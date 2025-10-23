@@ -1,0 +1,13 @@
+[package]
+name = "bitwi/meleegame"
+version = "0.1.0"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+
+[dependencies]
+Promise = "evaera/promise@4.0.0"
+Networker = "leifstout/networker@0.3.0"
+RaycastHitbox = "ulferno/raycasthitbox@4.0.2"
+
+[server-dependencies]
+ProfileService = "firecam702/profileservice@1.0.0"
