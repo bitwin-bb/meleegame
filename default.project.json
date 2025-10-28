@@ -6,7 +6,43 @@
       "Shared": {
         "$className": "Folder",
         "Services": {
-          "$className": "Folder"
+          "$className": "Folder",
+          "EnemyService": {
+            "$className": "Folder",
+            "EnemyServiceClient": {
+              "$path": "src/Services/EnemyService/Client.luau"
+            },
+            "Util": {
+              "$path": "src/Services/EnemyService/Util.luau"
+            }
+          },
+          "MeleeService": {
+            "$className": "Folder",
+            "MeleeServiceClient": {
+              "$path": "src/Services/MeleeService/Client.luau"
+            },
+            "Util": {
+              "$path": "src/Services/MeleeService/Util.luau"
+            }
+          },
+          "ParryService": {
+            "$className": "Folder",
+            "ParryServiceClient": {
+              "$path": "src/Services/ParryService/Client.luau"
+            },
+            "Util": {
+              "$path": "src/Services/ParryService/Util.luau"
+            }
+          },
+          "RollService": {
+            "$className": "Folder",
+            "RollServiceClient": {
+              "$path": "src/Services/RollService/Client.luau"
+            },
+            "Util": {
+              "$path": "src/Services/RollService/Util.luau"
+            }
+          }
         },
         "Classes": {
           "$className": "Folder",
@@ -24,7 +60,40 @@
           }
         },
         "Modules": {
-          "$className": "Folder"
+          "$className": "Folder",
+          "Core": {
+            "$className": "Folder",
+            "Combat": {
+              "$path": "src/Modules/Core/Combat.luau"
+            }
+          },
+          "Game": {
+            "$className": "Folder",
+            "Combat": {
+              "$path": "src/Modules/Game/Combat.luau"
+            }
+          },
+          "Items": {
+            "$className": "Folder",
+            "DroppedItems": {
+              "$path": "src/Modules/Items/DroppedItems.luau"
+            }
+          },
+          "Math": {
+            "$className": "Folder",
+            "calculateCameraPhysics": {
+              "$path": "src/Modules/Math/calculateCameraPhysics.luau"
+            }
+          },
+          "Platform": {
+            "$className": "Folder",
+            "DiurnalCycle": {
+              "$path": "src/Modules/Platform/DiurnalCycle.luau"
+            },
+            "Weather": {
+              "$path": "src/Modules/Platform/Weather.luau"
+            }
+          }
         }
       },
       "Packages": {
@@ -39,7 +108,31 @@
         "$path": "src/startup/Server.server.luau"
       },
       "Services": {
-        "$className": "Folder"
+        "$className": "Folder",
+        "EnemyService": {
+          "$className": "Folder",
+          "EnemyServiceServer": {
+            "$path": "src/Services/EnemyService/Server.luau"
+          }
+        },
+        "MeleeService": {
+          "$className": "Folder",
+          "MeleeServiceServer": {
+            "$path": "src/Services/MeleeService/Server.luau"
+          }
+        },
+        "ParryService": {
+          "$className": "Folder",
+          "ParryServiceServer": {
+            "$path": "src/Services/ParryService/Server.luau"
+          }
+        },
+        "RollService": {
+          "$className": "Folder",
+          "RollServiceServer": {
+            "$path": "src/Services/RollService/Server.luau"
+          }
+        }
       },
       "Classes": {
         "$className": "Folder"
