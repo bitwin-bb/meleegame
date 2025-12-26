@@ -1,0 +1,11 @@
+name = "basic-tarmac-example"
+
+upload-to-group-id = 1082513156
+
+# Most projects will define some 'inputs'.
+# This tells Tarmac where to find assets that we'll use in our game.
+[[inputs]]
+glob = "assets/**/*.png"
+codegen = true
+codegen-path = "src/assets.lua"
+codegen-base-path = "assets"

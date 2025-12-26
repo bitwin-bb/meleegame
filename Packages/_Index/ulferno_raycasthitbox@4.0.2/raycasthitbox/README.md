@@ -1,1 +1,0 @@
-Port of [Swordphin/raycastHitboxRbxl](https://github.com/Swordphin/raycastHitboxRbxl) for use on [Wally](https://wally.run) for Check it Containment.

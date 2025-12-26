@@ -20,3 +20,4 @@ return {
 	INSTANCE_ATTRIBUTE = "__networkTag",
 	INSTANCE_TAG = "__instance",
 }
+	

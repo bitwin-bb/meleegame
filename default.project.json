@@ -7,91 +7,94 @@
         "$className": "Folder",
         "Services": {
           "$className": "Folder",
+          "BlockService": {
+            "$className": "Folder",
+            "BlockServiceClient": {
+              "$path": "src/services/BlockService/Client.luau"
+            },
+            "Util": {
+              "$path": "src/services/BlockService/Util.luau"
+            }
+          },
           "EnemyService": {
             "$className": "Folder",
             "EnemyServiceClient": {
-              "$path": "src/Services/EnemyService/Client.luau"
+              "$path": "src/services/EnemyService/Client.luau"
             },
             "Util": {
-              "$path": "src/Services/EnemyService/Util.luau"
+              "$path": "src/services/EnemyService/Util.luau"
             }
           },
-          "MeleeService": {
+          "MagicService": {
             "$className": "Folder",
-            "MeleeServiceClient": {
-              "$path": "src/Services/MeleeService/Client.luau"
+            "MagicServiceClient": {
+              "$path": "src/services/MagicService/Client.luau"
             },
             "Util": {
-              "$path": "src/Services/MeleeService/Util.luau"
+              "$path": "src/services/MagicService/Util.luau"
             }
           },
-          "ParryService": {
+          "SwordService": {
             "$className": "Folder",
-            "ParryServiceClient": {
-              "$path": "src/Services/ParryService/Client.luau"
+            "SwordServiceClient": {
+              "$path": "src/services/SwordService/Client.luau"
             },
             "Util": {
-              "$path": "src/Services/ParryService/Util.luau"
+              "$path": "src/services/SwordService/Util.luau"
             }
           },
-          "RollService": {
+          "TestService": {
             "$className": "Folder",
-            "RollServiceClient": {
-              "$path": "src/Services/RollService/Client.luau"
+            "TestServiceClient": {
+              "$path": "src/services/TestService/Client.luau"
             },
             "Util": {
-              "$path": "src/Services/RollService/Util.luau"
+              "$path": "src/services/TestService/Util.luau"
             }
           }
         },
         "Classes": {
           "$className": "Folder",
-          "Ranged": {
-            "$path": "src/Classes/Ranged.luau"
-          },
-          "Slime": {
-            "$path": "src/Classes/Slime.luau"
+          "Boss": {
+            "$path": "src/classes/Boss.luau"
           },
           "Sword": {
-            "$path": "src/Classes/Sword.luau"
-          },
-          "Zombie": {
-            "$path": "src/Classes/Zombie.luau"
+            "$path": "src/classes/Sword.luau"
           }
         },
         "Modules": {
           "$className": "Folder",
           "Core": {
             "$className": "Folder",
-            "Combat": {
-              "$path": "src/Modules/Core/Combat.luau"
-            }
-          },
-          "Game": {
-            "$className": "Folder",
-            "Combat": {
-              "$path": "src/Modules/Game/Combat.luau"
+            "DataTemplate": {
+              "$path": "src/modules/Core/DataTemplate.luau"
             }
           },
           "Items": {
             "$className": "Folder",
-            "DroppedItems": {
-              "$path": "src/Modules/Items/DroppedItems.luau"
+            "Part": {
+              "$path": "src/modules/Items/Part.luau"
             }
           },
           "Math": {
             "$className": "Folder",
-            "calculateCameraPhysics": {
-              "$path": "src/Modules/Math/calculateCameraPhysics.luau"
+            "RandomNumber": {
+              "$path": "src/modules/Math/RandomNumber.luau"
             }
           },
           "Platform": {
             "$className": "Folder",
-            "DiurnalCycle": {
-              "$path": "src/Modules/Platform/DiurnalCycle.luau"
-            },
-            "Weather": {
-              "$path": "src/Modules/Platform/Weather.luau"
+            "GetUserID": {
+              "$path": "src/modules/Platform/GetUserID.luau"
+            }
+          },
+          "UI": {
+            "$className": "Folder",
+            "Placeholder": {
+              "$className": "Folder",
+              "yeah": {
+                "$path": "src/modules/UI/Placeholder/yeah.luau"
+              }
             }
           }
         }
@@ -109,36 +112,51 @@
       },
       "Services": {
         "$className": "Folder",
+        "BlockService": {
+          "$className": "Folder",
+          "BlockServiceServer": {
+            "$path": "src/services/BlockService/Server.luau"
+          }
+        },
         "EnemyService": {
           "$className": "Folder",
           "EnemyServiceServer": {
-            "$path": "src/Services/EnemyService/Server.luau"
+            "$path": "src/services/EnemyService/Server.luau"
           }
         },
-        "MeleeService": {
+        "MagicService": {
           "$className": "Folder",
-          "MeleeServiceServer": {
-            "$path": "src/Services/MeleeService/Server.luau"
+          "MagicServiceServer": {
+            "$path": "src/services/MagicService/Server.luau"
           }
         },
-        "ParryService": {
+        "SwordService": {
           "$className": "Folder",
-          "ParryServiceServer": {
-            "$path": "src/Services/ParryService/Server.luau"
+          "SwordServiceServer": {
+            "$path": "src/services/SwordService/Server.luau"
           }
         },
-        "RollService": {
+        "TestService": {
           "$className": "Folder",
-          "RollServiceServer": {
-            "$path": "src/Services/RollService/Server.luau"
+          "TestServiceServer": {
+            "$path": "src/services/TestService/Server.luau"
           }
         }
       },
       "Classes": {
-        "$className": "Folder"
+        "$className": "Folder",
+        "BossServer": {
+          "$path": "src/classes/BossServer.luau"
+        }
       },
       "Modules": {
-        "$className": "Folder"
+        "$className": "Folder",
+        "Items": {
+          "$className": "Folder",
+          "PartsServer": {
+            "$path": "src/modules/Items/PartsServer.luau"
+          }
+        }
       }
     },
     "StarterPlayer": {

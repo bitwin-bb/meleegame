@@ -1,0 +1,3 @@
+local SwordServiceClient = {}
+
+return SwordServiceClient

@@ -1,10 +1,2 @@
-# Project place file
-/meleegame.rbxlx
-
-# Roblox Studio lock files
-/*.rbxlx.lock
-/*.rbxl.lock
-
 node_modules/
 Packages/
-ServerPackages/

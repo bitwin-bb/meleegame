@@ -1,0 +1,19 @@
+[inputs."assets/heart.png"]
+hash = "66a859aa6547018e7e886f639b3a4d5f0ea457d8b08c52b0589858db92b39c18"
+id = 109496938822520
+packable = false
+
+[inputs."assets/heartDamaged.png"]
+hash = "ed745589dd7cbb1bb8b924788788aba041d58b50eebf550938e552823bf03694"
+id = 78414267956984
+packable = false
+
+[inputs."assets/storageslot.png"]
+hash = "cefe76df18ef95336037d5c162492b23c4797b167e0c9f5ec3d2eef4b45ebc75"
+id = 128598260479730
+packable = false
+
+[inputs."assets/storageslothighlighted.png"]
+hash = "034f437f72a4eb0b8ebc93be0c72a1159c9db55fc0f40dc693155debcff7815b"
+id = 76528848573929
+packable = false
