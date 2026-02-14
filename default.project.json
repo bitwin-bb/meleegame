@@ -7,67 +7,70 @@
         "$className": "Folder",
         "Services": {
           "$className": "Folder",
-          "BlockService": {
+          "CameraService": {
             "$className": "Folder",
-            "BlockServiceClient": {
-              "$path": "src/services/BlockService/Client.luau"
+            "CameraServiceClient": {
+              "$path": "src/services/CameraService/Client.luau"
             },
-            "Util": {
-              "$path": "src/services/BlockService/Util.luau"
+            "CameraServiceUtils": {
+              "$path": "src/services/CameraService/Utils.luau"
             }
           },
-          "EnemyService": {
+          "NpcService": {
             "$className": "Folder",
-            "EnemyServiceClient": {
-              "$path": "src/services/EnemyService/Client.luau"
+            "NpcServiceClient": {
+              "$path": "src/services/NpcService/Client.luau"
             },
-            "Util": {
-              "$path": "src/services/EnemyService/Util.luau"
+            "NpcServiceUtils": {
+              "$path": "src/services/NpcService/Utils.luau"
             }
           },
-          "MagicService": {
+          "PlayerService": {
             "$className": "Folder",
-            "MagicServiceClient": {
-              "$path": "src/services/MagicService/Client.luau"
+            "PlayerServiceClient": {
+              "$path": "src/services/PlayerService/Client.luau"
             },
-            "Util": {
-              "$path": "src/services/MagicService/Util.luau"
+            "PlayerServiceUtils": {
+              "$path": "src/services/PlayerService/Utils.luau"
             }
           },
-          "SwordService": {
+          "SlimeService": {
             "$className": "Folder",
-            "SwordServiceClient": {
-              "$path": "src/services/SwordService/Client.luau"
+            "SlimeServiceClient": {
+              "$path": "src/services/SlimeService/Client.luau"
             },
-            "Util": {
-              "$path": "src/services/SwordService/Util.luau"
-            }
-          },
-          "TestService": {
-            "$className": "Folder",
-            "TestServiceClient": {
-              "$path": "src/services/TestService/Client.luau"
-            },
-            "Util": {
-              "$path": "src/services/TestService/Util.luau"
+            "SlimeServiceUtils": {
+              "$path": "src/services/SlimeService/Utils.luau"
             }
           }
         },
         "Classes": {
           "$className": "Folder",
-          "Boss": {
-            "$path": "src/classes/Boss.luau"
+          "Camera": {
+            "$path": "src/classes/Camera"
           },
-          "Sword": {
-            "$path": "src/classes/Sword.luau"
+          "Npc": {
+            "$path": "src/classes/Npc.luau"
           }
         },
         "Modules": {
           "$className": "Folder",
           "Core": {
             "$className": "Folder",
+            "Configs": {
+              "$path": "src/modules/Core/Configs.luau"
+            },
             "DataTemplate": {
               "$path": "src/modules/Core/DataTemplate.luau"
+            }
+          },
+          "Game": {
+            "$className": "Folder",
+            "Skills": {
+              "1": {
+                "$path": "src/modules/Game/Skills/1.luau"
+              },
+              "$className": "Folder"
             }
           },
           "Items": {
@@ -90,11 +93,8 @@
           },
           "UI": {
             "$className": "Folder",
-            "Placeholder": {
-              "$className": "Folder",
-              "yeah": {
-                "$path": "src/modules/UI/Placeholder/yeah.luau"
-              }
+            "Abbreviate": {
+              "$path": "src/modules/UI/Abbreviate"
             }
           }
         }
@@ -112,42 +112,33 @@
       },
       "Services": {
         "$className": "Folder",
-        "BlockService": {
+        "CameraService": {
           "$className": "Folder",
-          "BlockServiceServer": {
-            "$path": "src/services/BlockService/Server.luau"
+          "CameraServiceServer": {
+            "$path": "src/services/CameraService/Server.luau"
           }
         },
-        "EnemyService": {
+        "NpcService": {
           "$className": "Folder",
-          "EnemyServiceServer": {
-            "$path": "src/services/EnemyService/Server.luau"
+          "NpcServiceServer": {
+            "$path": "src/services/NpcService/Server.luau"
           }
         },
-        "MagicService": {
+        "PlayerService": {
           "$className": "Folder",
-          "MagicServiceServer": {
-            "$path": "src/services/MagicService/Server.luau"
+          "PlayerServiceServer": {
+            "$path": "src/services/PlayerService/Server.luau"
           }
         },
-        "SwordService": {
+        "SlimeService": {
           "$className": "Folder",
-          "SwordServiceServer": {
-            "$path": "src/services/SwordService/Server.luau"
-          }
-        },
-        "TestService": {
-          "$className": "Folder",
-          "TestServiceServer": {
-            "$path": "src/services/TestService/Server.luau"
+          "SlimeServiceServer": {
+            "$path": "src/services/SlimeService/Server.luau"
           }
         }
       },
       "Classes": {
-        "$className": "Folder",
-        "BossServer": {
-          "$path": "src/classes/BossServer.luau"
-        }
+        "$className": "Folder"
       },
       "Modules": {
         "$className": "Folder",

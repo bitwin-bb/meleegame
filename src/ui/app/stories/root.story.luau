@@ -1,11 +1,18 @@
-return function(target) 
-   local frame = Instance.new("Frame")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-   frame.Size = UDim2.fromScale(0.1, 0.1)
-   frame.Position = UDim2.fromScale(0.45, 0.45)
-   frame.Parent = target
+local React = require(ReplicatedStorage.Packages.React)
+local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
+local RootUI = require(ReplicatedStorage.UI.app.RootUI)
 
-   return function()
-      frame:Destroy()
-   end
+local e: typeof(React.createElement) = React.createElement
+
+return function(target)
+	local root = ReactRoblox.createRoot(target)
+	root:render(e(RootUI, {
+		currentScreen = nil,
+	}))
+
+	return function()
+		root:unmount()
+	end
 end

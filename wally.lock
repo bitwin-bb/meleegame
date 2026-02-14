@@ -3,11 +3,6 @@
 registry = "test"
 
 [[package]]
-name = "autonomousethan/raycasthitboxv4"
-version = "0.1.0"
-dependencies = []
-
-[[package]]
 name = "chipioindustries/roact-rodux"
 version = "1.0.4"
 dependencies = [["Roact", "roblox/roact@1.4.4"], ["Rodux", "roblox/rodux@3.0.0"]]
@@ -40,6 +35,11 @@ dependencies = []
 [[package]]
 name = "jessekroeske/rodux"
 version = "3.0.0"
+dependencies = []
+
+[[package]]
+name = "joelbrd/charm"
+version = "1.0.10"
 dependencies = []
 
 [[package]]
@@ -83,7 +83,27 @@ version = "1.2.7"
 dependencies = []
 
 [[package]]
+name = "jsdotlua/promise"
+version = "3.5.2"
+dependencies = []
+
+[[package]]
 name = "jsdotlua/react"
+version = "17.2.1"
+dependencies = [["luau-polyfill", "jsdotlua/luau-polyfill@1.2.7"], ["shared", "jsdotlua/shared@17.2.1"]]
+
+[[package]]
+name = "jsdotlua/react-reconciler"
+version = "17.2.1"
+dependencies = [["luau-polyfill", "jsdotlua/luau-polyfill@1.2.7"], ["promise", "jsdotlua/promise@3.5.2"], ["react", "jsdotlua/react@17.2.1"], ["scheduler", "jsdotlua/scheduler@17.2.1"], ["shared", "jsdotlua/shared@17.2.1"]]
+
+[[package]]
+name = "jsdotlua/react-roblox"
+version = "17.2.1"
+dependencies = [["luau-polyfill", "jsdotlua/luau-polyfill@1.2.7"], ["react", "jsdotlua/react@17.2.1"], ["react-reconciler", "jsdotlua/react-reconciler@17.2.1"], ["scheduler", "jsdotlua/scheduler@17.2.1"], ["shared", "jsdotlua/shared@17.2.1"]]
+
+[[package]]
+name = "jsdotlua/scheduler"
 version = "17.2.1"
 dependencies = [["luau-polyfill", "jsdotlua/luau-polyfill@1.2.7"], ["shared", "jsdotlua/shared@17.2.1"]]
 
@@ -108,14 +128,29 @@ version = "1.2.7"
 dependencies = [["collections", "jsdotlua/collections@1.2.7"]]
 
 [[package]]
+name = "kartzrbx/janitor"
+version = "1.1.0"
+dependencies = []
+
+[[package]]
 name = "leifs/genrojotree"
 version = "0.1.0"
-dependencies = [["Networker", "leifstout/networker@0.3.0"], ["Promise", "cody-nelson/promise@4.0.1"], ["RaycastHitbox", "autonomousethan/raycasthitboxv4@0.1.0"], ["React", "jsdotlua/react@17.2.1"], ["Ripple", "littensy/ripple@0.9.3"], ["Roact", "jessekroeske/roact@1.4.2"], ["RoactRodux", "chipioindustries/roact-rodux@1.0.4"], ["Rodux", "jessekroeske/rodux@3.0.0"], ["Sift", "csqrl/sift@0.0.11"], ["Signal", "sleitnick/signal@2.0.3"], ["Smartbone", "jakeywastaken/smartbone-2@0.5.2"]]
+dependencies = [["Charm", "joelbrd/charm@1.0.10"], ["Janitor", "kartzrbx/janitor@1.1.0"], ["Networker", "leifstout/networker@0.2.1"], ["Promise", "cody-nelson/promise@4.0.1"], ["React", "jsdotlua/react@17.2.1"], ["ReactCharm", "littensy/react-charm@0.3.0"], ["ReactRoblox", "jsdotlua/react-roblox@17.2.1"], ["ReactRodux", "solarhorizon/react-rodux@0.2.2"], ["Ripple", "littensy/ripple@0.9.3"], ["Roact", "jessekroeske/roact@1.4.2"], ["RoactRodux", "chipioindustries/roact-rodux@1.0.4"], ["Rodux", "jessekroeske/rodux@3.0.0"], ["Sift", "csqrl/sift@0.0.11"], ["Signal", "sleitnick/signal@2.0.3"], ["Smartbone", "jakeywastaken/smartbone-2@0.5.2"]]
 
 [[package]]
 name = "leifstout/networker"
-version = "0.3.0"
+version = "0.2.1"
 dependencies = [["Signal", "sleitnick/signal@2.0.3"]]
+
+[[package]]
+name = "littensy/charm"
+version = "0.10.0"
+dependencies = []
+
+[[package]]
+name = "littensy/react-charm"
+version = "0.3.0"
+dependencies = [["React", "jsdotlua/react@17.2.1"], ["charm", "littensy/charm@0.10.0"]]
 
 [[package]]
 name = "littensy/ripple"
@@ -133,6 +168,16 @@ version = "3.0.0"
 dependencies = []
 
 [[package]]
+name = "roblox/rodux"
+version = "4.0.0-rc.0"
+dependencies = []
+
+[[package]]
 name = "sleitnick/signal"
 version = "2.0.3"
 dependencies = []
+
+[[package]]
+name = "solarhorizon/react-rodux"
+version = "0.2.2"
+dependencies = [["LuauPolyfill", "jsdotlua/luau-polyfill@1.2.7"], ["React", "jsdotlua/react@17.2.1"], ["Rodux", "roblox/rodux@4.0.0-rc.0"]]

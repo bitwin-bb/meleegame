@@ -1,3 +1,0 @@
-local SwordServiceClient = {}
-
-return SwordServiceClient
