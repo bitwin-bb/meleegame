@@ -3,6 +3,11 @@
 registry = "test"
 
 [[package]]
+name = "arakodev/rbxcamerashaker"
+version = "0.1.1"
+dependencies = []
+
+[[package]]
 name = "chipioindustries/roact-rodux"
 version = "1.0.4"
 dependencies = [["Roact", "roblox/roact@1.4.4"], ["Rodux", "roblox/rodux@3.0.0"]]
@@ -15,6 +20,11 @@ dependencies = []
 [[package]]
 name = "csqrl/sift"
 version = "0.0.11"
+dependencies = []
+
+[[package]]
+name = "essentiallyblue/zoneplus"
+version = "3.2.2"
 dependencies = []
 
 [[package]]
@@ -135,7 +145,7 @@ dependencies = []
 [[package]]
 name = "leifs/genrojotree"
 version = "0.1.0"
-dependencies = [["Charm", "joelbrd/charm@1.0.10"], ["Janitor", "kartzrbx/janitor@1.1.0"], ["Networker", "leifstout/networker@0.2.1"], ["Promise", "cody-nelson/promise@4.0.1"], ["React", "jsdotlua/react@17.2.1"], ["ReactCharm", "littensy/react-charm@0.3.0"], ["ReactRoblox", "jsdotlua/react-roblox@17.2.1"], ["ReactRodux", "solarhorizon/react-rodux@0.2.2"], ["Ripple", "littensy/ripple@0.9.3"], ["Roact", "jessekroeske/roact@1.4.2"], ["RoactRodux", "chipioindustries/roact-rodux@1.0.4"], ["Rodux", "jessekroeske/rodux@3.0.0"], ["Sift", "csqrl/sift@0.0.11"], ["Signal", "sleitnick/signal@2.0.3"], ["Smartbone", "jakeywastaken/smartbone-2@0.5.2"]]
+dependencies = [["BloodEngine", "megamonsta2/blood-engine@2.1.5"], ["Charm", "joelbrd/charm@1.0.10"], ["EZCameraShake", "arakodev/rbxcamerashaker@0.1.1"], ["FastCast", "megamonsta2/fastcast@1.0.0"], ["Janitor", "kartzrbx/janitor@1.1.0"], ["Networker", "leifstout/networker@0.2.1"], ["PartCache", "megamonsta2/partcache@1.1.3"], ["ProfileStore", "vyon/profilestore@1.0.3"], ["Promise", "cody-nelson/promise@4.0.1"], ["RaycastHitbox", "ulferno/raycasthitbox@4.0.2"], ["React", "jsdotlua/react@17.2.1"], ["ReactCharm", "littensy/react-charm@0.3.0"], ["ReactRoblox", "jsdotlua/react-roblox@17.2.1"], ["ReactRodux", "solarhorizon/react-rodux@0.2.2"], ["Ripple", "littensy/ripple@0.9.3"], ["Roact", "jessekroeske/roact@1.4.2"], ["RoactRodux", "chipioindustries/roact-rodux@1.0.4"], ["Rodux", "jessekroeske/rodux@3.0.0"], ["Sift", "csqrl/sift@0.0.11"], ["Signal", "sleitnick/signal@2.0.3"], ["Smartbone", "jakeywastaken/smartbone-2@0.5.2"], ["ZonePlus", "essentiallyblue/zoneplus@3.2.2"]]
 
 [[package]]
 name = "leifstout/networker"
@@ -156,6 +166,26 @@ dependencies = [["React", "jsdotlua/react@17.2.1"], ["charm", "littensy/charm@0.
 name = "littensy/ripple"
 version = "0.9.3"
 dependencies = [["Promise", "evaera/promise@4.0.0"]]
+
+[[package]]
+name = "megamonsta2/blood-engine"
+version = "2.1.5"
+dependencies = [["FastCast", "megamonsta2/fastcast@1.0.0"], ["PartCache", "megamonsta2/partcache@1.1.3"]]
+
+[[package]]
+name = "megamonsta2/fastcast"
+version = "1.0.0"
+dependencies = [["PartCache", "megamonsta2/partcache@1.1.3"], ["Table", "megamonsta2/table@1.0.3"]]
+
+[[package]]
+name = "megamonsta2/partcache"
+version = "1.1.3"
+dependencies = [["Table", "megamonsta2/table@1.0.3"]]
+
+[[package]]
+name = "megamonsta2/table"
+version = "1.0.3"
+dependencies = []
 
 [[package]]
 name = "roblox/roact"
@@ -181,3 +211,13 @@ dependencies = []
 name = "solarhorizon/react-rodux"
 version = "0.2.2"
 dependencies = [["LuauPolyfill", "jsdotlua/luau-polyfill@1.2.7"], ["React", "jsdotlua/react@17.2.1"], ["Rodux", "roblox/rodux@4.0.0-rc.0"]]
+
+[[package]]
+name = "ulferno/raycasthitbox"
+version = "4.0.2"
+dependencies = []
+
+[[package]]
+name = "vyon/profilestore"
+version = "1.0.3"
+dependencies = []

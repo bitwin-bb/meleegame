@@ -1,3 +1,0 @@
-local SlimeServiceUtils = {}
-
-return SlimeServiceUtils

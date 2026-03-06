@@ -7,6 +7,24 @@
         "$className": "Folder",
         "Services": {
           "$className": "Folder",
+          "AnimationService": {
+            "$className": "Folder",
+            "AnimationServiceClient": {
+              "$path": "src/services/AnimationService/Client.luau"
+            },
+            "AnimationServiceUtils": {
+              "$path": "src/services/AnimationService/Utils.luau"
+            }
+          },
+          "BuildService": {
+            "$className": "Folder",
+            "BuildServiceClient": {
+              "$path": "src/services/BuildService/Client.luau"
+            },
+            "BuildServiceUtils": {
+              "$path": "src/services/BuildService/Utils.luau"
+            }
+          },
           "CameraService": {
             "$className": "Folder",
             "CameraServiceClient": {
@@ -14,6 +32,87 @@
             },
             "CameraServiceUtils": {
               "$path": "src/services/CameraService/Utils.luau"
+            }
+          },
+          "CraftingService": {
+            "$className": "Folder",
+            "CraftingServiceClient": {
+              "$path": "src/services/CraftingService/Client.luau"
+            },
+            "CraftingTree": {
+              "$path": "src/services/CraftingService/CraftingTree.luau"
+            },
+            "CraftingServiceUtils": {
+              "$path": "src/services/CraftingService/Utils.luau"
+            }
+          },
+          "GoreService": {
+            "$className": "Folder",
+            "GoreServiceClient": {
+              "$path": "src/services/GoreService/Client.luau"
+            },
+            "GoreServiceUtils": {
+              "$path": "src/services/GoreService/Utils.luau"
+            }
+          },
+          "HpService": {
+            "$className": "Folder",
+            "HpServiceClient": {
+              "$path": "src/services/HpService/Client.luau"
+            },
+            "HpServiceUtils": {
+              "$path": "src/services/HpService/Utils.luau"
+            }
+          },
+          "InventoryService": {
+            "$className": "Folder",
+            "InventoryServiceClient": {
+              "$path": "src/services/InventoryService/Client.luau"
+            },
+            "InventoryServiceUtils": {
+              "$path": "src/services/InventoryService/Utils.luau"
+            }
+          },
+          "LootService": {
+            "$className": "Folder",
+            "Cache": {
+              "$path": "src/services/LootService/Cache.luau"
+            },
+            "LootServiceClient": {
+              "$path": "src/services/LootService/Client.luau"
+            },
+            "Data": {
+              "$path": "src/services/LootService/Data.luau"
+            },
+            "LootServiceUtils": {
+              "$path": "src/services/LootService/Utils.luau"
+            }
+          },
+          "MagicService": {
+            "$className": "Folder",
+            "MagicServiceClient": {
+              "$path": "src/services/MagicService/Client.luau"
+            },
+            "MagicServiceUtils": {
+              "$path": "src/services/MagicService/Utils.luau"
+            }
+          },
+          "ManaService": {
+            "$className": "Folder",
+            "ManaServiceClient": {
+              "$path": "src/services/ManaService/Client.luau"
+            },
+            "ManaServiceUtils": {
+              "$path": "src/services/ManaService/Utils.luau"
+            }
+          },
+          "MeleeService": {
+            "$className": "Folder",
+            "MeleeServiceClient": {
+              "$path": "src/services/MeleeService/Client.luau"
+            },
+            "MeleeServiceUtils": {
+              "$path": "src/services/MeleeService/Utils.luau"
             }
           },
           "NpcService": {
@@ -25,6 +124,15 @@
               "$path": "src/services/NpcService/Utils.luau"
             }
           },
+          "PlayerDataService": {
+            "$className": "Folder",
+            "PlayerDataServiceClient": {
+              "$path": "src/services/PlayerDataService/Client.luau"
+            },
+            "PlayerDataServiceUtils": {
+              "$path": "src/services/PlayerDataService/Utils.luau"
+            }
+          },
           "PlayerService": {
             "$className": "Folder",
             "PlayerServiceClient": {
@@ -34,13 +142,97 @@
               "$path": "src/services/PlayerService/Utils.luau"
             }
           },
-          "SlimeService": {
+          "RagdollService": {
             "$className": "Folder",
-            "SlimeServiceClient": {
-              "$path": "src/services/SlimeService/Client.luau"
+            "RagdollServiceClient": {
+              "$path": "src/services/RagdollService/Client.luau"
             },
-            "SlimeServiceUtils": {
-              "$path": "src/services/SlimeService/Utils.luau"
+            "RagdollServiceUtils": {
+              "$path": "src/services/RagdollService/Utils.luau"
+            }
+          },
+          "SoundService": {
+            "$className": "Folder",
+            "SoundServiceClient": {
+              "$path": "src/services/SoundService/Client.luau"
+            },
+            "SoundServiceUtils": {
+              "$path": "src/services/SoundService/Utils.luau"
+            }
+          },
+          "VFXService": {
+            "$className": "Folder",
+            "VFXServiceClient": {
+              "$path": "src/services/VFXService/Client.luau"
+            },
+            "VFXServiceUtils": {
+              "$path": "src/services/VFXService/Utils.luau"
+            }
+          },
+          "WeatherService": {
+            "$className": "Folder",
+            "WeatherServiceClient": {
+              "$path": "src/services/WeatherService/Client.luau"
+            },
+            "WeatherServiceUtils": {
+              "$path": "src/services/WeatherService/Utils.luau"
+            }
+          },
+          "WorldAnimatorService": {
+            "$className": "Folder",
+            "WorldAnimatorServiceClient": {
+              "$path": "src/services/WorldAnimatorService/Client.luau"
+            },
+            "WorldAnimatorServiceUtils": {
+              "$path": "src/services/WorldAnimatorService/Utils.luau"
+            }
+          },
+          "WorldGenerationService": {
+            "$className": "Folder",
+            "WorldGenerationServiceClient": {
+              "$path": "src/services/WorldGenerationService/Client.luau"
+            },
+            "WorldGenerationServiceUtils": {
+              "$path": "src/services/WorldGenerationService/Utils.luau"
+            }
+          },
+          "WorldSimulationService": {
+            "$className": "Folder",
+            "Cache": {
+              "$path": "src/services/WorldSimulationService/Cache.luau"
+            },
+            "WorldSimulationServiceClient": {
+              "$path": "src/services/WorldSimulationService/Client.luau"
+            },
+            "Config": {
+              "$path": "src/services/WorldSimulationService/Config.luau"
+            },
+            "Data": {
+              "$path": "src/services/WorldSimulationService/Data.luau"
+            },
+            "Debug": {
+              "$path": "src/services/WorldSimulationService/Debug.luau"
+            },
+            "Net": {
+              "$path": "src/services/WorldSimulationService/Net.luau"
+            },
+            "Render": {
+              "$path": "src/services/WorldSimulationService/Render.luau"
+            },
+            "Runtime": {
+              "$path": "src/services/WorldSimulationService/Runtime.luau"
+            },
+            "Shared": {
+              "$path": "src/services/WorldSimulationService/Shared.luau"
+            },
+            "State": {
+              "$path": "src/services/WorldSimulationService/State.luau"
+            },
+            "Stream": {
+              "$path": "src/services/WorldSimulationService/Stream.luau"
+            },
+            "WorldSimulationServiceUtils": {
+              "$path": "src/services/WorldSimulationService/Utils.luau"
             }
           }
         },
@@ -49,52 +241,220 @@
           "Camera": {
             "$path": "src/classes/Camera"
           },
+          "EnemyHitbox": {
+            "$path": "src/classes/EnemyHitbox",
+            "Utils": {
+              "$className": "Folder",
+              "SpatialHash": {
+                "$path": "src/classes/EnemyHitbox/Utils/SpatialHash.luau"
+              }
+            }
+          },
+          "Gore": {
+            "$path": "src/classes/Gore"
+          },
+          "Magic": {
+            "$path": "src/classes/Magic.luau"
+          },
+          "Melee": {
+            "$path": "src/classes/Melee.luau"
+          },
           "Npc": {
-            "$path": "src/classes/Npc.luau"
+            "$path": "src/classes/Npc"
+          },
+          "Rubble": {
+            "$path": "src/classes/Rubble.luau"
+          },
+          "WorldGeneration": {
+            "$path": "src/classes/WorldGeneration",
+            "Utils": {
+              "$className": "Folder",
+              "Cache": {
+                "$path": "src/classes/WorldGeneration/Utils/Cache.luau"
+              }
+            }
           }
         },
         "Modules": {
           "$className": "Folder",
           "Core": {
             "$className": "Folder",
+            "AttributeCache": {
+              "$path": "src/modules/Core/AttributeCache.luau"
+            },
+            "BinaryStreaming": {
+              "$path": "src/modules/Core/BinaryStreaming.luau"
+            },
+            "CameraShakeGate": {
+              "$path": "src/modules/Core/CameraShakeGate.luau"
+            },
+            "Codec": {
+              "$path": "src/modules/Core/Codec.luau"
+            },
             "Configs": {
               "$path": "src/modules/Core/Configs.luau"
             },
+            "DamagePipeline": {
+              "$path": "src/modules/Core/DamagePipeline.luau"
+            },
             "DataTemplate": {
               "$path": "src/modules/Core/DataTemplate.luau"
+            },
+            "DeterministicRNG": {
+              "$path": "src/modules/Core/DeterministicRNG.luau"
+            },
+            "EventBus": {
+              "$path": "src/modules/Core/EventBus.luau"
+            },
+            "ObjectPool": {
+              "$path": "src/modules/Core/ObjectPool.luau"
+            },
+            "Runtime": {
+              "$path": "src/modules/Core/Runtime.luau"
+            },
+            "SpatialHashGrid": {
+              "$path": "src/modules/Core/SpatialHashGrid.luau"
+            },
+            "StateMachine": {
+              "$path": "src/modules/Core/StateMachine.luau"
+            },
+            "TagQuery": {
+              "$path": "src/modules/Core/TagQuery.luau"
+            },
+            "TickScheduler": {
+              "$path": "src/modules/Core/TickScheduler.luau"
+            },
+            "TileMetadataRegistry": {
+              "$path": "src/modules/Core/TileMetadataRegistry.luau"
+            },
+            "WorkspaceFolders": {
+              "$path": "src/modules/Core/WorkspaceFolders.luau"
+            },
+            "WorldMutationQueue": {
+              "$path": "src/modules/Core/WorldMutationQueue.luau"
             }
           },
           "Game": {
             "$className": "Folder",
-            "Skills": {
-              "1": {
-                "$path": "src/modules/Game/Skills/1.luau"
-              },
-              "$className": "Folder"
+            "Player": {
+              "$className": "Folder",
+              "PlayerSpawnCooldown": {
+                "$path": "src/modules/Game/Player/PlayerSpawnCooldown.luau"
+              }
             }
           },
           "Items": {
             "$className": "Folder",
-            "Part": {
-              "$path": "src/modules/Items/Part.luau"
+            "Animations": {
+              "$path": "src/modules/Items/Animations.luau"
+            },
+            "Audio": {
+              "$path": "src/modules/Items/Audio.luau"
+            },
+            "Items": {
+              "$path": "src/modules/Items/Items.luau"
+            },
+            "MeleeWeapons": {
+              "$path": "src/modules/Items/MeleeWeapons.luau"
+            },
+            "Npcs": {
+              "$path": "src/modules/Items/Npcs.luau"
+            },
+            "Registry": {
+              "$path": "src/modules/Items/Registry.luau"
+            },
+            "Tiles": {
+              "$path": "src/modules/Items/Tiles.luau"
             }
           },
           "Math": {
             "$className": "Folder",
+            "DropChance": {
+              "$path": "src/modules/Math/DropChance.luau"
+            },
+            "HopMotion": {
+              "$path": "src/modules/Math/HopMotion.luau"
+            },
             "RandomNumber": {
               "$path": "src/modules/Math/RandomNumber.luau"
+            },
+            "ReforgeRarity": {
+              "$path": "src/modules/Math/ReforgeRarity.luau"
+            },
+            "SpawnChance": {
+              "$path": "src/modules/Math/SpawnChance.luau"
             }
           },
           "Platform": {
             "$className": "Folder",
-            "GetUserID": {
-              "$path": "src/modules/Platform/GetUserID.luau"
+            "Cursor": {
+              "$path": "src/modules/Platform/Cursor.luau"
+            },
+            "GamepadNav": {
+              "$path": "src/modules/Platform/GamepadNav.luau"
+            },
+            "Gestures": {
+              "$path": "src/modules/Platform/Gestures.luau"
+            },
+            "Haptics": {
+              "$path": "src/modules/Platform/Haptics.luau"
+            },
+            "HUDScaler": {
+              "$path": "src/modules/Platform/HUDScaler.luau"
+            },
+            "Input": {
+              "$path": "src/modules/Platform/Input.luau"
+            },
+            "PerfTier": {
+              "$path": "src/modules/Platform/PerfTier.luau"
+            },
+            "Platform": {
+              "$path": "src/modules/Platform/Platform.luau"
             }
           },
           "UI": {
             "$className": "Folder",
-            "Abbreviate": {
-              "$path": "src/modules/UI/Abbreviate"
+            "AbbreviationFormatter": {
+              "$path": "src/modules/UI/AbbreviationFormatter.luau"
+            },
+            "DynamicTextResolver": {
+              "$path": "src/modules/UI/DynamicTextResolver.luau"
+            },
+            "HUDLayoutEngine": {
+              "$path": "src/modules/UI/HUDLayoutEngine.luau"
+            },
+            "LocalizationEngine": {
+              "$path": "src/modules/UI/LocalizationEngine.luau"
+            },
+            "NotificationBus": {
+              "$path": "src/modules/UI/NotificationBus.luau"
+            },
+            "ReactiveState": {
+              "$path": "src/modules/UI/ReactiveState.luau"
+            },
+            "RichTextFormatter": {
+              "$path": "src/modules/UI/RichTextFormatter.luau"
+            },
+            "StatStringBuilder": {
+              "$path": "src/modules/UI/StatStringBuilder.luau"
+            },
+            "TextMeasurementCache": {
+              "$path": "src/modules/UI/TextMeasurementCache.luau"
+            },
+            "TooltipManager": {
+              "$path": "src/modules/UI/TooltipManager.luau"
+            },
+            "UIController": {
+              "$path": "src/modules/UI/UIController.luau"
+            },
+            "UIScaling": {
+              "$path": "src/modules/UI/UIScaling.luau"
+            },
+            "UISpringAnimator": {
+              "$path": "src/modules/UI/UISpringAnimator.luau"
+            },
+            "VirtualizedList": {
+              "$path": "src/modules/UI/VirtualizedList.luau"
             }
           }
         }
@@ -112,10 +472,70 @@
       },
       "Services": {
         "$className": "Folder",
+        "AnimationService": {
+          "$className": "Folder",
+          "AnimationServiceServer": {
+            "$path": "src/services/AnimationService/Server.luau"
+          }
+        },
+        "BuildService": {
+          "$className": "Folder",
+          "BuildServiceServer": {
+            "$path": "src/services/BuildService/Server.luau"
+          }
+        },
         "CameraService": {
           "$className": "Folder",
           "CameraServiceServer": {
             "$path": "src/services/CameraService/Server.luau"
+          }
+        },
+        "CraftingService": {
+          "$className": "Folder",
+          "CraftingServiceServer": {
+            "$path": "src/services/CraftingService/Server.luau"
+          }
+        },
+        "GoreService": {
+          "$className": "Folder",
+          "GoreServiceServer": {
+            "$path": "src/services/GoreService/Server.luau"
+          }
+        },
+        "HpService": {
+          "$className": "Folder",
+          "HpServiceServer": {
+            "$path": "src/services/HpService/Server.luau"
+          }
+        },
+        "InventoryService": {
+          "$className": "Folder",
+          "InventoryServiceServer": {
+            "$path": "src/services/InventoryService/Server.luau"
+          }
+        },
+        "LootService": {
+          "$className": "Folder",
+          "LootServiceServer": {
+            "$path": "src/services/LootService/Server.luau"
+          }
+        },
+        "MagicService": {
+          "$className": "Folder",
+          "MagicServiceServer": {
+            "$path": "src/services/MagicService/Server.luau"
+          }
+        },
+        "ManaService": {
+          "$className": "Folder",
+          "ManaServiceServer": {
+            "$path": "src/services/ManaService/Server.luau"
+          }
+        },
+        "MeleeService": {
+          "$className": "Folder",
+          "MeleeServiceServer": {
+            "$path": "src/services/MeleeService/Server.luau"
           }
         },
         "NpcService": {
@@ -124,16 +544,52 @@
             "$path": "src/services/NpcService/Server.luau"
           }
         },
+        "PlayerDataService": {
+          "$className": "Folder",
+          "PlayerDataServiceServer": {
+            "$path": "src/services/PlayerDataService/Server.luau"
+          }
+        },
         "PlayerService": {
           "$className": "Folder",
           "PlayerServiceServer": {
             "$path": "src/services/PlayerService/Server.luau"
           }
         },
-        "SlimeService": {
+        "RagdollService": {
           "$className": "Folder",
-          "SlimeServiceServer": {
-            "$path": "src/services/SlimeService/Server.luau"
+          "RagdollServiceServer": {
+            "$path": "src/services/RagdollService/Server.luau"
+          }
+        },
+        "SoundService": {
+          "$className": "Folder",
+          "SoundServiceServer": {
+            "$path": "src/services/SoundService/Server.luau"
+          }
+        },
+        "VFXService": {
+          "$className": "Folder",
+          "VFXServiceServer": {
+            "$path": "src/services/VFXService/Server.luau"
+          }
+        },
+        "WeatherService": {
+          "$className": "Folder",
+          "WeatherServiceServer": {
+            "$path": "src/services/WeatherService/Server.luau"
+          }
+        },
+        "WorldGenerationService": {
+          "$className": "Folder",
+          "WorldGenerationServiceServer": {
+            "$path": "src/services/WorldGenerationService/Server.luau"
+          }
+        },
+        "WorldSimulationService": {
+          "$className": "Folder",
+          "WorldSimulationServiceServer": {
+            "$path": "src/services/WorldSimulationService/Server.luau"
           }
         }
       },
@@ -141,13 +597,7 @@
         "$className": "Folder"
       },
       "Modules": {
-        "$className": "Folder",
-        "Items": {
-          "$className": "Folder",
-          "PartsServer": {
-            "$path": "src/modules/Items/PartsServer.luau"
-          }
-        }
+        "$className": "Folder"
       }
     },
     "StarterPlayer": {
