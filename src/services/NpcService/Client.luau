@@ -6,7 +6,7 @@ local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local NpcServiceUtils = require(ReplicatedStorage.Shared.Services.NpcService.NpcServiceUtils)
-local SoundServiceClient = require(ReplicatedStorage.Shared.Services.SoundService.SoundServiceClient)
+local AudioServiceClient = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceClient)
 
 type NpcSnapshot = NpcServiceUtils.NpcSnapshot
 
@@ -170,7 +170,7 @@ function NpcServiceClient.onNpcAnimationEvent(self: NpcServiceClient, payloadRaw
 		if (effect :: any).kind == "sound" then
 			local source = (effect :: any).source
 			local options = if typeof((effect :: any).options) == "table" then (effect :: any).options else {}
-			SoundServiceClient:playSfx(source, options)
+			AudioServiceClient:playSfx(source, options)
 		end
 	end
 end
@@ -221,3 +221,4 @@ type NpcServiceClient = typeof(NpcServiceClient) & {
 }
 
 return NpcServiceClient :: NpcServiceClient
+

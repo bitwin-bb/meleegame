@@ -2,6 +2,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local Audio = require(ReplicatedStorage.Shared.Modules.Items.Audio)
+local AudioServiceUtils = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceUtils)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
 
 local PlayerServiceUtils = {}
@@ -100,6 +102,19 @@ local MIN_BLOOD_CLEANUP_SECONDS = 2
 local HALF_TURN_RADIANS = math.pi
 local FULL_TURN_RADIANS = math.pi * 2
 local QUARTER_TURN_RADIANS = math.pi * 0.5
+local PLAYER_AUDIO = (Audio :: any).Player or {}
+local PLAYER_LAND_AUDIO = PLAYER_AUDIO.Land or {}
+
+local function createAudioBackedLandingConfig(audioEntries: any, config: LandingSoundConfig): LandingSoundConfig
+	return {
+		soundAssetIds = AudioServiceUtils.collectSoundAssetIds(audioEntries),
+		volume = config.volume,
+		playbackSpeedMin = config.playbackSpeedMin,
+		playbackSpeedMax = config.playbackSpeedMax,
+		rollOffMaxDistance = config.rollOffMaxDistance,
+		emitterSize = config.emitterSize,
+	}
+end
 
 local HORIZONTAL_FACING_KEYS: { [Enum.KeyCode]: FacingSign } = {
 	[Enum.KeyCode.A] = -1,
@@ -108,72 +123,48 @@ local HORIZONTAL_FACING_KEYS: { [Enum.KeyCode]: FacingSign } = {
 	[Enum.KeyCode.Right] = 1,
 }
 local DEFAULT_LANDING_SOUND: LandingSoundConfig = {
-	soundAssetIds = {
-		"rbxassetid://139218459028027",
-		"rbxassetid://135661992057340",
-		"rbxassetid://118171247776690",
-		"rbxassetid://99678905942335",
-	},
+	soundAssetIds = {},
 	volume = 0.58,
 	playbackSpeedMin = 0.84,
 	playbackSpeedMax = 0.94,
 	rollOffMaxDistance = 1000,
 	emitterSize = 6,
 }
+DEFAULT_LANDING_SOUND = createAudioBackedLandingConfig(PLAYER_LAND_AUDIO.Default, DEFAULT_LANDING_SOUND)
 
 local LANDING_SOUNDS_BY_SURFACE: { [string]: LandingSoundConfig } = {
-	Grass = {
-		soundAssetIds = {
-			"rbxassetid://110916840535817",
-			"rbxassetid://104414031461916",
-			"rbxassetid://98036398008424",
-			"rbxassetid://95096400753854",
-		},
+	Grass = createAudioBackedLandingConfig(PLAYER_LAND_AUDIO.Grass, {
+		soundAssetIds = {},
 		volume = 0.55,
 		playbackSpeedMin = 0.82,
 		playbackSpeedMax = 0.93,
 		rollOffMaxDistance = 1000,
 		emitterSize = 6,
-	},
-	Ground = {
-		soundAssetIds = {
-			"rbxassetid://70613938354919",
-			"rbxassetid://73189723454250",
-			"rbxassetid://85098154840446",
-			"rbxassetid://78685079799800",
-		},
+	}),
+	Ground = createAudioBackedLandingConfig(PLAYER_LAND_AUDIO.Ground, {
+		soundAssetIds = {},
 		volume = 0.58,
 		playbackSpeedMin = 0.83,
 		playbackSpeedMax = 0.95,
 		rollOffMaxDistance = 1000,
 		emitterSize = 6,
-	},
-	Sand = {
-		soundAssetIds = {
-			"rbxassetid://8453417974",
-			"rbxassetid://109565823661998",
-			"rbxassetid://18642869167",
-			"rbxassetid://18642867368",
-		},
+	}),
+	Sand = createAudioBackedLandingConfig(PLAYER_LAND_AUDIO.Sand, {
+		soundAssetIds = {},
 		volume = 0.54,
 		playbackSpeedMin = 0.8,
 		playbackSpeedMax = 0.91,
 		rollOffMaxDistance = 1000,
 		emitterSize = 6,
-	},
-	Snow = {
-		soundAssetIds = {
-			"rbxassetid://96739494925672",
-			"rbxassetid://105900849260487",
-			"rbxassetid://106747482840476",
-			"rbxassetid://101980065058830",
-		},
+	}),
+	Snow = createAudioBackedLandingConfig(PLAYER_LAND_AUDIO.Snow, {
+		soundAssetIds = {},
 		volume = 0.52,
 		playbackSpeedMin = 0.76,
 		playbackSpeedMax = 0.89,
 		rollOffMaxDistance = 1000,
 		emitterSize = 6,
-	},
+	}),
 }
 
 local LANDING_SOUND_ALIASES: { [string]: string } = {

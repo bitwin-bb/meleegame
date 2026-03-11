@@ -7,14 +7,15 @@ local Workspace = game:GetService("Workspace")
 
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
 local Networker = require(ReplicatedStorage.Packages.Networker)
+local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
 local InventoryServiceUtils = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceUtils)
 local LootServiceData = require(ReplicatedStorage.Shared.Services.LootService.Data)
 local LootServiceUtils = require(ReplicatedStorage.Shared.Services.LootService.LootServiceUtils)
-local SoundServiceUtils = require(ReplicatedStorage.Shared.Services.SoundService.SoundServiceUtils)
+local AudioServiceUtils = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceUtils)
 local InventoryServiceServer = require(ServerScriptService.Services.InventoryService.InventoryServiceServer)
 local PlayerDataServiceServer = require(ServerScriptService.Services.PlayerDataService.PlayerDataServiceServer)
-local SoundServiceServer = require(ServerScriptService.Services.SoundService.SoundServiceServer)
+local AudioServiceServer = require(ServerScriptService.Services.AudioService.AudioServiceServer)
 local LootServiceCache = require(ReplicatedStorage.Shared.Services.LootService.Cache)
 
 type NumberMotion = Ripple.Motion<number>
@@ -67,14 +68,14 @@ type PlayerDataServiceServerObject = {
 	) -> number?,
 }
 
-type SoundServiceServerObject = {
+type AudioServiceServerObject = {
 	playSfxForPlayer: (
-		self: SoundServiceServerObject,
+		self: AudioServiceServerObject,
 		player: Player,
 		soundAssetIdRaw: any,
 		optionsRaw: any
 	) -> (),
-	playSfxForAll: (self: SoundServiceServerObject, soundAssetIdRaw: any, optionsRaw: any) -> (),
+	playSfxForAll: (self: AudioServiceServerObject, soundAssetIdRaw: any, optionsRaw: any) -> (),
 }
 
 type LootServiceCacheObject = LootServiceCache.Cache
@@ -145,10 +146,10 @@ local COIN_TYPE_BY_ITEM_TOKEN: { [string]: "copper" | "silver" | "gold" | "plati
 	coinplatinum = "platinum",
 }
 local KATANA_DROP_TOKEN = "katana"
-local PICKUP_SOUND_PATH = { "Assets", "Sounds", "Player", "Pickup" }
-local ITEM_PICKUP_SOUND_NAMES = { "ItemPickup1", "ItemPickup2", "ItemPickup3" }
-local COIN_DROP_SOUND_NAME = "CoinDrop"
-local COIN_PICKUP_SOUND_NAME = "CoinPickup"
+local LOOT_AUDIO = (AudioRegistry :: any).Loot or {}
+local LOOT_ITEM_PICKUP_AUDIO = LOOT_AUDIO.ItemPickup or {}
+local LOOT_COIN_DROP_AUDIO = LOOT_AUDIO.CoinDrop or {}
+local LOOT_COIN_PICKUP_AUDIO = LOOT_AUDIO.CoinPickup or {}
 
 local function sanitizeOwnerUserId(userIdRaw: any): number?
 	if typeof(userIdRaw) ~= "number" or userIdRaw ~= userIdRaw then
@@ -265,6 +266,14 @@ local function normalizeItemToken(raw: any): string
 		return ""
 	end
 	return string.gsub(string.lower(value), "[%s_%-%.]+", "")
+end
+
+local function pickRandomSoundAssetId(randomObject: Random, soundAssetIds: { string }): string?
+	local count = #soundAssetIds
+	if count <= 0 then
+		return nil
+	end
+	return soundAssetIds[randomObject:NextInteger(1, count)]
 end
 
 function LootServiceServer.cacheToolTemplateIfPossible(self: LootServiceServer, itemId: string, template: Instance?)
@@ -463,61 +472,10 @@ function LootServiceServer.ensureLootFolder(self: LootServiceServer): Folder
 	return WorkspaceFolders.getOrCreateFolderInGame(LOOT_FOLDER_NAME)
 end
 
-function LootServiceServer.resolvePickupSoundFolder(self: LootServiceServer): Folder?
-	local cached = self.pickupSoundFolder
-	if cached ~= nil and cached.Parent ~= nil then
-		return cached
-	end
-
-	local resolved = resolveFolderByPath(ReplicatedStorage, PICKUP_SOUND_PATH)
-	if resolved == nil or not resolved:IsA("Folder") then
-		self.pickupSoundFolder = nil
-		return nil
-	end
-	self.pickupSoundFolder = resolved
-	return resolved
-end
-
-function LootServiceServer.resolvePickupSoundAssetId(self: LootServiceServer, soundNameRaw: any): string?
-	local soundName = LootServiceUtils.sanitizeString(soundNameRaw, nil)
-	if soundName == nil then
-		return nil
-	end
-
-	local pickupFolder = self:resolvePickupSoundFolder()
-	if pickupFolder == nil then
-		return nil
-	end
-
-	local sound = pickupFolder:FindFirstChild(soundName)
-	if sound ~= nil and sound:IsA("Sound") then
-		return SoundServiceUtils.resolveSoundAssetId(sound)
-	end
-	return nil
-end
-
-function LootServiceServer.resolveRandomItemPickupSoundAssetId(self: LootServiceServer): string?
-	local pickupFolder = self:resolvePickupSoundFolder()
-	if pickupFolder == nil then
-		return nil
-	end
-
-	local soundAssetIds = {}
-	for _, soundName in ITEM_PICKUP_SOUND_NAMES do
-		local sound = pickupFolder:FindFirstChild(soundName)
-		if sound ~= nil and sound:IsA("Sound") then
-			local soundAssetId = SoundServiceUtils.resolveSoundAssetId(sound)
-			if soundAssetId ~= nil then
-				table.insert(soundAssetIds, soundAssetId)
-			end
-		end
-	end
-	if #soundAssetIds <= 0 then
-		return nil
-	end
-
-	local index = self.random:NextInteger(1, #soundAssetIds)
-	return soundAssetIds[index]
+function LootServiceServer.refreshPickupSoundTemplates(self: LootServiceServer)
+	self.itemPickupSoundAssetIds = AudioServiceUtils.collectSoundAssetIds(LOOT_ITEM_PICKUP_AUDIO)
+	self.coinDropSoundAssetIds = AudioServiceUtils.collectSoundAssetIds(LOOT_COIN_DROP_AUDIO)
+	self.coinPickupSoundAssetIds = AudioServiceUtils.collectSoundAssetIds(LOOT_COIN_PICKUP_AUDIO)
 end
 
 function LootServiceServer.playCoinDropSound(self: LootServiceServer, runtime: LootRuntime)
@@ -526,7 +484,11 @@ function LootServiceServer.playCoinDropSound(self: LootServiceServer, runtime: L
 		return
 	end
 
-	local soundAssetId = self:resolvePickupSoundAssetId(COIN_DROP_SOUND_NAME)
+	if #self.coinDropSoundAssetIds <= 0 then
+		self:refreshPickupSoundTemplates()
+	end
+
+	local soundAssetId = pickRandomSoundAssetId(self.random, self.coinDropSoundAssetIds)
 	if soundAssetId == nil then
 		return
 	end
@@ -547,11 +509,15 @@ function LootServiceServer.playPickupSound(self: LootServiceServer, runtime: Loo
 		return
 	end
 
+	if #self.itemPickupSoundAssetIds <= 0 and #self.coinPickupSoundAssetIds <= 0 then
+		self:refreshPickupSoundTemplates()
+	end
+
 	local soundAssetId: string?
 	if self:resolveCoinTypeFromItemId(runtime.itemId) ~= nil then
-		soundAssetId = self:resolvePickupSoundAssetId(COIN_PICKUP_SOUND_NAME)
+		soundAssetId = pickRandomSoundAssetId(self.random, self.coinPickupSoundAssetIds)
 	else
-		soundAssetId = self:resolveRandomItemPickupSoundAssetId()
+		soundAssetId = pickRandomSoundAssetId(self.random, self.itemPickupSoundAssetIds)
 	end
 	if soundAssetId == nil then
 		return
@@ -1914,7 +1880,7 @@ function LootServiceServer.init(self: LootServiceServer)
 	})
 	self.inventoryService = InventoryServiceServer :: InventoryServiceServerObject
 	self.playerDataService = PlayerDataServiceServer :: PlayerDataServiceServerObject
-	self.soundService = SoundServiceServer :: SoundServiceServerObject
+	self.soundService = AudioServiceServer :: AudioServiceServerObject
 	self.data = LootServiceData
 	self.settings = LootServiceUtils.resolveSettings(self.data)
 	self.random = Random.new()
@@ -1922,7 +1888,10 @@ function LootServiceServer.init(self: LootServiceServer)
 	self.lootById = {}
 	self.itemTemplateByItemId = {}
 	self.assetSearchRoots = nil
-	self.pickupSoundFolder = nil
+	self.itemPickupSoundAssetIds = {} :: { string }
+	self.coinDropSoundAssetIds = {} :: { string }
+	self.coinPickupSoundAssetIds = {} :: { string }
+	self:refreshPickupSoundTemplates()
 	self.missingTemplateWarnedByItemId = {}
 	self.lastDropRequestAtByPlayer = {}
 	self.simulationAccumulator = 0
@@ -1969,14 +1938,13 @@ function LootServiceServer.destroy(self: LootServiceServer)
 		self.networker:destroy()
 	end
 	self.soundService = nil
-	self.pickupSoundFolder = nil
 end
 
 type LootServiceServer = typeof(LootServiceServer) & {
 	networker: Networker.Server,
 	inventoryService: InventoryServiceServerObject,
 	playerDataService: PlayerDataServiceServerObject,
-	soundService: SoundServiceServerObject?,
+	soundService: AudioServiceServerObject?,
 	data: { [string]: any },
 	settings: LootSettings,
 	random: Random,
@@ -1985,7 +1953,9 @@ type LootServiceServer = typeof(LootServiceServer) & {
 	lootById: { [string]: LootRuntime },
 	itemTemplateByItemId: { [string]: Instance | boolean },
 	assetSearchRoots: { Instance }?,
-	pickupSoundFolder: Folder?,
+	itemPickupSoundAssetIds: { string },
+	coinDropSoundAssetIds: { string },
+	coinPickupSoundAssetIds: { string },
 	missingTemplateWarnedByItemId: { [string]: boolean },
 	lastDropRequestAtByPlayer: { [Player]: number },
 	simulationAccumulator: number,

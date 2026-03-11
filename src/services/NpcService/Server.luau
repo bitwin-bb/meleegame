@@ -8,13 +8,15 @@ local Workspace = game:GetService("Workspace")
 
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
 local Configs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
 local Slime = require(ReplicatedStorage.Shared.Classes.Npc.AiTypes.slime)
 local EnemyHitbox = require(ReplicatedStorage.Shared.Classes.EnemyHitbox)
+local AudioServiceUtils = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceUtils)
 local NpcServiceUtils = require(ReplicatedStorage.Shared.Services.NpcService.NpcServiceUtils)
 local HpServiceServer = require(ServerScriptService.Services.HpService.HpServiceServer)
-local SoundServiceServer = require(ServerScriptService.Services.SoundService.SoundServiceServer)
+local AudioServiceServer = require(ServerScriptService.Services.AudioService.AudioServiceServer)
 local LootServiceServer = require(ServerScriptService.Services.LootService.LootServiceServer)
 local GoreServiceServer = require(ServerScriptService.Services.GoreService.GoreServiceServer)
 local WorldGenerationServiceServer =
@@ -34,8 +36,8 @@ type SlimeSpawnSettings = NpcServiceUtils.SlimeSpawnSettings
 type HpServiceServerObject = {
 	damagePlayer: (self: HpServiceServerObject, player: Player, damageRaw: any) -> number?,
 }
-type SoundServiceServerObject = {
-	playSfxForAll: (self: SoundServiceServerObject, soundAssetIdRaw: any, optionsRaw: any) -> (),
+type AudioServiceServerObject = {
+	playSfxForAll: (self: AudioServiceServerObject, soundAssetIdRaw: any, optionsRaw: any) -> (),
 }
 type LootServiceServerObject = {
 	spawnDropsFromSource: (
@@ -139,12 +141,16 @@ local DEFAULT_PRE_DAMAGE_SLIME_BLOOD_COOLDOWN = 0.12
 local DEFAULT_FALLBACK_SLIME_BLOOD_COLOR = Color3.fromRGB(39, 145, 58)
 local MISSING_SLIME_BLOOD_TEMPLATE_WARNING =
 	"[NpcService] Missing slime blood template. Expected ReplicatedStorage.Assets.Effects.SlimeBlood. Using fallback emitter."
-local SLIME_SOUND_VARIANTS = {
-	jump = { "Jump1", "Jump2" },
-	land = { "Land" },
-	hurt = { "Hit1", "Hit2", "Hit3" },
-	hit = { "Hit1", "Hit2", "Hit3" },
-	death = { "Death" },
+local NPC_AUDIO = (AudioRegistry :: any).Npcs or {}
+local SLIME_AUDIO = (NPC_AUDIO :: any).Slimes or {}
+local DEFAULT_SLIME_AUDIO_BINDINGS = (SLIME_AUDIO :: any).Default or {}
+local GREEN_SLIME_AUDIO_BINDINGS = (SLIME_AUDIO :: any).GreenSlime or DEFAULT_SLIME_AUDIO_BINDINGS
+local SLIME_AUDIO_KEY_BY_TOKEN = {
+	jump = "Jump",
+	land = "Land",
+	hurt = "Hurt",
+	hit = "Hurt",
+	death = "Death",
 }
 
 local function fireForPlayers(networker: Networker.Server, players: { Player }, methodName: string, ...: any)
@@ -289,21 +295,6 @@ local function normalizeToken(valueRaw: any): string
 		return ""
 	end
 	return string.lower(string.gsub(valueRaw, "[%s_%-%.]", ""))
-end
-
-local function findFolderByPath(root: Instance?, pathSegments: { string }): Folder?
-	local cursor = root
-	for _, segment in pathSegments do
-		if cursor == nil then
-			return nil
-		end
-		cursor = cursor:FindFirstChild(segment)
-	end
-
-	if cursor ~= nil and cursor:IsA("Folder") then
-		return cursor
-	end
-	return nil
 end
 
 local function findPartByPath(root: Instance?, pathSegments: { string }): BasePart?
@@ -537,15 +528,11 @@ function NpcServiceServer.applyRuntimeNpcCollisionGroup(self: NpcServiceServer, 
 	setModelCollisionGroup(model, ENEMY_COLLISION_GROUP)
 end
 
-function NpcServiceServer.getGreenSlimeSoundFolder(self: NpcServiceServer): Folder?
-	local cachedFolder = self.greenSlimeSoundFolder
-	if cachedFolder ~= nil and cachedFolder.Parent ~= nil then
-		return cachedFolder
+local function resolveSlimeAudioBindings(runtime: NpcRuntime): { [string]: any }
+	if runtime.slime.isGreenSlime then
+		return GREEN_SLIME_AUDIO_BINDINGS
 	end
-
-	local folder = findFolderByPath(ReplicatedStorage, { "Assets", "Sounds", "Enemies", "GreenSlime" })
-	self.greenSlimeSoundFolder = folder
-	return folder
+	return DEFAULT_SLIME_AUDIO_BINDINGS
 end
 
 function NpcServiceServer.resolveRuntimeSoundSource(self: NpcServiceServer, runtime: NpcRuntime, soundNameRaw: any): any?
@@ -553,29 +540,13 @@ function NpcServiceServer.resolveRuntimeSoundSource(self: NpcServiceServer, runt
 		return nil
 	end
 
-	local soundFolder = self:getGreenSlimeSoundFolder()
-	if soundFolder == nil then
-		return NpcServiceUtils.findDescendantByNameOfClass(runtime.slime.model, soundNameRaw, "Sound")
-	end
-
 	local token = normalizeToken(soundNameRaw)
-	local variantNames = SLIME_SOUND_VARIANTS[token]
-	if variantNames ~= nil and #variantNames > 0 then
-		local candidates = {}
-		for _, variantName in variantNames do
-			local soundInstance = NpcServiceUtils.findDescendantByNameOfClass(soundFolder, variantName, "Sound")
-			if soundInstance ~= nil and soundInstance:IsA("Sound") then
-				table.insert(candidates, soundInstance)
-			end
+	local soundKey = SLIME_AUDIO_KEY_BY_TOKEN[token]
+	if soundKey ~= nil then
+		local soundAssetIds = AudioServiceUtils.collectSoundAssetIds(resolveSlimeAudioBindings(runtime)[soundKey])
+		if #soundAssetIds > 0 then
+			return soundAssetIds[self.random:NextInteger(1, #soundAssetIds)]
 		end
-		if #candidates > 0 then
-			return candidates[self.random:NextInteger(1, #candidates)]
-		end
-	end
-
-	local directByName = NpcServiceUtils.findDescendantByNameOfClass(soundFolder, soundNameRaw, "Sound")
-	if directByName ~= nil then
-		return directByName
 	end
 
 	return NpcServiceUtils.findDescendantByNameOfClass(runtime.slime.model, soundNameRaw, "Sound")
@@ -2110,12 +2081,11 @@ function NpcServiceServer.init(self: NpcServiceServer)
 	self.runtimes = {}
 	self.runtimesByModel = {}
 	self.world = nil
-	self.soundService = SoundServiceServer :: SoundServiceServerObject
+	self.soundService = AudioServiceServer :: AudioServiceServerObject
 	self.lootService = LootServiceServer :: LootServiceServerObject
 	self.goreService = GoreServiceServer :: GoreServiceServerObject
 	self.collisionGroupsReady = false
 	self.playerCharacterAddedConnections = {}
-	self.greenSlimeSoundFolder = nil
 	self:ensureCollisionGroups()
 	self.enemyHitbox = EnemyHitbox.new({
 		cellSize = 8,
@@ -2199,12 +2169,11 @@ type NpcServiceServer = typeof(NpcServiceServer) & {
 	runtimes: { [string]: NpcRuntime },
 	runtimesByModel: { [Model]: NpcRuntime },
 	enemyHitbox: EnemyHitboxManager?,
-	soundService: SoundServiceServerObject?,
+	soundService: AudioServiceServerObject?,
 	lootService: LootServiceServerObject?,
 	goreService: GoreServiceServerObject?,
 	collisionGroupsReady: boolean,
 	playerCharacterAddedConnections: { [Player]: RBXScriptConnection },
-	greenSlimeSoundFolder: Folder?,
 	world: any?,
 	npcFolder: Folder,
 	slimeSpawnSettings: SlimeSpawnSettings,

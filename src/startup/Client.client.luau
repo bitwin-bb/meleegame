@@ -6,7 +6,8 @@ local CoreRuntime = require(ReplicatedStorage.Shared.Modules.Core.Runtime)
 local CameraServiceClient = require(ReplicatedStorage.Shared.Services.CameraService.CameraServiceClient)
 local PlayerServiceClient = require(ReplicatedStorage.Shared.Services.PlayerService.PlayerServiceClient)
 local AnimationServiceClient = require(ReplicatedStorage.Shared.Services.AnimationService.AnimationServiceClient)
-local SoundServiceClient = require(ReplicatedStorage.Shared.Services.SoundService.SoundServiceClient)
+local AudioServiceClient = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceClient)
+local VFXServiceClient = require(ReplicatedStorage.Shared.Services.VFXService.VFXServiceClient)
 local HpServiceClient = require(ReplicatedStorage.Shared.Services.HpService.HpServiceClient)
 local PlayerDataServiceClient = require(ReplicatedStorage.Shared.Services.PlayerDataService.PlayerDataServiceClient)
 local InventoryServiceClient = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceClient)
@@ -26,6 +27,8 @@ local WorldAnimatorServiceClient =
 	require(ReplicatedStorage.Shared.Services.WorldAnimatorService.WorldAnimatorServiceClient)
 local NpcServiceClient = require(ReplicatedStorage.Shared.Services.NpcService.NpcServiceClient)
 local WeatherServiceClient = require(ReplicatedStorage.Shared.Services.WeatherService.WeatherServiceClient)
+local WindFoliageServiceClient =
+	require(ReplicatedStorage.Shared.Services.WindFoliageService.WindFoliageServiceClient)
 
 local function isCameraServiceEnabled(): boolean
 	local cameraSettings = Configs.cameraSettings
@@ -66,7 +69,8 @@ ManaServiceClient:init()
 if isCameraServiceEnabled() then
 	CameraServiceClient:init()
 end
-SoundServiceClient:init()
+AudioServiceClient:init()
+VFXServiceClient:init()
 HpServiceClient:init()
 GoreServiceClient:init()
 PlayerServiceClient:init()
@@ -76,6 +80,7 @@ if isWorldSimulationReplicationEnabled() then
 	WorldSimulationServiceClient:init()
 end
 WeatherServiceClient:init()
+WindFoliageServiceClient:init()
 WorldAnimatorServiceClient:init()
 AnimationServiceClient:init()
 NpcServiceClient:init()
@@ -84,3 +89,4 @@ MagicServiceClient:init()
 RagdollServiceClient:init()
 
 ui()
+

@@ -10,10 +10,11 @@ local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
 local CameraShaker = require(ReplicatedStorage.Packages.EZCameraShake)
+local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
 local CameraShakeGate = require(ReplicatedStorage.Shared.Modules.Core.CameraShakeGate)
 local PlayerServiceUtils = require(ReplicatedStorage.Shared.Services.PlayerService.PlayerServiceUtils)
-local SoundServiceClient = require(ReplicatedStorage.Shared.Services.SoundService.SoundServiceClient)
-local SoundServiceUtils = require(ReplicatedStorage.Shared.Services.SoundService.SoundServiceUtils)
+local AudioServiceClient = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceClient)
+local AudioServiceUtils = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceUtils)
 local WorldGenerationServiceClient =
 	require(ReplicatedStorage.Shared.Services.WorldGenerationService.WorldGenerationServiceClient)
 
@@ -54,6 +55,8 @@ local WORLD_UNLOCK_REQUIRED_SURFACE_HITS = 1
 local WORLD_UNLOCK_MIN_SURFACE_NORMAL_Y = 0.5
 local WORLD_UNLOCK_REQUEST_MIN_INTERVAL = 0.1
 local RANDOM = Random.new()
+local PLAYER_AUDIO = (AudioRegistry :: any).Player or {}
+local PLAYER_HURT_AUDIO = PLAYER_AUDIO.Hurt or {}
 
 local AIRBORNE_STATES: { [Enum.HumanoidStateType]: boolean } = {
 	[Enum.HumanoidStateType.Jumping] = true,
@@ -130,7 +133,6 @@ function PlayerServiceClient.init(self: PlayerServiceClient)
 	self.lastLandingAt = 0
 	self.lastHurtFeedbackAt = 0
 	self.lastHurtShakeAt = 0
-	self.hurtSoundFolder = nil
 	self.hurtSoundAssetIds = {}
 	CameraShakeGate.reset()
 	self.cameraShaker = CameraShaker.new(Enum.RenderPriority.Last.Value, function(shakeOffset: CFrame)
@@ -149,19 +151,6 @@ function PlayerServiceClient.init(self: PlayerServiceClient)
 	cameraShakerInternal._renderName = ("PlayerServiceDamageShake_%d"):format(self.localPlayer.UserId)
 	self.cameraShaker:Start()
 
-	local assets = ReplicatedStorage:FindFirstChild("Assets")
-	if assets and assets:IsA("Folder") then
-		local sounds = assets:FindFirstChild("Sounds")
-		if sounds and sounds:IsA("Folder") then
-			local playerSounds = sounds:FindFirstChild("Player")
-			if playerSounds and playerSounds:IsA("Folder") then
-				local hurtFolder = playerSounds:FindFirstChild("Hurt")
-				if hurtFolder and hurtFolder:IsA("Folder") then
-					self.hurtSoundFolder = hurtFolder
-				end
-			end
-		end
-	end
 	self:refreshHurtSoundTemplates()
 
 	self.janitor:GiveChore(function()
@@ -225,20 +214,7 @@ function PlayerServiceClient.init(self: PlayerServiceClient)
 end
 
 function PlayerServiceClient.refreshHurtSoundTemplates(self: PlayerServiceClient)
-	self.hurtSoundAssetIds = {}
-	local hurtFolder = self.hurtSoundFolder
-	if not hurtFolder or hurtFolder.Parent == nil then
-		return
-	end
-
-	for _, child in hurtFolder:GetChildren() do
-		if child:IsA("Sound") then
-			local soundAssetId = SoundServiceUtils.resolveSoundAssetId(child)
-			if soundAssetId ~= nil then
-				table.insert(self.hurtSoundAssetIds, soundAssetId)
-			end
-		end
-	end
+	self.hurtSoundAssetIds = AudioServiceUtils.collectSoundAssetIds(PLAYER_HURT_AUDIO)
 end
 
 function PlayerServiceClient.pickHurtSoundAssetId(self: PlayerServiceClient): string?
@@ -263,7 +239,7 @@ function PlayerServiceClient.playHurtFeedback(self: PlayerServiceClient, damageA
 	local hurtSoundAssetId = self:pickHurtSoundAssetId()
 	if hurtSoundAssetId then
 		local soundParent = if self.characterRig and self.characterRig.rootPart then self.characterRig.rootPart else nil
-		SoundServiceClient:playSfx(hurtSoundAssetId, {
+		AudioServiceClient:playSfx(hurtSoundAssetId, {
 			parent = soundParent,
 			playbackSpeed = RANDOM:NextNumber(HURT_SOUND_PLAYBACK_SPEED_MIN, HURT_SOUND_PLAYBACK_SPEED_MAX),
 		})
@@ -700,7 +676,7 @@ function PlayerServiceClient.tryPlayLandingSound(
 	if now - self.lastLandingAt < self.landingSoundCooldown then
 		return
 	end
-	if SoundServiceClient.categoryGroups == nil then
+	if AudioServiceClient.categoryGroups == nil then
 		return
 	end
 
@@ -710,7 +686,7 @@ function PlayerServiceClient.tryPlayLandingSound(
 		return
 	end
 
-	local playedSound = SoundServiceClient:playSfx(soundAssetId, soundOptions)
+	local playedSound = AudioServiceClient:playSfx(soundAssetId, soundOptions)
 	if playedSound then
 		self.lastLandingAt = now
 	end
@@ -831,7 +807,6 @@ type PlayerServiceClient = typeof(PlayerServiceClient) & {
 	lastLandingAt: number,
 	lastHurtFeedbackAt: number,
 	lastHurtShakeAt: number,
-	hurtSoundFolder: Folder?,
 	hurtSoundAssetIds: { string },
 	cameraShaker: any,
 }

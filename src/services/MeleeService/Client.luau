@@ -18,7 +18,7 @@ local InventoryServiceClient = require(ReplicatedStorage.Shared.Services.Invento
 local InventoryServiceUtils = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceUtils)
 local MeleeServiceUtils = require(ReplicatedStorage.Shared.Services.MeleeService.MeleeServiceUtils)
 local RagdollServiceClient = require(ReplicatedStorage.Shared.Services.RagdollService.RagdollServiceClient)
-local SoundServiceClient = require(ReplicatedStorage.Shared.Services.SoundService.SoundServiceClient)
+local AudioServiceClient = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceClient)
 
 type MeleeWeaponConfig = MeleeServiceUtils.MeleeWeaponConfig
 type InventoryState = InventoryServiceUtils.InventoryState
@@ -673,7 +673,7 @@ function MeleeServiceClient.isAttackBlocked(self: MeleeServiceClient): boolean
 end
 
 function MeleeServiceClient.playToolSoundAssetId(self: MeleeServiceClient, soundAssetIdRaw: any)
-	if SoundServiceClient.categoryGroups == nil then
+	if AudioServiceClient.categoryGroups == nil then
 		return
 	end
 	if typeof(soundAssetIdRaw) ~= "string" and typeof(soundAssetIdRaw) ~= "number" then
@@ -681,7 +681,7 @@ function MeleeServiceClient.playToolSoundAssetId(self: MeleeServiceClient, sound
 	end
 
 	local rootPart = resolveRootPart(self.character)
-	SoundServiceClient:playSfx(soundAssetIdRaw, {
+	AudioServiceClient:playSfx(soundAssetIdRaw, {
 		parent = rootPart,
 		replaceChannel = false,
 		autoDestroy = true,
@@ -1217,3 +1217,4 @@ type MeleeServiceClient = typeof(MeleeServiceClient) & {
 }
 
 return MeleeServiceClient :: MeleeServiceClient
+

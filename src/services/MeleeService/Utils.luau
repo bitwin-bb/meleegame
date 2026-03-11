@@ -2,8 +2,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local MeleeServiceUtils = {}
+local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
 local ItemRegistry = require(ReplicatedStorage.Shared.Modules.Items.Registry)
-local SoundServiceUtils = require(ReplicatedStorage.Shared.Services.SoundService.SoundServiceUtils)
+local AudioServiceUtils = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceUtils)
 
 export type MeleeWeaponConfig = {
 	itemId: string,
@@ -120,6 +121,7 @@ MeleeServiceUtils.DEFAULT_FALLBACK_SWING_PADDING = DEFAULT_FALLBACK_SWING_PADDIN
 
 local sharedFolder = ReplicatedStorage:FindFirstChild("Shared")
 local modulesFolder = if sharedFolder and sharedFolder:IsA("Folder") then sharedFolder:FindFirstChild("Modules") else nil
+local WEAPON_AUDIO = (((AudioRegistry :: any).Items or {}).Weapons or {}) :: { [string]: any }
 
 local cachedDefinitions: { [string]: any } = {}
 local cachedWeaponConfigs: { [string]: MeleeWeaponConfig | false } = {}
@@ -605,6 +607,70 @@ function MeleeServiceUtils.resolveToolAnimationOverrides(toolRaw: any, fallbackA
 	return animationConfig
 end
 
+local function addNamedToolSound(sounds: { [string]: string }, soundName: string, soundAssetId: string)
+	sounds[soundName] = soundAssetId
+	sounds[string.lower(soundName)] = soundAssetId
+end
+
+local function buildRegistryToolSounds(tool: Tool): { [string]: string }
+	local sounds: { [string]: string } = {}
+	local itemId = MeleeServiceUtils.resolveToolItemId(tool)
+	if itemId == nil then
+		return sounds
+	end
+
+	local weaponAudio = WEAPON_AUDIO[itemId]
+	if typeof(weaponAudio) ~= "table" then
+		return sounds
+	end
+
+	local equipSoundAssetId = AudioServiceUtils.normalizeSoundAssetId((weaponAudio :: any).Equip)
+	if equipSoundAssetId ~= nil then
+		addNamedToolSound(sounds, "Equip", equipSoundAssetId)
+	end
+
+	return sounds
+end
+
+local function pushSwingSound(swingSounds: { [string]: { string } }, groupName: string, soundAssetId: string)
+	local bucket = swingSounds[groupName]
+	if bucket == nil then
+		bucket = {}
+		swingSounds[groupName] = bucket
+	end
+	table.insert(bucket, soundAssetId)
+end
+
+local function buildRegistryToolSwingSounds(tool: Tool): { [string]: { string } }
+	local swingSounds: { [string]: { string } } = {}
+	local itemId = MeleeServiceUtils.resolveToolItemId(tool)
+	if itemId == nil then
+		return swingSounds
+	end
+
+	local weaponAudio = WEAPON_AUDIO[itemId]
+	if typeof(weaponAudio) ~= "table" then
+		return swingSounds
+	end
+
+	if typeof((weaponAudio :: any).Swings) ~= "table" then
+		return swingSounds
+	end
+
+	for index, soundIdRaw in (weaponAudio :: any).Swings do
+		if typeof(index) ~= "number" then
+			continue
+		end
+
+		local soundAssetId = AudioServiceUtils.normalizeSoundAssetId(soundIdRaw)
+		if soundAssetId ~= nil then
+			pushSwingSound(swingSounds, "swing" .. tostring(math.max(1, math.floor(index))), soundAssetId)
+		end
+	end
+
+	return swingSounds
+end
+
 function MeleeServiceUtils.resolveToolSounds(toolRaw: any): { [string]: string }
 	local sounds: { [string]: string } = {}
 	if typeof(toolRaw) ~= "Instance" or not toolRaw:IsA("Tool") then
@@ -612,6 +678,10 @@ function MeleeServiceUtils.resolveToolSounds(toolRaw: any): { [string]: string }
 	end
 
 	local tool = toolRaw :: Tool
+	for soundName, soundAssetId in buildRegistryToolSounds(tool) do
+		sounds[soundName] = soundAssetId
+	end
+
 	local soundsContainer = findNamedChild(tool, "Sounds")
 	if soundsContainer == nil then
 		return sounds
@@ -624,7 +694,7 @@ function MeleeServiceUtils.resolveToolSounds(toolRaw: any): { [string]: string }
 
 		local soundName = trim(descendant.Name)
 		if soundName ~= "" then
-			local soundAssetId = SoundServiceUtils.resolveSoundAssetId(descendant)
+			local soundAssetId = AudioServiceUtils.resolveSoundAssetId(descendant)
 			if soundAssetId ~= nil then
 				sounds[soundName] = soundAssetId
 				sounds[string.lower(soundName)] = soundAssetId
@@ -662,18 +732,13 @@ function MeleeServiceUtils.resolveToolSwingSounds(toolRaw: any): { [string]: { s
 	end
 
 	local tool = toolRaw :: Tool
+	for groupName, soundAssetIds in buildRegistryToolSwingSounds(tool) do
+		swingSounds[groupName] = table.clone(soundAssetIds)
+	end
+
 	local soundsContainer = findNamedChild(tool, "Sounds")
 	if soundsContainer == nil then
 		return swingSounds
-	end
-
-	local function pushSwingSound(groupName: string, soundAssetId: string)
-		local bucket = swingSounds[groupName]
-		if bucket == nil then
-			bucket = {}
-			swingSounds[groupName] = bucket
-		end
-		table.insert(bucket, soundAssetId)
 	end
 
 	for _, descendant in soundsContainer:GetDescendants() do
@@ -696,7 +761,7 @@ function MeleeServiceUtils.resolveToolSwingSounds(toolRaw: any): { [string]: { s
 		end
 
 		if groupName ~= nil then
-			local soundAssetId = SoundServiceUtils.resolveSoundAssetId(descendant)
+			local soundAssetId = AudioServiceUtils.resolveSoundAssetId(descendant)
 			if soundAssetId ~= nil then
 				pushSwingSound(groupName, soundAssetId)
 			end

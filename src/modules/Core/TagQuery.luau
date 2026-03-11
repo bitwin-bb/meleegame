@@ -35,7 +35,7 @@ local function connectSignal(signal: any, callback: (...any) -> ()): any?
 end
 
 function TagQuery.new(providerRaw: any): TagQuery
-	if typeof(providerRaw) ~= "table" or typeof((providerRaw :: any).GetTagged) ~= "function" then
+	if providerRaw == nil or typeof((providerRaw :: any).GetTagged) ~= "function" then
 		error("TagQuery.new expects a provider with GetTagged(tag)")
 	end
 	local self = setmetatable({

@@ -6,6 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
 local Charm = require(ReplicatedStorage.Packages.Charm)
 local Signal = require(ReplicatedStorage.Packages.Signal)
+local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
 local ImageIds = require(ReplicatedStorage.UI.core.ImageIds)
 local NavButton = require(ReplicatedStorage.UI.core.components.NavButton)
 local infoThunks = require(ReplicatedStorage.UI.features.info.state.infoThunks)
@@ -22,8 +23,8 @@ local useCoinEmerge = require(ReplicatedStorage.UI.features.inventory.hooks.useC
 local useTrashAppear = require(ReplicatedStorage.UI.features.inventory.hooks.useTrashAppear)
 local useSlotSelect = require(ReplicatedStorage.UI.features.inventory.hooks.useSlotSelect)
 local InventoryServiceUtils = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceUtils)
-local SoundServiceClient = require(ReplicatedStorage.Shared.Services.SoundService.SoundServiceClient)
-local SoundServiceUtils = require(ReplicatedStorage.Shared.Services.SoundService.SoundServiceUtils)
+local AudioServiceClient = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceClient)
+local AudioServiceUtils = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceUtils)
 
 type InventoryState = InventoryServiceUtils.InventoryState
 type InventorySlot = InventoryServiceUtils.InventorySlot
@@ -60,12 +61,10 @@ local SELECTED_SLOT_TINT = Color3.fromRGB(142, 220, 255)
 local DISABLED_SLOT_TINT = Color3.fromRGB(100, 108, 120)
 local EXPANSION_VISIBILITY_EPSILON = 0.001
 local TRASH_VISIBILITY_EPSILON = 0.001
+local UI_AUDIO = (AudioRegistry :: any).UI or {}
+local UI_HOVER_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Hover)
+local UI_PRESS_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Press or UI_AUDIO.Click)
 type HoveredSlotSource = "Hotbar" | "Grid"
-type UiSoundTemplateCache = {
-	hover: string?,
-	press: string?,
-	resolved: boolean,
-}
 type DropRequestedSignal = {
 	Connect: (
 		self: DropRequestedSignal,
@@ -86,78 +85,36 @@ local KEYCODE_TO_SLOT_INDEX: { [Enum.KeyCode]: number } = {
 	[Enum.KeyCode.Eight] = 8,
 }
 
-local uiSoundTemplateCache: UiSoundTemplateCache = {
-	hover = nil,
-	press = nil,
-	resolved = false,
-}
-
 local DEFAULT_RENDER_INVENTORY_STATE = InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_LOADING)
 
 local function snapToPixel(value: number): number
 	return math.floor(value + 0.5)
 end
 
-local function resolveUiSoundTemplates()
-	if uiSoundTemplateCache.resolved then
-		return
-	end
-	uiSoundTemplateCache.resolved = true
-
-	local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
-	if assetsFolder == nil then
-		return
-	end
-
-	local soundsFolder = assetsFolder:FindFirstChild("Sounds")
-	if soundsFolder == nil then
-		return
-	end
-
-	local uiFolder = soundsFolder:FindFirstChild("Ui")
-	if uiFolder == nil then
-		return
-	end
-
-	local hover = uiFolder:FindFirstChild("UiHover")
-	if hover ~= nil and hover:IsA("Sound") then
-		uiSoundTemplateCache.hover = SoundServiceUtils.resolveSoundAssetId(hover)
-	end
-
-	local press = uiFolder:FindFirstChild("UiPress")
-	if press ~= nil and press:IsA("Sound") then
-		uiSoundTemplateCache.press = SoundServiceUtils.resolveSoundAssetId(press)
-	end
-end
-
 local function playUiHoverSound()
-	if SoundServiceClient.categoryGroups == nil then
+	if AudioServiceClient.categoryGroups == nil then
 		return
 	end
 
-	resolveUiSoundTemplates()
-	local hoverAssetId = uiSoundTemplateCache.hover
-	if hoverAssetId == nil then
+	if UI_HOVER_SOUND == nil then
 		return
 	end
 
-	SoundServiceClient:playUi(hoverAssetId, {
+	AudioServiceClient:playUi(UI_HOVER_SOUND, {
 		replaceChannel = false,
 	})
 end
 
 local function playUiPressSound()
-	if SoundServiceClient.categoryGroups == nil then
+	if AudioServiceClient.categoryGroups == nil then
 		return
 	end
 
-	resolveUiSoundTemplates()
-	local pressAssetId = uiSoundTemplateCache.press
-	if pressAssetId == nil then
+	if UI_PRESS_SOUND == nil then
 		return
 	end
 
-	SoundServiceClient:playUi(pressAssetId, {
+	AudioServiceClient:playUi(UI_PRESS_SOUND, {
 		replaceChannel = false,
 	})
 end

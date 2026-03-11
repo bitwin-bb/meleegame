@@ -1,5 +1,6 @@
 --!strict
 
+local CollectionService = game:GetService("CollectionService")
 local Workspace = game:GetService("Workspace")
 
 local ProceduralTree = {}
@@ -76,6 +77,8 @@ type ResolvedProceduralTreeConfig = {
 }
 
 type BranchDescriptor = {
+	index: number,
+	parentIndex: number,
 	startPosition: Vector3,
 	endPosition: Vector3,
 	thickness: number,
@@ -83,12 +86,15 @@ type BranchDescriptor = {
 }
 
 type LeafDescriptor = {
+	index: number,
+	parentBranchIndex: number,
 	position: Vector3,
 	size: Vector3,
 	rotation: Vector3,
 }
 
 type GrowthNode = {
+	parentIndex: number,
 	startPosition: Vector3,
 	direction: Vector3,
 	length: number,
@@ -118,6 +124,13 @@ local function resolveLeafMaterialFallback(): Enum.Material
 end
 
 local DEFAULT_LEAF_MATERIAL = resolveLeafMaterialFallback()
+local WIND_FOLIAGE_TAG = "WindFoliage"
+local WIND_FOLIAGE_PIVOT_ATTACHMENT_NAME = "WindFoliagePivot"
+local TREE_GRAPH_ATTRIBUTE = "WindFoliageTreeGraph"
+local TREE_NODE_TYPE_ATTRIBUTE = "WindTreeNodeType"
+local TREE_NODE_INDEX_ATTRIBUTE = "WindTreeNodeIndex"
+local TREE_PARENT_INDEX_ATTRIBUTE = "WindTreeParentIndex"
+local TREE_DEPTH_ATTRIBUTE = "WindTreeDepth"
 
 local DEFAULT_CONFIG: ResolvedProceduralTreeConfig = {
 	Algorithm = "Recursive",
@@ -397,6 +410,53 @@ local function createWeld(part0: BasePart, part1: BasePart)
 	weld.Parent = part0
 end
 
+local function ensureWindFoliagePivotAttachment(rootPart: BasePart): Attachment
+	local localBaseOffset = Vector3.new(0, 0, rootPart.Size.Z * 0.5)
+	local existing = rootPart:FindFirstChild(WIND_FOLIAGE_PIVOT_ATTACHMENT_NAME)
+	if existing ~= nil then
+		if existing:IsA("Attachment") then
+			existing.Position = localBaseOffset
+			return existing
+		end
+		existing:Destroy()
+	end
+
+	local attachment = Instance.new("Attachment")
+	attachment.Name = WIND_FOLIAGE_PIVOT_ATTACHMENT_NAME
+	attachment.Position = localBaseOffset
+	attachment.Parent = rootPart
+	return attachment
+end
+
+local function resolveWindFoliagePreset(config: ResolvedProceduralTreeConfig): (string, number, number, number, number, number)
+	local isHeavyTree = config.InitialLength >= 22 or config.InitialThickness >= 3.6 or config.MaxDepth >= 6
+	if isHeavyTree then
+		return "BranchHeavy", 5.5, 0.34, 0.58, 0.72, 0.28
+	end
+	return "BranchSmall", 7.25, 0.46, 0.72, 0.86, 0.42
+end
+
+local function applyWindFoliageMetadata(treeModel: Model, rootPart: BasePart, config: ResolvedProceduralTreeConfig)
+	local presetName, maxBendAngle, swayAmplitude, heightMultiplier, gustSensitivity, disturbanceSensitivity =
+		resolveWindFoliagePreset(config)
+
+	ensureWindFoliagePivotAttachment(rootPart)
+
+	treeModel:SetAttribute("WindFoliageEnabled", true)
+	treeModel:SetAttribute(TREE_GRAPH_ATTRIBUTE, true)
+	treeModel:SetAttribute("WindFoliagePreset", presetName)
+	treeModel:SetAttribute("WindFoliageRepresentation", "Model")
+	treeModel:SetAttribute("WindFoliageMotionStyle", "Branch")
+	treeModel:SetAttribute("WindFoliagePivotAttachment", WIND_FOLIAGE_PIVOT_ATTACHMENT_NAME)
+	treeModel:SetAttribute("WindFoliagePivotMode", "Attachment")
+	treeModel:SetAttribute("WindFoliageMaxBendAngle", maxBendAngle)
+	treeModel:SetAttribute("WindFoliageSwayAmplitude", swayAmplitude)
+	treeModel:SetAttribute("WindFoliageHeightMultiplier", heightMultiplier)
+	treeModel:SetAttribute("WindFoliageGustSensitivity", gustSensitivity)
+	treeModel:SetAttribute("WindFoliageDisturbanceSensitivity", disturbanceSensitivity)
+	treeModel:SetAttribute("WindFoliageTranslationWeight", 0)
+end
+
 function ProceduralTree.new(configRaw: ProceduralTreeConfig?): ProceduralTree
 	local config = resolveConfig(configRaw)
 
@@ -431,6 +491,7 @@ function ProceduralTree.addLeafCluster(
 	self: ProceduralTree,
 	leaves: { LeafDescriptor },
 	randomObject: Random,
+	parentBranchIndex: number,
 	position: Vector3,
 	direction: Vector3
 )
@@ -459,6 +520,8 @@ function ProceduralTree.addLeafCluster(
 		)
 
 		leaves[#leaves + 1] = {
+			index = #leaves + 1,
+			parentBranchIndex = parentBranchIndex,
 			position = position + tangent * jitterX + bitangent * jitterZ + Vector3.yAxis * jitterY,
 			size = size,
 			rotation = rotation,
@@ -473,9 +536,16 @@ function ProceduralTree.buildRecursiveDescriptors(
 	local branches: { BranchDescriptor } = {}
 	local leaves: { LeafDescriptor } = {}
 
-	local function grow(startPosition: Vector3, direction: Vector3, length: number, thickness: number, depth: number)
+	local function grow(
+		startPosition: Vector3,
+		direction: Vector3,
+		length: number,
+		thickness: number,
+		depth: number,
+		parentIndex: number
+	)
 		if #branches >= self.config.MaxBranchParts then
-			self:addLeafCluster(leaves, randomObject, startPosition, direction)
+			self:addLeafCluster(leaves, randomObject, parentIndex, startPosition, direction)
 			return
 		end
 
@@ -483,8 +553,11 @@ function ProceduralTree.buildRecursiveDescriptors(
 		local clampedLength = math.max(self.config.MinBranchLength, length)
 		local clampedThickness = math.max(self.config.MinBranchThickness, thickness)
 		local endPosition = startPosition + unitDirection * clampedLength
+		local branchIndex = #branches + 1
 
 		branches[#branches + 1] = {
+			index = branchIndex,
+			parentIndex = parentIndex,
 			startPosition = startPosition,
 			endPosition = endPosition,
 			thickness = clampedThickness,
@@ -500,7 +573,7 @@ function ProceduralTree.buildRecursiveDescriptors(
 			or nextLengthBase < self.config.MinBranchLength
 			or nextThicknessBase < self.config.MinBranchThickness
 		then
-			self:addLeafCluster(leaves, randomObject, endPosition, unitDirection)
+			self:addLeafCluster(leaves, randomObject, branchIndex, endPosition, unitDirection)
 			return
 		end
 
@@ -510,7 +583,7 @@ function ProceduralTree.buildRecursiveDescriptors(
 			rotateDirectionByAngles(unitDirection, wobbleTilt, wobbleAzimuth, self.config.UpwardBias)
 		local continuationLength = nextLengthBase * randomInRange(randomObject, self.config.LengthJitter)
 		local continuationThickness = nextThicknessBase * randomInRange(randomObject, self.config.ThicknessJitter)
-		grow(endPosition, continuationDirection, continuationLength, continuationThickness, nextDepth)
+		grow(endPosition, continuationDirection, continuationLength, continuationThickness, nextDepth, branchIndex)
 
 		local depthAlpha = if self.config.MaxDepth > 0 then depth / self.config.MaxDepth else 1
 		local depthChanceScale = math.clamp(1 - depthAlpha * 0.45, 0.35, 1)
@@ -531,11 +604,11 @@ function ProceduralTree.buildRecursiveDescriptors(
 				rotateDirectionByAngles(unitDirection, branchAngle, azimuth, self.config.UpwardBias * 0.55)
 			local branchLength = nextLengthBase * randomInRange(randomObject, self.config.LengthJitter)
 			local branchThickness = nextThicknessBase * randomInRange(randomObject, self.config.ThicknessJitter)
-			grow(endPosition, branchDirection, branchLength, branchThickness, nextDepth)
+			grow(endPosition, branchDirection, branchLength, branchThickness, nextDepth, branchIndex)
 		end
 	end
 
-	grow(Vector3.zero, Vector3.yAxis, self.config.InitialLength, self.config.InitialThickness, 0)
+	grow(Vector3.zero, Vector3.yAxis, self.config.InitialLength, self.config.InitialThickness, 0, 0)
 	return branches, leaves
 end
 
@@ -548,6 +621,7 @@ function ProceduralTree.buildLSystemStyleDescriptors(
 
 	local queue: { GrowthNode } = {
 		{
+			parentIndex = 0,
 			startPosition = Vector3.zero,
 			direction = Vector3.yAxis,
 			length = self.config.InitialLength,
@@ -562,7 +636,7 @@ function ProceduralTree.buildLSystemStyleDescriptors(
 		cursor += 1
 
 		if #branches >= self.config.MaxBranchParts then
-			self:addLeafCluster(leaves, randomObject, node.startPosition, node.direction)
+			self:addLeafCluster(leaves, randomObject, node.parentIndex, node.startPosition, node.direction)
 			break
 		end
 
@@ -570,8 +644,11 @@ function ProceduralTree.buildLSystemStyleDescriptors(
 		local clampedLength = math.max(self.config.MinBranchLength, node.length)
 		local clampedThickness = math.max(self.config.MinBranchThickness, node.thickness)
 		local endPosition = node.startPosition + unitDirection * clampedLength
+		local branchIndex = #branches + 1
 
 		branches[#branches + 1] = {
+			index = branchIndex,
+			parentIndex = node.parentIndex,
 			startPosition = node.startPosition,
 			endPosition = endPosition,
 			thickness = clampedThickness,
@@ -587,7 +664,7 @@ function ProceduralTree.buildLSystemStyleDescriptors(
 			or nextLengthBase < self.config.MinBranchLength
 			or nextThicknessBase < self.config.MinBranchThickness
 		then
-			self:addLeafCluster(leaves, randomObject, endPosition, unitDirection)
+			self:addLeafCluster(leaves, randomObject, branchIndex, endPosition, unitDirection)
 			continue
 		end
 
@@ -597,6 +674,7 @@ function ProceduralTree.buildLSystemStyleDescriptors(
 			rotateDirectionByAngles(unitDirection, wobbleTilt, wobbleAzimuth, self.config.UpwardBias)
 
 		queue[#queue + 1] = {
+			parentIndex = branchIndex,
 			startPosition = endPosition,
 			direction = continuationDirection,
 			length = nextLengthBase * randomInRange(randomObject, self.config.LengthJitter),
@@ -622,6 +700,7 @@ function ProceduralTree.buildLSystemStyleDescriptors(
 			local sideDirection =
 				rotateDirectionByAngles(unitDirection, branchAngle, azimuth, self.config.UpwardBias * 0.55)
 			queue[#queue + 1] = {
+				parentIndex = branchIndex,
 				startPosition = endPosition,
 				direction = sideDirection,
 				length = nextLengthBase * randomInRange(randomObject, self.config.LengthJitter),
@@ -656,7 +735,7 @@ function ProceduralTree.createBranchPart(self: ProceduralTree, descriptor: Branc
 
 	local midpoint = worldStart + direction * 0.5
 	local part = Instance.new("Part")
-	part.Name = ("Branch_%d"):format(descriptor.depth)
+	part.Name = if descriptor.parentIndex == 0 then "Trunk" else ("Branch_%d_%d"):format(descriptor.depth, descriptor.index)
 	part.Size = Vector3.new(descriptor.thickness, descriptor.thickness, length)
 	part.CFrame = CFrame.lookAt(midpoint, midpoint + direction.Unit)
 	part.Color = self.config.BranchColor
@@ -667,6 +746,10 @@ function ProceduralTree.createBranchPart(self: ProceduralTree, descriptor: Branc
 	part.CanCollide = self.config.BranchCanCollide
 	part.CanTouch = self.config.BranchCanCollide
 	part.CanQuery = self.config.BranchCanCollide
+	part:SetAttribute(TREE_NODE_TYPE_ATTRIBUTE, if descriptor.parentIndex == 0 then "Trunk" else "Branch")
+	part:SetAttribute(TREE_NODE_INDEX_ATTRIBUTE, descriptor.index)
+	part:SetAttribute(TREE_PARENT_INDEX_ATTRIBUTE, descriptor.parentIndex)
+	part:SetAttribute(TREE_DEPTH_ATTRIBUTE, descriptor.depth)
 	return part
 end
 
@@ -691,6 +774,10 @@ function ProceduralTree.createLeafPart(self: ProceduralTree, descriptor: LeafDes
 	part.CanCollide = false
 	part.CanTouch = false
 	part.CanQuery = false
+	part:SetAttribute(TREE_NODE_TYPE_ATTRIBUTE, "Leaf")
+	part:SetAttribute(TREE_NODE_INDEX_ATTRIBUTE, descriptor.index)
+	part:SetAttribute(TREE_PARENT_INDEX_ATTRIBUTE, descriptor.parentBranchIndex)
+	part:SetAttribute(TREE_DEPTH_ATTRIBUTE, 0)
 	return part
 end
 
@@ -728,17 +815,11 @@ function ProceduralTree.generate(self: ProceduralTree, parentRaw: Instance?, bas
 	local rootPart: BasePart? = nil
 	for index, descriptor in branchDescriptors do
 		local branchPart = self:createBranchPart(descriptor, baseCFrame)
-		if self.config.UseWelds then
-			if rootPart == nil then
-				branchPart.Anchored = true
-				rootPart = branchPart
-			else
-				branchPart.Anchored = false
-				branchPart.Massless = true
-			end
-		else
-			branchPart.Anchored = true
+		if rootPart == nil then
+			rootPart = branchPart
 		end
+		branchPart.Anchored = true
+		branchPart.Massless = false
 		branchPart.Parent = branchModel
 		branchParts[index] = branchPart
 	end
@@ -762,30 +843,18 @@ function ProceduralTree.generate(self: ProceduralTree, parentRaw: Instance?, bas
 	local leafParts = table.create(#leafDescriptors)
 	for index, descriptor in leafDescriptors do
 		local leafPart = self:createLeafPart(descriptor, baseCFrame)
-		if self.config.UseWelds then
-			leafPart.Anchored = false
-			leafPart.Massless = true
-		else
-			leafPart.Anchored = true
-		end
+		leafPart.Anchored = true
+		leafPart.Massless = false
 		leafPart.Parent = leavesModel
 		leafParts[index] = leafPart
 	end
 
-	if self.config.UseWelds then
-		local weldRoot = rootPart :: BasePart
-		for _, branchPart in branchParts do
-			if branchPart ~= weldRoot then
-				createWeld(weldRoot, branchPart)
-			end
-		end
-		for _, leafPart in leafParts do
-			createWeld(weldRoot, leafPart)
-		end
-	end
-
 	treeModel.PrimaryPart = rootPart
+	applyWindFoliageMetadata(treeModel, rootPart, self.config)
 	treeModel.Parent = parent
+	if not CollectionService:HasTag(treeModel, WIND_FOLIAGE_TAG) then
+		CollectionService:AddTag(treeModel, WIND_FOLIAGE_TAG)
+	end
 	self.model = treeModel
 	return treeModel
 end

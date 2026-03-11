@@ -6,7 +6,7 @@ local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local AnimationServiceUtils = require(ReplicatedStorage.Shared.Services.AnimationService.AnimationServiceUtils)
 local PlayerServiceUtils = require(ReplicatedStorage.Shared.Services.PlayerService.PlayerServiceUtils)
-local SoundServiceClient = require(ReplicatedStorage.Shared.Services.SoundService.SoundServiceClient)
+local AudioServiceClient = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceClient)
 
 type AnimationClipConfig = AnimationServiceUtils.AnimationClipConfig
 type AnimationProfile = AnimationServiceUtils.AnimationProfile
@@ -468,7 +468,7 @@ function AnimationServiceClient.playFootstep(self: AnimationServiceClient, runti
 	if now - runtime.lastFootstepAt < runtime.profile.footstepCooldown then
 		return false
 	end
-	if SoundServiceClient.categoryGroups == nil then
+	if AudioServiceClient.categoryGroups == nil then
 		return false
 	end
 
@@ -482,7 +482,7 @@ function AnimationServiceClient.playFootstep(self: AnimationServiceClient, runti
 		return false
 	end
 
-	local playedSound = SoundServiceClient:playSfx(soundAssetId, soundOptions)
+	local playedSound = AudioServiceClient:playSfx(soundAssetId, soundOptions)
 	if playedSound then
 		runtime.lastFootstepAt = now
 		return true
@@ -498,7 +498,7 @@ function AnimationServiceClient.playJump(self: AnimationServiceClient, runtime: 
 	if now - runtime.lastJumpAt < runtime.profile.jumpCooldown then
 		return false
 	end
-	if SoundServiceClient.categoryGroups == nil then
+	if AudioServiceClient.categoryGroups == nil then
 		return false
 	end
 
@@ -508,7 +508,7 @@ function AnimationServiceClient.playJump(self: AnimationServiceClient, runtime: 
 		return false
 	end
 
-	local playedSound = SoundServiceClient:playSfx(soundAssetId, soundOptions)
+	local playedSound = AudioServiceClient:playSfx(soundAssetId, soundOptions)
 	if playedSound then
 		runtime.lastJumpAt = now
 		return true
@@ -566,3 +566,4 @@ type AnimationServiceClient = typeof(AnimationServiceClient) & {
 }
 
 return AnimationServiceClient :: AnimationServiceClient
+

@@ -41,6 +41,25 @@ local runtime = {
 	renderSteppedConnection = nil :: RBXScriptConnection?,
 }
 
+local function resolveModelAdornee(model: Model): BasePart?
+	local humanoidRootPart = model:FindFirstChild("HumanoidRootPart")
+	if humanoidRootPart ~= nil and humanoidRootPart:IsA("BasePart") then
+		return humanoidRootPart
+	end
+
+	local primaryPart = model.PrimaryPart
+	if primaryPart ~= nil and primaryPart:IsA("BasePart") then
+		return primaryPart
+	end
+
+	local descendantPart = model:FindFirstChildWhichIsA("BasePart", true)
+	if descendantPart ~= nil then
+		return descendantPart
+	end
+
+	return nil
+end
+
 local function toGuiPosition(screenPosition: Vector2): Vector2
 	local topLeftInset, _ = GuiService:GetGuiInset()
 	return Vector2.new(math.max(0, screenPosition.X - topLeftInset.X), math.max(0, screenPosition.Y - topLeftInset.Y))
@@ -168,12 +187,19 @@ local function showHover(runtimeId: string, model: Model, mousePosition: Vector2
 		return
 	end
 
+	local adornee = resolveModelAdornee(model)
+	if adornee == nil then
+		clearHover()
+		return
+	end
+
 	runtime.hoveredRuntimeId = runtimeId
 	runtime.hoveredModel = model
 	applyHighlight(model)
 	entityInfoSlice.showEntityInfo({
 		hoverId = ENTITY_HOVER_ID,
 		runtimeId = runtimeId,
+		adornee = adornee,
 		displayName = snapshot.displayName,
 		hp = snapshot.hp,
 		maxHp = snapshot.maxHp,
@@ -195,10 +221,17 @@ local function refreshHoveredSnapshot()
 		return
 	end
 
+	local adornee = resolveModelAdornee(hoveredModel)
+	if adornee == nil then
+		clearHover()
+		return
+	end
+
 	local currentState = entityInfoSlice.getEntityInfoState()
 	entityInfoSlice.showEntityInfo({
 		hoverId = ENTITY_HOVER_ID,
 		runtimeId = runtimeId,
+		adornee = adornee,
 		displayName = snapshot.displayName,
 		hp = snapshot.hp,
 		maxHp = snapshot.maxHp,

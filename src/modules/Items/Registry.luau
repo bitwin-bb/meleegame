@@ -11,6 +11,10 @@ type RegistryData = {
 }
 
 local cachedRegistry: RegistryData? = nil
+local NON_DEFINITION_MODULE_NAMES = {
+	Animations = true,
+	Audio = true,
+}
 
 local function trim(valueRaw: any): string
 	if typeof(valueRaw) ~= "string" then
@@ -140,7 +144,7 @@ local function buildRegistry(): RegistryData
 	local itemsFolder = findItemsFolder()
 	if itemsFolder ~= nil then
 		for _, child in itemsFolder:GetChildren() do
-			if not child:IsA("ModuleScript") or child == script then
+			if not child:IsA("ModuleScript") or child == script or NON_DEFINITION_MODULE_NAMES[child.Name] == true then
 				continue
 			end
 

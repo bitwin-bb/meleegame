@@ -6,6 +6,7 @@ local Workspace = game:GetService("Workspace")
 
 local Npc = require(script.Parent.Parent)
 local HopMotion = require(ReplicatedStorage.Shared.Modules.Math.HopMotion)
+local Animations = require(ReplicatedStorage.Shared.Modules.Items.Animations)
 
 type NpcBehaviorConfig = Npc.NpcBehaviorConfig
 type NpcConfig = Npc.NpcConfig
@@ -30,7 +31,11 @@ local DEFAULT_HOP_PENETRATION_LIFT_STEPS = 10
 local DEFAULT_HOP_PENETRATION_LIFT_STEP = 0.35
 local DEFAULT_HOP_OVERLAP_MAX_PARTS = 24
 
-local REQUIRED_ANIMATIONS = { "Hurt", "Idle", "Jump", "Land" }
+local SLIME_ANIMATION_ORDER = { "Hurt", "Idle", "Jump", "Land" }
+local NPC_ANIMATIONS = (Animations :: any).Npcs or {}
+local SLIME_ANIMATIONS = (NPC_ANIMATIONS :: any).Slimes or {}
+local DEFAULT_SLIME_ANIMATION_BINDINGS = (SLIME_ANIMATIONS :: any).Default or {}
+local GREEN_SLIME_ANIMATION_BINDINGS = (SLIME_ANIMATIONS :: any).GreenSlime or DEFAULT_SLIME_ANIMATION_BINDINGS
 
 type SlimeTracks = {
 	Hurt: AnimationTrack?,
@@ -127,6 +132,39 @@ end
 
 local function normalizeToken(value: string): string
 	return string.lower(string.gsub(value, "[%s_%-%.]", ""))
+end
+
+local function normalizeAnimationAssetId(rawId: any): string?
+	if typeof(rawId) == "number" then
+		if rawId <= 0 or rawId ~= rawId then
+			return nil
+		end
+		return "rbxassetid://" .. tostring(math.floor(rawId))
+	end
+
+	if typeof(rawId) ~= "string" then
+		return nil
+	end
+
+	local text = string.gsub(rawId, "%s", "")
+	if text == "" then
+		return nil
+	end
+
+	if string.find(text, "rbxassetid://", 1, true) == 1 then
+		local digits = string.match(text, "%d+")
+		if digits == nil then
+			return nil
+		end
+		return "rbxassetid://" .. digits
+	end
+
+	local digits = string.match(text, "^%d+$")
+	if digits == nil then
+		return nil
+	end
+
+	return "rbxassetid://" .. digits
 end
 
 local function resolveSlimeLabel(config: { [string]: any }): string
@@ -280,14 +318,26 @@ local function resolveTrack(animator: Animator, animation: Animation): Animation
 	return track
 end
 
-local function findAnimationByName(model: Model, expectedName: string): Animation?
-	local expectedToken = normalizeToken(expectedName)
-	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("Animation") and normalizeToken(descendant.Name) == expectedToken then
-			return descendant
-		end
+local function resolveSlimeAnimationIds(self: Slime): { [string]: any }
+	if self.isGreenSlime then
+		return GREEN_SLIME_ANIMATION_BINDINGS
 	end
-	return nil
+	if next(DEFAULT_SLIME_ANIMATION_BINDINGS) ~= nil then
+		return DEFAULT_SLIME_ANIMATION_BINDINGS
+	end
+	return GREEN_SLIME_ANIMATION_BINDINGS
+end
+
+local function createSlimeAnimation(animationName: string, animationIdRaw: any): Animation?
+	local animationId = normalizeAnimationAssetId(animationIdRaw)
+	if animationId == nil then
+		return nil
+	end
+
+	local animation = Instance.new("Animation")
+	animation.Name = animationName
+	animation.AnimationId = animationId
+	return animation
 end
 
 function Slime:_isAggroEnabled(): boolean
@@ -441,24 +491,23 @@ function Slime:_loadSlimeAnimations()
 		Land = nil,
 	}
 
-	for _, animationName in REQUIRED_ANIMATIONS do
-		local animation = findAnimationByName(self.model, animationName)
+	local animationBindings = resolveSlimeAnimationIds(self)
+	for _, animationName in SLIME_ANIMATION_ORDER do
+		local animation = createSlimeAnimation(animationName, animationBindings[animationName])
 		if animation == nil then
 			continue
 		end
 
 		local track = resolveTrack(animator, animation)
+		animation:Destroy()
 		if track == nil then
 			continue
 		end
 
-		if animationName == "Idle" then
-			track.Looped = true
-			track.Priority = Enum.AnimationPriority.Idle
-		else
-			track.Looped = false
-			track.Priority = Enum.AnimationPriority.Action
-		end
+		track.Looped = animationName == "Idle"
+		track.Priority = if animationName == "Idle"
+			then Enum.AnimationPriority.Idle
+			else Enum.AnimationPriority.Action
 
 		if animationName == "Hurt" then
 			self._slimeAnimations.Hurt = track

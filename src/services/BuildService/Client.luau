@@ -10,12 +10,13 @@ local Ripple = require(ReplicatedStorage.Packages.Ripple)
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
+local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
 local CoreRuntime = require(ReplicatedStorage.Shared.Modules.Core.Runtime)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
 local Rubble = require(ReplicatedStorage.Shared.Classes.Rubble)
 local BuildServiceUtils = require(ReplicatedStorage.Shared.Services.BuildService.BuildServiceUtils)
-local SoundServiceClient = require(ReplicatedStorage.Shared.Services.SoundService.SoundServiceClient)
-local SoundServiceUtils = require(ReplicatedStorage.Shared.Services.SoundService.SoundServiceUtils)
+local AudioServiceClient = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceClient)
+local AudioServiceUtils = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceUtils)
 local WorldGenerationServiceClient =
 	require(ReplicatedStorage.Shared.Services.WorldGenerationService.WorldGenerationServiceClient)
 
@@ -193,7 +194,6 @@ local TREE_GROUND_HIT_SAMPLE_COUNT = 5
 local TREE_GROUND_HIT_SCAN_DEPTH_TILES = 3
 local TREE_GROUND_HIT_SURFACE_PADDING_TILES = 0.2
 local TREE_GROUND_HIT_FAILSAFE_SECONDS = 1.2
-local TREE_FALL_SOUND_NAMES: { string } = { "TreeFall1", "TreeFall2" }
 local TREE_FALL_SOUND_FADE_OUT_SECONDS = 0.7
 local TREE_FALL_SPRING = {
 	frequency = 2.7,
@@ -213,6 +213,8 @@ local TREE_FADE_SPRING = {
 }
 local INPUT_ACTION_BREAK = "BuildService.Break"
 local INPUT_ACTION_PLACE = "BuildService.Place"
+local TREE_AUDIO = (((AudioRegistry :: any).Misc or {}).Tree or {})
+local TREE_FALL_AUDIO = TREE_AUDIO.Fall or {}
 
 local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
@@ -261,22 +263,6 @@ local function collectModelParts(model: Model): ({ BasePart }, { number })
 		baseTransparency[#baseTransparency + 1] = descendant.Transparency
 	end
 	return parts, baseTransparency
-end
-
-local function resolveTreeFallSoundFolder(): Folder?
-	local assets = ReplicatedStorage:FindFirstChild("Assets")
-	if assets == nil or not assets:IsA("Folder") then
-		return nil
-	end
-	local sounds = assets:FindFirstChild("Sounds")
-	if sounds == nil or not sounds:IsA("Folder") then
-		return nil
-	end
-	local misc = sounds:FindFirstChild("Misc")
-	if misc ~= nil and misc:IsA("Folder") then
-		return misc
-	end
-	return nil
 end
 
 local function resolveSoundPlayableDuration(sound: Sound?): number?
@@ -391,25 +377,7 @@ function BuildServiceClient.resolveTreeModelForFellEvent(
 end
 
 function BuildServiceClient.refreshTreeFallSoundTemplates(self: BuildServiceClient)
-	self.treeFallSoundAssetIds = {}
-	local soundFolder = self.treeFallSoundFolder
-	if soundFolder == nil or soundFolder.Parent == nil then
-		soundFolder = resolveTreeFallSoundFolder()
-		self.treeFallSoundFolder = soundFolder
-	end
-	if soundFolder == nil then
-		return
-	end
-
-	for _, soundName in TREE_FALL_SOUND_NAMES do
-		local template = soundFolder:FindFirstChild(soundName)
-		if template ~= nil and template:IsA("Sound") then
-			local soundAssetId = SoundServiceUtils.resolveSoundAssetId(template)
-			if soundAssetId ~= nil then
-				self.treeFallSoundAssetIds[#self.treeFallSoundAssetIds + 1] = soundAssetId
-			end
-		end
-	end
+	self.treeFallSoundAssetIds = AudioServiceUtils.collectSoundAssetIds(TREE_FALL_AUDIO)
 end
 
 function BuildServiceClient.pickTreeFallSoundAssetId(self: BuildServiceClient): string?
@@ -438,11 +406,11 @@ function BuildServiceClient.playTreeFallSound(self: BuildServiceClient, animatio
 	end
 
 	self:applyTreeFallSoundSyncDuration(animation, nil)
-	if SoundServiceClient.categoryGroups == nil then
+	if AudioServiceClient.categoryGroups == nil then
 		return
 	end
 
-	local playedSound = SoundServiceClient:playSfx(soundAssetId, {
+	local playedSound = AudioServiceClient:playSfx(soundAssetId, {
 		parent = self.visualFolder,
 		replaceChannel = false,
 		autoDestroy = true,
@@ -491,7 +459,7 @@ function BuildServiceClient.fadeTreeFallSoundIfPlaying(
 	local fadeSeconds = if isFiniteNumber(fadeSecondsRaw)
 		then math.max(0, fadeSecondsRaw)
 		else TREE_FALL_SOUND_FADE_OUT_SECONDS
-	SoundServiceUtils.stopAndDestroySound(sound, fadeSeconds)
+	AudioServiceUtils.stopAndDestroySound(sound, fadeSeconds)
 end
 
 function BuildServiceClient.stopTreeFallAnimation(self: BuildServiceClient, treeId: string, destroyModel: boolean)
@@ -1624,7 +1592,6 @@ function BuildServiceClient.init(self: BuildServiceClient)
 	self.enableDefaultInputBinding = true
 	self.enableServerTileFetchFallback = false
 	self.random = Random.new()
-	self.treeFallSoundFolder = resolveTreeFallSoundFolder()
 	self.treeFallSoundAssetIds = {} :: { string }
 	self:refreshTreeFallSoundTemplates()
 	self.predictedTileOverrides = {} :: { [string]: number }
@@ -1784,7 +1751,6 @@ type BuildServiceClient = typeof(BuildServiceClient) & {
 	cursorTileX: number?,
 	cursorTileY: number?,
 	random: Random,
-	treeFallSoundFolder: Folder?,
 	treeFallSoundAssetIds: { string },
 	breakInput: HeldInputState,
 	placeInput: HeldInputState,

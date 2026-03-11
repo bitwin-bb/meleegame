@@ -3,13 +3,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
 local Charm = require(ReplicatedStorage.Packages.Charm)
+local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
 local ImageIds = require(ReplicatedStorage.UI.core.ImageIds)
 local useManaTransparency = require(ReplicatedStorage.UI.features.mana.hooks.useManaTransparency)
 local manaSlice = require(ReplicatedStorage.UI.features.mana.state.manaSlice)
 local manaThunks = require(ReplicatedStorage.UI.features.mana.state.manaThunks)
 local infoThunks = require(ReplicatedStorage.UI.features.info.state.infoThunks)
-local SoundServiceClient = require(ReplicatedStorage.Shared.Services.SoundService.SoundServiceClient)
-local SoundServiceUtils = require(ReplicatedStorage.Shared.Services.SoundService.SoundServiceUtils)
+local AudioServiceClient = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceClient)
+local AudioServiceUtils = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceUtils)
 local ManaServiceUtils = require(ReplicatedStorage.Shared.Services.ManaService.ManaServiceUtils)
 
 type ManaServiceState = ManaServiceUtils.ManaServiceState
@@ -44,6 +45,8 @@ local e: typeof(React.createElement) = React.createElement
 local DEFAULT_MANA_STAR_VALUE = 20
 local EMPTY_STAR_COLOR = Color3.fromRGB(24, 44, 75)
 local FILLED_STAR_COLOR = Color3.fromRGB(133, 189, 255)
+local UI_AUDIO = (AudioRegistry :: any).UI or {}
+local UI_HOVER_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Hover)
 
 local function buildManaStars(manaRaw: any, maxManaRaw: any, starValueRaw: any): { ManaStarState }
 	local starValue = if typeof(starValueRaw) == "number" and starValueRaw == starValueRaw
@@ -71,30 +74,6 @@ local function buildManaStars(manaRaw: any, maxManaRaw: any, starValueRaw: any):
 		}
 	end
 	return stars
-end
-
-local function getUiHoverSoundAssetId(): string?
-	local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
-	if not assetsFolder then
-		return nil
-	end
-
-	local soundsFolder = assetsFolder:FindFirstChild("Sounds")
-	if not soundsFolder then
-		return nil
-	end
-
-	local uiFolder = soundsFolder:FindFirstChild("Ui")
-	if not uiFolder then
-		return nil
-	end
-
-	local uiHoverSound = uiFolder:FindFirstChild("UiHover")
-	if uiHoverSound and uiHoverSound:IsA("Sound") then
-		return SoundServiceUtils.resolveSoundAssetId(uiHoverSound)
-	end
-
-	return nil
 end
 
 type ManaStarItemProps = {
@@ -294,9 +273,8 @@ return function(props: ManaTopRightBarProps)
 					text = hoverText,
 				})
 
-				local uiHoverSound = getUiHoverSoundAssetId()
-				if uiHoverSound then
-					SoundServiceClient:playUi(uiHoverSound, {
+				if UI_HOVER_SOUND then
+					AudioServiceClient:playUi(UI_HOVER_SOUND, {
 						replaceChannel = false,
 					})
 				end

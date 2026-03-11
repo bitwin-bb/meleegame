@@ -1,11 +1,11 @@
 --!strict
 local TweenService = game:GetService("TweenService")
 
-local SoundServiceUtils = {}
+local AudioServiceUtils = {}
 
 export type SoundCategory = "Music" | "SFX" | "Ambience" | "UI" | "Voice"
 
-export type SoundServiceState = {
+export type AudioServiceState = {
 	masterVolume: number,
 	muted: boolean,
 	categoryVolumes: { [string]: number },
@@ -43,10 +43,10 @@ local DEFAULT_CATEGORY_VOLUMES: { [string]: number } = {
 	Voice = 1,
 }
 
-SoundServiceUtils.CATEGORY_ORDER = CATEGORY_ORDER
-SoundServiceUtils.DEFAULT_CATEGORY = DEFAULT_CATEGORY
-SoundServiceUtils.DEFAULT_MASTER_VOLUME = DEFAULT_MASTER_VOLUME
-SoundServiceUtils.DEFAULT_CATEGORY_VOLUMES = DEFAULT_CATEGORY_VOLUMES
+AudioServiceUtils.CATEGORY_ORDER = CATEGORY_ORDER
+AudioServiceUtils.DEFAULT_CATEGORY = DEFAULT_CATEGORY
+AudioServiceUtils.DEFAULT_MASTER_VOLUME = DEFAULT_MASTER_VOLUME
+AudioServiceUtils.DEFAULT_CATEGORY_VOLUMES = DEFAULT_CATEGORY_VOLUMES
 
 local function clampNumber(value: any, minimum: number, maximum: number, fallback: number): number
 	if typeof(value) ~= "number" then
@@ -59,7 +59,7 @@ local function clampNumber(value: any, minimum: number, maximum: number, fallbac
 	return math.clamp(value, minimum, maximum)
 end
 
-function SoundServiceUtils.normalizeSoundAssetId(rawId: any): string?
+function AudioServiceUtils.normalizeSoundAssetId(rawId: any): string?
 	if typeof(rawId) == "number" then
 		if rawId <= 0 then
 			return nil
@@ -97,19 +97,70 @@ function SoundServiceUtils.normalizeSoundAssetId(rawId: any): string?
 	return nil
 end
 
-function SoundServiceUtils.resolveSoundAssetId(soundSourceRaw: any): string?
+function AudioServiceUtils.resolveSoundAssetId(soundSourceRaw: any): string?
 	if typeof(soundSourceRaw) == "Instance" then
 		local instance = soundSourceRaw :: Instance
 		if instance:IsA("Sound") then
-			return SoundServiceUtils.normalizeSoundAssetId(instance.SoundId)
+			return AudioServiceUtils.normalizeSoundAssetId(instance.SoundId)
 		end
 		return nil
 	end
 
-	return SoundServiceUtils.normalizeSoundAssetId(soundSourceRaw)
+	if typeof(soundSourceRaw) == "table" then
+		local source = soundSourceRaw :: { [string]: any }
+		if typeof(source.sound) == "Instance" and source.sound:IsA("Sound") then
+			return AudioServiceUtils.normalizeSoundAssetId((source.sound :: Sound).SoundId)
+		end
+
+		local directId = source.id or source.soundId or source.assetId or source.source
+		if directId ~= nil then
+			return AudioServiceUtils.normalizeSoundAssetId(directId)
+		end
+	end
+
+	return AudioServiceUtils.normalizeSoundAssetId(soundSourceRaw)
 end
 
-function SoundServiceUtils.normalizeCategoryOrNil(value: any): SoundCategory?
+local function collectSoundAssetIdsFromSource(
+	sourceRaw: any,
+	out: { string },
+	seen: { [string]: boolean }
+)
+	if sourceRaw == nil then
+		return
+	end
+
+	if typeof(sourceRaw) == "table" then
+		local source = sourceRaw :: { [any]: any }
+		local directId = AudioServiceUtils.resolveSoundAssetId(source)
+		if directId ~= nil and seen[directId] ~= true then
+			seen[directId] = true
+			table.insert(out, directId)
+		end
+
+		for _, nested in source do
+			collectSoundAssetIdsFromSource(nested, out, seen)
+		end
+		return
+	end
+
+	local soundAssetId = AudioServiceUtils.resolveSoundAssetId(sourceRaw)
+	if soundAssetId == nil or seen[soundAssetId] == true then
+		return
+	end
+
+	seen[soundAssetId] = true
+	table.insert(out, soundAssetId)
+end
+
+function AudioServiceUtils.collectSoundAssetIds(sourceRaw: any): { string }
+	local soundAssetIds = {}
+	local seen = {}
+	collectSoundAssetIdsFromSource(sourceRaw, soundAssetIds, seen)
+	return soundAssetIds
+end
+
+function AudioServiceUtils.normalizeCategoryOrNil(value: any): SoundCategory?
 	if typeof(value) ~= "string" then
 		return nil
 	end
@@ -121,19 +172,19 @@ function SoundServiceUtils.normalizeCategoryOrNil(value: any): SoundCategory?
 	return nil
 end
 
-function SoundServiceUtils.sanitizeCategory(value: any, fallback: SoundCategory?): SoundCategory
-	local normalized = SoundServiceUtils.normalizeCategoryOrNil(value)
+function AudioServiceUtils.sanitizeCategory(value: any, fallback: SoundCategory?): SoundCategory
+	local normalized = AudioServiceUtils.normalizeCategoryOrNil(value)
 	if normalized then
 		return normalized
 	end
 	return (fallback or DEFAULT_CATEGORY) :: SoundCategory
 end
 
-function SoundServiceUtils.sanitizeVolume(value: any, fallback: number?): number
+function AudioServiceUtils.sanitizeVolume(value: any, fallback: number?): number
 	return clampNumber(value, 0, 2, fallback or 1)
 end
 
-function SoundServiceUtils.cloneCategoryVolumes(source: { [string]: number }): { [string]: number }
+function AudioServiceUtils.cloneCategoryVolumes(source: { [string]: number }): { [string]: number }
 	local cloned = {}
 	for key, value in source do
 		cloned[key] = value
@@ -141,11 +192,11 @@ function SoundServiceUtils.cloneCategoryVolumes(source: { [string]: number }): {
 	return cloned
 end
 
-function SoundServiceUtils.createDefaultCategoryVolumes(): { [string]: number }
-	return SoundServiceUtils.cloneCategoryVolumes(DEFAULT_CATEGORY_VOLUMES)
+function AudioServiceUtils.createDefaultCategoryVolumes(): { [string]: number }
+	return AudioServiceUtils.cloneCategoryVolumes(DEFAULT_CATEGORY_VOLUMES)
 end
 
-function SoundServiceUtils.sanitizeCategoryVolumes(
+function AudioServiceUtils.sanitizeCategoryVolumes(
 	rawVolumes: any,
 	fallbackVolumes: { [string]: number }?
 ): { [string]: number }
@@ -154,66 +205,66 @@ function SoundServiceUtils.sanitizeCategoryVolumes(
 	local result = {}
 
 	for _, category in CATEGORY_ORDER do
-		result[category] = SoundServiceUtils.sanitizeVolume((source :: any)[category], base[category])
+		result[category] = AudioServiceUtils.sanitizeVolume((source :: any)[category], base[category])
 	end
 
 	return result
 end
 
-function SoundServiceUtils.createDefaultState(): SoundServiceState
+function AudioServiceUtils.createDefaultState(): AudioServiceState
 	return {
 		masterVolume = DEFAULT_MASTER_VOLUME,
 		muted = false,
-		categoryVolumes = SoundServiceUtils.createDefaultCategoryVolumes(),
+		categoryVolumes = AudioServiceUtils.createDefaultCategoryVolumes(),
 	}
 end
 
-function SoundServiceUtils.createState(
+function AudioServiceUtils.createState(
 	masterVolumeRaw: any,
 	mutedRaw: any,
 	categoryVolumesRaw: any,
-	fallbackState: SoundServiceState?
-): SoundServiceState
-	local fallback = if fallbackState then fallbackState else SoundServiceUtils.createDefaultState()
+	fallbackState: AudioServiceState?
+): AudioServiceState
+	local fallback = if fallbackState then fallbackState else AudioServiceUtils.createDefaultState()
 	return {
-		masterVolume = SoundServiceUtils.sanitizeVolume(masterVolumeRaw, fallback.masterVolume),
+		masterVolume = AudioServiceUtils.sanitizeVolume(masterVolumeRaw, fallback.masterVolume),
 		muted = if typeof(mutedRaw) == "boolean" then mutedRaw else fallback.muted,
-		categoryVolumes = SoundServiceUtils.sanitizeCategoryVolumes(categoryVolumesRaw, fallback.categoryVolumes),
+		categoryVolumes = AudioServiceUtils.sanitizeCategoryVolumes(categoryVolumesRaw, fallback.categoryVolumes),
 	}
 end
 
-function SoundServiceUtils.withMasterVolume(state: SoundServiceState, masterVolumeRaw: any): SoundServiceState
+function AudioServiceUtils.withMasterVolume(state: AudioServiceState, masterVolumeRaw: any): AudioServiceState
 	return {
-		masterVolume = SoundServiceUtils.sanitizeVolume(masterVolumeRaw, state.masterVolume),
+		masterVolume = AudioServiceUtils.sanitizeVolume(masterVolumeRaw, state.masterVolume),
 		muted = state.muted,
-		categoryVolumes = SoundServiceUtils.cloneCategoryVolumes(state.categoryVolumes),
+		categoryVolumes = AudioServiceUtils.cloneCategoryVolumes(state.categoryVolumes),
 	}
 end
 
-function SoundServiceUtils.withMuted(state: SoundServiceState, mutedRaw: any): SoundServiceState
+function AudioServiceUtils.withMuted(state: AudioServiceState, mutedRaw: any): AudioServiceState
 	return {
 		masterVolume = state.masterVolume,
 		muted = if typeof(mutedRaw) == "boolean" then mutedRaw else state.muted,
-		categoryVolumes = SoundServiceUtils.cloneCategoryVolumes(state.categoryVolumes),
+		categoryVolumes = AudioServiceUtils.cloneCategoryVolumes(state.categoryVolumes),
 	}
 end
 
-function SoundServiceUtils.withCategoryVolume(
-	state: SoundServiceState,
+function AudioServiceUtils.withCategoryVolume(
+	state: AudioServiceState,
 	categoryRaw: any,
 	volumeRaw: any
-): SoundServiceState
-	local category = SoundServiceUtils.normalizeCategoryOrNil(categoryRaw)
+): AudioServiceState
+	local category = AudioServiceUtils.normalizeCategoryOrNil(categoryRaw)
 	if not category then
 		return {
 			masterVolume = state.masterVolume,
 			muted = state.muted,
-			categoryVolumes = SoundServiceUtils.cloneCategoryVolumes(state.categoryVolumes),
+			categoryVolumes = AudioServiceUtils.cloneCategoryVolumes(state.categoryVolumes),
 		}
 	end
 
-	local nextCategoryVolumes = SoundServiceUtils.cloneCategoryVolumes(state.categoryVolumes)
-	nextCategoryVolumes[category] = SoundServiceUtils.sanitizeVolume(volumeRaw, nextCategoryVolumes[category])
+	local nextCategoryVolumes = AudioServiceUtils.cloneCategoryVolumes(state.categoryVolumes)
+	nextCategoryVolumes[category] = AudioServiceUtils.sanitizeVolume(volumeRaw, nextCategoryVolumes[category])
 
 	return {
 		masterVolume = state.masterVolume,
@@ -222,10 +273,10 @@ function SoundServiceUtils.withCategoryVolume(
 	}
 end
 
-function SoundServiceUtils.sanitizePlaybackOptions(optionsRaw: any, fallbackCategory: SoundCategory?): PlaybackOptions
+function AudioServiceUtils.sanitizePlaybackOptions(optionsRaw: any, fallbackCategory: SoundCategory?): PlaybackOptions
 	local source = if typeof(optionsRaw) == "table" then optionsRaw else {}
 	local category: SoundCategory =
-		SoundServiceUtils.sanitizeCategory((source :: any).category, fallbackCategory or DEFAULT_CATEGORY)
+		AudioServiceUtils.sanitizeCategory((source :: any).category, fallbackCategory or DEFAULT_CATEGORY)
 
 	local channelRaw = (source :: any).channel
 	local channel = if typeof(channelRaw) == "string" and channelRaw ~= "" then channelRaw else nil
@@ -265,11 +316,11 @@ function SoundServiceUtils.sanitizePlaybackOptions(optionsRaw: any, fallbackCate
 	return options
 end
 
-function SoundServiceUtils.serializePlaybackOptions(
+function AudioServiceUtils.serializePlaybackOptions(
 	optionsRaw: any,
 	fallbackCategory: SoundCategory?
 ): { [string]: any }
-	local options = SoundServiceUtils.sanitizePlaybackOptions(optionsRaw, fallbackCategory)
+	local options = AudioServiceUtils.sanitizePlaybackOptions(optionsRaw, fallbackCategory)
 	local serialized: { [string]: any } = {
 		category = options.category,
 	}
@@ -313,31 +364,31 @@ function SoundServiceUtils.serializePlaybackOptions(
 	return serialized
 end
 
-function SoundServiceUtils.ensureRuntimeFolder(soundService: SoundService): Folder
-	local existing = soundService:FindFirstChild("SoundServiceRuntime")
+function AudioServiceUtils.ensureRuntimeFolder(audioEngineService: SoundService): Folder
+	local existing = audioEngineService:FindFirstChild("SoundServiceRuntime")
 	if existing and existing:IsA("Folder") then
 		return existing
 	end
 
 	local folder = Instance.new("Folder")
 	folder.Name = "SoundServiceRuntime"
-	folder.Parent = soundService
+	folder.Parent = audioEngineService
 	return folder
 end
 
-function SoundServiceUtils.ensureCategoryGroups(soundService: SoundService): { [string]: SoundGroup }
+function AudioServiceUtils.ensureCategoryGroups(audioEngineService: SoundService): { [string]: SoundGroup }
 	local groups: { [string]: SoundGroup } = {}
 
 	for _, category in CATEGORY_ORDER do
 		local groupName = "SoundService_" .. category
-		local existing = soundService:FindFirstChild(groupName)
+		local existing = audioEngineService:FindFirstChild(groupName)
 		if existing and existing:IsA("SoundGroup") then
 			groups[category] = existing
 		else
 			local group = Instance.new("SoundGroup")
 			group.Name = groupName
 			group.Volume = DEFAULT_CATEGORY_VOLUMES[category]
-			group.Parent = soundService
+			group.Parent = audioEngineService
 			groups[category] = group
 		end
 	end
@@ -345,8 +396,8 @@ function SoundServiceUtils.ensureCategoryGroups(soundService: SoundService): { [
 	return groups
 end
 
-function SoundServiceUtils.applyStateToCategoryGroups(
-	state: SoundServiceState,
+function AudioServiceUtils.applyStateToCategoryGroups(
+	state: AudioServiceState,
 	categoryGroups: { [string]: SoundGroup }
 )
 	local baseVolume = if state.muted then 0 else state.masterVolume
@@ -361,18 +412,18 @@ function SoundServiceUtils.applyStateToCategoryGroups(
 	end
 end
 
-function SoundServiceUtils.createSoundInstance(
+function AudioServiceUtils.createSoundInstance(
 	soundAssetIdRaw: any,
 	optionsRaw: any,
 	defaultParent: Instance,
 	soundGroup: SoundGroup?
 ): Sound?
-	local soundId = SoundServiceUtils.normalizeSoundAssetId(soundAssetIdRaw)
+	local soundId = AudioServiceUtils.normalizeSoundAssetId(soundAssetIdRaw)
 	if soundId == nil then
 		return nil
 	end
 
-	local options = SoundServiceUtils.sanitizePlaybackOptions(optionsRaw, DEFAULT_CATEGORY)
+	local options = AudioServiceUtils.sanitizePlaybackOptions(optionsRaw, DEFAULT_CATEGORY)
 	local parent = if options.parent and options.parent.Parent ~= nil then options.parent else defaultParent
 
 	local sound = Instance.new("Sound")
@@ -407,7 +458,7 @@ function SoundServiceUtils.createSoundInstance(
 	return sound
 end
 
-function SoundServiceUtils.fadeSoundVolume(sound: Sound, targetVolume: number, fadeTime: number): Tween?
+function AudioServiceUtils.fadeSoundVolume(sound: Sound, targetVolume: number, fadeTime: number): Tween?
 	local duration = math.max(0, fadeTime)
 	local target = math.max(0, targetVolume)
 	if duration <= 0 then
@@ -424,7 +475,7 @@ function SoundServiceUtils.fadeSoundVolume(sound: Sound, targetVolume: number, f
 	return tween
 end
 
-function SoundServiceUtils.stopAndDestroySound(sound: Sound, fadeTimeRaw: any)
+function AudioServiceUtils.stopAndDestroySound(sound: Sound, fadeTimeRaw: any)
 	local fadeTime = clampNumber(fadeTimeRaw, 0, 10, 0)
 	if fadeTime <= 0 then
 		sound:Stop()
@@ -432,7 +483,7 @@ function SoundServiceUtils.stopAndDestroySound(sound: Sound, fadeTimeRaw: any)
 		return
 	end
 
-	local tween = SoundServiceUtils.fadeSoundVolume(sound, 0, fadeTime)
+	local tween = AudioServiceUtils.fadeSoundVolume(sound, 0, fadeTime)
 	if not tween then
 		sound:Stop()
 		sound:Destroy()
@@ -452,4 +503,5 @@ function SoundServiceUtils.stopAndDestroySound(sound: Sound, fadeTimeRaw: any)
 	end)
 end
 
-return SoundServiceUtils
+return AudioServiceUtils
+

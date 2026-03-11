@@ -183,6 +183,9 @@ function TickScheduler.scheduleFixed(self: TickScheduler, callbackRaw: any, step
 	local options = if typeof(optionsRaw) == "table" then table.clone(optionsRaw) else {}
 	options.fixed = true
 	options.interval = self.fixedStep * steps
+	if options.repeatCount == nil then
+		options.repeatCount = -1
+	end
 	return self:schedule(callbackRaw, options.interval, options)
 end
 

@@ -6,10 +6,11 @@ local GuiService = game:GetService("GuiService")
 
 local React = require(ReplicatedStorage.Packages.React)
 local Charm = require(ReplicatedStorage.Packages.Charm)
+local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
 local itemSlice = require(ReplicatedStorage.UI.features.item.state.itemSlice)
 local itemThunks = require(ReplicatedStorage.UI.features.item.state.itemThunks)
-local SoundServiceClient = require(ReplicatedStorage.Shared.Services.SoundService.SoundServiceClient)
-local SoundServiceUtils = require(ReplicatedStorage.Shared.Services.SoundService.SoundServiceUtils)
+local AudioServiceClient = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceClient)
+local AudioServiceUtils = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceUtils)
 
 type ItemDragState = itemSlice.ItemDragState
 
@@ -31,76 +32,34 @@ type ActivationSuppression = {
 	untilTime: number,
 }
 
-type UiItemSoundCache = {
-	pickup: string?,
-	release: string?,
-	resolved: boolean,
-}
-
 local ACTIVATION_SUPPRESSION_SECONDS = 0.2
 local SLOT_CLICK_GRACE_SECONDS = 0.1
 local POINTER_SMOOTHING_SPEED = 10
 local MOUSE_CURSOR_CENTER_OFFSET = Vector2.new(0, -60)
-local uiItemSoundCache: UiItemSoundCache = {
-	pickup = nil,
-	release = nil,
-	resolved = false,
-}
-
-local function resolveUiItemSounds()
-	if uiItemSoundCache.resolved then
-		return
-	end
-	uiItemSoundCache.resolved = true
-
-	local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
-	if assetsFolder == nil then
-		return
-	end
-
-	local soundsFolder = assetsFolder:FindFirstChild("Sounds")
-	if soundsFolder == nil then
-		return
-	end
-
-	local uiFolder = soundsFolder:FindFirstChild("Ui")
-	if uiFolder == nil then
-		return
-	end
-
-	local pickupSound = uiFolder:FindFirstChild("UiItemPickUp")
-	if pickupSound ~= nil and pickupSound:IsA("Sound") then
-		uiItemSoundCache.pickup = SoundServiceUtils.resolveSoundAssetId(pickupSound)
-	end
-
-	local releaseSound = uiFolder:FindFirstChild("UiItemRelease")
-	if releaseSound ~= nil and releaseSound:IsA("Sound") then
-		uiItemSoundCache.release = SoundServiceUtils.resolveSoundAssetId(releaseSound)
-	end
-end
+local UI_AUDIO = (AudioRegistry :: any).UI or {}
+local UI_ITEM_PICKUP_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.ItemPickup)
+local UI_ITEM_PUT_DOWN_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.ItemPutDown)
 
 local function playUiItemPickupSound()
-	if SoundServiceClient.categoryGroups == nil then
+	if AudioServiceClient.categoryGroups == nil then
 		return
 	end
-	resolveUiItemSounds()
-	if uiItemSoundCache.pickup == nil then
+	if UI_ITEM_PICKUP_SOUND == nil then
 		return
 	end
-	SoundServiceClient:playUi(uiItemSoundCache.pickup, {
+	AudioServiceClient:playUi(UI_ITEM_PICKUP_SOUND, {
 		replaceChannel = false,
 	})
 end
 
 local function playUiItemReleaseSound()
-	if SoundServiceClient.categoryGroups == nil then
+	if AudioServiceClient.categoryGroups == nil then
 		return
 	end
-	resolveUiItemSounds()
-	if uiItemSoundCache.release == nil then
+	if UI_ITEM_PUT_DOWN_SOUND == nil then
 		return
 	end
-	SoundServiceClient:playUi(uiItemSoundCache.release, {
+	AudioServiceClient:playUi(UI_ITEM_PUT_DOWN_SOUND, {
 		replaceChannel = false,
 	})
 end

@@ -16,6 +16,15 @@
               "$path": "src/services/AnimationService/Utils.luau"
             }
           },
+          "AudioService": {
+            "$className": "Folder",
+            "AudioServiceClient": {
+              "$path": "src/services/AudioService/Client.luau"
+            },
+            "AudioServiceUtils": {
+              "$path": "src/services/AudioService/Utils.luau"
+            }
+          },
           "BuildService": {
             "$className": "Folder",
             "BuildServiceClient": {
@@ -151,15 +160,6 @@
               "$path": "src/services/RagdollService/Utils.luau"
             }
           },
-          "SoundService": {
-            "$className": "Folder",
-            "SoundServiceClient": {
-              "$path": "src/services/SoundService/Client.luau"
-            },
-            "SoundServiceUtils": {
-              "$path": "src/services/SoundService/Utils.luau"
-            }
-          },
           "VFXService": {
             "$className": "Folder",
             "VFXServiceClient": {
@@ -176,6 +176,12 @@
             },
             "WeatherServiceUtils": {
               "$path": "src/services/WeatherService/Utils.luau"
+            }
+          },
+          "WindFoliageService": {
+            "$className": "Folder",
+            "WindFoliageServiceClient": {
+              "$path": "src/services/WindFoliageService/Client.luau"
             }
           },
           "WorldAnimatorService": {
@@ -264,6 +270,9 @@
           },
           "Rubble": {
             "$path": "src/classes/Rubble.luau"
+          },
+          "WindFoliage": {
+            "$path": "src/classes/WindFoliage"
           },
           "WorldGeneration": {
             "$path": "src/classes/WorldGeneration",
@@ -478,6 +487,12 @@
             "$path": "src/services/AnimationService/Server.luau"
           }
         },
+        "AudioService": {
+          "$className": "Folder",
+          "AudioServiceServer": {
+            "$path": "src/services/AudioService/Server.luau"
+          }
+        },
         "BuildService": {
           "$className": "Folder",
           "BuildServiceServer": {
@@ -560,12 +575,6 @@
           "$className": "Folder",
           "RagdollServiceServer": {
             "$path": "src/services/RagdollService/Server.luau"
-          }
-        },
-        "SoundService": {
-          "$className": "Folder",
-          "SoundServiceServer": {
-            "$path": "src/services/SoundService/Server.luau"
           }
         },
         "VFXService": {

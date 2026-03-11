@@ -1,4 +1,10 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Audio = require(ReplicatedStorage.Shared.Modules.Items.Audio)
+local Animations = require(ReplicatedStorage.Shared.Modules.Items.Animations)
+local AudioServiceUtils = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceUtils)
+
 local AnimationServiceUtils = {}
 
 export type AnimationClipName = string
@@ -69,10 +75,6 @@ local MIN_FOOTSTEP_EMITTER_SIZE = 8
 local MIN_JUMP_ROLLOFF_MAX_DISTANCE = 48
 local MIN_JUMP_EMITTER_SIZE = 6
 
-local DEFAULT_IDLE_ANIMATION_ID = "rbxassetid://138568783631888"
-local DEFAULT_WALK_ANIMATION_ID = "rbxassetid://113533578671192"
-local DEFAULT_JUMP_ANIMATION_ID = "rbxassetid://98667478927886"
-local DEFAULT_FALL_ANIMATION_ID = "rbxassetid://83522693025815"
 local RBX_ASSET_PREFIX = "rbxassetid://"
 
 local DEFAULT_FOOTSTEP_MARKERS = { "Footstep", "LeftFootstep", "RightFootstep", "Step" }
@@ -86,190 +88,192 @@ local DEFAULT_FOOTSTEP_KEYFRAMES = {
 }
 local DEFAULT_JUMP_MARKERS = { "Jump", "JumpStart", "Takeoff" }
 local DEFAULT_JUMP_KEYFRAMES = { "Jump", "JumpStart", "Takeoff" }
+local PLAYER_AUDIO = (Audio :: any).Player or {}
+local PLAYER_WALK_AUDIO = PLAYER_AUDIO.Walk or {}
+local PLAYER_JUMP_AUDIO = PLAYER_AUDIO.Jump or {}
+local PLAYER_ANIMATION_REGISTRY = (((Animations :: any).Player or {}).Profiles or {})[DEFAULT_PROFILE_NAME] or {}
+local PLAYER_ANIMATION_IDS = PLAYER_ANIMATION_REGISTRY :: { [string]: any }
+
+local function normalizeAssetId(rawId: any): string?
+	if typeof(rawId) == "number" then
+		if rawId <= 0 then
+			return nil
+		end
+		return RBX_ASSET_PREFIX .. tostring(math.floor(rawId))
+	end
+
+	if typeof(rawId) ~= "string" then
+		return nil
+	end
+
+	local assetId = string.gsub(rawId, "%s", "")
+	if assetId == "" then
+		return nil
+	end
+
+	if string.sub(assetId, 1, #RBX_ASSET_PREFIX) == RBX_ASSET_PREFIX then
+		local numericId = string.match(assetId, "%d+")
+		if numericId == nil then
+			return nil
+		end
+		if numericId == "0" then
+			return nil
+		end
+		return RBX_ASSET_PREFIX .. numericId
+	end
+
+	local numericOnly = string.match(assetId, "^%d+$")
+	if numericOnly == nil or numericOnly == "0" then
+		return nil
+	end
+
+	return RBX_ASSET_PREFIX .. numericOnly
+end
+
+local function buildDefaultAnimationClip(
+	clipName: string,
+	fallback: AnimationClipConfig
+): AnimationClipConfig
+	local animationId = normalizeAssetId(PLAYER_ANIMATION_IDS[clipName])
+
+	return {
+		id = if animationId ~= nil then animationId else fallback.id,
+		looped = fallback.looped,
+		priority = fallback.priority,
+		speed = fallback.speed,
+		weight = fallback.weight,
+		fadeTime = fallback.fadeTime,
+	}
+end
+
+local function createAudioBackedSoundConfig(audioEntries: any, config: FootstepSoundConfig): FootstepSoundConfig
+	return {
+		soundAssetIds = AudioServiceUtils.collectSoundAssetIds(audioEntries),
+		volume = config.volume,
+		playbackSpeedMin = config.playbackSpeedMin,
+		playbackSpeedMax = config.playbackSpeedMax,
+		rollOffMaxDistance = config.rollOffMaxDistance,
+		emitterSize = config.emitterSize,
+	}
+end
 
 local DEFAULT_FOOTSTEP_SOUND: FootstepSoundConfig = {
-	soundAssetIds = {
-		"rbxassetid://139218459028027",
-		"rbxassetid://135661992057340",
-		"rbxassetid://118171247776690",
-		"rbxassetid://99678905942335",
-	},
+	soundAssetIds = {},
 	volume = 1,
 	playbackSpeedMin = 0.94,
 	playbackSpeedMax = 1.06,
 	rollOffMaxDistance = 1000,
 	emitterSize = 4,
 }
+DEFAULT_FOOTSTEP_SOUND = createAudioBackedSoundConfig(PLAYER_WALK_AUDIO.Default, DEFAULT_FOOTSTEP_SOUND)
 
 local DEFAULT_JUMP_SOUND: JumpSoundConfig = {
-	soundAssetIds = {
-		"rbxassetid://78685079799800",
-		"rbxassetid://85098154840446",
-	},
+	soundAssetIds = {},
 	volume = 1,
 	playbackSpeedMin = 0.94,
 	playbackSpeedMax = 1.04,
 	rollOffMaxDistance = 1000,
 	emitterSize = 6,
 }
+DEFAULT_JUMP_SOUND = createAudioBackedSoundConfig(PLAYER_JUMP_AUDIO, DEFAULT_JUMP_SOUND)
 
 local DEFAULT_FOOTSTEP_SOUNDS: { [string]: FootstepSoundConfig } = {
-	Grass = {
-		soundAssetIds = {
-			"rbxassetid://110916840535817",
-			"rbxassetid://104414031461916",
-			"rbxassetid://98036398008424",
-			"rbxassetid://95096400753854",
-		},
+	Grass = createAudioBackedSoundConfig(PLAYER_WALK_AUDIO.Grass, {
+		soundAssetIds = {},
 		volume = 1,
 		playbackSpeedMin = 0.95,
 		playbackSpeedMax = 1.06,
 		rollOffMaxDistance = 1000,
 		emitterSize = 4,
-	},
-	Ground = {
-		soundAssetIds = {
-			"rbxassetid://70613938354919",
-			"rbxassetid://73189723454250",
-			"rbxassetid://85098154840446",
-			"rbxassetid://78685079799800",
-		},
+	}),
+	Ground = createAudioBackedSoundConfig(PLAYER_WALK_AUDIO.Ground, {
+		soundAssetIds = {},
 		volume = 1,
 		playbackSpeedMin = 0.95,
 		playbackSpeedMax = 1.05,
 		rollOffMaxDistance = 1000,
 		emitterSize = 4,
-	},
-	Sand = {
-		soundAssetIds = {
-			"rbxassetid://8453417974",
-			"rbxassetid://109565823661998",
-			"rbxassetid://18642869167",
-			"rbxassetid://18642867368",
-		},
+	}),
+	Sand = createAudioBackedSoundConfig(PLAYER_WALK_AUDIO.Sand, {
+		soundAssetIds = {},
 		volume = 1,
 		playbackSpeedMin = 0.94,
 		playbackSpeedMax = 1.03,
 		rollOffMaxDistance = 1000,
 		emitterSize = 4,
-	},
-	Snow = {
-		soundAssetIds = {
-			"rbxassetid://96739494925672",
-			"rbxassetid://105900849260487",
-			"rbxassetid://106747482840476",
-			"rbxassetid://101980065058830",
-		},
+	}),
+	Snow = createAudioBackedSoundConfig(PLAYER_WALK_AUDIO.Snow, {
+		soundAssetIds = {},
 		volume = 1,
 		playbackSpeedMin = 0.9,
 		playbackSpeedMax = 1,
 		rollOffMaxDistance = 1000,
 		emitterSize = 4,
-	},
-	Wood = {
-		soundAssetIds = {
-			"rbxassetid://73970805826355",
-			"rbxassetid://78724561577501",
-			"rbxassetid://77792575599157",
-			"rbxassetid://74978166551807",
-		},
+	}),
+	Wood = createAudioBackedSoundConfig(PLAYER_WALK_AUDIO.Wood, {
+		soundAssetIds = {},
 		volume = 1,
 		playbackSpeedMin = 0.95,
 		playbackSpeedMax = 1.08,
 		rollOffMaxDistance = 1000,
 		emitterSize = 5,
-	},
-	WoodPlanks = {
-		soundAssetIds = {
-			"rbxassetid://93362771418104",
-			"rbxassetid://91500330512189",
-			"rbxassetid://88241122706351",
-			"rbxassetid://86403700569364",
-		},
+	}),
+	WoodPlanks = createAudioBackedSoundConfig(PLAYER_WALK_AUDIO.WoodPlanks, {
+		soundAssetIds = {},
 		volume = 1,
 		playbackSpeedMin = 0.95,
 		playbackSpeedMax = 1.08,
 		rollOffMaxDistance = 1000,
 		emitterSize = 5,
-	},
-	Metal = {
-		soundAssetIds = {
-			"rbxassetid://134158390225401",
-			"rbxassetid://99264815020652",
-			"rbxassetid://73835982692201",
-			"rbxassetid://137551819745308",
-		},
+	}),
+	Metal = createAudioBackedSoundConfig(PLAYER_WALK_AUDIO.Metal, {
+		soundAssetIds = {},
 		volume = 1,
 		playbackSpeedMin = 0.95,
 		playbackSpeedMax = 1.05,
 		rollOffMaxDistance = 1000,
 		emitterSize = 6,
-	},
-	DiamondPlate = {
-		soundAssetIds = {
-			"rbxassetid://134158390225401",
-			"rbxassetid://99264815020652",
-			"rbxassetid://73835982692201",
-			"rbxassetid://137551819745308",
-		},
+	}),
+	DiamondPlate = createAudioBackedSoundConfig(PLAYER_WALK_AUDIO.DiamondPlate, {
+		soundAssetIds = {},
 		volume = 1,
 		playbackSpeedMin = 0.95,
 		playbackSpeedMax = 1.05,
 		rollOffMaxDistance = 1000,
 		emitterSize = 6,
-	},
-	Concrete = {
-		soundAssetIds = {
-			"rbxassetid://128083760642409",
-			"rbxassetid://86082095505293",
-			"rbxassetid://84272541885035",
-			"rbxassetid://106886087227576",
-		},
+	}),
+	Concrete = createAudioBackedSoundConfig(PLAYER_WALK_AUDIO.Concrete, {
+		soundAssetIds = {},
 		volume = 1,
 		playbackSpeedMin = 0.94,
 		playbackSpeedMax = 1.06,
 		rollOffMaxDistance = 1000,
 		emitterSize = 5,
-	},
-	Brick = {
-		soundAssetIds = {
-			"rbxassetid://0",
-			"rbxassetid://0",
-			"rbxassetid://0",
-			"rbxassetid://0",
-		},
+	}),
+	Brick = createAudioBackedSoundConfig(PLAYER_WALK_AUDIO.Brick, {
+		soundAssetIds = {},
 		volume = 1,
 		playbackSpeedMin = 0.95,
 		playbackSpeedMax = 1.06,
 		rollOffMaxDistance = 1000,
 		emitterSize = 5,
-	},
-	Slate = {
-		soundAssetIds = {
-			"rbxassetid://0",
-			"rbxassetid://0",
-			"rbxassetid://0",
-			"rbxassetid://0",
-		},
+	}),
+	Slate = createAudioBackedSoundConfig(PLAYER_WALK_AUDIO.Slate, {
+		soundAssetIds = {},
 		volume = 1,
 		playbackSpeedMin = 0.95,
 		playbackSpeedMax = 1.05,
 		rollOffMaxDistance = 1000,
 		emitterSize = 5,
-	},
-	Cobblestone = {
-		soundAssetIds = {
-			"rbxassetid://0",
-			"rbxassetid://0",
-			"rbxassetid://0",
-			"rbxassetid://0",
-		},
+	}),
+	Cobblestone = createAudioBackedSoundConfig(PLAYER_WALK_AUDIO.Cobblestone, {
+		soundAssetIds = {},
 		volume = 1,
 		playbackSpeedMin = 0.95,
 		playbackSpeedMax = 1.05,
 		rollOffMaxDistance = 1000,
 		emitterSize = 5,
-	},
+	}),
 }
 
 local DEFAULT_PROFILE: AnimationProfile = {
@@ -278,38 +282,38 @@ local DEFAULT_PROFILE: AnimationProfile = {
 	footstepCooldown = DEFAULT_FOOTSTEP_COOLDOWN,
 	jumpCooldown = DEFAULT_JUMP_COOLDOWN,
 	animations = {
-		Idle = {
-			id = DEFAULT_IDLE_ANIMATION_ID,
+		Idle = buildDefaultAnimationClip("Idle", {
+			id = "",
 			looped = true,
 			priority = Enum.AnimationPriority.Idle,
 			speed = 1,
 			weight = 1,
 			fadeTime = 1,
-		},
-		Walk = {
-			id = DEFAULT_WALK_ANIMATION_ID,
+		}),
+		Walk = buildDefaultAnimationClip("Walk", {
+			id = "",
 			looped = true,
 			priority = Enum.AnimationPriority.Movement,
 			speed = 1,
 			weight = 1,
 			fadeTime = 0.1,
-		},
-		Jump = {
-			id = DEFAULT_JUMP_ANIMATION_ID,
+		}),
+		Jump = buildDefaultAnimationClip("Jump", {
+			id = "",
 			looped = true,
 			priority = Enum.AnimationPriority.Action,
 			speed = 1,
 			weight = 1,
 			fadeTime = 0.1,
-		},
-		Fall = {
-			id = DEFAULT_FALL_ANIMATION_ID,
+		}),
+		Fall = buildDefaultAnimationClip("Fall", {
+			id = "",
 			looped = true,
 			priority = Enum.AnimationPriority.Action,
 			speed = 1,
 			weight = 1,
 			fadeTime = 0.1,
-		},
+		}),
 	},
 	footstepMarkers = DEFAULT_FOOTSTEP_MARKERS,
 	footstepKeyframes = DEFAULT_FOOTSTEP_KEYFRAMES,

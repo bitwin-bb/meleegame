@@ -2,13 +2,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
 local Charm = require(ReplicatedStorage.Packages.Charm)
+local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
 local ImageIds = require(ReplicatedStorage.UI.core.ImageIds)
 local useBeatMotion = require(ReplicatedStorage.UI.features.hp.hooks.useBeatMotion)
 local hpSlice = require(ReplicatedStorage.UI.features.hp.state.hpSlice)
 local hpThunks = require(ReplicatedStorage.UI.features.hp.state.hpThunks)
 local infoThunks = require(ReplicatedStorage.UI.features.info.state.infoThunks)
-local SoundServiceClient = require(ReplicatedStorage.Shared.Services.SoundService.SoundServiceClient)
-local SoundServiceUtils = require(ReplicatedStorage.Shared.Services.SoundService.SoundServiceUtils)
+local AudioServiceClient = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceClient)
+local AudioServiceUtils = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceUtils)
 local HpServiceUtils = require(ReplicatedStorage.Shared.Services.HpService.HpServiceUtils)
 
 type HeartState = HpServiceUtils.HeartState
@@ -33,6 +34,8 @@ local e: typeof(React.createElement) = React.createElement
 
 local EMPTY_HEART_COLOR = Color3.fromRGB(59, 25, 29)
 local FILLED_HEART_COLOR = Color3.fromRGB(255, 90, 118)
+local UI_AUDIO = (AudioRegistry :: any).UI or {}
+local UI_HOVER_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Hover)
 
 local function getBeatHeartIndexFromHearts(hearts: { HeartState }): number?
 	for heartIndex = #hearts, 1, -1 do
@@ -40,30 +43,6 @@ local function getBeatHeartIndexFromHearts(hearts: { HeartState }): number?
 		if heart.health > 0 then
 			return heart.index
 		end
-	end
-
-	return nil
-end
-
-local function getUiHoverSoundAssetId(): string?
-	local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
-	if not assetsFolder then
-		return nil
-	end
-
-	local soundsFolder = assetsFolder:FindFirstChild("Sounds")
-	if not soundsFolder then
-		return nil
-	end
-
-	local uiFolder = soundsFolder:FindFirstChild("Ui")
-	if not uiFolder then
-		return nil
-	end
-
-	local uiHoverSound = uiFolder:FindFirstChild("UiHover")
-	if uiHoverSound and uiHoverSound:IsA("Sound") then
-		return SoundServiceUtils.resolveSoundAssetId(uiHoverSound)
 	end
 
 	return nil
@@ -239,9 +218,8 @@ return function(props: HpTopRightBarProps)
 					text = heartsHoverText,
 				})
 
-				local uiHoverSound = getUiHoverSoundAssetId()
-				if uiHoverSound then
-					SoundServiceClient:playUi(uiHoverSound, {
+				if UI_HOVER_SOUND then
+					AudioServiceClient:playUi(UI_HOVER_SOUND, {
 						replaceChannel = false,
 					})
 				end

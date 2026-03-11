@@ -3,14 +3,15 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
 local Charm = require(ReplicatedStorage.Packages.Charm)
+local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
 local ImageIds = require(ReplicatedStorage.UI.core.ImageIds)
 local itemThunks = require(ReplicatedStorage.UI.features.item.state.itemThunks)
 local itemSlice = require(ReplicatedStorage.UI.features.item.state.itemSlice)
 local infoThunks = require(ReplicatedStorage.UI.features.info.state.infoThunks)
 local trashSlice = require(ReplicatedStorage.UI.features.inventory.state.trashSlice)
 local trashThunks = require(ReplicatedStorage.UI.features.inventory.state.trashThunks)
-local SoundServiceClient = require(ReplicatedStorage.Shared.Services.SoundService.SoundServiceClient)
-local SoundServiceUtils = require(ReplicatedStorage.Shared.Services.SoundService.SoundServiceUtils)
+local AudioServiceClient = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceClient)
+local AudioServiceUtils = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceUtils)
 
 type TrashState = trashSlice.TrashState
 type ItemDragState = itemSlice.ItemDragState
@@ -30,6 +31,11 @@ local e: typeof(React.createElement) = React.createElement
 
 local TRASH_HOVER_ID = "inventory_trash"
 local DEFAULT_SIZE = UDim2.fromOffset(58, 58)
+local UI_AUDIO = (AudioRegistry :: any).UI or {}
+local UI_TRASH_OPEN_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.TrashCanOpen)
+local UI_TRASH_CLOSE_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.TrashCanClose)
+local UI_TRASH_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Trash)
+local UI_ITEM_PUT_DOWN_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.ItemPutDown)
 
 local function resolveEmergeOffset(offsetRaw: any): Vector2
 	if typeof(offsetRaw) ~= "Vector2" then
@@ -52,38 +58,14 @@ local function applyOffset(base: UDim2, offset: Vector2): UDim2
 	return UDim2.new(base.X.Scale, base.X.Offset + offset.X, base.Y.Scale, base.Y.Offset + offset.Y)
 end
 
-local function resolveUiTrashSoundAssetId(soundName: string): string?
-	local assetsFolder = ReplicatedStorage:FindFirstChild("Assets")
-	if assetsFolder == nil then
-		return nil
-	end
-
-	local soundsFolder = assetsFolder:FindFirstChild("Sounds")
-	if soundsFolder == nil then
-		return nil
-	end
-
-	local uiFolder = soundsFolder:FindFirstChild("Ui")
-	if uiFolder == nil then
-		return nil
-	end
-
-	local sound = uiFolder:FindFirstChild(soundName)
-	if sound ~= nil and sound:IsA("Sound") then
-		return SoundServiceUtils.resolveSoundAssetId(sound)
-	end
-	return nil
-end
-
-local function playUiTrashSound(soundName: string)
-	if SoundServiceClient.categoryGroups == nil then
+local function playUiTrashSound(soundAssetId: string?)
+	if AudioServiceClient.categoryGroups == nil then
 		return
 	end
-	local soundAssetId = resolveUiTrashSoundAssetId(soundName)
 	if soundAssetId == nil then
 		return
 	end
-	SoundServiceClient:playUi(soundAssetId, {
+	AudioServiceClient:playUi(soundAssetId, {
 		replaceChannel = false,
 	})
 end
@@ -175,12 +157,12 @@ return function(props: TrashScreenProps): React.ReactNode
 				id = TRASH_HOVER_ID,
 				text = resolveHoverText(state, dragState),
 			})
-			playUiTrashSound("UiTrashOpen")
+			playUiTrashSound(UI_TRASH_OPEN_SOUND)
 		end,
 		[React.Event.MouseLeave] = function()
 			trashThunks.close()
 			infoThunks.hideHover(TRASH_HOVER_ID)
-			playUiTrashSound("UiTrashClose")
+			playUiTrashSound(UI_TRASH_CLOSE_SOUND)
 		end,
 		[React.Event.InputBegan] = function(_: GuiObject, inputObject: InputObject)
 			local inputType = inputObject.UserInputType
@@ -193,8 +175,8 @@ return function(props: TrashScreenProps): React.ReactNode
 
 			local didRequest = itemThunks.trashDrag(nil)
 			if didRequest then
-				playUiTrashSound("UiItemRelease")
-				playUiTrashSound("UiTrashSound")
+				playUiTrashSound(UI_ITEM_PUT_DOWN_SOUND)
+				playUiTrashSound(UI_TRASH_SOUND)
 			end
 		end,
 		[React.Event.Activated] = function()
@@ -207,7 +189,7 @@ return function(props: TrashScreenProps): React.ReactNode
 
 			local didRequest = trashThunks.trashSelected(nil)
 			if didRequest then
-				playUiTrashSound("UiTrashSound")
+				playUiTrashSound(UI_TRASH_SOUND)
 			end
 		end,
 	})

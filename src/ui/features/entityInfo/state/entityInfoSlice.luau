@@ -7,6 +7,7 @@ export type EntityInfoState = {
 	visible: boolean,
 	hoverId: string?,
 	runtimeId: string?,
+	adornee: Instance?,
 	displayName: string,
 	hp: number,
 	maxHp: number,
@@ -17,6 +18,7 @@ export type EntityInfoState = {
 export type ShowEntityPayload = {
 	hoverId: string?,
 	runtimeId: string?,
+	adornee: Instance?,
 	displayName: string?,
 	hp: number?,
 	maxHp: number?,
@@ -28,6 +30,7 @@ local DEFAULT_STATE: EntityInfoState = {
 	visible = false,
 	hoverId = nil,
 	runtimeId = nil,
+	adornee = nil,
 	displayName = "",
 	hp = 0,
 	maxHp = 0,
@@ -46,6 +49,13 @@ end
 
 local function sanitizeDisplayName(valueRaw: any, fallback: string): string
 	if typeof(valueRaw) == "string" and valueRaw ~= "" then
+		return valueRaw
+	end
+	return fallback
+end
+
+local function sanitizeAdornee(valueRaw: any, fallback: Instance?): Instance?
+	if typeof(valueRaw) == "Instance" then
 		return valueRaw
 	end
 	return fallback
@@ -85,6 +95,7 @@ local function setEntityInfoState(stateRaw: any): EntityInfoState
 		visible = (source :: any).visible == true,
 		hoverId = sanitizeOptionalId((source :: any).hoverId),
 		runtimeId = sanitizeOptionalId((source :: any).runtimeId),
+		adornee = sanitizeAdornee((source :: any).adornee, current.adornee),
 		displayName = sanitizeDisplayName((source :: any).displayName, current.displayName),
 		hp = sanitizeHp((source :: any).hp, maxHp, current.hp),
 		maxHp = maxHp,
@@ -95,6 +106,7 @@ local function setEntityInfoState(stateRaw: any): EntityInfoState
 	if nextState.visible ~= true then
 		nextState.hoverId = nil
 		nextState.runtimeId = nil
+		nextState.adornee = nil
 	end
 
 	entityInfoStateAtom(nextState)
@@ -109,6 +121,7 @@ local function showEntityInfo(payloadRaw: any): EntityInfoState
 		visible = true,
 		hoverId = sanitizeOptionalId((payload :: any).hoverId),
 		runtimeId = sanitizeOptionalId((payload :: any).runtimeId),
+		adornee = sanitizeAdornee((payload :: any).adornee, current.adornee),
 		displayName = sanitizeDisplayName((payload :: any).displayName, current.displayName),
 		hp = sanitizeHp((payload :: any).hp, maxHp, current.hp),
 		maxHp = maxHp,
@@ -131,6 +144,7 @@ local function updateMousePosition(mousePositionRaw: any): EntityInfoState
 		visible = current.visible,
 		hoverId = current.hoverId,
 		runtimeId = current.runtimeId,
+		adornee = current.adornee,
 		displayName = current.displayName,
 		hp = current.hp,
 		maxHp = current.maxHp,
@@ -155,6 +169,7 @@ local function hideEntityInfo(hoverIdRaw: any): EntityInfoState
 		visible = false,
 		hoverId = nil,
 		runtimeId = nil,
+		adornee = nil,
 		displayName = "",
 		hp = 0,
 		maxHp = 0,
@@ -171,6 +186,7 @@ local function resetEntityInfoState(): EntityInfoState
 		visible = false,
 		hoverId = nil,
 		runtimeId = nil,
+		adornee = nil,
 		displayName = "",
 		hp = 0,
 		maxHp = 0,
