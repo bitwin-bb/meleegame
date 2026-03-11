@@ -223,6 +223,7 @@ local DEFAULT_CONFIG: Config = {
 	windField = {
 		seed = "AquariaWindField",
 		baseDirection = Vector3.new(1, 0, 0.25),
+		strengthMultiplier = 1,
 		baseStrength = 0.62,
 		gustStrength = 0.92,
 		detailStrength = 0.2,

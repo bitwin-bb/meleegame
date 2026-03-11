@@ -89,21 +89,25 @@ function AudioServiceServer.playSfxForPlayer(
 	soundAssetIdRaw: any,
 	optionsRaw: any
 )
-	local soundAssetId = AudioServiceUtils.normalizeSoundAssetId(soundAssetIdRaw)
+	local soundAssetId, options = AudioServiceUtils.resolvePlaybackRequest(soundAssetIdRaw, optionsRaw, "SFX")
 	if soundAssetId == nil then
 		return
 	end
-	local options = AudioServiceUtils.serializePlaybackOptions(optionsRaw, "SFX")
-	self.networker:fire(player, "playSfx", soundAssetId, options)
+	self.networker:fire(player, "playSfx", soundAssetId, AudioServiceUtils.serializePlaybackOptions(options, "SFX"))
 end
 
 function AudioServiceServer.playSfxForAll(self: AudioServiceServer, soundAssetIdRaw: any, optionsRaw: any)
-	local soundAssetId = AudioServiceUtils.normalizeSoundAssetId(soundAssetIdRaw)
+	local soundAssetId, options = AudioServiceUtils.resolvePlaybackRequest(soundAssetIdRaw, optionsRaw, "SFX")
 	if soundAssetId == nil then
 		return
 	end
-	local options = AudioServiceUtils.serializePlaybackOptions(optionsRaw, "SFX")
-	fireForPlayers(self.networker, Players:GetPlayers(), "playSfx", soundAssetId, options)
+	fireForPlayers(
+		self.networker,
+		Players:GetPlayers(),
+		"playSfx",
+		soundAssetId,
+		AudioServiceUtils.serializePlaybackOptions(options, "SFX")
+	)
 end
 
 function AudioServiceServer.playMusicForPlayer(
@@ -112,44 +116,25 @@ function AudioServiceServer.playMusicForPlayer(
 	soundAssetIdRaw: any,
 	optionsRaw: any
 )
-	local soundAssetId = AudioServiceUtils.normalizeSoundAssetId(soundAssetIdRaw)
+	local soundAssetId, options = AudioServiceUtils.resolvePlaybackRequest(soundAssetIdRaw, optionsRaw, "Music")
 	if soundAssetId == nil then
 		return
 	end
-	local options = AudioServiceUtils.serializePlaybackOptions(optionsRaw, "Music")
-	self.networker:fire(player, "playMusic", soundAssetId, options)
+	self.networker:fire(player, "playMusic", soundAssetId, AudioServiceUtils.serializePlaybackOptions(options, "Music"))
 end
 
 function AudioServiceServer.playMusicForAll(self: AudioServiceServer, soundAssetIdRaw: any, optionsRaw: any)
-	local soundAssetId = AudioServiceUtils.normalizeSoundAssetId(soundAssetIdRaw)
+	local soundAssetId, options = AudioServiceUtils.resolvePlaybackRequest(soundAssetIdRaw, optionsRaw, "Music")
 	if soundAssetId == nil then
 		return
 	end
-	local options = AudioServiceUtils.serializePlaybackOptions(optionsRaw, "Music")
-	fireForPlayers(self.networker, Players:GetPlayers(), "playMusic", soundAssetId, options)
-end
-
-function AudioServiceServer.playAmbienceForPlayer(
-	self: AudioServiceServer,
-	player: Player,
-	soundAssetIdRaw: any,
-	optionsRaw: any
-)
-	local soundAssetId = AudioServiceUtils.normalizeSoundAssetId(soundAssetIdRaw)
-	if soundAssetId == nil then
-		return
-	end
-	local options = AudioServiceUtils.serializePlaybackOptions(optionsRaw, "Ambience")
-	self.networker:fire(player, "playAmbience", soundAssetId, options)
-end
-
-function AudioServiceServer.playAmbienceForAll(self: AudioServiceServer, soundAssetIdRaw: any, optionsRaw: any)
-	local soundAssetId = AudioServiceUtils.normalizeSoundAssetId(soundAssetIdRaw)
-	if soundAssetId == nil then
-		return
-	end
-	local options = AudioServiceUtils.serializePlaybackOptions(optionsRaw, "Ambience")
-	fireForPlayers(self.networker, Players:GetPlayers(), "playAmbience", soundAssetId, options)
+	fireForPlayers(
+		self.networker,
+		Players:GetPlayers(),
+		"playMusic",
+		soundAssetId,
+		AudioServiceUtils.serializePlaybackOptions(options, "Music")
+	)
 end
 
 function AudioServiceServer.stopChannelForPlayer(

@@ -188,6 +188,27 @@ local function formatStats(statsRaw: any): string
 	return table.concat(lines, "\n")
 end
 
+local function resolveStackAmount(stackRaw: any): number
+	if typeof(stackRaw) ~= "table" then
+		return 0
+	end
+	local amountRaw = (stackRaw :: any).amount
+	if typeof(amountRaw) ~= "number" or amountRaw ~= amountRaw then
+		return 0
+	end
+	return math.max(0, math.floor(amountRaw))
+end
+
+local function resolveRequestedDragAmount(state: ItemDragState, amountRaw: any): any
+	if amountRaw ~= nil then
+		return amountRaw
+	end
+	if state.stack == nil then
+		return nil
+	end
+	return state.stack.amount
+end
+
 function itemThunks.resolveItemIconByType(itemTypeRaw: any, itemIdRaw: any?): string?
 	local normalizedType = normalizeTypeKey(itemTypeRaw)
 	local normalizedItemId = normalizeTypeKey(itemIdRaw)
@@ -288,8 +309,24 @@ function itemThunks.beginDrag(slotIndexRaw: any, stackRaw: any, pointerPositionR
 	return itemSlice.beginDrag(slotIndexRaw, stackRaw, pointerPositionRaw, itemType, icon)
 end
 
+function itemThunks.beginSplitDrag(slotIndexRaw: any, stackRaw: any, pointerPositionRaw: any, amountRaw: any): ItemDragState
+	local itemId = if typeof(stackRaw) == "table" then (stackRaw :: { [string]: any }).itemId else nil
+	local itemType = resolveItemTypeFromStack(stackRaw)
+	local icon = itemThunks.resolveItemIconByType(itemType, itemId)
+	local sourceStackAmount = resolveStackAmount(stackRaw)
+	return itemSlice.beginDrag(slotIndexRaw, stackRaw, pointerPositionRaw, itemType, icon, {
+		mode = "SplitHold",
+		dragAmount = amountRaw,
+		sourceStackAmount = sourceStackAmount,
+	})
+end
+
 function itemThunks.updatePointer(pointerPositionRaw: any): ItemDragState
 	return itemSlice.setPointerPosition(pointerPositionRaw)
+end
+
+function itemThunks.setDragStackAmount(amountRaw: any): ItemDragState
+	return itemSlice.setStackAmount(amountRaw)
 end
 
 function itemThunks.setHoveredSlot(slotIndexRaw: any): ItemDragState
@@ -312,7 +349,8 @@ function itemThunks.trashDrag(amountRaw: any): boolean
 		return false
 	end
 
-	local didRequest = inventoryThunks.trashSlot(sourceSlot, amountRaw)
+	local requestedAmount = resolveRequestedDragAmount(state, amountRaw)
+	local didRequest = inventoryThunks.trashSlot(sourceSlot, requestedAmount)
 	itemSlice.clearDragState()
 	return didRequest
 end
@@ -329,7 +367,8 @@ function itemThunks.dropDrag(amountRaw: any): boolean
 		return false
 	end
 
-	local didRequest = inventoryThunks.dropFromSlot(sourceSlot, amountRaw)
+	local requestedAmount = resolveRequestedDragAmount(state, amountRaw)
+	local didRequest = inventoryThunks.dropFromSlot(sourceSlot, requestedAmount)
 	if didRequest then
 		itemSlice.clearDragState()
 	end
@@ -346,10 +385,11 @@ function itemThunks.endDrag(targetSlotRaw: any): boolean
 	local targetSlot = if typeof(targetSlotRaw) == "number" and targetSlotRaw == targetSlotRaw
 		then math.floor(targetSlotRaw)
 		else nil
+	local dragAmount = if state.stack ~= nil then state.stack.amount else nil
 	local didMove = false
 	if sourceSlot ~= nil and targetSlot ~= nil and sourceSlot ~= targetSlot then
-		inventoryThunks.moveSlot(sourceSlot, targetSlot, nil)
-		didMove = true
+		local requestedAmount = if state.mode == "SplitHold" then dragAmount else nil
+		didMove = inventoryThunks.moveSlot(sourceSlot, targetSlot, requestedAmount)
 	end
 
 	itemSlice.clearDragState()

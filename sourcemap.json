@@ -6534,6 +6534,13 @@
                           "filePaths": [
                             "src/classes/Camera/Behavior/enemySubject.luau"
                           ]
+                        },
+                        {
+                          "name": "catchUpPlayer",
+                          "className": "ModuleScript",
+                          "filePaths": [
+                            "src/classes/Camera/Behavior/catchUpPlayer.luau"
+                          ]
                         }
                       ]
                     },

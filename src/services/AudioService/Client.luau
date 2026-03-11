@@ -526,12 +526,11 @@ function AudioServiceClient.playSound(
 	optionsRaw: any,
 	fallbackCategory: SoundCategory?
 ): Sound?
-	local soundAssetId = AudioServiceUtils.normalizeSoundAssetId(soundAssetIdRaw)
+	local soundAssetId, options = AudioServiceUtils.resolvePlaybackRequest(soundAssetIdRaw, optionsRaw, fallbackCategory)
 	if soundAssetId == nil then
 		return nil
 	end
 
-	local options = AudioServiceUtils.sanitizePlaybackOptions(optionsRaw, fallbackCategory)
 	local categoryGroup = self.categoryGroups[options.category]
 
 	local shouldReplaceChannel = if options.replaceChannel == nil then true else options.replaceChannel
@@ -591,15 +590,6 @@ end
 
 function AudioServiceClient.playUi(self: AudioServiceClient, soundAssetIdRaw: any, optionsRaw: any): Sound?
 	return self:playSound(soundAssetIdRaw, optionsRaw, "UI")
-end
-
-function AudioServiceClient.playAmbience(self: AudioServiceClient, soundAssetIdRaw: any, optionsRaw: any): Sound?
-	local options = AudioServiceUtils.sanitizePlaybackOptions(optionsRaw, "Ambience")
-	if options.channel == nil then
-		options.channel = "ambience"
-	end
-	options.looped = true
-	return self:playSound(soundAssetIdRaw, options, "Ambience")
 end
 
 function AudioServiceClient.playMusic(self: AudioServiceClient, soundAssetIdRaw: any, optionsRaw: any): Sound?

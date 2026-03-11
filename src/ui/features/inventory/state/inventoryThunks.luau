@@ -74,7 +74,7 @@ function inventoryThunks.clearSelectedSlot(): boolean
 	return false
 end
 
-function inventoryThunks.moveSlot(fromSlotRaw: any, toSlotRaw: any, amountRaw: any)
+function inventoryThunks.moveSlot(fromSlotRaw: any, toSlotRaw: any, amountRaw: any): boolean
 	local currentState = inventorySlice.getInventoryState()
 	local optimisticState = InventoryServiceUtils.cloneState(currentState)
 	local optimisticResult = InventoryServiceUtils.moveSlot(optimisticState, fromSlotRaw, toSlotRaw, amountRaw)
@@ -85,12 +85,14 @@ function inventoryThunks.moveSlot(fromSlotRaw: any, toSlotRaw: any, amountRaw: a
 	pcall(function()
 		InventoryServiceClient:moveSlot(fromSlotRaw, toSlotRaw, amountRaw)
 	end)
+	return optimisticResult.changed
 end
 
-function inventoryThunks.splitSlot(fromSlotRaw: any, toSlotRaw: any, amountRaw: any)
+function inventoryThunks.splitSlot(fromSlotRaw: any, toSlotRaw: any, amountRaw: any): boolean
 	pcall(function()
 		InventoryServiceClient:splitSlot(fromSlotRaw, toSlotRaw, amountRaw)
 	end)
+	return true
 end
 
 function inventoryThunks.dropFromSlot(slotIndexRaw: any, amountRaw: any): boolean

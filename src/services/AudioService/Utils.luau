@@ -3,7 +3,7 @@ local TweenService = game:GetService("TweenService")
 
 local AudioServiceUtils = {}
 
-export type SoundCategory = "Music" | "SFX" | "Ambience" | "UI" | "Voice"
+export type SoundCategory = "Music" | "SFX" | "UI" | "Voice"
 
 export type AudioServiceState = {
 	masterVolume: number,
@@ -27,7 +27,7 @@ export type PlaybackOptions = {
 	parent: Instance?,
 }
 
-local CATEGORY_ORDER: { SoundCategory } = { "Music", "SFX", "Ambience", "UI", "Voice" }
+local CATEGORY_ORDER: { SoundCategory } = { "Music", "SFX", "UI", "Voice" }
 local CATEGORY_SET: { [string]: boolean } = {}
 for _, category in CATEGORY_ORDER do
 	CATEGORY_SET[category] = true
@@ -38,7 +38,6 @@ local DEFAULT_MASTER_VOLUME = 1
 local DEFAULT_CATEGORY_VOLUMES: { [string]: number } = {
 	Music = 0.75,
 	SFX = 1,
-	Ambience = 0.85,
 	UI = 1,
 	Voice = 1,
 }
@@ -112,7 +111,7 @@ function AudioServiceUtils.resolveSoundAssetId(soundSourceRaw: any): string?
 			return AudioServiceUtils.normalizeSoundAssetId((source.sound :: Sound).SoundId)
 		end
 
-		local directId = source.id or source.soundId or source.assetId or source.source
+		local directId = source.sound or source.id or source.soundId or source.assetId or source.source
 		if directId ~= nil then
 			return AudioServiceUtils.normalizeSoundAssetId(directId)
 		end
@@ -165,7 +164,7 @@ function AudioServiceUtils.normalizeCategoryOrNil(value: any): SoundCategory?
 		return nil
 	end
 
-	if value == "Music" or value == "SFX" or value == "Ambience" or value == "UI" or value == "Voice" then
+	if value == "Music" or value == "SFX" or value == "UI" or value == "Voice" then
 		return value
 	end
 
@@ -314,6 +313,66 @@ function AudioServiceUtils.sanitizePlaybackOptions(optionsRaw: any, fallbackCate
 	}
 
 	return options
+end
+
+function AudioServiceUtils.resolvePlaybackRequest(
+	soundSourceRaw: any,
+	optionsRaw: any,
+	fallbackCategory: SoundCategory?
+): (string?, PlaybackOptions)
+	local soundAssetId = AudioServiceUtils.resolveSoundAssetId(soundSourceRaw)
+	local options = AudioServiceUtils.sanitizePlaybackOptions(optionsRaw, fallbackCategory)
+	if typeof(soundSourceRaw) ~= "table" then
+		return soundAssetId, options
+	end
+
+	local source = soundSourceRaw :: { [string]: any }
+	local providedOptions = if typeof(optionsRaw) == "table" then optionsRaw :: { [string]: any } else nil
+	local sourceOptions = AudioServiceUtils.sanitizePlaybackOptions(soundSourceRaw, fallbackCategory)
+
+	if providedOptions == nil or providedOptions.category == nil then
+		if source.category ~= nil then
+			options.category = sourceOptions.category
+		end
+	end
+	if options.channel == nil and source.channel ~= nil then
+		options.channel = sourceOptions.channel
+	end
+	if options.looped == nil and source.looped ~= nil then
+		options.looped = sourceOptions.looped
+	end
+	if options.volume == nil and source.volume ~= nil then
+		options.volume = sourceOptions.volume
+	end
+	if options.playbackSpeed == nil and source.playbackSpeed ~= nil then
+		options.playbackSpeed = sourceOptions.playbackSpeed
+	end
+	if options.timePosition == nil and source.timePosition ~= nil then
+		options.timePosition = sourceOptions.timePosition
+	end
+	if options.fadeInTime == nil and source.fadeInTime ~= nil then
+		options.fadeInTime = sourceOptions.fadeInTime
+	end
+	if options.fadeOutTime == nil and source.fadeOutTime ~= nil then
+		options.fadeOutTime = sourceOptions.fadeOutTime
+	end
+	if options.rollOffMaxDistance == nil and source.rollOffMaxDistance ~= nil then
+		options.rollOffMaxDistance = sourceOptions.rollOffMaxDistance
+	end
+	if options.emitterSize == nil and source.emitterSize ~= nil then
+		options.emitterSize = sourceOptions.emitterSize
+	end
+	if options.autoDestroy == nil and source.autoDestroy ~= nil then
+		options.autoDestroy = sourceOptions.autoDestroy
+	end
+	if options.replaceChannel == nil and source.replaceChannel ~= nil then
+		options.replaceChannel = sourceOptions.replaceChannel
+	end
+	if options.parent == nil and source.parent ~= nil then
+		options.parent = sourceOptions.parent
+	end
+
+	return soundAssetId, options
 end
 
 function AudioServiceUtils.serializePlaybackOptions(

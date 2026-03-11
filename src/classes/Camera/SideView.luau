@@ -6,6 +6,7 @@ local UserInputService = game:GetService("UserInputService")
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Configs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
+local CatchUpPlayer = require(script.Parent.Behavior.catchUpPlayer)
 
 local SideView = {}
 SideView.__index = SideView
@@ -54,6 +55,7 @@ export type SideView = typeof(setmetatable(
 		mouseInfluenceY: number,
 		cameraSpring: SpringOptions,
 		fovSpring: SpringOptions,
+		catchUpPlayerBehavior: CatchUpPlayer.CatchUpPlayer,
 		cameraMotion: Motion<CFrame>,
 		fovMotion: Motion<number>,
 		janitor: JanitorClass,
@@ -134,6 +136,7 @@ function SideView.new(config: SideViewConfig?): SideView
 		fovSpring = if config and config.fovSpring
 			then config.fovSpring
 			else (DEFAULT_SIDE_VIEW_CONFIG.fovSpring or DEFAULT_FOV_SPRING),
+		catchUpPlayerBehavior = CatchUpPlayer.new(if config then (config :: any).catchUpPlayer else nil),
 		cameraMotion = Ripple.createMotion(startCFrame),
 		fovMotion = Ripple.createMotion(startFov),
 		janitor = Janitor.new(),
@@ -178,6 +181,7 @@ end
 
 function SideView.setTarget(self: SideView, target: BasePart)
 	self.target = target
+	self.catchUpPlayerBehavior:reset()
 end
 
 function SideView.snapToTarget(self: SideView)
@@ -194,6 +198,7 @@ function SideView.snapToTarget(self: SideView)
 	camera.FieldOfView = self.fieldOfView
 	self.cameraMotion:immediate(targetCFrame)
 	self.fovMotion:immediate(self.fieldOfView)
+	self.catchUpPlayerBehavior:reset()
 end
 
 function SideView.enable(self: SideView)
@@ -209,6 +214,7 @@ function SideView.enable(self: SideView)
 		self.cameraMotion:immediate(camera.CFrame)
 		self.fovMotion:immediate(camera.FieldOfView)
 	end
+	self.catchUpPlayerBehavior:reset()
 
 	self.enabled = true
 	RunService:BindToRenderStep(self.renderStepName, SIDE_VIEW_RENDER_PRIORITY, function(deltaTime)
@@ -226,6 +232,7 @@ function SideView.disable(self: SideView)
 
 	self.enabled = false
 	self.janitor:Clean()
+	self.catchUpPlayerBehavior:reset()
 
 	local camera = Workspace.CurrentCamera
 	if camera then
@@ -254,8 +261,11 @@ function SideView.update(self: SideView, deltaTime: number?)
 	camera.CameraType = Enum.CameraType.Scriptable
 
 	local targetCFrame = self:getTargetCFrame(camera)
+	local currentCFrame = self.cameraMotion:get()
+	local resolvedCameraSpring =
+		self.catchUpPlayerBehavior:resolveSpring(self.cameraSpring, currentCFrame, targetCFrame, deltaTime)
 
-	self.cameraMotion:spring(targetCFrame, self.cameraSpring)
+	self.cameraMotion:spring(targetCFrame, resolvedCameraSpring)
 	self.fovMotion:spring(self.fieldOfView, self.fovSpring)
 
 	local dt = deltaTime or (1 / 60)
@@ -305,6 +315,11 @@ function SideView.applyConfig(self: SideView, config: SideViewConfig)
 	end
 	if config.fovSpring then
 		self.fovSpring = config.fovSpring
+	end
+
+	local catchUpPlayerConfig = (config :: any).catchUpPlayer
+	if catchUpPlayerConfig ~= nil then
+		self.catchUpPlayerBehavior:applyConfig(catchUpPlayerConfig)
 	end
 end
 

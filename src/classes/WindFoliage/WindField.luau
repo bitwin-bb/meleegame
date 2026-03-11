@@ -22,6 +22,7 @@ export type WindField = typeof(setmetatable({} :: any, WindField))
 export type Config = {
 	seed: any?,
 	baseDirection: Vector3?,
+	strengthMultiplier: number?,
 	baseStrength: number?,
 	gustStrength: number?,
 	detailStrength: number?,
@@ -67,6 +68,7 @@ function WindField.new(configRaw: Config?): WindField
 
 	local self = setmetatable({
 		baseDirection = sanitizeDirection(config.baseDirection),
+		strengthMultiplier = clampNumber(config.strengthMultiplier, 1, 0, 10),
 		baseStrength = clampNumber(config.baseStrength, 0.62, 0, 10),
 		gustStrength = clampNumber(config.gustStrength, 0.9, 0, 10),
 		detailStrength = clampNumber(config.detailStrength, 0.2, 0, 10),
@@ -96,6 +98,7 @@ function WindField.sample(
 	local timeSeconds = if typeof(timeSecondsRaw) == "number" and timeSecondsRaw == timeSecondsRaw then timeSecondsRaw else 0
 	local phaseOffset = if typeof(phaseOffsetRaw) == "number" and phaseOffsetRaw == phaseOffsetRaw then phaseOffsetRaw else 0
 	local amplitudeScale = clampNumber(amplitudeScaleRaw, 1, 0, 10)
+	local strengthMultiplier = self.strengthMultiplier
 
 	local x = worldPosition.X
 	local z = worldPosition.Z
@@ -183,9 +186,10 @@ function WindField.sample(
 	local scalarStrength =
 		(self.baseStrength + self.gustStrength * gustAlpha + self.detailStrength * math.min(1, detailMagnitude))
 		* amplitudeScale
+		* strengthMultiplier
 	local vector =
-		direction * (self.baseStrength + self.gustStrength * gustAlpha) * amplitudeScale
-		+ detailVector * self.detailStrength * amplitudeScale
+		direction * (self.baseStrength + self.gustStrength * gustAlpha) * amplitudeScale * strengthMultiplier
+		+ detailVector * self.detailStrength * amplitudeScale * strengthMultiplier
 
 	return {
 		vector = vector,

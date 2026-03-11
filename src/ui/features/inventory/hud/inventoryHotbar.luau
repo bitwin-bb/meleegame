@@ -1,11 +1,9 @@
 --!strict
-local GuiService = game:GetService("GuiService")
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
 local Charm = require(ReplicatedStorage.Packages.Charm)
-local Signal = require(ReplicatedStorage.Packages.Signal)
 local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
 local ImageIds = require(ReplicatedStorage.UI.core.ImageIds)
 local NavButton = require(ReplicatedStorage.UI.core.components.NavButton)
@@ -17,6 +15,7 @@ local inventorySlice = require(ReplicatedStorage.UI.features.inventory.state.inv
 local inventoryThunks = require(ReplicatedStorage.UI.features.inventory.state.inventoryThunks)
 local ItemScreen = require(ReplicatedStorage.UI.features.item.screen.itemScreen)
 local useDrag = require(ReplicatedStorage.UI.features.item.hooks.useDrag)
+local itemSlice = require(ReplicatedStorage.UI.features.item.state.itemSlice)
 local itemThunks = require(ReplicatedStorage.UI.features.item.state.itemThunks)
 local useInventorySlide = require(ReplicatedStorage.UI.features.inventory.hooks.useInventorySlide)
 local useCoinEmerge = require(ReplicatedStorage.UI.features.inventory.hooks.useCoinEmerge)
@@ -29,6 +28,7 @@ local AudioServiceUtils = require(ReplicatedStorage.Shared.Services.AudioService
 type InventoryState = InventoryServiceUtils.InventoryState
 type InventorySlot = InventoryServiceUtils.InventorySlot
 type InventoryItemStack = InventoryServiceUtils.InventoryItemStack
+type ItemDragState = itemSlice.ItemDragState
 
 type InventoryHotbarProps = {
 	layoutOrder: number?,
@@ -65,15 +65,6 @@ local UI_AUDIO = (AudioRegistry :: any).UI or {}
 local UI_HOVER_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Hover)
 local UI_PRESS_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Press or UI_AUDIO.Click)
 type HoveredSlotSource = "Hotbar" | "Grid"
-type DropRequestedSignal = {
-	Connect: (
-		self: DropRequestedSignal,
-		callback: (slotIndex: number, slotGuiObject: GuiObject) -> ()
-	) -> RBXScriptConnection,
-	Fire: (self: DropRequestedSignal, slotIndex: number, slotGuiObject: GuiObject) -> (),
-	Destroy: (self: DropRequestedSignal) -> (),
-}
-
 local KEYCODE_TO_SLOT_INDEX: { [Enum.KeyCode]: number } = {
 	[Enum.KeyCode.One] = 1,
 	[Enum.KeyCode.Two] = 2,
@@ -188,6 +179,44 @@ local function resolveSlotHoverText(slot: InventorySlot): string
 	return ("Slot %d\nEmpty"):format(slot.index)
 end
 
+local function cloneStackWithAmount(stack: InventoryItemStack, amount: number): InventoryItemStack
+	return {
+		stackId = stack.stackId,
+		itemId = stack.itemId,
+		amount = amount,
+		maxStack = stack.maxStack,
+		metadata = InventoryServiceUtils.cloneDeep(stack.metadata),
+	}
+end
+
+local function resolveDisplayedStackForSlot(slot: InventorySlot, dragState: ItemDragState): InventoryItemStack?
+	local stack = slot.stack
+	if stack == nil then
+		return nil
+	end
+	if not dragState.active or dragState.mode ~= "SplitHold" then
+		return stack
+	end
+	if dragState.sourceSlot ~= slot.index then
+		return stack
+	end
+	if dragState.stack == nil or dragState.sourceStackAmount == nil then
+		return stack
+	end
+	if dragState.stack.stackId ~= stack.stackId then
+		return stack
+	end
+
+	local remainingAmount = math.max(0, dragState.sourceStackAmount - dragState.stack.amount)
+	if remainingAmount <= 0 then
+		return nil
+	end
+	if remainingAmount == stack.amount then
+		return stack
+	end
+	return cloneStackWithAmount(stack, remainingAmount)
+end
+
 local function selectSlot(slotIndex: number, currentlySelectedSlot: number?)
 	if currentlySelectedSlot == slotIndex then
 		inventoryThunks.clearSelectedSlot()
@@ -209,41 +238,6 @@ local function resolveLoadingInventoryText(dotCountRaw: number): string
 	return "Loading inventory" .. string.rep(".", dotCount)
 end
 
-local function resolveCursorGuiPosition(): Vector2?
-	local success, mouseLocation = pcall(function()
-		return UserInputService:GetMouseLocation()
-	end)
-	if not success or typeof(mouseLocation) ~= "Vector2" then
-		return nil
-	end
-	local topLeftInset = GuiService:GetGuiInset()
-	return Vector2.new(math.max(0, mouseLocation.X - topLeftInset.X), math.max(0, mouseLocation.Y - topLeftInset.Y))
-end
-
-local function isSlotTopmostAtCursor(slotGuiObject: GuiObject): boolean
-	if slotGuiObject.Parent == nil then
-		return false
-	end
-	local cursorPosition = resolveCursorGuiPosition()
-	if cursorPosition == nil then
-		return false
-	end
-	local success, guiObjects = pcall(function()
-		return GuiService:GetGuiObjectsAtPosition(math.floor(cursorPosition.X), math.floor(cursorPosition.Y))
-	end)
-	if not success or type(guiObjects) ~= "table" then
-		return false
-	end
-	local topmost = guiObjects[1]
-	if topmost == nil or not topmost:IsA("GuiObject") then
-		return false
-	end
-	if topmost == slotGuiObject then
-		return true
-	end
-	return topmost:IsDescendantOf(slotGuiObject)
-end
-
 return function(props: InventoryHotbarProps)
 	local inventoryState, setInventoryState = React.useState(function(): InventoryState
 		return inventorySlice.inventoryStateAtom()
@@ -255,9 +249,6 @@ return function(props: InventoryHotbarProps)
 	local isExpandButtonPressed, setIsExpandButtonPressed = React.useState(false)
 	local isInventoryExpanded, setIsInventoryExpanded = React.useState(false)
 	local loadingDotCount, setLoadingDotCount = React.useState(1)
-	local dropRequestedSignal = React.useMemo(function(): DropRequestedSignal
-		return Signal.new()
-	end, {})
 	local drag = useDrag({
 		hoveredSlotIndex = hoveredSlotIndex,
 	})
@@ -279,69 +270,6 @@ return function(props: InventoryHotbarProps)
 			stop()
 		end
 	end, {})
-
-	React.useEffect(function()
-		return function()
-			dropRequestedSignal:Destroy()
-		end
-	end, { dropRequestedSignal })
-
-	React.useEffect(function()
-		if props.visible == false or not isInventoryExpanded then
-			return
-		end
-
-		local dropRequestedConnection = dropRequestedSignal:Connect(function(slotIndex: number, slotGuiObject: GuiObject)
-			if props.visible == false or not isInventoryExpanded then
-				return
-			end
-			if not isInventoryStateInitialized then
-				return
-			end
-			if UserInputService:GetFocusedTextBox() ~= nil then
-				return
-			end
-			if not InventoryServiceUtils.isLoadedState(renderState.loadState) then
-				return
-			end
-			if drag.isDragging then
-				return
-			end
-
-			local maxInteractiveSlots = math.min(renderState.capacity, TOTAL_VISIBLE_SLOTS)
-			if slotIndex < 1 or slotIndex > maxInteractiveSlots then
-				return
-			end
-
-			local slot = resolveSlot(renderState, slotIndex)
-			if slot.stack == nil then
-				return
-			end
-			if slotGuiObject.Parent == nil then
-				return
-			end
-			if not isSlotTopmostAtCursor(slotGuiObject) then
-				return
-			end
-
-			task.defer(function()
-				inventoryThunks.dropFromSlot(slotIndex, nil)
-			end)
-		end)
-
-		return function()
-			dropRequestedConnection:Disconnect()
-		end
-	end, {
-		props.visible,
-		isInventoryExpanded,
-		renderState.loadState,
-		renderState.capacity,
-		renderState.updatedAt,
-		drag.isDragging,
-		dropRequestedSignal,
-		isInventoryStateInitialized,
-	})
 
 	React.useEffect(function()
 		if props.visible == false then
@@ -428,11 +356,22 @@ return function(props: InventoryHotbarProps)
 		end
 
 		local hoveredSlot = resolveSlot(renderState, hoveredSlotIndex)
+		hoveredSlot = {
+			index = hoveredSlot.index,
+			stack = resolveDisplayedStackForSlot(hoveredSlot, drag.dragState),
+		}
 		infoThunks.showHover({
 			id = SLOT_HOVER_ID_PREFIX .. tostring(hoveredSlotIndex),
 			text = resolveSlotHoverText(hoveredSlot),
 		})
-	end, { hoveredSlotIndex, hoveredSlotSource, renderState.updatedAt, renderState.capacity, isInventoryStateInitialized })
+	end, {
+		hoveredSlotIndex,
+		hoveredSlotSource,
+		renderState.updatedAt,
+		renderState.capacity,
+		isInventoryStateInitialized,
+		drag.dragState.updatedAt,
+	})
 
 	React.useEffect(function()
 		return function()
@@ -573,11 +512,13 @@ return function(props: InventoryHotbarProps)
 
 	for hotbarIndex = 1, HOTBAR_SLOT_COUNT do
 		local slot = resolveSlot(renderState, hotbarIndex)
-		local stack = slot.stack
+		local displayStack = resolveDisplayedStackForSlot(slot, drag.dragState)
 		local isSlotAvailable = isInventoryStateInitialized and hotbarIndex <= maxInteractiveSlots
-		local hasItem = isSlotAvailable and typeof(stack) == "table"
+		local hasItem = isSlotAvailable and typeof(displayStack) == "table"
 		local isSelected = selectedSlot == hotbarIndex
-		local isDragSourceSlot = drag.isDragging and drag.dragSourceSlot == hotbarIndex
+		local isSplitPreviewSource =
+			drag.dragState.active and drag.dragState.mode == "SplitHold" and drag.dragState.sourceSlot == hotbarIndex
+		local isDragSourceSlot = drag.isDragging and drag.dragSourceSlot == hotbarIndex and not isSplitPreviewSource
 		local hasVisibleItem = hasItem and not isDragSourceSlot
 		local showKeyHints = props.showKeyHints ~= false
 		local isHovered = hoveredSlotSource == "Hotbar" and hoveredSlotIndex == hotbarIndex
@@ -588,8 +529,8 @@ return function(props: InventoryHotbarProps)
 			else if hasVisibleItem then FILLED_SLOT_TINT else EMPTY_SLOT_TINT
 		local slotImage = if isSelected or isHovered then ImageIds.inventorySlotHovered else ImageIds.inventorySlot
 		local slotZIndex = if isExpanded then zIndex + 3 else zIndex + 2
-		local itemAmount = if hasVisibleItem then resolveStackAmount(stack) else 0
-		local itemIcon = if hasVisibleItem then resolveStackIcon(stack) else nil
+		local itemAmount = if hasVisibleItem then resolveStackAmount(displayStack) else 0
+		local itemIcon = if hasVisibleItem then resolveStackIcon(displayStack) else nil
 
 		hotbarChildren["Slot_" .. tostring(hotbarIndex)] = e("ImageButton", {
 			Name = "Slot_" .. tostring(hotbarIndex),
@@ -614,28 +555,24 @@ return function(props: InventoryHotbarProps)
 				setHoveredSlotIndex(nil)
 				infoThunks.hideHover(SLOT_HOVER_ID_PREFIX .. tostring(hotbarIndex))
 			end,
-			[React.Event.InputBegan] = function(slotButton: GuiObject, inputObject: InputObject)
+			[React.Event.MouseButton2Down] = function()
+				if not isSlotAvailable then
+					return
+				end
+				if UserInputService:GetFocusedTextBox() ~= nil then
+					return
+				end
+				drag.handleSlotSecondaryInput(hotbarIndex, if typeof(slot.stack) == "table" then slot.stack else nil)
+			end,
+			[React.Event.InputBegan] = function(_: GuiObject, inputObject: InputObject)
 				if not isSlotAvailable then
 					return
 				end
 				local userInputType = inputObject.UserInputType
-				if userInputType == Enum.UserInputType.MouseButton2 then
-					if props.visible == false or not isInventoryExpanded then
-						return
-					end
-					if UserInputService:GetFocusedTextBox() ~= nil then
-						return
-					end
-					if slotButton == nil or slotButton.Parent == nil then
-						return
-					end
-					dropRequestedSignal:Fire(hotbarIndex, slotButton)
-					return
-				end
 				if userInputType ~= Enum.UserInputType.MouseButton1 and userInputType ~= Enum.UserInputType.Touch then
 					return
 				end
-				drag.handleSlotInput(hotbarIndex, if typeof(stack) == "table" then stack else nil, inputObject)
+				drag.handleSlotInput(hotbarIndex, if typeof(slot.stack) == "table" then slot.stack else nil, inputObject)
 			end,
 			[React.Event.Activated] = function()
 				if not isSlotAvailable then
@@ -759,11 +696,13 @@ return function(props: InventoryHotbarProps)
 	for slotIndex = 1, INVENTORY_MAX_SLOTS do
 		local inventorySlotIndex = GRID_SLOT_START_INDEX + slotIndex - 1
 		local slot = resolveSlot(renderState, inventorySlotIndex)
-		local stack = slot.stack
+		local displayStack = resolveDisplayedStackForSlot(slot, drag.dragState)
 		local isSlotAvailable = isInventoryStateInitialized and inventorySlotIndex <= maxInteractiveSlots
-		local hasItem = isSlotAvailable and typeof(stack) == "table"
+		local hasItem = isSlotAvailable and typeof(displayStack) == "table"
 		local isSelected = isSlotAvailable and selectedSlot == inventorySlotIndex
-		local isDragSourceSlot = drag.isDragging and drag.dragSourceSlot == inventorySlotIndex
+		local isSplitPreviewSource =
+			drag.dragState.active and drag.dragState.mode == "SplitHold" and drag.dragState.sourceSlot == inventorySlotIndex
+		local isDragSourceSlot = drag.isDragging and drag.dragSourceSlot == inventorySlotIndex and not isSplitPreviewSource
 		local hasVisibleItem = hasItem and not isDragSourceSlot
 		local isHovered = hoveredSlotSource == "Grid" and hoveredSlotIndex == inventorySlotIndex
 		local columnIndex = ((slotIndex - 1) % INVENTORY_COLUMNS) + 1
@@ -773,12 +712,12 @@ return function(props: InventoryHotbarProps)
 			then DISABLED_SLOT_TINT
 			else if isSelected then SELECTED_SLOT_TINT else if hasVisibleItem then FILLED_SLOT_TINT else EMPTY_SLOT_TINT
 		local slotImage = if isSelected or isHovered then ImageIds.inventorySlotHovered else ImageIds.inventorySlot
-		local itemAmount = if hasVisibleItem then resolveStackAmount(stack) else 0
+		local itemAmount = if hasVisibleItem then resolveStackAmount(displayStack) else 0
 		local slotZIndex = zIndex + 3
 		local slotBaseTransparency = if isSlotAvailable then 0 else 0.15
 		local slotTransparency =
 			math.clamp(slotBaseTransparency + columnRevealTransparency * (1 - slotBaseTransparency), 0, 1)
-		local itemIcon = if hasVisibleItem then resolveStackIcon(stack) else nil
+		local itemIcon = if hasVisibleItem then resolveStackIcon(displayStack) else nil
 
 		gridChildren["GridSlot_" .. tostring(slotIndex)] = e("ImageButton", {
 			Name = "GridSlot_" .. tostring(slotIndex),
@@ -808,28 +747,31 @@ return function(props: InventoryHotbarProps)
 					infoThunks.hideHover(SLOT_HOVER_ID_PREFIX .. tostring(inventorySlotIndex))
 				end
 			end,
-			[React.Event.InputBegan] = function(slotButton: GuiObject, inputObject: InputObject)
+			[React.Event.MouseButton2Down] = function()
+				if not isSlotAvailable then
+					return
+				end
+				if UserInputService:GetFocusedTextBox() ~= nil then
+					return
+				end
+				drag.handleSlotSecondaryInput(
+					inventorySlotIndex,
+					if typeof(slot.stack) == "table" then slot.stack else nil
+				)
+			end,
+			[React.Event.InputBegan] = function(_: GuiObject, inputObject: InputObject)
 				if not isSlotAvailable then
 					return
 				end
 				local userInputType = inputObject.UserInputType
-				if userInputType == Enum.UserInputType.MouseButton2 then
-					if props.visible == false or not isInventoryExpanded then
-						return
-					end
-					if UserInputService:GetFocusedTextBox() ~= nil then
-						return
-					end
-					if slotButton == nil or slotButton.Parent == nil then
-						return
-					end
-					dropRequestedSignal:Fire(inventorySlotIndex, slotButton)
-					return
-				end
 				if userInputType ~= Enum.UserInputType.MouseButton1 and userInputType ~= Enum.UserInputType.Touch then
 					return
 				end
-				drag.handleSlotInput(inventorySlotIndex, if typeof(stack) == "table" then stack else nil, inputObject)
+				drag.handleSlotInput(
+					inventorySlotIndex,
+					if typeof(slot.stack) == "table" then slot.stack else nil,
+					inputObject
+				)
 			end,
 			[React.Event.Activated] = function()
 				if not isSlotAvailable then

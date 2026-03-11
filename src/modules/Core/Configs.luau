@@ -29,6 +29,14 @@ local Configs = {
 			frequency = 5,
 			damping = 1,
 		},
+		catchUpPlayer = {
+			enabled = true,
+			startDistance = 24,
+			maxDistance = 140,
+			accelerationSeconds = 0.9,
+			minFrequencyDivisor = 2.2,
+			maxFrequencyDivisor = 6,
+		},
 	},
 
 	npcSettings = {
@@ -44,6 +52,16 @@ local Configs = {
 
 	meleeSettings = {
 		debugHitboxEnabled = false,
+	},
+
+	inventory = {
+		rightHoldSplit = {
+			enabled = true,
+			holdDelaySeconds = 0.18,
+			initialIntervalSeconds = 0.18,
+			minimumIntervalSeconds = 0.035,
+			accelerationRampSeconds = 1.1,
+		},
 	},
 
 	crafting = {
@@ -140,6 +158,7 @@ local Configs = {
 		windField = {
 			seed = "AquariaWindField",
 			baseDirection = Vector3.new(1, 0, 0.25),
+			strengthMultiplier = 20,
 			baseStrength = 0.62,
 			gustStrength = 0.92,
 			detailStrength = 0.2,

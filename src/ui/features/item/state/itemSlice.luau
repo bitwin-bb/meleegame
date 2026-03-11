@@ -6,6 +6,13 @@ local InventoryServiceUtils = require(ReplicatedStorage.Shared.Services.Inventor
 
 type InventoryItemStack = InventoryServiceUtils.InventoryItemStack
 
+export type ItemDragMode = "Move" | "SplitHold"
+export type ItemDragBeginOptions = {
+	mode: ItemDragMode?,
+	dragAmount: number?,
+	sourceStackAmount: number?,
+}
+
 export type ItemDragState = {
 	active: boolean,
 	sourceSlot: number?,
@@ -14,6 +21,8 @@ export type ItemDragState = {
 	itemType: string?,
 	icon: string?,
 	pointerPosition: Vector2,
+	mode: ItemDragMode,
+	sourceStackAmount: number?,
 	updatedAt: number,
 }
 
@@ -65,6 +74,28 @@ local function sanitizeText(valueRaw: any): string?
 	return value
 end
 
+local function sanitizeDragMode(valueRaw: any): ItemDragMode
+	if valueRaw == "SplitHold" then
+		return "SplitHold"
+	end
+	return "Move"
+end
+
+local function sanitizePositiveInteger(valueRaw: any, fallback: number, minimum: number, maximum: number?): number
+	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
+		return fallback
+	end
+
+	local value = math.floor(valueRaw)
+	if value < minimum then
+		value = minimum
+	end
+	if maximum ~= nil and value > maximum then
+		value = maximum
+	end
+	return value
+end
+
 local function cloneStack(stackRaw: any): InventoryItemStack?
 	if typeof(stackRaw) ~= "table" then
 		return nil
@@ -98,6 +129,8 @@ local function createDefaultDragState(): ItemDragState
 		itemType = nil,
 		icon = nil,
 		pointerPosition = Vector2.zero,
+		mode = "Move",
+		sourceStackAmount = nil,
 		updatedAt = os.clock(),
 	}
 end
@@ -118,13 +151,29 @@ local function beginDrag(
 	stackRaw: any,
 	pointerPositionRaw: any,
 	itemTypeRaw: any,
-	iconRaw: any
+	iconRaw: any,
+	optionsRaw: any?
 ): ItemDragState
 	local sourceSlot = sanitizeSlot(sourceSlotRaw)
 	local stack = cloneStack(stackRaw)
 	if sourceSlot == nil or stack == nil then
 		return dragStateAtom()
 	end
+
+	local options = if typeof(optionsRaw) == "table" then (optionsRaw :: ItemDragBeginOptions) else nil
+	local mode = sanitizeDragMode(if options ~= nil then options.mode else nil)
+	local sourceStackAmount = nil :: number?
+	if mode == "SplitHold" then
+		sourceStackAmount = sanitizePositiveInteger(
+			if options ~= nil then options.sourceStackAmount else nil,
+			stack.amount,
+			1,
+			math.max(1, stack.maxStack)
+		)
+	end
+	local maxDragAmount = if sourceStackAmount ~= nil then sourceStackAmount else stack.amount
+	local dragAmount = sanitizePositiveInteger(if options ~= nil then options.dragAmount else nil, stack.amount, 1, maxDragAmount)
+	stack.amount = dragAmount
 
 	local nextState: ItemDragState = {
 		active = true,
@@ -134,6 +183,8 @@ local function beginDrag(
 		itemType = sanitizeText(itemTypeRaw),
 		icon = sanitizeText(iconRaw),
 		pointerPosition = sanitizeVector2(pointerPositionRaw),
+		mode = mode,
+		sourceStackAmount = sourceStackAmount,
 		updatedAt = os.clock(),
 	}
 	dragStateAtom(nextState)
@@ -159,6 +210,46 @@ local function setPointerPosition(pointerPositionRaw: any): ItemDragState
 		itemType = state.itemType,
 		icon = state.icon,
 		pointerPosition = pointerPosition,
+		mode = state.mode,
+		sourceStackAmount = state.sourceStackAmount,
+		updatedAt = os.clock(),
+	}
+	dragStateAtom(nextState)
+	return nextState
+end
+
+local function setStackAmount(amountRaw: any): ItemDragState
+	local state = dragStateAtom()
+	if not state.active or state.stack == nil then
+		return state
+	end
+
+	local stack = state.stack
+	local maxAmount = math.max(1, stack.amount)
+	if state.sourceStackAmount ~= nil then
+		maxAmount = math.max(1, state.sourceStackAmount)
+	end
+	local nextAmount = sanitizePositiveInteger(amountRaw, stack.amount, 1, maxAmount)
+	if nextAmount == stack.amount then
+		return state
+	end
+
+	local nextStack = cloneStack(stack)
+	if nextStack == nil then
+		return state
+	end
+	nextStack.amount = nextAmount
+
+	local nextState: ItemDragState = {
+		active = state.active,
+		sourceSlot = state.sourceSlot,
+		hoveredSlot = state.hoveredSlot,
+		stack = nextStack,
+		itemType = state.itemType,
+		icon = state.icon,
+		pointerPosition = state.pointerPosition,
+		mode = state.mode,
+		sourceStackAmount = state.sourceStackAmount,
 		updatedAt = os.clock(),
 	}
 	dragStateAtom(nextState)
@@ -184,6 +275,8 @@ local function setHoveredSlot(slotRaw: any): ItemDragState
 		itemType = state.itemType,
 		icon = state.icon,
 		pointerPosition = state.pointerPosition,
+		mode = state.mode,
+		sourceStackAmount = state.sourceStackAmount,
 		updatedAt = os.clock(),
 	}
 	dragStateAtom(nextState)
@@ -265,6 +358,7 @@ return {
 	getDragDebugState = getDragDebugState,
 	beginDrag = beginDrag,
 	setPointerPosition = setPointerPosition,
+	setStackAmount = setStackAmount,
 	setHoveredSlot = setHoveredSlot,
 	setDragDebugEnabled = setDragDebugEnabled,
 	clearDragDebug = clearDragDebug,
