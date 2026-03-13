@@ -17,14 +17,19 @@ local Rubble = require(ReplicatedStorage.Shared.Classes.Rubble)
 local BuildServiceUtils = require(ReplicatedStorage.Shared.Services.BuildService.BuildServiceUtils)
 local AudioServiceClient = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceClient)
 local AudioServiceUtils = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceUtils)
+local InventoryServiceClient = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceClient)
+local InventoryServiceUtils = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceUtils)
+local itemSlice = require(ReplicatedStorage.UI.features.item.state.itemSlice)
 local WorldGenerationServiceClient =
 	require(ReplicatedStorage.Shared.Services.WorldGenerationService.WorldGenerationServiceClient)
 
 type BuildServiceState = BuildServiceUtils.BuildServiceState
+type PlaceableItemConfig = BuildServiceUtils.PlaceableItemConfig
 type TileCoordinate = BuildServiceUtils.TileCoordinate
 type TileDelta = BuildServiceUtils.TileDelta
 type TreeHitResult = BuildServiceUtils.TreeHitResult
 type TreeFelledPayload = BuildServiceUtils.TreeFelledPayload
+type InventoryState = InventoryServiceUtils.InventoryState
 
 type RubbleObject = {
 	Spawn: (self: RubbleObject, paramsRaw: { [string]: any }?) -> BasePart?,
@@ -51,6 +56,11 @@ type PendingAction = {
 	predictedPreviousByTile: { [string]: number },
 	predictedTargetByTile: { [string]: number },
 	createdAt: number,
+}
+
+type ActivePlaceSource = {
+	config: PlaceableItemConfig,
+	sourceSlot: number?,
 }
 
 type HeldInputState = {
@@ -168,15 +178,16 @@ local BREAK_DEBRIS_VISUALS = {
 		color = Color3.fromRGB(126, 104, 160),
 		material = Enum.Material.Rock,
 	},
+	[BuildServiceUtils.TILE_ID.WOOD] = {
+		color = Color3.fromRGB(121, 91, 56),
+		material = Enum.Material.Wood,
+	},
 }
 local DEFAULT_BREAK_DEBRIS_VISUAL = BREAK_DEBRIS_VISUALS[BuildServiceUtils.TILE_ID.STONE]
 local BREAK_CHUNK_ANIMATION_SKIP_SECONDS = 1.5
-local BREAK_INPUT_USER_TYPES = {
+local PRIMARY_INPUT_USER_TYPES = {
 	[Enum.UserInputType.MouseButton1] = true,
 	[Enum.UserInputType.Touch] = true,
-}
-local PLACE_INPUT_USER_TYPES = {
-	[Enum.UserInputType.MouseButton2] = true,
 }
 local TREE_MODEL_MATCH_MAX_DISTANCE_TILES = 6
 local TREE_FALL_DURATION_MIN = 4
@@ -211,8 +222,7 @@ local TREE_FADE_SPRING = {
 	frequency = 7,
 	damping = 1,
 }
-local INPUT_ACTION_BREAK = "BuildService.Break"
-local INPUT_ACTION_PLACE = "BuildService.Place"
+local INPUT_ACTION_PRIMARY = "BuildService.Primary"
 local TREE_AUDIO = (((AudioRegistry :: any).Misc or {}).Tree or {})
 local TREE_FALL_AUDIO = TREE_AUDIO.Fall or {}
 
@@ -220,12 +230,84 @@ local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function isBreakInput(inputObject: InputObject): boolean
-	return BREAK_INPUT_USER_TYPES[inputObject.UserInputType] == true
+local function isPrimaryInput(inputObject: InputObject): boolean
+	return PRIMARY_INPUT_USER_TYPES[inputObject.UserInputType] == true
 end
 
-local function isPlaceInput(inputObject: InputObject): boolean
-	return PLACE_INPUT_USER_TYPES[inputObject.UserInputType] == true
+local function sanitizeInventorySlot(slotRaw: any): number?
+	if typeof(slotRaw) ~= "number" or slotRaw ~= slotRaw then
+		return nil
+	end
+
+	local slot = math.floor(slotRaw)
+	if slot <= 0 then
+		return nil
+	end
+	return slot
+end
+
+local function sanitizeInventoryState(stateRaw: any): InventoryState
+	local state = if typeof(stateRaw) == "table"
+		then InventoryServiceUtils.sanitizeState(stateRaw, InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED))
+		else InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
+	return state
+end
+
+local function resolvePlaceableSourceFromInventorySlot(state: InventoryState, slotRaw: any): ActivePlaceSource?
+	local slot = sanitizeInventorySlot(slotRaw)
+	if slot == nil then
+		return nil
+	end
+
+	local stack = InventoryServiceUtils.getStack(state, slot)
+	if stack == nil or stack.amount <= 0 then
+		return nil
+	end
+
+	local config = BuildServiceUtils.resolvePlaceableItemConfig(stack.itemId)
+	if config == nil then
+		return nil
+	end
+
+	return {
+		config = config,
+		sourceSlot = slot,
+	}
+end
+
+local function resolveSelectedPlaceableSourceFromInventoryState(stateRaw: any): ActivePlaceSource?
+	local state = sanitizeInventoryState(stateRaw)
+	if not InventoryServiceUtils.isLoadedState(state.loadState) then
+		return nil
+	end
+
+	return resolvePlaceableSourceFromInventorySlot(state, state.selectedSlot)
+end
+
+local function resolveSelectedPlaceableConfigFromInventoryState(stateRaw: any): PlaceableItemConfig?
+	local placeSource = resolveSelectedPlaceableSourceFromInventoryState(stateRaw)
+	if placeSource == nil then
+		return nil
+	end
+
+	return placeSource.config
+end
+
+local function resolveActivePlaceSourceFromInventoryState(stateRaw: any): ActivePlaceSource?
+	local state = sanitizeInventoryState(stateRaw)
+	if not InventoryServiceUtils.isLoadedState(state.loadState) then
+		return nil
+	end
+
+	local dragState = itemSlice.getDragState()
+	if typeof(dragState) == "table" and dragState.active == true then
+		if dragState.hoveredSlot ~= nil then
+			return nil
+		end
+		return resolvePlaceableSourceFromInventorySlot(state, dragState.sourceSlot)
+	end
+
+	return resolveSelectedPlaceableSourceFromInventoryState(state)
 end
 
 local function resolveBreakDebrisVisual(tileId: number): (Color3, Enum.Material)
@@ -992,11 +1074,13 @@ function BuildServiceClient.requestPlaceTile(
 	self: BuildServiceClient,
 	tileXRaw: any,
 	tileYRaw: any,
-	tileIdRaw: any
+	tileIdRaw: any,
+	sourceSlotRaw: any?
 ): number
 	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
 	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
 	local tileId = BuildServiceUtils.sanitizeTileId(tileIdRaw)
+	local sourceSlot = sanitizeInventorySlot(sourceSlotRaw)
 	local requestId = self.nextRequestId
 	self.nextRequestId += 1
 
@@ -1009,7 +1093,8 @@ function BuildServiceClient.requestPlaceTile(
 		tileX,
 		tileY,
 		tileId,
-		requestId
+		requestId,
+		sourceSlot
 	)
 	return requestId
 end
@@ -1197,7 +1282,7 @@ function BuildServiceClient.updatePreviewVisual(
 	self: BuildServiceClient,
 	tileX: number?,
 	tileY: number?,
-	_canPlace: boolean?
+	canPlace: boolean?
 )
 	if self.previewPart == nil then
 		return
@@ -1220,6 +1305,13 @@ function BuildServiceClient.updatePreviewVisual(
 	self.previewPart.Size = Vector3.new(0.08, self.state.tileSize, self.state.tileSize)
 	self.previewPart.CFrame = CFrame.new(center)
 	if self.previewHighlight ~= nil then
+		if canPlace == true then
+			self.previewHighlight.OutlineColor = Color3.fromRGB(122, 255, 154)
+		elseif canPlace == false then
+			self.previewHighlight.OutlineColor = Color3.fromRGB(255, 116, 116)
+		else
+			self.previewHighlight.OutlineColor = Color3.new(1, 1, 1)
+		end
 		self.previewHighlight.Enabled = true
 	end
 end
@@ -1290,6 +1382,11 @@ function BuildServiceClient.flushHeldPlaceInput(self: BuildServiceClient, now: n
 	if not state.isHeld then
 		return
 	end
+	local activePlaceSource = self:resolveActivePlaceSource()
+	if activePlaceSource == nil then
+		self:setPlaceInput(false, nil, nil)
+		return
+	end
 	if state.tileX == nil or state.tileY == nil then
 		return
 	end
@@ -1297,13 +1394,13 @@ function BuildServiceClient.flushHeldPlaceInput(self: BuildServiceClient, now: n
 		return
 	end
 
-	local tileId = self.selectedTileId
+	local tileId = activePlaceSource.config.tileId
 	local canPlace = self:canPlaceAt(state.tileX, state.tileY, tileId)
 	if not canPlace then
 		return
 	end
 	state.lastSentAt = now
-	self:requestPlaceTile(state.tileX, state.tileY, tileId)
+	self:requestPlaceTile(state.tileX, state.tileY, tileId, activePlaceSource.sourceSlot)
 end
 
 function BuildServiceClient.onRenderStep(self: BuildServiceClient, _deltaTime: number)
@@ -1369,7 +1466,13 @@ function BuildServiceClient.onRenderStep(self: BuildServiceClient, _deltaTime: n
 
 	local previewTileX = self.cursorTileX
 	local previewTileY = self.cursorTileY
-	if previewTileX ~= nil and previewTileY ~= nil then
+	local previewCanPlace = nil :: boolean?
+	local activePlaceSource = self:resolveActivePlaceSource()
+	if activePlaceSource ~= nil then
+		if previewTileX ~= nil and previewTileY ~= nil then
+			previewCanPlace = self:canPlaceAt(previewTileX, previewTileY, activePlaceSource.config.tileId)
+		end
+	elseif previewTileX ~= nil and previewTileY ~= nil then
 		local previewTileId = self:getTileAt(previewTileX, previewTileY, false)
 		if previewTileId == BuildServiceUtils.AIR_TILE_ID then
 			previewTileX = nil
@@ -1377,12 +1480,7 @@ function BuildServiceClient.onRenderStep(self: BuildServiceClient, _deltaTime: n
 		end
 	end
 
-	if self.placeInput.isHeld and previewTileX ~= nil and previewTileY ~= nil then
-		local canPlace = self:canPlaceAt(previewTileX, previewTileY, self.selectedTileId)
-		self:updatePreviewVisual(previewTileX, previewTileY, canPlace)
-	else
-		self:updatePreviewVisual(previewTileX, previewTileY, nil)
-	end
+	self:updatePreviewVisual(previewTileX, previewTileY, previewCanPlace)
 end
 
 function BuildServiceClient.onInputBegan(self: BuildServiceClient, inputObject: InputObject, gameProcessed: boolean)
@@ -1392,30 +1490,14 @@ function BuildServiceClient.onInputBegan(self: BuildServiceClient, inputObject: 
 	if UserInputService:GetFocusedTextBox() ~= nil then
 		return
 	end
-	if not HOVER_BREAK_TEST_MODE and isBreakInput(inputObject) then
-		local hoverTileX = self.cursorTileX
-		local hoverTileY = self.cursorTileY
-		if hoverTileX == nil or hoverTileY == nil then
-			return
-		end
-		if not self:isBreakableTarget(hoverTileX, hoverTileY) then
-			return
-		end
-		self:setBreakInput(true, hoverTileX, hoverTileY)
-		return
-	end
-	if isPlaceInput(inputObject) then
-		self:setPlaceInput(true, self.cursorTileX, self.cursorTileY)
+	if isPrimaryInput(inputObject) then
+		self:handlePrimaryInput(true)
 	end
 end
 
 function BuildServiceClient.onInputEnded(self: BuildServiceClient, inputObject: InputObject)
-	if not HOVER_BREAK_TEST_MODE and isBreakInput(inputObject) then
-		self:setBreakInput(false, nil, nil)
-		return
-	end
-	if isPlaceInput(inputObject) then
-		self:setPlaceInput(false, self.cursorTileX, self.cursorTileY)
+	if isPrimaryInput(inputObject) then
+		self:handlePrimaryInput(false)
 	end
 end
 
@@ -1440,29 +1522,16 @@ function BuildServiceClient.bindInputRouter(self: BuildServiceClient): boolean
 		cursorAny:init()
 	end
 
-	local breakBound = (inputRouter :: any):bindAction(INPUT_ACTION_BREAK, function(phase: string)
+	local primaryBound = (inputRouter :: any):bindAction(INPUT_ACTION_PRIMARY, function(phase: string)
 		if phase ~= "Began" and phase ~= "Ended" then
 			return false
 		end
-		if phase == "Began" then
-			if HOVER_BREAK_TEST_MODE then
-				return false
-			end
-			local hoverTileX = self.cursorTileX
-			local hoverTileY = self.cursorTileY
-			if hoverTileX == nil or hoverTileY == nil then
-				return false
-			end
-			if not self:isBreakableTarget(hoverTileX, hoverTileY) then
-				return false
-			end
-			self:setBreakInput(true, hoverTileX, hoverTileY)
+		local startedAction = self:handlePrimaryInput(phase == "Began")
+		if phase == "Began" and startedAction == BuildServiceUtils.ACTION_TYPE_BREAK then
 			if self.hapticsModule ~= nil and typeof((self.hapticsModule :: any).impactLight) == "function" then
 				local hapticsAny = self.hapticsModule :: any
 				hapticsAny:impactLight()
 			end
-		else
-			self:setBreakInput(false, nil, nil)
 		end
 		return false
 	end, {
@@ -1480,33 +1549,10 @@ function BuildServiceClient.bindInputRouter(self: BuildServiceClient): boolean
 		},
 	})
 
-	local placeBound = (inputRouter :: any):bindAction(INPUT_ACTION_PLACE, function(phase: string)
-		if phase ~= "Began" and phase ~= "Ended" then
-			return false
-		end
-		if phase == "Began" then
-			self:setPlaceInput(true, self.cursorTileX, self.cursorTileY)
-		else
-			self:setPlaceInput(false, self.cursorTileX, self.cursorTileY)
-		end
-		return false
-	end, {
-		layer = "Gameplay",
-		consume = false,
-		allowGameProcessed = false,
-		allowWhileTyping = false,
-		bindings = {
-			{
-				inputType = Enum.UserInputType.MouseButton2,
-			},
-		},
-	})
-
-	if breakBound ~= true or placeBound ~= true then
+	if primaryBound ~= true then
 		local router = inputRouter :: any
 		if typeof(router.unbindAction) == "function" then
-			router:unbindAction(INPUT_ACTION_BREAK)
-			router:unbindAction(INPUT_ACTION_PLACE)
+			router:unbindAction(INPUT_ACTION_PRIMARY)
 		end
 		return false
 	end
@@ -1514,11 +1560,28 @@ function BuildServiceClient.bindInputRouter(self: BuildServiceClient): boolean
 	self.janitor:GiveChore(function()
 		local router = inputRouter :: any
 		if typeof(router.unbindAction) == "function" then
-			router:unbindAction(INPUT_ACTION_BREAK)
-			router:unbindAction(INPUT_ACTION_PLACE)
+			router:unbindAction(INPUT_ACTION_PRIMARY)
 		end
 	end)
 	return true
+end
+
+function BuildServiceClient.applySelectedPlaceableConfig(self: BuildServiceClient, configRaw: any)
+	local config = if typeof(configRaw) == "table" then (configRaw :: PlaceableItemConfig) else nil
+	self.selectedPlaceableConfig = config
+	if config ~= nil then
+		self.selectedTileId = config.tileId
+		return
+	end
+
+	if self:resolveActivePlaceSource() == nil then
+		self:setPlaceInput(false, nil, nil)
+	end
+end
+
+function BuildServiceClient.onInventoryStateChanged(self: BuildServiceClient, stateRaw: any)
+	self.inventoryState = InventoryServiceUtils.sanitizeState(stateRaw, self.inventoryState)
+	self:applySelectedPlaceableConfig(resolveSelectedPlaceableConfigFromInventoryState(self.inventoryState))
 end
 
 function BuildServiceClient.setSelectedTileId(self: BuildServiceClient, tileIdRaw: any)
@@ -1555,6 +1618,9 @@ function BuildServiceClient.setPlaceInput(
 	local isHeld = BuildServiceUtils.sanitizeBoolean(isHeldRaw, false)
 	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
 	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
+	if self:resolveActivePlaceSource() == nil then
+		isHeld = false
+	end
 	self.placeInput.isHeld = isHeld
 	self.placeInput.tileX = tileX
 	self.placeInput.tileY = tileY
@@ -1586,6 +1652,8 @@ function BuildServiceClient.init(self: BuildServiceClient)
 	self.runtimeContext = nil
 	self.cursorModule = nil
 	self.hapticsModule = nil
+	self.inventoryState = InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
+	self.selectedPlaceableConfig = nil :: PlaceableItemConfig?
 
 	self.nextRequestId = 1
 	self.selectedTileId = BuildServiceUtils.TILE_ID.DIRT
@@ -1665,6 +1733,11 @@ function BuildServiceClient.init(self: BuildServiceClient)
 	self.janitor:GiveChore(RunService.RenderStepped:Connect(function(deltaTime: number)
 		self:onRenderStep(deltaTime)
 	end))
+	if InventoryServiceClient.stateChanged ~= nil then
+		self.janitor:GiveChore(InventoryServiceClient.stateChanged:Connect(function(nextState: InventoryState)
+			self:onInventoryStateChanged(nextState)
+		end))
+	end
 
 	if self.enableDefaultInputBinding and self:bindInputRouter() then
 		self.enableDefaultInputBinding = false
@@ -1679,6 +1752,7 @@ function BuildServiceClient.init(self: BuildServiceClient)
 		end))
 	end
 
+	self:onInventoryStateChanged(InventoryServiceClient.state)
 	self:requestSync()
 end
 
@@ -1699,8 +1773,59 @@ function BuildServiceClient.destroy(self: BuildServiceClient)
 	table.clear(self.treeFallAnimations)
 end
 
-function BuildServiceClient.RequestPlaceTile(self: BuildServiceClient, tileXRaw: any, tileYRaw: any, tileIdRaw: any): number
-	return self:requestPlaceTile(tileXRaw, tileYRaw, tileIdRaw)
+function BuildServiceClient.resolveActivePlaceSource(self: BuildServiceClient): ActivePlaceSource?
+	return resolveActivePlaceSourceFromInventoryState(self.inventoryState)
+end
+
+function BuildServiceClient.beginBreakInputFromCursor(self: BuildServiceClient): boolean
+	local hoverTileX = self.cursorTileX
+	local hoverTileY = self.cursorTileY
+	if hoverTileX == nil or hoverTileY == nil then
+		return false
+	end
+	if not self:isBreakableTarget(hoverTileX, hoverTileY) then
+		return false
+	end
+
+	self:setBreakInput(true, hoverTileX, hoverTileY)
+	return true
+end
+
+function BuildServiceClient.handlePrimaryInput(self: BuildServiceClient, isHeldRaw: any): string?
+	local isHeld = BuildServiceUtils.sanitizeBoolean(isHeldRaw, false)
+	if not isHeld then
+		self:setPlaceInput(false, nil, nil)
+		if not HOVER_BREAK_TEST_MODE then
+			self:setBreakInput(false, nil, nil)
+		end
+		return nil
+	end
+
+	local activePlaceSource = self:resolveActivePlaceSource()
+	if activePlaceSource ~= nil then
+		self:setBreakInput(false, nil, nil)
+		self:setPlaceInput(true, self.cursorTileX, self.cursorTileY)
+		return BuildServiceUtils.ACTION_TYPE_PLACE
+	end
+
+	self:setPlaceInput(false, nil, nil)
+	if HOVER_BREAK_TEST_MODE then
+		return nil
+	end
+	if self:beginBreakInputFromCursor() then
+		return BuildServiceUtils.ACTION_TYPE_BREAK
+	end
+	return nil
+end
+
+function BuildServiceClient.RequestPlaceTile(
+	self: BuildServiceClient,
+	tileXRaw: any,
+	tileYRaw: any,
+	tileIdRaw: any,
+	sourceSlotRaw: any?
+): number
+	return self:requestPlaceTile(tileXRaw, tileYRaw, tileIdRaw, sourceSlotRaw)
 end
 
 function BuildServiceClient.RequestBreakTile(
@@ -1739,8 +1864,10 @@ type BuildServiceClient = typeof(BuildServiceClient) & {
 	breakProgressChanged: SignalObject,
 	tileDeltasApplied: SignalObject,
 	hitFeedback: SignalObject,
+	inventoryState: InventoryState,
 	nextRequestId: number,
 	selectedTileId: number,
+	selectedPlaceableConfig: PlaceableItemConfig?,
 	enableServerTileFetchFallback: boolean,
 	enableDefaultInputBinding: boolean,
 	predictedTileOverrides: { [string]: number },

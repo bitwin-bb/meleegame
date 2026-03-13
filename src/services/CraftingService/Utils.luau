@@ -180,6 +180,20 @@ local BIOME_TOKEN_ALIASES: { [string]: string } = {
 	corrupt = "corruption",
 	overworld = "forest",
 }
+local COIN_ITEM_ID_TO_KEY: { [string]: string } = {
+	CopperCoin = "copper",
+	SilverCoin = "silver",
+	GoldCoin = "gold",
+	PlatinumCoin = "platinum",
+}
+local COIN_ITEM_MAX_AMOUNT = 999
+local COIN_KEY_TO_COPPER_VALUE: { [string]: number } = {
+	copper = 1,
+	silver = 100,
+	gold = 10_000,
+	platinum = 1_000_000,
+}
+local COIN_KEYS_ORDER_DESCENDING = { "platinum", "gold", "silver", "copper" }
 
 local function trim(textRaw: any): string
 	if typeof(textRaw) ~= "string" then
@@ -361,6 +375,64 @@ local function appendMergedItemAmount(target: { ItemAmount }, itemId: string, am
 		itemId = itemId,
 		amount = amount,
 	})
+end
+
+local function createDefaultCoinAmounts(): { [string]: number }
+	return {
+		copper = 0,
+		silver = 0,
+		gold = 0,
+		platinum = 0,
+	}
+end
+
+local function coinsToTotalCopper(amountsRaw: { [string]: number }): number
+	local totalCopper = 0
+	for coinKey, coinValue in COIN_KEY_TO_COPPER_VALUE do
+		local amount = sanitizeInteger(amountsRaw[coinKey], 0, 0, 1_000_000_000)
+		totalCopper += amount * coinValue
+	end
+	return totalCopper
+end
+
+local function totalCopperToCoinAmounts(totalCopperRaw: any): { [string]: number }
+	local remaining = sanitizeInteger(totalCopperRaw, 0, 0, 1_000_000_000)
+	local amounts = createDefaultCoinAmounts()
+	for _, coinKey in COIN_KEYS_ORDER_DESCENDING do
+		local coinValue = COIN_KEY_TO_COPPER_VALUE[coinKey]
+		local coinCount = math.floor(remaining / coinValue)
+		remaining -= coinCount * coinValue
+		amounts[coinKey] = coinCount
+	end
+	return amounts
+end
+
+local function resolveCoinAmountsFromData(coinsDataRaw: any): ({ [string]: number }, boolean)
+	if typeof(coinsDataRaw) ~= "table" then
+		return createDefaultCoinAmounts(), false
+	end
+
+	local source = coinsDataRaw :: { [string]: any }
+	local amounts = createDefaultCoinAmounts()
+	local hasExplicitAmounts = false
+	for coinKey in COIN_KEY_TO_COPPER_VALUE do
+		local amount = sanitizeInteger(source[coinKey], 0, 0, 1_000_000_000)
+		amounts[coinKey] = amount
+		if amount > 0 then
+			hasExplicitAmounts = true
+		end
+	end
+
+	if hasExplicitAmounts then
+		return amounts, true
+	end
+
+	local totalCopperRaw = source.totalCopper
+	if typeof(totalCopperRaw) == "number" and totalCopperRaw == totalCopperRaw then
+		return totalCopperToCoinAmounts(totalCopperRaw), false
+	end
+
+	return amounts, false
 end
 
 local function resolveStationDefinitionsFromTree(treeRaw: any): { [string]: StationDefinition }
@@ -671,33 +743,62 @@ function CraftingServiceUtils.cloneItemAmounts(itemAmountsRaw: { ItemAmount }): 
 	return output
 end
 
-function CraftingServiceUtils.buildInventoryItemCountMap(inventoryStateRaw: any): { [string]: number }
+function CraftingServiceUtils.buildInventoryItemCountMap(inventoryStateRaw: any, coinsDataRaw: any?): { [string]: number }
 	local output: { [string]: number } = {}
 	if typeof(inventoryStateRaw) ~= "table" then
-		return output
+		inventoryStateRaw = nil
 	end
-	local slotsRaw = (inventoryStateRaw :: any).slots
-	if typeof(slotsRaw) ~= "table" then
-		return output
+	local slotsRaw = if inventoryStateRaw ~= nil then (inventoryStateRaw :: any).slots else nil
+	if typeof(slotsRaw) == "table" then
+		for _, slotRaw in slotsRaw do
+			if typeof(slotRaw) ~= "table" then
+				continue
+			end
+			local stackRaw = (slotRaw :: any).stack
+			if typeof(stackRaw) ~= "table" then
+				continue
+			end
+			local itemId = sanitizeString((stackRaw :: any).itemId, nil)
+			local amount = sanitizeInteger((stackRaw :: any).amount, 0, 0, 1_000_000)
+			if itemId == nil or amount <= 0 then
+				continue
+			end
+			output[itemId] = (output[itemId] or 0) + amount
+		end
 	end
 
-	for _, slotRaw in slotsRaw do
-		if typeof(slotRaw) ~= "table" then
-			continue
+	local coinsRaw = coinsDataRaw
+	if typeof(coinsRaw) == "table" then
+		local resolvedCoinAmounts = resolveCoinAmountsFromData(coinsRaw)
+		for coinItemId, coinKey in COIN_ITEM_ID_TO_KEY do
+			local amount = sanitizeInteger(resolvedCoinAmounts[coinKey], 0, 0, COIN_ITEM_MAX_AMOUNT)
+			if amount > 0 then
+				output[coinItemId] = (output[coinItemId] or 0) + amount
+			end
 		end
-		local stackRaw = (slotRaw :: any).stack
-		if typeof(stackRaw) ~= "table" then
-			continue
-		end
-		local itemId = sanitizeString((stackRaw :: any).itemId, nil)
-		local amount = sanitizeInteger((stackRaw :: any).amount, 0, 0, 1_000_000)
-		if itemId == nil or amount <= 0 then
-			continue
-		end
-		output[itemId] = (output[itemId] or 0) + amount
 	end
 
 	return output
+end
+
+local function resolveCoinCapacityForResult(
+	itemIdRaw: any,
+	inventoryItemCountsRaw: { [string]: number },
+	amountPerCraftRaw: any
+): number?
+	local itemId = sanitizeString(itemIdRaw, nil)
+	if itemId == nil or COIN_ITEM_ID_TO_KEY[itemId] == nil then
+		return nil
+	end
+
+	local amountPerCraft = sanitizeInteger(amountPerCraftRaw, 0, 0, 1_000_000)
+	if amountPerCraft <= 0 then
+		return 0
+	end
+
+	local currentAmount = math.max(0, math.floor(inventoryItemCountsRaw[itemId] or 0))
+	local remainingCapacity = math.max(0, COIN_ITEM_MAX_AMOUNT - currentAmount)
+	return math.floor(remainingCapacity / amountPerCraft)
 end
 
 local RecipeIndexer = {}
@@ -1372,6 +1473,17 @@ function CraftingServiceUtils.computeMaxCraftableQuantity(
 		end
 	end
 
+	for _, result in recipeRaw.results do
+		local craftableForCapacity = resolveCoinCapacityForResult(
+			result.itemId,
+			inventoryItemCountsRaw,
+			result.amount
+		)
+		if craftableForCapacity ~= nil and craftableForCapacity < maxCraftable then
+			maxCraftable = craftableForCapacity
+		end
+	end
+
 	if maxCraftable == math.huge then
 		return 0
 	end
@@ -1753,9 +1865,95 @@ local function normalizeTransactionMutationResult(resultRaw: any, fieldName: str
 	return math.max(0, math.floor(value))
 end
 
-function CraftTransaction.createInventoryProvider(inventoryServiceRaw: any): InventoryProvider
+function CraftTransaction.createInventoryProvider(inventoryServiceRaw: any, playerDataServiceRaw: any?): InventoryProvider
 	local inventoryService = inventoryServiceRaw
+	local playerDataService = playerDataServiceRaw
 	local provider = {} :: any
+
+	local function resolveCoinKey(itemIdRaw: any): string?
+		local itemId = sanitizeString(itemIdRaw, nil)
+		if itemId == nil then
+			return nil
+		end
+		return COIN_ITEM_ID_TO_KEY[itemId]
+	end
+
+	local function getCoinBalance(player: Player, itemIdRaw: any): number
+		local coinKey = resolveCoinKey(itemIdRaw)
+		if coinKey == nil then
+			return 0
+		end
+		if typeof(playerDataService) ~= "table" then
+			return 0
+		end
+		local getCoinsDataMethod = (playerDataService :: any).getCoinsData
+		if typeof(getCoinsDataMethod) ~= "function" then
+			return 0
+		end
+		local ok, coinsData = pcall(function()
+			return (playerDataService :: any):getCoinsData(player, nil)
+		end)
+		if not ok or typeof(coinsData) ~= "table" then
+			return 0
+		end
+		local resolvedCoinAmounts = resolveCoinAmountsFromData(coinsData)
+		return sanitizeInteger(resolvedCoinAmounts[coinKey], 0, 0, COIN_ITEM_MAX_AMOUNT)
+	end
+
+	local function getCoinWallet(player: Player): { [string]: number }?
+		if typeof(playerDataService) ~= "table" then
+			return nil
+		end
+		local getCoinsDataMethod = (playerDataService :: any).getCoinsData
+		if typeof(getCoinsDataMethod) ~= "function" then
+			return nil
+		end
+		local ok, coinsData = pcall(function()
+			return (playerDataService :: any):getCoinsData(player, nil)
+		end)
+		if not ok then
+			return nil
+		end
+		local resolvedCoinAmounts = resolveCoinAmountsFromData(coinsData)
+		return {
+			copper = sanitizeInteger(resolvedCoinAmounts.copper, 0, 0, COIN_ITEM_MAX_AMOUNT),
+			silver = sanitizeInteger(resolvedCoinAmounts.silver, 0, 0, COIN_ITEM_MAX_AMOUNT),
+			gold = sanitizeInteger(resolvedCoinAmounts.gold, 0, 0, COIN_ITEM_MAX_AMOUNT),
+			platinum = sanitizeInteger(resolvedCoinAmounts.platinum, 0, 0, COIN_ITEM_MAX_AMOUNT),
+		}
+	end
+
+	local function incrementCoinBalance(player: Player, itemIdRaw: any, amountRaw: any): number?
+		local coinKey = resolveCoinKey(itemIdRaw)
+		if coinKey == nil then
+			return nil
+		end
+		if typeof(playerDataService) ~= "table" then
+			return nil
+		end
+		local setCoinsDataMethod = (playerDataService :: any).setCoinsData
+		if typeof(setCoinsDataMethod) ~= "function" then
+			return nil
+		end
+		local currentWallet = getCoinWallet(player)
+		if currentWallet == nil then
+			return nil
+		end
+		local amount = if typeof(amountRaw) == "number" and amountRaw == amountRaw then math.floor(amountRaw) else 0
+		local nextValue = sanitizeInteger(currentWallet[coinKey], 0, 0, COIN_ITEM_MAX_AMOUNT) + amount
+		if nextValue < 0 or nextValue > COIN_ITEM_MAX_AMOUNT then
+			return nextValue
+		end
+		currentWallet[coinKey] = nextValue
+		local didSet = false
+		local ok = pcall(function()
+			didSet = (playerDataService :: any):setCoinsData(player, currentWallet, true) == true
+		end)
+		if not ok or not didSet then
+			return nil
+		end
+		return nextValue
+	end
 
 	function provider:IsReady(player: Player): boolean
 		if typeof(inventoryService) ~= "table" then
@@ -1779,6 +1977,10 @@ function CraftTransaction.createInventoryProvider(inventoryServiceRaw: any): Inv
 	end
 
 	function provider:CountItem(player: Player, itemId: string): number
+		local coinBalance = getCoinBalance(player, itemId)
+		if coinBalance > 0 or resolveCoinKey(itemId) ~= nil then
+			return coinBalance
+		end
 		if typeof(inventoryService) ~= "table" then
 			return 0
 		end
@@ -1815,6 +2017,22 @@ function CraftTransaction.createInventoryProvider(inventoryServiceRaw: any): Inv
 		end
 
 		for _, requirement in requirements do
+			local coinKey = resolveCoinKey(requirement.itemId)
+			if coinKey ~= nil then
+				if self:CountItem(player, requirement.itemId) < requirement.amount then
+					return false, consumed, "insufficient_ingredients"
+				end
+				local nextValue = incrementCoinBalance(player, requirement.itemId, -requirement.amount)
+				if nextValue == nil or nextValue < 0 then
+					if nextValue ~= nil and nextValue < 0 then
+						incrementCoinBalance(player, requirement.itemId, requirement.amount)
+					end
+					return false, consumed, "consume_failed"
+				end
+				appendMergedItemAmount(consumed, requirement.itemId, requirement.amount)
+				continue
+			end
+
 			local ok, resultOrError = pcall(function()
 				return (inventoryService :: any):removeItem(player, requirement.itemId, requirement.amount)
 			end)
@@ -1845,6 +2063,19 @@ function CraftTransaction.createInventoryProvider(inventoryServiceRaw: any): Inv
 		end
 
 		for _, grantItem in grantItems do
+			if resolveCoinKey(grantItem.itemId) ~= nil then
+				local currentAmount = getCoinBalance(player, grantItem.itemId)
+				if currentAmount + grantItem.amount > COIN_ITEM_MAX_AMOUNT then
+					return false, granted, "inventory_full"
+				end
+				local nextValue = incrementCoinBalance(player, grantItem.itemId, grantItem.amount)
+				if nextValue == nil then
+					return false, granted, "grant_failed"
+				end
+				appendMergedItemAmount(granted, grantItem.itemId, grantItem.amount)
+				continue
+			end
+
 			local ok, resultOrError = pcall(function()
 				return (inventoryService :: any):addItem(player, grantItem.itemId, grantItem.amount, {
 					stackIdPrefix = "craft",
@@ -1880,6 +2111,19 @@ function CraftTransaction.createInventoryProvider(inventoryServiceRaw: any): Inv
 
 		local restoredEverything = true
 		for _, restoreItem in restoreItems do
+			if resolveCoinKey(restoreItem.itemId) ~= nil then
+				local currentAmount = getCoinBalance(player, restoreItem.itemId)
+				if currentAmount + restoreItem.amount > COIN_ITEM_MAX_AMOUNT then
+					restoredEverything = false
+					continue
+				end
+				local nextValue = incrementCoinBalance(player, restoreItem.itemId, restoreItem.amount)
+				if nextValue == nil then
+					restoredEverything = false
+				end
+				continue
+			end
+
 			local ok, resultOrError = pcall(function()
 				return (inventoryService :: any):addItem(player, restoreItem.itemId, restoreItem.amount, {
 					stackIdPrefix = "craftRollback",
@@ -1908,6 +2152,21 @@ function CraftTransaction.createInventoryProvider(inventoryServiceRaw: any): Inv
 
 		local revokedEverything = true
 		for _, revokeItem in revokeItems do
+			if resolveCoinKey(revokeItem.itemId) ~= nil then
+				if self:CountItem(player, revokeItem.itemId) < revokeItem.amount then
+					revokedEverything = false
+				else
+					local nextValue = incrementCoinBalance(player, revokeItem.itemId, -revokeItem.amount)
+					if nextValue == nil or nextValue < 0 then
+						if nextValue ~= nil and nextValue < 0 then
+							incrementCoinBalance(player, revokeItem.itemId, revokeItem.amount)
+						end
+						revokedEverything = false
+					end
+				end
+				continue
+			end
+
 			local ok, resultOrError = pcall(function()
 				return (inventoryService :: any):removeItem(player, revokeItem.itemId, revokeItem.amount)
 			end)

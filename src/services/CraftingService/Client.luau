@@ -9,6 +9,7 @@ local Signal = require(ReplicatedStorage.Packages.Signal)
 local Configs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
 local CraftingServiceUtils = require(ReplicatedStorage.Shared.Services.CraftingService.CraftingServiceUtils)
 local InventoryServiceClient = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceClient)
+local PlayerDataServiceClient = require(ReplicatedStorage.Shared.Services.PlayerDataService.PlayerDataServiceClient)
 local WorldGenerationServiceClient =
 	require(ReplicatedStorage.Shared.Services.WorldGenerationService.WorldGenerationServiceClient)
 
@@ -155,8 +156,8 @@ function CraftingServiceClient.refreshBiomeTokens(self: CraftingServiceClient): 
 	return true
 end
 
-function CraftingServiceClient.applyInventoryState(self: CraftingServiceClient, stateRaw: any): boolean
-	local nextCounts = CraftingServiceUtils.buildInventoryItemCountMap(stateRaw)
+function CraftingServiceClient.applyInventoryState(self: CraftingServiceClient, stateRaw: any, coinsDataRaw: any?): boolean
+	local nextCounts = CraftingServiceUtils.buildInventoryItemCountMap(stateRaw, coinsDataRaw)
 	if countMapEquals(self.inventoryItemCounts, nextCounts) then
 		return false
 	end
@@ -344,6 +345,7 @@ function CraftingServiceClient.getRecipes(self: CraftingServiceClient, optionsRa
 			recipeId = recipe.id,
 			displayName = recipe.displayName,
 			category = recipe.category,
+			resultItemId = if #recipe.results > 0 then recipe.results[1].itemId else nil,
 			groupId = self.registry.groupIdByRecipeId[recipe.id],
 			sortOrder = recipe.sortOrder,
 			isHidden = recipe.isHidden,
@@ -464,13 +466,27 @@ function CraftingServiceClient.init(self: CraftingServiceClient)
 	self.stationDetector:start()
 
 	local initialInventoryState = InventoryServiceClient:getState()
-	self:applyInventoryState(initialInventoryState)
+	local initialCoinsData = PlayerDataServiceClient:getCoinsData(nil)
+	self:applyInventoryState(initialInventoryState, initialCoinsData)
 	self.currentBiomeTokens = self:resolveLocalBiomeTokens()
 	self:refreshAvailableRecipeIds(true)
 
 	if InventoryServiceClient.stateChanged ~= nil then
 		self.janitor:GiveChore(InventoryServiceClient.stateChanged:Connect(function(nextState: any)
-			self:applyInventoryState(nextState)
+			self:applyInventoryState(nextState, PlayerDataServiceClient:getCoinsData(nil))
+		end))
+	end
+
+	if PlayerDataServiceClient.stateChanged ~= nil then
+		self.janitor:GiveChore(PlayerDataServiceClient.stateChanged:Connect(function(nextState: any)
+			local coinsData = nil
+			if typeof(nextState) == "table" then
+				local data = (nextState :: any).data
+				if typeof(data) == "table" then
+					coinsData = (data :: any).coins
+				end
+			end
+			self:applyInventoryState(InventoryServiceClient:getState(), coinsData)
 		end))
 	end
 

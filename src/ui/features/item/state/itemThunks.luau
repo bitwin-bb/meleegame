@@ -241,12 +241,9 @@ function itemThunks.resolveItemIconByType(itemTypeRaw: any, itemIdRaw: any?): st
 		end
 	end
 
-	local weaponIcons = if typeof(ImageIds.weaponIcons) == "table" then (ImageIds.weaponIcons :: { [string]: any }) else nil
-	if weaponIcons ~= nil then
-		local sword = weaponIcons.sword
-		if typeof(sword) == "string" and sword ~= "" then
-			return sword
-		end
+	local questionMark = ImageIds.questionMark
+	if typeof(questionMark) == "string" and questionMark ~= "" then
+		return questionMark
 	end
 
 	return nil

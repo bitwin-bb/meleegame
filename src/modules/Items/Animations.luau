@@ -12,6 +12,9 @@ return {
 		},
 	},
 	Items = {
+		Tiles = {
+			Wood = {},
+		},
 		Weapons = {
 			CopperBroadSword = {
 				Equip = "rbxassetid://88895068313648",

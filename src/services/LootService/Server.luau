@@ -8,6 +8,7 @@ local Workspace = game:GetService("Workspace")
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
+local ResolveItem = require(ReplicatedStorage.Shared.Modules.Game.ResolveItem)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
 local InventoryServiceUtils = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceUtils)
 local LootServiceData = require(ReplicatedStorage.Shared.Services.LootService.Data)
@@ -221,17 +222,6 @@ local function resolveRootPartFromInstance(instance: Instance): BasePart?
 	end
 
 	return nil
-end
-
-local function resolveFolderByPath(root: Instance?, segments: { string }): Instance?
-	local cursor = root
-	for _, segment in segments do
-		if cursor == nil then
-			return nil
-		end
-		cursor = cursor:FindFirstChild(segment)
-	end
-	return cursor
 end
 
 local function toUnitVectorOrFallback(directionRaw: any, fallbackRaw: Vector3): Vector3
@@ -535,98 +525,6 @@ function LootServiceServer.playPickupSound(self: LootServiceServer, runtime: Loo
 	})
 end
 
-function LootServiceServer.resolveAssetSearchRoots(self: LootServiceServer): { Instance }
-	if self.assetSearchRoots ~= nil then
-		return self.assetSearchRoots
-	end
-
-	local roots = {}
-	local pathsRaw = if typeof(self.data) == "table" then (self.data :: { [string]: any }).assetSearchRoots else nil
-	if typeof(pathsRaw) == "table" then
-		for _, pathRaw in pathsRaw do
-			if typeof(pathRaw) ~= "table" then
-				continue
-			end
-
-			local segments = {}
-			for _, segmentRaw in pathRaw do
-				local segment = LootServiceUtils.sanitizeString(segmentRaw, nil)
-				if segment ~= nil then
-					table.insert(segments, segment)
-				end
-			end
-			if #segments <= 0 then
-				continue
-			end
-
-			local resolved = resolveFolderByPath(ReplicatedStorage, segments)
-			if resolved ~= nil then
-				table.insert(roots, resolved)
-			end
-		end
-	end
-
-	if #roots <= 0 then
-		local assets = ReplicatedStorage:FindFirstChild("Assets")
-		if assets ~= nil then
-			table.insert(roots, assets)
-		end
-	end
-
-	self.assetSearchRoots = roots
-	return roots
-end
-
-function LootServiceServer.resolveCurrenciesFolder(self: LootServiceServer): Folder?
-	local assets = ReplicatedStorage:FindFirstChild("Assets")
-	if assets == nil or not assets:IsA("Folder") then
-		return nil
-	end
-
-	local items = assets:FindFirstChild("Items")
-	if items == nil or not items:IsA("Folder") then
-		return nil
-	end
-
-	local currencies = items:FindFirstChild("Currencies")
-	if currencies ~= nil and currencies:IsA("Folder") then
-		return currencies
-	end
-	return nil
-end
-
-function LootServiceServer.resolveWeaponsFolder(self: LootServiceServer): Folder?
-	local assets = ReplicatedStorage:FindFirstChild("Assets")
-	if assets == nil or not assets:IsA("Folder") then
-		return nil
-	end
-
-	local items = assets:FindFirstChild("Items")
-	if items == nil or not items:IsA("Folder") then
-		return nil
-	end
-
-	local weapons = items:FindFirstChild("Weapons")
-	if weapons ~= nil and weapons:IsA("Folder") then
-		return weapons
-	end
-	return nil
-end
-
-function LootServiceServer.findUsableTemplateDescendant(self: LootServiceServer, root: Instance): Instance?
-	for _, descendant in root:GetDescendants() do
-		if
-			descendant:IsA("Model")
-			or descendant:IsA("BasePart")
-			or descendant:IsA("Tool")
-			or descendant:IsA("Accessory")
-		then
-			return descendant
-		end
-	end
-	return nil
-end
-
 function LootServiceServer.resolveItemTemplate(self: LootServiceServer, itemIdRaw: any): Instance?
 	local itemId = LootServiceUtils.sanitizeString(itemIdRaw, nil)
 	if itemId == nil then
@@ -641,109 +539,18 @@ function LootServiceServer.resolveItemTemplate(self: LootServiceServer, itemIdRa
 		local cachedInstance = cached :: Instance
 		if cachedInstance.Parent ~= nil then
 			self:cacheToolTemplateIfPossible(itemId, cachedInstance)
+			self:cacheToolTemplateIfPossible(itemId, ResolveItem.resolveToolTemplate(itemId))
 			return cachedInstance
 		end
 		self.itemTemplateByItemId[itemId] = nil
 	end
 
-	local candidateNames = LootServiceUtils.resolveItemNameCandidates(self.data, itemId)
-	if self:resolveCoinTypeFromItemId(itemId) ~= nil then
-		local currenciesFolder = self:resolveCurrenciesFolder()
-		if currenciesFolder ~= nil then
-			for _, candidate in candidateNames do
-				local direct = currenciesFolder:FindFirstChild(candidate)
-				if direct ~= nil then
-					if
-						direct:IsA("Model")
-						or direct:IsA("BasePart")
-						or direct:IsA("Tool")
-						or direct:IsA("Accessory")
-					then
-						self.itemTemplateByItemId[itemId] = direct
-						self:cacheToolTemplateIfPossible(itemId, direct)
-						return direct
-					end
-					local resolvedDescendant = self:findUsableTemplateDescendant(direct)
-					if resolvedDescendant ~= nil then
-						self.itemTemplateByItemId[itemId] = resolvedDescendant
-						self:cacheToolTemplateIfPossible(itemId, resolvedDescendant)
-						return resolvedDescendant
-					end
-				end
-			end
-		end
-	end
-
-	local itemConfig = LootServiceUtils.resolveItemConfig(self.data, itemId)
-	if itemConfig.maxStack <= 1 then
-		local weaponsFolder = self:resolveWeaponsFolder()
-		if weaponsFolder ~= nil then
-			for _, candidate in candidateNames do
-				local weaponRoot = weaponsFolder:FindFirstChild(candidate)
-				if weaponRoot == nil then
-					continue
-				end
-
-				local modelNode = weaponRoot:FindFirstChild("Model")
-				local preferredRoot = if modelNode ~= nil then modelNode else weaponRoot
-				if
-					preferredRoot:IsA("Model")
-					or preferredRoot:IsA("BasePart")
-					or preferredRoot:IsA("Tool")
-					or preferredRoot:IsA("Accessory")
-				then
-					self.itemTemplateByItemId[itemId] = preferredRoot
-					self:cacheToolTemplateIfPossible(itemId, preferredRoot)
-					return preferredRoot
-				end
-
-				local resolvedDescendant = self:findUsableTemplateDescendant(preferredRoot)
-				if resolvedDescendant ~= nil then
-					self.itemTemplateByItemId[itemId] = resolvedDescendant
-					self:cacheToolTemplateIfPossible(itemId, resolvedDescendant)
-					return resolvedDescendant
-				end
-			end
-		end
-	end
-
-	local searchRoots = self:resolveAssetSearchRoots()
-	for _, root in searchRoots do
-		for _, candidate in candidateNames do
-			local direct = root:FindFirstChild(candidate)
-			if direct ~= nil then
-				if direct:IsA("Model") or direct:IsA("BasePart") or direct:IsA("Tool") or direct:IsA("Accessory") then
-					self.itemTemplateByItemId[itemId] = direct
-					self:cacheToolTemplateIfPossible(itemId, direct)
-					return direct
-				end
-				local resolvedDescendant = self:findUsableTemplateDescendant(direct)
-				if resolvedDescendant ~= nil then
-					self.itemTemplateByItemId[itemId] = resolvedDescendant
-					self:cacheToolTemplateIfPossible(itemId, resolvedDescendant)
-					return resolvedDescendant
-				end
-			end
-		end
-	end
-
-	for _, root in searchRoots do
-		for _, candidate in candidateNames do
-			local deep = root:FindFirstChild(candidate, true)
-			if deep ~= nil then
-				if deep:IsA("Model") or deep:IsA("BasePart") or deep:IsA("Tool") or deep:IsA("Accessory") then
-					self.itemTemplateByItemId[itemId] = deep
-					self:cacheToolTemplateIfPossible(itemId, deep)
-					return deep
-				end
-				local resolvedDescendant = self:findUsableTemplateDescendant(deep)
-				if resolvedDescendant ~= nil then
-					self.itemTemplateByItemId[itemId] = resolvedDescendant
-					self:cacheToolTemplateIfPossible(itemId, resolvedDescendant)
-					return resolvedDescendant
-				end
-			end
-		end
+	local resolvedTemplate = ResolveItem.resolvePrimaryTemplate(itemId)
+	if resolvedTemplate ~= nil then
+		self.itemTemplateByItemId[itemId] = resolvedTemplate
+		self:cacheToolTemplateIfPossible(itemId, resolvedTemplate)
+		self:cacheToolTemplateIfPossible(itemId, ResolveItem.resolveToolTemplate(itemId))
+		return resolvedTemplate
 	end
 
 	self.itemTemplateByItemId[itemId] = false
@@ -1887,7 +1694,6 @@ function LootServiceServer.init(self: LootServiceServer)
 	self.cache = LootServiceCache.new()
 	self.lootById = {}
 	self.itemTemplateByItemId = {}
-	self.assetSearchRoots = nil
 	self.itemPickupSoundAssetIds = {} :: { string }
 	self.coinDropSoundAssetIds = {} :: { string }
 	self.coinPickupSoundAssetIds = {} :: { string }
@@ -1952,7 +1758,6 @@ type LootServiceServer = typeof(LootServiceServer) & {
 	lootFolder: Folder,
 	lootById: { [string]: LootRuntime },
 	itemTemplateByItemId: { [string]: Instance | boolean },
-	assetSearchRoots: { Instance }?,
 	itemPickupSoundAssetIds: { string },
 	coinDropSoundAssetIds: { string },
 	coinPickupSoundAssetIds: { string },

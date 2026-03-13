@@ -9,7 +9,6 @@ local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Promise = require(ReplicatedStorage.Packages.Promise)
 local RaycastHitbox = require(ReplicatedStorage.Packages.RaycastHitbox)
 local CameraShaker = require(ReplicatedStorage.Packages.EZCameraShake)
-local CameraShakeGate = require(ReplicatedStorage.Shared.Modules.Core.CameraShakeGate)
 local CoreRuntime = require(ReplicatedStorage.Shared.Modules.Core.Runtime)
 local Configs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
 local Melee = require(ReplicatedStorage.Shared.Classes.Melee)
@@ -93,8 +92,6 @@ local MELEE_CAMERA_SHAKE_MAX_POSITION_INFLUENCE = Vector3.new(0.18, 0.13, 0.18)
 local MELEE_CAMERA_SHAKE_MIN_ROTATION_INFLUENCE = Vector3.new(1.35, 1.75, 1.35)
 local MELEE_CAMERA_SHAKE_MAX_ROTATION_INFLUENCE = Vector3.new(1.75, 2.15, 1.75)
 local MELEE_CAMERA_SHAKE_MIN_INTERVAL = 0.06
-local MELEE_CAMERA_SHAKE_MAX_TRANSLATION = 0.55
-local MELEE_CAMERA_SHAKE_MAX_ROTATION_RADIANS = math.rad(11)
 local MELEE_CAMERA_SHAKE_DAMAGE_FOR_MAX_INTENSITY = 60
 
 local function isAttackInput(inputObject: InputObject): boolean
@@ -341,11 +338,7 @@ function MeleeServiceClient.init(self: MeleeServiceClient)
 				return
 			end
 
-			local boundedShake = CameraShakeGate.gateShakeOffset(shakeCFrame, {
-				maxTranslation = MELEE_CAMERA_SHAKE_MAX_TRANSLATION,
-				maxRotationRadians = MELEE_CAMERA_SHAKE_MAX_ROTATION_RADIANS,
-			})
-			camera.CFrame = camera.CFrame * boundedShake
+			camera.CFrame = camera.CFrame * shakeCFrame
 		end) :: any
 		return cameraShaker :: CameraShakerObject
 	end)

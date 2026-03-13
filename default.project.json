@@ -294,9 +294,6 @@
             "BinaryStreaming": {
               "$path": "src/modules/Core/BinaryStreaming.luau"
             },
-            "CameraShakeGate": {
-              "$path": "src/modules/Core/CameraShakeGate.luau"
-            },
             "Codec": {
               "$path": "src/modules/Core/Codec.luau"
             },
@@ -350,6 +347,9 @@
               "PlayerSpawnCooldown": {
                 "$path": "src/modules/Game/Player/PlayerSpawnCooldown.luau"
               }
+            },
+            "ResolveItem": {
+              "$path": "src/modules/Game/ResolveItem.luau"
             }
           },
           "Items": {

@@ -9,9 +9,7 @@ local Workspace = game:GetService("Workspace")
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
-local CameraShaker = require(ReplicatedStorage.Packages.EZCameraShake)
 local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
-local CameraShakeGate = require(ReplicatedStorage.Shared.Modules.Core.CameraShakeGate)
 local PlayerServiceUtils = require(ReplicatedStorage.Shared.Services.PlayerService.PlayerServiceUtils)
 local AudioServiceClient = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceClient)
 local AudioServiceUtils = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceUtils)
@@ -35,20 +33,6 @@ local MOVE_RENDERSTEP_NAME = "PlayerService_UpdateMovement"
 local GROUNDED_CONTACT_MAX_DISTANCE = 0.85
 local FLOOR_CONTACT_MAX_VERTICAL_SPEED = 2.5
 local HURT_FEEDBACK_MIN_INTERVAL = 0.06
-local HURT_SHAKE_MIN_INTERVAL = 0.2
-local HURT_SHAKE_MIN_MAGNITUDE = 3.2
-local HURT_SHAKE_MAX_MAGNITUDE = 6.8
-local HURT_SHAKE_MIN_ROUGHNESS = 13
-local HURT_SHAKE_MAX_ROUGHNESS = 20
-local HURT_SHAKE_DAMAGE_FOR_MAX_INTENSITY = 40
-local HURT_SHAKE_FADE_IN = 0.012
-local HURT_SHAKE_FADE_OUT = 0.24
-local HURT_SHAKE_MIN_POSITION_INFLUENCE = Vector3.new(0.18, 0.18, 0.1)
-local HURT_SHAKE_MAX_POSITION_INFLUENCE = Vector3.new(0.3, 0.3, 0.16)
-local HURT_SHAKE_MIN_ROTATION_INFLUENCE = Vector3.new(1.25, 1.25, 0.7)
-local HURT_SHAKE_MAX_ROTATION_INFLUENCE = Vector3.new(2.05, 2.05, 1.15)
-local HURT_SHAKE_MAX_TRANSLATION = 0.62
-local HURT_SHAKE_MAX_ROTATION_RADIANS = math.rad(12)
 local HURT_SOUND_PLAYBACK_SPEED_MIN = 0.95
 local HURT_SOUND_PLAYBACK_SPEED_MAX = 1.08
 local WORLD_UNLOCK_REQUIRED_SURFACE_HITS = 1
@@ -132,24 +116,7 @@ function PlayerServiceClient.init(self: PlayerServiceClient)
 	self.maxAirborneDownwardSpeed = 0
 	self.lastLandingAt = 0
 	self.lastHurtFeedbackAt = 0
-	self.lastHurtShakeAt = 0
 	self.hurtSoundAssetIds = {}
-	CameraShakeGate.reset()
-	self.cameraShaker = CameraShaker.new(Enum.RenderPriority.Last.Value, function(shakeOffset: CFrame)
-		local currentCamera = Workspace.CurrentCamera
-		if not currentCamera then
-			return
-		end
-
-		local boundedShakeOffset = CameraShakeGate.gateShakeOffset(shakeOffset, {
-			maxTranslation = HURT_SHAKE_MAX_TRANSLATION,
-			maxRotationRadians = HURT_SHAKE_MAX_ROTATION_RADIANS,
-		})
-		currentCamera.CFrame = currentCamera.CFrame * boundedShakeOffset
-	end)
-	local cameraShakerInternal = self.cameraShaker :: any
-	cameraShakerInternal._renderName = ("PlayerServiceDamageShake_%d"):format(self.localPlayer.UserId)
-	self.cameraShaker:Start()
 
 	self:refreshHurtSoundTemplates()
 
@@ -162,11 +129,6 @@ function PlayerServiceClient.init(self: PlayerServiceClient)
 	self.janitor:GiveChore(function()
 		ContextActionService:UnbindAction(BLOCK_MOVEMENT_ACTION)
 		RunService:UnbindFromRenderStep(MOVE_RENDERSTEP_NAME)
-	end)
-	self.janitor:GiveChore(function()
-		if self.cameraShaker then
-			self.cameraShaker:Stop()
-		end
 	end)
 
 	ContextActionService:BindActionAtPriority(
@@ -229,7 +191,7 @@ function PlayerServiceClient.pickHurtSoundAssetId(self: PlayerServiceClient): st
 	return self.hurtSoundAssetIds[RANDOM:NextInteger(1, count)]
 end
 
-function PlayerServiceClient.playHurtFeedback(self: PlayerServiceClient, damageAmountRaw: any)
+function PlayerServiceClient.playHurtFeedback(self: PlayerServiceClient)
 	local now = os.clock()
 	if now - self.lastHurtFeedbackAt < HURT_FEEDBACK_MIN_INTERVAL then
 		return
@@ -243,35 +205,6 @@ function PlayerServiceClient.playHurtFeedback(self: PlayerServiceClient, damageA
 			parent = soundParent,
 			playbackSpeed = RANDOM:NextNumber(HURT_SOUND_PLAYBACK_SPEED_MIN, HURT_SOUND_PLAYBACK_SPEED_MAX),
 		})
-	end
-
-	if self.cameraShaker then
-		if now - self.lastHurtShakeAt < HURT_SHAKE_MIN_INTERVAL then
-			return
-		end
-		self.lastHurtShakeAt = now
-
-		local damageAmount = if typeof(damageAmountRaw) == "number" and damageAmountRaw == damageAmountRaw
-			then math.max(0, damageAmountRaw)
-			else 0
-		local intensityAlpha = math.clamp(damageAmount / HURT_SHAKE_DAMAGE_FOR_MAX_INTENSITY, 0, 1)
-		local magnitude =
-			HURT_SHAKE_MIN_MAGNITUDE + (HURT_SHAKE_MAX_MAGNITUDE - HURT_SHAKE_MIN_MAGNITUDE) * intensityAlpha
-		local roughness =
-			HURT_SHAKE_MIN_ROUGHNESS + (HURT_SHAKE_MAX_ROUGHNESS - HURT_SHAKE_MIN_ROUGHNESS) * intensityAlpha
-		local positionInfluence =
-			HURT_SHAKE_MIN_POSITION_INFLUENCE:Lerp(HURT_SHAKE_MAX_POSITION_INFLUENCE, intensityAlpha)
-		local rotationInfluence =
-			HURT_SHAKE_MIN_ROTATION_INFLUENCE:Lerp(HURT_SHAKE_MAX_ROTATION_INFLUENCE, intensityAlpha)
-
-		self.cameraShaker:ShakeOnce(
-			magnitude,
-			roughness,
-			HURT_SHAKE_FADE_IN,
-			HURT_SHAKE_FADE_OUT,
-			positionInfluence,
-			rotationInfluence
-		)
 	end
 end
 
@@ -290,7 +223,7 @@ function PlayerServiceClient.onDamaged(self: PlayerServiceClient, damageAmountRa
 		return
 	end
 
-	self:playHurtFeedback(amount)
+	self:playHurtFeedback()
 end
 
 function PlayerServiceClient.emitBloodEffect(
@@ -445,8 +378,6 @@ function PlayerServiceClient.onCharacterAdded(self: PlayerServiceClient, charact
 	self.wasGrounded = false
 	self.maxAirborneDownwardSpeed = 0
 	self.lastHurtFeedbackAt = 0
-	self.lastHurtShakeAt = 0
-	CameraShakeGate.reset()
 
 	RunService:UnbindFromRenderStep(MOVE_RENDERSTEP_NAME)
 
@@ -753,7 +684,7 @@ end
 type PlayerServiceClient = typeof(PlayerServiceClient) & {
 	refreshHurtSoundTemplates: (self: PlayerServiceClient) -> (),
 	pickHurtSoundAssetId: (self: PlayerServiceClient) -> string?,
-	playHurtFeedback: (self: PlayerServiceClient, damageAmountRaw: any) -> (),
+	playHurtFeedback: (self: PlayerServiceClient) -> (),
 	onDamaged: (self: PlayerServiceClient, damageAmountRaw: any) -> (),
 	emitBloodEffect: (self: PlayerServiceClient, characterRaw: any, originPartRaw: any) -> (),
 	getMouseFacing: (self: PlayerServiceClient, rig: CharacterRig) -> FacingSign?,
@@ -806,9 +737,7 @@ type PlayerServiceClient = typeof(PlayerServiceClient) & {
 	maxAirborneDownwardSpeed: number,
 	lastLandingAt: number,
 	lastHurtFeedbackAt: number,
-	lastHurtShakeAt: number,
 	hurtSoundAssetIds: { string },
-	cameraShaker: any,
 }
 
 return PlayerServiceClient :: PlayerServiceClient

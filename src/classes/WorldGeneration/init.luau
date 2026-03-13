@@ -141,6 +141,7 @@ export type TileIdMap = {
 	AIR: number,
 	GRASS: number,
 	JUNGLE_GRASS: number,
+	WOOD: number,
 	DIRT: number,
 	STONE: number,
 	SAND: number,
@@ -231,7 +232,20 @@ local TILE_ID: TileIdMap = {
 	CORRUPT_SOIL = 15,
 	CORRUPT_STONE = 16,
 	JUNGLE_GRASS = 17,
+	WOOD = 18,
 }
+
+local function resolveMaxTileId(tileIdMap: { [string]: number }): number
+	local maxTileId = 0
+	for _, tileId in tileIdMap do
+		if tileId > maxTileId then
+			maxTileId = tileId
+		end
+	end
+	return maxTileId
+end
+
+local MAX_TILE_ID = resolveMaxTileId(TILE_ID)
 
 local WALL_ID: WallIdMap = {
 	NONE = 0,
@@ -277,6 +291,12 @@ local TILE_VISUALS: { [number]: TileVisual } = {
 		name = "JungleGrass",
 		color = Color3.fromRGB(113, 186, 72),
 		material = Enum.Material.Grass,
+		transparency = 0,
+	},
+	[TILE_ID.WOOD] = {
+		name = "Wood",
+		color = Color3.fromRGB(121, 91, 56),
+		material = Enum.Material.Wood,
 		transparency = 0,
 	},
 	[TILE_ID.DIRT] = {
@@ -1618,6 +1638,7 @@ function WorldGeneration.new(configRaw: WorldGenerationConfig?): WorldGeneration
 		[self.tileId.JUNGLE_GRASS] = if tilesFolder ~= nil
 			then (tilesFolder:FindFirstChild("JungleGrass") or tilesFolder:FindFirstChild("Grass"))
 			else nil,
+		[self.tileId.WOOD] = if tilesFolder ~= nil then tilesFolder:FindFirstChild("Wood") else nil,
 		[self.tileId.CORRUPT_STONE] = if tilesFolder ~= nil then tilesFolder:FindFirstChild("CorruptStone") else nil,
 		[self.tileId.CORRUPT_SOIL] = if tilesFolder ~= nil then tilesFolder:FindFirstChild("CorruptSoil") else nil,
 		[self.tileId.CORRUPT_GRASS] = if tilesFolder ~= nil then tilesFolder:FindFirstChild("CorruptGrass") else nil,
@@ -3737,7 +3758,7 @@ function WorldGeneration.setTileAt(self: WorldGeneration, tileXRaw: any, tileYRa
 	if tileY < self.minTileY or tileY > self.maxTileY then
 		return false, self.tileId.AIR, self.tileId.AIR
 	end
-	if nextTileId < self.tileId.AIR or nextTileId > self.tileId.JUNGLE_GRASS then
+	if nextTileId < self.tileId.AIR or nextTileId > MAX_TILE_ID then
 		return false, self.tileId.AIR, self.tileId.AIR
 	end
 

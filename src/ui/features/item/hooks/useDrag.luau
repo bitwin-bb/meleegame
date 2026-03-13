@@ -8,6 +8,7 @@ local React = require(ReplicatedStorage.Packages.React)
 local Charm = require(ReplicatedStorage.Packages.Charm)
 local Configs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
 local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
+local BuildServiceUtils = require(ReplicatedStorage.Shared.Services.BuildService.BuildServiceUtils)
 local itemSlice = require(ReplicatedStorage.UI.features.item.state.itemSlice)
 local itemThunks = require(ReplicatedStorage.UI.features.item.state.itemThunks)
 local inventoryThunks = require(ReplicatedStorage.UI.features.inventory.state.inventoryThunks)
@@ -275,6 +276,14 @@ local function isSplitHoldDrag(state: ItemDragState): boolean
 	return state.active and state.mode == "SplitHold" and state.stack ~= nil and state.sourceSlot ~= nil
 end
 
+local function isPlaceableDragOutsideInventory(state: ItemDragState): boolean
+	if not state.active or state.hoveredSlot ~= nil or state.stack == nil then
+		return false
+	end
+
+	return BuildServiceUtils.resolvePlaceableItemConfig(state.stack.itemId) ~= nil
+end
+
 local function resolveSplitIncrementInterval(elapsedSeconds: number): number
 	local rampSeconds = math.max(SPLIT_HOLD_CONFIG.accelerationRampSeconds, 1e-4)
 	local alpha = math.clamp(elapsedSeconds / rampSeconds, 0, 1)
@@ -457,6 +466,9 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 					return
 				end
 				if os.clock() - lastSlotInputTimeRef.current <= SLOT_CLICK_GRACE_SECONDS then
+					return
+				end
+				if isPlaceableDragOutsideInventory(nextState) then
 					return
 				end
 				finalizeDragWithSuppression(suppressionRef, nil)

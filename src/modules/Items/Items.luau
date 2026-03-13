@@ -27,4 +27,15 @@ return {
 		name = "Life Crystal",
 		description = "A condensed crystal that radiates restorative energy.",
 	},
+	["Workbench"] = {
+		name = "Workbench",
+		description = "A crafting station built for standard crafting.",
+		useCase = "Placeable furniture",
+		deployable = {
+			stationId = "Workbench",
+			stationTag = "CraftingStation_Workbench",
+			placementDistance = 6,
+			maxPlacementDistance = 16,
+		},
+	},
 }

@@ -53,6 +53,7 @@ LootServiceData.settings = {
 LootServiceData.assetSearchRoots = {
 	{ "Assets", "Items", "Currencies" },
 	{ "Assets", "Items", "Weapons" },
+	{ "Assets", "Items", "Tiles" },
 	{ "Assets", "Items" },
 	{ "Assets", "Models", "Items" },
 	{ "Assets", "Models", "Loot" },
@@ -70,6 +71,11 @@ LootServiceData.itemAssetAliases = {
 	CopperBroadSword = { "CopperBroadSword", "copperBroadSword" },
 	Katana = { "Katana", "katana" },
 	LifeCrystal = { "LifeCrystal", "lifeCrystal" },
+	Wood = { "Wood", "wood", "WoodTile", "woodTile" },
+	Dirt = { "Dirt", "dirt", "DirtTile", "dirtTile" },
+	Stone = { "Stone", "stone", "StoneTile", "stoneTile" },
+	Mud = { "Mud", "mud", "MudTile", "mudTile" },
+	EbonStone = { "EbonStone", "Ebon Stone", "ebonStone", "CorruptStone" },
 }
 
 LootServiceData.items = {
@@ -82,6 +88,11 @@ LootServiceData.items = {
 	CopperBroadSword = { rarity = "Rare", maxStack = 1 },
 	Katana = { rarity = "Epic", maxStack = 1 },
 	LifeCrystal = { rarity = "Legendary", maxStack = 20 },
+	Wood = { rarity = "Common", maxStack = 999 },
+	Dirt = { rarity = "Common", maxStack = 999 },
+	Stone = { rarity = "Common", maxStack = 999 },
+	Mud = { rarity = "Common", maxStack = 999 },
+	EbonStone = { rarity = "Uncommon", maxStack = 999 },
 }
 
 LootServiceData.dropTables = {

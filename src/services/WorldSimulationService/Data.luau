@@ -83,6 +83,7 @@ local WG_TILE_ID = {
 	CORRUPT_SOIL = 15,
 	CORRUPT_STONE = 16,
 	JUNGLE_GRASS = 17,
+	WOOD = 18,
 }
 
 local function createEntityBuffer(capacity: number): ChunkEntityBuffer
@@ -163,6 +164,9 @@ local function mapWorldGenerationTileIdToSimulation(tileIdRaw: any): number
 		return Shared.TILE_ID.GRASS
 	end
 	if tileId == WG_TILE_ID.DIRT or tileId == WG_TILE_ID.CLAY then
+		return Shared.TILE_ID.DIRT
+	end
+	if tileId == WG_TILE_ID.WOOD then
 		return Shared.TILE_ID.DIRT
 	end
 	if tileId == WG_TILE_ID.STONE

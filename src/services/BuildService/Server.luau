@@ -8,12 +8,15 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Configs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
 local BuildServiceUtils = require(ReplicatedStorage.Shared.Services.BuildService.BuildServiceUtils)
+local InventoryServiceUtils = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceUtils)
 local WorldGenerationServiceServer =
 	require(ServerScriptService.Services.WorldGenerationService.WorldGenerationServiceServer)
+local InventoryServiceServer = require(ServerScriptService.Services.InventoryService.InventoryServiceServer)
 local LootServiceServer = require(ServerScriptService.Services.LootService.LootServiceServer)
 
 type BuildServiceConfig = BuildServiceUtils.BuildServiceConfig
 type BuildServiceState = BuildServiceUtils.BuildServiceState
+type PlaceableItemConfig = BuildServiceUtils.PlaceableItemConfig
 type TileCoordinate = BuildServiceUtils.TileCoordinate
 type TileDelta = BuildServiceUtils.TileDelta
 type TreeState = BuildServiceUtils.TreeState
@@ -21,6 +24,9 @@ type TreeSnapshot = BuildServiceUtils.TreeSnapshot
 type TreeFootprint = BuildServiceUtils.TreeFootprint
 type TreeHitResult = BuildServiceUtils.TreeHitResult
 type TreeBreakProfile = BuildServiceUtils.TreeBreakProfile
+type InventoryState = InventoryServiceUtils.InventoryState
+type InventoryItemStack = InventoryServiceUtils.InventoryItemStack
+type SlotMutationResult = InventoryServiceUtils.SlotMutationResult
 
 type WorldGenerationServiceServerObject = {
 	getWorld: (self: WorldGenerationServiceServerObject) -> any,
@@ -33,6 +39,23 @@ type LootServiceServerObject = {
 		itemIdRaw: any,
 		amountRaw: any,
 		positionRaw: any,
+		optionsRaw: any
+	) -> any,
+}
+
+type InventoryServiceServerObject = {
+	getState: (self: InventoryServiceServerObject, player: Player) -> InventoryState,
+	removeFromSlot: (
+		self: InventoryServiceServerObject,
+		player: Player,
+		slotIndexRaw: any,
+		amountRaw: any
+	) -> SlotMutationResult,
+	addItem: (
+		self: InventoryServiceServerObject,
+		player: Player,
+		itemIdRaw: any,
+		amountRaw: any,
 		optionsRaw: any
 	) -> any,
 }
@@ -76,6 +99,18 @@ local TREE_DROP_SOURCE_TYPE = "TreeFell"
 
 local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
+end
+
+local function sanitizeInventorySlot(slotRaw: any): number?
+	if typeof(slotRaw) ~= "number" or slotRaw ~= slotRaw then
+		return nil
+	end
+
+	local slot = math.floor(slotRaw)
+	if slot <= 0 then
+		return nil
+	end
+	return slot
 end
 
 local function resolveBuildConfigSource(): any
@@ -157,6 +192,41 @@ local function resolvePlayerToolType(player: Player, fallback: string): string
 		end
 	end
 	return fallback
+end
+
+local function resolvePlaceableFromInventory(
+	inventoryService: InventoryServiceServerObject?,
+	player: Player,
+	sourceSlotRaw: any?
+): (number?, InventoryItemStack?, PlaceableItemConfig?, string?)
+	if inventoryService == nil then
+		return nil, nil, nil, nil
+	end
+
+	local inventoryState = inventoryService:getState(player)
+	if not InventoryServiceUtils.isLoadedState(inventoryState.loadState) then
+		return nil, nil, nil, nil
+	end
+
+	local sourceSlot = nil :: number?
+	if sourceSlotRaw ~= nil then
+		sourceSlot = sanitizeInventorySlot(sourceSlotRaw)
+		if sourceSlot == nil then
+			return nil, nil, nil, "invalid_source_slot"
+		end
+	else
+		sourceSlot = inventoryState.selectedSlot
+	end
+	if sourceSlot == nil then
+		return nil, nil, nil, nil
+	end
+
+	local stack = InventoryServiceUtils.getStack(inventoryState, sourceSlot)
+	if stack == nil or stack.amount <= 0 then
+		return sourceSlot, nil, nil, nil
+	end
+
+	return sourceSlot, stack, BuildServiceUtils.resolvePlaceableItemConfig(stack.itemId), nil
 end
 
 local function cloneTileDeltaList(source: { TileDelta }): { TileDelta }
@@ -789,9 +859,17 @@ function BuildServiceServer.canPlaceAt(
 ): (boolean, string)
 	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
 	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
-	local tileId = BuildServiceUtils.sanitizeTileId(tileIdRaw)
-	if tileX == nil or tileY == nil or tileId == nil then
+	local requestedTileId = BuildServiceUtils.sanitizeTileId(tileIdRaw)
+	if tileX == nil or tileY == nil or requestedTileId == nil then
 		return false, "invalid_tile_coordinate_or_id"
+	end
+	local _, _, selectedPlaceableConfig = resolvePlaceableFromInventory(self.inventoryService, player, nil)
+	if selectedPlaceableConfig == nil then
+		return false, "selected_item_not_placeable"
+	end
+	local tileId = selectedPlaceableConfig.tileId
+	if requestedTileId ~= tileId then
+		return false, "selected_item_tile_mismatch"
 	end
 	if not self:isTileWithinBounds(tileY) then
 		return false, "tile_out_of_bounds"
@@ -820,19 +898,56 @@ function BuildServiceServer.requestPlaceTile(
 	tileXRaw: any,
 	tileYRaw: any,
 	tileIdRaw: any,
-	requestIdRaw: any?
+	requestIdRaw: any?,
+	sourceSlotRaw: any?
 )
 	local requestId = BuildServiceUtils.sanitizeRequestId(requestIdRaw)
 	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
 	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
-	local tileId = BuildServiceUtils.sanitizeTileId(tileIdRaw)
-	if tileX == nil or tileY == nil or tileId == nil then
+	local requestedTileId = BuildServiceUtils.sanitizeTileId(tileIdRaw)
+	if tileX == nil or tileY == nil or requestedTileId == nil then
 		self:sendActionResult(
 			player,
 			requestId,
 			BuildServiceUtils.ACTION_TYPE_PLACE,
 			false,
 			"invalid_tile_coordinate_or_id",
+			nil
+		)
+		return
+	end
+	local sourceSlot, sourceStack, sourcePlaceableConfig, sourceError =
+		resolvePlaceableFromInventory(self.inventoryService, player, sourceSlotRaw)
+	if sourceError ~= nil then
+		self:sendActionResult(
+			player,
+			requestId,
+			BuildServiceUtils.ACTION_TYPE_PLACE,
+			false,
+			sourceError,
+			nil
+		)
+		return
+	end
+	if sourceSlot == nil or sourceStack == nil or sourcePlaceableConfig == nil then
+		self:sendActionResult(
+			player,
+			requestId,
+			BuildServiceUtils.ACTION_TYPE_PLACE,
+			false,
+			"selected_item_not_placeable",
+			nil
+		)
+		return
+	end
+	local tileId = sourcePlaceableConfig.tileId
+	if requestedTileId ~= tileId then
+		self:sendActionResult(
+			player,
+			requestId,
+			BuildServiceUtils.ACTION_TYPE_PLACE,
+			false,
+			"selected_item_tile_mismatch",
 			nil
 		)
 		return
@@ -868,6 +983,48 @@ function BuildServiceServer.requestPlaceTile(
 		)
 		return
 	end
+	local requiredAmount = if sourcePlaceableConfig.consumesOnPlace then #placementResult.footprint else 0
+	if sourceStack.amount < requiredAmount then
+		self:sendActionResult(
+			player,
+			requestId,
+			BuildServiceUtils.ACTION_TYPE_PLACE,
+			false,
+			"insufficient_items",
+			nil
+		)
+		return
+	end
+
+	local stackSnapshot = nil :: InventoryItemStack?
+	if requiredAmount > 0 then
+		stackSnapshot = {
+			stackId = sourceStack.stackId,
+			itemId = sourceStack.itemId,
+			amount = sourceStack.amount,
+			maxStack = sourceStack.maxStack,
+			metadata = InventoryServiceUtils.cloneDeep(sourceStack.metadata),
+		}
+		local consumeResult = self.inventoryService:removeFromSlot(player, sourceSlot, requiredAmount)
+		if consumeResult.removedAmount < requiredAmount then
+			if consumeResult.removedAmount > 0 and stackSnapshot ~= nil then
+				self.inventoryService:addItem(player, stackSnapshot.itemId, consumeResult.removedAmount, {
+					maxStack = stackSnapshot.maxStack,
+					metadata = stackSnapshot.metadata,
+					stackIdPrefix = "buildRollback",
+				})
+			end
+			self:sendActionResult(
+				player,
+				requestId,
+				BuildServiceUtils.ACTION_TYPE_PLACE,
+				false,
+				"insufficient_items",
+				nil
+			)
+			return
+		end
+	end
 
 	local changedTiles: { TileCoordinate } = {}
 	local changedDeltas: { TileDelta } = {}
@@ -893,11 +1050,26 @@ function BuildServiceServer.requestPlaceTile(
 	end
 
 	if #changedTiles <= 0 then
+		if requiredAmount > 0 and stackSnapshot ~= nil then
+			self.inventoryService:addItem(player, stackSnapshot.itemId, requiredAmount, {
+				maxStack = stackSnapshot.maxStack,
+				metadata = stackSnapshot.metadata,
+				stackIdPrefix = "buildRollback",
+			})
+		end
 		self:sendActionResult(player, requestId, BuildServiceUtils.ACTION_TYPE_PLACE, false, "no_change", nil)
 		return
 	end
 
-	self:registerMultiTilePlacement(tileId, placementResult.footprint)
+	if requiredAmount > 0 and stackSnapshot ~= nil and #changedTiles < requiredAmount then
+		self.inventoryService:addItem(player, stackSnapshot.itemId, requiredAmount - #changedTiles, {
+			maxStack = stackSnapshot.maxStack,
+			metadata = stackSnapshot.metadata,
+			stackIdPrefix = "buildRollback",
+		})
+	end
+
+	self:registerMultiTilePlacement(tileId, changedTiles)
 	self:sendActionResult(
 		player,
 		requestId,
@@ -1280,6 +1452,7 @@ end
 function BuildServiceServer.init(self: BuildServiceServer)
 	local worldGenerationService = WorldGenerationServiceServer :: WorldGenerationServiceServerObject
 	self.worldGenerationService = worldGenerationService
+	self.inventoryService = InventoryServiceServer :: InventoryServiceServerObject
 	self.lootService = LootServiceServer :: LootServiceServerObject
 	self.world = worldGenerationService:getWorld()
 	self.config = BuildServiceUtils.sanitizeConfig(resolveBuildConfigSource(), nil)
@@ -1350,6 +1523,7 @@ type BuildServiceServer = typeof(BuildServiceServer) & {
 	config: BuildServiceConfig,
 	state: BuildServiceState,
 	worldGenerationService: WorldGenerationServiceServerObject,
+	inventoryService: InventoryServiceServerObject?,
 	lootService: LootServiceServerObject?,
 	world: any,
 	pendingTileDeltas: { TileDelta },

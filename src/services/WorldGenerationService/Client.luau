@@ -150,6 +150,12 @@ local TILE_VISUALS: { [number]: TileVisual } = {
 		material = Enum.Material.Grass,
 		transparency = 0,
 	},
+	[18] = {
+		name = "Wood",
+		color = Color3.fromRGB(121, 91, 56),
+		material = Enum.Material.Wood,
+		transparency = 0,
+	},
 	[2] = {
 		name = "Dirt",
 		color = Color3.fromRGB(108, 78, 52),

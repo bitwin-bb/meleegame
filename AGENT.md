@@ -37,6 +37,7 @@ Package-level style profile:
 3. Keep comments minimal.
 - Do not add explanatory noise.
 - Add comments only for non-obvious contracts or side effects.
+- Comments use lower case with no punctuation unless a required identifier must keep its original casing.
 
 4. Respect existing naming rhythm.
 - Types/tables/modules/services/classes: `PascalCase`.
@@ -104,6 +105,7 @@ Hard rule: for networking, follow the above pattern exactly unless the user expl
 - Error handling style:
   - Use `pcall` around external boundaries (cross-service calls, tool requires, optional services).
   - Warn with service-prefixed messages when needed.
+  - Printed, warned, or errored message text uses lower case with no punctuation unless a required identifier must keep its original casing.
 - State style:
   - Clone before exposing mutable state (`cloneState` style).
   - Push snapshots, not direct runtime references.

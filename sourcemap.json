@@ -6522,6 +6522,13 @@
                           ]
                         },
                         {
+                          "name": "catchUpPlayer",
+                          "className": "ModuleScript",
+                          "filePaths": [
+                            "src/classes/Camera/Behavior/catchUpPlayer.luau"
+                          ]
+                        },
+                        {
                           "name": "cutsceneSubject",
                           "className": "ModuleScript",
                           "filePaths": [
@@ -6533,13 +6540,6 @@
                           "className": "ModuleScript",
                           "filePaths": [
                             "src/classes/Camera/Behavior/enemySubject.luau"
-                          ]
-                        },
-                        {
-                          "name": "catchUpPlayer",
-                          "className": "ModuleScript",
-                          "filePaths": [
-                            "src/classes/Camera/Behavior/catchUpPlayer.luau"
                           ]
                         }
                       ]
@@ -6704,6 +6704,78 @@
                   ]
                 },
                 {
+                  "name": "WindFoliage",
+                  "className": "ModuleScript",
+                  "filePaths": [
+                    "src/classes/WindFoliage/init.luau"
+                  ],
+                  "children": [
+                    {
+                      "name": "DisturbanceSource",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/classes/WindFoliage/DisturbanceSource.luau"
+                      ]
+                    },
+                    {
+                      "name": "FoliageInstance",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/classes/WindFoliage/FoliageInstance.luau"
+                      ]
+                    },
+                    {
+                      "name": "TreeFoliageGraph",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/classes/WindFoliage/TreeFoliageGraph.luau"
+                      ]
+                    },
+                    {
+                      "name": "WindField",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/classes/WindFoliage/WindField.luau"
+                      ]
+                    },
+                    {
+                      "name": "RippleMotion",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/classes/WindFoliage/RippleMotion.luau"
+                      ]
+                    },
+                    {
+                      "name": "BufferPool",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/classes/WindFoliage/BufferPool.luau"
+                      ]
+                    },
+                    {
+                      "name": "FoliageUpdateManager",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/classes/WindFoliage/FoliageUpdateManager.luau"
+                      ]
+                    },
+                    {
+                      "name": "LODController",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/classes/WindFoliage/LODController.luau"
+                      ]
+                    },
+                    {
+                      "name": "TreeRuntimeRegistry",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/classes/WindFoliage/TreeRuntimeRegistry.luau"
+                      ]
+                    }
+                  ]
+                },
+                {
                   "name": "WorldGeneration",
                   "className": "ModuleScript",
                   "filePaths": [
@@ -6765,43 +6837,6 @@
                       ]
                     }
                   ]
-                },
-                {
-                  "name": "WindFoliage",
-                  "className": "ModuleScript",
-                  "filePaths": [
-                    "src/classes/WindFoliage/init.luau"
-                  ],
-                  "children": [
-                    {
-                      "name": "DisturbanceSource",
-                      "className": "ModuleScript",
-                      "filePaths": [
-                        "src/classes/WindFoliage/DisturbanceSource.luau"
-                      ]
-                    },
-                    {
-                      "name": "FoliageInstance",
-                      "className": "ModuleScript",
-                      "filePaths": [
-                        "src/classes/WindFoliage/FoliageInstance.luau"
-                      ]
-                    },
-                    {
-                      "name": "WindField",
-                      "className": "ModuleScript",
-                      "filePaths": [
-                        "src/classes/WindFoliage/WindField.luau"
-                      ]
-                    },
-                    {
-                      "name": "TreeFoliageGraph",
-                      "className": "ModuleScript",
-                      "filePaths": [
-                        "src/classes/WindFoliage/TreeFoliageGraph.luau"
-                      ]
-                    }
-                  ]
                 }
               ]
             },
@@ -6825,13 +6860,6 @@
                       "className": "ModuleScript",
                       "filePaths": [
                         "src/modules/Core/BinaryStreaming.luau"
-                      ]
-                    },
-                    {
-                      "name": "CameraShakeGate",
-                      "className": "ModuleScript",
-                      "filePaths": [
-                        "src/modules/Core/CameraShakeGate.luau"
                       ]
                     },
                     {
@@ -6956,6 +6984,13 @@
                             "src/modules/Game/Player/PlayerSpawnCooldown.luau"
                           ]
                         }
+                      ]
+                    },
+                    {
+                      "name": "ResolveItem",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/modules/Game/ResolveItem.luau"
                       ]
                     }
                   ]
@@ -7610,6 +7645,19 @@
                   ]
                 },
                 {
+                  "name": "WindFoliageService",
+                  "className": "Folder",
+                  "children": [
+                    {
+                      "name": "WindFoliageServiceClient",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/services/WindFoliageService/Client.luau"
+                      ]
+                    }
+                  ]
+                },
+                {
                   "name": "WorldAnimatorService",
                   "className": "Folder",
                   "children": [
@@ -7735,19 +7783,6 @@
                       "className": "ModuleScript",
                       "filePaths": [
                         "src/services/WorldSimulationService/Utils.luau"
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "name": "WindFoliageService",
-                  "className": "Folder",
-                  "children": [
-                    {
-                      "name": "WindFoliageServiceClient",
-                      "className": "ModuleScript",
-                      "filePaths": [
-                        "src/services/WindFoliageService/Client.luau"
                       ]
                     }
                   ]

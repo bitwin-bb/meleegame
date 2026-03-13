@@ -27,9 +27,10 @@ local weaponIcons = {
 	axe = "rbxassetid://131821175291479",
 	hammer = "rbxassetid://122769702567537",
 }
+local questionMarkIcon = "rbxassetid://105837137977667"
 
 local itemIcons = withAliases({
-	default = weaponIcons.sword,
+	default = questionMarkIcon,
 	sword = weaponIcons.sword,
 	copperShortSword = weaponIcons.sword,
 	pickaxe = weaponIcons.pickaxe,
@@ -49,6 +50,7 @@ local itemIcons = withAliases({
 	ebonStone = "rbxassetid://84325236351785",
 	dirt = "rbxassetid://79897470188136",
 	acorn = "rbxassetid://89910393519002",
+	workbench = "rbxassetid://127346854237238",
 }, {
 	default = { "weapon", "shortsword", "broadsword" },
 	copperShortSword = { "coppershortsword" },
@@ -87,6 +89,8 @@ return {
 	craftingMenuCategoryPressed = "rbxassetid://125140152167084",
 	craftingMenuInner = "rbxassetid://73368761402049",
 	craftingMenuTextBox = "rbxassetid://98196498320236",
+	recipeIcon = "rbxassetid://114344383327166",
+	questionMark = questionMarkIcon,
 	spriteSheets = {
 		copperCoin = "rbxassetid://138124828857039",
 		silverCoin = "rbxassetid://81978209477040",

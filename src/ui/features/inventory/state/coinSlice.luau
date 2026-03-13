@@ -44,6 +44,22 @@ local function createDefaultCoinAmounts(): CoinAmounts
 	}
 end
 
+local function resolveRawCoinAmounts(coinsDataRaw: any): (CoinAmounts, boolean)
+	if typeof(coinsDataRaw) ~= "table" then
+		return createDefaultCoinAmounts(), false
+	end
+
+	local source = coinsDataRaw :: { [string]: any }
+	local amounts: CoinAmounts = {
+		copper = sanitizeWholeNumber(source.copper, 0),
+		silver = sanitizeWholeNumber(source.silver, 0),
+		gold = sanitizeWholeNumber(source.gold, 0),
+		platinum = sanitizeWholeNumber(source.platinum, 0),
+	}
+	local hasExplicitAmounts = amounts.copper > 0 or amounts.silver > 0 or amounts.gold > 0 or amounts.platinum > 0
+	return amounts, hasExplicitAmounts
+end
+
 local function coinsToTotalCopper(amounts: CoinAmounts): number
 	return amounts.copper * COIN_VALUE_TO_COPPER.copper
 		+ amounts.silver * COIN_VALUE_TO_COPPER.silver
@@ -72,18 +88,17 @@ local function resolveTotalCopperFromCoinsData(coinsDataRaw: any, fallbackTotalC
 	end
 
 	local source = coinsDataRaw :: { [string]: any }
+	local rawAmounts, hasExplicitAmounts = resolveRawCoinAmounts(source)
+	if hasExplicitAmounts then
+		return coinsToTotalCopper(rawAmounts)
+	end
+
 	local explicitTotalCopperRaw = source.totalCopper
 	if typeof(explicitTotalCopperRaw) == "number" and explicitTotalCopperRaw == explicitTotalCopperRaw then
 		return sanitizeWholeNumber(explicitTotalCopperRaw, fallbackTotalCopper)
 	end
 
-	local amounts: CoinAmounts = {
-		copper = sanitizeWholeNumber(source.copper, 0),
-		silver = sanitizeWholeNumber(source.silver, 0),
-		gold = sanitizeWholeNumber(source.gold, 0),
-		platinum = sanitizeWholeNumber(source.platinum, 0),
-	}
-	return coinsToTotalCopper(amounts)
+	return coinsToTotalCopper(rawAmounts)
 end
 
 local function createDefaultState(loadStateRaw: any): CoinState
@@ -101,13 +116,14 @@ local function createStateFromData(coinsDataRaw: any, loadStateRaw: any, fallbac
 		then (fallbackStateRaw :: CoinState)
 		else createDefaultState(PlayerDataServiceUtils.LOAD_STATE_UNLOADED)
 	local loadState = PlayerDataServiceUtils.sanitizeLoadState(loadStateRaw, fallbackState.loadState)
+	local rawAmounts, hasExplicitAmounts = resolveRawCoinAmounts(coinsDataRaw)
 	local totalCopper = resolveTotalCopperFromCoinsData(coinsDataRaw, fallbackState.totalCopper)
-	local amounts = totalCopperToCoinAmounts(totalCopper)
+	local amounts = if hasExplicitAmounts then rawAmounts else totalCopperToCoinAmounts(totalCopper)
 
 	return {
 		loadState = loadState,
 		amounts = amounts,
-		totalCopper = coinsToTotalCopper(amounts),
+		totalCopper = totalCopper,
 		updatedAt = os.clock(),
 	}
 end

@@ -1,11 +1,14 @@
 --!strict
 local Players = game:GetService("Players")
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
+local Workspace = game:GetService("Workspace")
 
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local ItemRegistry = require(ReplicatedStorage.Shared.Modules.Items.Registry)
+local ResolveItem = require(ReplicatedStorage.Shared.Modules.Game.ResolveItem)
 local InventoryServiceUtils = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceUtils)
 local PlayerDataServiceServer = require(ServerScriptService.Services.PlayerDataService.PlayerDataServiceServer)
 
@@ -54,6 +57,10 @@ local TOOL_IMPORT_ATTRIBUTE_NAME = "itemId"
 local TOOL_IMPORT_TYPE_ATTRIBUTE_NAME = "itemType"
 local TOOL_IMPORT_STACK_ID_PREFIX = "tool"
 local TOOL_IMPORT_METADATA_TYPE_KEY = "itemType"
+local DEPLOYABLE_PLACED_ATTRIBUTE_NAME = "PlacedItemId"
+local boundToolConnections = {} :: { [Tool]: { RBXScriptConnection } }
+local resolveToolImportData: (tool: Tool) -> (string?, string?)
+local suppressAndPurgePlayerTools: (runtime: PlayerRuntime, player: Player, itemIdRaw: any, amountRaw: any) -> ()
 
 local function trim(textRaw: any): string
 	if typeof(textRaw) ~= "string" then
@@ -75,6 +82,13 @@ local function normalizeImportAmount(amountRaw: any): number
 		return 1
 	end
 	return math.max(1, math.floor(amountRaw))
+end
+
+local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number): number
+	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
+		return fallback
+	end
+	return math.max(minimum, valueRaw)
 end
 
 local function queuePendingToolImport(runtime: PlayerRuntime, itemId: string, itemType: string, amountRaw: any)
@@ -130,7 +144,270 @@ local function resolveItemIdLookup(): { [string]: string }
 	return ItemRegistry.getItemIdLookup()
 end
 
-local function resolveToolImportData(tool: Tool): (string?, string?)
+local function resolveItemTypeForStack(stackRaw: any): string?
+	if typeof(stackRaw) ~= "table" then
+		return nil
+	end
+
+	local stack = stackRaw :: { [string]: any }
+	local metadata = if typeof(stack.metadata) == "table" then (stack.metadata :: { [string]: any }) else nil
+	local metadataItemType = if metadata ~= nil then sanitizeItemId(metadata[TOOL_IMPORT_METADATA_TYPE_KEY]) else nil
+	if metadataItemType ~= nil then
+		return metadataItemType
+	end
+
+	local definition = ItemRegistry.resolveDefinition(stack.itemId)
+	if typeof(definition) == "table" then
+		local definitionTable = definition :: { [string]: any }
+		local definitionItemType = sanitizeItemId(definitionTable.itemType) or sanitizeItemId(definitionTable.type)
+		if definitionItemType ~= nil then
+			return definitionItemType
+		end
+	end
+
+	return sanitizeItemId(stack.itemId)
+end
+
+local function cloneToolForInventoryStack(itemIdRaw: any, stackRaw: any): Tool?
+	local itemId = sanitizeItemId(itemIdRaw)
+	if itemId == nil then
+		return nil
+	end
+
+	local clone = ResolveItem.cloneToolTemplate(itemId)
+	if clone == nil then
+		return nil
+	end
+
+	clone:SetAttribute(TOOL_IMPORT_ATTRIBUTE_NAME, itemId)
+	clone:SetAttribute("ItemId", itemId)
+
+	local itemType = resolveItemTypeForStack(stackRaw)
+	if itemType ~= nil then
+		clone:SetAttribute(TOOL_IMPORT_TYPE_ATTRIBUTE_NAME, itemType)
+		clone:SetAttribute("ItemType", itemType)
+	end
+
+	return clone
+end
+
+local function resolveDeployableConfig(itemIdRaw: any): { [string]: any }?
+	local itemId = sanitizeItemId(itemIdRaw)
+	if itemId == nil then
+		return nil
+	end
+
+	local definition = ItemRegistry.resolveDefinition(itemId)
+	if typeof(definition) ~= "table" then
+		return nil
+	end
+
+	local deployable = (definition :: { [string]: any }).deployable
+	if typeof(deployable) ~= "table" then
+		return nil
+	end
+
+	local stationTag = sanitizeItemId((deployable :: { [string]: any }).stationTag)
+	if stationTag == nil then
+		return nil
+	end
+
+	return deployable :: { [string]: any }
+end
+
+local function resolveDeployablePrimaryPart(instance: Instance): BasePart?
+	if instance:IsA("BasePart") then
+		return instance
+	end
+	if instance:IsA("Model") then
+		if instance.PrimaryPart ~= nil then
+			return instance.PrimaryPart
+		end
+
+		local descendantPart = instance:FindFirstChildWhichIsA("BasePart", true)
+		if descendantPart ~= nil then
+			instance.PrimaryPart = descendantPart
+			return descendantPart
+		end
+	end
+
+	return nil
+end
+
+local function setModelAnchored(instance: Instance, anchored: boolean)
+	if instance:IsA("BasePart") then
+		instance.Anchored = anchored
+		return
+	end
+	for _, descendant in instance:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = anchored
+		end
+	end
+end
+
+local function cleanupBoundTool(tool: Tool)
+	local connections = boundToolConnections[tool]
+	if connections == nil then
+		return
+	end
+	boundToolConnections[tool] = nil
+	for _, connection in connections do
+		connection:Disconnect()
+	end
+end
+
+local function resolveHorizontalLookVector(rootPart: BasePart): Vector3
+	local lookVector = rootPart.CFrame.LookVector
+	local flattened = Vector3.new(lookVector.X, 0, lookVector.Z)
+	if flattened.Magnitude <= 0.001 then
+		return Vector3.new(0, 0, -1)
+	end
+	return flattened.Unit
+end
+
+local function resolveDeployablePlacementCFrame(
+	player: Player,
+	deployableConfig: { [string]: any },
+	placedInstance: Instance
+): CFrame?
+	local character = player.Character
+	if character == nil then
+		return nil
+	end
+
+	local rootPart = character.PrimaryPart
+	if rootPart == nil then
+		rootPart = character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	end
+	if rootPart == nil then
+		return nil
+	end
+
+	local lookVector = resolveHorizontalLookVector(rootPart)
+	local placementDistance = sanitizeNumber(deployableConfig.placementDistance, 6, 2)
+	local maxPlacementDistance = sanitizeNumber(deployableConfig.maxPlacementDistance, placementDistance + 4, placementDistance)
+	local castOrigin = rootPart.Position + Vector3.new(0, 4, 0)
+	local castDirection = lookVector * math.min(placementDistance, maxPlacementDistance)
+	local desiredPosition = castOrigin + castDirection
+
+	local raycastParams = RaycastParams.new()
+	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+	raycastParams.FilterDescendantsInstances = { character, placedInstance }
+
+	local groundRayResult = Workspace:Raycast(desiredPosition + Vector3.new(0, 12, 0), Vector3.new(0, -32, 0), raycastParams)
+	local groundPosition = if groundRayResult ~= nil then groundRayResult.Position else desiredPosition
+
+	local boundingCFrame: CFrame
+	local boundingSize: Vector3
+	if placedInstance:IsA("Model") then
+		boundingCFrame, boundingSize = placedInstance:GetBoundingBox()
+	else
+		local placedPart = placedInstance :: BasePart
+		boundingCFrame = placedPart.CFrame
+		boundingSize = placedPart.Size
+	end
+	local bottomOffset = math.max(0, boundingSize.Y * 0.5)
+	local yaw = math.atan2(-lookVector.X, -lookVector.Z)
+	local targetPosition = Vector3.new(groundPosition.X, groundPosition.Y + bottomOffset, groundPosition.Z)
+
+	return CFrame.new(targetPosition) * CFrame.Angles(0, yaw, 0) * boundingCFrame.Rotation
+end
+
+function InventoryServiceServer.tryPlaceDeployableFromTool(
+	self: InventoryServiceServer,
+	player: Player,
+	runtime: PlayerRuntime,
+	tool: Tool
+): boolean
+	local itemId = sanitizeItemId(tool:GetAttribute(TOOL_IMPORT_ATTRIBUTE_NAME))
+	if itemId == nil then
+		itemId = sanitizeItemId(tool:GetAttribute("ItemId"))
+	end
+	if itemId == nil then
+		return false
+	end
+
+	local deployableConfig = resolveDeployableConfig(itemId)
+	if deployableConfig == nil then
+		return false
+	end
+
+	local selectedSlot = runtime.state.selectedSlot
+	local selectedStack = if selectedSlot ~= nil then InventoryServiceUtils.getStack(runtime.state, selectedSlot) else nil
+	if selectedSlot == nil or selectedStack == nil or sanitizeItemId(selectedStack.itemId) ~= itemId then
+		return false
+	end
+
+	local primaryTemplate = ResolveItem.resolvePrimaryTemplate(itemId)
+	if primaryTemplate == nil or primaryTemplate:IsA("Tool") then
+		return false
+	end
+
+	local placedInstance = primaryTemplate:Clone()
+	local primaryPart = resolveDeployablePrimaryPart(placedInstance)
+	if primaryPart == nil then
+		placedInstance:Destroy()
+		return false
+	end
+
+	local placementCFrame = resolveDeployablePlacementCFrame(player, deployableConfig, placedInstance)
+	if placementCFrame == nil then
+		placedInstance:Destroy()
+		return false
+	end
+
+	local mutation = InventoryServiceUtils.removeFromSlot(runtime.state, selectedSlot, 1)
+	if not mutation.changed or mutation.removedAmount <= 0 then
+		placedInstance:Destroy()
+		return false
+	end
+
+	setModelAnchored(placedInstance, true)
+	if placedInstance:IsA("Model") then
+		placedInstance:PivotTo(placementCFrame)
+	else
+		(placedInstance :: BasePart).CFrame = placementCFrame
+	end
+
+	local stationTag = sanitizeItemId(deployableConfig.stationTag)
+	if stationTag ~= nil then
+		CollectionService:AddTag(placedInstance, stationTag)
+	end
+	placedInstance:SetAttribute(DEPLOYABLE_PLACED_ATTRIBUTE_NAME, itemId)
+	placedInstance.Parent = Workspace
+
+	suppressAndPurgePlayerTools(runtime, player, itemId, mutation.removedAmount)
+	self:pushAndPersistState(player, runtime)
+	return true
+end
+
+function InventoryServiceServer.bindToolInteractions(
+	self: InventoryServiceServer,
+	player: Player,
+	runtime: PlayerRuntime,
+	tool: Tool
+)
+	if boundToolConnections[tool] ~= nil then
+		return
+	end
+
+	local itemId = resolveToolImportData(tool)
+	if resolveDeployableConfig(itemId) == nil then
+		return
+	end
+
+	local connections = {} :: { RBXScriptConnection }
+	boundToolConnections[tool] = connections
+	connections[#connections + 1] = tool.Activated:Connect(function()
+		self:tryPlaceDeployableFromTool(player, runtime, tool)
+	end)
+	connections[#connections + 1] = tool.Destroying:Connect(function()
+		cleanupBoundTool(tool)
+	end)
+end
+
+resolveToolImportData = function(tool: Tool): (string?, string?)
 	local itemId = sanitizeItemId(tool:GetAttribute(TOOL_IMPORT_ATTRIBUTE_NAME))
 	local itemType = sanitizeItemId(tool:GetAttribute(TOOL_IMPORT_TYPE_ATTRIBUTE_NAME))
 
@@ -205,7 +482,7 @@ local function destroyMatchingToolsInContainer(container: Instance?, itemId: str
 	return destroyed
 end
 
-local function suppressAndPurgePlayerTools(runtime: PlayerRuntime, player: Player, itemIdRaw: any, amountRaw: any)
+suppressAndPurgePlayerTools = function(runtime: PlayerRuntime, player: Player, itemIdRaw: any, amountRaw: any)
 	local itemId = sanitizeItemId(itemIdRaw)
 	if itemId == nil then
 		return
@@ -395,6 +672,9 @@ function InventoryServiceServer.syncSelectedTool(self: InventoryServiceServer, p
 	end
 
 	if equippedItemId == desiredItemId then
+		if equippedTool ~= nil then
+			self:bindToolInteractions(player, runtime, equippedTool)
+		end
 		return
 	end
 
@@ -402,6 +682,13 @@ function InventoryServiceServer.syncSelectedTool(self: InventoryServiceServer, p
 	if desiredTool == nil then
 		local backpack = player:FindFirstChildOfClass("Backpack")
 		desiredTool = findMatchingToolInContainer(backpack, desiredItemId)
+		if desiredTool == nil and selectedStack ~= nil then
+			local clonedTool = cloneToolForInventoryStack(desiredItemId, selectedStack)
+			if clonedTool ~= nil then
+				clonedTool.Parent = if backpack ~= nil then backpack else character
+				desiredTool = clonedTool
+			end
+		end
 	end
 
 	if desiredTool == nil then
@@ -412,6 +699,8 @@ function InventoryServiceServer.syncSelectedTool(self: InventoryServiceServer, p
 		end
 		return
 	end
+
+	self:bindToolInteractions(player, runtime, desiredTool)
 
 	pcall(function()
 		humanoid:EquipTool(desiredTool :: Tool)
@@ -475,6 +764,7 @@ function InventoryServiceServer.consumeToolInstance(self: InventoryServiceServer
 	local itemId, itemType = resolveToolImportData(tool)
 	if itemId ~= nil and itemType ~= nil then
 		if consumeSuppressedToolImport(runtime, itemId, 1) then
+			cleanupBoundTool(tool)
 			tool:Destroy()
 			return
 		end
@@ -483,6 +773,8 @@ function InventoryServiceServer.consumeToolInstance(self: InventoryServiceServer
 			local changed = self:importToolItemIntoState(runtime, itemId, itemType, 1)
 			if changed then
 				self:pushAndPersistState(player, runtime)
+			else
+				self:syncSelectedTool(player, runtime)
 			end
 		else
 			queuePendingToolImport(runtime, itemId, itemType, 1)

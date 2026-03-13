@@ -608,7 +608,10 @@ function CraftingServiceServer.setInventoryProvider(self: CraftingServiceServer,
 			return
 		end
 	end
-	self.inventoryProvider = CraftingServiceUtils.CraftTransaction.createInventoryProvider(self.inventoryService)
+	self.inventoryProvider = CraftingServiceUtils.CraftTransaction.createInventoryProvider(
+		self.inventoryService,
+		self.playerDataService
+	)
 end
 
 function CraftingServiceServer.setProgressionFlag(
@@ -657,7 +660,10 @@ function CraftingServiceServer.init(self: CraftingServiceServer)
 	self.inventoryService = InventoryServiceServer :: InventoryServiceServerObject
 	self.playerDataService = PlayerDataServiceServer :: PlayerDataServiceServerObject
 	self.worldGenerationService = WorldGenerationServiceServer :: WorldGenerationServiceServerObject
-	self.inventoryProvider = CraftingServiceUtils.CraftTransaction.createInventoryProvider(self.inventoryService)
+	self.inventoryProvider = CraftingServiceUtils.CraftTransaction.createInventoryProvider(
+		self.inventoryService,
+		self.playerDataService
+	)
 
 	self.networker = Networker.server.new("CraftingService", self, {
 		self.requestSync,

@@ -1,0 +1,298 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local ItemRegistry = require(ReplicatedStorage.Shared.Modules.Items.Registry)
+local LootServiceData = require(ReplicatedStorage.Shared.Services.LootService.Data)
+local LootServiceUtils = require(ReplicatedStorage.Shared.Services.LootService.LootServiceUtils)
+
+local ResolveItem = {}
+
+export type ItemTemplateResolution = {
+	primaryTemplate: Instance?,
+	toolTemplate: Tool?,
+}
+
+type CachedResolution = {
+	primaryTemplate: Instance | boolean,
+	toolTemplate: Tool | boolean,
+}
+
+local assetSearchRootsCache = nil :: { Instance }?
+local resolutionCacheByItemId = {} :: { [string]: CachedResolution }
+
+local function sanitizeItemId(itemIdRaw: any): string?
+	return LootServiceUtils.sanitizeString(itemIdRaw, nil)
+end
+
+local function resolveFolderByPath(root: Instance?, segments: { string }): Instance?
+	local cursor = root
+	for _, segment in segments do
+		if cursor == nil then
+			return nil
+		end
+		cursor = cursor:FindFirstChild(segment)
+	end
+	return cursor
+end
+
+local function appendUniqueString(target: { string }, seen: { [string]: boolean }, valueRaw: any)
+	local value = sanitizeItemId(valueRaw)
+	if value == nil or seen[value] == true then
+		return
+	end
+
+	seen[value] = true
+	target[#target + 1] = value
+end
+
+local function resolveAssetSearchRoots(): { Instance }
+	if assetSearchRootsCache ~= nil then
+		return assetSearchRootsCache
+	end
+
+	local roots = {}
+	local pathsRaw = if typeof(LootServiceData) == "table" then (LootServiceData :: { [string]: any }).assetSearchRoots else nil
+	if typeof(pathsRaw) == "table" then
+		for _, pathRaw in pathsRaw do
+			if typeof(pathRaw) ~= "table" then
+				continue
+			end
+
+			local segments = {}
+			for _, segmentRaw in pathRaw do
+				local segment = sanitizeItemId(segmentRaw)
+				if segment ~= nil then
+					segments[#segments + 1] = segment
+				end
+			end
+			if #segments <= 0 then
+				continue
+			end
+
+			local resolved = resolveFolderByPath(ReplicatedStorage, segments)
+			if resolved ~= nil then
+				roots[#roots + 1] = resolved
+			end
+		end
+	end
+
+	if #roots <= 0 then
+		local assets = ReplicatedStorage:FindFirstChild("Assets")
+		if assets ~= nil then
+			roots[#roots + 1] = assets
+		end
+	end
+
+	assetSearchRootsCache = roots
+	return roots
+end
+
+local function resolveItemNameCandidates(itemIdRaw: any): { string }
+	local itemId = sanitizeItemId(itemIdRaw)
+	if itemId == nil then
+		return {}
+	end
+
+	local candidates = {}
+	local seen = {} :: { [string]: boolean }
+
+	local baseCandidates = LootServiceUtils.resolveItemNameCandidates(LootServiceData, itemId)
+	for _, candidate in baseCandidates do
+		appendUniqueString(candidates, seen, candidate)
+	end
+
+	local definition = ItemRegistry.resolveDefinition(itemId)
+	if typeof(definition) == "table" then
+		local definitionTable = definition :: { [string]: any }
+		appendUniqueString(candidates, seen, definitionTable.name)
+		appendUniqueString(candidates, seen, definitionTable.id)
+		appendUniqueString(candidates, seen, definitionTable.itemId)
+	end
+
+	return candidates
+end
+
+local function findUsableTemplateDescendant(root: Instance): Instance?
+	for _, descendant in root:GetDescendants() do
+		if
+			descendant:IsA("Model")
+			or descendant:IsA("BasePart")
+			or descendant:IsA("Tool")
+			or descendant:IsA("Accessory")
+		then
+			return descendant
+		end
+	end
+	return nil
+end
+
+local function findTemplateVariantDescendant(root: Instance, variantNameRaw: any): Instance?
+	local variantName = sanitizeItemId(variantNameRaw)
+	if variantName == nil then
+		return nil
+	end
+
+	local variantRoot = root:FindFirstChild(variantName)
+	if variantRoot == nil then
+		return nil
+	end
+	if
+		variantRoot:IsA("Model")
+		or variantRoot:IsA("BasePart")
+		or variantRoot:IsA("Tool")
+		or variantRoot:IsA("Accessory")
+	then
+		return variantRoot
+	end
+
+	return findUsableTemplateDescendant(variantRoot)
+end
+
+local function resolveTemplatesFromRoot(root: Instance): ItemTemplateResolution
+	if root:IsA("Tool") then
+		return {
+			primaryTemplate = root,
+			toolTemplate = root,
+		}
+	end
+
+	if root:IsA("Accessory") then
+		return {
+			primaryTemplate = root,
+			toolTemplate = nil,
+		}
+	end
+
+	if root:IsA("Model") or root:IsA("BasePart") then
+		local toolVariant = findTemplateVariantDescendant(root, "Tool")
+		return {
+			primaryTemplate = root,
+			toolTemplate = if toolVariant ~= nil and toolVariant:IsA("Tool") then toolVariant else nil,
+		}
+	end
+
+	local toolVariant = findTemplateVariantDescendant(root, "Tool")
+	local modelVariant = findTemplateVariantDescendant(root, "Model")
+	local primaryTemplate = modelVariant or findUsableTemplateDescendant(root)
+	local toolTemplate = nil :: Tool?
+	if toolVariant ~= nil and toolVariant:IsA("Tool") then
+		toolTemplate = toolVariant
+	elseif primaryTemplate ~= nil and primaryTemplate:IsA("Tool") then
+		toolTemplate = primaryTemplate
+	end
+
+	return {
+		primaryTemplate = primaryTemplate,
+		toolTemplate = toolTemplate,
+	}
+end
+
+local function isCachedTemplateAlive(templateRaw: Instance | boolean): boolean
+	if templateRaw == false then
+		return true
+	end
+	return (templateRaw :: Instance).Parent ~= nil
+end
+
+local function readCachedResolution(itemId: string): ItemTemplateResolution?
+	local cached = resolutionCacheByItemId[itemId]
+	if cached == nil then
+		return nil
+	end
+
+	if not isCachedTemplateAlive(cached.primaryTemplate) or not isCachedTemplateAlive(cached.toolTemplate) then
+		resolutionCacheByItemId[itemId] = nil
+		return nil
+	end
+
+	return {
+		primaryTemplate = if cached.primaryTemplate == false then nil else (cached.primaryTemplate :: Instance),
+		toolTemplate = if cached.toolTemplate == false then nil else (cached.toolTemplate :: Tool),
+	}
+end
+
+local function cacheResolution(itemId: string, resolution: ItemTemplateResolution): ItemTemplateResolution
+	resolutionCacheByItemId[itemId] = {
+		primaryTemplate = if resolution.primaryTemplate ~= nil then resolution.primaryTemplate else false,
+		toolTemplate = if resolution.toolTemplate ~= nil then resolution.toolTemplate else false,
+	}
+	return resolution
+end
+
+function ResolveItem.resolve(itemIdRaw: any): ItemTemplateResolution
+	local itemId = sanitizeItemId(itemIdRaw)
+	if itemId == nil then
+		return {
+			primaryTemplate = nil,
+			toolTemplate = nil,
+		}
+	end
+
+	local cached = readCachedResolution(itemId)
+	if cached ~= nil then
+		return cached
+	end
+
+	local roots = resolveAssetSearchRoots()
+	local candidates = resolveItemNameCandidates(itemId)
+
+	for _, root in roots do
+		for _, candidate in candidates do
+			local direct = root:FindFirstChild(candidate)
+			if direct ~= nil then
+				local resolution = resolveTemplatesFromRoot(direct)
+				if resolution.primaryTemplate ~= nil or resolution.toolTemplate ~= nil then
+					return cacheResolution(itemId, resolution)
+				end
+			end
+		end
+	end
+
+	for _, root in roots do
+		for _, candidate in candidates do
+			for _, descendant in root:GetDescendants() do
+				if descendant.Name ~= candidate then
+					continue
+				end
+
+				local resolution = resolveTemplatesFromRoot(descendant)
+				if resolution.primaryTemplate ~= nil or resolution.toolTemplate ~= nil then
+					return cacheResolution(itemId, resolution)
+				end
+			end
+		end
+	end
+
+	return cacheResolution(itemId, {
+		primaryTemplate = nil,
+		toolTemplate = nil,
+	})
+end
+
+function ResolveItem.resolvePrimaryTemplate(itemIdRaw: any): Instance?
+	return ResolveItem.resolve(itemIdRaw).primaryTemplate
+end
+
+function ResolveItem.resolveToolTemplate(itemIdRaw: any): Tool?
+	return ResolveItem.resolve(itemIdRaw).toolTemplate
+end
+
+function ResolveItem.cloneToolTemplate(itemIdRaw: any): Tool?
+	local template = ResolveItem.resolveToolTemplate(itemIdRaw)
+	if template == nil then
+		return nil
+	end
+
+	local clone = template:Clone()
+	if not clone:IsA("Tool") then
+		clone:Destroy()
+		return nil
+	end
+	return clone
+end
+
+function ResolveItem.clearCache()
+	assetSearchRootsCache = nil
+	table.clear(resolutionCacheByItemId)
+end
+
+return ResolveItem

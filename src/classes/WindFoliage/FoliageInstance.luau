@@ -103,7 +103,7 @@ local function normalizeRepresentation(valueRaw: any): Representation
 	if valueRaw == "Bone" then
 		return "Bone"
 	end
-	return "BasePart"
+	return DEFAULT_REPRESENTATION
 end
 
 local function resolveBasePartFromInstance(instance: Instance): BasePart?

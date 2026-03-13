@@ -28,46 +28,46 @@ CraftingTree.stations = {
 }
 
 CraftingTree.groups = {
+	craftingStations = {
+		id = "craftingStations",
+		displayName = "Furniture",
+		sortOrder = 5,
+		recipeIds = {
+			"craft_workbench",
+		},
+	},
 	currency = {
 		id = "currency",
 		displayName = "Currency Compression",
 		sortOrder = 10,
 		recipeIds = {
 			"coin_silver_from_copper",
+			"coin_copper_from_silver",
 			"coin_gold_from_silver",
+			"coin_silver_from_gold",
 			"coin_platinum_from_gold",
-		},
-	},
-	metalwork = {
-		id = "metalwork",
-		displayName = "Metalwork",
-		sortOrder = 20,
-		recipeIds = {
-			"forge_copper_shortsword",
-			"forge_copper_broadsword",
-			"forge_katana",
-		},
-	},
-	alchemy = {
-		id = "alchemy",
-		displayName = "Alchemy",
-		sortOrder = 30,
-		recipeIds = {
-			"condense_life_crystal",
-		},
-	},
-	recycling = {
-		id = "recycling",
-		displayName = "Recycling",
-		sortOrder = 40,
-		recipeIds = {
-			"recycle_copper_broadsword",
-			"recycle_katana",
+			"coin_gold_from_platinum",
 		},
 	},
 }
 
 CraftingTree.recipes = {
+	{
+		id = "craft_workbench",
+		displayName = "Workbench",
+		category = "Furniture",
+		ingredients = {
+			{ itemId = "Wood", amount = 10 },
+		},
+		results = {
+			{ itemId = "Workbench", amount = 1 },
+		},
+		requiredStations = {},
+		requiredBiome = nil,
+		unlockConditions = nil,
+		sortOrder = 5,
+		isHidden = false,
+	},
 	{
 		id = "coin_silver_from_copper",
 		displayName = "Silver Coin (100 Copper)",
@@ -78,10 +78,26 @@ CraftingTree.recipes = {
 		results = {
 			{ itemId = "SilverCoin", amount = 1 },
 		},
-		requiredStations = { "Workbench" },
+		requiredStations = {},
 		requiredBiome = nil,
 		unlockConditions = nil,
 		sortOrder = 10,
+		isHidden = false,
+	},
+	{
+		id = "coin_copper_from_silver",
+		displayName = "Copper Coin (1 Silver)",
+		category = "Currency",
+		ingredients = {
+			{ itemId = "SilverCoin", amount = 1 },
+		},
+		results = {
+			{ itemId = "CopperCoin", amount = 100 },
+		},
+		requiredStations = {},
+		requiredBiome = nil,
+		unlockConditions = nil,
+		sortOrder = 15,
 		isHidden = false,
 	},
 	{
@@ -94,13 +110,27 @@ CraftingTree.recipes = {
 		results = {
 			{ itemId = "GoldCoin", amount = 1 },
 		},
-		requiredStations = { "Workbench" },
+		requiredStations = {},
 		requiredBiome = nil,
-		unlockConditions = {
-			requiredItems = { "SilverCoin" },
-		},
+		unlockConditions = nil,
 		sortOrder = 20,
-		isHidden = true,
+		isHidden = false,
+	},
+	{
+		id = "coin_silver_from_gold",
+		displayName = "Silver Coin (1 Gold)",
+		category = "Currency",
+		ingredients = {
+			{ itemId = "GoldCoin", amount = 1 },
+		},
+		results = {
+			{ itemId = "SilverCoin", amount = 100 },
+		},
+		requiredStations = {},
+		requiredBiome = nil,
+		unlockConditions = nil,
+		sortOrder = 25,
+		isHidden = false,
 	},
 	{
 		id = "coin_platinum_from_gold",
@@ -112,124 +142,27 @@ CraftingTree.recipes = {
 		results = {
 			{ itemId = "PlatinumCoin", amount = 1 },
 		},
-		requiredStations = { "Furnace" },
+		requiredStations = {},
 		requiredBiome = nil,
-		unlockConditions = {
-			requiredItems = { "GoldCoin" },
-		},
+		unlockConditions = nil,
 		sortOrder = 30,
-		isHidden = true,
-	},
-	{
-		id = "forge_copper_shortsword",
-		displayName = "Copper Shortsword",
-		category = "Weapons",
-		ingredients = {
-			{ itemId = "Part", amount = 8 },
-			{ itemId = "CopperCoin", amount = 20 },
-		},
-		results = {
-			{ itemId = "CopperShortSword", amount = 1 },
-		},
-		requiredStations = { "Workbench" },
-		requiredBiome = nil,
-		unlockConditions = nil,
-		sortOrder = 110,
 		isHidden = false,
 	},
 	{
-		id = "forge_copper_broadsword",
-		displayName = "Copper Broadsword",
-		category = "Weapons",
+		id = "coin_gold_from_platinum",
+		displayName = "Gold Coin (1 Platinum)",
+		category = "Currency",
 		ingredients = {
-			{ itemId = "CopperShortSword", amount = 1 },
-			{ itemId = "Part", amount = 12 },
-			{ itemId = "SilverCoin", amount = 6 },
+			{ itemId = "PlatinumCoin", amount = 1 },
 		},
 		results = {
-			{ itemId = "CopperBroadSword", amount = 1 },
+			{ itemId = "GoldCoin", amount = 100 },
 		},
-		requiredStations = { "Anvil" },
-		requiredBiome = nil,
-		unlockConditions = {
-			requiredItems = { "CopperShortSword", "SilverCoin" },
-		},
-		sortOrder = 120,
-		isHidden = true,
-	},
-	{
-		id = "forge_katana",
-		displayName = "Katana",
-		category = "Weapons",
-		ingredients = {
-			{ itemId = "CopperBroadSword", amount = 1 },
-			{ itemId = "Part", amount = 35 },
-			{ itemId = "GoldCoin", amount = 4 },
-		},
-		results = {
-			{ itemId = "Katana", amount = 1 },
-		},
-		requiredStations = { "Furnace", "Anvil" },
-		requiredBiome = nil,
-		unlockConditions = {
-			requiredItems = { "CopperBroadSword", "GoldCoin" },
-		},
-		sortOrder = 130,
-		isHidden = true,
-	},
-	{
-		id = "condense_life_crystal",
-		displayName = "Life Crystal",
-		category = "Alchemy",
-		ingredients = {
-			{ itemId = "Part", amount = 70 },
-			{ itemId = "GoldCoin", amount = 12 },
-		},
-		results = {
-			{ itemId = "LifeCrystal", amount = 1 },
-		},
-		requiredStations = { "AlchemyTable" },
-		requiredBiome = "Jungle",
-		unlockConditions = {
-			requiredItems = { "Part", "GoldCoin" },
-		},
-		sortOrder = 210,
-		isHidden = true,
-	},
-	{
-		id = "recycle_copper_broadsword",
-		displayName = "Recycle Copper Broadsword",
-		category = "Recycling",
-		ingredients = {
-			{ itemId = "CopperBroadSword", amount = 1 },
-		},
-		results = {
-			{ itemId = "Part", amount = 20 },
-		},
-		requiredStations = { "Furnace" },
+		requiredStations = {},
 		requiredBiome = nil,
 		unlockConditions = nil,
-		sortOrder = 310,
+		sortOrder = 35,
 		isHidden = false,
-	},
-	{
-		id = "recycle_katana",
-		displayName = "Recycle Katana",
-		category = "Recycling",
-		ingredients = {
-			{ itemId = "Katana", amount = 1 },
-		},
-		results = {
-			{ itemId = "Part", amount = 50 },
-			{ itemId = "GoldCoin", amount = 2 },
-		},
-		requiredStations = { "Furnace" },
-		requiredBiome = nil,
-		unlockConditions = {
-			requiredItems = { "Katana" },
-		},
-		sortOrder = 320,
-		isHidden = true,
 	},
 }
 

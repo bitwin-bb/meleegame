@@ -1,5 +1,9 @@
 --!strict
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local ItemRegistry = require(ReplicatedStorage.Shared.Modules.Items.Registry)
+
 local BuildServiceUtils = {}
 
 BuildServiceUtils.NETWORK_METHOD_REQUEST_SYNC = "requestSync"
@@ -81,6 +85,13 @@ export type TilePlacementResult = {
 	canPlace: boolean,
 	reason: string,
 	footprint: { TileCoordinate },
+}
+
+export type PlaceableItemConfig = {
+	itemId: string,
+	tileId: number,
+	consumesOnPlace: boolean,
+	animationProfile: string?,
 }
 
 export type TreeTileType = "trunk" | "leaf"
@@ -206,12 +217,36 @@ local TILE_ID = {
 	CORRUPT_SOIL = 15,
 	CORRUPT_STONE = 16,
 	JUNGLE_GRASS = 17,
+	WOOD = 18,
 }
 
 BuildServiceUtils.TILE_ID = TILE_ID
 BuildServiceUtils.AIR_TILE_ID = TILE_ID.AIR
 BuildServiceUtils.MIN_TILE_ID = TILE_ID.AIR
-BuildServiceUtils.MAX_TILE_ID = TILE_ID.JUNGLE_GRASS
+BuildServiceUtils.MAX_TILE_ID = TILE_ID.WOOD
+
+local TILE_NAME_TO_ID = {
+	air = TILE_ID.AIR,
+	grass = TILE_ID.GRASS,
+	dirt = TILE_ID.DIRT,
+	stone = TILE_ID.STONE,
+	sand = TILE_ID.SAND,
+	sandstone = TILE_ID.SANDSTONE,
+	snow = TILE_ID.SNOW,
+	ice = TILE_ID.ICE,
+	mud = TILE_ID.MUD,
+	clay = TILE_ID.CLAY,
+	copperore = TILE_ID.COPPER_ORE,
+	ironore = TILE_ID.IRON_ORE,
+	silverore = TILE_ID.SILVER_ORE,
+	goldore = TILE_ID.GOLD_ORE,
+	corruptgrass = TILE_ID.CORRUPT_GRASS,
+	corruptsoil = TILE_ID.CORRUPT_SOIL,
+	corruptstone = TILE_ID.CORRUPT_STONE,
+	junglegrass = TILE_ID.JUNGLE_GRASS,
+	wood = TILE_ID.WOOD,
+	ebonstone = TILE_ID.CORRUPT_STONE,
+}
 
 local DEFAULT_TILE_RULE: TileRule = {
 	id = TILE_ID.AIR,
@@ -540,6 +575,24 @@ local TILE_RULE_BY_ID: { [number]: TileRule } = {
 		anchorOffsetX = 0,
 		anchorOffsetY = 0,
 	},
+	[TILE_ID.WOOD] = {
+		id = TILE_ID.WOOD,
+		name = "Wood",
+		assetName = "Wood",
+		isSolid = true,
+		replaceable = false,
+		requiresSupport = false,
+		supportMode = "None",
+		fallWhenUnsupported = false,
+		hardness = 0.95,
+		breakTime = 0.4,
+		requiredToolPower = 0,
+		unbreakableWithoutTool = false,
+		multiTileSizeX = 1,
+		multiTileSizeY = 1,
+		anchorOffsetX = 0,
+		anchorOffsetY = 0,
+	},
 }
 
 local function isFiniteNumber(value: any): boolean
@@ -554,6 +607,14 @@ local function sanitizeString(valueRaw: any, fallback: string): string
 		return fallback
 	end
 	return valueRaw
+end
+
+local function normalizeToken(valueRaw: any): string
+	local value = string.lower(sanitizeString(valueRaw, ""))
+	if value == "" then
+		return ""
+	end
+	return string.gsub(value, "[%s_%-%.]+", "")
 end
 
 local function resolveSeededUnit(seedRaw: any, sampleX: number, sampleY: number, sampleZ: number): number
@@ -1281,6 +1342,74 @@ function BuildServiceUtils.sanitizeTreeFelledPayload(payloadRaw: any): TreeFelle
 		height = height,
 		seed = sanitizeInteger(source.seed, -2147483648, 2147483647, 0),
 		fallDuration = fallDuration,
+	}
+end
+
+function BuildServiceUtils.resolveTileIdFromAlias(tileIdRaw: any): number?
+	local numericTileId = BuildServiceUtils.sanitizeTileId(tileIdRaw)
+	if numericTileId ~= nil then
+		return numericTileId
+	end
+
+	local normalized = normalizeToken(tileIdRaw)
+	if normalized == "" then
+		return nil
+	end
+
+	return TILE_NAME_TO_ID[normalized]
+end
+
+function BuildServiceUtils.resolvePlaceableItemConfig(itemIdRaw: any): PlaceableItemConfig?
+	local canonicalItemId = ItemRegistry.resolveCanonicalItemId(itemIdRaw)
+	if canonicalItemId == nil then
+		return nil
+	end
+
+	local definition = ItemRegistry.resolveDefinition(canonicalItemId)
+	if typeof(definition) ~= "table" then
+		return nil
+	end
+
+	local definitionTable = definition :: { [string]: any }
+	local placement = if typeof(definitionTable.build) == "table"
+		then (definitionTable.build :: { [string]: any })
+		else if typeof(definitionTable.placement) == "table"
+			then (definitionTable.placement :: { [string]: any })
+			else {}
+	local tileId = BuildServiceUtils.resolveTileIdFromAlias(
+		placement.tileId
+			or placement.buildTileId
+			or placement.placedTileId
+			or definitionTable.buildTileId
+			or definitionTable.placedTileId
+	)
+
+	if tileId == nil then
+		local itemType = normalizeToken(definitionTable.itemType or definitionTable.type)
+		local functionality = string.lower(sanitizeString(definitionTable.functionality, ""))
+		local useCase = string.lower(sanitizeString(definitionTable.useCase, ""))
+		local looksPlaceable = itemType == "tile"
+			or string.find(functionality, "placed", 1, true) ~= nil
+			or string.find(useCase, "place", 1, true) ~= nil
+		if looksPlaceable then
+			tileId = BuildServiceUtils.resolveTileIdFromAlias(canonicalItemId)
+				or BuildServiceUtils.resolveTileIdFromAlias(definitionTable.name)
+		end
+	end
+
+	if tileId == nil or tileId == BuildServiceUtils.AIR_TILE_ID then
+		return nil
+	end
+
+	local animationProfile = sanitizeString(
+		placement.animationProfile or placement.animationName or definitionTable.animationProfile,
+		""
+	)
+	return {
+		itemId = canonicalItemId,
+		tileId = tileId,
+		consumesOnPlace = if typeof(placement.consumesOnPlace) == "boolean" then placement.consumesOnPlace else true,
+		animationProfile = if animationProfile ~= "" then animationProfile else nil,
 	}
 end
 

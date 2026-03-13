@@ -9,12 +9,15 @@ local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local AttributeCache = require(ReplicatedStorage.Shared.Modules.Core.AttributeCache)
 local DeterministicRNG = require(ReplicatedStorage.Shared.Modules.Core.DeterministicRNG)
 local ObjectPool = require(ReplicatedStorage.Shared.Modules.Core.ObjectPool)
-local SpatialHashGrid = require(ReplicatedStorage.Shared.Modules.Core.SpatialHashGrid)
 local TagQuery = require(ReplicatedStorage.Shared.Modules.Core.TagQuery)
 local TickSchedulerModule = require(ReplicatedStorage.Shared.Modules.Core.TickScheduler)
 
+local BufferPool = require(script.BufferPool)
 local DisturbanceSourceModule = require(script.DisturbanceSource)
+local FoliageUpdateManager = require(script.FoliageUpdateManager)
 local FoliageInstance = require(script.FoliageInstance)
+local LODController = require(script.LODController)
+local TreeRuntimeRegistry = require(script.TreeRuntimeRegistry)
 local WindField = require(script.WindField)
 
 type WindSample = WindField.WindSample
@@ -37,6 +40,9 @@ type FoliageRecord = {
 	id: number,
 	bucketIndex: number,
 	bucketSlot: number,
+	lastSampleTime: number,
+	cachedLodState: LODState?,
+	cachedWindSample: WindSample?,
 	destroyConnection: RBXScriptConnection?,
 	attributeDisconnect: (() -> ())?,
 }
@@ -65,6 +71,9 @@ local ZERO = Vector3.zero
 local DEFAULT_FOLIAGE_TAG = "WindFoliage"
 local DEFAULT_DISTURBER_TAG = "WindFoliageDisturber"
 local WORLD_ANIMATOR_RUNTIME_FOLDER_NAME = "WorldAnimatorRuntime"
+local TREE_GRAPH_ATTRIBUTE = "WindFoliageTreeGraph"
+local RUNTIME_ATTRIBUTE_LOD = "WindRuntimeLOD"
+local RUNTIME_ATTRIBUTE_WRITES = "WindRuntimeWrites"
 
 local ATTRIBUTES = {
 	foliageEnabled = "WindFoliageEnabled",
@@ -97,6 +106,21 @@ local ATTRIBUTES = {
 	disturbancePropagationWeight = "WindFoliageDisturbancePropagationWeight",
 	disturbanceVelocityInfluence = "WindFoliageDisturbanceVelocityInfluence",
 }
+
+local REFRESH_ATTRIBUTE_SET = {
+	[TREE_GRAPH_ATTRIBUTE] = true,
+}
+
+for _, attributeName in ATTRIBUTES do
+	REFRESH_ATTRIBUTE_SET[attributeName] = true
+end
+
+local function setAttributeIfChanged(instance: Instance, attributeName: string, value: any)
+	if instance:GetAttribute(attributeName) == value then
+		return
+	end
+	instance:SetAttribute(attributeName, value)
+end
 
 local DEFAULT_PRESETS = {
 	GrassLight = {
@@ -234,6 +258,36 @@ local DEFAULT_CONFIG: Config = {
 		directionJitterDegrees = 18,
 		gustOctaves = 4,
 		detailOctaves = 3,
+	},
+	runtime = {
+		nearDistance = 54,
+		midDistance = 118,
+		farDistance = 190,
+		cullDistance = 280,
+		viewDotCull = -0.35,
+		enableVisibilityCull = true,
+		nearUpdateInterval = 1 / 60,
+		midUpdateInterval = 0.12,
+		farUpdateInterval = 0.32,
+		frozenUpdateInterval = 0.75,
+		maxActiveTrees = 128,
+		maxInteractiveTrees = 24,
+		maxTransformWritesPerStep = 24000,
+		enableSecondaryFlutter = true,
+		enableCanopyOnlyFar = false,
+		branchCapPerTree = 99999,
+		leafClusterCapPerTree = 99999,
+		primaryDriverStiffness = 8,
+		primaryDriverDamping = 5.5,
+		secondaryDriverStiffness = 12,
+		secondaryDriverDamping = 6.5,
+		interactionDriverStiffness = 7.5,
+		interactionDriverDamping = 5.2,
+		flutterDriverStiffness = 14,
+		flutterDriverDamping = 7.5,
+		debug = {
+			enabled = false,
+		},
 	},
 	presets = DEFAULT_PRESETS,
 }
@@ -398,11 +452,12 @@ function WindFoliage.new(configRaw: Config?): any
 		attributeCache = AttributeCache.new(),
 		tagQuery = TagQuery.new(CollectionService),
 		windField = WindField.new(config.windField),
-		foliageGrid = SpatialHashGrid.new({
-			cellSize = clampNumber(config.gridCellSize, DEFAULT_CONFIG.gridCellSize, 1, 2048),
-			cellsPerChunk = 4,
-			deterministicQueries = true,
+		bufferPool = BufferPool.new({
+			maxAvailable = 32,
 		}),
+		runtimeRegistry = nil,
+		lodController = nil,
+		updateManager = nil,
 		disturbancePool = ObjectPool.new(function()
 			return DisturbanceSourceModule.createTemplate()
 		end, {
@@ -411,59 +466,31 @@ function WindFoliage.new(configRaw: Config?): any
 			maxAvailable = 512,
 			reset = DisturbanceSourceModule.reset,
 		}),
-		foliageByInstance = {} :: { [Instance]: FoliageRecord },
-		foliageBuckets = table.create(bucketCount),
 		trackedDisturbers = {} :: { [Instance]: TrackedDisturberRecord },
 		activeDisturbances = {} :: { DisturbanceSource },
 		playerTracks = {} :: { [Player]: PlayerTrackRecord },
 		nextFoliageId = 0,
 		nextDisturbanceId = 0,
 		bucketCount = bucketCount,
-		bucketCursor = 0,
 		time = 0,
 		timeOffset = getServerAlignedTime(),
 		trackedRefreshAccumulator = 0,
 		disturbanceAccumulator = 0,
 		poolShrinkAccumulator = 0,
-		queryBuffer = {} :: { any },
 		schedulerToken = nil :: CancellationToken?,
 		schedulerGroup = ("windFoliage_%s"):format(tostring(math.floor(os.clock() * 1000))),
-		lodStates = {
-			near = {
-				level = "Near",
-				windScale = 1,
-				detailScale = 1,
-				disturbanceScale = 1,
-				updateInterval = clampNumber(lodConfig.nearUpdateInterval, 0.05, 0.01, 1),
-			} :: LODState,
-			mid = {
-				level = "Mid",
-				windScale = 0.82,
-				detailScale = 0.42,
-				disturbanceScale = 0.42,
-				updateInterval = clampNumber(lodConfig.midUpdateInterval, 0.12, 0.02, 2),
-			} :: LODState,
-			far = {
-				level = "Far",
-				windScale = 0.56,
-				detailScale = 0.1,
-				disturbanceScale = 0,
-				updateInterval = clampNumber(lodConfig.farUpdateInterval, 0.32, 0.04, 4),
-			} :: LODState,
-		},
-		lodDistances = {
-			near = clampNumber(lodConfig.nearDistance, 54, 0, 5000),
-			mid = clampNumber(lodConfig.midDistance, 118, 0, 5000),
-			far = clampNumber(lodConfig.farDistance, 190, 0, 5000),
-			cull = clampNumber(lodConfig.cullDistance, 280, 0, 10000),
-		},
 		initialized = false,
 		destroyed = false,
 	}, WindFoliage)
 
-	for index = 1, bucketCount do
-		self.foliageBuckets[index] = {}
-	end
+	self.runtimeRegistry = TreeRuntimeRegistry.new({
+		gridCellSize = clampNumber(config.gridCellSize, DEFAULT_CONFIG.gridCellSize, 1, 2048),
+	})
+	self.lodController = LODController.new({
+		lod = lodConfig,
+		runtime = config.runtime,
+	})
+	self.updateManager = FoliageUpdateManager.new(config, self.runtimeRegistry, self.windField, self.lodController, self.bufferPool)
 
 	return self
 end
@@ -630,22 +657,19 @@ function WindFoliage.resolveDisturberConfig(self: any, instance: Instance, overr
 end
 
 function WindFoliage.resolveLOD(self: any, distance: number): LODState?
-	if distance <= self.lodDistances.near then
-		return self.lodStates.near
+	local controller = self.lodController
+	if controller == nil then
+		return nil
 	end
-	if distance <= self.lodDistances.mid then
-		return self.lodStates.mid
-	end
-	if distance <= self.lodDistances.far then
-		return self.lodStates.far
-	end
-	if distance <= self.lodDistances.cull then
-		return self.lodStates.far
+
+	local tier = controller:resolve(distance * distance, self:resolveReferencePosition(), 0)
+	if tier ~= nil and not tier.frozen then
+		return tier.lodState
 	end
 	return nil
 end
 
-function WindFoliage.resolveReferencePosition(self: any): Vector3
+function WindFoliage.resolveReferencePosition(_self: any): Vector3
 	local camera = Workspace.CurrentCamera
 	if camera ~= nil then
 		return camera.CFrame.Position
@@ -662,16 +686,8 @@ function WindFoliage.resolveReferencePosition(self: any): Vector3
 	return ZERO
 end
 
-function WindFoliage.removeFromBucket(self: any, record: FoliageRecord)
-	local bucket = self.foliageBuckets[record.bucketIndex]
-	local slot = record.bucketSlot
-	local lastRecord = bucket[#bucket]
-	bucket[#bucket] = nil
-	record.bucketSlot = 0
-	if lastRecord ~= nil and lastRecord ~= record and slot >= 1 and slot <= #bucket + 1 then
-		bucket[slot] = lastRecord
-		lastRecord.bucketSlot = slot
-	end
+function WindFoliage.removeFromBucket(_self: any, _record: FoliageRecord)
+	return nil
 end
 
 function WindFoliage.insertActiveDisturbance(self: any, source: DisturbanceSource)
@@ -715,7 +731,7 @@ function WindFoliage.releaseDisturbanceAt(self: any, index: number)
 end
 
 function WindFoliage.maybeUnbindAttributes(self: any, instance: Instance)
-	if self.foliageByInstance[instance] ~= nil then
+	if self.runtimeRegistry:get(instance) ~= nil then
 		return
 	end
 	if self.trackedDisturbers[instance] ~= nil then
@@ -724,13 +740,14 @@ function WindFoliage.maybeUnbindAttributes(self: any, instance: Instance)
 	self.attributeCache:unbind(instance)
 end
 
-function WindFoliage.registerFoliage(self: any, instanceRaw: any): FoliageRecord?
+function WindFoliage.registerFoliage(self: any, instanceRaw: any): any
 	if typeof(instanceRaw) ~= "Instance" then
 		return nil
 	end
 	local instance = instanceRaw :: Instance
-	if self.foliageByInstance[instance] ~= nil then
-		return self.foliageByInstance[instance]
+	local existing = self.runtimeRegistry:get(instance)
+	if existing ~= nil then
+		return existing
 	end
 	if not self:shouldRegisterFoliage(instance) then
 		return nil
@@ -738,42 +755,27 @@ function WindFoliage.registerFoliage(self: any, instanceRaw: any): FoliageRecord
 
 	self.nextFoliageId += 1
 	local config = self:resolveFoliageConfig(instance, self.nextFoliageId)
-	local foliage = FoliageInstance.new(instance, config)
-	if foliage == nil then
+	local entry = self.runtimeRegistry:register(instance, config)
+	if entry == nil then
 		return nil
 	end
 
-	local bucketIndex = config.bucketIndex
-	local record: FoliageRecord = {
-		instance = instance,
-		foliage = foliage,
-		id = config.id,
-		bucketIndex = bucketIndex,
-		bucketSlot = #self.foliageBuckets[bucketIndex] + 1,
-		destroyConnection = nil,
-		attributeDisconnect = nil,
-	}
+	local entryAny = entry :: any
 
-	record.destroyConnection = instance.Destroying:Connect(function()
+	entryAny.destroyConnection = instance.Destroying:Connect(function()
 		self:unregisterFoliage(instance)
 	end)
-	record.attributeDisconnect = self.attributeCache:onChanged(instance, "*", function(changedInstance, attributeName)
+	entryAny.attributeDisconnect = self.attributeCache:onChanged(instance, "*", function(changedInstance, attributeName)
 		if typeof(attributeName) ~= "string" then
 			return
 		end
-		if string.find(attributeName, "WindFoliage", 1, true) ~= 1 then
+		if REFRESH_ATTRIBUTE_SET[attributeName] ~= true then
 			return
 		end
 		self:refreshFoliage(changedInstance)
 	end)
 
-	self.foliageByInstance[instance] = record
-	self.foliageBuckets[bucketIndex][record.bucketSlot] = record
-
-	local rootPosition = foliage:getRootPosition()
-	self.foliageGrid:insert(record.id, rootPosition.X, rootPosition.Y, rootPosition.Z, foliage)
-
-	return record
+	return entry
 end
 
 function WindFoliage.unregisterFoliage(self: any, instanceRaw: any)
@@ -781,25 +783,24 @@ function WindFoliage.unregisterFoliage(self: any, instanceRaw: any)
 		return
 	end
 	local instance = instanceRaw :: Instance
-	local record = self.foliageByInstance[instance]
-	if record == nil then
+	local entry = self.runtimeRegistry:get(instance)
+	if entry == nil then
 		return
 	end
 
-	self.foliageByInstance[instance] = nil
-	self.foliageGrid:remove(record.id)
-	self:removeFromBucket(record)
-
-	if record.destroyConnection ~= nil then
-		record.destroyConnection:Disconnect()
-		record.destroyConnection = nil
+	local entryAny = entry :: any
+	if entryAny.destroyConnection ~= nil then
+		entryAny.destroyConnection:Disconnect()
+		entryAny.destroyConnection = nil
 	end
-	if record.attributeDisconnect ~= nil then
-		record.attributeDisconnect()
-		record.attributeDisconnect = nil
+	if entryAny.attributeDisconnect ~= nil then
+		entryAny.attributeDisconnect()
+		entryAny.attributeDisconnect = nil
 	end
 
-	record.foliage:destroy()
+	setAttributeIfChanged(instance, RUNTIME_ATTRIBUTE_LOD, nil)
+	setAttributeIfChanged(instance, RUNTIME_ATTRIBUTE_WRITES, nil)
+	self.runtimeRegistry:unregister(instance)
 	self:maybeUnbindAttributes(instance)
 end
 
@@ -814,7 +815,7 @@ function WindFoliage.refreshFoliage(self: any, instanceRaw: any)
 		return
 	end
 
-	if self.foliageByInstance[instance] ~= nil then
+	if self.runtimeRegistry:get(instance) ~= nil then
 		self:unregisterFoliage(instance)
 	end
 	self:registerFoliage(instance)
@@ -955,14 +956,20 @@ function WindFoliage.applyDisturbanceSource(self: any, source: DisturbanceSource
 		return
 	end
 
-	local records =
-		self.foliageGrid:queryRadius(source.position.X, source.position.Y, source.position.Z, queryRadius, self.queryBuffer)
+	local records = self.runtimeRegistry:queryRadius(source.position, queryRadius)
+	local updateManager = self.updateManager
+	local maxInteractiveTrees = updateManager.maxInteractiveTrees
+	local applied = 0
 	for _, queryRecord in records do
-		local foliage = queryRecord.payload :: FoliageObject
-		if foliage ~= nil then
-			local impulse = DisturbanceSourceModule.computeImpulse(source, foliage:getRootPosition())
+		local entry = queryRecord.payload
+		if entry ~= nil then
+			local impulse = DisturbanceSourceModule.computeImpulse(source, entry.rootPosition)
 			if impulse.Magnitude > 1e-5 then
-				foliage:addDisturbance(impulse * pulseDt, source.position)
+				updateManager:applyInteractionImpulse(entry, impulse * pulseDt, source.position)
+				applied += 1
+				if applied >= maxInteractiveTrees then
+					break
+				end
 			end
 		end
 	end
@@ -986,44 +993,12 @@ function WindFoliage.pulseDisturbances(self: any, pulseDt: number)
 	end
 end
 
-function WindFoliage.processBucket(self: any, bucketIndex: number)
-	local bucket = self.foliageBuckets[bucketIndex]
-	if bucket == nil or #bucket <= 0 then
-		return
-	end
+function WindFoliage.refreshBucketSamples(_self: any, _bucketIndex: number, _referencePosition: Vector3)
+	return nil
+end
 
-	local referencePosition = self:resolveReferencePosition()
-	for index = #bucket, 1, -1 do
-		local record = bucket[index]
-		if record == nil then
-			continue
-		end
-
-		local instance = record.instance
-		if instance.Parent == nil or record.foliage.destroyed then
-			self:unregisterFoliage(instance)
-			continue
-		end
-
-		local foliage = record.foliage
-		local distance = (foliage:getRootPosition() - referencePosition).Magnitude
-		local lodState = self:resolveLOD(distance)
-		if lodState == nil then
-			continue
-		end
-
-		local elapsed = self.time - foliage.lastUpdateTime
-		if foliage.lastUpdateTime <= 0 then
-			elapsed = lodState.updateInterval
-		end
-		if elapsed < lodState.updateInterval then
-			continue
-		end
-
-		local windSample: WindSample =
-			self.windField:sample(foliage:getRootPosition(), self.time + self.timeOffset, foliage.phaseOffset, foliage.amplitudeScale)
-		foliage:step(self.time, elapsed, windSample, lodState)
-	end
+function WindFoliage.stepActiveFoliage(_self: any, _dt: number)
+	return nil
 end
 
 function WindFoliage.refreshTrackedDisturbers(self: any, refreshDt: number)
@@ -1067,8 +1042,7 @@ function WindFoliage.onFixedStep(self: any, dt: number)
 		self.disturbancePool:softShrink(clampNumber(self.config.maxPoolShrinkPerSweep, 12, 0, 128))
 	end
 
-	self.bucketCursor = (self.bucketCursor % self.bucketCount) + 1
-	self:processBucket(self.bucketCursor)
+	self.updateManager:update(self.time + self.timeOffset, dt, self:resolveReferencePosition())
 end
 
 function WindFoliage.trackPlayer(self: any, player: Player)
@@ -1138,7 +1112,7 @@ function WindFoliage.cleanupDescendant(self: any, instanceRaw: any)
 		return
 	end
 	local instance = instanceRaw :: Instance
-	if self.foliageByInstance[instance] ~= nil then
+	if self.runtimeRegistry:get(instance) ~= nil then
 		self:unregisterFoliage(instance)
 	end
 	if self.trackedDisturbers[instance] ~= nil then
@@ -1231,12 +1205,21 @@ function WindFoliage.getStats(self: any): { [string]: number }
 	for _ in self.trackedDisturbers do
 		trackedCount += 1
 	end
+	local runtimeStats = self.updateManager:getStats()
 
 	return {
-		registeredFoliage = self.foliageGrid:count(),
+		registeredFoliage = runtimeStats.registeredTrees,
+		activeAnimatedTrees = runtimeStats.activeAnimatedTrees,
 		activeDisturbances = #self.activeDisturbances,
 		trackedDisturbers = trackedCount,
-		bucketCursor = self.bucketCursor,
+		nearTrees = runtimeStats.nearTrees,
+		midTrees = runtimeStats.midTrees,
+		farTrees = runtimeStats.farTrees,
+		frozenTrees = runtimeStats.frozenTrees,
+		culledTrees = runtimeStats.culledTrees,
+		activeRippleDrivers = runtimeStats.activeRippleDrivers,
+		transformWrites = runtimeStats.transformWrites,
+		averageUpdateCostMs = runtimeStats.averageUpdateCostMs,
 		time = self.time,
 	}
 end
@@ -1248,8 +1231,8 @@ function WindFoliage.destroy(self: any)
 	self.destroyed = true
 
 	local foliageInstances = {}
-	for instance in self.foliageByInstance do
-		foliageInstances[#foliageInstances + 1] = instance
+	for _, entry in self.runtimeRegistry.entries do
+		foliageInstances[#foliageInstances + 1] = entry.instance
 	end
 	for _, instance in foliageInstances do
 		self:unregisterFoliage(instance)
@@ -1274,14 +1257,11 @@ function WindFoliage.destroy(self: any)
 	if self.janitor ~= nil then
 		(self.janitor :: JanitorClass):Destroy()
 	end
-	table.clear(self.foliageByInstance)
 	table.clear(self.trackedDisturbers)
 	table.clear(self.playerTracks)
-	for _, bucket in self.foliageBuckets do
-		table.clear(bucket)
-	end
 	table.clear(self.activeDisturbances)
-	self.foliageGrid:clear()
+	self.runtimeRegistry:destroy()
+	self.bufferPool:destroy()
 end
 
 WindFoliage.Tags = {
@@ -1295,5 +1275,9 @@ WindFoliage.DefaultPresets = DEFAULT_PRESETS
 WindFoliage.WindField = WindField
 WindFoliage.FoliageInstance = FoliageInstance
 WindFoliage.DisturbanceSource = DisturbanceSourceModule
+WindFoliage.BufferPool = BufferPool
+WindFoliage.LODController = LODController
+WindFoliage.TreeRuntimeRegistry = TreeRuntimeRegistry
+WindFoliage.FoliageUpdateManager = FoliageUpdateManager
 
 return WindFoliage
