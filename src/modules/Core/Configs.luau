@@ -1,3 +1,9 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local WorldGenerationColor = require(ReplicatedStorage.Shared.Modules.Items.WorldGenerationColor)
+
+local liquidDefinitions = WorldGenerationColor.LIQUID_DEFINITIONS
+local liquidBiomeTints = WorldGenerationColor.LIQUID_BIOME_TINTS
+
 local Configs = {
 	gameVersion = "0.0.1",
 	gameName = "Aquaria",
@@ -89,14 +95,104 @@ local Configs = {
 
 	worldGeneration = {
 		chunkSize = 32,
-		defaultRenderDistanceChunks = 1,
-		defaultVerticalRenderDistanceChunks = 1,
+		defaultRenderDistanceChunks = 2,
+		defaultVerticalRenderDistanceChunks = 2,
 		maxConcurrentChunkLoads = 3,
 		maxChunkUnloadsPerHeartbeat = 12,
 		maxChunkRebuildsPerHeartbeat = 4,
 		maxCachedChunkData = 1200,
 		maxCachedChunkVisuals = 0,
 		maxCollisionPartsPerChunk = 4096,
+	},
+
+	liquid = {
+		simulation = {
+			stepRate = 12,
+			hazardCheckRate = 8,
+			streamSyncInterval = 0.12,
+			activeSafetyMarginChunks = 1,
+			disturbedChunkKeepAliveSeconds = 8,
+			maxChunkStepsPerTick = 12,
+			maxCellsPerChunkStep = 96,
+			maxWakeRequestsPerTick = 192,
+			maxDeltaCellsPerChunk = 256,
+			fullSnapshotThreshold = 160,
+			generationSettlePasses = 10,
+			leakScanDistanceTiles = 96,
+			consistencySweepInterval = 0.9,
+			consistencySweepChunkBudget = 12,
+		},
+		generation = {
+			depressionScanRadius = 6,
+			surfacePoolChance = 0.92,
+			surfacePoolMinDepth = 2,
+			surfacePoolMaxDepth = 8,
+			surfacePoolFillChance = 1,
+			cavePocketChance = 0.018,
+			cavePocketMinDepth = 8,
+			cavePocketMaxDepth = 90,
+			cavePocketMinRadius = 2,
+			cavePocketMaxRadius = 5,
+			reservoirChance = 0.011,
+			reservoirMinDepth = 24,
+			reservoirMaxDepth = 160,
+			reservoirMinRadius = 4,
+			reservoirMaxRadius = 9,
+			lavaStartDepth = 44,
+			lavaCommonDepth = 92,
+			lavaPocketChance = 0.013,
+			lavaReservoirChance = 0.009,
+			lavaPocketMinRadius = 3,
+			lavaPocketMaxRadius = 8,
+		},
+		render = {
+			interpolationTime = 0.18,
+			surfaceWaveAmplitudeStuds = 0.08,
+			surfaceWaveSpeed = 1.9,
+			surfaceWaveScale = 0.45,
+			rebuildRowsPerFrame = 8,
+			rebuildFlushInterval = 1 / 30,
+			minVisibleFill = 6,
+			fillBucketSize = 8,
+		},
+		definitions = {
+			[1] = {
+				baseColor = liquidDefinitions[1].baseColor,
+				surfaceColor = liquidDefinitions[1].surfaceColor,
+				movementSpeedMultiplier = 0.72,
+			},
+			[2] = {
+				baseColor = liquidDefinitions[2].baseColor,
+				surfaceColor = liquidDefinitions[2].surfaceColor,
+				movementSpeedMultiplier = 0.3,
+			},
+		},
+		biomeTints = {
+			byBiomeId = liquidBiomeTints.byBiomeId,
+			byBiomeType = liquidBiomeTints.byBiomeType,
+			lavaAmbientByBiomeId = liquidBiomeTints.lavaAmbientByBiomeId,
+			lavaAmbientByBiomeType = liquidBiomeTints.lavaAmbientByBiomeType,
+		},
+		debug = {
+			enabled = false,
+			logActivations = false,
+			logDirtyMarks = false,
+			logSimulationSteps = false,
+			logStableTransitions = false,
+			visualizeChunks = false,
+			visualizeCells = false,
+		},
+	},
+
+	breath = {
+		maxBreathSeconds = 8,
+		graceDuration = 0.8,
+		recoveryDelay = 0.45,
+		recoveryDuration = 1.8,
+		drowningTickRate = 0.2,
+		drowningDamage = 2,
+		updateRate = 8,
+		statePushInterval = 0.12,
 	},
 
 	worldSimulation = {

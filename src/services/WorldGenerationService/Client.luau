@@ -3,14 +3,15 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
 
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
 local ProceduralTree = require(ReplicatedStorage.Shared.Classes.WorldGeneration.Tree)
-local WorldGenerationServiceUtils = require(ReplicatedStorage.Shared.Services.WorldGenerationService.WorldGenerationServiceUtils)
+local WorldGenerationColor = require(ReplicatedStorage.Shared.Modules.Items.WorldGenerationColor)
+local WorldGenerationServiceUtils =
+	require(ReplicatedStorage.Shared.Services.WorldGenerationService.WorldGenerationServiceUtils)
 
 type WorldGenerationServiceState = WorldGenerationServiceUtils.WorldGenerationServiceState
 type ProceduralTreeConfig = ProceduralTree.ProceduralTreeConfig
@@ -81,6 +82,7 @@ type ChunkVisualRuntime = {
 	partCount: number,
 	revision: number,
 	builtAt: number,
+	treeSignature: string,
 }
 
 type TileVisual = {
@@ -137,116 +139,27 @@ local MAX_DEPTH_LAYER_CODE = 4
 local MIN_DEPTH_BELOW_SURFACE = -8192
 local MAX_DEPTH_BELOW_SURFACE = 8192
 
-local TILE_VISUALS: { [number]: TileVisual } = {
-	[1] = {
-		name = "Grass",
-		color = Color3.fromRGB(95, 159, 53),
-		material = Enum.Material.Grass,
-		transparency = 0,
-	},
-	[17] = {
-		name = "JungleGrass",
-		color = Color3.fromRGB(113, 186, 72),
-		material = Enum.Material.Grass,
-		transparency = 0,
-	},
-	[18] = {
-		name = "Wood",
-		color = Color3.fromRGB(121, 91, 56),
-		material = Enum.Material.Wood,
-		transparency = 0,
-	},
-	[2] = {
-		name = "Dirt",
-		color = Color3.fromRGB(108, 78, 52),
-		material = Enum.Material.Ground,
-		transparency = 0,
-	},
-	[3] = {
-		name = "Stone",
-		color = Color3.fromRGB(108, 113, 122),
-		material = Enum.Material.Slate,
-		transparency = 0,
-	},
-	[4] = {
-		name = "Sand",
-		color = Color3.fromRGB(225, 206, 136),
-		material = Enum.Material.Sand,
-		transparency = 0,
-	},
-	[5] = {
-		name = "Sandstone",
-		color = Color3.fromRGB(183, 154, 109),
-		material = Enum.Material.Sandstone,
-		transparency = 0,
-	},
-	[6] = {
-		name = "Snow",
-		color = Color3.fromRGB(232, 240, 255),
-		material = Enum.Material.Snow,
-		transparency = 0,
-	},
-	[7] = {
-		name = "Ice",
-		color = Color3.fromRGB(178, 214, 255),
-		material = Enum.Material.Glacier,
-		transparency = 0,
-	},
-	[8] = {
-		name = "Mud",
-		color = Color3.fromRGB(112, 90, 61),
-		material = Enum.Material.Ground,
-		transparency = 0,
-	},
-	[9] = {
-		name = "Clay",
-		color = Color3.fromRGB(135, 98, 73),
-		material = Enum.Material.Ground,
-		transparency = 0,
-	},
-	[10] = {
-		name = "CopperOre",
-		color = Color3.fromRGB(189, 118, 63),
-		material = Enum.Material.Metal,
-		transparency = 0,
-	},
-	[11] = {
-		name = "IronOre",
-		color = Color3.fromRGB(141, 134, 116),
-		material = Enum.Material.Metal,
-		transparency = 0,
-	},
-	[12] = {
-		name = "SilverOre",
-		color = Color3.fromRGB(177, 177, 185),
-		material = Enum.Material.Metal,
-		transparency = 0,
-	},
-	[13] = {
-		name = "GoldOre",
-		color = Color3.fromRGB(214, 186, 62),
-		material = Enum.Material.Metal,
-		transparency = 0,
-	},
-	[14] = {
-		name = "CorruptGrass",
-		color = Color3.fromRGB(131, 84, 193),
-		material = Enum.Material.Grass,
-		transparency = 0,
-	},
-	[15] = {
-		name = "CorruptSoil",
-		color = Color3.fromRGB(116, 84, 88),
-		material = Enum.Material.Ground,
-		transparency = 0,
-	},
-	[16] = {
-		name = "CorruptStone",
-		color = Color3.fromRGB(126, 104, 160),
-		material = Enum.Material.Rock,
-		transparency = 0,
-	},
-}
+local TILE_VISUALS: { [number]: TileVisual } = WorldGenerationColor.TILE_VISUALS
+local TREE_PALETTE_CORRUPTION_1 = WorldGenerationColor.TREE_PALETTES.Corruption1
+	or {
+		BranchColor = Color3.fromRGB(56, 39, 89),
+		LeafColor = Color3.fromRGB(153, 92, 210),
+	}
+local TREE_PALETTE_CORRUPTION_2 = WorldGenerationColor.TREE_PALETTES.Corruption2
+	or {
+		BranchColor = Color3.fromRGB(49, 33, 81),
+		LeafColor = Color3.fromRGB(171, 101, 231),
+	}
+local TREE_PALETTE_JUNGLE_1 = WorldGenerationColor.TREE_PALETTES.Jungle1
+	or {
+		BranchColor = Color3.fromRGB(88, 65, 42),
+		LeafColor = Color3.fromRGB(67, 178, 86),
+	}
+local TREE_PALETTE_JUNGLE_2 = WorldGenerationColor.TREE_PALETTES.Jungle2
+	or {
+		BranchColor = Color3.fromRGB(82, 60, 39),
+		LeafColor = Color3.fromRGB(74, 192, 96),
+	}
 
 local function createTreeVariantDefinitions(): { TreeVariantDefinition }
 	return {
@@ -359,8 +272,8 @@ local function createTreeVariantDefinitions(): { TreeVariantDefinition }
 				LeavesPerTerminalMax = 2,
 				MaxBranchParts = 58,
 				MaxLeafParts = 28,
-				BranchColor = Color3.fromRGB(56, 39, 89),
-				LeafColor = Color3.fromRGB(153, 92, 210),
+				BranchColor = TREE_PALETTE_CORRUPTION_1.BranchColor,
+				LeafColor = TREE_PALETTE_CORRUPTION_1.LeafColor,
 				UseWelds = true,
 				BranchCanCollide = false,
 				ModelName = "ProceduralTree_Corruption1",
@@ -384,8 +297,8 @@ local function createTreeVariantDefinitions(): { TreeVariantDefinition }
 				LeavesPerTerminalMax = 2,
 				MaxBranchParts = 74,
 				MaxLeafParts = 30,
-				BranchColor = Color3.fromRGB(49, 33, 81),
-				LeafColor = Color3.fromRGB(171, 101, 231),
+				BranchColor = TREE_PALETTE_CORRUPTION_2.BranchColor,
+				LeafColor = TREE_PALETTE_CORRUPTION_2.LeafColor,
 				UseWelds = true,
 				BranchCanCollide = false,
 				ModelName = "ProceduralTree_Corruption2",
@@ -410,8 +323,8 @@ local function createTreeVariantDefinitions(): { TreeVariantDefinition }
 				LeavesPerTerminalMax = 4,
 				MaxBranchParts = 124,
 				MaxLeafParts = 108,
-				BranchColor = Color3.fromRGB(88, 65, 42),
-				LeafColor = Color3.fromRGB(67, 178, 86),
+				BranchColor = TREE_PALETTE_JUNGLE_1.BranchColor,
+				LeafColor = TREE_PALETTE_JUNGLE_1.LeafColor,
 				UseWelds = true,
 				BranchCanCollide = false,
 				ModelName = "ProceduralTree_Jungle1",
@@ -436,8 +349,8 @@ local function createTreeVariantDefinitions(): { TreeVariantDefinition }
 				LeavesPerTerminalMax = 4,
 				MaxBranchParts = 148,
 				MaxLeafParts = 126,
-				BranchColor = Color3.fromRGB(82, 60, 39),
-				LeafColor = Color3.fromRGB(74, 192, 96),
+				BranchColor = TREE_PALETTE_JUNGLE_2.BranchColor,
+				LeafColor = TREE_PALETTE_JUNGLE_2.LeafColor,
 				UseWelds = true,
 				BranchCanCollide = false,
 				ModelName = "ProceduralTree_Jungle2",
@@ -477,6 +390,27 @@ local function countBaseParts(instance: Instance): number
 		end
 	end
 	return total
+end
+
+local function computeTreeSignature(snapshot: ChunkSnapshot): string
+	local trees = snapshot.trees
+	if #trees <= 0 then
+		return ""
+	end
+
+	local chunks = table.create(#trees)
+	for index, tree in trees do
+		chunks[index] = table.concat({
+			tostring(tree.tileX),
+			tostring(tree.tileY),
+			tostring(tree.variantIndex),
+			tostring(tree.seed),
+			tostring(tree.biomeType),
+			tostring(tree.biomeId),
+			tostring(tree.templateIndex),
+		}, ":")
+	end
+	return table.concat(chunks, "|")
 end
 
 local function isFiniteNumber(value: any): boolean
@@ -571,7 +505,8 @@ local function cloneTemplateByVariant(templates: { Instance }, variantIndexRaw: 
 		return nil
 	end
 	local variantIndex = 1
-	if typeof(variantIndexRaw) == "number"
+	if
+		typeof(variantIndexRaw) == "number"
 		and variantIndexRaw == variantIndexRaw
 		and variantIndexRaw ~= math.huge
 		and variantIndexRaw ~= -math.huge
@@ -854,9 +789,10 @@ function WorldGenerationServiceClient.destroyChunkVisual(self: WorldGenerationSe
 end
 
 function WorldGenerationServiceClient.replaceChunkVisualContents(
-	self: WorldGenerationServiceClient,
+	_self: WorldGenerationServiceClient,
 	targetModel: Model,
-	rebuiltModel: Model
+	rebuiltModel: Model,
+	preservedChildNamesRaw: { [string]: boolean }?
 )
 	if targetModel == rebuiltModel then
 		return
@@ -873,12 +809,24 @@ function WorldGenerationServiceClient.replaceChunkVisualContents(
 	end
 
 	targetModel.Name = rebuiltModel.Name
+	local preservedChildNames = if typeof(preservedChildNamesRaw) == "table"
+		then preservedChildNamesRaw
+		else {} :: { [string]: boolean }
+	local preservedChildren = {} :: { [string]: Instance }
 	for _, child in targetModel:GetChildren() do
-		child:Destroy()
+		if preservedChildNames[child.Name] == true then
+			preservedChildren[child.Name] = child
+		else
+			child:Destroy()
+		end
 	end
 
 	for _, child in rebuiltModel:GetChildren() do
-		child.Parent = targetModel
+		if preservedChildren[child.Name] ~= nil then
+			child:Destroy()
+		else
+			child.Parent = targetModel
+		end
 	end
 	rebuiltModel:Destroy()
 end
@@ -977,7 +925,7 @@ function WorldGenerationServiceClient.sanitizeChunkSnapshot(
 
 	local totalTiles = width * height
 	local tiles = table.create(totalTiles, FOREGROUND_TILE_AIR_ID)
-	local tilesRaw = if typeof(source.tiles) == "table" then (source.tiles :: { any }) else {}
+	local tilesRaw = if typeof(source.tiles) == "table" then source.tiles :: { any } else {}
 	for tileIndex = 1, totalTiles do
 		local rawTileId = tilesRaw[tileIndex]
 		if isFiniteNumber(rawTileId) then
@@ -985,7 +933,7 @@ function WorldGenerationServiceClient.sanitizeChunkSnapshot(
 		end
 	end
 	local depthLayers = table.create(totalTiles, DEPTH_LAYER_CODE_UNDERGROUND)
-	local depthLayersRaw = if typeof(source.depthLayers) == "table" then (source.depthLayers :: { any }) else {}
+	local depthLayersRaw = if typeof(source.depthLayers) == "table" then source.depthLayers :: { any } else {}
 	for tileIndex = 1, totalTiles do
 		local rawDepthLayerCode = depthLayersRaw[tileIndex]
 		if isFiniteNumber(rawDepthLayerCode) then
@@ -1001,17 +949,13 @@ function WorldGenerationServiceClient.sanitizeChunkSnapshot(
 	end
 	local depthBelowSurface = table.create(totalTiles, 0)
 	local depthBelowSurfaceRaw = if typeof(source.depthBelowSurface) == "table"
-		then (source.depthBelowSurface :: { any })
+		then source.depthBelowSurface :: { any }
 		else {}
 	for tileIndex = 1, totalTiles do
 		local rawDepthBelowSurface = depthBelowSurfaceRaw[tileIndex]
 		if isFiniteNumber(rawDepthBelowSurface) then
-			depthBelowSurface[tileIndex] = sanitizeInteger(
-				rawDepthBelowSurface,
-				MIN_DEPTH_BELOW_SURFACE,
-				MAX_DEPTH_BELOW_SURFACE,
-				0
-			)
+			depthBelowSurface[tileIndex] =
+				sanitizeInteger(rawDepthBelowSurface, MIN_DEPTH_BELOW_SURFACE, MAX_DEPTH_BELOW_SURFACE, 0)
 		elseif depthLayers[tileIndex] == DEPTH_LAYER_CODE_SKY then
 			depthBelowSurface[tileIndex] = -1
 		end
@@ -1019,7 +963,7 @@ function WorldGenerationServiceClient.sanitizeChunkSnapshot(
 
 	local dominantBiomeId = sanitizeInteger(source.dominantBiomeId, BIOME_ID_FOREST, BIOME_ID_JUNGLE, BIOME_ID_FOREST)
 	local biomeIds = table.create(totalTiles, dominantBiomeId)
-	local biomeIdsRaw = if typeof(source.biomeIds) == "table" then (source.biomeIds :: { any }) else {}
+	local biomeIdsRaw = if typeof(source.biomeIds) == "table" then source.biomeIds :: { any } else {}
 	for tileIndex = 1, totalTiles do
 		local rawBiomeId = biomeIdsRaw[tileIndex]
 		if isFiniteNumber(rawBiomeId) then
@@ -1030,16 +974,17 @@ function WorldGenerationServiceClient.sanitizeChunkSnapshot(
 	local dominantBiomeType =
 		sanitizeInteger(source.dominantBiomeType, BIOME_TYPE_NORMAL, BIOME_TYPE_CORRUPTION, BIOME_TYPE_NORMAL)
 	local biomeTypes = table.create(totalTiles, dominantBiomeType)
-	local biomeTypesRaw = if typeof(source.biomeTypes) == "table" then (source.biomeTypes :: { any }) else {}
+	local biomeTypesRaw = if typeof(source.biomeTypes) == "table" then source.biomeTypes :: { any } else {}
 	for tileIndex = 1, totalTiles do
 		local rawBiomeType = biomeTypesRaw[tileIndex]
 		if isFiniteNumber(rawBiomeType) then
-			biomeTypes[tileIndex] = sanitizeInteger(rawBiomeType, BIOME_TYPE_NORMAL, BIOME_TYPE_CORRUPTION, dominantBiomeType)
+			biomeTypes[tileIndex] =
+				sanitizeInteger(rawBiomeType, BIOME_TYPE_NORMAL, BIOME_TYPE_CORRUPTION, dominantBiomeType)
 		end
 	end
 
 	local backgroundLayers: { ChunkLayerSnapshot } = {}
-	local layersRaw = if typeof(source.backgroundLayers) == "table" then (source.backgroundLayers :: { any }) else {}
+	local layersRaw = if typeof(source.backgroundLayers) == "table" then source.backgroundLayers :: { any } else {}
 	for _, layerRaw in layersRaw do
 		if typeof(layerRaw) ~= "table" then
 			continue
@@ -1053,7 +998,7 @@ function WorldGenerationServiceClient.sanitizeChunkSnapshot(
 		local layerIndex = sanitizeInteger(layer.layerIndex, 1, 64, #backgroundLayers + 1)
 		local layerTotalTiles = layerWidth * layerHeight
 		local layerTiles = table.create(layerTotalTiles, FOREGROUND_TILE_AIR_ID)
-		local layerTilesRaw = if typeof(layer.tiles) == "table" then (layer.tiles :: { any }) else {}
+		local layerTilesRaw = if typeof(layer.tiles) == "table" then layer.tiles :: { any } else {}
 		for tileIndex = 1, layerTotalTiles do
 			local rawTileId = layerTilesRaw[tileIndex]
 			if isFiniteNumber(rawTileId) then
@@ -1072,7 +1017,7 @@ function WorldGenerationServiceClient.sanitizeChunkSnapshot(
 	end
 
 	local trees: { TreeSpawnSnapshot } = {}
-	local treesRaw = if typeof(source.trees) == "table" then (source.trees :: { any }) else {}
+	local treesRaw = if typeof(source.trees) == "table" then source.trees :: { any } else {}
 	for _, treeRaw in treesRaw do
 		if typeof(treeRaw) ~= "table" then
 			continue
@@ -1087,12 +1032,8 @@ function WorldGenerationServiceClient.sanitizeChunkSnapshot(
 		local tileY = math.floor(tree.tileY)
 		local fallbackVariantIndex = sanitizeInteger(tree.templateIndex, 1, 128, 1)
 		local variantIndex = sanitizeInteger(tree.variantIndex, 1, 128, fallbackVariantIndex)
-		local fallbackSeed = sanitizeInteger(
-			tileX * 92821 + tileY * 68917 + variantIndex * 193 + 1337,
-			MIN_INT32,
-			MAX_INT32,
-			1337
-		)
+		local fallbackSeed =
+			sanitizeInteger(tileX * 92821 + tileY * 68917 + variantIndex * 193 + 1337, MIN_INT32, MAX_INT32, 1337)
 
 		table.insert(trees, {
 			tileX = tileX,
@@ -1112,7 +1053,7 @@ function WorldGenerationServiceClient.sanitizeChunkSnapshot(
 	end
 
 	local props: { PropSpawnSnapshot } = {}
-	local propsRaw = if typeof(source.props) == "table" then (source.props :: { any }) else {}
+	local propsRaw = if typeof(source.props) == "table" then source.props :: { any } else {}
 	for _, propRaw in propsRaw do
 		if typeof(propRaw) ~= "table" then
 			continue
@@ -1471,6 +1412,7 @@ function WorldGenerationServiceClient.processChunkRebuildQueue(self: WorldGenera
 		end
 
 		local model, partCount = self:buildChunkVisualModel(snapshot)
+		local nextTreeSignature = computeTreeSignature(snapshot)
 		local existingPartCount = if existing ~= nil then existing.partCount else 0
 		local projectedPartTotal = self.totalVisualPartCount - existingPartCount + partCount
 		if projectedPartTotal > MAX_VISUAL_PARTS_TOTAL then
@@ -1482,7 +1424,11 @@ function WorldGenerationServiceClient.processChunkRebuildQueue(self: WorldGenera
 		local visualModel = model
 		if existing ~= nil then
 			shouldSkipChunkAnimation = true
-			self:replaceChunkVisualContents(existing.model, model)
+			local preservedChildNames = {} :: { [string]: boolean }
+			if existing.treeSignature == nextTreeSignature then
+				preservedChildNames.Trees = true
+			end
+			self:replaceChunkVisualContents(existing.model, model, preservedChildNames)
 			visualModel = existing.model
 		end
 
@@ -1496,6 +1442,7 @@ function WorldGenerationServiceClient.processChunkRebuildQueue(self: WorldGenera
 			partCount = partCount,
 			revision = snapshot.revision,
 			builtAt = now,
+			treeSignature = nextTreeSignature,
 		}
 		self.lastChunkBuildAt[chunkKey] = now
 		self.totalVisualPartCount = projectedPartTotal
@@ -1550,7 +1497,11 @@ function WorldGenerationServiceClient.refreshVisibleChunks(self: WorldGeneration
 
 		nextVisible[chunkKey] = true
 		local existingVisual = self.chunkVisuals[chunkKey]
-		if existingVisual == nil or existingVisual.revision ~= snapshot.revision or self.dirtyChunkLookup[chunkKey] == true then
+		if
+			existingVisual == nil
+			or existingVisual.revision ~= snapshot.revision
+			or self.dirtyChunkLookup[chunkKey] == true
+		then
 			self:enqueueChunkRebuild(chunkKey)
 		end
 	end

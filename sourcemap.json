@@ -6711,6 +6711,13 @@
                   ],
                   "children": [
                     {
+                      "name": "BufferPool",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/classes/WindFoliage/BufferPool.luau"
+                      ]
+                    },
+                    {
                       "name": "DisturbanceSource",
                       "className": "ModuleScript",
                       "filePaths": [
@@ -6722,34 +6729,6 @@
                       "className": "ModuleScript",
                       "filePaths": [
                         "src/classes/WindFoliage/FoliageInstance.luau"
-                      ]
-                    },
-                    {
-                      "name": "TreeFoliageGraph",
-                      "className": "ModuleScript",
-                      "filePaths": [
-                        "src/classes/WindFoliage/TreeFoliageGraph.luau"
-                      ]
-                    },
-                    {
-                      "name": "WindField",
-                      "className": "ModuleScript",
-                      "filePaths": [
-                        "src/classes/WindFoliage/WindField.luau"
-                      ]
-                    },
-                    {
-                      "name": "RippleMotion",
-                      "className": "ModuleScript",
-                      "filePaths": [
-                        "src/classes/WindFoliage/RippleMotion.luau"
-                      ]
-                    },
-                    {
-                      "name": "BufferPool",
-                      "className": "ModuleScript",
-                      "filePaths": [
-                        "src/classes/WindFoliage/BufferPool.luau"
                       ]
                     },
                     {
@@ -6767,10 +6746,31 @@
                       ]
                     },
                     {
+                      "name": "RippleMotion",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/classes/WindFoliage/RippleMotion.luau"
+                      ]
+                    },
+                    {
+                      "name": "TreeFoliageGraph",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/classes/WindFoliage/TreeFoliageGraph.luau"
+                      ]
+                    },
+                    {
                       "name": "TreeRuntimeRegistry",
                       "className": "ModuleScript",
                       "filePaths": [
                         "src/classes/WindFoliage/TreeRuntimeRegistry.luau"
+                      ]
+                    },
+                    {
+                      "name": "WindField",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/classes/WindFoliage/WindField.luau"
                       ]
                     }
                   ]
@@ -6834,6 +6834,13 @@
                             "src/classes/WorldGeneration/Utils/Cache.luau"
                           ]
                         }
+                      ]
+                    },
+                    {
+                      "name": "Liquid",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/classes/WorldGeneration/Liquid.luau"
                       ]
                     }
                   ]
@@ -7046,6 +7053,13 @@
                       "className": "ModuleScript",
                       "filePaths": [
                         "src/modules/Items/Tiles.luau"
+                      ]
+                    },
+                    {
+                      "name": "WorldGenerationColor",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/modules/Items/WorldGenerationColor.luau"
                       ]
                     }
                   ]
@@ -7783,6 +7797,46 @@
                       "className": "ModuleScript",
                       "filePaths": [
                         "src/services/WorldSimulationService/Utils.luau"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "LiquidService",
+                  "className": "Folder",
+                  "children": [
+                    {
+                      "name": "LiquidServiceUtils",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/services/LiquidService/Utils.luau"
+                      ]
+                    },
+                    {
+                      "name": "LiquidServiceClient",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/services/LiquidService/Client.luau"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "BreathService",
+                  "className": "Folder",
+                  "children": [
+                    {
+                      "name": "BreathServiceUtils",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/services/BreathService/Utils.luau"
+                      ]
+                    },
+                    {
+                      "name": "BreathServiceClient",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/services/BreathService/Client.luau"
                       ]
                     }
                   ]
@@ -9041,6 +9095,32 @@
                   "className": "ModuleScript",
                   "filePaths": [
                     "src/services/WorldSimulationService/Server.luau"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "LiquidService",
+              "className": "Folder",
+              "children": [
+                {
+                  "name": "LiquidServiceServer",
+                  "className": "ModuleScript",
+                  "filePaths": [
+                    "src/services/LiquidService/Server.luau"
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "BreathService",
+              "className": "Folder",
+              "children": [
+                {
+                  "name": "BreathServiceServer",
+                  "className": "ModuleScript",
+                  "filePaths": [
+                    "src/services/BreathService/Server.luau"
                   ]
                 }
               ]

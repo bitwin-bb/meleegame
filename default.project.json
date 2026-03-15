@@ -25,6 +25,15 @@
               "$path": "src/services/AudioService/Utils.luau"
             }
           },
+          "BreathService": {
+            "$className": "Folder",
+            "BreathServiceClient": {
+              "$path": "src/services/BreathService/Client.luau"
+            },
+            "BreathServiceUtils": {
+              "$path": "src/services/BreathService/Utils.luau"
+            }
+          },
           "BuildService": {
             "$className": "Folder",
             "BuildServiceClient": {
@@ -80,6 +89,15 @@
             },
             "InventoryServiceUtils": {
               "$path": "src/services/InventoryService/Utils.luau"
+            }
+          },
+          "LiquidService": {
+            "$className": "Folder",
+            "LiquidServiceClient": {
+              "$path": "src/services/LiquidService/Client.luau"
+            },
+            "LiquidServiceUtils": {
+              "$path": "src/services/LiquidService/Utils.luau"
             }
           },
           "LootService": {
@@ -374,6 +392,9 @@
             },
             "Tiles": {
               "$path": "src/modules/Items/Tiles.luau"
+            },
+            "WorldGenerationColor": {
+              "$path": "src/modules/Items/WorldGenerationColor.luau"
             }
           },
           "Math": {
@@ -493,6 +514,12 @@
             "$path": "src/services/AudioService/Server.luau"
           }
         },
+        "BreathService": {
+          "$className": "Folder",
+          "BreathServiceServer": {
+            "$path": "src/services/BreathService/Server.luau"
+          }
+        },
         "BuildService": {
           "$className": "Folder",
           "BuildServiceServer": {
@@ -527,6 +554,12 @@
           "$className": "Folder",
           "InventoryServiceServer": {
             "$path": "src/services/InventoryService/Server.luau"
+          }
+        },
+        "LiquidService": {
+          "$className": "Folder",
+          "LiquidServiceServer": {
+            "$path": "src/services/LiquidService/Server.luau"
           }
         },
         "LootService": {

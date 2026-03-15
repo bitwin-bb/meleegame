@@ -453,6 +453,56 @@ function FoliageInstance.getRootPosition(self: FoliageInstance): Vector3
 	return self.rootPosition
 end
 
+function FoliageInstance.resetPose(self: FoliageInstance)
+	if self.destroyed then
+		return
+	end
+
+	self.currentBend = ZERO
+	self.springVelocity = ZERO
+	self.reactiveBend = ZERO
+	self.lastDisturbanceImpulse = ZERO
+
+	if self.treeGraph ~= nil then
+		self.treeGraph:reset()
+		self.rootPosition = self.treeGraph:getRootPosition()
+		return
+	end
+
+	if self.representation == "BasePart" then
+		local part = self.part
+		local restCFrame = self.restCFrame
+		local restPivotFrame = self.restPivotFrame
+		if part ~= nil and restCFrame ~= nil and part.Parent ~= nil then
+			part.CFrame = restCFrame
+		end
+		if restPivotFrame ~= nil then
+			self.rootPosition = restPivotFrame.Position
+		end
+		return
+	end
+
+	if self.representation == "Model" then
+		local model = self.model
+		local restCFrame = self.restCFrame
+		local restPivotFrame = self.restPivotFrame
+		if model ~= nil and restCFrame ~= nil and model.Parent ~= nil then
+			model:PivotTo(restCFrame)
+		end
+		if restPivotFrame ~= nil then
+			self.rootPosition = restPivotFrame.Position
+		end
+		return
+	end
+
+	for _, record in self.bones do
+		if record.bone.Parent ~= nil then
+			record.bone.Transform = record.restTransform
+		end
+	end
+	self.rootPosition = self.referenceFrame.Position
+end
+
 function FoliageInstance.addDisturbance(self: FoliageInstance, impulseWorld: Vector3, originWorldRaw: any?)
 	if self.destroyed then
 		return

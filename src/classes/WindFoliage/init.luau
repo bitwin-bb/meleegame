@@ -415,6 +415,10 @@ local function canBeDisturber(instance: Instance): boolean
 	return instance:IsA("BasePart") or instance:IsA("Model") or instance:IsA("Attachment") or instance:IsA("Bone")
 end
 
+local function isInWorkspace(instance: Instance): boolean
+	return instance == Workspace or instance:IsDescendantOf(Workspace)
+end
+
 local function isInWorldAnimatorRuntime(instance: Instance): boolean
 	local current = instance.Parent
 	while current ~= nil do
@@ -570,6 +574,11 @@ function WindFoliage.shouldRegisterFoliage(self: any, instance: Instance): boole
 	if not canBeFoliageRoot(instance) then
 		return false
 	end
+	-- Ignore off-workspace foliage so chunk-build staging models and animator clones
+	-- do not capture rest transforms before their final visible placement.
+	if not isInWorkspace(instance) then
+		return false
+	end
 	if isInWorldAnimatorRuntime(instance) then
 		return false
 	end
@@ -594,6 +603,9 @@ end
 
 function WindFoliage.shouldTrackDisturber(self: any, instance: Instance): boolean
 	if not canBeDisturber(instance) then
+		return false
+	end
+	if not isInWorkspace(instance) then
 		return false
 	end
 	if isInWorldAnimatorRuntime(instance) then

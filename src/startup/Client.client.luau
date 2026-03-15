@@ -20,15 +20,16 @@ local GoreServiceClient = require(ReplicatedStorage.Shared.Services.GoreService.
 local RagdollServiceClient = require(ReplicatedStorage.Shared.Services.RagdollService.RagdollServiceClient)
 local WorldGenerationServiceClient =
 	require(ReplicatedStorage.Shared.Services.WorldGenerationService.WorldGenerationServiceClient)
+local LiquidServiceClient = require(ReplicatedStorage.Shared.Services.LiquidService.LiquidServiceClient)
 local BuildServiceClient = require(ReplicatedStorage.Shared.Services.BuildService.BuildServiceClient)
+local BreathServiceClient = require(ReplicatedStorage.Shared.Services.BreathService.BreathServiceClient)
 local WorldSimulationServiceClient =
 	require(ReplicatedStorage.Shared.Services.WorldSimulationService.WorldSimulationServiceClient)
 local WorldAnimatorServiceClient =
 	require(ReplicatedStorage.Shared.Services.WorldAnimatorService.WorldAnimatorServiceClient)
 local NpcServiceClient = require(ReplicatedStorage.Shared.Services.NpcService.NpcServiceClient)
 local WeatherServiceClient = require(ReplicatedStorage.Shared.Services.WeatherService.WeatherServiceClient)
-local WindFoliageServiceClient =
-	require(ReplicatedStorage.Shared.Services.WindFoliageService.WindFoliageServiceClient)
+local WindFoliageServiceClient = require(ReplicatedStorage.Shared.Services.WindFoliageService.WindFoliageServiceClient)
 
 local function isCameraServiceEnabled(): boolean
 	local cameraSettings = Configs.cameraSettings
@@ -75,6 +76,7 @@ HpServiceClient:init()
 GoreServiceClient:init()
 PlayerServiceClient:init()
 WorldGenerationServiceClient:init()
+LiquidServiceClient:init()
 BuildServiceClient:init()
 if isWorldSimulationReplicationEnabled() then
 	WorldSimulationServiceClient:init()
@@ -86,7 +88,7 @@ AnimationServiceClient:init()
 NpcServiceClient:init()
 MeleeServiceClient:init()
 MagicServiceClient:init()
+BreathServiceClient:init()
 RagdollServiceClient:init()
 
 ui()
-

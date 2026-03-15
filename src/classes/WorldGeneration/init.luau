@@ -4,15 +4,19 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local Configs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
 local Biome = require(script.Biome)
 local Cave = require(script.Cave)
+local Liquid = require(script.Liquid)
 local Structures = require(script.Structures)
 local ProceduralTree = require(script.Tree)
 local Cache = require(script.Utils.Cache)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
+local WorldGenerationColor = require(ReplicatedStorage.Shared.Modules.Items.WorldGenerationColor)
 
 type BiomeClass = Biome.Biome
 type CaveClass = Cave.Cave
+type LiquidGenerationClass = Liquid.LiquidGeneration
 type StructuresClass = Structures.Structures
 type CacheClass = Cache.Cache
 type ColumnProfile = Biome.ColumnProfile
@@ -68,6 +72,7 @@ type ChunkData = {
 	width: number,
 	height: number,
 	tiles: { number },
+	liquids: { number },
 	depthLayers: { number },
 	depthBelowSurface: { number },
 	biomeIds: { number },
@@ -92,6 +97,29 @@ type ChunkVisual = {
 	parts: { BasePart },
 	loadedAt: number,
 	lastAccessedAt: number,
+}
+
+type ChunkDirtyBounds = {
+	minTileX: number,
+	minTileY: number,
+	maxTileX: number,
+	maxTileY: number,
+}
+
+type ChunkLifecycleObserver = {
+	OnChunkCollisionReady: ((self: any, chunkX: number, chunkY: number, context: any?) -> ())?,
+	OnChunkCollisionUnloaded: ((self: any, chunkX: number, chunkY: number, context: any?) -> ())?,
+	OnChunkTerrainChanged: ((
+		self: any,
+		chunkX: number,
+		chunkY: number,
+		dirtyBounds: ChunkDirtyBounds,
+		context: any?
+	) -> ())?,
+}
+
+type ChunkLifecycleConnection = {
+	Disconnect: (self: ChunkLifecycleConnection) -> (),
 }
 
 type PlayerRuntime = {
@@ -280,116 +308,27 @@ local DEPTH_LAYER_CODE = {
 	DEEP = 4,
 }
 
-local TILE_VISUALS: { [number]: TileVisual } = {
-	[TILE_ID.GRASS] = {
-		name = "Grass",
-		color = Color3.fromRGB(95, 159, 53),
-		material = Enum.Material.Grass,
-		transparency = 0,
-	},
-	[TILE_ID.JUNGLE_GRASS] = {
-		name = "JungleGrass",
-		color = Color3.fromRGB(113, 186, 72),
-		material = Enum.Material.Grass,
-		transparency = 0,
-	},
-	[TILE_ID.WOOD] = {
-		name = "Wood",
-		color = Color3.fromRGB(121, 91, 56),
-		material = Enum.Material.Wood,
-		transparency = 0,
-	},
-	[TILE_ID.DIRT] = {
-		name = "Dirt",
-		color = Color3.fromRGB(108, 78, 52),
-		material = Enum.Material.Ground,
-		transparency = 0,
-	},
-	[TILE_ID.STONE] = {
-		name = "Stone",
-		color = Color3.fromRGB(108, 113, 122),
-		material = Enum.Material.Slate,
-		transparency = 0,
-	},
-	[TILE_ID.SAND] = {
-		name = "Sand",
-		color = Color3.fromRGB(225, 206, 136),
-		material = Enum.Material.Sand,
-		transparency = 0,
-	},
-	[TILE_ID.SANDSTONE] = {
-		name = "Sandstone",
-		color = Color3.fromRGB(183, 154, 109),
-		material = Enum.Material.Sandstone,
-		transparency = 0,
-	},
-	[TILE_ID.SNOW] = {
-		name = "Snow",
-		color = Color3.fromRGB(232, 240, 255),
-		material = Enum.Material.Snow,
-		transparency = 0,
-	},
-	[TILE_ID.ICE] = {
-		name = "Ice",
-		color = Color3.fromRGB(178, 214, 255),
-		material = Enum.Material.Glacier,
-		transparency = 0,
-	},
-	[TILE_ID.MUD] = {
-		name = "Mud",
-		color = Color3.fromRGB(112, 90, 61),
-		material = Enum.Material.Ground,
-		transparency = 0,
-	},
-	[TILE_ID.CLAY] = {
-		name = "Clay",
-		color = Color3.fromRGB(135, 98, 73),
-		material = Enum.Material.Ground,
-		transparency = 0,
-	},
-	[TILE_ID.COPPER_ORE] = {
-		name = "CopperOre",
-		color = Color3.fromRGB(189, 118, 63),
-		material = Enum.Material.Metal,
-		transparency = 0,
-	},
-	[TILE_ID.IRON_ORE] = {
-		name = "IronOre",
-		color = Color3.fromRGB(141, 134, 116),
-		material = Enum.Material.Metal,
-		transparency = 0,
-	},
-	[TILE_ID.SILVER_ORE] = {
-		name = "SilverOre",
-		color = Color3.fromRGB(177, 177, 185),
-		material = Enum.Material.Metal,
-		transparency = 0,
-	},
-	[TILE_ID.GOLD_ORE] = {
-		name = "GoldOre",
-		color = Color3.fromRGB(214, 186, 62),
-		material = Enum.Material.Metal,
-		transparency = 0,
-	},
-	[TILE_ID.CORRUPT_GRASS] = {
-		name = "CorruptGrass",
-		color = Color3.fromRGB(131, 84, 193),
-		material = Enum.Material.Grass,
-		transparency = 0,
-	},
-	[TILE_ID.CORRUPT_SOIL] = {
-		name = "CorruptSoil",
-		color = Color3.fromRGB(116, 84, 88),
-		material = Enum.Material.Ground,
-		transparency = 0,
-	},
-	[TILE_ID.CORRUPT_STONE] = {
-		name = "CorruptStone",
-		color = Color3.fromRGB(126, 104, 160),
-		material = Enum.Material.Rock,
-		transparency = 0,
-	},
-}
+local TILE_VISUALS: { [number]: TileVisual } = WorldGenerationColor.TILE_VISUALS
+local TREE_PALETTE_CORRUPTION_1 = WorldGenerationColor.TREE_PALETTES.Corruption1
+	or {
+		BranchColor = Color3.fromRGB(56, 39, 89),
+		LeafColor = Color3.fromRGB(153, 92, 210),
+	}
+local TREE_PALETTE_CORRUPTION_2 = WorldGenerationColor.TREE_PALETTES.Corruption2
+	or {
+		BranchColor = Color3.fromRGB(49, 33, 81),
+		LeafColor = Color3.fromRGB(171, 101, 231),
+	}
+local TREE_PALETTE_JUNGLE_1 = WorldGenerationColor.TREE_PALETTES.Jungle1
+	or {
+		BranchColor = Color3.fromRGB(88, 65, 42),
+		LeafColor = Color3.fromRGB(67, 178, 86),
+	}
+local TREE_PALETTE_JUNGLE_2 = WorldGenerationColor.TREE_PALETTES.Jungle2
+	or {
+		BranchColor = Color3.fromRGB(82, 60, 39),
+		LeafColor = Color3.fromRGB(74, 192, 96),
+	}
 
 local DEFAULT_SEED = 93847583
 local DEFAULT_CHUNK_SIZE = 32
@@ -554,7 +493,13 @@ local function encodeDepthLayer(depthLayer: DepthLayer): number
 	return DEPTH_LAYER_CODE.DEEP
 end
 
-local function hasNonAirNeighborOrSelf(values: { number }, width: number, height: number, localX: number, localY: number): boolean
+local function hasNonAirNeighborOrSelf(
+	values: { number },
+	width: number,
+	height: number,
+	localX: number,
+	localY: number
+): boolean
 	local minY = math.max(0, localY - 1)
 	local maxY = math.min(height - 1, localY + 1)
 	local minX = math.max(0, localX - 1)
@@ -839,8 +784,8 @@ local function createProceduralTreeVariantConfigs(): { TreeVariantConfig }
 				LeavesPerTerminalMax = 2,
 				MaxBranchParts = 58,
 				MaxLeafParts = 28,
-				BranchColor = Color3.fromRGB(56, 39, 89),
-				LeafColor = Color3.fromRGB(153, 92, 210),
+				BranchColor = TREE_PALETTE_CORRUPTION_1.BranchColor,
+				LeafColor = TREE_PALETTE_CORRUPTION_1.LeafColor,
 				UseWelds = true,
 				BranchCanCollide = false,
 				ModelName = "ProceduralTree_Corruption1",
@@ -864,8 +809,8 @@ local function createProceduralTreeVariantConfigs(): { TreeVariantConfig }
 				LeavesPerTerminalMax = 2,
 				MaxBranchParts = 74,
 				MaxLeafParts = 30,
-				BranchColor = Color3.fromRGB(49, 33, 81),
-				LeafColor = Color3.fromRGB(171, 101, 231),
+				BranchColor = TREE_PALETTE_CORRUPTION_2.BranchColor,
+				LeafColor = TREE_PALETTE_CORRUPTION_2.LeafColor,
 				UseWelds = true,
 				BranchCanCollide = false,
 				ModelName = "ProceduralTree_Corruption2",
@@ -891,8 +836,8 @@ local function createProceduralTreeVariantConfigs(): { TreeVariantConfig }
 				LeavesPerTerminalMax = 4,
 				MaxBranchParts = 124,
 				MaxLeafParts = 108,
-				BranchColor = Color3.fromRGB(88, 65, 42),
-				LeafColor = Color3.fromRGB(67, 178, 86),
+				BranchColor = TREE_PALETTE_JUNGLE_1.BranchColor,
+				LeafColor = TREE_PALETTE_JUNGLE_1.LeafColor,
 				UseWelds = true,
 				BranchCanCollide = false,
 				ModelName = "ProceduralTree_Jungle1",
@@ -918,8 +863,8 @@ local function createProceduralTreeVariantConfigs(): { TreeVariantConfig }
 				LeavesPerTerminalMax = 4,
 				MaxBranchParts = 148,
 				MaxLeafParts = 126,
-				BranchColor = Color3.fromRGB(82, 60, 39),
-				LeafColor = Color3.fromRGB(74, 192, 96),
+				BranchColor = TREE_PALETTE_JUNGLE_2.BranchColor,
+				LeafColor = TREE_PALETTE_JUNGLE_2.LeafColor,
 				UseWelds = true,
 				BranchCanCollide = false,
 				ModelName = "ProceduralTree_Jungle2",
@@ -1046,7 +991,9 @@ local function debugPrintJungleSides(self: WorldGeneration)
 		`[WorldGeneration] Debug biome distribution in x=[{-DEBUG_JUNGLE_SCAN_RADIUS_TILES},{DEBUG_JUNGLE_SCAN_RADIUS_TILES}] :: Forest={forestCount}, Desert={desertCount}, Snow={snowCount}, Jungle={jungleCount}`
 	)
 	print(
-		`[WorldGeneration] Jungle placement config :: Side={(if self.biomeGenerator.junglePreferredSideSign < 0 then "LEFT" else "RIGHT")}, Mode={self.biomeGenerator.junglePlacementLabel}, AnchorDistance={self.biomeGenerator.jungleAnchorDistance}, BandHalfWidth={self.biomeGenerator.jungleBandHalfWidth}`
+		`[WorldGeneration] Jungle placement config :: Side={(if self.biomeGenerator.junglePreferredSideSign < 0
+			then "LEFT"
+			else "RIGHT")}, Mode={self.biomeGenerator.junglePlacementLabel}, AnchorDistance={self.biomeGenerator.jungleAnchorDistance}, BandHalfWidth={self.biomeGenerator.jungleBandHalfWidth}`
 	)
 
 	if leftJungleX ~= nil then
@@ -1064,6 +1011,9 @@ end
 
 local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 	local chunkDataRaw = chunkData :: any
+	if chunkDataRaw._metadataValidated == true then
+		return
+	end
 	local totalTiles = chunkData.width * chunkData.height
 	if typeof(chunkDataRaw.biomeTypes) ~= "table" then
 		chunkDataRaw.biomeTypes = table.create(totalTiles, self.biomeType.NORMAL)
@@ -1155,7 +1105,8 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 	end
 	for tileIndex = 1, totalTiles do
 		local biomeId = biomeIds[tileIndex]
-		if biomeId == self.biomeId.FOREST
+		if
+			biomeId == self.biomeId.FOREST
 			or biomeId == self.biomeId.DESERT
 			or biomeId == self.biomeId.SNOW
 			or biomeId == self.biomeId.JUNGLE
@@ -1192,6 +1143,7 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 
 	chunkDataRaw.dominantBiomeType = resolveDominantBiomeType(biomeTypes, self.biomeType.NORMAL)
 	chunkDataRaw.dominantBiomeId = resolveDominantBiomeId(biomeIds, self.biomeId.FOREST)
+	chunkDataRaw._metadataValidated = true
 end
 
 local function carveCorruptionChasmsForChunk(
@@ -1353,7 +1305,8 @@ local function carveCorruptionChasmsForChunk(
 			local radiusNoise = math.noise(
 				(walker.x + CORRUPTION_CHASM_RADIUS_OFFSET_X + walker.seedValue * BG_SEED_X_MULTIPLIER)
 					* CORRUPTION_CHASM_RADIUS_NOISE_FREQUENCY,
-				(walker.y + CORRUPTION_CHASM_RADIUS_OFFSET_Y - stepIndex * 0.41) * CORRUPTION_CHASM_RADIUS_NOISE_FREQUENCY,
+				(walker.y + CORRUPTION_CHASM_RADIUS_OFFSET_Y - stepIndex * 0.41)
+					* CORRUPTION_CHASM_RADIUS_NOISE_FREQUENCY,
 				self.seed * BG_SEED_Y_MULTIPLIER
 			)
 			local radius = math.clamp(
@@ -1383,7 +1336,8 @@ local function carveCorruptionChasmsForChunk(
 			walker.x += walker.driftVelocity
 			walker.y -= 1
 
-			if spawnedBranches < CORRUPTION_CHASM_MAX_BRANCHES
+			if
+				spawnedBranches < CORRUPTION_CHASM_MAX_BRANCHES
 				and walker.generation < CORRUPTION_CHASM_MAX_BRANCH_GENERATION
 				and walker.depthRemaining >= CORRUPTION_CHASM_BRANCH_MIN_DEPTH
 				and random:NextNumber() < walker.branchChance
@@ -1472,6 +1426,76 @@ local function carveCorruptionChasmsForChunk(
 			end
 		end
 	end
+end
+
+local function ensureChunkLiquidData(self: WorldGeneration, chunkData: ChunkData)
+	local chunkDataRaw = chunkData :: any
+	if chunkDataRaw._liquidValidated == true then
+		return
+	end
+	local totalTiles = chunkData.width * chunkData.height
+	if typeof(chunkDataRaw.liquids) == "table" and #chunkDataRaw.liquids >= totalTiles then
+		chunkDataRaw._liquidValidated = true
+		return
+	end
+
+	if self.liquidGenerator == nil then
+		chunkDataRaw.liquids = table.create(totalTiles, 0)
+		chunkDataRaw._liquidValidated = true
+		return
+	end
+
+	local liquidGeneratorRaw = self.liquidGenerator :: any
+	local scanRadius = BACKGROUND_LAYER_BOUNDS_PADDING_TILES
+	if typeof(liquidGeneratorRaw) == "table" then
+		local liquidConfig = liquidGeneratorRaw.config
+		if typeof(liquidConfig) == "table" and typeof(liquidConfig.generation) == "table" then
+			scanRadius = math.max(
+				scanRadius,
+				sanitizeInteger(
+					(liquidConfig.generation :: any).depressionScanRadius,
+					1,
+					64,
+					BACKGROUND_LAYER_BOUNDS_PADDING_TILES
+				)
+			)
+		end
+	end
+
+	local scanWidth = chunkData.width + scanRadius * 2
+	local scanColumnMinX = chunkData.tileMinX - scanRadius
+	local scanColumnProfiles: { ColumnProfile } = table.create(scanWidth)
+	local columnProfiles: { ColumnProfile } = table.create(chunkData.width)
+	for localX = 0, scanWidth - 1 do
+		local worldTileX = scanColumnMinX + localX
+		local column = self.biomeGenerator:getColumnProfile(worldTileX)
+		scanColumnProfiles[localX + 1] = column
+		if localX >= scanRadius and localX < scanRadius + chunkData.width then
+			columnProfiles[localX - scanRadius + 1] = column
+		end
+	end
+
+	chunkDataRaw.dominantBiomeType = resolveDominantBiomeType(chunkData.biomeTypes, self.biomeType.NORMAL)
+	chunkDataRaw.dominantBiomeId = resolveDominantBiomeId(chunkData.biomeIds, self.biomeId.FOREST)
+	chunkDataRaw.liquids = self.liquidGenerator:generateChunkLiquids({
+		seed = self.seed,
+		chunkX = chunkData.chunkX,
+		chunkY = chunkData.chunkY,
+		tileMinX = chunkData.tileMinX,
+		tileMinY = chunkData.tileMinY,
+		width = chunkData.width,
+		height = chunkData.height,
+		tiles = chunkData.tiles,
+		depthBelowSurface = chunkData.depthBelowSurface,
+		biomeIds = chunkData.biomeIds,
+		biomeTypes = chunkData.biomeTypes,
+		dominantBiomeId = chunkDataRaw.dominantBiomeId,
+		dominantBiomeType = chunkDataRaw.dominantBiomeType,
+		columnProfiles = columnProfiles,
+		scanColumnProfiles = scanColumnProfiles,
+		scanColumnMinX = scanColumnMinX,
+	})
+	chunkDataRaw._liquidValidated = true
 end
 
 function WorldGeneration.new(configRaw: WorldGenerationConfig?): WorldGeneration
@@ -1590,6 +1614,7 @@ function WorldGeneration.new(configRaw: WorldGenerationConfig?): WorldGeneration
 		chunkRevisions = {} :: { [string]: number },
 		chunkOverrides = {} :: { [string]: { [number]: number } },
 		chunkBiomeOverrides = {} :: { [string]: { [number]: number } },
+		chunkLiquidOverrides = {} :: { [string]: { [number]: number } },
 		dirtyChunkLookup = {} :: { [string]: boolean },
 		dirtyChunkQueue = {} :: { string },
 		dirtyChunkQueueHead = 1,
@@ -1613,11 +1638,14 @@ function WorldGeneration.new(configRaw: WorldGenerationConfig?): WorldGeneration
 		chunkRebuildQueueHead = 1,
 		chunkRebuildQueueTail = 0,
 		pendingRebuildLookup = {} :: { [string]: boolean },
+		chunkLifecycleObservers = {} :: { [number]: ChunkLifecycleObserver },
+		nextChunkLifecycleObserverId = 0,
 		maxChunkRebuildsPerHeartbeat = sanitizeInteger((config :: any).maxChunkRebuildsPerHeartbeat, 1, 64, 4),
 		cachePruneAccumulator = 0,
 		loadedChunkAuditAccumulator = 0,
 		hasPrintedJungleSideLeft = false,
 		hasPrintedJungleSideRight = false,
+		liquidGenerator = nil :: LiquidGenerationClass?,
 	}, WorldGeneration)
 
 	self.backgroundLayerThicknessBlocks = 1
@@ -1664,6 +1692,11 @@ function WorldGeneration.new(configRaw: WorldGenerationConfig?): WorldGeneration
 		seed = self.seed,
 		tileId = self.tileId,
 	})
+	local liquidConfigSource = (config :: any).liquidConfig
+	if typeof(liquidConfigSource) ~= "table" and typeof(Configs) == "table" then
+		liquidConfigSource = (Configs :: any).liquid
+	end
+	self.liquidGenerator = Liquid.new(liquidConfigSource)
 
 	return self
 end
@@ -1941,7 +1974,9 @@ function WorldGeneration.processChunkRebuildQueue(self: WorldGeneration)
 			self:releaseChunkVisual(cachedVisual)
 		end
 
-		self:loadChunkByKey(chunkKey)
+		self:loadChunkByKey(chunkKey, {
+			reason = "rebuildReady",
+		})
 		processed += 1
 	end
 end
@@ -1958,6 +1993,134 @@ end
 
 function WorldGeneration.getChunkRevisionByKey(self: WorldGeneration, chunkKey: string): number
 	return self.chunkRevisions[chunkKey] or 0
+end
+
+function WorldGeneration.registerChunkLifecycleObserver(
+	self: WorldGeneration,
+	observerRaw: any
+): ChunkLifecycleConnection?
+	if typeof(observerRaw) ~= "table" then
+		return nil
+	end
+
+	self.nextChunkLifecycleObserverId += 1
+	local observerId = self.nextChunkLifecycleObserverId
+	self.chunkLifecycleObservers[observerId] = observerRaw :: ChunkLifecycleObserver
+	local disconnected = false
+
+	return {
+		Disconnect = function(_self: ChunkLifecycleConnection)
+			if disconnected then
+				return
+			end
+			disconnected = true
+			self.chunkLifecycleObservers[observerId] = nil
+		end,
+	}
+end
+
+function WorldGeneration.notifyChunkCollisionReady(self: WorldGeneration, chunkKey: string, contextRaw: any?)
+	local chunkX, chunkY = unpackChunkKey(chunkKey)
+	if chunkX == nil or chunkY == nil then
+		return
+	end
+
+	for _, observer in self.chunkLifecycleObservers do
+		local callback = (observer :: any).OnChunkCollisionReady
+		if typeof(callback) ~= "function" then
+			continue
+		end
+		local ok, err = pcall(function()
+			callback(observer, chunkX, chunkY, contextRaw)
+		end)
+		if not ok then
+			warn("[WorldGeneration] Chunk collision ready observer failed:", chunkKey, tostring(err))
+		end
+	end
+end
+
+function WorldGeneration.notifyChunkCollisionUnloaded(self: WorldGeneration, chunkKey: string, contextRaw: any?)
+	local chunkX, chunkY = unpackChunkKey(chunkKey)
+	if chunkX == nil or chunkY == nil then
+		return
+	end
+
+	for _, observer in self.chunkLifecycleObservers do
+		local callback = (observer :: any).OnChunkCollisionUnloaded
+		if typeof(callback) ~= "function" then
+			continue
+		end
+		local ok, err = pcall(function()
+			callback(observer, chunkX, chunkY, contextRaw)
+		end)
+		if not ok then
+			warn("[WorldGeneration] Chunk collision unload observer failed:", chunkKey, tostring(err))
+		end
+	end
+end
+
+function WorldGeneration.notifyChunkTerrainChanged(
+	self: WorldGeneration,
+	chunkKey: string,
+	dirtyBounds: ChunkDirtyBounds,
+	contextRaw: any?
+)
+	local chunkX, chunkY = unpackChunkKey(chunkKey)
+	if chunkX == nil or chunkY == nil then
+		return
+	end
+
+	for _, observer in self.chunkLifecycleObservers do
+		local callback = (observer :: any).OnChunkTerrainChanged
+		if typeof(callback) ~= "function" then
+			continue
+		end
+		local ok, err = pcall(function()
+			callback(observer, chunkX, chunkY, dirtyBounds, contextRaw)
+		end)
+		if not ok then
+			warn("[WorldGeneration] Chunk terrain change observer failed:", chunkKey, tostring(err))
+		end
+	end
+end
+
+function WorldGeneration.isChunkCollisionReady(self: WorldGeneration, chunkXRaw: any, chunkYRaw: any): boolean
+	if not isFiniteNumber(chunkXRaw) or not isFiniteNumber(chunkYRaw) then
+		return false
+	end
+
+	local chunkX = math.floor(chunkXRaw :: number)
+	local chunkY = math.floor(chunkYRaw :: number)
+	if not self:isChunkYWithinWorldBounds(chunkY) then
+		return false
+	end
+
+	local chunkKey = packChunkKey(chunkX, chunkY)
+	if self.loadedChunkVisuals[chunkKey] == nil then
+		return false
+	end
+	if self.loadingLookup[chunkKey] then
+		return false
+	end
+	if self.dirtyChunkLookup[chunkKey] or self.pendingRebuildLookup[chunkKey] then
+		return false
+	end
+	return true
+end
+
+function WorldGeneration.isChunkCollisionReadyByKey(self: WorldGeneration, chunkKeyRaw: any): boolean
+	if typeof(chunkKeyRaw) ~= "string" then
+		return false
+	end
+	local chunkX, chunkY = unpackChunkKey(chunkKeyRaw)
+	if chunkX == nil or chunkY == nil then
+		return false
+	end
+	return self:isChunkCollisionReady(chunkX, chunkY)
+end
+
+function WorldGeneration.getLoadedCollisionChunkCount(self: WorldGeneration): number
+	return self.loadedChunkCount
 end
 
 function WorldGeneration.auditLoadedChunksForUnload(self: WorldGeneration, deltaTime: number)
@@ -2314,7 +2477,9 @@ function WorldGeneration.placeTerrainTileTemplate(
 
 	local style = self.tileVisuals[tileId] or self.tileVisuals[self.tileId.STONE]
 	cloned.Name = style.name
-	local rotationFix = if shouldApplyGrassRotationFix(self, tileId) then GRASS_TEMPLATE_X_ROTATION_FIX else CFrame.identity
+	local rotationFix = if shouldApplyGrassRotationFix(self, tileId)
+		then GRASS_TEMPLATE_X_ROTATION_FIX
+		else CFrame.identity
 	local placementCFrame = CFrame.new(position) * rotationFix
 	if cloned:IsA("Model") then
 		cloned:PivotTo(placementCFrame)
@@ -2364,7 +2529,9 @@ function WorldGeneration.placeBackgroundTileTemplate(
 	local layerCount = math.max(1, totalLayers)
 	local layerAlpha = if layerCount > 1 then (layerIndex - 1) / (layerCount - 1) else 0
 	local darkenAlpha = 0.28 + layerAlpha * 0.26
-	local rotationFix = if shouldApplyGrassRotationFix(self, tileId) then GRASS_TEMPLATE_X_ROTATION_FIX else CFrame.identity
+	local rotationFix = if shouldApplyGrassRotationFix(self, tileId)
+		then GRASS_TEMPLATE_X_ROTATION_FIX
+		else CFrame.identity
 	local placementCFrame = CFrame.new(position) * rotationFix
 
 	cloned.Name = `{style.name}Background_{layerIndex}`
@@ -2503,9 +2670,7 @@ function WorldGeneration.shouldFillBackgroundLayer(
 		return true
 	end
 
-	local layerAlpha = if self.backgroundLayerCount > 1
-		then (layerIndex - 1) / (self.backgroundLayerCount - 1)
-		else 0
+	local layerAlpha = if self.backgroundLayerCount > 1 then (layerIndex - 1) / (self.backgroundLayerCount - 1) else 0
 
 	local warpedX = tileX * (0.73 + layerAlpha * 0.24) + layerIndex * 19.7
 	local warpedY = tileY * (0.67 + layerAlpha * 0.19) - layerIndex * 13.1
@@ -2535,11 +2700,13 @@ function WorldGeneration.shouldFillBackgroundLayer(
 		BG_PRIMARY_OFFSET_Y - layerIndex * 39.3
 	)
 	local crackFrequency = 0.048 + layerAlpha * 0.018
-	local crackNoise = math.abs(math.noise(
-		(tileX + BG_CRACK_OFFSET_X + layerIndex * 83.5) * crackFrequency,
-		(tileY + BG_CRACK_OFFSET_Y - layerIndex * 57.8) * crackFrequency,
-		(layerZ + self.seed + layerIndex * 307) * BG_SEED_Y_MULTIPLIER
-	))
+	local crackNoise = math.abs(
+		math.noise(
+			(tileX + BG_CRACK_OFFSET_X + layerIndex * 83.5) * crackFrequency,
+			(tileY + BG_CRACK_OFFSET_Y - layerIndex * 57.8) * crackFrequency,
+			(layerZ + self.seed + layerIndex * 307) * BG_SEED_Y_MULTIPLIER
+		)
+	)
 
 	local density = sharedDensity * 0.42 + detailNoise * 0.43 + pocketNoise * 0.15
 	local carveThreshold = 0.72
@@ -2618,13 +2785,8 @@ function WorldGeneration.resolveForegroundTileAt(
 		if isBedrock then
 			tileId = self.tileId.STONE
 		else
-			local shouldCarve = self.caveGenerator:shouldCarve(
-				worldTileX,
-				worldTileY,
-				column.biomeId,
-				depthLayer,
-				depthBelowSurface
-			)
+			local shouldCarve =
+				self.caveGenerator:shouldCarve(worldTileX, worldTileY, column.biomeId, depthLayer, depthBelowSurface)
 			if shouldCarve then
 				tileId = self.tileId.AIR
 			else
@@ -2645,12 +2807,7 @@ end
 function WorldGeneration.isTreeAnchorTile(self: WorldGeneration, worldTileX: number): boolean
 	local treeCell = math.floor(worldTileX / TREE_SPACING_TILES)
 	local slotAlpha = math.clamp(
-		(math.noise(
-			(treeCell + 0.5) * TREE_SLOT_NOISE_FREQUENCY,
-			self.seed * BG_SEED_Y_MULTIPLIER,
-			73.4
-		) + 1)
-			* 0.5,
+		(math.noise((treeCell + 0.5) * TREE_SLOT_NOISE_FREQUENCY, self.seed * BG_SEED_Y_MULTIPLIER, 73.4) + 1) * 0.5,
 		0,
 		1
 	)
@@ -2697,12 +2854,13 @@ function WorldGeneration.resolveTreeTemplateIndex(
 	end
 
 	local variantAlpha = math.clamp(
-		(math.noise(
-			(worldTileX + 179.3) * TREE_VARIANT_NOISE_FREQUENCY_X,
-			(surfaceTileY - 61.7) * TREE_VARIANT_NOISE_FREQUENCY_Y,
-			self.seed * BG_SEED_X_MULTIPLIER
-		) + 1)
-			* 0.5,
+		(
+			math.noise(
+				(worldTileX + 179.3) * TREE_VARIANT_NOISE_FREQUENCY_X,
+				(surfaceTileY - 61.7) * TREE_VARIANT_NOISE_FREQUENCY_Y,
+				self.seed * BG_SEED_X_MULTIPLIER
+			) + 1
+		) * 0.5,
 		0,
 		1
 	)
@@ -2848,14 +3006,12 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 				(clusterZ + BIOME_BLEND_NOISE_OFFSET_Z + self.seed * BG_SEED_X_MULTIPLIER) * BIOME_BLEND_NOISE_FREQUENCY
 			)
 			local noiseAlpha = (edgeNoise + 1) * 0.5
-			local blendFactor = math.clamp(
-				distanceAlpha * (1 - BIOME_BLEND_NOISE_WEIGHT) + noiseAlpha * BIOME_BLEND_NOISE_WEIGHT,
-				0,
-				1
-			)
+			local blendFactor =
+				math.clamp(distanceAlpha * (1 - BIOME_BLEND_NOISE_WEIGHT) + noiseAlpha * BIOME_BLEND_NOISE_WEIGHT, 0, 1)
 			local secondaryChance = BIOME_BLEND_MIN_SECONDARY_CHANCE
 				+ (BIOME_BLEND_MAX_SECONDARY_CHANCE - BIOME_BLEND_MIN_SECONDARY_CHANCE) * blendFactor
-			local roll = deterministicUnitInterval(self.seed, clusterX, clusterY, clusterZ, BIOME_BLEND_CLUSTER_ROLL_SALT)
+			local roll =
+				deterministicUnitInterval(self.seed, clusterX, clusterY, clusterZ, BIOME_BLEND_CLUSTER_ROLL_SALT)
 			if roll < secondaryChance then
 				selectedColumn = secondaryColumn
 			end
@@ -2904,7 +3060,8 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 			local column = resolveClusterBlendedColumn(worldTileX, worldTileY, blendDepthBelowSurface, baseColumn)
 			biomeIds[index] = column.biomeId
 			biomeTypes[index] = column.biomeType
-			local tileId, depthLayer, tileDepthBelowSurface = self:resolveForegroundTileAt(column, worldTileX, worldTileY)
+			local tileId, depthLayer, tileDepthBelowSurface =
+				self:resolveForegroundTileAt(column, worldTileX, worldTileY)
 			tiles[index] = tileId
 			depthLayers[index] = encodeDepthLayer(depthLayer)
 			depthBelowSurface[index] = tileDepthBelowSurface
@@ -2915,7 +3072,18 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 		end
 	end
 
-	carveCorruptionChasmsForChunk(self, chunkX, chunkY, tileMinX, tileMinY, width, height, tiles, biomeTypes, columnProfiles)
+	carveCorruptionChasmsForChunk(
+		self,
+		chunkX,
+		chunkY,
+		tileMinX,
+		tileMinY,
+		width,
+		height,
+		tiles,
+		biomeTypes,
+		columnProfiles
+	)
 
 	for localY = 0, backgroundHeight - 1 do
 		local worldTileY = backgroundTileMinY + localY
@@ -3078,7 +3246,8 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 		end
 
 		local hasAirClearance = self:hasTreeAirClearance(column, worldTileX, surfaceTileY)
-		local treeVariantIndex = self:resolveTreeTemplateIndex(worldTileX, surfaceTileY, column.biomeType, column.biomeId)
+		local treeVariantIndex =
+			self:resolveTreeTemplateIndex(worldTileX, surfaceTileY, column.biomeType, column.biomeId)
 		if treeVariantIndex ~= nil and hasAirClearance then
 			local treeSeed = computeProceduralTreeSeed(self.seed, worldTileX, surfaceTileY, treeVariantIndex)
 			table.insert(trees, {
@@ -3095,9 +3264,29 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 
 	local dominantBiomeType = resolveDominantBiomeType(biomeTypes, self.biomeType.NORMAL)
 	local dominantBiomeId = resolveDominantBiomeId(biomeIds, self.biomeId.FOREST)
+	local liquids = if self.liquidGenerator ~= nil
+		then self.liquidGenerator:generateChunkLiquids({
+			seed = self.seed,
+			chunkX = chunkX,
+			chunkY = chunkY,
+			tileMinX = tileMinX,
+			tileMinY = tileMinY,
+			width = width,
+			height = height,
+			tiles = tiles,
+			depthBelowSurface = depthBelowSurface,
+			biomeIds = biomeIds,
+			biomeTypes = biomeTypes,
+			dominantBiomeId = dominantBiomeId,
+			dominantBiomeType = dominantBiomeType,
+			columnProfiles = columnProfiles,
+			scanColumnProfiles = backgroundColumnProfiles,
+			scanColumnMinX = backgroundTileMinX,
+		})
+		else table.create(width * height, 0)
 
 	local now = os.clock()
-	return {
+	local generated = {
 		key = packChunkKey(chunkX, chunkY),
 		chunkX = chunkX,
 		chunkY = chunkY,
@@ -3106,6 +3295,7 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 		width = width,
 		height = height,
 		tiles = tiles,
+		liquids = liquids,
 		depthLayers = depthLayers,
 		depthBelowSurface = depthBelowSurface,
 		biomeIds = biomeIds,
@@ -3118,6 +3308,10 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 		generatedAt = now,
 		lastAccessedAt = now,
 	}
+	local generatedRaw = generated :: any
+	generatedRaw._metadataValidated = true
+	generatedRaw._liquidValidated = true
+	return generated
 end
 
 function WorldGeneration.getOrGenerateChunkData(self: WorldGeneration, chunkX: number, chunkY: number): ChunkData
@@ -3126,11 +3320,13 @@ function WorldGeneration.getOrGenerateChunkData(self: WorldGeneration, chunkX: n
 	local cached = if cache then cache:getChunkData(key) :: ChunkData? else nil
 	if cached then
 		ensureChunkBiomeMetadata(self, cached)
+		ensureChunkLiquidData(self, cached)
 		return cached
 	end
 
 	local generated = self:generateChunkData(chunkX, chunkY)
 	ensureChunkBiomeMetadata(self, generated)
+	ensureChunkLiquidData(self, generated)
 	local chunkOverrides = self.chunkOverrides[key]
 	if chunkOverrides ~= nil then
 		for tileIndex, overrideTileId in chunkOverrides do
@@ -3145,13 +3341,20 @@ function WorldGeneration.getOrGenerateChunkData(self: WorldGeneration, chunkX: n
 		for tileIndex, overrideBiomeType in chunkBiomeOverrides do
 			if tileIndex >= 1 and tileIndex <= #generated.biomeTypes then
 				generated.biomeTypes[tileIndex] = overrideBiomeType
-				generated.tiles[tileIndex] = self.biomeGenerator:convertTileToBiomeType(
-					generated.tiles[tileIndex],
-					overrideBiomeType
-				)
+				generated.tiles[tileIndex] =
+					self.biomeGenerator:convertTileToBiomeType(generated.tiles[tileIndex], overrideBiomeType)
 			end
 		end
 		generated.dominantBiomeType = resolveDominantBiomeType(generated.biomeTypes, self.biomeType.NORMAL)
+	end
+
+	local chunkLiquidOverrides = self.chunkLiquidOverrides[key]
+	if chunkLiquidOverrides ~= nil then
+		for tileIndex, overrideCell in chunkLiquidOverrides do
+			if tileIndex >= 1 and tileIndex <= #generated.liquids then
+				generated.liquids[tileIndex] = overrideCell
+			end
+		end
 	end
 
 	if cache then
@@ -3404,13 +3607,17 @@ function WorldGeneration.unloadChunkByKey(self: WorldGeneration, chunkKey: strin
 	self.loadedChunkVisuals[chunkKey] = nil
 	self.loadedChunkCount = math.max(0, self.loadedChunkCount - 1)
 	self:cacheChunkVisual(chunkKey, visual)
+	self:notifyChunkCollisionUnloaded(chunkKey, {
+		reason = "unloaded",
+	})
 end
 
-function WorldGeneration.loadChunkByKey(self: WorldGeneration, chunkKey: string)
+function WorldGeneration.loadChunkByKey(self: WorldGeneration, chunkKey: string, contextRaw: any?)
 	if self.loadedChunkVisuals[chunkKey] ~= nil then
 		return
 	end
 
+	local context = if typeof(contextRaw) == "table" then contextRaw :: { [string]: any } else {}
 	local chunkX, chunkY = unpackChunkKey(chunkKey)
 	if chunkX == nil or chunkY == nil then
 		return
@@ -3426,6 +3633,10 @@ function WorldGeneration.loadChunkByKey(self: WorldGeneration, chunkKey: string)
 			self:attachChunkVisual(cachedVisual)
 			self.loadedChunkVisuals[chunkKey] = cachedVisual
 			self.loadedChunkCount += 1
+			self:notifyChunkCollisionReady(chunkKey, {
+				reason = if typeof(context.reason) == "string" then context.reason else "loaded",
+				fromCache = true,
+			})
 		else
 			self:cacheChunkVisual(chunkKey, cachedVisual)
 		end
@@ -3450,6 +3661,10 @@ function WorldGeneration.loadChunkByKey(self: WorldGeneration, chunkKey: string)
 
 	self.loadedChunkVisuals[chunkKey] = visual
 	self.loadedChunkCount += 1
+	self:notifyChunkCollisionReady(chunkKey, {
+		reason = if typeof(context.reason) == "string" then context.reason else "loaded",
+		fromCache = false,
+	})
 end
 
 function WorldGeneration.processUnloadQueue(self: WorldGeneration)
@@ -3743,7 +3958,110 @@ function WorldGeneration.getChunkSnapshotByKey(self: WorldGeneration, chunkKeyRa
 	}
 end
 
-function WorldGeneration.setTileAt(self: WorldGeneration, tileXRaw: any, tileYRaw: any, tileIdRaw: any): (boolean, number, number)
+function WorldGeneration.getLiquidChunkSnapshotByKey(self: WorldGeneration, chunkKeyRaw: any): { [string]: any }?
+	local chunkData = self:getChunkDataByKey(chunkKeyRaw)
+	if chunkData == nil then
+		return nil
+	end
+
+	return {
+		key = chunkData.key,
+		chunkX = chunkData.chunkX,
+		chunkY = chunkData.chunkY,
+		tileMinX = chunkData.tileMinX,
+		tileMinY = chunkData.tileMinY,
+		width = chunkData.width,
+		height = chunkData.height,
+		cells = table.clone(chunkData.liquids),
+		updatedAt = os.clock(),
+	}
+end
+
+function WorldGeneration.getLiquidCellAt(self: WorldGeneration, tileXRaw: any, tileYRaw: any): number
+	if not isFiniteNumber(tileXRaw) or not isFiniteNumber(tileYRaw) then
+		return 0
+	end
+
+	local tileX = math.floor(tileXRaw :: number)
+	local tileY = math.floor(tileYRaw :: number)
+	if tileY < self.minTileY or tileY > self.maxTileY then
+		return 0
+	end
+
+	local chunkX = toChunkCoordinate(tileX, self.chunkSize)
+	local chunkY = toChunkCoordinate(tileY, self.chunkSize)
+	if not self:isChunkYWithinWorldBounds(chunkY) then
+		return 0
+	end
+
+	local chunkData = self:getOrGenerateChunkData(chunkX, chunkY)
+	chunkData.lastAccessedAt = os.clock()
+	local localX = tileX - chunkData.tileMinX
+	local localY = tileY - chunkData.tileMinY
+	if localX < 0 or localX >= chunkData.width or localY < 0 or localY >= chunkData.height then
+		return 0
+	end
+
+	return chunkData.liquids[computeTileIndex(localX, localY, chunkData.width)] or 0
+end
+
+function WorldGeneration.setLiquidCellAt(
+	self: WorldGeneration,
+	tileXRaw: any,
+	tileYRaw: any,
+	packedCellRaw: any
+): (boolean, number, number)
+	if not isFiniteNumber(tileXRaw) or not isFiniteNumber(tileYRaw) then
+		return false, 0, 0
+	end
+	if not isFiniteNumber(packedCellRaw) then
+		return false, 0, 0
+	end
+
+	local tileX = math.floor(tileXRaw :: number)
+	local tileY = math.floor(tileYRaw :: number)
+	local nextPackedCell = math.max(0, math.floor(packedCellRaw :: number))
+	if tileY < self.minTileY or tileY > self.maxTileY then
+		return false, 0, 0
+	end
+
+	local chunkX = toChunkCoordinate(tileX, self.chunkSize)
+	local chunkY = toChunkCoordinate(tileY, self.chunkSize)
+	if not self:isChunkYWithinWorldBounds(chunkY) then
+		return false, 0, 0
+	end
+
+	local chunkData = self:getOrGenerateChunkData(chunkX, chunkY)
+	chunkData.lastAccessedAt = os.clock()
+	local localX = tileX - chunkData.tileMinX
+	local localY = tileY - chunkData.tileMinY
+	if localX < 0 or localX >= chunkData.width or localY < 0 or localY >= chunkData.height then
+		return false, 0, 0
+	end
+
+	local tileIndex = computeTileIndex(localX, localY, chunkData.width)
+	local previousPackedCell = chunkData.liquids[tileIndex] or 0
+	if previousPackedCell == nextPackedCell then
+		return false, previousPackedCell, nextPackedCell
+	end
+
+	chunkData.liquids[tileIndex] = nextPackedCell
+	local liquidOverrides = self.chunkLiquidOverrides[chunkData.key]
+	if liquidOverrides == nil then
+		liquidOverrides = {}
+		self.chunkLiquidOverrides[chunkData.key] = liquidOverrides
+	end
+	liquidOverrides[tileIndex] = nextPackedCell
+
+	return true, previousPackedCell, nextPackedCell
+end
+
+function WorldGeneration.setTileAt(
+	self: WorldGeneration,
+	tileXRaw: any,
+	tileYRaw: any,
+	tileIdRaw: any
+): (boolean, number, number)
 	if not isFiniteNumber(tileXRaw) or not isFiniteNumber(tileYRaw) then
 		return false, self.tileId.AIR, self.tileId.AIR
 	end
@@ -3792,11 +4110,13 @@ function WorldGeneration.setTileAt(self: WorldGeneration, tileXRaw: any, tileYRa
 	chunkOverrides[tileIndex] = nextTileId
 
 	local touchedChunkKeys: { [string]: boolean } = {}
-	local function touchChunk(chunkKey: string)
+	local touchedChunkBounds: { [string]: ChunkDirtyBounds } = {}
+	local function touchChunk(chunkKey: string, dirtyBounds: ChunkDirtyBounds)
 		if touchedChunkKeys[chunkKey] then
 			return
 		end
 		touchedChunkKeys[chunkKey] = true
+		touchedChunkBounds[chunkKey] = dirtyBounds
 		self:bumpChunkRevisionByKey(chunkKey)
 		self:markChunkDirtyByKey(chunkKey)
 
@@ -3808,22 +4128,61 @@ function WorldGeneration.setTileAt(self: WorldGeneration, tileXRaw: any, tileYRa
 		end
 	end
 
-	touchChunk(chunkData.key)
+	touchChunk(chunkData.key, {
+		minTileX = tileX,
+		minTileY = tileY,
+		maxTileX = tileX,
+		maxTileY = tileY,
+	})
 	if localX == 0 then
-		touchChunk(packChunkKey(chunkX - 1, chunkY))
+		local neighborChunkX = chunkX - 1
+		touchChunk(packChunkKey(neighborChunkX, chunkY), {
+			minTileX = neighborChunkX * self.chunkSize + self.chunkSize - 1,
+			minTileY = tileY,
+			maxTileX = neighborChunkX * self.chunkSize + self.chunkSize - 1,
+			maxTileY = tileY,
+		})
 	elseif localX == chunkData.width - 1 then
-		touchChunk(packChunkKey(chunkX + 1, chunkY))
+		local neighborChunkX = chunkX + 1
+		touchChunk(packChunkKey(neighborChunkX, chunkY), {
+			minTileX = neighborChunkX * self.chunkSize,
+			minTileY = tileY,
+			maxTileX = neighborChunkX * self.chunkSize,
+			maxTileY = tileY,
+		})
 	end
 	if localY == 0 then
 		local belowChunkY = chunkY - 1
 		if self:isChunkYWithinWorldBounds(belowChunkY) then
-			touchChunk(packChunkKey(chunkX, belowChunkY))
+			touchChunk(packChunkKey(chunkX, belowChunkY), {
+				minTileX = tileX,
+				minTileY = belowChunkY * self.chunkSize + self.chunkSize - 1,
+				maxTileX = tileX,
+				maxTileY = belowChunkY * self.chunkSize + self.chunkSize - 1,
+			})
 		end
 	elseif localY == chunkData.height - 1 then
 		local aboveChunkY = chunkY + 1
 		if self:isChunkYWithinWorldBounds(aboveChunkY) then
-			touchChunk(packChunkKey(chunkX, aboveChunkY))
+			touchChunk(packChunkKey(chunkX, aboveChunkY), {
+				minTileX = tileX,
+				minTileY = aboveChunkY * self.chunkSize,
+				maxTileX = tileX,
+				maxTileY = aboveChunkY * self.chunkSize,
+			})
 		end
+	end
+
+	for touchedChunkKey, dirtyBounds in touchedChunkBounds do
+		self:notifyChunkTerrainChanged(touchedChunkKey, dirtyBounds, {
+			reason = "setTileAt",
+			sourceTileX = tileX,
+			sourceTileY = tileY,
+			previousTileId = previousTileId,
+			nextTileId = nextTileId,
+			sourceChunkKey = chunkData.key,
+			targetChunkKey = touchedChunkKey,
+		})
 	end
 
 	return true, previousTileId, nextTileId
@@ -4028,6 +4387,8 @@ function WorldGeneration.destroy(self: WorldGeneration)
 	table.clear(self.chunkRevisions)
 	table.clear(self.chunkOverrides)
 	table.clear(self.chunkBiomeOverrides)
+	table.clear(self.chunkLiquidOverrides)
+	table.clear(self.chunkLifecycleObservers)
 	table.clear(self.loadQueue)
 	table.clear(self.unloadQueue)
 	table.clear(self.dirtyChunkQueue)

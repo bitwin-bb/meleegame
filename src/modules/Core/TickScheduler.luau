@@ -251,6 +251,12 @@ function TickScheduler._runClock(self: TickScheduler, nowTime: number, dt: numbe
 	clearArray(due)
 
 	for _, task in self.tasks do
+		if task == nil or typeof(task) ~= "table" then
+			continue
+		end
+		if task.token == nil then
+			continue
+		end
 		if task.useFixedClock ~= useFixedClock then
 			continue
 		end
@@ -273,6 +279,12 @@ function TickScheduler._runClock(self: TickScheduler, nowTime: number, dt: numbe
 	local fired = 0
 	for index = 1, #due do
 		local task = due[index]
+		if task == nil or typeof(task) ~= "table" then
+			continue
+		end
+		if task.token == nil then
+			continue
+		end
 		if task.token.cancelled then
 			continue
 		end
@@ -347,6 +359,9 @@ function TickScheduler.getStats(self: TickScheduler): { [string]: number }
 	local fixed = 0
 	local variable = 0
 	for _, task in self.tasks do
+		if task == nil or typeof(task) ~= "table" or task.token == nil then
+			continue
+		end
 		if task.token.cancelled then
 			continue
 		end
@@ -369,11 +384,13 @@ end
 
 function TickScheduler.clear(self: TickScheduler)
 	for _, task in self.tasks do
+		if task == nil or typeof(task) ~= "table" or task.token == nil then
+			continue
+		end
 		task.token.cancelled = true
 	end
 	table.clear(self.tasks)
 	table.clear(self.pausedGroups)
-	clearArray(self.dueBuffer)
 end
 
 return TickScheduler

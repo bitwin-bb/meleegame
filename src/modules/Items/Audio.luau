@@ -238,5 +238,11 @@ return {
 			Chop = {},
 			Fall = {},
 		},
+		Water = {
+			"rbxassetid://87702599635040",
+			"rbxassetid://83673781452193",
+			"rbxassetid://6569949256",
+			"rbxassetid://5930519356",
+		}
 	},
 }

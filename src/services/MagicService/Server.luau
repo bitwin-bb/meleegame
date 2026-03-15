@@ -9,6 +9,7 @@ local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Magic = require(ReplicatedStorage.Shared.Classes.Magic)
 local MagicServiceUtils = require(ReplicatedStorage.Shared.Services.MagicService.MagicServiceUtils)
+local PlayerServiceUtils = require(ReplicatedStorage.Shared.Services.PlayerService.PlayerServiceUtils)
 local InventoryServiceServer = require(ServerScriptService.Services.InventoryService.InventoryServiceServer)
 local ManaServiceServer = require(ServerScriptService.Services.ManaService.ManaServiceServer)
 local NpcServiceServer = require(ServerScriptService.Services.NpcService.NpcServiceServer)
@@ -85,8 +86,12 @@ type PlayerRuntime = {
 	magicController: MagicController?,
 	weaponCooldowns: { [string]: number },
 	pendingPreparedCast: { itemId: string, config: WeaponRuntimeConfig, stats: CastStats, castRequest: CastRequest }?,
-	pendingCastByToken: { [number]: { itemId: string, config: WeaponRuntimeConfig, stats: CastStats, castRequest: CastRequest } },
-	committedCastByToken: { [number]: { itemId: string, config: WeaponRuntimeConfig, stats: CastStats, castRequest: CastRequest } },
+	pendingCastByToken: {
+		[number]: { itemId: string, config: WeaponRuntimeConfig, stats: CastStats, castRequest: CastRequest },
+	},
+	committedCastByToken: {
+		[number]: { itemId: string, config: WeaponRuntimeConfig, stats: CastStats, castRequest: CastRequest },
+	},
 }
 
 local MagicServiceServer = {}
@@ -143,7 +148,8 @@ local function looksLikeMagicDefinition(definitionRaw: any): boolean
 		return true
 	end
 
-	local typeToken = string.lower(trim(definition.itemType or definition.type or definition.weaponType or definition.class))
+	local typeToken =
+		string.lower(trim(definition.itemType or definition.type or definition.weaponType or definition.class))
 	typeToken = string.gsub(typeToken, "[%s_%-]+", "")
 	if typeToken == "magicweapon" or typeToken == "magic" or typeToken == "staff" or typeToken == "spell" then
 		return true
@@ -238,10 +244,7 @@ function MagicServiceServer.resolveRuntimeByMagic(
 	return nil, nil
 end
 
-function MagicServiceServer.resolveManaStateSnapshot(
-	self: MagicServiceServer,
-	player: Player
-): (number, number, number)
+function MagicServiceServer.resolveManaStateSnapshot(self: MagicServiceServer, player: Player): (number, number, number)
 	local mana = MagicServiceUtils.DEFAULT_MAX_MANA
 	local maxMana = MagicServiceUtils.DEFAULT_MAX_MANA
 	local regenPerSecond = MagicServiceUtils.DEFAULT_MANA_REGEN
@@ -254,11 +257,13 @@ function MagicServiceServer.resolveManaStateSnapshot(
 		return manaService:getState(player)
 	end)
 	if not success then
-		warn(("[MagicService] Failed to read mana snapshot for %s (%d): %s"):format(
-			player.Name,
-			player.UserId,
-			tostring(manaStateOrError)
-		))
+		warn(
+			("[MagicService] Failed to read mana snapshot for %s (%d): %s"):format(
+				player.Name,
+				player.UserId,
+				tostring(manaStateOrError)
+			)
+		)
 		return mana, maxMana, regenPerSecond
 	end
 	if typeof(manaStateOrError) ~= "table" then
@@ -361,7 +366,7 @@ function MagicServiceServer.buildRuntimeConfigWithOverrides(
 	self: MagicServiceServer,
 	weaponConfigRaw: any
 ): WeaponRuntimeConfig?
-	local weaponConfig = if typeof(weaponConfigRaw) == "table" then (weaponConfigRaw :: { [string]: any }) else nil
+	local weaponConfig = if typeof(weaponConfigRaw) == "table" then weaponConfigRaw :: { [string]: any } else nil
 	if weaponConfig == nil then
 		return nil
 	end
@@ -535,11 +540,13 @@ function MagicServiceServer.canConsumeMana(
 		return manaService:canConsumeMana(player, manaCost, context)
 	end)
 	if not success then
-		warn(("[MagicService] Failed canConsumeMana for %s (%d): %s"):format(
-			player.Name,
-			player.UserId,
-			tostring(canConsumeOrError)
-		))
+		warn(
+			("[MagicService] Failed canConsumeMana for %s (%d): %s"):format(
+				player.Name,
+				player.UserId,
+				tostring(canConsumeOrError)
+			)
+		)
 		return false
 	end
 	return canConsumeOrError == true
@@ -577,11 +584,13 @@ function MagicServiceServer.consumeMana(
 		return manaService:consumeMana(player, manaCost, context)
 	end)
 	if not success then
-		warn(("[MagicService] Failed consumeMana for %s (%d): %s"):format(
-			player.Name,
-			player.UserId,
-			tostring(consumeResultOrError)
-		))
+		warn(
+			("[MagicService] Failed consumeMana for %s (%d): %s"):format(
+				player.Name,
+				player.UserId,
+				tostring(consumeResultOrError)
+			)
+		)
 		return false
 	end
 	if consumeResultOrError ~= true then
@@ -800,7 +809,11 @@ function MagicServiceServer.collectOverlapParts(
 	return parts
 end
 
-function MagicServiceServer.isValidHumanoidTarget(self: MagicServiceServer, projectile: any, humanoid: Humanoid?): boolean
+function MagicServiceServer.isValidHumanoidTarget(
+	self: MagicServiceServer,
+	projectile: any,
+	humanoid: Humanoid?
+): boolean
 	if not MagicServiceUtils.isHumanoidAlive(humanoid) then
 		return false
 	end
@@ -933,9 +946,15 @@ function MagicServiceServer.applySplashEffect(
 
 		local model = part:FindFirstAncestorOfClass("Model")
 		local npcDamaged = false
-		if model ~= nil and not seenNpcModels[model] and projectile.config.projectile.canHitNpcs and self.npcService ~= nil then
+		if
+			model ~= nil
+			and not seenNpcModels[model]
+			and projectile.config.projectile.canHitNpcs
+			and self.npcService ~= nil
+		then
 			seenNpcModels[model] = true
-			local splashNpcDamage = self.npcService:damageNpcFromHitPart(part, projectile.stats.damage * damageScale, projectile.caster)
+			local splashNpcDamage =
+				self.npcService:damageNpcFromHitPart(part, projectile.stats.damage * damageScale, projectile.caster)
 			if splashNpcDamage > 0 then
 				npcDamaged = true
 			end
@@ -1008,12 +1027,8 @@ function MagicServiceServer.applyChainEffect(
 	local jumpFalloff = math.clamp(effect.jumpFalloff, 0, 1)
 
 	for _ = 1, jumpCount do
-		local targetHumanoid, targetPosition = self:findNearestChainTarget(
-			projectile,
-			currentPosition,
-			effect.radius,
-			visited
-		)
+		local targetHumanoid, targetPosition =
+			self:findNearestChainTarget(projectile, currentPosition, effect.radius, visited)
 		if targetHumanoid == nil or targetPosition == nil then
 			break
 		end
@@ -1098,7 +1113,12 @@ function MagicServiceServer.expireProjectile(
 	})
 end
 
-function MagicServiceServer.handleProjectileHit(self: MagicServiceServer, projectileId: number, projectile: any, hit: any)
+function MagicServiceServer.handleProjectileHit(
+	self: MagicServiceServer,
+	projectileId: number,
+	projectile: any,
+	hit: any
+)
 	local hitPart = hit.Instance
 	if typeof(hitPart) ~= "Instance" or not hitPart:IsA("BasePart") then
 		if projectile.config.projectile.collisionBehavior ~= "pierce" then
@@ -1156,10 +1176,7 @@ function MagicServiceServer.handleProjectileHit(self: MagicServiceServer, projec
 	end
 end
 
-function MagicServiceServer.findNearestHomingTarget(
-	self: MagicServiceServer,
-	projectile: any
-): (Humanoid?, Vector3?)
+function MagicServiceServer.findNearestHomingTarget(self: MagicServiceServer, projectile: any): (Humanoid?, Vector3?)
 	local homingRange = projectile.config.projectile.homingRange
 	if homingRange <= 0 then
 		return nil, nil
@@ -1282,7 +1299,8 @@ function MagicServiceServer.stepProjectiles(self: MagicServiceServer, dt: number
 			if self.activeProjectiles[projectileId] == nil then
 				continue
 			end
-			projectile.poolEntry.part.CFrame = CFrame.lookAt(projectile.position, projectile.position + projectile.direction)
+			projectile.poolEntry.part.CFrame =
+				CFrame.lookAt(projectile.position, projectile.position + projectile.direction)
 		else
 			projectile.position = toPosition
 			projectile.poolEntry.part.CFrame = CFrame.lookAt(toPosition, toPosition + projectile.direction)
@@ -1326,26 +1344,25 @@ function MagicServiceServer.stepEffects(self: MagicServiceServer, now: number)
 		end
 
 		if next(effectsMap) == nil then
-			local base = humanoid:GetAttribute("MagicService_BaseWalkSpeed")
-			if typeof(base) == "number" and base == base then
-				humanoid.WalkSpeed = math.max(2, base)
-			end
-			humanoid:SetAttribute("MagicService_BaseWalkSpeed", nil)
+			PlayerServiceUtils.setMovementSpeedMultiplier(
+				humanoid,
+				PlayerServiceUtils.MAGIC_WALK_SPEED_MULTIPLIER_ATTRIBUTE,
+				nil
+			)
 			self.activeEffectsByHumanoid[humanoid] = nil
 		else
 			if maxSlow > 0 then
-				local base = humanoid:GetAttribute("MagicService_BaseWalkSpeed")
-				if typeof(base) ~= "number" or base ~= base then
-					base = humanoid.WalkSpeed
-					humanoid:SetAttribute("MagicService_BaseWalkSpeed", base)
-				end
-				humanoid.WalkSpeed = math.max(2, (base :: number) * (1 - maxSlow))
+				PlayerServiceUtils.setMovementSpeedMultiplier(
+					humanoid,
+					PlayerServiceUtils.MAGIC_WALK_SPEED_MULTIPLIER_ATTRIBUTE,
+					1 - maxSlow
+				)
 			else
-				local base = humanoid:GetAttribute("MagicService_BaseWalkSpeed")
-				if typeof(base) == "number" and base == base then
-					humanoid.WalkSpeed = math.max(2, base)
-				end
-				humanoid:SetAttribute("MagicService_BaseWalkSpeed", nil)
+				PlayerServiceUtils.setMovementSpeedMultiplier(
+					humanoid,
+					PlayerServiceUtils.MAGIC_WALK_SPEED_MULTIPLIER_ATTRIBUTE,
+					nil
+				)
 			end
 		end
 	end
@@ -1447,17 +1464,17 @@ function MagicServiceServer.executeCast(
 		return
 	end
 	for projectileIndex = 1, stats.projectileCount do
-		local spreadDirection = MagicServiceUtils.applySpread(
-			direction,
-			stats.projectileSpread,
-			projectileIndex,
-			stats.projectileCount
-		)
+		local spreadDirection =
+			MagicServiceUtils.applySpread(direction, stats.projectileSpread, projectileIndex, stats.projectileCount)
 		self:spawnProjectile(player, runtime, config, stats, spreadDirection, origin, castToken, projectileIndex)
 	end
 end
 
-function MagicServiceServer.onMagicCastCommitted(self: MagicServiceServer, magicController: MagicController, contextRaw: any)
+function MagicServiceServer.onMagicCastCommitted(
+	self: MagicServiceServer,
+	magicController: MagicController,
+	contextRaw: any
+)
 	local player, runtime = self:resolveRuntimeByMagic(magicController)
 	if player == nil or runtime == nil then
 		return
@@ -1499,7 +1516,12 @@ function MagicServiceServer.onHeartbeat(self: MagicServiceServer, dt: number)
 	end
 end
 
-function MagicServiceServer.bindCharacter(self: MagicServiceServer, player: Player, runtime: PlayerRuntime, character: Model)
+function MagicServiceServer.bindCharacter(
+	self: MagicServiceServer,
+	player: Player,
+	runtime: PlayerRuntime,
+	character: Model
+)
 	runtime.characterJanitor:Clean()
 	runtime.character = character
 	runtime.humanoid = character:FindFirstChildOfClass("Humanoid")
@@ -1532,7 +1554,12 @@ function MagicServiceServer.bindCharacter(self: MagicServiceServer, player: Play
 	self:refreshEquippedWeaponFromInventory(player, runtime)
 end
 
-function MagicServiceServer.bindBackpack(self: MagicServiceServer, player: Player, runtime: PlayerRuntime, backpack: Backpack)
+function MagicServiceServer.bindBackpack(
+	self: MagicServiceServer,
+	player: Player,
+	runtime: PlayerRuntime,
+	backpack: Backpack
+)
 	runtime.playerJanitor:GiveChore(backpack.ChildAdded:Connect(function(child: Instance)
 		if child:IsA("Tool") then
 			self:refreshEquippedWeaponFromInventory(player, runtime)
@@ -1616,7 +1643,11 @@ function MagicServiceServer.untrackPlayer(self: MagicServiceServer, player: Play
 	self.playerRuntimes[player] = nil
 end
 
-function MagicServiceServer.registerModifierProvider(self: MagicServiceServer, providerNameRaw: any, callbackRaw: any): boolean
+function MagicServiceServer.registerModifierProvider(
+	self: MagicServiceServer,
+	providerNameRaw: any,
+	callbackRaw: any
+): boolean
 	local providerName = trim(providerNameRaw)
 	if providerName == "" or typeof(callbackRaw) ~= "function" then
 		return false
@@ -1637,7 +1668,11 @@ function MagicServiceServer.unregisterModifierProvider(self: MagicServiceServer,
 	return true
 end
 
-function MagicServiceServer.registerWeaponDefinition(self: MagicServiceServer, itemIdRaw: any, definitionRaw: any): boolean
+function MagicServiceServer.registerWeaponDefinition(
+	self: MagicServiceServer,
+	itemIdRaw: any,
+	definitionRaw: any
+): boolean
 	local itemId = trim(itemIdRaw)
 	if itemId == "" or typeof(definitionRaw) ~= "table" then
 		return false
@@ -1660,7 +1695,12 @@ function MagicServiceServer.registerWeaponModule(self: MagicServiceServer, modul
 		if shouldSilenceModuleRequireError(moduleResultOrError) then
 			return false
 		end
-		warn(("[MagicService] Failed to require %s: %s"):format(moduleScript:GetFullName(), tostring(moduleResultOrError)))
+		warn(
+			("[MagicService] Failed to require %s: %s"):format(
+				moduleScript:GetFullName(),
+				tostring(moduleResultOrError)
+			)
+		)
 		return false
 	end
 	if typeof(moduleResultOrError) ~= "table" then
@@ -1681,7 +1721,10 @@ function MagicServiceServer.registerWeaponModule(self: MagicServiceServer, modul
 
 	registerEntry(moduleResult.itemId or moduleResult.id or moduleScript.Name, moduleResult)
 	if typeof(moduleResult.definition) == "table" then
-		registerEntry((moduleResult.definition :: any).itemId or (moduleResult.definition :: any).id or moduleScript.Name, moduleResult.definition)
+		registerEntry(
+			(moduleResult.definition :: any).itemId or (moduleResult.definition :: any).id or moduleScript.Name,
+			moduleResult.definition
+		)
 	end
 	for key, value in moduleResult do
 		if typeof(value) ~= "table" then

@@ -1,7 +1,9 @@
 --!strict
 
 local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local WorldGenerationColor = require(ReplicatedStorage.Shared.Modules.Items.WorldGenerationColor)
 
 local ProceduralTree = {}
 ProceduralTree.__index = ProceduralTree
@@ -124,6 +126,11 @@ local function resolveLeafMaterialFallback(): Enum.Material
 end
 
 local DEFAULT_LEAF_MATERIAL = resolveLeafMaterialFallback()
+local DEFAULT_TREE_PALETTE = WorldGenerationColor.TREE_PALETTES.Default
+	or {
+		BranchColor = Color3.fromRGB(102, 72, 49),
+		LeafColor = Color3.fromRGB(91, 153, 66),
+	}
 local WIND_FOLIAGE_TAG = "WindFoliage"
 local WIND_FOLIAGE_PIVOT_ATTACHMENT_NAME = "WindFoliagePivot"
 local TREE_GRAPH_ATTRIBUTE = "WindFoliageTreeGraph"
@@ -160,9 +167,9 @@ local DEFAULT_CONFIG: ResolvedProceduralTreeConfig = {
 	UseWelds = true,
 	BranchCanCollide = false,
 	BranchMaterial = Enum.Material.Wood,
-	BranchColor = Color3.fromRGB(102, 72, 49),
+	BranchColor = DEFAULT_TREE_PALETTE.BranchColor,
 	LeafMaterial = DEFAULT_LEAF_MATERIAL,
-	LeafColor = Color3.fromRGB(91, 153, 66),
+	LeafColor = DEFAULT_TREE_PALETTE.LeafColor,
 	ModelName = "ProceduralTree",
 }
 
@@ -428,7 +435,9 @@ local function ensureWindFoliagePivotAttachment(rootPart: BasePart): Attachment
 	return attachment
 end
 
-local function resolveWindFoliagePreset(config: ResolvedProceduralTreeConfig): (string, number, number, number, number, number)
+local function resolveWindFoliagePreset(
+	config: ResolvedProceduralTreeConfig
+): (string, number, number, number, number, number)
 	local isHeavyTree = config.InitialLength >= 22 or config.InitialThickness >= 3.6 or config.MaxDepth >= 6
 	if isHeavyTree then
 		return "BranchHeavy", 5.5, 0.34, 0.58, 0.72, 0.28
@@ -735,7 +744,9 @@ function ProceduralTree.createBranchPart(self: ProceduralTree, descriptor: Branc
 
 	local midpoint = worldStart + direction * 0.5
 	local part = Instance.new("Part")
-	part.Name = if descriptor.parentIndex == 0 then "Trunk" else ("Branch_%d_%d"):format(descriptor.depth, descriptor.index)
+	part.Name = if descriptor.parentIndex == 0
+		then "Trunk"
+		else ("Branch_%d_%d"):format(descriptor.depth, descriptor.index)
 	part.Size = Vector3.new(descriptor.thickness, descriptor.thickness, length)
 	part.CFrame = CFrame.lookAt(midpoint, midpoint + direction.Unit)
 	part.Color = self.config.BranchColor

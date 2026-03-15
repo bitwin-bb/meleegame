@@ -102,6 +102,10 @@ local MIN_BLOOD_CLEANUP_SECONDS = 2
 local HALF_TURN_RADIANS = math.pi
 local FULL_TURN_RADIANS = math.pi * 2
 local QUARTER_TURN_RADIANS = math.pi * 0.5
+local SHARED_BASE_WALK_SPEED_ATTRIBUTE = "PlayerService_BaseWalkSpeed"
+local MAGIC_WALK_SPEED_MULTIPLIER_ATTRIBUTE = "MagicService_WalkSpeedMultiplier"
+local LIQUID_WALK_SPEED_MULTIPLIER_ATTRIBUTE = "LiquidService_WalkSpeedMultiplier"
+local MIN_EFFECTIVE_WALK_SPEED = 2
 local PLAYER_AUDIO = (Audio :: any).Player or {}
 local PLAYER_LAND_AUDIO = PLAYER_AUDIO.Land or {}
 
@@ -225,7 +229,8 @@ PlayerServiceUtils.DEFAULT_DEATH_RESPAWN_HEALTH_SCALE = DEFAULT_DEATH_RESPAWN_HE
 PlayerServiceUtils.DEFAULT_INVINCIBILITY_FRAMES_DURATION = DEFAULT_INVINCIBILITY_FRAMES_DURATION
 PlayerServiceUtils.DEFAULT_INVINCIBILITY_FRAMES_FLICKER_INTERVAL = DEFAULT_INVINCIBILITY_FRAMES_FLICKER_INTERVAL
 PlayerServiceUtils.DEFAULT_INVINCIBILITY_HIGHLIGHT_FILL_TRANSPARENCY = DEFAULT_INVINCIBILITY_HIGHLIGHT_FILL_TRANSPARENCY
-PlayerServiceUtils.DEFAULT_INVINCIBILITY_HIGHLIGHT_OUTLINE_TRANSPARENCY = DEFAULT_INVINCIBILITY_HIGHLIGHT_OUTLINE_TRANSPARENCY
+PlayerServiceUtils.DEFAULT_INVINCIBILITY_HIGHLIGHT_OUTLINE_TRANSPARENCY =
+	DEFAULT_INVINCIBILITY_HIGHLIGHT_OUTLINE_TRANSPARENCY
 PlayerServiceUtils.NETWORK_METHOD_SET_WORLD_READY_FOR_MOVEMENT = NETWORK_METHOD_SET_WORLD_READY_FOR_MOVEMENT
 PlayerServiceUtils.NETWORK_METHOD_APPLY_MOVEMENT_LOCK = NETWORK_METHOD_APPLY_MOVEMENT_LOCK
 PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE = DEFAULT_MOVEMENT_LOCK_ATTRIBUTE
@@ -234,6 +239,9 @@ PlayerServiceUtils.DEFAULT_WORLD_UNLOCK_RAYCAST_DISTANCE = DEFAULT_WORLD_UNLOCK_
 PlayerServiceUtils.GAME_FOLDER_NAME = GAME_FOLDER_NAME
 PlayerServiceUtils.WORLD_GENERATION_FOLDER_NAME = WORLD_GENERATION_FOLDER_NAME
 PlayerServiceUtils.EFFECTS_JUNK_FOLDER_NAME = EFFECTS_JUNK_FOLDER_NAME
+PlayerServiceUtils.SHARED_BASE_WALK_SPEED_ATTRIBUTE = SHARED_BASE_WALK_SPEED_ATTRIBUTE
+PlayerServiceUtils.MAGIC_WALK_SPEED_MULTIPLIER_ATTRIBUTE = MAGIC_WALK_SPEED_MULTIPLIER_ATTRIBUTE
+PlayerServiceUtils.LIQUID_WALK_SPEED_MULTIPLIER_ATTRIBUTE = LIQUID_WALK_SPEED_MULTIPLIER_ATTRIBUTE
 PlayerServiceUtils.MIN_RESPAWN_MAX_HEALTH = MIN_RESPAWN_MAX_HEALTH
 
 function PlayerServiceUtils.getOrCreateWorkspaceGameFolder(): Folder
@@ -254,7 +262,8 @@ end
 
 function PlayerServiceUtils.sanitizeInvincibilityFramesConfig(configRaw: any): InvincibilityFramesConfig
 	local source = if typeof(configRaw) == "table" then configRaw else {}
-	local duration = if typeof((source :: any).duration) == "number" and (source :: any).duration == (source :: any).duration
+	local duration = if typeof((source :: any).duration) == "number"
+			and (source :: any).duration == (source :: any).duration
 		then math.max(MIN_INVINCIBILITY_FRAMES_DURATION, (source :: any).duration)
 		else DEFAULT_INVINCIBILITY_FRAMES_DURATION
 	local flickerInterval = if typeof((source :: any).flickerInterval) == "number"
@@ -514,7 +523,8 @@ function PlayerServiceUtils.sampleGroundFromFeet(
 	raycastDistance: number?
 ): RaycastResult?
 	local leftHit = raycastGroundFromPart(leftFoot, raycastParams, raycastDistance, DEFAULT_GROUND_RAYCAST_ORIGIN_LIFT)
-	local rightHit = raycastGroundFromPart(rightFoot, raycastParams, raycastDistance, DEFAULT_GROUND_RAYCAST_ORIGIN_LIFT)
+	local rightHit =
+		raycastGroundFromPart(rightFoot, raycastParams, raycastDistance, DEFAULT_GROUND_RAYCAST_ORIGIN_LIFT)
 	local bestHit = pickNearestRaycastResult(leftHit, rightHit)
 	if bestHit ~= nil then
 		return bestHit
@@ -602,6 +612,66 @@ function PlayerServiceUtils.applyCharacterSettings(humanoid: Humanoid)
 	humanoid.AutoRotate = false
 end
 
+local function isValidWalkSpeed(value: any): boolean
+	return typeof(value) == "number" and value == value and value > 0
+end
+
+local function getConfiguredWalkSpeedMultiplier(humanoid: Humanoid, attributeName: string): number
+	local multiplier = humanoid:GetAttribute(attributeName)
+	if not isValidWalkSpeed(multiplier) then
+		return 1
+	end
+	return math.clamp(multiplier :: number, 0.05, 1)
+end
+
+function PlayerServiceUtils.getBaseWalkSpeed(humanoid: Humanoid): number
+	local storedBase = humanoid:GetAttribute(SHARED_BASE_WALK_SPEED_ATTRIBUTE)
+	if isValidWalkSpeed(storedBase) then
+		return storedBase :: number
+	end
+
+	local baseWalkSpeed = humanoid.WalkSpeed
+	if not isValidWalkSpeed(baseWalkSpeed) then
+		baseWalkSpeed = 16
+	end
+	humanoid:SetAttribute(SHARED_BASE_WALK_SPEED_ATTRIBUTE, baseWalkSpeed)
+	return baseWalkSpeed
+end
+
+function PlayerServiceUtils.getCombinedWalkSpeedMultiplier(humanoid: Humanoid): number
+	return getConfiguredWalkSpeedMultiplier(humanoid, MAGIC_WALK_SPEED_MULTIPLIER_ATTRIBUTE)
+		* getConfiguredWalkSpeedMultiplier(humanoid, LIQUID_WALK_SPEED_MULTIPLIER_ATTRIBUTE)
+end
+
+function PlayerServiceUtils.applyCombinedWalkSpeedModifiers(humanoid: Humanoid): number
+	local baseWalkSpeed = PlayerServiceUtils.getBaseWalkSpeed(humanoid)
+	local hasMagicModifier = isValidWalkSpeed(humanoid:GetAttribute(MAGIC_WALK_SPEED_MULTIPLIER_ATTRIBUTE))
+	local hasLiquidModifier = isValidWalkSpeed(humanoid:GetAttribute(LIQUID_WALK_SPEED_MULTIPLIER_ATTRIBUTE))
+
+	if not hasMagicModifier and not hasLiquidModifier then
+		humanoid.WalkSpeed = math.max(MIN_EFFECTIVE_WALK_SPEED, baseWalkSpeed)
+		humanoid:SetAttribute(SHARED_BASE_WALK_SPEED_ATTRIBUTE, nil)
+		return humanoid.WalkSpeed
+	end
+
+	humanoid.WalkSpeed =
+		math.max(MIN_EFFECTIVE_WALK_SPEED, baseWalkSpeed * PlayerServiceUtils.getCombinedWalkSpeedMultiplier(humanoid))
+	return humanoid.WalkSpeed
+end
+
+function PlayerServiceUtils.setMovementSpeedMultiplier(
+	humanoid: Humanoid,
+	attributeName: string,
+	multiplierRaw: any
+): number
+	if isValidWalkSpeed(multiplierRaw) and (multiplierRaw :: number) < 0.999 then
+		humanoid:SetAttribute(attributeName, math.clamp(multiplierRaw :: number, 0.05, 1))
+	else
+		humanoid:SetAttribute(attributeName, nil)
+	end
+	return PlayerServiceUtils.applyCombinedWalkSpeedModifiers(humanoid)
+end
+
 function PlayerServiceUtils.isHumanoidAlive(humanoid: Humanoid?): boolean
 	if humanoid == nil then
 		return false
@@ -671,8 +741,9 @@ function PlayerServiceUtils.getFacingFlipFromScreenX(
 	hysteresisPixels: number?
 ): FacingSign?
 	local currentFacing = PlayerServiceUtils.sanitizeFacingSign(currentFacingRaw, DEFAULT_FACING_SIGN)
-	local threshold =
-		if hysteresisPixels then math.max(0, hysteresisPixels) else DEFAULT_MOUSE_FACING_FLIP_HYSTERESIS_PIXELS
+	local threshold = if hysteresisPixels
+		then math.max(0, hysteresisPixels)
+		else DEFAULT_MOUSE_FACING_FLIP_HYSTERESIS_PIXELS
 	local delta = mouseX - targetX
 
 	if currentFacing == 1 then
@@ -688,7 +759,12 @@ function PlayerServiceUtils.getFacingFlipFromScreenX(
 	return nil
 end
 
-function PlayerServiceUtils.getScreenLookAngleRadians(mouseX: number, mouseY: number, targetX: number, targetY: number): number?
+function PlayerServiceUtils.getScreenLookAngleRadians(
+	mouseX: number,
+	mouseY: number,
+	targetX: number,
+	targetY: number
+): number?
 	local deltaX = mouseX - targetX
 	local deltaY = targetY - mouseY
 	if math.abs(deltaX) <= 1e-4 and math.abs(deltaY) <= 1e-4 then
@@ -736,7 +812,12 @@ function PlayerServiceUtils.getNormalizedScreenAxisFromX(
 	return math.clamp(delta / maxDistance, -1, 1)
 end
 
-function PlayerServiceUtils.getMouseWorldPointOnPlaneX(camera: Camera, mouseX: number, mouseY: number, planeX: number): Vector3?
+function PlayerServiceUtils.getMouseWorldPointOnPlaneX(
+	camera: Camera,
+	mouseX: number,
+	mouseY: number,
+	planeX: number
+): Vector3?
 	local mouseRay = camera:ViewportPointToRay(mouseX, mouseY)
 	local rayDirection = mouseRay.Direction
 	local rayOrigin = mouseRay.Origin
@@ -753,11 +834,7 @@ function PlayerServiceUtils.getMouseWorldPointOnPlaneX(camera: Camera, mouseX: n
 	return rayOrigin + rayDirection * t
 end
 
-function PlayerServiceUtils.getNormalizedWorldAxisFromZ(
-	targetZ: number,
-	originZ: number,
-	maxDistance: number?
-): number
+function PlayerServiceUtils.getNormalizedWorldAxisFromZ(targetZ: number, originZ: number, maxDistance: number?): number
 	local range = math.max(0.001, if maxDistance then maxDistance else DEFAULT_HEAD_LOOK_MAX_WORLD_DISTANCE)
 	return math.clamp((targetZ - originZ) / range, -1, 1)
 end
@@ -789,7 +866,11 @@ function PlayerServiceUtils.snapRootPartFacing(rootPart: BasePart, facingSign: F
 	rootPart.AssemblyAngularVelocity = preservedAngularVelocity
 end
 
-function PlayerServiceUtils.ensureRootPartUpright(rootPart: BasePart, facingSign: FacingSign, toleranceDegrees: number?): boolean
+function PlayerServiceUtils.ensureRootPartUpright(
+	rootPart: BasePart,
+	facingSign: FacingSign,
+	toleranceDegrees: number?
+): boolean
 	local tolerance = math.max(0, if toleranceDegrees then toleranceDegrees else DEFAULT_ROOT_UPRIGHT_TOLERANCE_DEGREES)
 	local upDot = math.clamp(rootPart.CFrame.UpVector:Dot(Vector3.yAxis), -1, 1)
 	local tiltDegrees = math.deg(math.acos(upDot))

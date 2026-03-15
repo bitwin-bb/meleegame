@@ -7,6 +7,9 @@ FoliageUpdateManager.__index = FoliageUpdateManager
 
 local RUNTIME_ATTRIBUTE_LOD = "WindRuntimeLOD"
 local RUNTIME_ATTRIBUTE_WRITES = "WindRuntimeWrites"
+local WORLD_ANIMATOR_ACTIVE_ATTRIBUTE = "WorldAnimatorAnimating"
+local MAX_EFFECTIVE_STEP_DT = 0.1
+local MAX_STALE_ELAPSED = 0.75
 
 local function setAttributeIfChanged(instance: Instance, attributeName: string, value: any)
 	if instance:GetAttribute(attributeName) == value then
@@ -40,6 +43,33 @@ local function resolveDirectionOrFallback(vector: Vector3, fallback: Vector3): V
 		return fallbackPlanar.Unit
 	end
 	return planar.Unit
+end
+
+local function isInAnimatingChunk(instance: Instance): boolean
+	local current: Instance? = instance
+	while current ~= nil do
+		if current:GetAttribute(WORLD_ANIMATOR_ACTIVE_ATTRIBUTE) == true then
+			return true
+		end
+		current = current.Parent
+	end
+	return false
+end
+
+local function resetEntryDrivers(entry: any)
+	entry.primarySwayMotion:immediate(ZERO)
+	entry.secondarySwayMotion:immediate(ZERO)
+	entry.interactionBendMotion:immediate(ZERO)
+	entry.canopyFlutterMotion:immediate(0)
+
+	local resolved = entry.resolvedWindSample
+	resolved.vector = ZERO
+	resolved.direction = Vector3.xAxis
+	resolved.strength = 0
+	resolved.gustAlpha = 0
+	resolved.detailAlpha = 0
+	resolved.detailVector = ZERO
+	resolved.flutter = 0
 end
 
 function FoliageUpdateManager.new(configRaw: any?, registry: any, windField: any, lodController: any, bufferPool: any): FoliageUpdateManager
@@ -154,6 +184,13 @@ function FoliageUpdateManager.update(self: FoliageUpdateManager, simulationTime:
 			self.registry:unregister(entry.instance)
 			continue
 		end
+		if isInAnimatingChunk(entry.instance) then
+			entry.foliage:resetPose()
+			entry.rootPosition = entry.foliage:getRootPosition()
+			resetEntryDrivers(entry)
+			entry.lastUpdateTime = simulationTime
+			continue
+		end
 
 		local delta = entry.rootPosition - referencePosition
 		local distanceSquared = delta:Dot(delta)
@@ -184,9 +221,27 @@ function FoliageUpdateManager.update(self: FoliageUpdateManager, simulationTime:
 			frozenTrees += 1
 		end
 
-		local elapsed = simulationTime - entry.lastUpdateTime
 		if entry.lastUpdateTime <= 0 then
-			elapsed = tier.updateInterval
+			entry.foliage:resetPose()
+			entry.rootPosition = entry.foliage:getRootPosition()
+			resetEntryDrivers(entry)
+			entry.lastUpdateTime = simulationTime
+			if self.debugEnabled then
+				setAttributeIfChanged(entry.instance, RUNTIME_ATTRIBUTE_LOD, tier.name)
+			end
+			continue
+		end
+
+		local elapsed = simulationTime - entry.lastUpdateTime
+		if elapsed > MAX_STALE_ELAPSED then
+			entry.foliage:resetPose()
+			entry.rootPosition = entry.foliage:getRootPosition()
+			resetEntryDrivers(entry)
+			entry.lastUpdateTime = simulationTime
+			if self.debugEnabled then
+				setAttributeIfChanged(entry.instance, RUNTIME_ATTRIBUTE_LOD, tier.name)
+			end
+			continue
 		end
 		if elapsed < tier.updateInterval then
 			if self.debugEnabled then
@@ -206,10 +261,12 @@ function FoliageUpdateManager.update(self: FoliageUpdateManager, simulationTime:
 
 		local baseSample =
 			self.windField:sample(entry.rootPosition, simulationTime, entry.phaseOffset, entry.amplitudeScale)
-		local resolvedSample = self:updateEntryDrivers(entry, baseSample, elapsed)
+		local effectiveDt = math.min(elapsed, MAX_EFFECTIVE_STEP_DT)
+		local resolvedSample = self:updateEntryDrivers(entry, baseSample, effectiveDt)
 
 		if not tier.frozen then
-			entry.foliage:step(simulationTime, elapsed, resolvedSample, tier.lodState)
+			entry.foliage:step(simulationTime, effectiveDt, resolvedSample, tier.lodState)
+			entry.rootPosition = entry.foliage:getRootPosition()
 			transformWrites += entry.estimatedTransformWrites
 			activeAnimatedTrees += 1
 		end

@@ -18,11 +18,15 @@ local MeleeServiceServer = require(ServerScriptService.Services.MeleeService.Mel
 local MagicServiceServer = require(ServerScriptService.Services.MagicService.MagicServiceServer)
 local GoreServiceServer = require(ServerScriptService.Services.GoreService.GoreServiceServer)
 local RagdollServiceServer = require(ServerScriptService.Services.RagdollService.RagdollServiceServer)
-local WorldGenerationServiceServer = require(ServerScriptService.Services.WorldGenerationService.WorldGenerationServiceServer)
+local WorldGenerationServiceServer =
+	require(ServerScriptService.Services.WorldGenerationService.WorldGenerationServiceServer)
+local LiquidServiceServer = require(ServerScriptService.Services.LiquidService.LiquidServiceServer)
 local BuildServiceServer = require(ServerScriptService.Services.BuildService.BuildServiceServer)
-local WorldSimulationServiceServer = require(ServerScriptService.Services.WorldSimulationService.WorldSimulationServiceServer)
+local WorldSimulationServiceServer =
+	require(ServerScriptService.Services.WorldSimulationService.WorldSimulationServiceServer)
 local NpcServiceServer = require(ServerScriptService.Services.NpcService.NpcServiceServer)
 local WeatherServiceServer = require(ServerScriptService.Services.WeatherService.WeatherServiceServer)
+local BreathServiceServer = require(ServerScriptService.Services.BreathService.BreathServiceServer)
 
 local function isCameraServiceEnabled(): boolean
 	local cameraSettings = Configs.cameraSettings
@@ -43,6 +47,8 @@ runtime:init()
 
 PlayerDataServiceServer:init()
 WorldGenerationServiceServer:init()
+HpServiceServer:init()
+LiquidServiceServer:init()
 BuildServiceServer:init()
 WorldSimulationServiceServer:init()
 InventoryServiceServer:init()
@@ -61,6 +67,5 @@ NpcServiceServer:init()
 AnimationServiceServer:init()
 AudioServiceServer:init()
 VFXServiceServer:init()
-HpServiceServer:init()
+BreathServiceServer:init()
 RagdollServiceServer:init()
-
