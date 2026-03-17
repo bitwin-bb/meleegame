@@ -64,6 +64,21 @@
               "$path": "src/services/CraftingService/Utils.luau"
             }
           },
+          "DevPromptService": {
+            "$className": "Folder",
+            "DevPromptServiceClient": {
+              "$path": "src/services/DevPromptService/Client.luau"
+            },
+            "Commands": {
+              "$path": "src/services/DevPromptService/Commands.luau"
+            },
+            "Role": {
+              "$path": "src/services/DevPromptService/Role.luau"
+            },
+            "DevPromptServiceUtils": {
+              "$path": "src/services/DevPromptService/Utils.luau"
+            }
+          },
           "GoreService": {
             "$className": "Folder",
             "GoreServiceClient": {
@@ -536,6 +551,12 @@
           "$className": "Folder",
           "CraftingServiceServer": {
             "$path": "src/services/CraftingService/Server.luau"
+          }
+        },
+        "DevPromptService": {
+          "$className": "Folder",
+          "DevPromptServiceServer": {
+            "$path": "src/services/DevPromptService/Server.luau"
           }
         },
         "GoreService": {

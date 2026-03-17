@@ -484,6 +484,9 @@ function NpcServiceServer.ensureCollisionGroups(self: NpcServiceServer)
 	pcall(function()
 		PhysicsService:CollisionGroupSetCollidable(ENEMY_COLLISION_GROUP, PLAYER_COLLISION_GROUP, false)
 	end)
+	pcall(function()
+		PhysicsService:CollisionGroupSetCollidable(ENEMY_COLLISION_GROUP, ENEMY_COLLISION_GROUP, false)
+	end)
 
 	self.collisionGroupsReady = true
 end

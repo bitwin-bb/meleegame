@@ -30,6 +30,7 @@ local WorldAnimatorServiceClient =
 local NpcServiceClient = require(ReplicatedStorage.Shared.Services.NpcService.NpcServiceClient)
 local WeatherServiceClient = require(ReplicatedStorage.Shared.Services.WeatherService.WeatherServiceClient)
 local WindFoliageServiceClient = require(ReplicatedStorage.Shared.Services.WindFoliageService.WindFoliageServiceClient)
+local DevPromptServiceClient = require(ReplicatedStorage.Shared.Services.DevPromptService.DevPromptServiceClient)
 
 local function isCameraServiceEnabled(): boolean
 	local cameraSettings = Configs.cameraSettings
@@ -90,5 +91,6 @@ MeleeServiceClient:init()
 MagicServiceClient:init()
 BreathServiceClient:init()
 RagdollServiceClient:init()
+DevPromptServiceClient:init()
 
 ui()

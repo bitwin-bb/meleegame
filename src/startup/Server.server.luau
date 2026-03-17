@@ -27,6 +27,7 @@ local WorldSimulationServiceServer =
 local NpcServiceServer = require(ServerScriptService.Services.NpcService.NpcServiceServer)
 local WeatherServiceServer = require(ServerScriptService.Services.WeatherService.WeatherServiceServer)
 local BreathServiceServer = require(ServerScriptService.Services.BreathService.BreathServiceServer)
+local DevPromptServiceServer = require(ServerScriptService.Services.DevPromptService.DevPromptServiceServer)
 
 local function isCameraServiceEnabled(): boolean
 	local cameraSettings = Configs.cameraSettings
@@ -69,3 +70,4 @@ AudioServiceServer:init()
 VFXServiceServer:init()
 BreathServiceServer:init()
 RagdollServiceServer:init()
+DevPromptServiceServer:init()
