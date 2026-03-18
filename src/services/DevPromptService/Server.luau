@@ -12,6 +12,7 @@ local Role = require(ReplicatedStorage.Shared.Services.DevPromptService.Role)
 local ItemRegistry = require(ReplicatedStorage.Shared.Modules.Items.Registry)
 local HpServiceServer = require(ServerScriptService.Services.HpService.HpServiceServer)
 local InventoryServiceServer = require(ServerScriptService.Services.InventoryService.InventoryServiceServer)
+local BossServiceServer = require(ServerScriptService.Services.BossService.BossServiceServer)
 local NpcServiceServer = require(ServerScriptService.Services.NpcService.NpcServiceServer)
 
 type CommandResult = Commands.CommandResult
@@ -42,6 +43,12 @@ local GREEN_SLIME_VARIANTS = {
 	slime = true,
 	green = true,
 	greenslime = true,
+}
+
+local EYE_OF_CTHULHU_VARIANTS = {
+	eye = true,
+	eyeofcthulhu = true,
+	eoc = true,
 }
 
 local function normalizeToken(valueRaw: any): string
@@ -411,10 +418,13 @@ function DevPromptServiceServer.spawnEntityForPlayer(
 	self: DevPromptServiceServer,
 	player: Player,
 	entityTokenRaw: any,
-	amountRaw: any
+	amountRaw: any,
+	optionsRaw: any?
 ): (boolean, number, string?)
 	local normalized = normalizeToken(entityTokenRaw)
-	if GREEN_SLIME_VARIANTS[normalized] ~= true then
+	local spawnSlime = GREEN_SLIME_VARIANTS[normalized] == true
+	local spawnEyeOfCthulhu = EYE_OF_CTHULHU_VARIANTS[normalized] == true
+	if not spawnSlime and not spawnEyeOfCthulhu then
 		return false, 0, "unsupported_entity"
 	end
 
@@ -427,29 +437,68 @@ function DevPromptServiceServer.spawnEntityForPlayer(
 	local amount = math.clamp(
 		if typeof(amountRaw) == "number" and amountRaw == amountRaw then math.floor(amountRaw) else 1,
 		1,
-		20
+		if spawnEyeOfCthulhu then 5 else 20
 	)
 	local spawnedCount = 0
-	local basePosition = rootPart.Position + rootPart.CFrame.LookVector * 10 + Vector3.new(0, 3, 0)
+	local lastFailureReason = nil :: string?
+	local basePosition = if spawnEyeOfCthulhu
+		then rootPart.Position + rootPart.CFrame.LookVector * 18 + Vector3.new(0, 20, 0)
+		else rootPart.Position + rootPart.CFrame.LookVector * 10 + Vector3.new(0, 3, 0)
 	local rightVector = rootPart.CFrame.RightVector
 
 	for index = 1, amount do
 		local offset = (index - 1) - ((amount - 1) * 0.5)
-		local spawnPosition = basePosition + rightVector * (offset * 4)
+		local lateralSpacing = if spawnEyeOfCthulhu then 10 else 4
+		local spawnPosition = basePosition + rightVector * (offset * lateralSpacing)
 		local spawnCFrame = CFrame.new(spawnPosition)
-		local spawnConfig = NpcServiceServer:createDefaultSpawnConfigAt(spawnCFrame)
-		if spawnConfig == nil then
-			continue
+		local runtime: any = nil
+		if spawnEyeOfCthulhu then
+			local options = if typeof(optionsRaw) == "table" then optionsRaw else {}
+			local spawnOk, controllerOrError, bossReason = pcall(function()
+				return BossServiceServer:spawnBoss({
+					bossId = "EyeOfCthulhu",
+					targetPlayer = player,
+					spawnSource = "DebugCommand",
+					encounterChannel = BossServiceServer:createUniqueDebugEncounterChannel("EyeOfCthulhu", player, index),
+					planeX = rootPart.Position.X,
+					simulationSpeed = if typeof((options :: any).simulationSpeed) == "number"
+						then (options :: any).simulationSpeed
+						else nil,
+					aggressiveness = if typeof((options :: any).aggressiveness) == "number"
+						then (options :: any).aggressiveness
+						else nil,
+				})
+			end)
+			if spawnOk then
+				runtime = controllerOrError
+				if runtime == nil and typeof(bossReason) == "string" and bossReason ~= "" then
+					lastFailureReason = bossReason
+				end
+			else
+				local spawnErrorText = DevPromptServiceUtils.trim(tostring(controllerOrError))
+				lastFailureReason = if spawnErrorText ~= ""
+					then ("boss_spawn_error: %s"):format(spawnErrorText)
+					else "boss_spawn_error"
+				warn(("[DevPromptService] Boss spawn failed for %s (%d): %s"):format(
+					player.Name,
+					player.UserId,
+					tostring(controllerOrError)
+				))
+			end
+		else
+			local spawnConfig = NpcServiceServer:createDefaultSpawnConfigAt(spawnCFrame)
+			if spawnConfig == nil then
+				continue
+			end
+			runtime = NpcServiceServer:spawnSlime(spawnConfig)
 		end
-
-		local runtime = NpcServiceServer:spawnSlime(spawnConfig)
 		if runtime ~= nil then
 			spawnedCount += 1
 		end
 	end
 
 	if spawnedCount <= 0 then
-		return false, 0, "no_valid_spawn_position"
+		return false, 0, if lastFailureReason ~= nil then lastFailureReason else "no_valid_spawn_position"
 	end
 	return true, spawnedCount, nil
 end

@@ -12,6 +12,7 @@ local MagicServiceUtils = require(ReplicatedStorage.Shared.Services.MagicService
 local PlayerServiceUtils = require(ReplicatedStorage.Shared.Services.PlayerService.PlayerServiceUtils)
 local InventoryServiceServer = require(ServerScriptService.Services.InventoryService.InventoryServiceServer)
 local ManaServiceServer = require(ServerScriptService.Services.ManaService.ManaServiceServer)
+local BossServiceServer = require(ServerScriptService.Services.BossService.BossServiceServer)
 local NpcServiceServer = require(ServerScriptService.Services.NpcService.NpcServiceServer)
 local HpServiceServer = require(ServerScriptService.Services.HpService.HpServiceServer)
 
@@ -60,6 +61,16 @@ type NpcServiceServerObject = {
 		hitPartRaw: any,
 		damageRaw: any,
 		source: any?
+	) -> number,
+}
+
+type BossServiceServerObject = {
+	damageBossFromHitPart: (
+		self: BossServiceServerObject,
+		hitPartRaw: any,
+		damageRaw: any,
+		sourceRaw: any?,
+		damageContextRaw: any?
 	) -> number,
 }
 
@@ -958,6 +969,18 @@ function MagicServiceServer.applySplashEffect(
 			if splashNpcDamage > 0 then
 				npcDamaged = true
 			end
+
+			if not npcDamaged and self.bossService ~= nil then
+				local splashBossDamage = self.bossService:damageBossFromHitPart(
+					part,
+					projectile.stats.damage * damageScale,
+					projectile.caster,
+					"MagicSplash"
+				)
+				if splashBossDamage > 0 then
+					npcDamaged = true
+				end
+			end
 		end
 
 		local humanoid = MagicServiceUtils.resolveHumanoidFromHitPart(part)
@@ -1138,6 +1161,14 @@ function MagicServiceServer.handleProjectileHit(
 	if projectile.config.projectile.canHitNpcs and self.npcService ~= nil then
 		local npcDamage = self.npcService:damageNpcFromHitPart(hitPart, damage, projectile.caster)
 		if npcDamage > 0 then
+			didDamage = true
+			npcDamaged = true
+		end
+	end
+
+	if projectile.config.projectile.canHitNpcs and (not npcDamaged) and self.bossService ~= nil then
+		local bossDamage = self.bossService:damageBossFromHitPart(hitPart, damage, projectile.caster, "MagicProjectile")
+		if bossDamage > 0 then
 			didDamage = true
 			npcDamaged = true
 		end
@@ -1759,6 +1790,7 @@ function MagicServiceServer.init(self: MagicServiceServer)
 	self.inventoryService = InventoryServiceServer :: InventoryServiceServerObject
 	self.manaService = ManaServiceServer :: ManaServiceServerObject
 	self.npcService = NpcServiceServer :: NpcServiceServerObject
+	self.bossService = BossServiceServer :: BossServiceServerObject
 	self.hpService = HpServiceServer :: HpServiceServerObject
 	self.playerRuntimes = {}
 	self.projectilePools = {}
@@ -1840,6 +1872,7 @@ type MagicServiceServer = typeof(MagicServiceServer) & {
 	inventoryService: InventoryServiceServerObject,
 	manaService: ManaServiceServerObject?,
 	npcService: NpcServiceServerObject?,
+	bossService: BossServiceServerObject?,
 	hpService: HpServiceServerObject?,
 	playerRuntimes: { [Player]: PlayerRuntime },
 	projectilePools: { [string]: { [string]: any } },

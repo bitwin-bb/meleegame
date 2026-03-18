@@ -6,6 +6,7 @@ local UserInputService = game:GetService("UserInputService")
 local ConnectionUtils = require(ReplicatedStorage.UI.core.utils.ConnectionUtils)
 local ServiceSync = require(ReplicatedStorage.UI.core.utils.ServiceSync)
 local infoPlayerSlice = require(ReplicatedStorage.UI.features.infoPlayer.state.infoPlayerSlice)
+local BossServiceClient = require(ReplicatedStorage.Shared.Services.BossService.BossServiceClient)
 local InventoryServiceClient = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceClient)
 local InventoryServiceUtils = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceUtils)
 local HpServiceClient = require(ReplicatedStorage.Shared.Services.HpService.HpServiceClient)
@@ -21,6 +22,12 @@ type NpcServiceClientState = {
 	updatedAt: number,
 }
 
+type BossServiceClientState = {
+	byId: { [string]: { hp: number } },
+	orderedIds: { string },
+	updatedAt: number,
+}
+
 local infoPlayerThunks = {}
 
 local DAMAGE_DEALT_INPUT_WINDOW_SECONDS = 1.35
@@ -31,14 +38,17 @@ local runtime = {
 	inventoryStateChangedConnection = nil :: RBXScriptConnection?,
 	hpStateChangedConnection = nil :: RBXScriptConnection?,
 	npcStateChangedConnection = nil :: RBXScriptConnection?,
+	bossStateChangedConnection = nil :: RBXScriptConnection?,
 	inputBeganConnection = nil :: RBXScriptConnection?,
 	previousInventoryCounts = {} :: { [string]: number },
 	previousHp = nil :: number?,
 	previousHpUpdatedAt = nil :: number?,
 	previousNpcHpById = {} :: { [string]: number },
+	previousBossHpById = {} :: { [string]: number },
 	hasPrimedInventory = false,
 	hasPrimedHp = false,
 	hasPrimedNpc = false,
+	hasPrimedBoss = false,
 	lastCombatIntentAt = -math.huge,
 }
 
@@ -83,6 +93,30 @@ local function buildInventoryCounts(stateRaw: any): { [string]: number }
 end
 
 local function buildNpcHpMap(stateRaw: any): { [string]: number }
+	local output: { [string]: number } = {}
+	if typeof(stateRaw) ~= "table" then
+		return output
+	end
+	local byIdRaw = (stateRaw :: any).byId
+	if typeof(byIdRaw) ~= "table" then
+		return output
+	end
+
+	for runtimeIdRaw, snapshotRaw in byIdRaw do
+		if typeof(runtimeIdRaw) ~= "string" or runtimeIdRaw == "" then
+			continue
+		end
+		if typeof(snapshotRaw) ~= "table" then
+			continue
+		end
+		local hp = sanitizeCount((snapshotRaw :: any).hp)
+		output[runtimeIdRaw] = hp
+	end
+
+	return output
+end
+
+local function buildBossHpMap(stateRaw: any): { [string]: number }
 	local output: { [string]: number } = {}
 	if typeof(stateRaw) ~= "table" then
 		return output
@@ -207,6 +241,37 @@ local function onNpcStateChanged(nextStateRaw: any)
 	runtime.previousNpcHpById = nextHpById
 end
 
+local function onBossStateChanged(nextStateRaw: any)
+	local nextState = if typeof(nextStateRaw) == "table" then (nextStateRaw :: BossServiceClientState) else nil
+	if nextState == nil then
+		return
+	end
+
+	local nextHpById = buildBossHpMap(nextState)
+	if not runtime.hasPrimedBoss then
+		runtime.hasPrimedBoss = true
+		runtime.previousBossHpById = nextHpById
+		return
+	end
+
+	local totalDealt = 0
+	for runtimeId, nextHp in nextHpById do
+		local previousHp = runtime.previousBossHpById[runtimeId]
+		if previousHp ~= nil and previousHp > nextHp then
+			totalDealt += math.max(0, previousHp - nextHp)
+		end
+	end
+
+	if totalDealt > 0 then
+		local now = os.clock()
+		if now - runtime.lastCombatIntentAt <= DAMAGE_DEALT_INPUT_WINDOW_SECONDS then
+			infoPlayerSlice.pushDamageDealt(totalDealt)
+		end
+	end
+
+	runtime.previousBossHpById = nextHpById
+end
+
 local function syncFromServices()
 	if InventoryServiceClient.getState ~= nil then
 		local inventoryOk, inventoryStateOrError = pcall(function()
@@ -246,6 +311,15 @@ local function syncFromServices()
 			onNpcStateChanged(npcStateOrError)
 		end
 	end
+
+	if BossServiceClient.getState ~= nil then
+		local bossOk, bossStateOrError = pcall(function()
+			return BossServiceClient:getState()
+		end)
+		if bossOk then
+			onBossStateChanged(bossStateOrError)
+		end
+	end
 end
 
 function infoPlayerThunks.start(): () -> ()
@@ -257,11 +331,13 @@ function infoPlayerThunks.start(): () -> ()
 	runtime.localPlayer = Players.LocalPlayer
 	runtime.previousInventoryCounts = {}
 	runtime.previousNpcHpById = {}
+	runtime.previousBossHpById = {}
 	runtime.previousHp = nil
 	runtime.previousHpUpdatedAt = nil
 	runtime.hasPrimedInventory = false
 	runtime.hasPrimedHp = false
 	runtime.hasPrimedNpc = false
+	runtime.hasPrimedBoss = false
 	runtime.lastCombatIntentAt = -math.huge
 
 	runtime.inventoryStateChangedConnection =
@@ -276,6 +352,11 @@ function infoPlayerThunks.start(): () -> ()
 	runtime.npcStateChangedConnection = ServiceSync.connectStateChanged(NpcServiceClient, function(nextState: NpcServiceClientState)
 		onNpcStateChanged(nextState)
 	end)
+
+	runtime.bossStateChangedConnection =
+		ServiceSync.connectStateChanged(BossServiceClient, function(nextState: BossServiceClientState)
+			onBossStateChanged(nextState)
+		end)
 
 	runtime.inputBeganConnection = UserInputService.InputBegan:Connect(function(inputObject: InputObject, gameProcessed: boolean)
 		if gameProcessed then
@@ -295,6 +376,7 @@ function infoPlayerThunks.start(): () -> ()
 		InventoryServiceClient,
 		HpServiceClient,
 		NpcServiceClient,
+		BossServiceClient,
 	})
 
 	return infoPlayerThunks.stop
@@ -305,22 +387,26 @@ function infoPlayerThunks.stop()
 		runtime.inventoryStateChangedConnection,
 		runtime.hpStateChangedConnection,
 		runtime.npcStateChangedConnection,
+		runtime.bossStateChangedConnection,
 		runtime.inputBeganConnection,
 	})
 	runtime.inventoryStateChangedConnection = nil
 	runtime.hpStateChangedConnection = nil
 	runtime.npcStateChangedConnection = nil
+	runtime.bossStateChangedConnection = nil
 	runtime.inputBeganConnection = nil
 
 	runtime.started = false
 	runtime.localPlayer = nil
 	runtime.previousInventoryCounts = {}
 	runtime.previousNpcHpById = {}
+	runtime.previousBossHpById = {}
 	runtime.previousHp = nil
 	runtime.previousHpUpdatedAt = nil
 	runtime.hasPrimedInventory = false
 	runtime.hasPrimedHp = false
 	runtime.hasPrimedNpc = false
+	runtime.hasPrimedBoss = false
 	runtime.lastCombatIntentAt = -math.huge
 	infoPlayerSlice.resetInfoPlayerState()
 end

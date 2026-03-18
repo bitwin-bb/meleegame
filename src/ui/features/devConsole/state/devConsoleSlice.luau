@@ -44,7 +44,11 @@ local MAX_SUGGESTIONS = 8
 local MAX_HISTORY = 50
 local AMOUNT_SUGGESTIONS = { "1", "5", "10", "25", "50", "100", "999999" }
 local GODMODE_MODE_SUGGESTIONS = { "on", "off", "toggle" }
-local SPAWN_ENTITY_SUGGESTIONS = { "slime", "green", "greenslime" }
+local SPAWN_ENTITY_SUGGESTIONS = { "slime", "green", "greenslime", "eye", "eoc", "eyeofcthulhu" }
+local BOSS_SPAWN_AMOUNT_SUGGESTIONS = { "1", "2", "3", "5" }
+local DEFAULT_SPAWN_AMOUNT_SUGGESTIONS = { "1", "2", "3", "5", "10", "20" }
+local SIMULATION_SPEED_SUGGESTIONS = { "0.5", "1", "1.25", "1.5", "2" }
+local AGGRESSIVENESS_SUGGESTIONS = { "0.5", "1", "1.25", "1.5", "2" }
 
 type SuggestionCandidate = {
 	value: string,
@@ -69,6 +73,19 @@ local function trim(valueRaw: any): string
 		return ""
 	end
 	return valueRaw
+end
+
+local function normalizeToken(valueRaw: any): string
+	local value = DevPromptServiceUtils.trim(valueRaw)
+	if value == "" then
+		return ""
+	end
+	return string.lower(string.gsub(value, "[%s_%-%.]", ""))
+end
+
+local function isEyeSpawnToken(valueRaw: any): boolean
+	local token = normalizeToken(valueRaw)
+	return token == "eye" or token == "eoc" or token == "eyeofcthulhu"
 end
 
 local function cloneStringArray(valuesRaw: any): { string }
@@ -431,10 +448,32 @@ local function buildParameterCandidates(
 			appendChoiceCandidates(candidates, AMOUNT_SUGGESTIONS, "Item amount", definition.usage, analysis.activeTokenIndex, 0)
 		end
 	elseif definition.name == "spawn" then
+		local spawnEntityToken = normalizeToken(analysis.tokens[2])
 		if activeArgIndex == 1 then
 			appendChoiceCandidates(candidates, SPAWN_ENTITY_SUGGESTIONS, "Spawnable entity", definition.usage, analysis.activeTokenIndex, 0)
 		elseif activeArgIndex == 2 then
-			appendChoiceCandidates(candidates, { "1", "2", "3", "5", "10", "20" }, "Spawn amount", definition.usage, analysis.activeTokenIndex, 0)
+			local amountSuggestions = if isEyeSpawnToken(spawnEntityToken)
+				then BOSS_SPAWN_AMOUNT_SUGGESTIONS
+				else DEFAULT_SPAWN_AMOUNT_SUGGESTIONS
+			appendChoiceCandidates(candidates, amountSuggestions, "Spawn amount", definition.usage, analysis.activeTokenIndex, 0)
+		elseif activeArgIndex == 3 and isEyeSpawnToken(spawnEntityToken) then
+			appendChoiceCandidates(
+				candidates,
+				SIMULATION_SPEED_SUGGESTIONS,
+				"Simulation speed",
+				definition.usage,
+				analysis.activeTokenIndex,
+				0
+			)
+		elseif activeArgIndex == 4 and isEyeSpawnToken(spawnEntityToken) then
+			appendChoiceCandidates(
+				candidates,
+				AGGRESSIVENESS_SUGGESTIONS,
+				"Aggressiveness",
+				definition.usage,
+				analysis.activeTokenIndex,
+				0
+			)
 		end
 	elseif definition.name == "godmode" then
 		if activeArgIndex == 1 then

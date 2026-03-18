@@ -233,7 +233,6 @@ export type WorldGenerationConfig = {
 	maxCachedChunkVisuals: number?,
 	maxPoolSize: number?,
 	parent: Instance?,
-	debugLog: boolean?,
 }
 
 local WorldGeneration = {}
@@ -380,8 +379,6 @@ local TREE_VARIANT_NOISE_FREQUENCY_Y = 0.217
 local UINT32_MAX = 0xFFFFFFFF
 local INT32_SIGN_BIT = 0x80000000
 local UINT32_WRAP = 4294967296
-local DEBUG_JUNGLE_SCAN_RADIUS_TILES = 5000
-local DEBUG_JUNGLE_SCAN_STEP_TILES = 1
 local CORRUPTION_CHASM_CHUNK_SPAWN_CHANCE = 0.74
 local CORRUPTION_CHASM_MIN_SEEDS = 1
 local CORRUPTION_CHASM_MAX_SEEDS = 3
@@ -954,58 +951,6 @@ local function populateChunkBiomeIdsFromColumns(self: WorldGeneration, chunkData
 			local tileIndex = computeTileIndex(localX, localY, chunkData.width)
 			biomeIds[tileIndex] = biomeIdByColumn[localX + 1]
 		end
-	end
-end
-
-local function debugPrintJungleSides(self: WorldGeneration)
-	local leftJungleX: number? = nil
-	local rightJungleX: number? = nil
-	local forestCount = 0
-	local desertCount = 0
-	local snowCount = 0
-	local jungleCount = 0
-
-	for tileX = -DEBUG_JUNGLE_SCAN_RADIUS_TILES, DEBUG_JUNGLE_SCAN_RADIUS_TILES, DEBUG_JUNGLE_SCAN_STEP_TILES do
-		local column = self.biomeGenerator:getColumnProfile(tileX)
-		if column.biomeId == self.biomeId.FOREST then
-			forestCount += 1
-		elseif column.biomeId == self.biomeId.DESERT then
-			desertCount += 1
-		elseif column.biomeId == self.biomeId.SNOW then
-			snowCount += 1
-		elseif column.biomeId == self.biomeId.JUNGLE then
-			jungleCount += 1
-			if tileX < 0 then
-				if leftJungleX == nil or math.abs(tileX) < math.abs(leftJungleX) then
-					leftJungleX = tileX
-				end
-			else
-				if rightJungleX == nil or tileX < rightJungleX then
-					rightJungleX = tileX
-				end
-			end
-		end
-	end
-
-	print(
-		`[WorldGeneration] Debug biome distribution in x=[{-DEBUG_JUNGLE_SCAN_RADIUS_TILES},{DEBUG_JUNGLE_SCAN_RADIUS_TILES}] :: Forest={forestCount}, Desert={desertCount}, Snow={snowCount}, Jungle={jungleCount}`
-	)
-	print(
-		`[WorldGeneration] Jungle placement config :: Side={(if self.biomeGenerator.junglePreferredSideSign < 0
-			then "LEFT"
-			else "RIGHT")}, Mode={self.biomeGenerator.junglePlacementLabel}, AnchorDistance={self.biomeGenerator.jungleAnchorDistance}, BandHalfWidth={self.biomeGenerator.jungleBandHalfWidth}`
-	)
-
-	if leftJungleX ~= nil then
-		print(`[WorldGeneration] Debug jungle scan: LEFT side jungle near tileX={leftJungleX}`)
-	else
-		print("[WorldGeneration] Debug jungle scan: LEFT side jungle not found in scan range")
-	end
-
-	if rightJungleX ~= nil then
-		print(`[WorldGeneration] Debug jungle scan: RIGHT side jungle near tileX={rightJungleX}`)
-	else
-		print("[WorldGeneration] Debug jungle scan: RIGHT side jungle not found in scan range")
 	end
 end
 
@@ -1596,7 +1541,6 @@ function WorldGeneration.new(configRaw: WorldGenerationConfig?): WorldGeneration
 		),
 		maxCollisionPartsPerChunk = sanitizeInteger((config :: any).maxCollisionPartsPerChunk, 64, 20000, 4096),
 		maxPoolSize = sanitizeInteger((config :: any).maxPoolSize, 64, 200000, DEFAULT_POOL_SIZE),
-		debugLog = if typeof((config :: any).debugLog) == "boolean" then (config :: any).debugLog else false,
 		parent = parent,
 		tileId = TILE_ID,
 		wallId = WALL_ID,
@@ -1643,8 +1587,6 @@ function WorldGeneration.new(configRaw: WorldGenerationConfig?): WorldGeneration
 		maxChunkRebuildsPerHeartbeat = sanitizeInteger((config :: any).maxChunkRebuildsPerHeartbeat, 1, 64, 4),
 		cachePruneAccumulator = 0,
 		loadedChunkAuditAccumulator = 0,
-		hasPrintedJungleSideLeft = false,
-		hasPrintedJungleSideRight = false,
 		liquidGenerator = nil :: LiquidGenerationClass?,
 	}, WorldGeneration)
 
@@ -1679,7 +1621,6 @@ function WorldGeneration.new(configRaw: WorldGenerationConfig?): WorldGeneration
 		biomeId = self.biomeId,
 		biomeType = self.biomeType,
 	})
-	debugPrintJungleSides(self)
 	self.caveGenerator = Cave.new({
 		seed = self.seed,
 		tileId = {
@@ -1699,13 +1640,6 @@ function WorldGeneration.new(configRaw: WorldGenerationConfig?): WorldGeneration
 	self.liquidGenerator = Liquid.new(liquidConfigSource)
 
 	return self
-end
-
-function WorldGeneration.log(self: WorldGeneration, ...: any)
-	if not self.debugLog then
-		return
-	end
-	warn("[WorldGeneration]", ...)
 end
 
 function WorldGeneration.createFolders(self: WorldGeneration)
@@ -3026,15 +2960,6 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 		local column = self.biomeGenerator:getColumnProfile(worldTileX)
 		backgroundColumnProfiles[localX + 1] = column
 		biomeBlendColumnCache[worldTileX] = column
-		if column.biomeId == self.biomeId.JUNGLE then
-			if worldTileX < 0 and not self.hasPrintedJungleSideLeft then
-				self.hasPrintedJungleSideLeft = true
-				print(`[WorldGeneration] Jungle detected on LEFT side (tileX={worldTileX})`)
-			elseif worldTileX >= 0 and not self.hasPrintedJungleSideRight then
-				self.hasPrintedJungleSideRight = true
-				print(`[WorldGeneration] Jungle detected on RIGHT side (tileX={worldTileX})`)
-			end
-		end
 	end
 
 	for localX = 0, width - 1 do

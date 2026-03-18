@@ -61,7 +61,7 @@ return {
 		name = "Copper Broadsword",
 		description = "Apparently this weapon is quite the heavy hitter! Although time your attacks or else you'll die terribly",
 		functionality = "Weapon",
-		damage = 10,
+		damage = 500,
 		melee = {
 			animations = buildWeaponAnimations(weaponAnimationIds.CopperBroadSword),
 		},

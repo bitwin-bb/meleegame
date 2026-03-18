@@ -8,15 +8,30 @@ local Workspace = game:GetService("Workspace")
 
 local ConnectionUtils = require(ReplicatedStorage.UI.core.utils.ConnectionUtils)
 local entityInfoSlice = require(ReplicatedStorage.UI.features.entityInfo.state.entityInfoSlice)
+local BossServiceClient = require(ReplicatedStorage.Shared.Services.BossService.BossServiceClient)
+local BossServiceUtils = require(ReplicatedStorage.Shared.Services.BossService.BossServiceUtils)
 local NpcServiceClient = require(ReplicatedStorage.Shared.Services.NpcService.NpcServiceClient)
 local NpcServiceUtils = require(ReplicatedStorage.Shared.Services.NpcService.NpcServiceUtils)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
 
 type EntityInfoState = entityInfoSlice.EntityInfoState
+type BossSnapshot = BossServiceUtils.BossSnapshot
 type NpcSnapshot = NpcServiceUtils.NpcSnapshot
+type HoverEntityKind = "Npc" | "Boss"
+type HoverSnapshot = {
+	displayName: string,
+	hp: number,
+	maxHp: number,
+}
 
 type NpcServiceClientState = {
 	byId: { [string]: NpcSnapshot },
+	orderedIds: { string },
+	updatedAt: number,
+}
+
+type BossServiceClientState = {
+	byId: { [string]: BossSnapshot },
 	orderedIds: { string },
 	updatedAt: number,
 }
@@ -34,10 +49,13 @@ local runtime = {
 	localPlayer = nil :: Player?,
 	mouse = nil :: Mouse?,
 	cachedNpcState = nil :: NpcServiceClientState?,
+	cachedBossState = nil :: BossServiceClientState?,
+	hoveredEntityKind = nil :: HoverEntityKind?,
 	hoveredRuntimeId = nil :: string?,
 	hoveredModel = nil :: Model?,
 	highlight = nil :: Highlight?,
-	stateChangedConnection = nil :: RBXScriptConnection?,
+	npcStateChangedConnection = nil :: RBXScriptConnection?,
+	bossStateChangedConnection = nil :: RBXScriptConnection?,
 	renderSteppedConnection = nil :: RBXScriptConnection?,
 }
 
@@ -126,7 +144,7 @@ local function applyHighlight(model: Model?)
 	highlight.Enabled = true
 end
 
-local function syncStateFromService()
+local function syncNpcStateFromService()
 	local success, stateOrError = pcall(function()
 		return NpcServiceClient:getState()
 	end)
@@ -135,7 +153,39 @@ local function syncStateFromService()
 	end
 end
 
-local function getCachedSnapshot(runtimeId: string): NpcSnapshot?
+local function syncBossStateFromService()
+	local success, stateOrError = pcall(function()
+		return BossServiceClient:getState()
+	end)
+	if success and typeof(stateOrError) == "table" then
+		runtime.cachedBossState = stateOrError :: BossServiceClientState
+	end
+end
+
+local function syncStateFromServices()
+	syncNpcStateFromService()
+	syncBossStateFromService()
+end
+
+local function getCachedSnapshot(runtimeId: string, entityKind: HoverEntityKind): HoverSnapshot?
+	if entityKind == "Boss" then
+		local cachedBossState = runtime.cachedBossState
+		if cachedBossState ~= nil then
+			local cachedSnapshot = cachedBossState.byId[runtimeId]
+			if cachedSnapshot ~= nil then
+				return cachedSnapshot
+			end
+		end
+
+		syncBossStateFromService()
+		cachedBossState = runtime.cachedBossState
+		if cachedBossState == nil then
+			return nil
+		end
+
+		return cachedBossState.byId[runtimeId]
+	end
+
 	local cachedState = runtime.cachedNpcState
 	if cachedState ~= nil then
 		local cachedSnapshot = cachedState.byId[runtimeId]
@@ -144,7 +194,7 @@ local function getCachedSnapshot(runtimeId: string): NpcSnapshot?
 		end
 	end
 
-	syncStateFromService()
+	syncNpcStateFromService()
 	cachedState = runtime.cachedNpcState
 	if cachedState == nil then
 		return nil
@@ -160,28 +210,37 @@ local function clearHover()
 		return
 	end
 
+	runtime.hoveredEntityKind = nil
 	runtime.hoveredRuntimeId = nil
 	runtime.hoveredModel = nil
 	applyHighlight(nil)
 	entityInfoSlice.hideEntityInfo(ENTITY_HOVER_ID)
 end
 
-local function resolveHoveredNpc(targetRaw: any): (Model?, string?)
+local function resolveHoveredEntity(targetRaw: any): (Model?, string?, HoverEntityKind?)
+	local bossModel = BossServiceUtils.resolveRuntimeModelFromInstance(targetRaw)
+	if bossModel ~= nil then
+		local bossRuntimeId = BossServiceUtils.resolveRuntimeIdFromInstance(bossModel)
+		if bossRuntimeId ~= nil and bossRuntimeId ~= "" then
+			return bossModel, bossRuntimeId, "Boss"
+		end
+	end
+
 	local model = NpcServiceUtils.resolveRuntimeModelFromInstance(targetRaw)
 	if model == nil then
-		return nil, nil
+		return nil, nil, nil
 	end
 
 	local runtimeId = NpcServiceUtils.resolveRuntimeIdFromInstance(model)
 	if runtimeId == nil or runtimeId == "" then
-		return nil, nil
+		return nil, nil, nil
 	end
 
-	return model, runtimeId
+	return model, runtimeId, "Npc"
 end
 
-local function showHover(runtimeId: string, model: Model, mousePosition: Vector2)
-	local snapshot = getCachedSnapshot(runtimeId)
+local function showHover(runtimeId: string, entityKind: HoverEntityKind, model: Model, mousePosition: Vector2)
+	local snapshot = getCachedSnapshot(runtimeId, entityKind)
 	if snapshot == nil then
 		clearHover()
 		return
@@ -193,6 +252,7 @@ local function showHover(runtimeId: string, model: Model, mousePosition: Vector2
 		return
 	end
 
+	runtime.hoveredEntityKind = entityKind
 	runtime.hoveredRuntimeId = runtimeId
 	runtime.hoveredModel = model
 	applyHighlight(model)
@@ -208,14 +268,15 @@ local function showHover(runtimeId: string, model: Model, mousePosition: Vector2
 end
 
 local function refreshHoveredSnapshot()
+	local entityKind = runtime.hoveredEntityKind
 	local runtimeId = runtime.hoveredRuntimeId
 	local hoveredModel = runtime.hoveredModel
-	if runtimeId == nil or hoveredModel == nil or hoveredModel.Parent == nil then
+	if entityKind == nil or runtimeId == nil or hoveredModel == nil or hoveredModel.Parent == nil then
 		clearHover()
 		return
 	end
 
-	local snapshot = getCachedSnapshot(runtimeId)
+	local snapshot = getCachedSnapshot(runtimeId, entityKind)
 	if snapshot == nil then
 		clearHover()
 		return
@@ -257,21 +318,22 @@ local function stepHoverState()
 		return
 	end
 
-	local hoveredModel, runtimeId = resolveHoveredNpc(targetPart)
-	if hoveredModel == nil or runtimeId == nil then
+	local hoveredModel, runtimeId, entityKind = resolveHoveredEntity(targetPart)
+	if hoveredModel == nil or runtimeId == nil or entityKind == nil then
 		clearHover()
 		return
 	end
 
 	if currentState.visible == true
 		and currentState.runtimeId == runtimeId
+		and runtime.hoveredEntityKind == entityKind
 		and runtime.hoveredRuntimeId == runtimeId
 		and runtime.hoveredModel == hoveredModel then
 		applyHighlight(hoveredModel)
 		return
 	end
 
-	showHover(runtimeId, hoveredModel, mousePosition)
+	showHover(runtimeId, entityKind, hoveredModel, mousePosition)
 end
 
 function entityInfoThunks.start(): () -> ()
@@ -290,13 +352,21 @@ function entityInfoThunks.start(): () -> ()
 		end
 	end
 
-	syncStateFromService()
+	syncStateFromServices()
 	ensureHighlight()
 
-	local stateChangedSignal = NpcServiceClient.stateChanged
-	if stateChangedSignal ~= nil then
-		runtime.stateChangedConnection = stateChangedSignal:Connect(function(nextState: NpcServiceClientState)
+	local npcStateChangedSignal = NpcServiceClient.stateChanged
+	if npcStateChangedSignal ~= nil then
+		runtime.npcStateChangedConnection = npcStateChangedSignal:Connect(function(nextState: NpcServiceClientState)
 			runtime.cachedNpcState = nextState
+			refreshHoveredSnapshot()
+		end)
+	end
+
+	local bossStateChangedSignal = BossServiceClient.stateChanged
+	if bossStateChangedSignal ~= nil then
+		runtime.bossStateChangedConnection = bossStateChangedSignal:Connect(function(nextState: BossServiceClientState)
+			runtime.cachedBossState = nextState
 			refreshHoveredSnapshot()
 		end)
 	end
@@ -313,14 +383,18 @@ end
 
 function entityInfoThunks.stop()
 	ConnectionUtils.disconnectMany({
-		runtime.stateChangedConnection,
+		runtime.npcStateChangedConnection,
+		runtime.bossStateChangedConnection,
 		runtime.renderSteppedConnection,
 	})
-	runtime.stateChangedConnection = nil
+	runtime.npcStateChangedConnection = nil
+	runtime.bossStateChangedConnection = nil
 	runtime.renderSteppedConnection = nil
 
 	runtime.started = false
 	runtime.cachedNpcState = nil
+	runtime.cachedBossState = nil
+	runtime.hoveredEntityKind = nil
 	runtime.hoveredRuntimeId = nil
 	runtime.hoveredModel = nil
 	runtime.mouse = nil

@@ -12,6 +12,7 @@ local Melee = require(ReplicatedStorage.Shared.Classes.Melee)
 local InventoryServiceUtils = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceUtils)
 local MeleeServiceUtils = require(ReplicatedStorage.Shared.Services.MeleeService.MeleeServiceUtils)
 local InventoryServiceServer = require(ServerScriptService.Services.InventoryService.InventoryServiceServer)
+local BossServiceServer = require(ServerScriptService.Services.BossService.BossServiceServer)
 local NpcServiceServer = require(ServerScriptService.Services.NpcService.NpcServiceServer)
 local RagdollServiceServer = require(ServerScriptService.Services.RagdollService.RagdollServiceServer)
 
@@ -81,6 +82,24 @@ type InventoryServiceServerObject = {
 
 type RagdollServiceServerObject = {
 	isPlayerRagdolled: (self: RagdollServiceServerObject, player: Player) -> boolean,
+}
+
+type BossServiceServerObject = {
+	damageBossFromHitPart: (
+		self: BossServiceServerObject,
+		hitPartRaw: any,
+		damageRaw: any,
+		sourceRaw: any?,
+		damageContextRaw: any?
+	) -> number,
+	damageBossesInBox: (
+		self: BossServiceServerObject,
+		boxCFrameRaw: any,
+		boxSizeRaw: any,
+		damageRaw: any,
+		sourceRaw: any?,
+		damageContextRaw: any?
+	) -> number,
 }
 
 local MeleeServiceServer = {}
@@ -234,6 +253,17 @@ local function applyNpcOverlapDamageFallback(player: Player, runtime: PlayerRunt
 		local appliedDamage = (NpcServiceServer :: any):damageNpcFromHitPart(candidate, damage, player, "Melee")
 		if typeof(appliedDamage) == "number" and appliedDamage > 0 then
 			overlapDamageApplied += appliedDamage
+			continue
+		end
+
+		local bossDamage = (BossServiceServer :: BossServiceServerObject):damageBossFromHitPart(
+			candidate,
+			damage,
+			player,
+			"Melee"
+		)
+		if typeof(bossDamage) == "number" and bossDamage > 0 then
+			overlapDamageApplied += bossDamage
 		end
 	end
 	if overlapDamageApplied > 0 then
@@ -244,6 +274,12 @@ local function applyNpcOverlapDamageFallback(player: Player, runtime: PlayerRunt
 		return (NpcServiceServer :: any):damageNpcsInBox(queryCFrame, querySize, damage, player, "Melee")
 	end)
 	if runtimeDamageOk and typeof(runtimeDamageOrError) == "number" and runtimeDamageOrError > 0 then
+		return
+	end
+
+	local bossRuntimeDamage =
+		(BossServiceServer :: BossServiceServerObject):damageBossesInBox(queryCFrame, querySize, damage, player, "Melee")
+	if typeof(bossRuntimeDamage) == "number" and bossRuntimeDamage > 0 then
 		return
 	end
 end
@@ -551,6 +587,11 @@ function MeleeServiceServer.onHit(
 	if weaponConfig.canHitNpcs then
 		local serviceDamage = (NpcServiceServer :: any):damageNpcFromHitPart(hitPart, damage, player, "Melee")
 		if typeof(serviceDamage) == "number" and serviceDamage > 0 then
+			return
+		end
+
+		local bossDamage = (BossServiceServer :: BossServiceServerObject):damageBossFromHitPart(hitPart, damage, player, "Melee")
+		if typeof(bossDamage) == "number" and bossDamage > 0 then
 			return
 		end
 	end

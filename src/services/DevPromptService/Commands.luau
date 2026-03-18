@@ -68,6 +68,19 @@ local function parseWholeNumber(valueRaw: any): number?
 	return math.floor(value)
 end
 
+local function parseNumber(valueRaw: any): number?
+	local text = DevPromptServiceUtils.trim(valueRaw)
+	if text == "" then
+		return nil
+	end
+
+	local value = tonumber(text)
+	if value == nil or value ~= value then
+		return nil
+	end
+	return value
+end
+
 local function parsePositiveWholeNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
 	local value = parseWholeNumber(valueRaw)
 	if value == nil then
@@ -87,6 +100,14 @@ local function joinArgs(args: { string }, startIndex: number): string
 		output[outputIndex] = args[index]
 	end
 	return table.concat(output, " ")
+end
+
+local function normalizeToken(valueRaw: any): string
+	local text = DevPromptServiceUtils.trim(valueRaw)
+	if text == "" then
+		return ""
+	end
+	return string.lower(string.gsub(text, "[%s_%-%.]", ""))
 end
 
 local function sortDefinitions()
@@ -339,18 +360,48 @@ addCommand({
 addCommand({
 	name = "spawn",
 	aliases = { "summon" },
-	description = "Spawn a supported entity near you. Right now this supports slime variants.",
-	usage = "spawn <entity> [amount]",
+	description = "Spawn a supported entity near you. This supports slime variants and Eye of Cthulhu.",
+	usage = "spawn <entity> [amount] [simulationSpeed] [aggressiveness]",
 	run = function(context: CommandContext)
 		local entityToken = context.args[1]
 		if entityToken == nil or entityToken == "" then
 			context.result.ok = false
-			context:reply("error", "Usage: spawn <entity> [amount]")
+			context:reply("error", "Usage: spawn <entity> [amount] [simulationSpeed] [aggressiveness]")
 			return
 		end
 
-		local amount = parsePositiveWholeNumber(context.args[2], 1, 1, 20)
-		local ok, spawnedCount, reason = context.service:spawnEntityForPlayer(context.player, entityToken, amount)
+		local entityType = normalizeToken(entityToken)
+		local amount = parsePositiveWholeNumber(
+			context.args[2],
+			1,
+			1,
+			if entityType == "eye" or entityType == "eoc" or entityType == "eyeofcthulhu" then 5 else 20
+		)
+		local simulationSpeed = nil :: number?
+		local aggressiveness = nil :: number?
+		if context.args[3] ~= nil and context.args[3] ~= "" then
+			local parsed = parseNumber(context.args[3])
+			if parsed == nil then
+				context.result.ok = false
+				context:reply("error", "Simulation speed must be a number between 0.05 and 5.")
+				return
+			end
+			simulationSpeed = math.clamp(parsed, 0.05, 5)
+		end
+		if context.args[4] ~= nil and context.args[4] ~= "" then
+			local parsed = parseNumber(context.args[4])
+			if parsed == nil then
+				context.result.ok = false
+				context:reply("error", "Aggressiveness must be a number between 0.1 and 3.")
+				return
+			end
+			aggressiveness = math.clamp(parsed, 0.1, 3)
+		end
+
+		local ok, spawnedCount, reason = context.service:spawnEntityForPlayer(context.player, entityToken, amount, {
+			simulationSpeed = simulationSpeed,
+			aggressiveness = aggressiveness,
+		})
 		if not ok then
 			context.result.ok = false
 			context:reply(

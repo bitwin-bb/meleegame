@@ -25,6 +25,15 @@
               "$path": "src/services/AudioService/Utils.luau"
             }
           },
+          "BossService": {
+            "$className": "Folder",
+            "BossServiceClient": {
+              "$path": "src/services/BossService/Client.luau"
+            },
+            "BossServiceUtils": {
+              "$path": "src/services/BossService/Utils.luau"
+            }
+          },
           "BreathService": {
             "$className": "Folder",
             "BreathServiceClient": {
@@ -277,6 +286,9 @@
         },
         "Classes": {
           "$className": "Folder",
+          "Boss": {
+            "$path": "src/classes/Boss"
+          },
           "Camera": {
             "$path": "src/classes/Camera"
           },
@@ -527,6 +539,12 @@
           "$className": "Folder",
           "AudioServiceServer": {
             "$path": "src/services/AudioService/Server.luau"
+          }
+        },
+        "BossService": {
+          "$className": "Folder",
+          "BossServiceServer": {
+            "$path": "src/services/BossService/Server.luau"
           }
         },
         "BreathService": {

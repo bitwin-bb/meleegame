@@ -23,6 +23,7 @@ local WorldGenerationServiceServer =
 	require(ServerScriptService.Services.WorldGenerationService.WorldGenerationServiceServer)
 
 type SlimeClass = Slime.Slime
+type RuntimeNpc = SlimeClass
 type EnemyHitboxManager = EnemyHitbox.EnemyHitbox
 type NpcType = NpcServiceUtils.NpcType
 type NpcRuntimeState = NpcServiceUtils.NpcRuntimeState
@@ -72,7 +73,8 @@ type NpcRuntime = {
 	id: string,
 	npcType: NpcType,
 	displayName: string,
-	slime: SlimeClass,
+	npc: RuntimeNpc,
+	slime: RuntimeNpc,
 	hp: number,
 	maxHp: number,
 	isAlive: boolean,
@@ -152,6 +154,10 @@ local SLIME_AUDIO_KEY_BY_TOKEN = {
 	hit = "Hurt",
 	death = "Death",
 }
+
+local function isSlimeRuntime(runtime: NpcRuntime): boolean
+	return runtime.npcType == "Slime"
+end
 
 local function fireForPlayers(networker: Networker.Server, players: { Player }, methodName: string, ...: any)
 	for _, player in players do
@@ -532,7 +538,7 @@ function NpcServiceServer.applyRuntimeNpcCollisionGroup(self: NpcServiceServer, 
 end
 
 local function resolveSlimeAudioBindings(runtime: NpcRuntime): { [string]: any }
-	if runtime.slime.isGreenSlime then
+	if isSlimeRuntime(runtime) and (runtime.slime :: any).isGreenSlime then
 		return GREEN_SLIME_AUDIO_BINDINGS
 	end
 	return DEFAULT_SLIME_AUDIO_BINDINGS
@@ -544,7 +550,7 @@ function NpcServiceServer.resolveRuntimeSoundSource(self: NpcServiceServer, runt
 	end
 
 	local token = normalizeToken(soundNameRaw)
-	local soundKey = SLIME_AUDIO_KEY_BY_TOKEN[token]
+	local soundKey = if isSlimeRuntime(runtime) then SLIME_AUDIO_KEY_BY_TOKEN[token] else nil
 	if soundKey ~= nil then
 		local soundAssetIds = AudioServiceUtils.collectSoundAssetIds(resolveSlimeAudioBindings(runtime)[soundKey])
 		if #soundAssetIds > 0 then
@@ -914,6 +920,10 @@ function NpcServiceServer.onEnemyHitPlayer(
 end
 
 function NpcServiceServer.registerRuntimeEnemyHitbox(self: NpcServiceServer, runtime: NpcRuntime)
+	if not isSlimeRuntime(runtime) then
+		return
+	end
+
 	local enemyHitbox = self.enemyHitbox
 	if enemyHitbox == nil then
 		return
@@ -997,7 +1007,7 @@ end
 function NpcServiceServer.getActiveSlimeCount(self: NpcServiceServer): number
 	local count = 0
 	for _, runtime in self.runtimes do
-		if runtime.isAlive and not runtime.isRemoving then
+		if runtime.npcType == "Slime" and runtime.isAlive and not runtime.isRemoving then
 			count += 1
 		end
 	end
@@ -1525,7 +1535,7 @@ function NpcServiceServer.emitRuntimeSlimeBlood(
 end
 
 function NpcServiceServer.resolveRuntimeState(self: NpcServiceServer, runtime: NpcRuntime): NpcRuntimeState
-	local slime = runtime.slime
+	local npc = runtime.npc
 	if not runtime.isAlive then
 		return "Dead"
 	end
@@ -1536,16 +1546,16 @@ function NpcServiceServer.resolveRuntimeState(self: NpcServiceServer, runtime: N
 		return "Attacking"
 	end
 
-	local currentTarget = slime.currentTarget
-	local hasTarget = currentTarget ~= nil and slime:isTargetValid(currentTarget)
+	local currentTarget = npc.currentTarget
+	local hasTarget = currentTarget ~= nil and npc:isTargetValid(currentTarget)
 	if hasTarget then
-		if slime:canAttackTarget(currentTarget) then
+		if npc:canAttackTarget(currentTarget) then
 			return "Attacking"
 		end
 		return "Aggro"
 	end
 
-	if slime.state == "Moving" then
+	if npc.state == "Moving" then
 		return "Searching"
 	end
 	return "Idle"
@@ -1755,6 +1765,9 @@ function NpcServiceServer.ensureRuntimeAnimationEventBindings(self: NpcServiceSe
 	if runtime.animationEventsBound then
 		return
 	end
+	if not isSlimeRuntime(runtime) then
+		return
+	end
 
 	local slimeAny = runtime.slime :: any
 	if slimeAny._slimeAnimationsLoaded ~= true then
@@ -1871,6 +1884,11 @@ function NpcServiceServer.trackRuntime(self: NpcServiceServer, runtime: NpcRunti
 
 	runtime.janitor:GiveChore(runtime.slime.signals.targetChanged:Connect(function()
 		self:updateRuntime(runtime, "targetChanged", false)
+	end))
+
+	runtime.janitor:GiveChore(runtime.npc.signals.attacked:Connect(function()
+		runtime.lastEnemyHitAt = os.clock()
+		self:updateRuntime(runtime, "npcAttacked", false)
 	end))
 
 	runtime.janitor:GiveChore(runtime.slime.signals.damaged:Connect(function(damageAmount: number, _source: any?, hpRaw: number?)
@@ -1992,6 +2010,7 @@ function NpcServiceServer.spawnSlime(self: NpcServiceServer, spawnConfig: SlimeS
 		id = slime.uniqueId,
 		npcType = "Slime",
 		displayName = spawnConfig.displayName,
+		npc = slime,
 		slime = slime,
 		hp = slime.hp,
 		maxHp = slime.maxHp,

@@ -2,6 +2,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TextService = game:GetService("TextService")
+local UserInputService = game:GetService("UserInputService")
 
 local React = require(ReplicatedStorage.Packages.React)
 local Role = require(ReplicatedStorage.Shared.Services.DevPromptService.Role)
@@ -130,6 +131,53 @@ return function(props: PromptProps): React.ReactNode
 			end
 		end)
 	end, { props.visible })
+
+	React.useEffect(function()
+		if props.visible ~= true then
+			return
+		end
+
+		local connection = UserInputService.InputBegan:Connect(function(inputObject: InputObject, processed: boolean)
+			if processed then
+				return
+			end
+
+			local input = inputRef.current
+			if input == nil or input.Parent == nil or not input:IsFocused() then
+				return
+			end
+
+			if inputObject.KeyCode == Enum.KeyCode.Tab then
+				props.onApplySelectedSuggestion(nil)
+				task.defer(function()
+					local currentInput = inputRef.current
+					if currentInput ~= nil and currentInput.Parent ~= nil then
+						currentInput:CaptureFocus()
+					end
+				end)
+			elseif inputObject.KeyCode == Enum.KeyCode.Up then
+				props.onCycleSuggestion(-1)
+			elseif inputObject.KeyCode == Enum.KeyCode.Down then
+				props.onCycleSuggestion(1)
+			elseif inputObject.KeyCode == Enum.KeyCode.PageUp then
+				props.onCycleHistory(-1)
+			elseif inputObject.KeyCode == Enum.KeyCode.PageDown then
+				props.onCycleHistory(1)
+			elseif inputObject.KeyCode == Enum.KeyCode.Escape then
+				props.onClose()
+			end
+		end)
+
+		return function()
+			connection:Disconnect()
+		end
+	end, {
+		props.visible,
+		props.onApplySelectedSuggestion,
+		props.onCycleSuggestion,
+		props.onCycleHistory,
+		props.onClose,
+	})
 
 	local suggestionRows = {}
 	for index, suggestion in suggestions do
@@ -309,8 +357,6 @@ return function(props: PromptProps): React.ReactNode
 				BorderSizePixel = 0,
 				ClearTextOnFocus = false,
 				Font = Enum.Font.Code,
-				ShouldEmitTabEvents = true,
-				ShouldEmitUpAndDownArrowEvents = true,
 				Text = props.promptText,
 				PlaceholderText = if props.canUseCommands
 					then "Type a developer command..."
@@ -339,27 +385,6 @@ return function(props: PromptProps): React.ReactNode
 								end
 							end)
 						end
-					end
-				end,
-				[React.Event.InputBegan] = function(_rbx: GuiObject, inputObject: InputObject)
-					if inputObject.KeyCode == Enum.KeyCode.Tab then
-						props.onApplySelectedSuggestion(nil)
-						task.defer(function()
-							local input = inputRef.current
-							if input ~= nil and input.Parent ~= nil then
-								input:CaptureFocus()
-							end
-						end)
-					elseif inputObject.KeyCode == Enum.KeyCode.Up then
-						props.onCycleSuggestion(-1)
-					elseif inputObject.KeyCode == Enum.KeyCode.Down then
-						props.onCycleSuggestion(1)
-					elseif inputObject.KeyCode == Enum.KeyCode.PageUp then
-						props.onCycleHistory(-1)
-					elseif inputObject.KeyCode == Enum.KeyCode.PageDown then
-						props.onCycleHistory(1)
-					elseif inputObject.KeyCode == Enum.KeyCode.Escape then
-						props.onClose()
 					end
 				end,
 			}),

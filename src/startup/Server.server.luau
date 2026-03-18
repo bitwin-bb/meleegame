@@ -24,6 +24,7 @@ local LiquidServiceServer = require(ServerScriptService.Services.LiquidService.L
 local BuildServiceServer = require(ServerScriptService.Services.BuildService.BuildServiceServer)
 local WorldSimulationServiceServer =
 	require(ServerScriptService.Services.WorldSimulationService.WorldSimulationServiceServer)
+local BossServiceServer = require(ServerScriptService.Services.BossService.BossServiceServer)
 local NpcServiceServer = require(ServerScriptService.Services.NpcService.NpcServiceServer)
 local WeatherServiceServer = require(ServerScriptService.Services.WeatherService.WeatherServiceServer)
 local BreathServiceServer = require(ServerScriptService.Services.BreathService.BreathServiceServer)
@@ -65,6 +66,7 @@ end
 PlayerServiceServer:init()
 WeatherServiceServer:init()
 NpcServiceServer:init()
+BossServiceServer:init()
 AnimationServiceServer:init()
 AudioServiceServer:init()
 VFXServiceServer:init()

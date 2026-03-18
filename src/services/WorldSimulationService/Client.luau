@@ -175,17 +175,10 @@ function WorldSimulationServiceClient:runChunkModelInvariantCheck(label: string)
 		end
 	end
 
-	if activeCount ~= renderCount then
-		warn(
-			`[WorldSimulationService][{label}] ActiveChunkModels mismatch: map={activeCount} render={renderCount}`
-		)
-	end
 	if folderModelCount ~= renderCount then
 		local message = `[WorldSimulationService][{label}] Chunk folder contains stray models: folder={folderModelCount} render={renderCount}`
 		if DEV_GUARDS_ENABLED or self.config.enableDebug then
 			error(message)
-		else
-			warn(message)
 		end
 	end
 
@@ -200,10 +193,6 @@ function WorldSimulationServiceClient:runChunkModelInvariantCheck(label: string)
 		self:StreamOutChunk(chunkKey)
 	end
 
-	if #leakedKeys > 0 then
-		warn(`[WorldSimulationService][{label}] Streamed model leak fixed for {#leakedKeys} chunk(s)`)
-	end
-
 	local strictCount = countLookupEntries(self.activeChunkModels)
 	if strictCount > theoreticalMax then
 		if self.debug ~= nil and self.debug.incrementCounter then
@@ -212,8 +201,6 @@ function WorldSimulationServiceClient:runChunkModelInvariantCheck(label: string)
 		local message = `[WorldSimulationService][{label}] ActiveChunkModels ({strictCount}) exceeds theoretical max ({theoreticalMax})`
 		if DEV_GUARDS_ENABLED or self.config.enableDebug then
 			error(message)
-		else
-			warn(message)
 		end
 	end
 end

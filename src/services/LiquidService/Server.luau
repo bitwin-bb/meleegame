@@ -646,11 +646,8 @@ function LiquidServiceServer:shouldDebugLog(flagName: string): boolean
 	return (self.config.debug :: any)[flagName] == true
 end
 
-function LiquidServiceServer:debugLog(flagName: string, message: string)
-	if not self:shouldDebugLog(flagName) then
-		return
-	end
-	print(`[LiquidService] {message}`)
+function LiquidServiceServer:debugLog(_flagName: string, _message: string)
+	return
 end
 
 function LiquidServiceServer:getDebugFolder(): Folder?

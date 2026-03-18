@@ -9,6 +9,7 @@ local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
 local AudioServiceUtils = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceUtils)
+local BossServiceClient = require(ReplicatedStorage.Shared.Services.BossService.BossServiceClient)
 local WorldGenerationServiceClient =
 	require(ReplicatedStorage.Shared.Services.WorldGenerationService.WorldGenerationServiceClient)
 
@@ -44,6 +45,7 @@ local CORRUPTION_SOUNDTRACK_BIOME = "Corruption"
 local JUNGLE_SOUNDTRACK_BIOME = "Jungle"
 local UNDERGROUND_SOUNDTRACK_BIOME = "Underground"
 local CAVERN_SOUNDTRACK_BIOME = "Cavern"
+local EYE_OF_CTHULHU_SOUNDTRACK_BIOME = "EyeOfCthulhu"
 local BIOME_TYPE_NORMAL = 1
 local BIOME_TYPE_CORRUPTION = 2
 local BIOME_ID_FOREST = 1
@@ -62,6 +64,7 @@ local SOUNDTRACK_TRACK_KEYS_BY_BIOME: { [string]: { string } } = {
 	Jungle = { "Jungle" },
 	Underground = { "Underground" },
 	Cavern = { "Cavern" },
+	EyeOfCthulhu = { "EyeOfCthulhu" },
 }
 
 local SOUNDTRACK_BIOME_BY_BIOME_TYPE: { [number]: string } = {
@@ -76,6 +79,7 @@ local SOUNDTRACK_LOOPED_BY_BIOME: { [string]: boolean } = {
 	Jungle = true,
 	Underground = true,
 	Cavern = true,
+	EyeOfCthulhu = true,
 }
 
 local function isNightTime(clockTime: number): boolean
@@ -233,7 +237,62 @@ function AudioServiceClient.resolveDepthLayerAtWorldPosition(
 	return math.floor(depthLayerOrError)
 end
 
+function AudioServiceClient.attachBossStateListenerIfNeeded(self: AudioServiceClient)
+	if self.bossStateChangedConnection ~= nil then
+		return
+	end
+
+	local bossStateChanged = (BossServiceClient :: any).stateChanged
+	if typeof(bossStateChanged) ~= "table" or typeof((bossStateChanged :: any).Connect) ~= "function" then
+		return
+	end
+
+	local connection = bossStateChanged:Connect(function()
+		self.soundtrackSampleAccumulator = SOUNDTRACK_BIOME_SAMPLE_INTERVAL
+		self:updateBiomeSoundtrack(SOUNDTRACK_BIOME_SAMPLE_INTERVAL)
+	end)
+	self.bossStateChangedConnection = connection
+	self.janitor:GiveChore(connection)
+
+	self.soundtrackSampleAccumulator = SOUNDTRACK_BIOME_SAMPLE_INTERVAL
+end
+
+function AudioServiceClient.resolveBossSoundtrackBiome(self: AudioServiceClient): string?
+	local bossState = (BossServiceClient :: any).state
+	if typeof(bossState) ~= "table" then
+		return nil
+	end
+
+	local orderedIds = (bossState :: any).orderedIds
+	local byId = (bossState :: any).byId
+	if typeof(orderedIds) ~= "table" or typeof(byId) ~= "table" then
+		return nil
+	end
+
+	for _, runtimeId in orderedIds do
+		local snapshot = byId[runtimeId]
+		if typeof(snapshot) ~= "table" then
+			continue
+		end
+		if (snapshot :: any).bossId ~= "EyeOfCthulhu" or (snapshot :: any).isAlive ~= true then
+			continue
+		end
+
+		local state = (snapshot :: any).state
+		if state ~= "Dormant" and state ~= "Death" and state ~= "Despawn" then
+			return EYE_OF_CTHULHU_SOUNDTRACK_BIOME
+		end
+	end
+
+	return nil
+end
+
 function AudioServiceClient.resolveSoundtrackBiomeForLocalPlayer(self: AudioServiceClient): string?
+	local bossSoundtrackBiome = self:resolveBossSoundtrackBiome()
+	if bossSoundtrackBiome ~= nil then
+		return bossSoundtrackBiome
+	end
+
 	local character = self.localPlayer.Character
 	if character == nil then
 		return nil
@@ -393,6 +452,7 @@ function AudioServiceClient.setSoundtrackBiome(self: AudioServiceClient, soundtr
 end
 
 function AudioServiceClient.updateBiomeSoundtrack(self: AudioServiceClient, deltaTime: number)
+	self:attachBossStateListenerIfNeeded()
 	self.soundtrackSampleAccumulator += deltaTime
 	if self.soundtrackSampleAccumulator < SOUNDTRACK_BIOME_SAMPLE_INTERVAL then
 		return
@@ -424,6 +484,7 @@ function AudioServiceClient.init(self: AudioServiceClient)
 	self.soundtrackTrackEndedConnection = nil
 	self.soundtrackTrackDestroyingConnection = nil
 	self.soundtrackSampleAccumulator = SOUNDTRACK_BIOME_SAMPLE_INTERVAL
+	self.bossStateChangedConnection = nil
 
 	AudioServiceUtils.applyStateToCategoryGroups(self.state, self.categoryGroups)
 	disableDefaultCharacterSoundSystem(self.localPlayer, self.localPlayer.Character)
@@ -529,6 +590,19 @@ function AudioServiceClient.playSound(
 	local soundAssetId, options = AudioServiceUtils.resolvePlaybackRequest(soundAssetIdRaw, optionsRaw, fallbackCategory)
 	if soundAssetId == nil then
 		return nil
+	end
+
+	if self.runtimeFolder == nil then
+		self.runtimeFolder = AudioServiceUtils.ensureRuntimeFolder(RobloxSoundService)
+	end
+	if self.categoryGroups == nil then
+		self.categoryGroups = AudioServiceUtils.ensureCategoryGroups(RobloxSoundService)
+		local state = self.state or AudioServiceUtils.createDefaultState()
+		self.state = state
+		AudioServiceUtils.applyStateToCategoryGroups(state, self.categoryGroups)
+	end
+	if self.channelSounds == nil then
+		self.channelSounds = {}
 	end
 
 	local categoryGroup = self.categoryGroups[options.category]
@@ -643,6 +717,8 @@ type AudioServiceClient = typeof(AudioServiceClient) & {
 	resolveBiomeTypeAtWorldPosition: (self: AudioServiceClient, worldPosition: Vector3) -> number,
 	resolveBiomeIdAtWorldPosition: (self: AudioServiceClient, worldPosition: Vector3) -> number,
 	resolveDepthLayerAtWorldPosition: (self: AudioServiceClient, worldPosition: Vector3) -> number?,
+	attachBossStateListenerIfNeeded: (self: AudioServiceClient) -> (),
+	resolveBossSoundtrackBiome: (self: AudioServiceClient) -> string?,
 	resolveSoundtrackBiomeForLocalPlayer: (self: AudioServiceClient) -> string?,
 	getNextTrackForSoundtrackBiome: (self: AudioServiceClient, soundtrackBiome: string) -> string?,
 	clearActiveSoundtrackConnections: (self: AudioServiceClient) -> (),
@@ -666,6 +742,7 @@ type AudioServiceClient = typeof(AudioServiceClient) & {
 	soundtrackTrackEndedConnection: RBXScriptConnection?,
 	soundtrackTrackDestroyingConnection: RBXScriptConnection?,
 	soundtrackSampleAccumulator: number,
+	bossStateChangedConnection: RBXScriptConnection?,
 }
 
 return AudioServiceClient :: AudioServiceClient

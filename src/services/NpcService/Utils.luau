@@ -880,9 +880,13 @@ function NpcServiceUtils.sanitizeSnapshot(snapshotRaw: any, fallback: NpcSnapsho
 		hp = 0
 	end
 
+	local npcType = if source.npcType == "Slime"
+		then "Slime"
+		else if fallbackSnapshot then fallbackSnapshot.npcType else "Slime"
+
 	return {
 		id = id,
-		npcType = if source.npcType == "Slime" then "Slime" else if fallbackSnapshot then fallbackSnapshot.npcType else "Slime",
+		npcType = npcType,
 		displayName = if typeof(source.displayName) == "string" and source.displayName ~= ""
 			then source.displayName
 			else if fallbackSnapshot then fallbackSnapshot.displayName else id,
