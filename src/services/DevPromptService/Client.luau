@@ -69,6 +69,10 @@ function DevPromptServiceClient.pushStateChanged(self: DevPromptServiceClient)
 	self.stateChanged:Fire(self:getState())
 end
 
+function DevPromptServiceClient.canOpenConsole(self: DevPromptServiceClient): boolean
+	return self.isStateReady == true and self.state.canUseCommands == true
+end
+
 function DevPromptServiceClient.syncChatAvailability(self: DevPromptServiceClient)
 	setChatCoreGuiEnabled(self.state.isOpen)
 end
@@ -78,6 +82,9 @@ function DevPromptServiceClient.mergeState(self: DevPromptServiceClient, serverS
 	local nextState = DevPromptServiceUtils.sanitizeState(serverStateRaw, fallback)
 	nextState.entries = DevPromptServiceUtils.limitEntries(fallback.entries, nextState.maxEntries)
 	nextState.isOpen = fallback.isOpen
+	if nextState.canUseCommands ~= true then
+		nextState.isOpen = false
+	end
 	self.state = nextState
 	self.isStateReady = true
 	self:syncChatAvailability()
@@ -118,6 +125,9 @@ end
 
 function DevPromptServiceClient.setOpen(self: DevPromptServiceClient, isOpenRaw: any)
 	local nextOpen = if typeof(isOpenRaw) == "boolean" then isOpenRaw else false
+	if nextOpen and not self:canOpenConsole() then
+		return
+	end
 	if self.state.isOpen == nextOpen then
 		return
 	end
@@ -199,6 +209,9 @@ function DevPromptServiceClient.bindToggleInput(self: DevPromptServiceClient)
 		end
 		if self.state.isOpen then
 			self:setOpen(false)
+			return
+		end
+		if not self:canOpenConsole() then
 			return
 		end
 		if processed then
@@ -296,6 +309,7 @@ type DevPromptServiceClient = typeof(DevPromptServiceClient) & {
 	stateChanged: SignalObject,
 	_incomingMessageCallback: ((message: TextChatMessage) -> TextChatMessageProperties?)?,
 	previousChatCoreGuiEnabled: boolean,
+	canOpenConsole: (self: DevPromptServiceClient) -> boolean,
 }
 
 return DevPromptServiceClient :: DevPromptServiceClient

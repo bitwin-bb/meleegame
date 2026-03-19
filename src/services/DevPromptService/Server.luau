@@ -200,10 +200,11 @@ end
 function DevPromptServiceServer.refreshPlayerRole(self: DevPromptServiceServer, player: Player)
 	local roleId = Role.resolveRoleIdForPlayer(player, self:getRoleResolveContext())
 	local snapshot = Role.createSnapshot(roleId, player.UserId, player.Name, player.DisplayName)
+	snapshot.canUseCommands = self:isOwnerPlayer(player)
 	self.playerRoles[player] = snapshot
 
 	player:SetAttribute(DevPromptServiceUtils.ROLE_ATTRIBUTE, snapshot.roleId)
-	player:SetAttribute(DevPromptServiceUtils.CAN_USE_COMMANDS_ATTRIBUTE, snapshot.canUseCommands)
+	player:SetAttribute(DevPromptServiceUtils.CAN_USE_COMMANDS_ATTRIBUTE, self:isOwnerPlayer(player))
 	player:SetAttribute(DevPromptServiceUtils.GODMODE_ATTRIBUTE, self.godmodeUsers[player.UserId] == true)
 end
 
@@ -273,7 +274,7 @@ function DevPromptServiceServer.createStateSnapshot(self: DevPromptServiceServer
 		ownerUserId = self.ownerUserId,
 		ownerName = self.ownerName,
 		localRoleId = localRoleId,
-		canUseCommands = snapshot ~= nil and snapshot.canUseCommands or false,
+		canUseCommands = self:isOwnerPlayer(player),
 		playerRoles = self:createPlayerRolesPayload(),
 		commandPrefix = self.commandPrefix,
 		maxEntries = self.maxEntries,
@@ -320,9 +321,15 @@ function DevPromptServiceServer.getUnauthorizedCommandMessage(self: DevPromptSer
 	return ("Only the resolved owner (%d) can use developer commands."):format(self.ownerUserId)
 end
 
+function DevPromptServiceServer.isOwnerPlayer(self: DevPromptServiceServer, player: Player): boolean
+	if self.ownerUserId == nil then
+		return false
+	end
+	return player.UserId == self.ownerUserId
+end
+
 function DevPromptServiceServer.canPlayerUseCommands(self: DevPromptServiceServer, player: Player): boolean
-	local snapshot = self.playerRoles[player]
-	return snapshot ~= nil and snapshot.canUseCommands == true
+	return self:isOwnerPlayer(player)
 end
 
 function DevPromptServiceServer.resolvePlayerQuery(
