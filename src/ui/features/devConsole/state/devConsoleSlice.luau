@@ -43,7 +43,12 @@ local devConsoleSlice = {}
 local MAX_SUGGESTIONS = 8
 local MAX_HISTORY = 50
 local AMOUNT_SUGGESTIONS = { "1", "5", "10", "25", "50", "100", "999999" }
+local CLEAR_OPTION_SUGGESTIONS = { "entities" }
 local GODMODE_MODE_SUGGESTIONS = { "on", "off", "toggle" }
+local DAYLIGHT_MODE_SUGGESTIONS = { "on", "off", "toggle", "time" }
+local CLOCK_TIME_SUGGESTIONS = { "0", "4.5", "6", "8.5", "12", "18", "21" }
+local WEATHER_TYPE_SUGGESTIONS = { "clear", "rainstorm", "thunderstorm" }
+local WEATHER_TRANSITION_SUGGESTIONS = { "0", "1", "3", "6", "10" }
 local SPAWN_ENTITY_SUGGESTIONS = { "slime", "green", "greenslime", "eye", "eoc", "eyeofcthulhu" }
 local BOSS_SPAWN_AMOUNT_SUGGESTIONS = { "1", "2", "3", "5" }
 local DEFAULT_SPAWN_AMOUNT_SUGGESTIONS = { "1", "2", "3", "5", "10", "20" }
@@ -419,6 +424,8 @@ local function buildParameterCandidates(
 				priority = 0,
 			}
 		end
+	elseif definition.name == "clear" and activeArgIndex == 1 then
+		appendChoiceCandidates(candidates, CLEAR_OPTION_SUGGESTIONS, "Clear all active entities", definition.usage, analysis.activeTokenIndex, 0)
 	elseif definition.name == "role" and activeArgIndex == 1 then
 		appendPlayerCandidates(candidates, serviceState, definition.usage, analysis.activeTokenIndex, 0)
 	elseif definition.name == "heal" then
@@ -474,6 +481,32 @@ local function buildParameterCandidates(
 				analysis.activeTokenIndex,
 				0
 			)
+		end
+	elseif definition.name == "weather" then
+		if activeArgIndex == 1 then
+			appendChoiceCandidates(candidates, WEATHER_TYPE_SUGGESTIONS, "Weather preset", definition.usage, analysis.activeTokenIndex, 0)
+		elseif activeArgIndex == 2 then
+			appendChoiceCandidates(
+				candidates,
+				WEATHER_TRANSITION_SUGGESTIONS,
+				"Transition seconds",
+				definition.usage,
+				analysis.activeTokenIndex,
+				0
+			)
+		end
+	elseif definition.name == "daylight" then
+		local modeToken = normalizeToken(analysis.tokens[2])
+		if activeArgIndex == 1 then
+			appendChoiceCandidates(candidates, DAYLIGHT_MODE_SUGGESTIONS, "Daylight mode", definition.usage, analysis.activeTokenIndex, 0)
+			appendChoiceCandidates(candidates, CLOCK_TIME_SUGGESTIONS, "Clock time", definition.usage, analysis.activeTokenIndex, 1)
+			if looksNumeric then
+				for _, candidate in candidates do
+					candidate.priority = if candidate.description == "Clock time" then 0 else candidate.priority + 1
+				end
+			end
+		elseif activeArgIndex == 2 and (modeToken == "time" or modeToken == "clock" or modeToken == "set") then
+			appendChoiceCandidates(candidates, CLOCK_TIME_SUGGESTIONS, "Clock time", definition.usage, analysis.activeTokenIndex, 0)
 		end
 	elseif definition.name == "godmode" then
 		if activeArgIndex == 1 then

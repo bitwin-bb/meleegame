@@ -110,6 +110,64 @@ local function normalizeToken(valueRaw: any): string
 	return string.lower(string.gsub(text, "[%s_%-%.]", ""))
 end
 
+local WEATHER_TYPE_BY_VARIANT = {
+	clear = "Clear",
+	sun = "Clear",
+	sunny = "Clear",
+	rain = "Rainstorm",
+	rainy = "Rainstorm",
+	rainstorm = "Rainstorm",
+	storm = "Rainstorm",
+	thunder = "Thunderstorm",
+	lightning = "Thunderstorm",
+	thunderstorm = "Thunderstorm",
+}
+
+local DAYLIGHT_ENABLE_VARIANTS = {
+	on = true,
+	enable = true,
+	enabled = true,
+	resume = true,
+}
+
+local DAYLIGHT_DISABLE_VARIANTS = {
+	off = true,
+	disable = true,
+	disabled = true,
+	pause = true,
+	stop = true,
+}
+
+local DAYLIGHT_TOGGLE_VARIANTS = {
+	toggle = true,
+	switch = true,
+}
+
+local DAYLIGHT_TIME_VARIANTS = {
+	time = true,
+	clock = true,
+	set = true,
+}
+
+local function resolveWeatherType(valueRaw: any): string?
+	local normalized = normalizeToken(valueRaw)
+	if normalized == "" then
+		return nil
+	end
+	return WEATHER_TYPE_BY_VARIANT[normalized]
+end
+
+local function buildWeatherServiceErrorMessage(reasonRaw: any, fallback: string): string
+	local reason = DevPromptServiceUtils.trim(reasonRaw)
+	if reason == "service_unavailable" then
+		return "Weather service is not available in this server."
+	end
+	if reason == "service_disabled" then
+		return "Weather service is disabled in this server."
+	end
+	return fallback
+end
+
 local function sortDefinitions()
 	table.sort(commandDefinitions, function(a, b)
 		return a.name < b.name
@@ -148,9 +206,29 @@ end
 addCommand({
 	name = "clear",
 	aliases = { "cls" },
-	description = "Clear the local developer console output.",
-	usage = "clear",
+	description = "Clear the local developer console output or remove all active entities.",
+	usage = "clear [entities]",
 	run = function(context: CommandContext)
+		local option = normalizeToken(context.args[1])
+		if option ~= "" then
+			if option ~= "entities" and option ~= "entity" and option ~= "all" then
+				context.result.ok = false
+				context:reply("error", "Usage: clear [entities]")
+				return
+			end
+
+			local removedNpcCount, removedBossCount, removedProjectileCount = context.service:clearAllEntities()
+			context:reply(
+				"success",
+				("Cleared %d NPC(s), %d boss(es), and %d projectile(s)."):format(
+					removedNpcCount,
+					removedBossCount,
+					removedProjectileCount
+				)
+			)
+			return
+		end
+
 		context.result.clearBefore = true
 		context.result.echoInput = false
 	end,
@@ -414,6 +492,125 @@ addCommand({
 		end
 
 		context:reply("success", ("Spawned %d %s instance(s)."):format(spawnedCount, entityToken))
+	end,
+})
+
+addCommand({
+	name = "weather",
+	aliases = { "forecast" },
+	description = "Change the active weather preset for the server.",
+	usage = "weather <clear|rainstorm|thunderstorm> [transitionSeconds]",
+	run = function(context: CommandContext)
+		local weatherType = resolveWeatherType(context.args[1])
+		if weatherType == nil then
+			context.result.ok = false
+			context:reply("error", "Weather must be clear, rainstorm, or thunderstorm.")
+			return
+		end
+
+		local transitionSeconds = nil :: number?
+		if context.args[2] ~= nil and context.args[2] ~= "" then
+			local parsed = parseNumber(context.args[2])
+			if parsed == nil then
+				context.result.ok = false
+				context:reply("error", "Transition seconds must be a number between 0 and 60.")
+				return
+			end
+			transitionSeconds = math.clamp(parsed, 0, 60)
+		end
+
+		local ok, appliedWeatherType, appliedTransition, reason =
+			context.service:setWeatherState(weatherType, transitionSeconds)
+		if not ok then
+			context.result.ok = false
+			context:reply("error", buildWeatherServiceErrorMessage(reason, "Failed to change weather."))
+			return
+		end
+
+		context:reply(
+			"success",
+			("Weather changed to %s over %.1f seconds."):format(appliedWeatherType or weatherType, appliedTransition)
+		)
+	end,
+})
+
+addCommand({
+	name = "daylight",
+	aliases = { "clock", "timeofday" },
+	description = "Control the day-night cycle or set the current clock time.",
+	usage = "daylight <on|off|toggle|time> [clockTime]",
+	run = function(context: CommandContext)
+		local firstArg = context.args[1]
+		if firstArg == nil or firstArg == "" then
+			context.result.ok = false
+			context:reply("error", "Usage: daylight <on|off|toggle|time> [clockTime]")
+			return
+		end
+
+		local parsedClockTime = parseNumber(firstArg)
+		if parsedClockTime ~= nil then
+			local ok, clockTime, reason = context.service:setDaylightClockTime(parsedClockTime)
+			if not ok then
+				context.result.ok = false
+				context:reply("error", buildWeatherServiceErrorMessage(reason, "Failed to set clock time."))
+				return
+			end
+
+			context:reply("success", ("Clock time set to %.2f."):format(clockTime))
+			return
+		end
+
+		local normalized = normalizeToken(firstArg)
+		if DAYLIGHT_TIME_VARIANTS[normalized] == true then
+			local clockTimeArg = context.args[2]
+			local clockTime = parseNumber(clockTimeArg)
+			if clockTime == nil then
+				context.result.ok = false
+				context:reply("error", "Usage: daylight time <clockTime>")
+				return
+			end
+
+			local ok, nextClockTime, reason = context.service:setDaylightClockTime(clockTime)
+			if not ok then
+				context.result.ok = false
+				context:reply("error", buildWeatherServiceErrorMessage(reason, "Failed to set clock time."))
+				return
+			end
+
+			context:reply("success", ("Clock time set to %.2f."):format(nextClockTime))
+			return
+		end
+
+		local desiredEnabled = nil :: boolean?
+		if DAYLIGHT_ENABLE_VARIANTS[normalized] == true then
+			desiredEnabled = true
+		elseif DAYLIGHT_DISABLE_VARIANTS[normalized] == true then
+			desiredEnabled = false
+		elseif DAYLIGHT_TOGGLE_VARIANTS[normalized] == true then
+			local state = context.service:getWeatherStateSnapshot()
+			if state == nil then
+				context.result.ok = false
+				context:reply("error", buildWeatherServiceErrorMessage("service_unavailable", "Failed to inspect daylight state."))
+				return
+			end
+			desiredEnabled = not state.dayNightCycleEnabled
+		else
+			context.result.ok = false
+			context:reply("error", "Usage: daylight <on|off|toggle|time> [clockTime]")
+			return
+		end
+
+		local ok, nextEnabled, clockTime, reason = context.service:setDaylightCycleEnabled(desiredEnabled)
+		if not ok then
+			context.result.ok = false
+			context:reply("error", buildWeatherServiceErrorMessage(reason, "Failed to change daylight cycle."))
+			return
+		end
+
+		context:reply(
+			"success",
+			("Daylight cycle %s at %.2f."):format(if nextEnabled then "enabled" else "disabled", clockTime)
+		)
 	end,
 })
 

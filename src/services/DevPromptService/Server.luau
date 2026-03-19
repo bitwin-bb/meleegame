@@ -14,6 +14,9 @@ local HpServiceServer = require(ServerScriptService.Services.HpService.HpService
 local InventoryServiceServer = require(ServerScriptService.Services.InventoryService.InventoryServiceServer)
 local BossServiceServer = require(ServerScriptService.Services.BossService.BossServiceServer)
 local NpcServiceServer = require(ServerScriptService.Services.NpcService.NpcServiceServer)
+local MagicServiceServer = require(ServerScriptService.Services.MagicService.MagicServiceServer)
+local WeatherServiceServer = require(ServerScriptService.Services.WeatherService.WeatherServiceServer)
+local WeatherServiceUtils = require(ReplicatedStorage.Shared.Services.WeatherService.WeatherServiceUtils)
 
 type CommandResult = Commands.CommandResult
 type ConsoleEntry = DevPromptServiceUtils.ConsoleEntry
@@ -22,6 +25,8 @@ type PlayerRoleSnapshot = Role.PlayerRoleSnapshot
 type RoleId = Role.RoleId
 type RoleOverrides = Role.RoleOverrides
 type RoleResolveContext = Role.RoleResolveContext
+type WeatherType = WeatherServiceUtils.WeatherType
+type WeatherServiceState = WeatherServiceUtils.WeatherServiceState
 
 type JanitorClass = {
 	GiveChore: (self: JanitorClass, chore: any, ...any) -> (any),
@@ -419,6 +424,215 @@ function DevPromptServiceServer.giveItemToPlayer(
 		return false, canonicalItemId, 0, requestedAmount, "inventory_full"
 	end
 	return true, canonicalItemId, result.added, result.requested, nil
+end
+
+function DevPromptServiceServer.getWeatherStateSnapshot(_self: DevPromptServiceServer): WeatherServiceState?
+	local weatherService = WeatherServiceServer :: any
+	if typeof(weatherService) ~= "table" or typeof(weatherService.getState) ~= "function" then
+		return nil
+	end
+
+	local ok, stateOrError = pcall(function()
+		return weatherService:getState()
+	end)
+	if not ok or typeof(stateOrError) ~= "table" then
+		return nil
+	end
+
+	return stateOrError :: WeatherServiceState
+end
+
+function DevPromptServiceServer.isWeatherServiceEnabled(_self: DevPromptServiceServer): boolean
+	local weatherService = WeatherServiceServer :: any
+	if typeof(weatherService) ~= "table" then
+		return false
+	end
+
+	local config = weatherService.config
+	if typeof(config) ~= "table" then
+		return false
+	end
+
+	return (config :: any).enabled == true
+end
+
+function DevPromptServiceServer.setWeatherState(
+	self: DevPromptServiceServer,
+	weatherTypeRaw: any,
+	transitionSecondsRaw: any?
+): (boolean, WeatherType?, number, string?)
+	local weatherService = WeatherServiceServer :: any
+	if typeof(weatherService) ~= "table" or typeof(weatherService.setWeather) ~= "function" then
+		return false, nil, 0, "service_unavailable"
+	end
+	if not self:isWeatherServiceEnabled() then
+		return false, nil, 0, "service_disabled"
+	end
+
+	local config = if typeof(weatherService.config) == "table" then weatherService.config else {}
+	local transitionSeconds =
+		WeatherServiceUtils.sanitizeNumber(transitionSecondsRaw, (config :: any).weatherTransitionSeconds or 0, 0, 60)
+
+	local ok, weatherTypeOrError = pcall(function()
+		return weatherService:setWeather(weatherTypeRaw, transitionSeconds, true)
+	end)
+	if not ok then
+		return false, nil, transitionSeconds, "service_error"
+	end
+
+	local state = self:getWeatherStateSnapshot()
+	local appliedWeatherType = if state ~= nil
+		then state.weatherType
+		else WeatherServiceUtils.sanitizeWeatherType(weatherTypeOrError, "Clear")
+	local appliedTransition = if state ~= nil then state.weatherTransitionSeconds else transitionSeconds
+	return true, appliedWeatherType, appliedTransition, nil
+end
+
+function DevPromptServiceServer.setDaylightCycleEnabled(
+	self: DevPromptServiceServer,
+	enabledRaw: any
+): (boolean, boolean, number, string?)
+	local weatherService = WeatherServiceServer :: any
+	if typeof(weatherService) ~= "table" or typeof(weatherService.setDayNightCycleEnabled) ~= "function" then
+		return false, false, 0, "service_unavailable"
+	end
+	if not self:isWeatherServiceEnabled() then
+		return false, false, 0, "service_disabled"
+	end
+
+	local ok, enabledOrError = pcall(function()
+		return weatherService:setDayNightCycleEnabled(enabledRaw, true)
+	end)
+	if not ok then
+		return false, false, 0, "service_error"
+	end
+
+	local state = self:getWeatherStateSnapshot()
+	local appliedEnabled = if state ~= nil
+		then state.dayNightCycleEnabled
+		else WeatherServiceUtils.sanitizeBoolean(enabledOrError, false)
+	local clockTime = if state ~= nil then state.clockTime else 0
+	return true, appliedEnabled, clockTime, nil
+end
+
+function DevPromptServiceServer.setDaylightClockTime(
+	self: DevPromptServiceServer,
+	clockTimeRaw: any
+): (boolean, number, string?)
+	local weatherService = WeatherServiceServer :: any
+	if typeof(weatherService) ~= "table" or typeof(weatherService.setClockTime) ~= "function" then
+		return false, 0, "service_unavailable"
+	end
+	if not self:isWeatherServiceEnabled() then
+		return false, 0, "service_disabled"
+	end
+
+	local ok, clockTimeOrError = pcall(function()
+		return weatherService:setClockTime(clockTimeRaw, true)
+	end)
+	if not ok then
+		return false, 0, "service_error"
+	end
+
+	local state = self:getWeatherStateSnapshot()
+	local clockTime = if state ~= nil then state.clockTime else WeatherServiceUtils.sanitizeNumber(clockTimeOrError, 12, 0, 24)
+	return true, clockTime, nil
+end
+
+function DevPromptServiceServer.clearAllEntities(_self: DevPromptServiceServer): (number, number, number)
+	local removedNpcCount = 0
+	local removedBossCount = 0
+	local removedProjectileCount = 0
+
+	local npcService = NpcServiceServer :: any
+	if typeof(npcService) == "table" and typeof(npcService.removeRuntime) == "function" then
+		local runtimeIds = {}
+		if typeof(npcService.runtimes) == "table" then
+			for runtimeId in npcService.runtimes do
+				if typeof(runtimeId) == "string" and runtimeId ~= "" then
+					runtimeIds[#runtimeIds + 1] = runtimeId
+				end
+			end
+		end
+
+		table.sort(runtimeIds)
+		for _, runtimeId in runtimeIds do
+			if typeof(npcService.runtimes) == "table" and npcService.runtimes[runtimeId] ~= nil then
+				local ok = pcall(function()
+					npcService:removeRuntime(runtimeId, "devClearEntities")
+				end)
+				if ok then
+					removedNpcCount += 1
+				end
+			end
+		end
+	end
+
+	local bossService = BossServiceServer :: any
+	if typeof(bossService) == "table" and typeof(bossService.removeController) == "function" then
+		bossService.pendingNaturalSpawn = nil
+
+		local runtimeIds = {}
+		local seenRuntimeIds = {}
+		local state = bossService.state
+		local orderedIds = if typeof(state) == "table" then (state :: any).orderedIds else nil
+		if typeof(orderedIds) == "table" then
+			for _, runtimeId in orderedIds do
+				if typeof(runtimeId) == "string" and runtimeId ~= "" and not seenRuntimeIds[runtimeId] then
+					seenRuntimeIds[runtimeId] = true
+					runtimeIds[#runtimeIds + 1] = runtimeId
+				end
+			end
+		end
+		if typeof(bossService.controllersById) == "table" then
+			for runtimeId in bossService.controllersById do
+				if typeof(runtimeId) == "string" and runtimeId ~= "" and not seenRuntimeIds[runtimeId] then
+					seenRuntimeIds[runtimeId] = true
+					runtimeIds[#runtimeIds + 1] = runtimeId
+				end
+			end
+		end
+
+		table.sort(runtimeIds)
+		for _, runtimeId in runtimeIds do
+			if typeof(bossService.controllersById) == "table" and bossService.controllersById[runtimeId] ~= nil then
+				local ok = pcall(function()
+					bossService:removeController(runtimeId, "devClearEntities")
+				end)
+				if ok then
+					removedBossCount += 1
+				end
+			end
+		end
+	end
+
+	local magicService = MagicServiceServer :: any
+	if typeof(magicService) == "table"
+		and typeof(magicService.activeProjectiles) == "table"
+		and typeof(magicService.releaseProjectile) == "function" then
+		local projectileIds = {}
+		for projectileId in magicService.activeProjectiles do
+			if typeof(projectileId) == "number" and projectileId == projectileId then
+				projectileIds[#projectileIds + 1] = projectileId
+			end
+		end
+
+		table.sort(projectileIds)
+		for _, projectileId in projectileIds do
+			local projectile = magicService.activeProjectiles[projectileId]
+			if projectile ~= nil then
+				magicService.activeProjectiles[projectileId] = nil
+				local ok = pcall(function()
+					magicService:releaseProjectile(projectile)
+				end)
+				if ok then
+					removedProjectileCount += 1
+				end
+			end
+		end
+	end
+
+	return removedNpcCount, removedBossCount, removedProjectileCount
 end
 
 function DevPromptServiceServer.spawnEntityForPlayer(

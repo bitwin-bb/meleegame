@@ -53,8 +53,6 @@ local Role = {}
 
 local DEFAULT_ADMIN_MIN_GROUP_RANK = 254
 local DEFAULT_MODERATOR_MIN_GROUP_RANK = 200
-
--- Add user ids here if you want manual Admin or Moderator overrides in addition to owner detection.
 local DEFAULT_ROLE_OVERRIDES: RoleOverrides = {
 	admins = {},
 	moderators = {},
