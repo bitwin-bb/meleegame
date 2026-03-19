@@ -23,6 +23,7 @@ type PlayerRuntime = {
 	humanoid: Humanoid?,
 	loadToken: number,
 	pendingPersistedHealth: number?,
+	pendingPersistedMaxHealth: number?,
 	hasResolvedPersistedLoad: boolean,
 	healthChangedBeforePersistedLoad: boolean,
 	isApplyingPersistedHealth: boolean,
@@ -79,7 +80,7 @@ function HpServiceServer.init(self: HpServiceServer)
 	end)
 end
 
-function HpServiceServer.createRuntime(self: HpServiceServer): PlayerRuntime
+function HpServiceServer.createRuntime(_self: HpServiceServer): PlayerRuntime
 	return {
 		state = HpServiceUtils.createDefaultState(),
 		playerJanitor = Janitor.new(),
@@ -87,6 +88,7 @@ function HpServiceServer.createRuntime(self: HpServiceServer): PlayerRuntime
 		humanoid = nil,
 		loadToken = 0,
 		pendingPersistedHealth = nil,
+		pendingPersistedMaxHealth = nil,
 		hasResolvedPersistedLoad = false,
 		healthChangedBeforePersistedLoad = false,
 		isApplyingPersistedHealth = false,
@@ -96,7 +98,7 @@ function HpServiceServer.createRuntime(self: HpServiceServer): PlayerRuntime
 end
 
 function HpServiceServer.setHumanoidHealthWithoutDamageFeedback(
-	self: HpServiceServer,
+	_self: HpServiceServer,
 	runtime: PlayerRuntime,
 	humanoid: Humanoid,
 	nextHealth: number
@@ -150,7 +152,7 @@ function HpServiceServer.persistRuntime(self: HpServiceServer, player: Player, r
 	return didSet == true
 end
 
-function HpServiceServer.applyPendingPersistedHealth(
+function HpServiceServer.applyPendingPersistedState(
 	self: HpServiceServer,
 	player: Player,
 	runtime: PlayerRuntime,
@@ -161,12 +163,25 @@ function HpServiceServer.applyPendingPersistedHealth(
 	end
 
 	local pendingHealth = runtime.pendingPersistedHealth
-	if pendingHealth == nil then
+	local pendingMaxHealth = runtime.pendingPersistedMaxHealth
+	if pendingHealth == nil and pendingMaxHealth == nil then
 		return false
 	end
 
-	local nextHealth = math.clamp(pendingHealth, 0, math.max(1, humanoid.MaxHealth))
+	local nextMaxHealth = math.max(
+		1,
+		if typeof(pendingMaxHealth) == "number" and pendingMaxHealth == pendingMaxHealth
+			then pendingMaxHealth
+			else humanoid.MaxHealth
+	)
+	local nextHealth = math.clamp(
+		if typeof(pendingHealth) == "number" and pendingHealth == pendingHealth then pendingHealth else humanoid.Health,
+		0,
+		nextMaxHealth
+	)
 	runtime.pendingPersistedHealth = nil
+	runtime.pendingPersistedMaxHealth = nil
+	humanoid.MaxHealth = nextMaxHealth
 	runtime.isApplyingPersistedHealth = true
 	self:setHumanoidHealthWithoutDamageFeedback(runtime, humanoid, nextHealth)
 	runtime.isApplyingPersistedHealth = false
@@ -180,12 +195,19 @@ function HpServiceServer.applyPendingPersistedHealth(
 			if humanoid.Parent == nil then
 				return
 			end
-
-			local clampedTarget = math.clamp(nextHealth, 0, math.max(1, humanoid.MaxHealth))
-			if humanoid.Health > clampedTarget then
-				self:setHumanoidHealthWithoutDamageFeedback(runtime, humanoid, clampedTarget)
-				self:refreshStateFromHumanoid(player, humanoid)
+			if runtime.isDeathLocked then
+				return
 			end
+
+			local clampedMaxHealth = math.max(1, nextMaxHealth)
+			local clampedTarget = math.clamp(nextHealth, 0, clampedMaxHealth)
+			if math.abs(humanoid.MaxHealth - clampedMaxHealth) > 1e-3 then
+				humanoid.MaxHealth = clampedMaxHealth
+			end
+			if math.abs(humanoid.Health - clampedTarget) > 1e-3 then
+				self:setHumanoidHealthWithoutDamageFeedback(runtime, humanoid, clampedTarget)
+			end
+			self:refreshStateFromHumanoid(player, humanoid)
 		end)
 	end
 
@@ -251,10 +273,12 @@ function HpServiceServer.loadPersistedHealth(self: HpServiceServer, player: Play
 	end
 
 	runtime.hasResolvedPersistedLoad = true
-	local persistedHealth = HpServiceUtils.resolvePersistedHealth(persistedHpRaw)
+	local persistedHealth, persistedMaxHealth =
+		HpServiceUtils.resolvePersistedHealthAndMaxHealth(persistedHpRaw, runtime.state.maxHealth)
 	if runtime.healthChangedBeforePersistedLoad then
 		self:persistRuntime(player, runtime)
 		runtime.pendingPersistedHealth = nil
+		runtime.pendingPersistedMaxHealth = nil
 		self:pushState(player)
 		return
 	end
@@ -265,9 +289,13 @@ function HpServiceServer.loadPersistedHealth(self: HpServiceServer, player: Play
 	end
 
 	runtime.pendingPersistedHealth = persistedHealth
+	runtime.pendingPersistedMaxHealth = persistedMaxHealth
+	runtime.state = HpServiceUtils.createState(persistedHealth, persistedMaxHealth, self.heartValue, runtime.state)
 	local humanoid = runtime.humanoid
 	if humanoid ~= nil and humanoid.Parent ~= nil then
-		self:applyPendingPersistedHealth(player, runtime, humanoid)
+		self:applyPendingPersistedState(player, runtime, humanoid)
+	else
+		self:pushState(player)
 	end
 end
 
@@ -276,7 +304,7 @@ function HpServiceServer.bindHumanoid(self: HpServiceServer, player: Player, hum
 	runtime.humanoid = humanoid
 	runtime.isDeathLocked = isHumanoidDead(humanoid)
 	applyHumanoidPresentationSettings(humanoid)
-	local didApplyPendingHealth = self:applyPendingPersistedHealth(player, runtime, humanoid)
+	local didApplyPendingHealth = self:applyPendingPersistedState(player, runtime, humanoid)
 	if not didApplyPendingHealth then
 		self:refreshStateFromHumanoid(player, humanoid)
 	end
@@ -358,6 +386,7 @@ function HpServiceServer.trackPlayer(self: HpServiceServer, player: Player)
 	runtime.characterJanitor:Clean()
 	runtime.humanoid = nil
 	runtime.pendingPersistedHealth = nil
+	runtime.pendingPersistedMaxHealth = nil
 	runtime.hasResolvedPersistedLoad = false
 	runtime.healthChangedBeforePersistedLoad = false
 	runtime.isApplyingPersistedHealth = false
@@ -428,6 +457,47 @@ end
 function HpServiceServer.getState(self: HpServiceServer, player: Player): HpServiceState
 	local runtime = self:getRuntime(player)
 	return HpServiceUtils.cloneState(runtime.state)
+end
+
+function HpServiceServer.setPlayerMaxHealth(
+	self: HpServiceServer,
+	player: Player,
+	nextMaxHealthRaw: any,
+	fillToMaxRaw: any
+): number?
+	local runtime = self:getRuntime(player)
+	local nextMaxHealth = math.max(
+		1,
+		if typeof(nextMaxHealthRaw) == "number" and nextMaxHealthRaw == nextMaxHealthRaw
+			then nextMaxHealthRaw
+			else runtime.state.maxHealth
+	)
+	local fillToMax = fillToMaxRaw ~= false
+	local appliedHealth = if fillToMax then nextMaxHealth else math.clamp(runtime.state.health, 0, nextMaxHealth)
+	local stateHealth = if runtime.isDeathLocked then 0 else appliedHealth
+
+	runtime.pendingPersistedMaxHealth = nextMaxHealth
+	runtime.pendingPersistedHealth = appliedHealth
+	if not runtime.hasResolvedPersistedLoad then
+		runtime.healthChangedBeforePersistedLoad = true
+	end
+
+	runtime.state = HpServiceUtils.createState(stateHealth, nextMaxHealth, self.heartValue, runtime.state)
+
+	local humanoid = self:getHumanoid(player)
+	if humanoid ~= nil and humanoid.Parent ~= nil and not runtime.isDeathLocked then
+		self:applyPendingPersistedState(player, runtime, humanoid)
+		if not runtime.hasResolvedPersistedLoad then
+			self:pushState(player)
+		end
+	else
+		if runtime.hasResolvedPersistedLoad then
+			self:persistRuntime(player, runtime)
+		end
+		self:pushState(player)
+	end
+
+	return nextMaxHealth
 end
 
 function HpServiceServer.setPlayerHealth(self: HpServiceServer, player: Player, nextHealthRaw: any): number?

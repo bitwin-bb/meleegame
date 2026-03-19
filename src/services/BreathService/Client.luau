@@ -104,6 +104,14 @@ function BreathServiceClient:requestSync()
 	self.networker:fire(BreathServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
+function BreathServiceClient:getState(): BreathServiceState
+	return BreathServiceUtils.cloneState(self.state)
+end
+
+function BreathServiceClient:isReady(): boolean
+	return self.state.ready == true
+end
+
 function BreathServiceClient:init()
 	self.localPlayer = Players.LocalPlayer
 	self.networker = Networker.client.new("BreathService", self)
@@ -153,6 +161,8 @@ type BreathServiceClient = typeof(BreathServiceClient) & {
 	eventPulse: number,
 	colorCorrection: ColorCorrectionEffect?,
 	blur: BlurEffect?,
+	getState: (self: BreathServiceClient) -> BreathServiceState,
+	isReady: (self: BreathServiceClient) -> boolean,
 }
 
 return BreathServiceClient :: BreathServiceClient

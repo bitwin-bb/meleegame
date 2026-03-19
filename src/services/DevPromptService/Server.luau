@@ -12,6 +12,7 @@ local Role = require(ReplicatedStorage.Shared.Services.DevPromptService.Role)
 local ItemRegistry = require(ReplicatedStorage.Shared.Modules.Items.Registry)
 local HpServiceServer = require(ServerScriptService.Services.HpService.HpServiceServer)
 local InventoryServiceServer = require(ServerScriptService.Services.InventoryService.InventoryServiceServer)
+local ManaServiceServer = require(ServerScriptService.Services.ManaService.ManaServiceServer)
 local BossServiceServer = require(ServerScriptService.Services.BossService.BossServiceServer)
 local NpcServiceServer = require(ServerScriptService.Services.NpcService.NpcServiceServer)
 local MagicServiceServer = require(ServerScriptService.Services.MagicService.MagicServiceServer)
@@ -43,6 +44,8 @@ local DevPromptServiceServer = {}
 
 local DEFAULT_ADMIN_MIN_GROUP_RANK = 254
 local DEFAULT_MODERATOR_MIN_GROUP_RANK = 200
+local DEV_COMMAND_MAX_HEALTH = 500
+local DEV_COMMAND_MAX_MANA = 200
 
 local GREEN_SLIME_VARIANTS = {
 	slime = true,
@@ -338,7 +341,7 @@ function DevPromptServiceServer.canPlayerUseCommands(self: DevPromptServiceServe
 end
 
 function DevPromptServiceServer.resolvePlayerQuery(
-	self: DevPromptServiceServer,
+	_self: DevPromptServiceServer,
 	queryRaw: any,
 	defaultPlayerRaw: Player?
 ): (Player?, string?)
@@ -389,7 +392,7 @@ function DevPromptServiceServer.resolvePlayerQuery(
 end
 
 function DevPromptServiceServer.healPlayerTarget(
-	self: DevPromptServiceServer,
+	_self: DevPromptServiceServer,
 	targetPlayer: Player,
 	amountRaw: any
 ): (boolean, number)
@@ -401,8 +404,45 @@ function DevPromptServiceServer.healPlayerTarget(
 	return true, resultingHealth
 end
 
+function DevPromptServiceServer.setPlayerMaxHealthTarget(
+	_self: DevPromptServiceServer,
+	targetPlayer: Player,
+	amountRaw: any
+): (boolean, number, number)
+	local requestedAmount = if typeof(amountRaw) == "number" and amountRaw == amountRaw then amountRaw else 0
+	local nextMaxHealth = math.clamp(math.floor(requestedAmount), 1, DEV_COMMAND_MAX_HEALTH)
+	local appliedMaxHealth = HpServiceServer:setPlayerMaxHealth(targetPlayer, nextMaxHealth, true)
+	if appliedMaxHealth == nil then
+		return false, 0, 0
+	end
+
+	local state = HpServiceServer:getState(targetPlayer)
+	return true, state.health, state.maxHealth
+end
+
+function DevPromptServiceServer.setPlayerMaxManaTarget(
+	_self: DevPromptServiceServer,
+	targetPlayer: Player,
+	amountRaw: any
+): (boolean, number, number)
+	local requestedAmount = if typeof(amountRaw) == "number" and amountRaw == amountRaw then amountRaw else 0
+	local nextMaxMana = math.clamp(math.floor(requestedAmount), 1, DEV_COMMAND_MAX_MANA)
+	local appliedMaxMana = ManaServiceServer:setMaxMana(targetPlayer, nextMaxMana)
+	if appliedMaxMana == nil then
+		return false, 0, 0
+	end
+
+	local appliedMana = ManaServiceServer:setMana(targetPlayer, appliedMaxMana)
+	if appliedMana == nil then
+		return false, 0, 0
+	end
+
+	local state = ManaServiceServer:getState(targetPlayer)
+	return true, state.mana, state.maxMana
+end
+
 function DevPromptServiceServer.giveItemToPlayer(
-	self: DevPromptServiceServer,
+	_self: DevPromptServiceServer,
 	targetPlayer: Player,
 	itemIdRaw: any,
 	amountRaw: any
@@ -636,7 +676,7 @@ function DevPromptServiceServer.clearAllEntities(_self: DevPromptServiceServer):
 end
 
 function DevPromptServiceServer.spawnEntityForPlayer(
-	self: DevPromptServiceServer,
+	_self: DevPromptServiceServer,
 	player: Player,
 	entityTokenRaw: any,
 	amountRaw: any,

@@ -2,6 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
 local NavButton = require(ReplicatedStorage.UI.core.components.NavButton)
+local BubblesScreen = require(ReplicatedStorage.UI.features.breath.screens.bubblesScreen)
 local HpTopRightBar = require(ReplicatedStorage.UI.features.hp.hud.hpTopRightBar)
 local ManaTopRightBar = require(ReplicatedStorage.UI.features.mana.hud.ManaTopRightBar)
 
@@ -36,6 +37,7 @@ type RightSideBarProps = {
 	navigateEvent: BindableEvent?,
 	hpBarProps: { [string]: any }?,
 	manaBarProps: { [string]: any }?,
+	breathBarProps: { [string]: any }?,
 	onButtonActivated: ((payload: any, inputObject: InputObject?, button: RightSideBarButton) -> ())?,
 }
 
@@ -101,7 +103,7 @@ return function(props: RightSideBarProps)
 	local manaBarProps = {
 		layoutOrder = 6,
 		zIndex = zIndex + 1,
-		position = UDim2.new(1, 0, 0, 0),
+		position = UDim2.fromScale(1, 0),
 		anchorPoint = Vector2.new(1, 0),
 	}
 	if props.manaBarProps ~= nil then
@@ -110,8 +112,19 @@ return function(props: RightSideBarProps)
 		end
 	end
 
+	local breathBarProps = {
+		layoutOrder = 7,
+		zIndex = zIndex + 1,
+		position = UDim2.new(1, 0, 0, 60),
+		anchorPoint = Vector2.new(1, 0),
+	}
+	if props.breathBarProps ~= nil then
+		for key, value in pairs(props.breathBarProps) do
+			breathBarProps[key] = value
+		end
+	end
+
 	return e("Frame", {
-		Name = "RightSideBar",
 		Size = props.size or UDim2.new(0, 220, 1, -144),
 		Position = props.position or UDim2.new(1, -12, 0.5, 0),
 		AnchorPoint = props.anchorPoint or Vector2.new(1, 0.5),
@@ -122,7 +135,6 @@ return function(props: RightSideBarProps)
 		Visible = props.visible ~= false,
 	}, {
 		ButtonList = e("Frame", {
-			Name = "ButtonList",
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
@@ -130,5 +142,6 @@ return function(props: RightSideBarProps)
 		}, buttonListChildren),
 		HpTopRightBar = e(HpTopRightBar, hpBarProps),
 		ManaTopRightBar = e(ManaTopRightBar, manaBarProps),
+		BreathBubbles = e(BubblesScreen, breathBarProps),
 	})
 end

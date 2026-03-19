@@ -38,11 +38,11 @@ export type DevConsoleState = {
 	updatedAt: number,
 }
 
-local devConsoleSlice = {}
-
 local MAX_SUGGESTIONS = 8
 local MAX_HISTORY = 50
 local AMOUNT_SUGGESTIONS = { "1", "5", "10", "25", "50", "100", "999999" }
+local HEALTH_VALUE_SUGGESTIONS = { "20", "100", "200", "400", "420", "500" }
+local MANA_VALUE_SUGGESTIONS = { "20", "40", "100", "200" }
 local CLEAR_OPTION_SUGGESTIONS = { "entities" }
 local GODMODE_MODE_SUGGESTIONS = { "on", "off", "toggle" }
 local DAYLIGHT_MODE_SUGGESTIONS = { "on", "off", "toggle", "time" }
@@ -428,6 +428,58 @@ local function buildParameterCandidates(
 		appendChoiceCandidates(candidates, CLEAR_OPTION_SUGGESTIONS, "Clear all active entities", definition.usage, analysis.activeTokenIndex, 0)
 	elseif definition.name == "role" and activeArgIndex == 1 then
 		appendPlayerCandidates(candidates, serviceState, definition.usage, analysis.activeTokenIndex, 0)
+	elseif definition.name == "sethealth" then
+		if activeArgIndex == 1 then
+			appendPlayerCandidates(candidates, serviceState, definition.usage, analysis.activeTokenIndex, 0)
+			appendChoiceCandidates(
+				candidates,
+				HEALTH_VALUE_SUGGESTIONS,
+				"Max health amount",
+				definition.usage,
+				analysis.activeTokenIndex,
+				1
+			)
+			if looksNumeric then
+				for _, candidate in candidates do
+					candidate.priority = if candidate.description == "Max health amount" then 0 else candidate.priority + 1
+				end
+			end
+		elseif activeArgIndex == 2 then
+			appendChoiceCandidates(
+				candidates,
+				HEALTH_VALUE_SUGGESTIONS,
+				"Max health amount",
+				definition.usage,
+				analysis.activeTokenIndex,
+				0
+			)
+		end
+	elseif definition.name == "setmana" then
+		if activeArgIndex == 1 then
+			appendPlayerCandidates(candidates, serviceState, definition.usage, analysis.activeTokenIndex, 0)
+			appendChoiceCandidates(
+				candidates,
+				MANA_VALUE_SUGGESTIONS,
+				"Max mana amount",
+				definition.usage,
+				analysis.activeTokenIndex,
+				1
+			)
+			if looksNumeric then
+				for _, candidate in candidates do
+					candidate.priority = if candidate.description == "Max mana amount" then 0 else candidate.priority + 1
+				end
+			end
+		elseif activeArgIndex == 2 then
+			appendChoiceCandidates(
+				candidates,
+				MANA_VALUE_SUGGESTIONS,
+				"Max mana amount",
+				definition.usage,
+				analysis.activeTokenIndex,
+				0
+			)
+		end
 	elseif definition.name == "heal" then
 		if activeArgIndex == 1 then
 			appendPlayerCandidates(candidates, serviceState, definition.usage, analysis.activeTokenIndex, 0)

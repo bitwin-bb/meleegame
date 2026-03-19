@@ -350,6 +350,107 @@ addCommand({
 })
 
 addCommand({
+	name = "sethealth",
+	aliases = { "sethp", "maxhealth", "maxhp" },
+	description = "Permanently set a player's max health and refill it.",
+	usage = "sethealth [playerName] <amount>",
+	run = function(context: CommandContext)
+		local firstArg = context.args[1]
+		local secondArg = context.args[2]
+		if firstArg == nil or firstArg == "" then
+			context.result.ok = false
+			context:reply("error", "Usage: sethealth [playerName] <amount>")
+			return
+		end
+
+		local targetPlayer = context.player
+		local amountToken = firstArg
+		if parseWholeNumber(firstArg) == nil then
+			local resolvedPlayer, errorMessage = context:resolvePlayer(firstArg, nil)
+			if resolvedPlayer == nil then
+				context.result.ok = false
+				context:reply("error", errorMessage or "Player not found.")
+				return
+			end
+			targetPlayer = resolvedPlayer
+			amountToken = secondArg
+		end
+
+		local amount = parseWholeNumber(amountToken)
+		if amount == nil then
+			context.result.ok = false
+			context:reply("error", "Health amount must be a whole number between 1 and 500.")
+			return
+		end
+
+		local ok, currentHealth, maxHealth = context.service:setPlayerMaxHealthTarget(targetPlayer, amount)
+		if not ok then
+			context.result.ok = false
+			context:reply("error", ("Failed to set health for %s."):format(targetPlayer.Name))
+			return
+		end
+
+		context:reply(
+			"success",
+			("%s max health set to %.0f HP. Current health: %.0f/%.0f."):format(
+				targetPlayer.Name,
+				maxHealth,
+				currentHealth,
+				maxHealth
+			)
+		)
+	end,
+})
+
+addCommand({
+	name = "setmana",
+	aliases = { "maxmana" },
+	description = "Permanently set a player's max mana and refill it.",
+	usage = "setmana [playerName] <amount>",
+	run = function(context: CommandContext)
+		local firstArg = context.args[1]
+		local secondArg = context.args[2]
+		if firstArg == nil or firstArg == "" then
+			context.result.ok = false
+			context:reply("error", "Usage: setmana [playerName] <amount>")
+			return
+		end
+
+		local targetPlayer = context.player
+		local amountToken = firstArg
+		if parseWholeNumber(firstArg) == nil then
+			local resolvedPlayer, errorMessage = context:resolvePlayer(firstArg, nil)
+			if resolvedPlayer == nil then
+				context.result.ok = false
+				context:reply("error", errorMessage or "Player not found.")
+				return
+			end
+			targetPlayer = resolvedPlayer
+			amountToken = secondArg
+		end
+
+		local amount = parseWholeNumber(amountToken)
+		if amount == nil then
+			context.result.ok = false
+			context:reply("error", "Mana amount must be a whole number between 1 and 200.")
+			return
+		end
+
+		local ok, currentMana, maxMana = context.service:setPlayerMaxManaTarget(targetPlayer, amount)
+		if not ok then
+			context.result.ok = false
+			context:reply("error", ("Failed to set mana for %s."):format(targetPlayer.Name))
+			return
+		end
+
+		context:reply(
+			"success",
+			("%s max mana set to %.0f. Current mana: %.0f/%.0f."):format(targetPlayer.Name, maxMana, currentMana, maxMana)
+		)
+	end,
+})
+
+addCommand({
 	name = "heal",
 	aliases = { "hp" },
 	description = "Heal yourself or another player.",

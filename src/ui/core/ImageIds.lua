@@ -28,6 +28,7 @@ local weaponIcons = {
 	hammer = "rbxassetid://122769702567537",
 }
 local questionMarkIcon = "rbxassetid://105837137977667"
+local lifeFruitHeartIcon = "rbxassetid://111119749912611"
 
 local itemIcons = withAliases({
 	default = questionMarkIcon,
@@ -61,7 +62,8 @@ local itemIcons = withAliases({
 
 return {
 	normalHeart = "rbxassetid://105126599485879",
-	heartLifeFruit = "rbxassetid://111119749912611",
+	heartLifeFruit = lifeFruitHeartIcon,
+	lifeFruitHeart = lifeFruitHeartIcon,
 	inventorySlot = "rbxassetid://101539278639866",
 	inventorySlotHovered = "rbxassetid://84425714531334",
 	expandInventory = "rbxassetid://105988157243321",

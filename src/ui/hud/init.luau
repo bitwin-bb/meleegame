@@ -27,6 +27,7 @@ type HudProps = {
 	rightButtons: { any }?,
 	hpBarProps: { [string]: any }?,
 	manaBarProps: { [string]: any }?,
+	breathBarProps: { [string]: any }?,
 	inventoryHotbarProps: { [string]: any }?,
 	onNavigate: ((barName: string, payload: any, inputObject: InputObject?, button: any) -> ())?,
 }
@@ -43,7 +44,6 @@ return function(props: HudProps)
 	local baseZIndex = props.zIndex or 10
 
 	return e("Frame", {
-		Name = "HUD",
 		Size = UDim2.fromScale(1, 1),
 		Position = UDim2.fromScale(0, 0),
 		BackgroundTransparency = 1,
@@ -82,6 +82,7 @@ return function(props: HudProps)
 			navigateEvent = props.navigateEvent,
 			hpBarProps = props.hpBarProps,
 			manaBarProps = props.manaBarProps,
+			breathBarProps = props.breathBarProps,
 			onButtonActivated = function(payload: any, inputObject: InputObject?, button: any)
 				if props.onNavigate then
 					props.onNavigate("RightSideBar", payload, inputObject, button)

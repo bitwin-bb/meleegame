@@ -82,6 +82,10 @@ local MEMBER_COLORS = {
 	Color3.fromRGB(228, 233, 242),
 }
 
+local CHAT_TAG_RAINBOW_SATURATION = 0.95
+local CHAT_TAG_RAINBOW_VALUE = 1
+local CHAT_TAG_RAINBOW_SPREAD = 0.72
+
 local ROLE_DEFINITIONS: { [RoleId]: RoleDefinition } = {
 	Owner = {
 		id = "Owner",
@@ -368,27 +372,7 @@ local function colorToHex(color: Color3): string
 	return string.format("#%02X%02X%02X", r, g, b)
 end
 
-local function interpolateColor(a: Color3, b: Color3, alpha: number): Color3
-	return Color3.new(a.R + (b.R - a.R) * alpha, a.G + (b.G - a.G) * alpha, a.B + (b.B - a.B) * alpha)
-end
-
-local function sampleGradient(colors: { Color3 }, alphaRaw: number): Color3
-	local alpha = math.clamp(alphaRaw, 0, 1)
-	if #colors <= 0 then
-		return Color3.fromRGB(255, 255, 255)
-	end
-	if #colors == 1 then
-		return colors[1]
-	end
-
-	local scaled = alpha * (#colors - 1)
-	local lowerIndex = math.clamp(math.floor(scaled) + 1, 1, #colors)
-	local upperIndex = math.clamp(lowerIndex + 1, 1, #colors)
-	local localAlpha = scaled - math.floor(scaled)
-	return interpolateColor(colors[lowerIndex], colors[upperIndex], localAlpha)
-end
-
-local function buildPerCharacterRichText(textRaw: any, colors: { Color3 }, phaseRaw: number?): string
+local function buildRainbowGradientRichText(textRaw: any, phaseRaw: number?): string
 	local text = if typeof(textRaw) == "string" then textRaw else tostring(textRaw)
 	if text == "" then
 		return ""
@@ -406,7 +390,8 @@ local function buildPerCharacterRichText(textRaw: any, colors: { Color3 }, phase
 	local parts = table.create(#characters)
 	for index, character in characters do
 		local alpha = if #characters <= 1 then 0 else (index - 1) / (#characters - 1)
-		local color = sampleGradient(colors, (alpha + phase) % 1)
+		local hue = (phase + alpha * CHAT_TAG_RAINBOW_SPREAD) % 1
+		local color = Color3.fromHSV(hue, CHAT_TAG_RAINBOW_SATURATION, CHAT_TAG_RAINBOW_VALUE)
 		parts[index] =
 			string.format('<font color="%s">%s</font>', colorToHex(color), RichTextFormatter.escape(character))
 	end
@@ -538,11 +523,8 @@ end
 function Role.buildChatTagRichText(roleIdRaw: any, phaseRaw: number?): string
 	local definition = Role.getDefinition(roleIdRaw)
 	local tagText = ("[%s]"):format(definition.tagText)
-	if definition.chatMode == "rainbow" then
-		return buildPerCharacterRichText(tagText, definition.chatColors, phaseRaw)
-	end
-	if definition.chatMode == "gradient" then
-		return buildPerCharacterRichText(tagText, definition.chatColors, 0)
+	if definition.id ~= "Member" then
+		return buildRainbowGradientRichText(tagText, phaseRaw)
 	end
 	return string.format(
 		'<font color="%s">%s</font>',
@@ -560,24 +542,13 @@ function Role.buildChatPrefixText(roleIdRaw: any, basePrefixTextRaw: any, phaseR
 	return ("%s %s"):format(tag, basePrefixText)
 end
 
-function Role.decorateChatMessageText(roleIdRaw: any, messageTextRaw: any, phaseRaw: number?): string
-	local definition = Role.getDefinition(roleIdRaw)
+function Role.decorateChatMessageText(_roleIdRaw: any, messageTextRaw: any, _phaseRaw: number?): string
 	local messageText = if typeof(messageTextRaw) == "string" then messageTextRaw else tostring(messageTextRaw)
 	if messageText == "" then
 		return ""
 	end
 
-	if definition.chatMode == "rainbow" then
-		return buildPerCharacterRichText(messageText, definition.chatColors, phaseRaw)
-	end
-	if definition.chatMode == "gradient" then
-		return buildPerCharacterRichText(messageText, definition.chatColors, 0)
-	end
-	return string.format(
-		'<font color="%s">%s</font>',
-		colorToHex(definition.chatColors[1]),
-		RichTextFormatter.escape(messageText)
-	)
+	return RichTextFormatter.escape(messageText)
 end
 
 return Role

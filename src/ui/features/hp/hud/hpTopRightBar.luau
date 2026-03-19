@@ -34,6 +34,8 @@ local e: typeof(React.createElement) = React.createElement
 
 local EMPTY_HEART_COLOR = Color3.fromRGB(59, 25, 29)
 local FILLED_HEART_COLOR = Color3.fromRGB(255, 90, 118)
+local EMPTY_LIFE_FRUIT_HEART_COLOR = Color3.fromRGB(52, 78, 28)
+local FILLED_LIFE_FRUIT_HEART_COLOR = Color3.fromRGB(255, 255, 255)
 local UI_AUDIO = (AudioRegistry :: any).UI or {}
 local UI_HOVER_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Hover)
 
@@ -51,6 +53,9 @@ end
 type HeartItemProps = {
 	heart: HeartState,
 	heartSize: UDim2,
+	heartImage: string,
+	emptyColor: Color3,
+	filledColor: Color3,
 	zIndex: number,
 	isBeating: boolean,
 }
@@ -58,6 +63,9 @@ type HeartItemProps = {
 local function HeartItem(props: HeartItemProps)
 	local heart = props.heart
 	local heartSize = props.heartSize
+	local heartImage = props.heartImage
+	local emptyColor = props.emptyColor
+	local filledColor = props.filledColor
 	local zIndex = props.zIndex
 	local beatMotion = useBeatMotion({
 		enabled = props.isBeating,
@@ -69,10 +77,9 @@ local function HeartItem(props: HeartItemProps)
 	})
 
 	local fillAlpha = math.clamp(heart.fillAlpha, 0, 1)
-	local heartColor = if heart.isEmpty then EMPTY_HEART_COLOR else FILLED_HEART_COLOR
+	local heartColor = if heart.isEmpty then emptyColor else filledColor
 
 	return e("Frame", {
-		Name = `Heart_{heart.index}`,
 		Size = heartSize,
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
@@ -83,19 +90,17 @@ local function HeartItem(props: HeartItemProps)
 			Scale = beatMotion.scale,
 		}),
 		Empty = e("ImageLabel", {
-			Name = "Empty",
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
-			Image = ImageIds.normalHeart,
-			ImageColor3 = EMPTY_HEART_COLOR,
+			Image = heartImage,
+			ImageColor3 = emptyColor,
 			ImageTransparency = 0,
 			ZIndex = zIndex + 1,
 		}),
 		Fill = e("ImageLabel", {
-			Name = "Fill",
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
-			Image = ImageIds.normalHeart,
+			Image = heartImage,
 			ImageColor3 = heartColor,
 			ImageTransparency = 1 - fillAlpha,
 			ZIndex = zIndex + 2,
@@ -182,6 +187,14 @@ return function(props: HpTopRightBarProps)
 	local zIndex = props.zIndex or 12
 	local hearts = hpState.hearts
 	local heartSize = props.heartSize or UDim2.fromOffset(30, 30)
+	local useLifeFruitHearts = hpState.maxHealth > 400
+	local heartImage = if useLifeFruitHearts
+		then if typeof((ImageIds :: any).lifeFruitHeart) == "string" and (ImageIds :: any).lifeFruitHeart ~= ""
+			then (ImageIds :: any).lifeFruitHeart
+			else ImageIds.heartLifeFruit
+		else ImageIds.normalHeart
+	local emptyHeartColor = if useLifeFruitHearts then EMPTY_LIFE_FRUIT_HEART_COLOR else EMPTY_HEART_COLOR
+	local filledHeartColor = if useLifeFruitHearts then FILLED_LIFE_FRUIT_HEART_COLOR else FILLED_HEART_COLOR
 	local beatHeartIndex = if useServiceState then hpThunks.getBeatHeartIndex() else getBeatHeartIndexFromHearts(hearts)
 
 	local heartsRowChildren: { [string]: React.ReactNode } = {
@@ -202,8 +215,7 @@ return function(props: HpTopRightBarProps)
 
 	local children: { [string]: React.ReactNode } = {
 		HeartsRow = e("Frame", {
-			Name = "HeartsRow",
-			Size = UDim2.new(0, 0, 0, heartSize.Y.Offset),
+			Size = UDim2.fromOffset(0, heartSize.Y.Offset),
 			AutomaticSize = Enum.AutomaticSize.X,
 			AnchorPoint = Vector2.new(1, 1),
 			Position = UDim2.new(1, 0, 1, -4),
@@ -235,6 +247,9 @@ return function(props: HpTopRightBarProps)
 		heartsRowChildren[`Heart_{heart.index}`] = e(HeartItem, {
 			heart = heart,
 			heartSize = heartSize,
+			heartImage = heartImage,
+			emptyColor = emptyHeartColor,
+			filledColor = filledHeartColor,
 			zIndex = zIndex + 2,
 			isBeating = beatHeartIndex ~= nil and heart.index == beatHeartIndex,
 		})
@@ -242,9 +257,8 @@ return function(props: HpTopRightBarProps)
 
 	if props.showValueLabel ~= false then
 		children.LifeValue = e("TextLabel", {
-			Name = "LifeValue",
 			Size = UDim2.new(1, -16, 0, 18),
-			Position = UDim2.new(0, 8, 0, 0),
+			Position = UDim2.fromOffset(8, 0),
 			BackgroundTransparency = 1,
 			Font = Enum.Font.GothamBold,
 			Text = string.format("Life: %.0f/%.0f", hpState.health, hpState.maxHealth),
@@ -258,8 +272,7 @@ return function(props: HpTopRightBarProps)
 	end
 
 	return e("Frame", {
-		Name = "HpTopRightBar",
-		Size = props.size or UDim2.new(0, 360, 0, 56),
+		Size = props.size or UDim2.fromOffset(360, 56),
 		Position = props.position or UDim2.new(1, -12, 0, 12),
 		AnchorPoint = props.anchorPoint or Vector2.new(1, 0),
 		BackgroundTransparency = 1,

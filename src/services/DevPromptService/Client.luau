@@ -240,7 +240,6 @@ function DevPromptServiceClient.bindChatDecoration(self: DevPromptServiceClient)
 		local phase = (os.clock() * 0.15) % 1
 		local basePrefixText = message.PrefixText
 		properties.PrefixText = Role.buildChatPrefixText(roleId, basePrefixText, phase)
-		properties.Text = Role.decorateChatMessageText(roleId, message.Text, phase)
 		return properties
 	end
 

@@ -8912,6 +8912,71 @@
                       ]
                     }
                   ]
+                },
+                {
+                  "name": "breath",
+                  "className": "Folder",
+                  "children": [
+                    {
+                      "name": "state",
+                      "className": "Folder",
+                      "children": [
+                        {
+                          "name": "breathSlice",
+                          "className": "ModuleScript",
+                          "filePaths": [
+                            "src/ui/features/breath/state/breathSlice.luau"
+                          ]
+                        },
+                        {
+                          "name": "breathThunks",
+                          "className": "ModuleScript",
+                          "filePaths": [
+                            "src/ui/features/breath/state/breathThunks.luau"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "components",
+                      "className": "Folder",
+                      "children": [
+                        {
+                          "name": "bubble",
+                          "className": "ModuleScript",
+                          "filePaths": [
+                            "src/ui/features/breath/components/bubble.luau"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "screens",
+                      "className": "Folder",
+                      "children": [
+                        {
+                          "name": "bubblesScreen",
+                          "className": "ModuleScript",
+                          "filePaths": [
+                            "src/ui/features/breath/screens/bubblesScreen.luau"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "hooks",
+                      "className": "Folder",
+                      "children": [
+                        {
+                          "name": "useBubbleDeplete",
+                          "className": "ModuleScript",
+                          "filePaths": [
+                            "src/ui/features/breath/hooks/useBubbleDeplete.luau"
+                          ]
+                        }
+                      ]
+                    }
+                  ]
                 }
               ]
             },
