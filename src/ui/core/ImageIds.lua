@@ -92,6 +92,8 @@ return {
 	craftingMenuInner = "rbxassetid://73368761402049",
 	craftingMenuTextBox = "rbxassetid://98196498320236",
 	recipeIcon = "rbxassetid://114344383327166",
+	marker = "rbxassetid://72558733619067",
+	eocIcon = "rbxassetid://119845369401414",
 	questionMark = questionMarkIcon,
 	spriteSheets = {
 		copperCoin = "rbxassetid://138124828857039",

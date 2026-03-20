@@ -8977,6 +8977,58 @@
                       ]
                     }
                   ]
+                },
+                {
+                  "name": "bossMarker",
+                  "className": "Folder",
+                  "children": [
+                    {
+                      "name": "screens",
+                      "className": "Folder",
+                      "children": [
+                        {
+                          "name": "markerScreen",
+                          "className": "ModuleScript",
+                          "filePaths": [
+                            "src/ui/features/bossMarker/screens/markerScreen.luau"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "state",
+                      "className": "Folder",
+                      "children": [
+                        {
+                          "name": "markerSlice",
+                          "className": "ModuleScript",
+                          "filePaths": [
+                            "src/ui/features/bossMarker/state/markerSlice.luau"
+                          ]
+                        },
+                        {
+                          "name": "markerThunks",
+                          "className": "ModuleScript",
+                          "filePaths": [
+                            "src/ui/features/bossMarker/state/markerThunks.luau"
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "name": "components",
+                      "className": "Folder",
+                      "children": [
+                        {
+                          "name": "marker",
+                          "className": "ModuleScript",
+                          "filePaths": [
+                            "src/ui/features/bossMarker/components/marker.luau"
+                          ]
+                        }
+                      ]
+                    }
+                  ]
                 }
               ]
             },

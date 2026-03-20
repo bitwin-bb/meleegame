@@ -5,6 +5,7 @@ local HUD = require(ReplicatedStorage.UI.hud)
 local InfoScreen = require(ReplicatedStorage.UI.features.info.screens.infoScreen)
 local InfoPlayerScreen = require(ReplicatedStorage.UI.features.infoPlayer.screens.infoPlayerScreen)
 local EntityInfoScreen = require(ReplicatedStorage.UI.features.entityInfo.screens.entityInfoScreen)
+local MarkerScreen = require(ReplicatedStorage.UI.features.bossMarker.screens.markerScreen)
 local BiomeNameScreen = require(ReplicatedStorage.UI.features.biome.screens.biomeNameScreen)
 local DeathScreen = require(ReplicatedStorage.UI.features.death.screens.deathScreen)
 local MiningProgressScreen = require(ReplicatedStorage.UI.features.miningProgress.screens.miningProgressScreen)
@@ -35,6 +36,9 @@ return function(props: RootUIProps)
 		}),
 		EntityInfoScreen = React.createElement(EntityInfoScreen, {
 			zIndex = 160,
+		}),
+		MarkerScreen = React.createElement(MarkerScreen, {
+			zIndex = 165,
 		}),
 		MiningProgressScreen = React.createElement(MiningProgressScreen, {
 			zIndex = 170,
