@@ -11,6 +11,7 @@ local BossServiceUtils = require(ReplicatedStorage.Shared.Services.BossService.B
 local EyeOfCthulhuController = require(ReplicatedStorage.Shared.Classes.Boss.EyeOfCthulhu)
 local EyeOfCthulhuConfig = require(ReplicatedStorage.Shared.Classes.Boss.EyeOfCthulhu.Config)
 local HpServiceServer = require(ServerScriptService.Services.HpService.HpServiceServer)
+local PlayerServiceServer = require(ServerScriptService.Services.PlayerService.PlayerServiceServer)
 local WeatherServiceServer = require(ServerScriptService.Services.WeatherService.WeatherServiceServer)
 local WorldGenerationServiceServer =
 	require(ServerScriptService.Services.WorldGenerationService.WorldGenerationServiceServer)
@@ -144,11 +145,6 @@ function BossServiceServer.isNightTime(self: BossServiceServer): boolean
 end
 
 function BossServiceServer.getWorld(self: BossServiceServer): any?
-	local cachedWorld = self.world
-	if cachedWorld ~= nil then
-		return cachedWorld
-	end
-
 	local worldGenerationService = self.worldGenerationService
 	if worldGenerationService == nil then
 		return nil
@@ -162,7 +158,9 @@ function BossServiceServer.getWorld(self: BossServiceServer): any?
 		return nil
 	end
 
-	self.world = worldOrError
+	if worldOrError ~= self.world then
+		self.world = worldOrError
+	end
 	return self.world
 end
 
@@ -305,7 +303,9 @@ end
 
 function BossServiceServer.broadcast(self: BossServiceServer, methodName: string, ...: any)
 	for _, player in Players:GetPlayers() do
-		self.networker:fire(player, methodName, ...)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self.networker:fire(player, methodName, ...)
+		end
 	end
 end
 
@@ -875,11 +875,15 @@ function BossServiceServer.init(self: BossServiceServer)
 	self.previousClockTime = self:getClockTime()
 
 	for _, player in Players:GetPlayers() do
-		self:trackPlayer(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		self:trackPlayer(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end)
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
 		self:untrackPlayer(player)

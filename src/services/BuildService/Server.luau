@@ -9,6 +9,7 @@ local Networker = require(ReplicatedStorage.Packages.Networker)
 local Configs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
 local BuildServiceUtils = require(ReplicatedStorage.Shared.Services.BuildService.BuildServiceUtils)
 local InventoryServiceUtils = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceUtils)
+local PlayerServiceServer = require(ServerScriptService.Services.PlayerService.PlayerServiceServer)
 local WorldGenerationServiceServer =
 	require(ServerScriptService.Services.WorldGenerationService.WorldGenerationServiceServer)
 local InventoryServiceServer = require(ServerScriptService.Services.InventoryService.InventoryServiceServer)
@@ -91,6 +92,10 @@ type MultiTileAnchorRuntime = {
 }
 
 local BuildServiceServer = {}
+
+local function shouldReplicateToPlayer(player: Player): boolean
+	return PlayerServiceServer:isGameplayActiveForPlayer(player)
+end
 
 local DEFAULT_DAMAGE_RETENTION_SECONDS = 30
 local DAMAGE_PRUNE_INTERVAL = 2
@@ -570,6 +575,20 @@ function BuildServiceServer.untrackPlayer(self: BuildServiceServer, player: Play
 end
 
 function BuildServiceServer.requestSync(self: BuildServiceServer, player: Player)
+	if self.playerBreakIntents[player] == nil then
+		self:trackPlayer(player)
+	end
+	local nextWorld = (self.worldGenerationService :: any):getWorld()
+	if nextWorld ~= self.world then
+		self.world = nextWorld
+		table.clear(self.pendingTileDeltas)
+		table.clear(self.pendingTileDeltaLookup)
+		table.clear(self.tileDamage)
+		table.clear(self.treeDamage)
+		table.clear(self.treeStates)
+		table.clear(self.multiTileAnchors)
+		table.clear(self.multiTileMembers)
+	end
 	self:pushState(player)
 end
 
@@ -839,10 +858,14 @@ function BuildServiceServer.flushTileDeltas(self: BuildServiceServer)
 			}
 			cursor += 1
 		end
-		self.networker:fireAll(BuildServiceUtils.CLIENT_METHOD_ON_TILE_DELTAS, {
-			deltas = batch,
-			updatedAt = os.clock(),
-		})
+		for _, player in Players:GetPlayers() do
+			if shouldReplicateToPlayer(player) then
+				self.networker:fire(player, BuildServiceUtils.CLIENT_METHOD_ON_TILE_DELTAS, {
+					deltas = batch,
+					updatedAt = os.clock(),
+				})
+			end
+		end
 		startIndex += batchMax
 	end
 
@@ -1192,7 +1215,11 @@ function BuildServiceServer.processTreeBreakCompletion(
 		fallDuration = treeBreakProfile.fallDuration,
 	}
 	if self.networker ~= nil then
-		self.networker:fireAll(BuildServiceUtils.CLIENT_METHOD_ON_TREE_FELLED, payload)
+		for _, listedPlayer in Players:GetPlayers() do
+			if shouldReplicateToPlayer(listedPlayer) then
+				self.networker:fire(listedPlayer, BuildServiceUtils.CLIENT_METHOD_ON_TREE_FELLED, payload)
+			end
+		end
 	end
 
 	self:sendActionResult(player, intent.requestId, BuildServiceUtils.ACTION_TYPE_BREAK, true, "tree_felled", {})
@@ -1438,11 +1465,19 @@ function BuildServiceServer.pruneTileDamage(self: BuildServiceServer, deltaTime:
 end
 
 function BuildServiceServer.onHeartbeat(self: BuildServiceServer, deltaTime: number)
+	local nextWorld = (self.worldGenerationService :: any):getWorld()
+	if nextWorld ~= self.world then
+		self.world = nextWorld
+		table.clear(self.pendingTileDeltas)
+		table.clear(self.pendingTileDeltaLookup)
+		table.clear(self.tileDamage)
+		table.clear(self.treeDamage)
+		table.clear(self.treeStates)
+		table.clear(self.multiTileAnchors)
+		table.clear(self.multiTileMembers)
+	end
 	if self.world == nil then
-		self.world = (self.worldGenerationService :: any):getWorld()
-		if self.world == nil then
-			return
-		end
+		return
 	end
 	self:processBreakIntents(deltaTime)
 	self:pruneTileDamage(deltaTime)
@@ -1476,11 +1511,15 @@ function BuildServiceServer.init(self: BuildServiceServer)
 	})
 
 	for _, player in Players:GetPlayers() do
-		self:trackPlayer(player)
+		if shouldReplicateToPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		self:trackPlayer(player)
+		if shouldReplicateToPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end)
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
 		self:untrackPlayer(player)

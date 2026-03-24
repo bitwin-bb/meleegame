@@ -175,6 +175,15 @@
               "$path": "src/services/NpcService/Utils.luau"
             }
           },
+          "ParallaxService": {
+            "$className": "Folder",
+            "ParallaxServiceClient": {
+              "$path": "src/services/ParallaxService/Client.luau"
+            },
+            "ParallaxServiceUtils": {
+              "$path": "src/services/ParallaxService/Utils.luau"
+            }
+          },
           "PlayerDataService": {
             "$className": "Folder",
             "PlayerDataServiceClient": {
@@ -413,6 +422,9 @@
             },
             "Npcs": {
               "$path": "src/modules/Items/Npcs.luau"
+            },
+            "ParallaxBackgrounds": {
+              "$path": "src/modules/Items/ParallaxBackgrounds.luau"
             },
             "Registry": {
               "$path": "src/modules/Items/Registry.luau"

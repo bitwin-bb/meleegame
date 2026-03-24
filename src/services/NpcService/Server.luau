@@ -19,6 +19,7 @@ local HpServiceServer = require(ServerScriptService.Services.HpService.HpService
 local AudioServiceServer = require(ServerScriptService.Services.AudioService.AudioServiceServer)
 local LootServiceServer = require(ServerScriptService.Services.LootService.LootServiceServer)
 local GoreServiceServer = require(ServerScriptService.Services.GoreService.GoreServiceServer)
+local PlayerServiceServer = require(ServerScriptService.Services.PlayerService.PlayerServiceServer)
 local WorldGenerationServiceServer =
 	require(ServerScriptService.Services.WorldGenerationService.WorldGenerationServiceServer)
 
@@ -571,11 +572,6 @@ function NpcServiceServer.playRuntimeNamedSound(self: NpcServiceServer, runtime:
 end
 
 function NpcServiceServer.resolveWorld(self: NpcServiceServer): any?
-	local cached = self.world
-	if cached ~= nil then
-		return cached
-	end
-
 	local getWorldMethod = (WorldGenerationServiceServer :: any).getWorld
 	if typeof(getWorldMethod) ~= "function" then
 		return nil
@@ -589,7 +585,9 @@ function NpcServiceServer.resolveWorld(self: NpcServiceServer): any?
 		return nil
 	end
 
-	self.world = worldOrError
+	if worldOrError ~= self.world then
+		self.world = worldOrError
+	end
 	return self.world
 end
 
@@ -1269,7 +1267,13 @@ function NpcServiceServer.createStatePayload(self: NpcServiceServer): { NpcSnaps
 end
 
 function NpcServiceServer.broadcast(self: NpcServiceServer, methodName: string, ...: any)
-	fireForPlayers(self.networker, Players:GetPlayers(), methodName, ...)
+	local recipients = {}
+	for _, player in Players:GetPlayers() do
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			recipients[#recipients + 1] = player
+		end
+	end
+	fireForPlayers(self.networker, recipients, methodName, ...)
 end
 
 function NpcServiceServer.pushState(self: NpcServiceServer, player: Player)
@@ -2132,7 +2136,9 @@ function NpcServiceServer.init(self: NpcServiceServer)
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
 		self:bindPlayerCollisionGroup(player)
-		self:pushState(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:pushState(player)
+		end
 	end)
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
 		self:unbindPlayerCollisionGroup(player)

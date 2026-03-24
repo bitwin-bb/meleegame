@@ -17,6 +17,7 @@ local e: typeof(React.createElement) = React.createElement
 
 local DEFAULT_SIZE = UDim2.fromOffset(72, 72)
 local MARKER_COLOR = Color3.fromRGB(255, 247, 250)
+local ICON_GAP = 4
 
 return function(props: MarkerProps): React.ReactNode
 	if props.visible == false then
@@ -31,7 +32,7 @@ return function(props: MarkerProps): React.ReactNode
 	local rotationRadians = math.rad(props.rotation)
 	local baseDirection = Vector2.new(-math.sin(rotationRadians), math.cos(rotationRadians))
 	local iconSize = math.max(16, math.floor(markerRadius * 0.58 + 0.5))
-	local baseOffset = math.floor(markerRadius * 0.72 + 0.5)
+	local baseOffset = math.floor(markerRadius + ICON_GAP + iconSize * 0.5 + 0.5)
 	local iconPosition = Vector2.new(markerWidth * 0.5, markerHeight * 0.5) + baseDirection * baseOffset
 
 	return e("Frame", {
@@ -41,6 +42,7 @@ return function(props: MarkerProps): React.ReactNode
 		Size = markerSize,
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
+		ClipsDescendants = false,
 		ZIndex = zIndex,
 	}, {
 		Marker = e("ImageLabel", {

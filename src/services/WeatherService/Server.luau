@@ -2,11 +2,13 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Configs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
 local WeatherServiceUtils = require(ReplicatedStorage.Shared.Services.WeatherService.WeatherServiceUtils)
+local PlayerServiceServer = require(ServerScriptService.Services.PlayerService.PlayerServiceServer)
 
 type WeatherType = WeatherServiceUtils.WeatherType
 type WeatherServiceConfig = WeatherServiceUtils.WeatherServiceConfig
@@ -57,7 +59,9 @@ function WeatherServiceServer.pushState(self: WeatherServiceServer, playerRaw: a
 	end
 
 	for _, listedPlayer in Players:GetPlayers() do
-		self.networker:fire(listedPlayer, WeatherServiceUtils.CLIENT_METHOD_APPLY_STATE, snapshot)
+		if PlayerServiceServer:isGameplayActiveForPlayer(listedPlayer) then
+			self.networker:fire(listedPlayer, WeatherServiceUtils.CLIENT_METHOD_APPLY_STATE, snapshot)
+		end
 	end
 	self.stateDirty = false
 end
@@ -196,11 +200,15 @@ function WeatherServiceServer.init(self: WeatherServiceServer)
 	})
 
 	for _, player in Players:GetPlayers() do
-		self:trackPlayer(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		self:trackPlayer(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end)
 
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)

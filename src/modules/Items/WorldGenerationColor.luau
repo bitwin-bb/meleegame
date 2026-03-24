@@ -29,43 +29,43 @@ local WorldGenerationColor = {}
 local TILE_VISUALS: { [number]: TileVisual } = {
 	[1] = {
 		name = "Grass",
-		color = Color3.fromRGB(55, 77, 36),
+		color = Color3.fromRGB(113, 155, 76),
 		material = Enum.Material.Grass,
 		transparency = 0,
 	},
 	[17] = {
 		name = "JungleGrass",
-		color = Color3.fromRGB(46, 151, 63),
+		color = Color3.fromRGB(112, 147, 41),
 		material = Enum.Material.Grass,
 		transparency = 0,
 	},
 	[18] = {
 		name = "Wood",
-		color = Color3.fromRGB(53, 36, 17),
+		color = Color3.fromRGB(90, 64, 44),
 		material = Enum.Material.Wood,
 		transparency = 0,
 	},
 	[2] = {
 		name = "Dirt",
-		color = Color3.fromRGB(61, 41, 23),
+		color = Color3.fromRGB(79, 47, 20),
 		material = Enum.Material.Ground,
 		transparency = 0,
 	},
 	[3] = {
 		name = "Stone",
-		color = Color3.fromRGB(47, 51, 56),
+		color = Color3.fromRGB(95, 102, 111),
 		material = Enum.Material.Slate,
 		transparency = 0,
 	},
 	[4] = {
 		name = "Sand",
-		color = Color3.fromRGB(202, 174, 73),
+		color = Color3.fromRGB(211, 196, 139),
 		material = Enum.Material.Sand,
 		transparency = 0,
 	},
 	[5] = {
 		name = "Sandstone",
-		color = Color3.fromRGB(223, 182, 121),
+		color = Color3.fromRGB(199, 161, 103),
 		material = Enum.Material.Sandstone,
 		transparency = 0,
 	},
@@ -83,13 +83,13 @@ local TILE_VISUALS: { [number]: TileVisual } = {
 	},
 	[8] = {
 		name = "Mud",
-		color = Color3.fromRGB(49, 33, 13),
+		color = Color3.fromRGB(48, 40, 31),
 		material = Enum.Material.Ground,
 		transparency = 0,
 	},
 	[9] = {
 		name = "Clay",
-		color = Color3.fromRGB(136, 64, 46),
+		color = Color3.fromRGB(174, 78, 54),
 		material = Enum.Material.Ground,
 		transparency = 0,
 	},
@@ -139,8 +139,8 @@ local TILE_VISUALS: { [number]: TileVisual } = {
 
 local TREE_PALETTES: { [string]: TreePalette } = {
 	Default = {
-		BranchColor = Color3.fromRGB(49, 30, 16),
-		LeafColor = Color3.fromRGB(34, 61, 24),
+		BranchColor = Color3.fromRGB(109, 80, 60),
+		LeafColor = Color3.fromRGB(100, 141, 84),
 	},
 	Corruption1 = {
 		BranchColor = Color3.fromRGB(31, 19, 56),
@@ -151,12 +151,12 @@ local TREE_PALETTES: { [string]: TreePalette } = {
 		LeafColor = Color3.fromRGB(171, 101, 231),
 	},
 	Jungle1 = {
-		BranchColor = Color3.fromRGB(48, 37, 26),
-		LeafColor = Color3.fromRGB(48, 77, 52),
+		BranchColor = Color3.fromRGB(123, 71, 87),
+		LeafColor = Color3.fromRGB(52, 132, 58),
 	},
 	Jungle2 = {
-		BranchColor = Color3.fromRGB(44, 34, 24),
-		LeafColor = Color3.fromRGB(63, 104, 70),
+		BranchColor = Color3.fromRGB(154, 74, 105),
+		LeafColor = Color3.fromRGB(51, 138, 66),
 	},
 }
 

@@ -753,7 +753,7 @@ function ProceduralTree.createBranchPart(self: ProceduralTree, descriptor: Branc
 	part.Material = self.config.BranchMaterial
 	part.TopSurface = Enum.SurfaceType.Smooth
 	part.BottomSurface = Enum.SurfaceType.Smooth
-	part.CastShadow = true
+	part.CastShadow = false
 	part.CanCollide = self.config.BranchCanCollide
 	part.CanTouch = self.config.BranchCanCollide
 	part.CanQuery = self.config.BranchCanCollide

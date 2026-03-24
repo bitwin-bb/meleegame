@@ -12,6 +12,7 @@ local BreathServiceUtils = require(ReplicatedStorage.Shared.Services.BreathServi
 local LiquidServiceUtils = require(ReplicatedStorage.Shared.Services.LiquidService.LiquidServiceUtils)
 local LiquidServiceServer = require(ServerScriptService.Services.LiquidService.LiquidServiceServer)
 local HpServiceServer = require(ServerScriptService.Services.HpService.HpServiceServer)
+local PlayerServiceServer = require(ServerScriptService.Services.PlayerService.PlayerServiceServer)
 
 type BreathServiceConfig = BreathServiceUtils.BreathServiceConfig
 type BreathServiceState = BreathServiceUtils.BreathServiceState
@@ -101,6 +102,10 @@ function BreathServiceServer:untrackPlayer(player: Player)
 end
 
 function BreathServiceServer:requestSync(player: Player)
+	if self.playerRuntimes[player] == nil then
+		self:trackPlayer(player)
+		return
+	end
 	self:pushState(player)
 end
 
@@ -192,11 +197,15 @@ function BreathServiceServer:init()
 	})
 
 	for _, player in Players:GetPlayers() do
-		self:trackPlayer(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		self:trackPlayer(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end)
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
 		self:untrackPlayer(player)

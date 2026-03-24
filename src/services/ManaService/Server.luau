@@ -6,6 +6,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local ManaServiceUtils = require(ReplicatedStorage.Shared.Services.ManaService.ManaServiceUtils)
+local PlayerServiceServer = require(ServerScriptService.Services.PlayerService.PlayerServiceServer)
 local PlayerDataServiceServer = require(ServerScriptService.Services.PlayerDataService.PlayerDataServiceServer)
 
 type ManaServiceState = ManaServiceUtils.ManaServiceState
@@ -293,6 +294,10 @@ function ManaServiceServer.untrackPlayer(self: ManaServiceServer, player: Player
 end
 
 function ManaServiceServer.requestSync(self: ManaServiceServer, player: Player)
+	if self.playerRuntimes[player] == nil then
+		self:trackPlayer(player)
+		return
+	end
 	local runtime = self:getRuntime(player)
 	self:pushState(player, runtime, true)
 end
@@ -527,11 +532,15 @@ function ManaServiceServer.init(self: ManaServiceServer)
 	self.dataLoadTimeoutSeconds = DATA_LOAD_TIMEOUT_SECONDS
 
 	for _, player in Players:GetPlayers() do
-		self:trackPlayer(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		self:trackPlayer(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end)
 
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)

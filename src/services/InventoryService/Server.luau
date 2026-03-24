@@ -10,6 +10,7 @@ local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local ItemRegistry = require(ReplicatedStorage.Shared.Modules.Items.Registry)
 local ResolveItem = require(ReplicatedStorage.Shared.Modules.Game.ResolveItem)
 local InventoryServiceUtils = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceUtils)
+local PlayerServiceServer = require(ServerScriptService.Services.PlayerService.PlayerServiceServer)
 local PlayerDataServiceServer = require(ServerScriptService.Services.PlayerDataService.PlayerDataServiceServer)
 
 type InventoryState = InventoryServiceUtils.InventoryState
@@ -554,11 +555,15 @@ function InventoryServiceServer.init(self: InventoryServiceServer)
 	self.didWarnMissingDropHandler = false
 
 	for _, player in Players:GetPlayers() do
-		self:trackPlayer(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		self:trackPlayer(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end)
 
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)

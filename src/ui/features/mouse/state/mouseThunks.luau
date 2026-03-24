@@ -28,7 +28,10 @@ local runtime = {
 
 local function toGuiPosition(screenPosition: Vector2): Vector2
 	local topLeftInset, _ = GuiService:GetGuiInset()
-	return Vector2.new(math.max(0, screenPosition.X - topLeftInset.X), math.max(0, screenPosition.Y - topLeftInset.Y))
+	if topLeftInset.X == 0 and topLeftInset.Y == 0 then
+		return screenPosition
+	end
+	return screenPosition
 end
 
 local function getPlayerGui(): PlayerGui?

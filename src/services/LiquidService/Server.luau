@@ -19,6 +19,7 @@ local PlayerServiceUtils = require(ReplicatedStorage.Shared.Services.PlayerServi
 local WorldSimulationDebug = require(ReplicatedStorage.Shared.Services.WorldSimulationService.Debug)
 local WorldGenerationServiceServer =
 	require(ServerScriptService.Services.WorldGenerationService.WorldGenerationServiceServer)
+local PlayerServiceServer = require(ServerScriptService.Services.PlayerService.PlayerServiceServer)
 local HpServiceServer = require(ServerScriptService.Services.HpService.HpServiceServer)
 
 type LiquidServiceConfig = LiquidServiceUtils.LiquidServiceConfig
@@ -67,6 +68,10 @@ type WorldObject = {
 
 type WorldGenerationServiceServerObject = {
 	getWorld: (self: WorldGenerationServiceServerObject) -> WorldObject,
+}
+
+type PlayerServiceServerObject = {
+	isGameplayActiveForPlayer: (self: PlayerServiceServerObject, player: Player) -> boolean,
 }
 
 type HpServiceServerObject = {
@@ -169,6 +174,17 @@ type SimulationTickStats = {
 }
 
 local LiquidServiceServer = {}
+
+local function isGameplayReplicationActive(player: Player): boolean
+	local activeCheck = (PlayerServiceServer :: any).isGameplayActiveForPlayer
+	if typeof(activeCheck) ~= "function" then
+		return true
+	end
+	local ok, isActive = pcall(function()
+		return (PlayerServiceServer :: any):isGameplayActiveForPlayer(player)
+	end)
+	return ok and isActive == true
+end
 
 local LIQUID_TYPE = LiquidServiceUtils.LIQUID_TYPE
 local CELL_DEBUG_STATE = LiquidServiceUtils.CELL_DEBUG_STATE
@@ -2294,6 +2310,8 @@ function LiquidServiceServer:processHazards()
 end
 
 function LiquidServiceServer:onHeartbeat(deltaTime: number)
+	self:refreshWorldBinding()
+
 	self.streamAccumulator += deltaTime
 	self.simulationAccumulator += deltaTime
 	self.hazardAccumulator += deltaTime
@@ -2341,6 +2359,11 @@ function LiquidServiceServer:untrackPlayer(player: Player)
 end
 
 function LiquidServiceServer:requestSync(player: Player)
+	if self.playerStreams[player] == nil then
+		self:trackPlayer(player)
+		return
+	end
+	self:refreshWorldBinding()
 	local stream = self:getPlayerStream(player)
 	table.clear(stream.interestKeys)
 	table.clear(stream.sentRevisions)
@@ -2354,6 +2377,62 @@ end
 
 function LiquidServiceServer:getPlayerLiquidQuery(player: Player): LiquidQueryResult
 	return self:getPlayerQuery(player)
+end
+
+function LiquidServiceServer:refreshWorldBinding()
+	local latestWorld = self.worldGenerationService:getWorld()
+	if latestWorld == self.world then
+		return
+	end
+
+	if self.chunkLifecycleConnection ~= nil then
+		self.chunkLifecycleConnection:Disconnect()
+		self.chunkLifecycleConnection = nil
+	end
+	self.world = latestWorld
+	if self.world ~= nil and typeof((self.world :: any).registerChunkLifecycleObserver) == "function" then
+		self.chunkLifecycleConnection = (
+			(self.world :: any):registerChunkLifecycleObserver(self)
+		) :: ChunkLifecycleConnection?
+	end
+
+	table.clear(self.chunkRuntimes)
+	table.clear(self.changedChunkKeys)
+	table.clear(self.pendingWakeQueue)
+	table.clear(self.pendingWakeLookup)
+	self.pendingWakeHead = 1
+	self.pendingWakeTail = 0
+	self.pendingChunkReadinessWakeups = 0
+	self.currentSimulationStats = createSimulationTickStats()
+
+	if self.dirtyCellQueue ~= nil then
+		self.dirtyCellQueue:destroy()
+	end
+	self.dirtyCellQueue = WorldMutationQueue.new({
+		chunkSize = if self.world ~= nil then self.world.chunkSize else 32,
+		flushInterval = 1 / self.config.simulation.stepRate,
+		maxMutationsPerFlush = self.config.simulation.maxChunkStepsPerTick
+			* self.config.simulation.maxCellsPerChunkStep,
+	})
+
+	self.recentChunkGrid = SpatialHashGrid.new({
+		cellSize = if self.world ~= nil then math.max(1, self.world.chunkSize * self.world.tileSize) else 64,
+		cellsPerChunk = 2,
+		deterministicQueries = true,
+	})
+	table.clear(self.recentChunkTouchedAt)
+
+	if self.debugFolder ~= nil and self.debugFolder.Parent ~= nil then
+		self.debugFolder:Destroy()
+		self.debugFolder = nil
+	end
+
+	for player in self.playerStreams do
+		self.playerStreams[player] = self:createPlayerStream()
+	end
+	for player in self.playerHazards do
+		self.playerHazards[player] = self:createHazardRuntime()
+	end
 end
 
 function LiquidServiceServer:init()
@@ -2451,12 +2530,10 @@ function LiquidServiceServer:init()
 		self.requestSync,
 	})
 
-	for _, player in Players:GetPlayers() do
-		self:trackPlayer(player)
-	end
-
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		self:trackPlayer(player)
+		if isGameplayReplicationActive(player) then
+			self:trackPlayer(player)
+		end
 	end)
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
 		self:untrackPlayer(player)
@@ -2561,6 +2638,7 @@ type LiquidServiceServer = typeof(LiquidServiceServer) & {
 	config: LiquidServiceConfig,
 	state: LiquidServiceState,
 	worldGenerationService: WorldGenerationServiceServerObject,
+	playerService: PlayerServiceServerObject?,
 	world: WorldObject,
 	hpService: HpServiceServerObject,
 	debug: DebugObject?,

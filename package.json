@@ -2,7 +2,6 @@
   "name": "genrojotree",
   "version": "1.0.0",
   "main": "index.js",
-
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:rojo": "node tools/genRojoTree.js",
@@ -14,5 +13,9 @@
   "description": "",
   "devDependencies": {
     "chokidar-cli": "^3.0.0"
+  },
+  "dependencies": {
+    "@quenty/flipbook": "^9.28.0",
+    "@quenty/maid": "^3.8.0"
   }
 }

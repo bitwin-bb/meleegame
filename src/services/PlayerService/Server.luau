@@ -18,6 +18,7 @@ type PlayerState = {
 	facingSign: FacingSign,
 	nextSpawnHealth: number?,
 	movementLocked: boolean,
+	spawnWorldPosition: Vector3?,
 }
 
 type JanitorClass = {
@@ -46,6 +47,18 @@ type GoreServiceServerObject = {
 	unregisterPlayer: (self: GoreServiceServerObject, playerRaw: any) -> boolean,
 	onPlayerDamaged: (self: GoreServiceServerObject, playerRaw: any, originRaw: any, damageRaw: any?) -> boolean,
 	onPlayerDied: (self: GoreServiceServerObject, playerRaw: any, originRaw: any) -> boolean,
+}
+
+type RagdollServiceServerObject = {
+	setPlayerRagdoll: (
+		self: RagdollServiceServerObject,
+		player: Player,
+		enabledRaw: any,
+		reasonRaw: any,
+		durationRaw: any,
+		canRecoverRaw: any,
+		impulseRaw: any
+	) -> boolean,
 }
 
 local PlayerServiceServer = {}
@@ -121,11 +134,15 @@ end
 function PlayerServiceServer.init(self: PlayerServiceServer)
 	self.playerState = {}
 	self.playerRuntimes = {}
+	self.activeGameplayPlayers = {}
 	self.invincibilityFramesConfig = resolveInvincibilityFramesConfigFromTemplate()
 	self.allowMovementFreeze = resolveAllowMovementFreezeFromTemplate()
+	Players.CharacterAutoLoads = true
 	PlayerServiceUtils.getOrCreateWorkspaceGameFolder()
 	PlayerSpawnCooldown.applyConfiguredRespawnDelay()
 	self.goreService = GoreServiceServer :: GoreServiceServerObject
+	self.ragdollService =
+		require(ServerScriptService.Services.RagdollService.RagdollServiceServer) :: RagdollServiceServerObject
 	self.networker = Networker.server.new("PlayerService", self, {
 		self.setFacing,
 		self.requestState,
@@ -143,6 +160,28 @@ function PlayerServiceServer.init(self: PlayerServiceServer)
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player)
 		self:untrackPlayer(player)
 	end)
+end
+
+function PlayerServiceServer.isGameplayActiveForPlayer(self: PlayerServiceServer, player: Player): boolean
+	return self.activeGameplayPlayers[player] == true
+end
+
+function PlayerServiceServer.EnterGameplay(self: PlayerServiceServer, player: Player): boolean
+	self.activeGameplayPlayers[player] = true
+
+	local character = player.Character
+	if character ~= nil then
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid ~= nil and humanoid.Health > 0 then
+			self:setMovementLocked(player, true, true)
+			self:applyGameplaySpawnToCharacter(player, character)
+			self:queueSpawnSurfaceSnap(player, character, humanoid)
+			return true
+		end
+	end
+
+	player:LoadCharacter()
+	return true
 end
 
 function PlayerServiceServer.createRuntime(self: PlayerServiceServer): PlayerRuntime
@@ -237,6 +276,55 @@ function PlayerServiceServer.setMovementLocked(
 	if replicateToClient ~= false and self.networker then
 		self.networker:fire(player, PlayerServiceUtils.NETWORK_METHOD_APPLY_MOVEMENT_LOCK, movementLocked)
 	end
+end
+
+function PlayerServiceServer.setGameplaySpawnPosition(self: PlayerServiceServer, player: Player, worldPositionRaw: any)
+	local state = self:getState(player)
+	if typeof(worldPositionRaw) == "Vector3" then
+		state.spawnWorldPosition = worldPositionRaw
+	else
+		state.spawnWorldPosition = nil
+	end
+end
+
+function PlayerServiceServer.applyGameplaySpawnToCharacter(
+	self: PlayerServiceServer,
+	player: Player,
+	character: Model
+): boolean
+	local state = self:getState(player)
+	local spawnWorldPosition = state.spawnWorldPosition
+	if typeof(spawnWorldPosition) ~= "Vector3" then
+		return false
+	end
+
+	local rootPart = PlayerServiceUtils.resolveCharacterRootPart(character)
+	if rootPart == nil then
+		return false
+	end
+
+	local rootToPivot = CFrame.identity
+	local pivotOk, currentPivot = pcall(function(): CFrame
+		return character:GetPivot()
+	end)
+	if pivotOk then
+		rootToPivot = rootPart.CFrame:ToObjectSpace(currentPivot :: CFrame)
+	end
+
+	local targetRootCFrame =
+		CFrame.lookAt(spawnWorldPosition, spawnWorldPosition + Vector3.new(0, 0, -state.facingSign), Vector3.yAxis)
+	local pivotTarget = targetRootCFrame * rootToPivot
+	local pivotApplied = pcall(function()
+		character:PivotTo(pivotTarget)
+	end)
+	if not pivotApplied then
+		rootPart.CFrame = targetRootCFrame
+	end
+
+	rootPart.AssemblyLinearVelocity = Vector3.zero
+	rootPart.AssemblyAngularVelocity = Vector3.zero
+	PlayerServiceUtils.snapRootPartFacing(rootPart, state.facingSign)
+	return true
 end
 
 function PlayerServiceServer.trySnapCharacterToWorldSurface(
@@ -538,9 +626,12 @@ function PlayerServiceServer.bindHumanoid(self: PlayerServiceServer, player: Pla
 		if self.goreService ~= nil then
 			self.goreService:registerPlayerCharacter(player, character)
 		end
-		local rig = PlayerServiceUtils.resolveCharacterRig(character)
-		if rig then
-			PlayerServiceUtils.snapRootPartFacing(rig.rootPart, state.facingSign)
+		local appliedSpawn = self:applyGameplaySpawnToCharacter(player, character)
+		if not appliedSpawn then
+			local rig = PlayerServiceUtils.resolveCharacterRig(character)
+			if rig then
+				PlayerServiceUtils.snapRootPartFacing(rig.rootPart, state.facingSign)
+			end
 		end
 	end
 	self:applyMovementLockToRuntime(runtime, player, state.movementLocked)
@@ -573,6 +664,31 @@ function PlayerServiceServer.bindHumanoid(self: PlayerServiceServer, player: Pla
 		self:stopInvincibilityFrames(runtime)
 		state.nextSpawnHealth =
 			PlayerServiceUtils.computeRespawnHealthFromDeath(humanoid.MaxHealth, PlayerServiceUtils.DEFAULT_DEATH_RESPAWN_HEALTH_SCALE)
+		if self.ragdollService ~= nil then
+			pcall(function()
+				self.ragdollService:setPlayerRagdoll(player, true, "Death", nil, false, nil)
+			end)
+		end
+
+		if self:isGameplayActiveForPlayer(player) then
+			local respawnDelay = PlayerSpawnCooldown.getCurrentRespawnDelay()
+			task.delay(respawnDelay, function()
+				if player.Parent == nil then
+					return
+				end
+				if not self:isGameplayActiveForPlayer(player) then
+					return
+				end
+				local currentCharacter = player.Character
+				if currentCharacter ~= nil then
+					local currentHumanoid = currentCharacter:FindFirstChildOfClass("Humanoid")
+					if currentHumanoid ~= nil and currentHumanoid.Health > 0 then
+						return
+					end
+				end
+				player:LoadCharacter()
+			end)
+		end
 	end))
 
 	runtime.characterJanitor:GiveChore(humanoid.Destroying:Connect(function()
@@ -631,11 +747,13 @@ function PlayerServiceServer.bindCharacter(self: PlayerServiceServer, player: Pl
 end
 
 function PlayerServiceServer.trackPlayer(self: PlayerServiceServer, player: Player)
+	self.activeGameplayPlayers[player] = true
 	local shouldStartLocked = self.allowMovementFreeze
 	self.playerState[player] = {
 		facingSign = PlayerServiceUtils.DEFAULT_FACING_SIGN,
 		nextSpawnHealth = nil,
 		movementLocked = shouldStartLocked,
+		spawnWorldPosition = nil,
 	}
 	player:SetAttribute(PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE, shouldStartLocked)
 
@@ -661,6 +779,7 @@ function PlayerServiceServer.trackPlayer(self: PlayerServiceServer, player: Play
 end
 
 function PlayerServiceServer.untrackPlayer(self: PlayerServiceServer, player: Player)
+	self.activeGameplayPlayers[player] = nil
 	self.playerState[player] = nil
 	player:SetAttribute(PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE, nil)
 	if self.goreService ~= nil then
@@ -693,6 +812,7 @@ function PlayerServiceServer.getState(self: PlayerServiceServer, player: Player)
 		facingSign = PlayerServiceUtils.DEFAULT_FACING_SIGN,
 		nextSpawnHealth = nil,
 		movementLocked = shouldStartLocked,
+		spawnWorldPosition = nil,
 	}
 	player:SetAttribute(PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE, shouldStartLocked)
 	self.playerState[player] = defaultState
@@ -786,6 +906,10 @@ function PlayerServiceServer.destroy(self: PlayerServiceServer)
 end
 
 type PlayerServiceServer = typeof(PlayerServiceServer) & {
+	isGameplayActiveForPlayer: (self: PlayerServiceServer, player: Player) -> boolean,
+	EnterGameplay: (self: PlayerServiceServer, player: Player) -> boolean,
+	setGameplaySpawnPosition: (self: PlayerServiceServer, player: Player, worldPositionRaw: any) -> (),
+	applyGameplaySpawnToCharacter: (self: PlayerServiceServer, player: Player, character: Model) -> boolean,
 	emitPlayerGore: (
 		self: PlayerServiceServer,
 		player: Player,
@@ -795,9 +919,11 @@ type PlayerServiceServer = typeof(PlayerServiceServer) & {
 	) -> (),
 	networker: Networker.Server,
 	goreService: GoreServiceServerObject?,
+	ragdollService: RagdollServiceServerObject?,
 	invincibilityFramesConfig: InvincibilityFramesConfig,
 	allowMovementFreeze: boolean,
 	playerState: { [Player]: PlayerState },
+	activeGameplayPlayers: { [Player]: boolean },
 	playerRuntimes: { [Player]: PlayerRuntime },
 	playerAddedConnection: RBXScriptConnection?,
 	playerRemovingConnection: RBXScriptConnection?,

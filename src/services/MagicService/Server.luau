@@ -15,6 +15,7 @@ local ManaServiceServer = require(ServerScriptService.Services.ManaService.ManaS
 local BossServiceServer = require(ServerScriptService.Services.BossService.BossServiceServer)
 local NpcServiceServer = require(ServerScriptService.Services.NpcService.NpcServiceServer)
 local HpServiceServer = require(ServerScriptService.Services.HpService.HpServiceServer)
+local PlayerServiceServer = require(ServerScriptService.Services.PlayerService.PlayerServiceServer)
 
 type WeaponRuntimeConfig = MagicServiceUtils.WeaponRuntimeConfig
 type ModifierStats = MagicServiceUtils.ModifierStats
@@ -621,6 +622,10 @@ function MagicServiceServer.consumeMana(
 end
 
 function MagicServiceServer.requestSync(self: MagicServiceServer, player: Player)
+	if self.playerRuntimes[player] == nil then
+		self:trackPlayer(player)
+		return
+	end
 	local runtime = self:getRuntime(player)
 	self:pushState(player, runtime)
 end
@@ -1059,15 +1064,19 @@ function MagicServiceServer.applyChainEffect(
 
 		local chainDamage = projectile.stats.damage * damageScale
 		if self:damageHumanoidTarget(projectile, targetHumanoid, chainDamage, true) then
-			self.networker:fireAll(MagicServiceUtils.CLIENT_METHOD_ON_IMPACT_VISUAL, {
-				castId = projectile.castId,
-				weaponId = projectile.weaponId,
-				position = targetPosition,
-				normal = nil,
-				visualColor = projectile.config.projectile.visualColor,
-				visualSize = projectile.config.projectile.visualSize,
-				reason = "Chain",
-			})
+			for _, listedPlayer in Players:GetPlayers() do
+				if PlayerServiceServer:isGameplayActiveForPlayer(listedPlayer) then
+					self.networker:fire(listedPlayer, MagicServiceUtils.CLIENT_METHOD_ON_IMPACT_VISUAL, {
+						castId = projectile.castId,
+						weaponId = projectile.weaponId,
+						position = targetPosition,
+						normal = nil,
+						visualColor = projectile.config.projectile.visualColor,
+						visualSize = projectile.config.projectile.visualSize,
+						reason = "Chain",
+					})
+				end
+			end
 		end
 
 		currentPosition = targetPosition
@@ -1118,15 +1127,19 @@ function MagicServiceServer.expireProjectile(
 	end
 	self.activeProjectiles[projectileId] = nil
 	self:releaseProjectile(projectile)
-	self.networker:fireAll(MagicServiceUtils.CLIENT_METHOD_ON_IMPACT_VISUAL, {
-		castId = projectile.castId,
-		weaponId = projectile.weaponId,
-		position = position,
-		normal = normal,
-		visualColor = projectile.config.projectile.visualColor,
-		visualSize = projectile.config.projectile.visualSize,
-		reason = reason,
-	})
+	for _, listedPlayer in Players:GetPlayers() do
+		if PlayerServiceServer:isGameplayActiveForPlayer(listedPlayer) then
+			self.networker:fire(listedPlayer, MagicServiceUtils.CLIENT_METHOD_ON_IMPACT_VISUAL, {
+				castId = projectile.castId,
+				weaponId = projectile.weaponId,
+				position = position,
+				normal = normal,
+				visualColor = projectile.config.projectile.visualColor,
+				visualSize = projectile.config.projectile.visualSize,
+				reason = reason,
+			})
+		end
+	end
 	self:invokeWeaponCallback(projectile.config.callbacks.OnExpire, {
 		service = self,
 		projectile = projectile,
@@ -1455,19 +1468,23 @@ function MagicServiceServer.spawnProjectile(
 	poolEntry.part.CFrame = CFrame.lookAt(origin, origin + direction)
 	poolEntry.part.Transparency = 1
 
-	self.networker:fireAll(MagicServiceUtils.CLIENT_METHOD_ON_CAST_VISUAL, {
-		castId = castId,
-		casterUserId = player.UserId,
-		weaponId = config.itemId,
-		origin = origin,
-		direction = direction,
-		speed = stats.projectileSpeed,
-		lifetime = stats.projectileLifetime,
-		castTime = stats.castTime,
-		visualColor = config.projectile.visualColor,
-		visualSize = config.projectile.visualSize,
-		visualName = config.displayName,
-	})
+	for _, listedPlayer in Players:GetPlayers() do
+		if PlayerServiceServer:isGameplayActiveForPlayer(listedPlayer) then
+			self.networker:fire(listedPlayer, MagicServiceUtils.CLIENT_METHOD_ON_CAST_VISUAL, {
+				castId = castId,
+				casterUserId = player.UserId,
+				weaponId = config.itemId,
+				origin = origin,
+				direction = direction,
+				speed = stats.projectileSpeed,
+				lifetime = stats.projectileLifetime,
+				castTime = stats.castTime,
+				visualColor = config.projectile.visualColor,
+				visualSize = config.projectile.visualSize,
+				visualName = config.displayName,
+			})
+		end
+	end
 end
 
 function MagicServiceServer.executeCast(
@@ -1821,10 +1838,14 @@ function MagicServiceServer.init(self: MagicServiceServer)
 	end
 
 	for _, player in Players:GetPlayers() do
-		self:trackPlayer(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		self:trackPlayer(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end)
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
 		self:untrackPlayer(player)

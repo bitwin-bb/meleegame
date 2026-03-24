@@ -589,7 +589,7 @@ local function createPartTemplate(): Part
 	part.Name = "WorldTile"
 	part.Anchored = true
 	part.Locked = true
-	part.CastShadow = true
+	part.CastShadow = false
 	part.TopSurface = Enum.SurfaceType.Smooth
 	part.BottomSurface = Enum.SurfaceType.Smooth
 	part.CanCollide = false
@@ -2386,7 +2386,7 @@ function WorldGeneration.styleTerrainPart(self: WorldGeneration, part: BasePart,
 	part.CanCollide = true
 	part.CanQuery = true
 	part.CanTouch = false
-	part.CastShadow = true
+	part.CastShadow = false
 end
 
 function WorldGeneration.getTerrainTileTemplate(self: WorldGeneration, tileId: number): Instance?
@@ -2426,7 +2426,7 @@ function WorldGeneration.placeTerrainTileTemplate(
 				descendant.Color = style.color
 				descendant.Material = style.material
 				descendant.Transparency = style.transparency
-				descendant.CastShadow = true
+				descendant.CastShadow = false
 			end
 		end
 	elseif cloned:IsA("BasePart") then
@@ -2438,7 +2438,7 @@ function WorldGeneration.placeTerrainTileTemplate(
 		cloned.Color = style.color
 		cloned.Material = style.material
 		cloned.Transparency = style.transparency
-		cloned.CastShadow = true
+		cloned.CastShadow = false
 	end
 
 	cloned.Parent = parent

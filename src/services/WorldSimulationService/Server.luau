@@ -3,11 +3,13 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local ServerScriptService = game:GetService("ServerScriptService")
 
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local CoreConfigs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
 local CoreRuntime = require(ReplicatedStorage.Shared.Modules.Core.Runtime)
 local WorldSimulationModules = ReplicatedStorage.Shared.Services.WorldSimulationService
+local PlayerServiceServer = require(ServerScriptService.Services.PlayerService.PlayerServiceServer)
 
 local Cache = require(WorldSimulationModules.Cache)
 local Config = require(WorldSimulationModules.Config)
@@ -456,7 +458,9 @@ function WorldSimulationServiceServer:init()
 	end
 
 	for _, player in Players:GetPlayers() do
-		self:trackPlayer(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end
 
 	if self.pendingGeneratedInterestRawByPlayer ~= nil then
@@ -473,7 +477,9 @@ function WorldSimulationServiceServer:init()
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		self:trackPlayer(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end)
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
 		self:untrackPlayer(player)

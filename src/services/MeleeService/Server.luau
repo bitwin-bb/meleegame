@@ -14,6 +14,7 @@ local MeleeServiceUtils = require(ReplicatedStorage.Shared.Services.MeleeService
 local InventoryServiceServer = require(ServerScriptService.Services.InventoryService.InventoryServiceServer)
 local BossServiceServer = require(ServerScriptService.Services.BossService.BossServiceServer)
 local NpcServiceServer = require(ServerScriptService.Services.NpcService.NpcServiceServer)
+local PlayerServiceServer = require(ServerScriptService.Services.PlayerService.PlayerServiceServer)
 local RagdollServiceServer = require(ServerScriptService.Services.RagdollService.RagdollServiceServer)
 
 type MeleeWeaponConfig = MeleeServiceUtils.MeleeWeaponConfig
@@ -377,11 +378,15 @@ function MeleeServiceServer.init(self: MeleeServiceServer)
 	self.playerRuntimes = {}
 
 	for _, player in Players:GetPlayers() do
-		self:trackPlayer(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		self:trackPlayer(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end)
 
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
@@ -1007,11 +1012,17 @@ function MeleeServiceServer.untrackPlayer(self: MeleeServiceServer, player: Play
 end
 
 function MeleeServiceServer.requestRefreshEquipped(self: MeleeServiceServer, player: Player)
+	if self.playerRuntimes[player] == nil then
+		self:trackPlayer(player)
+	end
 	local runtime = self:getRuntime(player)
 	self:refreshEquippedWeaponFromInventory(player, runtime)
 end
 
 function MeleeServiceServer.requestSetInputHeld(self: MeleeServiceServer, player: Player, inputHeldRaw: any)
+	if self.playerRuntimes[player] == nil then
+		self:trackPlayer(player)
+	end
 	local runtime = self:getRuntime(player)
 	local inputHeld = inputHeldRaw == true
 	if inputHeld and self:isAttackBlocked(player, runtime) then

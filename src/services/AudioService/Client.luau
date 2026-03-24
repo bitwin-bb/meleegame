@@ -467,6 +467,9 @@ function AudioServiceClient.updateBiomeSoundtrack(self: AudioServiceClient, delt
 end
 
 function AudioServiceClient.init(self: AudioServiceClient)
+	if self.janitor ~= nil then
+		return
+	end
 	self.localPlayer = Players.LocalPlayer
 	self.networker = Networker.client.new("AudioService", self)
 	self.janitor = Janitor.new()
@@ -709,6 +712,7 @@ end
 function AudioServiceClient.destroy(self: AudioServiceClient)
 	if self.janitor then
 		self.janitor:Destroy()
+		self.janitor = nil
 	end
 end
 

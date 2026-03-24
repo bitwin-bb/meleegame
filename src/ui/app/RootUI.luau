@@ -21,6 +21,7 @@ type RootUIProps = {
 return function(props: RootUIProps)
 	return React.createElement("ScreenGui", {
 		ResetOnSpawn = false,
+		IgnoreGuiInset = true,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 	}, {
 		HUD = React.createElement(HUD, props.hudProps),
@@ -50,7 +51,7 @@ return function(props: RootUIProps)
 			zIndex = 210,
 		}),
 		MouseScreen = React.createElement(MouseScreen, {
-			zIndex = 220,
+			zIndex = 1000,
 		}),
 		DeathScreen = React.createElement(DeathScreen, {
 			zIndex = 230,

@@ -661,7 +661,7 @@ local function styleForegroundPart(part: BasePart, tileId: number)
 	part.Color = style.color
 	part.Material = style.material
 	part.Transparency = style.transparency
-	part.CastShadow = true
+	part.CastShadow = false
 end
 
 local function styleBackgroundPart(part: BasePart, tileId: number, layerIndex: number, layerCount: number)
@@ -1289,6 +1289,11 @@ function WorldGenerationServiceClient.buildChunkVisualModel(
 		local generatedTreeModel = proceduralTree:generate(treesFolder, CFrame.new(position))
 		generatedTreeModel:SetAttribute("VariantIndex", treeSpawnData.variantIndex)
 		generatedTreeModel:SetAttribute("TreeSeed", treeSpawnData.seed)
+		for _, descendant in generatedTreeModel:GetDescendants() do
+			if descendant:IsA("BasePart") then
+				descendant.CastShadow = false
+			end
+		end
 
 		local generatedPartCount = countBaseParts(generatedTreeModel)
 		if partCount + generatedPartCount > MAX_VISUAL_PARTS_PER_CHUNK then
@@ -1338,6 +1343,7 @@ function WorldGenerationServiceClient.buildChunkVisualModel(
 					descendant.CanCollide = false
 					descendant.CanQuery = false
 					descendant.CanTouch = false
+					descendant.CastShadow = false
 				end
 			end
 		elseif propInstance:IsA("BasePart") then
@@ -1346,6 +1352,7 @@ function WorldGenerationServiceClient.buildChunkVisualModel(
 			propInstance.CanCollide = false
 			propInstance.CanQuery = false
 			propInstance.CanTouch = false
+			propInstance.CastShadow = false
 			generatedPartCount = 1
 		end
 
@@ -1529,8 +1536,38 @@ function WorldGenerationServiceClient.onHeartbeat(self: WorldGenerationServiceCl
 	self:processChunkRebuildQueue()
 end
 
+function WorldGenerationServiceClient.resetActiveWorldState(self: WorldGenerationServiceClient)
+	for chunkKey in self.chunkVisuals do
+		self:destroyChunkVisual(chunkKey)
+	end
+
+	table.clear(self.chunkSnapshots)
+	table.clear(self.visibleChunkKeys)
+	table.clear(self.dirtyChunkLookup)
+	table.clear(self.rebuildLookup)
+	table.clear(self.lastChunkBuildAt)
+	table.clear(self.chunkAnimationSkipUntil)
+	table.clear(self.rebuildQueue)
+	self.rebuildQueueHead = 1
+	self.rebuildQueueTail = 0
+	self.totalVisualPartCount = 0
+	self.visibilityRefreshAccumulator = VISIBILITY_REFRESH_INTERVAL
+end
+
 function WorldGenerationServiceClient.applyState(self: WorldGenerationServiceClient, stateRaw: any)
-	self.state = WorldGenerationServiceUtils.createState(stateRaw, self.state)
+	local previousState = self.state
+	local nextState = WorldGenerationServiceUtils.createState(stateRaw, previousState)
+	local shouldResetActiveWorld = previousState ~= nil
+		and (
+			previousState.seed ~= nextState.seed
+			or previousState.chunkSize ~= nextState.chunkSize
+			or previousState.minTileY ~= nextState.minTileY
+			or previousState.maxTileY ~= nextState.maxTileY
+		)
+	if shouldResetActiveWorld then
+		self:resetActiveWorldState()
+	end
+	self.state = nextState
 	self.stateChanged:Fire(WorldGenerationServiceUtils.cloneState(self.state))
 end
 

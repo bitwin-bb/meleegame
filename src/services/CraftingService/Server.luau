@@ -9,6 +9,7 @@ local Configs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
 local CraftingServiceUtils = require(ReplicatedStorage.Shared.Services.CraftingService.CraftingServiceUtils)
 local InventoryServiceUtils = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceUtils)
 local InventoryServiceServer = require(ServerScriptService.Services.InventoryService.InventoryServiceServer)
+local PlayerServiceServer = require(ServerScriptService.Services.PlayerService.PlayerServiceServer)
 local PlayerDataServiceServer = require(ServerScriptService.Services.PlayerDataService.PlayerDataServiceServer)
 local WorldGenerationServiceServer = require(ServerScriptService.Services.WorldGenerationService.WorldGenerationServiceServer)
 
@@ -671,11 +672,15 @@ function CraftingServiceServer.init(self: CraftingServiceServer)
 	})
 
 	for _, player in Players:GetPlayers() do
-		self:trackPlayer(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		self:trackPlayer(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end)
 
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)

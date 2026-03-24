@@ -379,6 +379,10 @@ function RagdollServiceServer.untrackPlayer(self: RagdollServiceServer, player: 
 end
 
 function RagdollServiceServer.requestSync(self: RagdollServiceServer, player: Player)
+	if self.playerRuntimes[player] == nil then
+		self:trackPlayer(player)
+		return
+	end
 	self:pushState(player)
 end
 

@@ -523,6 +523,9 @@ function GoreServiceClient.spawnGibs(
 end
 
 function GoreServiceClient.init(self: GoreServiceClient)
+	if self.janitor ~= nil then
+		return
+	end
 	self.networker = Networker.client.new("GoreService", self)
 	self.janitor = Janitor.new()
 	self.random = Random.new()
@@ -560,6 +563,7 @@ function GoreServiceClient.destroy(self: GoreServiceClient)
 	self.isDestroyed = true
 	if self.janitor ~= nil then
 		self.janitor:Destroy()
+		self.janitor = nil
 	end
 end
 

@@ -11,6 +11,7 @@ local WorldGeneration = require(ReplicatedStorage.Shared.Classes.WorldGeneration
 local WorldGenerationServiceUtils = require(ReplicatedStorage.Shared.Services.WorldGenerationService.WorldGenerationServiceUtils)
 local WorldSimulationServiceServer =
 	require(ServerScriptService.Services.WorldSimulationService.WorldSimulationServiceServer)
+local PlayerServiceServer = require(ServerScriptService.Services.PlayerService.PlayerServiceServer)
 
 type WorldGenerationClass = WorldGeneration.WorldGeneration
 type WorldGenerationConfig = WorldGenerationServiceUtils.WorldGenerationConfig
@@ -40,6 +41,33 @@ local CHUNK_STREAM_GLOBAL_BUDGET_PER_TICK = 12
 local CHUNK_STREAM_PER_PLAYER_BUDGET_PER_TICK = 3
 local CHUNK_STREAM_SIMULATION_BUDGET_PER_TICK = 24
 local CHUNK_STREAM_MAX_QUEUE_PER_PLAYER = 4096
+
+local function resolveConfigSource(): any
+	if typeof(Configs) ~= "table" then
+		return nil
+	end
+	return (Configs :: any).worldGeneration
+end
+
+local function cloneTableShallow(sourceRaw: any): { [any]: any }
+	local source = if typeof(sourceRaw) == "table" then sourceRaw else {}
+	local clone = {}
+	for key, value in source do
+		clone[key] = value
+	end
+	return clone
+end
+
+local function isGameplayReplicationActive(player: Player): boolean
+	local activeCheck = (PlayerServiceServer :: any).isGameplayActiveForPlayer
+	if typeof(activeCheck) ~= "function" then
+		return true
+	end
+	local ok, isActive = pcall(function()
+		return (PlayerServiceServer :: any):isGameplayActiveForPlayer(player)
+	end)
+	return ok and isActive == true
+end
 
 local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
@@ -132,7 +160,7 @@ end
 local WorldGenerationServiceServer = {}
 
 function WorldGenerationServiceServer.init(self: WorldGenerationServiceServer)
-	local configSource = if typeof(Configs) == "table" then (Configs :: any).worldGeneration else nil
+	local configSource = resolveConfigSource()
 	self.config = WorldGenerationServiceUtils.sanitizeConfig(configSource, nil)
 	self.config.seed = resolveRuntimeSeed(configSource, self.config)
 	self.world = WorldGeneration.new(self.config)
@@ -157,15 +185,14 @@ function WorldGenerationServiceServer.init(self: WorldGenerationServiceServer)
 		self:onHeartbeat(deltaTime)
 	end)
 
-	for _, player in Players:GetPlayers() do
-		self:trackPlayer(player)
-	end
 	if self.studioPreviewEnabled and self.worldBootstrapPlayerUserId == nil and next(self.playerRenderSettings) == nil then
 		self:enableStudioPreview()
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		self:trackPlayer(player)
+		if isGameplayReplicationActive(player) then
+			self:trackPlayer(player)
+		end
 	end)
 
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
@@ -174,6 +201,63 @@ function WorldGenerationServiceServer.init(self: WorldGenerationServiceServer)
 			self:enableStudioPreview()
 		end
 	end)
+end
+
+function WorldGenerationServiceServer.resetStreamingState(self: WorldGenerationServiceServer)
+	for player, stream in self.playerChunkStreams do
+		if self.networker ~= nil then
+			for chunkKey in stream.interestKeys do
+				self.networker:fire(player, "onChunkUnloaded", chunkKey)
+			end
+		end
+
+		table.clear(stream.interestKeys)
+		table.clear(stream.sentRevisions)
+		table.clear(stream.queuedLookup)
+		table.clear(stream.sendQueue)
+		stream.sendQueueHead = 1
+		stream.sendQueueTail = 0
+		self:pushPlayerInterestToWorldSimulation(player, {})
+	end
+
+	table.clear(self.worldSimulationSentRevisions)
+	table.clear(self.worldSimulationChunkQueue.sendQueue)
+	table.clear(self.worldSimulationChunkQueue.queuedLookup)
+	self.worldSimulationChunkQueue.sendQueueHead = 1
+	self.worldSimulationChunkQueue.sendQueueTail = 0
+end
+
+function WorldGenerationServiceServer.loadWorld(self: WorldGenerationServiceServer, worldRaw: any)
+	local worldSource = if typeof(worldRaw) == "table" then worldRaw else {}
+	local configSource = cloneTableShallow(resolveConfigSource())
+	for key, value in worldSource do
+		if key == "seed" or key == "worldOrigin" or key == "minTileY" or key == "maxTileY" or key == "bedrockThickness" then
+			configSource[key] = value
+		end
+	end
+
+	local nextConfig = WorldGenerationServiceUtils.sanitizeConfig(configSource, nil)
+	nextConfig.seed = resolveRuntimeSeed(configSource, nextConfig)
+
+	self:disableStudioPreview()
+	self:resetStreamingState()
+
+	if self.world ~= nil then
+		self.world:destroy()
+	end
+
+	self.config = nextConfig
+	self.world = WorldGeneration.new(self.config)
+	self.world:init()
+	self:pushSeedToWorldSimulation()
+
+	for _, player in Players:GetPlayers() do
+		self:trackPlayer(player)
+	end
+
+	if self.studioPreviewEnabled and self.worldBootstrapPlayerUserId == nil and next(self.playerRenderSettings) == nil then
+		self:enableStudioPreview()
+	end
 end
 
 function WorldGenerationServiceServer.buildStudioPreviewInterest(
@@ -603,6 +687,10 @@ function WorldGenerationServiceServer.untrackPlayer(self: WorldGenerationService
 end
 
 function WorldGenerationServiceServer.requestSync(self: WorldGenerationServiceServer, player: Player)
+	if self.playerRenderSettings[player] == nil then
+		self:trackPlayer(player)
+		return
+	end
 	self:resetChunkStream(player)
 	self:pushPlayerInterestToWorldSimulation(player, self.world:getPlayerInterestKeys(player))
 	self:pushState(player)

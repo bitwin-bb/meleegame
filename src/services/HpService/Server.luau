@@ -6,6 +6,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local HpServiceUtils = require(ReplicatedStorage.Shared.Services.HpService.HpServiceUtils)
+local PlayerServiceServer = require(ServerScriptService.Services.PlayerService.PlayerServiceServer)
 local PlayerDataServiceServer = require(ServerScriptService.Services.PlayerDataService.PlayerDataServiceServer)
 
 type HpServiceState = HpServiceUtils.HpServiceState
@@ -68,11 +69,15 @@ function HpServiceServer.init(self: HpServiceServer)
 	self.dataLoadRetryDelaySeconds = DEFAULT_DATA_LOAD_RETRY_DELAY_SECONDS
 
 	for _, player in Players:GetPlayers() do
-		self:trackPlayer(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		self:trackPlayer(player)
+		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+			self:trackPlayer(player)
+		end
 	end)
 
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
@@ -447,6 +452,10 @@ function HpServiceServer.getHumanoid(self: HpServiceServer, player: Player): Hum
 end
 
 function HpServiceServer.requestSync(self: HpServiceServer, player: Player)
+	if self.playerRuntimes[player] == nil then
+		self:trackPlayer(player)
+		return
+	end
 	local runtime = self:getRuntime(player)
 	if not runtime.hasResolvedPersistedLoad then
 		return
