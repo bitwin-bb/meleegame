@@ -1,6 +1,7 @@
 --!strict
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
 local TextChatService = game:GetService("TextChatService")
 local UserInputService = game:GetService("UserInputService")
@@ -10,10 +11,12 @@ local Networker = require(ReplicatedStorage.Packages.Networker)
 local React = require(ReplicatedStorage.Packages.React)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local DevPromptServiceUtils = require(ReplicatedStorage.Shared.Services.DevPromptService.DevPromptServiceUtils)
+local PlayerServiceUtils = require(ReplicatedStorage.Shared.Services.PlayerService.PlayerServiceUtils)
 local Role = require(ReplicatedStorage.Shared.Services.DevPromptService.Role)
 
 type ConsoleEntry = DevPromptServiceUtils.ConsoleEntry
 type DevPromptState = DevPromptServiceUtils.DevPromptState
+type CharacterRig = PlayerServiceUtils.CharacterRig
 type PlayerRoleSnapshot = Role.PlayerRoleSnapshot
 type RoleId = Role.RoleId
 
@@ -34,6 +37,18 @@ local DevPromptServiceClient = {}
 local DEFAULT_TOGGLE_KEYCODE = Enum.KeyCode.F2
 local CHAT_CORE_GUI_MAX_ATTEMPTS = 8
 local CHAT_CORE_GUI_RETRY_DELAY = 0.2
+local FLY_RENDERSTEP_NAME = "DevPromptService_Fly"
+local FLY_HORIZONTAL_NEGATIVE_KEYS = { Enum.KeyCode.A, Enum.KeyCode.Left }
+local FLY_HORIZONTAL_POSITIVE_KEYS = { Enum.KeyCode.D, Enum.KeyCode.Right }
+local FLY_ASCEND_KEYS = { Enum.KeyCode.W, Enum.KeyCode.Up, Enum.KeyCode.Space }
+local FLY_DESCEND_KEYS = {
+	Enum.KeyCode.S,
+	Enum.KeyCode.Down,
+	Enum.KeyCode.LeftShift,
+	Enum.KeyCode.RightShift,
+	Enum.KeyCode.LeftControl,
+	Enum.KeyCode.RightControl,
+}
 
 local function cloneState(stateRaw: any): DevPromptState
 	return DevPromptServiceUtils.cloneState(stateRaw)
@@ -63,6 +78,15 @@ local function setChatCoreGuiEnabled(enabledRaw: any)
 	end
 
 	apply()
+end
+
+local function isAnyKeyDown(keyCodes: { Enum.KeyCode }): boolean
+	for _, keyCode in keyCodes do
+		if UserInputService:IsKeyDown(keyCode) then
+			return true
+		end
+	end
+	return false
 end
 
 function DevPromptServiceClient.pushStateChanged(self: DevPromptServiceClient)
@@ -107,6 +131,179 @@ end
 
 function DevPromptServiceClient.requestSync(self: DevPromptServiceClient)
 	self.networker:fire(DevPromptServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
+end
+
+function DevPromptServiceClient.resolveFlyRig(self: DevPromptServiceClient): CharacterRig?
+	local character = self.localPlayer.Character
+	if character == nil then
+		return nil
+	end
+	return PlayerServiceUtils.resolveCharacterRig(character)
+end
+
+function DevPromptServiceClient.setCharacterFlyCollision(
+	self: DevPromptServiceClient,
+	characterRaw: Model?,
+	enabledRaw: any
+)
+	local enabled = enabledRaw == true
+	if not enabled then
+		for part, previousCanCollide in self.flyCollisionSnapshots do
+			if part.Parent ~= nil then
+				part.CanCollide = previousCanCollide
+			end
+		end
+		self.flyCollisionSnapshots = {}
+		self.flyCollisionCharacter = nil
+		return
+	end
+
+	local character = characterRaw
+	if character == nil then
+		return
+	end
+
+	if self.flyCollisionCharacter ~= nil and self.flyCollisionCharacter ~= character then
+		self:setCharacterFlyCollision(nil, false)
+	end
+
+	self.flyCollisionCharacter = character
+	for _, descendant in character:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			if self.flyCollisionSnapshots[descendant] == nil then
+				self.flyCollisionSnapshots[descendant] = descendant.CanCollide
+			end
+			descendant.CanCollide = false
+		end
+	end
+end
+
+function DevPromptServiceClient.setFlyEnabledLocally(
+	self: DevPromptServiceClient,
+	enabledRaw: any,
+	speedRaw: any?
+)
+	local nextEnabled = enabledRaw == true
+	local nextSpeed = DevPromptServiceUtils.DEFAULT_FLY_SPEED
+	if typeof(speedRaw) == "number" and speedRaw == speedRaw then
+		nextSpeed = math.clamp(
+			speedRaw,
+			DevPromptServiceUtils.MIN_FLY_SPEED,
+			DevPromptServiceUtils.MAX_FLY_SPEED
+		)
+	elseif typeof(self.flySpeed) == "number" and self.flySpeed == self.flySpeed then
+		nextSpeed = math.clamp(
+			self.flySpeed,
+			DevPromptServiceUtils.MIN_FLY_SPEED,
+			DevPromptServiceUtils.MAX_FLY_SPEED
+		)
+	end
+
+	self.flyEnabled = nextEnabled
+	self.flySpeed = nextSpeed
+
+	local rig = self:resolveFlyRig()
+	if nextEnabled then
+		if rig ~= nil then
+			self.flyLockedDepthX = rig.rootPart.Position.X
+			self.flyTargetPosition = Vector3.new(self.flyLockedDepthX, rig.rootPart.Position.Y, rig.rootPart.Position.Z)
+			self.flyFacingSign = PlayerServiceUtils.getFacingFromLookVector(rig.rootPart.CFrame.LookVector, self.flyFacingSign)
+			self:setCharacterFlyCollision(rig.character, true)
+			rig.humanoid.PlatformStand = true
+			if PlayerServiceUtils.isHumanoidAlive(rig.humanoid) then
+				rig.humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+			end
+		end
+		return
+	end
+
+	self.flyLockedDepthX = nil
+	self.flyTargetPosition = nil
+	self:setCharacterFlyCollision(nil, false)
+	if rig ~= nil then
+		rig.humanoid.PlatformStand = false
+		rig.rootPart.AssemblyLinearVelocity = Vector3.zero
+		rig.rootPart.AssemblyAngularVelocity = Vector3.zero
+		if PlayerServiceUtils.isHumanoidAlive(rig.humanoid) then
+			rig.humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+		end
+		PlayerServiceUtils.ensureRootPartUpright(
+			rig.rootPart,
+			self.flyFacingSign,
+			PlayerServiceUtils.DEFAULT_ROOT_UPRIGHT_TOLERANCE_DEGREES
+		)
+	end
+end
+
+function DevPromptServiceClient.applyFlyStateFromAttributes(self: DevPromptServiceClient)
+	local flyEnabled = self.localPlayer:GetAttribute(DevPromptServiceUtils.FLY_ATTRIBUTE) == true
+	local flySpeedAttribute = self.localPlayer:GetAttribute(DevPromptServiceUtils.FLY_SPEED_ATTRIBUTE)
+	self:setFlyEnabledLocally(flyEnabled, flySpeedAttribute)
+end
+
+function DevPromptServiceClient.stepFly(self: DevPromptServiceClient, deltaTime: number)
+	if not self.flyEnabled then
+		return
+	end
+
+	local rig = self:resolveFlyRig()
+	if rig == nil then
+		return
+	end
+	if not PlayerServiceUtils.isHumanoidAlive(rig.humanoid) then
+		return
+	end
+
+	if self.flyCollisionCharacter ~= rig.character then
+		self:setCharacterFlyCollision(rig.character, true)
+	end
+
+	if self.flyLockedDepthX == nil then
+		self.flyLockedDepthX = rig.rootPart.Position.X
+	end
+	if self.flyTargetPosition == nil then
+		self.flyTargetPosition = Vector3.new(self.flyLockedDepthX, rig.rootPart.Position.Y, rig.rootPart.Position.Z)
+	end
+
+	rig.humanoid.PlatformStand = true
+	rig.humanoid:Move(Vector3.zero, false)
+	if rig.humanoid:GetState() ~= Enum.HumanoidStateType.Physics then
+		rig.humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+	end
+
+	local horizontalAxis = 0
+	local verticalAxis = 0
+	if UserInputService:GetFocusedTextBox() == nil then
+		if isAnyKeyDown(FLY_HORIZONTAL_POSITIVE_KEYS) then
+			horizontalAxis += 1
+		end
+		if isAnyKeyDown(FLY_HORIZONTAL_NEGATIVE_KEYS) then
+			horizontalAxis -= 1
+		end
+		if isAnyKeyDown(FLY_ASCEND_KEYS) then
+			verticalAxis += 1
+		end
+		if isAnyKeyDown(FLY_DESCEND_KEYS) then
+			verticalAxis -= 1
+		end
+	end
+
+	if horizontalAxis ~= 0 then
+		self.flyFacingSign = PlayerServiceUtils.sanitizeFacingSign(horizontalAxis, self.flyFacingSign)
+	end
+
+	local moveVector = PlayerServiceUtils.getSidewaysMoveVector(horizontalAxis, 1) + Vector3.new(0, verticalAxis, 0)
+	if moveVector.Magnitude > 1 then
+		moveVector = moveVector.Unit
+	end
+
+	local nextPosition = (self.flyTargetPosition :: Vector3) + moveVector * self.flySpeed * deltaTime
+	nextPosition = Vector3.new(self.flyLockedDepthX :: number, nextPosition.Y, nextPosition.Z)
+	self.flyTargetPosition = nextPosition
+	local nextLookTarget = nextPosition + Vector3.new(0, 0, -self.flyFacingSign)
+	rig.character:PivotTo(CFrame.lookAt(nextPosition, nextLookTarget, Vector3.yAxis))
+	rig.rootPart.AssemblyLinearVelocity = Vector3.zero
+	rig.rootPart.AssemblyAngularVelocity = Vector3.zero
 end
 
 function DevPromptServiceClient.submitCommand(self: DevPromptServiceClient, commandTextRaw: any): boolean
@@ -251,6 +448,13 @@ function DevPromptServiceClient.init(self: DevPromptServiceClient)
 	self.localPlayer = Players.LocalPlayer
 	self.state = DevPromptServiceUtils.createDefaultState()
 	self.isStateReady = false
+	self.flyEnabled = false
+	self.flySpeed = DevPromptServiceUtils.DEFAULT_FLY_SPEED
+	self.flyLockedDepthX = nil
+	self.flyTargetPosition = nil
+	self.flyCollisionSnapshots = {}
+	self.flyCollisionCharacter = nil
+	self.flyFacingSign = PlayerServiceUtils.DEFAULT_FACING_SIGN
 	self.networker = Networker.client.new("DevPromptService", self)
 	self.janitor = Janitor.new()
 	self.stateChanged = Signal.new()
@@ -267,12 +471,36 @@ function DevPromptServiceClient.init(self: DevPromptServiceClient)
 	self:bindChatDecoration()
 	self:syncChatAvailability()
 
-	self.janitor:GiveChore(self.localPlayer.CharacterAdded:Connect(function()
+	RunService:BindToRenderStep(FLY_RENDERSTEP_NAME, Enum.RenderPriority.Input.Value + 25, function(deltaTime: number)
+		self:stepFly(deltaTime)
+	end)
+
+	self.janitor:GiveChore(self.localPlayer.CharacterAdded:Connect(function(character: Model)
 		task.defer(function()
 			self:syncChatAvailability()
+			if self.flyCollisionCharacter ~= nil and self.flyCollisionCharacter ~= character then
+				self:setCharacterFlyCollision(nil, false)
+			end
+			self.flyLockedDepthX = nil
+			self.flyTargetPosition = nil
+			self:applyFlyStateFromAttributes()
 		end)
 	end))
+	self.janitor:GiveChore(
+		self.localPlayer:GetAttributeChangedSignal(DevPromptServiceUtils.FLY_ATTRIBUTE):Connect(function()
+			self:applyFlyStateFromAttributes()
+		end)
+	)
+	self.janitor:GiveChore(
+		self.localPlayer:GetAttributeChangedSignal(DevPromptServiceUtils.FLY_SPEED_ATTRIBUTE):Connect(function()
+			self:applyFlyStateFromAttributes()
+		end)
+	)
 
+	self.janitor:GiveChore(function()
+		RunService:UnbindFromRenderStep(FLY_RENDERSTEP_NAME)
+		self:setFlyEnabledLocally(false)
+	end)
 	self.janitor:GiveChore(function()
 		self.networker:destroy()
 	end)
@@ -286,6 +514,7 @@ function DevPromptServiceClient.init(self: DevPromptServiceClient)
 		setChatCoreGuiEnabled(self.previousChatCoreGuiEnabled)
 	end)
 
+	self:applyFlyStateFromAttributes()
 	self:requestSync()
 end
 
@@ -308,7 +537,19 @@ type DevPromptServiceClient = typeof(DevPromptServiceClient) & {
 	stateChanged: SignalObject,
 	_incomingMessageCallback: ((message: TextChatMessage) -> TextChatMessageProperties?)?,
 	previousChatCoreGuiEnabled: boolean,
+	flyEnabled: boolean,
+	flySpeed: number,
+	flyLockedDepthX: number?,
+	flyTargetPosition: Vector3?,
+	flyCollisionSnapshots: { [BasePart]: boolean },
+	flyCollisionCharacter: Model?,
+	flyFacingSign: number,
 	canOpenConsole: (self: DevPromptServiceClient) -> boolean,
+	resolveFlyRig: (self: DevPromptServiceClient) -> CharacterRig?,
+	setCharacterFlyCollision: (self: DevPromptServiceClient, characterRaw: Model?, enabledRaw: any) -> (),
+	setFlyEnabledLocally: (self: DevPromptServiceClient, enabledRaw: any, speedRaw: any?) -> (),
+	applyFlyStateFromAttributes: (self: DevPromptServiceClient) -> (),
+	stepFly: (self: DevPromptServiceClient, deltaTime: number) -> (),
 }
 
 return DevPromptServiceClient :: DevPromptServiceClient

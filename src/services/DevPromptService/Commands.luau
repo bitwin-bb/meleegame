@@ -763,6 +763,90 @@ addCommand({
 	end,
 })
 
+addCommand({
+	name = "fly",
+	aliases = { "airwalk" },
+	description = "Enable flight for yourself or another player.",
+	usage = "fly [playerName] [speed]",
+	run = function(context: CommandContext)
+		local firstArg = context.args[1]
+		local secondArg = context.args[2]
+		local targetPlayer = context.player
+		local speed = nil :: number?
+
+		if firstArg ~= nil and firstArg ~= "" then
+			if parseWholeNumber(firstArg) ~= nil then
+				speed = parsePositiveWholeNumber(
+					firstArg,
+					DevPromptServiceUtils.DEFAULT_FLY_SPEED,
+					DevPromptServiceUtils.MIN_FLY_SPEED,
+					DevPromptServiceUtils.MAX_FLY_SPEED
+				)
+			else
+				local resolvedPlayer, errorMessage = context:resolvePlayer(firstArg, nil)
+				if resolvedPlayer == nil then
+					context.result.ok = false
+					context:reply("error", errorMessage or "Player not found.")
+					return
+				end
+				targetPlayer = resolvedPlayer
+				if secondArg ~= nil and secondArg ~= "" then
+					local parsedSpeed = parseWholeNumber(secondArg)
+					if parsedSpeed == nil then
+						context.result.ok = false
+						context:reply(
+							"error",
+							("Flight speed must be a whole number between %d and %d."):format(
+								DevPromptServiceUtils.MIN_FLY_SPEED,
+								DevPromptServiceUtils.MAX_FLY_SPEED
+							)
+						)
+						return
+					end
+					speed = math.clamp(
+						parsedSpeed,
+						DevPromptServiceUtils.MIN_FLY_SPEED,
+						DevPromptServiceUtils.MAX_FLY_SPEED
+					)
+				end
+			end
+		end
+
+		local nextEnabled, appliedSpeed = context.service:setFlyEnabled(targetPlayer, true, speed)
+		if not nextEnabled then
+			context.result.ok = false
+			context:reply("error", ("Failed to enable flight for %s."):format(targetPlayer.Name))
+			return
+		end
+
+		context:reply("success", ("Flight enabled for %s at speed %d."):format(targetPlayer.Name, appliedSpeed))
+	end,
+})
+
+addCommand({
+	name = "unfly",
+	aliases = { "land" },
+	description = "Disable flight for yourself or another player.",
+	usage = "unfly [playerName]",
+	run = function(context: CommandContext)
+		local targetPlayer, errorMessage = context:resolvePlayer(context.args[1], context.player)
+		if targetPlayer == nil then
+			context.result.ok = false
+			context:reply("error", errorMessage or "Player not found.")
+			return
+		end
+
+		local nextEnabled = context.service:setFlyEnabled(targetPlayer, false)
+		if nextEnabled then
+			context.result.ok = false
+			context:reply("error", ("Failed to disable flight for %s."):format(targetPlayer.Name))
+			return
+		end
+
+		context:reply("success", ("Flight disabled for %s."):format(targetPlayer.Name))
+	end,
+})
+
 sortDefinitions()
 
 function Commands.getDefinitions(): { CommandDefinition }

@@ -40,10 +40,15 @@ DevPromptServiceUtils.CLIENT_METHOD_RECEIVE_ENTRIES = "receiveEntries"
 DevPromptServiceUtils.ROLE_ATTRIBUTE = "DevPromptRoleId"
 DevPromptServiceUtils.CAN_USE_COMMANDS_ATTRIBUTE = "DevPromptCanUseCommands"
 DevPromptServiceUtils.GODMODE_ATTRIBUTE = "DevPromptGodmode"
+DevPromptServiceUtils.FLY_ATTRIBUTE = "DevPromptFlyEnabled"
+DevPromptServiceUtils.FLY_SPEED_ATTRIBUTE = "DevPromptFlySpeed"
 
 DevPromptServiceUtils.DEFAULT_COMMAND_PREFIX = ";"
 DevPromptServiceUtils.DEFAULT_MAX_ENTRIES = 120
 DevPromptServiceUtils.DEFAULT_TOGGLE_KEYCODE_NAME = "F2"
+DevPromptServiceUtils.DEFAULT_FLY_SPEED = 72
+DevPromptServiceUtils.MIN_FLY_SPEED = 16
+DevPromptServiceUtils.MAX_FLY_SPEED = 220
 
 local function trim(valueRaw: any): string
 	if typeof(valueRaw) ~= "string" then

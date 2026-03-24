@@ -13,6 +13,7 @@ local ItemRegistry = require(ReplicatedStorage.Shared.Modules.Items.Registry)
 local HpServiceServer = require(ServerScriptService.Services.HpService.HpServiceServer)
 local InventoryServiceServer = require(ServerScriptService.Services.InventoryService.InventoryServiceServer)
 local ManaServiceServer = require(ServerScriptService.Services.ManaService.ManaServiceServer)
+local PlayerServiceServer = require(ServerScriptService.Services.PlayerService.PlayerServiceServer)
 local BossServiceServer = require(ServerScriptService.Services.BossService.BossServiceServer)
 local NpcServiceServer = require(ServerScriptService.Services.NpcService.NpcServiceServer)
 local MagicServiceServer = require(ServerScriptService.Services.MagicService.MagicServiceServer)
@@ -46,6 +47,9 @@ local DEFAULT_ADMIN_MIN_GROUP_RANK = 254
 local DEFAULT_MODERATOR_MIN_GROUP_RANK = 200
 local DEV_COMMAND_MAX_HEALTH = 500
 local DEV_COMMAND_MAX_MANA = 200
+local DEV_COMMAND_DEFAULT_FLY_SPEED = DevPromptServiceUtils.DEFAULT_FLY_SPEED
+local DEV_COMMAND_MIN_FLY_SPEED = DevPromptServiceUtils.MIN_FLY_SPEED
+local DEV_COMMAND_MAX_FLY_SPEED = DevPromptServiceUtils.MAX_FLY_SPEED
 
 local GREEN_SLIME_VARIANTS = {
 	slime = true,
@@ -203,6 +207,12 @@ function DevPromptServiceServer.bindCharacter(self: DevPromptServiceServer, play
 			bindHumanoid(child)
 		end
 	end))
+
+	if self.flySpeeds[player.UserId] ~= nil and PlayerServiceServer ~= nil then
+		pcall(function()
+			PlayerServiceServer:setMovementLocked(player, false, true)
+		end)
+	end
 end
 
 function DevPromptServiceServer.refreshPlayerRole(self: DevPromptServiceServer, player: Player)
@@ -214,6 +224,10 @@ function DevPromptServiceServer.refreshPlayerRole(self: DevPromptServiceServer, 
 	player:SetAttribute(DevPromptServiceUtils.ROLE_ATTRIBUTE, snapshot.roleId)
 	player:SetAttribute(DevPromptServiceUtils.CAN_USE_COMMANDS_ATTRIBUTE, self:isOwnerPlayer(player))
 	player:SetAttribute(DevPromptServiceUtils.GODMODE_ATTRIBUTE, self.godmodeUsers[player.UserId] == true)
+	local flySpeed = self.flySpeeds[player.UserId]
+	local flyEnabled = flySpeed ~= nil
+	player:SetAttribute(DevPromptServiceUtils.FLY_ATTRIBUTE, flyEnabled)
+	player:SetAttribute(DevPromptServiceUtils.FLY_SPEED_ATTRIBUTE, if flyEnabled then flySpeed else nil)
 end
 
 function DevPromptServiceServer.refreshAllPlayerRoles(self: DevPromptServiceServer)
@@ -781,6 +795,42 @@ function DevPromptServiceServer.setGodmode(self: DevPromptServiceServer, player:
 	return nextEnabled
 end
 
+function DevPromptServiceServer.setFlyEnabled(
+	self: DevPromptServiceServer,
+	player: Player,
+	enabledRaw: any,
+	speedRaw: any?
+): (boolean, number)
+	local currentSpeed = self.flySpeeds[player.UserId]
+	local currentEnabled = currentSpeed ~= nil
+	local nextEnabled = if typeof(enabledRaw) == "boolean" then enabledRaw else not currentEnabled
+
+	local nextSpeed = DEV_COMMAND_DEFAULT_FLY_SPEED
+	if currentSpeed ~= nil then
+		nextSpeed = currentSpeed
+	end
+	if typeof(speedRaw) == "number" and speedRaw == speedRaw then
+		nextSpeed = math.clamp(speedRaw, DEV_COMMAND_MIN_FLY_SPEED, DEV_COMMAND_MAX_FLY_SPEED)
+	end
+
+	if nextEnabled then
+		self.flySpeeds[player.UserId] = nextSpeed
+		player:SetAttribute(DevPromptServiceUtils.FLY_ATTRIBUTE, true)
+		player:SetAttribute(DevPromptServiceUtils.FLY_SPEED_ATTRIBUTE, nextSpeed)
+		if PlayerServiceServer ~= nil then
+			pcall(function()
+				PlayerServiceServer:setMovementLocked(player, false, true)
+			end)
+		end
+	else
+		self.flySpeeds[player.UserId] = nil
+		player:SetAttribute(DevPromptServiceUtils.FLY_ATTRIBUTE, false)
+		player:SetAttribute(DevPromptServiceUtils.FLY_SPEED_ATTRIBUTE, nil)
+	end
+
+	return nextEnabled, nextSpeed
+end
+
 function DevPromptServiceServer.submitCommand(self: DevPromptServiceServer, player: Player, commandTextRaw: any)
 	local commandText = DevPromptServiceUtils.trim(commandTextRaw)
 	if commandText == "" then
@@ -825,6 +875,7 @@ function DevPromptServiceServer.init(self: DevPromptServiceServer)
 	self.playerRoles = {}
 	self.playerRuntimes = {}
 	self.godmodeUsers = {}
+	self.flySpeeds = {}
 	self.roleOverrides = Role.getDefaultRoleOverrides()
 	self.commandPrefix = DevPromptServiceUtils.DEFAULT_COMMAND_PREFIX
 	self.maxEntries = DevPromptServiceUtils.DEFAULT_MAX_ENTRIES
@@ -878,6 +929,7 @@ type DevPromptServiceServer = typeof(DevPromptServiceServer) & {
 	playerRoles: { [Player]: PlayerRoleSnapshot },
 	playerRuntimes: { [Player]: PlayerRuntime },
 	godmodeUsers: { [number]: boolean },
+	flySpeeds: { [number]: number },
 	roleOverrides: RoleOverrides,
 	commandPrefix: string,
 	maxEntries: number,

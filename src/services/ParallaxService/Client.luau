@@ -27,7 +27,7 @@ type JanitorClass = {
 
 type SegmentRuntime = {
 	part: Part,
-	decals: { Decal },
+	textures: { Texture },
 	lastWidth: number,
 	lastHeight: number,
 	assignedStripIndex: number?,
@@ -53,6 +53,8 @@ type BiomeRuntime = {
 
 local WORLD_FOLDER_NAME = "WorldGeneration"
 local ROOT_PARENT_FALLBACK_NAME = "ParallaxService"
+local SEGMENT_TEXTURE_OFFSET_STUDS_U = 0.3
+local SEGMENT_TEXTURE_OFFSET_STUDS_V = 0.3
 local ParallaxServiceClient = {}
 
 local function asFolder(instance: Instance?): Folder?
@@ -128,15 +130,17 @@ local function blendToLayerTransparency(baseTransparency: number, biomeAlpha: nu
 	return 1 - (1 - clampedBaseTransparency) * clampedBiomeAlpha
 end
 
-local function createDecal(part: Part, face: Enum.NormalId, definition: LayerDefinition): Decal
-	local decal = Instance.new("Decal")
-	decal.Name = face.Name
-	decal.Face = face
-	decal.Texture = definition.image
-	decal.Color3 = definition.tint
-	decal.Transparency = 1
-	decal.Parent = part
-	return decal
+local function createTexture(part: Part, face: Enum.NormalId, definition: LayerDefinition): Texture
+	local texture = Instance.new("Texture")
+	texture.Name = face.Name
+	texture.Face = face
+	texture.Texture = definition.image
+	texture.Color3 = definition.tint
+	texture.Transparency = 1
+	texture.OffsetStudsU = SEGMENT_TEXTURE_OFFSET_STUDS_U
+	texture.OffsetStudsV = SEGMENT_TEXTURE_OFFSET_STUDS_V
+	texture.Parent = part
+	return texture
 end
 
 function ParallaxServiceClient._initializeCoreState(self: ParallaxServiceClient)
@@ -244,21 +248,20 @@ function ParallaxServiceClient._refreshWorldAttributes(self: ParallaxServiceClie
 	self.basePlaneX = nextBasePlaneX
 end
 
-function ParallaxServiceClient._resolveReferenceDistanceToPlane(
+function ParallaxServiceClient._resolveGameplayPlaneReferenceDistance(
 	self: ParallaxServiceClient,
-	cameraPositionX: number,
-	planeX: number
+	cameraPositionX: number
 ): number
 	local gameplayPlaneX = self.worldOrigin.X + self.basePlaneX
 	local gameplayPlaneDistance = math.max(math.abs(cameraPositionX - gameplayPlaneX), 1)
-	
-    if self.referenceGameplayPlaneDistanceX == nil then
+
+	if self.referenceGameplayPlaneDistanceX == nil then
 		self.referenceGameplayPlaneDistanceX = gameplayPlaneDistance
 	else
 		self.referenceGameplayPlaneDistanceX = math.min(self.referenceGameplayPlaneDistanceX, gameplayPlaneDistance)
 	end
 
-	return self.referenceGameplayPlaneDistanceX + math.abs(gameplayPlaneX - planeX)
+	return self.referenceGameplayPlaneDistanceX
 end
 
 function ParallaxServiceClient._resolveDisplayedBiomeName(self: ParallaxServiceClient): string
@@ -311,14 +314,14 @@ function ParallaxServiceClient._createSegment(self: ParallaxServiceClient, layer
 	part.Size = Vector3.new(self.catalog.settings.segmentThickness, 1, 1)
 	part.Parent = layerRuntime.folder
 
-	local decals = {
-		createDecal(part, Enum.NormalId.Left, definition),
-		createDecal(part, Enum.NormalId.Right, definition),
+	local textures = {
+		createTexture(part, Enum.NormalId.Left, definition),
+		createTexture(part, Enum.NormalId.Right, definition),
 	}
 
 	return {
 		part = part,
-		decals = decals,
+		textures = textures,
 		lastWidth = 0,
 		lastHeight = 0,
 		assignedStripIndex = nil,
@@ -501,15 +504,17 @@ function ParallaxServiceClient._updateLayerRuntime(
 		else 2
 
 	local planeX = self.worldOrigin.X + self.basePlaneX - definition.planeDepthBlocks * tileDepth
-	local referencePlaneDistance = self:_resolveReferenceDistanceToPlane(cameraPosition.X, planeX)
-	local visibleWidth, visibleHeight = computeVisibleExtentsAtDistance(camera, referencePlaneDistance)
+	local gameplayReferenceDistance = self:_resolveGameplayPlaneReferenceDistance(cameraPosition.X)
+	local coverageReferenceDistance = gameplayReferenceDistance + math.abs((self.worldOrigin.X + self.basePlaneX) - planeX)
+	local visibleWidth, visibleHeight = computeVisibleExtentsAtDistance(camera, coverageReferenceDistance)
+	local sizeReferenceWidth, sizeReferenceHeight = computeVisibleExtentsAtDistance(camera, gameplayReferenceDistance)
 	local segmentWidth = alignSegmentWidthToTile(
-		math.max(visibleWidth * definition.segmentWidthScale, definition.textureStudsPerTileU),
+		math.max(sizeReferenceWidth * definition.segmentWidthScale, definition.textureStudsPerTileU),
 		definition.textureStudsPerTileU
 	)
 	local overscanSegments = math.max(definition.overscanSegments, 2)
 	local aspectRatio = math.max(definition.imageAspectRatio, 0.05)
-	local segmentHeight = math.max(segmentWidth / aspectRatio, visibleHeight * definition.heightScale)
+	local segmentHeight = math.max(segmentWidth / aspectRatio, sizeReferenceHeight * definition.heightScale)
 	local horizontalOverlap = computeHorizontalSegmentOverlap(segmentWidth)
 	local stripLeftEdgeZ = cameraPosition.Z * (1 - definition.depth) + now * definition.scrollSpeed
 	local visibleMinZ = cameraPosition.Z - visibleWidth * 0.5 - segmentWidth * overscanSegments
@@ -534,10 +539,14 @@ function ParallaxServiceClient._updateLayerRuntime(
 		segmentRuntime.part.Size =
 			Vector3.new(self.catalog.settings.segmentThickness, segmentHeight, segmentWidth + horizontalOverlap)
 		segmentRuntime.part.CFrame = CFrame.new(planeX, centerY, centerZ)
-		for _, decal in segmentRuntime.decals do
-			decal.Texture = definition.image
-			decal.Color3 = definition.tint
-			decal.Transparency = targetTextureTransparency
+		for _, texture in segmentRuntime.textures do
+			texture.Texture = definition.image
+			texture.Color3 = definition.tint
+			texture.Transparency = targetTextureTransparency
+			texture.StudsPerTileU = segmentWidth
+			texture.StudsPerTileV = segmentHeight
+			texture.OffsetStudsU = SEGMENT_TEXTURE_OFFSET_STUDS_U
+			texture.OffsetStudsV = SEGMENT_TEXTURE_OFFSET_STUDS_V
 		end
 		segmentRuntime.assignedStripIndex = stripIndex
 		segmentRuntime.lastWidth = segmentWidth
@@ -547,8 +556,8 @@ function ParallaxServiceClient._updateLayerRuntime(
 	for segmentIndex = segmentCount + 1, #layerRuntime.segments do
 		local segmentRuntime = layerRuntime.segments[segmentIndex]
 		segmentRuntime.part.CFrame = CFrame.new(planeX, -100000, 0)
-		for _, decal in segmentRuntime.decals do
-			decal.Transparency = 1
+		for _, texture in segmentRuntime.textures do
+			texture.Transparency = 1
 		end
 		segmentRuntime.assignedStripIndex = nil
 	end
