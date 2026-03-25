@@ -96,65 +96,50 @@ local IMPLICIT_BIOME_TINTS = {
 	underground = Color3.fromRGB(132, 144, 170),
 }
 
-local IMPLICIT_LAYER_VERTICAL_LIFT_FACTOR = 0.58
-
-local IMPLICIT_LAYER_PRESENTATION = {
-	default = {
-		imageAspectRatio = 3.1,
-		planeDepthBase = 10,
-		planeDepthStep = 12,
-		heightScaleBase = 1,
-		heightScaleStep = 0.04,
-		segmentWidthScaleBase = 1.18,
-		segmentWidthScaleStep = 0.3,
-		minSegments = 2,
-		overscanSegments = 3,
-		transparencyBase = 0.04,
-		transparencyStep = 0.1,
-		verticalOffsetBase = 16,
-		verticalOffsetStep = 14,
-		verticalDepthBase = 0.008,
-		verticalDepthStep = 0.014,
-		textureStudsPerTileU = 112,
-		textureStudsPerTileV = 96,
+local IMPLICIT_LAYER_FALLBACK_IMAGE_ASPECT_RATIO = 3.3
+local IMPLICIT_LAYER_BASE_TEXTURE_TILE_STUDS = 96
+local IMPLICIT_LAYER_DEPTH_BASE = 0.32
+local IMPLICIT_LAYER_DEPTH_STEP = 0.08
+local IMPLICIT_LAYER_PLANE_DEPTH_BASE = 10
+local IMPLICIT_LAYER_PLANE_DEPTH_STEP = 7
+local IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_BASE = 0.54
+local IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_STEP = 0.09
+local IMPLICIT_LAYER_TRANSPARENCY_BASE = 0.04
+local IMPLICIT_LAYER_TRANSPARENCY_STEP = 0.025
+local IMPLICIT_LAYER_VERTICAL_OFFSET_BASE = -18
+local IMPLICIT_LAYER_VERTICAL_OFFSET_STEP = 10
+local IMPLICIT_LAYER_VERTICAL_DEPTH_BASE = 0.008
+local IMPLICIT_LAYER_VERTICAL_DEPTH_STEP = 0.004
+local IMPLICIT_PARALLAX_SOURCE_DIMENSIONS = {
+	overworld = {
+		[1] = { width = 1024, height = 533 },
+		[2] = { width = 1024, height = 600 },
+		[3] = { width = 1024, height = 660 },
+		[4] = { width = 1024, height = 699 },
+	},
+	corruption = {
+		[1] = { width = 1024, height = 533 },
+		[2] = { width = 1024, height = 533 },
+		[3] = { width = 1024, height = 533 },
+		[4] = { width = 1024, height = 371 },
+	},
+	jungle = {
+		[1] = { width = 1024, height = 768 },
+		[2] = { width = 1024, height = 533 },
+		[3] = { width = 1024, height = 540 },
+		[4] = { width = 1024, height = 533 },
 	},
 	desert = {
-		imageAspectRatio = 3.9,
-		planeDepthBase = 14,
-		planeDepthStep = 18,
-		heightScaleBase = 1,
-		heightScaleStep = 0.04,
-		segmentWidthScaleBase = 1.08,
-		segmentWidthScaleStep = 0.24,
-		minSegments = 3,
-		overscanSegments = 4,
-		transparencyBase = 0.07,
-		transparencyStep = 0.11,
-		verticalOffsetBase = 6,
-		verticalOffsetStep = 6,
-		verticalDepthBase = 0.01,
-		verticalDepthStep = 0.012,
-		textureStudsPerTileU = 120,
-		textureStudsPerTileV = 96,
+		[1] = { width = 1024, height = 400 },
+		[2] = { width = 1024, height = 500 },
+		[3] = { width = 1024, height = 434 },
+		[4] = { width = 1024, height = 434 },
 	},
 	snow = {
-		imageAspectRatio = 3.45,
-		planeDepthBase = 12,
-		planeDepthStep = 16,
-		heightScaleBase = 1.06,
-		heightScaleStep = 0.05,
-		segmentWidthScaleBase = 1.12,
-		segmentWidthScaleStep = 0.26,
-		minSegments = 3,
-		overscanSegments = 4,
-		transparencyBase = 0.05,
-		transparencyStep = 0.09,
-		verticalOffsetBase = 4,
-		verticalOffsetStep = 8,
-		verticalDepthBase = 0.009,
-		verticalDepthStep = 0.013,
-		textureStudsPerTileU = 116,
-		textureStudsPerTileV = 96,
+		[1] = { width = 1024, height = 529 },
+		[2] = { width = 1024, height = 529 },
+		[3] = { width = 1024, height = 600 },
+		[4] = { width = 1024, height = 600 },
 	},
 }
 
@@ -232,37 +217,54 @@ local function resolveImplicitBiomeTint(biomeName: string, farAlpha: number): Co
 	return lerpColor3(Color3.new(1, 1, 1), baseTint, 0.14 + farAlpha * 0.16)
 end
 
-local function resolveImplicitLayerPresentation(biomeName: string): { [string]: number }
+local function resolveImplicitSourceImageAspectRatio(biomeName: string, layerIndex: number): number?
 	local normalizedBiomeName = normalizeToken(biomeName)
-	local specific = IMPLICIT_LAYER_PRESENTATION[normalizedBiomeName]
-	if specific ~= nil then
-		return specific
+	if normalizedBiomeName == "forest" then
+		normalizedBiomeName = "overworld"
 	end
-	return IMPLICIT_LAYER_PRESENTATION.default
+
+	local biomeDimensions = IMPLICIT_PARALLAX_SOURCE_DIMENSIONS[normalizedBiomeName]
+	if biomeDimensions == nil then
+		return nil
+	end
+
+	local imageDimensions = biomeDimensions[layerIndex]
+	if imageDimensions == nil or imageDimensions.width <= 0 or imageDimensions.height <= 0 then
+		return nil
+	end
+
+	return imageDimensions.width / imageDimensions.height
 end
 
-local function resolveImplicitLayerImageAspectRatio(
+local function resolveImplicitLayerDefaults(
 	biomeName: string,
 	layerIndex: number,
-	baseAspectRatio: number
-): number
-	local normalizedBiomeName = normalizeToken(biomeName)
-	if (normalizedBiomeName == "overworld" or normalizedBiomeName == "forest") and layerIndex == 1 then
-		return baseAspectRatio * 1.08
-	end
-	return baseAspectRatio
-end
+	totalLayers: number
+): { [string]: any }
+	local total = math.max(totalLayers, 1)
+	local stackIndex = math.max(layerIndex - 1, 0)
+	local farAlpha = if total <= 1 then 0 else (layerIndex - 1) / (total - 1)
+	local imageAspectRatio = resolveImplicitSourceImageAspectRatio(biomeName, layerIndex)
+		or IMPLICIT_LAYER_FALLBACK_IMAGE_ASPECT_RATIO
 
-local function resolveImplicitLayerHeightScale(
-	biomeName: string,
-	layerIndex: number,
-	heightScale: number
-): number
-	local normalizedBiomeName = normalizeToken(biomeName)
-	if (normalizedBiomeName == "overworld" or normalizedBiomeName == "forest") and layerIndex == 1 then
-		return math.max(0.05, heightScale * 0.95)
-	end
-	return heightScale
+	return {
+		imageAspectRatio = imageAspectRatio,
+		depth = math.clamp(IMPLICIT_LAYER_DEPTH_BASE - stackIndex * IMPLICIT_LAYER_DEPTH_STEP, 0.05, 0.98),
+		planeDepthBlocks = IMPLICIT_LAYER_PLANE_DEPTH_BASE + stackIndex * IMPLICIT_LAYER_PLANE_DEPTH_STEP,
+		heightScale = 1,
+		segmentWidthScale = IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_BASE
+			+ stackIndex * IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_STEP,
+		minSegments = 2,
+		overscanSegments = 4,
+		tint = resolveImplicitBiomeTint(biomeName, farAlpha),
+		transparency = IMPLICIT_LAYER_TRANSPARENCY_BASE + stackIndex * IMPLICIT_LAYER_TRANSPARENCY_STEP,
+		scrollSpeed = 0,
+		textureStudsPerTileU = IMPLICIT_LAYER_BASE_TEXTURE_TILE_STUDS,
+		textureStudsPerTileV = IMPLICIT_LAYER_BASE_TEXTURE_TILE_STUDS,
+		verticalAlign = "Center",
+		verticalOffsetStuds = IMPLICIT_LAYER_VERTICAL_OFFSET_BASE + stackIndex * IMPLICIT_LAYER_VERTICAL_OFFSET_STEP,
+		verticalDepth = IMPLICIT_LAYER_VERTICAL_DEPTH_BASE + stackIndex * IMPLICIT_LAYER_VERTICAL_DEPTH_STEP,
+	}
 end
 
 local function sanitizeVerticalAlign(valueRaw: any, fallback: VerticalAlign): VerticalAlign
@@ -310,41 +312,25 @@ local function createImplicitLayerSource(
 	totalLayers: number,
 	image: string
 ): { [string]: any }
-	local total = math.max(totalLayers, 1)
-	local farAlpha = if total <= 1 then 0 else (layerIndex - 1) / (total - 1)
-	local closeAlpha = 1 - farAlpha
-	local presentation = resolveImplicitLayerPresentation(biomeName)
-	local defaultVerticalOffsetStuds =
-		-(presentation.verticalOffsetBase + closeAlpha * presentation.verticalOffsetStep)
-		* IMPLICIT_LAYER_VERTICAL_LIFT_FACTOR
-	local resolvedImageAspectRatio = resolveImplicitLayerImageAspectRatio(
-		biomeName,
-		layerIndex,
-		presentation.imageAspectRatio
-	)
-	local resolvedHeightScale = resolveImplicitLayerHeightScale(
-		biomeName,
-		layerIndex,
-		presentation.heightScaleBase + farAlpha * presentation.heightScaleStep
-	)
+	local defaults = resolveImplicitLayerDefaults(biomeName, layerIndex, totalLayers)
 	return {
 		id = `{biomeName}_{variantName}_Layer_{layerIndex}`,
 		image = image,
-		imageAspectRatio = resolvedImageAspectRatio,
-		depth = 0.08 + closeAlpha * 0.24,
-		planeDepthBlocks = presentation.planeDepthBase + farAlpha * presentation.planeDepthStep,
-		heightScale = resolvedHeightScale,
-		segmentWidthScale = presentation.segmentWidthScaleBase + farAlpha * presentation.segmentWidthScaleStep,
-		minSegments = presentation.minSegments,
-		overscanSegments = presentation.overscanSegments,
-		tint = resolveImplicitBiomeTint(biomeName, farAlpha),
-		transparency = presentation.transparencyBase + farAlpha * presentation.transparencyStep,
-		scrollSpeed = 0,
-		textureStudsPerTileU = presentation.textureStudsPerTileU,
-		textureStudsPerTileV = presentation.textureStudsPerTileV,
-		verticalAlign = "Bottom",
-		verticalOffsetStuds = defaultVerticalOffsetStuds,
-		verticalDepth = presentation.verticalDepthBase + farAlpha * presentation.verticalDepthStep,
+		imageAspectRatio = defaults.imageAspectRatio,
+		depth = defaults.depth,
+		planeDepthBlocks = defaults.planeDepthBlocks,
+		heightScale = defaults.heightScale,
+		segmentWidthScale = defaults.segmentWidthScale,
+		minSegments = defaults.minSegments,
+		overscanSegments = defaults.overscanSegments,
+		tint = defaults.tint,
+		transparency = defaults.transparency,
+		scrollSpeed = defaults.scrollSpeed,
+		textureStudsPerTileU = defaults.textureStudsPerTileU,
+		textureStudsPerTileV = defaults.textureStudsPerTileV,
+		verticalAlign = defaults.verticalAlign,
+		verticalOffsetStuds = defaults.verticalOffsetStuds,
+		verticalDepth = defaults.verticalDepth,
 	}
 end
 
@@ -378,69 +364,25 @@ local function sanitizeLayerDefinition(
 		return nil
 	end
 
-	local total = math.max(totalLayers, 1)
-	local farAlpha = if total <= 1 then 0 else (layerIndex - 1) / (total - 1)
-	local closeAlpha = 1 - farAlpha
-	local presentation = resolveImplicitLayerPresentation(biomeName)
-	local fallbackDepth = 0.08 + closeAlpha * 0.24
-	local fallbackVerticalOffsetStuds =
-		-(presentation.verticalOffsetBase + closeAlpha * presentation.verticalOffsetStep)
-		* IMPLICIT_LAYER_VERTICAL_LIFT_FACTOR
-	local fallbackBiomeTint = resolveImplicitBiomeTint(biomeName, farAlpha)
-	local fallbackImageAspectRatio = presentation.imageAspectRatio
+	local defaults = resolveImplicitLayerDefaults(biomeName, layerIndex, totalLayers)
 	return {
 		id = trim(source.id) ~= "" and trim(source.id) or fallbackId,
 		image = image,
-		imageAspectRatio = resolveImageAspectRatio(source, fallbackImageAspectRatio),
-		depth = sanitizeNumber(source.depth, fallbackDepth, 0, 0.98),
-		planeDepthBlocks = sanitizeNumber(
-			source.planeDepthBlocks,
-			presentation.planeDepthBase + farAlpha * presentation.planeDepthStep,
-			1,
-			256
-		),
-		heightScale = sanitizeNumber(
-			source.heightScale,
-			presentation.heightScaleBase + farAlpha * presentation.heightScaleStep,
-			0.05,
-			4
-		),
-		segmentWidthScale = sanitizeNumber(
-			source.segmentWidthScale,
-			presentation.segmentWidthScaleBase + farAlpha * presentation.segmentWidthScaleStep,
-			0.25,
-			8
-		),
-		minSegments = sanitizeInteger(source.minSegments, presentation.minSegments, 1, 32),
-		overscanSegments = sanitizeInteger(source.overscanSegments, presentation.overscanSegments, 0, 16),
-		tint = sanitizeColor3(source.tint, fallbackBiomeTint),
-		transparency = sanitizeNumber(
-			source.transparency,
-			presentation.transparencyBase + farAlpha * presentation.transparencyStep,
-			0,
-			1
-		),
-		scrollSpeed = sanitizeNumber(source.scrollSpeed, 0, -256, 256),
-		textureStudsPerTileU = sanitizeNumber(
-			source.textureStudsPerTileU,
-			presentation.textureStudsPerTileU,
-			1,
-			4096
-		),
-		textureStudsPerTileV = sanitizeNumber(
-			source.textureStudsPerTileV,
-			presentation.textureStudsPerTileV,
-			1,
-			4096
-		),
-		verticalAlign = sanitizeVerticalAlign(source.verticalAlign, "Bottom"),
-		verticalOffsetStuds = sanitizeNumber(source.verticalOffsetStuds, fallbackVerticalOffsetStuds, -4096, 4096),
-		verticalDepth = sanitizeNumber(
-			source.verticalDepth,
-			presentation.verticalDepthBase + farAlpha * presentation.verticalDepthStep,
-			0,
-			1
-		),
+		imageAspectRatio = resolveImageAspectRatio(source, defaults.imageAspectRatio),
+		depth = sanitizeNumber(source.depth, defaults.depth, 0, 0.98),
+		planeDepthBlocks = sanitizeNumber(source.planeDepthBlocks, defaults.planeDepthBlocks, 1, 256),
+		heightScale = sanitizeNumber(source.heightScale, defaults.heightScale, 0.05, 4),
+		segmentWidthScale = sanitizeNumber(source.segmentWidthScale, defaults.segmentWidthScale, 0.25, 8),
+		minSegments = sanitizeInteger(source.minSegments, defaults.minSegments, 1, 32),
+		overscanSegments = sanitizeInteger(source.overscanSegments, defaults.overscanSegments, 0, 16),
+		tint = sanitizeColor3(source.tint, defaults.tint),
+		transparency = sanitizeNumber(source.transparency, defaults.transparency, 0, 1),
+		scrollSpeed = sanitizeNumber(source.scrollSpeed, defaults.scrollSpeed, -256, 256),
+		textureStudsPerTileU = sanitizeNumber(source.textureStudsPerTileU, defaults.textureStudsPerTileU, 1, 4096),
+		textureStudsPerTileV = sanitizeNumber(source.textureStudsPerTileV, defaults.textureStudsPerTileV, 1, 4096),
+		verticalAlign = sanitizeVerticalAlign(source.verticalAlign, defaults.verticalAlign),
+		verticalOffsetStuds = sanitizeNumber(source.verticalOffsetStuds, defaults.verticalOffsetStuds, -4096, 4096),
+		verticalDepth = sanitizeNumber(source.verticalDepth, defaults.verticalDepth, 0, 1),
 	}
 end
 

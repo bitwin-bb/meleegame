@@ -55,6 +55,7 @@ local WORLD_FOLDER_NAME = "WorldGeneration"
 local ROOT_PARENT_FALLBACK_NAME = "ParallaxService"
 local SEGMENT_TEXTURE_OFFSET_STUDS_U = 0.3
 local SEGMENT_TEXTURE_OFFSET_STUDS_V = 0.3
+local MIN_SEGMENT_HEIGHT_VIEWPORT_COVERAGE = 0.72
 local ParallaxServiceClient = {}
 
 local function asFolder(instance: Instance?): Folder?
@@ -98,11 +99,6 @@ local function computeVisibleExtentsAtDistance(camera: Camera, distance: number)
 	local visibleHeight = 2 * resolvedDistance * math.tan(math.rad(camera.FieldOfView) * 0.5)
 	local visibleWidth = visibleHeight * aspectRatio
 	return visibleWidth, visibleHeight
-end
-
-local function alignSegmentWidthToTile(rawWidth: number, tileWidth: number): number
-	local safeTileWidth = math.max(tileWidth, 1)
-	return math.max(safeTileWidth, math.ceil(rawWidth / safeTileWidth) * safeTileWidth)
 end
 
 local function computeHorizontalSegmentOverlap(segmentSize: number): number
@@ -508,14 +504,17 @@ function ParallaxServiceClient._updateLayerRuntime(
 	local coverageReferenceDistance = gameplayReferenceDistance + math.abs((self.worldOrigin.X + self.basePlaneX) - planeX)
 	local visibleWidth, visibleHeight = computeVisibleExtentsAtDistance(camera, coverageReferenceDistance)
 	local sizeReferenceWidth, sizeReferenceHeight = computeVisibleExtentsAtDistance(camera, gameplayReferenceDistance)
-	local segmentWidth = alignSegmentWidthToTile(
-		math.max(sizeReferenceWidth * definition.segmentWidthScale, definition.textureStudsPerTileU),
-		definition.textureStudsPerTileU
-	)
+	local minimumSegmentWidth = math.max(definition.textureStudsPerTileU * 0.25, 12)
 	local overscanSegments = math.max(definition.overscanSegments, 2)
 	local aspectRatio = math.max(definition.imageAspectRatio, 0.05)
-	local naturalSegmentHeight = math.max(definition.textureStudsPerTileV, segmentWidth / aspectRatio)
-	local segmentHeight = naturalSegmentHeight * math.max(definition.heightScale, 0.05)
+	local minimumSegmentWidthForHeightCoverage =
+		math.max(sizeReferenceHeight * MIN_SEGMENT_HEIGHT_VIEWPORT_COVERAGE * aspectRatio, minimumSegmentWidth)
+	local segmentWidth = math.max(
+		sizeReferenceWidth * definition.segmentWidthScale,
+		minimumSegmentWidthForHeightCoverage
+	)
+	local naturalSegmentHeight = math.max(1, segmentWidth / aspectRatio)
+	local segmentHeight = math.max(1, naturalSegmentHeight * math.max(definition.heightScale, 0.05))
 	local horizontalOverlap = computeHorizontalSegmentOverlap(segmentWidth)
 	local stripLeftEdgeZ = cameraPosition.Z * (1 - definition.depth) + now * definition.scrollSpeed
 	local visibleMinZ = cameraPosition.Z - visibleWidth * 0.5 - segmentWidth * overscanSegments
