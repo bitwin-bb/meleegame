@@ -574,8 +574,6 @@ function WindFoliage.shouldRegisterFoliage(self: any, instance: Instance): boole
 	if not canBeFoliageRoot(instance) then
 		return false
 	end
-	-- Ignore off-workspace foliage so chunk-build staging models and animator clones
-	-- do not capture rest transforms before their final visible placement.
 	if not isInWorkspace(instance) then
 		return false
 	end

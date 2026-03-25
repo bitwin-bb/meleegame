@@ -1,8 +1,5 @@
 --!strict
 
--- Runtime
--- Shared helper wiring for EventBus/TickScheduler and platform abstractions.
-
 local RunService = game:GetService("RunService")
 
 local EventBus = require(script.Parent.EventBus)
