@@ -6910,6 +6910,13 @@
                           ]
                         }
                       ]
+                    },
+                    {
+                      "name": "Cactus",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/classes/WorldGeneration/Cactus.luau"
+                      ]
                     }
                   ]
                 }
@@ -7128,6 +7135,20 @@
                       "className": "ModuleScript",
                       "filePaths": [
                         "src/modules/Items/WorldGenerationColor.luau"
+                      ]
+                    },
+                    {
+                      "name": "WorldGenerationDesert",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/modules/Items/WorldGenerationDesert.luau"
+                      ]
+                    },
+                    {
+                      "name": "WorldGenerationSnow",
+                      "className": "ModuleScript",
+                      "filePaths": [
+                        "src/modules/Items/WorldGenerationSnow.luau"
                       ]
                     },
                     {

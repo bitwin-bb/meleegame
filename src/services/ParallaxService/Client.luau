@@ -514,7 +514,8 @@ function ParallaxServiceClient._updateLayerRuntime(
 	)
 	local overscanSegments = math.max(definition.overscanSegments, 2)
 	local aspectRatio = math.max(definition.imageAspectRatio, 0.05)
-	local segmentHeight = math.max(segmentWidth / aspectRatio, sizeReferenceHeight * definition.heightScale)
+	local naturalSegmentHeight = math.max(definition.textureStudsPerTileV, segmentWidth / aspectRatio)
+	local segmentHeight = naturalSegmentHeight * math.max(definition.heightScale, 0.05)
 	local horizontalOverlap = computeHorizontalSegmentOverlap(segmentWidth)
 	local stripLeftEdgeZ = cameraPosition.Z * (1 - definition.depth) + now * definition.scrollSpeed
 	local visibleMinZ = cameraPosition.Z - visibleWidth * 0.5 - segmentWidth * overscanSegments

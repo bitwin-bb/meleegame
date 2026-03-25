@@ -13,11 +13,14 @@ local ProceduralTree = require(script.Tree)
 local Cache = require(script.Utils.Cache)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
 local WorldGenerationColor = require(ReplicatedStorage.Shared.Modules.Items.WorldGenerationColor)
+local WorldGenerationDesert = require(ReplicatedStorage.Shared.Modules.Items.WorldGenerationDesert)
+local WorldGenerationSnow = require(ReplicatedStorage.Shared.Modules.Items.WorldGenerationSnow)
 
 type BiomeClass = Biome.Biome
 type CaveClass = Cave.Cave
 type LiquidGenerationClass = Liquid.LiquidGeneration
 type StructuresClass = Structures.Structures
+type StructureGenerationResult = Structures.StructureGenerationResult
 type CacheClass = Cache.Cache
 type ColumnProfile = Biome.ColumnProfile
 type ProceduralTreeConfig = ProceduralTree.ProceduralTreeConfig
@@ -61,6 +64,7 @@ type PropSpawnData = {
 	variantIndex: number,
 	seed: number,
 	biomeType: number,
+	biomeId: number,
 }
 
 type ChunkData = {
@@ -233,6 +237,8 @@ export type WorldGenerationConfig = {
 	maxCachedChunkVisuals: number?,
 	maxPoolSize: number?,
 	parent: Instance?,
+	desertConfig: any?,
+	snowConfig: any?,
 }
 
 local WorldGeneration = {}
@@ -297,6 +303,11 @@ local BIOME_TYPE: BiomeTypeMap = {
 
 local PROP_ID = {
 	CORRUPTION_SPIKE = 1,
+	DESERT_CACTUS = 2,
+	DEAD_BUSH = 3,
+	DESERT_ROCK = 4,
+	SNOW_PILE = 5,
+	ICE_SPIKE = 6,
 }
 
 local DEPTH_LAYER_CODE = {
@@ -327,6 +338,16 @@ local TREE_PALETTE_JUNGLE_2 = WorldGenerationColor.TREE_PALETTES.Jungle2
 	or {
 		BranchColor = Color3.fromRGB(82, 60, 39),
 		LeafColor = Color3.fromRGB(74, 192, 96),
+	}
+local TREE_PALETTE_SNOW_1 = WorldGenerationColor.TREE_PALETTES.Snow1
+	or {
+		BranchColor = Color3.fromRGB(89, 75, 70),
+		LeafColor = Color3.fromRGB(220, 238, 244),
+	}
+local TREE_PALETTE_SNOW_2 = WorldGenerationColor.TREE_PALETTES.Snow2
+	or {
+		BranchColor = Color3.fromRGB(74, 68, 81),
+		LeafColor = Color3.fromRGB(197, 226, 239),
 	}
 
 local DEFAULT_SEED = 93847583
@@ -403,6 +424,8 @@ local CORRUPTION_CHASM_BRANCH_MIN_DEPTH = 8
 local CORRUPTION_CHASM_BRANCH_MIN_RADIUS = 0.85
 local CORRUPTION_CHASM_SMOOTHING_PASSES = 2
 local CORRUPTION_CHASM_MIN_SOLID_NEIGHBORS = 4
+local DESERT_DEBUG_SCAN_MAX_DISTANCE_TILES = 4096
+local DESERT_DEBUG_SCAN_STEP_TILES = 8
 local BIOME_BLEND_CLUSTER_SIZE_TILES = 2
 local BIOME_BLEND_NEAR_SURFACE_DEPTH = 10
 local BIOME_BLEND_TRANSITION_WIDTH_TILES = 8
@@ -416,6 +439,13 @@ local BIOME_BLEND_NOISE_OFFSET_Y = 4021.57
 local BIOME_BLEND_NOISE_OFFSET_Z = 4391.63
 local BIOME_BLEND_TIE_BREAK_SALT = 7919
 local BIOME_BLEND_CLUSTER_ROLL_SALT = 104729
+local DESERT_CACTUS_SLOT_NOISE_FREQUENCY = 0.511
+local DESERT_CLUTTER_SLOT_NOISE_FREQUENCY = 0.427
+local DESERT_ROCK_SLOT_NOISE_FREQUENCY = 0.389
+local DESERT_PROP_VARIANT_NOISE_FREQUENCY_X = 0.293
+local DESERT_PROP_VARIANT_NOISE_FREQUENCY_Y = 0.187
+local SNOW_PILE_SLOT_NOISE_FREQUENCY = 0.463
+local ICE_SPIKE_SLOT_NOISE_FREQUENCY = 0.347
 
 WorldGeneration.TILE_ID = TILE_ID
 WorldGeneration.WALL_ID = WALL_ID
@@ -867,6 +897,60 @@ local function createProceduralTreeVariantConfigs(): { TreeVariantConfig }
 				ModelName = "ProceduralTree_Jungle2",
 			},
 		},
+		{
+			biomeType = BIOME_TYPE.NORMAL,
+			biomeId = BIOME_ID.SNOW,
+			config = {
+				Algorithm = "Recursive",
+				MaxDepth = 5,
+				BranchAngleRange = NumberRange.new(14, 28),
+				LengthScale = 0.72,
+				ThicknessScale = 0.74,
+				BranchChance = 0.44,
+				InitialLength = 13.8,
+				InitialThickness = 1.58,
+				TrunkWobbleAngle = 3,
+				UpwardBias = 0.81,
+				LeafSizeMin = Vector3.new(2.2, 2.8, 2.2),
+				LeafSizeMax = Vector3.new(3.6, 5, 3.6),
+				LeavesPerTerminalMin = 1,
+				LeavesPerTerminalMax = 2,
+				MaxBranchParts = 72,
+				MaxLeafParts = 44,
+				BranchColor = TREE_PALETTE_SNOW_1.BranchColor,
+				LeafColor = TREE_PALETTE_SNOW_1.LeafColor,
+				UseWelds = true,
+				BranchCanCollide = false,
+				ModelName = "ProceduralTree_Snow1",
+			},
+		},
+		{
+			biomeType = BIOME_TYPE.NORMAL,
+			biomeId = BIOME_ID.SNOW,
+			config = {
+				Algorithm = "LSystemStyle",
+				MaxDepth = 6,
+				BranchAngleRange = NumberRange.new(10, 22),
+				LengthScale = 0.7,
+				ThicknessScale = 0.72,
+				BranchChance = 0.38,
+				InitialLength = 14.6,
+				InitialThickness = 1.66,
+				TrunkWobbleAngle = 2,
+				UpwardBias = 0.88,
+				LeafSizeMin = Vector3.new(2.1, 3, 2.1),
+				LeafSizeMax = Vector3.new(3.2, 5.8, 3.2),
+				LeavesPerTerminalMin = 1,
+				LeavesPerTerminalMax = 2,
+				MaxBranchParts = 82,
+				MaxLeafParts = 52,
+				BranchColor = TREE_PALETTE_SNOW_2.BranchColor,
+				LeafColor = TREE_PALETTE_SNOW_2.LeafColor,
+				UseWelds = true,
+				BranchCanCollide = false,
+				ModelName = "ProceduralTree_Snow2",
+			},
+		},
 	}
 end
 
@@ -976,20 +1060,6 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 	if typeof(chunkDataRaw.props) ~= "table" then
 		chunkDataRaw.props = {}
 	end
-	local propsRaw = chunkDataRaw.props
-	if typeof(propsRaw) == "table" then
-		local filteredProps = table.create(#propsRaw)
-		for _, propData in propsRaw do
-			if typeof(propData) ~= "table" then
-				continue
-			end
-			if (propData :: any).propId == self.propId.CORRUPTION_SPIKE then
-				continue
-			end
-			filteredProps[#filteredProps + 1] = propData
-		end
-		chunkDataRaw.props = filteredProps
-	end
 
 	local biomeTypes = chunkDataRaw.biomeTypes :: { number }
 	local biomeIds = chunkDataRaw.biomeIds :: { number }
@@ -1082,6 +1152,45 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 					end
 				end
 				treeDataAny.biomeId = fallbackBiomeId
+			end
+		end
+	end
+
+	local propsRaw = chunkDataRaw.props
+	if typeof(propsRaw) == "table" then
+		for _, propDataRaw in propsRaw do
+			if typeof(propDataRaw) ~= "table" then
+				continue
+			end
+			local propDataAny = propDataRaw :: any
+			if not isFiniteNumber(propDataAny.biomeType) then
+				propDataAny.biomeType = self.biomeType.NORMAL
+			else
+				propDataAny.biomeType = sanitizeInteger(
+					propDataAny.biomeType,
+					self.biomeType.NORMAL,
+					self.biomeType.CORRUPTION,
+					self.biomeType.NORMAL
+				)
+			end
+			if not isFiniteNumber(propDataAny.biomeId) then
+				local fallbackBiomeId = self.biomeId.FOREST
+				if isFiniteNumber(propDataAny.tileX) and isFiniteNumber(propDataAny.tileY) then
+					local localX = math.floor(propDataAny.tileX) - chunkData.tileMinX
+					local localY = math.floor(propDataAny.tileY) - chunkData.tileMinY
+					if localX >= 0 and localX < chunkData.width and localY >= 0 and localY < chunkData.height then
+						local tileIndex = computeTileIndex(localX, localY, chunkData.width)
+						fallbackBiomeId = biomeIds[tileIndex] or fallbackBiomeId
+					end
+				end
+				propDataAny.biomeId = fallbackBiomeId
+			else
+				propDataAny.biomeId = sanitizeInteger(
+					propDataAny.biomeId,
+					self.biomeId.FOREST,
+					self.biomeId.JUNGLE,
+					self.biomeId.FOREST
+				)
 			end
 		end
 	end
@@ -1373,6 +1482,60 @@ local function carveCorruptionChasmsForChunk(
 	end
 end
 
+local function printDesertGenerationDebug(self: WorldGeneration)
+	local biomeGenerator = self.biomeGenerator
+	if biomeGenerator == nil then
+		print("desert hasnt been generated")
+		return
+	end
+
+	local nearestLeftDistance: number? = nil
+	local nearestRightDistance: number? = nil
+
+	for distance = 0, DESERT_DEBUG_SCAN_MAX_DISTANCE_TILES, DESERT_DEBUG_SCAN_STEP_TILES do
+		if nearestRightDistance == nil then
+			local rightColumn = biomeGenerator:getColumnProfile(distance)
+			if rightColumn.biomeId == self.biomeId.DESERT and rightColumn.biomeType == self.biomeType.NORMAL then
+				nearestRightDistance = distance
+			end
+		end
+
+		if distance > 0 and nearestLeftDistance == nil then
+			local leftColumn = biomeGenerator:getColumnProfile(-distance)
+			if leftColumn.biomeId == self.biomeId.DESERT and leftColumn.biomeType == self.biomeType.NORMAL then
+				nearestLeftDistance = distance
+			end
+		end
+
+		if nearestLeftDistance ~= nil or nearestRightDistance ~= nil then
+			break
+		end
+	end
+
+	if nearestLeftDistance == nil and nearestRightDistance == nil then
+		print("desert hasnt been generated")
+		return
+	end
+
+	if nearestLeftDistance ~= nil and nearestRightDistance == nil then
+		print("desert is on left side")
+		return
+	end
+
+	if nearestRightDistance ~= nil and nearestLeftDistance == nil then
+		print("desert is on right side")
+		return
+	end
+
+	if nearestLeftDistance ~= nil and nearestRightDistance ~= nil then
+		if nearestLeftDistance <= nearestRightDistance then
+			print("desert is on left side")
+		else
+			print("desert is on right side")
+		end
+	end
+end
+
 local function ensureChunkLiquidData(self: WorldGeneration, chunkData: ChunkData)
 	local chunkDataRaw = chunkData :: any
 	if chunkDataRaw._liquidValidated == true then
@@ -1453,6 +1616,12 @@ function WorldGeneration.new(configRaw: WorldGenerationConfig?): WorldGeneration
 	local minTileY = sanitizeInteger((config :: any).minTileY, -2048, 2048, DEFAULT_MIN_TILE_Y)
 	local maxTileY = sanitizeInteger((config :: any).maxTileY, -2048, 2048, DEFAULT_MAX_TILE_Y)
 	local seed = sanitizeInteger((config :: any).seed, -2147483648, 2147483647, DEFAULT_SEED)
+	local desertConfig = if typeof((config :: any).desertConfig) == "table"
+		then (config :: any).desertConfig
+		else WorldGenerationDesert
+	local snowConfig = if typeof((config :: any).snowConfig) == "table"
+		then (config :: any).snowConfig
+		else WorldGenerationSnow
 
 	local self = setmetatable({
 		seed = seed,
@@ -1542,6 +1711,8 @@ function WorldGeneration.new(configRaw: WorldGenerationConfig?): WorldGeneration
 		maxCollisionPartsPerChunk = sanitizeInteger((config :: any).maxCollisionPartsPerChunk, 64, 20000, 4096),
 		maxPoolSize = sanitizeInteger((config :: any).maxPoolSize, 64, 200000, DEFAULT_POOL_SIZE),
 		parent = parent,
+		desertConfig = desertConfig,
+		snowConfig = snowConfig,
 		tileId = TILE_ID,
 		wallId = WALL_ID,
 		biomeId = BIOME_ID,
@@ -1620,6 +1791,8 @@ function WorldGeneration.new(configRaw: WorldGenerationConfig?): WorldGeneration
 		tileId = self.tileId,
 		biomeId = self.biomeId,
 		biomeType = self.biomeType,
+		desertConfig = self.desertConfig,
+		snowConfig = self.snowConfig,
 	})
 	self.caveGenerator = Cave.new({
 		seed = self.seed,
@@ -1628,16 +1801,21 @@ function WorldGeneration.new(configRaw: WorldGenerationConfig?): WorldGeneration
 		},
 		wallId = self.wallId,
 		biomeId = self.biomeId,
+		snowConfig = self.snowConfig,
 	})
 	self.structuresGenerator = Structures.new({
 		seed = self.seed,
 		tileId = self.tileId,
+		biomeId = self.biomeId,
+		biomeType = self.biomeType,
+		desertConfig = self.desertConfig,
 	})
 	local liquidConfigSource = (config :: any).liquidConfig
 	if typeof(liquidConfigSource) ~= "table" and typeof(Configs) == "table" then
 		liquidConfigSource = (Configs :: any).liquid
 	end
 	self.liquidGenerator = Liquid.new(liquidConfigSource)
+	printDesertGenerationDebug(self)
 
 	return self
 end
@@ -2749,6 +2927,30 @@ function WorldGeneration.isTreeAnchorTile(self: WorldGeneration, worldTileX: num
 	return worldTileX == treeCell * TREE_SPACING_TILES + slot
 end
 
+function WorldGeneration.isSurfaceAnchorTile(
+	self: WorldGeneration,
+	worldTileX: number,
+	spacingTiles: number,
+	slotNoiseFrequency: number,
+	salt: number
+): boolean
+	local spacing = math.max(2, spacingTiles)
+	local anchorCell = math.floor(worldTileX / spacing)
+	local slotAlpha = math.clamp(
+		(
+			math.noise(
+				(anchorCell + salt * 0.37) * slotNoiseFrequency,
+				self.seed * BG_SEED_Y_MULTIPLIER + salt * 0.11,
+				51.8 + salt * 0.07
+			) + 1
+		) * 0.5,
+		0,
+		1
+	)
+	local slot = math.clamp(math.floor(slotAlpha * spacing), 0, spacing - 1)
+	return worldTileX == anchorCell * spacing + slot
+end
+
 function WorldGeneration.resolveTreeTemplateIndex(
 	self: WorldGeneration,
 	worldTileX: number,
@@ -2808,7 +3010,17 @@ function WorldGeneration.hasTreeAirClearance(
 	worldTileX: number,
 	surfaceTileY: number
 ): boolean
-	for offset = 1, TREE_REQUIRED_AIR_CLEARANCE do
+	return self:hasAirClearance(column, worldTileX, surfaceTileY, TREE_REQUIRED_AIR_CLEARANCE)
+end
+
+function WorldGeneration.hasAirClearance(
+	self: WorldGeneration,
+	column: ColumnProfile,
+	worldTileX: number,
+	surfaceTileY: number,
+	requiredAirTiles: number
+): boolean
+	for offset = 1, math.max(1, requiredAirTiles) do
 		local scanTileY = surfaceTileY + offset
 		if scanTileY > self.maxTileY then
 			continue
@@ -2821,6 +3033,45 @@ function WorldGeneration.hasTreeAirClearance(
 	end
 
 	return true
+end
+
+function WorldGeneration.isWithinBiomeTransitionBuffer(
+	self: WorldGeneration,
+	getColumnProfile: (worldTileX: number) -> ColumnProfile,
+	worldTileX: number,
+	expectedBiomeId: number,
+	expectedBiomeType: number,
+	bufferTiles: number
+): boolean
+	for offset = -math.max(0, bufferTiles), math.max(0, bufferTiles), 2 do
+		local column = getColumnProfile(worldTileX + offset)
+		if column.biomeId ~= expectedBiomeId or column.biomeType ~= expectedBiomeType then
+			return false
+		end
+	end
+
+	return true
+end
+
+function WorldGeneration.resolveDesertPropVariantIndex(
+	self: WorldGeneration,
+	worldTileX: number,
+	surfaceTileY: number,
+	variantCount: number
+): number
+	local count = math.max(1, variantCount)
+	local variantAlpha = math.clamp(
+		(
+			math.noise(
+				(worldTileX + 97.3) * DESERT_PROP_VARIANT_NOISE_FREQUENCY_X,
+				(surfaceTileY - 41.9) * DESERT_PROP_VARIANT_NOISE_FREQUENCY_Y,
+				self.seed * BG_SEED_X_MULTIPLIER
+			) + 1
+		) * 0.5,
+		0,
+		1
+	)
+	return math.clamp(math.floor(variantAlpha * count) + 1, 1, count)
 end
 
 function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number, chunkY: number): ChunkData
@@ -3010,6 +3261,20 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 		columnProfiles
 	)
 
+	local structureGenerationResult: StructureGenerationResult = self.structuresGenerator:generateChunkStructures({
+		chunkX = chunkX,
+		chunkY = chunkY,
+		tileMinX = tileMinX,
+		tileMinY = tileMinY,
+		width = width,
+		height = height,
+		getColumnProfile = getColumnProfileForBlend,
+		computeTileIndex = computeTileIndex,
+	})
+	for tileIndex, overrideTileId in structureGenerationResult.tileOverrides do
+		tiles[tileIndex] = overrideTileId
+	end
+
 	for localY = 0, backgroundHeight - 1 do
 		local worldTileY = backgroundTileMinY + localY
 		if worldTileY < self.minTileY or worldTileY > self.maxTileY then
@@ -3151,7 +3416,24 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 
 	local trees: { TreeSpawnData } = {}
 	local props: { PropSpawnData } = {}
+	local desertDecorationSettings = if typeof(self.desertConfig) == "table"
+			and typeof((self.desertConfig :: any).Decoration) == "table"
+		then (self.desertConfig :: any).Decoration :: { [string]: any }
+		else {}
+	local snowDecorationSettings = if typeof(self.snowConfig) == "table"
+			and typeof((self.snowConfig :: any).Decoration) == "table"
+		then (self.snowConfig :: any).Decoration :: { [string]: any }
+		else {}
 	local chunkTileMaxY = tileMinY + height - 1
+	local function hasReservedSurfaceTileNear(worldTileX: number, radius: number): boolean
+		for scanTileX = worldTileX - radius, worldTileX + radius do
+			if structureGenerationResult.reservedSurfaceTiles[scanTileX] == true then
+				return true
+			end
+		end
+		return false
+	end
+
 	for localX = 0, width - 1 do
 		local worldTileX = tileMinX + localX
 		local column = columnProfiles[localX + 1]
@@ -3170,10 +3452,33 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 			continue
 		end
 
-		local hasAirClearance = self:hasTreeAirClearance(column, worldTileX, surfaceTileY)
-		local treeVariantIndex =
-			self:resolveTreeTemplateIndex(worldTileX, surfaceTileY, column.biomeType, column.biomeId)
-		if treeVariantIndex ~= nil and hasAirClearance then
+		local surfaceSupportsTrees = surfaceTileId ~= self.tileId.SAND
+			and surfaceTileId ~= self.tileId.SANDSTONE
+			and surfaceTileId ~= self.tileId.ICE
+		local hasAirClearance = surfaceSupportsTrees
+			and self:hasTreeAirClearance(column, worldTileX, surfaceTileY)
+		local treeVariantIndex = if surfaceSupportsTrees
+			then self:resolveTreeTemplateIndex(worldTileX, surfaceTileY, column.biomeType, column.biomeId)
+			else nil
+		local canSpawnTree = surfaceSupportsTrees and treeVariantIndex ~= nil and hasAirClearance
+		local didSpawnTree = false
+		if canSpawnTree and column.biomeId == self.biomeId.SNOW and column.biomeType == self.biomeType.NORMAL then
+			local snowTreeChance = clampNumber(snowDecorationSettings.TreeChance, 0, 1, 0.38)
+			local snowTreeEdgeBuffer = sanitizeInteger(snowDecorationSettings.TreeEdgeBufferTiles, 0, 48, 8)
+			if not self:isWithinBiomeTransitionBuffer(
+				getColumnProfileForBlend,
+				worldTileX,
+				self.biomeId.SNOW,
+				self.biomeType.NORMAL,
+				snowTreeEdgeBuffer
+			) then
+				canSpawnTree = false
+			else
+				local snowTreeRoll = deterministicUnitInterval(self.seed, worldTileX, surfaceTileY, treeVariantIndex :: number, 1549)
+				canSpawnTree = snowTreeRoll <= snowTreeChance
+			end
+		end
+		if canSpawnTree then
 			local treeSeed = computeProceduralTreeSeed(self.seed, worldTileX, surfaceTileY, treeVariantIndex)
 			table.insert(trees, {
 				tileX = worldTileX,
@@ -3184,6 +3489,170 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 				biomeId = column.biomeId,
 				templateIndex = treeVariantIndex,
 			})
+			didSpawnTree = true
+		end
+
+		if not didSpawnTree and column.biomeId == self.biomeId.SNOW and column.biomeType == self.biomeType.NORMAL then
+			local isSnowSurfaceTile = surfaceTileId == self.tileId.SNOW or surfaceTileId == self.tileId.ICE
+			if isSnowSurfaceTile then
+				local propEdgeBuffer = sanitizeInteger(snowDecorationSettings.PropEdgeBufferTiles, 0, 48, 6)
+				local propStructureBuffer = sanitizeInteger(snowDecorationSettings.PropStructureBufferTiles, 0, 48, 10)
+				local propAirClearance = sanitizeInteger(snowDecorationSettings.PropAirClearanceTiles, 1, 24, 5)
+				if self:isWithinBiomeTransitionBuffer(
+					getColumnProfileForBlend,
+					worldTileX,
+					self.biomeId.SNOW,
+					self.biomeType.NORMAL,
+					propEdgeBuffer
+				) and not hasReservedSurfaceTileNear(worldTileX, propStructureBuffer) then
+					local didSpawnSnowProp = false
+					local iceSpikeChance = clampNumber(snowDecorationSettings.IceSpikeChance, 0, 1, 0.13)
+					local iceSpikeSpacing = sanitizeInteger(snowDecorationSettings.IceSpikeSpacingTiles, 4, 64, 15)
+					if self:isSurfaceAnchorTile(worldTileX, iceSpikeSpacing, ICE_SPIKE_SLOT_NOISE_FREQUENCY, 863)
+						and self:hasAirClearance(column, worldTileX, surfaceTileY, propAirClearance) then
+						local iceSpikeRoll =
+							deterministicUnitInterval(self.seed, worldTileX, surfaceTileY, self.propId.ICE_SPIKE, 1877)
+						if iceSpikeRoll <= iceSpikeChance then
+							local variantIndex = self:resolveDesertPropVariantIndex(worldTileX, surfaceTileY, 3)
+							props[#props + 1] = {
+								tileX = worldTileX,
+								tileY = surfaceTileY,
+								propId = self.propId.ICE_SPIKE,
+								variantIndex = variantIndex,
+								seed = computeProceduralTreeSeed(
+									self.seed + self.propId.ICE_SPIKE * 97,
+									worldTileX,
+									surfaceTileY,
+									variantIndex
+								),
+								biomeType = column.biomeType,
+								biomeId = column.biomeId,
+							}
+							didSpawnSnowProp = true
+						end
+					end
+
+					if not didSpawnSnowProp then
+						local snowPileChance = clampNumber(snowDecorationSettings.SnowPileChance, 0, 1, 0.24)
+						local snowPileSpacing = sanitizeInteger(snowDecorationSettings.SnowPileSpacingTiles, 4, 64, 11)
+						if self:isSurfaceAnchorTile(worldTileX, snowPileSpacing, SNOW_PILE_SLOT_NOISE_FREQUENCY, 1223) then
+							local snowPileRoll =
+								deterministicUnitInterval(self.seed, worldTileX, surfaceTileY, self.propId.SNOW_PILE, 2179)
+							if snowPileRoll <= snowPileChance then
+								local variantIndex = self:resolveDesertPropVariantIndex(worldTileX, surfaceTileY, 3)
+								props[#props + 1] = {
+									tileX = worldTileX,
+									tileY = surfaceTileY,
+									propId = self.propId.SNOW_PILE,
+									variantIndex = variantIndex,
+									seed = computeProceduralTreeSeed(
+										self.seed + self.propId.SNOW_PILE * 97,
+										worldTileX,
+										surfaceTileY,
+										variantIndex
+									),
+									biomeType = column.biomeType,
+									biomeId = column.biomeId,
+								}
+							end
+						end
+					end
+				end
+			end
+		end
+
+		if column.biomeId ~= self.biomeId.DESERT or column.biomeType ~= self.biomeType.NORMAL then
+			continue
+		end
+		if surfaceTileId ~= self.tileId.SAND and surfaceTileId ~= self.tileId.SANDSTONE then
+			continue
+		end
+
+		local cactusEdgeBuffer = sanitizeInteger(
+			desertDecorationSettings.CactusEdgeBufferTiles,
+			0,
+			48,
+			7
+		)
+		local cactusStructureBuffer = sanitizeInteger(
+			desertDecorationSettings.CactusStructureBufferTiles,
+			0,
+			48,
+			10
+		)
+		if
+			not self:isWithinBiomeTransitionBuffer(
+				getColumnProfileForBlend,
+				worldTileX,
+				self.biomeId.DESERT,
+				self.biomeType.NORMAL,
+				cactusEdgeBuffer
+			)
+		then
+			continue
+		end
+		if hasReservedSurfaceTileNear(worldTileX, cactusStructureBuffer) then
+			continue
+		end
+
+		local cactusChance = clampNumber(desertDecorationSettings.CactusChance, 0, 1, 0.68)
+		local cactusSpacing = sanitizeInteger(desertDecorationSettings.CactusSpacingTiles, 4, 64, 11)
+		local cactusAirClearance = sanitizeInteger(
+			desertDecorationSettings.CactusAirClearanceTiles,
+			3,
+			32,
+			14
+		)
+		local rockChance = clampNumber(desertDecorationSettings.RockChance, 0, 1, 0.12)
+		local rockSpacing = sanitizeInteger(desertDecorationSettings.RockSpacingTiles, 4, 64, 16)
+		local didSpawnDesertProp = false
+
+		if
+			self:isSurfaceAnchorTile(worldTileX, cactusSpacing, DESERT_CACTUS_SLOT_NOISE_FREQUENCY, 211)
+			and self:hasAirClearance(column, worldTileX, surfaceTileY, cactusAirClearance)
+		then
+			local cactusRoll = deterministicUnitInterval(self.seed, worldTileX, surfaceTileY, self.propId.DESERT_CACTUS, 617)
+			if cactusRoll <= cactusChance then
+				local variantIndex = self:resolveDesertPropVariantIndex(worldTileX, surfaceTileY, 4)
+				local propSeed =
+					computeProceduralTreeSeed(self.seed + self.propId.DESERT_CACTUS * 97, worldTileX, surfaceTileY, variantIndex)
+				props[#props + 1] = {
+					tileX = worldTileX,
+					tileY = surfaceTileY,
+					propId = self.propId.DESERT_CACTUS,
+					variantIndex = variantIndex,
+					seed = propSeed,
+					biomeType = column.biomeType,
+					biomeId = column.biomeId,
+				}
+				didSpawnDesertProp = true
+			end
+		end
+
+		if didSpawnDesertProp then
+			continue
+		end
+
+		if self:isSurfaceAnchorTile(worldTileX, rockSpacing, DESERT_ROCK_SLOT_NOISE_FREQUENCY, 487) then
+			local rockRoll =
+				deterministicUnitInterval(self.seed, worldTileX, surfaceTileY, self.propId.DESERT_ROCK, 1181)
+			if rockRoll <= rockChance then
+				local variantIndex = self:resolveDesertPropVariantIndex(worldTileX, surfaceTileY, 2)
+				props[#props + 1] = {
+					tileX = worldTileX,
+					tileY = surfaceTileY,
+					propId = self.propId.DESERT_ROCK,
+					variantIndex = variantIndex,
+					seed = computeProceduralTreeSeed(
+						self.seed + self.propId.DESERT_ROCK * 97,
+						worldTileX,
+						surfaceTileY,
+						variantIndex
+					),
+					biomeType = column.biomeType,
+					biomeId = column.biomeId,
+				}
+			end
 		end
 	end
 
@@ -3858,6 +4327,7 @@ function WorldGeneration.getChunkSnapshotByKey(self: WorldGeneration, chunkKeyRa
 			variantIndex = propData.variantIndex,
 			seed = propData.seed,
 			biomeType = propData.biomeType,
+			biomeId = propData.biomeId,
 		}
 	end
 

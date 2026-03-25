@@ -434,6 +434,12 @@
             },
             "WorldGenerationColor": {
               "$path": "src/modules/Items/WorldGenerationColor.luau"
+            },
+            "WorldGenerationDesert": {
+              "$path": "src/modules/Items/WorldGenerationDesert.luau"
+            },
+            "WorldGenerationSnow": {
+              "$path": "src/modules/Items/WorldGenerationSnow.luau"
             }
           },
           "Math": {

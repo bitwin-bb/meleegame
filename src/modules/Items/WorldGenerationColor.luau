@@ -158,6 +158,14 @@ local TREE_PALETTES: { [string]: TreePalette } = {
 		BranchColor = Color3.fromRGB(154, 74, 105),
 		LeafColor = Color3.fromRGB(51, 138, 66),
 	},
+	Snow1 = {
+		BranchColor = Color3.fromRGB(89, 75, 70),
+		LeafColor = Color3.fromRGB(220, 238, 244),
+	},
+	Snow2 = {
+		BranchColor = Color3.fromRGB(74, 68, 81),
+		LeafColor = Color3.fromRGB(197, 226, 239),
+	},
 }
 
 local LIQUID_DEFINITIONS: { [number]: LiquidColorDefinition } = {
@@ -174,7 +182,7 @@ local LIQUID_DEFINITIONS: { [number]: LiquidColorDefinition } = {
 local LIQUID_BIOME_TINTS: LiquidBiomeTints = {
 	byBiomeId = {
 		[1] = Color3.fromRGB(52, 60, 133),
-		[2] = Color3.fromRGB(47, 87, 67),
+		[2] = Color3.fromRGB(141, 116, 68),
 		[3] = Color3.fromRGB(39, 90, 114),
 		[4] = Color3.fromRGB(70, 143, 102),
 	},

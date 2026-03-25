@@ -1,0 +1,52 @@
+--!strict
+
+return {
+	Surface = {
+		SurfaceTile = "SAND",
+		FillerTile = "SAND",
+		DeepTile = "SANDSTONE",
+		SubsurfaceSandDepth = 7,
+		SandstoneDepth = 16,
+		HardenedDepth = 28,
+	},
+	Dunes = {
+		HeightOffset = 0,
+		Amplitude = 10.5,
+		Frequency = 0.0046,
+		Octaves = 3,
+		Lacunarity = 1.92,
+		Persistence = 0.52,
+		DetailAmplitude = 2.3,
+		DetailFrequency = 0.018,
+		BaseTerrainInfluence = 0.15,
+		StoneDepthOffset = 3,
+	},
+	Decoration = {
+		CactusSpacingTiles = 9,
+		CactusChance = 0.78,
+		CactusEdgeBufferTiles = 7,
+		CactusStructureBufferTiles = 10,
+		CactusAirClearanceTiles = 16,
+		DeadBushSpacingTiles = 14,
+		DeadBushChance = 0.2,
+		RockSpacingTiles = 15,
+		RockChance = 0.16,
+	},
+	Structures = {
+		PyramidCellWidth = 224,
+		PyramidSpawnChance = 0.34,
+		PyramidHalfWidthMin = 15,
+		PyramidHalfWidthMax = 23,
+		PyramidHeightMin = 12,
+		PyramidHeightMax = 20,
+		InteriorPadding = 4,
+		EdgeBufferTiles = 18,
+		SurfaceVarianceTolerance = 8,
+		BuriedDepthMin = 2,
+		BuriedDepthMax = 5,
+		EntranceHeight = 3,
+	},
+	Oasis = {
+		Rarity = 0.02,
+	},
+}

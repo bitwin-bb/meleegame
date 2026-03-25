@@ -13,6 +13,11 @@ return {
 		EyeOfCthulhu = "rbxassetid://118342611588852",
 		Cavern = "rbxassetid://135190767488877",
 		Underground = "rbxassetid://122174376611444",
+		Desert = "rbxassetid://110380615662801",
+		Snow = "rbxassetid://82496140751964",
+		Rain = "rbxassetid://110148836882951",
+		UndergroundCorruption = "rbxassetid://133175187074428",
+		EyeOfCthulhuRedux = "rbxassetid://73783286159203",
 	},
 	Npcs = {
 		Slimes = {

@@ -42,6 +42,7 @@ local SOUNDTRACK_BIOME_SAMPLE_INTERVAL = 0.35
 local DEFAULT_SOUNDTRACK_BIOME = "Overworld"
 local OVERWORLD_NIGHT_SOUNDTRACK_BIOME = "OverworldNight"
 local CORRUPTION_SOUNDTRACK_BIOME = "Corruption"
+local SNOW_SOUNDTRACK_BIOME = "Snow"
 local JUNGLE_SOUNDTRACK_BIOME = "Jungle"
 local UNDERGROUND_SOUNDTRACK_BIOME = "Underground"
 local CAVERN_SOUNDTRACK_BIOME = "Cavern"
@@ -49,6 +50,7 @@ local EYE_OF_CTHULHU_SOUNDTRACK_BIOME = "EyeOfCthulhu"
 local BIOME_TYPE_NORMAL = 1
 local BIOME_TYPE_CORRUPTION = 2
 local BIOME_ID_FOREST = 1
+local BIOME_ID_SNOW = 3
 local BIOME_ID_JUNGLE = 4
 local DEPTH_LAYER_UNDERGROUND = 2
 local DEPTH_LAYER_CAVERN = 3
@@ -61,10 +63,11 @@ local SOUNDTRACK_TRACK_KEYS_BY_BIOME: { [string]: { string } } = {
 	Overworld = { "OverworldDay" },
 	OverworldNight = { "OverworldNight" },
 	Corruption = { "Corruption" },
+	Snow = { "Snow" },
 	Jungle = { "Jungle" },
 	Underground = { "Underground" },
 	Cavern = { "Cavern" },
-	EyeOfCthulhu = { "EyeOfCthulhu" },
+	EyeOfCthulhu = { "EyeOfCthulhuRedux" },
 }
 
 local SOUNDTRACK_BIOME_BY_BIOME_TYPE: { [number]: string } = {
@@ -76,6 +79,7 @@ local SOUNDTRACK_LOOPED_BY_BIOME: { [string]: boolean } = {
 	Overworld = false,
 	OverworldNight = true,
 	Corruption = true,
+	Snow = true,
 	Jungle = true,
 	Underground = true,
 	Cavern = true,
@@ -209,6 +213,9 @@ function AudioServiceClient.resolveBiomeIdAtWorldPosition(
 	end
 
 	local biomeId = math.floor(biomeIdOrError)
+	if biomeId == BIOME_ID_SNOW then
+		return BIOME_ID_SNOW
+	end
 	if biomeId == BIOME_ID_JUNGLE then
 		return BIOME_ID_JUNGLE
 	end
@@ -318,6 +325,9 @@ function AudioServiceClient.resolveSoundtrackBiomeForLocalPlayer(self: AudioServ
 	end
 
 	local biomeId = self:resolveBiomeIdAtWorldPosition(worldPosition)
+	if biomeId == BIOME_ID_SNOW then
+		return SNOW_SOUNDTRACK_BIOME
+	end
 	if biomeId == BIOME_ID_JUNGLE then
 		return JUNGLE_SOUNDTRACK_BIOME
 	end

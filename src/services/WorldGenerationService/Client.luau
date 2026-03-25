@@ -9,6 +9,7 @@ local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
 local ProceduralTree = require(ReplicatedStorage.Shared.Classes.WorldGeneration.Tree)
+local ProceduralCactus = require(ReplicatedStorage.Shared.Classes.WorldGeneration.Cactus)
 local WorldGenerationColor = require(ReplicatedStorage.Shared.Modules.Items.WorldGenerationColor)
 local WorldGenerationServiceUtils =
 	require(ReplicatedStorage.Shared.Services.WorldGenerationService.WorldGenerationServiceUtils)
@@ -54,6 +55,7 @@ type PropSpawnSnapshot = {
 	variantIndex: number,
 	seed: number,
 	biomeType: number?,
+	biomeId: number?,
 }
 
 type ChunkSnapshot = {
@@ -130,8 +132,14 @@ local MAX_INT32 = 2147483647
 local BIOME_TYPE_NORMAL = 1
 local BIOME_TYPE_CORRUPTION = 2
 local BIOME_ID_FOREST = 1
+local BIOME_ID_DESERT = 2
 local BIOME_ID_JUNGLE = 4
 local PROP_ID_CORRUPTION_SPIKE = 1
+local PROP_ID_DESERT_CACTUS = 2
+local PROP_ID_DEAD_BUSH = 3
+local PROP_ID_DESERT_ROCK = 4
+local PROP_ID_SNOW_PILE = 5
+local PROP_ID_ICE_SPIKE = 6
 local DEPTH_LAYER_CODE_SKY = 0
 local DEPTH_LAYER_CODE_UNDERGROUND = 2
 local MIN_DEPTH_LAYER_CODE = 0
@@ -159,6 +167,16 @@ local TREE_PALETTE_JUNGLE_2 = WorldGenerationColor.TREE_PALETTES.Jungle2
 	or {
 		BranchColor = Color3.fromRGB(82, 60, 39),
 		LeafColor = Color3.fromRGB(74, 192, 96),
+	}
+local TREE_PALETTE_SNOW_1 = WorldGenerationColor.TREE_PALETTES.Snow1
+	or {
+		BranchColor = Color3.fromRGB(89, 75, 70),
+		LeafColor = Color3.fromRGB(220, 238, 244),
+	}
+local TREE_PALETTE_SNOW_2 = WorldGenerationColor.TREE_PALETTES.Snow2
+	or {
+		BranchColor = Color3.fromRGB(74, 68, 81),
+		LeafColor = Color3.fromRGB(197, 226, 239),
 	}
 
 local function createTreeVariantDefinitions(): { TreeVariantDefinition }
@@ -357,6 +375,58 @@ local function createTreeVariantDefinitions(): { TreeVariantDefinition }
 			},
 			estimatedPartCount = 228,
 		},
+		{
+			config = {
+				Algorithm = "Recursive",
+				MaxDepth = 5,
+				BranchAngleRange = NumberRange.new(14, 28),
+				LengthScale = 0.72,
+				ThicknessScale = 0.74,
+				BranchChance = 0.44,
+				InitialLength = 13.8,
+				InitialThickness = 1.58,
+				TrunkWobbleAngle = 3,
+				UpwardBias = 0.81,
+				LeafSizeMin = Vector3.new(2.2, 2.8, 2.2),
+				LeafSizeMax = Vector3.new(3.6, 5, 3.6),
+				LeavesPerTerminalMin = 1,
+				LeavesPerTerminalMax = 2,
+				MaxBranchParts = 72,
+				MaxLeafParts = 44,
+				BranchColor = TREE_PALETTE_SNOW_1.BranchColor,
+				LeafColor = TREE_PALETTE_SNOW_1.LeafColor,
+				UseWelds = true,
+				BranchCanCollide = false,
+				ModelName = "ProceduralTree_Snow1",
+			},
+			estimatedPartCount = 88,
+		},
+		{
+			config = {
+				Algorithm = "LSystemStyle",
+				MaxDepth = 6,
+				BranchAngleRange = NumberRange.new(10, 22),
+				LengthScale = 0.7,
+				ThicknessScale = 0.72,
+				BranchChance = 0.38,
+				InitialLength = 14.6,
+				InitialThickness = 1.66,
+				TrunkWobbleAngle = 2,
+				UpwardBias = 0.88,
+				LeafSizeMin = Vector3.new(2.1, 3, 2.1),
+				LeafSizeMax = Vector3.new(3.2, 5.8, 3.2),
+				LeavesPerTerminalMin = 1,
+				LeavesPerTerminalMax = 2,
+				MaxBranchParts = 82,
+				MaxLeafParts = 52,
+				BranchColor = TREE_PALETTE_SNOW_2.BranchColor,
+				LeafColor = TREE_PALETTE_SNOW_2.LeafColor,
+				UseWelds = true,
+				BranchCanCollide = false,
+				ModelName = "ProceduralTree_Snow2",
+			},
+			estimatedPartCount = 102,
+		},
 	}
 end
 
@@ -496,6 +566,24 @@ local function resolvePropTemplatesByPropId(): { [number]: { Instance } }
 		end
 	end
 
+	local snowPileFolder = propsFolder:FindFirstChild("SnowPile")
+	if snowPileFolder ~= nil then
+		if snowPileFolder:IsA("Folder") then
+			templatesByPropId[PROP_ID_SNOW_PILE] = collectTemplateInstances(snowPileFolder)
+		elseif snowPileFolder:IsA("Model") or snowPileFolder:IsA("BasePart") then
+			templatesByPropId[PROP_ID_SNOW_PILE] = { snowPileFolder }
+		end
+	end
+
+	local iceSpikeFolder = propsFolder:FindFirstChild("IceSpike")
+	if iceSpikeFolder ~= nil then
+		if iceSpikeFolder:IsA("Folder") then
+			templatesByPropId[PROP_ID_ICE_SPIKE] = collectTemplateInstances(iceSpikeFolder)
+		elseif iceSpikeFolder:IsA("Model") or iceSpikeFolder:IsA("BasePart") then
+			templatesByPropId[PROP_ID_ICE_SPIKE] = { iceSpikeFolder }
+		end
+	end
+
 	return templatesByPropId
 end
 
@@ -551,6 +639,159 @@ local function createCorruptionSpikeFallbackModel(variantIndex: number, seed: nu
 		local yOffset = if segment == 1 then height * 0.5 else height * 0.5 + 1.3
 		wedge.CFrame = CFrame.new(0, yOffset, 0) * CFrame.Angles(0, yaw, 0)
 		wedge.Parent = model
+	end
+
+	return model
+end
+
+local function createDeadBushFallbackModel(variantIndex: number, seed: number): Model
+	local randomObject = Random.new(seed)
+	local model = Instance.new("Model")
+	model.Name = "DeadBush"
+
+	local stemCount = math.max(2, math.min(5, variantIndex + 1))
+	for stemIndex = 1, stemCount do
+		local stem = Instance.new("Part")
+		stem.Name = `Stem_{stemIndex}`
+		stem.Anchored = true
+		stem.CanCollide = false
+		stem.CanQuery = false
+		stem.CanTouch = false
+		stem.CastShadow = false
+		stem.Material = Enum.Material.Wood
+		stem.Color = Color3.fromRGB(
+			119 + randomObject:NextInteger(-12, 12),
+			94 + randomObject:NextInteger(-10, 10),
+			58 + randomObject:NextInteger(-8, 8)
+		)
+		local height = randomObject:NextNumber(1.1, 2.2)
+		local thickness = randomObject:NextNumber(0.12, 0.2)
+		stem.Size = Vector3.new(thickness, height, thickness)
+		local angle = math.rad(randomObject:NextNumber(-28, 28))
+		local yaw = math.rad(randomObject:NextNumber(-35, 35))
+		stem.CFrame = CFrame.new(
+			randomObject:NextNumber(-0.35, 0.35),
+			height * 0.5,
+			randomObject:NextNumber(-0.2, 0.2)
+		) * CFrame.Angles(0, yaw, angle)
+		stem.Parent = model
+	end
+
+	return model
+end
+
+local function createDesertRockFallbackModel(variantIndex: number, seed: number): Model
+	local randomObject = Random.new(seed)
+	local model = Instance.new("Model")
+	model.Name = "DesertRock"
+
+	local stoneCount = if variantIndex % 2 == 0 then 2 else 3
+	for stoneIndex = 1, stoneCount do
+		local rock = Instance.new("Part")
+		rock.Name = `Rock_{stoneIndex}`
+		rock.Shape = Enum.PartType.Block
+		rock.Anchored = true
+		rock.CanCollide = false
+		rock.CanQuery = false
+		rock.CanTouch = false
+		rock.CastShadow = false
+		rock.Material = Enum.Material.Sandstone
+		rock.Color = Color3.fromRGB(
+			187 + randomObject:NextInteger(-12, 10),
+			157 + randomObject:NextInteger(-10, 10),
+			111 + randomObject:NextInteger(-9, 9)
+		)
+		rock.Size = Vector3.new(
+			randomObject:NextNumber(0.7, 1.4),
+			randomObject:NextNumber(0.45, 0.95),
+			randomObject:NextNumber(0.45, 1.1)
+		)
+		rock.CFrame = CFrame.new(
+			randomObject:NextNumber(-0.45, 0.45),
+			rock.Size.Y * 0.5,
+			randomObject:NextNumber(-0.18, 0.18)
+		) * CFrame.Angles(
+			math.rad(randomObject:NextNumber(-15, 15)),
+			math.rad(randomObject:NextNumber(-25, 25)),
+			math.rad(randomObject:NextNumber(-12, 12))
+		)
+		rock.Parent = model
+	end
+
+	return model
+end
+
+local function createSnowPileFallbackModel(variantIndex: number, seed: number): Model
+	local randomObject = Random.new(seed)
+	local model = Instance.new("Model")
+	model.Name = "SnowPile"
+
+	local moundCount = math.max(1, math.min(3, variantIndex))
+	for moundIndex = 1, moundCount do
+		local mound = Instance.new("Part")
+		mound.Name = `SnowPile_{moundIndex}`
+		mound.Shape = Enum.PartType.Ball
+		mound.Anchored = true
+		mound.CanCollide = false
+		mound.CanQuery = false
+		mound.CanTouch = false
+		mound.CastShadow = false
+		mound.Material = Enum.Material.Snow
+		mound.Color = Color3.fromRGB(
+			228 + randomObject:NextInteger(-8, 8),
+			239 + randomObject:NextInteger(-6, 6),
+			248 + randomObject:NextInteger(-6, 6)
+		)
+		mound.Size = Vector3.new(
+			randomObject:NextNumber(0.9, 1.8),
+			randomObject:NextNumber(0.45, 0.85),
+			randomObject:NextNumber(0.7, 1.4)
+		)
+		mound.CFrame = CFrame.new(
+			randomObject:NextNumber(-0.25, 0.25),
+			mound.Size.Y * 0.5,
+			randomObject:NextNumber(-0.12, 0.12)
+		)
+		mound.Parent = model
+	end
+
+	return model
+end
+
+local function createIceSpikeFallbackModel(variantIndex: number, seed: number): Model
+	local randomObject = Random.new(seed)
+	local model = Instance.new("Model")
+	model.Name = "IceSpike"
+
+	local spikeCount = math.max(1, math.min(3, variantIndex))
+	for spikeIndex = 1, spikeCount do
+		local spike = Instance.new("WedgePart")
+		spike.Name = `IceSpike_{spikeIndex}`
+		spike.Anchored = true
+		spike.CanCollide = false
+		spike.CanQuery = false
+		spike.CanTouch = false
+		spike.CastShadow = false
+		spike.Material = Enum.Material.Glacier
+		spike.Color = Color3.fromRGB(
+			170 + randomObject:NextInteger(-10, 10),
+			216 + randomObject:NextInteger(-10, 10),
+			255 + randomObject:NextInteger(-6, 0)
+		)
+		local height = randomObject:NextNumber(1.8, 3.8)
+		local width = randomObject:NextNumber(0.45, 0.85)
+		local depth = randomObject:NextNumber(0.55, 1.05)
+		spike.Size = Vector3.new(width, height, depth)
+		spike.CFrame = CFrame.new(
+			randomObject:NextNumber(-0.28, 0.28),
+			height * 0.5,
+			randomObject:NextNumber(-0.1, 0.1)
+		) * CFrame.Angles(
+			math.rad(randomObject:NextNumber(-6, 6)),
+			math.rad(randomObject:NextNumber(-18, 18)),
+			math.rad(randomObject:NextNumber(-7, 7))
+		)
+		spike.Parent = model
 	end
 
 	return model
@@ -1065,9 +1306,6 @@ function WorldGenerationServiceClient.sanitizeChunkSnapshot(
 		end
 
 		local propId = sanitizeInteger(prop.propId, 1, 1024, PROP_ID_CORRUPTION_SPIKE)
-		if propId == PROP_ID_CORRUPTION_SPIKE then
-			continue
-		end
 		local variantIndex = sanitizeInteger(prop.variantIndex, 1, 32, 1)
 		local tileX = math.floor(prop.tileX)
 		local tileY = math.floor(prop.tileY)
@@ -1086,6 +1324,9 @@ function WorldGenerationServiceClient.sanitizeChunkSnapshot(
 			seed = sanitizeInteger(prop.seed, MIN_INT32, MAX_INT32, fallbackSeed),
 			biomeType = if isFiniteNumber(prop.biomeType)
 				then sanitizeInteger(prop.biomeType, BIOME_TYPE_NORMAL, BIOME_TYPE_CORRUPTION, dominantBiomeType)
+				else nil,
+			biomeId = if isFiniteNumber(prop.biomeId)
+				then sanitizeInteger(prop.biomeId, BIOME_ID_FOREST, BIOME_ID_JUNGLE, dominantBiomeId)
 				else nil,
 		}
 	end
@@ -1311,24 +1552,82 @@ function WorldGenerationServiceClient.buildChunkVisualModel(
 			break
 		end
 
-		if propSpawnData.propId ~= PROP_ID_CORRUPTION_SPIKE then
+		local centerTileX = propSpawnData.tileX + 0.5
+		local centerTileY = propSpawnData.tileY + TREE_SURFACE_OFFSET_Y_TILES
+		if propSpawnData.propId == PROP_ID_DEAD_BUSH
+			or propSpawnData.propId == PROP_ID_DESERT_ROCK
+			or propSpawnData.propId == PROP_ID_SNOW_PILE
+			or propSpawnData.propId == PROP_ID_ICE_SPIKE then
+			centerTileY = propSpawnData.tileY + 0.5
+		end
+		local position = self:computeTileCenterPosition(centerTileX, centerTileY, treePlaneOffset)
+		local propInstance: Instance?
+		if propSpawnData.propId == PROP_ID_CORRUPTION_SPIKE then
+			local templates = self.propTemplatesByPropId[propSpawnData.propId]
+			propInstance = if templates ~= nil
+				then cloneTemplateByVariant(templates, propSpawnData.variantIndex)
+				else nil
+			if propInstance == nil then
+				propInstance = createCorruptionSpikeFallbackModel(propSpawnData.variantIndex, propSpawnData.seed)
+			end
+		elseif propSpawnData.propId == PROP_ID_DESERT_CACTUS then
+			local cactusColor = if propSpawnData.biomeId == BIOME_ID_DESERT
+				then Color3.fromRGB(90, 147, 78)
+				else Color3.fromRGB(82, 136, 74)
+			local cactusComplexity = math.clamp(propSpawnData.variantIndex, 1, 4)
+			local cactusGenerator = ProceduralCactus.new({
+				Seed = propSpawnData.seed,
+				Parent = propsFolder,
+				ModelName = `Cactus_{snapshot.chunkX}_{snapshot.chunkY}_{propCount + 1}`,
+				Iterations = 6 + cactusComplexity,
+				StepLength = 3.05 + cactusComplexity * 0.25,
+				BaseThickness = 1.25 + cactusComplexity * 0.18,
+				AngleDegrees = 24 + cactusComplexity * 2.5,
+				MinBranchHeight = 3.5 + cactusComplexity * 0.75,
+				MaxBranches = 2 + math.clamp(cactusComplexity, 0, 3),
+				BranchChance = math.clamp(0.48 + cactusComplexity * 0.07, 0, 0.82),
+				BranchStartIteration = 2,
+				Curvature = 11 + cactusComplexity * 1.8,
+				TrunkWobbleDegrees = 1.2 + cactusComplexity * 0.2,
+				ArmThicknessScale = 0.74,
+				MinimumThickness = 0.48,
+				SegmentMaterial = Enum.Material.SmoothPlastic,
+				SegmentColor = cactusColor,
+				UseWelds = true,
+				SegmentCanCollide = false,
+			})
+			propInstance = cactusGenerator:Generate(position)
+		elseif propSpawnData.propId == PROP_ID_DESERT_ROCK then
+			propInstance = createDesertRockFallbackModel(propSpawnData.variantIndex, propSpawnData.seed)
+		elseif propSpawnData.propId == PROP_ID_SNOW_PILE then
+			local templates = self.propTemplatesByPropId[propSpawnData.propId]
+			propInstance = if templates ~= nil
+				then cloneTemplateByVariant(templates, propSpawnData.variantIndex)
+				else nil
+			if propInstance == nil then
+				propInstance = createSnowPileFallbackModel(propSpawnData.variantIndex, propSpawnData.seed)
+			end
+		elseif propSpawnData.propId == PROP_ID_ICE_SPIKE then
+			local templates = self.propTemplatesByPropId[propSpawnData.propId]
+			propInstance = if templates ~= nil
+				then cloneTemplateByVariant(templates, propSpawnData.variantIndex)
+				else nil
+			if propInstance == nil then
+				propInstance = createIceSpikeFallbackModel(propSpawnData.variantIndex, propSpawnData.seed)
+			end
+		else
 			continue
 		end
 
-		local templates = self.propTemplatesByPropId[propSpawnData.propId]
-		local propInstance = if templates ~= nil
-			then cloneTemplateByVariant(templates, propSpawnData.variantIndex)
-			else nil
 		if propInstance == nil then
-			propInstance = createCorruptionSpikeFallbackModel(propSpawnData.variantIndex, propSpawnData.seed)
+			continue
 		end
 
-		local centerTileX = propSpawnData.tileX + 0.5
-		local centerTileY = propSpawnData.tileY + TREE_SURFACE_OFFSET_Y_TILES
-		local position = self:computeTileCenterPosition(centerTileX, centerTileY, treePlaneOffset)
 		local generatedPartCount = 0
 		if propInstance:IsA("Model") then
-			propInstance:PivotTo(CFrame.new(position))
+			local existingPivot = propInstance:GetPivot()
+			local preservedRotation = existingPivot - existingPivot.Position
+			propInstance:PivotTo(CFrame.new(position) * preservedRotation)
 			local boundsCFrame, boundsSize = propInstance:GetBoundingBox()
 			local boundsBottomY = boundsCFrame.Position.Y - boundsSize.Y * 0.5
 			local bottomOffset = position.Y - boundsBottomY

@@ -29,6 +29,7 @@ export type CaveConfig = {
 	tileId: TileIdMap,
 	wallId: WallIdMap,
 	biomeId: BiomeIdMap,
+	snowConfig: any?,
 	surfaceDepth: number,
 	undergroundDepth: number,
 	cavernDepth: number,
@@ -51,6 +52,9 @@ local DEFAULT_CAVE_PERSISTENCE = 0.5
 local DEFAULT_TUNNEL_FREQUENCY = 0.047
 local DEFAULT_POCKET_FREQUENCY = 0.016
 local DEFAULT_CRACK_FREQUENCY = 0.085
+local DEFAULT_SNOW_UNDERGROUND_THRESHOLD_DELTA = -0.025
+local DEFAULT_SNOW_CAVERN_THRESHOLD_DELTA = -0.045
+local DEFAULT_SNOW_POCKET_THRESHOLD_DELTA = -0.06
 
 local SEED_X_MULTIPLIER = 0.000187
 local SEED_Y_MULTIPLIER = 0.000413
@@ -159,7 +163,31 @@ function Cave.new(configRaw: any)
 		tunnelFrequency = clampNumber((config :: any).tunnelFrequency, 0.0001, 1, DEFAULT_TUNNEL_FREQUENCY),
 		pocketFrequency = clampNumber((config :: any).pocketFrequency, 0.0001, 1, DEFAULT_POCKET_FREQUENCY),
 		crackFrequency = clampNumber((config :: any).crackFrequency, 0.0001, 1, DEFAULT_CRACK_FREQUENCY),
+		snowUndergroundThresholdDelta = DEFAULT_SNOW_UNDERGROUND_THRESHOLD_DELTA,
+		snowCavernThresholdDelta = DEFAULT_SNOW_CAVERN_THRESHOLD_DELTA,
+		snowPocketThresholdDelta = DEFAULT_SNOW_POCKET_THRESHOLD_DELTA,
 	}, Cave)
+
+	local snowConfig = if typeof((config :: any).snowConfig) == "table" then (config :: any).snowConfig else {}
+	local snowCavesConfig = if typeof((snowConfig :: any).Caves) == "table" then (snowConfig :: any).Caves else {}
+	self.snowUndergroundThresholdDelta = clampNumber(
+		snowCavesConfig.UndergroundThresholdDelta,
+		-0.25,
+		0.25,
+		DEFAULT_SNOW_UNDERGROUND_THRESHOLD_DELTA
+	)
+	self.snowCavernThresholdDelta = clampNumber(
+		snowCavesConfig.CavernThresholdDelta,
+		-0.25,
+		0.25,
+		DEFAULT_SNOW_CAVERN_THRESHOLD_DELTA
+	)
+	self.snowPocketThresholdDelta = clampNumber(
+		snowCavesConfig.PocketThresholdDelta,
+		-0.25,
+		0.25,
+		DEFAULT_SNOW_POCKET_THRESHOLD_DELTA
+	)
 
 	self.undergroundDepth = math.max(self.undergroundDepth, self.surfaceDepth + 8)
 	self.cavernDepth = math.max(self.cavernDepth, self.undergroundDepth + 24)
@@ -270,6 +298,15 @@ function Cave.shouldCarve(
 	if biomeId == self.biomeId.DESERT and depthLayer == "Underground" then
 		threshold += 0.04
 		tunnelThreshold -= 0.01
+	elseif biomeId == self.biomeId.SNOW then
+		if depthLayer == "Underground" then
+			threshold += self.snowUndergroundThresholdDelta
+			pocketThreshold += self.snowPocketThresholdDelta * 0.66
+		elseif depthLayer == "Cavern" or depthLayer == "Deep" then
+			threshold += self.snowCavernThresholdDelta
+			pocketThreshold += self.snowPocketThresholdDelta
+			tunnelThreshold += 0.01
+		end
 	elseif biomeId == self.biomeId.JUNGLE and depthLayer ~= "Surface" then
 		threshold -= 0.04
 	end

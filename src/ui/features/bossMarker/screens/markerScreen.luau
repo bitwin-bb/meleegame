@@ -31,7 +31,7 @@ type RenderedMarker = {
 local e: typeof(React.createElement) = React.createElement
 
 local EDGE_PADDING = 72
-local MARKER_SIZE = UDim2.fromOffset(72, 72)
+local MARKER_SIZE = UDim2.fromOffset(70, 70)
 local ROTATION_OFFSET_DEGREES = 90
 local DEFAULT_DIRECTION = Vector2.new(0, -1)
 local UNKNOWN_BOSS_ICON = ImageIds.questionMark
