@@ -1,8 +1,11 @@
 --!strict
 local Players = game:GetService("Players")
 local GuiService = game:GetService("GuiService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+
+local Signal = require(ReplicatedStorage.Packages.Signal)
 
 local Cursor = {}
 Cursor.__index = Cursor
@@ -27,6 +30,17 @@ export type CursorConfig = {
 }
 
 export type Cursor = typeof(setmetatable({} :: any, Cursor))
+
+type SignalConnection = {
+	Disconnect: (self: SignalConnection) -> (),
+}
+
+type CursorChangedSignal = {
+	Connect: (self: CursorChangedSignal, callback: (state: CursorState) -> ()) -> SignalConnection,
+	Fire: (self: CursorChangedSignal, state: CursorState) -> (),
+	DisconnectAll: (self: CursorChangedSignal) -> (),
+	Destroy: (self: CursorChangedSignal) -> (),
+}
 
 local function normalizeEventName(valueRaw: any, fallback: string): string
 	if typeof(valueRaw) == "string" and valueRaw ~= "" then
@@ -176,8 +190,7 @@ function Cursor.new(configRaw: CursorConfig?): Cursor
 		useCustomIcon = if config.useCustomIcon == nil then true else config.useCustomIcon == true,
 		defaultMouseIconEnabled = nil :: boolean?,
 		state = state,
-		nextListenerId = 0,
-		listeners = {} :: { [number]: (state: CursorState) -> () },
+		changedSignal = Signal.new() :: CursorChangedSignal,
 		inputChangedConnection = nil :: RBXScriptConnection?,
 		inputBeganConnection = nil :: RBXScriptConnection?,
 		inputEndedConnection = nil :: RBXScriptConnection?,
@@ -191,9 +204,7 @@ function Cursor.new(configRaw: CursorConfig?): Cursor
 end
 
 function Cursor._emitChanged(self: Cursor, state: CursorState)
-	for _, callback in self.listeners do
-		callback(state)
-	end
+	self.changedSignal:Fire(state)
 	if self.eventBus ~= nil and typeof((self.eventBus :: any).publish) == "function" then
 		local eventBusAny = self.eventBus :: any
 		eventBusAny:publish(self.eventChannel, self.changeEvent, state)
@@ -430,11 +441,9 @@ function Cursor.onChanged(self: Cursor, callbackRaw: any): () -> ()
 	if typeof(callbackRaw) ~= "function" then
 		return function() end
 	end
-	self.nextListenerId += 1
-	local id = self.nextListenerId
-	self.listeners[id] = callbackRaw
+	local connection = self.changedSignal:Connect(callbackRaw :: (state: CursorState) -> ())
 	return function()
-		self.listeners[id] = nil
+		connection:Disconnect()
 	end
 end
 
@@ -504,7 +513,8 @@ function Cursor.destroy(self: Cursor)
 		UserInputService.MouseIconEnabled = true
 	end
 	self.defaultMouseIconEnabled = nil
-	table.clear(self.listeners)
+	self.changedSignal:DisconnectAll()
+	self.changedSignal:Destroy()
 	self.isInitialized = false
 end
 

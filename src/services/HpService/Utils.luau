@@ -1,4 +1,8 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 local HpServiceUtils = {}
 
 export type HeartState = {
@@ -150,9 +154,8 @@ function HpServiceUtils.sanitizeState(stateRaw: any, fallback: HpServiceState?):
 end
 
 function HpServiceUtils.cloneState(state: HpServiceState): HpServiceState
-	local clonedHearts: { HeartState } = table.create(#state.hearts)
-	for index, heart in state.hearts do
-		clonedHearts[index] = {
+	local clonedHearts = Sift.Array.map(state.hearts, function(heart: HeartState): HeartState
+		return {
 			index = heart.index,
 			health = heart.health,
 			maxHealth = heart.maxHealth,
@@ -161,7 +164,7 @@ function HpServiceUtils.cloneState(state: HpServiceState): HpServiceState
 			isFull = heart.isFull,
 			isEmpty = heart.isEmpty,
 		}
-	end
+	end) :: { HeartState }
 
 	return {
 		health = state.health,
@@ -179,12 +182,12 @@ end
 
 function HpServiceUtils.clonePath(pathRaw: any): { string }
 	local source = if typeof(pathRaw) == "table" then pathRaw else DEFAULT_DATA_PATH
-	local output = {}
-	for _, segmentRaw in source do
+	local output = Sift.Array.map(source, function(segmentRaw: any): string?
 		if typeof(segmentRaw) == "string" and segmentRaw ~= "" then
-			table.insert(output, segmentRaw)
+			return segmentRaw
 		end
-	end
+		return nil
+	end)
 	if #output == 0 then
 		return { "hp" }
 	end

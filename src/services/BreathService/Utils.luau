@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local BreathServiceUtils = {}
 
@@ -115,18 +118,7 @@ function BreathServiceUtils.createState(stateRaw: any, fallbackRaw: BreathServic
 end
 
 function BreathServiceUtils.cloneState(state: BreathServiceState): BreathServiceState
-	return {
-		ready = state.ready,
-		maxBreath = state.maxBreath,
-		breath = state.breath,
-		graceRemaining = state.graceRemaining,
-		isUnderwater = state.isUnderwater,
-		isBreathingBlocked = state.isBreathingBlocked,
-		isDrowning = state.isDrowning,
-		submersionRatio = state.submersionRatio,
-		breathingLiquidType = state.breathingLiquidType,
-		updatedAt = state.updatedAt,
-	}
+	return Sift.Dictionary.copy(state) :: BreathServiceState
 end
 
 return BreathServiceUtils

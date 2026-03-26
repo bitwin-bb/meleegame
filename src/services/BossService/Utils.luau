@@ -1,5 +1,8 @@
 --!strict
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local BossServiceUtils = {}
 
@@ -468,32 +471,36 @@ function BossServiceUtils.sanitizeSnapshot(snapshotRaw: any, fallbackRaw: BossSn
 end
 
 function BossServiceUtils.createDefaultState(): BossServiceState
-	local byId = {}
-	local orderedIds = {}
 	return {
-		byId = byId,
-		orderedIds = orderedIds,
+		byId = {},
+		orderedIds = {},
 		updatedAt = os.clock(),
 	}
 end
 
 function BossServiceUtils.cloneState(state: BossServiceState): BossServiceState
-	local byId = {}
-	local orderedIds = table.create(#state.orderedIds)
-
-	for index, runtimeId in state.orderedIds do
-		orderedIds[index] = runtimeId
-	end
-
-	for runtimeId, snapshot in state.byId do
-		byId[runtimeId] = cloneSnapshot(snapshot)
-	end
-
 	return {
-		byId = byId,
-		orderedIds = orderedIds,
+		byId = Sift.Dictionary.map(state.byId, function(snapshot: BossSnapshot): BossSnapshot
+			return cloneSnapshot(snapshot)
+		end),
+		orderedIds = Sift.Array.copy(state.orderedIds),
 		updatedAt = state.updatedAt,
 	}
+end
+
+local function pushSanitizedSnapshot(
+	nextState: BossServiceState,
+	runtimeId: string,
+	snapshotRaw: any,
+	fallbackSnapshot: BossSnapshot?
+)
+	local snapshot = BossServiceUtils.sanitizeSnapshot(snapshotRaw, fallbackSnapshot)
+	if snapshot == nil then
+		return
+	end
+
+	nextState.byId[runtimeId] = snapshot
+	nextState.orderedIds[#nextState.orderedIds + 1] = runtimeId
 end
 
 function BossServiceUtils.sanitizeState(stateRaw: any, fallbackRaw: BossServiceState?): BossServiceState
@@ -518,11 +525,7 @@ function BossServiceUtils.sanitizeState(stateRaw: any, fallbackRaw: BossServiceS
 
 				local snapshotRaw = (byIdRaw :: any)[runtimeId]
 				local fallbackSnapshot = fallback.byId[runtimeId]
-				local snapshot = BossServiceUtils.sanitizeSnapshot(snapshotRaw, fallbackSnapshot)
-				if snapshot ~= nil then
-					nextState.byId[runtimeId] = snapshot
-					table.insert(nextState.orderedIds, runtimeId)
-				end
+				pushSanitizedSnapshot(nextState, runtimeId, snapshotRaw, fallbackSnapshot)
 			end
 		end
 
@@ -531,18 +534,14 @@ function BossServiceUtils.sanitizeState(stateRaw: any, fallbackRaw: BossServiceS
 				continue
 			end
 			local fallbackSnapshot = fallback.byId[runtimeId]
-			local snapshot = BossServiceUtils.sanitizeSnapshot(snapshotRaw, fallbackSnapshot)
-			if snapshot ~= nil then
-				nextState.byId[runtimeId] = snapshot
-				table.insert(nextState.orderedIds, runtimeId)
-			end
+			pushSanitizedSnapshot(nextState, runtimeId, snapshotRaw, fallbackSnapshot)
 		end
 	elseif typeof((source :: any)[1]) == "table" then
 		for _, snapshotRaw in source do
 			local snapshot = BossServiceUtils.sanitizeSnapshot(snapshotRaw, nil)
 			if snapshot ~= nil then
 				nextState.byId[snapshot.id] = snapshot
-				table.insert(nextState.orderedIds, snapshot.id)
+				nextState.orderedIds[#nextState.orderedIds + 1] = snapshot.id
 			end
 		end
 	end

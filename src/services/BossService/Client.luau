@@ -8,6 +8,7 @@ local Workspace = game:GetService("Workspace")
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local CameraShaker = require(ReplicatedStorage.Packages.EZCameraShake)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
 local BossServiceUtils = require(ReplicatedStorage.Shared.Services.BossService.BossServiceUtils)
@@ -63,6 +64,13 @@ local CAMERA_SHAKE_RENDER_PRIORITY = Enum.RenderPriority.Camera.Value + 1
 local PRESENTATION_MODULES = {
 	EyeOfCthulhu = EyeOfCthulhuPresentation,
 }
+
+local function appendUniqueOrderedId(orderedIds: { string }, runtimeId: string): { string }
+	if Sift.Array.includes(orderedIds, runtimeId) then
+		return orderedIds
+	end
+	return Sift.Array.append(orderedIds, runtimeId)
+end
 
 local function trim(valueRaw: any): string
 	return BossServiceUtils.trim(valueRaw)
@@ -194,14 +202,11 @@ end
 
 function BossServiceClient.applyState(self: BossServiceClient, stateRaw: any)
 	local nextState = BossServiceUtils.sanitizeState(stateRaw, self.state)
-	local previousIds = table.clone(self.state.orderedIds)
+	local previousIds = Sift.Array.copy(self.state.orderedIds)
 	self.state = nextState
 	self.isReadyFlag = true
 
-	local nextLookup = {}
-	for _, runtimeId in nextState.orderedIds do
-		nextLookup[runtimeId] = true
-	end
+	local nextLookup = Sift.Set.fromArray(nextState.orderedIds)
 
 	for _, runtimeId in previousIds do
 		if nextLookup[runtimeId] ~= true then
@@ -231,19 +236,11 @@ function BossServiceClient.upsertSnapshot(self: BossServiceClient, snapshotRaw: 
 		return
 	end
 
-	self.state.byId[snapshot.id] = snapshot
-	local alreadyOrdered = false
-	for _, existingId in self.state.orderedIds do
-		if existingId == snapshot.id then
-			alreadyOrdered = true
-			break
-		end
-	end
-	if not alreadyOrdered then
-		table.insert(self.state.orderedIds, snapshot.id)
-	end
-
-	self.state.updatedAt = os.clock()
+	self.state = {
+		byId = Sift.Dictionary.set(self.state.byId, snapshot.id, snapshot),
+		orderedIds = appendUniqueOrderedId(self.state.orderedIds, snapshot.id),
+		updatedAt = os.clock(),
+	}
 	self.isReadyFlag = true
 	self:ensureVisual(snapshot)
 	self:pushStateChanged()
@@ -263,15 +260,13 @@ function BossServiceClient.onBossRemoved(self: BossServiceClient, runtimeIdRaw: 
 		return
 	end
 
-	self.state.byId[runtimeId] = nil
-	local nextOrderedIds = {}
-	for _, existingId in self.state.orderedIds do
-		if existingId ~= runtimeId then
-			table.insert(nextOrderedIds, existingId)
-		end
-	end
-	self.state.orderedIds = nextOrderedIds
-	self.state.updatedAt = os.clock()
+	self.state = {
+		byId = Sift.Dictionary.removeKey(self.state.byId, runtimeId),
+		orderedIds = Sift.Array.filter(self.state.orderedIds, function(existingId: string): boolean
+			return existingId ~= runtimeId
+		end),
+		updatedAt = os.clock(),
+	}
 	self:destroyVisual(runtimeId)
 	self:pushStateChanged()
 end

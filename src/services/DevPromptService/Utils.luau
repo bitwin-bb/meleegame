@@ -1,6 +1,7 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local Role = require(ReplicatedStorage.Shared.Services.DevPromptService.Role)
 
 type PlayerRoleSnapshot = Role.PlayerRoleSnapshot
@@ -130,16 +131,14 @@ function DevPromptServiceUtils.clonePlayerRoleSnapshot(snapshotRaw: any): Player
 end
 
 function DevPromptServiceUtils.sanitizePlayerRoles(roleMapRaw: any): { [string]: PlayerRoleSnapshot }
-	local output = {}
 	if typeof(roleMapRaw) ~= "table" then
-		return output
+		return {}
 	end
 
-	for key, value in roleMapRaw do
+	return Sift.Dictionary.map(roleMapRaw, function(value: any, key: any): (PlayerRoleSnapshot, string)
 		local stringKey = if typeof(key) == "string" then key else tostring(key)
-		output[stringKey] = DevPromptServiceUtils.clonePlayerRoleSnapshot(value)
-	end
-	return output
+		return DevPromptServiceUtils.clonePlayerRoleSnapshot(value), stringKey
+	end)
 end
 
 function DevPromptServiceUtils.createConsoleEntry(
@@ -196,14 +195,12 @@ function DevPromptServiceUtils.cloneConsoleEntry(entryRaw: any): ConsoleEntry
 end
 
 function DevPromptServiceUtils.cloneEntries(entriesRaw: any): { ConsoleEntry }
-	local output = {}
 	if typeof(entriesRaw) ~= "table" then
-		return output
+		return {}
 	end
-	for _, entry in entriesRaw do
-		output[#output + 1] = DevPromptServiceUtils.cloneConsoleEntry(entry)
-	end
-	return output
+	return Sift.Array.map(entriesRaw, function(entry: any): ConsoleEntry
+		return DevPromptServiceUtils.cloneConsoleEntry(entry)
+	end)
 end
 
 function DevPromptServiceUtils.limitEntries(entriesRaw: { ConsoleEntry }, maxEntriesRaw: any): { ConsoleEntry }
@@ -212,14 +209,7 @@ function DevPromptServiceUtils.limitEntries(entriesRaw: { ConsoleEntry }, maxEnt
 	if #entries <= maxEntries then
 		return entries
 	end
-	local startIndex = #entries - maxEntries + 1
-	local output = table.create(maxEntries)
-	local outputIndex = 0
-	for index = startIndex, #entries do
-		outputIndex += 1
-		output[outputIndex] = entries[index]
-	end
-	return output
+	return Sift.Array.slice(entries, #entries - maxEntries + 1, #entries)
 end
 
 function DevPromptServiceUtils.createDefaultState(): DevPromptState
@@ -249,10 +239,7 @@ function DevPromptServiceUtils.sanitizeState(stateRaw: any, fallbackRaw: any?): 
 		localRoleId = localRoleId,
 		canUseCommands = sanitizeBoolean((source :: any).canUseCommands, fallback.canUseCommands),
 		playerRoles = DevPromptServiceUtils.sanitizePlayerRoles((source :: any).playerRoles),
-		entries = DevPromptServiceUtils.limitEntries(
-			DevPromptServiceUtils.cloneEntries((source :: any).entries),
-			(source :: any).maxEntries
-		),
+		entries = DevPromptServiceUtils.limitEntries((source :: any).entries, (source :: any).maxEntries),
 		isOpen = sanitizeBoolean((source :: any).isOpen, fallback.isOpen),
 		commandPrefix = if trim((source :: any).commandPrefix) ~= ""
 			then trim((source :: any).commandPrefix)

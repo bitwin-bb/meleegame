@@ -1,6 +1,9 @@
 --!strict
 local GuiService = game:GetService("GuiService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
+
+local Signal = require(ReplicatedStorage.Packages.Signal)
 
 local GamepadNav = {}
 GamepadNav.__index = GamepadNav
@@ -36,6 +39,17 @@ type LayoutRecord = {
 }
 
 export type GamepadNav = typeof(setmetatable({} :: any, GamepadNav))
+
+type SignalConnection = {
+	Disconnect: (self: SignalConnection) -> (),
+}
+
+type FocusChangedSignal = {
+	Connect: (self: FocusChangedSignal, callback: FocusCallback) -> SignalConnection,
+	Fire: (self: FocusChangedSignal, nextFocused: GuiObject?, prevFocused: GuiObject?) -> (),
+	DisconnectAll: (self: FocusChangedSignal) -> (),
+	Destroy: (self: FocusChangedSignal) -> (),
+}
 
 local function clampInteger(valueRaw: any, fallback: number, minValue: number, maxValue: number): number
 	local value = if typeof(valueRaw) == "number" then math.floor(valueRaw) else fallback
@@ -98,8 +112,7 @@ function GamepadNav.new(configRaw: GamepadNavConfig?): GamepadNav
 		activeLayoutKey = nil :: string?,
 		activeIndex = 0,
 		lastFocusedByLayout = {} :: { [string]: number },
-		focusListeners = {} :: { [number]: FocusCallback },
-		nextListenerId = 0,
+		focusChangedSignal = Signal.new() :: FocusChangedSignal,
 		connections = {} :: { RBXScriptConnection? },
 		isInitialized = false,
 		isEnabled = true,
@@ -122,9 +135,7 @@ function GamepadNav._emitFocusChanged(self: GamepadNav, nextFocused: GuiObject?,
 	if self.externalFocusChanged ~= nil then
 		self.externalFocusChanged(nextFocused, prevFocused)
 	end
-	for _, callback in self.focusListeners do
-		callback(nextFocused, prevFocused)
-	end
+	self.focusChangedSignal:Fire(nextFocused, prevFocused)
 	if self.tooltipManager ~= nil and typeof((self.tooltipManager :: any).hide) == "function" and nextFocused == nil then
 		local tooltipManagerAny = self.tooltipManager :: any
 		tooltipManagerAny:hide()
@@ -474,11 +485,9 @@ function GamepadNav.onFocusChanged(self: GamepadNav, callbackRaw: any): () -> ()
 	if typeof(callbackRaw) ~= "function" then
 		return function() end
 	end
-	self.nextListenerId += 1
-	local id = self.nextListenerId
-	self.focusListeners[id] = callbackRaw
+	local connection = self.focusChangedSignal:Connect(callbackRaw :: FocusCallback)
 	return function()
-		self.focusListeners[id] = nil
+		connection:Disconnect()
 	end
 end
 
@@ -497,7 +506,8 @@ function GamepadNav.destroy(self: GamepadNav)
 	table.clear(self.layouts)
 	table.clear(self.layoutOrder)
 	table.clear(self.lastFocusedByLayout)
-	table.clear(self.focusListeners)
+	self.focusChangedSignal:DisconnectAll()
+	self.focusChangedSignal:Destroy()
 	self.activeLayoutKey = nil
 	self.activeIndex = 0
 	self.isInitialized = false

@@ -3,7 +3,9 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Networker = require(ReplicatedStorage.Packages.Networker)
+local Promise = require(ReplicatedStorage.Packages.Promise)
 local ProfileStore = require(ReplicatedStorage.Packages.ProfileStore)
+local Signal = require(ReplicatedStorage.Packages.Signal)
 local PlayerDataServiceUtils = require(ReplicatedStorage.Shared.Services.PlayerDataService.PlayerDataServiceUtils)
 local DataTemplate = require(ReplicatedStorage.Shared.Modules.Core.DataTemplate)
 
@@ -15,12 +17,21 @@ type ProfileSignalConnection = {
 	Disconnect: (self: ProfileSignalConnection) -> (),
 }
 
+type StateChangedSignal = {
+	Connect: (self: StateChangedSignal, callback: () -> ()) -> any,
+	Fire: (self: StateChangedSignal) -> (),
+	DisconnectAll: (self: StateChangedSignal) -> (),
+	Destroy: (self: StateChangedSignal) -> (),
+}
+
 type PlayerRuntime = {
 	loadToken: number,
 	loadState: LoadState,
 	profile: Profile?,
 	data: PlayerData?,
 	profileEndedConnection: ProfileSignalConnection?,
+	stateChangedSignal: StateChangedSignal,
+	loadPromise: any?,
 }
 
 local PlayerDataServiceServer = {}
@@ -62,6 +73,8 @@ function PlayerDataServiceServer.createRuntime(self: PlayerDataServiceServer): P
 		profile = nil,
 		data = nil,
 		profileEndedConnection = nil,
+		stateChangedSignal = Signal.new() :: StateChangedSignal,
+		loadPromise = nil,
 	}
 end
 
@@ -101,12 +114,19 @@ function PlayerDataServiceServer.releaseProfile(self: PlayerDataServiceServer, r
 	end
 end
 
+function PlayerDataServiceServer.emitRuntimeStateChanged(self: PlayerDataServiceServer, runtime: PlayerRuntime)
+	runtime.stateChangedSignal:Fire()
+end
+
 function PlayerDataServiceServer.pushState(self: PlayerDataServiceServer, player: Player)
+	local runtime = self.playerRuntimes[player]
 	if self.networker == nil then
+		if runtime ~= nil then
+			self:emitRuntimeStateChanged(runtime)
+		end
 		return
 	end
 
-	local runtime = self.playerRuntimes[player]
 	if runtime == nil then
 		self.networker:fire(player, "applyState", nil, PlayerDataServiceUtils.LOAD_STATE_UNLOADED)
 		return
@@ -114,6 +134,7 @@ function PlayerDataServiceServer.pushState(self: PlayerDataServiceServer, player
 
 	local dataSnapshot = if runtime.data ~= nil then PlayerDataServiceUtils.cloneDeep(runtime.data) else nil
 	self.networker:fire(player, "applyState", dataSnapshot, runtime.loadState)
+	self:emitRuntimeStateChanged(runtime)
 end
 
 function PlayerDataServiceServer.onProfileSessionEnded(self: PlayerDataServiceServer, player: Player, profile: Profile)
@@ -136,99 +157,119 @@ function PlayerDataServiceServer.onProfileSessionEnded(self: PlayerDataServiceSe
 	end
 end
 
-function PlayerDataServiceServer.loadProfileAsync(
+function PlayerDataServiceServer.loadProfilePromise(
 	self: PlayerDataServiceServer,
 	player: Player,
 	loadToken: number
 )
-	local runtime = self.playerRuntimes[player]
-	if runtime == nil then
-		return
-	end
-	if runtime.loadToken ~= loadToken then
-		return
-	end
-
-	local profileKey = PlayerDataServiceUtils.getProfileKey(player)
-	if profileKey == nil then
-		runtime.loadState = PlayerDataServiceUtils.LOAD_STATE_FAILED
-		self:pushState(player)
-		if player.Parent == Players and not ProfileStore.IsClosing then
-			player:Kick(DATA_LOAD_FAILED_KICK_MESSAGE)
+	return Promise.try(function()
+		local runtime = self.playerRuntimes[player]
+		if runtime == nil or runtime.loadToken ~= loadToken then
+			return nil
 		end
-		return
-	end
 
-	local profile: Profile? = nil
-	local success, resultOrError = pcall(function()
-		return self.profileStore:StartSessionAsync(profileKey, {
-			Cancel = function()
-				local currentRuntime = self.playerRuntimes[player]
-				if currentRuntime == nil then
-					return true
-				end
-				return currentRuntime.loadToken ~= loadToken
-			end,
-		})
-	end)
-	if success then
-		profile = resultOrError :: Profile?
-	else
-		warn(("[PlayerDataService] Failed to start profile for %s (%d): %s"):format(
+		local profileKey = PlayerDataServiceUtils.getProfileKey(player)
+		if profileKey == nil then
+			runtime.loadState = PlayerDataServiceUtils.LOAD_STATE_FAILED
+			self:pushState(player)
+			if player.Parent == Players and not ProfileStore.IsClosing then
+				player:Kick(DATA_LOAD_FAILED_KICK_MESSAGE)
+			end
+			return nil
+		end
+
+		local profile: Profile? = nil
+		local success, resultOrError = pcall(function()
+			return self.profileStore:StartSessionAsync(profileKey, {
+				Cancel = function()
+					local currentRuntime = self.playerRuntimes[player]
+					if currentRuntime == nil then
+						return true
+					end
+					return currentRuntime.loadToken ~= loadToken
+				end,
+			})
+		end)
+		if success then
+			profile = resultOrError :: Profile?
+		else
+			warn(("[PlayerDataService] Failed to start profile for %s (%d): %s"):format(
+				player.Name,
+				player.UserId,
+				tostring(resultOrError)
+			))
+		end
+
+		runtime = self.playerRuntimes[player]
+		if runtime == nil or runtime.loadToken ~= loadToken then
+			if profile and profile:IsActive() then
+				profile:EndSession()
+			end
+			return nil
+		end
+
+		if profile == nil then
+			runtime.loadState = PlayerDataServiceUtils.LOAD_STATE_FAILED
+			self:pushState(player)
+			if player.Parent == Players and not ProfileStore.IsClosing then
+				player:Kick(DATA_LOAD_FAILED_KICK_MESSAGE)
+			end
+			return nil
+		end
+
+		profile:AddUserId(player.UserId)
+		profile:Reconcile()
+
+		local profileData = profile.Data
+		if typeof(profileData) ~= "table" then
+			profileData = PlayerDataServiceUtils.createDefaultData(self.dataTemplate)
+			profile.Data = profileData
+		end
+		PlayerDataServiceUtils.reconcileData(profileData, self.dataTemplate)
+
+		self:disconnectProfileEndedConnection(runtime)
+		runtime.profile = profile
+		runtime.data = profileData
+		runtime.loadState = PlayerDataServiceUtils.LOAD_STATE_LOADED
+		runtime.profileEndedConnection = profile.OnSessionEnd:Connect(function()
+			self:onProfileSessionEnded(player, profile :: Profile)
+		end)
+
+		self:pushState(player)
+		return profileData
+	end):catch(function(err: any)
+		warn(("[PlayerDataService] Unexpected loadProfilePromise failure for %s (%d): %s"):format(
 			player.Name,
 			player.UserId,
-			tostring(resultOrError)
+			tostring(err)
 		))
-	end
 
-	runtime = self.playerRuntimes[player]
-	if runtime == nil or runtime.loadToken ~= loadToken then
-		if profile and profile:IsActive() then
-			profile:EndSession()
+		local runtime = self.playerRuntimes[player]
+		if runtime ~= nil and runtime.loadToken == loadToken then
+			runtime.loadState = PlayerDataServiceUtils.LOAD_STATE_FAILED
+			self:pushState(player)
 		end
-		return
-	end
-
-	if profile == nil then
-		runtime.loadState = PlayerDataServiceUtils.LOAD_STATE_FAILED
-		self:pushState(player)
-		if player.Parent == Players and not ProfileStore.IsClosing then
-			player:Kick(DATA_LOAD_FAILED_KICK_MESSAGE)
-		end
-		return
-	end
-
-	profile:AddUserId(player.UserId)
-	profile:Reconcile()
-
-	local profileData = profile.Data
-	if typeof(profileData) ~= "table" then
-		profileData = PlayerDataServiceUtils.createDefaultData(self.dataTemplate)
-		profile.Data = profileData
-	end
-	PlayerDataServiceUtils.reconcileData(profileData, self.dataTemplate)
-
-	self:disconnectProfileEndedConnection(runtime)
-	runtime.profile = profile
-	runtime.data = profileData
-	runtime.loadState = PlayerDataServiceUtils.LOAD_STATE_LOADED
-	runtime.profileEndedConnection = profile.OnSessionEnd:Connect(function()
-		self:onProfileSessionEnded(player, profile :: Profile)
+		return nil
 	end)
-
-	self:pushState(player)
 end
 
 function PlayerDataServiceServer.trackPlayer(self: PlayerDataServiceServer, player: Player)
 	local runtime = self:getRuntime(player)
 	runtime.loadToken += 1
+	if runtime.loadPromise ~= nil then
+		runtime.loadPromise:cancel()
+		runtime.loadPromise = nil
+	end
 	self:releaseProfile(runtime)
 	runtime.loadState = PlayerDataServiceUtils.LOAD_STATE_LOADING
 	self:pushState(player)
 
 	local currentLoadToken = runtime.loadToken
-	task.spawn(function()
-		self:loadProfileAsync(player, currentLoadToken)
+	runtime.loadPromise = self:loadProfilePromise(player, currentLoadToken):finally(function()
+		local currentRuntime = self.playerRuntimes[player]
+		if currentRuntime ~= nil and currentRuntime.loadToken == currentLoadToken then
+			currentRuntime.loadPromise = nil
+		end
 	end)
 end
 
@@ -238,10 +279,16 @@ function PlayerDataServiceServer.untrackPlayer(self: PlayerDataServiceServer, pl
 		return
 	end
 
-	self.playerRuntimes[player] = nil
 	runtime.loadToken += 1
+	if runtime.loadPromise ~= nil then
+		runtime.loadPromise:cancel()
+		runtime.loadPromise = nil
+	end
 	runtime.loadState = PlayerDataServiceUtils.LOAD_STATE_UNLOADED
+	self:emitRuntimeStateChanged(runtime)
+	self.playerRuntimes[player] = nil
 	self:releaseProfile(runtime)
+	runtime.stateChangedSignal:Destroy()
 end
 
 function PlayerDataServiceServer.getActiveRuntime(self: PlayerDataServiceServer, player: Player): PlayerRuntime?
@@ -290,30 +337,66 @@ function PlayerDataServiceServer.waitForData(
 	player: Player,
 	timeoutSecondsRaw: any
 ): PlayerData?
+	local success, result = self:waitForDataPromise(player, timeoutSecondsRaw):await()
+	if not success then
+		return nil
+	end
+	return result :: PlayerData?
+end
+
+function PlayerDataServiceServer.waitForDataPromise(
+	self: PlayerDataServiceServer,
+	player: Player,
+	timeoutSecondsRaw: any
+)
 	local timeoutSeconds = if typeof(timeoutSecondsRaw) == "number" and timeoutSecondsRaw == timeoutSecondsRaw
 		then math.max(0, timeoutSecondsRaw)
 		else 15
-	local startedAt = os.clock()
 
-	while true do
-		local runtime = self:getActiveRuntime(player)
-		if runtime and runtime.data ~= nil then
-			return runtime.data
+	local function resolveIfReady(): PlayerData?
+		local activeRuntime = self:getActiveRuntime(player)
+		if activeRuntime ~= nil and activeRuntime.data ~= nil then
+			return activeRuntime.data
 		end
-
-		local trackedRuntime = self.playerRuntimes[player]
-		if trackedRuntime == nil then
-			return nil
-		end
-		if trackedRuntime.loadState == PlayerDataServiceUtils.LOAD_STATE_FAILED then
-			return nil
-		end
-		if os.clock() - startedAt >= timeoutSeconds then
-			return nil
-		end
-
-		task.wait()
+		return nil
 	end
+
+	local immediateData = resolveIfReady()
+	if immediateData ~= nil then
+		return Promise.resolve(immediateData)
+	end
+
+	local trackedRuntime = self.playerRuntimes[player]
+	if trackedRuntime == nil then
+		return Promise.resolve(nil)
+	end
+	if trackedRuntime.loadState == PlayerDataServiceUtils.LOAD_STATE_FAILED then
+		return Promise.resolve(nil)
+	end
+
+	local stateChangedPromise = Promise.fromEvent(trackedRuntime.stateChangedSignal, function()
+		local currentRuntime = self.playerRuntimes[player]
+		if currentRuntime == nil then
+			return true
+		end
+		if currentRuntime.loadState == PlayerDataServiceUtils.LOAD_STATE_FAILED then
+			return true
+		end
+		return resolveIfReady() ~= nil
+	end):andThen(function()
+		return resolveIfReady()
+	end)
+
+	if timeoutSeconds <= 0 then
+		return Promise.resolve(nil)
+	end
+
+	return Promise.race({
+		stateChangedPromise,
+		Promise.delay(timeoutSeconds):andThen(function()
+			return nil
+		end),
+	})
 end
 
 function PlayerDataServiceServer.getProfile(self: PlayerDataServiceServer, player: Player): Profile?
@@ -456,29 +539,39 @@ function PlayerDataServiceServer.mergeData(
 end
 
 function PlayerDataServiceServer.savePlayerData(self: PlayerDataServiceServer, player: Player): boolean
-	local runtime = self:getActiveRuntime(player)
-	if runtime == nil then
-		return false
-	end
-
-	local profile = runtime.profile
-	if profile == nil or not profile:IsActive() then
-		return false
-	end
-
-	local success, resultOrError = pcall(function()
-		profile:Save()
-	end)
+	local success, result = self:savePlayerDataPromise(player):await()
 	if not success then
-		warn(("[PlayerDataService] Failed to save profile for %s (%d): %s"):format(
-			player.Name,
-			player.UserId,
-			tostring(resultOrError)
-		))
 		return false
 	end
+	return result == true
+end
 
-	return true
+function PlayerDataServiceServer.savePlayerDataPromise(self: PlayerDataServiceServer, player: Player)
+	return Promise.try(function()
+		local runtime = self:getActiveRuntime(player)
+		if runtime == nil then
+			return false
+		end
+
+		local profile = runtime.profile
+		if profile == nil or not profile:IsActive() then
+			return false
+		end
+
+		local success, resultOrError = pcall(function()
+			profile:Save()
+		end)
+		if not success then
+			warn(("[PlayerDataService] Failed to save profile for %s (%d): %s"):format(
+				player.Name,
+				player.UserId,
+				tostring(resultOrError)
+			))
+			return false
+		end
+
+		return true
+	end)
 end
 
 function PlayerDataServiceServer.saveAllPlayerData(self: PlayerDataServiceServer)
@@ -501,8 +594,14 @@ function PlayerDataServiceServer.destroy(self: PlayerDataServiceServer)
 	for player, runtime in self.playerRuntimes do
 		self.playerRuntimes[player] = nil
 		runtime.loadToken += 1
+		if runtime.loadPromise ~= nil then
+			runtime.loadPromise:cancel()
+			runtime.loadPromise = nil
+		end
 		runtime.loadState = PlayerDataServiceUtils.LOAD_STATE_UNLOADED
+		self:emitRuntimeStateChanged(runtime)
 		self:releaseProfile(runtime)
+		runtime.stateChangedSignal:Destroy()
 	end
 
 	if self.networker then

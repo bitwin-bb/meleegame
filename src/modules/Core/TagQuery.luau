@@ -1,5 +1,9 @@
 --!strict
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Signal = require(ReplicatedStorage.Packages.Signal)
+
 local TagQuery = {}
 TagQuery.__index = TagQuery
 
@@ -14,6 +18,17 @@ export type TagProvider = {
 export type TagListener = (instance: any, isAdded: boolean, tag: string) -> ()
 
 export type TagQuery = typeof(setmetatable({} :: any, TagQuery))
+
+type SignalConnection = {
+	Disconnect: (self: SignalConnection) -> (),
+}
+
+type TagSignal = {
+	Connect: (self: TagSignal, callback: TagListener) -> SignalConnection,
+	Fire: (self: TagSignal, instance: any, isAdded: boolean, tag: string) -> (),
+	DisconnectAll: (self: TagSignal) -> (),
+	Destroy: (self: TagSignal) -> (),
+}
 
 local function clearArray(array: { any })
 	for index = #array, 1, -1 do
@@ -43,11 +58,20 @@ function TagQuery.new(providerRaw: any): TagQuery
 		tagLists = {} :: { [string]: { any } },
 		tagSets = {} :: { [string]: { [any]: true } },
 		tagVersions = {} :: { [string]: number },
-		listeners = {} :: { [string]: { [number]: TagListener } },
-		nextListenerId = 0,
+		signalsByTag = {} :: { [string]: TagSignal },
 		tagConnections = {} :: { [string]: { any? } },
 	}, TagQuery)
 	return self
+end
+
+function TagQuery._getSignal(self: TagQuery, tag: string): TagSignal
+	local signal = self.signalsByTag[tag]
+	if signal ~= nil then
+		return signal
+	end
+	signal = Signal.new() :: TagSignal
+	self.signalsByTag[tag] = signal
+	return signal
 end
 
 function TagQuery._refreshTag(self: TagQuery, tag: string)
@@ -98,12 +122,7 @@ function TagQuery._ensureTagSignals(self: TagQuery, tag: string)
 					set[instance] = true
 					list[#list + 1] = instance
 					self.tagVersions[tag] = (self.tagVersions[tag] or 0) + 1
-					local tagListeners = self.listeners[tag]
-					if tagListeners ~= nil then
-						for _, listener in tagListeners do
-							listener(instance, true, tag)
-						end
-					end
+					self:_getSignal(tag):Fire(instance, true, tag)
 				end
 			end)
 		end
@@ -130,12 +149,7 @@ function TagQuery._ensureTagSignals(self: TagQuery, tag: string)
 						end
 					end
 					self.tagVersions[tag] = (self.tagVersions[tag] or 0) + 1
-					local tagListeners = self.listeners[tag]
-					if tagListeners ~= nil then
-						for _, listener in tagListeners do
-							listener(instance, false, tag)
-						end
-					end
+					self:_getSignal(tag):Fire(instance, false, tag)
 				end
 			end)
 		end
@@ -192,26 +206,14 @@ function TagQuery.subscribe(self: TagQuery, tagRaw: any, listener: TagListener):
 		return function() end
 	end
 
-	if self.listeners[tagRaw] == nil then
-		self.listeners[tagRaw] = {}
-	end
-	self.nextListenerId += 1
-	local listenerId = self.nextListenerId
-	self.listeners[tagRaw][listenerId] = listener
-
 	if self.tagLists[tagRaw] == nil then
 		self:_refreshTag(tagRaw)
 	end
 	self:_ensureTagSignals(tagRaw)
+	local connection = self:_getSignal(tagRaw):Connect(listener)
 
 	return function()
-		local byTag = self.listeners[tagRaw]
-		if byTag ~= nil then
-			byTag[listenerId] = nil
-			if next(byTag) == nil then
-				self.listeners[tagRaw] = nil
-			end
-		end
+		connection:Disconnect()
 	end
 end
 
@@ -266,10 +268,11 @@ function TagQuery.destroy(self: TagQuery)
 		end
 	end
 	table.clear(self.tagConnections)
-	for _, byTag in self.listeners do
-		table.clear(byTag)
+	for _, signal in self.signalsByTag do
+		signal:DisconnectAll()
+		signal:Destroy()
 	end
-	table.clear(self.listeners)
+	table.clear(self.signalsByTag)
 	for _, list in self.tagLists do
 		clearArray(list)
 	end

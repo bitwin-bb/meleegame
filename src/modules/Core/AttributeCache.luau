@@ -1,6 +1,9 @@
 --!strict
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Codec = require(script.Parent.Codec)
+local Signal = require(ReplicatedStorage.Packages.Signal)
 
 local AttributeCache = {}
 AttributeCache.__index = AttributeCache
@@ -30,13 +33,24 @@ export type ReplicationChange = {
 	attributes: { [string]: any },
 }
 
+type SignalConnection = {
+	Disconnect: (self: SignalConnection) -> (),
+}
+
+type AttributeChangedSignal = {
+	Connect: (self: AttributeChangedSignal, callback: ChangeListener) -> SignalConnection,
+	Fire: (self: AttributeChangedSignal, instance: Instance, attribute: string, newValue: any, oldValue: any) -> (),
+	DisconnectAll: (self: AttributeChangedSignal) -> (),
+	Destroy: (self: AttributeChangedSignal) -> (),
+}
+
 export type InstanceRecord = {
 	cache: { [string]: any },
 	base: { [string]: any },
 	modifiers: { [string]: { [string]: ModifierRecord } },
 	dirty: { [string]: { oldValue: any, newValue: any } },
 	dirtyOrder: { string },
-	listeners: { [string]: { [number]: ChangeListener } },
+	listenerSignals: { [string]: AttributeChangedSignal },
 	suppress: { [string]: boolean },
 	connection: RBXScriptConnection?,
 	bindOrder: number,
@@ -95,10 +109,19 @@ function AttributeCache.new(): AttributeCache
 		dirtyInstances = {} :: { Instance },
 		timedModifiers = {} :: { { instance: Instance, attribute: string, modifierId: string, expiresAt: number } },
 		now = 0,
-		nextListenerId = 0,
 		nextBindOrder = 0,
 	}, AttributeCache)
 	return self
+end
+
+function AttributeCache._getListenerSignal(self: AttributeCache, record: InstanceRecord, attribute: string): AttributeChangedSignal
+	local signal = record.listenerSignals[attribute]
+	if signal ~= nil then
+		return signal
+	end
+	signal = Signal.new() :: AttributeChangedSignal
+	record.listenerSignals[attribute] = signal
+	return signal
 end
 
 function AttributeCache._getRecord(self: AttributeCache, instance: Instance): InstanceRecord?
@@ -114,17 +137,13 @@ function AttributeCache._registerDirtyInstance(self: AttributeCache, instance: I
 end
 
 function AttributeCache._notifyListeners(self: AttributeCache, record: InstanceRecord, instance: Instance, attribute: string, newValue: any, oldValue: any)
-	local byAttribute = record.listeners[attribute]
+	local byAttribute = record.listenerSignals[attribute]
 	if byAttribute ~= nil then
-		for _, listener in byAttribute do
-			listener(instance, attribute, newValue, oldValue)
-		end
+		byAttribute:Fire(instance, attribute, newValue, oldValue)
 	end
-	local wildcard = record.listeners[DEFAULT_GROUP]
+	local wildcard = record.listenerSignals[DEFAULT_GROUP]
 	if wildcard ~= nil then
-		for _, listener in wildcard do
-			listener(instance, attribute, newValue, oldValue)
-		end
+		wildcard:Fire(instance, attribute, newValue, oldValue)
 	end
 end
 
@@ -226,7 +245,7 @@ function AttributeCache.bind(self: AttributeCache, instanceRaw: any): boolean
 		modifiers = {},
 		dirty = {},
 		dirtyOrder = {},
-		listeners = {},
+		listenerSignals = {},
 		suppress = {},
 		connection = nil,
 		bindOrder = self.nextBindOrder,
@@ -273,6 +292,11 @@ function AttributeCache.unbind(self: AttributeCache, instanceRaw: any)
 		record.connection:Disconnect()
 		record.connection = nil
 	end
+	for _, signal in record.listenerSignals do
+		signal:DisconnectAll()
+		signal:Destroy()
+	end
+	table.clear(record.listenerSignals)
 	self.records[instance] = nil
 	self.instanceDirtySet[instance] = nil
 	for index = #self.dirtyInstances, 1, -1 do
@@ -343,26 +367,10 @@ function AttributeCache.onChanged(self: AttributeCache, instanceRaw: any, attrib
 	end
 
 	local attribute = normalizeAttribute(attributeRaw) or DEFAULT_GROUP
-	if record.listeners[attribute] == nil then
-		record.listeners[attribute] = {}
-	end
-	self.nextListenerId += 1
-	local listenerId = self.nextListenerId
-	record.listeners[attribute][listenerId] = listener
+	local connection = self:_getListenerSignal(record, attribute):Connect(listener)
 
 	return function()
-		local runtimeRecord = self.records[instanceRaw]
-		if runtimeRecord == nil then
-			return
-		end
-		local byAttribute = runtimeRecord.listeners[attribute]
-		if byAttribute == nil then
-			return
-		end
-		byAttribute[listenerId] = nil
-		if next(byAttribute) == nil then
-			runtimeRecord.listeners[attribute] = nil
-		end
+		connection:Disconnect()
 	end
 end
 

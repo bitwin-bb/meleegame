@@ -1185,12 +1185,8 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 				end
 				propDataAny.biomeId = fallbackBiomeId
 			else
-				propDataAny.biomeId = sanitizeInteger(
-					propDataAny.biomeId,
-					self.biomeId.FOREST,
-					self.biomeId.JUNGLE,
-					self.biomeId.FOREST
-				)
+				propDataAny.biomeId =
+					sanitizeInteger(propDataAny.biomeId, self.biomeId.FOREST, self.biomeId.JUNGLE, self.biomeId.FOREST)
 			end
 		end
 	end
@@ -1482,11 +1478,19 @@ local function carveCorruptionChasmsForChunk(
 	end
 end
 
-local function printDesertGenerationDebug(self: WorldGeneration)
-	local biomeGenerator = self.biomeGenerator
-	if biomeGenerator == nil then
+local function printDesertGenerationDebugMessage(side: ("left" | "right")?)
+	if side == nil then
 		print("desert hasnt been generated")
 		return
+	end
+
+	print(("desert is on %s side"):format(side))
+end
+
+local function resolveNearestDesertSide(self: WorldGeneration): ("left" | "right")?
+	local biomeGenerator = self.biomeGenerator
+	if biomeGenerator == nil then
+		return nil
 	end
 
 	local nearestLeftDistance: number? = nil
@@ -1513,27 +1517,26 @@ local function printDesertGenerationDebug(self: WorldGeneration)
 	end
 
 	if nearestLeftDistance == nil and nearestRightDistance == nil then
-		print("desert hasnt been generated")
-		return
+		return nil
 	end
 
 	if nearestLeftDistance ~= nil and nearestRightDistance == nil then
-		print("desert is on left side")
-		return
+		return "left"
 	end
 
 	if nearestRightDistance ~= nil and nearestLeftDistance == nil then
-		print("desert is on right side")
-		return
+		return "right"
 	end
 
 	if nearestLeftDistance ~= nil and nearestRightDistance ~= nil then
-		if nearestLeftDistance <= nearestRightDistance then
-			print("desert is on left side")
-		else
-			print("desert is on right side")
-		end
+		return if nearestLeftDistance <= nearestRightDistance then "left" else "right"
 	end
+
+	return nil
+end
+
+local function printDesertGenerationDebug(self: WorldGeneration)
+	printDesertGenerationDebugMessage(resolveNearestDesertSide(self))
 end
 
 local function ensureChunkLiquidData(self: WorldGeneration, chunkData: ChunkData)
@@ -3455,8 +3458,7 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 		local surfaceSupportsTrees = surfaceTileId ~= self.tileId.SAND
 			and surfaceTileId ~= self.tileId.SANDSTONE
 			and surfaceTileId ~= self.tileId.ICE
-		local hasAirClearance = surfaceSupportsTrees
-			and self:hasTreeAirClearance(column, worldTileX, surfaceTileY)
+		local hasAirClearance = surfaceSupportsTrees and self:hasTreeAirClearance(column, worldTileX, surfaceTileY)
 		local treeVariantIndex = if surfaceSupportsTrees
 			then self:resolveTreeTemplateIndex(worldTileX, surfaceTileY, column.biomeType, column.biomeId)
 			else nil
@@ -3465,16 +3467,19 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 		if canSpawnTree and column.biomeId == self.biomeId.SNOW and column.biomeType == self.biomeType.NORMAL then
 			local snowTreeChance = clampNumber(snowDecorationSettings.TreeChance, 0, 1, 0.38)
 			local snowTreeEdgeBuffer = sanitizeInteger(snowDecorationSettings.TreeEdgeBufferTiles, 0, 48, 8)
-			if not self:isWithinBiomeTransitionBuffer(
-				getColumnProfileForBlend,
-				worldTileX,
-				self.biomeId.SNOW,
-				self.biomeType.NORMAL,
-				snowTreeEdgeBuffer
-			) then
+			if
+				not self:isWithinBiomeTransitionBuffer(
+					getColumnProfileForBlend,
+					worldTileX,
+					self.biomeId.SNOW,
+					self.biomeType.NORMAL,
+					snowTreeEdgeBuffer
+				)
+			then
 				canSpawnTree = false
 			else
-				local snowTreeRoll = deterministicUnitInterval(self.seed, worldTileX, surfaceTileY, treeVariantIndex :: number, 1549)
+				local snowTreeRoll =
+					deterministicUnitInterval(self.seed, worldTileX, surfaceTileY, treeVariantIndex :: number, 1549)
 				canSpawnTree = snowTreeRoll <= snowTreeChance
 			end
 		end
@@ -3498,18 +3503,22 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 				local propEdgeBuffer = sanitizeInteger(snowDecorationSettings.PropEdgeBufferTiles, 0, 48, 6)
 				local propStructureBuffer = sanitizeInteger(snowDecorationSettings.PropStructureBufferTiles, 0, 48, 10)
 				local propAirClearance = sanitizeInteger(snowDecorationSettings.PropAirClearanceTiles, 1, 24, 5)
-				if self:isWithinBiomeTransitionBuffer(
-					getColumnProfileForBlend,
-					worldTileX,
-					self.biomeId.SNOW,
-					self.biomeType.NORMAL,
-					propEdgeBuffer
-				) and not hasReservedSurfaceTileNear(worldTileX, propStructureBuffer) then
+				if
+					self:isWithinBiomeTransitionBuffer(
+						getColumnProfileForBlend,
+						worldTileX,
+						self.biomeId.SNOW,
+						self.biomeType.NORMAL,
+						propEdgeBuffer
+					) and not hasReservedSurfaceTileNear(worldTileX, propStructureBuffer)
+				then
 					local didSpawnSnowProp = false
 					local iceSpikeChance = clampNumber(snowDecorationSettings.IceSpikeChance, 0, 1, 0.13)
 					local iceSpikeSpacing = sanitizeInteger(snowDecorationSettings.IceSpikeSpacingTiles, 4, 64, 15)
-					if self:isSurfaceAnchorTile(worldTileX, iceSpikeSpacing, ICE_SPIKE_SLOT_NOISE_FREQUENCY, 863)
-						and self:hasAirClearance(column, worldTileX, surfaceTileY, propAirClearance) then
+					if
+						self:isSurfaceAnchorTile(worldTileX, iceSpikeSpacing, ICE_SPIKE_SLOT_NOISE_FREQUENCY, 863)
+						and self:hasAirClearance(column, worldTileX, surfaceTileY, propAirClearance)
+					then
 						local iceSpikeRoll =
 							deterministicUnitInterval(self.seed, worldTileX, surfaceTileY, self.propId.ICE_SPIKE, 1877)
 						if iceSpikeRoll <= iceSpikeChance then
@@ -3535,9 +3544,16 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 					if not didSpawnSnowProp then
 						local snowPileChance = clampNumber(snowDecorationSettings.SnowPileChance, 0, 1, 0.24)
 						local snowPileSpacing = sanitizeInteger(snowDecorationSettings.SnowPileSpacingTiles, 4, 64, 11)
-						if self:isSurfaceAnchorTile(worldTileX, snowPileSpacing, SNOW_PILE_SLOT_NOISE_FREQUENCY, 1223) then
-							local snowPileRoll =
-								deterministicUnitInterval(self.seed, worldTileX, surfaceTileY, self.propId.SNOW_PILE, 2179)
+						if
+							self:isSurfaceAnchorTile(worldTileX, snowPileSpacing, SNOW_PILE_SLOT_NOISE_FREQUENCY, 1223)
+						then
+							local snowPileRoll = deterministicUnitInterval(
+								self.seed,
+								worldTileX,
+								surfaceTileY,
+								self.propId.SNOW_PILE,
+								2179
+							)
 							if snowPileRoll <= snowPileChance then
 								local variantIndex = self:resolveDesertPropVariantIndex(worldTileX, surfaceTileY, 3)
 								props[#props + 1] = {
@@ -3568,18 +3584,8 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 			continue
 		end
 
-		local cactusEdgeBuffer = sanitizeInteger(
-			desertDecorationSettings.CactusEdgeBufferTiles,
-			0,
-			48,
-			7
-		)
-		local cactusStructureBuffer = sanitizeInteger(
-			desertDecorationSettings.CactusStructureBufferTiles,
-			0,
-			48,
-			10
-		)
+		local cactusEdgeBuffer = sanitizeInteger(desertDecorationSettings.CactusEdgeBufferTiles, 0, 48, 7)
+		local cactusStructureBuffer = sanitizeInteger(desertDecorationSettings.CactusStructureBufferTiles, 0, 48, 10)
 		if
 			not self:isWithinBiomeTransitionBuffer(
 				getColumnProfileForBlend,
@@ -3597,12 +3603,7 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 
 		local cactusChance = clampNumber(desertDecorationSettings.CactusChance, 0, 1, 0.68)
 		local cactusSpacing = sanitizeInteger(desertDecorationSettings.CactusSpacingTiles, 4, 64, 11)
-		local cactusAirClearance = sanitizeInteger(
-			desertDecorationSettings.CactusAirClearanceTiles,
-			3,
-			32,
-			14
-		)
+		local cactusAirClearance = sanitizeInteger(desertDecorationSettings.CactusAirClearanceTiles, 3, 32, 14)
 		local rockChance = clampNumber(desertDecorationSettings.RockChance, 0, 1, 0.12)
 		local rockSpacing = sanitizeInteger(desertDecorationSettings.RockSpacingTiles, 4, 64, 16)
 		local didSpawnDesertProp = false
@@ -3611,11 +3612,16 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 			self:isSurfaceAnchorTile(worldTileX, cactusSpacing, DESERT_CACTUS_SLOT_NOISE_FREQUENCY, 211)
 			and self:hasAirClearance(column, worldTileX, surfaceTileY, cactusAirClearance)
 		then
-			local cactusRoll = deterministicUnitInterval(self.seed, worldTileX, surfaceTileY, self.propId.DESERT_CACTUS, 617)
+			local cactusRoll =
+				deterministicUnitInterval(self.seed, worldTileX, surfaceTileY, self.propId.DESERT_CACTUS, 617)
 			if cactusRoll <= cactusChance then
 				local variantIndex = self:resolveDesertPropVariantIndex(worldTileX, surfaceTileY, 4)
-				local propSeed =
-					computeProceduralTreeSeed(self.seed + self.propId.DESERT_CACTUS * 97, worldTileX, surfaceTileY, variantIndex)
+				local propSeed = computeProceduralTreeSeed(
+					self.seed + self.propId.DESERT_CACTUS * 97,
+					worldTileX,
+					surfaceTileY,
+					variantIndex
+				)
 				props[#props + 1] = {
 					tileX = worldTileX,
 					tileY = surfaceTileY,

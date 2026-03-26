@@ -1,5 +1,8 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
+
+local Signal = require(ReplicatedStorage.Packages.Signal)
 
 local Platform = {}
 Platform.__index = Platform
@@ -26,6 +29,17 @@ export type PlatformConfig = {
 export type PlatformListener = (nextState: PlatformSnapshot, prevState: PlatformSnapshot?) -> ()
 
 export type Platform = typeof(setmetatable({} :: any, Platform))
+
+type SignalConnection = {
+	Disconnect: (self: SignalConnection) -> (),
+}
+
+type ChangedSignal = {
+	Connect: (self: ChangedSignal, callback: PlatformListener) -> SignalConnection,
+	Fire: (self: ChangedSignal, nextState: PlatformSnapshot, prevState: PlatformSnapshot?) -> (),
+	DisconnectAll: (self: ChangedSignal) -> (),
+	Destroy: (self: ChangedSignal) -> (),
+}
 
 local function normalizeEventName(valueRaw: any, fallback: string): string
 	if typeof(valueRaw) == "string" and valueRaw ~= "" then
@@ -141,17 +155,14 @@ function Platform.new(configRaw: PlatformConfig?): Platform
 		snapshot = nil :: PlatformSnapshot?,
 		lastInputType = nil :: Enum.UserInputType?,
 		connections = {} :: { RBXScriptConnection? },
-		nextListenerId = 0,
-		listeners = {} :: { [number]: PlatformListener },
+		changedSignal = Signal.new() :: ChangedSignal,
 		isInitialized = false,
 	}, Platform)
 	return self
 end
 
 function Platform._emitChange(self: Platform, nextState: PlatformSnapshot, prevState: PlatformSnapshot?)
-	for _, callback in self.listeners do
-		callback(nextState, prevState)
-	end
+	self.changedSignal:Fire(nextState, prevState)
 	if self.eventBus ~= nil and typeof((self.eventBus :: any).publish) == "function" then
 		local eventBusAny = self.eventBus :: any
 		eventBusAny:publish(self.eventChannel, self.changeEvent, {
@@ -193,11 +204,9 @@ function Platform.onChanged(self: Platform, callbackRaw: any): () -> ()
 	if typeof(callbackRaw) ~= "function" then
 		return function() end
 	end
-	self.nextListenerId += 1
-	local listenerId = self.nextListenerId
-	self.listeners[listenerId] = callbackRaw
+	local connection = self.changedSignal:Connect(callbackRaw :: PlatformListener)
 	return function()
-		self.listeners[listenerId] = nil
+		connection:Disconnect()
 	end
 end
 
@@ -237,7 +246,8 @@ function Platform.destroy(self: Platform)
 		safeDisconnect(self.connections[index])
 		self.connections[index] = nil
 	end
-	table.clear(self.listeners)
+	self.changedSignal:DisconnectAll()
+	self.changedSignal:Destroy()
 	self.isInitialized = false
 end
 

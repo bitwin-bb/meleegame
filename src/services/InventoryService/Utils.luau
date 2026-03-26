@@ -1,4 +1,8 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 local InventoryServiceUtils = {}
 
 export type InventoryLoadState = "Unloaded" | "Loading" | "Loaded" | "Failed"
@@ -359,13 +363,9 @@ end
 
 function InventoryServiceUtils.clonePath(pathRaw: any): { string }
 	local source = if typeof(pathRaw) == "table" then pathRaw else DEFAULT_DATA_PATH
-	local output = {}
-	for _, segmentRaw in source do
-		local segment = sanitizeString(segmentRaw, nil)
-		if segment ~= nil then
-			table.insert(output, segment)
-		end
-	end
+	local output = Sift.Array.map(source, function(segmentRaw: any): string?
+		return sanitizeString(segmentRaw, nil)
+	end)
 	if #output == 0 then
 		return { "inventory" }
 	end
@@ -456,13 +456,12 @@ function InventoryServiceUtils.sanitizeState(stateRaw: any, fallbackStateRaw: an
 end
 
 function InventoryServiceUtils.cloneState(state: InventoryState): InventoryState
-	local slots: { InventorySlot } = table.create(#state.slots)
-	for index, slot in state.slots do
-		slots[index] = {
+	local slots = Sift.Array.map(state.slots, function(slot: InventorySlot): InventorySlot
+		return {
 			index = slot.index,
 			stack = if slot.stack ~= nil then cloneStack(slot.stack) else nil,
 		}
-	end
+	end) :: { InventorySlot }
 
 	return {
 		capacity = state.capacity,
@@ -479,23 +478,21 @@ function InventoryServiceUtils.serializeStateForData(stateRaw: any): { [string]:
 	local state = if typeof(stateRaw) == "table"
 		then InventoryServiceUtils.sanitizeState(stateRaw, InventoryServiceUtils.createDefaultState(LOAD_STATE_UNLOADED))
 		else InventoryServiceUtils.createDefaultState(LOAD_STATE_UNLOADED)
-	local serializedSlots = {}
-
-	for _, slot in state.slots do
+	local serializedSlots = Sift.Array.map(state.slots, function(slot: InventorySlot)
 		local stack = slot.stack
 		if stack == nil then
-			continue
+			return nil
 		end
 
-		table.insert(serializedSlots, {
+		return {
 			index = slot.index,
 			stackId = stack.stackId,
 			itemId = stack.itemId,
 			amount = stack.amount,
 			maxStack = stack.maxStack,
 			metadata = cloneMetadata(stack.metadata),
-		})
-	end
+		}
+	end)
 
 	return {
 		capacity = state.capacity,

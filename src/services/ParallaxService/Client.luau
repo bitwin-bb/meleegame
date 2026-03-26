@@ -9,6 +9,7 @@ local Workspace = game:GetService("Workspace")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
+local Promise = require(ReplicatedStorage.Packages.Promise)
 local ParallaxBackgrounds = require(ReplicatedStorage.Shared.Modules.Items.ParallaxBackgrounds)
 local ParallaxServiceUtils = require(ReplicatedStorage.Shared.Services.ParallaxService.ParallaxServiceUtils)
 local WorldGenerationServiceClient =
@@ -55,7 +56,8 @@ local WORLD_FOLDER_NAME = "WorldGeneration"
 local ROOT_PARENT_FALLBACK_NAME = "ParallaxService"
 local SEGMENT_TEXTURE_OFFSET_STUDS_U = 0.3
 local SEGMENT_TEXTURE_OFFSET_STUDS_V = 0.3
-local MIN_SEGMENT_HEIGHT_VIEWPORT_COVERAGE = 0.72
+local MIN_SEGMENT_VERTICAL_COVERAGE_BLEED_FACTOR = 0.14
+local MIN_SEGMENT_VERTICAL_COVERAGE_BLEED_STUDS = 4
 local ParallaxServiceClient = {}
 
 local function asFolder(instance: Instance?): Folder?
@@ -155,11 +157,17 @@ function ParallaxServiceClient._initializeCoreState(self: ParallaxServiceClient)
 	if self.preloadedBiomes == nil then
 		self.preloadedBiomes = {} :: { [string]: boolean }
 	end
+	if self.preloadBiomePromises == nil then
+		self.preloadBiomePromises = {} :: { [string]: any }
+	end
 	if self.selectedBiomeVariantNames == nil then
 		self.selectedBiomeVariantNames = {} :: { [string]: string }
 	end
 	if self.didPreloadAllAssets == nil then
 		self.didPreloadAllAssets = false
+	end
+	if self.preloadAllAssetsPromise == nil then
+		self.preloadAllAssetsPromise = nil
 	end
 	if self.transitionActive == nil then
 		self.transitionActive = false
@@ -427,38 +435,53 @@ end
 function ParallaxServiceClient._preloadBiomeAssets(self: ParallaxServiceClient, biomeNameRaw: any)
 	local biomeName = ParallaxServiceUtils.resolveBiomeName(self.catalog, biomeNameRaw)
 	if self.preloadedBiomes[biomeName] then
-		return
+		return self.preloadBiomePromises[biomeName]
 	end
 	self.preloadedBiomes[biomeName] = true
 
 	local assetIds = ParallaxServiceUtils.collectAssetIds(self.catalog, { biomeName })
 	if #assetIds <= 0 then
-		return
+		local emptyPromise = Promise.resolve(true)
+		self.preloadBiomePromises[biomeName] = emptyPromise
+		return emptyPromise
 	end
 
-	task.spawn(function()
-		pcall(function()
+	local preloadPromise = Promise.try(function()
 			ContentProvider:PreloadAsync(assetIds)
+			return true
 		end)
-	end)
+		:catch(function(err: any)
+			warn(("[ParallaxServiceClient] Failed to preload biome assets for %s: %s"):format(
+				tostring(biomeName),
+				tostring(err)
+			))
+			return false
+		end)
+	self.preloadBiomePromises[biomeName] = preloadPromise
+	return preloadPromise
 end
 
 function ParallaxServiceClient._preloadAllAssets(self: ParallaxServiceClient)
 	if self.didPreloadAllAssets then
-		return
+		return self.preloadAllAssetsPromise
 	end
 	self.didPreloadAllAssets = true
 
 	local assetIds = ParallaxServiceUtils.collectAssetIds(self.catalog, nil)
 	if #assetIds <= 0 then
-		return
+		self.preloadAllAssetsPromise = Promise.resolve(true)
+		return self.preloadAllAssetsPromise
 	end
 
-	task.spawn(function()
-		pcall(function()
+	self.preloadAllAssetsPromise = Promise.try(function()
 			ContentProvider:PreloadAsync(assetIds)
+			return true
 		end)
-	end)
+		:catch(function(err: any)
+			warn(("[ParallaxServiceClient] Failed to preload parallax assets: %s"):format(tostring(err)))
+			return false
+		end)
+	return self.preloadAllAssetsPromise
 end
 
 function ParallaxServiceClient._resolveCurrentWorldBiome(self: ParallaxServiceClient): string
@@ -503,18 +526,27 @@ function ParallaxServiceClient._updateLayerRuntime(
 	local gameplayReferenceDistance = self:_resolveGameplayPlaneReferenceDistance(cameraPosition.X)
 	local coverageReferenceDistance = gameplayReferenceDistance + math.abs((self.worldOrigin.X + self.basePlaneX) - planeX)
 	local visibleWidth, visibleHeight = computeVisibleExtentsAtDistance(camera, coverageReferenceDistance)
-	local sizeReferenceWidth, sizeReferenceHeight = computeVisibleExtentsAtDistance(camera, gameplayReferenceDistance)
+	local sizeReferenceWidth = select(1, computeVisibleExtentsAtDistance(camera, gameplayReferenceDistance))
 	local minimumSegmentWidth = math.max(definition.textureStudsPerTileU * 0.25, 12)
-	local overscanSegments = math.max(definition.overscanSegments, 2)
 	local aspectRatio = math.max(definition.imageAspectRatio, 0.05)
-	local minimumSegmentWidthForHeightCoverage =
-		math.max(sizeReferenceHeight * MIN_SEGMENT_HEIGHT_VIEWPORT_COVERAGE * aspectRatio, minimumSegmentWidth)
-	local segmentWidth = math.max(
-		sizeReferenceWidth * definition.segmentWidthScale,
-		minimumSegmentWidthForHeightCoverage
-	)
-	local naturalSegmentHeight = math.max(1, segmentWidth / aspectRatio)
-	local segmentHeight = math.max(1, naturalSegmentHeight * math.max(definition.heightScale, 0.05))
+	local resolvedHeightScale = math.max(definition.heightScale, 0.05)
+	local candidateSegmentWidth = math.max(sizeReferenceWidth * definition.segmentWidthScale, minimumSegmentWidth)
+	local candidateSegmentHeight = math.max(1, (candidateSegmentWidth / aspectRatio) * resolvedHeightScale)
+	local centerShift = definition.verticalOffsetStuds - (cameraPosition.Y - self.worldOrigin.Y) * definition.verticalDepth
+	local candidateCenterY = computeAlignedCenterY(
+		definition.verticalAlign,
+		cameraPosition.Y,
+		visibleHeight,
+		candidateSegmentHeight
+	) + centerShift
+	local visibleTopY = cameraPosition.Y + visibleHeight * 0.5
+	local visibleBottomY = cameraPosition.Y - visibleHeight * 0.5
+	local requiredHalfHeight = math.max(candidateCenterY - visibleBottomY, visibleTopY - candidateCenterY)
+		+ math.max(visibleHeight * MIN_SEGMENT_VERTICAL_COVERAGE_BLEED_FACTOR, MIN_SEGMENT_VERTICAL_COVERAGE_BLEED_STUDS)
+	local requiredSegmentHeight = requiredHalfHeight * 2
+	local segmentHeight = math.max(candidateSegmentHeight, requiredSegmentHeight)
+	local segmentWidth = math.max(candidateSegmentWidth, (segmentHeight / resolvedHeightScale) * aspectRatio)
+	local overscanSegments = math.max(definition.overscanSegments, 2)
 	local horizontalOverlap = computeHorizontalSegmentOverlap(segmentWidth)
 	local stripLeftEdgeZ = cameraPosition.Z * (1 - definition.depth) + now * definition.scrollSpeed
 	local visibleMinZ = cameraPosition.Z - visibleWidth * 0.5 - segmentWidth * overscanSegments
@@ -528,7 +560,7 @@ function ParallaxServiceClient._updateLayerRuntime(
 	self:_ensureSegmentPool(layerRuntime, segmentCount)
 
 	local centerY = computeAlignedCenterY(definition.verticalAlign, cameraPosition.Y, visibleHeight, segmentHeight)
-	centerY += definition.verticalOffsetStuds - (cameraPosition.Y - self.worldOrigin.Y) * definition.verticalDepth
+	centerY += centerShift
 
 	local targetTextureTransparency = blendToLayerTransparency(definition.transparency, biomeAlpha)
 	for segmentIndex = 1, segmentCount do
@@ -722,8 +754,10 @@ end
 function ParallaxServiceClient.ForceRefresh(self: ParallaxServiceClient)
 	self.catalog = ParallaxServiceUtils.normalizeCatalog(ParallaxBackgrounds)
 	self.preloadedBiomes = {}
+	self.preloadBiomePromises = {}
 	self.selectedBiomeVariantNames = {}
 	self.didPreloadAllAssets = false
+	self.preloadAllAssetsPromise = nil
 	self.referenceGameplayPlaneDistanceX = nil
 	self:_destroyAllBiomeRuntimes()
 	self:_ensureRootFolder()
@@ -750,6 +784,18 @@ function ParallaxServiceClient.getCurrentBiome(self: ParallaxServiceClient): str
 end
 
 function ParallaxServiceClient.destroy(self: ParallaxServiceClient)
+	if self.preloadBiomePromises ~= nil then
+		for biomeName, preloadPromise in self.preloadBiomePromises do
+			if preloadPromise ~= nil then
+				preloadPromise:cancel()
+			end
+			self.preloadBiomePromises[biomeName] = nil
+		end
+	end
+	if self.preloadAllAssetsPromise ~= nil then
+		self.preloadAllAssetsPromise:cancel()
+		self.preloadAllAssetsPromise = nil
+	end
 	if self.janitor ~= nil then
 		self.janitor:Destroy()
 		self.janitor = nil
@@ -763,8 +809,10 @@ type ParallaxServiceClient = typeof(ParallaxServiceClient) & {
 	state: ServiceState,
 	activeBiomeRuntimes: { [string]: BiomeRuntime },
 	preloadedBiomes: { [string]: boolean },
+	preloadBiomePromises: { [string]: any },
 	selectedBiomeVariantNames: { [string]: string },
 	didPreloadAllAssets: boolean,
+	preloadAllAssetsPromise: any?,
 	referenceGameplayPlaneDistanceX: number?,
 	transitionActive: boolean,
 	transitionStartedAt: number,

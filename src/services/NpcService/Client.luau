@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local NpcServiceUtils = require(ReplicatedStorage.Shared.Services.NpcService.NpcServiceUtils)
 local AudioServiceClient = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceClient)
 
@@ -48,34 +49,50 @@ local function cloneSnapshot(snapshot: NpcSnapshot): NpcSnapshot
 end
 
 local function cloneState(state: NpcServiceClientState): NpcServiceClientState
-	local byId = {}
-	local orderedIds = table.create(#state.orderedIds)
-	for index, runtimeId in state.orderedIds do
-		orderedIds[index] = runtimeId
-	end
-	for runtimeId, snapshot in state.byId do
-		byId[runtimeId] = cloneSnapshot(snapshot)
-	end
 	return {
-		byId = byId,
-		orderedIds = orderedIds,
+		byId = Sift.Dictionary.map(state.byId, function(snapshot: NpcSnapshot): NpcSnapshot
+			return cloneSnapshot(snapshot)
+		end),
+		orderedIds = Sift.Array.copy(state.orderedIds),
 		updatedAt = state.updatedAt,
 	}
 end
 
-function NpcServiceClient.ensureOrderedId(self: NpcServiceClient, runtimeId: string)
-	for _, existing in self.state.orderedIds do
-		if existing == runtimeId then
-			return
+local function appendUniqueOrderedId(orderedIds: { string }, runtimeId: string): { string }
+	if Sift.Array.includes(orderedIds, runtimeId) then
+		return orderedIds
+	end
+	return Sift.Array.append(orderedIds, runtimeId)
+end
+
+local function buildStateFromSnapshots(snapshotsRaw: any): NpcServiceClientState
+	local byId: { [string]: NpcSnapshot } = {}
+	local orderedIds: { string } = {}
+
+	if typeof(snapshotsRaw) == "table" then
+		for _, rawSnapshot in snapshotsRaw do
+			local snapshot = NpcServiceUtils.sanitizeSnapshot(rawSnapshot, nil)
+			if snapshot ~= nil then
+				byId[snapshot.id] = snapshot
+				orderedIds = appendUniqueOrderedId(orderedIds, snapshot.id)
+			end
 		end
 	end
-	table.insert(self.state.orderedIds, runtimeId)
+
+	return {
+		byId = byId,
+		orderedIds = orderedIds,
+		updatedAt = os.clock(),
+	}
 end
 
 function NpcServiceClient.upsertSnapshot(self: NpcServiceClient, snapshot: NpcSnapshot)
-	self.state.byId[snapshot.id] = cloneSnapshot(snapshot)
-	self:ensureOrderedId(snapshot.id)
-	self.state.updatedAt = os.clock()
+	local nextSnapshot = cloneSnapshot(snapshot)
+	self.state = {
+		byId = Sift.Dictionary.set(self.state.byId, snapshot.id, nextSnapshot),
+		orderedIds = appendUniqueOrderedId(self.state.orderedIds, snapshot.id),
+		updatedAt = os.clock(),
+	}
 	self.stateChanged:Fire(self:getState())
 end
 
@@ -87,37 +104,19 @@ function NpcServiceClient.removeSnapshot(self: NpcServiceClient, runtimeIdRaw: a
 	if self.state.byId[runtimeIdRaw] == nil then
 		return
 	end
-	self.state.byId[runtimeIdRaw] = nil
 
-	local nextOrderedIds = {}
-	for _, existingId in self.state.orderedIds do
-		if existingId ~= runtimeIdRaw then
-			table.insert(nextOrderedIds, existingId)
-		end
-	end
-	self.state.orderedIds = nextOrderedIds
-	self.state.updatedAt = os.clock()
+	self.state = {
+		byId = Sift.Dictionary.removeKey(self.state.byId, runtimeIdRaw),
+		orderedIds = Sift.Array.filter(self.state.orderedIds, function(existingId: string): boolean
+			return existingId ~= runtimeIdRaw
+		end),
+		updatedAt = os.clock(),
+	}
 	self.stateChanged:Fire(self:getState())
 end
 
 function NpcServiceClient.applyState(self: NpcServiceClient, snapshotsRaw: any)
-	local nextState: NpcServiceClientState = {
-		byId = {},
-		orderedIds = {},
-		updatedAt = os.clock(),
-	}
-
-	if typeof(snapshotsRaw) == "table" then
-		for _, rawSnapshot in snapshotsRaw do
-			local snapshot = NpcServiceUtils.sanitizeSnapshot(rawSnapshot, nil)
-			if snapshot ~= nil then
-				nextState.byId[snapshot.id] = snapshot
-				table.insert(nextState.orderedIds, snapshot.id)
-			end
-		end
-	end
-
-	self.state = nextState
+	self.state = buildStateFromSnapshots(snapshotsRaw)
 	self.stateChanged:Fire(self:getState())
 end
 

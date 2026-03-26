@@ -1,5 +1,8 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
+
+local Signal = require(ReplicatedStorage.Packages.Signal)
 
 local Gestures = {}
 Gestures.__index = Gestures
@@ -58,6 +61,17 @@ type TouchState = {
 }
 
 export type Gestures = typeof(setmetatable({} :: any, Gestures))
+
+type SignalConnection = {
+	Disconnect: (self: SignalConnection) -> (),
+}
+
+type GestureSignal = {
+	Connect: (self: GestureSignal, callback: GestureCallback) -> SignalConnection,
+	Fire: (self: GestureSignal, payload: GesturePayload) -> (),
+	DisconnectAll: (self: GestureSignal) -> (),
+	Destroy: (self: GestureSignal) -> (),
+}
 
 local function clampNumber(valueRaw: any, fallback: number, minValue: number, maxValue: number): number
 	local value = if typeof(valueRaw) == "number" then valueRaw else fallback
@@ -129,8 +143,7 @@ function Gestures.new(configRaw: GesturesConfig?): Gestures
 		touches = {} :: { [InputObject]: TouchState },
 		activeTouchCount = 0,
 		touchPool = {} :: { TouchState },
-		listeners = {} :: { [string]: { [number]: GestureCallback } },
-		nextListenerId = 0,
+		signalsByGesture = {} :: { [string]: GestureSignal },
 		connections = {} :: { RBXScriptConnection? },
 		isInitialized = false,
 		isEnabled = true,
@@ -143,6 +156,16 @@ function Gestures.new(configRaw: GesturesConfig?): Gestures
 		pinchActive = false,
 	}, Gestures)
 	return self
+end
+
+function Gestures._getSignal(self: Gestures, gesture: string): GestureSignal
+	local signal = self.signalsByGesture[gesture]
+	if signal ~= nil then
+		return signal
+	end
+	signal = Signal.new() :: GestureSignal
+	self.signalsByGesture[gesture] = signal
+	return signal
 end
 
 function Gestures._acquireTouchState(self: Gestures): TouchState
@@ -173,11 +196,9 @@ function Gestures._releaseTouchState(self: Gestures, state: TouchState)
 end
 
 function Gestures._emit(self: Gestures, gesture: GestureType, payload: GesturePayload)
-	local bucket = self.listeners[gesture]
-	if bucket ~= nil then
-		for _, callback in bucket do
-			callback(payload)
-		end
+	local signal = self.signalsByGesture[gesture]
+	if signal ~= nil then
+		signal:Fire(payload)
 	end
 	if self.eventBus ~= nil and typeof((self.eventBus :: any).publish) == "function" then
 		local eventBusAny = self.eventBus :: any
@@ -542,23 +563,9 @@ function Gestures.bind(self: Gestures, gestureRaw: any, callbackRaw: any): () ->
 		return function() end
 	end
 	local gesture = gestureRaw :: string
-	local bucket = self.listeners[gesture]
-	if bucket == nil then
-		bucket = {}
-		self.listeners[gesture] = bucket
-	end
-	self.nextListenerId += 1
-	local id = self.nextListenerId
-	bucket[id] = callbackRaw
+	local connection = self:_getSignal(gesture):Connect(callbackRaw :: GestureCallback)
 	return function()
-		local runtime = self.listeners[gesture]
-		if runtime == nil then
-			return
-		end
-		runtime[id] = nil
-		if next(runtime) == nil then
-			self.listeners[gesture] = nil
-		end
+		connection:Disconnect()
 	end
 end
 
@@ -582,7 +589,11 @@ function Gestures.destroy(self: Gestures)
 		self.touches[input] = nil
 		self:_releaseTouchState(state)
 	end
-	table.clear(self.listeners)
+	for _, signal in self.signalsByGesture do
+		signal:DisconnectAll()
+		signal:Destroy()
+	end
+	table.clear(self.signalsByGesture)
 	self:_exitPinch()
 	self.isInitialized = false
 end

@@ -2,6 +2,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Charm = require(ReplicatedStorage.Packages.Charm)
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 export type InfoPlayerPopupKind = "pickup" | "damage_dealt" | "damage_taken"
 
@@ -77,9 +78,8 @@ local function sanitizeAmount(valueRaw: any): number
 end
 
 local function clonePopups(popupsRaw: { InfoPlayerPopup }): { InfoPlayerPopup }
-	local output: { InfoPlayerPopup } = table.create(#popupsRaw)
-	for index, popup in popupsRaw do
-		output[index] = {
+	return Sift.Array.map(popupsRaw, function(popup: InfoPlayerPopup): InfoPlayerPopup
+		return {
 			id = popup.id,
 			eventToken = popup.eventToken,
 			kind = popup.kind,
@@ -90,8 +90,14 @@ local function clonePopups(popupsRaw: { InfoPlayerPopup }): { InfoPlayerPopup }
 			amountPrefix = popup.amountPrefix,
 			createdAt = popup.createdAt,
 		}
+	end)
+end
+
+local function limitPopups(popups: { InfoPlayerPopup }): { InfoPlayerPopup }
+	if #popups <= MAX_POPUP_COUNT then
+		return popups
 	end
-	return output
+	return Sift.Array.slice(popups, 1, MAX_POPUP_COUNT)
 end
 
 local function formatWordsFromToken(tokenRaw: string): string
@@ -145,9 +151,7 @@ local function setInfoPlayerState(stateRaw: any): InfoPlayerState
 		end
 	end
 
-	while #nextPopups > MAX_POPUP_COUNT do
-		table.remove(nextPopups, #nextPopups)
-	end
+	nextPopups = limitPopups(nextPopups)
 
 	local nextState: InfoPlayerState = {
 		enabled = enabled,
@@ -185,11 +189,7 @@ local function pushPopup(payloadRaw: any): InfoPlayerPopup?
 		createdAt = os.clock(),
 	}
 
-	local nextPopups = clonePopups(current.popups)
-	table.insert(nextPopups, 1, popup)
-	while #nextPopups > MAX_POPUP_COUNT do
-		table.remove(nextPopups, #nextPopups)
-	end
+	local nextPopups = limitPopups(Sift.Array.prepend(clonePopups(current.popups), popup))
 
 	infoPlayerStateAtom({
 		enabled = true,
@@ -257,12 +257,9 @@ local function removePopup(popupIdRaw: any): InfoPlayerState
 	end
 
 	local current = infoPlayerStateAtom()
-	local nextPopups = {}
-	for _, popup in current.popups do
-		if popup.id ~= popupId then
-			table.insert(nextPopups, popup)
-		end
-	end
+	local nextPopups = Sift.Array.filter(current.popups, function(popup: InfoPlayerPopup): boolean
+		return popup.id ~= popupId
+	end)
 
 	if #nextPopups == #current.popups then
 		return current

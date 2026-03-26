@@ -1,4 +1,8 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 local ManaServiceUtils = {}
 
 export type ManaServiceState = {
@@ -103,27 +107,17 @@ function ManaServiceUtils.sanitizeState(stateRaw: any, fallbackRaw: ManaServiceS
 end
 
 function ManaServiceUtils.cloneState(state: ManaServiceState): ManaServiceState
-	return {
-		mana = state.mana,
-		maxMana = state.maxMana,
-		regenPerSecond = state.regenPerSecond,
-		normalizedMana = state.normalizedMana,
-		delta = state.delta,
-		lastSpend = state.lastSpend,
-		lastGain = state.lastGain,
-		isLoaded = state.isLoaded,
-		updatedAt = state.updatedAt,
-	}
+	return Sift.Dictionary.copy(state) :: ManaServiceState
 end
 
 function ManaServiceUtils.clonePath(pathRaw: any): { string }
 	local source = if typeof(pathRaw) == "table" then pathRaw else DEFAULT_DATA_PATH
-	local output = {}
-	for _, segmentRaw in source do
+	local output = Sift.Array.map(source, function(segmentRaw: any): string?
 		if typeof(segmentRaw) == "string" and segmentRaw ~= "" then
-			table.insert(output, segmentRaw)
+			return segmentRaw
 		end
-	end
+		return nil
+	end)
 	if #output <= 0 then
 		return { "mana" }
 	end

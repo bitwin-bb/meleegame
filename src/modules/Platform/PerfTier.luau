@@ -1,7 +1,10 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Stats = game:GetService("Stats")
 local UserInputService = game:GetService("UserInputService")
+
+local Signal = require(ReplicatedStorage.Packages.Signal)
 
 local PerfTier = {}
 PerfTier.__index = PerfTier
@@ -31,6 +34,17 @@ export type PerfTierConfig = {
 }
 
 export type PerfTier = typeof(setmetatable({} :: any, PerfTier))
+
+type SignalConnection = {
+	Disconnect: (self: SignalConnection) -> (),
+}
+
+type TierChangedSignal = {
+	Connect: (self: TierChangedSignal, callback: (tier: TierName, settings: TierSettings) -> ()) -> SignalConnection,
+	Fire: (self: TierChangedSignal, tier: TierName, settings: TierSettings) -> (),
+	DisconnectAll: (self: TierChangedSignal) -> (),
+	Destroy: (self: TierChangedSignal) -> (),
+}
 
 local DEFAULT_TIERS: { [TierName]: TierSettings } = {
 	Low = {
@@ -163,8 +177,7 @@ function PerfTier.new(configRaw: PerfTierConfig?): PerfTier
 		sampleCount = 0,
 		sampleSum = 0,
 		evaluationAccumulator = 0,
-		listeners = {} :: { [number]: (tier: TierName, settings: TierSettings) -> () },
-		nextListenerId = 0,
+		changedSignal = Signal.new() :: TierChangedSignal,
 		loopToken = nil,
 		heartbeatConnection = nil :: RBXScriptConnection?,
 		isInitialized = false,
@@ -232,9 +245,7 @@ end
 
 function PerfTier._emitChange(self: PerfTier, nextTier: TierName)
 	local settings = self.tiers[nextTier]
-	for _, callback in self.listeners do
-		callback(nextTier, settings)
-	end
+	self.changedSignal:Fire(nextTier, settings)
 	if self.eventBus ~= nil and typeof((self.eventBus :: any).publish) == "function" then
 		local eventBusAny = self.eventBus :: any
 		eventBusAny:publish(self.eventChannel, self.changeEvent, {
@@ -311,11 +322,9 @@ function PerfTier.onChanged(self: PerfTier, callbackRaw: any): () -> ()
 	if typeof(callbackRaw) ~= "function" then
 		return function() end
 	end
-	self.nextListenerId += 1
-	local id = self.nextListenerId
-	self.listeners[id] = callbackRaw
+	local connection = self.changedSignal:Connect(callbackRaw :: (tier: TierName, settings: TierSettings) -> ())
 	return function()
-		self.listeners[id] = nil
+		connection:Disconnect()
 	end
 end
 
@@ -373,7 +382,8 @@ function PerfTier.destroy(self: PerfTier)
 	end
 	safeDisconnect(self.heartbeatConnection)
 	self.heartbeatConnection = nil
-	table.clear(self.listeners)
+	self.changedSignal:DisconnectAll()
+	self.changedSignal:Destroy()
 	self.isInitialized = false
 end
 
