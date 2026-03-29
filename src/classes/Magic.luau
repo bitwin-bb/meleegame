@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local ItemRegistry = require(ReplicatedStorage.Shared.Modules.Items.Registry)
+local ResolveToolInstance = require(ReplicatedStorage.Shared.Modules.Game.ResolveToolInstance)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 
 local Magic = {}
@@ -294,44 +295,12 @@ local function getItemDefinition(itemIdRaw: any): { [string]: any }?
 	return definition
 end
 
-local function resolveToolAttributeText(tool: Tool, ...: string): string?
-	for _, attributeName in { ... } do
-		local attributeValue = sanitizeItemId(tool:GetAttribute(attributeName))
-		if attributeValue ~= nil then
-			return attributeValue
-		end
-	end
-	return nil
-end
-
 function Magic.resolveToolItemId(toolRaw: any): string?
-	if typeof(toolRaw) ~= 'Instance' or not toolRaw:IsA('Tool') then
-		return nil
-	end
-
-	local tool = toolRaw :: Tool
-	local itemId = resolveToolAttributeText(tool, 'itemId', 'ItemId', 'ittemId', 'id')
-	if itemId == nil then
-		itemId = sanitizeItemId(tool.Name)
-	end
-	if itemId == nil then
-		return nil
-	end
-	return resolveCanonicalItemId(itemId)
+	return ResolveToolInstance.resolveToolItemId(toolRaw)
 end
 
 function Magic.resolveToolItemType(toolRaw: any): string?
-	if typeof(toolRaw) ~= 'Instance' or not toolRaw:IsA('Tool') then
-		return nil
-	end
-
-	local tool = toolRaw :: Tool
-	local rawType = resolveToolAttributeText(tool, 'itemType', 'ItemType', 'itemtype', 'type', 'Type')
-	if rawType == nil then
-		return nil
-	end
-
-	local normalized = normalizeTypeToken(rawType)
+	local normalized = normalizeTypeToken(ResolveToolInstance.resolveToolItemType(toolRaw))
 	if normalized == '' then
 		return nil
 	end

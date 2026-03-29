@@ -1077,8 +1077,24 @@ function Melee:_onPresentationAnimatorChanged()
 	end
 end
 
-function Melee:_resolveCooldown(_clip: any): number
+function Melee:_resolveCooldown(clipRaw: any): number
+	local clip = if typeof(clipRaw) == "table" then clipRaw else nil
+	if clip ~= nil and typeof((clip :: any).cooldown) == "number" then
+		return toNumber((clip :: any).cooldown, self.cooldown, 0, nil)
+	end
 	return self.cooldown
+end
+
+function Melee:_commitActiveCooldown(startedAtRaw: any?, clipRaw: any?)
+	local active = self.active
+	if active == nil or active.cooldownCommitted == true then
+		return
+	end
+
+	local startedAt = toNumber(startedAtRaw, os.clock(), 0, nil)
+	local clip = if clipRaw ~= nil then clipRaw else active.clip
+	active.cooldownCommitted = true
+	self.cooldownUntil = math.max(self.cooldownUntil, startedAt + self:_resolveCooldown(clip))
 end
 
 function Melee:_emitSwingStart(eventName: any, eventType: any, param: any, synthetic: boolean?)
@@ -1203,11 +1219,11 @@ function Melee:_startAttack()
 		clip = play.clip,
 		index = play.index,
 		synthetic = usedSyntheticAttack,
+		cooldownCommitted = false,
 	}
 
-	local cooldown = self:_resolveCooldown(play.clip)
 	if self.cooldownStartsOn == "SwingStart" then
-		self.cooldownUntil = math.max(self.cooldownUntil, now + cooldown)
+		self:_commitActiveCooldown(now, play.clip)
 	end
 
 	local startedContext = self:_context(nil, "AttackStarted", nil)
@@ -1218,9 +1234,10 @@ function Melee:_startAttack()
 		self:_spawnProjectile("attackStart", "Synthetic", nil)
 	end
 
+	local clipSpeed = if typeof(play.clip.speed) == "number" and play.clip.speed > 0 then play.clip.speed else 1
 	local duration = if typeof(play.clip.duration) == "number"
 		then play.clip.duration
-		else if play.track ~= nil and play.track.Length > 0 then play.track.Length else self.timeout
+		else if play.track ~= nil and play.track.Length > 0 then play.track.Length / clipSpeed else self.timeout
 	self.timeoutToken += 1
 	local token = self.timeoutToken
 	task.delay(math.max(0.01, duration + self.timeoutPadding), function()
@@ -1249,8 +1266,11 @@ function Melee:_finishAttack(reasonRaw: any)
 		self:_emitSwingEnd("syntheticEnd", "Synthetic", nil, true)
 	end
 
+	local active = self.active
+	local activeTrack = if active ~= nil then active.track else nil
+	local activeClip = if active ~= nil then active.clip else nil
 	if self.cooldownStartsOn == "SwingEnd" then
-		self.cooldownUntil = math.max(self.cooldownUntil, os.clock() + self:_resolveCooldown(if self.active then self.active.clip else nil))
+		self:_commitActiveCooldown(os.clock(), activeClip)
 	end
 
 	local finishedContext = self:_context(reason, "AttackFinished", nil)
@@ -1264,6 +1284,13 @@ function Melee:_finishAttack(reasonRaw: any)
 
 	self.signals.attackFinished:Fire(finishedContext)
 	self:_invokeCallback("onAttackFinished", finishedContext)
+
+	-- If a track never reported completion, force it down before the next queued swing can begin.
+	if reason == "Timeout" and activeTrack ~= nil and activeTrack.IsPlaying then
+		pcall(function()
+			activeTrack:Stop(toNumber(if activeClip ~= nil then activeClip.fadeTime else nil, 0.02, 0, nil))
+		end)
+	end
 
 	if not self.inputHeld and self.isToolEquipped then
 		self:_playIdleAndScheduleStance()
@@ -1316,7 +1343,9 @@ function Melee:_onAnimationEvent(nameRaw: any, eventType: string, param: any, tr
 
 	if self.endEventSet[normalized] then
 		self:_emitSwingEnd(nameRaw, eventType, param, false)
-		self:_finishAttack("EndSwingEvent")
+		if self.cooldownStartsOn == "SwingEnd" then
+			self:_commitActiveCooldown(eventContext.now, clip)
+		end
 	end
 end
 

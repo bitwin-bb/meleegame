@@ -1,8 +1,12 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local WorldSimulationShared = require(ReplicatedStorage.Shared.Services.WorldSimulationService.Shared)
+
 local WeatherServiceUtils = {}
 
 export type WeatherType = "Clear" | "Rainstorm" | "Thunderstorm"
-export type SkyKey = "Overworld" | "Corruption" | "Underground"
+export type SkyKey = "Overworld" | "Corruption" | "Underground" | "SnowBiome"
 
 export type WeatherServiceConfig = {
 	enabled: boolean,
@@ -50,6 +54,7 @@ WeatherServiceUtils.WEATHER_TYPE_THUNDERSTORM = "Thunderstorm"
 WeatherServiceUtils.SKY_KEY_OVERWORLD = "Overworld"
 WeatherServiceUtils.SKY_KEY_CORRUPTION = "Corruption"
 WeatherServiceUtils.SKY_KEY_UNDERGROUND = "Underground"
+WeatherServiceUtils.SKY_KEY_SNOW_BIOME = "SnowBiome"
 
 WeatherServiceUtils.BIOME_TYPE_NORMAL = 1
 WeatherServiceUtils.BIOME_TYPE_CORRUPTION = 2
@@ -154,6 +159,9 @@ local function sanitizeSkyKey(skyKeyRaw: any, fallback: SkyKey?): SkyKey
 	if skyKeyRaw == "Underground" then
 		return "Underground"
 	end
+	if skyKeyRaw == "SnowBiome" then
+		return "SnowBiome"
+	end
 	local text = sanitizeString(skyKeyRaw, nil)
 	if text ~= nil then
 		local lowered = string.lower(text)
@@ -165,6 +173,9 @@ local function sanitizeSkyKey(skyKeyRaw: any, fallback: SkyKey?): SkyKey
 		end
 		if lowered == "underground" then
 			return "Underground"
+		end
+		if lowered == "snowbiome" or lowered == "snow_biome" or lowered == "snow" then
+			return "SnowBiome"
 		end
 	end
 	return fallback or "Overworld"
@@ -425,15 +436,31 @@ function WeatherServiceUtils.shortestClockDeltaHours(fromClockRaw: any, toClockR
 	return ((toClock - fromClock + 12) % 24) - 12
 end
 
+function WeatherServiceUtils.resolveSkyKeyFromWorldSample(
+	biomeIdRaw: any,
+	biomeTypeRaw: any,
+	_depthLayerRaw: any
+): SkyKey
+	local biomeType = if typeof(biomeTypeRaw) == "number" then math.floor(biomeTypeRaw) else WeatherServiceUtils.BIOME_TYPE_NORMAL
+	local biomeId = if typeof(biomeIdRaw) == "number"
+		then math.floor(biomeIdRaw)
+		else WorldSimulationShared.BIOME_ID.FOREST
+
+	if biomeId == WorldSimulationShared.BIOME_ID.CORRUPTION or biomeType == WeatherServiceUtils.BIOME_TYPE_CORRUPTION then
+		return WeatherServiceUtils.SKY_KEY_CORRUPTION
+	end
+	if biomeId == WorldSimulationShared.BIOME_ID.SNOW then
+		return WeatherServiceUtils.SKY_KEY_SNOW_BIOME
+	end
+	return WeatherServiceUtils.SKY_KEY_OVERWORLD
+end
+
 function WeatherServiceUtils.resolveSkyKeyFromBiomeType(biomeTypeRaw: any): SkyKey
-	if typeof(biomeTypeRaw) ~= "number" then
-		return "Overworld"
-	end
-	local biomeType = math.floor(biomeTypeRaw)
-	if biomeType == WeatherServiceUtils.BIOME_TYPE_CORRUPTION then
-		return "Corruption"
-	end
-	return "Overworld"
+	return WeatherServiceUtils.resolveSkyKeyFromWorldSample(nil, biomeTypeRaw, nil)
+end
+
+function WeatherServiceUtils.resolveSkyKeyFromBiome(biomeTypeRaw: any, biomeIdRaw: any): SkyKey
+	return WeatherServiceUtils.resolveSkyKeyFromWorldSample(biomeIdRaw, biomeTypeRaw, nil)
 end
 
 function WeatherServiceUtils.sanitizeWeatherType(weatherTypeRaw: any, fallback: WeatherType?): WeatherType

@@ -41,8 +41,6 @@ return {
 		TreeEdgeBufferTiles = 8,
 		SnowPileSpacingTiles = 11,
 		SnowPileChance = 0.24,
-		IceSpikeSpacingTiles = 15,
-		IceSpikeChance = 0.13,
 		PropEdgeBufferTiles = 6,
 		PropStructureBufferTiles = 10,
 		PropAirClearanceTiles = 5,

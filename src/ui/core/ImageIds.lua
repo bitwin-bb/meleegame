@@ -21,10 +21,13 @@ local function withAliases(
 	return output
 end
 
+local copperAxeIcon = "rbxassetid://75765746802617"
+local copperPickaxeIcon = "rbxassetid://135500881364781"
+
 local weaponIcons = {
 	sword = "rbxassetid://120461830147890",
-	pickaxe = "rbxassetid://79792137829691",
-	axe = "rbxassetid://131821175291479",
+	pickaxe = copperPickaxeIcon,
+	axe = copperAxeIcon,
 	hammer = "rbxassetid://122769702567537",
 }
 local questionMarkIcon = "rbxassetid://105837137977667"
@@ -52,6 +55,8 @@ local itemIcons = withAliases({
 	dirt = "rbxassetid://79897470188136",
 	acorn = "rbxassetid://89910393519002",
 	workbench = "rbxassetid://127346854237238",
+	copperAxeIcon = copperAxeIcon,
+	copperPickaxeIcon = copperPickaxeIcon,
 }, {
 	default = { "weapon", "shortsword", "broadsword" },
 	copperShortSword = { "coppershortsword" },

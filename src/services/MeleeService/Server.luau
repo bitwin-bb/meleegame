@@ -728,9 +728,6 @@ function MeleeServiceServer.bindCharacter(self: MeleeServiceServer, player: Play
 				end))
 			end
 			self:applyHitboxPoints(runtime)
-			if runtime.meleeController ~= nil and runtime.character ~= nil then
-				runtime.meleeController:setCharacter(runtime.character)
-			end
 			return
 		end
 		if child:IsA("Tool") then
@@ -788,10 +785,6 @@ function MeleeServiceServer.bindCharacter(self: MeleeServiceServer, player: Play
 		self:destroyHitbox(runtime)
 	end))
 
-	if runtime.meleeController ~= nil then
-		runtime.meleeController:setCharacter(character)
-	end
-
 	local currentHumanoid = runtime.humanoid
 	if currentHumanoid ~= nil then
 		runtime.characterJanitor:GiveChore(currentHumanoid.Died:Connect(function()
@@ -837,10 +830,9 @@ function MeleeServiceServer.setEquippedWeaponConfig(
 	end
 
 	local classConfig = MeleeServiceUtils.createMeleeClassConfig(weaponConfig, {
-		character = runtime.character,
 		autoRepeatWhileHeld = weaponConfig.autoRepeatWhileHeld,
 		namedAnimationPlaybackEnabled = false,
-		animations = weaponConfig.animations,
+		animations = false,
 		callbacks = {
 			onAttackStarted = function(_: any, context: { [string]: any })
 				self:onAttackStarted(player, runtime, context)
@@ -856,11 +848,10 @@ function MeleeServiceServer.setEquippedWeaponConfig(
 	if classConfig == nil then
 		return
 	end
+	classConfig.fallbackSwingDuration = weaponConfig.hitboxDuration
+	classConfig.fallbackSwingPadding = 0
 
 	local meleeController = Melee.new(classConfig) :: any
-	if runtime.character ~= nil then
-		meleeController:setCharacter(runtime.character)
-	end
 	runtime.meleeController = meleeController :: MeleeController
 
 	self:applyHitboxPoints(runtime)

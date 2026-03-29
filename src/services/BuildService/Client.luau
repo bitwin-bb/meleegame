@@ -103,6 +103,7 @@ local BuildServiceClient = {}
 local CLIENT_VISUALS_FOLDER_NAME = "BuildServiceClientVisuals"
 local TILE_QUERY_FETCH_COOLDOWN = 0.25
 local PREDICTION_TTL_SECONDS = 2
+local TERRAIN_HOVER_SCAN_DEPTH_TILES = 8
 local HOVER_BREAK_TEST_MODE = false
 local MAX_BREAK_DEBRIS_TILES_PER_BATCH = 16
 local BREAK_DEBRIS_REASONS = {
@@ -224,7 +225,11 @@ local TREE_FADE_SPRING = {
 }
 local INPUT_ACTION_PRIMARY = "BuildService.Primary"
 local TREE_AUDIO = (((AudioRegistry :: any).Misc or {}).Tree or {})
+local TREE_CHOP_AUDIO = TREE_AUDIO.Chop or {}
 local TREE_FALL_AUDIO = TREE_AUDIO.Fall or {}
+local TILE_AUDIO = (((AudioRegistry :: any).Misc or {}).Tile or {})
+local TILE_HIT_AUDIO = TILE_AUDIO.Hit or {}
+local TILE_BREAK_AUDIO = TILE_AUDIO.Break or {}
 
 local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
@@ -460,6 +465,99 @@ end
 
 function BuildServiceClient.refreshTreeFallSoundTemplates(self: BuildServiceClient)
 	self.treeFallSoundAssetIds = AudioServiceUtils.collectSoundAssetIds(TREE_FALL_AUDIO)
+end
+
+function BuildServiceClient.refreshTreeChopSoundTemplates(self: BuildServiceClient)
+	self.treeChopSoundAssetIds = AudioServiceUtils.collectSoundAssetIds(TREE_CHOP_AUDIO)
+end
+
+function BuildServiceClient.refreshTileHitSoundTemplates(self: BuildServiceClient)
+	self.tileHitSoundAssetIds = AudioServiceUtils.collectSoundAssetIds(TILE_HIT_AUDIO)
+end
+
+function BuildServiceClient.refreshTileBreakSoundTemplates(self: BuildServiceClient)
+	self.tileBreakSoundAssetIds = AudioServiceUtils.collectSoundAssetIds(TILE_BREAK_AUDIO)
+end
+
+function BuildServiceClient.pickTreeChopSoundAssetId(self: BuildServiceClient): string?
+	if #self.treeChopSoundAssetIds <= 0 then
+		self:refreshTreeChopSoundTemplates()
+	end
+	local count = #self.treeChopSoundAssetIds
+	if count <= 0 then
+		return nil
+	end
+	return self.treeChopSoundAssetIds[self.random:NextInteger(1, count)]
+end
+
+function BuildServiceClient.playTreeChopSound(self: BuildServiceClient): boolean
+	local soundAssetId = self:pickTreeChopSoundAssetId()
+	if soundAssetId == nil then
+		return false
+	end
+	if AudioServiceClient.categoryGroups == nil then
+		return false
+	end
+
+	return AudioServiceClient:playSfx(soundAssetId, {
+		parent = self.visualFolder,
+		replaceChannel = false,
+		autoDestroy = true,
+	}) ~= nil
+end
+
+function BuildServiceClient.pickTileHitSoundAssetId(self: BuildServiceClient): string?
+	if #self.tileHitSoundAssetIds <= 0 then
+		self:refreshTileHitSoundTemplates()
+	end
+	local count = #self.tileHitSoundAssetIds
+	if count <= 0 then
+		return nil
+	end
+	return self.tileHitSoundAssetIds[self.random:NextInteger(1, count)]
+end
+
+function BuildServiceClient.playTileHitSound(self: BuildServiceClient): boolean
+	local soundAssetId = self:pickTileHitSoundAssetId()
+	if soundAssetId == nil then
+		return false
+	end
+	if AudioServiceClient.categoryGroups == nil then
+		return false
+	end
+
+	return AudioServiceClient:playSfx(soundAssetId, {
+		parent = self.visualFolder,
+		replaceChannel = false,
+		autoDestroy = true,
+	}) ~= nil
+end
+
+function BuildServiceClient.pickTileBreakSoundAssetId(self: BuildServiceClient): string?
+	if #self.tileBreakSoundAssetIds <= 0 then
+		self:refreshTileBreakSoundTemplates()
+	end
+	local count = #self.tileBreakSoundAssetIds
+	if count <= 0 then
+		return nil
+	end
+	return self.tileBreakSoundAssetIds[self.random:NextInteger(1, count)]
+end
+
+function BuildServiceClient.playTileBreakSound(self: BuildServiceClient): boolean
+	local soundAssetId = self:pickTileBreakSoundAssetId()
+	if soundAssetId == nil then
+		return false
+	end
+	if AudioServiceClient.categoryGroups == nil then
+		return false
+	end
+
+	return AudioServiceClient:playSfx(soundAssetId, {
+		parent = self.visualFolder,
+		replaceChannel = false,
+		autoDestroy = true,
+	}) ~= nil
 end
 
 function BuildServiceClient.pickTreeFallSoundAssetId(self: BuildServiceClient): string?
@@ -808,40 +906,17 @@ function BuildServiceClient.createPreviewVisual(self: BuildServiceClient)
 	for _, child in self.visualFolder:GetChildren() do
 		if child.Name == "BuildPreview" then
 			child:Destroy()
+		elseif child.Name == "BuildHoverHighlight" then
+			child:Destroy()
 		end
 	end
 	for _, descendant in self.visualFolder:GetDescendants() do
 		if descendant:IsA("BillboardGui") and descendant.Name == "BreakProgress" then
 			descendant:Destroy()
+		elseif descendant:IsA("Highlight") and descendant.Name == "BuildHoverHighlight" then
+			descendant:Destroy()
 		end
 	end
-
-	local previewPart = Instance.new("Part")
-	previewPart.Name = "BuildPreview"
-	previewPart.Anchored = true
-	previewPart.CanCollide = false
-	previewPart.CanQuery = false
-	previewPart.CanTouch = false
-	previewPart.Material = Enum.Material.SmoothPlastic
-	previewPart.Color = Color3.new(1, 1, 1)
-	previewPart.Transparency = 1
-	previewPart.Size = Vector3.new(0.08, self.state.tileSize, self.state.tileSize)
-	previewPart.CFrame = CFrame.new(0, -10000, 0)
-	previewPart.Parent = self.visualFolder
-
-	local previewHighlight = Instance.new("Highlight")
-	previewHighlight.Name = "BuildHoverHighlight"
-	previewHighlight.Adornee = previewPart
-	previewHighlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	previewHighlight.FillColor = Color3.new(1, 1, 1)
-	previewHighlight.FillTransparency = 1
-	previewHighlight.OutlineColor = Color3.new(1, 1, 1)
-	previewHighlight.OutlineTransparency = 0
-	previewHighlight.Enabled = false
-	previewHighlight.Parent = previewPart
-
-	self.previewPart = previewPart
-	self.previewHighlight = previewHighlight
 end
 
 function BuildServiceClient.resolveCursorTile(self: BuildServiceClient): (number?, number?)
@@ -880,6 +955,26 @@ function BuildServiceClient.resolveCursorTile(self: BuildServiceClient): (number
 	local planeTileX, planeTileY =
 		BuildServiceUtils.worldPositionToTile(hitOnPlane, self.state.worldOrigin, self.state.tileSize)
 	return planeTileX, planeTileY
+end
+
+function BuildServiceClient.resolveTerrainHoverTile(self: BuildServiceClient, tileX: number?, tileY: number?): (number?, number?)
+	if tileX == nil or tileY == nil then
+		return nil, nil
+	end
+
+	for depth = 0, TERRAIN_HOVER_SCAN_DEPTH_TILES do
+		local scanTileY = tileY - depth
+		local tileId = self:getTileAt(tileX, scanTileY, false)
+		if tileId == BuildServiceUtils.AIR_TILE_ID then
+			continue
+		end
+		if not BuildServiceUtils.isSolidTile(tileId) then
+			continue
+		end
+		return tileX, scanTileY
+	end
+
+	return nil, nil
 end
 
 function BuildServiceClient.getTileFromWorldGenerationSnapshot(
@@ -1103,11 +1198,13 @@ function BuildServiceClient.requestBreakTile(
 	self: BuildServiceClient,
 	tileXRaw: any,
 	tileYRaw: any,
-	isBreakingRaw: any
+	isBreakingRaw: any,
+	registerHitRaw: any?
 ): number
 	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
 	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
 	local isBreaking = BuildServiceUtils.sanitizeBoolean(isBreakingRaw, false)
+	local registerHit = BuildServiceUtils.sanitizeBoolean(registerHitRaw, false)
 	local requestId = self.nextRequestId
 	self.nextRequestId += 1
 	self.networker:fire(
@@ -1115,7 +1212,8 @@ function BuildServiceClient.requestBreakTile(
 		tileX,
 		tileY,
 		isBreaking,
-		requestId
+		requestId,
+		registerHit
 	)
 	return requestId
 end
@@ -1132,6 +1230,7 @@ function BuildServiceClient.onTileDeltas(self: BuildServiceClient, payloadRaw: a
 
 	local appliedDeltas: { TileDelta } = {}
 	local debrisTilesSpawned = 0
+	local playedTileBreakSound = false
 	for _, deltaRaw in deltasRaw do
 		local delta = BuildServiceUtils.cloneTileDelta(deltaRaw)
 		if delta == nil then
@@ -1151,11 +1250,19 @@ function BuildServiceClient.onTileDeltas(self: BuildServiceClient, payloadRaw: a
 			suppressChunkAnimationForBreakDelta(delta)
 		end
 
-		if debrisTilesSpawned < MAX_BREAK_DEBRIS_TILES_PER_BATCH then
-			local shouldSpawnDebris = delta.tileId == BuildServiceUtils.AIR_TILE_ID
-				and previousTileId ~= BuildServiceUtils.AIR_TILE_ID
-				and isBreakDelta
-			if shouldSpawnDebris then
+		local shouldSpawnDebris = delta.tileId == BuildServiceUtils.AIR_TILE_ID
+			and previousTileId ~= BuildServiceUtils.AIR_TILE_ID
+			and isBreakDelta
+		if shouldSpawnDebris then
+			local isLocalBreakTarget = (self.breakInput.isHeld and self.breakInput.tileX == delta.tileX and self.breakInput.tileY == delta.tileY)
+				or (self.currentBreakProgress ~= nil
+					and self.currentBreakProgress.tileX == delta.tileX
+					and self.currentBreakProgress.tileY == delta.tileY)
+				or (self.cursorTileX == delta.tileX and self.cursorTileY == delta.tileY)
+			if isLocalBreakTarget and not playedTileBreakSound then
+				playedTileBreakSound = self:playTileBreakSound()
+			end
+			if debrisTilesSpawned < MAX_BREAK_DEBRIS_TILES_PER_BATCH then
 				debrisTilesSpawned += 1
 				self:spawnBreakDebris(delta.tileX, delta.tileY, previousTileId)
 			end
@@ -1167,11 +1274,21 @@ function BuildServiceClient.onTileDeltas(self: BuildServiceClient, payloadRaw: a
 	end
 end
 
-function BuildServiceClient.spawnBreakDebris(
-	self: BuildServiceClient,
+local function spawnDebrisBurst(
+	self,
 	tileX: number,
 	tileY: number,
-	tileId: number
+	tileId: number,
+	shardCountMin: number,
+	shardCountMax: number,
+	shardScaleMin: number,
+	shardScaleMax: number,
+	horizontalImpulseMax: number,
+	verticalImpulseMin: number,
+	verticalImpulseMax: number,
+	depthImpulseMax: number,
+	lifetimeMin: number,
+	lifetimeMax: number
 )
 	if self.rubble == nil then
 		return
@@ -1185,18 +1302,18 @@ function BuildServiceClient.spawnBreakDebris(
 		self.state.basePlaneX
 	)
 	local halfTile = self.state.tileSize * 0.5
-	local shardCount = self.random:NextInteger(2, 4)
+	local shardCount = self.random:NextInteger(shardCountMin, shardCountMax)
 	for _ = 1, shardCount do
-		local shardSize = self.state.tileSize * self.random:NextNumber(0.15, 0.34)
+		local shardSize = self.state.tileSize * self.random:NextNumber(shardScaleMin, shardScaleMax)
 		local spawnOffset = Vector3.new(
 			self.random:NextNumber(-0.02, 0.02),
 			self.random:NextNumber(-halfTile * 0.2, halfTile * 0.2),
 			self.random:NextNumber(-halfTile * 0.2, halfTile * 0.2)
 		)
 		local impulse = Vector3.new(
-			self.random:NextNumber(-0.9, 0.9),
-			self.random:NextNumber(0.35, 1.35),
-			self.random:NextNumber(-1.4, 1.4)
+			self.random:NextNumber(-horizontalImpulseMax, horizontalImpulseMax),
+			self.random:NextNumber(verticalImpulseMin, verticalImpulseMax),
+			self.random:NextNumber(-depthImpulseMax, depthImpulseMax)
 		)
 		self.rubble:Spawn({
 			CFrame = CFrame.new(tileCenter + spawnOffset),
@@ -1212,10 +1329,78 @@ function BuildServiceClient.spawnBreakDebris(
 			EnableGravity = true,
 			CanFling = false,
 			FadeOut = true,
-			Lifetime = self.random:NextNumber(0.5, 0.95),
+			Lifetime = self.random:NextNumber(lifetimeMin, lifetimeMax),
 			Mirror = false,
 		})
 	end
+end
+
+function BuildServiceClient.spawnHitDebris(
+	self: BuildServiceClient,
+	tileX: number,
+	tileY: number,
+	tileId: number
+)
+	spawnDebrisBurst(self, tileX, tileY, tileId, 1, 2, 0.12, 0.24, 0.55, 0.18, 0.7, 0.85, 0.3, 0.55)
+end
+
+function BuildServiceClient.spawnBreakDebris(
+	self: BuildServiceClient,
+	tileX: number,
+	tileY: number,
+	tileId: number
+)
+	spawnDebrisBurst(self, tileX, tileY, tileId, 4, 7, 0.18, 0.4, 1.15, 0.45, 1.55, 1.7, 0.55, 1.05)
+end
+
+function BuildServiceClient.playHoveredTileBreakFeedback(self: BuildServiceClient): boolean
+	if not self.breakInput.isHeld then
+		return false
+	end
+
+	local targetTileX = self.breakInput.tileX
+	local targetTileY = self.breakInput.tileY
+	if targetTileX == nil or targetTileY == nil then
+		return false
+	end
+	if self.cursorTileX ~= targetTileX or self.cursorTileY ~= targetTileY then
+		return false
+	end
+
+	local tileId = self:getTileAt(targetTileX, targetTileY, false)
+	if tileId == BuildServiceUtils.AIR_TILE_ID then
+		return false
+	end
+
+	self:playTileHitSound()
+	self:spawnHitDebris(targetTileX, targetTileY, tileId)
+	self:requestBreakTile(targetTileX, targetTileY, true, true)
+	return true
+end
+
+function BuildServiceClient.playHoveredTreeChopFeedback(self: BuildServiceClient): boolean
+	if not self.breakInput.isHeld then
+		return false
+	end
+
+	local targetTileX = self.breakInput.tileX
+	local targetTileY = self.breakInput.tileY
+	if targetTileX == nil or targetTileY == nil then
+		return false
+	end
+	if self.cursorTileX ~= targetTileX or self.cursorTileY ~= targetTileY then
+		return false
+	end
+
+	local treeHit = self:resolveTreeHitAtTile(targetTileX, targetTileY)
+	if treeHit == nil then
+		return false
+	end
+
+	self:playTreeChopSound()
+	self:spawnHitDebris(targetTileX, targetTileY, BuildServiceUtils.TILE_ID.WOOD)
+	self:requestBreakTile(targetTileX, targetTileY, true, true)
+	return true
 end
 
 function BuildServiceClient.onActionResult(self: BuildServiceClient, payloadRaw: any)
@@ -1258,8 +1443,14 @@ function BuildServiceClient.onBreakProgress(self: BuildServiceClient, payloadRaw
 	local tileY = BuildServiceUtils.sanitizeTileCoordinate(payload.tileY)
 	local progressRaw = payload.progress
 	local breakDurationRaw = payload.breakDuration
+	local progressModeRaw = payload.progressMode
+	local progressUnitsRaw = payload.progressUnits
+	local progressTotalRaw = payload.progressTotal
 	local progress = if isFiniteNumber(progressRaw) then math.clamp(progressRaw, 0, 1) else 0
 	local breakDuration = if isFiniteNumber(breakDurationRaw) then math.max(0, breakDurationRaw) else 0
+	local progressMode = if typeof(progressModeRaw) == "string" then progressModeRaw else nil
+	local progressUnits = if isFiniteNumber(progressUnitsRaw) then math.max(0, progressUnitsRaw) else nil
+	local progressTotal = if isFiniteNumber(progressTotalRaw) then math.max(0, progressTotalRaw) else nil
 	local isActive = payload.isActive == true and tileX ~= nil and tileY ~= nil
 
 	if isActive then
@@ -1269,6 +1460,9 @@ function BuildServiceClient.onBreakProgress(self: BuildServiceClient, payloadRaw
 			tileY = tileY,
 			progress = progress,
 			breakDuration = breakDuration,
+			progressMode = progressMode,
+			progressUnits = progressUnits,
+			progressTotal = progressTotal,
 			updatedAt = os.clock(),
 		}
 		self.hitFeedback:Fire(tileX, tileY, progress)
@@ -1282,37 +1476,11 @@ function BuildServiceClient.updatePreviewVisual(
 	self: BuildServiceClient,
 	tileX: number?,
 	tileY: number?,
-	canPlace: boolean?
+	_canPlace: boolean?
 )
-	if self.previewPart == nil then
-		return
-	end
-	if tileX == nil or tileY == nil then
-		self.previewPart.CFrame = CFrame.new(0, -10000, 0)
-		if self.previewHighlight ~= nil then
-			self.previewHighlight.Enabled = false
-		end
-		return
-	end
-
-	local center = BuildServiceUtils.tileToWorldCenter(
-		tileX,
-		tileY,
-		self.state.worldOrigin,
-		self.state.tileSize,
-		self.state.basePlaneX
-	)
-	self.previewPart.Size = Vector3.new(0.08, self.state.tileSize, self.state.tileSize)
-	self.previewPart.CFrame = CFrame.new(center)
-	if self.previewHighlight ~= nil then
-		if canPlace == true then
-			self.previewHighlight.OutlineColor = Color3.fromRGB(122, 255, 154)
-		elseif canPlace == false then
-			self.previewHighlight.OutlineColor = Color3.fromRGB(255, 116, 116)
-		else
-			self.previewHighlight.OutlineColor = Color3.new(1, 1, 1)
-		end
-		self.previewHighlight.Enabled = true
+	local setHoveredTerrainTile = (WorldGenerationServiceClient :: any).setHoveredTerrainTile
+	if typeof(setHoveredTerrainTile) == "function" then
+		(WorldGenerationServiceClient :: any):setHoveredTerrainTile(tileX, tileY)
 	end
 end
 
@@ -1352,7 +1520,8 @@ function BuildServiceClient.flushHeldBreakInput(self: BuildServiceClient, now: n
 				state.tileX,
 				state.tileY,
 				false,
-				0
+				0,
+				false
 			)
 			state.lastSentTileKey = nil
 		end
@@ -1373,7 +1542,8 @@ function BuildServiceClient.flushHeldBreakInput(self: BuildServiceClient, now: n
 		state.tileX,
 		state.tileY,
 		true,
-		0
+		0,
+		false
 	)
 end
 
@@ -1464,11 +1634,11 @@ function BuildServiceClient.onRenderStep(self: BuildServiceClient, _deltaTime: n
 	self:flushHeldPlaceInput(now)
 	self:prunePendingPredictions()
 
-	local previewTileX = self.cursorTileX
-	local previewTileY = self.cursorTileY
+	local previewTileX, previewTileY = self:resolveCursorTile()
 	local previewCanPlace = nil :: boolean?
 	local activePlaceSource = self:resolveActivePlaceSource()
 	if activePlaceSource ~= nil then
+		previewTileX, previewTileY = self:resolveTerrainHoverTile(previewTileX, previewTileY)
 		if previewTileX ~= nil and previewTileY ~= nil then
 			previewCanPlace = self:canPlaceAt(previewTileX, previewTileY, activePlaceSource.config.tileId)
 		end
@@ -1628,9 +1798,6 @@ end
 
 function BuildServiceClient.applyState(self: BuildServiceClient, stateRaw: any)
 	self.state = BuildServiceUtils.createState(stateRaw, self.state)
-	if self.previewPart ~= nil then
-		self.previewPart.Size = Vector3.new(0.08, self.state.tileSize, self.state.tileSize)
-	end
 	self.stateChanged:Fire(BuildServiceUtils.cloneState(self.state))
 end
 
@@ -1660,13 +1827,29 @@ function BuildServiceClient.init(self: BuildServiceClient)
 	self.enableDefaultInputBinding = true
 	self.enableServerTileFetchFallback = false
 	self.random = Random.new()
+	self.treeChopSoundAssetIds = {} :: { string }
+	self:refreshTreeChopSoundTemplates()
 	self.treeFallSoundAssetIds = {} :: { string }
 	self:refreshTreeFallSoundTemplates()
+	self.tileHitSoundAssetIds = {} :: { string }
+	self:refreshTileHitSoundTemplates()
+	self.tileBreakSoundAssetIds = {} :: { string }
+	self:refreshTileBreakSoundTemplates()
 	self.predictedTileOverrides = {} :: { [string]: number }
 	self.authoritativeDeltaCache = {} :: { [string]: number }
 	self.pendingActions = {} :: { [number]: PendingAction }
 	self.tileFetchCooldownByTileKey = {} :: { [string]: number }
-	self.currentBreakProgress = nil :: { isActive: boolean, tileX: number, tileY: number, progress: number, breakDuration: number, updatedAt: number }?
+	self.currentBreakProgress = nil :: {
+		isActive: boolean,
+		tileX: number,
+		tileY: number,
+		progress: number,
+		breakDuration: number,
+		progressMode: string?,
+		progressUnits: number?,
+		progressTotal: number?,
+		updatedAt: number,
+	}?
 	self.cursorTileX = nil :: number?
 	self.cursorTileY = nil :: number?
 	self.breakInput = {
@@ -1707,6 +1890,10 @@ function BuildServiceClient.init(self: BuildServiceClient)
 	}) :: RubbleObject
 
 	self:createPreviewVisual()
+	local clearHoveredTerrainTile = (WorldGenerationServiceClient :: any).clearHoveredTerrainTile
+	if typeof(clearHoveredTerrainTile) == "function" then
+		(WorldGenerationServiceClient :: any):clearHoveredTerrainTile()
+	end
 
 	self.janitor:GiveChore(function()
 		self.networker:destroy()
@@ -1759,6 +1946,10 @@ end
 function BuildServiceClient.destroy(self: BuildServiceClient)
 	self:setBreakInput(false, nil, nil)
 	self:setPlaceInput(false, nil, nil)
+	local clearHoveredTerrainTile = (WorldGenerationServiceClient :: any).clearHoveredTerrainTile
+	if typeof(clearHoveredTerrainTile) == "function" then
+		(WorldGenerationServiceClient :: any):clearHoveredTerrainTile()
+	end
 	for treeId in self.treeFallAnimations do
 		self:stopTreeFallAnimation(treeId, true)
 	end
@@ -1832,9 +2023,10 @@ function BuildServiceClient.RequestBreakTile(
 	self: BuildServiceClient,
 	tileXRaw: any,
 	tileYRaw: any,
-	isBreakingRaw: any
+	isBreakingRaw: any,
+	registerHitRaw: any?
 ): number
-	return self:requestBreakTile(tileXRaw, tileYRaw, isBreakingRaw)
+	return self:requestBreakTile(tileXRaw, tileYRaw, isBreakingRaw, registerHitRaw)
 end
 
 function BuildServiceClient.GetTileAt(self: BuildServiceClient, tileXRaw: any, tileYRaw: any): number
@@ -1874,19 +2066,30 @@ type BuildServiceClient = typeof(BuildServiceClient) & {
 	authoritativeDeltaCache: { [string]: number },
 	pendingActions: { [number]: PendingAction },
 	tileFetchCooldownByTileKey: { [string]: number },
-	currentBreakProgress: { isActive: boolean, tileX: number, tileY: number, progress: number, breakDuration: number, updatedAt: number }?,
+	currentBreakProgress: {
+		isActive: boolean,
+		tileX: number,
+		tileY: number,
+		progress: number,
+		breakDuration: number,
+		progressMode: string?,
+		progressUnits: number?,
+		progressTotal: number?,
+		updatedAt: number,
+	}?,
 	cursorTileX: number?,
 	cursorTileY: number?,
 	random: Random,
+	treeChopSoundAssetIds: { string },
 	treeFallSoundAssetIds: { string },
+	tileHitSoundAssetIds: { string },
+	tileBreakSoundAssetIds: { string },
 	breakInput: HeldInputState,
 	placeInput: HeldInputState,
 	treeFallAnimations: { [string]: TreeFallAnimation },
 	treeFallAnimationOrder: { string },
 	rubble: RubbleObject?,
 	visualFolder: Folder,
-	previewPart: Part,
-	previewHighlight: Highlight,
 }
 
 return BuildServiceClient :: BuildServiceClient

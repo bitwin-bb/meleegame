@@ -7,6 +7,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Configs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
+local MiningPower = require(ReplicatedStorage.Shared.Modules.Math.MiningPower)
 local BuildServiceUtils = require(ReplicatedStorage.Shared.Services.BuildService.BuildServiceUtils)
 local InventoryServiceUtils = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceUtils)
 local PlayerServiceServer = require(ServerScriptService.Services.PlayerService.PlayerServiceServer)
@@ -70,6 +71,7 @@ type PlayerBreakIntent = {
 	requestId: number,
 	toolPower: number,
 	toolType: string,
+	pendingHitCount: number,
 	breakTargetKind: string?,
 	targetTreeId: string?,
 	targetTreeRootTileX: number?,
@@ -146,56 +148,48 @@ local function resolvePlayerRootPart(player: Player): BasePart?
 	return nil
 end
 
-local function resolvePlayerToolPower(player: Player, fallback: number): number
-	local character = player.Character
-	if character ~= nil then
-		for _, child in character:GetChildren() do
-			if not child:IsA("Tool") then
-				continue
-			end
-			local attr = child:GetAttribute("MiningPower")
-			if not isFiniteNumber(attr) then
-				attr = child:GetAttribute("ToolPower")
-			end
-			if not isFiniteNumber(attr) then
-				attr = child:GetAttribute("PickaxePower")
-			end
-			if isFiniteNumber(attr) then
-				return math.max(0, attr :: number)
-			end
-		end
+local function resolveSelectedInventoryToolProfile(
+	inventoryService: InventoryServiceServerObject?,
+	player: Player
+): MiningPower.ToolProfile?
+	if inventoryService == nil then
+		return nil
 	end
+
+	local inventoryState = inventoryService:getState(player)
+	if not InventoryServiceUtils.isLoadedState(inventoryState.loadState) then
+		return nil
+	end
+	local selectedToolContext = MiningPower.resolveSelectedToolContextFromInventoryState(inventoryState)
+	if selectedToolContext == nil then
+		return nil
+	end
+	return selectedToolContext
+end
+
+local function resolvePlayerToolPower(
+	inventoryService: InventoryServiceServerObject?,
+	player: Player,
+	fallback: number
+): number
+	local selectedProfile = resolveSelectedInventoryToolProfile(inventoryService, player)
+	if selectedProfile ~= nil then
+		return math.max(0, selectedProfile.toolPower)
+	end
+
 	return fallback
 end
 
-local function resolvePlayerToolType(player: Player, fallback: string): string
-	local character = player.Character
-	if character ~= nil then
-		for _, child in character:GetChildren() do
-			if not child:IsA("Tool") then
-				continue
-			end
-
-			local attr = child:GetAttribute("ToolType")
-			if typeof(attr) ~= "string" or attr == "" then
-				attr = child:GetAttribute("HarvestType")
-			end
-			if typeof(attr) ~= "string" or attr == "" then
-				attr = child:GetAttribute("WeaponType")
-			end
-			if typeof(attr) == "string" and attr ~= "" then
-				return attr
-			end
-
-			local lowerName = string.lower(child.Name)
-			if string.find(lowerName, "axe", 1, true) ~= nil then
-				return "Axe"
-			end
-			if string.find(lowerName, "pick", 1, true) ~= nil then
-				return "Pickaxe"
-			end
-		end
+local function resolvePlayerToolType(
+	inventoryService: InventoryServiceServerObject?,
+	player: Player,
+	fallback: string
+): string
+	local selectedProfile = resolveSelectedInventoryToolProfile(inventoryService, player)
+	if selectedProfile ~= nil and selectedProfile.toolType ~= nil then
+		return selectedProfile.toolType
 	end
+
 	return fallback
 end
 
@@ -282,6 +276,7 @@ function BuildServiceServer.createBreakIntent(self: BuildServiceServer): PlayerB
 		requestId = 0,
 		toolPower = self.config.defaultToolPower,
 		toolType = "",
+		pendingHitCount = 0,
 		breakTargetKind = nil,
 		targetTreeId = nil,
 		targetTreeRootTileX = nil,
@@ -528,8 +523,13 @@ function BuildServiceServer.pushBreakProgress(
 	tileY: number?,
 	progress: number,
 	breakDuration: number,
-	toolPower: number
+	toolPower: number,
+	progressModeRaw: any?,
+	progressUnitsRaw: any?,
+	progressTotalRaw: any?
 )
+	local progressUnits = if isFiniteNumber(progressUnitsRaw) then math.max(0, progressUnitsRaw) else nil
+	local progressTotal = if isFiniteNumber(progressTotalRaw) then math.max(0, progressTotalRaw) else nil
 	self.networker:fire(player, BuildServiceUtils.CLIENT_METHOD_ON_BREAK_PROGRESS, {
 		isActive = isActive,
 		tileX = tileX,
@@ -537,6 +537,9 @@ function BuildServiceServer.pushBreakProgress(
 		progress = math.clamp(progress, 0, 1),
 		breakDuration = breakDuration,
 		toolPower = toolPower,
+		progressMode = if typeof(progressModeRaw) == "string" then progressModeRaw else nil,
+		progressUnits = progressUnits,
+		progressTotal = progressTotal,
 		updatedAt = os.clock(),
 	})
 end
@@ -570,7 +573,37 @@ function BuildServiceServer.trackPlayer(self: BuildServiceServer, player: Player
 	self:pushState(player)
 end
 
+function BuildServiceServer.clearBreakRuntimeForIntent(self: BuildServiceServer, intent: PlayerBreakIntent)
+	intent.pendingHitCount = 0
+	local tileX = intent.tileX
+	local tileY = intent.tileY
+	if tileX ~= nil and tileY ~= nil then
+		local tileKey = BuildServiceUtils.packTileKey(tileX, tileY)
+		self.tileDamage[tileKey] = nil
+	end
+
+	local treeId = intent.targetTreeId
+	if treeId ~= nil and treeId ~= "" then
+		local healthPoolKey = BuildServiceUtils.getTreeHealthPoolKey(treeId)
+		self.treeDamage[healthPoolKey] = nil
+	end
+end
+
+function BuildServiceServer.clearBreakTargetForIntent(self: BuildServiceServer, intent: PlayerBreakIntent)
+	intent.breakTargetKind = nil
+	intent.targetTreeId = nil
+	intent.targetTreeRootTileX = nil
+	intent.targetTreeRootTileY = nil
+	intent.targetTreeSeed = nil
+	intent.targetTreeHeight = nil
+	intent.lastTreeHitDirection = 0
+end
+
 function BuildServiceServer.untrackPlayer(self: BuildServiceServer, player: Player)
+	local intent = self.playerBreakIntents[player]
+	if intent ~= nil then
+		self:clearBreakRuntimeForIntent(intent)
+	end
 	self.playerBreakIntents[player] = nil
 end
 
@@ -1241,23 +1274,17 @@ function BuildServiceServer.stopBreaking(
 	intent: PlayerBreakIntent,
 	reason: string
 )
-	if reason ~= "broken" and intent.tileX ~= nil and intent.tileY ~= nil then
-		if intent.breakTargetKind == "tile" then
-			local tileKey = BuildServiceUtils.packTileKey(intent.tileX, intent.tileY)
-			self.tileDamage[tileKey] = nil
-		end
+	if reason ~= "broken" then
+		self:clearBreakRuntimeForIntent(intent)
 	end
+
 	intent.isBreaking = false
 	intent.tileX = nil
 	intent.tileY = nil
 	intent.lastInputAt = 0
-	intent.breakTargetKind = nil
-	intent.targetTreeId = nil
-	intent.targetTreeRootTileX = nil
-	intent.targetTreeRootTileY = nil
-	intent.targetTreeSeed = nil
-	intent.targetTreeHeight = nil
-	intent.lastTreeHitDirection = 0
+	intent.lastProgressPushAt = 0
+	intent.pendingHitCount = 0
+	self:clearBreakTargetForIntent(intent)
 	self:pushBreakProgress(player, false, nil, nil, 0, 0, intent.toolPower)
 	if reason ~= "client_released" and reason ~= "broken" then
 		self:sendActionResult(player, intent.requestId, BuildServiceUtils.ACTION_TYPE_BREAK, false, reason, nil)
@@ -1270,14 +1297,16 @@ function BuildServiceServer.requestBreakTile(
 	tileXRaw: any,
 	tileYRaw: any,
 	isBreakingRaw: any,
-	requestIdRaw: any?
+	requestIdRaw: any?,
+	registerHitRaw: any?
 )
 	local intent = self:getBreakIntent(player)
 	local isBreaking = BuildServiceUtils.sanitizeBoolean(isBreakingRaw, false)
+	local registerHit = BuildServiceUtils.sanitizeBoolean(registerHitRaw, false)
 	intent.requestId = BuildServiceUtils.sanitizeRequestId(requestIdRaw)
 	intent.lastInputAt = os.clock()
-	intent.toolPower = resolvePlayerToolPower(player, self.config.defaultToolPower)
-	intent.toolType = resolvePlayerToolType(player, "")
+	intent.toolPower = resolvePlayerToolPower(self.inventoryService, player, self.config.defaultToolPower)
+	intent.toolType = resolvePlayerToolType(self.inventoryService, player, "")
 
 	if not isBreaking then
 		self:stopBreaking(player, intent, "client_released")
@@ -1301,16 +1330,16 @@ function BuildServiceServer.requestBreakTile(
 
 	intent.isBreaking = true
 	if intent.tileX ~= tileX or intent.tileY ~= tileY then
-		intent.breakTargetKind = nil
-		intent.targetTreeId = nil
-		intent.targetTreeRootTileX = nil
-		intent.targetTreeRootTileY = nil
-		intent.targetTreeSeed = nil
-		intent.targetTreeHeight = nil
-		intent.lastTreeHitDirection = 0
+		self:clearBreakRuntimeForIntent(intent)
+		intent.lastProgressPushAt = 0
+		self:clearBreakTargetForIntent(intent)
+		self:pushBreakProgress(player, false, nil, nil, 0, 0, intent.toolPower)
 	end
 	intent.tileX = tileX
 	intent.tileY = tileY
+	if registerHit then
+		intent.pendingHitCount += 1
+	end
 end
 
 function BuildServiceServer.processBreakIntents(self: BuildServiceServer, deltaTime: number)
@@ -1319,6 +1348,8 @@ function BuildServiceServer.processBreakIntents(self: BuildServiceServer, deltaT
 		if not intent.isBreaking then
 			continue
 		end
+		intent.toolPower = resolvePlayerToolPower(self.inventoryService, player, self.config.defaultToolPower)
+		intent.toolType = resolvePlayerToolType(self.inventoryService, player, "")
 		if now - intent.lastInputAt > self.config.breakInputTimeout then
 			self:stopBreaking(player, intent, "input_timeout")
 			continue
@@ -1340,6 +1371,10 @@ function BuildServiceServer.processBreakIntents(self: BuildServiceServer, deltaT
 
 		local tileId = self:getTileAtInternal(tileX, tileY)
 		if tileId ~= BuildServiceUtils.AIR_TILE_ID then
+			if intent.breakTargetKind ~= "tile" then
+				self:clearBreakRuntimeForIntent(intent)
+				intent.lastProgressPushAt = 0
+			end
 			intent.breakTargetKind = "tile"
 			intent.targetTreeId = nil
 			intent.targetTreeRootTileX = nil
@@ -1348,7 +1383,7 @@ function BuildServiceServer.processBreakIntents(self: BuildServiceServer, deltaT
 			intent.targetTreeHeight = nil
 			intent.lastTreeHitDirection = 0
 
-			local canBreak, reason, breakDuration = BuildServiceUtils.canBreakTile(tileId, intent.toolPower)
+			local canBreak, reason, breakHits = BuildServiceUtils.canBreakTile(tileId, intent.toolType, intent.toolPower)
 			if not canBreak then
 				self:stopBreaking(player, intent, reason)
 				continue
@@ -1364,18 +1399,21 @@ function BuildServiceServer.processBreakIntents(self: BuildServiceServer, deltaT
 				self.tileDamage[tileKey] = damageRuntime
 			end
 
-			damageRuntime.damage += deltaTime / math.max(0.05, breakDuration)
-			damageRuntime.updatedAt = now
-			local progress = math.clamp(damageRuntime.damage, 0, 1)
-			if now - intent.lastProgressPushAt >= self.config.breakProgressPushInterval then
+			local pendingHits = math.max(0, math.floor(intent.pendingHitCount))
+			if pendingHits > 0 then
+				intent.pendingHitCount = 0
+				damageRuntime.damage += pendingHits
+				damageRuntime.updatedAt = now
+				local totalHits = math.max(1, breakHits)
+				local currentHits = math.min(totalHits, math.max(0, math.floor(damageRuntime.damage)))
+				local progress = math.clamp(currentHits / totalHits, 0, 1)
 				intent.lastProgressPushAt = now
-				self:pushBreakProgress(player, true, tileX, tileY, progress, breakDuration, intent.toolPower)
-			end
-
-			if progress >= 1 then
-				self.tileDamage[tileKey] = nil
-				self:processBreakCompletion(player, intent, tileX, tileY)
-				self:stopBreaking(player, intent, "broken")
+				self:pushBreakProgress(player, true, tileX, tileY, progress, 0, intent.toolPower, "hits", currentHits, totalHits)
+				if progress >= 1 then
+					self.tileDamage[tileKey] = nil
+					self:processBreakCompletion(player, intent, tileX, tileY)
+					self:stopBreaking(player, intent, "broken")
+				end
 			end
 			continue
 		end
@@ -1390,6 +1428,10 @@ function BuildServiceServer.processBreakIntents(self: BuildServiceServer, deltaT
 			continue
 		end
 
+		if intent.breakTargetKind ~= "tree" or intent.targetTreeId ~= treeHit.tree.treeId then
+			self:clearBreakRuntimeForIntent(intent)
+			intent.lastProgressPushAt = 0
+		end
 		intent.breakTargetKind = "tree"
 		intent.targetTreeId = treeHit.tree.treeId
 		intent.targetTreeRootTileX = treeHit.tree.rootTileX
@@ -1404,7 +1446,7 @@ function BuildServiceServer.processBreakIntents(self: BuildServiceServer, deltaT
 			tileX - treeHit.tree.rootTileX
 		)
 
-		local canBreakTree, treeReason, treeBreakDuration, treeBreakProfile =
+		local canBreakTree, treeReason, treeBreakHits, treeBreakProfile =
 			BuildServiceUtils.canBreakTree({
 				seed = treeHit.tree.seed,
 				variantIndex = treeHit.tree.variantIndex,
@@ -1427,18 +1469,22 @@ function BuildServiceServer.processBreakIntents(self: BuildServiceServer, deltaT
 			self.treeDamage[healthPoolKey] = treeDamageRuntime
 		end
 
-		treeDamageRuntime.damage += deltaTime / math.max(0.05, treeBreakDuration)
-		treeDamageRuntime.updatedAt = now
-		local treeProgress = math.clamp(treeDamageRuntime.damage, 0, 1)
-		if now - intent.lastProgressPushAt >= self.config.breakProgressPushInterval then
+		local pendingHits = math.max(0, math.floor(intent.pendingHitCount))
+		if pendingHits > 0 then
+			intent.pendingHitCount = 0
+			treeDamageRuntime.damage += pendingHits
+			treeDamageRuntime.updatedAt = now
+			local totalHits = math.max(1, treeBreakHits)
+			local currentHits = math.min(totalHits, math.max(0, math.floor(treeDamageRuntime.damage)))
+			local treeProgress = math.clamp(currentHits / totalHits, 0, 1)
 			intent.lastProgressPushAt = now
-			self:pushBreakProgress(player, true, tileX, tileY, treeProgress, treeBreakDuration, intent.toolPower)
-		end
+			self:pushBreakProgress(player, true, tileX, tileY, treeProgress, 0, intent.toolPower, "hits", currentHits, totalHits)
 
-		if treeProgress >= 1 then
-			self.treeDamage[healthPoolKey] = nil
-			self:processTreeBreakCompletion(player, intent, treeHit, treeBreakProfile)
-			self:stopBreaking(player, intent, "broken")
+			if treeProgress >= 1 then
+				self.treeDamage[healthPoolKey] = nil
+				self:processTreeBreakCompletion(player, intent, treeHit, treeBreakProfile)
+				self:stopBreaking(player, intent, "broken")
+			end
 		end
 	end
 end

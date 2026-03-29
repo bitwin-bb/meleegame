@@ -9,6 +9,8 @@ local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local ItemRegistry = require(ReplicatedStorage.Shared.Modules.Items.Registry)
 local ResolveItem = require(ReplicatedStorage.Shared.Modules.Game.ResolveItem)
+local ResolveToolInstance = require(ReplicatedStorage.Shared.Modules.Game.ResolveToolInstance)
+local MiningPower = require(ReplicatedStorage.Shared.Modules.Math.MiningPower)
 local InventoryServiceUtils = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceUtils)
 local PlayerServiceServer = require(ServerScriptService.Services.PlayerService.PlayerServiceServer)
 local PlayerDataServiceServer = require(ServerScriptService.Services.PlayerDataService.PlayerDataServiceServer)
@@ -25,8 +27,10 @@ type JanitorClass = {
 }
 
 type PlayerDataServiceServerObject = {
-	waitForData: (self: PlayerDataServiceServerObject, player: Player, timeoutSecondsRaw: any) -> any,
 	getValue: (self: PlayerDataServiceServerObject, player: Player, pathRaw: any, fallback: any) -> any,
+	getLoadState: (self: PlayerDataServiceServerObject, player: Player) -> string,
+	isLoaded: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
+	requestSync: (self: PlayerDataServiceServerObject, player: Player) -> (),
 	setValue: (
 		self: PlayerDataServiceServerObject,
 		player: Player,
@@ -53,12 +57,14 @@ type PlayerRuntime = {
 
 local InventoryServiceServer = {}
 
-local DEFAULT_DATA_LOAD_TIMEOUT_SECONDS = 20
+local DATA_LOAD_RETRY_DELAY_SECONDS = 0.25
 local TOOL_IMPORT_ATTRIBUTE_NAME = "itemId"
 local TOOL_IMPORT_TYPE_ATTRIBUTE_NAME = "itemType"
 local TOOL_IMPORT_STACK_ID_PREFIX = "tool"
 local TOOL_IMPORT_METADATA_TYPE_KEY = "itemType"
 local DEPLOYABLE_PLACED_ATTRIBUTE_NAME = "PlacedItemId"
+local MANAGED_TOOL_ATTRIBUTE_NAME = "InventoryManagedTool"
+local GENERATED_TOOL_WELD_ATTRIBUTE_NAME = "InventoryManagedToolWeld"
 local boundToolConnections = {} :: { [Tool]: { RBXScriptConnection } }
 local resolveToolImportData: (tool: Tool) -> (string?, string?)
 local suppressAndPurgePlayerTools: (runtime: PlayerRuntime, player: Player, itemIdRaw: any, amountRaw: any) -> ()
@@ -141,10 +147,6 @@ local function consumeSuppressedToolImport(runtime: PlayerRuntime, itemIdRaw: an
 	return true
 end
 
-local function resolveItemIdLookup(): { [string]: string }
-	return ItemRegistry.getItemIdLookup()
-end
-
 local function resolveItemTypeForStack(stackRaw: any): string?
 	if typeof(stackRaw) ~= "table" then
 		return nil
@@ -169,6 +171,133 @@ local function resolveItemTypeForStack(stackRaw: any): string?
 	return sanitizeItemId(stack.itemId)
 end
 
+local function isManagedInventoryTool(tool: Tool): boolean
+	return tool:GetAttribute(MANAGED_TOOL_ATTRIBUTE_NAME) == true
+end
+
+local function applyToolHandleProperties(part: BasePart)
+	part.Name = "Handle"
+	part.Anchored = false
+	part.CanCollide = false
+	part.CanTouch = false
+	part.CanQuery = false
+	part.Massless = true
+end
+
+local function createFallbackToolHandle(tool: Tool, itemIdRaw: any): BasePart
+	local handle = Instance.new("Part")
+	handle.Name = "Handle"
+	handle.Size = Vector3.new(0.45, 2.2, 0.45)
+	handle.Material = Enum.Material.Metal
+	handle.Color = if string.find(string.lower(sanitizeItemId(itemIdRaw) or tool.Name), "copper", 1, true) ~= nil
+		then Color3.fromRGB(184, 115, 51)
+		else Color3.fromRGB(163, 162, 165)
+	handle.Parent = tool
+	applyToolHandleProperties(handle)
+	return handle
+end
+
+local function applyToolVisualProperties(part: BasePart)
+	part.Anchored = false
+	part.CanCollide = false
+	part.CanTouch = false
+	part.CanQuery = false
+	part.Massless = true
+end
+
+local function clearGeneratedToolWelds(tool: Tool)
+	for _, descendant in tool:GetDescendants() do
+		if descendant:IsA("WeldConstraint") and descendant:GetAttribute(GENERATED_TOOL_WELD_ATTRIBUTE_NAME) == true then
+			descendant:Destroy()
+		end
+	end
+end
+
+local function collectOwnedToolParts(tool: Tool): { BasePart }
+	local parts = {}
+	for _, descendant in tool:GetDescendants() do
+		if not descendant:IsA("BasePart") then
+			continue
+		end
+		if descendant:FindFirstAncestorWhichIsA("Tool") ~= tool then
+			continue
+		end
+		table.insert(parts, descendant)
+	end
+	return parts
+end
+
+local function bindToolDescendantsToHandle(tool: Tool, handle: BasePart)
+	clearGeneratedToolWelds(tool)
+
+	for _, part in collectOwnedToolParts(tool) do
+		applyToolVisualProperties(part)
+		if part == handle then
+			continue
+		end
+
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = handle
+		weld.Part1 = part
+		weld:SetAttribute(GENERATED_TOOL_WELD_ATTRIBUTE_NAME, true)
+		weld.Parent = handle
+	end
+end
+
+local function ensureToolHasVisibleHandle(tool: Tool, itemIdRaw: any): BasePart
+	tool.RequiresHandle = true
+
+	local existingHandle = tool:FindFirstChild("Handle")
+	if existingHandle ~= nil and existingHandle:IsA("BasePart") then
+		applyToolHandleProperties(existingHandle)
+		bindToolDescendantsToHandle(tool, existingHandle)
+		return existingHandle
+	end
+
+	local directPart = tool:FindFirstChildWhichIsA("BasePart")
+	if directPart ~= nil then
+		applyToolHandleProperties(directPart)
+		bindToolDescendantsToHandle(tool, directPart)
+		return directPart
+	end
+
+	local descendantPart = tool:FindFirstChildWhichIsA("BasePart", true)
+	if descendantPart ~= nil then
+		local clonedHandle = descendantPart:Clone()
+		clonedHandle.Parent = tool
+		applyToolHandleProperties(clonedHandle)
+		clonedHandle.Transparency = 1
+		bindToolDescendantsToHandle(tool, clonedHandle)
+		return clonedHandle
+	end
+
+	local basePart = createFallbackToolHandle(tool, itemIdRaw)
+	bindToolDescendantsToHandle(tool, basePart)
+	return basePart
+end
+
+local function configureManagedToolForInventoryStack(tool: Tool, itemIdRaw: any, stackRaw: any)
+	local itemId = sanitizeItemId(itemIdRaw)
+	if itemId == nil then
+		return
+	end
+
+	tool:SetAttribute(MANAGED_TOOL_ATTRIBUTE_NAME, true)
+	tool:SetAttribute(TOOL_IMPORT_ATTRIBUTE_NAME, itemId)
+	tool:SetAttribute("ItemId", itemId)
+
+	local itemType = resolveItemTypeForStack(stackRaw)
+	tool:SetAttribute(TOOL_IMPORT_TYPE_ATTRIBUTE_NAME, itemType)
+	tool:SetAttribute("ItemType", itemType)
+
+	local definition = ItemRegistry.resolveDefinition(itemId)
+	local toolAttributes = MiningPower.toToolAttributeBundle(definition, itemType, nil)
+	for attributeName, attributeValue in toolAttributes do
+		tool:SetAttribute(attributeName, attributeValue)
+	end
+	ensureToolHasVisibleHandle(tool, itemId)
+end
+
 local function cloneToolForInventoryStack(itemIdRaw: any, stackRaw: any): Tool?
 	local itemId = sanitizeItemId(itemIdRaw)
 	if itemId == nil then
@@ -180,14 +309,7 @@ local function cloneToolForInventoryStack(itemIdRaw: any, stackRaw: any): Tool?
 		return nil
 	end
 
-	clone:SetAttribute(TOOL_IMPORT_ATTRIBUTE_NAME, itemId)
-	clone:SetAttribute("ItemId", itemId)
-
-	local itemType = resolveItemTypeForStack(stackRaw)
-	if itemType ~= nil then
-		clone:SetAttribute(TOOL_IMPORT_TYPE_ATTRIBUTE_NAME, itemType)
-		clone:SetAttribute("ItemType", itemType)
-	end
+	configureManagedToolForInventoryStack(clone, itemId, stackRaw)
 
 	return clone
 end
@@ -321,10 +443,7 @@ function InventoryServiceServer.tryPlaceDeployableFromTool(
 	runtime: PlayerRuntime,
 	tool: Tool
 ): boolean
-	local itemId = sanitizeItemId(tool:GetAttribute(TOOL_IMPORT_ATTRIBUTE_NAME))
-	if itemId == nil then
-		itemId = sanitizeItemId(tool:GetAttribute("ItemId"))
-	end
+	local itemId = select(1, resolveToolImportData(tool))
 	if itemId == nil then
 		return false
 	end
@@ -409,43 +528,46 @@ function InventoryServiceServer.bindToolInteractions(
 end
 
 resolveToolImportData = function(tool: Tool): (string?, string?)
-	local itemId = sanitizeItemId(tool:GetAttribute(TOOL_IMPORT_ATTRIBUTE_NAME))
-	local itemType = sanitizeItemId(tool:GetAttribute(TOOL_IMPORT_TYPE_ATTRIBUTE_NAME))
-
+	local itemId = ResolveToolInstance.resolveToolItemId(tool)
 	if itemId == nil then
-		itemId = sanitizeItemId(tool:GetAttribute("ItemId"))
-	end
-	if itemId == nil then
-		itemId = sanitizeItemId(tool:GetAttribute("ittemId"))
-	end
-	if itemType == nil then
-		itemType = sanitizeItemId(tool:GetAttribute("ItemType"))
+		return nil, nil
 	end
 
-	if itemId == nil then
-		itemId = sanitizeItemId(tool.Name)
-	end
+	local itemType = sanitizeItemId(ResolveToolInstance.resolveToolItemType(tool))
 	if itemType == nil then
 		itemType = sanitizeItemId(tool.Name)
 	end
-
-	if itemId == nil then
-		return nil, nil
-	end
 	if itemType == nil then
 		return nil, nil
 	end
 
-	local itemIdLookup = resolveItemIdLookup()
-	local canonicalItemId = itemIdLookup[itemId]
-	if canonicalItemId == nil then
-		canonicalItemId = itemIdLookup[string.lower(itemId)]
-	end
-	if canonicalItemId == nil then
-		return nil, nil
-	end
+	return itemId, itemType
+end
 
-	return canonicalItemId, itemType
+local function destroyManagedToolsExcept(player: Player, preserveToolRaw: any)
+	local preserveTool = if typeof(preserveToolRaw) == "Instance" and preserveToolRaw:IsA("Tool")
+		then preserveToolRaw :: Tool
+		else nil
+
+	for _, container in { player.Character, player:FindFirstChildOfClass("Backpack") } do
+		if typeof(container) ~= "Instance" then
+			continue
+		end
+
+		for _, child in container:GetChildren() do
+			if not child:IsA("Tool") then
+				continue
+			end
+			if child == preserveTool then
+				continue
+			end
+			if not isManagedInventoryTool(child) then
+				continue
+			end
+			cleanupBoundTool(child)
+			child:Destroy()
+		end
+	end
 end
 
 local function destroyMatchingToolsInContainer(container: Instance?, itemId: string, maxDestroyRaw: any): number
@@ -476,6 +598,7 @@ local function destroyMatchingToolsInContainer(container: Instance?, itemId: str
 		if toolItemId ~= itemId then
 			continue
 		end
+		cleanupBoundTool(child)
 		child:Destroy()
 		destroyed += 1
 	end
@@ -550,7 +673,6 @@ function InventoryServiceServer.init(self: InventoryServiceServer)
 	self.playerRuntimes = {}
 	self.playerDataService = PlayerDataServiceServer :: PlayerDataServiceServerObject
 	self.dataPath = InventoryServiceUtils.getDefaultDataPath()
-	self.dataLoadTimeoutSeconds = DEFAULT_DATA_LOAD_TIMEOUT_SECONDS
 	self.dropFromSlotHandler = nil
 	self.didWarnMissingDropHandler = false
 
@@ -664,21 +786,14 @@ function InventoryServiceServer.syncSelectedTool(self: InventoryServiceServer, p
 	local selectedSlot = runtime.state.selectedSlot
 	local selectedStack = if selectedSlot ~= nil then InventoryServiceUtils.getStack(runtime.state, selectedSlot) else nil
 	local desiredItemId = if selectedStack ~= nil then sanitizeItemId(selectedStack.itemId) else nil
-	local equippedTool = character:FindFirstChildOfClass("Tool")
-	local equippedItemId = if equippedTool ~= nil then resolveToolImportData(equippedTool) else nil
 
 	if desiredItemId == nil then
+		destroyManagedToolsExcept(player, nil)
+		local equippedTool = character:FindFirstChildOfClass("Tool")
 		if equippedTool ~= nil then
 			pcall(function()
 				humanoid:UnequipTools()
 			end)
-		end
-		return
-	end
-
-	if equippedItemId == desiredItemId then
-		if equippedTool ~= nil then
-			self:bindToolInteractions(player, runtime, equippedTool)
 		end
 		return
 	end
@@ -697,6 +812,8 @@ function InventoryServiceServer.syncSelectedTool(self: InventoryServiceServer, p
 	end
 
 	if desiredTool == nil then
+		destroyManagedToolsExcept(player, nil)
+		local equippedTool = character:FindFirstChildOfClass("Tool")
 		if equippedTool ~= nil then
 			pcall(function()
 				humanoid:UnequipTools()
@@ -705,11 +822,17 @@ function InventoryServiceServer.syncSelectedTool(self: InventoryServiceServer, p
 		return
 	end
 
+	if selectedStack ~= nil then
+		configureManagedToolForInventoryStack(desiredTool, desiredItemId, selectedStack)
+	end
+	destroyManagedToolsExcept(player, desiredTool)
 	self:bindToolInteractions(player, runtime, desiredTool)
 
-	pcall(function()
-		humanoid:EquipTool(desiredTool :: Tool)
-	end)
+	if desiredTool.Parent ~= character then
+		pcall(function()
+			humanoid:EquipTool(desiredTool :: Tool)
+		end)
+	end
 end
 
 function InventoryServiceServer.importToolItemIntoState(
@@ -766,6 +889,10 @@ function InventoryServiceServer.flushPendingToolImports(self: InventoryServiceSe
 end
 
 function InventoryServiceServer.consumeToolInstance(self: InventoryServiceServer, player: Player, runtime: PlayerRuntime, tool: Tool)
+	if isManagedInventoryTool(tool) then
+		return
+	end
+
 	local itemId, itemType = resolveToolImportData(tool)
 	if itemId ~= nil and itemType ~= nil then
 		if consumeSuppressedToolImport(runtime, itemId, 1) then
@@ -848,6 +975,28 @@ function InventoryServiceServer.bindBackpack(
 	self:syncSelectedTool(player, runtime)
 end
 
+function InventoryServiceServer.failLoadInventory(self: InventoryServiceServer, player: Player, runtime: PlayerRuntime)
+	InventoryServiceUtils.setLoadState(runtime.state, InventoryServiceUtils.LOAD_STATE_FAILED)
+	self:pushState(player)
+end
+
+function InventoryServiceServer.retryLoadInventoryLater(
+	self: InventoryServiceServer,
+	player: Player,
+	loadToken: number
+)
+	task.delay(DATA_LOAD_RETRY_DELAY_SECONDS, function()
+		local runtime = self.playerRuntimes[player]
+		if runtime == nil or runtime.loadToken ~= loadToken then
+			return
+		end
+		if runtime.state.loadState ~= InventoryServiceUtils.LOAD_STATE_LOADING then
+			return
+		end
+		self:loadPlayerInventory(player, loadToken)
+	end)
+end
+
 function InventoryServiceServer.loadPlayerInventory(self: InventoryServiceServer, player: Player, loadToken: number)
 	local runtime = self.playerRuntimes[player]
 	if runtime == nil or runtime.loadToken ~= loadToken then
@@ -856,25 +1005,39 @@ function InventoryServiceServer.loadPlayerInventory(self: InventoryServiceServer
 
 	local playerDataService = self.playerDataService
 	if playerDataService == nil then
-		InventoryServiceUtils.setLoadState(runtime.state, InventoryServiceUtils.LOAD_STATE_FAILED)
-		self:pushState(player)
+		self:failLoadInventory(player, runtime)
 		return
 	end
 
-	local waitSuccess, playerData = pcall(function()
-		return playerDataService:waitForData(player, self.dataLoadTimeoutSeconds)
+	pcall(function()
+		playerDataService:requestSync(player)
+	end)
+
+	local loadStateSuccess, playerDataLoadState = pcall(function()
+		return playerDataService:getLoadState(player)
 	end)
 	runtime = self.playerRuntimes[player]
 	if runtime == nil or runtime.loadToken ~= loadToken then
 		return
 	end
+	if not loadStateSuccess then
+		self:retryLoadInventoryLater(player, loadToken)
+		return
+	end
+	if playerDataLoadState == "Failed" then
+		self:failLoadInventory(player, runtime)
+		return
+	end
 
-	if (not waitSuccess) or playerData == nil then
-		if not waitSuccess then
-			warn(("[InventoryService] Failed to load inventory data for %s (%d)"):format(player.Name, player.UserId))
-		end
-		InventoryServiceUtils.setLoadState(runtime.state, InventoryServiceUtils.LOAD_STATE_FAILED)
-		self:pushState(player)
+	local isLoadedSuccess, isLoaded = pcall(function()
+		return playerDataService:isLoaded(player)
+	end)
+	if not isLoadedSuccess then
+		self:retryLoadInventoryLater(player, loadToken)
+		return
+	end
+	if not isLoaded then
+		self:retryLoadInventoryLater(player, loadToken)
 		return
 	end
 
@@ -883,8 +1046,12 @@ function InventoryServiceServer.loadPlayerInventory(self: InventoryServiceServer
 	end)
 	if not getValueSuccess then
 		warn(("[InventoryService] Failed to read persisted inventory for %s (%d)"):format(player.Name, player.UserId))
-		InventoryServiceUtils.setLoadState(runtime.state, InventoryServiceUtils.LOAD_STATE_FAILED)
-		self:pushState(player)
+		self:failLoadInventory(player, runtime)
+		return
+	end
+
+	runtime = self.playerRuntimes[player]
+	if runtime == nil or runtime.loadToken ~= loadToken then
 		return
 	end
 
@@ -953,7 +1120,8 @@ function InventoryServiceServer.requestSync(self: InventoryServiceServer, player
 		return
 	end
 
-	if runtime.state.loadState == InventoryServiceUtils.LOAD_STATE_FAILED then
+	if runtime.state.loadState == InventoryServiceUtils.LOAD_STATE_UNLOADED
+		or runtime.state.loadState == InventoryServiceUtils.LOAD_STATE_FAILED then
 		self:trackPlayer(player)
 		return
 	end
@@ -1013,8 +1181,11 @@ function InventoryServiceServer.requestTrashSelectedSlot(self: InventoryServiceS
 end
 
 function InventoryServiceServer.getState(self: InventoryServiceServer, player: Player): InventoryState
-	local runtime = self:getRuntime(player)
-	return runtime.state
+	local runtime = self.playerRuntimes[player]
+	if runtime ~= nil then
+		return runtime.state
+	end
+	return InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
 end
 
 function InventoryServiceServer.getStateCopy(self: InventoryServiceServer, player: Player): InventoryState
@@ -1419,7 +1590,6 @@ type InventoryServiceServer = typeof(InventoryServiceServer) & {
 	playerRuntimes: { [Player]: PlayerRuntime },
 	playerDataService: PlayerDataServiceServerObject,
 	dataPath: { string },
-	dataLoadTimeoutSeconds: number,
 	dropFromSlotHandler: ((player: Player, slotIndexRaw: any, amountRaw: any, throwDirectionRaw: any) -> any)?,
 	releaseSuppressedToolImport: (
 		self: InventoryServiceServer,

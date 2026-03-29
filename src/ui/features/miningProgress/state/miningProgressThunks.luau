@@ -17,6 +17,9 @@ type BuildProgressPayload = {
 	tileY: number,
 	progress: number,
 	breakDuration: number,
+	progressMode: string?,
+	progressUnits: number?,
+	progressTotal: number?,
 	updatedAt: number,
 }
 

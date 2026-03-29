@@ -104,8 +104,8 @@ local IMPLICIT_LAYER_PLANE_DEPTH_BASE = 10
 local IMPLICIT_LAYER_PLANE_DEPTH_STEP = 7
 local IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_BASE = 0.54
 local IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_STEP = 0.09
-local IMPLICIT_LAYER_TRANSPARENCY_BASE = 0.04
-local IMPLICIT_LAYER_TRANSPARENCY_STEP = 0.025
+local IMPLICIT_LAYER_TRANSPARENCY_BASE = 0
+local IMPLICIT_LAYER_TRANSPARENCY_STEP = 0
 local IMPLICIT_LAYER_VERTICAL_OFFSET_BASE = -18
 local IMPLICIT_LAYER_VERTICAL_OFFSET_STEP = 10
 local IMPLICIT_LAYER_VERTICAL_DEPTH_BASE = 0.008
@@ -376,7 +376,7 @@ local function sanitizeLayerDefinition(
 		minSegments = sanitizeInteger(source.minSegments, defaults.minSegments, 1, 32),
 		overscanSegments = sanitizeInteger(source.overscanSegments, defaults.overscanSegments, 0, 16),
 		tint = sanitizeColor3(source.tint, defaults.tint),
-		transparency = sanitizeNumber(source.transparency, defaults.transparency, 0, 1),
+		transparency = 0,
 		scrollSpeed = sanitizeNumber(source.scrollSpeed, defaults.scrollSpeed, -256, 256),
 		textureStudsPerTileU = sanitizeNumber(source.textureStudsPerTileU, defaults.textureStudsPerTileU, 1, 4096),
 		textureStudsPerTileV = sanitizeNumber(source.textureStudsPerTileV, defaults.textureStudsPerTileV, 1, 4096),
@@ -661,13 +661,8 @@ function ParallaxServiceUtils.resolveBiomeNameFromWorldSample(
 	catalog: Catalog,
 	biomeIdRaw: any,
 	biomeTypeRaw: any,
-	depthLayerRaw: any
+	_depthLayerRaw: any
 ): string
-	local depthLayer = sanitizeInteger(depthLayerRaw, ParallaxServiceUtils.DEPTH_LAYER_SKY, -256, 256)
-	if depthLayer >= ParallaxServiceUtils.DEPTH_LAYER_UNDERGROUND then
-		return ParallaxServiceUtils.resolveBiomeName(catalog, "Underground")
-	end
-
 	local biomeType = sanitizeInteger(biomeTypeRaw, WorldSimulationShared.BIOME_ID.FOREST, 0, 1024)
 	local biomeId = sanitizeInteger(biomeIdRaw, WorldSimulationShared.BIOME_ID.FOREST, 0, 1024)
 

@@ -2,6 +2,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
+local ResolveToolInstance = require(ReplicatedStorage.Shared.Modules.Game.ResolveToolInstance)
 
 local MagicServiceUtils = {}
 
@@ -263,31 +264,12 @@ local function attackSpeedCooldown(raw: any): number?
 end
 
 function MagicServiceUtils.isMagicTool(toolRaw: any): boolean
-	if typeof(toolRaw) ~= "Instance" or not toolRaw:IsA("Tool") then
-		return false
-	end
-	local tool = toolRaw :: Tool
-	local itemTypeRaw =
-		tool:GetAttribute("itemType") or tool:GetAttribute("ItemType") or tool:GetAttribute("itemtype") or tool:GetAttribute("type")
-	local normalized = token(itemTypeRaw)
+	local normalized = token(ResolveToolInstance.resolveToolItemType(toolRaw))
 	return normalized == "magicweapon" or normalized == "magic" or normalized == "staff" or normalized == "spell"
 end
 
 function MagicServiceUtils.resolveToolItemId(toolRaw: any): string?
-	if typeof(toolRaw) ~= "Instance" or not toolRaw:IsA("Tool") then
-		return nil
-	end
-	local tool = toolRaw :: Tool
-	local rawItemId = tool:GetAttribute("itemId") or tool:GetAttribute("ItemId") or tool:GetAttribute("ittemId")
-	local value = trim(rawItemId)
-	if value ~= "" then
-		return value
-	end
-	local fromName = trim(tool.Name)
-	if fromName == "" then
-		return nil
-	end
-	return fromName
+	return ResolveToolInstance.resolveToolItemId(toolRaw)
 end
 
 function MagicServiceUtils.resolveToolByItemId(characterRaw: any, backpackRaw: any, itemIdRaw: any): Tool?

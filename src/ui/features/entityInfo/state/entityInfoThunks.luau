@@ -41,8 +41,9 @@ local entityInfoThunks = {}
 local ENTITY_HOVER_ID = "npc_entity_hover"
 local HIGHLIGHT_NAME = "EntityInfoHoverHighlight"
 local HIGHLIGHT_FILL_COLOR = Color3.fromRGB(255, 236, 66)
-local HIGHLIGHT_FILL_TRANSPARENCY = 0.38
-local HIGHLIGHT_OUTLINE_TRANSPARENCY = 1
+local HIGHLIGHT_OUTLINE_COLOR = HIGHLIGHT_FILL_COLOR
+local HIGHLIGHT_FILL_TRANSPARENCY = 1
+local HIGHLIGHT_OUTLINE_TRANSPARENCY = 0
 
 local runtime = {
 	started = false,
@@ -97,6 +98,10 @@ end
 local function ensureHighlight(): Highlight
 	local existing = runtime.highlight
 	if existing ~= nil and existing.Parent ~= nil then
+		existing.FillColor = HIGHLIGHT_FILL_COLOR
+		existing.OutlineColor = HIGHLIGHT_OUTLINE_COLOR
+		existing.FillTransparency = HIGHLIGHT_FILL_TRANSPARENCY
+		existing.OutlineTransparency = HIGHLIGHT_OUTLINE_TRANSPARENCY
 		return existing
 	end
 
@@ -104,6 +109,10 @@ local function ensureHighlight(): Highlight
 	local existingInGame = gameFolder:FindFirstChild(HIGHLIGHT_NAME)
 	if existingInGame ~= nil then
 		if existingInGame:IsA("Highlight") then
+			existingInGame.FillColor = HIGHLIGHT_FILL_COLOR
+			existingInGame.OutlineColor = HIGHLIGHT_OUTLINE_COLOR
+			existingInGame.FillTransparency = HIGHLIGHT_FILL_TRANSPARENCY
+			existingInGame.OutlineTransparency = HIGHLIGHT_OUTLINE_TRANSPARENCY
 			runtime.highlight = existingInGame
 			return existingInGame
 		end
@@ -113,6 +122,10 @@ local function ensureHighlight(): Highlight
 	local legacy = Workspace:FindFirstChild(HIGHLIGHT_NAME)
 	if legacy ~= nil then
 		if legacy:IsA("Highlight") then
+			legacy.FillColor = HIGHLIGHT_FILL_COLOR
+			legacy.OutlineColor = HIGHLIGHT_OUTLINE_COLOR
+			legacy.FillTransparency = HIGHLIGHT_FILL_TRANSPARENCY
+			legacy.OutlineTransparency = HIGHLIGHT_OUTLINE_TRANSPARENCY
 			legacy.Parent = gameFolder
 			runtime.highlight = legacy
 			return legacy
@@ -124,6 +137,7 @@ local function ensureHighlight(): Highlight
 	highlight.Name = HIGHLIGHT_NAME
 	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 	highlight.FillColor = HIGHLIGHT_FILL_COLOR
+	highlight.OutlineColor = HIGHLIGHT_OUTLINE_COLOR
 	highlight.FillTransparency = HIGHLIGHT_FILL_TRANSPARENCY
 	highlight.OutlineTransparency = HIGHLIGHT_OUTLINE_TRANSPARENCY
 	highlight.Enabled = false

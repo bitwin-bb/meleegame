@@ -79,14 +79,6 @@ type ChunkSnapshot = {
 	revision: number,
 }
 
-type ChunkVisualRuntime = {
-	model: Model,
-	partCount: number,
-	revision: number,
-	builtAt: number,
-	treeSignature: string,
-}
-
 type TileVisual = {
 	name: string,
 	color: Color3,
@@ -100,6 +92,38 @@ type GreedyRect = {
 	width: number,
 	height: number,
 	value: number,
+}
+
+type TerrainRectRuntime = {
+	part: Part,
+	tileMinX: number,
+	tileMinY: number,
+	width: number,
+	height: number,
+	tileId: number,
+}
+
+type TerrainHoverRuntime = {
+	chunkKey: string,
+	tileX: number,
+	tileY: number,
+	originalPart: Part,
+	originalPartTransparency: number,
+	hoverPart: Part,
+	highlight: Highlight,
+	replacementParts: { BasePart },
+}
+
+type ChunkVisualRuntime = {
+	model: Model,
+	partCount: number,
+	revision: number,
+	builtAt: number,
+	treeSignature: string,
+	terrainFolder: Folder,
+	terrainHoverFolder: Folder,
+	terrainRects: { TerrainRectRuntime },
+	terrainRectByLocalTileIndex: { number },
 }
 
 type TreeVariantDefinition = {
@@ -139,13 +163,18 @@ local PROP_ID_DESERT_CACTUS = 2
 local PROP_ID_DEAD_BUSH = 3
 local PROP_ID_DESERT_ROCK = 4
 local PROP_ID_SNOW_PILE = 5
-local PROP_ID_ICE_SPIKE = 6
 local DEPTH_LAYER_CODE_SKY = 0
 local DEPTH_LAYER_CODE_UNDERGROUND = 2
 local MIN_DEPTH_LAYER_CODE = 0
 local MAX_DEPTH_LAYER_CODE = 4
 local MIN_DEPTH_BELOW_SURFACE = -8192
 local MAX_DEPTH_BELOW_SURFACE = 8192
+local TERRAIN_HOVER_FOLDER_NAME = "TerrainHover"
+local TERRAIN_HOVER_HIGHLIGHT_NAME = "TerrainHoverHighlight"
+local TERRAIN_HOVER_FILL_COLOR = Color3.fromRGB(255, 221, 64)
+local TERRAIN_HOVER_OUTLINE_COLOR = Color3.fromRGB(255, 221, 64)
+local TERRAIN_HOVER_FILL_TRANSPARENCY = 1
+local TERRAIN_HOVER_OUTLINE_TRANSPARENCY = 0
 
 local TILE_VISUALS: { [number]: TileVisual } = WorldGenerationColor.TILE_VISUALS
 local TREE_PALETTE_CORRUPTION_1 = WorldGenerationColor.TREE_PALETTES.Corruption1
@@ -178,6 +207,15 @@ local TREE_PALETTE_SNOW_2 = WorldGenerationColor.TREE_PALETTES.Snow2
 		BranchColor = Color3.fromRGB(74, 68, 81),
 		LeafColor = Color3.fromRGB(197, 226, 239),
 	}
+
+local function applyTileStudSurfaces(part: BasePart)
+	part.TopSurface = Enum.SurfaceType.Studs
+	part.BottomSurface = Enum.SurfaceType.Studs
+	part.LeftSurface = Enum.SurfaceType.Studs
+	part.RightSurface = Enum.SurfaceType.Studs
+	part.FrontSurface = Enum.SurfaceType.Studs
+	part.BackSurface = Enum.SurfaceType.Studs
+end
 
 local function createTreeVariantDefinitions(): { TreeVariantDefinition }
 	return {
@@ -575,15 +613,6 @@ local function resolvePropTemplatesByPropId(): { [number]: { Instance } }
 		end
 	end
 
-	local iceSpikeFolder = propsFolder:FindFirstChild("IceSpike")
-	if iceSpikeFolder ~= nil then
-		if iceSpikeFolder:IsA("Folder") then
-			templatesByPropId[PROP_ID_ICE_SPIKE] = collectTemplateInstances(iceSpikeFolder)
-		elseif iceSpikeFolder:IsA("Model") or iceSpikeFolder:IsA("BasePart") then
-			templatesByPropId[PROP_ID_ICE_SPIKE] = { iceSpikeFolder }
-		end
-	end
-
 	return templatesByPropId
 end
 
@@ -758,45 +787,6 @@ local function createSnowPileFallbackModel(variantIndex: number, seed: number): 
 	return model
 end
 
-local function createIceSpikeFallbackModel(variantIndex: number, seed: number): Model
-	local randomObject = Random.new(seed)
-	local model = Instance.new("Model")
-	model.Name = "IceSpike"
-
-	local spikeCount = math.max(1, math.min(3, variantIndex))
-	for spikeIndex = 1, spikeCount do
-		local spike = Instance.new("WedgePart")
-		spike.Name = `IceSpike_{spikeIndex}`
-		spike.Anchored = true
-		spike.CanCollide = false
-		spike.CanQuery = false
-		spike.CanTouch = false
-		spike.CastShadow = false
-		spike.Material = Enum.Material.Glacier
-		spike.Color = Color3.fromRGB(
-			170 + randomObject:NextInteger(-10, 10),
-			216 + randomObject:NextInteger(-10, 10),
-			255 + randomObject:NextInteger(-6, 0)
-		)
-		local height = randomObject:NextNumber(1.8, 3.8)
-		local width = randomObject:NextNumber(0.45, 0.85)
-		local depth = randomObject:NextNumber(0.55, 1.05)
-		spike.Size = Vector3.new(width, height, depth)
-		spike.CFrame = CFrame.new(
-			randomObject:NextNumber(-0.28, 0.28),
-			height * 0.5,
-			randomObject:NextNumber(-0.1, 0.1)
-		) * CFrame.Angles(
-			math.rad(randomObject:NextNumber(-6, 6)),
-			math.rad(randomObject:NextNumber(-18, 18)),
-			math.rad(randomObject:NextNumber(-7, 7))
-		)
-		spike.Parent = model
-	end
-
-	return model
-end
-
 local function resolvePlayerRootPart(player: Player): BasePart?
 	local character = player.Character
 	if character == nil then
@@ -903,16 +893,40 @@ local function styleForegroundPart(part: BasePart, tileId: number)
 	part.Material = style.material
 	part.Transparency = style.transparency
 	part.CastShadow = false
+	applyTileStudSurfaces(part)
 end
 
 local function styleBackgroundPart(part: BasePart, tileId: number, layerIndex: number, layerCount: number)
 	local style = TILE_VISUALS[tileId] or TILE_VISUALS[3]
 	local alpha = if layerCount > 1 then (layerIndex - 1) / (layerCount - 1) else 0
+	local backgroundColor = style.color:Lerp(Color3.new(0, 0, 0), 0.28 + alpha * 0.26)
 	part.Name = `{style.name}Background_{layerIndex}`
-	part.Color = style.color:Lerp(Color3.new(0, 0, 0), 0.28 + alpha * 0.26)
+	part.Color = backgroundColor
 	part.Material = style.material
 	part.Transparency = 0
 	part.CastShadow = false
+	applyTileStudSurfaces(part)
+end
+
+local function sanitizeTileCoordinate(valueRaw: any): number?
+	if not isFiniteNumber(valueRaw) then
+		return nil
+	end
+	return math.floor(valueRaw)
+end
+
+local function createTerrainHoverHighlight(targetPart: BasePart): Highlight
+	local highlight = Instance.new("Highlight")
+	highlight.Name = TERRAIN_HOVER_HIGHLIGHT_NAME
+	highlight.Adornee = targetPart
+	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	highlight.FillColor = TERRAIN_HOVER_FILL_COLOR
+	highlight.FillTransparency = TERRAIN_HOVER_FILL_TRANSPARENCY
+	highlight.OutlineColor = TERRAIN_HOVER_OUTLINE_COLOR
+	highlight.OutlineTransparency = TERRAIN_HOVER_OUTLINE_TRANSPARENCY
+	highlight.Enabled = true
+	highlight.Parent = targetPart
+	return highlight
 end
 
 function WorldGenerationServiceClient.resolveWorldFolder(self: WorldGenerationServiceClient): Folder?
@@ -978,6 +992,214 @@ function WorldGenerationServiceClient.computeTileCenterPosition(
 	)
 end
 
+function WorldGenerationServiceClient.createForegroundRectPart(
+	self: WorldGenerationServiceClient,
+	tileMinX: number,
+	tileMinY: number,
+	width: number,
+	height: number,
+	tileId: number
+): Part
+	local tileDepth = self.state.tileDepth
+	local tileSize = self.state.tileSize
+	local part = Instance.new("Part")
+	part.Anchored = true
+	part.Locked = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.Size = Vector3.new(tileDepth, tileSize * height, tileSize * width)
+	styleForegroundPart(part, tileId)
+
+	local centerTileX = tileMinX + width * 0.5
+	local centerTileY = tileMinY + height * 0.5
+	part.CFrame = CFrame.new(self:computeTileCenterPosition(centerTileX, centerTileY, 0))
+	return part
+end
+
+function WorldGenerationServiceClient.clearHoveredTerrainTileRuntime(self: WorldGenerationServiceClient)
+	local activeRuntime = self.hoveredTerrainRuntime
+	if activeRuntime == nil then
+		return
+	end
+
+	if activeRuntime.highlight.Parent ~= nil then
+		activeRuntime.highlight:Destroy()
+	end
+
+	for _, replacementPart in activeRuntime.replacementParts do
+		if replacementPart.Parent ~= nil then
+			replacementPart:Destroy()
+		end
+	end
+
+	if activeRuntime.originalPart.Parent ~= nil then
+		activeRuntime.originalPart.Transparency = activeRuntime.originalPartTransparency
+	end
+
+	self.hoveredTerrainRuntime = nil
+end
+
+function WorldGenerationServiceClient.resolveTerrainRectRuntime(
+	self: WorldGenerationServiceClient,
+	tileX: number,
+	tileY: number
+): (ChunkVisualRuntime?, TerrainRectRuntime?)
+	local chunkSize = math.max(1, math.floor(self.state.chunkSize))
+	local chunkX = toChunkCoordinate(tileX, chunkSize)
+	local chunkY = toChunkCoordinate(tileY, chunkSize)
+	local chunkKey = packChunkKey(chunkX, chunkY)
+	local visual = self.chunkVisuals[chunkKey]
+	if visual == nil then
+		return nil, nil
+	end
+
+	local snapshot = self.chunkSnapshots[chunkKey]
+	if snapshot == nil then
+		return nil, nil
+	end
+
+	local localX = tileX - snapshot.tileMinX
+	local localY = tileY - snapshot.tileMinY
+	if localX < 0 or localX >= snapshot.width or localY < 0 or localY >= snapshot.height then
+		return nil, nil
+	end
+
+	local lookupIndex = computeTileIndex(localX, localY, snapshot.width)
+	local rectIndex = visual.terrainRectByLocalTileIndex[lookupIndex]
+	if rectIndex == nil or rectIndex <= 0 then
+		return nil, nil
+	end
+
+	return visual, visual.terrainRects[rectIndex]
+end
+
+function WorldGenerationServiceClient.applyHoveredTerrainTileRuntime(self: WorldGenerationServiceClient)
+	self:clearHoveredTerrainTileRuntime()
+
+	local tileX = self.hoveredTerrainTileX
+	local tileY = self.hoveredTerrainTileY
+	local hoveredChunkKey = self.hoveredTerrainChunkKey
+	if tileX == nil or tileY == nil or hoveredChunkKey == nil then
+		return
+	end
+
+	local visual, rectRuntime = self:resolveTerrainRectRuntime(tileX, tileY)
+	if visual == nil or rectRuntime == nil then
+		return
+	end
+
+	local replacementParts = {} :: { BasePart }
+	local hoverPart = rectRuntime.part
+	local originalPartTransparency = rectRuntime.part.Transparency
+
+	if rectRuntime.width > 1 or rectRuntime.height > 1 then
+		rectRuntime.part.Transparency = 1
+
+		local localHoverX = tileX - rectRuntime.tileMinX
+		local localHoverY = tileY - rectRuntime.tileMinY
+		local subRects = {
+			{
+				tileMinX = rectRuntime.tileMinX,
+				tileMinY = rectRuntime.tileMinY,
+				width = rectRuntime.width,
+				height = localHoverY,
+			},
+			{
+				tileMinX = rectRuntime.tileMinX,
+				tileMinY = rectRuntime.tileMinY + localHoverY + 1,
+				width = rectRuntime.width,
+				height = rectRuntime.height - localHoverY - 1,
+			},
+			{
+				tileMinX = rectRuntime.tileMinX,
+				tileMinY = rectRuntime.tileMinY + localHoverY,
+				width = localHoverX,
+				height = 1,
+			},
+			{
+				tileMinX = rectRuntime.tileMinX + localHoverX + 1,
+				tileMinY = rectRuntime.tileMinY + localHoverY,
+				width = rectRuntime.width - localHoverX - 1,
+				height = 1,
+			},
+		}
+
+		for _, subRect in subRects do
+			if subRect.width <= 0 or subRect.height <= 0 then
+				continue
+			end
+
+			local replacementPart = self:createForegroundRectPart(
+				subRect.tileMinX,
+				subRect.tileMinY,
+				subRect.width,
+				subRect.height,
+				rectRuntime.tileId
+			)
+			replacementPart.Parent = visual.terrainHoverFolder
+			table.insert(replacementParts, replacementPart)
+		end
+
+		hoverPart = self:createForegroundRectPart(tileX, tileY, 1, 1, rectRuntime.tileId)
+		hoverPart.Parent = visual.terrainHoverFolder
+	end
+
+	local highlight = createTerrainHoverHighlight(hoverPart)
+	self.hoveredTerrainRuntime = {
+		chunkKey = hoveredChunkKey,
+		tileX = tileX,
+		tileY = tileY,
+		originalPart = rectRuntime.part,
+		originalPartTransparency = originalPartTransparency,
+		hoverPart = hoverPart,
+		highlight = highlight,
+		replacementParts = replacementParts,
+	}
+end
+
+function WorldGenerationServiceClient.setHoveredTerrainTile(
+	self: WorldGenerationServiceClient,
+	tileXRaw: any,
+	tileYRaw: any
+)
+	local tileX = sanitizeTileCoordinate(tileXRaw)
+	local tileY = sanitizeTileCoordinate(tileYRaw)
+	if tileX == nil or tileY == nil then
+		self.hoveredTerrainTileX = nil
+		self.hoveredTerrainTileY = nil
+		self.hoveredTerrainChunkKey = nil
+		self:clearHoveredTerrainTileRuntime()
+		return
+	end
+
+	local chunkSize = math.max(1, math.floor(self.state.chunkSize))
+	local chunkKey = packChunkKey(toChunkCoordinate(tileX, chunkSize), toChunkCoordinate(tileY, chunkSize))
+	local activeRuntime = self.hoveredTerrainRuntime
+	if
+		self.hoveredTerrainTileX == tileX
+		and self.hoveredTerrainTileY == tileY
+		and self.hoveredTerrainChunkKey == chunkKey
+		and activeRuntime ~= nil
+		and activeRuntime.tileX == tileX
+		and activeRuntime.tileY == tileY
+	then
+		return
+	end
+
+	self.hoveredTerrainTileX = tileX
+	self.hoveredTerrainTileY = tileY
+	self.hoveredTerrainChunkKey = chunkKey
+	self:applyHoveredTerrainTileRuntime()
+end
+
+function WorldGenerationServiceClient.clearHoveredTerrainTile(self: WorldGenerationServiceClient)
+	self.hoveredTerrainTileX = nil
+	self.hoveredTerrainTileY = nil
+	self.hoveredTerrainChunkKey = nil
+	self:clearHoveredTerrainTileRuntime()
+end
+
 function WorldGenerationServiceClient.enqueueChunkRebuild(self: WorldGenerationServiceClient, chunkKey: string)
 	if self.rebuildLookup[chunkKey] then
 		return
@@ -1022,6 +1244,10 @@ function WorldGenerationServiceClient.destroyChunkVisual(self: WorldGenerationSe
 	local visual = self.chunkVisuals[chunkKey]
 	if visual == nil then
 		return
+	end
+
+	if self.hoveredTerrainChunkKey == chunkKey then
+		self:clearHoveredTerrainTileRuntime()
 	end
 
 	self.chunkVisuals[chunkKey] = nil
@@ -1392,7 +1618,7 @@ end
 function WorldGenerationServiceClient.buildChunkVisualModel(
 	self: WorldGenerationServiceClient,
 	snapshot: ChunkSnapshot
-): (Model, number)
+): (Model, number, Folder, Folder, { TerrainRectRuntime }, { number })
 	local model = Instance.new("Model")
 	model.Name = `Chunk_{snapshot.chunkX}_{snapshot.chunkY}`
 	model:SetAttribute("ChunkX", snapshot.chunkX)
@@ -1406,6 +1632,10 @@ function WorldGenerationServiceClient.buildChunkVisualModel(
 	local terrainFolder = Instance.new("Folder")
 	terrainFolder.Name = "Terrain"
 	terrainFolder.Parent = model
+
+	local terrainHoverFolder = Instance.new("Folder")
+	terrainHoverFolder.Name = TERRAIN_HOVER_FOLDER_NAME
+	terrainHoverFolder.Parent = model
 
 	local backgroundFolder = Instance.new("Folder")
 	backgroundFolder.Name = "BackgroundDepth"
@@ -1422,8 +1652,10 @@ function WorldGenerationServiceClient.buildChunkVisualModel(
 	local tileDepth = self.state.tileDepth
 	local tileSize = self.state.tileSize
 	local partCount = 0
+	local terrainRectRuntimes = {} :: { TerrainRectRuntime }
+	local terrainRectByLocalTileIndex = table.create(snapshot.width * snapshot.height, 0) :: { number }
 
-	local terrainRects = buildGreedyRectangles(
+	local terrainGreedyRects = buildGreedyRectangles(
 		snapshot.tiles,
 		snapshot.width,
 		snapshot.height,
@@ -1432,27 +1664,33 @@ function WorldGenerationServiceClient.buildChunkVisualModel(
 		end
 	)
 
-	for rectIndex, rect in terrainRects do
+	for rectIndex, rect in terrainGreedyRects do
 		if partCount >= MAX_VISUAL_PARTS_PER_CHUNK then
 			break
 		end
 
-		local part = Instance.new("Part")
-		part.Anchored = true
-		part.Locked = true
-		part.TopSurface = Enum.SurfaceType.Smooth
-		part.BottomSurface = Enum.SurfaceType.Smooth
-		part.CanCollide = false
-		part.CanQuery = false
-		part.CanTouch = false
-		part.Size = Vector3.new(tileDepth, tileSize * rect.height, tileSize * rect.width)
-		styleForegroundPart(part, rect.value)
-
-		local centerTileX = snapshot.tileMinX + rect.x + rect.width * 0.5
-		local centerTileY = snapshot.tileMinY + rect.y + rect.height * 0.5
-		part.CFrame = CFrame.new(self:computeTileCenterPosition(centerTileX, centerTileY, 0))
+		local absoluteTileMinX = snapshot.tileMinX + rect.x
+		local absoluteTileMinY = snapshot.tileMinY + rect.y
+		local part =
+			self:createForegroundRectPart(absoluteTileMinX, absoluteTileMinY, rect.width, rect.height, rect.value)
 		part.Parent = terrainFolder
 		partCount += 1
+
+		local runtimeRectIndex = #terrainRectRuntimes + 1
+		terrainRectRuntimes[runtimeRectIndex] = {
+			part = part,
+			tileMinX = absoluteTileMinX,
+			tileMinY = absoluteTileMinY,
+			width = rect.width,
+			height = rect.height,
+			tileId = rect.value,
+		}
+		for localRectY = 0, rect.height - 1 do
+			for localRectX = 0, rect.width - 1 do
+				local lookupIndex = computeTileIndex(rect.x + localRectX, rect.y + localRectY, snapshot.width)
+				terrainRectByLocalTileIndex[lookupIndex] = runtimeRectIndex
+			end
+		end
 
 		if rectIndex % 128 == 0 then
 			task.wait()
@@ -1484,8 +1722,6 @@ function WorldGenerationServiceClient.buildChunkVisualModel(
 			local part = Instance.new("Part")
 			part.Anchored = true
 			part.Locked = true
-			part.TopSurface = Enum.SurfaceType.Smooth
-			part.BottomSurface = Enum.SurfaceType.Smooth
 			part.CanCollide = false
 			part.CanQuery = false
 			part.CanTouch = false
@@ -1556,8 +1792,7 @@ function WorldGenerationServiceClient.buildChunkVisualModel(
 		local centerTileY = propSpawnData.tileY + TREE_SURFACE_OFFSET_Y_TILES
 		if propSpawnData.propId == PROP_ID_DEAD_BUSH
 			or propSpawnData.propId == PROP_ID_DESERT_ROCK
-			or propSpawnData.propId == PROP_ID_SNOW_PILE
-			or propSpawnData.propId == PROP_ID_ICE_SPIKE then
+			or propSpawnData.propId == PROP_ID_SNOW_PILE then
 			centerTileY = propSpawnData.tileY + 0.5
 		end
 		local position = self:computeTileCenterPosition(centerTileX, centerTileY, treePlaneOffset)
@@ -1606,14 +1841,6 @@ function WorldGenerationServiceClient.buildChunkVisualModel(
 				else nil
 			if propInstance == nil then
 				propInstance = createSnowPileFallbackModel(propSpawnData.variantIndex, propSpawnData.seed)
-			end
-		elseif propSpawnData.propId == PROP_ID_ICE_SPIKE then
-			local templates = self.propTemplatesByPropId[propSpawnData.propId]
-			propInstance = if templates ~= nil
-				then cloneTemplateByVariant(templates, propSpawnData.variantIndex)
-				else nil
-			if propInstance == nil then
-				propInstance = createIceSpikeFallbackModel(propSpawnData.variantIndex, propSpawnData.seed)
 			end
 		else
 			continue
@@ -1667,7 +1894,7 @@ function WorldGenerationServiceClient.buildChunkVisualModel(
 
 	model:SetAttribute("TreeCount", treeCount)
 	model:SetAttribute("PropCount", propCount)
-	return model, partCount
+	return model, partCount, terrainFolder, terrainHoverFolder, terrainRectRuntimes, terrainRectByLocalTileIndex
 end
 
 function WorldGenerationServiceClient.processChunkRebuildQueue(self: WorldGenerationServiceClient)
@@ -1717,7 +1944,8 @@ function WorldGenerationServiceClient.processChunkRebuildQueue(self: WorldGenera
 			continue
 		end
 
-		local model, partCount = self:buildChunkVisualModel(snapshot)
+		local model, partCount, terrainFolder, terrainHoverFolder, terrainRects, terrainRectByLocalTileIndex =
+			self:buildChunkVisualModel(snapshot)
 		local nextTreeSignature = computeTreeSignature(snapshot)
 		local existingPartCount = if existing ~= nil then existing.partCount else 0
 		local projectedPartTotal = self.totalVisualPartCount - existingPartCount + partCount
@@ -1729,6 +1957,9 @@ function WorldGenerationServiceClient.processChunkRebuildQueue(self: WorldGenera
 		local shouldSkipChunkAnimation = self:shouldSkipChunkAnimationForKey(chunkKey, now)
 		local visualModel = model
 		if existing ~= nil then
+			if self.hoveredTerrainChunkKey == chunkKey then
+				self:clearHoveredTerrainTileRuntime()
+			end
 			shouldSkipChunkAnimation = true
 			local preservedChildNames = {} :: { [string]: boolean }
 			if existing.treeSignature == nextTreeSignature then
@@ -1749,10 +1980,17 @@ function WorldGenerationServiceClient.processChunkRebuildQueue(self: WorldGenera
 			revision = snapshot.revision,
 			builtAt = now,
 			treeSignature = nextTreeSignature,
+			terrainFolder = terrainFolder,
+			terrainHoverFolder = terrainHoverFolder,
+			terrainRects = terrainRects,
+			terrainRectByLocalTileIndex = terrainRectByLocalTileIndex,
 		}
 		self.lastChunkBuildAt[chunkKey] = now
 		self.totalVisualPartCount = projectedPartTotal
 		self.dirtyChunkLookup[chunkKey] = nil
+		if self.hoveredTerrainChunkKey == chunkKey then
+			self:applyHoveredTerrainTileRuntime()
+		end
 		processed += 1
 	end
 end
@@ -1836,6 +2074,7 @@ function WorldGenerationServiceClient.onHeartbeat(self: WorldGenerationServiceCl
 end
 
 function WorldGenerationServiceClient.resetActiveWorldState(self: WorldGenerationServiceClient)
+	self:clearHoveredTerrainTile()
 	for chunkKey in self.chunkVisuals do
 		self:destroyChunkVisual(chunkKey)
 	end
@@ -2007,6 +2246,10 @@ function WorldGenerationServiceClient.init(self: WorldGenerationServiceClient)
 	self.chunkAnimationSkipUntil = {} :: { [string]: number }
 	self.totalVisualPartCount = 0
 	self.visibilityRefreshAccumulator = VISIBILITY_REFRESH_INTERVAL
+	self.hoveredTerrainTileX = nil :: number?
+	self.hoveredTerrainTileY = nil :: number?
+	self.hoveredTerrainChunkKey = nil :: string?
+	self.hoveredTerrainRuntime = nil :: TerrainHoverRuntime?
 
 	self.janitor:GiveChore(function()
 		self.networker:destroy()
@@ -2026,6 +2269,7 @@ function WorldGenerationServiceClient.init(self: WorldGenerationServiceClient)
 end
 
 function WorldGenerationServiceClient.destroy(self: WorldGenerationServiceClient)
+	self:clearHoveredTerrainTile()
 	for chunkKey in self.chunkVisuals do
 		self:destroyChunkVisual(chunkKey)
 	end
@@ -2068,6 +2312,10 @@ type WorldGenerationServiceClient = typeof(WorldGenerationServiceClient) & {
 	chunkAnimationSkipUntil: { [string]: number },
 	totalVisualPartCount: number,
 	visibilityRefreshAccumulator: number,
+	hoveredTerrainTileX: number?,
+	hoveredTerrainTileY: number?,
+	hoveredTerrainChunkKey: string?,
+	hoveredTerrainRuntime: TerrainHoverRuntime?,
 }
 
 return WorldGenerationServiceClient :: WorldGenerationServiceClient

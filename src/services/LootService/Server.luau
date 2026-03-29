@@ -9,6 +9,7 @@ local Ripple = require(ReplicatedStorage.Packages.Ripple)
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
 local ResolveItem = require(ReplicatedStorage.Shared.Modules.Game.ResolveItem)
+local ResolveToolInstance = require(ReplicatedStorage.Shared.Modules.Game.ResolveToolInstance)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
 local InventoryServiceUtils = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceUtils)
 local LootServiceData = require(ReplicatedStorage.Shared.Services.LootService.Data)
@@ -292,7 +293,9 @@ function LootServiceServer.isToolMatchingItemId(self: LootServiceServer, tool: T
 		targetTokens[normalizeItemToken(itemId)] = true
 	end
 
+	local resolvedToolItemId = ResolveToolInstance.resolveToolItemId(tool)
 	local idCandidates = {
+		resolvedToolItemId,
 		tool:GetAttribute("itemId"),
 		tool:GetAttribute("ItemId"),
 		tool:GetAttribute("ittemId"),

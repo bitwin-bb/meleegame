@@ -3,6 +3,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ItemRegistry = require(ReplicatedStorage.Shared.Modules.Items.Registry)
+local MiningPower = require(ReplicatedStorage.Shared.Modules.Math.MiningPower)
 
 local BuildServiceUtils = {}
 
@@ -133,9 +134,17 @@ export type TreeBreakProfile = {
 	maxHealth: number,
 	requiredToolType: string,
 	requiredToolPower: number,
+	breakHits: number,
 	breakDuration: number,
 	fallDuration: number,
 	dropTableId: string,
+}
+
+export type TileBreakProfile = {
+	requiredToolType: string,
+	requiredToolPower: number,
+	breakHits: number,
+	tileTier: string,
 }
 
 export type TreeDropEntry = {
@@ -156,6 +165,7 @@ local DEFAULT_MAX_INTERACTION_DISTANCE_TILES = 8
 local DEFAULT_BREAK_INPUT_TIMEOUT = 0.55
 local DEFAULT_BREAK_PROGRESS_PUSH_INTERVAL = 0.08
 local DEFAULT_BREAK_SUPPORT_FLOOD_LIMIT = 384
+local DEFAULT_TILE_BREAK_HIT_RATE = 8
 local DEFAULT_DELTA_BATCH_MAX = 256
 local DEFAULT_TOOL_POWER = 40
 local DEFAULT_CLIENT_BREAK_INPUT_RATE = 1 / 20
@@ -166,11 +176,14 @@ local DEFAULT_TREE_TRUNK_HEIGHT_MAX = 11
 local DEFAULT_TREE_CANOPY_RADIUS_MIN = 1
 local DEFAULT_TREE_CANOPY_RADIUS_MAX = 3
 local DEFAULT_TREE_REQUIRED_TOOL_TYPE = "Axe"
-local DEFAULT_TREE_REQUIRED_TOOL_POWER = 10
-local TREE_REQUIRE_AXE_FOR_BREAKING = false
+local DEFAULT_TREE_REQUIRED_TOOL_POWER = 0
+local TREE_REQUIRE_AXE_FOR_BREAKING = true
+local DEFAULT_TILE_REQUIRED_TOOL_TYPE = "Pickaxe"
+local TILE_REQUIRE_PICKAXE_FOR_BREAKING = true
 local DEFAULT_TREE_BASE_HEALTH = 90
 local DEFAULT_TREE_HEALTH_PER_HEIGHT = 22
 local DEFAULT_TREE_BREAK_POWER_FLOOR = 7
+local DEFAULT_TREE_BREAK_HIT_RATE = 8
 local DEFAULT_TREE_FALL_DURATION_MIN = 0.52
 local DEFAULT_TREE_FALL_DURATION_MAX = 1.25
 local TREE_BIOME_TYPE_NORMAL = 1
@@ -191,7 +204,6 @@ local TREE_DROP_TABLES: {
 	},
 	CorruptTree = {
 		{ itemId = "Ebonwood", minAmount = 4, maxAmount = 7, chance = 1, bonusPerHeight = 0.5 },
-		{ itemId = "RotSpore", minAmount = 1, maxAmount = 2, chance = 0.35, bonusPerHeight = 0.03 },
 	},
 	DefaultTree = {
 		{ itemId = "Wood", minAmount = 3, maxAmount = 6, chance = 1, bonusPerHeight = 0.4 },
@@ -1157,17 +1169,21 @@ function BuildServiceUtils.resolveTreeBreakProfile(treeRaw: any, toolPowerRaw: a
 	local heightTiles = if isFiniteNumber(source.heightTiles)
 		then sanitizeInteger(source.heightTiles, 1, 128, DEFAULT_TREE_TRUNK_HEIGHT_MIN)
 		else BuildServiceUtils.resolveTreeTrunkHeight(source) + 1
+	local dropTableId = BuildServiceUtils.resolveTreeDropTableId(source)
+	local treeRequirement = MiningPower.resolveTreeRequirement(dropTableId)
 	local maxHealth = DEFAULT_TREE_BASE_HEALTH + heightTiles * DEFAULT_TREE_HEALTH_PER_HEIGHT
 	local toolPower = sanitizeNumber(toolPowerRaw, 0, 100000, 0)
 	local effectivePower = math.max(DEFAULT_TREE_BREAK_POWER_FLOOR, toolPower)
 	local breakDuration = math.max(0.35, maxHealth / (effectivePower * 6))
+	local breakHits = math.max(1, math.ceil(breakDuration * DEFAULT_TREE_BREAK_HIT_RATE))
 	return {
 		maxHealth = maxHealth,
-		requiredToolType = DEFAULT_TREE_REQUIRED_TOOL_TYPE,
-		requiredToolPower = DEFAULT_TREE_REQUIRED_TOOL_POWER,
+		requiredToolType = treeRequirement.requiredToolType or string.lower(DEFAULT_TREE_REQUIRED_TOOL_TYPE),
+		requiredToolPower = treeRequirement.requiredToolPower or DEFAULT_TREE_REQUIRED_TOOL_POWER,
+		breakHits = breakHits,
 		breakDuration = breakDuration,
 		fallDuration = BuildServiceUtils.resolveTreeFallDuration(heightTiles),
-		dropTableId = BuildServiceUtils.resolveTreeDropTableId(source),
+		dropTableId = dropTableId,
 	}
 end
 
@@ -1179,13 +1195,14 @@ function BuildServiceUtils.canBreakTree(
 	local profile = BuildServiceUtils.resolveTreeBreakProfile(treeRaw, toolPowerRaw)
 	local toolType = string.lower(sanitizeString(toolTypeRaw, ""))
 	local toolPower = sanitizeNumber(toolPowerRaw, 0, 100000, 0)
-	if TREE_REQUIRE_AXE_FOR_BREAKING and profile.requiredToolType == "Axe" and string.find(toolType, "axe", 1, true) == nil then
+	local requiredToolType = string.lower(sanitizeString(profile.requiredToolType, DEFAULT_TREE_REQUIRED_TOOL_TYPE))
+	if TREE_REQUIRE_AXE_FOR_BREAKING and requiredToolType == "axe" and string.find(toolType, "axe", 1, true) == nil then
 		return false, "tree_requires_axe", math.huge, profile
 	end
-	if TREE_REQUIRE_AXE_FOR_BREAKING and toolPower < profile.requiredToolPower then
+	if toolPower < profile.requiredToolPower then
 		return false, "insufficient_axe_power", math.huge, profile
 	end
-	return true, "ok", profile.breakDuration, profile
+	return true, "ok", profile.breakHits, profile
 end
 
 function BuildServiceUtils.normalizeFallDirection(directionRaw: any): number
@@ -1712,19 +1729,61 @@ function BuildServiceUtils.resolveBreakDuration(tileIdRaw: any, toolPowerRaw: an
 	return rule.breakTime * rule.hardness / efficiency
 end
 
-function BuildServiceUtils.canBreakTile(tileIdRaw: any, toolPowerRaw: any): (boolean, string, number)
+function BuildServiceUtils.resolveTileBreakHits(tileIdRaw: any, toolPowerRaw: any): number
+	local breakDuration = BuildServiceUtils.resolveBreakDuration(tileIdRaw, toolPowerRaw)
+	if breakDuration == math.huge then
+		return math.huge
+	end
+	if breakDuration <= 0 then
+		return 0
+	end
+	return math.max(1, math.ceil(breakDuration * DEFAULT_TILE_BREAK_HIT_RATE))
+end
+
+function BuildServiceUtils.resolveTileBreakProfile(tileIdRaw: any, toolPowerRaw: any): TileBreakProfile
 	local tileId = BuildServiceUtils.sanitizeTileId(tileIdRaw)
 	if tileId == nil then
-		return false, "invalid_tile_id", math.huge
+		return {
+			requiredToolType = string.lower(DEFAULT_TILE_REQUIRED_TOOL_TYPE),
+			requiredToolPower = 0,
+			breakHits = math.huge,
+			tileTier = "invalid",
+		}
+	end
+
+	local rule = getRuleOrDefault(tileId)
+	local tileRequirement = MiningPower.resolveTileRequirement(tileId, rule.name)
+	return {
+		requiredToolType = tileRequirement.requiredToolType or string.lower(DEFAULT_TILE_REQUIRED_TOOL_TYPE),
+		requiredToolPower = math.max(rule.requiredToolPower, tileRequirement.requiredToolPower or 0),
+		breakHits = BuildServiceUtils.resolveTileBreakHits(tileId, toolPowerRaw),
+		tileTier = tileRequirement.tileTier or "default",
+	}
+end
+
+function BuildServiceUtils.canBreakTile(
+	tileIdRaw: any,
+	toolTypeRaw: any,
+	toolPowerRaw: any
+): (boolean, string, number, TileBreakProfile)
+	local tileId = BuildServiceUtils.sanitizeTileId(tileIdRaw)
+	if tileId == nil then
+		return false, "invalid_tile_id", math.huge, BuildServiceUtils.resolveTileBreakProfile(tileIdRaw, toolPowerRaw)
 	end
 	if tileId == TILE_ID.AIR then
-		return false, "air", 0
+		return false, "air", 0, BuildServiceUtils.resolveTileBreakProfile(tileId, toolPowerRaw)
 	end
-	local breakDuration = BuildServiceUtils.resolveBreakDuration(tileId, toolPowerRaw)
-	if breakDuration == math.huge then
-		return false, "insufficient_tool_power", breakDuration
+
+	local profile = BuildServiceUtils.resolveTileBreakProfile(tileId, toolPowerRaw)
+	local toolType = string.lower(sanitizeString(toolTypeRaw, ""))
+	local requiredToolType = string.lower(sanitizeString(profile.requiredToolType, DEFAULT_TILE_REQUIRED_TOOL_TYPE))
+	if TILE_REQUIRE_PICKAXE_FOR_BREAKING and requiredToolType == "pickaxe" and string.find(toolType, "pickaxe", 1, true) == nil then
+		return false, "tile_requires_pickaxe", math.huge, profile
 	end
-	return true, "ok", breakDuration
+	if profile.breakHits == math.huge then
+		return false, "insufficient_pickaxe_power", profile.breakHits, profile
+	end
+	return true, "ok", profile.breakHits, profile
 end
 
 function BuildServiceUtils.floodFillSupportComponent(

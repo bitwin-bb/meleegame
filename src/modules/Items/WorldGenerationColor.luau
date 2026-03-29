@@ -25,114 +25,115 @@ export type LiquidBiomeTints = {
 }
 
 local WorldGenerationColor = {}
+local TILE_MATERIAL = Enum.Material.Plastic
 
 local TILE_VISUALS: { [number]: TileVisual } = {
 	[1] = {
 		name = "Grass",
 		color = Color3.fromRGB(113, 155, 76),
-		material = Enum.Material.Grass,
+		material = TILE_MATERIAL,
 		transparency = 0,
 	},
 	[17] = {
 		name = "JungleGrass",
 		color = Color3.fromRGB(112, 147, 41),
-		material = Enum.Material.Grass,
+		material = TILE_MATERIAL,
 		transparency = 0,
 	},
 	[18] = {
 		name = "Wood",
 		color = Color3.fromRGB(90, 64, 44),
-		material = Enum.Material.Wood,
+		material = TILE_MATERIAL,
 		transparency = 0,
 	},
 	[2] = {
 		name = "Dirt",
 		color = Color3.fromRGB(79, 47, 20),
-		material = Enum.Material.Ground,
+		material = TILE_MATERIAL,
 		transparency = 0,
 	},
 	[3] = {
 		name = "Stone",
 		color = Color3.fromRGB(95, 102, 111),
-		material = Enum.Material.Slate,
+		material = TILE_MATERIAL,
 		transparency = 0,
 	},
 	[4] = {
 		name = "Sand",
 		color = Color3.fromRGB(211, 196, 139),
-		material = Enum.Material.Sand,
+		material = TILE_MATERIAL,
 		transparency = 0,
 	},
 	[5] = {
 		name = "Sandstone",
 		color = Color3.fromRGB(199, 161, 103),
-		material = Enum.Material.Sandstone,
+		material = TILE_MATERIAL,
 		transparency = 0,
 	},
 	[6] = {
 		name = "Snow",
 		color = Color3.fromRGB(232, 240, 255),
-		material = Enum.Material.Snow,
+		material = TILE_MATERIAL,
 		transparency = 0,
 	},
 	[7] = {
 		name = "Ice",
 		color = Color3.fromRGB(178, 214, 255),
-		material = Enum.Material.Glacier,
+		material = TILE_MATERIAL,
 		transparency = 0,
 	},
 	[8] = {
 		name = "Mud",
 		color = Color3.fromRGB(48, 40, 31),
-		material = Enum.Material.Ground,
+		material = TILE_MATERIAL,
 		transparency = 0,
 	},
 	[9] = {
 		name = "Clay",
 		color = Color3.fromRGB(174, 78, 54),
-		material = Enum.Material.Ground,
+		material = TILE_MATERIAL,
 		transparency = 0,
 	},
 	[10] = {
 		name = "CopperOre",
 		color = Color3.fromRGB(189, 118, 63),
-		material = Enum.Material.Metal,
+		material = TILE_MATERIAL,
 		transparency = 0,
 	},
 	[11] = {
 		name = "IronOre",
 		color = Color3.fromRGB(141, 134, 116),
-		material = Enum.Material.Metal,
+		material = TILE_MATERIAL,
 		transparency = 0,
 	},
 	[12] = {
 		name = "SilverOre",
 		color = Color3.fromRGB(177, 177, 185),
-		material = Enum.Material.Metal,
+		material = TILE_MATERIAL,
 		transparency = 0,
 	},
 	[13] = {
 		name = "GoldOre",
 		color = Color3.fromRGB(214, 186, 62),
-		material = Enum.Material.Metal,
+		material = TILE_MATERIAL,
 		transparency = 0,
 	},
 	[14] = {
 		name = "CorruptGrass",
 		color = Color3.fromRGB(70, 40, 109),
-		material = Enum.Material.Grass,
+		material = TILE_MATERIAL,
 		transparency = 0,
 	},
 	[15] = {
 		name = "CorruptSoil",
 		color = Color3.fromRGB(104, 73, 74),
-		material = Enum.Material.Ground,
+		material = TILE_MATERIAL,
 		transparency = 0,
 	},
 	[16] = {
 		name = "CorruptStone",
 		color = Color3.fromRGB(69, 35, 119),
-		material = Enum.Material.Rock,
+		material = TILE_MATERIAL,
 		transparency = 0,
 	},
 }

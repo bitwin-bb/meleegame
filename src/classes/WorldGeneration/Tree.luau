@@ -125,6 +125,15 @@ local function resolveLeafMaterialFallback(): Enum.Material
 	return Enum.Material.Grass
 end
 
+local function applyStudSurfaces(part: BasePart)
+	part.TopSurface = Enum.SurfaceType.Studs
+	part.BottomSurface = Enum.SurfaceType.Studs
+	part.LeftSurface = Enum.SurfaceType.Studs
+	part.RightSurface = Enum.SurfaceType.Studs
+	part.FrontSurface = Enum.SurfaceType.Studs
+	part.BackSurface = Enum.SurfaceType.Studs
+end
+
 local DEFAULT_LEAF_MATERIAL = resolveLeafMaterialFallback()
 local DEFAULT_TREE_PALETTE = WorldGenerationColor.TREE_PALETTES.Default
 	or {
@@ -750,9 +759,8 @@ function ProceduralTree.createBranchPart(self: ProceduralTree, descriptor: Branc
 	part.Size = Vector3.new(descriptor.thickness, descriptor.thickness, length)
 	part.CFrame = CFrame.lookAt(midpoint, midpoint + direction.Unit)
 	part.Color = self.config.BranchColor
-	part.Material = self.config.BranchMaterial
-	part.TopSurface = Enum.SurfaceType.Smooth
-	part.BottomSurface = Enum.SurfaceType.Smooth
+	part.Material = Enum.Material.Plastic
+	applyStudSurfaces(part)
 	part.CastShadow = false
 	part.CanCollide = self.config.BranchCanCollide
 	part.CanTouch = self.config.BranchCanCollide
@@ -778,9 +786,8 @@ function ProceduralTree.createLeafPart(self: ProceduralTree, descriptor: LeafDes
 			math.rad(descriptor.rotation.Z)
 		)
 	part.Color = self.config.LeafColor
-	part.Material = self.config.LeafMaterial
-	part.TopSurface = Enum.SurfaceType.Smooth
-	part.BottomSurface = Enum.SurfaceType.Smooth
+	part.Material = Enum.Material.Plastic
+	applyStudSurfaces(part)
 	part.CastShadow = false
 	part.CanCollide = false
 	part.CanTouch = false

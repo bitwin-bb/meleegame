@@ -13,6 +13,7 @@ local CoreRuntime = require(ReplicatedStorage.Shared.Modules.Core.Runtime)
 local Configs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
 local Melee = require(ReplicatedStorage.Shared.Classes.Melee)
 local AnimationServiceUtils = require(ReplicatedStorage.Shared.Services.AnimationService.AnimationServiceUtils)
+local BuildServiceClient = require(ReplicatedStorage.Shared.Services.BuildService.BuildServiceClient)
 local InventoryServiceClient = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceClient)
 local InventoryServiceUtils = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceUtils)
 local MeleeServiceUtils = require(ReplicatedStorage.Shared.Services.MeleeService.MeleeServiceUtils)
@@ -158,11 +159,47 @@ local function normalizeSwingSoundGroup(valueRaw: any): string?
 	if normalized == "" then
 		return nil
 	end
-	local swingIndexText = string.match(normalized, "^swing([123])")
+	local swingIndexText = string.match(normalized, "^swing(%d+)$")
 	if swingIndexText == nil then
 		return nil
 	end
 	return "swing" .. swingIndexText
+end
+
+local function isStartSwingEvent(valueRaw: any): boolean
+	local normalized = normalizeEventKey(valueRaw)
+	return normalized == "startswing" or normalized == "swingstart"
+end
+
+local function resolveOrderedSwingGroups(swingSounds: { [string]: { string } }): { string }
+	local indexedGroups = {}
+	for groupName, pool in swingSounds do
+		if typeof(groupName) ~= "string" or typeof(pool) ~= "table" or #pool <= 0 then
+			continue
+		end
+
+		local swingIndexText = string.match(groupName, "^swing(%d+)$")
+		local swingIndex = if swingIndexText ~= nil then tonumber(swingIndexText) else nil
+		if swingIndex ~= nil then
+			table.insert(indexedGroups, {
+				groupName = groupName,
+				swingIndex = swingIndex,
+			})
+		end
+	end
+
+	table.sort(indexedGroups, function(lhs, rhs)
+		if lhs.swingIndex == rhs.swingIndex then
+			return lhs.groupName < rhs.groupName
+		end
+		return lhs.swingIndex < rhs.swingIndex
+	end)
+
+	local orderedGroups = {}
+	for _, entry in indexedGroups do
+		orderedGroups[#orderedGroups + 1] = entry.groupName
+	end
+	return orderedGroups
 end
 
 local function resolveToolHandlePart(toolRaw: any): BasePart?
@@ -735,8 +772,11 @@ function MeleeServiceClient.resolveSwingSoundGroupFromContext(
 	local swingIndexRaw = context.swingIndex
 	if typeof(swingIndexRaw) == "number" and swingIndexRaw == swingIndexRaw then
 		local swingIndex = math.max(1, math.floor(swingIndexRaw))
-		local cycled = ((swingIndex - 1) % 3) + 1
-		return "swing" .. tostring(cycled)
+		local orderedGroups = resolveOrderedSwingGroups(self.equippedToolSwingSounds)
+		if #orderedGroups > 0 then
+			local cycledIndex = ((swingIndex - 1) % #orderedGroups) + 1
+			return orderedGroups[cycledIndex]
+		end
 	end
 
 	return nil
@@ -880,6 +920,14 @@ function MeleeServiceClient.bindEquippedTool(self: MeleeServiceClient, toolRaw: 
 	end
 end
 
+function MeleeServiceClient.isEquippedAxe(self: MeleeServiceClient): boolean
+	return MeleeServiceUtils.resolveToolItemType(self.equippedTool) == "axe"
+end
+
+function MeleeServiceClient.isEquippedPickaxe(self: MeleeServiceClient): boolean
+	return MeleeServiceUtils.resolveToolItemType(self.equippedTool) == "pickaxe"
+end
+
 function MeleeServiceClient.onMeleeAttackStarted(self: MeleeServiceClient, context: { [string]: any })
 	local debugHitbox = self.debugHitbox
 	if debugHitbox ~= nil then
@@ -891,6 +939,10 @@ function MeleeServiceClient.onMeleeAttackStarted(self: MeleeServiceClient, conte
 	if self.hapticsModule ~= nil and typeof((self.hapticsModule :: any).impactLight) == "function" then
 		local hapticsAny = self.hapticsModule :: any
 		hapticsAny:impactLight()
+	end
+
+	if self:isEquippedAxe() or self:isEquippedPickaxe() then
+		return
 	end
 
 	if self:playSwingSoundFromContext(context) then
@@ -911,6 +963,21 @@ function MeleeServiceClient.onMeleeAnimationEvent(self: MeleeServiceClient, cont
 	local context = if typeof(contextRaw) == "table" then contextRaw else {}
 	local eventName = context.eventName
 	local eventType = context.eventType
+
+	local equippedAxe = self:isEquippedAxe()
+	local equippedPickaxe = self:isEquippedPickaxe()
+	if isStartSwingEvent(eventName) and (equippedAxe or equippedPickaxe) then
+		if not self:playSwingSoundFromContext(context) then
+			self:playToolSoundByEvent(eventName, eventType, { "Swing", "SwingStart", "startSwing" })
+		end
+		if equippedAxe then
+			(BuildServiceClient :: any):playHoveredTreeChopFeedback()
+		else
+			(BuildServiceClient :: any):playHoveredTileBreakFeedback()
+		end
+		return
+	end
+
 	self:playToolSoundByEvent(eventName, eventType, nil)
 end
 

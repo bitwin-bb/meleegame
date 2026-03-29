@@ -8,6 +8,7 @@ local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Commands = require(ReplicatedStorage.Shared.Services.DevPromptService.Commands)
 local DevPromptServiceUtils = require(ReplicatedStorage.Shared.Services.DevPromptService.DevPromptServiceUtils)
+local InventoryServiceUtils = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceUtils)
 local Role = require(ReplicatedStorage.Shared.Services.DevPromptService.Role)
 local ItemRegistry = require(ReplicatedStorage.Shared.Modules.Items.Registry)
 local HpServiceServer = require(ServerScriptService.Services.HpService.HpServiceServer)
@@ -47,6 +48,34 @@ local DEFAULT_ADMIN_MIN_GROUP_RANK = 254
 local DEFAULT_MODERATOR_MIN_GROUP_RANK = 200
 local DEV_COMMAND_MAX_HEALTH = 500
 local DEV_COMMAND_MAX_MANA = 200
+
+local function normalizeToken(valueRaw: any): string
+	local text = DevPromptServiceUtils.trim(valueRaw)
+	if text == "" then
+		return ""
+	end
+	return string.lower(string.gsub(text, "[%s_%-%.]", ""))
+end
+
+local function isToolBackedItem(itemIdRaw: any): boolean
+	local definition = ItemRegistry.resolveDefinition(itemIdRaw)
+	if typeof(definition) ~= "table" then
+		return false
+	end
+
+	local definitionTable = definition :: { [string]: any }
+	if typeof(definitionTable.melee) == "table" or typeof(definitionTable.deployable) == "table" then
+		return true
+	end
+
+	local functionality = normalizeToken(definitionTable.functionality)
+	if functionality == "weapon" or functionality == "tool" then
+		return true
+	end
+
+	local itemType = normalizeToken(definitionTable.itemType or definitionTable.type)
+	return itemType == "axe" or itemType == "pickaxe" or itemType == "weapon" or itemType == "tool"
+end
 local DEV_COMMAND_DEFAULT_FLY_SPEED = DevPromptServiceUtils.DEFAULT_FLY_SPEED
 local DEV_COMMAND_MIN_FLY_SPEED = DevPromptServiceUtils.MIN_FLY_SPEED
 local DEV_COMMAND_MAX_FLY_SPEED = DevPromptServiceUtils.MAX_FLY_SPEED
@@ -62,14 +91,6 @@ local EYE_OF_CTHULHU_VARIANTS = {
 	eyeofcthulhu = true,
 	eoc = true,
 }
-
-local function normalizeToken(valueRaw: any): string
-	local text = DevPromptServiceUtils.trim(valueRaw)
-	if text == "" then
-		return ""
-	end
-	return string.lower(string.gsub(text, "[%s_%-%.]", ""))
-end
 
 local function resolveCharacterHumanoid(characterRaw: any): Humanoid?
 	if typeof(characterRaw) ~= "Instance" or not characterRaw:IsA("Model") then
@@ -471,11 +492,23 @@ function DevPromptServiceServer.giveItemToPlayer(
 		return false, tostring(itemIdRaw), 0, requestedAmount, "unknown_item"
 	end
 
+	local inventoryState = InventoryServiceServer:getState(targetPlayer)
+	if not InventoryServiceUtils.isLoadedState(inventoryState.loadState) then
+		InventoryServiceServer:requestSync(targetPlayer)
+		return false, canonicalItemId, 0, requestedAmount, "inventory_loading"
+	end
+
+	local toolBackedItem = isToolBackedItem(canonicalItemId)
 	local result = InventoryServiceServer:addItem(targetPlayer, canonicalItemId, requestedAmount, {
 		stackIdPrefix = "devprompt",
+		maxStack = if toolBackedItem then 1 else nil,
 	})
 	if result.added <= 0 then
 		return false, canonicalItemId, 0, requestedAmount, "inventory_full"
+	end
+
+	if toolBackedItem and #result.touchedSlots > 0 then
+		InventoryServiceServer:setSelectedSlot(targetPlayer, result.touchedSlots[1])
 	end
 	return true, canonicalItemId, result.added, result.requested, nil
 end

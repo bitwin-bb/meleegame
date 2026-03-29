@@ -7,6 +7,7 @@ local Ripple = require(ReplicatedStorage.Packages.Ripple)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Configs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
 local CatchUpPlayer = require(script.Parent.Behavior.catchUpPlayer)
+local RoomBehavior = require(script.Parent.Behavior.room)
 
 local SideView = {}
 SideView.__index = SideView
@@ -32,6 +33,7 @@ export type SideViewConfig = {
 	mouseInfluenceY: number?,
 	cameraSpring: SpringOptions?,
 	fovSpring: SpringOptions?,
+	room: RoomBehavior.RoomConfig?,
 }
 
 export type SideViewInitOptions = {
@@ -56,6 +58,7 @@ export type SideView = typeof(setmetatable(
 		cameraSpring: SpringOptions,
 		fovSpring: SpringOptions,
 		catchUpPlayerBehavior: CatchUpPlayer.CatchUpPlayer,
+		roomBehavior: RoomBehavior.Room,
 		cameraMotion: Motion<CFrame>,
 		fovMotion: Motion<number>,
 		janitor: JanitorClass,
@@ -137,6 +140,7 @@ function SideView.new(config: SideViewConfig?): SideView
 			then config.fovSpring
 			else (DEFAULT_SIDE_VIEW_CONFIG.fovSpring or DEFAULT_FOV_SPRING),
 		catchUpPlayerBehavior = CatchUpPlayer.new(if config then (config :: any).catchUpPlayer else nil),
+		roomBehavior = RoomBehavior.new(if config then (config :: any).room else nil),
 		cameraMotion = Ripple.createMotion(startCFrame),
 		fovMotion = Ripple.createMotion(startFov),
 		janitor = Janitor.new(),
@@ -154,7 +158,23 @@ function SideView.new(config: SideViewConfig?): SideView
 	return self
 end
 
-function SideView.getTargetCFrame(self: SideView, camera: Camera): CFrame
+function SideView.resolveDynamicViewConfig(self: SideView): RoomBehavior.ViewConfig
+	local baseViewConfig: RoomBehavior.ViewConfig = {
+		distance = self.distance,
+		height = self.height,
+		lookHeight = self.lookHeight,
+		fieldOfView = self.fieldOfView,
+	}
+
+	local target = self.target
+	if target == nil then
+		return baseViewConfig
+	end
+
+	return self.roomBehavior:resolveViewConfig(baseViewConfig, target.Position)
+end
+
+function SideView.getTargetCFrame(self: SideView, camera: Camera, viewConfig: RoomBehavior.ViewConfig): CFrame
 	local target = self.target :: BasePart
 	local targetPosition = target.Position
 	local sidewaysSpeed = math.abs(target.AssemblyLinearVelocity.Z)
@@ -163,8 +183,8 @@ function SideView.getTargetCFrame(self: SideView, camera: Camera): CFrame
 		else 0
 	local movementBackOffset = self.movementBackAmount * speedAlpha * self.movementBackSign
 
-	local baseCameraPosition = targetPosition + Vector3.new(self.distance * self.sideSign, self.height, 0)
-	local baseLookPosition = targetPosition + Vector3.new(0, self.lookHeight, 0)
+	local baseCameraPosition = targetPosition + Vector3.new(viewConfig.distance * self.sideSign, viewConfig.height, 0)
+	local baseLookPosition = targetPosition + Vector3.new(0, viewConfig.lookHeight, 0)
 	local cameraToLook = baseCameraPosition - baseLookPosition
 	local backDirection = if cameraToLook.Magnitude > 0 then cameraToLook.Unit else Vector3.new(self.sideSign, 0, 0)
 	local cameraPositionWithMovementBack = baseCameraPosition + (backDirection * movementBackOffset)
@@ -182,6 +202,7 @@ end
 function SideView.setTarget(self: SideView, target: BasePart)
 	self.target = target
 	self.catchUpPlayerBehavior:reset()
+	self.roomBehavior:reset()
 end
 
 function SideView.snapToTarget(self: SideView)
@@ -191,14 +212,16 @@ function SideView.snapToTarget(self: SideView)
 		return
 	end
 
-	local targetCFrame = self:getTargetCFrame(camera)
+	local resolvedViewConfig = self:resolveDynamicViewConfig()
+	local targetCFrame = self:getTargetCFrame(camera, resolvedViewConfig)
 
 	camera.CameraType = Enum.CameraType.Scriptable
 	camera.CFrame = targetCFrame
-	camera.FieldOfView = self.fieldOfView
+	camera.FieldOfView = resolvedViewConfig.fieldOfView
 	self.cameraMotion:immediate(targetCFrame)
-	self.fovMotion:immediate(self.fieldOfView)
+	self.fovMotion:immediate(resolvedViewConfig.fieldOfView)
 	self.catchUpPlayerBehavior:reset()
+	self.roomBehavior:reset()
 end
 
 function SideView.enable(self: SideView)
@@ -215,6 +238,7 @@ function SideView.enable(self: SideView)
 		self.fovMotion:immediate(camera.FieldOfView)
 	end
 	self.catchUpPlayerBehavior:reset()
+	self.roomBehavior:reset()
 
 	self.enabled = true
 	RunService:BindToRenderStep(self.renderStepName, SIDE_VIEW_RENDER_PRIORITY, function(deltaTime)
@@ -233,6 +257,7 @@ function SideView.disable(self: SideView)
 	self.enabled = false
 	self.janitor:Clean()
 	self.catchUpPlayerBehavior:reset()
+	self.roomBehavior:reset()
 
 	local camera = Workspace.CurrentCamera
 	if camera then
@@ -260,13 +285,14 @@ function SideView.update(self: SideView, deltaTime: number?)
 
 	camera.CameraType = Enum.CameraType.Scriptable
 
-	local targetCFrame = self:getTargetCFrame(camera)
+	local resolvedViewConfig = self:resolveDynamicViewConfig()
+	local targetCFrame = self:getTargetCFrame(camera, resolvedViewConfig)
 	local currentCFrame = self.cameraMotion:get()
 	local resolvedCameraSpring =
 		self.catchUpPlayerBehavior:resolveSpring(self.cameraSpring, currentCFrame, targetCFrame, deltaTime)
 
 	self.cameraMotion:spring(targetCFrame, resolvedCameraSpring)
-	self.fovMotion:spring(self.fieldOfView, self.fovSpring)
+	self.fovMotion:spring(resolvedViewConfig.fieldOfView, self.fovSpring)
 
 	local dt = deltaTime or (1 / 60)
 	camera.CFrame = self.cameraMotion:step(dt)
@@ -316,11 +342,15 @@ function SideView.applyConfig(self: SideView, config: SideViewConfig)
 	if config.fovSpring then
 		self.fovSpring = config.fovSpring
 	end
+	if (config :: any).room ~= nil then
+		self.roomBehavior:applyConfig((config :: any).room)
+	end
 
 	local catchUpPlayerConfig = (config :: any).catchUpPlayer
 	if catchUpPlayerConfig ~= nil then
 		self.catchUpPlayerBehavior:applyConfig(catchUpPlayerConfig)
 	end
+	self.roomBehavior:reset()
 end
 
 function SideView.init(self: SideView, target: BasePart, config: SideViewConfig?, options: SideViewInitOptions?)

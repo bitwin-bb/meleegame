@@ -44,6 +44,28 @@ return {
 				},
 			},
 		},
+		Axes = {
+			CopperAxe = {
+				Equip = "rbxassetid://133222321566847",
+				Idle = "rbxassetid://133222321566847",
+				Swings = {
+					[1] = "rbxassetid://124728048603736",
+					[2] = "rbxassetid://136985737110517",
+					[3] = "rbxassetid://132384282445787",
+				},
+			},
+		},
+		Pickaxes = {
+			CopperPickaxe = {
+				Equip = "rbxassetid://133222321566847",
+				Idle = "rbxassetid://133222321566847",
+				Swings = {
+					[1] = "rbxassetid://88491511141309",
+					[2] = "rbxassetid://79411035782719",
+					[3] = "rbxassetid://80832799577909",
+				},
+			},
+		},
 	},
 	Npcs = {
 		Slimes = {

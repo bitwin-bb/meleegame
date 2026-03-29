@@ -1,4 +1,5 @@
 --!strict
+local Pickaxes = require(script.Parent.Pickaxes)
 
 return {
 	Music = {
@@ -226,6 +227,27 @@ return {
 			CopperShortSword = {},
 			Katana = {},
 		},
+		Axes = {
+			CopperAxe = {
+				Equip = "rbxassetid://93174431767689",
+				Swings = {
+					"rbxassetid://89016100493144",
+					"rbxassetid://86985320830309",
+					"rbxassetid://132249368313234",
+					"rbxassetid://90536300513403",
+				},
+			},
+		},
+		Pickaxes = {
+			CopperPickaxe = {
+				Equip = "rbxassetid://93174431767689",
+				Swings = {
+					"rbxassetid://100378536881718",
+					"rbxassetid://86344294973582",
+					"rbxassetid://79732830869206",
+				},
+			},
+		},
 	},
 	UI = {
 		Hover = "rbxassetid://10066942189",
@@ -240,7 +262,12 @@ return {
 	Misc = {
 		Tree = {
 			Impact = {},
-			Chop = {},
+			Chop = {
+				"rbxassetid://9120808133",
+				"rbxassetid://9120807657",
+				"rbxassetid://9120808413",
+				"rbxassetid://9120807871",
+			},
 			Fall = {},
 		},
 		Water = {
@@ -248,6 +275,20 @@ return {
 			"rbxassetid://83673781452193",
 			"rbxassetid://6569949256",
 			"rbxassetid://5930519356",
+		},
+		Tile = {
+			Hit = {
+				"rbxassetid://9103759121",
+				"rbxassetid://9103759039",
+				"rbxassetid://9120146349",
+			},
+			Break = {
+				"rbxassetid://8666682639",
+				"rbxassetid://8666681117",
+				"rbxassetid://8666679694",
+				"rbxassetid://8666678078",
+				"rbxassetid://8666678762",
+			},
 		}
 	},
 }

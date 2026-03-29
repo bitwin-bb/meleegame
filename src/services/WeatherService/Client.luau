@@ -60,9 +60,6 @@ local LIGHTNING_FLASH_RANDOM_BRIGHTNESS = 0.1
 local LIGHTNING_FLASH_BASE_CONTRAST = 0.015
 local LIGHTNING_FLASH_RANDOM_CONTRAST = 0.045
 local LIGHTNING_FLASH_FADE_SECONDS = 0.16
-local DEPTH_LAYER_UNDERGROUND = 2
-local DEPTH_LAYER_CAVERN = 3
-local DEPTH_LAYER_DEEP = 4
 
 local RAIN_ATTACHMENT_OFFSETS = {
 	Vector3.new(-35, 0, -35),
@@ -319,18 +316,10 @@ local function resolveCloudFallback(skyKey: SkyKey): (number, number, Color3)
 	if skyKey == WeatherServiceUtils.SKY_KEY_UNDERGROUND then
 		return 0.02, 0.04, Color3.fromRGB(178, 186, 201)
 	end
-	return 0.34, 0.32, Color3.fromRGB(235, 242, 255)
-end
-
-local function isUndergroundDepthLayer(depthLayerRaw: any): boolean
-	if typeof(depthLayerRaw) ~= "number" then
-		return false
+	if skyKey == WeatherServiceUtils.SKY_KEY_SNOW_BIOME then
+		return 0.4, 0.36, Color3.fromRGB(228, 236, 245)
 	end
-
-	local depthLayer = math.floor(depthLayerRaw)
-	return depthLayer == DEPTH_LAYER_UNDERGROUND
-		or depthLayer == DEPTH_LAYER_CAVERN
-		or depthLayer == DEPTH_LAYER_DEEP
+	return 0.34, 0.32, Color3.fromRGB(235, 242, 255)
 end
 
 function WeatherServiceClient.warnMissingSkyAsset(self: WeatherServiceClient, skyKey: SkyKey)
@@ -730,21 +719,24 @@ function WeatherServiceClient.resolveSkyKeyForLocalPlayer(self: WeatherServiceCl
 	end
 	local worldPosition = rootPart.Position
 
+	local depthLayer = nil
 	local okDepthLayer, depthLayerOrError = pcall(function()
 		return (WorldGenerationServiceClient :: any):getDepthLayerAtWorldPosition(worldPosition)
 	end)
-	if okDepthLayer and isUndergroundDepthLayer(depthLayerOrError) then
-		return WeatherServiceUtils.SKY_KEY_UNDERGROUND
+	if okDepthLayer then
+		depthLayer = depthLayerOrError
 	end
 
-	local ok, biomeTypeOrError = pcall(function()
+	local okBiomeType, biomeTypeOrError = pcall(function()
 		return WorldGenerationServiceClient:getBiomeTypeAtWorldPosition(worldPosition)
 	end)
-	if not ok then
-		return WeatherServiceUtils.SKY_KEY_OVERWORLD
-	end
+	local biomeType = if okBiomeType then biomeTypeOrError else nil
+	local okBiomeId, biomeIdOrError = pcall(function()
+		return WorldGenerationServiceClient:getBiomeIdAtWorldPosition(worldPosition)
+	end)
+	local biomeId = if okBiomeId then biomeIdOrError else nil
 
-	return WeatherServiceUtils.resolveSkyKeyFromBiomeType(biomeTypeOrError)
+	return WeatherServiceUtils.resolveSkyKeyFromWorldSample(biomeId, biomeType, depthLayer)
 end
 
 function WeatherServiceClient.transitionToSky(self: WeatherServiceClient, skyKeyRaw: any, transitionSecondsRaw: any?)

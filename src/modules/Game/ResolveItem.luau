@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ItemRegistry = require(ReplicatedStorage.Shared.Modules.Items.Registry)
+local ResolveToolInstance = require(ReplicatedStorage.Shared.Modules.Game.ResolveToolInstance)
 local LootServiceData = require(ReplicatedStorage.Shared.Services.LootService.Data)
 local LootServiceUtils = require(ReplicatedStorage.Shared.Services.LootService.LootServiceUtils)
 
@@ -18,6 +19,10 @@ type CachedResolution = {
 
 local assetSearchRootsCache = nil :: { Instance }?
 local resolutionCacheByItemId = {} :: { [string]: CachedResolution }
+local ITEM_VARIANT_BRANCH_NAMES = {
+	model = true,
+	tool = true,
+}
 
 local function sanitizeItemId(itemIdRaw: any): string?
 	return LootServiceUtils.sanitizeString(itemIdRaw, nil)
@@ -111,73 +116,33 @@ local function resolveItemNameCandidates(itemIdRaw: any): { string }
 	return candidates
 end
 
-local function findUsableTemplateDescendant(root: Instance): Instance?
-	for _, descendant in root:GetDescendants() do
-		if
-			descendant:IsA("Model")
-			or descendant:IsA("BasePart")
-			or descendant:IsA("Tool")
-			or descendant:IsA("Accessory")
-		then
-			return descendant
-		end
+local function isVariantBranchName(nameRaw: any): boolean
+	local name = sanitizeItemId(nameRaw)
+	if name == nil then
+		return false
 	end
-	return nil
+	return ITEM_VARIANT_BRANCH_NAMES[string.lower(name)] == true
 end
 
-local function findTemplateVariantDescendant(root: Instance, variantNameRaw: any): Instance?
-	local variantName = sanitizeItemId(variantNameRaw)
-	if variantName == nil then
-		return nil
+local function promoteMatchedTemplateRoot(match: Instance): Instance
+	local promoted = match
+	local parent = promoted.Parent
+	while parent ~= nil and parent ~= ReplicatedStorage do
+		if isVariantBranchName(parent.Name) and parent.Parent ~= nil then
+			promoted = parent.Parent
+			parent = promoted.Parent
+		else
+			break
+		end
 	end
-
-	local variantRoot = root:FindFirstChild(variantName)
-	if variantRoot == nil then
-		return nil
-	end
-	if
-		variantRoot:IsA("Model")
-		or variantRoot:IsA("BasePart")
-		or variantRoot:IsA("Tool")
-		or variantRoot:IsA("Accessory")
-	then
-		return variantRoot
-	end
-
-	return findUsableTemplateDescendant(variantRoot)
+	return promoted
 end
 
 local function resolveTemplatesFromRoot(root: Instance): ItemTemplateResolution
-	if root:IsA("Tool") then
-		return {
-			primaryTemplate = root,
-			toolTemplate = root,
-		}
-	end
-
-	if root:IsA("Accessory") then
-		return {
-			primaryTemplate = root,
-			toolTemplate = nil,
-		}
-	end
-
-	if root:IsA("Model") or root:IsA("BasePart") then
-		local toolVariant = findTemplateVariantDescendant(root, "Tool")
-		return {
-			primaryTemplate = root,
-			toolTemplate = if toolVariant ~= nil and toolVariant:IsA("Tool") then toolVariant else nil,
-		}
-	end
-
-	local toolVariant = findTemplateVariantDescendant(root, "Tool")
-	local modelVariant = findTemplateVariantDescendant(root, "Model")
-	local primaryTemplate = modelVariant or findUsableTemplateDescendant(root)
-	local toolTemplate = nil :: Tool?
-	if toolVariant ~= nil and toolVariant:IsA("Tool") then
-		toolTemplate = toolVariant
-	elseif primaryTemplate ~= nil and primaryTemplate:IsA("Tool") then
-		toolTemplate = primaryTemplate
+	local toolTemplate = ResolveToolInstance.resolveTool(root)
+	local primaryTemplate = if root:IsA("Tool") then root else ResolveToolInstance.resolveVisualTemplate(root)
+	if primaryTemplate == nil then
+		primaryTemplate = toolTemplate
 	end
 
 	return {
@@ -234,13 +199,28 @@ function ResolveItem.resolve(itemIdRaw: any): ItemTemplateResolution
 
 	local roots = resolveAssetSearchRoots()
 	local candidates = resolveItemNameCandidates(itemId)
+	local resolvedRoots = {} :: { [Instance]: boolean }
+
+	local function tryResolveFromMatch(match: Instance): ItemTemplateResolution?
+		local promotedRoot = promoteMatchedTemplateRoot(match)
+		if resolvedRoots[promotedRoot] == true then
+			return nil
+		end
+		resolvedRoots[promotedRoot] = true
+
+		local resolution = resolveTemplatesFromRoot(promotedRoot)
+		if resolution.primaryTemplate ~= nil or resolution.toolTemplate ~= nil then
+			return resolution
+		end
+		return nil
+	end
 
 	for _, root in roots do
 		for _, candidate in candidates do
 			local direct = root:FindFirstChild(candidate)
 			if direct ~= nil then
-				local resolution = resolveTemplatesFromRoot(direct)
-				if resolution.primaryTemplate ~= nil or resolution.toolTemplate ~= nil then
+				local resolution = tryResolveFromMatch(direct)
+				if resolution ~= nil then
 					return cacheResolution(itemId, resolution)
 				end
 			end
@@ -254,8 +234,8 @@ function ResolveItem.resolve(itemIdRaw: any): ItemTemplateResolution
 					continue
 				end
 
-				local resolution = resolveTemplatesFromRoot(descendant)
-				if resolution.primaryTemplate ~= nil or resolution.toolTemplate ~= nil then
+				local resolution = tryResolveFromMatch(descendant)
+				if resolution ~= nil then
 					return cacheResolution(itemId, resolution)
 				end
 			end

@@ -404,6 +404,9 @@
             },
             "ResolveItem": {
               "$path": "src/modules/Game/ResolveItem.luau"
+            },
+            "ResolveToolInstance": {
+              "$path": "src/modules/Game/ResolveToolInstance.luau"
             }
           },
           "Items": {
@@ -413,6 +416,9 @@
             },
             "Audio": {
               "$path": "src/modules/Items/Audio.luau"
+            },
+            "Axes": {
+              "$path": "src/modules/Items/Axes.luau"
             },
             "Items": {
               "$path": "src/modules/Items/Items.luau"
@@ -425,6 +431,9 @@
             },
             "ParallaxBackgrounds": {
               "$path": "src/modules/Items/ParallaxBackgrounds.luau"
+            },
+            "Pickaxes": {
+              "$path": "src/modules/Items/Pickaxes.luau"
             },
             "Registry": {
               "$path": "src/modules/Items/Registry.luau"
@@ -450,11 +459,17 @@
             "HopMotion": {
               "$path": "src/modules/Math/HopMotion.luau"
             },
+            "MiningPower": {
+              "$path": "src/modules/Math/MiningPower.luau"
+            },
             "RandomNumber": {
               "$path": "src/modules/Math/RandomNumber.luau"
             },
             "ReforgeRarity": {
               "$path": "src/modules/Math/ReforgeRarity.luau"
+            },
+            "RoomScaleFactor": {
+              "$path": "src/modules/Math/RoomScaleFactor.luau"
             },
             "SpawnChance": {
               "$path": "src/modules/Math/SpawnChance.luau"

@@ -31,6 +31,15 @@ local BIOME_COLORS = {
 	[Shared.BIOME_ID.CORRUPTION] = Color3.fromRGB(128, 92, 188),
 }
 
+local function applyTileStudSurfaces(part: BasePart)
+	part.TopSurface = Enum.SurfaceType.Studs
+	part.BottomSurface = Enum.SurfaceType.Studs
+	part.LeftSurface = Enum.SurfaceType.Studs
+	part.RightSurface = Enum.SurfaceType.Studs
+	part.FrontSurface = Enum.SurfaceType.Studs
+	part.BackSurface = Enum.SurfaceType.Studs
+end
+
 local function decodeClusterIndex(index: number, countX: number, countY: number): (number, number, number)
 	local linear = index - 1
 	local localX = linear % countX
@@ -63,8 +72,7 @@ function Render.new(configRaw: any, cacheRaw: any, debugRaw: any)
 		part.CanCollide = false
 		part.CanQuery = false
 		part.CanTouch = false
-		part.TopSurface = Enum.SurfaceType.Smooth
-		part.BottomSurface = Enum.SurfaceType.Smooth
+		applyTileStudSurfaces(part)
 		return part
 	end, function(part: BasePart)
 		part.Parent = nil
@@ -216,7 +224,7 @@ function Render:SpawnChunkModel(coordRaw: any, chunkDataRaw: any): ChunkVisual?
 		part.Size = Vector3.new(clusterWorldSize, clusterWorldSize, clusterWorldSize)
 		part.CFrame = CFrame.new(worldTileX * tileSize, worldTileY * tileSize, worldTileZ * tileSize)
 		part.Color = color
-		part.Material = if biomeId == Shared.BIOME_ID.CORRUPTION then Enum.Material.Slate else Enum.Material.SmoothPlastic
+		part.Material = Enum.Material.Plastic
 		part.Transparency = 0
 		part.Parent = model
 		parts[#parts + 1] = part

@@ -445,7 +445,6 @@ local DESERT_ROCK_SLOT_NOISE_FREQUENCY = 0.389
 local DESERT_PROP_VARIANT_NOISE_FREQUENCY_X = 0.293
 local DESERT_PROP_VARIANT_NOISE_FREQUENCY_Y = 0.187
 local SNOW_PILE_SLOT_NOISE_FREQUENCY = 0.463
-local ICE_SPIKE_SLOT_NOISE_FREQUENCY = 0.347
 
 WorldGeneration.TILE_ID = TILE_ID
 WorldGeneration.WALL_ID = WALL_ID
@@ -475,6 +474,15 @@ end
 
 local function packChunkKey(chunkX: number, chunkY: number): string
 	return `{chunkX}:{chunkY}`
+end
+
+local function applyTileStudSurfaces(part: BasePart)
+	part.TopSurface = Enum.SurfaceType.Studs
+	part.BottomSurface = Enum.SurfaceType.Studs
+	part.LeftSurface = Enum.SurfaceType.Studs
+	part.RightSurface = Enum.SurfaceType.Studs
+	part.FrontSurface = Enum.SurfaceType.Studs
+	part.BackSurface = Enum.SurfaceType.Studs
 end
 
 local function unpackChunkKey(chunkKey: string): (number?, number?)
@@ -620,12 +628,11 @@ local function createPartTemplate(): Part
 	part.Anchored = true
 	part.Locked = true
 	part.CastShadow = false
-	part.TopSurface = Enum.SurfaceType.Smooth
-	part.BottomSurface = Enum.SurfaceType.Smooth
 	part.CanCollide = false
 	part.CanQuery = false
 	part.CanTouch = false
 	part.Size = Vector3.new(1, 1, 1)
+	applyTileStudSurfaces(part)
 	part.Parent = nil
 	return part
 end
@@ -2058,6 +2065,52 @@ function WorldGeneration.processDirtyChunkQueue(self: WorldGeneration)
 	end
 end
 
+function WorldGeneration.rebuildLoadedChunkByKey(self: WorldGeneration, chunkKey: string, contextRaw: any?): boolean
+	local previousVisual = self.loadedChunkVisuals[chunkKey]
+	if previousVisual == nil then
+		return false
+	end
+	local context = if typeof(contextRaw) == "table" then contextRaw :: { [string]: any } else {}
+
+	local chunkX, chunkY = unpackChunkKey(chunkKey)
+	if chunkX == nil or chunkY == nil then
+		return false
+	end
+	if not self:isChunkYWithinWorldBounds(chunkY) then
+		return false
+	end
+
+	local cachedVisual = self.cachedChunkVisuals[chunkKey]
+	if cachedVisual ~= nil then
+		self.cachedChunkVisuals[chunkKey] = nil
+		self.cachedChunkVisualCount = math.max(0, self.cachedChunkVisualCount - 1)
+		self:releaseChunkVisual(cachedVisual)
+	end
+
+	local chunkData = self:getOrGenerateChunkData(chunkX, chunkY)
+	chunkData.lastAccessedAt = os.clock()
+	local replacementVisual = self:buildChunkVisual(chunkData)
+	local currentVisual = self.loadedChunkVisuals[chunkKey]
+	if currentVisual ~= previousVisual then
+		self:releaseChunkVisual(replacementVisual)
+		return false
+	end
+
+	if (self.chunkDemand[chunkKey] or 0) <= 0 then
+		self:releaseChunkVisual(replacementVisual)
+		return false
+	end
+
+	self.loadedChunkVisuals[chunkKey] = replacementVisual
+	self:releaseChunkVisual(previousVisual)
+	self:notifyChunkCollisionReady(chunkKey, {
+		reason = if typeof(context.reason) == "string" then context.reason else "rebuildReady",
+		fromCache = false,
+		rebuilt = true,
+	})
+	return true
+end
+
 function WorldGeneration.processChunkRebuildQueue(self: WorldGeneration)
 	local processed = 0
 	while processed < self.maxChunkRebuildsPerHeartbeat do
@@ -2075,21 +2128,7 @@ function WorldGeneration.processChunkRebuildQueue(self: WorldGeneration)
 			continue
 		end
 
-		local loadedVisual = self.loadedChunkVisuals[chunkKey]
-		if loadedVisual ~= nil then
-			self.loadedChunkVisuals[chunkKey] = nil
-			self.loadedChunkCount = math.max(0, self.loadedChunkCount - 1)
-			self:releaseChunkVisual(loadedVisual)
-		end
-
-		local cachedVisual = self.cachedChunkVisuals[chunkKey]
-		if cachedVisual ~= nil then
-			self.cachedChunkVisuals[chunkKey] = nil
-			self.cachedChunkVisualCount = math.max(0, self.cachedChunkVisualCount - 1)
-			self:releaseChunkVisual(cachedVisual)
-		end
-
-		self:loadChunkByKey(chunkKey, {
+		self:rebuildLoadedChunkByKey(chunkKey, {
 			reason = "rebuildReady",
 		})
 		processed += 1
@@ -2568,6 +2607,7 @@ function WorldGeneration.styleTerrainPart(self: WorldGeneration, part: BasePart,
 	part.CanQuery = true
 	part.CanTouch = false
 	part.CastShadow = false
+	applyTileStudSurfaces(part)
 end
 
 function WorldGeneration.getTerrainTileTemplate(self: WorldGeneration, tileId: number): Instance?
@@ -2608,6 +2648,7 @@ function WorldGeneration.placeTerrainTileTemplate(
 				descendant.Material = style.material
 				descendant.Transparency = style.transparency
 				descendant.CastShadow = false
+				applyTileStudSurfaces(descendant)
 			end
 		end
 	elseif cloned:IsA("BasePart") then
@@ -2620,6 +2661,7 @@ function WorldGeneration.placeTerrainTileTemplate(
 		cloned.Material = style.material
 		cloned.Transparency = style.transparency
 		cloned.CastShadow = false
+		applyTileStudSurfaces(cloned)
 	end
 
 	cloned.Parent = parent
@@ -2662,6 +2704,7 @@ function WorldGeneration.placeBackgroundTileTemplate(
 				descendant.Color = style.color:Lerp(Color3.new(0, 0, 0), darkenAlpha)
 				descendant.Material = style.material
 				descendant.Transparency = 0
+				applyTileStudSurfaces(descendant)
 			end
 		end
 	elseif cloned:IsA("BasePart") then
@@ -2674,6 +2717,7 @@ function WorldGeneration.placeBackgroundTileTemplate(
 		cloned.Color = style.color:Lerp(Color3.new(0, 0, 0), darkenAlpha)
 		cloned.Material = style.material
 		cloned.Transparency = 0
+		applyTileStudSurfaces(cloned)
 	end
 
 	cloned.Parent = parent
@@ -2739,6 +2783,7 @@ function WorldGeneration.styleBackgroundPart(
 	part.CanQuery = false
 	part.CanTouch = false
 	part.CastShadow = false
+	applyTileStudSurfaces(part)
 end
 
 function WorldGeneration.sampleSharedBackgroundDensity(self: WorldGeneration, tileX: number, tileY: number): number
@@ -3512,24 +3557,25 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 						propEdgeBuffer
 					) and not hasReservedSurfaceTileNear(worldTileX, propStructureBuffer)
 				then
-					local didSpawnSnowProp = false
-					local iceSpikeChance = clampNumber(snowDecorationSettings.IceSpikeChance, 0, 1, 0.13)
-					local iceSpikeSpacing = sanitizeInteger(snowDecorationSettings.IceSpikeSpacingTiles, 4, 64, 15)
-					if
-						self:isSurfaceAnchorTile(worldTileX, iceSpikeSpacing, ICE_SPIKE_SLOT_NOISE_FREQUENCY, 863)
-						and self:hasAirClearance(column, worldTileX, surfaceTileY, propAirClearance)
-					then
-						local iceSpikeRoll =
-							deterministicUnitInterval(self.seed, worldTileX, surfaceTileY, self.propId.ICE_SPIKE, 1877)
-						if iceSpikeRoll <= iceSpikeChance then
+					local snowPileChance = clampNumber(snowDecorationSettings.SnowPileChance, 0, 1, 0.24)
+					local snowPileSpacing = sanitizeInteger(snowDecorationSettings.SnowPileSpacingTiles, 4, 64, 11)
+					if self:isSurfaceAnchorTile(worldTileX, snowPileSpacing, SNOW_PILE_SLOT_NOISE_FREQUENCY, 1223) then
+						local snowPileRoll = deterministicUnitInterval(
+							self.seed,
+							worldTileX,
+							surfaceTileY,
+							self.propId.SNOW_PILE,
+							2179
+						)
+						if snowPileRoll <= snowPileChance then
 							local variantIndex = self:resolveDesertPropVariantIndex(worldTileX, surfaceTileY, 3)
 							props[#props + 1] = {
 								tileX = worldTileX,
 								tileY = surfaceTileY,
-								propId = self.propId.ICE_SPIKE,
+								propId = self.propId.SNOW_PILE,
 								variantIndex = variantIndex,
 								seed = computeProceduralTreeSeed(
-									self.seed + self.propId.ICE_SPIKE * 97,
+									self.seed + self.propId.SNOW_PILE * 97,
 									worldTileX,
 									surfaceTileY,
 									variantIndex
@@ -3537,40 +3583,6 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 								biomeType = column.biomeType,
 								biomeId = column.biomeId,
 							}
-							didSpawnSnowProp = true
-						end
-					end
-
-					if not didSpawnSnowProp then
-						local snowPileChance = clampNumber(snowDecorationSettings.SnowPileChance, 0, 1, 0.24)
-						local snowPileSpacing = sanitizeInteger(snowDecorationSettings.SnowPileSpacingTiles, 4, 64, 11)
-						if
-							self:isSurfaceAnchorTile(worldTileX, snowPileSpacing, SNOW_PILE_SLOT_NOISE_FREQUENCY, 1223)
-						then
-							local snowPileRoll = deterministicUnitInterval(
-								self.seed,
-								worldTileX,
-								surfaceTileY,
-								self.propId.SNOW_PILE,
-								2179
-							)
-							if snowPileRoll <= snowPileChance then
-								local variantIndex = self:resolveDesertPropVariantIndex(worldTileX, surfaceTileY, 3)
-								props[#props + 1] = {
-									tileX = worldTileX,
-									tileY = surfaceTileY,
-									propId = self.propId.SNOW_PILE,
-									variantIndex = variantIndex,
-									seed = computeProceduralTreeSeed(
-										self.seed + self.propId.SNOW_PILE * 97,
-										worldTileX,
-										surfaceTileY,
-										variantIndex
-									),
-									biomeType = column.biomeType,
-									biomeId = column.biomeId,
-								}
-							end
 						end
 					end
 				end
