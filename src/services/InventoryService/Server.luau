@@ -1001,6 +1001,36 @@ function InventoryServiceServer.retryLoadInventoryLater(
 	end)
 end
 
+function InventoryServiceServer.loadInventoryFromPlayerData(
+	self: InventoryServiceServer,
+	player: Player,
+	runtime: PlayerRuntime,
+	loadToken: number
+): boolean
+	local getValueSuccess, storedInventoryRaw = pcall(function()
+		return self.playerDataService:getValue(player, self.dataPath, nil)
+	end)
+	if not getValueSuccess then
+		warn(("[InventoryService] Failed to read persisted inventory for %s (%d)"):format(player.Name, player.UserId))
+		self:failLoadInventory(player, runtime)
+		return false
+	end
+
+	runtime = self.playerRuntimes[player]
+	if runtime == nil or runtime.loadToken ~= loadToken then
+		return false
+	end
+
+	runtime.state = InventoryServiceUtils.createStateFromData(
+		storedInventoryRaw,
+		runtime.state,
+		InventoryServiceUtils.LOAD_STATE_LOADED
+	)
+	self:flushPendingToolImports(runtime)
+	self:pushAndPersistState(player, runtime)
+	return true
+end
+
 function InventoryServiceServer.loadPlayerInventory(self: InventoryServiceServer, player: Player, loadToken: number)
 	local runtime = self.playerRuntimes[player]
 	if runtime == nil or runtime.loadToken ~= loadToken then
@@ -1016,6 +1046,14 @@ function InventoryServiceServer.loadPlayerInventory(self: InventoryServiceServer
 	pcall(function()
 		playerDataService:requestSync(player)
 	end)
+
+	local isLoadedSuccess, isPlayerDataLoaded = pcall(function()
+		return playerDataService:isLoaded(player)
+	end)
+	if isLoadedSuccess and isPlayerDataLoaded then
+		self:loadInventoryFromPlayerData(player, runtime, loadToken)
+		return
+	end
 
 	local waitForDataSuccess, playerData = pcall(function()
 		return playerDataService:waitForData(player, PLAYER_DATA_LOAD_TIMEOUT_SECONDS)
@@ -1046,35 +1084,18 @@ function InventoryServiceServer.loadPlayerInventory(self: InventoryServiceServer
 			))
 			self:retryLoadInventoryLater(player, loadToken)
 			return
+		elseif playerDataLoadState == "Loaded" then
+			self:loadInventoryFromPlayerData(player, runtime, loadToken)
+			return
 		elseif playerDataLoadState == "Failed" then
+			self:failLoadInventory(player, runtime)
 			return
 		end
 
 		self:retryLoadInventoryLater(player, loadToken)
 		return
 	end
-
-	local getValueSuccess, storedInventoryRaw = pcall(function()
-		return playerDataService:getValue(player, self.dataPath, nil)
-	end)
-	if not getValueSuccess then
-		warn(("[InventoryService] Failed to read persisted inventory for %s (%d)"):format(player.Name, player.UserId))
-		self:failLoadInventory(player, runtime)
-		return
-	end
-
-	runtime = self.playerRuntimes[player]
-	if runtime == nil or runtime.loadToken ~= loadToken then
-		return
-	end
-
-	runtime.state = InventoryServiceUtils.createStateFromData(
-		storedInventoryRaw,
-		runtime.state,
-		InventoryServiceUtils.LOAD_STATE_LOADED
-	)
-	self:flushPendingToolImports(runtime)
-	self:pushAndPersistState(player, runtime)
+	self:loadInventoryFromPlayerData(player, runtime, loadToken)
 end
 
 function InventoryServiceServer.trackPlayer(self: InventoryServiceServer, player: Player)
@@ -1137,6 +1158,12 @@ function InventoryServiceServer.requestSync(self: InventoryServiceServer, player
 		or runtime.state.loadState == InventoryServiceUtils.LOAD_STATE_FAILED then
 		self:trackPlayer(player)
 		return
+	end
+	if runtime.state.loadState == InventoryServiceUtils.LOAD_STATE_LOADING then
+		local loadToken = runtime.loadToken
+		task.spawn(function()
+			self:loadPlayerInventory(player, loadToken)
+		end)
 	end
 
 	self:pushState(player)

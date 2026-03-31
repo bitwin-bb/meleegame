@@ -119,19 +119,14 @@ local function initCmdr()
 		error("Cmdr folder was not found in ReplicatedStorage.Shared.")
 	end
 
-	local serverCmdrFolder = ServerScriptService:FindFirstChild("Cmdr")
-	if serverCmdrFolder == nil then
-		error("Cmdr folder was not found in ServerScriptService.")
-	end
-
 	local cmdrTypes = sharedCmdrFolder:FindFirstChild("Types")
 	local sharedCmdrCommands = sharedCmdrFolder:FindFirstChild("Commands")
-	local serverCmdrCommands = serverCmdrFolder:FindFirstChild("ServerCommands")
+	local serverCmdrCommands = sharedCmdrFolder:FindFirstChild("ServerCommands")
 	if cmdrTypes == nil or sharedCmdrCommands == nil then
 		error("Cmdr Types/Commands folders were not found in ReplicatedStorage.Shared.Cmdr.")
 	end
 	if serverCmdrCommands == nil then
-		error("Cmdr ServerCommands folder was not found in ServerScriptService.Cmdr.")
+		error("Cmdr ServerCommands folder was not found in ReplicatedStorage.Shared.Cmdr.")
 	end
 
 	prepareStarterGuiForCmdr()
@@ -155,7 +150,7 @@ local function initCmdr()
 		return command.Name == "help"
 	end)
 	Cmdr:RegisterTypesIn(cmdrTypes:Clone())
-	registerCmdrCommands(Cmdr, sharedCmdrCommands:Clone(), serverCmdrCommands)
+	registerCmdrCommands(Cmdr, sharedCmdrCommands:Clone(), serverCmdrCommands:Clone())
 
 	for _, player in Players:GetPlayers() do
 		applyCmdrPlayerAttributes(player)

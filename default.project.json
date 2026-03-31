@@ -595,6 +595,45 @@
           "EntityCatalog": {
             "$path": "src/cmdr/EntityCatalog.luau"
           },
+          "ServerCommands": {
+            "$className": "Folder",
+            "ClearInventory": {
+              "$path": "src/cmdr/ServerCommands/ClearInventory.luau"
+            },
+            "Damage": {
+              "$path": "src/cmdr/ServerCommands/Damage.luau"
+            },
+            "Fly": {
+              "$path": "src/cmdr/ServerCommands/Fly.luau"
+            },
+            "Give": {
+              "$path": "src/cmdr/ServerCommands/Give.luau"
+            },
+            "Godmode": {
+              "$path": "src/cmdr/ServerCommands/Godmode.luau"
+            },
+            "Heal": {
+              "$path": "src/cmdr/ServerCommands/Heal.luau"
+            },
+            "SetHealth": {
+              "$path": "src/cmdr/ServerCommands/SetHealth.luau"
+            },
+            "SetMana": {
+              "$path": "src/cmdr/ServerCommands/SetMana.luau"
+            },
+            "Spawn": {
+              "$path": "src/cmdr/ServerCommands/Spawn.luau"
+            },
+            "Time": {
+              "$path": "src/cmdr/ServerCommands/Time.luau"
+            },
+            "Unfly": {
+              "$path": "src/cmdr/ServerCommands/Unfly.luau"
+            },
+            "Weather": {
+              "$path": "src/cmdr/ServerCommands/Weather.luau"
+            }
+          },
           "Types": {
             "$className": "Folder",
             "EntityToken": {
@@ -634,48 +673,6 @@
     "ServerScriptService": {
       "Server": {
         "$path": "src/startup/Server.server.luau"
-      },
-      "Cmdr": {
-        "$className": "Folder",
-        "ServerCommands": {
-          "$className": "Folder",
-          "ClearInventory": {
-            "$path": "src/cmdr/ServerCommands/ClearInventory.luau"
-          },
-          "Damage": {
-            "$path": "src/cmdr/ServerCommands/Damage.luau"
-          },
-          "Fly": {
-            "$path": "src/cmdr/ServerCommands/Fly.luau"
-          },
-          "Give": {
-            "$path": "src/cmdr/ServerCommands/Give.luau"
-          },
-          "Godmode": {
-            "$path": "src/cmdr/ServerCommands/Godmode.luau"
-          },
-          "Heal": {
-            "$path": "src/cmdr/ServerCommands/Heal.luau"
-          },
-          "SetHealth": {
-            "$path": "src/cmdr/ServerCommands/SetHealth.luau"
-          },
-          "SetMana": {
-            "$path": "src/cmdr/ServerCommands/SetMana.luau"
-          },
-          "Spawn": {
-            "$path": "src/cmdr/ServerCommands/Spawn.luau"
-          },
-          "Time": {
-            "$path": "src/cmdr/ServerCommands/Time.luau"
-          },
-          "Unfly": {
-            "$path": "src/cmdr/ServerCommands/Unfly.luau"
-          },
-          "Weather": {
-            "$path": "src/cmdr/ServerCommands/Weather.luau"
-          }
-        }
       },
       "Services": {
         "$className": "Folder",

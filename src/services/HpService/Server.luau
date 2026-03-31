@@ -34,6 +34,8 @@ type PlayerRuntime = {
 }
 
 type PlayerDataServiceServerObject = {
+	getLoadState: (self: PlayerDataServiceServerObject, player: Player) -> string,
+	requestSync: (self: PlayerDataServiceServerObject, player: Player) -> (),
 	waitForData: (self: PlayerDataServiceServerObject, player: Player, timeoutSecondsRaw: any) -> any,
 	waitForDataPromise: (self: PlayerDataServiceServerObject, player: Player, timeoutSecondsRaw: any) -> any,
 	isLoaded: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
@@ -254,8 +256,25 @@ function HpServiceServer.refreshStateFromHumanoid(self: HpServiceServer, player:
 	runtime.state = HpServiceUtils.createStateFromHumanoid(humanoid, self.heartValue, runtime.state)
 	if runtime.hasResolvedPersistedLoad then
 		self:persistRuntime(player, runtime)
-		self:pushState(player)
 	end
+	self:pushState(player)
+end
+
+function HpServiceServer.retryLoadPersistedHealthLater(
+	self: HpServiceServer,
+	player: Player,
+	loadToken: number
+)
+	task.delay(self.dataLoadRetryDelaySeconds, function()
+		local runtime = self.playerRuntimes[player]
+		if runtime == nil or runtime.loadToken ~= loadToken then
+			return
+		end
+		if runtime.hasResolvedPersistedLoad then
+			return
+		end
+		self:loadPersistedHealth(player, loadToken)
+	end)
 end
 
 function HpServiceServer.loadPersistedHealth(self: HpServiceServer, player: Player, loadToken: number)
@@ -269,6 +288,10 @@ function HpServiceServer.loadPersistedHealth(self: HpServiceServer, player: Play
 		return
 	end
 
+	pcall(function()
+		playerDataService:requestSync(player)
+	end)
+
 	local waitSuccess, nextPlayerData = pcall(function()
 		local waitPromise = playerDataService:waitForDataPromise(player, self.dataLoadTimeoutSeconds)
 		return select(2, waitPromise:await())
@@ -277,15 +300,25 @@ function HpServiceServer.loadPersistedHealth(self: HpServiceServer, player: Play
 	if runtime == nil or runtime.loadToken ~= loadToken then
 		return
 	end
-	if not waitSuccess or nextPlayerData == nil then
-		local loadedCheckSuccess, isLoaded = pcall(function()
-			return playerDataService:isLoaded(player)
+	if not waitSuccess then
+		warn(("[HpService] Failed while waiting for player data for %s (%d); retrying."):format(player.Name, player.UserId))
+		self:retryLoadPersistedHealthLater(player, loadToken)
+		return
+	end
+	if nextPlayerData == nil then
+		local loadStateSuccess, playerDataLoadState = pcall(function()
+			return playerDataService:getLoadState(player)
 		end)
-		if loadedCheckSuccess and isLoaded then
+		if loadStateSuccess and playerDataLoadState == "Loaded" then
 			runtime.hasResolvedPersistedLoad = true
 			self:persistRuntime(player, runtime)
 			self:pushState(player)
+			return
 		end
+		if loadStateSuccess and playerDataLoadState == "Failed" then
+			return
+		end
+		self:retryLoadPersistedHealthLater(player, loadToken)
 		return
 	end
 
@@ -295,6 +328,7 @@ function HpServiceServer.loadPersistedHealth(self: HpServiceServer, player: Play
 	if not readSuccess then
 		warn(("[HpService] Failed to read persisted hp for %s (%d)"):format(player.Name, player.UserId))
 		runtime.hasResolvedPersistedLoad = true
+		self:pushState(player)
 		return
 	end
 
@@ -440,6 +474,7 @@ function HpServiceServer.trackPlayer(self: HpServiceServer, player: Player)
 	if player.Character then
 		self:bindCharacter(player, player.Character)
 	end
+	self:pushState(player)
 
 	local loadToken = runtime.loadToken
 	task.spawn(function()
@@ -489,10 +524,6 @@ end
 function HpServiceServer.requestSync(self: HpServiceServer, player: Player)
 	if self.playerRuntimes[player] == nil then
 		self:trackPlayer(player)
-		return
-	end
-	local runtime = self:getRuntime(player)
-	if not runtime.hasResolvedPersistedLoad then
 		return
 	end
 	self:pushState(player)
