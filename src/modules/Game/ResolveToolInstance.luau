@@ -143,6 +143,20 @@ local function resolveAttributeText(instances: { Instance }, attributeNames: { s
 	return nil
 end
 
+local function resolveCanonicalOrFallbackItemId(valueRaw: any): string?
+	local value = sanitizeString(valueRaw)
+	if value == nil then
+		return nil
+	end
+
+	local canonicalItemId = ItemRegistry.resolveCanonicalItemId(value)
+	if canonicalItemId ~= nil then
+		return canonicalItemId
+	end
+
+	return value
+end
+
 function ResolveToolInstance.resolveTool(instanceRaw: any): Tool?
 	if typeof(instanceRaw) ~= "Instance" then
 		return nil
@@ -258,15 +272,12 @@ function ResolveToolInstance.resolveToolItemId(toolRaw: any): string?
 	local attributeSources = collectToolAttributeSources(tool)
 	local directItemId = resolveAttributeText(attributeSources, ITEM_ID_ATTRIBUTE_NAMES)
 	if directItemId ~= nil then
-		local canonicalItemId = ItemRegistry.resolveCanonicalItemId(directItemId)
-		if canonicalItemId ~= nil then
-			return canonicalItemId
-		end
+		return resolveCanonicalOrFallbackItemId(directItemId)
 	end
 
 	local fromName = sanitizeString(tool.Name)
 	if fromName ~= nil then
-		return ItemRegistry.resolveCanonicalItemId(fromName)
+		return resolveCanonicalOrFallbackItemId(fromName)
 	end
 
 	return nil

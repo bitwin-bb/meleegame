@@ -20,7 +20,7 @@ type ItemDefinition = {
 }
 
 local itemThunks = {}
-local cachedItemDefinitions: { [string]: ItemDefinition | false } = {}
+local cachedItemDefinitions: { [string]: ItemDefinition } = {}
 
 local function joinStrings(values: { string }, delimiter: string): string
 	local output = ""
@@ -132,22 +132,17 @@ local function resolveItemDefinition(itemIdRaw: any): ItemDefinition?
 
 	local cached = cachedItemDefinitions[itemId]
 	if cached ~= nil then
-		if cached == false then
-			return nil
-		end
 		return cached
 	end
 
 	local canonicalItemId = ItemRegistry.resolveCanonicalItemId(itemId)
 	local definitionTable = ItemRegistry.resolveDefinition(itemId)
 	if canonicalItemId == nil or definitionTable == nil then
-		cachedItemDefinitions[itemId] = false
 		return nil
 	end
 
 	local normalized = normalizeItemDefinition(canonicalItemId, definitionTable)
 	if normalized == nil then
-		cachedItemDefinitions[itemId] = false
 		return nil
 	end
 

@@ -38,6 +38,10 @@ local PlayerDataServiceServer = {}
 
 local DATA_LOAD_FAILED_KICK_MESSAGE = "Unable to load your data. Please rejoin."
 local DATA_SESSION_ENDED_KICK_MESSAGE = "Your data session ended. Please rejoin."
+-- ProfileStore's default session-start timeout is 120 seconds, but providing
+-- a Cancel callback disables that fallback. Mirror the default here so we keep
+-- leave/load-token cancellation without allowing live joins to hang forever.
+local PROFILE_SESSION_START_TIMEOUT_SECONDS = 120
 
 local function resolvePlayerDataTemplate(): PlayerData
 	local templateRoot = if typeof(DataTemplate) == "table" then DataTemplate else {}
@@ -178,6 +182,7 @@ function PlayerDataServiceServer.loadProfilePromise(
 			return nil
 		end
 
+		local loadDeadline = os.clock() + PROFILE_SESSION_START_TIMEOUT_SECONDS
 		local profile: Profile? = nil
 		local success, resultOrError = pcall(function()
 			return self.profileStore:StartSessionAsync(profileKey, {
@@ -186,7 +191,13 @@ function PlayerDataServiceServer.loadProfilePromise(
 					if currentRuntime == nil then
 						return true
 					end
-					return currentRuntime.loadToken ~= loadToken
+					if currentRuntime.loadToken ~= loadToken then
+						return true
+					end
+					if player.Parent ~= Players then
+						return true
+					end
+					return os.clock() >= loadDeadline
 				end,
 			})
 		end)
@@ -209,6 +220,13 @@ function PlayerDataServiceServer.loadProfilePromise(
 		end
 
 		if profile == nil then
+			if os.clock() >= loadDeadline then
+				warn(("[PlayerDataService] Timed out starting a profile session for %s (%d)."):format(
+					player.Name,
+					player.UserId
+				))
+			end
+
 			runtime.loadState = PlayerDataServiceUtils.LOAD_STATE_FAILED
 			self:pushState(player)
 			if player.Parent == Players and not ProfileStore.IsClosing then
@@ -248,6 +266,9 @@ function PlayerDataServiceServer.loadProfilePromise(
 		if runtime ~= nil and runtime.loadToken == loadToken then
 			runtime.loadState = PlayerDataServiceUtils.LOAD_STATE_FAILED
 			self:pushState(player)
+		end
+		if player.Parent == Players and not ProfileStore.IsClosing then
+			player:Kick(DATA_LOAD_FAILED_KICK_MESSAGE)
 		end
 		return nil
 	end)

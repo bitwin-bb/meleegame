@@ -12,7 +12,6 @@ local ResolveItem = require(ReplicatedStorage.Shared.Modules.Game.ResolveItem)
 local ResolveToolInstance = require(ReplicatedStorage.Shared.Modules.Game.ResolveToolInstance)
 local MiningPower = require(ReplicatedStorage.Shared.Modules.Math.MiningPower)
 local InventoryServiceUtils = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceUtils)
-local PlayerServiceServer = require(ServerScriptService.Services.PlayerService.PlayerServiceServer)
 local PlayerDataServiceServer = require(ServerScriptService.Services.PlayerDataService.PlayerDataServiceServer)
 
 type InventoryState = InventoryServiceUtils.InventoryState
@@ -31,6 +30,7 @@ type PlayerDataServiceServerObject = {
 	getLoadState: (self: PlayerDataServiceServerObject, player: Player) -> string,
 	isLoaded: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
 	requestSync: (self: PlayerDataServiceServerObject, player: Player) -> (),
+	waitForData: (self: PlayerDataServiceServerObject, player: Player, timeoutSecondsRaw: any) -> any,
 	setValue: (
 		self: PlayerDataServiceServerObject,
 		player: Player,
@@ -58,6 +58,7 @@ type PlayerRuntime = {
 local InventoryServiceServer = {}
 
 local DATA_LOAD_RETRY_DELAY_SECONDS = 0.25
+local PLAYER_DATA_LOAD_TIMEOUT_SECONDS = 20
 local TOOL_IMPORT_ATTRIBUTE_NAME = "itemId"
 local TOOL_IMPORT_TYPE_ATTRIBUTE_NAME = "itemType"
 local TOOL_IMPORT_STACK_ID_PREFIX = "tool"
@@ -676,17 +677,20 @@ function InventoryServiceServer.init(self: InventoryServiceServer)
 	self.dropFromSlotHandler = nil
 	self.didWarnMissingDropHandler = false
 
-	for _, player in Players:GetPlayers() do
-		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
-			self:trackPlayer(player)
+	local function trackPlayerIfNeeded(player: Player)
+		if self.playerRuntimes[player] ~= nil then
+			return
 		end
+		self:trackPlayer(player)
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
-			self:trackPlayer(player)
-		end
+		trackPlayerIfNeeded(player)
 	end)
+
+	for _, player in Players:GetPlayers() do
+		trackPlayerIfNeeded(player)
+	end
 
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
 		self:untrackPlayer(player)
@@ -1013,30 +1017,39 @@ function InventoryServiceServer.loadPlayerInventory(self: InventoryServiceServer
 		playerDataService:requestSync(player)
 	end)
 
-	local loadStateSuccess, playerDataLoadState = pcall(function()
-		return playerDataService:getLoadState(player)
+	local waitForDataSuccess, playerData = pcall(function()
+		return playerDataService:waitForData(player, PLAYER_DATA_LOAD_TIMEOUT_SECONDS)
 	end)
 	runtime = self.playerRuntimes[player]
 	if runtime == nil or runtime.loadToken ~= loadToken then
 		return
 	end
-	if not loadStateSuccess then
+	if not waitForDataSuccess then
+		warn(("[InventoryService] Failed while waiting for player data for %s (%d)."):format(player.Name, player.UserId))
 		self:retryLoadInventoryLater(player, loadToken)
-		return
-	end
-	if playerDataLoadState == "Failed" then
-		self:failLoadInventory(player, runtime)
 		return
 	end
 
-	local isLoadedSuccess, isLoaded = pcall(function()
-		return playerDataService:isLoaded(player)
-	end)
-	if not isLoadedSuccess then
-		self:retryLoadInventoryLater(player, loadToken)
-		return
-	end
-	if not isLoaded then
+	if playerData == nil then
+		local loadStateSuccess, playerDataLoadState = pcall(function()
+			return playerDataService:getLoadState(player)
+		end)
+		if not loadStateSuccess then
+			warn(("[InventoryService] Timed out waiting for player data for %s (%d), then failed to read load state."):format(
+				player.Name,
+				player.UserId
+			))
+		elseif playerDataLoadState == "Loading" then
+			warn(("[InventoryService] Timed out waiting for player data to load for %s (%d)."):format(
+				player.Name,
+				player.UserId
+			))
+			self:retryLoadInventoryLater(player, loadToken)
+			return
+		elseif playerDataLoadState == "Failed" then
+			return
+		end
+
 		self:retryLoadInventoryLater(player, loadToken)
 		return
 	end

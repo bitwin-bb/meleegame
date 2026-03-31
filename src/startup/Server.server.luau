@@ -91,7 +91,7 @@ end
 local function registerCmdrCommands(cmdr: any, sharedFolder: Instance, serverFolder: Instance)
 	for _, child in sharedFolder:GetChildren() do
 		if child:IsA("ModuleScript") then
-			local serverModule = serverFolder:FindFirstChild(child.Name .. "Server")
+			local serverModule = serverFolder:FindFirstChild(child.Name)
 			if serverModule == nil or not serverModule:IsA("ModuleScript") then
 				error(`Missing Cmdr server module for command "{child.Name}".`)
 			end
@@ -126,12 +126,12 @@ local function initCmdr()
 
 	local cmdrTypes = sharedCmdrFolder:FindFirstChild("Types")
 	local sharedCmdrCommands = sharedCmdrFolder:FindFirstChild("Commands")
-	local serverCmdrCommands = serverCmdrFolder:FindFirstChild("Commands")
+	local serverCmdrCommands = serverCmdrFolder:FindFirstChild("ServerCommands")
 	if cmdrTypes == nil or sharedCmdrCommands == nil then
 		error("Cmdr Types/Commands folders were not found in ReplicatedStorage.Shared.Cmdr.")
 	end
 	if serverCmdrCommands == nil then
-		error("Cmdr Commands folder was not found in ServerScriptService.Cmdr.")
+		error("Cmdr ServerCommands folder was not found in ServerScriptService.Cmdr.")
 	end
 
 	prepareStarterGuiForCmdr()

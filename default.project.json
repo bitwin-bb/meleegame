@@ -637,42 +637,42 @@
       },
       "Cmdr": {
         "$className": "Folder",
-        "Commands": {
+        "ServerCommands": {
           "$className": "Folder",
-          "ClearInventoryServer": {
+          "ClearInventory": {
             "$path": "src/cmdr/ServerCommands/ClearInventory.luau"
           },
-          "DamageServer": {
+          "Damage": {
             "$path": "src/cmdr/ServerCommands/Damage.luau"
           },
-          "FlyServer": {
+          "Fly": {
             "$path": "src/cmdr/ServerCommands/Fly.luau"
           },
-          "GiveServer": {
+          "Give": {
             "$path": "src/cmdr/ServerCommands/Give.luau"
           },
-          "GodmodeServer": {
+          "Godmode": {
             "$path": "src/cmdr/ServerCommands/Godmode.luau"
           },
-          "HealServer": {
+          "Heal": {
             "$path": "src/cmdr/ServerCommands/Heal.luau"
           },
-          "SetHealthServer": {
+          "SetHealth": {
             "$path": "src/cmdr/ServerCommands/SetHealth.luau"
           },
-          "SetManaServer": {
+          "SetMana": {
             "$path": "src/cmdr/ServerCommands/SetMana.luau"
           },
-          "SpawnServer": {
+          "Spawn": {
             "$path": "src/cmdr/ServerCommands/Spawn.luau"
           },
-          "TimeServer": {
+          "Time": {
             "$path": "src/cmdr/ServerCommands/Time.luau"
           },
-          "UnflyServer": {
+          "Unfly": {
             "$path": "src/cmdr/ServerCommands/Unfly.luau"
           },
-          "WeatherServer": {
+          "Weather": {
             "$path": "src/cmdr/ServerCommands/Weather.luau"
           }
         }

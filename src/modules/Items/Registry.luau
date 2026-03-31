@@ -11,6 +11,8 @@ type RegistryData = {
 }
 
 local cachedRegistry: RegistryData? = nil
+local cachedItemsFolder: Folder? = nil
+local cachedItemsFolderChildCount = -1
 local NON_DEFINITION_MODULE_NAMES = {
 	Animations = true,
 	Audio = true,
@@ -132,7 +134,13 @@ local function collectDefinitions(sourceRaw: any, fallbackItemId: string?, regis
 end
 
 local function buildRegistry(): RegistryData
-	if cachedRegistry ~= nil then
+	local itemsFolder = findItemsFolder()
+	if
+		cachedRegistry ~= nil
+		and itemsFolder ~= nil
+		and cachedItemsFolder == itemsFolder
+		and cachedItemsFolderChildCount == #itemsFolder:GetChildren()
+	then
 		return cachedRegistry
 	end
 
@@ -140,9 +148,12 @@ local function buildRegistry(): RegistryData
 		canonicalByAlias = {},
 		definitionsById = {},
 	}
+	local hadRequireFailure = false
 
-	local itemsFolder = findItemsFolder()
 	if itemsFolder ~= nil then
+		cachedItemsFolder = itemsFolder
+		cachedItemsFolderChildCount = #itemsFolder:GetChildren()
+
 		for _, child in itemsFolder:GetChildren() do
 			if not child:IsA("ModuleScript") or child == script or NON_DEFINITION_MODULE_NAMES[child.Name] == true then
 				continue
@@ -150,14 +161,28 @@ local function buildRegistry(): RegistryData
 
 			local ok, moduleResult = pcall(require, child)
 			if not ok then
+				hadRequireFailure = true
+				warn(("[ItemRegistry] Failed to require %s: %s"):format(child:GetFullName(), tostring(moduleResult)))
 				continue
 			end
 
 			collectDefinitions(moduleResult, sanitizeItemId(child.Name), registry)
 		end
+	else
+		cachedItemsFolder = nil
+		cachedItemsFolderChildCount = -1
 	end
 
-	cachedRegistry = registry
+	-- Published clients can hit this module before every dependency under
+	-- ReplicatedStorage has fully replicated. If we cache a partial first scan,
+	-- item definitions stay missing for the rest of the session. Only cache
+	-- successful builds so later lookups can recover naturally.
+	if hadRequireFailure then
+		cachedRegistry = nil
+	else
+		cachedRegistry = registry
+	end
+
 	return registry
 end
 
@@ -199,6 +224,8 @@ end
 
 function Registry.clearCache()
 	cachedRegistry = nil
+	cachedItemsFolder = nil
+	cachedItemsFolderChildCount = -1
 end
 
 return Registry

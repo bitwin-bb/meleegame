@@ -4,6 +4,7 @@ local StarterGui = game:GetService("StarterGui")
 
 local ui = require(ReplicatedStorage.UI)
 local Configs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
+local ItemRegistry = require(ReplicatedStorage.Shared.Modules.Items.Registry)
 local CmdrUtils = require(ReplicatedStorage.Shared.Cmdr.CmdrUtils)
 local CoreRuntime = require(ReplicatedStorage.Shared.Modules.Core.Runtime)
 local CameraServiceClient = require(ReplicatedStorage.Shared.Services.CameraService.CameraServiceClient)
@@ -39,6 +40,54 @@ local WindFoliageServiceClient = require(ReplicatedStorage.Shared.Services.WindF
 local localPlayer = Players.LocalPlayer
 local cmdrClient = nil
 local pendingCmdrRetry = false
+local ITEM_REGISTRY_WARMUP_TIMEOUT_SECONDS = 5
+local ITEM_REGISTRY_STABLE_PASSES_REQUIRED = 2
+
+local function countDictionaryEntries(dictionaryRaw: any): number
+	if typeof(dictionaryRaw) ~= "table" then
+		return 0
+	end
+
+	local count = 0
+	for _ in dictionaryRaw do
+		count += 1
+	end
+	return count
+end
+
+local function warmItemRegistry()
+	local deadline = os.clock() + ITEM_REGISTRY_WARMUP_TIMEOUT_SECONDS
+	local lastDefinitionCount = -1
+	local stablePasses = 0
+
+	while os.clock() < deadline do
+		ItemRegistry.clearCache()
+
+		local definitionCount = countDictionaryEntries(ItemRegistry.getDefinitionsById())
+		if definitionCount > 0 then
+			if definitionCount == lastDefinitionCount then
+				stablePasses += 1
+			else
+				lastDefinitionCount = definitionCount
+				stablePasses = 1
+			end
+
+			if stablePasses >= ITEM_REGISTRY_STABLE_PASSES_REQUIRED then
+				return
+			end
+		else
+			lastDefinitionCount = definitionCount
+			stablePasses = 0
+		end
+
+		task.wait()
+	end
+
+	warn(("[ClientStartup] Timed out warming the item registry after %.1fs; continuing with %d definitions."):format(
+		ITEM_REGISTRY_WARMUP_TIMEOUT_SECONDS,
+		math.max(0, lastDefinitionCount)
+	))
+end
 
 local function findValidStarterGuiCmdr(): ScreenGui?
 	local cmdrGui = CmdrUtils.keepSingleValidCmdrGui(StarterGui)
@@ -138,6 +187,8 @@ end
 
 local runtime = CoreRuntime.getClientRuntime()
 runtime:init()
+
+warmItemRegistry()
 
 PlayerDataServiceClient:init()
 InventoryServiceClient:init()
