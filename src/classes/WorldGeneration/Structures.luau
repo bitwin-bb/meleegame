@@ -178,6 +178,10 @@ local function sanitizeInteger(valueRaw: any, minimum: number, maximum: number, 
 	return math.clamp(math.floor(valueRaw :: number), minimum, maximum)
 end
 
+local function toUnitInterval(noiseValue: number): number
+	return math.clamp((noiseValue + 1) * 0.5, 0, 1)
+end
+
 local function sampleOctaveNoise(
 	seed: number,
 	x: number,
@@ -469,7 +473,7 @@ function Structures.resolveOreTile(
 			threshold -= 0.03
 		end
 
-		local oreNoise = sampleOctaveNoise(
+		local oreNoise = toUnitInterval(sampleOctaveNoise(
 			self.seed,
 			tileX,
 			tileY,
@@ -479,7 +483,7 @@ function Structures.resolveOreTile(
 			self.orePersistence,
 			ORE_OFFSET_X + rule.frequencyScale * 113,
 			ORE_OFFSET_Y + rule.frequencyScale * 61
-		)
+		))
 		local blobNoise = math.abs(math.noise(
 			(tileX + BLOB_OFFSET_X + rule.frequencyScale * 97) * self.oreBlobFrequency,
 			(tileY + BLOB_OFFSET_Y + rule.frequencyScale * 47) * self.oreBlobFrequency,
@@ -492,7 +496,7 @@ function Structures.resolveOreTile(
 	end
 
 	if baseTileId == self.tileId.DIRT and depthBelowSurface >= 5 and depthBelowSurface <= 54 then
-		local clayNoise = sampleOctaveNoise(
+		local clayNoise = toUnitInterval(sampleOctaveNoise(
 			self.seed,
 			tileX,
 			tileY,
@@ -502,7 +506,7 @@ function Structures.resolveOreTile(
 			0.55,
 			CLAY_OFFSET_X,
 			CLAY_OFFSET_Y
-		)
+		))
 		if clayNoise > 0.7 then
 			return self.tileId.CLAY
 		end

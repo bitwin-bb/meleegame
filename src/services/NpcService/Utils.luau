@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 local Workspace = game:GetService("Workspace")
 
 local NpcServiceUtils = {}
@@ -230,7 +233,7 @@ local function cloneAnimationEventAction(action: AnimationEventAction): Animatio
 end
 
 local function cloneAnimationActions(actions: { AnimationEventAction }): { AnimationEventAction }
-	local out = table.create(#actions)
+	local out = Sift.Array.create(#actions)
 	for index, action in actions do
 		out[index] = cloneAnimationEventAction(action)
 	end

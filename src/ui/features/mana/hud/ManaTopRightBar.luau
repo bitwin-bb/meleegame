@@ -1,5 +1,6 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local React = require(ReplicatedStorage.Packages.React)
 local Charm = require(ReplicatedStorage.Packages.Charm)
@@ -58,7 +59,7 @@ local function buildManaStars(manaRaw: any, maxManaRaw: any, starValueRaw: any):
 	mana = math.clamp(mana, 0, maxMana)
 
 	local starCount = math.max(1, math.ceil(maxMana / starValue))
-	local stars: { ManaStarState } = table.create(starCount)
+	local stars: { ManaStarState } = Sift.Array.create(starCount)
 	for starIndex = 1, starCount do
 		local starStart = (starIndex - 1) * starValue
 		local maxManaInStar = math.clamp(maxMana - starStart, 0, starValue)

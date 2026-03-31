@@ -72,6 +72,7 @@ export type Gore = typeof(setmetatable(
 		gibArcHeight: number,
 		gibTravelTime: number,
 		gibRestDistance: NumberRange,
+		cleanupDelaySeconds: number,
 		bloodEngine: any?,
 		limbDestruction: LimbDestruction.LimbDestruction,
 		activeGibs: { [Gib.Gib]: true },
@@ -86,6 +87,10 @@ local DEFAULT_GIB_LIFETIME = 10
 local DEFAULT_GIB_ARC_HEIGHT = 5.5
 local DEFAULT_GIB_TRAVEL_TIME = 0.48
 local DEFAULT_GIB_REST_DISTANCE = NumberRange.new(2.5, 6.5)
+local DEFAULT_BLOOD_DECAY_DELAY_SECONDS = 15
+local DEFAULT_BLOOD_DECAY_TWEEN_SECONDS = 1
+local DEFAULT_CLEANUP_BUFFER_SECONDS = 0.5
+local MAX_DESTROY_DRAIN_WAIT_SECONDS = 5
 
 local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
@@ -113,6 +118,20 @@ local function sanitizeRange(valueRaw: any, fallback: NumberRange): NumberRange
 		local minimum = math.min(valueRaw.Min, valueRaw.Max)
 		local maximum = math.max(valueRaw.Min, valueRaw.Max)
 		return NumberRange.new(minimum, maximum)
+	end
+	return fallback
+end
+
+local function getRangeMaximum(valueRaw: any, fallback: number): number
+	if typeof(valueRaw) == "NumberRange" then
+		return math.max(valueRaw.Min, valueRaw.Max)
+	end
+	return fallback
+end
+
+local function getTweenDuration(valueRaw: any, fallback: number): number
+	if typeof(valueRaw) == "TweenInfo" then
+		return math.max(0, valueRaw.Time)
 	end
 	return fallback
 end
@@ -185,6 +204,22 @@ local function buildRaycastParams(filter: { Instance }): RaycastParams
 	params.FilterDescendantsInstances = filter
 	params.IgnoreWater = false
 	return params
+end
+
+local function resolveCleanupDelaySeconds(
+	bloodSettingsRaw: any,
+	gibTravelTime: number,
+	gibLifetime: number
+): number
+	local bloodSettings = if typeof(bloodSettingsRaw) == "table" then bloodSettingsRaw else {}
+	local tweens = if typeof(bloodSettings.Tweens) == "table" then bloodSettings.Tweens else nil
+	local decayDelaySeconds = getRangeMaximum(bloodSettings.DecayDelay, DEFAULT_BLOOD_DECAY_DELAY_SECONDS)
+	local decayTweenSeconds =
+		getTweenDuration(if tweens ~= nil then tweens.Decay else nil, DEFAULT_BLOOD_DECAY_TWEEN_SECONDS)
+	local bloodCleanupSeconds = decayDelaySeconds + decayTweenSeconds + DEFAULT_CLEANUP_BUFFER_SECONDS
+	local gibCleanupSeconds = gibTravelTime + gibLifetime + DEFAULT_CLEANUP_BUFFER_SECONDS
+
+	return math.max(bloodCleanupSeconds, gibCleanupSeconds)
 end
 
 function Gore._resolveBloodColor(self: Gore, limb: BasePart, optionsRaw: any, profileRaw: LimbProfile?): Color3
@@ -284,6 +319,7 @@ function Gore.new(configRaw: GoreConfig?): Gore
 		gibArcHeight = sanitizeNumber(config and config.gibArcHeight, DEFAULT_GIB_ARC_HEIGHT, 0, 200),
 		gibTravelTime = sanitizeNumber(config and config.gibTravelTime, DEFAULT_GIB_TRAVEL_TIME, 0.1, 12),
 		gibRestDistance = sanitizeRange(config and config.gibRestDistance, DEFAULT_GIB_REST_DISTANCE),
+		cleanupDelaySeconds = 0,
 		bloodEngine = nil,
 		limbDestruction = LimbDestruction.new({
 			model = entityModel,
@@ -323,6 +359,7 @@ function Gore.new(configRaw: GoreConfig?): Gore
 	if typeof(bloodSettings.Filter) ~= "table" then
 		bloodSettings.Filter = raycastFilter
 	end
+	self.cleanupDelaySeconds = resolveCleanupDelaySeconds(bloodSettings, self.gibTravelTime, self.gibLifetime)
 
 	local ok, engineOrError = pcall(function()
 		return BloodEngine(bloodSettings)
@@ -369,7 +406,7 @@ function Gore.getBloodColor(self: Gore): Color3
 end
 
 function Gore.emitBlood(self: Gore, originRaw: any, directionRaw: any?, amountRaw: any?, settingsRaw: any?): boolean
-	if self.bloodEngine == nil then
+	if self.isDestroyed or self.bloodEngine == nil then
 		return false
 	end
 
@@ -488,12 +525,46 @@ function Gore.restoreAllLimbs(self: Gore)
 	self.limbDestruction:restoreAll()
 end
 
+function Gore._countActiveBloodDroplets(self: Gore): number
+	local bloodEngine = self.bloodEngine
+	if typeof(bloodEngine) ~= "table" then
+		return 0
+	end
+
+	local activeEngine = (bloodEngine :: any).ActiveEngine
+	if typeof(activeEngine) ~= "table" then
+		return 0
+	end
+
+	local cache = activeEngine.Cache
+	if typeof(cache) ~= "table" or typeof(cache.InUse) ~= "table" then
+		return 0
+	end
+
+	return #cache.InUse
+end
+
 function Gore.destroy(self: Gore)
 	if self.isDestroyed then
 		return
 	end
 	self.isDestroyed = true
-	self.janitor:Destroy()
+
+	local janitor = self.janitor
+	local cleanupDelaySeconds = self.cleanupDelaySeconds
+	task.spawn(function()
+		local cleanupReadyAt = os.clock() + cleanupDelaySeconds
+		local cleanupDeadlineAt = cleanupReadyAt + MAX_DESTROY_DRAIN_WAIT_SECONDS
+
+		while os.clock() < cleanupDeadlineAt do
+			if os.clock() >= cleanupReadyAt and self:_countActiveBloodDroplets() <= 0 then
+				break
+			end
+			task.wait(0.25)
+		end
+
+		janitor:Destroy()
+	end)
 end
 
 return Gore

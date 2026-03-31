@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 local VirtualizedList = {}
 VirtualizedList.__index = VirtualizedList
 
@@ -257,7 +260,7 @@ function VirtualizedList.setData(self: VirtualizedList, dataRaw: any)
 	if typeof(dataRaw) ~= "table" then
 		self.data = {}
 	else
-		self.data = table.clone(dataRaw)
+		self.data = Sift.Dictionary.copy(dataRaw)
 	end
 
 	local oldTopIndex = self:_findIndexAtOffset(self.scrollingFrame.CanvasPosition.Y)

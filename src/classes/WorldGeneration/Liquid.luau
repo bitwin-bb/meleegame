@@ -1,6 +1,7 @@
 --!strict
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local LiquidServiceUtils = require(ReplicatedStorage.Shared.Services.LiquidService.LiquidServiceUtils)
 
@@ -552,7 +553,7 @@ function LiquidGeneration.generateChunkLiquids(
 	contextRaw: ChunkLiquidGenerationContext
 ): { number }
 	local context = contextRaw
-	local cells = table.create(context.width * context.height, 0)
+	local cells = Sift.Array.create(context.width * context.height, 0)
 
 	self:seedSurfacePools(context, cells)
 	self:seedUndergroundPockets(context, cells)

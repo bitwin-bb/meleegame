@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 local UserInputService = game:GetService("UserInputService")
 
 local Input = {}
@@ -239,7 +242,7 @@ end
 
 function Input._compileBindings(self: Input, action: ActionRecord, bindingsRaw: any): { CompiledBinding }
 	local normalized = normalizeBindings(bindingsRaw)
-	local compiled = table.create(#normalized)
+	local compiled = Sift.Array.create(#normalized)
 	for index = 1, #normalized do
 		local binding = normalized[index]
 		local keyCode = binding.keyCode

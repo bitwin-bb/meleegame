@@ -2,9 +2,9 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Octree = require(ReplicatedStorage.Packages.Octree)
 local FoliageInstance = require(script.Parent.FoliageInstance)
 local RippleMotion = require(script.Parent.RippleMotion)
-local SpatialHashGrid = require(ReplicatedStorage.Shared.Modules.Core.SpatialHashGrid)
 
 local TreeRuntimeRegistry = {}
 TreeRuntimeRegistry.__index = TreeRuntimeRegistry
@@ -60,6 +60,16 @@ local function clampNumber(valueRaw: any, fallback: number, minimum: number, max
 		return maximum
 	end
 	return value
+end
+
+local function clearArray(array: { any })
+	for index = #array, 1, -1 do
+		array[index] = nil
+	end
+end
+
+local function sortEntriesById(a: RuntimeEntry, b: RuntimeEntry): boolean
+	return a.id < b.id
 end
 
 local function resolveSeed(instance: Instance, config: { [string]: any }): number
@@ -133,6 +143,9 @@ end
 function TreeRuntimeRegistry.new(configRaw: any?): TreeRuntimeRegistry
 	local config = if typeof(configRaw) == "table" then configRaw else {}
 	local gridCellSize = clampNumber(config.gridCellSize, 18, 1, 2048)
+	local octreeMaxDepth = math.max(1, math.floor(clampNumber(config.octreeMaxDepth, 4, 1, 12)))
+	local octreeMaxRegionSize =
+		clampNumber(config.octreeMaxRegionSize, math.max(64, gridCellSize * (2 ^ octreeMaxDepth)), 8, 32768)
 
 	local self = setmetatable({
 		config = config,
@@ -140,12 +153,9 @@ function TreeRuntimeRegistry.new(configRaw: any?): TreeRuntimeRegistry
 		entries = {} :: { RuntimeEntry },
 		entriesById = {} :: { [number]: RuntimeEntry },
 		entriesByInstance = {} :: { [Instance]: RuntimeEntry },
-		spatialGrid = SpatialHashGrid.new({
-			cellSize = gridCellSize,
-			cellsPerChunk = 4,
-			deterministicQueries = true,
-		}),
-		queryBuffer = {} :: { any },
+		spatialIndex = Octree.new(octreeMaxRegionSize, octreeMaxDepth),
+		spatialNodesById = {} :: { [number]: any },
+		queryBuffer = {} :: { RuntimeEntry },
 	}, TreeRuntimeRegistry)
 
 	return self
@@ -210,7 +220,7 @@ function TreeRuntimeRegistry.register(self: TreeRuntimeRegistry, instanceRaw: an
 	self.entriesByInstance[instance] = entry
 	self.entriesById[entry.id] = entry
 	self.entries[entry.orderIndex] = entry
-	self.spatialGrid:insert(entry.id, entry.rootPosition.X, entry.rootPosition.Y, entry.rootPosition.Z, entry)
+	self.spatialNodesById[entry.id] = self.spatialIndex:CreateNode(entry.rootPosition, entry)
 	setAttributeIfChanged(instance, RUNTIME_ATTRIBUTE_ID, entry.id)
 
 	return entry
@@ -229,7 +239,11 @@ function TreeRuntimeRegistry.unregister(self: TreeRuntimeRegistry, instanceRaw: 
 
 	self.entriesByInstance[instance] = nil
 	self.entriesById[entry.id] = nil
-	self.spatialGrid:remove(entry.id)
+	local spatialNode = self.spatialNodesById[entry.id]
+	if spatialNode ~= nil then
+		spatialNode:Destroy()
+		self.spatialNodesById[entry.id] = nil
+	end
 
 	local orderIndex = entry.orderIndex
 	local lastEntry = self.entries[#self.entries]
@@ -260,7 +274,20 @@ end
 
 function TreeRuntimeRegistry.queryRadius(self: TreeRuntimeRegistry, positionRaw: any, radiusRaw: any, outRaw: { any }?): { any }
 	local position = if typeof(positionRaw) == "Vector3" then positionRaw else ZERO
-	return self.spatialGrid:queryRadius(position.X, position.Y, position.Z, radiusRaw, outRaw or self.queryBuffer)
+	local radius = clampNumber(radiusRaw, 0, 0, 1000000)
+	local out = if outRaw ~= nil then outRaw else self.queryBuffer
+	clearArray(out)
+
+	local results = self.spatialIndex:RadiusSearch(position, radius)
+	for index, entry in results do
+		out[index] = entry
+	end
+
+	if #out > 1 then
+		table.sort(out, sortEntriesById)
+	end
+
+	return out
 end
 
 function TreeRuntimeRegistry.destroy(self: TreeRuntimeRegistry)
@@ -272,7 +299,7 @@ function TreeRuntimeRegistry.destroy(self: TreeRuntimeRegistry)
 	end
 	table.clear(self.entriesByInstance)
 	table.clear(self.entriesById)
-	self.spatialGrid:clear()
+	table.clear(self.spatialNodesById)
 	table.clear(self.queryBuffer)
 end
 

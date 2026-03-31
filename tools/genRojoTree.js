@@ -52,6 +52,13 @@ const tree = {
   tree: {
     $className: "DataModel",
 
+    Workspace: {
+      $properties: {
+        FallHeightEnabled: false,
+        FallenPartsDestroyHeight: -50000,
+      },
+    },
+
     ReplicatedStorage: {
       Shared: {
         $className: "Folder",

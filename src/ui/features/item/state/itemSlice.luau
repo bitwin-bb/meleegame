@@ -1,5 +1,6 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local Charm = require(ReplicatedStorage.Packages.Charm)
 local InventoryServiceUtils = require(ReplicatedStorage.Shared.Services.InventoryService.InventoryServiceUtils)
@@ -335,10 +336,9 @@ local function pushDragDebug(messageRaw: any): ItemDragDebugState
 
 	local timestamp = os.clock()
 	local prefix = ("[%0.3f] "):format(timestamp)
-	local lines = table.clone(current.lines)
-	table.insert(lines, prefix .. message)
+	local lines = Sift.Array.append(Sift.Array.copy(current.lines), prefix .. message)
 	if #lines > MAX_DEBUG_LINES then
-		table.remove(lines, 1)
+		lines = Sift.Array.removeIndex(lines, 1)
 	end
 
 	local nextState: ItemDragDebugState = {

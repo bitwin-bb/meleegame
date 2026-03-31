@@ -70,7 +70,7 @@ function HpServiceUtils.buildHearts(healthRaw: any, maxHealthRaw: any, heartValu
 	local health = sanitizeNumber(healthRaw, maxHealth, 0, maxHealth)
 
 	local heartCount = math.max(1, math.ceil(maxHealth / heartValue))
-	local hearts: { HeartState } = table.create(heartCount)
+	local hearts: { HeartState } = Sift.Array.create(heartCount)
 
 	for heartIndex = 1, heartCount do
 		local heartStart = (heartIndex - 1) * heartValue

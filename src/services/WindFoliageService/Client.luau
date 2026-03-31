@@ -1,6 +1,7 @@
 --!strict
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local WindFoliage = require(ReplicatedStorage.Shared.Classes.WindFoliage)
@@ -17,7 +18,7 @@ local WindFoliageServiceClient = {}
 
 local function resolveConfig(): { [string]: any }
 	local configSource = if typeof(Configs) == "table" then (Configs :: any).windFoliage else nil
-	return if typeof(configSource) == "table" then table.clone(configSource) else {}
+	return if typeof(configSource) == "table" then Sift.Dictionary.copy(configSource) else {}
 end
 
 function WindFoliageServiceClient.init(self: any)

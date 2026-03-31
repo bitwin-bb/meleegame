@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 local Workspace = game:GetService("Workspace")
 
 local RagdollServiceUtils = {}
@@ -291,7 +294,7 @@ local function collectRagdollParts(motors: { Motor6D }, rootPart: BasePart): { B
 end
 
 local function capturePartSnapshots(parts: { BasePart }): { PartSnapshot }
-	local snapshots: { PartSnapshot } = table.create(#parts)
+	local snapshots: { PartSnapshot } = Sift.Array.create(#parts)
 	for index, part in parts do
 		snapshots[index] = {
 			part = part,
@@ -585,7 +588,7 @@ function RagdollServiceUtils.beginRagdoll(rig: CharacterRig, options: BeginRagdo
 	runtimeFolder.Parent = rig.character
 
 	local createdInstances: { Instance } = { runtimeFolder }
-	local motorSnapshots: { MotorSnapshot } = table.create(#motors)
+	local motorSnapshots: { MotorSnapshot } = Sift.Array.create(#motors)
 
 	for index, motor in motors do
 		motorSnapshots[index] = {

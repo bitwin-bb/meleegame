@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 
 local RoomScaleFactor = {}
 
@@ -70,7 +73,7 @@ local function lerp(from: number, to: number, alpha: number): number
 end
 
 function RoomScaleFactor.createDefaultConfig(): RoomScaleFactorConfig
-	return table.clone(DEFAULT_CONFIG)
+	return Sift.Dictionary.copy(DEFAULT_CONFIG)
 end
 
 function RoomScaleFactor.createDefaultResult(): RoomScaleResult

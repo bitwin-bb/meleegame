@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 local GuiService = game:GetService("GuiService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
@@ -536,9 +539,9 @@ function UIScaling.new(configRaw: UIScalingConfig?): UIScaling
 		minGlobalScale = clampNumber(config.minGlobalScale, 0.78, 0.1, 10),
 		maxGlobalScale = clampNumber(config.maxGlobalScale, 1.45, 0.1, 10),
 		presets = {
-			Desktop = table.clone(DEFAULT_DEVICE_PRESETS.Desktop),
-			Mobile = table.clone(DEFAULT_DEVICE_PRESETS.Mobile),
-			Console = table.clone(DEFAULT_DEVICE_PRESETS.Console),
+			Desktop = Sift.Dictionary.copy(DEFAULT_DEVICE_PRESETS.Desktop),
+			Mobile = Sift.Dictionary.copy(DEFAULT_DEVICE_PRESETS.Mobile),
+			Console = Sift.Dictionary.copy(DEFAULT_DEVICE_PRESETS.Console),
 		} :: { [string]: DevicePreset },
 		aspectRules = copyAspectRules(DEFAULT_ASPECT_RULES),
 		elements = {} :: { [string]: ElementRecord },
@@ -655,7 +658,7 @@ function UIScaling._computeSnapshot(self: UIScaling): UISnapshot
 	local viewport = self:_getViewport()
 	local guiSize = self:_getRootSize(viewport)
 	local deviceType = detectDeviceType(self.platform)
-	local preset = self.presets[deviceType] or self.presets.Desktop or table.clone(DEFAULT_DEVICE_PRESETS.Desktop)
+	local preset = self.presets[deviceType] or self.presets.Desktop or Sift.Dictionary.copy(DEFAULT_DEVICE_PRESETS.Desktop)
 	local globalScale = clampNumber(guiSize.Y / self.referenceResolution.Y, 1, self.minGlobalScale, self.maxGlobalScale)
 
 	local safeTopLeft = Vector2.zero

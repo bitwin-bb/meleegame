@@ -1,56 +1,12 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 
 local Animations = require(script.Parent.Animations)
+local BuildAnimationMelee = require(script.Parent.Parent.Game.BuildAnimationMelee)
 
 local axeAnimationIds = (((Animations :: any).Items or {}).Axes or {}) :: { [string]: any }
-
-local function buildAxeAnimations(sourceRaw: any): { [string]: any }?
-	if typeof(sourceRaw) ~= "table" then
-		return nil
-	end
-
-	local source = sourceRaw :: { [string]: any }
-	local swings = {}
-	if typeof(source.Swings) == "table" then
-		for index, animationId in source.Swings do
-			if typeof(index) == "number" and typeof(animationId) == "string" and animationId ~= "" then
-				table.insert(swings, {
-					name = ("Swing%d"):format(index),
-					id = animationId,
-					priority = Enum.AnimationPriority.Action,
-				})
-			end
-		end
-	end
-
-	table.sort(swings, function(lhs, rhs)
-		return lhs.name < rhs.name
-	end)
-
-	local namedAnimations = {}
-	if typeof(source.Equip) == "string" and source.Equip ~= "" then
-		namedAnimations.Equip = {
-			id = source.Equip,
-			looped = false,
-		}
-	end
-	if typeof(source.Idle) == "string" and source.Idle ~= "" then
-		namedAnimations.Idle = {
-			id = source.Idle,
-			looped = true,
-		}
-	end
-
-	if #swings <= 0 and next(namedAnimations) == nil then
-		return nil
-	end
-
-	return {
-		mode = "Sequence",
-		namedAnimations = namedAnimations,
-		clips = swings,
-	}
-end
 
 local rawAxes = {
 	["CopperAxe"] = {
@@ -65,8 +21,11 @@ local rawAxes = {
 
 local axes = {}
 for itemId, definition in rawAxes do
-	local enrichedDefinition = table.clone(definition)
-	local axeAnimations = buildAxeAnimations(axeAnimationIds[itemId])
+	local enrichedDefinition = Sift.Dictionary.copy(definition)
+	local axeAnimations = BuildAnimationMelee(axeAnimationIds[itemId], {
+		swingPriority = Enum.AnimationPriority.Action,
+		returnNilIfEmpty = true,
+	})
 	if axeAnimations ~= nil then
 		enrichedDefinition.melee = {
 			animations = axeAnimations,

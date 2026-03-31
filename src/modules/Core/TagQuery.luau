@@ -1,6 +1,7 @@
 --!strict
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local Signal = require(ReplicatedStorage.Packages.Signal)
 
@@ -80,7 +81,7 @@ function TagQuery._refreshTag(self: TagQuery, tag: string)
 		list = {}
 	end
 
-	local outList = table.create(#list)
+	local outList = Sift.Array.create(#list)
 	local outSet = {}
 	for index = 1, #list do
 		local instance = list[index]

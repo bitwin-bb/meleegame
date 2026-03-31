@@ -1,5 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local StringUtils = require(ReplicatedStorage.Shared.Modules.Core.StringUtils)
+local InstanceUtils = require(ReplicatedStorage.Shared.Modules.Platform.InstanceUtils)
 local ItemRegistry = require(ReplicatedStorage.Shared.Modules.Items.Registry)
 local ResolveToolInstance = require(ReplicatedStorage.Shared.Modules.Game.ResolveToolInstance)
 local LootServiceData = require(ReplicatedStorage.Shared.Services.LootService.Data)
@@ -25,18 +27,7 @@ local ITEM_VARIANT_BRANCH_NAMES = {
 }
 
 local function sanitizeItemId(itemIdRaw: any): string?
-	return LootServiceUtils.sanitizeString(itemIdRaw, nil)
-end
-
-local function resolveFolderByPath(root: Instance?, segments: { string }): Instance?
-	local cursor = root
-	for _, segment in segments do
-		if cursor == nil then
-			return nil
-		end
-		cursor = cursor:FindFirstChild(segment)
-	end
-	return cursor
+	return StringUtils.sanitize(itemIdRaw, nil)
 end
 
 local function appendUniqueString(target: { string }, seen: { [string]: boolean }, valueRaw: any)
@@ -73,7 +64,7 @@ local function resolveAssetSearchRoots(): { Instance }
 				continue
 			end
 
-			local resolved = resolveFolderByPath(ReplicatedStorage, segments)
+			local resolved = InstanceUtils.resolveChildPath(ReplicatedStorage, segments)
 			if resolved ~= nil then
 				roots[#roots + 1] = resolved
 			end

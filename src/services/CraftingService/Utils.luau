@@ -3,6 +3,7 @@
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
@@ -284,7 +285,7 @@ local function clonePath(pathRaw: any, fallback: { string }): { string }
 		end
 	end
 	if #output <= 0 then
-		return table.clone(fallback)
+		return Sift.Dictionary.copy(fallback)
 	end
 	return output
 end
@@ -484,7 +485,7 @@ function CraftingServiceUtils.deepFreeze<T>(value: T): T
 end
 
 function CraftingServiceUtils.getDefaultDataPath(): { string }
-	return table.clone(DEFAULT_DATA_PATH)
+	return Sift.Dictionary.copy(DEFAULT_DATA_PATH)
 end
 
 function CraftingServiceUtils.resolveConfig(configRaw: any): CraftingServiceConfig

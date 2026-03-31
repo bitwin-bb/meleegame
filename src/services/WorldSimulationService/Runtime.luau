@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 
 local Data = require(script.Parent.Data)
 local Shared = require(script.Parent.Shared)
@@ -390,7 +393,7 @@ function Runtime.tick(self: Runtime, dt: number)
 	local chunkBudget = math.min(activeCount, self.config.maxChunksPerRuntimeTick)
 	local runtimeBudget = self.config.maxRuntimeSecondsPerTick
 	local startTime = os.clock()
-	local selectedChunks = table.create(chunkBudget)
+	local selectedChunks = Sift.Array.create(chunkBudget)
 
 	while #selectedChunks < chunkBudget do
 		if os.clock() - startTime >= runtimeBudget then

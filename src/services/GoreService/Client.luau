@@ -1,6 +1,7 @@
 --!strict
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
@@ -9,6 +10,7 @@ local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Gore = require(ReplicatedStorage.Shared.Classes.Gore)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
+local InstanceUtils = require(ReplicatedStorage.Shared.Modules.Platform.InstanceUtils)
 
 type JanitorClass = {
 	GiveChore: (self: JanitorClass, chore: any, ...any) -> (any),
@@ -51,73 +53,27 @@ local function parseEntityId(entityId: string): (string?, string?)
 	return nil, nil
 end
 
-local function normalizeToken(valueRaw: any): string
-	if typeof(valueRaw) ~= "string" then
-		return ""
-	end
-	return string.lower(string.gsub(string.match(valueRaw, "^%s*(.-)%s*$") or "", "[%s_%-%.]", ""))
-end
-
-local function resolveFirstBasePart(instanceRaw: Instance?): BasePart?
-	if instanceRaw == nil then
-		return nil
-	end
-	if instanceRaw:IsA("BasePart") then
-		return instanceRaw
-	end
-
-	local asModel = if instanceRaw:IsA("Model") then instanceRaw else nil
-	if asModel ~= nil and asModel.PrimaryPart ~= nil then
-		return asModel.PrimaryPart
-	end
-
-	for _, descendant in instanceRaw:GetDescendants() do
-		if descendant:IsA("BasePart") then
-			return descendant
-		end
-	end
-	return nil
-end
-
-local function findDescendantBasePartByToken(root: Instance?, token: string): BasePart?
-	if root == nil then
-		return nil
-	end
-
-	local normalizedToken = normalizeToken(token)
-	if normalizedToken == "" then
-		return nil
-	end
-
-	for _, descendant in root:GetDescendants() do
-		if descendant:IsA("BasePart") and normalizeToken(descendant.Name) == normalizedToken then
-			return descendant
-		end
-	end
-	return nil
-end
-
 local function resolveSlimeBloodEffectTemplate(): BasePart?
 	local assets = ReplicatedStorage:FindFirstChild("Assets")
 	local effects = if assets ~= nil then assets:FindFirstChild("Effects") else nil
 	if effects ~= nil then
-		local directPart = resolveFirstBasePart(effects:FindFirstChild("SlimeBlood"))
+		local directPart = InstanceUtils.resolveFirstBasePart(effects:FindFirstChild("SlimeBlood"))
 		if directPart ~= nil then
 			return directPart
 		end
 
-		local nestedSlimeBlood = findDescendantBasePartByToken(effects, "SlimeBlood")
+		local nestedSlimeBlood = InstanceUtils.findDescendantBasePartByToken(effects, "SlimeBlood")
 		if nestedSlimeBlood ~= nil then
 			return nestedSlimeBlood
 		end
 
-		local fallbackBlood = resolveFirstBasePart(effects:FindFirstChild("Blood"))
+		local fallbackBlood = InstanceUtils.resolveFirstBasePart(effects:FindFirstChild("Blood"))
 		if fallbackBlood ~= nil then
 			return fallbackBlood
 		end
 	end
 
-	return findDescendantBasePartByToken(ReplicatedStorage, "SlimeBlood")
+	return InstanceUtils.findDescendantBasePartByToken(ReplicatedStorage, "SlimeBlood")
 end
 
 local function createFallbackSlimeBloodEffect(): BasePart
@@ -240,7 +196,7 @@ function GoreServiceClient.registerEntity(self: GoreServiceClient, entityIdRaw: 
 		return nil
 	end
 
-	local config = if typeof(configRaw) == "table" then table.clone(configRaw) else {}
+	local config = if typeof(configRaw) == "table" then Sift.Dictionary.copy(configRaw) else {}
 	local model = if isModel(modelRaw) then (modelRaw :: Model) else self:resolveModelFromEntityId(entityId)
 	if model == nil then
 		self.pendingEntityConfigById[entityId] = config

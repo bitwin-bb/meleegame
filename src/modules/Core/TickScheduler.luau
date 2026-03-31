@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 
 local TickScheduler = {}
 TickScheduler.__index = TickScheduler
@@ -172,7 +175,7 @@ function TickScheduler.schedule(self: TickScheduler, callbackRaw: any, delayRaw:
 end
 
 function TickScheduler.scheduleEvery(self: TickScheduler, callbackRaw: any, intervalRaw: any, optionsRaw: ScheduleOptions?): CancellationToken
-	local options = if typeof(optionsRaw) == "table" then table.clone(optionsRaw) else {}
+	local options = if typeof(optionsRaw) == "table" then Sift.Dictionary.copy(optionsRaw) else {}
 	options.interval = intervalRaw
 	options.repeatCount = -1
 	return self:schedule(callbackRaw, intervalRaw, options)
@@ -180,7 +183,7 @@ end
 
 function TickScheduler.scheduleFixed(self: TickScheduler, callbackRaw: any, stepsRaw: any, optionsRaw: ScheduleOptions?): CancellationToken
 	local steps = if typeof(stepsRaw) == "number" then math.max(1, math.floor(stepsRaw)) else 1
-	local options = if typeof(optionsRaw) == "table" then table.clone(optionsRaw) else {}
+	local options = if typeof(optionsRaw) == "table" then Sift.Dictionary.copy(optionsRaw) else {}
 	options.fixed = true
 	options.interval = self.fixedStep * steps
 	if options.repeatCount == nil then

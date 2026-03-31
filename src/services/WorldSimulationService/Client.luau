@@ -2,6 +2,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 
 local Networker = require(ReplicatedStorage.Packages.Networker)
@@ -182,7 +183,7 @@ function WorldSimulationServiceClient:runChunkModelInvariantCheck(label: string)
 		end
 	end
 
-	local leakedKeys = table.create(8)
+	local leakedKeys = Sift.Array.create(8)
 	for chunkKey in self.activeChunkModels do
 		if self.activeStreamingSet[chunkKey] ~= true then
 			leakedKeys[#leakedKeys + 1] = chunkKey
@@ -250,7 +251,7 @@ function WorldSimulationServiceClient:reconcileRenderWindow(centerX: number, cen
 		end
 	end
 
-	local unloadKeys = table.create(16)
+	local unloadKeys = Sift.Array.create(16)
 	for chunkKey in self.activeChunkModels do
 		if desiredLookup[chunkKey] ~= true then
 			unloadKeys[#unloadKeys + 1] = chunkKey

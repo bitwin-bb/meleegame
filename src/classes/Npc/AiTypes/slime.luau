@@ -1,6 +1,7 @@
 --!strict
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
@@ -1069,12 +1070,12 @@ function Slime:_slimeOnDeath()
 end
 
 function Slime.new(configRaw: SlimeConfig?): Slime
-	local config = if typeof(configRaw) == "table" then table.clone(configRaw :: any) else {}
+	local config = if typeof(configRaw) == "table" then Sift.Dictionary.copy(configRaw :: any) else {}
 	local baseBehavior = if typeof(config.behavior) == "table"
 		then config.behavior :: NpcBehaviorConfig
 		else ({} :: NpcBehaviorConfig)
 
-	local movement = if typeof(config.movement) == "table" then table.clone(config.movement) else {}
+	local movement = if typeof(config.movement) == "table" then Sift.Dictionary.copy(config.movement) else {}
 	if movement.canWander == nil then
 		movement.canWander = false
 	end
@@ -1083,7 +1084,7 @@ function Slime.new(configRaw: SlimeConfig?): Slime
 	end
 	config.movement = movement
 
-	local lifecycle = if typeof(config.lifecycle) == "table" then table.clone(config.lifecycle) else {}
+	local lifecycle = if typeof(config.lifecycle) == "table" then Sift.Dictionary.copy(config.lifecycle) else {}
 	local autoStart = toBoolean(lifecycle.autoStart, false)
 	lifecycle.autoStart = false
 	config.lifecycle = lifecycle

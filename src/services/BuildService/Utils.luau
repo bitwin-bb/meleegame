@@ -279,6 +279,11 @@ local DEFAULT_TILE_RULE: TileRule = {
 	anchorOffsetY = 0,
 }
 
+local FIXED_TILE_BREAK_HITS_BY_TILE_ID = {
+	[TILE_ID.DIRT] = 2,
+	[TILE_ID.STONE] = 3,
+}
+
 local TILE_RULE_BY_ID: { [number]: TileRule } = {
 	[TILE_ID.AIR] = DEFAULT_TILE_RULE,
 	[TILE_ID.GRASS] = {
@@ -1730,6 +1735,11 @@ function BuildServiceUtils.resolveBreakDuration(tileIdRaw: any, toolPowerRaw: an
 end
 
 function BuildServiceUtils.resolveTileBreakHits(tileIdRaw: any, toolPowerRaw: any): number
+	local tileId = BuildServiceUtils.sanitizeTileId(tileIdRaw)
+	if tileId == nil then
+		return math.huge
+	end
+
 	local breakDuration = BuildServiceUtils.resolveBreakDuration(tileIdRaw, toolPowerRaw)
 	if breakDuration == math.huge then
 		return math.huge
@@ -1737,6 +1747,12 @@ function BuildServiceUtils.resolveTileBreakHits(tileIdRaw: any, toolPowerRaw: an
 	if breakDuration <= 0 then
 		return 0
 	end
+
+	local fixedBreakHits = FIXED_TILE_BREAK_HITS_BY_TILE_ID[tileId]
+	if fixedBreakHits ~= nil then
+		return fixedBreakHits
+	end
+
 	return math.max(1, math.ceil(breakDuration * DEFAULT_TILE_BREAK_HIT_RATE))
 end
 

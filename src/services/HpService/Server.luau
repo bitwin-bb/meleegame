@@ -5,6 +5,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local CmdrUtils = require(ReplicatedStorage.Shared.Cmdr.CmdrUtils)
 local HpServiceUtils = require(ReplicatedStorage.Shared.Services.HpService.HpServiceUtils)
 local PlayerServiceServer = require(ServerScriptService.Services.PlayerService.PlayerServiceServer)
 local PlayerDataServiceServer = require(ServerScriptService.Services.PlayerDataService.PlayerDataServiceServer)
@@ -45,6 +46,14 @@ local HpServiceServer = {}
 local DEFAULT_DATA_LOAD_TIMEOUT_SECONDS = 20
 local DEFAULT_DATA_LOAD_RETRY_DELAY_SECONDS = 1
 local SUPPRESS_DAMAGE_FEEDBACK_ATTRIBUTE = "HpService_SuppressDamageFeedback"
+
+local function isGodmodeEnabled(playerRaw: any): boolean
+	if typeof(playerRaw) ~= "Instance" or not playerRaw:IsA("Player") then
+		return false
+	end
+
+	return playerRaw:GetAttribute(CmdrUtils.GODMODE_ENABLED_ATTRIBUTE) == true
+end
 
 local function isHumanoidDead(humanoid: Humanoid): boolean
 	if humanoid.Health <= 0 then
@@ -119,6 +128,22 @@ function HpServiceServer.setHumanoidHealthWithoutDamageFeedback(
 			humanoid:SetAttribute(SUPPRESS_DAMAGE_FEEDBACK_ATTRIBUTE, false)
 		end
 	end)
+end
+
+function HpServiceServer.restoreGodmodeHealth(
+	self: HpServiceServer,
+	player: Player,
+	runtime: PlayerRuntime,
+	humanoid: Humanoid
+): number
+	runtime.isDeathLocked = false
+	local targetHealth = math.max(1, humanoid.MaxHealth)
+	if math.abs(humanoid.Health - targetHealth) > 1e-3 then
+		self:setHumanoidHealthWithoutDamageFeedback(runtime, humanoid, targetHealth)
+	end
+
+	self:refreshStateFromHumanoid(player, humanoid)
+	return humanoid.Health
 end
 
 function HpServiceServer.getRuntime(self: HpServiceServer, player: Player): PlayerRuntime
@@ -309,10 +334,20 @@ function HpServiceServer.bindHumanoid(self: HpServiceServer, player: Player, hum
 	if not didApplyPendingHealth then
 		self:refreshStateFromHumanoid(player, humanoid)
 	end
+	if isGodmodeEnabled(player) then
+		self:restoreGodmodeHealth(player, runtime, humanoid)
+	end
 
 	runtime.characterJanitor:GiveChore(humanoid.HealthChanged:Connect(function()
 		if runtime.humanoid ~= humanoid then
 			return
+		end
+		if isGodmodeEnabled(player) then
+			local targetHealth = math.max(1, humanoid.MaxHealth)
+			if humanoid.Health + 1e-3 < targetHealth then
+				self:restoreGodmodeHealth(player, runtime, humanoid)
+				return
+			end
 		end
 		if humanoid.Health <= 0 then
 			runtime.isDeathLocked = true
@@ -332,6 +367,10 @@ function HpServiceServer.bindHumanoid(self: HpServiceServer, player: Player, hum
 
 	runtime.characterJanitor:GiveChore(humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(function()
 		if runtime.humanoid ~= humanoid then
+			return
+		end
+		if isGodmodeEnabled(player) then
+			self:restoreGodmodeHealth(player, runtime, humanoid)
 			return
 		end
 		self:refreshStateFromHumanoid(player, humanoid)
@@ -534,6 +573,9 @@ function HpServiceServer.damagePlayer(self: HpServiceServer, player: Player, dam
 	local humanoid = self:getHumanoid(player)
 	if not humanoid then
 		return nil
+	end
+	if isGodmodeEnabled(player) then
+		return self:restoreGodmodeHealth(player, runtime, humanoid)
 	end
 	if runtime.isDeathLocked then
 		self:refreshStateFromHumanoid(player, humanoid)

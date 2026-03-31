@@ -27,6 +27,14 @@ return {
 		name = "Life Crystal",
 		description = "A condensed crystal that radiates restorative energy.",
 	},
+	["CopperOre"] = {
+		name = "Copper Ore",
+		description = "A chunk of copper-bearing stone ready to be smelted or crafted with.",
+	},
+	["Gel"] = {
+		name = "Gel",
+		description = "A sticky blob of slime residue dropped by defeated slimes.",
+	},
 	["Workbench"] = {
 		name = "Workbench",
 		description = "A crafting station built for standard crafting.",

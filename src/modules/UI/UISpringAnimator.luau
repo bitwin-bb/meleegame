@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 local RunService = game:GetService("RunService")
 
 local UISpringAnimator = {}
@@ -318,9 +321,9 @@ function UISpringAnimator.animate(
 	local state = byProperty[property]
 	if state == nil then
 		local componentCount = componentCountFor(kind)
-		local valueComponents = table.create(componentCount, 0)
-		local targetComponents = table.create(componentCount, 0)
-		local velocityComponents = table.create(componentCount, 0)
+		local valueComponents = Sift.Array.create(componentCount, 0)
+		local targetComponents = Sift.Array.create(componentCount, 0)
+		local velocityComponents = Sift.Array.create(componentCount, 0)
 		fillComponents(kind, currentValue, valueComponents)
 		fillComponents(kind, targetValue, targetComponents)
 		state = {

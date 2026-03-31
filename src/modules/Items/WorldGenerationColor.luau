@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 
 export type TileVisual = {
 	name: string,
@@ -27,6 +30,8 @@ export type LiquidBiomeTints = {
 local WorldGenerationColor = {}
 local TILE_MATERIAL = Enum.Material.Plastic
 
+-- Ore tiles are rendered from dedicated assets, so they intentionally do not
+-- get unique flat color entries in the shared tile visual palette.
 local TILE_VISUALS: { [number]: TileVisual } = {
 	[1] = {
 		name = "Grass",
@@ -91,30 +96,6 @@ local TILE_VISUALS: { [number]: TileVisual } = {
 	[9] = {
 		name = "Clay",
 		color = Color3.fromRGB(174, 78, 54),
-		material = TILE_MATERIAL,
-		transparency = 0,
-	},
-	[10] = {
-		name = "CopperOre",
-		color = Color3.fromRGB(189, 118, 63),
-		material = TILE_MATERIAL,
-		transparency = 0,
-	},
-	[11] = {
-		name = "IronOre",
-		color = Color3.fromRGB(141, 134, 116),
-		material = TILE_MATERIAL,
-		transparency = 0,
-	},
-	[12] = {
-		name = "SilverOre",
-		color = Color3.fromRGB(177, 177, 185),
-		material = TILE_MATERIAL,
-		transparency = 0,
-	},
-	[13] = {
-		name = "GoldOre",
-		color = Color3.fromRGB(214, 186, 62),
 		material = TILE_MATERIAL,
 		transparency = 0,
 	},
@@ -201,7 +182,7 @@ local LIQUID_BIOME_TINTS: LiquidBiomeTints = {
 }
 
 local function cloneColor3Map(source: { [number]: Color3 }): { [number]: Color3 }
-	return table.clone(source)
+	return Sift.Dictionary.copy(source)
 end
 
 local function cloneTreePalette(palette: TreePalette): TreePalette
@@ -221,13 +202,13 @@ function WorldGenerationColor.getTileVisual(tileId: number): TileVisual?
 	if visual == nil then
 		return nil
 	end
-	return table.clone(visual)
+	return Sift.Dictionary.copy(visual)
 end
 
 function WorldGenerationColor.getTileVisuals(): { [number]: TileVisual }
 	local visuals = {}
 	for tileId, visual in TILE_VISUALS do
-		visuals[tileId] = table.clone(visual)
+		visuals[tileId] = Sift.Dictionary.copy(visual)
 	end
 	return visuals
 end

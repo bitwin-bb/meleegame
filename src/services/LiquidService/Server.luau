@@ -2,6 +2,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
@@ -1035,7 +1036,7 @@ function LiquidServiceServer:getChunkSnapshot(chunkKey: string): LiquidChunkSnap
 		tileMinY = if isFiniteNumber(source.tileMinY) then math.floor(source.tileMinY) else 0,
 		width = if isFiniteNumber(source.width) then math.floor(source.width) else world.chunkSize,
 		height = if isFiniteNumber(source.height) then math.floor(source.height) else world.chunkSize,
-		cells = if typeof(source.cells) == "table" then table.clone(source.cells) else {},
+		cells = if typeof(source.cells) == "table" then Sift.Dictionary.copy(source.cells) else {},
 		revision = runtime.revision,
 		updatedAt = os.clock(),
 	}
@@ -2133,7 +2134,7 @@ function LiquidServiceServer:processChangedChunks()
 		if not runtime.forceFullResync then
 			local chunkSnapshot = self:getChunkSnapshot(chunkKey)
 			if chunkSnapshot ~= nil then
-				local changes = table.create(#runtime.pendingDeltaIndices)
+				local changes = Sift.Array.create(#runtime.pendingDeltaIndices)
 				for index, cellIndex in runtime.pendingDeltaIndices do
 					changes[index] = {
 						index = cellIndex,

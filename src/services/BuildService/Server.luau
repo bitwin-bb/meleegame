@@ -2,6 +2,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
@@ -103,6 +104,10 @@ local DEFAULT_DAMAGE_RETENTION_SECONDS = 30
 local DAMAGE_PRUNE_INTERVAL = 2
 local MAX_CASCADE_PASSES_PER_TICK = 8
 local TREE_DROP_SOURCE_TYPE = "TreeFell"
+local TILE_BREAK_DROP_SOURCE_TYPE = "TileBreak"
+local TILE_BREAK_DROP_ITEM_BY_TILE_ID = {
+	[BuildServiceUtils.TILE_ID.COPPER_ORE] = "CopperOre",
+}
 
 local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
@@ -146,6 +151,10 @@ local function resolvePlayerRootPart(player: Player): BasePart?
 		end
 	end
 	return nil
+end
+
+local function resolveTileBreakDropItemId(tileId: number): string?
+	return TILE_BREAK_DROP_ITEM_BY_TILE_ID[tileId]
 end
 
 local function resolveSelectedInventoryToolProfile(
@@ -229,7 +238,7 @@ local function resolvePlaceableFromInventory(
 end
 
 local function cloneTileDeltaList(source: { TileDelta }): { TileDelta }
-	local output: { TileDelta } = table.create(#source)
+	local output: { TileDelta } = Sift.Array.create(#source)
 	for index, delta in source do
 		output[index] = {
 			tileX = delta.tileX,
@@ -692,7 +701,7 @@ function BuildServiceServer.registerMultiTilePlacement(
 		originTileY = math.min(originTileY, tile.tileY)
 	end
 	local anchorKey = BuildServiceUtils.packTileKey(originTileX, originTileY)
-	local members = table.create(#footprint)
+	local members = Sift.Array.create(#footprint)
 	for index, tile in footprint do
 		members[index] = {
 			tileX = tile.tileX,
@@ -742,7 +751,7 @@ function BuildServiceServer.resolveBreakFootprint(
 	if anchorKey ~= nil then
 		local anchor = self.multiTileAnchors[anchorKey]
 		if anchor ~= nil then
-			local footprint = table.create(#anchor.members)
+			local footprint = Sift.Array.create(#anchor.members)
 			for index, member in anchor.members do
 				footprint[index] = {
 					tileX = member.tileX,
@@ -879,7 +888,7 @@ function BuildServiceServer.flushTileDeltas(self: BuildServiceServer)
 	local startIndex = 1
 	while startIndex <= count do
 		local stopIndex = math.min(count, startIndex + batchMax - 1)
-		local batch = table.create(stopIndex - startIndex + 1)
+		local batch = Sift.Array.create(stopIndex - startIndex + 1)
 		local cursor = 1
 		for index = startIndex, stopIndex do
 			local delta = self.pendingTileDeltas[index]
@@ -1173,6 +1182,22 @@ function BuildServiceServer.processBreakCompletion(
 				tileId = nextTileId,
 				reason = "break",
 			}
+
+			local droppedItemId = resolveTileBreakDropItemId(currentTileId)
+			if droppedItemId ~= nil and self.lootService ~= nil then
+				local spawnPosition = BuildServiceUtils.tileToWorldCenter(
+					breakTile.tileX,
+					breakTile.tileY,
+					self.state.worldOrigin,
+					self.state.tileSize,
+					self.state.basePlaneX
+				) + Vector3.new(0, self.state.tileSize * 0.55, 0)
+				pcall(function()
+					(self.lootService :: any):spawnLootRuntime(droppedItemId, 1, spawnPosition, {
+						sourceType = TILE_BREAK_DROP_SOURCE_TYPE,
+					})
+				end)
+			end
 		end
 	end
 

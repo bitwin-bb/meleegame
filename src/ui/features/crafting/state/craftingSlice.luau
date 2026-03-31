@@ -1,5 +1,6 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local Charm = require(ReplicatedStorage.Packages.Charm)
 
@@ -122,7 +123,7 @@ local function sanitizeRecipeEntries(entriesRaw: any): { CraftingRecipeEntry }
 end
 
 local function cloneRecipeEntries(entriesRaw: { CraftingRecipeEntry }): { CraftingRecipeEntry }
-	local output: { CraftingRecipeEntry } = table.create(#entriesRaw)
+	local output: { CraftingRecipeEntry } = Sift.Array.create(#entriesRaw)
 	for index, entry in entriesRaw do
 		output[index] = {
 			recipeId = entry.recipeId,
@@ -133,7 +134,7 @@ local function cloneRecipeEntries(entriesRaw: { CraftingRecipeEntry }): { Crafti
 			maxCraftableQuantity = entry.maxCraftableQuantity,
 			groupId = entry.groupId,
 			sortOrder = entry.sortOrder,
-			preview = if typeof(entry.preview) == "table" then table.clone(entry.preview) else nil,
+			preview = if typeof(entry.preview) == "table" then Sift.Dictionary.copy(entry.preview) else nil,
 		}
 	end
 	return output

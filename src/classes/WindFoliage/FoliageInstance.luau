@@ -1,6 +1,7 @@
 --!strict
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local TreeFoliageGraph = require(script.Parent.TreeFoliageGraph)
@@ -285,7 +286,7 @@ local function collectBones(root: Instance, config: Config): { BoneRecord }
 	end
 
 	local tipBias = clampNumber(config.tipBias, 1.9, 0.1, 6)
-	local records = table.create(#bones)
+	local records = Sift.Array.create(#bones)
 	local count = #bones
 	for index, bone in bones do
 		local alpha = if count <= 1 then 1 else (index - 1) / (count - 1)

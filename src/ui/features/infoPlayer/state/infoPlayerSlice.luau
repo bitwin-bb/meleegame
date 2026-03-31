@@ -135,7 +135,7 @@ local function setInfoPlayerState(stateRaw: any): InfoPlayerState
 			local popupSource = popupRaw :: { [string]: any }
 			local id = sanitizeString(popupSource.id, ("event_%d"):format(nextSequence + #nextPopups + 1))
 			local popupAmount = sanitizeAmount(popupSource.amount)
-			table.insert(nextPopups, {
+			nextPopups = Sift.Array.append(nextPopups, {
 				id = id,
 				eventToken = sanitizeString(popupSource.eventToken, id),
 				kind = sanitizePopupKind(popupSource.kind),

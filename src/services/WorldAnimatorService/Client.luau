@@ -1,5 +1,6 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
@@ -324,7 +325,7 @@ function WorldAnimatorServiceClient.startChunkAnimation(self: WorldAnimatorServi
 		return "skip"
 	end
 
-	local originalLocalTransparencyModifiers = table.create(#originalParts)
+	local originalLocalTransparencyModifiers = Sift.Array.create(#originalParts)
 	for index, part in originalParts do
 		originalLocalTransparencyModifiers[index] = part.LocalTransparencyModifier
 		part.LocalTransparencyModifier = 1

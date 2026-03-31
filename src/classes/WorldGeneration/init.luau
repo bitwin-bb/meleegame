@@ -2,6 +2,7 @@
 
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local Workspace = game:GetService("Workspace")
 
 local Configs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
@@ -1030,7 +1031,7 @@ local function resolveDominantBiomeId(biomeIds: { number }, fallbackBiomeId: num
 end
 
 local function populateChunkBiomeIdsFromColumns(self: WorldGeneration, chunkData: ChunkData, biomeIds: { number })
-	local biomeIdByColumn = table.create(chunkData.width, self.biomeId.FOREST)
+	local biomeIdByColumn = Sift.Array.create(chunkData.width, self.biomeId.FOREST)
 	for localX = 0, chunkData.width - 1 do
 		local worldTileX = chunkData.tileMinX + localX
 		local column = self.biomeGenerator:getColumnProfile(worldTileX)
@@ -1052,17 +1053,17 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 	end
 	local totalTiles = chunkData.width * chunkData.height
 	if typeof(chunkDataRaw.biomeTypes) ~= "table" then
-		chunkDataRaw.biomeTypes = table.create(totalTiles, self.biomeType.NORMAL)
+		chunkDataRaw.biomeTypes = Sift.Array.create(totalTiles, self.biomeType.NORMAL)
 	end
 	if typeof(chunkDataRaw.biomeIds) ~= "table" then
-		chunkDataRaw.biomeIds = table.create(totalTiles, self.biomeId.FOREST)
+		chunkDataRaw.biomeIds = Sift.Array.create(totalTiles, self.biomeId.FOREST)
 		populateChunkBiomeIdsFromColumns(self, chunkData, chunkDataRaw.biomeIds)
 	end
 	if typeof(chunkDataRaw.depthLayers) ~= "table" then
-		chunkDataRaw.depthLayers = table.create(totalTiles)
+		chunkDataRaw.depthLayers = Sift.Array.create(totalTiles)
 	end
 	if typeof(chunkDataRaw.depthBelowSurface) ~= "table" then
-		chunkDataRaw.depthBelowSurface = table.create(totalTiles)
+		chunkDataRaw.depthBelowSurface = Sift.Array.create(totalTiles)
 	end
 	if typeof(chunkDataRaw.props) ~= "table" then
 		chunkDataRaw.props = {}
@@ -1299,7 +1300,7 @@ local function carveCorruptionChasmsForChunk(
 
 	local tileMaxX = tileMinX + width - 1
 	local tileMaxY = tileMinY + height - 1
-	local smoothingMask = table.create(width * height, false)
+	local smoothingMask = Sift.Array.create(width * height, false)
 	local carvedAny = false
 
 	local function markSmoothingNeighborhood(localX: number, localY: number)
@@ -1435,7 +1436,7 @@ local function carveCorruptionChasmsForChunk(
 
 	local totalTiles = width * height
 	for _ = 1, CORRUPTION_CHASM_SMOOTHING_PASSES do
-		local removals = table.create(totalTiles, false)
+		local removals = Sift.Array.create(totalTiles, false)
 		local removalCount = 0
 
 		for tileIndex = 1, totalTiles do
@@ -1558,7 +1559,7 @@ local function ensureChunkLiquidData(self: WorldGeneration, chunkData: ChunkData
 	end
 
 	if self.liquidGenerator == nil then
-		chunkDataRaw.liquids = table.create(totalTiles, 0)
+		chunkDataRaw.liquids = Sift.Array.create(totalTiles, 0)
 		chunkDataRaw._liquidValidated = true
 		return
 	end
@@ -1582,8 +1583,8 @@ local function ensureChunkLiquidData(self: WorldGeneration, chunkData: ChunkData
 
 	local scanWidth = chunkData.width + scanRadius * 2
 	local scanColumnMinX = chunkData.tileMinX - scanRadius
-	local scanColumnProfiles: { ColumnProfile } = table.create(scanWidth)
-	local columnProfiles: { ColumnProfile } = table.create(chunkData.width)
+	local scanColumnProfiles: { ColumnProfile } = Sift.Array.create(scanWidth)
+	local columnProfiles: { ColumnProfile } = Sift.Array.create(chunkData.width)
 	for localX = 0, scanWidth - 1 do
 		local worldTileX = scanColumnMinX + localX
 		local column = self.biomeGenerator:getColumnProfile(worldTileX)
@@ -3127,17 +3128,17 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 	local height = self.chunkSize
 	local tileMinX = chunkX * width
 	local tileMinY = chunkY * height
-	local tiles = table.create(width * height, self.tileId.AIR)
-	local depthLayers = table.create(width * height, DEPTH_LAYER_CODE.SKY)
-	local depthBelowSurface = table.create(width * height, -1)
-	local biomeIds = table.create(width * height, self.biomeId.FOREST)
-	local biomeTypes = table.create(width * height, self.biomeType.NORMAL)
+	local tiles = Sift.Array.create(width * height, self.tileId.AIR)
+	local depthLayers = Sift.Array.create(width * height, DEPTH_LAYER_CODE.SKY)
+	local depthBelowSurface = Sift.Array.create(width * height, -1)
+	local biomeIds = Sift.Array.create(width * height, self.biomeId.FOREST)
+	local biomeTypes = Sift.Array.create(width * height, self.biomeType.NORMAL)
 	local backgroundPadding = BACKGROUND_LAYER_BOUNDS_PADDING_TILES
 	local backgroundWidth = width + backgroundPadding * 2
 	local backgroundHeight = height + backgroundPadding * 2
 	local backgroundTileMinX = tileMinX - backgroundPadding
 	local backgroundTileMinY = tileMinY - backgroundPadding
-	local backgroundLayers: { BackgroundLayerData } = table.create(self.backgroundLayerCount)
+	local backgroundLayers: { BackgroundLayerData } = Sift.Array.create(self.backgroundLayerCount)
 	for layerIndex = 1, self.backgroundLayerCount do
 		backgroundLayers[layerIndex] = {
 			layerIndex = layerIndex,
@@ -3145,11 +3146,11 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 			tileMinY = backgroundTileMinY,
 			width = backgroundWidth,
 			height = backgroundHeight,
-			tiles = table.create(backgroundWidth * backgroundHeight, self.tileId.AIR),
+			tiles = Sift.Array.create(backgroundWidth * backgroundHeight, self.tileId.AIR),
 		}
 	end
-	local backgroundColumnProfiles: { ColumnProfile } = table.create(backgroundWidth)
-	local columnProfiles: { ColumnProfile } = table.create(width)
+	local backgroundColumnProfiles: { ColumnProfile } = Sift.Array.create(backgroundWidth)
+	local columnProfiles: { ColumnProfile } = Sift.Array.create(width)
 	local biomeBlendColumnCache = {} :: { [number]: ColumnProfile }
 	local biomeBlendAxisCache = {} :: { [number]: BiomeBlendAxisData }
 	local biomeBlendClusterCache = {} :: { [string]: ColumnProfile }
@@ -3361,7 +3362,7 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 		end
 	end
 
-	local foregroundAnchorTiles = table.create(backgroundWidth * backgroundHeight, self.tileId.AIR)
+	local foregroundAnchorTiles = Sift.Array.create(backgroundWidth * backgroundHeight, self.tileId.AIR)
 	for foregroundLocalY = 0, height - 1 do
 		for foregroundLocalX = 0, width - 1 do
 			local foregroundIndex = computeTileIndex(foregroundLocalX, foregroundLocalY, width)
@@ -3695,7 +3696,7 @@ function WorldGeneration.generateChunkData(self: WorldGeneration, chunkX: number
 			scanColumnProfiles = backgroundColumnProfiles,
 			scanColumnMinX = backgroundTileMinX,
 		})
-		else table.create(width * height, 0)
+		else Sift.Array.create(width * height, 0)
 
 	local now = os.clock()
 	local generated = {
@@ -3783,7 +3784,7 @@ function WorldGeneration.buildGreedyRectangles(
 	shouldInclude: (value: number, index: number) -> boolean
 ): { GreedyRect }
 	local rectangles: { GreedyRect } = {}
-	local visited: { boolean } = table.create(width * height, false)
+	local visited: { boolean } = Sift.Array.create(width * height, false)
 
 	for localY = 0, height - 1 do
 		for localX = 0, width - 1 do
@@ -4311,7 +4312,7 @@ function WorldGeneration.getChunkSnapshotByKey(self: WorldGeneration, chunkKeyRa
 		return nil
 	end
 
-	local backgroundLayersSnapshot = table.create(#chunkData.backgroundLayers)
+	local backgroundLayersSnapshot = Sift.Array.create(#chunkData.backgroundLayers)
 	for layerIndex, layerData in chunkData.backgroundLayers do
 		backgroundLayersSnapshot[layerIndex] = {
 			layerIndex = layerData.layerIndex,
@@ -4319,11 +4320,11 @@ function WorldGeneration.getChunkSnapshotByKey(self: WorldGeneration, chunkKeyRa
 			tileMinY = layerData.tileMinY,
 			width = layerData.width,
 			height = layerData.height,
-			tiles = table.clone(layerData.tiles),
+			tiles = Sift.Dictionary.copy(layerData.tiles),
 		}
 	end
 
-	local treesSnapshot = table.create(#chunkData.trees)
+	local treesSnapshot = Sift.Array.create(#chunkData.trees)
 	for treeIndex, treeData in chunkData.trees do
 		treesSnapshot[treeIndex] = {
 			tileX = treeData.tileX,
@@ -4336,7 +4337,7 @@ function WorldGeneration.getChunkSnapshotByKey(self: WorldGeneration, chunkKeyRa
 		}
 	end
 
-	local propsSnapshot = table.create(#chunkData.props)
+	local propsSnapshot = Sift.Array.create(#chunkData.props)
 	for propIndex, propData in chunkData.props do
 		propsSnapshot[propIndex] = {
 			tileX = propData.tileX,
@@ -4357,11 +4358,11 @@ function WorldGeneration.getChunkSnapshotByKey(self: WorldGeneration, chunkKeyRa
 		tileMinY = chunkData.tileMinY,
 		width = chunkData.width,
 		height = chunkData.height,
-		tiles = table.clone(chunkData.tiles),
-		depthLayers = table.clone(chunkData.depthLayers),
-		depthBelowSurface = table.clone(chunkData.depthBelowSurface),
-		biomeIds = table.clone(chunkData.biomeIds),
-		biomeTypes = table.clone(chunkData.biomeTypes),
+		tiles = Sift.Dictionary.copy(chunkData.tiles),
+		depthLayers = Sift.Dictionary.copy(chunkData.depthLayers),
+		depthBelowSurface = Sift.Dictionary.copy(chunkData.depthBelowSurface),
+		biomeIds = Sift.Dictionary.copy(chunkData.biomeIds),
+		biomeTypes = Sift.Dictionary.copy(chunkData.biomeTypes),
 		dominantBiomeId = chunkData.dominantBiomeId,
 		dominantBiomeType = chunkData.dominantBiomeType,
 		backgroundLayers = backgroundLayersSnapshot,
@@ -4385,7 +4386,7 @@ function WorldGeneration.getLiquidChunkSnapshotByKey(self: WorldGeneration, chun
 		tileMinY = chunkData.tileMinY,
 		width = chunkData.width,
 		height = chunkData.height,
-		cells = table.clone(chunkData.liquids),
+		cells = Sift.Dictionary.copy(chunkData.liquids),
 		updatedAt = os.clock(),
 	}
 end

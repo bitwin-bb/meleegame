@@ -445,6 +445,29 @@ local function chooseWeightedEntry(entriesRaw: any, randomObject: Random, luck: 
 	return weightedEntries[#weightedEntries].entry
 end
 
+local function appendDropResult(
+	output: { LootRollResult },
+	dataRaw: any,
+	entry: SanitizedDropEntry,
+	randomObject: Random,
+	quantityMultiplier: number,
+	sourceType: string
+)
+	local baseAmount = if entry.amountMax > entry.amountMin
+		then randomObject:NextInteger(entry.amountMin, entry.amountMax)
+		else entry.amountMin
+	local amount = math.max(1, math.floor(baseAmount * quantityMultiplier + 0.5))
+	local itemConfig = LootServiceUtils.resolveItemConfig(dataRaw, entry.itemId)
+	table.insert(output, {
+		itemId = entry.itemId,
+		amount = amount,
+		maxStack = itemConfig.maxStack,
+		metadata = cloneDeepInternal(entry.metadata, {}),
+		rarity = itemConfig.rarity,
+		sourceType = sourceType,
+	})
+end
+
 local function getDropTable(dataRaw: any, tableIdRaw: any): { [string]: any }?
 	if typeof(dataRaw) ~= "table" then
 		return nil
@@ -834,6 +857,16 @@ function LootServiceUtils.rollDropTable(
 	end
 
 	local output = {}
+	local guaranteedDropsRaw = (dropTable :: any).guaranteedDrops
+	if typeof(guaranteedDropsRaw) == "table" then
+		for _, rawEntry in guaranteedDropsRaw do
+			local entry = sanitizeDropEntry(rawEntry)
+			if entry ~= nil then
+				appendDropResult(output, dataRaw, entry, randomObject, quantityMultiplier, sourceType)
+			end
+		end
+	end
+
 	local totalRolls = rollCount + bonusRolls
 	for _ = 1, totalRolls do
 		local entry = chooseWeightedEntry((dropTable :: any).entries, randomObject, luck)
@@ -841,19 +874,7 @@ function LootServiceUtils.rollDropTable(
 			continue
 		end
 
-		local baseAmount = if entry.amountMax > entry.amountMin
-			then randomObject:NextInteger(entry.amountMin, entry.amountMax)
-			else entry.amountMin
-		local amount = math.max(1, math.floor(baseAmount * quantityMultiplier + 0.5))
-		local itemConfig = LootServiceUtils.resolveItemConfig(dataRaw, entry.itemId)
-		table.insert(output, {
-			itemId = entry.itemId,
-			amount = amount,
-			maxStack = itemConfig.maxStack,
-			metadata = cloneDeepInternal(entry.metadata, {}),
-			rarity = itemConfig.rarity,
-			sourceType = sourceType,
-		})
+		appendDropResult(output, dataRaw, entry, randomObject, quantityMultiplier, sourceType)
 	end
 
 	return output

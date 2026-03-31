@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 local ReactiveState = {}
 
 local BaseValue = {}
@@ -304,7 +307,7 @@ function ReactiveState.Combine(sourceListRaw: any, compute: (...any) -> any): Co
 	end
 	local sourceList = sourceListRaw :: { any }
 	return ReactiveState.Computed(function()
-		local values = table.create(#sourceList)
+		local values = Sift.Array.create(#sourceList)
 		for index = 1, #sourceList do
 			values[index] = sourceList[index]:get()
 		end

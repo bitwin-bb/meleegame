@@ -2,6 +2,7 @@
 
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local Workspace = game:GetService("Workspace")
 local WorldGenerationColor = require(ReplicatedStorage.Shared.Modules.Items.WorldGenerationColor)
 
@@ -829,7 +830,7 @@ function ProceduralTree.generate(self: ProceduralTree, parentRaw: Instance?, bas
 	leavesModel.Name = "Leaves"
 	leavesModel.Parent = treeModel
 
-	local branchParts = table.create(#branchDescriptors)
+	local branchParts = Sift.Array.create(#branchDescriptors)
 	local rootPart: BasePart? = nil
 	for index, descriptor in branchDescriptors do
 		local branchPart = self:createBranchPart(descriptor, baseCFrame)
@@ -858,7 +859,7 @@ function ProceduralTree.generate(self: ProceduralTree, parentRaw: Instance?, bas
 		rootPart = anchor
 	end
 
-	local leafParts = table.create(#leafDescriptors)
+	local leafParts = Sift.Array.create(#leafDescriptors)
 	for index, descriptor in leafDescriptors do
 		local leafPart = self:createLeafPart(descriptor, baseCFrame)
 		leafPart.Anchored = true

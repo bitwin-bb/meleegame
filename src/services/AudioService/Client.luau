@@ -1,5 +1,6 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local RobloxSoundService = game:GetService("SoundService")
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
@@ -353,7 +354,7 @@ function AudioServiceClient.getNextTrackForSoundtrackBiome(
 
 	local shuffleBag = self.soundtrackShuffleBagByBiome[soundtrackBiome]
 	if shuffleBag == nil or #shuffleBag <= 0 then
-		shuffleBag = table.clone(assetIds)
+		shuffleBag = Sift.Dictionary.copy(assetIds)
 		shuffleStringsInPlace(self.random, shuffleBag)
 		self.soundtrackShuffleBagByBiome[soundtrackBiome] = shuffleBag
 	end

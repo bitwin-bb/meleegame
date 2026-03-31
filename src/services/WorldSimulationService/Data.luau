@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 
 local Config = require(script.Parent.Config)
 local Net = require(script.Parent.Net)
@@ -90,16 +93,16 @@ local function createEntityBuffer(capacity: number): ChunkEntityBuffer
 	return {
 		count = 0,
 		capacity = capacity,
-		ids = table.create(capacity, 0),
-		kinds = table.create(capacity, Shared.ENTITY_KIND.NONE),
-		flags = table.create(capacity, 0),
-		posX = table.create(capacity, 0),
-		posY = table.create(capacity, 0),
-		posZ = table.create(capacity, 0),
-		velX = table.create(capacity, 0),
-		velY = table.create(capacity, 0),
-		velZ = table.create(capacity, 0),
-		health = table.create(capacity, 100),
+		ids = Sift.Array.create(capacity, 0),
+		kinds = Sift.Array.create(capacity, Shared.ENTITY_KIND.NONE),
+		flags = Sift.Array.create(capacity, 0),
+		posX = Sift.Array.create(capacity, 0),
+		posY = Sift.Array.create(capacity, 0),
+		posZ = Sift.Array.create(capacity, 0),
+		velX = Sift.Array.create(capacity, 0),
+		velY = Sift.Array.create(capacity, 0),
+		velZ = Sift.Array.create(capacity, 0),
+		health = Sift.Array.create(capacity, 100),
 	}
 end
 
@@ -131,15 +134,15 @@ local function createChunk(
 		clusterCountX = clusterCountX,
 		clusterCountY = clusterCountY,
 		clusterCountZ = clusterCountZ,
-		tileIds = table.create(tileVolume, Shared.TILE_ID.AIR),
-		biomeIds = table.create(tileVolume, Shared.BIOME_ID.FOREST),
-		corruptionLevels = table.create(tileVolume, 0),
-		clusterPrimaryBiomeIds = table.create(clusterVolume, Shared.BIOME_ID.FOREST),
-		clusterSecondaryBiomeIds = table.create(clusterVolume, Shared.BIOME_ID.FOREST),
-		clusterChosenBiomeIds = table.create(clusterVolume, Shared.BIOME_ID.FOREST),
-		clusterBlendWeights = table.create(clusterVolume, 0),
-		clusterSolidMask = table.create(clusterVolume, 0),
-		clusterSurfaceY = table.create(clusterVolume, 0),
+		tileIds = Sift.Array.create(tileVolume, Shared.TILE_ID.AIR),
+		biomeIds = Sift.Array.create(tileVolume, Shared.BIOME_ID.FOREST),
+		corruptionLevels = Sift.Array.create(tileVolume, 0),
+		clusterPrimaryBiomeIds = Sift.Array.create(clusterVolume, Shared.BIOME_ID.FOREST),
+		clusterSecondaryBiomeIds = Sift.Array.create(clusterVolume, Shared.BIOME_ID.FOREST),
+		clusterChosenBiomeIds = Sift.Array.create(clusterVolume, Shared.BIOME_ID.FOREST),
+		clusterBlendWeights = Sift.Array.create(clusterVolume, 0),
+		clusterSolidMask = Sift.Array.create(clusterVolume, 0),
+		clusterSurfaceY = Sift.Array.create(clusterVolume, 0),
 		entities = createEntityBuffer(config.entityCapacityPerChunk),
 	}
 end
@@ -544,7 +547,7 @@ function Data.ingestWorldGenerationChunkSnapshot(
 end
 
 function Data.compactActiveChunkKeys(world: WorldData)
-	local nextKeys = table.create(#world.activeChunkKeys)
+	local nextKeys = Sift.Array.create(#world.activeChunkKeys)
 	for _, key in world.activeChunkKeys do
 		if world.activeChunkLookup[key] then
 			nextKeys[#nextKeys + 1] = key

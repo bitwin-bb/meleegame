@@ -1,5 +1,6 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local React = require(ReplicatedStorage.Packages.React)
 local Charm = require(ReplicatedStorage.Packages.Charm)
@@ -65,7 +66,7 @@ local function buildBubbles(breathRaw: any, maxBreathRaw: any, bubbleValueRaw: a
 	local breath = sanitizeNumber(breathRaw, maxBreath, 0, maxBreath)
 
 	local bubbleCount = math.max(1, math.ceil(maxBreath / bubbleValue))
-	local bubbles: { BubbleState } = table.create(bubbleCount)
+	local bubbles: { BubbleState } = Sift.Array.create(bubbleCount)
 	for bubbleIndex = 1, bubbleCount do
 		local bubbleStart = (bubbleIndex - 1) * bubbleValue
 		local maxBreathInBubble = math.clamp(maxBreath - bubbleStart, 0, bubbleValue)
@@ -162,7 +163,7 @@ return function(props: BubblesScreenProps)
 	local zIndex = props.zIndex or 12
 	local bubbleSize = props.bubbleSize or UDim2.fromOffset(30, 30)
 	local bubbles = buildBubbles(breathState.breath, breathState.maxBreath, props.bubbleValue)
-	local bubbleFillAlphas = table.create(#bubbles)
+	local bubbleFillAlphas = Sift.Array.create(#bubbles)
 	for bubbleIndex, bubbleState in ipairs(bubbles) do
 		bubbleFillAlphas[bubbleIndex] = bubbleState.fillAlpha
 	end

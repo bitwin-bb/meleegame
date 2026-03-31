@@ -1,5 +1,6 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 
 local React = require(ReplicatedStorage.Packages.React)
@@ -25,7 +26,7 @@ local function cloneFillAlphas(fillAlphasRaw: any): { number }
 		return { 1 }
 	end
 
-	local fillAlphas = table.create(#fillAlphasRaw)
+	local fillAlphas = Sift.Array.create(#fillAlphasRaw)
 	for index, fillAlphaRaw in ipairs(fillAlphasRaw) do
 		fillAlphas[index] = sanitizeNumber(fillAlphaRaw, 1, 0, 1)
 	end
@@ -37,17 +38,28 @@ local function cloneFillAlphas(fillAlphasRaw: any): { number }
 	return fillAlphas
 end
 
+local function joinStrings(values: { string }, delimiter: string): string
+	local output = ""
+	for index, value in values do
+		if index > 1 then
+			output ..= delimiter
+		end
+		output ..= value
+	end
+	return output
+end
+
 local function getFillAlphaKey(fillAlphas: { number }): string
-	local keyParts = table.create(#fillAlphas)
+	local keyParts = Sift.Array.create(#fillAlphas)
 	for index, fillAlpha in ipairs(fillAlphas) do
 		keyParts[index] = string.format("%.4f", fillAlpha)
 	end
-	return table.concat(keyParts, "|")
+	return joinStrings(keyParts, "|")
 end
 
 local function synchronizeFillAlphas(currentFillAlphas: { number }, targetFillAlphas: { number }): ({ number }, boolean)
 	local hasChanges = #currentFillAlphas ~= #targetFillAlphas
-	local synchronizedFillAlphas = table.create(#targetFillAlphas)
+	local synchronizedFillAlphas = Sift.Array.create(#targetFillAlphas)
 
 	for index, targetFillAlpha in ipairs(targetFillAlphas) do
 		local synchronizedFillAlpha = sanitizeNumber(currentFillAlphas[index], targetFillAlpha, 0, 1)
@@ -102,7 +114,7 @@ local function useBubbleDeplete(options: BubbleDepleteOptions?): { number }
 	local speed = sanitizeNumber(if options then options.speed else nil, DEFAULT_SPEED, 0.05, 60)
 	local epsilon = sanitizeNumber(if options then options.epsilon else nil, DEFAULT_EPSILON, 0.0001, 0.1)
 	local animatedFillAlphas, setAnimatedFillAlphas = React.useState(function(): { number }
-		return table.clone(targetFillAlphas)
+		return Sift.Array.copy(targetFillAlphas)
 	end)
 	local targetFillAlphasRef = React.useRef(targetFillAlphas)
 
@@ -140,9 +152,7 @@ local function useBubbleDeplete(options: BubbleDepleteOptions?): { number }
 					return synchronizedFillAlphas
 				end
 
-				local nextFillAlphas = table.clone(synchronizedFillAlphas)
-				nextFillAlphas[activeBubbleIndex] = nextFillAlpha
-				return nextFillAlphas
+				return Sift.Array.set(synchronizedFillAlphas, activeBubbleIndex, nextFillAlpha)
 			end)
 		end)
 

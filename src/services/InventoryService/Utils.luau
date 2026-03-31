@@ -267,7 +267,7 @@ local function cloneStack(stack: InventoryItemStack): InventoryItemStack
 end
 
 local function createEmptySlots(capacity: number): { InventorySlot }
-	local slots: { InventorySlot } = table.create(capacity)
+	local slots: { InventorySlot } = Sift.Array.create(capacity)
 	for slotIndex = 1, capacity do
 		slots[slotIndex] = {
 			index = slotIndex,

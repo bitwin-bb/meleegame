@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 
 local Codec = require(script.Parent.Codec)
 local BinaryStreaming = require(script.Parent.BinaryStreaming)
@@ -85,7 +88,7 @@ local function sanitizeMutation(raw: any): TileMutation?
 	end
 	local metadata: { [string]: any }? = nil
 	if typeof(raw.metadata) == "table" then
-		metadata = table.clone(raw.metadata)
+		metadata = Sift.Dictionary.copy(raw.metadata)
 	end
 	return {
 		x = math.floor(raw.x),
@@ -218,7 +221,7 @@ function WorldMutationQueue._drainBucket(self: WorldMutationQueue, bucket: any, 
 		return nil
 	end
 
-	local outMutations = table.create(remainingBudget)
+	local outMutations = Sift.Array.create(remainingBudget)
 	for index = 1, remainingBudget do
 		outMutations[index] = bucket.mutations[index]
 	end

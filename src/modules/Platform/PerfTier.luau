@@ -1,5 +1,6 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Stats = game:GetService("Stats")
 local UserInputService = game:GetService("UserInputService")
@@ -139,9 +140,9 @@ end
 function PerfTier.new(configRaw: PerfTierConfig?): PerfTier
 	local config = if typeof(configRaw) == "table" then configRaw else {}
 	local tierTable = {
-		Low = table.clone(DEFAULT_TIERS.Low),
-		Medium = table.clone(DEFAULT_TIERS.Medium),
-		High = table.clone(DEFAULT_TIERS.High),
+		Low = Sift.Dictionary.copy(DEFAULT_TIERS.Low),
+		Medium = Sift.Dictionary.copy(DEFAULT_TIERS.Medium),
+		High = Sift.Dictionary.copy(DEFAULT_TIERS.High),
 	}
 	if typeof(config.tiers) == "table" then
 		for key, value in config.tiers do
@@ -172,7 +173,7 @@ function PerfTier.new(configRaw: PerfTierConfig?): PerfTier
 		tiers = tierTable,
 		currentTier = detectBaseTier() :: TierName,
 		manualTier = nil :: TierName?,
-		samples = table.create(sampleWindow, 1 / 60) :: { number },
+		samples = Sift.Array.create(sampleWindow, 1 / 60) :: { number },
 		sampleIndex = 0,
 		sampleCount = 0,
 		sampleSum = 0,

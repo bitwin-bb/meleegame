@@ -1,6 +1,7 @@
 --!strict
 local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local React = require(ReplicatedStorage.Packages.React)
 local Charm = require(ReplicatedStorage.Packages.Charm)
@@ -488,7 +489,7 @@ return function(props: InventoryHotbarProps)
 		hotbarPosition.Y.Scale,
 		snapToPixel(hotbarPosition.Y.Offset + hotbarAnchorPoint.Y * (hotbarSidebarHeight - hotbarSlotsHeight))
 	)
-	local hotbarSlotScales: { number } = table.create(HOTBAR_SLOT_COUNT)
+	local hotbarSlotScales: { number } = Sift.Array.create(HOTBAR_SLOT_COUNT)
 
 	for hotbarIndex = 1, HOTBAR_SLOT_COUNT do
 		local isSlotAvailable = isInventoryStateInitialized and hotbarIndex <= maxInteractiveSlots

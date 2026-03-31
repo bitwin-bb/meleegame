@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 
 local EventBus = {}
 EventBus.__index = EventBus
@@ -73,7 +76,7 @@ local function buildScopedChannels(channel: string): { string }
 		return { "*" }
 	end
 	local parts = splitChannel(channel)
-	local out = table.create(#parts + 1)
+	local out = Sift.Array.create(#parts + 1)
 	out[1] = "*"
 	local cursor = ""
 	for index = 1, #parts do

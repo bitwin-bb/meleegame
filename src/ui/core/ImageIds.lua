@@ -23,6 +23,8 @@ end
 
 local copperAxeIcon = "rbxassetid://75765746802617"
 local copperPickaxeIcon = "rbxassetid://135500881364781"
+local copperOreIcon = "rbxassetid://86523519459129"
+local gelIcon = "rbxassetid://125223837467164"
 
 local weaponIcons = {
 	sword = "rbxassetid://120461830147890",
@@ -55,12 +57,18 @@ local itemIcons = withAliases({
 	dirt = "rbxassetid://79897470188136",
 	acorn = "rbxassetid://89910393519002",
 	workbench = "rbxassetid://127346854237238",
+	gel = gelIcon,
+	gelIcon = gelIcon,
+	copperOre = copperOreIcon,
+	copperOreIcon = copperOreIcon,
 	copperAxeIcon = copperAxeIcon,
 	copperPickaxeIcon = copperPickaxeIcon,
 }, {
 	default = { "weapon", "shortsword", "broadsword" },
 	copperShortSword = { "coppershortsword" },
 	copperBroadSword = { "copperbroadsword" },
+	copperOre = { "copperore" },
+	gel = { "Gel", "gelIcon" },
 	richMahogany = { "richmahogany" },
 	jungleWood = { "junglewood" },
 })

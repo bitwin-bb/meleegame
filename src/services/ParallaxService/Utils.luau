@@ -1,6 +1,7 @@
 --!strict
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local WorldSimulationShared = require(ReplicatedStorage.Shared.Services.WorldSimulationService.Shared)
 
@@ -352,7 +353,7 @@ local function sanitizeLayerDefinition(
 	elseif typeof(layerRaw) == "table" then
 		source = layerRaw :: { [string]: any }
 		if trim(source.image) == "" and trim(source.asset) ~= "" then
-			source = table.clone(source)
+			source = Sift.Dictionary.copy(source)
 			source.image = source.asset
 		end
 	else

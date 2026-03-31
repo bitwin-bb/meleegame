@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 
 local Codec = require(script.Parent.Codec)
 
@@ -161,7 +164,7 @@ function TileMetadataRegistry.register(self: TileMetadataRegistry, tileIdRaw: an
 		corruptionSusceptibility = clampNumber(metadataRaw.corruptionSusceptibility, 0, 0, 1),
 		lightBlocking = clampNumber(metadataRaw.lightBlocking, 0, 0, 1),
 		toolTier = clampInteger(metadataRaw.toolTier, 0, 0, 100),
-		attributes = if typeof(metadataRaw.attributes) == "table" then table.clone(metadataRaw.attributes) else {},
+		attributes = if typeof(metadataRaw.attributes) == "table" then Sift.Dictionary.copy(metadataRaw.attributes) else {},
 	} :: TileMetadata
 
 	local hadExisting = self.entries[tileIdRaw] ~= nil
@@ -216,7 +219,7 @@ function TileMetadataRegistry.hasFlag(self: TileMetadataRegistry, tileIdRaw: any
 end
 
 function TileMetadataRegistry.listIds(self: TileMetadataRegistry): { string }
-	return table.clone(self.idOrder)
+	return Sift.Dictionary.copy(self.idOrder)
 end
 
 function TileMetadataRegistry.getDrops(self: TileMetadataRegistry, tileIdRaw: any, rngRaw: any?): { [string]: number }
@@ -264,12 +267,12 @@ function TileMetadataRegistry.snapshot(self: TileMetadataRegistry): { [string]: 
 			out[tileId] = {
 				id = metadata.id,
 				hardness = metadata.hardness,
-				drops = table.clone(metadata.drops),
+				drops = Sift.Dictionary.copy(metadata.drops),
 				flags = metadata.flags,
 				corruptionSusceptibility = metadata.corruptionSusceptibility,
 				lightBlocking = metadata.lightBlocking,
 				toolTier = metadata.toolTier,
-				attributes = table.clone(metadata.attributes),
+				attributes = Sift.Dictionary.copy(metadata.attributes),
 			}
 		end
 	end

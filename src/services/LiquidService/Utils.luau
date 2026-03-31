@@ -2,6 +2,7 @@
 
 local LiquidServiceUtils = {}
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local WorldGenerationColor = require(ReplicatedStorage.Shared.Modules.Items.WorldGenerationColor)
 
 LiquidServiceUtils.NETWORK_METHOD_REQUEST_SYNC = "requestSync"
@@ -1115,7 +1116,7 @@ function LiquidMesher.buildBackgroundVisualCells(
 	local tileMinY = sanitizeInteger(tileMinYRaw, -10000000, 10000000, 0)
 	local layerListIndex = sanitizeInteger(layerListIndexRaw, 1, 64, 1)
 	local total = width * height
-	local derivedCells = table.create(total, 0)
+	local derivedCells = Sift.Array.create(total, 0)
 	local sourceCells = if typeof(sourceCellsRaw) == "table" then sourceCellsRaw :: { number } else nil
 	if sourceCells == nil then
 		return derivedCells
@@ -1137,11 +1138,11 @@ function LiquidMesher.buildBackgroundVisualCells(
 	local minVisibleFill = math.max(1, config.render.minVisibleFill)
 	local maxLateralSpread = math.max(0, math.min(3, layerListIndex - 1))
 
-	local queueLocalX = table.create(total)
-	local queueLocalY = table.create(total)
-	local queueType = table.create(total)
-	local queueFill = table.create(total)
-	local queueDistance = table.create(total)
+	local queueLocalX = Sift.Array.create(total)
+	local queueLocalY = Sift.Array.create(total)
+	local queueType = Sift.Array.create(total)
+	local queueFill = Sift.Array.create(total)
+	local queueDistance = Sift.Array.create(total)
 	local queueHead = 1
 	local queueTail = 0
 
@@ -2218,7 +2219,7 @@ function LiquidSolver.settleGrid(
 	isSolid: (tileX: number, tileY: number) -> boolean,
 	passesRaw: any?
 ): { number }
-	local settled = table.clone(cells)
+	local settled = Sift.Dictionary.copy(cells)
 	local passes = sanitizeInteger(passesRaw, 0, 256, config.simulation.generationSettlePasses)
 
 	local function getCell(tileX: number, tileY: number): number

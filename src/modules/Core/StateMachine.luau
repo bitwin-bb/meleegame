@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 
 local StateMachine = {}
 StateMachine.__index = StateMachine
@@ -171,7 +174,7 @@ function StateMachine.getActiveState(self: StateMachine): string
 end
 
 function StateMachine.getActivePath(self: StateMachine): { string }
-	return table.clone(self.activePath)
+	return Sift.Dictionary.copy(self.activePath)
 end
 
 function StateMachine.getStateElapsed(self: StateMachine, stateIdRaw: any): number

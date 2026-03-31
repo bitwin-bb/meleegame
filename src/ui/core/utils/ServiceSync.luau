@@ -1,5 +1,6 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local Promise = require(ReplicatedStorage.Packages.Promise)
 
@@ -82,7 +83,7 @@ function ServiceSync.requestSync(serviceClientRaw: any)
 end
 
 function ServiceSync.requestSyncMany(serviceClientsRaw: { any })
-	local promises = table.create(#serviceClientsRaw)
+	local promises = Sift.Array.create(#serviceClientsRaw)
 	for index, serviceClient in serviceClientsRaw do
 		promises[index] = requestSyncPromise(serviceClient)
 	end

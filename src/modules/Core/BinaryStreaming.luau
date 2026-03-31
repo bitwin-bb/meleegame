@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 
 local Codec = require(script.Parent.Codec)
 
@@ -493,7 +496,7 @@ function BinaryStreaming.createChunkBatch(payload: buffer, payloadSizeRaw: any, 
 
 	local chunkCount = math.max(1, math.ceil(payloadSize / chunkSize))
 	local batchId = if options and options.batchId ~= nil then clampInteger(options.batchId, 1, 4294967295) else Codec.stableHash({ payloadSize = payloadSize, chunkCount = chunkCount })
-	local frames = table.create(chunkCount)
+	local frames = Sift.Array.create(chunkCount)
 
 	for chunkIndex = 0, chunkCount - 1 do
 		local startOffset = chunkIndex * chunkSize
@@ -584,7 +587,7 @@ function BinaryStreaming.createChunkAssembler(maxPendingRaw: any)
 			batch = {
 				chunkCount = chunkCount,
 				fullPayloadSize = fullPayloadSize,
-				parts = table.create(chunkCount),
+				parts = Sift.Array.create(chunkCount),
 				received = 0,
 			}
 			state.pending[batchId] = batch
@@ -656,7 +659,7 @@ function BinaryStreaming.createChunkAssembler(maxPendingRaw: any)
 	end
 
 	function assembler.debugPending(): { number }
-		local copy = table.clone(state.pendingOrder)
+		local copy = Sift.Dictionary.copy(state.pendingOrder)
 		sortDeterministic(copy :: any)
 		return copy
 	end

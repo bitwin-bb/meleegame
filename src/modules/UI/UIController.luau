@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 local Platform = require(script.Parent.Parent.Platform.Platform)
@@ -458,7 +461,7 @@ function UIController.getTopModal(self: UIController): string?
 end
 
 function UIController.getModalStack(self: UIController): { string }
-	return table.clone(self.modalStack)
+	return Sift.Dictionary.copy(self.modalStack)
 end
 
 function UIController.destroy(self: UIController)

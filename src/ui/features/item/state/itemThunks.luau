@@ -1,5 +1,6 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local ImageIds = require(ReplicatedStorage.UI.core.ImageIds)
 local ItemRegistry = require(ReplicatedStorage.Shared.Modules.Items.Registry)
@@ -20,6 +21,17 @@ type ItemDefinition = {
 
 local itemThunks = {}
 local cachedItemDefinitions: { [string]: ItemDefinition | false } = {}
+
+local function joinStrings(values: { string }, delimiter: string): string
+	local output = ""
+	for index, value in values do
+		if index > 1 then
+			output ..= delimiter
+		end
+		output ..= value
+	end
+	return output
+end
 
 local function trim(textRaw: any): string
 	if typeof(textRaw) ~= "string" then
@@ -181,11 +193,11 @@ local function formatStats(statsRaw: any): string
 		local label = toTitleCase(key)
 		local textValue = sanitizeText(tostring(value), "")
 		if textValue ~= nil and textValue ~= "" then
-			table.insert(lines, ("%s: %s"):format(label, textValue))
+			lines = Sift.Array.append(lines, ("%s: %s"):format(label, textValue))
 		end
 	end
-	table.sort(lines)
-	return table.concat(lines, "\n")
+	lines = Sift.Array.sort(lines)
+	return joinStrings(lines, "\n")
 end
 
 local function resolveStackAmount(stackRaw: any): number
@@ -286,17 +298,17 @@ function itemThunks.resolveHoverTextForStack(stackRaw: any, slotIndexRaw: any): 
 
 	local lines = { name, ("Amount: %d"):format(amount) }
 	if useCase ~= nil and useCase ~= "" then
-		table.insert(lines, ("Use: %s"):format(useCase))
+		lines = Sift.Array.append(lines, ("Use: %s"):format(useCase))
 	end
 	if description ~= nil and description ~= "" then
-		table.insert(lines, "")
-		table.insert(lines, description)
+		lines = Sift.Array.append(lines, "")
+		lines = Sift.Array.append(lines, description)
 	end
 	if statsText ~= "" then
-		table.insert(lines, "")
-		table.insert(lines, statsText)
+		lines = Sift.Array.append(lines, "")
+		lines = Sift.Array.append(lines, statsText)
 	end
-	return table.concat(lines, "\n")
+	return joinStrings(lines, "\n")
 end
 
 function itemThunks.beginDrag(slotIndexRaw: any, stackRaw: any, pointerPositionRaw: any): ItemDragState

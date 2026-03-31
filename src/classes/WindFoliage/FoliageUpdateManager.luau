@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 
 local RippleMotion = require(script.Parent.RippleMotion)
 
@@ -292,7 +295,7 @@ function FoliageUpdateManager.update(self: FoliageUpdateManager, simulationTime:
 end
 
 function FoliageUpdateManager.getStats(self: FoliageUpdateManager): { [string]: number }
-	return table.clone(self.stats)
+	return Sift.Dictionary.copy(self.stats)
 end
 
 return FoliageUpdateManager

@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 
 local RunService = game:GetService("RunService")
 
@@ -210,7 +213,7 @@ function Runtime.getHUDScaler(self: RuntimeContext, configRaw: any?): any
 		return nil
 	end
 	local HUDScaler = require(script.Parent.Parent.Platform.HUDScaler)
-	local config = if typeof(configRaw) == "table" then table.clone(configRaw) else {}
+	local config = if typeof(configRaw) == "table" then Sift.Dictionary.copy(configRaw) else {}
 	if config.platform == nil then
 		config.platform = self.platform
 	end

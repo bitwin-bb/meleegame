@@ -1,6 +1,7 @@
 --!strict
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local Codec = require(script.Parent.Codec)
 local Signal = require(ReplicatedStorage.Packages.Signal)
@@ -240,8 +241,8 @@ function AttributeCache.bind(self: AttributeCache, instanceRaw: any): boolean
 	local attributes = instance:GetAttributes()
 	self.nextBindOrder += 1
 	local record = {
-		cache = table.clone(attributes),
-		base = table.clone(attributes),
+		cache = Sift.Dictionary.copy(attributes),
+		base = Sift.Dictionary.copy(attributes),
 		modifiers = {},
 		dirty = {},
 		dirtyOrder = {},
@@ -588,7 +589,7 @@ function AttributeCache.buildReplicationBatch(self: AttributeCache, maxAttribute
 		entry.attributes[diff.attribute] = diff.newValue
 	end
 
-	local out = table.create(#order)
+	local out = Sift.Array.create(#order)
 	for index = 1, #order do
 		out[index] = grouped[order[index]]
 	end

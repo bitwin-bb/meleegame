@@ -1,5 +1,6 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local Charm = require(ReplicatedStorage.Packages.Charm)
 local BossServiceUtils = require(ReplicatedStorage.Shared.Services.BossService.BossServiceUtils)
@@ -12,12 +13,12 @@ local markerReadyAtom: Charm.Atom<boolean> = Charm.atom(false)
 
 local aliveBossesAtom: Charm.Selector<{ BossSnapshot }> = Charm.computed(function(): { BossSnapshot }
 	local state = markerStateAtom()
-	local aliveBosses = table.create(#state.orderedIds)
+	local aliveBosses = Sift.Array.create(#state.orderedIds)
 
 	for _, runtimeId in state.orderedIds do
 		local snapshot = state.byId[runtimeId]
 		if snapshot ~= nil and snapshot.isAlive == true then
-			table.insert(aliveBosses, snapshot)
+			aliveBosses = Sift.Array.append(aliveBosses, snapshot)
 		end
 	end
 

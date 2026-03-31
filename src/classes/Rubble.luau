@@ -3,6 +3,7 @@
 local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
@@ -10,6 +11,10 @@ local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.Workspace
 
 local Rubble = {}
 Rubble.__index = Rubble
+
+local DEFAULT_COLLISION_GROUP = "Default"
+local PLAYER_COLLISION_GROUP = "PlayersCharacters"
+local ENEMY_COLLISION_GROUP = "NpcEnemies"
 
 type ReusePolicy = "RecycleOldest" | "DropSpawn"
 
@@ -309,9 +314,18 @@ local function safeRegisterCollisionGroup(groupName: string)
 	end)
 end
 
+local function safeSetCollisionGroupCollidable(groupA: string, groupB: string, collidable: boolean)
+	if groupA == "" or groupB == "" then
+		return
+	end
+	pcall(function()
+		PhysicsService:CollisionGroupSetCollidable(groupA, groupB, collidable)
+	end)
+end
+
 function Rubble.new(configRaw: Config?): Rubble
 	local cfg = if typeof(configRaw) == "table" then configRaw else {}
-	local tuning: Tuning = table.clone(DEFAULT_TUNING)
+	local tuning: Tuning = Sift.Dictionary.copy(DEFAULT_TUNING)
 	if typeof(cfg.tuning) == "table" then
 		for key, value in cfg.tuning :: any do
 			(tuning :: any)[key] = value
@@ -427,16 +441,17 @@ function Rubble.new(configRaw: Config?): Rubble
 	end
 	self.raycastParams.FilterDescendantsInstances = filter
 
-	if RunService:IsServer() then
-		safeRegisterCollisionGroup(activeGroup)
-		safeRegisterCollisionGroup(inactiveGroup)
-		pcall(function()
-			PhysicsService:CollisionGroupSetCollidable(inactiveGroup, activeGroup, false)
-		end)
-		pcall(function()
-			PhysicsService:CollisionGroupSetCollidable(inactiveGroup, inactiveGroup, false)
-		end)
-	end
+	safeRegisterCollisionGroup(activeGroup)
+	safeRegisterCollisionGroup(inactiveGroup)
+	safeSetCollisionGroupCollidable(inactiveGroup, activeGroup, false)
+	safeSetCollisionGroupCollidable(inactiveGroup, inactiveGroup, false)
+	safeSetCollisionGroupCollidable(activeGroup, activeGroup, true)
+	safeSetCollisionGroupCollidable(activeGroup, DEFAULT_COLLISION_GROUP, true)
+	safeSetCollisionGroupCollidable(DEFAULT_COLLISION_GROUP, activeGroup, true)
+	safeSetCollisionGroupCollidable(activeGroup, PLAYER_COLLISION_GROUP, false)
+	safeSetCollisionGroupCollidable(PLAYER_COLLISION_GROUP, activeGroup, false)
+	safeSetCollisionGroupCollidable(activeGroup, ENEMY_COLLISION_GROUP, false)
+	safeSetCollisionGroupCollidable(ENEMY_COLLISION_GROUP, activeGroup, false)
 
 	self:WarmPool(tuning.initialPoolSize)
 	self.heartbeat = RunService.Heartbeat:Connect(function(dt)
@@ -445,7 +460,7 @@ function Rubble.new(configRaw: Config?): Rubble
 	if not RunService:IsServer() and self.mirrorRemote and self.mirrorListen then
 			self.mirrorConnection = self.mirrorRemote.OnClientEvent:Connect(function(action, payload)
 				if action == "RubbleSpawn" and typeof(payload) == "table" then
-					local p = table.clone(payload)
+					local p = Sift.Dictionary.copy(payload)
 					local pAny = p :: any
 					pAny.VisualOnly = true
 					pAny.Mirror = false
@@ -866,7 +881,7 @@ function Rubble:Spawn(paramsRaw: SpawnParams?): BasePart?
 	local anchored = b(g(params, "anchored", "Anchored"), false)
 	local enableGravity = b(g(params, "enableGravity", "EnableGravity"), true)
 	local visualOnly = b(g(params, "visualOnly", "VisualOnly"), self.visualOnly)
-	local canCollide = if visualOnly then false else b(g(params, "canCollide", "CanCollide"), self.tuning.defaultCanCollide)
+	local canCollide = b(g(params, "canCollide", "CanCollide"), self.tuning.defaultCanCollide)
 	local canTouch = if visualOnly then false else b(g(params, "canTouch", "CanTouch"), self.tuning.defaultCanTouch)
 	local canQuery = if visualOnly then false else b(g(params, "canQuery", "CanQuery"), self.tuning.defaultCanQuery)
 	local collisionGroup = s(g(params, "collisionGroup", "CollisionGroup"), self.activeGroup)

@@ -1,6 +1,7 @@
 --!strict
 local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local UserInputService = game:GetService("UserInputService")
 
 local Signal = require(ReplicatedStorage.Packages.Signal)
@@ -459,7 +460,7 @@ function GamepadNav.getActiveElements(self: GamepadNav): { GuiObject }
 	if layout == nil then
 		return {}
 	end
-	return table.clone(layout.elements)
+	return Sift.Dictionary.copy(layout.elements)
 end
 
 function GamepadNav.getFocused(self: GamepadNav): GuiObject?

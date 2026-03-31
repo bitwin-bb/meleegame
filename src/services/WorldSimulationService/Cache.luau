@@ -1,6 +1,7 @@
 --!strict
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local CoreObjectPool = require(ReplicatedStorage.Shared.Modules.Core.ObjectPool)
 
@@ -86,7 +87,7 @@ function Cache.acquireNumberArray(self: Cache, lengthRaw: any, fillValueRaw: any
 	local fillValue = if typeof(fillValueRaw) == "number" then fillValueRaw else 0
 	local count = #self.numberArrayPool
 	if count <= 0 then
-		local created = table.create(length, fillValue)
+		local created = Sift.Array.create(length, fillValue)
 		return created
 	end
 	local array = self.numberArrayPool[count]
@@ -122,9 +123,9 @@ function Cache.acquireVectorBuffer(self: Cache, capacityRaw: any): VectorBuffer
 	end
 
 	return {
-		x = table.create(capacity, 0),
-		y = table.create(capacity, 0),
-		z = table.create(capacity, 0),
+		x = Sift.Array.create(capacity, 0),
+		y = Sift.Array.create(capacity, 0),
+		z = Sift.Array.create(capacity, 0),
 		size = capacity,
 	}
 end

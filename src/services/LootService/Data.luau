@@ -55,6 +55,10 @@ LootServiceData.assetSearchRoots = {
 	{ "Assets", "Items", "Weapons" },
 	{ "Assets", "Items", "Axes" },
 	{ "Assets", "Items", "Pickaxes" },
+	{ "Assets", "Items", "Consumables" },
+	{ "Assets", "Items", "EnemyDrops" },
+	{ "Assets", "Items", "CraftingStations" },
+	{ "Assets", "Items", "Plants" },
 	{ "Assets", "Items", "Tiles" },
 	{ "Assets", "Items" },
 	{ "Assets", "Models", "Items" },
@@ -78,6 +82,8 @@ LootServiceData.itemAssetAliases = {
 	Wood = { "Wood", "wood", "WoodTile", "woodTile" },
 	Dirt = { "Dirt", "dirt", "DirtTile", "dirtTile" },
 	Stone = { "Stone", "stone", "StoneTile", "stoneTile" },
+	CopperOre = { "CopperOre", "copperOre", "Copper Ore" },
+	Gel = { "Gel", "gel" },
 	Mud = { "Mud", "mud", "MudTile", "mudTile" },
 	EbonStone = { "EbonStone", "Ebon Stone", "ebonStone", "CorruptStone" },
 }
@@ -97,6 +103,8 @@ LootServiceData.items = {
 	Wood = { rarity = "Common", maxStack = 999 },
 	Dirt = { rarity = "Common", maxStack = 999 },
 	Stone = { rarity = "Common", maxStack = 999 },
+	CopperOre = { rarity = "Common", maxStack = 999 },
+	Gel = { rarity = "Common", maxStack = 999 },
 	Mud = { rarity = "Common", maxStack = 999 },
 	EbonStone = { rarity = "Uncommon", maxStack = 999 },
 }

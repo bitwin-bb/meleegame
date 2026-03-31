@@ -1,5 +1,6 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local Audio = require(ReplicatedStorage.Shared.Modules.Items.Audio)
 local Animations = require(ReplicatedStorage.Shared.Modules.Items.Animations)
@@ -334,7 +335,7 @@ AnimationServiceUtils.DEFAULT_PROFILE_NAME = DEFAULT_PROFILE_NAME
 AnimationServiceUtils.DEFAULT_PROFILE_REGISTRY = DEFAULT_PROFILE_REGISTRY
 
 local function cloneStringArray(values: { string }): { string }
-	local out = table.create(#values)
+	local out = Sift.Array.create(#values)
 	for index, value in values do
 		out[index] = value
 	end

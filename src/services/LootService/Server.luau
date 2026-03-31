@@ -8,6 +8,8 @@ local Workspace = game:GetService("Workspace")
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
+local StringUtils = require(ReplicatedStorage.Shared.Modules.Core.StringUtils)
+local InstanceUtils = require(ReplicatedStorage.Shared.Modules.Platform.InstanceUtils)
 local ResolveItem = require(ReplicatedStorage.Shared.Modules.Game.ResolveItem)
 local ResolveToolInstance = require(ReplicatedStorage.Shared.Modules.Game.ResolveToolInstance)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
@@ -152,6 +154,7 @@ local LOOT_AUDIO = (AudioRegistry :: any).Loot or {}
 local LOOT_ITEM_PICKUP_AUDIO = LOOT_AUDIO.ItemPickup or {}
 local LOOT_COIN_DROP_AUDIO = LOOT_AUDIO.CoinDrop or {}
 local LOOT_COIN_PICKUP_AUDIO = LOOT_AUDIO.CoinPickup or {}
+local LOOT_PICKUP_VOLUME = 1.5
 
 local function sanitizeOwnerUserId(userIdRaw: any): number?
 	if typeof(userIdRaw) ~= "number" or userIdRaw ~= userIdRaw then
@@ -198,33 +201,6 @@ local function forEachBasePart(instance: Instance, callback: (BasePart) -> ())
 	end
 end
 
-local function resolveRootPartFromInstance(instance: Instance): BasePart?
-	if instance:IsA("BasePart") then
-		return instance
-	end
-
-	if instance:IsA("Model") then
-		local rootPart = instance:FindFirstChild("HumanoidRootPart")
-		if rootPart ~= nil and rootPart:IsA("BasePart") then
-			if instance.PrimaryPart == nil then
-				instance.PrimaryPart = rootPart
-			end
-			return rootPart
-		end
-		if instance.PrimaryPart ~= nil then
-			return instance.PrimaryPart
-		end
-		for _, descendant in instance:GetDescendants() do
-			if descendant:IsA("BasePart") then
-				instance.PrimaryPart = descendant
-				return descendant
-			end
-		end
-	end
-
-	return nil
-end
-
 local function toUnitVectorOrFallback(directionRaw: any, fallbackRaw: Vector3): Vector3
 	local fallback = fallbackRaw
 	if fallback.Magnitude <= EPSILON then
@@ -249,14 +225,6 @@ local function shallowCopy(sourceRaw: any): { [string]: any }
 		end
 	end
 	return output
-end
-
-local function normalizeItemToken(raw: any): string
-	local value = LootServiceUtils.sanitizeString(raw, nil)
-	if value == nil then
-		return ""
-	end
-	return string.gsub(string.lower(value), "[%s_%-%.]+", "")
 end
 
 local function pickRandomSoundAssetId(randomObject: Random, soundAssetIds: { string }): string?
@@ -284,13 +252,13 @@ function LootServiceServer.isToolMatchingItemId(self: LootServiceServer, tool: T
 
 	local targetTokens: { [string]: boolean } = {}
 	for _, candidate in LootServiceUtils.resolveItemNameCandidates(self.data, itemId) do
-		local token = normalizeItemToken(candidate)
+		local token = StringUtils.compactToken(candidate)
 		if token ~= "" then
 			targetTokens[token] = true
 		end
 	end
 	if next(targetTokens) == nil then
-		targetTokens[normalizeItemToken(itemId)] = true
+		targetTokens[StringUtils.compactToken(itemId)] = true
 	end
 
 	local resolvedToolItemId = ResolveToolInstance.resolveToolItemId(tool)
@@ -302,7 +270,7 @@ function LootServiceServer.isToolMatchingItemId(self: LootServiceServer, tool: T
 		tool.Name,
 	}
 	for _, candidate in idCandidates do
-		local candidateToken = normalizeItemToken(candidate)
+		local candidateToken = StringUtils.compactToken(candidate)
 		if candidateToken ~= "" and targetTokens[candidateToken] == true then
 			return true
 		end
@@ -415,14 +383,14 @@ function LootServiceServer.resolveCoinTypeFromItemId(
 		return nil
 	end
 
-	local itemToken = normalizeItemToken(itemId)
+	local itemToken = StringUtils.compactToken(itemId)
 	local mapped = COIN_TYPE_BY_ITEM_TOKEN[itemToken]
 	if mapped ~= nil then
 		return mapped
 	end
 
 	for _, candidate in LootServiceUtils.resolveItemNameCandidates(self.data, itemId) do
-		local token = normalizeItemToken(candidate)
+		local token = StringUtils.compactToken(candidate)
 		local byToken = COIN_TYPE_BY_ITEM_TOKEN[token]
 		if byToken ~= nil then
 			return byToken
@@ -523,6 +491,7 @@ function LootServiceServer.playPickupSound(self: LootServiceServer, runtime: Loo
 
 	soundService:playSfxForPlayer(player, soundAssetId, {
 		category = "SFX",
+		volume = LOOT_PICKUP_VOLUME,
 		parent = parent,
 		autoDestroy = true,
 	})
@@ -589,7 +558,7 @@ function LootServiceServer.cloneLootInstanceFromTemplate(
 	end
 
 	local clone = template:Clone()
-	local rootPart = resolveRootPartFromInstance(clone)
+	local rootPart = InstanceUtils.resolveInstanceRootPart(clone, true)
 	if rootPart == nil then
 		clone:Destroy()
 		return nil, nil
@@ -906,7 +875,7 @@ function LootServiceServer.applyDropImpulse(self: LootServiceServer, runtime: Lo
 		linearVelocity = Vector3.new(0, linearVelocity.Y, linearVelocity.Z)
 	end
 
-	local itemToken = normalizeItemToken(runtime.itemId)
+	local itemToken = StringUtils.compactToken(runtime.itemId)
 	local linearScale = 1
 	local angularScale = 1
 	local maxLinearSpeed: number? = nil

@@ -2,6 +2,12 @@
   "name": "genrojotree",
   "tree": {
     "$className": "DataModel",
+    "Workspace": {
+      "$properties": {
+        "FallHeightEnabled": false,
+        "FallenPartsDestroyHeight": -50000
+      }
+    },
     "ReplicatedStorage": {
       "Shared": {
         "$className": "Folder",
@@ -71,21 +77,6 @@
             },
             "CraftingServiceUtils": {
               "$path": "src/services/CraftingService/Utils.luau"
-            }
-          },
-          "DevPromptService": {
-            "$className": "Folder",
-            "DevPromptServiceClient": {
-              "$path": "src/services/DevPromptService/Client.luau"
-            },
-            "Commands": {
-              "$path": "src/services/DevPromptService/Commands.luau"
-            },
-            "Role": {
-              "$path": "src/services/DevPromptService/Role.luau"
-            },
-            "DevPromptServiceUtils": {
-              "$path": "src/services/DevPromptService/Utils.luau"
             }
           },
           "GoreService": {
@@ -378,6 +369,9 @@
             "StateMachine": {
               "$path": "src/modules/Core/StateMachine.luau"
             },
+            "StringUtils": {
+              "$path": "src/modules/Core/StringUtils.luau"
+            },
             "TagQuery": {
               "$path": "src/modules/Core/TagQuery.luau"
             },
@@ -396,6 +390,9 @@
           },
           "Game": {
             "$className": "Folder",
+            "BuildAnimationMelee": {
+              "$path": "src/modules/Game/BuildAnimationMelee.luau"
+            },
             "Player": {
               "$className": "Folder",
               "PlayerSpawnCooldown": {
@@ -428,6 +425,9 @@
             },
             "Npcs": {
               "$path": "src/modules/Items/Npcs.luau"
+            },
+            "Ores": {
+              "$path": "src/modules/Items/Ores.luau"
             },
             "ParallaxBackgrounds": {
               "$path": "src/modules/Items/ParallaxBackgrounds.luau"
@@ -495,6 +495,9 @@
             "Input": {
               "$path": "src/modules/Platform/Input.luau"
             },
+            "InstanceUtils": {
+              "$path": "src/modules/Platform/InstanceUtils.luau"
+            },
             "PerfTier": {
               "$path": "src/modules/Platform/PerfTier.luau"
             },
@@ -547,6 +550,78 @@
               "$path": "src/modules/UI/VirtualizedList.luau"
             }
           }
+        },
+        "Cmdr": {
+          "$className": "Folder",
+          "Commands": {
+            "$className": "Folder",
+            "ClearInventory": {
+              "$path": "src/cmdr/Commands/ClearInventory.luau"
+            },
+            "Damage": {
+              "$path": "src/cmdr/Commands/Damage.luau"
+            },
+            "Fly": {
+              "$path": "src/cmdr/Commands/Fly.luau"
+            },
+            "Give": {
+              "$path": "src/cmdr/Commands/Give.luau"
+            },
+            "Godmode": {
+              "$path": "src/cmdr/Commands/Godmode.luau"
+            },
+            "Heal": {
+              "$path": "src/cmdr/Commands/Heal.luau"
+            },
+            "SetHealth": {
+              "$path": "src/cmdr/Commands/SetHealth.luau"
+            },
+            "SetMana": {
+              "$path": "src/cmdr/Commands/SetMana.luau"
+            },
+            "Spawn": {
+              "$path": "src/cmdr/Commands/Spawn.luau"
+            },
+            "Time": {
+              "$path": "src/cmdr/Commands/Time.luau"
+            },
+            "Unfly": {
+              "$path": "src/cmdr/Commands/Unfly.luau"
+            },
+            "Weather": {
+              "$path": "src/cmdr/Commands/Weather.luau"
+            }
+          },
+          "EntityCatalog": {
+            "$path": "src/cmdr/EntityCatalog.luau"
+          },
+          "Types": {
+            "$className": "Folder",
+            "EntityToken": {
+              "$path": "src/cmdr/Types/EntityToken.luau"
+            },
+            "InventoryItem": {
+              "$path": "src/cmdr/Types/InventoryItem.luau"
+            },
+            "WeatherKind": {
+              "$path": "src/cmdr/Types/WeatherKind.luau"
+            }
+          },
+          "CmdrUtils": {
+            "$path": "src/cmdr/Utils.luau"
+          }
+        },
+        "Tests": {
+          "$className": "Folder",
+          "Specs": {
+            "$className": "Folder",
+            "Core": {
+              "$className": "Folder",
+              "StringUtils.spec": {
+                "$path": "src/tests/Specs/Core/StringUtils.spec.luau"
+              }
+            }
+          }
         }
       },
       "Packages": {
@@ -559,6 +634,48 @@
     "ServerScriptService": {
       "Server": {
         "$path": "src/startup/Server.server.luau"
+      },
+      "Cmdr": {
+        "$className": "Folder",
+        "Commands": {
+          "$className": "Folder",
+          "ClearInventoryServer": {
+            "$path": "src/cmdr/ServerCommands/ClearInventory.luau"
+          },
+          "DamageServer": {
+            "$path": "src/cmdr/ServerCommands/Damage.luau"
+          },
+          "FlyServer": {
+            "$path": "src/cmdr/ServerCommands/Fly.luau"
+          },
+          "GiveServer": {
+            "$path": "src/cmdr/ServerCommands/Give.luau"
+          },
+          "GodmodeServer": {
+            "$path": "src/cmdr/ServerCommands/Godmode.luau"
+          },
+          "HealServer": {
+            "$path": "src/cmdr/ServerCommands/Heal.luau"
+          },
+          "SetHealthServer": {
+            "$path": "src/cmdr/ServerCommands/SetHealth.luau"
+          },
+          "SetManaServer": {
+            "$path": "src/cmdr/ServerCommands/SetMana.luau"
+          },
+          "SpawnServer": {
+            "$path": "src/cmdr/ServerCommands/Spawn.luau"
+          },
+          "TimeServer": {
+            "$path": "src/cmdr/ServerCommands/Time.luau"
+          },
+          "UnflyServer": {
+            "$path": "src/cmdr/ServerCommands/Unfly.luau"
+          },
+          "WeatherServer": {
+            "$path": "src/cmdr/ServerCommands/Weather.luau"
+          }
+        }
       },
       "Services": {
         "$className": "Folder",
@@ -602,12 +719,6 @@
           "$className": "Folder",
           "CraftingServiceServer": {
             "$path": "src/services/CraftingService/Server.luau"
-          }
-        },
-        "DevPromptService": {
-          "$className": "Folder",
-          "DevPromptServiceServer": {
-            "$path": "src/services/DevPromptService/Server.luau"
           }
         },
         "GoreService": {
@@ -712,6 +823,12 @@
       },
       "Modules": {
         "$className": "Folder"
+      },
+      "Tests": {
+        "$className": "Folder",
+        "runTests.server": {
+          "$path": "src/tests/runTests.server.luau"
+        }
       }
     },
     "StarterPlayer": {

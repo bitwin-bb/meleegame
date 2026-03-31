@@ -11,6 +11,8 @@ local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
 local Configs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
+local StringUtils = require(ReplicatedStorage.Shared.Modules.Core.StringUtils)
+local InstanceUtils = require(ReplicatedStorage.Shared.Modules.Platform.InstanceUtils)
 local Slime = require(ReplicatedStorage.Shared.Classes.Npc.AiTypes.slime)
 local EnemyHitbox = require(ReplicatedStorage.Shared.Classes.EnemyHitbox)
 local AudioServiceUtils = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceUtils)
@@ -148,6 +150,8 @@ local NPC_AUDIO = (AudioRegistry :: any).Npcs or {}
 local SLIME_AUDIO = (NPC_AUDIO :: any).Slimes or {}
 local DEFAULT_SLIME_AUDIO_BINDINGS = (SLIME_AUDIO :: any).Default or {}
 local GREEN_SLIME_AUDIO_BINDINGS = (SLIME_AUDIO :: any).GreenSlime or DEFAULT_SLIME_AUDIO_BINDINGS
+local SLIME_GEL_DROP_ITEM_ID = "Gel"
+local SLIME_GEL_DROP_AMOUNT = 1
 local SLIME_AUDIO_KEY_BY_TOKEN = {
 	jump = "Jump",
 	land = "Land",
@@ -234,29 +238,6 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?,
 	return value
 end
 
-local function resolveRootPartFromModel(model: Model?): BasePart?
-	if model == nil then
-		return nil
-	end
-
-	local humanoidRoot = model:FindFirstChild("HumanoidRootPart")
-	if humanoidRoot ~= nil and humanoidRoot:IsA("BasePart") then
-		return humanoidRoot
-	end
-
-	if model.PrimaryPart ~= nil then
-		return model.PrimaryPart
-	end
-
-	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("BasePart") then
-			return descendant
-		end
-	end
-
-	return nil
-end
-
 local function sanitizeSizeVector(sizeRaw: any, fallback: Vector3): Vector3
 	if typeof(sizeRaw) ~= "Vector3" then
 		return fallback
@@ -297,68 +278,6 @@ local function aabbIntersects(aMin: Vector3, aMax: Vector3, bMin: Vector3, bMax:
 	return true
 end
 
-local function normalizeToken(valueRaw: any): string
-	if typeof(valueRaw) ~= "string" then
-		return ""
-	end
-	return string.lower(string.gsub(valueRaw, "[%s_%-%.]", ""))
-end
-
-local function findPartByPath(root: Instance?, pathSegments: { string }): BasePart?
-	local cursor = root
-	for _, segment in pathSegments do
-		if cursor == nil then
-			return nil
-		end
-		cursor = cursor:FindFirstChild(segment)
-	end
-
-	if cursor ~= nil and cursor:IsA("BasePart") then
-		return cursor
-	end
-	return nil
-end
-
-local function resolveFirstBasePart(instanceRaw: Instance?): BasePart?
-	if instanceRaw == nil then
-		return nil
-	end
-	if instanceRaw:IsA("BasePart") then
-		return instanceRaw
-	end
-
-	local asModel = if instanceRaw:IsA("Model") then instanceRaw else nil
-	if asModel ~= nil and asModel.PrimaryPart ~= nil then
-		return asModel.PrimaryPart
-	end
-
-	for _, descendant in instanceRaw:GetDescendants() do
-		if descendant:IsA("BasePart") then
-			return descendant
-		end
-	end
-	return nil
-end
-
-local function findDescendantBasePartByToken(root: Instance?, token: string): BasePart?
-	if root == nil then
-		return nil
-	end
-
-	local targetToken = normalizeToken(token)
-	if targetToken == "" then
-		return nil
-	end
-
-	for _, descendant in root:GetDescendants() do
-		if descendant:IsA("BasePart") and normalizeToken(descendant.Name) == targetToken then
-			return descendant
-		end
-	end
-
-	return nil
-end
-
 local function setModelCollisionGroup(model: Model, collisionGroup: string)
 	for _, descendant in model:GetDescendants() do
 		if descendant:IsA("BasePart") then
@@ -372,7 +291,7 @@ local function getOrCreateEffectsJunkFolder(): Folder
 end
 
 local function resolveSlimeBloodEffectTemplate(): BasePart?
-	local directTemplate = findPartByPath(ReplicatedStorage, { "Assets", "Effects", "SlimeBlood" })
+	local directTemplate = InstanceUtils.resolveBasePartByPath(ReplicatedStorage, { "Assets", "Effects", "SlimeBlood" })
 	if directTemplate ~= nil then
 		return directTemplate
 	end
@@ -382,29 +301,29 @@ local function resolveSlimeBloodEffectTemplate(): BasePart?
 
 	if effects ~= nil then
 		local directChild = effects:FindFirstChild("SlimeBlood")
-		local directPart = resolveFirstBasePart(directChild)
+		local directPart = InstanceUtils.resolveFirstBasePart(directChild)
 		if directPart ~= nil then
 			return directPart
 		end
 
-		local nestedByToken = findDescendantBasePartByToken(effects, "SlimeBlood")
+		local nestedByToken = InstanceUtils.findDescendantBasePartByToken(effects, "SlimeBlood")
 		if nestedByToken ~= nil then
 			return nestedByToken
 		end
 	end
 
-	local anywhereInReplicatedStorage = findDescendantBasePartByToken(ReplicatedStorage, "SlimeBlood")
+	local anywhereInReplicatedStorage = InstanceUtils.findDescendantBasePartByToken(ReplicatedStorage, "SlimeBlood")
 	if anywhereInReplicatedStorage ~= nil then
 		return anywhereInReplicatedStorage
 	end
 
 	if effects ~= nil then
-		local bloodDirectPart = resolveFirstBasePart(effects:FindFirstChild("Blood"))
+		local bloodDirectPart = InstanceUtils.resolveFirstBasePart(effects:FindFirstChild("Blood"))
 		if bloodDirectPart ~= nil then
 			return bloodDirectPart
 		end
 
-		local bloodNestedPart = findDescendantBasePartByToken(effects, "Blood")
+		local bloodNestedPart = InstanceUtils.findDescendantBasePartByToken(effects, "Blood")
 		if bloodNestedPart ~= nil then
 			return bloodNestedPart
 		end
@@ -550,7 +469,7 @@ function NpcServiceServer.resolveRuntimeSoundSource(self: NpcServiceServer, runt
 		return nil
 	end
 
-	local token = normalizeToken(soundNameRaw)
+	local token = StringUtils.compactToken(soundNameRaw)
 	local soundKey = if isSlimeRuntime(runtime) then SLIME_AUDIO_KEY_BY_TOKEN[token] else nil
 	if soundKey ~= nil then
 		local soundAssetIds = AudioServiceUtils.collectSoundAssetIds(resolveSlimeAudioBindings(runtime)[soundKey])
@@ -696,7 +615,7 @@ function NpcServiceServer.resolveRuntimeHurtbox(self: NpcServiceServer, runtime:
 	end
 
 	if center == nil then
-		local rootPart = resolveRootPartFromModel(model)
+		local rootPart = InstanceUtils.resolveModelRootPart(model)
 		if rootPart ~= nil then
 			center = rootPart.Position
 			size = sanitizeSizeVector(rootPart.Size, DEFAULT_RUNTIME_HURTBOX_SIZE)
@@ -768,7 +687,7 @@ function NpcServiceServer.emitRuntimePreDamageSlimeBlood(
 	source: any?,
 	damageContextRaw: any?
 )
-	if normalizeToken(damageContextRaw) ~= "melee" then
+	if StringUtils.compactToken(damageContextRaw) ~= "melee" then
 		return
 	end
 	if runtime.npcType ~= "Slime" then
@@ -804,7 +723,7 @@ function NpcServiceServer.emitRuntimePreDamageSlimeBlood(
 
 	local origin: any = runtime.slime.rootPart
 	if origin == nil or origin.Parent == nil then
-		local modelRoot = resolveRootPartFromModel(runtime.slime.model)
+		local modelRoot = InstanceUtils.resolveModelRootPart(runtime.slime.model)
 		if modelRoot ~= nil then
 			origin = modelRoot
 		else
@@ -953,7 +872,7 @@ function NpcServiceServer.registerRuntimeEnemyHitbox(self: NpcServiceServer, run
 			return hurtboxSize
 		end,
 		getAttackSize = function(ownerRuntime: NpcRuntime, model: Model?, rootPart: BasePart?): Vector3
-			local basePart = if rootPart ~= nil then rootPart else resolveRootPartFromModel(model)
+			local basePart = if rootPart ~= nil then rootPart else InstanceUtils.resolveModelRootPart(model)
 			local baseSize = if basePart ~= nil then basePart.Size else DEFAULT_RUNTIME_HURTBOX_SIZE
 			local slime = ownerRuntime.slime
 			local attackRange = sanitizeNumber(slime.combat.attackRange, 3.5, 0.5, 25)
@@ -1151,7 +1070,7 @@ function NpcServiceServer.getNearestPlayerDistance(self: NpcServiceServer, posit
 			continue
 		end
 
-		local rootPart = resolveRootPartFromModel(character)
+		local rootPart = InstanceUtils.resolveModelRootPart(character)
 		if rootPart == nil then
 			continue
 		end
@@ -1217,6 +1136,76 @@ function NpcServiceServer.createDefaultSpawnConfigAt(self: NpcServiceServer, spa
 		return nil
 	end
 	return configs[1]
+end
+
+function NpcServiceServer.getDebugSpawnCFrameForPlayer(
+	self: NpcServiceServer,
+	playerRaw: any,
+	indexRaw: any
+): CFrame?
+	if typeof(playerRaw) ~= "Instance" or not playerRaw:IsA("Player") then
+		return self:getNextSpawnCFrame()
+	end
+
+	local character = playerRaw.Character
+	if character == nil then
+		return self:getNextSpawnCFrame()
+	end
+
+	local rootPart = InstanceUtils.resolveModelRootPart(character)
+	if rootPart == nil then
+		return self:getNextSpawnCFrame()
+	end
+
+	local index = math.max(1, math.floor(sanitizeNumber(indexRaw, 1, 1, 10 ^ 6)))
+	local laneIndex = math.floor((index - 1) / 2)
+	local directionSign = if index % 2 == 1 then 1 else -1
+	local zOffset = DEFAULT_PLAYER_RELATIVE_MIN_Z_OFFSET + laneIndex * 8
+	local yOffset = DEFAULT_PLAYER_RELATIVE_Y_OFFSET + math.min(laneIndex, 4)
+	local candidatePosition = rootPart.Position + Vector3.new(0, yOffset, directionSign * zOffset)
+	local snappedSpawnCFrame = self:resolveSurfaceSpawnCFrame(candidatePosition, character)
+
+	if snappedSpawnCFrame ~= nil
+		and not self:isCorruptionBiomePosition(snappedSpawnCFrame.Position)
+		and self:isSpawnGapClear(snappedSpawnCFrame, character)
+	then
+		return snappedSpawnCFrame
+	end
+
+	return self:getNextSpawnCFrame()
+end
+
+function NpcServiceServer.spawnDebugNpcById(
+	self: NpcServiceServer,
+	npcIdRaw: any,
+	playerRaw: any,
+	indexRaw: any
+): (NpcRuntime?, string?)
+	if npcIdRaw ~= "GreenSlime" then
+		return nil, "unsupported_npc"
+	end
+
+	local spawnCFrame = self:getDebugSpawnCFrameForPlayer(playerRaw, indexRaw)
+	if spawnCFrame == nil then
+		return nil, "missing_spawn_cframe"
+	end
+
+	local spawnConfig = self:createDefaultSpawnConfigAt(spawnCFrame)
+	if spawnConfig == nil then
+		return nil, "invalid_spawn_configuration"
+	end
+
+	spawnConfig.slimeType = "GreenSlime"
+	spawnConfig.displayName = "Green Slime"
+	spawnConfig.modelName = "GreenSlime"
+	spawnConfig.modelHierarchy = "Enemies.GreenSlime"
+
+	local runtime = self:spawnSlime(spawnConfig)
+	if runtime == nil then
+		return nil, "spawn_failed"
+	end
+
+	return runtime, nil
 end
 
 function NpcServiceServer.tryAutoSpawnSlime(self: NpcServiceServer, reasonRaw: any): NpcRuntime?
@@ -1383,7 +1372,7 @@ function NpcServiceServer.resolveRuntimeDeathOrigin(self: NpcServiceServer, runt
 		return deathPosition
 	end
 
-	local rootPart = resolveRootPartFromModel(runtime.slime.model)
+	local rootPart = InstanceUtils.resolveModelRootPart(runtime.slime.model)
 	if rootPart ~= nil then
 		return rootPart.Position
 	end
@@ -1443,7 +1432,7 @@ function NpcServiceServer.emitRuntimeSlimeBlood(
 
 	local sourcePart = runtime.slime.rootPart
 	if sourcePart == nil or sourcePart.Parent == nil then
-		sourcePart = resolveRootPartFromModel(runtime.slime.model)
+		sourcePart = InstanceUtils.resolveModelRootPart(runtime.slime.model)
 	end
 	if sourcePart == nil then
 		bloodEffect:Destroy()
@@ -1925,12 +1914,15 @@ function NpcServiceServer.trackRuntime(self: NpcServiceServer, runtime: NpcRunti
 		if lootService ~= nil then
 			local deathPosition = runtime.slime:getPosition()
 			if deathPosition == nil then
-				local rootPart = resolveRootPartFromModel(runtime.slime.model)
+				local rootPart = InstanceUtils.resolveModelRootPart(runtime.slime.model)
 				if rootPart ~= nil then
 					deathPosition = rootPart.Position
 				end
 			end
 			if deathPosition ~= nil then
+				lootService:spawnLootRuntime(SLIME_GEL_DROP_ITEM_ID, SLIME_GEL_DROP_AMOUNT, deathPosition, {
+					sourceType = runtime.displayName,
+				})
 				lootService:spawnDropsFromSource(runtime.displayName, deathPosition, {
 					sourceType = runtime.displayName,
 				})

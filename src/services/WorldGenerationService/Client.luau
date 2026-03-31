@@ -2,11 +2,13 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
+local OreRegistry = require(ReplicatedStorage.Shared.Modules.Items.Ores)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
 local ProceduralTree = require(ReplicatedStorage.Shared.Classes.WorldGeneration.Tree)
 local ProceduralCactus = require(ReplicatedStorage.Shared.Classes.WorldGeneration.Cactus)
@@ -175,6 +177,22 @@ local TERRAIN_HOVER_FILL_COLOR = Color3.fromRGB(255, 221, 64)
 local TERRAIN_HOVER_OUTLINE_COLOR = Color3.fromRGB(255, 221, 64)
 local TERRAIN_HOVER_FILL_TRANSPARENCY = 1
 local TERRAIN_HOVER_OUTLINE_TRANSPARENCY = 0
+local STONE_TILE_ID = 3
+local ORE_TEXTURE_NAME = "OreTexture"
+local ORE_TEXTURE_FACES = {
+	Enum.NormalId.Front,
+	Enum.NormalId.Back,
+	Enum.NormalId.Left,
+	Enum.NormalId.Right,
+	Enum.NormalId.Top,
+	Enum.NormalId.Bottom,
+}
+local ORE_ASSET_KEYS_BY_TILE_ID = {
+	[10] = { "CopperOre", "Copper" },
+	[11] = { "IronOre", "Iron" },
+	[12] = { "SilverOre", "Silver" },
+	[13] = { "GoldOre", "Gold" },
+}
 
 local TILE_VISUALS: { [number]: TileVisual } = WorldGenerationColor.TILE_VISUALS
 local TREE_PALETTE_CORRUPTION_1 = WorldGenerationColor.TREE_PALETTES.Corruption1
@@ -506,7 +524,7 @@ local function computeTreeSignature(snapshot: ChunkSnapshot): string
 		return ""
 	end
 
-	local chunks = table.create(#trees)
+	local chunks = Sift.Array.create(#trees)
 	for index, tree in trees do
 		chunks[index] = table.concat({
 			tostring(tree.tileX),
@@ -818,7 +836,7 @@ local function buildGreedyRectangles(
 	shouldInclude: (value: number, index: number) -> boolean
 ): { GreedyRect }
 	local rectangles: { GreedyRect } = {}
-	local visited: { boolean } = table.create(width * height, false)
+	local visited: { boolean } = Sift.Array.create(width * height, false)
 
 	for localY = 0, height - 1 do
 		for localX = 0, width - 1 do
@@ -887,13 +905,79 @@ local function buildGreedyRectangles(
 end
 
 local function styleForegroundPart(part: BasePart, tileId: number)
-	local style = TILE_VISUALS[tileId] or TILE_VISUALS[3]
+	local visualTileId = if ORE_ASSET_KEYS_BY_TILE_ID[tileId] ~= nil then STONE_TILE_ID else tileId
+	local style = TILE_VISUALS[visualTileId] or TILE_VISUALS[STONE_TILE_ID]
 	part.Name = style.name
 	part.Color = style.color
 	part.Material = style.material
 	part.Transparency = style.transparency
 	part.CastShadow = false
 	applyTileStudSurfaces(part)
+end
+
+local function resolveOreTextureAsset(tileId: number): string?
+	local assetKeys = ORE_ASSET_KEYS_BY_TILE_ID[tileId]
+	if assetKeys == nil or typeof(OreRegistry) ~= "table" then
+		return nil
+	end
+
+	local oreRegistry = OreRegistry :: { [string]: any }
+	for _, assetKey in assetKeys do
+		local entry = oreRegistry[assetKey]
+		if typeof(entry) == "string" and entry ~= "" then
+			return entry
+		end
+		if typeof(entry) ~= "table" then
+			continue
+		end
+
+		local asset = entry.asset or entry.texture or entry.id
+		if typeof(asset) == "string" and asset ~= "" then
+			return asset
+		end
+	end
+
+	return nil
+end
+
+local function clearOreTextures(part: BasePart)
+	for _, child in part:GetChildren() do
+		if child:IsA("Texture") and child.Name == ORE_TEXTURE_NAME then
+			child:Destroy()
+		end
+	end
+end
+
+local function resolveOreTextureScale(face: Enum.NormalId, tileSize: number, tileDepth: number): (number, number)
+	if face == Enum.NormalId.Left or face == Enum.NormalId.Right then
+		return tileDepth, tileSize
+	end
+	if face == Enum.NormalId.Top or face == Enum.NormalId.Bottom then
+		return tileSize, tileDepth
+	end
+	return tileSize, tileSize
+end
+
+local function applyOreTextures(part: BasePart, tileId: number, tileSize: number, tileDepth: number)
+	clearOreTextures(part)
+
+	local textureAsset = resolveOreTextureAsset(tileId)
+	if textureAsset == nil then
+		return
+	end
+
+	local safeTileSize = math.max(0.01, tileSize)
+	local safeTileDepth = math.max(0.01, tileDepth)
+	for _, face in ORE_TEXTURE_FACES do
+		local studsPerTileU, studsPerTileV = resolveOreTextureScale(face, safeTileSize, safeTileDepth)
+		local texture = Instance.new("Texture")
+		texture.Name = ORE_TEXTURE_NAME
+		texture.Face = face
+		texture.Texture = textureAsset
+		texture.StudsPerTileU = studsPerTileU
+		texture.StudsPerTileV = studsPerTileV
+		texture.Parent = part
+	end
 end
 
 local function styleBackgroundPart(part: BasePart, tileId: number, layerIndex: number, layerCount: number)
@@ -1010,6 +1094,7 @@ function WorldGenerationServiceClient.createForegroundRectPart(
 	part.CanTouch = false
 	part.Size = Vector3.new(tileDepth, tileSize * height, tileSize * width)
 	styleForegroundPart(part, tileId)
+	applyOreTextures(part, tileId, tileSize, tileDepth)
 
 	local centerTileX = tileMinX + width * 0.5
 	local centerTileY = tileMinY + height * 0.5
@@ -1391,7 +1476,7 @@ function WorldGenerationServiceClient.sanitizeChunkSnapshot(
 	local revision = sanitizeInteger(source.revision, 0, 2147483646, 0)
 
 	local totalTiles = width * height
-	local tiles = table.create(totalTiles, FOREGROUND_TILE_AIR_ID)
+	local tiles = Sift.Array.create(totalTiles, FOREGROUND_TILE_AIR_ID)
 	local tilesRaw = if typeof(source.tiles) == "table" then source.tiles :: { any } else {}
 	for tileIndex = 1, totalTiles do
 		local rawTileId = tilesRaw[tileIndex]
@@ -1399,7 +1484,7 @@ function WorldGenerationServiceClient.sanitizeChunkSnapshot(
 			tiles[tileIndex] = math.floor(rawTileId)
 		end
 	end
-	local depthLayers = table.create(totalTiles, DEPTH_LAYER_CODE_UNDERGROUND)
+	local depthLayers = Sift.Array.create(totalTiles, DEPTH_LAYER_CODE_UNDERGROUND)
 	local depthLayersRaw = if typeof(source.depthLayers) == "table" then source.depthLayers :: { any } else {}
 	for tileIndex = 1, totalTiles do
 		local rawDepthLayerCode = depthLayersRaw[tileIndex]
@@ -1414,7 +1499,7 @@ function WorldGenerationServiceClient.sanitizeChunkSnapshot(
 			depthLayers[tileIndex] = DEPTH_LAYER_CODE_SKY
 		end
 	end
-	local depthBelowSurface = table.create(totalTiles, 0)
+	local depthBelowSurface = Sift.Array.create(totalTiles, 0)
 	local depthBelowSurfaceRaw = if typeof(source.depthBelowSurface) == "table"
 		then source.depthBelowSurface :: { any }
 		else {}
@@ -1429,7 +1514,7 @@ function WorldGenerationServiceClient.sanitizeChunkSnapshot(
 	end
 
 	local dominantBiomeId = sanitizeInteger(source.dominantBiomeId, BIOME_ID_FOREST, BIOME_ID_JUNGLE, BIOME_ID_FOREST)
-	local biomeIds = table.create(totalTiles, dominantBiomeId)
+	local biomeIds = Sift.Array.create(totalTiles, dominantBiomeId)
 	local biomeIdsRaw = if typeof(source.biomeIds) == "table" then source.biomeIds :: { any } else {}
 	for tileIndex = 1, totalTiles do
 		local rawBiomeId = biomeIdsRaw[tileIndex]
@@ -1440,7 +1525,7 @@ function WorldGenerationServiceClient.sanitizeChunkSnapshot(
 
 	local dominantBiomeType =
 		sanitizeInteger(source.dominantBiomeType, BIOME_TYPE_NORMAL, BIOME_TYPE_CORRUPTION, BIOME_TYPE_NORMAL)
-	local biomeTypes = table.create(totalTiles, dominantBiomeType)
+	local biomeTypes = Sift.Array.create(totalTiles, dominantBiomeType)
 	local biomeTypesRaw = if typeof(source.biomeTypes) == "table" then source.biomeTypes :: { any } else {}
 	for tileIndex = 1, totalTiles do
 		local rawBiomeType = biomeTypesRaw[tileIndex]
@@ -1464,7 +1549,7 @@ function WorldGenerationServiceClient.sanitizeChunkSnapshot(
 		local layerTileMinY = sanitizeInteger(layer.tileMinY, -10000000, 10000000, tileMinY)
 		local layerIndex = sanitizeInteger(layer.layerIndex, 1, 64, #backgroundLayers + 1)
 		local layerTotalTiles = layerWidth * layerHeight
-		local layerTiles = table.create(layerTotalTiles, FOREGROUND_TILE_AIR_ID)
+		local layerTiles = Sift.Array.create(layerTotalTiles, FOREGROUND_TILE_AIR_ID)
 		local layerTilesRaw = if typeof(layer.tiles) == "table" then layer.tiles :: { any } else {}
 		for tileIndex = 1, layerTotalTiles do
 			local rawTileId = layerTilesRaw[tileIndex]
@@ -1653,7 +1738,7 @@ function WorldGenerationServiceClient.buildChunkVisualModel(
 	local tileSize = self.state.tileSize
 	local partCount = 0
 	local terrainRectRuntimes = {} :: { TerrainRectRuntime }
-	local terrainRectByLocalTileIndex = table.create(snapshot.width * snapshot.height, 0) :: { number }
+	local terrainRectByLocalTileIndex = Sift.Array.create(snapshot.width * snapshot.height, 0) :: { number }
 
 	local terrainGreedyRects = buildGreedyRectangles(
 		snapshot.tiles,
@@ -1758,7 +1843,7 @@ function WorldGenerationServiceClient.buildChunkVisualModel(
 		local centerTileY = treeSpawnData.tileY + TREE_SURFACE_OFFSET_Y_TILES
 		local position = self:computeTileCenterPosition(centerTileX, centerTileY, treePlaneOffset)
 
-		local treeConfig = table.clone(variantDefinition.config) :: { [string]: any }
+		local treeConfig = Sift.Dictionary.copy(variantDefinition.config) :: { [string]: any }
 		treeConfig.Seed = treeSpawnData.seed
 		treeConfig.ModelName = `Tree_{snapshot.chunkX}_{snapshot.chunkY}_{treeCount + 1}`
 

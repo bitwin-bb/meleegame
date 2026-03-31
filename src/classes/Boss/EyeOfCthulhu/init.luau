@@ -1,5 +1,6 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
 local BossBase = require(script.Parent)
@@ -215,7 +216,7 @@ local function chooseSideSign(spawnRequest: BossSpawnRequest): number
 end
 
 local function resolveInitialSpawnRequest(spawnRequest: BossSpawnRequest, config: EyeConfig): BossSpawnRequest
-	local resolved = table.clone(spawnRequest)
+	local resolved = Sift.Dictionary.copy(spawnRequest)
 	if resolved.targetPlayer ~= nil then
 		local rootPart = BossServiceUtils.resolveCharacterRootPart(resolved.targetPlayer)
 		if rootPart ~= nil then

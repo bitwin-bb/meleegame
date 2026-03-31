@@ -2,6 +2,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 
 local Networker = require(ReplicatedStorage.Packages.Networker)
@@ -126,7 +127,7 @@ function LiquidServiceClient:createChunkSnapshot(snapshotRaw: any): ClientChunkS
 		then math.max(1, math.floor(source.height))
 		else self.state.chunkSize
 	local total = width * height
-	local cells = table.create(total, 0)
+	local cells = Sift.Array.create(total, 0)
 	local sourceCells = if typeof(source.cells) == "table" then source.cells else {}
 	for index = 1, total do
 		local packed = sourceCells[index]
@@ -246,7 +247,7 @@ function LiquidServiceClient:markAllRowsDirtyForChunk(chunkKey: string)
 	if snapshot == nil then
 		return
 	end
-	local allRows = table.create(snapshot.height)
+	local allRows = Sift.Array.create(snapshot.height)
 	for rowY = 0, snapshot.height - 1 do
 		allRows[#allRows + 1] = rowY
 	end

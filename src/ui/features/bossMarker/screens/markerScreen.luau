@@ -1,5 +1,6 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
@@ -121,7 +122,7 @@ local function buildRenderedMarkers(camera: Camera?, markerState: MarkerState): 
 		return {}
 	end
 
-	local renderedMarkers = table.create(#markerState.orderedIds)
+	local renderedMarkers = Sift.Array.create(#markerState.orderedIds)
 	for _, runtimeId in markerState.orderedIds do
 		local snapshot = markerState.byId[runtimeId]
 		if snapshot == nil or snapshot.isAlive ~= true then
@@ -142,7 +143,7 @@ local function buildRenderedMarkers(camera: Camera?, markerState: MarkerState): 
 		local markerPosition = clampToViewportEdge(direction, viewportSize)
 		local rotation = math.deg(math.atan2(direction.Y, direction.X)) + ROTATION_OFFSET_DEGREES
 
-		table.insert(renderedMarkers, {
+		renderedMarkers = Sift.Array.append(renderedMarkers, {
 			runtimeId = runtimeId,
 			icon = resolveBossIcon(snapshot.bossId),
 			position = markerPosition,

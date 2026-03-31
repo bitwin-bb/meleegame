@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 
 local Codec = {}
 
@@ -36,7 +39,7 @@ local FNV_PRIME = 16777619
 local MAX_BITMASK_BITS = 31
 
 local function cloneArray(source: { any }): { any }
-	local out = table.create(#source)
+	local out = Sift.Array.create(#source)
 	for index = 1, #source do
 		out[index] = source[index]
 	end
@@ -246,7 +249,7 @@ local function parseValue(source: string, startIndex: number): (any, number)
 	end
 	if tag == "a" then
 		local count, cursor = parseLength(source, startIndex + 1, "[")
-		local out = table.create(count)
+		local out = Sift.Array.create(count)
 		for index = 1, count do
 			local parsed
 			parsed, cursor = parseValue(source, cursor)
@@ -611,7 +614,7 @@ end
 function Codec.unpackBitmask(bitmaskRaw: any, bitCountRaw: any): { boolean }
 	local bitmask = clampInteger(bitmaskRaw, 0, 2147483647)
 	local bitCount = clampInteger(bitCountRaw, 0, MAX_BITMASK_BITS)
-	local flags = table.create(bitCount, false)
+	local flags = Sift.Array.create(bitCount, false)
 	for index = 1, bitCount do
 		flags[index] = bit32.band(bitmask, bit32.lshift(1, index - 1)) ~= 0
 	end

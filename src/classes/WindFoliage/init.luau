@@ -209,6 +209,7 @@ local DEFAULT_CONFIG: Config = {
 	enabled = true,
 	bucketCount = 4,
 	gridCellSize = 18,
+	octreeMaxDepth = 4,
 	trackedRefreshInterval = 0.08,
 	disturbancePulseInterval = 0.05,
 	poolShrinkInterval = 2.5,
@@ -489,6 +490,7 @@ function WindFoliage.new(configRaw: Config?): any
 
 	self.runtimeRegistry = TreeRuntimeRegistry.new({
 		gridCellSize = clampNumber(config.gridCellSize, DEFAULT_CONFIG.gridCellSize, 1, 2048),
+		octreeMaxDepth = clampNumber(config.octreeMaxDepth, DEFAULT_CONFIG.octreeMaxDepth, 1, 12),
 	})
 	self.lodController = LODController.new({
 		lod = lodConfig,
@@ -970,8 +972,7 @@ function WindFoliage.applyDisturbanceSource(self: any, source: DisturbanceSource
 	local updateManager = self.updateManager
 	local maxInteractiveTrees = updateManager.maxInteractiveTrees
 	local applied = 0
-	for _, queryRecord in records do
-		local entry = queryRecord.payload
+	for _, entry in records do
 		if entry ~= nil then
 			local impulse = DisturbanceSourceModule.computeImpulse(source, entry.rootPosition)
 			if impulse.Magnitude > 1e-5 then

@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 
 local Shared = require(script.Parent.Shared)
 
@@ -132,7 +135,7 @@ function Net.decodeRle(rleRaw: any): { number }
 		end
 	end
 
-	local output = table.create(totalLength, 0)
+	local output = Sift.Array.create(totalLength, 0)
 	local cursor = 1
 	for _, pair in rleRaw do
 		if typeof(pair) ~= "table" then
@@ -149,7 +152,7 @@ function Net.decodeRle(rleRaw: any): { number }
 end
 
 local function copyEntitySlice(array: { number }, count: number): { number }
-	local copied = table.create(count, 0)
+	local copied = Sift.Array.create(count, 0)
 	for index = 1, count do
 		copied[index] = array[index]
 	end
@@ -157,7 +160,7 @@ local function copyEntitySlice(array: { number }, count: number): { number }
 end
 
 local function copyLegacyEntitySlice(valuesRaw: any, count: number): { number }
-	local copied = table.create(count, 0)
+	local copied = Sift.Array.create(count, 0)
 	if typeof(valuesRaw) ~= "table" then
 		return copied
 	end
@@ -342,10 +345,10 @@ function Net.decodeLegacyChunkTransitional(legacyRaw: any): { [string]: any }?
 	local revision = sanitizeInteger(legacy.revision, 0, 1000000000, 0)
 	local tileMinY = sanitizeInteger(legacy.tileMinY, -1000000, 1000000, chunkY * tileCountY)
 
-	local clusterChosenBiomeIds = table.create(expectedClusters, dominantBiomeId)
-	local clusterBlendWeights = table.create(expectedClusters, 0)
-	local clusterSolidMask = table.create(expectedClusters, 0)
-	local clusterSurfaceY = table.create(expectedClusters, tileMinY)
+	local clusterChosenBiomeIds = Sift.Array.create(expectedClusters, dominantBiomeId)
+	local clusterBlendWeights = Sift.Array.create(expectedClusters, 0)
+	local clusterSolidMask = Sift.Array.create(expectedClusters, 0)
+	local clusterSurfaceY = Sift.Array.create(expectedClusters, tileMinY)
 
 	local clusterChosenBiomeIdsRaw = if typeof(legacy.clusterChosenBiomeIds) == "table"
 		then (legacy.clusterChosenBiomeIds :: { any })

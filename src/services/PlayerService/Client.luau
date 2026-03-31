@@ -10,6 +10,7 @@ local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
 local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
+local CmdrUtils = require(ReplicatedStorage.Shared.Cmdr.CmdrUtils)
 local PlayerServiceUtils = require(ReplicatedStorage.Shared.Services.PlayerService.PlayerServiceUtils)
 local AudioServiceClient = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceClient)
 local AudioServiceUtils = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceUtils)
@@ -66,6 +67,22 @@ local function getHorizontalKeyStateForCode(keyCode: Enum.KeyCode): boolean
 	return false
 end
 
+local function getFlyVerticalAxis(): number
+	local upPressed = UserInputService:IsKeyDown(Enum.KeyCode.W)
+		or UserInputService:IsKeyDown(Enum.KeyCode.Up)
+		or UserInputService:IsKeyDown(Enum.KeyCode.Space)
+	local downPressed = UserInputService:IsKeyDown(Enum.KeyCode.S)
+		or UserInputService:IsKeyDown(Enum.KeyCode.Down)
+		or UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
+		or UserInputService:IsKeyDown(Enum.KeyCode.RightControl)
+
+	if upPressed == downPressed then
+		return 0
+	end
+
+	return if upPressed then 1 else -1
+end
+
 local function shouldRefreshRigFromCharacterChild(child: Instance): boolean
 	if child:IsA("Tool") then
 		return false
@@ -105,6 +122,8 @@ function PlayerServiceClient.init(self: PlayerServiceClient)
 	self.neckBaseC0 = nil
 	self.headPart = nil
 	self.movementLocked = false
+	self.flyEnabled = false
+	self.flySpeed = CmdrUtils.DEFAULT_FLY_SPEED
 	self.worldUnlockPending = false
 	self.worldUnlockCheckAccumulator = 0
 	self.worldUnlockCheckInterval = PlayerServiceUtils.DEFAULT_WORLD_UNLOCK_CHECK_INTERVAL
@@ -156,13 +175,24 @@ function PlayerServiceClient.init(self: PlayerServiceClient)
 		self:onCharacterAdded(character)
 	end))
 	self.janitor:GiveChore(
-		self.localPlayer:GetAttributeChangedSignal(PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE):Connect(function()
-			local movementLockAttribute = self.localPlayer:GetAttribute(PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE)
-			if typeof(movementLockAttribute) == "boolean" then
-				self:applyMovementLock(movementLockAttribute)
-			end
+		self.localPlayer
+			:GetAttributeChangedSignal(PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE)
+			:Connect(function()
+				local movementLockAttribute =
+					self.localPlayer:GetAttribute(PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE)
+				if typeof(movementLockAttribute) == "boolean" then
+					self:applyMovementLock(movementLockAttribute)
+				end
+			end)
+	)
+	self.janitor:GiveChore(
+		self.localPlayer:GetAttributeChangedSignal(CmdrUtils.FLY_ENABLED_ATTRIBUTE):Connect(function()
+			self:refreshCmdrFlyState()
 		end)
 	)
+	self.janitor:GiveChore(self.localPlayer:GetAttributeChangedSignal(CmdrUtils.FLY_SPEED_ATTRIBUTE):Connect(function()
+		self:refreshCmdrFlyState()
+	end))
 
 	if self.localPlayer.Character then
 		self:onCharacterAdded(self.localPlayer.Character)
@@ -171,6 +201,7 @@ function PlayerServiceClient.init(self: PlayerServiceClient)
 	if typeof(movementLockAttribute) == "boolean" then
 		self:applyMovementLock(movementLockAttribute)
 	end
+	self:refreshCmdrFlyState()
 
 	self.networker:fire("requestState")
 end
@@ -226,11 +257,7 @@ function PlayerServiceClient.onDamaged(self: PlayerServiceClient, damageAmountRa
 	self:playHurtFeedback()
 end
 
-function PlayerServiceClient.emitBloodEffect(
-	self: PlayerServiceClient,
-	_characterRaw: any,
-	_originPartRaw: any
-)
+function PlayerServiceClient.emitBloodEffect(_self: PlayerServiceClient, _characterRaw: any, _originPartRaw: any)
 	return
 end
 
@@ -296,6 +323,18 @@ function PlayerServiceClient.applyMovementLock(self: PlayerServiceClient, moveme
 	else
 		self.worldUnlockPending = false
 		self.worldUnlockConsecutiveSurfaceHits = 0
+	end
+end
+
+function PlayerServiceClient.refreshCmdrFlyState(self: PlayerServiceClient)
+	local wasFlying = self.flyEnabled
+	self.flyEnabled = self.localPlayer:GetAttribute(CmdrUtils.FLY_ENABLED_ATTRIBUTE) == true
+	self.flySpeed =
+		CmdrUtils.sanitizeFlySpeed(self.localPlayer:GetAttribute(CmdrUtils.FLY_SPEED_ATTRIBUTE), self.flySpeed)
+
+	if wasFlying and not self.flyEnabled and self.characterRig ~= nil then
+		self.characterRig.rootPart.AssemblyLinearVelocity = Vector3.zero
+		self.characterRig.rootPart.AssemblyAngularVelocity = Vector3.zero
 	end
 end
 
@@ -456,7 +495,8 @@ function PlayerServiceClient.getMouseLookState(self: PlayerServiceClient, rig: C
 		return nil, 0
 	end
 
-	local relativeLookAngleRadians = PlayerServiceUtils.getRelativeLookAngleRadians(screenLookAngleRadians, self.facingSign)
+	local relativeLookAngleRadians =
+		PlayerServiceUtils.getRelativeLookAngleRadians(screenLookAngleRadians, self.facingSign)
 	local desiredFacing = PlayerServiceUtils.getFacingFlipFromScreenX(
 		mouseLocation.X,
 		rootViewportPosition.X,
@@ -476,12 +516,69 @@ function PlayerServiceClient.applyHeadLook(self: PlayerServiceClient, lookAngleR
 		return
 	end
 
-	PlayerServiceUtils.applyNeckLookAngle(
-		self.neckJoint,
-		self.neckBaseC0,
-		lookAngleRadians,
-		self.headLookMaxYawDegrees
+	PlayerServiceUtils.applyNeckLookAngle(self.neckJoint, self.neckBaseC0, lookAngleRadians, self.headLookMaxYawDegrees)
+end
+
+function PlayerServiceClient.updateFlyingMovement(self: PlayerServiceClient, rig: CharacterRig)
+	if not PlayerServiceUtils.isHumanoidAlive(rig.humanoid) then
+		self:applyHeadLook(nil)
+		return
+	end
+
+	local mouseFacing: FacingSign? = nil
+	local lookAngleRadians: number? = nil
+	if self.mouseFacingEnabled then
+		mouseFacing, lookAngleRadians = self:getMouseLookState(rig)
+	end
+
+	local horizontalAxis = PlayerServiceUtils.getHorizontalInputAxis(function(keyCode: Enum.KeyCode): boolean
+		return getHorizontalKeyStateForCode(keyCode)
+	end)
+	local verticalAxis = getFlyVerticalAxis()
+
+	local desiredFacing = mouseFacing
+	if desiredFacing == nil and horizontalAxis ~= 0 then
+		desiredFacing = PlayerServiceUtils.sanitizeFacingSign(horizontalAxis, self.facingSign)
+	end
+
+	local now = os.clock()
+	local didUpdateFacing = false
+	local canFlipFacing = (now - self.lastFacingFlipAt) >= self.mouseFacingFlipMinInterval
+	if desiredFacing ~= nil and desiredFacing ~= self.facingSign then
+		if (not self.mouseFacingEnabled) or canFlipFacing then
+			self:setFacing(desiredFacing, true)
+			self.lastFacingFlipAt = now
+			didUpdateFacing = true
+		end
+	end
+
+	if self.mouseFacingEnabled and didUpdateFacing then
+		local _, refreshedLookAngleRadians = self:getMouseLookState(rig)
+		lookAngleRadians = refreshedLookAngleRadians
+	end
+
+	self:applyHeadLook(if self.mouseFacingEnabled then lookAngleRadians else nil)
+
+	rig.humanoid:Move(Vector3.zero, false)
+	if rig.humanoid:GetState() ~= Enum.HumanoidStateType.Physics then
+		rig.humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+	end
+
+	local flySpeed = CmdrUtils.sanitizeFlySpeed(self.flySpeed, CmdrUtils.DEFAULT_FLY_SPEED)
+	rig.rootPart.AssemblyLinearVelocity = Vector3.new(0, verticalAxis * flySpeed, -horizontalAxis * flySpeed)
+	rig.rootPart.AssemblyAngularVelocity = Vector3.zero
+	PlayerServiceUtils.applySidewaysConstraint(rig.rootPart, self.lockedDepthX)
+	PlayerServiceUtils.ensureRootPartUpright(
+		rig.rootPart,
+		self.facingSign,
+		PlayerServiceUtils.DEFAULT_ROOT_UPRIGHT_TOLERANCE_DEGREES
 	)
+
+	self.worldUnlockPending = false
+	self.worldUnlockConsecutiveSurfaceHits = 0
+	self.wasGrounded = false
+	self.maxAirborneDownwardSpeed = 0
+	self.lastLandingAt = now
 end
 
 function PlayerServiceClient.updateFacingFromMovement(self: PlayerServiceClient, deltaTime: number)
@@ -494,12 +591,18 @@ function PlayerServiceClient.updateFacingFromMovement(self: PlayerServiceClient,
 		return
 	end
 
+	if self.flyEnabled then
+		self:updateFlyingMovement(rig)
+		return
+	end
+
 	if self.movementLocked then
 		self.moveAxisMotion:immediate(0)
 		rig.humanoid:Move(Vector3.zero, false)
 		rig.rootPart.AssemblyLinearVelocity = Vector3.zero
 		rig.rootPart.AssemblyAngularVelocity = Vector3.zero
-		if PlayerServiceUtils.isHumanoidAlive(rig.humanoid)
+		if
+			PlayerServiceUtils.isHumanoidAlive(rig.humanoid)
 			and rig.humanoid:GetState() ~= Enum.HumanoidStateType.Freefall
 		then
 			rig.humanoid:ChangeState(Enum.HumanoidStateType.Freefall)

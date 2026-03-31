@@ -1,5 +1,6 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local ConnectionUtils = require(ReplicatedStorage.UI.core.utils.ConnectionUtils)
 local ServiceSync = require(ReplicatedStorage.UI.core.utils.ServiceSync)
@@ -45,8 +46,7 @@ local function toStringArrayFromSet(setRaw: any): { string }
 			output[#output + 1] = key
 		end
 	end
-	table.sort(output)
-	return output
+	return Sift.Array.sort(output)
 end
 
 local function applyFromService(): CraftingState

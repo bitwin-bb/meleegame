@@ -1,6 +1,7 @@
 --!strict
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
@@ -811,7 +812,7 @@ function BossServiceServer.onHeartbeat(self: BossServiceServer, dtRaw: any)
 	end
 	self.previousClockTime = currentClockTime
 
-	local orderedIds = table.clone(self.state.orderedIds)
+	local orderedIds = Sift.Dictionary.copy(self.state.orderedIds)
 	for _, runtimeId in orderedIds do
 		local boss = self.controllersById[runtimeId]
 		if boss == nil then
@@ -907,7 +908,7 @@ function BossServiceServer.destroy(self: BossServiceServer)
 		self.heartbeatConnection = nil
 	end
 
-	local runtimeIds = table.clone(self.state.orderedIds)
+	local runtimeIds = Sift.Dictionary.copy(self.state.orderedIds)
 	for _, runtimeId in runtimeIds do
 		self:removeController(runtimeId, "service_destroy")
 	end

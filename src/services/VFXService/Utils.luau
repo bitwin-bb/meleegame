@@ -1,5 +1,6 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
 
@@ -148,7 +149,7 @@ end
 
 function VFXServiceUtils.cloneDictionary(sourceRaw: any): { [string]: any }
 	local source = if typeof(sourceRaw) == "table" then sourceRaw else {}
-	return table.clone(source)
+	return Sift.Dictionary.copy(source)
 end
 
 function VFXServiceUtils.getTemplateKind(templateRaw: any): VFXTemplateKind?

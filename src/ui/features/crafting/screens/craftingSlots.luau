@@ -1,5 +1,6 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local React = require(ReplicatedStorage.Packages.React)
 local Charm = require(ReplicatedStorage.Packages.Charm)
@@ -204,7 +205,7 @@ local function resolveDisplayRecipeGroups(
 		end
 	end
 
-	table.sort(visibleEntries, function(lhs: CraftingRecipeEntry, rhs: CraftingRecipeEntry): boolean
+	visibleEntries = Sift.Array.sort(visibleEntries, function(lhs: CraftingRecipeEntry, rhs: CraftingRecipeEntry): boolean
 		if lhs.sortOrder ~= rhs.sortOrder then
 			return lhs.sortOrder < rhs.sortOrder
 		end

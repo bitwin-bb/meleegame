@@ -11,7 +11,6 @@ local DeathScreen = require(ReplicatedStorage.UI.features.death.screens.deathScr
 local MiningProgressScreen = require(ReplicatedStorage.UI.features.miningProgress.screens.miningProgressScreen)
 local CraftingSlotsScreen = require(ReplicatedStorage.UI.features.crafting.screens.craftingSlots)
 local MouseScreen = require(ReplicatedStorage.UI.features.mouse.screen.mouseScreen)
-local ConsoleScreen = require(ReplicatedStorage.UI.features.devConsole.screens.consoleScreen)
 
 type RootUIProps = {
 	currentScreen: React.ReactElement<any, any>?,
@@ -19,11 +18,7 @@ type RootUIProps = {
 }
 
 return function(props: RootUIProps)
-	return React.createElement("ScreenGui", {
-		ResetOnSpawn = false,
-		IgnoreGuiInset = true,
-		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-	}, {
+	return React.createElement(React.Fragment, nil, {
 		HUD = React.createElement(HUD, props.hudProps),
 		CurrentScreen = props.currentScreen,
 		InfoScreen = React.createElement(InfoScreen, {
@@ -46,9 +41,6 @@ return function(props: RootUIProps)
 		}),
 		CraftingSlotsScreen = React.createElement(CraftingSlotsScreen, {
 			zIndex = 175,
-		}),
-		ConsoleScreen = React.createElement(ConsoleScreen, {
-			zIndex = 210,
 		}),
 		MouseScreen = React.createElement(MouseScreen, {
 			zIndex = 1000,

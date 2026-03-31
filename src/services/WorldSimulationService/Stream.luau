@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 
 local Shared = require(script.Parent.Shared)
 
@@ -140,7 +143,7 @@ function Stream.reconcilePlayerInterest(
 		end
 	end
 
-	local removedKeys = table.create(#stream.queueKeys)
+	local removedKeys = Sift.Array.create(#stream.queueKeys)
 	for chunkKey in stream.interestLookup do
 		if nextInterest[chunkKey] == nil then
 			removedKeys[#removedKeys + 1] = chunkKey

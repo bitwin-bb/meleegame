@@ -1,4 +1,7 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
 local RunService = game:GetService("RunService")
 
 local NotificationBus = {}
@@ -93,7 +96,7 @@ end
 
 local function defaultSanitizePayload(payload: any): any
 	if typeof(payload) == "table" then
-		return table.clone(payload)
+		return Sift.Dictionary.copy(payload)
 	end
 	return payload
 end

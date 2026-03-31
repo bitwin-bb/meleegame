@@ -1,5 +1,6 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local MeleeServiceUtils = {}
 local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
@@ -743,7 +744,7 @@ function MeleeServiceUtils.resolveToolSwingSounds(toolRaw: any): { [string]: { s
 
 	local tool = toolRaw :: Tool
 	for groupName, soundAssetIds in buildRegistryToolSwingSounds(tool) do
-		swingSounds[groupName] = table.clone(soundAssetIds)
+		swingSounds[groupName] = Sift.Dictionary.copy(soundAssetIds)
 	end
 
 	local soundsContainer = findNamedChild(tool, "Sounds")
