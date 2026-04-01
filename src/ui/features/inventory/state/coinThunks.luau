@@ -1,4 +1,5 @@
 --!strict
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ConnectionUtils = require(ReplicatedStorage.UI.core.utils.ConnectionUtils)
@@ -18,6 +19,36 @@ local runtime = {
 }
 
 local COINS_DATA_PATH = PlayerDataServiceUtils.getDefaultCoinsDataPath()
+local LOCAL_PLAYER = Players.LocalPlayer
+
+local function stringifyLogValue(valueRaw: any): string
+	if valueRaw == nil then
+		return "nil"
+	end
+	local valueType = typeof(valueRaw)
+	if valueType == "string" or valueType == "number" or valueType == "boolean" then
+		return tostring(valueRaw)
+	end
+	return valueType
+end
+
+local function logCoinsApplied(nextPlayerDataState: PlayerDataServiceState, nextCoinState: CoinState)
+	local fields = {
+		'stage="Coins applied from player data state"',
+		("player=%s"):format(LOCAL_PLAYER.Name),
+		("userId=%d"):format(LOCAL_PLAYER.UserId),
+		("loadToken=%s"):format(stringifyLogValue(nextPlayerDataState.loadToken)),
+		("elapsed=%.3f"):format(if typeof(nextPlayerDataState.loadElapsedSeconds) == "number" then nextPlayerDataState.loadElapsedSeconds else 0),
+		("loadState=%s"):format(stringifyLogValue(nextPlayerDataState.loadState)),
+		("hasResolvedInitialLoad=%s"):format(tostring(nextPlayerDataState.hasResolvedInitialLoad == true)),
+		("isLoading=%s"):format(tostring(nextPlayerDataState.isLoading == true)),
+		("totalCopper=%s"):format(stringifyLogValue(nextCoinState.totalCopper)),
+	}
+	if nextPlayerDataState.lastFailureReason ~= nil then
+		fields[#fields + 1] = ("lastFailureReason=%s"):format(stringifyLogValue(nextPlayerDataState.lastFailureReason))
+	end
+	warn("[Coins] " .. table.concat(fields, " "))
+end
 
 local function applyPlayerDataState(nextPlayerDataStateRaw: any): CoinState
 	local fallbackState = coinSlice.getCoinState()
@@ -28,9 +59,13 @@ local function applyPlayerDataState(nextPlayerDataStateRaw: any): CoinState
 		return fallbackState
 	end
 
-	local coinsData =
-		PlayerDataServiceUtils.getValueAtPath(nextPlayerDataState.data, COINS_DATA_PATH, fallbackState.amounts)
-	return coinSlice.setCoinsData(coinsData, nextPlayerDataState.loadState)
+	local fallbackCoinsData = if PlayerDataServiceUtils.hasResolvedState(nextPlayerDataState)
+		then coinSlice.createDefaultCoinAmounts()
+		else fallbackState.amounts
+	local coinsData = PlayerDataServiceUtils.getValueAtPath(nextPlayerDataState.data, COINS_DATA_PATH, fallbackCoinsData)
+	local nextCoinState = coinSlice.setCoinsData(coinsData, nextPlayerDataState.loadState)
+	logCoinsApplied(nextPlayerDataState, nextCoinState)
+	return nextCoinState
 end
 
 local function syncFromService(): CoinState

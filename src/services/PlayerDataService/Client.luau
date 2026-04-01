@@ -42,8 +42,8 @@ function PlayerDataServiceClient.init(self: PlayerDataServiceClient)
 	self.networker:fire("requestSync")
 end
 
-function PlayerDataServiceClient.applyState(self: PlayerDataServiceClient, dataRaw: any, loadStateRaw: any)
-	self.state = PlayerDataServiceUtils.createState(dataRaw, loadStateRaw, self.state)
+function PlayerDataServiceClient.applyState(self: PlayerDataServiceClient, dataRaw: any, loadStateRaw: any, metadataRaw: any?)
+	self.state = PlayerDataServiceUtils.createState(dataRaw, loadStateRaw, self.state, metadataRaw)
 	self.stateChanged:Fire(PlayerDataServiceUtils.cloneState(self.state))
 end
 
@@ -65,6 +65,10 @@ end
 
 function PlayerDataServiceClient.isLoaded(self: PlayerDataServiceClient): boolean
 	return PlayerDataServiceUtils.isLoadedState(self.state.loadState)
+end
+
+function PlayerDataServiceClient.isResolved(self: PlayerDataServiceClient): boolean
+	return PlayerDataServiceUtils.hasResolvedState(self.state)
 end
 
 function PlayerDataServiceClient.getValue(self: PlayerDataServiceClient, pathRaw: any, fallback: any): any
@@ -91,6 +95,7 @@ type PlayerDataServiceClient = typeof(PlayerDataServiceClient) & {
 	janitor: JanitorClass,
 	state: PlayerDataServiceState,
 	stateChanged: SignalObject,
+	isResolved: (self: PlayerDataServiceClient) -> boolean,
 }
 
 return PlayerDataServiceClient :: PlayerDataServiceClient

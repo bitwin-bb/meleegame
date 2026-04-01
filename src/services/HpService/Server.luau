@@ -522,10 +522,19 @@ function HpServiceServer.getHumanoid(self: HpServiceServer, player: Player): Hum
 end
 
 function HpServiceServer.requestSync(self: HpServiceServer, player: Player)
-	if self.playerRuntimes[player] == nil then
+	local runtime = self.playerRuntimes[player]
+	if runtime == nil then
 		self:trackPlayer(player)
 		return
 	end
+
+	if not runtime.hasResolvedPersistedLoad then
+		local loadToken = runtime.loadToken
+		task.spawn(function()
+			self:loadPersistedHealth(player, loadToken)
+		end)
+	end
+
 	self:pushState(player)
 end
 

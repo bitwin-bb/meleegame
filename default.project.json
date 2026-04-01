@@ -102,6 +102,9 @@
             "InventoryServiceClient": {
               "$path": "src/services/InventoryService/Client.luau"
             },
+            "Profile": {
+              "$path": "src/services/InventoryService/Profile.luau"
+            },
             "InventoryServiceUtils": {
               "$path": "src/services/InventoryService/Utils.luau"
             }
@@ -658,6 +661,12 @@
               "$className": "Folder",
               "StringUtils.spec": {
                 "$path": "src/tests/Specs/Core/StringUtils.spec.luau"
+              }
+            },
+            "Services": {
+              "$className": "Folder",
+              "InventoryServiceUtils.spec": {
+                "$path": "src/tests/Specs/Services/InventoryServiceUtils.spec.luau"
               }
             }
           }

@@ -9,6 +9,11 @@ export type PlayerDataServiceState = {
 	data: PlayerData,
 	loadState: LoadState,
 	updatedAt: number,
+	isLoading: boolean,
+	hasResolvedInitialLoad: boolean,
+	loadToken: number,
+	lastFailureReason: string?,
+	loadElapsedSeconds: number,
 }
 
 local DEFAULT_PROFILE_STORE_NAME = "PlayerData"
@@ -32,6 +37,38 @@ PlayerDataServiceUtils.LOAD_STATE_FAILED = LOAD_STATE_FAILED
 
 local function trim(text: string): string
 	return string.match(text, "^%s*(.-)%s*$") or ""
+end
+
+local function sanitizeBoolean(valueRaw: any, fallback: boolean): boolean
+	if typeof(valueRaw) == "boolean" then
+		return valueRaw
+	end
+	return fallback
+end
+
+local function sanitizeWholeNumber(valueRaw: any, fallback: number): number
+	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
+		return fallback
+	end
+	return math.max(0, math.floor(valueRaw))
+end
+
+local function sanitizeNonNegativeNumber(valueRaw: any, fallback: number): number
+	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
+		return fallback
+	end
+	return math.max(0, valueRaw)
+end
+
+local function sanitizeOptionalString(valueRaw: any): string?
+	if typeof(valueRaw) ~= "string" then
+		return nil
+	end
+	local trimmedValue = trim(valueRaw)
+	if trimmedValue == "" then
+		return nil
+	end
+	return trimmedValue
 end
 
 local function clonePath(pathRaw: any, fallbackPathRaw: any): { DataPathSegment }
@@ -181,25 +218,66 @@ function PlayerDataServiceUtils.isLoadedState(loadStateRaw: any): boolean
 	return PlayerDataServiceUtils.sanitizeLoadState(loadStateRaw) == LOAD_STATE_LOADED
 end
 
+function PlayerDataServiceUtils.isTerminalLoadState(loadStateRaw: any): boolean
+	local loadState = PlayerDataServiceUtils.sanitizeLoadState(loadStateRaw)
+	return loadState == LOAD_STATE_LOADED or loadState == LOAD_STATE_FAILED
+end
+
+function PlayerDataServiceUtils.hasResolvedState(stateRaw: any): boolean
+	if typeof(stateRaw) ~= "table" then
+		return false
+	end
+
+	local state = stateRaw :: { [string]: any }
+	if sanitizeBoolean(state.hasResolvedInitialLoad, false) then
+		return true
+	end
+	return PlayerDataServiceUtils.isTerminalLoadState(state.loadState)
+end
+
 function PlayerDataServiceUtils.createDefaultState(): PlayerDataServiceState
 	return {
 		data = {},
 		loadState = LOAD_STATE_UNLOADED,
 		updatedAt = os.clock(),
+		isLoading = false,
+		hasResolvedInitialLoad = false,
+		loadToken = 0,
+		lastFailureReason = nil,
+		loadElapsedSeconds = 0,
 	}
 end
 
 function PlayerDataServiceUtils.createState(
 	dataRaw: any,
 	loadStateRaw: any,
-	fallbackState: PlayerDataServiceState?
+	fallbackState: PlayerDataServiceState?,
+	metadataRaw: any?
 ): PlayerDataServiceState
 	local fallback = if fallbackState then fallbackState else PlayerDataServiceUtils.createDefaultState()
 	local sourceData = if typeof(dataRaw) == "table" then dataRaw else fallback.data
+	local metadata = if typeof(metadataRaw) == "table" then metadataRaw :: { [string]: any } else {}
+	local loadState = PlayerDataServiceUtils.sanitizeLoadState(loadStateRaw, fallback.loadState)
+	local hasResolvedInitialLoad = if metadata.hasResolvedInitialLoad ~= nil
+		then sanitizeBoolean(metadata.hasResolvedInitialLoad, PlayerDataServiceUtils.isTerminalLoadState(loadState))
+		else PlayerDataServiceUtils.isTerminalLoadState(loadState)
+	local isLoading = if metadata.isLoading ~= nil
+		then sanitizeBoolean(metadata.isLoading, loadState == LOAD_STATE_LOADING)
+		else loadState == LOAD_STATE_LOADING
+	local lastFailureReason = if loadState == LOAD_STATE_FAILED
+		then sanitizeOptionalString(metadata.lastFailureReason) or fallback.lastFailureReason
+		else nil
 	return {
 		data = cloneDeepInternal(sourceData, {}),
-		loadState = PlayerDataServiceUtils.sanitizeLoadState(loadStateRaw, fallback.loadState),
+		loadState = loadState,
 		updatedAt = os.clock(),
+		isLoading = isLoading,
+		hasResolvedInitialLoad = hasResolvedInitialLoad,
+		loadToken = sanitizeWholeNumber(metadata.loadToken, fallback.loadToken),
+		lastFailureReason = lastFailureReason,
+		loadElapsedSeconds = if metadata.loadElapsedSeconds ~= nil
+			then sanitizeNonNegativeNumber(metadata.loadElapsedSeconds, fallback.loadElapsedSeconds)
+			else fallback.loadElapsedSeconds,
 	}
 end
 
@@ -208,6 +286,11 @@ function PlayerDataServiceUtils.cloneState(state: PlayerDataServiceState): Playe
 		data = cloneDeepInternal(state.data, {}),
 		loadState = state.loadState,
 		updatedAt = state.updatedAt,
+		isLoading = state.isLoading,
+		hasResolvedInitialLoad = state.hasResolvedInitialLoad,
+		loadToken = state.loadToken,
+		lastFailureReason = state.lastFailureReason,
+		loadElapsedSeconds = state.loadElapsedSeconds,
 	}
 end
 
