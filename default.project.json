@@ -746,6 +746,9 @@
             },
             "Services": {
               "$className": "Folder",
+              "InventoryProfile.spec": {
+                "$path": "src/tests/Specs/Services/InventoryProfile.spec.luau"
+              },
               "InventoryServiceUtils.spec": {
                 "$path": "src/tests/Specs/Services/InventoryServiceUtils.spec.luau"
               }

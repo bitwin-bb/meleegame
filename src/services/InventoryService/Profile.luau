@@ -14,6 +14,7 @@ type PlayerDataServiceServerObject = {
 	getProfile: (self: PlayerDataServiceServerObject, player: Player) -> any,
 	isLoaded: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
 	requestSync: (self: PlayerDataServiceServerObject, player: Player) -> (),
+	savePlayerData: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
 	waitForData: (self: PlayerDataServiceServerObject, player: Player, timeoutSecondsRaw: any) -> any,
 	setValue: (
 		self: PlayerDataServiceServerObject,
@@ -135,6 +136,25 @@ local function validatePersistedInventoryData(inventoryRaw: any): (boolean, stri
 	return true, "inventory_valid"
 end
 
+local function dataPathToString(path: { string }): string
+	local parts = table.create(#path)
+	for index, segment in path do
+		parts[index] = tostring(segment)
+	end
+	return table.concat(parts, ".")
+end
+
+local function resolveProfileDataRoot(profileRaw: any): { [any]: any }?
+	if typeof(profileRaw) ~= "table" then
+		return nil
+	end
+	local profileData = (profileRaw :: { [string]: any }).Data
+	if typeof(profileData) ~= "table" then
+		return nil
+	end
+	return profileData
+end
+
 function InventoryProfile.new(
 	playerDataService: PlayerDataServiceServerObject?,
 	configRaw: InventoryProfileConfig?
@@ -165,6 +185,14 @@ end
 
 function InventoryProfile.cloneDefaultInventoryData(self: InventoryProfile): { [string]: any }
 	return PlayerDataServiceUtils.cloneDeep(self.defaultInventoryData)
+end
+
+function InventoryProfile.getDataPath(self: InventoryProfile): { string }
+	return InventoryServiceUtils.clonePath(self.dataPath)
+end
+
+function InventoryProfile.getDataPathString(self: InventoryProfile): string
+	return dataPathToString(self.dataPath)
 end
 
 function InventoryProfile.hasAuthoritativeProfile(self: InventoryProfile, player: Player): boolean
@@ -402,34 +430,79 @@ function InventoryProfile.resolvePersistedInventory(
 	}
 end
 
-function InventoryProfile.saveState(
+function InventoryProfile.writeState(
 	self: InventoryProfile,
 	player: Player,
 	stateRaw: any
-): boolean
+): (boolean, string)
 	if typeof(stateRaw) ~= "table" then
-		return false
+		return false, "state_not_table"
 	end
 	if not InventoryServiceUtils.isLoadedState((stateRaw :: any).loadState) then
-		return false
+		return false, "state_not_loaded"
 	end
 
 	local playerDataService = self.playerDataService
 	if playerDataService == nil then
-		return false
-	end
-	if not self:hasAuthoritativeProfile(player) then
-		return false
+		return false, "player_data_service_missing"
 	end
 
-	local serializedState = InventoryServiceUtils.serializeStateForData(stateRaw)
-	local success, didSet = pcall(function()
-		return playerDataService:setValue(player, self.dataPath, serializedState, false)
+	local profileSuccess, profileRaw = pcall(function()
+		return playerDataService:getProfile(player)
 	end)
-	if not success then
-		return false
+	if not profileSuccess then
+		return false, "profile_lookup_error:" .. tostring(profileRaw)
 	end
-	return didSet == true
+
+	local profileData = resolveProfileDataRoot(profileRaw)
+	if profileData == nil then
+		return false, "profile_data_unavailable"
+	end
+
+	local serializedState = PlayerDataServiceUtils.cloneDeep(InventoryServiceUtils.serializeStateForData(stateRaw))
+	local writeSuccess, didWrite = pcall(function()
+		return PlayerDataServiceUtils.setValueAtPath(profileData, self.dataPath, serializedState)
+	end)
+	if not writeSuccess then
+		return false, "profile_write_error:" .. tostring(didWrite)
+	end
+	if didWrite ~= true then
+		return false, "profile_write_failed"
+	end
+
+	return true, "written:" .. self:getDataPathString()
+end
+
+function InventoryProfile.saveProfile(self: InventoryProfile, player: Player): (boolean, string)
+	local playerDataService = self.playerDataService
+	if playerDataService == nil then
+		return false, "player_data_service_missing"
+	end
+
+	local saveSuccess, didSave = pcall(function()
+		return playerDataService:savePlayerData(player)
+	end)
+	if not saveSuccess then
+		return false, "profile_save_error:" .. tostring(didSave)
+	end
+	if didSave ~= true then
+		return false, "profile_save_failed"
+	end
+
+	return true, "saved:" .. self:getDataPathString()
+end
+
+function InventoryProfile.saveState(
+	self: InventoryProfile,
+	player: Player,
+	stateRaw: any
+): (boolean, string)
+	local didWrite, writeReason = self:writeState(player, stateRaw)
+	if didWrite ~= true then
+		return false, writeReason
+	end
+
+	return self:saveProfile(player)
 end
 
 return InventoryProfile
