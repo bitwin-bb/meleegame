@@ -3,6 +3,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Configs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
+local Ease = require(ReplicatedStorage.Shared.Modules.Math.Ease)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
 
 local WorldAnimatorServiceUtils = {}
@@ -119,11 +120,10 @@ function WorldAnimatorServiceUtils.applyEasing(easing: ChunkAnimationEasing, alp
 	local alpha = clampNumber(alphaRaw, 0, 1, 0)
 
 	if easing == "sine" then
-		return math.sin(alpha * math.pi * 0.5)
+		return Ease.outSine(alpha)
 	end
 	if easing == "quadratic" then
-		local inverse = 1 - alpha
-		return 1 - inverse * inverse
+		return Ease.outQuad(alpha)
 	end
 	return alpha
 end

@@ -3,6 +3,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local DeterministicRNG = require(ReplicatedStorage.Shared.Modules.Core.DeterministicRNG)
+local Damp = require(ReplicatedStorage.Shared.Modules.Math.Damp)
+local Vec = require(ReplicatedStorage.Shared.Modules.Math.Vec)
 
 local TreeFoliageGraph = {}
 TreeFoliageGraph.__index = TreeFoliageGraph
@@ -126,7 +128,7 @@ local function resolveTrunkBasePosition(part: BasePart): Vector3
 end
 
 local function resolvePlanarAngles(referenceFrame: CFrame, bendWorld: Vector3, maxAngleRadians: number, yawAmount: number): (number, number, number)
-	local planar = Vector3.new(bendWorld.X, 0, bendWorld.Z)
+	local planar = Vec.flattenY(bendWorld)
 	local magnitude = planar.Magnitude
 	if magnitude <= 1e-5 or maxAngleRadians <= 0 then
 		return 0, 0, 0
@@ -141,8 +143,7 @@ local function resolvePlanarAngles(referenceFrame: CFrame, bendWorld: Vector3, m
 end
 
 local function decayReactive(node: any, dt: number)
-	local recoveryAlpha = math.exp(-node.recoverySpeed * dt)
-	node.reactiveBend *= recoveryAlpha
+	node.reactiveBend = Damp.value(node.reactiveBend, ZERO, node.recoverySpeed, dt)
 	if node.reactiveBend.Magnitude <= 1e-4 then
 		node.reactiveBend = ZERO
 	end
@@ -465,7 +466,7 @@ function TreeFoliageGraph.step(
 		target += windSample.direction * phaseWave * 0.045 * branch.detailScale * lod.detailScale
 		target += branch.reactiveBend * lod.disturbanceScale
 		target *= heightMultiplier * branch.amplitudeScale
-		target = Vector3.new(target.X, 0, target.Z)
+		target = Vec.flattenY(target)
 		if target.Magnitude > 1.2 then
 			target = target.Unit * 1.2
 		end
@@ -494,7 +495,7 @@ function TreeFoliageGraph.step(
 		target += windSample.direction * flutterWave * 0.14 * lod.detailScale
 		target += leaf.reactiveBend * lod.disturbanceScale
 		target *= leaf.amplitudeScale
-		target = Vector3.new(target.X, 0, target.Z)
+		target = Vec.flattenY(target)
 		if target.Magnitude > 1.45 then
 			target = target.Unit * 1.45
 		end

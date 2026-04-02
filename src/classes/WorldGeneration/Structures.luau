@@ -1,5 +1,9 @@
 --!strict
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Noise = require(ReplicatedStorage.Shared.Modules.Math.Noise)
+
 local Structures = {}
 Structures.__index = Structures
 
@@ -179,7 +183,7 @@ local function sanitizeInteger(valueRaw: any, minimum: number, maximum: number, 
 end
 
 local function toUnitInterval(noiseValue: number): number
-	return math.clamp((noiseValue + 1) * 0.5, 0, 1)
+	return Noise.toUnit(noiseValue)
 end
 
 local function sampleOctaveNoise(
@@ -193,28 +197,14 @@ local function sampleOctaveNoise(
 	offsetX: number,
 	offsetY: number
 ): number
-	local frequency = baseFrequency
-	local amplitude = 1
-	local total = 0
-	local amplitudeSum = 0
-
-	for octave = 1, octaves do
-		local sample = math.noise(
-			(x + offsetX + octave * 0.67) * frequency,
-			(y + offsetY + octave * 0.49) * frequency,
+	return Noise.fbmOctaves(octaves, persistence, lacunarity, function(octave, frequency)
+		local sampleFrequency = baseFrequency * frequency
+		return math.noise(
+			(x + offsetX + octave * 0.67) * sampleFrequency,
+			(y + offsetY + octave * 0.49) * sampleFrequency,
 			seed * SEED_X_MULTIPLIER + octave * SEED_Y_MULTIPLIER
 		)
-		total += sample * amplitude
-		amplitudeSum += amplitude
-		frequency *= lacunarity
-		amplitude *= persistence
-	end
-
-	if amplitudeSum <= 0 then
-		return 0
-	end
-
-	return total / amplitudeSum
+	end)
 end
 
 local function computeSeed(seed: number, x: number, y: number, salt: number): number

@@ -3,6 +3,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Audio = require(ReplicatedStorage.Shared.Modules.Items.Audio)
+local Angle = require(ReplicatedStorage.Shared.Modules.Math.Angle)
+local Plane = require(ReplicatedStorage.Shared.Modules.Math.Plane)
+local Trig = require(ReplicatedStorage.Shared.Modules.Math.Trig)
 local AudioServiceUtils = require(ReplicatedStorage.Shared.Services.AudioService.AudioServiceUtils)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
 
@@ -198,11 +201,7 @@ local LANDING_SOUND_ALIASES: { [string]: string } = {
 local RANDOM = Random.new()
 
 local function normalizeSignedRadians(angleRadians: number): number
-	local normalized = (angleRadians + HALF_TURN_RADIANS) % FULL_TURN_RADIANS
-	if normalized < 0 then
-		normalized += FULL_TURN_RADIANS
-	end
-	return normalized - HALF_TURN_RADIANS
+	return Angle.wrapRadians(angleRadians)
 end
 
 PlayerServiceUtils.DEFAULT_FACING_SIGN = DEFAULT_FACING_SIGN
@@ -790,7 +789,7 @@ end
 
 function PlayerServiceUtils.clampLookAngleRadians(relativeLookAngleRadians: number, maxYawDegrees: number?): number
 	local maxYawRadians =
-		math.rad(math.max(0, if maxYawDegrees then maxYawDegrees else DEFAULT_HEAD_LOOK_MAX_YAW_DEGREES))
+		Trig.degToRad(math.max(0, if maxYawDegrees then maxYawDegrees else DEFAULT_HEAD_LOOK_MAX_YAW_DEGREES))
 	return math.clamp(relativeLookAngleRadians, -maxYawRadians, maxYawRadians)
 end
 
@@ -819,19 +818,9 @@ function PlayerServiceUtils.getMouseWorldPointOnPlaneX(
 	planeX: number
 ): Vector3?
 	local mouseRay = camera:ViewportPointToRay(mouseX, mouseY)
-	local rayDirection = mouseRay.Direction
-	local rayOrigin = mouseRay.Origin
-	local denominator = rayDirection.X
-	if math.abs(denominator) <= 1e-5 then
-		return nil
-	end
-
-	local t = (planeX - rayOrigin.X) / denominator
-	if t <= 0 then
-		return nil
-	end
-
-	return rayOrigin + rayDirection * t
+	local plane = Plane.fromPointNormal(Vector3.new(planeX, 0, 0), Vector3.xAxis)
+	local hit = Plane.raycast(plane, mouseRay.Origin, mouseRay.Direction)
+	return if hit ~= nil then hit.point else nil
 end
 
 function PlayerServiceUtils.getNormalizedWorldAxisFromZ(targetZ: number, originZ: number, maxDistance: number?): number
@@ -873,7 +862,7 @@ function PlayerServiceUtils.ensureRootPartUpright(
 ): boolean
 	local tolerance = math.max(0, if toleranceDegrees then toleranceDegrees else DEFAULT_ROOT_UPRIGHT_TOLERANCE_DEGREES)
 	local upDot = math.clamp(rootPart.CFrame.UpVector:Dot(Vector3.yAxis), -1, 1)
-	local tiltDegrees = math.deg(math.acos(upDot))
+	local tiltDegrees = Trig.radToDeg(Trig.safeAcos(upDot))
 	if tiltDegrees <= tolerance then
 		return false
 	end

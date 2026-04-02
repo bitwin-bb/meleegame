@@ -1,4 +1,8 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Noise = require(ReplicatedStorage.Shared.Modules.Math.Noise)
+
 local Biome = {}
 Biome.__index = Biome
 
@@ -127,8 +131,6 @@ local DESERT_BAND_FEATHER_WIDTH = 125
 local DESERT_HUMIDITY_MAX = 0.32
 local DESERT_TEMPERATURE_MIN = -0.08
 local DESERT_REGION_THRESHOLD = 0.22
-local DESERT_SURFACE_OFFSET = 1823.119
-local DESERT_DETAIL_OFFSET = 1937.441
 local DEFAULT_DESERT_HEIGHT_OFFSET = -3
 local DEFAULT_DESERT_DUNE_AMPLITUDE = 8.5
 local DEFAULT_DESERT_DUNE_FREQUENCY = 0.0052
@@ -213,28 +215,14 @@ local function sampleOctaveNoise(
 	offsetX: number,
 	offsetY: number
 ): number
-	local frequency = baseFrequency
-	local amplitude = 1
-	local total = 0
-	local amplitudeSum = 0
-
-	for octave = 1, octaves do
-		local sample = math.noise(
-			(x + offsetX + octave * 0.73) * frequency,
+	return Noise.fbmOctaves(octaves, persistence, lacunarity, function(octave, frequency)
+		local sampleFrequency = baseFrequency * frequency
+		return math.noise(
+			(x + offsetX + octave * 0.73) * sampleFrequency,
 			offsetY + octave * 3.11 + seed * SEED_Y_MULTIPLIER,
 			seed * SEED_X_MULTIPLIER + octave * 0.17
 		)
-		total += sample * amplitude
-		amplitudeSum += amplitude
-		frequency *= lacunarity
-		amplitude *= persistence
-	end
-
-	if amplitudeSum <= 0 then
-		return 0
-	end
-
-	return total / amplitudeSum
+	end)
 end
 
 local function resolveBiomeSurfaceTiles(self, biomeId: number, biomeType: number): (number, number, number)

@@ -3,6 +3,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
+local Lerp = require(ReplicatedStorage.Shared.Modules.Math.Lerp)
 local WorldSimulationShared = require(ReplicatedStorage.Shared.Services.WorldSimulationService.Shared)
 
 local ParallaxServiceUtils = {}
@@ -206,11 +207,7 @@ local function resolveImageAspectRatio(source: { [string]: any }, fallback: numb
 end
 
 local function lerpColor3(from: Color3, to: Color3, alpha: number): Color3
-	return Color3.new(
-		from.R + (to.R - from.R) * alpha,
-		from.G + (to.G - from.G) * alpha,
-		from.B + (to.B - from.B) * alpha
-	)
+	return Lerp.color3(from, to, alpha)
 end
 
 local function resolveImplicitBiomeTint(biomeName: string, farAlpha: number): Color3

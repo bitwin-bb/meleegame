@@ -1,6 +1,8 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Damp = require(ReplicatedStorage.Shared.Modules.Math.Damp)
+local Vec = require(ReplicatedStorage.Shared.Modules.Math.Vec)
 local BossServiceUtils = require(ReplicatedStorage.Shared.Services.BossService.BossServiceUtils)
 
 type BossMotionState = BossServiceUtils.BossMotionState
@@ -58,13 +60,11 @@ end
 
 local function safeUnit(vector: Vector3, fallbackRaw: Vector3?): Vector3
 	local fallback = if typeof(fallbackRaw) == "Vector3" then fallbackRaw else Vector3.zAxis
+	local fallbackUnit = Vec.unit(fallback, Vector3.zAxis)
 	if vector.Magnitude <= 1e-4 then
-		if fallback.Magnitude <= 1e-4 then
-			return Vector3.zAxis
-		end
-		return fallback.Unit
+		return fallbackUnit
 	end
-	return vector.Unit
+	return Vec.unit(vector, fallbackUnit)
 end
 
 local function projectPosition(position: Vector3, planeXRaw: any): Vector3
@@ -100,7 +100,7 @@ local function dampVelocity(velocity: Vector3, dampingRaw: any, dt: number): Vec
 	if damping <= 0 then
 		return velocity
 	end
-	return velocity * math.exp(-damping * dt)
+	return Damp.value(velocity, ZERO_VECTOR, damping, dt)
 end
 
 local function solveAnchoredVelocity(

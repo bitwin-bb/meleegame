@@ -1,6 +1,8 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Trig = require(ReplicatedStorage.Shared.Modules.Math.Trig)
+local Vec = require(ReplicatedStorage.Shared.Modules.Math.Vec)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
 local ResolveToolInstance = require(ReplicatedStorage.Shared.Modules.Game.ResolveToolInstance)
 
@@ -403,23 +405,22 @@ end
 
 function MagicServiceUtils.resolveCastDirection(origin: Vector3, castRequestRaw: any, fallbackRaw: any): Vector3
 	local request = MagicServiceUtils.sanitizeCastRequest(castRequestRaw)
-	local fallback = if typeof(fallbackRaw) == "Vector3" and fallbackRaw.Magnitude > 1e-4
-		then fallbackRaw.Unit
-		else Vector3.new(0, 0, -1)
+	local fallback = if typeof(fallbackRaw) == "Vector3" then fallbackRaw else Vector3.new(0, 0, -1)
+	local fallbackUnit = Vec.unit(fallback, Vector3.new(0, 0, -1))
 	if request.aimDirection ~= nil and request.aimDirection.Magnitude > 1e-4 then
-		return request.aimDirection.Unit
+		return Vec.unit(request.aimDirection, fallbackUnit)
 	end
 	if request.aimPosition ~= nil then
 		local offset = request.aimPosition - origin
 		if offset.Magnitude > 1e-4 then
-			return offset.Unit
+			return Vec.unit(offset, fallbackUnit)
 		end
 	end
-	return fallback
+	return fallbackUnit
 end
 
 function MagicServiceUtils.applySpread(directionRaw: Vector3, spreadRaw: any, indexRaw: any, countRaw: any): Vector3
-	local direction = if directionRaw.Magnitude > 1e-4 then directionRaw.Unit else Vector3.new(0, 0, -1)
+	local direction = Vec.unit(directionRaw, Vector3.new(0, 0, -1))
 	local spread = num(spreadRaw, 0, 0, 120)
 	local count = int(countRaw, 1, 1, 64)
 	if spread <= 1e-3 or count <= 1 then
@@ -427,7 +428,7 @@ function MagicServiceUtils.applySpread(directionRaw: Vector3, spreadRaw: any, in
 	end
 	local index = int(indexRaw, 1, 1, count)
 	local alpha = ((index - 1) / (count - 1)) - 0.5
-	local yaw = math.rad(alpha * spread)
+	local yaw = Trig.degToRad(alpha * spread)
 	local look = CFrame.lookAt(Vector3.zero, direction) * CFrame.Angles(0, yaw, 0)
 	return look.LookVector
 end
@@ -519,8 +520,9 @@ function MagicServiceUtils.buildWeaponRuntimeConfig(weaponConfigRaw: any): Weapo
 		end
 	end
 
-	local attackSpeedCooldown = attackSpeedCooldown((stats :: any).attackSpeed)
-	local cooldownFallback = if attackSpeedCooldown ~= nil then attackSpeedCooldown else num(weaponConfig.cooldown, 0.42, 0, 60)
+	local attackSpeedCooldownValue = attackSpeedCooldown((stats :: any).attackSpeed)
+	local cooldownFallback =
+		if attackSpeedCooldownValue ~= nil then attackSpeedCooldownValue else num(weaponConfig.cooldown, 0.42, 0, 60)
 	local callbacksRaw = if typeof((root :: any).callbacks) == "table"
 		then (root :: any).callbacks
 		else if typeof((definition :: any).callbacks) == "table" then (definition :: any).callbacks else {}

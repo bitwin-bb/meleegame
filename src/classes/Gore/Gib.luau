@@ -4,6 +4,9 @@ local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Curve = require(ReplicatedStorage.Shared.Modules.Math.Curve)
+local Ease = require(ReplicatedStorage.Shared.Modules.Math.Ease)
+local Vec = require(ReplicatedStorage.Shared.Modules.Math.Vec)
 
 local Gib = {}
 Gib.__index = Gib
@@ -126,19 +129,15 @@ local function clearConstraintsAndJoints(part: BasePart)
 end
 
 local function quadraticBezier(a: Vector3, b: Vector3, c: Vector3, t: number): Vector3
-	local ab = a:Lerp(b, t)
-	local bc = b:Lerp(c, t)
-	return ab:Lerp(bc, t)
+	return Curve.quadratic(a, b, c, t)
 end
 
 local function quadraticTangent(a: Vector3, b: Vector3, c: Vector3, t: number): Vector3
-	local firstTerm = (b - a) * (2 * (1 - t))
-	local secondTerm = (c - b) * (2 * t)
-	return firstTerm + secondTerm
+	return Curve.quadraticTangent(a, b, c, t)
 end
 
 local function easeInOutSine(alpha: number): number
-	return -(math.cos(math.pi * alpha) - 1) * 0.5
+	return Ease.inOutSine(alpha)
 end
 
 local function randomUnitVector2D(randomObject: Random): Vector3
@@ -248,12 +247,9 @@ function Gib._step(self: Gib, dt: number)
 	if tangent.Magnitude <= 1e-4 then
 		tangent = restPosition - startPosition
 	end
-	if tangent.Magnitude <= 1e-4 then
-		tangent = Vector3.new(0, 0, -1)
-	end
 
 	local spin = self.rotationVelocity * (self.elapsed / self.travelTime)
-	local cframe = CFrame.lookAt(position, position + tangent.Unit, Vector3.yAxis)
+	local cframe = CFrame.lookAt(position, position + Vec.unit(tangent, Vector3.new(0, 0, -1)), Vector3.yAxis)
 	self.part.CFrame = cframe * CFrame.Angles(spin.X, spin.Y, spin.Z)
 
 	if alpha >= 1 then

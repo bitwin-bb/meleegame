@@ -4,6 +4,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Damp = require(ReplicatedStorage.Shared.Modules.Math.Damp)
+local Vec = require(ReplicatedStorage.Shared.Modules.Math.Vec)
 local TreeFoliageGraph = require(script.Parent.TreeFoliageGraph)
 
 local FoliageInstance = {}
@@ -527,7 +529,7 @@ end
 
 function FoliageInstance.resolveLocalAngles(self: FoliageInstance, bendWorld: Vector3, flutter: number, lod: LODState): (number, number, number, Vector3)
 	local reference = self.referenceFrame
-	local planar = Vector3.new(bendWorld.X, 0, bendWorld.Z)
+	local planar = Vec.flattenY(bendWorld)
 	local magnitude = planar.Magnitude
 	if magnitude <= 1e-5 then
 		return 0, 0, 0, ZERO
@@ -620,8 +622,7 @@ function FoliageInstance.step(self: FoliageInstance, simulationTime: number, dt:
 	end
 
 	local recoverySpeed = clampNumber(self.config.recoverySpeed, 4, 0, 30)
-	local recoveryAlpha = math.exp(-recoverySpeed * dt)
-	self.reactiveBend *= recoveryAlpha
+	self.reactiveBend = Damp.value(self.reactiveBend, ZERO, recoverySpeed, dt)
 	if self.reactiveBend.Magnitude <= 1e-4 then
 		self.reactiveBend = ZERO
 	end
@@ -637,7 +638,7 @@ function FoliageInstance.step(self: FoliageInstance, simulationTime: number, dt:
 	target += windSample.detailVector * detailAmplitude * lod.detailScale
 	target += self.reactiveBend * lod.disturbanceScale
 	target *= heightMultiplier * self.amplitudeScale
-	target = Vector3.new(target.X, 0, target.Z)
+	target = Vec.flattenY(target)
 
 	if target.Magnitude > 1.35 then
 		target = target.Unit * 1.35

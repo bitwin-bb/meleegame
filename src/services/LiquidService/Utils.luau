@@ -3,6 +3,7 @@
 local LiquidServiceUtils = {}
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
+local Lerp = require(ReplicatedStorage.Shared.Modules.Math.Lerp)
 local WorldGenerationColor = require(ReplicatedStorage.Shared.Modules.Items.WorldGenerationColor)
 
 LiquidServiceUtils.NETWORK_METHOD_REQUEST_SYNC = "requestSync"
@@ -363,7 +364,7 @@ end
 
 local function lerpColor(a: Color3, b: Color3, alphaRaw: any): Color3
 	local alpha = sanitizeNumber(alphaRaw, 0, 1, 0)
-	return Color3.new(a.R + (b.R - a.R) * alpha, a.G + (b.G - a.G) * alpha, a.B + (b.B - a.B) * alpha)
+	return Lerp.color3(a, b, alpha)
 end
 
 function LiquidServiceUtils.packChunkKey(chunkX: number, chunkY: number): string

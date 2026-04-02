@@ -5,6 +5,7 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
+local Damp = require(ReplicatedStorage.Shared.Modules.Math.Damp)
 
 export type CraftMenuDragOptions = {
 	enabled: boolean?,
@@ -141,7 +142,7 @@ local function useCraftMenuDrag(options: CraftMenuDragOptions?): CraftMenuDragRe
 		local connection = RunService.RenderStepped:Connect(function(deltaTime: number)
 			local currentOffset = offsetRef.current
 			local targetOffset = targetOffsetRef.current
-			local alpha = math.clamp(1 - math.exp(-dragSmoothness * math.max(0, deltaTime)), 0, 1)
+			local alpha = Damp.factor(dragSmoothness, deltaTime)
 			local nextOffset = currentOffset:Lerp(targetOffset, alpha)
 
 			if (targetOffset - nextOffset).Magnitude <= SNAP_EPSILON then

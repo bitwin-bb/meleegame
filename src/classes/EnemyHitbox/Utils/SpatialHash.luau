@@ -1,4 +1,8 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Bounds = require(ReplicatedStorage.Shared.Modules.Math.Bounds)
+
 local SpatialHash = {}
 SpatialHash.__index = SpatialHash
 
@@ -42,18 +46,8 @@ local function ensureAabb(aabbMinRaw: any, aabbMaxRaw: any): (Vector3, Vector3)
 		return Vector3.zero, Vector3.zero
 	end
 
-	local aabbMin = Vector3.new(
-		math.min(aabbMinRaw.X, aabbMaxRaw.X),
-		math.min(aabbMinRaw.Y, aabbMaxRaw.Y),
-		math.min(aabbMinRaw.Z, aabbMaxRaw.Z)
-	)
-	local aabbMax = Vector3.new(
-		math.max(aabbMinRaw.X, aabbMaxRaw.X),
-		math.max(aabbMinRaw.Y, aabbMaxRaw.Y),
-		math.max(aabbMinRaw.Z, aabbMaxRaw.Z)
-	)
-
-	return aabbMin, aabbMax
+	local bounds = Bounds.new(aabbMinRaw, aabbMaxRaw)
+	return bounds.min, bounds.max
 end
 
 local function hashCellKey(cellX: number, cellY: number, cellZ: number): string
@@ -90,8 +84,8 @@ end
 function SpatialHash.aabbFromCenterSize(centerRaw: any, sizeRaw: any): (Vector3, Vector3)
 	local center = if typeof(centerRaw) == "Vector3" then centerRaw else Vector3.zero
 	local size = if typeof(sizeRaw) == "Vector3" then sizeRaw else Vector3.zero
-	local half = size * 0.5
-	return center - half, center + half
+	local bounds = Bounds.fromCenterSize(center, size)
+	return bounds.min, bounds.max
 end
 
 function SpatialHash.aabbIntersects(aMinRaw: any, aMaxRaw: any, bMinRaw: any, bMaxRaw: any): boolean
@@ -102,12 +96,7 @@ function SpatialHash.aabbIntersects(aMinRaw: any, aMaxRaw: any, bMinRaw: any, bM
 		return false
 	end
 
-	return aMinRaw.X <= bMaxRaw.X
-		and aMaxRaw.X >= bMinRaw.X
-		and aMinRaw.Y <= bMaxRaw.Y
-		and aMaxRaw.Y >= bMinRaw.Y
-		and aMinRaw.Z <= bMaxRaw.Z
-		and aMaxRaw.Z >= bMinRaw.Z
+	return Bounds.intersects(Bounds.new(aMinRaw, aMaxRaw), Bounds.new(bMinRaw, bMaxRaw))
 end
 
 function SpatialHash._forEachOverlappingCell(
@@ -276,12 +265,8 @@ function SpatialHash.querySphere(
 			return false
 		end
 
-		local nearestX = math.clamp(center.X, entry.aabbMin.X, entry.aabbMax.X)
-		local nearestY = math.clamp(center.Y, entry.aabbMin.Y, entry.aabbMax.Y)
-		local nearestZ = math.clamp(center.Z, entry.aabbMin.Z, entry.aabbMax.Z)
-		local nearestPoint = Vector3.new(nearestX, nearestY, nearestZ)
-		local distanceSquared = (nearestPoint - center):Dot(nearestPoint - center)
-		return distanceSquared <= radiusSquared
+		local bounds = Bounds.new(entry.aabbMin, entry.aabbMax)
+		return Bounds.distanceSqToPoint(bounds, center) <= radiusSquared
 	end)
 end
 

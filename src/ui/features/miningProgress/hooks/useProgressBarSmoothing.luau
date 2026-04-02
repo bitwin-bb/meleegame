@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local React = require(ReplicatedStorage.Packages.React)
+local Damp = require(ReplicatedStorage.Shared.Modules.Math.Damp)
 
 export type ProgressBarSmoothingOptions = {
 	progress: number?,
@@ -30,7 +31,7 @@ local function sanitizePositiveRate(valueRaw: any, fallback: number): number
 end
 
 local function smoothStep(current: number, target: number, rate: number, deltaTime: number): number
-	local alpha = 1 - math.exp(-rate * deltaTime)
+	local alpha = Damp.factor(rate, deltaTime)
 	return current + ((target - current) * alpha)
 end
 

@@ -3,6 +3,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local DeterministicRNG = require(ReplicatedStorage.Shared.Modules.Core.DeterministicRNG)
+local Noise = require(ReplicatedStorage.Shared.Modules.Math.Noise)
+local Trig = require(ReplicatedStorage.Shared.Modules.Math.Trig)
+local Vec = require(ReplicatedStorage.Shared.Modules.Math.Vec)
 
 local WindField = {}
 WindField.__index = WindField
@@ -51,15 +54,11 @@ end
 
 local function sanitizeDirection(directionRaw: any): Vector3
 	local direction = if typeof(directionRaw) == "Vector3" then directionRaw else DEFAULT_DIRECTION
-	direction = Vector3.new(direction.X, 0, direction.Z)
-	if direction.Magnitude <= 1e-5 then
-		return DEFAULT_DIRECTION.Unit
-	end
-	return direction.Unit
+	return Vec.unit(Vec.flattenY(direction), Vec.unit(DEFAULT_DIRECTION, Vector3.xAxis))
 end
 
 local function remapNoise(sample: number): number
-	return sample * 2 - 1
+	return Noise.toSigned(sample)
 end
 
 function WindField.new(configRaw: Config?): WindField
@@ -76,7 +75,7 @@ function WindField.new(configRaw: Config?): WindField
 		gustTimeScale = clampNumber(config.gustTimeScale, 0.16, 0.001, 20),
 		detailSpatialScale = clampNumber(config.detailSpatialScale, 22, 1, 2000),
 		detailTimeScale = clampNumber(config.detailTimeScale, 1.55, 0.001, 60),
-		directionJitterRadians = math.rad(clampNumber(config.directionJitterDegrees, 18, 0, 180)),
+		directionJitterRadians = Trig.degToRad(clampNumber(config.directionJitterDegrees, 18, 0, 180)),
 		gustOctaves = math.floor(clampNumber(config.gustOctaves, 4, 1, 8)),
 		detailOctaves = math.floor(clampNumber(config.detailOctaves, 3, 1, 8)),
 		gustNoise = DeterministicRNG.createNoise(seed),
@@ -144,7 +143,7 @@ function WindField.sample(
 	if direction.Magnitude <= 1e-5 then
 		direction = self.baseDirection
 	end
-	direction = direction.Unit
+	direction = Vec.unit(direction, self.baseDirection)
 
 	local detailX = remapNoise(
 		self.detailNoise:fbm3D(

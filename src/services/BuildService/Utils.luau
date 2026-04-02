@@ -4,6 +4,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ItemRegistry = require(ReplicatedStorage.Shared.Modules.Items.Registry)
 local MiningPower = require(ReplicatedStorage.Shared.Modules.Math.MiningPower)
+local Noise = require(ReplicatedStorage.Shared.Modules.Math.Noise)
+local Plane = require(ReplicatedStorage.Shared.Modules.Math.Plane)
+local Vec = require(ReplicatedStorage.Shared.Modules.Math.Vec)
 
 local BuildServiceUtils = {}
 
@@ -636,12 +639,11 @@ end
 
 local function resolveSeededUnit(seedRaw: any, sampleX: number, sampleY: number, sampleZ: number): number
 	local seed = if isFiniteNumber(seedRaw) then seedRaw :: number else 0
-	local noise = math.noise(
+	return Noise.toUnit(math.noise(
 		(seed + 53.17) * 0.017 + sampleX * 0.239,
 		(seed - 21.91) * 0.013 + sampleY * 0.211,
 		(seed + 9.73) * 0.009 + sampleZ * 0.197
-	)
-	return math.clamp((noise + 1) * 0.5, 0, 1)
+	))
 end
 
 local function sanitizeInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
@@ -1531,17 +1533,16 @@ function BuildServiceUtils.raycastToBuildPlane(
 	direction: Vector3,
 	basePlaneX: number
 ): Vector3?
-	if direction.Magnitude <= 0 then
+	if Vec.isNearlyZero(direction) then
 		return nil
 	end
-	if math.abs(direction.X) <= 1e-6 then
+
+	local plane = Plane.fromPointNormal(Vector3.new(basePlaneX, 0, 0), Vector3.xAxis)
+	local hit = Plane.raycast(plane, origin, direction)
+	if hit == nil then
 		return nil
 	end
-	local distanceAlongRay = (basePlaneX - origin.X) / direction.X
-	if distanceAlongRay < 0 then
-		return nil
-	end
-	return origin + direction * distanceAlongRay
+	return hit.point
 end
 
 function BuildServiceUtils.traceTilesFromWorldRay2D(
@@ -1553,7 +1554,7 @@ function BuildServiceUtils.traceTilesFromWorldRay2D(
 	basePlaneX: number
 ): { TileCoordinate }
 	local maxDistance = sanitizeNumber(maxDistanceRaw, 0.5, 10000, 256)
-	local unitDirection = if direction.Magnitude > 0 then direction.Unit else Vector3.new(1, 0, 0)
+	local unitDirection = Vec.unit(direction, Vector3.xAxis)
 	local startPoint = BuildServiceUtils.raycastToBuildPlane(origin, unitDirection, basePlaneX)
 	if startPoint == nil then
 		return {}

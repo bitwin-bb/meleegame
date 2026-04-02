@@ -1,4 +1,8 @@
 --!strict
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Noise = require(ReplicatedStorage.Shared.Modules.Math.Noise)
+local Rand = require(ReplicatedStorage.Shared.Modules.Math.Rand)
 
 local DeterministicRNG = {}
 local RNG = {}
@@ -31,9 +35,7 @@ export type NoiseWrapper = {
 	fbm3D: (self: NoiseWrapper, x: number, y: number, z: number, octaves: number?, persistence: number?, lacunarity: number?) -> number,
 }
 
-local UINT32_MAX = 4294967295
 local UINT32_FLOAT_DENOMINATOR = 4294967296
-local DEFAULT_SEED = 1
 
 local function clampInteger(valueRaw: any, minValue: number, maxValue: number): number
 	local value = if typeof(valueRaw) == "number" then valueRaw else minValue
@@ -47,57 +49,13 @@ local function clampInteger(valueRaw: any, minValue: number, maxValue: number): 
 	return value
 end
 
-local function normalizeUint32(valueRaw: any): number
-	local value = if typeof(valueRaw) == "number" then valueRaw else DEFAULT_SEED
-	value = math.floor(value)
-	value = value % UINT32_FLOAT_DENOMINATOR
-	if value < 0 then
-		value += UINT32_FLOAT_DENOMINATOR
-	end
-	if value == 0 then
-		value = DEFAULT_SEED
-	end
-	return value
-end
-
-local function fnv1aHashString(source: string): number
-	local hash = 2166136261
-	for index = 1, #source do
-		hash = bit32.bxor(hash, string.byte(source, index))
-		hash = (hash * 16777619) % UINT32_FLOAT_DENOMINATOR
-	end
-	return normalizeUint32(hash)
-end
-
 local function normalizeSeed(seedRaw: any): number
-	local kind = typeof(seedRaw)
-	if kind == "number" then
-		return normalizeUint32(seedRaw)
-	end
-	if kind == "string" then
-		return fnv1aHashString(seedRaw)
-	end
-	if kind == "boolean" then
-		if seedRaw then
-			return 1
-		end
-		return 2
-	end
-	if kind == "nil" then
-		return DEFAULT_SEED
-	end
-	return fnv1aHashString(tostring(seedRaw))
+	return Rand.seed(seedRaw)
 end
 
 local function xorshift32(state: number): number
-	local x = bit32.bxor(state, bit32.lshift(state, 13))
-	x = bit32.bxor(x, bit32.rshift(x, 17))
-	x = bit32.bxor(x, bit32.lshift(x, 5))
-	x = bit32.band(x, UINT32_MAX)
-	if x == 0 then
-		return DEFAULT_SEED
-	end
-	return x
+	local nextSeed = Rand.step(state)
+	return nextSeed
 end
 
 local function floorToInteger(value: number): number
@@ -108,18 +66,12 @@ local function floorToInteger(value: number): number
 end
 
 local function hashCoordinatesInternal(xRaw: number, yRaw: number, zRaw: number, seedRaw: number): number
-	local x = normalizeUint32(floorToInteger(xRaw))
-	local y = normalizeUint32(floorToInteger(yRaw))
-	local z = normalizeUint32(floorToInteger(zRaw))
-	local seed = normalizeUint32(seedRaw)
-
-	local hash = seed
-	hash = bit32.bxor(hash, bit32.band(x * 374761393, UINT32_MAX))
-	hash = bit32.bxor(hash, bit32.band(y * 668265263, UINT32_MAX))
-	hash = bit32.bxor(hash, bit32.band(z * 2147483647, UINT32_MAX))
-	hash = bit32.band(hash * 1274126177, UINT32_MAX)
-	hash = bit32.bxor(hash, bit32.rshift(hash, 16))
-	return normalizeUint32(hash)
+	return Rand.hashCoordinates(
+		Rand.uint32(seedRaw),
+		floorToInteger(xRaw),
+		floorToInteger(yRaw),
+		floorToInteger(zRaw)
+	)
 end
 
 local function hashToUnitFloat(hashValue: number): number
@@ -199,7 +151,9 @@ function RNG.nextUInt32(self: RNG): number
 end
 
 function RNG.nextNumber(self: RNG): number
-	return self:nextUInt32() / UINT32_FLOAT_DENOMINATOR
+	local nextSeed, value = Rand.number(self.state)
+	self.state = nextSeed
+	return value
 end
 
 function RNG.nextInteger(self: RNG, minValueRaw: any, maxValueRaw: any): number
@@ -214,8 +168,10 @@ function RNG.nextInteger(self: RNG, minValueRaw: any, maxValueRaw: any): number
 	if span <= 1 then
 		return minValue
 	end
-	local value = self:nextUInt32() % span
-	return minValue + value
+
+	local nextSeed, value = Rand.integer(self.state, minValue, maxValue)
+	self.state = nextSeed
+	return value
 end
 
 function RNG.nextRange(self: RNG, minValueRaw: any, maxValueRaw: any): number
@@ -226,39 +182,23 @@ function RNG.nextRange(self: RNG, minValueRaw: any, maxValueRaw: any): number
 		maxValue = minValue
 		minValue = tmp
 	end
-	return minValue + (maxValue - minValue) * self:nextNumber()
+
+	local nextSeed, value = Rand.number(self.state, minValue, maxValue)
+	self.state = nextSeed
+	return value
 end
 
 function RNG.chance(self: RNG, probabilityRaw: any): boolean
-	local probability = if typeof(probabilityRaw) == "number" then math.clamp(probabilityRaw, 0, 1) else 0
-	return self:nextNumber() <= probability
+	local probability = if typeof(probabilityRaw) == "number" then probabilityRaw else 0
+	local nextSeed, value = Rand.chance(self.state, probability)
+	self.state = nextSeed
+	return value
 end
 
 function RNG.pickWeighted<T>(self: RNG, entries: { WeightedEntry<T> }): T?
-	if #entries == 0 then
-		return nil
-	end
-
-	local totalWeight = 0
-	for _, entry in entries do
-		if typeof(entry.weight) == "number" and entry.weight > 0 then
-			totalWeight += entry.weight
-		end
-	end
-	if totalWeight <= 0 then
-		return entries[1].value
-	end
-
-	local roll = self:nextNumber() * totalWeight
-	local running = 0
-	for _, entry in entries do
-		local weight = if typeof(entry.weight) == "number" and entry.weight > 0 then entry.weight else 0
-		running += weight
-		if roll <= running then
-			return entry.value
-		end
-	end
-	return entries[#entries].value
+	local nextSeed, picked = Rand.weighted(self.state, entries)
+	self.state = nextSeed
+	return picked
 end
 
 function RNG.shuffleInPlace<T>(self: RNG, array: { T }): { T }
@@ -284,7 +224,7 @@ function DeterministicRNG.seedFrom(seedRaw: any): number
 end
 
 function DeterministicRNG.hashString(value: string): number
-	return fnv1aHashString(value)
+	return Rand.hashString(value)
 end
 
 function DeterministicRNG.hashCoordinates(x: number, y: number, z: number?, seedRaw: any): number
@@ -323,20 +263,10 @@ function DeterministicRNG.createNoise(seedRaw: any): NoiseWrapper
 		local octaves = clampInteger(octavesRaw, 1, 12)
 		local persistence = if typeof(persistenceRaw) == "number" then persistenceRaw else 0.5
 		local lacunarity = if typeof(lacunarityRaw) == "number" then lacunarityRaw else 2
-		local amplitude = 1
-		local frequency = 1
-		local total = 0
-		local normalizer = 0
-		for _ = 1, octaves do
-			total += sampleValueNoise2D(self.seed, x * frequency, y * frequency) * amplitude
-			normalizer += amplitude
-			amplitude *= persistence
-			frequency *= lacunarity
-		end
-		if normalizer <= 0 then
-			return 0
-		end
-		return total / normalizer
+
+		return Noise.fbmOctaves(octaves, persistence, lacunarity, function(_, frequency)
+			return sampleValueNoise2D(self.seed, x * frequency, y * frequency)
+		end)
 	end
 
 	function wrapper.fbm3D(
@@ -351,20 +281,10 @@ function DeterministicRNG.createNoise(seedRaw: any): NoiseWrapper
 		local octaves = clampInteger(octavesRaw, 1, 12)
 		local persistence = if typeof(persistenceRaw) == "number" then persistenceRaw else 0.5
 		local lacunarity = if typeof(lacunarityRaw) == "number" then lacunarityRaw else 2
-		local amplitude = 1
-		local frequency = 1
-		local total = 0
-		local normalizer = 0
-		for _ = 1, octaves do
-			total += sampleValueNoise3D(self.seed, x * frequency, y * frequency, z * frequency) * amplitude
-			normalizer += amplitude
-			amplitude *= persistence
-			frequency *= lacunarity
-		end
-		if normalizer <= 0 then
-			return 0
-		end
-		return total / normalizer
+
+		return Noise.fbmOctaves(octaves, persistence, lacunarity, function(_, frequency)
+			return sampleValueNoise3D(self.seed, x * frequency, y * frequency, z * frequency)
+		end)
 	end
 
 	return wrapper

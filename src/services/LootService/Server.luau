@@ -9,6 +9,7 @@ local Ripple = require(ReplicatedStorage.Packages.Ripple)
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
 local StringUtils = require(ReplicatedStorage.Shared.Modules.Core.StringUtils)
+local Vec = require(ReplicatedStorage.Shared.Modules.Math.Vec)
 local InstanceUtils = require(ReplicatedStorage.Shared.Modules.Platform.InstanceUtils)
 local ResolveItem = require(ReplicatedStorage.Shared.Modules.Game.ResolveItem)
 local ResolveToolInstance = require(ReplicatedStorage.Shared.Modules.Game.ResolveToolInstance)
@@ -206,12 +207,13 @@ local function toUnitVectorOrFallback(directionRaw: any, fallbackRaw: Vector3): 
 	if fallback.Magnitude <= EPSILON then
 		fallback = Vector3.new(0, 0, -1)
 	end
+	local fallbackUnit = Vec.unit(fallback, Vector3.new(0, 0, -1))
 
 	local direction = LootServiceUtils.sanitizeVector3(directionRaw, fallback)
 	if direction.Magnitude <= EPSILON then
-		return fallback.Unit
+		return fallbackUnit
 	end
-	return direction.Unit
+	return Vec.unit(direction, fallbackUnit)
 end
 
 local function shallowCopy(sourceRaw: any): { [string]: any }
@@ -1450,11 +1452,8 @@ function LootServiceServer.updateMagnetizedRuntime(
 	magnet.zMotion:spring(targetPosition.Z, spring)
 	local springPosition = Vector3.new(magnet.xMotion:step(dt), magnet.yMotion:step(dt), magnet.zMotion:step(dt))
 
-	local speedPosition = currentPosition
-	if distance > EPSILON then
-		local maxStep = magnet.speed * closeSpeedBoost * distanceStrength * dt
-		speedPosition += toTarget.Unit * math.min(maxStep, distance)
-	end
+	local speedPosition =
+		Vec.moveTowards(currentPosition, targetPosition, magnet.speed * closeSpeedBoost * distanceStrength * dt)
 
 	local nextPosition = springPosition:Lerp(speedPosition, self.settings.magnetSpeedBlend)
 	self:setRuntimePosition(runtime, nextPosition)

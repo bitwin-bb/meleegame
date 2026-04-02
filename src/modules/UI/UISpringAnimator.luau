@@ -1,6 +1,7 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
+local Spring = require(ReplicatedStorage.Shared.Modules.Math.Spring)
 
 local RunService = game:GetService("RunService")
 
@@ -140,16 +141,11 @@ local function fromComponents(kind: string, components: { number }): any
 end
 
 local function springStep(position: number, velocity: number, target: number, dt: number, frequency: number, dampingRatio: number, mass: number): (number, number)
-	local omega = 2 * math.pi * frequency
-	local scaledOmega = omega / math.sqrt(mass)
-	local f = 1 + 2 * dt * dampingRatio * scaledOmega
-	local oo = scaledOmega * scaledOmega
-	local hoo = dt * oo
-	local hhoo = dt * hoo
-	local detInv = 1 / (f + hhoo)
-	local newPosition = (f * position + dt * velocity + hhoo * target) * detInv
-	local newVelocity = (velocity + hoo * (target - position)) * detInv
-	return newPosition, newVelocity
+	local nextState = Spring.step({
+		value = position,
+		velocity = velocity,
+	}, target, frequency, dampingRatio, dt, mass)
+	return nextState.value, nextState.velocity
 end
 
 function UISpringAnimator.new(configRaw: AnimatorConfig?): UISpringAnimator

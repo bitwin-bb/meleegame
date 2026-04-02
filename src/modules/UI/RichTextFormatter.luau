@@ -1,4 +1,6 @@
 --!strict
+local Lerp = require(script.Parent.Parent.Math.Lerp)
+
 local RichTextFormatter = {}
 
 local Builder = {}
@@ -100,7 +102,7 @@ local function resolveColor(colorRaw: any): string?
 end
 
 local function interpolateColor(a: Color3, b: Color3, t: number): Color3
-	return Color3.new(a.R + (b.R - a.R) * t, a.G + (b.G - a.G) * t, a.B + (b.B - a.B) * t)
+	return Lerp.color3(a, b, t)
 end
 
 local function cachePut(key: string, value: string)

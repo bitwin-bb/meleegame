@@ -10,6 +10,7 @@ local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
 local Configs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
+local Bounds = require(ReplicatedStorage.Shared.Modules.Math.Bounds)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
 local StringUtils = require(ReplicatedStorage.Shared.Modules.Core.StringUtils)
 local InstanceUtils = require(ReplicatedStorage.Shared.Modules.Platform.InstanceUtils)
@@ -266,16 +267,7 @@ local function computeBoxAabb(cframeRaw: any, sizeRaw: any): (Vector3, Vector3)
 end
 
 local function aabbIntersects(aMin: Vector3, aMax: Vector3, bMin: Vector3, bMax: Vector3): boolean
-	if aMax.X < bMin.X or bMax.X < aMin.X then
-		return false
-	end
-	if aMax.Y < bMin.Y or bMax.Y < aMin.Y then
-		return false
-	end
-	if aMax.Z < bMin.Z or bMax.Z < aMin.Z then
-		return false
-	end
-	return true
+	return Bounds.intersects(Bounds.new(aMin, aMax), Bounds.new(bMin, bMax))
 end
 
 local function setModelCollisionGroup(model: Model, collisionGroup: string)

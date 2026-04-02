@@ -1,8 +1,10 @@
 --!strict
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Sift = require(ReplicatedStorage.Packages.Sift)
+local Plane = require(ReplicatedStorage.Shared.Modules.Math.Plane)
+local Proj = require(ReplicatedStorage.Shared.Modules.Math.Proj)
+local Vec = require(ReplicatedStorage.Shared.Modules.Math.Vec)
 
 local BossServiceUtils = {}
 
@@ -149,12 +151,6 @@ local DEFAULT_MOTION: BossMotionState = {
 	chargeTimeRemaining = nil,
 	motionOwner = "None",
 	localPresentationOffset = nil,
-}
-
-local DEFAULT_STATE: BossServiceState = {
-	byId = {},
-	orderedIds = {},
-	updatedAt = os.clock(),
 }
 
 local EYE_OF_CTHULHU_REGISTRY_ENTRY: BossRegistryEntry = {
@@ -762,37 +758,27 @@ function BossServiceUtils.projectPositionToPlaneX(position: Vector3, planeXRaw: 
 	if typeof(planeXRaw) ~= "number" or planeXRaw ~= planeXRaw then
 		return position
 	end
-	return Vector3.new(planeXRaw, position.Y, position.Z)
+	local plane = Plane.fromPointNormal(Vector3.new(planeXRaw, 0, 0), Vector3.xAxis)
+	return Plane.projectPoint(plane, position)
 end
 
 function BossServiceUtils.projectVectorToPlaneX(vector: Vector3, planeXRaw: any): Vector3
 	if typeof(planeXRaw) ~= "number" or planeXRaw ~= planeXRaw then
 		return vector
 	end
-	return Vector3.new(0, vector.Y, vector.Z)
+	return Proj.ontoPlane(vector, Vector3.xAxis)
 end
 
 function BossServiceUtils.moveTowardsVector(current: Vector3, target: Vector3, maxDeltaRaw: any): Vector3
 	local maxDelta = sanitizeNumber(maxDeltaRaw, 0, 0, nil)
-	local delta = target - current
-	local magnitude = delta.Magnitude
-	if magnitude <= 1e-6 or magnitude <= maxDelta then
-		return target
-	end
-	return current + delta.Unit * maxDelta
+	return Vec.moveTowards(current, target, maxDelta)
 end
 
-function BossServiceUtils.computeFacingVector(position: Vector3, desiredDirectionRaw: any, fallbackRaw: Vector3?): Vector3
+function BossServiceUtils.computeFacingVector(_position: Vector3, desiredDirectionRaw: any, fallbackRaw: Vector3?): Vector3
 	local desiredDirection = if typeof(desiredDirectionRaw) == "Vector3" then desiredDirectionRaw else Vector3.zero
-	if desiredDirection.Magnitude > 1e-4 then
-		return desiredDirection.Unit
-	end
-
 	local fallback = if typeof(fallbackRaw) == "Vector3" then fallbackRaw else Vector3.zAxis
-	if fallback.Magnitude > 1e-4 then
-		return fallback.Unit
-	end
-	return (Vector3.zAxis :: Vector3)
+	local fallbackUnit = Vec.unit(fallback, Vector3.zAxis)
+	return Vec.unit(desiredDirection, fallbackUnit)
 end
 
 function BossServiceUtils.lookCFrame(position: Vector3, facingRaw: any): CFrame

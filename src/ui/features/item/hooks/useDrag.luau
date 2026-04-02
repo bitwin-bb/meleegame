@@ -7,6 +7,7 @@ local GuiService = game:GetService("GuiService")
 local React = require(ReplicatedStorage.Packages.React)
 local Charm = require(ReplicatedStorage.Packages.Charm)
 local Configs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
+local Damp = require(ReplicatedStorage.Shared.Modules.Math.Damp)
 local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
 local BuildServiceUtils = require(ReplicatedStorage.Shared.Services.BuildService.BuildServiceUtils)
 local itemSlice = require(ReplicatedStorage.UI.features.item.state.itemSlice)
@@ -389,8 +390,7 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 				smoothedPointerRef.current = targetPointer
 				hasSmoothedPointerRef.current = true
 			else
-				local alpha = 1 - math.exp(-POINTER_SMOOTHING_SPEED * math.max(deltaTime, 0))
-				alpha = math.clamp(alpha, 0, 1)
+				local alpha = Damp.factor(POINTER_SMOOTHING_SPEED, deltaTime)
 				smoothedPointerRef.current = smoothedPointerRef.current:Lerp(targetPointer, alpha)
 			end
 

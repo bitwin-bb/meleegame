@@ -456,17 +456,77 @@
           },
           "Math": {
             "$className": "Folder",
+            "Angle": {
+              "$path": "src/modules/Math/Angle.luau"
+            },
+            "Arc": {
+              "$path": "src/modules/Math/Arc.luau"
+            },
+            "Avg": {
+              "$path": "src/modules/Math/Avg.luau"
+            },
+            "Basis": {
+              "$path": "src/modules/Math/Basis.luau"
+            },
+            "Bounds": {
+              "$path": "src/modules/Math/Bounds.luau"
+            },
+            "Curve": {
+              "$path": "src/modules/Math/Curve.luau"
+            },
+            "Damp": {
+              "$path": "src/modules/Math/Damp.luau"
+            },
+            "Deriv": {
+              "$path": "src/modules/Math/Deriv.luau"
+            },
+            "Diff": {
+              "$path": "src/modules/Math/Diff.luau"
+            },
             "DropChance": {
               "$path": "src/modules/Math/DropChance.luau"
+            },
+            "Ease": {
+              "$path": "src/modules/Math/Ease.luau"
             },
             "HopMotion": {
               "$path": "src/modules/Math/HopMotion.luau"
             },
+            "Integ": {
+              "$path": "src/modules/Math/Integ.luau"
+            },
+            "Lerp": {
+              "$path": "src/modules/Math/Lerp.luau"
+            },
             "MiningPower": {
               "$path": "src/modules/Math/MiningPower.luau"
             },
+            "Noise": {
+              "$path": "src/modules/Math/Noise.luau"
+            },
+            "Num": {
+              "$path": "src/modules/Math/Num.luau"
+            },
+            "Osc": {
+              "$path": "src/modules/Math/Osc.luau"
+            },
+            "Plane": {
+              "$path": "src/modules/Math/Plane.luau"
+            },
+            "Proj": {
+              "$path": "src/modules/Math/Proj.luau"
+            },
+            "Rand": {
+              "$path": "src/modules/Math/Rand.luau"
+            },
             "RandomNumber": {
               "$path": "src/modules/Math/RandomNumber.luau"
+            },
+            "Range": {
+              "$path": "src/modules/Math/Range.luau"
+            },
+            "Ray": {
+              "$path": "src/modules/Math/Ray.luau"
             },
             "ReforgeRarity": {
               "$path": "src/modules/Math/ReforgeRarity.luau"
@@ -474,8 +534,23 @@
             "RoomScaleFactor": {
               "$path": "src/modules/Math/RoomScaleFactor.luau"
             },
+            "Solve": {
+              "$path": "src/modules/Math/Solve.luau"
+            },
             "SpawnChance": {
               "$path": "src/modules/Math/SpawnChance.luau"
+            },
+            "Spring": {
+              "$path": "src/modules/Math/Spring.luau"
+            },
+            "Stat": {
+              "$path": "src/modules/Math/Stat.luau"
+            },
+            "Trig": {
+              "$path": "src/modules/Math/Trig.luau"
+            },
+            "Vec": {
+              "$path": "src/modules/Math/Vec.luau"
             }
           },
           "Platform": {
@@ -661,6 +736,12 @@
               "$className": "Folder",
               "StringUtils.spec": {
                 "$path": "src/tests/Specs/Core/StringUtils.spec.luau"
+              }
+            },
+            "Math": {
+              "$className": "Folder",
+              "MathModules.spec": {
+                "$path": "src/tests/Specs/Math/MathModules.spec.luau"
               }
             },
             "Services": {

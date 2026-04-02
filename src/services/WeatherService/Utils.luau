@@ -1,6 +1,7 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Range = require(ReplicatedStorage.Shared.Modules.Math.Range)
 local WorldSimulationShared = require(ReplicatedStorage.Shared.Services.WorldSimulationService.Shared)
 
 local WeatherServiceUtils = {}
@@ -129,11 +130,7 @@ end
 
 local function normalizeClockTime(clockTimeRaw: any, fallback: number): number
 	local value = sanitizeNumber(clockTimeRaw, fallback, -100000, 100000)
-	value %= 24
-	if value < 0 then
-		value += 24
-	end
-	return value
+	return Range.wrap(value, 0, 24)
 end
 
 local function sanitizeWeatherType(weatherTypeRaw: any, fallback: WeatherType?): WeatherType
@@ -433,7 +430,7 @@ end
 function WeatherServiceUtils.shortestClockDeltaHours(fromClockRaw: any, toClockRaw: any): number
 	local fromClock = normalizeClockTime(fromClockRaw, 0)
 	local toClock = normalizeClockTime(toClockRaw, 0)
-	return ((toClock - fromClock + 12) % 24) - 12
+	return Range.wrap(toClock - fromClock + 12, 0, 24) - 12
 end
 
 function WeatherServiceUtils.resolveSkyKeyFromWorldSample(

@@ -11,6 +11,7 @@ local Signal = require(ReplicatedStorage.Packages.Signal)
 local AudioRegistry = require(ReplicatedStorage.Shared.Modules.Items.Audio)
 local Configs = require(ReplicatedStorage.Shared.Modules.Core.Configs)
 local CoreRuntime = require(ReplicatedStorage.Shared.Modules.Core.Runtime)
+local Lerp = require(ReplicatedStorage.Shared.Modules.Math.Lerp)
 local TickSchedulerModule = require(ReplicatedStorage.Shared.Modules.Core.TickScheduler)
 local WorkspaceFolders = require(ReplicatedStorage.Shared.Modules.Core.WorkspaceFolders)
 local WorldMutationQueue = require(ReplicatedStorage.Shared.Modules.Core.WorldMutationQueue)
@@ -100,7 +101,7 @@ local function isFiniteNumber(value: any): boolean
 end
 
 local function lerpColor(a: Color3, b: Color3, alpha: number): Color3
-	return Color3.new(a.R + (b.R - a.R) * alpha, a.G + (b.G - a.G) * alpha, a.B + (b.B - a.B) * alpha)
+	return Lerp.color3(a, b, alpha)
 end
 
 local function darkenColor(color: Color3, amountRaw: any): Color3
