@@ -3,6 +3,18 @@
 ## Scope
 This file is the style and refactor contract for `aquaria`. These rules are hard requirements for all future scripts and edits.
 
+## Priority Rules
+
+These rules are must-always-follow requirements. If a priority rule applies, it takes precedence over lower-priority style preferences.
+
+1. Always prefer Nevermore `node_modules` packages when they suit the purpose.
+- There is no limit to how many Nevermore packages may be used in a script when the fit is clear.
+- Prefer existing Nevermore infrastructure instead of hand-rolled replacements when it improves consistency with the repo.
+- Common examples include `loader` for package requiring/bootstrap, `ServiceBag` for service initialization, and `Rx` for reactive flows, but any suitable Nevermore package may be used.
+- Do not avoid a Nevermore package just to keep a file dependency-light if the package is already the right tool for the job.
+
+Hard rule: when a Nevermore `node_modules` package clearly fits the task, use it by default unless the user explicitly requests otherwise.
+
 ## Repository Scan Baseline
 Scan performed across `src/*`, `Packages/*`, and dependency manifests.
 
@@ -151,11 +163,11 @@ Hard rule: do not normalize module export shapes unless all call sites and dynam
 
 Hard rule: prefer existing UI state and composition idioms over introducing a new state architecture per feature.
 
-### `src/startup`
+### `src/scripts` and `src/modules`
 
-- Startup files orchestrate initialization only.
-- Keep as ordered `:init()` calls with minimal branching.
-- Do not move feature logic into startup scripts.
+- `src/scripts` only bootstraps the Nevermore package root and service bag.
+- Game initialization lives in the `AquariaBackup*Bootstrap` modules under `src/modules`.
+- Keep initialization as ordered `:init()` calls with minimal branching.
 
 Hard rule: preserve init order unless there is an explicit dependency fix requested.
 

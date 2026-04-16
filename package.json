@@ -1,21 +1,31 @@
 {
-  "name": "genrojotree",
+  "name": "aquaria-backup",
   "version": "1.0.0",
-  "main": "index.js",
+  "packageManager": "pnpm@10.27.0",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build:rojo": "node tools/genRojoTree.js",
-    "watch:rojo": "chokidar \"src/**/*\" -c \"npm run build:rojo\""
+    "build:sourcemap": "rojo sourcemap default.project.json --output sourcemap.json --absolute",
+    "format": "stylua --config-path=stylua.toml src",
+    "lint:luau": "luau-lsp analyze --sourcemap=sourcemap.json --base-luaurc=.luaurc --flag:LuauSolverV2=false --ignore=**/node_modules/** --ignore=**/*.story.lua --ignore=**/*.client.lua --ignore=**/*.server.lua src",
+    "lint:moonwave": "moonwave-extractor extract src",
+    "lint:selene": "selene --no-summary --config=selene.toml src",
+    "lint:stylua": "stylua --config-path=stylua.toml --check src",
+    "prelint:luau": "npm run build:sourcemap",
+    "prelint:selene": "selene generate-roblox-std",
+    "serve": "rojo serve default.project.json",
+    "check:pascal-methods": "node tools/checkPascalMethods.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
-  "devDependencies": {
-    "chokidar-cli": "^3.0.0"
-  },
   "dependencies": {
+    "@quenty/binder": "^14.32.0",
+    "@quenty/clienttranslator": "^14.33.0",
+    "@quenty/cmdrservice": "^13.39.0",
     "@quenty/flipbook": "^9.28.0",
-    "@quenty/maid": "^3.8.0"
+    "@quenty/loader": "^10.10.0",
+    "@quenty/maid": "^3.8.0",
+    "@quenty/octree": "^11.13.0",
+    "@quenty/servicebag": "^11.16.0"
   }
 }
