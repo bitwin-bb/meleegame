@@ -1,9 +1,10 @@
 --!strict
-local Resolver = require(script.Parent.CmdrPackageResolver)
+local gameRoot = script:FindFirstAncestor("game")
+assert(gameRoot ~= nil, "Missing Nevermore game root for SpawnServer.")
 
-local BossServiceUtils = Resolver.requireFromGameRoot("Shared", "Services", "BossService", "BossServiceUtils")
-local BossServiceServer = Resolver.requireFromGameRoot("Server", "Services", "BossService", "BossServiceServer")
-local NpcServiceServer = Resolver.requireFromGameRoot("Server", "Services", "NpcService", "NpcServiceServer")
+local BossServiceUtils = require(gameRoot.Shared.Services.BossService.BossServiceUtils)
+local BossServiceServer = require(gameRoot.Server.Services.BossService.BossServiceServer)
+local NpcServiceServer = require(gameRoot.Server.Services.NpcService.NpcServiceServer)
 
 type EntityEntry = {
 	Id: string,

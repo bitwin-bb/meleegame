@@ -4,29 +4,34 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local PACKAGE_NAME = "AquariaBackup"
 
-local function requireFromGameRoot(...: string): any
-	local packageContainer = ServerScriptService:FindFirstChild(PACKAGE_NAME)
-	if packageContainer == nil then
-		packageContainer = ReplicatedStorage:FindFirstChild(PACKAGE_NAME)
-	end
-	if packageContainer == nil then
-		packageContainer = ReplicatedStorage:WaitForChild(PACKAGE_NAME, 5)
-	end
-	assert(packageContainer ~= nil, `Could not find the {PACKAGE_NAME} package container for Cmdr types.`)
-
-	local current = packageContainer:FindFirstChild("game")
-	assert(current ~= nil, `Could not find the "game" folder in {PACKAGE_NAME}.`)
-
-	for index = 1, select("#", ...) do
-		local segment = select(index, ...)
-		current = current:FindFirstChild(segment)
-		assert(current ~= nil, `Could not resolve Cmdr type dependency segment "{segment}".`)
+local function resolveGameRoot(): Instance
+	local directGameRoot = script:FindFirstAncestor("game")
+	if directGameRoot ~= nil then
+		return directGameRoot
 	end
 
-	return require(current)
+	local serverPackage = ServerScriptService:FindFirstChild(PACKAGE_NAME)
+	if serverPackage ~= nil then
+		local serverGameRoot = serverPackage:FindFirstChild("game")
+		if serverGameRoot ~= nil then
+			return serverGameRoot
+		end
+	end
+
+	local replicatedPackage = ReplicatedStorage:FindFirstChild(PACKAGE_NAME) or ReplicatedStorage:WaitForChild(PACKAGE_NAME, 5)
+	if replicatedPackage ~= nil then
+		local replicatedGameRoot = replicatedPackage:FindFirstChild("game")
+		if replicatedGameRoot ~= nil then
+			return replicatedGameRoot
+		end
+	end
+
+	error("Missing Nevermore game root for WeatherKind.")
 end
 
-local WeatherServiceUtils = requireFromGameRoot("Shared", "Services", "WeatherService", "WeatherServiceUtils")
+local gameRoot = resolveGameRoot()
+
+local WeatherServiceUtils = require(gameRoot.Shared.Services.WeatherService.WeatherServiceUtils)
 
 local WEATHER_OPTIONS = {
 	{

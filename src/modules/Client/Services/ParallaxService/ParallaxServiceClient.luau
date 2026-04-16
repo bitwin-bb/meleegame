@@ -63,6 +63,17 @@ local MIN_SEGMENT_VERTICAL_COVERAGE_BLEED_FACTOR = 0.14
 local MIN_SEGMENT_VERTICAL_COVERAGE_BLEED_STUDS = 4
 local ParallaxServiceClient = {}
 
+local function promiseTry<T...>(callback: () -> T...): Promise.Promise<T...>
+	return Promise.spawn(function(resolve, reject)
+		local results = table.pack(pcall(callback))
+		if results[1] then
+			resolve(table.unpack(results, 2, results.n))
+		else
+			reject(table.unpack(results, 2, results.n))
+		end
+	end)
+end
+
 local function asFolder(instance: Instance?): Folder?
 	if instance ~= nil and instance:IsA("Folder") then
 		return instance
@@ -444,16 +455,16 @@ function ParallaxServiceClient._preloadBiomeAssets(self: ParallaxServiceClient, 
 
 	local assetIds = ParallaxServiceUtils.collectAssetIds(self.catalog, { biomeName })
 	if #assetIds <= 0 then
-		local emptyPromise = Promise.resolve(true)
+		local emptyPromise = Promise.resolved(true)
 		self.preloadBiomePromises[biomeName] = emptyPromise
 		return emptyPromise
 	end
 
-	local preloadPromise = Promise.try(function()
+	local preloadPromise = promiseTry(function()
 			ContentProvider:PreloadAsync(assetIds)
 			return true
 		end)
-		:catch(function(err: any)
+		:Catch(function(_err: any)
 			return false
 		end)
 	self.preloadBiomePromises[biomeName] = preloadPromise
@@ -468,15 +479,15 @@ function ParallaxServiceClient._preloadAllAssets(self: ParallaxServiceClient)
 
 	local assetIds = ParallaxServiceUtils.collectAssetIds(self.catalog, nil)
 	if #assetIds <= 0 then
-		self.preloadAllAssetsPromise = Promise.resolve(true)
+		self.preloadAllAssetsPromise = Promise.resolved(true)
 		return self.preloadAllAssetsPromise
 	end
 
-	self.preloadAllAssetsPromise = Promise.try(function()
+	self.preloadAllAssetsPromise = promiseTry(function()
 			ContentProvider:PreloadAsync(assetIds)
 			return true
 		end)
-		:catch(function(err: any)
+		:Catch(function(_err: any)
 			return false
 		end)
 	return self.preloadAllAssetsPromise
@@ -756,13 +767,13 @@ function ParallaxServiceClient.Destroy(self: ParallaxServiceClient)
 	if self.preloadBiomePromises ~= nil then
 		for biomeName, preloadPromise in self.preloadBiomePromises do
 			if preloadPromise ~= nil then
-				preloadPromise:cancel()
+				preloadPromise:Destroy()
 			end
 			self.preloadBiomePromises[biomeName] = nil
 		end
 	end
 	if self.preloadAllAssetsPromise ~= nil then
-		self.preloadAllAssetsPromise:cancel()
+		self.preloadAllAssetsPromise:Destroy()
 		self.preloadAllAssetsPromise = nil
 	end
 	if self.janitor ~= nil then

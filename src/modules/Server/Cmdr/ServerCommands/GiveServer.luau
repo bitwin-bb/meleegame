@@ -1,8 +1,9 @@
 --!strict
-local Resolver = require(script.Parent.CmdrPackageResolver)
+local gameRoot = script:FindFirstAncestor("game")
+assert(gameRoot ~= nil, "Missing Nevermore game root for GiveServer.")
 
-local ItemRegistry = Resolver.requireFromGameRoot("Shared", "Modules", "Items", "Registry")
-local InventoryServiceServer = Resolver.requireFromGameRoot("Server", "Services", "InventoryService", "InventoryServiceServer")
+local ItemRegistry = require(gameRoot.Shared.Modules.Items.Registry)
+local InventoryServiceServer = require(gameRoot.Server.Services.InventoryService.InventoryServiceServer)
 
 local function joinNames(names: { string }): string
 	return table.concat(names, ", ")

@@ -90,6 +90,98 @@ local MELEE_CAMERA_SHAKE_MAX_ROTATION_INFLUENCE = Vector3.new(1.75, 2.15, 1.75)
 local MELEE_CAMERA_SHAKE_MIN_INTERVAL = 0.06
 local MELEE_CAMERA_SHAKE_DAMAGE_FOR_MAX_INTENSITY = 60
 
+local function promiseAll(promises: { any }): any
+	if #promises <= 0 then
+		return Promise.resolved()
+	end
+
+	local results = table.create(#promises)
+	local remaining = #promises
+
+	local aggregatePromise = Promise.new(function(resolve, reject)
+		local settled = false
+
+		local function rejectOnce(...)
+			if settled then
+				return
+			end
+			settled = true
+			reject(...)
+		end
+
+		local function resolveOne(index: number, ...)
+			if settled then
+				return
+			end
+			results[index] = table.pack(...)
+			remaining -= 1
+			if remaining <= 0 then
+				settled = true
+				resolve(results)
+			end
+		end
+
+		for index, nextPromise in promises do
+			nextPromise:Then(function(...)
+				resolveOne(index, ...)
+			end, rejectOnce)
+		end
+	end)
+
+	aggregatePromise:Finally(function()
+		for _, nextPromise in promises do
+			if nextPromise ~= nil and typeof((nextPromise :: any).Destroy) == "function" then
+				(nextPromise :: any):Destroy()
+			end
+		end
+	end)
+
+	return aggregatePromise
+end
+
+local function promiseFromSignal(signal: any, predicate: ((...any) -> boolean)?): any
+	local connection = nil
+	local promise = Promise.new(function(resolve, reject)
+		local settled = false
+
+		local function cleanup()
+			if connection ~= nil then
+				connection:Disconnect()
+				connection = nil
+			end
+		end
+
+		local function settle(callback: (...any) -> (), ...)
+			if settled then
+				return
+			end
+			settled = true
+			cleanup()
+			callback(...)
+		end
+
+		connection = signal:Connect(function(...)
+			if predicate ~= nil and not predicate(...) then
+				return
+			end
+			settle(resolve, ...)
+		end)
+
+		if connection == nil then
+			settle(reject, "Failed to connect signal")
+		end
+	end)
+
+	promise:Finally(function()
+		if connection ~= nil then
+			connection:Disconnect()
+			connection = nil
+		end
+	end)
+
+	return promise
+end
+
 local function resolveHumanoidFromCharacter(character: Model?): Humanoid?
 	if character == nil then
 		return nil
@@ -419,20 +511,20 @@ function MeleeServiceClient.Init(self: MeleeServiceClient)
 
 	self:onInventoryStateChanged(InventoryServiceClient.state)
 
-	self.bootstrapPromise = Promise.all({
+	self.bootstrapPromise = promiseAll({
 		self:waitForCharacter(),
 		self:waitForInventoryLoaded(),
 	})
-		:andThen(function()
+		:Then(function()
 			self:refreshEquippedWeapon("Bootstrap")
 			self:replicateEquippedState(true)
 		end)
-		:catch(function(err: any)
+		:Catch(function(_err: any)
 		end)
 
 	self.janitor:GiveChore(function()
 		if self.bootstrapPromise ~= nil then
-			self.bootstrapPromise:cancel()
+			self.bootstrapPromise:Destroy()
 			self.bootstrapPromise = nil
 		end
 	end)
@@ -472,21 +564,21 @@ end
 function MeleeServiceClient.WaitForCharacter(self: MeleeServiceClient)
 	local character = self.localPlayer.Character
 	if character ~= nil then
-		return Promise.resolve(character)
+		return Promise.resolved(character)
 	end
-	return Promise.fromEvent(self.localPlayer.CharacterAdded)
+	return promiseFromSignal(self.localPlayer.CharacterAdded)
 end
 
 function MeleeServiceClient.WaitForInventoryLoaded(self: MeleeServiceClient)
 	local state = self.inventoryState
 	if InventoryServiceUtils.isLoadedState(state.loadState) then
-		return Promise.resolve(state)
+		return Promise.resolved(state)
 	end
 	if InventoryServiceClient.stateChanged == nil then
-		return Promise.resolve(state)
+		return Promise.resolved(state)
 	end
 
-	return Promise.fromEvent(InventoryServiceClient.stateChanged, function(nextState: InventoryState): boolean
+	return promiseFromSignal(InventoryServiceClient.stateChanged, function(nextState: InventoryState): boolean
 		return InventoryServiceUtils.isLoadedState(nextState.loadState)
 	end)
 end

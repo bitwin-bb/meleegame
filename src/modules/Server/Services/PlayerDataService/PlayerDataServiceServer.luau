@@ -50,6 +50,17 @@ local DATA_SESSION_ENDED_KICK_MESSAGE = "Your data session ended. Please rejoin.
 local PROFILE_FALLBACK_DATASTORE_TIMEOUT_SECONDS = 2
 local PROFILE_SESSION_START_TIMEOUT_SECONDS = 5
 
+local function promiseTry<T...>(callback: () -> T...): Promise.Promise<T...>
+	return Promise.spawn(function(resolve, reject)
+		local results = table.pack(pcall(callback))
+		if results[1] then
+			resolve(table.unpack(results, 2, results.n))
+		else
+			reject(table.unpack(results, 2, results.n))
+		end
+	end)
+end
+
 local function resolvePlayerDataTemplate(): PlayerData
 	local templateRoot = if typeof(DataTemplate) == "table" then DataTemplate else {}
 	local playerData = if typeof((templateRoot :: any).playerData) == "table" then (templateRoot :: any).playerData else {}
@@ -345,7 +356,7 @@ function PlayerDataServiceServer.StartProfileLoad(self: PlayerDataServiceServer,
 		return
 	end
 
-	runtime.loadPromise = self:loadProfilePromise(player, currentLoadToken):finally(function()
+	runtime.loadPromise = self:loadProfilePromise(player, currentLoadToken):Finally(function()
 		local currentRuntime = self.playerRuntimes[player]
 		if currentRuntime ~= nil and currentRuntime.loadToken == currentLoadToken then
 			currentRuntime.loadPromise = nil
@@ -457,7 +468,7 @@ function PlayerDataServiceServer.LoadProfilePromise(
 	player: Player,
 	loadToken: number
 )
-	return Promise.try(function()
+	return promiseTry(function()
 		local runtime = self.playerRuntimes[player]
 		if runtime == nil or runtime.loadToken ~= loadToken then
 			return nil
@@ -537,7 +548,7 @@ function PlayerDataServiceServer.LoadProfilePromise(
 		PlayerDataServiceUtils.reconcileData(profileData, self.dataTemplate)
 		self:finalizeLoadedRuntime(player, runtime, loadToken, profileData, "profile", "profile_loaded", profile)
 		return profileData
-	end):catch(function(err: any)
+	end):Catch(function(err: any)
 		local runtime = self.playerRuntimes[player]
 		if runtime ~= nil and runtime.loadToken == loadToken then
 			self:finalizeFailedRuntime(player, runtime, loadToken, "unexpected_error:" .. tostring(err))
@@ -576,7 +587,7 @@ function PlayerDataServiceServer.UntrackPlayer(self: PlayerDataServiceServer, pl
 
 	runtime.loadToken += 1
 	if runtime.loadPromise ~= nil then
-		runtime.loadPromise:cancel()
+		runtime.loadPromise:Destroy()
 		runtime.loadPromise = nil
 	end
 	runtime.loadState = PlayerDataServiceUtils.LOAD_STATE_UNLOADED
@@ -630,7 +641,7 @@ function PlayerDataServiceServer.WaitForData(
 	player: Player,
 	timeoutSecondsRaw: any
 ): PlayerData?
-	local success, result = self:waitForDataPromise(player, timeoutSecondsRaw):await()
+	local success, result = self:waitForDataPromise(player, timeoutSecondsRaw):Yield()
 	if not success then
 		return nil
 	end
@@ -656,40 +667,58 @@ function PlayerDataServiceServer.WaitForDataPromise(
 
 	local immediateData = resolveIfReady()
 	if immediateData ~= nil then
-		return Promise.resolve(immediateData)
+		return Promise.resolved(immediateData)
 	end
 
 	local trackedRuntime = self.playerRuntimes[player]
 	if trackedRuntime == nil then
-		return Promise.resolve(nil)
+		return Promise.resolved(nil)
 	end
 	if trackedRuntime.hasResolvedInitialLoad then
-		return Promise.resolve(resolveIfReady())
+		return Promise.resolved(resolveIfReady())
 	end
-
-	local stateChangedPromise = Promise.fromEvent(trackedRuntime.stateChangedSignal, function()
-		local currentRuntime = self.playerRuntimes[player]
-		if currentRuntime == nil then
-			return true
-		end
-		if currentRuntime.hasResolvedInitialLoad then
-			return true
-		end
-		return resolveIfReady() ~= nil
-	end):andThen(function()
-		return resolveIfReady()
-	end)
 
 	if timeoutSeconds <= 0 then
-		return Promise.resolve(nil)
+		return Promise.resolved(nil)
 	end
 
-	return Promise.race({
-		stateChangedPromise,
-		Promise.delay(timeoutSeconds):andThen(function()
-			return nil
-		end),
-	})
+	return Promise.new(function(resolve, _reject)
+		local connection = nil
+		local settled = false
+
+		local function cleanup()
+			if connection ~= nil then
+				connection:Disconnect()
+				connection = nil
+			end
+		end
+
+		local function settle(result: PlayerData?)
+			if settled then
+				return
+			end
+			settled = true
+			cleanup()
+			resolve(result)
+		end
+
+		connection = trackedRuntime.stateChangedSignal:Connect(function()
+			local currentRuntime = self.playerRuntimes[player]
+			if currentRuntime == nil or currentRuntime.hasResolvedInitialLoad or resolveIfReady() ~= nil then
+				settle(resolveIfReady())
+			end
+		end)
+
+		local readyData = resolveIfReady()
+		if readyData ~= nil or trackedRuntime.hasResolvedInitialLoad then
+			settle(readyData)
+			return
+		end
+
+		task.delay(timeoutSeconds, function()
+			settle(nil)
+		end)
+	end)
 end
 
 function PlayerDataServiceServer.GetProfile(self: PlayerDataServiceServer, player: Player): Profile?
@@ -844,7 +873,7 @@ function PlayerDataServiceServer.MergeData(
 end
 
 function PlayerDataServiceServer.SavePlayerData(self: PlayerDataServiceServer, player: Player): boolean
-	local success, result = self:savePlayerDataPromise(player):await()
+	local success, result = self:savePlayerDataPromise(player):Yield()
 	if not success then
 		return false
 	end
@@ -852,7 +881,7 @@ function PlayerDataServiceServer.SavePlayerData(self: PlayerDataServiceServer, p
 end
 
 function PlayerDataServiceServer.SavePlayerDataPromise(self: PlayerDataServiceServer, player: Player)
-	return Promise.try(function()
+	return promiseTry(function()
 		local runtime = self:getActiveRuntime(player)
 		if runtime == nil then
 			return false
@@ -895,7 +924,7 @@ function PlayerDataServiceServer.Destroy(self: PlayerDataServiceServer)
 		self.playerRuntimes[player] = nil
 		runtime.loadToken += 1
 		if runtime.loadPromise ~= nil then
-			runtime.loadPromise:cancel()
+			runtime.loadPromise:Destroy()
 			runtime.loadPromise = nil
 		end
 		runtime.loadState = PlayerDataServiceUtils.LOAD_STATE_UNLOADED

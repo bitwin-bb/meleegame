@@ -1,7 +1,8 @@
 --!strict
-local Resolver = require(script.Parent.CmdrPackageResolver)
+local gameRoot = script:FindFirstAncestor("game")
+assert(gameRoot ~= nil, "Missing Nevermore game root for ClearInventoryServer.")
 
-local InventoryServiceServer = Resolver.requireFromGameRoot("Server", "Services", "InventoryService", "InventoryServiceServer")
+local InventoryServiceServer = require(gameRoot.Server.Services.InventoryService.InventoryServiceServer)
 
 return function(_context, players: { Player })
 	local cleared = {}

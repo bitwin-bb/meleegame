@@ -293,7 +293,7 @@ function HpServiceServer.LoadPersistedHealth(self: HpServiceServer, player: Play
 
 	local waitSuccess, nextPlayerData = pcall(function()
 		local waitPromise = playerDataService:waitForDataPromise(player, self.dataLoadTimeoutSeconds)
-		return select(2, waitPromise:await())
+		return select(2, waitPromise:Yield())
 	end)
 	runtime = self.playerRuntimes[player]
 	if runtime == nil or runtime.loadToken ~= loadToken then

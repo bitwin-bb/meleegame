@@ -19,21 +19,6 @@
     "ReplicatedStorage": {
       "Packages": {
         "$path": "Packages"
-      },
-      "AquariaBackup": {
-        "$className": "Folder",
-        "game": {
-          "$className": "Folder",
-          "Client": {
-            "$path": "src/modules/Client"
-          },
-          "Shared": {
-            "$path": "src/modules/Shared"
-          }
-        },
-        "node_modules": {
-          "$path": "node_modules"
-        }
       }
     },
     "ServerScriptService": {
@@ -49,14 +34,14 @@
           "$path": "node_modules"
         }
       },
-      "Server": {
-        "$path": "src/scripts/Server/ServerMain.server.lua"
+      "AquariaBackupScripts": {
+        "$path": "src/scripts/Server"
       }
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
-        "Client": {
-          "$path": "src/scripts/Client/ClientMain.client.lua"
+        "AquariaBackupScripts": {
+          "$path": "src/scripts/Client"
         }
       }
     }

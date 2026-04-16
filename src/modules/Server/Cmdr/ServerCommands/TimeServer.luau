@@ -1,7 +1,8 @@
 --!strict
-local Resolver = require(script.Parent.CmdrPackageResolver)
+local gameRoot = script:FindFirstAncestor("game")
+assert(gameRoot ~= nil, "Missing Nevermore game root for TimeServer.")
 
-local WeatherServiceServer = Resolver.requireFromGameRoot("Server", "Services", "WeatherService", "WeatherServiceServer")
+local WeatherServiceServer = require(gameRoot.Server.Services.WeatherService.WeatherServiceServer)
 
 local TIME_PRESETS = {
 	day = 8.5,

@@ -2,11 +2,11 @@
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerScriptService = game:GetService("ServerScriptService")
 local StarterGui = game:GetService("StarterGui")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
+local gameRoot = script:FindFirstAncestor("game")
+assert(gameRoot ~= nil, "Missing Nevermore game root for AquariaBackupServerBootstrap.")
+local packageRoot = gameRoot.Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
 local require = require(loaderUtils.Parent).load(script)
 
@@ -122,11 +122,6 @@ local function registerCmdrCommands(cmdr: any, sharedFolder: Instance, serverFol
 end
 
 local function initCmdr()
-	local gameRoot = script:FindFirstAncestor("game")
-	if gameRoot == nil then
-		error("Nevermore game root was not found.")
-	end
-
 	local sharedRoot = gameRoot:FindFirstChild("Shared")
 	if sharedRoot == nil then
 		error("Shared folder was not found in the Nevermore game root.")
@@ -178,7 +173,7 @@ local function initCmdr()
 		return command.Name == "help"
 	end)
 	Cmdr:RegisterTypesIn(cmdrTypes:Clone())
-	registerCmdrCommands(Cmdr, sharedCmdrCommands:Clone(), serverCmdrCommands:Clone())
+	registerCmdrCommands(Cmdr, sharedCmdrCommands:Clone(), serverCmdrCommands)
 
 	for _, player in Players:GetPlayers() do
 		applyCmdrPlayerAttributes(player)

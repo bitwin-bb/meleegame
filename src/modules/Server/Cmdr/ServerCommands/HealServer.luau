@@ -1,7 +1,8 @@
 --!strict
-local Resolver = require(script.Parent.CmdrPackageResolver)
+local gameRoot = script:FindFirstAncestor("game")
+assert(gameRoot ~= nil, "Missing Nevermore game root for HealServer.")
 
-local HpServiceServer = Resolver.requireFromGameRoot("Server", "Services", "HpService", "HpServiceServer")
+local HpServiceServer = require(gameRoot.Server.Services.HpService.HpServiceServer)
 
 return function(_context, players: { Player }, amountRaw: number?)
 	local healed = {}

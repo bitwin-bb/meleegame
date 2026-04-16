@@ -1,7 +1,8 @@
 --!strict
-local Resolver = require(script.Parent.CmdrPackageResolver)
+local gameRoot = script:FindFirstAncestor("game")
+assert(gameRoot ~= nil, "Missing Nevermore game root for SetManaServer.")
 
-local ManaServiceServer = Resolver.requireFromGameRoot("Server", "Services", "ManaService", "ManaServiceServer")
+local ManaServiceServer = require(gameRoot.Server.Services.ManaService.ManaServiceServer)
 
 local function joinParts(parts: { string }): string
 	return table.concat(parts, ", ")

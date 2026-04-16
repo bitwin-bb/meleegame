@@ -10,7 +10,6 @@ local RaycastHitbox = require(ReplicatedStorage.Packages.RaycastHitbox)
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
 local require = require(loaderUtils.Parent).load(script)
-local Promise = require("Promise")
 local Melee = require(script:FindFirstAncestor("game").Shared.Classes.Melee)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryService.InventoryServiceUtils)
 local MeleeServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.MeleeService.MeleeServiceUtils)
@@ -479,7 +478,7 @@ function MeleeServiceServer.CancelHitboxCleanupPromise(self: MeleeServiceServer,
 	if hitboxCleanupPromise == nil then
 		return
 	end
-	hitboxCleanupPromise:cancel()
+	hitboxCleanupPromise:Destroy()
 end
 
 function MeleeServiceServer.StopHitbox(self: MeleeServiceServer, runtime: PlayerRuntime)

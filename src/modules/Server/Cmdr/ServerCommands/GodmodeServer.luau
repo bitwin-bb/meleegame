@@ -1,8 +1,9 @@
 --!strict
-local Resolver = require(script.Parent.CmdrPackageResolver)
+local gameRoot = script:FindFirstAncestor("game")
+assert(gameRoot ~= nil, "Missing Nevermore game root for GodmodeServer.")
 
-local CmdrUtils = Resolver.requireFromGameRoot("Shared", "Cmdr", "CmdrUtils")
-local HpServiceServer = Resolver.requireFromGameRoot("Server", "Services", "HpService", "HpServiceServer")
+local CmdrUtils = require(gameRoot.Shared.Cmdr.CmdrUtils)
+local HpServiceServer = require(gameRoot.Server.Services.HpService.HpServiceServer)
 
 local function joinParts(parts: { string }): string
 	return table.concat(parts, ", ")

@@ -1,7 +1,8 @@
 --!strict
-local Resolver = require(script.Parent.CmdrPackageResolver)
+local gameRoot = script:FindFirstAncestor("game")
+assert(gameRoot ~= nil, "Missing Nevermore game root for UnflyServer.")
 
-local CmdrUtils = Resolver.requireFromGameRoot("Shared", "Cmdr", "CmdrUtils")
+local CmdrUtils = require(gameRoot.Shared.Cmdr.CmdrUtils)
 
 local function setFlyEnabled(player: Player, enabledRaw: any)
 	local enabled = enabledRaw == true

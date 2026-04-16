@@ -1,6 +1,4 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Sift = require(ReplicatedStorage.Packages.Sift)
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
 local require = require(loaderUtils.Parent).load(script)
@@ -15,17 +13,17 @@ local ServiceSync = {}
 
 local function requestSyncPromise(serviceClientRaw: any): any
 	if typeof(serviceClientRaw) ~= "table" then
-		return Promise.resolve(false)
+		return Promise.resolved(false)
 	end
 	if typeof((serviceClientRaw :: any).requestSync) ~= "function" then
-		return Promise.resolve(false)
+		return Promise.resolved(false)
 	end
 
-	return Promise.try(function()
-		(serviceClientRaw :: any):requestSync()
-		return true
-	end):catch(function()
-		return false
+	return Promise.spawn(function(resolve, _reject)
+		local success = pcall(function()
+			(serviceClientRaw :: any):requestSync()
+		end)
+		resolve(success)
 	end)
 end
 
@@ -86,11 +84,9 @@ function ServiceSync.RequestSync(serviceClientRaw: any)
 end
 
 function ServiceSync.RequestSyncMany(serviceClientsRaw: { any })
-	local promises = Sift.Array.create(#serviceClientsRaw)
-	for index, serviceClient in serviceClientsRaw do
-		promises[index] = requestSyncPromise(serviceClient)
+	for _, serviceClient in serviceClientsRaw do
+		requestSyncPromise(serviceClient)
 	end
-	Promise.all(promises)
 end
 
 ServiceSync.connectStateChanged = ServiceSync.ConnectStateChanged
