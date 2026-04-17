@@ -216,7 +216,11 @@ local function resolveAnimationConfigClips(configRaw: any): any
 	return configRaw
 end
 
-local function normalizeNamedAnimationClip(clipRaw: any, fallbackName: string, defaultLooped: boolean?): { [string]: any }?
+local function normalizeNamedAnimationClip(
+	clipRaw: any,
+	fallbackName: string,
+	defaultLooped: boolean?
+): { [string]: any }?
 	local clipTable = if typeof(clipRaw) == "table" then clipRaw else { animation = clipRaw }
 	if typeof(clipTable) ~= "table" then
 		return nil
@@ -628,7 +632,8 @@ function Melee.New(configRaw: any)
 	local animationConfig = config.animations
 	local controller = AnimationController.New(animationConfig)
 	local namedAnimationStateClips = resolveNamedAnimationStateClips(animationConfig)
-	local hasStanceNamedAnimations = namedAnimationStateClips.StanceTransition ~= nil or namedAnimationStateClips.StanceIdle ~= nil
+	local hasStanceNamedAnimations = namedAnimationStateClips.StanceTransition ~= nil
+		or namedAnimationStateClips.StanceIdle ~= nil
 
 	local stanceConfig = {}
 	if typeof(animationConfig) == "table" and typeof((animationConfig :: any).stance) == "table" then
@@ -646,7 +651,9 @@ function Melee.New(configRaw: any)
 		if config.stanceDelay ~= nil
 			then config.stanceDelay
 			else if (animationConfig :: any) ~= nil and typeof(animationConfig) == "table"
-				then ((animationConfig :: any).stanceDelay or (animationConfig :: any).weaponStanceDelay or (stanceConfig :: any).delay)
+				then ((animationConfig :: any).stanceDelay or (animationConfig :: any).weaponStanceDelay or (
+					stanceConfig :: any
+				).delay)
 				else nil,
 		DEFAULT_STANCE_DELAY,
 		0.05,
@@ -654,7 +661,8 @@ function Melee.New(configRaw: any)
 	)
 	local namedAnimationPlaybackEnabled = toBool(config.namedAnimationPlaybackEnabled, true)
 
-	local mergedMarkers = mergeUniqueStringLists(controller:getMarkers(), startMarkers, endMarkers, projectileMarkers, extraMarkers)
+	local mergedMarkers =
+		mergeUniqueStringLists(controller:getMarkers(), startMarkers, endMarkers, projectileMarkers, extraMarkers)
 	controller:setMarkers(mergedMarkers)
 
 	local trackedKeyframes = {}
@@ -743,13 +751,21 @@ function Melee.New(configRaw: any)
 		end
 	end)
 
-	self.janitor:GiveChore(self.controller.signals.markerReached:Connect(function(name: string, param: string?, track: AnimationTrack, clip: any, index: number)
-		self:_onAnimationEvent(name, "Marker", param, track, clip, index)
-	end))
+	self.janitor:GiveChore(
+		self.controller.signals.markerReached:Connect(
+			function(name: string, param: string?, track: AnimationTrack, clip: any, index: number)
+				self:_onAnimationEvent(name, "Marker", param, track, clip, index)
+			end
+		)
+	)
 
-	self.janitor:GiveChore(self.controller.signals.keyframeReached:Connect(function(name: string, _: any, track: AnimationTrack, clip: any, index: number)
-		self:_onAnimationEvent(name, "Keyframe", nil, track, clip, index)
-	end))
+	self.janitor:GiveChore(
+		self.controller.signals.keyframeReached:Connect(
+			function(name: string, _: any, track: AnimationTrack, clip: any, index: number)
+				self:_onAnimationEvent(name, "Keyframe", nil, track, clip, index)
+			end
+		)
+	)
 
 	self.janitor:GiveChore(self.controller.signals.trackStopped:Connect(function(track: AnimationTrack)
 		self:_onTrackStopped(track)
@@ -1289,7 +1305,14 @@ function Melee:_finishAttack(reasonRaw: any)
 	end
 end
 
-function Melee:_onAnimationEvent(nameRaw: any, eventType: string, param: any, track: AnimationTrack, clip: any, index: number)
+function Melee:_onAnimationEvent(
+	nameRaw: any,
+	eventType: string,
+	param: any,
+	track: AnimationTrack,
+	clip: any,
+	index: number
+)
 	if not self.attackActive or self.active == nil then
 		return
 	end

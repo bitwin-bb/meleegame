@@ -318,7 +318,8 @@ local function isWithinPyramidBounds(pyramid: PyramidDefinition, worldTileX: num
 	if horizontalDistance > pyramid.halfWidth then
 		return false
 	end
-	local columnTopY = pyramid.baseTileY + math.floor((1 - horizontalDistance / pyramid.halfWidth) * pyramid.height + 0.5)
+	local columnTopY = pyramid.baseTileY
+		+ math.floor((1 - horizontalDistance / pyramid.halfWidth) * pyramid.height + 0.5)
 	return worldTileY >= pyramid.baseTileY and worldTileY <= columnTopY
 end
 
@@ -376,12 +377,7 @@ function Structures.New(configRaw: any)
 		oreOctaves = sanitizeOctaveCount((config :: any).oreOctaves, DEFAULT_ORE_OCTAVES),
 		oreLacunarity = clampNumber((config :: any).oreLacunarity, 1, 4, DEFAULT_ORE_LACUNARITY),
 		orePersistence = clampNumber((config :: any).orePersistence, 0.1, 0.95, DEFAULT_ORE_PERSISTENCE),
-		oreBlobFrequency = clampNumber(
-			(config :: any).oreBlobFrequency,
-			0.0001,
-			1,
-			DEFAULT_ORE_BLOB_FREQUENCY
-		),
+		oreBlobFrequency = clampNumber((config :: any).oreBlobFrequency, 0.0001, 1, DEFAULT_ORE_BLOB_FREQUENCY),
 		clayPocketFrequency = clampNumber(
 			(config :: any).clayPocketFrequency,
 			0.0001,
@@ -453,32 +449,33 @@ function Structures.ResolveOreTile(
 			continue
 		end
 
-		local depthAlpha = math.clamp(
-			(depthBelowSurface - rule.minDepth) / math.max(1, rule.maxDepth - rule.minDepth),
-			0,
-			1
-		)
+		local depthAlpha =
+			math.clamp((depthBelowSurface - rule.minDepth) / math.max(1, rule.maxDepth - rule.minDepth), 0, 1)
 		local threshold = rule.threshold - depthAlpha * 0.05
 		if depthLayer == "Deep" then
 			threshold -= 0.03
 		end
 
-		local oreNoise = toUnitInterval(sampleOctaveNoise(
-			self.seed,
-			tileX,
-			tileY,
-			self.oreFrequency * rule.frequencyScale,
-			self.oreOctaves,
-			self.oreLacunarity,
-			self.orePersistence,
-			ORE_OFFSET_X + rule.frequencyScale * 113,
-			ORE_OFFSET_Y + rule.frequencyScale * 61
-		))
-		local blobNoise = math.abs(math.noise(
-			(tileX + BLOB_OFFSET_X + rule.frequencyScale * 97) * self.oreBlobFrequency,
-			(tileY + BLOB_OFFSET_Y + rule.frequencyScale * 47) * self.oreBlobFrequency,
-			self.seed * SEED_Y_MULTIPLIER
-		))
+		local oreNoise = toUnitInterval(
+			sampleOctaveNoise(
+				self.seed,
+				tileX,
+				tileY,
+				self.oreFrequency * rule.frequencyScale,
+				self.oreOctaves,
+				self.oreLacunarity,
+				self.orePersistence,
+				ORE_OFFSET_X + rule.frequencyScale * 113,
+				ORE_OFFSET_Y + rule.frequencyScale * 61
+			)
+		)
+		local blobNoise = math.abs(
+			math.noise(
+				(tileX + BLOB_OFFSET_X + rule.frequencyScale * 97) * self.oreBlobFrequency,
+				(tileY + BLOB_OFFSET_Y + rule.frequencyScale * 47) * self.oreBlobFrequency,
+				self.seed * SEED_Y_MULTIPLIER
+			)
+		)
 
 		if oreNoise > threshold and blobNoise > rule.blobThreshold then
 			return rule.tileId
@@ -486,17 +483,19 @@ function Structures.ResolveOreTile(
 	end
 
 	if baseTileId == self.tileId.DIRT and depthBelowSurface >= 5 and depthBelowSurface <= 54 then
-		local clayNoise = toUnitInterval(sampleOctaveNoise(
-			self.seed,
-			tileX,
-			tileY,
-			self.clayPocketFrequency,
-			2,
-			2,
-			0.55,
-			CLAY_OFFSET_X,
-			CLAY_OFFSET_Y
-		))
+		local clayNoise = toUnitInterval(
+			sampleOctaveNoise(
+				self.seed,
+				tileX,
+				tileY,
+				self.clayPocketFrequency,
+				2,
+				2,
+				0.55,
+				CLAY_OFFSET_X,
+				CLAY_OFFSET_Y
+			)
+		)
 		if clayNoise > 0.7 then
 			return self.tileId.CLAY
 		end
@@ -523,10 +522,8 @@ function Structures.ResolvePyramidForCell(
 	end
 
 	local cellMinX = cellX * settings.PyramidCellWidth
-	local centerTileX = randomObject:NextInteger(
-		cellMinX + availableMargin,
-		cellMinX + settings.PyramidCellWidth - availableMargin
-	)
+	local centerTileX =
+		randomObject:NextInteger(cellMinX + availableMargin, cellMinX + settings.PyramidCellWidth - availableMargin)
 	local minTileX = centerTileX - halfWidth
 	local maxTileX = centerTileX + halfWidth
 
@@ -578,10 +575,7 @@ function Structures.ResolvePyramidForCell(
 	}
 end
 
-function Structures.GenerateChunkStructures(
-	self,
-	context: StructureChunkContext
-): StructureGenerationResult
+function Structures.GenerateChunkStructures(self, context: StructureChunkContext): StructureGenerationResult
 	local tileOverrides: { [number]: number } = {}
 	local reservedSurfaceTiles: { [number]: boolean } = {}
 	local reservations: { StructureReservation } = {}

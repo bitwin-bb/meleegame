@@ -1,9 +1,9 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossService.BossServiceUtils)
 local Damp = require(script:FindFirstAncestor("game").Shared.Modules.Math.Damp)
 local Vec = require(script:FindFirstAncestor("game").Shared.Modules.Math.Vec)
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossService.BossServiceUtils)
 
 type BossMotionState = BossServiceUtils.BossMotionState
 
@@ -82,7 +82,11 @@ local function resolveTargetVelocity(targetSnapshot: MotionTargetSnapshot?): Vec
 	return targetSnapshot.velocity
 end
 
-local function resolveFacingTowardTarget(currentPosition: Vector3, targetSnapshot: MotionTargetSnapshot?, fallbackRaw: Vector3?): Vector3
+local function resolveFacingTowardTarget(
+	currentPosition: Vector3,
+	targetSnapshot: MotionTargetSnapshot?,
+	fallbackRaw: Vector3?
+): Vector3
 	local fallback = if typeof(fallbackRaw) == "Vector3" then fallbackRaw else Vector3.zAxis
 	if targetSnapshot ~= nil and targetSnapshot.position ~= nil then
 		return safeUnit(targetSnapshot.position - currentPosition, fallback)
@@ -223,10 +227,7 @@ local function computeHoverAnchor(
 		math.cos(time * bobSpeed * 0.5) * bobAmplitude * lateralBobScale
 	)
 
-	return projectPosition(
-		targetPosition + Vector3.new(0, height, sideOffset * sideSign + leadZ) + bob,
-		planeXRaw
-	)
+	return projectPosition(targetPosition + Vector3.new(0, height, sideOffset * sideSign + leadZ) + bob, planeXRaw)
 end
 
 local function rotateFacingOnPlane(baseFacingRaw: any, sideSignRaw: any, angleRadians: number): Vector3
@@ -333,7 +334,8 @@ local function solveLockedChargeMotion(
 	local lockedDuration = if chargeLock ~= nil then chargeLock.duration else 0
 	local chargeTimeRemaining = math.max(0, lockedDuration - context.stateTime)
 	local velocity = projectVector(lockedDirection * lockedSpeed, context.planeX)
-	local facing = safeUnit(lockedDirection, resolveFacingTowardTarget(context.position, targetSnapshot, fallbackDirection))
+	local facing =
+		safeUnit(lockedDirection, resolveFacingTowardTarget(context.position, targetSnapshot, fallbackDirection))
 
 	return createResult(
 		context,
@@ -375,7 +377,8 @@ function EyeOfCthulhuMotion.CreateChargeLock(
 	durationRaw: any,
 	fallbackDirectionRaw: any?
 ): ChargeLock
-	local fallbackDirection = resolvePlaneFallback(if typeof(fallbackDirectionRaw) == "number" then fallbackDirectionRaw else 1)
+	local fallbackDirection =
+		resolvePlaneFallback(if typeof(fallbackDirectionRaw) == "number" then fallbackDirectionRaw else 1)
 	local predictionTime = sanitizeNumber(predictionTimeRaw, 0.16, 0, 4)
 	local verticalBias = sanitizeNumber(verticalBiasRaw, 0, -128, 128)
 	local speed = sanitizeNumber(speedRaw, 0, 0, 10 ^ 5)
@@ -383,7 +386,10 @@ function EyeOfCthulhuMotion.CreateChargeLock(
 
 	local predictedPosition = nil :: Vector3?
 	if targetPosition ~= nil then
-		predictedPosition = projectPosition(targetPosition + targetVelocity * predictionTime + Vector3.new(0, verticalBias, 0), planeXRaw)
+		predictedPosition = projectPosition(
+			targetPosition + targetVelocity * predictionTime + Vector3.new(0, verticalBias, 0),
+			planeXRaw
+		)
 	end
 
 	local direction = if predictedPosition ~= nil
@@ -604,7 +610,8 @@ function EyeOfCthulhuMotion.SolveTransformMotion(
 	local progress = math.clamp(context.stateTime / transformDuration, 0, 1)
 	local spinAngle = progress * math.pi * 2 * sanitizeNumber(config.transformSpinTurns, 8, 0, 64)
 	local facing = rotateFacingOnPlane(context.transformBaseFacing, context.sideSign, spinAngle)
-	local localPresentationOffset = Vector3.new(0, math.sin(progress * math.pi) * sanitizeNumber(config.transformPauseLift, 8, 0, 128) * 0.35, 0)
+	local localPresentationOffset =
+		Vector3.new(0, math.sin(progress * math.pi) * sanitizeNumber(config.transformPauseLift, 8, 0, 128) * 0.35, 0)
 
 	if targetSnapshot ~= nil and targetSnapshot.position ~= nil and progress <= 0.08 then
 		facing = resolveFacingTowardTarget(context.position, targetSnapshot, facing)
@@ -700,11 +707,7 @@ function EyeOfCthulhuMotion.SolveDespawnMotion(
 	)
 end
 
-function EyeOfCthulhuMotion.ComputeRapidChainSpeed(
-	healthRatioRaw: any,
-	baseSpeedRaw: any,
-	topSpeedRaw: any
-): number
+function EyeOfCthulhuMotion.ComputeRapidChainSpeed(healthRatioRaw: any, baseSpeedRaw: any, topSpeedRaw: any): number
 	local healthRatio = math.clamp(sanitizeNumber(healthRatioRaw, 1, 0, 1), 0, 1)
 	local baseSpeed = sanitizeNumber(baseSpeedRaw, 110, 0, 10 ^ 5)
 	local topSpeed = sanitizeNumber(topSpeedRaw, 154, baseSpeed, 10 ^ 5)

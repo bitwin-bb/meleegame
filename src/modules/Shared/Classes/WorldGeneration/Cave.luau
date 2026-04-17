@@ -160,24 +160,12 @@ function Cave.New(configRaw: any)
 
 	local snowConfig = if typeof((config :: any).snowConfig) == "table" then (config :: any).snowConfig else {}
 	local snowCavesConfig = if typeof((snowConfig :: any).Caves) == "table" then (snowConfig :: any).Caves else {}
-	self.snowUndergroundThresholdDelta = clampNumber(
-		snowCavesConfig.UndergroundThresholdDelta,
-		-0.25,
-		0.25,
-		DEFAULT_SNOW_UNDERGROUND_THRESHOLD_DELTA
-	)
-	self.snowCavernThresholdDelta = clampNumber(
-		snowCavesConfig.CavernThresholdDelta,
-		-0.25,
-		0.25,
-		DEFAULT_SNOW_CAVERN_THRESHOLD_DELTA
-	)
-	self.snowPocketThresholdDelta = clampNumber(
-		snowCavesConfig.PocketThresholdDelta,
-		-0.25,
-		0.25,
-		DEFAULT_SNOW_POCKET_THRESHOLD_DELTA
-	)
+	self.snowUndergroundThresholdDelta =
+		clampNumber(snowCavesConfig.UndergroundThresholdDelta, -0.25, 0.25, DEFAULT_SNOW_UNDERGROUND_THRESHOLD_DELTA)
+	self.snowCavernThresholdDelta =
+		clampNumber(snowCavesConfig.CavernThresholdDelta, -0.25, 0.25, DEFAULT_SNOW_CAVERN_THRESHOLD_DELTA)
+	self.snowPocketThresholdDelta =
+		clampNumber(snowCavesConfig.PocketThresholdDelta, -0.25, 0.25, DEFAULT_SNOW_POCKET_THRESHOLD_DELTA)
 
 	self.undergroundDepth = math.max(self.undergroundDepth, self.surfaceDepth + 8)
 	self.cavernDepth = math.max(self.cavernDepth, self.undergroundDepth + 24)
@@ -240,27 +228,22 @@ function Cave.ShouldCarve(
 	end
 
 	local density = self:sampleDensity(tileX, tileY)
-	local tunnel = math.abs(math.noise(
-		(tileX + TUNNEL_OFFSET_X) * self.tunnelFrequency,
-		(tileY + TUNNEL_OFFSET_Y) * self.tunnelFrequency,
-		self.seed * SEED_X_MULTIPLIER
-	))
-	local pocket = sampleOctaveNoise(
-		self.seed,
-		tileX,
-		tileY,
-		self.pocketFrequency,
-		2,
-		2,
-		0.55,
-		POCKET_OFFSET_X,
-		POCKET_OFFSET_Y
+	local tunnel = math.abs(
+		math.noise(
+			(tileX + TUNNEL_OFFSET_X) * self.tunnelFrequency,
+			(tileY + TUNNEL_OFFSET_Y) * self.tunnelFrequency,
+			self.seed * SEED_X_MULTIPLIER
+		)
 	)
-	local crack = math.abs(math.noise(
-		(tileX + CRACK_OFFSET_X) * self.crackFrequency,
-		(tileY + CRACK_OFFSET_Y) * self.crackFrequency,
-		self.seed * SEED_Y_MULTIPLIER
-	))
+	local pocket =
+		sampleOctaveNoise(self.seed, tileX, tileY, self.pocketFrequency, 2, 2, 0.55, POCKET_OFFSET_X, POCKET_OFFSET_Y)
+	local crack = math.abs(
+		math.noise(
+			(tileX + CRACK_OFFSET_X) * self.crackFrequency,
+			(tileY + CRACK_OFFSET_Y) * self.crackFrequency,
+			self.seed * SEED_Y_MULTIPLIER
+		)
+	)
 
 	local threshold = 0.72
 	local tunnelThreshold = 0.055

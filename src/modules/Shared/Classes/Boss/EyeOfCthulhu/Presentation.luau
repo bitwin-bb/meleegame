@@ -2,9 +2,9 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Ripple = require(ReplicatedStorage.Packages.Ripple)
 local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossService.BossServiceUtils)
 local EyeOfCthulhuMotion = require(script.Parent.Motion)
+local Ripple = require(ReplicatedStorage.Packages.Ripple)
 
 type BossSnapshot = BossServiceUtils.BossSnapshot
 type Motion<T> = Ripple.Motion<T>
@@ -62,7 +62,9 @@ local IMPULSE_SPRING: SpringOptions = {
 	damping = 0.76,
 }
 
-local function resolvePartRefs(model: Model?): ({ [string]: BasePart? }, { BasePart }, { [BasePart]: CFrame }, BasePart?)
+local function resolvePartRefs(
+	model: Model?
+): ({ [string]: BasePart? }, { BasePart }, { [BasePart]: CFrame }, BasePart?)
 	local refs = {
 		iris = nil :: BasePart?,
 		pupil = nil :: BasePart?,
@@ -159,7 +161,15 @@ local function getSuggestedOffset(snapshot: BossSnapshot): Vector3
 	return Vector3.zero
 end
 
-local function computeShellTarget(snapshot: BossSnapshot, anticipation: number, recoil: number, damage: number, roar: number, transform: number, death: number): CFrame
+local function computeShellTarget(
+	snapshot: BossSnapshot,
+	anticipation: number,
+	recoil: number,
+	damage: number,
+	roar: number,
+	transform: number,
+	death: number
+): CFrame
 	local stateTime = snapshot.stateTime
 	local hoverLift = if snapshot.state == "SpawnIntro"
 		then math.sin(stateTime * 2.1) * 0.55

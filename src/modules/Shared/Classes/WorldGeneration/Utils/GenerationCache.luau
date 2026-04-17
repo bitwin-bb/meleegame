@@ -31,7 +31,7 @@ end
 function Cache.New(configRaw: CacheConfig?): Cache
 	local config = if typeof(configRaw) == "table" then configRaw else {}
 	local createPartCallback = if typeof((config :: any).createPart) == "function"
-		then ((config :: any).createPart :: () -> BasePart)
+		then (config :: any).createPart :: () -> BasePart
 		else nil
 
 	local self = setmetatable({

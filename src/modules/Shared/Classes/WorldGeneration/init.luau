@@ -1,17 +1,17 @@
 --!strict
 
-local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local Workspace = game:GetService("Workspace")
 
-local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local Biome = require(script.Biome)
-local Cave = require(script.Cave)
-local Liquid = require(script.Liquid)
-local Structures = require(script.Structures)
-local ProceduralTree = require(script.Tree)
 local Cache = require(script.Utils.GenerationCache)
+local Cave = require(script.Cave)
+local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
+local Liquid = require(script.Liquid)
+local ProceduralTree = require(script.Tree)
+local Structures = require(script.Structures)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local WorldGenerationColor = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationColor)
 local WorldGenerationDesert = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationDesert)
@@ -3498,13 +3498,8 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 					local snowPileChance = clampNumber(snowDecorationSettings.SnowPileChance, 0, 1, 0.24)
 					local snowPileSpacing = sanitizeInteger(snowDecorationSettings.SnowPileSpacingTiles, 4, 64, 11)
 					if self:isSurfaceAnchorTile(worldTileX, snowPileSpacing, SNOW_PILE_SLOT_NOISE_FREQUENCY, 1223) then
-						local snowPileRoll = deterministicUnitInterval(
-							self.seed,
-							worldTileX,
-							surfaceTileY,
-							self.propId.SNOW_PILE,
-							2179
-						)
+						local snowPileRoll =
+							deterministicUnitInterval(self.seed, worldTileX, surfaceTileY, self.propId.SNOW_PILE, 2179)
 						if snowPileRoll <= snowPileChance then
 							local variantIndex = self:resolveDesertPropVariantIndex(worldTileX, surfaceTileY, 3)
 							props[#props + 1] = {

@@ -214,8 +214,10 @@ function EyeOfCthulhuConfig.Resolve(configRaw: any): EyeOfCthulhuConfig
 	local source = if typeof(configRaw) == "table" then configRaw else {}
 
 	config.maxHp = sanitizeInteger((source :: any).maxHp, config.maxHp, 1, 10 ^ 9)
-	config.defensePhase1 = BossServiceUtils.sanitizeNumber((source :: any).defensePhase1, config.defensePhase1, 0, 10 ^ 6)
-	config.defensePhase2 = BossServiceUtils.sanitizeNumber((source :: any).defensePhase2, config.defensePhase2, 0, 10 ^ 6)
+	config.defensePhase1 =
+		BossServiceUtils.sanitizeNumber((source :: any).defensePhase1, config.defensePhase1, 0, 10 ^ 6)
+	config.defensePhase2 =
+		BossServiceUtils.sanitizeNumber((source :: any).defensePhase2, config.defensePhase2, 0, 10 ^ 6)
 	config.contactDamagePhase1 =
 		BossServiceUtils.sanitizeNumber((source :: any).contactDamagePhase1, config.contactDamagePhase1, 0, 10 ^ 6)
 	config.contactDamagePhase2 =
@@ -245,7 +247,8 @@ function EyeOfCthulhuConfig.Resolve(configRaw: any): EyeOfCthulhuConfig
 	config.introDistance = BossServiceUtils.sanitizeNumber((source :: any).introDistance, config.introDistance, 8, 512)
 	config.introDriftAmplitude =
 		BossServiceUtils.sanitizeNumber((source :: any).introDriftAmplitude, config.introDriftAmplitude, 0, 128)
-	config.introDriftSpeed = BossServiceUtils.sanitizeNumber((source :: any).introDriftSpeed, config.introDriftSpeed, 0, 30)
+	config.introDriftSpeed =
+		BossServiceUtils.sanitizeNumber((source :: any).introDriftSpeed, config.introDriftSpeed, 0, 30)
 	config.phase1HoverHeight =
 		BossServiceUtils.sanitizeNumber((source :: any).phase1HoverHeight, config.phase1HoverHeight, 0, 512)
 	config.phase1LeadMultiplier =
@@ -266,7 +269,8 @@ function EyeOfCthulhuConfig.Resolve(configRaw: any): EyeOfCthulhuConfig
 		config.phase1ChargeSetDelayMin,
 		10
 	)
-	config.phase1HoverSpeed = BossServiceUtils.sanitizeNumber((source :: any).phase1HoverSpeed, config.phase1HoverSpeed, 0, 10 ^ 5)
+	config.phase1HoverSpeed =
+		BossServiceUtils.sanitizeNumber((source :: any).phase1HoverSpeed, config.phase1HoverSpeed, 0, 10 ^ 5)
 	config.phase1HoverAcceleration = BossServiceUtils.sanitizeNumber(
 		(source :: any).phase1HoverAcceleration,
 		config.phase1HoverAcceleration,
@@ -277,7 +281,8 @@ function EyeOfCthulhuConfig.Resolve(configRaw: any): EyeOfCthulhuConfig
 		BossServiceUtils.sanitizeNumber((source :: any).phase1HoverDamping, config.phase1HoverDamping, 0, 50)
 	config.phase1BobAmplitude =
 		BossServiceUtils.sanitizeNumber((source :: any).phase1BobAmplitude, config.phase1BobAmplitude, 0, 64)
-	config.phase1BobSpeed = BossServiceUtils.sanitizeNumber((source :: any).phase1BobSpeed, config.phase1BobSpeed, 0, 50)
+	config.phase1BobSpeed =
+		BossServiceUtils.sanitizeNumber((source :: any).phase1BobSpeed, config.phase1BobSpeed, 0, 50)
 	config.phase1ChargeWindupDuration = BossServiceUtils.sanitizeNumber(
 		(source :: any).phase1ChargeWindupDuration,
 		config.phase1ChargeWindupDuration,
@@ -286,12 +291,8 @@ function EyeOfCthulhuConfig.Resolve(configRaw: any): EyeOfCthulhuConfig
 	)
 	config.phase1ChargeSpeed =
 		BossServiceUtils.sanitizeNumber((source :: any).phase1ChargeSpeed, config.phase1ChargeSpeed, 0, 10 ^ 5)
-	config.phase1ChargeDuration = BossServiceUtils.sanitizeNumber(
-		(source :: any).phase1ChargeDuration,
-		config.phase1ChargeDuration,
-		0.01,
-		10
-	)
+	config.phase1ChargeDuration =
+		BossServiceUtils.sanitizeNumber((source :: any).phase1ChargeDuration, config.phase1ChargeDuration, 0.01, 10)
 	config.phase1ChargeRecoveryDuration = BossServiceUtils.sanitizeNumber(
 		(source :: any).phase1ChargeRecoveryDuration,
 		config.phase1ChargeRecoveryDuration,
@@ -390,7 +391,8 @@ function EyeOfCthulhuConfig.Resolve(configRaw: any): EyeOfCthulhuConfig
 		config.phase2AttackDelayMin,
 		10
 	)
-	config.phase2HoverSpeed = BossServiceUtils.sanitizeNumber((source :: any).phase2HoverSpeed, config.phase2HoverSpeed, 0, 10 ^ 5)
+	config.phase2HoverSpeed =
+		BossServiceUtils.sanitizeNumber((source :: any).phase2HoverSpeed, config.phase2HoverSpeed, 0, 10 ^ 5)
 	config.phase2HoverAcceleration = BossServiceUtils.sanitizeNumber(
 		(source :: any).phase2HoverAcceleration,
 		config.phase2HoverAcceleration,
@@ -401,7 +403,8 @@ function EyeOfCthulhuConfig.Resolve(configRaw: any): EyeOfCthulhuConfig
 		BossServiceUtils.sanitizeNumber((source :: any).phase2HoverDamping, config.phase2HoverDamping, 0, 50)
 	config.phase2BobAmplitude =
 		BossServiceUtils.sanitizeNumber((source :: any).phase2BobAmplitude, config.phase2BobAmplitude, 0, 64)
-	config.phase2BobSpeed = BossServiceUtils.sanitizeNumber((source :: any).phase2BobSpeed, config.phase2BobSpeed, 0, 50)
+	config.phase2BobSpeed =
+		BossServiceUtils.sanitizeNumber((source :: any).phase2BobSpeed, config.phase2BobSpeed, 0, 50)
 	config.phase2ChargeCount = sanitizeInteger((source :: any).phase2ChargeCount, config.phase2ChargeCount, 1, 10)
 	config.phase2ChargeWindupDuration = BossServiceUtils.sanitizeNumber(
 		(source :: any).phase2ChargeWindupDuration,
@@ -411,12 +414,8 @@ function EyeOfCthulhuConfig.Resolve(configRaw: any): EyeOfCthulhuConfig
 	)
 	config.phase2ChargeSpeed =
 		BossServiceUtils.sanitizeNumber((source :: any).phase2ChargeSpeed, config.phase2ChargeSpeed, 0, 10 ^ 5)
-	config.phase2ChargeDuration = BossServiceUtils.sanitizeNumber(
-		(source :: any).phase2ChargeDuration,
-		config.phase2ChargeDuration,
-		0.01,
-		10
-	)
+	config.phase2ChargeDuration =
+		BossServiceUtils.sanitizeNumber((source :: any).phase2ChargeDuration, config.phase2ChargeDuration, 0.01, 10)
 	config.phase2ChargeRecoveryDuration = BossServiceUtils.sanitizeNumber(
 		(source :: any).phase2ChargeRecoveryDuration,
 		config.phase2ChargeRecoveryDuration,
@@ -451,8 +450,7 @@ function EyeOfCthulhuConfig.Resolve(configRaw: any): EyeOfCthulhuConfig
 		0.01,
 		0.95
 	)
-	config.rapidChainCount =
-		sanitizeInteger((source :: any).rapidChainCount, config.rapidChainCount, 1, 16)
+	config.rapidChainCount = sanitizeInteger((source :: any).rapidChainCount, config.rapidChainCount, 1, 16)
 	config.rapidChainWindupDuration = BossServiceUtils.sanitizeNumber(
 		(source :: any).rapidChainWindupDuration,
 		config.rapidChainWindupDuration,
@@ -469,34 +467,17 @@ function EyeOfCthulhuConfig.Resolve(configRaw: any): EyeOfCthulhuConfig
 		BossServiceUtils.sanitizeNumber((source :: any).rapidChainBaseSpeed, config.rapidChainBaseSpeed, 0, 10 ^ 5)
 	config.rapidChainTopSpeed =
 		BossServiceUtils.sanitizeNumber((source :: any).rapidChainTopSpeed, config.rapidChainTopSpeed, 0, 10 ^ 5)
-	config.rapidChainPredictionTime = BossServiceUtils.sanitizeNumber(
-		(source :: any).rapidChainPredictionTime,
-		config.rapidChainPredictionTime,
-		0,
-		4
-	)
-	config.targetLostGraceSeconds = BossServiceUtils.sanitizeNumber(
-		(source :: any).targetLostGraceSeconds,
-		config.targetLostGraceSeconds,
-		0,
-		60
-	)
+	config.rapidChainPredictionTime =
+		BossServiceUtils.sanitizeNumber((source :: any).rapidChainPredictionTime, config.rapidChainPredictionTime, 0, 4)
+	config.targetLostGraceSeconds =
+		BossServiceUtils.sanitizeNumber((source :: any).targetLostGraceSeconds, config.targetLostGraceSeconds, 0, 60)
 	config.despawnRiseSpeed =
 		BossServiceUtils.sanitizeNumber((source :: any).despawnRiseSpeed, config.despawnRiseSpeed, 0, 10 ^ 5)
-	config.despawnForwardSpeed = BossServiceUtils.sanitizeNumber(
-		(source :: any).despawnForwardSpeed,
-		config.despawnForwardSpeed,
-		0,
-		10 ^ 5
-	)
-	config.despawnAcceleration = BossServiceUtils.sanitizeNumber(
-		(source :: any).despawnAcceleration,
-		config.despawnAcceleration,
-		0,
-		10 ^ 5
-	)
-	config.deathDuration =
-		BossServiceUtils.sanitizeNumber((source :: any).deathDuration, config.deathDuration, 0.1, 30)
+	config.despawnForwardSpeed =
+		BossServiceUtils.sanitizeNumber((source :: any).despawnForwardSpeed, config.despawnForwardSpeed, 0, 10 ^ 5)
+	config.despawnAcceleration =
+		BossServiceUtils.sanitizeNumber((source :: any).despawnAcceleration, config.despawnAcceleration, 0, 10 ^ 5)
+	config.deathDuration = BossServiceUtils.sanitizeNumber((source :: any).deathDuration, config.deathDuration, 0.1, 30)
 	config.naturalSpawnEnabled =
 		BossServiceUtils.sanitizeBoolean((source :: any).naturalSpawnEnabled, config.naturalSpawnEnabled)
 	config.naturalSpawnChancePerNight = BossServiceUtils.sanitizeNumber(
@@ -515,10 +496,8 @@ function EyeOfCthulhuConfig.Resolve(configRaw: any): EyeOfCthulhuConfig
 		BossServiceUtils.sanitizeNumber((source :: any).simulationSpeed, config.simulationSpeed, 0.05, 5)
 	config.aggressiveness =
 		BossServiceUtils.sanitizeNumber((source :: any).aggressiveness, config.aggressiveness, 0.1, 3)
-	config.expertBehaviorEnabled = BossServiceUtils.sanitizeBoolean(
-		(source :: any).expertBehaviorEnabled,
-		config.expertBehaviorEnabled
-	)
+	config.expertBehaviorEnabled =
+		BossServiceUtils.sanitizeBoolean((source :: any).expertBehaviorEnabled, config.expertBehaviorEnabled)
 
 	return config
 end

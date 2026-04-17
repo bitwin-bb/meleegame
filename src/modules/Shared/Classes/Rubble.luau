@@ -1,4 +1,3 @@
-
 --!strict
 local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
@@ -267,7 +266,12 @@ local function firstPlayerPosition(): Vector3?
 	return nil
 end
 
-local function resolvePhysical(customProps: any, massOverride: any, size: Vector3, fallback: PhysicalProperties?): PhysicalProperties?
+local function resolvePhysical(
+	customProps: any,
+	massOverride: any,
+	size: Vector3,
+	fallback: PhysicalProperties?
+): PhysicalProperties?
 	local result = if typeof(customProps) == "PhysicalProperties" then customProps :: PhysicalProperties else fallback
 	if typeof(massOverride) ~= "number" or massOverride ~= massOverride or massOverride <= 0 then
 		return result
@@ -373,7 +377,9 @@ function Rubble.New(configRaw: Config?): Rubble
 	tuning.defaultCanQuery = b(tuning.defaultCanQuery, DEFAULT_TUNING.defaultCanQuery :: boolean)
 	tuning.reusePolicy = if tuning.reusePolicy == "DropSpawn" then "DropSpawn" else "RecycleOldest"
 
-	local template = if cfg.template and cfg.template:IsA("BasePart") then cfg.template:Clone() else Instance.new("Part")
+	local template = if cfg.template and cfg.template:IsA("BasePart")
+		then cfg.template:Clone()
+		else Instance.new("Part")
 	template.Name = "RubbleTemplate"
 	template.Anchored = true
 	template.CanCollide = false
@@ -407,7 +413,9 @@ function Rubble.New(configRaw: Config?): Rubble
 		inactiveGroup = inactiveGroup,
 		lodReference = cfg.lodReference,
 		visualOnly = b(cfg.visualOnly, false),
-		mirrorRemote = if cfg.mirrorRemoteEvent and cfg.mirrorRemoteEvent:IsA("RemoteEvent") then cfg.mirrorRemoteEvent else nil,
+		mirrorRemote = if cfg.mirrorRemoteEvent and cfg.mirrorRemoteEvent:IsA("RemoteEvent")
+			then cfg.mirrorRemoteEvent
+			else nil,
 		mirrorSend = b(cfg.mirrorSendFromServer, true),
 		mirrorListen = b(cfg.mirrorListenOnClient, true),
 		slotById = {},
@@ -458,16 +466,16 @@ function Rubble.New(configRaw: Config?): Rubble
 		self:_onHeartbeat(dt)
 	end)
 	if not RunService:IsServer() and self.mirrorRemote and self.mirrorListen then
-			self.mirrorConnection = self.mirrorRemote.OnClientEvent:Connect(function(action, payload)
-				if action == "RubbleSpawn" and typeof(payload) == "table" then
-					local p = Sift.Dictionary.copy(payload)
-					local pAny = p :: any
-					pAny.VisualOnly = true
-					pAny.Mirror = false
-					self:Spawn(p)
-				elseif action == "RubbleRecycleAll" then
-					self:RecycleAll()
-				end
+		self.mirrorConnection = self.mirrorRemote.OnClientEvent:Connect(function(action, payload)
+			if action == "RubbleSpawn" and typeof(payload) == "table" then
+				local p = Sift.Dictionary.copy(payload)
+				local pAny = p :: any
+				pAny.VisualOnly = true
+				pAny.Mirror = false
+				self:Spawn(p)
+			elseif action == "RubbleRecycleAll" then
+				self:RecycleAll()
+			end
 		end)
 	end
 	return self
@@ -847,7 +855,8 @@ function Rubble:Spawn(paramsRaw: SpawnParams?): BasePart?
 			size = sanitizeVector3(sizeRaw, self.templateSize)
 		end
 	else
-		local scale = n(g(params, "scale", "Scale"), self.tuning.defaultScale, self.tuning.minScale, self.tuning.maxScale)
+		local scale =
+			n(g(params, "scale", "Scale"), self.tuning.defaultScale, self.tuning.minScale, self.tuning.maxScale)
 		local scaleRange = g(params, "scaleRange", "ScaleRange")
 		if scaleRange ~= nil then
 			local lo, hi = resolveRange(scaleRange, self.tuning.minScale, self.tuning.maxScale)
@@ -875,9 +884,11 @@ function Rubble:Spawn(paramsRaw: SpawnParams?): BasePart?
 		self.templatePhysical
 	)
 	local impactForce = sanitizeVector3(g(params, "impactForce", "ImpactForce"), ZERO)
-	local impulse = sanitizeVector3(g(params, "impulse", "Impulse"), ZERO) + impactForce * self.tuning.forceToImpulseSeconds
+	local impulse = sanitizeVector3(g(params, "impulse", "Impulse"), ZERO)
+		+ impactForce * self.tuning.forceToImpulseSeconds
 	impulse = clampMag(impulse, self.tuning.maxImpulse)
-	local angularImpulse = clampMag(sanitizeVector3(g(params, "angularImpulse", "AngularImpulse"), ZERO), self.tuning.maxAngularImpulse)
+	local angularImpulse =
+		clampMag(sanitizeVector3(g(params, "angularImpulse", "AngularImpulse"), ZERO), self.tuning.maxAngularImpulse)
 	local anchored = b(g(params, "anchored", "Anchored"), false)
 	local enableGravity = b(g(params, "enableGravity", "EnableGravity"), true)
 	local visualOnly = b(g(params, "visualOnly", "VisualOnly"), self.visualOnly)
@@ -885,12 +896,22 @@ function Rubble:Spawn(paramsRaw: SpawnParams?): BasePart?
 	local canTouch = if visualOnly then false else b(g(params, "canTouch", "CanTouch"), self.tuning.defaultCanTouch)
 	local canQuery = if visualOnly then false else b(g(params, "canQuery", "CanQuery"), self.tuning.defaultCanQuery)
 	local collisionGroup = s(g(params, "collisionGroup", "CollisionGroup"), self.activeGroup)
-	local lifetime = n(g(params, "lifetime", "Lifetime"), self.tuning.defaultLifetime, self.tuning.minLifetime, self.tuning.maxLifetime)
+	local lifetime = n(
+		g(params, "lifetime", "Lifetime"),
+		self.tuning.defaultLifetime,
+		self.tuning.minLifetime,
+		self.tuning.maxLifetime
+	)
 	local canFling = b(g(params, "canFling", "CanFling"), false)
 	local fadeOut = b(g(params, "fadeOut", "FadeOut"), self.tuning.defaultFadeOut)
-	local fadeDuration = math.min(n(g(params, "fadeDuration", "FadeDuration"), self.tuning.fadeDuration, 0, self.tuning.maxLifetime), lifetime)
-	local flingReflectionScale = n(g(params, "flingReflectionScale", "FlingReflectionScale"), self.tuning.flingReflectionScale, 0, 2)
-	local maxFlingBounces = math.floor(n(g(params, "maxFlingBounces", "MaxFlingBounces"), self.tuning.maxFlingBounces, 0, 20))
+	local fadeDuration = math.min(
+		n(g(params, "fadeDuration", "FadeDuration"), self.tuning.fadeDuration, 0, self.tuning.maxLifetime),
+		lifetime
+	)
+	local flingReflectionScale =
+		n(g(params, "flingReflectionScale", "FlingReflectionScale"), self.tuning.flingReflectionScale, 0, 2)
+	local maxFlingBounces =
+		math.floor(n(g(params, "maxFlingBounces", "MaxFlingBounces"), self.tuning.maxFlingBounces, 0, 20))
 
 	local part = slot.part
 	slot.token += 1

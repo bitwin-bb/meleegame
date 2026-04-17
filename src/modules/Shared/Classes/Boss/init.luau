@@ -3,10 +3,10 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossService.BossServiceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossService.BossServiceUtils)
 
 type BossId = BossServiceUtils.BossId
 type BossEncounterState = BossServiceUtils.BossEncounterState
@@ -293,17 +293,31 @@ local function createBuiltInEyeOfCthulhuPhaseModel(phaseName: string): Model
 	rootPart.Parent = model
 	model.PrimaryPart = rootPart
 
-	local eyeShell = createDecorativeOrb("Eye", rootSize - Vector3.new(1.2, 1.2, 1.2), Vector3.new(0, 0, -0.3), Color3.fromRGB(228, 232, 236), 0.05)
+	local eyeShell = createDecorativeOrb(
+		"Eye",
+		rootSize - Vector3.new(1.2, 1.2, 1.2),
+		Vector3.new(0, 0, -0.3),
+		Color3.fromRGB(228, 232, 236),
+		0.05
+	)
 	eyeShell.Parent = model
 
-	local iris = createDecorativeOrb("Iris", irisSize, Vector3.new(0, 0, -(rootSize.Z * 0.46)), Color3.fromRGB(191, 55, 55), 0)
+	local iris =
+		createDecorativeOrb("Iris", irisSize, Vector3.new(0, 0, -(rootSize.Z * 0.46)), Color3.fromRGB(191, 55, 55), 0)
 	iris.Parent = model
 
-	local pupil = createDecorativeOrb("Pupil", pupilSize, Vector3.new(0, 0, -(rootSize.Z * 0.54)), Color3.fromRGB(18, 16, 16), 0)
+	local pupil =
+		createDecorativeOrb("Pupil", pupilSize, Vector3.new(0, 0, -(rootSize.Z * 0.54)), Color3.fromRGB(18, 16, 16), 0)
 	pupil.Parent = model
 
 	if isPhase2 then
-		local jaw = createDecorativeOrb("Jaw", Vector3.new(7.5, 4.75, 1.35), Vector3.new(0, -(rootSize.Y * 0.23), -(rootSize.Z * 0.42)), Color3.fromRGB(132, 34, 34), 0)
+		local jaw = createDecorativeOrb(
+			"Jaw",
+			Vector3.new(7.5, 4.75, 1.35),
+			Vector3.new(0, -(rootSize.Y * 0.23), -(rootSize.Z * 0.42)),
+			Color3.fromRGB(132, 34, 34),
+			0
+		)
 		jaw.Parent = model
 	end
 
@@ -443,7 +457,9 @@ function Boss.New(
 ): Boss
 	local config = if typeof(configRaw) == "table" then configRaw else {}
 	local modelTemplate = resolveBossModelTemplate(definition, "Phase1")
-	local spawnPosition = if typeof(spawnRequest.spawnPosition) == "Vector3" then spawnRequest.spawnPosition else Vector3.zero
+	local spawnPosition = if typeof(spawnRequest.spawnPosition) == "Vector3"
+		then spawnRequest.spawnPosition
+		else Vector3.zero
 
 	local self = setmetatable({
 		service = service,
@@ -567,7 +583,10 @@ function Boss.ResolveTargetVelocity(self: Boss): Vector3
 	if self.targetPlayer == nil then
 		return Vector3.zero
 	end
-	return BossServiceUtils.projectVectorToPlaneX(BossServiceUtils.resolveCharacterVelocity(self.targetPlayer), self.planeX)
+	return BossServiceUtils.projectVectorToPlaneX(
+		BossServiceUtils.resolveCharacterVelocity(self.targetPlayer),
+		self.planeX
+	)
 end
 
 function Boss.GetHealthRatio(self: Boss): number
@@ -813,7 +832,13 @@ function Boss.ReplaceModel(self: Boss, phaseModelRaw: any?): Model?
 	end
 
 	nextModel:PivotTo(BossServiceUtils.lookCFrame(self.position, self.facing))
-	BossServiceUtils.applyRuntimeModelAttributes(nextModel, self.id, self.bossId, self.displayName, self.encounterChannel)
+	BossServiceUtils.applyRuntimeModelAttributes(
+		nextModel,
+		self.id,
+		self.bossId,
+		self.displayName,
+		self.encounterChannel
+	)
 
 	local previousModel = self.model
 	self.model = nextModel

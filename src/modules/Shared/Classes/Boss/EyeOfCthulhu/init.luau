@@ -2,11 +2,11 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local BossBase = require(script.Parent)
 local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossService.BossServiceUtils)
 local EyeOfCthulhuConfig = require(script.Config)
 local EyeOfCthulhuMotion = require(script.Motion)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 
 type Boss = BossBase.Boss
 type BossRegistryEntry = BossServiceUtils.BossRegistryEntry
@@ -353,7 +353,8 @@ end
 local function resolveServantSpawnPosition(self: EyeOfCthulhuController): Vector3
 	local model = self.model
 	if model ~= nil then
-		local spawnPart = BossServiceUtils.findFirstDescendantByNormalizedName(model, { "Pupil", "Iris", "Eye", "RootPart" })
+		local spawnPart =
+			BossServiceUtils.findFirstDescendantByNormalizedName(model, { "Pupil", "Iris", "Eye", "RootPart" })
 		if spawnPart ~= nil and spawnPart:IsA("BasePart") then
 			return BossServiceUtils.projectPositionToPlaneX((spawnPart :: BasePart).Position, self.planeX)
 		end
@@ -426,7 +427,8 @@ local function stepServants(self: EyeOfCthulhuController, dt: number)
 
 		local targetPosition = getTargetPosition(self)
 		if targetPosition ~= nil then
-			local desiredDirection = BossServiceUtils.projectVectorToPlaneX(targetPosition - servant.position, self.planeX)
+			local desiredDirection =
+				BossServiceUtils.projectVectorToPlaneX(targetPosition - servant.position, self.planeX)
 			if desiredDirection.Magnitude > 1e-4 then
 				local desiredVelocity = desiredDirection.Unit * scaleSpeed(self, self._eyeConfig.servantSpeed)
 				servant.velocity = BossServiceUtils.moveTowardsVector(
@@ -437,7 +439,8 @@ local function stepServants(self: EyeOfCthulhuController, dt: number)
 			end
 		end
 
-		servant.position = BossServiceUtils.projectPositionToPlaneX(servant.position + servant.velocity * dt, self.planeX)
+		servant.position =
+			BossServiceUtils.projectPositionToPlaneX(servant.position + servant.velocity * dt, self.planeX)
 		servant.part.CFrame = BossServiceUtils.lookCFrame(servant.position, servant.velocity)
 
 		for _, player in game:GetService("Players"):GetPlayers() do
@@ -448,8 +451,10 @@ local function stepServants(self: EyeOfCthulhuController, dt: number)
 			if rootPart == nil then
 				continue
 			end
-			if (BossServiceUtils.projectPositionToPlaneX(rootPart.Position, self.planeX) - servant.position).Magnitude
-				> self._eyeConfig.servantRadius then
+			if
+				(BossServiceUtils.projectPositionToPlaneX(rootPart.Position, self.planeX) - servant.position).Magnitude
+				> self._eyeConfig.servantRadius
+			then
 				continue
 			end
 			local lastDamageAt = servant.damageCooldownByUserId[player.UserId] or -math.huge
@@ -671,24 +676,19 @@ function EyeOfCthulhuController:StepSpawnIntro(dt: number)
 		return
 	end
 
-	local result = EyeOfCthulhuMotion.solveSpawnIntroMotion(
-		createMotionContext(self),
-		targetSnapshot,
-		{
-			introDuration = scaleDuration(self, self._eyeConfig.introDuration),
-			introHeight = self._eyeConfig.introHeight,
-			introDistance = self._eyeConfig.introDistance,
-			phase1HoverHeight = self._eyeConfig.phase1HoverHeight,
-			phase1SideOffset = self._eyeConfig.phase1SideOffset,
-			phase1LeadMultiplier = self._eyeConfig.phase1LeadMultiplier,
-			phase1BobAmplitude = self._eyeConfig.phase1BobAmplitude,
-			phase1BobSpeed = self._eyeConfig.phase1BobSpeed,
-			phase1HoverSpeed = scaleSpeed(self, self._eyeConfig.phase1HoverSpeed),
-			phase1HoverAcceleration = scaleSpeed(self, self._eyeConfig.phase1HoverAcceleration),
-			phase1HoverDamping = self._eyeConfig.phase1HoverDamping,
-		},
-		dt
-	)
+	local result = EyeOfCthulhuMotion.solveSpawnIntroMotion(createMotionContext(self), targetSnapshot, {
+		introDuration = scaleDuration(self, self._eyeConfig.introDuration),
+		introHeight = self._eyeConfig.introHeight,
+		introDistance = self._eyeConfig.introDistance,
+		phase1HoverHeight = self._eyeConfig.phase1HoverHeight,
+		phase1SideOffset = self._eyeConfig.phase1SideOffset,
+		phase1LeadMultiplier = self._eyeConfig.phase1LeadMultiplier,
+		phase1BobAmplitude = self._eyeConfig.phase1BobAmplitude,
+		phase1BobSpeed = self._eyeConfig.phase1BobSpeed,
+		phase1HoverSpeed = scaleSpeed(self, self._eyeConfig.phase1HoverSpeed),
+		phase1HoverAcceleration = scaleSpeed(self, self._eyeConfig.phase1HoverAcceleration),
+		phase1HoverDamping = self._eyeConfig.phase1HoverDamping,
+	}, dt)
 	applyMotionResult(self, result)
 
 	if result.finished then
@@ -703,21 +703,16 @@ function EyeOfCthulhuController:StepPhase1Hover(dt: number)
 		return
 	end
 
-	local result = EyeOfCthulhuMotion.solvePhase1HoverMotion(
-		createMotionContext(self),
-		targetSnapshot,
-		{
-			phase1HoverHeight = self._eyeConfig.phase1HoverHeight,
-			phase1SideOffset = self._eyeConfig.phase1SideOffset,
-			phase1LeadMultiplier = self._eyeConfig.phase1LeadMultiplier,
-			phase1BobAmplitude = self._eyeConfig.phase1BobAmplitude,
-			phase1BobSpeed = self._eyeConfig.phase1BobSpeed,
-			phase1HoverSpeed = scaleSpeed(self, self._eyeConfig.phase1HoverSpeed),
-			phase1HoverAcceleration = scaleSpeed(self, self._eyeConfig.phase1HoverAcceleration),
-			phase1HoverDamping = self._eyeConfig.phase1HoverDamping,
-		},
-		dt
-	)
+	local result = EyeOfCthulhuMotion.solvePhase1HoverMotion(createMotionContext(self), targetSnapshot, {
+		phase1HoverHeight = self._eyeConfig.phase1HoverHeight,
+		phase1SideOffset = self._eyeConfig.phase1SideOffset,
+		phase1LeadMultiplier = self._eyeConfig.phase1LeadMultiplier,
+		phase1BobAmplitude = self._eyeConfig.phase1BobAmplitude,
+		phase1BobSpeed = self._eyeConfig.phase1BobSpeed,
+		phase1HoverSpeed = scaleSpeed(self, self._eyeConfig.phase1HoverSpeed),
+		phase1HoverAcceleration = scaleSpeed(self, self._eyeConfig.phase1HoverAcceleration),
+		phase1HoverDamping = self._eyeConfig.phase1HoverDamping,
+	}, dt)
 	applyMotionResult(self, result)
 
 	if self.stateTime < self._nextChargeDelay then
@@ -740,21 +735,16 @@ function EyeOfCthulhuController:StepPhase1ServantBurst(dt: number)
 		return
 	end
 
-	local result = EyeOfCthulhuMotion.solveServantBurstMotion(
-		createMotionContext(self),
-		targetSnapshot,
-		{
-			phase1HoverHeight = self._eyeConfig.phase1HoverHeight,
-			phase1SideOffset = self._eyeConfig.phase1SideOffset,
-			phase1LeadMultiplier = self._eyeConfig.phase1LeadMultiplier,
-			phase1BobAmplitude = self._eyeConfig.phase1BobAmplitude,
-			phase1BobSpeed = self._eyeConfig.phase1BobSpeed,
-			phase1HoverSpeed = scaleSpeed(self, self._eyeConfig.phase1HoverSpeed),
-			phase1HoverAcceleration = scaleSpeed(self, self._eyeConfig.phase1HoverAcceleration),
-			phase1HoverDamping = self._eyeConfig.phase1HoverDamping,
-		},
-		dt
-	)
+	local result = EyeOfCthulhuMotion.solveServantBurstMotion(createMotionContext(self), targetSnapshot, {
+		phase1HoverHeight = self._eyeConfig.phase1HoverHeight,
+		phase1SideOffset = self._eyeConfig.phase1SideOffset,
+		phase1LeadMultiplier = self._eyeConfig.phase1LeadMultiplier,
+		phase1BobAmplitude = self._eyeConfig.phase1BobAmplitude,
+		phase1BobSpeed = self._eyeConfig.phase1BobSpeed,
+		phase1HoverSpeed = scaleSpeed(self, self._eyeConfig.phase1HoverSpeed),
+		phase1HoverAcceleration = scaleSpeed(self, self._eyeConfig.phase1HoverAcceleration),
+		phase1HoverDamping = self._eyeConfig.phase1HoverDamping,
+	}, dt)
 	applyMotionResult(self, result)
 
 	if not self._didInitializeBurst then
@@ -786,16 +776,11 @@ end
 
 function EyeOfCthulhuController:StepPhase1ChargeWindup(dt: number)
 	local targetSnapshot = createTargetSnapshot(self)
-	local result = EyeOfCthulhuMotion.solveChargeWindupMotion(
-		createMotionContext(self),
-		targetSnapshot,
-		{
-			duration = scaleDuration(self, self._eyeConfig.phase1ChargeWindupDuration),
-			brakeAcceleration = scaleSpeed(self, self._eyeConfig.phase1HoverAcceleration * 1.45),
-			brakeDamping = self._eyeConfig.phase1HoverDamping + 1.15,
-		},
-		dt
-	)
+	local result = EyeOfCthulhuMotion.solveChargeWindupMotion(createMotionContext(self), targetSnapshot, {
+		duration = scaleDuration(self, self._eyeConfig.phase1ChargeWindupDuration),
+		brakeAcceleration = scaleSpeed(self, self._eyeConfig.phase1HoverAcceleration * 1.45),
+		brakeDamping = self._eyeConfig.phase1HoverDamping + 1.15,
+	}, dt)
 	result.motionOwner = "Phase1ChargeWindup"
 	result.debug.motionOwner = "Phase1ChargeWindup"
 	applyMotionResult(self, result)
@@ -828,17 +813,12 @@ end
 
 function EyeOfCthulhuController:StepPhase1Recovery(dt: number)
 	local targetSnapshot = createTargetSnapshot(self)
-	local result = EyeOfCthulhuMotion.solveRecoveryMotion(
-		createMotionContext(self),
-		targetSnapshot,
-		{
-			duration = scaleDuration(self, self._eyeConfig.phase1ChargeRecoveryDuration),
-			speed = scaleSpeed(self, self._eyeConfig.phase1ChargeRecoverySpeed),
-			acceleration = scaleSpeed(self, self._eyeConfig.phase1ChargeRecoveryAcceleration),
-			damping = self._eyeConfig.phase1ChargeRecoveryDamping,
-		},
-		dt
-	)
+	local result = EyeOfCthulhuMotion.solveRecoveryMotion(createMotionContext(self), targetSnapshot, {
+		duration = scaleDuration(self, self._eyeConfig.phase1ChargeRecoveryDuration),
+		speed = scaleSpeed(self, self._eyeConfig.phase1ChargeRecoverySpeed),
+		acceleration = scaleSpeed(self, self._eyeConfig.phase1ChargeRecoveryAcceleration),
+		damping = self._eyeConfig.phase1ChargeRecoveryDamping,
+	}, dt)
 	result.motionOwner = "Phase1Recovery"
 	result.debug.motionOwner = "Phase1Recovery"
 	applyMotionResult(self, result)
@@ -856,16 +836,11 @@ function EyeOfCthulhuController:StepPhase1Recovery(dt: number)
 end
 
 function EyeOfCthulhuController:StepTransform(dt: number)
-	local result = EyeOfCthulhuMotion.solveTransformMotion(
-		createMotionContext(self),
-		createTargetSnapshot(self),
-		{
-			transformDuration = scaleDuration(self, self._eyeConfig.transformDuration),
-			transformSpinTurns = self._eyeConfig.transformSpinTurns,
-			transformPauseLift = self._eyeConfig.transformPauseLift,
-		},
-		dt
-	)
+	local result = EyeOfCthulhuMotion.solveTransformMotion(createMotionContext(self), createTargetSnapshot(self), {
+		transformDuration = scaleDuration(self, self._eyeConfig.transformDuration),
+		transformSpinTurns = self._eyeConfig.transformSpinTurns,
+		transformPauseLift = self._eyeConfig.transformPauseLift,
+	}, dt)
 	applyMotionResult(self, result)
 
 	if result.finished then
@@ -880,21 +855,16 @@ function EyeOfCthulhuController:StepPhase2HoverIdle(dt: number)
 		return
 	end
 
-	local result = EyeOfCthulhuMotion.solvePhase2HoverIdleMotion(
-		createMotionContext(self),
-		targetSnapshot,
-		{
-			phase2HoverHeight = self._eyeConfig.phase2HoverHeight,
-			phase2SideOffset = self._eyeConfig.phase2SideOffset,
-			phase2LeadMultiplier = self._eyeConfig.phase2LeadMultiplier,
-			phase2BobAmplitude = self._eyeConfig.phase2BobAmplitude,
-			phase2BobSpeed = self._eyeConfig.phase2BobSpeed,
-			phase2HoverSpeed = scaleSpeed(self, self._eyeConfig.phase2HoverSpeed),
-			phase2HoverAcceleration = scaleSpeed(self, self._eyeConfig.phase2HoverAcceleration),
-			phase2HoverDamping = self._eyeConfig.phase2HoverDamping,
-		},
-		dt
-	)
+	local result = EyeOfCthulhuMotion.solvePhase2HoverIdleMotion(createMotionContext(self), targetSnapshot, {
+		phase2HoverHeight = self._eyeConfig.phase2HoverHeight,
+		phase2SideOffset = self._eyeConfig.phase2SideOffset,
+		phase2LeadMultiplier = self._eyeConfig.phase2LeadMultiplier,
+		phase2BobAmplitude = self._eyeConfig.phase2BobAmplitude,
+		phase2BobSpeed = self._eyeConfig.phase2BobSpeed,
+		phase2HoverSpeed = scaleSpeed(self, self._eyeConfig.phase2HoverSpeed),
+		phase2HoverAcceleration = scaleSpeed(self, self._eyeConfig.phase2HoverAcceleration),
+		phase2HoverDamping = self._eyeConfig.phase2HoverDamping,
+	}, dt)
 	result.motionOwner = "Phase2HoverIdle"
 	result.debug.motionOwner = "Phase2HoverIdle"
 	applyMotionResult(self, result)
@@ -918,16 +888,11 @@ function EyeOfCthulhuController:StepPhase2ChargeWindup(dt: number)
 	end
 
 	local targetSnapshot = createTargetSnapshot(self)
-	local result = EyeOfCthulhuMotion.solveChargeWindupMotion(
-		createMotionContext(self),
-		targetSnapshot,
-		{
-			duration = scaleDuration(self, self._eyeConfig.phase2ChargeWindupDuration),
-			brakeAcceleration = scaleSpeed(self, self._eyeConfig.phase2HoverAcceleration * 1.85),
-			brakeDamping = self._eyeConfig.phase2HoverDamping + 1.4,
-		},
-		dt
-	)
+	local result = EyeOfCthulhuMotion.solveChargeWindupMotion(createMotionContext(self), targetSnapshot, {
+		duration = scaleDuration(self, self._eyeConfig.phase2ChargeWindupDuration),
+		brakeAcceleration = scaleSpeed(self, self._eyeConfig.phase2HoverAcceleration * 1.85),
+		brakeDamping = self._eyeConfig.phase2HoverDamping + 1.4,
+	}, dt)
 	result.motionOwner = "Phase2ChargeWindup"
 	result.debug.motionOwner = "Phase2ChargeWindup"
 	applyMotionResult(self, result)
@@ -958,17 +923,12 @@ end
 
 function EyeOfCthulhuController:StepPhase2Recovery(dt: number)
 	local targetSnapshot = createTargetSnapshot(self)
-	local result = EyeOfCthulhuMotion.solveRecoveryMotion(
-		createMotionContext(self),
-		targetSnapshot,
-		{
-			duration = scaleDuration(self, self._eyeConfig.phase2ChargeRecoveryDuration),
-			speed = scaleSpeed(self, self._eyeConfig.phase2ChargeRecoverySpeed),
-			acceleration = scaleSpeed(self, self._eyeConfig.phase2ChargeRecoveryAcceleration),
-			damping = self._eyeConfig.phase2ChargeRecoveryDamping,
-		},
-		dt
-	)
+	local result = EyeOfCthulhuMotion.solveRecoveryMotion(createMotionContext(self), targetSnapshot, {
+		duration = scaleDuration(self, self._eyeConfig.phase2ChargeRecoveryDuration),
+		speed = scaleSpeed(self, self._eyeConfig.phase2ChargeRecoverySpeed),
+		acceleration = scaleSpeed(self, self._eyeConfig.phase2ChargeRecoveryAcceleration),
+		damping = self._eyeConfig.phase2ChargeRecoveryDamping,
+	}, dt)
 	result.motionOwner = "Phase2Recovery"
 	result.debug.motionOwner = "Phase2Recovery"
 	applyMotionResult(self, result)
@@ -1012,16 +972,11 @@ function EyeOfCthulhuController:StepRapidChain(dt: number)
 			context.lockedCharge = self._lockedCharge
 		end
 
-		local result = EyeOfCthulhuMotion.solveChargeWindupMotion(
-			context,
-			targetSnapshot,
-			{
-				duration = rapidWindupDuration,
-				brakeAcceleration = scaleSpeed(self, self._eyeConfig.phase2HoverAcceleration * 1.65),
-				brakeDamping = self._eyeConfig.phase2HoverDamping + 1.4,
-			},
-			dt
-		)
+		local result = EyeOfCthulhuMotion.solveChargeWindupMotion(context, targetSnapshot, {
+			duration = rapidWindupDuration,
+			brakeAcceleration = scaleSpeed(self, self._eyeConfig.phase2HoverAcceleration * 1.65),
+			brakeDamping = self._eyeConfig.phase2HoverDamping + 1.4,
+		}, dt)
 		applyMotionResult(self, result)
 
 		if result.finished then
@@ -1051,17 +1006,12 @@ function EyeOfCthulhuController:StepRapidChain(dt: number)
 		return
 	end
 
-	local result = EyeOfCthulhuMotion.solveRecoveryMotion(
-		context,
-		targetSnapshot,
-		{
-			duration = rapidRecoveryDuration,
-			speed = scaleSpeed(self, self._eyeConfig.phase2ChargeRecoverySpeed * 0.72),
-			acceleration = scaleSpeed(self, self._eyeConfig.phase2ChargeRecoveryAcceleration),
-			damping = self._eyeConfig.phase2ChargeRecoveryDamping,
-		},
-		dt
-	)
+	local result = EyeOfCthulhuMotion.solveRecoveryMotion(context, targetSnapshot, {
+		duration = rapidRecoveryDuration,
+		speed = scaleSpeed(self, self._eyeConfig.phase2ChargeRecoverySpeed * 0.72),
+		acceleration = scaleSpeed(self, self._eyeConfig.phase2ChargeRecoveryAcceleration),
+		damping = self._eyeConfig.phase2ChargeRecoveryDamping,
+	}, dt)
 	applyMotionResult(self, result)
 
 	if not result.finished then
@@ -1132,11 +1082,13 @@ function EyeOfCthulhuController:OnStep(dt: number)
 		self:despawn("NoTarget")
 	end
 
-	if self.phase <= 1
+	if
+		self.phase <= 1
 		and self.state ~= "Transform"
 		and self.state ~= "Death"
 		and self.state ~= "Despawn"
-		and self:getHealthRatio() <= self._eyeConfig.transformHealthThreshold then
+		and self:getHealthRatio() <= self._eyeConfig.transformHealthThreshold
+	then
 		self:changeState("Transform", "HealthThreshold")
 	end
 

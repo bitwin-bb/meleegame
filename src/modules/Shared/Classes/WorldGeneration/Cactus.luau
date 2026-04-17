@@ -273,12 +273,7 @@ local function ClampInteger(valueRaw: any, minimum: number, maximum: number, fal
 	return math.floor(ClampNumber(valueRaw, minimum, maximum, fallback))
 end
 
-local function SanitizeNumberRange(
-	valueRaw: any,
-	fallback: NumberRange,
-	minimum: number,
-	maximum: number
-): NumberRange
+local function SanitizeNumberRange(valueRaw: any, fallback: NumberRange, minimum: number, maximum: number): NumberRange
 	local minValue = fallback.Min
 	local maxValue = fallback.Max
 
@@ -474,7 +469,11 @@ function CactusGenerator.GetArchetypeProfile(self: CactusGenerator): ArchetypePr
 	return ARCHETYPE_PROFILES[self.Config.Archetype]
 end
 
-function CactusGenerator.ComputeTargetHeight(self: CactusGenerator, profile: ArchetypeProfile, randomObject: Random): number
+function CactusGenerator.ComputeTargetHeight(
+	self: CactusGenerator,
+	profile: ArchetypeProfile,
+	randomObject: Random
+): number
 	local configuredMin = if self.Config.MinHeight > 0 then self.Config.MinHeight else profile.MinHeight
 	local configuredMax = if self.Config.MaxHeight > 0 then self.Config.MaxHeight else profile.MaxHeight
 	local seededHeight = randomObject:NextNumber(configuredMin, configuredMax)
@@ -634,7 +633,8 @@ function CactusGenerator.GrowArm(
 
 	local heightAlpha = math.clamp(parentNode.Height / math.max(targetHeight, 0.001), 0, 1)
 	local maxRemainingHeight = math.max(targetHeight - parentNode.Height, self.Config.StepLength)
-	local desiredArmHeight = maxRemainingHeight * randomObject:NextNumber(profile.ArmLengthAlphaMin, profile.ArmLengthAlphaMax)
+	local desiredArmHeight = maxRemainingHeight
+		* randomObject:NextNumber(profile.ArmLengthAlphaMin, profile.ArmLengthAlphaMax)
 	local nodeSpacing = math.max(0.35, self.Config.StepLength * profile.ArmNodeSpacingScale)
 	local armSteps = math.max(1, math.min(8, math.floor(desiredArmHeight / math.max(nodeSpacing, 0.001) + 0.5)))
 
@@ -677,7 +677,8 @@ function CactusGenerator.GrowArm(
 		local thicknessStart = if armStep == 1
 			then math.max(self.Config.MinimumThickness, parentNode.Thickness * self.Config.ArmThicknessScale)
 			else lastNode.Thickness
-		local thicknessEnd = self:ComputeThicknessAtProgress(profile, math.max(heightAlpha, progress1), randomObject, true)
+		local thicknessEnd =
+			self:ComputeThicknessAtProgress(profile, math.max(heightAlpha, progress1), randomObject, true)
 		if kind == "Pad" then
 			thicknessEnd *= 1.12
 		end
@@ -728,9 +729,11 @@ function CactusGenerator.GrowTrunk(
 )
 	local targetHeight = self:ComputeTargetHeight(profile, randomObject)
 	local nodeSpacing = self:ComputeNodeSpacing(profile)
-	local stepCount = math.max(3, math.min(self.Config.MaxSegments, math.floor(targetHeight / math.max(nodeSpacing, 0.001) + 0.5)))
+	local stepCount =
+		math.max(3, math.min(self.Config.MaxSegments, math.floor(targetHeight / math.max(nodeSpacing, 0.001) + 0.5)))
 
-	local rootNode = self:CreateNode(skeleton.Nodes, 0, origin, Vector3.yAxis, self.Config.BaseThickness, 0, 0, 1, "Trunk", 0)
+	local rootNode =
+		self:CreateNode(skeleton.Nodes, 0, origin, Vector3.yAxis, self.Config.BaseThickness, 0, 0, 1, "Trunk", 0)
 	local currentNode = rootNode
 	local direction = Vector3.yAxis
 	local previousSideSign = if randomObject:NextNumber() < 0.5 then -1 else 1
@@ -747,7 +750,12 @@ function CactusGenerator.GrowTrunk(
 		local driftSign = if progress1 > 0.5 then previousSideSign else -previousSideSign
 		local leanAngle = math.rad(profile.TrunkLeanDegrees * 0.08 * driftSign)
 		local wobbleAngle = math.rad(RandomInRange(randomObject, self.Config.AngleJitter) * 0.18)
-		local trunkBendAngle = math.rad(RandomInRange(randomObject, NumberRange.new(-self.Config.TrunkWobbleDegrees, self.Config.TrunkWobbleDegrees)))
+		local trunkBendAngle = math.rad(
+			RandomInRange(
+				randomObject,
+				NumberRange.new(-self.Config.TrunkWobbleDegrees, self.Config.TrunkWobbleDegrees)
+			)
+		)
 
 		direction = RotateWithinPlane(direction, leanAngle + wobbleAngle + trunkBendAngle)
 		direction = BlendDirection(
@@ -792,7 +800,17 @@ function CactusGenerator.GrowTrunk(
 		skeleton.Height = math.max(skeleton.Height, currentNode.Height)
 		skeleton.TrunkTipNodeIndex = currentNode.Index
 
-		if self:ValidateBranchSpawn(profile, currentNode, stepIndex, stepCount, skeleton.ArmCount, lastBranchStep, randomObject) then
+		if
+			self:ValidateBranchSpawn(
+				profile,
+				currentNode,
+				stepIndex,
+				stepCount,
+				skeleton.ArmCount,
+				lastBranchStep,
+				randomObject
+			)
+		then
 			previousSideSign *= -1
 			lastBranchStep = stepIndex
 			self:GrowArm(
@@ -907,7 +925,8 @@ function CactusGenerator.ApplyDetails(
 	end
 
 	local areoleStep = math.max(1, math.floor(3 / math.max(self.Config.DetailDensity, 0.2)))
-	local detailBudget = math.max(8, math.floor((#skeleton.Segments + skeleton.ArmCount * 2) * 0.45 * self.Config.DetailDensity))
+	local detailBudget =
+		math.max(8, math.floor((#skeleton.Segments + skeleton.ArmCount * 2) * 0.45 * self.Config.DetailDensity))
 	local detailCount = 0
 
 	for segmentIndex, segment in skeleton.Segments do
@@ -923,7 +942,9 @@ function CactusGenerator.ApplyDetails(
 		if segmentIndex % areoleStep == 0 then
 			local alpha = randomObject:NextNumber(0.28, 0.78)
 			local anchor = segment.Start:Lerp(segment.End, alpha)
-			local forward = if segmentPart.CFrame.LookVector.Magnitude > 0.001 then segmentPart.CFrame.LookVector.Unit else Vector3.xAxis
+			local forward = if segmentPart.CFrame.LookVector.Magnitude > 0.001
+				then segmentPart.CFrame.LookVector.Unit
+				else Vector3.xAxis
 			local normal = if randomObject:NextNumber() < 0.5 then forward else -forward
 			local areoleSize = math.max(0.08, segment.Thickness * 0.12)
 			local areole = self:CreateDetailPart(
@@ -945,7 +966,10 @@ function CactusGenerator.ApplyDetails(
 			local spine = self:CreateDetailPart(
 				"Spine",
 				Vector3.new(spineLength, 0.05, 0.05),
-				CFrame.lookAt(anchor + normal * (segment.Thickness * 0.36), anchor + normal * (segment.Thickness * 0.36) + spineDirection),
+				CFrame.lookAt(
+					anchor + normal * (segment.Thickness * 0.36),
+					anchor + normal * (segment.Thickness * 0.36) + spineDirection
+				),
 				self.Config.SegmentColor:Lerp(Color3.new(0.95, 0.9, 0.7), 0.7),
 				Enum.Material.Plastic,
 				false
@@ -982,7 +1006,11 @@ function CactusGenerator.ApplyDetails(
 			end
 			local rib = self:CreateDetailPart(
 				"Rib",
-				Vector3.new(length * 0.96, math.max(0.06, segment.Thickness * 0.11), math.max(0.06, segment.Thickness * 0.11)),
+				Vector3.new(
+					length * 0.96,
+					math.max(0.06, segment.Thickness * 0.11),
+					math.max(0.06, segment.Thickness * 0.11)
+				),
 				cframe + cframe.UpVector * ribOffset * side,
 				self.Config.SegmentColor:Lerp(Color3.new(0, 0, 0), 0.08),
 				Enum.Material.Plastic,
