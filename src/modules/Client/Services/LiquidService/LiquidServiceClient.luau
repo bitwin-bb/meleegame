@@ -1,5 +1,6 @@
 --!strict
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
@@ -11,6 +12,8 @@ local Signal = require(ReplicatedStorage.Packages.Signal)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
 local Lerp = require(script:FindFirstAncestor("game").Shared.Modules.Math.Lerp)
 local TickSchedulerModule = require(script:FindFirstAncestor("game").Shared.Modules.Core.TickScheduler)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
@@ -19,6 +22,7 @@ local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Servi
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioService.AudioServiceUtils)
 local LiquidServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.LiquidService.LiquidServiceUtils)
 local WorldSimulationDebug = require(script:FindFirstAncestor("game").Shared.Services.WorldSimulationService.Debug)
+local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationService.WorldGenerationServiceClient)
 
@@ -157,6 +161,7 @@ function LiquidServiceClient:CreateChunkVisual(chunkKey: string): ChunkVisual
 	model.Name = `Liquid_{chunkKey}`
 	model:SetAttribute("ChunkKey", chunkKey)
 	model.Parent = self.visualFolder
+	TagBinder.applyTag(model, TagBinder.Tags.Liquid, CollectionService)
 
 	local frontFolder = Instance.new("Folder")
 	frontFolder.Name = "Front"
@@ -1062,6 +1067,7 @@ function LiquidServiceClient:Init()
 	self.dependencySyncAccumulator = WORLD_DEPENDENCY_SYNC_INTERVAL
 	self.visualFolder = WorkspaceFolders.getOrCreateFolderInGame(VISUAL_FOLDER_NAME)
 	self.burnEmitter = nil :: ParticleEmitter?
+	self.binders = NevermoreSupport.getService(ClientBinderSupport)
 	self:refreshWaterSplashSoundAssetIds()
 	self:recreateRebuildQueue()
 

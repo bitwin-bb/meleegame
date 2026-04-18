@@ -5,6 +5,8 @@ local RunService = game:GetService("RunService")
 
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local RagdollServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.RagdollService.RagdollServiceUtils)
 
 type CharacterRig = RagdollServiceUtils.CharacterRig
@@ -42,6 +44,7 @@ function RagdollServiceServer.Init(self: RagdollServiceServer)
 		self.RequestSelfRecover,
 	})
 	self.playerRuntimes = {}
+	self.binders = NevermoreSupport.getService(ServerBinderSupport)
 
 	for _, player in Players:GetPlayers() do
 		self:trackPlayer(player)

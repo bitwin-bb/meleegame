@@ -11,6 +11,7 @@ local DeterministicRNG = require(script:FindFirstAncestor("game").Shared.Modules
 local ObjectPool = require(script:FindFirstAncestor("game").Shared.Modules.Core.ObjectPool)
 local TagQuery = require(script:FindFirstAncestor("game").Shared.Modules.Core.TagQuery)
 local TickSchedulerModule = require(script:FindFirstAncestor("game").Shared.Modules.Core.TickScheduler)
+local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 
 local BufferPool = require(script.BufferPool)
 local DisturbanceSourceModule = require(script.DisturbanceSource)
@@ -68,8 +69,8 @@ local WindFoliage = {}
 WindFoliage.__index = WindFoliage
 
 local ZERO = Vector3.zero
-local DEFAULT_FOLIAGE_TAG = "WindFoliage"
-local DEFAULT_DISTURBER_TAG = "WindFoliageDisturber"
+local DEFAULT_FOLIAGE_TAG = TagBinder.Tags.Foliage
+local DEFAULT_DISTURBER_TAG = TagBinder.Tags.Disturber
 local WORLD_ANIMATOR_RUNTIME_FOLDER_NAME = "WorldAnimatorRuntime"
 local TREE_GRAPH_ATTRIBUTE = "WindFoliageTreeGraph"
 local RUNTIME_ATTRIBUTE_LOD = "WindRuntimeLOD"

@@ -18,6 +18,8 @@ local InventoryProfile = require(script:FindFirstAncestor("game").Shared.Service
 local PlayerDataServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerDataService.PlayerDataServiceUtils)
 local PlayerDataServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerDataService.PlayerDataServiceServer)
 local WorldGenerationServiceServer = require(script:FindFirstAncestor("game").Server.Services.WorldGenerationService.WorldGenerationServiceServer)
+local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
+local ToolBinder = require(script:FindFirstAncestor("game").Shared.Binders.ToolBinder)
 
 type InventoryState = InventoryServiceUtils.InventoryState
 type AddItemResult = InventoryServiceUtils.AddItemResult
@@ -105,7 +107,7 @@ local DEPLOYABLE_PLACED_ATTRIBUTE_NAME = "PlacedItemId"
 local DEPLOYABLE_TILE_X_ATTRIBUTE_NAME = "DeployableTileX"
 local DEPLOYABLE_TILE_Y_ATTRIBUTE_NAME = "DeployableTileY"
 local DEPLOYABLE_SUPPORT_KIND_ATTRIBUTE_NAME = "DeployableSupportKind"
-local TORCH_DEPLOYABLE_TAG = "LightSource_Torch"
+local TORCH_DEPLOYABLE_TAG = TagBinder.Tags.Light_Torch
 local TORCH_GROUND_NORMAL = Vector3.new(0, 1, 0)
 local TORCH_LEFT_WALL_NORMAL = Vector3.new(0, 0, 1)
 local TORCH_RIGHT_WALL_NORMAL = Vector3.new(0, 0, -1)
@@ -342,6 +344,7 @@ local function configureManagedToolForInventoryStack(tool: Tool, itemIdRaw: any,
 		tool:SetAttribute(attributeName, attributeValue)
 	end
 	ensureToolHasVisibleHandle(tool, itemId)
+	ToolBinder.applyTags(tool)
 end
 
 local function cloneToolForInventoryStack(itemIdRaw: any, stackRaw: any, selectedSlotRaw: any): Tool?
@@ -529,7 +532,7 @@ local function getWorldTileId(worldRaw: any, tileX: number, tileY: number): numb
 end
 
 local function findTorchDeployableAtTile(tileX: number, tileY: number, excludeInstance: Instance?): Instance?
-	for _, tagged in CollectionService:GetTagged(TORCH_DEPLOYABLE_TAG) do
+	for _, tagged in TagBinder.getTagged(TORCH_DEPLOYABLE_TAG, CollectionService) do
 		if tagged == excludeInstance then
 			continue
 		end
@@ -1569,6 +1572,7 @@ function InventoryServiceServer.OnObservedTool(
 	runtime: PlayerRuntime,
 	tool: Tool
 )
+	ToolBinder.applyTags(tool)
 	if isManagedInventoryTool(tool) then
 		return
 	end
@@ -1735,7 +1739,14 @@ function InventoryServiceServer.TryPlaceSelectedDeployable(
 	end
 	local stationTag = sanitizeItemId((deployableConfig :: { [string]: any }).stationTag)
 	if stationTag ~= nil then
-		CollectionService:AddTag(placedInstance, stationTag)
+		TagBinder.applyTag(placedInstance, stationTag, CollectionService)
+	end
+	if itemId == "Torch" then
+		TagBinder.applyTag(placedInstance, TagBinder.Tags.Placeable_Torch, CollectionService)
+	elseif itemId == "Workbench" then
+		TagBinder.applyTag(placedInstance, TagBinder.Tags.Placeable_Workbench, CollectionService)
+	else
+		TagBinder.applyTag(placedInstance, TagBinder.Tags.Placeable, CollectionService)
 	end
 	placedInstance:SetAttribute(DEPLOYABLE_PLACED_ATTRIBUTE_NAME, itemId)
 	if placedTileX ~= nil and placedTileY ~= nil then

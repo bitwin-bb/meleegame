@@ -26,6 +26,7 @@
     "@quenty/loader": "^10.10.0",
     "@quenty/maid": "^3.8.0",
     "@quenty/octree": "^11.13.0",
-    "@quenty/servicebag": "^11.16.0"
+    "@quenty/servicebag": "^11.16.0",
+    "@quenty/snackbar": "^11.38.0"
   }
 }

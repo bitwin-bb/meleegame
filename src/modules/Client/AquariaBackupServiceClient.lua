@@ -8,13 +8,12 @@ local AquariaBackupClientBootstrap = require(script.Parent.AquariaBackupClientBo
 local AquariaBackupServiceClient = {}
 AquariaBackupServiceClient.ServiceName = "AquariaBackupServiceClient"
 
-export type AquariaBackupServiceClient =
-	typeof(setmetatable(
-		{} :: {
-			_serviceBag: any,
-		},
-		{} :: typeof({ __index = AquariaBackupServiceClient })
-	))
+export type AquariaBackupServiceClient = typeof(setmetatable(
+	{} :: {
+		_serviceBag: any,
+	},
+	{} :: typeof({ __index = AquariaBackupServiceClient })
+))
 
 function AquariaBackupServiceClient.Init(self: AquariaBackupServiceClient, serviceBag: any): ()
 	assert(not (self :: any)._serviceBag, "Already initialized")

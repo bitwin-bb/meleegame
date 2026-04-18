@@ -6,6 +6,9 @@ local Workspace = game:GetService("Workspace")
 
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerService.PlayerServiceUtils)
 local DataTemplate = require(script:FindFirstAncestor("game").Shared.Modules.Core.DataTemplate)
 local PlayerSpawnCooldown = require(script:FindFirstAncestor("game").Shared.Modules.Game.Player.PlayerSpawnCooldown)
@@ -148,6 +151,7 @@ function PlayerServiceServer.Init(self: PlayerServiceServer)
 		self.RequestState,
 		self.SetWorldReadyForMovement,
 	})
+	self.binders = NevermoreSupport.getService(ServerBinderSupport)
 
 	for _, player in Players:GetPlayers() do
 		self:trackPlayer(player)
@@ -706,6 +710,7 @@ end
 
 function PlayerServiceServer.BindCharacter(self: PlayerServiceServer, player: Player, character: Model)
 	local runtime = self:getRuntime(player)
+	TagBinder.applyTag(character, TagBinder.Tags.Character)
 	if self.goreService ~= nil then
 		self.goreService:unregisterPlayer(player)
 	end

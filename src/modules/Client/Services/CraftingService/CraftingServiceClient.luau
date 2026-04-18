@@ -8,6 +8,8 @@ local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local CraftingServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.CraftingService.CraftingServiceUtils)
+local NevermoreNotificationServiceClient =
+	require(script:FindFirstAncestor("game").Client.Services.NevermoreNotificationServiceClient)
 local InventoryServiceClient = require(script:FindFirstAncestor("game").Client.Services.InventoryService.InventoryServiceClient)
 local PlayerDataServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlayerDataService.PlayerDataServiceClient)
 local WorldGenerationServiceClient =
@@ -206,6 +208,9 @@ function CraftingServiceClient.OnCraftResult(self: CraftingServiceClient, result
 			else 0,
 		updatedAt = os.clock(),
 	}
+	if self.lastCraftResult.success ~= true or self.bulkCraftToken == nil then
+		NevermoreNotificationServiceClient.showCraftResult(self.lastCraftResult, self)
+	end
 	self:emitStateChanged()
 end
 

@@ -8,11 +8,14 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local BreathServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BreathService.BreathServiceUtils)
 local LiquidServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.LiquidService.LiquidServiceUtils)
 local LiquidServiceServer = require(script:FindFirstAncestor("game").Server.Services.LiquidService.LiquidServiceServer)
 local HpServiceServer = require(script:FindFirstAncestor("game").Server.Services.HpService.HpServiceServer)
 local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerService.PlayerServiceServer)
+local BreathBinder = require(script:FindFirstAncestor("game").Server.Binders.BreathBinder)
 
 type BreathServiceConfig = BreathServiceUtils.BreathServiceConfig
 type BreathServiceState = BreathServiceUtils.BreathServiceState
@@ -112,6 +115,10 @@ end
 function BreathServiceServer:ProcessPlayer(player: Player, dt: number)
 	local runtime = self:getRuntime(player)
 	local liquidQuery = self.liquidService:getPlayerLiquidQuery(player)
+	local overrideQuery = BreathBinder.queryCharacterOverride(player.Character)
+	if overrideQuery ~= nil then
+		liquidQuery = overrideQuery
+	end
 	local breathBlocked = LiquidServiceUtils.LiquidDamage.shouldBlockBreath(self.liquidService.config, liquidQuery)
 	local wasBreathBlocked = runtime.wasBreathBlocked
 	local now = os.clock()
@@ -191,6 +198,7 @@ function BreathServiceServer:Init()
 	self.liquidService = LiquidServiceServer :: LiquidServiceServerObject
 	self.hpService = HpServiceServer :: HpServiceServerObject
 	self.breathDepleted = Signal.new()
+	self.binders = NevermoreSupport.getService(ServerBinderSupport)
 
 	self.networker = Networker.server.new("BreathService", self, {
 		self.RequestSync,

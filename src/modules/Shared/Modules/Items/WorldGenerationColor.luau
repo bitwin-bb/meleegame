@@ -35,13 +35,13 @@ local TILE_MATERIAL = Enum.Material.Plastic
 local TILE_VISUALS: { [number]: TileVisual } = {
 	[1] = {
 		name = "Grass",
-		color = Color3.fromRGB(113, 155, 76),
+		color = Color3.fromRGB(79, 47, 20),
 		material = TILE_MATERIAL,
 		transparency = 0,
 	},
 	[17] = {
 		name = "JungleGrass",
-		color = Color3.fromRGB(112, 147, 41),
+		color = Color3.fromRGB(48, 40, 31),
 		material = TILE_MATERIAL,
 		transparency = 0,
 	},
@@ -101,7 +101,7 @@ local TILE_VISUALS: { [number]: TileVisual } = {
 	},
 	[14] = {
 		name = "CorruptGrass",
-		color = Color3.fromRGB(70, 40, 109),
+		color = Color3.fromRGB(104, 73, 74),
 		material = TILE_MATERIAL,
 		transparency = 0,
 	},

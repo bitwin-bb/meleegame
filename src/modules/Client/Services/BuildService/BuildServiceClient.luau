@@ -13,6 +13,10 @@ local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
+local NevermoreNotificationServiceClient =
+	require(script:FindFirstAncestor("game").Client.Services.NevermoreNotificationServiceClient)
 local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformService.PlatformServiceClient)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local Rubble = require(script:FindFirstAncestor("game").Shared.Classes.Rubble)
@@ -21,6 +25,7 @@ local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Servi
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioService.AudioServiceUtils)
 local InventoryServiceClient = require(script:FindFirstAncestor("game").Client.Services.InventoryService.InventoryServiceClient)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryService.InventoryServiceUtils)
+local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local itemSlice = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemSlice)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationService.WorldGenerationServiceClient)
@@ -34,10 +39,10 @@ type TreeFelledPayload = BuildServiceUtils.TreeFelledPayload
 
 local DEPLOYABLE_TILE_X_ATTRIBUTE_NAME = "DeployableTileX"
 local DEPLOYABLE_TILE_Y_ATTRIBUTE_NAME = "DeployableTileY"
-local TORCH_DEPLOYABLE_TAG = "LightSource_Torch"
+local TORCH_DEPLOYABLE_TAG = TagBinder.Tags.Light_Torch
 
 local function hasTorchDeployableAtTile(tileX: number, tileY: number): boolean
-	for _, tagged in CollectionService:GetTagged(TORCH_DEPLOYABLE_TAG) do
+	for _, tagged in TagBinder.getTagged(TORCH_DEPLOYABLE_TAG, CollectionService) do
 		local taggedTileX = tagged:GetAttribute(DEPLOYABLE_TILE_X_ATTRIBUTE_NAME)
 		local taggedTileY = tagged:GetAttribute(DEPLOYABLE_TILE_Y_ATTRIBUTE_NAME)
 		if typeof(taggedTileX) == "number" and typeof(taggedTileY) == "number" then
@@ -243,6 +248,9 @@ local TREE_FADE_SPRING = {
 	damping = 1,
 }
 local INPUT_ACTION_PRIMARY = "BuildService.Primary"
+local CURSOR_VISUAL_RAYCAST_DISTANCE_STUDS = 4096
+local BUILD_TREE_ROOT_TILE_X_ATTRIBUTE = "BuildTreeRootTileX"
+local BUILD_TREE_ROOT_TILE_Y_ATTRIBUTE = "BuildTreeRootTileY"
 local TREE_AUDIO = (((AudioRegistry :: any).Misc or {}).Tree or {})
 local TREE_CHOP_AUDIO = TREE_AUDIO.Chop or {}
 local TREE_FALL_AUDIO = TREE_AUDIO.Fall or {}
@@ -275,6 +283,37 @@ local function sanitizeInventoryState(stateRaw: any): InventoryState
 		then InventoryServiceUtils.sanitizeState(stateRaw, InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED))
 		else InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
 	return state
+end
+
+local function resolveMouseLocation(cursorModuleRaw: any): Vector2?
+	if cursorModuleRaw ~= nil and typeof((cursorModuleRaw :: any).getScreenPosition) == "function" then
+		local candidate = (cursorModuleRaw :: any):getScreenPosition()
+		if typeof(candidate) == "Vector2" then
+			return candidate
+		end
+	end
+
+	local ok, candidate = pcall(function()
+		return UserInputService:GetMouseLocation()
+	end)
+	if ok and typeof(candidate) == "Vector2" then
+		return candidate
+	end
+
+	return nil
+end
+
+local function resolveIntegerAttribute(instance: Instance?, attributeName: string): number?
+	if instance == nil then
+		return nil
+	end
+
+	local value = instance:GetAttribute(attributeName)
+	if typeof(value) ~= "number" or value ~= value then
+		return nil
+	end
+
+	return math.floor(value)
 end
 
 local function resolvePlaceableSourceFromInventorySlot(state: InventoryState, slotRaw: any): ActivePlaceSource?
@@ -923,7 +962,7 @@ end
 function BuildServiceClient.CreatePreviewVisual(self: BuildServiceClient)
 	self.visualFolder = self:createVisualFolder()
 	for _, child in self.visualFolder:GetChildren() do
-		if child.Name == "BuildPreview" then
+		if child.Name == "BuildPreview" or child.Name == "BuildPreviewBinder" then
 			child:Destroy()
 		elseif child.Name == "BuildHoverHighlight" then
 			child:Destroy()
@@ -936,6 +975,19 @@ function BuildServiceClient.CreatePreviewVisual(self: BuildServiceClient)
 			descendant:Destroy()
 		end
 	end
+
+	local previewPart = Instance.new("Part")
+	previewPart.Name = "BuildPreviewBinder"
+	previewPart.Anchored = true
+	previewPart.CanCollide = false
+	previewPart.CanTouch = false
+	previewPart.CanQuery = false
+	previewPart.Material = Enum.Material.ForceField
+	previewPart.CastShadow = false
+	previewPart.Transparency = 1
+	previewPart.Size = Vector3.new(0.1, 0.1, 0.1)
+	previewPart.Parent = self.visualFolder
+	TagBinder.applyTag(previewPart, TagBinder.Tags.Preview, CollectionService)
 end
 
 function BuildServiceClient.ResolveCursorTile(self: BuildServiceClient): (number?, number?)
@@ -943,26 +995,37 @@ function BuildServiceClient.ResolveCursorTile(self: BuildServiceClient): (number
 	if currentCamera == nil then
 		return nil, nil
 	end
-	local mouseLocation = nil :: Vector2?
-	local cursorModule = self.cursorModule
-	if cursorModule ~= nil and typeof((cursorModule :: any).getScreenPosition) == "function" then
-		local candidate = (cursorModule :: any):getScreenPosition()
-		if typeof(candidate) == "Vector2" then
-			mouseLocation = candidate
-		end
-	end
-	if mouseLocation == nil then
-		local ok, candidate = pcall(function()
-			return UserInputService:GetMouseLocation()
-		end)
-		if ok and typeof(candidate) == "Vector2" then
-			mouseLocation = candidate
-		end
-	end
+	local mouseLocation = resolveMouseLocation(self.cursorModule)
 	if mouseLocation == nil then
 		return nil, nil
 	end
+
 	local viewportRay = currentCamera:ViewportPointToRay(mouseLocation.X, mouseLocation.Y)
+	local chunksFolder = (WorldGenerationServiceClient :: any).chunksFolder
+	if typeof(chunksFolder) == "Instance" then
+		local raycastParams = RaycastParams.new()
+		raycastParams.FilterType = Enum.RaycastFilterType.Include
+		raycastParams.FilterDescendantsInstances = { chunksFolder }
+		raycastParams.IgnoreWater = true
+
+		local raycastResult =
+			Workspace:Raycast(viewportRay.Origin, viewportRay.Direction * CURSOR_VISUAL_RAYCAST_DISTANCE_STUDS, raycastParams)
+		if raycastResult ~= nil then
+			local hitModel = raycastResult.Instance:FindFirstAncestorOfClass("Model")
+			local rootTileX = resolveIntegerAttribute(hitModel, BUILD_TREE_ROOT_TILE_X_ATTRIBUTE)
+			local rootTileY = resolveIntegerAttribute(hitModel, BUILD_TREE_ROOT_TILE_Y_ATTRIBUTE)
+			if rootTileX ~= nil and rootTileY ~= nil then
+				return rootTileX, rootTileY
+			end
+
+			return BuildServiceUtils.worldPositionToTile(
+				raycastResult.Position,
+				self.state.worldOrigin,
+				self.state.tileSize
+			)
+		end
+	end
+
 	local hitOnPlane = BuildServiceUtils.raycastToBuildPlane(
 		viewportRay.Origin,
 		viewportRay.Direction,
@@ -1448,6 +1511,7 @@ function BuildServiceClient.OnActionResult(self: BuildServiceClient, payloadRaw:
 	end
 
 	if not accepted then
+		NevermoreNotificationServiceClient.showBuildActionRejected(payload.actionType, reason)
 		self.actionRejected:Fire(payload.actionType, reason, requestId)
 		return
 	end
@@ -1892,6 +1956,7 @@ function BuildServiceClient.Init(self: BuildServiceClient)
 		},
 	}) :: RubbleObject
 
+	self.binders = NevermoreSupport.getService(ClientBinderSupport)
 	self:createPreviewVisual()
 	local clearHoveredTerrainTile = (WorldGenerationServiceClient :: any).clearHoveredTerrainTile
 	if typeof(clearHoveredTerrainTile) == "function" then

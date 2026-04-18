@@ -5,6 +5,7 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local Plane = require(script:FindFirstAncestor("game").Shared.Modules.Math.Plane)
 local Proj = require(script:FindFirstAncestor("game").Shared.Modules.Math.Proj)
 local Vec = require(script:FindFirstAncestor("game").Shared.Modules.Math.Vec)
+local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 
 local BossServiceUtils = {}
 
@@ -630,6 +631,11 @@ function BossServiceUtils.ApplyRuntimeModelAttributes(
 
 	modelRaw:SetAttribute(BossServiceUtils.RUNTIME_ID_ATTRIBUTE, runtimeId)
 	modelRaw:SetAttribute(BossServiceUtils.RUNTIME_BOSS_ID_ATTRIBUTE, bossId)
+	TagBinder.applyTag(modelRaw, TagBinder.Tags.Boss)
+	TagBinder.applyTag(modelRaw, TagBinder.Tags.Gore_Boss)
+	if bossId == "EyeOfCthulhu" then
+		TagBinder.applyTag(modelRaw, TagBinder.Tags.Boss_EyeOfCthulhu)
+	end
 
 	local displayName = trim(displayNameRaw)
 	if displayName ~= "" then

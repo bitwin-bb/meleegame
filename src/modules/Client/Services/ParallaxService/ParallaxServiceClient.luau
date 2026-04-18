@@ -12,6 +12,8 @@ local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
 local require = require(loaderUtils.Parent).load(script)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
 local Promise = require("Promise")
 local ParallaxBackgrounds = require(script:FindFirstAncestor("game").Shared.Modules.Items.ParallaxBackgrounds)
 local ParallaxServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.ParallaxService.ParallaxServiceUtils)
@@ -663,6 +665,7 @@ function ParallaxServiceClient.Init(self: ParallaxServiceClient, _container: Ins
 			end
 			self.rootFolder = nil
 		end)
+		self.binders = NevermoreSupport.getService(ClientBinderSupport)
 	end
 
 	if self.initialized then

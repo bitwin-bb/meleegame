@@ -8,6 +8,8 @@ local Workspace = game:GetService("Workspace")
 
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossService.BossServiceUtils)
 local EyeOfCthulhuController = require(script:FindFirstAncestor("game").Shared.Classes.Boss.EyeOfCthulhu)
 local EyeOfCthulhuConfig = require(script:FindFirstAncestor("game").Shared.Classes.Boss.EyeOfCthulhu.Config)
@@ -867,6 +869,7 @@ function BossServiceServer.Init(self: BossServiceServer)
 		EyeOfCthulhu = EyeOfCthulhuConfig.resolve(resolveEyeConfigSource()),
 	}
 	self.previousClockTime = self:getClockTime()
+	self.binders = NevermoreSupport.getService(ServerBinderSupport)
 
 	for _, player in Players:GetPlayers() do
 		if PlayerServiceServer:isGameplayActiveForPlayer(player) then

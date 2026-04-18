@@ -9,6 +9,8 @@ local RunService = game:GetService("RunService")
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioService.AudioServiceUtils)
 local BossServiceClient = require(script:FindFirstAncestor("game").Client.Services.BossService.BossServiceClient)
 local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.WeatherService.WeatherServiceUtils)
@@ -533,6 +535,7 @@ function AudioServiceClient.Init(self: AudioServiceClient)
 	self.soundtrackSampleAccumulator = SOUNDTRACK_BIOME_SAMPLE_INTERVAL
 	self.bossStateChangedConnection = nil
 
+	self.binders = NevermoreSupport.getService(ClientBinderSupport)
 	AudioServiceUtils.applyStateToCategoryGroups(self.state, self.categoryGroups)
 	disableDefaultCharacterSoundSystem(self.localPlayer, self.localPlayer.Character)
 	self:refreshSoundtrackAssetIds()

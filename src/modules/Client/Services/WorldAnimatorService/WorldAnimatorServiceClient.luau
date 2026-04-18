@@ -6,6 +6,8 @@ local Workspace = game:GetService("Workspace")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local WorldAnimatorServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.WorldAnimatorService.WorldAnimatorServiceUtils)
 
@@ -437,19 +439,6 @@ function WorldAnimatorServiceClient.BindChunksFolder(self: WorldAnimatorServiceC
 	table.clear(self.pendingChunks)
 	table.clear(self.pendingChunkLookup)
 	self.chunksFolder = chunksFolder
-
-	self.chunksFolderJanitor:GiveChore(chunksFolder.ChildAdded:Connect(function(child: Instance)
-		self:onChunkAdded(child)
-	end))
-	self.chunksFolderJanitor:GiveChore(chunksFolder.ChildRemoved:Connect(function(child: Instance)
-		self:onChunkRemoved(child)
-	end))
-
-	if self.settings.animateExistingChunks then
-		for _, child in chunksFolder:GetChildren() do
-			self:onChunkAdded(child)
-		end
-	end
 end
 
 function WorldAnimatorServiceClient.BindWorldFolder(self: WorldAnimatorServiceClient, worldFolder: Folder)
@@ -504,6 +493,7 @@ function WorldAnimatorServiceClient.Init(self: WorldAnimatorServiceClient)
 	self.pendingChunks = {}
 	self.pendingChunkLookup = {}
 	self.renderConnection = nil :: RBXScriptConnection?
+	self.binders = NevermoreSupport.getService(ClientBinderSupport)
 
 	local function onWorldFolderAdded(child: Instance)
 		if child.Name ~= WorldAnimatorServiceUtils.WORLD_FOLDER_NAME then

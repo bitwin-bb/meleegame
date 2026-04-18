@@ -3,6 +3,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Networker = require(ReplicatedStorage.Packages.Networker)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local GoreServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.GoreService.GoreServiceUtils)
 
 local GoreServiceServer = {}
@@ -404,6 +406,7 @@ function GoreServiceServer.Init(self: GoreServiceServer)
 		self.RequestSync,
 	})
 	self.entitiesById = {} :: { [string]: EntityRuntime }
+	self.binders = NevermoreSupport.getService(ServerBinderSupport)
 end
 
 function GoreServiceServer.Destroy(self: GoreServiceServer)

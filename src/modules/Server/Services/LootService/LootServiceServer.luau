@@ -14,6 +14,8 @@ local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Modules.Pl
 local ResolveItem = require(script:FindFirstAncestor("game").Shared.Modules.Game.ResolveItem)
 local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Modules.Game.ResolveToolInstance)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryService.InventoryServiceUtils)
 local LootServiceData = require(script:FindFirstAncestor("game").Shared.Services.LootService.Data)
 local LootServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.LootService.LootServiceUtils)
@@ -1650,6 +1652,7 @@ function LootServiceServer.Init(self: LootServiceServer)
 	self.lastDropRequestAtByPlayer = {}
 	self.simulationAccumulator = 0
 	self.lootFolder = self:ensureLootFolder()
+	self.binders = NevermoreSupport.getService(ServerBinderSupport)
 
 	self.inventoryService:setDropFromSlotHandler(
 		function(player: Player, slotIndexRaw: any, amountRaw: any, throwDirectionRaw: any)

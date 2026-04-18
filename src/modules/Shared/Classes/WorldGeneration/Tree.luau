@@ -1,10 +1,10 @@
 --!strict
 
-local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local Workspace = game:GetService("Workspace")
 local WorldGenerationColor = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationColor)
+local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 
 local ProceduralTree = {}
 ProceduralTree.__index = ProceduralTree
@@ -141,7 +141,7 @@ local DEFAULT_TREE_PALETTE = WorldGenerationColor.TREE_PALETTES.Default
 		BranchColor = Color3.fromRGB(102, 72, 49),
 		LeafColor = Color3.fromRGB(91, 153, 66),
 	}
-local WIND_FOLIAGE_TAG = "WindFoliage"
+local WIND_FOLIAGE_TAG = TagBinder.Tags.Foliage
 local WIND_FOLIAGE_PIVOT_ATTACHMENT_NAME = "WindFoliagePivot"
 local TREE_GRAPH_ATTRIBUTE = "WindFoliageTreeGraph"
 local TREE_NODE_TYPE_ATTRIBUTE = "WindTreeNodeType"
@@ -871,9 +871,7 @@ function ProceduralTree.Generate(self: ProceduralTree, parentRaw: Instance?, bas
 	treeModel.PrimaryPart = rootPart
 	applyWindFoliageMetadata(treeModel, rootPart, self.config)
 	treeModel.Parent = parent
-	if not CollectionService:HasTag(treeModel, WIND_FOLIAGE_TAG) then
-		CollectionService:AddTag(treeModel, WIND_FOLIAGE_TAG)
-	end
+	TagBinder.applyTag(treeModel, WIND_FOLIAGE_TAG)
 	self.model = treeModel
 	return treeModel
 end

@@ -8,6 +8,8 @@ local Workspace = game:GetService("Workspace")
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Magic = require(script:FindFirstAncestor("game").Shared.Classes.Magic)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local MagicServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.MagicService.MagicServiceUtils)
 local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerService.PlayerServiceUtils)
 local InventoryServiceServer = require(script:FindFirstAncestor("game").Server.Services.InventoryService.InventoryServiceServer)
@@ -1788,6 +1790,7 @@ function MagicServiceServer.Init(self: MagicServiceServer)
 	self.nextProjectileId = 0
 	self.fixedStepAccumulator = 0
 	self.projectileFolder = MagicServiceUtils.ensureProjectileFolder()
+	self.binders = NevermoreSupport.getService(ServerBinderSupport)
 
 	local gameRoot = script:FindFirstAncestor("game")
 	local sharedRoot = if gameRoot ~= nil then gameRoot:FindFirstChild("Shared") else nil

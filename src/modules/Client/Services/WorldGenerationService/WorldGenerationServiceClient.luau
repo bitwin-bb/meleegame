@@ -1,5 +1,6 @@
 --!strict
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
@@ -9,12 +10,15 @@ local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local OreRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Ores)
+local PlantRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Plants)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local ProceduralTree = require(script:FindFirstAncestor("game").Shared.Classes.WorldGeneration.Tree)
 local ProceduralCactus = require(script:FindFirstAncestor("game").Shared.Classes.WorldGeneration.Cactus)
+local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildService.BuildServiceUtils)
 local WorldGenerationColor = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationColor)
 local WorldGenerationServiceUtils =
 	require(script:FindFirstAncestor("game").Shared.Services.WorldGenerationService.WorldGenerationServiceUtils)
+local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 
 type WorldGenerationServiceState = WorldGenerationServiceUtils.WorldGenerationServiceState
 type ProceduralTreeConfig = ProceduralTree.ProceduralTreeConfig
@@ -133,6 +137,11 @@ type TreeVariantDefinition = {
 	estimatedPartCount: number,
 }
 
+type GrassTextureDefinition = {
+	top: string?,
+	side: string?,
+}
+
 local WorldGenerationServiceClient = {}
 local ENABLE_CLIENT_VISUALS = true
 
@@ -177,8 +186,12 @@ local TERRAIN_HOVER_FILL_COLOR = Color3.fromRGB(255, 221, 64)
 local TERRAIN_HOVER_OUTLINE_COLOR = Color3.fromRGB(255, 221, 64)
 local TERRAIN_HOVER_FILL_TRANSPARENCY = 1
 local TERRAIN_HOVER_OUTLINE_TRANSPARENCY = 0
+local GRASS_TILE_ID = 1
 local STONE_TILE_ID = 3
+local CORRUPT_GRASS_TILE_ID = 14
+local JUNGLE_GRASS_TILE_ID = 17
 local ORE_TEXTURE_NAME = "OreTexture"
+local GRASS_TEXTURE_NAME = "GrassTexture"
 local ORE_TEXTURE_FACES = {
 	Enum.NormalId.Front,
 	Enum.NormalId.Back,
@@ -193,8 +206,20 @@ local ORE_ASSET_KEYS_BY_TILE_ID = {
 	[12] = { "SilverOre", "Silver" },
 	[13] = { "GoldOre", "Gold" },
 }
+local GRASS_TEXTURE_KEYS_BY_TILE_ID = {
+	[GRASS_TILE_ID] = "overworld",
+	[CORRUPT_GRASS_TILE_ID] = "corruption",
+	[JUNGLE_GRASS_TILE_ID] = "jungle",
+}
+local GRASS_SIDE_TEXTURE_FACES = {
+	Enum.NormalId.Front,
+	Enum.NormalId.Back,
+	Enum.NormalId.Left,
+	Enum.NormalId.Right,
+}
 
 local TILE_VISUALS: { [number]: TileVisual } = WorldGenerationColor.TILE_VISUALS
+local GRASS_TEXTURES: { [string]: GrassTextureDefinition } = PlantRegistry
 local TREE_PALETTE_CORRUPTION_1 = WorldGenerationColor.TREE_PALETTES.Corruption1
 	or {
 		BranchColor = Color3.fromRGB(56, 39, 89),
@@ -915,6 +940,20 @@ local function styleForegroundPart(part: BasePart, tileId: number)
 	applyTileStudSurfaces(part)
 end
 
+local function resolveGrassTextureDefinition(tileId: number): GrassTextureDefinition?
+	local biomeKey = GRASS_TEXTURE_KEYS_BY_TILE_ID[tileId]
+	if biomeKey == nil then
+		return nil
+	end
+
+	local definition = GRASS_TEXTURES[biomeKey]
+	if typeof(definition) ~= "table" then
+		return nil
+	end
+
+	return definition
+end
+
 local function resolveOreTextureAsset(tileId: number): string?
 	local assetKeys = ORE_ASSET_KEYS_BY_TILE_ID[tileId]
 	if assetKeys == nil or typeof(OreRegistry) ~= "table" then
@@ -940,9 +979,9 @@ local function resolveOreTextureAsset(tileId: number): string?
 	return nil
 end
 
-local function clearOreTextures(part: BasePart)
+local function clearTexturesByName(part: BasePart, textureName: string)
 	for _, child in part:GetChildren() do
-		if child:IsA("Texture") and child.Name == ORE_TEXTURE_NAME then
+		if child:IsA("Texture") and child.Name == textureName then
 			child:Destroy()
 		end
 	end
@@ -959,7 +998,7 @@ local function resolveOreTextureScale(face: Enum.NormalId, tileSize: number, til
 end
 
 local function applyOreTextures(part: BasePart, tileId: number, tileSize: number, tileDepth: number)
-	clearOreTextures(part)
+	clearTexturesByName(part, ORE_TEXTURE_NAME)
 
 	local textureAsset = resolveOreTextureAsset(tileId)
 	if textureAsset == nil then
@@ -980,10 +1019,69 @@ local function applyOreTextures(part: BasePart, tileId: number, tileSize: number
 	end
 end
 
+local function resolveGrassTextureScale(face: Enum.NormalId, tileSize: number, tileDepth: number): (number, number)
+	if face == Enum.NormalId.Left or face == Enum.NormalId.Right then
+		return tileSize, tileSize
+	end
+	return tileDepth, tileSize
+end
+
+local function applyGrassTextures(
+	part: BasePart,
+	tileId: number,
+	tileSize: number,
+	tileDepth: number,
+	textureTint: Color3?
+)
+	clearTexturesByName(part, GRASS_TEXTURE_NAME)
+
+	local textureDefinition = resolveGrassTextureDefinition(tileId)
+	if textureDefinition == nil then
+		return
+	end
+
+	local safeTileSize = math.max(0.01, tileSize)
+	local safeTileDepth = math.max(0.01, tileDepth)
+	local tint = if textureTint ~= nil then textureTint else Color3.new(1, 1, 1)
+	if typeof(textureDefinition.top) == "string" and textureDefinition.top ~= "" then
+		local studsPerTileU, studsPerTileV =
+			resolveGrassTextureScale(Enum.NormalId.Top, safeTileSize, safeTileDepth)
+		local topTexture = Instance.new("Texture")
+		topTexture.Name = GRASS_TEXTURE_NAME
+		topTexture.Face = Enum.NormalId.Top
+		topTexture.Texture = textureDefinition.top
+		topTexture.Color3 = tint
+		topTexture.StudsPerTileU = studsPerTileU
+		topTexture.StudsPerTileV = studsPerTileV
+		topTexture.Parent = part
+	end
+
+	if typeof(textureDefinition.side) ~= "string" or textureDefinition.side == "" then
+		return
+	end
+
+	for _, face in GRASS_SIDE_TEXTURE_FACES do
+		local studsPerTileU, studsPerTileV = resolveGrassTextureScale(face, safeTileSize, safeTileDepth)
+		local sideTexture = Instance.new("Texture")
+		sideTexture.Name = GRASS_TEXTURE_NAME
+		sideTexture.Face = face
+		sideTexture.Texture = textureDefinition.side
+		sideTexture.Color3 = tint
+		sideTexture.StudsPerTileU = studsPerTileU
+		sideTexture.StudsPerTileV = studsPerTileV
+		sideTexture.Parent = part
+	end
+end
+
+local function resolveBackgroundDarkenAlpha(layerIndex: number, layerCount: number): number
+	local alpha = if layerCount > 1 then (layerIndex - 1) / (layerCount - 1) else 0
+	return 0.28 + alpha * 0.26
+end
+
 local function styleBackgroundPart(part: BasePart, tileId: number, layerIndex: number, layerCount: number)
 	local style = TILE_VISUALS[tileId] or TILE_VISUALS[3]
-	local alpha = if layerCount > 1 then (layerIndex - 1) / (layerCount - 1) else 0
-	local backgroundColor = style.color:Lerp(Color3.new(0, 0, 0), 0.28 + alpha * 0.26)
+	local darkenAlpha = resolveBackgroundDarkenAlpha(layerIndex, layerCount)
+	local backgroundColor = style.color:Lerp(Color3.new(0, 0, 0), darkenAlpha)
 	part.Name = `{style.name}Background_{layerIndex}`
 	part.Color = backgroundColor
 	part.Material = style.material
@@ -1095,6 +1193,7 @@ function WorldGenerationServiceClient.CreateForegroundRectPart(
 	part.Size = Vector3.new(tileDepth, tileSize * height, tileSize * width)
 	styleForegroundPart(part, tileId)
 	applyOreTextures(part, tileId, tileSize, tileDepth)
+	applyGrassTextures(part, tileId, tileSize, tileDepth)
 
 	local centerTileX = tileMinX + width * 0.5
 	local centerTileY = tileMinY + height * 0.5
@@ -1725,6 +1824,7 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 	local backgroundFolder = Instance.new("Folder")
 	backgroundFolder.Name = "BackgroundDepth"
 	backgroundFolder.Parent = model
+	TagBinder.applyTag(backgroundFolder, TagBinder.Tags.Layer, CollectionService)
 
 	local treesFolder = Instance.new("Folder")
 	treesFolder.Name = "Trees"
@@ -1733,6 +1833,7 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 	local propsFolder = Instance.new("Folder")
 	propsFolder.Name = "Props"
 	propsFolder.Parent = model
+	TagBinder.applyTag(model, TagBinder.Tags.Chunk, CollectionService)
 
 	local tileDepth = self.state.tileDepth
 	local tileSize = self.state.tileSize
@@ -1812,6 +1913,13 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 			part.CanTouch = false
 			part.Size = Vector3.new(tileDepth, tileSize * rect.height, tileSize * rect.width)
 			styleBackgroundPart(part, rect.value, layerListIndex, layerCount)
+			applyGrassTextures(
+				part,
+				rect.value,
+				tileSize,
+				tileDepth,
+				Color3.new(1, 1, 1):Lerp(Color3.new(0, 0, 0), resolveBackgroundDarkenAlpha(layerListIndex, layerCount))
+			)
 
 			local centerTileX = layerData.tileMinX + rect.x + rect.width * 0.5
 			local centerTileY = layerData.tileMinY + rect.y + rect.height * 0.5
@@ -1849,6 +1957,12 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 
 		local proceduralTree = ProceduralTree.new(treeConfig)
 		local generatedTreeModel = proceduralTree:generate(treesFolder, CFrame.new(position))
+		generatedTreeModel:SetAttribute(
+			"BuildTreeId",
+			BuildServiceUtils.computeTreeId(treeSpawnData.tileX, treeSpawnData.tileY, treeSpawnData.seed)
+		)
+		generatedTreeModel:SetAttribute("BuildTreeRootTileX", treeSpawnData.tileX)
+		generatedTreeModel:SetAttribute("BuildTreeRootTileY", treeSpawnData.tileY)
 		generatedTreeModel:SetAttribute("VariantIndex", treeSpawnData.variantIndex)
 		generatedTreeModel:SetAttribute("TreeSeed", treeSpawnData.seed)
 		for _, descendant in generatedTreeModel:GetDescendants() do

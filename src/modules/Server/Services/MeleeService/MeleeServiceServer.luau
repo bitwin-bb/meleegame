@@ -7,10 +7,9 @@ local Workspace = game:GetService("Workspace")
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local RaycastHitbox = require(ReplicatedStorage.Packages.RaycastHitbox)
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local require = require(loaderUtils.Parent).load(script)
 local Melee = require(script:FindFirstAncestor("game").Shared.Classes.Melee)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryService.InventoryServiceUtils)
 local MeleeServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.MeleeService.MeleeServiceUtils)
 local InventoryServiceServer = require(script:FindFirstAncestor("game").Server.Services.InventoryService.InventoryServiceServer)
@@ -378,6 +377,7 @@ function MeleeServiceServer.Init(self: MeleeServiceServer)
 	self.inventoryService = InventoryServiceServer :: InventoryServiceServerObject
 	self.ragdollService = RagdollServiceServer :: RagdollServiceServerObject
 	self.playerRuntimes = {}
+	self.binders = NevermoreSupport.getService(ServerBinderSupport)
 
 	for _, player in Players:GetPlayers() do
 		if PlayerServiceServer:isGameplayActiveForPlayer(player) then

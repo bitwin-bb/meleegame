@@ -19,9 +19,13 @@ local serverBootstrapModule = gameRoot.Server:WaitForChild("AquariaBackupServerB
 
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
 local require = require(loaderUtils.Parent).bootstrapGame(packageRoot)
+local NevermoreSupport = require(gameRoot.Shared.Modules.Core.NevermoreSupport)
+local ServerBinderSupport = require(gameRoot.Server.Binders.ServerBinderSupport)
+local AquariaBackupTranslator = require(gameRoot.Shared.AquariaBackupTranslator)
 
-local serviceBag = require("ServiceBag").new()
-serviceBag:Init()
-serviceBag:Start()
+NevermoreSupport.start({
+	ServerBinderSupport,
+	AquariaBackupTranslator,
+})
 
 require(serverBootstrapModule).start()

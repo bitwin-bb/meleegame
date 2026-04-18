@@ -3,17 +3,29 @@
 ## Scope
 This file is the style and refactor contract for `aquaria`. These rules are hard requirements for all future scripts and edits.
 
-## Priority Rules
+## Priority
 
 These rules are must-always-follow requirements. If a priority rule applies, it takes precedence over lower-priority style preferences.
 
-1. Always prefer Nevermore `node_modules` packages when they suit the purpose.
-- There is no limit to how many Nevermore packages may be used in a script when the fit is clear.
-- Prefer existing Nevermore infrastructure instead of hand-rolled replacements when it improves consistency with the repo.
+1. Always use Nevermore `node_modules` packages in every script the AI writes or edits.
+- This is a hard requirement, not a preference.
+- There is no limit to how many Nevermore packages may be used in a script.
+- Do not avoid Nevermore packages to reduce dependency count; package count is not a constraint.
+- Prefer existing Nevermore infrastructure over hand-rolled replacements whenever possible.
 - Common examples include `loader` for package requiring/bootstrap, `ServiceBag` for service initialization, and `Rx` for reactive flows, but any suitable Nevermore package may be used.
-- Do not avoid a Nevermore package just to keep a file dependency-light if the package is already the right tool for the job.
+- The AI must always use loader to load nevermore packages, the intended way.
+- Always check the official Nevermore documentation page for anything involving Nevermore before scripting, then follow any further instructions after that.
+- Before using Nevermore Engine, always, and ALWAYS look at the API first so we use all relevant Nevermore package features and Nevermore Engine features wherever they are a good fit.
 
-Hard rule: when a Nevermore `node_modules` package clearly fits the task, use it by default unless the user explicitly requests otherwise.
+Hard rule: AI-generated code must rely on Nevermore `node_modules` packages for every script unless the user explicitly requests an exception.
+
+2. Strictly follow the user's request scope.
+- Do not do tasks that you werent told to do.
+- Stop and realign instead of expanding the task on your own.
+
+3. Do not create new files unless the user explicitly requests a new file.
+- Refactors and fixes must prefer existing files and existing structure.
+- If a new file seems necessary, stop and wait for explicit user approval first.
 
 ## Repository Scan Baseline
 Scan performed across `src/*`, `Packages/*`, and dependency manifests.

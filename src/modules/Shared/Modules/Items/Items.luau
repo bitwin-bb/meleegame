@@ -41,7 +41,7 @@ return {
 		useCase = "Light source",
 		deployable = {
 			placementProfile = "Torch",
-			stationTag = "LightSource_Torch",
+			stationTag = "Light_Torch",
 			placementDistance = 5,
 			maxPlacementDistance = 12,
 		},
@@ -52,7 +52,7 @@ return {
 		useCase = "Placeable furniture",
 		deployable = {
 			stationId = "Workbench",
-			stationTag = "CraftingStation_Workbench",
+			stationTag = "Station_Workbench",
 			placementDistance = 6,
 			maxPlacementDistance = 16,
 		},

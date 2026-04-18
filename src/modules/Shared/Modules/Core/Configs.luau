@@ -108,12 +108,12 @@ local Configs = {
 		dataLoadTimeoutSeconds = 20,
 		maxCraftQuantityPerRequest = 99,
 		dataPath = { "crafting" },
-		stationTagPrefix = "CraftingStation_",
+		stationTagPrefix = "Station_",
 		stationTagById = {
-			Workbench = "CraftingStation_Workbench",
-			Furnace = "CraftingStation_Furnace",
-			Anvil = "CraftingStation_Anvil",
-			AlchemyTable = "CraftingStation_AlchemyTable",
+			Workbench = "Station_Workbench",
+			Furnace = "Station_Furnace",
+			Anvil = "Station_Anvil",
+			AlchemyTable = "Station_AlchemyTable",
 		},
 	},
 
@@ -238,8 +238,8 @@ local Configs = {
 
 	windFoliage = {
 		enabled = true,
-		foliageTag = "WindFoliage",
-		disturberTag = "WindFoliageDisturber",
+		foliageTag = "Foliage",
+		disturberTag = "Disturber",
 		bucketCount = 4,
 		gridCellSize = 18,
 		trackedRefreshInterval = 0.08,

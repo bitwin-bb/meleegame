@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local Workspace = game:GetService("Workspace")
+local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 
 local NpcServiceUtils = {}
 
@@ -794,6 +795,18 @@ function NpcServiceUtils.ApplyRuntimeModelAttributes(
 	local npcType = trim(npcTypeRaw)
 	if npcType ~= "" then
 		modelRaw:SetAttribute(NpcServiceUtils.RUNTIME_NPC_TYPE_ATTRIBUTE, npcType)
+	end
+	TagBinder.applyTag(modelRaw, TagBinder.Tags.Npc)
+	local npcTypeToken = string.lower(npcType)
+	if string.find(npcTypeToken, "slime", 1, true) ~= nil then
+		TagBinder.applyTag(modelRaw, TagBinder.Tags.Npc_Slime)
+		TagBinder.applyTag(modelRaw, TagBinder.Tags.Gore_Slime)
+	end
+	if string.find(npcTypeToken, "flying", 1, true) ~= nil then
+		TagBinder.applyTag(modelRaw, TagBinder.Tags.Npc_Flying)
+	end
+	if string.find(npcTypeToken, "ground", 1, true) ~= nil then
+		TagBinder.applyTag(modelRaw, TagBinder.Tags.Npc_Ground)
 	end
 
 	local displayName = trim(displayNameRaw)

@@ -10,6 +10,7 @@ local Workspace = game:GetService("Workspace")
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryService.InventoryServiceUtils)
 local CraftingTree = require(script.Parent.CraftingTree)
+local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 
 local CraftingServiceUtils = {}
 
@@ -172,7 +173,7 @@ local DEFAULT_PERSIST_INTERVAL_SECONDS = 3
 local DEFAULT_DATA_LOAD_TIMEOUT_SECONDS = 20
 local DEFAULT_MAX_CRAFT_QUANTITY_PER_REQUEST = 99
 local DEFAULT_DATA_PATH = { "crafting" }
-local DEFAULT_STATION_TAG_PREFIX = "CraftingStation_"
+local DEFAULT_STATION_TAG_PREFIX = "Station_"
 local BIOME_TYPE_NORMAL = 1
 local BIOME_TYPE_CORRUPTION = 2
 local BIOME_ID_FOREST = 1
@@ -1745,7 +1746,7 @@ function StationDetector.GetStationsNearPosition(
 			continue
 		end
 
-		local taggedStations = CollectionService:GetTagged(stationTag)
+		local taggedStations = TagBinder.getTagged(stationTag, CollectionService)
 		for _, stationInstance in taggedStations do
 			local stationPosition = StationDetector.ResolveInstancePosition(stationInstance)
 			if stationPosition == nil then

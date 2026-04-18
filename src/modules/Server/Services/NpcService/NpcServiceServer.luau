@@ -16,6 +16,8 @@ local StringUtils = require(script:FindFirstAncestor("game").Shared.Modules.Core
 local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Modules.Platform.InstanceUtils)
 local Slime = require(script:FindFirstAncestor("game").Shared.Classes.Npc.AiTypes.slime)
 local EnemyHitbox = require(script:FindFirstAncestor("game").Shared.Classes.EnemyHitbox)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioService.AudioServiceUtils)
 local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.NpcService.NpcServiceUtils)
 local HpServiceServer = require(script:FindFirstAncestor("game").Server.Services.HpService.HpServiceServer)
@@ -2108,6 +2110,7 @@ function NpcServiceServer.Init(self: NpcServiceServer)
 	self.missingSlimeBloodTemplateWarningShown = false
 	self.stateRefreshAccumulator = 0
 	self.biomeRefreshAccumulator = 0
+	self.binders = NevermoreSupport.getService(ServerBinderSupport)
 
 	for _, player in Players:GetPlayers() do
 		self:bindPlayerCollisionGroup(player)

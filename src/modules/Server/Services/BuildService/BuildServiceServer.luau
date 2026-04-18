@@ -10,8 +10,11 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local Networker = require(ReplicatedStorage.Packages.Networker)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local MiningPower = require(script:FindFirstAncestor("game").Shared.Modules.Math.MiningPower)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildService.BuildServiceUtils)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryService.InventoryServiceUtils)
+local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerService.PlayerServiceServer)
 local WorldGenerationServiceServer =
 	require(script:FindFirstAncestor("game").Server.Services.WorldGenerationService.WorldGenerationServiceServer)
@@ -108,7 +111,7 @@ local TREE_DROP_SOURCE_TYPE = "TreeFell"
 local TILE_BREAK_DROP_SOURCE_TYPE = "TileBreak"
 local DEPLOYABLE_TILE_X_ATTRIBUTE_NAME = "DeployableTileX"
 local DEPLOYABLE_TILE_Y_ATTRIBUTE_NAME = "DeployableTileY"
-local TORCH_DEPLOYABLE_TAG = "LightSource_Torch"
+local TORCH_DEPLOYABLE_TAG = TagBinder.Tags.Light_Torch
 local TILE_BREAK_DROP_ITEM_BY_TILE_ID = {
 	[BuildServiceUtils.TILE_ID.COPPER_ORE] = "CopperOre",
 }
@@ -130,7 +133,7 @@ local function sanitizeInventorySlot(slotRaw: any): number?
 end
 
 local function hasTorchDeployableAtTile(tileX: number, tileY: number): boolean
-	for _, tagged in CollectionService:GetTagged(TORCH_DEPLOYABLE_TAG) do
+	for _, tagged in TagBinder.getTagged(TORCH_DEPLOYABLE_TAG, CollectionService) do
 		local taggedTileX = tagged:GetAttribute(DEPLOYABLE_TILE_X_ATTRIBUTE_NAME)
 		local taggedTileY = tagged:GetAttribute(DEPLOYABLE_TILE_Y_ATTRIBUTE_NAME)
 		if typeof(taggedTileX) == "number" and typeof(taggedTileY) == "number" then
@@ -1608,6 +1611,7 @@ function BuildServiceServer.Init(self: BuildServiceServer)
 	self.multiTileAnchors = {} :: { [string]: MultiTileAnchorRuntime }
 	self.multiTileMembers = {} :: { [string]: string }
 	self.damagePruneAccumulator = 0
+	self.binders = NevermoreSupport.getService(ServerBinderSupport)
 
 	self.networker = Networker.server.new("BuildService", self, {
 		self.RequestSync,

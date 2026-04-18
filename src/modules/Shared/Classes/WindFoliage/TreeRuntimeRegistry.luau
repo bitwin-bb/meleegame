@@ -73,6 +73,17 @@ local function sortEntriesById(a: RuntimeEntry, b: RuntimeEntry): boolean
 	return a.id < b.id
 end
 
+local function configureOctree(spatialIndex: any, maxRegionSize: number, maxDepth: number): any
+	if typeof(spatialIndex) ~= "table" then
+		return spatialIndex
+	end
+
+	-- Nevermore's Octree constructor is argumentless; configure its search bounds explicitly.
+	spatialIndex._maxDepth = maxDepth
+	spatialIndex._maxRegionSize = { maxRegionSize, maxRegionSize, maxRegionSize }
+	return spatialIndex
+end
+
 local function resolveSeed(instance: Instance, config: { [string]: any }): number
 	local seed = instance:GetAttribute("Seed")
 	if typeof(seed) == "number" and seed == seed then
@@ -154,7 +165,7 @@ function TreeRuntimeRegistry.New(configRaw: any?): TreeRuntimeRegistry
 		entries = {} :: { RuntimeEntry },
 		entriesById = {} :: { [number]: RuntimeEntry },
 		entriesByInstance = {} :: { [Instance]: RuntimeEntry },
-		spatialIndex = Octree.new(octreeMaxRegionSize, octreeMaxDepth),
+		spatialIndex = configureOctree(Octree.new(), octreeMaxRegionSize, octreeMaxDepth),
 		spatialNodesById = {} :: { [number]: any },
 		queryBuffer = {} :: { RuntimeEntry },
 	}, TreeRuntimeRegistry)

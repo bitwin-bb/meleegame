@@ -8,22 +8,22 @@ CraftingTree.stations = {
 	Workbench = {
 		id = "Workbench",
 		displayName = "Workbench",
-		tag = "CraftingStation_Workbench",
+		tag = "Station_Workbench",
 	},
 	Furnace = {
 		id = "Furnace",
 		displayName = "Furnace",
-		tag = "CraftingStation_Furnace",
+		tag = "Station_Furnace",
 	},
 	Anvil = {
 		id = "Anvil",
 		displayName = "Anvil",
-		tag = "CraftingStation_Anvil",
+		tag = "Station_Anvil",
 	},
 	AlchemyTable = {
 		id = "AlchemyTable",
 		displayName = "Alchemy Table",
-		tag = "CraftingStation_AlchemyTable",
+		tag = "Station_AlchemyTable",
 	},
 }
 
