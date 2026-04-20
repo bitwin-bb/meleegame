@@ -45,21 +45,31 @@ function MatterDebugMenuClient:Init()
 		return
 	end
 
-	self.initialized = true
-	self.localPlayer = Players.LocalPlayer
-	self.world = Matter.World.new()
-	self.loop = Matter.Loop.new(self.world, self)
-	self.debugger = Matter.Debugger.new(Plasma)
-	self.debugger:autoInitialize(self.loop)
-	self.connection = self.loop:begin({
+	local localPlayer = Players.LocalPlayer
+	if localPlayer == nil then
+		return
+	end
+
+	local world = Matter.World.new()
+	local loop = Matter.Loop.new(world, self)
+	local debugger = Matter.Debugger.new(Plasma)
+	debugger:autoInitialize(loop)
+	local connection = loop:begin({
 		default = RunService.Heartbeat,
 	})
-	self.attributeConnection = self.localPlayer:GetAttributeChangedSignal(
+	local attributeConnection = localPlayer:GetAttributeChangedSignal(
 		CmdrUtils.MATTER_DEBUG_MENU_ENABLED_ATTRIBUTE
 	):Connect(function()
 		self:applyEnabledState()
 	end)
 
+	self.localPlayer = localPlayer
+	self.world = world
+	self.loop = loop
+	self.debugger = debugger
+	self.connection = connection
+	self.attributeConnection = attributeConnection
+	self.initialized = true
 	self:applyEnabledState()
 end
 

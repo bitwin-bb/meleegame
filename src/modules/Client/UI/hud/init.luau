@@ -56,6 +56,7 @@ return function(props: HudProps)
 			layoutOrder = barOrders.top or DEFAULT_BAR_ORDERS.top,
 			zIndex = baseZIndex + 1,
 			buttons = props.topButtons,
+			hpBarProps = props.hpBarProps,
 			navigateEvent = props.navigateEvent,
 			onButtonActivated = function(payload: any, inputObject: InputObject?, button: any)
 				if props.onNavigate then
@@ -80,7 +81,6 @@ return function(props: HudProps)
 			zIndex = baseZIndex + 1,
 			buttons = props.rightButtons,
 			navigateEvent = props.navigateEvent,
-			hpBarProps = props.hpBarProps,
 			manaBarProps = props.manaBarProps,
 			breathBarProps = props.breathBarProps,
 			onButtonActivated = function(payload: any, inputObject: InputObject?, button: any)

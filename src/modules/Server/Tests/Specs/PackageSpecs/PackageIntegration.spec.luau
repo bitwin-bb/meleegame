@@ -1,14 +1,20 @@
 --!strict
 
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Matter = require(ReplicatedStorage.Packages.Matter)
 local TestEZ = require(ReplicatedStorage.Packages.TestEZ)
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local require = require(loaderUtils.Parent).load(script)
-local Maid = require("Maid")
-local Rx = require("Rx")
+local nevermoreRequire = require(loaderUtils.Parent).load(script)
+
+local Binder = nevermoreRequire("Binder")
+local Brio = nevermoreRequire("Brio")
+local Maid = nevermoreRequire("Maid")
+local Octree = nevermoreRequire("Octree")
+local Rx = nevermoreRequire("Rx")
+local RxSignal = nevermoreRequire("RxSignal")
 
 return function()
 	describe("Package integrations", function()
@@ -52,9 +58,12 @@ return function()
 
 			loop:scheduleSystem(function(activeWorld)
 				for entityId, position in activeWorld:query(Position) do
-					activeWorld:insert(entityId, Position({
-						x = position.x + 1,
-					}))
+					activeWorld:insert(
+						entityId,
+						Position({
+							x = position.x + 1,
+						})
+					)
 				end
 			end)
 
@@ -72,6 +81,66 @@ return function()
 
 			connections.default:Disconnect()
 			tick:Destroy()
+		end)
+
+		it("supports Brio lifetimes and RxSignal wrappers", function()
+			local bindable = Instance.new("BindableEvent")
+			local signal = RxSignal.new(Rx.fromSignal(bindable.Event))
+			local brio = Brio.new("alive")
+			local cleaned = 0
+			local values = {}
+
+			brio:ToMaid():GiveTask(function()
+				cleaned += 1
+			end)
+
+			signal:Connect(function(value)
+				values[#values + 1] = value
+			end)
+
+			bindable:Fire("hello")
+			task.wait()
+			brio:Kill()
+
+			expect(values[1]).to.equal("hello")
+			expect(cleaned).to.equal(1)
+			bindable:Destroy()
+		end)
+
+		it("supports Octree spatial queries and Binder instance lifetimes", function()
+			local octree = Octree.new()
+			local nodeA = octree:CreateNode(Vector3.new(0, 0, 0), "A")
+			local nodeB = octree:CreateNode(Vector3.new(20, 0, 0), "B")
+			local nearby = octree:RadiusSearch(Vector3.zero, 10)
+			expect(#nearby).to.equal(1)
+			expect(nearby[1]).to.equal("A")
+
+			local binder = Binder.new("PackageIntegrationBinderSpec", function(inst: Instance)
+				return {
+					instance = inst,
+					Destroy = function(self: any)
+						self.destroyed = true
+					end,
+				}
+			end)
+			binder:Start()
+
+			local folder = Instance.new("Folder")
+			folder.Name = "BoundFolder"
+			folder.Parent = workspace
+			CollectionService:AddTag(folder, "PackageIntegrationBinderSpec")
+			task.wait()
+
+			local bound = binder:Get(folder)
+			expect(bound ~= nil).to.equal(true)
+			CollectionService:RemoveTag(folder, "PackageIntegrationBinderSpec")
+			task.wait()
+			expect(binder:Get(folder)).to.equal(nil)
+
+			nodeA:Destroy()
+			nodeB:Destroy()
+			folder:Destroy()
+			binder:Destroy()
 		end)
 	end)
 end

@@ -6,14 +6,17 @@ if script:GetAttribute("RunTests") == true then
 	local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 	local PACKAGE_NAME = "AquariaBackup"
+	local PACKAGE_LOAD_TIMEOUT_SECONDS = 10
 
 	local packageRoot = ServerScriptService:FindFirstChild(PACKAGE_NAME)
+		or ServerScriptService:WaitForChild(PACKAGE_NAME, PACKAGE_LOAD_TIMEOUT_SECONDS)
 	assert(packageRoot ~= nil, `[runTests] Missing ServerScriptService.{PACKAGE_NAME}.`)
 
-	local gameRoot = packageRoot:FindFirstChild("game")
+	local gameRoot = packageRoot:FindFirstChild("game") or packageRoot:WaitForChild("game", PACKAGE_LOAD_TIMEOUT_SECONDS)
 	assert(gameRoot ~= nil, `[runTests] Missing game folder in {packageRoot:GetFullName()}.`)
+	local serverRoot = gameRoot:FindFirstChild("Server") or gameRoot:WaitForChild("Server", PACKAGE_LOAD_TIMEOUT_SECONDS)
 	assert(
-		gameRoot:FindFirstChild("Server") ~= nil,
+		serverRoot ~= nil,
 		`[runTests] Missing game.Server folder in {packageRoot:GetFullName()}.`
 	)
 
@@ -21,7 +24,7 @@ if script:GetAttribute("RunTests") == true then
 	require(loaderUtils.Parent).bootstrapGame(packageRoot)
 
 	local TestEZ = require(ReplicatedStorage.Packages.TestEZ)
-	local serverTests = packageRoot:WaitForChild("game"):WaitForChild("Server"):WaitForChild("Tests")
+	local serverTests = serverRoot:WaitForChild("Tests", PACKAGE_LOAD_TIMEOUT_SECONDS)
 
 	TestEZ.TestBootstrap:run({
 		serverTests:WaitForChild("Specs"),

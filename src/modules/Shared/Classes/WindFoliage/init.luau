@@ -218,6 +218,7 @@ local DEFAULT_CONFIG: Config = {
 	autoTrackPlayers = true,
 	foliageTag = DEFAULT_FOLIAGE_TAG,
 	disturberTag = DEFAULT_DISTURBER_TAG,
+	observeTaggedInstances = true,
 	fallbackPreset = "GrassLight",
 	lod = {
 		nearDistance = 54,
@@ -1153,32 +1154,34 @@ function WindFoliage.Init(self: any)
 		self.disturbancePool:destroy()
 	end)
 
-	janitor:GiveChore(self.tagQuery:observeTag(foliageTag, function(instance: Instance)
-		self:registerFoliage(instance)
-	end, function(instance: Instance)
-		if self:shouldRegisterFoliage(instance) then
-			self:refreshFoliage(instance)
-		else
-			self:unregisterFoliage(instance)
-		end
-	end))
+	if self.config.observeTaggedInstances ~= false then
+		janitor:GiveChore(self.tagQuery:observeTag(foliageTag, function(instance: Instance)
+			self:registerFoliage(instance)
+		end, function(instance: Instance)
+			if self:shouldRegisterFoliage(instance) then
+				self:refreshFoliage(instance)
+			else
+				self:unregisterFoliage(instance)
+			end
+		end))
 
-	janitor:GiveChore(self.tagQuery:observeTag(disturberTag, function(instance: Instance)
-		self:trackDisturber(instance)
-	end, function(instance: Instance)
-		if self:shouldTrackDisturber(instance) then
+		janitor:GiveChore(self.tagQuery:observeTag(disturberTag, function(instance: Instance)
 			self:trackDisturber(instance)
-		else
-			self:untrackDisturber(instance)
-		end
-	end))
+		end, function(instance: Instance)
+			if self:shouldTrackDisturber(instance) then
+				self:trackDisturber(instance)
+			else
+				self:untrackDisturber(instance)
+			end
+		end))
 
-	janitor:GiveChore(Workspace.DescendantAdded:Connect(function(instance: Instance)
-		self:considerDescendant(instance)
-	end))
-	janitor:GiveChore(Workspace.DescendantRemoving:Connect(function(instance: Instance)
-		self:cleanupDescendant(instance)
-	end))
+		janitor:GiveChore(Workspace.DescendantAdded:Connect(function(instance: Instance)
+			self:considerDescendant(instance)
+		end))
+		janitor:GiveChore(Workspace.DescendantRemoving:Connect(function(instance: Instance)
+			self:cleanupDescendant(instance)
+		end))
+	end
 
 	if self.config.autoTrackPlayers ~= false then
 		janitor:GiveChore(Players.PlayerAdded:Connect(function(player: Player)
@@ -1192,8 +1195,10 @@ function WindFoliage.Init(self: any)
 		end
 	end
 
-	for _, descendant in Workspace:GetDescendants() do
-		self:considerDescendant(descendant)
+	if self.config.observeTaggedInstances ~= false then
+		for _, descendant in Workspace:GetDescendants() do
+			self:considerDescendant(descendant)
+		end
 	end
 
 	self.schedulerToken = self.tickScheduler:scheduleFixed(function(dt)

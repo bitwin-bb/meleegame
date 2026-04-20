@@ -1,14 +1,10 @@
 --!strict
 
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local StarterGui = game:GetService("StarterGui")
 
 local ui = require(script:FindFirstAncestor("game").Client.UI)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
-local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Cmdr.CmdrUtils)
-local MatterDebugMenuClient = require(script:FindFirstAncestor("game").Client.Cmdr.MatterDebugMenuClient)
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
 local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformService.PlatformServiceClient)
 local CameraServiceClient = require(script:FindFirstAncestor("game").Client.Services.CameraService.CameraServiceClient)
@@ -42,8 +38,6 @@ local WeatherServiceClient = require(script:FindFirstAncestor("game").Client.Ser
 local WindFoliageServiceClient = require(script:FindFirstAncestor("game").Client.Services.WindFoliageService.WindFoliageServiceClient)
 
 local localPlayer = Players.LocalPlayer
-local cmdrClient = nil
-local pendingCmdrRetry = false
 local started = false
 local ITEM_REGISTRY_WARMUP_TIMEOUT_SECONDS = 5
 local ITEM_REGISTRY_STABLE_PASSES_REQUIRED = 2
@@ -86,74 +80,6 @@ local function warmItemRegistry()
 		end
 
 		task.wait()
-	end
-end
-
-local function findValidStarterGuiCmdr(): ScreenGui?
-	local cmdrGui = CmdrUtils.keepSingleValidCmdrGui(StarterGui)
-
-	while cmdrGui ~= nil and not CmdrUtils.isValidCmdrGui(cmdrGui) do
-		task.wait()
-		cmdrGui = CmdrUtils.keepSingleValidCmdrGui(StarterGui)
-	end
-
-	return cmdrGui
-end
-
-local function preparePlayerGuiForCmdr()
-	local playerGui = localPlayer:WaitForChild("PlayerGui")
-	return CmdrUtils.keepSingleValidCmdrGui(playerGui)
-end
-
-local function ensureCmdrClient()
-	if cmdrClient ~= nil then
-		return cmdrClient
-	end
-
-	local starterGuiCmdr = findValidStarterGuiCmdr()
-	if starterGuiCmdr == nil then
-		return nil
-	end
-
-	local existingGui = preparePlayerGuiForCmdr()
-
-	local playerGui = localPlayer:WaitForChild("PlayerGui")
-	if existingGui == nil then
-		starterGuiCmdr:Clone().Parent = playerGui
-		existingGui = CmdrUtils.keepSingleValidCmdrGui(playerGui)
-	end
-
-	if existingGui == nil then
-		return nil
-	end
-
-	cmdrClient = require(ReplicatedStorage:WaitForChild("CmdrClient"))
-	cmdrClient:SetActivationKeys({ Enum.KeyCode.F2 })
-	cmdrClient:SetEnabled(false)
-	return cmdrClient
-end
-
-local function applyCmdrAccess()
-	local cmdrEnabled = localPlayer:GetAttribute(CmdrUtils.CMDR_ENABLED_ATTRIBUTE) == true
-	if not cmdrEnabled then
-		if cmdrClient ~= nil then
-			cmdrClient:SetEnabled(false)
-			cmdrClient:Hide()
-		end
-		return
-	end
-
-	local ensuredClient = ensureCmdrClient()
-	if ensuredClient ~= nil then
-		ensuredClient:SetEnabled(true)
-	else
-		if not pendingCmdrRetry then
-			pendingCmdrRetry = true
-			task.delay(0.1, function()
-				pendingCmdrRetry = false
-				applyCmdrAccess()
-			end)
-		end
 	end
 end
 
@@ -227,11 +153,6 @@ local function start()
 	BreathServiceClient:init()
 	RagdollServiceClient:init()
 	GoreServiceClient:init()
-	localPlayer:GetAttributeChangedSignal(CmdrUtils.CMDR_ENABLED_ATTRIBUTE):Connect(function()
-		applyCmdrAccess()
-	end)
-	applyCmdrAccess()
-	MatterDebugMenuClient:init()
 
 	ui()
 end

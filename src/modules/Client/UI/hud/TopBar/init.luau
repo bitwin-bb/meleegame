@@ -2,6 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
 local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
+local HpTopRightBar = require(script:FindFirstAncestor("game").Client.UI.hud.TopBar.HpTopRightBar)
 
 local e: typeof(React.createElement) = React.createElement
 
@@ -31,6 +32,7 @@ type TopBarProps = {
 	anchorPoint: Vector2?,
 	padding: UDim?,
 	buttons: { TopBarButton }?,
+	hpBarProps: { [string]: any }?,
 	navigateEvent: BindableEvent?,
 	onButtonActivated: ((payload: any, inputObject: InputObject?, button: TopBarButton) -> ())?,
 }
@@ -38,7 +40,7 @@ type TopBarProps = {
 return function(props: TopBarProps)
 	local buttons = props.buttons or {}
 	local zIndex = props.zIndex or 10
-	local children = {
+	local buttonListChildren = {
 		Padding = e("UIPadding", {
 			PaddingTop = UDim.new(0, 6),
 			PaddingBottom = UDim.new(0, 6),
@@ -56,7 +58,7 @@ return function(props: TopBarProps)
 
 	for index, button in ipairs(buttons) do
 		local key = button.key or button.id or button.route or tostring(index)
-		children["Button_" .. key] = e(NavButton, {
+		buttonListChildren["Button_" .. key] = e(NavButton, {
 			id = button.id,
 			route = button.route,
 			label = button.label,
@@ -82,6 +84,18 @@ return function(props: TopBarProps)
 		})
 	end
 
+	local hpBarProps = {
+		layoutOrder = 2,
+		zIndex = zIndex + 1,
+		position = UDim2.fromScale(1, 0),
+		anchorPoint = Vector2.new(1, 0),
+	}
+	if props.hpBarProps ~= nil then
+		for key, value in pairs(props.hpBarProps) do
+			hpBarProps[key] = value
+		end
+	end
+
 	return e("Frame", {
 		Name = "TopBar",
 		Size = props.size or UDim2.new(1, -24, 0, 56),
@@ -92,5 +106,14 @@ return function(props: TopBarProps)
 		LayoutOrder = props.layoutOrder or 1,
 		ZIndex = zIndex,
 		Visible = props.visible ~= false,
-	}, children)
+	}, {
+		ButtonList = e("Frame", {
+			Name = "ButtonList",
+			Size = UDim2.new(1, -368, 1, 0),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ZIndex = zIndex,
+		}, buttonListChildren),
+		HpTopRightBar = e(HpTopRightBar, hpBarProps),
+	})
 end

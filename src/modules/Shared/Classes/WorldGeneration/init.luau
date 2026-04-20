@@ -1,9 +1,21 @@
 --!strict
 
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local Workspace = game:GetService("Workspace")
+local packageRoot = script:FindFirstAncestor("game").Parent
+local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
+local nevermoreRequire = require(loaderUtils.Parent).load(script)
+
+local Brio = nevermoreRequire("Brio")
+local Maid = nevermoreRequire("Maid")
+local Octree = nevermoreRequire("Octree")
+local Rx = nevermoreRequire("Rx")
+local RxBrioUtils = nevermoreRequire("RxBrioUtils")
+local RxSignal = nevermoreRequire("RxSignal")
+local Signal = nevermoreRequire("Signal")
 
 local Biome = require(script.Biome)
 local Cache = require(script.Utils.GenerationCache)
@@ -12,6 +24,7 @@ local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Con
 local Liquid = require(script.Liquid)
 local ProceduralTree = require(script.Tree)
 local Structures = require(script.Structures)
+local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local WorldGenerationColor = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationColor)
 local WorldGenerationDesert = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationDesert)
@@ -25,6 +38,42 @@ type StructureGenerationResult = Structures.StructureGenerationResult
 type CacheClass = Cache.Cache
 type ColumnProfile = Biome.ColumnProfile
 type ProceduralTreeConfig = ProceduralTree.ProceduralTreeConfig
+type MaidClass = {
+	Add: <T>(self: MaidClass, task: T) -> T,
+	GiveTask: (self: MaidClass, task: any) -> number,
+	Destroy: (self: MaidClass) -> (),
+	DoCleaning: (self: MaidClass) -> (),
+}
+type SignalObject = {
+	Connect: (self: SignalObject, callback: (...any) -> ()) -> RBXScriptConnection,
+	Fire: (self: SignalObject, ...any) -> (),
+	Destroy: (self: SignalObject) -> (),
+}
+type ObservableObject = {
+	Subscribe: (
+		self: ObservableObject,
+		fireCallback: ((...any) -> ())?,
+		failCallback: ((...any) -> ())?,
+		completeCallback: ((...any) -> ())?
+	) -> any,
+	Pipe: (self: ObservableObject, transformers: { any }) -> ObservableObject,
+}
+type RxSignalObject = {
+	Connect: (self: RxSignalObject, callback: (...any) -> ()) -> any,
+	Once: (self: RxSignalObject, callback: (...any) -> ()) -> any,
+	Wait: (self: RxSignalObject) -> ...any,
+}
+type BrioObject = {
+	IsDead: (self: BrioObject) -> boolean,
+	GetValue: (self: BrioObject) -> ...any,
+	GetDiedSignal: (self: BrioObject) -> SignalObject,
+	ToMaid: (self: BrioObject) -> MaidClass,
+	Kill: (self: BrioObject) -> (),
+}
+type OctreeNodeObject = {
+	SetPosition: (self: OctreeNodeObject, position: Vector3) -> (),
+	Destroy: (self: OctreeNodeObject) -> (),
+}
 
 type TreeVariantConfig = {
 	config: ProceduralTreeConfig,
@@ -127,7 +176,37 @@ type ChunkLifecycleConnection = {
 	Disconnect: (self: ChunkLifecycleConnection) -> (),
 }
 
+type ChunkLifecycleEvent = {
+	chunkKey: string,
+	chunkX: number,
+	chunkY: number,
+	reason: string,
+	context: { [string]: any },
+}
+
+type ChunkTerrainChangedEvent = ChunkLifecycleEvent & {
+	dirtyBounds: ChunkDirtyBounds,
+}
+
+type ChunkDemandChangedEvent = {
+	chunkKey: string,
+	previousDemand: number,
+	nextDemand: number,
+}
+
+type PlayerInterestChangedEvent = {
+	player: Player,
+	focusPosition: Vector3?,
+	centerChunkX: number?,
+	centerChunkY: number?,
+	renderDistance: number,
+	verticalRenderDistance: number,
+	interestKeys: { [string]: boolean },
+}
+
 type PlayerRuntime = {
+	maid: MaidClass,
+	brio: BrioObject,
 	renderDistance: number,
 	verticalRenderDistance: number,
 	interestKeys: { [string]: boolean },
@@ -135,7 +214,8 @@ type PlayerRuntime = {
 	forceRefresh: boolean,
 	lastChunkX: number?,
 	lastChunkY: number?,
-	connections: { RBXScriptConnection },
+	focusPosition: Vector3?,
+	focusNode: OctreeNodeObject?,
 }
 
 type GreedyRect = {
@@ -470,6 +550,62 @@ local function sanitizeInteger(valueRaw: any, minimum: number, maximum: number, 
 	return math.clamp(value, minimum, maximum)
 end
 
+local function cloneBooleanLookup(sourceRaw: any): { [string]: boolean }
+	local clone = {}
+	if typeof(sourceRaw) ~= "table" then
+		return clone
+	end
+
+	for key, value in sourceRaw do
+		if typeof(key) == "string" and value == true then
+			clone[key] = true
+		end
+	end
+
+	return clone
+end
+
+local function cloneDictionaryShallow(sourceRaw: any): { [string]: any }
+	local clone = {}
+	if typeof(sourceRaw) ~= "table" then
+		return clone
+	end
+
+	for key, value in sourceRaw do
+		if typeof(key) == "string" then
+			clone[key] = value
+		end
+	end
+
+	return clone
+end
+
+local function countLookupEntries(lookup: { [any]: any }): number
+	local count = 0
+	for _ in lookup do
+		count += 1
+	end
+	return count
+end
+
+local function didVectorMeaningfullyChange(previous: Vector3?, nextValue: Vector3?, minimumDistance: number): boolean
+	if previous == nil or nextValue == nil then
+		return previous ~= nextValue
+	end
+
+	return (previous - nextValue).Magnitude >= minimumDistance
+end
+
+local function configureOctree(spatialIndex: any, maxRegionSize: number, maxDepth: number): any
+	if typeof(spatialIndex) ~= "table" then
+		return spatialIndex
+	end
+
+	spatialIndex._maxDepth = maxDepth
+	spatialIndex._maxRegionSize = { maxRegionSize, maxRegionSize, maxRegionSize }
+	return spatialIndex
+end
+
 local function packChunkKey(chunkX: number, chunkY: number): string
 	return `{chunkX}:{chunkY}`
 end
@@ -683,6 +819,42 @@ end
 
 local function shouldApplyGrassRotationFix(self: WorldGeneration, tileId: number): boolean
 	return tileId == self.tileId.GRASS or tileId == self.tileId.CORRUPT_GRASS or tileId == self.tileId.JUNGLE_GRASS
+end
+
+local function resolveExposedSurfaceCapTileId(
+	self: WorldGeneration,
+	tileId: number,
+	biomeId: number,
+	biomeType: number
+): number
+	if biomeType == self.biomeType.CORRUPTION then
+		if tileId == self.tileId.CORRUPT_SOIL then
+			return self.tileId.CORRUPT_GRASS
+		end
+		return tileId
+	end
+
+	if biomeId == self.biomeId.JUNGLE then
+		if tileId == self.tileId.MUD then
+			return self.tileId.JUNGLE_GRASS
+		end
+		return tileId
+	end
+
+	if biomeId == self.biomeId.SNOW then
+		if tileId == self.tileId.DIRT then
+			return self.tileId.SNOW
+		end
+		return tileId
+	end
+
+	if biomeId == self.biomeId.FOREST then
+		if tileId == self.tileId.DIRT then
+			return self.tileId.GRASS
+		end
+	end
+
+	return tileId
 end
 
 local function collectTemplateInstances(sourceFolder: Folder?): { Instance }
@@ -1571,6 +1743,7 @@ function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
 		else WorldGenerationSnow
 
 	local self = setmetatable({
+		maid = Maid.new() :: MaidClass,
 		seed = seed,
 		chunkSize = chunkSize,
 		tileSize = FIXED_TILE_SIZE_STUDS,
@@ -1672,6 +1845,21 @@ function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
 		heartbeatConnection = nil :: RBXScriptConnection?,
 		initialized = false,
 		playerRuntimes = {} :: { [Player]: PlayerRuntime },
+		playerFocusOctree = configureOctree(Octree.new(), math.max(512, chunkSize * FIXED_TILE_SIZE_STUDS * 64), 6),
+		playerFocusNodes = {} :: { [Player]: OctreeNodeObject },
+		maxTrackedRenderDistanceChunks = sanitizeInteger(
+			(config :: any).defaultRenderDistanceChunks,
+			1,
+			24,
+			DEFAULT_RENDER_DISTANCE_CHUNKS
+		),
+		maxTrackedVerticalRenderDistanceChunks = sanitizeInteger(
+			(config :: any).defaultVerticalRenderDistanceChunks,
+			1,
+			24,
+			DEFAULT_VERTICAL_RENDER_DISTANCE_CHUNKS
+		),
+		chunkInterestPlayers = {} :: { [string]: { [Player]: boolean } },
 		chunkDemand = {} :: { [string]: number },
 		chunkRevisions = {} :: { [string]: number },
 		chunkOverrides = {} :: { [string]: { [number]: number } },
@@ -1706,11 +1894,49 @@ function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
 		cachePruneAccumulator = 0,
 		loadedChunkAuditAccumulator = 0,
 		liquidGenerator = nil :: LiquidGenerationClass?,
+		_chunkCollisionReadySignal = Signal.new() :: SignalObject,
+		_chunkCollisionUnloadedSignal = Signal.new() :: SignalObject,
+		_chunkTerrainChangedSignal = Signal.new() :: SignalObject,
+		_chunkDemandChangedSignal = Signal.new() :: SignalObject,
+		_playerInterestChangedSignal = Signal.new() :: SignalObject,
+		_playerFocusChangedSignal = Signal.new() :: SignalObject,
+		_trackedPlayerBrioSignal = Signal.new() :: SignalObject,
+		_statsPulseSignal = Signal.new() :: SignalObject,
 	}, WorldGeneration)
 
 	self.backgroundLayerThicknessBlocks = 1
 	local maxLayersByDepth = math.max(2, math.floor(self.horizonDepthBlocks))
 	self.backgroundLayerCount = math.min(self.backgroundLayerCount, maxLayersByDepth)
+	self.focusUpdateMinimumDistanceStuds = math.max(0.5, self.tileSize * 0.5)
+	self.statsChangedSignal = RxSignal.new(function(): ObservableObject
+		return self:observeStats() :: ObservableObject
+	end) :: RxSignalObject
+	self.chunkCollisionReadySignal = RxSignal.new(function(): ObservableObject
+		return self:observeChunkCollisionReady() :: ObservableObject
+	end) :: RxSignalObject
+	self.chunkCollisionUnloadedSignal = RxSignal.new(function(): ObservableObject
+		return self:observeChunkCollisionUnloaded() :: ObservableObject
+	end) :: RxSignalObject
+	self.chunkTerrainChangedSignal = RxSignal.new(function(): ObservableObject
+		return self:observeChunkTerrainChanged() :: ObservableObject
+	end) :: RxSignalObject
+	self.playerInterestChangedSignal = RxSignal.new(function(): ObservableObject
+		return self:observePlayerInterest() :: ObservableObject
+	end) :: RxSignalObject
+	self.playerFocusChangedSignal = RxSignal.new(function(): ObservableObject
+		return self:observePlayerFocusChanged() :: ObservableObject
+	end) :: RxSignalObject
+	self.trackedPlayerBrioSignal = RxSignal.new(function(): ObservableObject
+		return self:observeTrackedPlayersBrio() :: ObservableObject
+	end) :: RxSignalObject
+	self.maid:GiveTask(self._chunkCollisionReadySignal)
+	self.maid:GiveTask(self._chunkCollisionUnloadedSignal)
+	self.maid:GiveTask(self._chunkTerrainChangedSignal)
+	self.maid:GiveTask(self._chunkDemandChangedSignal)
+	self.maid:GiveTask(self._playerInterestChangedSignal)
+	self.maid:GiveTask(self._playerFocusChangedSignal)
+	self.maid:GiveTask(self._trackedPlayerBrioSignal)
+	self.maid:GiveTask(self._statsPulseSignal)
 
 	self.cache = Cache.new({
 		maxPoolSize = self.maxPoolSize,
@@ -1809,6 +2035,8 @@ function WorldGeneration.Init(self: WorldGeneration)
 	self.heartbeatConnection = RunService.Heartbeat:Connect(function(deltaTime: number)
 		self:onHeartbeat(deltaTime)
 	end)
+	self.maid:GiveTask(self.heartbeatConnection)
+	self:pulseStatsChanged()
 end
 
 function WorldGeneration.OnHeartbeat(self: WorldGeneration, deltaTime: number)
@@ -1848,6 +2076,7 @@ function WorldGeneration.EnqueueLoadByKey(self: WorldGeneration, chunkKey: strin
 	self.pendingLoadLookup[chunkKey] = true
 	self.loadQueueTail += 1
 	self.loadQueue[self.loadQueueTail] = chunkKey
+	self:pulseStatsChanged()
 end
 
 function WorldGeneration.EnqueueUnloadByKey(self: WorldGeneration, chunkKey: string)
@@ -1858,6 +2087,7 @@ function WorldGeneration.EnqueueUnloadByKey(self: WorldGeneration, chunkKey: str
 	self.pendingUnloadLookup[chunkKey] = true
 	self.unloadQueueTail += 1
 	self.unloadQueue[self.unloadQueueTail] = chunkKey
+	self:pulseStatsChanged()
 end
 
 function WorldGeneration.DequeueLoadKey(self: WorldGeneration): string?
@@ -1919,6 +2149,7 @@ function WorldGeneration.MarkChunkDirtyByKey(self: WorldGeneration, chunkKey: st
 	self.dirtyChunkLookup[chunkKey] = true
 	self.dirtyChunkQueueTail += 1
 	self.dirtyChunkQueue[self.dirtyChunkQueueTail] = chunkKey
+	self:pulseStatsChanged()
 end
 
 function WorldGeneration.DequeueDirtyChunkKey(self: WorldGeneration): string?
@@ -1955,6 +2186,7 @@ function WorldGeneration.EnqueueChunkRebuildByKey(self: WorldGeneration, chunkKe
 	self.pendingRebuildLookup[chunkKey] = true
 	self.chunkRebuildQueueTail += 1
 	self.chunkRebuildQueue[self.chunkRebuildQueueTail] = chunkKey
+	self:pulseStatsChanged()
 end
 
 function WorldGeneration.DequeueChunkRebuildKey(self: WorldGeneration): string?
@@ -2085,6 +2317,298 @@ function WorldGeneration.GetChunkRevisionByKey(self: WorldGeneration, chunkKey: 
 	return self.chunkRevisions[chunkKey] or 0
 end
 
+function WorldGeneration.PulseStatsChanged(self: WorldGeneration)
+	self._statsPulseSignal:Fire()
+end
+
+function WorldGeneration.RecomputeTrackedRenderDistanceBounds(self: WorldGeneration)
+	local maxRenderDistance = self.defaultRenderDistanceChunks
+	local maxVerticalRenderDistance = self.defaultVerticalRenderDistanceChunks
+
+	for _, runtime in self.playerRuntimes do
+		if runtime.renderDistance > maxRenderDistance then
+			maxRenderDistance = runtime.renderDistance
+		end
+		if runtime.verticalRenderDistance > maxVerticalRenderDistance then
+			maxVerticalRenderDistance = runtime.verticalRenderDistance
+		end
+	end
+
+	self.maxTrackedRenderDistanceChunks = maxRenderDistance
+	self.maxTrackedVerticalRenderDistanceChunks = maxVerticalRenderDistance
+end
+
+function WorldGeneration.UpdateTrackedPlayerFocusIndex(
+	self: WorldGeneration,
+	player: Player,
+	runtime: PlayerRuntime,
+	focusPositionRaw: Vector3?
+)
+	local focusPosition = if typeof(focusPositionRaw) == "Vector3" then focusPositionRaw else nil
+	local existingNode = runtime.focusNode
+
+	if focusPosition == nil then
+		if existingNode ~= nil then
+			existingNode:Destroy()
+			runtime.focusNode = nil
+			self.playerFocusNodes[player] = nil
+		end
+		runtime.focusPosition = nil
+		return
+	end
+
+	if existingNode == nil then
+		local nextNode = self.playerFocusOctree:CreateNode(focusPosition, player) :: OctreeNodeObject
+		runtime.focusNode = nextNode
+		self.playerFocusNodes[player] = nextNode
+	else
+		existingNode:SetPosition(focusPosition)
+	end
+
+	runtime.focusPosition = focusPosition
+end
+
+function WorldGeneration.SetPlayerChunkInterest(
+	self: WorldGeneration,
+	player: Player,
+	runtime: PlayerRuntime,
+	chunkKey: string,
+	enabled: boolean
+)
+	if enabled then
+		runtime.interestKeys[chunkKey] = true
+		local interestedPlayers = self.chunkInterestPlayers[chunkKey]
+		if interestedPlayers == nil then
+			interestedPlayers = {}
+			self.chunkInterestPlayers[chunkKey] = interestedPlayers
+		end
+		interestedPlayers[player] = true
+		return
+	end
+
+	runtime.interestKeys[chunkKey] = nil
+	local interestedPlayers = self.chunkInterestPlayers[chunkKey]
+	if interestedPlayers == nil then
+		return
+	end
+
+	interestedPlayers[player] = nil
+	if next(interestedPlayers) == nil then
+		self.chunkInterestPlayers[chunkKey] = nil
+	end
+end
+
+function WorldGeneration.BuildPlayerInterestChangedEvent(
+	self: WorldGeneration,
+	player: Player,
+	runtime: PlayerRuntime,
+	focusPositionRaw: Vector3?,
+	centerChunkX: number?,
+	centerChunkY: number?
+): PlayerInterestChangedEvent
+	return {
+		player = player,
+		focusPosition = if typeof(focusPositionRaw) == "Vector3" then focusPositionRaw else nil,
+		centerChunkX = centerChunkX,
+		centerChunkY = centerChunkY,
+		renderDistance = runtime.renderDistance,
+		verticalRenderDistance = runtime.verticalRenderDistance,
+		interestKeys = cloneBooleanLookup(runtime.interestKeys),
+	}
+end
+
+function WorldGeneration.ObserveStats(self: WorldGeneration): ObservableObject
+	return Rx.fromSignal(self._statsPulseSignal):Pipe({
+		Rx.startWith({ false }),
+		Rx.map(function()
+			return self:GetStats()
+		end),
+		Rx.shareReplay(1),
+	}) :: ObservableObject
+end
+
+function WorldGeneration.ObserveChunkCollisionReady(self: WorldGeneration, chunkKeyRaw: any?): ObservableObject
+	local chunkKey = if typeof(chunkKeyRaw) == "string" and chunkKeyRaw ~= "" then chunkKeyRaw else nil
+	return Rx.fromSignal(self._chunkCollisionReadySignal):Pipe({
+		Rx.where(function(event: ChunkLifecycleEvent)
+			return chunkKey == nil or event.chunkKey == chunkKey
+		end),
+	}) :: ObservableObject
+end
+
+function WorldGeneration.ObserveChunkCollisionUnloaded(self: WorldGeneration, chunkKeyRaw: any?): ObservableObject
+	local chunkKey = if typeof(chunkKeyRaw) == "string" and chunkKeyRaw ~= "" then chunkKeyRaw else nil
+	return Rx.fromSignal(self._chunkCollisionUnloadedSignal):Pipe({
+		Rx.where(function(event: ChunkLifecycleEvent)
+			return chunkKey == nil or event.chunkKey == chunkKey
+		end),
+	}) :: ObservableObject
+end
+
+function WorldGeneration.ObserveChunkTerrainChanged(self: WorldGeneration, chunkKeyRaw: any?): ObservableObject
+	local chunkKey = if typeof(chunkKeyRaw) == "string" and chunkKeyRaw ~= "" then chunkKeyRaw else nil
+	return Rx.fromSignal(self._chunkTerrainChangedSignal):Pipe({
+		Rx.where(function(event: ChunkTerrainChangedEvent)
+			return chunkKey == nil or event.chunkKey == chunkKey
+		end),
+	}) :: ObservableObject
+end
+
+function WorldGeneration.ObserveChunkDemand(self: WorldGeneration, chunkKeyRaw: any?): ObservableObject
+	local chunkKey = if typeof(chunkKeyRaw) == "string" and chunkKeyRaw ~= "" then chunkKeyRaw else nil
+	return Rx.fromSignal(self._chunkDemandChangedSignal):Pipe({
+		Rx.where(function(event: ChunkDemandChangedEvent)
+			return chunkKey == nil or event.chunkKey == chunkKey
+		end),
+	}) :: ObservableObject
+end
+
+function WorldGeneration.ObservePlayerInterest(self: WorldGeneration, playerRaw: any?): ObservableObject
+	local targetPlayer = if typeof(playerRaw) == "Instance" and playerRaw:IsA("Player") then playerRaw else nil
+	return Rx.fromSignal(self._playerInterestChangedSignal):Pipe({
+		Rx.where(function(event: PlayerInterestChangedEvent)
+			return targetPlayer == nil or event.player == targetPlayer
+		end),
+	}) :: ObservableObject
+end
+
+function WorldGeneration.ObservePlayerFocusChanged(self: WorldGeneration, playerRaw: any?): ObservableObject
+	local targetPlayer = if typeof(playerRaw) == "Instance" and playerRaw:IsA("Player") then playerRaw else nil
+	return Rx.fromSignal(self._playerFocusChangedSignal):Pipe({
+		Rx.where(function(event: PlayerInterestChangedEvent)
+			return targetPlayer == nil or event.player == targetPlayer
+		end),
+	}) :: ObservableObject
+end
+
+function WorldGeneration.ObserveTrackedPlayersBrio(self: WorldGeneration): ObservableObject
+	return Rx.fromSignal(self._trackedPlayerBrioSignal):Pipe({
+		Rx.where(function(brio)
+			return brio ~= nil
+		end),
+		RxBrioUtils.toBrio(),
+		Rx.share(),
+	}) :: ObservableObject
+end
+
+function WorldGeneration.ObservePlayerFocus(self: WorldGeneration, player: Player): ObservableObject
+	return Rx.defer(function()
+		local runtime = self.playerRuntimes[player]
+		if runtime == nil then
+			return Rx.EMPTY
+		end
+
+		return Rx.merge({
+			Rx.of(
+				self:BuildPlayerInterestChangedEvent(
+					player,
+					runtime,
+					runtime.focusPosition,
+					runtime.lastChunkX,
+					runtime.lastChunkY
+				)
+			),
+			RxBrioUtils.completeOnDeath(runtime.brio, self:ObservePlayerFocusChanged(player)),
+		})
+	end) :: ObservableObject
+end
+
+function WorldGeneration.GetTrackedPlayerFocusPosition(self: WorldGeneration, player: Player): Vector3?
+	local runtime = self.playerRuntimes[player]
+	if runtime == nil then
+		return nil
+	end
+
+	return runtime.focusPosition
+end
+
+function WorldGeneration.GetPlayersInterestedInChunk(self: WorldGeneration, chunkKeyRaw: any): { Player }
+	if typeof(chunkKeyRaw) ~= "string" or chunkKeyRaw == "" then
+		return {}
+	end
+
+	local interestedPlayers = self.chunkInterestPlayers[chunkKeyRaw]
+	if interestedPlayers == nil then
+		return {}
+	end
+
+	local players = {}
+	for player in interestedPlayers do
+		players[#players + 1] = player
+	end
+	return players
+end
+
+function WorldGeneration.GetPlayersNearWorldPosition(
+	self: WorldGeneration,
+	worldPositionRaw: any,
+	radiusRaw: any,
+	maxCountRaw: any?
+): { Player }
+	if typeof(worldPositionRaw) ~= "Vector3" then
+		return {}
+	end
+
+	local radius = if isFiniteNumber(radiusRaw) then math.max(0, radiusRaw :: number) else 0
+	if radius <= 0 then
+		return {}
+	end
+
+	local candidates
+	if isFiniteNumber(maxCountRaw) and (maxCountRaw :: number) > 0 then
+		candidates = {
+			self.playerFocusOctree:KNearestNeighborsSearch(worldPositionRaw, math.floor(maxCountRaw :: number), radius),
+		}
+	else
+		candidates = { self.playerFocusOctree:RadiusSearch(worldPositionRaw, radius) }
+	end
+
+	local players = {}
+	local seen = {} :: { [Player]: boolean }
+	local candidatePlayers = candidates[1]
+	if typeof(candidatePlayers) ~= "table" then
+		return players
+	end
+
+	for _, player in candidatePlayers do
+		if
+			typeof(player) == "Instance"
+			and player:IsA("Player")
+			and self.playerRuntimes[player] ~= nil
+			and not seen[player]
+		then
+			seen[player] = true
+			players[#players + 1] = player
+		end
+	end
+
+	return players
+end
+
+function WorldGeneration.GetPlayersNearChunk(
+	self: WorldGeneration,
+	chunkXRaw: any,
+	chunkYRaw: any,
+	extraRadiusChunksRaw: any?
+): { Player }
+	if not isFiniteNumber(chunkXRaw) or not isFiniteNumber(chunkYRaw) then
+		return {}
+	end
+
+	local chunkX = math.floor(chunkXRaw :: number)
+	local chunkY = math.floor(chunkYRaw :: number)
+	local extraRadiusChunks = if isFiniteNumber(extraRadiusChunksRaw)
+		then math.max(0, extraRadiusChunksRaw :: number)
+		else 0
+	local centerTileX = chunkX * self.chunkSize + self.chunkSize * 0.5
+	local centerTileY = chunkY * self.chunkSize + self.chunkSize * 0.5
+	local worldPosition = self:ComputeTileCenterPosition(centerTileX, centerTileY, 0)
+	local horizontalRadiusChunks = self.maxTrackedRenderDistanceChunks + extraRadiusChunks + 1
+	local verticalRadiusChunks = self.maxTrackedVerticalRenderDistanceChunks + extraRadiusChunks + 1
+	local radiusStuds = math.max(horizontalRadiusChunks, verticalRadiusChunks) * self.chunkSize * self.tileSize
+	return self:GetPlayersNearWorldPosition(worldPosition, radiusStuds)
+end
+
 function WorldGeneration.RegisterChunkLifecycleObserver(
 	self: WorldGeneration,
 	observerRaw: any
@@ -2114,6 +2638,7 @@ function WorldGeneration.NotifyChunkCollisionReady(self: WorldGeneration, chunkK
 	if chunkX == nil or chunkY == nil then
 		return
 	end
+	local context = cloneDictionaryShallow(contextRaw)
 
 	for _, observer in self.chunkLifecycleObservers do
 		local callback = (observer :: any).OnChunkCollisionReady
@@ -2121,9 +2646,18 @@ function WorldGeneration.NotifyChunkCollisionReady(self: WorldGeneration, chunkK
 			continue
 		end
 		pcall(function()
-			callback(observer, chunkX, chunkY, contextRaw)
+			callback(observer, chunkX, chunkY, context)
 		end)
 	end
+
+	self._chunkCollisionReadySignal:Fire({
+		chunkKey = chunkKey,
+		chunkX = chunkX,
+		chunkY = chunkY,
+		reason = if typeof(context.reason) == "string" then context.reason else "loaded",
+		context = context,
+	})
+	self:pulseStatsChanged()
 end
 
 function WorldGeneration.NotifyChunkCollisionUnloaded(self: WorldGeneration, chunkKey: string, contextRaw: any?)
@@ -2131,6 +2665,7 @@ function WorldGeneration.NotifyChunkCollisionUnloaded(self: WorldGeneration, chu
 	if chunkX == nil or chunkY == nil then
 		return
 	end
+	local context = cloneDictionaryShallow(contextRaw)
 
 	for _, observer in self.chunkLifecycleObservers do
 		local callback = (observer :: any).OnChunkCollisionUnloaded
@@ -2138,9 +2673,18 @@ function WorldGeneration.NotifyChunkCollisionUnloaded(self: WorldGeneration, chu
 			continue
 		end
 		pcall(function()
-			callback(observer, chunkX, chunkY, contextRaw)
+			callback(observer, chunkX, chunkY, context)
 		end)
 	end
+
+	self._chunkCollisionUnloadedSignal:Fire({
+		chunkKey = chunkKey,
+		chunkX = chunkX,
+		chunkY = chunkY,
+		reason = if typeof(context.reason) == "string" then context.reason else "unloaded",
+		context = context,
+	})
+	self:pulseStatsChanged()
 end
 
 function WorldGeneration.NotifyChunkTerrainChanged(
@@ -2153,6 +2697,7 @@ function WorldGeneration.NotifyChunkTerrainChanged(
 	if chunkX == nil or chunkY == nil then
 		return
 	end
+	local context = cloneDictionaryShallow(contextRaw)
 
 	for _, observer in self.chunkLifecycleObservers do
 		local callback = (observer :: any).OnChunkTerrainChanged
@@ -2160,9 +2705,19 @@ function WorldGeneration.NotifyChunkTerrainChanged(
 			continue
 		end
 		pcall(function()
-			callback(observer, chunkX, chunkY, dirtyBounds, contextRaw)
+			callback(observer, chunkX, chunkY, dirtyBounds, context)
 		end)
 	end
+
+	self._chunkTerrainChangedSignal:Fire({
+		chunkKey = chunkKey,
+		chunkX = chunkX,
+		chunkY = chunkY,
+		dirtyBounds = dirtyBounds,
+		reason = if typeof(context.reason) == "string" then context.reason else "terrainChanged",
+		context = context,
+	})
+	self:pulseStatsChanged()
 end
 
 function WorldGeneration.IsChunkCollisionReady(self: WorldGeneration, chunkXRaw: any, chunkYRaw: any): boolean
@@ -2233,6 +2788,12 @@ function WorldGeneration.AdjustChunkDemand(self: WorldGeneration, chunkKey: stri
 		if current ~= 0 then
 			self.chunkDemand[chunkKey] = nil
 			self:enqueueUnloadByKey(chunkKey)
+			self._chunkDemandChangedSignal:Fire({
+				chunkKey = chunkKey,
+				previousDemand = current,
+				nextDemand = 0,
+			})
+			self:pulseStatsChanged()
 		end
 		return
 	end
@@ -2241,13 +2802,26 @@ function WorldGeneration.AdjustChunkDemand(self: WorldGeneration, chunkKey: stri
 	if current == 0 then
 		self:enqueueLoadByKey(chunkKey)
 	end
+	if current ~= nextDemand then
+		self._chunkDemandChangedSignal:Fire({
+			chunkKey = chunkKey,
+			previousDemand = current,
+			nextDemand = nextDemand,
+		})
+		self:pulseStatsChanged()
+	end
 end
 
-function WorldGeneration.ClearPlayerInterest(self: WorldGeneration, runtime: PlayerRuntime)
+function WorldGeneration.ClearPlayerInterest(self: WorldGeneration, player: Player, runtime: PlayerRuntime)
+	local chunkKeys = {}
 	for chunkKey in runtime.interestKeys do
-		self:adjustChunkDemand(chunkKey, -1)
+		chunkKeys[#chunkKeys + 1] = chunkKey
 	end
-	runtime.interestKeys = {}
+
+	for _, chunkKey in chunkKeys do
+		self:adjustChunkDemand(chunkKey, -1)
+		self:setPlayerChunkInterest(player, runtime, chunkKey, false)
+	end
 end
 
 function WorldGeneration.TrackPlayer(
@@ -2264,8 +2838,11 @@ function WorldGeneration.TrackPlayer(
 	local renderDistance = sanitizeInteger(renderDistanceRaw, 1, 24, self.defaultRenderDistanceChunks)
 	local verticalRenderDistance =
 		sanitizeInteger(verticalRenderDistanceRaw, 1, 24, self.defaultVerticalRenderDistanceChunks)
+	local runtimeMaid = Maid.new() :: MaidClass
 
 	local runtime: PlayerRuntime = {
+		maid = runtimeMaid,
+		brio = nil :: any,
 		renderDistance = renderDistance,
 		verticalRenderDistance = verticalRenderDistance,
 		interestKeys = {},
@@ -2273,19 +2850,26 @@ function WorldGeneration.TrackPlayer(
 		forceRefresh = true,
 		lastChunkX = nil,
 		lastChunkY = nil,
-		connections = {},
+		focusPosition = nil,
+		focusNode = nil,
 	}
+	local runtimeBrio = Brio.new(player, runtime) :: BrioObject
+	runtime.brio = runtimeBrio
 
-	runtime.connections[1] = player.CharacterAdded:Connect(function()
+	runtimeMaid:GiveTask(runtimeBrio)
+	runtimeMaid:GiveTask(player.CharacterAdded:Connect(function()
 		runtime.forceRefresh = true
 		runtime.refreshAccumulator = self.playerRefreshInterval
-	end)
-	runtime.connections[2] = player.CharacterRemoving:Connect(function()
+	end))
+	runtimeMaid:GiveTask(player.CharacterRemoving:Connect(function()
 		runtime.forceRefresh = true
 		runtime.refreshAccumulator = self.playerRefreshInterval
-	end)
+	end))
 
 	self.playerRuntimes[player] = runtime
+	self:recomputeTrackedRenderDistanceBounds()
+	self._trackedPlayerBrioSignal:Fire(runtimeBrio)
+	self:pulseStatsChanged()
 	self:refreshPlayerInterest(player, runtime)
 end
 function WorldGeneration.UntrackPlayer(self: WorldGeneration, player: Player)
@@ -2294,12 +2878,13 @@ function WorldGeneration.UntrackPlayer(self: WorldGeneration, player: Player)
 		return
 	end
 
-	self:clearPlayerInterest(runtime)
-	for _, connection in runtime.connections do
-		connection:Disconnect()
-	end
-
+	self:clearPlayerInterest(player, runtime)
+	self:updateTrackedPlayerFocusIndex(player, runtime, nil)
+	runtime.brio:Kill()
+	runtime.maid:Destroy()
 	self.playerRuntimes[player] = nil
+	self:recomputeTrackedRenderDistanceBounds()
+	self:pulseStatsChanged()
 end
 
 function WorldGeneration.SetPlayerRenderDistance(
@@ -2329,6 +2914,8 @@ function WorldGeneration.SetPlayerRenderDistance(
 	if runtime.forceRefresh then
 		runtime.refreshAccumulator = self.playerRefreshInterval
 	end
+	self:recomputeTrackedRenderDistanceBounds()
+	self:pulseStatsChanged()
 end
 
 function WorldGeneration.GetPlayerRenderDistance(self: WorldGeneration, player: Player): (number, number)
@@ -2422,14 +3009,21 @@ function WorldGeneration.RefreshPlayerInterest(self: WorldGeneration, player: Pl
 		return
 	end
 
+	local previousFocusPosition = runtime.focusPosition
 	local focusPosition = self:getPlayerFocusPosition(player)
 	if focusPosition == nil then
 		if next(runtime.interestKeys) ~= nil then
-			self:clearPlayerInterest(runtime)
+			self:clearPlayerInterest(player, runtime)
+			self._playerInterestChangedSignal:Fire(self:BuildPlayerInterestChangedEvent(player, runtime, nil, nil, nil))
 		end
+		if previousFocusPosition ~= nil then
+			self._playerFocusChangedSignal:Fire(self:BuildPlayerInterestChangedEvent(player, runtime, nil, nil, nil))
+		end
+		self:updateTrackedPlayerFocusIndex(player, runtime, nil)
 		runtime.lastChunkX = nil
 		runtime.lastChunkY = nil
 		runtime.forceRefresh = false
+		self:pulseStatsChanged()
 		return
 	end
 
@@ -2440,12 +3034,22 @@ function WorldGeneration.RefreshPlayerInterest(self: WorldGeneration, player: Pl
 	local minChunkY = toChunkCoordinate(self.minTileY, self.chunkSize)
 	local maxChunkY = toChunkCoordinate(self.maxTileY, self.chunkSize)
 	centerChunkY = math.clamp(centerChunkY, minChunkY, maxChunkY)
+	local focusChanged =
+		didVectorMeaningfullyChange(previousFocusPosition, focusPosition, self.focusUpdateMinimumDistanceStuds)
+
+	if focusChanged then
+		self:updateTrackedPlayerFocusIndex(player, runtime, focusPosition)
+		self._playerFocusChangedSignal:Fire(
+			self:BuildPlayerInterestChangedEvent(player, runtime, focusPosition, centerChunkX, centerChunkY)
+		)
+	end
 
 	if not runtime.forceRefresh and runtime.lastChunkX == centerChunkX and runtime.lastChunkY == centerChunkY then
 		return
 	end
 
 	local nextInterest: { [string]: boolean } = {}
+	local previousInterest = cloneBooleanLookup(runtime.interestKeys)
 	local radiusSquared = runtime.renderDistance * runtime.renderDistance
 
 	for offsetY = -runtime.verticalRenderDistance, runtime.verticalRenderDistance do
@@ -2465,23 +3069,28 @@ function WorldGeneration.RefreshPlayerInterest(self: WorldGeneration, player: Pl
 	end
 
 	for chunkKey in nextInterest do
-		if runtime.interestKeys[chunkKey] then
+		if previousInterest[chunkKey] then
 			continue
 		end
 		self:adjustChunkDemand(chunkKey, 1)
+		self:setPlayerChunkInterest(player, runtime, chunkKey, true)
 	end
 
-	for chunkKey in runtime.interestKeys do
+	for chunkKey in previousInterest do
 		if nextInterest[chunkKey] then
 			continue
 		end
 		self:adjustChunkDemand(chunkKey, -1)
+		self:setPlayerChunkInterest(player, runtime, chunkKey, false)
 	end
 
-	runtime.interestKeys = nextInterest
 	runtime.lastChunkX = centerChunkX
 	runtime.lastChunkY = centerChunkY
 	runtime.forceRefresh = false
+	self._playerInterestChangedSignal:Fire(
+		self:BuildPlayerInterestChangedEvent(player, runtime, focusPosition, centerChunkX, centerChunkY)
+	)
+	self:pulseStatsChanged()
 end
 
 function WorldGeneration.UpdateTrackedPlayers(self: WorldGeneration, deltaTime: number)
@@ -3258,6 +3867,42 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 		tiles[tileIndex] = overrideTileId
 	end
 
+	for localY = 0, height - 1 do
+		local worldTileY = tileMinY + localY
+		for localX = 0, width - 1 do
+			local tileIndex = computeTileIndex(localX, localY, width)
+			local tileId = tiles[tileIndex]
+			if tileId == self.tileId.AIR then
+				continue
+			end
+
+			local aboveTileId = self.tileId.AIR
+			if worldTileY > self.minTileY then
+				if localY > 0 then
+					aboveTileId = tiles[computeTileIndex(localX, localY - 1, width)]
+				else
+					local worldTileX = tileMinX + localX
+					local worldTileAboveY = worldTileY - 1
+					local baseAboveColumn = columnProfiles[localX + 1]
+					local aboveColumn = resolveBlendedColumnForTile(worldTileX, worldTileAboveY, baseAboveColumn)
+					aboveTileId = select(1, self:resolveForegroundTileAt(aboveColumn, worldTileX, worldTileAboveY))
+				end
+			end
+
+			if aboveTileId ~= self.tileId.AIR then
+				continue
+			end
+
+			local biomeId = biomeIds[tileIndex]
+			local biomeType = biomeTypes[tileIndex]
+			tiles[tileIndex] = resolveExposedSurfaceCapTileId(self, tileId, biomeId, biomeType)
+		end
+
+		if localY > 0 and localY % self.generationRowsPerYield == 0 then
+			task.wait()
+		end
+	end
+
 	for localY = 0, backgroundHeight - 1 do
 		local worldTileY = backgroundTileMinY + localY
 		if worldTileY < self.minTileY or worldTileY > self.maxTileY then
@@ -3798,6 +4443,8 @@ function WorldGeneration.BuildChunkVisual(self: WorldGeneration, chunkData: Chun
 	model:SetAttribute("DominantBiomeId", chunkData.dominantBiomeId)
 	model:SetAttribute("DominantBiomeType", chunkData.dominantBiomeType)
 	model:SetAttribute("IsCorruptionChunk", chunkData.dominantBiomeType == self.biomeType.CORRUPTION)
+	model:SetAttribute("ChunkCollisionReady", false)
+	TagBinder.applyTag(model, TagBinder.Tags.Chunk, CollectionService)
 
 	local terrainFolder = Instance.new("Folder")
 	terrainFolder.Name = "Terrain"
@@ -3866,6 +4513,7 @@ function WorldGeneration.AttachChunkVisual(self: WorldGeneration, visual: ChunkV
 	end
 
 	visual.model.Parent = collisionChunksFolder
+	visual.model:SetAttribute("ChunkCollisionReady", true)
 	local now = os.clock()
 	visual.loadedAt = now
 	visual.lastAccessedAt = now
@@ -3917,6 +4565,7 @@ function WorldGeneration.CacheChunkVisual(self: WorldGeneration, chunkKey: strin
 	if visual.model.Parent ~= nil then
 		visual.model.Parent = nil
 	end
+	visual.model:SetAttribute("ChunkCollisionReady", false)
 	visual.lastAccessedAt = os.clock()
 
 	local existing = self.cachedChunkVisuals[chunkKey]
@@ -3940,6 +4589,7 @@ function WorldGeneration.ReleaseChunkVisual(self: WorldGeneration, visual: Chunk
 		self:releasePart(part)
 	end
 	table.clear(visual.parts)
+	visual.model:SetAttribute("ChunkCollisionReady", false)
 	visual.model:Destroy()
 end
 
@@ -3976,6 +4626,7 @@ function WorldGeneration.LoadChunkByKey(self: WorldGeneration, chunkKey: string,
 	if cachedVisual ~= nil then
 		if (self.chunkDemand[chunkKey] or 0) > 0 then
 			self:attachChunkVisual(cachedVisual)
+			cachedVisual.model:SetAttribute("ChunkRevision", self.chunkRevisions[chunkKey] or 0)
 			self.loadedChunkVisuals[chunkKey] = cachedVisual
 			self.loadedChunkCount += 1
 			self:notifyChunkCollisionReady(chunkKey, {
@@ -4006,6 +4657,7 @@ function WorldGeneration.LoadChunkByKey(self: WorldGeneration, chunkKey: string,
 
 	self.loadedChunkVisuals[chunkKey] = visual
 	self.loadedChunkCount += 1
+	visual.model:SetAttribute("ChunkRevision", self.chunkRevisions[chunkKey] or 0)
 	self:notifyChunkCollisionReady(chunkKey, {
 		reason = if typeof(context.reason) == "string" then context.reason else "loaded",
 		fromCache = false,
@@ -4034,6 +4686,10 @@ function WorldGeneration.ProcessUnloadQueue(self: WorldGeneration)
 		self:unloadChunkByKey(chunkKey)
 		processed += 1
 	end
+
+	if processed > 0 then
+		self:pulseStatsChanged()
+	end
 end
 
 function WorldGeneration.PumpLoadQueue(self: WorldGeneration)
@@ -4056,6 +4712,7 @@ function WorldGeneration.PumpLoadQueue(self: WorldGeneration)
 
 		self.loadingLookup[chunkKey] = true
 		self.activeLoadWorkers += 1
+		self:pulseStatsChanged()
 
 		task.spawn(function()
 			pcall(function()
@@ -4063,6 +4720,7 @@ function WorldGeneration.PumpLoadQueue(self: WorldGeneration)
 			end)
 			self.loadingLookup[chunkKey] = nil
 			self.activeLoadWorkers = math.max(0, self.activeLoadWorkers - 1)
+			self:pulseStatsChanged()
 		end)
 	end
 end
@@ -4656,6 +5314,8 @@ function WorldGeneration.GetStats(self: WorldGeneration): { [string]: any }
 	for _ in self.chunkDemand do
 		demandedChunks += 1
 	end
+	local focusedPlayers = countLookupEntries(self.playerFocusNodes)
+	local interestIndexedChunks = countLookupEntries(self.chunkInterestPlayers)
 
 	return {
 		seed = self.seed,
@@ -4676,6 +5336,10 @@ function WorldGeneration.GetStats(self: WorldGeneration): { [string]: any }
 		queuedUnloads = math.max(0, self.unloadQueueTail - self.unloadQueueHead + 1),
 		queuedDirtyChunks = math.max(0, self.dirtyChunkQueueTail - self.dirtyChunkQueueHead + 1),
 		queuedChunkRebuilds = math.max(0, self.chunkRebuildQueueTail - self.chunkRebuildQueueHead + 1),
+		focusedPlayers = focusedPlayers,
+		interestIndexedChunks = interestIndexedChunks,
+		maxTrackedRenderDistanceChunks = self.maxTrackedRenderDistanceChunks,
+		maxTrackedVerticalRenderDistanceChunks = self.maxTrackedVerticalRenderDistanceChunks,
 		treeVariants = #self.treeVariantConfigs,
 		trackedPlayers = #self:getTrackedPlayers(),
 		minTileY = self.minTileY,
@@ -4692,11 +5356,6 @@ function WorldGeneration.GetTrackedPlayers(self: WorldGeneration): { Player }
 end
 
 function WorldGeneration.Destroy(self: WorldGeneration)
-	if self.heartbeatConnection then
-		self.heartbeatConnection:Disconnect()
-		self.heartbeatConnection = nil
-	end
-
 	local trackedPlayers = self:getTrackedPlayers()
 	for _, player in trackedPlayers do
 		self:untrackPlayer(player)
@@ -4727,6 +5386,8 @@ function WorldGeneration.Destroy(self: WorldGeneration)
 	table.clear(self.dirtyChunkLookup)
 	table.clear(self.loadingLookup)
 	table.clear(self.chunkDemand)
+	table.clear(self.chunkInterestPlayers)
+	table.clear(self.playerFocusNodes)
 	table.clear(self.chunkRevisions)
 	table.clear(self.chunkOverrides)
 	table.clear(self.chunkBiomeOverrides)
@@ -4752,6 +5413,10 @@ function WorldGeneration.Destroy(self: WorldGeneration)
 		self.collisionChunksFolder = nil
 	end
 
+	if self.maid ~= nil then
+		self.maid:Destroy()
+	end
+	self.heartbeatConnection = nil
 	self.initialized = false
 end
 
@@ -4773,6 +5438,20 @@ WorldGeneration.rebuildLoadedChunkByKey = WorldGeneration.RebuildLoadedChunkByKe
 WorldGeneration.processChunkRebuildQueue = WorldGeneration.ProcessChunkRebuildQueue
 WorldGeneration.bumpChunkRevisionByKey = WorldGeneration.BumpChunkRevisionByKey
 WorldGeneration.getChunkRevisionByKey = WorldGeneration.GetChunkRevisionByKey
+WorldGeneration.pulseStatsChanged = WorldGeneration.PulseStatsChanged
+WorldGeneration.recomputeTrackedRenderDistanceBounds = WorldGeneration.RecomputeTrackedRenderDistanceBounds
+WorldGeneration.updateTrackedPlayerFocusIndex = WorldGeneration.UpdateTrackedPlayerFocusIndex
+WorldGeneration.setPlayerChunkInterest = WorldGeneration.SetPlayerChunkInterest
+WorldGeneration.buildPlayerInterestChangedEvent = WorldGeneration.BuildPlayerInterestChangedEvent
+WorldGeneration.observeStats = WorldGeneration.ObserveStats
+WorldGeneration.observeChunkCollisionReady = WorldGeneration.ObserveChunkCollisionReady
+WorldGeneration.observeChunkCollisionUnloaded = WorldGeneration.ObserveChunkCollisionUnloaded
+WorldGeneration.observeChunkTerrainChanged = WorldGeneration.ObserveChunkTerrainChanged
+WorldGeneration.observeChunkDemand = WorldGeneration.ObserveChunkDemand
+WorldGeneration.observePlayerInterest = WorldGeneration.ObservePlayerInterest
+WorldGeneration.observePlayerFocusChanged = WorldGeneration.ObservePlayerFocusChanged
+WorldGeneration.observeTrackedPlayersBrio = WorldGeneration.ObserveTrackedPlayersBrio
+WorldGeneration.observePlayerFocus = WorldGeneration.ObservePlayerFocus
 WorldGeneration.registerChunkLifecycleObserver = WorldGeneration.RegisterChunkLifecycleObserver
 WorldGeneration.notifyChunkCollisionReady = WorldGeneration.NotifyChunkCollisionReady
 WorldGeneration.notifyChunkCollisionUnloaded = WorldGeneration.NotifyChunkCollisionUnloaded
@@ -4788,6 +5467,10 @@ WorldGeneration.untrackPlayer = WorldGeneration.UntrackPlayer
 WorldGeneration.setPlayerRenderDistance = WorldGeneration.SetPlayerRenderDistance
 WorldGeneration.getPlayerRenderDistance = WorldGeneration.GetPlayerRenderDistance
 WorldGeneration.getPlayerInterestKeys = WorldGeneration.GetPlayerInterestKeys
+WorldGeneration.getTrackedPlayerFocusPosition = WorldGeneration.GetTrackedPlayerFocusPosition
+WorldGeneration.getPlayersInterestedInChunk = WorldGeneration.GetPlayersInterestedInChunk
+WorldGeneration.getPlayersNearWorldPosition = WorldGeneration.GetPlayersNearWorldPosition
+WorldGeneration.getPlayersNearChunk = WorldGeneration.GetPlayersNearChunk
 WorldGeneration.getPlayerRootPart = WorldGeneration.GetPlayerRootPart
 WorldGeneration.getPlayerFocusPosition = WorldGeneration.GetPlayerFocusPosition
 WorldGeneration.refreshPlayerInterest = WorldGeneration.RefreshPlayerInterest

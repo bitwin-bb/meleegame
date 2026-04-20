@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
 local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
-local manaSlice = require(script:FindFirstAncestor("game").Client.UI.features.mana.state.manaSlice)
+local manaSlice = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.manaSlice)
 local ManaServiceClient = require(script:FindFirstAncestor("game").Client.Services.ManaService.ManaServiceClient)
 local ManaServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.ManaService.ManaServiceUtils)
 

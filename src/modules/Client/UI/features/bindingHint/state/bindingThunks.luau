@@ -1,6 +1,5 @@
 --!strict
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
 local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
@@ -112,6 +111,14 @@ local function readMagicState(): MagicServiceUtils.ReplicatedState
 		return MagicServiceUtils.sanitizeReplicatedState(stateOrError, fallback)
 	end
 	return MagicServiceUtils.sanitizeReplicatedState(MagicServiceClient.state, fallback)
+end
+
+local function getMeleeServiceClient(): any
+	if typeof(MeleeServiceClient) ~= "table" then
+		return nil
+	end
+
+	return MeleeServiceClient
 end
 
 local function readSelectedStack(inventoryState: InventoryState): InventoryServiceUtils.InventoryItemStack?
@@ -380,54 +387,23 @@ local function appendBuildHints(hints: { BindingHintEntry }, inventoryState: Inv
 	return nil
 end
 
-local function appendMovementHints(hints: { BindingHintEntry })
-	if PlayerServiceClient.movementLocked == true then
-		return
-	end
-
-	pushHint(hints, {
-		id = "move",
-		actionName = PlatformServiceClient.ACTIONS.MOVE,
-		label = "Move",
-		detail = nil,
-		enabled = true,
-		priority = 300,
-	})
-
-	if PlayerServiceClient.flyEnabled == true then
-		pushHint(hints, {
-			id = "move_vertical",
-			actionName = PlatformServiceClient.ACTIONS.MOVE_VERTICAL,
-			label = "Fly Up / Down",
-			detail = nil,
-			enabled = true,
-			priority = 310,
-		})
-		return
-	end
-
-	pushHint(hints, {
-		id = "jump",
-		actionName = PlatformServiceClient.ACTIONS.JUMP,
-		label = "Jump",
-		detail = nil,
-		enabled = true,
-		priority = 305,
-	})
-end
-
 local function appendMeleeHint(hints: { BindingHintEntry }, contextualBuildKind: string?)
-	local weaponConfig = MeleeServiceClient.equippedWeaponConfig
+	local meleeServiceClient = getMeleeServiceClient()
+	if meleeServiceClient == nil then
+		return
+	end
+
+	local weaponConfig = meleeServiceClient.equippedWeaponConfig
 	if typeof(weaponConfig) ~= "table" then
 		return
 	end
 
 	local usingHarvestTool = false
 	local axeOk, isAxe = pcall(function()
-		return MeleeServiceClient:isEquippedAxe()
+		return meleeServiceClient:isEquippedAxe()
 	end)
 	local pickaxeOk, isPickaxe = pcall(function()
-		return MeleeServiceClient:isEquippedPickaxe()
+		return meleeServiceClient:isEquippedPickaxe()
 	end)
 	if axeOk and isAxe == true then
 		usingHarvestTool = true
@@ -442,7 +418,7 @@ local function appendMeleeHint(hints: { BindingHintEntry }, contextualBuildKind:
 
 	local blocked = true
 	local blockedOk, blockedOrError = pcall(function()
-		return MeleeServiceClient:isAttackBlocked()
+		return meleeServiceClient:isAttackBlocked()
 	end)
 	if blockedOk then
 		blocked = blockedOrError == true
@@ -510,18 +486,22 @@ local function appendMagicHint(hints: { BindingHintEntry })
 	})
 end
 
-local function appendHotbarHints(hints: { BindingHintEntry }, inventoryState: InventoryState)
-	if not InventoryServiceUtils.isLoadedState(inventoryState.loadState) then
+local function appendJumpHint(hints: { BindingHintEntry })
+	if PlayerServiceClient.movementLocked == true then
+		return
+	end
+
+	if PlayerServiceClient.flyEnabled == true then
 		return
 	end
 
 	pushHint(hints, {
-		id = "hotbar_cycle",
-		actionName = PlatformServiceClient.ACTIONS.HOTBAR_CYCLE,
-		label = "Cycle Hotbar",
+		id = "jump",
+		actionName = PlatformServiceClient.ACTIONS.JUMP,
+		label = "Jump",
 		detail = nil,
 		enabled = true,
-		priority = 410,
+		priority = 305,
 	})
 end
 
@@ -534,8 +514,7 @@ local function computeBindingState(): BindingHintState
 	local contextualBuildKind = appendBuildHints(hints, inventoryState, selectedStack)
 	appendMeleeHint(hints, contextualBuildKind)
 	appendMagicHint(hints)
-	appendMovementHints(hints)
-	appendHotbarHints(hints, inventoryState)
+	appendJumpHint(hints)
 
 	return bindingSlice.setBindingState({
 		started = true,

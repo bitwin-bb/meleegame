@@ -1,30 +1,31 @@
 --!strict
-local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local React = require(ReplicatedStorage.Packages.React)
-local Charm = require(ReplicatedStorage.Packages.Charm)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
-local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
-local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
-local CoinScreen = require(script:FindFirstAncestor("game").Client.UI.features.inventory.screens.coinScreen)
-local TrashScreen = require(script:FindFirstAncestor("game").Client.UI.features.inventory.screens.trashScreen)
-local CraftButton = require(script:FindFirstAncestor("game").Client.UI.features.crafting.hud.craftButton)
-local inventorySlice = require(script:FindFirstAncestor("game").Client.UI.features.inventory.state.inventorySlice)
-local inventoryThunks = require(script:FindFirstAncestor("game").Client.UI.features.inventory.state.inventoryThunks)
-local ItemScreen = require(script:FindFirstAncestor("game").Client.UI.features.item.screen.itemScreen)
-local useDrag = require(script:FindFirstAncestor("game").Client.UI.features.item.hooks.useDrag)
-local itemSlice = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemSlice)
-local itemThunks = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemThunks)
-local useInventorySlide = require(script:FindFirstAncestor("game").Client.UI.features.inventory.hooks.useInventorySlide)
-local useCoinEmerge = require(script:FindFirstAncestor("game").Client.UI.features.inventory.hooks.useCoinEmerge)
-local useTrashAppear = require(script:FindFirstAncestor("game").Client.UI.features.inventory.hooks.useTrashAppear)
-local useSlotSelect = require(script:FindFirstAncestor("game").Client.UI.features.inventory.hooks.useSlotSelect)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryService.InventoryServiceUtils)
 local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioService.AudioServiceClient)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioService.AudioServiceUtils)
+local Charm = require(ReplicatedStorage.Packages.Charm)
+local CoinScreen = require(script:FindFirstAncestor("game").Client.UI.features.inventory.screens.coinScreen)
+local CraftButton = require(script:FindFirstAncestor("game").Client.UI.features.crafting.hud.craftButton)
+local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
+local InventoryServiceUtils =
+	require(script:FindFirstAncestor("game").Shared.Services.InventoryService.InventoryServiceUtils)
+local ItemScreen = require(script:FindFirstAncestor("game").Client.UI.features.item.screen.itemScreen)
+local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
+local React = require(ReplicatedStorage.Packages.React)
+local TrashScreen = require(script:FindFirstAncestor("game").Client.UI.features.inventory.screens.trashScreen)
+local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
+local inventorySlice = require(script:FindFirstAncestor("game").Client.UI.features.inventory.state.inventorySlice)
+local inventoryThunks = require(script:FindFirstAncestor("game").Client.UI.features.inventory.state.inventoryThunks)
+local itemSlice = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemSlice)
+local itemThunks = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemThunks)
+local useCoinEmerge = require(script:FindFirstAncestor("game").Client.UI.features.inventory.hooks.useCoinEmerge)
+local useDrag = require(script:FindFirstAncestor("game").Client.UI.features.item.hooks.useDrag)
+local useInventorySlide = require(script:FindFirstAncestor("game").Client.UI.features.inventory.hooks.useInventorySlide)
+local useSlotSelect = require(script:FindFirstAncestor("game").Client.UI.features.inventory.hooks.useSlotSelect)
+local useTrashAppear = require(script:FindFirstAncestor("game").Client.UI.features.inventory.hooks.useTrashAppear)
 
 type InventoryState = InventoryServiceUtils.InventoryState
 type InventorySlot = InventoryServiceUtils.InventorySlot
@@ -77,7 +78,8 @@ local KEYCODE_TO_SLOT_INDEX: { [Enum.KeyCode]: number } = {
 	[Enum.KeyCode.Eight] = 8,
 }
 
-local DEFAULT_RENDER_INVENTORY_STATE = InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_LOADING)
+local DEFAULT_RENDER_INVENTORY_STATE =
+	InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_LOADING)
 
 local function snapToPixel(value: number): number
 	return math.floor(value + 0.5)
@@ -129,9 +131,11 @@ local function resolveSlot(stateRaw: any, slotIndexRaw: any): InventorySlot
 	end
 
 	local stackRaw = (slot :: any).stack
-	local stack = if typeof(stackRaw) == "table" then (stackRaw :: InventoryItemStack) else nil
+	local stack = if typeof(stackRaw) == "table" then stackRaw :: InventoryItemStack else nil
 	local indexRaw = (slot :: any).index
-	local index = if typeof(indexRaw) == "number" and indexRaw == indexRaw then math.max(1, math.floor(indexRaw)) else slotIndex
+	local index = if typeof(indexRaw) == "number" and indexRaw == indexRaw
+		then math.max(1, math.floor(indexRaw))
+		else slotIndex
 	return {
 		index = index,
 		stack = stack,
@@ -244,7 +248,8 @@ return function(props: InventoryHotbarProps)
 		return inventorySlice.inventoryStateAtom()
 	end)
 	local renderState = sanitizeRenderState(inventoryState)
-	local isInventoryStateInitialized = typeof(renderState.slots) == "table" and #renderState.slots >= math.max(1, renderState.capacity)
+	local isInventoryStateInitialized = typeof(renderState.slots) == "table"
+		and #renderState.slots >= math.max(1, renderState.capacity)
 	local hoveredSlotIndex, setHoveredSlotIndex = React.useState(nil :: number?)
 	local hoveredSlotSource, setHoveredSlotSource = React.useState(nil :: HoveredSlotSource?)
 	local isExpandButtonPressed, setIsExpandButtonPressed = React.useState(false)
@@ -517,8 +522,9 @@ return function(props: InventoryHotbarProps)
 		local isSlotAvailable = isInventoryStateInitialized and hotbarIndex <= maxInteractiveSlots
 		local hasItem = isSlotAvailable and typeof(displayStack) == "table"
 		local isSelected = selectedSlot == hotbarIndex
-		local isSplitPreviewSource =
-			drag.dragState.active and drag.dragState.mode == "SplitHold" and drag.dragState.sourceSlot == hotbarIndex
+		local isSplitPreviewSource = drag.dragState.active
+			and drag.dragState.mode == "SplitHold"
+			and drag.dragState.sourceSlot == hotbarIndex
 		local isDragSourceSlot = drag.isDragging and drag.dragSourceSlot == hotbarIndex and not isSplitPreviewSource
 		local hasVisibleItem = hasItem and not isDragSourceSlot
 		local showKeyHints = props.showKeyHints ~= false
@@ -573,7 +579,11 @@ return function(props: InventoryHotbarProps)
 				if userInputType ~= Enum.UserInputType.MouseButton1 and userInputType ~= Enum.UserInputType.Touch then
 					return
 				end
-				drag.handleSlotInput(hotbarIndex, if typeof(slot.stack) == "table" then slot.stack else nil, inputObject)
+				drag.handleSlotInput(
+					hotbarIndex,
+					if typeof(slot.stack) == "table" then slot.stack else nil,
+					inputObject
+				)
 			end,
 			[React.Event.Activated] = function()
 				if not isSlotAvailable then
@@ -701,9 +711,12 @@ return function(props: InventoryHotbarProps)
 		local isSlotAvailable = isInventoryStateInitialized and inventorySlotIndex <= maxInteractiveSlots
 		local hasItem = isSlotAvailable and typeof(displayStack) == "table"
 		local isSelected = isSlotAvailable and selectedSlot == inventorySlotIndex
-		local isSplitPreviewSource =
-			drag.dragState.active and drag.dragState.mode == "SplitHold" and drag.dragState.sourceSlot == inventorySlotIndex
-		local isDragSourceSlot = drag.isDragging and drag.dragSourceSlot == inventorySlotIndex and not isSplitPreviewSource
+		local isSplitPreviewSource = drag.dragState.active
+			and drag.dragState.mode == "SplitHold"
+			and drag.dragState.sourceSlot == inventorySlotIndex
+		local isDragSourceSlot = drag.isDragging
+			and drag.dragSourceSlot == inventorySlotIndex
+			and not isSplitPreviewSource
 		local hasVisibleItem = hasItem and not isDragSourceSlot
 		local isHovered = hoveredSlotSource == "Grid" and hoveredSlotIndex == inventorySlotIndex
 		local columnIndex = ((slotIndex - 1) % INVENTORY_COLUMNS) + 1
@@ -711,7 +724,9 @@ return function(props: InventoryHotbarProps)
 		local columnRevealTransparency = 1 - columnRevealProgress
 		local slotTint = if not isSlotAvailable
 			then DISABLED_SLOT_TINT
-			else if isSelected then SELECTED_SLOT_TINT else if hasVisibleItem then FILLED_SLOT_TINT else EMPTY_SLOT_TINT
+			else if isSelected
+				then SELECTED_SLOT_TINT
+				else if hasVisibleItem then FILLED_SLOT_TINT else EMPTY_SLOT_TINT
 		local slotImage = if isSelected or isHovered then ImageIds.inventorySlotHovered else ImageIds.inventorySlot
 		local itemAmount = if hasVisibleItem then resolveStackAmount(displayStack) else 0
 		local slotZIndex = zIndex + 3

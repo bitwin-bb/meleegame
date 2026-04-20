@@ -3,19 +3,53 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local ServerScriptService = game:GetService("ServerScriptService")
+local packageRoot = script:FindFirstAncestor("game").Parent
+local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
+local nevermoreRequire = require(loaderUtils.Parent).load(script)
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Maid = nevermoreRequire("Maid")
+local Rx = nevermoreRequire("Rx")
+local RxSignal = nevermoreRequire("RxSignal")
+local Signal = nevermoreRequire("Signal")
+
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
+local Networker = require(ReplicatedStorage.Packages.Networker)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerService.PlayerServiceServer)
+local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local WorldGeneration = require(script:FindFirstAncestor("game").Shared.Classes.WorldGeneration)
-local WorldGenerationServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.WorldGenerationService.WorldGenerationServiceUtils)
+local WorldGenerationServiceUtils =
+	require(script:FindFirstAncestor("game").Shared.Services.WorldGenerationService.WorldGenerationServiceUtils)
 local WorldSimulationServiceServer =
 	require(script:FindFirstAncestor("game").Server.Services.WorldSimulationService.WorldSimulationServiceServer)
-local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerService.PlayerServiceServer)
 
 type WorldGenerationClass = WorldGeneration.WorldGeneration
 type WorldGenerationConfig = WorldGenerationServiceUtils.WorldGenerationConfig
 type WorldGenerationServiceState = WorldGenerationServiceUtils.WorldGenerationServiceState
+type MaidClass = {
+	Add: <T>(self: MaidClass, task: T) -> T,
+	GiveTask: (self: MaidClass, task: any) -> number,
+	DoCleaning: (self: MaidClass) -> (),
+	Destroy: (self: MaidClass) -> (),
+}
+type SignalObject = {
+	Connect: (self: SignalObject, callback: (...any) -> ()) -> RBXScriptConnection,
+	Fire: (self: SignalObject, ...any) -> (),
+	Destroy: (self: SignalObject) -> (),
+}
+type ObservableObject = {
+	Subscribe: (
+		self: ObservableObject,
+		fireCallback: ((...any) -> ())?,
+		failCallback: ((...any) -> ())?,
+		completeCallback: ((...any) -> ())?
+	) -> any,
+	Pipe: (self: ObservableObject, transformers: { any }) -> ObservableObject,
+}
+type RxSignalObject = {
+	Connect: (self: RxSignalObject, callback: (...any) -> ()) -> any,
+}
 
 type PlayerRenderSettings = {
 	renderDistanceChunks: number,
@@ -32,6 +66,18 @@ type ChunkSendQueue = {
 type PlayerChunkStream = ChunkSendQueue & {
 	interestKeys: { [string]: boolean },
 	sentRevisions: { [string]: number },
+}
+
+type PlayerInterestChangedEvent = {
+	player: Player,
+	interestKeys: { [string]: boolean },
+}
+
+type ChunkLifecycleEvent = {
+	chunkKey: string,
+	chunkX: number,
+	chunkY: number,
+	context: { [string]: any },
 }
 
 local MIN_INT32_SEED = -2147483648
@@ -56,6 +102,29 @@ local function cloneTableShallow(sourceRaw: any): { [any]: any }
 		clone[key] = value
 	end
 	return clone
+end
+
+local function cloneBooleanLookup(sourceRaw: any): { [string]: boolean }
+	local clone = {}
+	if typeof(sourceRaw) ~= "table" then
+		return clone
+	end
+
+	for key, value in sourceRaw do
+		if typeof(key) == "string" and value == true then
+			clone[key] = true
+		end
+	end
+
+	return clone
+end
+
+local function countLookupEntries(lookup: { [any]: any }): number
+	local count = 0
+	for _ in lookup do
+		count += 1
+	end
+	return count
 end
 
 local function isGameplayReplicationActive(player: Player): boolean
@@ -160,32 +229,60 @@ end
 local WorldGenerationServiceServer = {}
 
 function WorldGenerationServiceServer.Init(self: WorldGenerationServiceServer)
+	self.maid = Maid.new() :: MaidClass
 	local configSource = resolveConfigSource()
 	self.config = WorldGenerationServiceUtils.sanitizeConfig(configSource, nil)
 	self.config.seed = resolveRuntimeSeed(configSource, self.config)
 	self.world = WorldGeneration.new(self.config)
 	self.world:init()
+	self.latestWorldStats = self.world:getStats()
 	self:pushSeedToWorldSimulation()
 	self.studioPreviewEnabled = RunService:IsStudio() and resolveStudioPreviewEnabled(configSource)
 	self.studioPreviewInterestKeys = {}
 	self.studioPreviewActive = false
 	self.worldBootstrapPlayerUserId = nil
 
+	self.binders = NevermoreSupport.getService(ServerBinderSupport)
+	self.chunkBinder = self.binders:Get(TagBinder.Tags.Chunk)
 	self.playerRenderSettings = {}
 	self.playerChunkStreams = {}
+	self.playersPendingSync = {} :: { [Player]: boolean }
+	self.pendingPlayerInterest = {} :: { [Player]: { [string]: boolean } }
 	self.worldSimulationChunkQueue = self:createChunkSendQueue()
 	self.worldSimulationSentRevisions = {}
+	self.chunkRuntimeByKey = {} :: { [string]: any }
+	self.boundChunkRuntimeCount = 0
 	self.chunkStreamAccumulator = CHUNK_STREAM_SYNC_INTERVAL
+	self.worldObserverMaid = Maid.new() :: MaidClass
+	self.maid:GiveTask(self.worldObserverMaid)
+	self._stateChangedSignal = Signal.new() :: SignalObject
+	self.stateChangedSignal = RxSignal.new(function(): ObservableObject
+		return self:observeStateChanged()
+	end) :: RxSignalObject
+	self.maid:GiveTask(self._stateChangedSignal)
 	self.networker = Networker.server.new("WorldGenerationService", self, {
 		self.RequestSync,
 		self.SetRenderDistance,
 	})
+	self.maid:GiveTask(function()
+		if self.networker ~= nil then
+			self.networker:destroy()
+			self.networker = nil
+		end
+	end)
+	self:connectReactiveWorldObservers()
+	self:connectChunkBinderObservers()
 
 	self.heartbeatConnection = RunService.Heartbeat:Connect(function(deltaTime: number)
 		self:onHeartbeat(deltaTime)
 	end)
+	self.maid:GiveTask(self.heartbeatConnection)
 
-	if self.studioPreviewEnabled and self.worldBootstrapPlayerUserId == nil and next(self.playerRenderSettings) == nil then
+	if
+		self.studioPreviewEnabled
+		and self.worldBootstrapPlayerUserId == nil
+		and next(self.playerRenderSettings) == nil
+	then
 		self:enableStudioPreview()
 	end
 
@@ -194,13 +291,19 @@ function WorldGenerationServiceServer.Init(self: WorldGenerationServiceServer)
 			self:trackPlayer(player)
 		end
 	end)
+	self.maid:GiveTask(self.playerAddedConnection)
 
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
 		self:untrackPlayer(player)
-		if self.studioPreviewEnabled and self.worldBootstrapPlayerUserId == nil and next(self.playerRenderSettings) == nil then
+		if
+			self.studioPreviewEnabled
+			and self.worldBootstrapPlayerUserId == nil
+			and next(self.playerRenderSettings) == nil
+		then
 			self:enableStudioPreview()
 		end
 	end)
+	self.maid:GiveTask(self.playerRemovingConnection)
 end
 
 function WorldGenerationServiceServer.ResetStreamingState(self: WorldGenerationServiceServer)
@@ -217,6 +320,8 @@ function WorldGenerationServiceServer.ResetStreamingState(self: WorldGenerationS
 		table.clear(stream.sendQueue)
 		stream.sendQueueHead = 1
 		stream.sendQueueTail = 0
+		self.playersPendingSync[player] = nil
+		self.pendingPlayerInterest[player] = nil
 		self:pushPlayerInterestToWorldSimulation(player, {})
 	end
 
@@ -225,13 +330,21 @@ function WorldGenerationServiceServer.ResetStreamingState(self: WorldGenerationS
 	table.clear(self.worldSimulationChunkQueue.queuedLookup)
 	self.worldSimulationChunkQueue.sendQueueHead = 1
 	self.worldSimulationChunkQueue.sendQueueTail = 0
+	table.clear(self.playersPendingSync)
+	table.clear(self.pendingPlayerInterest)
 end
 
 function WorldGenerationServiceServer.LoadWorld(self: WorldGenerationServiceServer, worldRaw: any)
 	local worldSource = if typeof(worldRaw) == "table" then worldRaw else {}
 	local configSource = cloneTableShallow(resolveConfigSource())
 	for key, value in worldSource do
-		if key == "seed" or key == "worldOrigin" or key == "minTileY" or key == "maxTileY" or key == "bedrockThickness" then
+		if
+			key == "seed"
+			or key == "worldOrigin"
+			or key == "minTileY"
+			or key == "maxTileY"
+			or key == "bedrockThickness"
+		then
 			configSource[key] = value
 		end
 	end
@@ -241,21 +354,32 @@ function WorldGenerationServiceServer.LoadWorld(self: WorldGenerationServiceServ
 
 	self:disableStudioPreview()
 	self:resetStreamingState()
+	if self.worldObserverMaid ~= nil then
+		self.worldObserverMaid:DoCleaning()
+	end
 
 	if self.world ~= nil then
 		self.world:destroy()
 	end
+	table.clear(self.chunkRuntimeByKey)
+	self.boundChunkRuntimeCount = 0
 
 	self.config = nextConfig
 	self.world = WorldGeneration.new(self.config)
 	self.world:init()
+	self.latestWorldStats = self.world:getStats()
+	self:connectReactiveWorldObservers()
 	self:pushSeedToWorldSimulation()
 
 	for _, player in Players:GetPlayers() do
 		self:trackPlayer(player)
 	end
 
-	if self.studioPreviewEnabled and self.worldBootstrapPlayerUserId == nil and next(self.playerRenderSettings) == nil then
+	if
+		self.studioPreviewEnabled
+		and self.worldBootstrapPlayerUserId == nil
+		and next(self.playerRenderSettings) == nil
+	then
 		self:enableStudioPreview()
 	end
 end
@@ -350,6 +474,8 @@ function WorldGenerationServiceServer.CreateStateSnapshot(
 	player: Player
 ): WorldGenerationServiceState
 	local renderSettings = self:getOrCreatePlayerRenderSettings(player)
+	local stats = cloneTableShallow(self.latestWorldStats or self.world:getStats())
+	stats.boundCollisionChunkModels = self.boundChunkRuntimeCount
 	local snapshot = WorldGenerationServiceUtils.createState({
 		seed = self.config.seed,
 		chunkSize = self.config.chunkSize,
@@ -360,7 +486,7 @@ function WorldGenerationServiceServer.CreateStateSnapshot(
 		minTileY = self.config.minTileY,
 		maxTileY = self.config.maxTileY,
 		ready = true,
-		stats = self.world:getStats(),
+		stats = stats,
 	}, nil)
 	return snapshot
 end
@@ -370,7 +496,9 @@ function WorldGenerationServiceServer.PushState(self: WorldGenerationServiceServ
 		return
 	end
 
-	self.networker:fire(player, "applyState", self:createStateSnapshot(player))
+	local snapshot = self:createStateSnapshot(player)
+	self.networker:fire(player, "applyState", snapshot)
+	self:emitStateChanged(player, snapshot)
 end
 
 function WorldGenerationServiceServer.CreateChunkSendQueue(self: WorldGenerationServiceServer): ChunkSendQueue
@@ -392,6 +520,141 @@ function WorldGenerationServiceServer.CreateChunkStream(self: WorldGenerationSer
 		sendQueueTail = sendQueue.sendQueueTail,
 		queuedLookup = sendQueue.queuedLookup,
 	}
+end
+
+function WorldGenerationServiceServer.ObserveStateChanged(
+	self: WorldGenerationServiceServer,
+	playerRaw: any?
+): ObservableObject
+	local targetPlayer = if typeof(playerRaw) == "Instance" and playerRaw:IsA("Player") then playerRaw else nil
+	return Rx.fromSignal(self._stateChangedSignal):Pipe({
+		Rx.where(function(player: Player)
+			return targetPlayer == nil or player == targetPlayer
+		end),
+	}) :: ObservableObject
+end
+
+function WorldGenerationServiceServer.EmitStateChanged(
+	self: WorldGenerationServiceServer,
+	player: Player,
+	snapshot: WorldGenerationServiceState
+)
+	self._stateChangedSignal:Fire(player, snapshot)
+end
+
+function WorldGenerationServiceServer.MarkPlayerStreamDirty(
+	self: WorldGenerationServiceServer,
+	player: Player,
+	interestOverrideRaw: any?
+)
+	if self.playerRenderSettings[player] == nil then
+		return
+	end
+
+	self.playersPendingSync[player] = true
+	if typeof(interestOverrideRaw) == "table" then
+		self.pendingPlayerInterest[player] = cloneBooleanLookup(interestOverrideRaw)
+	end
+end
+
+function WorldGenerationServiceServer.QueueChunkForInterestedPlayers(
+	self: WorldGenerationServiceServer,
+	chunkKeyRaw: any,
+	revisionRaw: number?
+)
+	if typeof(chunkKeyRaw) ~= "string" or chunkKeyRaw == "" then
+		return
+	end
+
+	local revision = revisionRaw
+	if revision == nil then
+		revision = self.world:getChunkRevisionByKey(chunkKeyRaw)
+	end
+
+	for _, player in self.world:getPlayersInterestedInChunk(chunkKeyRaw) do
+		local stream = self:getOrCreateChunkStream(player)
+		if stream.interestKeys[chunkKeyRaw] == true then
+			enqueueChunkForStream(stream, chunkKeyRaw)
+		end
+	end
+
+	self:enqueueChunkForWorldSimulation(chunkKeyRaw, revision)
+end
+
+function WorldGenerationServiceServer.ConnectReactiveWorldObservers(self: WorldGenerationServiceServer)
+	local observerMaid = self.worldObserverMaid
+	observerMaid:DoCleaning()
+
+	observerMaid:GiveTask(self.world:observeStats():Subscribe(function(stats)
+		if typeof(stats) == "table" then
+			self.latestWorldStats = stats
+		end
+	end))
+
+	observerMaid:GiveTask(self.world:observePlayerInterest():Subscribe(function(event: PlayerInterestChangedEvent)
+		if typeof(event) ~= "table" then
+			return
+		end
+		if typeof(event.player) ~= "Instance" or not event.player:IsA("Player") then
+			return
+		end
+		self:markPlayerStreamDirty(event.player, event.interestKeys)
+	end))
+
+	observerMaid:GiveTask(self.world:observeChunkCollisionReady():Subscribe(function(event: ChunkLifecycleEvent)
+		if typeof(event) ~= "table" then
+			return
+		end
+		self:queueChunkForInterestedPlayers(event.chunkKey)
+	end))
+
+	observerMaid:GiveTask(self.world:observeChunkTerrainChanged():Subscribe(function(event: ChunkLifecycleEvent)
+		if typeof(event) ~= "table" then
+			return
+		end
+		self:queueChunkForInterestedPlayers(event.chunkKey)
+	end))
+
+	observerMaid:GiveTask(self.world:observeChunkCollisionUnloaded():Subscribe(function(event: ChunkLifecycleEvent)
+		if typeof(event) ~= "table" or typeof(event.chunkKey) ~= "string" then
+			return
+		end
+		self.worldSimulationSentRevisions[event.chunkKey] = nil
+	end))
+end
+
+function WorldGenerationServiceServer.ConnectChunkBinderObservers(self: WorldGenerationServiceServer)
+	if self.chunkBinder == nil then
+		return
+	end
+
+	self.maid:GiveTask(self.chunkBinder:ObserveAllBrio():Subscribe(function(brio)
+		if brio == nil or typeof(brio) ~= "table" or typeof((brio :: any).GetValue) ~= "function" then
+			return
+		end
+
+		local runtime = brio:GetValue()
+		if runtime == nil then
+			return
+		end
+
+		local chunkKey = if typeof((runtime :: any).GetChunkKey) == "function"
+			then (runtime :: any):GetChunkKey()
+			else ((runtime :: any).chunkKey or "")
+		if typeof(chunkKey) ~= "string" or chunkKey == "" then
+			return
+		end
+
+		local brioMaid = brio:ToMaid()
+		self.chunkRuntimeByKey[chunkKey] = runtime
+		self.boundChunkRuntimeCount = countLookupEntries(self.chunkRuntimeByKey)
+		brioMaid:GiveTask(function()
+			if self.chunkRuntimeByKey[chunkKey] == runtime then
+				self.chunkRuntimeByKey[chunkKey] = nil
+			end
+			self.boundChunkRuntimeCount = countLookupEntries(self.chunkRuntimeByKey)
+		end)
+	end))
 end
 
 function WorldGenerationServiceServer.PushSeedToWorldSimulation(self: WorldGenerationServiceServer)
@@ -489,6 +752,7 @@ function WorldGenerationServiceServer.ResetChunkStream(self: WorldGenerationServ
 	table.clear(stream.sendQueue)
 	stream.sendQueueHead = 1
 	stream.sendQueueTail = 0
+	self.pendingPlayerInterest[player] = nil
 end
 
 function WorldGenerationServiceServer.EnqueueChunkForWorldSimulation(
@@ -544,10 +808,13 @@ end
 function WorldGenerationServiceServer.SyncPlayerChunkStream(
 	self: WorldGenerationServiceServer,
 	player: Player,
-	stream: PlayerChunkStream
+	stream: PlayerChunkStream,
+	nextInterestRaw: { [string]: boolean }?
 )
 	local world = self.world
-	local nextInterest = world:getPlayerInterestKeys(player)
+	local nextInterest = if typeof(nextInterestRaw) == "table"
+		then cloneBooleanLookup(nextInterestRaw)
+		else world:getPlayerInterestKeys(player)
 	self:pushPlayerInterestToWorldSimulation(player, nextInterest)
 
 	for chunkKey in nextInterest do
@@ -582,8 +849,10 @@ function WorldGenerationServiceServer.ProcessChunkStreamQueues(self: WorldGenera
 		end
 
 		local perPlayerProcessed = 0
-		while perPlayerProcessed < CHUNK_STREAM_PER_PLAYER_BUDGET_PER_TICK
-			and totalProcessed < CHUNK_STREAM_GLOBAL_BUDGET_PER_TICK do
+		while
+			perPlayerProcessed < CHUNK_STREAM_PER_PLAYER_BUDGET_PER_TICK
+			and totalProcessed < CHUNK_STREAM_GLOBAL_BUDGET_PER_TICK
+		do
 			local chunkKey = dequeueChunkForStream(stream)
 			if chunkKey == nil then
 				break
@@ -650,9 +919,11 @@ function WorldGenerationServiceServer.OnHeartbeat(self: WorldGenerationServiceSe
 	end
 	self.chunkStreamAccumulator = 0
 
-	for player in self.playerRenderSettings do
+	for player in self.playersPendingSync do
 		local stream = self:getOrCreateChunkStream(player)
-		self:syncPlayerChunkStream(player, stream)
+		self:syncPlayerChunkStream(player, stream, self.pendingPlayerInterest[player])
+		self.playersPendingSync[player] = nil
+		self.pendingPlayerInterest[player] = nil
 	end
 
 	self:processChunkStreamQueues()
@@ -674,14 +945,16 @@ function WorldGenerationServiceServer.TrackPlayer(self: WorldGenerationServiceSe
 		renderSettings.renderDistanceChunks,
 		renderSettings.verticalRenderDistanceChunks
 	)
-	self:pushPlayerInterestToWorldSimulation(player, self.world:getPlayerInterestKeys(player))
 	self:resetChunkStream(player)
+	self:markPlayerStreamDirty(player, self.world:getPlayerInterestKeys(player))
 	self:pushState(player)
 end
 
 function WorldGenerationServiceServer.UntrackPlayer(self: WorldGenerationServiceServer, player: Player)
 	self.playerRenderSettings[player] = nil
 	self.playerChunkStreams[player] = nil
+	self.playersPendingSync[player] = nil
+	self.pendingPlayerInterest[player] = nil
 	self.world:untrackPlayer(player)
 	self:pushPlayerInterestToWorldSimulation(player, {})
 end
@@ -692,7 +965,7 @@ function WorldGenerationServiceServer.RequestSync(self: WorldGenerationServiceSe
 		return
 	end
 	self:resetChunkStream(player)
-	self:pushPlayerInterestToWorldSimulation(player, self.world:getPlayerInterestKeys(player))
+	self:markPlayerStreamDirty(player, self.world:getPlayerInterestKeys(player))
 	self:pushState(player)
 end
 
@@ -703,10 +976,8 @@ function WorldGenerationServiceServer.SetRenderDistance(
 	verticalRenderDistanceRaw: any?
 )
 	local renderSettings = self:getOrCreatePlayerRenderSettings(player)
-	local nextRenderDistance = WorldGenerationServiceUtils.sanitizeRenderDistance(
-		renderDistanceRaw,
-		renderSettings.renderDistanceChunks
-	)
+	local nextRenderDistance =
+		WorldGenerationServiceUtils.sanitizeRenderDistance(renderDistanceRaw, renderSettings.renderDistanceChunks)
 	local nextVerticalRenderDistance = WorldGenerationServiceUtils.sanitizeVerticalRenderDistance(
 		verticalRenderDistanceRaw,
 		renderSettings.verticalRenderDistanceChunks
@@ -716,8 +987,8 @@ function WorldGenerationServiceServer.SetRenderDistance(
 	renderSettings.verticalRenderDistanceChunks = nextVerticalRenderDistance
 	self.world:setPlayerRenderDistance(player, nextRenderDistance, nextVerticalRenderDistance)
 	self:pushPlayerRenderDistanceToWorldSimulation(player, nextRenderDistance, nextVerticalRenderDistance)
-	self:pushPlayerInterestToWorldSimulation(player, self.world:getPlayerInterestKeys(player))
 	self:resetChunkStream(player)
+	self:markPlayerStreamDirty(player, self.world:getPlayerInterestKeys(player))
 	self:pushState(player)
 end
 
@@ -792,20 +1063,8 @@ end
 
 function WorldGenerationServiceServer.Destroy(self: WorldGenerationServiceServer)
 	self:disableStudioPreview()
-
-	if self.heartbeatConnection then
-		self.heartbeatConnection:Disconnect()
-		self.heartbeatConnection = nil
-	end
-
-	if self.playerAddedConnection then
-		self.playerAddedConnection:Disconnect()
-		self.playerAddedConnection = nil
-	end
-
-	if self.playerRemovingConnection then
-		self.playerRemovingConnection:Disconnect()
-		self.playerRemovingConnection = nil
+	if self.worldObserverMaid ~= nil then
+		self.worldObserverMaid:DoCleaning()
 	end
 
 	local playersToUntrack = {}
@@ -816,14 +1075,20 @@ function WorldGenerationServiceServer.Destroy(self: WorldGenerationServiceServer
 		self:untrackPlayer(player)
 	end
 	table.clear(self.playerChunkStreams)
+	table.clear(self.playersPendingSync)
+	table.clear(self.pendingPlayerInterest)
+	table.clear(self.chunkRuntimeByKey)
 
 	if self.world then
 		self.world:destroy()
 	end
 
-	if self.networker then
-		self.networker:destroy()
+	if self.maid ~= nil then
+		self.maid:Destroy()
 	end
+	self.heartbeatConnection = nil
+	self.playerAddedConnection = nil
+	self.playerRemovingConnection = nil
 end
 
 WorldGenerationServiceServer.init = WorldGenerationServiceServer.Init
@@ -833,22 +1098,36 @@ WorldGenerationServiceServer.buildStudioPreviewInterest = WorldGenerationService
 WorldGenerationServiceServer.applyStudioPreviewInterest = WorldGenerationServiceServer.ApplyStudioPreviewInterest
 WorldGenerationServiceServer.enableStudioPreview = WorldGenerationServiceServer.EnableStudioPreview
 WorldGenerationServiceServer.disableStudioPreview = WorldGenerationServiceServer.DisableStudioPreview
-WorldGenerationServiceServer.getOrCreatePlayerRenderSettings = WorldGenerationServiceServer.GetOrCreatePlayerRenderSettings
+WorldGenerationServiceServer.getOrCreatePlayerRenderSettings =
+	WorldGenerationServiceServer.GetOrCreatePlayerRenderSettings
 WorldGenerationServiceServer.createStateSnapshot = WorldGenerationServiceServer.CreateStateSnapshot
 WorldGenerationServiceServer.pushState = WorldGenerationServiceServer.PushState
 WorldGenerationServiceServer.createChunkSendQueue = WorldGenerationServiceServer.CreateChunkSendQueue
 WorldGenerationServiceServer.createChunkStream = WorldGenerationServiceServer.CreateChunkStream
+WorldGenerationServiceServer.observeStateChanged = WorldGenerationServiceServer.ObserveStateChanged
+WorldGenerationServiceServer.emitStateChanged = WorldGenerationServiceServer.EmitStateChanged
+WorldGenerationServiceServer.markPlayerStreamDirty = WorldGenerationServiceServer.MarkPlayerStreamDirty
+WorldGenerationServiceServer.queueChunkForInterestedPlayers =
+	WorldGenerationServiceServer.QueueChunkForInterestedPlayers
+WorldGenerationServiceServer.connectReactiveWorldObservers = WorldGenerationServiceServer.ConnectReactiveWorldObservers
+WorldGenerationServiceServer.connectChunkBinderObservers = WorldGenerationServiceServer.ConnectChunkBinderObservers
 WorldGenerationServiceServer.pushSeedToWorldSimulation = WorldGenerationServiceServer.PushSeedToWorldSimulation
-WorldGenerationServiceServer.pushPlayerInterestToWorldSimulation = WorldGenerationServiceServer.PushPlayerInterestToWorldSimulation
-WorldGenerationServiceServer.pushChunkSnapshotToWorldSimulation = WorldGenerationServiceServer.PushChunkSnapshotToWorldSimulation
-WorldGenerationServiceServer.pushPlayerRenderDistanceToWorldSimulation = WorldGenerationServiceServer.PushPlayerRenderDistanceToWorldSimulation
+WorldGenerationServiceServer.pushPlayerInterestToWorldSimulation =
+	WorldGenerationServiceServer.PushPlayerInterestToWorldSimulation
+WorldGenerationServiceServer.pushChunkSnapshotToWorldSimulation =
+	WorldGenerationServiceServer.PushChunkSnapshotToWorldSimulation
+WorldGenerationServiceServer.pushPlayerRenderDistanceToWorldSimulation =
+	WorldGenerationServiceServer.PushPlayerRenderDistanceToWorldSimulation
 WorldGenerationServiceServer.getOrCreateChunkStream = WorldGenerationServiceServer.GetOrCreateChunkStream
 WorldGenerationServiceServer.resetChunkStream = WorldGenerationServiceServer.ResetChunkStream
-WorldGenerationServiceServer.enqueueChunkForWorldSimulation = WorldGenerationServiceServer.EnqueueChunkForWorldSimulation
-WorldGenerationServiceServer.enqueueAffectedWorldSimulationChunkKeysForTile = WorldGenerationServiceServer.EnqueueAffectedWorldSimulationChunkKeysForTile
+WorldGenerationServiceServer.enqueueChunkForWorldSimulation =
+	WorldGenerationServiceServer.EnqueueChunkForWorldSimulation
+WorldGenerationServiceServer.enqueueAffectedWorldSimulationChunkKeysForTile =
+	WorldGenerationServiceServer.EnqueueAffectedWorldSimulationChunkKeysForTile
 WorldGenerationServiceServer.syncPlayerChunkStream = WorldGenerationServiceServer.SyncPlayerChunkStream
 WorldGenerationServiceServer.processChunkStreamQueues = WorldGenerationServiceServer.ProcessChunkStreamQueues
-WorldGenerationServiceServer.processWorldSimulationChunkQueue = WorldGenerationServiceServer.ProcessWorldSimulationChunkQueue
+WorldGenerationServiceServer.processWorldSimulationChunkQueue =
+	WorldGenerationServiceServer.ProcessWorldSimulationChunkQueue
 WorldGenerationServiceServer.onHeartbeat = WorldGenerationServiceServer.OnHeartbeat
 WorldGenerationServiceServer.trackPlayer = WorldGenerationServiceServer.TrackPlayer
 WorldGenerationServiceServer.untrackPlayer = WorldGenerationServiceServer.UntrackPlayer
@@ -865,10 +1144,15 @@ WorldGenerationServiceServer.getConfig = WorldGenerationServiceServer.GetConfig
 WorldGenerationServiceServer.destroy = WorldGenerationServiceServer.Destroy
 
 type WorldGenerationServiceServer = typeof(WorldGenerationServiceServer) & {
+	maid: MaidClass,
 	networker: Networker.Server,
 	world: WorldGenerationClass,
 	config: WorldGenerationConfig,
+	binders: any,
+	chunkBinder: any,
 	playerRenderSettings: { [Player]: PlayerRenderSettings },
+	playersPendingSync: { [Player]: boolean },
+	pendingPlayerInterest: { [Player]: { [string]: boolean } },
 	studioPreviewEnabled: boolean,
 	studioPreviewActive: boolean,
 	studioPreviewInterestKeys: { [string]: boolean },
@@ -876,7 +1160,13 @@ type WorldGenerationServiceServer = typeof(WorldGenerationServiceServer) & {
 	playerChunkStreams: { [Player]: PlayerChunkStream },
 	worldSimulationChunkQueue: ChunkSendQueue,
 	worldSimulationSentRevisions: { [string]: number },
+	chunkRuntimeByKey: { [string]: any },
+	boundChunkRuntimeCount: number,
+	latestWorldStats: { [string]: any },
 	chunkStreamAccumulator: number,
+	worldObserverMaid: MaidClass,
+	_stateChangedSignal: SignalObject,
+	stateChangedSignal: RxSignalObject,
 	heartbeatConnection: RBXScriptConnection?,
 	playerAddedConnection: RBXScriptConnection?,
 	playerRemovingConnection: RBXScriptConnection?,

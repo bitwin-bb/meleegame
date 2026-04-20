@@ -3,8 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
 local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
 local BubblesScreen = require(script:FindFirstAncestor("game").Client.UI.features.breath.screens.bubblesScreen)
-local HpTopRightBar = require(script:FindFirstAncestor("game").Client.UI.features.hp.hud.hpTopRightBar)
-local ManaTopRightBar = require(script:FindFirstAncestor("game").Client.UI.features.mana.hud.ManaTopRightBar)
+local ManaTopRightBar = require(script:FindFirstAncestor("game").Client.UI.hud.TopBar.ManaTopRightBar)
 
 local e: typeof(React.createElement) = React.createElement
 
@@ -35,7 +34,6 @@ type RightSideBarProps = {
 	padding: UDim?,
 	buttons: { RightSideBarButton }?,
 	navigateEvent: BindableEvent?,
-	hpBarProps: { [string]: any }?,
 	manaBarProps: { [string]: any }?,
 	breathBarProps: { [string]: any }?,
 	onButtonActivated: ((payload: any, inputObject: InputObject?, button: RightSideBarButton) -> ())?,
@@ -88,18 +86,6 @@ return function(props: RightSideBarProps)
 		})
 	end
 
-	local hpBarProps = {
-		layoutOrder = 5,
-		zIndex = zIndex + 1,
-		position = UDim2.new(1, 0, 0, -60),
-		anchorPoint = Vector2.new(1, 0),
-	}
-	if props.hpBarProps ~= nil then
-		for key, value in pairs(props.hpBarProps) do
-			hpBarProps[key] = value
-		end
-	end
-
 	local manaBarProps = {
 		layoutOrder = 6,
 		zIndex = zIndex + 1,
@@ -140,7 +126,6 @@ return function(props: RightSideBarProps)
 			BorderSizePixel = 0,
 			ZIndex = zIndex,
 		}, buttonListChildren),
-		HpTopRightBar = e(HpTopRightBar, hpBarProps),
 		ManaTopRightBar = e(ManaTopRightBar, manaBarProps),
 		BreathBubbles = e(BubblesScreen, breathBarProps),
 	})

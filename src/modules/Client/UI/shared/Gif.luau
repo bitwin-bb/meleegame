@@ -2,6 +2,13 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
+local packageRoot = script:FindFirstAncestor("game").Parent
+local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
+local nevermoreRequire = require(loaderUtils.Parent).load(script)
+
+local Flipbook = nevermoreRequire("Flipbook")
+local FlipbookPlayer = nevermoreRequire("FlipbookPlayer")
+local Maid = nevermoreRequire("Maid")
 local React = require(ReplicatedStorage.Packages.React)
 
 type FrameSlice = {
@@ -150,6 +157,10 @@ local function resolveGridRowCount(frameCount: number, columns: number): number
 	return math.max(1, math.ceil(frameCount / columns))
 end
 
+local function resolveGridFrameSlice(frameIndex: number, columns: number, frameSize: Vector2): FrameSlice
+	return resolveComputedFrameSlice(frameIndex, columns, frameSize, Vector2.zero, Vector2.zero)
+end
+
 local function Gif(props: GifProps)
 	local fallbackFrameSize = sanitizeVector2PositivePixels(props.frameSize, DEFAULT_FRAME_SIZE)
 	local frameOrigin = sanitizeVector2NonNegativePixels(props.frameOrigin, Vector2.zero)
@@ -166,6 +177,7 @@ local function Gif(props: GifProps)
 	local startFrameIndex = if props.startFrameIndex ~= nil
 		then clampFrameIndex(props.startFrameIndex, frameCount)
 		else clampFrameIndex(if props.startFrame ~= nil then props.startFrame - 1 else 0, frameCount)
+	local imageRef = React.useRef(nil :: ImageLabel?)
 
 	local frameIndex, setFrameIndex = React.useState(startFrameIndex)
 	local frameIndexRef = React.useRef(startFrameIndex)
@@ -260,7 +272,114 @@ local function Gif(props: GifProps)
 
 	local hasExplicitRects = #explicitSlices > 0
 	local hasGridOffset = frameOrigin ~= Vector2.zero or framePadding ~= Vector2.zero
+	local useNevermoreFlipbook = (not hasExplicitRects)
+		and (not hasGridOffset)
+		and props.onLooped == nil
 	local useViewportMode = (not hasExplicitRects) and (not hasGridOffset)
+
+	React.useEffect(function()
+		if not useNevermoreFlipbook then
+			return
+		end
+
+		local imageLabel = imageRef.current
+		if imageLabel == nil then
+			return
+		end
+
+		local maid = Maid.new()
+		local flipbook = Flipbook.new({
+			image = props.image,
+			frameCount = frameCount,
+			rows = resolveGridRowCount(frameCount, columns),
+			columns = columns,
+			imageRectSize = fallbackFrameSize,
+			frameRate = fps,
+			restFrame = startFrameIndex + 1,
+		})
+		local player = FlipbookPlayer.new(imageLabel)
+		maid:GiveTask(player)
+		player:SetFlipbook(flipbook)
+
+		local alive = true
+		if playing then
+			if looped then
+				player:Play()
+			else
+				player:PromisePlayRepeat(1):Then(function()
+					if alive and props.onCompleted ~= nil then
+						props.onCompleted()
+					end
+				end)
+			end
+		else
+			player:Stop()
+		end
+
+		return function()
+			alive = false
+			maid:DoCleaning()
+		end
+	end, {
+		useNevermoreFlipbook,
+		props.image,
+		frameCount,
+		columns,
+		fallbackFrameSize.X,
+		fallbackFrameSize.Y,
+		fps,
+		playing,
+		looped,
+		startFrameIndex,
+		props.onCompleted,
+	})
+
+	if useNevermoreFlipbook then
+		local activeSlice = resolveGridFrameSlice(startFrameIndex, columns, fallbackFrameSize)
+		local rootProps = {
+			Name = props.name or "Gif",
+			ref = imageRef,
+			Size = props.size or UDim2.fromOffset(fallbackFrameSize.X, fallbackFrameSize.Y),
+			Position = props.position or UDim2.fromScale(0, 0),
+			AnchorPoint = props.anchorPoint or Vector2.new(0, 0),
+			LayoutOrder = props.layoutOrder,
+			Visible = props.visible ~= false,
+			ZIndex = props.zIndex or 1,
+			BackgroundColor3 = props.backgroundColor3,
+			BackgroundTransparency = sanitizeNumber(
+				props.backgroundTransparency,
+				DEFAULT_BACKGROUND_TRANSPARENCY,
+				0,
+				1
+			),
+			BorderSizePixel = if props.borderSizePixel ~= nil then props.borderSizePixel else 0,
+			ClipsDescendants = if props.clipsDescendants ~= nil then props.clipsDescendants else false,
+			Image = props.image,
+			ImageColor3 = props.imageColor3,
+			ImageTransparency = sanitizeNumber(props.imageTransparency, 0, 0, 1),
+			ImageRectOffset = activeSlice.offset,
+			ImageRectSize = activeSlice.size,
+			ScaleType = props.scaleType,
+			SliceCenter = props.sliceCenter,
+			SliceScale = props.sliceScale,
+			ResampleMode = props.resampleMode,
+		}
+
+		if props.native then
+			for index, value in props.native do
+				(rootProps :: any)[index] = value
+			end
+		end
+
+		local children: { [string]: React.ReactNode } = {}
+		if props.children then
+			for childName, child in props.children do
+				children[childName] = child
+			end
+		end
+
+		return e("ImageLabel", rootProps, children)
+	end
 
 	if useViewportMode then
 		local rows = resolveGridRowCount(frameCount, columns)

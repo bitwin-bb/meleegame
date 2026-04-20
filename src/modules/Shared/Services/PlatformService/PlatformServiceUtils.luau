@@ -987,8 +987,8 @@ local DEFAULT_ACTION_DEFINITIONS: { [string]: ActionDefinition } = {
 	},
 	[ACTIONS.HOTBAR_CYCLE] = {
 		actionName = ACTIONS.HOTBAR_CYCLE,
-		displayName = "Cycle Hotbar",
-		description = "Cycle the selected hotbar slot.",
+		displayName = "Scroll Heart Bar",
+		description = "Scroll your heart bar.",
 		priority = 1500,
 		consume = false,
 		allowWhileTyping = false,
@@ -997,7 +997,7 @@ local DEFAULT_ACTION_DEFINITIONS: { [string]: ActionDefinition } = {
 		promptBindingsByPlatform = {
 			KeyboardMouse = {
 				{
-					label = "Wheel",
+					label = "Scroll Wheel",
 				},
 			},
 		},

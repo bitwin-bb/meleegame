@@ -7,6 +7,8 @@ local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local WindFoliage = require(script:FindFirstAncestor("game").Shared.Classes.WindFoliage)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
 
 type JanitorClass = {
 	GiveChore: (self: JanitorClass, chore: any, ...any) -> (any),
@@ -163,9 +165,11 @@ function WindFoliageServiceClient.Init(self: any)
 	local runtime = CoreRuntime.getClientRuntime()
 	local tickScheduler = runtime:getTickScheduler()
 	config.tickScheduler = tickScheduler
+	config.observeTaggedInstances = false
 
 	self.simulation = WindFoliage.new(config)
 	self.simulation:init()
+	self.binders = NevermoreSupport.getService(ClientBinderSupport)
 	self.janitor = Janitor.new()
 	local windField = self.simulation.windField
 	local lodController = self.simulation.lodController
@@ -199,6 +203,7 @@ function WindFoliageServiceClient.Init(self: any)
 
 	local janitor = self.janitor :: JanitorClass
 	janitor:GiveChore(function()
+		self.binders = nil
 		self.weatherWindState = nil
 		if self.simulation ~= nil then
 			self.simulation:destroy()
