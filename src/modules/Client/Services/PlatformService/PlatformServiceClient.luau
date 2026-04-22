@@ -1,16 +1,23 @@
 --!strict
+local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
-local ContextActionService = game:GetService("ContextActionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
+local packageRoot = script:FindFirstAncestor("game").Parent
+local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
+local nevermoreRequire = require(loaderUtils.Parent).load(script)
+
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
+local Rx = nevermoreRequire("Rx")
+local RxSignal = nevermoreRequire("RxSignal")
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
+local PlatformServiceUtils =
+	require(script:FindFirstAncestor("game").Shared.Services.PlatformService.PlatformServiceUtils)
 local PlatformUIScale = require(script:FindFirstAncestor("game").Shared.Services.PlatformService.UIScale)
-local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlatformService.PlatformServiceUtils)
 
 type JanitorClass = {
 	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
@@ -25,6 +32,22 @@ type PromptBinding = PlatformServiceUtils.PromptBinding
 
 type SignalConnection = {
 	Disconnect: (self: SignalConnection) -> (),
+}
+
+type ObservableObject = {
+	Subscribe: (
+		self: ObservableObject,
+		fireCallback: ((...any) -> ())?,
+		failCallback: ((...any) -> ())?,
+		completeCallback: ((...any) -> ())?
+	) -> any,
+	Pipe: (self: ObservableObject, transformers: { any }) -> ObservableObject,
+}
+
+type RxSignalObject = {
+	Connect: (self: RxSignalObject, callback: (...any) -> ()) -> any,
+	Once: (self: RxSignalObject, callback: (...any) -> ()) -> any,
+	Wait: (self: RxSignalObject) -> ...any,
 }
 
 type StateChangedSignal = {
@@ -59,6 +82,23 @@ export type ActionContext = {
 	isPressed: boolean,
 }
 
+type ActionDefinitionChangedSignal = {
+	Connect: (self: ActionDefinitionChangedSignal, callback: (actionName: string) -> ()) -> SignalConnection,
+	Fire: (self: ActionDefinitionChangedSignal, actionName: string) -> (),
+	DisconnectAll: (self: ActionDefinitionChangedSignal) -> (),
+	Destroy: (self: ActionDefinitionChangedSignal) -> (),
+}
+
+type ActionTriggeredSignal = {
+	Connect: (
+		self: ActionTriggeredSignal,
+		callback: (actionName: string, phase: ActionPhase, context: ActionContext) -> ()
+	) -> SignalConnection,
+	Fire: (self: ActionTriggeredSignal, actionName: string, phase: ActionPhase, context: ActionContext) -> (),
+	DisconnectAll: (self: ActionTriggeredSignal) -> (),
+	Destroy: (self: ActionTriggeredSignal) -> (),
+}
+
 export type ActionListener = (phase: ActionPhase, context: ActionContext) -> boolean?
 
 export type PlatformClientState = PlatformStateBase & {
@@ -72,6 +112,7 @@ type ActionRuntime = {
 	boundBindings: { ActionBinding },
 	isBound: boolean,
 	isEnabled: boolean,
+	isObserved: boolean,
 }
 
 local PlatformServiceClient = {}
@@ -223,6 +264,10 @@ local function safeDisconnect(connection: RBXScriptConnection?)
 		return
 	end
 	connection:Disconnect()
+end
+
+local function hasActionSubscribers(actionRuntime: ActionRuntime): boolean
+	return actionRuntime.isObserved == true or next(actionRuntime.listeners) ~= nil
 end
 
 local function cloneState(state: PlatformClientState): PlatformClientState
@@ -451,9 +496,17 @@ function PlatformServiceClient._resolveGamepadFamily(_self: typeof(PlatformServi
 	return "xbox"
 end
 
+function PlatformServiceClient._ensureInitialized(self: typeof(PlatformServiceClient))
+	if self.janitor ~= nil then
+		return
+	end
+
+	self:Init()
+end
+
 function PlatformServiceClient._updateActionBindingsForPlatform(self: typeof(PlatformServiceClient))
 	for _, actionRuntime in self.actions do
-		if next(actionRuntime.listeners) ~= nil then
+		if hasActionSubscribers(actionRuntime) then
 			self:_unbindContextAction(actionRuntime)
 			self:_bindContextAction(actionRuntime)
 		end
@@ -522,6 +575,7 @@ function PlatformServiceClient._ensureActionRuntime(
 		boundBindings = {},
 		isBound = false,
 		isEnabled = true,
+		isObserved = false,
 	}
 	self.actions[actionName] = runtime
 	return runtime
@@ -668,6 +722,9 @@ function PlatformServiceClient._dispatchAction(
 	for _, listener in actionRuntime.listeners do
 		pcall(listener, phase, context)
 	end
+	if self.actionTriggered ~= nil then
+		self.actionTriggered:Fire(actionRuntime.definition.actionName, phase, context)
+	end
 
 	if actionRuntime.definition.consume == true then
 		return Enum.ContextActionResult.Sink
@@ -715,8 +772,38 @@ function PlatformServiceClient.Init(self: typeof(PlatformServiceClient))
 	end
 
 	self.janitor = Janitor.new()
-	self.stateChanged = Signal.new()
-	self.platformChanged = Signal.new()
+	self.stateChanged = Signal.new() :: StateChangedSignal
+	self.platformChanged = Signal.new() :: PlatformChangedSignal
+	self.actionDefinitionChanged = Signal.new() :: ActionDefinitionChangedSignal
+	self.actionTriggered = Signal.new() :: ActionTriggeredSignal
+	self.stateObservable = nil :: ObservableObject?
+	self.platformObservable = nil :: ObservableObject?
+	self.deviceClassObservable = nil :: ObservableObject?
+	self.platformChangedObservable = nil :: ObservableObject?
+	self.uiScaleObservable = nil :: ObservableObject?
+	self.allActionsObservable = nil :: ObservableObject?
+	self.promptObservables = {} :: { [string]: ObservableObject }
+	self.actionObservables = {} :: { [string]: ObservableObject }
+	self.promptSignals = {} :: { [string]: RxSignalObject }
+	self.actionSignals = {} :: { [string]: RxSignalObject }
+	self.stateChangedSignal = RxSignal.new(function(): ObservableObject
+		return self:ObserveState()
+	end) :: RxSignalObject
+	self.platformSignal = RxSignal.new(function(): ObservableObject
+		return self:ObservePlatform()
+	end) :: RxSignalObject
+	self.deviceClassSignal = RxSignal.new(function(): ObservableObject
+		return self:ObserveDeviceClass()
+	end) :: RxSignalObject
+	self.platformChangedSignal = RxSignal.new(function(): ObservableObject
+		return self:ObservePlatformChanged()
+	end) :: RxSignalObject
+	self.uiScaleChangedSignal = RxSignal.new(function(): ObservableObject
+		return self:ObserveUIScale()
+	end) :: RxSignalObject
+	self.actionTriggeredSignal = RxSignal.new(function(): ObservableObject
+		return self:ObserveAllActions()
+	end) :: RxSignalObject
 	self.actions = {}
 	self.lastInputType = nil :: Enum.UserInputType?
 	self.gamepadFamily = self:_resolveGamepadFamily()
@@ -734,6 +821,8 @@ function PlatformServiceClient.Init(self: typeof(PlatformServiceClient))
 	self.janitor:GiveChore(function()
 		self.stateChanged:Destroy()
 		self.platformChanged:Destroy()
+		self.actionDefinitionChanged:Destroy()
+		self.actionTriggered:Destroy()
 	end)
 
 	self.janitor:GiveChore(UserInputService.LastInputTypeChanged:Connect(function(inputType: Enum.UserInputType)
@@ -784,10 +873,12 @@ function PlatformServiceClient.Init(self: typeof(PlatformServiceClient))
 end
 
 function PlatformServiceClient.RequestSync(self: typeof(PlatformServiceClient))
+	self:_ensureInitialized()
 	self:_refreshState(true)
 end
 
 function PlatformServiceClient.GetState(self: typeof(PlatformServiceClient)): PlatformClientState
+	self:_ensureInitialized()
 	if self.state == nil then
 		self:_refreshState(true)
 	end
@@ -815,6 +906,7 @@ function PlatformServiceClient.IsKeyboardMouse(self: typeof(PlatformServiceClien
 end
 
 function PlatformServiceClient.OnPlatformChanged(self: typeof(PlatformServiceClient), callbackRaw: any): () -> ()
+	self:_ensureInitialized()
 	if typeof(callbackRaw) ~= "function" then
 		return function() end
 	end
@@ -824,19 +916,241 @@ function PlatformServiceClient.OnPlatformChanged(self: typeof(PlatformServiceCli
 	end
 end
 
+function PlatformServiceClient.ObserveState(self: typeof(PlatformServiceClient)): ObservableObject
+	self:_ensureInitialized()
+
+	if self.stateObservable == nil then
+		self.stateObservable = Rx.fromSignal(self.stateChanged):Pipe({
+			Rx.start(function()
+				return self:getState()
+			end),
+		}) :: ObservableObject
+	end
+
+	return self.stateObservable :: ObservableObject
+end
+
+function PlatformServiceClient.ObservePlatform(self: typeof(PlatformServiceClient)): ObservableObject
+	self:_ensureInitialized()
+
+	if self.platformObservable == nil then
+		self.platformObservable = self:ObserveState():Pipe({
+			Rx.map(function(state: PlatformClientState): PlatformKind
+				return state.platform
+			end),
+			Rx.distinct() :: any,
+		}) :: ObservableObject
+	end
+
+	return self.platformObservable :: ObservableObject
+end
+
+function PlatformServiceClient.ObserveDeviceClass(self: typeof(PlatformServiceClient)): ObservableObject
+	self:_ensureInitialized()
+
+	if self.deviceClassObservable == nil then
+		self.deviceClassObservable = self:ObserveState():Pipe({
+			Rx.map(function(state: PlatformClientState): string
+				return state.deviceClass
+			end),
+			Rx.distinct() :: any,
+		}) :: ObservableObject
+	end
+
+	return self.deviceClassObservable :: ObservableObject
+end
+
+function PlatformServiceClient.ObservePlatformChanged(self: typeof(PlatformServiceClient)): ObservableObject
+	self:_ensureInitialized()
+
+	if self.platformChangedObservable == nil then
+		self.platformChangedObservable = Rx.fromSignal(self.platformChanged) :: ObservableObject
+	end
+
+	return self.platformChangedObservable :: ObservableObject
+end
+
+function PlatformServiceClient.ObserveUIScale(self: typeof(PlatformServiceClient)): ObservableObject
+	self:_ensureInitialized()
+
+	if self.uiScaleObservable == nil then
+		local uiScale = self.uiScale
+		if uiScale == nil then
+			self.uiScaleObservable = Rx.of(nil) :: ObservableObject
+		else
+			self.uiScaleObservable = Rx.fromSignal((uiScale :: any).changed):Pipe({
+				Rx.start(function()
+					return uiScale:getSnapshot()
+				end),
+			}) :: ObservableObject
+		end
+	end
+
+	return self.uiScaleObservable :: ObservableObject
+end
+
+function PlatformServiceClient.ObserveAllActions(self: typeof(PlatformServiceClient)): ObservableObject
+	self:_ensureInitialized()
+
+	if self.allActionsObservable == nil then
+		self.allActionsObservable = Rx.fromSignal(self.actionTriggered) :: ObservableObject
+	end
+
+	return self.allActionsObservable :: ObservableObject
+end
+
+function PlatformServiceClient.ObserveAction(self: typeof(PlatformServiceClient), actionNameRaw: any): ObservableObject
+	self:_ensureInitialized()
+
+	if typeof(actionNameRaw) ~= "string" or actionNameRaw == "" then
+		return Rx.EMPTY :: ObservableObject
+	end
+
+	local actionName = actionNameRaw :: string
+	local runtime = self:_ensureActionRuntime(actionName)
+	if runtime == nil then
+		return Rx.EMPTY :: ObservableObject
+	end
+
+	runtime.isObserved = true
+	if not runtime.isBound then
+		self:_bindContextAction(runtime)
+	end
+
+	local cached = self.actionObservables[actionName]
+	if cached == nil then
+		cached = self:ObserveAllActions():Pipe({
+			Rx.where(function(triggeredActionName: string): boolean
+				return triggeredActionName == actionName
+			end),
+			Rx.map(function(_triggeredActionName: string, phase: ActionPhase, context: ActionContext)
+				return phase, context
+			end),
+		}) :: ObservableObject
+		self.actionObservables[actionName] = cached
+	end
+
+	return cached
+end
+
+function PlatformServiceClient.ObservePromptForAction(
+	self: typeof(PlatformServiceClient),
+	actionNameRaw: any
+): ObservableObject
+	self:_ensureInitialized()
+
+	if typeof(actionNameRaw) ~= "string" or actionNameRaw == "" then
+		return Rx.of(nil) :: ObservableObject
+	end
+
+	local actionName = actionNameRaw :: string
+	local cached = self.promptObservables[actionName]
+	if cached == nil then
+		cached = Rx.merge({
+			self:ObserveState():Pipe({
+				Rx.map(function()
+					return actionName
+				end),
+			}),
+			Rx.fromSignal(self.actionDefinitionChanged):Pipe({
+				Rx.where(function(changedActionName: string): boolean
+					return changedActionName == actionName
+				end),
+			}),
+		}):Pipe({
+			Rx.map(function()
+				return self:getPromptForAction(actionName)
+			end),
+		}) :: ObservableObject
+		self.promptObservables[actionName] = cached
+	end
+
+	return cached
+end
+
+function PlatformServiceClient.GetStateChangedSignal(self: typeof(PlatformServiceClient)): RxSignalObject
+	self:_ensureInitialized()
+	return self.stateChangedSignal :: RxSignalObject
+end
+
+function PlatformServiceClient.GetPlatformSignal(self: typeof(PlatformServiceClient)): RxSignalObject
+	self:_ensureInitialized()
+	return self.platformSignal :: RxSignalObject
+end
+
+function PlatformServiceClient.GetDeviceClassSignal(self: typeof(PlatformServiceClient)): RxSignalObject
+	self:_ensureInitialized()
+	return self.deviceClassSignal :: RxSignalObject
+end
+
+function PlatformServiceClient.GetPlatformChangedSignal(self: typeof(PlatformServiceClient)): RxSignalObject
+	self:_ensureInitialized()
+	return self.platformChangedSignal :: RxSignalObject
+end
+
+function PlatformServiceClient.GetUIScaleChangedSignal(self: typeof(PlatformServiceClient)): RxSignalObject
+	self:_ensureInitialized()
+	return self.uiScaleChangedSignal :: RxSignalObject
+end
+
+function PlatformServiceClient.GetActionTriggeredSignal(self: typeof(PlatformServiceClient)): RxSignalObject
+	self:_ensureInitialized()
+	return self.actionTriggeredSignal :: RxSignalObject
+end
+
+function PlatformServiceClient.GetActionSignal(self: typeof(PlatformServiceClient), actionNameRaw: any): RxSignalObject
+	self:_ensureInitialized()
+
+	if typeof(actionNameRaw) ~= "string" or actionNameRaw == "" then
+		return RxSignal.new(Rx.EMPTY) :: RxSignalObject
+	end
+
+	local actionName = actionNameRaw :: string
+	local cached = self.actionSignals[actionName]
+	if cached == nil then
+		cached = RxSignal.new(function(): ObservableObject
+			return self:ObserveAction(actionName)
+		end) :: RxSignalObject
+		self.actionSignals[actionName] = cached
+	end
+
+	return cached
+end
+
+function PlatformServiceClient.GetPromptSignal(self: typeof(PlatformServiceClient), actionNameRaw: any): RxSignalObject
+	self:_ensureInitialized()
+
+	if typeof(actionNameRaw) ~= "string" or actionNameRaw == "" then
+		return RxSignal.new(Rx.of(nil)) :: RxSignalObject
+	end
+
+	local actionName = actionNameRaw :: string
+	local cached = self.promptSignals[actionName]
+	if cached == nil then
+		cached = RxSignal.new(function(): ObservableObject
+			return self:ObservePromptForAction(actionName)
+		end) :: RxSignalObject
+		self.promptSignals[actionName] = cached
+	end
+
+	return cached
+end
+
 function PlatformServiceClient.RegisterAction(
 	self: typeof(PlatformServiceClient),
 	actionNameRaw: any,
 	definitionRaw: any
 ): boolean
+	self:_ensureInitialized()
 	local runtime = self:_ensureActionRuntime(actionNameRaw, definitionRaw)
 	if runtime == nil then
 		return false
 	end
 	self:_unbindContextAction(runtime)
-	if next(runtime.listeners) ~= nil then
+	if hasActionSubscribers(runtime) then
 		self:_bindContextAction(runtime)
 	end
+	self.actionDefinitionChanged:Fire(runtime.definition.actionName)
 	return true
 end
 
@@ -847,6 +1161,7 @@ function PlatformServiceClient.RebindAction(
 	bindingsRaw: any,
 	promptBindingsRaw: any?
 ): boolean
+	self:_ensureInitialized()
 	local runtime = self:_ensureActionRuntime(actionNameRaw)
 	if runtime == nil then
 		return false
@@ -859,9 +1174,10 @@ function PlatformServiceClient.RebindAction(
 		runtime.definition.promptBindingsByPlatform[platformKind] = sanitizeBindingsTable(promptBindingsRaw)
 	end
 	self:_unbindContextAction(runtime)
-	if next(runtime.listeners) ~= nil then
+	if hasActionSubscribers(runtime) then
 		self:_bindContextAction(runtime)
 	end
+	self.actionDefinitionChanged:Fire(runtime.definition.actionName)
 	return true
 end
 
@@ -870,6 +1186,7 @@ function PlatformServiceClient.SetActionEnabled(
 	actionNameRaw: any,
 	enabledRaw: any
 ): boolean
+	self:_ensureInitialized()
 	if typeof(actionNameRaw) ~= "string" then
 		return false
 	end
@@ -879,7 +1196,7 @@ function PlatformServiceClient.SetActionEnabled(
 	end
 	runtime.isEnabled = enabledRaw == true
 	self:_unbindContextAction(runtime)
-	if runtime.isEnabled and next(runtime.listeners) ~= nil then
+	if runtime.isEnabled and hasActionSubscribers(runtime) then
 		self:_bindContextAction(runtime)
 	end
 	return true
@@ -891,12 +1208,16 @@ function PlatformServiceClient.BindAction(
 	callbackRaw: any,
 	overrideDefinitionRaw: any?
 ): (() -> ())?
+	self:_ensureInitialized()
 	if typeof(callbackRaw) ~= "function" then
 		return nil
 	end
 	local runtime = self:_ensureActionRuntime(actionNameRaw, overrideDefinitionRaw)
 	if runtime == nil then
 		return nil
+	end
+	if overrideDefinitionRaw ~= nil then
+		self.actionDefinitionChanged:Fire(runtime.definition.actionName)
 	end
 	runtime.nextListenerId += 1
 	local listenerId = runtime.nextListenerId
@@ -910,7 +1231,7 @@ function PlatformServiceClient.BindAction(
 			return
 		end
 		actionRuntime.listeners[listenerId] = nil
-		if next(actionRuntime.listeners) == nil then
+		if not hasActionSubscribers(actionRuntime) then
 			self:_unbindContextAction(actionRuntime)
 		end
 	end
@@ -920,6 +1241,7 @@ function PlatformServiceClient.GetPromptForAction(
 	self: typeof(PlatformServiceClient),
 	actionNameRaw: any
 ): PromptBinding?
+	self:_ensureInitialized()
 	if typeof(actionNameRaw) ~= "string" then
 		return nil
 	end
@@ -976,10 +1298,12 @@ function PlatformServiceClient.GetPromptForAction(
 end
 
 function PlatformServiceClient.GetUIScale(self: typeof(PlatformServiceClient)): any?
+	self:_ensureInitialized()
 	return self.uiScale
 end
 
 function PlatformServiceClient.SetScreenGui(self: typeof(PlatformServiceClient), screenGuiRaw: any): boolean
+	self:_ensureInitialized()
 	if self.uiScale == nil then
 		return false
 	end
@@ -987,6 +1311,7 @@ function PlatformServiceClient.SetScreenGui(self: typeof(PlatformServiceClient),
 end
 
 function PlatformServiceClient.SetScaleTarget(self: typeof(PlatformServiceClient), targetRaw: any): boolean
+	self:_ensureInitialized()
 	if self.uiScale == nil then
 		return false
 	end
@@ -994,10 +1319,12 @@ function PlatformServiceClient.SetScaleTarget(self: typeof(PlatformServiceClient
 end
 
 function PlatformServiceClient.Destroy(self: typeof(PlatformServiceClient))
-	for _, actionRuntime in self.actions do
-		self:_unbindContextAction(actionRuntime)
+	if typeof(self.actions) == "table" then
+		for _, actionRuntime in self.actions do
+			self:_unbindContextAction(actionRuntime)
+		end
+		table.clear(self.actions)
 	end
-	table.clear(self.actions)
 	if self.janitor ~= nil then
 		self.janitor:Destroy()
 		self.janitor = nil
@@ -1005,6 +1332,40 @@ function PlatformServiceClient.Destroy(self: typeof(PlatformServiceClient))
 	self.runtimeContext = nil
 	self.state = nil
 	self.lastInputType = nil
+	self.gamepadFamily = nil
+	self.stateObservable = nil
+	self.platformObservable = nil
+	self.deviceClassObservable = nil
+	self.platformChangedObservable = nil
+	self.uiScaleObservable = nil
+	self.allActionsObservable = nil
+	self.stateChanged = nil
+	self.platformChanged = nil
+	self.actionDefinitionChanged = nil
+	self.actionTriggered = nil
+	self.stateChangedSignal = nil
+	self.platformSignal = nil
+	self.deviceClassSignal = nil
+	self.platformChangedSignal = nil
+	self.uiScaleChangedSignal = nil
+	self.actionTriggeredSignal = nil
+	if typeof(self.promptObservables) == "table" then
+		table.clear(self.promptObservables)
+	end
+	if typeof(self.actionObservables) == "table" then
+		table.clear(self.actionObservables)
+	end
+	if typeof(self.promptSignals) == "table" then
+		table.clear(self.promptSignals)
+	end
+	if typeof(self.actionSignals) == "table" then
+		table.clear(self.actionSignals)
+	end
+	self.promptObservables = nil
+	self.actionObservables = nil
+	self.promptSignals = nil
+	self.actionSignals = nil
+	self.actions = nil
 end
 
 PlatformServiceClient.init = PlatformServiceClient.Init
@@ -1016,6 +1377,22 @@ PlatformServiceClient.isTouch = PlatformServiceClient.IsTouch
 PlatformServiceClient.isGamepad = PlatformServiceClient.IsGamepad
 PlatformServiceClient.isKeyboardMouse = PlatformServiceClient.IsKeyboardMouse
 PlatformServiceClient.onPlatformChanged = PlatformServiceClient.OnPlatformChanged
+PlatformServiceClient.observeState = PlatformServiceClient.ObserveState
+PlatformServiceClient.observePlatform = PlatformServiceClient.ObservePlatform
+PlatformServiceClient.observeDeviceClass = PlatformServiceClient.ObserveDeviceClass
+PlatformServiceClient.observePlatformChanged = PlatformServiceClient.ObservePlatformChanged
+PlatformServiceClient.observeUIScale = PlatformServiceClient.ObserveUIScale
+PlatformServiceClient.observeAllActions = PlatformServiceClient.ObserveAllActions
+PlatformServiceClient.observeAction = PlatformServiceClient.ObserveAction
+PlatformServiceClient.observePromptForAction = PlatformServiceClient.ObservePromptForAction
+PlatformServiceClient.getStateChangedSignal = PlatformServiceClient.GetStateChangedSignal
+PlatformServiceClient.getPlatformSignal = PlatformServiceClient.GetPlatformSignal
+PlatformServiceClient.getDeviceClassSignal = PlatformServiceClient.GetDeviceClassSignal
+PlatformServiceClient.getPlatformChangedSignal = PlatformServiceClient.GetPlatformChangedSignal
+PlatformServiceClient.getUIScaleChangedSignal = PlatformServiceClient.GetUIScaleChangedSignal
+PlatformServiceClient.getActionTriggeredSignal = PlatformServiceClient.GetActionTriggeredSignal
+PlatformServiceClient.getActionSignal = PlatformServiceClient.GetActionSignal
+PlatformServiceClient.getPromptSignal = PlatformServiceClient.GetPromptSignal
 PlatformServiceClient.registerAction = PlatformServiceClient.RegisterAction
 PlatformServiceClient.rebindAction = PlatformServiceClient.RebindAction
 PlatformServiceClient.setActionEnabled = PlatformServiceClient.SetActionEnabled

@@ -261,6 +261,9 @@ return {
 		Craft = "rbxassetid://98310051876142",
 		Drag = "rbxassetid://74396890203317",
 	},
+	System = {
+		Notification = "rbxassetid://131390520971848",
+	},
 	Misc = {
 		Tree = {
 			Impact = {},
@@ -299,6 +302,6 @@ return {
 				"rbxassetid://139319051979882",
 				"rbxassetid://118514478805322",
 			},
-		}
+		},
 	},
 }

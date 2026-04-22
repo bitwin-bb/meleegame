@@ -1,4 +1,5 @@
 --!strict
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
@@ -35,6 +36,7 @@ type ChunkAnimationState = {
 	animationType: ChunkAnimationType,
 	easing: ChunkAnimationEasing,
 	destroyConnection: RBXScriptConnection?,
+	isStopping: boolean?,
 }
 
 type StartAnimationResult = "started" | "retry" | "skip"
@@ -66,6 +68,12 @@ local function collectModelParts(model: Model, maxCount: number): { BasePart }
 		end
 	end
 	return parts
+end
+
+local function clearCollectionTags(instance: Instance)
+	for _, tag in CollectionService:GetTags(instance) do
+		CollectionService:RemoveTag(instance, tag)
+	end
 end
 
 local function resolveChunkIdentityKey(chunkModel: Model): string?
@@ -164,6 +172,24 @@ function WorldAnimatorServiceClient.RestoreOriginalChunkVisibility(self: WorldAn
 end
 
 function WorldAnimatorServiceClient.StopAnimation(self: WorldAnimatorServiceClient, animation: ChunkAnimationState, revealOriginal: boolean)
+	if animation.isStopping then
+		return
+	end
+	animation.isStopping = true
+
+	self.animationsByChunk[animation.chunkModel] = nil
+	for index = #self.activeAnimations, 1, -1 do
+		if self.activeAnimations[index] == animation then
+			table.remove(self.activeAnimations, index)
+			break
+		end
+	end
+
+	if animation.destroyConnection ~= nil then
+		animation.destroyConnection:Disconnect()
+		animation.destroyConnection = nil
+	end
+
 	pcall(function()
 		animation.chunkModel:SetAttribute(ANIMATING_WORLD_ANIMATOR_ATTRIBUTE, false)
 	end)
@@ -172,21 +198,8 @@ function WorldAnimatorServiceClient.StopAnimation(self: WorldAnimatorServiceClie
 		self:restoreOriginalChunkVisibility(animation)
 	end
 
-	if animation.destroyConnection ~= nil then
-		animation.destroyConnection:Disconnect()
-		animation.destroyConnection = nil
-	end
-
 	if animation.visualModel.Parent ~= nil then
 		animation.visualModel:Destroy()
-	end
-
-	self.animationsByChunk[animation.chunkModel] = nil
-	for index = #self.activeAnimations, 1, -1 do
-		if self.activeAnimations[index] == animation then
-			table.remove(self.activeAnimations, index)
-			break
-		end
 	end
 end
 
@@ -305,10 +318,14 @@ function WorldAnimatorServiceClient.StartChunkAnimation(self: WorldAnimatorServi
 
 	local visualClone = chunkModel:Clone()
 	visualClone.Name = `{chunkModel.Name}_ChunkAnim`
+	-- Visual clones must not keep gameplay tags, or binders/tag observers will recurse on them.
+	visualClone:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, true)
+	clearCollectionTags(visualClone)
 
 	local cloneParts = {}
 	local cloneBaseTransparency = {}
 	for _, descendant in visualClone:GetDescendants() do
+		clearCollectionTags(descendant)
 		if descendant:IsA("Script") or descendant:IsA("LocalScript") or descendant:IsA("ModuleScript") then
 			descendant:Destroy()
 		elseif descendant:IsA("BasePart") then
@@ -359,6 +376,7 @@ function WorldAnimatorServiceClient.StartChunkAnimation(self: WorldAnimatorServi
 		animationType = self.settings.animationType,
 		easing = self.settings.easing,
 		destroyConnection = nil,
+		isStopping = false,
 	}
 
 	animation.destroyConnection = chunkModel.Destroying:Connect(function()

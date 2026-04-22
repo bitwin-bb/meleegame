@@ -6,6 +6,9 @@ local ChunkBinder = {}
 ChunkBinder.__index = ChunkBinder
 setmetatable(ChunkBinder, ModelBinder)
 
+local SKIP_WORLD_ANIMATOR_ATTRIBUTE = "SkipWorldAnimator"
+local WORLD_ANIMATOR_RUNTIME_FOLDER_NAME = "WorldAnimatorRuntime"
+
 local worldAnimatorServiceClient = nil
 
 local function getWorldAnimatorServiceClient()
@@ -16,12 +19,33 @@ local function getWorldAnimatorServiceClient()
 	return worldAnimatorServiceClient
 end
 
+local function isInWorldAnimatorRuntime(instance: Instance): boolean
+	local current = instance.Parent
+	while current ~= nil do
+		if current.Name == WORLD_ANIMATOR_RUNTIME_FOLDER_NAME then
+			return true
+		end
+		current = current.Parent
+	end
+	return false
+end
+
+local function shouldNotifyWorldAnimator(model: Model?): boolean
+	if model == nil then
+		return false
+	end
+	if model:GetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE) == true then
+		return false
+	end
+	return not isInWorldAnimatorRuntime(model)
+end
+
 function ChunkBinder.new(instance: Instance, context: any)
 	local self = ModelBinder.new(instance, context, ChunkBinder)
 	self.model = self:GetModel()
 	self:updateMetadata()
 
-	if self.model ~= nil then
+	if shouldNotifyWorldAnimator(self.model) then
 		pcall(function()
 			getWorldAnimatorServiceClient():onChunkAdded(self.model)
 		end)
@@ -39,7 +63,7 @@ function ChunkBinder.updateMetadata(self: any)
 end
 
 function ChunkBinder.Cleanup(self: any)
-	if self.model ~= nil then
+	if shouldNotifyWorldAnimator(self.model) then
 		pcall(function()
 			getWorldAnimatorServiceClient():onChunkRemoved(self.model)
 		end)

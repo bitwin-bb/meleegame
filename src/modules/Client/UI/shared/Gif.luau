@@ -48,6 +48,7 @@ export type GifProps = {
 	sliceCenter: Rect?,
 	sliceScale: number?,
 	resampleMode: Enum.ResamplerMode?,
+	preferNevermoreFlipbook: boolean?,
 	native: { [any]: any }?,
 	children: { [string]: React.ReactNode }?,
 }
@@ -81,10 +82,7 @@ local function sanitizeVector2PositivePixels(value: any, fallback: Vector2): Vec
 		return fallback
 	end
 
-	return Vector2.new(
-		math.max(1, math.floor(value.X + 0.5)),
-		math.max(1, math.floor(value.Y + 0.5))
-	)
+	return Vector2.new(math.max(1, math.floor(value.X + 0.5)), math.max(1, math.floor(value.Y + 0.5)))
 end
 
 local function sanitizeVector2NonNegativePixels(value: any, fallback: Vector2): Vector2
@@ -95,10 +93,7 @@ local function sanitizeVector2NonNegativePixels(value: any, fallback: Vector2): 
 		return fallback
 	end
 
-	return Vector2.new(
-		math.max(0, math.floor(value.X + 0.5)),
-		math.max(0, math.floor(value.Y + 0.5))
-	)
+	return Vector2.new(math.max(0, math.floor(value.X + 0.5)), math.max(0, math.floor(value.Y + 0.5)))
 end
 
 local function clampFrameIndex(frameIndexRaw: any, frameCount: number): number
@@ -272,10 +267,14 @@ local function Gif(props: GifProps)
 
 	local hasExplicitRects = #explicitSlices > 0
 	local hasGridOffset = frameOrigin ~= Vector2.zero or framePadding ~= Vector2.zero
-	local useNevermoreFlipbook = (not hasExplicitRects)
-		and (not hasGridOffset)
+	-- Flipbook slices by absolute pixels, so a re-exported sheet can drift if its
+	-- resolution changes but the grid layout stays the same. The viewport path only
+	-- depends on rows/columns, so keep it as the default and make Flipbook opt-in.
+	local useNevermoreFlipbook = props.preferNevermoreFlipbook == true
+		and (not hasExplicitRects)
+		and not hasGridOffset
 		and props.onLooped == nil
-	local useViewportMode = (not hasExplicitRects) and (not hasGridOffset)
+	local useViewportMode = (not hasExplicitRects) and not hasGridOffset
 
 	React.useEffect(function()
 		if not useNevermoreFlipbook then
@@ -414,7 +413,6 @@ local function Gif(props: GifProps)
 
 		local children: { [string]: React.ReactNode } = {
 			SpriteSheet = e("ImageLabel", {
-				Name = "SpriteSheet",
 				Size = UDim2.fromScale(columns, rows),
 				Position = UDim2.fromScale(-column, -row),
 				BackgroundTransparency = 1,
@@ -453,12 +451,7 @@ local function Gif(props: GifProps)
 		Visible = props.visible ~= false,
 		ZIndex = props.zIndex or 1,
 		BackgroundColor3 = props.backgroundColor3,
-		BackgroundTransparency = sanitizeNumber(
-			props.backgroundTransparency,
-			DEFAULT_BACKGROUND_TRANSPARENCY,
-			0,
-			1
-		),
+		BackgroundTransparency = sanitizeNumber(props.backgroundTransparency, DEFAULT_BACKGROUND_TRANSPARENCY, 0, 1),
 		BorderSizePixel = if props.borderSizePixel ~= nil then props.borderSizePixel else 0,
 		ClipsDescendants = if props.clipsDescendants ~= nil then props.clipsDescendants else false,
 		Image = props.image,
