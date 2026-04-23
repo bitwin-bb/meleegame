@@ -3,7 +3,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Camera = require(script:FindFirstAncestor("game").Shared.Classes.Camera)
 local CameraServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.CameraService.CameraServiceUtils)
@@ -176,3 +176,4 @@ type CameraServiceClient = typeof(CameraServiceClient) & {
 }
 
 return CameraServiceClient :: CameraServiceClient
+

@@ -5,7 +5,7 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
@@ -361,3 +361,4 @@ type InventoryServiceClient = typeof(InventoryServiceClient) & {
 }
 
 return InventoryServiceClient :: InventoryServiceClient
+

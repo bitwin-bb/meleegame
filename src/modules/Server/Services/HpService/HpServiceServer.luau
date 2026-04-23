@@ -3,7 +3,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Cmdr.CmdrUtils)
 local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.HpService.HpServiceUtils)
@@ -706,3 +706,4 @@ export type HpServiceServer = typeof(HpServiceServer) & {
 }
 
 return HpServiceServer :: HpServiceServer
+

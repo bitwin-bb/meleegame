@@ -3,13 +3,12 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local CraftingServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.CraftingService.CraftingServiceUtils)
-local NevermoreNotificationServiceClient =
-	require(script:FindFirstAncestor("game").Client.Services.NevermoreNotificationServiceClient)
+local SnackbarNotifications = require(script:FindFirstAncestor("game").Client.SnackbarNotifications)
 local InventoryServiceClient = require(script:FindFirstAncestor("game").Client.Services.InventoryService.InventoryServiceClient)
 local PlayerDataServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlayerDataService.PlayerDataServiceClient)
 local WorldGenerationServiceClient =
@@ -209,7 +208,7 @@ function CraftingServiceClient.OnCraftResult(self: CraftingServiceClient, result
 		updatedAt = os.clock(),
 	}
 	if self.lastCraftResult.success ~= true or self.bulkCraftToken == nil then
-		NevermoreNotificationServiceClient.showCraftResult(self.lastCraftResult, self)
+		SnackbarNotifications.showCraftResult(self.lastCraftResult, self)
 	end
 	self:emitStateChanged()
 end
@@ -578,3 +577,4 @@ type CraftingServiceClient = typeof(CraftingServiceClient) & {
 }
 
 return CraftingServiceClient :: CraftingServiceClient
+

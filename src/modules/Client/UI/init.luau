@@ -8,8 +8,7 @@ local RootUI = require(script:FindFirstAncestor("game").Client.UI.app.RootUI)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 local React = require(ReplicatedStorage.Packages.React)
 local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformService.PlatformServiceClient)
-local NevermoreNotificationServiceClient =
-	require(script:FindFirstAncestor("game").Client.Services.NevermoreNotificationServiceClient)
+local SnackbarNotifications = require(script:FindFirstAncestor("game").Client.SnackbarNotifications)
 
 local e: typeof(React.createElement) = React.createElement
 
@@ -62,7 +61,7 @@ local root = ReactRoblox.createRoot(uiCanvas)
 return function()
 	PlatformServiceClient:setScreenGui(uiRoot)
 	PlatformServiceClient:setScaleTarget(uiCanvas)
-	NevermoreNotificationServiceClient:setScreenGui(uiRoot)
+	SnackbarNotifications.attachToScreenGui(uiRoot)
 	root:render(e(RootUI, {
 		currentScreen = nil,
 	}))

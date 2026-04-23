@@ -5,7 +5,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
@@ -971,3 +971,4 @@ type PlayerServiceClient = typeof(PlayerServiceClient) & {
 }
 
 return PlayerServiceClient :: PlayerServiceClient
+

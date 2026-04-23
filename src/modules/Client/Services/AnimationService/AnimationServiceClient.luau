@@ -2,7 +2,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local AnimationServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AnimationService.AnimationServiceUtils)
 local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerService.PlayerServiceUtils)
@@ -585,4 +585,5 @@ type AnimationServiceClient = typeof(AnimationServiceClient) & {
 }
 
 return AnimationServiceClient :: AnimationServiceClient
+
 

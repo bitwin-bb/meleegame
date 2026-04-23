@@ -6,7 +6,7 @@ local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
@@ -825,4 +825,5 @@ type AudioServiceClient = typeof(AudioServiceClient) & {
 }
 
 return AudioServiceClient :: AudioServiceClient
+
 

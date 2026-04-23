@@ -1,0 +1,29 @@
+option ServerOutput = "./BlinkServer.luau"
+option ClientOutput = "./BlinkClient.luau"
+option RemoteScope = "AQUARIA_NETWORKER"
+
+struct PackedArguments {
+    Count: u16,
+    NilIndices: u16[],
+    Values: unknown[]
+}
+
+event ServerToClient {
+    From: Server,
+    Type: Reliable,
+    Call: ManyAsync,
+    Data: (string, string, PackedArguments)
+}
+
+event ClientToServer {
+    From: Client,
+    Type: Reliable,
+    Call: SingleAsync,
+    Data: (string, string, PackedArguments)
+}
+
+function ClientFetch {
+    Yield: Coroutine,
+    Data: (string, string, PackedArguments),
+    Return: PackedArguments
+}

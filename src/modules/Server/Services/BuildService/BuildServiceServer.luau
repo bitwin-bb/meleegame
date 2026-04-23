@@ -7,7 +7,7 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local MiningPower = require(script:FindFirstAncestor("game").Shared.Modules.Math.MiningPower)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
@@ -1734,3 +1734,4 @@ type BuildServiceServer = typeof(BuildServiceServer) & {
 }
 
 return BuildServiceServer :: BuildServiceServer
+

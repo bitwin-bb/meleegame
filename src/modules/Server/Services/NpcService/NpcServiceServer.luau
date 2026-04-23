@@ -6,7 +6,7 @@ local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
@@ -2260,3 +2260,4 @@ type NpcServiceServer = typeof(NpcServiceServer) & {
 }
 
 return NpcServiceServer :: NpcServiceServer
+

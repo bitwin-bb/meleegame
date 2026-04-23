@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
 local packageRoot = script:FindFirstAncestor("game").Parent
@@ -587,3 +587,4 @@ type WorldSimulationServiceClient = typeof(WorldSimulationServiceClient) & {
 }
 
 return WorldSimulationServiceClient :: WorldSimulationServiceClient
+

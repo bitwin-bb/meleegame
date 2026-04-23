@@ -2,7 +2,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local ManaServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.ManaService.ManaServiceUtils)
@@ -122,3 +122,4 @@ export type ManaServiceClient = typeof(ManaServiceClient) & {
 }
 
 return ManaServiceClient :: ManaServiceClient
+

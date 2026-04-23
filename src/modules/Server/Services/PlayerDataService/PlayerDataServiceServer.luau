@@ -2,7 +2,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
@@ -992,3 +992,4 @@ type PlayerDataServiceServer = typeof(PlayerDataServiceServer) & {
 }
 
 return PlayerDataServiceServer :: PlayerDataServiceServer
+

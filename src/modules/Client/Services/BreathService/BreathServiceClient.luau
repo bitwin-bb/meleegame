@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local BreathServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BreathService.BreathServiceUtils)
@@ -177,3 +177,4 @@ type BreathServiceClient = typeof(BreathServiceClient) & {
 }
 
 return BreathServiceClient :: BreathServiceClient
+

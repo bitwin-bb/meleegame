@@ -5,7 +5,7 @@ local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.WeatherService.WeatherServiceUtils)
 local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerService.PlayerServiceServer)
@@ -271,3 +271,4 @@ export type WeatherServiceServer = typeof(WeatherServiceServer) & {
 }
 
 return WeatherServiceServer :: WeatherServiceServer
+

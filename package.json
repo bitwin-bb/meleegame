@@ -4,6 +4,7 @@
   "packageManager": "pnpm@10.27.0",
   "scripts": {
     "build:sourcemap": "rojo sourcemap default.project.json --output sourcemap.json --absolute",
+    "build:networker": "blink src/modules/Shared/Modules/Networking/Networker.blink -y",
     "format": "stylua --config-path=stylua.toml src",
     "lint:luau": "luau-lsp analyze --sourcemap=sourcemap.json --base-luaurc=.luaurc --flag:LuauSolverV2=false --ignore=**/node_modules/** --ignore=**/*.story.lua --ignore=**/*.client.lua --ignore=**/*.server.lua src",
     "lint:moonwave": "moonwave-extractor extract src",

@@ -13,7 +13,7 @@ local RxSignal = nevermoreRequire("RxSignal")
 local Signal = nevermoreRequire("Signal")
 
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
 local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerService.PlayerServiceServer)
 local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
@@ -1173,3 +1173,4 @@ type WorldGenerationServiceServer = typeof(WorldGenerationServiceServer) & {
 }
 
 return WorldGenerationServiceServer :: WorldGenerationServiceServer
+

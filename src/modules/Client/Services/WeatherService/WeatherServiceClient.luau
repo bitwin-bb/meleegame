@@ -7,7 +7,7 @@ local Terrain = workspace.Terrain
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local CameraShaker = require(ReplicatedStorage.Packages.EZCameraShake)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
@@ -1339,3 +1339,4 @@ type WeatherServiceClient = typeof(WeatherServiceClient) & {
 }
 
 return WeatherServiceClient :: WeatherServiceClient
+

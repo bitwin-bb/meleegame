@@ -4,7 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local CraftingServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.CraftingService.CraftingServiceUtils)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryService.InventoryServiceUtils)
@@ -756,3 +756,4 @@ type CraftingServiceServer = typeof(CraftingServiceServer) & {
 }
 
 return CraftingServiceServer :: CraftingServiceServer
+

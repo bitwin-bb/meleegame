@@ -6,7 +6,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local GoreServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.GoreService.GoreServiceUtils)
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Gore = require(script:FindFirstAncestor("game").Shared.Classes.Gore)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
@@ -548,3 +548,4 @@ type GoreServiceClient = typeof(GoreServiceClient) & {
 }
 
 return GoreServiceClient :: GoreServiceClient
+

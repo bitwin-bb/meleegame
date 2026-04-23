@@ -6,7 +6,7 @@ local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
 local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
@@ -986,3 +986,4 @@ type BossServiceServer = typeof(BossServiceServer) & {
 }
 
 return BossServiceServer :: BossServiceServer
+

@@ -6,7 +6,7 @@ local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local Matter = require(ReplicatedStorage.Packages.Matter)
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Plasma = require(ReplicatedStorage.Packages.Plasma)
 local CoreConfigs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Cmdr.CmdrUtils)
@@ -615,3 +615,4 @@ type WorldSimulationServiceServer = typeof(WorldSimulationServiceServer) & {
 }
 
 return WorldSimulationServiceServer :: WorldSimulationServiceServer
+

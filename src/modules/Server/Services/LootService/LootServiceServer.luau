@@ -6,7 +6,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
 local StringUtils = require(script:FindFirstAncestor("game").Shared.Modules.Core.StringUtils)
 local Vec = require(script:FindFirstAncestor("game").Shared.Modules.Math.Vec)
@@ -1774,3 +1774,4 @@ type LootServiceServer = typeof(LootServiceServer) & {
 }
 
 return LootServiceServer :: LootServiceServer
+

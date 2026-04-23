@@ -6,7 +6,7 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
@@ -2772,3 +2772,4 @@ type LiquidServiceServer = typeof(LiquidServiceServer) & {
 }
 
 return LiquidServiceServer :: LiquidServiceServer
+

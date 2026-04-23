@@ -3,7 +3,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local RaycastHitbox = require(ReplicatedStorage.Packages.RaycastHitbox)
 local CameraShaker = require(ReplicatedStorage.Packages.EZCameraShake)
@@ -1326,3 +1326,4 @@ type MeleeServiceClient = typeof(MeleeServiceClient) & {
 }
 
 return MeleeServiceClient :: MeleeServiceClient
+

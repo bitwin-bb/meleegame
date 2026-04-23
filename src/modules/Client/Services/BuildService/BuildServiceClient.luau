@@ -8,15 +8,14 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
 local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
-local NevermoreNotificationServiceClient =
-	require(script:FindFirstAncestor("game").Client.Services.NevermoreNotificationServiceClient)
+local SnackbarNotifications = require(script:FindFirstAncestor("game").Client.SnackbarNotifications)
 local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformService.PlatformServiceClient)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local Rubble = require(script:FindFirstAncestor("game").Shared.Classes.Rubble)
@@ -1511,7 +1510,7 @@ function BuildServiceClient.OnActionResult(self: BuildServiceClient, payloadRaw:
 	end
 
 	if not accepted then
-		NevermoreNotificationServiceClient.showBuildActionRejected(payload.actionType, reason)
+		SnackbarNotifications.showBuildActionRejected(payload.actionType, reason)
 		self.actionRejected:Fire(payload.actionType, reason, requestId)
 		return
 	end
@@ -2195,3 +2194,4 @@ type BuildServiceClient = typeof(BuildServiceClient) & {
 }
 
 return BuildServiceClient :: BuildServiceClient
+

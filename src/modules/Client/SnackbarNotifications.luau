@@ -8,13 +8,18 @@ local ScreenGuiService = nevermoreRequire("ScreenGuiService")
 local SnackbarServiceClient = nevermoreRequire("SnackbarServiceClient")
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
 local AquariaBackupTranslator = require(script:FindFirstAncestor("game").Shared.AquariaBackupTranslator)
+local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
+local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioService.AudioServiceClient)
+local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioService.AudioServiceUtils)
 
-local NevermoreNotificationServiceClient = {}
+local SnackbarNotifications = {}
 
 local screenGuiCleanup = nil :: (() -> ())?
 local lastShownAtByKey = {} :: { [string]: number }
 
 local DEFAULT_DEDUPE_WINDOW_SECONDS = 0.6
+local SYSTEM_AUDIO = (AudioRegistry :: any).System or {}
+local NOTIFICATION_SOUND_ASSET_ID = AudioServiceUtils.normalizeSoundAssetId(SYSTEM_AUDIO.Notification)
 
 local function getTranslator()
 	return NevermoreSupport.getService(AquariaBackupTranslator)
@@ -26,6 +31,46 @@ end
 
 local function getSnackbarService()
 	return NevermoreSupport.getService(SnackbarServiceClient)
+end
+
+local function playNotificationSound()
+	if NOTIFICATION_SOUND_ASSET_ID == nil or AudioServiceClient.categoryGroups == nil then
+		return
+	end
+
+	AudioServiceClient:playUi(NOTIFICATION_SOUND_ASSET_ID, {
+		replaceChannel = false,
+	})
+end
+
+local function playNotificationSoundWhenShown(snackbar: any)
+	if snackbar == nil then
+		return
+	end
+
+	if typeof((snackbar :: any).IsVisible) == "function" and (snackbar :: any):IsVisible() then
+		playNotificationSound()
+		return
+	end
+
+	if typeof((snackbar :: any).VisibleChanged) ~= "table" or typeof((snackbar :: any).VisibleChanged.Connect) ~= "function" then
+		playNotificationSound()
+		return
+	end
+
+	local connection: RBXScriptConnection?
+	connection = (snackbar :: any).VisibleChanged:Connect(function(isVisible: boolean)
+		if not isVisible then
+			return
+		end
+
+		if connection ~= nil then
+			connection:Disconnect()
+			connection = nil
+		end
+
+		playNotificationSound()
+	end)
 end
 
 local function trim(valueRaw: any): string
@@ -97,7 +142,7 @@ local function resolveRecipeDisplayName(craftingServiceRaw: any, recipeIdRaw: an
 	return humanizeReason(recipeId)
 end
 
-function NevermoreNotificationServiceClient.SetScreenGui(screenGui: ScreenGui)
+function SnackbarNotifications.AttachToScreenGui(screenGui: ScreenGui)
 	if screenGuiCleanup ~= nil then
 		screenGuiCleanup()
 		screenGuiCleanup = nil
@@ -107,7 +152,7 @@ function NevermoreNotificationServiceClient.SetScreenGui(screenGui: ScreenGui)
 	screenGuiCleanup = getScreenGuiService():SetGuiParent(screenGui)
 end
 
-function NevermoreNotificationServiceClient.ShowText(textRaw: any, optionsRaw: any?)
+function SnackbarNotifications.ShowText(textRaw: any, optionsRaw: any?)
 	local text = trim(textRaw)
 	if text == "" then
 		return nil
@@ -129,18 +174,20 @@ function NevermoreNotificationServiceClient.ShowText(textRaw: any, optionsRaw: a
 		then (options.snackbarOptions :: { [string]: any })
 		else nil
 
-	return getSnackbarService():ShowSnackbar(text, snackbarOptions)
+	local snackbar = getSnackbarService():ShowSnackbar(text, snackbarOptions)
+	playNotificationSoundWhenShown(snackbar)
+	return snackbar
 end
 
-function NevermoreNotificationServiceClient.HideCurrent(doNotAnimateRaw: any)
+function SnackbarNotifications.HideCurrent(doNotAnimateRaw: any)
 	return getSnackbarService():HideCurrent(doNotAnimateRaw == true)
 end
 
-function NevermoreNotificationServiceClient.ClearQueue(doNotAnimateRaw: any)
+function SnackbarNotifications.ClearQueue(doNotAnimateRaw: any)
 	return getSnackbarService():ClearQueue(doNotAnimateRaw == true)
 end
 
-function NevermoreNotificationServiceClient.ShowBuildActionRejected(actionTypeRaw: any, reasonRaw: any)
+function SnackbarNotifications.ShowBuildActionRejected(actionTypeRaw: any, reasonRaw: any)
 	local actionType = string.lower(trim(actionTypeRaw))
 	local reason = trim(reasonRaw)
 	if actionType == "" then
@@ -158,13 +205,13 @@ function NevermoreNotificationServiceClient.ShowBuildActionRejected(actionTypeRa
 	end
 
 	local text = translate(specificKey) or translate(fallbackKey) or humanizeReason(reason)
-	return NevermoreNotificationServiceClient.ShowText(text, {
+	return SnackbarNotifications.ShowText(text, {
 		dedupeKey = `build:{actionType}:{reason}`,
 		dedupeWindowSeconds = 0.45,
 	})
 end
 
-function NevermoreNotificationServiceClient.ShowCraftResult(resultRaw: any, craftingServiceRaw: any)
+function SnackbarNotifications.ShowCraftResult(resultRaw: any, craftingServiceRaw: any)
 	if typeof(resultRaw) ~= "table" then
 		return nil
 	end
@@ -182,7 +229,7 @@ function NevermoreNotificationServiceClient.ShowCraftResult(resultRaw: any, craf
 			itemName = recipeName,
 		}) or `Crafted {quantity}x {recipeName}`
 
-		return NevermoreNotificationServiceClient.ShowText(text, {
+		return SnackbarNotifications.ShowText(text, {
 			dedupeKey = `craft:success:{trim(result.recipeId)}`,
 			dedupeWindowSeconds = 0.8,
 		})
@@ -197,17 +244,17 @@ function NevermoreNotificationServiceClient.ShowCraftResult(resultRaw: any, craf
 		or translate("notifications.crafting.failure.generic")
 		or humanizeReason(reason)
 
-	return NevermoreNotificationServiceClient.ShowText(text, {
+	return SnackbarNotifications.ShowText(text, {
 		dedupeKey = `craft:failure:{reason}`,
 		dedupeWindowSeconds = 0.8,
 	})
 end
 
-NevermoreNotificationServiceClient.setScreenGui = NevermoreNotificationServiceClient.SetScreenGui
-NevermoreNotificationServiceClient.showText = NevermoreNotificationServiceClient.ShowText
-NevermoreNotificationServiceClient.hideCurrent = NevermoreNotificationServiceClient.HideCurrent
-NevermoreNotificationServiceClient.clearQueue = NevermoreNotificationServiceClient.ClearQueue
-NevermoreNotificationServiceClient.showBuildActionRejected = NevermoreNotificationServiceClient.ShowBuildActionRejected
-NevermoreNotificationServiceClient.showCraftResult = NevermoreNotificationServiceClient.ShowCraftResult
+SnackbarNotifications.attachToScreenGui = SnackbarNotifications.AttachToScreenGui
+SnackbarNotifications.showText = SnackbarNotifications.ShowText
+SnackbarNotifications.hideCurrent = SnackbarNotifications.HideCurrent
+SnackbarNotifications.clearQueue = SnackbarNotifications.ClearQueue
+SnackbarNotifications.showBuildActionRejected = SnackbarNotifications.ShowBuildActionRejected
+SnackbarNotifications.showCraftResult = SnackbarNotifications.ShowCraftResult
 
-return NevermoreNotificationServiceClient
+return SnackbarNotifications

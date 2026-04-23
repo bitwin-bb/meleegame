@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
@@ -271,3 +271,4 @@ type BreathServiceServer = typeof(BreathServiceServer) & {
 }
 
 return BreathServiceServer :: BreathServiceServer
+

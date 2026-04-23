@@ -5,7 +5,7 @@ local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(ReplicatedStorage.Packages.Networker)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Magic = require(script:FindFirstAncestor("game").Shared.Classes.Magic)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
@@ -1941,3 +1941,4 @@ type MagicServiceServer = typeof(MagicServiceServer) & {
 }
 
 return MagicServiceServer :: MagicServiceServer
+
