@@ -10,7 +10,7 @@ local lootServiceServer = nil
 
 local function getLootServiceServer()
 	if lootServiceServer == nil then
-		lootServiceServer = require(script:FindFirstAncestor("game").Server.Services.LootService.LootServiceServer)
+		lootServiceServer = require(script:FindFirstAncestor("game").Server.Services.LootServiceServer)
 	end
 	return lootServiceServer
 end

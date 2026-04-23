@@ -3,7 +3,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local LiquidServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.LiquidService.LiquidServiceUtils)
+local LiquidServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.LiquidServiceUtils)
 
 type LiquidServiceConfig = LiquidServiceUtils.LiquidServiceConfig
 

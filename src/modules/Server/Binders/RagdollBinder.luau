@@ -3,7 +3,7 @@
 local Players = game:GetService("Players")
 
 local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
-local RagdollServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.RagdollService.RagdollServiceUtils)
+local RagdollServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.RagdollServiceUtils)
 
 local RagdollBinder = {}
 RagdollBinder.__index = RagdollBinder

@@ -3,10 +3,10 @@
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossService.BossServiceUtils)
-local GoreServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.GoreService.GoreServiceUtils)
+local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossServiceUtils)
+local GoreServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.GoreServiceUtils)
 local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
-local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.NpcService.NpcServiceUtils)
+local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.NpcServiceUtils)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 
 local GoreBinder = {}
@@ -18,7 +18,7 @@ local goreServiceServer = nil
 
 local function getGoreServiceServer()
 	if goreServiceServer == nil then
-		goreServiceServer = require(script:FindFirstAncestor("game").Server.Services.GoreService.GoreServiceServer)
+		goreServiceServer = require(script:FindFirstAncestor("game").Server.Services.GoreServiceServer)
 	end
 	return goreServiceServer
 end

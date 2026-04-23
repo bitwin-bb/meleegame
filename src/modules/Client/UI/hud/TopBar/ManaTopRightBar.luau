@@ -10,9 +10,9 @@ local useManaTransparency = require(script:FindFirstAncestor("game").Client.UI.c
 local manaSlice = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.manaSlice)
 local manaThunks = require(script:FindFirstAncestor("game").Client.UI.hud.state.thunk.manaThunks)
 local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
-local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioService.AudioServiceClient)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioService.AudioServiceUtils)
-local ManaServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.ManaService.ManaServiceUtils)
+local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
+local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
+local ManaServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.ManaServiceUtils)
 
 type ManaServiceState = ManaServiceUtils.ManaServiceState
 

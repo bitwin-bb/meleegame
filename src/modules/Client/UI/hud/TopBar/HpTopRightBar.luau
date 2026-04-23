@@ -9,9 +9,9 @@ local useBeatMotion = require(script:FindFirstAncestor("game").Client.UI.core.ho
 local hpSlice = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.hpSlice)
 local hpThunks = require(script:FindFirstAncestor("game").Client.UI.hud.state.thunk.hpThunks)
 local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
-local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioService.AudioServiceClient)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioService.AudioServiceUtils)
-local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.HpService.HpServiceUtils)
+local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
+local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
+local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.HpServiceUtils)
 
 type HeartState = HpServiceUtils.HeartState
 type HpServiceState = HpServiceUtils.HpServiceState

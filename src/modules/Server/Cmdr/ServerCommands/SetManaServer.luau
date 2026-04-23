@@ -2,7 +2,7 @@
 local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for SetManaServer.")
 
-local ManaServiceServer = require(gameRoot.Server.Services.ManaService.ManaServiceServer)
+local ManaServiceServer = require(gameRoot.Server.Services.ManaServiceServer)
 
 local function joinParts(parts: { string }): string
 	return table.concat(parts, ", ")

@@ -2,7 +2,7 @@
 
 local RunService = game:GetService("RunService")
 
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildService.BuildServiceUtils)
+local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
 local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
 
 local PreviewBinder = {}
@@ -13,7 +13,7 @@ local buildServiceClient = nil
 
 local function getBuildServiceClient()
 	if buildServiceClient == nil then
-		buildServiceClient = require(script:FindFirstAncestor("game").Client.Services.BuildService.BuildServiceClient)
+		buildServiceClient = require(script:FindFirstAncestor("game").Client.Services.BuildServiceClient)
 	end
 	return buildServiceClient
 end

@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local BossBase = require(script.Parent)
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossService.BossServiceUtils)
+local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossServiceUtils)
 local EyeOfCthulhuConfig = require(script.Config)
 local EyeOfCthulhuMotion = require(script.Motion)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)

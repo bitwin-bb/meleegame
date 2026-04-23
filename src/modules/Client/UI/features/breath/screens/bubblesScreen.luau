@@ -10,9 +10,9 @@ local useBubbleDeplete = require(script:FindFirstAncestor("game").Client.UI.feat
 local breathSlice = require(script:FindFirstAncestor("game").Client.UI.features.breath.state.breathSlice)
 local breathThunks = require(script:FindFirstAncestor("game").Client.UI.features.breath.state.breathThunks)
 local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
-local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioService.AudioServiceClient)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioService.AudioServiceUtils)
-local BreathServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BreathService.BreathServiceUtils)
+local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
+local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
+local BreathServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BreathServiceUtils)
 
 type BreathServiceState = BreathServiceUtils.BreathServiceState
 

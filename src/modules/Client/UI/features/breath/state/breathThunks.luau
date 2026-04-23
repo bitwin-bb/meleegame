@@ -4,8 +4,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
 local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
 local breathSlice = require(script:FindFirstAncestor("game").Client.UI.features.breath.state.breathSlice)
-local BreathServiceClient = require(script:FindFirstAncestor("game").Client.Services.BreathService.BreathServiceClient)
-local BreathServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BreathService.BreathServiceUtils)
+local BreathServiceClient = require(script:FindFirstAncestor("game").Client.Services.BreathServiceClient)
+local BreathServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BreathServiceUtils)
 
 type BreathServiceState = BreathServiceUtils.BreathServiceState
 

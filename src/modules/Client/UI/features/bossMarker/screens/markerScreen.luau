@@ -10,7 +10,7 @@ local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageId
 local Marker = require(script:FindFirstAncestor("game").Client.UI.features.bossMarker.components.marker)
 local markerSlice = require(script:FindFirstAncestor("game").Client.UI.features.bossMarker.state.markerSlice)
 local markerThunks = require(script:FindFirstAncestor("game").Client.UI.features.bossMarker.state.markerThunks)
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossService.BossServiceUtils)
+local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossServiceUtils)
 
 type MarkerState = markerSlice.MarkerState
 type BossSnapshot = BossServiceUtils.BossSnapshot

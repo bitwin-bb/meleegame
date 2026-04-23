@@ -1,8 +1,8 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local InventoryProfile = require(script:FindFirstAncestor("game").Shared.Services.InventoryService.Profile)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryService.InventoryServiceUtils)
+local InventoryProfile = require(script:FindFirstAncestor("game").Shared.Services.Profile)
+local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
 
 local function createPlayer(): Player
 	return {

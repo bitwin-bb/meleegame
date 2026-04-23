@@ -4,10 +4,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local RoomScaleFactor = require(script:FindFirstAncestor("game").Shared.Modules.Math.RoomScaleFactor)
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildService.BuildServiceUtils)
-local BuildServiceClient = require(script:FindFirstAncestor("game").Client.Services.BuildService.BuildServiceClient)
+local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
+local BuildServiceClient = require(script:FindFirstAncestor("game").Client.Services.BuildServiceClient)
 local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationService.WorldGenerationServiceClient)
+	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
 
 local Room = {}
 Room.__index = Room

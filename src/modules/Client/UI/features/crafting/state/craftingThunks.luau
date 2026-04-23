@@ -5,7 +5,7 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
 local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
 local craftingSlice = require(script:FindFirstAncestor("game").Client.UI.features.crafting.state.craftingSlice)
-local CraftingServiceClient = require(script:FindFirstAncestor("game").Client.Services.CraftingService.CraftingServiceClient)
+local CraftingServiceClient = require(script:FindFirstAncestor("game").Client.Services.CraftingServiceClient)
 
 type CraftingState = craftingSlice.CraftingState
 

@@ -3,7 +3,7 @@ local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for GodmodeServer.")
 
 local CmdrUtils = require(gameRoot.Shared.Cmdr.CmdrUtils)
-local HpServiceServer = require(gameRoot.Server.Services.HpService.HpServiceServer)
+local HpServiceServer = require(gameRoot.Server.Services.HpServiceServer)
 
 local function joinParts(parts: { string }): string
 	return table.concat(parts, ", ")

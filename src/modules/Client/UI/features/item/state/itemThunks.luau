@@ -6,7 +6,7 @@ local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageId
 local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
 local itemSlice = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemSlice)
 local inventoryThunks = require(script:FindFirstAncestor("game").Client.UI.features.inventory.state.inventoryThunks)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryService.InventoryServiceUtils)
+local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
 
 type InventoryItemStack = InventoryServiceUtils.InventoryItemStack
 type ItemDragState = itemSlice.ItemDragState

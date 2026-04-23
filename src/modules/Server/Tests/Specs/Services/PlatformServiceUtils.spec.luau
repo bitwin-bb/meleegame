@@ -2,7 +2,7 @@
 -- selene: allow(undefined_variable)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlatformService.PlatformServiceUtils)
+local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlatformServiceUtils)
 
 local DEFAULT_CAPABILITIES: PlatformServiceUtils.CapabilitySnapshot = {
 	touchEnabled = false,

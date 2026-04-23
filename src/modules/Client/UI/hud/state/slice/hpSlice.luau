@@ -2,7 +2,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Charm = require(ReplicatedStorage.Packages.Charm)
-local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.HpService.HpServiceUtils)
+local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.HpServiceUtils)
 
 type HpServiceState = HpServiceUtils.HpServiceState
 type HeartState = HpServiceUtils.HeartState

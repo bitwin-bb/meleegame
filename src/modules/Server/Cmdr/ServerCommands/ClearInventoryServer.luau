@@ -2,7 +2,7 @@
 local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for ClearInventoryServer.")
 
-local InventoryServiceServer = require(gameRoot.Server.Services.InventoryService.InventoryServiceServer)
+local InventoryServiceServer = require(gameRoot.Server.Services.InventoryServiceServer)
 
 return function(_context, players: { Player })
 	local cleared = {}

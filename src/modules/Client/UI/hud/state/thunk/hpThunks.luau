@@ -4,8 +4,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
 local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
 local hpSlice = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.hpSlice)
-local HpServiceClient = require(script:FindFirstAncestor("game").Client.Services.HpService.HpServiceClient)
-local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.HpService.HpServiceUtils)
+local HpServiceClient = require(script:FindFirstAncestor("game").Client.Services.HpServiceClient)
+local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.HpServiceUtils)
 
 type HpServiceState = HpServiceUtils.HpServiceState
 

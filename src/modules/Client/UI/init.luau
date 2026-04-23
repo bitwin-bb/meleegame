@@ -7,7 +7,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local RootUI = require(script:FindFirstAncestor("game").Client.UI.app.RootUI)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 local React = require(ReplicatedStorage.Packages.React)
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformService.PlatformServiceClient)
+local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
 local SnackbarNotifications = require(script:FindFirstAncestor("game").Client.SnackbarNotifications)
 
 local e: typeof(React.createElement) = React.createElement

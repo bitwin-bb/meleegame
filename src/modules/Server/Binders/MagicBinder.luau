@@ -11,7 +11,7 @@ local magicServiceServer = nil
 
 local function getMagicServiceServer()
 	if magicServiceServer == nil then
-		magicServiceServer = require(script:FindFirstAncestor("game").Server.Services.MagicService.MagicServiceServer)
+		magicServiceServer = require(script:FindFirstAncestor("game").Server.Services.MagicServiceServer)
 	end
 	return magicServiceServer
 end

@@ -10,8 +10,8 @@ local itemSlice = require(script:FindFirstAncestor("game").Client.UI.features.it
 local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
 local trashSlice = require(script:FindFirstAncestor("game").Client.UI.features.inventory.state.trashSlice)
 local trashThunks = require(script:FindFirstAncestor("game").Client.UI.features.inventory.state.trashThunks)
-local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioService.AudioServiceClient)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioService.AudioServiceUtils)
+local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
+local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
 
 type TrashState = trashSlice.TrashState
 type ItemDragState = itemSlice.ItemDragState

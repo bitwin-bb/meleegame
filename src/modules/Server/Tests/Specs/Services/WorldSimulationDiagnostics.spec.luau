@@ -2,7 +2,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Diagnostics = require(script:FindFirstAncestor("game").Shared.Services.WorldSimulationService.Diagnostics)
+local Diagnostics = require(script:FindFirstAncestor("game").Shared.Services.Diagnostics)
 
 local function createDebugStub()
 	return {

@@ -3,7 +3,7 @@ local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for GiveServer.")
 
 local ItemRegistry = require(gameRoot.Shared.Modules.Items.Registry)
-local InventoryServiceServer = require(gameRoot.Server.Services.InventoryService.InventoryServiceServer)
+local InventoryServiceServer = require(gameRoot.Server.Services.InventoryServiceServer)
 
 local function joinNames(names: { string }): string
 	return table.concat(names, ", ")

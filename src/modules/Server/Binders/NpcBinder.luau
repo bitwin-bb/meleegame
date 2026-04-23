@@ -1,7 +1,7 @@
 --!strict
 
 local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
-local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.NpcService.NpcServiceUtils)
+local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.NpcServiceUtils)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 
 local NpcBinder = {}

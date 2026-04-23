@@ -14,7 +14,7 @@ local worldAnimatorServiceClient = nil
 local function getWorldAnimatorServiceClient()
 	if worldAnimatorServiceClient == nil then
 		worldAnimatorServiceClient =
-			require(script:FindFirstAncestor("game").Client.Services.WorldAnimatorService.WorldAnimatorServiceClient)
+			require(script:FindFirstAncestor("game").Client.Services.WorldAnimatorServiceClient)
 	end
 	return worldAnimatorServiceClient
 end

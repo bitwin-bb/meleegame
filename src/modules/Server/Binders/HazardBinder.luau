@@ -1,6 +1,6 @@
 --!strict
 
-local LiquidServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.LiquidService.LiquidServiceUtils)
+local LiquidServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.LiquidServiceUtils)
 local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 
@@ -15,28 +15,28 @@ local npcServiceServer = nil
 
 local function getBossServiceServer()
 	if bossServiceServer == nil then
-		bossServiceServer = require(script:FindFirstAncestor("game").Server.Services.BossService.BossServiceServer)
+		bossServiceServer = require(script:FindFirstAncestor("game").Server.Services.BossServiceServer)
 	end
 	return bossServiceServer
 end
 
 local function getHpServiceServer()
 	if hpServiceServer == nil then
-		hpServiceServer = require(script:FindFirstAncestor("game").Server.Services.HpService.HpServiceServer)
+		hpServiceServer = require(script:FindFirstAncestor("game").Server.Services.HpServiceServer)
 	end
 	return hpServiceServer
 end
 
 local function getLiquidServiceServer()
 	if liquidServiceServer == nil then
-		liquidServiceServer = require(script:FindFirstAncestor("game").Server.Services.LiquidService.LiquidServiceServer)
+		liquidServiceServer = require(script:FindFirstAncestor("game").Server.Services.LiquidServiceServer)
 	end
 	return liquidServiceServer
 end
 
 local function getNpcServiceServer()
 	if npcServiceServer == nil then
-		npcServiceServer = require(script:FindFirstAncestor("game").Server.Services.NpcService.NpcServiceServer)
+		npcServiceServer = require(script:FindFirstAncestor("game").Server.Services.NpcServiceServer)
 	end
 	return npcServiceServer
 end

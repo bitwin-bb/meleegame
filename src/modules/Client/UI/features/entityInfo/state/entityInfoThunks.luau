@@ -8,10 +8,10 @@ local Workspace = game:GetService("Workspace")
 
 local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
 local entityInfoSlice = require(script:FindFirstAncestor("game").Client.UI.features.entityInfo.state.entityInfoSlice)
-local BossServiceClient = require(script:FindFirstAncestor("game").Client.Services.BossService.BossServiceClient)
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossService.BossServiceUtils)
-local NpcServiceClient = require(script:FindFirstAncestor("game").Client.Services.NpcService.NpcServiceClient)
-local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.NpcService.NpcServiceUtils)
+local BossServiceClient = require(script:FindFirstAncestor("game").Client.Services.BossServiceClient)
+local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossServiceUtils)
+local NpcServiceClient = require(script:FindFirstAncestor("game").Client.Services.NpcServiceClient)
+local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.NpcServiceUtils)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 
 type EntityInfoState = entityInfoSlice.EntityInfoState

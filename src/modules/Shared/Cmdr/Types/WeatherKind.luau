@@ -31,7 +31,7 @@ end
 
 local gameRoot = resolveGameRoot()
 
-local WeatherServiceUtils = require(gameRoot.Shared.Services.WeatherService.WeatherServiceUtils)
+local WeatherServiceUtils = require(gameRoot.Shared.Services.WeatherServiceUtils)
 
 local WEATHER_OPTIONS = {
 	{

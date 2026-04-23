@@ -11,7 +11,7 @@ local inventoryServiceServer = nil
 local function getInventoryServiceServer()
 	if inventoryServiceServer == nil then
 		inventoryServiceServer =
-			require(script:FindFirstAncestor("game").Server.Services.InventoryService.InventoryServiceServer)
+			require(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
 	end
 	return inventoryServiceServer
 end

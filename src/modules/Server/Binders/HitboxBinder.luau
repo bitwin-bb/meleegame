@@ -12,21 +12,21 @@ local npcServiceServer = nil
 
 local function getBossServiceServer()
 	if bossServiceServer == nil then
-		bossServiceServer = require(script:FindFirstAncestor("game").Server.Services.BossService.BossServiceServer)
+		bossServiceServer = require(script:FindFirstAncestor("game").Server.Services.BossServiceServer)
 	end
 	return bossServiceServer
 end
 
 local function getHpServiceServer()
 	if hpServiceServer == nil then
-		hpServiceServer = require(script:FindFirstAncestor("game").Server.Services.HpService.HpServiceServer)
+		hpServiceServer = require(script:FindFirstAncestor("game").Server.Services.HpServiceServer)
 	end
 	return hpServiceServer
 end
 
 local function getNpcServiceServer()
 	if npcServiceServer == nil then
-		npcServiceServer = require(script:FindFirstAncestor("game").Server.Services.NpcService.NpcServiceServer)
+		npcServiceServer = require(script:FindFirstAncestor("game").Server.Services.NpcServiceServer)
 	end
 	return npcServiceServer
 end

@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
 local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationService.WorldGenerationServiceClient)
+	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
 local biomeSlice = require(script:FindFirstAncestor("game").Client.UI.features.biome.state.biomeSlice)
 
 type BiomeState = biomeSlice.BiomeState

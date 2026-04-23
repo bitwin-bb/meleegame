@@ -1,7 +1,7 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossService.BossServiceUtils)
+local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossServiceUtils)
 local NpcDefinitions = require(script:FindFirstAncestor("game").Shared.Modules.Items.Npcs)
 
 export type EntityKind = "Boss" | "Npc"

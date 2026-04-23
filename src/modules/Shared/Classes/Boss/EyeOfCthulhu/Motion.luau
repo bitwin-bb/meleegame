@@ -1,7 +1,7 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossService.BossServiceUtils)
+local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossServiceUtils)
 local Damp = require(script:FindFirstAncestor("game").Shared.Modules.Math.Damp)
 local Vec = require(script:FindFirstAncestor("game").Shared.Modules.Math.Vec)
 

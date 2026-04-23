@@ -3,7 +3,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local WindFoliageServiceClient = require(script:FindFirstAncestor("game").Client.Services.WindFoliageService.WindFoliageServiceClient)
+local WindFoliageServiceClient = require(script:FindFirstAncestor("game").Client.Services.WindFoliageServiceClient)
 
 local function createWeatherWindStub()
 	local baseline = {
