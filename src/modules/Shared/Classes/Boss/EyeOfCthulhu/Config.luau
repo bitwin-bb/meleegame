@@ -102,11 +102,11 @@ export type EyeOfCthulhuConfig = {
 local DEFAULTS: EyeOfCthulhuConfig = {
 	maxHp = 2800,
 	defensePhase1 = 12,
-	defensePhase2 = 0,
+	defensePhase2 = 12,
 	contactDamagePhase1 = 15,
-	contactDamagePhase2 = 23,
+	contactDamagePhase2 = 15,
 	contactDamageRadiusPhase1 = 10.5,
-	contactDamageRadiusPhase2 = 12.5,
+	contactDamageRadiusPhase2 = 10.5,
 	contactDamageCooldown = 0.35,
 	transformHealthThreshold = 0.5,
 	introDuration = 2.4,
@@ -152,26 +152,26 @@ local DEFAULTS: EyeOfCthulhuConfig = {
 	transformDuration = 2.25,
 	transformSpinTurns = 8,
 	transformPauseLift = 8,
-	phase2HoverHeight = 13,
-	phase2LeadMultiplier = 0.22,
-	phase2SideOffset = 7,
+	phase2HoverHeight = 24,
+	phase2LeadMultiplier = 0.32,
+	phase2SideOffset = 14,
 	phase2HoverDuration = 4,
 	phase2AttackDelayMin = 2.0,
 	phase2AttackDelayMax = 4.0,
 	phase2HoverSpeed = 17,
-	phase2HoverAcceleration = 168,
-	phase2HoverDamping = 0.38,
-	phase2BobAmplitude = 1.7,
-	phase2BobSpeed = 6.4,
+	phase2HoverAcceleration = 70,
+	phase2HoverDamping = 0.5,
+	phase2BobAmplitude = 3,
+	phase2BobSpeed = 4.2,
 	phase2ChargeCount = 3,
-	phase2ChargeWindupDuration = 0.18,
+	phase2ChargeWindupDuration = 0.4,
 	phase2ChargeSpeed = 30,
-	phase2ChargeDuration = 1.4,
-	phase2ChargeRecoveryDuration = 0.2,
-	phase2ChargeRecoverySpeed = 58,
-	phase2ChargeRecoveryAcceleration = 188,
-	phase2ChargeRecoveryDamping = 0.9,
-	phase2PredictionTime = 0.18,
+	phase2ChargeDuration = 1.5,
+	phase2ChargeRecoveryDuration = 1.5,
+	phase2ChargeRecoverySpeed = 10,
+	phase2ChargeRecoveryAcceleration = 20,
+	phase2ChargeRecoveryDamping = 1.1,
+	phase2PredictionTime = 0.16,
 	rapidChainEnabled = true,
 	rapidChainHealthThreshold = 0.34,
 	rapidChainCount = 4,
@@ -217,11 +217,11 @@ function EyeOfCthulhuConfig.Resolve(configRaw: any): EyeOfCthulhuConfig
 	config.defensePhase1 =
 		BossServiceUtils.sanitizeNumber((source :: any).defensePhase1, config.defensePhase1, 0, 10 ^ 6)
 	config.defensePhase2 =
-		BossServiceUtils.sanitizeNumber((source :: any).defensePhase2, config.defensePhase2, 0, 10 ^ 6)
+		BossServiceUtils.sanitizeNumber((source :: any).defensePhase2, config.defensePhase1, 0, 10 ^ 6)
 	config.contactDamagePhase1 =
 		BossServiceUtils.sanitizeNumber((source :: any).contactDamagePhase1, config.contactDamagePhase1, 0, 10 ^ 6)
 	config.contactDamagePhase2 =
-		BossServiceUtils.sanitizeNumber((source :: any).contactDamagePhase2, config.contactDamagePhase2, 0, 10 ^ 6)
+		BossServiceUtils.sanitizeNumber((source :: any).contactDamagePhase2, config.contactDamagePhase1, 0, 10 ^ 6)
 	config.contactDamageRadiusPhase1 = BossServiceUtils.sanitizeNumber(
 		(source :: any).contactDamageRadiusPhase1,
 		config.contactDamageRadiusPhase1,
@@ -230,7 +230,7 @@ function EyeOfCthulhuConfig.Resolve(configRaw: any): EyeOfCthulhuConfig
 	)
 	config.contactDamageRadiusPhase2 = BossServiceUtils.sanitizeNumber(
 		(source :: any).contactDamageRadiusPhase2,
-		config.contactDamageRadiusPhase2,
+		config.contactDamageRadiusPhase1,
 		0,
 		256
 	)
@@ -372,76 +372,76 @@ function EyeOfCthulhuConfig.Resolve(configRaw: any): EyeOfCthulhuConfig
 	config.transformPauseLift =
 		BossServiceUtils.sanitizeNumber((source :: any).transformPauseLift, config.transformPauseLift, 0, 128)
 	config.phase2HoverHeight =
-		BossServiceUtils.sanitizeNumber((source :: any).phase2HoverHeight, config.phase2HoverHeight, 0, 512)
+		BossServiceUtils.sanitizeNumber((source :: any).phase2HoverHeight, config.phase1HoverHeight, 0, 512)
 	config.phase2LeadMultiplier =
-		BossServiceUtils.sanitizeNumber((source :: any).phase2LeadMultiplier, config.phase2LeadMultiplier, 0, 4)
+		BossServiceUtils.sanitizeNumber((source :: any).phase2LeadMultiplier, config.phase1LeadMultiplier, 0, 4)
 	config.phase2SideOffset =
-		BossServiceUtils.sanitizeNumber((source :: any).phase2SideOffset, config.phase2SideOffset, 0, 256)
+		BossServiceUtils.sanitizeNumber((source :: any).phase2SideOffset, config.phase1SideOffset, 0, 256)
 	config.phase2HoverDuration =
-		BossServiceUtils.sanitizeNumber((source :: any).phase2HoverDuration, config.phase2HoverDuration, 0.01, 10)
+		BossServiceUtils.sanitizeNumber((source :: any).phase2HoverDuration, config.phase1HoverDuration, 0.01, 10)
 	config.phase2AttackDelayMin = BossServiceUtils.sanitizeNumber(
 		(source :: any).phase2AttackDelayMin,
-		if (source :: any).phase2HoverDuration ~= nil then config.phase2HoverDuration else config.phase2AttackDelayMin,
+		if (source :: any).phase2HoverDuration ~= nil then config.phase2HoverDuration else config.phase1ChargeSetDelayMin,
 		0.01,
 		10
 	)
 	config.phase2AttackDelayMax = BossServiceUtils.sanitizeNumber(
 		(source :: any).phase2AttackDelayMax,
-		if (source :: any).phase2HoverDuration ~= nil then config.phase2AttackDelayMin else config.phase2AttackDelayMax,
+		if (source :: any).phase2HoverDuration ~= nil then config.phase2AttackDelayMin else config.phase1ChargeSetDelayMax,
 		config.phase2AttackDelayMin,
 		10
 	)
 	config.phase2HoverSpeed =
-		BossServiceUtils.sanitizeNumber((source :: any).phase2HoverSpeed, config.phase2HoverSpeed, 0, 10 ^ 5)
+		BossServiceUtils.sanitizeNumber((source :: any).phase2HoverSpeed, config.phase1HoverSpeed, 0, 10 ^ 5)
 	config.phase2HoverAcceleration = BossServiceUtils.sanitizeNumber(
 		(source :: any).phase2HoverAcceleration,
-		config.phase2HoverAcceleration,
+		config.phase1HoverAcceleration,
 		0,
 		10 ^ 5
 	)
 	config.phase2HoverDamping =
-		BossServiceUtils.sanitizeNumber((source :: any).phase2HoverDamping, config.phase2HoverDamping, 0, 50)
+		BossServiceUtils.sanitizeNumber((source :: any).phase2HoverDamping, config.phase1HoverDamping, 0, 50)
 	config.phase2BobAmplitude =
-		BossServiceUtils.sanitizeNumber((source :: any).phase2BobAmplitude, config.phase2BobAmplitude, 0, 64)
+		BossServiceUtils.sanitizeNumber((source :: any).phase2BobAmplitude, config.phase1BobAmplitude, 0, 64)
 	config.phase2BobSpeed =
-		BossServiceUtils.sanitizeNumber((source :: any).phase2BobSpeed, config.phase2BobSpeed, 0, 50)
-	config.phase2ChargeCount = sanitizeInteger((source :: any).phase2ChargeCount, config.phase2ChargeCount, 1, 10)
+		BossServiceUtils.sanitizeNumber((source :: any).phase2BobSpeed, config.phase1BobSpeed, 0, 50)
+	config.phase2ChargeCount = sanitizeInteger((source :: any).phase2ChargeCount, config.phase1ChargeCount, 1, 10)
 	config.phase2ChargeWindupDuration = BossServiceUtils.sanitizeNumber(
 		(source :: any).phase2ChargeWindupDuration,
-		config.phase2ChargeWindupDuration,
+		config.phase1ChargeWindupDuration,
 		0.01,
 		10
 	)
 	config.phase2ChargeSpeed =
-		BossServiceUtils.sanitizeNumber((source :: any).phase2ChargeSpeed, config.phase2ChargeSpeed, 0, 10 ^ 5)
+		BossServiceUtils.sanitizeNumber((source :: any).phase2ChargeSpeed, config.phase1ChargeSpeed, 0, 10 ^ 5)
 	config.phase2ChargeDuration =
-		BossServiceUtils.sanitizeNumber((source :: any).phase2ChargeDuration, config.phase2ChargeDuration, 0.01, 10)
+		BossServiceUtils.sanitizeNumber((source :: any).phase2ChargeDuration, config.phase1ChargeDuration, 0.01, 10)
 	config.phase2ChargeRecoveryDuration = BossServiceUtils.sanitizeNumber(
 		(source :: any).phase2ChargeRecoveryDuration,
-		config.phase2ChargeRecoveryDuration,
+		config.phase1ChargeRecoveryDuration,
 		0.01,
 		10
 	)
 	config.phase2ChargeRecoverySpeed = BossServiceUtils.sanitizeNumber(
 		(source :: any).phase2ChargeRecoverySpeed,
-		config.phase2ChargeRecoverySpeed,
+		config.phase1ChargeRecoverySpeed,
 		0,
 		10 ^ 5
 	)
 	config.phase2ChargeRecoveryAcceleration = BossServiceUtils.sanitizeNumber(
 		(source :: any).phase2ChargeRecoveryAcceleration,
-		config.phase2ChargeRecoveryAcceleration,
+		config.phase1ChargeRecoveryAcceleration,
 		0,
 		10 ^ 5
 	)
 	config.phase2ChargeRecoveryDamping = BossServiceUtils.sanitizeNumber(
 		(source :: any).phase2ChargeRecoveryDamping,
-		config.phase2ChargeRecoveryDamping,
+		config.phase1ChargeRecoveryDamping,
 		0,
 		50
 	)
 	config.phase2PredictionTime =
-		BossServiceUtils.sanitizeNumber((source :: any).phase2PredictionTime, config.phase2PredictionTime, 0, 4)
+		BossServiceUtils.sanitizeNumber((source :: any).phase2PredictionTime, config.phase1PredictionTime, 0, 4)
 	config.rapidChainEnabled =
 		BossServiceUtils.sanitizeBoolean((source :: any).rapidChainEnabled, config.rapidChainEnabled)
 	config.rapidChainHealthThreshold = BossServiceUtils.sanitizeNumber(

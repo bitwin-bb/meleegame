@@ -3,15 +3,16 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
 local HUD = require(script:FindFirstAncestor("game").Client.UI.hud)
 local InfoScreen = require(script:FindFirstAncestor("game").Client.UI.features.info.screens.infoScreen)
-local InfoPlayerScreen = require(script:FindFirstAncestor("game").Client.UI.features.infoPlayer.screens.infoPlayerScreen)
-local EntityInfoScreen = require(script:FindFirstAncestor("game").Client.UI.features.entityInfo.screens.entityInfoScreen)
-local MarkerScreen = require(script:FindFirstAncestor("game").Client.UI.features.bossMarker.screens.markerScreen)
+local InfoPlayerScreen = require(script:FindFirstAncestor("game").Client.UI.features.player.screens.infoPlayerScreen)
+local EntityInfoScreen = require(script:FindFirstAncestor("game").Client.UI.features.entity.screens.entityInfoScreen)
+local MarkerScreen = require(script:FindFirstAncestor("game").Client.UI.features.boss.screens.markerScreen)
 local BiomeNameScreen = require(script:FindFirstAncestor("game").Client.UI.features.biome.screens.biomeNameScreen)
 local DeathScreen = require(script:FindFirstAncestor("game").Client.UI.features.death.screens.deathScreen)
-local MiningProgressScreen = require(script:FindFirstAncestor("game").Client.UI.features.miningProgress.screens.miningProgressScreen)
+local MiningProgressScreen = require(script:FindFirstAncestor("game").Client.UI.features.mining.screens.miningProgressScreen)
 local CraftingSlotsScreen = require(script:FindFirstAncestor("game").Client.UI.features.crafting.screens.craftingSlots)
-local BindingHintScreen = require(script:FindFirstAncestor("game").Client.UI.features.bindingHint.screens.bindingHintScreen)
+local BindingHintScreen = require(script:FindFirstAncestor("game").Client.UI.features.binding.screens.bindingHintScreen)
 local MouseScreen = require(script:FindFirstAncestor("game").Client.UI.features.mouse.screen.mouseScreen)
+local PadScreen = require(script:FindFirstAncestor("game").Client.UI.features.pad.screens.pad)
 
 type RootUIProps = {
 	currentScreen: React.ReactElement<any, any>?,
@@ -48,6 +49,9 @@ return function(props: RootUIProps)
 		}),
 		MouseScreen = React.createElement(MouseScreen, {
 			zIndex = 1000,
+		}),
+		PadScreen = React.createElement(PadScreen, {
+			zIndex = 980,
 		}),
 		DeathScreen = React.createElement(DeathScreen, {
 			zIndex = 230,

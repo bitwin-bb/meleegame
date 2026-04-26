@@ -1,13 +1,14 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local React = require(ReplicatedStorage.Packages.React)
-local Charm = require(ReplicatedStorage.Packages.Charm)
 local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
-local useBiomeNameAppearance = require(script:FindFirstAncestor("game").Client.UI.features.biome.hooks.useBiomeNameAppearance)
-local useTextUnderline = require(script:FindFirstAncestor("game").Client.UI.features.biome.hooks.useTextUnderline)
+local React = require(ReplicatedStorage.Packages.React)
 local biomeSlice = require(script:FindFirstAncestor("game").Client.UI.features.biome.state.biomeSlice)
 local biomeThunks = require(script:FindFirstAncestor("game").Client.UI.features.biome.state.biomeThunks)
+local useBiomeNameAppearance =
+	require(script:FindFirstAncestor("game").Client.UI.features.biome.hooks.useBiomeNameAppearance)
+local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local useTextUnderline = require(script:FindFirstAncestor("game").Client.UI.features.biome.hooks.useTextUnderline)
 
 type BiomeState = biomeSlice.BiomeState
 
@@ -27,20 +28,12 @@ local UNDERLINE_BASE_SIZE = Vector2.new(236, 14)
 
 return function(props: BiomeNameScreenProps?): React.ReactNode
 	local resolvedProps: BiomeNameScreenProps = if props ~= nil then props else {}
-	local biomeState, setBiomeState = React.useState(function(): BiomeState
-		return biomeSlice.biomeStateAtom()
-	end)
+	local biomeState = (useStore(biomeSlice.biomeStateAtom) :: BiomeState?) or biomeSlice.biomeStateAtom()
 
 	React.useEffect(function()
 		local stop = biomeThunks.start()
-		local unsubscribe = Charm.subscribe(biomeSlice.biomeStateAtom, function(nextState: BiomeState)
-			setBiomeState(nextState)
-		end, {
-			inclusive = true,
-		})
 
 		return function()
-			unsubscribe()
 			stop()
 		end
 	end, {})
@@ -62,9 +55,11 @@ return function(props: BiomeNameScreenProps?): React.ReactNode
 	})
 
 	local showBanner = canRender
-		and (biomeState.visible
-		or appearance.progress > BANNER_PROGRESS_EPSILON
-		or underline.progress > BANNER_PROGRESS_EPSILON)
+		and (
+			biomeState.visible
+			or appearance.progress > BANNER_PROGRESS_EPSILON
+			or underline.progress > BANNER_PROGRESS_EPSILON
+		)
 	if not showBanner or biomeState.biomeName == "" then
 		return nil
 	end

@@ -9,7 +9,25 @@ local Signal = require(ReplicatedStorage.Packages.Signal)
 local GamepadNav = {}
 GamepadNav.__index = GamepadNav
 
+local GAMEPAD_CURSOR_ACTIVE_ATTRIBUTE = "CustomCursorGamepadActive"
+
 export type NavDirection = "Up" | "Down" | "Left" | "Right"
+export type ThumbstickKey = "Left" | "Right"
+
+export type ThumbstickState = {
+	key: ThumbstickKey,
+	raw: Vector2,
+	screen: Vector2,
+	magnitude: number,
+	active: boolean,
+}
+
+export type ThumbstickSnapshot = {
+	left: ThumbstickState,
+	right: ThumbstickState,
+	dominant: ThumbstickKey?,
+	lastUpdatedAt: number,
+}
 
 export type LayoutConfig = {
 	mode: "Linear" | "Grid"?,
@@ -23,12 +41,14 @@ export type GamepadNavConfig = {
 	eventBus: any?,
 	eventChannel: string?,
 	focusEvent: string?,
+	thumbstickEvent: string?,
 	tooltipManager: any?,
 	onActivate: ((focused: GuiObject?) -> ())?,
 	onBack: (() -> ())?,
 	onFocusChanged: FocusCallback?,
 	moveRepeatCooldown: number?,
 	stickDeadzone: number?,
+	navigationStickKeyCode: Enum.KeyCode?,
 }
 
 type LayoutRecord = {
@@ -50,6 +70,15 @@ type FocusChangedSignal = {
 	Fire: (self: FocusChangedSignal, nextFocused: GuiObject?, prevFocused: GuiObject?) -> (),
 	DisconnectAll: (self: FocusChangedSignal) -> (),
 	Destroy: (self: FocusChangedSignal) -> (),
+}
+
+type ThumbstickChangedCallback = (snapshot: ThumbstickSnapshot) -> ()
+
+type ThumbstickChangedSignal = {
+	Connect: (self: ThumbstickChangedSignal, callback: ThumbstickChangedCallback) -> SignalConnection,
+	Fire: (self: ThumbstickChangedSignal, snapshot: ThumbstickSnapshot) -> (),
+	DisconnectAll: (self: ThumbstickChangedSignal) -> (),
+	Destroy: (self: ThumbstickChangedSignal) -> (),
 }
 
 local function clampInteger(valueRaw: any, fallback: number, minValue: number, maxValue: number): number
@@ -96,24 +125,85 @@ local function isSelectable(gui: GuiObject): boolean
 	return gui.Visible and gui.Active and gui.Selectable
 end
 
+local function createThumbstickState(key: ThumbstickKey): ThumbstickState
+	return {
+		key = key,
+		raw = Vector2.zero,
+		screen = Vector2.zero,
+		magnitude = 0,
+		active = false,
+	}
+end
+
+local function cloneThumbstickState(state: ThumbstickState): ThumbstickState
+	return {
+		key = state.key,
+		raw = state.raw,
+		screen = state.screen,
+		magnitude = state.magnitude,
+		active = state.active,
+	}
+end
+
+local function cloneThumbstickSnapshot(snapshot: ThumbstickSnapshot): ThumbstickSnapshot
+	return {
+		left = cloneThumbstickState(snapshot.left),
+		right = cloneThumbstickState(snapshot.right),
+		dominant = snapshot.dominant,
+		lastUpdatedAt = snapshot.lastUpdatedAt,
+	}
+end
+
+local function normalizeThumbstickVector(vector: Vector2, deadzone: number): Vector2
+	local magnitude = vector.Magnitude
+	if magnitude <= deadzone or magnitude <= 1e-4 then
+		return Vector2.zero
+	end
+	local remappedMagnitude = math.clamp((magnitude - deadzone) / math.max(1e-4, 1 - deadzone), 0, 1)
+	return vector.Unit * remappedMagnitude
+end
+
+local function thumbstickStatesEqual(a: ThumbstickState, b: ThumbstickState): boolean
+	return a.key == b.key
+		and a.active == b.active
+		and math.abs(a.raw.X - b.raw.X) <= 1e-4
+		and math.abs(a.raw.Y - b.raw.Y) <= 1e-4
+		and math.abs(a.screen.X - b.screen.X) <= 1e-4
+		and math.abs(a.screen.Y - b.screen.Y) <= 1e-4
+		and math.abs(a.magnitude - b.magnitude) <= 1e-4
+end
+
 function GamepadNav.New(configRaw: GamepadNavConfig?): GamepadNav
 	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local thumbstickSnapshot: ThumbstickSnapshot = {
+		left = createThumbstickState("Left"),
+		right = createThumbstickState("Right"),
+		dominant = nil,
+		lastUpdatedAt = 0,
+	}
 	local self = setmetatable({
 		eventBus = config.eventBus,
 		eventChannel = normalizeEventName(config.eventChannel, "gamepad.nav"),
 		focusEvent = normalizeEventName(config.focusEvent, "focusChanged"),
+		thumbstickEvent = normalizeEventName(config.thumbstickEvent, "thumbsticksChanged"),
 		tooltipManager = config.tooltipManager,
 		onActivate = if typeof(config.onActivate) == "function" then config.onActivate else nil,
 		onBack = if typeof(config.onBack) == "function" then config.onBack else nil,
 		externalFocusChanged = if typeof(config.onFocusChanged) == "function" then config.onFocusChanged else nil,
 		moveRepeatCooldown = clampNumber(config.moveRepeatCooldown, 0.12, 0.02, 1),
 		stickDeadzone = clampNumber(config.stickDeadzone, 0.35, 0, 1),
+		navigationStickKeyCode = if typeof(config.navigationStickKeyCode) == "EnumItem"
+				and config.navigationStickKeyCode.EnumType == Enum.KeyCode
+			then config.navigationStickKeyCode
+			else Enum.KeyCode.Thumbstick1,
 		layouts = {} :: { [string]: LayoutRecord },
 		layoutOrder = {} :: { string },
 		activeLayoutKey = nil :: string?,
 		activeIndex = 0,
 		lastFocusedByLayout = {} :: { [string]: number },
 		focusChangedSignal = Signal.new() :: FocusChangedSignal,
+		thumbstickChangedSignal = Signal.new() :: ThumbstickChangedSignal,
+		thumbstickSnapshot = thumbstickSnapshot,
 		connections = {} :: { RBXScriptConnection? },
 		isInitialized = false,
 		isEnabled = true,
@@ -149,6 +239,15 @@ function GamepadNav._emitFocusChanged(self: GamepadNav, nextFocused: GuiObject?,
 			focused = nextFocused,
 			previous = prevFocused,
 		})
+	end
+end
+
+function GamepadNav._emitThumbstickChanged(self: GamepadNav)
+	local snapshot = cloneThumbstickSnapshot(self.thumbstickSnapshot)
+	self.thumbstickChangedSignal:Fire(snapshot)
+	if self.eventBus ~= nil and typeof((self.eventBus :: any).publish) == "function" then
+		local eventBusAny = self.eventBus :: any
+		eventBusAny:publish(self.eventChannel, self.thumbstickEvent, snapshot)
 	end
 end
 
@@ -300,16 +399,12 @@ function GamepadNav._move(self: GamepadNav, direction: NavDirection): boolean
 	return self:_moveLinear(direction)
 end
 
-function GamepadNav._handleThumbstick(self: GamepadNav, input: InputObject)
-	local pos = input.Position
-	if typeof(pos) ~= "Vector3" then
-		return
-	end
-	local x = pos.X
-	local y = pos.Y
+function GamepadNav._handleThumbstick(self: GamepadNav, vector: Vector2)
+	local x = vector.X
+	local y = vector.Y
 	local absX = math.abs(x)
 	local absY = math.abs(y)
-	if absX < self.stickDeadzone and absY < self.stickDeadzone then
+	if absX <= 1e-4 and absY <= 1e-4 then
 		self.lastStickDirX = 0
 		self.lastStickDirY = 0
 		return
@@ -332,6 +427,41 @@ function GamepadNav._handleThumbstick(self: GamepadNav, input: InputObject)
 	end
 end
 
+function GamepadNav._updateThumbstick(self: GamepadNav, key: ThumbstickKey, input: InputObject)
+	local position = input.Position
+	if typeof(position) ~= "Vector3" then
+		return
+	end
+
+	local nextRaw = normalizeThumbstickVector(Vector2.new(position.X, position.Y), self.stickDeadzone)
+	local nextState: ThumbstickState = {
+		key = key,
+		raw = nextRaw,
+		screen = Vector2.new(nextRaw.X, -nextRaw.Y),
+		magnitude = nextRaw.Magnitude,
+		active = nextRaw.Magnitude > 1e-4,
+	}
+
+	local previous = if key == "Left" then self.thumbstickSnapshot.left else self.thumbstickSnapshot.right
+	if thumbstickStatesEqual(previous, nextState) then
+		return
+	end
+
+	if key == "Left" then
+		self.thumbstickSnapshot.left = nextState
+	else
+		self.thumbstickSnapshot.right = nextState
+	end
+
+	local leftMagnitude = self.thumbstickSnapshot.left.magnitude
+	local rightMagnitude = self.thumbstickSnapshot.right.magnitude
+	self.thumbstickSnapshot.dominant = if leftMagnitude <= 1e-4 and rightMagnitude <= 1e-4
+		then nil
+		else if rightMagnitude > leftMagnitude then "Right" else "Left"
+	self.thumbstickSnapshot.lastUpdatedAt = os.clock()
+	self:_emitThumbstickChanged()
+end
+
 function GamepadNav._onInputBegan(self: GamepadNav, input: InputObject, gameProcessed: boolean)
 	if gameProcessed or not self.isEnabled then
 		return
@@ -349,6 +479,9 @@ function GamepadNav._onInputBegan(self: GamepadNav, input: InputObject, gameProc
 	elseif input.KeyCode == Enum.KeyCode.DPadRight then
 		self:_move("Right")
 	elseif input.KeyCode == Enum.KeyCode.ButtonA then
+		if GuiService:GetAttribute(GAMEPAD_CURSOR_ACTIVE_ATTRIBUTE) == true then
+			return
+		end
 		local focused = GuiService.SelectedObject
 		if focused ~= nil and focused:IsA("GuiButton") then
 			focused:Activate()
@@ -370,7 +503,15 @@ function GamepadNav._onInputChanged(self: GamepadNav, input: InputObject)
 		return
 	end
 	if input.KeyCode == Enum.KeyCode.Thumbstick1 then
-		self:_handleThumbstick(input)
+		self:_updateThumbstick("Left", input)
+		if self.navigationStickKeyCode == Enum.KeyCode.Thumbstick1 then
+			self:_handleThumbstick(self.thumbstickSnapshot.left.raw)
+		end
+	elseif input.KeyCode == Enum.KeyCode.Thumbstick2 then
+		self:_updateThumbstick("Right", input)
+		if self.navigationStickKeyCode == Enum.KeyCode.Thumbstick2 then
+			self:_handleThumbstick(self.thumbstickSnapshot.right.raw)
+		end
 	end
 end
 
@@ -492,6 +633,20 @@ function GamepadNav.OnFocusChanged(self: GamepadNav, callbackRaw: any): () -> ()
 	end
 end
 
+function GamepadNav.GetThumbstickState(self: GamepadNav): ThumbstickSnapshot
+	return cloneThumbstickSnapshot(self.thumbstickSnapshot)
+end
+
+function GamepadNav.OnThumbstickChanged(self: GamepadNav, callbackRaw: any): () -> ()
+	if typeof(callbackRaw) ~= "function" then
+		return function() end
+	end
+	local connection = self.thumbstickChangedSignal:Connect(callbackRaw :: ThumbstickChangedCallback)
+	return function()
+		connection:Disconnect()
+	end
+end
+
 function GamepadNav.SetEnabled(self: GamepadNav, enabledRaw: any)
 	self.isEnabled = enabledRaw == true
 	if not self.isEnabled then
@@ -509,6 +664,8 @@ function GamepadNav.Destroy(self: GamepadNav)
 	table.clear(self.lastFocusedByLayout)
 	self.focusChangedSignal:DisconnectAll()
 	self.focusChangedSignal:Destroy()
+	self.thumbstickChangedSignal:DisconnectAll()
+	self.thumbstickChangedSignal:Destroy()
 	self.activeLayoutKey = nil
 	self.activeIndex = 0
 	self.isInitialized = false
@@ -522,6 +679,8 @@ GamepadNav.GetFocused = GamepadNav.GetFocused
 GamepadNav.Move = GamepadNav.Move
 GamepadNav.FocusIndex = GamepadNav.FocusIndex
 GamepadNav.OnFocusChanged = GamepadNav.OnFocusChanged
+GamepadNav.GetThumbstickState = GamepadNav.GetThumbstickState
+GamepadNav.OnThumbstickChanged = GamepadNav.OnThumbstickChanged
 GamepadNav.SetEnabled = GamepadNav.SetEnabled
 GamepadNav.Init = GamepadNav.Init
 GamepadNav.Destroy = GamepadNav.Destroy
@@ -536,6 +695,8 @@ GamepadNav.getFocused = GamepadNav.GetFocused
 GamepadNav.move = GamepadNav.Move
 GamepadNav.focusIndex = GamepadNav.FocusIndex
 GamepadNav.onFocusChanged = GamepadNav.OnFocusChanged
+GamepadNav.getThumbstickState = GamepadNav.GetThumbstickState
+GamepadNav.onThumbstickChanged = GamepadNav.OnThumbstickChanged
 GamepadNav.setEnabled = GamepadNav.SetEnabled
 GamepadNav.destroy = GamepadNav.Destroy
 

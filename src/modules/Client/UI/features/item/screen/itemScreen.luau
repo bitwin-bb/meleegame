@@ -1,11 +1,11 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local PortalTargets = require(script:FindFirstAncestor("game").Client.UI.core.utils.PortalTargets)
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
-local Charm = require(ReplicatedStorage.Packages.Charm)
-local PortalTargets = require(script:FindFirstAncestor("game").Client.UI.core.utils.PortalTargets)
 local itemSlice = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemSlice)
+local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
 type ItemDragState = itemSlice.ItemDragState
 
@@ -22,19 +22,7 @@ local function resolveDragState(): ItemDragState
 end
 
 return function(props: ItemScreenProps): React.ReactNode
-	local dragState, setDragState = React.useState(resolveDragState)
-
-	React.useEffect(function()
-		local unsubscribeDrag = Charm.subscribe(itemSlice.dragStateAtom, function(nextState: ItemDragState)
-			setDragState(nextState)
-		end, {
-			inclusive = true,
-		})
-
-		return function()
-			unsubscribeDrag()
-		end
-	end, {})
+	local dragState = (useStore(itemSlice.dragStateAtom) :: ItemDragState?) or resolveDragState()
 
 	if props.visible == false then
 		return nil

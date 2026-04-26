@@ -2,10 +2,10 @@
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local nevermoreRequire = require(loaderUtils.Parent).load(script)
+local loader = require(loaderUtils.Parent).load(script)
 
-local Binder = nevermoreRequire("Binder")
-local BinderProvider = nevermoreRequire("BinderProvider")
+local Binder = loader("Binder")
+local BinderProvider = loader("BinderProvider")
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local AudioBinder = require(script.Parent.AudioBinder)
 local ChunkBinder = require(script.Parent.ChunkBinder)

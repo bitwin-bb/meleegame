@@ -4,9 +4,9 @@ local RunService = game:GetService("RunService")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local nevermoreRequire = require(loaderUtils.Parent).load(script)
+local loader = require(loaderUtils.Parent).load(script)
 
-local ServiceBag = nevermoreRequire("ServiceBag")
+local ServiceBag = loader("ServiceBag")
 
 local NevermoreSupport = {}
 
@@ -29,6 +29,17 @@ local function setActiveServiceBag(serviceBag: any)
 	end
 end
 
+function NevermoreSupport.SetServiceBag(serviceBag: any): ()
+	assert(serviceBag == nil or ServiceBag.isServiceBag(serviceBag), "Bad serviceBag")
+
+	local existing = getActiveServiceBag()
+	if existing ~= nil and serviceBag ~= nil and existing ~= serviceBag then
+		error("A different service bag is already active.")
+	end
+
+	setActiveServiceBag(serviceBag)
+end
+
 function NevermoreSupport.Start(serviceTypesRaw: any): any
 	local existing = getActiveServiceBag()
 	if existing ~= nil then
@@ -36,7 +47,7 @@ function NevermoreSupport.Start(serviceTypesRaw: any): any
 	end
 
 	local serviceBag = ServiceBag.new()
-	setActiveServiceBag(serviceBag)
+	NevermoreSupport.SetServiceBag(serviceBag)
 
 	local ok, err = xpcall(function()
 		if typeof(serviceTypesRaw) == "table" then
@@ -52,7 +63,7 @@ function NevermoreSupport.Start(serviceTypesRaw: any): any
 	end, debug.traceback)
 
 	if not ok then
-		setActiveServiceBag(nil)
+		NevermoreSupport.SetServiceBag(nil)
 		serviceBag:Destroy()
 		error(err)
 	end
@@ -63,7 +74,7 @@ end
 function NevermoreSupport.GetServiceBag(): any
 	local serviceBag = getActiveServiceBag()
 	if serviceBag == nil then
-		error("NevermoreSupport.Start() must be called before retrieving services.")
+		error("NevermoreSupport.Start() or NevermoreSupport.SetServiceBag() must be called before retrieving services.")
 	end
 
 	return serviceBag
@@ -83,7 +94,7 @@ function NevermoreSupport.Destroy()
 		return
 	end
 
-	setActiveServiceBag(nil)
+	NevermoreSupport.SetServiceBag(nil)
 	serviceBag:Destroy()
 end
 
@@ -92,5 +103,6 @@ NevermoreSupport.getServiceBag = NevermoreSupport.GetServiceBag
 NevermoreSupport.getService = NevermoreSupport.GetService
 NevermoreSupport.isStarted = NevermoreSupport.IsStarted
 NevermoreSupport.destroy = NevermoreSupport.Destroy
+NevermoreSupport.setServiceBag = NevermoreSupport.SetServiceBag
 
 return NevermoreSupport

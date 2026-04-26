@@ -6,9 +6,9 @@ local WorldGeneration = require(script:FindFirstAncestor("game").Shared.Classes.
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local nevermoreRequire = require(loaderUtils.Parent).load(script)
+local loader = require(loaderUtils.Parent).load(script)
 
-local Maid = nevermoreRequire("Maid")
+local Maid = loader("Maid")
 
 return function()
 	describe("WorldGeneration Nevermore integrations", function()

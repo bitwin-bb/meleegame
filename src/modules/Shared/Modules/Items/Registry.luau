@@ -64,7 +64,8 @@ local function registerAlias(canonicalByAlias: { [string]: string }, aliasRaw: a
 end
 
 local function looksLikeDefinition(entry: { [any]: any }): boolean
-	if entry.id ~= nil
+	if
+		entry.id ~= nil
 		or entry.itemId ~= nil
 		or entry.name ~= nil
 		or entry.description ~= nil
@@ -77,7 +78,8 @@ local function looksLikeDefinition(entry: { [any]: any }): boolean
 		or entry.damage ~= nil
 		or entry.health ~= nil
 		or entry.attack ~= nil
-		or entry.defense ~= nil then
+		or entry.defense ~= nil
+	then
 		return true
 	end
 

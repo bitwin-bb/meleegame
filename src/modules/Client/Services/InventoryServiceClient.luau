@@ -9,10 +9,12 @@ local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networ
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
+local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Modules.Platform.GamepadPointer)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
 local LootServiceClient = require(script:FindFirstAncestor("game").Client.Services.LootServiceClient)
+local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
 local PlayerDataServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlayerDataServiceClient)
 local PlayerDataServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerDataServiceUtils)
 local WorldGenerationServiceClient =
@@ -40,6 +42,33 @@ local InventoryServiceClient = {}
 local DISABLE_BACKPACK_UI_MAX_ATTEMPTS = 8
 local DISABLE_BACKPACK_UI_RETRY_DELAY = 0.2
 local WORLD_FOLDER_NAME = "WorldGeneration"
+
+local function resolveCharacterRootPart(playerRaw: any): BasePart?
+	if typeof(playerRaw) ~= "Instance" or not playerRaw:IsA("Player") then
+		return nil
+	end
+
+	local player = playerRaw :: Player
+	local character = player.Character
+	if character == nil then
+		return nil
+	end
+
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	if humanoidRootPart ~= nil and humanoidRootPart:IsA("BasePart") then
+		return humanoidRootPart
+	end
+
+	if character.PrimaryPart ~= nil then
+		return character.PrimaryPart
+	end
+
+	return character:FindFirstChildWhichIsA("BasePart")
+end
+
+local function shouldUseGamepadWorldSelection(): boolean
+	return PlatformServiceClient:isGamepad() and PlatformServiceClient:getMachineFamily() ~= "desktop"
+end
 
 local function resolveWorldGridConfig(): (Vector3?, number?, number?)
 	local worldFolder = WorkspaceFolders.findFolderInGameOrWorkspace(WORLD_FOLDER_NAME)
@@ -119,13 +148,23 @@ local function resolveCursorScreenPosition(): Vector2?
 end
 
 local function resolveCursorTileFromMouse(): (number?, number?)
-	local camera = Workspace.CurrentCamera
-	if camera == nil then
+	local worldOrigin, tileSize, basePlaneX = resolveWorldGridConfig()
+	if worldOrigin == nil or tileSize == nil or basePlaneX == nil then
 		return nil, nil
 	end
 
-	local worldOrigin, tileSize, basePlaneX = resolveWorldGridConfig()
-	if worldOrigin == nil or tileSize == nil or basePlaneX == nil then
+	if shouldUseGamepadWorldSelection() then
+		local rootPart = resolveCharacterRootPart(Players.LocalPlayer)
+		local worldPosition = GamepadPointer.resolveCurrentWorldPosition(tileSize, rootPart)
+		if worldPosition ~= nil then
+			return BuildServiceUtils.WorldPositionToTile(worldPosition, worldOrigin, tileSize)
+		end
+
+		return nil, nil
+	end
+
+	local camera = Workspace.CurrentCamera
+	if camera == nil then
 		return nil, nil
 	end
 
@@ -168,6 +207,22 @@ local function disableDefaultBackpackUi()
 end
 
 local function resolveThrowDirectionFromMouse(): Vector3?
+	if shouldUseGamepadWorldSelection() then
+		local _, tileSize = resolveWorldGridConfig()
+		if tileSize ~= nil then
+			local rootPart = resolveCharacterRootPart(Players.LocalPlayer)
+			local worldPosition = GamepadPointer.resolveCurrentWorldPosition(tileSize, rootPart)
+			if rootPart ~= nil and worldPosition ~= nil then
+				local direction = worldPosition - rootPart.Position
+				if direction.Magnitude > 1e-4 then
+					return direction.Unit
+				end
+			end
+		end
+
+		return nil
+	end
+
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
 		return nil

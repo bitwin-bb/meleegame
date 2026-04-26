@@ -49,12 +49,28 @@ local MagicServiceClient = {}
 local CLIENT_VISUAL_FOLDER_NAME = "MagicClientVisuals"
 local CLIENT_VISUAL_STEP = 1 / 120
 local INPUT_ACTION_CAST = "MagicService.Cast"
+local GAMEPAD_AIM_DEADZONE = 0.12
 
 local function trim(raw: any): string
 	if typeof(raw) ~= "string" then
 		return ""
 	end
 	return string.match(raw, "^%s*(.-)%s*$") or ""
+end
+
+local function resolveGamepadAimVector(gamepadNavRaw: any): Vector2?
+	if gamepadNavRaw == nil or typeof((gamepadNavRaw :: any).getThumbstickState) ~= "function" then
+		return nil
+	end
+	local snapshot = (gamepadNavRaw :: any):getThumbstickState()
+	if typeof(snapshot) ~= "table" or typeof((snapshot :: any).right) ~= "table" then
+		return nil
+	end
+	local screenVector = (((snapshot :: any).right :: any).screen)
+	if typeof(screenVector) ~= "Vector2" or screenVector.Magnitude <= GAMEPAD_AIM_DEADZONE then
+		return nil
+	end
+	return screenVector
 end
 
 local function createDefaultReplicatedState(): ReplicatedState
@@ -191,12 +207,26 @@ function MagicServiceClient.BuildCastRequest(self: MagicServiceClient, triggerRa
 	local rootPart = resolveCharacterRootPart(self.character)
 	local origin = if rootPart ~= nil then rootPart.Position + Vector3.new(0, 1.35, 0) else Vector3.zero
 	local fallbackDirection = if rootPart ~= nil then rootPart.CFrame.LookVector else Vector3.new(0, 0, -1)
-	local mousePosition = resolveMouseHitPosition(self.localPlayer)
+	local mousePosition = nil :: Vector3?
 	local aimDirection = nil :: Vector3?
-	if mousePosition ~= nil then
-		local offset = mousePosition - origin
-		if offset.Magnitude > 1e-4 then
-			aimDirection = offset.Unit
+
+	if PlatformServiceClient:isGamepad() then
+		local gamepadAim = resolveGamepadAimVector(self.gamepadNav)
+		if gamepadAim ~= nil then
+			local candidate = Vector3.new(0, gamepadAim.Y, -gamepadAim.X)
+			if candidate.Magnitude > 1e-4 then
+				aimDirection = candidate.Unit
+			end
+		end
+	end
+
+	if aimDirection == nil then
+		mousePosition = resolveMouseHitPosition(self.localPlayer)
+		if mousePosition ~= nil then
+			local offset = mousePosition - origin
+			if offset.Magnitude > 1e-4 then
+				aimDirection = offset.Unit
+			end
 		end
 	end
 	if aimDirection == nil then
@@ -379,6 +409,9 @@ function MagicServiceClient.BindInputRouter(self: MagicServiceClient): boolean
 	end
 	self.runtimeContext = runtimeContext
 	self.hapticsModule = if runtimeContext ~= nil then (runtimeContext :: any).haptics else nil
+	self.gamepadNav = if runtimeContext ~= nil and typeof((runtimeContext :: any).getGamepadNav) == "function"
+		then (runtimeContext :: any):getGamepadNav()
+		else if runtimeContext ~= nil then (runtimeContext :: any).gamepadNav else nil
 	if not PlatformServiceClient:isReady() then
 		PlatformServiceClient:init()
 	end
@@ -476,6 +509,7 @@ function MagicServiceClient.Init(self: MagicServiceClient)
 	self.lastHeldTickAt = -math.huge
 	self.runtimeContext = nil
 	self.hapticsModule = nil
+	self.gamepadNav = nil
 
 	self.visualFolder = WorkspaceFolders.getOrCreateFolderInGame(CLIENT_VISUAL_FOLDER_NAME)
 
@@ -576,6 +610,7 @@ MagicServiceClient.destroy = MagicServiceClient.Destroy
 type MagicServiceClient = typeof(MagicServiceClient) & {
 	runtimeContext: any?,
 	hapticsModule: any?,
+	gamepadNav: any?,
 	localPlayer: Player,
 	networker: Networker.Client,
 	janitor: JanitorClass,

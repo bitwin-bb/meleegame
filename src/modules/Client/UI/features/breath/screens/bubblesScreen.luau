@@ -2,17 +2,18 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local React = require(ReplicatedStorage.Packages.React)
-local Charm = require(ReplicatedStorage.Packages.Charm)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local bubbleComponent = require(script:FindFirstAncestor("game").Client.UI.features.breath.components.bubble)
-local useBubbleDeplete = require(script:FindFirstAncestor("game").Client.UI.features.breath.hooks.useBubbleDeplete)
-local breathSlice = require(script:FindFirstAncestor("game").Client.UI.features.breath.state.breathSlice)
-local breathThunks = require(script:FindFirstAncestor("game").Client.UI.features.breath.state.breathThunks)
-local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
 local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
 local BreathServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BreathServiceUtils)
+local React = require(ReplicatedStorage.Packages.React)
+local breathSlice = require(script:FindFirstAncestor("game").Client.UI.features.breath.state.breathSlice)
+local breathThunks = require(script:FindFirstAncestor("game").Client.UI.features.breath.state.breathThunks)
+local bubbleComponent = require(script:FindFirstAncestor("game").Client.UI.features.breath.components.bubble)
+local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
+local useBubbleDeplete = require(script:FindFirstAncestor("game").Client.UI.features.breath.hooks.useBubbleDeplete)
+local useHover = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useHover)
+local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
 type BreathServiceState = BreathServiceUtils.BreathServiceState
 
@@ -86,25 +87,35 @@ end
 
 return function(props: BubblesScreenProps)
 	local useServiceState = props.useServiceState ~= false
-	local breathState, setBreathState = React.useState(function(): BreathServiceState
-		if not useServiceState and props.mockState ~= nil then
-			return props.mockState
-		end
-		return breathSlice.breathStateAtom()
-	end)
-	local isBreathReady, setIsBreathReady = React.useState(function(): boolean
-		if not useServiceState then
-			if props.mockReady ~= nil then
-				return props.mockReady
-			end
-			return true
-		end
-		return breathSlice.isBreathReady()
-	end)
-	local isHoveringBubbles, setIsHoveringBubbles = React.useState(false)
+	local serviceBreathState =
+		useStore(if useServiceState then breathSlice.breathStateAtom else nil) :: BreathServiceState?
+	local serviceBreathReady = useStore(if useServiceState then breathSlice.breathReadyAtom else nil) :: boolean?
+	local breathState = if useServiceState
+		then (serviceBreathState or breathSlice.breathStateAtom())
+		else if props.mockState ~= nil then props.mockState else breathSlice.breathStateAtom()
+	local isBreathReady = if useServiceState
+		then (serviceBreathReady or breathSlice.isBreathReady())
+		else if props.mockReady ~= nil then props.mockReady else true
 
 	local hoverId = "breath_bubbles_row"
 	local hoverText = string.format("Breath: %.1f/%.1f", breathState.breath, breathState.maxBreath)
+	local bubblesHover = useHover({
+		onHoverStart = function()
+			infoThunks.showHover({
+				id = hoverId,
+				text = hoverText,
+			})
+
+			if UI_HOVER_SOUND then
+				AudioServiceClient:playUi(UI_HOVER_SOUND, {
+					replaceChannel = false,
+				})
+			end
+		end,
+		onHoverEnd = function()
+			infoThunks.hideHover(hoverId)
+		end,
+	})
 
 	React.useEffect(function()
 		if not useServiceState then
@@ -112,47 +123,22 @@ return function(props: BubblesScreenProps)
 		end
 
 		local stop = breathThunks.start()
-		local unsubscribe = Charm.subscribe(breathSlice.breathStateAtom, function(nextState: BreathServiceState)
-			setBreathState(nextState)
-		end, {
-			inclusive = true,
-		})
-		local readyUnsubscribe = Charm.subscribe(breathSlice.breathReadyAtom, function(nextReady: boolean)
-			setIsBreathReady(nextReady)
-		end, {
-			inclusive = true,
-		})
 
 		return function()
-			unsubscribe()
-			readyUnsubscribe()
 			stop()
 		end
 	end, { useServiceState })
 
 	React.useEffect(function()
-		if useServiceState then
+		if not bubblesHover.hovered then
 			return
 		end
 
-		if props.mockState ~= nil then
-			setBreathState(props.mockState)
-		end
-		if props.mockReady ~= nil then
-			setIsBreathReady(props.mockReady)
-		else
-			setIsBreathReady(true)
-		end
-	end, { useServiceState, props.mockState, props.mockReady })
-
-	React.useEffect(function()
-		if isHoveringBubbles then
-			infoThunks.showHover({
-				id = hoverId,
-				text = hoverText,
-			})
-		end
-	end, { isHoveringBubbles, hoverText })
+		infoThunks.showHover({
+			id = hoverId,
+			text = hoverText,
+		})
+	end, { bubblesHover.hovered, hoverText })
 
 	React.useEffect(function()
 		return function()
@@ -229,23 +215,8 @@ return function(props: BubblesScreenProps)
 			BorderSizePixel = 0,
 			Active = true,
 			ZIndex = zIndex + 1,
-			[React.Event.MouseEnter] = function()
-				setIsHoveringBubbles(true)
-				infoThunks.showHover({
-					id = hoverId,
-					text = hoverText,
-				})
-
-				if UI_HOVER_SOUND then
-					AudioServiceClient:playUi(UI_HOVER_SOUND, {
-						replaceChannel = false,
-					})
-				end
-			end,
-			[React.Event.MouseLeave] = function()
-				setIsHoveringBubbles(false)
-				infoThunks.hideHover(hoverId)
-			end,
+			[React.Event.MouseEnter] = bubblesHover.eventHandlers[React.Event.MouseEnter],
+			[React.Event.MouseLeave] = bubblesHover.eventHandlers[React.Event.MouseLeave],
 		}, bubblesRowChildren),
 	})
 end

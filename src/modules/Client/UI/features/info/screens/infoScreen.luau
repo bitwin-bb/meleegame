@@ -1,12 +1,12 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local PortalTargets = require(script:FindFirstAncestor("game").Client.UI.core.utils.PortalTargets)
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
-local Charm = require(ReplicatedStorage.Packages.Charm)
-local PortalTargets = require(script:FindFirstAncestor("game").Client.UI.core.utils.PortalTargets)
 local TextLabel = require(script:FindFirstAncestor("game").Client.UI.core.primitives.TextLabel)
 local infoState = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoState)
 local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
+local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
 type HoverInfoState = infoState.HoverInfoState
 
@@ -22,20 +22,12 @@ local e: typeof(React.createElement) = React.createElement
 local DEFAULT_CURSOR_OFFSET = Vector2.new(16, 20)
 
 return function(props: InfoScreenProps): React.ReactNode
-	local hoverState, setHoverState = React.useState(function(): HoverInfoState
-		return infoState.infoStateAtom()
-	end)
+	local hoverState = (useStore(infoState.infoStateAtom) :: HoverInfoState?) or infoState.infoStateAtom()
 
 	React.useEffect(function()
 		local stop = infoThunks.start()
-		local unsubscribe = Charm.subscribe(infoState.infoStateAtom, function(nextState: HoverInfoState)
-			setHoverState(nextState)
-		end, {
-			inclusive = true,
-		})
 
 		return function()
-			unsubscribe()
 			stop()
 		end
 	end, {})

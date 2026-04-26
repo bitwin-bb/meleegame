@@ -7,9 +7,9 @@ local StarterGui = game:GetService("StarterGui")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local nevermoreRequire = require(loaderUtils.Parent).load(script)
+local loader = require(loaderUtils.Parent).load(script)
 
-local Maid = nevermoreRequire("Maid")
+local Maid = loader("Maid")
 local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Cmdr.CmdrUtils)
 local MatterDebugMenuClient = require(script.Parent.MatterDebugMenuClient)
 

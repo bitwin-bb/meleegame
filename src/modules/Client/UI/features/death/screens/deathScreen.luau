@@ -2,11 +2,11 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local Charm = require(ReplicatedStorage.Packages.Charm)
 local deathSlice = require(script:FindFirstAncestor("game").Client.UI.features.death.state.deathSlice)
 local deathThunks = require(script:FindFirstAncestor("game").Client.UI.features.death.state.deathThunks)
-local useDeathScreen = require(script:FindFirstAncestor("game").Client.UI.features.death.hooks.useDeathScreen)
 local useCountDown = require(script:FindFirstAncestor("game").Client.UI.features.death.hooks.useCountDown)
+local useDeathScreen = require(script:FindFirstAncestor("game").Client.UI.features.death.hooks.useDeathScreen)
+local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
 type DeathState = deathSlice.DeathState
 
@@ -28,20 +28,12 @@ local COUNTDOWN_APPEAR_DELAY_SECONDS = 2
 
 return function(props: DeathScreenProps?): React.ReactNode
 	local resolvedProps: DeathScreenProps = if props ~= nil then props else {}
-	local deathState, setDeathState = React.useState(function(): DeathState
-		return deathSlice.deathStateAtom()
-	end)
+	local deathState = (useStore(deathSlice.deathStateAtom) :: DeathState?) or deathSlice.deathStateAtom()
 
 	React.useEffect(function()
 		local stop = deathThunks.start()
-		local unsubscribe = Charm.subscribe(deathSlice.deathStateAtom, function(nextState: DeathState)
-			setDeathState(nextState)
-		end, {
-			inclusive = true,
-		})
 
 		return function()
-			unsubscribe()
 			stop()
 		end
 	end, {})
@@ -70,7 +62,8 @@ return function(props: DeathScreenProps?): React.ReactNode
 	end, { deathState.visible, countDownAppearance.canRespawn })
 
 	local showMainText = canRender and (deathState.visible or deathAppearance.progress > TEXT_PROGRESS_EPSILON)
-	local showCountDown = canRender and (countDownAppearance.revealed or countDownAppearance.progress > TEXT_PROGRESS_EPSILON)
+	local showCountDown = canRender
+		and (countDownAppearance.revealed or countDownAppearance.progress > TEXT_PROGRESS_EPSILON)
 	if not showMainText and not showCountDown then
 		return nil
 	end

@@ -3,18 +3,31 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
-local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
-local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local packageRoot = script:FindFirstAncestor("game").Parent
+local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
+local loader = require(loaderUtils.Parent).load(script)
+
+local CancelToken = loader("CancelToken")
+local Maid = loader("Maid")
+local ObservableMap = loader("ObservableMap")
+local ObservableSet = loader("ObservableSet")
+local Promise = loader("Promise")
+local PromiseMaidUtils = loader("PromiseMaidUtils")
+local Rx = loader("Rx")
+local RxSignal = loader("RxSignal")
+local Signal = loader("Signal")
+local ValueObject = loader("ValueObject")
 local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossServiceUtils)
-local EyeOfCthulhuController = require(script:FindFirstAncestor("game").Shared.Classes.Boss.EyeOfCthulhu)
+local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local EyeOfCthulhuConfig = require(script:FindFirstAncestor("game").Shared.Classes.Boss.EyeOfCthulhu.Config)
+local EyeOfCthulhuController = require(script:FindFirstAncestor("game").Shared.Classes.Boss.EyeOfCthulhu)
 local HpServiceServer = require(script:FindFirstAncestor("game").Server.Services.HpServiceServer)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
 local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
+local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local WeatherServiceServer = require(script:FindFirstAncestor("game").Server.Services.WeatherServiceServer)
 local WorldGenerationServiceServer =
 	require(script:FindFirstAncestor("game").Server.Services.WorldGenerationServiceServer)
@@ -26,6 +39,65 @@ type BossRegistryEntry = BossServiceUtils.BossRegistryEntry
 type BossSpawnRequest = BossServiceUtils.BossSpawnRequest
 
 type BossObject = any
+type MaidClass = {
+	Add: <T>(self: MaidClass, task: T) -> T,
+	GiveTask: (self: MaidClass, task: any) -> number,
+	DoCleaning: (self: MaidClass) -> (),
+	Destroy: (self: MaidClass) -> (),
+}
+
+type SignalObject = {
+	Connect: (self: SignalObject, callback: (...any) -> ()) -> any,
+	Fire: (self: SignalObject, ...any) -> (),
+	Destroy: (self: SignalObject) -> (),
+}
+
+type ObservableObject = {
+	Subscribe: (
+		self: ObservableObject,
+		onFire: (...any) -> (),
+		onFail: ((...any) -> ())?,
+		onComplete: ((...any) -> ())?
+	) -> any,
+	Pipe: (self: ObservableObject, transformers: { any }) -> ObservableObject,
+}
+
+type RxSignalObject = {
+	Connect: (self: RxSignalObject, callback: (...any) -> ()) -> any,
+	Once: (self: RxSignalObject, callback: (...any) -> ()) -> any,
+	Wait: (self: RxSignalObject) -> ...any,
+}
+
+type PromiseObject = {
+	Then: (self: PromiseObject, onFulfilled: ((...any) -> ...any)?, onRejected: ((...any) -> ...any)?) -> PromiseObject,
+	Catch: (self: PromiseObject, onRejected: ((...any) -> ...any)?) -> PromiseObject,
+	Finally: (self: PromiseObject, callback: ((...any) -> ...any)?) -> PromiseObject,
+	Yield: (self: PromiseObject) -> (boolean, ...any),
+	Destroy: (self: PromiseObject) -> (),
+}
+
+type ObservableMapClass = {
+	Set: (self: ObservableMapClass, key: string, value: BossObject?) -> () -> (),
+	Remove: (self: ObservableMapClass, key: string) -> (),
+	Get: (self: ObservableMapClass, key: string) -> BossObject?,
+	ObservePairsBrio: (self: ObservableMapClass) -> ObservableObject,
+	ObserveAtKey: (self: ObservableMapClass, key: string) -> ObservableObject,
+	Destroy: (self: ObservableMapClass) -> (),
+}
+
+type ObservableSetClass = {
+	Add: (self: ObservableSetClass, item: Player) -> () -> (),
+	Remove: (self: ObservableSetClass, item: Player) -> boolean,
+	GetList: (self: ObservableSetClass) -> { Player },
+	ObserveItemsBrio: (self: ObservableSetClass) -> ObservableObject,
+	Destroy: (self: ObservableSetClass) -> (),
+}
+
+type ValueObjectClass<T> = {
+	Value: T,
+	Observe: (self: ValueObjectClass<T>) -> ObservableObject,
+	Destroy: (self: ValueObjectClass<T>) -> (),
+}
 
 type HpServiceServerObject = {
 	damagePlayer: (self: HpServiceServerObject, player: Player, damageRaw: any) -> number?,
@@ -85,17 +157,12 @@ local function resolveEyeConfigSource(): { [string]: any }?
 	return nil
 end
 
-local function disconnect(connectionRaw: any)
-	if connectionRaw == nil then
-		return
-	end
-	pcall(function()
-		connectionRaw:Disconnect()
-	end)
-end
-
 local function trim(valueRaw: any): string
 	return BossServiceUtils.trim(valueRaw)
+end
+
+local function resolveModelBindingMaidKey(runtimeId: string): string
+	return ("modelBinding_%s"):format(runtimeId)
 end
 
 local function resolveBossId(boss: BossObject): string
@@ -118,6 +185,180 @@ local function destroyBossSafely(bossRaw: any)
 	pcall(function()
 		destroy(bossRaw)
 	end)
+end
+
+local function getOrCreateObservable(
+	self: BossServiceServer,
+	key: string,
+	factory: () -> ObservableObject
+): ObservableObject
+	local cached = self.observableCache[key]
+	if cached ~= nil then
+		return cached
+	end
+
+	local created = factory()
+	self.observableCache[key] = created
+	return created
+end
+
+local function getOrCreateRxSignal(self: BossServiceServer, key: string, factory: () -> RxSignalObject): RxSignalObject
+	local cached = self.rxSignalCache[key]
+	if cached ~= nil then
+		return cached
+	end
+
+	local created = factory()
+	self.rxSignalCache[key] = created
+	return created
+end
+
+local function resolveCancelToken(cancelTokenRaw: any): any?
+	if CancelToken.isCancelToken(cancelTokenRaw) then
+		return cancelTokenRaw
+	end
+	return nil
+end
+
+function BossServiceServer.SetPendingNaturalSpawn(self: BossServiceServer, pendingNaturalSpawn: PendingNaturalSpawn?)
+	self.pendingNaturalSpawn = pendingNaturalSpawn
+	if self.pendingNaturalSpawnValue ~= nil then
+		self.pendingNaturalSpawnValue.Value = pendingNaturalSpawn
+	end
+end
+
+function BossServiceServer.EmitStateChanged(self: BossServiceServer)
+	if self._stateChangedSignal ~= nil then
+		self._stateChangedSignal:Fire(self:createStateSnapshot())
+	end
+end
+
+function BossServiceServer.EmitControllerAdded(self: BossServiceServer, snapshot: BossSnapshot, boss: BossObject)
+	if self._controllerAddedSignal ~= nil then
+		self._controllerAddedSignal:Fire(snapshot, boss)
+	end
+end
+
+function BossServiceServer.EmitControllerUpdated(self: BossServiceServer, snapshot: BossSnapshot, boss: BossObject)
+	if self._controllerUpdatedSignal ~= nil then
+		self._controllerUpdatedSignal:Fire(snapshot, boss)
+	end
+end
+
+function BossServiceServer.EmitControllerRemoved(
+	self: BossServiceServer,
+	runtimeId: string,
+	boss: BossObject?,
+	reasonRaw: any?
+)
+	if self._controllerRemovedSignal == nil then
+		return
+	end
+
+	self._controllerRemovedSignal:Fire({
+		id = runtimeId,
+		bossId = if boss ~= nil then boss.bossId else nil,
+		reason = trim(reasonRaw),
+		updatedAt = self:getNow(),
+	}, boss)
+end
+
+function BossServiceServer.BindController(self: BossServiceServer, runtimeId: string, boss: BossObject, maid: MaidClass)
+	self:refreshControllerModelBinding(boss)
+
+	local function syncNow()
+		if self.controllersById[runtimeId] ~= boss then
+			return
+		end
+
+		self:refreshControllerModelBinding(boss)
+		self:syncControllerSnapshot(boss, true)
+	end
+
+	maid:GiveTask(boss:observeStateChanged():Subscribe(function()
+		syncNow()
+	end))
+	maid:GiveTask(boss:observeTargetChanged():Subscribe(function()
+		syncNow()
+	end))
+	maid:GiveTask(boss:observeDamaged():Subscribe(function()
+		syncNow()
+	end))
+	maid:GiveTask(boss:observeDied():Subscribe(function()
+		syncNow()
+	end))
+	maid:GiveTask(boss:observeModelChanged():Subscribe(function()
+		syncNow()
+	end))
+	maid:GiveTask(boss:observeRemoved():Subscribe(function(reason)
+		if self.controllersById[runtimeId] ~= boss then
+			return
+		end
+
+		self:removeController(runtimeId, reason)
+	end))
+	maid:GiveTask(boss:observeDestroying():Subscribe(function()
+		if self.controllersById[runtimeId] ~= boss then
+			return
+		end
+
+		self:removeController(runtimeId, "controller_destroyed")
+	end))
+end
+
+function BossServiceServer.InitReactiveState(self: BossServiceServer)
+	self.observableCache = {}
+	self.rxSignalCache = {}
+	self._stateChangedSignal = Signal.new()
+	self._controllerAddedSignal = Signal.new()
+	self._controllerUpdatedSignal = Signal.new()
+	self._controllerRemovedSignal = Signal.new()
+	self._announcementSignal = Signal.new()
+	self.controllerMap = ObservableMap.new() :: ObservableMapClass
+	self.trackedPlayers = ObservableSet.new() :: ObservableSetClass
+	self.pendingNaturalSpawnValue = ValueObject.new(nil) :: ValueObjectClass<PendingNaturalSpawn?>
+
+	self.stateChangedSignal = RxSignal.new(function()
+		return self:observeState()
+	end) :: RxSignalObject
+	self.controllerAddedSignal = RxSignal.new(function()
+		return self:observeControllerAdded()
+	end) :: RxSignalObject
+	self.controllerUpdatedSignal = RxSignal.new(function()
+		return self:observeControllerUpdated()
+	end) :: RxSignalObject
+	self.controllerRemovedSignal = RxSignal.new(function()
+		return self:observeControllerRemoved()
+	end) :: RxSignalObject
+	self.controllersSignal = RxSignal.new(function()
+		return self:observeControllersBrio()
+	end) :: RxSignalObject
+	self.announcementSignal = RxSignal.new(function()
+		return self:observeAnnouncement()
+	end) :: RxSignalObject
+	self.pendingNaturalSpawnSignal = RxSignal.new(function()
+		return self:observePendingNaturalSpawn()
+	end) :: RxSignalObject
+
+	self.maid:GiveTask(self._stateChangedSignal)
+	self.maid:GiveTask(self._controllerAddedSignal)
+	self.maid:GiveTask(self._controllerUpdatedSignal)
+	self.maid:GiveTask(self._controllerRemovedSignal)
+	self.maid:GiveTask(self._announcementSignal)
+	self.maid:GiveTask(self.controllerMap)
+	self.maid:GiveTask(self.trackedPlayers)
+	self.maid:GiveTask(self.pendingNaturalSpawnValue)
+	self.maid:GiveTask(self:observeControllersBrio():Subscribe(function(brio)
+		local lifetimeMaid, runtimeId, boss = brio:ToMaidAndValue()
+		if typeof(runtimeId) ~= "string" or runtimeId == "" then
+			return
+		end
+		if boss == nil then
+			return
+		end
+
+		self:bindController(runtimeId, boss, lifetimeMaid)
+	end))
 end
 
 function BossServiceServer.GetNow(self: BossServiceServer): number
@@ -169,7 +410,9 @@ function BossServiceServer.GetSurfaceYAtWorldPosition(self: BossServiceServer, w
 		return nil
 	end
 
-	local worldOrigin = if typeof((world :: any).worldOrigin) == "Vector3" then (world :: any).worldOrigin else Vector3.zero
+	local worldOrigin = if typeof((world :: any).worldOrigin) == "Vector3"
+		then (world :: any).worldOrigin
+		else Vector3.zero
 	local tileSize = if typeof((world :: any).tileSize) == "number" and (world :: any).tileSize > 0
 		then (world :: any).tileSize
 		else 2
@@ -293,6 +536,7 @@ function BossServiceServer.UpsertControllerState(self: BossServiceServer, boss: 
 	self.state.updatedAt = self:getNow()
 	boss.snapshotDirty = false
 	boss.lastSnapshotAt = self.state.updatedAt
+	self:emitStateChanged()
 	return snapshot
 end
 
@@ -338,7 +582,8 @@ function BossServiceServer.ResolveSpawnRequest(
 		return nil, nil, "unknown_boss"
 	end
 
-	request.encounterChannel = if typeof(request.encounterChannel) == "string" and request.encounterChannel ~= ""
+	request.encounterChannel = if typeof(request.encounterChannel) == "string"
+			and request.encounterChannel ~= ""
 		then request.encounterChannel
 		else definition.encounterChannel
 	return request, definition, nil
@@ -356,7 +601,11 @@ end
 function BossServiceServer.ResolveControllerConstructor(
 	self: BossServiceServer,
 	definition: BossRegistryEntry
-): ((BossServiceServer, BossRegistryEntry, BossSpawnRequest) -> BossObject)?
+): ((
+	BossServiceServer,
+	BossRegistryEntry,
+	BossSpawnRequest
+) -> BossObject)?
 	local constructor = CONTROLLER_CONSTRUCTORS[definition.controllerId]
 	if typeof(constructor) == "function" then
 		return constructor
@@ -376,15 +625,21 @@ function BossServiceServer.RefreshControllerModelBinding(self: BossServiceServer
 		return
 	end
 
-	disconnect(self.modelDestroyConnectionsById[runtimeId])
-	self.modelDestroyConnectionsById[runtimeId] = nil
+	local modelBindingMaidKey = resolveModelBindingMaidKey(runtimeId)
+	local modelBindingMaid = (self.maid :: any)[modelBindingMaidKey]
+	if modelBindingMaid == nil then
+		modelBindingMaid = Maid.new() :: MaidClass
+		(self.maid :: any)[modelBindingMaidKey] = modelBindingMaid
+	end
+	modelBindingMaid:DoCleaning()
 	self.boundModelsById[runtimeId] = currentModel
 
 	if currentModel == nil then
 		return
 	end
 
-	self.modelDestroyConnectionsById[runtimeId] = currentModel.Destroying:Connect(function()
+	local modelBindingState = modelBindingMaid :: any
+	modelBindingState.destroyingConnection = currentModel.Destroying:Connect(function()
 		if boss.model ~= currentModel then
 			return
 		end
@@ -395,6 +650,9 @@ end
 function BossServiceServer.TrackController(self: BossServiceServer, boss: BossObject)
 	self.controllersById[boss.id] = boss
 	self.controllersByChannel[boss.encounterChannel] = boss
+	if self.controllerMap ~= nil then
+		self.controllerMap:Set(boss.id, boss)
+	end
 	self:refreshControllerModelBinding(boss)
 end
 
@@ -408,9 +666,12 @@ function BossServiceServer.UntrackController(self: BossServiceServer, boss: Boss
 	if self.controllersByChannel[boss.encounterChannel] == boss then
 		self.controllersByChannel[boss.encounterChannel] = nil
 	end
+	if self.controllerMap ~= nil then
+		self.controllerMap:Remove(runtimeId)
+	end
 
-	disconnect(self.modelDestroyConnectionsById[runtimeId])
-	self.modelDestroyConnectionsById[runtimeId] = nil
+	local maid = self.maid :: any
+	maid[resolveModelBindingMaidKey(runtimeId)] = nil
 	self.boundModelsById[runtimeId] = nil
 end
 
@@ -432,6 +693,7 @@ function BossServiceServer.SyncControllerSnapshot(
 
 	local snapshot = self:upsertControllerState(boss)
 	self:broadcast(BossServiceUtils.CLIENT_METHOD_ON_BOSS_UPDATED, snapshot)
+	self:emitControllerUpdated(snapshot, boss)
 	return snapshot
 end
 
@@ -446,18 +708,20 @@ function BossServiceServer.RemoveController(self: BossServiceServer, runtimeIdRa
 		return
 	end
 
-	self:untrackController(boss)
-	self.state.byId[runtimeId] = nil
-	self:removeOrderedId(runtimeId)
-	self.state.updatedAt = self:getNow()
-
 	local reason = trim(reasonRaw)
 	if reason ~= "" then
 		boss.lastReason = reason
 	end
 
+	self:untrackController(boss)
+	self.state.byId[runtimeId] = nil
+	self:removeOrderedId(runtimeId)
+	self.state.updatedAt = self:getNow()
+	self:emitStateChanged()
+
 	boss:destroy()
 	self:broadcast(BossServiceUtils.CLIENT_METHOD_ON_BOSS_REMOVED, runtimeId)
+	self:emitControllerRemoved(runtimeId, boss, if reason ~= "" then reason else boss.lastReason)
 end
 
 function BossServiceServer.SpawnBoss(self: BossServiceServer, requestRaw: any): (BossObject?, string?)
@@ -516,6 +780,7 @@ function BossServiceServer.SpawnBoss(self: BossServiceServer, requestRaw: any): 
 
 	local snapshot = self:upsertControllerState(boss)
 	self:broadcast(BossServiceUtils.CLIENT_METHOD_ON_BOSS_ADDED, snapshot)
+	self:emitControllerAdded(snapshot, boss)
 	return boss, nil
 end
 
@@ -647,16 +912,21 @@ function BossServiceServer.BroadcastAnnouncement(self: BossServiceServer, textRa
 		return
 	end
 
-	self:broadcast(BossServiceUtils.CLIENT_METHOD_ON_ANNOUNCEMENT, {
+	local payload = {
 		text = text,
 		bossId = bossIdRaw,
 		updatedAt = self:getNow(),
-	})
+	}
+	self:broadcast(BossServiceUtils.CLIENT_METHOD_ON_ANNOUNCEMENT, payload)
+	if self._announcementSignal ~= nil then
+		self._announcementSignal:Fire(payload)
+	end
 end
 
 function BossServiceServer.ResolveNaturalSpawnTargetPlayer(self: BossServiceServer): Player?
 	local alivePlayers = {}
-	for _, player in Players:GetPlayers() do
+	local trackedPlayers = if self.trackedPlayers ~= nil then self.trackedPlayers:GetList() else Players:GetPlayers()
+	for _, player in trackedPlayers do
 		if BossServiceUtils.isPlayerAlive(player) then
 			table.insert(alivePlayers, player)
 		end
@@ -702,10 +972,16 @@ function BossServiceServer.ScheduleNaturalSpawn(self: BossServiceServer, definit
 		delayRemaining = BossServiceUtils.sanitizeNumber(defaultConfig.naturalSpawnAnnouncementDelay, 2, 0, 30),
 		announcement = announcement,
 	}
+	self:setPendingNaturalSpawn(self.pendingNaturalSpawn)
 	self:broadcastAnnouncement(announcement, definition.id)
 end
 
-function BossServiceServer.StepNaturalSpawns(self: BossServiceServer, dt: number, previousClockTime: number, currentClockTime: number)
+function BossServiceServer.StepNaturalSpawns(
+	self: BossServiceServer,
+	dt: number,
+	previousClockTime: number,
+	currentClockTime: number
+)
 	if BossServiceUtils.didClockPass(previousClockTime, currentClockTime, BossServiceUtils.NIGHT_START_CLOCK_TIME) then
 		for _, definition in BossServiceUtils.getRegistryEntries() do
 			if definition.supportsNaturalSpawn and not self:isEncounterChannelBusy(definition.encounterChannel) then
@@ -720,12 +996,12 @@ function BossServiceServer.StepNaturalSpawns(self: BossServiceServer, dt: number
 	end
 
 	if not self:isNightTime() then
-		self.pendingNaturalSpawn = nil
+		self:setPendingNaturalSpawn(nil)
 		return
 	end
 
 	if not BossServiceUtils.isPlayerAlive(pending.targetPlayer) then
-		self.pendingNaturalSpawn = nil
+		self:setPendingNaturalSpawn(nil)
 		return
 	end
 
@@ -746,7 +1022,7 @@ function BossServiceServer.StepNaturalSpawns(self: BossServiceServer, dt: number
 	})
 
 	if controller ~= nil or reason ~= "encounter_channel_busy" then
-		self.pendingNaturalSpawn = nil
+		self:setPendingNaturalSpawn(nil)
 	end
 end
 
@@ -780,7 +1056,12 @@ function BossServiceServer.SummonBossForPlayer(
 	})
 end
 
-function BossServiceServer.RequestManualSummon(self: BossServiceServer, player: Player, bossTokenRaw: any, optionsRaw: any?)
+function BossServiceServer.RequestManualSummon(
+	self: BossServiceServer,
+	player: Player,
+	bossTokenRaw: any,
+	optionsRaw: any?
+)
 	if self.allowClientManualSummon ~= true then
 		return
 	end
@@ -790,6 +1071,230 @@ end
 
 function BossServiceServer.GetState(self: BossServiceServer): BossServiceState
 	return self:createStateSnapshot()
+end
+
+function BossServiceServer.ObserveState(self: BossServiceServer): ObservableObject
+	return getOrCreateObservable(self, "state", function()
+		return Rx.fromSignal(self._stateChangedSignal):Pipe({
+			Rx.startWith({ self:getState() }),
+			Rx.shareReplay(1),
+		}) :: ObservableObject
+	end)
+end
+
+function BossServiceServer.ObserveControllerAdded(self: BossServiceServer): ObservableObject
+	return getOrCreateObservable(self, "controllerAdded", function()
+		return Rx.fromSignal(self._controllerAddedSignal):Pipe({
+			Rx.share(),
+		}) :: ObservableObject
+	end)
+end
+
+function BossServiceServer.ObserveControllerUpdated(self: BossServiceServer): ObservableObject
+	return getOrCreateObservable(self, "controllerUpdated", function()
+		return Rx.fromSignal(self._controllerUpdatedSignal):Pipe({
+			Rx.share(),
+		}) :: ObservableObject
+	end)
+end
+
+function BossServiceServer.ObserveControllerRemoved(self: BossServiceServer): ObservableObject
+	return getOrCreateObservable(self, "controllerRemoved", function()
+		return Rx.fromSignal(self._controllerRemovedSignal):Pipe({
+			Rx.share(),
+		}) :: ObservableObject
+	end)
+end
+
+function BossServiceServer.ObserveControllersBrio(self: BossServiceServer): ObservableObject
+	return getOrCreateObservable(self, "controllersBrio", function()
+		return self.controllerMap:ObservePairsBrio():Pipe({
+			Rx.share(),
+		}) :: ObservableObject
+	end)
+end
+
+function BossServiceServer.ObserveControllerAtId(self: BossServiceServer, runtimeIdRaw: any): ObservableObject
+	local runtimeId = trim(runtimeIdRaw)
+	if runtimeId == "" then
+		return Rx.of(nil) :: ObservableObject
+	end
+
+	return getOrCreateObservable(self, ("controllerAtId_%s"):format(runtimeId), function()
+		return self.controllerMap:ObserveAtKey(runtimeId):Pipe({
+			Rx.shareReplay(1),
+		}) :: ObservableObject
+	end)
+end
+
+function BossServiceServer.ObserveTrackedPlayersBrio(self: BossServiceServer): ObservableObject
+	return getOrCreateObservable(self, "trackedPlayersBrio", function()
+		return self.trackedPlayers:ObserveItemsBrio():Pipe({
+			Rx.share(),
+		}) :: ObservableObject
+	end)
+end
+
+function BossServiceServer.ObserveAnnouncement(self: BossServiceServer): ObservableObject
+	return getOrCreateObservable(self, "announcement", function()
+		return Rx.fromSignal(self._announcementSignal):Pipe({
+			Rx.share(),
+		}) :: ObservableObject
+	end)
+end
+
+function BossServiceServer.ObservePendingNaturalSpawn(self: BossServiceServer): ObservableObject
+	return getOrCreateObservable(self, "pendingNaturalSpawn", function()
+		return self.pendingNaturalSpawnValue:Observe():Pipe({
+			Rx.shareReplay(1),
+		}) :: ObservableObject
+	end)
+end
+
+function BossServiceServer.GetStateChangedSignal(self: BossServiceServer): RxSignalObject
+	return self.stateChangedSignal
+end
+
+function BossServiceServer.GetControllerAddedSignal(self: BossServiceServer): RxSignalObject
+	return self.controllerAddedSignal
+end
+
+function BossServiceServer.GetControllerUpdatedSignal(self: BossServiceServer): RxSignalObject
+	return self.controllerUpdatedSignal
+end
+
+function BossServiceServer.GetControllerRemovedSignal(self: BossServiceServer): RxSignalObject
+	return self.controllerRemovedSignal
+end
+
+function BossServiceServer.GetControllersSignal(self: BossServiceServer): RxSignalObject
+	return self.controllersSignal
+end
+
+function BossServiceServer.GetAnnouncementSignal(self: BossServiceServer): RxSignalObject
+	return self.announcementSignal
+end
+
+function BossServiceServer.GetPendingNaturalSpawnSignal(self: BossServiceServer): RxSignalObject
+	return self.pendingNaturalSpawnSignal
+end
+
+function BossServiceServer.WaitForControllerPromise(
+	self: BossServiceServer,
+	runtimeIdRaw: any,
+	cancelTokenRaw: any?
+): PromiseObject
+	local runtimeId = trim(runtimeIdRaw)
+	if runtimeId == "" then
+		return Promise.resolved(nil) :: PromiseObject
+	end
+
+	local existing = self.controllersById[runtimeId]
+	if existing ~= nil then
+		return Promise.resolved(existing) :: PromiseObject
+	end
+
+	return Rx.toPromise(
+		self:observeControllerAtId(runtimeId):Pipe({
+			Rx.where(function(boss)
+				return boss ~= nil
+			end),
+			Rx.take(1),
+		}),
+		resolveCancelToken(cancelTokenRaw)
+	) :: PromiseObject
+end
+
+function BossServiceServer.WaitForControllerRemovalPromise(
+	self: BossServiceServer,
+	runtimeIdRaw: any,
+	cancelTokenRaw: any?
+): PromiseObject
+	local runtimeId = trim(runtimeIdRaw)
+	if runtimeId == "" then
+		return Promise.rejected("invalid_runtime_id") :: PromiseObject
+	end
+	if self.controllersById[runtimeId] == nil then
+		return Promise.resolved({
+			id = runtimeId,
+			bossId = nil,
+			reason = "already_removed",
+			updatedAt = self:getNow(),
+		}) :: PromiseObject
+	end
+
+	return Rx.toPromise(
+		self:observeControllerRemoved():Pipe({
+			Rx.where(function(payload)
+				return typeof(payload) == "table" and (payload :: any).id == runtimeId
+			end),
+			Rx.take(1),
+		}),
+		resolveCancelToken(cancelTokenRaw)
+	) :: PromiseObject
+end
+
+function BossServiceServer.SpawnBossPromise(
+	self: BossServiceServer,
+	requestRaw: any,
+	cancelTokenRaw: any?
+): PromiseObject
+	local cancelToken = resolveCancelToken(cancelTokenRaw)
+	local promise = Promise.spawn(function(resolve, reject)
+		if cancelToken ~= nil and cancelToken:IsCancelled() then
+			reject("cancelled")
+			return
+		end
+
+		local boss, reason = self:spawnBoss(requestRaw)
+		if cancelToken ~= nil and cancelToken:IsCancelled() then
+			if boss ~= nil then
+				self:removeController(boss.id, "spawn_cancelled")
+			end
+			reject("cancelled")
+			return
+		end
+
+		resolve(boss, reason)
+	end) :: PromiseObject
+
+	PromiseMaidUtils.whilePromise(promise, function(maid: MaidClass)
+		if cancelToken ~= nil then
+			maid:GiveTask(cancelToken.Cancelled:Connect(function()
+				promise:Destroy()
+			end))
+		end
+	end)
+
+	return promise
+end
+
+function BossServiceServer.SummonBossForPlayerPromise(
+	self: BossServiceServer,
+	playerRaw: any,
+	bossTokenRaw: any,
+	optionsRaw: any?,
+	cancelTokenRaw: any?
+): PromiseObject
+	local cancelToken = resolveCancelToken(cancelTokenRaw)
+	local promise = Promise.spawn(function(resolve, reject)
+		if cancelToken ~= nil and cancelToken:IsCancelled() then
+			reject("cancelled")
+			return
+		end
+
+		resolve(self:summonBossForPlayer(playerRaw, bossTokenRaw, optionsRaw))
+	end) :: PromiseObject
+
+	PromiseMaidUtils.whilePromise(promise, function(maid: MaidClass)
+		if cancelToken ~= nil then
+			maid:GiveTask(cancelToken.Cancelled:Connect(function()
+				promise:Destroy()
+			end))
+		end
+	end)
+
+	return promise
 end
 
 function BossServiceServer.OnHeartbeat(self: BossServiceServer, dtRaw: any)
@@ -838,25 +1343,36 @@ function BossServiceServer.OnHeartbeat(self: BossServiceServer, dtRaw: any)
 end
 
 function BossServiceServer.TrackPlayer(self: BossServiceServer, player: Player)
+	if self.trackedPlayers ~= nil then
+		self.trackedPlayers:Add(player)
+	end
 	self:pushState(player)
 end
 
-function BossServiceServer.UntrackPlayer(self: BossServiceServer, _player: Player)
-	return
+function BossServiceServer.UntrackPlayer(self: BossServiceServer, player: Player)
+	if self.trackedPlayers ~= nil then
+		self.trackedPlayers:Remove(player)
+	end
 end
 
 function BossServiceServer.Init(self: BossServiceServer)
+	self.maid = Maid.new() :: MaidClass
 	self.networker = Networker.server.new("BossService", self, {
 		self.RequestSync,
 		self.RequestManualSummon,
 	})
+	self.maid:GiveTask(function()
+		if self.networker ~= nil then
+			self.networker:destroy()
+			self.networker = nil
+		end
+	end)
 	self.hpService = HpServiceServer :: HpServiceServerObject
 	self.weatherService = WeatherServiceServer :: WeatherServiceServerObject
 	self.worldGenerationService = WorldGenerationServiceServer :: WorldGenerationServiceServerObject
 	self.controllersById = {}
 	self.controllersByChannel = {}
 	self.boundModelsById = {}
-	self.modelDestroyConnectionsById = {}
 	self.state = BossServiceUtils.createDefaultState()
 	self.statePushInterval = DEFAULT_STATE_PUSH_INTERVAL
 	self.naturalSpawnCheckInterval = DEFAULT_NATURAL_SPAWN_CHECK_INTERVAL
@@ -870,53 +1386,34 @@ function BossServiceServer.Init(self: BossServiceServer)
 	}
 	self.previousClockTime = self:getClockTime()
 	self.binders = NevermoreSupport.getService(ServerBinderSupport)
+	self:initReactiveState()
 
-	for _, player in Players:GetPlayers() do
-		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
-			self:trackPlayer(player)
-		end
-	end
-
-	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
-			self:trackPlayer(player)
-		end
-	end)
-	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
+	self.maid:GiveTask(Rx.fromSignal(Players.PlayerAdded)
+		:Pipe({
+			Rx.startFrom(function()
+				return Players:GetPlayers()
+			end),
+		})
+		:Subscribe(function(player: Player)
+			if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+				self:trackPlayer(player)
+			end
+		end))
+	self.maid:GiveTask(Rx.fromSignal(Players.PlayerRemoving):Subscribe(function(player: Player)
 		self:untrackPlayer(player)
-	end)
-	self.heartbeatConnection = RunService.Heartbeat:Connect(function(dt: number)
+	end))
+	self.maid:GiveTask(Rx.fromSignal(RunService.Heartbeat):Subscribe(function(dt: number)
 		self:onHeartbeat(dt)
-	end)
+	end))
 end
 
 function BossServiceServer.Destroy(self: BossServiceServer)
-	if self.playerAddedConnection ~= nil then
-		self.playerAddedConnection:Disconnect()
-		self.playerAddedConnection = nil
-	end
-	if self.playerRemovingConnection ~= nil then
-		self.playerRemovingConnection:Disconnect()
-		self.playerRemovingConnection = nil
-	end
-	if self.heartbeatConnection ~= nil then
-		self.heartbeatConnection:Disconnect()
-		self.heartbeatConnection = nil
-	end
-
 	local runtimeIds = Sift.Dictionary.copy(self.state.orderedIds)
 	for _, runtimeId in runtimeIds do
 		self:removeController(runtimeId, "service_destroy")
 	end
 
-	for runtimeId, connection in self.modelDestroyConnectionsById do
-		disconnect(connection)
-		self.modelDestroyConnectionsById[runtimeId] = nil
-	end
-
-	if self.networker ~= nil then
-		self.networker:destroy()
-	end
+	self.maid:Destroy()
 end
 
 BossServiceServer.getNow = BossServiceServer.GetNow
@@ -926,6 +1423,13 @@ BossServiceServer.getWorld = BossServiceServer.GetWorld
 BossServiceServer.getSurfaceYAtWorldPosition = BossServiceServer.GetSurfaceYAtWorldPosition
 BossServiceServer.isPlayerAboveSurface = BossServiceServer.IsPlayerAboveSurface
 BossServiceServer.damagePlayer = BossServiceServer.DamagePlayer
+BossServiceServer.setPendingNaturalSpawn = BossServiceServer.SetPendingNaturalSpawn
+BossServiceServer.emitStateChanged = BossServiceServer.EmitStateChanged
+BossServiceServer.emitControllerAdded = BossServiceServer.EmitControllerAdded
+BossServiceServer.emitControllerUpdated = BossServiceServer.EmitControllerUpdated
+BossServiceServer.emitControllerRemoved = BossServiceServer.EmitControllerRemoved
+BossServiceServer.bindController = BossServiceServer.BindController
+BossServiceServer.initReactiveState = BossServiceServer.InitReactiveState
 BossServiceServer.ensureOrderedId = BossServiceServer.EnsureOrderedId
 BossServiceServer.removeOrderedId = BossServiceServer.RemoveOrderedId
 BossServiceServer.createSnapshot = BossServiceServer.CreateSnapshot
@@ -955,6 +1459,26 @@ BossServiceServer.stepNaturalSpawns = BossServiceServer.StepNaturalSpawns
 BossServiceServer.summonBossForPlayer = BossServiceServer.SummonBossForPlayer
 BossServiceServer.requestManualSummon = BossServiceServer.RequestManualSummon
 BossServiceServer.getState = BossServiceServer.GetState
+BossServiceServer.observeState = BossServiceServer.ObserveState
+BossServiceServer.observeControllerAdded = BossServiceServer.ObserveControllerAdded
+BossServiceServer.observeControllerUpdated = BossServiceServer.ObserveControllerUpdated
+BossServiceServer.observeControllerRemoved = BossServiceServer.ObserveControllerRemoved
+BossServiceServer.observeControllersBrio = BossServiceServer.ObserveControllersBrio
+BossServiceServer.observeControllerAtId = BossServiceServer.ObserveControllerAtId
+BossServiceServer.observeTrackedPlayersBrio = BossServiceServer.ObserveTrackedPlayersBrio
+BossServiceServer.observeAnnouncement = BossServiceServer.ObserveAnnouncement
+BossServiceServer.observePendingNaturalSpawn = BossServiceServer.ObservePendingNaturalSpawn
+BossServiceServer.getStateChangedSignal = BossServiceServer.GetStateChangedSignal
+BossServiceServer.getControllerAddedSignal = BossServiceServer.GetControllerAddedSignal
+BossServiceServer.getControllerUpdatedSignal = BossServiceServer.GetControllerUpdatedSignal
+BossServiceServer.getControllerRemovedSignal = BossServiceServer.GetControllerRemovedSignal
+BossServiceServer.getControllersSignal = BossServiceServer.GetControllersSignal
+BossServiceServer.getAnnouncementSignal = BossServiceServer.GetAnnouncementSignal
+BossServiceServer.getPendingNaturalSpawnSignal = BossServiceServer.GetPendingNaturalSpawnSignal
+BossServiceServer.waitForControllerPromise = BossServiceServer.WaitForControllerPromise
+BossServiceServer.waitForControllerRemovalPromise = BossServiceServer.WaitForControllerRemovalPromise
+BossServiceServer.spawnBossPromise = BossServiceServer.SpawnBossPromise
+BossServiceServer.summonBossForPlayerPromise = BossServiceServer.SummonBossForPlayerPromise
 BossServiceServer.onHeartbeat = BossServiceServer.OnHeartbeat
 BossServiceServer.trackPlayer = BossServiceServer.TrackPlayer
 BossServiceServer.untrackPlayer = BossServiceServer.UntrackPlayer
@@ -962,14 +1486,16 @@ BossServiceServer.init = BossServiceServer.Init
 BossServiceServer.destroy = BossServiceServer.Destroy
 
 type BossServiceServer = typeof(BossServiceServer) & {
+	maid: MaidClass,
 	networker: Networker.Server,
 	hpService: HpServiceServerObject,
 	weatherService: WeatherServiceServerObject,
 	worldGenerationService: WorldGenerationServiceServerObject,
 	controllersById: { [string]: BossObject },
 	controllersByChannel: { [string]: BossObject },
+	controllerMap: ObservableMapClass,
+	trackedPlayers: ObservableSetClass,
 	boundModelsById: { [string]: Model? },
-	modelDestroyConnectionsById: { [string]: RBXScriptConnection? },
 	state: BossServiceState,
 	statePushInterval: number,
 	naturalSpawnCheckInterval: number,
@@ -977,13 +1503,24 @@ type BossServiceServer = typeof(BossServiceServer) & {
 	random: Random,
 	world: any?,
 	pendingNaturalSpawn: PendingNaturalSpawn?,
+	pendingNaturalSpawnValue: ValueObjectClass<PendingNaturalSpawn?>,
 	allowClientManualSummon: boolean,
 	defaultConfigByBossId: { [BossId]: { [string]: any } },
 	previousClockTime: number,
-	playerAddedConnection: RBXScriptConnection?,
-	playerRemovingConnection: RBXScriptConnection?,
-	heartbeatConnection: RBXScriptConnection?,
+	observableCache: { [string]: ObservableObject },
+	rxSignalCache: { [string]: RxSignalObject },
+	_stateChangedSignal: SignalObject,
+	_controllerAddedSignal: SignalObject,
+	_controllerUpdatedSignal: SignalObject,
+	_controllerRemovedSignal: SignalObject,
+	_announcementSignal: SignalObject,
+	stateChangedSignal: RxSignalObject,
+	controllerAddedSignal: RxSignalObject,
+	controllerUpdatedSignal: RxSignalObject,
+	controllerRemovedSignal: RxSignalObject,
+	controllersSignal: RxSignalObject,
+	announcementSignal: RxSignalObject,
+	pendingNaturalSpawnSignal: RxSignalObject,
 }
 
 return BossServiceServer :: BossServiceServer
-

@@ -13,6 +13,7 @@ local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
+local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Modules.Platform.GamepadPointer)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
 local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
 local SnackbarNotifications = require(script:FindFirstAncestor("game").Client.SnackbarNotifications)
@@ -302,6 +303,10 @@ local function resolveMouseLocation(cursorModuleRaw: any): Vector2?
 	return nil
 end
 
+local function shouldUseGamepadWorldSelection(): boolean
+	return PlatformServiceClient:isGamepad() and PlatformServiceClient:getMachineFamily() ~= "desktop"
+end
+
 local function resolveIntegerAttribute(instance: Instance?, attributeName: string): number?
 	if instance == nil then
 		return nil
@@ -313,6 +318,54 @@ local function resolveIntegerAttribute(instance: Instance?, attributeName: strin
 	end
 
 	return math.floor(value)
+end
+
+local function resolveTreeRootTileNearWorldPosition(worldPosition: Vector3, radiusStudsRaw: any): (number?, number?)
+	local chunksFolder = (WorldGenerationServiceClient :: any).chunksFolder
+	if typeof(chunksFolder) ~= "Instance" then
+		return nil, nil
+	end
+
+	local overlapParams = OverlapParams.new()
+	overlapParams.FilterType = Enum.RaycastFilterType.Include
+	overlapParams.FilterDescendantsInstances = { chunksFolder }
+	overlapParams.MaxParts = 24
+
+	local searchRadius = if typeof(radiusStudsRaw) == "number" and radiusStudsRaw == radiusStudsRaw
+		then math.max(1, radiusStudsRaw)
+		else 1
+	local success, parts = pcall(function()
+		return Workspace:GetPartBoundsInRadius(worldPosition, searchRadius, overlapParams)
+	end)
+	if not success or type(parts) ~= "table" then
+		return nil, nil
+	end
+
+	local bestDistance = math.huge
+	local bestTileX = nil :: number?
+	local bestTileY = nil :: number?
+
+	for _, part in parts do
+		if not part:IsA("BasePart") then
+			continue
+		end
+
+		local hitModel = part:FindFirstAncestorOfClass("Model")
+		local rootTileX = resolveIntegerAttribute(hitModel, BUILD_TREE_ROOT_TILE_X_ATTRIBUTE)
+		local rootTileY = resolveIntegerAttribute(hitModel, BUILD_TREE_ROOT_TILE_Y_ATTRIBUTE)
+		if rootTileX == nil or rootTileY == nil then
+			continue
+		end
+
+		local distance = (part.Position - worldPosition).Magnitude
+		if distance < bestDistance then
+			bestDistance = distance
+			bestTileX = rootTileX
+			bestTileY = rootTileY
+		end
+	end
+
+	return bestTileX, bestTileY
 end
 
 local function resolvePlaceableSourceFromInventorySlot(state: InventoryState, slotRaw: any): ActivePlaceSource?
@@ -990,6 +1043,23 @@ function BuildServiceClient.CreatePreviewVisual(self: BuildServiceClient)
 end
 
 function BuildServiceClient.ResolveCursorTile(self: BuildServiceClient): (number?, number?)
+	if shouldUseGamepadWorldSelection() then
+		local worldPosition = GamepadPointer.resolveCurrentWorldPosition(self.state.tileSize)
+		if worldPosition ~= nil then
+			local rootTileX, rootTileY = resolveTreeRootTileNearWorldPosition(
+				worldPosition,
+				math.max(1, self.state.tileSize * 0.8)
+			)
+			if rootTileX ~= nil and rootTileY ~= nil then
+				return rootTileX, rootTileY
+			end
+
+			return BuildServiceUtils.worldPositionToTile(worldPosition, self.state.worldOrigin, self.state.tileSize)
+		end
+
+		return nil, nil
+	end
+
 	local currentCamera = Workspace.CurrentCamera
 	if currentCamera == nil then
 		return nil, nil

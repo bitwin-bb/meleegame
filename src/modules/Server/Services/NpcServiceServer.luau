@@ -77,6 +77,7 @@ type JanitorClass = {
 
 type NpcRuntime = {
 	id: string,
+	entityId: string,
 	npcType: NpcType,
 	displayName: string,
 	npc: RuntimeNpc,
@@ -1993,6 +1994,11 @@ function NpcServiceServer.SpawnSlime(self: NpcServiceServer, spawnConfig: SlimeS
 	local defaultAnimationEvents = NpcServiceUtils.createDefaultSlimeAnimationEvents()
 	local runtime: NpcRuntime = {
 		id = slime.uniqueId,
+		entityId = if typeof(spawnConfig.slimeType) == "string" and spawnConfig.slimeType ~= ""
+			then spawnConfig.slimeType
+			else if typeof(spawnConfig.modelName) == "string" and spawnConfig.modelName ~= ""
+				then spawnConfig.modelName
+				else spawnConfig.displayName,
 		npcType = "Slime",
 		displayName = spawnConfig.displayName,
 		npc = slime,

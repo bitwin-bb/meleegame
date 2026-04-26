@@ -3,9 +3,18 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local packageRoot = script:FindFirstAncestor("game").Parent
+local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
+local loader = require(loaderUtils.Parent).load(script)
+
 local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossServiceUtils)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local CancelToken = loader("CancelToken")
+local Promise = loader("Promise")
+local Rx = loader("Rx")
+local RxSignal = loader("RxSignal")
+local Signal = loader("Signal")
+local ValueObject = loader("ValueObject")
+local Maid = loader("Maid")
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 
 type BossId = BossServiceUtils.BossId
@@ -13,12 +22,14 @@ type BossEncounterState = BossServiceUtils.BossEncounterState
 type BossRegistryEntry = BossServiceUtils.BossRegistryEntry
 type BossMotionState = BossServiceUtils.BossMotionState
 type BossPresentationState = BossServiceUtils.BossPresentationState
+type BossSnapshot = BossServiceUtils.BossSnapshot
 type BossSpawnRequest = BossServiceUtils.BossSpawnRequest
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
+type MaidClass = {
+	Add: <T>(self: MaidClass, task: T) -> T,
+	GiveTask: (self: MaidClass, task: any) -> number,
+	DoCleaning: (self: MaidClass) -> (),
+	Destroy: (self: MaidClass) -> (),
 }
 
 type SignalObject = {
@@ -27,12 +38,47 @@ type SignalObject = {
 	Destroy: (self: SignalObject) -> (),
 }
 
+type ObservableObject = {
+	Subscribe: (
+		self: ObservableObject,
+		onFire: (...any) -> (),
+		onFail: ((...any) -> ())?,
+		onComplete: ((...any) -> ())?
+	) -> any,
+	Pipe: (self: ObservableObject, transformers: { any }) -> ObservableObject,
+}
+
+type PromiseObject = {
+	Then: (self: PromiseObject, onFulfilled: ((...any) -> ...any)?, onRejected: ((...any) -> ...any)?) -> PromiseObject,
+	Catch: (self: PromiseObject, onRejected: ((...any) -> ...any)?) -> PromiseObject,
+	Finally: (self: PromiseObject, callback: ((...any) -> ...any)?) -> PromiseObject,
+	Yield: (self: PromiseObject) -> (boolean, ...any),
+	Destroy: (self: PromiseObject) -> (),
+}
+
+type RxSignalObject = {
+	Connect: (self: RxSignalObject, callback: (...any) -> ()) -> any,
+	Once: (self: RxSignalObject, callback: (...any) -> ()) -> any,
+	Wait: (self: RxSignalObject) -> ...any,
+}
+
+type ValueObjectClass<T> = {
+	Value: T,
+	Observe: (self: ValueObjectClass<T>) -> ObservableObject,
+	ObserveBrio: (self: ValueObjectClass<T>, condition: ((T) -> boolean)?) -> ObservableObject,
+	Destroy: (self: ValueObjectClass<T>) -> (),
+}
+
 type BossSignals = {
 	stateChanged: SignalObject,
 	targetChanged: SignalObject,
 	damaged: SignalObject,
 	removed: SignalObject,
 	died: SignalObject,
+	spawned: SignalObject,
+	modelChanged: SignalObject,
+	snapshotDirty: SignalObject,
+	destroying: SignalObject,
 }
 
 local Boss = {}
@@ -86,8 +132,19 @@ export type Boss = typeof(setmetatable(
 		config: { [string]: any },
 		spawnRequest: BossSpawnRequest,
 		damageCooldownByUserId: { [number]: number },
-		janitor: JanitorClass,
+		maid: MaidClass,
 		signals: BossSignals,
+		stateValue: ValueObjectClass<BossEncounterState>,
+		phaseValue: ValueObjectClass<number>,
+		targetValue: ValueObjectClass<Player?>,
+		modelValue: ValueObjectClass<Model?>,
+		healthValue: ValueObjectClass<number>,
+		aliveValue: ValueObjectClass<boolean>,
+		spawnedValue: ValueObjectClass<boolean>,
+		destroyedValue: ValueObjectClass<boolean>,
+		removeRequestedValue: ValueObjectClass<boolean>,
+		observableCache: { [string]: ObservableObject },
+		rxSignalCache: { [string]: RxSignalObject },
 	},
 	Boss
 ))
@@ -449,6 +506,35 @@ local function nowClock(): number
 	return os.clock()
 end
 
+local function getOrCreateObservable(self: Boss, key: string, factory: () -> ObservableObject): ObservableObject
+	local cached = self.observableCache[key]
+	if cached ~= nil then
+		return cached
+	end
+
+	local created = factory()
+	self.observableCache[key] = created
+	return created
+end
+
+local function getOrCreateRxSignal(self: Boss, key: string, factory: () -> RxSignalObject): RxSignalObject
+	local cached = self.rxSignalCache[key]
+	if cached ~= nil then
+		return cached
+	end
+
+	local created = factory()
+	self.rxSignalCache[key] = created
+	return created
+end
+
+local function resolveCancelToken(cancelTokenRaw: any): any?
+	if CancelToken.isCancelToken(cancelTokenRaw) then
+		return cancelTokenRaw
+	end
+	return nil
+end
+
 function Boss.New(
 	service: any,
 	definition: BossRegistryEntry,
@@ -460,6 +546,50 @@ function Boss.New(
 	local spawnPosition = if typeof(spawnRequest.spawnPosition) == "Vector3"
 		then spawnRequest.spawnPosition
 		else Vector3.zero
+	local maid = Maid.new() :: MaidClass
+	local maxHp = BossServiceUtils.sanitizeNumber(config.maxHp, 1, 1, 10 ^ 9)
+	local targetPlayer = if typeof(spawnRequest.targetPlayer) == "Instance" and spawnRequest.targetPlayer:IsA("Player")
+		then spawnRequest.targetPlayer
+		else nil
+	local signals = {
+		stateChanged = Signal.new(),
+		targetChanged = Signal.new(),
+		damaged = Signal.new(),
+		removed = Signal.new(),
+		died = Signal.new(),
+		spawned = Signal.new(),
+		modelChanged = Signal.new(),
+		snapshotDirty = Signal.new(),
+		destroying = Signal.new(),
+	}
+	local stateValue = ValueObject.new("Dormant" :: BossEncounterState, "string") :: ValueObjectClass<BossEncounterState>
+	local phaseValue = ValueObject.new(0, "number") :: ValueObjectClass<number>
+	local targetValue = ValueObject.new(targetPlayer) :: ValueObjectClass<Player?>
+	local modelValue = ValueObject.new(nil) :: ValueObjectClass<Model?>
+	local healthValue = ValueObject.new(maxHp, "number") :: ValueObjectClass<number>
+	local aliveValue = ValueObject.new(true, "boolean") :: ValueObjectClass<boolean>
+	local spawnedValue = ValueObject.new(false, "boolean") :: ValueObjectClass<boolean>
+	local destroyedValue = ValueObject.new(false, "boolean") :: ValueObjectClass<boolean>
+	local removeRequestedValue = ValueObject.new(false, "boolean") :: ValueObjectClass<boolean>
+
+	maid:GiveTask(signals.stateChanged)
+	maid:GiveTask(signals.targetChanged)
+	maid:GiveTask(signals.damaged)
+	maid:GiveTask(signals.removed)
+	maid:GiveTask(signals.died)
+	maid:GiveTask(signals.spawned)
+	maid:GiveTask(signals.modelChanged)
+	maid:GiveTask(signals.snapshotDirty)
+	maid:GiveTask(signals.destroying)
+	maid:GiveTask(stateValue)
+	maid:GiveTask(phaseValue)
+	maid:GiveTask(targetValue)
+	maid:GiveTask(modelValue)
+	maid:GiveTask(healthValue)
+	maid:GiveTask(aliveValue)
+	maid:GiveTask(spawnedValue)
+	maid:GiveTask(destroyedValue)
+	maid:GiveTask(removeRequestedValue)
 
 	local self = setmetatable({
 		service = service,
@@ -484,8 +614,8 @@ function Boss.New(
 		state = "Dormant" :: BossEncounterState,
 		stateTime = 0,
 		phase = 0,
-		hp = BossServiceUtils.sanitizeNumber(config.maxHp, 1, 1, 10 ^ 9),
-		maxHp = BossServiceUtils.sanitizeNumber(config.maxHp, 1, 1, 10 ^ 9),
+		hp = maxHp,
+		maxHp = maxHp,
 		defense = BossServiceUtils.sanitizeNumber(config.defense, 0, 0, 10 ^ 6),
 		baseDefense = BossServiceUtils.sanitizeNumber(config.defense, 0, 0, 10 ^ 6),
 		contactDamage = BossServiceUtils.sanitizeNumber(config.contactDamage, 0, 0, 10 ^ 6),
@@ -500,8 +630,8 @@ function Boss.New(
 		position = BossServiceUtils.projectPositionToPlaneX(spawnPosition, spawnRequest.planeX),
 		velocity = Vector3.zero,
 		facing = Vector3.zAxis,
-		targetPlayer = spawnRequest.targetPlayer,
-		targetUserId = BossServiceUtils.resolveTargetPlayerUserId(spawnRequest.targetPlayer),
+		targetPlayer = targetPlayer,
+		targetUserId = BossServiceUtils.resolveTargetPlayerUserId(targetPlayer),
 		targetLostTime = 0,
 		lastSnapshotAt = nowClock(),
 		snapshotDirty = true,
@@ -510,14 +640,19 @@ function Boss.New(
 		config = config,
 		spawnRequest = spawnRequest,
 		damageCooldownByUserId = {},
-		janitor = Janitor.new(),
-		signals = {
-			stateChanged = Signal.new(),
-			targetChanged = Signal.new(),
-			damaged = Signal.new(),
-			removed = Signal.new(),
-			died = Signal.new(),
-		},
+		maid = maid,
+		signals = signals,
+		stateValue = stateValue,
+		phaseValue = phaseValue,
+		targetValue = targetValue,
+		modelValue = modelValue,
+		healthValue = healthValue,
+		aliveValue = aliveValue,
+		spawnedValue = spawnedValue,
+		destroyedValue = destroyedValue,
+		removeRequestedValue = removeRequestedValue,
+		observableCache = {},
+		rxSignalCache = {},
 	}, Boss)
 
 	return self
@@ -538,7 +673,11 @@ function Boss.GetOrCreateRuntimeFolder(self: Boss): Folder
 end
 
 function Boss.MarkSnapshotDirty(self: Boss)
-	self.snapshotDirty = true
+	if not self.snapshotDirty then
+		self.snapshotDirty = true
+	end
+
+	self.signals.snapshotDirty:Fire()
 end
 
 function Boss.SetTarget(self: Boss, targetPlayerRaw: any?): boolean
@@ -558,6 +697,7 @@ function Boss.SetTarget(self: Boss, targetPlayerRaw: any?): boolean
 	self.targetPlayer = targetPlayer
 	self.targetUserId = BossServiceUtils.resolveTargetPlayerUserId(targetPlayer)
 	self.targetLostTime = 0
+	self.targetValue.Value = targetPlayer
 	self:markSnapshotDirty()
 	self.signals.targetChanged:Fire(targetPlayer, previousTarget)
 	return targetPlayer ~= nil
@@ -613,6 +753,7 @@ function Boss.ChangeState(self: Boss, nextStateRaw: any, reasonRaw: any?)
 	self.stateTime = 0
 	self.lastReason = reason
 	self.motion.state = self.state
+	self.stateValue.Value = self.state
 	self:markSnapshotDirty()
 	self.signals.stateChanged:Fire(self.state, previousState, reason)
 
@@ -637,6 +778,7 @@ function Boss.SetPhase(self: Boss, nextPhaseRaw: any, phaseModelRaw: any?)
 
 	self.phase = nextPhase
 	self.presentation.phaseModel = phaseModel
+	self.phaseValue.Value = self.phase
 	self:markSnapshotDirty()
 
 	if modelChanged and self.isSpawned then
@@ -816,6 +958,7 @@ function Boss.ReplaceModel(self: Boss, phaseModelRaw: any?): Model?
 		return nil
 	end
 
+	local previousModel = self.model
 	local modelTemplate = self:resolveModelTemplate(phaseModelRaw)
 	if modelTemplate == nil then
 		return self.model
@@ -840,15 +983,15 @@ function Boss.ReplaceModel(self: Boss, phaseModelRaw: any?): Model?
 		self.encounterChannel
 	)
 
-	local previousModel = self.model
 	self.model = nextModel
 	self.rootPart = nextRootPart
 	self.isSpawned = true
+	self.modelValue.Value = nextModel
+	self.spawnedValue.Value = true
+	local maid = self.maid :: any
+	maid.runtimeModel = nextModel
 	self:markSnapshotDirty()
-
-	if previousModel ~= nil then
-		previousModel:Destroy()
-	end
+	self.signals.modelChanged:Fire(nextModel, previousModel)
 
 	return nextModel
 end
@@ -883,9 +1026,16 @@ function Boss.Spawn(self: Boss, spawnCFrameRaw: any?): Model
 	self.position = self:projectToPlane(spawnCFrame.Position)
 	self.facing = spawnCFrame.LookVector
 	self.isSpawned = true
+	self.modelValue.Value = model
+	self.spawnedValue.Value = true
+	local maid = self.maid :: any
+	maid.runtimeModel = model
 
 	self:updateModelPivot()
 	BossServiceUtils.applyRuntimeModelAttributes(model, self.id, self.bossId, self.displayName, self.encounterChannel)
+	self:markSnapshotDirty()
+	self.signals.spawned:Fire(model)
+	self.signals.modelChanged:Fire(model, nil)
 
 	return model
 end
@@ -905,6 +1055,7 @@ function Boss.TakeDamage(self: Boss, damageRaw: any, sourceRaw: any?, _contextRa
 
 	local appliedDamage = math.max(1, math.floor(incomingDamage - self.defense + 0.5))
 	self.hp = math.max(0, self.hp - appliedDamage)
+	self.healthValue.Value = self.hp
 	self:incrementPresentationToken("damagePulseToken")
 	self.signals.damaged:Fire(appliedDamage, sourceRaw, self.hp)
 	self:markSnapshotDirty()
@@ -932,6 +1083,8 @@ function Boss.Die(self: Boss, reasonRaw: any?, killerRaw: any?)
 
 	self.isAlive = false
 	self.hp = 0
+	self.healthValue.Value = self.hp
+	self.aliveValue.Value = false
 	self.offenseEnabled = false
 	self.contactDamageActive = false
 	self:setPresentationFlag("isDying", true)
@@ -958,6 +1111,7 @@ function Boss.RequestRemoval(self: Boss, reasonRaw: any?)
 	if self.removeReason == "" then
 		self.removeReason = "removeRequested"
 	end
+	self.removeRequestedValue.Value = true
 	self.signals.removed:Fire(self.removeReason)
 end
 
@@ -979,6 +1133,337 @@ end
 
 function Boss.IsPlayerAboveSurface(self: Boss, player: Player): boolean
 	return self.service:isPlayerAboveSurface(player)
+end
+
+function Boss.CreateSnapshot(self: Boss): BossSnapshot
+	local createSnapshot = (self.service :: any).createSnapshot
+	if typeof(createSnapshot) ~= "function" then
+		error("[Boss] Service must expose createSnapshot() before snapshot observation can be used")
+	end
+
+	return createSnapshot(self.service, self)
+end
+
+function Boss.ObserveState(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "state", function()
+		return self.stateValue:Observe():Pipe({
+			Rx.shareReplay(1),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.ObservePhase(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "phase", function()
+		return self.phaseValue:Observe():Pipe({
+			Rx.shareReplay(1),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.ObserveHealth(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "health", function()
+		return self.healthValue:Observe():Pipe({
+			Rx.shareReplay(1),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.ObserveHealthRatio(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "healthRatio", function()
+		return self:observeHealth():Pipe({
+			Rx.map(function()
+				return self:getHealthRatio()
+			end),
+			Rx.shareReplay(1),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.ObserveTarget(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "target", function()
+		return self.targetValue:Observe():Pipe({
+			Rx.shareReplay(1),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.ObserveModel(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "model", function()
+		return self.modelValue:Observe():Pipe({
+			Rx.shareReplay(1),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.ObserveModelBrio(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "modelBrio", function()
+		return self.modelValue:ObserveBrio(function(model)
+			return model ~= nil
+		end):Pipe({
+			Rx.share(),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.ObserveSpawned(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "spawned", function()
+		return self.spawnedValue:Observe():Pipe({
+			Rx.shareReplay(1),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.ObserveAlive(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "alive", function()
+		return self.aliveValue:Observe():Pipe({
+			Rx.shareReplay(1),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.ObserveDestroyed(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "destroyed", function()
+		return self.destroyedValue:Observe():Pipe({
+			Rx.shareReplay(1),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.ObserveRemovalRequested(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "removeRequested", function()
+		return self.removeRequestedValue:Observe():Pipe({
+			Rx.shareReplay(1),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.ObserveStateChanged(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "stateChangedEvent", function()
+		return Rx.fromSignal(self.signals.stateChanged):Pipe({
+			Rx.share(),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.ObserveTargetChanged(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "targetChangedEvent", function()
+		return Rx.fromSignal(self.signals.targetChanged):Pipe({
+			Rx.share(),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.ObserveDamaged(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "damagedEvent", function()
+		return Rx.fromSignal(self.signals.damaged):Pipe({
+			Rx.share(),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.ObserveRemoved(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "removedEvent", function()
+		return Rx.fromSignal(self.signals.removed):Pipe({
+			Rx.share(),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.ObserveDied(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "diedEvent", function()
+		return Rx.fromSignal(self.signals.died):Pipe({
+			Rx.share(),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.ObserveSpawnedEvent(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "spawnedEvent", function()
+		return Rx.fromSignal(self.signals.spawned):Pipe({
+			Rx.share(),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.ObserveModelChanged(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "modelChangedEvent", function()
+		return Rx.fromSignal(self.signals.modelChanged):Pipe({
+			Rx.share(),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.ObserveSnapshotDirty(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "snapshotDirtyEvent", function()
+		return Rx.fromSignal(self.signals.snapshotDirty):Pipe({
+			Rx.share(),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.ObserveSnapshot(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "snapshot", function()
+		return Rx.fromSignal(self.signals.snapshotDirty):Pipe({
+			Rx.startWith({ self:createSnapshot() }),
+			Rx.map(function()
+				return self:createSnapshot()
+			end),
+			Rx.shareReplay(1),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.ObserveDestroying(self: Boss): ObservableObject
+	return getOrCreateObservable(self, "destroyingEvent", function()
+		return Rx.fromSignal(self.signals.destroying):Pipe({
+			Rx.share(),
+		}) :: ObservableObject
+	end)
+end
+
+function Boss.GetStateSignal(self: Boss): RxSignalObject
+	return getOrCreateRxSignal(self, "stateSignal", function()
+		return RxSignal.new(function()
+			return self:observeState()
+		end) :: RxSignalObject
+	end)
+end
+
+function Boss.GetModelSignal(self: Boss): RxSignalObject
+	return getOrCreateRxSignal(self, "modelSignal", function()
+		return RxSignal.new(function()
+			return self:observeModel()
+		end) :: RxSignalObject
+	end)
+end
+
+function Boss.GetRemovedSignal(self: Boss): RxSignalObject
+	return getOrCreateRxSignal(self, "removedSignal", function()
+		return RxSignal.new(function()
+			return self:observeRemoved()
+		end) :: RxSignalObject
+	end)
+end
+
+function Boss.GetSnapshotSignal(self: Boss): RxSignalObject
+	return getOrCreateRxSignal(self, "snapshotSignal", function()
+		return RxSignal.new(function()
+			return self:observeSnapshot()
+		end) :: RxSignalObject
+	end)
+end
+
+function Boss.PromiseState(self: Boss, desiredStateRaw: any, cancelTokenRaw: any?): PromiseObject
+	local desiredState = if typeof(desiredStateRaw) == "string" and desiredStateRaw ~= ""
+		then desiredStateRaw
+		else self.state
+	if self.state == desiredState then
+		return Promise.resolved(self.state, self.state, self.lastReason) :: PromiseObject
+	end
+
+	return Rx.toPromise(
+		self:observeStateChanged():Pipe({
+			Rx.where(function(nextState)
+				return nextState == desiredState
+			end),
+			Rx.take(1),
+		}),
+		resolveCancelToken(cancelTokenRaw)
+	) :: PromiseObject
+end
+
+function Boss.PromiseModel(self: Boss, cancelTokenRaw: any?): PromiseObject
+	if self.model ~= nil then
+		return Promise.resolved(self.model) :: PromiseObject
+	end
+
+	return Rx.toPromise(
+		self:observeModel():Pipe({
+			Rx.where(function(model)
+				return model ~= nil
+			end),
+			Rx.take(1),
+		}),
+		resolveCancelToken(cancelTokenRaw)
+	) :: PromiseObject
+end
+
+function Boss.PromiseSpawned(self: Boss, cancelTokenRaw: any?): PromiseObject
+	if self.model ~= nil then
+		return Promise.resolved(self.model) :: PromiseObject
+	end
+
+	return Rx.toPromise(
+		self:observeSpawnedEvent():Pipe({
+			Rx.take(1),
+		}),
+		resolveCancelToken(cancelTokenRaw)
+	) :: PromiseObject
+end
+
+function Boss.PromiseDied(self: Boss, cancelTokenRaw: any?): PromiseObject
+	if not self.isAlive or self.state == "Death" then
+		return Promise.resolved() :: PromiseObject
+	end
+
+	return Rx.toPromise(
+		self:observeDied():Pipe({
+			Rx.take(1),
+		}),
+		resolveCancelToken(cancelTokenRaw)
+	) :: PromiseObject
+end
+
+function Boss.PromiseRemoved(self: Boss, cancelTokenRaw: any?): PromiseObject
+	if self.removeRequested then
+		return Promise.resolved(self.removeReason) :: PromiseObject
+	end
+
+	return Rx.toPromise(
+		self:observeRemoved():Pipe({
+			Rx.take(1),
+		}),
+		resolveCancelToken(cancelTokenRaw)
+	) :: PromiseObject
+end
+
+function Boss.PromiseDestroyed(self: Boss, cancelTokenRaw: any?): PromiseObject
+	if self.isDestroyed then
+		return Promise.resolved() :: PromiseObject
+	end
+
+	return Rx.toPromise(
+		self:observeDestroying():Pipe({
+			Rx.take(1),
+		}),
+		resolveCancelToken(cancelTokenRaw)
+	) :: PromiseObject
+end
+
+function Boss.SpawnPromise(self: Boss, spawnCFrameRaw: any?): PromiseObject
+	return Promise.spawn(function(resolve, reject)
+		local ok, result = pcall(function()
+			return self:spawn(spawnCFrameRaw)
+		end)
+		if ok then
+			resolve(result)
+		else
+			reject(result)
+		end
+	end) :: PromiseObject
+end
+
+function Boss.ReplaceModelPromise(self: Boss, phaseModelRaw: any?): PromiseObject
+	return Promise.spawn(function(resolve, reject)
+		local ok, result = pcall(function()
+			return self:replaceModel(phaseModelRaw)
+		end)
+		if ok then
+			resolve(result)
+		else
+			reject(result)
+		end
+	end) :: PromiseObject
 end
 
 function Boss.Step(self: Boss, dtRaw: any)
@@ -1032,18 +1517,16 @@ function Boss.Destroy(self: Boss)
 
 	self.isDestroyed = true
 	self.isSpawned = false
+	self.isAlive = false
+	self.aliveValue.Value = false
+	self.destroyedValue.Value = true
+	self.spawnedValue.Value = false
+	self.modelValue.Value = nil
+	self.signals.destroying:Fire()
 
-	local model = self.model
 	self.model = nil
 	self.rootPart = nil
-	if model ~= nil then
-		model:Destroy()
-	end
-
-	self.janitor:Destroy()
-	for _, signalObject in self.signals do
-		signalObject:Destroy()
-	end
+	self.maid:Destroy()
 end
 
 Boss.new = Boss.New
@@ -1083,6 +1566,40 @@ Boss.isNightTime = Boss.IsNightTime
 Boss.isDayTime = Boss.IsDayTime
 Boss.getSurfaceYAt = Boss.GetSurfaceYAt
 Boss.isPlayerAboveSurface = Boss.IsPlayerAboveSurface
+Boss.createSnapshot = Boss.CreateSnapshot
+Boss.observeState = Boss.ObserveState
+Boss.observePhase = Boss.ObservePhase
+Boss.observeHealth = Boss.ObserveHealth
+Boss.observeHealthRatio = Boss.ObserveHealthRatio
+Boss.observeTarget = Boss.ObserveTarget
+Boss.observeModel = Boss.ObserveModel
+Boss.observeModelBrio = Boss.ObserveModelBrio
+Boss.observeSpawned = Boss.ObserveSpawned
+Boss.observeAlive = Boss.ObserveAlive
+Boss.observeDestroyed = Boss.ObserveDestroyed
+Boss.observeRemovalRequested = Boss.ObserveRemovalRequested
+Boss.observeStateChanged = Boss.ObserveStateChanged
+Boss.observeTargetChanged = Boss.ObserveTargetChanged
+Boss.observeDamaged = Boss.ObserveDamaged
+Boss.observeRemoved = Boss.ObserveRemoved
+Boss.observeDied = Boss.ObserveDied
+Boss.observeSpawnedEvent = Boss.ObserveSpawnedEvent
+Boss.observeModelChanged = Boss.ObserveModelChanged
+Boss.observeSnapshotDirty = Boss.ObserveSnapshotDirty
+Boss.observeSnapshot = Boss.ObserveSnapshot
+Boss.observeDestroying = Boss.ObserveDestroying
+Boss.getStateSignal = Boss.GetStateSignal
+Boss.getModelSignal = Boss.GetModelSignal
+Boss.getRemovedSignal = Boss.GetRemovedSignal
+Boss.getSnapshotSignal = Boss.GetSnapshotSignal
+Boss.promiseState = Boss.PromiseState
+Boss.promiseModel = Boss.PromiseModel
+Boss.promiseSpawned = Boss.PromiseSpawned
+Boss.promiseDied = Boss.PromiseDied
+Boss.promiseRemoved = Boss.PromiseRemoved
+Boss.promiseDestroyed = Boss.PromiseDestroyed
+Boss.spawnPromise = Boss.SpawnPromise
+Boss.replaceModelPromise = Boss.ReplaceModelPromise
 Boss.step = Boss.Step
 Boss.destroy = Boss.Destroy
 

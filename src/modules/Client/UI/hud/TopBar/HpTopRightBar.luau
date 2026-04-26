@@ -1,17 +1,18 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local React = require(ReplicatedStorage.Packages.React)
-local Charm = require(ReplicatedStorage.Packages.Charm)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
-local useBeatMotion = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useBeatMotion)
-local hpSlice = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.hpSlice)
-local hpThunks = require(script:FindFirstAncestor("game").Client.UI.hud.state.thunk.hpThunks)
-local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
 local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
 local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.HpServiceUtils)
+local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
+local React = require(ReplicatedStorage.Packages.React)
+local hpSlice = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.hpSlice)
+local hpThunks = require(script:FindFirstAncestor("game").Client.UI.hud.state.thunk.hpThunks)
+local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
+local useBeatMotion = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useBeatMotion)
+local useHover = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useHover)
+local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
 type HeartState = HpServiceUtils.HeartState
 type HpServiceState = HpServiceUtils.HpServiceState
@@ -111,25 +112,34 @@ end
 
 return function(props: HpTopRightBarProps)
 	local useServiceState = props.useServiceState ~= false
-	local hpState, setHpState = React.useState(function(): HpServiceState
-		if not useServiceState and props.mockState ~= nil then
-			return props.mockState
-		end
-		return hpSlice.hpStateAtom()
-	end)
-	local isHpReady, setIsHpReady = React.useState(function(): boolean
-		if not useServiceState then
-			if props.mockReady ~= nil then
-				return props.mockReady
-			end
-			return true
-		end
-		return hpSlice.isHpReady()
-	end)
-	local isHoveringHearts, setIsHoveringHearts = React.useState(false)
+	local serviceHpState = useStore(if useServiceState then hpSlice.hpStateAtom else nil) :: HpServiceState?
+	local serviceHpReady = useStore(if useServiceState then hpSlice.hpReadyAtom else nil) :: boolean?
+	local hpState = if useServiceState
+		then (serviceHpState or hpSlice.hpStateAtom())
+		else if props.mockState ~= nil then props.mockState else hpSlice.hpStateAtom()
+	local isHpReady = if useServiceState
+		then (serviceHpReady or hpSlice.isHpReady())
+		else if props.mockReady ~= nil then props.mockReady else true
 
 	local heartsHoverId = "hp_hearts_row"
 	local heartsHoverText = string.format("%.0f/%.0f", hpState.health, hpState.maxHealth)
+	local heartsHover = useHover({
+		onHoverStart = function()
+			infoThunks.showHover({
+				id = heartsHoverId,
+				text = heartsHoverText,
+			})
+
+			if UI_HOVER_SOUND then
+				AudioServiceClient:playUi(UI_HOVER_SOUND, {
+					replaceChannel = false,
+				})
+			end
+		end,
+		onHoverEnd = function()
+			infoThunks.hideHover(heartsHoverId)
+		end,
+	})
 
 	React.useEffect(function()
 		if not useServiceState then
@@ -137,47 +147,22 @@ return function(props: HpTopRightBarProps)
 		end
 
 		local stop = hpThunks.start()
-		local unsubscribe = Charm.subscribe(hpSlice.hpStateAtom, function(nextState: HpServiceState)
-			setHpState(nextState)
-		end, {
-			inclusive = true,
-		})
-		local readyUnsubscribe = Charm.subscribe(hpSlice.hpReadyAtom, function(nextReady: boolean)
-			setIsHpReady(nextReady)
-		end, {
-			inclusive = true,
-		})
 
 		return function()
-			unsubscribe()
-			readyUnsubscribe()
 			stop()
 		end
 	end, { useServiceState })
 
 	React.useEffect(function()
-		if useServiceState then
+		if not heartsHover.hovered then
 			return
 		end
 
-		if props.mockState ~= nil then
-			setHpState(props.mockState)
-		end
-		if props.mockReady ~= nil then
-			setIsHpReady(props.mockReady)
-		else
-			setIsHpReady(true)
-		end
-	end, { useServiceState, props.mockState, props.mockReady })
-
-	React.useEffect(function()
-		if isHoveringHearts then
-			infoThunks.showHover({
-				id = heartsHoverId,
-				text = heartsHoverText,
-			})
-		end
-	end, { isHoveringHearts, heartsHoverText })
+		infoThunks.showHover({
+			id = heartsHoverId,
+			text = heartsHoverText,
+		})
+	end, { heartsHover.hovered, heartsHoverText })
 
 	React.useEffect(function()
 		return function()
@@ -225,23 +210,8 @@ return function(props: HpTopRightBarProps)
 			BorderSizePixel = 0,
 			Active = true,
 			ZIndex = zIndex + 1,
-			[React.Event.MouseEnter] = function()
-				setIsHoveringHearts(true)
-				infoThunks.showHover({
-					id = heartsHoverId,
-					text = heartsHoverText,
-				})
-
-				if UI_HOVER_SOUND then
-					AudioServiceClient:playUi(UI_HOVER_SOUND, {
-						replaceChannel = false,
-					})
-				end
-			end,
-			[React.Event.MouseLeave] = function()
-				setIsHoveringHearts(false)
-				infoThunks.hideHover(heartsHoverId)
-			end,
+			[React.Event.MouseEnter] = heartsHover.eventHandlers[React.Event.MouseEnter],
+			[React.Event.MouseLeave] = heartsHover.eventHandlers[React.Event.MouseLeave],
 		}, heartsRowChildren),
 	}
 

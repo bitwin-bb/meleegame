@@ -67,6 +67,6 @@ return {
 				tileId = "Mud",
 				consumesOnPlace = true,
 			},
-		}
-	}
+		},
+	},
 }

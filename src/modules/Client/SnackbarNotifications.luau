@@ -2,10 +2,10 @@
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local nevermoreRequire = require(loaderUtils.Parent).load(script)
+local loader = require(loaderUtils.Parent).load(script)
 
-local ScreenGuiService = nevermoreRequire("ScreenGuiService")
-local SnackbarServiceClient = nevermoreRequire("SnackbarServiceClient")
+local ScreenGuiService = loader("ScreenGuiService")
+local SnackbarServiceClient = loader("SnackbarServiceClient")
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
 local AquariaBackupTranslator = require(script:FindFirstAncestor("game").Shared.AquariaBackupTranslator)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)

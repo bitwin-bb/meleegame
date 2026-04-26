@@ -870,7 +870,7 @@ local DEFAULT_ACTION_DEFINITIONS: { [string]: ActionDefinition } = {
 			},
 			Gamepad = {
 				{
-					playerAction = Enum.PlayerActions.CharacterJump,
+					keyCode = Enum.KeyCode.ButtonA,
 				},
 			},
 			Touch = {
@@ -987,8 +987,8 @@ local DEFAULT_ACTION_DEFINITIONS: { [string]: ActionDefinition } = {
 	},
 	[ACTIONS.HOTBAR_CYCLE] = {
 		actionName = ACTIONS.HOTBAR_CYCLE,
-		displayName = "Scroll Heart Bar",
-		description = "Scroll your heart bar.",
+		displayName = "Cycle Hotbar",
+		description = "Select the previous or next hotbar item.",
 		priority = 1500,
 		consume = false,
 		allowWhileTyping = false,
@@ -998,6 +998,12 @@ local DEFAULT_ACTION_DEFINITIONS: { [string]: ActionDefinition } = {
 			KeyboardMouse = {
 				{
 					label = "Scroll Wheel",
+				},
+			},
+			Gamepad = {
+				{
+					keyCode = Enum.KeyCode.ButtonL1,
+					label = "LB / RB",
 				},
 			},
 		},

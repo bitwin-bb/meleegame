@@ -4,11 +4,11 @@ local RunService = game:GetService("RunService")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local nevermoreRequire = require(loaderUtils.Parent).load(script)
+local loader = require(loaderUtils.Parent).load(script)
 
-local Flipbook = nevermoreRequire("Flipbook")
-local FlipbookPlayer = nevermoreRequire("FlipbookPlayer")
-local Maid = nevermoreRequire("Maid")
+local Flipbook = loader("Flipbook")
+local FlipbookPlayer = loader("FlipbookPlayer")
+local Maid = loader("Maid")
 local React = require(ReplicatedStorage.Packages.React)
 
 type FrameSlice = {

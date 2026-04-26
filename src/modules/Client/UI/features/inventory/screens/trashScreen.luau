@@ -1,17 +1,17 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local React = require(ReplicatedStorage.Packages.React)
-local Charm = require(ReplicatedStorage.Packages.Charm)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
-local itemThunks = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemThunks)
-local itemSlice = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemSlice)
-local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
-local trashSlice = require(script:FindFirstAncestor("game").Client.UI.features.inventory.state.trashSlice)
-local trashThunks = require(script:FindFirstAncestor("game").Client.UI.features.inventory.state.trashThunks)
 local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
+local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
+local React = require(ReplicatedStorage.Packages.React)
+local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
+local itemSlice = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemSlice)
+local itemThunks = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemThunks)
+local trashSlice = require(script:FindFirstAncestor("game").Client.UI.features.inventory.state.trashSlice)
+local trashThunks = require(script:FindFirstAncestor("game").Client.UI.features.inventory.state.trashThunks)
+local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
 type TrashState = trashSlice.TrashState
 type ItemDragState = itemSlice.ItemDragState
@@ -84,29 +84,13 @@ local function resolveHoverText(state: TrashState, dragState: ItemDragState): st
 end
 
 return function(props: TrashScreenProps): React.ReactNode
-	local state, setState = React.useState(function(): TrashState
-		return trashSlice.getTrashState()
-	end)
-	local dragState, setDragState = React.useState(function(): ItemDragState
-		return itemSlice.getDragState()
-	end)
+	local state = (useStore(trashSlice.trashStateAtom) :: TrashState?) or trashSlice.getTrashState()
+	local dragState = (useStore(itemSlice.dragStateAtom) :: ItemDragState?) or itemSlice.getDragState()
 
 	React.useEffect(function()
 		local stop = trashThunks.start()
-		local unsubscribe = Charm.subscribe(trashSlice.trashStateAtom, function(nextState: TrashState)
-			setState(nextState)
-		end, {
-			inclusive = true,
-		})
-		local unsubscribeDrag = Charm.subscribe(itemSlice.dragStateAtom, function(nextState: ItemDragState)
-			setDragState(nextState)
-		end, {
-			inclusive = true,
-		})
 
 		return function()
-			unsubscribe()
-			unsubscribeDrag()
 			stop()
 			infoThunks.hideHover(TRASH_HOVER_ID)
 		end

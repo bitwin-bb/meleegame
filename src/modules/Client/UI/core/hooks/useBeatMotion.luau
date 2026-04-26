@@ -58,13 +58,10 @@ local function useBeatMotion(options: BeatMotionOptions?): BeatMotionResult
 	local bpm = sanitizeNumber(if options then options.bpm else nil, DEFAULT_BPM, 1, 400)
 	local baseScale = sanitizeNumber(if options then options.baseScale else nil, DEFAULT_BASE_SCALE, 0.01, 10)
 	local primaryScale = sanitizeNumber(if options then options.primaryScale else nil, DEFAULT_PRIMARY_SCALE, 0.01, 10)
-	local secondaryScale = sanitizeNumber(
-		if options then options.secondaryScale else nil,
-		DEFAULT_SECONDARY_SCALE,
-		0.01,
-		10
-	)
-	local secondaryDelay = sanitizeNumber(if options then options.secondaryDelay else nil, DEFAULT_SECONDARY_DELAY, 0, 5)
+	local secondaryScale =
+		sanitizeNumber(if options then options.secondaryScale else nil, DEFAULT_SECONDARY_SCALE, 0.01, 10)
+	local secondaryDelay =
+		sanitizeNumber(if options then options.secondaryDelay else nil, DEFAULT_SECONDARY_DELAY, 0, 5)
 	local recoverDelay = sanitizeNumber(if options then options.recoverDelay else nil, DEFAULT_RECOVER_DELAY, 0, 5)
 	local spring = if options and options.spring then options.spring else DEFAULT_SPRING
 

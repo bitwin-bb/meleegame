@@ -1,22 +1,22 @@
 --!strict
 
-local ContentProvider = game:GetService("ContentProvider")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
 local require = require(loaderUtils.Parent).load(script)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
-local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
-local Promise = require("Promise")
+
+local ContentProviderUtils = require("ContentProviderUtils")
+local Maid = require("Maid")
+local Rx = require("Rx")
+local RxSignal = require("RxSignal")
+local ValueObject = require("ValueObject")
+
 local ParallaxBackgrounds = require(script:FindFirstAncestor("game").Shared.Modules.Items.ParallaxBackgrounds)
 local ParallaxServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.ParallaxServiceUtils)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
 
@@ -24,25 +24,66 @@ type Catalog = ParallaxServiceUtils.Catalog
 type BiomeDefinition = ParallaxServiceUtils.BiomeDefinition
 type BiomeVariantDefinition = ParallaxServiceUtils.BiomeVariantDefinition
 type LayerDefinition = ParallaxServiceUtils.LayerDefinition
+type PlaneSizing = ParallaxServiceUtils.PlaneSizing
 type ServiceState = ParallaxServiceUtils.ServiceState
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Destroy: (self: JanitorClass) -> (),
+type MaidClass = {
+	GiveTask: (self: MaidClass, task: any) -> any,
+	GivePromise: (self: MaidClass, promise: any) -> any,
+	DoCleaning: (self: MaidClass) -> (),
+	Destroy: (self: MaidClass) -> (),
+	[string]: any,
 }
 
-type SegmentRuntime = {
+type ObservableObject = {
+	Subscribe: (
+		self: ObservableObject,
+		fireCallback: ((...any) -> ())?,
+		failCallback: ((...any) -> ())?,
+		completeCallback: ((...any) -> ())?
+	) -> any,
+	Pipe: (self: ObservableObject, transformers: { any }) -> ObservableObject,
+}
+
+type RxSignalObject = {
+	Connect: (self: RxSignalObject, callback: (...any) -> ()) -> any,
+	Once: (self: RxSignalObject, callback: (...any) -> ()) -> any,
+	Wait: (self: RxSignalObject) -> ...any,
+}
+
+type ValueObjectClass<T> = {
+	Value: T,
+	Observe: (self: ValueObjectClass<T>) -> ObservableObject,
+	Destroy: (self: ValueObjectClass<T>) -> (),
+}
+
+type CameraSnapshot = {
+	fieldOfView: number,
+	viewportSize: Vector2,
+}
+
+type WorldLayoutSnapshot = {
+	tileDepth: number,
+	chunkSize: number,
+	tileSize: number,
+	renderDistanceChunks: number,
+	horizontalVisionStuds: number,
+}
+
+type LayoutSnapshot = CameraSnapshot & WorldLayoutSnapshot
+
+type PlaneRuntime = {
 	part: Part,
 	textures: { Texture },
 	lastWidth: number,
 	lastHeight: number,
-	assignedStripIndex: number?,
+	lastRepeatWidth: number,
 }
 
 type LayerRuntime = {
 	definition: LayerDefinition,
 	folder: Folder,
-	segments: { SegmentRuntime },
+	plane: PlaneRuntime,
 }
 
 type BiomeRuntime = {
@@ -59,29 +100,15 @@ type BiomeRuntime = {
 
 local WORLD_FOLDER_NAME = "WorldGeneration"
 local ROOT_PARENT_FALLBACK_NAME = "ParallaxService"
-local SEGMENT_TEXTURE_OFFSET_STUDS_U = 0.3
-local SEGMENT_TEXTURE_OFFSET_STUDS_V = 0.3
-local MIN_SEGMENT_VERTICAL_COVERAGE_BLEED_FACTOR = 0.14
-local MIN_SEGMENT_VERTICAL_COVERAGE_BLEED_STUDS = 4
+local BASE_TEXTURE_OFFSET_STUDS_U = 0.3
+local BASE_TEXTURE_OFFSET_STUDS_V = 0.3
+local PARALLAX_TEXTURE_MOTION_SCALE = 0.65
+local MIN_PLANE_VERTICAL_COVERAGE_BLEED_FACTOR = 0.14
+local MIN_PLANE_VERTICAL_COVERAGE_BLEED_STUDS = 4
+local DEFAULT_CAMERA_FIELD_OF_VIEW = 70
+local DEFAULT_CAMERA_VIEWPORT = Vector2.new(1920, 1080)
+
 local ParallaxServiceClient = {}
-
-local function promiseTry<T...>(callback: () -> T...): Promise.Promise<T...>
-	return Promise.spawn(function(resolve, reject)
-		local results = table.pack(pcall(callback))
-		if results[1] then
-			resolve(table.unpack(results, 2, results.n))
-		else
-			reject(table.unpack(results, 2, results.n))
-		end
-	end)
-end
-
-local function asFolder(instance: Instance?): Folder?
-	if instance ~= nil and instance:IsA("Folder") then
-		return instance
-	end
-	return nil
-end
 
 local function createFolder(parent: Instance, name: string): Folder
 	local existing = parent:FindFirstChild(name)
@@ -110,38 +137,65 @@ local function resolveCameraPosition(): Vector3
 	return camera.CFrame.Position
 end
 
-local function computeVisibleExtentsAtDistance(camera: Camera, distance: number): (number, number)
+local function resolveCameraSnapshot(camera: Camera?): CameraSnapshot
+	if camera == nil then
+		return {
+			fieldOfView = DEFAULT_CAMERA_FIELD_OF_VIEW,
+			viewportSize = DEFAULT_CAMERA_VIEWPORT,
+		}
+	end
+
 	local viewportSize = camera.ViewportSize
-	local aspectRatio = if viewportSize.Y > 0 then viewportSize.X / viewportSize.Y else 16 / 9
-	local resolvedDistance = math.max(distance, 1)
-	local visibleHeight = 2 * resolvedDistance * math.tan(math.rad(camera.FieldOfView) * 0.5)
-	local visibleWidth = visibleHeight * aspectRatio
-	return visibleWidth, visibleHeight
+	return {
+		fieldOfView = math.clamp(camera.FieldOfView, 1, 120),
+		viewportSize = Vector2.new(math.max(1, viewportSize.X), math.max(1, viewportSize.Y)),
+	}
 end
 
-local function computeHorizontalSegmentOverlap(segmentSize: number): number
-	return math.clamp(segmentSize * 0.0015, 0.08, 0.3)
+local function computeVisibleExtentsAtDistance(
+	fieldOfViewDegrees: number,
+	viewportSize: Vector2,
+	distance: number
+): (number, number)
+	local aspectRatio = if viewportSize.Y > 0 then viewportSize.X / viewportSize.Y else 16 / 9
+	local resolvedDistance = math.max(distance, 1)
+	local visibleHeight = 2 * resolvedDistance * math.tan(math.rad(fieldOfViewDegrees) * 0.5)
+	local visibleWidth = visibleHeight * aspectRatio
+	return visibleWidth, visibleHeight
 end
 
 local function computeAlignedCenterY(
 	verticalAlign: ParallaxServiceUtils.VerticalAlign,
 	cameraY: number,
 	visibleHeight: number,
-	segmentHeight: number
+	planeHeight: number
 ): number
 	if verticalAlign == "Top" then
-		return cameraY + visibleHeight * 0.5 - segmentHeight * 0.5
+		return cameraY + visibleHeight * 0.5 - planeHeight * 0.5
 	end
 	if verticalAlign == "Center" then
 		return cameraY
 	end
-	return cameraY - visibleHeight * 0.5 + segmentHeight * 0.5
+	return cameraY - visibleHeight * 0.5 + planeHeight * 0.5
 end
 
 local function blendToLayerTransparency(baseTransparency: number, biomeAlpha: number): number
 	local clampedBaseTransparency = math.clamp(baseTransparency, 0, 1)
 	local clampedBiomeAlpha = math.clamp(biomeAlpha, 0, 1)
 	return 1 - (1 - clampedBaseTransparency) * clampedBiomeAlpha
+end
+
+local function wrapTextureOffsetStuds(offsetStudsRaw: number, repeatWidthRaw: number): number
+	local repeatWidth = math.max(repeatWidthRaw, 0.001)
+	local wrapped = offsetStudsRaw % repeatWidth
+	if wrapped < 0 then
+		wrapped += repeatWidth
+	end
+	return wrapped
+end
+
+local function cloneState(state: ServiceState): ServiceState
+	return ParallaxServiceUtils.cloneState(state)
 end
 
 local function createTexture(part: Part, face: Enum.NormalId, definition: LayerDefinition): Texture
@@ -151,8 +205,8 @@ local function createTexture(part: Part, face: Enum.NormalId, definition: LayerD
 	texture.Texture = definition.image
 	texture.Color3 = definition.tint
 	texture.Transparency = 1
-	texture.OffsetStudsU = SEGMENT_TEXTURE_OFFSET_STUDS_U
-	texture.OffsetStudsV = SEGMENT_TEXTURE_OFFSET_STUDS_V
+	texture.OffsetStudsU = BASE_TEXTURE_OFFSET_STUDS_U
+	texture.OffsetStudsV = BASE_TEXTURE_OFFSET_STUDS_V
 	texture.Parent = part
 	return texture
 end
@@ -166,6 +220,17 @@ function ParallaxServiceClient._initializeCoreState(self: ParallaxServiceClient)
 	end
 	if self.state == nil then
 		self.state = ParallaxServiceUtils.createDefaultState(self.catalog)
+	end
+	if self.stateValue == nil then
+		self.stateValue = ValueObject.new(cloneState(self.state), "table") :: any
+	end
+	if self.stateChangedSignal == nil then
+		self.stateChangedSignal = RxSignal.new(function(): ObservableObject
+			return self:ObserveState()
+		end) :: RxSignalObject
+	end
+	if self.layoutStateValue == nil then
+		self.layoutStateValue = ValueObject.new(self:_resolveCurrentLayoutSnapshot(), "table") :: any
 	end
 	if self.activeBiomeRuntimes == nil then
 		self.activeBiomeRuntimes = {} :: { [string]: BiomeRuntime }
@@ -191,9 +256,130 @@ function ParallaxServiceClient._initializeCoreState(self: ParallaxServiceClient)
 	if self.transitionStartedAt == nil then
 		self.transitionStartedAt = 0
 	end
-	if self.biomeSampleAccumulator == nil then
-		self.biomeSampleAccumulator = self.catalog.settings.biomeSampleIntervalSeconds
+end
+
+function ParallaxServiceClient._resolveWorldLayoutSnapshot(
+	self: ParallaxServiceClient,
+	stateRaw: any?
+): WorldLayoutSnapshot
+	local fallbackState = ((WorldGenerationServiceClient :: any).state :: { [string]: any }?) or {}
+	local state = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else fallbackState
+	local tileDepth = if typeof(state.tileDepth) == "number" then math.max(state.tileDepth, 0.5) else 2
+	local chunkSize = if typeof(state.chunkSize) == "number" then math.max(1, math.floor(state.chunkSize)) else 32
+	local tileSize = if typeof(state.tileSize) == "number" then math.max(state.tileSize, 0.25) else 2
+	local renderDistanceChunks = if typeof(state.renderDistanceChunks) == "number"
+		then math.max(1, math.floor(state.renderDistanceChunks))
+		else 4
+
+	return {
+		tileDepth = tileDepth,
+		chunkSize = chunkSize,
+		tileSize = tileSize,
+		renderDistanceChunks = renderDistanceChunks,
+		horizontalVisionStuds = ParallaxServiceUtils.computeHorizontalVisionStuds(
+			chunkSize,
+			tileSize,
+			renderDistanceChunks
+		),
+	}
+end
+
+function ParallaxServiceClient._resolveCurrentLayoutSnapshot(self: ParallaxServiceClient): LayoutSnapshot
+	local cameraSnapshot = resolveCameraSnapshot(getCamera())
+	local worldSnapshot = self:_resolveWorldLayoutSnapshot()
+	return {
+		fieldOfView = cameraSnapshot.fieldOfView,
+		viewportSize = cameraSnapshot.viewportSize,
+		tileDepth = worldSnapshot.tileDepth,
+		chunkSize = worldSnapshot.chunkSize,
+		tileSize = worldSnapshot.tileSize,
+		renderDistanceChunks = worldSnapshot.renderDistanceChunks,
+		horizontalVisionStuds = worldSnapshot.horizontalVisionStuds,
+	}
+end
+
+function ParallaxServiceClient._observeCameraSnapshot(self: ParallaxServiceClient): ObservableObject
+	return Rx.fromSignal(Workspace:GetPropertyChangedSignal("CurrentCamera")):Pipe({
+		Rx.start(function()
+			return getCamera()
+		end),
+		Rx.map(function()
+			return getCamera()
+		end),
+		Rx.switchMap(function(camera: Camera?): ObservableObject
+			if camera == nil then
+				return Rx.of(resolveCameraSnapshot(nil)) :: any
+			end
+
+			return Rx.merge({
+				Rx.of(true),
+				Rx.fromSignal(camera:GetPropertyChangedSignal("FieldOfView")),
+				Rx.fromSignal(camera:GetPropertyChangedSignal("ViewportSize")),
+			}):Pipe({
+				Rx.map(function()
+					return resolveCameraSnapshot(camera)
+				end),
+			}) :: any
+		end),
+		Rx.throttleDefer(),
+	}) :: ObservableObject
+end
+
+function ParallaxServiceClient._observeWorldLayoutSnapshot(self: ParallaxServiceClient): ObservableObject
+	local worldStateSignal = (WorldGenerationServiceClient :: any).stateChanged
+	if worldStateSignal == nil then
+		return Rx.of(self:_resolveWorldLayoutSnapshot()) :: any
 	end
+
+	return Rx.fromSignal(worldStateSignal):Pipe({
+		Rx.start(function()
+			return WorldGenerationServiceClient:getState()
+		end),
+		Rx.map(function(worldState: any)
+			return self:_resolveWorldLayoutSnapshot(worldState)
+		end),
+		Rx.throttleDefer(),
+	}) :: ObservableObject
+end
+
+function ParallaxServiceClient._bindReactiveStreams(self: ParallaxServiceClient)
+	if self.reactiveStreamsMaid == nil then
+		return
+	end
+
+	self.reactiveStreamsMaid:DoCleaning()
+	self.reactiveStreamsMaid:GiveTask(Rx.combineLatest({
+		camera = self:_observeCameraSnapshot(),
+		world = self:_observeWorldLayoutSnapshot(),
+	})
+		:Pipe({
+			Rx.throttleDefer(),
+		})
+		:Subscribe(function(snapshot: { camera: CameraSnapshot, world: WorldLayoutSnapshot })
+			self.layoutStateValue.Value = {
+				fieldOfView = snapshot.camera.fieldOfView,
+				viewportSize = snapshot.camera.viewportSize,
+				tileDepth = snapshot.world.tileDepth,
+				chunkSize = snapshot.world.chunkSize,
+				tileSize = snapshot.world.tileSize,
+				renderDistanceChunks = snapshot.world.renderDistanceChunks,
+				horizontalVisionStuds = snapshot.world.horizontalVisionStuds,
+			}
+		end))
+
+	self.reactiveStreamsMaid:GiveTask(
+		Rx.timer(self.catalog.settings.biomeSampleIntervalSeconds, self.catalog.settings.biomeSampleIntervalSeconds)
+			:Subscribe(function()
+				if not self.initialized then
+					return
+				end
+
+				local sampledBiome = self:_resolveCurrentWorldBiome()
+				if sampledBiome ~= self.state.targetBiome then
+					self:SetBiome(sampledBiome)
+				end
+			end)
+	)
 end
 
 function ParallaxServiceClient._resolveWorldFolder(self: ParallaxServiceClient): Folder?
@@ -314,13 +500,14 @@ function ParallaxServiceClient._publishState(self: ParallaxServiceClient)
 	if self.state.targetBiome ~= "" then
 		self.state.currentBiome = self:_resolveDisplayedBiomeName()
 	end
+	self.stateValue.Value = cloneState(self.state)
 end
 
-function ParallaxServiceClient._createSegment(self: ParallaxServiceClient, layerRuntime: LayerRuntime): SegmentRuntime
+function ParallaxServiceClient._createPlane(self: ParallaxServiceClient, layerRuntime: LayerRuntime): PlaneRuntime
 	local definition = layerRuntime.definition
 
 	local part = Instance.new("Part")
-	part.Name = `{definition.id}_Segment`
+	part.Name = `{definition.id}_Plane`
 	part.Anchored = true
 	part.Locked = true
 	part.CanCollide = false
@@ -344,14 +531,8 @@ function ParallaxServiceClient._createSegment(self: ParallaxServiceClient, layer
 		textures = textures,
 		lastWidth = 0,
 		lastHeight = 0,
-		assignedStripIndex = nil,
+		lastRepeatWidth = 0,
 	}
-end
-
-function ParallaxServiceClient._ensureSegmentPool(self: ParallaxServiceClient, layerRuntime: LayerRuntime, neededCount: number)
-	while #layerRuntime.segments < neededCount do
-		table.insert(layerRuntime.segments, self:_createSegment(layerRuntime))
-	end
 end
 
 function ParallaxServiceClient._createLayerRuntime(
@@ -360,11 +541,13 @@ function ParallaxServiceClient._createLayerRuntime(
 	definition: LayerDefinition
 ): LayerRuntime
 	local folder = createFolder(biomeRuntime.folder, definition.id)
-	return {
+	local runtime: LayerRuntime = {
 		definition = definition,
 		folder = folder,
-		segments = {},
+		plane = nil :: any,
 	}
+	runtime.plane = self:_createPlane(runtime)
+	return runtime
 end
 
 function ParallaxServiceClient._createBiomeRuntime(self: ParallaxServiceClient, biomeName: string): BiomeRuntime
@@ -428,10 +611,8 @@ function ParallaxServiceClient._stepTransition(self: ParallaxServiceClient, now:
 
 	local duration = math.max(0.001, self.catalog.settings.transitionSeconds)
 	local rawProgress = math.clamp((now - self.transitionStartedAt) / duration, 0, 1)
-	local easedProgress = TweenService:GetValue(rawProgress, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-
 	for _, runtime in self.activeBiomeRuntimes do
-		local nextAlpha = runtime.startAlpha + (runtime.targetAlpha - runtime.startAlpha) * easedProgress
+		local nextAlpha = runtime.startAlpha + (runtime.targetAlpha - runtime.startAlpha) * rawProgress
 		self:_setBiomeAlpha(runtime, nextAlpha)
 	end
 
@@ -457,19 +638,22 @@ function ParallaxServiceClient._preloadBiomeAssets(self: ParallaxServiceClient, 
 
 	local assetIds = ParallaxServiceUtils.collectAssetIds(self.catalog, { biomeName })
 	if #assetIds <= 0 then
-		local emptyPromise = Promise.resolved(true)
+		local emptyPromise = Rx.toPromise(Rx.of(true))
 		self.preloadBiomePromises[biomeName] = emptyPromise
 		return emptyPromise
 	end
 
-	local preloadPromise = promiseTry(function()
-			ContentProvider:PreloadAsync(assetIds)
+	local preloadPromise = ContentProviderUtils.promisePreload(assetIds)
+		:Then(function()
 			return true
 		end)
-		:Catch(function(_err: any)
+		:Catch(function()
 			return false
 		end)
 	self.preloadBiomePromises[biomeName] = preloadPromise
+	if self.maid ~= nil then
+		self.maid:GivePromise(preloadPromise)
+	end
 	return preloadPromise
 end
 
@@ -481,17 +665,20 @@ function ParallaxServiceClient._preloadAllAssets(self: ParallaxServiceClient)
 
 	local assetIds = ParallaxServiceUtils.collectAssetIds(self.catalog, nil)
 	if #assetIds <= 0 then
-		self.preloadAllAssetsPromise = Promise.resolved(true)
+		self.preloadAllAssetsPromise = Rx.toPromise(Rx.of(true))
 		return self.preloadAllAssetsPromise
 	end
 
-	self.preloadAllAssetsPromise = promiseTry(function()
-			ContentProvider:PreloadAsync(assetIds)
+	self.preloadAllAssetsPromise = ContentProviderUtils.promisePreload(assetIds)
+		:Then(function()
 			return true
 		end)
-		:Catch(function(_err: any)
+		:Catch(function()
 			return false
 		end)
+	if self.maid ~= nil then
+		self.maid:GivePromise(self.preloadAllAssetsPromise)
+	end
 	return self.preloadAllAssetsPromise
 end
 
@@ -517,6 +704,7 @@ function ParallaxServiceClient._syncBiomeFromWorldSampleNow(self: ParallaxServic
 	local sampledBiome = self:_resolveCurrentWorldBiome()
 	self.state.currentBiome = sampledBiome
 	self.state.targetBiome = sampledBiome
+	self.stateValue.Value = cloneState(self.state)
 	return sampledBiome
 end
 
@@ -524,101 +712,107 @@ function ParallaxServiceClient._updateLayerRuntime(
 	self: ParallaxServiceClient,
 	layerRuntime: LayerRuntime,
 	biomeAlpha: number,
-	camera: Camera,
 	cameraPosition: Vector3,
 	now: number
 )
 	local definition = layerRuntime.definition
-	local tileDepth = if typeof((WorldGenerationServiceClient :: any).state) == "table"
-		then ((WorldGenerationServiceClient :: any).state :: any).tileDepth or 2
-		else 2
+	local layoutSnapshot = self.layoutStateValue.Value
+	if layoutSnapshot == nil then
+		layoutSnapshot = self:_resolveCurrentLayoutSnapshot()
+		self.layoutStateValue.Value = layoutSnapshot
+	end
 
-	local planeX = self.worldOrigin.X + self.basePlaneX - definition.planeDepthBlocks * tileDepth
+	local planeX = self.worldOrigin.X + self.basePlaneX - definition.planeDepthBlocks * layoutSnapshot.tileDepth
 	local gameplayReferenceDistance = self:_resolveGameplayPlaneReferenceDistance(cameraPosition.X)
-	local coverageReferenceDistance = gameplayReferenceDistance + math.abs((self.worldOrigin.X + self.basePlaneX) - planeX)
-	local visibleWidth, visibleHeight = computeVisibleExtentsAtDistance(camera, coverageReferenceDistance)
-	local sizeReferenceWidth = select(1, computeVisibleExtentsAtDistance(camera, gameplayReferenceDistance))
-	local minimumSegmentWidth = math.max(definition.textureStudsPerTileU * 0.25, 12)
-	local aspectRatio = math.max(definition.imageAspectRatio, 0.05)
-	local resolvedHeightScale = math.max(definition.heightScale, 0.05)
-	local candidateSegmentWidth = math.max(sizeReferenceWidth * definition.segmentWidthScale, minimumSegmentWidth)
-	local candidateSegmentHeight = math.max(1, (candidateSegmentWidth / aspectRatio) * resolvedHeightScale)
-	local centerShift = definition.verticalOffsetStuds - (cameraPosition.Y - self.worldOrigin.Y) * definition.verticalDepth
+	local coverageReferenceDistance = gameplayReferenceDistance
+		+ math.abs((self.worldOrigin.X + self.basePlaneX) - planeX)
+	local visibleWidth, visibleHeight = computeVisibleExtentsAtDistance(
+		layoutSnapshot.fieldOfView,
+		layoutSnapshot.viewportSize,
+		coverageReferenceDistance
+	)
+	local sizeReferenceWidth = select(
+		1,
+		computeVisibleExtentsAtDistance(
+			layoutSnapshot.fieldOfView,
+			layoutSnapshot.viewportSize,
+			gameplayReferenceDistance
+		)
+	)
+	local planeSizing: PlaneSizing = ParallaxServiceUtils.resolveDeterministicPlaneSizing(
+		visibleWidth,
+		sizeReferenceWidth,
+		layoutSnapshot.horizontalVisionStuds,
+		definition.imageAspectRatio,
+		definition.heightScale,
+		definition.segmentWidthScale,
+		definition.textureStudsPerTileU
+	)
+	local minimumPlaneHeight = planeSizing.textureRepeatHeight
+	local centerShift = definition.verticalOffsetStuds
+		- (cameraPosition.Y - self.worldOrigin.Y) * definition.verticalDepth
 	local candidateCenterY = computeAlignedCenterY(
 		definition.verticalAlign,
 		cameraPosition.Y,
 		visibleHeight,
-		candidateSegmentHeight
+		minimumPlaneHeight
 	) + centerShift
 	local visibleTopY = cameraPosition.Y + visibleHeight * 0.5
 	local visibleBottomY = cameraPosition.Y - visibleHeight * 0.5
 	local requiredHalfHeight = math.max(candidateCenterY - visibleBottomY, visibleTopY - candidateCenterY)
-		+ math.max(visibleHeight * MIN_SEGMENT_VERTICAL_COVERAGE_BLEED_FACTOR, MIN_SEGMENT_VERTICAL_COVERAGE_BLEED_STUDS)
-	local requiredSegmentHeight = requiredHalfHeight * 2
-	local segmentHeight = math.max(candidateSegmentHeight, requiredSegmentHeight)
-	local segmentWidth = math.max(candidateSegmentWidth, (segmentHeight / resolvedHeightScale) * aspectRatio)
-	local overscanSegments = math.max(definition.overscanSegments, 2)
-	local horizontalOverlap = computeHorizontalSegmentOverlap(segmentWidth)
-	local stripLeftEdgeZ = cameraPosition.Z * (1 - definition.depth) + now * definition.scrollSpeed
-	local visibleMinZ = cameraPosition.Z - visibleWidth * 0.5 - segmentWidth * overscanSegments
-	local visibleMaxZ = cameraPosition.Z + visibleWidth * 0.5 + segmentWidth * overscanSegments
-	local firstVisibleStripIndex = math.floor((visibleMinZ - stripLeftEdgeZ) / segmentWidth)
-	local lastVisibleStripIndex = math.ceil((visibleMaxZ - stripLeftEdgeZ) / segmentWidth) - 1
-	local requiredSegmentCount = math.max(1, lastVisibleStripIndex - firstVisibleStripIndex + 1)
-	local segmentCount = math.max(definition.minSegments, requiredSegmentCount)
-	local firstStripIndex = firstVisibleStripIndex
-
-	self:_ensureSegmentPool(layerRuntime, segmentCount)
-
-	local centerY = computeAlignedCenterY(definition.verticalAlign, cameraPosition.Y, visibleHeight, segmentHeight)
-	centerY += centerShift
-
+		+ math.max(visibleHeight * MIN_PLANE_VERTICAL_COVERAGE_BLEED_FACTOR, MIN_PLANE_VERTICAL_COVERAGE_BLEED_STUDS)
+	local planeHeight = math.max(minimumPlaneHeight, requiredHalfHeight * 2)
+	planeSizing = ParallaxServiceUtils.resolveDeterministicPlaneSizing(
+		visibleWidth,
+		sizeReferenceWidth,
+		layoutSnapshot.horizontalVisionStuds,
+		definition.imageAspectRatio,
+		definition.heightScale,
+		definition.segmentWidthScale,
+		definition.textureStudsPerTileU,
+		planeHeight
+	)
+	local textureRepeatWidth = planeSizing.textureRepeatWidth
+	local textureRepeatHeight = planeSizing.textureRepeatHeight
+	local centerY = computeAlignedCenterY(definition.verticalAlign, cameraPosition.Y, visibleHeight, planeHeight)
+		+ centerShift
 	local targetTextureTransparency = blendToLayerTransparency(definition.transparency, biomeAlpha)
-	for segmentIndex = 1, segmentCount do
-		local segmentRuntime = layerRuntime.segments[segmentIndex]
-		local stripIndex = firstStripIndex + (segmentIndex - 1)
-		local centerZ = stripLeftEdgeZ + (stripIndex + 0.5) * segmentWidth
+	local textureOffsetU = wrapTextureOffsetStuds(
+		BASE_TEXTURE_OFFSET_STUDS_U
+			+ cameraPosition.Z * definition.depth * PARALLAX_TEXTURE_MOTION_SCALE
+			- now * definition.scrollSpeed * PARALLAX_TEXTURE_MOTION_SCALE,
+		textureRepeatWidth
+	)
+	local planeRuntime = layerRuntime.plane
 
-		segmentRuntime.part.Size =
-			Vector3.new(self.catalog.settings.segmentThickness, segmentHeight, segmentWidth + horizontalOverlap)
-		segmentRuntime.part.CFrame = CFrame.new(planeX, centerY, centerZ)
-		for _, texture in segmentRuntime.textures do
-			texture.Texture = definition.image
-			texture.Color3 = definition.tint
-			texture.Transparency = targetTextureTransparency
-			texture.StudsPerTileU = segmentWidth
-			texture.StudsPerTileV = segmentHeight
-			texture.OffsetStudsU = SEGMENT_TEXTURE_OFFSET_STUDS_U
-			texture.OffsetStudsV = SEGMENT_TEXTURE_OFFSET_STUDS_V
-		end
-		segmentRuntime.assignedStripIndex = stripIndex
-		segmentRuntime.lastWidth = segmentWidth
-		segmentRuntime.lastHeight = segmentHeight
+	planeRuntime.part.Size = Vector3.new(self.catalog.settings.segmentThickness, planeHeight, planeSizing.planeWidth)
+	planeRuntime.part.CFrame = CFrame.new(planeX, centerY, cameraPosition.Z)
+	for _, texture in planeRuntime.textures do
+		texture.Texture = definition.image
+		texture.Color3 = definition.tint
+		texture.Transparency = targetTextureTransparency
+		texture.StudsPerTileU = textureRepeatWidth
+		texture.StudsPerTileV = textureRepeatHeight
+		texture.OffsetStudsU = textureOffsetU
+		texture.OffsetStudsV = BASE_TEXTURE_OFFSET_STUDS_V
 	end
-
-	for segmentIndex = segmentCount + 1, #layerRuntime.segments do
-		local segmentRuntime = layerRuntime.segments[segmentIndex]
-		segmentRuntime.part.CFrame = CFrame.new(planeX, -100000, 0)
-		for _, texture in segmentRuntime.textures do
-			texture.Transparency = 1
-		end
-		segmentRuntime.assignedStripIndex = nil
-	end
+	planeRuntime.lastWidth = planeSizing.planeWidth
+	planeRuntime.lastHeight = planeHeight
+	planeRuntime.lastRepeatWidth = textureRepeatWidth
 end
 
 function ParallaxServiceClient._updateBiomeRuntime(
 	self: ParallaxServiceClient,
 	biomeRuntime: BiomeRuntime,
-	camera: Camera,
 	cameraPosition: Vector3,
 	now: number
 )
 	for _, layerRuntime in biomeRuntime.layers do
-		self:_updateLayerRuntime(layerRuntime, biomeRuntime.alpha, camera, cameraPosition, now)
+		self:_updateLayerRuntime(layerRuntime, biomeRuntime.alpha, cameraPosition, now)
 	end
 end
 
-function ParallaxServiceClient._render(self: ParallaxServiceClient, deltaTime: number)
+function ParallaxServiceClient._render(self: ParallaxServiceClient)
 	if not self.initialized then
 		return
 	end
@@ -629,15 +823,6 @@ function ParallaxServiceClient._render(self: ParallaxServiceClient, deltaTime: n
 	local now = os.clock()
 	self:_stepTransition(now)
 
-	self.biomeSampleAccumulator += deltaTime
-	if self.biomeSampleAccumulator >= self.catalog.settings.biomeSampleIntervalSeconds then
-		self.biomeSampleAccumulator = 0
-		local sampledBiome = self:_resolveCurrentWorldBiome()
-		if sampledBiome ~= self.state.targetBiome then
-			self:SetBiome(sampledBiome)
-		end
-	end
-
 	local camera = getCamera()
 	if camera == nil then
 		return
@@ -645,16 +830,20 @@ function ParallaxServiceClient._render(self: ParallaxServiceClient, deltaTime: n
 
 	local cameraPosition = resolveCameraPosition()
 	for _, biomeRuntime in self.activeBiomeRuntimes do
-		self:_updateBiomeRuntime(biomeRuntime, camera, cameraPosition, now)
+		self:_updateBiomeRuntime(biomeRuntime, cameraPosition, now)
 	end
 end
 
 function ParallaxServiceClient.Init(self: ParallaxServiceClient, _container: Instance?)
 	self:_initializeCoreState()
 
-	if self.janitor == nil then
-		self.janitor = Janitor.new()
-		self.janitor:GiveChore(function()
+	if self.maid == nil then
+		self.maid = Maid.new()
+		self.reactiveStreamsMaid = Maid.new()
+		self.maid:GiveTask(self.stateValue)
+		self.maid:GiveTask(self.layoutStateValue)
+		self.maid:GiveTask(self.reactiveStreamsMaid)
+		self.maid:GiveTask(function()
 			if self.renderStepName ~= nil then
 				RunService:UnbindFromRenderStep(self.renderStepName)
 				self.renderStepName = nil
@@ -665,7 +854,7 @@ function ParallaxServiceClient.Init(self: ParallaxServiceClient, _container: Ins
 			end
 			self.rootFolder = nil
 		end)
-		self.binders = NevermoreSupport.getService(ClientBinderSupport)
+		self:_bindReactiveStreams()
 	end
 
 	if self.initialized then
@@ -687,8 +876,8 @@ function ParallaxServiceClient.Init(self: ParallaxServiceClient, _container: Ins
 	self:_publishState()
 
 	self.renderStepName = ("ParallaxServiceRender_%d"):format(math.floor(os.clock() * 1000))
-	RunService:BindToRenderStep(self.renderStepName, Enum.RenderPriority.Camera.Value + 5, function(deltaTime: number)
-		self:_render(deltaTime)
+	RunService:BindToRenderStep(self.renderStepName, Enum.RenderPriority.Camera.Value + 5, function()
+		self:_render()
 	end)
 end
 
@@ -749,6 +938,8 @@ function ParallaxServiceClient.ForceRefresh(self: ParallaxServiceClient)
 	self:_destroyAllBiomeRuntimes()
 	self:_ensureRootFolder()
 	self:_refreshWorldAttributes()
+	self:_bindReactiveStreams()
+
 	local activeBiomeName = self:_syncBiomeFromWorldSampleNow()
 	self:_preloadAllAssets()
 	self:_preloadBiomeAssets(activeBiomeName)
@@ -762,38 +953,79 @@ function ParallaxServiceClient.ForceRefresh(self: ParallaxServiceClient)
 	self:_publishState()
 end
 
+function ParallaxServiceClient.ObserveState(self: ParallaxServiceClient): ObservableObject
+	self:_initializeCoreState()
+
+	if self.stateObservable == nil then
+		self.stateObservable = self.stateValue:Observe():Pipe({
+			Rx.map(function(state: ServiceState)
+				return cloneState(state)
+			end),
+		}) :: ObservableObject
+	end
+
+	return self.stateObservable
+end
+
+function ParallaxServiceClient.GetStateChangedSignal(self: ParallaxServiceClient): RxSignalObject
+	self:_initializeCoreState()
+	return self.stateChangedSignal
+end
+
+function ParallaxServiceClient.GetState(self: ParallaxServiceClient): ServiceState
+	self:_initializeCoreState()
+	return cloneState(self.state)
+end
+
 function ParallaxServiceClient.GetCurrentBiome(self: ParallaxServiceClient): string
-	return self.state.currentBiome
+	return self:GetState().currentBiome
 end
 
 function ParallaxServiceClient.Destroy(self: ParallaxServiceClient)
 	if self.preloadBiomePromises ~= nil then
-		for biomeName, preloadPromise in self.preloadBiomePromises do
-			if preloadPromise ~= nil then
-				preloadPromise:Destroy()
-			end
-			self.preloadBiomePromises[biomeName] = nil
-		end
+		table.clear(self.preloadBiomePromises)
 	end
-	if self.preloadAllAssetsPromise ~= nil then
-		self.preloadAllAssetsPromise:Destroy()
-		self.preloadAllAssetsPromise = nil
+	if self.preloadedBiomes ~= nil then
+		table.clear(self.preloadedBiomes)
 	end
-	if self.janitor ~= nil then
-		self.janitor:Destroy()
-		self.janitor = nil
+	if self.selectedBiomeVariantNames ~= nil then
+		table.clear(self.selectedBiomeVariantNames)
 	end
+	if self.activeBiomeRuntimes ~= nil then
+		table.clear(self.activeBiomeRuntimes)
+	end
+	if self.maid ~= nil then
+		self.maid:Destroy()
+		self.maid = nil
+	end
+	self.reactiveStreamsMaid = nil
+	self.stateObservable = nil
+	self.stateChangedSignal = nil
+	self.stateValue = nil
+	self.layoutStateValue = nil
+	self.preloadAllAssetsPromise = nil
+	self.initialized = false
 end
 
 ParallaxServiceClient.init = ParallaxServiceClient.Init
+ParallaxServiceClient.setBiome = ParallaxServiceClient.SetBiome
+ParallaxServiceClient.forceRefresh = ParallaxServiceClient.ForceRefresh
+ParallaxServiceClient.observeState = ParallaxServiceClient.ObserveState
+ParallaxServiceClient.getStateChangedSignal = ParallaxServiceClient.GetStateChangedSignal
+ParallaxServiceClient.getState = ParallaxServiceClient.GetState
 ParallaxServiceClient.getCurrentBiome = ParallaxServiceClient.GetCurrentBiome
 ParallaxServiceClient.destroy = ParallaxServiceClient.Destroy
 
 type ParallaxServiceClient = typeof(ParallaxServiceClient) & {
 	localPlayer: Player,
-	janitor: JanitorClass?,
+	maid: MaidClass?,
+	reactiveStreamsMaid: MaidClass?,
 	catalog: Catalog,
 	state: ServiceState,
+	stateValue: ValueObjectClass<ServiceState>,
+	stateObservable: ObservableObject?,
+	stateChangedSignal: RxSignalObject,
+	layoutStateValue: ValueObjectClass<LayoutSnapshot>,
 	activeBiomeRuntimes: { [string]: BiomeRuntime },
 	preloadedBiomes: { [string]: boolean },
 	preloadBiomePromises: { [string]: any },
@@ -803,7 +1035,6 @@ type ParallaxServiceClient = typeof(ParallaxServiceClient) & {
 	referenceGameplayPlaneDistanceX: number?,
 	transitionActive: boolean,
 	transitionStartedAt: number,
-	biomeSampleAccumulator: number,
 	rootFolder: Folder?,
 	worldOrigin: Vector3,
 	basePlaneX: number,

@@ -111,7 +111,7 @@ function UseBinder.createPrompt(self: any): ProximityPrompt?
 	prompt.Name = "UsePrompt"
 	prompt.RequiresLineOfSight = false
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
-	prompt.GamepadKeyCode = Enum.KeyCode.ButtonX
+	prompt.GamepadKeyCode = Enum.KeyCode.ButtonB
 	prompt.Parent = self.rootPart
 	self:AddCleanup(function()
 		if prompt.Parent ~= nil then

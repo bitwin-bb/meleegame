@@ -8,16 +8,26 @@ local Workspace = game:GetService("Workspace")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local nevermoreRequire = require(loaderUtils.Parent).load(script)
+local loader = require(loaderUtils.Parent).load(script)
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
-local Rx = nevermoreRequire("Rx")
-local RxSignal = nevermoreRequire("RxSignal")
+local Rx = loader("Rx")
+local CoreGuiEnabler = loader("CoreGuiEnabler")
+local InputModeServiceClient = loader("InputModeServiceClient")
+local InputModeTypeSelector = loader("InputModeTypeSelector")
+local InputModeTypes = loader("InputModeTypes")
+local InputObjectUtils = loader("InputObjectUtils")
+local JumpButtonUtils = loader("JumpButtonUtils")
+local MouseShiftLockService = loader("MouseShiftLockService")
+local PlayerInputModeTypes = loader("PlayerInputModeTypes")
+local RxSignal = loader("RxSignal")
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
-local PlatformServiceUtils =
-	require(script:FindFirstAncestor("game").Shared.Services.PlatformServiceUtils)
+local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlatformServiceUtils)
 local PlatformUIScale = require(script:FindFirstAncestor("game").Shared.Services.UIScale)
+local XboxControls = require(script:FindFirstAncestor("game").Client.Modules.Controls.Xbox)
 
 type JanitorClass = {
 	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
@@ -102,6 +112,15 @@ type ActionTriggeredSignal = {
 export type ActionListener = (phase: ActionPhase, context: ActionContext) -> boolean?
 
 export type PlatformClientState = PlatformStateBase & {
+	gamepadFamily: string?,
+	machineFamily: string,
+	playerInputMode: string,
+	activeInputModeName: string,
+	activeGamepadInputName: string?,
+	platformName: string?,
+	connectedGamepadCount: number,
+	shiftLockAllowed: boolean,
+	customCursorEnabled: boolean,
 	updatedAt: number,
 }
 
@@ -121,6 +140,10 @@ PlatformServiceClient.ACTIONS = PlatformServiceUtils.ACTIONS
 
 local TOUCH_MOVEMENT_GUARD_WIDTH = 0.42
 local TOUCH_MOVEMENT_GUARD_HEIGHT = 0.44
+local TOUCH_JUMP_BUTTON_PADDING = 12
+local GAMEPAD_CURSOR_ACTIVE_ATTRIBUTE = "CustomCursorGamepadActive"
+local GAMEPAD_HINTS = if typeof((ImageIds :: any).hints) == "table" then (ImageIds :: any).hints :: any else {}
+local MOUSE_LOCK_POLICY_KEY = {}
 
 local function cloneBinding(binding: ActionBinding): ActionBinding
 	return {
@@ -207,6 +230,191 @@ local function sanitizeBinding(bindingRaw: any): ActionBinding?
 	return binding
 end
 
+local function sanitizeOptionalString(valueRaw: any): string?
+	if typeof(valueRaw) ~= "string" then
+		return nil
+	end
+	local value = string.match(valueRaw, "^%s*(.-)%s*$")
+	if value == nil or value == "" then
+		return nil
+	end
+	return value
+end
+
+local function resolveKeyCodeByName(keyCodeNameRaw: any): Enum.KeyCode?
+	local keyCodeName = sanitizeOptionalString(keyCodeNameRaw)
+	if keyCodeName == nil then
+		return nil
+	end
+	local ok, keyCodeOrError = pcall(function()
+		return Enum.KeyCode[keyCodeName]
+	end)
+	if ok and typeof(keyCodeOrError) == "EnumItem" then
+		return keyCodeOrError :: Enum.KeyCode
+	end
+	return nil
+end
+
+local function resolveImageForKeyCode(keyCode: Enum.KeyCode?): string?
+	if keyCode == nil then
+		return nil
+	end
+	local okImage, image = pcall(function()
+		return UserInputService:GetImageForKeyCode(keyCode)
+	end)
+	if okImage and typeof(image) == "string" and image ~= "" then
+		return image
+	end
+	return nil
+end
+
+local function cloneResolvedPrompt(promptRaw: PromptBinding?): PromptBinding?
+	if typeof(promptRaw) ~= "table" then
+		return nil
+	end
+	return {
+		actionName = promptRaw.actionName,
+		displayName = promptRaw.displayName,
+		platform = promptRaw.platform,
+		deviceClass = promptRaw.deviceClass,
+		text = promptRaw.text,
+		icon = promptRaw.icon,
+		keyCode = promptRaw.keyCode,
+		inputType = promptRaw.inputType,
+		playerAction = promptRaw.playerAction,
+	}
+end
+
+local function resolveControlPrompt(promptRaw: any): any
+	local keyCode = resolveKeyCodeByName(if typeof(promptRaw) == "table" then promptRaw.keyCode else nil)
+	local text = sanitizeOptionalString(if typeof(promptRaw) == "table" then promptRaw.text else nil)
+	if text == nil and keyCode ~= nil then
+		local okText, officialText = pcall(function()
+			return UserInputService:GetStringForKeyCode(keyCode)
+		end)
+		if okText and typeof(officialText) == "string" and officialText ~= "" then
+			text = officialText
+		end
+	end
+	return {
+		text = text,
+		icon = resolveImageForKeyCode(keyCode),
+		keyCode = keyCode,
+		detail = sanitizeOptionalString(if typeof(promptRaw) == "table" then promptRaw.detail else nil),
+		hold = if typeof(promptRaw) == "table" and promptRaw.hold == true then true else false,
+	}
+end
+
+local function resolvePromptForActionOnPlatform(
+	self: typeof(PlatformServiceClient),
+	actionNameRaw: any,
+	platformKindRaw: any
+): PromptBinding?
+	if typeof(actionNameRaw) ~= "string" then
+		return nil
+	end
+	local runtime = self.actions[actionNameRaw]
+	local definition = if runtime ~= nil
+		then runtime.definition
+		else PlatformServiceUtils.getDefaultActionDefinition(actionNameRaw)
+	if definition == nil then
+		return nil
+	end
+
+	local prompt = PlatformServiceUtils.resolvePromptForAction(
+		definition,
+		sanitizePlatformKind(platformKindRaw),
+		self:getState().deviceClass,
+		self:getState().gamepadFamily
+	)
+	if prompt == nil then
+		return nil
+	end
+
+	local output = {
+		actionName = prompt.actionName,
+		displayName = prompt.displayName,
+		platform = prompt.platform,
+		deviceClass = prompt.deviceClass,
+		text = prompt.text,
+		icon = prompt.icon,
+		keyCode = prompt.keyCode,
+		inputType = prompt.inputType,
+		playerAction = prompt.playerAction,
+	} :: PromptBinding
+
+	if output.keyCode ~= nil then
+		if output.text == nil or output.text == "" then
+			local okText, officialText = pcall(function()
+				return UserInputService:GetStringForKeyCode(output.keyCode :: Enum.KeyCode)
+			end)
+			if okText and typeof(officialText) == "string" and officialText ~= "" then
+				output.text = officialText
+			end
+		end
+
+		if output.icon == nil or output.icon == "" then
+			local okImage, officialImage = pcall(function()
+				return UserInputService:GetImageForKeyCode(output.keyCode :: Enum.KeyCode)
+			end)
+			if okImage and typeof(officialImage) == "string" and officialImage ~= "" then
+				output.icon = officialImage
+			end
+		end
+	end
+
+	return output
+end
+
+local function resolveControlEntry(self: typeof(PlatformServiceClient), entryRaw: any, platformKindRaw: any): any
+	local prompts = {}
+	if typeof(entryRaw) == "table" and typeof(entryRaw.prompts) == "table" then
+		for index = 1, #entryRaw.prompts do
+			prompts[#prompts + 1] = resolveControlPrompt(entryRaw.prompts[index])
+		end
+	end
+
+	local actionName = sanitizeOptionalString(if typeof(entryRaw) == "table" then entryRaw.actionName else nil)
+	local resolvedPrompt = if actionName ~= nil
+		then cloneResolvedPrompt(resolvePromptForActionOnPlatform(self, actionName, platformKindRaw))
+		else nil
+
+	return {
+		id = sanitizeOptionalString(if typeof(entryRaw) == "table" then entryRaw.id else nil),
+		label = sanitizeOptionalString(if typeof(entryRaw) == "table" then entryRaw.label else nil),
+		detail = sanitizeOptionalString(if typeof(entryRaw) == "table" then entryRaw.detail else nil),
+		actionName = actionName,
+		prompts = prompts,
+		resolvedPrompt = resolvedPrompt,
+	}
+end
+
+local function resolveControlSections(
+	self: typeof(PlatformServiceClient),
+	layoutRaw: any,
+	platformKindRaw: any
+): { any }
+	local output = {}
+	if typeof(layoutRaw) ~= "table" or typeof(layoutRaw.sections) ~= "table" then
+		return output
+	end
+	for sectionIndex = 1, #layoutRaw.sections do
+		local sectionRaw = layoutRaw.sections[sectionIndex]
+		local controls = {}
+		if typeof(sectionRaw) == "table" and typeof(sectionRaw.controls) == "table" then
+			for controlIndex = 1, #sectionRaw.controls do
+				controls[#controls + 1] = resolveControlEntry(self, sectionRaw.controls[controlIndex], platformKindRaw)
+			end
+		end
+		output[#output + 1] = {
+			id = sanitizeOptionalString(if typeof(sectionRaw) == "table" then sectionRaw.id else nil),
+			title = sanitizeOptionalString(if typeof(sectionRaw) == "table" then sectionRaw.title else nil),
+			controls = controls,
+		}
+	end
+	return output
+end
+
 local function sanitizeBindingsTable(bindingsRaw: any): { ActionBinding }
 	local output: { ActionBinding } = {}
 	if typeof(bindingsRaw) ~= "table" then
@@ -284,8 +492,195 @@ local function cloneState(state: PlatformClientState): PlatformClientState
 		mouseEnabled = cloned.mouseEnabled,
 		gamepadEnabled = cloned.gamepadEnabled,
 		basePrimaryInputType = cloned.basePrimaryInputType,
+		gamepadFamily = state.gamepadFamily,
+		machineFamily = state.machineFamily,
+		playerInputMode = state.playerInputMode,
+		activeInputModeName = state.activeInputModeName,
+		activeGamepadInputName = state.activeGamepadInputName,
+		platformName = state.platformName,
+		connectedGamepadCount = state.connectedGamepadCount,
+		shiftLockAllowed = state.shiftLockAllowed,
+		customCursorEnabled = state.customCursorEnabled,
 		updatedAt = state.updatedAt,
 	}
+end
+
+local function resolvePlatformName(): string?
+	local okPlatform, platformValue = pcall(function()
+		local inputServiceAny = UserInputService :: any
+		if typeof(inputServiceAny.GetPlatform) == "function" then
+			return inputServiceAny:GetPlatform()
+		end
+		return nil
+	end)
+	if not okPlatform then
+		return nil
+	end
+	if typeof(platformValue) == "EnumItem" then
+		return platformValue.Name
+	end
+	if typeof(platformValue) == "string" and platformValue ~= "" then
+		return platformValue
+	end
+	return nil
+end
+
+local function countConnectedGamepads(): number
+	local okGamepads, connectedGamepads = pcall(function()
+		return UserInputService:GetConnectedGamepads()
+	end)
+	if okGamepads and type(connectedGamepads) == "table" then
+		return #connectedGamepads
+	end
+	return if UserInputService.GamepadEnabled then 1 else 0
+end
+
+local function getInputModeLastEnabledTime(inputModeServiceRaw: any, inputModeTypeRaw: any): number
+	if typeof(inputModeServiceRaw) ~= "table" or typeof(inputModeTypeRaw) ~= "table" then
+		return 0
+	end
+	local okInputMode, inputMode = pcall(function()
+		return (inputModeServiceRaw :: any):GetInputMode(inputModeTypeRaw)
+	end)
+	if not okInputMode or typeof(inputMode) ~= "table" then
+		return 0
+	end
+	local okLastEnabledTime, lastEnabledTime = pcall(function()
+		return (inputMode :: any):GetLastEnabledTime()
+	end)
+	if okLastEnabledTime and typeof(lastEnabledTime) == "number" then
+		return lastEnabledTime
+	end
+	return 0
+end
+
+local function resolveLatestInputModeName(inputModeServiceRaw: any, inputModeTypeList: { any }): string?
+	if typeof(inputModeServiceRaw) ~= "table" then
+		return nil
+	end
+	local bestModeName = nil :: string?
+	local bestEnabledTime = 0
+	for _, inputModeType in inputModeTypeList do
+		local lastEnabledTime = getInputModeLastEnabledTime(inputModeServiceRaw, inputModeType)
+		if lastEnabledTime > bestEnabledTime then
+			bestEnabledTime = lastEnabledTime
+			bestModeName = if typeof((inputModeType :: any).Name) == "string" then (inputModeType :: any).Name else nil
+		end
+	end
+	return bestModeName
+end
+
+local function resolvePlatformKindFromInputModeName(modeNameRaw: any): PlatformKind?
+	if typeof(modeNameRaw) ~= "string" or modeNameRaw == "" then
+		return nil
+	end
+	if modeNameRaw == "Gamepads" or modeNameRaw == "Thumbsticks" or modeNameRaw == "DPad" then
+		return "Gamepad"
+	end
+	if modeNameRaw == "Touch" then
+		return "Touch"
+	end
+	if modeNameRaw == "Keyboard" or modeNameRaw == "KeyboardAndMouse" or modeNameRaw == "Mouse" then
+		return "KeyboardMouse"
+	end
+	return nil
+end
+
+local function resolvePrimaryInputTypeFromInputModeName(modeNameRaw: any): string?
+	local platformKind = resolvePlatformKindFromInputModeName(modeNameRaw)
+	if platformKind == "Gamepad" then
+		return "Gamepad"
+	end
+	if platformKind == "Touch" then
+		return "Touch"
+	end
+	if platformKind == "KeyboardMouse" then
+		return "KeyboardMouse"
+	end
+	return nil
+end
+
+local function resolvePlayerInputMode(platformKind: PlatformKind): string
+	if platformKind == "Gamepad" then
+		return PlayerInputModeTypes.GAMEPAD
+	end
+	if platformKind == "Touch" then
+		return PlayerInputModeTypes.TOUCH
+	end
+	return PlayerInputModeTypes.KEYBOARD
+end
+
+local function resolveGamepadFamilyFromPlatformName(platformNameRaw: any): string?
+	if typeof(platformNameRaw) ~= "string" or platformNameRaw == "" then
+		return nil
+	end
+	local platformName = string.lower(platformNameRaw)
+	if string.find(platformName, "playstation", 1, true) ~= nil or string.sub(platformName, 1, 2) == "ps" then
+		return "playstation"
+	end
+	if string.find(platformName, "xbox", 1, true) ~= nil then
+		return "xbox"
+	end
+	return nil
+end
+
+local function resolveGamepadFamilyFromButtonImage(): string?
+	local okButtonImage, buttonAImage = pcall(function()
+		return UserInputService:GetImageForKeyCode(Enum.KeyCode.ButtonA)
+	end)
+	if not okButtonImage or typeof(buttonAImage) ~= "string" or buttonAImage == "" then
+		return nil
+	end
+	for _, family in { "playstation", "xbox" } do
+		local familyHints = GAMEPAD_HINTS[family]
+		if typeof(familyHints) == "table" then
+			local familyButtonA = familyHints[Enum.KeyCode.ButtonA]
+			if typeof(familyButtonA) == "string" and familyButtonA ~= "" and familyButtonA == buttonAImage then
+				return family
+			end
+		end
+	end
+	return nil
+end
+
+local function resolveMachineFamily(
+	platformState: PlatformStateBase,
+	platformNameRaw: any,
+	gamepadFamilyRaw: any
+): string
+	local familyFromPlatformName = resolveGamepadFamilyFromPlatformName(platformNameRaw)
+	if familyFromPlatformName ~= nil then
+		return familyFromPlatformName
+	end
+	if
+		platformState.platform == "Touch"
+		or platformState.deviceClass == "Phone"
+		or platformState.deviceClass == "Tablet"
+	then
+		return "mobile"
+	end
+	if platformState.deviceClass == "Console" or platformState.isTenFootInterface then
+		if gamepadFamilyRaw == "playstation" or gamepadFamilyRaw == "xbox" then
+			return gamepadFamilyRaw
+		end
+		return "console"
+	end
+	return "desktop"
+end
+
+local function shouldUseCustomCursorForState(state: PlatformClientState): boolean
+	return state.platform == "KeyboardMouse"
+		and state.playerInputMode == PlayerInputModeTypes.KEYBOARD
+		and state.deviceClass == "Desktop"
+		and state.mouseEnabled == true
+end
+
+local function shouldAllowShiftLockForState(state: PlatformClientState): boolean
+	return state.platform == "KeyboardMouse"
+		and state.playerInputMode == PlayerInputModeTypes.KEYBOARD
+		and state.deviceClass == "Desktop"
+		and state.keyboardEnabled == true
+		and state.mouseEnabled == true
 end
 
 local function toActionPhase(inputState: Enum.UserInputState): ActionPhase?
@@ -301,18 +696,75 @@ local function toActionPhase(inputState: Enum.UserInputState): ActionPhase?
 	return nil
 end
 
-local function getPointerScreenPosition(inputObject: InputObject?): Vector2?
-	if inputObject == nil then
+local function isGamepadCursorActive(): boolean
+	return GuiService:GetAttribute(GAMEPAD_CURSOR_ACTIVE_ATTRIBUTE) == true
+end
+
+local function getRuntimeCursorScreenPosition(runtimeContext: any?): Vector2?
+	if runtimeContext == nil then
 		return nil
 	end
-	if PlatformServiceUtils.isPointerInputType(inputObject.UserInputType) then
-		local position = inputObject.Position
-		if typeof(position) == "Vector3" then
-			return Vector2.new(position.X, position.Y)
+	local cursor = (runtimeContext :: any).cursor
+	if cursor == nil then
+		return nil
+	end
+
+	local cursorAny = cursor :: any
+	if typeof(cursorAny.GetScreenPosition) == "function" then
+		local ok, screenPosition = pcall(function()
+			return cursorAny:GetScreenPosition()
+		end)
+		if ok and typeof(screenPosition) == "Vector2" then
+			return screenPosition
 		end
-		if typeof(position) == "Vector2" then
-			return position
+	end
+	if typeof(cursorAny.getScreenPosition) == "function" then
+		local ok, screenPosition = pcall(function()
+			return cursorAny:getScreenPosition()
+		end)
+		if ok and typeof(screenPosition) == "Vector2" then
+			return screenPosition
 		end
+	end
+	if typeof(cursorAny.GetState) == "function" then
+		local ok, cursorState = pcall(function()
+			return cursorAny:GetState()
+		end)
+		if ok and typeof(cursorState) == "table" then
+			local screenPosition = (cursorState :: any).screenPosition
+			if typeof(screenPosition) == "Vector2" then
+				return screenPosition
+			end
+		end
+	end
+
+	return nil
+end
+
+local function getPointerScreenPosition(runtimeContext: any?, inputObject: InputObject?): Vector2?
+	if inputObject == nil then
+		if isGamepadCursorActive() then
+			return getRuntimeCursorScreenPosition(runtimeContext)
+		end
+		return nil
+	end
+	local userInputType = inputObject.UserInputType
+	local isMousePointer = false
+	if typeof(userInputType) == "EnumItem" and userInputType.EnumType == Enum.UserInputType then
+		isMousePointer = InputObjectUtils.isMouseUserInputType(userInputType)
+	end
+	if not isMousePointer and userInputType ~= Enum.UserInputType.Touch then
+		if PlatformServiceUtils.isGamepadInputType(userInputType) and isGamepadCursorActive() then
+			return getRuntimeCursorScreenPosition(runtimeContext)
+		end
+		return nil
+	end
+	local position = inputObject.Position
+	if typeof(position) == "Vector3" then
+		return Vector2.new(position.X, position.Y)
+	end
+	if typeof(position) == "Vector2" then
+		return position
 	end
 	return nil
 end
@@ -412,9 +864,42 @@ local function isScreenPositionOverInteractiveGui(screenPositionRaw: any): boole
 	return false
 end
 
-local function isTouchMovementRegion(position: Vector2, viewport: Vector2): boolean
-	return position.X <= viewport.X * TOUCH_MOVEMENT_GUARD_WIDTH
+local function resolveAbsoluteUDim(axis: UDim, axisLength: number): number
+	return axis.Scale * axisLength + axis.Offset
+end
+
+local function resolveTouchJumpButtonBounds(viewport: Vector2): (Vector2?, number?)
+	local okJumpButton, jumpButtonPosition, jumpButtonSize = pcall(function()
+		return JumpButtonUtils.getJumpButtonPositionAndSize(viewport)
+	end)
+	if not okJumpButton or typeof(jumpButtonPosition) ~= "UDim2" or typeof(jumpButtonSize) ~= "number" then
+		return nil
+	end
+	return Vector2.new(
+		resolveAbsoluteUDim(jumpButtonPosition.X, viewport.X),
+		resolveAbsoluteUDim(jumpButtonPosition.Y, viewport.Y)
+	),
+		jumpButtonSize
+end
+
+local function isTouchReservedRegion(position: Vector2, viewport: Vector2): boolean
+	if
+		position.X <= viewport.X * TOUCH_MOVEMENT_GUARD_WIDTH
 		and position.Y >= viewport.Y * TOUCH_MOVEMENT_GUARD_HEIGHT
+	then
+		return true
+	end
+
+	local jumpButtonPosition, jumpButtonSize = resolveTouchJumpButtonBounds(viewport)
+	if jumpButtonPosition == nil or jumpButtonSize == nil then
+		return false
+	end
+
+	local padding = math.max(TOUCH_JUMP_BUTTON_PADDING, jumpButtonSize * 0.1)
+	return position.X >= jumpButtonPosition.X - padding
+		and position.X <= jumpButtonPosition.X + jumpButtonSize + padding
+		and position.Y >= jumpButtonPosition.Y - padding
+		and position.Y <= jumpButtonPosition.Y + jumpButtonSize + padding
 end
 
 function PlatformServiceClient._resolveCapabilities(
@@ -458,7 +943,99 @@ function PlatformServiceClient._resolveViewport(self: typeof(PlatformServiceClie
 	return Vector2.new(1920, 1080)
 end
 
+function PlatformServiceClient._setupNevermorePlatformSupport(self: typeof(PlatformServiceClient))
+	if self.nevermorePlatformSetup == true then
+		return
+	end
+
+	if not NevermoreSupport.isStarted() then
+		return
+	end
+
+	local okServiceBag, serviceBag = pcall(function()
+		return NevermoreSupport.getServiceBag()
+	end)
+	if not okServiceBag or typeof(serviceBag) ~= "table" then
+		return
+	end
+
+	self.nevermorePlatformSetup = true
+	self.nevermoreServiceBag = serviceBag
+
+	local okInputModeService, inputModeService = pcall(function()
+		return serviceBag:GetService(InputModeServiceClient)
+	end)
+	if okInputModeService then
+		self.nevermoreInputModeService = inputModeService
+	end
+
+	local function registerSelector(selectorRaw: any)
+		if typeof(selectorRaw) ~= "table" then
+			return
+		end
+		local changedSignal = (selectorRaw :: any).Changed
+		if changedSignal ~= nil and typeof(changedSignal.Connect) == "function" then
+			self.janitor:GiveChore(changedSignal:Connect(function()
+				self:_refreshState(false)
+			end))
+		end
+		self.janitor:GiveChore(function()
+			if typeof((selectorRaw :: any).Destroy) == "function" then
+				(selectorRaw :: any):Destroy()
+			end
+		end)
+	end
+
+	if self.nevermoreInputModeService ~= nil then
+		self.inputModeSelector = InputModeTypeSelector.new(serviceBag, {
+			InputModeTypes.Gamepads,
+			InputModeTypes.KeyboardAndMouse,
+			InputModeTypes.Touch,
+		})
+		registerSelector(self.inputModeSelector)
+
+		self.gamepadInputModeSelector = InputModeTypeSelector.new(serviceBag, {
+			InputModeTypes.Thumbsticks,
+			InputModeTypes.DPad,
+			InputModeTypes.Gamepads,
+		})
+		registerSelector(self.gamepadInputModeSelector)
+	end
+
+	local okMouseShiftLockService, mouseShiftLockService = pcall(function()
+		return serviceBag:GetService(MouseShiftLockService)
+	end)
+	if okMouseShiftLockService then
+		self.mouseShiftLockService = mouseShiftLockService
+	end
+end
+
+function PlatformServiceClient._applySystemPolicies(self: typeof(PlatformServiceClient), state: PlatformClientState)
+	local allowShiftLock = shouldAllowShiftLockForState(state)
+
+	if allowShiftLock then
+		CoreGuiEnabler:Enable(MOUSE_LOCK_POLICY_KEY, "EnableMouseLockOption")
+	else
+		CoreGuiEnabler:Disable(MOUSE_LOCK_POLICY_KEY, "EnableMouseLockOption")
+	end
+
+	local mouseShiftLockService = self.mouseShiftLockService
+	if mouseShiftLockService == nil then
+		return
+	end
+
+	pcall(function()
+		if allowShiftLock then
+			(mouseShiftLockService :: any):EnableShiftLock()
+		else
+			(mouseShiftLockService :: any):DisableShiftLock()
+		end
+	end)
+end
+
 function PlatformServiceClient._resolveState(self: typeof(PlatformServiceClient)): PlatformClientState
+	self:_setupNevermorePlatformSupport()
+
 	local preferredInput = nil
 	local preferredInputOk, preferredInputValue = pcall(function()
 		return UserInputService.PreferredInput
@@ -469,14 +1046,70 @@ function PlatformServiceClient._resolveState(self: typeof(PlatformServiceClient)
 
 	local viewport = self:_resolveViewport()
 	local capabilities = self:_resolveCapabilities()
-	local platformState = PlatformServiceUtils.createPlatformState(
+	local platformName = resolvePlatformName()
+	local activeInputModeName = resolveLatestInputModeName(self.nevermoreInputModeService, {
+		InputModeTypes.KeyboardAndMouse,
+		InputModeTypes.Touch,
+		InputModeTypes.Gamepads,
+	})
+	local rawGamepadInputName = resolveLatestInputModeName(self.nevermoreInputModeService, {
+		InputModeTypes.Thumbsticks,
+		InputModeTypes.DPad,
+		InputModeTypes.Gamepads,
+	})
+	local connectedGamepadCount = countConnectedGamepads()
+	local platformStateBase = PlatformServiceUtils.createPlatformState(
 		preferredInput,
 		self.lastInputType,
 		capabilities,
 		viewport,
 		GuiService:IsTenFootInterface()
 	)
-	return {
+	local resolvedPlatform = resolvePlatformKindFromInputModeName(activeInputModeName)
+	if resolvedPlatform == nil then
+		resolvedPlatform = platformStateBase.platform
+	end
+	local activeGamepadInputName = if resolvedPlatform == "Gamepad" then rawGamepadInputName else nil
+	local resolvedPrimaryInputType = resolvePrimaryInputTypeFromInputModeName(activeInputModeName)
+	local platformState: PlatformStateBase = {
+		platform = resolvedPlatform,
+		deviceClass = PlatformServiceUtils.resolveDeviceClass(
+			resolvedPlatform,
+			viewport,
+			capabilities,
+			GuiService:IsTenFootInterface()
+		),
+		preferredInputName = platformStateBase.preferredInputName,
+		lastInputTypeName = platformStateBase.lastInputTypeName,
+		viewport = platformStateBase.viewport,
+		isTenFootInterface = platformStateBase.isTenFootInterface,
+		touchEnabled = platformStateBase.touchEnabled,
+		keyboardEnabled = platformStateBase.keyboardEnabled,
+		mouseEnabled = platformStateBase.mouseEnabled,
+		gamepadEnabled = platformStateBase.gamepadEnabled,
+		basePrimaryInputType = if resolvedPrimaryInputType ~= nil
+			then resolvedPrimaryInputType
+			else platformStateBase.basePrimaryInputType,
+	}
+	local gamepadFamily = if platformState.gamepadEnabled
+			or connectedGamepadCount > 0
+			or platformState.deviceClass == "Console"
+		then self:_resolveGamepadFamily()
+		else nil
+	local machineFamily = resolveMachineFamily(platformState, platformName, gamepadFamily)
+	local playerInputMode = resolvePlayerInputMode(platformState.platform)
+	local resolvedActiveInputModeName = activeInputModeName
+	if resolvedActiveInputModeName == nil or resolvedActiveInputModeName == "" then
+		if platformState.preferredInputName ~= "" then
+			resolvedActiveInputModeName = platformState.preferredInputName
+		elseif platformState.lastInputTypeName ~= "" then
+			resolvedActiveInputModeName = platformState.lastInputTypeName
+		else
+			resolvedActiveInputModeName = platformState.platform
+		end
+	end
+
+	local provisionalState: PlatformClientState = {
 		platform = platformState.platform,
 		deviceClass = platformState.deviceClass,
 		preferredInputName = platformState.preferredInputName,
@@ -488,11 +1121,33 @@ function PlatformServiceClient._resolveState(self: typeof(PlatformServiceClient)
 		mouseEnabled = platformState.mouseEnabled,
 		gamepadEnabled = platformState.gamepadEnabled,
 		basePrimaryInputType = platformState.basePrimaryInputType,
-		updatedAt = os.clock(),
+		gamepadFamily = gamepadFamily,
+		machineFamily = machineFamily,
+		playerInputMode = playerInputMode,
+		activeInputModeName = resolvedActiveInputModeName,
+		activeGamepadInputName = activeGamepadInputName,
+		platformName = platformName,
+		connectedGamepadCount = connectedGamepadCount,
+		shiftLockAllowed = false,
+		customCursorEnabled = false,
+		updatedAt = 0,
 	}
+	provisionalState.shiftLockAllowed = shouldAllowShiftLockForState(provisionalState)
+	provisionalState.updatedAt = os.clock()
+	return provisionalState
 end
 
 function PlatformServiceClient._resolveGamepadFamily(_self: typeof(PlatformServiceClient)): string
+	local familyFromPlatform = resolveGamepadFamilyFromPlatformName(resolvePlatformName())
+	if familyFromPlatform ~= nil then
+		return familyFromPlatform
+	end
+
+	local familyFromButtonImage = resolveGamepadFamilyFromButtonImage()
+	if familyFromButtonImage ~= nil then
+		return familyFromButtonImage
+	end
+
 	return "xbox"
 end
 
@@ -515,10 +1170,22 @@ end
 
 function PlatformServiceClient._refreshState(self: typeof(PlatformServiceClient), forceEmit: boolean?)
 	local nextState = self:_resolveState()
+	nextState.customCursorEnabled = shouldUseCustomCursorForState(nextState)
 	local previousState = self.state
+	self.gamepadFamily = nextState.gamepadFamily
 	self.state = nextState
+	self:_applySystemPolicies(nextState)
 	local didPlatformChange = previousState == nil
 		or not PlatformServiceUtils.platformStatesEqual(previousState, nextState)
+		or previousState.gamepadFamily ~= nextState.gamepadFamily
+		or previousState.machineFamily ~= nextState.machineFamily
+		or previousState.playerInputMode ~= nextState.playerInputMode
+		or previousState.activeInputModeName ~= nextState.activeInputModeName
+		or previousState.activeGamepadInputName ~= nextState.activeGamepadInputName
+		or previousState.platformName ~= nextState.platformName
+		or previousState.connectedGamepadCount ~= nextState.connectedGamepadCount
+		or previousState.shiftLockAllowed ~= nextState.shiftLockAllowed
+		or previousState.customCursorEnabled ~= nextState.customCursorEnabled
 	if didPlatformChange or forceEmit == true then
 		local clonedState = cloneState(nextState)
 		self.stateChanged:Fire(clonedState)
@@ -526,6 +1193,15 @@ function PlatformServiceClient._refreshState(self: typeof(PlatformServiceClient)
 			previousState == nil
 			or previousState.platform ~= nextState.platform
 			or previousState.deviceClass ~= nextState.deviceClass
+			or previousState.gamepadFamily ~= nextState.gamepadFamily
+			or previousState.machineFamily ~= nextState.machineFamily
+			or previousState.playerInputMode ~= nextState.playerInputMode
+			or previousState.activeInputModeName ~= nextState.activeInputModeName
+			or previousState.activeGamepadInputName ~= nextState.activeGamepadInputName
+			or previousState.platformName ~= nextState.platformName
+			or previousState.connectedGamepadCount ~= nextState.connectedGamepadCount
+			or previousState.shiftLockAllowed ~= nextState.shiftLockAllowed
+			or previousState.customCursorEnabled ~= nextState.customCursorEnabled
 		then
 			self.platformChanged:Fire(clonedState, if previousState ~= nil then cloneState(previousState) else nil)
 			self:_updateActionBindingsForPlatform()
@@ -642,21 +1318,29 @@ function PlatformServiceClient._shouldIgnoreAction(
 		return true
 	end
 
-	if definition.blockWhenGuiSelected == true and GuiService.SelectedObject ~= nil then
-		return true
+	local screenPosition = nil :: Vector2?
+	local shouldUsePointerGuardForSelectedGui = false
+	if definition.blockWhenGuiSelected == true or definition.blockWhenPointerOverGui == true then
+		screenPosition = getPointerScreenPosition(self.runtimeContext, inputObject)
+		shouldUsePointerGuardForSelectedGui = definition.blockWhenPointerOverGui == true and screenPosition ~= nil
 	end
 
-	if definition.blockWhenPointerOverGui == true then
-		local screenPosition = getPointerScreenPosition(inputObject)
-		if screenPosition ~= nil then
-			if self.state ~= nil and self.state.platform == "Touch" then
-				if isTouchMovementRegion(screenPosition, self.state.viewport) then
-					return true
-				end
-			end
-			if isScreenPositionOverInteractiveGui(screenPosition) then
+	if definition.blockWhenGuiSelected == true and GuiService.SelectedObject ~= nil then
+		-- Hover and navigation both write into SelectedObject, so prefer the real
+		-- pointer hit-test whenever this action already opted into it.
+		if not shouldUsePointerGuardForSelectedGui then
+			return true
+		end
+	end
+
+	if definition.blockWhenPointerOverGui == true and screenPosition ~= nil then
+		if self.state ~= nil and self.state.platform == "Touch" then
+			if isTouchReservedRegion(screenPosition, self.state.viewport) then
 				return true
 			end
+		end
+		if isScreenPositionOverInteractiveGui(screenPosition) then
+			return true
 		end
 	end
 
@@ -807,15 +1491,30 @@ function PlatformServiceClient.Init(self: typeof(PlatformServiceClient))
 	self.actions = {}
 	self.lastInputType = nil :: Enum.UserInputType?
 	self.gamepadFamily = self:_resolveGamepadFamily()
+	self.nevermorePlatformSetup = false
+	self.nevermoreServiceBag = nil
+	self.nevermoreInputModeService = nil
+	self.inputModeSelector = nil
+	self.gamepadInputModeSelector = nil
+	self.mouseShiftLockService = nil
 	self.uiScale = PlatformUIScale.new({
 		platformService = self,
 	})
 	self.uiScale:init()
+	self:_setupNevermorePlatformSupport()
 
 	self.janitor:GiveChore(function()
 		if self.uiScale ~= nil then
 			self.uiScale:destroy()
 			self.uiScale = nil
+		end
+	end)
+	self.janitor:GiveChore(function()
+		CoreGuiEnabler:Enable(MOUSE_LOCK_POLICY_KEY, "EnableMouseLockOption")
+		if self.mouseShiftLockService ~= nil then
+			pcall(function()
+				(self.mouseShiftLockService :: any):EnableShiftLock()
+			end)
 		end
 	end)
 	self.janitor:GiveChore(function()
@@ -903,6 +1602,42 @@ end
 
 function PlatformServiceClient.IsKeyboardMouse(self: typeof(PlatformServiceClient)): boolean
 	return self:getPlatform() == "KeyboardMouse"
+end
+
+function PlatformServiceClient.GetGamepadFamily(self: typeof(PlatformServiceClient)): string?
+	return self:getState().gamepadFamily
+end
+
+function PlatformServiceClient.GetMachineFamily(self: typeof(PlatformServiceClient)): string
+	return self:getState().machineFamily
+end
+
+function PlatformServiceClient.GetPlayerInputMode(self: typeof(PlatformServiceClient)): string
+	return self:getState().playerInputMode
+end
+
+function PlatformServiceClient.GetActiveInputModeName(self: typeof(PlatformServiceClient)): string
+	return self:getState().activeInputModeName
+end
+
+function PlatformServiceClient.GetActiveGamepadInputName(self: typeof(PlatformServiceClient)): string?
+	return self:getState().activeGamepadInputName
+end
+
+function PlatformServiceClient.GetPlatformName(self: typeof(PlatformServiceClient)): string?
+	return self:getState().platformName
+end
+
+function PlatformServiceClient.GetConnectedGamepadCount(self: typeof(PlatformServiceClient)): number
+	return self:getState().connectedGamepadCount
+end
+
+function PlatformServiceClient.IsShiftLockAllowed(self: typeof(PlatformServiceClient)): boolean
+	return self:getState().shiftLockAllowed == true
+end
+
+function PlatformServiceClient.ShouldUseCustomCursor(self: typeof(PlatformServiceClient)): boolean
+	return self:getState().customCursorEnabled == true
 end
 
 function PlatformServiceClient.OnPlatformChanged(self: typeof(PlatformServiceClient), callbackRaw: any): () -> ()
@@ -1257,7 +1992,7 @@ function PlatformServiceClient.GetPromptForAction(
 		definition,
 		self:getPlatform(),
 		self:getState().deviceClass,
-		self.gamepadFamily
+		self:getState().gamepadFamily
 	)
 	if prompt == nil then
 		return nil
@@ -1302,6 +2037,23 @@ function PlatformServiceClient.GetUIScale(self: typeof(PlatformServiceClient)): 
 	return self.uiScale
 end
 
+function PlatformServiceClient.GetControls(self: typeof(PlatformServiceClient), platformKindRaw: any): any
+	self:_ensureInitialized()
+	local requestedPlatform = if platformKindRaw == "Gamepad" or platformKindRaw == "Touch"
+		then platformKindRaw
+		elseif platformKindRaw == "KeyboardMouse" then "KeyboardMouse"
+		else self:getPlatform()
+	local state = self:getState()
+
+	local layout = if requestedPlatform == "Gamepad" then XboxControls else nil
+	return {
+		platform = requestedPlatform,
+		deviceClass = state.deviceClass,
+		gamepadFamily = if requestedPlatform == "Gamepad" then state.gamepadFamily else nil,
+		sections = if layout ~= nil then resolveControlSections(self, layout, requestedPlatform) else {},
+	}
+end
+
 function PlatformServiceClient.SetScreenGui(self: typeof(PlatformServiceClient), screenGuiRaw: any): boolean
 	self:_ensureInitialized()
 	if self.uiScale == nil then
@@ -1333,6 +2085,12 @@ function PlatformServiceClient.Destroy(self: typeof(PlatformServiceClient))
 	self.state = nil
 	self.lastInputType = nil
 	self.gamepadFamily = nil
+	self.nevermorePlatformSetup = nil
+	self.nevermoreServiceBag = nil
+	self.nevermoreInputModeService = nil
+	self.inputModeSelector = nil
+	self.gamepadInputModeSelector = nil
+	self.mouseShiftLockService = nil
 	self.stateObservable = nil
 	self.platformObservable = nil
 	self.deviceClassObservable = nil
@@ -1376,6 +2134,15 @@ PlatformServiceClient.getPlatform = PlatformServiceClient.GetPlatform
 PlatformServiceClient.isTouch = PlatformServiceClient.IsTouch
 PlatformServiceClient.isGamepad = PlatformServiceClient.IsGamepad
 PlatformServiceClient.isKeyboardMouse = PlatformServiceClient.IsKeyboardMouse
+PlatformServiceClient.getGamepadFamily = PlatformServiceClient.GetGamepadFamily
+PlatformServiceClient.getMachineFamily = PlatformServiceClient.GetMachineFamily
+PlatformServiceClient.getPlayerInputMode = PlatformServiceClient.GetPlayerInputMode
+PlatformServiceClient.getActiveInputModeName = PlatformServiceClient.GetActiveInputModeName
+PlatformServiceClient.getActiveGamepadInputName = PlatformServiceClient.GetActiveGamepadInputName
+PlatformServiceClient.getPlatformName = PlatformServiceClient.GetPlatformName
+PlatformServiceClient.getConnectedGamepadCount = PlatformServiceClient.GetConnectedGamepadCount
+PlatformServiceClient.isShiftLockAllowed = PlatformServiceClient.IsShiftLockAllowed
+PlatformServiceClient.shouldUseCustomCursor = PlatformServiceClient.ShouldUseCustomCursor
 PlatformServiceClient.onPlatformChanged = PlatformServiceClient.OnPlatformChanged
 PlatformServiceClient.observeState = PlatformServiceClient.ObserveState
 PlatformServiceClient.observePlatform = PlatformServiceClient.ObservePlatform
@@ -1398,6 +2165,7 @@ PlatformServiceClient.rebindAction = PlatformServiceClient.RebindAction
 PlatformServiceClient.setActionEnabled = PlatformServiceClient.SetActionEnabled
 PlatformServiceClient.bindAction = PlatformServiceClient.BindAction
 PlatformServiceClient.getPromptForAction = PlatformServiceClient.GetPromptForAction
+PlatformServiceClient.getControls = PlatformServiceClient.GetControls
 PlatformServiceClient.getUIScale = PlatformServiceClient.GetUIScale
 PlatformServiceClient.setScreenGui = PlatformServiceClient.SetScreenGui
 PlatformServiceClient.setScaleTarget = PlatformServiceClient.SetScaleTarget

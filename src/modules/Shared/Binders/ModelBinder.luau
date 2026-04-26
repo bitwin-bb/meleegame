@@ -4,8 +4,8 @@ local Players = game:GetService("Players")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local nevermoreRequire = require(loaderUtils.Parent).load(script)
-local Maid = nevermoreRequire("Maid")
+local loader = require(loaderUtils.Parent).load(script)
+local Maid = loader("Maid")
 local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Modules.Platform.InstanceUtils)
 local TagBinder = require(script.Parent.TagBinder)
 

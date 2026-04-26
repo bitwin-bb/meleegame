@@ -2,17 +2,18 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local React = require(ReplicatedStorage.Packages.React)
-local Charm = require(ReplicatedStorage.Packages.Charm)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
-local useManaTransparency = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useManaTransparency)
-local manaSlice = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.manaSlice)
-local manaThunks = require(script:FindFirstAncestor("game").Client.UI.hud.state.thunk.manaThunks)
-local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
 local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
+local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
 local ManaServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.ManaServiceUtils)
+local React = require(ReplicatedStorage.Packages.React)
+local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
+local manaSlice = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.manaSlice)
+local manaThunks = require(script:FindFirstAncestor("game").Client.UI.hud.state.thunk.manaThunks)
+local useHover = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useHover)
+local useManaTransparency = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useManaTransparency)
+local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
 type ManaServiceState = ManaServiceUtils.ManaServiceState
 
@@ -127,28 +128,37 @@ end
 
 return function(props: ManaTopRightBarProps)
 	local useServiceState = props.useServiceState ~= false
-	local manaState, setManaState = React.useState(function(): ManaServiceState
-		if not useServiceState and props.mockState ~= nil then
-			return props.mockState
-		end
-		return manaSlice.manaStateAtom()
-	end)
-	local isManaReady, setIsManaReady = React.useState(function(): boolean
-		if not useServiceState then
-			if props.mockReady ~= nil then
-				return props.mockReady
-			end
-			return true
-		end
-		return manaSlice.isManaReady()
-	end)
-	local isHoveringStars, setIsHoveringStars = React.useState(false)
-	local hoverAlpha = useManaTransparency({
-		enabled = isHoveringStars,
-	})
+	local serviceManaState = useStore(if useServiceState then manaSlice.manaStateAtom else nil) :: ManaServiceState?
+	local serviceManaReady = useStore(if useServiceState then manaSlice.manaReadyAtom else nil) :: boolean?
+	local manaState = if useServiceState
+		then (serviceManaState or manaSlice.manaStateAtom())
+		else if props.mockState ~= nil then props.mockState else manaSlice.manaStateAtom()
+	local isManaReady = if useServiceState
+		then (serviceManaReady or manaSlice.isManaReady())
+		else if props.mockReady ~= nil then props.mockReady else true
 
 	local hoverId = "mana_stars_row"
 	local hoverText = string.format("%.0f/%.0f", manaState.mana, manaState.maxMana)
+	local starsHover = useHover({
+		onHoverStart = function()
+			infoThunks.showHover({
+				id = hoverId,
+				text = hoverText,
+			})
+
+			if UI_HOVER_SOUND then
+				AudioServiceClient:playUi(UI_HOVER_SOUND, {
+					replaceChannel = false,
+				})
+			end
+		end,
+		onHoverEnd = function()
+			infoThunks.hideHover(hoverId)
+		end,
+	})
+	local hoverAlpha = useManaTransparency({
+		enabled = starsHover.hovered,
+	})
 
 	React.useEffect(function()
 		if not useServiceState then
@@ -156,47 +166,22 @@ return function(props: ManaTopRightBarProps)
 		end
 
 		local stop = manaThunks.start()
-		local unsubscribe = Charm.subscribe(manaSlice.manaStateAtom, function(nextState: ManaServiceState)
-			setManaState(nextState)
-		end, {
-			inclusive = true,
-		})
-		local readyUnsubscribe = Charm.subscribe(manaSlice.manaReadyAtom, function(nextReady: boolean)
-			setIsManaReady(nextReady)
-		end, {
-			inclusive = true,
-		})
 
 		return function()
-			unsubscribe()
-			readyUnsubscribe()
 			stop()
 		end
 	end, { useServiceState })
 
 	React.useEffect(function()
-		if useServiceState then
+		if not starsHover.hovered then
 			return
 		end
 
-		if props.mockState ~= nil then
-			setManaState(props.mockState)
-		end
-		if props.mockReady ~= nil then
-			setIsManaReady(props.mockReady)
-		else
-			setIsManaReady(true)
-		end
-	end, { useServiceState, props.mockState, props.mockReady })
-
-	React.useEffect(function()
-		if isHoveringStars then
-			infoThunks.showHover({
-				id = hoverId,
-				text = hoverText,
-			})
-		end
-	end, { isHoveringStars, hoverText })
+		infoThunks.showHover({
+			id = hoverId,
+			text = hoverText,
+		})
+	end, { starsHover.hovered, hoverText })
 
 	React.useEffect(function()
 		return function()
@@ -267,23 +252,8 @@ return function(props: ManaTopRightBarProps)
 			BorderSizePixel = 0,
 			Active = true,
 			ZIndex = zIndex + 1,
-			[React.Event.MouseEnter] = function()
-				setIsHoveringStars(true)
-				infoThunks.showHover({
-					id = hoverId,
-					text = hoverText,
-				})
-
-				if UI_HOVER_SOUND then
-					AudioServiceClient:playUi(UI_HOVER_SOUND, {
-						replaceChannel = false,
-					})
-				end
-			end,
-			[React.Event.MouseLeave] = function()
-				setIsHoveringStars(false)
-				infoThunks.hideHover(hoverId)
-			end,
+			[React.Event.MouseEnter] = starsHover.eventHandlers[React.Event.MouseEnter],
+			[React.Event.MouseLeave] = starsHover.eventHandlers[React.Event.MouseLeave],
 		}, starsRowChildren),
 	})
 end

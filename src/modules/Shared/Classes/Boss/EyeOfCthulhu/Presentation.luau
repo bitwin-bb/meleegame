@@ -1,7 +1,10 @@
 --!strict
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SoundService = game:GetService("SoundService")
 
+local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
+local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
 local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossServiceUtils)
 local EyeOfCthulhuMotion = require(script.Parent.Motion)
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
@@ -46,11 +49,16 @@ type PresentationRuntime = {
 		pupil: BasePart?,
 		jaw: BasePart?,
 	},
+	soundRefs: {
+		roar: Sound?,
+	},
+	createdRuntimeSounds: { [Sound]: boolean },
 	deformParts: { BasePart },
 	baseLocalCFrames: { [BasePart]: CFrame },
 }
 
 local EyeOfCthulhuPresentation = {}
+local EYE_ROAR_SOUND_ID = AudioServiceUtils.resolveSoundAssetId((((AudioRegistry :: any).Npcs :: any).Bosses :: any).EyeOfCthulhu.roar)
 
 local SHELL_SPRING: SpringOptions = {
 	frequency = 5.2,
@@ -122,6 +130,14 @@ local function resolveTargetPosition(snapshot: BossSnapshot): Vector3?
 	return rootPart.Position
 end
 
+local function restartSound(sound: Sound)
+	pcall(function()
+		sound:Stop()
+		sound.TimePosition = 0
+		sound:Play()
+	end)
+end
+
 local function playModelSound(runtime: PresentationRuntime, candidateNames: { string })
 	local model = runtime.model
 	if model == nil then
@@ -130,10 +146,64 @@ local function playModelSound(runtime: PresentationRuntime, candidateNames: { st
 
 	local sound = BossServiceUtils.findFirstDescendantByNormalizedName(model, candidateNames)
 	if sound ~= nil and sound:IsA("Sound") then
-		pcall(function()
-			(sound :: Sound):Play()
-		end)
+		restartSound(sound :: Sound)
 	end
+end
+
+local function ensureRoarSound(runtime: PresentationRuntime): Sound?
+	local roarSound = runtime.soundRefs.roar
+	if roarSound ~= nil and roarSound.Parent ~= nil then
+		return roarSound
+	end
+
+	local model = runtime.model
+	if model == nil then
+		return nil
+	end
+
+	local existingSound = BossServiceUtils.findFirstDescendantByNormalizedName(model, { "Roar" })
+	if existingSound ~= nil and existingSound:IsA("Sound") then
+		runtime.soundRefs.roar = existingSound :: Sound
+		return runtime.soundRefs.roar
+	end
+
+	local rootPart = runtime.rootPart
+	if rootPart == nil or EYE_ROAR_SOUND_ID == nil then
+		return nil
+	end
+
+	local categoryGroups = AudioServiceUtils.ensureCategoryGroups(SoundService)
+	local createdSound = AudioServiceUtils.createSoundInstance(
+		EYE_ROAR_SOUND_ID,
+		{
+			category = "SFX",
+			volume = 1,
+			rollOffMaxDistance = 120,
+			emitterSize = 10,
+			autoDestroy = false,
+			parent = rootPart,
+		},
+		rootPart,
+		categoryGroups.SFX
+	)
+	if createdSound == nil then
+		return nil
+	end
+
+	createdSound.Name = "Roar"
+	runtime.soundRefs.roar = createdSound
+	runtime.createdRuntimeSounds[createdSound] = true
+	return createdSound
+end
+
+local function playRoarSound(runtime: PresentationRuntime)
+	local roarSound = ensureRoarSound(runtime)
+	if roarSound ~= nil then
+		restartSound(roarSound)
+		return
+	end
+
+	playModelSound(runtime, { "Roar", "Scream", "Transform" })
 end
 
 local function shake(runtime: PresentationRuntime, magnitude: number, roughness: number, fadeOut: number)
@@ -198,8 +268,12 @@ function EyeOfCthulhuPresentation.CreateRuntime(
 ): PresentationRuntime
 	local model = if typeof(modelRaw) == "Instance" and modelRaw:IsA("Model") then modelRaw else nil
 	local partRefs, deformParts, baseLocalCFrames, rootPart = resolvePartRefs(model)
+	local soundRefs: { roar: Sound? } = {
+		roar = nil :: Sound?,
+	}
+	local createdRuntimeSounds: { [Sound]: boolean } = {}
 
-	return {
+	local runtime: PresentationRuntime = {
 		model = model,
 		rootPart = rootPart,
 		snapshot = snapshot,
@@ -219,9 +293,14 @@ function EyeOfCthulhuPresentation.CreateRuntime(
 		lastDeathPulseToken = snapshot.presentation.deathPulseToken,
 		lastServantPulseToken = snapshot.presentation.servantPulseToken,
 		partRefs = partRefs,
+		soundRefs = soundRefs,
+		createdRuntimeSounds = createdRuntimeSounds,
 		deformParts = deformParts,
 		baseLocalCFrames = baseLocalCFrames,
 	}
+
+	ensureRoarSound(runtime)
+	return runtime
 end
 
 function EyeOfCthulhuPresentation.ApplySnapshot(runtime: PresentationRuntime, snapshot: BossSnapshot)
@@ -231,7 +310,7 @@ function EyeOfCthulhuPresentation.ApplySnapshot(runtime: PresentationRuntime, sn
 		runtime.lastDashPulseToken = snapshot.presentation.dashPulseToken
 		runtime.anticipationMotion:immediate(1)
 		runtime.recoilMotion:immediate(0.95)
-		playModelSound(runtime, { "Charge", "Roar", "Dash" })
+		playModelSound(runtime, { "Charge", "Dash" })
 		shake(runtime, 1.25, 12, 0.18)
 	end
 
@@ -243,7 +322,7 @@ function EyeOfCthulhuPresentation.ApplySnapshot(runtime: PresentationRuntime, sn
 	if snapshot.presentation.roarPulseToken ~= runtime.lastRoarPulseToken then
 		runtime.lastRoarPulseToken = snapshot.presentation.roarPulseToken
 		runtime.roarMotion:immediate(1)
-		playModelSound(runtime, { "Roar", "Scream", "Transform" })
+		playRoarSound(runtime)
 		shake(runtime, 1.8, 10, 0.3)
 	end
 
@@ -283,6 +362,7 @@ function EyeOfCthulhuPresentation.Step(runtime: PresentationRuntime, dtRaw: any)
 	if rootPart == nil then
 		return
 	end
+	ensureRoarSound(runtime)
 
 	runtime.anticipationMotion:spring(0, IMPULSE_SPRING)
 	runtime.recoilMotion:spring(0, IMPULSE_SPRING)
@@ -365,6 +445,13 @@ function EyeOfCthulhuPresentation.Destroy(runtime: PresentationRuntime)
 				part.CFrame = rootPart.CFrame * localCFrame
 			end
 		end
+	end
+
+	for sound in runtime.createdRuntimeSounds do
+		if sound.Parent ~= nil then
+			sound:Destroy()
+		end
+		runtime.createdRuntimeSounds[sound] = nil
 	end
 
 	runtime.shellMotion:destroy()

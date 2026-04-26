@@ -67,6 +67,11 @@ return {
 				},
 			},
 		},
+		Bosses = {
+			EyeOfCthulhu = {
+				roar = "rbxassetid://80990251150303",
+			},
+		},
 	},
 	Player = {
 		Walk = {

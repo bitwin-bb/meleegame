@@ -66,6 +66,12 @@ export type ServiceState = {
 	transitionState: TransitionState,
 }
 
+export type PlaneSizing = {
+	planeWidth: number,
+	textureRepeatWidth: number,
+	textureRepeatHeight: number,
+}
+
 ParallaxServiceUtils.DEPTH_LAYER_SKY = 0
 ParallaxServiceUtils.DEPTH_LAYER_UNDERGROUND = 2
 
@@ -112,6 +118,10 @@ local IMPLICIT_LAYER_VERTICAL_OFFSET_BASE = -18
 local IMPLICIT_LAYER_VERTICAL_OFFSET_STEP = 10
 local IMPLICIT_LAYER_VERTICAL_DEPTH_BASE = 0.008
 local IMPLICIT_LAYER_VERTICAL_DEPTH_STEP = 0.004
+local DEFAULT_HORIZONTAL_VISION_STUDS = 576
+local MINIMUM_TEXTURE_REPEAT_WIDTH_STUDS = 12
+local MINIMUM_HORIZONTAL_PLANE_BLEED_STUDS = 8
+local HORIZONTAL_PLANE_BLEED_FACTOR = 0.08
 local IMPLICIT_PARALLAX_SOURCE_DIMENSIONS = {
 	overworld = {
 		[1] = { width = 1024, height = 533 },
@@ -280,7 +290,7 @@ local function sanitizeVerticalAlign(valueRaw: any, fallback: VerticalAlign): Ve
 end
 
 local function collectSortedNumericIndices(sourceRaw: any): { number }
-	local source = if typeof(sourceRaw) == "table" then (sourceRaw :: { [any]: any }) else {}
+	local source = if typeof(sourceRaw) == "table" then sourceRaw :: { [any]: any } else {}
 	local indices: { number } = {}
 	for key in source do
 		if typeof(key) == "number" and key % 1 == 0 then
@@ -292,7 +302,7 @@ local function collectSortedNumericIndices(sourceRaw: any): { number }
 end
 
 local function collectSortedStringKeys(sourceRaw: any): { string }
-	local source = if typeof(sourceRaw) == "table" then (sourceRaw :: { [any]: any }) else {}
+	local source = if typeof(sourceRaw) == "table" then sourceRaw :: { [any]: any } else {}
 	local keys: { string } = {}
 	for key in source do
 		if typeof(key) == "string" then
@@ -480,7 +490,8 @@ local function sanitizeBiomeDefinition(nameRaw: any, biomeRaw: any): BiomeDefini
 		end
 	elseif typeof(source.variants) == "table" then
 		for _, variantName in collectSortedStringKeys(source.variants) do
-			local variant = sanitizeVariantDefinition(name, variantName, (source.variants :: { [string]: any })[variantName])
+			local variant =
+				sanitizeVariantDefinition(name, variantName, (source.variants :: { [string]: any })[variantName])
 			if variant ~= nil then
 				variants[variant.name] = variant
 				table.insert(orderedVariantNames, variant.name)
@@ -518,9 +529,9 @@ local function sanitizeBiomeDefinition(nameRaw: any, biomeRaw: any): BiomeDefini
 end
 
 function ParallaxServiceUtils.NormalizeCatalog(rawCatalog: any): Catalog
-	local source = if typeof(rawCatalog) == "table" then (rawCatalog :: { [string]: any }) else {}
-	local settingsRaw = if typeof(source.settings) == "table" then (source.settings :: { [string]: any }) else {}
-	local rawBiomes = if typeof(source.biomes) == "table" then (source.biomes :: { [string]: any }) else source
+	local source = if typeof(rawCatalog) == "table" then rawCatalog :: { [string]: any } else {}
+	local settingsRaw = if typeof(source.settings) == "table" then source.settings :: { [string]: any } else {}
+	local rawBiomes = if typeof(source.biomes) == "table" then source.biomes :: { [string]: any } else source
 
 	local biomes: { [string]: BiomeDefinition } = {}
 	local orderedBiomeNames: { string } = {}
@@ -604,10 +615,7 @@ function ParallaxServiceUtils.ResolveBiomeDefinition(catalog: Catalog, biomeName
 	return catalog.biomes[ParallaxServiceUtils.ResolveBiomeName(catalog, biomeNameRaw)]
 end
 
-function ParallaxServiceUtils.ResolveVariantName(
-	biomeDefinition: BiomeDefinition,
-	variantNameRaw: any
-): string
+function ParallaxServiceUtils.ResolveVariantName(biomeDefinition: BiomeDefinition, variantNameRaw: any): string
 	local requestedName = trim(variantNameRaw)
 	if requestedName ~= "" and biomeDefinition.variants[requestedName] ~= nil then
 		return requestedName
@@ -655,6 +663,61 @@ function ParallaxServiceUtils.CreateDefaultState(catalog: Catalog): ServiceState
 	}
 end
 
+function ParallaxServiceUtils.CloneState(state: ServiceState): ServiceState
+	return {
+		initialized = state.initialized,
+		currentBiome = state.currentBiome,
+		targetBiome = state.targetBiome,
+		transitionState = state.transitionState,
+	}
+end
+
+function ParallaxServiceUtils.ComputeHorizontalVisionStuds(
+	chunkSizeRaw: any,
+	tileSizeRaw: any,
+	renderDistanceChunksRaw: any
+): number
+	local chunkSize = sanitizeInteger(chunkSizeRaw, 32, 1, 512)
+	local tileSize = sanitizeNumber(tileSizeRaw, 2, 0.25, 128)
+	local renderDistanceChunks = sanitizeInteger(renderDistanceChunksRaw, 4, 1, 128)
+	return math.max(DEFAULT_HORIZONTAL_VISION_STUDS, (renderDistanceChunks * 2 + 1) * chunkSize * tileSize)
+end
+
+function ParallaxServiceUtils.ResolveDeterministicPlaneSizing(
+	visibleWidthRaw: any,
+	sizeReferenceWidthRaw: any,
+	horizontalVisionStudsRaw: any,
+	imageAspectRatioRaw: any,
+	heightScaleRaw: any,
+	segmentWidthScaleRaw: any,
+	textureStudsPerTileURaw: any,
+	requiredPlaneHeightRaw: any?
+): PlaneSizing
+	local visibleWidth = sanitizeNumber(visibleWidthRaw, 0, 0, 1000000)
+	local sizeReferenceWidth = sanitizeNumber(sizeReferenceWidthRaw, visibleWidth, 0, 1000000)
+	local horizontalVisionStuds = sanitizeNumber(horizontalVisionStudsRaw, DEFAULT_HORIZONTAL_VISION_STUDS, 0, 1000000)
+	local imageAspectRatio = sanitizeNumber(imageAspectRatioRaw, IMPLICIT_LAYER_FALLBACK_IMAGE_ASPECT_RATIO, 0.05, 64)
+	local heightScale = sanitizeNumber(heightScaleRaw, 1, 0.05, 4)
+	local segmentWidthScale = sanitizeNumber(segmentWidthScaleRaw, IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_BASE, 0.25, 8)
+	local textureStudsPerTileU =
+		sanitizeNumber(textureStudsPerTileURaw, IMPLICIT_LAYER_BASE_TEXTURE_TILE_STUDS, 1, 4096)
+
+	local minimumTextureRepeatWidth = math.max(textureStudsPerTileU * 0.25, MINIMUM_TEXTURE_REPEAT_WIDTH_STUDS)
+	local baseTextureRepeatWidth = math.max(sizeReferenceWidth * segmentWidthScale, minimumTextureRepeatWidth)
+	local baseTextureRepeatHeight = math.max(1, (baseTextureRepeatWidth / imageAspectRatio) * heightScale)
+	local textureRepeatHeight = math.max(baseTextureRepeatHeight, sanitizeNumber(requiredPlaneHeightRaw, 0, 0, 1000000))
+	local textureRepeatWidth = math.max(baseTextureRepeatWidth, (textureRepeatHeight / heightScale) * imageAspectRatio)
+	local horizontalBleed = math.max(visibleWidth * HORIZONTAL_PLANE_BLEED_FACTOR, MINIMUM_HORIZONTAL_PLANE_BLEED_STUDS)
+	local planeWidth =
+		math.max(textureRepeatWidth, visibleWidth + horizontalBleed, horizontalVisionStuds + horizontalBleed)
+
+	return {
+		planeWidth = planeWidth,
+		textureRepeatWidth = textureRepeatWidth,
+		textureRepeatHeight = textureRepeatHeight,
+	}
+end
+
 function ParallaxServiceUtils.ResolveBiomeNameFromWorldSample(
 	catalog: Catalog,
 	biomeIdRaw: any,
@@ -686,6 +749,9 @@ ParallaxServiceUtils.resolveVariantName = ParallaxServiceUtils.ResolveVariantNam
 ParallaxServiceUtils.resolveVariantDefinition = ParallaxServiceUtils.ResolveVariantDefinition
 ParallaxServiceUtils.collectAssetIds = ParallaxServiceUtils.CollectAssetIds
 ParallaxServiceUtils.createDefaultState = ParallaxServiceUtils.CreateDefaultState
+ParallaxServiceUtils.cloneState = ParallaxServiceUtils.CloneState
+ParallaxServiceUtils.computeHorizontalVisionStuds = ParallaxServiceUtils.ComputeHorizontalVisionStuds
+ParallaxServiceUtils.resolveDeterministicPlaneSizing = ParallaxServiceUtils.ResolveDeterministicPlaneSizing
 ParallaxServiceUtils.resolveBiomeNameFromWorldSample = ParallaxServiceUtils.ResolveBiomeNameFromWorldSample
 
 return ParallaxServiceUtils

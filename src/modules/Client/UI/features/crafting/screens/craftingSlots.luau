@@ -2,20 +2,20 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local React = require(ReplicatedStorage.Packages.React)
-local Charm = require(ReplicatedStorage.Packages.Charm)
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
-local Gif = require(script:FindFirstAncestor("game").Client.UI.shared.Gif)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
 local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
-local CraftingSlot = require(script:FindFirstAncestor("game").Client.UI.features.crafting.components.craftingSlot)
 local CraftingButton = require(script:FindFirstAncestor("game").Client.UI.features.crafting.components.craftingButton)
-local useCraftMenuDrag = require(script:FindFirstAncestor("game").Client.UI.features.crafting.hooks.useCraftMenuDrag)
-local useCraftSlide = require(script:FindFirstAncestor("game").Client.UI.features.crafting.hooks.useCraftSlide)
+local CraftingSlot = require(script:FindFirstAncestor("game").Client.UI.features.crafting.components.craftingSlot)
+local Gif = require(script:FindFirstAncestor("game").Client.UI.shared.Gif)
+local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
+local React = require(ReplicatedStorage.Packages.React)
 local craftingSlice = require(script:FindFirstAncestor("game").Client.UI.features.crafting.state.craftingSlice)
 local craftingThunks = require(script:FindFirstAncestor("game").Client.UI.features.crafting.state.craftingThunks)
 local itemThunks = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemThunks)
+local useCraftMenuDrag = require(script:FindFirstAncestor("game").Client.UI.features.crafting.hooks.useCraftMenuDrag)
+local useCraftSlide = require(script:FindFirstAncestor("game").Client.UI.features.crafting.hooks.useCraftSlide)
+local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
 type CraftingState = craftingSlice.CraftingState
 type CraftingRecipeEntry = craftingSlice.CraftingRecipeEntry
@@ -221,12 +221,15 @@ local function resolveDisplayRecipeGroups(
 		end
 	end
 
-	visibleEntries = Sift.Array.sort(visibleEntries, function(lhs: CraftingRecipeEntry, rhs: CraftingRecipeEntry): boolean
-		if lhs.sortOrder ~= rhs.sortOrder then
-			return lhs.sortOrder < rhs.sortOrder
+	visibleEntries = Sift.Array.sort(
+		visibleEntries,
+		function(lhs: CraftingRecipeEntry, rhs: CraftingRecipeEntry): boolean
+			if lhs.sortOrder ~= rhs.sortOrder then
+				return lhs.sortOrder < rhs.sortOrder
+			end
+			return lhs.recipeId < rhs.recipeId
 		end
-		return lhs.recipeId < rhs.recipeId
-	end)
+	)
 
 	return visibleEntries, groupsByVisibleRecipeId
 end
@@ -349,24 +352,17 @@ local function buildIngredientRows(previewRaw: any, zIndex: number): { [string]:
 end
 
 return function(props: CraftingSlotsProps): React.ReactNode
-	local craftingState, setCraftingState = React.useState(function(): CraftingState
-		return craftingSlice.getCraftingState()
-	end)
+	local craftingState = (useStore(craftingSlice.craftingStateAtom) :: CraftingState?)
+		or craftingSlice.getCraftingState()
 	local searchText, setSearchText = React.useState(function(): string
 		return craftingState.searchQuery
 	end)
 
 	React.useEffect(function()
 		local stop = craftingThunks.start()
-		local unsubscribe = Charm.subscribe(craftingSlice.craftingStateAtom, function(nextState: CraftingState)
-			setCraftingState(nextState)
-		end, {
-			inclusive = true,
-		})
 
 		return function()
 			craftingThunks.stopBulkCraft()
-			unsubscribe()
 			stop()
 		end
 	end, {})

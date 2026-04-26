@@ -1,12 +1,12 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local PortalTargets = require(script:FindFirstAncestor("game").Client.UI.core.utils.PortalTargets)
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
-local PortalTargets = require(script:FindFirstAncestor("game").Client.UI.core.utils.PortalTargets)
-local Charm = require(ReplicatedStorage.Packages.Charm)
 local mouseSlice = require(script:FindFirstAncestor("game").Client.UI.features.mouse.state.mouseSlice)
 local mouseThunks = require(script:FindFirstAncestor("game").Client.UI.features.mouse.state.mouseThunks)
+local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
 type MouseState = mouseSlice.MouseState
 
@@ -24,20 +24,12 @@ local DEFAULT_CURSOR_SIZE = Vector2.new(28, 28)
 local DEFAULT_HOTSPOT_OFFSET = Vector2.new(0, 0)
 
 return function(props: MouseScreenProps): React.ReactNode
-	local currentMouseState, setCurrentMouseState = React.useState(function(): MouseState
-		return mouseSlice.mouseStateAtom()
-	end)
+	local currentMouseState = (useStore(mouseSlice.mouseStateAtom) :: MouseState?) or mouseSlice.mouseStateAtom()
 
 	React.useEffect(function()
 		local stop = mouseThunks.start()
-		local unsubscribe = Charm.subscribe(mouseSlice.mouseStateAtom, function(nextMouseState: MouseState)
-			setCurrentMouseState(nextMouseState)
-		end, {
-			inclusive = true,
-		})
 
 		return function()
-			unsubscribe()
 			stop()
 		end
 	end, {})

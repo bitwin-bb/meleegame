@@ -1,6 +1,12 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local packageRoot = script:FindFirstAncestor("game").Parent
+local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
+local loader = require(loaderUtils.Parent).load(script)
+
+local CharacterUtils = loader("CharacterUtils")
+local String = loader("String")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local Plane = require(script:FindFirstAncestor("game").Shared.Modules.Math.Plane)
 local Proj = require(script:FindFirstAncestor("game").Shared.Modules.Math.Proj)
@@ -182,7 +188,7 @@ local function trim(valueRaw: any): string
 	if typeof(valueRaw) ~= "string" then
 		return ""
 	end
-	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
+	return String.trim(valueRaw)
 end
 
 local function normalizeToken(valueRaw: any): string
@@ -740,15 +746,16 @@ function BossServiceUtils.ResolveCharacterRootPart(playerRaw: any): BasePart?
 		return nil
 	end
 
+	local rootPart = CharacterUtils.getPlayerRootPart(playerRaw)
+	if rootPart ~= nil then
+		return rootPart
+	end
+
 	local character = playerRaw.Character
 	if character == nil then
 		return nil
 	end
 
-	local rootPart = character:FindFirstChild("HumanoidRootPart")
-	if rootPart ~= nil and rootPart:IsA("BasePart") then
-		return rootPart
-	end
 	return BossServiceUtils.ResolveRootPart(character)
 end
 
@@ -823,14 +830,7 @@ function BossServiceUtils.IsPlayerAlive(playerRaw: any): boolean
 	if typeof(playerRaw) ~= "Instance" or not playerRaw:IsA("Player") then
 		return false
 	end
-
-	local character = playerRaw.Character
-	if character == nil then
-		return false
-	end
-
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	return humanoid ~= nil and humanoid.Health > 0
+	return CharacterUtils.getAlivePlayerHumanoid(playerRaw) ~= nil
 end
 
 BossServiceUtils.trim = BossServiceUtils.Trim

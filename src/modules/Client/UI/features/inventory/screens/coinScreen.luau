@@ -1,14 +1,14 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local React = require(ReplicatedStorage.Packages.React)
-local Charm = require(ReplicatedStorage.Packages.Charm)
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
 local Gif = require(script:FindFirstAncestor("game").Client.UI.shared.Gif)
-local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
+local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
+local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
+local React = require(ReplicatedStorage.Packages.React)
 local coinSlice = require(script:FindFirstAncestor("game").Client.UI.features.inventory.state.coinSlice)
 local coinThunks = require(script:FindFirstAncestor("game").Client.UI.features.inventory.state.coinThunks)
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
+local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
+local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
 type CoinType = coinSlice.CoinType
 type CoinState = coinSlice.CoinState
@@ -43,10 +43,8 @@ local COIN_HOVER_ID_PREFIX = "inventory_coin_"
 local COIN_SHEET_SIZE = Vector2.new(1290, 774)
 local COIN_FRAME_ROWS = 3
 local COIN_FRAME_COLUMNS = 5
-local COIN_FRAME_SIZE = Vector2.new(
-	math.floor(COIN_SHEET_SIZE.X / COIN_FRAME_COLUMNS),
-	math.floor(COIN_SHEET_SIZE.Y / COIN_FRAME_ROWS)
-)
+local COIN_FRAME_SIZE =
+	Vector2.new(math.floor(COIN_SHEET_SIZE.X / COIN_FRAME_COLUMNS), math.floor(COIN_SHEET_SIZE.Y / COIN_FRAME_ROWS))
 local COIN_FRAME_COUNT = COIN_FRAME_ROWS * COIN_FRAME_COLUMNS
 local COIN_FPS = 12
 local DEFAULT_COIN_SLOT_SIZE = 58
@@ -109,7 +107,9 @@ local function resolveCoinAmount(state: CoinState, coinType: CoinType): number
 	local amounts = state.amounts
 	return if coinType == "platinum"
 		then amounts.platinum
-		else if coinType == "gold" then amounts.gold else if coinType == "silver" then amounts.silver else amounts.copper
+		else if coinType == "gold"
+			then amounts.gold
+			else if coinType == "silver" then amounts.silver else amounts.copper
 end
 
 local function resolveItemField(valueRaw: any, fallback: string): string
@@ -160,20 +160,12 @@ local function applyOffset(base: UDim2, offset: Vector2): UDim2
 end
 
 return function(props: CoinScreenProps): React.ReactNode
-	local coinState, setCoinState = React.useState(function(): CoinState
-		return coinSlice.coinStateAtom()
-	end)
+	local coinState = (useStore(coinSlice.coinStateAtom) :: CoinState?) or coinSlice.coinStateAtom()
 
 	React.useEffect(function()
 		local stop = coinThunks.start()
-		local unsubscribe = Charm.subscribe(coinSlice.coinStateAtom, function(nextCoinState: CoinState)
-			setCoinState(nextCoinState)
-		end, {
-			inclusive = true,
-		})
 
 		return function()
-			unsubscribe()
 			stop()
 			infoThunks.hideHover(nil)
 		end
@@ -186,7 +178,9 @@ return function(props: CoinScreenProps): React.ReactNode
 	local zIndex = props.zIndex or 40
 	local emergeOffset = resolveEmergeOffset(props.emergeOffset)
 	local emergeTransparency = resolveTransparency(props.emergeTransparency)
-	local slotWidth = if props.slotSize ~= nil then math.max(1, math.floor(props.slotSize.X.Offset + 0.5)) else DEFAULT_COIN_SLOT_SIZE
+	local slotWidth = if props.slotSize ~= nil
+		then math.max(1, math.floor(props.slotSize.X.Offset + 0.5))
+		else DEFAULT_COIN_SLOT_SIZE
 	local slotHeight = if props.slotSize ~= nil
 		then math.max(1, math.floor(props.slotSize.Y.Offset + 0.5))
 		else DEFAULT_COIN_SLOT_SIZE

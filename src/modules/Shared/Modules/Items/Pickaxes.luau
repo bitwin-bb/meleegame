@@ -2,7 +2,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-
 local Animations = require(script.Parent.Animations)
 local BuildAnimationMelee = require(script.Parent.Parent.Game.BuildAnimationMelee)
 

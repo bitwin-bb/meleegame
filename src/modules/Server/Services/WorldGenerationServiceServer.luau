@@ -5,12 +5,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local nevermoreRequire = require(loaderUtils.Parent).load(script)
+local loader = require(loaderUtils.Parent).load(script)
 
-local Maid = nevermoreRequire("Maid")
-local Rx = nevermoreRequire("Rx")
-local RxSignal = nevermoreRequire("RxSignal")
-local Signal = nevermoreRequire("Signal")
+local Maid = loader("Maid")
+local Rx = loader("Rx")
+local RxSignal = loader("RxSignal")
+local Signal = loader("Signal")
 
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)

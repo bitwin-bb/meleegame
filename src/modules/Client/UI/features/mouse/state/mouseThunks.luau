@@ -5,6 +5,7 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
+local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
 local mouseSlice = require(script:FindFirstAncestor("game").Client.UI.features.mouse.state.mouseSlice)
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
 
@@ -20,7 +21,9 @@ local runtime = {
 	inputEndedConnection = nil :: RBXScriptConnection?,
 	lastInputTypeChangedConnection = nil :: RBXScriptConnection?,
 	renderSteppedConnection = nil :: RBXScriptConnection?,
+	platformDisconnect = nil :: (() -> ())?,
 	usingSharedCursor = false,
+	customCursorAllowed = false,
 	cursor = nil :: any?,
 	cursorDisconnect = nil :: (() -> ())?,
 }
@@ -113,6 +116,9 @@ local function resolveHoveredGuiObject(guiPosition: Vector2): GuiObject?
 end
 
 local function applyPointerStateFromCursorState(cursorStateRaw: any)
+	if not runtime.customCursorAllowed then
+		return
+	end
 	if typeof(cursorStateRaw) ~= "table" then
 		return
 	end
@@ -133,6 +139,9 @@ local function applyPointerStateFromScreenPosition(screenPosition: Vector2)
 end
 
 local function syncPointerFromMouseLocation()
+	if not runtime.customCursorAllowed then
+		return
+	end
 	local success, mouseLocation = pcall(function()
 		return UserInputService:GetMouseLocation()
 	end)
@@ -142,6 +151,11 @@ local function syncPointerFromMouseLocation()
 end
 
 local function applyVisibilityFromInputMode()
+	if not runtime.customCursorAllowed then
+		mouseSlice.setMouseVisible(false)
+		mouseSlice.setMouseDown(false)
+		return
+	end
 	local shouldShowMouse = UserInputService.MouseEnabled
 	mouseSlice.setMouseVisible(shouldShowMouse)
 	mouseSlice.setMouseDown(false)
@@ -163,14 +177,54 @@ local function bindSharedCursor(): boolean
 	runtime.cursorDisconnect = (cursor :: any):onChanged(function(nextState: any)
 		applyPointerStateFromCursorState(nextState)
 	end)
-	if typeof((cursor :: any).getState) == "function" then
-		applyPointerStateFromCursorState((cursor :: any):getState())
+	if typeof((cursor :: any).setEnabled) == "function" then
+		local cursorAny = cursor :: any
+		cursorAny:setEnabled(runtime.customCursorAllowed)
 	end
 	if typeof((cursor :: any).sync) == "function" then
 		local cursorAny = cursor :: any
 		cursorAny:sync()
 	end
+	if typeof((cursor :: any).getState) == "function" then
+		applyPointerStateFromCursorState((cursor :: any):getState())
+	end
 	return true
+end
+
+local function applyCursorPolicy()
+	runtime.customCursorAllowed = PlatformServiceClient:shouldUseCustomCursor()
+	local machineFamily = PlatformServiceClient:getMachineFamily()
+
+	if runtime.usingSharedCursor and runtime.cursor ~= nil and typeof((runtime.cursor :: any).setEnabled) == "function" then
+		local cursorAny = runtime.cursor :: any
+		cursorAny:setEnabled(runtime.customCursorAllowed)
+		if runtime.customCursorAllowed then
+			if typeof((runtime.cursor :: any).sync) == "function" then
+				cursorAny:sync()
+			end
+			if typeof((runtime.cursor :: any).getState) == "function" then
+				applyPointerStateFromCursorState(cursorAny:getState())
+			end
+			return
+		end
+	end
+
+	if runtime.customCursorAllowed then
+		if not runtime.usingSharedCursor then
+			UserInputService.MouseIconEnabled = false
+		end
+		applyVisibilityFromInputMode()
+		syncPointerFromMouseLocation()
+		return
+	end
+
+	if runtime.defaultMouseIconEnabled ~= nil then
+		UserInputService.MouseIconEnabled = if machineFamily == "desktop" then runtime.defaultMouseIconEnabled else false
+	else
+		UserInputService.MouseIconEnabled = machineFamily == "desktop"
+	end
+	mouseSlice.setMouseVisible(false)
+	mouseSlice.setMouseDown(false)
 end
 
 function mouseThunks.Start(): () -> ()
@@ -179,76 +233,86 @@ function mouseThunks.Start(): () -> ()
 	end
 
 	runtime.started = true
-
-	if bindSharedCursor() then
-		return mouseThunks.Stop
+	if not PlatformServiceClient:isReady() then
+		PlatformServiceClient:init()
 	end
-
 	runtime.defaultMouseIconEnabled = UserInputService.MouseIconEnabled
-	UserInputService.MouseIconEnabled = false
-	applyVisibilityFromInputMode()
-	syncPointerFromMouseLocation()
 
-	runtime.inputChangedConnection = UserInputService.InputChanged:Connect(function(inputObject: InputObject)
-		if not runtime.started then
-			return
-		end
-		if isMouseMovementInput(inputObject.UserInputType) then
-			applyPointerStateFromScreenPosition(inputObject.Position)
-		end
-	end)
+	if not bindSharedCursor() then
+		runtime.inputChangedConnection = UserInputService.InputChanged:Connect(function(inputObject: InputObject)
+			if not runtime.started or not runtime.customCursorAllowed then
+				return
+			end
+			if isMouseMovementInput(inputObject.UserInputType) then
+				applyPointerStateFromScreenPosition(inputObject.Position)
+			end
+		end)
 
-	runtime.inputBeganConnection = UserInputService.InputBegan:Connect(function(inputObject: InputObject)
-		if not runtime.started then
-			return
-		end
-		if isMouseButtonInput(inputObject.UserInputType) then
-			local currentMouseState = mouseSlice.getMouseState()
-			if currentMouseState.isHoveringGui then
-				mouseSlice.setMouseDown(true)
-			else
+		runtime.inputBeganConnection = UserInputService.InputBegan:Connect(function(inputObject: InputObject)
+			if not runtime.started or not runtime.customCursorAllowed then
+				return
+			end
+			if isMouseButtonInput(inputObject.UserInputType) then
+				local currentMouseState = mouseSlice.getMouseState()
+				if currentMouseState.isHoveringGui then
+					mouseSlice.setMouseDown(true)
+				else
+					mouseSlice.setMouseDown(false)
+				end
+				syncPointerFromMouseLocation()
+			end
+		end)
+
+		runtime.inputEndedConnection = UserInputService.InputEnded:Connect(function(inputObject: InputObject)
+			if not runtime.started or not runtime.customCursorAllowed then
+				return
+			end
+			if isMouseButtonInput(inputObject.UserInputType) then
 				mouseSlice.setMouseDown(false)
+				syncPointerFromMouseLocation()
+			end
+		end)
+
+		runtime.lastInputTypeChangedConnection = UserInputService.LastInputTypeChanged:Connect(function()
+			if not runtime.started then
+				return
+			end
+			applyVisibilityFromInputMode()
+			syncPointerFromMouseLocation()
+		end)
+
+		runtime.renderSteppedConnection = RunService.RenderStepped:Connect(function()
+			if not runtime.started or not runtime.customCursorAllowed then
+				return
+			end
+			if not UserInputService.MouseEnabled then
+				return
 			end
 			syncPointerFromMouseLocation()
-		end
-	end)
+		end)
+	end
 
-	runtime.inputEndedConnection = UserInputService.InputEnded:Connect(function(inputObject: InputObject)
-		if not runtime.started then
-			return
-		end
-		if isMouseButtonInput(inputObject.UserInputType) then
-			mouseSlice.setMouseDown(false)
-			syncPointerFromMouseLocation()
-		end
+	runtime.platformDisconnect = PlatformServiceClient:onPlatformChanged(function()
+		applyCursorPolicy()
 	end)
-
-	runtime.lastInputTypeChangedConnection = UserInputService.LastInputTypeChanged:Connect(function()
-		if not runtime.started then
-			return
-		end
-		applyVisibilityFromInputMode()
-		syncPointerFromMouseLocation()
-	end)
-
-	runtime.renderSteppedConnection = RunService.RenderStepped:Connect(function()
-		if not runtime.started then
-			return
-		end
-		if not UserInputService.MouseEnabled then
-			return
-		end
-		syncPointerFromMouseLocation()
-	end)
+	applyCursorPolicy()
 
 	return mouseThunks.Stop
 end
 
 function mouseThunks.Stop()
+	ConnectionUtils.call(runtime.platformDisconnect)
+	runtime.platformDisconnect = nil
+
+	if runtime.cursor ~= nil and typeof((runtime.cursor :: any).setEnabled) == "function" then
+		local cursorAny = runtime.cursor :: any
+		cursorAny:setEnabled(false)
+	end
 	ConnectionUtils.call(runtime.cursorDisconnect)
 	runtime.cursorDisconnect = nil
 	runtime.cursor = nil
 	runtime.usingSharedCursor = false
+	runtime.customCursorAllowed = false
 
 	ConnectionUtils.disconnectMany({
 		runtime.inputChangedConnection,
@@ -269,6 +333,7 @@ function mouseThunks.Stop()
 	runtime.defaultMouseIconEnabled = nil
 
 	runtime.started = false
+	mouseSlice.setMouseVisible(false)
 	mouseSlice.resetMouseState()
 end
 
