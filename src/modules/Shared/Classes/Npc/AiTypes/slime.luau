@@ -5,9 +5,9 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local Npc = require(script.Parent.Parent)
-local HopMotion = require(script:FindFirstAncestor("game").Shared.Modules.Math.HopMotion)
 local Animations = require(script:FindFirstAncestor("game").Shared.Modules.Items.Animations)
+local HopMotion = require(script:FindFirstAncestor("game").Shared.Modules.Math.HopMotion)
+local Npc = require(script.Parent.Parent)
 
 type NpcBehaviorConfig = Npc.NpcBehaviorConfig
 type NpcConfig = Npc.NpcConfig
@@ -189,9 +189,7 @@ local function isGreenVariant(slimeLabel: string): boolean
 		return false
 	end
 	local normalized = normalizeToken(slimeLabel)
-	return normalized == "green"
-		or normalized == "greenslime"
-		or string.find(normalized, "greenslime", 1, true) ~= nil
+	return normalized == "green" or normalized == "greenslime" or string.find(normalized, "greenslime", 1, true) ~= nil
 end
 
 local function resolveRootPart(model: Model?): BasePart?
@@ -505,9 +503,7 @@ function Slime:_loadSlimeAnimations()
 		end
 
 		track.Looped = animationName == "Idle"
-		track.Priority = if animationName == "Idle"
-			then Enum.AnimationPriority.Idle
-			else Enum.AnimationPriority.Action
+		track.Priority = if animationName == "Idle" then Enum.AnimationPriority.Idle else Enum.AnimationPriority.Action
 
 		if animationName == "Hurt" then
 			self._slimeAnimations.Hurt = track
@@ -788,7 +784,9 @@ function Slime:_resolveEmbeddedRestState()
 		self:_refreshHopCollisionQueryParams()
 	end
 
-	local lookSign = if math.abs(rootPart.CFrame.LookVector.Z) > 0.001 then math.sign(rootPart.CFrame.LookVector.Z) else 1
+	local lookSign = if math.abs(rootPart.CFrame.LookVector.Z) > 0.001
+		then math.sign(rootPart.CFrame.LookVector.Z)
+		else 1
 	local lookDirection = Vector3.new(0, 0, lookSign)
 	local currentPosition = self:_projectTo2DPlane(rootPart.Position)
 	if not self:_hasBlockingOverlap(currentPosition, lookDirection) then
@@ -1072,7 +1070,7 @@ function Slime.New(configRaw: SlimeConfig?): Slime
 	local config = if typeof(configRaw) == "table" then Sift.Dictionary.copy(configRaw :: any) else {}
 	local baseBehavior = if typeof(config.behavior) == "table"
 		then config.behavior :: NpcBehaviorConfig
-		else ({} :: NpcBehaviorConfig)
+		else {} :: NpcBehaviorConfig
 
 	local movement = if typeof(config.movement) == "table" then Sift.Dictionary.copy(config.movement) else {}
 	if movement.canWander == nil then
@@ -1148,12 +1146,7 @@ function Slime.New(configRaw: SlimeConfig?): Slime
 	local planeXRaw = if config.planeX ~= nil then config.planeX else config.twoDPlaneX
 	local hopMotionSpringRaw = if typeof(config.hopMotionSpring) == "table" then config.hopMotionSpring else {}
 	local hopMotionSpring = {
-		frequency = toNumber(
-			(hopMotionSpringRaw :: any).frequency,
-			DEFAULT_HOP_SPRING_FREQUENCY,
-			0.01,
-			120
-		),
+		frequency = toNumber((hopMotionSpringRaw :: any).frequency, DEFAULT_HOP_SPRING_FREQUENCY, 0.01, 120),
 		damping = toNumber((hopMotionSpringRaw :: any).damping, DEFAULT_HOP_SPRING_DAMPING, 0, 20),
 	}
 
@@ -1168,7 +1161,8 @@ function Slime.New(configRaw: SlimeConfig?): Slime
 	self.hopMaxArcHeight = toNumber(config.hopMaxArcHeight, DEFAULT_HOP_MAX_ARC_HEIGHT, self.hopMinArcHeight, 100)
 	self.hopArcHeight = toOptionalNumber(config.hopArcHeight)
 	self.idleAnimationMinSpeed = toNumber(config.idleAnimationMinSpeed, DEFAULT_IDLE_MIN_SPEED, 0.05, 8)
-	self.idleAnimationMaxSpeed = toNumber(config.idleAnimationMaxSpeed, DEFAULT_IDLE_MAX_SPEED, self.idleAnimationMinSpeed, 12)
+	self.idleAnimationMaxSpeed =
+		toNumber(config.idleAnimationMaxSpeed, DEFAULT_IDLE_MAX_SPEED, self.idleAnimationMinSpeed, 12)
 	self._isResting = true
 	self.restElapsed = 0
 	self.hopElapsed = 0

@@ -31,6 +31,7 @@ type Metrics = {
 }
 
 local e: typeof(React.createElement) = React.createElement
+local HINT_CONTENT_TRANSPARENCY = 0
 
 local function resolveMetrics(deviceClassRaw: any): Metrics
 	if deviceClassRaw == "Console" then
@@ -113,7 +114,11 @@ local function resolvePromptGap(hint: BindingHintEntry, metrics: Metrics): numbe
 	if promptText == "Space" then
 		return math.max(2, metrics.promptGap - 2)
 	end
-	if #promptText >= 4 or string.find(promptText, "D-Pad", 1, true) ~= nil or string.find(promptText, "Stick", 1, true) ~= nil then
+	if
+		#promptText >= 4
+		or string.find(promptText, "D-Pad", 1, true) ~= nil
+		or string.find(promptText, "Stick", 1, true) ~= nil
+	then
 		return math.max(3, metrics.promptGap - 1)
 	end
 	return metrics.promptGap
@@ -135,7 +140,7 @@ local function HintPrompt(props: {
 			BorderSizePixel = 0,
 			Image = props.hint.promptIcon,
 			ScaleType = Enum.ScaleType.Fit,
-			ImageTransparency = if enabled then 0 else 0.45,
+			ImageTransparency = HINT_CONTENT_TRANSPARENCY,
 			LayoutOrder = 1,
 			ZIndex = props.zIndex + 1,
 		})
@@ -151,6 +156,7 @@ local function HintPrompt(props: {
 			font = Enum.Font.GothamBold,
 			textSize = props.metrics.promptTextSize,
 			textColor3 = if enabled then Color3.fromRGB(244, 248, 255) else Color3.fromRGB(176, 182, 192),
+			textTransparency = HINT_CONTENT_TRANSPARENCY,
 			textXAlignment = Enum.TextXAlignment.Left,
 			textYAlignment = Enum.TextYAlignment.Center,
 			layoutOrder = 1,
@@ -193,6 +199,7 @@ local function HintBody(props: {
 			font = Enum.Font.GothamBold,
 			textSize = props.metrics.labelTextSize,
 			textColor3 = if enabled then Color3.fromRGB(246, 249, 255) else Color3.fromRGB(182, 187, 196),
+			textTransparency = HINT_CONTENT_TRANSPARENCY,
 			textXAlignment = Enum.TextXAlignment.Left,
 			textYAlignment = Enum.TextYAlignment.Center,
 			layoutOrder = 1,
@@ -219,6 +226,7 @@ local function HintBody(props: {
 			font = Enum.Font.Gotham,
 			textSize = props.metrics.detailTextSize,
 			textColor3 = if enabled then Color3.fromRGB(160, 198, 235) else Color3.fromRGB(205, 155, 155),
+			textTransparency = HINT_CONTENT_TRANSPARENCY,
 			textXAlignment = Enum.TextXAlignment.Left,
 			textYAlignment = Enum.TextYAlignment.Center,
 			layoutOrder = 2,
