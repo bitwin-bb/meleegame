@@ -54,6 +54,8 @@ type SkyTemplate = {
 type RainRuntime = {
 	anchorPart: Part,
 	emitters: { ParticleEmitter },
+	lastAnchorPosition: Vector3?,
+	lastEmitterRate: number,
 }
 
 local WeatherServiceClient = {}
@@ -71,8 +73,14 @@ local WEATHER_CAMERA_SHAKE_RENDER_PRIORITY = Enum.RenderPriority.Camera.Value + 
 
 local RAIN_RATE_PER_EMITTER_AT_FULL = 130
 local RAIN_FOLLOW_HEIGHT = 34
+local RAIN_RUNTIME_DISABLE_THRESHOLD = 0.005
+local RAIN_ANCHOR_POSITION_EPSILON = 0.25
+local RAIN_EMITTER_RATE_EPSILON = 0.5
 local RAIN_AUDIO_BASE_VOLUME = 0.18
 local RAIN_AUDIO_MAX_VOLUME = 0.55
+local RAIN_AUDIO_UPDATE_INTERVAL = 0.18
+local WEATHER_WIND_UPDATE_INTERVAL = 0.12
+local WEATHER_WIND_INTENSITY_EPSILON = 0.02
 local CLOCK_MAX_FOLLOW_SPEED_HOURS_PER_SECOND = 8
 local CORRUPTION_CLOUD_COLOR = Color3.fromRGB(255, 145, 72)
 local LIGHTNING_FLASH_TINT = Color3.fromRGB(255, 255, 255)
@@ -460,8 +468,22 @@ function WeatherServiceClient.UpdateWeatherWind(self: WeatherServiceClient)
 	end
 
 	local stormAlpha = math.clamp(math.max(self.currentRainIntensity, self.targetRainIntensity), 0, 1)
+	if stormAlpha <= RAIN_RUNTIME_DISABLE_THRESHOLD then
+		stormAlpha = 0
+	end
 	local isThunderstorm = WeatherServiceUtils.isThunderWeather(self.state.weatherType)
+	if
+		self.lastWeatherWindStormAlpha ~= nil
+		and stormAlpha > 0
+		and math.abs(stormAlpha - self.lastWeatherWindStormAlpha) < WEATHER_WIND_INTENSITY_EPSILON
+		and self.lastWeatherWindIsThunderstorm == isThunderstorm
+	then
+		return
+	end
+
 	windFoliageServiceClient:setWeatherWind(stormAlpha, isThunderstorm)
+	self.lastWeatherWindStormAlpha = stormAlpha
+	self.lastWeatherWindIsThunderstorm = isThunderstorm
 end
 
 function WeatherServiceClient.WarnMissingSkyAsset(self: WeatherServiceClient, skyKey: SkyKey)
@@ -979,8 +1001,22 @@ function WeatherServiceClient.EnsureRainRuntime(self: WeatherServiceClient): Rai
 	self.rainRuntime = {
 		anchorPart = anchorPart,
 		emitters = emitters,
+		lastAnchorPosition = nil :: Vector3?,
+		lastEmitterRate = -1,
 	}
 	return self.rainRuntime
+end
+
+function WeatherServiceClient.DestroyRainRuntime(self: WeatherServiceClient)
+	local runtime = self.rainRuntime
+	if runtime == nil then
+		return
+	end
+
+	if runtime.anchorPart ~= nil and runtime.anchorPart.Parent ~= nil then
+		runtime.anchorPart:Destroy()
+	end
+	self.rainRuntime = nil
 end
 
 function WeatherServiceClient.ResolveRainFollowPosition(self: WeatherServiceClient): Vector3
@@ -998,13 +1034,31 @@ function WeatherServiceClient.ResolveRainFollowPosition(self: WeatherServiceClie
 end
 
 function WeatherServiceClient.UpdateRainRuntime(self: WeatherServiceClient)
+	if
+		self.currentRainIntensity <= RAIN_RUNTIME_DISABLE_THRESHOLD
+		and self.targetRainIntensity <= RAIN_RUNTIME_DISABLE_THRESHOLD
+	then
+		self:destroyRainRuntime()
+		return
+	end
+
 	local runtime = self:ensureRainRuntime()
 	local followPosition = self:resolveRainFollowPosition()
-	runtime.anchorPart.CFrame = CFrame.new(followPosition + Vector3.new(0, RAIN_FOLLOW_HEIGHT, 0))
+	local anchorPosition = followPosition + Vector3.new(0, RAIN_FOLLOW_HEIGHT, 0)
+	if
+		runtime.lastAnchorPosition == nil
+		or (anchorPosition - runtime.lastAnchorPosition).Magnitude >= RAIN_ANCHOR_POSITION_EPSILON
+	then
+		runtime.anchorPart.CFrame = CFrame.new(anchorPosition)
+		runtime.lastAnchorPosition = anchorPosition
+	end
 
 	local emitterRate = RAIN_RATE_PER_EMITTER_AT_FULL * self.currentRainIntensity
-	for _, emitter in runtime.emitters do
-		emitter.Rate = emitterRate
+	if math.abs(emitterRate - runtime.lastEmitterRate) >= RAIN_EMITTER_RATE_EPSILON then
+		for _, emitter in runtime.emitters do
+			emitter.Rate = emitterRate
+		end
+		runtime.lastEmitterRate = emitterRate
 	end
 end
 
@@ -1147,8 +1201,16 @@ function WeatherServiceClient.OnHeartbeat(self: WeatherServiceClient, dtRaw: any
 	self:updateClockTime(dt)
 	self:updateBiomeSky(dt)
 	self:updateRainIntensity(dt)
-	self:updateRainAudio()
-	self:updateWeatherWind()
+	self.rainAudioUpdateAccumulator += dt
+	if self.rainAudioUpdateAccumulator >= RAIN_AUDIO_UPDATE_INTERVAL then
+		self.rainAudioUpdateAccumulator = 0
+		self:updateRainAudio()
+	end
+	self.weatherWindUpdateAccumulator += dt
+	if self.weatherWindUpdateAccumulator >= WEATHER_WIND_UPDATE_INTERVAL then
+		self.weatherWindUpdateAccumulator = 0
+		self:updateWeatherWind()
+	end
 	self:updateClouds(dt)
 	self:updateThunderFlash(dt)
 end
@@ -1158,6 +1220,8 @@ function WeatherServiceClient.ApplyState(self: WeatherServiceClient, stateRaw: a
 	self.state = WeatherServiceUtils.sanitizeState(stateRaw, self.state)
 	self.hasReceivedServerState = true
 	self.targetRainIntensity = self.state.rainIntensity
+	self.rainAudioUpdateAccumulator = RAIN_AUDIO_UPDATE_INTERVAL
+	self.weatherWindUpdateAccumulator = WEATHER_WIND_UPDATE_INTERVAL
 
 	if not wasReady then
 		self.currentRainIntensity = self.targetRainIntensity
@@ -1176,10 +1240,7 @@ function WeatherServiceClient.CleanupVisualRuntime(self: WeatherServiceClient)
 	end
 
 	if self.rainRuntime ~= nil then
-		if self.rainRuntime.anchorPart ~= nil and self.rainRuntime.anchorPart.Parent ~= nil then
-			self.rainRuntime.anchorPart:Destroy()
-		end
-		self.rainRuntime = nil
+		self:destroyRainRuntime()
 	end
 	local audioServiceClient = getAudioServiceClient()
 	if audioServiceClient ~= nil and audioServiceClient.categoryGroups ~= nil then
@@ -1189,6 +1250,8 @@ function WeatherServiceClient.CleanupVisualRuntime(self: WeatherServiceClient)
 	if windFoliageServiceClient ~= nil and windFoliageServiceClient.simulation ~= nil then
 		windFoliageServiceClient:setWeatherWind(0, false)
 	end
+	self.lastWeatherWindStormAlpha = nil
+	self.lastWeatherWindIsThunderstorm = nil
 	for _, instanceName in {
 		RUNTIME_SKY_NAME,
 		RUNTIME_ATMOSPHERE_NAME,
@@ -1232,6 +1295,10 @@ function WeatherServiceClient.Init(self: WeatherServiceClient)
 
 	self.currentRainIntensity = self.state.rainIntensity
 	self.targetRainIntensity = self.state.rainIntensity
+	self.rainAudioUpdateAccumulator = RAIN_AUDIO_UPDATE_INTERVAL
+	self.weatherWindUpdateAccumulator = WEATHER_WIND_UPDATE_INTERVAL
+	self.lastWeatherWindStormAlpha = nil :: number?
+	self.lastWeatherWindIsThunderstorm = nil :: boolean?
 	local fallbackCover, fallbackDensity, fallbackColor = resolveCloudFallback(WeatherServiceUtils.SKY_KEY_OVERWORLD)
 	self.cloudTargetCover = fallbackCover
 	self.cloudTargetDensity = fallbackDensity
@@ -1292,6 +1359,7 @@ WeatherServiceClient.resolveSkyKeyForLocalPlayer = WeatherServiceClient.ResolveS
 WeatherServiceClient.transitionToSky = WeatherServiceClient.TransitionToSky
 WeatherServiceClient.createRainEmitter = WeatherServiceClient.CreateRainEmitter
 WeatherServiceClient.ensureRainRuntime = WeatherServiceClient.EnsureRainRuntime
+WeatherServiceClient.destroyRainRuntime = WeatherServiceClient.DestroyRainRuntime
 WeatherServiceClient.resolveRainFollowPosition = WeatherServiceClient.ResolveRainFollowPosition
 WeatherServiceClient.updateRainRuntime = WeatherServiceClient.UpdateRainRuntime
 WeatherServiceClient.updateRainIntensity = WeatherServiceClient.UpdateRainIntensity
@@ -1332,6 +1400,10 @@ type WeatherServiceClient = typeof(WeatherServiceClient) & {
 	cameraShaker: CameraShakerObject?,
 	currentRainIntensity: number,
 	targetRainIntensity: number,
+	rainAudioUpdateAccumulator: number,
+	weatherWindUpdateAccumulator: number,
+	lastWeatherWindStormAlpha: number?,
+	lastWeatherWindIsThunderstorm: boolean?,
 	cloudTargetCover: number,
 	cloudTargetDensity: number,
 	cloudTargetColor: Color3,

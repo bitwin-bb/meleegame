@@ -32,6 +32,9 @@ type Metrics = {
 
 local e: typeof(React.createElement) = React.createElement
 local HINT_CONTENT_TRANSPARENCY = 0
+local PROMPT_TEXT_COLOR = Color3.fromRGB(244, 248, 255)
+local LABEL_TEXT_COLOR = Color3.fromRGB(246, 249, 255)
+local DETAIL_TEXT_COLOR = Color3.fromRGB(160, 198, 235)
 
 local function resolveMetrics(deviceClassRaw: any): Metrics
 	if deviceClassRaw == "Console" then
@@ -131,7 +134,6 @@ local function HintPrompt(props: {
 }): React.ReactNode
 	local hasPromptIcon = props.hint.promptIcon ~= nil and props.hint.promptIcon ~= ""
 	local hasPromptText = props.hint.promptText ~= nil and props.hint.promptText ~= ""
-	local enabled = props.hint.enabled == true
 
 	if hasPromptIcon then
 		return e("ImageLabel", {
@@ -155,7 +157,7 @@ local function HintPrompt(props: {
 			backgroundTransparency = 1,
 			font = Enum.Font.GothamBold,
 			textSize = props.metrics.promptTextSize,
-			textColor3 = if enabled then Color3.fromRGB(244, 248, 255) else Color3.fromRGB(176, 182, 192),
+			textColor3 = PROMPT_TEXT_COLOR,
 			textTransparency = HINT_CONTENT_TRANSPARENCY,
 			textXAlignment = Enum.TextXAlignment.Left,
 			textYAlignment = Enum.TextYAlignment.Center,
@@ -181,7 +183,6 @@ local function HintBody(props: {
 	metrics: Metrics,
 	zIndex: number,
 }): React.ReactNode
-	local enabled = props.hint.enabled == true
 	local children: { [string]: React.ReactNode } = {
 		ListLayout = e("UIListLayout", {
 			FillDirection = Enum.FillDirection.Vertical,
@@ -198,7 +199,7 @@ local function HintBody(props: {
 			backgroundTransparency = 1,
 			font = Enum.Font.GothamBold,
 			textSize = props.metrics.labelTextSize,
-			textColor3 = if enabled then Color3.fromRGB(246, 249, 255) else Color3.fromRGB(182, 187, 196),
+			textColor3 = LABEL_TEXT_COLOR,
 			textTransparency = HINT_CONTENT_TRANSPARENCY,
 			textXAlignment = Enum.TextXAlignment.Left,
 			textYAlignment = Enum.TextYAlignment.Center,
@@ -225,7 +226,7 @@ local function HintBody(props: {
 			backgroundTransparency = 1,
 			font = Enum.Font.Gotham,
 			textSize = props.metrics.detailTextSize,
-			textColor3 = if enabled then Color3.fromRGB(160, 198, 235) else Color3.fromRGB(205, 155, 155),
+			textColor3 = DETAIL_TEXT_COLOR,
 			textTransparency = HINT_CONTENT_TRANSPARENCY,
 			textXAlignment = Enum.TextXAlignment.Left,
 			textYAlignment = Enum.TextYAlignment.Center,

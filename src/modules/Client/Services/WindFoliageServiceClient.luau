@@ -30,18 +30,18 @@ local RAIN_WIND_PROFILE = {
 	gustSpatialScale = 0.22,
 	detailSpatialScale = 0.2,
 	directionJitterRadians = 1.45,
-	nearUpdateIntervalReduction = 0.5,
-	midUpdateIntervalReduction = 0.45,
-	farUpdateIntervalReduction = 0.32,
-	frozenUpdateIntervalReduction = 0.18,
+	nearUpdateIntervalIncrease = 0.45,
+	midUpdateIntervalIncrease = 0.35,
+	farUpdateIntervalIncrease = 0.18,
+	frozenUpdateIntervalIncrease = 0,
 	nearWindScale = 0.18,
 	midWindScale = 0.26,
 	farWindScale = 0.42,
 	nearDetailScale = 0.25,
 	midDetailScale = 0.48,
 	farDetailScale = 0.9,
-	maxActiveTrees = 0.28,
-	maxTransformWritesPerStep = 0.35,
+	maxActiveTreesReduction = 0.42,
+	maxTransformWritesPerStepReduction = 0.58,
 	primarySpringFrequency = 0.45,
 	secondarySpringFrequency = 0.65,
 	flutterSpringFrequency = 0.8,
@@ -57,18 +57,18 @@ local THUNDERSTORM_WIND_PROFILE = {
 	gustSpatialScale = 0.38,
 	detailSpatialScale = 0.34,
 	directionJitterRadians = 2.8,
-	nearUpdateIntervalReduction = 0.72,
-	midUpdateIntervalReduction = 0.62,
-	farUpdateIntervalReduction = 0.48,
-	frozenUpdateIntervalReduction = 0.32,
+	nearUpdateIntervalIncrease = 0.9,
+	midUpdateIntervalIncrease = 0.65,
+	farUpdateIntervalIncrease = 0.32,
+	frozenUpdateIntervalIncrease = 0.08,
 	nearWindScale = 0.34,
 	midWindScale = 0.52,
 	farWindScale = 0.82,
 	nearDetailScale = 0.38,
 	midDetailScale = 0.72,
 	farDetailScale = 1.4,
-	maxActiveTrees = 0.6,
-	maxTransformWritesPerStep = 0.75,
+	maxActiveTreesReduction = 0.58,
+	maxTransformWritesPerStepReduction = 0.68,
 	primarySpringFrequency = 0.9,
 	secondarySpringFrequency = 1.15,
 	flutterSpringFrequency = 1.35,
@@ -106,7 +106,14 @@ local function snapshotSpring(springRaw: any): { [string]: number }?
 	}
 end
 
-local function applyTierState(tierRaw: any, baselineRaw: any, stormAlpha: number, updateReduction: number, windBoost: number, detailBoost: number)
+local function applyTierState(
+	tierRaw: any,
+	baselineRaw: any,
+	stormAlpha: number,
+	updateIntervalIncrease: number,
+	windBoost: number,
+	detailBoost: number
+)
 	if typeof(tierRaw) ~= "table" or typeof(baselineRaw) ~= "table" then
 		return
 	end
@@ -116,7 +123,7 @@ local function applyTierState(tierRaw: any, baselineRaw: any, stormAlpha: number
 	if typeof(baseline.updateInterval) == "number" then
 		tier.updateInterval = math.max(
 			MIN_WEATHER_UPDATE_INTERVAL,
-			baseline.updateInterval * (1 - stormAlpha * updateReduction)
+			baseline.updateInterval * (1 + stormAlpha * updateIntervalIncrease)
 		)
 	end
 
@@ -269,7 +276,7 @@ function WindFoliageServiceClient.SetWeatherWind(self: any, stormAlphaRaw: any, 
 			lodController.tierNear,
 			tiers.near,
 			stormAlpha,
-			profile.nearUpdateIntervalReduction,
+			profile.nearUpdateIntervalIncrease,
 			profile.nearWindScale,
 			profile.nearDetailScale
 		)
@@ -277,7 +284,7 @@ function WindFoliageServiceClient.SetWeatherWind(self: any, stormAlphaRaw: any, 
 			lodController.tierMid,
 			tiers.mid,
 			stormAlpha,
-			profile.midUpdateIntervalReduction,
+			profile.midUpdateIntervalIncrease,
 			profile.midWindScale,
 			profile.midDetailScale
 		)
@@ -285,7 +292,7 @@ function WindFoliageServiceClient.SetWeatherWind(self: any, stormAlphaRaw: any, 
 			lodController.tierFar,
 			tiers.far,
 			stormAlpha,
-			profile.farUpdateIntervalReduction,
+			profile.farUpdateIntervalIncrease,
 			profile.farWindScale,
 			profile.farDetailScale
 		)
@@ -293,7 +300,7 @@ function WindFoliageServiceClient.SetWeatherWind(self: any, stormAlphaRaw: any, 
 			lodController.tierFrozen,
 			tiers.frozen,
 			stormAlpha,
-			profile.frozenUpdateIntervalReduction,
+			profile.frozenUpdateIntervalIncrease,
 			0,
 			0
 		)
@@ -302,13 +309,18 @@ function WindFoliageServiceClient.SetWeatherWind(self: any, stormAlphaRaw: any, 
 	local updateBudget = state.updateBudget
 	if updateManager ~= nil and typeof(updateBudget) == "table" then
 		if typeof(updateBudget.maxActiveTrees) == "number" then
-			updateManager.maxActiveTrees =
-				math.max(1, math.floor(updateBudget.maxActiveTrees * (1 + stormAlpha * profile.maxActiveTrees)))
+			updateManager.maxActiveTrees = math.max(
+				1,
+				math.floor(updateBudget.maxActiveTrees * (1 - stormAlpha * profile.maxActiveTreesReduction))
+			)
 		end
 		if typeof(updateBudget.maxTransformWritesPerStep) == "number" then
 			updateManager.maxTransformWritesPerStep = math.max(
 				1,
-				math.floor(updateBudget.maxTransformWritesPerStep * (1 + stormAlpha * profile.maxTransformWritesPerStep))
+				math.floor(
+					updateBudget.maxTransformWritesPerStep
+						* (1 - stormAlpha * profile.maxTransformWritesPerStepReduction)
+				)
 			)
 		end
 	end

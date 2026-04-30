@@ -5,17 +5,17 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Ripple = require(ReplicatedStorage.Packages.Ripple)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Cmdr.CmdrUtils)
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
-local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerServiceUtils)
-local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlatformServiceUtils)
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
 local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
+local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Cmdr.CmdrUtils)
+local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
+local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlatformServiceUtils)
+local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerServiceUtils)
+local Ripple = require(ReplicatedStorage.Packages.Ripple)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
 
@@ -68,7 +68,7 @@ local function resolveGamepadAimVector(gamepadNavRaw: any): Vector2?
 	if typeof(snapshot) ~= "table" or typeof((snapshot :: any).right) ~= "table" then
 		return nil
 	end
-	local screenVector = (((snapshot :: any).right :: any).screen)
+	local screenVector = ((snapshot :: any).right :: any).screen
 	if typeof(screenVector) ~= "Vector2" or screenVector.Magnitude <= GAMEPAD_AIM_DEADZONE then
 		return nil
 	end
@@ -224,6 +224,20 @@ function PlayerServiceClient.SetGamepadMoveVector(self: PlayerServiceClient, vec
 	self.gamepadMoveVector = PlatformServiceUtils.applyThumbstickDeadzone(vectorRaw, GAMEPAD_MOVE_DEADZONE)
 end
 
+function PlayerServiceClient.GetPolledGamepadMoveAxis(self: PlayerServiceClient): number?
+	local ok, gamepadState = pcall(function()
+		return UserInputService:GetGamepadState(Enum.UserInputType.Gamepad1)
+	end)
+	if not ok then
+		return nil
+	end
+	return PlayerServiceUtils.getGamepadMoveAxis(
+		gamepadState,
+		GAMEPAD_MOVE_DEADZONE,
+		math.max(self.moveAxisDeadzone, self.horizontalDeadzone)
+	)
+end
+
 function PlayerServiceClient.OnGamepadMoveInputChanged(self: PlayerServiceClient, inputObjectRaw: any)
 	if typeof(inputObjectRaw) ~= "InputObject" then
 		return
@@ -243,11 +257,30 @@ function PlayerServiceClient.OnGamepadMoveInputChanged(self: PlayerServiceClient
 	self:setGamepadMoveVector(thumbstickVector)
 end
 
-function PlayerServiceClient.GetHorizontalMoveAxis(self: PlayerServiceClient): number
-	if math.abs(self.gamepadMoveVector.X) > 1e-4 then
-		return self.gamepadMoveVector.X
-	end
+function PlayerServiceClient.GetActionHorizontalMoveAxis(self: PlayerServiceClient): number
 	return math.clamp(self.moveRightValue - self.moveLeftValue, -1, 1)
+end
+
+function PlayerServiceClient.GetGamepadMoveAxis(self: PlayerServiceClient): number
+	local polledGamepadAxis = self:getPolledGamepadMoveAxis()
+	if polledGamepadAxis ~= nil then
+		return polledGamepadAxis
+	end
+
+	local axisDeadzone = math.max(self.moveAxisDeadzone, self.horizontalDeadzone)
+	local cachedGamepadAxis = PlayerServiceUtils.applyAxisDeadzone(self.gamepadMoveVector.X, axisDeadzone)
+	if cachedGamepadAxis ~= 0 then
+		return cachedGamepadAxis
+	end
+	return 0
+end
+
+function PlayerServiceClient.GetHorizontalMoveAxis(self: PlayerServiceClient): number
+	return PlayerServiceUtils.getCombinedHorizontalInputAxis(
+		self:getActionHorizontalMoveAxis(),
+		self:getGamepadMoveAxis(),
+		self.moveAxisDeadzone
+	)
 end
 
 function PlayerServiceClient.GetVerticalMoveAxis(self: PlayerServiceClient): number
@@ -578,7 +611,7 @@ function PlayerServiceClient.OnCharacterAdded(self: PlayerServiceClient, charact
 	RunService:UnbindFromRenderStep(MOVE_RENDERSTEP_NAME)
 
 	self:resolveCurrentRig(character)
-	self:applyMovementLock(true)
+	self:applyMovementLock(false)
 	local movementLockAttribute = self.localPlayer:GetAttribute(PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE)
 	if typeof(movementLockAttribute) == "boolean" then
 		self:applyMovementLock(movementLockAttribute)
@@ -969,7 +1002,10 @@ PlayerServiceClient.resolveCurrentRig = PlayerServiceClient.ResolveCurrentRig
 PlayerServiceClient.resetMovementInputState = PlayerServiceClient.ResetMovementInputState
 PlayerServiceClient.setMovementActionValue = PlayerServiceClient.SetMovementActionValue
 PlayerServiceClient.setGamepadMoveVector = PlayerServiceClient.SetGamepadMoveVector
+PlayerServiceClient.getPolledGamepadMoveAxis = PlayerServiceClient.GetPolledGamepadMoveAxis
 PlayerServiceClient.onGamepadMoveInputChanged = PlayerServiceClient.OnGamepadMoveInputChanged
+PlayerServiceClient.getActionHorizontalMoveAxis = PlayerServiceClient.GetActionHorizontalMoveAxis
+PlayerServiceClient.getGamepadMoveAxis = PlayerServiceClient.GetGamepadMoveAxis
 PlayerServiceClient.getHorizontalMoveAxis = PlayerServiceClient.GetHorizontalMoveAxis
 PlayerServiceClient.getVerticalMoveAxis = PlayerServiceClient.GetVerticalMoveAxis
 PlayerServiceClient.refreshPlatformInputMode = PlayerServiceClient.RefreshPlatformInputMode
@@ -1008,7 +1044,10 @@ type PlayerServiceClient = typeof(PlayerServiceClient) & {
 	resetMovementInputState: (self: PlayerServiceClient) -> (),
 	setMovementActionValue: (self: PlayerServiceClient, actionNameRaw: any, valueRaw: any) -> (),
 	setGamepadMoveVector: (self: PlayerServiceClient, vectorRaw: any) -> (),
+	getPolledGamepadMoveAxis: (self: PlayerServiceClient) -> number?,
 	onGamepadMoveInputChanged: (self: PlayerServiceClient, inputObjectRaw: any) -> (),
+	getActionHorizontalMoveAxis: (self: PlayerServiceClient) -> number,
+	getGamepadMoveAxis: (self: PlayerServiceClient) -> number,
 	getHorizontalMoveAxis: (self: PlayerServiceClient) -> number,
 	getVerticalMoveAxis: (self: PlayerServiceClient) -> number,
 	refreshPlatformInputMode: (self: PlayerServiceClient) -> (),
@@ -1080,4 +1119,3 @@ type PlayerServiceClient = typeof(PlayerServiceClient) & {
 }
 
 return PlayerServiceClient :: PlayerServiceClient
-

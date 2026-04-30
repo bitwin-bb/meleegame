@@ -3,10 +3,10 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Camera = require(script:FindFirstAncestor("game").Shared.Classes.Camera)
 local CameraServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.CameraServiceUtils)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 
 type CameraMode = CameraServiceUtils.CameraMode
 type SideViewConfig = CameraServiceUtils.SideViewConfig
@@ -30,6 +30,7 @@ function CameraServiceClient.Init(self: CameraServiceClient)
 	local defaultState = CameraServiceUtils.createDefaultState()
 	self.currentMode = defaultState.mode
 	self.sideViewConfig = defaultState.sideViewConfig
+	self.snapSideViewOnNextTarget = true
 	self.cameraController = Camera.new({
 		SideView = {
 			config = self.sideViewConfig,
@@ -54,6 +55,7 @@ end
 
 function CameraServiceClient.OnCharacterAdded(self: CameraServiceClient, character: Model)
 	self.character = character
+	self.snapSideViewOnNextTarget = true
 	self.characterJanitor:Clean()
 	self.cameraController:setSideViewCharacter(character)
 
@@ -65,7 +67,7 @@ function CameraServiceClient.OnCharacterAdded(self: CameraServiceClient, charact
 
 		local target = CameraServiceUtils.resolveCharacterTarget(character)
 		if target then
-			self.cameraController:useSideView(target, self.sideViewConfig)
+			self:applySideView()
 
 			if childAddedConnection then
 				childAddedConnection:Disconnect()
@@ -89,7 +91,12 @@ function CameraServiceClient.ApplySideView(self: CameraServiceClient)
 	self.cameraController:setSideViewCharacter(self.character)
 
 	local target = CameraServiceUtils.resolveCharacterTarget(self.character)
-	self.cameraController:useSideView(target, self.sideViewConfig)
+	local snapToTarget = self.snapSideViewOnNextTarget == true and target ~= nil
+	self.cameraController:useSideView(target, self.sideViewConfig, snapToTarget)
+
+	if snapToTarget then
+		self.snapSideViewOnNextTarget = false
+	end
 end
 
 function CameraServiceClient.ApplyMode(self: CameraServiceClient, mode: any, sideViewConfig: any)
@@ -173,7 +180,7 @@ type CameraServiceClient = typeof(CameraServiceClient) & {
 	currentMode: CameraMode,
 	sideViewConfig: SideViewConfig,
 	character: Model?,
+	snapSideViewOnNextTarget: boolean,
 }
 
 return CameraServiceClient :: CameraServiceClient
-

@@ -3,8 +3,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local Workspace = game:GetService("Workspace")
-local WorldGenerationColor = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationColor)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
+local Height = require(script.Parent.Height)
+local WorldGenerationColor = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationColor)
 
 local ProceduralTree = {}
 ProceduralTree.__index = ProceduralTree
@@ -476,6 +477,10 @@ local function applyWindFoliageMetadata(treeModel: Model, rootPart: BasePart, co
 	treeModel:SetAttribute("WindFoliageTranslationWeight", 0)
 end
 
+local function resolveInitialLength(config: ResolvedProceduralTreeConfig, seed: number): number
+	return config.InitialLength * Height.ResolveHeightScale(seed)
+end
+
 function ProceduralTree.New(configRaw: ProceduralTreeConfig?): ProceduralTree
 	local config = resolveConfig(configRaw)
 
@@ -627,7 +632,7 @@ function ProceduralTree.BuildRecursiveDescriptors(
 		end
 	end
 
-	grow(Vector3.zero, Vector3.yAxis, self.config.InitialLength, self.config.InitialThickness, 0, 0)
+	grow(Vector3.zero, Vector3.yAxis, resolveInitialLength(self.config, self.seed), self.config.InitialThickness, 0, 0)
 	return branches, leaves
 end
 
@@ -643,7 +648,7 @@ function ProceduralTree.BuildLSystemStyleDescriptors(
 			parentIndex = 0,
 			startPosition = Vector3.zero,
 			direction = Vector3.yAxis,
-			length = self.config.InitialLength,
+			length = resolveInitialLength(self.config, self.seed),
 			thickness = self.config.InitialThickness,
 			depth = 0,
 		},
@@ -819,6 +824,7 @@ function ProceduralTree.Generate(self: ProceduralTree, parentRaw: Instance?, bas
 	treeModel.Name = self.config.ModelName
 	treeModel:SetAttribute("Seed", self.seed)
 	treeModel:SetAttribute("Algorithm", self.config.Algorithm)
+	treeModel:SetAttribute("HeightScale", Height.ResolveHeightScale(self.seed))
 	treeModel:SetAttribute("BranchCount", #branchDescriptors)
 	treeModel:SetAttribute("LeafCount", #leafDescriptors)
 

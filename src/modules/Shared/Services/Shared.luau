@@ -41,6 +41,8 @@ local HUMIDITY_OFFSET_X = 881.42
 local HUMIDITY_OFFSET_Y = 439.57
 local TERRAIN_HEIGHT_OFFSET_X = 1193.27
 local TERRAIN_HEIGHT_OFFSET_Y = 719.81
+local TERRAIN_ROLLING_OFFSET_X = 1311.64
+local TERRAIN_ROLLING_OFFSET_Y = 863.52
 local TERRAIN_DETAIL_OFFSET_X = 1427.41
 local TERRAIN_DETAIL_OFFSET_Y = 1001.33
 local CORRUPTION_NOISE_OFFSET_X = 1733.11
@@ -247,18 +249,112 @@ function Shared.SampleFractalNoise3D(
 end
 
 function Shared.SampleTemperature(seed: number, worldX: number, worldZ: number): number
-	return Shared.SampleFractalNoise2D(seed, worldX, worldZ, 0.0037, 3, 2.05, 0.52, TEMPERATURE_OFFSET_X, TEMPERATURE_OFFSET_Y)
+	return Shared.SampleFractalNoise2D(
+		seed,
+		worldX,
+		worldZ,
+		0.0037,
+		3,
+		2.05,
+		0.52,
+		TEMPERATURE_OFFSET_X,
+		TEMPERATURE_OFFSET_Y
+	)
 end
 
 function Shared.SampleHumidity(seed: number, worldX: number, worldZ: number): number
-	return Shared.SampleFractalNoise2D(seed, worldX, worldZ, 0.0033, 3, 2.02, 0.55, HUMIDITY_OFFSET_X, HUMIDITY_OFFSET_Y)
+	return Shared.SampleFractalNoise2D(
+		seed,
+		worldX,
+		worldZ,
+		0.0033,
+		3,
+		2.02,
+		0.55,
+		HUMIDITY_OFFSET_X,
+		HUMIDITY_OFFSET_Y
+	)
 end
 
 function Shared.SampleSurfaceHeight(seed: number, worldX: number, worldZ: number): number
-	local broad = Shared.SampleFractalNoise2D(seed, worldX, worldZ, 0.0028, 4, 2.1, 0.48, TERRAIN_HEIGHT_OFFSET_X, TERRAIN_HEIGHT_OFFSET_Y)
-	local detail = Shared.SampleFractalNoise2D(seed, worldX, worldZ, 0.0097, 2, 2, 0.5, TERRAIN_DETAIL_OFFSET_X, TERRAIN_DETAIL_OFFSET_Y)
-	local ridged = math.abs(detail)
-	return math.floor(12 + broad * 16 + ridged * 6)
+	local biomeId = Shared.ResolveBiomeId(seed, worldX, worldZ, {})
+	local broad = Shared.SampleFractalNoise3D(
+		seed,
+		worldX,
+		0,
+		worldZ,
+		0.0024,
+		4,
+		2.1,
+		0.48,
+		TERRAIN_HEIGHT_OFFSET_X,
+		TERRAIN_HEIGHT_OFFSET_Y
+	)
+	local rolling = Shared.SampleFractalNoise3D(
+		seed + 187,
+		worldX,
+		0,
+		worldZ,
+		0.0062,
+		3,
+		2.05,
+		0.5,
+		TERRAIN_ROLLING_OFFSET_X,
+		TERRAIN_ROLLING_OFFSET_Y
+	)
+	local detail = Shared.SampleFractalNoise3D(
+		seed + 421,
+		worldX,
+		0,
+		worldZ,
+		0.015,
+		2,
+		2,
+		0.5,
+		TERRAIN_DETAIL_OFFSET_X,
+		TERRAIN_DETAIL_OFFSET_Y
+	)
+	local ridged = math.abs(
+		Shared.SampleFractalNoise3D(
+			seed - 113,
+			worldX,
+			0,
+			worldZ,
+			0.0088,
+			2,
+			2,
+			0.5,
+			TERRAIN_DETAIL_OFFSET_X + 317.8,
+			TERRAIN_DETAIL_OFFSET_Y + 211.4
+		)
+	)
+	local height = 12 + broad * 13.5 + rolling * 5 + detail * 1.2 + ridged * 3.25
+
+	if biomeId == Shared.BIOME_ID.DESERT then
+		height -= 2
+		height += Shared.SampleFractalNoise3D(
+			seed + 911,
+			worldX,
+			0,
+			worldZ,
+			0.0042,
+			3,
+			1.92,
+			0.52,
+			TERRAIN_HEIGHT_OFFSET_X + 541.3,
+			TERRAIN_HEIGHT_OFFSET_Y + 429.7
+		) * 4.5
+	elseif biomeId == Shared.BIOME_ID.SNOW then
+		height += 1.5
+		height += ridged * 1.25
+	elseif biomeId == Shared.BIOME_ID.JUNGLE then
+		height += 2.5
+		height += rolling * 2
+	elseif biomeId == Shared.BIOME_ID.CORRUPTION then
+		height += ridged * 2.5 - 1
+	end
+
+	return math.floor(height + 0.5)
 end
 
 function Shared.ResolveBiomeId(seed: number, worldX: number, worldZ: number, thresholds: { [string]: number }): number

@@ -1,6 +1,6 @@
 local DataTemplate = {
 	playerData = {
-		allowMovementFreeze = true,
+		allowMovementFreeze = false,
 		respawnCooldown = 5,
 		inventory = {
 			capacity = 72,

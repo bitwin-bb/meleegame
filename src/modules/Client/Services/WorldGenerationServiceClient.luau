@@ -6,19 +6,19 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local OreRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Ores)
 local PlantRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Plants)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
-local ProceduralTree = require(script:FindFirstAncestor("game").Shared.Classes.WorldGeneration.Tree)
 local ProceduralCactus = require(script:FindFirstAncestor("game").Shared.Classes.WorldGeneration.Cactus)
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
+local ProceduralTree = require(script:FindFirstAncestor("game").Shared.Classes.WorldGeneration.Tree)
+local Signal = require(ReplicatedStorage.Packages.Signal)
+local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local WorldGenerationColor = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationColor)
 local WorldGenerationServiceUtils =
 	require(script:FindFirstAncestor("game").Shared.Services.WorldGenerationServiceUtils)
-local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 
 type WorldGenerationServiceState = WorldGenerationServiceUtils.WorldGenerationServiceState
 type ProceduralTreeConfig = ProceduralTree.ProceduralTreeConfig
@@ -149,11 +149,11 @@ local WORLD_FOLDER_NAME = "WorldGeneration"
 local CHUNKS_FOLDER_NAME = "Chunks"
 local DEFAULT_BASE_PLANE_X = 0
 local DEFAULT_WORLD_ORIGIN = Vector3.zero
-local MAX_CHUNK_REBUILDS_PER_HEARTBEAT = 2
+local MAX_CHUNK_REBUILDS_PER_HEARTBEAT = 8
 local MAX_VISUAL_PARTS_TOTAL = 35000
 local MAX_VISUAL_PARTS_PER_CHUNK = 2800
-local MIN_SECONDS_BETWEEN_REBUILDS_PER_CHUNK = 0.08
-local VISIBILITY_REFRESH_INTERVAL = 0.1
+local MIN_SECONDS_BETWEEN_REBUILDS_PER_CHUNK = 0.02
+local VISIBILITY_REFRESH_INTERVAL = 0.03
 local MAX_REBUILD_QUEUE_LENGTH = 2048
 local DEFAULT_CHUNK_ANIMATION_SKIP_SECONDS = 1.5
 local MAX_CHUNK_ANIMATION_SKIP_SECONDS = 8
@@ -543,6 +543,40 @@ local function countBaseParts(instance: Instance): number
 	return total
 end
 
+local function computeBasePartBottomY(part: BasePart): number
+	local halfSize = part.Size * 0.5
+	local cframe = part.CFrame
+	local worldHalfY = math.abs(cframe.RightVector.Y) * halfSize.X
+		+ math.abs(cframe.UpVector.Y) * halfSize.Y
+		+ math.abs(cframe.LookVector.Y) * halfSize.Z
+	return cframe.Position.Y - worldHalfY
+end
+
+local function alignInstanceBottomToY(instance: Instance, targetBottomY: number)
+	local bottomY: number?
+	if instance:IsA("Model") then
+		local boundsCFrame, boundsSize = instance:GetBoundingBox()
+		bottomY = boundsCFrame.Position.Y - boundsSize.Y * 0.5
+	elseif instance:IsA("BasePart") then
+		bottomY = computeBasePartBottomY(instance)
+	end
+
+	if bottomY == nil then
+		return
+	end
+
+	local offsetY = targetBottomY - bottomY
+	if math.abs(offsetY) <= 0.0001 then
+		return
+	end
+
+	if instance:IsA("Model") then
+		instance:PivotTo(instance:GetPivot() + Vector3.new(0, offsetY, 0))
+	elseif instance:IsA("BasePart") then
+		instance.CFrame = instance.CFrame + Vector3.new(0, offsetY, 0)
+	end
+end
+
 local function computeTreeSignature(snapshot: ChunkSnapshot): string
 	local trees = snapshot.trees
 	if #trees <= 0 then
@@ -741,11 +775,8 @@ local function createDeadBushFallbackModel(variantIndex: number, seed: number): 
 		stem.Size = Vector3.new(thickness, height, thickness)
 		local angle = math.rad(randomObject:NextNumber(-28, 28))
 		local yaw = math.rad(randomObject:NextNumber(-35, 35))
-		stem.CFrame = CFrame.new(
-			randomObject:NextNumber(-0.35, 0.35),
-			height * 0.5,
-			randomObject:NextNumber(-0.2, 0.2)
-		) * CFrame.Angles(0, yaw, angle)
+		stem.CFrame = CFrame.new(randomObject:NextNumber(-0.35, 0.35), height * 0.5, randomObject:NextNumber(-0.2, 0.2))
+			* CFrame.Angles(0, yaw, angle)
 		stem.Parent = model
 	end
 
@@ -819,11 +850,8 @@ local function createSnowPileFallbackModel(variantIndex: number, seed: number): 
 			randomObject:NextNumber(0.45, 0.85),
 			randomObject:NextNumber(0.7, 1.4)
 		)
-		mound.CFrame = CFrame.new(
-			randomObject:NextNumber(-0.25, 0.25),
-			mound.Size.Y * 0.5,
-			randomObject:NextNumber(-0.12, 0.12)
-		)
+		mound.CFrame =
+			CFrame.new(randomObject:NextNumber(-0.25, 0.25), mound.Size.Y * 0.5, randomObject:NextNumber(-0.12, 0.12))
 		mound.Parent = model
 	end
 
@@ -1044,8 +1072,7 @@ local function applyGrassTextures(
 	local safeTileDepth = math.max(0.01, tileDepth)
 	local tint = if textureTint ~= nil then textureTint else Color3.new(1, 1, 1)
 	if typeof(textureDefinition.top) == "string" and textureDefinition.top ~= "" then
-		local studsPerTileU, studsPerTileV =
-			resolveGrassTextureScale(Enum.NormalId.Top, safeTileSize, safeTileDepth)
+		local studsPerTileU, studsPerTileV = resolveGrassTextureScale(Enum.NormalId.Top, safeTileSize, safeTileDepth)
 		local topTexture = Instance.new("Texture")
 		topTexture.Name = GRASS_TEXTURE_NAME
 		topTexture.Face = Enum.NormalId.Top
@@ -1802,7 +1829,14 @@ end
 function WorldGenerationServiceClient.BuildChunkVisualModel(
 	self: WorldGenerationServiceClient,
 	snapshot: ChunkSnapshot
-): (Model, number, Folder, Folder, { TerrainRectRuntime }, { number })
+): (
+	Model,
+	number,
+	Folder,
+	Folder,
+	{ TerrainRectRuntime },
+	{ number }
+)
 	local model = Instance.new("Model")
 	model.Name = `Chunk_{snapshot.chunkX}_{snapshot.chunkY}`
 	model:SetAttribute("ChunkX", snapshot.chunkX)
@@ -1989,13 +2023,16 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 
 		local centerTileX = propSpawnData.tileX + 0.5
 		local centerTileY = propSpawnData.tileY + TREE_SURFACE_OFFSET_Y_TILES
-		if propSpawnData.propId == PROP_ID_DEAD_BUSH
+		if
+			propSpawnData.propId == PROP_ID_DEAD_BUSH
 			or propSpawnData.propId == PROP_ID_DESERT_ROCK
-			or propSpawnData.propId == PROP_ID_SNOW_PILE then
+			or propSpawnData.propId == PROP_ID_SNOW_PILE
+		then
 			centerTileY = propSpawnData.tileY + 0.5
 		end
 		local position = self:computeTileCenterPosition(centerTileX, centerTileY, treePlaneOffset)
 		local propInstance: Instance?
+		local useGeneratedBoundsPlacement = false
 		if propSpawnData.propId == PROP_ID_CORRUPTION_SPIKE then
 			local templates = self.propTemplatesByPropId[propSpawnData.propId]
 			propInstance = if templates ~= nil
@@ -2031,6 +2068,7 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 				SegmentCanCollide = false,
 			})
 			propInstance = cactusGenerator:Generate(position)
+			useGeneratedBoundsPlacement = true
 		elseif propSpawnData.propId == PROP_ID_DESERT_ROCK then
 			propInstance = createDesertRockFallbackModel(propSpawnData.variantIndex, propSpawnData.seed)
 		elseif propSpawnData.propId == PROP_ID_SNOW_PILE then
@@ -2051,15 +2089,12 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 
 		local generatedPartCount = 0
 		if propInstance:IsA("Model") then
-			local existingPivot = propInstance:GetPivot()
-			local preservedRotation = existingPivot - existingPivot.Position
-			propInstance:PivotTo(CFrame.new(position) * preservedRotation)
-			local boundsCFrame, boundsSize = propInstance:GetBoundingBox()
-			local boundsBottomY = boundsCFrame.Position.Y - boundsSize.Y * 0.5
-			local bottomOffset = position.Y - boundsBottomY
-			if math.abs(bottomOffset) > 0.0001 then
-				propInstance:PivotTo(propInstance:GetPivot() + Vector3.new(0, bottomOffset, 0))
+			if not useGeneratedBoundsPlacement then
+				local existingPivot = propInstance:GetPivot()
+				local preservedRotation = existingPivot - existingPivot.Position
+				propInstance:PivotTo(CFrame.new(position) * preservedRotation)
 			end
+			alignInstanceBottomToY(propInstance, position.Y)
 
 			generatedPartCount = countBaseParts(propInstance)
 			for _, descendant in propInstance:GetDescendants() do
@@ -2072,7 +2107,8 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 				end
 			end
 		elseif propInstance:IsA("BasePart") then
-			propInstance.CFrame = CFrame.new(position + Vector3.new(0, propInstance.Size.Y * 0.5, 0))
+			propInstance.CFrame = CFrame.new(position)
+			alignInstanceBottomToY(propInstance, position.Y)
 			propInstance.Anchored = true
 			propInstance.CanCollide = false
 			propInstance.CanQuery = false
@@ -2492,18 +2528,22 @@ WorldGenerationServiceClient.resolveChunksFolder = WorldGenerationServiceClient.
 WorldGenerationServiceClient.refreshWorldAttributes = WorldGenerationServiceClient.RefreshWorldAttributes
 WorldGenerationServiceClient.computeTileCenterPosition = WorldGenerationServiceClient.ComputeTileCenterPosition
 WorldGenerationServiceClient.createForegroundRectPart = WorldGenerationServiceClient.CreateForegroundRectPart
-WorldGenerationServiceClient.clearHoveredTerrainTileRuntime = WorldGenerationServiceClient.ClearHoveredTerrainTileRuntime
+WorldGenerationServiceClient.clearHoveredTerrainTileRuntime =
+	WorldGenerationServiceClient.ClearHoveredTerrainTileRuntime
 WorldGenerationServiceClient.resolveTerrainRectRuntime = WorldGenerationServiceClient.ResolveTerrainRectRuntime
-WorldGenerationServiceClient.applyHoveredTerrainTileRuntime = WorldGenerationServiceClient.ApplyHoveredTerrainTileRuntime
+WorldGenerationServiceClient.applyHoveredTerrainTileRuntime =
+	WorldGenerationServiceClient.ApplyHoveredTerrainTileRuntime
 WorldGenerationServiceClient.setHoveredTerrainTile = WorldGenerationServiceClient.SetHoveredTerrainTile
 WorldGenerationServiceClient.clearHoveredTerrainTile = WorldGenerationServiceClient.ClearHoveredTerrainTile
 WorldGenerationServiceClient.enqueueChunkRebuild = WorldGenerationServiceClient.EnqueueChunkRebuild
 WorldGenerationServiceClient.dequeueChunkRebuild = WorldGenerationServiceClient.DequeueChunkRebuild
 WorldGenerationServiceClient.destroyChunkVisual = WorldGenerationServiceClient.DestroyChunkVisual
 WorldGenerationServiceClient.replaceChunkVisualContents = WorldGenerationServiceClient.ReplaceChunkVisualContents
-WorldGenerationServiceClient.suppressChunkAnimationForChunkKey = WorldGenerationServiceClient.SuppressChunkAnimationForChunkKey
+WorldGenerationServiceClient.suppressChunkAnimationForChunkKey =
+	WorldGenerationServiceClient.SuppressChunkAnimationForChunkKey
 WorldGenerationServiceClient.suppressChunkAnimationForTile = WorldGenerationServiceClient.SuppressChunkAnimationForTile
-WorldGenerationServiceClient.shouldSkipChunkAnimationForKey = WorldGenerationServiceClient.ShouldSkipChunkAnimationForKey
+WorldGenerationServiceClient.shouldSkipChunkAnimationForKey =
+	WorldGenerationServiceClient.ShouldSkipChunkAnimationForKey
 WorldGenerationServiceClient.sanitizeChunkSnapshot = WorldGenerationServiceClient.SanitizeChunkSnapshot
 WorldGenerationServiceClient.onChunkSnapshot = WorldGenerationServiceClient.OnChunkSnapshot
 WorldGenerationServiceClient.onChunkUnloaded = WorldGenerationServiceClient.OnChunkUnloaded
@@ -2520,7 +2560,8 @@ WorldGenerationServiceClient.getRenderDistance = WorldGenerationServiceClient.Ge
 WorldGenerationServiceClient.getBiomeTypeAtWorldPosition = WorldGenerationServiceClient.GetBiomeTypeAtWorldPosition
 WorldGenerationServiceClient.getBiomeIdAtWorldPosition = WorldGenerationServiceClient.GetBiomeIdAtWorldPosition
 WorldGenerationServiceClient.getDepthLayerAtWorldPosition = WorldGenerationServiceClient.GetDepthLayerAtWorldPosition
-WorldGenerationServiceClient.getDepthBelowSurfaceAtWorldPosition = WorldGenerationServiceClient.GetDepthBelowSurfaceAtWorldPosition
+WorldGenerationServiceClient.getDepthBelowSurfaceAtWorldPosition =
+	WorldGenerationServiceClient.GetDepthBelowSurfaceAtWorldPosition
 WorldGenerationServiceClient.init = WorldGenerationServiceClient.Init
 WorldGenerationServiceClient.destroy = WorldGenerationServiceClient.Destroy
 
@@ -2555,4 +2596,3 @@ type WorldGenerationServiceClient = typeof(WorldGenerationServiceClient) & {
 }
 
 return WorldGenerationServiceClient :: WorldGenerationServiceClient
-

@@ -1157,6 +1157,10 @@ function CactusGenerator.BuildGeometry(self: CactusGenerator, skeleton: Skeleton
 		model:PivotTo(model:GetPivot() + Vector3.new(0, bottomAlignmentOffset, 0))
 	end
 
+	-- Keep generated cactus placement anchored at the terrain contact point, not the first trunk segment center.
+	model.PrimaryPart = nil
+	model.WorldPivot = CFrame.new(origin)
+
 	model.Parent = if self.Config.Parent ~= nil then self.Config.Parent else Workspace
 	self.Model = model
 	return model

@@ -15,7 +15,6 @@ local Signal = loader("Signal")
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
-local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
 local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local WorldGeneration = require(script:FindFirstAncestor("game").Shared.Classes.WorldGeneration)
@@ -82,9 +81,9 @@ type ChunkLifecycleEvent = {
 
 local MIN_INT32_SEED = -2147483648
 local MAX_INT32_SEED = 2147483647
-local CHUNK_STREAM_SYNC_INTERVAL = 0.08
-local CHUNK_STREAM_GLOBAL_BUDGET_PER_TICK = 12
-local CHUNK_STREAM_PER_PLAYER_BUDGET_PER_TICK = 3
+local CHUNK_STREAM_SYNC_INTERVAL = 0.03
+local CHUNK_STREAM_GLOBAL_BUDGET_PER_TICK = 64
+local CHUNK_STREAM_PER_PLAYER_BUDGET_PER_TICK = 16
 local CHUNK_STREAM_SIMULATION_BUDGET_PER_TICK = 24
 local CHUNK_STREAM_MAX_QUEUE_PER_PLAYER = 4096
 
@@ -127,17 +126,6 @@ local function countLookupEntries(lookup: { [any]: any }): number
 	return count
 end
 
-local function isGameplayReplicationActive(player: Player): boolean
-	local activeCheck = (PlayerServiceServer :: any).isGameplayActiveForPlayer
-	if typeof(activeCheck) ~= "function" then
-		return true
-	end
-	local ok, isActive = pcall(function()
-		return (PlayerServiceServer :: any):isGameplayActiveForPlayer(player)
-	end)
-	return ok and isActive == true
-end
-
 local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
@@ -171,8 +159,64 @@ local function packChunkKey(chunkX: number, chunkY: number): string
 	return `{chunkX}:{chunkY}`
 end
 
+local function unpackChunkKey(chunkKey: string): (number?, number?)
+	local xRaw, yRaw = string.match(chunkKey, "^(-?%d+):(-?%d+)$")
+	if xRaw == nil or yRaw == nil then
+		return nil, nil
+	end
+	return tonumber(xRaw), tonumber(yRaw)
+end
+
 local function toTileCoordinate(worldAxis: number, tileSize: number): number
 	return math.floor(worldAxis / tileSize)
+end
+
+local function toChunkCoordinate(tile: number, chunkSize: number): number
+	return math.floor(tile / chunkSize)
+end
+
+local function collectSortedInterestKeys(
+	world: WorldGenerationClass,
+	player: Player,
+	interestKeys: { [string]: boolean }
+): { string }
+	local centerChunkX = 0
+	local centerChunkY = 0
+	local focusPosition = world:getPlayerFocusPosition(player)
+	if typeof(focusPosition) == "Vector3" then
+		local tileX = toTileCoordinate(focusPosition.Z - world.worldOrigin.Z, world.tileSize)
+		local tileY = toTileCoordinate(focusPosition.Y - world.worldOrigin.Y, world.tileSize)
+		centerChunkX = toChunkCoordinate(tileX, world.chunkSize)
+		centerChunkY = toChunkCoordinate(tileY, world.chunkSize)
+	end
+
+	local entries = {}
+	for chunkKey in interestKeys do
+		local chunkX, chunkY = unpackChunkKey(chunkKey)
+		local distanceSquared = math.huge
+		if chunkX ~= nil and chunkY ~= nil then
+			local deltaX = chunkX - centerChunkX
+			local deltaY = chunkY - centerChunkY
+			distanceSquared = deltaX * deltaX + deltaY * deltaY
+		end
+		entries[#entries + 1] = {
+			key = chunkKey,
+			distanceSquared = distanceSquared,
+		}
+	end
+
+	table.sort(entries, function(left, right)
+		if left.distanceSquared ~= right.distanceSquared then
+			return left.distanceSquared < right.distanceSquared
+		end
+		return left.key < right.key
+	end)
+
+	local sortedKeys = table.create(#entries)
+	for index, entry in entries do
+		sortedKeys[index] = entry.key
+	end
+	return sortedKeys
 end
 
 local function isChunkYWithinBounds(config: WorldGenerationConfig, chunkY: number): boolean
@@ -286,10 +330,12 @@ function WorldGenerationServiceServer.Init(self: WorldGenerationServiceServer)
 		self:enableStudioPreview()
 	end
 
+	for _, player in Players:GetPlayers() do
+		self:trackPlayer(player)
+	end
+
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		if isGameplayReplicationActive(player) then
-			self:trackPlayer(player)
-		end
+		self:trackPlayer(player)
 	end)
 	self.maid:GiveTask(self.playerAddedConnection)
 
@@ -817,9 +863,12 @@ function WorldGenerationServiceServer.SyncPlayerChunkStream(
 		else world:getPlayerInterestKeys(player)
 	self:pushPlayerInterestToWorldSimulation(player, nextInterest)
 
-	for chunkKey in nextInterest do
+	for _, chunkKey in collectSortedInterestKeys(world, player, nextInterest) do
 		local revision = world:getChunkRevisionByKey(chunkKey)
 		self:enqueueChunkForWorldSimulation(chunkKey, revision)
+		if not world:isChunkCollisionReadyByKey(chunkKey) then
+			continue
+		end
 		if stream.sentRevisions[chunkKey] ~= revision then
 			enqueueChunkForStream(stream, chunkKey)
 		elseif stream.interestKeys[chunkKey] == nil then
@@ -863,6 +912,9 @@ function WorldGenerationServiceServer.ProcessChunkStreamQueues(self: WorldGenera
 
 			local revision = self.world:getChunkRevisionByKey(chunkKey)
 			if stream.sentRevisions[chunkKey] == revision then
+				continue
+			end
+			if not self.world:isChunkCollisionReadyByKey(chunkKey) then
 				continue
 			end
 
@@ -1173,4 +1225,3 @@ type WorldGenerationServiceServer = typeof(WorldGenerationServiceServer) & {
 }
 
 return WorldGenerationServiceServer :: WorldGenerationServiceServer
-

@@ -1,18 +1,17 @@
 --!strict
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local DataTemplate = require(script:FindFirstAncestor("game").Shared.Modules.Core.DataTemplate)
+local GoreServiceServer = require(script:FindFirstAncestor("game").Server.Services.GoreServiceServer)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerServiceUtils)
+local PlayerSpawnCooldown = require(script:FindFirstAncestor("game").Shared.Modules.Game.Player.PlayerSpawnCooldown)
 local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
-local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerServiceUtils)
-local DataTemplate = require(script:FindFirstAncestor("game").Shared.Modules.Core.DataTemplate)
-local PlayerSpawnCooldown = require(script:FindFirstAncestor("game").Shared.Modules.Game.Player.PlayerSpawnCooldown)
-local GoreServiceServer = require(script:FindFirstAncestor("game").Server.Services.GoreServiceServer)
 
 type FacingSign = PlayerServiceUtils.FacingSign
 type InvincibilityFramesConfig = PlayerServiceUtils.InvincibilityFramesConfig
@@ -73,6 +72,7 @@ local WORLD_SURFACE_SNAP_RAYCAST_HEIGHT = 2048
 local WORLD_SURFACE_SNAP_RAYCAST_DEPTH = WORLD_SURFACE_SNAP_RAYCAST_HEIGHT * 2
 local WORLD_SURFACE_MIN_NORMAL_Y = 0.5
 local DAMAGE_FEEDBACK_MIN_INTERVAL = 0.12
+local LOADING_SCREEN_READY_REMOTE_NAME = "AquariaLoadingScreenReady"
 
 local function resolveInvincibilityFramesConfigFromTemplate(): InvincibilityFramesConfig
 	local template = if typeof(DataTemplate) == "table" then DataTemplate else {}
@@ -88,6 +88,21 @@ local function resolveAllowMovementFreezeFromTemplate(): boolean
 		return allowMovementFreeze
 	end
 	return true
+end
+
+local function ensureRemoteEvent(parent: Instance, name: string): RemoteEvent
+	local existing = parent:FindFirstChild(name)
+	if existing ~= nil then
+		if existing:IsA("RemoteEvent") then
+			return existing
+		end
+		existing:Destroy()
+	end
+
+	local remote = Instance.new("RemoteEvent")
+	remote.Name = name
+	remote.Parent = parent
+	return remote
 end
 
 function PlayerServiceServer.EmitPlayerGore(
@@ -138,9 +153,10 @@ function PlayerServiceServer.Init(self: PlayerServiceServer)
 	self.playerState = {}
 	self.playerRuntimes = {}
 	self.activeGameplayPlayers = {}
+	self.loadingScreenReadyPlayers = {}
 	self.invincibilityFramesConfig = resolveInvincibilityFramesConfigFromTemplate()
 	self.allowMovementFreeze = resolveAllowMovementFreezeFromTemplate()
-	Players.CharacterAutoLoads = true
+	Players.CharacterAutoLoads = false
 	PlayerServiceUtils.getOrCreateWorkspaceGameFolder()
 	PlayerSpawnCooldown.applyConfiguredRespawnDelay()
 	self.goreService = GoreServiceServer :: GoreServiceServerObject
@@ -151,6 +167,10 @@ function PlayerServiceServer.Init(self: PlayerServiceServer)
 		self.RequestState,
 		self.SetWorldReadyForMovement,
 	})
+	self.loadingScreenReadyRemote = ensureRemoteEvent(ReplicatedStorage, LOADING_SCREEN_READY_REMOTE_NAME)
+	self.loadingScreenReadyConnection = self.loadingScreenReadyRemote.OnServerEvent:Connect(function(player, statusRaw)
+		self:onLoadingScreenReady(player, statusRaw)
+	end)
 	self.binders = NevermoreSupport.getService(ServerBinderSupport)
 
 	for _, player in Players:GetPlayers() do
@@ -170,16 +190,37 @@ function PlayerServiceServer.IsGameplayActiveForPlayer(self: PlayerServiceServer
 	return self.activeGameplayPlayers[player] == true
 end
 
+function PlayerServiceServer.OnLoadingScreenReady(self: PlayerServiceServer, player: Player, statusRaw: any): boolean
+	if player.Parent ~= Players then
+		return false
+	end
+	if self.loadingScreenReadyPlayers[player] == true then
+		return true
+	end
+
+	local status = if typeof(statusRaw) == "string" then statusRaw else ""
+	if status ~= "complete" and status ~= "failed" then
+		return false
+	end
+
+	self.loadingScreenReadyPlayers[player] = true
+	return self:enterGameplay(player)
+end
+
 function PlayerServiceServer.EnterGameplay(self: PlayerServiceServer, player: Player): boolean
 	self.activeGameplayPlayers[player] = true
+	self:setMovementLocked(player, true, true, true)
 
 	local character = player.Character
 	if character ~= nil then
 		local humanoid = character:FindFirstChildOfClass("Humanoid")
 		if humanoid ~= nil and humanoid.Health > 0 then
-			self:setMovementLocked(player, true, true)
 			self:applyGameplaySpawnToCharacter(player, character)
-			self:queueSpawnSurfaceSnap(player, character, humanoid)
+			if self:trySnapCharacterToWorldSurface(player, character, humanoid) then
+				self:setMovementLocked(player, false, true)
+			else
+				self:queueSpawnSurfaceSnap(player, character, humanoid)
+			end
 			return true
 		end
 	end
@@ -238,9 +279,11 @@ function PlayerServiceServer.ApplyMovementLockToRuntime(
 	end
 
 	if movementLocked then
-		if runtime.movementLockAnchoredRoot
+		if
+			runtime.movementLockAnchoredRoot
 			and runtime.movementLockAnchoredRoot ~= rootPart
-			and runtime.movementLockAnchoredRoot.Parent ~= nil then
+			and runtime.movementLockAnchoredRoot.Parent ~= nil
+		then
 			runtime.movementLockAnchoredRoot.Anchored = false
 		end
 		if not rootPart.Anchored then
@@ -264,9 +307,10 @@ function PlayerServiceServer.SetMovementLocked(
 	self: PlayerServiceServer,
 	player: Player,
 	movementLocked: boolean,
-	replicateToClient: boolean?
+	replicateToClient: boolean?,
+	forceLock: boolean?
 )
-	if not self.allowMovementFreeze then
+	if movementLocked and not self.allowMovementFreeze and forceLock ~= true then
 		movementLocked = false
 	end
 
@@ -640,7 +684,11 @@ function PlayerServiceServer.BindHumanoid(self: PlayerServiceServer, player: Pla
 	end
 	self:applyMovementLockToRuntime(runtime, player, state.movementLocked)
 	if character and character:IsA("Model") then
-		self:queueSpawnSurfaceSnap(player, character, humanoid)
+		if self:trySnapCharacterToWorldSurface(player, character, humanoid) then
+			self:setMovementLocked(player, false, true)
+		else
+			self:queueSpawnSurfaceSnap(player, character, humanoid)
+		end
 	end
 
 	runtime.characterJanitor:GiveChore(humanoid.HealthChanged:Connect(function(nextHealth: number)
@@ -666,8 +714,10 @@ function PlayerServiceServer.BindHumanoid(self: PlayerServiceServer, player: Pla
 
 		runtime.deathFeedbackLocked = true
 		self:stopInvincibilityFrames(runtime)
-		state.nextSpawnHealth =
-			PlayerServiceUtils.computeRespawnHealthFromDeath(humanoid.MaxHealth, PlayerServiceUtils.DEFAULT_DEATH_RESPAWN_HEALTH_SCALE)
+		state.nextSpawnHealth = PlayerServiceUtils.computeRespawnHealthFromDeath(
+			humanoid.MaxHealth,
+			PlayerServiceUtils.DEFAULT_DEATH_RESPAWN_HEALTH_SCALE
+		)
 		if self.ragdollService ~= nil then
 			pcall(function()
 				self.ragdollService:setPlayerRagdoll(player, true, "Death", nil, false, nil)
@@ -714,7 +764,7 @@ function PlayerServiceServer.BindCharacter(self: PlayerServiceServer, player: Pl
 	if self.goreService ~= nil then
 		self.goreService:unregisterPlayer(player)
 	end
-	self:setMovementLocked(player, true, true)
+	self:setMovementLocked(player, true, true, true)
 	self:stopInvincibilityFrames(runtime)
 	runtime.characterJanitor:Clean()
 	runtime.humanoid = nil
@@ -752,15 +802,15 @@ function PlayerServiceServer.BindCharacter(self: PlayerServiceServer, player: Pl
 end
 
 function PlayerServiceServer.TrackPlayer(self: PlayerServiceServer, player: Player)
-	self.activeGameplayPlayers[player] = true
-	local shouldStartLocked = self.allowMovementFreeze
+	local loadingReady = self.loadingScreenReadyPlayers[player] == true
+	self.activeGameplayPlayers[player] = loadingReady
 	self.playerState[player] = {
 		facingSign = PlayerServiceUtils.DEFAULT_FACING_SIGN,
 		nextSpawnHealth = nil,
-		movementLocked = shouldStartLocked,
+		movementLocked = true,
 		spawnWorldPosition = nil,
 	}
-	player:SetAttribute(PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE, shouldStartLocked)
+	player:SetAttribute(PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE, true)
 
 	local runtime = self:getRuntime(player)
 	runtime.playerJanitor:Clean()
@@ -775,16 +825,28 @@ function PlayerServiceServer.TrackPlayer(self: PlayerServiceServer, player: Play
 	runtime.deathFeedbackLocked = false
 
 	runtime.playerJanitor:GiveChore(player.CharacterAdded:Connect(function(character: Model)
+		if self.loadingScreenReadyPlayers[player] ~= true then
+			character:Destroy()
+			return
+		end
+
 		self:bindCharacter(player, character)
 	end))
 
-	if player.Character then
+	if player.Character and loadingReady then
 		self:bindCharacter(player, player.Character)
+	elseif player.Character then
+		player.Character:Destroy()
+	end
+
+	if loadingReady then
+		self:enterGameplay(player)
 	end
 end
 
 function PlayerServiceServer.UntrackPlayer(self: PlayerServiceServer, player: Player)
 	self.activeGameplayPlayers[player] = nil
+	self.loadingScreenReadyPlayers[player] = nil
 	self.playerState[player] = nil
 	player:SetAttribute(PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE, nil)
 	if self.goreService ~= nil then
@@ -812,14 +874,13 @@ function PlayerServiceServer.GetState(self: PlayerServiceServer, player: Player)
 		return state
 	end
 
-	local shouldStartLocked = self.allowMovementFreeze
 	local defaultState: PlayerState = {
 		facingSign = PlayerServiceUtils.DEFAULT_FACING_SIGN,
 		nextSpawnHealth = nil,
-		movementLocked = shouldStartLocked,
+		movementLocked = true,
 		spawnWorldPosition = nil,
 	}
-	player:SetAttribute(PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE, shouldStartLocked)
+	player:SetAttribute(PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE, true)
 	self.playerState[player] = defaultState
 	return defaultState
 end
@@ -861,7 +922,7 @@ function PlayerServiceServer.SetWorldReadyForMovement(self: PlayerServiceServer,
 		end
 		self:setMovementLocked(player, false, true)
 	else
-		self:setMovementLocked(player, true, true)
+		self:setMovementLocked(player, true, true, true)
 	end
 end
 
@@ -889,6 +950,10 @@ function PlayerServiceServer.Destroy(self: PlayerServiceServer)
 		self.playerRemovingConnection:Disconnect()
 		self.playerRemovingConnection = nil
 	end
+	if self.loadingScreenReadyConnection then
+		self.loadingScreenReadyConnection:Disconnect()
+		self.loadingScreenReadyConnection = nil
+	end
 
 	if self.networker then
 		self.networker:destroy()
@@ -914,6 +979,8 @@ PlayerServiceServer.emitPlayerGore = PlayerServiceServer.EmitPlayerGore
 PlayerServiceServer.fireDamageFeedback = PlayerServiceServer.FireDamageFeedback
 PlayerServiceServer.init = PlayerServiceServer.Init
 PlayerServiceServer.isGameplayActiveForPlayer = PlayerServiceServer.IsGameplayActiveForPlayer
+PlayerServiceServer.onLoadingScreenReady = PlayerServiceServer.OnLoadingScreenReady
+PlayerServiceServer.enterGameplay = PlayerServiceServer.EnterGameplay
 PlayerServiceServer.createRuntime = PlayerServiceServer.CreateRuntime
 PlayerServiceServer.getRuntime = PlayerServiceServer.GetRuntime
 PlayerServiceServer.stopInvincibilityFrames = PlayerServiceServer.StopInvincibilityFrames
@@ -938,7 +1005,16 @@ PlayerServiceServer.destroy = PlayerServiceServer.Destroy
 
 type PlayerServiceServer = typeof(PlayerServiceServer) & {
 	isGameplayActiveForPlayer: (self: PlayerServiceServer, player: Player) -> boolean,
+	onLoadingScreenReady: (self: PlayerServiceServer, player: Player, statusRaw: any) -> boolean,
 	EnterGameplay: (self: PlayerServiceServer, player: Player) -> boolean,
+	enterGameplay: (self: PlayerServiceServer, player: Player) -> boolean,
+	setMovementLocked: (
+		self: PlayerServiceServer,
+		player: Player,
+		movementLocked: boolean,
+		replicateToClient: boolean?,
+		forceLock: boolean?
+	) -> (),
 	setGameplaySpawnPosition: (self: PlayerServiceServer, player: Player, worldPositionRaw: any) -> (),
 	applyGameplaySpawnToCharacter: (self: PlayerServiceServer, player: Player, character: Model) -> boolean,
 	emitPlayerGore: (
@@ -955,10 +1031,12 @@ type PlayerServiceServer = typeof(PlayerServiceServer) & {
 	allowMovementFreeze: boolean,
 	playerState: { [Player]: PlayerState },
 	activeGameplayPlayers: { [Player]: boolean },
+	loadingScreenReadyPlayers: { [Player]: boolean },
 	playerRuntimes: { [Player]: PlayerRuntime },
+	loadingScreenReadyRemote: RemoteEvent?,
+	loadingScreenReadyConnection: RBXScriptConnection?,
 	playerAddedConnection: RBXScriptConnection?,
 	playerRemovingConnection: RBXScriptConnection?,
 }
 
 return PlayerServiceServer :: PlayerServiceServer
-

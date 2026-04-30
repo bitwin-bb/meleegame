@@ -55,7 +55,7 @@ local DEFAULT_TILE_DEPTH = 2
 local DEFAULT_BASE_PLANE_X = 0
 local DEFAULT_WALL_PLANE_OFFSET = 1.65
 local DEFAULT_HORIZON_DEPTH_BLOCKS = 10
-local DEFAULT_BACKGROUND_LAYER_COUNT = 5
+local DEFAULT_BACKGROUND_LAYER_COUNT = 4
 local DEFAULT_BACKGROUND_LAYER_THICKNESS_BLOCKS = 1
 local DEFAULT_WORLD_ORIGIN = Vector3.zero
 local DEFAULT_MIN_TILE_Y = -360
@@ -63,12 +63,12 @@ local DEFAULT_MAX_TILE_Y = 180
 local DEFAULT_BEDROCK_THICKNESS = 4
 local DEFAULT_RENDER_DISTANCE_CHUNKS = 4
 local DEFAULT_VERTICAL_RENDER_DISTANCE_CHUNKS = 2
-local DEFAULT_PLAYER_REFRESH_INTERVAL = 0.1
-local DEFAULT_MAX_CONCURRENT_CHUNK_LOADS = 3
+local DEFAULT_PLAYER_REFRESH_INTERVAL = 0.05
+local DEFAULT_MAX_CONCURRENT_CHUNK_LOADS = 8
 local DEFAULT_MAX_CHUNK_UNLOADS_PER_HEARTBEAT = 12
 local DEFAULT_MAX_CHUNK_REBUILDS_PER_HEARTBEAT = 4
-local DEFAULT_GENERATION_ROWS_PER_YIELD = 8
-local DEFAULT_MESHING_ROWS_PER_YIELD = 16
+local DEFAULT_GENERATION_ROWS_PER_YIELD = 32
+local DEFAULT_MESHING_ROWS_PER_YIELD = 64
 local DEFAULT_MAX_CACHED_CHUNK_DATA = 1200
 local DEFAULT_MAX_CACHED_CHUNK_VISUALS = 0
 local DEFAULT_MAX_COLLISION_PARTS_PER_CHUNK = 4096
@@ -169,16 +169,11 @@ function WorldGenerationServiceUtils.SanitizeConfig(
 		tileDepth = sanitizeNumber((source :: any).tileDepth, 0.5, 64, fallback.tileDepth),
 		basePlaneX = sanitizeNumber((source :: any).basePlaneX, -4096, 4096, fallback.basePlaneX),
 		wallPlaneOffset = sanitizeNumber((source :: any).wallPlaneOffset, 0.1, 64, fallback.wallPlaneOffset),
-		horizonDepthBlocks = sanitizeInteger(
-			(source :: any).horizonDepthBlocks,
-			10,
-			256,
-			fallback.horizonDepthBlocks
-		),
+		horizonDepthBlocks = sanitizeInteger((source :: any).horizonDepthBlocks, 10, 256, fallback.horizonDepthBlocks),
 		backgroundLayerCount = sanitizeInteger(
 			(source :: any).backgroundLayerCount,
 			3,
-			8,
+			4,
 			fallback.backgroundLayerCount
 		),
 		backgroundLayerThicknessBlocks = sanitizeNumber(
@@ -237,12 +232,7 @@ function WorldGenerationServiceUtils.SanitizeConfig(
 			128,
 			fallback.meshingRowsPerYield
 		),
-		maxCachedChunkData = sanitizeInteger(
-			(source :: any).maxCachedChunkData,
-			16,
-			4096,
-			fallback.maxCachedChunkData
-		),
+		maxCachedChunkData = sanitizeInteger((source :: any).maxCachedChunkData, 16, 4096, fallback.maxCachedChunkData),
 		maxCachedChunkVisuals = sanitizeInteger(
 			(source :: any).maxCachedChunkVisuals,
 			0,
@@ -256,7 +246,9 @@ function WorldGenerationServiceUtils.SanitizeConfig(
 			fallback.maxCollisionPartsPerChunk
 		),
 		maxPoolSize = sanitizeInteger((source :: any).maxPoolSize, 64, 200000, fallback.maxPoolSize),
-		debugLog = if typeof((source :: any).debugLog) == "boolean" then (source :: any).debugLog else fallback.debugLog,
+		debugLog = if typeof((source :: any).debugLog) == "boolean"
+			then (source :: any).debugLog
+			else fallback.debugLog,
 	}
 end
 

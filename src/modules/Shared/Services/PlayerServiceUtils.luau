@@ -199,6 +199,53 @@ local function normalizeSignedRadians(angleRadians: number): number
 	return Angle.wrapRadians(angleRadians)
 end
 
+local function sanitizeDeadzone(valueRaw: any, fallback: number): number
+	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
+		return math.clamp(valueRaw, 0, 0.99)
+	end
+	return fallback
+end
+
+local function sanitizeAxis(valueRaw: any): number
+	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
+		return 0
+	end
+	return math.clamp(valueRaw, -1, 1)
+end
+
+local function applyThumbstickDeadzone(vector: Vector2, deadzone: number): Vector2
+	local magnitude = vector.Magnitude
+	if magnitude <= deadzone or magnitude <= 0 then
+		return Vector2.zero
+	end
+
+	local scaledMagnitude = math.clamp((magnitude - deadzone) / (1 - deadzone), 0, 1)
+	return (vector / magnitude) * scaledMagnitude
+end
+
+local function resolveThumbstickVector(inputObjectRaw: any): Vector2?
+	if typeof(inputObjectRaw) == "Vector2" then
+		return inputObjectRaw
+	end
+	if typeof(inputObjectRaw) ~= "InputObject" then
+		return nil
+	end
+
+	local inputObject = inputObjectRaw :: InputObject
+	if inputObject.KeyCode ~= Enum.KeyCode.Thumbstick1 then
+		return nil
+	end
+
+	local position = inputObject.Position
+	if typeof(position) == "Vector3" then
+		return Vector2.new(position.X, position.Y)
+	end
+	if typeof(position) == "Vector2" then
+		return position
+	end
+	return nil
+end
+
 PlayerServiceUtils.DEFAULT_FACING_SIGN = DEFAULT_FACING_SIGN
 PlayerServiceUtils.DEFAULT_HORIZONTAL_DEADZONE = DEFAULT_HORIZONTAL_DEADZONE
 PlayerServiceUtils.DEFAULT_MOVE_AXIS_DEADZONE = DEFAULT_MOVE_AXIS_DEADZONE
@@ -795,6 +842,40 @@ function PlayerServiceUtils.GetNormalizedWorldAxisFromZ(targetZ: number, originZ
 	return math.clamp((targetZ - originZ) / range, -1, 1)
 end
 
+function PlayerServiceUtils.ApplyAxisDeadzone(axisRaw: any, deadzoneRaw: any): number
+	local axis = sanitizeAxis(axisRaw)
+	local deadzone = sanitizeDeadzone(deadzoneRaw, DEFAULT_MOVE_AXIS_DEADZONE)
+	if math.abs(axis) <= deadzone then
+		return 0
+	end
+	return axis
+end
+
+function PlayerServiceUtils.GetGamepadMoveAxis(
+	gamepadStateRaw: any,
+	stickDeadzoneRaw: any,
+	axisDeadzoneRaw: any?
+): number
+	local stickDeadzone = sanitizeDeadzone(stickDeadzoneRaw, DEFAULT_HORIZONTAL_DEADZONE)
+	local axisDeadzone = sanitizeDeadzone(axisDeadzoneRaw, DEFAULT_MOVE_AXIS_DEADZONE)
+	local thumbstickVector = resolveThumbstickVector(gamepadStateRaw)
+
+	if thumbstickVector == nil and typeof(gamepadStateRaw) == "table" then
+		for _, inputObjectRaw in gamepadStateRaw do
+			thumbstickVector = resolveThumbstickVector(inputObjectRaw)
+			if thumbstickVector ~= nil then
+				break
+			end
+		end
+	end
+	if thumbstickVector == nil then
+		return 0
+	end
+
+	local moveVector = applyThumbstickDeadzone(thumbstickVector, stickDeadzone)
+	return PlayerServiceUtils.ApplyAxisDeadzone(moveVector.X, axisDeadzone)
+end
+
 function PlayerServiceUtils.GetHorizontalInputAxis(isKeyDown: (keyCode: Enum.KeyCode) -> boolean): number
 	local facing = PlayerServiceUtils.GetFacingFromHorizontalKeyState(isKeyDown)
 	if not facing then
@@ -802,6 +883,23 @@ function PlayerServiceUtils.GetHorizontalInputAxis(isKeyDown: (keyCode: Enum.Key
 	end
 
 	return facing
+end
+
+function PlayerServiceUtils.GetCombinedHorizontalInputAxis(
+	keyboardProviderRaw: any,
+	gamepadAxisRaw: any,
+	deadzoneRaw: any?
+): number
+	local gamepadAxis = PlayerServiceUtils.ApplyAxisDeadzone(gamepadAxisRaw, deadzoneRaw)
+	if gamepadAxis ~= 0 then
+		return gamepadAxis
+	end
+
+	if typeof(keyboardProviderRaw) == "function" then
+		local isKeyDown = keyboardProviderRaw :: (Enum.KeyCode) -> boolean
+		return PlayerServiceUtils.GetHorizontalInputAxis(isKeyDown)
+	end
+	return sanitizeAxis(keyboardProviderRaw)
 end
 
 function PlayerServiceUtils.GetFacingFromLookVector(lookVector: Vector3, fallback: FacingSign?): FacingSign
@@ -945,7 +1043,10 @@ PlayerServiceUtils.clampLookAngleRadians = PlayerServiceUtils.ClampLookAngleRadi
 PlayerServiceUtils.getNormalizedScreenAxisFromX = PlayerServiceUtils.GetNormalizedScreenAxisFromX
 PlayerServiceUtils.getMouseWorldPointOnPlaneX = PlayerServiceUtils.GetMouseWorldPointOnPlaneX
 PlayerServiceUtils.getNormalizedWorldAxisFromZ = PlayerServiceUtils.GetNormalizedWorldAxisFromZ
+PlayerServiceUtils.applyAxisDeadzone = PlayerServiceUtils.ApplyAxisDeadzone
+PlayerServiceUtils.getGamepadMoveAxis = PlayerServiceUtils.GetGamepadMoveAxis
 PlayerServiceUtils.getHorizontalInputAxis = PlayerServiceUtils.GetHorizontalInputAxis
+PlayerServiceUtils.getCombinedHorizontalInputAxis = PlayerServiceUtils.GetCombinedHorizontalInputAxis
 PlayerServiceUtils.getFacingFromLookVector = PlayerServiceUtils.GetFacingFromLookVector
 PlayerServiceUtils.snapRootPartFacing = PlayerServiceUtils.SnapRootPartFacing
 PlayerServiceUtils.ensureRootPartUpright = PlayerServiceUtils.EnsureRootPartUpright
