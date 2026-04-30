@@ -42,6 +42,10 @@
       }
     },
     "StarterPlayer": {
+      "$properties": {
+        "DevComputerMovementMode": "UserChoice",
+        "DevTouchMovementMode": "UserChoice"
+      },
       "StarterPlayerScripts": {
         "AquariaBackupScripts": {
           "$path": "src/scripts/Client"

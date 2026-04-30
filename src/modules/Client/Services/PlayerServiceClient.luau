@@ -1,4 +1,5 @@
 --!strict
+local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -32,6 +33,8 @@ type JanitorClass = {
 
 local PlayerServiceClient = {}
 local MOVE_RENDERSTEP_NAME = "PlayerService_UpdateMovement"
+local BLOCK_MOVEMENT_ACTION = "PlayerService_BlockMovement"
+local BLOCK_MOVEMENT_PRIORITY = 2000
 local GROUNDED_CONTACT_MAX_DISTANCE = 0.85
 local FLOOR_CONTACT_MAX_VERTICAL_SPEED = 2.5
 local HURT_FEEDBACK_MIN_INTERVAL = 0.06
@@ -42,6 +45,8 @@ local WORLD_UNLOCK_MIN_SURFACE_NORMAL_Y = 0.5
 local WORLD_UNLOCK_REQUEST_MIN_INTERVAL = 0.1
 local GAMEPAD_MOVE_DEADZONE = 0.2
 local GAMEPAD_AIM_DEADZONE = 0.12
+local DEBUG_MOVEMENT_INPUT_ATTRIBUTE = "PlayerService_DebugMovementInput"
+local DEBUG_MOVEMENT_RAW_AXIS_INTERVAL = 0.25
 local RANDOM = Random.new()
 local PLAYER_AUDIO = (AudioRegistry :: any).Player or {}
 local PLAYER_HURT_AUDIO = PLAYER_AUDIO.Hurt or {}
@@ -84,6 +89,13 @@ local function resolveThumbstickVector(inputObjectRaw: any): Vector2?
 		return nil
 	end
 	return Vector2.new(position.X, position.Y)
+end
+
+local function formatInputKeyCode(inputObject: InputObject?): string
+	if inputObject == nil then
+		return "nil"
+	end
+	return inputObject.KeyCode.Name
 end
 
 local function shouldRefreshRigFromCharacterChild(child: Instance): boolean
@@ -146,6 +158,8 @@ function PlayerServiceClient.Init(self: PlayerServiceClient)
 	self.maxAirborneDownwardSpeed = 0
 	self.lastLandingAt = 0
 	self.lastHurtFeedbackAt = 0
+	self.lastMovementDebugLogAt = -math.huge
+	self.lastMovementDebugRawAxis = nil
 	self.hurtSoundAssetIds = {}
 
 	self:refreshHurtSoundTemplates()
@@ -158,6 +172,9 @@ function PlayerServiceClient.Init(self: PlayerServiceClient)
 	end)
 	self.janitor:GiveChore(function()
 		RunService:UnbindFromRenderStep(MOVE_RENDERSTEP_NAME)
+	end)
+	self.janitor:GiveChore(function()
+		ContextActionService:UnbindAction(BLOCK_MOVEMENT_ACTION)
 	end)
 	self:bindPlatformInputs()
 
@@ -224,15 +241,52 @@ function PlayerServiceClient.SetGamepadMoveVector(self: PlayerServiceClient, vec
 	self.gamepadMoveVector = PlatformServiceUtils.applyThumbstickDeadzone(vectorRaw, GAMEPAD_MOVE_DEADZONE)
 end
 
-function PlayerServiceClient.GetPolledGamepadMoveAxis(self: PlayerServiceClient): number?
-	local ok, gamepadState = pcall(function()
-		return UserInputService:GetGamepadState(Enum.UserInputType.Gamepad1)
-	end)
-	if not ok then
-		return nil
+function PlayerServiceClient.IsMovementInputDebugEnabled(self: PlayerServiceClient): boolean
+	return self.localPlayer:GetAttribute(DEBUG_MOVEMENT_INPUT_ATTRIBUTE) == true
+end
+
+function PlayerServiceClient.DebugMovementInput(self: PlayerServiceClient, message: string)
+	if not self:isMovementInputDebugEnabled() then
+		return
 	end
-	return PlayerServiceUtils.getGamepadMoveAxis(
-		gamepadState,
+	print(("[playerserviceclient] %s"):format(message))
+end
+
+function PlayerServiceClient.DebugRawMovementAxis(
+	self: PlayerServiceClient,
+	rawAxis: number,
+	keyboardAxis: number,
+	gamepadAxis: number
+)
+	if not self:isMovementInputDebugEnabled() then
+		return
+	end
+
+	local now = os.clock()
+	local previousRawAxis = self.lastMovementDebugRawAxis
+	if
+		previousRawAxis ~= nil
+		and math.abs(previousRawAxis - rawAxis) <= 0.01
+		and now - self.lastMovementDebugLogAt < DEBUG_MOVEMENT_RAW_AXIS_INTERVAL
+	then
+		return
+	end
+
+	self.lastMovementDebugLogAt = now
+	self.lastMovementDebugRawAxis = rawAxis
+	self:debugMovementInput(
+		("rawAxis=%.3f keyboardAxis=%.3f gamepadAxis=%.3f locked=%s humanoidMoveNext=true"):format(
+			rawAxis,
+			keyboardAxis,
+			gamepadAxis,
+			tostring(self.movementLocked)
+		)
+	)
+end
+
+function PlayerServiceClient.GetPolledGamepadMoveAxis(self: PlayerServiceClient): number?
+	return PlayerServiceUtils.getGamepadThumbstick1Axis(
+		UserInputService,
 		GAMEPAD_MOVE_DEADZONE,
 		math.max(self.moveAxisDeadzone, self.horizontalDeadzone)
 	)
@@ -254,6 +308,9 @@ function PlayerServiceClient.OnGamepadMoveInputChanged(self: PlayerServiceClient
 	if thumbstickVector == nil then
 		return
 	end
+	self:debugMovementInput(
+		("inputchanged Thumbstick1 position=(%.3f, %.3f)"):format(thumbstickVector.X, thumbstickVector.Y)
+	)
 	self:setGamepadMoveVector(thumbstickVector)
 end
 
@@ -290,6 +347,45 @@ function PlayerServiceClient.GetVerticalMoveAxis(self: PlayerServiceClient): num
 	return math.clamp(math.max(self.moveUpValue, self.jumpActionValue) - self.moveDownValue, -1, 1)
 end
 
+function PlayerServiceClient.ShouldSinkMovementInput(self: PlayerServiceClient): boolean
+	return self.movementLocked == true or self.worldUnlockPending == true
+end
+
+function PlayerServiceClient.BindMovementBlocker(self: PlayerServiceClient)
+	ContextActionService:BindActionAtPriority(
+		BLOCK_MOVEMENT_ACTION,
+		function(actionName: string, inputState: Enum.UserInputState, inputObject: InputObject?)
+			local shouldSink = self:shouldSinkMovementInput()
+			local result = if shouldSink then Enum.ContextActionResult.Sink else Enum.ContextActionResult.Pass
+			self:debugMovementInput(
+				("cas %s state=%s key=%s result=%s locked=%s worldUnlock=%s"):format(
+					actionName,
+					inputState.Name,
+					formatInputKeyCode(inputObject),
+					result.Name,
+					tostring(self.movementLocked),
+					tostring(self.worldUnlockPending)
+				)
+			)
+			return result
+		end,
+		false,
+		BLOCK_MOVEMENT_PRIORITY,
+		Enum.PlayerActions.CharacterLeft,
+		Enum.PlayerActions.CharacterRight,
+		Enum.PlayerActions.CharacterForward,
+		Enum.PlayerActions.CharacterBackward,
+		Enum.KeyCode.A,
+		Enum.KeyCode.D,
+		Enum.KeyCode.Left,
+		Enum.KeyCode.Right,
+		Enum.KeyCode.W,
+		Enum.KeyCode.S,
+		Enum.KeyCode.LeftControl,
+		Enum.KeyCode.RightControl
+	)
+end
+
 function PlayerServiceClient.RefreshPlatformInputMode(self: PlayerServiceClient)
 	local shouldUseMouseFacing = true
 	if PlatformServiceClient:isReady() then
@@ -314,7 +410,27 @@ function PlayerServiceClient.BindPlatformInputs(self: PlayerServiceClient)
 
 	local function bindMovementAction(actionName: string)
 		local disconnect = PlatformServiceClient:bindAction(actionName, function(_phase: string, context: any)
-			self:setMovementActionValue(actionName, context.value)
+			local inputObject: any = nil
+			local inputState: any = nil
+			local value = 0
+			if typeof(context) == "table" then
+				inputObject = (context :: any).inputObject
+				inputState = (context :: any).inputState
+				if typeof((context :: any).value) == "number" then
+					value = (context :: any).value
+				end
+			end
+			self:debugMovementInput(
+				("cas %s state=%s key=%s value=%.3f result=Pass"):format(
+					actionName,
+					if typeof(inputState) == "EnumItem" then (inputState :: Enum.UserInputState).Name else "nil",
+					if typeof(inputObject) == "InputObject"
+						then formatInputKeyCode(inputObject :: InputObject)
+						else "nil",
+					value
+				)
+			)
+			self:setMovementActionValue(actionName, value)
 			return false
 		end)
 		if disconnect ~= nil then
@@ -334,6 +450,7 @@ function PlayerServiceClient.BindPlatformInputs(self: PlayerServiceClient)
 	if jumpDisconnect ~= nil then
 		self.janitor:GiveChore(jumpDisconnect)
 	end
+	self:bindMovementBlocker()
 	self.janitor:GiveChore(UserInputService.InputChanged:Connect(function(inputObject: InputObject)
 		self:onGamepadMoveInputChanged(inputObject)
 	end))
@@ -825,7 +942,10 @@ function PlayerServiceClient.UpdateFacingFromMovement(self: PlayerServiceClient,
 
 	local mouseFacing, lookAngleRadians = self:resolveLookState(rig)
 
-	local rawAxis = self:getHorizontalMoveAxis()
+	local keyboardAxis = self:getActionHorizontalMoveAxis()
+	local gamepadAxis = self:getGamepadMoveAxis()
+	local rawAxis = PlayerServiceUtils.getCombinedHorizontalInputAxis(keyboardAxis, gamepadAxis, self.moveAxisDeadzone)
+	self:debugRawMovementAxis(rawAxis, keyboardAxis, gamepadAxis)
 	self.moveAxisMotion:spring(rawAxis, self.moveSpring)
 
 	local smoothedAxis = self.moveAxisMotion:step(deltaTime)
@@ -1002,12 +1122,17 @@ PlayerServiceClient.resolveCurrentRig = PlayerServiceClient.ResolveCurrentRig
 PlayerServiceClient.resetMovementInputState = PlayerServiceClient.ResetMovementInputState
 PlayerServiceClient.setMovementActionValue = PlayerServiceClient.SetMovementActionValue
 PlayerServiceClient.setGamepadMoveVector = PlayerServiceClient.SetGamepadMoveVector
+PlayerServiceClient.isMovementInputDebugEnabled = PlayerServiceClient.IsMovementInputDebugEnabled
+PlayerServiceClient.debugMovementInput = PlayerServiceClient.DebugMovementInput
+PlayerServiceClient.debugRawMovementAxis = PlayerServiceClient.DebugRawMovementAxis
 PlayerServiceClient.getPolledGamepadMoveAxis = PlayerServiceClient.GetPolledGamepadMoveAxis
 PlayerServiceClient.onGamepadMoveInputChanged = PlayerServiceClient.OnGamepadMoveInputChanged
 PlayerServiceClient.getActionHorizontalMoveAxis = PlayerServiceClient.GetActionHorizontalMoveAxis
 PlayerServiceClient.getGamepadMoveAxis = PlayerServiceClient.GetGamepadMoveAxis
 PlayerServiceClient.getHorizontalMoveAxis = PlayerServiceClient.GetHorizontalMoveAxis
 PlayerServiceClient.getVerticalMoveAxis = PlayerServiceClient.GetVerticalMoveAxis
+PlayerServiceClient.shouldSinkMovementInput = PlayerServiceClient.ShouldSinkMovementInput
+PlayerServiceClient.bindMovementBlocker = PlayerServiceClient.BindMovementBlocker
 PlayerServiceClient.refreshPlatformInputMode = PlayerServiceClient.RefreshPlatformInputMode
 PlayerServiceClient.bindPlatformInputs = PlayerServiceClient.BindPlatformInputs
 PlayerServiceClient.applyMovementLock = PlayerServiceClient.ApplyMovementLock
@@ -1044,12 +1169,17 @@ type PlayerServiceClient = typeof(PlayerServiceClient) & {
 	resetMovementInputState: (self: PlayerServiceClient) -> (),
 	setMovementActionValue: (self: PlayerServiceClient, actionNameRaw: any, valueRaw: any) -> (),
 	setGamepadMoveVector: (self: PlayerServiceClient, vectorRaw: any) -> (),
+	isMovementInputDebugEnabled: (self: PlayerServiceClient) -> boolean,
+	debugMovementInput: (self: PlayerServiceClient, message: string) -> (),
+	debugRawMovementAxis: (self: PlayerServiceClient, rawAxis: number, keyboardAxis: number, gamepadAxis: number) -> (),
 	getPolledGamepadMoveAxis: (self: PlayerServiceClient) -> number?,
 	onGamepadMoveInputChanged: (self: PlayerServiceClient, inputObjectRaw: any) -> (),
 	getActionHorizontalMoveAxis: (self: PlayerServiceClient) -> number,
 	getGamepadMoveAxis: (self: PlayerServiceClient) -> number,
 	getHorizontalMoveAxis: (self: PlayerServiceClient) -> number,
 	getVerticalMoveAxis: (self: PlayerServiceClient) -> number,
+	shouldSinkMovementInput: (self: PlayerServiceClient) -> boolean,
+	bindMovementBlocker: (self: PlayerServiceClient) -> (),
 	refreshPlatformInputMode: (self: PlayerServiceClient) -> (),
 	bindPlatformInputs: (self: PlayerServiceClient) -> (),
 	requestJump: (self: PlayerServiceClient) -> boolean,
@@ -1115,6 +1245,8 @@ type PlayerServiceClient = typeof(PlayerServiceClient) & {
 	maxAirborneDownwardSpeed: number,
 	lastLandingAt: number,
 	lastHurtFeedbackAt: number,
+	lastMovementDebugLogAt: number,
+	lastMovementDebugRawAxis: number?,
 	hurtSoundAssetIds: { string },
 }
 

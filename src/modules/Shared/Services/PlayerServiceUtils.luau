@@ -2,11 +2,11 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local Audio = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
 local Angle = require(script:FindFirstAncestor("game").Shared.Modules.Math.Angle)
+local Audio = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
+local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
 local Plane = require(script:FindFirstAncestor("game").Shared.Modules.Math.Plane)
 local Trig = require(script:FindFirstAncestor("game").Shared.Modules.Math.Trig)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 
 local PlayerServiceUtils = {}
@@ -876,6 +876,34 @@ function PlayerServiceUtils.GetGamepadMoveAxis(
 	return PlayerServiceUtils.ApplyAxisDeadzone(moveVector.X, axisDeadzone)
 end
 
+function PlayerServiceUtils.GetGamepadThumbstick1Axis(
+	userInputServiceRaw: any,
+	stickDeadzoneRaw: any,
+	axisDeadzoneRaw: any?
+): number?
+	if userInputServiceRaw == nil or typeof((userInputServiceRaw :: any).GetGamepadState) ~= "function" then
+		return nil
+	end
+
+	local ok, gamepadState = pcall(function()
+		return (userInputServiceRaw :: any):GetGamepadState(Enum.UserInputType.Gamepad1)
+	end)
+	if not ok then
+		return nil
+	end
+
+	if typeof(gamepadState) == "table" then
+		for _, inputObjectRaw in gamepadState do
+			if resolveThumbstickVector(inputObjectRaw) ~= nil then
+				return PlayerServiceUtils.GetGamepadMoveAxis(inputObjectRaw, stickDeadzoneRaw, axisDeadzoneRaw)
+			end
+		end
+		return nil
+	end
+
+	return PlayerServiceUtils.GetGamepadMoveAxis(gamepadState, stickDeadzoneRaw, axisDeadzoneRaw)
+end
+
 function PlayerServiceUtils.GetHorizontalInputAxis(isKeyDown: (keyCode: Enum.KeyCode) -> boolean): number
 	local facing = PlayerServiceUtils.GetFacingFromHorizontalKeyState(isKeyDown)
 	if not facing then
@@ -1045,6 +1073,7 @@ PlayerServiceUtils.getMouseWorldPointOnPlaneX = PlayerServiceUtils.GetMouseWorld
 PlayerServiceUtils.getNormalizedWorldAxisFromZ = PlayerServiceUtils.GetNormalizedWorldAxisFromZ
 PlayerServiceUtils.applyAxisDeadzone = PlayerServiceUtils.ApplyAxisDeadzone
 PlayerServiceUtils.getGamepadMoveAxis = PlayerServiceUtils.GetGamepadMoveAxis
+PlayerServiceUtils.getGamepadThumbstick1Axis = PlayerServiceUtils.GetGamepadThumbstick1Axis
 PlayerServiceUtils.getHorizontalInputAxis = PlayerServiceUtils.GetHorizontalInputAxis
 PlayerServiceUtils.getCombinedHorizontalInputAxis = PlayerServiceUtils.GetCombinedHorizontalInputAxis
 PlayerServiceUtils.getFacingFromLookVector = PlayerServiceUtils.GetFacingFromLookVector
