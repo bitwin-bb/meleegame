@@ -15,6 +15,7 @@ export type PadState = {
 	platform: string,
 	imageId: string,
 	dominantStick: "Left" | "Right"?,
+	lastActiveThumbstick: "Left" | "Right"?,
 	leftStick: PadStickState,
 	rightStick: PadStickState,
 	lastInputAt: number,
@@ -24,6 +25,13 @@ local DEFAULT_IMAGE_ID = if typeof((ImageIds :: any).platform) == "table"
 		and typeof((((ImageIds :: any).platform :: any).gamepadNav)) == "string"
 	then (((ImageIds :: any).platform :: any).gamepadNav :: string)
 	else ""
+
+local function resolveThumbstickKey(keyRaw: any): "Left" | "Right"?
+	if keyRaw == "Left" or keyRaw == "Right" then
+		return keyRaw :: "Left" | "Right"
+	end
+	return nil
+end
 
 local function createStickState(positionRaw: any, activeRaw: any): PadStickState
 	local position = if typeof(positionRaw) == "Vector2" then positionRaw else Vector2.zero
@@ -44,6 +52,7 @@ local function createDefaultState(): PadState
 		platform = "KeyboardMouse",
 		imageId = DEFAULT_IMAGE_ID,
 		dominantStick = nil,
+		lastActiveThumbstick = nil,
 		leftStick = createStickState(Vector2.zero, false),
 		rightStick = createStickState(Vector2.zero, false),
 		lastInputAt = 0,
@@ -64,6 +73,7 @@ local function setPlatform(platformRaw: any): PadState
 		platform = platform,
 		imageId = current.imageId,
 		dominantStick = current.dominantStick,
+		lastActiveThumbstick = current.lastActiveThumbstick,
 		leftStick = current.leftStick,
 		rightStick = current.rightStick,
 		lastInputAt = current.lastInputAt,
@@ -81,9 +91,8 @@ local function updateThumbsticks(snapshotRaw: any): PadState
 		visible = current.platform == "Gamepad",
 		platform = current.platform,
 		imageId = current.imageId,
-		dominantStick = if (snapshot :: any).dominant == "Left" or (snapshot :: any).dominant == "Right"
-			then (snapshot :: any).dominant
-			else nil,
+		dominantStick = resolveThumbstickKey((snapshot :: any).dominant),
+		lastActiveThumbstick = resolveThumbstickKey((snapshot :: any).lastActiveThumbstick),
 		leftStick = createStickState(
 			if left ~= nil then (left :: any).screen else current.leftStick.position,
 			if left ~= nil then (left :: any).active else current.leftStick.active

@@ -136,26 +136,54 @@ local function resolveStickVector(snapshot: any, key: PointerOwner): (Vector2?, 
 	return screenVector, isActive
 end
 
+local function resolvePointerOwner(ownerRaw: any): PointerOwner?
+	if ownerRaw == "Left" or ownerRaw == "Right" then
+		return ownerRaw :: PointerOwner
+	end
+	return nil
+end
+
+local function resolveConfiguredFallbackOwner(snapshot: any): PointerOwner?
+	if snapshot == nil then
+		return nil
+	end
+
+	return resolvePointerOwner((snapshot :: any).fallbackOwner)
+		or resolvePointerOwner((snapshot :: any).pointerFallbackOwner)
+		or resolvePointerOwner((snapshot :: any).preferredOwner)
+end
+
+local function resolveOwnedStickVector(snapshot: any, owner: PointerOwner): (Vector2?, PointerOwner?)
+	local vector, active = resolveStickVector(snapshot, owner)
+	if active and vector ~= nil then
+		return vector, owner
+	end
+	return nil, nil
+end
+
 function GamepadPointer.ResolveOwnedVector(snapshotRaw: any): (Vector2?, PointerOwner?)
 	local snapshot = resolveThumbstickSnapshot(snapshotRaw)
 	if snapshot ~= nil then
-		local dominantRaw = (snapshot :: any).dominant
-		if dominantRaw == "Right" or dominantRaw == "Left" then
-			local dominantVector, dominantActive = resolveStickVector(snapshot, dominantRaw)
-			if dominantActive and dominantVector ~= nil then
-				return dominantVector, dominantRaw
-			end
+		local explicitOwner = resolvePointerOwner((snapshot :: any).owner)
+			or resolvePointerOwner((snapshot :: any).dominant)
+			or resolvePointerOwner((snapshot :: any).lastActiveThumbstick)
+		if explicitOwner ~= nil then
+			return resolveOwnedStickVector(snapshot, explicitOwner)
 		end
 	end
 
-	local rightVector, rightActive = resolveStickVector(snapshot, "Right")
-	if rightActive and rightVector ~= nil then
-		return rightVector, "Right"
+	local fallbackOwner = resolveConfiguredFallbackOwner(snapshot)
+	if fallbackOwner ~= nil then
+		return resolveOwnedStickVector(snapshot, fallbackOwner)
 	end
 
 	local leftVector, leftActive = resolveStickVector(snapshot, "Left")
-	if leftActive and leftVector ~= nil then
+	local rightVector, rightActive = resolveStickVector(snapshot, "Right")
+	if leftActive and not rightActive and leftVector ~= nil then
 		return leftVector, "Left"
+	end
+	if rightActive and not leftActive and rightVector ~= nil then
+		return rightVector, "Right"
 	end
 
 	return nil, nil

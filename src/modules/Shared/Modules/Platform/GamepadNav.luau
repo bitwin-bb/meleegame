@@ -27,6 +27,7 @@ export type ThumbstickSnapshot = {
 	left: ThumbstickState,
 	right: ThumbstickState,
 	dominant: ThumbstickKey?,
+	lastActiveThumbstick: ThumbstickKey?,
 	lastUpdatedAt: number,
 }
 
@@ -152,6 +153,7 @@ local function cloneThumbstickSnapshot(snapshot: ThumbstickSnapshot): Thumbstick
 		left = cloneThumbstickState(snapshot.left),
 		right = cloneThumbstickState(snapshot.right),
 		dominant = snapshot.dominant,
+		lastActiveThumbstick = snapshot.lastActiveThumbstick,
 		lastUpdatedAt = snapshot.lastUpdatedAt,
 	}
 end
@@ -193,12 +195,22 @@ local function createThumbstickStateFromInput(
 	}
 end
 
-local function resolveDominantThumbstick(left: ThumbstickState, right: ThumbstickState): ThumbstickKey?
-	if right.active then
-		return "Right"
+local function resolveDominantThumbstick(
+	left: ThumbstickState,
+	right: ThumbstickState,
+	lastActiveThumbstick: ThumbstickKey?
+): ThumbstickKey?
+	if lastActiveThumbstick == "Left" then
+		return if left.active then "Left" else nil
+	elseif lastActiveThumbstick == "Right" then
+		return if right.active then "Right" else nil
 	end
-	if left.active then
+
+	if left.active and not right.active then
 		return "Left"
+	end
+	if right.active and not left.active then
+		return "Right"
 	end
 	return nil
 end
@@ -219,6 +231,7 @@ function GamepadNav.New(configRaw: GamepadNavConfig?): GamepadNav
 		left = createThumbstickState("Left"),
 		right = createThumbstickState("Right"),
 		dominant = nil,
+		lastActiveThumbstick = nil,
 		lastUpdatedAt = 0,
 	}
 	local self = setmetatable({
@@ -475,13 +488,32 @@ end
 function GamepadNav._setThumbstickSnapshot(
 	self: GamepadNav,
 	nextLeft: ThumbstickState,
-	nextRight: ThumbstickState
+	nextRight: ThumbstickState,
+	changedKeyRaw: ThumbstickKey?
 ): boolean
-	local nextDominant = resolveDominantThumbstick(nextLeft, nextRight)
+	local previous = self.thumbstickSnapshot
+	local changedKey = changedKeyRaw
+	local nextLastActiveThumbstick = previous.lastActiveThumbstick
+	if changedKey == "Left" and nextLeft.active and not thumbstickStatesEqual(previous.left, nextLeft) then
+		nextLastActiveThumbstick = "Left"
+	elseif changedKey == "Right" and nextRight.active and not thumbstickStatesEqual(previous.right, nextRight) then
+		nextLastActiveThumbstick = "Right"
+	elseif changedKey == nil then
+		local leftChangedActive = nextLeft.active and not thumbstickStatesEqual(previous.left, nextLeft)
+		local rightChangedActive = nextRight.active and not thumbstickStatesEqual(previous.right, nextRight)
+		if leftChangedActive and not rightChangedActive then
+			nextLastActiveThumbstick = "Left"
+		elseif rightChangedActive and not leftChangedActive then
+			nextLastActiveThumbstick = "Right"
+		end
+	end
+
+	local nextDominant = resolveDominantThumbstick(nextLeft, nextRight, nextLastActiveThumbstick)
 	if
 		thumbstickStatesEqual(self.thumbstickSnapshot.left, nextLeft)
 		and thumbstickStatesEqual(self.thumbstickSnapshot.right, nextRight)
 		and self.thumbstickSnapshot.dominant == nextDominant
+		and self.thumbstickSnapshot.lastActiveThumbstick == nextLastActiveThumbstick
 	then
 		return false
 	end
@@ -489,6 +521,7 @@ function GamepadNav._setThumbstickSnapshot(
 	self.thumbstickSnapshot.left = nextLeft
 	self.thumbstickSnapshot.right = nextRight
 	self.thumbstickSnapshot.dominant = nextDominant
+	self.thumbstickSnapshot.lastActiveThumbstick = nextLastActiveThumbstick
 	self.thumbstickSnapshot.lastUpdatedAt = os.clock()
 	self:_emitThumbstickChanged()
 	return true
@@ -499,7 +532,7 @@ function GamepadNav._setThumbstickState(self: GamepadNav, key: ThumbstickKey, ne
 	local currentRight = self.thumbstickSnapshot.right
 	local nextLeft = if key == "Left" then nextState else currentLeft
 	local nextRight = if key == "Right" then nextState else currentRight
-	return self:_setThumbstickSnapshot(nextLeft, nextRight)
+	return self:_setThumbstickSnapshot(nextLeft, nextRight, key)
 end
 
 function GamepadNav._updateThumbstick(self: GamepadNav, key: ThumbstickKey, input: InputObject)
@@ -511,7 +544,11 @@ function GamepadNav._updateThumbstick(self: GamepadNav, key: ThumbstickKey, inpu
 	self:_setThumbstickState(key, nextState)
 end
 
-function GamepadNav._refreshThumbsticks(self: GamepadNav, gamepadType: Enum.UserInputType): boolean
+function GamepadNav._refreshThumbsticks(
+	self: GamepadNav,
+	gamepadType: Enum.UserInputType,
+	changedKey: ThumbstickKey?
+): boolean
 	local ok, gamepadState = pcall(function()
 		return UserInputService:GetGamepadState(gamepadType)
 	end)
@@ -545,7 +582,7 @@ function GamepadNav._refreshThumbsticks(self: GamepadNav, gamepadType: Enum.User
 	if not foundThumbstick then
 		return false
 	end
-	self:_setThumbstickSnapshot(nextLeft, nextRight)
+	self:_setThumbstickSnapshot(nextLeft, nextRight, changedKey)
 	return true
 end
 
@@ -598,14 +635,14 @@ function GamepadNav._onInputChanged(self: GamepadNav, input: InputObject)
 		return
 	end
 	if input.KeyCode == Enum.KeyCode.Thumbstick1 then
-		if not self:_refreshThumbsticks(input.UserInputType) then
+		if not self:_refreshThumbsticks(input.UserInputType, "Left") then
 			self:_updateThumbstick("Left", input)
 		end
 		if self.navigationStickKeyCode == Enum.KeyCode.Thumbstick1 then
 			self:_handleThumbstick(self:_getNavigationVector(input))
 		end
 	elseif input.KeyCode == Enum.KeyCode.Thumbstick2 then
-		if not self:_refreshThumbsticks(input.UserInputType) then
+		if not self:_refreshThumbsticks(input.UserInputType, "Right") then
 			self:_updateThumbstick("Right", input)
 		end
 		if self.navigationStickKeyCode == Enum.KeyCode.Thumbstick2 then
@@ -622,14 +659,14 @@ function GamepadNav._onInputEnded(self: GamepadNav, input: InputObject)
 		return
 	end
 	if input.KeyCode == Enum.KeyCode.Thumbstick1 then
-		if not self:_refreshThumbsticks(input.UserInputType) then
+		if not self:_refreshThumbsticks(input.UserInputType, "Left") then
 			self:_resetThumbstick("Left")
 		end
 		if self.navigationStickKeyCode == Enum.KeyCode.Thumbstick1 then
 			self:_handleThumbstick(Vector2.zero)
 		end
 	elseif input.KeyCode == Enum.KeyCode.Thumbstick2 then
-		if not self:_refreshThumbsticks(input.UserInputType) then
+		if not self:_refreshThumbsticks(input.UserInputType, "Right") then
 			self:_resetThumbstick("Right")
 		end
 		if self.navigationStickKeyCode == Enum.KeyCode.Thumbstick2 then

@@ -66,29 +66,43 @@ local function renderStickIndicator(imageId: string, size: Vector2, zIndex: numb
 	})
 end
 
-local function resolveActiveIndicatorState(state: PadState): ActiveIndicatorState?
-	if state.dominantStick == "Right" and state.rightStick.active then
-		return {
-			position = state.rightStick.position,
-			hideOnCenter = false,
-		}
-	end
-	if state.dominantStick == "Left" and state.leftStick.active then
+local function resolveOwnedIndicatorState(state: PadState, owner: "Left" | "Right"): ActiveIndicatorState?
+	if owner == "Left" then
+		if not state.leftStick.active then
+			return nil
+		end
 		return {
 			position = state.leftStick.position,
 			hideOnCenter = false,
 		}
 	end
 
-	if state.rightStick.active then
+	if not state.rightStick.active then
+		return nil
+	end
+	return {
+		position = state.rightStick.position,
+		hideOnCenter = false,
+	}
+end
+
+local function resolveActiveIndicatorState(state: PadState): ActiveIndicatorState?
+	if state.dominantStick ~= nil then
+		return resolveOwnedIndicatorState(state, state.dominantStick)
+	end
+	if state.lastActiveThumbstick ~= nil then
+		return resolveOwnedIndicatorState(state, state.lastActiveThumbstick)
+	end
+
+	if state.leftStick.active and not state.rightStick.active then
 		return {
-			position = state.rightStick.position,
+			position = state.leftStick.position,
 			hideOnCenter = false,
 		}
 	end
-	if state.leftStick.active then
+	if state.rightStick.active and not state.leftStick.active then
 		return {
-			position = state.leftStick.position,
+			position = state.rightStick.position,
 			hideOnCenter = false,
 		}
 	end
@@ -176,6 +190,7 @@ return function(props: PadScreenProps?): React.ReactNode
 		return nil
 	end, {
 		state.dominantStick,
+		state.lastActiveThumbstick,
 		state.leftStick.active,
 		state.leftStick.position,
 		state.rightStick.active,

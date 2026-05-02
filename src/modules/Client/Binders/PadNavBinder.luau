@@ -40,6 +40,7 @@ type ThumbstickSnapshot = {
 	left: ThumbstickState,
 	right: ThumbstickState,
 	dominant: "Left" | "Right"?,
+	lastActiveThumbstick: "Left" | "Right"?,
 	lastUpdatedAt: number,
 }
 
@@ -62,6 +63,7 @@ local EMPTY_THUMBSTICK_SNAPSHOT: ThumbstickSnapshot = {
 		active = false,
 	},
 	dominant = nil,
+	lastActiveThumbstick = nil,
 	lastUpdatedAt = 0,
 }
 
