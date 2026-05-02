@@ -226,7 +226,7 @@ function GamepadPointer.ResolveWorldPosition(
 		return nil, owner, vector
 	end
 
-	local worldOffset = GamepadPointer.ResolveWorldOffset(vector, tileSizeStudsRaw)
+	local worldOffset = GamepadPointer.ResolveWorldOffsetForScreenVector(vector, tileSizeStudsRaw, rootPart)
 	if worldOffset == nil then
 		return nil, owner, vector
 	end
