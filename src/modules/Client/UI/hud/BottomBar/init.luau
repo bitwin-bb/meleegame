@@ -1,9 +1,12 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local React = require(ReplicatedStorage.Packages.React)
 local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
+local React = require(ReplicatedStorage.Packages.React)
 
 local e: typeof(React.createElement) = React.createElement
+
+local BOTTOM_BAR_HEIGHT = 56
+local BOTTOM_BAR_EDGE_PADDING = 12
 
 type BottomBarButton = {
 	key: string?,
@@ -83,14 +86,39 @@ return function(props: BottomBarProps)
 	end
 
 	return e("Frame", {
-		Name = "BottomBar",
-		Size = props.size or UDim2.new(1, -24, 0, 56),
-		Position = props.position or UDim2.new(0.5, 0, 1, -12),
+		Size = props.size or UDim2.new(1, 0, 0, BOTTOM_BAR_HEIGHT + BOTTOM_BAR_EDGE_PADDING),
+		Position = props.position or UDim2.fromScale(0.5, 1),
 		AnchorPoint = props.anchorPoint or Vector2.new(0.5, 1),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
+		Active = false,
+		Selectable = false,
 		LayoutOrder = props.layoutOrder or 4,
 		ZIndex = zIndex,
 		Visible = props.visible ~= false,
-	}, children)
+	}, {
+		BottomBarContent = e("Frame", {
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Active = false,
+			Selectable = false,
+			ZIndex = zIndex,
+		}, {
+			EdgePadding = e("UIPadding", {
+				PaddingTop = UDim.new(0, 0),
+				PaddingBottom = UDim.new(0, BOTTOM_BAR_EDGE_PADDING),
+				PaddingLeft = UDim.new(0, BOTTOM_BAR_EDGE_PADDING),
+				PaddingRight = UDim.new(0, BOTTOM_BAR_EDGE_PADDING),
+			}),
+			ButtonList = e("Frame", {
+				Size = UDim2.fromScale(1, 1),
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				Active = false,
+				Selectable = false,
+				ZIndex = zIndex,
+			}, children),
+		}),
+	})
 end

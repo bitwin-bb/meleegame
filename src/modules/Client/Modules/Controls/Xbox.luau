@@ -78,6 +78,7 @@ return {
 				},
 				{
 					id = "open_inventory",
+					actionName = "Inventory.Open",
 					label = "Inventory",
 					prompts = {
 						{

@@ -1,10 +1,10 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local React = require(ReplicatedStorage.Packages.React)
-local TopBar = require(script:FindFirstAncestor("game").Client.UI.hud.TopBar)
 local BottomBar = require(script:FindFirstAncestor("game").Client.UI.hud.BottomBar)
 local LeftSideBar = require(script:FindFirstAncestor("game").Client.UI.hud.LeftSideBar)
+local React = require(ReplicatedStorage.Packages.React)
 local RightSideBar = require(script:FindFirstAncestor("game").Client.UI.hud.RightSideBar)
+local TopBar = require(script:FindFirstAncestor("game").Client.UI.hud.TopBar)
 
 local e: typeof(React.createElement) = React.createElement
 
@@ -48,6 +48,8 @@ return function(props: HudProps)
 		Position = UDim2.fromScale(0, 0),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
+		Active = false,
+		Selectable = false,
 		LayoutOrder = props.layoutOrder or 1,
 		ZIndex = baseZIndex,
 		Visible = props.visible ~= false,

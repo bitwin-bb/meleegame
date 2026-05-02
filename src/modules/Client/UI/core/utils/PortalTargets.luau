@@ -3,7 +3,7 @@ local Players = game:GetService("Players")
 
 local PortalTargets = {}
 
-local UI_ROOT_NAME = "ui"
+local UI_ROOT_NAME = "App"
 
 function PortalTargets.ResolveUiScreenGui(): ScreenGui?
 	local localPlayer = Players.LocalPlayer

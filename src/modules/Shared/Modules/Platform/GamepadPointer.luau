@@ -11,11 +11,26 @@ GamepadPointer.WORLD_REACH_TILES = 5
 
 export type PointerOwner = "Left" | "Right"
 
+local WORLD_PLANE_EPSILON = 1e-4
+
 local function sanitizeTileSizeStuds(tileSizeStudsRaw: any): number
 	local tileSizeStuds = if typeof(tileSizeStudsRaw) == "number" and tileSizeStudsRaw == tileSizeStudsRaw
 		then tileSizeStudsRaw
 		else GamepadPointer.DEFAULT_TILE_SIZE_STUDS
 	return math.max(0.25, tileSizeStuds)
+end
+
+local function resolveViewportOffset(camera: Camera, origin: Vector3, worldOffset: Vector3): Vector2
+	local originViewportPosition = camera:WorldToViewportPoint(origin)
+	local targetViewportPosition = camera:WorldToViewportPoint(origin + worldOffset)
+	return Vector2.new(
+		targetViewportPosition.X - originViewportPosition.X,
+		targetViewportPosition.Y - originViewportPosition.Y
+	)
+end
+
+local function resolveRootPart(rootPartRaw: any): BasePart?
+	return if typeof(rootPartRaw) == "Instance" and rootPartRaw:IsA("BasePart") then rootPartRaw :: BasePart else nil
 end
 
 local function resolveCharacterRootPart(playerRaw: any): BasePart?
@@ -123,6 +138,16 @@ end
 
 function GamepadPointer.ResolveOwnedVector(snapshotRaw: any): (Vector2?, PointerOwner?)
 	local snapshot = resolveThumbstickSnapshot(snapshotRaw)
+	if snapshot ~= nil then
+		local dominantRaw = (snapshot :: any).dominant
+		if dominantRaw == "Right" or dominantRaw == "Left" then
+			local dominantVector, dominantActive = resolveStickVector(snapshot, dominantRaw)
+			if dominantActive and dominantVector ~= nil then
+				return dominantVector, dominantRaw
+			end
+		end
+	end
+
 	local rightVector, rightActive = resolveStickVector(snapshot, "Right")
 	if rightActive and rightVector ~= nil then
 		return rightVector, "Right"
@@ -152,6 +177,48 @@ function GamepadPointer.ResolveWorldOffset(vectorRaw: any, tileSizeStudsRaw: any
 	return Vector3.new(0, -vectorRaw.Y * reachStuds, -vectorRaw.X * reachStuds)
 end
 
+function GamepadPointer.ResolveWorldOffsetForScreenVector(
+	vectorRaw: any,
+	tileSizeStudsRaw: any,
+	rootPartRaw: any?
+): Vector3?
+	if typeof(vectorRaw) ~= "Vector2" then
+		return nil
+	end
+
+	local vector = vectorRaw :: Vector2
+	local magnitude = vector.Magnitude
+	if magnitude <= WORLD_PLANE_EPSILON then
+		return nil
+	end
+
+	local rootPart = resolveRootPart(rootPartRaw)
+	local camera = Workspace.CurrentCamera
+	if rootPart == nil or camera == nil then
+		return GamepadPointer.ResolveWorldOffset(vector, tileSizeStudsRaw)
+	end
+
+	local origin = rootPart.Position
+	local zScreenAxis = resolveViewportOffset(camera, origin, Vector3.zAxis)
+	local yScreenAxis = resolveViewportOffset(camera, origin, Vector3.yAxis)
+	local determinant = zScreenAxis.X * yScreenAxis.Y - yScreenAxis.X * zScreenAxis.Y
+	if math.abs(determinant) <= WORLD_PLANE_EPSILON then
+		return GamepadPointer.ResolveWorldOffset(vector, tileSizeStudsRaw)
+	end
+
+	local desiredScreenDirection = vector.Unit
+	local zCoefficient = (desiredScreenDirection.X * yScreenAxis.Y - yScreenAxis.X * desiredScreenDirection.Y)
+		/ determinant
+	local yCoefficient = (zScreenAxis.X * desiredScreenDirection.Y - desiredScreenDirection.X * zScreenAxis.Y)
+		/ determinant
+	local worldDirection = Vector3.new(0, yCoefficient, zCoefficient)
+	if worldDirection.Magnitude <= WORLD_PLANE_EPSILON then
+		return GamepadPointer.ResolveWorldOffset(vector, tileSizeStudsRaw)
+	end
+
+	return worldDirection.Unit * GamepadPointer.ResolveReachStuds(tileSizeStudsRaw) * math.clamp(magnitude, 0, 1)
+end
+
 function GamepadPointer.ResolveWorldPosition(
 	tileSizeStudsRaw: any,
 	rootPartRaw: any?,
@@ -169,7 +236,7 @@ function GamepadPointer.ResolveWorldPosition(
 		return nil, owner, vector
 	end
 
-	local worldOffset = GamepadPointer.ResolveWorldOffset(vector, tileSizeStudsRaw)
+	local worldOffset = GamepadPointer.ResolveWorldOffsetForScreenVector(vector, tileSizeStudsRaw, rootPart)
 	if worldOffset == nil then
 		return nil, owner, vector
 	end
@@ -217,6 +284,7 @@ end
 GamepadPointer.resolveOwnedVector = GamepadPointer.ResolveOwnedVector
 GamepadPointer.resolveReachStuds = GamepadPointer.ResolveReachStuds
 GamepadPointer.resolveWorldOffset = GamepadPointer.ResolveWorldOffset
+GamepadPointer.resolveWorldOffsetForScreenVector = GamepadPointer.ResolveWorldOffsetForScreenVector
 GamepadPointer.resolveWorldPosition = GamepadPointer.ResolveWorldPosition
 GamepadPointer.resolveCurrentWorldPosition = GamepadPointer.ResolveCurrentWorldPosition
 GamepadPointer.resolveScreenPosition = GamepadPointer.ResolveScreenPosition

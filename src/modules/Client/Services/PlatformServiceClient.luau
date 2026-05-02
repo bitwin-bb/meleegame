@@ -1175,7 +1175,7 @@ function PlatformServiceClient._refreshState(self: typeof(PlatformServiceClient)
 	self.gamepadFamily = nextState.gamepadFamily
 	self.state = nextState
 	self:_applySystemPolicies(nextState)
-	local didPlatformChange = previousState == nil
+	local didStateChange = previousState == nil
 		or not PlatformServiceUtils.platformStatesEqual(previousState, nextState)
 		or previousState.gamepadFamily ~= nextState.gamepadFamily
 		or previousState.machineFamily ~= nextState.machineFamily
@@ -1186,23 +1186,20 @@ function PlatformServiceClient._refreshState(self: typeof(PlatformServiceClient)
 		or previousState.connectedGamepadCount ~= nextState.connectedGamepadCount
 		or previousState.shiftLockAllowed ~= nextState.shiftLockAllowed
 		or previousState.customCursorEnabled ~= nextState.customCursorEnabled
-	if didPlatformChange or forceEmit == true then
+	if didStateChange or forceEmit == true then
 		local clonedState = cloneState(nextState)
 		self.stateChanged:Fire(clonedState)
-		if
-			previousState == nil
+		local didPlatformSurfaceChange = previousState == nil
 			or previousState.platform ~= nextState.platform
 			or previousState.deviceClass ~= nextState.deviceClass
 			or previousState.gamepadFamily ~= nextState.gamepadFamily
 			or previousState.machineFamily ~= nextState.machineFamily
 			or previousState.playerInputMode ~= nextState.playerInputMode
-			or previousState.activeInputModeName ~= nextState.activeInputModeName
-			or previousState.activeGamepadInputName ~= nextState.activeGamepadInputName
 			or previousState.platformName ~= nextState.platformName
 			or previousState.connectedGamepadCount ~= nextState.connectedGamepadCount
 			or previousState.shiftLockAllowed ~= nextState.shiftLockAllowed
 			or previousState.customCursorEnabled ~= nextState.customCursorEnabled
-		then
+		if didPlatformSurfaceChange then
 			self.platformChanged:Fire(clonedState, if previousState ~= nil then cloneState(previousState) else nil)
 			self:_updateActionBindingsForPlatform()
 		end

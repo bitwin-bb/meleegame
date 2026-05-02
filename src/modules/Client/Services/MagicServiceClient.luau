@@ -3,15 +3,16 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Signal = require(ReplicatedStorage.Packages.Signal)
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
+local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Modules.Platform.GamepadPointer)
 local InventoryServiceClient = require(script:FindFirstAncestor("game").Client.Services.InventoryServiceClient)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local MagicServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.MagicServiceUtils)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
+local Signal = require(ReplicatedStorage.Packages.Signal)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 
 type InventoryState = InventoryServiceUtils.InventoryState
 type ReplicatedState = MagicServiceUtils.ReplicatedState
@@ -63,10 +64,11 @@ local function resolveGamepadAimVector(gamepadNavRaw: any): Vector2?
 		return nil
 	end
 	local snapshot = (gamepadNavRaw :: any):getThumbstickState()
-	if typeof(snapshot) ~= "table" or typeof((snapshot :: any).right) ~= "table" then
+	if typeof(snapshot) ~= "table" then
 		return nil
 	end
-	local screenVector = (((snapshot :: any).right :: any).screen)
+
+	local screenVector = GamepadPointer.resolveOwnedVector(snapshot)
 	if typeof(screenVector) ~= "Vector2" or screenVector.Magnitude <= GAMEPAD_AIM_DEADZONE then
 		return nil
 	end
@@ -213,7 +215,11 @@ function MagicServiceClient.BuildCastRequest(self: MagicServiceClient, triggerRa
 	if PlatformServiceClient:isGamepad() then
 		local gamepadAim = resolveGamepadAimVector(self.gamepadNav)
 		if gamepadAim ~= nil then
-			local candidate = Vector3.new(0, gamepadAim.Y, -gamepadAim.X)
+			local candidate = GamepadPointer.resolveWorldOffsetForScreenVector(
+				gamepadAim,
+				GamepadPointer.DEFAULT_TILE_SIZE_STUDS,
+				rootPart
+			) or Vector3.new(0, -gamepadAim.Y, -gamepadAim.X)
 			if candidate.Magnitude > 1e-4 then
 				aimDirection = candidate.Unit
 			end
@@ -632,4 +638,3 @@ type MagicServiceClient = typeof(MagicServiceClient) & {
 }
 
 return MagicServiceClient :: MagicServiceClient
-

@@ -1,11 +1,15 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local React = require(ReplicatedStorage.Packages.React)
-local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
 local BubblesScreen = require(script:FindFirstAncestor("game").Client.UI.features.breath.screens.bubblesScreen)
 local ManaTopRightBar = require(script:FindFirstAncestor("game").Client.UI.hud.TopBar.ManaTopRightBar)
+local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
+local React = require(ReplicatedStorage.Packages.React)
 
 local e: typeof(React.createElement) = React.createElement
+
+local SIDE_BAR_WIDTH = 220
+local SIDE_BAR_EDGE_PADDING = 12
+local SIDE_BAR_VERTICAL_PADDING = 72
 
 type RightSideBarButton = {
 	key: string?,
@@ -111,22 +115,41 @@ return function(props: RightSideBarProps)
 	end
 
 	return e("Frame", {
-		Size = props.size or UDim2.new(0, 220, 1, -144),
-		Position = props.position or UDim2.new(1, -12, 0.5, 0),
+		Size = props.size or UDim2.new(0, SIDE_BAR_WIDTH, 1, 0),
+		Position = props.position or UDim2.fromScale(1, 0.5),
 		AnchorPoint = props.anchorPoint or Vector2.new(1, 0.5),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
+		Active = false,
+		Selectable = false,
 		LayoutOrder = props.layoutOrder or 3,
 		ZIndex = zIndex,
 		Visible = props.visible ~= false,
 	}, {
-		ButtonList = e("Frame", {
+		RightSideBarContent = e("Frame", {
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
+			Active = false,
+			Selectable = false,
 			ZIndex = zIndex,
-		}, buttonListChildren),
-		ManaTopRightBar = e(ManaTopRightBar, manaBarProps),
-		BreathBubbles = e(BubblesScreen, breathBarProps),
+		}, {
+			EdgePadding = e("UIPadding", {
+				PaddingTop = UDim.new(0, SIDE_BAR_VERTICAL_PADDING),
+				PaddingBottom = UDim.new(0, SIDE_BAR_VERTICAL_PADDING),
+				PaddingLeft = UDim.new(0, 0),
+				PaddingRight = UDim.new(0, SIDE_BAR_EDGE_PADDING),
+			}),
+			ButtonList = e("Frame", {
+				Size = UDim2.fromScale(1, 1),
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				Active = false,
+				Selectable = false,
+				ZIndex = zIndex,
+			}, buttonListChildren),
+			ManaTopRightBar = e(ManaTopRightBar, manaBarProps),
+			BreathBubbles = e(BubblesScreen, breathBarProps),
+		}),
 	})
 end

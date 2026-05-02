@@ -1,10 +1,14 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local React = require(ReplicatedStorage.Packages.React)
-local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
 local InventoryHotbar = require(script:FindFirstAncestor("game").Client.UI.features.inventory.hud.inventoryHotbar)
+local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
+local React = require(ReplicatedStorage.Packages.React)
 
 local e: typeof(React.createElement) = React.createElement
+
+local SIDE_BAR_WIDTH = 220
+local SIDE_BAR_EDGE_PADDING = 12
+local SIDE_BAR_VERTICAL_PADDING = 72
 
 type LeftSideBarButton = {
 	key: string?,
@@ -97,23 +101,40 @@ return function(props: LeftSideBarProps)
 	end
 
 	return e("Frame", {
-		Name = "LeftSideBar",
-		Size = props.size or UDim2.new(0, 220, 1, -144),
-		Position = props.position or UDim2.new(0, 12, 0.5, 0),
+		Size = props.size or UDim2.new(0, SIDE_BAR_WIDTH, 1, 0),
+		Position = props.position or UDim2.fromScale(0, 0.5),
 		AnchorPoint = props.anchorPoint or Vector2.new(0, 0.5),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
+		Active = false,
+		Selectable = false,
 		LayoutOrder = props.layoutOrder or 2,
 		ZIndex = zIndex,
 		Visible = props.visible ~= false,
 	}, {
-		ButtonList = e("Frame", {
-			Name = "ButtonList",
+		LeftSideBarContent = e("Frame", {
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
+			Active = false,
+			Selectable = false,
 			ZIndex = zIndex,
-		}, buttonListChildren),
-		InventoryHotbar = e(InventoryHotbar, inventoryHotbarProps),
+		}, {
+			EdgePadding = e("UIPadding", {
+				PaddingTop = UDim.new(0, SIDE_BAR_VERTICAL_PADDING),
+				PaddingBottom = UDim.new(0, SIDE_BAR_VERTICAL_PADDING),
+				PaddingLeft = UDim.new(0, SIDE_BAR_EDGE_PADDING),
+				PaddingRight = UDim.new(0, 0),
+			}),
+			ButtonList = e("Frame", {
+				Size = UDim2.fromScale(1, 1),
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				Active = false,
+				Selectable = false,
+				ZIndex = zIndex,
+			}, buttonListChildren),
+			InventoryHotbar = e(InventoryHotbar, inventoryHotbarProps),
+		}),
 	})
 end

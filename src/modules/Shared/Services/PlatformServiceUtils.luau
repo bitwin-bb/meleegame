@@ -128,6 +128,7 @@ local ACTIONS = {
 	MAGIC_CAST = "MagicService.Cast",
 	HOTBAR_SELECT = "Inventory.SelectHotbar",
 	HOTBAR_CYCLE = "Inventory.CycleHotbar",
+	OPEN_INVENTORY = "Inventory.Open",
 	PLACE_DEPLOYABLE = "Inventory.PlaceDeployable",
 }
 
@@ -627,12 +628,6 @@ local DEFAULT_ACTION_DEFINITIONS: { [string]: ActionDefinition } = {
 			},
 			Gamepad = {
 				{
-					playerAction = Enum.PlayerActions.CharacterLeft,
-					axis = "X",
-					axisSign = -1,
-					deadzone = 0.2,
-				},
-				{
 					keyCode = Enum.KeyCode.DPadLeft,
 				},
 			},
@@ -687,12 +682,6 @@ local DEFAULT_ACTION_DEFINITIONS: { [string]: ActionDefinition } = {
 			},
 			Gamepad = {
 				{
-					playerAction = Enum.PlayerActions.CharacterRight,
-					axis = "X",
-					axisSign = 1,
-					deadzone = 0.2,
-				},
-				{
 					keyCode = Enum.KeyCode.DPadRight,
 				},
 			},
@@ -746,12 +735,6 @@ local DEFAULT_ACTION_DEFINITIONS: { [string]: ActionDefinition } = {
 				},
 			},
 			Gamepad = {
-				{
-					playerAction = Enum.PlayerActions.CharacterForward,
-					axis = "Y",
-					axisSign = 1,
-					deadzone = 0.2,
-				},
 				{
 					keyCode = Enum.KeyCode.DPadUp,
 				},
@@ -812,12 +795,6 @@ local DEFAULT_ACTION_DEFINITIONS: { [string]: ActionDefinition } = {
 				},
 			},
 			Gamepad = {
-				{
-					playerAction = Enum.PlayerActions.CharacterBackward,
-					axis = "Y",
-					axisSign = -1,
-					deadzone = 0.2,
-				},
 				{
 					keyCode = Enum.KeyCode.DPadDown,
 				},
@@ -1004,6 +981,30 @@ local DEFAULT_ACTION_DEFINITIONS: { [string]: ActionDefinition } = {
 				{
 					keyCode = Enum.KeyCode.ButtonL1,
 					label = "LB / RB",
+				},
+			},
+		},
+	},
+	[ACTIONS.OPEN_INVENTORY] = {
+		actionName = ACTIONS.OPEN_INVENTORY,
+		displayName = "Open Inventory",
+		description = "Open or close the expanded inventory.",
+		priority = 1500,
+		consume = false,
+		allowWhileTyping = false,
+		blockWhenPointerOverGui = false,
+		blockWhenGuiSelected = false,
+		bindingsByPlatform = {
+			Gamepad = {
+				{
+					keyCode = Enum.KeyCode.ButtonY,
+				},
+			},
+		},
+		promptBindingsByPlatform = {
+			Gamepad = {
+				{
+					keyCode = Enum.KeyCode.ButtonY,
 				},
 			},
 		},

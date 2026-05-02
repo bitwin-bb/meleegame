@@ -568,6 +568,17 @@ local function appendJumpHint(hints: { BindingHintEntry })
 	})
 end
 
+local function appendInventoryHint(hints: { BindingHintEntry })
+	pushHint(hints, {
+		id = "open_inventory",
+		actionName = PlatformServiceClient.ACTIONS.OPEN_INVENTORY,
+		label = "Inventory",
+		detail = nil,
+		enabled = true,
+		priority = 300,
+	})
+end
+
 local function computeBindingState(): BindingHintState
 	local platformSnapshot = readPlatformSnapshot()
 	local inventoryState = readInventoryState()
@@ -577,6 +588,7 @@ local function computeBindingState(): BindingHintState
 	local contextualBuildKind = appendBuildHints(hints, inventoryState, selectedStack)
 	appendMeleeHint(hints, contextualBuildKind)
 	appendMagicHint(hints)
+	appendInventoryHint(hints)
 	appendJumpHint(hints)
 
 	return bindingSlice.setBindingState({

@@ -1,5 +1,4 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Angle = require(script:FindFirstAncestor("game").Shared.Modules.Math.Angle)
@@ -876,17 +875,21 @@ function PlayerServiceUtils.GetGamepadMoveAxis(
 	return PlayerServiceUtils.ApplyAxisDeadzone(moveVector.X, axisDeadzone)
 end
 
-function PlayerServiceUtils.GetGamepadThumbstick1Axis(
+function PlayerServiceUtils.GetGamepadHorizontalAxis(
 	userInputServiceRaw: any,
-	stickDeadzoneRaw: any,
+	gamepadTypeRaw: any,
+	stickDeadzoneRaw: any?,
 	axisDeadzoneRaw: any?
 ): number?
 	if userInputServiceRaw == nil or typeof((userInputServiceRaw :: any).GetGamepadState) ~= "function" then
 		return nil
 	end
+	local gamepadType = if typeof(gamepadTypeRaw) == "EnumItem"
+		then gamepadTypeRaw :: Enum.UserInputType
+		else Enum.UserInputType.Gamepad1
 
 	local ok, gamepadState = pcall(function()
-		return (userInputServiceRaw :: any):GetGamepadState(Enum.UserInputType.Gamepad1)
+		return (userInputServiceRaw :: any):GetGamepadState(gamepadType)
 	end)
 	if not ok then
 		return nil
@@ -902,6 +905,19 @@ function PlayerServiceUtils.GetGamepadThumbstick1Axis(
 	end
 
 	return PlayerServiceUtils.GetGamepadMoveAxis(gamepadState, stickDeadzoneRaw, axisDeadzoneRaw)
+end
+
+function PlayerServiceUtils.GetGamepadThumbstick1Axis(
+	userInputServiceRaw: any,
+	stickDeadzoneRaw: any,
+	axisDeadzoneRaw: any?
+): number?
+	return PlayerServiceUtils.GetGamepadHorizontalAxis(
+		userInputServiceRaw,
+		Enum.UserInputType.Gamepad1,
+		stickDeadzoneRaw,
+		axisDeadzoneRaw
+	)
 end
 
 function PlayerServiceUtils.GetHorizontalInputAxis(isKeyDown: (keyCode: Enum.KeyCode) -> boolean): number
@@ -1073,6 +1089,7 @@ PlayerServiceUtils.getMouseWorldPointOnPlaneX = PlayerServiceUtils.GetMouseWorld
 PlayerServiceUtils.getNormalizedWorldAxisFromZ = PlayerServiceUtils.GetNormalizedWorldAxisFromZ
 PlayerServiceUtils.applyAxisDeadzone = PlayerServiceUtils.ApplyAxisDeadzone
 PlayerServiceUtils.getGamepadMoveAxis = PlayerServiceUtils.GetGamepadMoveAxis
+PlayerServiceUtils.getGamepadHorizontalAxis = PlayerServiceUtils.GetGamepadHorizontalAxis
 PlayerServiceUtils.getGamepadThumbstick1Axis = PlayerServiceUtils.GetGamepadThumbstick1Axis
 PlayerServiceUtils.getHorizontalInputAxis = PlayerServiceUtils.GetHorizontalInputAxis
 PlayerServiceUtils.getCombinedHorizontalInputAxis = PlayerServiceUtils.GetCombinedHorizontalInputAxis

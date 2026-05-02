@@ -11,6 +11,7 @@ local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Servi
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
 local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Cmdr.CmdrUtils)
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
+local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Modules.Platform.GamepadPointer)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
@@ -45,6 +46,8 @@ local WORLD_UNLOCK_MIN_SURFACE_NORMAL_Y = 0.5
 local WORLD_UNLOCK_REQUEST_MIN_INTERVAL = 0.1
 local GAMEPAD_MOVE_DEADZONE = 0.2
 local GAMEPAD_AIM_DEADZONE = 0.12
+local GAMEPAD_NAV_SNAPSHOT_MAX_AGE_SECONDS = 0.35
+local LOOK_FACING_WORLD_HYSTERESIS_STUDS = 0.15
 local DEBUG_MOVEMENT_INPUT_ATTRIBUTE = "PlayerService_DebugMovementInput"
 local DEBUG_MOVEMENT_RAW_AXIS_INTERVAL = 0.25
 local RANDOM = Random.new()
@@ -65,15 +68,22 @@ local function isGroundHitContact(hit: RaycastResult?): boolean
 	return hit ~= nil and hit.Distance <= GROUNDED_CONTACT_MAX_DISTANCE
 end
 
-local function resolveGamepadAimVector(gamepadNavRaw: any): Vector2?
+local function resolveGamepadAimVector(gamepadNavRaw: any, maxAgeSeconds: number?): Vector2?
 	if gamepadNavRaw == nil or typeof((gamepadNavRaw :: any).getThumbstickState) ~= "function" then
 		return nil
 	end
 	local snapshot = (gamepadNavRaw :: any):getThumbstickState()
-	if typeof(snapshot) ~= "table" or typeof((snapshot :: any).right) ~= "table" then
+	if typeof(snapshot) ~= "table" then
 		return nil
 	end
-	local screenVector = ((snapshot :: any).right :: any).screen
+	local lastUpdatedAtRaw = (snapshot :: any).lastUpdatedAt
+	if typeof(lastUpdatedAtRaw) == "number" and maxAgeSeconds ~= nil then
+		if os.clock() - (lastUpdatedAtRaw :: number) > maxAgeSeconds then
+			return nil
+		end
+	end
+
+	local screenVector = GamepadPointer.resolveOwnedVector(snapshot)
 	if typeof(screenVector) ~= "Vector2" or screenVector.Magnitude <= GAMEPAD_AIM_DEADZONE then
 		return nil
 	end
@@ -96,6 +106,171 @@ local function formatInputKeyCode(inputObject: InputObject?): string
 		return "nil"
 	end
 	return inputObject.KeyCode.Name
+end
+
+local function getConnectedGamepadTypes(userInputServiceRaw: any): { Enum.UserInputType }
+	if userInputServiceRaw == nil or typeof((userInputServiceRaw :: any).GetConnectedGamepads) ~= "function" then
+		return { Enum.UserInputType.Gamepad1 }
+	end
+
+	local ok, connectedGamepads = pcall(function()
+		return (userInputServiceRaw :: any):GetConnectedGamepads()
+	end)
+	if not ok or typeof(connectedGamepads) ~= "table" or #connectedGamepads <= 0 then
+		return { Enum.UserInputType.Gamepad1 }
+	end
+
+	local output = {}
+	for _, gamepadTypeRaw in connectedGamepads do
+		if typeof(gamepadTypeRaw) == "EnumItem" then
+			output[#output + 1] = gamepadTypeRaw :: Enum.UserInputType
+		end
+	end
+	if #output <= 0 then
+		output[#output + 1] = Enum.UserInputType.Gamepad1
+	end
+	return output
+end
+
+local function getPolledThumbstick1PositionX(userInputServiceRaw: any, gamepadType: Enum.UserInputType): number?
+	if userInputServiceRaw == nil or typeof((userInputServiceRaw :: any).GetGamepadState) ~= "function" then
+		return nil
+	end
+
+	local ok, gamepadState = pcall(function()
+		return (userInputServiceRaw :: any):GetGamepadState(gamepadType)
+	end)
+	if not ok or typeof(gamepadState) ~= "table" then
+		return nil
+	end
+
+	for _, inputObjectRaw in gamepadState do
+		local inputObject = if typeof(inputObjectRaw) == "InputObject" then inputObjectRaw :: InputObject else nil
+		if inputObject ~= nil and inputObject.KeyCode == Enum.KeyCode.Thumbstick1 then
+			local position = inputObject.Position
+			if typeof(position) == "Vector3" then
+				return position.X
+			end
+		end
+	end
+	return nil
+end
+
+local function getPolledThumbstickVector(
+	userInputServiceRaw: any,
+	gamepadType: Enum.UserInputType,
+	keyCode: Enum.KeyCode
+): Vector2?
+	if userInputServiceRaw == nil or typeof((userInputServiceRaw :: any).GetGamepadState) ~= "function" then
+		return nil
+	end
+
+	local ok, gamepadState = pcall(function()
+		return (userInputServiceRaw :: any):GetGamepadState(gamepadType)
+	end)
+	if not ok or typeof(gamepadState) ~= "table" then
+		return nil
+	end
+
+	for _, inputObjectRaw in gamepadState do
+		local inputObject = if typeof(inputObjectRaw) == "InputObject" then inputObjectRaw :: InputObject else nil
+		if inputObject ~= nil and inputObject.KeyCode == keyCode then
+			return resolveThumbstickVector(inputObject)
+		end
+	end
+	return nil
+end
+
+local function resolveScreenThumbstickVector(vectorRaw: any, deadzone: number): Vector2?
+	if typeof(vectorRaw) ~= "Vector2" then
+		return nil
+	end
+	local deadzonedVector = PlatformServiceUtils.applyThumbstickDeadzone(vectorRaw :: Vector2, deadzone)
+	local screenVector = Vector2.new(deadzonedVector.X, -deadzonedVector.Y)
+	if screenVector.Magnitude <= 1e-4 then
+		return nil
+	end
+	return screenVector
+end
+
+local function getWorldPlaneHorizontalAxis(targetZ: number, originZ: number): number
+	return -(targetZ - originZ)
+end
+
+local function getWorldPlaneLookAngleRadians(targetPosition: Vector3, originPosition: Vector3): number?
+	local horizontalAxis = getWorldPlaneHorizontalAxis(targetPosition.Z, originPosition.Z)
+	local verticalAxis = targetPosition.Y - originPosition.Y
+	if math.abs(horizontalAxis) <= 1e-4 and math.abs(verticalAxis) <= 1e-4 then
+		return nil
+	end
+	return math.atan2(verticalAxis, horizontalAxis)
+end
+
+local function getFacingFromWorldPlaneHorizontalAxis(horizontalAxis: number, deadzoneStudsRaw: any): FacingSign?
+	local threshold = if typeof(deadzoneStudsRaw) == "number"
+		then math.max(0, deadzoneStudsRaw :: number)
+		else LOOK_FACING_WORLD_HYSTERESIS_STUDS
+	if math.abs(horizontalAxis) <= threshold then
+		return nil
+	end
+	return if horizontalAxis > 0 then 1 else -1
+end
+
+local function getFacingFlipFromWorldPlaneHorizontalAxis(
+	horizontalAxis: number,
+	currentFacingRaw: any,
+	hysteresisStudsRaw: any
+): FacingSign?
+	local currentFacing =
+		PlayerServiceUtils.sanitizeFacingSign(currentFacingRaw, PlayerServiceUtils.DEFAULT_FACING_SIGN)
+	local threshold = if typeof(hysteresisStudsRaw) == "number"
+		then math.max(0, hysteresisStudsRaw :: number)
+		else LOOK_FACING_WORLD_HYSTERESIS_STUDS
+
+	if currentFacing == 1 then
+		if horizontalAxis < -threshold then
+			return -1
+		end
+		return nil
+	end
+
+	if horizontalAxis > threshold then
+		return 1
+	end
+	return nil
+end
+
+local function getPolledGamepadAimVector(userInputServiceRaw: any): (Vector2?, boolean)
+	local didPollThumbstick = false
+	local gamepadTypes = getConnectedGamepadTypes(userInputServiceRaw)
+	local keyCodePriority = {
+		Enum.KeyCode.Thumbstick2,
+		Enum.KeyCode.Thumbstick1,
+	}
+
+	for _, keyCode in keyCodePriority do
+		for _, gamepadType in gamepadTypes do
+			local rawVector = getPolledThumbstickVector(userInputServiceRaw, gamepadType, keyCode)
+			if rawVector == nil then
+				continue
+			end
+			didPollThumbstick = true
+
+			local screenVector = resolveScreenThumbstickVector(rawVector, GAMEPAD_AIM_DEADZONE)
+			if screenVector ~= nil then
+				return screenVector, didPollThumbstick
+			end
+		end
+	end
+
+	return nil, didPollThumbstick
+end
+
+local function formatPolledGamepadName(gamepadType: Enum.UserInputType?): string
+	if gamepadType == nil then
+		return "nil"
+	end
+	return gamepadType.Name
 end
 
 local function shouldRefreshRigFromCharacterChild(child: Instance): boolean
@@ -135,15 +310,20 @@ function PlayerServiceClient.Init(self: PlayerServiceClient)
 	self.headLookMaxYawDegrees = PlayerServiceUtils.DEFAULT_HEAD_LOOK_MAX_YAW_DEGREES
 	self.runtimeContext = nil
 	self.gamepadNav = nil
+	self.cursorModule = nil
+	self.playerModuleControls = nil
+	self.lastPlayerModuleControlsResolveAt = -math.huge
 	self.neckJoint = nil
 	self.neckBaseC0 = nil
 	self.headPart = nil
 	self.movementLocked = false
+	self.movementBlockerBound = false
 	self.moveLeftValue = 0
 	self.moveRightValue = 0
 	self.moveUpValue = 0
 	self.moveDownValue = 0
 	self.gamepadMoveVector = Vector2.zero
+	self.gamepadAimVector = Vector2.zero
 	self.jumpActionValue = 0
 	self.flyEnabled = false
 	self.flySpeed = CmdrUtils.DEFAULT_FLY_SPEED
@@ -160,6 +340,11 @@ function PlayerServiceClient.Init(self: PlayerServiceClient)
 	self.lastHurtFeedbackAt = 0
 	self.lastMovementDebugLogAt = -math.huge
 	self.lastMovementDebugRawAxis = nil
+	self.lastPolledGamepadPositionX = nil
+	self.lastPolledGamepadAxis = nil
+	self.lastPolledGamepadType = nil
+	self.lastCoreControlMoveVectorX = nil
+	self.lastCoreControlMoveAxis = nil
 	self.hurtSoundAssetIds = {}
 
 	self:refreshHurtSoundTemplates()
@@ -238,7 +423,45 @@ function PlayerServiceClient.SetMovementActionValue(self: PlayerServiceClient, a
 end
 
 function PlayerServiceClient.SetGamepadMoveVector(self: PlayerServiceClient, vectorRaw: any)
-	self.gamepadMoveVector = PlatformServiceUtils.applyThumbstickDeadzone(vectorRaw, GAMEPAD_MOVE_DEADZONE)
+	local moveVector = PlatformServiceUtils.applyThumbstickDeadzone(vectorRaw, GAMEPAD_MOVE_DEADZONE)
+	self.gamepadMoveVector = moveVector
+	self:debugMovementInput(
+		("computed gamepadMoveVector=(%.3f, %.3f) gamepadMoveVector.X=%.3f"):format(
+			moveVector.X,
+			moveVector.Y,
+			moveVector.X
+		)
+	)
+end
+
+function PlayerServiceClient.SetGamepadAimVector(self: PlayerServiceClient, vectorRaw: any)
+	local rawVector = if typeof(vectorRaw) == "Vector2" then vectorRaw :: Vector2 else Vector2.zero
+	local aimVector = PlatformServiceUtils.applyThumbstickDeadzone(rawVector, GAMEPAD_AIM_DEADZONE)
+	self.gamepadAimVector = Vector2.new(aimVector.X, -aimVector.Y)
+end
+
+function PlayerServiceClient.GetCursorScreenPosition(self: PlayerServiceClient): Vector2
+	local cursorModule = self.cursorModule
+	if cursorModule ~= nil then
+		if typeof((cursorModule :: any).getScreenPosition) == "function" then
+			local ok, screenPosition = pcall(function()
+				return (cursorModule :: any):getScreenPosition()
+			end)
+			if ok and typeof(screenPosition) == "Vector2" then
+				return screenPosition
+			end
+		end
+		if typeof((cursorModule :: any).GetScreenPosition) == "function" then
+			local ok, screenPosition = pcall(function()
+				return (cursorModule :: any):GetScreenPosition()
+			end)
+			if ok and typeof(screenPosition) == "Vector2" then
+				return screenPosition
+			end
+		end
+	end
+
+	return UserInputService:GetMouseLocation()
 end
 
 function PlayerServiceClient.IsMovementInputDebugEnabled(self: PlayerServiceClient): boolean
@@ -254,9 +477,12 @@ end
 
 function PlayerServiceClient.DebugRawMovementAxis(
 	self: PlayerServiceClient,
+	context: string,
 	rawAxis: number,
 	keyboardAxis: number,
-	gamepadAxis: number
+	gamepadAxis: number,
+	humanoidMoveVector: Vector3,
+	velocityVector: Vector3?
 )
 	if not self:isMovementInputDebugEnabled() then
 		return
@@ -274,22 +500,140 @@ function PlayerServiceClient.DebugRawMovementAxis(
 
 	self.lastMovementDebugLogAt = now
 	self.lastMovementDebugRawAxis = rawAxis
+	local velocityText = if velocityVector ~= nil
+		then (" velocity=(%.3f, %.3f, %.3f)"):format(velocityVector.X, velocityVector.Y, velocityVector.Z)
+		else ""
 	self:debugMovementInput(
-		("rawAxis=%.3f keyboardAxis=%.3f gamepadAxis=%.3f locked=%s humanoidMoveNext=true"):format(
+		("%s Thumbstick1.Position.X=%s polledGamepadAxis=%s coreMoveVector.X=%s coreMoveAxis=%s GetHorizontalMoveAxis()=%.3f keyboardAxis=%.3f GetGamepadMoveAxis()=%.3f gamepadMoveVector.X=%.3f humanoidMove=(%.3f, %.3f, %.3f)%s locked=%s"):format(
+			context,
+			if self.lastPolledGamepadPositionX ~= nil
+				then ("%s:%.3f"):format(
+					formatPolledGamepadName(self.lastPolledGamepadType),
+					self.lastPolledGamepadPositionX :: number
+				)
+				else "nil",
+			if self.lastPolledGamepadAxis ~= nil then ("%.3f"):format(self.lastPolledGamepadAxis :: number) else "nil",
+			if self.lastCoreControlMoveVectorX ~= nil
+				then ("%.3f"):format(self.lastCoreControlMoveVectorX :: number)
+				else "nil",
+			if self.lastCoreControlMoveAxis ~= nil
+				then ("%.3f"):format(self.lastCoreControlMoveAxis :: number)
+				else "nil",
 			rawAxis,
 			keyboardAxis,
 			gamepadAxis,
+			self.gamepadMoveVector.X,
+			humanoidMoveVector.X,
+			humanoidMoveVector.Y,
+			humanoidMoveVector.Z,
+			velocityText,
 			tostring(self.movementLocked)
 		)
 	)
 end
 
 function PlayerServiceClient.GetPolledGamepadMoveAxis(self: PlayerServiceClient): number?
-	return PlayerServiceUtils.getGamepadThumbstick1Axis(
-		UserInputService,
-		GAMEPAD_MOVE_DEADZONE,
-		math.max(self.moveAxisDeadzone, self.horizontalDeadzone)
-	)
+	local axisDeadzone = math.max(self.moveAxisDeadzone, self.horizontalDeadzone)
+	local fallbackAxis = nil :: number?
+	local fallbackPositionX = nil :: number?
+	local fallbackGamepadType = nil :: Enum.UserInputType?
+	for _, gamepadType in getConnectedGamepadTypes(UserInputService) do
+		local polledPositionX = getPolledThumbstick1PositionX(UserInputService, gamepadType)
+		local polledAxis = PlayerServiceUtils.getGamepadHorizontalAxis(
+			UserInputService,
+			gamepadType,
+			GAMEPAD_MOVE_DEADZONE,
+			axisDeadzone
+		)
+		if fallbackAxis == nil then
+			fallbackAxis = polledAxis
+			fallbackPositionX = polledPositionX
+			fallbackGamepadType = gamepadType
+		end
+		if polledAxis ~= nil and polledAxis ~= 0 then
+			self.lastPolledGamepadPositionX = polledPositionX
+			self.lastPolledGamepadAxis = polledAxis
+			self.lastPolledGamepadType = gamepadType
+			return polledAxis
+		end
+	end
+
+	self.lastPolledGamepadPositionX = fallbackPositionX
+	self.lastPolledGamepadAxis = fallbackAxis
+	self.lastPolledGamepadType = fallbackGamepadType
+	return fallbackAxis
+end
+
+function PlayerServiceClient.ResolvePlayerModuleControls(self: PlayerServiceClient): any?
+	if self.playerModuleControls ~= nil then
+		return self.playerModuleControls
+	end
+
+	local now = os.clock()
+	if now - self.lastPlayerModuleControlsResolveAt < 0.5 then
+		return nil
+	end
+	self.lastPlayerModuleControlsResolveAt = now
+
+	local playerScripts = self.localPlayer:FindFirstChild("PlayerScripts")
+	if playerScripts == nil then
+		return nil
+	end
+	local playerModule = playerScripts:FindFirstChild("PlayerModule")
+	if playerModule == nil or not playerModule:IsA("ModuleScript") then
+		return nil
+	end
+
+	local ok, playerModuleValue = pcall(require, playerModule)
+	if
+		not ok
+		or typeof(playerModuleValue) ~= "table"
+		or typeof((playerModuleValue :: any).GetControls) ~= "function"
+	then
+		return nil
+	end
+
+	local controlsOk, controls = pcall(function()
+		return (playerModuleValue :: any):GetControls()
+	end)
+	if not controlsOk or controls == nil or typeof((controls :: any).GetMoveVector) ~= "function" then
+		return nil
+	end
+
+	self.playerModuleControls = controls
+	return controls
+end
+
+function PlayerServiceClient.GetCoreControlMoveAxis(self: PlayerServiceClient): number
+	local controls = self:resolvePlayerModuleControls()
+	if controls == nil then
+		self.lastCoreControlMoveVectorX = nil
+		self.lastCoreControlMoveAxis = nil
+		return 0
+	end
+
+	local ok, moveVector = pcall(function()
+		return (controls :: any):GetMoveVector()
+	end)
+	if not ok then
+		self.playerModuleControls = nil
+		self.lastCoreControlMoveVectorX = nil
+		self.lastCoreControlMoveAxis = nil
+		return 0
+	end
+
+	local moveVectorX = 0
+	if typeof(moveVector) == "Vector3" then
+		moveVectorX = (moveVector :: Vector3).X
+	elseif typeof(moveVector) == "Vector2" then
+		moveVectorX = (moveVector :: Vector2).X
+	end
+
+	local axis =
+		PlayerServiceUtils.applyAxisDeadzone(moveVectorX, math.max(self.moveAxisDeadzone, self.horizontalDeadzone))
+	self.lastCoreControlMoveVectorX = moveVectorX
+	self.lastCoreControlMoveAxis = axis
+	return axis
 end
 
 function PlayerServiceClient.OnGamepadMoveInputChanged(self: PlayerServiceClient, inputObjectRaw: any)
@@ -300,7 +644,22 @@ function PlayerServiceClient.OnGamepadMoveInputChanged(self: PlayerServiceClient
 	if inputObject.KeyCode ~= Enum.KeyCode.Thumbstick1 then
 		return
 	end
-	if not PlatformServiceUtils.isGamepadInputType(inputObject.UserInputType) then
+	local thumbstickVector = resolveThumbstickVector(inputObject)
+	if thumbstickVector == nil then
+		return
+	end
+	self:debugMovementInput(
+		("inputchanged Thumbstick1 Position.X=%.3f Position.Y=%.3f"):format(thumbstickVector.X, thumbstickVector.Y)
+	)
+	self:setGamepadMoveVector(thumbstickVector)
+end
+
+function PlayerServiceClient.OnGamepadAimInputChanged(self: PlayerServiceClient, inputObjectRaw: any)
+	if typeof(inputObjectRaw) ~= "InputObject" then
+		return
+	end
+	local inputObject = inputObjectRaw :: InputObject
+	if inputObject.KeyCode ~= Enum.KeyCode.Thumbstick2 then
 		return
 	end
 
@@ -308,10 +667,35 @@ function PlayerServiceClient.OnGamepadMoveInputChanged(self: PlayerServiceClient
 	if thumbstickVector == nil then
 		return
 	end
-	self:debugMovementInput(
-		("inputchanged Thumbstick1 position=(%.3f, %.3f)"):format(thumbstickVector.X, thumbstickVector.Y)
-	)
-	self:setGamepadMoveVector(thumbstickVector)
+	self:setGamepadAimVector(thumbstickVector)
+end
+
+function PlayerServiceClient.GetPolledGamepadAimVector(_self: PlayerServiceClient): Vector2?
+	local screenVector = getPolledGamepadAimVector(UserInputService)
+	return screenVector
+end
+
+function PlayerServiceClient.GetGamepadAimVector(self: PlayerServiceClient): Vector2?
+	local polledAimVector, didPollGamepad = getPolledGamepadAimVector(UserInputService)
+	if polledAimVector ~= nil then
+		return polledAimVector
+	end
+	if didPollGamepad then
+		return nil
+	end
+
+	local navAimVector = resolveGamepadAimVector(self.gamepadNav, GAMEPAD_NAV_SNAPSHOT_MAX_AGE_SECONDS)
+	if navAimVector ~= nil then
+		return navAimVector
+	end
+
+	if self.gamepadAimVector.Magnitude > 1e-4 then
+		return self.gamepadAimVector
+	end
+	if self.gamepadMoveVector.Magnitude > 1e-4 then
+		return Vector2.new(self.gamepadMoveVector.X, -self.gamepadMoveVector.Y)
+	end
+	return nil
 end
 
 function PlayerServiceClient.GetActionHorizontalMoveAxis(self: PlayerServiceClient): number
@@ -329,15 +713,23 @@ function PlayerServiceClient.GetGamepadMoveAxis(self: PlayerServiceClient): numb
 	if cachedGamepadAxis ~= 0 then
 		return cachedGamepadAxis
 	end
+	local coreControlAxis = self:getCoreControlMoveAxis()
+	if coreControlAxis ~= 0 then
+		return coreControlAxis
+	end
 	return 0
 end
 
+function PlayerServiceClient.GetHorizontalMoveAxisComponents(self: PlayerServiceClient): (number, number, number)
+	local keyboardAxis = self:getActionHorizontalMoveAxis()
+	local gamepadAxis = self:getGamepadMoveAxis()
+	local rawAxis = PlayerServiceUtils.getCombinedHorizontalInputAxis(keyboardAxis, gamepadAxis, self.moveAxisDeadzone)
+	return rawAxis, keyboardAxis, gamepadAxis
+end
+
 function PlayerServiceClient.GetHorizontalMoveAxis(self: PlayerServiceClient): number
-	return PlayerServiceUtils.getCombinedHorizontalInputAxis(
-		self:getActionHorizontalMoveAxis(),
-		self:getGamepadMoveAxis(),
-		self.moveAxisDeadzone
-	)
+	local rawAxis = self:getHorizontalMoveAxisComponents()
+	return rawAxis
 end
 
 function PlayerServiceClient.GetVerticalMoveAxis(self: PlayerServiceClient): number
@@ -352,22 +744,23 @@ function PlayerServiceClient.ShouldSinkMovementInput(self: PlayerServiceClient):
 end
 
 function PlayerServiceClient.BindMovementBlocker(self: PlayerServiceClient)
+	if self.movementBlockerBound then
+		return
+	end
+	self.movementBlockerBound = true
 	ContextActionService:BindActionAtPriority(
 		BLOCK_MOVEMENT_ACTION,
 		function(actionName: string, inputState: Enum.UserInputState, inputObject: InputObject?)
-			local shouldSink = self:shouldSinkMovementInput()
-			local result = if shouldSink then Enum.ContextActionResult.Sink else Enum.ContextActionResult.Pass
 			self:debugMovementInput(
-				("cas %s state=%s key=%s result=%s locked=%s worldUnlock=%s"):format(
+				("cas %s state=%s key=%s result=Sink locked=%s worldUnlock=%s"):format(
 					actionName,
 					inputState.Name,
 					formatInputKeyCode(inputObject),
-					result.Name,
 					tostring(self.movementLocked),
 					tostring(self.worldUnlockPending)
 				)
 			)
-			return result
+			return Enum.ContextActionResult.Sink
 		end,
 		false,
 		BLOCK_MOVEMENT_PRIORITY,
@@ -384,6 +777,22 @@ function PlayerServiceClient.BindMovementBlocker(self: PlayerServiceClient)
 		Enum.KeyCode.LeftControl,
 		Enum.KeyCode.RightControl
 	)
+end
+
+function PlayerServiceClient.UnbindMovementBlocker(self: PlayerServiceClient)
+	if not self.movementBlockerBound then
+		return
+	end
+	self.movementBlockerBound = false
+	ContextActionService:UnbindAction(BLOCK_MOVEMENT_ACTION)
+end
+
+function PlayerServiceClient.RefreshMovementBlocker(self: PlayerServiceClient)
+	if self:shouldSinkMovementInput() then
+		self:bindMovementBlocker()
+	else
+		self:unbindMovementBlocker()
+	end
 end
 
 function PlayerServiceClient.RefreshPlatformInputMode(self: PlayerServiceClient)
@@ -403,6 +812,12 @@ function PlayerServiceClient.BindPlatformInputs(self: PlayerServiceClient)
 	self.gamepadNav = if runtimeContext ~= nil and typeof((runtimeContext :: any).getGamepadNav) == "function"
 		then (runtimeContext :: any):getGamepadNav()
 		else if runtimeContext ~= nil then (runtimeContext :: any).gamepadNav else nil
+	self.cursorModule = if runtimeContext ~= nil then (runtimeContext :: any).cursor else nil
+	if self.cursorModule ~= nil and typeof((self.cursorModule :: any).init) == "function" then
+		pcall(function()
+			(self.cursorModule :: any):init()
+		end)
+	end
 
 	if not PlatformServiceClient:isReady() then
 		PlatformServiceClient:init()
@@ -450,9 +865,10 @@ function PlayerServiceClient.BindPlatformInputs(self: PlayerServiceClient)
 	if jumpDisconnect ~= nil then
 		self.janitor:GiveChore(jumpDisconnect)
 	end
-	self:bindMovementBlocker()
+	self:refreshMovementBlocker()
 	self.janitor:GiveChore(UserInputService.InputChanged:Connect(function(inputObject: InputObject)
 		self:onGamepadMoveInputChanged(inputObject)
+		self:onGamepadAimInputChanged(inputObject)
 	end))
 
 	self:resetMovementInputState()
@@ -461,6 +877,7 @@ function PlayerServiceClient.BindPlatformInputs(self: PlayerServiceClient)
 		self:resetMovementInputState()
 		if typeof(nextState) ~= "table" or (nextState :: any).platform ~= "Gamepad" then
 			self:setGamepadMoveVector(Vector2.zero)
+			self:setGamepadAimVector(Vector2.zero)
 		end
 		self:refreshPlatformInputMode()
 	end))
@@ -585,6 +1002,7 @@ function PlayerServiceClient.ApplyMovementLock(self: PlayerServiceClient, moveme
 		self.worldUnlockPending = false
 		self.worldUnlockConsecutiveSurfaceHits = 0
 	end
+	self:refreshMovementBlocker()
 end
 
 function PlayerServiceClient.RefreshCmdrFlyState(self: PlayerServiceClient)
@@ -630,6 +1048,7 @@ end
 
 function PlayerServiceClient.TryResolveWorldUnlock(self: PlayerServiceClient, rig: CharacterRig, deltaTime: number)
 	if not self.movementLocked or not self.worldUnlockPending then
+		self:refreshMovementBlocker()
 		return
 	end
 
@@ -655,6 +1074,8 @@ function PlayerServiceClient.TryResolveWorldUnlock(self: PlayerServiceClient, ri
 		return
 	end
 
+	self.worldUnlockPending = false
+	self:refreshMovementBlocker()
 	local now = os.clock()
 	if now - self.lastWorldUnlockRequestAt < WORLD_UNLOCK_REQUEST_MIN_INTERVAL then
 		return
@@ -760,16 +1181,20 @@ function PlayerServiceClient.GetMouseFacing(self: PlayerServiceClient, rig: Char
 		return nil
 	end
 
-	local mouseLocation = UserInputService:GetMouseLocation()
-	local facingViewportPosition, isFacingPointOnScreen = currentCamera:WorldToViewportPoint(rig.rootPart.Position)
-	if not isFacingPointOnScreen then
+	local mouseLocation = self:getCursorScreenPosition()
+	local targetPosition = PlayerServiceUtils.getMouseWorldPointOnPlaneX(
+		currentCamera,
+		mouseLocation.X,
+		mouseLocation.Y,
+		rig.rootPart.Position.X
+	)
+	if targetPosition == nil then
 		return nil
 	end
 
-	return PlayerServiceUtils.getFacingFromScreenX(
-		mouseLocation.X,
-		facingViewportPosition.X,
-		self.mouseFacingDeadzonePixels
+	return getFacingFromWorldPlaneHorizontalAxis(
+		getWorldPlaneHorizontalAxis(targetPosition.Z, rig.rootPart.Position.Z),
+		LOOK_FACING_WORLD_HYSTERESIS_STUDS
 	)
 end
 
@@ -780,65 +1205,79 @@ function PlayerServiceClient.GetMouseLookState(self: PlayerServiceClient, rig: C
 	end
 
 	local lookOriginPart = if self.headPart and self.headPart.Parent ~= nil then self.headPart else rig.rootPart
-	local lookOriginViewportPosition, isLookOriginOnScreen = currentCamera:WorldToViewportPoint(lookOriginPart.Position)
-	if not isLookOriginOnScreen then
-		return nil, nil
-	end
-	local rootViewportPosition, isRootOnScreen = currentCamera:WorldToViewportPoint(rig.rootPart.Position)
-	if not isRootOnScreen then
+	local mouseLocation = self:getCursorScreenPosition()
+	local targetPosition = PlayerServiceUtils.getMouseWorldPointOnPlaneX(
+		currentCamera,
+		mouseLocation.X,
+		mouseLocation.Y,
+		rig.rootPart.Position.X
+	)
+	if targetPosition == nil then
 		return nil, nil
 	end
 
-	local mouseLocation = UserInputService:GetMouseLocation()
-	local screenLookAngleRadians = PlayerServiceUtils.getScreenLookAngleRadians(
-		mouseLocation.X,
-		mouseLocation.Y,
-		lookOriginViewportPosition.X,
-		lookOriginViewportPosition.Y
-	)
-	if screenLookAngleRadians == nil then
+	local worldPlaneLookAngleRadians = getWorldPlaneLookAngleRadians(targetPosition, lookOriginPart.Position)
+	if worldPlaneLookAngleRadians == nil then
 		return nil, 0
 	end
 
 	local relativeLookAngleRadians =
-		PlayerServiceUtils.getRelativeLookAngleRadians(screenLookAngleRadians, self.facingSign)
-	local desiredFacing = PlayerServiceUtils.getFacingFlipFromScreenX(
-		mouseLocation.X,
-		rootViewportPosition.X,
+		PlayerServiceUtils.getRelativeLookAngleRadians(worldPlaneLookAngleRadians, self.facingSign)
+	local desiredFacing = getFacingFlipFromWorldPlaneHorizontalAxis(
+		getWorldPlaneHorizontalAxis(targetPosition.Z, rig.rootPart.Position.Z),
 		self.facingSign,
-		self.mouseFacingFlipHysteresisPixels
+		LOOK_FACING_WORLD_HYSTERESIS_STUDS
 	)
 	if desiredFacing ~= nil then
-		relativeLookAngleRadians = PlayerServiceUtils.getRelativeLookAngleRadians(screenLookAngleRadians, desiredFacing)
+		relativeLookAngleRadians =
+			PlayerServiceUtils.getRelativeLookAngleRadians(worldPlaneLookAngleRadians, desiredFacing)
 	end
 
 	return desiredFacing, PlayerServiceUtils.clampLookAngleRadians(relativeLookAngleRadians, self.headLookMaxYawDegrees)
 end
 
-function PlayerServiceClient.GetGamepadLookState(self: PlayerServiceClient, _rig: CharacterRig): (FacingSign?, number?)
-	if not PlatformServiceClient:isGamepad() then
-		return nil, nil
-	end
-
-	local aimVector = resolveGamepadAimVector(self.gamepadNav)
+function PlayerServiceClient.GetGamepadLookState(self: PlayerServiceClient, rig: CharacterRig): (FacingSign?, number?)
+	local aimVector = self:getGamepadAimVector()
 	if aimVector == nil then
 		return nil, nil
 	end
 
-	local desiredFacing = if math.abs(aimVector.X) > 1e-4
-		then PlayerServiceUtils.sanitizeFacingSign(aimVector.X, self.facingSign)
-		else nil
+	local lookOriginPart = if self.headPart and self.headPart.Parent ~= nil then self.headPart else rig.rootPart
+	local worldOffset = GamepadPointer.resolveWorldOffsetForScreenVector(
+		aimVector,
+		GamepadPointer.DEFAULT_TILE_SIZE_STUDS,
+		rig.rootPart
+	)
+	if worldOffset == nil then
+		return nil, nil
+	end
+
+	local lookTargetPosition = lookOriginPart.Position + worldOffset
+	local worldPlaneLookAngleRadians = getWorldPlaneLookAngleRadians(lookTargetPosition, lookOriginPart.Position)
+	if worldPlaneLookAngleRadians == nil then
+		return nil, 0
+	end
+
+	local desiredFacing = getFacingFlipFromWorldPlaneHorizontalAxis(
+		getWorldPlaneHorizontalAxis((rig.rootPart.Position + worldOffset).Z, rig.rootPart.Position.Z),
+		self.facingSign,
+		LOOK_FACING_WORLD_HYSTERESIS_STUDS
+	)
 	local facingForAngle = if desiredFacing ~= nil then desiredFacing else self.facingSign
 	local relativeLookAngleRadians =
-		PlayerServiceUtils.getRelativeLookAngleRadians(math.atan2(aimVector.Y, aimVector.X), facingForAngle)
+		PlayerServiceUtils.getRelativeLookAngleRadians(worldPlaneLookAngleRadians, facingForAngle)
 	return desiredFacing, PlayerServiceUtils.clampLookAngleRadians(relativeLookAngleRadians, self.headLookMaxYawDegrees)
 end
 
 function PlayerServiceClient.ResolveLookState(self: PlayerServiceClient, rig: CharacterRig): (FacingSign?, number?)
-	if self.mouseFacingEnabled then
+	local gamepadFacing, gamepadLookAngleRadians = self:getGamepadLookState(rig)
+	if gamepadFacing ~= nil or gamepadLookAngleRadians ~= nil then
+		return gamepadFacing, gamepadLookAngleRadians
+	end
+	if self.mouseFacingEnabled or UserInputService.MouseEnabled then
 		return self:getMouseLookState(rig)
 	end
-	return self:getGamepadLookState(rig)
+	return nil, nil
 end
 
 function PlayerServiceClient.ApplyHeadLook(self: PlayerServiceClient, lookAngleRadians: number?)
@@ -858,7 +1297,7 @@ function PlayerServiceClient.UpdateFlyingMovement(self: PlayerServiceClient, rig
 
 	local mouseFacing, lookAngleRadians = self:resolveLookState(rig)
 
-	local horizontalAxis = self:getHorizontalMoveAxis()
+	local horizontalAxis, keyboardAxis, gamepadAxis = self:getHorizontalMoveAxisComponents()
 	local verticalAxis = self:getVerticalMoveAxis()
 
 	local desiredFacing = mouseFacing
@@ -885,13 +1324,16 @@ function PlayerServiceClient.UpdateFlyingMovement(self: PlayerServiceClient, rig
 	self:applyHeadLook(lookAngleRadians)
 	rig.humanoid.Jump = false
 
-	rig.humanoid:Move(Vector3.zero, false)
+	local humanoidMoveVector = Vector3.zero
+	rig.humanoid:Move(humanoidMoveVector, false)
 	if rig.humanoid:GetState() ~= Enum.HumanoidStateType.Physics then
 		rig.humanoid:ChangeState(Enum.HumanoidStateType.Physics)
 	end
 
 	local flySpeed = CmdrUtils.sanitizeFlySpeed(self.flySpeed, CmdrUtils.DEFAULT_FLY_SPEED)
-	rig.rootPart.AssemblyLinearVelocity = Vector3.new(0, verticalAxis * flySpeed, -horizontalAxis * flySpeed)
+	local flyVelocity = Vector3.new(0, verticalAxis * flySpeed, -horizontalAxis * flySpeed)
+	self:debugRawMovementAxis("fly", horizontalAxis, keyboardAxis, gamepadAxis, humanoidMoveVector, flyVelocity)
+	rig.rootPart.AssemblyLinearVelocity = flyVelocity
 	rig.rootPart.AssemblyAngularVelocity = Vector3.zero
 	PlayerServiceUtils.applySidewaysConstraint(rig.rootPart, self.lockedDepthX)
 	PlayerServiceUtils.ensureRootPartUpright(
@@ -942,10 +1384,7 @@ function PlayerServiceClient.UpdateFacingFromMovement(self: PlayerServiceClient,
 
 	local mouseFacing, lookAngleRadians = self:resolveLookState(rig)
 
-	local keyboardAxis = self:getActionHorizontalMoveAxis()
-	local gamepadAxis = self:getGamepadMoveAxis()
-	local rawAxis = PlayerServiceUtils.getCombinedHorizontalInputAxis(keyboardAxis, gamepadAxis, self.moveAxisDeadzone)
-	self:debugRawMovementAxis(rawAxis, keyboardAxis, gamepadAxis)
+	local rawAxis, keyboardAxis, gamepadAxis = self:getHorizontalMoveAxisComponents()
 	self.moveAxisMotion:spring(rawAxis, self.moveSpring)
 
 	local smoothedAxis = self.moveAxisMotion:step(deltaTime)
@@ -955,7 +1394,9 @@ function PlayerServiceClient.UpdateFacingFromMovement(self: PlayerServiceClient,
 	end
 
 	self:applyJumpInput(rig)
-	rig.humanoid:Move(PlayerServiceUtils.getSidewaysMoveVector(curvedAxis, self.sidewaysMoveScale), false)
+	local moveVector = PlayerServiceUtils.getSidewaysMoveVector(curvedAxis, self.sidewaysMoveScale)
+	self:debugRawMovementAxis("ground", rawAxis, keyboardAxis, gamepadAxis, moveVector)
+	rig.humanoid:Move(moveVector, false)
 	PlayerServiceUtils.applySidewaysConstraint(rig.rootPart, self.lockedDepthX)
 	PlayerServiceUtils.ensureRootPartUpright(
 		rig.rootPart,
@@ -1110,6 +1551,7 @@ function PlayerServiceClient.Destroy(self: PlayerServiceClient)
 
 	self.runtimeContext = nil
 	self.gamepadNav = nil
+	self.cursorModule = nil
 end
 
 PlayerServiceClient.init = PlayerServiceClient.Init
@@ -1122,17 +1564,27 @@ PlayerServiceClient.resolveCurrentRig = PlayerServiceClient.ResolveCurrentRig
 PlayerServiceClient.resetMovementInputState = PlayerServiceClient.ResetMovementInputState
 PlayerServiceClient.setMovementActionValue = PlayerServiceClient.SetMovementActionValue
 PlayerServiceClient.setGamepadMoveVector = PlayerServiceClient.SetGamepadMoveVector
+PlayerServiceClient.setGamepadAimVector = PlayerServiceClient.SetGamepadAimVector
+PlayerServiceClient.getCursorScreenPosition = PlayerServiceClient.GetCursorScreenPosition
 PlayerServiceClient.isMovementInputDebugEnabled = PlayerServiceClient.IsMovementInputDebugEnabled
 PlayerServiceClient.debugMovementInput = PlayerServiceClient.DebugMovementInput
 PlayerServiceClient.debugRawMovementAxis = PlayerServiceClient.DebugRawMovementAxis
 PlayerServiceClient.getPolledGamepadMoveAxis = PlayerServiceClient.GetPolledGamepadMoveAxis
+PlayerServiceClient.resolvePlayerModuleControls = PlayerServiceClient.ResolvePlayerModuleControls
+PlayerServiceClient.getCoreControlMoveAxis = PlayerServiceClient.GetCoreControlMoveAxis
 PlayerServiceClient.onGamepadMoveInputChanged = PlayerServiceClient.OnGamepadMoveInputChanged
+PlayerServiceClient.onGamepadAimInputChanged = PlayerServiceClient.OnGamepadAimInputChanged
+PlayerServiceClient.getPolledGamepadAimVector = PlayerServiceClient.GetPolledGamepadAimVector
+PlayerServiceClient.getGamepadAimVector = PlayerServiceClient.GetGamepadAimVector
 PlayerServiceClient.getActionHorizontalMoveAxis = PlayerServiceClient.GetActionHorizontalMoveAxis
 PlayerServiceClient.getGamepadMoveAxis = PlayerServiceClient.GetGamepadMoveAxis
+PlayerServiceClient.getHorizontalMoveAxisComponents = PlayerServiceClient.GetHorizontalMoveAxisComponents
 PlayerServiceClient.getHorizontalMoveAxis = PlayerServiceClient.GetHorizontalMoveAxis
 PlayerServiceClient.getVerticalMoveAxis = PlayerServiceClient.GetVerticalMoveAxis
 PlayerServiceClient.shouldSinkMovementInput = PlayerServiceClient.ShouldSinkMovementInput
 PlayerServiceClient.bindMovementBlocker = PlayerServiceClient.BindMovementBlocker
+PlayerServiceClient.unbindMovementBlocker = PlayerServiceClient.UnbindMovementBlocker
+PlayerServiceClient.refreshMovementBlocker = PlayerServiceClient.RefreshMovementBlocker
 PlayerServiceClient.refreshPlatformInputMode = PlayerServiceClient.RefreshPlatformInputMode
 PlayerServiceClient.bindPlatformInputs = PlayerServiceClient.BindPlatformInputs
 PlayerServiceClient.applyMovementLock = PlayerServiceClient.ApplyMovementLock
@@ -1169,17 +1621,35 @@ type PlayerServiceClient = typeof(PlayerServiceClient) & {
 	resetMovementInputState: (self: PlayerServiceClient) -> (),
 	setMovementActionValue: (self: PlayerServiceClient, actionNameRaw: any, valueRaw: any) -> (),
 	setGamepadMoveVector: (self: PlayerServiceClient, vectorRaw: any) -> (),
+	setGamepadAimVector: (self: PlayerServiceClient, vectorRaw: any) -> (),
+	getCursorScreenPosition: (self: PlayerServiceClient) -> Vector2,
 	isMovementInputDebugEnabled: (self: PlayerServiceClient) -> boolean,
 	debugMovementInput: (self: PlayerServiceClient, message: string) -> (),
-	debugRawMovementAxis: (self: PlayerServiceClient, rawAxis: number, keyboardAxis: number, gamepadAxis: number) -> (),
+	debugRawMovementAxis: (
+		self: PlayerServiceClient,
+		context: string,
+		rawAxis: number,
+		keyboardAxis: number,
+		gamepadAxis: number,
+		humanoidMoveVector: Vector3,
+		velocityVector: Vector3?
+	) -> (),
 	getPolledGamepadMoveAxis: (self: PlayerServiceClient) -> number?,
+	resolvePlayerModuleControls: (self: PlayerServiceClient) -> any?,
+	getCoreControlMoveAxis: (self: PlayerServiceClient) -> number,
 	onGamepadMoveInputChanged: (self: PlayerServiceClient, inputObjectRaw: any) -> (),
+	onGamepadAimInputChanged: (self: PlayerServiceClient, inputObjectRaw: any) -> (),
+	getPolledGamepadAimVector: (self: PlayerServiceClient) -> Vector2?,
+	getGamepadAimVector: (self: PlayerServiceClient) -> Vector2?,
 	getActionHorizontalMoveAxis: (self: PlayerServiceClient) -> number,
 	getGamepadMoveAxis: (self: PlayerServiceClient) -> number,
+	getHorizontalMoveAxisComponents: (self: PlayerServiceClient) -> (number, number, number),
 	getHorizontalMoveAxis: (self: PlayerServiceClient) -> number,
 	getVerticalMoveAxis: (self: PlayerServiceClient) -> number,
 	shouldSinkMovementInput: (self: PlayerServiceClient) -> boolean,
 	bindMovementBlocker: (self: PlayerServiceClient) -> (),
+	unbindMovementBlocker: (self: PlayerServiceClient) -> (),
+	refreshMovementBlocker: (self: PlayerServiceClient) -> (),
 	refreshPlatformInputMode: (self: PlayerServiceClient) -> (),
 	bindPlatformInputs: (self: PlayerServiceClient) -> (),
 	requestJump: (self: PlayerServiceClient) -> boolean,
@@ -1224,15 +1694,20 @@ type PlayerServiceClient = typeof(PlayerServiceClient) & {
 	headLookMaxYawDegrees: number,
 	runtimeContext: any?,
 	gamepadNav: any?,
+	cursorModule: any?,
+	playerModuleControls: any?,
+	lastPlayerModuleControlsResolveAt: number,
 	neckJoint: Motor6D?,
 	neckBaseC0: CFrame?,
 	headPart: BasePart?,
 	movementLocked: boolean,
+	movementBlockerBound: boolean,
 	moveLeftValue: number,
 	moveRightValue: number,
 	moveUpValue: number,
 	moveDownValue: number,
 	gamepadMoveVector: Vector2,
+	gamepadAimVector: Vector2,
 	jumpActionValue: number,
 	worldUnlockPending: boolean,
 	worldUnlockCheckAccumulator: number,
@@ -1247,6 +1722,11 @@ type PlayerServiceClient = typeof(PlayerServiceClient) & {
 	lastHurtFeedbackAt: number,
 	lastMovementDebugLogAt: number,
 	lastMovementDebugRawAxis: number?,
+	lastPolledGamepadPositionX: number?,
+	lastPolledGamepadAxis: number?,
+	lastPolledGamepadType: Enum.UserInputType?,
+	lastCoreControlMoveVectorX: number?,
+	lastCoreControlMoveAxis: number?,
 	hurtSoundAssetIds: { string },
 }
 

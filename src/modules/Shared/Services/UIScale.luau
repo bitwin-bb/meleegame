@@ -2,10 +2,10 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Signal = require(ReplicatedStorage.Packages.Signal)
 local BaseUIScaling = require(script:FindFirstAncestor("game").Shared.Modules.UI.UIScaling)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local PlatformServiceUtils = require(script.Parent.PlatformServiceUtils)
+local Signal = require(ReplicatedStorage.Packages.Signal)
 
 type PlatformState = PlatformServiceUtils.PlatformState
 type PlatformKind = PlatformServiceUtils.PlatformKind
@@ -140,6 +140,33 @@ local function cloneSnapshot(snapshot: UIScaleSnapshot): UIScaleSnapshot
 	}
 end
 
+local function snapshotsEqual(a: UIScaleSnapshot?, b: UIScaleSnapshot?): boolean
+	if a == nil or b == nil then
+		return false
+	end
+	return a.platform == b.platform
+		and a.deviceClass == b.deviceClass
+		and a.viewport == b.viewport
+		and a.guiSize == b.guiSize
+		and a.safeTopLeft == b.safeTopLeft
+		and a.safeBottomRight == b.safeBottomRight
+		and a.safePadding == b.safePadding
+		and a.effectiveScale == b.effectiveScale
+		and a.minimumTouchTarget == b.minimumTouchTarget
+end
+
+local function shouldApplyForPlatformChange(nextStateRaw: any, prevStateRaw: any): boolean
+	if typeof(nextStateRaw) ~= "table" or typeof(prevStateRaw) ~= "table" then
+		return true
+	end
+	local nextState = nextStateRaw :: { [string]: any }
+	local prevState = prevStateRaw :: { [string]: any }
+	return nextState.platform ~= prevState.platform
+		or nextState.deviceClass ~= prevState.deviceClass
+		or nextState.viewport ~= prevState.viewport
+		or nextState.isTenFootInterface ~= prevState.isTenFootInterface
+end
+
 local function baseDeviceTypeFromClass(deviceClass: DeviceClass): string
 	if deviceClass == "Console" then
 		return "Console"
@@ -184,6 +211,7 @@ function PlatformUIScale.New(configRaw: UIScaleConfig?): typeof(setmetatable({} 
 		cameraChangedConnection = nil :: RBXScriptConnection?,
 		platformDisconnect = nil :: (() -> ())?,
 		lastSnapshot = nil :: UIScaleSnapshot?,
+		appliedBasePresetDeviceClass = nil :: DeviceClass?,
 		isInitialized = false,
 	}, PlatformUIScale)
 	return self
@@ -213,6 +241,10 @@ function PlatformUIScale._applyPresetToBaseScaler(
 	self: typeof(setmetatable({} :: any, PlatformUIScale)),
 	deviceClass: DeviceClass
 )
+	if self.appliedBasePresetDeviceClass == deviceClass then
+		return
+	end
+	self.appliedBasePresetDeviceClass = deviceClass
 	local preset = self:_getPreset(deviceClass)
 	local baseDeviceType = baseDeviceTypeFromClass(deviceClass)
 	self.baseScaler:setPreset(baseDeviceType, {
@@ -223,6 +255,21 @@ function PlatformUIScale._applyPresetToBaseScaler(
 		textMax = preset.textMax,
 		layoutSpacingScale = preset.layoutSpacingScale,
 	})
+end
+
+function PlatformUIScale._destroyScreenGuiRootScale(self: typeof(setmetatable({} :: any, PlatformUIScale)))
+	local screenGui = self.screenGui
+	if screenGui == nil then
+		return
+	end
+
+	local staleScale = screenGui:FindFirstChild("PlatformServiceRootScale")
+	if staleScale ~= nil then
+		if staleScale == self.rootScale then
+			self.rootScale = nil
+		end
+		staleScale:Destroy()
+	end
 end
 
 function PlatformUIScale._ensureRootScale(self: typeof(setmetatable({} :: any, PlatformUIScale))): UIScale?
@@ -236,6 +283,14 @@ function PlatformUIScale._ensureRootScale(self: typeof(setmetatable({} :: any, P
 	end
 	if existing ~= nil then
 		existing:Destroy()
+	end
+	local existingScale = target:FindFirstChild("PlatformServiceRootScale")
+	if existingScale ~= nil and existingScale:IsA("UIScale") then
+		self.rootScale = existingScale
+		return existingScale
+	end
+	if existingScale ~= nil then
+		existingScale:Destroy()
 	end
 	local scale = Instance.new("UIScale")
 	scale.Name = "PlatformServiceRootScale"
@@ -281,9 +336,18 @@ function PlatformUIScale._applyScaleTargetSafeArea(
 	end
 	local horizontalInset = safeTopLeft.X + safeBottomRight.X + safePadding.X * 2
 	local verticalInset = safeTopLeft.Y + safeBottomRight.Y + safePadding.Y * 2
-	target.AnchorPoint = Vector2.zero
-	target.Position = UDim2.fromOffset(safeTopLeft.X + safePadding.X, safeTopLeft.Y + safePadding.Y)
-	target.Size = UDim2.new(1, -math.floor(horizontalInset + 0.5), 1, -math.floor(verticalInset + 0.5))
+	local nextAnchorPoint = Vector2.new(0.5, 0.5)
+	local nextPosition = UDim2.fromScale(0.5, 0.5)
+	local nextSize = UDim2.new(1, -math.floor(horizontalInset + 0.5), 1, -math.floor(verticalInset + 0.5))
+	if target.AnchorPoint ~= nextAnchorPoint then
+		target.AnchorPoint = nextAnchorPoint
+	end
+	if target.Position ~= nextPosition then
+		target.Position = nextPosition
+	end
+	if target.Size ~= nextSize then
+		target.Size = nextSize
+	end
 end
 
 function PlatformUIScale.Init(self: typeof(setmetatable({} :: any, PlatformUIScale)))
@@ -305,7 +369,10 @@ function PlatformUIScale.Init(self: typeof(setmetatable({} :: any, PlatformUISca
 
 	local platformService = self.platformService
 	if platformService ~= nil and typeof((platformService :: any).onPlatformChanged) == "function" then
-		self.platformDisconnect = (platformService :: any):onPlatformChanged(function()
+		self.platformDisconnect = (platformService :: any):onPlatformChanged(function(nextState: any, prevState: any)
+			if not shouldApplyForPlatformChange(nextState, prevState) then
+				return
+			end
 			self:apply()
 		end)
 		self.janitor:GiveChore(function()
@@ -331,7 +398,9 @@ function PlatformUIScale.Apply(self: typeof(setmetatable({} :: any, PlatformUISc
 	local effectiveScale = baseSnapshot.scale * preset.uiScale
 	local rootScale = self:_ensureRootScale()
 	if rootScale ~= nil then
-		rootScale.Scale = effectiveScale
+		if rootScale.Scale ~= effectiveScale then
+			rootScale.Scale = effectiveScale
+		end
 	end
 	self:_applyScaleTargetSafeArea(baseSnapshot.safeTopLeft, baseSnapshot.safeBottomRight, preset.safePadding)
 
@@ -347,6 +416,9 @@ function PlatformUIScale.Apply(self: typeof(setmetatable({} :: any, PlatformUISc
 		minimumTouchTarget = preset.minimumTouchTarget,
 		baseSnapshot = baseSnapshot,
 	}
+	if snapshotsEqual(self.lastSnapshot, snapshot) then
+		return
+	end
 	self.lastSnapshot = snapshot
 	self.changed:Fire(cloneSnapshot(snapshot))
 end
@@ -359,6 +431,7 @@ function PlatformUIScale.SetScreenGui(
 		return false
 	end
 	self.screenGui = screenGuiRaw
+	self:_destroyScreenGuiRootScale()
 	self:_bindScreenGui()
 	if self.isInitialized then
 		self:apply()
@@ -412,6 +485,7 @@ function PlatformUIScale.Destroy(self: typeof(setmetatable({} :: any, PlatformUI
 	self.changed:DisconnectAll()
 	self.changed:Destroy()
 	self.lastSnapshot = nil
+	self.appliedBasePresetDeviceClass = nil
 	self.isInitialized = false
 end
 

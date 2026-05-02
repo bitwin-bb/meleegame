@@ -1,10 +1,13 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local React = require(ReplicatedStorage.Packages.React)
-local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
 local HpTopRightBar = require(script:FindFirstAncestor("game").Client.UI.hud.TopBar.HpTopRightBar)
+local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
+local React = require(ReplicatedStorage.Packages.React)
 
 local e: typeof(React.createElement) = React.createElement
+
+local TOP_BAR_HEIGHT = 56
+local TOP_BAR_EDGE_PADDING = 12
 
 type TopBarButton = {
 	key: string?,
@@ -97,23 +100,40 @@ return function(props: TopBarProps)
 	end
 
 	return e("Frame", {
-		Name = "TopBar",
-		Size = props.size or UDim2.new(1, -24, 0, 56),
-		Position = props.position or UDim2.new(0.5, 0, 0, 12),
+		Size = props.size or UDim2.new(1, 0, 0, TOP_BAR_HEIGHT + TOP_BAR_EDGE_PADDING),
+		Position = props.position or UDim2.fromScale(0.5, 0),
 		AnchorPoint = props.anchorPoint or Vector2.new(0.5, 0),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
+		Active = false,
+		Selectable = false,
 		LayoutOrder = props.layoutOrder or 1,
 		ZIndex = zIndex,
 		Visible = props.visible ~= false,
 	}, {
-		ButtonList = e("Frame", {
-			Name = "ButtonList",
-			Size = UDim2.new(1, -368, 1, 0),
+		TopBarContent = e("Frame", {
+			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
+			Active = false,
+			Selectable = false,
 			ZIndex = zIndex,
-		}, buttonListChildren),
-		HpTopRightBar = e(HpTopRightBar, hpBarProps),
+		}, {
+			EdgePadding = e("UIPadding", {
+				PaddingTop = UDim.new(0, TOP_BAR_EDGE_PADDING),
+				PaddingBottom = UDim.new(0, 0),
+				PaddingLeft = UDim.new(0, TOP_BAR_EDGE_PADDING),
+				PaddingRight = UDim.new(0, TOP_BAR_EDGE_PADDING),
+			}),
+			ButtonList = e("Frame", {
+				Size = UDim2.new(1, -368, 1, 0),
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				Active = false,
+				Selectable = false,
+				ZIndex = zIndex,
+			}, buttonListChildren),
+			HpTopRightBar = e(HpTopRightBar, hpBarProps),
+		}),
 	})
 end

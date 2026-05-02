@@ -85,5 +85,17 @@ return function()
 			expect(jumpPrompt.text).to.equal("Space")
 			expect(gamepadJumpPrompt.text).to.equal("A")
 		end)
+
+		it("exposes the Xbox inventory prompt on Y", function()
+			local definition = PlatformServiceUtils.getDefaultActionDefinition(PlatformServiceUtils.ACTIONS.OPEN_INVENTORY)
+
+			expect(definition ~= nil).to.equal(true)
+
+			local gamepadPrompt = PlatformServiceUtils.resolvePromptForAction(definition, "Gamepad", "Console", "xbox")
+
+			expect(gamepadPrompt.text).to.equal("Y")
+			expect(gamepadPrompt.keyCode).to.equal(Enum.KeyCode.ButtonY)
+			expect(typeof(gamepadPrompt.icon)).to.equal("string")
+		end)
 	end)
 end
