@@ -49,8 +49,8 @@ local function resolveCharacterRootPart(localPlayer: Player): BasePart?
 	return character:FindFirstChildWhichIsA("BasePart")
 end
 
-local function getWorldOffset(position: Vector2, rootPart: BasePart): Vector3
-	return GamepadPointer.resolveWorldOffsetForScreenVector(position, TILE_SIZE_STUDS, rootPart) or Vector3.zero
+local function getWorldOffset(position: Vector2): Vector3
+	return GamepadPointer.resolveWorldOffset(position, TILE_SIZE_STUDS) or Vector3.zero
 end
 
 local function renderStickIndicator(imageId: string, size: Vector2, zIndex: number)
@@ -64,50 +64,6 @@ local function renderStickIndicator(imageId: string, size: Vector2, zIndex: numb
 		Size = UDim2.fromOffset(math.floor(size.X + 0.5), math.floor(size.Y + 0.5)),
 		ZIndex = zIndex,
 	})
-end
-
-local function resolveOwnedIndicatorState(state: PadState, owner: "Left" | "Right"): ActiveIndicatorState?
-	if owner == "Left" then
-		if not state.leftStick.active then
-			return nil
-		end
-		return {
-			position = state.leftStick.position,
-			hideOnCenter = false,
-		}
-	end
-
-	if not state.rightStick.active then
-		return nil
-	end
-	return {
-		position = state.rightStick.position,
-		hideOnCenter = false,
-	}
-end
-
-local function resolveActiveIndicatorState(state: PadState): ActiveIndicatorState?
-	if state.dominantStick ~= nil then
-		return resolveOwnedIndicatorState(state, state.dominantStick)
-	end
-	if state.lastActiveThumbstick ~= nil then
-		return resolveOwnedIndicatorState(state, state.lastActiveThumbstick)
-	end
-
-	if state.leftStick.active and not state.rightStick.active then
-		return {
-			position = state.leftStick.position,
-			hideOnCenter = false,
-		}
-	end
-	if state.rightStick.active and not state.leftStick.active then
-		return {
-			position = state.rightStick.position,
-			hideOnCenter = false,
-		}
-	end
-
-	return nil
 end
 
 return function(props: PadScreenProps?): React.ReactNode
@@ -171,9 +127,19 @@ return function(props: PadScreenProps?): React.ReactNode
 	end, { localPlayer })
 
 	React.useEffect(function()
-		local nextIndicator = resolveActiveIndicatorState(state)
-		if nextIndicator ~= nil then
-			setActiveIndicator(nextIndicator)
+		if state.rightStick.active then
+			setActiveIndicator({
+				position = state.rightStick.position,
+				hideOnCenter = false,
+			})
+			return nil
+		end
+
+		if state.leftStick.active then
+			setActiveIndicator({
+				position = state.leftStick.position,
+				hideOnCenter = false,
+			})
 			return nil
 		end
 
@@ -189,8 +155,6 @@ return function(props: PadScreenProps?): React.ReactNode
 
 		return nil
 	end, {
-		state.dominantStick,
-		state.lastActiveThumbstick,
 		state.leftStick.active,
 		state.leftStick.position,
 		state.rightStick.active,
@@ -255,7 +219,7 @@ return function(props: PadScreenProps?): React.ReactNode
 		return nil
 	end
 
-	local worldOffset = getWorldOffset(activeIndicator.position, rootPart)
+	local worldOffset = getWorldOffset(activeIndicator.position)
 
 	return e("BillboardGui", {
 		Adornee = rootPart,
