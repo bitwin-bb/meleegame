@@ -18,41 +18,6 @@ local function getBuildServiceClient()
 	return buildServiceClient
 end
 
-local function isFiniteNumber(value: any): boolean
-	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
-end
-
-local function computeFootprintBounds(
-	footprint: { any },
-	fallbackTileX: number,
-	fallbackTileY: number
-): (number, number, number, number)
-	if #footprint <= 0 then
-		return fallbackTileX, fallbackTileX, fallbackTileY, fallbackTileY
-	end
-
-	local minTileX = math.huge
-	local maxTileX = -math.huge
-	local minTileY = math.huge
-	local maxTileY = -math.huge
-	for _, entry in footprint do
-		local tileX = entry.tileX
-		local tileY = entry.tileY
-		if typeof(tileX) == "number" and typeof(tileY) == "number" then
-			minTileX = math.min(minTileX, tileX)
-			maxTileX = math.max(maxTileX, tileX)
-			minTileY = math.min(minTileY, tileY)
-			maxTileY = math.max(maxTileY, tileY)
-		end
-	end
-
-	if minTileX == math.huge then
-		return fallbackTileX, fallbackTileX, fallbackTileY, fallbackTileY
-	end
-
-	return minTileX, maxTileX, minTileY, maxTileY
-end
-
 function PreviewBinder.new(instance: Instance, context: any)
 	local self = ModelBinder.new(instance, context, PreviewBinder)
 	self.part = if instance:IsA("BasePart") then instance else nil
@@ -92,7 +57,8 @@ function PreviewBinder.step(self: any)
 		return
 	end
 
-	local tileX, tileY = nextBuildServiceClient:resolveCursorTile()
+	local tileX = (nextBuildServiceClient :: any).cursorTileX
+	local tileY = (nextBuildServiceClient :: any).cursorTileY
 	local previewColor = Color3.fromRGB(255, 209, 92)
 	local footprint = {} :: { any }
 	local activePlaceSource = nextBuildServiceClient:resolveActivePlaceSource()
@@ -121,24 +87,14 @@ function PreviewBinder.step(self: any)
 		end
 	end
 
-	local tileSize = if isFiniteNumber((state :: any).tileSize) then math.max(0.25, (state :: any).tileSize) else 2
-	local worldOrigin = if typeof((state :: any).worldOrigin) == "Vector3"
-		then (state :: any).worldOrigin
-		else Vector3.zero
-	local basePlaneX = if isFiniteNumber((state :: any).basePlaneX) then (state :: any).basePlaneX else 0
-	local minTileX, maxTileX, minTileY, maxTileY = computeFootprintBounds(footprint, tileX, tileY)
-	local width = maxTileX - minTileX + 1
-	local height = maxTileY - minTileY + 1
-	local thickness = math.max(0.12, tileSize * 0.12)
-	local centerPosition = Vector3.new(
-		basePlaneX + thickness * 0.5,
-		worldOrigin.Y + (minTileY + height * 0.5) * tileSize,
-		worldOrigin.Z + (minTileX + width * 0.5) * tileSize
-	)
+	local previewGeometry = nextBuildServiceClient:resolvePreviewGeometry(tileX, tileY, footprint)
+	if previewGeometry == nil then
+		self:hide()
+		return
+	end
 
-	self.part.Size =
-		Vector3.new(thickness, math.max(0.1, height * tileSize * 0.92), math.max(0.1, width * tileSize * 0.92))
-	self.part.CFrame = CFrame.new(centerPosition)
+	self.part.Size = previewGeometry.size
+	self.part.CFrame = CFrame.new(previewGeometry.centerPosition)
 	self.part.Color = previewColor
 	self.part.Transparency = 0.42
 end

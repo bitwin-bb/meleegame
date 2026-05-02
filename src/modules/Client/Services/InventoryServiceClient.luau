@@ -5,18 +5,18 @@ local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
 local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Modules.Platform.GamepadPointer)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local LootServiceClient = require(script:FindFirstAncestor("game").Client.Services.LootServiceClient)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
 local PlayerDataServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlayerDataServiceClient)
 local PlayerDataServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerDataServiceUtils)
+local Signal = require(ReplicatedStorage.Packages.Signal)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
 
@@ -84,7 +84,9 @@ local function resolveWorldGridConfig(): (Vector3?, number?, number?)
 					if typeof(originX) == "number" and originX == originX then originX else 0,
 					if typeof(originY) == "number" and originY == originY then originY else 0,
 					if typeof(originZ) == "number" and originZ == originZ then originZ else 0
-				), tileSize, basePlaneX
+				),
+					tileSize,
+					basePlaneX
 			end
 		end
 	end
@@ -98,11 +100,14 @@ local function resolveWorldGridConfig(): (Vector3?, number?, number?)
 	end
 
 	local worldOrigin = if typeof(worldClient.worldOrigin) == "Vector3" then worldClient.worldOrigin else nil
-	local basePlaneX = if typeof(worldClient.basePlaneX) == "number" and worldClient.basePlaneX == worldClient.basePlaneX
+	local basePlaneX = if typeof(worldClient.basePlaneX) == "number"
+			and worldClient.basePlaneX == worldClient.basePlaneX
 		then worldClient.basePlaneX
 		else nil
 	local state = if typeof(worldClient.state) == "table" then worldClient.state else nil
-	local tileSize = if state ~= nil and typeof((state :: any).tileSize) == "number" and (state :: any).tileSize == (state :: any).tileSize
+	local tileSize = if state ~= nil
+			and typeof((state :: any).tileSize) == "number"
+			and (state :: any).tileSize == (state :: any).tileSize
 		then (state :: any).tileSize
 		else nil
 	if worldOrigin == nil or tileSize == nil or tileSize <= 0 or basePlaneX == nil then
@@ -147,6 +152,68 @@ local function resolveCursorScreenPosition(): Vector2?
 	return nil
 end
 
+local function resolveGamepadNav(): any?
+	local runtimeContext = nil
+	local ok, runtimeOrError = pcall(function()
+		return CoreRuntime.getClientRuntime()
+	end)
+	if ok then
+		runtimeContext = runtimeOrError
+	end
+
+	if runtimeContext ~= nil and typeof((runtimeContext :: any).init) == "function" then
+		pcall(function()
+			(runtimeContext :: any):init()
+		end)
+	end
+
+	if runtimeContext ~= nil and typeof((runtimeContext :: any).getGamepadNav) == "function" then
+		local didResolve, gamepadNavOrError = pcall(function()
+			return (runtimeContext :: any):getGamepadNav()
+		end)
+		if didResolve then
+			return gamepadNavOrError
+		end
+	end
+
+	if runtimeContext ~= nil then
+		return (runtimeContext :: any).gamepadNav
+	end
+
+	return nil
+end
+
+local function resolveGamepadScreenVector(): Vector2?
+	local gamepadNav = resolveGamepadNav()
+	if gamepadNav == nil or typeof((gamepadNav :: any).getThumbstickState) ~= "function" then
+		return nil
+	end
+
+	local ok, snapshotOrError = pcall(function()
+		return (gamepadNav :: any):getThumbstickState()
+	end)
+	if not ok or typeof(snapshotOrError) ~= "table" then
+		return nil
+	end
+
+	local screenVector = GamepadPointer.resolveOwnedVector(snapshotOrError)
+	return if typeof(screenVector) == "Vector2" then screenVector else nil
+end
+
+local function resolveGamepadWorldPosition(tileSize: number, rootPart: BasePart?): Vector3?
+	local screenVector = resolveGamepadScreenVector()
+	if screenVector == nil or rootPart == nil then
+		return nil
+	end
+
+	local worldOffset = GamepadPointer.resolveWorldOffsetForScreenVector(screenVector, tileSize, rootPart)
+	if worldOffset == nil then
+		return nil
+	end
+
+	return rootPart.Position + worldOffset
+end
+
 local function resolveCursorTileFromMouse(): (number?, number?)
 	local worldOrigin, tileSize, basePlaneX = resolveWorldGridConfig()
 	if worldOrigin == nil or tileSize == nil or basePlaneX == nil then
@@ -155,7 +222,7 @@ local function resolveCursorTileFromMouse(): (number?, number?)
 
 	if shouldUseGamepadWorldSelection() then
 		local rootPart = resolveCharacterRootPart(Players.LocalPlayer)
-		local worldPosition = GamepadPointer.resolveCurrentWorldPosition(tileSize, rootPart)
+		local worldPosition = resolveGamepadWorldPosition(tileSize, rootPart)
 		if worldPosition ~= nil then
 			return BuildServiceUtils.WorldPositionToTile(worldPosition, worldOrigin, tileSize)
 		end
@@ -211,7 +278,7 @@ local function resolveThrowDirectionFromMouse(): Vector3?
 		local _, tileSize = resolveWorldGridConfig()
 		if tileSize ~= nil then
 			local rootPart = resolveCharacterRootPart(Players.LocalPlayer)
-			local worldPosition = GamepadPointer.resolveCurrentWorldPosition(tileSize, rootPart)
+			local worldPosition = resolveGamepadWorldPosition(tileSize, rootPart)
 			if rootPart ~= nil and worldPosition ~= nil then
 				local direction = worldPosition - rootPart.Position
 				if direction.Magnitude > 1e-4 then
@@ -265,7 +332,10 @@ function InventoryServiceClient.Init(self: InventoryServiceClient)
 		if gameProcessedEvent then
 			return
 		end
-		if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then
+		if
+			input.UserInputType ~= Enum.UserInputType.MouseButton1
+			and input.UserInputType ~= Enum.UserInputType.Touch
+		then
 			return
 		end
 		if not isTorchSelected(self) then
@@ -275,7 +345,10 @@ function InventoryServiceClient.Init(self: InventoryServiceClient)
 	end))
 	if PlayerDataServiceClient.stateChanged ~= nil then
 		self.janitor:GiveChore(PlayerDataServiceClient.stateChanged:Connect(function(nextState: PlayerDataServiceState)
-			if PlayerDataServiceUtils.isLoadedState(nextState.loadState) and not InventoryServiceUtils.isLoadedState(self.state.loadState) then
+			if
+				PlayerDataServiceUtils.isLoadedState(nextState.loadState)
+				and not InventoryServiceUtils.isLoadedState(self.state.loadState)
+			then
 				self:requestSync()
 			end
 		end))
@@ -327,7 +400,11 @@ function InventoryServiceClient.IsLoaded(self: InventoryServiceClient): boolean
 	return InventoryServiceUtils.isLoadedState(self.state.loadState)
 end
 
-function InventoryServiceClient.SetSelectedSlot(self: InventoryServiceClient, slotIndexRaw: any, replicateToServerRaw: any): boolean
+function InventoryServiceClient.SetSelectedSlot(
+	self: InventoryServiceClient,
+	slotIndexRaw: any,
+	replicateToServerRaw: any
+): boolean
 	local nextState = InventoryServiceUtils.cloneState(self.state)
 	local changed = InventoryServiceUtils.setSelectedSlot(nextState, slotIndexRaw)
 	if changed then
@@ -348,7 +425,12 @@ function InventoryServiceClient.MoveSlot(self: InventoryServiceClient, fromSlotR
 	self.networker:fire(InventoryServiceUtils.NETWORK_METHOD_REQUEST_MOVE_SLOT, fromSlotRaw, toSlotRaw, amountRaw)
 end
 
-function InventoryServiceClient.SplitSlot(self: InventoryServiceClient, fromSlotRaw: any, toSlotRaw: any, amountRaw: any)
+function InventoryServiceClient.SplitSlot(
+	self: InventoryServiceClient,
+	fromSlotRaw: any,
+	toSlotRaw: any,
+	amountRaw: any
+)
 	self.networker:fire(InventoryServiceUtils.NETWORK_METHOD_REQUEST_SPLIT_SLOT, fromSlotRaw, toSlotRaw, amountRaw)
 end
 
@@ -416,4 +498,3 @@ type InventoryServiceClient = typeof(InventoryServiceClient) & {
 }
 
 return InventoryServiceClient :: InventoryServiceClient
-

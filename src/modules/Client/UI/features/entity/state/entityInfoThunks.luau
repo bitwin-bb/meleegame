@@ -1,20 +1,21 @@
 --!strict
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
-local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
-local entityInfoSlice = require(script:FindFirstAncestor("game").Client.UI.features.entity.state.entityInfoSlice)
 local BossServiceClient = require(script:FindFirstAncestor("game").Client.Services.BossServiceClient)
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
 local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossServiceUtils)
-local NpcServiceClient = require(script:FindFirstAncestor("game").Client.Services.NpcServiceClient)
+local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
+local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
 local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Modules.Platform.GamepadPointer)
+local NpcServiceClient = require(script:FindFirstAncestor("game").Client.Services.NpcServiceClient)
 local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.NpcServiceUtils)
+local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
+local entityInfoSlice = require(script:FindFirstAncestor("game").Client.UI.features.entity.state.entityInfoSlice)
 
 type EntityInfoState = entityInfoSlice.EntityInfoState
 type BossSnapshot = BossServiceUtils.BossSnapshot
@@ -100,6 +101,91 @@ end
 
 local function shouldUseGamepadWorldHover(): boolean
 	return PlatformServiceClient:isGamepad() and PlatformServiceClient:getMachineFamily() ~= "desktop"
+end
+
+local function resolveCharacterRootPart(playerRaw: any): BasePart?
+	if typeof(playerRaw) ~= "Instance" or not playerRaw:IsA("Player") then
+		return nil
+	end
+
+	local character = (playerRaw :: Player).Character
+	if character == nil then
+		return nil
+	end
+
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	if humanoidRootPart ~= nil and humanoidRootPart:IsA("BasePart") then
+		return humanoidRootPart
+	end
+
+	if character.PrimaryPart ~= nil then
+		return character.PrimaryPart
+	end
+
+	return character:FindFirstChildWhichIsA("BasePart")
+end
+
+local function resolveGamepadNav(): any?
+	local runtimeContext = nil
+	local ok, runtimeOrError = pcall(function()
+		return CoreRuntime.getClientRuntime()
+	end)
+	if ok then
+		runtimeContext = runtimeOrError
+	end
+
+	if runtimeContext ~= nil and typeof((runtimeContext :: any).init) == "function" then
+		pcall(function()
+			(runtimeContext :: any):init()
+		end)
+	end
+
+	if runtimeContext ~= nil and typeof((runtimeContext :: any).getGamepadNav) == "function" then
+		local didResolve, gamepadNavOrError = pcall(function()
+			return (runtimeContext :: any):getGamepadNav()
+		end)
+		if didResolve then
+			return gamepadNavOrError
+		end
+	end
+
+	if runtimeContext ~= nil then
+		return (runtimeContext :: any).gamepadNav
+	end
+
+	return nil
+end
+
+local function resolveGamepadWorldPosition(): Vector3?
+	local gamepadNav = resolveGamepadNav()
+	if gamepadNav == nil or typeof((gamepadNav :: any).getThumbstickState) ~= "function" then
+		return nil
+	end
+
+	local ok, snapshotOrError = pcall(function()
+		return (gamepadNav :: any):getThumbstickState()
+	end)
+	if not ok or typeof(snapshotOrError) ~= "table" then
+		return nil
+	end
+
+	local screenVector = GamepadPointer.resolveOwnedVector(snapshotOrError)
+	if typeof(screenVector) ~= "Vector2" then
+		return nil
+	end
+
+	local rootPart = resolveCharacterRootPart(runtime.localPlayer)
+	if rootPart == nil then
+		return nil
+	end
+
+	local worldOffset =
+		GamepadPointer.resolveWorldOffsetForScreenVector(screenVector, GamepadPointer.DEFAULT_TILE_SIZE_STUDS, rootPart)
+	if worldOffset == nil then
+		return nil
+	end
+
+	return rootPart.Position + worldOffset
 end
 
 local function ensureHighlight(): Highlight
@@ -384,7 +470,7 @@ end
 local function stepHoverState()
 	local currentState = entityInfoSlice.getEntityInfoState()
 	if shouldUseGamepadWorldHover() then
-		local worldPosition = GamepadPointer.resolveCurrentWorldPosition(nil)
+		local worldPosition = resolveGamepadWorldPosition()
 		if worldPosition == nil then
 			clearHover()
 			return
@@ -399,11 +485,13 @@ local function stepHoverState()
 			return
 		end
 
-		if currentState.visible == true
+		if
+			currentState.visible == true
 			and currentState.runtimeId == runtimeId
 			and runtime.hoveredEntityKind == entityKind
 			and runtime.hoveredRuntimeId == runtimeId
-			and runtime.hoveredModel == hoveredModel then
+			and runtime.hoveredModel == hoveredModel
+		then
 			applyHighlight(hoveredModel)
 			return
 		end
@@ -433,11 +521,13 @@ local function stepHoverState()
 		return
 	end
 
-	if currentState.visible == true
+	if
+		currentState.visible == true
 		and currentState.runtimeId == runtimeId
 		and runtime.hoveredEntityKind == entityKind
 		and runtime.hoveredRuntimeId == runtimeId
-		and runtime.hoveredModel == hoveredModel then
+		and runtime.hoveredModel == hoveredModel
+	then
 		applyHighlight(hoveredModel)
 		return
 	end

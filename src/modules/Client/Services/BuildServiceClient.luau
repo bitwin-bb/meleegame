@@ -1,34 +1,35 @@
 --!strict
 
-local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local Ripple = require(ReplicatedStorage.Packages.Ripple)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Signal = require(ReplicatedStorage.Packages.Signal)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
-local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Modules.Platform.GamepadPointer)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
-local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
-local SnackbarNotifications = require(script:FindFirstAncestor("game").Client.SnackbarNotifications)
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
-local Rubble = require(script:FindFirstAncestor("game").Shared.Classes.Rubble)
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
 local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
+local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
+local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
+local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
+local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Modules.Platform.GamepadPointer)
+local GamepadTargetServiceClient = require(script:FindFirstAncestor("game").Client.Services.GamepadTargetServiceClient)
 local InventoryServiceClient = require(script:FindFirstAncestor("game").Client.Services.InventoryServiceClient)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
+local Ripple = require(ReplicatedStorage.Packages.Ripple)
+local Rubble = require(script:FindFirstAncestor("game").Shared.Classes.Rubble)
+local Signal = require(ReplicatedStorage.Packages.Signal)
+local SnackbarNotifications = require(script:FindFirstAncestor("game").Client.SnackbarNotifications)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
-local itemSlice = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemSlice)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
+local itemSlice = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemSlice)
 
 type BuildServiceState = BuildServiceUtils.BuildServiceState
 type PlaceableItemConfig = BuildServiceUtils.PlaceableItemConfig
@@ -85,6 +86,11 @@ type PendingAction = {
 type ActivePlaceSource = {
 	config: PlaceableItemConfig,
 	sourceSlot: number?,
+}
+
+type PreviewGeometry = {
+	centerPosition: Vector3,
+	size: Vector3,
 }
 
 type HeldInputState = {
@@ -280,7 +286,10 @@ end
 
 local function sanitizeInventoryState(stateRaw: any): InventoryState
 	local state = if typeof(stateRaw) == "table"
-		then InventoryServiceUtils.sanitizeState(stateRaw, InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED))
+		then InventoryServiceUtils.sanitizeState(
+			stateRaw,
+			InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
+		)
 		else InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
 	return state
 end
@@ -307,6 +316,78 @@ local function shouldUseGamepadWorldSelection(): boolean
 	return PlatformServiceClient:isGamepad() and PlatformServiceClient:getMachineFamily() ~= "desktop"
 end
 
+local function resolveCharacterRootPart(playerRaw: any): BasePart?
+	if typeof(playerRaw) ~= "Instance" or not playerRaw:IsA("Player") then
+		return nil
+	end
+
+	local character = (playerRaw :: Player).Character
+	if character == nil then
+		return nil
+	end
+
+	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+	if humanoidRootPart ~= nil and humanoidRootPart:IsA("BasePart") then
+		return humanoidRootPart
+	end
+
+	if character.PrimaryPart ~= nil then
+		return character.PrimaryPart
+	end
+
+	return character:FindFirstChildWhichIsA("BasePart")
+end
+
+local function resolveGamepadNav(runtimeContextRaw: any): any?
+	local runtimeContext = runtimeContextRaw
+	if runtimeContext == nil then
+		local ok, runtimeOrError = pcall(function()
+			return CoreRuntime.getClientRuntime()
+		end)
+		if ok then
+			runtimeContext = runtimeOrError
+		end
+	end
+
+	if runtimeContext ~= nil and typeof((runtimeContext :: any).init) == "function" then
+		pcall(function()
+			(runtimeContext :: any):init()
+		end)
+	end
+
+	if runtimeContext ~= nil and typeof((runtimeContext :: any).getGamepadNav) == "function" then
+		local ok, gamepadNavOrError = pcall(function()
+			return (runtimeContext :: any):getGamepadNav()
+		end)
+		if ok then
+			return gamepadNavOrError
+		end
+	end
+
+	if runtimeContext ~= nil then
+		return (runtimeContext :: any).gamepadNav
+	end
+
+	return nil
+end
+
+local function resolveGamepadScreenVector(runtimeContextRaw: any): Vector2?
+	local gamepadNav = resolveGamepadNav(runtimeContextRaw)
+	if gamepadNav == nil or typeof((gamepadNav :: any).getThumbstickState) ~= "function" then
+		return nil
+	end
+
+	local ok, snapshotOrError = pcall(function()
+		return (gamepadNav :: any):getThumbstickState()
+	end)
+	if not ok or typeof(snapshotOrError) ~= "table" then
+		return nil
+	end
+
+	local screenVector = GamepadPointer.resolveOwnedVector(snapshotOrError)
+	return if typeof(screenVector) == "Vector2" then screenVector else nil
+end
+
 local function resolveIntegerAttribute(instance: Instance?, attributeName: string): number?
 	if instance == nil then
 		return nil
@@ -318,6 +399,41 @@ local function resolveIntegerAttribute(instance: Instance?, attributeName: strin
 	end
 
 	return math.floor(value)
+end
+
+local function computeFootprintBounds(
+	footprintRaw: any,
+	fallbackTileX: number,
+	fallbackTileY: number
+): (number, number, number, number)
+	if typeof(footprintRaw) ~= "table" or #footprintRaw <= 0 then
+		return fallbackTileX, fallbackTileX, fallbackTileY, fallbackTileY
+	end
+
+	local minTileX = math.huge
+	local maxTileX = -math.huge
+	local minTileY = math.huge
+	local maxTileY = -math.huge
+	for _, entry in footprintRaw do
+		if typeof(entry) ~= "table" then
+			continue
+		end
+
+		local tileX = (entry :: any).tileX
+		local tileY = (entry :: any).tileY
+		if typeof(tileX) == "number" and typeof(tileY) == "number" then
+			minTileX = math.min(minTileX, math.floor(tileX))
+			maxTileX = math.max(maxTileX, math.floor(tileX))
+			minTileY = math.min(minTileY, math.floor(tileY))
+			maxTileY = math.max(maxTileY, math.floor(tileY))
+		end
+	end
+
+	if minTileX == math.huge then
+		return fallbackTileX, fallbackTileX, fallbackTileY, fallbackTileY
+	end
+
+	return minTileX, maxTileX, minTileY, maxTileY
 end
 
 local function resolveTreeRootTileNearWorldPosition(worldPosition: Vector3, radiusStudsRaw: any): (number?, number?)
@@ -494,14 +610,15 @@ function BuildServiceClient.GetTreesForChunk(self: BuildServiceClient, chunkX: n
 	return trees
 end
 
-function BuildServiceClient.ResolveTreeHitAtTile(
-	self: BuildServiceClient,
-	tileX: number,
-	tileY: number
-): TreeHitResult?
-	return BuildServiceUtils.resolveTreeAtTile(tileX, tileY, self.state.chunkSize, function(chunkX: number, chunkY: number): { any }?
-		return self:getTreesForChunk(chunkX, chunkY)
-	end)
+function BuildServiceClient.ResolveTreeHitAtTile(self: BuildServiceClient, tileX: number, tileY: number): TreeHitResult?
+	return BuildServiceUtils.resolveTreeAtTile(
+		tileX,
+		tileY,
+		self.state.chunkSize,
+		function(chunkX: number, chunkY: number): { any }?
+			return self:getTreesForChunk(chunkX, chunkY)
+		end
+	)
 end
 
 function BuildServiceClient.IsBreakableTarget(self: BuildServiceClient, tileX: number, tileY: number): boolean
@@ -513,10 +630,7 @@ function BuildServiceClient.IsBreakableTarget(self: BuildServiceClient, tileX: n
 	return treeHit ~= nil
 end
 
-function BuildServiceClient.ResolveTreeModelForFellEvent(
-	self: BuildServiceClient,
-	payload: TreeFelledPayload
-): Model?
+function BuildServiceClient.ResolveTreeModelForFellEvent(self: BuildServiceClient, payload: TreeFelledPayload): Model?
 	local chunkVisuals = (WorldGenerationServiceClient :: any).chunkVisuals
 	if typeof(chunkVisuals) ~= "table" then
 		return nil
@@ -971,7 +1085,10 @@ function BuildServiceClient.StepTreeFallAnimations(self: BuildServiceClient, del
 		end
 		local impactFailsafeAt = math.max(
 			animation.minimumFadeElapsed,
-			animation.fallDuration + animation.bounceDuration + animation.settleDuration + TREE_GROUND_HIT_FAILSAFE_SECONDS
+			animation.fallDuration
+				+ animation.bounceDuration
+				+ animation.settleDuration
+				+ TREE_GROUND_HIT_FAILSAFE_SECONDS
 		)
 		if animation.stage ~= "fade" then
 			local canFadeOnImpact = animation.groundImpactDetected
@@ -1042,14 +1159,61 @@ function BuildServiceClient.CreatePreviewVisual(self: BuildServiceClient)
 	TagBinder.applyTag(previewPart, TagBinder.Tags.Preview, CollectionService)
 end
 
+function BuildServiceClient.ResolveGamepadWorldPosition(self: BuildServiceClient): (Vector3?, Vector2?)
+	local screenVector = resolveGamepadScreenVector(self.runtimeContext)
+	if screenVector == nil then
+		return nil, nil
+	end
+
+	local rootPart = resolveCharacterRootPart(self.localPlayer)
+	if rootPart == nil then
+		return nil, screenVector
+	end
+
+	local worldOffset = GamepadPointer.resolveWorldOffsetForScreenVector(screenVector, self.state.tileSize, rootPart)
+	if worldOffset == nil then
+		return nil, screenVector
+	end
+
+	return rootPart.Position + worldOffset, screenVector
+end
+
+function BuildServiceClient.ResolvePreviewGeometry(
+	self: BuildServiceClient,
+	tileXRaw: any,
+	tileYRaw: any,
+	footprintRaw: any?
+): PreviewGeometry?
+	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
+	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
+	if tileX == nil or tileY == nil then
+		return nil
+	end
+
+	local tileSize = math.max(0.25, self.state.tileSize)
+	local minTileX, maxTileX, minTileY, maxTileY = computeFootprintBounds(footprintRaw, tileX, tileY)
+	local width = maxTileX - minTileX + 1
+	local height = maxTileY - minTileY + 1
+	local thickness = math.max(0.12, tileSize * 0.12)
+	local centerPosition = Vector3.new(
+		self.state.basePlaneX + thickness * 0.5,
+		self.state.worldOrigin.Y + (minTileY + height * 0.5) * tileSize,
+		self.state.worldOrigin.Z + (minTileX + width * 0.5) * tileSize
+	)
+
+	return {
+		centerPosition = centerPosition,
+		size = Vector3.new(thickness, math.max(0.1, height * tileSize * 0.92), math.max(0.1, width * tileSize * 0.92)),
+	}
+end
+
 function BuildServiceClient.ResolveCursorTile(self: BuildServiceClient): (number?, number?)
 	if shouldUseGamepadWorldSelection() then
-		local worldPosition = GamepadPointer.resolveCurrentWorldPosition(self.state.tileSize)
+		local worldPosition, screenVector = self:resolveGamepadWorldPosition()
+		self.cursorScreenVector = screenVector
 		if worldPosition ~= nil then
-			local rootTileX, rootTileY = resolveTreeRootTileNearWorldPosition(
-				worldPosition,
-				math.max(1, self.state.tileSize * 0.8)
-			)
+			local rootTileX, rootTileY =
+				resolveTreeRootTileNearWorldPosition(worldPosition, math.max(1, self.state.tileSize * 0.8))
 			if rootTileX ~= nil and rootTileY ~= nil then
 				return rootTileX, rootTileY
 			end
@@ -1059,6 +1223,8 @@ function BuildServiceClient.ResolveCursorTile(self: BuildServiceClient): (number
 
 		return nil, nil
 	end
+
+	self.cursorScreenVector = nil
 
 	local currentCamera = Workspace.CurrentCamera
 	if currentCamera == nil then
@@ -1077,8 +1243,11 @@ function BuildServiceClient.ResolveCursorTile(self: BuildServiceClient): (number
 		raycastParams.FilterDescendantsInstances = { chunksFolder }
 		raycastParams.IgnoreWater = true
 
-		local raycastResult =
-			Workspace:Raycast(viewportRay.Origin, viewportRay.Direction * CURSOR_VISUAL_RAYCAST_DISTANCE_STUDS, raycastParams)
+		local raycastResult = Workspace:Raycast(
+			viewportRay.Origin,
+			viewportRay.Direction * CURSOR_VISUAL_RAYCAST_DISTANCE_STUDS,
+			raycastParams
+		)
 		if raycastResult ~= nil then
 			local hitModel = raycastResult.Instance:FindFirstAncestorOfClass("Model")
 			local rootTileX = resolveIntegerAttribute(hitModel, BUILD_TREE_ROOT_TILE_X_ATTRIBUTE)
@@ -1095,11 +1264,8 @@ function BuildServiceClient.ResolveCursorTile(self: BuildServiceClient): (number
 		end
 	end
 
-	local hitOnPlane = BuildServiceUtils.raycastToBuildPlane(
-		viewportRay.Origin,
-		viewportRay.Direction,
-		self.state.basePlaneX
-	)
+	local hitOnPlane =
+		BuildServiceUtils.raycastToBuildPlane(viewportRay.Origin, viewportRay.Direction, self.state.basePlaneX)
 	if hitOnPlane == nil then
 		return nil, nil
 	end
@@ -1108,7 +1274,11 @@ function BuildServiceClient.ResolveCursorTile(self: BuildServiceClient): (number
 	return planeTileX, planeTileY
 end
 
-function BuildServiceClient.ResolveTerrainHoverTile(self: BuildServiceClient, tileX: number?, tileY: number?): (number?, number?)
+function BuildServiceClient.ResolveTerrainHoverTile(
+	self: BuildServiceClient,
+	tileX: number?,
+	tileY: number?
+): (number?, number?)
 	if tileX == nil or tileY == nil then
 		return nil, nil
 	end
@@ -1150,7 +1320,9 @@ function BuildServiceClient.GetTileFromWorldGenerationSnapshot(
 		return nil
 	end
 
-	local chunkSize = if isFiniteNumber((worldState :: any).chunkSize) then math.floor((worldState :: any).chunkSize) else 32
+	local chunkSize = if isFiniteNumber((worldState :: any).chunkSize)
+		then math.floor((worldState :: any).chunkSize)
+		else 32
 	local chunkX = BuildServiceUtils.toChunkCoordinate(tileX, chunkSize)
 	local chunkY = BuildServiceUtils.toChunkCoordinate(tileY, chunkSize)
 	local chunkSnapshots = (WorldGenerationServiceClient :: any).chunkSnapshots
@@ -1163,10 +1335,18 @@ function BuildServiceClient.GetTileFromWorldGenerationSnapshot(
 		return nil
 	end
 
-	local tileMinX = if isFiniteNumber((snapshot :: any).tileMinX) then math.floor((snapshot :: any).tileMinX) else chunkX * chunkSize
-	local tileMinY = if isFiniteNumber((snapshot :: any).tileMinY) then math.floor((snapshot :: any).tileMinY) else chunkY * chunkSize
-	local width = if isFiniteNumber((snapshot :: any).width) then math.max(1, math.floor((snapshot :: any).width)) else chunkSize
-	local height = if isFiniteNumber((snapshot :: any).height) then math.max(1, math.floor((snapshot :: any).height)) else chunkSize
+	local tileMinX = if isFiniteNumber((snapshot :: any).tileMinX)
+		then math.floor((snapshot :: any).tileMinX)
+		else chunkX * chunkSize
+	local tileMinY = if isFiniteNumber((snapshot :: any).tileMinY)
+		then math.floor((snapshot :: any).tileMinY)
+		else chunkY * chunkSize
+	local width = if isFiniteNumber((snapshot :: any).width)
+		then math.max(1, math.floor((snapshot :: any).width))
+		else chunkSize
+	local height = if isFiniteNumber((snapshot :: any).height)
+		then math.max(1, math.floor((snapshot :: any).height))
+		else chunkSize
 	local localX = tileX - tileMinX
 	local localY = tileY - tileMinY
 	if localX < 0 or localX >= width or localY < 0 or localY >= height then
@@ -1412,10 +1592,12 @@ function BuildServiceClient.OnTileDeltas(self: BuildServiceClient, payloadRaw: a
 			and previousTileId ~= BuildServiceUtils.AIR_TILE_ID
 			and isBreakDelta
 		if shouldSpawnDebris then
-			local isLocalBreakTarget = (self.breakInput.isHeld and self.breakInput.tileX == delta.tileX and self.breakInput.tileY == delta.tileY)
-				or (self.currentBreakProgress ~= nil
-					and self.currentBreakProgress.tileX == delta.tileX
-					and self.currentBreakProgress.tileY == delta.tileY)
+			local isLocalBreakTarget = (
+				self.breakInput.isHeld
+				and self.breakInput.tileX == delta.tileX
+				and self.breakInput.tileY == delta.tileY
+			)
+				or (self.currentBreakProgress ~= nil and self.currentBreakProgress.tileX == delta.tileX and self.currentBreakProgress.tileY == delta.tileY)
 				or (self.cursorTileX == delta.tileX and self.cursorTileY == delta.tileY)
 			if isLocalBreakTarget and not playedTileBreakSound then
 				playedTileBreakSound = self:playTileBreakSound()
@@ -1493,21 +1675,11 @@ local function spawnDebrisBurst(
 	end
 end
 
-function BuildServiceClient.SpawnHitDebris(
-	self: BuildServiceClient,
-	tileX: number,
-	tileY: number,
-	tileId: number
-)
+function BuildServiceClient.SpawnHitDebris(self: BuildServiceClient, tileX: number, tileY: number, tileId: number)
 	spawnDebrisBurst(self, tileX, tileY, tileId, 1, 2, 0.12, 0.24, 0.55, 0.18, 0.7, 0.85, 0.3, 0.55)
 end
 
-function BuildServiceClient.SpawnBreakDebris(
-	self: BuildServiceClient,
-	tileX: number,
-	tileY: number,
-	tileId: number
-)
+function BuildServiceClient.SpawnBreakDebris(self: BuildServiceClient, tileX: number, tileY: number, tileId: number)
 	spawnDebrisBurst(self, tileX, tileY, tileId, 4, 7, 0.18, 0.4, 1.15, 0.45, 1.55, 1.7, 0.55, 1.05)
 end
 
@@ -1635,12 +1807,22 @@ function BuildServiceClient.UpdatePreviewVisual(
 	self: BuildServiceClient,
 	tileX: number?,
 	tileY: number?,
-	_canPlace: boolean?
+	_canPlace: boolean?,
+	footprintRaw: any?
 )
 	local setHoveredTerrainTile = (WorldGenerationServiceClient :: any).setHoveredTerrainTile
 	if typeof(setHoveredTerrainTile) == "function" then
 		(WorldGenerationServiceClient :: any):setHoveredTerrainTile(tileX, tileY)
 	end
+
+	if not shouldUseGamepadWorldSelection() then
+		GamepadTargetServiceClient.setTarget(nil, nil)
+		return
+	end
+
+	local previewGeometry = self:resolvePreviewGeometry(tileX, tileY, footprintRaw)
+	local targetWorldPosition = if previewGeometry ~= nil then previewGeometry.centerPosition else nil
+	GamepadTargetServiceClient.setTarget(targetWorldPosition, self.cursorScreenVector)
 end
 
 function BuildServiceClient.PrunePendingPredictions(self: BuildServiceClient)
@@ -1696,14 +1878,7 @@ function BuildServiceClient.FlushHeldBreakInput(self: BuildServiceClient, now: n
 	end
 	state.lastSentAt = now
 	state.lastSentTileKey = tileKey
-	self.networker:fire(
-		BuildServiceUtils.NETWORK_METHOD_REQUEST_BREAK_TILE,
-		state.tileX,
-		state.tileY,
-		true,
-		0,
-		false
-	)
+	self.networker:fire(BuildServiceUtils.NETWORK_METHOD_REQUEST_BREAK_TILE, state.tileX, state.tileY, true, 0, false)
 end
 
 function BuildServiceClient.FlushHeldPlaceInput(self: BuildServiceClient, now: number)
@@ -1793,13 +1968,18 @@ function BuildServiceClient.OnRenderStep(self: BuildServiceClient, _deltaTime: n
 	self:flushHeldPlaceInput(now)
 	self:prunePendingPredictions()
 
-	local previewTileX, previewTileY = self:resolveCursorTile()
+	local previewTileX = self.cursorTileX
+	local previewTileY = self.cursorTileY
 	local previewCanPlace = nil :: boolean?
+	local previewFootprint = {} :: { TileCoordinate }
 	local activePlaceSource = self:resolveActivePlaceSource()
 	if activePlaceSource ~= nil then
 		previewTileX, previewTileY = self:resolveTerrainHoverTile(previewTileX, previewTileY)
 		if previewTileX ~= nil and previewTileY ~= nil then
-			previewCanPlace = self:canPlaceAt(previewTileX, previewTileY, activePlaceSource.config.tileId)
+			local canPlace, _, resolvedFootprint =
+				self:canPlaceAt(previewTileX, previewTileY, activePlaceSource.config.tileId)
+			previewCanPlace = canPlace
+			previewFootprint = resolvedFootprint
 		end
 	elseif previewTileX ~= nil and previewTileY ~= nil then
 		local previewTileId = self:getTileAt(previewTileX, previewTileY, false)
@@ -1809,7 +1989,7 @@ function BuildServiceClient.OnRenderStep(self: BuildServiceClient, _deltaTime: n
 		end
 	end
 
-	self:updatePreviewVisual(previewTileX, previewTileY, previewCanPlace)
+	self:updatePreviewVisual(previewTileX, previewTileY, previewCanPlace, previewFootprint)
 end
 
 function BuildServiceClient.OnInputBegan(self: BuildServiceClient, inputObject: InputObject, gameProcessed: boolean)
@@ -1873,7 +2053,7 @@ function BuildServiceClient.BindInputRouter(self: BuildServiceClient): boolean
 end
 
 function BuildServiceClient.ApplySelectedPlaceableConfig(self: BuildServiceClient, configRaw: any)
-	local config = if typeof(configRaw) == "table" then (configRaw :: PlaceableItemConfig) else nil
+	local config = if typeof(configRaw) == "table" then configRaw :: PlaceableItemConfig else nil
 	self.selectedPlaceableConfig = config
 	if config ~= nil then
 		self.selectedTileId = config.tileId
@@ -1898,12 +2078,7 @@ function BuildServiceClient.SetSelectedTileId(self: BuildServiceClient, tileIdRa
 	self.selectedTileId = tileId
 end
 
-function BuildServiceClient.SetBreakInput(
-	self: BuildServiceClient,
-	isHeldRaw: any,
-	tileXRaw: any?,
-	tileYRaw: any?
-)
+function BuildServiceClient.SetBreakInput(self: BuildServiceClient, isHeldRaw: any, tileXRaw: any?, tileYRaw: any?)
 	local isHeld = BuildServiceUtils.sanitizeBoolean(isHeldRaw, false)
 	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
 	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
@@ -1915,12 +2090,7 @@ function BuildServiceClient.SetBreakInput(
 	end
 end
 
-function BuildServiceClient.SetPlaceInput(
-	self: BuildServiceClient,
-	isHeldRaw: any,
-	tileXRaw: any?,
-	tileYRaw: any?
-)
+function BuildServiceClient.SetPlaceInput(self: BuildServiceClient, isHeldRaw: any, tileXRaw: any?, tileYRaw: any?)
 	local isHeld = BuildServiceUtils.sanitizeBoolean(isHeldRaw, false)
 	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
 	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
@@ -1988,6 +2158,8 @@ function BuildServiceClient.Init(self: BuildServiceClient)
 	}?
 	self.cursorTileX = nil :: number?
 	self.cursorTileY = nil :: number?
+	self.cursorScreenVector = nil :: Vector2?
+	GamepadTargetServiceClient.clearTarget()
 	self.breakInput = {
 		isHeld = false,
 		tileX = nil,
@@ -2068,9 +2240,11 @@ function BuildServiceClient.Init(self: BuildServiceClient)
 	end
 
 	if self.enableDefaultInputBinding then
-		self.janitor:GiveChore(UserInputService.InputBegan:Connect(function(inputObject: InputObject, gameProcessed: boolean)
-			self:onInputBegan(inputObject, gameProcessed)
-		end))
+		self.janitor:GiveChore(
+			UserInputService.InputBegan:Connect(function(inputObject: InputObject, gameProcessed: boolean)
+				self:onInputBegan(inputObject, gameProcessed)
+			end)
+		)
 		self.janitor:GiveChore(UserInputService.InputEnded:Connect(function(inputObject: InputObject)
 			self:onInputEnded(inputObject)
 		end))
@@ -2083,6 +2257,7 @@ end
 function BuildServiceClient.Destroy(self: BuildServiceClient)
 	self:setBreakInput(false, nil, nil)
 	self:setPlaceInput(false, nil, nil)
+	GamepadTargetServiceClient.clearTarget()
 	local clearHoveredTerrainTile = (WorldGenerationServiceClient :: any).clearHoveredTerrainTile
 	if typeof(clearHoveredTerrainTile) == "function" then
 		(WorldGenerationServiceClient :: any):clearHoveredTerrainTile()
@@ -2173,6 +2348,8 @@ BuildServiceClient.stepTreeFallAnimations = BuildServiceClient.StepTreeFallAnima
 BuildServiceClient.onTreeFelled = BuildServiceClient.OnTreeFelled
 BuildServiceClient.createVisualFolder = BuildServiceClient.CreateVisualFolder
 BuildServiceClient.createPreviewVisual = BuildServiceClient.CreatePreviewVisual
+BuildServiceClient.resolveGamepadWorldPosition = BuildServiceClient.ResolveGamepadWorldPosition
+BuildServiceClient.resolvePreviewGeometry = BuildServiceClient.ResolvePreviewGeometry
 BuildServiceClient.resolveCursorTile = BuildServiceClient.ResolveCursorTile
 BuildServiceClient.resolveTerrainHoverTile = BuildServiceClient.ResolveTerrainHoverTile
 BuildServiceClient.getTileFromWorldGenerationSnapshot = BuildServiceClient.GetTileFromWorldGenerationSnapshot
@@ -2250,6 +2427,7 @@ type BuildServiceClient = typeof(BuildServiceClient) & {
 	}?,
 	cursorTileX: number?,
 	cursorTileY: number?,
+	cursorScreenVector: Vector2?,
 	random: Random,
 	treeChopSoundAssetIds: { string },
 	treeFallSoundAssetIds: { string },
@@ -2264,4 +2442,3 @@ type BuildServiceClient = typeof(BuildServiceClient) & {
 }
 
 return BuildServiceClient :: BuildServiceClient
-
