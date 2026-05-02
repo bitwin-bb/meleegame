@@ -3,9 +3,9 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Modules.Platform.GamepadPointer)
-local GamepadTargetServiceClient = require(script:FindFirstAncestor("game").Client.Services.GamepadTargetServiceClient)
 local React = require(ReplicatedStorage.Packages.React)
+local WorldGenerationServiceClient =
+	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
 local padSlice = require(script:FindFirstAncestor("game").Client.UI.features.pad.state.padSlice)
 local usePad = require(script:FindFirstAncestor("game").Client.UI.features.pad.hooks.usePad)
 local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
@@ -18,19 +18,13 @@ type PadScreenProps = {
 	visible: boolean?,
 }
 
-type ActiveIndicatorState = {
-	position: Vector2,
-	hideOnCenter: boolean,
-}
-
 local e: typeof(React.createElement) = React.createElement
 
-local TILE_SIZE_STUDS = GamepadPointer.DEFAULT_TILE_SIZE_STUDS
 local BILLBOARD_SIZE = Vector2.new(72, 72)
 local INDICATOR_SIZE = 44
 local IDLE_EXPANDED_SIZE = Vector2.new(52, 52)
 local IDLE_PHASE_DURATION = 0.7
-local RETURN_SPEED = 10
+local POSITION_EPSILON = 1e-4
 
 local function resolveCharacterRootPart(localPlayer: Player): BasePart?
 	local character = localPlayer.Character
@@ -50,12 +44,21 @@ local function resolveCharacterRootPart(localPlayer: Player): BasePart?
 	return character:FindFirstChildWhichIsA("BasePart")
 end
 
-local function getWorldOffset(position: Vector2, rootPart: BasePart, selectedWorldPosition: Vector3?): Vector3
-	if selectedWorldPosition ~= nil then
-		return selectedWorldPosition - rootPart.Position
+local function offsetsEqual(a: Vector3?, b: Vector3?): boolean
+	if a == nil or b == nil then
+		return a == b
 	end
 
-	return GamepadPointer.resolveWorldOffsetForScreenVector(position, TILE_SIZE_STUDS, rootPart) or Vector3.zero
+	return (a - b).Magnitude <= POSITION_EPSILON
+end
+
+local function resolveHoverWorldOffset(rootPart: BasePart): Vector3?
+	local hoverWorldPosition = WorldGenerationServiceClient:getHoveredTerrainWorldPosition()
+	if hoverWorldPosition == nil then
+		return nil
+	end
+
+	return hoverWorldPosition - rootPart.Position
 end
 
 local function renderStickIndicator(imageId: string, size: Vector2, zIndex: number)
@@ -76,15 +79,23 @@ return function(props: PadScreenProps?): React.ReactNode
 	local localPlayer = Players.LocalPlayer
 	local state = (useStore(padSlice.padStateAtom) :: PadState?) or padSlice.getPadState()
 	local rootPart, setRootPart = React.useState(resolveCharacterRootPart(localPlayer) :: BasePart?)
-	local activeIndicator, setActiveIndicator = React.useState(nil :: ActiveIndicatorState?)
-	local selectedWorldPosition, setSelectedWorldPosition =
-		React.useState(GamepadTargetServiceClient.getTargetWorldPosition() :: Vector3?)
+	local ringOffset, setRingOffset = React.useState(nil :: Vector3?)
+	local ringOffsetRef = React.useRef(nil :: Vector3?)
 	local idlePad = usePad({
-		enabled = activeIndicator ~= nil or selectedWorldPosition ~= nil,
+		enabled = ringOffset ~= nil,
 		collapsedSize = Vector2.new(INDICATOR_SIZE, INDICATOR_SIZE),
 		expandedSize = IDLE_EXPANDED_SIZE,
 		phaseDuration = IDLE_PHASE_DURATION,
 	})
+
+	local function applyRingOffset(nextOffset: Vector3?)
+		if offsetsEqual(ringOffsetRef.current, nextOffset) then
+			return
+		end
+
+		ringOffsetRef.current = nextOffset
+		setRingOffset(nextOffset)
+	end
 
 	React.useEffect(function()
 		local characterConnections: { RBXScriptConnection } = {}
@@ -134,91 +145,21 @@ return function(props: PadScreenProps?): React.ReactNode
 	end, { localPlayer })
 
 	React.useEffect(function()
-		setSelectedWorldPosition(GamepadTargetServiceClient.getTargetWorldPosition())
-
-		return GamepadTargetServiceClient.onTargetChanged(function(worldPosition: Vector3?)
-			setSelectedWorldPosition(worldPosition)
-		end)
-	end, {})
-
-	React.useEffect(function()
-		if state.rightStick.active then
-			setActiveIndicator({
-				position = state.rightStick.position,
-				hideOnCenter = false,
-			})
+		if rootPart == nil or state.visible ~= true or resolvedProps.visible == false then
+			applyRingOffset(nil)
 			return nil
 		end
 
-		if state.leftStick.active then
-			setActiveIndicator({
-				position = state.leftStick.position,
-				hideOnCenter = false,
-			})
-			return nil
+		local function refreshRingOffset()
+			applyRingOffset(resolveHoverWorldOffset(rootPart))
 		end
+		refreshRingOffset()
 
-		setActiveIndicator(function(current: ActiveIndicatorState?): ActiveIndicatorState?
-			if current == nil then
-				return nil
-			end
-			return {
-				position = current.position,
-				hideOnCenter = true,
-			}
-		end)
-
-		return nil
-	end, {
-		state.leftStick.active,
-		state.leftStick.position,
-		state.rightStick.active,
-		state.rightStick.position,
-	})
-
-	React.useEffect(function()
-		local current = activeIndicator
-		if current == nil then
-			return nil
-		end
-		if current.hideOnCenter ~= true then
-			return nil
-		end
-		if current.position.Magnitude <= 1e-4 then
-			setActiveIndicator(nil)
-			return nil
-		end
-
-		local connection = RunService.RenderStepped:Connect(function(deltaTime: number)
-			setActiveIndicator(function(active: ActiveIndicatorState?): ActiveIndicatorState?
-				if active == nil then
-					return nil
-				end
-				if active.hideOnCenter ~= true then
-					return active
-				end
-
-				local distance = active.position.Magnitude
-				if distance <= 1e-4 then
-					return nil
-				end
-
-				local stepDistance = RETURN_SPEED * deltaTime
-				local nextPosition = if stepDistance >= distance
-					then Vector2.zero
-					else active.position.Unit * (distance - stepDistance)
-
-				return {
-					position = nextPosition,
-					hideOnCenter = true,
-				}
-			end)
-		end)
-
+		local connection = RunService.RenderStepped:Connect(refreshRingOffset)
 		return function()
 			connection:Disconnect()
 		end
-	end, { activeIndicator })
+	end, { rootPart, resolvedProps.visible, state.visible })
 
 	if resolvedProps.visible == false or state.visible ~= true or rootPart == nil then
 		return nil
@@ -230,14 +171,9 @@ return function(props: PadScreenProps?): React.ReactNode
 		return nil
 	end
 
-	if activeIndicator == nil and selectedWorldPosition == nil then
+	if ringOffset == nil then
 		return nil
 	end
-
-	local fallbackPosition = if activeIndicator ~= nil
-		then activeIndicator.position
-		else GamepadTargetServiceClient.getTargetScreenVector() or Vector2.zero
-	local worldOffset = getWorldOffset(fallbackPosition, rootPart, selectedWorldPosition)
 
 	return e("BillboardGui", {
 		Adornee = rootPart,
@@ -247,7 +183,7 @@ return function(props: PadScreenProps?): React.ReactNode
 		MaxDistance = 80,
 		ResetOnSpawn = false,
 		Size = UDim2.fromOffset(BILLBOARD_SIZE.X, BILLBOARD_SIZE.Y),
-		StudsOffsetWorldSpace = worldOffset,
+		StudsOffsetWorldSpace = ringOffset,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 	}, {
 		ActiveIndicator = renderStickIndicator(imageId, idlePad.size, zIndex + 1),
