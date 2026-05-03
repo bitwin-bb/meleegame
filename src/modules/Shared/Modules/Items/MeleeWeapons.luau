@@ -1,7 +1,7 @@
 --!strict
 
 local Animations = require(script.Parent.Animations)
-local BuildAnimationMelee = require(script.Parent.Parent.Game.BuildAnimationMelee)
+local BuildAnimationMelee = require(script.Parent.Parent.Game.Render.BuildAnimationMelee)
 
 local weaponAnimationIds = (((Animations :: any).Items or {}).Weapons or {}) :: { [string]: any }
 

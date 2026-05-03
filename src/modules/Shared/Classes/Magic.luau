@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Modules.Game.ResolveToolInstance)
+local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Modules.Game.Format.ResolveToolInstance)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 
 local Magic = {}

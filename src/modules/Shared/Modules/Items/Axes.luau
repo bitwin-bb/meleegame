@@ -4,7 +4,7 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 
 
 local Animations = require(script.Parent.Animations)
-local BuildAnimationMelee = require(script.Parent.Parent.Game.BuildAnimationMelee)
+local BuildAnimationMelee = require(script.Parent.Parent.Game.Render.BuildAnimationMelee)
 
 local axeAnimationIds = (((Animations :: any).Items or {}).Axes or {}) :: { [string]: any }
 

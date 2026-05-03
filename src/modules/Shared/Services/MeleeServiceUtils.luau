@@ -5,7 +5,7 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local MeleeServiceUtils = {}
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
 local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
-local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Modules.Game.ResolveToolInstance)
+local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Modules.Game.Format.ResolveToolInstance)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
 
 export type MeleeWeaponConfig = {
