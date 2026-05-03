@@ -9,6 +9,7 @@ local Observable = require("Observable")
 local Rx = require("Rx")
 
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
+local GamepadNav = require(script:FindFirstAncestor("game").Shared.Modules.Platform.GamepadNav)
 local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
 local padSlice = require(script:FindFirstAncestor("game").Client.UI.features.pad.state.padSlice)
 
@@ -41,6 +42,8 @@ type ThumbstickSnapshot = {
 	right: ThumbstickState,
 	dominant: "Left" | "Right"?,
 	lastUpdatedAt: number,
+	stickDeadzone: number,
+	navigationDeadzone: number,
 }
 
 local PadNavBinder = {}
@@ -63,6 +66,8 @@ local EMPTY_THUMBSTICK_SNAPSHOT: ThumbstickSnapshot = {
 	},
 	dominant = nil,
 	lastUpdatedAt = 0,
+	stickDeadzone = GamepadNav.DEFAULT_STICK_DEADZONE,
+	navigationDeadzone = GamepadNav.DEFAULT_NAVIGATION_DEADZONE,
 }
 
 local function cleanupTask(taskRaw: any)

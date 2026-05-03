@@ -1411,20 +1411,6 @@ function WorldGenerationServiceClient.ClearHoveredTerrainTile(self: WorldGenerat
 	self:clearHoveredTerrainTileRuntime()
 end
 
-function WorldGenerationServiceClient.GetHoveredTerrainWorldPosition(self: WorldGenerationServiceClient): Vector3?
-	local activeRuntime = self.hoveredTerrainRuntime
-	if activeRuntime == nil then
-		return nil
-	end
-
-	local hoverPart = activeRuntime.hoverPart
-	if hoverPart.Parent == nil then
-		return nil
-	end
-
-	return hoverPart.Position
-end
-
 function WorldGenerationServiceClient.EnqueueChunkRebuild(self: WorldGenerationServiceClient, chunkKey: string)
 	if self.rebuildLookup[chunkKey] then
 		return
@@ -2549,8 +2535,6 @@ WorldGenerationServiceClient.applyHoveredTerrainTileRuntime =
 	WorldGenerationServiceClient.ApplyHoveredTerrainTileRuntime
 WorldGenerationServiceClient.setHoveredTerrainTile = WorldGenerationServiceClient.SetHoveredTerrainTile
 WorldGenerationServiceClient.clearHoveredTerrainTile = WorldGenerationServiceClient.ClearHoveredTerrainTile
-WorldGenerationServiceClient.getHoveredTerrainWorldPosition =
-	WorldGenerationServiceClient.GetHoveredTerrainWorldPosition
 WorldGenerationServiceClient.enqueueChunkRebuild = WorldGenerationServiceClient.EnqueueChunkRebuild
 WorldGenerationServiceClient.dequeueChunkRebuild = WorldGenerationServiceClient.DequeueChunkRebuild
 WorldGenerationServiceClient.destroyChunkVisual = WorldGenerationServiceClient.DestroyChunkVisual

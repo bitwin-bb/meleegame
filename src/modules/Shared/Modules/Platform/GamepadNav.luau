@@ -11,6 +11,14 @@ GamepadNav.__index = GamepadNav
 
 local GAMEPAD_CURSOR_ACTIVE_ATTRIBUTE = "CustomCursorGamepadActive"
 local THUMBSTICK_ACTIVE_EPSILON = 1e-4
+local DEFAULT_MOVE_REPEAT_COOLDOWN = 0.12
+local DEFAULT_STICK_DEADZONE = 0.12
+local DEFAULT_NAVIGATION_DEADZONE = 0.35
+
+GamepadNav.THUMBSTICK_ACTIVE_EPSILON = THUMBSTICK_ACTIVE_EPSILON
+GamepadNav.DEFAULT_MOVE_REPEAT_COOLDOWN = DEFAULT_MOVE_REPEAT_COOLDOWN
+GamepadNav.DEFAULT_STICK_DEADZONE = DEFAULT_STICK_DEADZONE
+GamepadNav.DEFAULT_NAVIGATION_DEADZONE = DEFAULT_NAVIGATION_DEADZONE
 
 export type NavDirection = "Up" | "Down" | "Left" | "Right"
 export type ThumbstickKey = "Left" | "Right"
@@ -28,6 +36,8 @@ export type ThumbstickSnapshot = {
 	right: ThumbstickState,
 	dominant: ThumbstickKey?,
 	lastUpdatedAt: number,
+	stickDeadzone: number,
+	navigationDeadzone: number,
 }
 
 export type LayoutConfig = {
@@ -153,6 +163,8 @@ local function cloneThumbstickSnapshot(snapshot: ThumbstickSnapshot): Thumbstick
 		right = cloneThumbstickState(snapshot.right),
 		dominant = snapshot.dominant,
 		lastUpdatedAt = snapshot.lastUpdatedAt,
+		stickDeadzone = snapshot.stickDeadzone,
+		navigationDeadzone = snapshot.navigationDeadzone,
 	}
 end
 
@@ -164,6 +176,12 @@ local function normalizeThumbstickVector(vector: Vector2, deadzone: number): Vec
 	local remappedMagnitude =
 		math.clamp((magnitude - deadzone) / math.max(THUMBSTICK_ACTIVE_EPSILON, 1 - deadzone), 0, 1)
 	return vector.Unit * remappedMagnitude
+end
+
+function GamepadNav.ResolveRemappedDeadzoneMagnitude(sourceDeadzoneRaw: any, targetDeadzoneRaw: any): number
+	local sourceDeadzone = clampNumber(sourceDeadzoneRaw, DEFAULT_STICK_DEADZONE, 0, 1)
+	local targetDeadzone = clampNumber(targetDeadzoneRaw, DEFAULT_NAVIGATION_DEADZONE, 0, 1)
+	return math.clamp((targetDeadzone - sourceDeadzone) / math.max(THUMBSTICK_ACTIVE_EPSILON, 1 - sourceDeadzone), 0, 1)
 end
 
 local function resolveInputThumbstickVector(input: InputObject, deadzone: number): Vector2?
@@ -215,11 +233,15 @@ end
 
 function GamepadNav.New(configRaw: GamepadNavConfig?): GamepadNav
 	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local stickDeadzone = clampNumber(config.stickDeadzone, DEFAULT_STICK_DEADZONE, 0, 1)
+	local navigationDeadzone = clampNumber(config.navigationDeadzone, DEFAULT_NAVIGATION_DEADZONE, 0, 1)
 	local thumbstickSnapshot: ThumbstickSnapshot = {
 		left = createThumbstickState("Left"),
 		right = createThumbstickState("Right"),
 		dominant = nil,
 		lastUpdatedAt = 0,
+		stickDeadzone = stickDeadzone,
+		navigationDeadzone = navigationDeadzone,
 	}
 	local self = setmetatable({
 		eventBus = config.eventBus,
@@ -230,9 +252,9 @@ function GamepadNav.New(configRaw: GamepadNavConfig?): GamepadNav
 		onActivate = if typeof(config.onActivate) == "function" then config.onActivate else nil,
 		onBack = if typeof(config.onBack) == "function" then config.onBack else nil,
 		externalFocusChanged = if typeof(config.onFocusChanged) == "function" then config.onFocusChanged else nil,
-		moveRepeatCooldown = clampNumber(config.moveRepeatCooldown, 0.12, 0.02, 1),
-		stickDeadzone = clampNumber(config.stickDeadzone, 0.12, 0, 1),
-		navigationDeadzone = clampNumber(config.navigationDeadzone, 0.35, 0, 1),
+		moveRepeatCooldown = clampNumber(config.moveRepeatCooldown, DEFAULT_MOVE_REPEAT_COOLDOWN, 0.02, 1),
+		stickDeadzone = stickDeadzone,
+		navigationDeadzone = navigationDeadzone,
 		navigationStickKeyCode = if typeof(config.navigationStickKeyCode) == "EnumItem"
 				and config.navigationStickKeyCode.EnumType == Enum.KeyCode
 			then config.navigationStickKeyCode
@@ -490,6 +512,8 @@ function GamepadNav._setThumbstickSnapshot(
 	self.thumbstickSnapshot.right = nextRight
 	self.thumbstickSnapshot.dominant = nextDominant
 	self.thumbstickSnapshot.lastUpdatedAt = os.clock()
+	self.thumbstickSnapshot.stickDeadzone = self.stickDeadzone
+	self.thumbstickSnapshot.navigationDeadzone = self.navigationDeadzone
 	self:_emitThumbstickChanged()
 	return true
 end
@@ -809,6 +833,7 @@ GamepadNav.FocusIndex = GamepadNav.FocusIndex
 GamepadNav.OnFocusChanged = GamepadNav.OnFocusChanged
 GamepadNav.GetThumbstickState = GamepadNav.GetThumbstickState
 GamepadNav.OnThumbstickChanged = GamepadNav.OnThumbstickChanged
+GamepadNav.ResolveRemappedDeadzoneMagnitude = GamepadNav.ResolveRemappedDeadzoneMagnitude
 GamepadNav.SetEnabled = GamepadNav.SetEnabled
 GamepadNav.Init = GamepadNav.Init
 GamepadNav.Destroy = GamepadNav.Destroy
@@ -825,6 +850,7 @@ GamepadNav.focusIndex = GamepadNav.FocusIndex
 GamepadNav.onFocusChanged = GamepadNav.OnFocusChanged
 GamepadNav.getThumbstickState = GamepadNav.GetThumbstickState
 GamepadNav.onThumbstickChanged = GamepadNav.OnThumbstickChanged
+GamepadNav.resolveRemappedDeadzoneMagnitude = GamepadNav.ResolveRemappedDeadzoneMagnitude
 GamepadNav.setEnabled = GamepadNav.SetEnabled
 GamepadNav.destroy = GamepadNav.Destroy
 
