@@ -73,7 +73,6 @@ return function(props: BiomeNameScreenProps?): React.ReactNode
 	local underlineHeight = math.max(1, math.floor(UNDERLINE_BASE_SIZE.Y + 0.5))
 
 	return e("Frame", {
-		Name = "BiomeNameScreen",
 		Size = UDim2.fromScale(1, 1),
 		Position = UDim2.fromScale(0, 0),
 		LayoutOrder = resolvedProps.layoutOrder or 997,
@@ -83,7 +82,6 @@ return function(props: BiomeNameScreenProps?): React.ReactNode
 		Active = false,
 	}, {
 		Banner = e("Frame", {
-			Name = "BiomeBanner",
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.new(
 				BANNER_POSITION.X.Scale,
@@ -100,7 +98,6 @@ return function(props: BiomeNameScreenProps?): React.ReactNode
 				Scale = appearance.scale,
 			}),
 			NameText = e("TextLabel", {
-				Name = "BiomeName",
 				Size = UDim2.fromOffset(TEXT_SIZE.X, TEXT_SIZE.Y),
 				Position = UDim2.fromOffset(0, 0),
 				BackgroundTransparency = 1,
@@ -126,7 +123,6 @@ return function(props: BiomeNameScreenProps?): React.ReactNode
 			}),
 			Underline = if UNDERLINE_IMAGE ~= ""
 				then e("ImageLabel", {
-					Name = "BiomeUnderline",
 					AnchorPoint = Vector2.new(0.5, 0),
 					Position = UDim2.new(0.5, underlineXOffset, 1, -8 + underlineYOffset),
 					Size = UDim2.fromOffset(underlineWidth, underlineHeight),
@@ -139,7 +135,6 @@ return function(props: BiomeNameScreenProps?): React.ReactNode
 					ZIndex = zIndex + 2,
 				})
 				else e("Frame", {
-					Name = "BiomeUnderlineFallback",
 					AnchorPoint = Vector2.new(0.5, 0),
 					Position = UDim2.new(0.5, underlineXOffset, 1, -8 + underlineYOffset),
 					Size = UDim2.fromOffset(underlineWidth, 4),

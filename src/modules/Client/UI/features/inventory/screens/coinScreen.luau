@@ -216,7 +216,6 @@ return function(props: CoinScreenProps): React.ReactNode
 		local hoverId = COIN_HOVER_ID_PREFIX .. coinDefinition.id
 
 		rootChildren["Coin_" .. coinDefinition.id] = e("ImageButton", {
-			Name = "Coin_" .. coinDefinition.id,
 			Size = UDim2.fromOffset(slotWidth, slotHeight),
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
@@ -238,7 +237,6 @@ return function(props: CoinScreenProps): React.ReactNode
 			end,
 		}, {
 			CoinAnimation = e(Gif, {
-				name = "CoinAnimation",
 				image = spriteSheetImage,
 				frameSize = COIN_FRAME_SIZE,
 				frameCount = COIN_FRAME_COUNT,
@@ -254,7 +252,6 @@ return function(props: CoinScreenProps): React.ReactNode
 				resampleMode = Enum.ResamplerMode.Pixelated,
 			}),
 			Amount = e("TextLabel", {
-				Name = "Amount",
 				Size = UDim2.fromOffset(slotWidth, COIN_AMOUNT_HEIGHT),
 				Position = UDim2.new(0.5, 0, 0, amountTop),
 				AnchorPoint = Vector2.new(0.5, 0),
@@ -282,7 +279,6 @@ return function(props: CoinScreenProps): React.ReactNode
 	end
 
 	return e("Frame", {
-		Name = "CoinScreen",
 		Size = UDim2.fromOffset(slotWidth * renderedCoinCount, slotHeight),
 		Position = applyOffset(props.position or UDim2.new(1, 0, 1, 0), emergeOffset),
 		AnchorPoint = props.anchorPoint or Vector2.new(1, 1),

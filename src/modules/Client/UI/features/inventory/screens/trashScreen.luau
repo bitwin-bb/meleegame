@@ -121,7 +121,6 @@ return function(props: TrashScreenProps): React.ReactNode
 		else if canInteract then Color3.fromRGB(222, 222, 222) else Color3.fromRGB(180, 180, 180)
 
 	return e("ImageButton", {
-		Name = "TrashScreen",
 		Size = props.size or DEFAULT_SIZE,
 		Position = applyOffset(props.position or UDim2.new(1, 0, 1, 0), emergeOffset),
 		AnchorPoint = props.anchorPoint or Vector2.new(1, 0),

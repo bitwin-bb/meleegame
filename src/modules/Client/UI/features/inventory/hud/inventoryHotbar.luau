@@ -630,7 +630,6 @@ return function(props: InventoryHotbarProps)
 		local itemIcon = if hasVisibleItem then resolveStackIcon(displayStack) else nil
 
 		hotbarChildren["Slot_" .. tostring(hotbarIndex)] = e("ImageButton", {
-			Name = "Slot_" .. tostring(hotbarIndex),
 			Size = hotbarSlotSize,
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
@@ -696,7 +695,6 @@ return function(props: InventoryHotbarProps)
 			}),
 			KeyHint = if showKeyHints
 				then e("TextLabel", {
-					Name = "KeyHint",
 					Size = UDim2.fromOffset(16, 14),
 					Position = UDim2.fromOffset(4, 4),
 					BackgroundTransparency = 1,
@@ -712,7 +710,6 @@ return function(props: InventoryHotbarProps)
 				else nil,
 			Amount = if hasVisibleItem and itemAmount > 1
 				then e("TextLabel", {
-					Name = "Amount",
 					Size = UDim2.fromOffset(0, 0),
 					AutomaticSize = Enum.AutomaticSize.XY,
 					Position = UDim2.new(1, -6, 1, -5),
@@ -731,7 +728,6 @@ return function(props: InventoryHotbarProps)
 				else nil,
 			Icon = if hasVisibleItem and itemIcon ~= nil
 				then e("ImageLabel", {
-					Name = "Icon",
 					Size = UDim2.fromOffset(32, 32),
 					Position = UDim2.fromScale(0.5, 0.5),
 					AnchorPoint = Vector2.new(0.5, 0.5),
@@ -824,7 +820,6 @@ return function(props: InventoryHotbarProps)
 		local isGridSlotInteractable = isSlotAvailable and columnRevealProgress >= (1 - EXPANSION_VISIBILITY_EPSILON)
 
 		gridChildren["GridSlotContainer_" .. tostring(slotIndex)] = e("Frame", {
-			Name = "GridSlotContainer_" .. tostring(slotIndex),
 			Size = gridSlotSize,
 			Position = UDim2.fromOffset(snapToPixel(currentSlotOffset.X), snapToPixel(currentSlotOffset.Y)),
 			BackgroundTransparency = 1,
@@ -832,7 +827,6 @@ return function(props: InventoryHotbarProps)
 			ZIndex = slotZIndex,
 		}, {
 			Slot = e("ImageButton", {
-				Name = "GridSlot_" .. tostring(slotIndex),
 				Size = UDim2.fromScale(1, 1),
 				BackgroundTransparency = 1,
 				BorderSizePixel = 0,
@@ -902,7 +896,6 @@ return function(props: InventoryHotbarProps)
 			}, {
 			Amount = if hasVisibleItem and itemAmount > 1
 				then e("TextLabel", {
-					Name = "Amount",
 					Size = UDim2.fromOffset(0, 0),
 					AutomaticSize = Enum.AutomaticSize.XY,
 					Position = UDim2.new(1, -5, 1, -4),
@@ -920,7 +913,6 @@ return function(props: InventoryHotbarProps)
 				else nil,
 			Icon = if hasVisibleItem and itemIcon ~= nil
 				then e("ImageLabel", {
-					Name = "Icon",
 					Size = UDim2.fromOffset(30, 30),
 					Position = UDim2.fromScale(0.5, 0.5),
 					AnchorPoint = Vector2.new(0.5, 0.5),
@@ -946,7 +938,6 @@ return function(props: InventoryHotbarProps)
 
 	local rootChildren: { [string]: React.ReactNode } = {
 		Hotbar = e("Frame", {
-			Name = "InventoryHotbarLeft",
 			Size = UDim2.fromOffset(hotbarWidth, hotbarSidebarHeight),
 			Position = hotbarSidebarPosition,
 			AnchorPoint = hotbarAnchorPoint,
@@ -968,7 +959,6 @@ return function(props: InventoryHotbarProps)
 
 	if showExpandedGrid then
 		rootChildren.ExpandedInventoryContainer = e("Frame", {
-			Name = "ExpandedInventoryContainer",
 			Size = UDim2.fromOffset(gridContainerWidth, gridContainerHeight),
 			Position = inventoryPanelPosition,
 			AnchorPoint = inventoryPanelAnchorPoint,
@@ -977,7 +967,6 @@ return function(props: InventoryHotbarProps)
 			ZIndex = zIndex + 1,
 		}, {
 			ExpandedInventory = e("Frame", {
-				Name = "ExpandedInventory",
 				Size = UDim2.fromOffset(gridContainerWidth, gridContainerHeight),
 				Position = UDim2.fromOffset(0, 0),
 				BackgroundTransparency = 1,
@@ -986,7 +975,6 @@ return function(props: InventoryHotbarProps)
 			}, gridChildren),
 			InventoryColumnReveal = if showRevealOverlay
 				then e("Frame", {
-					Name = "InventoryColumnReveal",
 					Size = UDim2.fromOffset(gridContainerWidth, gridContainerHeight),
 					Position = UDim2.fromOffset(0, 0),
 					BackgroundTransparency = 1,
@@ -1011,7 +999,6 @@ return function(props: InventoryHotbarProps)
 
 	rootChildren.StatusLabel = if not InventoryServiceUtils.isLoadedState(renderState.loadState)
 		then e("TextLabel", {
-			Name = "InventoryStatus",
 			Size = UDim2.fromOffset(0, 18),
 			AutomaticSize = Enum.AutomaticSize.X,
 			Position = UDim2.new(
@@ -1039,7 +1026,6 @@ return function(props: InventoryHotbarProps)
 	})
 
 	return e("Frame", {
-		Name = "InventoryHotbar",
 		Size = UDim2.fromScale(1, 1),
 		Position = UDim2.fromScale(0, 0),
 		BackgroundTransparency = 1,

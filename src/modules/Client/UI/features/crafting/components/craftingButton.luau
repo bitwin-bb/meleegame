@@ -43,7 +43,6 @@ return function(props: CraftingButtonProps): React.ReactNode
 	local textOffset = if typeof(props.textOffset) == "Vector2" then props.textOffset else Vector2.zero
 
 	return e("ImageButton", {
-		Name = "CraftingButton",
 		Size = props.size or UDim2.fromOffset(58, 58),
 		Position = props.position,
 		AnchorPoint = props.anchorPoint,
@@ -90,7 +89,6 @@ return function(props: CraftingButtonProps): React.ReactNode
 	}, {
 		Label = if text ~= nil and text ~= ""
 			then e("TextLabel", {
-				Name = "Label",
 				Size = UDim2.new(1, -6, 1, -6),
 				Position = UDim2.new(0.5, textOffset.X, 0.5, textOffset.Y),
 				AnchorPoint = Vector2.new(0.5, 0.5),

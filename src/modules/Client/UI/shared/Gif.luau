@@ -31,7 +31,6 @@ export type GifProps = {
 	startFrameIndex: number?,
 	onLooped: ((loopCount: number) -> ())?,
 	onCompleted: (() -> ())?,
-	name: string?,
 	size: UDim2?,
 	position: UDim2?,
 	anchorPoint: Vector2?,
@@ -336,7 +335,6 @@ local function Gif(props: GifProps)
 	if useNevermoreFlipbook then
 		local activeSlice = resolveGridFrameSlice(startFrameIndex, columns, fallbackFrameSize)
 		local rootProps = {
-			Name = props.name or "Gif",
 			ref = imageRef,
 			Size = props.size or UDim2.fromOffset(fallbackFrameSize.X, fallbackFrameSize.Y),
 			Position = props.position or UDim2.fromScale(0, 0),
@@ -386,7 +384,6 @@ local function Gif(props: GifProps)
 		local row = math.floor(frameIndex / columns)
 
 		local rootProps = {
-			Name = props.name or "Gif",
 			Size = props.size or UDim2.fromOffset(fallbackFrameSize.X, fallbackFrameSize.Y),
 			Position = props.position or UDim2.fromScale(0, 0),
 			AnchorPoint = props.anchorPoint or Vector2.new(0, 0),
@@ -443,7 +440,6 @@ local function Gif(props: GifProps)
 	local activeFrameSize = if activeSlice ~= nil then activeSlice.size else fallbackFrameSize
 
 	local rootProps = {
-		Name = props.name or "Gif",
 		Size = props.size or UDim2.fromOffset(activeFrameSize.X, activeFrameSize.Y),
 		Position = props.position or UDim2.fromScale(0, 0),
 		AnchorPoint = props.anchorPoint or Vector2.new(0, 0),

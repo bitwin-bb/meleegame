@@ -42,7 +42,6 @@ return function(props: ItemScreenProps): React.ReactNode
 
 	if dragState.active and stack ~= nil and icon ~= nil then
 		children.GhostIcon = e("ImageLabel", {
-			Name = "GhostIcon",
 			Size = UDim2.fromOffset(iconSize, iconSize),
 			Position = UDim2.fromOffset(pointer.X, pointer.Y),
 			AnchorPoint = Vector2.new(0.5, 0.5),
@@ -54,7 +53,6 @@ return function(props: ItemScreenProps): React.ReactNode
 		}, {
 			GhostAmount = if stack.amount > 1
 				then e("TextLabel", {
-					Name = "Amount",
 					Size = UDim2.fromOffset(0, 0),
 					AutomaticSize = Enum.AutomaticSize.XY,
 					Position = UDim2.new(1, -2, 1, -1),
@@ -73,7 +71,6 @@ return function(props: ItemScreenProps): React.ReactNode
 	end
 
 	local rootElement = e("Frame", {
-		Name = "ItemDragLayer",
 		Size = UDim2.fromScale(1, 1),
 		Position = UDim2.fromScale(0, 0),
 		BackgroundTransparency = 1,

@@ -55,7 +55,6 @@ export type TextEffects = {
 }
 
 export type TextLabelProps = {
-	name: string?,
 	text: string?,
 	size: UDim2?,
 	position: UDim2?,
@@ -363,7 +362,6 @@ local function TextLabel(props: TextLabelProps)
 			)
 
 			children[`Shadow_{layer}`] = e("TextLabel", {
-				Name = `Shadow_{layer}`,
 				ZIndex = shadowZIndex,
 				TextColor3 = shadowColor,
 				TextTransparency = layerTransparency,
@@ -402,7 +400,6 @@ local function TextLabel(props: TextLabelProps)
 
 		for index, outlineOffset in outlineOffsets do
 			children[`Outline_{index}`] = e("TextLabel", {
-				Name = `Outline_{index}`,
 				ZIndex = outlineZIndex,
 				TextColor3 = outlineColor,
 				TextTransparency = outlineTransparency,
@@ -427,7 +424,6 @@ local function TextLabel(props: TextLabelProps)
 	end
 
 	local rootProps = {
-		Name = props.name or "TextLabel",
 		Size = props.size or DEFAULT_SIZE,
 		Position = props.position or DEFAULT_POSITION,
 		AnchorPoint = props.anchorPoint or DEFAULT_ANCHOR_POINT,

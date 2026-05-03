@@ -76,7 +76,6 @@ return function(props: MiningProgressScreenProps?): React.ReactNode
 	local progressWidth = math.floor((BAR_WIDTH * progressScale) + 0.5)
 
 	return e("BillboardGui", {
-		Name = "MiningProgressBillboard",
 		ref = billboardRef,
 		Enabled = isVisible,
 		AlwaysOnTop = true,
@@ -88,7 +87,6 @@ return function(props: MiningProgressScreenProps?): React.ReactNode
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 	}, {
 		FrameImage = e("ImageLabel", {
-			Name = "MiningProgressFrame",
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
 			Image = FRAME_IMAGE_ID,
@@ -97,7 +95,6 @@ return function(props: MiningProgressScreenProps?): React.ReactNode
 			ZIndex = zIndex + 2,
 		}, {
 			BarClip = e("Frame", {
-				Name = "MiningProgressBarClip",
 				BackgroundTransparency = 1,
 				BorderSizePixel = 0,
 				ClipsDescendants = true,
@@ -106,7 +103,6 @@ return function(props: MiningProgressScreenProps?): React.ReactNode
 				ZIndex = zIndex + 1,
 			}, {
 				BarImage = e("ImageLabel", {
-					Name = "MiningProgressBar",
 					BackgroundTransparency = 1,
 					BorderSizePixel = 0,
 					Image = BAR_IMAGE_ID,

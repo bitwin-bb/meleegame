@@ -83,7 +83,6 @@ return function(props: EntityInfoScreenProps): React.ReactNode
 	local displayName = if entityState.displayName ~= "" then entityState.displayName else "Entity"
 
 	return e(DropsInfo, {
-		name = "EntityInfoScreen",
 		adornee = entityState.adornee,
 		visible = true,
 		enabled = true,
@@ -121,13 +120,11 @@ return function(props: EntityInfoScreenProps): React.ReactNode
 		},
 		children = {
 			Shadow = e("Frame", {
-				Name = "Shadow",
 				Visible = false,
 				BackgroundTransparency = 1,
 				BorderSizePixel = 0,
 			}),
 			Stack = e("Frame", {
-				Name = "Stack",
 				Size = UDim2.new(1, 0, 1, 0),
 				BackgroundTransparency = 1,
 				BorderSizePixel = 0,
@@ -147,7 +144,6 @@ return function(props: EntityInfoScreenProps): React.ReactNode
 					SortOrder = Enum.SortOrder.LayoutOrder,
 				}),
 				HealthBarTrack = e("Frame", {
-					Name = "HealthBarTrack",
 					LayoutOrder = 1,
 					Size = UDim2.new(1, 0, 0, 8),
 					BackgroundColor3 = Color3.fromRGB(35, 41, 55),
@@ -159,7 +155,6 @@ return function(props: EntityInfoScreenProps): React.ReactNode
 						CornerRadius = UDim.new(1, 0),
 					}),
 					Fill = e("Frame", {
-						Name = "Fill",
 						Size = healthSpring.binding:map(function(value: number)
 							return UDim2.fromScale(value, 1)
 						end),
@@ -181,7 +176,6 @@ return function(props: EntityInfoScreenProps): React.ReactNode
 					}),
 				}),
 				Name = e("TextLabel", {
-					Name = "Name",
 					LayoutOrder = 2,
 					Size = UDim2.new(1, 0, 0, 16),
 					BackgroundTransparency = 1,

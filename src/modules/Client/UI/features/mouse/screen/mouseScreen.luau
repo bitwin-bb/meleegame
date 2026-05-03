@@ -44,7 +44,7 @@ return function(props: MouseScreenProps): React.ReactNode
 	local cursorPosition = currentMouseState.position - hotspotOffset
 
 	local rootElement = e("Frame", {
-		Name = "MouseScreenRoot",
+		[React.Tag] = "IsCustomMouseCursor",
 		Size = UDim2.fromScale(1, 1),
 		Position = UDim2.fromScale(0, 0),
 		LayoutOrder = props.layoutOrder or 1000,
@@ -55,7 +55,7 @@ return function(props: MouseScreenProps): React.ReactNode
 		ZIndex = zIndex,
 	}, {
 		MouseCursorImage = e("ImageLabel", {
-			Name = "MouseCursorImage",
+			[React.Tag] = "IsCustomMouseCursor",
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
 			Active = false,

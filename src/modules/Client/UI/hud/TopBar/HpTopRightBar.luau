@@ -201,7 +201,6 @@ return function(props: HpTopRightBarProps)
 
 	local children: { [string]: React.ReactNode } = {
 		HeartsRow = e("Frame", {
-			Name = "HeartsRow",
 			Size = UDim2.fromOffset(0, heartSize.Y.Offset),
 			AutomaticSize = Enum.AutomaticSize.X,
 			AnchorPoint = Vector2.new(1, 1),
@@ -229,7 +228,6 @@ return function(props: HpTopRightBarProps)
 
 	if props.showValueLabel ~= false then
 		children.LifeValue = e("TextLabel", {
-			Name = "LifeValue",
 			Size = UDim2.new(1, -16, 0, 18),
 			Position = UDim2.fromOffset(8, 0),
 			BackgroundTransparency = 1,
@@ -245,7 +243,6 @@ return function(props: HpTopRightBarProps)
 	end
 
 	return e("Frame", {
-		Name = "HpTopRightBar",
 		Size = props.size or UDim2.fromOffset(360, 56),
 		Position = props.position or UDim2.new(1, -12, 0, 12),
 		AnchorPoint = props.anchorPoint or Vector2.new(1, 0),

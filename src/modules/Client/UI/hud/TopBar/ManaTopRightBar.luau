@@ -93,7 +93,6 @@ local function ManaStarItem(props: ManaStarItemProps)
 	local scale = 1 + 0.03 * hoverAlpha
 
 	return e("Frame", {
-		Name = `ManaStar_{star.index}`,
 		Size = props.starSize,
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
@@ -104,7 +103,6 @@ local function ManaStarItem(props: ManaStarItemProps)
 			Scale = scale,
 		}),
 		Empty = e("ImageLabel", {
-			Name = "Empty",
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			Image = ImageIds.mana,
@@ -114,7 +112,6 @@ local function ManaStarItem(props: ManaStarItemProps)
 			ZIndex = props.zIndex + 1,
 		}),
 		Fill = e("ImageLabel", {
-			Name = "Fill",
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			Image = ImageIds.mana,
@@ -218,7 +215,6 @@ return function(props: ManaTopRightBarProps)
 	end
 
 	return e("Frame", {
-		Name = "ManaTopRightBar",
 		Size = props.size or UDim2.new(0, 360, 0, 56),
 		Position = props.position or UDim2.new(1, 0, 0, 0),
 		AnchorPoint = props.anchorPoint or Vector2.new(1, 0),
@@ -229,7 +225,6 @@ return function(props: ManaTopRightBarProps)
 		Visible = props.visible ~= false and isManaReady,
 	}, {
 		ManaValue = e("TextLabel", {
-			Name = "ManaValue",
 			Size = UDim2.new(1, -16, 0, 18),
 			Position = UDim2.new(0, 8, 0, 0),
 			BackgroundTransparency = 1,
@@ -243,7 +238,6 @@ return function(props: ManaTopRightBarProps)
 			ZIndex = zIndex + 3,
 		}),
 		StarsRow = e("Frame", {
-			Name = "StarsRow",
 			Size = UDim2.new(0, 0, 0, starSize.Y.Offset),
 			AutomaticSize = Enum.AutomaticSize.X,
 			AnchorPoint = Vector2.new(1, 1),

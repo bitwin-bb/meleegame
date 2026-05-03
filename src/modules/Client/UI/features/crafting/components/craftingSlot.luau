@@ -82,7 +82,6 @@ return function(props: CraftingSlotProps): React.ReactNode
 		else "Missing"
 
 	return e("ImageButton", {
-		Name = "CraftingSlot_" .. recipe.recipeId,
 		Size = props.size or UDim2.fromOffset(64, 64),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
@@ -100,7 +99,6 @@ return function(props: CraftingSlotProps): React.ReactNode
 	}, {
 		Icon = if coinSpriteSheet ~= nil
 			then e(Gif, {
-				name = "Icon",
 				image = coinSpriteSheet,
 				frameSize = COIN_FRAME_SIZE,
 				frameCount = COIN_FRAME_COUNT,
@@ -116,7 +114,6 @@ return function(props: CraftingSlotProps): React.ReactNode
 				resampleMode = Enum.ResamplerMode.Pixelated,
 			})
 			else e("ImageLabel", {
-				Name = "Icon",
 				Size = UDim2.fromOffset(40, 40),
 				Position = UDim2.fromScale(0.5, 0.5),
 				AnchorPoint = Vector2.new(0.5, 0.5),
@@ -127,7 +124,6 @@ return function(props: CraftingSlotProps): React.ReactNode
 				ZIndex = zIndex + 1,
 			}),
 		MaxCraft = e("TextLabel", {
-			Name = "MaxCraft",
 			AutomaticSize = Enum.AutomaticSize.X,
 			Size = UDim2.fromOffset(0, 14),
 			Position = UDim2.new(1, -5, 1, -5),

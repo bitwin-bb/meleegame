@@ -214,7 +214,6 @@ return function(props: MarkerScreenProps): React.ReactNode
 	end
 
 	return e("Frame", {
-		Name = "BossMarkerScreen",
 		Size = UDim2.fromScale(1, 1),
 		Position = UDim2.fromScale(0, 0),
 		BackgroundTransparency = 1,

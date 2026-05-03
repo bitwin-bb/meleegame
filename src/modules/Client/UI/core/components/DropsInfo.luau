@@ -32,7 +32,6 @@ export type DropsInfoTheme = {
 }
 
 export type DropsInfoProps = {
-	name: string?,
 	adornee: Instance?,
 	portalTarget: Instance?,
 	disablePortal: boolean?,
@@ -516,7 +515,6 @@ function DropsInfo:render()
 		end)
 
 		local billboardProps: { [string]: any } = {
-			Name = props.name or "DropsInfo",
 			Enabled = props.enabled ~= false,
 			Active = props.active == true,
 			Adornee = props.adornee,
@@ -536,7 +534,6 @@ function DropsInfo:render()
 
 		local billboardElement = e("BillboardGui", billboardProps, {
 			TextRoot = e("Frame", {
-				Name = "TextRoot",
 				AutomaticSize = Enum.AutomaticSize.XY,
 				Size = UDim2.fromOffset(0, 0),
 				Position = textPositionBinding,
@@ -549,7 +546,6 @@ function DropsInfo:render()
 					Scale = self.scaleBinding,
 				}),
 				Text = e("TextLabel", {
-					Name = "Text",
 					AutomaticSize = Enum.AutomaticSize.XY,
 					Size = UDim2.fromOffset(0, 0),
 					BackgroundTransparency = 1,
@@ -618,7 +614,6 @@ function DropsInfo:render()
 	end)
 
 	local cardProps: { [string]: any } = {
-		Name = "Card",
 		Size = props.cardSize or DEFAULT_CARD_SIZE,
 		AutomaticSize = props.cardAutomaticSize or Enum.AutomaticSize.None,
 		Position = cardPositionBinding,
@@ -631,7 +626,6 @@ function DropsInfo:render()
 	applyNativeProps(cardProps, props.nativeCard)
 
 	local titleProps: { [string]: any } = {
-		Name = "Title",
 		Size = UDim2.new(1, 0, 0, 21),
 		BackgroundTransparency = 1,
 		Font = props.titleFont or Enum.Font.GothamBold,
@@ -648,7 +642,6 @@ function DropsInfo:render()
 	applyNativeProps(titleProps, props.nativeTitle)
 
 	local subtitleProps: { [string]: any } = {
-		Name = "Subtitle",
 		Size = UDim2.new(1, 0, 0, 18),
 		BackgroundTransparency = 1,
 		Font = props.subtitleFont or Enum.Font.GothamSemibold,
@@ -665,7 +658,6 @@ function DropsInfo:render()
 	applyNativeProps(subtitleProps, props.nativeSubtitle)
 
 	local descriptionProps: { [string]: any } = {
-		Name = "Description",
 		Size = UDim2.new(1, 0, 0, 16),
 		BackgroundTransparency = 1,
 		Font = props.descriptionFont or Enum.Font.Gotham,
@@ -682,7 +674,6 @@ function DropsInfo:render()
 	applyNativeProps(descriptionProps, props.nativeDescription)
 
 	local amountProps: { [string]: any } = {
-		Name = "Amount",
 		AutomaticSize = Enum.AutomaticSize.XY,
 		BackgroundColor3 = accentColor,
 		BackgroundTransparency = amountTransparencyBinding,
@@ -701,7 +692,6 @@ function DropsInfo:render()
 	applyNativeProps(amountProps, props.nativeAmount)
 
 	local iconProps: { [string]: any } = {
-		Name = "Icon",
 		Size = props.iconSize or UDim2.fromOffset(28, 28),
 		BackgroundTransparency = 1,
 		Image = props.icon or "",
@@ -725,7 +715,6 @@ function DropsInfo:render()
 			Transparency = cardStrokeTransparencyBinding,
 		}),
 		Shadow = e("Frame", {
-			Name = "Shadow",
 			Size = UDim2.new(1, 0, 1, 0),
 			Position = UDim2.fromOffset(0, 2),
 			BackgroundColor3 = Color3.fromRGB(0, 0, 0),
@@ -744,7 +733,6 @@ function DropsInfo:render()
 			PaddingRight = props.cardPadding or DEFAULT_CARD_PADDING,
 		}),
 		Content = e("Frame", {
-			Name = "Content",
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			ZIndex = zIndex + 3,
@@ -757,7 +745,6 @@ function DropsInfo:render()
 			}),
 			Icon = if showIcon
 				then e("Frame", {
-					Name = "IconContainer",
 					AutomaticSize = Enum.AutomaticSize.XY,
 					BackgroundTransparency = 1,
 					LayoutOrder = 1,
@@ -773,7 +760,6 @@ function DropsInfo:render()
 				})
 				else nil,
 			TextStack = e("Frame", {
-				Name = "TextStack",
 				AutomaticSize = Enum.AutomaticSize.Y,
 				Size = UDim2.new(1, if showIcon then -32 else 0, 0, 0),
 				BackgroundTransparency = 1,
@@ -818,7 +804,6 @@ function DropsInfo:render()
 
 	if showRarityPill and props.rarity ~= nil then
 		cardChildren.Rarity = e("TextLabel", {
-			Name = "Rarity",
 			AutomaticSize = Enum.AutomaticSize.XY,
 			BackgroundColor3 = accentColor,
 			BackgroundTransparency = rarityPillTransparencyBinding,
@@ -853,7 +838,6 @@ function DropsInfo:render()
 	end
 
 	local billboardProps: { [string]: any } = {
-		Name = props.name or "DropsInfo",
 		Enabled = props.enabled ~= false,
 		Active = props.active == true,
 		Adornee = props.adornee,

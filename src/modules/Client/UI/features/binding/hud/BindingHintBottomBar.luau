@@ -150,7 +150,6 @@ local function HintPrompt(props: {
 
 	if hasPromptText then
 		return e(TextLabel, {
-			name = "PromptText",
 			text = props.hint.promptText,
 			size = UDim2.fromOffset(0, 0),
 			automaticSize = Enum.AutomaticSize.XY,
@@ -192,7 +191,6 @@ local function HintBody(props: {
 			SortOrder = Enum.SortOrder.LayoutOrder,
 		}),
 		Label = e(TextLabel, {
-			name = "HintLabel",
 			text = props.hint.label,
 			size = UDim2.fromOffset(0, 0),
 			automaticSize = Enum.AutomaticSize.XY,
@@ -219,7 +217,6 @@ local function HintBody(props: {
 
 	if props.hint.detail ~= nil and props.hint.detail ~= "" then
 		children.Detail = e(TextLabel, {
-			name = "HintDetail",
 			text = props.hint.detail,
 			size = UDim2.fromOffset(0, 0),
 			automaticSize = Enum.AutomaticSize.XY,

@@ -205,7 +205,6 @@ function NavButton:render()
 		else (if isDisabled then 0.45 else 0.15)
 
 	return e("ImageButton", {
-		Name = props.id or "NavButton",
 		Size = props.size or DEFAULT_SIZE,
 		Position = props.position,
 		AnchorPoint = props.anchorPoint,
@@ -258,7 +257,6 @@ function NavButton:render()
 			Transparency = strokeTransparency,
 		}),
 		Content = e("Frame", {
-			Name = "Content",
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			ZIndex = (props.zIndex or 1) + 1,
@@ -277,7 +275,6 @@ function NavButton:render()
 			}),
 			Icon = if hasIcon
 				then e("ImageLabel", {
-					Name = "Icon",
 					Size = props.iconSize or DEFAULT_ICON_SIZE,
 					BackgroundTransparency = 1,
 					LayoutOrder = 1,
@@ -287,7 +284,6 @@ function NavButton:render()
 				else nil,
 			Label = if hasLabel
 				then e("TextLabel", {
-					Name = "Label",
 					Size = UDim2.fromScale(1, 1),
 					BackgroundTransparency = 1,
 					LayoutOrder = 2,

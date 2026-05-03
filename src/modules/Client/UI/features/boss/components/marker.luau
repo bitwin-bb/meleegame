@@ -36,7 +36,6 @@ return function(props: MarkerProps): React.ReactNode
 	local iconPosition = Vector2.new(markerWidth * 0.5, markerHeight * 0.5) + baseDirection * baseOffset
 
 	return e("Frame", {
-		Name = "BossMarker",
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromOffset(math.floor(props.position.X + 0.5), math.floor(props.position.Y + 0.5)),
 		Size = markerSize,
@@ -46,7 +45,6 @@ return function(props: MarkerProps): React.ReactNode
 		ZIndex = zIndex,
 	}, {
 		Marker = e("ImageLabel", {
-			Name = "Marker",
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
 			Size = UDim2.fromScale(1, 1),
@@ -57,7 +55,6 @@ return function(props: MarkerProps): React.ReactNode
 			ZIndex = zIndex + 1,
 		}),
 		Icon = e("ImageLabel", {
-			Name = "Icon",
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromOffset(math.floor(iconPosition.X + 0.5), math.floor(iconPosition.Y + 0.5)),
 			Size = UDim2.fromOffset(iconSize, iconSize),

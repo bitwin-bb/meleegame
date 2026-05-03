@@ -151,7 +151,6 @@ local function PopupEntry(props: PopupEntryProps): React.ReactNode
 	end
 
 	return e(DropsInfo, {
-		name = ("InfoPlayerPopup_%s"):format(popup.id),
 		adornee = adornee,
 		eventToken = popup.eventToken,
 		visible = true,

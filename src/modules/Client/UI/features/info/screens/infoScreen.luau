@@ -41,7 +41,6 @@ return function(props: InfoScreenProps): React.ReactNode
 	local targetPosition = hoverState.mousePosition + offset
 
 	local rootElement = e("Frame", {
-		Name = "InfoScreen",
 		Size = UDim2.fromScale(1, 1),
 		Position = UDim2.fromScale(0, 0),
 		LayoutOrder = props.layoutOrder or 999,
@@ -51,7 +50,6 @@ return function(props: InfoScreenProps): React.ReactNode
 		ZIndex = zIndex,
 	}, {
 		HoverTooltip = e(TextLabel, {
-			name = "HoverTooltip",
 			text = hoverState.text,
 			size = UDim2.fromOffset(0, 0),
 			position = UDim2.fromOffset(math.floor(targetPosition.X), math.floor(targetPosition.Y)),

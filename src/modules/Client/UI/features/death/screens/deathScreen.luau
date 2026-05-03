@@ -77,7 +77,6 @@ return function(props: DeathScreenProps?): React.ReactNode
 	local countdownYOffset = math.floor(countDownAppearance.offset.Y + 0.5)
 
 	return e("Frame", {
-		Name = "DeathScreen",
 		Size = UDim2.fromScale(1, 1),
 		Position = UDim2.fromScale(0, 0),
 		LayoutOrder = resolvedProps.layoutOrder or 990,
@@ -87,7 +86,6 @@ return function(props: DeathScreenProps?): React.ReactNode
 		Active = false,
 	}, {
 		MainText = e("TextLabel", {
-			Name = "MainText",
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = MAIN_TEXT_POSITION,
 			Size = UDim2.fromOffset(MAIN_TEXT_SIZE.X, MAIN_TEXT_SIZE.Y),
@@ -117,7 +115,6 @@ return function(props: DeathScreenProps?): React.ReactNode
 		}),
 		CountDownText = if showCountDown
 			then e("TextLabel", {
-				Name = "CountDownText",
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				Position = UDim2.new(
 					COUNTDOWN_BASE_POSITION.X.Scale,

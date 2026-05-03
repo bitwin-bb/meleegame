@@ -1,5 +1,6 @@
 --!strict
 local Players = game:GetService("Players")
+local CollectionService = game:GetService("CollectionService")
 local GuiService = game:GetService("GuiService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
@@ -147,7 +148,7 @@ local function isCustomCursorGui(guiObject: GuiObject): boolean
 		if current:GetAttribute("IsCustomMouseCursor") == true then
 			return true
 		end
-		if current.Name == "MouseScreenRoot" or current.Name == "MouseCursorImage" then
+		if CollectionService:HasTag(current, "IsCustomMouseCursor") then
 			return true
 		end
 		current = current.Parent

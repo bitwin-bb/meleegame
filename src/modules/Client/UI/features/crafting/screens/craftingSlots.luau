@@ -294,7 +294,6 @@ local function buildIngredientRows(previewRaw: any, zIndex: number): { [string]:
 		local coinSpriteSheet = resolveCoinSpriteSheet(itemId)
 
 		rows["Ingredient_" .. tostring(index)] = e("ImageLabel", {
-			Name = "Ingredient_" .. tostring(index),
 			Size = UDim2.fromOffset(RECIPE_REQUIREMENT_SLOT_SIZE, RECIPE_REQUIREMENT_SLOT_SIZE),
 			BackgroundTransparency = 1,
 			LayoutOrder = index,
@@ -304,7 +303,6 @@ local function buildIngredientRows(previewRaw: any, zIndex: number): { [string]:
 		}, {
 			Icon = if coinSpriteSheet ~= nil
 				then e(Gif, {
-					name = "Icon",
 					image = coinSpriteSheet,
 					frameSize = COIN_FRAME_SIZE,
 					frameCount = COIN_FRAME_COUNT,
@@ -320,7 +318,6 @@ local function buildIngredientRows(previewRaw: any, zIndex: number): { [string]:
 					resampleMode = Enum.ResamplerMode.Pixelated,
 				})
 				else e("ImageLabel", {
-					Name = "Icon",
 					Size = UDim2.fromOffset(RECIPE_REQUIREMENT_ICON_SIZE, RECIPE_REQUIREMENT_ICON_SIZE),
 					Position = UDim2.fromScale(0.5, 0.5),
 					AnchorPoint = Vector2.new(0.5, 0.5),
@@ -330,7 +327,6 @@ local function buildIngredientRows(previewRaw: any, zIndex: number): { [string]:
 					ZIndex = zIndex + 1,
 				}),
 			Amount = e("TextLabel", {
-				Name = "Amount",
 				AutomaticSize = Enum.AutomaticSize.X,
 				Size = UDim2.fromOffset(0, 10),
 				Position = UDim2.new(1, -2, 1, -2),
@@ -494,7 +490,6 @@ return function(props: CraftingSlotsProps): React.ReactNode
 		local isSelected = activeCategory == categoryValue
 		local hasCategoryAsset = CRAFTING_MENU_CATEGORY_IMAGE_ID ~= ""
 		categoryChildren["Category_" .. tostring(index)] = e("ImageButton", {
-			Name = "Category_" .. tostring(index),
 			Size = UDim2.fromOffset(74, CATEGORY_TAB_HEIGHT),
 			LayoutOrder = index,
 			AutoButtonColor = false,
@@ -510,7 +505,6 @@ return function(props: CraftingSlotsProps): React.ReactNode
 			end,
 		}, {
 			Label = e("TextLabel", {
-				Name = "Label",
 				Size = UDim2.new(1, -8, 1, 0),
 				Position = UDim2.fromScale(0.5, 0.5),
 				AnchorPoint = Vector2.new(0.5, 0.5),
@@ -531,7 +525,6 @@ return function(props: CraftingSlotsProps): React.ReactNode
 		buildIngredientRows(if selectedRecipe ~= nil then selectedRecipe.preview else nil, zIndex + 4)
 
 	return e("Frame", {
-		Name = "CraftingSlotsScreen",
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
@@ -540,7 +533,6 @@ return function(props: CraftingSlotsProps): React.ReactNode
 		Visible = isRequestedVisible,
 	}, {
 		Panel = e("CanvasGroup", {
-			Name = "CraftingPanel",
 			Size = UDim2.fromOffset(PANEL_WIDTH, PANEL_HEIGHT),
 			Position = UDim2.new(0.5, math.floor(animatedOffset.X), 0.5, math.floor(animatedOffset.Y)),
 			AnchorPoint = Vector2.new(0.5, 0.5),
@@ -555,7 +547,6 @@ return function(props: CraftingSlotsProps): React.ReactNode
 			}),
 			BackgroundImage = if CRAFTING_MENU_IMAGE_ID ~= ""
 				then e("ImageLabel", {
-					Name = "BackgroundImage",
 					Size = UDim2.fromScale(1, 1),
 					BackgroundTransparency = 1,
 					BorderSizePixel = 0,
@@ -566,7 +557,6 @@ return function(props: CraftingSlotsProps): React.ReactNode
 				})
 				else nil,
 			Header = e("TextLabel", {
-				Name = "Header",
 				Size = UDim2.new(1, -20, 0, 24),
 				Position = UDim2.fromOffset(10, 10),
 				BackgroundTransparency = 1,
@@ -579,7 +569,6 @@ return function(props: CraftingSlotsProps): React.ReactNode
 				ZIndex = zIndex + 2,
 			}),
 			DragHandle = e("TextButton", {
-				Name = "DragHandle",
 				Size = UDim2.new(1, 0, 0, 32),
 				Position = UDim2.fromOffset(0, 0),
 				BackgroundTransparency = 1,
@@ -595,7 +584,6 @@ return function(props: CraftingSlotsProps): React.ReactNode
 				end,
 			}),
 			SearchContainer = e("ImageLabel", {
-				Name = "SearchContainer",
 				Size = UDim2.new(1, -20, 0, 28),
 				Position = UDim2.fromOffset(10, 38),
 				BackgroundColor3 = Color3.fromRGB(16, 23, 32),
@@ -607,7 +595,6 @@ return function(props: CraftingSlotsProps): React.ReactNode
 				ZIndex = zIndex + 3,
 			}, {
 				Search = e("TextBox", {
-					Name = "Search",
 					Size = UDim2.new(1, -14, 1, -6),
 					Position = UDim2.fromOffset(7, 3),
 					BackgroundTransparency = 1,
@@ -630,7 +617,6 @@ return function(props: CraftingSlotsProps): React.ReactNode
 				}),
 			}),
 			Categories = e("Frame", {
-				Name = "Categories",
 				Size = UDim2.new(1, -20, 0, CATEGORY_TAB_HEIGHT),
 				Position = UDim2.fromOffset(10, 72),
 				BackgroundTransparency = 1,
@@ -644,7 +630,6 @@ return function(props: CraftingSlotsProps): React.ReactNode
 				CategoriesList = e(React.Fragment, nil, categoryChildren),
 			}),
 			RecipesContainer = e("ImageLabel", {
-				Name = "RecipesContainer",
 				Size = UDim2.new(1, -20, 0, 240),
 				Position = UDim2.fromOffset(10, 104),
 				BackgroundColor3 = Color3.fromRGB(19, 27, 36),
@@ -662,7 +647,6 @@ return function(props: CraftingSlotsProps): React.ReactNode
 					PaddingBottom = UDim.new(0, 4),
 				}),
 				Recipes = e("ScrollingFrame", {
-					Name = "Recipes",
 					Size = UDim2.fromScale(1, 1),
 					BackgroundTransparency = 1,
 					BorderSizePixel = 0,
@@ -691,7 +675,6 @@ return function(props: CraftingSlotsProps): React.ReactNode
 				}),
 			}),
 			SelectionDetails = e("ImageLabel", {
-				Name = "SelectionDetails",
 				Size = UDim2.new(1, -20, 0, 64),
 				Position = UDim2.fromOffset(10, 348),
 				BackgroundColor3 = Color3.fromRGB(19, 27, 36),
@@ -709,7 +692,6 @@ return function(props: CraftingSlotsProps): React.ReactNode
 					PaddingBottom = UDim.new(0, 6),
 				}),
 				Ingredients = e("Frame", {
-					Name = "Ingredients",
 					Size = UDim2.new(1, 0, 1, 0),
 					BackgroundTransparency = 1,
 					BorderSizePixel = 0,
