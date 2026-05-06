@@ -81,7 +81,7 @@ return function(props: BiomeNameScreenProps?): React.ReactNode
 		ZIndex = zIndex,
 		Active = false,
 	}, {
-		Banner = e("Frame", {
+		e("Frame", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.new(
 				BANNER_POSITION.X.Scale,
@@ -94,10 +94,10 @@ return function(props: BiomeNameScreenProps?): React.ReactNode
 			BorderSizePixel = 0,
 			ZIndex = zIndex + 1,
 		}, {
-			Scale = e("UIScale", {
+			e("UIScale", {
 				Scale = appearance.scale,
 			}),
-			NameText = e("TextLabel", {
+			e("TextLabel", {
 				Size = UDim2.fromOffset(TEXT_SIZE.X, TEXT_SIZE.Y),
 				Position = UDim2.fromOffset(0, 0),
 				BackgroundTransparency = 1,
@@ -113,7 +113,7 @@ return function(props: BiomeNameScreenProps?): React.ReactNode
 				TextYAlignment = Enum.TextYAlignment.Center,
 				ZIndex = zIndex + 3,
 			}, {
-				Gradient = e("UIGradient", {
+				e("UIGradient", {
 					Color = ColorSequence.new({
 						ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
 						ColorSequenceKeypoint.new(1, Color3.fromRGB(236, 214, 151)),
@@ -121,7 +121,7 @@ return function(props: BiomeNameScreenProps?): React.ReactNode
 					Rotation = 90,
 				}),
 			}),
-			Underline = if UNDERLINE_IMAGE ~= ""
+			if UNDERLINE_IMAGE ~= ""
 				then e("ImageLabel", {
 					AnchorPoint = Vector2.new(0.5, 0),
 					Position = UDim2.new(0.5, underlineXOffset, 1, -8 + underlineYOffset),
@@ -143,7 +143,7 @@ return function(props: BiomeNameScreenProps?): React.ReactNode
 					BorderSizePixel = 0,
 					ZIndex = zIndex + 2,
 				}, {
-					Corner = e("UICorner", {
+					e("UICorner", {
 						CornerRadius = UDim.new(1, 0),
 					}),
 				}),

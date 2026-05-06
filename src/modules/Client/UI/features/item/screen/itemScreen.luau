@@ -38,10 +38,10 @@ return function(props: ItemScreenProps): React.ReactNode
 	local pointer = dragState.pointerPosition
 	local iconSize = 46
 
-	local children: { [string]: React.ReactNode } = {}
+	local children: { React.ReactNode } = {}
 
 	if dragState.active and stack ~= nil and icon ~= nil then
-		children.GhostIcon = e("ImageLabel", {
+		children[#children + 1] = e("ImageLabel", {
 			Size = UDim2.fromOffset(iconSize, iconSize),
 			Position = UDim2.fromOffset(pointer.X, pointer.Y),
 			AnchorPoint = Vector2.new(0.5, 0.5),
@@ -51,7 +51,7 @@ return function(props: ItemScreenProps): React.ReactNode
 			ImageTransparency = 0,
 			ZIndex = zIndex + 1,
 		}, {
-			GhostAmount = if stack.amount > 1
+			if stack.amount > 1
 				then e("TextLabel", {
 					Size = UDim2.fromOffset(0, 0),
 					AutomaticSize = Enum.AutomaticSize.XY,

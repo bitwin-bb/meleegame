@@ -2,6 +2,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local DropsInfo = require(script:FindFirstAncestor("game").Client.UI.core.components.DropsInfo)
+local EntityHealthBar = require(script:FindFirstAncestor("game").Client.UI.features.entity.components.EntityHealthBar)
 local React = require(ReplicatedStorage.Packages.React)
 local entityInfoSlice = require(script:FindFirstAncestor("game").Client.UI.features.entity.state.entityInfoSlice)
 local entityInfoThunks = require(script:FindFirstAncestor("game").Client.UI.features.entity.state.entityInfoThunks)
@@ -119,63 +120,38 @@ return function(props: EntityInfoScreenProps): React.ReactNode
 			Visible = false,
 		},
 		children = {
-			Shadow = e("Frame", {
+			e("Frame", {
 				Visible = false,
 				BackgroundTransparency = 1,
 				BorderSizePixel = 0,
 			}),
-			Stack = e("Frame", {
+			e("Frame", {
 				Size = UDim2.new(1, 0, 1, 0),
 				BackgroundTransparency = 1,
 				BorderSizePixel = 0,
 				ZIndex = zIndex + 4,
 			}, {
-				Padding = e("UIPadding", {
+				e("UIPadding", {
 					PaddingTop = UDim.new(0, 2),
 					PaddingBottom = UDim.new(0, 0),
 					PaddingLeft = UDim.new(0, 16),
 					PaddingRight = UDim.new(0, 16),
 				}),
-				Layout = e("UIListLayout", {
+				e("UIListLayout", {
 					FillDirection = Enum.FillDirection.Vertical,
 					HorizontalAlignment = Enum.HorizontalAlignment.Center,
 					VerticalAlignment = Enum.VerticalAlignment.Top,
 					Padding = UDim.new(0, 4),
 					SortOrder = Enum.SortOrder.LayoutOrder,
 				}),
-				HealthBarTrack = e("Frame", {
-					LayoutOrder = 1,
-					Size = UDim2.new(1, 0, 0, 8),
-					BackgroundColor3 = Color3.fromRGB(35, 41, 55),
-					BackgroundTransparency = 0.06,
-					BorderSizePixel = 0,
-					ZIndex = zIndex + 4,
-				}, {
-					Corner = e("UICorner", {
-						CornerRadius = UDim.new(1, 0),
-					}),
-					Fill = e("Frame", {
-						Size = healthSpring.binding:map(function(value: number)
-							return UDim2.fromScale(value, 1)
-						end),
-						BackgroundColor3 = healthColor,
-						BorderSizePixel = 0,
-						ZIndex = zIndex + 5,
-					}, {
-						Corner = e("UICorner", {
-							CornerRadius = UDim.new(1, 0),
-						}),
-						Glow = e("UIGradient", {
-							Color = healthColor:map(function(color: Color3)
-								return ColorSequence.new({
-									ColorSequenceKeypoint.new(0, color:Lerp(Color3.fromRGB(255, 255, 255), 0.35)),
-									ColorSequenceKeypoint.new(1, color),
-								})
-							end),
-						}),
-					}),
+				e(EntityHealthBar, {
+					healthSize = healthSpring.binding:map(function(value: number)
+						return UDim2.fromScale(value, 1)
+					end),
+					healthColor = healthColor,
+					zIndex = zIndex + 4,
 				}),
-				Name = e("TextLabel", {
+				e("TextLabel", {
 					LayoutOrder = 2,
 					Size = UDim2.new(1, 0, 0, 16),
 					BackgroundTransparency = 1,

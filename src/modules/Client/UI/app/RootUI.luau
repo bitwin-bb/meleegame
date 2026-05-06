@@ -1,59 +1,85 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local React = require(ReplicatedStorage.Packages.React)
-local HUD = require(script:FindFirstAncestor("game").Client.UI.hud)
-local InfoScreen = require(script:FindFirstAncestor("game").Client.UI.features.info.screens.infoScreen)
-local InfoPlayerScreen = require(script:FindFirstAncestor("game").Client.UI.features.player.screens.infoPlayerScreen)
-local EntityInfoScreen = require(script:FindFirstAncestor("game").Client.UI.features.entity.screens.entityInfoScreen)
-local MarkerScreen = require(script:FindFirstAncestor("game").Client.UI.features.boss.screens.markerScreen)
-local BiomeNameScreen = require(script:FindFirstAncestor("game").Client.UI.features.biome.screens.biomeNameScreen)
-local DeathScreen = require(script:FindFirstAncestor("game").Client.UI.features.death.screens.deathScreen)
-local MiningProgressScreen = require(script:FindFirstAncestor("game").Client.UI.features.mining.screens.miningProgressScreen)
-local CraftingSlotsScreen = require(script:FindFirstAncestor("game").Client.UI.features.crafting.screens.craftingSlots)
 local BindingHintScreen = require(script:FindFirstAncestor("game").Client.UI.features.binding.screens.bindingHintScreen)
+local BiomeNameScreen = require(script:FindFirstAncestor("game").Client.UI.features.biome.screens.biomeNameScreen)
+local CraftingSlotsScreen = require(script:FindFirstAncestor("game").Client.UI.features.crafting.screens.craftingSlots)
+local DeathScreen = require(script:FindFirstAncestor("game").Client.UI.features.death.screens.deathScreen)
+local EntityInfoScreen = require(script:FindFirstAncestor("game").Client.UI.features.entity.screens.entityInfoScreen)
+local HUD = require(script:FindFirstAncestor("game").Client.UI.hud)
+local InfoPlayerScreen = require(script:FindFirstAncestor("game").Client.UI.features.player.screens.infoPlayerScreen)
+local InfoScreen = require(script:FindFirstAncestor("game").Client.UI.features.info.screens.infoScreen)
+local MarkerScreen = require(script:FindFirstAncestor("game").Client.UI.features.boss.screens.markerScreen)
+local MiningProgressScreen =
+	require(script:FindFirstAncestor("game").Client.UI.features.mining.screens.miningProgressScreen)
 local MouseScreen = require(script:FindFirstAncestor("game").Client.UI.features.mouse.screen.mouseScreen)
 local PadScreen = require(script:FindFirstAncestor("game").Client.UI.features.pad.screens.pad)
+local React = require(ReplicatedStorage.Packages.React)
+
+local e: typeof(React.createElement) = React.createElement
 
 type RootUIProps = {
 	currentScreen: React.ReactElement<any, any>?,
 	hudProps: { [string]: any }?,
+	onCanvasMounted: ((Frame) -> ())?,
 }
 
 return function(props: RootUIProps)
-	return React.createElement(React.Fragment, nil, {
-		HUD = React.createElement(HUD, props.hudProps),
-		CurrentScreen = props.currentScreen,
-		InfoScreen = React.createElement(InfoScreen, {
+	local canvasRef = React.useRef(nil :: Frame?)
+
+	React.useEffect(function()
+		local canvas = canvasRef.current
+		if canvas ~= nil and props.onCanvasMounted ~= nil then
+			props.onCanvasMounted(canvas)
+		end
+	end, { props.onCanvasMounted })
+
+	return e("Frame", {
+		ref = canvasRef,
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Active = false,
+		Selectable = false,
+	}, {
+		e("UIAspectRatioConstraint", {
+			AspectRatio = 16 / 9,
+		}),
+		e("UIScale"),
+		e(HUD, props.hudProps),
+		props.currentScreen,
+		e(InfoScreen, {
 			zIndex = 140,
 		}),
-		InfoPlayerScreen = React.createElement(InfoPlayerScreen, {
+		e(InfoPlayerScreen, {
 			zIndex = 145,
 		}),
-		BiomeNameScreen = React.createElement(BiomeNameScreen, {
+		e(BiomeNameScreen, {
 			zIndex = 150,
 		}),
-		EntityInfoScreen = React.createElement(EntityInfoScreen, {
+		e(EntityInfoScreen, {
 			zIndex = 160,
 		}),
-		MarkerScreen = React.createElement(MarkerScreen, {
+		e(MarkerScreen, {
 			zIndex = 165,
 		}),
-		MiningProgressScreen = React.createElement(MiningProgressScreen, {
+		e(MiningProgressScreen, {
 			zIndex = 170,
 		}),
-		CraftingSlotsScreen = React.createElement(CraftingSlotsScreen, {
+		e(CraftingSlotsScreen, {
 			zIndex = 175,
 		}),
-		BindingHintScreen = React.createElement(BindingHintScreen, {
+		e(BindingHintScreen, {
 			zIndex = 180,
 		}),
-		MouseScreen = React.createElement(MouseScreen, {
+		e(MouseScreen, {
 			zIndex = 1000,
 		}),
-		PadScreen = React.createElement(PadScreen, {
+		e(PadScreen, {
 			zIndex = 980,
 		}),
-		DeathScreen = React.createElement(DeathScreen, {
+		e(DeathScreen, {
 			zIndex = 230,
 		}),
 	})

@@ -2,6 +2,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
+local MiningProgressBar =
+	require(script:FindFirstAncestor("game").Client.UI.features.mining.components.MiningProgressBar)
 local React = require(ReplicatedStorage.Packages.React)
 local miningProgressSlice =
 	require(script:FindFirstAncestor("game").Client.UI.features.mining.state.miningProgressSlice)
@@ -73,7 +75,6 @@ return function(props: MiningProgressScreenProps?): React.ReactNode
 		gainRate = 28,
 		depletionRate = 7,
 	})
-	local progressWidth = math.floor((BAR_WIDTH * progressScale) + 0.5)
 
 	return e("BillboardGui", {
 		ref = billboardRef,
@@ -86,31 +87,17 @@ return function(props: MiningProgressScreenProps?): React.ReactNode
 		StudsOffsetWorldSpace = Vector3.new(0, 0, 0),
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 	}, {
-		FrameImage = e("ImageLabel", {
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			Image = FRAME_IMAGE_ID,
-			Size = UDim2.fromScale(1, 1),
-			Position = UDim2.fromScale(0, 0),
-			ZIndex = zIndex + 2,
-		}, {
-			BarClip = e("Frame", {
-				BackgroundTransparency = 1,
-				BorderSizePixel = 0,
-				ClipsDescendants = true,
-				Position = UDim2.fromOffset(BAR_INSET_X, BAR_INSET_Y),
-				Size = UDim2.fromOffset(progressWidth, BAR_HEIGHT),
-				ZIndex = zIndex + 1,
-			}, {
-				BarImage = e("ImageLabel", {
-					BackgroundTransparency = 1,
-					BorderSizePixel = 0,
-					Image = BAR_IMAGE_ID,
-					Position = UDim2.fromOffset(0, 0),
-					Size = UDim2.fromOffset(BAR_WIDTH, BAR_HEIGHT),
-					ZIndex = zIndex + 1,
-				}),
-			}),
+		e(MiningProgressBar, {
+			progress = progressScale,
+			frameImage = FRAME_IMAGE_ID,
+			barImage = BAR_IMAGE_ID,
+			frameWidth = FRAME_WIDTH,
+			frameHeight = FRAME_HEIGHT,
+			barWidth = BAR_WIDTH,
+			barHeight = BAR_HEIGHT,
+			barInsetX = BAR_INSET_X,
+			barInsetY = BAR_INSET_Y,
+			zIndex = zIndex,
 		}),
 	})
 end

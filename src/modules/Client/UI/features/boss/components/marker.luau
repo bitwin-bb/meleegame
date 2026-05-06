@@ -1,8 +1,8 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local React = require(ReplicatedStorage.Packages.React)
 local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
+local React = require(ReplicatedStorage.Packages.React)
 
 export type MarkerProps = {
 	icon: string,
@@ -44,7 +44,7 @@ return function(props: MarkerProps): React.ReactNode
 		ClipsDescendants = false,
 		ZIndex = zIndex,
 	}, {
-		Marker = e("ImageLabel", {
+		e("ImageLabel", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromScale(0.5, 0.5),
 			Size = UDim2.fromScale(1, 1),
@@ -54,7 +54,7 @@ return function(props: MarkerProps): React.ReactNode
 			Rotation = props.rotation,
 			ZIndex = zIndex + 1,
 		}),
-		Icon = e("ImageLabel", {
+		e("ImageLabel", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = UDim2.fromOffset(math.floor(iconPosition.X + 0.5), math.floor(iconPosition.Y + 0.5)),
 			Size = UDim2.fromOffset(iconSize, iconSize),

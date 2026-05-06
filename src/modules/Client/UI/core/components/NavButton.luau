@@ -192,15 +192,14 @@ function NavButton:render()
 	end
 
 	local textColor = isDisabled and theme.disabledTextColor or theme.textColor
-	local iconColor = props.iconColor3
-		or (if isDisabled then theme.disabledIconColor else theme.iconColor)
+	local iconColor = props.iconColor3 or (if isDisabled then theme.disabledIconColor else theme.iconColor)
 	local strokeColor = isSelected and theme.selectedStrokeColor or theme.strokeColor
 	local backgroundTransparency = if typeof(props.backgroundTransparency) == "number"
 			and props.backgroundTransparency == props.backgroundTransparency
 		then math.clamp(props.backgroundTransparency, 0, 1)
 		else 0
-	local strokeTransparency = if typeof(props.strokeTransparency) == "number" and props.strokeTransparency
-			== props.strokeTransparency
+	local strokeTransparency = if typeof(props.strokeTransparency) == "number"
+			and props.strokeTransparency == props.strokeTransparency
 		then math.clamp(props.strokeTransparency, 0, 1)
 		else (if isDisabled then 0.45 else 0.15)
 
@@ -247,33 +246,33 @@ function NavButton:render()
 			self:emitActivated(inputObject)
 		end,
 	}, {
-		Corner = e("UICorner", {
+		e("UICorner", {
 			CornerRadius = props.cornerRadius or UDim.new(0, 10),
 		}),
-		Stroke = e("UIStroke", {
+		e("UIStroke", {
 			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 			Color = strokeColor,
 			Thickness = isSelected and 2 or 1,
 			Transparency = strokeTransparency,
 		}),
-		Content = e("Frame", {
+		e("Frame", {
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			ZIndex = (props.zIndex or 1) + 1,
 		}, {
-			Padding = e("UIPadding", {
+			e("UIPadding", {
 				PaddingLeft = props.padding or UDim.new(0, 12),
 				PaddingRight = props.padding or UDim.new(0, 12),
 				PaddingTop = UDim.new(0, 6),
 				PaddingBottom = UDim.new(0, 6),
 			}),
-			ListLayout = e("UIListLayout", {
+			e("UIListLayout", {
 				FillDirection = Enum.FillDirection.Horizontal,
 				VerticalAlignment = Enum.VerticalAlignment.Center,
 				HorizontalAlignment = hasLabel and Enum.HorizontalAlignment.Left or Enum.HorizontalAlignment.Center,
 				Padding = UDim.new(0, 8),
 			}),
-			Icon = if hasIcon
+			if hasIcon
 				then e("ImageLabel", {
 					Size = props.iconSize or DEFAULT_ICON_SIZE,
 					BackgroundTransparency = 1,
@@ -282,7 +281,7 @@ function NavButton:render()
 					ImageColor3 = iconColor,
 				})
 				else nil,
-			Label = if hasLabel
+			if hasLabel
 				then e("TextLabel", {
 					Size = UDim2.fromScale(1, 1),
 					BackgroundTransparency = 1,

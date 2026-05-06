@@ -49,7 +49,7 @@ return function(props: InfoScreenProps): React.ReactNode
 		Active = false,
 		ZIndex = zIndex,
 	}, {
-		HoverTooltip = e(TextLabel, {
+		e(TextLabel, {
 			text = hoverState.text,
 			size = UDim2.fromOffset(0, 0),
 			position = UDim2.fromOffset(math.floor(targetPosition.X), math.floor(targetPosition.Y)),
@@ -72,16 +72,16 @@ return function(props: InfoScreenProps): React.ReactNode
 				},
 			},
 			children = {
-				Padding = e("UIPadding", {
+				e("UIPadding", {
 					PaddingLeft = UDim.new(0, 10),
 					PaddingRight = UDim.new(0, 10),
 					PaddingTop = UDim.new(0, 6),
 					PaddingBottom = UDim.new(0, 6),
 				}),
-				Corner = e("UICorner", {
+				e("UICorner", {
 					CornerRadius = UDim.new(0, 8),
 				}),
-				Stroke = e("UIStroke", {
+				e("UIStroke", {
 					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 					Color = Color3.fromRGB(120, 144, 170),
 					Transparency = 0.4,

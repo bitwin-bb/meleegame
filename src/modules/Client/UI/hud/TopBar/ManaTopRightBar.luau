@@ -2,12 +2,10 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
+local ManaMeter = require(script.Parent.components.ManaMeter)
 local ManaServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.ManaServiceUtils)
 local React = require(ReplicatedStorage.Packages.React)
+local UiSound = require(script:FindFirstAncestor("game").Client.UI.core.utils.UiSound)
 local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
 local manaSlice = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.manaSlice)
 local manaThunks = require(script:FindFirstAncestor("game").Client.UI.hud.state.thunk.manaThunks)
@@ -45,11 +43,6 @@ type ManaTopRightBarProps = {
 local e: typeof(React.createElement) = React.createElement
 
 local DEFAULT_MANA_STAR_VALUE = 20
-local EMPTY_STAR_COLOR = Color3.fromRGB(24, 44, 75)
-local FILLED_STAR_COLOR = Color3.fromRGB(133, 189, 255)
-local UI_AUDIO = (AudioRegistry :: any).UI or {}
-local UI_HOVER_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Hover)
-
 local function buildManaStars(manaRaw: any, maxManaRaw: any, starValueRaw: any): { ManaStarState }
 	local starValue = if typeof(starValueRaw) == "number" and starValueRaw == starValueRaw
 		then math.max(1, starValueRaw)
@@ -78,51 +71,6 @@ local function buildManaStars(manaRaw: any, maxManaRaw: any, starValueRaw: any):
 	return stars
 end
 
-type ManaStarItemProps = {
-	star: ManaStarState,
-	starSize: UDim2,
-	zIndex: number,
-	hoverAlpha: number,
-}
-
-local function ManaStarItem(props: ManaStarItemProps)
-	local star = props.star
-	local fillAlpha = math.clamp(star.fillAlpha, 0, 1)
-	local hoverAlpha = math.clamp(props.hoverAlpha, 0, 1)
-	local fillTransparency = math.clamp((1 - fillAlpha) - (0.14 * hoverAlpha * fillAlpha), 0, 1)
-	local scale = 1 + 0.03 * hoverAlpha
-
-	return e("Frame", {
-		Size = props.starSize,
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		LayoutOrder = star.index,
-		ZIndex = props.zIndex,
-	}, {
-		Scale = e("UIScale", {
-			Scale = scale,
-		}),
-		Empty = e("ImageLabel", {
-			Size = UDim2.fromScale(1, 1),
-			BackgroundTransparency = 1,
-			Image = ImageIds.mana,
-			Rotation = 0,
-			ImageColor3 = EMPTY_STAR_COLOR,
-			ImageTransparency = 0,
-			ZIndex = props.zIndex + 1,
-		}),
-		Fill = e("ImageLabel", {
-			Size = UDim2.fromScale(1, 1),
-			BackgroundTransparency = 1,
-			Image = ImageIds.mana,
-			Rotation = 0,
-			ImageColor3 = FILLED_STAR_COLOR,
-			ImageTransparency = fillTransparency,
-			ZIndex = props.zIndex + 2,
-		}),
-	})
-end
-
 return function(props: ManaTopRightBarProps)
 	local useServiceState = props.useServiceState ~= false
 	local serviceManaState = useStore(if useServiceState then manaSlice.manaStateAtom else nil) :: ManaServiceState?
@@ -143,11 +91,7 @@ return function(props: ManaTopRightBarProps)
 				text = hoverText,
 			})
 
-			if UI_HOVER_SOUND then
-				AudioServiceClient:playUi(UI_HOVER_SOUND, {
-					replaceChannel = false,
-				})
-			end
+			UiSound.playHover()
 		end,
 		onHoverEnd = function()
 			infoThunks.hideHover(hoverId)
@@ -189,30 +133,6 @@ return function(props: ManaTopRightBarProps)
 	local zIndex = props.zIndex or 12
 	local starSize = props.starSize or props.iconSize or UDim2.fromOffset(30, 30)
 	local stars = buildManaStars(manaState.mana, manaState.maxMana, props.starValue)
-	local starsRowChildren: { [string]: React.ReactNode } = {
-		Padding = e("UIPadding", {
-			PaddingTop = UDim.new(0, 0),
-			PaddingBottom = UDim.new(0, 0),
-			PaddingLeft = UDim.new(0, 8),
-			PaddingRight = UDim.new(0, 8),
-		}),
-		ListLayout = e("UIListLayout", {
-			FillDirection = Enum.FillDirection.Horizontal,
-			HorizontalAlignment = Enum.HorizontalAlignment.Right,
-			VerticalAlignment = Enum.VerticalAlignment.Center,
-			SortOrder = Enum.SortOrder.LayoutOrder,
-			Padding = props.padding or UDim.new(0, 4),
-		}),
-	}
-
-	for _, star in ipairs(stars) do
-		starsRowChildren[`Star_{star.index}`] = e(ManaStarItem, {
-			star = star,
-			starSize = starSize,
-			zIndex = zIndex + 2,
-			hoverAlpha = hoverAlpha,
-		})
-	end
 
 	return e("Frame", {
 		Size = props.size or UDim2.new(0, 360, 0, 56),
@@ -224,7 +144,7 @@ return function(props: ManaTopRightBarProps)
 		ZIndex = zIndex,
 		Visible = props.visible ~= false and isManaReady,
 	}, {
-		ManaValue = e("TextLabel", {
+		e("TextLabel", {
 			Size = UDim2.new(1, -16, 0, 18),
 			Position = UDim2.new(0, 8, 0, 0),
 			BackgroundTransparency = 1,
@@ -237,17 +157,14 @@ return function(props: ManaTopRightBarProps)
 			TextYAlignment = Enum.TextYAlignment.Center,
 			ZIndex = zIndex + 3,
 		}),
-		StarsRow = e("Frame", {
-			Size = UDim2.new(0, 0, 0, starSize.Y.Offset),
-			AutomaticSize = Enum.AutomaticSize.X,
-			AnchorPoint = Vector2.new(1, 1),
-			Position = UDim2.new(1, 0, 1, -4),
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			Active = true,
-			ZIndex = zIndex + 1,
-			[React.Event.MouseEnter] = starsHover.eventHandlers[React.Event.MouseEnter],
-			[React.Event.MouseLeave] = starsHover.eventHandlers[React.Event.MouseLeave],
-		}, starsRowChildren),
+		e(ManaMeter, {
+			stars = stars,
+			starSize = starSize,
+			padding = props.padding or UDim.new(0, 4),
+			zIndex = zIndex + 1,
+			hoverAlpha = hoverAlpha,
+			onMouseEnter = starsHover.eventHandlers[React.Event.MouseEnter],
+			onMouseLeave = starsHover.eventHandlers[React.Event.MouseLeave],
+		}),
 	})
 end

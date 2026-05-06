@@ -2,14 +2,17 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
+local CategoryTabs = require(script:FindFirstAncestor("game").Client.UI.features.crafting.components.CategoryTabs)
 local CraftingButton = require(script:FindFirstAncestor("game").Client.UI.features.crafting.components.craftingButton)
-local CraftingSlot = require(script:FindFirstAncestor("game").Client.UI.features.crafting.components.craftingSlot)
-local Gif = require(script:FindFirstAncestor("game").Client.UI.shared.Gif)
+local CraftingPanel = require(script:FindFirstAncestor("game").Client.UI.features.crafting.components.CraftingPanel)
 local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
+local IngredientSlot = require(script:FindFirstAncestor("game").Client.UI.features.crafting.components.IngredientSlot)
 local React = require(ReplicatedStorage.Packages.React)
+local RecipeDetails = require(script:FindFirstAncestor("game").Client.UI.features.crafting.components.RecipeDetails)
+local RecipeGrid = require(script:FindFirstAncestor("game").Client.UI.features.crafting.components.RecipeGrid)
+local RecipeSlot = require(script:FindFirstAncestor("game").Client.UI.features.crafting.components.RecipeSlot)
+local SearchBox = require(script:FindFirstAncestor("game").Client.UI.features.crafting.components.SearchBox)
+local UiSound = require(script:FindFirstAncestor("game").Client.UI.core.utils.UiSound)
 local craftingSlice = require(script:FindFirstAncestor("game").Client.UI.features.crafting.state.craftingSlice)
 local craftingThunks = require(script:FindFirstAncestor("game").Client.UI.features.crafting.state.craftingThunks)
 local itemThunks = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemThunks)
@@ -32,7 +35,6 @@ local PANEL_WIDTH = 336
 local PANEL_HEIGHT = 458
 local PANEL_OPEN_START_OFFSET = Vector2.new(0, 96)
 local PANEL_MIN_SCALE = 0.2
-local CATEGORY_TAB_HEIGHT = 26
 local RECIPE_SLOT_SIZE = 80
 local RECIPE_SLOT_PADDING = 8
 local RECIPE_REQUIREMENT_SLOT_SIZE = 60
@@ -42,31 +44,9 @@ local MENU_OPEN_SPRING = {
 	frequency = 0.2,
 	damping = 1,
 }
-local COIN_SPRITE_SHEET_KEY_BY_ITEM_ID = {
-	CopperCoin = "copperCoin",
-	SilverCoin = "silverCoin",
-	GoldCoin = "goldCoin",
-	PlatinumCoin = "platinumCoin",
-}
-local COIN_SHEET_SIZE = Vector2.new(1290, 774)
-local COIN_FRAME_ROWS = 3
-local COIN_FRAME_COLUMNS = 5
-local COIN_FRAME_SIZE =
-	Vector2.new(math.floor(COIN_SHEET_SIZE.X / COIN_FRAME_COLUMNS), math.floor(COIN_SHEET_SIZE.Y / COIN_FRAME_ROWS))
-local COIN_FRAME_COUNT = COIN_FRAME_ROWS * COIN_FRAME_COLUMNS
-local COIN_FPS = 12
-local UI_AUDIO = (AudioRegistry :: any).UI or {}
-local UI_CRAFT_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Craft)
-local UI_DRAG_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Drag)
 
 local function playUiSound(soundAssetId: string?)
-	if AudioServiceClient.categoryGroups == nil or soundAssetId == nil then
-		return
-	end
-
-	AudioServiceClient:playUi(soundAssetId, {
-		replaceChannel = false,
-	})
+	UiSound.play(soundAssetId)
 end
 
 local function resolveImageId(valueRaw: any, fallbackRaw: any): string
@@ -77,28 +57,6 @@ local function resolveImageId(valueRaw: any, fallbackRaw: any): string
 		return fallbackRaw
 	end
 	return ""
-end
-
-local function resolveCoinSpriteSheet(itemIdRaw: any): string?
-	local itemId = if typeof(itemIdRaw) == "string" then itemIdRaw else nil
-	if itemId == nil then
-		return nil
-	end
-	local spriteSheetKey = COIN_SPRITE_SHEET_KEY_BY_ITEM_ID[itemId]
-	if spriteSheetKey == nil then
-		return nil
-	end
-	local spriteSheets = if typeof(ImageIds.spriteSheets) == "table"
-		then ImageIds.spriteSheets :: { [string]: any }
-		else nil
-	if spriteSheets == nil then
-		return nil
-	end
-	local spriteSheet = spriteSheets[spriteSheetKey]
-	if typeof(spriteSheet) ~= "string" or spriteSheet == "" then
-		return nil
-	end
-	return spriteSheet
 end
 
 local CRAFTING_MENU_IMAGE_ID = resolveImageId(ImageIds.craftingMenu, "")
@@ -260,8 +218,8 @@ local function resolveDisplayedSelectedRecipe(
 	return displayedRecipes[1]
 end
 
-local function buildIngredientRows(previewRaw: any, zIndex: number): { [string]: React.ReactNode }
-	local rows: { [string]: React.ReactNode } = {}
+local function buildIngredientRows(previewRaw: any, zIndex: number): { React.ReactNode }
+	local rows: { React.ReactNode } = {}
 	if typeof(previewRaw) ~= "table" then
 		return rows
 	end
@@ -281,66 +239,22 @@ local function buildIngredientRows(previewRaw: any, zIndex: number): { [string]:
 				and ingredient.required == ingredient.required
 			then math.max(0, math.floor(ingredient.required))
 			else 0
-		local available = if typeof(ingredient.available) == "number"
-				and ingredient.available == ingredient.available
-			then math.max(0, math.floor(ingredient.available))
-			else 0
 		local isSufficient = ingredient.isSufficient == true
 
 		local resolvedIcon = itemThunks.resolveItemIconByType(nil, itemId)
 		local icon = if typeof(resolvedIcon) == "string" and resolvedIcon ~= ""
 			then resolvedIcon
 			else ImageIds.questionMark
-		local coinSpriteSheet = resolveCoinSpriteSheet(itemId)
 
-		rows["Ingredient_" .. tostring(index)] = e("ImageLabel", {
-			Size = UDim2.fromOffset(RECIPE_REQUIREMENT_SLOT_SIZE, RECIPE_REQUIREMENT_SLOT_SIZE),
-			BackgroundTransparency = 1,
-			LayoutOrder = index,
-			Image = ImageIds.recipeIcon,
-			ImageColor3 = if isSufficient then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(255, 207, 207),
-			ZIndex = zIndex,
-		}, {
-			Icon = if coinSpriteSheet ~= nil
-				then e(Gif, {
-					image = coinSpriteSheet,
-					frameSize = COIN_FRAME_SIZE,
-					frameCount = COIN_FRAME_COUNT,
-					columns = COIN_FRAME_COLUMNS,
-					startFrameIndex = 0,
-					fps = COIN_FPS,
-					size = UDim2.fromOffset(RECIPE_REQUIREMENT_ICON_SIZE, RECIPE_REQUIREMENT_ICON_SIZE),
-					position = UDim2.fromScale(0.5, 0.5),
-					anchorPoint = Vector2.new(0.5, 0.5),
-					backgroundTransparency = 1,
-					imageTransparency = 0,
-					zIndex = zIndex + 1,
-					resampleMode = Enum.ResamplerMode.Pixelated,
-				})
-				else e("ImageLabel", {
-					Size = UDim2.fromOffset(RECIPE_REQUIREMENT_ICON_SIZE, RECIPE_REQUIREMENT_ICON_SIZE),
-					Position = UDim2.fromScale(0.5, 0.5),
-					AnchorPoint = Vector2.new(0.5, 0.5),
-					BackgroundTransparency = 1,
-					Image = icon,
-					ScaleType = Enum.ScaleType.Fit,
-					ZIndex = zIndex + 1,
-				}),
-			Amount = e("TextLabel", {
-				AutomaticSize = Enum.AutomaticSize.X,
-				Size = UDim2.fromOffset(0, 10),
-				Position = UDim2.new(1, -2, 1, -2),
-				AnchorPoint = Vector2.new(1, 1),
-				BackgroundTransparency = 1,
-				Text = tostring(required),
-				Font = Enum.Font.GothamBold,
-				TextSize = 9,
-				TextXAlignment = Enum.TextXAlignment.Right,
-				TextYAlignment = Enum.TextYAlignment.Center,
-				TextColor3 = if isSufficient then Color3.fromRGB(157, 239, 182) else Color3.fromRGB(248, 172, 172),
-				TextStrokeTransparency = 0.55,
-				ZIndex = zIndex + 2,
-			}),
+		rows[#rows + 1] = e(IngredientSlot, {
+			layoutOrder = index,
+			itemId = itemId,
+			required = required,
+			isSufficient = isSufficient,
+			icon = icon,
+			size = UDim2.fromOffset(RECIPE_REQUIREMENT_SLOT_SIZE, RECIPE_REQUIREMENT_SLOT_SIZE),
+			iconSize = UDim2.fromOffset(RECIPE_REQUIREMENT_ICON_SIZE, RECIPE_REQUIREMENT_ICON_SIZE),
+			zIndex = zIndex,
 		})
 	end
 
@@ -396,7 +310,7 @@ return function(props: CraftingSlotsProps): React.ReactNode
 
 		lastCraftResultUpdatedAtRef.current = updatedAt
 		if (lastCraftResult :: any).success == true then
-			playUiSound(UI_CRAFT_SOUND)
+			playUiSound(UiSound.craft)
 		end
 	end, { craftingState.lastCraftResult })
 
@@ -404,7 +318,7 @@ return function(props: CraftingSlotsProps): React.ReactNode
 		local wasDragging = wasDraggingRef.current
 		wasDraggingRef.current = craftMenuDrag.isDragging
 		if craftMenuDrag.isDragging and not wasDragging then
-			playUiSound(UI_DRAG_SOUND)
+			playUiSound(UiSound.drag)
 		end
 	end, { craftMenuDrag.isDragging })
 
@@ -433,7 +347,7 @@ return function(props: CraftingSlotsProps): React.ReactNode
 		categoryTabs[#categoryTabs + 1] = category
 	end
 
-	local recipeChildren: { [string]: React.ReactNode } = {}
+	local recipeChildren: { React.ReactNode } = {}
 	for index, entry in displayedRecipes do
 		local entryGroup = displayRecipeGroups[entry.recipeId]
 		local isSelected = false
@@ -445,7 +359,7 @@ return function(props: CraftingSlotsProps): React.ReactNode
 				end
 			end
 		end
-		recipeChildren["Recipe_" .. entry.recipeId] = e(CraftingSlot, {
+		recipeChildren[#recipeChildren + 1] = e(RecipeSlot, {
 			layoutOrder = index,
 			zIndex = zIndex + 4,
 			size = UDim2.fromOffset(RECIPE_SLOT_SIZE, RECIPE_SLOT_SIZE),
@@ -475,52 +389,6 @@ return function(props: CraftingSlotsProps): React.ReactNode
 		})
 	end
 
-	local categoryChildren: { [string]: React.ReactNode } = {
-		ListLayout = e("UIListLayout", {
-			FillDirection = Enum.FillDirection.Horizontal,
-			HorizontalAlignment = Enum.HorizontalAlignment.Left,
-			VerticalAlignment = Enum.VerticalAlignment.Center,
-			Padding = UDim.new(0, 4),
-			SortOrder = Enum.SortOrder.LayoutOrder,
-		}),
-	}
-	for index, category in categoryTabs do
-		local isAll = category == "All"
-		local categoryValue = if isAll then "" else category
-		local isSelected = activeCategory == categoryValue
-		local hasCategoryAsset = CRAFTING_MENU_CATEGORY_IMAGE_ID ~= ""
-		categoryChildren["Category_" .. tostring(index)] = e("ImageButton", {
-			Size = UDim2.fromOffset(74, CATEGORY_TAB_HEIGHT),
-			LayoutOrder = index,
-			AutoButtonColor = false,
-			BackgroundColor3 = if isSelected then Color3.fromRGB(76, 142, 185) else Color3.fromRGB(38, 47, 60),
-			BackgroundTransparency = if hasCategoryAsset then 1 else panelTransparency * 0.35,
-			BorderSizePixel = 0,
-			Image = CRAFTING_MENU_CATEGORY_IMAGE_ID,
-			ImageColor3 = if isSelected then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(229, 240, 252),
-			ImageTransparency = panelTransparency * 0.25,
-			ZIndex = zIndex + 3,
-			[React.Event.Activated] = function()
-				craftingThunks.setCategoryFilter(categoryValue)
-			end,
-		}, {
-			Label = e("TextLabel", {
-				Size = UDim2.new(1, -8, 1, 0),
-				Position = UDim2.fromScale(0.5, 0.5),
-				AnchorPoint = Vector2.new(0.5, 0.5),
-				BackgroundTransparency = 1,
-				Text = category,
-				Font = Enum.Font.GothamSemibold,
-				TextSize = 12,
-				TextColor3 = if isSelected then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(212, 223, 236),
-				TextXAlignment = Enum.TextXAlignment.Center,
-				TextYAlignment = Enum.TextYAlignment.Center,
-				TextStrokeTransparency = 0.55,
-				ZIndex = zIndex + 4,
-			}),
-		})
-	end
-
 	local ingredientRows =
 		buildIngredientRows(if selectedRecipe ~= nil then selectedRecipe.preview else nil, zIndex + 4)
 
@@ -532,199 +400,72 @@ return function(props: CraftingSlotsProps): React.ReactNode
 		ZIndex = zIndex,
 		Visible = isRequestedVisible,
 	}, {
-		Panel = e("CanvasGroup", {
-			Size = UDim2.fromOffset(PANEL_WIDTH, PANEL_HEIGHT),
-			Position = UDim2.new(0.5, math.floor(animatedOffset.X), 0.5, math.floor(animatedOffset.Y)),
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			BackgroundColor3 = Color3.fromRGB(24, 33, 43),
-			BackgroundTransparency = if CRAFTING_MENU_IMAGE_ID ~= "" then 1 else panelTransparency * 0.15,
-			BorderSizePixel = 0,
-			GroupTransparency = panelTransparency,
-			ZIndex = zIndex + 1,
-		}, {
-			Scale = e("UIScale", {
-				Scale = panelScale,
-			}),
-			BackgroundImage = if CRAFTING_MENU_IMAGE_ID ~= ""
-				then e("ImageLabel", {
-					Size = UDim2.fromScale(1, 1),
-					BackgroundTransparency = 1,
-					BorderSizePixel = 0,
-					Image = CRAFTING_MENU_IMAGE_ID,
-					ImageColor3 = Color3.fromRGB(255, 255, 255),
-					ImageTransparency = panelTransparency,
-					ZIndex = zIndex + 1,
-				})
-				else nil,
-			Header = e("TextLabel", {
-				Size = UDim2.new(1, -20, 0, 24),
-				Position = UDim2.fromOffset(10, 10),
-				BackgroundTransparency = 1,
-				Text = "Crafting",
-				Font = Enum.Font.GothamBold,
-				TextSize = 18,
-				TextXAlignment = Enum.TextXAlignment.Left,
-				TextColor3 = Color3.fromRGB(246, 251, 255),
-				TextStrokeTransparency = 0.45,
-				ZIndex = zIndex + 2,
-			}),
-			DragHandle = e("TextButton", {
-				Size = UDim2.new(1, 0, 0, 32),
-				Position = UDim2.fromOffset(0, 0),
-				BackgroundTransparency = 1,
-				BorderSizePixel = 0,
-				AutoButtonColor = false,
-				Text = "",
-				ZIndex = zIndex + 6,
-				[React.Event.InputBegan] = function(rbx: GuiObject, inputObject: InputObject)
-					craftMenuDrag.onDragInputBegan(rbx, inputObject)
-				end,
-				[React.Event.InputEnded] = function(rbx: GuiObject, inputObject: InputObject)
-					craftMenuDrag.onDragInputEnded(rbx, inputObject)
-				end,
-			}),
-			SearchContainer = e("ImageLabel", {
-				Size = UDim2.new(1, -20, 0, 28),
-				Position = UDim2.fromOffset(10, 38),
-				BackgroundColor3 = Color3.fromRGB(16, 23, 32),
-				BackgroundTransparency = if CRAFTING_MENU_TEXTBOX_IMAGE_ID ~= "" then 1 else panelTransparency * 0.2,
-				BorderSizePixel = 0,
-				Image = CRAFTING_MENU_TEXTBOX_IMAGE_ID,
-				ImageColor3 = Color3.fromRGB(255, 255, 255),
-				ImageTransparency = panelTransparency * 0.2,
-				ZIndex = zIndex + 3,
-			}, {
-				Search = e("TextBox", {
-					Size = UDim2.new(1, -14, 1, -6),
-					Position = UDim2.fromOffset(7, 3),
-					BackgroundTransparency = 1,
-					BorderSizePixel = 0,
-					Text = searchText,
-					PlaceholderText = "Search recipes...",
-					Font = Enum.Font.Gotham,
-					TextSize = 13,
-					TextColor3 = Color3.fromRGB(235, 242, 250),
-					PlaceholderColor3 = Color3.fromRGB(134, 152, 171),
-					ClearTextOnFocus = false,
-					TextXAlignment = Enum.TextXAlignment.Left,
-					ZIndex = zIndex + 4,
-					[React.Change.Text] = function(rbx: TextBox)
-						setSearchText(rbx.Text)
-					end,
-					[React.Event.FocusLost] = function()
+		e(CraftingPanel, {
+			size = UDim2.fromOffset(PANEL_WIDTH, PANEL_HEIGHT),
+			position = UDim2.new(0.5, math.floor(animatedOffset.X), 0.5, math.floor(animatedOffset.Y)),
+			anchorPoint = Vector2.new(0.5, 0.5),
+			scale = panelScale,
+			panelImage = CRAFTING_MENU_IMAGE_ID,
+			panelTransparency = panelTransparency,
+			zIndex = zIndex + 1,
+			onDragInputBegan = function(rbx: GuiObject, inputObject: InputObject)
+				craftMenuDrag.onDragInputBegan(rbx, inputObject)
+			end,
+			onDragInputEnded = function(rbx: GuiObject, inputObject: InputObject)
+				craftMenuDrag.onDragInputEnded(rbx, inputObject)
+			end,
+			children = {
+				e(SearchBox, {
+					text = searchText,
+					image = CRAFTING_MENU_TEXTBOX_IMAGE_ID,
+					panelTransparency = panelTransparency,
+					zIndex = zIndex + 3,
+					onTextChanged = setSearchText,
+					onFocusLost = function()
 						craftingThunks.setSearchQuery(searchText)
 					end,
 				}),
-			}),
-			Categories = e("Frame", {
-				Size = UDim2.new(1, -20, 0, CATEGORY_TAB_HEIGHT),
-				Position = UDim2.fromOffset(10, 72),
-				BackgroundTransparency = 1,
-				BorderSizePixel = 0,
-				ZIndex = zIndex + 3,
-			}, {
-				Padding = e("UIPadding", {
-					PaddingLeft = UDim.new(0, 2),
-					PaddingRight = UDim.new(0, 2),
+				e(CategoryTabs, {
+					categories = categoryTabs,
+					activeCategory = activeCategory,
+					categoryImage = CRAFTING_MENU_CATEGORY_IMAGE_ID,
+					panelTransparency = panelTransparency,
+					zIndex = zIndex + 3,
+					onActivated = function(categoryValue: string)
+						craftingThunks.setCategoryFilter(categoryValue)
+					end,
 				}),
-				CategoriesList = e(React.Fragment, nil, categoryChildren),
-			}),
-			RecipesContainer = e("ImageLabel", {
-				Size = UDim2.new(1, -20, 0, 240),
-				Position = UDim2.fromOffset(10, 104),
-				BackgroundColor3 = Color3.fromRGB(19, 27, 36),
-				BackgroundTransparency = if CRAFTING_MENU_INNER_IMAGE_ID ~= "" then 1 else panelTransparency * 0.2,
-				BorderSizePixel = 0,
-				Image = CRAFTING_MENU_INNER_IMAGE_ID,
-				ImageColor3 = Color3.fromRGB(255, 255, 255),
-				ImageTransparency = panelTransparency * 0.2,
-				ZIndex = zIndex + 3,
-			}, {
-				Padding = e("UIPadding", {
-					PaddingLeft = UDim.new(0, 4),
-					PaddingRight = UDim.new(0, 4),
-					PaddingTop = UDim.new(0, 4),
-					PaddingBottom = UDim.new(0, 4),
+				e(RecipeGrid, {
+					image = CRAFTING_MENU_INNER_IMAGE_ID,
+					panelTransparency = panelTransparency,
+					slotSize = RECIPE_SLOT_SIZE,
+					slotPadding = RECIPE_SLOT_PADDING,
+					zIndex = zIndex + 3,
+					children = recipeChildren,
 				}),
-				Recipes = e("ScrollingFrame", {
-					Size = UDim2.fromScale(1, 1),
-					BackgroundTransparency = 1,
-					BorderSizePixel = 0,
-					ScrollBarThickness = 10,
-					ScrollBarImageColor3 = Color3.fromRGB(152, 158, 168),
-					ScrollBarImageTransparency = 0.05,
-					AutomaticCanvasSize = Enum.AutomaticSize.Y,
-					CanvasSize = UDim2.new(0, 0, 0, 0),
-					ScrollingDirection = Enum.ScrollingDirection.Y,
-					VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar,
-					ZIndex = zIndex + 4,
-				}, {
-					GridLayout = e("UIGridLayout", {
-						CellSize = UDim2.fromOffset(RECIPE_SLOT_SIZE, RECIPE_SLOT_SIZE),
-						CellPadding = UDim2.fromOffset(RECIPE_SLOT_PADDING, RECIPE_SLOT_PADDING),
-						SortOrder = Enum.SortOrder.LayoutOrder,
-						FillDirectionMaxCells = 4,
-					}),
-					GridPadding = e("UIPadding", {
-						PaddingLeft = UDim.new(0, 4),
-						PaddingRight = UDim.new(0, 10),
-						PaddingTop = UDim.new(0, 4),
-						PaddingBottom = UDim.new(0, 4),
-					}),
-					Items = e(React.Fragment, nil, recipeChildren),
+				e(RecipeDetails, {
+					image = CRAFTING_MENU_INNER_IMAGE_ID,
+					panelTransparency = panelTransparency,
+					slotSize = RECIPE_REQUIREMENT_SLOT_SIZE,
+					slotPadding = RECIPE_REQUIREMENT_SLOT_PADDING,
+					zIndex = zIndex + 3,
+					children = ingredientRows,
 				}),
-			}),
-			SelectionDetails = e("ImageLabel", {
-				Size = UDim2.new(1, -20, 0, 64),
-				Position = UDim2.fromOffset(10, 348),
-				BackgroundColor3 = Color3.fromRGB(19, 27, 36),
-				BackgroundTransparency = if CRAFTING_MENU_INNER_IMAGE_ID ~= "" then 1 else panelTransparency * 0.2,
-				BorderSizePixel = 0,
-				Image = CRAFTING_MENU_INNER_IMAGE_ID,
-				ImageColor3 = Color3.fromRGB(255, 255, 255),
-				ImageTransparency = panelTransparency * 0.2,
-				ZIndex = zIndex + 3,
-			}, {
-				Padding = e("UIPadding", {
-					PaddingLeft = UDim.new(0, 8),
-					PaddingRight = UDim.new(0, 8),
-					PaddingTop = UDim.new(0, 6),
-					PaddingBottom = UDim.new(0, 6),
+				e(CraftingButton, {
+					size = UDim2.new(1, -20, 0, 36),
+					position = UDim2.fromOffset(10, 416),
+					zIndex = zIndex + 4,
+					disabled = not canCraftSelected,
+					icon = ImageIds.finalCraftButton,
+					iconPressed = ImageIds.finalCraftButtonPressed,
+					text = if craftingState.isBulkCrafting then "Crafting..." else "Craft",
+					onActivated = function()
+						if canCraftSelected and selectedRecipe ~= nil then
+							craftingThunks.requestCraft(selectedRecipe.recipeId, 1)
+						end
+					end,
 				}),
-				Ingredients = e("Frame", {
-					Size = UDim2.new(1, 0, 1, 0),
-					BackgroundTransparency = 1,
-					BorderSizePixel = 0,
-					ZIndex = zIndex + 4,
-				}, {
-					GridLayout = e("UIGridLayout", {
-						FillDirection = Enum.FillDirection.Horizontal,
-						HorizontalAlignment = Enum.HorizontalAlignment.Left,
-						VerticalAlignment = Enum.VerticalAlignment.Center,
-						CellSize = UDim2.fromOffset(RECIPE_REQUIREMENT_SLOT_SIZE, RECIPE_REQUIREMENT_SLOT_SIZE),
-						CellPadding = UDim2.fromOffset(
-							RECIPE_REQUIREMENT_SLOT_PADDING,
-							RECIPE_REQUIREMENT_SLOT_PADDING
-						),
-						SortOrder = Enum.SortOrder.LayoutOrder,
-					}),
-					Rows = e(React.Fragment, nil, ingredientRows),
-				}),
-			}),
-			ActionButton = e(CraftingButton, {
-				size = UDim2.new(1, -20, 0, 36),
-				position = UDim2.fromOffset(10, 416),
-				zIndex = zIndex + 4,
-				disabled = not canCraftSelected,
-				icon = ImageIds.finalCraftButton,
-				iconPressed = ImageIds.finalCraftButtonPressed,
-				text = if craftingState.isBulkCrafting then "Crafting..." else "Craft",
-				onActivated = function()
-					if canCraftSelected and selectedRecipe ~= nil then
-						craftingThunks.requestCraft(selectedRecipe.recipeId, 1)
-					end
-				end,
-			}),
+			},
 		}),
 	})
 end

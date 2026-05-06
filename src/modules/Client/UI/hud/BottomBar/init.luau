@@ -42,13 +42,13 @@ return function(props: BottomBarProps)
 	local buttons = props.buttons or {}
 	local zIndex = props.zIndex or 10
 	local children = {
-		Padding = e("UIPadding", {
+		e("UIPadding", {
 			PaddingTop = UDim.new(0, 6),
 			PaddingBottom = UDim.new(0, 6),
 			PaddingLeft = UDim.new(0, 8),
 			PaddingRight = UDim.new(0, 8),
 		}),
-		ListLayout = e("UIListLayout", {
+		e("UIListLayout", {
 			FillDirection = Enum.FillDirection.Horizontal,
 			HorizontalAlignment = Enum.HorizontalAlignment.Center,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
@@ -59,7 +59,7 @@ return function(props: BottomBarProps)
 
 	for index, button in ipairs(buttons) do
 		local key = button.key or button.id or button.route or tostring(index)
-		children["Button_" .. key] = e(NavButton, {
+		children[#children + 1] = e(NavButton, {
 			id = button.id,
 			route = button.route,
 			label = button.label,
@@ -97,7 +97,7 @@ return function(props: BottomBarProps)
 		ZIndex = zIndex,
 		Visible = props.visible ~= false,
 	}, {
-		BottomBarContent = e("Frame", {
+		e("Frame", {
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
@@ -105,13 +105,13 @@ return function(props: BottomBarProps)
 			Selectable = false,
 			ZIndex = zIndex,
 		}, {
-			EdgePadding = e("UIPadding", {
+			e("UIPadding", {
 				PaddingTop = UDim.new(0, 0),
 				PaddingBottom = UDim.new(0, BOTTOM_BAR_EDGE_PADDING),
 				PaddingLeft = UDim.new(0, BOTTOM_BAR_EDGE_PADDING),
 				PaddingRight = UDim.new(0, BOTTOM_BAR_EDGE_PADDING),
 			}),
-			ButtonList = e("Frame", {
+			e("Frame", {
 				Size = UDim2.fromScale(1, 1),
 				BackgroundTransparency = 1,
 				BorderSizePixel = 0,

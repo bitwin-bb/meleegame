@@ -218,9 +218,9 @@ return function(props: InfoPlayerScreenProps?): React.ReactNode
 	end
 
 	local zIndex = resolvedProps.zIndex or 180
-	local children: { [string]: React.ReactNode } = {}
+	local children: { React.ReactNode } = {}
 	for index, popup in infoPlayerState.popups do
-		children[("Popup_%s"):format(popup.id)] = createPopupElement(localPlayer, popup, index, zIndex)
+		children[#children + 1] = createPopupElement(localPlayer, popup, index, zIndex)
 	end
 
 	return e(React.Fragment, nil, children)

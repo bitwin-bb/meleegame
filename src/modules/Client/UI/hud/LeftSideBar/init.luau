@@ -45,13 +45,13 @@ return function(props: LeftSideBarProps)
 	local buttons = props.buttons or {}
 	local zIndex = props.zIndex or 10
 	local buttonListChildren = {
-		Padding = e("UIPadding", {
+		e("UIPadding", {
 			PaddingTop = UDim.new(0, 8),
 			PaddingBottom = UDim.new(0, 8),
 			PaddingLeft = UDim.new(0, 8),
 			PaddingRight = UDim.new(0, 8),
 		}),
-		ListLayout = e("UIListLayout", {
+		e("UIListLayout", {
 			FillDirection = Enum.FillDirection.Vertical,
 			HorizontalAlignment = Enum.HorizontalAlignment.Left,
 			VerticalAlignment = Enum.VerticalAlignment.Top,
@@ -62,7 +62,7 @@ return function(props: LeftSideBarProps)
 
 	for index, button in ipairs(buttons) do
 		local key = button.key or button.id or button.route or tostring(index)
-		buttonListChildren["Button_" .. key] = e(NavButton, {
+		buttonListChildren[#buttonListChildren + 1] = e(NavButton, {
 			id = button.id,
 			route = button.route,
 			label = button.label,
@@ -112,7 +112,7 @@ return function(props: LeftSideBarProps)
 		ZIndex = zIndex,
 		Visible = props.visible ~= false,
 	}, {
-		LeftSideBarContent = e("Frame", {
+		e("Frame", {
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
@@ -120,13 +120,13 @@ return function(props: LeftSideBarProps)
 			Selectable = false,
 			ZIndex = zIndex,
 		}, {
-			EdgePadding = e("UIPadding", {
+			e("UIPadding", {
 				PaddingTop = UDim.new(0, SIDE_BAR_VERTICAL_PADDING),
 				PaddingBottom = UDim.new(0, SIDE_BAR_VERTICAL_PADDING),
 				PaddingLeft = UDim.new(0, SIDE_BAR_EDGE_PADDING),
 				PaddingRight = UDim.new(0, 0),
 			}),
-			ButtonList = e("Frame", {
+			e("Frame", {
 				Size = UDim2.fromScale(1, 1),
 				BackgroundTransparency = 1,
 				BorderSizePixel = 0,
@@ -134,7 +134,7 @@ return function(props: LeftSideBarProps)
 				Selectable = false,
 				ZIndex = zIndex,
 			}, buttonListChildren),
-			InventoryHotbar = e(InventoryHotbar, inventoryHotbarProps),
+			e(InventoryHotbar, inventoryHotbarProps),
 		}),
 	})
 end

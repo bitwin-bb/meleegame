@@ -1,8 +1,8 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local React = require(ReplicatedStorage.Packages.React)
 local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
+local React = require(ReplicatedStorage.Packages.React)
 
 export type BubbleProps = {
 	index: number,
@@ -24,7 +24,7 @@ return function(props: BubbleProps)
 		LayoutOrder = props.index,
 		ZIndex = props.zIndex,
 	}, {
-		Empty = e("ImageLabel", {
+		e("ImageLabel", {
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			Image = ImageIds.bubble,
@@ -32,7 +32,7 @@ return function(props: BubbleProps)
 			ImageTransparency = 0,
 			ZIndex = props.zIndex + 1,
 		}),
-		Fill = e("ImageLabel", {
+		e("ImageLabel", {
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			Image = ImageIds.bubble,

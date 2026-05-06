@@ -14,9 +14,6 @@ local e: typeof(React.createElement) = React.createElement
 
 local UI_ROOT_NAME = "App"
 local LEGACY_UI_ROOT_NAME = "ui"
-local UI_CANVAS_NAME = "uiCanvas"
-local UI_CANVAS_ASPECT_RATIO_NAME = "uiCanvasAspectRatio"
-local UI_CANVAS_ASPECT_RATIO = 16 / 9
 
 local function configureUiRoot(rootGui: ScreenGui): ScreenGui
 	rootGui.ResetOnSpawn = false
@@ -57,63 +54,17 @@ local function ensureUiRoot(): ScreenGui
 	return rootGui
 end
 
-local function ensureUiCanvas(parent: ScreenGui): Frame
-	local existing = parent:FindFirstChild(UI_CANVAS_NAME)
-	if existing ~= nil and existing:IsA("Frame") then
-		existing.AnchorPoint = Vector2.new(0.5, 0.5)
-		existing.Position = UDim2.fromScale(0.5, 0.5)
-		existing.Size = UDim2.fromScale(1, 1)
-		existing.Active = false
-		existing.Selectable = false
-		return existing
-	end
-
-	if existing ~= nil then
-		existing:Destroy()
-	end
-
-	local canvas = Instance.new("Frame")
-	canvas.Name = UI_CANVAS_NAME
-	canvas.AnchorPoint = Vector2.new(0.5, 0.5)
-	canvas.Size = UDim2.fromScale(1, 1)
-	canvas.Position = UDim2.fromScale(0.5, 0.5)
-	canvas.BackgroundTransparency = 1
-	canvas.BorderSizePixel = 0
-	canvas.Active = false
-	canvas.Selectable = false
-	canvas.Parent = parent
-	return canvas
-end
-
-local function ensureUiCanvasAspectRatio(parent: Frame): UIAspectRatioConstraint
-	local existing = parent:FindFirstChild(UI_CANVAS_ASPECT_RATIO_NAME)
-	if existing ~= nil and existing:IsA("UIAspectRatioConstraint") then
-		existing.AspectRatio = UI_CANVAS_ASPECT_RATIO
-		return existing
-	end
-
-	if existing ~= nil then
-		existing:Destroy()
-	end
-
-	local aspectRatio = Instance.new("UIAspectRatioConstraint")
-	aspectRatio.Name = UI_CANVAS_ASPECT_RATIO_NAME
-	aspectRatio.AspectRatio = UI_CANVAS_ASPECT_RATIO
-	aspectRatio.Parent = parent
-	return aspectRatio
-end
-
 local uiRoot = ensureUiRoot()
-local uiCanvas = ensureUiCanvas(uiRoot)
-ensureUiCanvasAspectRatio(uiCanvas)
-local root = ReactRoblox.createRoot(uiCanvas)
+local root = ReactRoblox.createRoot(uiRoot)
 
 return function()
 	PlatformServiceClient:setScreenGui(uiRoot)
-	PlatformServiceClient:setScaleTarget(uiCanvas)
 	SnackbarNotifications.attachToScreenGui(uiRoot)
 	root:render(e(RootUI, {
 		currentScreen = nil,
+		onCanvasMounted = function(canvas: Frame)
+			PlatformServiceClient:setScaleTarget(canvas)
+		end,
 	}))
 
 	player.AncestryChanged:Connect(function()

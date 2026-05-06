@@ -1,8 +1,8 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local React = require(ReplicatedStorage.Packages.React)
 local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
+local React = require(ReplicatedStorage.Packages.React)
 
 type CraftingButtonProps = {
 	layoutOrder: number?,
@@ -87,7 +87,7 @@ return function(props: CraftingButtonProps): React.ReactNode
 			props.onActivated()
 		end,
 	}, {
-		Label = if text ~= nil and text ~= ""
+		if text ~= nil and text ~= ""
 			then e("TextLabel", {
 				Size = UDim2.new(1, -6, 1, -6),
 				Position = UDim2.new(0.5, textOffset.X, 0.5, textOffset.Y),

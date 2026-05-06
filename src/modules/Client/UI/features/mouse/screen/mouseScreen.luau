@@ -54,7 +54,7 @@ return function(props: MouseScreenProps): React.ReactNode
 		Selectable = false,
 		ZIndex = zIndex,
 	}, {
-		MouseCursorImage = e("ImageLabel", {
+		e("ImageLabel", {
 			[React.Tag] = "IsCustomMouseCursor",
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,

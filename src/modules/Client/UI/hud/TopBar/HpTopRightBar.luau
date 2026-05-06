@@ -1,16 +1,13 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
+local HeartMeter = require(script.Parent.components.HeartMeter)
 local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.HpServiceUtils)
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
 local React = require(ReplicatedStorage.Packages.React)
+local UiSound = require(script:FindFirstAncestor("game").Client.UI.core.utils.UiSound)
 local hpSlice = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.hpSlice)
 local hpThunks = require(script:FindFirstAncestor("game").Client.UI.hud.state.thunk.hpThunks)
 local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
-local useBeatMotion = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useBeatMotion)
 local useHover = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useHover)
 local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
@@ -34,13 +31,6 @@ type HpTopRightBarProps = {
 
 local e: typeof(React.createElement) = React.createElement
 
-local EMPTY_HEART_COLOR = Color3.fromRGB(59, 25, 29)
-local FILLED_HEART_COLOR = Color3.fromRGB(255, 90, 118)
-local EMPTY_LIFE_FRUIT_HEART_COLOR = Color3.fromRGB(52, 78, 28)
-local FILLED_LIFE_FRUIT_HEART_COLOR = Color3.fromRGB(255, 255, 255)
-local UI_AUDIO = (AudioRegistry :: any).UI or {}
-local UI_HOVER_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Hover)
-
 local function getBeatHeartIndexFromHearts(hearts: { HeartState }): number?
 	for heartIndex = #hearts, 1, -1 do
 		local heart = hearts[heartIndex]
@@ -50,64 +40,6 @@ local function getBeatHeartIndexFromHearts(hearts: { HeartState }): number?
 	end
 
 	return nil
-end
-
-type HeartItemProps = {
-	heart: HeartState,
-	heartSize: UDim2,
-	heartImage: string,
-	emptyColor: Color3,
-	filledColor: Color3,
-	zIndex: number,
-	isBeating: boolean,
-}
-
-local function HeartItem(props: HeartItemProps)
-	local heart = props.heart
-	local heartSize = props.heartSize
-	local heartImage = props.heartImage
-	local emptyColor = props.emptyColor
-	local filledColor = props.filledColor
-	local zIndex = props.zIndex
-	local beatMotion = useBeatMotion({
-		enabled = props.isBeating,
-		auto = true,
-		bpm = 72,
-		baseScale = 1,
-		primaryScale = 1.08,
-		secondaryScale = 1.04,
-	})
-
-	local fillAlpha = math.clamp(heart.fillAlpha, 0, 1)
-	local heartColor = if heart.isEmpty then emptyColor else filledColor
-
-	return e("Frame", {
-		Size = heartSize,
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		LayoutOrder = heart.index,
-		ZIndex = zIndex,
-	}, {
-		Scale = e("UIScale", {
-			Scale = beatMotion.scale,
-		}),
-		Empty = e("ImageLabel", {
-			Size = UDim2.fromScale(1, 1),
-			BackgroundTransparency = 1,
-			Image = heartImage,
-			ImageColor3 = emptyColor,
-			ImageTransparency = 0,
-			ZIndex = zIndex + 1,
-		}),
-		Fill = e("ImageLabel", {
-			Size = UDim2.fromScale(1, 1),
-			BackgroundTransparency = 1,
-			Image = heartImage,
-			ImageColor3 = heartColor,
-			ImageTransparency = 1 - fillAlpha,
-			ZIndex = zIndex + 2,
-		}),
-	})
 end
 
 return function(props: HpTopRightBarProps)
@@ -130,11 +62,7 @@ return function(props: HpTopRightBarProps)
 				text = heartsHoverText,
 			})
 
-			if UI_HOVER_SOUND then
-				AudioServiceClient:playUi(UI_HOVER_SOUND, {
-					replaceChannel = false,
-				})
-			end
+			UiSound.playHover()
 		end,
 		onHoverEnd = function()
 			infoThunks.hideHover(heartsHoverId)
@@ -174,60 +102,23 @@ return function(props: HpTopRightBarProps)
 	local hearts = hpState.hearts
 	local heartSize = props.heartSize or UDim2.fromOffset(30, 30)
 	local useLifeFruitHearts = hpState.maxHealth > 400
-	local heartImage = if useLifeFruitHearts
-		then if typeof((ImageIds :: any).lifeFruitHeart) == "string" and (ImageIds :: any).lifeFruitHeart ~= ""
-			then (ImageIds :: any).lifeFruitHeart
-			else ImageIds.heartLifeFruit
-		else ImageIds.normalHeart
-	local emptyHeartColor = if useLifeFruitHearts then EMPTY_LIFE_FRUIT_HEART_COLOR else EMPTY_HEART_COLOR
-	local filledHeartColor = if useLifeFruitHearts then FILLED_LIFE_FRUIT_HEART_COLOR else FILLED_HEART_COLOR
 	local beatHeartIndex = if useServiceState then hpThunks.getBeatHeartIndex() else getBeatHeartIndexFromHearts(hearts)
 
-	local heartsRowChildren: { [string]: React.ReactNode } = {
-		Padding = e("UIPadding", {
-			PaddingTop = UDim.new(0, 0),
-			PaddingBottom = UDim.new(0, 0),
-			PaddingLeft = UDim.new(0, 8),
-			PaddingRight = UDim.new(0, 8),
-		}),
-		ListLayout = e("UIListLayout", {
-			FillDirection = Enum.FillDirection.Horizontal,
-			HorizontalAlignment = Enum.HorizontalAlignment.Right,
-			VerticalAlignment = Enum.VerticalAlignment.Center,
-			SortOrder = Enum.SortOrder.LayoutOrder,
-			Padding = props.padding or UDim.new(0, 4),
-		}),
-	}
-
-	local children: { [string]: React.ReactNode } = {
-		HeartsRow = e("Frame", {
-			Size = UDim2.fromOffset(0, heartSize.Y.Offset),
-			AutomaticSize = Enum.AutomaticSize.X,
-			AnchorPoint = Vector2.new(1, 1),
-			Position = UDim2.new(1, 0, 1, -4),
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			Active = true,
-			ZIndex = zIndex + 1,
-			[React.Event.MouseEnter] = heartsHover.eventHandlers[React.Event.MouseEnter],
-			[React.Event.MouseLeave] = heartsHover.eventHandlers[React.Event.MouseLeave],
-		}, heartsRowChildren),
-	}
-
-	for _, heart in ipairs(hearts) do
-		heartsRowChildren[`Heart_{heart.index}`] = e(HeartItem, {
-			heart = heart,
+	local children: { React.ReactNode } = {
+		e(HeartMeter, {
+			hearts = hearts,
 			heartSize = heartSize,
-			heartImage = heartImage,
-			emptyColor = emptyHeartColor,
-			filledColor = filledHeartColor,
-			zIndex = zIndex + 2,
-			isBeating = beatHeartIndex ~= nil and heart.index == beatHeartIndex,
-		})
-	end
+			padding = props.padding or UDim.new(0, 4),
+			zIndex = zIndex + 1,
+			useLifeFruitHearts = useLifeFruitHearts,
+			beatHeartIndex = beatHeartIndex,
+			onMouseEnter = heartsHover.eventHandlers[React.Event.MouseEnter],
+			onMouseLeave = heartsHover.eventHandlers[React.Event.MouseLeave],
+		}),
+	}
 
 	if props.showValueLabel ~= false then
-		children.LifeValue = e("TextLabel", {
+		children[#children + 1] = e("TextLabel", {
 			Size = UDim2.new(1, -16, 0, 18),
 			Position = UDim2.fromOffset(8, 0),
 			BackgroundTransparency = 1,

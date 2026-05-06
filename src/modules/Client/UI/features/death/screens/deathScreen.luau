@@ -85,7 +85,7 @@ return function(props: DeathScreenProps?): React.ReactNode
 		ZIndex = zIndex,
 		Active = false,
 	}, {
-		MainText = e("TextLabel", {
+		e("TextLabel", {
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Position = MAIN_TEXT_POSITION,
 			Size = UDim2.fromOffset(MAIN_TEXT_SIZE.X, MAIN_TEXT_SIZE.Y),
@@ -102,10 +102,10 @@ return function(props: DeathScreenProps?): React.ReactNode
 			TextYAlignment = Enum.TextYAlignment.Center,
 			ZIndex = zIndex + 2,
 		}, {
-			Scale = e("UIScale", {
+			e("UIScale", {
 				Scale = deathAppearance.scale,
 			}),
-			Gradient = e("UIGradient", {
+			e("UIGradient", {
 				Color = ColorSequence.new({
 					ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
 					ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 197, 197)),
@@ -113,7 +113,7 @@ return function(props: DeathScreenProps?): React.ReactNode
 				Rotation = 90,
 			}),
 		}),
-		CountDownText = if showCountDown
+		if showCountDown
 			then e("TextLabel", {
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				Position = UDim2.new(
@@ -136,7 +136,7 @@ return function(props: DeathScreenProps?): React.ReactNode
 				TextYAlignment = Enum.TextYAlignment.Center,
 				ZIndex = zIndex + 3,
 			}, {
-				Scale = e("UIScale", {
+				e("UIScale", {
 					Scale = countDownAppearance.scale,
 				}),
 			})

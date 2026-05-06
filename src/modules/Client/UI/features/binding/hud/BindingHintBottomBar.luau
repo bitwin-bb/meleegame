@@ -182,15 +182,15 @@ local function HintBody(props: {
 	metrics: Metrics,
 	zIndex: number,
 }): React.ReactNode
-	local children: { [string]: React.ReactNode } = {
-		ListLayout = e("UIListLayout", {
+	local children: { React.ReactNode } = {
+		e("UIListLayout", {
 			FillDirection = Enum.FillDirection.Vertical,
 			HorizontalAlignment = Enum.HorizontalAlignment.Left,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
 			Padding = UDim.new(0, props.metrics.labelGap),
 			SortOrder = Enum.SortOrder.LayoutOrder,
 		}),
-		Label = e(TextLabel, {
+		e(TextLabel, {
 			text = props.hint.label,
 			size = UDim2.fromOffset(0, 0),
 			automaticSize = Enum.AutomaticSize.XY,
@@ -216,7 +216,7 @@ local function HintBody(props: {
 	}
 
 	if props.hint.detail ~= nil and props.hint.detail ~= "" then
-		children.Detail = e(TextLabel, {
+		children[#children + 1] = e(TextLabel, {
 			text = props.hint.detail,
 			size = UDim2.fromOffset(0, 0),
 			automaticSize = Enum.AutomaticSize.XY,
@@ -250,15 +250,15 @@ local function HintItem(props: {
 	zIndex: number,
 	layoutOrder: number,
 }): React.ReactNode
-	local children: { [string]: React.ReactNode } = {
-		ListLayout = e("UIListLayout", {
+	local children: { React.ReactNode } = {
+		e("UIListLayout", {
 			FillDirection = Enum.FillDirection.Horizontal,
 			HorizontalAlignment = Enum.HorizontalAlignment.Left,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
 			Padding = UDim.new(0, resolvePromptGap(props.hint, props.metrics)),
 			SortOrder = Enum.SortOrder.LayoutOrder,
 		}),
-		Body = e(HintBody, {
+		e(HintBody, {
 			hint = props.hint,
 			metrics = props.metrics,
 			zIndex = props.zIndex + 1,
@@ -271,7 +271,7 @@ local function HintItem(props: {
 		zIndex = props.zIndex + 1,
 	})
 	if prompt ~= nil then
-		children.Prompt = prompt
+		children[#children + 1] = prompt
 	end
 
 	return e("Frame", {
@@ -294,8 +294,8 @@ return function(props: BindingHintBottomBarProps): React.ReactNode
 
 	local zIndex = props.zIndex or 180
 	local metrics = resolveMetrics(props.deviceClass)
-	local children: { [string]: React.ReactNode } = {
-		ListLayout = e("UIListLayout", {
+	local children: { React.ReactNode } = {
+		e("UIListLayout", {
 			FillDirection = Enum.FillDirection.Horizontal,
 			HorizontalAlignment = Enum.HorizontalAlignment.Left,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
@@ -305,7 +305,7 @@ return function(props: BindingHintBottomBarProps): React.ReactNode
 	}
 
 	for index, hint in hints do
-		children["Hint_" .. hint.id] = e(HintItem, {
+		children[#children + 1] = e(HintItem, {
 			hint = hint,
 			metrics = metrics,
 			zIndex = zIndex + 1,

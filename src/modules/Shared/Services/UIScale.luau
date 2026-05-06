@@ -184,6 +184,16 @@ local function safeDisconnect(connection: RBXScriptConnection?)
 	connection:Disconnect()
 end
 
+local function findRootScale(parent: Instance): UIScale?
+	for _, child in parent:GetChildren() do
+		if child:IsA("UIScale") then
+			return child
+		end
+	end
+
+	return nil
+end
+
 function PlatformUIScale.New(configRaw: UIScaleConfig?): typeof(setmetatable({} :: any, PlatformUIScale))
 	local config = if typeof(configRaw) == "table" then configRaw else {}
 	local self = setmetatable({
@@ -263,12 +273,9 @@ function PlatformUIScale._destroyScreenGuiRootScale(self: typeof(setmetatable({}
 		return
 	end
 
-	local staleScale = screenGui:FindFirstChild("PlatformServiceRootScale")
-	if staleScale ~= nil then
-		if staleScale == self.rootScale then
-			self.rootScale = nil
-		end
-		staleScale:Destroy()
+	local staleScale = findRootScale(screenGui)
+	if staleScale ~= nil and staleScale == self.rootScale then
+		self.rootScale = nil
 	end
 end
 
@@ -282,21 +289,14 @@ function PlatformUIScale._ensureRootScale(self: typeof(setmetatable({} :: any, P
 		return existing
 	end
 	if existing ~= nil then
-		existing:Destroy()
+		self.rootScale = nil
 	end
-	local existingScale = target:FindFirstChild("PlatformServiceRootScale")
-	if existingScale ~= nil and existingScale:IsA("UIScale") then
+	local existingScale = findRootScale(target)
+	if existingScale ~= nil then
 		self.rootScale = existingScale
 		return existingScale
 	end
-	if existingScale ~= nil then
-		existingScale:Destroy()
-	end
-	local scale = Instance.new("UIScale")
-	scale.Name = "PlatformServiceRootScale"
-	scale.Parent = target
-	self.rootScale = scale
-	return scale
+	return nil
 end
 
 function PlatformUIScale._bindCameraViewport(self: typeof(setmetatable({} :: any, PlatformUIScale)))
@@ -477,10 +477,7 @@ function PlatformUIScale.Destroy(self: typeof(setmetatable({} :: any, PlatformUI
 	safeDisconnect(self.cameraViewportConnection)
 	self.screenGuiConnection = nil
 	self.cameraViewportConnection = nil
-	if self.rootScale ~= nil then
-		self.rootScale:Destroy()
-		self.rootScale = nil
-	end
+	self.rootScale = nil
 	self.baseScaler:destroy()
 	self.changed:DisconnectAll()
 	self.changed:Destroy()

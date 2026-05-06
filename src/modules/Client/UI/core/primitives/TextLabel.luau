@@ -83,7 +83,7 @@ export type TextLabelProps = {
 	textStrokeTransparency: number?,
 	effects: TextEffects?,
 	native: { [string]: any }?,
-	children: { [string]: React.ReactNode }?,
+	children: { React.ReactNode }?,
 }
 
 local e: typeof(React.createElement) = React.createElement
@@ -161,13 +161,8 @@ local function normalizeDirection(direction: Vector2): Vector2
 	return direction / magnitude
 end
 
-local function buildRainbowSequence(
-	baseHue: number,
-	saturation: number,
-	value: number,
-	spread: number
-): ColorSequence
-	local colorA = Color3.fromHSV((baseHue) % 1, saturation, value)
+local function buildRainbowSequence(baseHue: number, saturation: number, value: number, spread: number): ColorSequence
+	local colorA = Color3.fromHSV(baseHue % 1, saturation, value)
 	local colorB = Color3.fromHSV((baseHue + spread) % 1, saturation, value)
 	local colorC = Color3.fromHSV((baseHue + spread * 2) % 1, saturation, value)
 	local colorD = Color3.fromHSV((baseHue + spread * 3) % 1, saturation, value)
@@ -190,32 +185,18 @@ local function TextLabel(props: TextLabelProps)
 
 	local rainbowEnabled = rainbow ~= nil and rainbow.enabled ~= false
 	local rainbowGradientEnabled = rainbowEnabled and rainbow.gradient == true
-	local rainbowSpeed = sanitizeNumber(
-		if rainbow then rainbow.speed else nil,
-		DEFAULT_RAINBOW_SPEED,
-		0,
-		8
-	)
-	local rainbowSaturation = sanitizeNumber(
-		if rainbow then rainbow.saturation else nil,
-		DEFAULT_RAINBOW_SATURATION,
-		0,
-		1
-	)
+	local rainbowSpeed = sanitizeNumber(if rainbow then rainbow.speed else nil, DEFAULT_RAINBOW_SPEED, 0, 8)
+	local rainbowSaturation =
+		sanitizeNumber(if rainbow then rainbow.saturation else nil, DEFAULT_RAINBOW_SATURATION, 0, 1)
 	local rainbowValue = sanitizeNumber(if rainbow then rainbow.value else nil, DEFAULT_RAINBOW_VALUE, 0, 1)
 	local rainbowSpread = sanitizeNumber(if rainbow then rainbow.spread else nil, DEFAULT_RAINBOW_SPREAD, 0.01, 1)
 
 	local gradientEnabled = gradient ~= nil and gradient.enabled ~= false
 	local gradientAnimated = gradientEnabled and gradient ~= nil and gradient.animated == true
-	local gradientScrollSpeed = sanitizeNumber(
-		if gradient then gradient.scrollSpeed else nil,
-		DEFAULT_GRADIENT_SCROLL_SPEED,
-		0,
-		8
-	)
-	local gradientDirection = normalizeDirection(
-		sanitizeVector2(if gradient then gradient.direction else nil, DEFAULT_GRADIENT_DIRECTION)
-	)
+	local gradientScrollSpeed =
+		sanitizeNumber(if gradient then gradient.scrollSpeed else nil, DEFAULT_GRADIENT_SCROLL_SPEED, 0, 8)
+	local gradientDirection =
+		normalizeDirection(sanitizeVector2(if gradient then gradient.direction else nil, DEFAULT_GRADIENT_DIRECTION))
 	local gradientRotation = sanitizeNumber(if gradient then gradient.rotation else nil, 0, -360, 360)
 	local gradientTransparency = if gradient and gradient.transparency then gradient.transparency else nil
 	local baseGradientOffset = sanitizeVector2(if gradient then gradient.offset else nil, Vector2.new(0, 0))
@@ -225,21 +206,13 @@ local function TextLabel(props: TextLabelProps)
 	local shadowColor = sanitizeColor(if shadow then shadow.color else nil, DEFAULT_SHADOW_COLOR)
 	local shadowOffset = sanitizeVector2(if shadow then shadow.offset else nil, DEFAULT_SHADOW_OFFSET)
 	local shadowLayers = math.floor(sanitizeNumber(if shadow then shadow.layers else nil, DEFAULT_SHADOW_LAYERS, 1, 8))
-	local shadowTransparency = sanitizeNumber(
-		if shadow then shadow.transparency else nil,
-		DEFAULT_SHADOW_TRANSPARENCY,
-		0,
-		1
-	)
+	local shadowTransparency =
+		sanitizeNumber(if shadow then shadow.transparency else nil, DEFAULT_SHADOW_TRANSPARENCY, 0, 1)
 
 	local outlineEnabled = outline ~= nil and outline.enabled ~= false
 	local outlineColor = sanitizeColor(if outline then outline.color else nil, DEFAULT_OUTLINE_COLOR)
-	local outlineTransparency = sanitizeNumber(
-		if outline then outline.transparency else nil,
-		DEFAULT_OUTLINE_TRANSPARENCY,
-		0,
-		1
-	)
+	local outlineTransparency =
+		sanitizeNumber(if outline then outline.transparency else nil, DEFAULT_OUTLINE_TRANSPARENCY, 0, 1)
 	local outlineThickness = sanitizeNumber(if outline then outline.thickness else nil, DEFAULT_OUTLINE_THICKNESS, 1, 4)
 
 	local pulseEnabled = pulse ~= nil and pulse.enabled == true
@@ -315,7 +288,9 @@ local function TextLabel(props: TextLabelProps)
 	})
 
 	local resolvedTextColor = if rainbowEnabled and not rainbowGradientEnabled then animatedTextColor else baseTextColor
-	local resolvedGradientColor = if rainbowEnabled and rainbowGradientEnabled then animatedGradientColor else baseGradientColor
+	local resolvedGradientColor = if rainbowEnabled and rainbowGradientEnabled
+		then animatedGradientColor
+		else baseGradientColor
 	local resolvedGradientOffset = if gradientAnimated then animatedGradientOffset else baseGradientOffset
 
 	local textCommonProps = {
@@ -339,10 +314,10 @@ local function TextLabel(props: TextLabelProps)
 		LineHeight = props.lineHeight,
 	}
 
-	local children: { [string]: React.ReactNode } = {}
+	local children: { React.ReactNode } = {}
 
 	if pulseEnabled then
-		children.PulseScale = e("UIScale", {
+		children[#children + 1] = e("UIScale", {
 			Scale = pulseScale,
 		})
 	end
@@ -355,13 +330,9 @@ local function TextLabel(props: TextLabelProps)
 		for layer = 1, shadowLayers do
 			local alpha = layer / shadowLayers
 			local layerOffset = shadowOffset * alpha
-			local layerTransparency = math.clamp(
-				shadowTransparency + (1 - alpha) * 0.2,
-				0,
-				1
-			)
+			local layerTransparency = math.clamp(shadowTransparency + (1 - alpha) * 0.2, 0, 1)
 
-			children[`Shadow_{layer}`] = e("TextLabel", {
+			children[#children + 1] = e("TextLabel", {
 				ZIndex = shadowZIndex,
 				TextColor3 = shadowColor,
 				TextTransparency = layerTransparency,
@@ -399,7 +370,7 @@ local function TextLabel(props: TextLabelProps)
 		}
 
 		for index, outlineOffset in outlineOffsets do
-			children[`Outline_{index}`] = e("TextLabel", {
+			children[#children + 1] = e("TextLabel", {
 				ZIndex = outlineZIndex,
 				TextColor3 = outlineColor,
 				TextTransparency = outlineTransparency,
@@ -432,12 +403,7 @@ local function TextLabel(props: TextLabelProps)
 		Visible = props.visible ~= false,
 		ZIndex = rootZIndex,
 		BackgroundColor3 = props.backgroundColor3,
-		BackgroundTransparency = sanitizeNumber(
-			props.backgroundTransparency,
-			DEFAULT_BACKGROUND_TRANSPARENCY,
-			0,
-			1
-		),
+		BackgroundTransparency = sanitizeNumber(props.backgroundTransparency, DEFAULT_BACKGROUND_TRANSPARENCY, 0, 1),
 		BorderSizePixel = if props.borderSizePixel ~= nil then props.borderSizePixel else 0,
 		ClipsDescendants = if props.clipsDescendants ~= nil then props.clipsDescendants else false,
 		Text = textCommonProps.Text,
@@ -464,7 +430,7 @@ local function TextLabel(props: TextLabelProps)
 	end
 
 	if gradientEnabled or rainbowGradientEnabled then
-		children.Gradient = e("UIGradient", {
+		children[#children + 1] = e("UIGradient", {
 			Color = resolvedGradientColor,
 			Offset = resolvedGradientOffset,
 			Rotation = gradientRotation,
@@ -473,8 +439,8 @@ local function TextLabel(props: TextLabelProps)
 	end
 
 	if props.children then
-		for childName, child in props.children do
-			children[childName] = child
+		for _, child in props.children do
+			children[#children + 1] = child
 		end
 	end
 

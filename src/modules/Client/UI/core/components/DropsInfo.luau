@@ -1,10 +1,11 @@
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local formatNumber = require(script:FindFirstAncestor("game").Client.UI.core.utils.formatNumber)
 
 local e: typeof(React.createElement) = React.createElement
 
@@ -103,7 +104,7 @@ export type DropsInfoProps = {
 	nativeDescription: { [string]: any }?,
 	nativeAmount: { [string]: any }?,
 	nativeIcon: { [string]: any }?,
-	children: { [string]: React.ReactNode }?,
+	children: { React.ReactNode }?,
 }
 
 type JanitorClass = {
@@ -240,29 +241,6 @@ local function applyNativeProps(targetProps: { [string]: any }, nativeProps: { [
 	end
 end
 
-local function formatCommas(value: number): string
-	local absolute = math.abs(math.floor(value))
-	local raw = tostring(absolute)
-	local remainder = #raw % 3
-	local groups = {}
-
-	if remainder > 0 then
-		table.insert(groups, string.sub(raw, 1, remainder))
-	end
-
-	local index = remainder + 1
-	while index <= #raw do
-		table.insert(groups, string.sub(raw, index, index + 2))
-		index += 3
-	end
-
-	local formatted = table.concat(groups, ",")
-	if value < 0 then
-		return "-" .. formatted
-	end
-	return formatted
-end
-
 local function resolveAmountText(props: DropsInfoProps): string?
 	if props.amountText ~= nil and props.amountText ~= "" then
 		return props.amountText
@@ -271,7 +249,7 @@ local function resolveAmountText(props: DropsInfoProps): string?
 	if typeof(props.amount) == "number" then
 		local amountPrefix = sanitizeString(props.amountPrefix, "+")
 		local amountValue = math.floor(props.amount)
-		return amountPrefix .. formatCommas(amountValue)
+		return amountPrefix .. formatNumber(amountValue)
 	end
 
 	return nil
@@ -451,7 +429,8 @@ function DropsInfo:render()
 
 	local accentColor = sanitizeColor(theme.accentColor, rarityColor or DEFAULT_THEME.accentColor)
 	local backgroundColor = sanitizeColor(theme.backgroundColor, DEFAULT_THEME.backgroundColor)
-	local backgroundTransparency = sanitizeTransparency(theme.backgroundTransparency, DEFAULT_THEME.backgroundTransparency)
+	local backgroundTransparency =
+		sanitizeTransparency(theme.backgroundTransparency, DEFAULT_THEME.backgroundTransparency)
 	local strokeColor = sanitizeColor(theme.strokeColor, accentColor:Lerp(DEFAULT_THEME.strokeColor, 0.4))
 	local strokeTransparency = sanitizeTransparency(theme.strokeTransparency, DEFAULT_THEME.strokeTransparency)
 	local titleColor = sanitizeColor(theme.titleColor, accentColor:Lerp(DEFAULT_THEME.titleColor, 0.9))
@@ -459,7 +438,8 @@ function DropsInfo:render()
 	local subtitleColor = sanitizeColor(theme.subtitleColor, DEFAULT_THEME.subtitleColor)
 	local subtitleTransparency = sanitizeTransparency(theme.subtitleTransparency, DEFAULT_THEME.subtitleTransparency)
 	local descriptionColor = sanitizeColor(theme.descriptionColor, DEFAULT_THEME.descriptionColor)
-	local descriptionTransparency = sanitizeTransparency(theme.descriptionTransparency, DEFAULT_THEME.descriptionTransparency)
+	local descriptionTransparency =
+		sanitizeTransparency(theme.descriptionTransparency, DEFAULT_THEME.descriptionTransparency)
 	local amountColor = sanitizeColor(theme.amountColor, DEFAULT_THEME.amountColor)
 	local amountTransparency = sanitizeTransparency(theme.amountTransparency, DEFAULT_THEME.amountTransparency)
 	local iconColor = sanitizeColor(theme.iconColor, DEFAULT_THEME.iconColor)
@@ -533,7 +513,7 @@ function DropsInfo:render()
 		applyNativeProps(billboardProps, props.nativeBillboard)
 
 		local billboardElement = e("BillboardGui", billboardProps, {
-			TextRoot = e("Frame", {
+			e("Frame", {
 				AutomaticSize = Enum.AutomaticSize.XY,
 				Size = UDim2.fromOffset(0, 0),
 				Position = textPositionBinding,
@@ -542,10 +522,10 @@ function DropsInfo:render()
 				BorderSizePixel = 0,
 				ZIndex = zIndex + 1,
 			}, {
-				Scale = e("UIScale", {
+				e("UIScale", {
 					Scale = self.scaleBinding,
 				}),
-				Text = e("TextLabel", {
+				e("TextLabel", {
 					AutomaticSize = Enum.AutomaticSize.XY,
 					Size = UDim2.fromOffset(0, 0),
 					BackgroundTransparency = 1,
@@ -701,20 +681,20 @@ function DropsInfo:render()
 	}
 	applyNativeProps(iconProps, props.nativeIcon)
 
-	local cardChildren: { [string]: React.ReactNode } = {
-		Scale = e("UIScale", {
+	local cardChildren: { React.ReactNode } = {
+		e("UIScale", {
 			Scale = self.scaleBinding,
 		}),
-		Corner = e("UICorner", {
+		e("UICorner", {
 			CornerRadius = props.cardCornerRadius or DEFAULT_CORNER_RADIUS,
 		}),
-		Stroke = e("UIStroke", {
+		e("UIStroke", {
 			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 			Color = strokeColor,
 			Thickness = sanitizeNumber(props.strokeThickness, DEFAULT_STROKE_THICKNESS, 0, 8),
 			Transparency = cardStrokeTransparencyBinding,
 		}),
-		Shadow = e("Frame", {
+		e("Frame", {
 			Size = UDim2.new(1, 0, 1, 0),
 			Position = UDim2.fromOffset(0, 2),
 			BackgroundColor3 = Color3.fromRGB(0, 0, 0),
@@ -722,36 +702,36 @@ function DropsInfo:render()
 			BorderSizePixel = 0,
 			ZIndex = zIndex,
 		}, {
-			Corner = e("UICorner", {
+			e("UICorner", {
 				CornerRadius = props.cardCornerRadius or DEFAULT_CORNER_RADIUS,
 			}),
 		}),
-		Padding = e("UIPadding", {
+		e("UIPadding", {
 			PaddingTop = props.cardPadding or DEFAULT_CARD_PADDING,
 			PaddingBottom = props.cardPadding or DEFAULT_CARD_PADDING,
 			PaddingLeft = props.cardPadding or DEFAULT_CARD_PADDING,
 			PaddingRight = props.cardPadding or DEFAULT_CARD_PADDING,
 		}),
-		Content = e("Frame", {
+		e("Frame", {
 			Size = UDim2.fromScale(1, 1),
 			BackgroundTransparency = 1,
 			ZIndex = zIndex + 3,
 		}, {
-			Layout = e("UIListLayout", {
+			e("UIListLayout", {
 				FillDirection = Enum.FillDirection.Horizontal,
 				VerticalAlignment = Enum.VerticalAlignment.Top,
 				HorizontalAlignment = Enum.HorizontalAlignment.Left,
 				Padding = props.contentPadding or DEFAULT_CONTENT_PADDING,
 			}),
-			Icon = if showIcon
+			if showIcon
 				then e("Frame", {
 					AutomaticSize = Enum.AutomaticSize.XY,
 					BackgroundTransparency = 1,
 					LayoutOrder = 1,
 					ZIndex = zIndex + 3,
 				}, {
-					IconImage = e("ImageLabel", iconProps),
-					IconGlow = e("UIStroke", {
+					e("ImageLabel", iconProps),
+					e("UIStroke", {
 						ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
 						Color = glowColor,
 						Thickness = 1.1,
@@ -759,28 +739,28 @@ function DropsInfo:render()
 					}),
 				})
 				else nil,
-			TextStack = e("Frame", {
+			e("Frame", {
 				AutomaticSize = Enum.AutomaticSize.Y,
 				Size = UDim2.new(1, if showIcon then -32 else 0, 0, 0),
 				BackgroundTransparency = 1,
 				LayoutOrder = 2,
 				ZIndex = zIndex + 3,
 			}, {
-				List = e("UIListLayout", {
+				e("UIListLayout", {
 					FillDirection = Enum.FillDirection.Vertical,
 					VerticalAlignment = Enum.VerticalAlignment.Top,
 					HorizontalAlignment = Enum.HorizontalAlignment.Left,
 					Padding = UDim.new(0, 1),
 				}),
-				Title = e("TextLabel", titleProps),
-				Subtitle = if showSubtitle then e("TextLabel", subtitleProps) else nil,
-				Description = if showDescription then e("TextLabel", descriptionProps) else nil,
+				e("TextLabel", titleProps),
+				if showSubtitle then e("TextLabel", subtitleProps) else nil,
+				if showDescription then e("TextLabel", descriptionProps) else nil,
 			}),
 		}),
 	}
 
 	if useGradient then
-		cardChildren.Gradient = e("UIGradient", {
+		cardChildren[#cardChildren + 1] = e("UIGradient", {
 			Color = gradientColor,
 			Transparency = gradientTransparency,
 			Rotation = -8,
@@ -789,21 +769,21 @@ function DropsInfo:render()
 	end
 
 	if showAmount then
-		cardChildren.Amount = e("TextLabel", amountProps, {
-			Padding = e("UIPadding", {
+		cardChildren[#cardChildren + 1] = e("TextLabel", amountProps, {
+			e("UIPadding", {
 				PaddingTop = UDim.new(0, 3),
 				PaddingBottom = UDim.new(0, 3),
 				PaddingLeft = UDim.new(0, 8),
 				PaddingRight = UDim.new(0, 8),
 			}),
-			Corner = e("UICorner", {
+			e("UICorner", {
 				CornerRadius = UDim.new(1, 0),
 			}),
 		})
 	end
 
 	if showRarityPill and props.rarity ~= nil then
-		cardChildren.Rarity = e("TextLabel", {
+		cardChildren[#cardChildren + 1] = e("TextLabel", {
 			AutomaticSize = Enum.AutomaticSize.XY,
 			BackgroundColor3 = accentColor,
 			BackgroundTransparency = rarityPillTransparencyBinding,
@@ -819,21 +799,21 @@ function DropsInfo:render()
 			TextYAlignment = Enum.TextYAlignment.Center,
 			ZIndex = zIndex + 5,
 		}, {
-			Padding = e("UIPadding", {
+			e("UIPadding", {
 				PaddingTop = UDim.new(0, 2),
 				PaddingBottom = UDim.new(0, 2),
 				PaddingLeft = UDim.new(0, 7),
 				PaddingRight = UDim.new(0, 7),
 			}),
-			Corner = e("UICorner", {
+			e("UICorner", {
 				CornerRadius = UDim.new(1, 0),
 			}),
 		})
 	end
 
 	if props.children then
-		for childName, childNode in props.children do
-			cardChildren[childName] = childNode
+		for _, childNode in props.children do
+			cardChildren[#cardChildren + 1] = childNode
 		end
 	end
 
@@ -856,7 +836,7 @@ function DropsInfo:render()
 	applyNativeProps(billboardProps, props.nativeBillboard)
 
 	local billboardElement = e("BillboardGui", billboardProps, {
-		Card = e("Frame", cardProps, cardChildren),
+		e("Frame", cardProps, cardChildren),
 	})
 
 	local portalTarget = self:resolvePortalTarget()

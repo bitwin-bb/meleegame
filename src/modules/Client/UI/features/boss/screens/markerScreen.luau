@@ -202,9 +202,9 @@ return function(props: MarkerScreenProps): React.ReactNode
 	end
 
 	local zIndex = props.zIndex or 165
-	local children: { [string]: React.ReactNode } = {}
+	local children: { React.ReactNode } = {}
 	for _, renderedMarker in renderedMarkers do
-		children[`Marker_{renderedMarker.runtimeId}`] = e(Marker, {
+		children[#children + 1] = e(Marker, {
 			icon = renderedMarker.icon,
 			position = renderedMarker.position,
 			rotation = renderedMarker.rotation,

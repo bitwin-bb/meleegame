@@ -165,14 +165,14 @@ local function LoaderGui(props: LoaderGuiProps): React.ReactNode
 	local progress = math.clamp(snapshot.progress, 0, 1)
 
 	return e(React.Fragment, nil, {
-		LoaderScreen = e("Frame", {
+		e("Frame", {
 			Size = UDim2.fromScale(1, 1),
 			Position = UDim2.fromScale(0, 0),
 			BackgroundColor3 = BACKGROUND_COLOR,
 			BorderSizePixel = 0,
 			ZIndex = 1000,
 		}, {
-			Center = e("Frame", {
+			e("Frame", {
 				Size = UDim2.new(0.56, 0, 0, 76),
 				Position = UDim2.fromScale(0.5, 0.5),
 				AnchorPoint = Vector2.new(0.5, 0.5),
@@ -180,11 +180,11 @@ local function LoaderGui(props: LoaderGuiProps): React.ReactNode
 				BorderSizePixel = 0,
 				ZIndex = 1001,
 			}, {
-				SizeConstraint = e("UISizeConstraint", {
+				e("UISizeConstraint", {
 					MinSize = Vector2.new(288, 76),
 					MaxSize = Vector2.new(430, 76),
 				}),
-				LoadingText = e("TextLabel", {
+				e("TextLabel", {
 					Size = UDim2.new(1, 0, 0, 22),
 					Position = UDim2.fromOffset(0, 0),
 					BackgroundTransparency = 1,
@@ -199,7 +199,7 @@ local function LoaderGui(props: LoaderGuiProps): React.ReactNode
 					TextYAlignment = Enum.TextYAlignment.Center,
 					ZIndex = 1002,
 				}),
-				BarTrack = e("Frame", {
+				e("Frame", {
 					Size = UDim2.new(1, 0, 0, 8),
 					Position = UDim2.fromOffset(0, 34),
 					BackgroundColor3 = TRACK_COLOR,
@@ -207,7 +207,7 @@ local function LoaderGui(props: LoaderGuiProps): React.ReactNode
 					ClipsDescendants = true,
 					ZIndex = 1002,
 				}, {
-					BarFill = e("Frame", {
+					e("Frame", {
 						Size = UDim2.fromScale(progress, 1),
 						Position = UDim2.fromScale(0, 0),
 						BackgroundColor3 = BAR_COLOR,
@@ -215,7 +215,7 @@ local function LoaderGui(props: LoaderGuiProps): React.ReactNode
 						ZIndex = 1003,
 					}),
 				}),
-				Percentage = e("TextLabel", {
+				e("TextLabel", {
 					Size = UDim2.new(1, 0, 0, 20),
 					Position = UDim2.fromOffset(0, 48),
 					BackgroundTransparency = 1,

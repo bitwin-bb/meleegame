@@ -2,14 +2,12 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
+local BreathMeter = require(script:FindFirstAncestor("game").Client.UI.features.breath.components.BreathMeter)
 local BreathServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BreathServiceUtils)
 local React = require(ReplicatedStorage.Packages.React)
+local UiSound = require(script:FindFirstAncestor("game").Client.UI.core.utils.UiSound)
 local breathSlice = require(script:FindFirstAncestor("game").Client.UI.features.breath.state.breathSlice)
 local breathThunks = require(script:FindFirstAncestor("game").Client.UI.features.breath.state.breathThunks)
-local bubbleComponent = require(script:FindFirstAncestor("game").Client.UI.features.breath.components.bubble)
 local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
 local useBubbleDeplete = require(script:FindFirstAncestor("game").Client.UI.features.breath.hooks.useBubbleDeplete)
 local useHover = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useHover)
@@ -44,9 +42,6 @@ type BubblesScreenProps = {
 local e: typeof(React.createElement) = React.createElement
 
 local DEFAULT_BUBBLE_VALUE = 1
-local UI_AUDIO = (AudioRegistry :: any).UI or {}
-local UI_HOVER_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Hover)
-
 local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number, maximum: number?): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
@@ -106,11 +101,7 @@ return function(props: BubblesScreenProps)
 				text = hoverText,
 			})
 
-			if UI_HOVER_SOUND then
-				AudioServiceClient:playUi(UI_HOVER_SOUND, {
-					replaceChannel = false,
-				})
-			end
+			UiSound.playHover()
 		end,
 		onHoverEnd = function()
 			infoThunks.hideHover(hoverId)
@@ -158,31 +149,6 @@ return function(props: BubblesScreenProps)
 	})
 	local shouldShow = breathState.isUnderwater or breathState.isBreathingBlocked or breathState.isDrowning
 
-	local bubblesRowChildren: { [string]: React.ReactNode } = {
-		Padding = e("UIPadding", {
-			PaddingTop = UDim.new(0, 0),
-			PaddingBottom = UDim.new(0, 0),
-			PaddingLeft = UDim.new(0, 8),
-			PaddingRight = UDim.new(0, 8),
-		}),
-		ListLayout = e("UIListLayout", {
-			FillDirection = Enum.FillDirection.Horizontal,
-			HorizontalAlignment = Enum.HorizontalAlignment.Right,
-			VerticalAlignment = Enum.VerticalAlignment.Center,
-			SortOrder = Enum.SortOrder.LayoutOrder,
-			Padding = props.padding or UDim.new(0, 4),
-		}),
-	}
-
-	for _, bubbleState in ipairs(bubbles) do
-		bubblesRowChildren[`Bubble_{bubbleState.index}`] = e(bubbleComponent, {
-			index = bubbleState.index,
-			fillAlpha = animatedBubbleFillAlphas[bubbleState.index] or bubbleState.fillAlpha,
-			size = bubbleSize,
-			zIndex = zIndex + 2,
-		})
-	end
-
 	return e("Frame", {
 		Size = props.size or UDim2.fromOffset(360, 56),
 		Position = props.position or UDim2.new(1, 0, 0, 60),
@@ -193,7 +159,7 @@ return function(props: BubblesScreenProps)
 		ZIndex = zIndex,
 		Visible = props.visible ~= false and isBreathReady and shouldShow,
 	}, {
-		BreathValue = e("TextLabel", {
+		e("TextLabel", {
 			Size = UDim2.new(1, -16, 0, 18),
 			Position = UDim2.fromOffset(8, 0),
 			BackgroundTransparency = 1,
@@ -206,17 +172,14 @@ return function(props: BubblesScreenProps)
 			TextYAlignment = Enum.TextYAlignment.Center,
 			ZIndex = zIndex + 3,
 		}),
-		BubblesRow = e("Frame", {
-			Size = UDim2.fromOffset(0, bubbleSize.Y.Offset),
-			AutomaticSize = Enum.AutomaticSize.X,
-			AnchorPoint = Vector2.new(1, 1),
-			Position = UDim2.new(1, 0, 1, -4),
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			Active = true,
-			ZIndex = zIndex + 1,
-			[React.Event.MouseEnter] = bubblesHover.eventHandlers[React.Event.MouseEnter],
-			[React.Event.MouseLeave] = bubblesHover.eventHandlers[React.Event.MouseLeave],
-		}, bubblesRowChildren),
+		e(BreathMeter, {
+			bubbles = bubbles,
+			fillAlphas = animatedBubbleFillAlphas,
+			bubbleSize = bubbleSize,
+			padding = props.padding or UDim.new(0, 4),
+			zIndex = zIndex + 1,
+			onMouseEnter = bubblesHover.eventHandlers[React.Event.MouseEnter],
+			onMouseLeave = bubblesHover.eventHandlers[React.Event.MouseLeave],
+		}),
 	})
 end

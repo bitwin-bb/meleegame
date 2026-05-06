@@ -1,11 +1,9 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
 local React = require(ReplicatedStorage.Packages.React)
+local TrashButton = require(script:FindFirstAncestor("game").Client.UI.features.inventory.components.TrashButton)
+local UiSound = require(script:FindFirstAncestor("game").Client.UI.core.utils.UiSound)
 local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
 local itemSlice = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemSlice)
 local itemThunks = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemThunks)
@@ -31,11 +29,6 @@ local e: typeof(React.createElement) = React.createElement
 
 local TRASH_HOVER_ID = "inventory_trash"
 local DEFAULT_SIZE = UDim2.fromOffset(58, 58)
-local UI_AUDIO = (AudioRegistry :: any).UI or {}
-local UI_TRASH_OPEN_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.TrashCanOpen)
-local UI_TRASH_CLOSE_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.TrashCanClose)
-local UI_TRASH_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Trash)
-local UI_ITEM_PUT_DOWN_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.ItemPutDown)
 
 local function resolveEmergeOffset(offsetRaw: any): Vector2
 	if typeof(offsetRaw) ~= "Vector2" then
@@ -59,15 +52,7 @@ local function applyOffset(base: UDim2, offset: Vector2): UDim2
 end
 
 local function playUiTrashSound(soundAssetId: string?)
-	if AudioServiceClient.categoryGroups == nil then
-		return
-	end
-	if soundAssetId == nil then
-		return
-	end
-	AudioServiceClient:playUi(soundAssetId, {
-		replaceChannel = false,
-	})
+	UiSound.play(soundAssetId)
 end
 
 local function resolveHoverText(state: TrashState, dragState: ItemDragState): string
@@ -120,34 +105,31 @@ return function(props: TrashScreenProps): React.ReactNode
 		then Color3.fromRGB(255, 255, 255)
 		else if canInteract then Color3.fromRGB(222, 222, 222) else Color3.fromRGB(180, 180, 180)
 
-	return e("ImageButton", {
-		Size = props.size or DEFAULT_SIZE,
-		Position = applyOffset(props.position or UDim2.new(1, 0, 1, 0), emergeOffset),
-		AnchorPoint = props.anchorPoint or Vector2.new(1, 0),
-		LayoutOrder = props.layoutOrder or 1,
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		Image = if state.isOpen then ImageIds.trashCanOpen else ImageIds.trashCanClosed,
-		ImageColor3 = imageColor,
-		ImageTransparency = emergeTransparency,
-		ZIndex = zIndex,
-		AutoButtonColor = false,
-		Active = emergeTransparency < 0.98,
-		Selectable = emergeTransparency < 0.98,
-		[React.Event.MouseEnter] = function()
+	return e(TrashButton, {
+		size = props.size or DEFAULT_SIZE,
+		position = applyOffset(props.position or UDim2.fromScale(1, 1), emergeOffset),
+		anchorPoint = props.anchorPoint or Vector2.new(1, 0),
+		layoutOrder = props.layoutOrder or 1,
+		zIndex = zIndex,
+		isOpen = state.isOpen,
+		imageColor3 = imageColor,
+		imageTransparency = emergeTransparency,
+		active = emergeTransparency < 0.98,
+		selectable = emergeTransparency < 0.98,
+		onMouseEnter = function()
 			trashThunks.open()
 			infoThunks.showHover({
 				id = TRASH_HOVER_ID,
 				text = resolveHoverText(state, dragState),
 			})
-			playUiTrashSound(UI_TRASH_OPEN_SOUND)
+			playUiTrashSound((UiSound :: any).trashCanOpen)
 		end,
-		[React.Event.MouseLeave] = function()
+		onMouseLeave = function()
 			trashThunks.close()
 			infoThunks.hideHover(TRASH_HOVER_ID)
-			playUiTrashSound(UI_TRASH_CLOSE_SOUND)
+			playUiTrashSound((UiSound :: any).trashCanClose)
 		end,
-		[React.Event.InputBegan] = function(_: GuiObject, inputObject: InputObject)
+		onInputBegan = function(_: GuiObject, inputObject: InputObject)
 			local inputType = inputObject.UserInputType
 			if inputType ~= Enum.UserInputType.MouseButton1 and inputType ~= Enum.UserInputType.Touch then
 				return
@@ -158,11 +140,11 @@ return function(props: TrashScreenProps): React.ReactNode
 
 			local didRequest = itemThunks.trashDrag(nil)
 			if didRequest then
-				playUiTrashSound(UI_ITEM_PUT_DOWN_SOUND)
-				playUiTrashSound(UI_TRASH_SOUND)
+				playUiTrashSound((UiSound :: any).itemPutDown)
+				playUiTrashSound(UiSound.trash)
 			end
 		end,
-		[React.Event.Activated] = function()
+		onActivated = function()
 			if canTrashDragged then
 				return
 			end
@@ -172,7 +154,7 @@ return function(props: TrashScreenProps): React.ReactNode
 
 			local didRequest = trashThunks.trashSelected(nil)
 			if didRequest then
-				playUiTrashSound(UI_TRASH_SOUND)
+				playUiTrashSound(UiSound.trash)
 			end
 		end,
 	})

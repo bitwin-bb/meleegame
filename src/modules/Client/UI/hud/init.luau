@@ -54,7 +54,7 @@ return function(props: HudProps)
 		ZIndex = baseZIndex,
 		Visible = props.visible ~= false,
 	}, {
-		TopBar = e(TopBar, {
+		e(TopBar, {
 			layoutOrder = barOrders.top or DEFAULT_BAR_ORDERS.top,
 			zIndex = baseZIndex + 1,
 			buttons = props.topButtons,
@@ -66,7 +66,7 @@ return function(props: HudProps)
 				end
 			end,
 		}),
-		LeftSideBar = e(LeftSideBar, {
+		e(LeftSideBar, {
 			layoutOrder = barOrders.left or DEFAULT_BAR_ORDERS.left,
 			zIndex = baseZIndex + 1,
 			buttons = props.leftButtons,
@@ -78,7 +78,7 @@ return function(props: HudProps)
 				end
 			end,
 		}),
-		RightSideBar = e(RightSideBar, {
+		e(RightSideBar, {
 			layoutOrder = barOrders.right or DEFAULT_BAR_ORDERS.right,
 			zIndex = baseZIndex + 1,
 			buttons = props.rightButtons,
@@ -91,7 +91,7 @@ return function(props: HudProps)
 				end
 			end,
 		}),
-		BottomBar = e(BottomBar, {
+		e(BottomBar, {
 			layoutOrder = barOrders.bottom or DEFAULT_BAR_ORDERS.bottom,
 			zIndex = baseZIndex + 1,
 			buttons = props.bottomButtons,

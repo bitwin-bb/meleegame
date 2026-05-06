@@ -1,12 +1,13 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Gif = require(script:FindFirstAncestor("game").Client.UI.shared.Gif)
+local CoinRow = require(script:FindFirstAncestor("game").Client.UI.features.inventory.components.CoinRow)
 local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
 local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
 local React = require(ReplicatedStorage.Packages.React)
 local coinSlice = require(script:FindFirstAncestor("game").Client.UI.features.inventory.state.coinSlice)
 local coinThunks = require(script:FindFirstAncestor("game").Client.UI.features.inventory.state.coinThunks)
+local formatNumber = require(script:FindFirstAncestor("game").Client.UI.core.utils.formatNumber)
 local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
 local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
@@ -40,19 +41,11 @@ type CoinDefinition = {
 local e: typeof(React.createElement) = React.createElement
 
 local COIN_HOVER_ID_PREFIX = "inventory_coin_"
-local COIN_SHEET_SIZE = Vector2.new(1290, 774)
-local COIN_FRAME_ROWS = 3
-local COIN_FRAME_COLUMNS = 5
-local COIN_FRAME_SIZE =
-	Vector2.new(math.floor(COIN_SHEET_SIZE.X / COIN_FRAME_COLUMNS), math.floor(COIN_SHEET_SIZE.Y / COIN_FRAME_ROWS))
-local COIN_FRAME_COUNT = COIN_FRAME_ROWS * COIN_FRAME_COLUMNS
-local COIN_FPS = 12
 local DEFAULT_COIN_SLOT_SIZE = 58
 local COIN_ICON_SIZE = 34
 local COIN_ICON_TOP_PADDING = 4
 local COIN_AMOUNT_HEIGHT = 16
 local COIN_AMOUNT_GAP = 1
-local COIN_TEXT_STROKE_TRANSPARENCY = 0.2
 
 local function resolveCoinItemData(itemId: string): CoinItemData
 	local definition = ItemRegistry.resolveDefinition(itemId)
@@ -90,19 +83,6 @@ local COIN_RENDER_ORDER: { CoinDefinition } = {
 	},
 }
 
-local function formatWholeNumber(valueRaw: any): string
-	local value = if typeof(valueRaw) == "number" and valueRaw == valueRaw then math.max(0, math.floor(valueRaw)) else 0
-	local text = tostring(value)
-	while true do
-		local nextText, replacements = string.gsub(text, "^(-?%d+)(%d%d%d)", "%1,%2")
-		text = nextText
-		if replacements == 0 then
-			break
-		end
-	end
-	return text
-end
-
 local function resolveCoinAmount(state: CoinState, coinType: CoinType): number
 	local amounts = state.amounts
 	return if coinType == "platinum"
@@ -130,12 +110,7 @@ local function resolveHoverText(coinDefinition: CoinDefinition, amount: number):
 	local itemDescription = resolveItemField(itemData.description, "No description.")
 	local itemValue = resolveItemField(itemData.value, "Unknown value")
 
-	return ("%s\n\n%s\n\nValue: %s\n\nOwned: %s"):format(
-		itemName,
-		itemDescription,
-		itemValue,
-		formatWholeNumber(amount)
-	)
+	return ("%s\n\n%s\n\nValue: %s\n\nOwned: %s"):format(itemName, itemDescription, itemValue, formatNumber(amount))
 end
 
 local function resolveEmergeOffset(offsetRaw: any): Vector2
@@ -188,15 +163,7 @@ return function(props: CoinScreenProps): React.ReactNode
 	local amountTop = iconTop + COIN_ICON_SIZE + COIN_AMOUNT_GAP
 	local spriteSheets = if typeof(ImageIds.spriteSheets) == "table" then ImageIds.spriteSheets else {}
 	local renderedCoinCount = 0
-	local rootChildren: { [string]: React.ReactNode } = {
-		Layout = e("UIListLayout", {
-			FillDirection = Enum.FillDirection.Horizontal,
-			HorizontalAlignment = Enum.HorizontalAlignment.Right,
-			VerticalAlignment = Enum.VerticalAlignment.Center,
-			SortOrder = Enum.SortOrder.LayoutOrder,
-			Padding = UDim.new(0, 0),
-		}),
-	}
+	local coinRowItems: { any } = {}
 
 	for _, coinDefinition in COIN_RENDER_ORDER do
 		local spriteSheetImage = (spriteSheets :: { [string]: any })[coinDefinition.spriteSheetKey]
@@ -215,63 +182,14 @@ return function(props: CoinScreenProps): React.ReactNode
 		local coinLayoutOrder = renderedCoinCount
 		local hoverId = COIN_HOVER_ID_PREFIX .. coinDefinition.id
 
-		rootChildren["Coin_" .. coinDefinition.id] = e("ImageButton", {
-			Size = UDim2.fromOffset(slotWidth, slotHeight),
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			AutoButtonColor = false,
-			ImageTransparency = 1,
-			LayoutOrder = coinLayoutOrder,
-			ZIndex = zIndex + 1,
-			[React.Event.MouseEnter] = function()
-				if emergeTransparency >= 0.98 then
-					return
-				end
-				infoThunks.showHover({
-					id = hoverId,
-					text = resolveHoverText(coinDefinition, coinAmount),
-				})
-			end,
-			[React.Event.MouseLeave] = function()
-				infoThunks.hideHover(hoverId)
-			end,
-		}, {
-			CoinAnimation = e(Gif, {
-				image = spriteSheetImage,
-				frameSize = COIN_FRAME_SIZE,
-				frameCount = COIN_FRAME_COUNT,
-				columns = COIN_FRAME_COLUMNS,
-				startFrameIndex = 0,
-				fps = COIN_FPS,
-				size = UDim2.fromOffset(COIN_ICON_SIZE, COIN_ICON_SIZE),
-				position = UDim2.new(0.5, 0, 0, iconTop),
-				anchorPoint = Vector2.new(0.5, 0),
-				backgroundTransparency = 1,
-				imageTransparency = emergeTransparency,
-				zIndex = zIndex + 2,
-				resampleMode = Enum.ResamplerMode.Pixelated,
-			}),
-			Amount = e("TextLabel", {
-				Size = UDim2.fromOffset(slotWidth, COIN_AMOUNT_HEIGHT),
-				Position = UDim2.new(0.5, 0, 0, amountTop),
-				AnchorPoint = Vector2.new(0.5, 0),
-				BackgroundTransparency = 1,
-				Text = formatWholeNumber(coinAmount),
-				Font = Enum.Font.GothamBold,
-				TextSize = 13,
-				TextColor3 = Color3.fromRGB(248, 253, 255),
-				TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-				TextTransparency = emergeTransparency,
-				TextStrokeTransparency = math.clamp(
-					COIN_TEXT_STROKE_TRANSPARENCY + emergeTransparency * (1 - COIN_TEXT_STROKE_TRANSPARENCY),
-					0,
-					1
-				),
-				TextXAlignment = Enum.TextXAlignment.Center,
-				TextYAlignment = Enum.TextYAlignment.Top,
-				ZIndex = zIndex + 3,
-			}),
-		})
+		coinRowItems[#coinRowItems + 1] = {
+			id = coinDefinition.id,
+			amount = coinAmount,
+			spriteSheetImage = spriteSheetImage,
+			hoverId = hoverId,
+			hoverText = resolveHoverText(coinDefinition, coinAmount),
+			layoutOrder = coinLayoutOrder,
+		}
 	end
 
 	if renderedCoinCount <= 0 then
@@ -280,12 +198,36 @@ return function(props: CoinScreenProps): React.ReactNode
 
 	return e("Frame", {
 		Size = UDim2.fromOffset(slotWidth * renderedCoinCount, slotHeight),
-		Position = applyOffset(props.position or UDim2.new(1, 0, 1, 0), emergeOffset),
+		Position = applyOffset(props.position or UDim2.fromScale(1, 1), emergeOffset),
 		AnchorPoint = props.anchorPoint or Vector2.new(1, 1),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		LayoutOrder = props.layoutOrder or 1,
 		ZIndex = zIndex,
 		Visible = props.visible ~= false,
-	}, rootChildren)
+	}, {
+		e(CoinRow, {
+			coins = coinRowItems,
+			slotWidth = slotWidth,
+			slotHeight = slotHeight,
+			iconTop = iconTop,
+			iconSize = COIN_ICON_SIZE,
+			amountTop = amountTop,
+			amountHeight = COIN_AMOUNT_HEIGHT,
+			emergeTransparency = emergeTransparency,
+			zIndex = zIndex,
+			onHoverStart = function(coin)
+				if emergeTransparency >= 0.98 then
+					return
+				end
+				infoThunks.showHover({
+					id = coin.hoverId,
+					text = coin.hoverText,
+				})
+			end,
+			onHoverEnd = function(coin)
+				infoThunks.hideHover(coin.hoverId)
+			end,
+		}),
+	})
 end

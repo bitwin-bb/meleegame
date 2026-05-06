@@ -49,7 +49,7 @@ export type GifProps = {
 	resampleMode: Enum.ResamplerMode?,
 	preferNevermoreFlipbook: boolean?,
 	native: { [any]: any }?,
-	children: { [string]: React.ReactNode }?,
+	children: { React.ReactNode }?,
 }
 
 local e: typeof(React.createElement) = React.createElement
@@ -270,7 +270,7 @@ local function Gif(props: GifProps)
 	-- resolution changes but the grid layout stays the same. The viewport path only
 	-- depends on rows/columns, so keep it as the default and make Flipbook opt-in.
 	local useNevermoreFlipbook = props.preferNevermoreFlipbook == true
-		and (not hasExplicitRects)
+		and not hasExplicitRects
 		and not hasGridOffset
 		and props.onLooped == nil
 	local useViewportMode = (not hasExplicitRects) and not hasGridOffset
@@ -368,10 +368,10 @@ local function Gif(props: GifProps)
 			end
 		end
 
-		local children: { [string]: React.ReactNode } = {}
+		local children: { React.ReactNode } = {}
 		if props.children then
-			for childName, child in props.children do
-				children[childName] = child
+			for _, child in props.children do
+				children[#children + 1] = child
 			end
 		end
 
@@ -408,8 +408,8 @@ local function Gif(props: GifProps)
 		end
 		(rootProps :: any).ClipsDescendants = true
 
-		local children: { [string]: React.ReactNode } = {
-			SpriteSheet = e("ImageLabel", {
+		local children: { React.ReactNode } = {
+			e("ImageLabel", {
 				Size = UDim2.fromScale(columns, rows),
 				Position = UDim2.fromScale(-column, -row),
 				BackgroundTransparency = 1,
@@ -426,8 +426,8 @@ local function Gif(props: GifProps)
 		}
 
 		if props.children then
-			for childName, child in props.children do
-				children[childName] = child
+			for _, child in props.children do
+				children[#children + 1] = child
 			end
 		end
 
@@ -467,10 +467,10 @@ local function Gif(props: GifProps)
 		end
 	end
 
-	local children: { [string]: React.ReactNode } = {}
+	local children: { React.ReactNode } = {}
 	if props.children then
-		for childName, child in props.children do
-			children[childName] = child
+		for _, child in props.children do
+			children[#children + 1] = child
 		end
 	end
 

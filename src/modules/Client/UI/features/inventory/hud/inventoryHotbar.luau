@@ -3,23 +3,26 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
 local CoinScreen = require(script:FindFirstAncestor("game").Client.UI.features.inventory.screens.coinScreen)
 local CraftButton = require(script:FindFirstAncestor("game").Client.UI.features.crafting.hud.craftButton)
+local HotbarRow = require(script:FindFirstAncestor("game").Client.UI.features.inventory.components.HotbarRow)
+local HotbarSlot = require(script:FindFirstAncestor("game").Client.UI.features.inventory.components.HotbarSlot)
 local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
+local InventoryGrid = require(script:FindFirstAncestor("game").Client.UI.features.inventory.components.InventoryGrid)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
+local InventorySlotComponent =
+	require(script:FindFirstAncestor("game").Client.UI.features.inventory.components.InventorySlot)
 local ItemScreen = require(script:FindFirstAncestor("game").Client.UI.features.item.screen.itemScreen)
 local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
 local React = require(ReplicatedStorage.Packages.React)
 local TrashScreen = require(script:FindFirstAncestor("game").Client.UI.features.inventory.screens.trashScreen)
+local UiSound = require(script:FindFirstAncestor("game").Client.UI.core.utils.UiSound)
 local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
 local inventorySlice = require(script:FindFirstAncestor("game").Client.UI.features.inventory.state.inventorySlice)
 local inventoryThunks = require(script:FindFirstAncestor("game").Client.UI.features.inventory.state.inventoryThunks)
-local trashThunks = require(script:FindFirstAncestor("game").Client.UI.features.inventory.state.trashThunks)
 local itemSlice = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemSlice)
 local itemThunks = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemThunks)
+local trashThunks = require(script:FindFirstAncestor("game").Client.UI.features.inventory.state.trashThunks)
 local useCoinEmerge = require(script:FindFirstAncestor("game").Client.UI.features.inventory.hooks.useCoinEmerge)
 local useDrag = require(script:FindFirstAncestor("game").Client.UI.features.item.hooks.useDrag)
 local useInterval = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useInterval)
@@ -65,9 +68,6 @@ local SELECTED_SLOT_TINT = Color3.fromRGB(142, 220, 255)
 local DISABLED_SLOT_TINT = Color3.fromRGB(100, 108, 120)
 local EXPANSION_VISIBILITY_EPSILON = 0.001
 local TRASH_VISIBILITY_EPSILON = 0.001
-local UI_AUDIO = (AudioRegistry :: any).UI or {}
-local UI_HOVER_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Hover)
-local UI_PRESS_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Press or UI_AUDIO.Click)
 type HoveredSlotSource = "Hotbar" | "Grid"
 local GAMEPAD_INVENTORY_TOGGLE_KEY = Enum.KeyCode.ButtonY
 local GAMEPAD_DROP_TRASH_KEY = Enum.KeyCode.ButtonX
@@ -92,31 +92,11 @@ local function snapToPixel(value: number): number
 end
 
 local function playUiHoverSound()
-	if AudioServiceClient.categoryGroups == nil then
-		return
-	end
-
-	if UI_HOVER_SOUND == nil then
-		return
-	end
-
-	AudioServiceClient:playUi(UI_HOVER_SOUND, {
-		replaceChannel = false,
-	})
+	UiSound.playHover()
 end
 
 local function playUiPressSound()
-	if AudioServiceClient.categoryGroups == nil then
-		return
-	end
-
-	if UI_PRESS_SOUND == nil then
-		return
-	end
-
-	AudioServiceClient:playUi(UI_PRESS_SOUND, {
-		replaceChannel = false,
-	})
+	UiSound.playPress()
 end
 
 local function sanitizeRenderState(stateRaw: any): InventoryState
@@ -279,7 +259,9 @@ local function resolveHotbarSelectionSlot(stateRaw: any): number
 end
 
 local function cycleHotbarSelection(stepRaw: any)
-	local step = if typeof(stepRaw) == "number" and stepRaw == stepRaw and stepRaw ~= 0
+	local step = if typeof(stepRaw) == "number"
+			and stepRaw == stepRaw
+			and stepRaw ~= 0
 		then if stepRaw < 0 then -1 else 1
 		else nil
 	if step == nil then
@@ -596,15 +578,7 @@ return function(props: InventoryHotbarProps)
 		})
 	end
 
-	local hotbarChildren: { [string]: React.ReactNode } = {
-		Layout = e("UIListLayout", {
-			FillDirection = Enum.FillDirection.Vertical,
-			HorizontalAlignment = Enum.HorizontalAlignment.Center,
-			VerticalAlignment = Enum.VerticalAlignment.Top,
-			SortOrder = Enum.SortOrder.LayoutOrder,
-			Padding = UDim.new(0, hotbarGap),
-		}),
-	}
+	local hotbarChildren: { React.ReactNode } = {}
 
 	for hotbarIndex = 1, HOTBAR_SLOT_COUNT do
 		local slot = resolveSlot(renderState, hotbarIndex)
@@ -629,29 +603,29 @@ return function(props: InventoryHotbarProps)
 		local itemAmount = if hasVisibleItem then resolveStackAmount(displayStack) else 0
 		local itemIcon = if hasVisibleItem then resolveStackIcon(displayStack) else nil
 
-		hotbarChildren["Slot_" .. tostring(hotbarIndex)] = e("ImageButton", {
-			Size = hotbarSlotSize,
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			Image = slotImage,
-			ImageColor3 = slotTint,
-			ImageTransparency = 0,
-			LayoutOrder = hotbarIndex,
-			ZIndex = slotZIndex,
-			AutoButtonColor = false,
-			Active = isSlotAvailable,
-			Selectable = isSlotAvailable,
-			[React.Event.MouseEnter] = function()
+		hotbarChildren[#hotbarChildren + 1] = e(HotbarSlot, {
+			index = hotbarIndex,
+			size = hotbarSlotSize,
+			image = slotImage,
+			tint = slotTint,
+			zIndex = slotZIndex,
+			active = isSlotAvailable,
+			selectable = isSlotAvailable,
+			scale = slotScale,
+			showKeyHint = showKeyHints,
+			itemIcon = itemIcon,
+			itemAmount = itemAmount,
+			onMouseEnter = function()
 				setHoveredSlotSource("Hotbar")
 				setHoveredSlotIndex(hotbarIndex)
 				playUiHoverSound()
 			end,
-			[React.Event.MouseLeave] = function()
+			onMouseLeave = function()
 				setHoveredSlotSource(nil)
 				setHoveredSlotIndex(nil)
 				infoThunks.hideHover(SLOT_HOVER_ID_PREFIX .. tostring(hotbarIndex))
 			end,
-			[React.Event.MouseButton2Down] = function()
+			onSecondaryInput = function()
 				if not isSlotAvailable then
 					return
 				end
@@ -660,7 +634,7 @@ return function(props: InventoryHotbarProps)
 				end
 				drag.handleSlotSecondaryInput(hotbarIndex, if typeof(slot.stack) == "table" then slot.stack else nil)
 			end,
-			[React.Event.InputBegan] = function(_: GuiObject, inputObject: InputObject)
+			onInputBegan = function(_: GuiObject, inputObject: InputObject)
 				if not isSlotAvailable then
 					return
 				end
@@ -674,7 +648,7 @@ return function(props: InventoryHotbarProps)
 					inputObject
 				)
 			end,
-			[React.Event.Activated] = function()
+			onActivated = function()
 				if not isSlotAvailable then
 					return
 				end
@@ -689,60 +663,10 @@ return function(props: InventoryHotbarProps)
 				end
 				selectSlot(hotbarIndex, selectedSlot)
 			end,
-		}, {
-			Scale = e("UIScale", {
-				Scale = slotScale,
-			}),
-			KeyHint = if showKeyHints
-				then e("TextLabel", {
-					Size = UDim2.fromOffset(16, 14),
-					Position = UDim2.fromOffset(4, 4),
-					BackgroundTransparency = 1,
-					Text = tostring(hotbarIndex),
-					Font = Enum.Font.GothamBold,
-					TextSize = 11,
-					TextColor3 = Color3.fromRGB(202, 235, 255),
-					TextStrokeTransparency = 0.55,
-					TextXAlignment = Enum.TextXAlignment.Left,
-					TextYAlignment = Enum.TextYAlignment.Top,
-					ZIndex = slotZIndex + 2,
-				})
-				else nil,
-			Amount = if hasVisibleItem and itemAmount > 1
-				then e("TextLabel", {
-					Size = UDim2.fromOffset(0, 0),
-					AutomaticSize = Enum.AutomaticSize.XY,
-					Position = UDim2.new(1, -6, 1, -5),
-					AnchorPoint = Vector2.new(1, 1),
-					BackgroundTransparency = 1,
-					Text = tostring(itemAmount),
-					Font = Enum.Font.GothamBold,
-					TextSize = 13,
-					TextColor3 = Color3.fromRGB(248, 253, 255),
-					TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-					TextStrokeTransparency = 0.3,
-					TextXAlignment = Enum.TextXAlignment.Right,
-					TextYAlignment = Enum.TextYAlignment.Bottom,
-					ZIndex = slotZIndex + 3,
-				})
-				else nil,
-			Icon = if hasVisibleItem and itemIcon ~= nil
-				then e("ImageLabel", {
-					Size = UDim2.fromOffset(32, 32),
-					Position = UDim2.fromScale(0.5, 0.5),
-					AnchorPoint = Vector2.new(0.5, 0.5),
-					BackgroundTransparency = 1,
-					BorderSizePixel = 0,
-					Image = itemIcon,
-					ImageColor3 = Color3.fromRGB(255, 255, 255),
-					ImageTransparency = 0,
-					ZIndex = slotZIndex + 2,
-				})
-				else nil,
 		})
 	end
 
-	hotbarChildren.ExpanderButton = e(NavButton, {
+	hotbarChildren[#hotbarChildren + 1] = e(NavButton, {
 		id = "InventoryExpander",
 		label = nil,
 		icon = if isExpandButtonPressed.value or isInventoryExpanded.value
@@ -772,13 +696,13 @@ return function(props: InventoryHotbarProps)
 		end,
 	})
 
-	hotbarChildren.CraftButton = e(CraftButton, {
+	hotbarChildren[#hotbarChildren + 1] = e(CraftButton, {
 		layoutOrder = HOTBAR_SLOT_COUNT + 2,
 		size = expanderSize,
 		zIndex = zIndex + 4,
 	})
 
-	local gridChildren: { [string]: React.ReactNode } = {}
+	local gridChildren: { React.ReactNode } = {}
 	local gridStepX = gridSlotSize.X.Offset + gridGap
 	local gridStepY = gridSlotSize.Y.Offset + gridGap
 	local hotbarOriginOffsetX = -(hotbarWidth + gridGap)
@@ -819,133 +743,93 @@ return function(props: InventoryHotbarProps)
 		local itemIcon = if hasVisibleItem then resolveStackIcon(displayStack) else nil
 		local isGridSlotInteractable = isSlotAvailable and columnRevealProgress >= (1 - EXPANSION_VISIBILITY_EPSILON)
 
-		gridChildren["GridSlotContainer_" .. tostring(slotIndex)] = e("Frame", {
-			Size = gridSlotSize,
-			Position = UDim2.fromOffset(snapToPixel(currentSlotOffset.X), snapToPixel(currentSlotOffset.Y)),
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			ZIndex = slotZIndex,
-		}, {
-			Slot = e("ImageButton", {
-				Size = UDim2.fromScale(1, 1),
-				BackgroundTransparency = 1,
-				BorderSizePixel = 0,
-				Image = slotImage,
-				ImageColor3 = slotTint,
-				ImageTransparency = slotTransparency,
-				ZIndex = slotZIndex,
-				AutoButtonColor = false,
-				Active = isGridSlotInteractable,
-				Selectable = isGridSlotInteractable,
-				[React.Event.MouseEnter] = function()
-					if not isGridSlotInteractable then
-						return
-					end
-					setHoveredSlotSource("Grid")
-					setHoveredSlotIndex(inventorySlotIndex)
-					playUiHoverSound()
-				end,
-				[React.Event.MouseLeave] = function()
-					if isGridSlotInteractable then
-						setHoveredSlotSource(nil)
-						setHoveredSlotIndex(nil)
-						infoThunks.hideHover(SLOT_HOVER_ID_PREFIX .. tostring(inventorySlotIndex))
-					end
-				end,
-				[React.Event.MouseButton2Down] = function()
-					if not isGridSlotInteractable then
-						return
-					end
-					if UserInputService:GetFocusedTextBox() ~= nil then
-						return
-					end
-					drag.handleSlotSecondaryInput(
-						inventorySlotIndex,
-						if typeof(slot.stack) == "table" then slot.stack else nil
-					)
-				end,
-				[React.Event.InputBegan] = function(_: GuiObject, inputObject: InputObject)
-					if not isGridSlotInteractable then
-						return
-					end
-					local userInputType = inputObject.UserInputType
-					if userInputType ~= Enum.UserInputType.MouseButton1 and userInputType ~= Enum.UserInputType.Touch then
-						return
-					end
-					drag.handleSlotInput(
-						inventorySlotIndex,
-						if typeof(slot.stack) == "table" then slot.stack else nil,
-						inputObject
-					)
-				end,
-				[React.Event.Activated] = function()
-					if not isGridSlotInteractable then
-						return
-					end
-					if drag.isDragging or drag.shouldSuppressActivation(inventorySlotIndex) then
-						return
-					end
-					if not isInventoryStateInitialized then
-						return
-					end
-					if not InventoryServiceUtils.isLoadedState(renderState.loadState) then
-						return
-					end
-					selectSlot(inventorySlotIndex, selectedSlot)
-				end,
-			}, {
-			Amount = if hasVisibleItem and itemAmount > 1
-				then e("TextLabel", {
-					Size = UDim2.fromOffset(0, 0),
-					AutomaticSize = Enum.AutomaticSize.XY,
-					Position = UDim2.new(1, -5, 1, -4),
-					AnchorPoint = Vector2.new(1, 1),
-					BackgroundTransparency = 1,
-					Text = tostring(itemAmount),
-					Font = Enum.Font.GothamBold,
-					TextSize = 11,
-					TextColor3 = Color3.fromRGB(248, 253, 255),
-					TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-					TextTransparency = columnRevealTransparency,
-					TextStrokeTransparency = math.clamp(0.3 + columnRevealTransparency * 0.7, 0, 1),
-					ZIndex = slotZIndex + 1,
-				})
+		gridChildren[#gridChildren + 1] = e(InventorySlotComponent, {
+			layoutOrder = slotIndex,
+			size = gridSlotSize,
+			position = UDim2.fromOffset(snapToPixel(currentSlotOffset.X), snapToPixel(currentSlotOffset.Y)),
+			image = slotImage,
+			tint = slotTint,
+			imageTransparency = slotTransparency,
+			zIndex = slotZIndex,
+			active = isGridSlotInteractable,
+			selectable = isGridSlotInteractable,
+			itemIcon = itemIcon,
+			itemAmount = itemAmount,
+			itemTransparency = columnRevealTransparency,
+			stackTextTransparency = columnRevealTransparency,
+			stackStrokeTransparency = math.clamp(0.3 + columnRevealTransparency * 0.7, 0, 1),
+			selectedStrokeTransparency = if isSelected
+				then math.clamp(0.15 + columnRevealTransparency * 0.85, 0, 1)
 				else nil,
-			Icon = if hasVisibleItem and itemIcon ~= nil
-				then e("ImageLabel", {
-					Size = UDim2.fromOffset(30, 30),
-					Position = UDim2.fromScale(0.5, 0.5),
-					AnchorPoint = Vector2.new(0.5, 0.5),
-					BackgroundTransparency = 1,
-					BorderSizePixel = 0,
-					Image = itemIcon,
-					ImageColor3 = Color3.fromRGB(255, 255, 255),
-					ImageTransparency = columnRevealTransparency,
-					ZIndex = slotZIndex + 1,
-				})
-				else nil,
-			SelectedStroke = if isSelected
-				then e("UIStroke", {
-					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-					Color = Color3.fromRGB(128, 226, 255),
-					Transparency = math.clamp(0.15 + columnRevealTransparency * 0.85, 0, 1),
-					Thickness = 1.25,
-				})
-				else nil,
-			}),
+			onMouseEnter = function()
+				if not isGridSlotInteractable then
+					return
+				end
+				setHoveredSlotSource("Grid")
+				setHoveredSlotIndex(inventorySlotIndex)
+				playUiHoverSound()
+			end,
+			onMouseLeave = function()
+				if isGridSlotInteractable then
+					setHoveredSlotSource(nil)
+					setHoveredSlotIndex(nil)
+					infoThunks.hideHover(SLOT_HOVER_ID_PREFIX .. tostring(inventorySlotIndex))
+				end
+			end,
+			onSecondaryInput = function()
+				if not isGridSlotInteractable then
+					return
+				end
+				if UserInputService:GetFocusedTextBox() ~= nil then
+					return
+				end
+				drag.handleSlotSecondaryInput(
+					inventorySlotIndex,
+					if typeof(slot.stack) == "table" then slot.stack else nil
+				)
+			end,
+			onInputBegan = function(_: GuiObject, inputObject: InputObject)
+				if not isGridSlotInteractable then
+					return
+				end
+				local userInputType = inputObject.UserInputType
+				if userInputType ~= Enum.UserInputType.MouseButton1 and userInputType ~= Enum.UserInputType.Touch then
+					return
+				end
+				drag.handleSlotInput(
+					inventorySlotIndex,
+					if typeof(slot.stack) == "table" then slot.stack else nil,
+					inputObject
+				)
+			end,
+			onActivated = function()
+				if not isGridSlotInteractable then
+					return
+				end
+				if drag.isDragging or drag.shouldSuppressActivation(inventorySlotIndex) then
+					return
+				end
+				if not isInventoryStateInitialized then
+					return
+				end
+				if not InventoryServiceUtils.isLoadedState(renderState.loadState) then
+					return
+				end
+				selectSlot(inventorySlotIndex, selectedSlot)
+			end,
 		})
 	end
 
-	local rootChildren: { [string]: React.ReactNode } = {
-		Hotbar = e("Frame", {
-			Size = UDim2.fromOffset(hotbarWidth, hotbarSidebarHeight),
-			Position = hotbarSidebarPosition,
-			AnchorPoint = hotbarAnchorPoint,
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			ZIndex = zIndex + 1,
-		}, hotbarChildren),
-		TrashScreen = e(TrashScreen, {
+	local rootChildren: { React.ReactNode } = {
+		e(HotbarRow, {
+			size = UDim2.fromOffset(hotbarWidth, hotbarSidebarHeight),
+			position = hotbarSidebarPosition,
+			anchorPoint = hotbarAnchorPoint,
+			zIndex = zIndex + 1,
+			gap = hotbarGap,
+			children = hotbarChildren,
+		}),
+		e(TrashScreen, {
 			layoutOrder = 3,
 			visible = showTrashScreen,
 			zIndex = zIndex + 7,
@@ -958,46 +842,30 @@ return function(props: InventoryHotbarProps)
 	}
 
 	if showExpandedGrid then
-		rootChildren.ExpandedInventoryContainer = e("Frame", {
-			Size = UDim2.fromOffset(gridContainerWidth, gridContainerHeight),
-			Position = inventoryPanelPosition,
-			AnchorPoint = inventoryPanelAnchorPoint,
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			ZIndex = zIndex + 1,
-		}, {
-			ExpandedInventory = e("Frame", {
-				Size = UDim2.fromOffset(gridContainerWidth, gridContainerHeight),
-				Position = UDim2.fromOffset(0, 0),
-				BackgroundTransparency = 1,
-				BorderSizePixel = 0,
-				ZIndex = zIndex + 2,
-			}, gridChildren),
-			InventoryColumnReveal = if showRevealOverlay
-				then e("Frame", {
-					Size = UDim2.fromOffset(gridContainerWidth, gridContainerHeight),
-					Position = UDim2.fromOffset(0, 0),
-					BackgroundTransparency = 1,
-					BorderSizePixel = 0,
-					ZIndex = zIndex + 6,
-					Active = true,
-					Selectable = true,
-				})
-				else nil,
-			CoinScreen = e(CoinScreen, {
-				layoutOrder = 2,
-				visible = showExpandedGrid,
-				zIndex = zIndex + 7,
-				position = UDim2.new(1, 0, 1, hotbarGap),
-				anchorPoint = Vector2.new(1, 0),
-				slotSize = gridSlotSize,
-				emergeOffset = coinEmerge.offset,
-				emergeTransparency = coinEmerge.transparency,
-			}),
+		rootChildren[#rootChildren + 1] = e(InventoryGrid, {
+			size = UDim2.fromOffset(gridContainerWidth, gridContainerHeight),
+			position = inventoryPanelPosition,
+			anchorPoint = inventoryPanelAnchorPoint,
+			zIndex = zIndex + 1,
+			showRevealOverlay = showRevealOverlay,
+			revealOverlayZIndex = zIndex + 6,
+			children = gridChildren,
+			extraChildren = {
+				e(CoinScreen, {
+					layoutOrder = 2,
+					visible = showExpandedGrid,
+					zIndex = zIndex + 7,
+					position = UDim2.new(1, 0, 1, hotbarGap),
+					anchorPoint = Vector2.new(1, 0),
+					slotSize = gridSlotSize,
+					emergeOffset = coinEmerge.offset,
+					emergeTransparency = coinEmerge.transparency,
+				}),
+			},
 		})
 	end
 
-	rootChildren.StatusLabel = if not InventoryServiceUtils.isLoadedState(renderState.loadState)
+	rootChildren[#rootChildren + 1] = if not InventoryServiceUtils.isLoadedState(renderState.loadState)
 		then e("TextLabel", {
 			Size = UDim2.fromOffset(0, 18),
 			AutomaticSize = Enum.AutomaticSize.X,
@@ -1019,7 +887,7 @@ return function(props: InventoryHotbarProps)
 			ZIndex = zIndex + 6,
 		})
 		else nil
-	rootChildren.ItemScreen = e(ItemScreen, {
+	rootChildren[#rootChildren + 1] = e(ItemScreen, {
 		layoutOrder = 99,
 		visible = props.visible ~= false,
 		zIndex = zIndex + 120,
