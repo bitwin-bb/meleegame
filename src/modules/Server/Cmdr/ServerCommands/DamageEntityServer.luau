@@ -2,8 +2,8 @@
 local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for DamageEntityServer.")
 
-local BossServiceUtils = require(gameRoot.Shared.Services.BossServiceUtils)
 local BossServiceServer = require(gameRoot.Server.Services.BossServiceServer)
+local BossServiceUtils = require(gameRoot.Shared.Services.BossServiceUtils)
 local NpcServiceServer = require(gameRoot.Server.Services.NpcServiceServer)
 
 type EntityEntry = {
@@ -234,7 +234,7 @@ end
 local function formatHealth(currentHpRaw: any, maxHpRaw: any): string
 	local currentHp = math.max(0, math.floor(BossServiceUtils.sanitizeNumber(currentHpRaw, 0, 0, 10 ^ 9) + 0.5))
 	local maxHp = math.max(currentHp, math.floor(BossServiceUtils.sanitizeNumber(maxHpRaw, currentHp, 0, 10 ^ 9) + 0.5))
-	return (`{currentHp}/{maxHp} HP`)
+	return `{currentHp}/{maxHp} HP`
 end
 
 local function applyNpcDamage(runtime: NpcRuntime, player: Player, amountRaw: number?): (number, string, string)
@@ -268,14 +268,14 @@ return function(_context, entity: EntityEntry, players: { Player }, amountRaw: n
 	for _, player in players do
 		local rootPart = resolvePlayerRootPart(player)
 		if rootPart == nil then
-			responseParts[#responseParts + 1] = (`Could not target anything for {player.Name} because their character was unavailable.`)
+			responseParts[#responseParts + 1] = `Could not target anything for {player.Name} because their character was unavailable.`
 			continue
 		end
 
 		if entity.Kind == "Npc" then
 			local runtime = findNearestNpcRuntime(entity, player, seenIds)
 			if runtime == nil then
-				responseParts[#responseParts + 1] = (`Could not find {entity.Name} near {player.Name}.`)
+				responseParts[#responseParts + 1] = `Could not find {entity.Name} near {player.Name}.`
 				continue
 			end
 
@@ -284,18 +284,19 @@ return function(_context, entity: EntityEntry, players: { Player }, amountRaw: n
 			local appliedDamage, displayName, healthText = applyNpcDamage(runtime, player, amountRaw)
 			if appliedDamage > 0 then
 				if runtime.hp <= 0 then
-					responseParts[#responseParts + 1] = (`Killed {displayName} near {player.Name} ({healthText}).`)
+					responseParts[#responseParts + 1] = `Killed {displayName} near {player.Name} ({healthText}).`
 				else
-					responseParts[#responseParts + 1] =
-						(`Damaged {displayName} near {player.Name} for {math.floor(appliedDamage + 0.5)} ({healthText}).`)
+					responseParts[#responseParts + 1] = `Damaged {displayName} near {player.Name} for {math.floor(
+						appliedDamage + 0.5
+					)} ({healthText}).`
 				end
 			else
-				responseParts[#responseParts + 1] = (`Could not damage {displayName} near {player.Name}.`)
+				responseParts[#responseParts + 1] = `Could not damage {displayName} near {player.Name}.`
 			end
 		elseif entity.Kind == "Boss" then
 			local boss = findNearestBoss(entity, player, seenIds)
 			if boss == nil then
-				responseParts[#responseParts + 1] = (`Could not find {entity.Name} near {player.Name}.`)
+				responseParts[#responseParts + 1] = `Could not find {entity.Name} near {player.Name}.`
 				continue
 			end
 
@@ -304,16 +305,17 @@ return function(_context, entity: EntityEntry, players: { Player }, amountRaw: n
 			local appliedDamage, displayName, healthText = applyBossDamage(boss, player, amountRaw)
 			if appliedDamage > 0 then
 				if boss.hp <= 0 then
-					responseParts[#responseParts + 1] = (`Killed {displayName} near {player.Name} ({healthText}).`)
+					responseParts[#responseParts + 1] = `Killed {displayName} near {player.Name} ({healthText}).`
 				else
-					responseParts[#responseParts + 1] =
-						(`Damaged {displayName} near {player.Name} for {math.floor(appliedDamage + 0.5)} ({healthText}).`)
+					responseParts[#responseParts + 1] = `Damaged {displayName} near {player.Name} for {math.floor(
+						appliedDamage + 0.5
+					)} ({healthText}).`
 				end
 			else
-				responseParts[#responseParts + 1] = (`Could not damage {displayName} near {player.Name}.`)
+				responseParts[#responseParts + 1] = `Could not damage {displayName} near {player.Name}.`
 			end
 		else
-			responseParts[#responseParts + 1] = (`Unsupported entity kind "{entity.Kind}".`)
+			responseParts[#responseParts + 1] = `Unsupported entity kind "{entity.Kind}".`
 		end
 	end
 

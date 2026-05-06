@@ -5,14 +5,14 @@ local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Signal = require(ReplicatedStorage.Packages.Signal)
-local Sift = require(ReplicatedStorage.Packages.Sift)
-local CameraShaker = require(ReplicatedStorage.Packages.EZCameraShake)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossServiceUtils)
+local CameraShaker = require(ReplicatedStorage.Packages.EZCameraShake)
 local EyeOfCthulhuPresentation = require(script:FindFirstAncestor("game").Shared.Classes.Boss.EyeOfCthulhu.Presentation)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local Sift = require(ReplicatedStorage.Packages.Sift)
+local Signal = require(ReplicatedStorage.Packages.Signal)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 
 type BossSnapshot = BossServiceUtils.BossSnapshot
 type BossServiceState = BossServiceUtils.BossServiceState
@@ -104,7 +104,10 @@ local function pushAnnouncement(textRaw: any)
 	end)
 end
 
-function BossServiceClient.ResolvePresentationModule(self: BossServiceClient, snapshot: BossSnapshot): PresentationModule?
+function BossServiceClient.ResolvePresentationModule(
+	self: BossServiceClient,
+	snapshot: BossSnapshot
+): PresentationModule?
 	local definition = BossServiceUtils.getRegistryEntryById(snapshot.bossId)
 	if definition == nil then
 		return nil
@@ -308,7 +311,11 @@ function BossServiceClient.StepVisuals(self: BossServiceClient, dtRaw: any)
 		end
 
 		local ensuredVisual = self:ensureVisual(snapshot)
-		if ensuredVisual ~= nil and ensuredVisual.presentationRuntime ~= nil and ensuredVisual.presentationModule ~= nil then
+		if
+			ensuredVisual ~= nil
+			and ensuredVisual.presentationRuntime ~= nil
+			and ensuredVisual.presentationModule ~= nil
+		then
 			ensuredVisual.presentationModule.step(ensuredVisual.presentationRuntime, dt)
 		end
 	end
@@ -409,4 +416,3 @@ type BossServiceClient = typeof(BossServiceClient) & {
 }
 
 return BossServiceClient :: BossServiceClient
-

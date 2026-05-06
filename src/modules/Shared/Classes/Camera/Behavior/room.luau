@@ -2,10 +2,10 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local BuildServiceClient = require(script:FindFirstAncestor("game").Client.Services.BuildServiceClient)
+local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local RoomScaleFactor = require(script:FindFirstAncestor("game").Shared.Modules.Math.RoomScaleFactor)
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
-local BuildServiceClient = require(script:FindFirstAncestor("game").Client.Services.BuildServiceClient)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
 
@@ -38,13 +38,16 @@ local AIR_TILE_ID = BuildServiceUtils.AIR_TILE_ID
 local function resolveWorldSpace(): (Vector3?, number?)
 	local worldGenerationClient = WorldGenerationServiceClient :: any
 	local worldGenerationState = worldGenerationClient.state
-	local tileSize = if typeof(worldGenerationState) == "table" and typeof(worldGenerationState.tileSize) == "number"
+	local tileSize = if typeof(worldGenerationState) == "table"
+			and typeof(worldGenerationState.tileSize) == "number"
 		then worldGenerationState.tileSize
 		else nil
 	local worldOrigin = nil :: Vector3?
 	if typeof(worldGenerationClient.worldOrigin) == "Vector3" then
 		worldOrigin = worldGenerationClient.worldOrigin
-	elseif typeof(worldGenerationState) == "table" and typeof((worldGenerationState :: any).worldOrigin) == "Vector3" then
+	elseif
+		typeof(worldGenerationState) == "table" and typeof((worldGenerationState :: any).worldOrigin) == "Vector3"
+	then
 		worldOrigin = (worldGenerationState :: any).worldOrigin
 	end
 	if worldOrigin ~= nil and tileSize ~= nil and tileSize > 0 then

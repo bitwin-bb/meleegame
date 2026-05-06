@@ -13,20 +13,14 @@ local Target = require(script:FindFirstAncestor("game").Shared.Classes.Camera.Ta
 
 local function expectVectorNear(actualRaw: any, expectedRaw: any, epsilon: number?)
 	if typeof(actualRaw) ~= "Vector3" or typeof(expectedRaw) ~= "Vector3" then
-		error(
-			("expected Vector3 values, got %s and %s"):format(typeof(actualRaw), typeof(expectedRaw)),
-			2
-		)
+		error(("expected Vector3 values, got %s and %s"):format(typeof(actualRaw), typeof(expectedRaw)), 2)
 	end
 
 	local actual = actualRaw :: Vector3
 	local expected = expectedRaw :: Vector3
 	local tolerance = epsilon or 1e-4
 	if (actual - expected).Magnitude > tolerance then
-		error(
-			("expected %s to be within %.6f of %s"):format(tostring(actual), tolerance, tostring(expected)),
-			2
-		)
+		error(("expected %s to be within %.6f of %s"):format(tostring(actual), tolerance, tostring(expected)), 2)
 	end
 end
 
@@ -132,13 +126,17 @@ return function()
 				derivedVelocityWeight = 1,
 			})
 
-			local result = predictor:resolve({
-				position = Vector3.new(10, 0, 0),
-				velocity = Vector3.zero,
-				cacheKey = "camera-test",
-			}, cache, {
-				now = 1,
-			})
+			local result = predictor:resolve(
+				{
+					position = Vector3.new(10, 0, 0),
+					velocity = Vector3.zero,
+					cacheKey = "camera-test",
+				},
+				cache,
+				{
+					now = 1,
+				}
+			)
 
 			expect(result.active).to.equal(true)
 			expectVectorNear(result.offset, Vector3.new(1, 0, 0), 1e-4)

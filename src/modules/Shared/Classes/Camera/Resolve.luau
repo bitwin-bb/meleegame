@@ -85,7 +85,9 @@ end
 
 local function resolveViewConfig(baseViewConfig: ViewConfig, overrideRaw: any): ViewConfig
 	local override = if typeof(overrideRaw) == "table" then overrideRaw else {}
-	local overrideViewConfig = if typeof((override :: any).viewConfig) == "table" then (override :: any).viewConfig else nil
+	local overrideViewConfig = if typeof((override :: any).viewConfig) == "table"
+		then (override :: any).viewConfig
+		else nil
 	local nextViewConfig = cloneViewConfig(baseViewConfig)
 
 	local source = if overrideViewConfig ~= nil then overrideViewConfig else override
@@ -200,7 +202,11 @@ function Resolve.Resolve(self: Resolve, contextRaw: any): ResolutionResult
 		leadTime = 0,
 		offset = Vector3.zero,
 	}
-	if subject ~= nil and typeof(self.predictor) == "table" and typeof((self.predictor :: any).resolve) == "function" then
+	if
+		subject ~= nil
+		and typeof(self.predictor) == "table"
+		and typeof((self.predictor :: any).resolve) == "function"
+	then
 		predicted = (self.predictor :: any):resolve(subject, self.cache, {
 			now = now,
 			deltaTime = deltaTime,
@@ -211,7 +217,9 @@ function Resolve.Resolve(self: Resolve, contextRaw: any): ResolutionResult
 
 	local targetPosition = if predicted.active == true and typeof(predicted.position) == "Vector3"
 		then predicted.position
-		else if subject ~= nil and typeof((subject :: any).position) == "Vector3" then (subject :: any).position else nil
+		else if subject ~= nil and typeof((subject :: any).position) == "Vector3"
+			then (subject :: any).position
+			else nil
 	local baseTargetPosition = if subject ~= nil and typeof((subject :: any).position) == "Vector3"
 		then (subject :: any).position
 		else nil
@@ -235,7 +243,9 @@ function Resolve.Resolve(self: Resolve, contextRaw: any): ResolutionResult
 		then (override :: any).lookPosition
 		else if subject ~= nil and typeof((subject :: any).lookPosition) == "Vector3"
 			then (subject :: any).lookPosition
-			else if targetPosition ~= nil then targetPosition + Vector3.new(0, resolvedViewConfig.lookHeight, 0) else nil
+			else if targetPosition ~= nil
+				then targetPosition + Vector3.new(0, resolvedViewConfig.lookHeight, 0)
+				else nil
 
 	local fieldOfView = resolvedViewConfig.fieldOfView
 	local cameraCFrame = nil :: CFrame?
@@ -256,15 +266,17 @@ function Resolve.Resolve(self: Resolve, contextRaw: any): ResolutionResult
 	elseif targetPosition ~= nil and lookPosition ~= nil then
 		local velocity = if predicted ~= nil and typeof(predicted.velocity) == "Vector3"
 			then predicted.velocity
-			else if subject ~= nil and typeof((subject :: any).velocity) == "Vector3" then (subject :: any).velocity else Vector3.zero
+			else if subject ~= nil and typeof((subject :: any).velocity) == "Vector3"
+				then (subject :: any).velocity
+				else Vector3.zero
 		local sidewaysSpeed = math.abs(velocity.Z)
 		local speedAlpha = if resolvedSettings.movementSpeedForMaxBack > 0
 			then math.clamp(sidewaysSpeed / resolvedSettings.movementSpeedForMaxBack, 0, 1)
 			else 0
 		local movementBackOffset = resolvedSettings.movementBackAmount * speedAlpha * resolvedSettings.movementBackSign
 
-		local baseCameraPosition =
-			targetPosition + Vector3.new(resolvedViewConfig.distance * resolvedSettings.sideSign, resolvedViewConfig.height, 0)
+		local baseCameraPosition = targetPosition
+			+ Vector3.new(resolvedViewConfig.distance * resolvedSettings.sideSign, resolvedViewConfig.height, 0)
 		local cameraToLook = baseCameraPosition - lookPosition
 		local backDirection = if cameraToLook.Magnitude > 0
 			then cameraToLook.Unit
@@ -292,7 +304,11 @@ function Resolve.Resolve(self: Resolve, contextRaw: any): ResolutionResult
 		})
 	end
 
-	if subject ~= nil and typeof(self.cache) == "table" and typeof((self.cache :: any).rememberSubject) == "function" then
+	if
+		subject ~= nil
+		and typeof(self.cache) == "table"
+		and typeof((self.cache :: any).rememberSubject) == "function"
+	then
 		(self.cache :: any):rememberSubject(
 			(subject :: any).cacheKey,
 			(subject :: any).kind,

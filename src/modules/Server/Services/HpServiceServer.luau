@@ -3,12 +3,12 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Cmdr.CmdrUtils)
 local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.HpServiceUtils)
-local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local PlayerDataServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerDataServiceServer)
+local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
 
 type HpServiceState = HpServiceUtils.HpServiceState
 
@@ -40,7 +40,12 @@ type PlayerDataServiceServerObject = {
 	waitForDataPromise: (self: PlayerDataServiceServerObject, player: Player, timeoutSecondsRaw: any) -> any,
 	isLoaded: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
 	getHpData: (self: PlayerDataServiceServerObject, player: Player, fallback: any) -> any,
-	setHpData: (self: PlayerDataServiceServerObject, player: Player, hpDataRaw: any, replicateToClientRaw: any) -> boolean,
+	setHpData: (
+		self: PlayerDataServiceServerObject,
+		player: Player,
+		hpDataRaw: any,
+		replicateToClientRaw: any
+	) -> boolean,
 	savePlayerData: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
 }
 
@@ -259,11 +264,7 @@ function HpServiceServer.RefreshStateFromHumanoid(self: HpServiceServer, player:
 	self:pushState(player)
 end
 
-function HpServiceServer.RetryLoadPersistedHealthLater(
-	self: HpServiceServer,
-	player: Player,
-	loadToken: number
-)
+function HpServiceServer.RetryLoadPersistedHealthLater(self: HpServiceServer, player: Player, loadToken: number)
 	task.delay(self.dataLoadRetryDelaySeconds, function()
 		local runtime = self.playerRuntimes[player]
 		if runtime == nil or runtime.loadToken ~= loadToken then
@@ -706,4 +707,3 @@ export type HpServiceServer = typeof(HpServiceServer) & {
 }
 
 return HpServiceServer :: HpServiceServer
-

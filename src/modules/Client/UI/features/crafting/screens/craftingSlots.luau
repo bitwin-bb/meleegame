@@ -7,6 +7,7 @@ local CraftingButton = require(script:FindFirstAncestor("game").Client.UI.featur
 local CraftingPanel = require(script:FindFirstAncestor("game").Client.UI.features.crafting.components.CraftingPanel)
 local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
 local IngredientSlot = require(script:FindFirstAncestor("game").Client.UI.features.crafting.components.IngredientSlot)
+local Layer = require(script:FindFirstAncestor("game").Client.UI.shared.Layer)
 local React = require(ReplicatedStorage.Packages.React)
 local RecipeDetails = require(script:FindFirstAncestor("game").Client.UI.features.crafting.components.RecipeDetails)
 local RecipeGrid = require(script:FindFirstAncestor("game").Client.UI.features.crafting.components.RecipeGrid)
@@ -18,6 +19,7 @@ local craftingThunks = require(script:FindFirstAncestor("game").Client.UI.featur
 local itemThunks = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemThunks)
 local useCraftMenuDrag = require(script:FindFirstAncestor("game").Client.UI.features.crafting.hooks.useCraftMenuDrag)
 local useCraftSlide = require(script:FindFirstAncestor("game").Client.UI.features.crafting.hooks.useCraftSlide)
+local useDebounceValue = require(script:FindFirstAncestor("game").Client.UI.shared.useDebounceValue)
 local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
 type CraftingState = craftingSlice.CraftingState
@@ -40,6 +42,7 @@ local RECIPE_SLOT_PADDING = 8
 local RECIPE_REQUIREMENT_SLOT_SIZE = 60
 local RECIPE_REQUIREMENT_SLOT_PADDING = 8
 local RECIPE_REQUIREMENT_ICON_SIZE = 30
+local SEARCH_DEBOUNCE_SECONDS = 0.15
 local MENU_OPEN_SPRING = {
 	frequency = 0.2,
 	damping = 1,
@@ -267,6 +270,19 @@ return function(props: CraftingSlotsProps): React.ReactNode
 	local searchText, setSearchText = React.useState(function(): string
 		return craftingState.searchQuery
 	end)
+	local lastAppliedSearchQueryRef = React.useRef(craftingState.searchQuery)
+	local searchQueryCommitInFlightRef = React.useRef(false)
+	local debouncedSearchText = useDebounceValue(searchText, SEARCH_DEBOUNCE_SECONDS)
+
+	local function commitSearchQuery(nextSearchText: string)
+		if nextSearchText == lastAppliedSearchQueryRef.current then
+			return
+		end
+
+		lastAppliedSearchQueryRef.current = nextSearchText
+		searchQueryCommitInFlightRef.current = true
+		craftingThunks.setSearchQuery(nextSearchText)
+	end
 
 	React.useEffect(function()
 		local stop = craftingThunks.start()
@@ -278,6 +294,26 @@ return function(props: CraftingSlotsProps): React.ReactNode
 	end, {})
 
 	React.useEffect(function()
+		if debouncedSearchText ~= searchText then
+			return
+		end
+
+		commitSearchQuery(debouncedSearchText)
+	end, { debouncedSearchText, searchText })
+
+	React.useEffect(function()
+		if searchQueryCommitInFlightRef.current then
+			if craftingState.searchQuery == lastAppliedSearchQueryRef.current then
+				searchQueryCommitInFlightRef.current = false
+			end
+			return
+		end
+
+		if craftingState.searchQuery == lastAppliedSearchQueryRef.current then
+			return
+		end
+
+		lastAppliedSearchQueryRef.current = craftingState.searchQuery
 		setSearchText(craftingState.searchQuery)
 	end, { craftingState.searchQuery })
 
@@ -392,80 +428,78 @@ return function(props: CraftingSlotsProps): React.ReactNode
 	local ingredientRows =
 		buildIngredientRows(if selectedRecipe ~= nil then selectedRecipe.preview else nil, zIndex + 4)
 
-	return e("Frame", {
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		LayoutOrder = props.layoutOrder or 12,
-		ZIndex = zIndex,
-		Visible = isRequestedVisible,
-	}, {
-		e(CraftingPanel, {
-			size = UDim2.fromOffset(PANEL_WIDTH, PANEL_HEIGHT),
-			position = UDim2.new(0.5, math.floor(animatedOffset.X), 0.5, math.floor(animatedOffset.Y)),
-			anchorPoint = Vector2.new(0.5, 0.5),
-			scale = panelScale,
-			panelImage = CRAFTING_MENU_IMAGE_ID,
-			panelTransparency = panelTransparency,
-			zIndex = zIndex + 1,
-			onDragInputBegan = function(rbx: GuiObject, inputObject: InputObject)
-				craftMenuDrag.onDragInputBegan(rbx, inputObject)
-			end,
-			onDragInputEnded = function(rbx: GuiObject, inputObject: InputObject)
-				craftMenuDrag.onDragInputEnded(rbx, inputObject)
-			end,
-			children = {
-				e(SearchBox, {
-					text = searchText,
-					image = CRAFTING_MENU_TEXTBOX_IMAGE_ID,
-					panelTransparency = panelTransparency,
-					zIndex = zIndex + 3,
-					onTextChanged = setSearchText,
-					onFocusLost = function()
-						craftingThunks.setSearchQuery(searchText)
-					end,
-				}),
-				e(CategoryTabs, {
-					categories = categoryTabs,
-					activeCategory = activeCategory,
-					categoryImage = CRAFTING_MENU_CATEGORY_IMAGE_ID,
-					panelTransparency = panelTransparency,
-					zIndex = zIndex + 3,
-					onActivated = function(categoryValue: string)
-						craftingThunks.setCategoryFilter(categoryValue)
-					end,
-				}),
-				e(RecipeGrid, {
-					image = CRAFTING_MENU_INNER_IMAGE_ID,
-					panelTransparency = panelTransparency,
-					slotSize = RECIPE_SLOT_SIZE,
-					slotPadding = RECIPE_SLOT_PADDING,
-					zIndex = zIndex + 3,
-					children = recipeChildren,
-				}),
-				e(RecipeDetails, {
-					image = CRAFTING_MENU_INNER_IMAGE_ID,
-					panelTransparency = panelTransparency,
-					slotSize = RECIPE_REQUIREMENT_SLOT_SIZE,
-					slotPadding = RECIPE_REQUIREMENT_SLOT_PADDING,
-					zIndex = zIndex + 3,
-					children = ingredientRows,
-				}),
-				e(CraftingButton, {
-					size = UDim2.new(1, -20, 0, 36),
-					position = UDim2.fromOffset(10, 416),
-					zIndex = zIndex + 4,
-					disabled = not canCraftSelected,
-					icon = ImageIds.finalCraftButton,
-					iconPressed = ImageIds.finalCraftButtonPressed,
-					text = if craftingState.isBulkCrafting then "Crafting..." else "Craft",
-					onActivated = function()
-						if canCraftSelected and selectedRecipe ~= nil then
-							craftingThunks.requestCraft(selectedRecipe.recipeId, 1)
+	return e(Layer, {
+		layoutOrder = props.layoutOrder or 12,
+		zIndex = zIndex,
+		visible = isRequestedVisible,
+		children = {
+			e(CraftingPanel, {
+				size = UDim2.fromOffset(PANEL_WIDTH, PANEL_HEIGHT),
+				position = UDim2.new(0.5, math.floor(animatedOffset.X), 0.5, math.floor(animatedOffset.Y)),
+				anchorPoint = Vector2.new(0.5, 0.5),
+				scale = panelScale,
+				panelImage = CRAFTING_MENU_IMAGE_ID,
+				panelTransparency = panelTransparency,
+				zIndex = zIndex + 1,
+				onDragInputBegan = function(rbx: GuiObject, inputObject: InputObject)
+					craftMenuDrag.onDragInputBegan(rbx, inputObject)
+				end,
+				onDragInputEnded = function(rbx: GuiObject, inputObject: InputObject)
+					craftMenuDrag.onDragInputEnded(rbx, inputObject)
+				end,
+				children = {
+					e(SearchBox, {
+						text = searchText,
+						image = CRAFTING_MENU_TEXTBOX_IMAGE_ID,
+						panelTransparency = panelTransparency,
+						zIndex = zIndex + 3,
+						onTextChanged = setSearchText,
+						onFocusLost = function()
+							commitSearchQuery(searchText)
+						end,
+					}),
+					e(CategoryTabs, {
+						categories = categoryTabs,
+						activeCategory = activeCategory,
+						categoryImage = CRAFTING_MENU_CATEGORY_IMAGE_ID,
+						panelTransparency = panelTransparency,
+						zIndex = zIndex + 3,
+						onActivated = function(categoryValue: string)
+							craftingThunks.setCategoryFilter(categoryValue)
+						end,
+					}),
+					e(RecipeGrid, {
+						image = CRAFTING_MENU_INNER_IMAGE_ID,
+						panelTransparency = panelTransparency,
+						slotSize = RECIPE_SLOT_SIZE,
+						slotPadding = RECIPE_SLOT_PADDING,
+						zIndex = zIndex + 3,
+						children = recipeChildren,
+					}),
+					e(RecipeDetails, {
+						image = CRAFTING_MENU_INNER_IMAGE_ID,
+						panelTransparency = panelTransparency,
+						slotSize = RECIPE_REQUIREMENT_SLOT_SIZE,
+						slotPadding = RECIPE_REQUIREMENT_SLOT_PADDING,
+						zIndex = zIndex + 3,
+						children = ingredientRows,
+					}),
+					e(CraftingButton, {
+						size = UDim2.new(1, -20, 0, 36),
+						position = UDim2.fromOffset(10, 416),
+						zIndex = zIndex + 4,
+						disabled = not canCraftSelected,
+						icon = ImageIds.finalCraftButton,
+						iconPressed = ImageIds.finalCraftButtonPressed,
+						text = if craftingState.isBulkCrafting then "Crafting..." else "Craft",
+						onActivated = function()
+							if canCraftSelected and selectedRecipe ~= nil then
+								craftingThunks.requestCraft(selectedRecipe.recipeId, 1)
+							end
 						end
-					end,
-				}),
-			},
-		}),
+					}),
+				},
+			}),
+		},
 	})
 end

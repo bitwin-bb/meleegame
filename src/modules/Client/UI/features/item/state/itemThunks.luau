@@ -3,10 +3,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
-local itemSlice = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemSlice)
-local inventoryThunks = require(script:FindFirstAncestor("game").Client.UI.features.inventory.state.inventoryThunks)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
+local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
+local inventoryThunks = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.inventoryThunks)
+local itemSlice = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemSlice)
 
 type InventoryItemStack = InventoryServiceUtils.InventoryItemStack
 type ItemDragState = itemSlice.ItemDragState
@@ -161,7 +161,7 @@ local function resolveItemTypeFromStack(stackRaw: any): string?
 	end
 
 	local stack = stackRaw :: { [string]: any }
-	local metadata = if typeof(stack.metadata) == "table" then (stack.metadata :: { [string]: any }) else nil
+	local metadata = if typeof(stack.metadata) == "table" then stack.metadata :: { [string]: any } else nil
 	if metadata ~= nil then
 		local typedFromMetadata = normalizeTypeKey(metadata.itemType or metadata.itemtype or metadata.type)
 		if typedFromMetadata ~= nil then
@@ -219,7 +219,7 @@ end
 function itemThunks.ResolveItemIconByType(itemTypeRaw: any, itemIdRaw: any?): string?
 	local normalizedType = normalizeTypeKey(itemTypeRaw)
 	local normalizedItemId = normalizeTypeKey(itemIdRaw)
-	local itemIcons = if typeof(ImageIds.itemIcons) == "table" then (ImageIds.itemIcons :: { [string]: any }) else nil
+	local itemIcons = if typeof(ImageIds.itemIcons) == "table" then ImageIds.itemIcons :: { [string]: any } else nil
 
 	if itemIcons ~= nil and normalizedItemId ~= nil then
 		local byItemId = itemIcons[normalizedItemId]
@@ -286,7 +286,9 @@ function itemThunks.ResolveHoverTextForStack(stackRaw: any, slotIndexRaw: any): 
 	local stack = stackRaw :: { [string]: any }
 	local definition = resolveItemDefinition(stack.itemId)
 	local name = if definition ~= nil then definition.name else toTitleCase(stack.itemId)
-	local amount = if typeof(stack.amount) == "number" and stack.amount == stack.amount then math.max(0, stack.amount) else 0
+	local amount = if typeof(stack.amount) == "number" and stack.amount == stack.amount
+		then math.max(0, stack.amount)
+		else 0
 	local useCase = if definition ~= nil then definition.useCase else nil
 	local description = if definition ~= nil then definition.description else nil
 	local statsText = if definition ~= nil then formatStats(definition.stats) else ""
@@ -313,7 +315,12 @@ function itemThunks.BeginDrag(slotIndexRaw: any, stackRaw: any, pointerPositionR
 	return itemSlice.beginDrag(slotIndexRaw, stackRaw, pointerPositionRaw, itemType, icon)
 end
 
-function itemThunks.BeginSplitDrag(slotIndexRaw: any, stackRaw: any, pointerPositionRaw: any, amountRaw: any): ItemDragState
+function itemThunks.BeginSplitDrag(
+	slotIndexRaw: any,
+	stackRaw: any,
+	pointerPositionRaw: any,
+	amountRaw: any
+): ItemDragState
 	local itemId = if typeof(stackRaw) == "table" then (stackRaw :: { [string]: any }).itemId else nil
 	local itemType = resolveItemTypeFromStack(stackRaw)
 	local icon = itemThunks.ResolveItemIconByType(itemType, itemId)

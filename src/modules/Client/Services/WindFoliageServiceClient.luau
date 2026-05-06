@@ -3,15 +3,15 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local WindFoliage = require(script:FindFirstAncestor("game").Shared.Classes.WindFoliage)
+local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
-local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
+local WindFoliage = require(script:FindFirstAncestor("game").Shared.Classes.WindFoliage)
 
 type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (any),
+	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
 	Clean: (self: JanitorClass) -> (),
 	Destroy: (self: JanitorClass) -> (),
 }
@@ -82,13 +82,18 @@ local function snapshotTier(tierRaw: any): { [string]: number }?
 	local tier = tierRaw :: any
 	local lodState = tier.lodState
 	return {
-		updateInterval = if typeof(tier.updateInterval) == "number" and tier.updateInterval == tier.updateInterval
+		updateInterval = if typeof(tier.updateInterval) == "number"
+				and tier.updateInterval == tier.updateInterval
 			then tier.updateInterval
 			else nil,
-		windScale = if typeof(lodState) == "table" and typeof(lodState.windScale) == "number" and lodState.windScale == lodState.windScale
+		windScale = if typeof(lodState) == "table"
+				and typeof(lodState.windScale) == "number"
+				and lodState.windScale == lodState.windScale
 			then lodState.windScale
 			else nil,
-		detailScale = if typeof(lodState) == "table" and typeof(lodState.detailScale) == "number" and lodState.detailScale == lodState.detailScale
+		detailScale = if typeof(lodState) == "table"
+				and typeof(lodState.detailScale) == "number"
+				and lodState.detailScale == lodState.detailScale
 			then lodState.detailScale
 			else nil,
 	}
@@ -101,8 +106,12 @@ local function snapshotSpring(springRaw: any): { [string]: number }?
 
 	local spring = springRaw :: any
 	return {
-		frequency = if typeof(spring.frequency) == "number" and spring.frequency == spring.frequency then spring.frequency else nil,
-		damping = if typeof(spring.damping) == "number" and spring.damping == spring.damping then spring.damping else nil,
+		frequency = if typeof(spring.frequency) == "number" and spring.frequency == spring.frequency
+			then spring.frequency
+			else nil,
+		damping = if typeof(spring.damping) == "number" and spring.damping == spring.damping
+			then spring.damping
+			else nil,
 	}
 end
 
@@ -121,10 +130,8 @@ local function applyTierState(
 	local tier = tierRaw :: any
 	local baseline = baselineRaw :: any
 	if typeof(baseline.updateInterval) == "number" then
-		tier.updateInterval = math.max(
-			MIN_WEATHER_UPDATE_INTERVAL,
-			baseline.updateInterval * (1 + stormAlpha * updateIntervalIncrease)
-		)
+		tier.updateInterval =
+			math.max(MIN_WEATHER_UPDATE_INTERVAL, baseline.updateInterval * (1 + stormAlpha * updateIntervalIncrease))
 	end
 
 	local lodState = tier.lodState
@@ -257,17 +264,15 @@ function WindFoliageServiceClient.SetWeatherWind(self: any, stormAlphaRaw: any, 
 		windField.gustTimeScale = state.gustTimeScale * (1 + stormAlpha * profile.gustTimeScale)
 	end
 	if state.detailSpatialScale ~= nil then
-		windField.detailSpatialScale = math.max(1, state.detailSpatialScale * (1 - stormAlpha * profile.detailSpatialScale))
+		windField.detailSpatialScale =
+			math.max(1, state.detailSpatialScale * (1 - stormAlpha * profile.detailSpatialScale))
 	end
 	if state.detailTimeScale ~= nil then
 		windField.detailTimeScale = state.detailTimeScale * (1 + stormAlpha * profile.detailTimeScale)
 	end
 	if state.directionJitterRadians ~= nil then
-		windField.directionJitterRadians = math.clamp(
-			state.directionJitterRadians * (1 + stormAlpha * profile.directionJitterRadians),
-			0,
-			math.pi
-		)
+		windField.directionJitterRadians =
+			math.clamp(state.directionJitterRadians * (1 + stormAlpha * profile.directionJitterRadians), 0, math.pi)
 	end
 
 	local tiers = state.tiers
@@ -296,14 +301,7 @@ function WindFoliageServiceClient.SetWeatherWind(self: any, stormAlphaRaw: any, 
 			profile.farWindScale,
 			profile.farDetailScale
 		)
-		applyTierState(
-			lodController.tierFrozen,
-			tiers.frozen,
-			stormAlpha,
-			profile.frozenUpdateIntervalIncrease,
-			0,
-			0
-		)
+		applyTierState(lodController.tierFrozen, tiers.frozen, stormAlpha, profile.frozenUpdateIntervalIncrease, 0, 0)
 	end
 
 	local updateBudget = state.updateBudget

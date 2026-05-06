@@ -1,9 +1,9 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local LootServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.LootServiceUtils)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 
 type JanitorClass = {
 	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
@@ -64,4 +64,3 @@ type LootServiceClient = typeof(LootServiceClient) & {
 }
 
 return LootServiceClient :: LootServiceClient
-

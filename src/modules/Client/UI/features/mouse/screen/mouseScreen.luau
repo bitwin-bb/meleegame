@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local PortalTargets = require(script:FindFirstAncestor("game").Client.UI.core.utils.PortalTargets)
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
+local Layer = require(script:FindFirstAncestor("game").Client.UI.shared.Layer)
 local mouseSlice = require(script:FindFirstAncestor("game").Client.UI.features.mouse.state.mouseSlice)
 local mouseThunks = require(script:FindFirstAncestor("game").Client.UI.features.mouse.state.mouseThunks)
 local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
@@ -43,28 +44,27 @@ return function(props: MouseScreenProps): React.ReactNode
 	local hotspotOffset = props.hotspotOffset or DEFAULT_HOTSPOT_OFFSET
 	local cursorPosition = currentMouseState.position - hotspotOffset
 
-	local rootElement = e("Frame", {
-		[React.Tag] = "IsCustomMouseCursor",
-		Size = UDim2.fromScale(1, 1),
-		Position = UDim2.fromScale(0, 0),
-		LayoutOrder = props.layoutOrder or 1000,
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		Active = false,
-		Selectable = false,
-		ZIndex = zIndex,
-	}, {
-		e("ImageLabel", {
+	local rootElement = e(Layer, {
+		layoutOrder = props.layoutOrder or 1000,
+		zIndex = zIndex,
+		active = false,
+		native = {
 			[React.Tag] = "IsCustomMouseCursor",
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			Active = false,
 			Selectable = false,
-			Image = currentMouseState.imageId,
-			Position = UDim2.fromOffset(math.floor(cursorPosition.X), math.floor(cursorPosition.Y)),
-			Size = UDim2.fromOffset(math.floor(cursorSize.X), math.floor(cursorSize.Y)),
-			ZIndex = zIndex + 1,
-		}),
+		},
+		children = {
+			e("ImageLabel", {
+				[React.Tag] = "IsCustomMouseCursor",
+				BackgroundTransparency = 1,
+				BorderSizePixel = 0,
+				Active = false,
+				Selectable = false,
+				Image = currentMouseState.imageId,
+				Position = UDim2.fromOffset(math.floor(cursorPosition.X), math.floor(cursorPosition.Y)),
+				Size = UDim2.fromOffset(math.floor(cursorSize.X), math.floor(cursorSize.Y)),
+				ZIndex = zIndex + 1,
+			}),
+		},
 	})
 
 	local portalTarget = PortalTargets.resolveUiScreenGui()

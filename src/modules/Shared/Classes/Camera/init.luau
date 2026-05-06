@@ -1,7 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local SideView = require(script.SideView)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
+local SideView = require(script.SideView)
 
 local Camera = {}
 Camera.__index = Camera

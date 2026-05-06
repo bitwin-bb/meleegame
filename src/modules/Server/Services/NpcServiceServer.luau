@@ -1,30 +1,30 @@
 --!strict
-local Players = game:GetService("Players")
 local PhysicsService = game:GetService("PhysicsService")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
-local Bounds = require(script:FindFirstAncestor("game").Shared.Modules.Math.Bounds)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
-local StringUtils = require(script:FindFirstAncestor("game").Shared.Modules.Core.StringUtils)
-local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Modules.Platform.InstanceUtils)
-local Slime = require(script:FindFirstAncestor("game").Shared.Classes.Npc.AiTypes.slime)
-local EnemyHitbox = require(script:FindFirstAncestor("game").Shared.Classes.EnemyHitbox)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
-local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
-local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.NpcServiceUtils)
-local HpServiceServer = require(script:FindFirstAncestor("game").Server.Services.HpServiceServer)
 local AudioServiceServer = require(script:FindFirstAncestor("game").Server.Services.AudioServiceServer)
-local LootServiceServer = require(script:FindFirstAncestor("game").Server.Services.LootServiceServer)
+local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
+local Bounds = require(script:FindFirstAncestor("game").Shared.Modules.Math.Bounds)
+local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
+local EnemyHitbox = require(script:FindFirstAncestor("game").Shared.Classes.EnemyHitbox)
 local GoreServiceServer = require(script:FindFirstAncestor("game").Server.Services.GoreServiceServer)
+local HpServiceServer = require(script:FindFirstAncestor("game").Server.Services.HpServiceServer)
+local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Modules.Platform.InstanceUtils)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local LootServiceServer = require(script:FindFirstAncestor("game").Server.Services.LootServiceServer)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.NpcServiceUtils)
 local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
+local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local Slime = require(script:FindFirstAncestor("game").Shared.Classes.Npc.AiTypes.slime)
+local StringUtils = require(script:FindFirstAncestor("game").Shared.Modules.Core.StringUtils)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local WorldGenerationServiceServer =
 	require(script:FindFirstAncestor("game").Server.Services.WorldGenerationServiceServer)
 
@@ -70,7 +70,7 @@ type GoreServiceServerObject = {
 }
 
 type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (any),
+	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
 	Clean: (self: JanitorClass) -> (),
 	Destroy: (self: JanitorClass) -> (),
 }
@@ -459,7 +459,11 @@ local function resolveSlimeAudioBindings(runtime: NpcRuntime): { [string]: any }
 	return DEFAULT_SLIME_AUDIO_BINDINGS
 end
 
-function NpcServiceServer.ResolveRuntimeSoundSource(self: NpcServiceServer, runtime: NpcRuntime, soundNameRaw: any): any?
+function NpcServiceServer.ResolveRuntimeSoundSource(
+	self: NpcServiceServer,
+	runtime: NpcRuntime,
+	soundNameRaw: any
+): any?
 	if typeof(soundNameRaw) ~= "string" or soundNameRaw == "" then
 		return nil
 	end
@@ -793,12 +797,7 @@ function NpcServiceServer.DamageNpcFromHitPart(
 	return self:applyRuntimeDamage(runtime, damageRaw, source, damageContextRaw)
 end
 
-function NpcServiceServer.OnEnemyHitPlayer(
-	self: NpcServiceServer,
-	runtimeIdRaw: any,
-	playerRaw: any,
-	damageRaw: any
-)
+function NpcServiceServer.OnEnemyHitPlayer(self: NpcServiceServer, runtimeIdRaw: any, playerRaw: any, damageRaw: any)
 	if typeof(runtimeIdRaw) ~= "string" or runtimeIdRaw == "" then
 		return
 	end
@@ -1000,9 +999,10 @@ function NpcServiceServer.IsSpawnGapClear(
 	overlapParams.FilterDescendantsInstances = excludeInstances
 	overlapParams.MaxParts = DEFAULT_SPAWN_EMPTY_GAP_MAX_PARTS
 
-	local queryCenter =
-		spawnCFrame.Position + Vector3.new(0, DEFAULT_SPAWN_EMPTY_GAP_HALF_EXTENTS.Y + DEFAULT_SPAWN_EMPTY_GAP_FLOOR_BUFFER, 0)
-	local parts = Workspace:GetPartBoundsInBox(CFrame.new(queryCenter), DEFAULT_SPAWN_EMPTY_GAP_HALF_EXTENTS * 2, overlapParams)
+	local queryCenter = spawnCFrame.Position
+		+ Vector3.new(0, DEFAULT_SPAWN_EMPTY_GAP_HALF_EXTENTS.Y + DEFAULT_SPAWN_EMPTY_GAP_FLOOR_BUFFER, 0)
+	local parts =
+		Workspace:GetPartBoundsInBox(CFrame.new(queryCenter), DEFAULT_SPAWN_EMPTY_GAP_HALF_EXTENTS * 2, overlapParams)
 	for _, part in parts do
 		if part:IsA("BasePart") and part.CanCollide then
 			return false
@@ -1041,12 +1041,17 @@ function NpcServiceServer.GetNextPlayerRelativeSpawnCFrame(self: NpcServiceServe
 
 		for _ = 1, DEFAULT_PLAYER_RELATIVE_SPAWN_ATTEMPTS_PER_PLAYER do
 			local spawnSign = if self.random:NextNumber() < 0.5 then -1 else 1
-			local zOffset = self.random:NextNumber(DEFAULT_PLAYER_RELATIVE_MIN_Z_OFFSET, DEFAULT_PLAYER_RELATIVE_MAX_Z_OFFSET)
+			local zOffset =
+				self.random:NextNumber(DEFAULT_PLAYER_RELATIVE_MIN_Z_OFFSET, DEFAULT_PLAYER_RELATIVE_MAX_Z_OFFSET)
 			local yOffset = self.random:NextNumber(0, DEFAULT_PLAYER_RELATIVE_Y_OFFSET)
 			local spawnPosition = rootPart.Position + Vector3.new(0, yOffset, spawnSign * zOffset)
 
 			local snappedSpawnCFrame = self:resolveSurfaceSpawnCFrame(spawnPosition, character)
-			if snappedSpawnCFrame ~= nil and not self:isCorruptionBiomePosition(snappedSpawnCFrame.Position) and self:isSpawnGapClear(snappedSpawnCFrame, character) then
+			if
+				snappedSpawnCFrame ~= nil
+				and not self:isCorruptionBiomePosition(snappedSpawnCFrame.Position)
+				and self:isSpawnGapClear(snappedSpawnCFrame, character)
+			then
 				return snappedSpawnCFrame
 			end
 		end
@@ -1132,11 +1137,7 @@ function NpcServiceServer.CreateDefaultSpawnConfigAt(self: NpcServiceServer, spa
 	return configs[1]
 end
 
-function NpcServiceServer.GetDebugSpawnCFrameForPlayer(
-	self: NpcServiceServer,
-	playerRaw: any,
-	indexRaw: any
-): CFrame?
+function NpcServiceServer.GetDebugSpawnCFrameForPlayer(self: NpcServiceServer, playerRaw: any, indexRaw: any): CFrame?
 	if typeof(playerRaw) ~= "Instance" or not playerRaw:IsA("Player") then
 		return self:getNextSpawnCFrame()
 	end
@@ -1159,7 +1160,8 @@ function NpcServiceServer.GetDebugSpawnCFrameForPlayer(
 	local candidatePosition = rootPart.Position + Vector3.new(0, yOffset, directionSign * zOffset)
 	local snappedSpawnCFrame = self:resolveSurfaceSpawnCFrame(candidatePosition, character)
 
-	if snappedSpawnCFrame ~= nil
+	if
+		snappedSpawnCFrame ~= nil
 		and not self:isCorruptionBiomePosition(snappedSpawnCFrame.Position)
 		and self:isSpawnGapClear(snappedSpawnCFrame, character)
 	then
@@ -1415,8 +1417,9 @@ function NpcServiceServer.EmitRuntimeSlimeBlood(
 	end
 
 	local slimeBloodTemplate = resolveSlimeBloodEffectTemplate()
-	local bloodEffect =
-		(if slimeBloodTemplate ~= nil then slimeBloodTemplate:Clone() else createFallbackSlimeBloodEffect()) :: BasePart
+	local bloodEffect = (
+		if slimeBloodTemplate ~= nil then slimeBloodTemplate:Clone() else createFallbackSlimeBloodEffect()
+	) :: BasePart
 	if slimeBloodTemplate == nil then
 		if self.missingSlimeBloodTemplateWarningShown ~= true then
 			self.missingSlimeBloodTemplateWarningShown = true
@@ -1502,11 +1505,10 @@ function NpcServiceServer.EmitRuntimeSlimeBlood(
 		end
 	end)
 
-	local cleanupDelay =
-		math.max(
-			MIN_SLIME_BLOOD_CLEANUP_SECONDS,
-			SLIME_BLOOD_EMIT_WINDOW_SECONDS + maxLifetime + DEFAULT_SLIME_BLOOD_CLEANUP_BUFFER_SECONDS
-		)
+	local cleanupDelay = math.max(
+		MIN_SLIME_BLOOD_CLEANUP_SECONDS,
+		SLIME_BLOOD_EMIT_WINDOW_SECONDS + maxLifetime + DEFAULT_SLIME_BLOOD_CLEANUP_BUFFER_SECONDS
+	)
 	task.delay(cleanupDelay, function()
 		local activeGoreService = self.goreService
 		if temporarySlimeBloodGoreRuntimeId ~= nil and activeGoreService ~= nil then
@@ -1611,7 +1613,11 @@ function NpcServiceServer.TryPlaySoundAction(
 	return true, nil, nil
 end
 
-function NpcServiceServer.TryPlayAnimationAction(self: NpcServiceServer, runtime: NpcRuntime, action: AnimationEventAction): boolean
+function NpcServiceServer.TryPlayAnimationAction(
+	self: NpcServiceServer,
+	runtime: NpcRuntime,
+	action: AnimationEventAction
+): boolean
 	local slimeModel = runtime.slime.model
 	local animationSource = if action.animation ~= nil then action.animation else action.source
 	if animationSource == nil and action.animationName ~= nil then
@@ -1804,7 +1810,12 @@ function NpcServiceServer.EnsureRuntimeAnimationEventBindings(self: NpcServiceSe
 	runtime.animationEventsBound = boundConnections > 0
 end
 
-function NpcServiceServer.UpdateRuntime(self: NpcServiceServer, runtime: NpcRuntime, reason: string, refreshBiome: boolean)
+function NpcServiceServer.UpdateRuntime(
+	self: NpcServiceServer,
+	runtime: NpcRuntime,
+	reason: string,
+	refreshBiome: boolean
+)
 	if runtime.isRemoving then
 		return
 	end
@@ -1827,9 +1838,11 @@ function NpcServiceServer.UpdateRuntime(self: NpcServiceServer, runtime: NpcRunt
 
 	local desiredState = self:resolveRuntimeState(runtime)
 	local transitioned = self:transitionRuntimeState(runtime, desiredState, reason, false)
-	if transitioned
+	if
+		transitioned
 		and runtime.state == previousState
-		and (runtime.hp ~= previousHp or runtime.maxHp ~= previousMaxHp or runtime.isAlive ~= previousAlive) then
+		and (runtime.hp ~= previousHp or runtime.maxHp ~= previousMaxHp or runtime.isAlive ~= previousAlive)
+	then
 		local payload = self:createSnapshot(runtime) :: any
 		payload.previousState = previousState
 		self:broadcast(NpcServiceUtils.CLIENT_METHOD_NPC_STATE_CHANGED, payload)
@@ -1875,23 +1888,25 @@ function NpcServiceServer.TrackRuntime(self: NpcServiceServer, runtime: NpcRunti
 		self:updateRuntime(runtime, "npcAttacked", false)
 	end))
 
-	runtime.janitor:GiveChore(runtime.slime.signals.damaged:Connect(function(damageAmount: number, _source: any?, hpRaw: number?)
-		if self.goreService ~= nil then
-			local didEmit = self.goreService:onNpcDamaged(runtime.id, runtime.slime.rootPart, damageAmount)
-			if not didEmit then
-				self:syncRuntimeGoreRegistration(runtime)
-				self.goreService:onNpcDamaged(runtime.id, runtime.slime.rootPart, damageAmount)
+	runtime.janitor:GiveChore(
+		runtime.slime.signals.damaged:Connect(function(damageAmount: number, _source: any?, hpRaw: number?)
+			if self.goreService ~= nil then
+				local didEmit = self.goreService:onNpcDamaged(runtime.id, runtime.slime.rootPart, damageAmount)
+				if not didEmit then
+					self:syncRuntimeGoreRegistration(runtime)
+					self.goreService:onNpcDamaged(runtime.id, runtime.slime.rootPart, damageAmount)
+				end
 			end
-		end
 
-		if not runtime.deathGoreEmitted and typeof(hpRaw) == "number" and hpRaw <= 0 then
-			local deathOrigin = self:resolveRuntimeDeathOrigin(runtime)
-			self:emitRuntimeDeathGore(runtime, deathOrigin)
-		end
+			if not runtime.deathGoreEmitted and typeof(hpRaw) == "number" and hpRaw <= 0 then
+				local deathOrigin = self:resolveRuntimeDeathOrigin(runtime)
+				self:emitRuntimeDeathGore(runtime, deathOrigin)
+			end
 
-		self:syncRuntimeVitals(runtime)
-		self:updateRuntime(runtime, "damaged", false)
-	end))
+			self:syncRuntimeVitals(runtime)
+			self:updateRuntime(runtime, "damaged", false)
+		end)
+	)
 
 	runtime.janitor:GiveChore(runtime.slime.signals.died:Connect(function()
 		self:emitRuntimeDeathGore(runtime, nil)
@@ -2010,7 +2025,10 @@ function NpcServiceServer.SpawnSlime(self: NpcServiceServer, spawnConfig: SlimeS
 		lastReason = "spawn",
 		biomeName = "Unknown",
 		biomeReady = false,
-		animationEvents = NpcServiceUtils.sanitizeAnimationEventsByTrack(spawnConfig.animationEvents, defaultAnimationEvents),
+		animationEvents = NpcServiceUtils.sanitizeAnimationEventsByTrack(
+			spawnConfig.animationEvents,
+			defaultAnimationEvents
+		),
 		stateGraph = NpcServiceUtils.createDefaultStateMachineGraph(),
 		updatedAt = os.clock(),
 		janitor = runtimeJanitor,
@@ -2266,4 +2284,3 @@ type NpcServiceServer = typeof(NpcServiceServer) & {
 }
 
 return NpcServiceServer :: NpcServiceServer
-

@@ -4,10 +4,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local ManaServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.ManaServiceUtils)
-local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local PlayerDataServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerDataServiceServer)
+local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
 
 type ManaServiceState = ManaServiceUtils.ManaServiceState
 
@@ -85,12 +85,7 @@ function ManaServiceServer.GetRuntime(self: ManaServiceServer, player: Player): 
 	return nextRuntime
 end
 
-function ManaServiceServer.PushState(
-	self: ManaServiceServer,
-	player: Player,
-	runtime: PlayerRuntime,
-	forceRaw: any
-)
+function ManaServiceServer.PushState(self: ManaServiceServer, player: Player, runtime: PlayerRuntime, forceRaw: any)
 	local force = forceRaw == true
 	local now = os.clock()
 	if not force and now - runtime.lastStatePushAt < STATE_PUSH_INTERVAL then
@@ -237,15 +232,7 @@ function ManaServiceServer.StepRegen(self: ManaServiceServer, dt: number)
 		if state.regenPerSecond > 0 and state.mana < state.maxMana then
 			local nextMana = math.clamp(state.mana + state.regenPerSecond * dt, 0, state.maxMana)
 			if math.abs(nextMana - state.mana) >= REGEN_PUSH_EPSILON then
-				self:applyState(
-					player,
-					runtime,
-					nextMana,
-					state.maxMana,
-					state.regenPerSecond,
-					true,
-					false
-				)
+				self:applyState(player, runtime, nextMana, state.maxMana, state.regenPerSecond, true, false)
 			end
 		end
 
@@ -346,7 +333,12 @@ function ManaServiceServer.GetRegenPerSecond(self: ManaServiceServer, player: Pl
 	return runtime.state.regenPerSecond
 end
 
-function ManaServiceServer.CanConsumeMana(self: ManaServiceServer, player: Player?, amountRaw: any, _contextRaw: any): boolean
+function ManaServiceServer.CanConsumeMana(
+	self: ManaServiceServer,
+	player: Player?,
+	amountRaw: any,
+	_contextRaw: any
+): boolean
 	if player == nil then
 		return false
 	end
@@ -362,7 +354,12 @@ function ManaServiceServer.CanConsumeMana(self: ManaServiceServer, player: Playe
 	return runtime.state.mana + 1e-6 >= amount
 end
 
-function ManaServiceServer.ConsumeMana(self: ManaServiceServer, player: Player?, amountRaw: any, _contextRaw: any): boolean
+function ManaServiceServer.ConsumeMana(
+	self: ManaServiceServer,
+	player: Player?,
+	amountRaw: any,
+	_contextRaw: any
+): boolean
 	if player == nil then
 		return false
 	end
@@ -413,15 +410,7 @@ function ManaServiceServer.AddMana(self: ManaServiceServer, player: Player?, amo
 		return runtime.state.mana
 	end
 
-	self:applyState(
-		player,
-		runtime,
-		nextMana,
-		runtime.state.maxMana,
-		runtime.state.regenPerSecond,
-		true,
-		false
-	)
+	self:applyState(player, runtime, nextMana, runtime.state.maxMana, runtime.state.regenPerSecond, true, false)
 	if runtime.hasResolvedPersistedLoad and os.clock() - runtime.lastPersistAt >= PERSIST_INTERVAL_SECONDS then
 		self:persistRuntime(player, runtime)
 	end
@@ -442,22 +431,19 @@ function ManaServiceServer.SetMana(self: ManaServiceServer, player: Player?, man
 		return runtime.state.mana
 	end
 
-	self:applyState(
-		player,
-		runtime,
-		nextMana,
-		runtime.state.maxMana,
-		runtime.state.regenPerSecond,
-		true,
-		false
-	)
+	self:applyState(player, runtime, nextMana, runtime.state.maxMana, runtime.state.regenPerSecond, true, false)
 	if runtime.hasResolvedPersistedLoad and os.clock() - runtime.lastPersistAt >= PERSIST_INTERVAL_SECONDS then
 		self:persistRuntime(player, runtime)
 	end
 	return runtime.state.mana
 end
 
-function ManaServiceServer.SetMaxMana(self: ManaServiceServer, player: Player?, maxManaRaw: any, _contextRaw: any): number?
+function ManaServiceServer.SetMaxMana(
+	self: ManaServiceServer,
+	player: Player?,
+	maxManaRaw: any,
+	_contextRaw: any
+): number?
 	if player == nil then
 		return nil
 	end
@@ -472,22 +458,19 @@ function ManaServiceServer.SetMaxMana(self: ManaServiceServer, player: Player?, 
 		return runtime.state.maxMana
 	end
 
-	self:applyState(
-		player,
-		runtime,
-		nextMana,
-		nextMaxMana,
-		runtime.state.regenPerSecond,
-		true,
-		false
-	)
+	self:applyState(player, runtime, nextMana, nextMaxMana, runtime.state.regenPerSecond, true, false)
 	if runtime.hasResolvedPersistedLoad and os.clock() - runtime.lastPersistAt >= PERSIST_INTERVAL_SECONDS then
 		self:persistRuntime(player, runtime)
 	end
 	return runtime.state.maxMana
 end
 
-function ManaServiceServer.SetRegenPerSecond(self: ManaServiceServer, player: Player?, regenRaw: any, _contextRaw: any): number?
+function ManaServiceServer.SetRegenPerSecond(
+	self: ManaServiceServer,
+	player: Player?,
+	regenRaw: any,
+	_contextRaw: any
+): number?
 	if player == nil then
 		return nil
 	end
@@ -501,15 +484,7 @@ function ManaServiceServer.SetRegenPerSecond(self: ManaServiceServer, player: Pl
 		return runtime.state.regenPerSecond
 	end
 
-	self:applyState(
-		player,
-		runtime,
-		runtime.state.mana,
-		runtime.state.maxMana,
-		nextRegen,
-		true,
-		false
-	)
+	self:applyState(player, runtime, runtime.state.mana, runtime.state.maxMana, nextRegen, true, false)
 	if runtime.hasResolvedPersistedLoad and os.clock() - runtime.lastPersistAt >= PERSIST_INTERVAL_SECONDS then
 		self:persistRuntime(player, runtime)
 	end
@@ -610,4 +585,3 @@ export type ManaServiceServer = typeof(ManaServiceServer) & {
 }
 
 return ManaServiceServer :: ManaServiceServer
-

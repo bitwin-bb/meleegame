@@ -2,8 +2,8 @@
 local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for GiveServer.")
 
-local ItemRegistry = require(gameRoot.Shared.Modules.Items.Registry)
 local InventoryServiceServer = require(gameRoot.Server.Services.InventoryServiceServer)
+local ItemRegistry = require(gameRoot.Shared.Modules.Items.Registry)
 
 local function joinNames(names: { string }): string
 	return table.concat(names, ", ")
@@ -12,7 +12,7 @@ end
 return function(_context, itemIdRaw: string, players: { Player }, amountRaw: number)
 	local itemId = ItemRegistry.resolveCanonicalItemId(itemIdRaw)
 	if itemId == nil then
-		return (`Unknown item "{itemIdRaw}".`)
+		return `Unknown item "{itemIdRaw}".`
 	end
 
 	local definition = ItemRegistry.resolveDefinition(itemId)
@@ -30,7 +30,7 @@ return function(_context, itemIdRaw: string, players: { Player }, amountRaw: num
 		if result.added >= amount and result.leftover <= 0 then
 			delivered[#delivered + 1] = player.Name
 		elseif result.added > 0 then
-			partial[#partial + 1] = (`{player.Name} (+{result.added}, {result.leftover} leftover)`)
+			partial[#partial + 1] = `{player.Name} (+{result.added}, {result.leftover} leftover)`
 		else
 			failed[#failed + 1] = player.Name
 		end
@@ -38,14 +38,13 @@ return function(_context, itemIdRaw: string, players: { Player }, amountRaw: num
 
 	local responseParts = {}
 	if #delivered > 0 then
-		responseParts[#responseParts + 1] = (`Gave {itemName} x{amount} to {joinNames(delivered)}.`)
+		responseParts[#responseParts + 1] = `Gave {itemName} x{amount} to {joinNames(delivered)}.`
 	end
 	if #partial > 0 then
-		responseParts[#responseParts + 1] = (`Partially added for {joinNames(partial)}.`)
+		responseParts[#responseParts + 1] = `Partially added for {joinNames(partial)}.`
 	end
 	if #failed > 0 then
-		responseParts[#responseParts + 1] =
-			(`Failed for {joinNames(failed)} because their inventory was unavailable or full.`)
+		responseParts[#responseParts + 1] = `Failed for {joinNames(failed)} because their inventory was unavailable or full.`
 	end
 
 	return table.concat(responseParts, " ")

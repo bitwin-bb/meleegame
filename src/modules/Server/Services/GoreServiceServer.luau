@@ -2,10 +2,10 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local GoreServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.GoreServiceUtils)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
 local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
-local GoreServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.GoreServiceUtils)
 
 local GoreServiceServer = {}
 local SHARED_LARGE_BLOOD_POOL_SIZE = NumberRange.new(0.95, 1.7)
@@ -57,11 +57,10 @@ local function buildRuntimeFromConfig(entityId: string, model: Model, configRaw:
 	local defaultEmitDeathGibs = not isPlayerEntity
 
 	local bloodColor = GoreServiceUtils.sanitizeColor((source :: any).bloodColor, defaultBloodColor)
-	local damageBloodAmount = GoreServiceUtils.sanitizeBloodAmount(
-		(source :: any).damageBloodAmount,
-		defaultDamageBloodAmount
-	)
-	local deathBloodAmount = GoreServiceUtils.sanitizeBloodAmount((source :: any).deathBloodAmount, defaultDeathBloodAmount)
+	local damageBloodAmount =
+		GoreServiceUtils.sanitizeBloodAmount((source :: any).damageBloodAmount, defaultDamageBloodAmount)
+	local deathBloodAmount =
+		GoreServiceUtils.sanitizeBloodAmount((source :: any).deathBloodAmount, defaultDeathBloodAmount)
 	local deathGibCount = GoreServiceUtils.sanitizeGibCount((source :: any).deathGibCount, defaultDeathGibCount)
 	local emitDeathGibs = GoreServiceUtils.sanitizeBoolean((source :: any).emitDeathGibs, defaultEmitDeathGibs)
 
@@ -132,7 +131,12 @@ function GoreServiceServer.GetEntityRuntime(self: GoreServiceServer, entityIdRaw
 	return self.entitiesById[entityId]
 end
 
-function GoreServiceServer.RegisterEntity(self: GoreServiceServer, entityIdRaw: any, modelRaw: any, configRaw: any?): boolean
+function GoreServiceServer.RegisterEntity(
+	self: GoreServiceServer,
+	entityIdRaw: any,
+	modelRaw: any,
+	configRaw: any?
+): boolean
 	local entityId = sanitizeEntityId(entityIdRaw)
 	if entityId == nil then
 		return false
@@ -207,14 +211,7 @@ function GoreServiceServer.EmitEntityBlood(
 		settings.DropletColor = runtime.bloodColor
 	end
 
-	self:broadcast(
-		GoreServiceUtils.NETWORK_METHOD_EMIT_BLOOD,
-		runtime.entityId,
-		origin,
-		nil,
-		amount,
-		settings
-	)
+	self:broadcast(GoreServiceUtils.NETWORK_METHOD_EMIT_BLOOD, runtime.entityId, origin, nil, amount, settings)
 	return true
 end
 
@@ -230,7 +227,9 @@ function GoreServiceServer.EmitEntityDamage(
 	end
 
 	local damageAmount = if typeof(damageRaw) == "number" and damageRaw == damageRaw then math.max(0, damageRaw) else 0
-	local scaledAmount = if damageAmount > 0 then runtime.damageBloodAmount + math.floor(damageAmount * 0.25 + 0.5) else runtime.damageBloodAmount
+	local scaledAmount = if damageAmount > 0
+		then runtime.damageBloodAmount + math.floor(damageAmount * 0.25 + 0.5)
+		else runtime.damageBloodAmount
 	return self:emitEntityBlood(entityIdRaw, originRaw, scaledAmount, nil)
 end
 
@@ -254,11 +253,7 @@ function GoreServiceServer.EmitEntityDeath(self: GoreServiceServer, entityIdRaw:
 	return didEmitBlood
 end
 
-function GoreServiceServer.RegisterPlayerCharacter(
-	self: GoreServiceServer,
-	playerRaw: any,
-	characterRaw: any
-): boolean
+function GoreServiceServer.RegisterPlayerCharacter(self: GoreServiceServer, playerRaw: any, characterRaw: any): boolean
 	local entityId = GoreServiceUtils.makePlayerEntityId(playerRaw)
 	if entityId == nil then
 		return false
@@ -292,7 +287,12 @@ function GoreServiceServer.UnregisterPlayer(self: GoreServiceServer, playerRaw: 
 	return self:unregisterEntity(entityId)
 end
 
-function GoreServiceServer.OnPlayerDamaged(self: GoreServiceServer, playerRaw: any, originRaw: any, damageRaw: any?): boolean
+function GoreServiceServer.OnPlayerDamaged(
+	self: GoreServiceServer,
+	playerRaw: any,
+	originRaw: any,
+	damageRaw: any?
+): boolean
 	local entityId = GoreServiceUtils.makePlayerEntityId(playerRaw)
 	if entityId == nil then
 		return false
@@ -308,7 +308,12 @@ function GoreServiceServer.OnPlayerDied(self: GoreServiceServer, playerRaw: any,
 	return self:emitEntityDeath(entityId, originRaw)
 end
 
-function GoreServiceServer.RegisterNpcEntity(self: GoreServiceServer, runtimeIdRaw: any, modelRaw: any, configRaw: any?): boolean
+function GoreServiceServer.RegisterNpcEntity(
+	self: GoreServiceServer,
+	runtimeIdRaw: any,
+	modelRaw: any,
+	configRaw: any?
+): boolean
 	local entityId = GoreServiceUtils.makeNpcEntityId(runtimeIdRaw)
 	if entityId == nil then
 		return false
@@ -343,7 +348,12 @@ function GoreServiceServer.UnregisterNpcEntity(self: GoreServiceServer, runtimeI
 	return self:unregisterEntity(entityId)
 end
 
-function GoreServiceServer.OnNpcDamaged(self: GoreServiceServer, runtimeIdRaw: any, originRaw: any, damageRaw: any?): boolean
+function GoreServiceServer.OnNpcDamaged(
+	self: GoreServiceServer,
+	runtimeIdRaw: any,
+	originRaw: any,
+	damageRaw: any?
+): boolean
 	local entityId = GoreServiceUtils.makeNpcEntityId(runtimeIdRaw)
 	if entityId == nil then
 		return false
@@ -383,10 +393,8 @@ function GoreServiceServer.EmitNpcSlimeBlood(
 	end
 
 	local emitCount = GoreServiceUtils.sanitizeBloodAmount(emitCountRaw, DEFAULT_SLIME_BLOOD_EMIT_COUNT)
-	local followDuration = GoreServiceUtils.sanitizeEffectDuration(
-		followDurationRaw,
-		DEFAULT_SLIME_BLOOD_FOLLOW_DURATION
-	)
+	local followDuration =
+		GoreServiceUtils.sanitizeEffectDuration(followDurationRaw, DEFAULT_SLIME_BLOOD_FOLLOW_DURATION)
 	local dropletAmount = GoreServiceUtils.sanitizeBloodAmount(dropletAmountRaw, DEFAULT_SLIME_BLOOD_DROPLET_AMOUNT)
 	local originPosition = if typeof(origin) == "Vector3" then origin else (origin :: BasePart).Position
 
@@ -447,4 +455,3 @@ type GoreServiceServer = typeof(GoreServiceServer) & {
 }
 
 return GoreServiceServer :: GoreServiceServer
-

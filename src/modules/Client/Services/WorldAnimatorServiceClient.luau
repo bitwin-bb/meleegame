@@ -5,10 +5,10 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
 local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
+local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local WorldAnimatorServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.WorldAnimatorServiceUtils)
 
@@ -17,7 +17,7 @@ type ChunkAnimationType = WorldAnimatorServiceUtils.ChunkAnimationType
 type ChunkAnimationEasing = WorldAnimatorServiceUtils.ChunkAnimationEasing
 
 type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (any),
+	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
 	Clean: (self: JanitorClass) -> (),
 	Destroy: (self: JanitorClass) -> (),
 }
@@ -163,7 +163,10 @@ function WorldAnimatorServiceClient.EnsureRenderLoop(self: WorldAnimatorServiceC
 	end)
 end
 
-function WorldAnimatorServiceClient.RestoreOriginalChunkVisibility(self: WorldAnimatorServiceClient, animation: ChunkAnimationState)
+function WorldAnimatorServiceClient.RestoreOriginalChunkVisibility(
+	self: WorldAnimatorServiceClient,
+	animation: ChunkAnimationState
+)
 	for index, part in animation.originalParts do
 		pcall(function()
 			part.LocalTransparencyModifier = animation.originalLocalTransparencyModifiers[index] or 0
@@ -171,7 +174,11 @@ function WorldAnimatorServiceClient.RestoreOriginalChunkVisibility(self: WorldAn
 	end
 end
 
-function WorldAnimatorServiceClient.StopAnimation(self: WorldAnimatorServiceClient, animation: ChunkAnimationState, revealOriginal: boolean)
+function WorldAnimatorServiceClient.StopAnimation(
+	self: WorldAnimatorServiceClient,
+	animation: ChunkAnimationState,
+	revealOriginal: boolean
+)
 	if animation.isStopping then
 		return
 	end
@@ -298,7 +305,10 @@ function WorldAnimatorServiceClient.EvaluateChunkAnimation(
 	return "started", targetPivot
 end
 
-function WorldAnimatorServiceClient.StartChunkAnimation(self: WorldAnimatorServiceClient, chunkModel: Model): StartAnimationResult
+function WorldAnimatorServiceClient.StartChunkAnimation(
+	self: WorldAnimatorServiceClient,
+	chunkModel: Model
+): StartAnimationResult
 	if chunkModel.Parent == nil then
 		return "skip"
 	end

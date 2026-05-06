@@ -124,13 +124,19 @@ local function resolveCmdrRoots(): (Folder, Folder, Folder)
 	assert(sharedRoot ~= nil and sharedRoot:IsA("Folder"), "Shared folder was not found in the Nevermore game root.")
 
 	local sharedCmdrRoot = sharedRoot:FindFirstChild("Cmdr")
-	assert(sharedCmdrRoot ~= nil and sharedCmdrRoot:IsA("Folder"), "Cmdr folder was not found in the Nevermore shared root.")
+	assert(
+		sharedCmdrRoot ~= nil and sharedCmdrRoot:IsA("Folder"),
+		"Cmdr folder was not found in the Nevermore shared root."
+	)
 
 	local serverRoot = gameRoot:FindFirstChild("Server")
 	assert(serverRoot ~= nil and serverRoot:IsA("Folder"), "Server folder was not found in the Nevermore game root.")
 
 	local serverCmdrRoot = serverRoot:FindFirstChild("Cmdr")
-	assert(serverCmdrRoot ~= nil and serverCmdrRoot:IsA("Folder"), "Cmdr folder was not found in the Nevermore server root.")
+	assert(
+		serverCmdrRoot ~= nil and serverCmdrRoot:IsA("Folder"),
+		"Cmdr folder was not found in the Nevermore server root."
+	)
 
 	local cmdrTypes = sharedCmdrRoot:FindFirstChild("Types")
 	local sharedCommands = sharedCmdrRoot:FindFirstChild("Commands")
@@ -142,7 +148,10 @@ local function resolveCmdrRoots(): (Folder, Folder, Folder)
 	return cmdrTypes, sharedCommands, serverCommands
 end
 
-local function collectModuleScriptsByKey(folder: Instance, useServerModuleKeys: boolean?): { [string]: { ModuleScript } }
+local function collectModuleScriptsByKey(
+	folder: Instance,
+	useServerModuleKeys: boolean?
+): { [string]: { ModuleScript } }
 	local modulesByKey = {}
 
 	for _, child in folder:GetChildren() do
@@ -189,11 +198,15 @@ end
 local function tryRequireCommandDefinition(moduleScript: ModuleScript): (boolean, any, string?)
 	local ok, result = pcall(require, moduleScript)
 	if not ok then
-		return false, nil, `[CmdrBootstrapServer] Failed to require shared Cmdr module {moduleScript:GetFullName()}: {result}`
+		return false,
+			nil,
+			`[CmdrBootstrapServer] Failed to require shared Cmdr module {moduleScript:GetFullName()}: {result}`
 	end
 
 	if typeof(result) ~= "table" then
-		return false, nil, `[CmdrBootstrapServer] Shared Cmdr module {moduleScript:GetFullName()} returned {typeof(result)} instead of a table.`
+		return false,
+			nil,
+			`[CmdrBootstrapServer] Shared Cmdr module {moduleScript:GetFullName()} returned {typeof(result)} instead of a table.`
 	end
 
 	local commandName = trim((result :: any).Name)
@@ -209,7 +222,9 @@ end
 local function tryRequireCommandExecutor(moduleScript: ModuleScript): (boolean, any, string?)
 	local ok, result = pcall(require, moduleScript)
 	if not ok then
-		return false, nil, `[CmdrBootstrapServer] Failed to require server Cmdr module {moduleScript:GetFullName()}: {result}`
+		return false,
+			nil,
+			`[CmdrBootstrapServer] Failed to require server Cmdr module {moduleScript:GetFullName()}: {result}`
 	end
 
 	if typeof(result) ~= "function" then
@@ -286,7 +301,11 @@ end
 local function waitForCmdrCommandModuleMaps(
 	sharedFolder: Instance,
 	serverFolder: Instance
-): ({ [string]: { ModuleScript } }, { [string]: { ModuleScript } }, { string })
+): (
+	{ [string]: { ModuleScript } },
+	{ [string]: { ModuleScript } },
+	{ string }
+)
 	local deadline = os.clock() + CMDR_COMMAND_LOAD_TIMEOUT_SECONDS
 
 	while true do
@@ -321,7 +340,10 @@ local function warnDuplicateModules(kind: string, moduleName: string, modules: {
 	end
 
 	warn(
-		`[CmdrBootstrapServer] Found duplicate {kind} Cmdr modules named "{moduleName}". Using the first valid candidate from: {table.concat(fullNames, "; ")}`
+		`[CmdrBootstrapServer] Found duplicate {kind} Cmdr modules named "{moduleName}". Using the first valid candidate from: {table.concat(
+			fullNames,
+			"; "
+		)}`
 	)
 end
 
@@ -333,11 +355,15 @@ end
 
 local function registerCmdrCommands(cmdrService: any, sharedFolder: Instance, serverFolder: Instance): number
 	local registeredCount = 0
-	local sharedModulesByKey, serverModulesByKey, missingServerKeys = waitForCmdrCommandModuleMaps(sharedFolder, serverFolder)
+	local sharedModulesByKey, serverModulesByKey, missingServerKeys =
+		waitForCmdrCommandModuleMaps(sharedFolder, serverFolder)
 
 	if #missingServerKeys > 0 then
 		warn(
-			`[CmdrBootstrapServer] Timed out waiting for server Cmdr executor modules in {serverFolder:GetFullName()}. Missing keys: {table.concat(missingServerKeys, ", ")}`
+			`[CmdrBootstrapServer] Timed out waiting for server Cmdr executor modules in {serverFolder:GetFullName()}. Missing keys: {table.concat(
+				missingServerKeys,
+				", "
+			)}`
 		)
 	end
 

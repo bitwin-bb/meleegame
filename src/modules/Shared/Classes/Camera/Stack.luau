@@ -125,7 +125,8 @@ function Stack.Push(self: Stack, entryRaw: any): number
 	self.nextOrder += 1
 
 	local now = os.clock()
-	local durationSeconds = if typeof((source :: any).durationSeconds) == "number" and (source :: any).durationSeconds >= 0
+	local durationSeconds = if typeof((source :: any).durationSeconds) == "number"
+			and (source :: any).durationSeconds >= 0
 		then (source :: any).durationSeconds
 		else nil
 	local explicitExpiresAt = if typeof((source :: any).expiresAt) == "number" then (source :: any).expiresAt else nil
@@ -138,13 +139,17 @@ function Stack.Push(self: Stack, entryRaw: any): number
 		label = if trim((source :: any).label) ~= "" then trim((source :: any).label) else "",
 		enabled = (source :: any).enabled ~= false,
 		createdAt = now,
-		expiresAt = if explicitExpiresAt ~= nil then explicitExpiresAt else if durationSeconds ~= nil then now + durationSeconds else nil,
+		expiresAt = if explicitExpiresAt ~= nil
+			then explicitExpiresAt
+			else if durationSeconds ~= nil then now + durationSeconds else nil,
 		subject = (source :: any).subject,
 		target = (source :: any).target,
 		position = if typeof((source :: any).position) == "Vector3" then (source :: any).position else nil,
 		velocity = if typeof((source :: any).velocity) == "Vector3" then (source :: any).velocity else nil,
 		lookPosition = if typeof((source :: any).lookPosition) == "Vector3" then (source :: any).lookPosition else nil,
-		cameraPosition = if typeof((source :: any).cameraPosition) == "Vector3" then (source :: any).cameraPosition else nil,
+		cameraPosition = if typeof((source :: any).cameraPosition) == "Vector3"
+			then (source :: any).cameraPosition
+			else nil,
 		cameraCFrame = if typeof((source :: any).cameraCFrame) == "CFrame" then (source :: any).cameraCFrame else nil,
 		fieldOfView = if typeof((source :: any).fieldOfView) == "number" then (source :: any).fieldOfView else nil,
 		viewConfig = cloneDictionary((source :: any).viewConfig),
@@ -236,7 +241,10 @@ function Stack.Resolve(self: Stack, nowRaw: any): OverrideEntry?
 			bestEntry = entry
 			continue
 		end
-		if entry.priority > bestEntry.priority or (entry.priority == bestEntry.priority and entry.order > bestEntry.order) then
+		if
+			entry.priority > bestEntry.priority
+			or (entry.priority == bestEntry.priority and entry.order > bestEntry.order)
+		then
 			bestEntry = entry
 		end
 	end

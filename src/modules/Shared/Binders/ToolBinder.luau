@@ -2,11 +2,11 @@
 
 local Players = game:GetService("Players")
 
+local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
+local MagicServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.MagicServiceUtils)
+local MeleeServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.MeleeServiceUtils)
 local ResolveItem = require(script:FindFirstAncestor("game").Shared.Modules.Game.Format.ResolveItem)
 local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Modules.Game.Format.ResolveToolInstance)
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
-local MeleeServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.MeleeServiceUtils)
-local MagicServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.MagicServiceUtils)
 local TagBinder = require(script.Parent.TagBinder)
 
 local ToolBinder = {}
@@ -107,10 +107,13 @@ function ToolBinder.Resolve(toolOrInstanceRaw: any): ToolResolution
 	local itemId = ResolveToolInstance.resolveToolItemId(tool)
 	local itemType = ResolveToolInstance.resolveToolItemType(tool)
 	local definition = if itemId ~= nil then ItemRegistry.resolveDefinition(itemId) else nil
-	local templates = if itemId ~= nil then ResolveItem.resolve(itemId) else { primaryTemplate = nil, toolTemplate = nil }
+	local templates = if itemId ~= nil
+		then ResolveItem.resolve(itemId)
+		else { primaryTemplate = nil, toolTemplate = nil }
 	local ownerPlayer, ownerCharacter = resolveOwnerPlayer(tool)
-	local deployable = if typeof(definition) == "table" and typeof((definition :: { [string]: any }).deployable) == "table"
-		then ((definition :: { [string]: any }).deployable :: { [string]: any })
+	local deployable = if typeof(definition) == "table"
+			and typeof((definition :: { [string]: any }).deployable) == "table"
+		then (definition :: { [string]: any }).deployable :: { [string]: any }
 		else nil
 	local isMelee = if itemId ~= nil
 		then MeleeServiceUtils.resolveWeaponConfig(itemId) ~= nil or MeleeServiceUtils.isMeleeTool(tool)

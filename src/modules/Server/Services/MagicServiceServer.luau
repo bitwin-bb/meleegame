@@ -5,19 +5,19 @@ local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local BossServiceServer = require(script:FindFirstAncestor("game").Server.Services.BossServiceServer)
+local HpServiceServer = require(script:FindFirstAncestor("game").Server.Services.HpServiceServer)
+local InventoryServiceServer = require(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Magic = require(script:FindFirstAncestor("game").Shared.Classes.Magic)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
-local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local MagicServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.MagicServiceUtils)
-local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerServiceUtils)
-local InventoryServiceServer = require(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
 local ManaServiceServer = require(script:FindFirstAncestor("game").Server.Services.ManaServiceServer)
-local BossServiceServer = require(script:FindFirstAncestor("game").Server.Services.BossServiceServer)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
 local NpcServiceServer = require(script:FindFirstAncestor("game").Server.Services.NpcServiceServer)
-local HpServiceServer = require(script:FindFirstAncestor("game").Server.Services.HpServiceServer)
 local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
+local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerServiceUtils)
+local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 
 type WeaponRuntimeConfig = MagicServiceUtils.WeaponRuntimeConfig
 type ModifierStats = MagicServiceUtils.ModifierStats
@@ -1157,7 +1157,7 @@ function MagicServiceServer.HandleProjectileHit(
 		end
 	end
 
-	if projectile.config.projectile.canHitNpcs and (not npcDamaged) and self.bossService ~= nil then
+	if projectile.config.projectile.canHitNpcs and not npcDamaged and self.bossService ~= nil then
 		local bossDamage = self.bossService:damageBossFromHitPart(hitPart, damage, projectile.caster, "MagicProjectile")
 		if bossDamage > 0 then
 			didDamage = true
@@ -1941,4 +1941,3 @@ type MagicServiceServer = typeof(MagicServiceServer) & {
 }
 
 return MagicServiceServer :: MagicServiceServer
-

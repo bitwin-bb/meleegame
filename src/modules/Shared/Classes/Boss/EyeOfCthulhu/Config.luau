@@ -381,13 +381,17 @@ function EyeOfCthulhuConfig.Resolve(configRaw: any): EyeOfCthulhuConfig
 		BossServiceUtils.sanitizeNumber((source :: any).phase2HoverDuration, config.phase1HoverDuration, 0.01, 10)
 	config.phase2AttackDelayMin = BossServiceUtils.sanitizeNumber(
 		(source :: any).phase2AttackDelayMin,
-		if (source :: any).phase2HoverDuration ~= nil then config.phase2HoverDuration else config.phase1ChargeSetDelayMin,
+		if (source :: any).phase2HoverDuration ~= nil
+			then config.phase2HoverDuration
+			else config.phase1ChargeSetDelayMin,
 		0.01,
 		10
 	)
 	config.phase2AttackDelayMax = BossServiceUtils.sanitizeNumber(
 		(source :: any).phase2AttackDelayMax,
-		if (source :: any).phase2HoverDuration ~= nil then config.phase2AttackDelayMin else config.phase1ChargeSetDelayMax,
+		if (source :: any).phase2HoverDuration ~= nil
+			then config.phase2AttackDelayMin
+			else config.phase1ChargeSetDelayMax,
 		config.phase2AttackDelayMin,
 		10
 	)

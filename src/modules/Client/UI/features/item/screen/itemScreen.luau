@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local PortalTargets = require(script:FindFirstAncestor("game").Client.UI.core.utils.PortalTargets)
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
+local Layer = require(script:FindFirstAncestor("game").Client.UI.shared.Layer)
 local itemSlice = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemSlice)
 local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
@@ -70,16 +71,15 @@ return function(props: ItemScreenProps): React.ReactNode
 		})
 	end
 
-	local rootElement = e("Frame", {
-		Size = UDim2.fromScale(1, 1),
-		Position = UDim2.fromScale(0, 0),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		LayoutOrder = props.layoutOrder or 20,
-		ZIndex = zIndex,
-		Active = false,
-		Selectable = false,
-	}, children)
+	local rootElement = e(Layer, {
+		layoutOrder = props.layoutOrder or 20,
+		zIndex = zIndex,
+		active = false,
+		native = {
+			Selectable = false,
+		},
+		children = children,
+	})
 
 	local portalTarget = PortalTargets.resolveUiScreenGui()
 	if portalTarget ~= nil then

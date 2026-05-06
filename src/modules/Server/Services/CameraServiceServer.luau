@@ -2,8 +2,8 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local CameraServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.CameraServiceUtils)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 
 type CameraState = CameraServiceUtils.CameraState
 
@@ -84,4 +84,3 @@ type CameraServiceServer = typeof(CameraServiceServer) & {
 }
 
 return CameraServiceServer :: CameraServiceServer
-

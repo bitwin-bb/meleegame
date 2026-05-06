@@ -2,8 +2,8 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 
 type AudioServiceState = AudioServiceUtils.AudioServiceState
 
@@ -197,5 +197,3 @@ type AudioServiceServer = typeof(AudioServiceServer) & {
 }
 
 return AudioServiceServer :: AudioServiceServer
-
-

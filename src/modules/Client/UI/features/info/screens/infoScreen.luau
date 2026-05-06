@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local PortalTargets = require(script:FindFirstAncestor("game").Client.UI.core.utils.PortalTargets)
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
+local Layer = require(script:FindFirstAncestor("game").Client.UI.shared.Layer)
 local TextLabel = require(script:FindFirstAncestor("game").Client.UI.core.primitives.TextLabel)
 local infoState = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoState)
 local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
@@ -40,55 +41,52 @@ return function(props: InfoScreenProps): React.ReactNode
 	local offset = props.cursorOffset or DEFAULT_CURSOR_OFFSET
 	local targetPosition = hoverState.mousePosition + offset
 
-	local rootElement = e("Frame", {
-		Size = UDim2.fromScale(1, 1),
-		Position = UDim2.fromScale(0, 0),
-		LayoutOrder = props.layoutOrder or 999,
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		Active = false,
-		ZIndex = zIndex,
-	}, {
-		e(TextLabel, {
-			text = hoverState.text,
-			size = UDim2.fromOffset(0, 0),
-			position = UDim2.fromOffset(math.floor(targetPosition.X), math.floor(targetPosition.Y)),
-			automaticSize = Enum.AutomaticSize.XY,
-			backgroundColor3 = Color3.fromRGB(22, 28, 36),
-			backgroundTransparency = 0.18,
-			borderSizePixel = 0,
-			textColor3 = Color3.fromRGB(245, 249, 255),
-			textSize = 14,
-			textXAlignment = Enum.TextXAlignment.Left,
-			textYAlignment = Enum.TextYAlignment.Center,
-			zIndex = zIndex + 1,
-			effects = {
-				shadow = {
-					enabled = true,
-					color = Color3.fromRGB(0, 0, 0),
-					transparency = 0.65,
-					offset = Vector2.new(1, 1),
-					layers = 1,
+	local rootElement = e(Layer, {
+		layoutOrder = props.layoutOrder or 999,
+		zIndex = zIndex,
+		active = false,
+		children = {
+			e(TextLabel, {
+				text = hoverState.text,
+				size = UDim2.fromOffset(0, 0),
+				position = UDim2.fromOffset(math.floor(targetPosition.X), math.floor(targetPosition.Y)),
+				automaticSize = Enum.AutomaticSize.XY,
+				backgroundColor3 = Color3.fromRGB(22, 28, 36),
+				backgroundTransparency = 0.18,
+				borderSizePixel = 0,
+				textColor3 = Color3.fromRGB(245, 249, 255),
+				textSize = 14,
+				textXAlignment = Enum.TextXAlignment.Left,
+				textYAlignment = Enum.TextYAlignment.Center,
+				zIndex = zIndex + 1,
+				effects = {
+					shadow = {
+						enabled = true,
+						color = Color3.fromRGB(0, 0, 0),
+						transparency = 0.65,
+						offset = Vector2.new(1, 1),
+						layers = 1,
+					},
 				},
-			},
-			children = {
-				e("UIPadding", {
-					PaddingLeft = UDim.new(0, 10),
-					PaddingRight = UDim.new(0, 10),
-					PaddingTop = UDim.new(0, 6),
-					PaddingBottom = UDim.new(0, 6),
-				}),
-				e("UICorner", {
-					CornerRadius = UDim.new(0, 8),
-				}),
-				e("UIStroke", {
-					ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-					Color = Color3.fromRGB(120, 144, 170),
-					Transparency = 0.4,
-					Thickness = 1,
-				}),
-			},
-		}),
+				children = {
+					e("UIPadding", {
+						PaddingLeft = UDim.new(0, 10),
+						PaddingRight = UDim.new(0, 10),
+						PaddingTop = UDim.new(0, 6),
+						PaddingBottom = UDim.new(0, 6),
+					}),
+					e("UICorner", {
+						CornerRadius = UDim.new(0, 8),
+					}),
+					e("UIStroke", {
+						ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+						Color = Color3.fromRGB(120, 144, 170),
+						Transparency = 0.4,
+						Thickness = 1,
+					}),
+				},
+			}),
+		},
 	})
 
 	local portalTarget = PortalTargets.resolveUiScreenGui()

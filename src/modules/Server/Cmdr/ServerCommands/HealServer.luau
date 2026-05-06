@@ -18,7 +18,7 @@ return function(_context, players: { Player }, amountRaw: number?)
 		end
 
 		if nextHealth ~= nil then
-			healed[#healed + 1] = (`{player.Name} ({math.floor(nextHealth + 0.5)} HP)`)
+			healed[#healed + 1] = `{player.Name} ({math.floor(nextHealth + 0.5)} HP)`
 		else
 			failed[#failed + 1] = player.Name
 		end
@@ -26,11 +26,10 @@ return function(_context, players: { Player }, amountRaw: number?)
 
 	local responseParts = {}
 	if #healed > 0 then
-		responseParts[#responseParts + 1] = (`Healed {table.concat(healed, ", ")}.`)
+		responseParts[#responseParts + 1] = `Healed {table.concat(healed, ", ")}.`
 	end
 	if #failed > 0 then
-		responseParts[#responseParts + 1] =
-			(`Could not heal {table.concat(failed, ", ")} because their humanoid was unavailable.`)
+		responseParts[#responseParts + 1] = `Could not heal {table.concat(failed, ", ")} because their humanoid was unavailable.`
 	end
 
 	return table.concat(responseParts, " ")

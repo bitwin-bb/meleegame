@@ -1,20 +1,20 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
-local RobloxSoundService = game:GetService("SoundService")
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
+local RobloxSoundService = game:GetService("SoundService")
 local RunService = game:GetService("RunService")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
-local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
 local BossServiceClient = require(script:FindFirstAncestor("game").Client.Services.BossServiceClient)
-local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.WeatherServiceUtils)
+local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
 local WeatherServiceClient = require(script:FindFirstAncestor("game").Client.Services.WeatherServiceClient)
+local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.WeatherServiceUtils)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
 
@@ -191,10 +191,7 @@ function AudioServiceClient.RefreshSoundtrackAssetIds(self: AudioServiceClient)
 	self.soundtrackShuffleBagByBiome = {}
 end
 
-function AudioServiceClient.ResolveBiomeTypeAtWorldPosition(
-	self: AudioServiceClient,
-	worldPosition: Vector3
-): number
+function AudioServiceClient.ResolveBiomeTypeAtWorldPosition(self: AudioServiceClient, worldPosition: Vector3): number
 	if typeof((WorldGenerationServiceClient :: any).state) ~= "table" then
 		return BIOME_TYPE_NORMAL
 	end
@@ -218,10 +215,7 @@ function AudioServiceClient.ResolveBiomeTypeAtWorldPosition(
 	return BIOME_TYPE_NORMAL
 end
 
-function AudioServiceClient.ResolveBiomeIdAtWorldPosition(
-	self: AudioServiceClient,
-	worldPosition: Vector3
-): number
+function AudioServiceClient.ResolveBiomeIdAtWorldPosition(self: AudioServiceClient, worldPosition: Vector3): number
 	if typeof((WorldGenerationServiceClient :: any).state) ~= "table" then
 		return BIOME_ID_FOREST
 	end
@@ -248,10 +242,7 @@ function AudioServiceClient.ResolveBiomeIdAtWorldPosition(
 	return BIOME_ID_FOREST
 end
 
-function AudioServiceClient.ResolveDepthLayerAtWorldPosition(
-	self: AudioServiceClient,
-	worldPosition: Vector3
-): number?
+function AudioServiceClient.ResolveDepthLayerAtWorldPosition(self: AudioServiceClient, worldPosition: Vector3): number?
 	if typeof((WorldGenerationServiceClient :: any).state) ~= "table" then
 		return nil
 	end
@@ -378,10 +369,7 @@ function AudioServiceClient.ResolveSoundtrackBiomeForLocalPlayer(self: AudioServ
 	return DEFAULT_SOUNDTRACK_BIOME
 end
 
-function AudioServiceClient.GetNextTrackForSoundtrackBiome(
-	self: AudioServiceClient,
-	soundtrackBiome: string
-): string?
+function AudioServiceClient.GetNextTrackForSoundtrackBiome(self: AudioServiceClient, soundtrackBiome: string): string?
 	local assetIds = self.soundtrackAssetIdsByBiome[soundtrackBiome]
 	if assetIds == nil or #assetIds <= 0 then
 		return nil
@@ -637,7 +625,8 @@ function AudioServiceClient.PlaySound(
 	optionsRaw: any,
 	fallbackCategory: SoundCategory?
 ): Sound?
-	local soundAssetId, options = AudioServiceUtils.resolvePlaybackRequest(soundAssetIdRaw, optionsRaw, fallbackCategory)
+	local soundAssetId, options =
+		AudioServiceUtils.resolvePlaybackRequest(soundAssetIdRaw, optionsRaw, fallbackCategory)
 	if soundAssetId == nil then
 		return nil
 	end
@@ -825,5 +814,3 @@ type AudioServiceClient = typeof(AudioServiceClient) & {
 }
 
 return AudioServiceClient :: AudioServiceClient
-
-

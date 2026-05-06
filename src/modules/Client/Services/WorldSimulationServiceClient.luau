@@ -5,14 +5,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 
+local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Signal = require(ReplicatedStorage.Packages.Signal)
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local require = require(loaderUtils.Parent).load(script)
 local Maid = require("Maid")
 local Rx = require("Rx")
+local require = require(loaderUtils.Parent).load(script)
 
 local Cache = require(script:FindFirstAncestor("game").Shared.Services.SimulationCache)
 local Config = require(script:FindFirstAncestor("game").Shared.Services.SimulationConfig)
@@ -202,7 +202,8 @@ function WorldSimulationServiceClient:RunChunkModelInvariantCheck(label: string)
 	end
 
 	if folderModelCount ~= renderCount then
-		local message = `[WorldSimulationService][{label}] Chunk folder contains stray models: folder={folderModelCount} render={renderCount}`
+		local message =
+			`[WorldSimulationService][{label}] Chunk folder contains stray models: folder={folderModelCount} render={renderCount}`
 		if DEV_GUARDS_ENABLED or self.config.enableDebug then
 			error(message)
 		end
@@ -224,7 +225,8 @@ function WorldSimulationServiceClient:RunChunkModelInvariantCheck(label: string)
 		if self.debug ~= nil and self.debug.incrementCounter then
 			self.debug:incrementCounter("active_chunk_models_exceeded")
 		end
-		local message = `[WorldSimulationService][{label}] ActiveChunkModels ({strictCount}) exceeds theoretical max ({theoreticalMax})`
+		local message =
+			`[WorldSimulationService][{label}] ActiveChunkModels ({strictCount}) exceeds theoretical max ({theoreticalMax})`
 		if DEV_GUARDS_ENABLED or self.config.enableDebug then
 			error(message)
 		end
@@ -250,16 +252,18 @@ function WorldSimulationServiceClient:ReconcileRenderWindow(centerX: number, cen
 	local catchupBudget = SNAPSHOT_CATCHUP_ENQUEUE_BUDGET_PER_HEARTBEAT
 	local catchupEnqueued = 0
 	for chunkKey, snapshot in self.chunkSnapshotsByKey do
-		if isChunkWithinInterest(
-			snapshot.chunkX,
-			snapshot.chunkY,
-			snapshot.chunkZ,
-			centerX,
-			centerY,
-			centerZ,
-			renderRadius,
-			renderVerticalRadius
-		) then
+		if
+			isChunkWithinInterest(
+				snapshot.chunkX,
+				snapshot.chunkY,
+				snapshot.chunkZ,
+				centerX,
+				centerY,
+				centerZ,
+				renderRadius,
+				renderVerticalRadius
+			)
+		then
 			desiredLookup[chunkKey] = true
 			if self.streamState.loadedLookup[chunkKey] ~= true and catchupEnqueued < catchupBudget then
 				local priority = Net.chunkPriorityFromCenter(
@@ -315,7 +319,8 @@ function WorldSimulationServiceClient:OnChunkDelta(deltaRaw: any)
 	end
 	self.chunkSnapshotsByKey[decoded.key] = decoded
 	local centerX, centerY, centerZ = self:getCenterChunk()
-	local priority = Net.chunkPriorityFromCenter(decoded.chunkX, decoded.chunkY, decoded.chunkZ, centerX, centerY, centerZ)
+	local priority =
+		Net.chunkPriorityFromCenter(decoded.chunkX, decoded.chunkY, decoded.chunkZ, centerX, centerY, centerZ)
 	Stream.pushClientSnapshot(self.streamState, decoded, priority)
 end
 
@@ -417,16 +422,18 @@ function WorldSimulationServiceClient:OnHeartbeat(dt: number)
 		if latest ~= nil then
 			snapshot = latest
 		end
-		if not isChunkWithinInterest(
-			snapshot.chunkX,
-			snapshot.chunkY,
-			snapshot.chunkZ,
-			centerX,
-			centerY,
-			centerZ,
-			renderRadius,
-			renderVerticalRadius
-		) then
+		if
+			not isChunkWithinInterest(
+				snapshot.chunkX,
+				snapshot.chunkY,
+				snapshot.chunkZ,
+				centerX,
+				centerY,
+				centerZ,
+				renderRadius,
+				renderVerticalRadius
+			)
+		then
 			self:StreamOutChunk(snapshot.key)
 			continue
 		end
@@ -490,13 +497,17 @@ function WorldSimulationServiceClient:Init()
 	end)
 	local tickScheduler = if self.runtimeContext ~= nil then (self.runtimeContext :: any).tickScheduler else nil
 	if tickScheduler ~= nil and typeof((tickScheduler :: any).scheduleEvery) == "function" then
-		local heartbeatToken = (tickScheduler :: any):scheduleEvery(function(dt: number)
-			self:onHeartbeat(dt)
-		end, 1 / 60, {
-			group = "service.worldSimulation.client",
-			priority = 120,
-			catchUp = false,
-		})
+		local heartbeatToken = (tickScheduler :: any):scheduleEvery(
+			function(dt: number)
+				self:onHeartbeat(dt)
+			end,
+			1 / 60,
+			{
+				group = "service.worldSimulation.client",
+				priority = 120,
+				catchUp = false,
+			}
+		)
 		self.maid:GiveTask(function()
 			if heartbeatToken ~= nil and typeof(heartbeatToken.cancel) == "function" then
 				heartbeatToken:cancel()
@@ -586,4 +597,3 @@ type WorldSimulationServiceClient = typeof(WorldSimulationServiceClient) & {
 }
 
 return WorldSimulationServiceClient :: WorldSimulationServiceClient
-

@@ -15,29 +15,26 @@ local DEFAULT_CAPABILITIES: PlatformServiceUtils.CapabilitySnapshot = {
 return function()
 	describe("PlatformServiceUtils", function()
 		it("prefers PreferredInput when resolving the current platform", function()
-			local state = PlatformServiceUtils.createPlatformState(
-				Enum.PreferredInput.Gamepad,
-				Enum.UserInputType.MouseButton1,
-				{
+			local state =
+				PlatformServiceUtils.createPlatformState(Enum.PreferredInput.Gamepad, Enum.UserInputType.MouseButton1, {
 					touchEnabled = true,
 					keyboardEnabled = true,
 					mouseEnabled = true,
 					gamepadEnabled = true,
 					basePrimaryInputType = "KeyboardMouse",
-				},
-				Vector2.new(1920, 1080),
-				false
-			)
+				}, Vector2.new(1920, 1080), false)
 
 			expect(state.platform).to.equal("Gamepad")
 			expect(state.deviceClass).to.equal("Console")
 		end)
 
 		it("classifies touch viewports into phone and tablet buckets", function()
-			expect(PlatformServiceUtils.resolveDeviceClass("Touch", Vector2.new(390, 844), DEFAULT_CAPABILITIES, false))
-				.to.equal("Phone")
-			expect(PlatformServiceUtils.resolveDeviceClass("Touch", Vector2.new(1280, 800), DEFAULT_CAPABILITIES, false))
-				.to.equal("Tablet")
+			expect(PlatformServiceUtils.resolveDeviceClass("Touch", Vector2.new(390, 844), DEFAULT_CAPABILITIES, false)).to.equal(
+				"Phone"
+			)
+			expect(
+				PlatformServiceUtils.resolveDeviceClass("Touch", Vector2.new(1280, 800), DEFAULT_CAPABILITIES, false)
+			).to.equal("Tablet")
 		end)
 
 		it("applies thumbstick deadzones without losing normalized direction", function()
@@ -50,7 +47,8 @@ return function()
 		end)
 
 		it("returns normalized prompts for each supported gameplay platform", function()
-			local definition = PlatformServiceUtils.getDefaultActionDefinition(PlatformServiceUtils.ACTIONS.MELEE_ATTACK)
+			local definition =
+				PlatformServiceUtils.getDefaultActionDefinition(PlatformServiceUtils.ACTIONS.MELEE_ATTACK)
 			expect(definition ~= nil).to.equal(true)
 
 			local keyboardPrompt =
@@ -66,7 +64,8 @@ return function()
 
 		it("keeps jump separate from fly-up controls", function()
 			local jumpDefinition = PlatformServiceUtils.getDefaultActionDefinition(PlatformServiceUtils.ACTIONS.JUMP)
-			local moveUpDefinition = PlatformServiceUtils.getDefaultActionDefinition(PlatformServiceUtils.ACTIONS.MOVE_UP)
+			local moveUpDefinition =
+				PlatformServiceUtils.getDefaultActionDefinition(PlatformServiceUtils.ACTIONS.MOVE_UP)
 
 			expect(jumpDefinition ~= nil).to.equal(true)
 			expect(moveUpDefinition ~= nil).to.equal(true)
@@ -87,7 +86,8 @@ return function()
 		end)
 
 		it("exposes the Xbox inventory prompt on Y", function()
-			local definition = PlatformServiceUtils.getDefaultActionDefinition(PlatformServiceUtils.ACTIONS.OPEN_INVENTORY)
+			local definition =
+				PlatformServiceUtils.getDefaultActionDefinition(PlatformServiceUtils.ACTIONS.OPEN_INVENTORY)
 
 			expect(definition ~= nil).to.equal(true)
 

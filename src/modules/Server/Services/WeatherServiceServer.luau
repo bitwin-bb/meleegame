@@ -5,10 +5,10 @@ local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
-local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.WeatherServiceUtils)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
+local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.WeatherServiceUtils)
 
 type WeatherType = WeatherServiceUtils.WeatherType
 type WeatherServiceConfig = WeatherServiceUtils.WeatherServiceConfig
@@ -66,7 +66,11 @@ function WeatherServiceServer.PushState(self: WeatherServiceServer, playerRaw: a
 	self.stateDirty = false
 end
 
-function WeatherServiceServer.SetClockTime(self: WeatherServiceServer, clockTimeRaw: any, forceReplicateRaw: any?): number
+function WeatherServiceServer.SetClockTime(
+	self: WeatherServiceServer,
+	clockTimeRaw: any,
+	forceReplicateRaw: any?
+): number
 	local nextClockTime = WeatherServiceUtils.sanitizeState({
 		clockTime = clockTimeRaw,
 	}, self.state).clockTime
@@ -100,12 +104,8 @@ function WeatherServiceServer.SetWeather(
 	forceReplicateRaw: any?
 ): WeatherType
 	local nextWeatherType = WeatherServiceUtils.sanitizeWeatherType(weatherTypeRaw, self.state.weatherType)
-	local transitionSeconds = WeatherServiceUtils.sanitizeNumber(
-		transitionSecondsRaw,
-		self.config.weatherTransitionSeconds,
-		0,
-		60
-	)
+	local transitionSeconds =
+		WeatherServiceUtils.sanitizeNumber(transitionSecondsRaw, self.config.weatherTransitionSeconds, 0, 60)
 
 	self.state.weatherType = nextWeatherType
 	self.state.weatherTransitionSeconds = transitionSeconds
@@ -148,7 +148,8 @@ function WeatherServiceServer.StepWeatherCycle(self: WeatherServiceServer, dt: n
 		return
 	end
 
-	local nextWeatherType = WeatherServiceUtils.chooseWeightedWeatherType(self.random, self.config, self.state.weatherType)
+	local nextWeatherType =
+		WeatherServiceUtils.chooseWeightedWeatherType(self.random, self.config, self.state.weatherType)
 	self:setWeather(nextWeatherType, self.config.weatherTransitionSeconds, false)
 end
 
@@ -271,4 +272,3 @@ export type WeatherServiceServer = typeof(WeatherServiceServer) & {
 }
 
 return WeatherServiceServer :: WeatherServiceServer
-

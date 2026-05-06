@@ -6,25 +6,25 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Signal = require(ReplicatedStorage.Packages.Signal)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
-local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
-local Lerp = require(script:FindFirstAncestor("game").Shared.Modules.Math.Lerp)
-local TickSchedulerModule = require(script:FindFirstAncestor("game").Shared.Modules.Core.TickScheduler)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
-local WorldMutationQueue = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorldMutationQueue)
 local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
+local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
+local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
+local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Lerp = require(script:FindFirstAncestor("game").Shared.Modules.Math.Lerp)
 local LiquidServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.LiquidServiceUtils)
-local WorldSimulationDebug = require(script:FindFirstAncestor("game").Shared.Services.Debug)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local Signal = require(ReplicatedStorage.Packages.Signal)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
+local TickSchedulerModule = require(script:FindFirstAncestor("game").Shared.Modules.Core.TickScheduler)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
+local WorldMutationQueue = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorldMutationQueue)
+local WorldSimulationDebug = require(script:FindFirstAncestor("game").Shared.Services.Debug)
 
 type LiquidServiceConfig = LiquidServiceUtils.LiquidServiceConfig
 type LiquidServiceState = LiquidServiceUtils.LiquidServiceState
@@ -1209,4 +1209,3 @@ type LiquidServiceClient = typeof(LiquidServiceClient) & {
 }
 
 return LiquidServiceClient :: LiquidServiceClient
-

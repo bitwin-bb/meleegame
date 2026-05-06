@@ -83,9 +83,9 @@ return function(_context, actionRaw: string, valueRaw: string)
 		WeatherServiceServer:setDayNightCycleEnabled(false, true)
 		local appliedClockTime = WeatherServiceServer:setClockTime(clockTime, true)
 		if preset ~= nil then
-			return (`Set time to {preset} ({formatClockTime(appliedClockTime)}) and paused the day/night cycle.`)
+			return `Set time to {preset} ({formatClockTime(appliedClockTime)}) and paused the day/night cycle.`
 		end
-		return (`Set time to {formatClockTime(appliedClockTime)} and paused the day/night cycle.`)
+		return `Set time to {formatClockTime(appliedClockTime)} and paused the day/night cycle.`
 	end
 
 	if action == "cycle" then

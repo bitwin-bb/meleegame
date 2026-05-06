@@ -20,16 +20,15 @@ return function(_context, players: { Player }, amountRaw: number)
 		end
 
 		ManaServiceServer:setMana(player, nextMaxMana)
-		updated[#updated + 1] = (`{player.Name} ({math.floor(nextMaxMana + 0.5)} mana)`)
+		updated[#updated + 1] = `{player.Name} ({math.floor(nextMaxMana + 0.5)} mana)`
 	end
 
 	local responseParts = {}
 	if #updated > 0 then
-		responseParts[#responseParts + 1] = (`Set permanent max mana for {joinParts(updated)} and refilled it.`)
+		responseParts[#responseParts + 1] = `Set permanent max mana for {joinParts(updated)} and refilled it.`
 	end
 	if #failed > 0 then
-		responseParts[#responseParts + 1] =
-			(`Could not update {joinParts(failed)} because their mana runtime was unavailable.`)
+		responseParts[#responseParts + 1] = `Could not update {joinParts(failed)} because their mana runtime was unavailable.`
 	end
 
 	return table.concat(responseParts, " ")

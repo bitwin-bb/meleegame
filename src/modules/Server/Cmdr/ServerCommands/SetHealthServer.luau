@@ -14,7 +14,7 @@ return function(_context, players: { Player }, amountRaw: number)
 	for _, player in players do
 		local nextMaxHealth = HpServiceServer:setPlayerMaxHealth(player, amountRaw, true)
 		if nextMaxHealth ~= nil then
-			updated[#updated + 1] = (`{player.Name} ({math.floor(nextMaxHealth + 0.5)} HP)`)
+			updated[#updated + 1] = `{player.Name} ({math.floor(nextMaxHealth + 0.5)} HP)`
 		end
 	end
 
@@ -22,5 +22,5 @@ return function(_context, players: { Player }, amountRaw: number)
 		return "No players could be updated."
 	end
 
-	return (`Set permanent max health for {joinParts(updated)} and refilled them.`)
+	return `Set permanent max health for {joinParts(updated)} and refilled them.`
 end

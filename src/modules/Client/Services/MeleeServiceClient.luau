@@ -3,25 +3,25 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local RaycastHitbox = require(ReplicatedStorage.Packages.RaycastHitbox)
 local CameraShaker = require(ReplicatedStorage.Packages.EZCameraShake)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local RaycastHitbox = require(ReplicatedStorage.Packages.RaycastHitbox)
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local require = require(loaderUtils.Parent).load(script)
-local Promise = require("Promise")
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
-local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
-local Melee = require(script:FindFirstAncestor("game").Shared.Classes.Melee)
 local AnimationServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AnimationServiceUtils)
+local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
 local BuildServiceClient = require(script:FindFirstAncestor("game").Client.Services.BuildServiceClient)
+local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
+local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
 local InventoryServiceClient = require(script:FindFirstAncestor("game").Client.Services.InventoryServiceClient)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
+local Melee = require(script:FindFirstAncestor("game").Shared.Classes.Melee)
 local MeleeServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.MeleeServiceUtils)
 local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
+local Promise = require("Promise")
 local RagdollServiceClient = require(script:FindFirstAncestor("game").Client.Services.RagdollServiceClient)
-local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
+local require = require(loaderUtils.Parent).load(script)
 
 type MeleeWeaponConfig = MeleeServiceUtils.MeleeWeaponConfig
 type InventoryState = InventoryServiceUtils.InventoryState
@@ -512,15 +512,14 @@ function MeleeServiceClient.Init(self: MeleeServiceClient)
 	self:onInventoryStateChanged(InventoryServiceClient.state)
 
 	self.bootstrapPromise = promiseAll({
-		self:waitForCharacter(),
-		self:waitForInventoryLoaded(),
-	})
+			self:waitForCharacter(),
+			self:waitForInventoryLoaded(),
+		})
 		:Then(function()
 			self:refreshEquippedWeapon("Bootstrap")
 			self:replicateEquippedState(true)
 		end)
-		:Catch(function(_err: any)
-		end)
+		:Catch(function(_err: any) end)
 
 	self.janitor:GiveChore(function()
 		if self.bootstrapPromise ~= nil then
@@ -771,10 +770,7 @@ function MeleeServiceClient.ResolveToolSound(self: MeleeServiceClient, soundName
 	return self.equippedToolSounds[string.lower(soundName)]
 end
 
-function MeleeServiceClient.ResolveRandomSwingSound(
-	self: MeleeServiceClient,
-	swingGroupRaw: any
-): string?
+function MeleeServiceClient.ResolveRandomSwingSound(self: MeleeServiceClient, swingGroupRaw: any): string?
 	local swingGroup = normalizeSwingSoundGroup(swingGroupRaw)
 	if swingGroup == nil then
 		return nil
@@ -789,10 +785,7 @@ function MeleeServiceClient.ResolveRandomSwingSound(
 	return pool[randomIndex]
 end
 
-function MeleeServiceClient.ResolveSwingSoundGroupFromContext(
-	self: MeleeServiceClient,
-	contextRaw: any
-): string?
+function MeleeServiceClient.ResolveSwingSoundGroupFromContext(self: MeleeServiceClient, contextRaw: any): string?
 	local context = if typeof(contextRaw) == "table" then contextRaw else {}
 
 	local fromClipName = normalizeSwingSoundGroup(context.clipName)
@@ -1168,7 +1161,8 @@ function MeleeServiceClient.RefreshEquippedWeapon(self: MeleeServiceClient, trig
 		weaponConfig = nil
 	elseif weaponConfig ~= nil then
 		local nextWeaponConfig = shallowCopyWeaponConfig(weaponConfig)
-		nextWeaponConfig.animations = MeleeServiceUtils.resolveToolAnimationOverrides(selectedTool, weaponConfig.animations)
+		nextWeaponConfig.animations =
+			MeleeServiceUtils.resolveToolAnimationOverrides(selectedTool, weaponConfig.animations)
 		weaponConfig = nextWeaponConfig
 	end
 
@@ -1326,4 +1320,3 @@ type MeleeServiceClient = typeof(MeleeServiceClient) & {
 }
 
 return MeleeServiceClient :: MeleeServiceClient
-

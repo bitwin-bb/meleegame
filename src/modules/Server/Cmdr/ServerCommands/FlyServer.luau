@@ -29,5 +29,5 @@ return function(_context, players: { Player }, speedRaw: number)
 		updated[index] = player.Name
 	end
 
-	return (`Enabled fly for {table.concat(updated, ", ")} at speed {speed}.`)
+	return `Enabled fly for {table.concat(updated, ", ")} at speed {speed}.`
 end

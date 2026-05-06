@@ -4,19 +4,19 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local RaycastHitbox = require(ReplicatedStorage.Packages.RaycastHitbox)
-local Melee = require(script:FindFirstAncestor("game").Shared.Classes.Melee)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
-local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
-local MeleeServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.MeleeServiceUtils)
-local InventoryServiceServer = require(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
 local BossServiceServer = require(script:FindFirstAncestor("game").Server.Services.BossServiceServer)
+local InventoryServiceServer = require(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
+local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Melee = require(script:FindFirstAncestor("game").Shared.Classes.Melee)
+local MeleeServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.MeleeServiceUtils)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
 local NpcServiceServer = require(script:FindFirstAncestor("game").Server.Services.NpcServiceServer)
 local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
 local RagdollServiceServer = require(script:FindFirstAncestor("game").Server.Services.RagdollServiceServer)
+local RaycastHitbox = require(ReplicatedStorage.Packages.RaycastHitbox)
+local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 
 type MeleeWeaponConfig = MeleeServiceUtils.MeleeWeaponConfig
 type InventoryState = InventoryServiceUtils.InventoryState
@@ -279,8 +279,13 @@ local function applyNpcOverlapDamageFallback(player: Player, runtime: PlayerRunt
 		return
 	end
 
-	local bossRuntimeDamage =
-		(BossServiceServer :: BossServiceServerObject):damageBossesInBox(queryCFrame, querySize, damage, player, "Melee")
+	local bossRuntimeDamage = (BossServiceServer :: BossServiceServerObject):damageBossesInBox(
+		queryCFrame,
+		querySize,
+		damage,
+		player,
+		"Melee"
+	)
 	if typeof(bossRuntimeDamage) == "number" and bossRuntimeDamage > 0 then
 		return
 	end
@@ -597,7 +602,12 @@ function MeleeServiceServer.OnHit(
 			return
 		end
 
-		local bossDamage = (BossServiceServer :: BossServiceServerObject):damageBossFromHitPart(hitPart, damage, player, "Melee")
+		local bossDamage = (BossServiceServer :: BossServiceServerObject):damageBossFromHitPart(
+			hitPart,
+			damage,
+			player,
+			"Melee"
+		)
 		if typeof(bossDamage) == "number" and bossDamage > 0 then
 			return
 		end
@@ -1099,4 +1109,3 @@ type MeleeServiceServer = typeof(MeleeServiceServer) & {
 }
 
 return MeleeServiceServer :: MeleeServiceServer
-

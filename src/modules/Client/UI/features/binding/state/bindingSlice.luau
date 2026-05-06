@@ -160,7 +160,8 @@ local function hintsEqual(lhs: { BindingHintEntry }, rhs: { BindingHintEntry }):
 		if a == nil or b == nil then
 			return false
 		end
-		if a.id ~= b.id
+		if
+			a.id ~= b.id
 			or a.actionName ~= b.actionName
 			or a.label ~= b.label
 			or a.detail ~= b.detail
@@ -190,7 +191,7 @@ end
 
 local function setBindingState(stateRaw: any): BindingHintState
 	local current = bindingStateAtom()
-	local source = if typeof(stateRaw) == "table" then (stateRaw :: { [string]: any }) else {}
+	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {}
 	local nextHints = if source.hints ~= nil then cloneHints(source.hints) else cloneHints(current.hints)
 
 	local nextState: BindingHintState = {

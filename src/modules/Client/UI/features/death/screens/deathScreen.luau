@@ -2,6 +2,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
+local Layer = require(script:FindFirstAncestor("game").Client.UI.shared.Layer)
+local Scale = require(script:FindFirstAncestor("game").Client.UI.shared.Scale)
 local deathSlice = require(script:FindFirstAncestor("game").Client.UI.features.death.state.deathSlice)
 local deathThunks = require(script:FindFirstAncestor("game").Client.UI.features.death.state.deathThunks)
 local useCountDown = require(script:FindFirstAncestor("game").Client.UI.features.death.hooks.useCountDown)
@@ -19,8 +21,8 @@ type DeathScreenProps = {
 local e: typeof(React.createElement) = React.createElement
 
 local TEXT_PROGRESS_EPSILON = 0.001
-local MAIN_TEXT_POSITION = UDim2.new(0.5, 0, 0.42, 0)
-local COUNTDOWN_BASE_POSITION = UDim2.new(0.5, 0, 0.42, 0)
+local MAIN_TEXT_POSITION = UDim2.fromScale(0.5, 0.42)
+local COUNTDOWN_BASE_POSITION = UDim2.fromScale(0.5, 0.42)
 local MAIN_TEXT_SIZE = Vector2.new(880, 92)
 local COUNTDOWN_TEXT_SIZE = Vector2.new(520, 44)
 local DEFAULT_MAIN_TEXT = "You were slain..."
@@ -76,70 +78,67 @@ return function(props: DeathScreenProps?): React.ReactNode
 	local countdownXOffset = math.floor(countDownAppearance.offset.X + 0.5)
 	local countdownYOffset = math.floor(countDownAppearance.offset.Y + 0.5)
 
-	return e("Frame", {
-		Size = UDim2.fromScale(1, 1),
-		Position = UDim2.fromScale(0, 0),
-		LayoutOrder = resolvedProps.layoutOrder or 990,
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		ZIndex = zIndex,
-		Active = false,
-	}, {
-		e("TextLabel", {
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = MAIN_TEXT_POSITION,
-			Size = UDim2.fromOffset(MAIN_TEXT_SIZE.X, MAIN_TEXT_SIZE.Y),
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			Text = deathText,
-			Font = Enum.Font.GothamBlack,
-			TextSize = 62,
-			TextColor3 = Color3.fromRGB(255, 236, 236),
-			TextStrokeColor3 = Color3.fromRGB(48, 9, 9),
-			TextStrokeTransparency = deathAppearance.strokeTransparency,
-			TextTransparency = deathAppearance.transparency,
-			TextXAlignment = Enum.TextXAlignment.Center,
-			TextYAlignment = Enum.TextYAlignment.Center,
-			ZIndex = zIndex + 2,
-		}, {
-			e("UIScale", {
-				Scale = deathAppearance.scale,
-			}),
-			e("UIGradient", {
-				Color = ColorSequence.new({
-					ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-					ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 197, 197)),
-				}),
-				Rotation = 90,
-			}),
-		}),
-		if showCountDown
-			then e("TextLabel", {
+	return e(Layer, {
+		layoutOrder = resolvedProps.layoutOrder or 990,
+		zIndex = zIndex,
+		active = false,
+		children = {
+			e("TextLabel", {
 				AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.new(
-					COUNTDOWN_BASE_POSITION.X.Scale,
-					COUNTDOWN_BASE_POSITION.X.Offset + countdownXOffset,
-					COUNTDOWN_BASE_POSITION.Y.Scale,
-					COUNTDOWN_BASE_POSITION.Y.Offset + countdownYOffset
-				),
-				Size = UDim2.fromOffset(COUNTDOWN_TEXT_SIZE.X, COUNTDOWN_TEXT_SIZE.Y),
+				Position = MAIN_TEXT_POSITION,
+				Size = UDim2.fromOffset(MAIN_TEXT_SIZE.X, MAIN_TEXT_SIZE.Y),
 				BackgroundTransparency = 1,
 				BorderSizePixel = 0,
-				Text = countDownText,
-				Font = Enum.Font.GothamBold,
-				TextSize = 34,
-				TextColor3 = Color3.fromRGB(255, 223, 223),
-				TextStrokeColor3 = Color3.fromRGB(33, 6, 6),
-				TextStrokeTransparency = countDownAppearance.strokeTransparency,
-				TextTransparency = countDownAppearance.transparency,
+				Text = deathText,
+				Font = Enum.Font.GothamBlack,
+				TextSize = 62,
+				TextColor3 = Color3.fromRGB(255, 236, 236),
+				TextStrokeColor3 = Color3.fromRGB(48, 9, 9),
+				TextStrokeTransparency = deathAppearance.strokeTransparency,
+				TextTransparency = deathAppearance.transparency,
 				TextXAlignment = Enum.TextXAlignment.Center,
 				TextYAlignment = Enum.TextYAlignment.Center,
-				ZIndex = zIndex + 3,
+				ZIndex = zIndex + 2,
 			}, {
-				e("UIScale", {
-					Scale = countDownAppearance.scale,
+				e(Scale, {
+					scale = deathAppearance.scale,
 				}),
-			})
-			else nil,
+				e("UIGradient", {
+					Color = ColorSequence.new({
+						ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+						ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 197, 197)),
+					}),
+					Rotation = 90,
+				}),
+			}),
+			if showCountDown
+				then e("TextLabel", {
+					AnchorPoint = Vector2.new(0.5, 0.5),
+					Position = UDim2.new(
+						COUNTDOWN_BASE_POSITION.X.Scale,
+						COUNTDOWN_BASE_POSITION.X.Offset + countdownXOffset,
+						COUNTDOWN_BASE_POSITION.Y.Scale,
+						COUNTDOWN_BASE_POSITION.Y.Offset + countdownYOffset
+					),
+					Size = UDim2.fromOffset(COUNTDOWN_TEXT_SIZE.X, COUNTDOWN_TEXT_SIZE.Y),
+					BackgroundTransparency = 1,
+					BorderSizePixel = 0,
+					Text = countDownText,
+					Font = Enum.Font.GothamBold,
+					TextSize = 34,
+					TextColor3 = Color3.fromRGB(255, 223, 223),
+					TextStrokeColor3 = Color3.fromRGB(33, 6, 6),
+					TextStrokeTransparency = countDownAppearance.strokeTransparency,
+					TextTransparency = countDownAppearance.transparency,
+					TextXAlignment = Enum.TextXAlignment.Center,
+					TextYAlignment = Enum.TextYAlignment.Center,
+					ZIndex = zIndex + 3,
+				}, {
+					e(Scale, {
+						scale = countDownAppearance.scale,
+					}),
+				})
+				else nil,
+		},
 	})
 end

@@ -7,13 +7,13 @@ local Terrain = workspace.Terrain
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local CameraShaker = require(ReplicatedStorage.Packages.EZCameraShake)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
+local CameraShaker = require(ReplicatedStorage.Packages.EZCameraShake)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.WeatherServiceUtils)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
 
@@ -295,7 +295,8 @@ local function collectSkyTemplate(folder: Instance): SkyTemplate?
 		assignTemplateFromInstance(template, descendant)
 	end
 
-	if template.sky == nil
+	if
+		template.sky == nil
 		and template.atmosphere == nil
 		and template.colorCorrection == nil
 		and template.bloom == nil
@@ -722,7 +723,11 @@ function WeatherServiceClient.ApplyTemplateTween(
 	self:playManagedTween(tweenKey, runtimeInstance, transitionSeconds, goal)
 end
 
-function WeatherServiceClient.ApplySkyTemplate(self: WeatherServiceClient, template: SkyTemplate, transitionSeconds: number)
+function WeatherServiceClient.ApplySkyTemplate(
+	self: WeatherServiceClient,
+	template: SkyTemplate,
+	transitionSeconds: number
+)
 	if template.sky ~= nil then
 		local runtimeSky = self:ensureRuntimeSky()
 		for _, propertyName in SKY_PROPERTY_NAMES do
@@ -853,12 +858,8 @@ function WeatherServiceClient.ApplyCloudTargetFromTemplate(
 	self.cloudTargetCover = nextCover
 	self.cloudTargetDensity = nextDensity
 	self.cloudTargetColor = nextColor
-	self.cloudTransitionSeconds = WeatherServiceUtils.sanitizeNumber(
-		transitionSecondsRaw,
-		self.state.cloudTransitionSeconds,
-		0.01,
-		20
-	)
+	self.cloudTransitionSeconds =
+		WeatherServiceUtils.sanitizeNumber(transitionSecondsRaw, self.state.cloudTransitionSeconds, 0.01, 20)
 end
 
 function WeatherServiceClient.ResolveSkyKeyForLocalPlayer(self: WeatherServiceClient): SkyKey
@@ -904,12 +905,8 @@ end
 
 function WeatherServiceClient.TransitionToSky(self: WeatherServiceClient, skyKeyRaw: any, transitionSecondsRaw: any?)
 	local skyKey = WeatherServiceUtils.sanitizeSkyKey(skyKeyRaw, WeatherServiceUtils.SKY_KEY_OVERWORLD)
-	local transitionSeconds = WeatherServiceUtils.sanitizeNumber(
-		transitionSecondsRaw,
-		self.state.skyTransitionSeconds,
-		0,
-		20
-	)
+	local transitionSeconds =
+		WeatherServiceUtils.sanitizeNumber(transitionSecondsRaw, self.state.skyTransitionSeconds, 0, 20)
 
 	local skyRoot = resolveWeatherSkyRoot()
 	local skyFolder = resolveSkyFolderByKey(skyRoot, skyKey)
@@ -1118,10 +1115,10 @@ function WeatherServiceClient.TriggerLightningFlash(self: WeatherServiceClient)
 	local flashEffect = self:ensureLightningFlashEffect()
 	flashEffect.Enabled = true
 	local intensity = math.clamp(self.currentRainIntensity, 0, 1)
-	flashEffect.Brightness =
-		LIGHTNING_FLASH_BASE_BRIGHTNESS + self.random:NextNumber(0, LIGHTNING_FLASH_RANDOM_BRIGHTNESS) * intensity
-	flashEffect.Contrast =
-		LIGHTNING_FLASH_BASE_CONTRAST + self.random:NextNumber(0, LIGHTNING_FLASH_RANDOM_CONTRAST) * intensity
+	flashEffect.Brightness = LIGHTNING_FLASH_BASE_BRIGHTNESS
+		+ self.random:NextNumber(0, LIGHTNING_FLASH_RANDOM_BRIGHTNESS) * intensity
+	flashEffect.Contrast = LIGHTNING_FLASH_BASE_CONTRAST
+		+ self.random:NextNumber(0, LIGHTNING_FLASH_RANDOM_CONTRAST) * intensity
 	flashEffect.TintColor = LIGHTNING_FLASH_TINT
 
 	self:playManagedTween("lightningFlash", flashEffect, LIGHTNING_FLASH_FADE_SECONDS, {
@@ -1134,8 +1131,10 @@ function WeatherServiceClient.TriggerLightningFlash(self: WeatherServiceClient)
 	if cameraShaker ~= nil then
 		pcall(function()
 			cameraShaker:ShakeOnce(
-				LIGHTNING_CAMERA_SHAKE_BASE_MAGNITUDE + self.random:NextNumber(0, LIGHTNING_CAMERA_SHAKE_RANDOM_MAGNITUDE) * intensity,
-				LIGHTNING_CAMERA_SHAKE_BASE_ROUGHNESS + self.random:NextNumber(0, LIGHTNING_CAMERA_SHAKE_RANDOM_ROUGHNESS),
+				LIGHTNING_CAMERA_SHAKE_BASE_MAGNITUDE
+					+ self.random:NextNumber(0, LIGHTNING_CAMERA_SHAKE_RANDOM_MAGNITUDE) * intensity,
+				LIGHTNING_CAMERA_SHAKE_BASE_ROUGHNESS
+					+ self.random:NextNumber(0, LIGHTNING_CAMERA_SHAKE_RANDOM_ROUGHNESS),
 				LIGHTNING_CAMERA_SHAKE_FADE_IN,
 				LIGHTNING_CAMERA_SHAKE_FADE_OUT,
 				LIGHTNING_CAMERA_SHAKE_POSITION_INFLUENCE,
@@ -1252,15 +1251,17 @@ function WeatherServiceClient.CleanupVisualRuntime(self: WeatherServiceClient)
 	end
 	self.lastWeatherWindStormAlpha = nil
 	self.lastWeatherWindIsThunderstorm = nil
-	for _, instanceName in {
-		RUNTIME_SKY_NAME,
-		RUNTIME_ATMOSPHERE_NAME,
-		RUNTIME_COLOR_CORRECTION_NAME,
-		RUNTIME_BLOOM_NAME,
-		RUNTIME_SUN_RAYS_NAME,
-		RUNTIME_DEPTH_OF_FIELD_NAME,
-		RUNTIME_LIGHTNING_FLASH_NAME,
-	} do
+	for _, instanceName in
+		{
+			RUNTIME_SKY_NAME,
+			RUNTIME_ATMOSPHERE_NAME,
+			RUNTIME_COLOR_CORRECTION_NAME,
+			RUNTIME_BLOOM_NAME,
+			RUNTIME_SUN_RAYS_NAME,
+			RUNTIME_DEPTH_OF_FIELD_NAME,
+			RUNTIME_LIGHTNING_FLASH_NAME,
+		}
+	do
 		local existing = Lighting:FindFirstChild(instanceName)
 		if existing ~= nil then
 			existing:Destroy()
@@ -1411,4 +1412,3 @@ type WeatherServiceClient = typeof(WeatherServiceClient) & {
 }
 
 return WeatherServiceClient :: WeatherServiceClient
-

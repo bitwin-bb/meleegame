@@ -103,14 +103,7 @@ local function sanitizeConfig(config: any, fallbackConfig: CatchUpPlayerConfig?)
 		"maxFrequencyMultiplier",
 		minFrequencyDivisor,
 		50,
-		resolveConfiguredNumber(
-			fallback,
-			"maxFrequencyDivisor",
-			"maxFrequencyMultiplier",
-			minFrequencyDivisor,
-			50,
-			6
-		)
+		resolveConfiguredNumber(fallback, "maxFrequencyDivisor", "maxFrequencyMultiplier", minFrequencyDivisor, 50, 6)
 	)
 
 	return {
@@ -212,18 +205,15 @@ function CatchUpPlayer.ResolveSpring(
 	self.activeDuration += dt
 	self.peakGapDistance = math.max(self.peakGapDistance, gapDistance)
 
-	local distanceAlpha = math.clamp(
-		(gapDistance - self.startDistance) / math.max(self.maxDistance - self.startDistance, 0.001),
-		0,
-		1
-	)
+	local distanceAlpha =
+		math.clamp((gapDistance - self.startDistance) / math.max(self.maxDistance - self.startDistance, 0.001), 0, 1)
 	local peakDistanceAlpha = math.clamp(
 		(self.peakGapDistance - self.startDistance) / math.max(self.maxDistance - self.startDistance, 0.001),
 		0,
 		1
 	)
-	local accelerationDuration =
-		self.accelerationSeconds * (1 + (peakDistanceAlpha * ACCELERATION_DISTANCE_DURATION_MULTIPLIER))
+	local accelerationDuration = self.accelerationSeconds
+		* (1 + (peakDistanceAlpha * ACCELERATION_DISTANCE_DURATION_MULTIPLIER))
 	local durationAlpha = math.clamp(self.activeDuration / math.max(accelerationDuration, 0.001), 0, 1)
 	local minimumDivisor = 1 + ((self.minFrequencyDivisor - 1) * distanceAlpha)
 	local maximumDivisor = 1 + ((self.maxFrequencyDivisor - 1) * distanceAlpha)

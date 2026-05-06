@@ -102,11 +102,7 @@ function VFXServiceServer.StopChannelForPlayer(self: VFXServiceServer, player: P
 	return true
 end
 
-function VFXServiceServer.StopChannelForPlayers(
-	self: VFXServiceServer,
-	playersRaw: any,
-	channelNameRaw: any
-): number
+function VFXServiceServer.StopChannelForPlayers(self: VFXServiceServer, playersRaw: any, channelNameRaw: any): number
 	local players = sanitizePlayers(playersRaw)
 	if #players <= 0 then
 		return 0
@@ -197,4 +193,3 @@ type VFXServiceServer = typeof(VFXServiceServer) & {
 }
 
 return VFXServiceServer :: VFXServiceServer
-

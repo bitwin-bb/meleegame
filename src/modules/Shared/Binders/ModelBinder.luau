@@ -71,11 +71,7 @@ function ModelBinder.CollectLights(instanceRaw: any): { Instance }
 	return lights
 end
 
-function ModelBinder.BindTouchedParts(
-	instanceRaw: any,
-	janitor: any,
-	callback: (part: BasePart, other: BasePart) -> ()
-)
+function ModelBinder.BindTouchedParts(instanceRaw: any, janitor: any, callback: (part: BasePart, other: BasePart) -> ())
 	if typeof(instanceRaw) ~= "Instance" then
 		return
 	end

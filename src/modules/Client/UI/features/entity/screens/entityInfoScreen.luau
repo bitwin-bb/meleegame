@@ -6,7 +6,7 @@ local EntityHealthBar = require(script:FindFirstAncestor("game").Client.UI.featu
 local React = require(ReplicatedStorage.Packages.React)
 local entityInfoSlice = require(script:FindFirstAncestor("game").Client.UI.features.entity.state.entityInfoSlice)
 local entityInfoThunks = require(script:FindFirstAncestor("game").Client.UI.features.entity.state.entityInfoThunks)
-local usePrevious = require(script:FindFirstAncestor("game").Client.UI.core.hooks.usePrevious)
+local useLast = require(script:FindFirstAncestor("game").Client.UI.shared.useLast)
 local useSpring = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useSpring)
 local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
@@ -49,7 +49,7 @@ return function(props: EntityInfoScreenProps): React.ReactNode
 	end, {})
 
 	local hpPercent = if entityState.maxHp > 0 then math.clamp(entityState.hp / entityState.maxHp, 0, 1) else 0
-	local previousRuntimeId = usePrevious(entityState.runtimeId)
+	local previousRuntimeId = useLast(entityState.runtimeId)
 	local healthSpring = useSpring(hpPercent, {
 		initialValue = hpPercent,
 		spring = HEALTH_BAR_SPRING,
@@ -126,7 +126,7 @@ return function(props: EntityInfoScreenProps): React.ReactNode
 				BorderSizePixel = 0,
 			}),
 			e("Frame", {
-				Size = UDim2.new(1, 0, 1, 0),
+				Size = UDim2.fromScale(1, 1),
 				BackgroundTransparency = 1,
 				BorderSizePixel = 0,
 				ZIndex = zIndex + 4,

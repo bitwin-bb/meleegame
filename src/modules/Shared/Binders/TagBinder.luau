@@ -222,12 +222,7 @@ local function getTagService(collectionServiceRaw: any?): any
 	return CollectionService
 end
 
-local function addCanonicalTag(
-	instance: Instance,
-	canonicalTag: string,
-	tagService: any,
-	seen: { [string]: boolean }
-)
+local function addCanonicalTag(instance: Instance, canonicalTag: string, tagService: any, seen: { [string]: boolean })
 	if seen[canonicalTag] == true then
 		return
 	end

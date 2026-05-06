@@ -23,5 +23,5 @@ return function(_context, players: { Player })
 		updated[index] = player.Name
 	end
 
-	return (`Disabled fly for {table.concat(updated, ", ")}.`)
+	return `Disabled fly for {table.concat(updated, ", ")}.`
 end

@@ -18,11 +18,10 @@ return function(_context, players: { Player })
 
 	local responseParts = {}
 	if #cleared > 0 then
-		responseParts[#responseParts + 1] = (`Cleared inventory for {table.concat(cleared, ", ")}.`)
+		responseParts[#responseParts + 1] = `Cleared inventory for {table.concat(cleared, ", ")}.`
 	end
 	if #unchanged > 0 then
-		responseParts[#responseParts + 1] =
-			(`No inventory changes were needed for {table.concat(unchanged, ", ")}.`)
+		responseParts[#responseParts + 1] = `No inventory changes were needed for {table.concat(unchanged, ", ")}.`
 	end
 
 	return table.concat(responseParts, " ")

@@ -70,7 +70,8 @@ function State.Resolve(self: State, contextRaw: any): StateSnapshot
 	local hasOverride = override ~= nil
 	local hasDirectCameraOverride = hasOverride
 		and (
-			typeof((override :: any).cameraCFrame) == "CFrame" or typeof((override :: any).cameraPosition) == "Vector3"
+			typeof((override :: any).cameraCFrame) == "CFrame"
+			or typeof((override :: any).cameraPosition) == "Vector3"
 		)
 	local hasTemporaryOverride = target ~= nil and (target :: any).kind == "TemporaryOverride"
 	local subjectKind = if target ~= nil and typeof((target :: any).kind) == "string" then (target :: any).kind else nil

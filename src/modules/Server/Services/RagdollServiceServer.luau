@@ -3,11 +3,11 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
-local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local RagdollServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.RagdollServiceUtils)
+local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 
 type CharacterRig = RagdollServiceUtils.CharacterRig
 type RagdollContext = RagdollServiceUtils.RagdollContext
@@ -105,7 +105,11 @@ function RagdollServiceServer.CommitState(
 	local token = runtime.stateToken
 	local now = RagdollServiceUtils.now()
 	local sequence = runtime.state.sequence + 1
-	local scheduledRecoveryAt = if isRagdolled and canRecover and durationSeconds ~= nil then now + durationSeconds else nil
+	local scheduledRecoveryAt = if isRagdolled
+			and canRecover
+			and durationSeconds ~= nil
+		then now + durationSeconds
+		else nil
 	runtime.state = RagdollServiceUtils.createState(
 		isRagdolled,
 		reasonRaw,
@@ -488,4 +492,3 @@ export type RagdollServiceServer = typeof(RagdollServiceServer) & {
 }
 
 return RagdollServiceServer :: RagdollServiceServer
-

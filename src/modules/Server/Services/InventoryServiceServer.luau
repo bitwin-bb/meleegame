@@ -1,25 +1,26 @@
 --!strict
-local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
+local InventoryProfile = require(script:FindFirstAncestor("game").Shared.Services.Profile)
+local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
 local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local MiningPower = require(script:FindFirstAncestor("game").Shared.Modules.Math.MiningPower)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PlayerDataServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerDataServiceServer)
+local PlayerDataServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerDataServiceUtils)
 local ResolveItem = require(script:FindFirstAncestor("game").Shared.Modules.Game.Format.ResolveItem)
 local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Modules.Game.Format.ResolveToolInstance)
-local MiningPower = require(script:FindFirstAncestor("game").Shared.Modules.Math.MiningPower)
-local TorchTilt = require(script:FindFirstAncestor("game").Shared.Modules.Math.TorchTilt)
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
-local InventoryProfile = require(script:FindFirstAncestor("game").Shared.Services.Profile)
-local PlayerDataServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerDataServiceUtils)
-local PlayerDataServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerDataServiceServer)
-local WorldGenerationServiceServer = require(script:FindFirstAncestor("game").Server.Services.WorldGenerationServiceServer)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local ToolBinder = require(script:FindFirstAncestor("game").Shared.Binders.ToolBinder)
+local TorchTilt = require(script:FindFirstAncestor("game").Shared.Modules.Math.TorchTilt)
+local WorldGenerationServiceServer =
+	require(script:FindFirstAncestor("game").Server.Services.WorldGenerationServiceServer)
 
 type InventoryState = InventoryServiceUtils.InventoryState
 type AddItemResult = InventoryServiceUtils.AddItemResult
@@ -498,10 +499,12 @@ local function resolveWorldGridConfig(): (any, Vector3?, number?, number?)
 	end
 
 	local worldOrigin = if typeof((world :: any).worldOrigin) == "Vector3" then (world :: any).worldOrigin else nil
-	local tileSize = if typeof((world :: any).tileSize) == "number" and (world :: any).tileSize == (world :: any).tileSize
+	local tileSize = if typeof((world :: any).tileSize) == "number"
+			and (world :: any).tileSize == (world :: any).tileSize
 		then (world :: any).tileSize
 		else nil
-	local basePlaneX = if typeof((world :: any).basePlaneX) == "number" and (world :: any).basePlaneX == (world :: any).basePlaneX
+	local basePlaneX = if typeof((world :: any).basePlaneX) == "number"
+			and (world :: any).basePlaneX == (world :: any).basePlaneX
 		then (world :: any).basePlaneX
 		else nil
 	return world, worldOrigin, tileSize, basePlaneX
@@ -570,7 +573,8 @@ local function isTorchPlacementInRange(
 	maxPlacementDistance: number,
 	tileSize: number
 ): boolean
-	return BuildServiceUtils.WorldDistance2D(rootPosition, placement.cframe.Position) <= (maxPlacementDistance + tileSize)
+	return BuildServiceUtils.WorldDistance2D(rootPosition, placement.cframe.Position)
+		<= (maxPlacementDistance + tileSize)
 end
 
 local function buildTorchTilePlacement(
@@ -719,7 +723,9 @@ local function resolveTorchPlacementFromRequestedTile(
 			basePlaneX,
 			lookVector
 		)
-		if placement ~= nil and isTorchPlacementInRange(rootPart.Position, placement, maxPlacementDistance, tileSize) then
+		if
+			placement ~= nil and isTorchPlacementInRange(rootPart.Position, placement, maxPlacementDistance, tileSize)
+		then
 			return placement
 		end
 	end
@@ -820,7 +826,8 @@ local function resolveTorchDeployablePlacement(
 	params.FilterDescendantsInstances = { character, placedInstance }
 
 	local function buildPlacementFromSupport(hitPosition: Vector3, hitNormal: Vector3): TorchTilt.TilePlacement?
-		local supportCFrame, supportKind = TorchTilt.resolvePlacementCFrame(hitPosition, hitNormal, boundingSize, lookVector)
+		local supportCFrame, supportKind =
+			TorchTilt.resolvePlacementCFrame(hitPosition, hitNormal, boundingSize, lookVector)
 		if supportCFrame == nil or supportKind == nil then
 			return nil
 		end
@@ -848,14 +855,22 @@ local function resolveTorchDeployablePlacement(
 	local wallPlacement = nil :: TorchTilt.TilePlacement?
 	local wallOrigin = rootPart.Position + Vector3.new(0, 2, 0)
 	local wallResult = Workspace:Raycast(wallOrigin, lookVector * supportDistance, params)
-	if wallResult ~= nil and TorchTilt.isSolidSurface(wallResult.Instance) and TorchTilt.isWallNormal(wallResult.Normal) then
+	if
+		wallResult ~= nil
+		and TorchTilt.isSolidSurface(wallResult.Instance)
+		and TorchTilt.isWallNormal(wallResult.Normal)
+	then
 		wallPlacement = buildPlacementFromSupport(wallResult.Position, wallResult.Normal)
 	end
 
 	local groundPlacement = nil :: TorchTilt.TilePlacement?
 	local desiredPosition = rootPart.Position + Vector3.new(0, 4, 0) + (lookVector * supportDistance)
 	local groundResult = Workspace:Raycast(desiredPosition + Vector3.new(0, 12, 0), Vector3.new(0, -32, 0), params)
-	if groundResult ~= nil and TorchTilt.isSolidSurface(groundResult.Instance) and TorchTilt.isGroundNormal(groundResult.Normal) then
+	if
+		groundResult ~= nil
+		and TorchTilt.isSolidSurface(groundResult.Instance)
+		and TorchTilt.isGroundNormal(groundResult.Normal)
+	then
 		groundPlacement = buildPlacementFromSupport(groundResult.Position, groundResult.Normal)
 	end
 
@@ -910,13 +925,13 @@ local function resolveDeployablePlacementCFrame(
 		local supportDistance = math.min(placementDistance, maxPlacementDistance)
 		local wallOrigin = rootPart.Position + Vector3.new(0, 2, 0)
 		local wallResult = Workspace:Raycast(wallOrigin, lookVector * supportDistance, params)
-		if wallResult ~= nil and TorchTilt.isSolidSurface(wallResult.Instance) and TorchTilt.isWallNormal(wallResult.Normal) then
-			local supportCFrame = TorchTilt.resolvePlacementCFrame(
-				wallResult.Position,
-				wallResult.Normal,
-				boundingSize,
-				lookVector
-			)
+		if
+			wallResult ~= nil
+			and TorchTilt.isSolidSurface(wallResult.Instance)
+			and TorchTilt.isWallNormal(wallResult.Normal)
+		then
+			local supportCFrame =
+				TorchTilt.resolvePlacementCFrame(wallResult.Position, wallResult.Normal, boundingSize, lookVector)
 			if supportCFrame ~= nil then
 				return supportCFrame * boundingCFrame.Rotation
 			end
@@ -931,12 +946,8 @@ local function resolveDeployablePlacementCFrame(
 			return nil
 		end
 
-		local supportCFrame = TorchTilt.resolvePlacementCFrame(
-			groundResult.Position,
-			groundResult.Normal,
-			boundingSize,
-			lookVector
-		)
+		local supportCFrame =
+			TorchTilt.resolvePlacementCFrame(groundResult.Position, groundResult.Normal, boundingSize, lookVector)
 		if supportCFrame == nil then
 			return nil
 		end
@@ -1711,8 +1722,13 @@ function InventoryServiceServer.TryPlaceSelectedDeployable(
 	local placedTileY = nil :: number?
 	local placedSupportKind = nil :: string?
 	if placementProfile == "Torch" then
-		local torchPlacement =
-			resolveTorchDeployablePlacement(player, deployableConfig, placedInstance, requestedTileXRaw, requestedTileYRaw)
+		local torchPlacement = resolveTorchDeployablePlacement(
+			player,
+			deployableConfig,
+			placedInstance,
+			requestedTileXRaw,
+			requestedTileYRaw
+		)
 		if torchPlacement ~= nil then
 			placementCFrame = torchPlacement.cframe
 			placedTileX = torchPlacement.tileX
@@ -2530,4 +2546,3 @@ type InventoryServiceServer = typeof(InventoryServiceServer) & {
 }
 
 return InventoryServiceServer :: InventoryServiceServer
-

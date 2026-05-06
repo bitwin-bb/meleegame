@@ -5,17 +5,17 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local Signal = require(ReplicatedStorage.Packages.Signal)
-local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
-local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
-local BreathServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BreathServiceUtils)
-local LiquidServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.LiquidServiceUtils)
-local LiquidServiceServer = require(script:FindFirstAncestor("game").Server.Services.LiquidServiceServer)
-local HpServiceServer = require(script:FindFirstAncestor("game").Server.Services.HpServiceServer)
-local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
 local BreathBinder = require(script:FindFirstAncestor("game").Server.Binders.BreathBinder)
+local BreathServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BreathServiceUtils)
+local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
+local HpServiceServer = require(script:FindFirstAncestor("game").Server.Services.HpServiceServer)
+local LiquidServiceServer = require(script:FindFirstAncestor("game").Server.Services.LiquidServiceServer)
+local LiquidServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.LiquidServiceUtils)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
+local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local Signal = require(ReplicatedStorage.Packages.Signal)
 
 type BreathServiceConfig = BreathServiceUtils.BreathServiceConfig
 type BreathServiceState = BreathServiceUtils.BreathServiceState
@@ -271,4 +271,3 @@ type BreathServiceServer = typeof(BreathServiceServer) & {
 }
 
 return BreathServiceServer :: BreathServiceServer
-

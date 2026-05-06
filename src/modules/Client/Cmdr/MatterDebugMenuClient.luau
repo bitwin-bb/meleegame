@@ -57,11 +57,11 @@ function MatterDebugMenuClient:Init()
 	local connection = loop:begin({
 		default = RunService.Heartbeat,
 	})
-	local attributeConnection = localPlayer:GetAttributeChangedSignal(
-		CmdrUtils.MATTER_DEBUG_MENU_ENABLED_ATTRIBUTE
-	):Connect(function()
-		self:applyEnabledState()
-	end)
+	local attributeConnection = localPlayer
+		:GetAttributeChangedSignal(CmdrUtils.MATTER_DEBUG_MENU_ENABLED_ATTRIBUTE)
+		:Connect(function()
+			self:applyEnabledState()
+		end)
 
 	self.localPlayer = localPlayer
 	self.world = world

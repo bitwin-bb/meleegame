@@ -1,20 +1,20 @@
-local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
-local Ripple = require(ReplicatedStorage.Packages.Ripple)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
-local CameraServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.CameraServiceUtils)
 local Cache = require(script.Parent.Cache)
+local CameraServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.CameraServiceUtils)
+local CatchUpPlayer = require(script.Parent.Behavior.catchUpPlayer)
+local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Predict = require(script.Parent.Predict)
 local Resolve = require(script.Parent.Resolve)
+local Ripple = require(ReplicatedStorage.Packages.Ripple)
+local RoomBehavior = require(script.Parent.Behavior.room)
 local Stack = require(script.Parent.Stack)
 local State = require(script.Parent.State)
 local Target = require(script.Parent.Target)
-local CatchUpPlayer = require(script.Parent.Behavior.catchUpPlayer)
-local RoomBehavior = require(script.Parent.Behavior.room)
 
 local SideView = {}
 SideView.__index = SideView
@@ -149,32 +149,32 @@ function SideView.New(config: SideViewConfig?): SideView
 		target = nil,
 		character = nil,
 		renderStepName = ("SideViewCameraUpdate_%d"):format(sideViewInstanceCount),
-		distance = if config and config.distance then config.distance else (DEFAULT_SIDE_VIEW_CONFIG.distance :: number),
-		height = if config and config.height then config.height else (DEFAULT_SIDE_VIEW_CONFIG.height :: number),
+		distance = if config and config.distance then config.distance else DEFAULT_SIDE_VIEW_CONFIG.distance :: number,
+		height = if config and config.height then config.height else DEFAULT_SIDE_VIEW_CONFIG.height :: number,
 		lookHeight = if config and config.lookHeight
 			then config.lookHeight
-			else (DEFAULT_SIDE_VIEW_CONFIG.lookHeight :: number),
+			else DEFAULT_SIDE_VIEW_CONFIG.lookHeight :: number,
 		sideSign = if config and config.sideSign
 			then math.sign(config.sideSign)
 			else math.sign(DEFAULT_SIDE_VIEW_CONFIG.sideSign :: number),
 		fieldOfView = if config and config.fieldOfView
 			then config.fieldOfView
-			else (DEFAULT_SIDE_VIEW_CONFIG.fieldOfView :: number),
+			else DEFAULT_SIDE_VIEW_CONFIG.fieldOfView :: number,
 		movementBackAmount = if config and config.movementBackAmount
 			then config.movementBackAmount
-			else (DEFAULT_SIDE_VIEW_CONFIG.movementBackAmount :: number),
+			else DEFAULT_SIDE_VIEW_CONFIG.movementBackAmount :: number,
 		movementSpeedForMaxBack = if config and config.movementSpeedForMaxBack
 			then config.movementSpeedForMaxBack
-			else (DEFAULT_SIDE_VIEW_CONFIG.movementSpeedForMaxBack :: number),
+			else DEFAULT_SIDE_VIEW_CONFIG.movementSpeedForMaxBack :: number,
 		movementBackSign = if config and config.movementBackSign
 			then math.sign(config.movementBackSign)
 			else math.sign(DEFAULT_SIDE_VIEW_CONFIG.movementBackSign :: number),
 		mouseInfluenceX = if config and config.mouseInfluenceX
 			then config.mouseInfluenceX
-			else (DEFAULT_SIDE_VIEW_CONFIG.mouseInfluenceX :: number),
+			else DEFAULT_SIDE_VIEW_CONFIG.mouseInfluenceX :: number,
 		mouseInfluenceY = if config and config.mouseInfluenceY
 			then config.mouseInfluenceY
-			else (DEFAULT_SIDE_VIEW_CONFIG.mouseInfluenceY :: number),
+			else DEFAULT_SIDE_VIEW_CONFIG.mouseInfluenceY :: number,
 		cameraSpring = if config and config.cameraSpring
 			then config.cameraSpring
 			else (DEFAULT_SIDE_VIEW_CONFIG.cameraSpring or DEFAULT_CAMERA_SPRING),

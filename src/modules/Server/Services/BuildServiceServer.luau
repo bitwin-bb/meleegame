@@ -1,25 +1,25 @@
 --!strict
 
-local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
-local MiningPower = require(script:FindFirstAncestor("game").Shared.Modules.Math.MiningPower)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
-local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
+local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
+local InventoryServiceServer = require(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
-local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
+local LootServiceServer = require(script:FindFirstAncestor("game").Server.Services.LootServiceServer)
+local MiningPower = require(script:FindFirstAncestor("game").Shared.Modules.Math.MiningPower)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
 local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
+local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local WorldGenerationServiceServer =
 	require(script:FindFirstAncestor("game").Server.Services.WorldGenerationServiceServer)
-local InventoryServiceServer = require(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
-local LootServiceServer = require(script:FindFirstAncestor("game").Server.Services.LootServiceServer)
 
 type BuildServiceConfig = BuildServiceUtils.BuildServiceConfig
 type BuildServiceState = BuildServiceUtils.BuildServiceState
@@ -37,7 +37,12 @@ type SlotMutationResult = InventoryServiceUtils.SlotMutationResult
 
 type WorldGenerationServiceServerObject = {
 	getWorld: (self: WorldGenerationServiceServerObject) -> any,
-	setTileAt: (self: WorldGenerationServiceServerObject, tileXRaw: any, tileYRaw: any, tileIdRaw: any) -> (boolean, number, number),
+	setTileAt: (
+		self: WorldGenerationServiceServerObject,
+		tileXRaw: any,
+		tileYRaw: any,
+		tileIdRaw: any
+	) -> (boolean, number, number),
 }
 
 type LootServiceServerObject = {
@@ -282,11 +287,15 @@ end
 function BuildServiceServer.CreateStateSnapshot(self: BuildServiceServer): BuildServiceState
 	local world = self.world
 	local tileSize = if world ~= nil and isFiniteNumber((world :: any).tileSize) then (world :: any).tileSize else 2
-	local chunkSize = if world ~= nil and isFiniteNumber((world :: any).chunkSize) then math.floor((world :: any).chunkSize) else 32
+	local chunkSize = if world ~= nil and isFiniteNumber((world :: any).chunkSize)
+		then math.floor((world :: any).chunkSize)
+		else 32
 	local worldOrigin = if world ~= nil and typeof((world :: any).worldOrigin) == "Vector3"
 		then (world :: any).worldOrigin
 		else Vector3.zero
-	local basePlaneX = if world ~= nil and isFiniteNumber((world :: any).basePlaneX) then (world :: any).basePlaneX else 0
+	local basePlaneX = if world ~= nil and isFiniteNumber((world :: any).basePlaneX)
+		then (world :: any).basePlaneX
+		else 0
 	return BuildServiceUtils.createState({
 		ready = world ~= nil,
 		tileSize = tileSize,
@@ -337,8 +346,12 @@ end
 
 function BuildServiceServer.GetTileBoundsY(self: BuildServiceServer): (number, number)
 	local world = self.world
-	local minTileY = if world ~= nil and isFiniteNumber((world :: any).minTileY) then math.floor((world :: any).minTileY) else -4096
-	local maxTileY = if world ~= nil and isFiniteNumber((world :: any).maxTileY) then math.floor((world :: any).maxTileY) else 4096
+	local minTileY = if world ~= nil and isFiniteNumber((world :: any).minTileY)
+		then math.floor((world :: any).minTileY)
+		else -4096
+	local maxTileY = if world ~= nil and isFiniteNumber((world :: any).maxTileY)
+		then math.floor((world :: any).maxTileY)
+		else 4096
 	return minTileY, maxTileY
 end
 
@@ -390,9 +403,14 @@ function BuildServiceServer.GetTreesForChunk(self: BuildServiceServer, chunkX: n
 end
 
 function BuildServiceServer.ResolveTreeHitAt(self: BuildServiceServer, tileX: number, tileY: number): TreeHitResult?
-	return BuildServiceUtils.resolveTreeAtTile(tileX, tileY, self.state.chunkSize, function(chunkX: number, chunkY: number): { any }?
-		return self:getTreesForChunk(chunkX, chunkY)
-	end)
+	return BuildServiceUtils.resolveTreeAtTile(
+		tileX,
+		tileY,
+		self.state.chunkSize,
+		function(chunkX: number, chunkY: number): { any }?
+			return self:getTreesForChunk(chunkX, chunkY)
+		end
+	)
 end
 
 function BuildServiceServer.ResolvePlayerTileX(self: BuildServiceServer, player: Player, fallbackTileX: number): number
@@ -400,7 +418,8 @@ function BuildServiceServer.ResolvePlayerTileX(self: BuildServiceServer, player:
 	if rootPart == nil then
 		return fallbackTileX
 	end
-	local tileX, _ = BuildServiceUtils.worldPositionToTile(rootPart.Position, self.state.worldOrigin, self.state.tileSize)
+	local tileX, _ =
+		BuildServiceUtils.worldPositionToTile(rootPart.Position, self.state.worldOrigin, self.state.tileSize)
 	return tileX
 end
 
@@ -530,7 +549,8 @@ function BuildServiceServer.IsWithinInteractionRange(
 		self.state.basePlaneX
 	)
 	local maxDistanceStuds = self.config.maxInteractionDistanceTiles * self.state.tileSize
-	return BuildServiceUtils.worldDistance2D(rootPart.Position, targetPosition) <= maxDistanceStuds + self.state.tileSize
+	return BuildServiceUtils.worldDistance2D(rootPart.Position, targetPosition)
+		<= maxDistanceStuds + self.state.tileSize
 end
 
 function BuildServiceServer.IsBreakTargetWithinInteractionRange(
@@ -755,8 +775,7 @@ function BuildServiceServer.SetTileAtAuthoritative(
 ): (boolean, number, number)
 	self:clearMultiTileMembershipAt(tileX, tileY)
 	local worldGenerationServiceAny = self.worldGenerationService :: any
-	local changed, previousTileIdRaw, nextTileIdRaw =
-		worldGenerationServiceAny:setTileAt(tileX, tileY, tileId)
+	local changed, previousTileIdRaw, nextTileIdRaw = worldGenerationServiceAny:setTileAt(tileX, tileY, tileId)
 	local previousTileId = if isFiniteNumber(previousTileIdRaw)
 		then math.floor(previousTileIdRaw)
 		else BuildServiceUtils.AIR_TILE_ID
@@ -852,9 +871,16 @@ function BuildServiceServer.ResolveUnsupportedCascadeAround(
 		if not tileRule.requiresSupport and not tileRule.fallWhenUnsupported then
 			continue
 		end
-		if BuildServiceUtils.hasSupportAt(current.tileX, current.tileY, tileRule.supportMode, function(scanX: number, scanY: number): number
-			return self:getTileAtInternal(scanX, scanY)
-		end) then
+		if
+			BuildServiceUtils.hasSupportAt(
+				current.tileX,
+				current.tileY,
+				tileRule.supportMode,
+				function(scanX: number, scanY: number): number
+					return self:getTileAtInternal(scanX, scanY)
+				end
+			)
+		then
 			continue
 		end
 
@@ -884,10 +910,8 @@ function BuildServiceServer.ResolveUnsupportedCascadeAround(
 					tileId = nextTileId,
 					reason = "cascade",
 				}
-				local unsupportedNeighbors = BuildServiceUtils.getCardinalNeighbors(
-					unsupportedTile.tileX,
-					unsupportedTile.tileY
-				)
+				local unsupportedNeighbors =
+					BuildServiceUtils.getCardinalNeighbors(unsupportedTile.tileX, unsupportedTile.tileY)
 				for _, neighbor in unsupportedNeighbors do
 					enqueue(neighbor.tileX, neighbor.tileY)
 				end
@@ -1016,14 +1040,7 @@ function BuildServiceServer.RequestPlaceTile(
 	local sourceSlot, sourceStack, sourcePlaceableConfig, sourceError =
 		resolvePlaceableFromInventory(self.inventoryService, player, sourceSlotRaw)
 	if sourceError ~= nil then
-		self:sendActionResult(
-			player,
-			requestId,
-			BuildServiceUtils.ACTION_TYPE_PLACE,
-			false,
-			sourceError,
-			nil
-		)
+		self:sendActionResult(player, requestId, BuildServiceUtils.ACTION_TYPE_PLACE, false, sourceError, nil)
 		return
 	end
 	if sourceSlot == nil or sourceStack == nil or sourcePlaceableConfig == nil then
@@ -1089,14 +1106,7 @@ function BuildServiceServer.RequestPlaceTile(
 	end
 	local requiredAmount = if sourcePlaceableConfig.consumesOnPlace then #placementResult.footprint else 0
 	if sourceStack.amount < requiredAmount then
-		self:sendActionResult(
-			player,
-			requestId,
-			BuildServiceUtils.ACTION_TYPE_PLACE,
-			false,
-			"insufficient_items",
-			nil
-		)
+		self:sendActionResult(player, requestId, BuildServiceUtils.ACTION_TYPE_PLACE, false, "insufficient_items", nil)
 		return
 	end
 
@@ -1133,12 +1143,8 @@ function BuildServiceServer.RequestPlaceTile(
 	local changedTiles: { TileCoordinate } = {}
 	local changedDeltas: { TileDelta } = {}
 	for _, footprintTile in placementResult.footprint do
-		local didChange, _, nextTileId = self:setTileAtAuthoritative(
-			footprintTile.tileX,
-			footprintTile.tileY,
-			tileId,
-			"place"
-		)
+		local didChange, _, nextTileId =
+			self:setTileAtAuthoritative(footprintTile.tileX, footprintTile.tileY, tileId, "place")
 		if didChange then
 			changedTiles[#changedTiles + 1] = {
 				tileX = footprintTile.tileX,
@@ -1174,14 +1180,7 @@ function BuildServiceServer.RequestPlaceTile(
 	end
 
 	self:registerMultiTilePlacement(tileId, changedTiles)
-	self:sendActionResult(
-		player,
-		requestId,
-		BuildServiceUtils.ACTION_TYPE_PLACE,
-		true,
-		"ok",
-		changedDeltas
-	)
+	self:sendActionResult(player, requestId, BuildServiceUtils.ACTION_TYPE_PLACE, true, "ok", changedDeltas)
 end
 
 function BuildServiceServer.ProcessBreakCompletion(
@@ -1204,12 +1203,8 @@ function BuildServiceServer.ProcessBreakCompletion(
 		if currentTileId == BuildServiceUtils.AIR_TILE_ID then
 			continue
 		end
-		local didChange, _, nextTileId = self:setTileAtAuthoritative(
-			breakTile.tileX,
-			breakTile.tileY,
-			BuildServiceUtils.AIR_TILE_ID,
-			"break"
-		)
+		local didChange, _, nextTileId =
+			self:setTileAtAuthoritative(breakTile.tileX, breakTile.tileY, BuildServiceUtils.AIR_TILE_ID, "break")
 		if didChange then
 			changedTiles[#changedTiles + 1] = {
 				tileX = breakTile.tileX,
@@ -1278,23 +1273,13 @@ function BuildServiceServer.ProcessTreeBreakCompletion(
 	local removed = self:removeTreeFromWorld(tree)
 	if not removed then
 		self.treeStates[treeId] = nil
-		self:sendActionResult(
-			player,
-			intent.requestId,
-			BuildServiceUtils.ACTION_TYPE_BREAK,
-			false,
-			"tree_missing",
-			nil
-		)
+		self:sendActionResult(player, intent.requestId, BuildServiceUtils.ACTION_TYPE_BREAK, false, "tree_missing", nil)
 		return
 	end
 
 	local playerTileX = self:resolvePlayerTileX(player, tree.rootTileX)
-	local fallDirection = BuildServiceUtils.computeTreeFallDirection(
-		tree.rootTileX,
-		playerTileX,
-		intent.lastTreeHitDirection
-	)
+	local fallDirection =
+		BuildServiceUtils.computeTreeFallDirection(tree.rootTileX, playerTileX, intent.lastTreeHitDirection)
 	local heightTiles = treeHit.footprint.heightTiles
 	local pivotCFrame = BuildServiceUtils.computeTreePivotCFrame(
 		tree.rootTileX,
@@ -1322,12 +1307,8 @@ function BuildServiceServer.ProcessTreeBreakCompletion(
 	self:sendActionResult(player, intent.requestId, BuildServiceUtils.ACTION_TYPE_BREAK, true, "tree_felled", {})
 
 	task.delay(treeBreakProfile.fallDuration, function()
-		local impactPosition = BuildServiceUtils.computeTreeImpactPosition(
-			pivotCFrame,
-			fallDirection,
-			heightTiles,
-			self.state.tileSize
-		)
+		local impactPosition =
+			BuildServiceUtils.computeTreeImpactPosition(pivotCFrame, fallDirection, heightTiles, self.state.tileSize)
 		self:spawnTreeDropsAtImpact(tree, heightTiles, fallDirection, impactPosition)
 	end)
 end
@@ -1447,7 +1428,8 @@ function BuildServiceServer.ProcessBreakIntents(self: BuildServiceServer, deltaT
 			intent.targetTreeHeight = nil
 			intent.lastTreeHitDirection = 0
 
-			local canBreak, reason, breakHits = BuildServiceUtils.canBreakTile(tileId, intent.toolType, intent.toolPower)
+			local canBreak, reason, breakHits =
+				BuildServiceUtils.canBreakTile(tileId, intent.toolType, intent.toolPower)
 			if not canBreak then
 				self:stopBreaking(player, intent, reason)
 				continue
@@ -1472,7 +1454,18 @@ function BuildServiceServer.ProcessBreakIntents(self: BuildServiceServer, deltaT
 				local currentHits = math.min(totalHits, math.max(0, math.floor(damageRuntime.damage)))
 				local progress = math.clamp(currentHits / totalHits, 0, 1)
 				intent.lastProgressPushAt = now
-				self:pushBreakProgress(player, true, tileX, tileY, progress, 0, intent.toolPower, "hits", currentHits, totalHits)
+				self:pushBreakProgress(
+					player,
+					true,
+					tileX,
+					tileY,
+					progress,
+					0,
+					intent.toolPower,
+					"hits",
+					currentHits,
+					totalHits
+				)
 				if progress >= 1 then
 					self.tileDamage[tileKey] = nil
 					self:processBreakCompletion(player, intent, tileX, tileY)
@@ -1510,14 +1503,13 @@ function BuildServiceServer.ProcessBreakIntents(self: BuildServiceServer, deltaT
 			tileX - treeHit.tree.rootTileX
 		)
 
-		local canBreakTree, treeReason, treeBreakHits, treeBreakProfile =
-			BuildServiceUtils.canBreakTree({
-				seed = treeHit.tree.seed,
-				variantIndex = treeHit.tree.variantIndex,
-				biomeType = treeHit.tree.biomeType,
-				biomeId = treeHit.tree.biomeId,
-				heightTiles = treeHit.footprint.heightTiles,
-			}, intent.toolType, intent.toolPower)
+		local canBreakTree, treeReason, treeBreakHits, treeBreakProfile = BuildServiceUtils.canBreakTree({
+			seed = treeHit.tree.seed,
+			variantIndex = treeHit.tree.variantIndex,
+			biomeType = treeHit.tree.biomeType,
+			biomeId = treeHit.tree.biomeId,
+			heightTiles = treeHit.footprint.heightTiles,
+		}, intent.toolType, intent.toolPower)
 		if not canBreakTree then
 			self:stopBreaking(player, intent, treeReason)
 			continue
@@ -1542,7 +1534,18 @@ function BuildServiceServer.ProcessBreakIntents(self: BuildServiceServer, deltaT
 			local currentHits = math.min(totalHits, math.max(0, math.floor(treeDamageRuntime.damage)))
 			local treeProgress = math.clamp(currentHits / totalHits, 0, 1)
 			intent.lastProgressPushAt = now
-			self:pushBreakProgress(player, true, tileX, tileY, treeProgress, 0, intent.toolPower, "hits", currentHits, totalHits)
+			self:pushBreakProgress(
+				player,
+				true,
+				tileX,
+				tileY,
+				treeProgress,
+				0,
+				intent.toolPower,
+				"hits",
+				currentHits,
+				totalHits
+			)
 
 			if treeProgress >= 1 then
 				self.treeDamage[healthPoolKey] = nil
@@ -1734,4 +1737,3 @@ type BuildServiceServer = typeof(BuildServiceServer) & {
 }
 
 return BuildServiceServer :: BuildServiceServer
-

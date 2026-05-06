@@ -3,14 +3,14 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Signal = require(ReplicatedStorage.Packages.Signal)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local CraftingServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.CraftingServiceUtils)
-local SnackbarNotifications = require(script:FindFirstAncestor("game").Client.SnackbarNotifications)
 local InventoryServiceClient = require(script:FindFirstAncestor("game").Client.Services.InventoryServiceClient)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local PlayerDataServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlayerDataServiceClient)
+local Signal = require(ReplicatedStorage.Packages.Signal)
+local SnackbarNotifications = require(script:FindFirstAncestor("game").Client.SnackbarNotifications)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
 
@@ -80,7 +80,7 @@ end
 local function buildRecipeListCacheKey(categoryRaw: any, searchRaw: any): string
 	local category = trim(categoryRaw)
 	local search = string.lower(trim(searchRaw))
-	return (`{category}::{search}`)
+	return `{category}::{search}`
 end
 
 function CraftingServiceClient.CreateInitialKnownRecipeIds(
@@ -135,7 +135,10 @@ function CraftingServiceClient.RefreshAvailableRecipeIds(self: CraftingServiceCl
 	return true
 end
 
-function CraftingServiceClient.SetActiveStations(self: CraftingServiceClient, nextStationsRaw: { [string]: boolean }): boolean
+function CraftingServiceClient.SetActiveStations(
+	self: CraftingServiceClient,
+	nextStationsRaw: { [string]: boolean }
+): boolean
 	local nextStations = CraftingServiceUtils.cloneStringSet(nextStationsRaw)
 	if CraftingServiceUtils.stringSetEquals(self.activeStations, nextStations) then
 		return false
@@ -157,7 +160,11 @@ function CraftingServiceClient.RefreshBiomeTokens(self: CraftingServiceClient): 
 	return true
 end
 
-function CraftingServiceClient.ApplyInventoryState(self: CraftingServiceClient, stateRaw: any, coinsDataRaw: any?): boolean
+function CraftingServiceClient.ApplyInventoryState(
+	self: CraftingServiceClient,
+	stateRaw: any,
+	coinsDataRaw: any?
+): boolean
 	local nextCounts = CraftingServiceUtils.buildInventoryItemCountMap(stateRaw, coinsDataRaw)
 	if countMapEquals(self.inventoryItemCounts, nextCounts) then
 		return false
@@ -183,7 +190,8 @@ end
 function CraftingServiceClient.ApplyState(self: CraftingServiceClient, stateRaw: any)
 	local fallback = self.serverState
 	local nextState = CraftingServiceUtils.sanitizeServiceStateSnapshot(stateRaw, fallback)
-	if CraftingServiceUtils.stringSetEquals(self.serverState.knownRecipeIds, nextState.knownRecipeIds)
+	if
+		CraftingServiceUtils.stringSetEquals(self.serverState.knownRecipeIds, nextState.knownRecipeIds)
 		and CraftingServiceUtils.stringSetEquals(self.serverState.discoveredItemIds, nextState.discoveredItemIds)
 		and CraftingServiceUtils.stringSetEquals(self.serverState.progressionFlags, nextState.progressionFlags)
 	then
@@ -197,7 +205,7 @@ function CraftingServiceClient.ApplyState(self: CraftingServiceClient, stateRaw:
 end
 
 function CraftingServiceClient.OnCraftResult(self: CraftingServiceClient, resultRaw: any)
-	local source = if typeof(resultRaw) == "table" then (resultRaw :: { [string]: any }) else {}
+	local source = if typeof(resultRaw) == "table" then resultRaw :: { [string]: any } else {}
 	self.lastCraftResult = {
 		success = source.success == true,
 		reason = if typeof(source.reason) == "string" then source.reason else nil,
@@ -217,11 +225,7 @@ function CraftingServiceClient.RequestSync(self: CraftingServiceClient)
 	self.networker:fire(CraftingServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
-function CraftingServiceClient.RequestCraft(
-	self: CraftingServiceClient,
-	recipeIdRaw: any,
-	quantityRaw: any
-): boolean
+function CraftingServiceClient.RequestCraft(self: CraftingServiceClient, recipeIdRaw: any, quantityRaw: any): boolean
 	local recipeId, quantity = CraftingServiceUtils.RecipeValidator.sanitizeCraftRequest(
 		recipeIdRaw,
 		quantityRaw,
@@ -250,11 +254,7 @@ function CraftingServiceClient.StopBulkCraft(self: CraftingServiceClient): boole
 	return true
 end
 
-function CraftingServiceClient.StartBulkCraft(
-	self: CraftingServiceClient,
-	recipeIdRaw: any,
-	quantityRaw: any
-): boolean
+function CraftingServiceClient.StartBulkCraft(self: CraftingServiceClient, recipeIdRaw: any, quantityRaw: any): boolean
 	local recipeId, quantity = CraftingServiceUtils.RecipeValidator.sanitizeCraftRequest(
 		recipeIdRaw,
 		quantityRaw,
@@ -314,7 +314,7 @@ function CraftingServiceClient.GetRecipePreview(
 end
 
 function CraftingServiceClient.GetRecipes(self: CraftingServiceClient, optionsRaw: any?): { [string]: any }
-	local options = if typeof(optionsRaw) == "table" then (optionsRaw :: { [string]: any }) else {}
+	local options = if typeof(optionsRaw) == "table" then optionsRaw :: { [string]: any } else {}
 	local category = trim(options.category)
 	local searchText = trim(options.searchText)
 	if category == "" then
@@ -368,7 +368,10 @@ function CraftingServiceClient.GetRecipes(self: CraftingServiceClient, optionsRa
 	return cloneRecipeEntries(entries)
 end
 
-function CraftingServiceClient.GetRecipesByCategory(self: CraftingServiceClient, searchTextRaw: any?): { [string]: { [string]: any } }
+function CraftingServiceClient.GetRecipesByCategory(
+	self: CraftingServiceClient,
+	searchTextRaw: any?
+): { [string]: { [string]: any } }
 	local searchText = trim(searchTextRaw)
 	local byCategory: { [string]: { [string]: any } } = {}
 	local entries = self:getRecipes({
@@ -577,4 +580,3 @@ type CraftingServiceClient = typeof(CraftingServiceClient) & {
 }
 
 return CraftingServiceClient :: CraftingServiceClient
-

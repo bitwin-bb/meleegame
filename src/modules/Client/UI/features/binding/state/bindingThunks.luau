@@ -1,21 +1,21 @@
 --!strict
 local RunService = game:GetService("RunService")
 
-local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
-local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
-local bindingSlice = require(script:FindFirstAncestor("game").Client.UI.features.binding.state.bindingSlice)
-local itemThunks = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemThunks)
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
-local MiningPower = require(script:FindFirstAncestor("game").Shared.Modules.Math.MiningPower)
 local BuildServiceClient = require(script:FindFirstAncestor("game").Client.Services.BuildServiceClient)
 local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
+local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
 local InventoryServiceClient = require(script:FindFirstAncestor("game").Client.Services.InventoryServiceClient)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
+local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
 local MagicServiceClient = require(script:FindFirstAncestor("game").Client.Services.MagicServiceClient)
 local MagicServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.MagicServiceUtils)
 local MeleeServiceClient = require(script:FindFirstAncestor("game").Client.Services.MeleeServiceClient)
+local MiningPower = require(script:FindFirstAncestor("game").Shared.Modules.Math.MiningPower)
 local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
 local PlayerServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlayerServiceClient)
+local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
+local bindingSlice = require(script:FindFirstAncestor("game").Client.UI.features.binding.state.bindingSlice)
+local itemThunks = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemThunks)
 
 type BindingHintEntry = bindingSlice.BindingHintEntry
 type BindingHintState = bindingSlice.BindingHintState
@@ -200,7 +200,8 @@ local function resolvePromptData(actionName: string): PromptData
 end
 
 local function isMousePrompt(promptData: PromptData): boolean
-	if promptData.keyCode == Enum.KeyCode.MouseLeftButton
+	if
+		promptData.keyCode == Enum.KeyCode.MouseLeftButton
 		or promptData.keyCode == Enum.KeyCode.MouseRightButton
 		or promptData.keyCode == Enum.KeyCode.MouseMiddleButton
 	then
@@ -437,7 +438,11 @@ local function tryBuildBreakHint(hints: { BindingHintEntry }, inventoryState: In
 	})
 end
 
-local function appendBuildHints(hints: { BindingHintEntry }, inventoryState: InventoryState, selectedStack: any): string?
+local function appendBuildHints(
+	hints: { BindingHintEntry },
+	inventoryState: InventoryState,
+	selectedStack: any
+): string?
 	if tryBuildPlaceHint(hints, selectedStack) then
 		return "Place"
 	end
@@ -523,10 +528,7 @@ local function appendMagicHint(hints: { BindingHintEntry })
 	local cooldowns = magicState.cooldowns
 	local cooldownRemaining = 0
 	if equippedWeaponId ~= "" then
-		cooldownRemaining = math.max(
-			cooldowns[equippedWeaponId] or 0,
-			cooldowns[string.lower(equippedWeaponId)] or 0
-		)
+		cooldownRemaining = math.max(cooldowns[equippedWeaponId] or 0, cooldowns[string.lower(equippedWeaponId)] or 0)
 	end
 
 	local enabled = true
@@ -622,10 +624,9 @@ function bindingThunks.Start(): () -> ()
 		PlatformServiceClient:init()
 	end
 
-	runtime.inventoryStateChangedConnection =
-		ServiceSync.connectStateChanged(InventoryServiceClient, function()
-			refreshBindingHints(true)
-		end)
+	runtime.inventoryStateChangedConnection = ServiceSync.connectStateChanged(InventoryServiceClient, function()
+		refreshBindingHints(true)
+	end)
 	runtime.buildStateChangedConnection = ServiceSync.connectStateChanged(BuildServiceClient, function()
 		refreshBindingHints(true)
 	end)

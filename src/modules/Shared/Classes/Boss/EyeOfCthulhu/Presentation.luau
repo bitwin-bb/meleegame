@@ -58,7 +58,8 @@ type PresentationRuntime = {
 }
 
 local EyeOfCthulhuPresentation = {}
-local EYE_ROAR_SOUND_ID = AudioServiceUtils.resolveSoundAssetId((((AudioRegistry :: any).Npcs :: any).Bosses :: any).EyeOfCthulhu.roar)
+local EYE_ROAR_SOUND_ID =
+	AudioServiceUtils.resolveSoundAssetId((((AudioRegistry :: any).Npcs :: any).Bosses :: any).EyeOfCthulhu.roar)
 
 local SHELL_SPRING: SpringOptions = {
 	frequency = 5.2,
@@ -173,19 +174,14 @@ local function ensureRoarSound(runtime: PresentationRuntime): Sound?
 	end
 
 	local categoryGroups = AudioServiceUtils.ensureCategoryGroups(SoundService)
-	local createdSound = AudioServiceUtils.createSoundInstance(
-		EYE_ROAR_SOUND_ID,
-		{
-			category = "SFX",
-			volume = 1,
-			rollOffMaxDistance = 120,
-			emitterSize = 10,
-			autoDestroy = false,
-			parent = rootPart,
-		},
-		rootPart,
-		categoryGroups.SFX
-	)
+	local createdSound = AudioServiceUtils.createSoundInstance(EYE_ROAR_SOUND_ID, {
+		category = "SFX",
+		volume = 1,
+		rollOffMaxDistance = 120,
+		emitterSize = 10,
+		autoDestroy = false,
+		parent = rootPart,
+	}, rootPart, categoryGroups.SFX)
 	if createdSound == nil then
 		return nil
 	end

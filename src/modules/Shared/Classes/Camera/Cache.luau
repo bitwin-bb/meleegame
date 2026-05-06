@@ -174,11 +174,15 @@ function Cache.StoreFrame(self: Cache, snapshotRaw: any): FrameSnapshot
 		reason = if typeof((snapshot :: any).reason) == "string" then (snapshot :: any).reason else "",
 		subjectKey = if typeof((snapshot :: any).subjectKey) == "string" then (snapshot :: any).subjectKey else nil,
 		subjectKind = if typeof((snapshot :: any).subjectKind) == "string" then (snapshot :: any).subjectKind else nil,
-		targetPosition = if typeof((snapshot :: any).targetPosition) == "Vector3" then (snapshot :: any).targetPosition else nil,
+		targetPosition = if typeof((snapshot :: any).targetPosition) == "Vector3"
+			then (snapshot :: any).targetPosition
+			else nil,
 		predictedPosition = if typeof((snapshot :: any).predictedPosition) == "Vector3"
 			then (snapshot :: any).predictedPosition
 			else nil,
-		cameraCFrame = if typeof((snapshot :: any).cameraCFrame) == "CFrame" then (snapshot :: any).cameraCFrame else nil,
+		cameraCFrame = if typeof((snapshot :: any).cameraCFrame) == "CFrame"
+			then (snapshot :: any).cameraCFrame
+			else nil,
 		fieldOfView = if typeof((snapshot :: any).fieldOfView) == "number" then (snapshot :: any).fieldOfView else nil,
 		hasOverride = (snapshot :: any).hasOverride == true,
 	}

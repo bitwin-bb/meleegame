@@ -5,15 +5,15 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local GoreServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.GoreServiceUtils)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Gore = require(script:FindFirstAncestor("game").Shared.Classes.Gore)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
+local GoreServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.GoreServiceUtils)
 local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Modules.Platform.InstanceUtils)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 
 type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (any),
+	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
 	Clean: (self: JanitorClass) -> (),
 	Destroy: (self: JanitorClass) -> (),
 }
@@ -190,14 +190,19 @@ function GoreServiceClient.TryResolvePendingEntity(self: GoreServiceClient, enti
 	return self:registerEntity(entityId, model, pendingConfig)
 end
 
-function GoreServiceClient.RegisterEntity(self: GoreServiceClient, entityIdRaw: any, modelRaw: any, configRaw: any): Gore.Gore?
+function GoreServiceClient.RegisterEntity(
+	self: GoreServiceClient,
+	entityIdRaw: any,
+	modelRaw: any,
+	configRaw: any
+): Gore.Gore?
 	local entityId = sanitizeEntityId(entityIdRaw)
 	if entityId == nil then
 		return nil
 	end
 
 	local config = if typeof(configRaw) == "table" then Sift.Dictionary.copy(configRaw) else {}
-	local model = if isModel(modelRaw) then (modelRaw :: Model) else self:resolveModelFromEntityId(entityId)
+	local model = if isModel(modelRaw) then modelRaw :: Model else self:resolveModelFromEntityId(entityId)
 	if model == nil then
 		self.pendingEntityConfigById[entityId] = config
 		return nil
@@ -289,8 +294,7 @@ function GoreServiceClient.EmitSlimeBlood(
 	end
 
 	local template = resolveSlimeBloodEffectTemplate()
-	local bloodEffect =
-		(if template ~= nil then template:Clone() else createFallbackSlimeBloodEffect()) :: BasePart
+	local bloodEffect = (if template ~= nil then template:Clone() else createFallbackSlimeBloodEffect()) :: BasePart
 	bloodEffect.Name = "SlimeBlood"
 	bloodEffect.Anchored = true
 	bloodEffect.CanCollide = false
@@ -548,4 +552,3 @@ type GoreServiceClient = typeof(GoreServiceClient) & {
 }
 
 return GoreServiceClient :: GoreServiceClient
-

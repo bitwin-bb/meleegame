@@ -6,6 +6,7 @@ local Workspace = game:GetService("Workspace")
 
 local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossServiceUtils)
 local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
+local Layer = require(script:FindFirstAncestor("game").Client.UI.shared.Layer)
 local Marker = require(script:FindFirstAncestor("game").Client.UI.features.boss.components.marker)
 local React = require(ReplicatedStorage.Packages.React)
 local markerSlice = require(script:FindFirstAncestor("game").Client.UI.features.boss.state.markerSlice)
@@ -213,14 +214,13 @@ return function(props: MarkerScreenProps): React.ReactNode
 		})
 	end
 
-	return e("Frame", {
-		Size = UDim2.fromScale(1, 1),
-		Position = UDim2.fromScale(0, 0),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		LayoutOrder = props.layoutOrder or 165,
-		Active = false,
-		Selectable = false,
-		ZIndex = zIndex,
-	}, children)
+	return e(Layer, {
+		layoutOrder = props.layoutOrder or 165,
+		zIndex = zIndex,
+		active = false,
+		native = {
+			Selectable = false,
+		},
+		children = children,
+	})
 end

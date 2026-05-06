@@ -5,25 +5,25 @@ local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local Ripple = require(ReplicatedStorage.Packages.Ripple)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local StringUtils = require(script:FindFirstAncestor("game").Shared.Modules.Core.StringUtils)
-local Vec = require(script:FindFirstAncestor("game").Shared.Modules.Math.Vec)
+local AudioServiceServer = require(script:FindFirstAncestor("game").Server.Services.AudioServiceServer)
+local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
 local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Modules.Platform.InstanceUtils)
-local ResolveItem = require(script:FindFirstAncestor("game").Shared.Modules.Game.Format.ResolveItem)
-local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Modules.Game.Format.ResolveToolInstance)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
-local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local InventoryServiceServer = require(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
+local LootServiceCache = require(script:FindFirstAncestor("game").Shared.Services.LootCache)
 local LootServiceData = require(script:FindFirstAncestor("game").Shared.Services.Data)
 local LootServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.LootServiceUtils)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
-local InventoryServiceServer = require(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
 local PlayerDataServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerDataServiceServer)
-local AudioServiceServer = require(script:FindFirstAncestor("game").Server.Services.AudioServiceServer)
-local LootServiceCache = require(script:FindFirstAncestor("game").Shared.Services.LootCache)
+local ResolveItem = require(script:FindFirstAncestor("game").Shared.Modules.Game.Format.ResolveItem)
+local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Modules.Game.Format.ResolveToolInstance)
+local Ripple = require(ReplicatedStorage.Packages.Ripple)
+local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local StringUtils = require(script:FindFirstAncestor("game").Shared.Modules.Core.StringUtils)
+local Vec = require(script:FindFirstAncestor("game").Shared.Modules.Math.Vec)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 
 type NumberMotion = Ripple.Motion<number>
 type SpringOptions = Ripple.SpringOptions
@@ -1774,4 +1774,3 @@ type LootServiceServer = typeof(LootServiceServer) & {
 }
 
 return LootServiceServer :: LootServiceServer
-

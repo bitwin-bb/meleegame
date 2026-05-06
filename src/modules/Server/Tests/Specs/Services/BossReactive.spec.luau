@@ -5,9 +5,9 @@ local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Mis
 local loader = require(loaderUtils.Parent).load(script)
 
 local Maid = loader("Maid")
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossServiceUtils)
 local BossBase = require(script:FindFirstAncestor("game").Shared.Classes.Boss)
 local BossServiceServer = require(script:FindFirstAncestor("game").Server.Services.BossServiceServer)
+local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossServiceUtils)
 local EyeOfCthulhuConfig = require(script:FindFirstAncestor("game").Shared.Classes.Boss.EyeOfCthulhu.Config)
 
 local function createTestService()

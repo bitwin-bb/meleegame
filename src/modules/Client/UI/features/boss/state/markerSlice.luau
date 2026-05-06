@@ -2,8 +2,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local Charm = require(ReplicatedStorage.Packages.Charm)
 local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossServiceUtils)
+local Charm = require(ReplicatedStorage.Packages.Charm)
 
 export type MarkerState = BossServiceUtils.BossServiceState
 type BossSnapshot = BossServiceUtils.BossSnapshot

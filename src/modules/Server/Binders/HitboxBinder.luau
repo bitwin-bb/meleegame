@@ -94,7 +94,10 @@ function HitboxBinder.onTouched(self: any, other: BasePart)
 	if self.affectsNpcs and getNpcServiceServer():damageNpcFromHitPart(other, self.damage, self.instance) > 0 then
 		return
 	end
-	if self.affectsBosses and getBossServiceServer():damageBossFromHitPart(other, self.damage, self.instance, "Hitbox") > 0 then
+	if
+		self.affectsBosses
+		and getBossServiceServer():damageBossFromHitPart(other, self.damage, self.instance, "Hitbox") > 0
+	then
 		return
 	end
 	if self.affectsHumanoids and humanoid ~= nil then

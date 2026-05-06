@@ -1,14 +1,18 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local InventoryHotbar = require(script:FindFirstAncestor("game").Client.UI.features.inventory.hud.inventoryHotbar)
+local HotbarLeftSideBar = require(script.HotbarLeftSideBar)
 local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
 local React = require(ReplicatedStorage.Packages.React)
+local inventorySlice = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.inventorySlice)
+local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
 local e: typeof(React.createElement) = React.createElement
 
 local SIDE_BAR_WIDTH = 220
 local SIDE_BAR_EDGE_PADDING = 12
 local SIDE_BAR_VERTICAL_PADDING = 72
+
+type InventoryHudState = inventorySlice.InventoryHudState
 
 type LeftSideBarButton = {
 	key: string?,
@@ -42,6 +46,8 @@ type LeftSideBarProps = {
 }
 
 return function(props: LeftSideBarProps)
+	local inventoryHudState = (useStore(inventorySlice.inventoryHudStateAtom) :: InventoryHudState?)
+		or inventorySlice.getInventoryHudState()
 	local buttons = props.buttons or {}
 	local zIndex = props.zIndex or 10
 	local buttonListChildren = {
@@ -61,7 +67,6 @@ return function(props: LeftSideBarProps)
 	}
 
 	for index, button in ipairs(buttons) do
-		local key = button.key or button.id or button.route or tostring(index)
 		buttonListChildren[#buttonListChildren + 1] = e(NavButton, {
 			id = button.id,
 			route = button.route,
@@ -110,7 +115,7 @@ return function(props: LeftSideBarProps)
 		Selectable = false,
 		LayoutOrder = props.layoutOrder or 2,
 		ZIndex = zIndex,
-		Visible = props.visible ~= false,
+		Visible = props.visible ~= false and inventoryHudState.isLeftSideBarVisible,
 	}, {
 		e("Frame", {
 			Size = UDim2.fromScale(1, 1),
@@ -134,7 +139,7 @@ return function(props: LeftSideBarProps)
 				Selectable = false,
 				ZIndex = zIndex,
 			}, buttonListChildren),
-			e(InventoryHotbar, inventoryHotbarProps),
+			e(HotbarLeftSideBar, inventoryHotbarProps),
 		}),
 	})
 end

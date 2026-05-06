@@ -5,12 +5,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Cmdr.CmdrUtils)
+local CoreConfigs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
+local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
 local Matter = require(ReplicatedStorage.Packages.Matter)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Plasma = require(ReplicatedStorage.Packages.Plasma)
-local CoreConfigs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
-local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Cmdr.CmdrUtils)
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
 local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
 
 local Cache = require(script:FindFirstAncestor("game").Shared.Services.SimulationCache)
@@ -102,8 +102,7 @@ local function getPlayerCenterChunkForWorldGeneration(config: SimulationConfig, 
 	end
 	local tileX = Shared.toTileCoordinate(rootPart.Position.Z, config.tileSize)
 	local tileY = Shared.toTileCoordinate(rootPart.Position.Y, config.tileSize)
-	return Shared.toChunkCoordinate(tileX, config.chunkSize),
-		Shared.toChunkCoordinate(tileY, config.chunkHeight)
+	return Shared.toChunkCoordinate(tileX, config.chunkSize), Shared.toChunkCoordinate(tileY, config.chunkHeight)
 end
 
 function WorldSimulationServiceServer:CreateStateSnapshot(player: Player): { [string]: any }
@@ -496,13 +495,17 @@ function WorldSimulationServiceServer:Init()
 
 	local tickScheduler = if self.runtimeContext ~= nil then (self.runtimeContext :: any).tickScheduler else nil
 	if tickScheduler ~= nil and typeof((tickScheduler :: any).scheduleEvery) == "function" then
-		self.heartbeatToken = (tickScheduler :: any):scheduleEvery(function(dt: number)
-			self:onHeartbeat(dt)
-		end, 1 / 60, {
-			group = "service.worldSimulation.server",
-			priority = 120,
-			catchUp = false,
-		})
+		self.heartbeatToken = (tickScheduler :: any):scheduleEvery(
+			function(dt: number)
+				self:onHeartbeat(dt)
+			end,
+			1 / 60,
+			{
+				group = "service.worldSimulation.server",
+				priority = 120,
+				catchUp = false,
+			}
+		)
 	else
 		self.heartbeatConnection = RunService.Heartbeat:Connect(function(dt: number)
 			self:onHeartbeat(dt)
@@ -578,7 +581,8 @@ WorldSimulationServiceServer.setAuthoritativeSeed = WorldSimulationServiceServer
 WorldSimulationServiceServer.toSimulationChunkKey = WorldSimulationServiceServer.ToSimulationChunkKey
 WorldSimulationServiceServer.pushGeneratedPlayerInterest = WorldSimulationServiceServer.PushGeneratedPlayerInterest
 WorldSimulationServiceServer.clearGeneratedPlayerInterest = WorldSimulationServiceServer.ClearGeneratedPlayerInterest
-WorldSimulationServiceServer.registerGeneratedChunkSnapshot = WorldSimulationServiceServer.RegisterGeneratedChunkSnapshot
+WorldSimulationServiceServer.registerGeneratedChunkSnapshot =
+	WorldSimulationServiceServer.RegisterGeneratedChunkSnapshot
 WorldSimulationServiceServer.trackPlayer = WorldSimulationServiceServer.TrackPlayer
 WorldSimulationServiceServer.untrackPlayer = WorldSimulationServiceServer.UntrackPlayer
 WorldSimulationServiceServer.requestSync = WorldSimulationServiceServer.RequestSync
@@ -614,4 +618,3 @@ type WorldSimulationServiceServer = typeof(WorldSimulationServiceServer) & {
 }
 
 return WorldSimulationServiceServer :: WorldSimulationServiceServer
-

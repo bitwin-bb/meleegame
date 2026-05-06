@@ -2,10 +2,10 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local RagdollServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.RagdollServiceUtils)
+local Signal = require(ReplicatedStorage.Packages.Signal)
 
 type RagdollServiceState = RagdollServiceUtils.RagdollServiceState
 
@@ -130,4 +130,3 @@ export type RagdollServiceClient = typeof(RagdollServiceClient) & {
 }
 
 return RagdollServiceClient :: RagdollServiceClient
-

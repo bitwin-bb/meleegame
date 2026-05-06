@@ -2,8 +2,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local VFXServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.VFXServiceUtils)
 
 type VFXPlaybackOptions = VFXServiceUtils.VFXPlaybackOptions
@@ -213,4 +213,3 @@ type VFXServiceClient = typeof(VFXServiceClient) & {
 }
 
 return VFXServiceClient :: VFXServiceClient
-

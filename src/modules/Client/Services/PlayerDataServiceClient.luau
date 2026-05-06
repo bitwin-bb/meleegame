@@ -2,10 +2,10 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local PlayerDataServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerDataServiceUtils)
+local Signal = require(ReplicatedStorage.Packages.Signal)
 
 type PlayerData = PlayerDataServiceUtils.PlayerData
 type LoadState = PlayerDataServiceUtils.LoadState
@@ -42,7 +42,12 @@ function PlayerDataServiceClient.Init(self: PlayerDataServiceClient)
 	self.networker:fire("requestSync")
 end
 
-function PlayerDataServiceClient.ApplyState(self: PlayerDataServiceClient, dataRaw: any, loadStateRaw: any, metadataRaw: any?)
+function PlayerDataServiceClient.ApplyState(
+	self: PlayerDataServiceClient,
+	dataRaw: any,
+	loadStateRaw: any,
+	metadataRaw: any?
+)
 	self.state = PlayerDataServiceUtils.createState(dataRaw, loadStateRaw, self.state, metadataRaw)
 	self.stateChanged:Fire(PlayerDataServiceUtils.cloneState(self.state))
 end
@@ -112,4 +117,3 @@ type PlayerDataServiceClient = typeof(PlayerDataServiceClient) & {
 }
 
 return PlayerDataServiceClient :: PlayerDataServiceClient
-

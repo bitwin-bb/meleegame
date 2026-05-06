@@ -6,20 +6,24 @@ local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Se
 return function()
 	describe("InventoryServiceUtils", function()
 		it("hydrates persisted data into the canonical state shape", function()
-			local state = InventoryServiceUtils.createStateFromData({
-				capacity = 72,
-				selectedSlot = 2,
-				slots = {
-					{
-						index = 2,
-						itemId = "CopperPickaxe",
-						stackId = "tool_pickaxe",
-						amount = 1,
-						maxStack = 1,
-						metadata = { itemType = "pickaxe" },
+			local state = InventoryServiceUtils.createStateFromData(
+				{
+					capacity = 72,
+					selectedSlot = 2,
+					slots = {
+						{
+							index = 2,
+							itemId = "CopperPickaxe",
+							stackId = "tool_pickaxe",
+							amount = 1,
+							maxStack = 1,
+							metadata = { itemType = "pickaxe" },
+						},
 					},
 				},
-			}, InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED), InventoryServiceUtils.LOAD_STATE_LOADED)
+				InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED),
+				InventoryServiceUtils.LOAD_STATE_LOADED
+			)
 
 			expect(state.loadState).to.equal(InventoryServiceUtils.LOAD_STATE_LOADED)
 			expect(state.selectedSlot).to.equal(2)

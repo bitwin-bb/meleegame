@@ -6,7 +6,6 @@ local loader = require(loaderUtils.Parent).load(script)
 
 local Binder = loader("Binder")
 local BinderProvider = loader("BinderProvider")
-local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local AudioBinder = require(script.Parent.AudioBinder)
 local ChunkBinder = require(script.Parent.ChunkBinder)
 local DisturberBinder = require(script.Parent.DisturberBinder)
@@ -15,6 +14,7 @@ local LayerBinder = require(script.Parent.LayerBinder)
 local LightBinder = require(script.Parent.LightBinder)
 local LiquidBinder = require(script.Parent.LiquidBinder)
 local PreviewBinder = require(script.Parent.PreviewBinder)
+local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local UseBinder = require(script.Parent.UseBinder)
 
 local function createContext(primaryTag: string, serviceBag: any): { tags: { string }, serviceBag: any }

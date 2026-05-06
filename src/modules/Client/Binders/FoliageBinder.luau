@@ -10,8 +10,7 @@ local windFoliageServiceClient = nil
 
 local function getWindFoliageServiceClient()
 	if windFoliageServiceClient == nil then
-		windFoliageServiceClient =
-			require(script:FindFirstAncestor("game").Client.Services.WindFoliageServiceClient)
+		windFoliageServiceClient = require(script:FindFirstAncestor("game").Client.Services.WindFoliageServiceClient)
 	end
 	return windFoliageServiceClient
 end

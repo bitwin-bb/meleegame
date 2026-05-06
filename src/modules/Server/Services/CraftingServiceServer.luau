@@ -4,14 +4,15 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local CraftingServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.CraftingServiceUtils)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
 local InventoryServiceServer = require(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
-local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
+local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local PlayerDataServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerDataServiceServer)
-local WorldGenerationServiceServer = require(script:FindFirstAncestor("game").Server.Services.WorldGenerationServiceServer)
+local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
+local WorldGenerationServiceServer =
+	require(script:FindFirstAncestor("game").Server.Services.WorldGenerationServiceServer)
 
 type RecipeRegistry = CraftingServiceUtils.RecipeRegistry
 type CraftingServiceConfig = CraftingServiceUtils.CraftingServiceConfig
@@ -137,11 +138,7 @@ function CraftingServiceServer.PushState(
 	end
 
 	runtime.lastStatePushAt = now
-	self.networker:fire(
-		player,
-		CraftingServiceUtils.CLIENT_METHOD_APPLY_STATE,
-		self:createStateSnapshot(runtime)
-	)
+	self.networker:fire(player, CraftingServiceUtils.CLIENT_METHOD_APPLY_STATE, self:createStateSnapshot(runtime))
 end
 
 function CraftingServiceServer.PushCraftResult(
@@ -214,11 +211,13 @@ function CraftingServiceServer.UnlockRecipesByIds(
 		if recipe == nil then
 			continue
 		end
-		if CraftingServiceUtils.RecipeValidator.areUnlockConditionsSatisfied(
-			recipe,
-			runtime.discoveredItemIds,
-			runtime.progressionFlags
-		) then
+		if
+			CraftingServiceUtils.RecipeValidator.areUnlockConditionsSatisfied(
+				recipe,
+				runtime.discoveredItemIds,
+				runtime.progressionFlags
+			)
+		then
 			runtime.knownRecipeIds[recipeId] = true
 			didUnlockAny = true
 		end
@@ -230,10 +229,7 @@ function CraftingServiceServer.UnlockRecipesByIds(
 	return didUnlockAny
 end
 
-function CraftingServiceServer.UnlockAllEligibleRecipes(
-	self: CraftingServiceServer,
-	runtime: PlayerRuntime
-): boolean
+function CraftingServiceServer.UnlockAllEligibleRecipes(self: CraftingServiceServer, runtime: PlayerRuntime): boolean
 	return self:unlockRecipesByIds(runtime, self.registry.recipeIdsOrdered)
 end
 
@@ -308,11 +304,7 @@ function CraftingServiceServer.ApplyPersistedStateToRuntime(
 	runtime.hasResolvedPersistedLoad = true
 end
 
-function CraftingServiceServer.LoadPlayerState(
-	self: CraftingServiceServer,
-	player: Player,
-	loadToken: number
-)
+function CraftingServiceServer.LoadPlayerState(self: CraftingServiceServer, player: Player, loadToken: number)
 	local runtime = self.playerRuntimes[player]
 	if runtime == nil or runtime.loadToken ~= loadToken then
 		return
@@ -379,7 +371,10 @@ function CraftingServiceServer.UntrackPlayer(self: CraftingServiceServer, player
 	self.playerRuntimes[player] = nil
 end
 
-function CraftingServiceServer.ResolvePlayerBiomeTokens(self: CraftingServiceServer, player: Player): { [string]: boolean }
+function CraftingServiceServer.ResolvePlayerBiomeTokens(
+	self: CraftingServiceServer,
+	player: Player
+): { [string]: boolean }
 	local rootPosition = CraftingServiceUtils.resolvePlayerRootPosition(player)
 	if rootPosition == nil then
 		return {}
@@ -429,8 +424,11 @@ function CraftingServiceServer.RequestCraft(
 	end
 	runtime.lastCraftRequestAt = now
 
-	local recipeId, quantity =
-		CraftingServiceUtils.RecipeValidator.sanitizeCraftRequest(recipeIdRaw, quantityRaw, self.config.maxCraftQuantityPerRequest)
+	local recipeId, quantity = CraftingServiceUtils.RecipeValidator.sanitizeCraftRequest(
+		recipeIdRaw,
+		quantityRaw,
+		self.config.maxCraftQuantityPerRequest
+	)
 	if recipeId == nil or quantity <= 0 then
 		self:pushCraftResult(player, {
 			success = false,
@@ -575,7 +573,8 @@ function CraftingServiceServer.OnHeartbeat(self: CraftingServiceServer, dtRaw: a
 	for player, runtime in self.playerRuntimes do
 		if runtime.hasResolvedPersistedLoad and shouldWatchInventory then
 			local inventoryState = self.inventoryService:getState(player)
-			local updatedAt = if typeof(inventoryState) == "table" and typeof((inventoryState :: any).updatedAt) == "number"
+			local updatedAt = if typeof(inventoryState) == "table"
+					and typeof((inventoryState :: any).updatedAt) == "number"
 				then (inventoryState :: any).updatedAt
 				else -math.huge
 			if updatedAt ~= runtime.lastObservedInventoryUpdatedAt then
@@ -597,7 +596,8 @@ end
 function CraftingServiceServer.SetInventoryProvider(self: CraftingServiceServer, providerRaw: any)
 	if typeof(providerRaw) == "table" then
 		local provider = providerRaw :: { [string]: any }
-		if typeof(provider.IsReady) == "function"
+		if
+			typeof(provider.IsReady) == "function"
 			and typeof(provider.CountItem) == "function"
 			and typeof(provider.HasItems) == "function"
 			and typeof(provider.ConsumeItems) == "function"
@@ -609,10 +609,8 @@ function CraftingServiceServer.SetInventoryProvider(self: CraftingServiceServer,
 			return
 		end
 	end
-	self.inventoryProvider = CraftingServiceUtils.CraftTransaction.createInventoryProvider(
-		self.inventoryService,
-		self.playerDataService
-	)
+	self.inventoryProvider =
+		CraftingServiceUtils.CraftTransaction.createInventoryProvider(self.inventoryService, self.playerDataService)
 end
 
 function CraftingServiceServer.SetProgressionFlag(
@@ -661,10 +659,8 @@ function CraftingServiceServer.Init(self: CraftingServiceServer)
 	self.inventoryService = InventoryServiceServer :: InventoryServiceServerObject
 	self.playerDataService = PlayerDataServiceServer :: PlayerDataServiceServerObject
 	self.worldGenerationService = WorldGenerationServiceServer :: WorldGenerationServiceServerObject
-	self.inventoryProvider = CraftingServiceUtils.CraftTransaction.createInventoryProvider(
-		self.inventoryService,
-		self.playerDataService
-	)
+	self.inventoryProvider =
+		CraftingServiceUtils.CraftTransaction.createInventoryProvider(self.inventoryService, self.playerDataService)
 
 	self.networker = Networker.server.new("CraftingService", self, {
 		self.RequestSync,
@@ -756,4 +752,3 @@ type CraftingServiceServer = typeof(CraftingServiceServer) & {
 }
 
 return CraftingServiceServer :: CraftingServiceServer
-

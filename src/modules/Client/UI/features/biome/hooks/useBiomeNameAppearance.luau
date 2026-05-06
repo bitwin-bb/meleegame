@@ -89,7 +89,9 @@ local function useBiomeNameAppearance(options: BiomeNameAppearanceOptions?): Bio
 	local fluidProgress = smoothstep(progress)
 	local offset = fromOffset:Lerp(toOffset, fluidProgress)
 	local scale = minScale + (maxScale - minScale) * fluidProgress
-	local scaleAlpha = if maxScale - minScale <= 0.0001 then fluidProgress else math.clamp((scale - minScale) / (maxScale - minScale), 0, 1)
+	local scaleAlpha = if maxScale - minScale <= 0.0001
+		then fluidProgress
+		else math.clamp((scale - minScale) / (maxScale - minScale), 0, 1)
 	local transparency = math.clamp(1 - scaleAlpha, 0, 1)
 	local strokeTransparency = math.clamp(0.18 + transparency * 0.82, 0, 1)
 

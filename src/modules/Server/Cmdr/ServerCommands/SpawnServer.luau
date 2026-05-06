@@ -2,8 +2,8 @@
 local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for SpawnServer.")
 
-local BossServiceUtils = require(gameRoot.Shared.Services.BossServiceUtils)
 local BossServiceServer = require(gameRoot.Server.Services.BossServiceServer)
+local BossServiceUtils = require(gameRoot.Shared.Services.BossServiceUtils)
 local NpcServiceServer = require(gameRoot.Server.Services.NpcServiceServer)
 
 type EntityEntry = {
@@ -76,21 +76,21 @@ return function(_context, entity: EntityEntry, players: { Player }, amountRaw: n
 			if ok then
 				spawnedCount += 1
 			else
-				failed[#failed + 1] = (`{player.Name} ({formatReason(reason)})`)
+				failed[#failed + 1] = `{player.Name} ({formatReason(reason)})`
 			end
 		end
 
 		if spawnedCount > 0 then
-			spawned[#spawned + 1] = (`{player.Name} x{spawnedCount}`)
+			spawned[#spawned + 1] = `{player.Name} x{spawnedCount}`
 		end
 	end
 
 	local responseParts = {}
 	if #spawned > 0 then
-		responseParts[#responseParts + 1] = (`Spawned {entity.Name} for {joinParts(spawned)}.`)
+		responseParts[#responseParts + 1] = `Spawned {entity.Name} for {joinParts(spawned)}.`
 	end
 	if #failed > 0 then
-		responseParts[#responseParts + 1] = (`Failed for {joinParts(failed)}.`)
+		responseParts[#responseParts + 1] = `Failed for {joinParts(failed)}.`
 	end
 
 	return table.concat(responseParts, " ")

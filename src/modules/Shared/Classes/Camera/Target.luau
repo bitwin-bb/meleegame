@@ -158,7 +158,11 @@ end
 local function resolveBossSnapshotByFilters(filtersRaw: any): any?
 	local filters = if typeof(filtersRaw) == "table" then filtersRaw else {}
 	local state = getBossState()
-	if typeof(state) ~= "table" or typeof((state :: any).orderedIds) ~= "table" or typeof((state :: any).byId) ~= "table" then
+	if
+		typeof(state) ~= "table"
+		or typeof((state :: any).orderedIds) ~= "table"
+		or typeof((state :: any).byId) ~= "table"
+	then
 		return nil
 	end
 
@@ -241,10 +245,12 @@ function Target.New(optionsRaw: any?): Target
 	local options = if typeof(optionsRaw) == "table" then optionsRaw else {}
 
 	return setmetatable({
-		localPlayer = if typeof((options :: any).localPlayer) == "Instance" and (options :: any).localPlayer:IsA("Player")
+		localPlayer = if typeof((options :: any).localPlayer) == "Instance"
+				and (options :: any).localPlayer:IsA("Player")
 			then (options :: any).localPlayer
 			else Players.LocalPlayer,
-		character = if typeof((options :: any).character) == "Instance" and (options :: any).character:IsA("Model")
+		character = if typeof((options :: any).character) == "Instance"
+				and (options :: any).character:IsA("Model")
 			then (options :: any).character
 			else nil,
 		explicitTarget = (options :: any).target,
@@ -333,7 +339,9 @@ function Target.ResolveAny(self: Target, sourceRaw: any, kindFallback: string?):
 			if sourceRaw.Parent == nil then
 				return nil
 			end
-			local parentPart = if sourceRaw.Parent ~= nil and sourceRaw.Parent:IsA("BasePart") then sourceRaw.Parent else nil
+			local parentPart = if sourceRaw.Parent ~= nil and sourceRaw.Parent:IsA("BasePart")
+				then sourceRaw.Parent
+				else nil
 			return createResolvedTarget(
 				kindFallback or "Attachment",
 				sourceRaw.WorldPosition,
@@ -402,7 +410,12 @@ function Target.ResolveAny(self: Target, sourceRaw: any, kindFallback: string?):
 	end
 
 	local source = sourceRaw :: any
-	local nestedTarget = source.target or source.subject or source.instance or source.basePart or source.rootPart or source.model
+	local nestedTarget = source.target
+		or source.subject
+		or source.instance
+		or source.basePart
+		or source.rootPart
+		or source.model
 	if nestedTarget ~= nil and nestedTarget ~= sourceRaw then
 		local nestedResolved = self:resolveAny(nestedTarget, source.kind or kindFallback)
 		if nestedResolved ~= nil then
@@ -516,7 +529,8 @@ function Target.Resolve(self: Target, optionsRaw: any?): ResolvedTarget?
 		return characterTarget
 	end
 
-	local localPlayer = if typeof((options :: any).localPlayer) == "Instance" and (options :: any).localPlayer:IsA("Player")
+	local localPlayer = if typeof((options :: any).localPlayer) == "Instance"
+			and (options :: any).localPlayer:IsA("Player")
 		then (options :: any).localPlayer
 		else self.localPlayer
 	if localPlayer ~= nil then

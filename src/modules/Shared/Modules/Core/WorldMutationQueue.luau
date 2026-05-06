@@ -2,9 +2,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-
-local Codec = require(script.Parent.Codec)
 local BinaryStreaming = require(script.Parent.BinaryStreaming)
+local Codec = require(script.Parent.Codec)
 
 local WorldMutationQueue = {}
 WorldMutationQueue.__index = WorldMutationQueue
@@ -197,7 +196,11 @@ function WorldMutationQueue.GetPendingCount(self: WorldMutationQueue): number
 	return self.pendingCount
 end
 
-function WorldMutationQueue._drainBucket(self: WorldMutationQueue, bucket: any, remainingBudget: number): ChunkMutationBatch?
+function WorldMutationQueue._drainBucket(
+	self: WorldMutationQueue,
+	bucket: any,
+	remainingBudget: number
+): ChunkMutationBatch?
 	local mutationCount = #bucket.mutations
 	if mutationCount <= 0 then
 		return nil
@@ -245,12 +248,18 @@ function WorldMutationQueue._drainBucket(self: WorldMutationQueue, bucket: any, 
 	} :: ChunkMutationBatch
 end
 
-function WorldMutationQueue.Flush(self: WorldMutationQueue, maxMutationsRaw: any?, onFlush: ((batch: FlushBatch) -> ())?): FlushBatch?
+function WorldMutationQueue.Flush(
+	self: WorldMutationQueue,
+	maxMutationsRaw: any?,
+	onFlush: ((batch: FlushBatch) -> ())?
+): FlushBatch?
 	if self.pendingCount <= 0 then
 		return nil
 	end
 
-	local maxMutations = if maxMutationsRaw ~= nil then clampInteger(maxMutationsRaw, self.maxMutationsPerFlush, 1, 1000000) else self.maxMutationsPerFlush
+	local maxMutations = if maxMutationsRaw ~= nil
+		then clampInteger(maxMutationsRaw, self.maxMutationsPerFlush, 1, 1000000)
+		else self.maxMutationsPerFlush
 	if maxMutations <= 0 then
 		return nil
 	end
@@ -305,7 +314,11 @@ function WorldMutationQueue.Flush(self: WorldMutationQueue, maxMutationsRaw: any
 	return batch
 end
 
-function WorldMutationQueue.Update(self: WorldMutationQueue, dtRaw: any, onFlush: ((batch: FlushBatch) -> ())?): { FlushBatch }
+function WorldMutationQueue.Update(
+	self: WorldMutationQueue,
+	dtRaw: any,
+	onFlush: ((batch: FlushBatch) -> ())?
+): { FlushBatch }
 	local dt = if typeof(dtRaw) == "number" and dtRaw > 0 then dtRaw else 0
 	if dt <= 0 then
 		return {}
@@ -350,7 +363,9 @@ function WorldMutationQueue.DecodeBatch(self: WorldMutationQueue, payloadRaw: an
 		return nil
 	end
 	local compressed = compressedRaw ~= false
-	local decoded = if compressed then Codec.deserializeCompressed(payloadRaw) else Codec.deserializeDeterministic(payloadRaw)
+	local decoded = if compressed
+		then Codec.deserializeCompressed(payloadRaw)
+		else Codec.deserializeDeterministic(payloadRaw)
 	if typeof(decoded) ~= "table" then
 		return nil
 	end

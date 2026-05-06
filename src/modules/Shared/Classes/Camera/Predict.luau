@@ -144,7 +144,9 @@ function Predict.Resolve(self: Predict, targetRaw: any, cacheRaw: any?, optionsR
 	end
 
 	local basePosition = (target :: any).position :: Vector3
-	local fallbackVelocity = if typeof((target :: any).velocity) == "Vector3" then (target :: any).velocity else Vector3.zero
+	local fallbackVelocity = if typeof((target :: any).velocity) == "Vector3"
+		then (target :: any).velocity
+		else Vector3.zero
 	local derivedVelocity = fallbackVelocity
 	local cache = if typeof(cacheRaw) == "table" then cacheRaw else nil
 	local subjectKey = if typeof((target :: any).cacheKey) == "string" then (target :: any).cacheKey else nil

@@ -2,6 +2,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
+local Scale = require(script:FindFirstAncestor("game").Client.UI.shared.Scale)
 
 export type CraftingPanelProps = {
 	size: UDim2,
@@ -20,8 +21,8 @@ local e: typeof(React.createElement) = React.createElement
 
 return function(props: CraftingPanelProps): React.ReactNode
 	local children: { React.ReactNode } = {
-		e("UIScale", {
-			Scale = props.scale,
+		e(Scale, {
+			scale = props.scale,
 		}),
 	}
 

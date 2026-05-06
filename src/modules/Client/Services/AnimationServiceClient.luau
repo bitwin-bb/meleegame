@@ -2,11 +2,11 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local AnimationServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AnimationServiceUtils)
-local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerServiceUtils)
 local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerServiceUtils)
 
 type AnimationClipConfig = AnimationServiceUtils.AnimationClipConfig
 type AnimationProfile = AnimationServiceUtils.AnimationProfile
@@ -147,11 +147,14 @@ function AnimationServiceClient.Init(self: AnimationServiceClient)
 		self:onCharacterAdded(character)
 	end))
 	self.janitor:GiveChore(
-		self.localPlayer:GetAttributeChangedSignal(PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE):Connect(function()
-			local movementLockAttribute = self.localPlayer:GetAttribute(PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE)
-			self.movementLocked = movementLockAttribute == true
-			self:refreshAnimation()
-		end)
+		self.localPlayer
+			:GetAttributeChangedSignal(PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE)
+			:Connect(function()
+				local movementLockAttribute =
+					self.localPlayer:GetAttribute(PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE)
+				self.movementLocked = movementLockAttribute == true
+				self:refreshAnimation()
+			end)
 	)
 
 	local movementLockAttribute = self.localPlayer:GetAttribute(PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE)
@@ -461,7 +464,11 @@ function AnimationServiceClient.CanPlayJump(self: AnimationServiceClient, runtim
 	return true
 end
 
-function AnimationServiceClient.PlayFootstep(self: AnimationServiceClient, runtime: CharacterRuntime, now: number): boolean
+function AnimationServiceClient.PlayFootstep(
+	self: AnimationServiceClient,
+	runtime: CharacterRuntime,
+	now: number
+): boolean
 	if not self:canPlayFootstep(runtime) then
 		return false
 	end
@@ -585,5 +592,3 @@ type AnimationServiceClient = typeof(AnimationServiceClient) & {
 }
 
 return AnimationServiceClient :: AnimationServiceClient
-
-

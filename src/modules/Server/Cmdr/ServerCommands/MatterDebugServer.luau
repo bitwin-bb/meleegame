@@ -26,10 +26,10 @@ return function(_context, players: { Player }, enabledRaw: boolean?)
 
 	local responseParts = {}
 	if #enabledPlayers > 0 then
-		responseParts[#responseParts + 1] = (`Enabled Matter debug menu for {joinParts(enabledPlayers)}.`)
+		responseParts[#responseParts + 1] = `Enabled Matter debug menu for {joinParts(enabledPlayers)}.`
 	end
 	if #disabledPlayers > 0 then
-		responseParts[#responseParts + 1] = (`Disabled Matter debug menu for {joinParts(disabledPlayers)}.`)
+		responseParts[#responseParts + 1] = `Disabled Matter debug menu for {joinParts(disabledPlayers)}.`
 	end
 
 	return table.concat(responseParts, " ")

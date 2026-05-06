@@ -10,8 +10,7 @@ local inventoryServiceClient = nil
 
 local function getInventoryServiceClient()
 	if inventoryServiceClient == nil then
-		inventoryServiceClient =
-			require(script:FindFirstAncestor("game").Client.Services.InventoryServiceClient)
+		inventoryServiceClient = require(script:FindFirstAncestor("game").Client.Services.InventoryServiceClient)
 	end
 	return inventoryServiceClient
 end

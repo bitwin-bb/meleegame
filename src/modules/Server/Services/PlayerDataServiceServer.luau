@@ -6,11 +6,12 @@ local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networ
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local require = require(loaderUtils.Parent).load(script)
-local PlayerDataServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerDataServiceUtils)
 local DataTemplate = require(script:FindFirstAncestor("game").Shared.Modules.Core.DataTemplate)
+local PlayerDataServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerDataServiceUtils)
+local ProfileStore =
+	require(game:GetService("ServerScriptService"):WaitForChild("ServerPackages"):WaitForChild("ProfileStore"))
 local Promise = require("Promise")
-local ProfileStore = require(game:GetService("ServerScriptService"):WaitForChild("ServerPackages"):WaitForChild("ProfileStore"))
+local require = require(loaderUtils.Parent).load(script)
 
 type PlayerData = PlayerDataServiceUtils.PlayerData
 type LoadState = PlayerDataServiceUtils.LoadState
@@ -63,7 +64,9 @@ end
 
 local function resolvePlayerDataTemplate(): PlayerData
 	local templateRoot = if typeof(DataTemplate) == "table" then DataTemplate else {}
-	local playerData = if typeof((templateRoot :: any).playerData) == "table" then (templateRoot :: any).playerData else {}
+	local playerData = if typeof((templateRoot :: any).playerData) == "table"
+		then (templateRoot :: any).playerData
+		else {}
 	return PlayerDataServiceUtils.createDefaultData(playerData)
 end
 
@@ -166,7 +169,10 @@ function PlayerDataServiceServer.GetRuntime(self: PlayerDataServiceServer, playe
 	return nextRuntime
 end
 
-function PlayerDataServiceServer.GetRuntimeLoadElapsedSeconds(_self: PlayerDataServiceServer, runtime: PlayerRuntime): number
+function PlayerDataServiceServer.GetRuntimeLoadElapsedSeconds(
+	_self: PlayerDataServiceServer,
+	runtime: PlayerRuntime
+): number
 	if runtime.loadStartedAt <= 0 then
 		return 0
 	end
@@ -209,7 +215,7 @@ function PlayerDataServiceServer.LogEvent(
 		end
 	end
 	if typeof(extraFieldsRaw) == "table" then
-		for key, value in (extraFieldsRaw :: { [string]: any }) do
+		for key, value in extraFieldsRaw :: { [string]: any } do
 			fields[#fields + 1] = ("%s=%s"):format(tostring(key), stringifyLogValue(value))
 		end
 	end
@@ -392,7 +398,9 @@ function PlayerDataServiceServer.FinalizeLoadedRuntime(
 	runtime.hasResolvedInitialLoad = true
 	runtime.lastFailureReason = nil
 	runtime.usingFallbackData = runtime.profile == nil
-	runtime.fallbackBaselineData = if runtime.usingFallbackData then PlayerDataServiceUtils.cloneDeep(resolvedData) else nil
+	runtime.fallbackBaselineData = if runtime.usingFallbackData
+		then PlayerDataServiceUtils.cloneDeep(resolvedData)
+		else nil
 	runtime.fallbackDirty = false
 	if runtime.profile ~= nil then
 		local activeProfile = runtime.profile :: Profile
@@ -463,11 +471,7 @@ function PlayerDataServiceServer.OnProfileSessionEnded(self: PlayerDataServiceSe
 	end
 end
 
-function PlayerDataServiceServer.LoadProfilePromise(
-	self: PlayerDataServiceServer,
-	player: Player,
-	loadToken: number
-)
+function PlayerDataServiceServer.LoadProfilePromise(self: PlayerDataServiceServer, player: Player, loadToken: number)
 	return promiseTry(function()
 		local runtime = self.playerRuntimes[player]
 		if runtime == nil or runtime.loadToken ~= loadToken then
@@ -840,8 +844,7 @@ function PlayerDataServiceServer.IncrementValue(
 		return nil
 	end
 
-	local nextValue =
-		PlayerDataServiceUtils.incrementValueAtPath(runtime.data, pathRaw, amountRaw, fallbackValueRaw)
+	local nextValue = PlayerDataServiceUtils.incrementValueAtPath(runtime.data, pathRaw, amountRaw, fallbackValueRaw)
 	if nextValue ~= nil and runtime.usingFallbackData then
 		runtime.fallbackDirty = true
 	end
@@ -992,4 +995,3 @@ type PlayerDataServiceServer = typeof(PlayerDataServiceServer) & {
 }
 
 return PlayerDataServiceServer :: PlayerDataServiceServer
-

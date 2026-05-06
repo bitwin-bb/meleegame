@@ -6,6 +6,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
 local Damp = require(script:FindFirstAncestor("game").Shared.Modules.Math.Damp)
+local useEvent = require(script:FindFirstAncestor("game").Client.UI.shared.useEvent)
+local useToggle = require(script:FindFirstAncestor("game").Client.UI.shared.useToggle)
 
 export type CraftMenuDragOptions = {
 	enabled: boolean?,
@@ -43,7 +45,7 @@ local function useCraftMenuDrag(options: CraftMenuDragOptions?): CraftMenuDragRe
 		120
 	)
 
-	local isDragging, setIsDragging = React.useState(false)
+	local dragging = useToggle(false)
 	local offset, setOffset = React.useState(Vector2.zero)
 	local offsetRef = React.useRef(Vector2.zero)
 	local targetOffsetRef = React.useRef(Vector2.zero)
@@ -62,22 +64,22 @@ local function useCraftMenuDrag(options: CraftMenuDragOptions?): CraftMenuDragRe
 
 		if wasEnabled and not enabled then
 			dragInputRef.current = nil
-			setIsDragging(false)
+			dragging.disable()
 			targetOffsetRef.current = offsetRef.current
 		end
-	end, { enabled })
+	end, { enabled, dragging.disable })
 
-	local onDragInputBegan = React.useCallback(function(_rbx: GuiObject, inputObject: InputObject)
+	local onDragInputBegan = useEvent(function(_rbx: GuiObject, inputObject: InputObject)
 		if not enabled or not isPrimaryDragInput(inputObject) then
 			return
 		end
 		dragInputRef.current = inputObject
 		dragStartPointerRef.current = toGuiPosition(inputObject)
 		dragStartOffsetRef.current = targetOffsetRef.current
-		setIsDragging(true)
-	end, { enabled })
+		dragging.enable()
+	end)
 
-	local onDragInputEnded = React.useCallback(function(_rbx: GuiObject, inputObject: InputObject)
+	local onDragInputEnded = useEvent(function(_rbx: GuiObject, inputObject: InputObject)
 		local dragInput = dragInputRef.current
 		if dragInput == nil then
 			return
@@ -89,12 +91,12 @@ local function useCraftMenuDrag(options: CraftMenuDragOptions?): CraftMenuDragRe
 			return
 		end
 		dragInputRef.current = nil
-		setIsDragging(false)
-	end, {})
+		dragging.disable()
+	end)
 
 	React.useEffect(function()
 		local changedConnection = UserInputService.InputChanged:Connect(function(inputObject: InputObject)
-			if not enabled or not isDragging then
+			if not enabled or not dragging.value then
 				return
 			end
 
@@ -129,14 +131,14 @@ local function useCraftMenuDrag(options: CraftMenuDragOptions?): CraftMenuDragRe
 			end
 
 			dragInputRef.current = nil
-			setIsDragging(false)
+			dragging.disable()
 		end)
 
 		return function()
 			changedConnection:Disconnect()
 			endedConnection:Disconnect()
 		end
-	end, { enabled, isDragging })
+	end, { enabled, dragging.value, dragging.disable })
 
 	React.useEffect(function()
 		local connection = RunService.RenderStepped:Connect(function(deltaTime: number)
@@ -163,7 +165,7 @@ local function useCraftMenuDrag(options: CraftMenuDragOptions?): CraftMenuDragRe
 
 	return {
 		offset = offset,
-		isDragging = isDragging,
+		isDragging = dragging.value,
 		onDragInputBegan = onDragInputBegan,
 		onDragInputEnded = onDragInputEnded,
 	}
