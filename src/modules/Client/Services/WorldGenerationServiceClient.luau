@@ -15,7 +15,6 @@ local ProceduralCactus = require(script:FindFirstAncestor("game").Shared.Classes
 local ProceduralTree = require(script:FindFirstAncestor("game").Shared.Classes.WorldGeneration.Tree)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
-local TileVisibilityResolver = require(script:FindFirstAncestor("game").Shared.Modules.Core.TileVisibilityResolver)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local WorldGenerationColor = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationColor)
 local WorldGenerationServiceUtils =
@@ -131,7 +130,6 @@ type ChunkVisualRuntime = {
 	terrainHoverFolder: Folder,
 	terrainRects: { TerrainRectRuntime },
 	terrainRectByLocalTileIndex: { number },
-	terrainVisibleByLocalTileIndex: { boolean },
 }
 
 type TreeVariantDefinition = {
@@ -154,7 +152,6 @@ local DEFAULT_WORLD_ORIGIN = Vector3.zero
 local MAX_CHUNK_REBUILDS_PER_HEARTBEAT = 8
 local MAX_VISUAL_PARTS_TOTAL = 35000
 local MAX_VISUAL_PARTS_PER_CHUNK = 2800
-local MAX_VISUAL_PART_POOL_SIZE = 4096
 local MIN_SECONDS_BETWEEN_REBUILDS_PER_CHUNK = 0.02
 local VISIBILITY_REFRESH_INTERVAL = 0.03
 local MAX_REBUILD_QUEUE_LENGTH = 2048
@@ -183,16 +180,8 @@ local MIN_DEPTH_LAYER_CODE = 0
 local MAX_DEPTH_LAYER_CODE = 4
 local MIN_DEPTH_BELOW_SURFACE = -8192
 local MAX_DEPTH_BELOW_SURFACE = 8192
-local CHUNK_SURFACE_INVALIDATION_OFFSETS = {
-	{ x = 0, y = 0 },
-	{ x = -1, y = 0 },
-	{ x = 1, y = 0 },
-	{ x = 0, y = -1 },
-	{ x = 0, y = 1 },
-}
 local TERRAIN_HOVER_FOLDER_NAME = "TerrainHover"
 local TERRAIN_HOVER_HIGHLIGHT_NAME = "TerrainHoverHighlight"
-local POOLED_WORLD_TILE_PART_ATTRIBUTE = "PooledWorldTilePart"
 local TERRAIN_HOVER_FILL_COLOR = Color3.fromRGB(255, 221, 64)
 local TERRAIN_HOVER_OUTLINE_COLOR = Color3.fromRGB(255, 221, 64)
 local TERRAIN_HOVER_FILL_TRANSPARENCY = 1
@@ -622,14 +611,6 @@ end
 
 local function packChunkKey(chunkX: number, chunkY: number): string
 	return `{chunkX}:{chunkY}`
-end
-
-local function unpackChunkKey(chunkKey: string): (number?, number?)
-	local chunkXRaw, chunkYRaw = string.match(chunkKey, "^(-?%d+):(-?%d+)$")
-	if chunkXRaw == nil or chunkYRaw == nil then
-		return nil, nil
-	end
-	return tonumber(chunkXRaw), tonumber(chunkYRaw)
 end
 
 local function computeTileIndex(localX: number, localY: number, width: number): number
@@ -1220,55 +1201,6 @@ function WorldGenerationServiceClient.ComputeTileCenterPosition(
 	)
 end
 
-function WorldGenerationServiceClient.AcquireVisualPart(self: WorldGenerationServiceClient): Part
-	local pooledPart = table.remove(self.visualPartPool)
-	local part = if pooledPart ~= nil then pooledPart else Instance.new("Part")
-	part:SetAttribute(POOLED_WORLD_TILE_PART_ATTRIBUTE, true)
-	return part
-end
-
-function WorldGenerationServiceClient.ReleaseVisualPart(self: WorldGenerationServiceClient, part: BasePart)
-	if not part:IsA("Part") then
-		part:Destroy()
-		return
-	end
-
-	local pooledPart = part :: Part
-	clearTexturesByName(pooledPart, ORE_TEXTURE_NAME)
-	clearTexturesByName(pooledPart, GRASS_TEXTURE_NAME)
-	pooledPart.Parent = nil
-	pooledPart.Name = "PooledWorldTilePart"
-	pooledPart.Anchored = true
-	pooledPart.Locked = true
-	pooledPart.CanCollide = false
-	pooledPart.CanQuery = false
-	pooledPart.CanTouch = false
-	pooledPart.CastShadow = false
-	pooledPart.Transparency = 1
-	pooledPart:SetAttribute(POOLED_WORLD_TILE_PART_ATTRIBUTE, true)
-
-	if #self.visualPartPool >= MAX_VISUAL_PART_POOL_SIZE then
-		pooledPart:Destroy()
-		return
-	end
-
-	table.insert(self.visualPartPool, pooledPart)
-end
-
-function WorldGenerationServiceClient.ReleasePooledPartsIn(self: WorldGenerationServiceClient, root: Instance)
-	if root:IsA("BasePart") and root:GetAttribute(POOLED_WORLD_TILE_PART_ATTRIBUTE) == true then
-		self:releaseVisualPart(root)
-		return
-	end
-
-	local descendants = root:GetDescendants()
-	for _, descendant in descendants do
-		if descendant:IsA("BasePart") and descendant:GetAttribute(POOLED_WORLD_TILE_PART_ATTRIBUTE) == true then
-			self:releaseVisualPart(descendant)
-		end
-	end
-end
-
 function WorldGenerationServiceClient.CreateForegroundRectPart(
 	self: WorldGenerationServiceClient,
 	tileMinX: number,
@@ -1279,7 +1211,7 @@ function WorldGenerationServiceClient.CreateForegroundRectPart(
 ): Part
 	local tileDepth = self.state.tileDepth
 	local tileSize = self.state.tileSize
-	local part = self:acquireVisualPart()
+	local part = Instance.new("Part")
 	part.Anchored = true
 	part.Locked = true
 	part.CanCollide = false
@@ -1519,71 +1451,6 @@ function WorldGenerationServiceClient.DequeueChunkRebuild(self: WorldGenerationS
 	return chunkKey
 end
 
-function WorldGenerationServiceClient.GetTileAtWorldCell(
-	self: WorldGenerationServiceClient,
-	tileXRaw: any,
-	tileYRaw: any,
-	includeCachedRaw: any?
-): number?
-	if not isFiniteNumber(tileXRaw) or not isFiniteNumber(tileYRaw) then
-		return nil
-	end
-
-	local tileX = math.floor(tileXRaw :: number)
-	local tileY = math.floor(tileYRaw :: number)
-	local chunkSize = math.max(1, math.floor(self.state.chunkSize))
-	local chunkX = toChunkCoordinate(tileX, chunkSize)
-	local chunkY = toChunkCoordinate(tileY, chunkSize)
-	local chunkKey = packChunkKey(chunkX, chunkY)
-	local snapshot = self.chunkSnapshots[chunkKey]
-	if snapshot == nil and includeCachedRaw ~= false then
-		snapshot = self.cachedChunkSnapshots[chunkKey]
-	end
-	if snapshot == nil then
-		return nil
-	end
-
-	local localX = tileX - snapshot.tileMinX
-	local localY = tileY - snapshot.tileMinY
-	if localX < 0 or localX >= snapshot.width or localY < 0 or localY >= snapshot.height then
-		return nil
-	end
-
-	return snapshot.tiles[computeTileIndex(localX, localY, snapshot.width)]
-end
-
-function WorldGenerationServiceClient.BuildVisibleForegroundTileValues(
-	self: WorldGenerationServiceClient,
-	snapshot: ChunkSnapshot
-): ({ number }, { boolean }, number)
-	return TileVisibilityResolver.BuildVisibleTileValues(snapshot.tiles, snapshot.width, snapshot.height, {
-		airTileId = FOREGROUND_TILE_AIR_ID,
-		tileMinX = snapshot.tileMinX,
-		tileMinY = snapshot.tileMinY,
-		getTileAtWorldCell = function(worldX: number, worldY: number): number?
-			return self:getTileAtWorldCell(worldX, worldY, true)
-		end,
-	})
-end
-
-function WorldGenerationServiceClient.InvalidateChunkSurfaceAndNeighbors(
-	self: WorldGenerationServiceClient,
-	chunkX: number,
-	chunkY: number
-)
-	for _, offset in CHUNK_SURFACE_INVALIDATION_OFFSETS do
-		local chunkKey = packChunkKey(chunkX + offset.x, chunkY + offset.y)
-		if self.chunkSnapshots[chunkKey] == nil then
-			continue
-		end
-
-		self.dirtyChunkLookup[chunkKey] = true
-		if self.visibleChunkKeys[chunkKey] ~= nil or self.chunkVisuals[chunkKey] ~= nil then
-			self:enqueueChunkRebuild(chunkKey)
-		end
-	end
-end
-
 function WorldGenerationServiceClient.DestroyChunkVisual(self: WorldGenerationServiceClient, chunkKey: string)
 	local visual = self.chunkVisuals[chunkKey]
 	if visual == nil then
@@ -1596,12 +1463,11 @@ function WorldGenerationServiceClient.DestroyChunkVisual(self: WorldGenerationSe
 
 	self.chunkVisuals[chunkKey] = nil
 	self.totalVisualPartCount = math.max(0, self.totalVisualPartCount - visual.partCount)
-	self:releasePooledPartsIn(visual.model)
 	visual.model:Destroy()
 end
 
 function WorldGenerationServiceClient.ReplaceChunkVisualContents(
-	self: WorldGenerationServiceClient,
+	_self: WorldGenerationServiceClient,
 	targetModel: Model,
 	rebuiltModel: Model,
 	preservedChildNamesRaw: { [string]: boolean }?
@@ -1629,14 +1495,12 @@ function WorldGenerationServiceClient.ReplaceChunkVisualContents(
 		if preservedChildNames[child.Name] == true then
 			preservedChildren[child.Name] = child
 		else
-			self:releasePooledPartsIn(child)
 			child:Destroy()
 		end
 	end
 
 	for _, child in rebuiltModel:GetChildren() do
 		if preservedChildren[child.Name] ~= nil then
-			self:releasePooledPartsIn(child)
 			child:Destroy()
 		else
 			child.Parent = targetModel
@@ -1935,10 +1799,6 @@ function WorldGenerationServiceClient.OnChunkSnapshot(self: WorldGenerationServi
 	local existingVisual = self.chunkVisuals[snapshot.key]
 	local wasAlreadyCurrentRevision = existingVisual ~= nil and existingVisual.revision == snapshot.revision
 	self.chunkSnapshots[snapshot.key] = snapshot
-	self.cachedChunkSnapshots[snapshot.key] = snapshot
-	if not wasAlreadyCurrentRevision then
-		self:invalidateChunkSurfaceAndNeighbors(snapshot.chunkX, snapshot.chunkY)
-	end
 	if not ENABLE_CLIENT_VISUALS then
 		return
 	end
@@ -1954,22 +1814,7 @@ function WorldGenerationServiceClient.OnChunkUnloaded(self: WorldGenerationServi
 		return
 	end
 
-	local existingSnapshot = self.chunkSnapshots[chunkKeyRaw]
-	if existingSnapshot ~= nil then
-		self.cachedChunkSnapshots[chunkKeyRaw] = existingSnapshot
-	end
 	self.chunkSnapshots[chunkKeyRaw] = nil
-	local chunkX: number?
-	local chunkY: number?
-	if existingSnapshot ~= nil then
-		chunkX = existingSnapshot.chunkX
-		chunkY = existingSnapshot.chunkY
-	else
-		chunkX, chunkY = unpackChunkKey(chunkKeyRaw)
-	end
-	if chunkX ~= nil and chunkY ~= nil then
-		self:invalidateChunkSurfaceAndNeighbors(chunkX, chunkY)
-	end
 	self.visibleChunkKeys[chunkKeyRaw] = nil
 	self.dirtyChunkLookup[chunkKeyRaw] = nil
 	self.rebuildLookup[chunkKeyRaw] = nil
@@ -1990,8 +1835,7 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 	Folder,
 	Folder,
 	{ TerrainRectRuntime },
-	{ number },
-	{ boolean }
+	{ number }
 )
 	local model = Instance.new("Model")
 	model.Name = `Chunk_{snapshot.chunkX}_{snapshot.chunkY}`
@@ -2030,15 +1874,9 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 	local partCount = 0
 	local terrainRectRuntimes = {} :: { TerrainRectRuntime }
 	local terrainRectByLocalTileIndex = Sift.Array.create(snapshot.width * snapshot.height, 0) :: { number }
-	local visibleTerrainTiles, terrainVisibility, visibleForegroundTileCount =
-		self:buildVisibleForegroundTileValues(snapshot)
-	local totalForegroundTileCount = snapshot.width * snapshot.height
-	model:SetAttribute("SurfaceCullingEnabled", true)
-	model:SetAttribute("VisibleForegroundTileCount", visibleForegroundTileCount)
-	model:SetAttribute("HiddenMetadataTileCount", math.max(0, totalForegroundTileCount - visibleForegroundTileCount))
 
 	local terrainGreedyRects = buildGreedyRectangles(
-		visibleTerrainTiles,
+		snapshot.tiles,
 		snapshot.width,
 		snapshot.height,
 		function(value: number): boolean
@@ -2101,7 +1939,7 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 				break
 			end
 
-			local part = self:acquireVisualPart()
+			local part = Instance.new("Part")
 			part.Anchored = true
 			part.Locked = true
 			part.CanCollide = false
@@ -2291,13 +2129,7 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 
 	model:SetAttribute("TreeCount", treeCount)
 	model:SetAttribute("PropCount", propCount)
-	return model,
-		partCount,
-		terrainFolder,
-		terrainHoverFolder,
-		terrainRectRuntimes,
-		terrainRectByLocalTileIndex,
-		terrainVisibility
+	return model, partCount, terrainFolder, terrainHoverFolder, terrainRectRuntimes, terrainRectByLocalTileIndex
 end
 
 function WorldGenerationServiceClient.ProcessChunkRebuildQueue(self: WorldGenerationServiceClient)
@@ -2347,19 +2179,12 @@ function WorldGenerationServiceClient.ProcessChunkRebuildQueue(self: WorldGenera
 			continue
 		end
 
-		local model,
-			partCount,
-			terrainFolder,
-			terrainHoverFolder,
-			terrainRects,
-			terrainRectByLocalTileIndex,
-			terrainVisibleByLocalTileIndex =
+		local model, partCount, terrainFolder, terrainHoverFolder, terrainRects, terrainRectByLocalTileIndex =
 			self:buildChunkVisualModel(snapshot)
 		local nextTreeSignature = computeTreeSignature(snapshot)
 		local existingPartCount = if existing ~= nil then existing.partCount else 0
 		local projectedPartTotal = self.totalVisualPartCount - existingPartCount + partCount
 		if projectedPartTotal > MAX_VISUAL_PARTS_TOTAL then
-			self:releasePooledPartsIn(model)
 			model:Destroy()
 			continue
 		end
@@ -2394,7 +2219,6 @@ function WorldGenerationServiceClient.ProcessChunkRebuildQueue(self: WorldGenera
 			terrainHoverFolder = terrainHoverFolder,
 			terrainRects = terrainRects,
 			terrainRectByLocalTileIndex = terrainRectByLocalTileIndex,
-			terrainVisibleByLocalTileIndex = terrainVisibleByLocalTileIndex,
 		}
 		self.lastChunkBuildAt[chunkKey] = now
 		self.totalVisualPartCount = projectedPartTotal
@@ -2491,7 +2315,6 @@ function WorldGenerationServiceClient.ResetActiveWorldState(self: WorldGeneratio
 	end
 
 	table.clear(self.chunkSnapshots)
-	table.clear(self.cachedChunkSnapshots)
 	table.clear(self.visibleChunkKeys)
 	table.clear(self.dirtyChunkLookup)
 	table.clear(self.rebuildLookup)
@@ -2647,9 +2470,7 @@ function WorldGenerationServiceClient.Init(self: WorldGenerationServiceClient)
 	self.treeVariantDefinitions = createTreeVariantDefinitions()
 	self.propTemplatesByPropId = resolvePropTemplatesByPropId()
 	self.chunkSnapshots = {} :: { [string]: ChunkSnapshot }
-	self.cachedChunkSnapshots = {} :: { [string]: ChunkSnapshot }
 	self.chunkVisuals = {} :: { [string]: ChunkVisualRuntime }
-	self.visualPartPool = {} :: { Part }
 	self.visibleChunkKeys = {} :: { [string]: boolean }
 	self.dirtyChunkLookup = {} :: { [string]: boolean }
 	self.rebuildQueue = {} :: { string }
@@ -2688,17 +2509,12 @@ function WorldGenerationServiceClient.Destroy(self: WorldGenerationServiceClient
 		self:destroyChunkVisual(chunkKey)
 	end
 	table.clear(self.chunkSnapshots)
-	table.clear(self.cachedChunkSnapshots)
 	table.clear(self.visibleChunkKeys)
 	table.clear(self.dirtyChunkLookup)
 	table.clear(self.rebuildLookup)
 	table.clear(self.lastChunkBuildAt)
 	table.clear(self.chunkAnimationSkipUntil)
 	table.clear(self.rebuildQueue)
-	for _, pooledPart in self.visualPartPool do
-		pooledPart:Destroy()
-	end
-	table.clear(self.visualPartPool)
 	self.rebuildQueueHead = 1
 	self.rebuildQueueTail = 0
 
@@ -2711,9 +2527,6 @@ WorldGenerationServiceClient.resolveWorldFolder = WorldGenerationServiceClient.R
 WorldGenerationServiceClient.resolveChunksFolder = WorldGenerationServiceClient.ResolveChunksFolder
 WorldGenerationServiceClient.refreshWorldAttributes = WorldGenerationServiceClient.RefreshWorldAttributes
 WorldGenerationServiceClient.computeTileCenterPosition = WorldGenerationServiceClient.ComputeTileCenterPosition
-WorldGenerationServiceClient.acquireVisualPart = WorldGenerationServiceClient.AcquireVisualPart
-WorldGenerationServiceClient.releaseVisualPart = WorldGenerationServiceClient.ReleaseVisualPart
-WorldGenerationServiceClient.releasePooledPartsIn = WorldGenerationServiceClient.ReleasePooledPartsIn
 WorldGenerationServiceClient.createForegroundRectPart = WorldGenerationServiceClient.CreateForegroundRectPart
 WorldGenerationServiceClient.clearHoveredTerrainTileRuntime =
 	WorldGenerationServiceClient.ClearHoveredTerrainTileRuntime
@@ -2724,11 +2537,6 @@ WorldGenerationServiceClient.setHoveredTerrainTile = WorldGenerationServiceClien
 WorldGenerationServiceClient.clearHoveredTerrainTile = WorldGenerationServiceClient.ClearHoveredTerrainTile
 WorldGenerationServiceClient.enqueueChunkRebuild = WorldGenerationServiceClient.EnqueueChunkRebuild
 WorldGenerationServiceClient.dequeueChunkRebuild = WorldGenerationServiceClient.DequeueChunkRebuild
-WorldGenerationServiceClient.getTileAtWorldCell = WorldGenerationServiceClient.GetTileAtWorldCell
-WorldGenerationServiceClient.buildVisibleForegroundTileValues =
-	WorldGenerationServiceClient.BuildVisibleForegroundTileValues
-WorldGenerationServiceClient.invalidateChunkSurfaceAndNeighbors =
-	WorldGenerationServiceClient.InvalidateChunkSurfaceAndNeighbors
 WorldGenerationServiceClient.destroyChunkVisual = WorldGenerationServiceClient.DestroyChunkVisual
 WorldGenerationServiceClient.replaceChunkVisualContents = WorldGenerationServiceClient.ReplaceChunkVisualContents
 WorldGenerationServiceClient.suppressChunkAnimationForChunkKey =
@@ -2770,9 +2578,7 @@ type WorldGenerationServiceClient = typeof(WorldGenerationServiceClient) & {
 	treeVariantDefinitions: { TreeVariantDefinition },
 	propTemplatesByPropId: { [number]: { Instance } },
 	chunkSnapshots: { [string]: ChunkSnapshot },
-	cachedChunkSnapshots: { [string]: ChunkSnapshot },
 	chunkVisuals: { [string]: ChunkVisualRuntime },
-	visualPartPool: { Part },
 	visibleChunkKeys: { [string]: boolean },
 	dirtyChunkLookup: { [string]: boolean },
 	rebuildQueue: { string },

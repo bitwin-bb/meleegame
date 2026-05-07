@@ -1303,16 +1303,6 @@ function BuildServiceClient.GetTileFromWorldGenerationSnapshot(
 	tileX: number,
 	tileY: number
 ): number?
-	local getTileAtWorldCellMethod = (WorldGenerationServiceClient :: any).getTileAtWorldCell
-	if typeof(getTileAtWorldCellMethod) == "function" then
-		local ok, tileIdOrError = pcall(function()
-			return (WorldGenerationServiceClient :: any):getTileAtWorldCell(tileX, tileY, false)
-		end)
-		if ok and isFiniteNumber(tileIdOrError) then
-			return BuildServiceUtils.sanitizeTileId(tileIdOrError)
-		end
-	end
-
 	local worldState = nil
 	local getStateMethod = (WorldGenerationServiceClient :: any).getState
 	if typeof(getStateMethod) == "function" then

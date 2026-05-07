@@ -6,30 +6,27 @@ local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
 local AudioServiceServer = require(script:FindFirstAncestor("game").Server.Services.AudioServiceServer)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
 local Bounds = require(script:FindFirstAncestor("game").Shared.Modules.Math.Bounds)
 local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
 local EnemyHitbox = require(script:FindFirstAncestor("game").Shared.Classes.EnemyHitbox)
+local EyeOfCthulhuNpc = require(script:FindFirstAncestor("game").Shared.Modules.Game.Npcs.EyeOfCthulhu)
 local GoreServiceServer = require(script:FindFirstAncestor("game").Server.Services.GoreServiceServer)
 local HpServiceServer = require(script:FindFirstAncestor("game").Server.Services.HpServiceServer)
 local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Modules.Platform.InstanceUtils)
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local LootServiceServer = require(script:FindFirstAncestor("game").Server.Services.LootServiceServer)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
 local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.NpcServiceUtils)
 local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
 local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
-local Slime = require(script:FindFirstAncestor("game").Shared.Classes.Npc.AiTypes.slime)
+local SlimeNpc = require(script:FindFirstAncestor("game").Shared.Modules.Game.Npcs.Slime)
 local StringUtils = require(script:FindFirstAncestor("game").Shared.Modules.Core.StringUtils)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local WorldGenerationServiceServer =
 	require(script:FindFirstAncestor("game").Server.Services.WorldGenerationServiceServer)
 
-type SlimeClass = Slime.Slime
-type RuntimeNpc = SlimeClass
+type RuntimeNpc = any
 type EnemyHitboxManager = EnemyHitbox.EnemyHitbox
 type NpcType = NpcServiceUtils.NpcType
 type NpcRuntimeState = NpcServiceUtils.NpcRuntimeState
@@ -119,7 +116,6 @@ local DEFAULT_SPAWN_EMPTY_GAP_FLOOR_BUFFER = 0.2
 local DEFAULT_SPAWN_EMPTY_GAP_MAX_PARTS = 24
 local DEFAULT_DESPAWN_CHECK_INTERVAL = 0.5
 local DEFAULT_DESPAWN_DISTANCE_BUFFER = 8
-local DEFAULT_SLIME_HP = 14
 local DEFAULT_SLIME_DAMAGE_BLOOD_AMOUNT = 50
 local DEFAULT_SLIME_DEATH_BLOOD_AMOUNT = 100
 local DEFAULT_SLIME_BLOOD_POOL_SIZE = NumberRange.new(0.95, 1.7)
@@ -150,18 +146,9 @@ local DEFAULT_PRE_DAMAGE_SLIME_BLOOD_COOLDOWN = 0.12
 local DEFAULT_FALLBACK_SLIME_BLOOD_COLOR = Color3.fromRGB(39, 145, 58)
 local MISSING_SLIME_BLOOD_TEMPLATE_WARNING =
 	"[NpcService] Missing slime blood template. Expected ReplicatedStorage.Assets.Effects.SlimeBlood. Using fallback emitter."
-local NPC_AUDIO = (AudioRegistry :: any).Npcs or {}
-local SLIME_AUDIO = (NPC_AUDIO :: any).Slimes or {}
-local DEFAULT_SLIME_AUDIO_BINDINGS = (SLIME_AUDIO :: any).Default or {}
-local GREEN_SLIME_AUDIO_BINDINGS = (SLIME_AUDIO :: any).GreenSlime or DEFAULT_SLIME_AUDIO_BINDINGS
-local SLIME_GEL_DROP_ITEM_ID = "Gel"
-local SLIME_GEL_DROP_AMOUNT = 1
-local SLIME_AUDIO_KEY_BY_TOKEN = {
-	jump = "Jump",
-	land = "Land",
-	hurt = "Hurt",
-	hit = "Hurt",
-	death = "Death",
+local NPC_MODULES = {
+	Slime = SlimeNpc,
+	EyeOfCthulhu = EyeOfCthulhuNpc,
 }
 
 local function isSlimeRuntime(runtime: NpcRuntime): boolean
@@ -240,6 +227,16 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?,
 	end
 
 	return value
+end
+
+function NpcServiceServer.SanitizeNumber(
+	_self: NpcServiceServer,
+	valueRaw: any,
+	fallback: number,
+	minimum: number?,
+	maximum: number?
+): number
+	return sanitizeNumber(valueRaw, fallback, minimum, maximum)
 end
 
 local function sanitizeSizeVector(sizeRaw: any, fallback: Vector3): Vector3
@@ -388,6 +385,21 @@ function NpcServiceServer.EnsureNpcFolder(self: NpcServiceServer): Folder
 	return WorkspaceFolders.getOrCreateFolderInGame(DEFAULT_NPC_FOLDER_NAME)
 end
 
+function NpcServiceServer.InitNpcModules(self: NpcServiceServer)
+	self.npcModulesByType = {}
+	for npcType, npcModule in NPC_MODULES do
+		self.npcModulesByType[tostring(npcType)] = npcModule
+		local init = (npcModule :: any).init
+		if typeof(init) == "function" then
+			init(npcModule, self)
+		end
+	end
+end
+
+function NpcServiceServer.GetRuntimeModule(self: NpcServiceServer, runtime: NpcRuntime): any?
+	return self.npcModulesByType[runtime.npcType]
+end
+
 function NpcServiceServer.EnsureCollisionGroups(self: NpcServiceServer)
 	if self.collisionGroupsReady == true then
 		return
@@ -452,13 +464,6 @@ function NpcServiceServer.ApplyRuntimeNpcCollisionGroup(self: NpcServiceServer, 
 	setModelCollisionGroup(model, ENEMY_COLLISION_GROUP)
 end
 
-local function resolveSlimeAudioBindings(runtime: NpcRuntime): { [string]: any }
-	if isSlimeRuntime(runtime) and (runtime.slime :: any).isGreenSlime then
-		return GREEN_SLIME_AUDIO_BINDINGS
-	end
-	return DEFAULT_SLIME_AUDIO_BINDINGS
-end
-
 function NpcServiceServer.ResolveRuntimeSoundSource(
 	self: NpcServiceServer,
 	runtime: NpcRuntime,
@@ -468,13 +473,10 @@ function NpcServiceServer.ResolveRuntimeSoundSource(
 		return nil
 	end
 
-	local token = StringUtils.compactToken(soundNameRaw)
-	local soundKey = if isSlimeRuntime(runtime) then SLIME_AUDIO_KEY_BY_TOKEN[token] else nil
-	if soundKey ~= nil then
-		local soundAssetIds = AudioServiceUtils.collectSoundAssetIds(resolveSlimeAudioBindings(runtime)[soundKey])
-		if #soundAssetIds > 0 then
-			return soundAssetIds[self.random:NextInteger(1, #soundAssetIds)]
-		end
+	local npcModule = self:getRuntimeModule(runtime)
+	local resolveSoundSource = if npcModule ~= nil then (npcModule :: any).resolveSoundSource else nil
+	if typeof(resolveSoundSource) == "function" then
+		return resolveSoundSource(npcModule, self, runtime, soundNameRaw)
 	end
 
 	return NpcServiceUtils.findDescendantByNameOfClass(runtime.slime.model, soundNameRaw, "Sound")
@@ -549,10 +551,17 @@ function NpcServiceServer.CreateSnapshot(self: NpcServiceServer, runtime: NpcRun
 end
 
 function NpcServiceServer.SyncRuntimeVitals(self: NpcServiceServer, runtime: NpcRuntime)
-	local slime = runtime.slime
-	runtime.maxHp = slime.maxHp
-	runtime.hp = math.clamp(slime.hp, 0, slime.maxHp)
-	runtime.isAlive = slime.isAlive
+	local npcModule = self:getRuntimeModule(runtime)
+	local syncVitals = if npcModule ~= nil then (npcModule :: any).syncVitals else nil
+	if typeof(syncVitals) == "function" then
+		syncVitals(npcModule, runtime)
+		return
+	end
+
+	local npc = runtime.npc
+	runtime.maxHp = npc.maxHp
+	runtime.hp = math.clamp(npc.hp, 0, npc.maxHp)
+	runtime.isAlive = npc.isAlive
 end
 
 function NpcServiceServer.GetRuntime(self: NpcServiceServer, runtimeId: string): NpcRuntime?
@@ -830,79 +839,10 @@ function NpcServiceServer.OnEnemyHitPlayer(self: NpcServiceServer, runtimeIdRaw:
 end
 
 function NpcServiceServer.RegisterRuntimeEnemyHitbox(self: NpcServiceServer, runtime: NpcRuntime)
-	if not isSlimeRuntime(runtime) then
-		return
-	end
-
-	local enemyHitbox = self.enemyHitbox
-	if enemyHitbox == nil then
-		return
-	end
-
-	local runtimeId = runtime.id
-	local didRegister = enemyHitbox:registerEnemy({
-		id = runtimeId,
-		owner = runtime,
-		model = runtime.slime.model,
-		getModel = function(ownerRuntime: NpcRuntime): Model?
-			return ownerRuntime.slime.model
-		end,
-		getCenter = function(ownerRuntime: NpcRuntime): Vector3?
-			local center = self:resolveRuntimeHurtbox(ownerRuntime)
-			return center
-		end,
-		getAlive = function(ownerRuntime: NpcRuntime): boolean
-			return ownerRuntime.isAlive and not ownerRuntime.isRemoving and ownerRuntime.slime.isAlive
-		end,
-		getDamage = function(ownerRuntime: NpcRuntime): number
-			return sanitizeNumber(ownerRuntime.slime.damage, 0, 0, 100000)
-		end,
-		getAttackCooldown = function(ownerRuntime: NpcRuntime): number
-			return sanitizeNumber(ownerRuntime.slime.combat.attackCooldown, 0.85, 0.05, 30)
-		end,
-		getHurtboxSize = function(ownerRuntime: NpcRuntime, _model: Model?, _rootPart: BasePart?): Vector3
-			local _, hurtboxSize = self:resolveRuntimeHurtbox(ownerRuntime)
-			return hurtboxSize
-		end,
-		getAttackSize = function(ownerRuntime: NpcRuntime, model: Model?, rootPart: BasePart?): Vector3
-			local basePart = if rootPart ~= nil then rootPart else InstanceUtils.resolveModelRootPart(model)
-			local baseSize = if basePart ~= nil then basePart.Size else DEFAULT_RUNTIME_HURTBOX_SIZE
-			local slime = ownerRuntime.slime
-			local attackRange = sanitizeNumber(slime.combat.attackRange, 3.5, 0.5, 25)
-			local hopReach = sanitizeNumber(slime.hopDistance, 6, 1, 60) * 0.5
-			local effectiveReach = math.max(attackRange, hopReach, 4)
-			return Vector3.new(
-				math.max(4, baseSize.X + 2),
-				math.max(3, baseSize.Y + 1),
-				math.max(6, baseSize.Z + effectiveReach * 2)
-			)
-		end,
-		canHitPlayer = function(ownerRuntime: NpcRuntime, player: Player): boolean
-			local slime = ownerRuntime.slime
-			if ownerRuntime.isRemoving or not ownerRuntime.isAlive or not slime.isAlive then
-				return false
-			end
-			if not slime.aggroOnPlayer then
-				return false
-			end
-			if slime.passiveUntilHit and not slime.hasBeenHit then
-				return false
-			end
-
-			local distance = slime:getDistanceTo(player)
-			if distance == nil then
-				return false
-			end
-			local maxContactDistance = math.max(5.5, sanitizeNumber(slime.hopDistance, 6, 1, 60) * 0.5 + 2)
-			return distance <= maxContactDistance
-		end,
-		onHitPlayer = function(ownerRuntime: NpcRuntime, player: Player, damage: number)
-			self:onEnemyHitPlayer(ownerRuntime.id, player, damage)
-		end,
-	})
-
-	if didRegister then
-		runtime.enemyHitboxId = runtimeId
+	local npcModule = self:getRuntimeModule(runtime)
+	local registerEnemyHitbox = if npcModule ~= nil then (npcModule :: any).registerEnemyHitbox else nil
+	if typeof(registerEnemyHitbox) == "function" then
+		registerEnemyHitbox(npcModule, self, runtime)
 	end
 end
 
@@ -1345,18 +1285,10 @@ function NpcServiceServer.SyncRuntimeGoreRegistration(self: NpcServiceServer, ru
 	end
 
 	local goreConfig = nil
-	if runtime.npcType == "Slime" then
-		goreConfig = {
-			damageBloodAmount = DEFAULT_SLIME_DAMAGE_BLOOD_AMOUNT,
-			deathBloodAmount = DEFAULT_SLIME_DEATH_BLOOD_AMOUNT,
-			bloodSettings = {
-				DefaultSize = DEFAULT_SLIME_BLOOD_POOL_SIZE,
-				SizeY = DEFAULT_SLIME_BLOOD_POOL_SIZE_Y,
-				StartingSize = DEFAULT_SLIME_BLOOD_POOL_STARTING_SIZE,
-				MaximumSize = DEFAULT_SLIME_BLOOD_POOL_MAX_SIZE,
-				ExpanseDivider = DEFAULT_SLIME_BLOOD_POOL_EXPANSE_DIVIDER,
-			},
-		}
+	local npcModule = self:getRuntimeModule(runtime)
+	local getGoreConfig = if npcModule ~= nil then (npcModule :: any).getGoreConfig else nil
+	if typeof(getGoreConfig) == "function" then
+		goreConfig = getGoreConfig(npcModule, runtime)
 	end
 
 	goreService:registerNpcEntity(runtime.id, model, goreConfig)
@@ -1523,6 +1455,12 @@ function NpcServiceServer.EmitRuntimeSlimeBlood(
 end
 
 function NpcServiceServer.ResolveRuntimeState(self: NpcServiceServer, runtime: NpcRuntime): NpcRuntimeState
+	local npcModule = self:getRuntimeModule(runtime)
+	local resolveRuntimeState = if npcModule ~= nil then (npcModule :: any).resolveRuntimeState else nil
+	if typeof(resolveRuntimeState) == "function" then
+		return resolveRuntimeState(npcModule, self, runtime)
+	end
+
 	local npc = runtime.npc
 	if not runtime.isAlive then
 		return "Dead"
@@ -1916,23 +1854,10 @@ function NpcServiceServer.TrackRuntime(self: NpcServiceServer, runtime: NpcRunti
 		if self.enemyHitbox ~= nil then
 			self.enemyHitbox:setEnemyAlive(runtime.id, false)
 		end
-		local lootService = self.lootService
-		if lootService ~= nil then
-			local deathPosition = runtime.slime:getPosition()
-			if deathPosition == nil then
-				local rootPart = InstanceUtils.resolveModelRootPart(runtime.slime.model)
-				if rootPart ~= nil then
-					deathPosition = rootPart.Position
-				end
-			end
-			if deathPosition ~= nil then
-				lootService:spawnLootRuntime(SLIME_GEL_DROP_ITEM_ID, SLIME_GEL_DROP_AMOUNT, deathPosition, {
-					sourceType = runtime.displayName,
-				})
-				lootService:spawnDropsFromSource(runtime.displayName, deathPosition, {
-					sourceType = runtime.displayName,
-				})
-			end
+		local npcModule = self:getRuntimeModule(runtime)
+		local spawnLoot = if npcModule ~= nil then (npcModule :: any).spawnLoot else nil
+		if typeof(spawnLoot) == "function" then
+			spawnLoot(npcModule, self, runtime)
 		end
 		self:transitionRuntimeState(runtime, "Dead", "died", true)
 		task.delay(2, function()
@@ -1962,90 +1887,12 @@ function NpcServiceServer.TrackRuntime(self: NpcServiceServer, runtime: NpcRunti
 end
 
 function NpcServiceServer.SpawnSlime(self: NpcServiceServer, spawnConfig: SlimeSpawnConfig): NpcRuntime?
-	local modelName = if spawnConfig.modelHierarchy ~= nil and spawnConfig.modelHierarchy ~= ""
-		then spawnConfig.modelHierarchy
-		else spawnConfig.modelName
-
-	local slime = Slime.new({
-		archetype = spawnConfig.slimeType,
-		displayName = spawnConfig.displayName,
-		modelName = modelName,
-		slimeType = spawnConfig.slimeType,
-		hp = DEFAULT_SLIME_HP,
-		maxHp = DEFAULT_SLIME_HP,
-		aggroOnPlayer = spawnConfig.aggroOnPlayer,
-		passiveUntilHit = spawnConfig.passiveUntilHit,
-		lockTo2DPlane = true,
-		planeX = spawnConfig.planeX,
-		restDuration = spawnConfig.restDuration,
-		hopDuration = spawnConfig.hopDuration,
-		hopDistance = spawnConfig.hopDistance,
-		movement = {
-			canWander = false,
-			thinkInterval = 0.1,
-			autoRotate = false,
-		},
-		combat = {
-			attackRange = 0,
-			attackCooldown = 1.1,
-		},
-		lifecycle = {
-			spawnParent = self.npcFolder,
-			autoDestroyModelOnDeath = true,
-			autoStart = false,
-		},
-	})
-
-	local model = slime:start(spawnConfig.spawnCFrame)
-	if model == nil then
-		slime:destroy()
+	local npcModule = self.npcModulesByType.Slime
+	if npcModule == nil or typeof((npcModule :: any).spawn) ~= "function" then
 		return nil
 	end
-
-	local runtimeJanitor = Janitor.new()
-	local animationEventJanitor = Janitor.new()
-	runtimeJanitor:GiveChore(animationEventJanitor)
-
-	local defaultAnimationEvents = NpcServiceUtils.createDefaultSlimeAnimationEvents()
-	local runtime: NpcRuntime = {
-		id = slime.uniqueId,
-		entityId = if typeof(spawnConfig.slimeType) == "string" and spawnConfig.slimeType ~= ""
-			then spawnConfig.slimeType
-			else if typeof(spawnConfig.modelName) == "string" and spawnConfig.modelName ~= ""
-				then spawnConfig.modelName
-				else spawnConfig.displayName,
-		npcType = "Slime",
-		displayName = spawnConfig.displayName,
-		npc = slime,
-		slime = slime,
-		hp = slime.hp,
-		maxHp = slime.maxHp,
-		isAlive = slime.isAlive,
-		state = "Dormant",
-		lastReason = "spawn",
-		biomeName = "Unknown",
-		biomeReady = false,
-		animationEvents = NpcServiceUtils.sanitizeAnimationEventsByTrack(
-			spawnConfig.animationEvents,
-			defaultAnimationEvents
-		),
-		stateGraph = NpcServiceUtils.createDefaultStateMachineGraph(),
-		updatedAt = os.clock(),
-		janitor = runtimeJanitor,
-		animationEventJanitor = animationEventJanitor,
-		animationEventsBound = false,
-		isRemoving = false,
-		deathGoreEmitted = false,
-		enemyHitboxId = nil,
-		lastEnemyHitAt = -math.huge,
-		lastPreDamageSlimeBloodAt = -math.huge,
-	}
-
-	self:trackRuntime(runtime)
-	self:transitionRuntimeState(runtime, "Spawning", "spawn", true)
-	self:updateRuntime(runtime, "spawn", true)
-	self:broadcast(NpcServiceUtils.CLIENT_METHOD_NPC_ADDED, self:createSnapshot(runtime))
-	return runtime
+	local runtime = (npcModule :: any):spawn(self, spawnConfig)
+	return runtime :: NpcRuntime?
 end
 
 function NpcServiceServer.SpawnInitialSlimes(self: NpcServiceServer)
@@ -2109,6 +1956,8 @@ function NpcServiceServer.Init(self: NpcServiceServer)
 	self.networker = Networker.server.new("NpcService", self, {
 		self.RequestSync,
 	})
+	self.npcModulesByType = {}
+	self:initNpcModules()
 	self.runtimes = {}
 	self.runtimesByModel = {}
 	self.world = nil
@@ -2256,9 +2105,13 @@ NpcServiceServer.spawnInitialSlimes = NpcServiceServer.SpawnInitialSlimes
 NpcServiceServer.onHeartbeat = NpcServiceServer.OnHeartbeat
 NpcServiceServer.init = NpcServiceServer.Init
 NpcServiceServer.destroy = NpcServiceServer.Destroy
+NpcServiceServer.initNpcModules = NpcServiceServer.InitNpcModules
+NpcServiceServer.getRuntimeModule = NpcServiceServer.GetRuntimeModule
+NpcServiceServer.sanitizeNumber = NpcServiceServer.SanitizeNumber
 
 type NpcServiceServer = typeof(NpcServiceServer) & {
 	networker: Networker.Server,
+	npcModulesByType: { [string]: any },
 	runtimes: { [string]: NpcRuntime },
 	runtimesByModel: { [Model]: NpcRuntime },
 	enemyHitbox: EnemyHitboxManager?,

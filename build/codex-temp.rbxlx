@@ -103645,6 +103645,7 @@ local WorldAnimatorServiceClient = {}
 
 local RUNTIME_FOLDER_NAME = "WorldAnimatorRuntime"
 local SKIP_WORLD_ANIMATOR_ATTRIBUTE = "SkipWorldAnimator"
+local SKIP_CHUNK_APPEAR_ANIMATION_ATTRIBUTE = "SkipChunkAppearAnimation"
 local ANIMATING_WORLD_ANIMATOR_ATTRIBUTE = "WorldAnimatorAnimating"
 
 local function safeGetModelPivot(model: Model): (boolean, CFrame)
@@ -103737,7 +103738,7 @@ local function computePositionRelativeFadeAlpha(startPivot: CFrame, currentPivot
 	return math.clamp(currentDistance / totalDistance, 0, 1)
 end
 
-function WorldAnimatorServiceClient.EnsureRuntimeFolder(self: WorldAnimatorServiceClient): Folder
+function WorldAnimatorServiceClient.EnsureRuntimeFolder(_self: WorldAnimatorServiceClient): Folder
 	return WorkspaceFolders.getOrCreateFolderInGame(RUNTIME_FOLDER_NAME)
 end
 
@@ -103764,7 +103765,7 @@ function WorldAnimatorServiceClient.EnsureRenderLoop(self: WorldAnimatorServiceC
 end
 
 function WorldAnimatorServiceClient.RestoreOriginalChunkVisibility(
-	self: WorldAnimatorServiceClient,
+	_self: WorldAnimatorServiceClient,
 	animation: ChunkAnimationState
 )
 	for index, part in animation.originalParts do
@@ -103910,6 +103911,12 @@ function WorldAnimatorServiceClient.StartChunkAnimation(
 	chunkModel: Model
 ): StartAnimationResult
 	if chunkModel.Parent == nil then
+		return "skip"
+	end
+	if
+		chunkModel:GetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE) == true
+		or chunkModel:GetAttribute(SKIP_CHUNK_APPEAR_ANIMATION_ATTRIBUTE) == true
+	then
 		return "skip"
 	end
 
@@ -104341,10 +104348,28 @@ type ChunkVisualRuntime = {
 	builtAt: number,
 	treeSignature: string,
 	terrainFolder: Folder,
+	terrainOcclusionFolder: Folder,
 	terrainHoverFolder: Folder,
+	backgroundFolder: Folder,
 	terrainRects: { TerrainRectRuntime },
 	terrainRectByLocalTileIndex: { number },
 	terrainVisibleByLocalTileIndex: { boolean },
+	terrainOcclusionRects: { TerrainRectRuntime },
+	terrainOcclusionRectByLocalTileIndex: { number },
+	backgroundRectsByLayerIndex: { { TerrainRectRuntime } },
+	backgroundRectByLocalTileIndexByLayerIndex: { { number } },
+}
+
+type TerrainSurfaceDirtyCell = {
+	tileX: number,
+	tileY: number,
+}
+
+type TerrainSurfaceUpdateOptions = {
+	animate: boolean?,
+	reason: string?,
+	allowFullRebuild: boolean?,
+	targetRevision: number?,
 }
 
 type TreeVariantDefinition = {
@@ -104368,6 +104393,7 @@ local MAX_CHUNK_REBUILDS_PER_HEARTBEAT = 8
 local MAX_VISUAL_PARTS_TOTAL = 35000
 local MAX_VISUAL_PARTS_PER_CHUNK = 2800
 local MAX_VISUAL_PART_POOL_SIZE = 4096
+local MAX_INCREMENTAL_SURFACE_DIRTY_CELLS = 512
 local MIN_SECONDS_BETWEEN_REBUILDS_PER_CHUNK = 0.02
 local VISIBILITY_REFRESH_INTERVAL = 0.03
 local MAX_REBUILD_QUEUE_LENGTH = 2048
@@ -104403,9 +104429,12 @@ local CHUNK_SURFACE_INVALIDATION_OFFSETS = {
 	{ x = 0, y = -1 },
 	{ x = 0, y = 1 },
 }
+local TERRAIN_OCCLUSION_FOLDER_NAME = "TerrainOcclusion"
 local TERRAIN_HOVER_FOLDER_NAME = "TerrainHover"
 local TERRAIN_HOVER_HIGHLIGHT_NAME = "TerrainHoverHighlight"
 local POOLED_WORLD_TILE_PART_ATTRIBUTE = "PooledWorldTilePart"
+local CHUNK_VISUAL_UPDATE_REASON_ATTRIBUTE = "ChunkVisualUpdateReason"
+local SKIP_CHUNK_APPEAR_ANIMATION_ATTRIBUTE = "SkipChunkAppearAnimation"
 local TERRAIN_HOVER_FILL_COLOR = Color3.fromRGB(255, 221, 64)
 local TERRAIN_HOVER_OUTLINE_COLOR = Color3.fromRGB(255, 221, 64)
 local TERRAIN_HOVER_FILL_TRANSPARENCY = 1
@@ -104482,6 +104511,15 @@ local function applyTileStudSurfaces(part: BasePart)
 	part.RightSurface = Enum.SurfaceType.Studs
 	part.FrontSurface = Enum.SurfaceType.Studs
 	part.BackSurface = Enum.SurfaceType.Studs
+end
+
+local function applyTileSmoothSurfaces(part: BasePart)
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	part.LeftSurface = Enum.SurfaceType.Smooth
+	part.RightSurface = Enum.SurfaceType.Smooth
+	part.FrontSurface = Enum.SurfaceType.Smooth
+	part.BackSurface = Enum.SurfaceType.Smooth
 end
 
 local function createTreeVariantDefinitions(): { TreeVariantDefinition }
@@ -104849,6 +104887,11 @@ local function computeTileIndex(localX: number, localY: number, width: number): 
 	return localY * width + localX + 1
 end
 
+local function unpackTileIndex(index: number, width: number): (number, number)
+	local zeroIndex = index - 1
+	return zeroIndex % width, math.floor(zeroIndex / width)
+end
+
 local function toTileCoordinate(worldAxis: number, tileSize: number): number
 	return math.floor(worldAxis / tileSize)
 end
@@ -104982,7 +105025,7 @@ local function createCorruptionSpikeFallbackModel(variantIndex: number, seed: nu
 	return model
 end
 
-local function createDeadBushFallbackModel(variantIndex: number, seed: number): Model
+local function _createDeadBushFallbackModel(variantIndex: number, seed: number): Model
 	local randomObject = Random.new(seed)
 	local model = Instance.new("Model")
 	model.Name = "DeadBush"
@@ -105189,6 +105232,86 @@ local function buildGreedyRectangles(
 	return rectangles
 end
 
+local function buildGreedyRectanglesInBounds(
+	values: { number },
+	width: number,
+	minLocalX: number,
+	minLocalY: number,
+	maxLocalX: number,
+	maxLocalY: number,
+	includedLookup: { [number]: boolean },
+	shouldInclude: (value: number, index: number) -> boolean
+): { GreedyRect }
+	local rectangles: { GreedyRect } = {}
+	local visited: { [number]: boolean } = {}
+
+	for localY = minLocalY, maxLocalY do
+		for localX = minLocalX, maxLocalX do
+			local index = computeTileIndex(localX, localY, width)
+			if visited[index] or includedLookup[index] ~= true then
+				continue
+			end
+
+			local value = values[index]
+			if not shouldInclude(value, index) then
+				visited[index] = true
+				continue
+			end
+
+			local rectWidth = 1
+			while localX + rectWidth <= maxLocalX do
+				local scanIndex = computeTileIndex(localX + rectWidth, localY, width)
+				if visited[scanIndex] or includedLookup[scanIndex] ~= true then
+					break
+				end
+
+				local scanValue = values[scanIndex]
+				if scanValue ~= value or not shouldInclude(scanValue, scanIndex) then
+					break
+				end
+				rectWidth += 1
+			end
+
+			local rectHeight = 1
+			local canExtend = true
+			while canExtend and localY + rectHeight <= maxLocalY do
+				for scanX = 0, rectWidth - 1 do
+					local scanIndex = computeTileIndex(localX + scanX, localY + rectHeight, width)
+					if visited[scanIndex] or includedLookup[scanIndex] ~= true then
+						canExtend = false
+						break
+					end
+
+					local scanValue = values[scanIndex]
+					if scanValue ~= value or not shouldInclude(scanValue, scanIndex) then
+						canExtend = false
+						break
+					end
+				end
+				if canExtend then
+					rectHeight += 1
+				end
+			end
+
+			for markY = 0, rectHeight - 1 do
+				for markX = 0, rectWidth - 1 do
+					visited[computeTileIndex(localX + markX, localY + markY, width)] = true
+				end
+			end
+
+			table.insert(rectangles, {
+				x = localX,
+				y = localY,
+				width = rectWidth,
+				height = rectHeight,
+				value = value,
+			})
+		end
+	end
+
+	return rectangles
+end
+
 local function styleForegroundPart(part: BasePart, tileId: number)
 	local visualTileId = if ORE_ASSET_KEYS_BY_TILE_ID[tileId] ~= nil then STONE_TILE_ID else tileId
 	local style = TILE_VISUALS[visualTileId] or TILE_VISUALS[STONE_TILE_ID]
@@ -105198,6 +105321,17 @@ local function styleForegroundPart(part: BasePart, tileId: number)
 	part.Transparency = style.transparency
 	part.CastShadow = false
 	applyTileStudSurfaces(part)
+end
+
+local function styleTerrainOcclusionPart(part: BasePart, tileId: number)
+	local visualTileId = if ORE_ASSET_KEYS_BY_TILE_ID[tileId] ~= nil then STONE_TILE_ID else tileId
+	local style = TILE_VISUALS[visualTileId] or TILE_VISUALS[STONE_TILE_ID]
+	part.Name = `{style.name}Occlusion`
+	part.Color = style.color:Lerp(Color3.new(0, 0, 0), 0.45)
+	part.Material = style.material
+	part.Transparency = 0
+	part.CastShadow = false
+	applyTileSmoothSurfaces(part)
 end
 
 local function resolveGrassTextureDefinition(tileId: number): GrassTextureDefinition?
@@ -105346,7 +105480,7 @@ local function styleBackgroundPart(part: BasePart, tileId: number, layerIndex: n
 	part.Material = style.material
 	part.Transparency = 0
 	part.CastShadow = false
-	applyTileStudSurfaces(part)
+	applyTileSmoothSurfaces(part)
 end
 
 local function sanitizeTileCoordinate(valueRaw: any): number?
@@ -105507,6 +105641,77 @@ function WorldGenerationServiceClient.CreateForegroundRectPart(
 	local centerTileY = tileMinY + height * 0.5
 	part.CFrame = CFrame.new(self:computeTileCenterPosition(centerTileX, centerTileY, 0))
 	return part
+end
+
+function WorldGenerationServiceClient.CreateTerrainOcclusionRectPart(
+	self: WorldGenerationServiceClient,
+	tileMinX: number,
+	tileMinY: number,
+	width: number,
+	height: number,
+	tileId: number
+): Part
+	local tileDepth = self.state.tileDepth
+	local tileSize = self.state.tileSize
+	local part = self:acquireVisualPart()
+	part.Anchored = true
+	part.Locked = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.Size = Vector3.new(math.max(0.05, tileDepth * 0.12), tileSize * height, tileSize * width)
+	styleTerrainOcclusionPart(part, tileId)
+
+	local centerTileX = tileMinX + width * 0.5
+	local centerTileY = tileMinY + height * 0.5
+	part.CFrame = CFrame.new(self:computeTileCenterPosition(centerTileX, centerTileY, -tileDepth * 0.08))
+	return part
+end
+
+function WorldGenerationServiceClient.CreateBackgroundRectPart(
+	self: WorldGenerationServiceClient,
+	layerListIndex: number,
+	layerCount: number,
+	tileMinX: number,
+	tileMinY: number,
+	width: number,
+	height: number,
+	tileId: number
+): Part
+	local tileDepth = self.state.tileDepth
+	local tileSize = self.state.tileSize
+	local part = self:acquireVisualPart()
+	part.Anchored = true
+	part.Locked = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.Size = Vector3.new(tileDepth, tileSize * height, tileSize * width)
+	styleBackgroundPart(part, tileId, layerListIndex, layerCount)
+	applyGrassTextures(
+		part,
+		tileId,
+		tileSize,
+		tileDepth,
+		Color3.new(1, 1, 1):Lerp(Color3.new(0, 0, 0), resolveBackgroundDarkenAlpha(layerListIndex, layerCount))
+	)
+
+	local centerTileX = tileMinX + width * 0.5
+	local centerTileY = tileMinY + height * 0.5
+	part.CFrame = CFrame.new(self:computeTileCenterPosition(centerTileX, centerTileY, -(layerListIndex * tileDepth)))
+	return part
+end
+
+function WorldGenerationServiceClient.ApplySurfaceUpdateAttributes(
+	_self: WorldGenerationServiceClient,
+	instance: Instance,
+	reasonRaw: any?,
+	animateRaw: any?
+)
+	local reason = if typeof(reasonRaw) == "string" and reasonRaw ~= "" then reasonRaw else "TileMutation"
+	instance:SetAttribute(CHUNK_VISUAL_UPDATE_REASON_ATTRIBUTE, reason)
+	instance:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, animateRaw ~= true)
+	instance:SetAttribute(SKIP_CHUNK_APPEAR_ANIMATION_ATTRIBUTE, animateRaw ~= true)
 end
 
 function WorldGenerationServiceClient.ClearHoveredTerrainTileRuntime(self: WorldGenerationServiceClient)
@@ -105779,10 +105984,481 @@ function WorldGenerationServiceClient.BuildVisibleForegroundTileValues(
 	})
 end
 
+function WorldGenerationServiceClient.BuildSurfaceDetailTileValues(
+	self: WorldGenerationServiceClient,
+	snapshot: ChunkSnapshot
+): ({ number }, { boolean }, number)
+	return self:buildVisibleForegroundTileValues(snapshot)
+end
+
+function WorldGenerationServiceClient.IsForegroundCellSolidOccluder(
+	_self: WorldGenerationServiceClient,
+	tileIdRaw: any
+): boolean
+	return TileVisibilityResolver.IsTileOpaque(tileIdRaw, {
+		airTileId = FOREGROUND_TILE_AIR_ID,
+	})
+end
+
+function WorldGenerationServiceClient.GetForegroundTileAtWorldCell(
+	self: WorldGenerationServiceClient,
+	worldX: number,
+	worldY: number
+): number?
+	return self:getTileAtWorldCell(worldX, worldY, true)
+end
+
+function WorldGenerationServiceClient.IsForegroundCellOpen(
+	self: WorldGenerationServiceClient,
+	worldX: number,
+	worldY: number
+): boolean
+	return not self:isForegroundCellSolidOccluder(self:getForegroundTileAtWorldCell(worldX, worldY))
+end
+
+function WorldGenerationServiceClient.BuildSolidTileMask(
+	self: WorldGenerationServiceClient,
+	snapshot: ChunkSnapshot
+): ({ boolean }, number)
+	local solidMask = table.create(snapshot.width * snapshot.height, false) :: { boolean }
+	local solidCount = 0
+	for index, tileId in snapshot.tiles do
+		if self:isForegroundCellSolidOccluder(tileId) then
+			solidMask[index] = true
+			solidCount += 1
+		end
+	end
+	return solidMask, solidCount
+end
+
+function WorldGenerationServiceClient.BuildTerrainOcclusionTileValues(
+	self: WorldGenerationServiceClient,
+	snapshot: ChunkSnapshot
+): ({ number }, { boolean }, number)
+	local solidMask, solidCount = self:buildSolidTileMask(snapshot)
+	local occlusionTiles = table.create(snapshot.width * snapshot.height, FOREGROUND_TILE_AIR_ID) :: { number }
+	for index, isSolid in solidMask do
+		if isSolid then
+			local tileId = snapshot.tiles[index] or STONE_TILE_ID
+			occlusionTiles[index] = if ORE_ASSET_KEYS_BY_TILE_ID[tileId] ~= nil then STONE_TILE_ID else tileId
+		end
+	end
+	return occlusionTiles, solidMask, solidCount
+end
+
+function WorldGenerationServiceClient.BuildBackgroundVisibleTileValues(
+	self: WorldGenerationServiceClient,
+	snapshot: ChunkSnapshot,
+	layerData: ChunkLayerSnapshot
+): ({ number }, { boolean }, number)
+	local tileCount = layerData.width * layerData.height
+	local visibleTiles = table.create(tileCount, FOREGROUND_TILE_AIR_ID) :: { number }
+	local visibleMask = table.create(tileCount, false) :: { boolean }
+	local visibleCount = 0
+
+	for localY = 0, layerData.height - 1 do
+		for localX = 0, layerData.width - 1 do
+			local index = computeTileIndex(localX, localY, layerData.width)
+			local tileId = layerData.tiles[index] or FOREGROUND_TILE_AIR_ID
+			if tileId == FOREGROUND_TILE_AIR_ID then
+				continue
+			end
+
+			local worldX = layerData.tileMinX + localX
+			local worldY = layerData.tileMinY + localY
+			local foregroundLocalX = worldX - snapshot.tileMinX
+			local foregroundLocalY = worldY - snapshot.tileMinY
+			local foregroundTileId
+			if
+				foregroundLocalX >= 0
+				and foregroundLocalX < snapshot.width
+				and foregroundLocalY >= 0
+				and foregroundLocalY < snapshot.height
+			then
+				foregroundTileId = snapshot.tiles[computeTileIndex(foregroundLocalX, foregroundLocalY, snapshot.width)]
+			else
+				foregroundTileId = self:getForegroundTileAtWorldCell(worldX, worldY)
+			end
+
+			if self:isForegroundCellSolidOccluder(foregroundTileId) then
+				continue
+			end
+
+			visibleTiles[index] = tileId
+			visibleMask[index] = true
+			visibleCount += 1
+		end
+	end
+
+	return visibleTiles, visibleMask, visibleCount
+end
+
+function WorldGenerationServiceClient.CollectChangedSurfaceCells(
+	_self: WorldGenerationServiceClient,
+	previousSnapshot: ChunkSnapshot,
+	nextSnapshot: ChunkSnapshot
+): ({ TerrainSurfaceDirtyCell }, boolean)
+	if previousSnapshot.width ~= nextSnapshot.width or previousSnapshot.height ~= nextSnapshot.height then
+		return {}, false
+	end
+	if previousSnapshot.tileMinX ~= nextSnapshot.tileMinX or previousSnapshot.tileMinY ~= nextSnapshot.tileMinY then
+		return {}, false
+	end
+
+	local dirtyLookup = {} :: { [string]: boolean }
+	local dirtyCells = {} :: { TerrainSurfaceDirtyCell }
+	local tileCount = nextSnapshot.width * nextSnapshot.height
+	for index = 1, tileCount do
+		if previousSnapshot.tiles[index] == nextSnapshot.tiles[index] then
+			continue
+		end
+
+		local localX, localY = unpackTileIndex(index, nextSnapshot.width)
+		local worldX = nextSnapshot.tileMinX + localX
+		local worldY = nextSnapshot.tileMinY + localY
+		for _, dirtyCell in TileVisibilityResolver.CollectVisibilityDirtyWorldCells(worldX, worldY, false) do
+			local dirtyKey = `{dirtyCell.tileX}:{dirtyCell.tileY}`
+			if dirtyLookup[dirtyKey] == true then
+				continue
+			end
+			dirtyLookup[dirtyKey] = true
+			table.insert(dirtyCells, {
+				tileX = dirtyCell.tileX,
+				tileY = dirtyCell.tileY,
+			})
+			if #dirtyCells > MAX_INCREMENTAL_SURFACE_DIRTY_CELLS then
+				return dirtyCells, false
+			end
+		end
+	end
+
+	return dirtyCells, true
+end
+
+function WorldGenerationServiceClient.PatchRectLayer(
+	self: WorldGenerationServiceClient,
+	rects: { TerrainRectRuntime },
+	rectByLocalTileIndex: { number },
+	folder: Folder,
+	values: { number },
+	width: number,
+	height: number,
+	tileMinX: number,
+	tileMinY: number,
+	dirtyCellsRaw: { TerrainSurfaceDirtyCell },
+	createPart: (tileMinX: number, tileMinY: number, width: number, height: number, tileId: number) -> Part,
+	optionsRaw: TerrainSurfaceUpdateOptions?
+): number
+	local options = if typeof(optionsRaw) == "table" then optionsRaw :: TerrainSurfaceUpdateOptions else {}
+	local affectedLookup = {} :: { [number]: boolean }
+	local rectsToRemove = {} :: { [number]: boolean }
+	local minLocalX = width
+	local minLocalY = height
+	local maxLocalX = -1
+	local maxLocalY = -1
+
+	local function includeLocalCell(localX: number, localY: number)
+		if localX < 0 or localX >= width or localY < 0 or localY >= height then
+			return
+		end
+		local index = computeTileIndex(localX, localY, width)
+		if affectedLookup[index] == true then
+			return
+		end
+		affectedLookup[index] = true
+		minLocalX = math.min(minLocalX, localX)
+		minLocalY = math.min(minLocalY, localY)
+		maxLocalX = math.max(maxLocalX, localX)
+		maxLocalY = math.max(maxLocalY, localY)
+	end
+
+	for _, dirtyCell in dirtyCellsRaw do
+		local localX = dirtyCell.tileX - tileMinX
+		local localY = dirtyCell.tileY - tileMinY
+		if localX < 0 or localX >= width or localY < 0 or localY >= height then
+			continue
+		end
+
+		includeLocalCell(localX, localY)
+		local index = computeTileIndex(localX, localY, width)
+		local rectIndex = rectByLocalTileIndex[index]
+		if rectIndex ~= nil and rectIndex > 0 then
+			rectsToRemove[rectIndex] = true
+		end
+	end
+
+	for rectIndex in rectsToRemove do
+		local rectRuntime = rects[rectIndex]
+		if rectRuntime == nil or rectRuntime.width <= 0 or rectRuntime.height <= 0 then
+			continue
+		end
+
+		local rectLocalMinX = rectRuntime.tileMinX - tileMinX
+		local rectLocalMinY = rectRuntime.tileMinY - tileMinY
+		for localY = rectLocalMinY, rectLocalMinY + rectRuntime.height - 1 do
+			for localX = rectLocalMinX, rectLocalMinX + rectRuntime.width - 1 do
+				includeLocalCell(localX, localY)
+			end
+		end
+	end
+
+	if maxLocalX < minLocalX or maxLocalY < minLocalY then
+		return 0
+	end
+
+	local removedPartCount = 0
+	for rectIndex in rectsToRemove do
+		local rectRuntime = rects[rectIndex]
+		if rectRuntime == nil or rectRuntime.width <= 0 or rectRuntime.height <= 0 then
+			continue
+		end
+
+		if rectRuntime.part.Parent ~= nil then
+			self:releaseVisualPart(rectRuntime.part)
+			removedPartCount += 1
+		end
+
+		local rectLocalMinX = rectRuntime.tileMinX - tileMinX
+		local rectLocalMinY = rectRuntime.tileMinY - tileMinY
+		for localY = rectLocalMinY, rectLocalMinY + rectRuntime.height - 1 do
+			for localX = rectLocalMinX, rectLocalMinX + rectRuntime.width - 1 do
+				rectByLocalTileIndex[computeTileIndex(localX, localY, width)] = 0
+			end
+		end
+
+		rectRuntime.width = 0
+		rectRuntime.height = 0
+		rectRuntime.tileId = FOREGROUND_TILE_AIR_ID
+	end
+
+	local newRects = buildGreedyRectanglesInBounds(
+		values,
+		width,
+		minLocalX,
+		minLocalY,
+		maxLocalX,
+		maxLocalY,
+		affectedLookup,
+		function(value: number): boolean
+			return value ~= FOREGROUND_TILE_AIR_ID
+		end
+	)
+
+	local addedPartCount = 0
+	for _, rect in newRects do
+		local absoluteTileMinX = tileMinX + rect.x
+		local absoluteTileMinY = tileMinY + rect.y
+		local part = createPart(absoluteTileMinX, absoluteTileMinY, rect.width, rect.height, rect.value)
+		self:applySurfaceUpdateAttributes(part, options.reason, options.animate)
+		part.Parent = folder
+
+		local runtimeRectIndex = #rects + 1
+		rects[runtimeRectIndex] = {
+			part = part,
+			tileMinX = absoluteTileMinX,
+			tileMinY = absoluteTileMinY,
+			width = rect.width,
+			height = rect.height,
+			tileId = rect.value,
+		}
+		for localRectY = 0, rect.height - 1 do
+			for localRectX = 0, rect.width - 1 do
+				local lookupIndex = computeTileIndex(rect.x + localRectX, rect.y + localRectY, width)
+				rectByLocalTileIndex[lookupIndex] = runtimeRectIndex
+			end
+		end
+		addedPartCount += 1
+	end
+
+	return addedPartCount - removedPartCount
+end
+
+function WorldGenerationServiceClient.UpdateTileVisualAtWorldCell(
+	self: WorldGenerationServiceClient,
+	tileX: number,
+	tileY: number,
+	optionsRaw: TerrainSurfaceUpdateOptions?
+): boolean
+	local chunkSize = math.max(1, math.floor(self.state.chunkSize))
+	local chunkX = toChunkCoordinate(tileX, chunkSize)
+	local chunkY = toChunkCoordinate(tileY, chunkSize)
+	return self:updateChunkSurfaceCells(packChunkKey(chunkX, chunkY), {
+		{
+			tileX = tileX,
+			tileY = tileY,
+		},
+	}, optionsRaw)
+end
+
+function WorldGenerationServiceClient.UpdateChunkSurfaceCells(
+	self: WorldGenerationServiceClient,
+	chunkKey: string,
+	dirtyCellsRaw: { TerrainSurfaceDirtyCell },
+	optionsRaw: TerrainSurfaceUpdateOptions?
+): boolean
+	local options = if typeof(optionsRaw) == "table" then optionsRaw :: TerrainSurfaceUpdateOptions else {}
+	local snapshot = self.chunkSnapshots[chunkKey]
+	local visual = self.chunkVisuals[chunkKey]
+	if snapshot == nil or visual == nil then
+		if options.allowFullRebuild == true and snapshot ~= nil then
+			self.dirtyChunkLookup[chunkKey] = true
+			self:enqueueChunkRebuild(chunkKey)
+		end
+		return false
+	end
+
+	local surfaceDetailTiles, terrainVisibility, visibleForegroundTileCount =
+		self:buildSurfaceDetailTileValues(snapshot)
+	local occlusionTiles, _solidMask, solidTileCount = self:buildTerrainOcclusionTileValues(snapshot)
+
+	local partDelta = 0
+	partDelta += self:patchRectLayer(
+		visual.terrainRects,
+		visual.terrainRectByLocalTileIndex,
+		visual.terrainFolder,
+		surfaceDetailTiles,
+		snapshot.width,
+		snapshot.height,
+		snapshot.tileMinX,
+		snapshot.tileMinY,
+		dirtyCellsRaw,
+		function(tileMinX: number, tileMinY: number, width: number, height: number, tileId: number): Part
+			return self:createForegroundRectPart(tileMinX, tileMinY, width, height, tileId)
+		end,
+		options
+	)
+	partDelta += self:patchRectLayer(
+		visual.terrainOcclusionRects,
+		visual.terrainOcclusionRectByLocalTileIndex,
+		visual.terrainOcclusionFolder,
+		occlusionTiles,
+		snapshot.width,
+		snapshot.height,
+		snapshot.tileMinX,
+		snapshot.tileMinY,
+		dirtyCellsRaw,
+		function(tileMinX: number, tileMinY: number, width: number, height: number, tileId: number): Part
+			return self:createTerrainOcclusionRectPart(tileMinX, tileMinY, width, height, tileId)
+		end,
+		options
+	)
+
+	for layerListIndex, layerData in snapshot.backgroundLayers do
+		local backgroundRects = visual.backgroundRectsByLayerIndex[layerListIndex]
+		local backgroundLookup = visual.backgroundRectByLocalTileIndexByLayerIndex[layerListIndex]
+		if backgroundRects == nil or backgroundLookup == nil then
+			continue
+		end
+		local backgroundTiles = self:buildBackgroundVisibleTileValues(snapshot, layerData)
+		partDelta += self:patchRectLayer(
+			backgroundRects,
+			backgroundLookup,
+			visual.backgroundFolder,
+			backgroundTiles,
+			layerData.width,
+			layerData.height,
+			layerData.tileMinX,
+			layerData.tileMinY,
+			dirtyCellsRaw,
+			function(tileMinX: number, tileMinY: number, width: number, height: number, tileId: number): Part
+				return self:createBackgroundRectPart(layerListIndex, #snapshot.backgroundLayers, tileMinX, tileMinY, width, height, tileId)
+			end,
+			options
+		)
+	end
+
+	for localY = 0, snapshot.height - 1 do
+		for localX = 0, snapshot.width - 1 do
+			local index = computeTileIndex(localX, localY, snapshot.width)
+			visual.terrainVisibleByLocalTileIndex[index] = terrainVisibility[index] == true
+		end
+	end
+
+	visual.partCount = math.max(0, visual.partCount + partDelta)
+	self.totalVisualPartCount = math.max(0, self.totalVisualPartCount + partDelta)
+	if options.targetRevision ~= nil then
+		visual.revision = options.targetRevision :: number
+	end
+	self:applySurfaceUpdateAttributes(visual.model, options.reason, options.animate)
+	visual.model:SetAttribute("VisibleForegroundTileCount", visibleForegroundTileCount)
+	visual.model:SetAttribute("SolidForegroundTileCount", solidTileCount)
+	visual.model:SetAttribute(
+		"HiddenMetadataTileCount",
+		math.max(0, snapshot.width * snapshot.height - visibleForegroundTileCount)
+	)
+	visual.model:SetAttribute("LastSurfaceUpdateAt", os.clock())
+	visual.model:SetAttribute("LastSurfaceUpdatePartDelta", partDelta)
+
+	if self.hoveredTerrainChunkKey == chunkKey then
+		self:applyHoveredTerrainTileRuntime()
+	end
+
+	return true
+end
+
+function WorldGenerationServiceClient.RefreshChunkSurfaceMask(
+	self: WorldGenerationServiceClient,
+	chunkKey: string,
+	optionsRaw: TerrainSurfaceUpdateOptions?
+): boolean
+	local snapshot = self.chunkSnapshots[chunkKey]
+	if snapshot == nil then
+		return false
+	end
+
+	local cells = table.create(snapshot.width * snapshot.height) :: { TerrainSurfaceDirtyCell }
+	for localY = 0, snapshot.height - 1 do
+		for localX = 0, snapshot.width - 1 do
+			table.insert(cells, {
+				tileX = snapshot.tileMinX + localX,
+				tileY = snapshot.tileMinY + localY,
+			})
+		end
+	end
+
+	return self:updateChunkSurfaceCells(chunkKey, cells, optionsRaw)
+end
+
+function WorldGenerationServiceClient.RefreshChunkBorderVisibility(
+	self: WorldGenerationServiceClient,
+	chunkKey: string,
+	optionsRaw: TerrainSurfaceUpdateOptions?
+): boolean
+	local snapshot = self.chunkSnapshots[chunkKey]
+	if snapshot == nil then
+		return false
+	end
+
+	local cells = {} :: { TerrainSurfaceDirtyCell }
+	for localX = 0, snapshot.width - 1 do
+		table.insert(cells, {
+			tileX = snapshot.tileMinX + localX,
+			tileY = snapshot.tileMinY,
+		})
+		table.insert(cells, {
+			tileX = snapshot.tileMinX + localX,
+			tileY = snapshot.tileMinY + snapshot.height - 1,
+		})
+	end
+	for localY = 1, snapshot.height - 2 do
+		table.insert(cells, {
+			tileX = snapshot.tileMinX,
+			tileY = snapshot.tileMinY + localY,
+		})
+		table.insert(cells, {
+			tileX = snapshot.tileMinX + snapshot.width - 1,
+			tileY = snapshot.tileMinY + localY,
+		})
+	end
+
+	return self:updateChunkSurfaceCells(chunkKey, cells, optionsRaw)
+end
+
 function WorldGenerationServiceClient.InvalidateChunkSurfaceAndNeighbors(
 	self: WorldGenerationServiceClient,
 	chunkX: number,
-	chunkY: number
+	chunkY: number,
+	reasonRaw: any?
 )
 	for _, offset in CHUNK_SURFACE_INVALIDATION_OFFSETS do
 		local chunkKey = packChunkKey(chunkX + offset.x, chunkY + offset.y)
@@ -105790,9 +106466,12 @@ function WorldGenerationServiceClient.InvalidateChunkSurfaceAndNeighbors(
 			continue
 		end
 
-		self.dirtyChunkLookup[chunkKey] = true
-		if self.visibleChunkKeys[chunkKey] ~= nil or self.chunkVisuals[chunkKey] ~= nil then
-			self:enqueueChunkRebuild(chunkKey)
+		if self.chunkVisuals[chunkKey] ~= nil then
+			self:refreshChunkBorderVisibility(chunkKey, {
+				animate = false,
+				reason = if typeof(reasonRaw) == "string" then reasonRaw else "NeighborInvalidation",
+				allowFullRebuild = false,
+			})
 		end
 	end
 end
@@ -106145,19 +106824,63 @@ function WorldGenerationServiceClient.OnChunkSnapshot(self: WorldGenerationServi
 		return
 	end
 
+	local previousSnapshot = self.chunkSnapshots[snapshot.key]
 	local existingVisual = self.chunkVisuals[snapshot.key]
-	local wasAlreadyCurrentRevision = existingVisual ~= nil and existingVisual.revision == snapshot.revision
 	self.chunkSnapshots[snapshot.key] = snapshot
 	self.cachedChunkSnapshots[snapshot.key] = snapshot
-	if not wasAlreadyCurrentRevision then
-		self:invalidateChunkSurfaceAndNeighbors(snapshot.chunkX, snapshot.chunkY)
-	end
 	if not ENABLE_CLIENT_VISUALS then
 		return
 	end
-	if wasAlreadyCurrentRevision and self.dirtyChunkLookup[snapshot.key] ~= true then
+
+	if existingVisual ~= nil and existingVisual.revision == snapshot.revision and self.dirtyChunkLookup[snapshot.key] ~= true then
 		return
 	end
+
+	if existingVisual ~= nil and previousSnapshot ~= nil then
+		local dirtyCells, canIncrementallyUpdate = self:collectChangedSurfaceCells(previousSnapshot, snapshot)
+		if canIncrementallyUpdate and #dirtyCells > 0 then
+			local cellsByChunkKey = {} :: { [string]: { TerrainSurfaceDirtyCell } }
+			local chunkSize = math.max(1, math.floor(self.state.chunkSize))
+			for _, dirtyCell in dirtyCells do
+				local dirtyChunkKey = packChunkKey(
+					toChunkCoordinate(dirtyCell.tileX, chunkSize),
+					toChunkCoordinate(dirtyCell.tileY, chunkSize)
+				)
+				local chunkCells = cellsByChunkKey[dirtyChunkKey]
+				if chunkCells == nil then
+					chunkCells = {}
+					cellsByChunkKey[dirtyChunkKey] = chunkCells
+				end
+				table.insert(chunkCells, dirtyCell)
+			end
+
+			for dirtyChunkKey, chunkCells in cellsByChunkKey do
+				self:updateChunkSurfaceCells(dirtyChunkKey, chunkCells, {
+					animate = false,
+					reason = "TileMutation",
+					allowFullRebuild = false,
+					targetRevision = if dirtyChunkKey == snapshot.key then snapshot.revision else nil,
+				})
+			end
+			self:invalidateChunkSurfaceAndNeighbors(snapshot.chunkX, snapshot.chunkY, "NeighborInvalidation")
+			self.dirtyChunkLookup[snapshot.key] = nil
+			return
+		end
+
+		if canIncrementallyUpdate and #dirtyCells == 0 then
+			existingVisual.revision = snapshot.revision
+			self:invalidateChunkSurfaceAndNeighbors(snapshot.chunkX, snapshot.chunkY, "NeighborInvalidation")
+			return
+		end
+	end
+
+	if existingVisual ~= nil then
+		existingVisual.model:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, true)
+		existingVisual.model:SetAttribute(SKIP_CHUNK_APPEAR_ANIMATION_ATTRIBUTE, true)
+		existingVisual.model:SetAttribute(CHUNK_VISUAL_UPDATE_REASON_ATTRIBUTE, "ChunkSnapshotFallback")
+	end
+
+	self:invalidateChunkSurfaceAndNeighbors(snapshot.chunkX, snapshot.chunkY, "ChunkLoad")
 	self.dirtyChunkLookup[snapshot.key] = true
 	self:enqueueChunkRebuild(snapshot.key)
 end
@@ -106202,9 +106925,15 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 	number,
 	Folder,
 	Folder,
+	Folder,
+	Folder,
 	{ TerrainRectRuntime },
 	{ number },
-	{ boolean }
+	{ boolean },
+	{ TerrainRectRuntime },
+	{ number },
+	{ { TerrainRectRuntime } },
+	{ { number } }
 )
 	local model = Instance.new("Model")
 	model.Name = `Chunk_{snapshot.chunkX}_{snapshot.chunkY}`
@@ -106219,6 +106948,10 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 	local terrainFolder = Instance.new("Folder")
 	terrainFolder.Name = "Terrain"
 	terrainFolder.Parent = model
+
+	local terrainOcclusionFolder = Instance.new("Folder")
+	terrainOcclusionFolder.Name = TERRAIN_OCCLUSION_FOLDER_NAME
+	terrainOcclusionFolder.Parent = terrainFolder
 
 	local terrainHoverFolder = Instance.new("Folder")
 	terrainHoverFolder.Name = TERRAIN_HOVER_FOLDER_NAME
@@ -106239,19 +106972,65 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 	TagBinder.applyTag(model, TagBinder.Tags.Chunk, CollectionService)
 
 	local tileDepth = self.state.tileDepth
-	local tileSize = self.state.tileSize
 	local partCount = 0
 	local terrainRectRuntimes = {} :: { TerrainRectRuntime }
 	local terrainRectByLocalTileIndex = Sift.Array.create(snapshot.width * snapshot.height, 0) :: { number }
-	local visibleTerrainTiles, terrainVisibility, visibleForegroundTileCount =
-		self:buildVisibleForegroundTileValues(snapshot)
+	local terrainOcclusionRectRuntimes = {} :: { TerrainRectRuntime }
+	local terrainOcclusionRectByLocalTileIndex = Sift.Array.create(snapshot.width * snapshot.height, 0) :: { number }
+	local backgroundRectsByLayerIndex = {} :: { { TerrainRectRuntime } }
+	local backgroundRectByLocalTileIndexByLayerIndex = {} :: { { number } }
+	local surfaceDetailTiles, terrainVisibility, visibleForegroundTileCount =
+		self:buildSurfaceDetailTileValues(snapshot)
+	local occlusionTiles, _solidMask, solidForegroundTileCount = self:buildTerrainOcclusionTileValues(snapshot)
 	local totalForegroundTileCount = snapshot.width * snapshot.height
 	model:SetAttribute("SurfaceCullingEnabled", true)
 	model:SetAttribute("VisibleForegroundTileCount", visibleForegroundTileCount)
+	model:SetAttribute("SolidForegroundTileCount", solidForegroundTileCount)
 	model:SetAttribute("HiddenMetadataTileCount", math.max(0, totalForegroundTileCount - visibleForegroundTileCount))
 
+	local terrainOcclusionGreedyRects = buildGreedyRectangles(
+		occlusionTiles,
+		snapshot.width,
+		snapshot.height,
+		function(value: number): boolean
+			return value ~= FOREGROUND_TILE_AIR_ID
+		end
+	)
+	for rectIndex, rect in terrainOcclusionGreedyRects do
+		if partCount >= MAX_VISUAL_PARTS_PER_CHUNK then
+			break
+		end
+
+		local absoluteTileMinX = snapshot.tileMinX + rect.x
+		local absoluteTileMinY = snapshot.tileMinY + rect.y
+		local part =
+			self:createTerrainOcclusionRectPart(absoluteTileMinX, absoluteTileMinY, rect.width, rect.height, rect.value)
+		part.Parent = terrainOcclusionFolder
+		partCount += 1
+
+		local runtimeRectIndex = #terrainOcclusionRectRuntimes + 1
+		terrainOcclusionRectRuntimes[runtimeRectIndex] = {
+			part = part,
+			tileMinX = absoluteTileMinX,
+			tileMinY = absoluteTileMinY,
+			width = rect.width,
+			height = rect.height,
+			tileId = rect.value,
+		}
+		for localRectY = 0, rect.height - 1 do
+			for localRectX = 0, rect.width - 1 do
+				local lookupIndex = computeTileIndex(rect.x + localRectX, rect.y + localRectY, snapshot.width)
+				terrainOcclusionRectByLocalTileIndex[lookupIndex] = runtimeRectIndex
+			end
+		end
+
+		if rectIndex % 128 == 0 then
+			task.wait()
+		end
+	end
+
 	local terrainGreedyRects = buildGreedyRectangles(
-		visibleTerrainTiles,
+		surfaceDetailTiles,
 		snapshot.width,
 		snapshot.height,
 		function(value: number): boolean
@@ -106299,8 +107078,13 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 		end
 
 		local layerData = snapshot.backgroundLayers[layerListIndex]
+		local backgroundTiles = self:buildBackgroundVisibleTileValues(snapshot, layerData)
+		local backgroundRectRuntimes = {} :: { TerrainRectRuntime }
+		local backgroundRectByLocalTileIndex = Sift.Array.create(layerData.width * layerData.height, 0) :: { number }
+		backgroundRectsByLayerIndex[layerListIndex] = backgroundRectRuntimes
+		backgroundRectByLocalTileIndexByLayerIndex[layerListIndex] = backgroundRectByLocalTileIndex
 		local layerRects = buildGreedyRectangles(
-			layerData.tiles,
+			backgroundTiles,
 			layerData.width,
 			layerData.height,
 			function(value: number): boolean
@@ -106308,33 +107092,40 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 			end
 		)
 
-		local planeOffset = -(layerListIndex * tileDepth)
 		for rectIndex, rect in layerRects do
 			if partCount >= MAX_VISUAL_PARTS_PER_CHUNK then
 				break
 			end
 
-			local part = self:acquireVisualPart()
-			part.Anchored = true
-			part.Locked = true
-			part.CanCollide = false
-			part.CanQuery = false
-			part.CanTouch = false
-			part.Size = Vector3.new(tileDepth, tileSize * rect.height, tileSize * rect.width)
-			styleBackgroundPart(part, rect.value, layerListIndex, layerCount)
-			applyGrassTextures(
-				part,
-				rect.value,
-				tileSize,
-				tileDepth,
-				Color3.new(1, 1, 1):Lerp(Color3.new(0, 0, 0), resolveBackgroundDarkenAlpha(layerListIndex, layerCount))
+			local absoluteTileMinX = layerData.tileMinX + rect.x
+			local absoluteTileMinY = layerData.tileMinY + rect.y
+			local part = self:createBackgroundRectPart(
+				layerListIndex,
+				layerCount,
+				absoluteTileMinX,
+				absoluteTileMinY,
+				rect.width,
+				rect.height,
+				rect.value
 			)
-
-			local centerTileX = layerData.tileMinX + rect.x + rect.width * 0.5
-			local centerTileY = layerData.tileMinY + rect.y + rect.height * 0.5
-			part.CFrame = CFrame.new(self:computeTileCenterPosition(centerTileX, centerTileY, planeOffset))
 			part.Parent = backgroundFolder
 			partCount += 1
+
+			local runtimeRectIndex = #backgroundRectRuntimes + 1
+			backgroundRectRuntimes[runtimeRectIndex] = {
+				part = part,
+				tileMinX = absoluteTileMinX,
+				tileMinY = absoluteTileMinY,
+				width = rect.width,
+				height = rect.height,
+				tileId = rect.value,
+			}
+			for localRectY = 0, rect.height - 1 do
+				for localRectX = 0, rect.width - 1 do
+					local lookupIndex = computeTileIndex(rect.x + localRectX, rect.y + localRectY, layerData.width)
+					backgroundRectByLocalTileIndex[lookupIndex] = runtimeRectIndex
+				end
+			end
 
 			if rectIndex % 128 == 0 then
 				task.wait()
@@ -106507,10 +107298,16 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 	return model,
 		partCount,
 		terrainFolder,
+		terrainOcclusionFolder,
 		terrainHoverFolder,
+		backgroundFolder,
 		terrainRectRuntimes,
 		terrainRectByLocalTileIndex,
-		terrainVisibility
+		terrainVisibility,
+		terrainOcclusionRectRuntimes,
+		terrainOcclusionRectByLocalTileIndex,
+		backgroundRectsByLayerIndex,
+		backgroundRectByLocalTileIndexByLayerIndex
 end
 
 function WorldGenerationServiceClient.ProcessChunkRebuildQueue(self: WorldGenerationServiceClient)
@@ -106563,10 +107360,16 @@ function WorldGenerationServiceClient.ProcessChunkRebuildQueue(self: WorldGenera
 		local model,
 			partCount,
 			terrainFolder,
+			terrainOcclusionFolder,
 			terrainHoverFolder,
+			backgroundFolder,
 			terrainRects,
 			terrainRectByLocalTileIndex,
-			terrainVisibleByLocalTileIndex =
+			terrainVisibleByLocalTileIndex,
+			terrainOcclusionRects,
+			terrainOcclusionRectByLocalTileIndex,
+			backgroundRectsByLayerIndex,
+			backgroundRectByLocalTileIndexByLayerIndex =
 			self:buildChunkVisualModel(snapshot)
 		local nextTreeSignature = computeTreeSignature(snapshot)
 		local existingPartCount = if existing ~= nil then existing.partCount else 0
@@ -106604,10 +107407,16 @@ function WorldGenerationServiceClient.ProcessChunkRebuildQueue(self: WorldGenera
 			builtAt = now,
 			treeSignature = nextTreeSignature,
 			terrainFolder = terrainFolder,
+			terrainOcclusionFolder = terrainOcclusionFolder,
 			terrainHoverFolder = terrainHoverFolder,
+			backgroundFolder = backgroundFolder,
 			terrainRects = terrainRects,
 			terrainRectByLocalTileIndex = terrainRectByLocalTileIndex,
 			terrainVisibleByLocalTileIndex = terrainVisibleByLocalTileIndex,
+			terrainOcclusionRects = terrainOcclusionRects,
+			terrainOcclusionRectByLocalTileIndex = terrainOcclusionRectByLocalTileIndex,
+			backgroundRectsByLayerIndex = backgroundRectsByLayerIndex,
+			backgroundRectByLocalTileIndexByLayerIndex = backgroundRectByLocalTileIndexByLayerIndex,
 		}
 		self.lastChunkBuildAt[chunkKey] = now
 		self.totalVisualPartCount = projectedPartTotal
@@ -106928,6 +107737,11 @@ WorldGenerationServiceClient.acquireVisualPart = WorldGenerationServiceClient.Ac
 WorldGenerationServiceClient.releaseVisualPart = WorldGenerationServiceClient.ReleaseVisualPart
 WorldGenerationServiceClient.releasePooledPartsIn = WorldGenerationServiceClient.ReleasePooledPartsIn
 WorldGenerationServiceClient.createForegroundRectPart = WorldGenerationServiceClient.CreateForegroundRectPart
+WorldGenerationServiceClient.createTerrainOcclusionRectPart =
+	WorldGenerationServiceClient.CreateTerrainOcclusionRectPart
+WorldGenerationServiceClient.createBackgroundRectPart = WorldGenerationServiceClient.CreateBackgroundRectPart
+WorldGenerationServiceClient.applySurfaceUpdateAttributes =
+	WorldGenerationServiceClient.ApplySurfaceUpdateAttributes
 WorldGenerationServiceClient.clearHoveredTerrainTileRuntime =
 	WorldGenerationServiceClient.ClearHoveredTerrainTileRuntime
 WorldGenerationServiceClient.resolveTerrainRectRuntime = WorldGenerationServiceClient.ResolveTerrainRectRuntime
@@ -106940,6 +107754,22 @@ WorldGenerationServiceClient.dequeueChunkRebuild = WorldGenerationServiceClient.
 WorldGenerationServiceClient.getTileAtWorldCell = WorldGenerationServiceClient.GetTileAtWorldCell
 WorldGenerationServiceClient.buildVisibleForegroundTileValues =
 	WorldGenerationServiceClient.BuildVisibleForegroundTileValues
+WorldGenerationServiceClient.buildSurfaceDetailTileValues = WorldGenerationServiceClient.BuildSurfaceDetailTileValues
+WorldGenerationServiceClient.isForegroundCellSolidOccluder =
+	WorldGenerationServiceClient.IsForegroundCellSolidOccluder
+WorldGenerationServiceClient.getForegroundTileAtWorldCell = WorldGenerationServiceClient.GetForegroundTileAtWorldCell
+WorldGenerationServiceClient.isForegroundCellOpen = WorldGenerationServiceClient.IsForegroundCellOpen
+WorldGenerationServiceClient.buildSolidTileMask = WorldGenerationServiceClient.BuildSolidTileMask
+WorldGenerationServiceClient.buildTerrainOcclusionTileValues =
+	WorldGenerationServiceClient.BuildTerrainOcclusionTileValues
+WorldGenerationServiceClient.buildBackgroundVisibleTileValues =
+	WorldGenerationServiceClient.BuildBackgroundVisibleTileValues
+WorldGenerationServiceClient.collectChangedSurfaceCells = WorldGenerationServiceClient.CollectChangedSurfaceCells
+WorldGenerationServiceClient.patchRectLayer = WorldGenerationServiceClient.PatchRectLayer
+WorldGenerationServiceClient.updateTileVisualAtWorldCell = WorldGenerationServiceClient.UpdateTileVisualAtWorldCell
+WorldGenerationServiceClient.updateChunkSurfaceCells = WorldGenerationServiceClient.UpdateChunkSurfaceCells
+WorldGenerationServiceClient.refreshChunkSurfaceMask = WorldGenerationServiceClient.RefreshChunkSurfaceMask
+WorldGenerationServiceClient.refreshChunkBorderVisibility = WorldGenerationServiceClient.RefreshChunkBorderVisibility
 WorldGenerationServiceClient.invalidateChunkSurfaceAndNeighbors =
 	WorldGenerationServiceClient.InvalidateChunkSurfaceAndNeighbors
 WorldGenerationServiceClient.destroyChunkVisual = WorldGenerationServiceClient.DestroyChunkVisual
@@ -108348,8 +109178,8 @@ return {
 	miningProgressFrame = "rbxassetid://105210418949426",
 	craftingIconPress = "rbxassetid://71167003932351",
 	craftItemSlot = "rbxassetid://131825319311584",
-	craftButton = "rbxassetid://114851769110143",
-	craftButtonPressed = "rbxassetid://71167003932351",
+	craftButton = "rbxassetid://137712402692671",
+	craftButtonPressed = "rbxassetid://105957411405415",
 	finalCraftButton = "rbxassetid://90417499799963",
 	finalCraftButtonPressed = "rbxassetid://103228470751134",
 	craftingMenu = "rbxassetid://79546150230515",

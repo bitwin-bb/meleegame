@@ -29,6 +29,7 @@ export type DropsInfoTheme = {
 	iconColor: Color3?,
 	iconTransparency: number?,
 	glowColor: Color3?,
+	shadowTransparency: number?,
 	gradientColor: ColorSequence?,
 	gradientTransparency: NumberSequence?,
 }
@@ -156,6 +157,7 @@ local DEFAULT_THEME = {
 	iconColor = Color3.fromRGB(235, 244, 255),
 	iconTransparency = 0,
 	glowColor = Color3.fromRGB(132, 208, 255),
+	shadowTransparency = 0.36,
 	gradientColor = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.fromRGB(13, 17, 24)),
 		ColorSequenceKeypoint.new(0.55, Color3.fromRGB(29, 38, 55)),
@@ -437,6 +439,7 @@ function DropsInfo:render()
 	local iconColor = sanitizeColor(theme.iconColor, DEFAULT_THEME.iconColor)
 	local iconTransparency = sanitizeTransparency(theme.iconTransparency, DEFAULT_THEME.iconTransparency)
 	local glowColor = sanitizeColor(theme.glowColor, accentColor)
+	local shadowTransparency = sanitizeTransparency(theme.shadowTransparency, DEFAULT_THEME.shadowTransparency)
 	local gradientColor = if theme.gradientColor ~= nil then theme.gradientColor else DEFAULT_THEME.gradientColor
 	local gradientTransparency = if theme.gradientTransparency ~= nil
 		then theme.gradientTransparency
@@ -582,7 +585,7 @@ function DropsInfo:render()
 		return withAlpha(0.02, alpha)
 	end)
 	local cardShadowTransparencyBinding = self.alphaBinding:map(function(alpha: number)
-		return withAlpha(0.36, alpha)
+		return withAlpha(shadowTransparency, alpha)
 	end)
 
 	local cardProps: { [string]: any } = {

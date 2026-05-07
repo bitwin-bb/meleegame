@@ -6,6 +6,7 @@ local React = require(ReplicatedStorage.Packages.React)
 export type EntityHealthBarProps = {
 	healthSize: any,
 	healthColor: any,
+	trackTransparency: number?,
 	zIndex: number,
 }
 
@@ -16,7 +17,7 @@ return function(props: EntityHealthBarProps): React.ReactNode
 		LayoutOrder = 1,
 		Size = UDim2.new(1, 0, 0, 8),
 		BackgroundColor3 = Color3.fromRGB(35, 41, 55),
-		BackgroundTransparency = 0.06,
+		BackgroundTransparency = props.trackTransparency or 0.06,
 		BorderSizePixel = 0,
 		ZIndex = props.zIndex,
 	}, {

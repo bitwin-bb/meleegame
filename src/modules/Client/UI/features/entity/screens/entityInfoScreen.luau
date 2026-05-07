@@ -110,6 +110,7 @@ return function(props: EntityInfoScreenProps): React.ReactNode
 			backgroundTransparency = 1,
 			strokeColor = Color3.fromRGB(96, 118, 146),
 			strokeTransparency = 1,
+			shadowTransparency = 1,
 			titleColor = Color3.fromRGB(248, 250, 255),
 			titleTransparency = 0,
 		},
@@ -149,6 +150,7 @@ return function(props: EntityInfoScreenProps): React.ReactNode
 						return UDim2.fromScale(value, 1)
 					end),
 					healthColor = healthColor,
+					trackTransparency = 1,
 					zIndex = zIndex + 4,
 				}),
 				e("TextLabel", {
@@ -161,6 +163,8 @@ return function(props: EntityInfoScreenProps): React.ReactNode
 					TextColor3 = Color3.fromRGB(248, 250, 255),
 					TextSize = 15,
 					TextTransparency = 0,
+					TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
+					TextStrokeTransparency = 0.35,
 					TextWrapped = false,
 					TextXAlignment = Enum.TextXAlignment.Center,
 					TextYAlignment = Enum.TextYAlignment.Center,
