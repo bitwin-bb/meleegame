@@ -3,11 +3,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HpTopRightBar = require(script:FindFirstAncestor("game").Client.UI.hud.TopBar.HpTopRightBar)
 local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
 local React = require(ReplicatedStorage.Packages.React)
+local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
 
 local e: typeof(React.createElement) = React.createElement
-
-local TOP_BAR_HEIGHT = 56
-local TOP_BAR_EDGE_PADDING = 12
 
 type TopBarButton = {
 	key: string?,
@@ -41,6 +39,14 @@ type TopBarProps = {
 }
 
 return function(props: TopBarProps)
+	local responsive = Responsive.useResponsiveMetrics()
+	local tokens = responsive.tokens
+	local hudTokens = tokens.hud
+	local meterTokens = tokens.meter
+	local edgePadding = hudTokens.edgePadding
+	local topPadding = responsive.safeArea.top
+	local leftPadding = responsive.safeArea.left
+	local rightPadding = responsive.safeArea.right
 	local buttons = props.buttons or {}
 	local zIndex = props.zIndex or 10
 	local buttonListChildren = {
@@ -60,18 +66,17 @@ return function(props: TopBarProps)
 	}
 
 	for index, button in ipairs(buttons) do
-		local key = button.key or button.id or button.route or tostring(index)
 		buttonListChildren[#buttonListChildren + 1] = e(NavButton, {
 			id = button.id,
 			route = button.route,
 			label = button.label,
 			icon = button.icon,
-			size = button.size or UDim2.fromOffset(170, 40),
+			size = button.size or UDim2.fromOffset(hudTokens.navButtonWidth, hudTokens.navButtonHeight),
 			layoutOrder = button.layoutOrder or index,
 			visible = button.visible,
 			selected = button.selected,
 			disabled = button.disabled,
-			textSize = button.textSize,
+			textSize = button.textSize or hudTokens.navButtonTextSize,
 			font = button.font,
 			zIndex = zIndex + 1,
 			navigateEvent = button.navigateEvent or props.navigateEvent,
@@ -92,6 +97,10 @@ return function(props: TopBarProps)
 		zIndex = zIndex + 1,
 		position = UDim2.fromScale(1, 0),
 		anchorPoint = Vector2.new(1, 0),
+		size = UDim2.fromOffset(meterTokens.frameWidth, meterTokens.frameHeight),
+		heartSize = UDim2.fromOffset(meterTokens.segmentSize, meterTokens.segmentSize),
+		padding = UDim.new(0, meterTokens.segmentGap),
+		showValueLabel = not responsive.isCompactHud,
 	}
 	if props.hpBarProps ~= nil then
 		for key, value in pairs(props.hpBarProps) do
@@ -100,7 +109,7 @@ return function(props: TopBarProps)
 	end
 
 	return e("Frame", {
-		Size = props.size or UDim2.new(1, 0, 0, TOP_BAR_HEIGHT + TOP_BAR_EDGE_PADDING),
+		Size = props.size or UDim2.new(1, 0, 0, hudTokens.topBarHeight + topPadding),
 		Position = props.position or UDim2.fromScale(0.5, 0),
 		AnchorPoint = props.anchorPoint or Vector2.new(0.5, 0),
 		BackgroundTransparency = 1,
@@ -120,13 +129,13 @@ return function(props: TopBarProps)
 			ZIndex = zIndex,
 		}, {
 			e("UIPadding", {
-				PaddingTop = UDim.new(0, TOP_BAR_EDGE_PADDING),
+				PaddingTop = UDim.new(0, topPadding),
 				PaddingBottom = UDim.new(0, 0),
-				PaddingLeft = UDim.new(0, TOP_BAR_EDGE_PADDING),
-				PaddingRight = UDim.new(0, TOP_BAR_EDGE_PADDING),
+				PaddingLeft = UDim.new(0, leftPadding),
+				PaddingRight = UDim.new(0, rightPadding),
 			}),
 			e("Frame", {
-				Size = UDim2.new(1, -368, 1, 0),
+				Size = UDim2.new(1, -(meterTokens.frameWidth + edgePadding), 1, 0),
 				BackgroundTransparency = 1,
 				BorderSizePixel = 0,
 				Active = false,

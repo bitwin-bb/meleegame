@@ -7,10 +7,10 @@ local gameRoot = packageRoot:WaitForChild("game")
 local ItemRegistry = require(gameRoot.Shared.Modules.Items.Registry)
 
 local loader = packageRoot:WaitForChild("loader")
-local require = require(loader).bootstrapGame(packageRoot)
+local loaderRequire = require(loader).bootstrapGame(packageRoot)
 
-local ServiceBag = require("ServiceBag")
-local NevermoreSupport = require("NevermoreSupport")
+local ServiceBag = loaderRequire("ServiceBag")
+local NevermoreSupport = loaderRequire("NevermoreSupport")
 
 local ITEM_REGISTRY_WARMUP_TIMEOUT_SECONDS = 5
 local ITEM_REGISTRY_STABLE_PASSES_REQUIRED = 2
@@ -61,7 +61,7 @@ local serviceBag = ServiceBag.new()
 NevermoreSupport.setServiceBag(serviceBag)
 warmItemRegistry()
 
-serviceBag:GetService(require("AquariaBackupServiceClient"))
+serviceBag:GetService(loaderRequire("AquariaBackupServiceClient"))
 
 serviceBag:Init()
 serviceBag:Start()

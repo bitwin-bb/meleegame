@@ -14,6 +14,7 @@ local InventorySlotComponent =
 local ItemScreen = require(script:FindFirstAncestor("game").Client.UI.features.item.screen.itemScreen)
 local LeftSideBarButtons = require(script.Parent.LeftSideBarButtons)
 local React = require(ReplicatedStorage.Packages.React)
+local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
 local TrashScreen = require(script:FindFirstAncestor("game").Client.UI.features.inventory.screens.trashScreen)
 local UiSound = require(script:FindFirstAncestor("game").Client.UI.core.utils.UiSound)
 local hudInventorySlice = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.inventorySlice)
@@ -30,7 +31,7 @@ local useInterval = require(script:FindFirstAncestor("game").Client.UI.core.hook
 local useInventorySlide = require(script:FindFirstAncestor("game").Client.UI.features.inventory.hooks.useInventorySlide)
 local useSlotSelect = require(script:FindFirstAncestor("game").Client.UI.features.inventory.hooks.useSlotSelect)
 local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
-local useToggle = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useToggle)
+local useToggle = require(script:FindFirstAncestor("game").Client.UI.shared.useToggle)
 local useTrashAppear = require(script:FindFirstAncestor("game").Client.UI.features.inventory.hooks.useTrashAppear)
 
 type InventoryState = InventoryServiceUtils.InventoryState
@@ -59,9 +60,6 @@ local INVENTORY_ROWS = 8
 local INVENTORY_MAX_SLOTS = INVENTORY_COLUMNS * INVENTORY_ROWS
 local GRID_SLOT_START_INDEX = HOTBAR_SLOT_COUNT + 1
 local TOTAL_VISIBLE_SLOTS = HOTBAR_SLOT_COUNT + INVENTORY_MAX_SLOTS
-local DEFAULT_SLOT_SIZE = UDim2.fromOffset(58, 58)
-local DEFAULT_SLOT_GAP = 6
-local DEFAULT_LEFT_PADDING = 16
 local HOTBAR_SLOT_SELECTED_SCALE = 1.12
 local SLOT_HOVER_ID_PREFIX = "inventory_slot_"
 local EMPTY_SLOT_TINT = Color3.fromRGB(152, 160, 172)
@@ -302,6 +300,8 @@ local function handleSelectedSlotDropOrTrash(isInventoryExpandedRaw: any): boole
 end
 
 return function(props: InventoryHotbarProps)
+	local responsive = Responsive.useResponsiveMetrics()
+	local inventoryTokens = responsive.tokens.inventory
 	local inventoryState = (useStore(inventorySlice.inventoryStateAtom) :: InventoryState?)
 		or inventorySlice.inventoryStateAtom()
 	local renderState = sanitizeRenderState(inventoryState)
@@ -489,11 +489,11 @@ return function(props: InventoryHotbarProps)
 
 	local zIndex = props.zIndex or 30
 	local selectedSlot = renderState.selectedSlot
-	local rawSlotSize = props.slotSize or DEFAULT_SLOT_SIZE
+	local rawSlotSize = props.slotSize or UDim2.fromOffset(inventoryTokens.slotSize, inventoryTokens.slotSize)
 	local slotWidth = snapToPixel(rawSlotSize.X.Offset)
 	local slotHeight = snapToPixel(rawSlotSize.Y.Offset)
 	local hotbarSlotSize = UDim2.fromOffset(slotWidth, slotHeight)
-	local hotbarGap = snapToPixel(if props.slotPadding then props.slotPadding.Offset else DEFAULT_SLOT_GAP)
+	local hotbarGap = snapToPixel(if props.slotPadding then props.slotPadding.Offset else inventoryTokens.slotGap)
 	local hotbarWidth = slotWidth
 	local hotbarSlotsHeight = slotHeight * HOTBAR_SLOT_COUNT + hotbarGap * (HOTBAR_SLOT_COUNT - 1)
 	local hotbarSidebarHeight = slotHeight * (HOTBAR_SLOT_COUNT + HOTBAR_CONTROL_BUTTON_COUNT)
@@ -534,7 +534,7 @@ return function(props: InventoryHotbarProps)
 		infoThunks.hideHover(nil)
 	end, { showExpandedGrid, hoveredSlotSource })
 
-	local leftPadding = DEFAULT_LEFT_PADDING
+	local leftPadding = inventoryTokens.leftPadding
 	local expanderSize = hotbarSlotSize
 	local rawHotbarPosition = props.position or UDim2.new(0, leftPadding, 0.5, 0)
 	local hotbarPosition = UDim2.new(
@@ -595,7 +595,7 @@ return function(props: InventoryHotbarProps)
 			and drag.dragState.sourceSlot == hotbarIndex
 		local isDragSourceSlot = drag.isDragging and drag.dragSourceSlot == hotbarIndex and not isSplitPreviewSource
 		local hasVisibleItem = hasItem and not isDragSourceSlot
-		local showKeyHints = props.showKeyHints ~= false
+		local showKeyHints = props.showKeyHints ~= false and not responsive.isCompactHud
 		local isHovered = hoveredSlotSource == "Hotbar" and hoveredSlotIndex == hotbarIndex
 		local slotScale = hotbarSlotScales[hotbarIndex]
 		local isExpanded = slotScale > 1.001
@@ -878,7 +878,7 @@ return function(props: InventoryHotbarProps)
 			Text = if renderState.loadState == InventoryServiceUtils.LOAD_STATE_FAILED
 				then "Inventory unavailable"
 				else resolveLoadingInventoryText(loadingDotCount),
-			Font = Enum.Font.GothamSemibold,
+			Font = Enum.Font.GothamMedium,
 			TextSize = 12,
 			TextColor3 = Color3.fromRGB(240, 242, 255),
 			TextStrokeTransparency = 0.5,

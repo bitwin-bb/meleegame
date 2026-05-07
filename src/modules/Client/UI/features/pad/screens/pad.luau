@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
+local BillboardCard = require(script:FindFirstAncestor("game").Client.UI.core.components.BillboardCard)
 local GamepadNav = require(script:FindFirstAncestor("game").Shared.Modules.Platform.GamepadNav)
 local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Modules.Platform.GamepadPointer)
 local React = require(ReplicatedStorage.Packages.React)
@@ -391,16 +392,20 @@ return function(props: PadScreenProps?): React.ReactNode
 
 	debugPrintPresentation(state, activeIndicator, rootPart)
 
-	return e("BillboardGui", {
-		Adornee = rootPart,
-		AlwaysOnTop = true,
-		Enabled = true,
-		LightInfluence = 0,
-		MaxDistance = 80,
-		ResetOnSpawn = false,
-		Size = UDim2.fromOffset(BILLBOARD_SIZE.X, BILLBOARD_SIZE.Y),
-		StudsOffsetWorldSpace = Vector3.zero,
-		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+	return e(BillboardCard, {
+		adornee = rootPart,
+		alwaysOnTop = true,
+		enabled = true,
+		lightInfluence = 0,
+		maxDistance = 80,
+		size = UDim2.fromOffset(BILLBOARD_SIZE.X, BILLBOARD_SIZE.Y),
+		studsOffset = Vector3.zero,
+		studsOffsetWorldSpace = Vector3.zero,
+		zIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		cardVisible = false,
+		nativeBillboard = {
+			ResetOnSpawn = false,
+		},
 	}, {
 		ActiveIndicator = renderStickIndicator(
 			state,

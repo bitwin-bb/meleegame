@@ -2,11 +2,11 @@
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local require = require(loaderUtils.Parent).load(script)
+local loader = require(loaderUtils.Parent).load(script)
 
-local Maid = require("Maid")
-local Observable = require("Observable")
-local Rx = require("Rx")
+local Maid = loader("Maid")
+local Observable = loader("Observable")
+local Rx = loader("Rx")
 
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
 local GamepadNav = require(script:FindFirstAncestor("game").Shared.Modules.Platform.GamepadNav)

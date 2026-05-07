@@ -4,12 +4,9 @@ local BubblesScreen = require(script:FindFirstAncestor("game").Client.UI.feature
 local ManaTopRightBar = require(script:FindFirstAncestor("game").Client.UI.hud.TopBar.ManaTopRightBar)
 local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
 local React = require(ReplicatedStorage.Packages.React)
+local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
 
 local e: typeof(React.createElement) = React.createElement
-
-local SIDE_BAR_WIDTH = 220
-local SIDE_BAR_EDGE_PADDING = 12
-local SIDE_BAR_VERTICAL_PADDING = 72
 
 type RightSideBarButton = {
 	key: string?,
@@ -44,6 +41,9 @@ type RightSideBarProps = {
 }
 
 return function(props: RightSideBarProps)
+	local responsive = Responsive.useResponsiveMetrics()
+	local hudTokens = responsive.tokens.hud
+	local meterTokens = responsive.tokens.meter
 	local buttons = props.buttons or {}
 	local zIndex = props.zIndex or 10
 	local buttonListChildren = {
@@ -63,18 +63,17 @@ return function(props: RightSideBarProps)
 	}
 
 	for index, button in ipairs(buttons) do
-		local key = button.key or button.id or button.route or tostring(index)
 		buttonListChildren[#buttonListChildren + 1] = e(NavButton, {
 			id = button.id,
 			route = button.route,
 			label = button.label,
 			icon = button.icon,
-			size = button.size or UDim2.fromOffset(190, 40),
+			size = button.size or UDim2.fromOffset(hudTokens.sideButtonWidth, hudTokens.navButtonHeight),
 			layoutOrder = button.layoutOrder or index,
 			visible = button.visible,
 			selected = button.selected,
 			disabled = button.disabled,
-			textSize = button.textSize,
+			textSize = button.textSize or hudTokens.navButtonTextSize,
 			font = button.font,
 			zIndex = zIndex + 1,
 			navigateEvent = button.navigateEvent or props.navigateEvent,
@@ -95,6 +94,10 @@ return function(props: RightSideBarProps)
 		zIndex = zIndex + 1,
 		position = UDim2.fromScale(1, 0),
 		anchorPoint = Vector2.new(1, 0),
+		size = UDim2.fromOffset(meterTokens.frameWidth, meterTokens.frameHeight),
+		starSize = UDim2.fromOffset(meterTokens.segmentSize, meterTokens.segmentSize),
+		padding = UDim.new(0, meterTokens.segmentGap),
+		showValueLabel = not responsive.isCompactHud,
 	}
 	if props.manaBarProps ~= nil then
 		for key, value in pairs(props.manaBarProps) do
@@ -105,8 +108,12 @@ return function(props: RightSideBarProps)
 	local breathBarProps = {
 		layoutOrder = 7,
 		zIndex = zIndex + 1,
-		position = UDim2.new(1, 0, 0, 60),
+		position = UDim2.new(1, 0, 0, meterTokens.frameHeight + hudTokens.edgePadding),
 		anchorPoint = Vector2.new(1, 0),
+		size = UDim2.fromOffset(meterTokens.frameWidth, meterTokens.frameHeight),
+		bubbleSize = UDim2.fromOffset(meterTokens.segmentSize, meterTokens.segmentSize),
+		padding = UDim.new(0, meterTokens.segmentGap),
+		showValueLabel = not responsive.isCompactHud,
 	}
 	if props.breathBarProps ~= nil then
 		for key, value in pairs(props.breathBarProps) do
@@ -115,7 +122,7 @@ return function(props: RightSideBarProps)
 	end
 
 	return e("Frame", {
-		Size = props.size or UDim2.new(0, SIDE_BAR_WIDTH, 1, 0),
+		Size = props.size or UDim2.new(0, hudTokens.sideBarWidth + responsive.safeArea.right, 1, 0),
 		Position = props.position or UDim2.fromScale(1, 0.5),
 		AnchorPoint = props.anchorPoint or Vector2.new(1, 0.5),
 		BackgroundTransparency = 1,
@@ -135,10 +142,10 @@ return function(props: RightSideBarProps)
 			ZIndex = zIndex,
 		}, {
 			e("UIPadding", {
-				PaddingTop = UDim.new(0, SIDE_BAR_VERTICAL_PADDING),
-				PaddingBottom = UDim.new(0, SIDE_BAR_VERTICAL_PADDING),
+				PaddingTop = UDim.new(0, responsive.safeArea.top + hudTokens.sideBarVerticalPadding),
+				PaddingBottom = UDim.new(0, responsive.safeArea.bottom + hudTokens.sideBarVerticalPadding),
 				PaddingLeft = UDim.new(0, 0),
-				PaddingRight = UDim.new(0, SIDE_BAR_EDGE_PADDING),
+				PaddingRight = UDim.new(0, responsive.safeArea.right),
 			}),
 			e("Frame", {
 				Size = UDim2.fromScale(1, 1),

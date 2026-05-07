@@ -5,6 +5,7 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local BreathMeter = require(script:FindFirstAncestor("game").Client.UI.features.breath.components.BreathMeter)
 local BreathServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BreathServiceUtils)
 local React = require(ReplicatedStorage.Packages.React)
+local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
 local UiSound = require(script:FindFirstAncestor("game").Client.UI.core.utils.UiSound)
 local breathSlice = require(script:FindFirstAncestor("game").Client.UI.features.breath.state.breathSlice)
 local breathThunks = require(script:FindFirstAncestor("game").Client.UI.features.breath.state.breathThunks)
@@ -33,6 +34,7 @@ type BubblesScreenProps = {
 	anchorPoint: Vector2?,
 	bubbleSize: UDim2?,
 	padding: UDim?,
+	showValueLabel: boolean?,
 	bubbleValue: number?,
 	useServiceState: boolean?,
 	mockState: BreathServiceState?,
@@ -81,6 +83,8 @@ local function buildBubbles(breathRaw: any, maxBreathRaw: any, bubbleValueRaw: a
 end
 
 return function(props: BubblesScreenProps)
+	local responsive = Responsive.useResponsiveMetrics()
+	local meterTokens = responsive.tokens.meter
 	local useServiceState = props.useServiceState ~= false
 	local serviceBreathState =
 		useStore(if useServiceState then breathSlice.breathStateAtom else nil) :: BreathServiceState?
@@ -138,7 +142,7 @@ return function(props: BubblesScreenProps)
 	end, {})
 
 	local zIndex = props.zIndex or 12
-	local bubbleSize = props.bubbleSize or UDim2.fromOffset(30, 30)
+	local bubbleSize = props.bubbleSize or UDim2.fromOffset(meterTokens.segmentSize, meterTokens.segmentSize)
 	local bubbles = buildBubbles(breathState.breath, breathState.maxBreath, props.bubbleValue)
 	local bubbleFillAlphas = Sift.Array.create(#bubbles)
 	for bubbleIndex, bubbleState in ipairs(bubbles) do
@@ -149,17 +153,20 @@ return function(props: BubblesScreenProps)
 	})
 	local shouldShow = breathState.isUnderwater or breathState.isBreathingBlocked or breathState.isDrowning
 
-	return e("Frame", {
-		Size = props.size or UDim2.fromOffset(360, 56),
-		Position = props.position or UDim2.new(1, 0, 0, 60),
-		AnchorPoint = props.anchorPoint or Vector2.new(1, 0),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		LayoutOrder = props.layoutOrder or 12,
-		ZIndex = zIndex,
-		Visible = props.visible ~= false and isBreathReady and shouldShow,
-	}, {
-		e("TextLabel", {
+	local children: { React.ReactNode } = {
+		e(BreathMeter, {
+			bubbles = bubbles,
+			fillAlphas = animatedBubbleFillAlphas,
+			bubbleSize = bubbleSize,
+			padding = props.padding or UDim.new(0, meterTokens.segmentGap),
+			zIndex = zIndex + 1,
+			onMouseEnter = bubblesHover.eventHandlers[React.Event.MouseEnter],
+			onMouseLeave = bubblesHover.eventHandlers[React.Event.MouseLeave],
+		}),
+	}
+
+	if props.showValueLabel ~= false and not responsive.isCompactHud then
+		children[#children + 1] = e("TextLabel", {
 			Size = UDim2.new(1, -16, 0, 18),
 			Position = UDim2.fromOffset(8, 0),
 			BackgroundTransparency = 1,
@@ -167,19 +174,21 @@ return function(props: BubblesScreenProps)
 			Text = "breath",
 			TextColor3 = Color3.fromRGB(255, 255, 255),
 			TextStrokeTransparency = 0.55,
-			TextSize = 14,
+			TextSize = meterTokens.labelTextSize,
 			TextXAlignment = Enum.TextXAlignment.Right,
 			TextYAlignment = Enum.TextYAlignment.Center,
 			ZIndex = zIndex + 3,
-		}),
-		e(BreathMeter, {
-			bubbles = bubbles,
-			fillAlphas = animatedBubbleFillAlphas,
-			bubbleSize = bubbleSize,
-			padding = props.padding or UDim.new(0, 4),
-			zIndex = zIndex + 1,
-			onMouseEnter = bubblesHover.eventHandlers[React.Event.MouseEnter],
-			onMouseLeave = bubblesHover.eventHandlers[React.Event.MouseLeave],
-		}),
-	})
+		})
+	end
+
+	return e("Frame", {
+		Size = props.size or UDim2.fromOffset(meterTokens.frameWidth, meterTokens.frameHeight),
+		Position = props.position or UDim2.new(1, 0, 0, meterTokens.frameHeight + responsive.tokens.hud.edgePadding),
+		AnchorPoint = props.anchorPoint or Vector2.new(1, 0),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		LayoutOrder = props.layoutOrder or 12,
+		ZIndex = zIndex,
+		Visible = props.visible ~= false and isBreathReady and shouldShow,
+	}, children)
 end

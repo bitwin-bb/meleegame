@@ -10,14 +10,17 @@ export type RecipeGridProps = {
 	slotSize: number,
 	slotPadding: number,
 	zIndex: number,
+	size: UDim2?,
+	position: UDim2?,
+	maxCells: number?,
 }
 
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: RecipeGridProps): React.ReactNode
 	return e("ImageLabel", {
-		Size = UDim2.new(1, -20, 0, 240),
-		Position = UDim2.fromOffset(10, 104),
+		Size = props.size or UDim2.new(1, -20, 0, 240),
+		Position = props.position or UDim2.fromOffset(10, 104),
 		BackgroundColor3 = Color3.fromRGB(19, 27, 36),
 		BackgroundTransparency = if props.image ~= "" then 1 else props.panelTransparency * 0.2,
 		BorderSizePixel = 0,
@@ -49,7 +52,7 @@ return function(props: RecipeGridProps): React.ReactNode
 				CellSize = UDim2.fromOffset(props.slotSize, props.slotSize),
 				CellPadding = UDim2.fromOffset(props.slotPadding, props.slotPadding),
 				SortOrder = Enum.SortOrder.LayoutOrder,
-				FillDirectionMaxCells = 4,
+				FillDirectionMaxCells = props.maxCells or 4,
 			}),
 			e("UIPadding", {
 				PaddingLeft = UDim.new(0, 4),

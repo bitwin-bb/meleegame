@@ -12,11 +12,14 @@ local React = require(ReplicatedStorage.Packages.React)
 local RecipeDetails = require(script:FindFirstAncestor("game").Client.UI.features.crafting.components.RecipeDetails)
 local RecipeGrid = require(script:FindFirstAncestor("game").Client.UI.features.crafting.components.RecipeGrid)
 local RecipeSlot = require(script:FindFirstAncestor("game").Client.UI.features.crafting.components.RecipeSlot)
+local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
 local SearchBox = require(script:FindFirstAncestor("game").Client.UI.features.crafting.components.SearchBox)
+local UiScaleUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.UiScaleUtils)
 local UiSound = require(script:FindFirstAncestor("game").Client.UI.core.utils.UiSound)
 local craftingSlice = require(script:FindFirstAncestor("game").Client.UI.features.crafting.state.craftingSlice)
 local craftingThunks = require(script:FindFirstAncestor("game").Client.UI.features.crafting.state.craftingThunks)
 local itemThunks = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemThunks)
+local resolveImageId = require(script:FindFirstAncestor("game").Client.UI.core.utils.resolveImageId)
 local useCraftMenuDrag = require(script:FindFirstAncestor("game").Client.UI.features.crafting.hooks.useCraftMenuDrag)
 local useCraftSlide = require(script:FindFirstAncestor("game").Client.UI.features.crafting.hooks.useCraftSlide)
 local useDebounceValue = require(script:FindFirstAncestor("game").Client.UI.shared.useDebounceValue)
@@ -33,15 +36,10 @@ type CraftingSlotsProps = {
 
 local e: typeof(React.createElement) = React.createElement
 
-local PANEL_WIDTH = 336
-local PANEL_HEIGHT = 458
 local PANEL_OPEN_START_OFFSET = Vector2.new(0, 96)
 local PANEL_MIN_SCALE = 0.2
-local RECIPE_SLOT_SIZE = 80
 local RECIPE_SLOT_PADDING = 8
-local RECIPE_REQUIREMENT_SLOT_SIZE = 60
 local RECIPE_REQUIREMENT_SLOT_PADDING = 8
-local RECIPE_REQUIREMENT_ICON_SIZE = 30
 local SEARCH_DEBOUNCE_SECONDS = 0.15
 local MENU_OPEN_SPRING = {
 	frequency = 0.2,
@@ -50,16 +48,6 @@ local MENU_OPEN_SPRING = {
 
 local function playUiSound(soundAssetId: string?)
 	UiSound.play(soundAssetId)
-end
-
-local function resolveImageId(valueRaw: any, fallbackRaw: any): string
-	if typeof(valueRaw) == "string" and valueRaw ~= "" then
-		return valueRaw
-	end
-	if typeof(fallbackRaw) == "string" and fallbackRaw ~= "" then
-		return fallbackRaw
-	end
-	return ""
 end
 
 local CRAFTING_MENU_IMAGE_ID = resolveImageId(ImageIds.craftingMenu, "")
@@ -221,7 +209,12 @@ local function resolveDisplayedSelectedRecipe(
 	return displayedRecipes[1]
 end
 
-local function buildIngredientRows(previewRaw: any, zIndex: number): { React.ReactNode }
+local function buildIngredientRows(
+	previewRaw: any,
+	zIndex: number,
+	requirementSlotSize: number,
+	requirementIconSize: number
+): { React.ReactNode }
 	local rows: { React.ReactNode } = {}
 	if typeof(previewRaw) ~= "table" then
 		return rows
@@ -255,8 +248,8 @@ local function buildIngredientRows(previewRaw: any, zIndex: number): { React.Rea
 			required = required,
 			isSufficient = isSufficient,
 			icon = icon,
-			size = UDim2.fromOffset(RECIPE_REQUIREMENT_SLOT_SIZE, RECIPE_REQUIREMENT_SLOT_SIZE),
-			iconSize = UDim2.fromOffset(RECIPE_REQUIREMENT_ICON_SIZE, RECIPE_REQUIREMENT_ICON_SIZE),
+			size = UDim2.fromOffset(requirementSlotSize, requirementSlotSize),
+			iconSize = UDim2.fromOffset(requirementIconSize, requirementIconSize),
 			zIndex = zIndex,
 		})
 	end
@@ -265,6 +258,8 @@ local function buildIngredientRows(previewRaw: any, zIndex: number): { React.Rea
 end
 
 return function(props: CraftingSlotsProps): React.ReactNode
+	local responsive = Responsive.useResponsiveMetrics()
+	local craftingTokens = responsive.tokens.crafting
 	local craftingState = (useStore(craftingSlice.craftingStateAtom) :: CraftingState?)
 		or craftingSlice.getCraftingState()
 	local searchText, setSearchText = React.useState(function(): string
@@ -363,15 +358,21 @@ return function(props: CraftingSlotsProps): React.ReactNode
 	end
 
 	local zIndex = props.zIndex or 180
-	local destinationOffset = craftMenuDrag.offset
-	local sourceOffset = destinationOffset + PANEL_OPEN_START_OFFSET
+	local responsivePanelScale = craftingTokens.panelScale
+	local destinationOffset = UiScaleUtils.clampCenteredPanelOffset(
+		craftMenuDrag.offset,
+		Vector2.new(craftingTokens.panelWidth, craftingTokens.panelHeight),
+		responsivePanelScale,
+		responsive
+	)
+	local sourceOffset = destinationOffset + PANEL_OPEN_START_OFFSET * responsivePanelScale
 	local animatedOffset = sourceOffset:Lerp(destinationOffset, slideProgress)
-	local pathLength = PANEL_OPEN_START_OFFSET.Magnitude
+	local pathLength = (PANEL_OPEN_START_OFFSET * responsivePanelScale).Magnitude
 	local remainingDistance = (destinationOffset - animatedOffset).Magnitude
 	local panelTransparency = if pathLength > 0
 		then math.clamp(remainingDistance / pathLength, 0, 1)
 		else math.clamp(1 - slideProgress, 0, 1)
-	local panelScale = PANEL_MIN_SCALE + (1 - PANEL_MIN_SCALE) * (1 - panelTransparency)
+	local panelScale = responsivePanelScale * (PANEL_MIN_SCALE + (1 - PANEL_MIN_SCALE) * (1 - panelTransparency))
 	local activeCategory = craftingState.categoryFilter
 	local displayedRecipes, displayRecipeGroups =
 		resolveDisplayRecipeGroups(craftingState.recipes, activeCategory, craftingState.selectedRecipeId)
@@ -398,7 +399,7 @@ return function(props: CraftingSlotsProps): React.ReactNode
 		recipeChildren[#recipeChildren + 1] = e(RecipeSlot, {
 			layoutOrder = index,
 			zIndex = zIndex + 4,
-			size = UDim2.fromOffset(RECIPE_SLOT_SIZE, RECIPE_SLOT_SIZE),
+			size = UDim2.fromOffset(craftingTokens.recipeSlotSize, craftingTokens.recipeSlotSize),
 			recipe = entry,
 			selected = isSelected,
 			onActivated = function(recipeId: string)
@@ -425,8 +426,12 @@ return function(props: CraftingSlotsProps): React.ReactNode
 		})
 	end
 
-	local ingredientRows =
-		buildIngredientRows(if selectedRecipe ~= nil then selectedRecipe.preview else nil, zIndex + 4)
+	local ingredientRows = buildIngredientRows(
+		if selectedRecipe ~= nil then selectedRecipe.preview else nil,
+		zIndex + 4,
+		craftingTokens.requirementSlotSize,
+		craftingTokens.iconSize
+	)
 
 	return e(Layer, {
 		layoutOrder = props.layoutOrder or 12,
@@ -434,7 +439,7 @@ return function(props: CraftingSlotsProps): React.ReactNode
 		visible = isRequestedVisible,
 		children = {
 			e(CraftingPanel, {
-				size = UDim2.fromOffset(PANEL_WIDTH, PANEL_HEIGHT),
+				size = UDim2.fromOffset(craftingTokens.panelWidth, craftingTokens.panelHeight),
 				position = UDim2.new(0.5, math.floor(animatedOffset.X), 0.5, math.floor(animatedOffset.Y)),
 				anchorPoint = Vector2.new(0.5, 0.5),
 				scale = panelScale,
@@ -453,6 +458,9 @@ return function(props: CraftingSlotsProps): React.ReactNode
 						image = CRAFTING_MENU_TEXTBOX_IMAGE_ID,
 						panelTransparency = panelTransparency,
 						zIndex = zIndex + 3,
+						position = UDim2.fromOffset(craftingTokens.panelPadding, craftingTokens.searchY),
+						size = UDim2.new(1, -craftingTokens.panelPadding * 2, 0, 28),
+						textSize = craftingTokens.textSize + 1,
 						onTextChanged = setSearchText,
 						onFocusLost = function()
 							commitSearchQuery(searchText)
@@ -464,6 +472,10 @@ return function(props: CraftingSlotsProps): React.ReactNode
 						categoryImage = CRAFTING_MENU_CATEGORY_IMAGE_ID,
 						panelTransparency = panelTransparency,
 						zIndex = zIndex + 3,
+						position = UDim2.fromOffset(craftingTokens.panelPadding, craftingTokens.categoryY),
+						size = UDim2.new(1, -craftingTokens.panelPadding * 2, 0, 26),
+						tabPadding = UDim.new(0, 4),
+						textSize = craftingTokens.textSize,
 						onActivated = function(categoryValue: string)
 							craftingThunks.setCategoryFilter(categoryValue)
 						end,
@@ -471,7 +483,9 @@ return function(props: CraftingSlotsProps): React.ReactNode
 					e(RecipeGrid, {
 						image = CRAFTING_MENU_INNER_IMAGE_ID,
 						panelTransparency = panelTransparency,
-						slotSize = RECIPE_SLOT_SIZE,
+						position = UDim2.fromOffset(craftingTokens.panelPadding, craftingTokens.recipeGridY),
+						size = UDim2.new(1, -craftingTokens.panelPadding * 2, 0, 240),
+						slotSize = craftingTokens.recipeSlotSize,
 						slotPadding = RECIPE_SLOT_PADDING,
 						zIndex = zIndex + 3,
 						children = recipeChildren,
@@ -479,14 +493,16 @@ return function(props: CraftingSlotsProps): React.ReactNode
 					e(RecipeDetails, {
 						image = CRAFTING_MENU_INNER_IMAGE_ID,
 						panelTransparency = panelTransparency,
-						slotSize = RECIPE_REQUIREMENT_SLOT_SIZE,
+						position = UDim2.fromOffset(craftingTokens.panelPadding, craftingTokens.recipeDetailsY),
+						size = UDim2.new(1, -craftingTokens.panelPadding * 2, 0, 64),
+						slotSize = craftingTokens.requirementSlotSize,
 						slotPadding = RECIPE_REQUIREMENT_SLOT_PADDING,
 						zIndex = zIndex + 3,
 						children = ingredientRows,
 					}),
 					e(CraftingButton, {
-						size = UDim2.new(1, -20, 0, 36),
-						position = UDim2.fromOffset(10, 416),
+						size = UDim2.new(1, -craftingTokens.panelPadding * 2, 0, craftingTokens.craftButtonHeight),
+						position = UDim2.fromOffset(craftingTokens.panelPadding, craftingTokens.craftButtonY),
 						zIndex = zIndex + 4,
 						disabled = not canCraftSelected,
 						icon = ImageIds.finalCraftButton,
@@ -496,7 +512,7 @@ return function(props: CraftingSlotsProps): React.ReactNode
 							if canCraftSelected and selectedRecipe ~= nil then
 								craftingThunks.requestCraft(selectedRecipe.recipeId, 1)
 							end
-						end
+						end,
 					}),
 				},
 			}),

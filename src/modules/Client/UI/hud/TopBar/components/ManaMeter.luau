@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
 local React = require(ReplicatedStorage.Packages.React)
+local SegmentIcon = require(script:FindFirstAncestor("game").Client.UI.core.components.SegmentIcon)
 local SegmentMeter = require(script:FindFirstAncestor("game").Client.UI.core.components.SegmentMeter)
 
 export type ManaSegment = {
@@ -36,34 +37,16 @@ local function ManaStarItem(props: {
 	local fillTransparency = math.clamp((1 - fillAlpha) - (0.14 * hoverAlpha * fillAlpha), 0, 1)
 	local scale = 1 + 0.03 * hoverAlpha
 
-	return e("Frame", {
-		Size = props.starSize,
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		LayoutOrder = props.star.index,
-		ZIndex = props.zIndex,
-	}, {
-		e("UIScale", {
-			Scale = scale,
-		}),
-		e("ImageLabel", {
-			Size = UDim2.fromScale(1, 1),
-			BackgroundTransparency = 1,
-			Image = ImageIds.mana,
-			Rotation = 0,
-			ImageColor3 = EMPTY_STAR_COLOR,
-			ImageTransparency = 0,
-			ZIndex = props.zIndex + 1,
-		}),
-		e("ImageLabel", {
-			Size = UDim2.fromScale(1, 1),
-			BackgroundTransparency = 1,
-			Image = ImageIds.mana,
-			Rotation = 0,
-			ImageColor3 = FILLED_STAR_COLOR,
-			ImageTransparency = fillTransparency,
-			ZIndex = props.zIndex + 2,
-		}),
+	return e(SegmentIcon, {
+		icon = ImageIds.mana,
+		size = props.starSize,
+		layoutOrder = props.star.index,
+		zIndex = props.zIndex,
+		fillAlpha = fillAlpha,
+		emptyColor = EMPTY_STAR_COLOR,
+		fullColor = FILLED_STAR_COLOR,
+		fullTransparency = fillTransparency,
+		scale = scale,
 	})
 end
 

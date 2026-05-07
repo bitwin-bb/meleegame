@@ -3,13 +3,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local RarityPill = require(script.Parent.RarityPill)
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 local formatNumber = require(script:FindFirstAncestor("game").Client.UI.core.utils.formatNumber)
 
 local e: typeof(React.createElement) = React.createElement
 
-export type DropsInfoRarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Mythic"
+export type DropsInfoRarity = RarityPill.Rarity
 
 export type DropsInfoTheme = {
 	backgroundColor: Color3?,
@@ -118,7 +119,7 @@ type DropsInfoState = {
 
 local DEFAULT_BILLBOARD_SIZE = UDim2.fromOffset(320, 124)
 local DEFAULT_CARD_SIZE = UDim2.fromOffset(268, 72)
-local DEFAULT_CARD_POSITION = UDim2.new(0.5, 0, 1, 0)
+local DEFAULT_CARD_POSITION = UDim2.fromScale(0.5, 1)
 local DEFAULT_CARD_ANCHOR_POINT = Vector2.new(0.5, 1)
 local DEFAULT_STUDS_OFFSET = Vector3.new(0, 3.1, 0)
 local DEFAULT_EXTENTS_OFFSET = Vector3.new(0, 0, 0)
@@ -164,15 +165,6 @@ local DEFAULT_THEME = {
 		NumberSequenceKeypoint.new(0, 0.06),
 		NumberSequenceKeypoint.new(1, 0.16),
 	}),
-}
-
-local RARITY_COLORS = {
-	Common = Color3.fromRGB(171, 177, 186),
-	Uncommon = Color3.fromRGB(104, 223, 117),
-	Rare = Color3.fromRGB(74, 163, 255),
-	Epic = Color3.fromRGB(191, 105, 255),
-	Legendary = Color3.fromRGB(255, 193, 79),
-	Mythic = Color3.fromRGB(255, 94, 143),
 }
 
 local function sanitizeNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
@@ -228,7 +220,7 @@ local function resolveRarityColor(rarity: DropsInfoRarity?): Color3?
 	if rarity == nil then
 		return nil
 	end
-	return (RARITY_COLORS :: any)[rarity]
+	return RarityPill.ResolveColor(rarity, nil)
 end
 
 local function applyNativeProps(targetProps: { [string]: any }, nativeProps: { [string]: any }?)
@@ -624,7 +616,7 @@ function DropsInfo:render()
 	local subtitleProps: { [string]: any } = {
 		Size = UDim2.new(1, 0, 0, 18),
 		BackgroundTransparency = 1,
-		Font = props.subtitleFont or Enum.Font.GothamSemibold,
+		Font = props.subtitleFont or Enum.Font.GothamMedium,
 		Text = props.subtitle or "",
 		TextColor3 = subtitleColor,
 		TextSize = sanitizeNumber(props.subtitleTextSize, 14, 8, 38),
@@ -695,7 +687,7 @@ function DropsInfo:render()
 			Transparency = cardStrokeTransparencyBinding,
 		}),
 		e("Frame", {
-			Size = UDim2.new(1, 0, 1, 0),
+			Size = UDim2.fromScale(1, 1),
 			Position = UDim2.fromOffset(0, 2),
 			BackgroundColor3 = Color3.fromRGB(0, 0, 0),
 			BackgroundTransparency = cardShadowTransparencyBinding,
@@ -783,31 +775,15 @@ function DropsInfo:render()
 	end
 
 	if showRarityPill and props.rarity ~= nil then
-		cardChildren[#cardChildren + 1] = e("TextLabel", {
-			AutomaticSize = Enum.AutomaticSize.XY,
-			BackgroundColor3 = accentColor,
-			BackgroundTransparency = rarityPillTransparencyBinding,
-			BorderSizePixel = 0,
-			Position = UDim2.fromOffset(2, -7),
-			AnchorPoint = Vector2.new(0, 0),
-			Font = Enum.Font.GothamSemibold,
-			Text = props.rarity,
-			TextColor3 = Color3.fromRGB(255, 255, 255),
-			TextSize = 12,
-			TextTransparency = rarityTextTransparencyBinding,
-			TextXAlignment = Enum.TextXAlignment.Center,
-			TextYAlignment = Enum.TextYAlignment.Center,
-			ZIndex = zIndex + 5,
-		}, {
-			e("UIPadding", {
-				PaddingTop = UDim.new(0, 2),
-				PaddingBottom = UDim.new(0, 2),
-				PaddingLeft = UDim.new(0, 7),
-				PaddingRight = UDim.new(0, 7),
-			}),
-			e("UICorner", {
-				CornerRadius = UDim.new(1, 0),
-			}),
+		cardChildren[#cardChildren + 1] = e(RarityPill.Component, {
+			rarity = props.rarity,
+			color = accentColor,
+			backgroundTransparency = rarityPillTransparencyBinding,
+			textTransparency = rarityTextTransparencyBinding,
+			position = UDim2.fromOffset(2, -7),
+			anchorPoint = Vector2.new(0, 0),
+			textSize = 12,
+			zIndex = zIndex + 5,
 		})
 	end
 

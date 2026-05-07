@@ -9,6 +9,11 @@ export type CategoryTabsProps = {
 	categoryImage: string,
 	panelTransparency: number,
 	zIndex: number,
+	size: UDim2?,
+	position: UDim2?,
+	tabSize: UDim2?,
+	tabPadding: UDim?,
+	textSize: number?,
 	onActivated: (string) -> (),
 }
 
@@ -20,7 +25,7 @@ return function(props: CategoryTabsProps): React.ReactNode
 			FillDirection = Enum.FillDirection.Horizontal,
 			HorizontalAlignment = Enum.HorizontalAlignment.Left,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
-			Padding = UDim.new(0, 4),
+			Padding = props.tabPadding or UDim.new(0, 4),
 			SortOrder = Enum.SortOrder.LayoutOrder,
 		}),
 	}
@@ -31,7 +36,7 @@ return function(props: CategoryTabsProps): React.ReactNode
 		local isSelected = props.activeCategory == categoryValue
 		local hasCategoryAsset = props.categoryImage ~= ""
 		categoryChildren[#categoryChildren + 1] = e("ImageButton", {
-			Size = UDim2.fromOffset(74, 26),
+			Size = props.tabSize or UDim2.fromOffset(74, 26),
 			LayoutOrder = index,
 			AutoButtonColor = false,
 			BackgroundColor3 = if isSelected then Color3.fromRGB(76, 142, 185) else Color3.fromRGB(38, 47, 60),
@@ -51,8 +56,8 @@ return function(props: CategoryTabsProps): React.ReactNode
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				BackgroundTransparency = 1,
 				Text = category,
-				Font = Enum.Font.GothamSemibold,
-				TextSize = 12,
+				Font = Enum.Font.GothamMedium,
+				TextSize = props.textSize or 12,
 				TextColor3 = if isSelected then Color3.fromRGB(255, 255, 255) else Color3.fromRGB(212, 223, 236),
 				TextXAlignment = Enum.TextXAlignment.Center,
 				TextYAlignment = Enum.TextYAlignment.Center,
@@ -63,8 +68,8 @@ return function(props: CategoryTabsProps): React.ReactNode
 	end
 
 	return e("Frame", {
-		Size = UDim2.new(1, -20, 0, 26),
-		Position = UDim2.fromOffset(10, 72),
+		Size = props.size or UDim2.new(1, -20, 0, 26),
+		Position = props.position or UDim2.fromOffset(10, 72),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		ZIndex = props.zIndex,

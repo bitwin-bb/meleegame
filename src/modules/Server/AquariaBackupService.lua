@@ -6,7 +6,7 @@
 local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local packageRoot = gameRoot.Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local require = require(loaderUtils.Parent).load(script)
+local loader = require(loaderUtils.Parent).load(script)
 
 local Configs = require(gameRoot.Shared.Modules.Core.Configs)
 local CoreRuntime = require(gameRoot.Shared.Modules.Core.Runtime)
@@ -38,7 +38,7 @@ local WeatherServiceServer = require(gameRoot.Server.Services.WeatherServiceServ
 local WorldGenerationServiceServer = require(gameRoot.Server.Services.WorldGenerationServiceServer)
 local WorldSimulationServiceServer = require(gameRoot.Server.Services.WorldSimulationServiceServer)
 
-local CmdrService = require("CmdrService")
+local CmdrService = loader("CmdrService")
 
 local AquariaBackupService = {}
 AquariaBackupService.ServiceName = "AquariaBackupService"

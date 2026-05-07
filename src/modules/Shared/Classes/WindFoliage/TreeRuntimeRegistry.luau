@@ -2,8 +2,8 @@
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local require = require(loaderUtils.Parent).load(script)
-local Octree = require("Octree")
+local loader = require(loaderUtils.Parent).load(script)
+local Octree = loader("Octree")
 local FoliageInstance = require(script.Parent.FoliageInstance)
 local RippleMotion = require(script.Parent.RippleMotion)
 
@@ -284,7 +284,12 @@ function TreeRuntimeRegistry.Count(self: TreeRuntimeRegistry): number
 	return #self.entries
 end
 
-function TreeRuntimeRegistry.QueryRadius(self: TreeRuntimeRegistry, positionRaw: any, radiusRaw: any, outRaw: { any }?): { any }
+function TreeRuntimeRegistry.QueryRadius(
+	self: TreeRuntimeRegistry,
+	positionRaw: any,
+	radiusRaw: any,
+	outRaw: { any }?
+): { any }
 	local position = if typeof(positionRaw) == "Vector3" then positionRaw else ZERO
 	local radius = clampNumber(radiusRaw, 0, 0, 1000000)
 	local out = if outRaw ~= nil then outRaw else self.queryBuffer

@@ -19,9 +19,9 @@ local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Se
 local Melee = require(script:FindFirstAncestor("game").Shared.Classes.Melee)
 local MeleeServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.MeleeServiceUtils)
 local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
-local Promise = require("Promise")
 local RagdollServiceClient = require(script:FindFirstAncestor("game").Client.Services.RagdollServiceClient)
-local require = require(loaderUtils.Parent).load(script)
+local loader = require(loaderUtils.Parent).load(script)
+local Promise = loader("Promise")
 
 type MeleeWeaponConfig = MeleeServiceUtils.MeleeWeaponConfig
 type InventoryState = InventoryServiceUtils.InventoryState

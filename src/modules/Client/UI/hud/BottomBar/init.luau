@@ -2,11 +2,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
 local React = require(ReplicatedStorage.Packages.React)
+local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
 
 local e: typeof(React.createElement) = React.createElement
-
-local BOTTOM_BAR_HEIGHT = 56
-local BOTTOM_BAR_EDGE_PADDING = 12
 
 type BottomBarButton = {
 	key: string?,
@@ -39,6 +37,8 @@ type BottomBarProps = {
 }
 
 return function(props: BottomBarProps)
+	local responsive = Responsive.useResponsiveMetrics()
+	local hudTokens = responsive.tokens.hud
 	local buttons = props.buttons or {}
 	local zIndex = props.zIndex or 10
 	local children = {
@@ -58,18 +58,17 @@ return function(props: BottomBarProps)
 	}
 
 	for index, button in ipairs(buttons) do
-		local key = button.key or button.id or button.route or tostring(index)
 		children[#children + 1] = e(NavButton, {
 			id = button.id,
 			route = button.route,
 			label = button.label,
 			icon = button.icon,
-			size = button.size or UDim2.fromOffset(170, 40),
+			size = button.size or UDim2.fromOffset(hudTokens.navButtonWidth, hudTokens.navButtonHeight),
 			layoutOrder = button.layoutOrder or index,
 			visible = button.visible,
 			selected = button.selected,
 			disabled = button.disabled,
-			textSize = button.textSize,
+			textSize = button.textSize or hudTokens.navButtonTextSize,
 			font = button.font,
 			zIndex = zIndex + 1,
 			navigateEvent = button.navigateEvent or props.navigateEvent,
@@ -86,7 +85,7 @@ return function(props: BottomBarProps)
 	end
 
 	return e("Frame", {
-		Size = props.size or UDim2.new(1, 0, 0, BOTTOM_BAR_HEIGHT + BOTTOM_BAR_EDGE_PADDING),
+		Size = props.size or UDim2.new(1, 0, 0, hudTokens.bottomBarHeight + responsive.safeArea.bottom),
 		Position = props.position or UDim2.fromScale(0.5, 1),
 		AnchorPoint = props.anchorPoint or Vector2.new(0.5, 1),
 		BackgroundTransparency = 1,
@@ -107,9 +106,9 @@ return function(props: BottomBarProps)
 		}, {
 			e("UIPadding", {
 				PaddingTop = UDim.new(0, 0),
-				PaddingBottom = UDim.new(0, BOTTOM_BAR_EDGE_PADDING),
-				PaddingLeft = UDim.new(0, BOTTOM_BAR_EDGE_PADDING),
-				PaddingRight = UDim.new(0, BOTTOM_BAR_EDGE_PADDING),
+				PaddingBottom = UDim.new(0, responsive.safeArea.bottom),
+				PaddingLeft = UDim.new(0, responsive.safeArea.left),
+				PaddingRight = UDim.new(0, responsive.safeArea.right),
 			}),
 			e("Frame", {
 				Size = UDim2.fromScale(1, 1),

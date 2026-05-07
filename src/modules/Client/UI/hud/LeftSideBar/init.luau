@@ -3,14 +3,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HotbarLeftSideBar = require(script.HotbarLeftSideBar)
 local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
 local React = require(ReplicatedStorage.Packages.React)
+local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
 local inventorySlice = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.inventorySlice)
 local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
 local e: typeof(React.createElement) = React.createElement
-
-local SIDE_BAR_WIDTH = 220
-local SIDE_BAR_EDGE_PADDING = 12
-local SIDE_BAR_VERTICAL_PADDING = 72
 
 type InventoryHudState = inventorySlice.InventoryHudState
 
@@ -46,6 +43,9 @@ type LeftSideBarProps = {
 }
 
 return function(props: LeftSideBarProps)
+	local responsive = Responsive.useResponsiveMetrics()
+	local hudTokens = responsive.tokens.hud
+	local inventoryTokens = responsive.tokens.inventory
 	local inventoryHudState = (useStore(inventorySlice.inventoryHudStateAtom) :: InventoryHudState?)
 		or inventorySlice.getInventoryHudState()
 	local buttons = props.buttons or {}
@@ -72,12 +72,12 @@ return function(props: LeftSideBarProps)
 			route = button.route,
 			label = button.label,
 			icon = button.icon,
-			size = button.size or UDim2.fromOffset(190, 40),
+			size = button.size or UDim2.fromOffset(hudTokens.sideButtonWidth, hudTokens.navButtonHeight),
 			layoutOrder = button.layoutOrder or index,
 			visible = button.visible,
 			selected = button.selected,
 			disabled = button.disabled,
-			textSize = button.textSize,
+			textSize = button.textSize or hudTokens.navButtonTextSize,
 			font = button.font,
 			zIndex = zIndex + 1,
 			navigateEvent = button.navigateEvent or props.navigateEvent,
@@ -96,8 +96,11 @@ return function(props: LeftSideBarProps)
 	local inventoryHotbarProps = {
 		layoutOrder = 6,
 		zIndex = zIndex + 1,
-		position = UDim2.new(0, 4, 0.5, 0),
+		position = UDim2.new(0, inventoryTokens.leftPadding, 0.5, 0),
 		anchorPoint = Vector2.new(0, 0.5),
+		slotSize = UDim2.fromOffset(inventoryTokens.slotSize, inventoryTokens.slotSize),
+		slotPadding = UDim.new(0, inventoryTokens.slotGap),
+		showKeyHints = not responsive.isCompactHud,
 	}
 	if props.inventoryHotbarProps ~= nil then
 		for key, value in pairs(props.inventoryHotbarProps) do
@@ -106,7 +109,7 @@ return function(props: LeftSideBarProps)
 	end
 
 	return e("Frame", {
-		Size = props.size or UDim2.new(0, SIDE_BAR_WIDTH, 1, 0),
+		Size = props.size or UDim2.new(0, hudTokens.sideBarWidth + responsive.safeArea.left, 1, 0),
 		Position = props.position or UDim2.fromScale(0, 0.5),
 		AnchorPoint = props.anchorPoint or Vector2.new(0, 0.5),
 		BackgroundTransparency = 1,
@@ -126,9 +129,9 @@ return function(props: LeftSideBarProps)
 			ZIndex = zIndex,
 		}, {
 			e("UIPadding", {
-				PaddingTop = UDim.new(0, SIDE_BAR_VERTICAL_PADDING),
-				PaddingBottom = UDim.new(0, SIDE_BAR_VERTICAL_PADDING),
-				PaddingLeft = UDim.new(0, SIDE_BAR_EDGE_PADDING),
+				PaddingTop = UDim.new(0, responsive.safeArea.top + hudTokens.sideBarVerticalPadding),
+				PaddingBottom = UDim.new(0, responsive.safeArea.bottom + hudTokens.sideBarVerticalPadding),
+				PaddingLeft = UDim.new(0, responsive.safeArea.left),
 				PaddingRight = UDim.new(0, 0),
 			}),
 			e("Frame", {

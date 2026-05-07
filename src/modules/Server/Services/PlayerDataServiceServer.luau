@@ -10,8 +10,8 @@ local DataTemplate = require(script:FindFirstAncestor("game").Shared.Modules.Cor
 local PlayerDataServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerDataServiceUtils)
 local ProfileStore =
 	require(game:GetService("ServerScriptService"):WaitForChild("ServerPackages"):WaitForChild("ProfileStore"))
-local Promise = require("Promise")
-local require = require(loaderUtils.Parent).load(script)
+local loader = require(loaderUtils.Parent).load(script)
+local Promise = loader("Promise")
 
 type PlayerData = PlayerDataServiceUtils.PlayerData
 type LoadState = PlayerDataServiceUtils.LoadState

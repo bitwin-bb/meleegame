@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HeartMeter = require(script.Parent.components.HeartMeter)
 local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.HpServiceUtils)
 local React = require(ReplicatedStorage.Packages.React)
+local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
 local UiSound = require(script:FindFirstAncestor("game").Client.UI.core.utils.UiSound)
 local hpSlice = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.hpSlice)
 local hpThunks = require(script:FindFirstAncestor("game").Client.UI.hud.state.thunk.hpThunks)
@@ -43,6 +44,8 @@ local function getBeatHeartIndexFromHearts(hearts: { HeartState }): number?
 end
 
 return function(props: HpTopRightBarProps)
+	local responsive = Responsive.useResponsiveMetrics()
+	local meterTokens = responsive.tokens.meter
 	local useServiceState = props.useServiceState ~= false
 	local serviceHpState = useStore(if useServiceState then hpSlice.hpStateAtom else nil) :: HpServiceState?
 	local serviceHpReady = useStore(if useServiceState then hpSlice.hpReadyAtom else nil) :: boolean?
@@ -100,7 +103,7 @@ return function(props: HpTopRightBarProps)
 
 	local zIndex = props.zIndex or 12
 	local hearts = hpState.hearts
-	local heartSize = props.heartSize or UDim2.fromOffset(30, 30)
+	local heartSize = props.heartSize or UDim2.fromOffset(meterTokens.segmentSize, meterTokens.segmentSize)
 	local useLifeFruitHearts = hpState.maxHealth > 400
 	local beatHeartIndex = if useServiceState then hpThunks.getBeatHeartIndex() else getBeatHeartIndexFromHearts(hearts)
 
@@ -117,7 +120,7 @@ return function(props: HpTopRightBarProps)
 		}),
 	}
 
-	if props.showValueLabel ~= false then
+	if props.showValueLabel ~= false and not responsive.isCompactHud then
 		children[#children + 1] = e("TextLabel", {
 			Size = UDim2.new(1, -16, 0, 18),
 			Position = UDim2.fromOffset(8, 0),
@@ -126,7 +129,7 @@ return function(props: HpTopRightBarProps)
 			Text = string.format("Life: %.0f/%.0f", hpState.health, hpState.maxHealth),
 			TextColor3 = Color3.fromRGB(255, 255, 255),
 			TextStrokeTransparency = 0.55,
-			TextSize = 14,
+			TextSize = meterTokens.labelTextSize,
 			TextXAlignment = Enum.TextXAlignment.Right,
 			TextYAlignment = Enum.TextYAlignment.Center,
 			ZIndex = zIndex + 3,
@@ -134,8 +137,8 @@ return function(props: HpTopRightBarProps)
 	end
 
 	return e("Frame", {
-		Size = props.size or UDim2.fromOffset(360, 56),
-		Position = props.position or UDim2.new(1, -12, 0, 12),
+		Size = props.size or UDim2.fromOffset(meterTokens.frameWidth, meterTokens.frameHeight),
+		Position = props.position or UDim2.new(1, -responsive.safeArea.right, 0, responsive.safeArea.top),
 		AnchorPoint = props.anchorPoint or Vector2.new(1, 0),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,

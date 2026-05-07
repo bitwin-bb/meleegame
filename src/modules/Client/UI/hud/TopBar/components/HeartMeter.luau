@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
 local React = require(ReplicatedStorage.Packages.React)
+local SegmentIcon = require(script:FindFirstAncestor("game").Client.UI.core.components.SegmentIcon)
 local SegmentMeter = require(script:FindFirstAncestor("game").Client.UI.core.components.SegmentMeter)
 local useBeatMotion = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useBeatMotion)
 
@@ -52,32 +53,15 @@ local function HeartItem(props: {
 	local fillAlpha = math.clamp(heart.fillAlpha, 0, 1)
 	local heartColor = if heart.isEmpty then props.emptyColor else props.filledColor
 
-	return e("Frame", {
-		Size = props.heartSize,
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		LayoutOrder = heart.index,
-		ZIndex = props.zIndex,
-	}, {
-		e("UIScale", {
-			Scale = beatMotion.scale,
-		}),
-		e("ImageLabel", {
-			Size = UDim2.fromScale(1, 1),
-			BackgroundTransparency = 1,
-			Image = props.heartImage,
-			ImageColor3 = props.emptyColor,
-			ImageTransparency = 0,
-			ZIndex = props.zIndex + 1,
-		}),
-		e("ImageLabel", {
-			Size = UDim2.fromScale(1, 1),
-			BackgroundTransparency = 1,
-			Image = props.heartImage,
-			ImageColor3 = heartColor,
-			ImageTransparency = 1 - fillAlpha,
-			ZIndex = props.zIndex + 2,
-		}),
+	return e(SegmentIcon, {
+		icon = props.heartImage,
+		size = props.heartSize,
+		layoutOrder = heart.index,
+		zIndex = props.zIndex,
+		fillAlpha = fillAlpha,
+		emptyColor = props.emptyColor,
+		fullColor = heartColor,
+		scale = beatMotion.scale,
 	})
 end
 

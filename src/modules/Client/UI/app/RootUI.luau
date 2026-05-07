@@ -14,6 +14,7 @@ local MiningProgressScreen =
 local MouseScreen = require(script:FindFirstAncestor("game").Client.UI.features.mouse.screen.mouseScreen)
 local PadScreen = require(script:FindFirstAncestor("game").Client.UI.features.pad.screens.pad)
 local React = require(ReplicatedStorage.Packages.React)
+local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
 
 local e: typeof(React.createElement) = React.createElement
 
@@ -33,54 +34,52 @@ return function(props: RootUIProps)
 		end
 	end, { props.onCanvasMounted })
 
-	return e("Frame", {
-		ref = canvasRef,
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		Position = UDim2.fromScale(0.5, 0.5),
-		Size = UDim2.fromScale(1, 1),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		Active = false,
-		Selectable = false,
-	}, {
-		e("UIAspectRatioConstraint", {
-			AspectRatio = 16 / 9,
-		}),
-		e("UIScale"),
-		e(HUD, props.hudProps),
-		props.currentScreen,
-		e(InfoScreen, {
-			zIndex = 140,
-		}),
-		e(InfoPlayerScreen, {
-			zIndex = 145,
-		}),
-		e(BiomeNameScreen, {
-			zIndex = 150,
-		}),
-		e(EntityInfoScreen, {
-			zIndex = 160,
-		}),
-		e(MarkerScreen, {
-			zIndex = 165,
-		}),
-		e(MiningProgressScreen, {
-			zIndex = 170,
-		}),
-		e(CraftingSlotsScreen, {
-			zIndex = 175,
-		}),
-		e(BindingHintScreen, {
-			zIndex = 180,
-		}),
-		e(MouseScreen, {
-			zIndex = 1000,
-		}),
-		e(PadScreen, {
-			zIndex = 980,
-		}),
-		e(DeathScreen, {
-			zIndex = 230,
+	return e(Responsive.Provider, {}, {
+		RootCanvas = e("Frame", {
+			ref = canvasRef,
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			Position = UDim2.fromScale(0.5, 0.5),
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			Active = false,
+			Selectable = false,
+		}, {
+			e(HUD, props.hudProps),
+			props.currentScreen,
+			e(InfoScreen, {
+				zIndex = 140,
+			}),
+			e(InfoPlayerScreen, {
+				zIndex = 145,
+			}),
+			e(BiomeNameScreen, {
+				zIndex = 150,
+			}),
+			e(EntityInfoScreen, {
+				zIndex = 160,
+			}),
+			e(MarkerScreen, {
+				zIndex = 165,
+			}),
+			e(MiningProgressScreen, {
+				zIndex = 170,
+			}),
+			e(CraftingSlotsScreen, {
+				zIndex = 175,
+			}),
+			e(BindingHintScreen, {
+				zIndex = 180,
+			}),
+			e(MouseScreen, {
+				zIndex = 1000,
+			}),
+			e(PadScreen, {
+				zIndex = 980,
+			}),
+			e(DeathScreen, {
+				zIndex = 230,
+			}),
 		}),
 	})
 end

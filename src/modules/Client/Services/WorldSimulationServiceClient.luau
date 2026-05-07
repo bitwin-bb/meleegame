@@ -10,9 +10,9 @@ local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networ
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local Maid = require("Maid")
-local Rx = require("Rx")
-local require = require(loaderUtils.Parent).load(script)
+local loader = require(loaderUtils.Parent).load(script)
+local Maid = loader("Maid")
+local Rx = loader("Rx")
 
 local Cache = require(script:FindFirstAncestor("game").Shared.Services.SimulationCache)
 local Config = require(script:FindFirstAncestor("game").Shared.Services.SimulationConfig)

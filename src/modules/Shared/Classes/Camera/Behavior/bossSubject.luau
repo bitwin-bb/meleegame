@@ -1,3 +1,28 @@
 --!strict
 
-return {}
+local Target = require(script.Parent.Parent.Target)
+
+local BossSubject = {}
+
+export type BossSubjectOptions = {
+	runtimeId: string?,
+	bossId: string?,
+	encounterChannel: string?,
+	target: any?,
+}
+
+function BossSubject.Resolve(optionsRaw: BossSubjectOptions?): Target.ResolvedTarget?
+	local resolver = Target.new({
+		target = optionsRaw,
+	})
+	return resolver:resolveAny(optionsRaw, "Boss")
+end
+
+function BossSubject.New(optionsRaw: BossSubjectOptions?): BossSubjectOptions
+	return optionsRaw or {}
+end
+
+BossSubject.resolve = BossSubject.Resolve
+BossSubject.new = BossSubject.New
+
+return BossSubject

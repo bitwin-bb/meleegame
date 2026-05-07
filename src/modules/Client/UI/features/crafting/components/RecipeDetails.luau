@@ -10,14 +10,16 @@ export type RecipeDetailsProps = {
 	slotSize: number,
 	slotPadding: number,
 	zIndex: number,
+	size: UDim2?,
+	position: UDim2?,
 }
 
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: RecipeDetailsProps): React.ReactNode
 	return e("ImageLabel", {
-		Size = UDim2.new(1, -20, 0, 64),
-		Position = UDim2.fromOffset(10, 348),
+		Size = props.size or UDim2.new(1, -20, 0, 64),
+		Position = props.position or UDim2.fromOffset(10, 348),
 		BackgroundColor3 = Color3.fromRGB(19, 27, 36),
 		BackgroundTransparency = if props.image ~= "" then 1 else props.panelTransparency * 0.2,
 		BorderSizePixel = 0,

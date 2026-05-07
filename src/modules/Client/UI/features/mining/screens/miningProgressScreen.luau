@@ -1,6 +1,7 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local BillboardCard = require(script:FindFirstAncestor("game").Client.UI.core.components.BillboardCard)
 local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
 local MiningProgressBar =
 	require(script:FindFirstAncestor("game").Client.UI.features.mining.components.MiningProgressBar)
@@ -76,16 +77,20 @@ return function(props: MiningProgressScreenProps?): React.ReactNode
 		depletionRate = 7,
 	})
 
-	return e("BillboardGui", {
-		ref = billboardRef,
-		Enabled = isVisible,
-		AlwaysOnTop = true,
-		ResetOnSpawn = false,
-		LightInfluence = 0,
-		MaxDistance = 140,
-		Size = UDim2.fromOffset(FRAME_WIDTH, FRAME_HEIGHT),
-		StudsOffsetWorldSpace = Vector3.new(0, 0, 0),
-		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+	return e(BillboardCard, {
+		enabled = isVisible,
+		alwaysOnTop = true,
+		lightInfluence = 0,
+		maxDistance = 140,
+		size = UDim2.fromOffset(FRAME_WIDTH, FRAME_HEIGHT),
+		studsOffset = Vector3.zero,
+		studsOffsetWorldSpace = Vector3.zero,
+		zIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		cardVisible = false,
+		nativeBillboard = {
+			ref = billboardRef,
+			ResetOnSpawn = false,
+		},
 	}, {
 		e(MiningProgressBar, {
 			progress = progressScale,

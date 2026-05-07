@@ -6,13 +6,13 @@ local Workspace = game:GetService("Workspace")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local require = require(loaderUtils.Parent).load(script)
+local loader = require(loaderUtils.Parent).load(script)
 
-local ContentProviderUtils = require("ContentProviderUtils")
-local Maid = require("Maid")
-local Rx = require("Rx")
-local RxSignal = require("RxSignal")
-local ValueObject = require("ValueObject")
+local ContentProviderUtils = loader("ContentProviderUtils")
+local Maid = loader("Maid")
+local Rx = loader("Rx")
+local RxSignal = loader("RxSignal")
+local ValueObject = loader("ValueObject")
 
 local ParallaxBackgrounds = require(script:FindFirstAncestor("game").Shared.Modules.Items.ParallaxBackgrounds)
 local ParallaxServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.ParallaxServiceUtils)

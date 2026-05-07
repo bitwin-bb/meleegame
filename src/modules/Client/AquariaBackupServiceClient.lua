@@ -6,7 +6,7 @@
 local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local packageRoot = gameRoot.Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local require = require(loaderUtils.Parent).load(script)
+local loader = require(loaderUtils.Parent).load(script)
 
 local Configs = require(gameRoot.Shared.Modules.Core.Configs)
 local CoreRuntime = require(gameRoot.Shared.Modules.Core.Runtime)
@@ -20,7 +20,6 @@ local BreathServiceClient = require(gameRoot.Client.Services.BreathServiceClient
 local BuildServiceClient = require(gameRoot.Client.Services.BuildServiceClient)
 local CameraServiceClient = require(gameRoot.Client.Services.CameraServiceClient)
 local ClientBinderSupport = require(gameRoot.Client.Binders.ClientBinderSupport)
-local PadNavBinder = require(gameRoot.Client.Binders.PadNavBinder)
 local CraftingServiceClient = require(gameRoot.Client.Services.CraftingServiceClient)
 local GoreServiceClient = require(gameRoot.Client.Services.GoreServiceClient)
 local HpServiceClient = require(gameRoot.Client.Services.HpServiceClient)
@@ -31,6 +30,7 @@ local MagicServiceClient = require(gameRoot.Client.Services.MagicServiceClient)
 local ManaServiceClient = require(gameRoot.Client.Services.ManaServiceClient)
 local MeleeServiceClient = require(gameRoot.Client.Services.MeleeServiceClient)
 local NpcServiceClient = require(gameRoot.Client.Services.NpcServiceClient)
+local PadNavBinder = require(gameRoot.Client.Binders.PadNavBinder)
 local ParallaxServiceClient = require(gameRoot.Client.Services.ParallaxServiceClient)
 local PlatformServiceClient = require(gameRoot.Client.Services.PlatformServiceClient)
 local PlayerDataServiceClient = require(gameRoot.Client.Services.PlayerDataServiceClient)
@@ -43,9 +43,9 @@ local WorldAnimatorServiceClient = require(gameRoot.Client.Services.WorldAnimato
 local WorldGenerationServiceClient = require(gameRoot.Client.Services.WorldGenerationServiceClient)
 local WorldSimulationServiceClient = require(gameRoot.Client.Services.WorldSimulationServiceClient)
 
-local CmdrBootstrapClient = require("CmdrBootstrapClient")
-local ScreenGuiService = require("ScreenGuiService")
-local SnackbarServiceClient = require("SnackbarServiceClient")
+local CmdrBootstrapClient = loader("CmdrBootstrapClient")
+local ScreenGuiService = loader("ScreenGuiService")
+local SnackbarServiceClient = loader("SnackbarServiceClient")
 
 local AquariaBackupServiceClient = {}
 AquariaBackupServiceClient.ServiceName = "AquariaBackupServiceClient"

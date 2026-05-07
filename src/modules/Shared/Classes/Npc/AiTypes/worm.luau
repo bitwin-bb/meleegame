@@ -5,12 +5,12 @@ local Workspace = game:GetService("Workspace")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local require = require(loaderUtils.Parent).load(script)
+local loader = require(loaderUtils.Parent).load(script)
 
-local CFrameUtils = require("CFrameUtils")
-local Maid = require("Maid")
-local Rx = require("Rx")
-local Signal = require("Signal")
+local CFrameUtils = loader("CFrameUtils")
+local Maid = loader("Maid")
+local Rx = loader("Rx")
+local Signal = loader("Signal")
 
 local Angle = require(script:FindFirstAncestor("game").Shared.Modules.Math.Angle)
 local Plane = require(script:FindFirstAncestor("game").Shared.Modules.Math.Plane)

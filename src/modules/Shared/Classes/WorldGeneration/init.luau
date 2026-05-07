@@ -25,6 +25,7 @@ local Liquid = require(script.Liquid)
 local ProceduralTree = require(script.Tree)
 local Structures = require(script.Structures)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
+local TileVisibilityResolver = require(script:FindFirstAncestor("game").Shared.Modules.Core.TileVisibilityResolver)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local WorldGenerationColor = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationColor)
 local WorldGenerationDesert = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationDesert)
@@ -149,6 +150,7 @@ type ChunkVisual = {
 	backgroundFolder: Folder?,
 	treesFolder: Folder?,
 	parts: { BasePart },
+	visibleTileMask: { boolean },
 	loadedAt: number,
 	lastAccessedAt: number,
 }
@@ -4878,8 +4880,22 @@ function WorldGeneration.BuildChunkVisual(self: WorldGeneration, chunkData: Chun
 	terrainFolder.Parent = model
 
 	local parts: { BasePart } = {}
+	local visibleTiles, _visibilityMask, visibleTileCount =
+		TileVisibilityResolver.BuildVisibleTileValues(chunkData.tiles, chunkData.width, chunkData.height, {
+			airTileId = self.tileId.AIR,
+			tileMinX = chunkData.tileMinX,
+			tileMinY = chunkData.tileMinY,
+			getTileAtWorldCell = function(worldX: number, worldY: number): number
+				local tileId = self:getTileAt(worldX, worldY)
+				return tileId
+			end,
+		})
+	model:SetAttribute("SurfaceCullingEnabled", true)
+	model:SetAttribute("VisibleCollisionTileCount", visibleTileCount)
+	model:SetAttribute("HiddenMetadataTileCount", math.max(0, chunkData.width * chunkData.height - visibleTileCount))
+
 	local collisionRects = self:buildGreedyRectangles(
-		chunkData.tiles,
+		visibleTiles,
 		chunkData.width,
 		chunkData.height,
 		function(value: number): boolean
@@ -4927,6 +4943,7 @@ function WorldGeneration.BuildChunkVisual(self: WorldGeneration, chunkData: Chun
 		backgroundFolder = nil,
 		treesFolder = nil,
 		parts = parts,
+		visibleTileMask = _visibilityMask,
 		loadedAt = now,
 		lastAccessedAt = now,
 	}
@@ -5544,66 +5561,48 @@ function WorldGeneration.SetTileAt(
 
 	local touchedChunkKeys: { [string]: boolean } = {}
 	local touchedChunkBounds: { [string]: ChunkDirtyBounds } = {}
-	local function touchChunk(chunkKey: string, dirtyBounds: ChunkDirtyBounds)
-		if touchedChunkKeys[chunkKey] then
+	local function touchWorldCell(dirtyTileX: number, dirtyTileY: number)
+		if dirtyTileY < self.minTileY or dirtyTileY > self.maxTileY then
 			return
 		end
-		touchedChunkKeys[chunkKey] = true
-		touchedChunkBounds[chunkKey] = dirtyBounds
-		self:bumpChunkRevisionByKey(chunkKey)
-		self:markChunkDirtyByKey(chunkKey)
+		local dirtyChunkX = toChunkCoordinate(dirtyTileX, self.chunkSize)
+		local dirtyChunkY = toChunkCoordinate(dirtyTileY, self.chunkSize)
+		if not self:isChunkYWithinWorldBounds(dirtyChunkY) then
+			return
+		end
 
-		local cachedVisual = self.cachedChunkVisuals[chunkKey]
-		if cachedVisual ~= nil then
-			self.cachedChunkVisuals[chunkKey] = nil
-			self.cachedChunkVisualCount = math.max(0, self.cachedChunkVisualCount - 1)
-			self:releaseChunkVisual(cachedVisual)
+		local chunkKey = packChunkKey(dirtyChunkX, dirtyChunkY)
+		local dirtyBounds = touchedChunkBounds[chunkKey]
+		if dirtyBounds == nil then
+			touchedChunkBounds[chunkKey] = {
+				minTileX = dirtyTileX,
+				minTileY = dirtyTileY,
+				maxTileX = dirtyTileX,
+				maxTileY = dirtyTileY,
+			}
+		else
+			dirtyBounds.minTileX = math.min(dirtyBounds.minTileX, dirtyTileX)
+			dirtyBounds.minTileY = math.min(dirtyBounds.minTileY, dirtyTileY)
+			dirtyBounds.maxTileX = math.max(dirtyBounds.maxTileX, dirtyTileX)
+			dirtyBounds.maxTileY = math.max(dirtyBounds.maxTileY, dirtyTileY)
+		end
+
+		if not touchedChunkKeys[chunkKey] then
+			touchedChunkKeys[chunkKey] = true
+			self:bumpChunkRevisionByKey(chunkKey)
+			self:markChunkDirtyByKey(chunkKey)
+
+			local cachedVisual = self.cachedChunkVisuals[chunkKey]
+			if cachedVisual ~= nil then
+				self.cachedChunkVisuals[chunkKey] = nil
+				self.cachedChunkVisualCount = math.max(0, self.cachedChunkVisualCount - 1)
+				self:releaseChunkVisual(cachedVisual)
+			end
 		end
 	end
 
-	touchChunk(chunkData.key, {
-		minTileX = tileX,
-		minTileY = tileY,
-		maxTileX = tileX,
-		maxTileY = tileY,
-	})
-	if localX == 0 then
-		local neighborChunkX = chunkX - 1
-		touchChunk(packChunkKey(neighborChunkX, chunkY), {
-			minTileX = neighborChunkX * self.chunkSize + self.chunkSize - 1,
-			minTileY = tileY,
-			maxTileX = neighborChunkX * self.chunkSize + self.chunkSize - 1,
-			maxTileY = tileY,
-		})
-	elseif localX == chunkData.width - 1 then
-		local neighborChunkX = chunkX + 1
-		touchChunk(packChunkKey(neighborChunkX, chunkY), {
-			minTileX = neighborChunkX * self.chunkSize,
-			minTileY = tileY,
-			maxTileX = neighborChunkX * self.chunkSize,
-			maxTileY = tileY,
-		})
-	end
-	if localY == 0 then
-		local belowChunkY = chunkY - 1
-		if self:isChunkYWithinWorldBounds(belowChunkY) then
-			touchChunk(packChunkKey(chunkX, belowChunkY), {
-				minTileX = tileX,
-				minTileY = belowChunkY * self.chunkSize + self.chunkSize - 1,
-				maxTileX = tileX,
-				maxTileY = belowChunkY * self.chunkSize + self.chunkSize - 1,
-			})
-		end
-	elseif localY == chunkData.height - 1 then
-		local aboveChunkY = chunkY + 1
-		if self:isChunkYWithinWorldBounds(aboveChunkY) then
-			touchChunk(packChunkKey(chunkX, aboveChunkY), {
-				minTileX = tileX,
-				minTileY = aboveChunkY * self.chunkSize,
-				maxTileX = tileX,
-				maxTileY = aboveChunkY * self.chunkSize,
-			})
-		end
+	for _, dirtyCell in TileVisibilityResolver.CollectVisibilityDirtyWorldCells(tileX, tileY, false) do
+		touchWorldCell(dirtyCell.tileX, dirtyCell.tileY)
 	end
 
 	for touchedChunkKey, dirtyBounds in touchedChunkBounds do

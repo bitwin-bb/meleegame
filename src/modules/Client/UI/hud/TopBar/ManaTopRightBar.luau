@@ -5,6 +5,7 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local ManaMeter = require(script.Parent.components.ManaMeter)
 local ManaServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.ManaServiceUtils)
 local React = require(ReplicatedStorage.Packages.React)
+local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
 local UiSound = require(script:FindFirstAncestor("game").Client.UI.core.utils.UiSound)
 local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
 local manaSlice = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.manaSlice)
@@ -34,6 +35,7 @@ type ManaTopRightBarProps = {
 	starSize: UDim2?,
 	iconSize: UDim2?,
 	padding: UDim?,
+	showValueLabel: boolean?,
 	starValue: number?,
 	useServiceState: boolean?,
 	mockState: ManaServiceState?,
@@ -72,6 +74,8 @@ local function buildManaStars(manaRaw: any, maxManaRaw: any, starValueRaw: any):
 end
 
 return function(props: ManaTopRightBarProps)
+	local responsive = Responsive.useResponsiveMetrics()
+	local meterTokens = responsive.tokens.meter
 	local useServiceState = props.useServiceState ~= false
 	local serviceManaState = useStore(if useServiceState then manaSlice.manaStateAtom else nil) :: ManaServiceState?
 	local serviceManaReady = useStore(if useServiceState then manaSlice.manaReadyAtom else nil) :: boolean?
@@ -131,40 +135,47 @@ return function(props: ManaTopRightBarProps)
 	end, {})
 
 	local zIndex = props.zIndex or 12
-	local starSize = props.starSize or props.iconSize or UDim2.fromOffset(30, 30)
+	local starSize = props.starSize
+		or props.iconSize
+		or UDim2.fromOffset(meterTokens.segmentSize, meterTokens.segmentSize)
 	local stars = buildManaStars(manaState.mana, manaState.maxMana, props.starValue)
 
+	local children: { React.ReactNode } = {
+		e(ManaMeter, {
+			stars = stars,
+			starSize = starSize,
+			padding = props.padding or UDim.new(0, meterTokens.segmentGap),
+			zIndex = zIndex + 1,
+			hoverAlpha = hoverAlpha,
+			onMouseEnter = starsHover.eventHandlers[React.Event.MouseEnter],
+			onMouseLeave = starsHover.eventHandlers[React.Event.MouseLeave],
+		}),
+	}
+
+	if props.showValueLabel ~= false and not responsive.isCompactHud then
+		children[#children + 1] = e("TextLabel", {
+			Size = UDim2.new(1, -16, 0, 18),
+			Position = UDim2.fromOffset(8, 0),
+			BackgroundTransparency = 1,
+			Font = Enum.Font.GothamBold,
+			Text = "mana",
+			TextColor3 = Color3.fromRGB(255, 255, 255),
+			TextStrokeTransparency = 0.55,
+			TextSize = meterTokens.labelTextSize,
+			TextXAlignment = Enum.TextXAlignment.Right,
+			TextYAlignment = Enum.TextYAlignment.Center,
+			ZIndex = zIndex + 3,
+		})
+	end
+
 	return e("Frame", {
-		Size = props.size or UDim2.new(0, 360, 0, 56),
-		Position = props.position or UDim2.new(1, 0, 0, 0),
+		Size = props.size or UDim2.fromOffset(meterTokens.frameWidth, meterTokens.frameHeight),
+		Position = props.position or UDim2.fromScale(1, 0),
 		AnchorPoint = props.anchorPoint or Vector2.new(1, 0),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		LayoutOrder = props.layoutOrder or 11,
 		ZIndex = zIndex,
 		Visible = props.visible ~= false and isManaReady,
-	}, {
-		e("TextLabel", {
-			Size = UDim2.new(1, -16, 0, 18),
-			Position = UDim2.new(0, 8, 0, 0),
-			BackgroundTransparency = 1,
-			Font = Enum.Font.GothamBold,
-			Text = "mana",
-			TextColor3 = Color3.fromRGB(255, 255, 255),
-			TextStrokeTransparency = 0.55,
-			TextSize = 14,
-			TextXAlignment = Enum.TextXAlignment.Right,
-			TextYAlignment = Enum.TextYAlignment.Center,
-			ZIndex = zIndex + 3,
-		}),
-		e(ManaMeter, {
-			stars = stars,
-			starSize = starSize,
-			padding = props.padding or UDim.new(0, 4),
-			zIndex = zIndex + 1,
-			hoverAlpha = hoverAlpha,
-			onMouseEnter = starsHover.eventHandlers[React.Event.MouseEnter],
-			onMouseLeave = starsHover.eventHandlers[React.Event.MouseLeave],
-		}),
-	})
+	}, children)
 end

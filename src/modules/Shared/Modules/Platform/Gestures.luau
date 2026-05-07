@@ -113,6 +113,20 @@ local function getSwipeDirection(delta: Vector2): string
 	return if delta.Y >= 0 then "Down" else "Up"
 end
 
+local function resolveInputTarget(input: InputObject): GuiObject?
+	local ok, targetRaw = pcall(function()
+		return (input :: any).Target
+	end)
+	if not ok or typeof(targetRaw) ~= "Instance" then
+		return nil
+	end
+	local target = targetRaw :: Instance
+	if not target:IsA("GuiObject") then
+		return nil
+	end
+	return target :: GuiObject
+end
+
 local function clearTouchState(state: TouchState)
 	state.input = nil
 	state.startPos = Vector2.zero
@@ -232,12 +246,16 @@ function Gestures._scheduleLongPress(self: Gestures, input: InputObject, state: 
 	end
 
 	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).schedule) == "function" then
-		local token = (self.tickScheduler :: any):schedule(function()
-			fireLongPress()
-		end, self.longPressTime, {
-			group = "gestures.longpress",
-			priority = 200,
-		})
+		local token = (self.tickScheduler :: any):schedule(
+			function()
+				fireLongPress()
+			end,
+			self.longPressTime,
+			{
+				group = "gestures.longpress",
+				priority = 200,
+			}
+		)
 		state.longPressCancel = function()
 			if typeof(token.cancel) == "function" then
 				token:cancel()
@@ -344,7 +362,7 @@ function Gestures._beginTouch(self: Gestures, input: InputObject)
 	state.lastPos = input.Position
 	state.startTime = os.clock()
 	state.lastTime = state.startTime
-	state.target = if typeof(input.Target) == "Instance" and input.Target:IsA("GuiObject") then input.Target else nil
+	state.target = resolveInputTarget(input)
 
 	self.touches[input] = state
 	self.activeTouchCount += 1
@@ -406,15 +424,19 @@ function Gestures._scheduleTapEmit(self: Gestures, payload: GesturePayload)
 	end
 	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).schedule) == "function" then
 		local cancelled = false
-		local token = (self.tickScheduler :: any):schedule(function()
-			if cancelled then
-				return
-			end
-			self:_emit("Tap", payload)
-		end, self.doubleTapWindow, {
-			group = "gestures.tap",
-			priority = 150,
-		})
+		local token = (self.tickScheduler :: any):schedule(
+			function()
+				if cancelled then
+					return
+				end
+				self:_emit("Tap", payload)
+			end,
+			self.doubleTapWindow,
+			{
+				group = "gestures.tap",
+				priority = 150,
+			}
+		)
 		self.pendingTapToken = function()
 			cancelled = true
 			if typeof(token.cancel) == "function" then
@@ -467,7 +489,7 @@ function Gestures._endTouch(self: Gestures, input: InputObject)
 		})
 	end
 
-	if (not state.pinchLocked) and (not state.longPressTriggered) then
+	if (not state.pinchLocked) and not state.longPressTriggered then
 		if duration <= self.swipeMaxDuration and distance >= self.swipeMinDistance then
 			self:_emit("Swipe", {
 				gesture = "Swipe",
@@ -479,7 +501,8 @@ function Gestures._endTouch(self: Gestures, input: InputObject)
 				target = state.target,
 			})
 		elseif duration <= self.tapMaxDuration and distance <= self.dragThreshold then
-			local isDoubleTap = (now - self.lastTapTime) <= self.doubleTapWindow and vectorDistance(self.lastTapPos, state.lastPos) <= (self.dragThreshold * 1.5)
+			local isDoubleTap = (now - self.lastTapTime) <= self.doubleTapWindow
+				and vectorDistance(self.lastTapPos, state.lastPos) <= (self.dragThreshold * 1.5)
 			if isDoubleTap then
 				if self.pendingTapToken ~= nil then
 					self.pendingTapToken()

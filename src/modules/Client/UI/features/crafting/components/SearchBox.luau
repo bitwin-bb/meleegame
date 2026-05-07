@@ -8,6 +8,9 @@ export type SearchBoxProps = {
 	image: string,
 	panelTransparency: number,
 	zIndex: number,
+	size: UDim2?,
+	position: UDim2?,
+	textSize: number?,
 	onTextChanged: (string) -> (),
 	onFocusLost: () -> (),
 }
@@ -16,8 +19,8 @@ local e: typeof(React.createElement) = React.createElement
 
 return function(props: SearchBoxProps): React.ReactNode
 	return e("ImageLabel", {
-		Size = UDim2.new(1, -20, 0, 28),
-		Position = UDim2.fromOffset(10, 38),
+		Size = props.size or UDim2.new(1, -20, 0, 28),
+		Position = props.position or UDim2.fromOffset(10, 38),
 		BackgroundColor3 = Color3.fromRGB(16, 23, 32),
 		BackgroundTransparency = if props.image ~= "" then 1 else props.panelTransparency * 0.2,
 		BorderSizePixel = 0,
@@ -34,7 +37,7 @@ return function(props: SearchBoxProps): React.ReactNode
 			Text = props.text,
 			PlaceholderText = "Search recipes...",
 			Font = Enum.Font.Gotham,
-			TextSize = 13,
+			TextSize = props.textSize or 13,
 			TextColor3 = Color3.fromRGB(235, 242, 250),
 			PlaceholderColor3 = Color3.fromRGB(134, 152, 171),
 			ClearTextOnFocus = false,
