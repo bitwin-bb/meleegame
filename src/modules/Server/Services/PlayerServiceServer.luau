@@ -158,6 +158,7 @@ function PlayerServiceServer.Init(self: PlayerServiceServer)
 	self.allowMovementFreeze = resolveAllowMovementFreezeFromTemplate()
 	Players.CharacterAutoLoads = false
 	PlayerServiceUtils.getOrCreateWorkspaceGameFolder()
+	PlayerServiceUtils.getOrCreateWorkspacePlayersFolder()
 	PlayerSpawnCooldown.applyConfiguredRespawnDelay()
 	self.goreService = GoreServiceServer :: GoreServiceServerObject
 	self.ragdollService =
@@ -760,6 +761,10 @@ end
 
 function PlayerServiceServer.BindCharacter(self: PlayerServiceServer, player: Player, character: Model)
 	local runtime = self:getRuntime(player)
+	local playersFolder = PlayerServiceUtils.getOrCreateWorkspacePlayersFolder()
+	if character.Parent ~= playersFolder then
+		character.Parent = playersFolder
+	end
 	TagBinder.applyTag(character, TagBinder.Tags.Character)
 	if self.goreService ~= nil then
 		self.goreService:unregisterPlayer(player)

@@ -1,4 +1,5 @@
 --!strict
+local HttpService = game:GetService("HttpService")
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -825,7 +826,7 @@ function WeatherServiceClient.EnsureTerrainClouds(self: WeatherServiceClient): C
 	end
 
 	local clouds = Instance.new("Clouds")
-	clouds.Name = "WeatherServiceClouds"
+	clouds.Name = HttpService:GenerateGUID(false)
 	clouds.Cover = 0.34
 	clouds.Density = 0.32
 	clouds.Color = Color3.fromRGB(235, 242, 255)
@@ -935,7 +936,7 @@ end
 
 function WeatherServiceClient.CreateRainEmitter(self: WeatherServiceClient, attachment: Attachment): ParticleEmitter
 	local emitter = Instance.new("ParticleEmitter")
-	emitter.Name = "RainEmitter"
+	emitter.Name = HttpService:GenerateGUID(false)
 	emitter.Enabled = true
 	emitter.Rate = 0
 	emitter.Lifetime = NumberRange.new(0.55, 0.82)

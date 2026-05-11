@@ -1,5 +1,6 @@
 --!strict
 local CollectionService = game:GetService("CollectionService")
+local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
@@ -327,7 +328,7 @@ function WorldAnimatorServiceClient.StartChunkAnimation(
 	end
 
 	local visualClone = chunkModel:Clone()
-	visualClone.Name = `{chunkModel.Name}_ChunkAnim`
+	visualClone.Name = HttpService:GenerateGUID(false)
 	-- Visual clones must not keep gameplay tags, or binders/tag observers will recurse on them.
 	visualClone:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, true)
 	clearCollectionTags(visualClone)

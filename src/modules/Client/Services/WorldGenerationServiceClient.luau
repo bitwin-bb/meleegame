@@ -1,6 +1,7 @@
 --!strict
 
 local CollectionService = game:GetService("CollectionService")
+local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
@@ -15,6 +16,7 @@ local ProceduralCactus = require(script:FindFirstAncestor("game").Shared.Classes
 local ProceduralTree = require(script:FindFirstAncestor("game").Shared.Classes.WorldGeneration.Tree)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
+local TileMaterial = require(script:FindFirstAncestor("game").Shared.Modules.Game.Render.TileMaterial)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local WorldGenerationColor = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationColor)
 local WorldGenerationServiceUtils =
@@ -126,8 +128,11 @@ type ChunkVisualRuntime = {
 	revision: number,
 	builtAt: number,
 	treeSignature: string,
-	terrainFolder: Folder,
-	terrainHoverFolder: Folder,
+	terrainHoverFolder: Folder?,
+	terrainLayerModel: Model?,
+	backgroundLayerModelsByLayer: { Model },
+	terrainParts: { BasePart },
+	backgroundPartsByLayer: { { BasePart } },
 	terrainRects: { TerrainRectRuntime },
 	terrainRectByLocalTileIndex: { number },
 }
@@ -137,9 +142,14 @@ type TreeVariantDefinition = {
 	estimatedPartCount: number,
 }
 
+type GrassTextureFaceDefinition = {
+	color: string?,
+	normal: string?,
+}
+
 type GrassTextureDefinition = {
-	top: string?,
-	side: string?,
+	top: (string | GrassTextureFaceDefinition)?,
+	side: (string | GrassTextureFaceDefinition)?,
 }
 
 local WorldGenerationServiceClient = {}
@@ -147,6 +157,10 @@ local ENABLE_CLIENT_VISUALS = true
 
 local WORLD_FOLDER_NAME = "WorldGeneration"
 local CHUNKS_FOLDER_NAME = "Chunks"
+local TERRAIN_FOLDER_NAME = "Terrain"
+local FOREGROUND_TERRAIN_LAYER_FOLDER_NAME = "0"
+local LEGACY_BACKGROUND_DEPTH_FOLDER_NAME = "BackgroundDepth"
+local TILES_FOLDER_NAME = "Tiles"
 local DEFAULT_BASE_PLANE_X = 0
 local DEFAULT_WORLD_ORIGIN = Vector3.zero
 local MAX_CHUNK_REBUILDS_PER_HEARTBEAT = 8
@@ -252,13 +266,18 @@ local TREE_PALETTE_SNOW_2 = WorldGenerationColor.TREE_PALETTES.Snow2
 	}
 
 local function applyTileStudSurfaces(part: BasePart)
-	part.TopSurface = Enum.SurfaceType.Studs
-	part.BottomSurface = Enum.SurfaceType.Studs
-	part.LeftSurface = Enum.SurfaceType.Studs
-	part.RightSurface = Enum.SurfaceType.Studs
-	part.FrontSurface = Enum.SurfaceType.Studs
-	part.BackSurface = Enum.SurfaceType.Studs
+	TileMaterial.ApplyStudSurfaces(part)
 end
+
+local function applyTileSmoothSurfaces(part: BasePart)
+	TileMaterial.ApplySmoothSurfaces(part)
+end
+
+local function shouldUseSmoothTextureSurfaces(tileId: number): boolean
+	return GRASS_TEXTURE_KEYS_BY_TILE_ID[tileId] ~= nil
+end
+
+local assignCreatedTileMaterial = TileMaterial.ApplyTileMaterial
 
 local function createTreeVariantDefinitions(): { TreeVariantDefinition }
 	return {
@@ -721,12 +740,12 @@ end
 local function createCorruptionSpikeFallbackModel(variantIndex: number, seed: number): Model
 	local randomObject = Random.new(seed)
 	local model = Instance.new("Model")
-	model.Name = "CorruptionSpike"
+	model.Name = HttpService:GenerateGUID(false)
 
 	local segmentCount = if variantIndex % 2 == 0 then 2 else 1
 	for segment = 1, segmentCount do
 		local wedge = Instance.new("WedgePart")
-		wedge.Name = `Spike_{segment}`
+		wedge.Name = HttpService:GenerateGUID(false)
 		wedge.Anchored = true
 		wedge.CanCollide = false
 		wedge.CanQuery = false
@@ -753,12 +772,12 @@ end
 local function createDeadBushFallbackModel(variantIndex: number, seed: number): Model
 	local randomObject = Random.new(seed)
 	local model = Instance.new("Model")
-	model.Name = "DeadBush"
+	model.Name = HttpService:GenerateGUID(false)
 
 	local stemCount = math.max(2, math.min(5, variantIndex + 1))
-	for stemIndex = 1, stemCount do
+	for _ = 1, stemCount do
 		local stem = Instance.new("Part")
-		stem.Name = `Stem_{stemIndex}`
+		stem.Name = HttpService:GenerateGUID(false)
 		stem.Anchored = true
 		stem.CanCollide = false
 		stem.CanQuery = false
@@ -786,12 +805,12 @@ end
 local function createDesertRockFallbackModel(variantIndex: number, seed: number): Model
 	local randomObject = Random.new(seed)
 	local model = Instance.new("Model")
-	model.Name = "DesertRock"
+	model.Name = HttpService:GenerateGUID(false)
 
 	local stoneCount = if variantIndex % 2 == 0 then 2 else 3
-	for stoneIndex = 1, stoneCount do
+	for _ = 1, stoneCount do
 		local rock = Instance.new("Part")
-		rock.Name = `Rock_{stoneIndex}`
+		rock.Name = HttpService:GenerateGUID(false)
 		rock.Shape = Enum.PartType.Block
 		rock.Anchored = true
 		rock.CanCollide = false
@@ -827,12 +846,12 @@ end
 local function createSnowPileFallbackModel(variantIndex: number, seed: number): Model
 	local randomObject = Random.new(seed)
 	local model = Instance.new("Model")
-	model.Name = "SnowPile"
+	model.Name = HttpService:GenerateGUID(false)
 
 	local moundCount = math.max(1, math.min(3, variantIndex))
-	for moundIndex = 1, moundCount do
+	for _ = 1, moundCount do
 		local mound = Instance.new("Part")
-		mound.Name = `SnowPile_{moundIndex}`
+		mound.Name = HttpService:GenerateGUID(false)
 		mound.Shape = Enum.PartType.Ball
 		mound.Anchored = true
 		mound.CanCollide = false
@@ -957,15 +976,24 @@ local function buildGreedyRectangles(
 	return rectangles
 end
 
-local function styleForegroundPart(part: BasePart, tileId: number)
+local function styleForegroundPart(part: BasePart, tileId: number): boolean
 	local visualTileId = if ORE_ASSET_KEYS_BY_TILE_ID[tileId] ~= nil then STONE_TILE_ID else tileId
 	local style = TILE_VISUALS[visualTileId] or TILE_VISUALS[STONE_TILE_ID]
-	part.Name = style.name
+	part.Name = HttpService:GenerateGUID(false)
 	part.Color = style.color
 	part.Material = style.material
 	part.Transparency = style.transparency
 	part.CastShadow = false
 	applyTileStudSurfaces(part)
+	if shouldUseSmoothTextureSurfaces(tileId) then
+		assignCreatedTileMaterial(part, visualTileId)
+		applyTileSmoothSurfaces(part)
+		return false
+	end
+	if assignCreatedTileMaterial(part, visualTileId) then
+		return true
+	end
+	return false
 end
 
 local function resolveGrassTextureDefinition(tileId: number): GrassTextureDefinition?
@@ -1054,6 +1082,74 @@ local function resolveGrassTextureScale(face: Enum.NormalId, tileSize: number, t
 	return tileDepth, tileSize
 end
 
+local function resolveTextureColorAsset(definitionRaw: any): string?
+	if typeof(definitionRaw) == "string" then
+		return if definitionRaw ~= "" then definitionRaw else nil
+	end
+	if typeof(definitionRaw) ~= "table" then
+		return nil
+	end
+
+	local colorAsset = definitionRaw.color
+		or definitionRaw.ColorMapContent
+		or definitionRaw.texture
+		or definitionRaw.Texture
+	if typeof(colorAsset) == "string" and colorAsset ~= "" then
+		return colorAsset
+	end
+
+	return nil
+end
+
+local function resolveTextureNormalAsset(definitionRaw: any): string?
+	if typeof(definitionRaw) ~= "table" then
+		return nil
+	end
+
+	local normalAsset = definitionRaw.normal or definitionRaw.NormalMapContent or definitionRaw.normalMap
+	if typeof(normalAsset) == "string" and normalAsset ~= "" then
+		return normalAsset
+	end
+
+	return nil
+end
+
+local function assignTextureContent(texture: Texture, colorAsset: string, normalAsset: string?)
+	texture.Texture = colorAsset
+	pcall(function()
+		(texture :: any).ColorMapContent = colorAsset
+	end)
+	if normalAsset ~= nil then
+		pcall(function()
+			(texture :: any).NormalMapContent = normalAsset
+		end)
+	end
+end
+
+local function createGrassTexture(
+	part: BasePart,
+	face: Enum.NormalId,
+	definitionRaw: any,
+	tileSize: number,
+	tileDepth: number,
+	tint: Color3
+)
+	local colorAsset = resolveTextureColorAsset(definitionRaw)
+	if colorAsset == nil then
+		return
+	end
+
+	local studsPerTileU, studsPerTileV = resolveGrassTextureScale(face, tileSize, tileDepth)
+	local texture = Instance.new("Texture")
+	texture.Name = GRASS_TEXTURE_NAME
+	texture.Face = face
+	assignTextureContent(texture, colorAsset, resolveTextureNormalAsset(definitionRaw))
+	texture.Color3 = tint
+	texture.StudsPerTileU = studsPerTileU
+	texture.StudsPerTileV = studsPerTileV
+	texture.Parent = part
+end
+
 local function applyGrassTextures(
 	part: BasePart,
 	tileId: number,
@@ -1071,32 +1167,14 @@ local function applyGrassTextures(
 	local safeTileSize = math.max(0.01, tileSize)
 	local safeTileDepth = math.max(0.01, tileDepth)
 	local tint = if textureTint ~= nil then textureTint else Color3.new(1, 1, 1)
-	if typeof(textureDefinition.top) == "string" and textureDefinition.top ~= "" then
-		local studsPerTileU, studsPerTileV = resolveGrassTextureScale(Enum.NormalId.Top, safeTileSize, safeTileDepth)
-		local topTexture = Instance.new("Texture")
-		topTexture.Name = GRASS_TEXTURE_NAME
-		topTexture.Face = Enum.NormalId.Top
-		topTexture.Texture = textureDefinition.top
-		topTexture.Color3 = tint
-		topTexture.StudsPerTileU = studsPerTileU
-		topTexture.StudsPerTileV = studsPerTileV
-		topTexture.Parent = part
-	end
+	createGrassTexture(part, Enum.NormalId.Top, textureDefinition.top, safeTileSize, safeTileDepth, tint)
 
-	if typeof(textureDefinition.side) ~= "string" or textureDefinition.side == "" then
+	if resolveTextureColorAsset(textureDefinition.side) == nil then
 		return
 	end
 
 	for _, face in GRASS_SIDE_TEXTURE_FACES do
-		local studsPerTileU, studsPerTileV = resolveGrassTextureScale(face, safeTileSize, safeTileDepth)
-		local sideTexture = Instance.new("Texture")
-		sideTexture.Name = GRASS_TEXTURE_NAME
-		sideTexture.Face = face
-		sideTexture.Texture = textureDefinition.side
-		sideTexture.Color3 = tint
-		sideTexture.StudsPerTileU = studsPerTileU
-		sideTexture.StudsPerTileV = studsPerTileV
-		sideTexture.Parent = part
+		createGrassTexture(part, face, textureDefinition.side, safeTileSize, safeTileDepth, tint)
 	end
 end
 
@@ -1105,16 +1183,25 @@ local function resolveBackgroundDarkenAlpha(layerIndex: number, layerCount: numb
 	return 0.28 + alpha * 0.26
 end
 
-local function styleBackgroundPart(part: BasePart, tileId: number, layerIndex: number, layerCount: number)
+local function styleBackgroundPart(part: BasePart, tileId: number, layerIndex: number, layerCount: number): boolean
 	local style = TILE_VISUALS[tileId] or TILE_VISUALS[3]
 	local darkenAlpha = resolveBackgroundDarkenAlpha(layerIndex, layerCount)
 	local backgroundColor = style.color:Lerp(Color3.new(0, 0, 0), darkenAlpha)
-	part.Name = `{style.name}Background_{layerIndex}`
+	part.Name = HttpService:GenerateGUID(false)
 	part.Color = backgroundColor
 	part.Material = style.material
 	part.Transparency = 0
 	part.CastShadow = false
 	applyTileStudSurfaces(part)
+	if shouldUseSmoothTextureSurfaces(tileId) then
+		assignCreatedTileMaterial(part, tileId)
+		applyTileSmoothSurfaces(part)
+		return false
+	end
+	if assignCreatedTileMaterial(part, tileId) then
+		return true
+	end
+	return false
 end
 
 local function sanitizeTileCoordinate(valueRaw: any): number?
@@ -1158,15 +1245,182 @@ function WorldGenerationServiceClient.ResolveChunksFolder(self: WorldGenerationS
 
 	local existing = worldFolder:FindFirstChild(CHUNKS_FOLDER_NAME)
 	if existing ~= nil and existing:IsA("Folder") then
-		self.chunksFolder = existing
-		return existing
+		local folder = WorkspaceFolders.manageFolder(existing, worldFolder) or existing
+		self.chunksFolder = folder
+		return folder
+	end
+
+	if self.chunksFolder ~= nil and self.chunksFolder.Parent == nil then
+		local folder = WorkspaceFolders.manageFolder(self.chunksFolder, worldFolder) or self.chunksFolder
+		self.chunksFolder = folder
+		return folder
 	end
 
 	local folder = Instance.new("Folder")
 	folder.Name = CHUNKS_FOLDER_NAME
 	folder.Parent = worldFolder
+	WorkspaceFolders.manageFolder(folder, worldFolder)
 	self.chunksFolder = folder
 	return folder
+end
+
+local function getOrCreateChildFolder(parent: Instance, folderName: string): Folder
+	local existing = parent:FindFirstChild(folderName)
+	if existing ~= nil and existing:IsA("Folder") then
+		return WorkspaceFolders.manageFolder(existing, parent) or existing
+	end
+	if existing ~= nil then
+		existing:Destroy()
+	end
+
+	local folder = Instance.new("Folder")
+	folder.Name = folderName
+	folder.Parent = parent
+	return WorkspaceFolders.manageFolder(folder, parent) or folder
+end
+
+local function destroyFolderIfEmpty(folder: Folder?)
+	if folder ~= nil and folder.Parent ~= nil and #folder:GetChildren() <= 0 then
+		folder:Destroy()
+	end
+end
+
+local function destroyFolderAndParentIfEmpty(folder: Folder?)
+	if folder == nil or folder.Parent == nil then
+		return
+	end
+	local parent = folder.Parent
+	destroyFolderIfEmpty(folder)
+	if parent:IsA("Folder") then
+		destroyFolderIfEmpty(parent)
+	end
+end
+
+local function hasVisibleChunkChildren(model: Model): boolean
+	for _, child in model:GetChildren() do
+		if child:IsA("Folder") and #child:GetChildren() <= 0 then
+			continue
+		end
+		return true
+	end
+	return false
+end
+
+local function pruneEmptyChildFolders(instance: Instance)
+	for _, child in instance:GetChildren() do
+		if child:IsA("Folder") then
+			destroyFolderIfEmpty(child)
+		end
+	end
+end
+
+local function getOrCreateTerrainHoverFolder(visual: ChunkVisualRuntime): Folder
+	local folder = visual.terrainHoverFolder
+	if folder ~= nil and folder.Parent ~= nil then
+		return folder
+	end
+
+	folder = getOrCreateChildFolder(visual.model, TERRAIN_HOVER_FOLDER_NAME)
+	visual.terrainHoverFolder = folder
+	return folder
+end
+
+local function getOrCreateChunkLayerModel(
+	parent: Instance,
+	snapshot: ChunkSnapshot,
+	skipWorldAnimation: boolean
+): Model
+	local existing = parent:FindFirstChild(snapshot.key)
+	if existing ~= nil and existing:IsA("Model") then
+		existing:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, skipWorldAnimation)
+		return existing
+	end
+	if existing ~= nil then
+		existing:Destroy()
+	end
+
+	local model = Instance.new("Model")
+	model.Name = snapshot.key
+	model:SetAttribute("ChunkX", snapshot.chunkX)
+	model:SetAttribute("ChunkY", snapshot.chunkY)
+	model:SetAttribute("ChunkKey", snapshot.key)
+	model:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, skipWorldAnimation)
+	TagBinder.applyTag(model, TagBinder.Tags.Chunk, CollectionService)
+	model.Parent = parent
+	return model
+end
+
+local function prepareChunkLayerModel(model: Model, snapshot: ChunkSnapshot, skipWorldAnimation: boolean)
+	model.Name = snapshot.key
+	model:SetAttribute("ChunkX", snapshot.chunkX)
+	model:SetAttribute("ChunkY", snapshot.chunkY)
+	model:SetAttribute("ChunkKey", snapshot.key)
+	model:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, skipWorldAnimation)
+	TagBinder.applyTag(model, TagBinder.Tags.Chunk, CollectionService)
+end
+
+function WorldGenerationServiceClient.ResolveSharedTerrainFolder(self: WorldGenerationServiceClient): Folder?
+	local chunksFolder = self:resolveChunksFolder()
+	if chunksFolder == nil then
+		return nil
+	end
+
+	local legacyBackgroundFolder = chunksFolder:FindFirstChild(LEGACY_BACKGROUND_DEPTH_FOLDER_NAME)
+	if legacyBackgroundFolder ~= nil then
+		legacyBackgroundFolder:Destroy()
+	end
+
+	return getOrCreateChildFolder(chunksFolder, TERRAIN_FOLDER_NAME)
+end
+
+function WorldGenerationServiceClient.ResolveForegroundTerrainFolder(self: WorldGenerationServiceClient): Folder?
+	local terrainFolder = self:resolveSharedTerrainFolder()
+	if terrainFolder == nil then
+		return nil
+	end
+
+	local foregroundFolder = getOrCreateChildFolder(terrainFolder, FOREGROUND_TERRAIN_LAYER_FOLDER_NAME)
+	local chunksFolder = terrainFolder.Parent
+	if chunksFolder ~= nil then
+		for _, child in chunksFolder:GetChildren() do
+			if child:IsA("Model") and typeof(child:GetAttribute("ChunkKey")) == "string" then
+				local tileParts = {}
+				for _, grandchild in child:GetChildren() do
+					if grandchild:IsA("BasePart") then
+						tileParts[#tileParts + 1] = grandchild
+					end
+				end
+				if #tileParts > 0 then
+					local tilesFolder = getOrCreateChildFolder(child, TILES_FOLDER_NAME)
+					for _, part in tileParts do
+						part.Parent = tilesFolder
+					end
+				end
+				child.Parent = foregroundFolder
+			end
+		end
+	end
+	for _, child in terrainFolder:GetChildren() do
+		if child:IsA("BasePart") then
+			child.Parent = foregroundFolder
+		end
+	end
+
+	return foregroundFolder
+end
+
+function WorldGenerationServiceClient.ResolveBackgroundLayerFolder(
+	self: WorldGenerationServiceClient,
+	layerIndex: number
+): Folder?
+	local terrainFolder = self:resolveSharedTerrainFolder()
+	if terrainFolder == nil then
+		return nil
+	end
+
+	local layerFolder = getOrCreateChildFolder(terrainFolder, tostring(layerIndex))
+	TagBinder.applyTag(layerFolder, TagBinder.Tags.Layer, CollectionService)
+	return layerFolder
 end
 
 function WorldGenerationServiceClient.RefreshWorldAttributes(self: WorldGenerationServiceClient)
@@ -1218,9 +1472,11 @@ function WorldGenerationServiceClient.CreateForegroundRectPart(
 	part.CanQuery = false
 	part.CanTouch = false
 	part.Size = Vector3.new(tileDepth, tileSize * height, tileSize * width)
-	styleForegroundPart(part, tileId)
+	local hasTileMaterial = styleForegroundPart(part, tileId)
 	applyOreTextures(part, tileId, tileSize, tileDepth)
-	applyGrassTextures(part, tileId, tileSize, tileDepth)
+	if not hasTileMaterial then
+		applyGrassTextures(part, tileId, tileSize, tileDepth)
+	end
 
 	local centerTileX = tileMinX + width * 0.5
 	local centerTileY = tileMinY + height * 0.5
@@ -1246,6 +1502,14 @@ function WorldGenerationServiceClient.ClearHoveredTerrainTileRuntime(self: World
 
 	if activeRuntime.originalPart.Parent ~= nil then
 		activeRuntime.originalPart.Transparency = activeRuntime.originalPartTransparency
+	end
+
+	local visual = self.chunkVisuals[activeRuntime.chunkKey]
+	if visual ~= nil then
+		destroyFolderIfEmpty(visual.terrainHoverFolder)
+		if visual.terrainHoverFolder ~= nil and visual.terrainHoverFolder.Parent == nil then
+			visual.terrainHoverFolder = nil
+		end
 	end
 
 	self.hoveredTerrainRuntime = nil
@@ -1305,6 +1569,7 @@ function WorldGenerationServiceClient.ApplyHoveredTerrainTileRuntime(self: World
 	local originalPartTransparency = rectRuntime.part.Transparency
 
 	if rectRuntime.width > 1 or rectRuntime.height > 1 then
+		local terrainHoverFolder = getOrCreateTerrainHoverFolder(visual)
 		rectRuntime.part.Transparency = 1
 
 		local localHoverX = tileX - rectRuntime.tileMinX
@@ -1348,12 +1613,12 @@ function WorldGenerationServiceClient.ApplyHoveredTerrainTileRuntime(self: World
 				subRect.height,
 				rectRuntime.tileId
 			)
-			replacementPart.Parent = visual.terrainHoverFolder
+			replacementPart.Parent = terrainHoverFolder
 			table.insert(replacementParts, replacementPart)
 		end
 
 		hoverPart = self:createForegroundRectPart(tileX, tileY, 1, 1, rectRuntime.tileId)
-		hoverPart.Parent = visual.terrainHoverFolder
+		hoverPart.Parent = terrainHoverFolder
 	end
 
 	local highlight = createTerrainHoverHighlight(hoverPart)
@@ -1463,7 +1728,141 @@ function WorldGenerationServiceClient.DestroyChunkVisual(self: WorldGenerationSe
 
 	self.chunkVisuals[chunkKey] = nil
 	self.totalVisualPartCount = math.max(0, self.totalVisualPartCount - visual.partCount)
-	visual.model:Destroy()
+	local terrainLayerFolder = if visual.terrainLayerModel ~= nil then visual.terrainLayerModel.Parent else nil
+	local terrainFolder = if terrainLayerFolder ~= nil then terrainLayerFolder.Parent else nil
+	for _, part in visual.terrainParts do
+		if part.Parent ~= nil then
+			part:Destroy()
+		end
+	end
+	for _, backgroundParts in visual.backgroundPartsByLayer do
+		for _, part in backgroundParts do
+			if part.Parent ~= nil then
+				part:Destroy()
+			end
+		end
+	end
+	local destroyedTerrainLayerModel = false
+	if visual.terrainLayerModel ~= nil and visual.terrainLayerModel.Parent ~= nil then
+		visual.terrainLayerModel:Destroy()
+		destroyedTerrainLayerModel = true
+	end
+	for _, layerModel in visual.backgroundLayerModelsByLayer do
+		local layerFolder = layerModel.Parent
+		if layerFolder ~= nil then
+			layerModel:Destroy()
+			if layerFolder:IsA("Folder") then
+				destroyFolderAndParentIfEmpty(layerFolder)
+			end
+		end
+	end
+	if visual.model ~= visual.terrainLayerModel or not destroyedTerrainLayerModel then
+		visual.model:Destroy()
+	end
+	if terrainLayerFolder ~= nil and terrainLayerFolder:IsA("Folder") then
+		destroyFolderIfEmpty(terrainLayerFolder)
+	end
+	if terrainFolder ~= nil and terrainFolder:IsA("Folder") then
+		destroyFolderIfEmpty(terrainFolder)
+	end
+end
+
+function WorldGenerationServiceClient.DestroyUncommittedChunkVisual(
+	_self: WorldGenerationServiceClient,
+	model: Model,
+	terrainParts: { BasePart },
+	backgroundPartsByLayer: { { BasePart } }
+)
+	for _, part in terrainParts do
+		if part.Parent ~= nil then
+			part:Destroy()
+		end
+	end
+	for _, backgroundParts in backgroundPartsByLayer do
+		for _, part in backgroundParts do
+			if part.Parent ~= nil then
+				part:Destroy()
+			end
+		end
+	end
+	model:Destroy()
+end
+
+function WorldGenerationServiceClient.CommitChunkVisualParts(
+	self: WorldGenerationServiceClient,
+	snapshot: ChunkSnapshot,
+	foregroundModel: Model,
+	terrainParts: { BasePart },
+	backgroundPartsByLayer: { { BasePart } },
+	skipWorldAnimation: boolean
+): (boolean, Model, { Model })
+	local backgroundLayerFolders = {} :: { Folder }
+	for layerIndex, backgroundParts in backgroundPartsByLayer do
+		if #backgroundParts <= 0 then
+			continue
+		end
+		local layerFolder = self:resolveBackgroundLayerFolder(layerIndex)
+		if layerFolder == nil then
+			return false, foregroundModel, {}
+		end
+		backgroundLayerFolders[layerIndex] = layerFolder
+	end
+
+	prepareChunkLayerModel(foregroundModel, snapshot, skipWorldAnimation)
+	pruneEmptyChildFolders(foregroundModel)
+	local foregroundHasContent = #terrainParts > 0 or hasVisibleChunkChildren(foregroundModel)
+	if foregroundHasContent then
+		local foregroundFolder = self:resolveForegroundTerrainFolder()
+		if foregroundFolder == nil then
+			return false, foregroundModel, {}
+		end
+		local existingForeground = foregroundFolder:FindFirstChild(snapshot.key)
+		if existingForeground ~= nil and existingForeground ~= foregroundModel then
+			existingForeground:Destroy()
+		end
+		foregroundModel.Parent = foregroundFolder
+	else
+		local previousForegroundFolder = foregroundModel.Parent
+		foregroundModel.Parent = nil
+		if previousForegroundFolder ~= nil and previousForegroundFolder:IsA("Folder") then
+			destroyFolderAndParentIfEmpty(previousForegroundFolder)
+		end
+	end
+
+	local terrainTilesFolder: Folder? = nil
+	if #terrainParts > 0 then
+		terrainTilesFolder = getOrCreateChildFolder(foregroundModel, TILES_FOLDER_NAME)
+	end
+	local backgroundLayerModelsByLayer = {} :: { Model }
+	for layerIndex, backgroundParts in backgroundPartsByLayer do
+		if #backgroundParts <= 0 then
+			continue
+		end
+
+		local layerFolder = backgroundLayerFolders[layerIndex]
+		if layerFolder ~= nil then
+			backgroundLayerModelsByLayer[layerIndex] =
+				getOrCreateChunkLayerModel(layerFolder, snapshot, skipWorldAnimation)
+		end
+	end
+
+	if terrainTilesFolder ~= nil then
+		for _, part in terrainParts do
+			part.Parent = terrainTilesFolder
+		end
+	end
+	for layerIndex, backgroundParts in backgroundPartsByLayer do
+		local layerModel = backgroundLayerModelsByLayer[layerIndex]
+		if layerModel == nil then
+			continue
+		end
+		local tilesFolder = getOrCreateChildFolder(layerModel, TILES_FOLDER_NAME)
+		for _, part in backgroundParts do
+			part.Parent = tilesFolder
+		end
+	end
+
+	return true, foregroundModel, backgroundLayerModelsByLayer
 end
 
 function WorldGenerationServiceClient.ReplaceChunkVisualContents(
@@ -1832,13 +2231,14 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 ): (
 	Model,
 	number,
-	Folder,
-	Folder,
+	Folder?,
+	{ BasePart },
+	{ { BasePart } },
 	{ TerrainRectRuntime },
 	{ number }
 )
 	local model = Instance.new("Model")
-	model.Name = `Chunk_{snapshot.chunkX}_{snapshot.chunkY}`
+	model.Name = snapshot.key
 	model:SetAttribute("ChunkX", snapshot.chunkX)
 	model:SetAttribute("ChunkY", snapshot.chunkY)
 	model:SetAttribute("ChunkKey", snapshot.key)
@@ -1847,31 +2247,13 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 	model:SetAttribute("DominantBiomeType", snapshot.dominantBiomeType)
 	model:SetAttribute("IsCorruptionChunk", snapshot.dominantBiomeType == BIOME_TYPE_CORRUPTION)
 
-	local terrainFolder = Instance.new("Folder")
-	terrainFolder.Name = "Terrain"
-	terrainFolder.Parent = model
-
-	local terrainHoverFolder = Instance.new("Folder")
-	terrainHoverFolder.Name = TERRAIN_HOVER_FOLDER_NAME
-	terrainHoverFolder.Parent = model
-
-	local backgroundFolder = Instance.new("Folder")
-	backgroundFolder.Name = "BackgroundDepth"
-	backgroundFolder.Parent = model
-	TagBinder.applyTag(backgroundFolder, TagBinder.Tags.Layer, CollectionService)
-
-	local treesFolder = Instance.new("Folder")
-	treesFolder.Name = "Trees"
-	treesFolder.Parent = model
-
-	local propsFolder = Instance.new("Folder")
-	propsFolder.Name = "Props"
-	propsFolder.Parent = model
 	TagBinder.applyTag(model, TagBinder.Tags.Chunk, CollectionService)
 
 	local tileDepth = self.state.tileDepth
 	local tileSize = self.state.tileSize
 	local partCount = 0
+	local terrainParts = {} :: { BasePart }
+	local backgroundPartsByLayer = {} :: { { BasePart } }
 	local terrainRectRuntimes = {} :: { TerrainRectRuntime }
 	local terrainRectByLocalTileIndex = Sift.Array.create(snapshot.width * snapshot.height, 0) :: { number }
 
@@ -1893,7 +2275,7 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 		local absoluteTileMinY = snapshot.tileMinY + rect.y
 		local part =
 			self:createForegroundRectPart(absoluteTileMinX, absoluteTileMinY, rect.width, rect.height, rect.value)
-		part.Parent = terrainFolder
+		terrainParts[#terrainParts + 1] = part
 		partCount += 1
 
 		local runtimeRectIndex = #terrainRectRuntimes + 1
@@ -1922,6 +2304,8 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 		if partCount >= MAX_VISUAL_PARTS_PER_CHUNK then
 			break
 		end
+		local backgroundParts = {} :: { BasePart }
+		backgroundPartsByLayer[layerListIndex] = backgroundParts
 
 		local layerData = snapshot.backgroundLayers[layerListIndex]
 		local layerRects = buildGreedyRectangles(
@@ -1946,19 +2330,22 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 			part.CanQuery = false
 			part.CanTouch = false
 			part.Size = Vector3.new(tileDepth, tileSize * rect.height, tileSize * rect.width)
-			styleBackgroundPart(part, rect.value, layerListIndex, layerCount)
-			applyGrassTextures(
-				part,
-				rect.value,
-				tileSize,
-				tileDepth,
-				Color3.new(1, 1, 1):Lerp(Color3.new(0, 0, 0), resolveBackgroundDarkenAlpha(layerListIndex, layerCount))
-			)
+			local hasTileMaterial = styleBackgroundPart(part, rect.value, layerListIndex, layerCount)
+			if not hasTileMaterial then
+				applyGrassTextures(
+					part,
+					rect.value,
+					tileSize,
+					tileDepth,
+					Color3.new(1, 1, 1)
+						:Lerp(Color3.new(0, 0, 0), resolveBackgroundDarkenAlpha(layerListIndex, layerCount))
+				)
+			end
 
 			local centerTileX = layerData.tileMinX + rect.x + rect.width * 0.5
 			local centerTileY = layerData.tileMinY + rect.y + rect.height * 0.5
 			part.CFrame = CFrame.new(self:computeTileCenterPosition(centerTileX, centerTileY, planeOffset))
-			part.Parent = backgroundFolder
+			backgroundParts[#backgroundParts + 1] = part
 			partCount += 1
 
 			if rectIndex % 128 == 0 then
@@ -1968,6 +2355,7 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 	end
 
 	local treeCount = 0
+	local treesFolder: Folder? = nil
 	local furthestBackgroundOffset = -math.max(1, #snapshot.backgroundLayers) * tileDepth
 	local treePlaneOffset = furthestBackgroundOffset * TREE_PLANE_DEPTH_ALPHA
 	local treeVariantDefinitions = self.treeVariantDefinitions
@@ -1990,6 +2378,7 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 		treeConfig.ModelName = `Tree_{snapshot.chunkX}_{snapshot.chunkY}_{treeCount + 1}`
 
 		local proceduralTree = ProceduralTree.new(treeConfig)
+		treesFolder = treesFolder or getOrCreateChildFolder(model, "Trees")
 		local generatedTreeModel = proceduralTree:generate(treesFolder, CFrame.new(position))
 		generatedTreeModel:SetAttribute(
 			"BuildTreeId",
@@ -2008,6 +2397,10 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 		local generatedPartCount = countBaseParts(generatedTreeModel)
 		if partCount + generatedPartCount > MAX_VISUAL_PARTS_PER_CHUNK then
 			generatedTreeModel:Destroy()
+			destroyFolderIfEmpty(treesFolder)
+			if treesFolder ~= nil and treesFolder.Parent == nil then
+				treesFolder = nil
+			end
 			break
 		end
 
@@ -2016,6 +2409,7 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 	end
 
 	local propCount = 0
+	local propsFolder: Folder? = nil
 	for _, propSpawnData in snapshot.props do
 		if partCount >= MAX_VISUAL_PARTS_PER_CHUNK then
 			break
@@ -2046,6 +2440,7 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 				then Color3.fromRGB(90, 147, 78)
 				else Color3.fromRGB(82, 136, 74)
 			local cactusComplexity = math.clamp(propSpawnData.variantIndex, 1, 4)
+			propsFolder = propsFolder or getOrCreateChildFolder(model, "Props")
 			local cactusGenerator = ProceduralCactus.new({
 				Seed = propSpawnData.seed,
 				Parent = propsFolder,
@@ -2119,17 +2514,28 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 
 		if partCount + generatedPartCount > MAX_VISUAL_PARTS_PER_CHUNK then
 			propInstance:Destroy()
+			destroyFolderIfEmpty(propsFolder)
+			if propsFolder ~= nil and propsFolder.Parent == nil then
+				propsFolder = nil
+			end
 			break
 		end
 
 		partCount += generatedPartCount
 		propCount += 1
+		propsFolder = propsFolder or getOrCreateChildFolder(model, "Props")
 		propInstance.Parent = propsFolder
 	end
 
 	model:SetAttribute("TreeCount", treeCount)
 	model:SetAttribute("PropCount", propCount)
-	return model, partCount, terrainFolder, terrainHoverFolder, terrainRectRuntimes, terrainRectByLocalTileIndex
+	return model,
+		partCount,
+		nil,
+		terrainParts,
+		backgroundPartsByLayer,
+		terrainRectRuntimes,
+		terrainRectByLocalTileIndex
 end
 
 function WorldGenerationServiceClient.ProcessChunkRebuildQueue(self: WorldGenerationServiceClient)
@@ -2179,13 +2585,13 @@ function WorldGenerationServiceClient.ProcessChunkRebuildQueue(self: WorldGenera
 			continue
 		end
 
-		local model, partCount, terrainFolder, terrainHoverFolder, terrainRects, terrainRectByLocalTileIndex =
+		local model, partCount, terrainHoverFolder, terrainParts, backgroundPartsByLayer, terrainRects, terrainRectByLocalTileIndex =
 			self:buildChunkVisualModel(snapshot)
 		local nextTreeSignature = computeTreeSignature(snapshot)
 		local existingPartCount = if existing ~= nil then existing.partCount else 0
 		local projectedPartTotal = self.totalVisualPartCount - existingPartCount + partCount
 		if projectedPartTotal > MAX_VISUAL_PARTS_TOTAL then
-			model:Destroy()
+			self:destroyUncommittedChunkVisual(model, terrainParts, backgroundPartsByLayer)
 			continue
 		end
 
@@ -2194,6 +2600,34 @@ function WorldGenerationServiceClient.ProcessChunkRebuildQueue(self: WorldGenera
 		if existing ~= nil then
 			if self.hoveredTerrainChunkKey == chunkKey then
 				self:clearHoveredTerrainTileRuntime()
+			end
+			for _, part in existing.terrainParts do
+				if part.Parent ~= nil then
+					part:Destroy()
+				end
+			end
+			for _, backgroundParts in existing.backgroundPartsByLayer do
+				for _, part in backgroundParts do
+					if part.Parent ~= nil then
+						part:Destroy()
+					end
+				end
+			end
+			if
+				existing.terrainHoverFolder ~= nil
+				and existing.terrainHoverFolder ~= terrainHoverFolder
+				and existing.terrainHoverFolder.Parent ~= nil
+			then
+				existing.terrainHoverFolder:Destroy()
+			end
+			for _, layerModel in existing.backgroundLayerModelsByLayer do
+				local layerFolder = layerModel.Parent
+				if layerFolder ~= nil then
+					layerModel:Destroy()
+					if layerFolder:IsA("Folder") then
+						destroyFolderAndParentIfEmpty(layerFolder)
+					end
+				end
 			end
 			shouldSkipChunkAnimation = true
 			local preservedChildNames = {} :: { [string]: boolean }
@@ -2204,9 +2638,17 @@ function WorldGenerationServiceClient.ProcessChunkRebuildQueue(self: WorldGenera
 			visualModel = existing.model
 		end
 
-		visualModel:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, shouldSkipChunkAnimation)
-		if visualModel.Parent == nil then
-			visualModel.Parent = chunksFolder
+		local didCommit, terrainLayerModel, backgroundLayerModelsByLayer =
+			self:commitChunkVisualParts(snapshot, visualModel, terrainParts, backgroundPartsByLayer, shouldSkipChunkAnimation)
+		if not didCommit then
+			if existing == nil then
+				self:destroyUncommittedChunkVisual(model, terrainParts, backgroundPartsByLayer)
+			end
+			continue
+		end
+
+		for _, layerModel in backgroundLayerModelsByLayer do
+			layerModel:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, shouldSkipChunkAnimation)
 		end
 
 		self.chunkVisuals[chunkKey] = {
@@ -2215,8 +2657,11 @@ function WorldGenerationServiceClient.ProcessChunkRebuildQueue(self: WorldGenera
 			revision = snapshot.revision,
 			builtAt = now,
 			treeSignature = nextTreeSignature,
-			terrainFolder = terrainFolder,
 			terrainHoverFolder = terrainHoverFolder,
+			terrainLayerModel = terrainLayerModel,
+			backgroundLayerModelsByLayer = backgroundLayerModelsByLayer,
+			terrainParts = terrainParts,
+			backgroundPartsByLayer = backgroundPartsByLayer,
 			terrainRects = terrainRects,
 			terrainRectByLocalTileIndex = terrainRectByLocalTileIndex,
 		}
@@ -2525,6 +2970,10 @@ end
 
 WorldGenerationServiceClient.resolveWorldFolder = WorldGenerationServiceClient.ResolveWorldFolder
 WorldGenerationServiceClient.resolveChunksFolder = WorldGenerationServiceClient.ResolveChunksFolder
+WorldGenerationServiceClient.resolveSharedTerrainFolder = WorldGenerationServiceClient.ResolveSharedTerrainFolder
+WorldGenerationServiceClient.resolveForegroundTerrainFolder =
+	WorldGenerationServiceClient.ResolveForegroundTerrainFolder
+WorldGenerationServiceClient.resolveBackgroundLayerFolder = WorldGenerationServiceClient.ResolveBackgroundLayerFolder
 WorldGenerationServiceClient.refreshWorldAttributes = WorldGenerationServiceClient.RefreshWorldAttributes
 WorldGenerationServiceClient.computeTileCenterPosition = WorldGenerationServiceClient.ComputeTileCenterPosition
 WorldGenerationServiceClient.createForegroundRectPart = WorldGenerationServiceClient.CreateForegroundRectPart
@@ -2538,6 +2987,8 @@ WorldGenerationServiceClient.clearHoveredTerrainTile = WorldGenerationServiceCli
 WorldGenerationServiceClient.enqueueChunkRebuild = WorldGenerationServiceClient.EnqueueChunkRebuild
 WorldGenerationServiceClient.dequeueChunkRebuild = WorldGenerationServiceClient.DequeueChunkRebuild
 WorldGenerationServiceClient.destroyChunkVisual = WorldGenerationServiceClient.DestroyChunkVisual
+WorldGenerationServiceClient.destroyUncommittedChunkVisual = WorldGenerationServiceClient.DestroyUncommittedChunkVisual
+WorldGenerationServiceClient.commitChunkVisualParts = WorldGenerationServiceClient.CommitChunkVisualParts
 WorldGenerationServiceClient.replaceChunkVisualContents = WorldGenerationServiceClient.ReplaceChunkVisualContents
 WorldGenerationServiceClient.suppressChunkAnimationForChunkKey =
 	WorldGenerationServiceClient.SuppressChunkAnimationForChunkKey

@@ -1,4 +1,5 @@
 --!strict
+local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
@@ -78,7 +79,7 @@ end
 
 local function createFallbackSlimeBloodEffect(): BasePart
 	local part = Instance.new("Part")
-	part.Name = "SlimeBlood"
+	part.Name = HttpService:GenerateGUID(false)
 	part.Size = Vector3.new(0.2, 0.2, 0.2)
 	part.Transparency = 1
 	part.Color = FALLBACK_SLIME_BLOOD_COLOR
@@ -88,7 +89,7 @@ local function createFallbackSlimeBloodEffect(): BasePart
 	part.CanQuery = false
 
 	local emitter = Instance.new("ParticleEmitter")
-	emitter.Name = "FallbackSlimeBloodEmitter"
+	emitter.Name = HttpService:GenerateGUID(false)
 	emitter.Enabled = false
 	emitter.Rate = 0
 	emitter.Color = ColorSequence.new(FALLBACK_SLIME_BLOOD_COLOR)
@@ -295,7 +296,6 @@ function GoreServiceClient.EmitSlimeBlood(
 
 	local template = resolveSlimeBloodEffectTemplate()
 	local bloodEffect = (if template ~= nil then template:Clone() else createFallbackSlimeBloodEffect()) :: BasePart
-	bloodEffect.Name = "SlimeBlood"
 	bloodEffect.Anchored = true
 	bloodEffect.CanCollide = false
 	bloodEffect.CanTouch = false

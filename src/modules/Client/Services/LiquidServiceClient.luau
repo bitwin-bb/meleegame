@@ -1,6 +1,7 @@
 --!strict
 
 local CollectionService = game:GetService("CollectionService")
+local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
@@ -158,7 +159,7 @@ end
 
 function LiquidServiceClient:CreateChunkVisual(chunkKey: string): ChunkVisual
 	local model = Instance.new("Model")
-	model.Name = `Liquid_{chunkKey}`
+	model.Name = HttpService:GenerateGUID(false)
 	model:SetAttribute("ChunkKey", chunkKey)
 	model.Parent = self.visualFolder
 	TagBinder.applyTag(model, TagBinder.Tags.Liquid, CollectionService)
@@ -598,7 +599,7 @@ function LiquidServiceClient:RebuildLayerRow(
 		local part = rowVisual.parts[descriptor.key]
 		if part == nil or part.Parent == nil then
 			part = Instance.new("Part")
-			part.Name = descriptor.key
+			part.Name = HttpService:GenerateGUID(false)
 			part.Size =
 				Vector3.new(self:getTileDepth(), 0.02, math.max(0.02, descriptor.widthTiles * self.state.tileSize))
 			part.Transparency = 1
@@ -741,7 +742,8 @@ function LiquidServiceClient:OnChunkSnapshot(snapshotRaw: any)
 	self.worldDependencySignatureByChunk[snapshot.key] = self:computeWorldDependencySignature(snapshot.key)
 	self:updateChunkVisualDebug(snapshot.key, {
 		LastUpdateKind = "snapshot",
-		LastServerUpdatedAt = if typeof(snapshotRaw) == "table" and isFiniteNumber((snapshotRaw :: any).updatedAt)
+		LastServerUpdatedAt = if typeof(snapshotRaw) == "table"
+				and isFiniteNumber((snapshotRaw :: any).updatedAt)
 			then (snapshotRaw :: any).updatedAt
 			else nil,
 	})
@@ -824,6 +826,11 @@ function LiquidServiceClient:OnChunkUnloaded(chunkKeyRaw: any)
 end
 
 function LiquidServiceClient:GetBurnAttachment(): Attachment?
+	local current = self.burnAttachment
+	if current ~= nil and current.Parent ~= nil then
+		return current
+	end
+
 	local character = self.localPlayer.Character
 	if character == nil then
 		return nil
@@ -832,13 +839,10 @@ function LiquidServiceClient:GetBurnAttachment(): Attachment?
 	if rootPart == nil or not rootPart:IsA("BasePart") then
 		return nil
 	end
-	local attachment = rootPart:FindFirstChild("LiquidBurnAttachment")
-	if attachment ~= nil and attachment:IsA("Attachment") then
-		return attachment
-	end
-	attachment = Instance.new("Attachment")
-	attachment.Name = "LiquidBurnAttachment"
+	local attachment = Instance.new("Attachment")
+	attachment.Name = HttpService:GenerateGUID(false)
 	attachment.Parent = rootPart
+	self.burnAttachment = attachment
 	return attachment
 end
 
@@ -849,7 +853,7 @@ function LiquidServiceClient:SetBurningVisualEnabled(enabled: boolean)
 	end
 	if self.burnEmitter == nil or self.burnEmitter.Parent ~= attachment then
 		local emitter = Instance.new("ParticleEmitter")
-		emitter.Name = "LiquidBurnEmitter"
+		emitter.Name = HttpService:GenerateGUID(false)
 		emitter.Color = ColorSequence.new(Color3.fromRGB(255, 176, 74), Color3.fromRGB(255, 77, 18))
 		emitter.Size = NumberSequence.new({
 			NumberSequenceKeypoint.new(0, 0.45),
@@ -920,9 +924,10 @@ function LiquidServiceClient:EmitSplash(liquidTypeRaw: any)
 	end
 
 	local attachment = Instance.new("Attachment")
-	attachment.Name = "LiquidSplashAttachment"
+	attachment.Name = HttpService:GenerateGUID(false)
 	attachment.Parent = rootPart
 	local emitter = Instance.new("ParticleEmitter")
+	emitter.Name = HttpService:GenerateGUID(false)
 	emitter.Rate = 0
 	emitter.Lifetime = NumberRange.new(0.25, 0.45)
 	emitter.Speed = NumberRange.new(2.5, 4.8)
@@ -1066,6 +1071,7 @@ function LiquidServiceClient:Init()
 	self.worldDependencySignatureByChunk = {} :: { [string]: string }
 	self.dependencySyncAccumulator = WORLD_DEPENDENCY_SYNC_INTERVAL
 	self.visualFolder = WorkspaceFolders.getOrCreateFolderInGame(VISUAL_FOLDER_NAME)
+	self.burnAttachment = nil :: Attachment?
 	self.burnEmitter = nil :: ParticleEmitter?
 	self.binders = NevermoreSupport.getService(ClientBinderSupport)
 	self:refreshWaterSplashSoundAssetIds()
@@ -1138,6 +1144,9 @@ function LiquidServiceClient:Destroy()
 	if self.burnEmitter ~= nil and self.burnEmitter.Parent ~= nil then
 		self.burnEmitter:Destroy()
 	end
+	if self.burnAttachment ~= nil and self.burnAttachment.Parent ~= nil then
+		self.burnAttachment:Destroy()
+	end
 end
 
 LiquidServiceClient.createChunkSnapshot = LiquidServiceClient.CreateChunkSnapshot
@@ -1205,6 +1214,7 @@ type LiquidServiceClient = typeof(LiquidServiceClient) & {
 	waterSplashSoundAssetIds: { string },
 	dependencySyncAccumulator: number,
 	visualFolder: Folder,
+	burnAttachment: Attachment?,
 	burnEmitter: ParticleEmitter?,
 }
 

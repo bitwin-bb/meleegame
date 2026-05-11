@@ -15,6 +15,7 @@ local GET_SNAPSHOT_NAME = "GetSnapshot"
 local CLIENT_SCRIPT_FOLDER_NAME = "AquariaBackupScripts"
 local CLIENT_BOOT_SCRIPT_NAME = "ClientMain"
 local NETWORK_REMOTE_PREFIX = "AQUARIA_NETWORKER_BLINK"
+local PART_CACHE_FOLDER_NAME = "Part Cache"
 
 local REPLICATION_TIMEOUT_SECONDS = 60
 local NETWORK_TIMEOUT_SECONDS = 30
@@ -492,6 +493,72 @@ local function requireModule(
 	return result
 end
 
+local function resolveWorkspaceFoldersModule(context: ReplicatedContext): ModuleScript?
+	local modulesFolder = context.sharedRoot:FindFirstChild("Modules")
+	if modulesFolder == nil then
+		return nil
+	end
+	local coreFolder = modulesFolder:FindFirstChild("Core")
+	if coreFolder == nil then
+		return nil
+	end
+	local workspaceFoldersModule = coreFolder:FindFirstChild("WorkspaceFolders")
+	if workspaceFoldersModule ~= nil and workspaceFoldersModule:IsA("ModuleScript") then
+		return workspaceFoldersModule
+	end
+	return nil
+end
+
+local function adoptPartCacheFolder(context: ReplicatedContext)
+	local loosePartCacheFolder = Workspace:FindFirstChild(PART_CACHE_FOLDER_NAME)
+	if loosePartCacheFolder == nil then
+		return
+	end
+	if not loosePartCacheFolder:IsA("Folder") then
+		return
+	end
+
+	local workspaceFoldersModule = resolveWorkspaceFoldersModule(context)
+	if workspaceFoldersModule == nil then
+		recordWarning("part cache folder", "WorkspaceFolders module was not available")
+		return
+	end
+
+	local ok, workspaceFolders = pcall(require, workspaceFoldersModule)
+	if not ok or typeof(workspaceFolders) ~= "table" then
+		recordWarning("part cache folder", workspaceFolders)
+		return
+	end
+
+	local gameFolder = (workspaceFolders :: any).getOrCreateGameFolder()
+	if typeof(gameFolder) ~= "Instance" or not gameFolder:IsA("Folder") then
+		recordWarning("part cache folder", "Game folder was not available")
+		return
+	end
+
+	local existing = gameFolder:FindFirstChild(PART_CACHE_FOLDER_NAME)
+	if existing ~= nil and existing ~= loosePartCacheFolder then
+		if existing:IsA("Folder") then
+			for _, child in loosePartCacheFolder:GetChildren() do
+				child.Parent = existing
+			end
+			loosePartCacheFolder:Destroy()
+			if typeof((workspaceFolders :: any).manageFolder) == "function" then
+				(workspaceFolders :: any).manageFolder(existing, gameFolder)
+			end
+			return
+		end
+		existing:Destroy()
+	end
+
+	if typeof((workspaceFolders :: any).manageFolder) == "function" then
+		(workspaceFolders :: any).manageFolder(loosePartCacheFolder, gameFolder)
+	end
+	if #loosePartCacheFolder:GetChildren() > 0 then
+		loosePartCacheFolder.Parent = gameFolder
+	end
+end
+
 local function countDictionaryEntries(dictionaryRaw: any): number
 	if typeof(dictionaryRaw) ~= "table" then
 		return 0
@@ -898,6 +965,7 @@ local function runLoader()
 
 	waitForNetwork()
 	prewarmRuntimePackages(context, warmedModules, assetIds, assetSet)
+	adoptPartCacheFolder(context)
 
 	local criticalResults = prewarmCriticalModules(context, warmedModules, assetIds, assetSet)
 	prewarmGameModules(context, warmedModules, assetIds, assetSet)

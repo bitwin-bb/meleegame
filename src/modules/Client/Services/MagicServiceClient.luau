@@ -1,4 +1,5 @@
 --!strict
+local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -113,10 +114,9 @@ local function resolveMouseHitPosition(localPlayer: Player): Vector3?
 	return (hitOrError :: CFrame).Position
 end
 
-function MagicServiceClient.CreateVisualPart(self: MagicServiceClient, weaponIdRaw: any): BasePart
-	local weaponId = trim(weaponIdRaw)
+function MagicServiceClient.CreateVisualPart(self: MagicServiceClient, _weaponIdRaw: any): BasePart
 	local part = Instance.new("Part")
-	part.Name = ("MagicClientProjectile_%s"):format(if weaponId ~= "" then weaponId else "Unknown")
+	part.Name = HttpService:GenerateGUID(false)
 	part.Shape = Enum.PartType.Ball
 	part.Size = Vector3.new(0.45, 0.45, 0.45)
 	part.Material = Enum.Material.Neon
@@ -364,6 +364,7 @@ function MagicServiceClient.SpawnImpactFlash(self: MagicServiceClient, payloadRa
 	end
 
 	local flash = Instance.new("Part")
+	flash.Name = HttpService:GenerateGUID(false)
 	flash.Anchored = true
 	flash.CanCollide = false
 	flash.CanTouch = false

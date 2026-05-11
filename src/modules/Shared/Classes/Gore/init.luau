@@ -1,15 +1,16 @@
 --!strict
-local Workspace = game:GetService("Workspace")
+local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local BloodEngine = require(ReplicatedStorage.Packages.BloodEngine)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local Gib = require(script.Gib)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local LimbDestruction = require(script.LimbDestruction)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 
 type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (any),
+	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
 	Clean: (self: JanitorClass) -> (),
 	Destroy: (self: JanitorClass) -> (),
 }
@@ -146,13 +147,16 @@ end
 local function ensureFolder(parent: Instance, name: string): Folder
 	local existing = parent:FindFirstChild(name)
 	if existing ~= nil and existing:IsA("Folder") then
-		return existing
+		return WorkspaceFolders.manageFolder(existing, parent) or existing
+	end
+	if existing ~= nil then
+		existing:Destroy()
 	end
 
 	local folder = Instance.new("Folder")
 	folder.Name = name
 	folder.Parent = parent
-	return folder
+	return WorkspaceFolders.manageFolder(folder, parent) or folder
 end
 
 local function resolveEntityModel(config: GoreConfig?): Model?
@@ -206,11 +210,7 @@ local function buildRaycastParams(filter: { Instance }): RaycastParams
 	return params
 end
 
-local function resolveCleanupDelaySeconds(
-	bloodSettingsRaw: any,
-	gibTravelTime: number,
-	gibLifetime: number
-): number
+local function resolveCleanupDelaySeconds(bloodSettingsRaw: any, gibTravelTime: number, gibLifetime: number): number
 	local bloodSettings = if typeof(bloodSettingsRaw) == "table" then bloodSettingsRaw else {}
 	local tweens = if typeof(bloodSettings.Tweens) == "table" then bloodSettings.Tweens else nil
 	local decayDelaySeconds = getRangeMaximum(bloodSettings.DecayDelay, DEFAULT_BLOOD_DECAY_DELAY_SECONDS)
@@ -293,15 +293,16 @@ function Gore._trackGib(self: Gore, gib: Gib.Gib)
 end
 
 function Gore.New(configRaw: GoreConfig?): Gore
-	local config = if typeof(configRaw) == "table" then (configRaw :: GoreConfig) else nil
+	local config = if typeof(configRaw) == "table" then configRaw :: GoreConfig else nil
 	local entityModel = resolveEntityModel(config)
 	local rootParent = if config ~= nil and typeof(config.parent) == "Instance"
 		then config.parent
 		else WorkspaceFolders.getOrCreateGameFolder()
 	local rootFolder = ensureFolder(rootParent, "GoreRuntime")
 	local runtimeFolder = Instance.new("Folder")
-	runtimeFolder.Name = if entityModel ~= nil then ("Gore_" .. entityModel.Name) else "Gore_Entity"
+	runtimeFolder.Name = HttpService:GenerateGUID(false)
 	runtimeFolder.Parent = rootFolder
+	WorkspaceFolders.manageFolder(runtimeFolder, rootFolder)
 
 	local raycastFilter = resolveRaycastFilter(config, entityModel, runtimeFolder)
 	local raycastParams = buildRaycastParams(raycastFilter)
@@ -475,7 +476,7 @@ function Gore.DestroyLimb(self: Gore, limbRaw: any, optionsRaw: DestroyLimbOptio
 		return nil
 	end
 
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: DestroyLimbOptions)
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: DestroyLimbOptions
 	local destroyResult = self.limbDestruction:destroyLimb(limbRaw, options)
 	if destroyResult == nil then
 		return nil

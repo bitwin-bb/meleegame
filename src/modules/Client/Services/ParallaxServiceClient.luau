@@ -1,5 +1,6 @@
 --!strict
 
+local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -114,7 +115,7 @@ local function createFolder(parent: Instance, name: string): Folder
 	local existing = parent:FindFirstChild(name)
 	if existing ~= nil then
 		if existing:IsA("Folder") then
-			return existing
+			return WorkspaceFolders.manageFolder(existing, parent) or existing
 		end
 		existing:Destroy()
 	end
@@ -122,7 +123,39 @@ local function createFolder(parent: Instance, name: string): Folder
 	local folder = Instance.new("Folder")
 	folder.Name = name
 	folder.Parent = parent
-	return folder
+	return WorkspaceFolders.manageFolder(folder, parent) or folder
+end
+
+local function toPascalCaseName(valueRaw: any, fallback: string): string
+	local value = if typeof(valueRaw) == "string" then valueRaw else ""
+	local words = {}
+	for word in string.gmatch(value, "[%w]+") do
+		local lower = string.lower(word)
+		words[#words + 1] = string.upper(string.sub(lower, 1, 1)) .. string.sub(lower, 2)
+	end
+
+	if #words <= 0 then
+		return fallback
+	end
+	return table.concat(words, "")
+end
+
+local function resolveBiomeFolderName(biomeDefinition: BiomeDefinition): string
+	return toPascalCaseName(biomeDefinition.name, "UnknownBiome")
+end
+
+local function resolveLayerFolderName(_layerDefinition: LayerDefinition, layerIndex: number): string
+	return `Layer{layerIndex}`
+end
+
+local function isKnownBiomeFolderName(catalog: Catalog, folderName: string): boolean
+	for _, biomeName in catalog.orderedBiomeNames do
+		local biomeDefinition = catalog.biomes[biomeName]
+		if biomeDefinition ~= nil and resolveBiomeFolderName(biomeDefinition) == folderName then
+			return true
+		end
+	end
+	return false
 end
 
 local function getCamera(): Camera?
@@ -410,11 +443,20 @@ function ParallaxServiceClient._destroyAllBiomeRuntimes(self: ParallaxServiceCli
 		end
 		self.activeBiomeRuntimes[biomeName] = nil
 	end
+	if self.rootFolder ~= nil and self.rootFolder.Parent ~= nil and #self.rootFolder:GetChildren() <= 0 then
+		self.rootFolder:Destroy()
+		self.rootFolder = nil
+	end
 end
 
 function ParallaxServiceClient._ensureRootFolder(self: ParallaxServiceClient)
 	local parent = self:_resolveRootParent()
 	if self.rootFolder ~= nil and self.rootFolder.Parent == parent then
+		for _, child in self.rootFolder:GetChildren() do
+			if child:IsA("Folder") and not isKnownBiomeFolderName(self.catalog, child.Name) then
+				child:Destroy()
+			end
+		end
 		return
 	end
 
@@ -423,6 +465,11 @@ function ParallaxServiceClient._ensureRootFolder(self: ParallaxServiceClient)
 		self.rootFolder:Destroy()
 	end
 	self.rootFolder = createFolder(parent, self.catalog.settings.folderName)
+	for _, child in self.rootFolder:GetChildren() do
+		if child:IsA("Folder") and not isKnownBiomeFolderName(self.catalog, child.Name) then
+			child:Destroy()
+		end
+	end
 end
 
 function ParallaxServiceClient._refreshWorldAttributes(self: ParallaxServiceClient)
@@ -507,7 +554,7 @@ function ParallaxServiceClient._createPlane(self: ParallaxServiceClient, layerRu
 	local definition = layerRuntime.definition
 
 	local part = Instance.new("Part")
-	part.Name = `{definition.id}_Plane`
+	part.Name = HttpService:GenerateGUID(false)
 	part.Anchored = true
 	part.Locked = true
 	part.CanCollide = false
@@ -538,9 +585,10 @@ end
 function ParallaxServiceClient._createLayerRuntime(
 	self: ParallaxServiceClient,
 	biomeRuntime: BiomeRuntime,
-	definition: LayerDefinition
+	definition: LayerDefinition,
+	layerIndex: number
 ): LayerRuntime
-	local folder = createFolder(biomeRuntime.folder, definition.id)
+	local folder = createFolder(biomeRuntime.folder, resolveLayerFolderName(definition, layerIndex))
 	local runtime: LayerRuntime = {
 		definition = definition,
 		folder = folder,
@@ -556,7 +604,10 @@ function ParallaxServiceClient._createBiomeRuntime(self: ParallaxServiceClient, 
 	local definition = ParallaxServiceUtils.resolveBiomeDefinition(self.catalog, biomeName)
 	local variantName = self:_resolveSelectedVariantName(definition)
 	local variantDefinition = ParallaxServiceUtils.resolveVariantDefinition(self.catalog, definition.name, variantName)
-	local folder = createFolder(self.rootFolder, `{definition.name}_{variantName}`)
+	local folder = createFolder(self.rootFolder, resolveBiomeFolderName(definition))
+	for _, child in folder:GetChildren() do
+		child:Destroy()
+	end
 	local runtime: BiomeRuntime = {
 		biomeName = definition.name,
 		variantName = variantName,
@@ -569,8 +620,8 @@ function ParallaxServiceClient._createBiomeRuntime(self: ParallaxServiceClient, 
 		targetAlpha = 0,
 	}
 
-	for _, layerDefinition in variantDefinition.layers do
-		table.insert(runtime.layers, self:_createLayerRuntime(runtime, layerDefinition))
+	for layerIndex, layerDefinition in variantDefinition.layers do
+		table.insert(runtime.layers, self:_createLayerRuntime(runtime, layerDefinition, layerIndex))
 	end
 
 	self.activeBiomeRuntimes[definition.name] = runtime
@@ -586,6 +637,10 @@ function ParallaxServiceClient._destroyBiomeRuntime(self: ParallaxServiceClient,
 		runtime.folder:Destroy()
 	end
 	self.activeBiomeRuntimes[biomeName] = nil
+	if self.rootFolder ~= nil and self.rootFolder.Parent ~= nil and #self.rootFolder:GetChildren() <= 0 then
+		self.rootFolder:Destroy()
+		self.rootFolder = nil
+	end
 end
 
 function ParallaxServiceClient._cleanupInactiveBiomeRuntimes(self: ParallaxServiceClient)
@@ -982,6 +1037,9 @@ function ParallaxServiceClient.GetCurrentBiome(self: ParallaxServiceClient): str
 end
 
 function ParallaxServiceClient.Destroy(self: ParallaxServiceClient)
+	if self.activeBiomeRuntimes ~= nil then
+		self:_destroyAllBiomeRuntimes()
+	end
 	if self.preloadBiomePromises ~= nil then
 		table.clear(self.preloadBiomePromises)
 	end
@@ -990,9 +1048,6 @@ function ParallaxServiceClient.Destroy(self: ParallaxServiceClient)
 	end
 	if self.selectedBiomeVariantNames ~= nil then
 		table.clear(self.selectedBiomeVariantNames)
-	end
-	if self.activeBiomeRuntimes ~= nil then
-		table.clear(self.activeBiomeRuntimes)
 	end
 	if self.maid ~= nil then
 		self.maid:Destroy()

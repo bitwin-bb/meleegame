@@ -1,6 +1,7 @@
 --!strict
 
 local CollectionService = game:GetService("CollectionService")
+local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Sift = require(ReplicatedStorage.Packages.Sift)
@@ -25,6 +26,7 @@ local Liquid = require(script.Liquid)
 local ProceduralTree = require(script.Tree)
 local Structures = require(script.Structures)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
+local TileMaterial = require(script:FindFirstAncestor("game").Shared.Modules.Game.Render.TileMaterial)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local WorldGenerationColor = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationColor)
 local WorldGenerationDesert = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationDesert)
@@ -145,7 +147,7 @@ type ChunkVisual = {
 	chunkX: number,
 	chunkY: number,
 	model: Model,
-	terrainFolder: Folder,
+	terrainFolder: Folder?,
 	backgroundFolder: Folder?,
 	treesFolder: Folder?,
 	parts: { BasePart },
@@ -438,7 +440,7 @@ local DEFAULT_TILE_DEPTH = 2
 local DEFAULT_BASE_PLANE_X = 0
 local DEFAULT_WALL_PLANE_OFFSET = 1.65
 local DEFAULT_HORIZON_DEPTH_BLOCKS = 10
-local DEFAULT_BACKGROUND_LAYER_COUNT = 4
+local DEFAULT_BACKGROUND_LAYER_COUNT = 6
 local DEFAULT_BACKGROUND_LAYER_THICKNESS_BLOCKS = 1
 local DEFAULT_MIN_TILE_Y = -360
 local DEFAULT_MAX_TILE_Y = 180
@@ -617,13 +619,14 @@ local function packChunkKey(chunkX: number, chunkY: number): string
 end
 
 local function applyTileStudSurfaces(part: BasePart)
-	part.TopSurface = Enum.SurfaceType.Studs
-	part.BottomSurface = Enum.SurfaceType.Studs
-	part.LeftSurface = Enum.SurfaceType.Studs
-	part.RightSurface = Enum.SurfaceType.Studs
-	part.FrontSurface = Enum.SurfaceType.Studs
-	part.BackSurface = Enum.SurfaceType.Studs
+	TileMaterial.ApplyStudSurfaces(part)
 end
+
+local function applyTileSmoothSurfaces(part: BasePart)
+	TileMaterial.ApplySmoothSurfaces(part)
+end
+
+local assignCreatedTileMaterial = TileMaterial.ApplyTileMaterial
 
 local function unpackChunkKey(chunkKey: string): (number?, number?)
 	local xRaw, yRaw = string.match(chunkKey, "^(-?%d+):(-?%d+)$")
@@ -764,7 +767,7 @@ end
 
 local function createPartTemplate(): Part
 	local part = Instance.new("Part")
-	part.Name = "WorldTile"
+	part.Name = HttpService:GenerateGUID(false)
 	part.Anchored = true
 	part.Locked = true
 	part.CastShadow = false
@@ -1793,7 +1796,7 @@ function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
 		backgroundLayerCount = sanitizeInteger(
 			(config :: any).backgroundLayerCount,
 			3,
-			4,
+			6,
 			DEFAULT_BACKGROUND_LAYER_COUNT
 		),
 		backgroundLayerThicknessBlocks = clampNumber(
@@ -2027,7 +2030,7 @@ function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
 end
 
 function WorldGeneration.CreateFolders(self: WorldGeneration)
-	if self.worldFolder ~= nil and self.worldFolder.Parent ~= nil then
+	if self.worldFolder ~= nil and self.chunksFolder ~= nil and self.collisionChunksFolder ~= nil then
 		return
 	end
 
@@ -2045,14 +2048,17 @@ function WorldGeneration.CreateFolders(self: WorldGeneration)
 	worldFolder:SetAttribute("WorldOriginY", self.worldOrigin.Y)
 	worldFolder:SetAttribute("WorldOriginZ", self.worldOrigin.Z)
 	worldFolder.Parent = self.parent
+	WorkspaceFolders.manageFolder(worldFolder, self.parent)
 
 	local chunksFolder = Instance.new("Folder")
 	chunksFolder.Name = DEFAULT_WORLD_CHUNKS_FOLDER_NAME
 	chunksFolder.Parent = worldFolder
+	WorkspaceFolders.manageFolder(chunksFolder, worldFolder)
 
 	local collisionChunksFolder = Instance.new("Folder")
 	collisionChunksFolder.Name = DEFAULT_WORLD_COLLISION_FOLDER_NAME
 	collisionChunksFolder.Parent = worldFolder
+	WorkspaceFolders.manageFolder(collisionChunksFolder, worldFolder)
 
 	self.worldFolder = worldFolder
 	self.chunksFolder = chunksFolder
@@ -3300,7 +3306,7 @@ end
 
 function WorldGeneration.StyleTerrainPart(self: WorldGeneration, part: BasePart, tileId: number)
 	local style = self.tileVisuals[tileId] or self.tileVisuals[self.tileId.STONE]
-	part.Name = style.name
+	part.Name = HttpService:GenerateGUID(false)
 	part.Color = style.color
 	part.Material = style.material
 	part.Transparency = style.transparency
@@ -3309,6 +3315,7 @@ function WorldGeneration.StyleTerrainPart(self: WorldGeneration, part: BasePart,
 	part.CanTouch = false
 	part.CastShadow = false
 	applyTileStudSurfaces(part)
+	assignCreatedTileMaterial(part, tileId)
 end
 
 function WorldGeneration.GetTerrainTileTemplate(self: WorldGeneration, tileId: number): Instance?
@@ -3350,6 +3357,7 @@ function WorldGeneration.PlaceTerrainTileTemplate(
 				descendant.Transparency = style.transparency
 				descendant.CastShadow = false
 				applyTileStudSurfaces(descendant)
+				assignCreatedTileMaterial(descendant, tileId)
 			end
 		end
 	elseif cloned:IsA("BasePart") then
@@ -3363,6 +3371,7 @@ function WorldGeneration.PlaceTerrainTileTemplate(
 		cloned.Transparency = style.transparency
 		cloned.CastShadow = false
 		applyTileStudSurfaces(cloned)
+		assignCreatedTileMaterial(cloned, tileId)
 	end
 
 	cloned.Parent = parent
@@ -3406,6 +3415,7 @@ function WorldGeneration.PlaceBackgroundTileTemplate(
 				descendant.Material = style.material
 				descendant.Transparency = 0
 				applyTileStudSurfaces(descendant)
+				assignCreatedTileMaterial(descendant, tileId)
 			end
 		end
 	elseif cloned:IsA("BasePart") then
@@ -3419,6 +3429,7 @@ function WorldGeneration.PlaceBackgroundTileTemplate(
 		cloned.Material = style.material
 		cloned.Transparency = 0
 		applyTileStudSurfaces(cloned)
+		assignCreatedTileMaterial(cloned, tileId)
 	end
 
 	cloned.Parent = parent
@@ -3476,7 +3487,7 @@ function WorldGeneration.StyleBackgroundPart(
 	local layer = if layerIndex then layerIndex else 1
 	local layerCount = math.max(1, if totalLayers then totalLayers else 1)
 	local layerAlpha = if layerCount > 1 then (layer - 1) / (layerCount - 1) else 0
-	part.Name = `{style.name}Background_{layer}`
+	part.Name = HttpService:GenerateGUID(false)
 	part.Color = style.color:Lerp(Color3.new(0, 0, 0), 0.28 + layerAlpha * 0.26)
 	part.Material = style.material
 	part.Transparency = 0
@@ -3485,6 +3496,7 @@ function WorldGeneration.StyleBackgroundPart(
 	part.CanTouch = false
 	part.CastShadow = false
 	applyTileStudSurfaces(part)
+	assignCreatedTileMaterial(part, tileId)
 end
 
 function WorldGeneration.SampleSharedBackgroundDensity(self: WorldGeneration, tileX: number, tileY: number): number
@@ -4862,7 +4874,7 @@ function WorldGeneration.BuildChunkVisual(self: WorldGeneration, chunkData: Chun
 	end
 
 	local model = Instance.new("Model")
-	model.Name = `CollisionChunk_{chunkData.chunkX}_{chunkData.chunkY}`
+	model.Name = HttpService:GenerateGUID(false)
 	model:SetAttribute("ChunkX", chunkData.chunkX)
 	model:SetAttribute("ChunkY", chunkData.chunkY)
 	model:SetAttribute("ChunkKey", chunkData.key)
@@ -4873,9 +4885,7 @@ function WorldGeneration.BuildChunkVisual(self: WorldGeneration, chunkData: Chun
 	model:SetAttribute("ChunkCollisionReady", false)
 	TagBinder.applyTag(model, TagBinder.Tags.Chunk, CollectionService)
 
-	local terrainFolder = Instance.new("Folder")
-	terrainFolder.Name = "Terrain"
-	terrainFolder.Parent = model
+	local terrainFolder: Folder? = nil
 
 	local parts: { BasePart } = {}
 	local collisionRects = self:buildGreedyRectangles(
@@ -4895,7 +4905,7 @@ function WorldGeneration.BuildChunkVisual(self: WorldGeneration, chunkData: Chun
 		local centerTileX = chunkData.tileMinX + rect.x + rect.width * 0.5
 		local centerTileY = chunkData.tileMinY + rect.y + rect.height * 0.5
 		local part = self:acquirePart()
-		part.Name = "Collision"
+		part.Name = HttpService:GenerateGUID(false)
 		part.Anchored = true
 		part.Locked = true
 		part.Transparency = 1
@@ -4907,6 +4917,12 @@ function WorldGeneration.BuildChunkVisual(self: WorldGeneration, chunkData: Chun
 		part.CastShadow = false
 		part.Size = Vector3.new(self.tileDepth, self.tileSize * rect.height, self.tileSize * rect.width)
 		part.CFrame = CFrame.new(self:computeTileCenterPosition(centerTileX, centerTileY, 0))
+		if terrainFolder == nil then
+			terrainFolder = Instance.new("Folder")
+			terrainFolder.Name = "Terrain"
+			terrainFolder.Parent = model
+			WorkspaceFolders.manageFolder(terrainFolder, model)
+		end
 		part.Parent = terrainFolder
 		table.insert(parts, part)
 

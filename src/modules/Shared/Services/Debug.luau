@@ -1,5 +1,6 @@
 --!strict
 
+local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
@@ -98,9 +99,15 @@ function Debug:ValidateChunkArrays(chunkRaw: any): boolean
 	end
 
 	local chunk = chunkRaw :: { [string]: any }
-	local clusterCountX = if isFiniteNumber(chunk.clusterCountX) then math.max(1, math.floor(chunk.clusterCountX)) else 1
-	local clusterCountY = if isFiniteNumber(chunk.clusterCountY) then math.max(1, math.floor(chunk.clusterCountY)) else 1
-	local clusterCountZ = if isFiniteNumber(chunk.clusterCountZ) then math.max(1, math.floor(chunk.clusterCountZ)) else 1
+	local clusterCountX = if isFiniteNumber(chunk.clusterCountX)
+		then math.max(1, math.floor(chunk.clusterCountX))
+		else 1
+	local clusterCountY = if isFiniteNumber(chunk.clusterCountY)
+		then math.max(1, math.floor(chunk.clusterCountY))
+		else 1
+	local clusterCountZ = if isFiniteNumber(chunk.clusterCountZ)
+		then math.max(1, math.floor(chunk.clusterCountZ))
+		else 1
 	local expectedClusters = clusterCountX * clusterCountY * clusterCountZ
 
 	local valid = true
@@ -160,7 +167,7 @@ function Debug:DrawChunkBox(chunkKey: string, center: Vector3, size: Vector3, co
 	local part = self.chunkVisuals[chunkKey]
 	if part == nil or part.Parent == nil then
 		part = Instance.new("Part")
-		part.Name = `Chunk_{chunkKey}`
+		part.Name = HttpService:GenerateGUID(false)
 		part.Anchored = true
 		part.CanCollide = false
 		part.CanQuery = false

@@ -1,4 +1,5 @@
 --!strict
+local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
@@ -23,7 +24,13 @@ export type NotificationConfig = {
 	formatPayload: ((key: string, payload: any, count: number) -> string)?,
 	createItem: (() -> GuiObject)?,
 	resetItem: ((item: GuiObject) -> ())?,
-	subscriptions: { { channel: string, event: string?, map: ((payload: any) -> { key: string, payload: any, config: any? }?)? } }?,
+	subscriptions: {
+		{
+			channel: string,
+			event: string?,
+			map: ((payload: any) -> { key: string, payload: any, config: any? }?)?,
+		}
+	}?,
 }
 
 export type NotificationBus = typeof(setmetatable({} :: any, NotificationBus))
@@ -61,14 +68,14 @@ end
 
 local function defaultCreateItem(): GuiObject
 	local frame = Instance.new("Frame")
-	frame.Name = "NotificationItem"
+	frame.Name = HttpService:GenerateGUID(false)
 	frame.Size = UDim2.new(1, 0, 0, 28)
 	frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 	frame.BackgroundTransparency = 0.2
 	frame.BorderSizePixel = 0
 
 	local label = Instance.new("TextLabel")
-	label.Name = "Label"
+	label.Name = HttpService:GenerateGUID(false)
 	label.BackgroundTransparency = 1
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.Size = UDim2.new(1, -12, 1, 0)
@@ -86,7 +93,7 @@ end
 local function defaultResetItem(item: GuiObject)
 	item.Visible = false
 	item.Parent = nil
-	local label = item:FindFirstChild("Label")
+	local label = item:FindFirstChildWhichIsA("TextLabel")
 	if label ~= nil and label:IsA("TextLabel") then
 		label.Text = ""
 		label.TextTransparency = 0
@@ -151,8 +158,12 @@ function NotificationBus.New(configRaw: NotificationConfig): NotificationBus
 		defaultDuration = clampNumber(configRaw.defaultDuration, 2.5, 0.1, 30),
 		mergeWindow = clampNumber(configRaw.mergeWindow, 0.6, 0, 10),
 		layoutDirection = if configRaw.layoutDirection == "Up" then "Up" else "Down",
-		sanitizePayload = if typeof(configRaw.sanitizePayload) == "function" then configRaw.sanitizePayload else defaultSanitizePayload,
-		formatPayload = if typeof(configRaw.formatPayload) == "function" then configRaw.formatPayload else defaultFormatPayload,
+		sanitizePayload = if typeof(configRaw.sanitizePayload) == "function"
+			then configRaw.sanitizePayload
+			else defaultSanitizePayload,
+		formatPayload = if typeof(configRaw.formatPayload) == "function"
+			then configRaw.formatPayload
+			else defaultFormatPayload,
 		createItem = if typeof(configRaw.createItem) == "function" then configRaw.createItem else defaultCreateItem,
 		resetItem = if typeof(configRaw.resetItem) == "function" then configRaw.resetItem else defaultResetItem,
 		subscriptions = if typeof(configRaw.subscriptions) == "table" then configRaw.subscriptions else {},
@@ -177,13 +188,17 @@ function NotificationBus._ensureLoop(self: NotificationBus)
 		return
 	end
 	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).scheduleEvery) == "function" then
-		self.loopToken = (self.tickScheduler :: any):scheduleEvery(function(dt: number)
-			self:update(dt)
-		end, 1 / 30, {
-			group = "ui.notifications",
-			priority = 100,
-			catchUp = false,
-		})
+		self.loopToken = (self.tickScheduler :: any):scheduleEvery(
+			function(dt: number)
+				self:update(dt)
+			end,
+			1 / 30,
+			{
+				group = "ui.notifications",
+				priority = 100,
+				catchUp = false,
+			}
+		)
 		return
 	end
 	self.heartbeatConnection = RunService.Heartbeat:Connect(function(dt)
@@ -367,7 +382,9 @@ function NotificationBus.Notify(self: NotificationBus, keyRaw: any, payloadRaw: 
 
 	local candidate = self:_findMergeCandidate(mergeKey)
 	if candidate ~= nil then
-		candidate.count += if typeof(config.incrementBy) == "number" then math.max(1, math.floor(config.incrementBy)) else 1
+		candidate.count += if typeof(config.incrementBy) == "number"
+			then math.max(1, math.floor(config.incrementBy))
+			else 1
 		candidate.payload = payload
 		candidate.lastUpdatedAt = self.now
 		candidate.expireAt = self.now + duration
@@ -406,14 +423,16 @@ function NotificationBus.NotifyDamageResult(self: NotificationBus, resultRaw: an
 	if typeof(resultRaw) ~= "table" then
 		return false
 	end
-	local damageValue = if typeof(resultRaw.finalDamage) == "number" then resultRaw.finalDamage else if typeof(resultRaw.damage) == "number" then resultRaw.damage else nil
+	local damageValue = if typeof(resultRaw.finalDamage) == "number"
+		then resultRaw.finalDamage
+		else if typeof(resultRaw.damage) == "number" then resultRaw.damage else nil
 	if damageValue == nil then
 		return false
 	end
 	local rounded = math.floor(math.max(0, damageValue) + 0.5)
 	local text = string.format("-%d HP", rounded)
 	if resultRaw.wasCrit == true then
-		text = string.format("<b>%s</b> <font color=\"#FFD35A\">CRIT</font>", text)
+		text = string.format('<b>%s</b> <font color="#FFD35A">CRIT</font>', text)
 	end
 	local payload = {
 		text = text,

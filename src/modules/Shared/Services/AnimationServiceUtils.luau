@@ -1,9 +1,10 @@
 --!strict
+local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local Audio = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
 local Animations = require(script:FindFirstAncestor("game").Shared.Modules.Items.Animations)
+local Audio = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
 
 local AnimationServiceUtils = {}
@@ -131,10 +132,7 @@ local function normalizeAssetId(rawId: any): string?
 	return RBX_ASSET_PREFIX .. numericOnly
 end
 
-local function buildDefaultAnimationClip(
-	clipName: string,
-	fallback: AnimationClipConfig
-): AnimationClipConfig
+local function buildDefaultAnimationClip(clipName: string, fallback: AnimationClipConfig): AnimationClipConfig
 	local animationId = normalizeAssetId(PLAYER_ANIMATION_IDS[clipName])
 
 	return {
@@ -672,10 +670,8 @@ function AnimationServiceUtils.SanitizeProfile(profile: any, fallback: Animation
 		(source :: any).fallbackFootstepSound,
 		defaultProfile.fallbackFootstepSound
 	)
-	local jumpSound = AnimationServiceUtils.SanitizeFootstepSoundConfig(
-		(source :: any).jumpSound,
-		defaultProfile.jumpSound
-	)
+	local jumpSound =
+		AnimationServiceUtils.SanitizeFootstepSoundConfig((source :: any).jumpSound, defaultProfile.jumpSound)
 
 	return {
 		name = profileName,
@@ -806,7 +802,7 @@ function AnimationServiceUtils.CreateAnimationTrack(animator: Animator, clip: An
 	end
 
 	local animation = Instance.new("Animation")
-	animation.Name = "AnimationServiceClip"
+	animation.Name = HttpService:GenerateGUID(false)
 	animation.AnimationId = animationId
 
 	local success, trackOrError = pcall(function()
@@ -892,24 +888,14 @@ function AnimationServiceUtils.CreateFootstepPlaybackOptions(
 	rootPart: BasePart,
 	soundConfig: FootstepSoundConfig
 ): FootstepPlaybackOptions
-	return createPlaybackOptions(
-		rootPart,
-		soundConfig,
-		MIN_FOOTSTEP_ROLLOFF_MAX_DISTANCE,
-		MIN_FOOTSTEP_EMITTER_SIZE
-	)
+	return createPlaybackOptions(rootPart, soundConfig, MIN_FOOTSTEP_ROLLOFF_MAX_DISTANCE, MIN_FOOTSTEP_EMITTER_SIZE)
 end
 
 function AnimationServiceUtils.CreateJumpPlaybackOptions(
 	rootPart: BasePart,
 	soundConfig: JumpSoundConfig
 ): JumpPlaybackOptions
-	return createPlaybackOptions(
-		rootPart,
-		soundConfig,
-		MIN_JUMP_ROLLOFF_MAX_DISTANCE,
-		MIN_JUMP_EMITTER_SIZE
-	)
+	return createPlaybackOptions(rootPart, soundConfig, MIN_JUMP_ROLLOFF_MAX_DISTANCE, MIN_JUMP_EMITTER_SIZE)
 end
 
 function AnimationServiceUtils.ResolveFootstepSoundAssetIdAndOptions(
@@ -972,7 +958,8 @@ AnimationServiceUtils.getFootstepSoundConfig = AnimationServiceUtils.GetFootstep
 AnimationServiceUtils.pickRandomSoundAssetId = AnimationServiceUtils.PickRandomSoundAssetId
 AnimationServiceUtils.createFootstepPlaybackOptions = AnimationServiceUtils.CreateFootstepPlaybackOptions
 AnimationServiceUtils.createJumpPlaybackOptions = AnimationServiceUtils.CreateJumpPlaybackOptions
-AnimationServiceUtils.resolveFootstepSoundAssetIdAndOptions = AnimationServiceUtils.ResolveFootstepSoundAssetIdAndOptions
+AnimationServiceUtils.resolveFootstepSoundAssetIdAndOptions =
+	AnimationServiceUtils.ResolveFootstepSoundAssetIdAndOptions
 AnimationServiceUtils.resolveJumpSoundAssetIdAndOptions = AnimationServiceUtils.ResolveJumpSoundAssetIdAndOptions
 
 return AnimationServiceUtils

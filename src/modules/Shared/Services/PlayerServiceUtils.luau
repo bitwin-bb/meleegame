@@ -90,6 +90,7 @@ local DEFAULT_MOVEMENT_LOCK_ATTRIBUTE = "PlayerService_MovementLocked"
 local DEFAULT_WORLD_UNLOCK_CHECK_INTERVAL = 0.08
 local DEFAULT_WORLD_UNLOCK_RAYCAST_DISTANCE = 240
 local GAME_FOLDER_NAME = "Game"
+local PLAYERS_FOLDER_NAME = "Players"
 local WORLD_GENERATION_FOLDER_NAME = "WorldGeneration"
 local EFFECTS_JUNK_FOLDER_NAME = "EffectsJunk"
 local MIN_RESPAWN_MAX_HEALTH = 1
@@ -277,6 +278,7 @@ PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE = DEFAULT_MOVEMENT_LOCK_ATTRI
 PlayerServiceUtils.DEFAULT_WORLD_UNLOCK_CHECK_INTERVAL = DEFAULT_WORLD_UNLOCK_CHECK_INTERVAL
 PlayerServiceUtils.DEFAULT_WORLD_UNLOCK_RAYCAST_DISTANCE = DEFAULT_WORLD_UNLOCK_RAYCAST_DISTANCE
 PlayerServiceUtils.GAME_FOLDER_NAME = GAME_FOLDER_NAME
+PlayerServiceUtils.PLAYERS_FOLDER_NAME = PLAYERS_FOLDER_NAME
 PlayerServiceUtils.WORLD_GENERATION_FOLDER_NAME = WORLD_GENERATION_FOLDER_NAME
 PlayerServiceUtils.EFFECTS_JUNK_FOLDER_NAME = EFFECTS_JUNK_FOLDER_NAME
 PlayerServiceUtils.SHARED_BASE_WALK_SPEED_ATTRIBUTE = SHARED_BASE_WALK_SPEED_ATTRIBUTE
@@ -286,6 +288,10 @@ PlayerServiceUtils.MIN_RESPAWN_MAX_HEALTH = MIN_RESPAWN_MAX_HEALTH
 
 function PlayerServiceUtils.GetOrCreateWorkspaceGameFolder(): Folder
 	return WorkspaceFolders.getOrCreateGameFolder()
+end
+
+function PlayerServiceUtils.GetOrCreateWorkspacePlayersFolder(): Folder
+	return WorkspaceFolders.getOrCreateFolderInGame(PLAYERS_FOLDER_NAME)
 end
 
 function PlayerServiceUtils.ComputeRespawnHealthFromDeath(maxHealthRaw: any, scaleRaw: any): number
@@ -1048,6 +1054,7 @@ function PlayerServiceUtils.ResetNeckLook(neckJoint: Motor6D?, baseC0: CFrame?)
 end
 
 PlayerServiceUtils.getOrCreateWorkspaceGameFolder = PlayerServiceUtils.GetOrCreateWorkspaceGameFolder
+PlayerServiceUtils.getOrCreateWorkspacePlayersFolder = PlayerServiceUtils.GetOrCreateWorkspacePlayersFolder
 PlayerServiceUtils.computeRespawnHealthFromDeath = PlayerServiceUtils.ComputeRespawnHealthFromDeath
 PlayerServiceUtils.computeRespawnMaxHealthFromDeath = PlayerServiceUtils.ComputeRespawnMaxHealthFromDeath
 PlayerServiceUtils.sanitizeInvincibilityFramesConfig = PlayerServiceUtils.SanitizeInvincibilityFramesConfig

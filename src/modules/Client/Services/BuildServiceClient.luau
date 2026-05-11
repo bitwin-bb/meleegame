@@ -1,6 +1,7 @@
 --!strict
 
 local CollectionService = game:GetService("CollectionService")
+local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -131,6 +132,7 @@ type TreeFallAnimation = {
 local BuildServiceClient = {}
 
 local CLIENT_VISUALS_FOLDER_NAME = "BuildServiceClientVisuals"
+local BUILD_PREVIEW_RUNTIME_ATTRIBUTE = "BuildPreviewRuntime"
 local TILE_QUERY_FETCH_COOLDOWN = 0.25
 local PREDICTION_TTL_SECONDS = 2
 local TERRAIN_HOVER_SCAN_DEPTH_TILES = 8
@@ -1131,7 +1133,11 @@ end
 function BuildServiceClient.CreatePreviewVisual(self: BuildServiceClient)
 	self.visualFolder = self:createVisualFolder()
 	for _, child in self.visualFolder:GetChildren() do
-		if child.Name == "BuildPreview" or child.Name == "BuildPreviewBinder" then
+		if
+			child.Name == "BuildPreview"
+			or child.Name == "BuildPreviewBinder"
+			or child:GetAttribute(BUILD_PREVIEW_RUNTIME_ATTRIBUTE) == true
+		then
 			child:Destroy()
 		elseif child.Name == "BuildHoverHighlight" then
 			child:Destroy()
@@ -1146,7 +1152,7 @@ function BuildServiceClient.CreatePreviewVisual(self: BuildServiceClient)
 	end
 
 	local previewPart = Instance.new("Part")
-	previewPart.Name = "BuildPreviewBinder"
+	previewPart.Name = HttpService:GenerateGUID(false)
 	previewPart.Anchored = true
 	previewPart.CanCollide = false
 	previewPart.CanTouch = false
@@ -1155,6 +1161,7 @@ function BuildServiceClient.CreatePreviewVisual(self: BuildServiceClient)
 	previewPart.CastShadow = false
 	previewPart.Transparency = 1
 	previewPart.Size = Vector3.new(0.1, 0.1, 0.1)
+	previewPart:SetAttribute(BUILD_PREVIEW_RUNTIME_ATTRIBUTE, true)
 	previewPart.Parent = self.visualFolder
 	TagBinder.applyTag(previewPart, TagBinder.Tags.Preview, CollectionService)
 end
@@ -2179,7 +2186,6 @@ function BuildServiceClient.Init(self: BuildServiceClient)
 
 	self.rubble = Rubble.new({
 		containerName = "BuildServiceRubble",
-		partNamePrefix = "BuildRubble_",
 		visualOnly = true,
 		tuning = {
 			initialPoolSize = 48,

@@ -1,4 +1,5 @@
 --!strict
+local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
@@ -378,11 +379,7 @@ local function sanitizePlaneX(valueRaw: any, fallback: number): number
 	return sanitizeNumber(valueRaw, fallback, -MAX_ABS_PLANE_X, MAX_ABS_PLANE_X)
 end
 
-local function createConstraintsForMotor(
-	motor: Motor6D,
-	runtimeFolder: Folder,
-	createdInstances: { Instance }
-)
+local function createConstraintsForMotor(motor: Motor6D, runtimeFolder: Folder, createdInstances: { Instance })
 	local part0 = motor.Part0
 	local part1 = motor.Part1
 	if part0 == nil or part1 == nil then
@@ -390,19 +387,19 @@ local function createConstraintsForMotor(
 	end
 
 	local attachment0 = Instance.new("Attachment")
-	attachment0.Name = (`{motor.Name}_RagdollAttachment0`)
+	attachment0.Name = HttpService:GenerateGUID(false)
 	attachment0.CFrame = motor.C0
 	attachment0.Parent = part0
 
 	local attachment1 = Instance.new("Attachment")
-	attachment1.Name = (`{motor.Name}_RagdollAttachment1`)
+	attachment1.Name = HttpService:GenerateGUID(false)
 	attachment1.CFrame = motor.C1
 	attachment1.Parent = part1
 
 	local config = resolveJointConfig(motor.Name)
 
 	local ballSocket = Instance.new("BallSocketConstraint")
-	ballSocket.Name = (`{motor.Name}_RagdollSocket`)
+	ballSocket.Name = HttpService:GenerateGUID(false)
 	ballSocket.Attachment0 = attachment0
 	ballSocket.Attachment1 = attachment1
 	ballSocket.LimitsEnabled = true
@@ -415,7 +412,7 @@ local function createConstraintsForMotor(
 	ballSocket.Parent = runtimeFolder
 
 	local noCollision = Instance.new("NoCollisionConstraint")
-	noCollision.Name = (`{motor.Name}_RagdollNoCollision`)
+	noCollision.Name = HttpService:GenerateGUID(false)
 	noCollision.Part0 = part0
 	noCollision.Part1 = part1
 	noCollision.Parent = runtimeFolder
@@ -570,7 +567,9 @@ function RagdollServiceUtils.BeginRagdoll(rig: CharacterRig, options: BeginRagdo
 		return nil
 	end
 
-	local runtimeFolderName = if options and typeof(options.runtimeFolderName) == "string" and #options.runtimeFolderName > 0
+	local runtimeFolderName = if options
+			and typeof(options.runtimeFolderName) == "string"
+			and #options.runtimeFolderName > 0
 		then options.runtimeFolderName
 		else DEFAULT_RUNTIME_FOLDER_NAME
 	local existingRuntimeFolder = rig.character:FindFirstChild(runtimeFolderName)

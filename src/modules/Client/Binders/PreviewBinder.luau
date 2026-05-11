@@ -1,5 +1,6 @@
 --!strict
 
+local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 
 local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
@@ -22,7 +23,7 @@ function PreviewBinder.new(instance: Instance, context: any)
 	local self = ModelBinder.new(instance, context, PreviewBinder)
 	self.part = if instance:IsA("BasePart") then instance else nil
 	if self.part ~= nil then
-		self.part.Name = "BuildPreviewBinder"
+		self.part.Name = HttpService:GenerateGUID(false)
 		self.part.Anchored = true
 		self.part.CanCollide = false
 		self.part.CanTouch = false

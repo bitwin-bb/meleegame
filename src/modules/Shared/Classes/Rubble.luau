@@ -1,4 +1,5 @@
 --!strict
+local HttpService = game:GetService("HttpService")
 local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -59,7 +60,6 @@ export type Config = {
 	containerName: string?,
 	activeFolderName: string?,
 	inactiveFolderName: string?,
-	partNamePrefix: string?,
 	parkingCFrame: CFrame?,
 	activeCollisionGroup: string?,
 	inactiveCollisionGroup: string?,
@@ -185,12 +185,15 @@ end
 local function ensureFolder(parent: Instance, name: string): Folder
 	local existing = parent:FindFirstChild(name)
 	if existing and existing:IsA("Folder") then
-		return existing
+		return WorkspaceFolders.manageFolder(existing, parent) or existing
+	end
+	if existing then
+		existing:Destroy()
 	end
 	local folder = Instance.new("Folder")
 	folder.Name = name
 	folder.Parent = parent
-	return folder
+	return WorkspaceFolders.manageFolder(folder, parent) or folder
 end
 
 local function resolveRange(raw: any, minFallback: number, maxFallback: number): (number, number)
@@ -377,10 +380,11 @@ function Rubble.New(configRaw: Config?): Rubble
 	tuning.defaultCanQuery = b(tuning.defaultCanQuery, DEFAULT_TUNING.defaultCanQuery :: boolean)
 	tuning.reusePolicy = if tuning.reusePolicy == "DropSpawn" then "DropSpawn" else "RecycleOldest"
 
-	local template = if cfg.template and cfg.template:IsA("BasePart")
-		then cfg.template:Clone()
-		else Instance.new("Part")
-	template.Name = "RubbleTemplate"
+	local sourceTemplate = if cfg.template and cfg.template:IsA("BasePart") then cfg.template else nil
+	local template = if sourceTemplate ~= nil then sourceTemplate:Clone() else Instance.new("Part")
+	if sourceTemplate == nil then
+		template.Name = HttpService:GenerateGUID(false)
+	end
 	template.Anchored = true
 	template.CanCollide = false
 	template.CanTouch = false
@@ -408,7 +412,6 @@ function Rubble.New(configRaw: Config?): Rubble
 		active = active,
 		inactive = inactive,
 		parkingCFrame = sanitizeCFrame(cfg.parkingCFrame, CFrame.new(0, -10000, 0)),
-		partNamePrefix = s(cfg.partNamePrefix, "Rubble_"),
 		activeGroup = activeGroup,
 		inactiveGroup = inactiveGroup,
 		lodReference = cfg.lodReference,
@@ -552,7 +555,7 @@ function Rubble:_makeSlot(): Slot?
 	end
 	self.nextSlotId += 1
 	local id = self.nextSlotId
-	part.Name = self.partNamePrefix .. tostring(id)
+	part.Name = HttpService:GenerateGUID(false)
 	part.Anchored = true
 	part.CanCollide = false
 	part.CanTouch = false

@@ -1,4 +1,5 @@
 --!strict
+local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 
 local AudioServiceUtils = {}
@@ -120,11 +121,7 @@ function AudioServiceUtils.ResolveSoundAssetId(soundSourceRaw: any): string?
 	return AudioServiceUtils.NormalizeSoundAssetId(soundSourceRaw)
 end
 
-local function collectSoundAssetIdsFromSource(
-	sourceRaw: any,
-	out: { string },
-	seen: { [string]: boolean }
-)
+local function collectSoundAssetIdsFromSource(sourceRaw: any, out: { string }, seen: { [string]: boolean })
 	if sourceRaw == nil then
 		return
 	end
@@ -487,9 +484,7 @@ function AudioServiceUtils.CreateSoundInstance(
 
 	local sound = Instance.new("Sound")
 	sound.SoundId = soundId
-	sound.Name = if options.channel
-		then `Sound_{options.channel}`
-		else "Sound"
+	sound.Name = HttpService:GenerateGUID(false)
 	if options.looped ~= nil then
 		sound.Looped = options.looped
 	end
@@ -587,4 +582,3 @@ AudioServiceUtils.fadeSoundVolume = AudioServiceUtils.FadeSoundVolume
 AudioServiceUtils.stopAndDestroySound = AudioServiceUtils.StopAndDestroySound
 
 return AudioServiceUtils
-

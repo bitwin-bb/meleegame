@@ -1,4 +1,5 @@
 --!strict
+local HttpService = game:GetService("HttpService")
 local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -326,7 +327,7 @@ end
 
 local function createFallbackSlimeBloodEffect(): BasePart
 	local part = Instance.new("Part")
-	part.Name = "SlimeBlood"
+	part.Name = HttpService:GenerateGUID(false)
 	part.Size = Vector3.new(0.2, 0.2, 0.2)
 	part.Transparency = 1
 	part.Color = DEFAULT_FALLBACK_SLIME_BLOOD_COLOR
@@ -337,7 +338,7 @@ local function createFallbackSlimeBloodEffect(): BasePart
 	part.CanQuery = false
 
 	local emitter = Instance.new("ParticleEmitter")
-	emitter.Name = "FallbackSlimeBloodEmitter"
+	emitter.Name = HttpService:GenerateGUID(false)
 	emitter.Enabled = false
 	emitter.Rate = 0
 	emitter.Color = ColorSequence.new(DEFAULT_FALLBACK_SLIME_BLOOD_COLOR)
@@ -1371,8 +1372,7 @@ function NpcServiceServer.EmitRuntimeSlimeBlood(
 		math.floor(sanitizeNumber(emitCountRaw, DEFAULT_SLIME_BLOOD_PARTICLES_PER_EMITTER, 1, 200) + 0.5)
 
 	local bloodRuntimeModel = Instance.new("Model")
-	bloodRuntimeModel.Name = "SlimeBloodRuntime"
-	bloodEffect.Name = "SlimeBlood"
+	bloodRuntimeModel.Name = HttpService:GenerateGUID(false)
 	bloodEffect.CFrame = sourcePart.CFrame
 	bloodEffect.Anchored = true
 	bloodEffect.CanCollide = false
@@ -1589,7 +1589,7 @@ function NpcServiceServer.TryPlayAnimationAction(
 	local shouldDestroyAnimationObject = false
 	if animationObject == nil and animationAssetId ~= nil then
 		local generated = Instance.new("Animation")
-		generated.Name = "NpcEventAnimation"
+		generated.Name = HttpService:GenerateGUID(false)
 		generated.AnimationId = animationAssetId
 		animationObject = generated
 		shouldDestroyAnimationObject = true

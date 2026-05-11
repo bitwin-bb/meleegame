@@ -15,6 +15,9 @@ export type InfoPlayerPopup = {
 	description: string,
 	amount: number,
 	amountPrefix: string,
+	targetKind: string?,
+	targetRuntimeId: string?,
+	targetPosition: Vector3?,
 	createdAt: number,
 }
 
@@ -33,6 +36,10 @@ export type PushPopupPayload = {
 	description: string?,
 	amount: number?,
 	amountPrefix: string?,
+	targetKind: string?,
+	targetRuntimeId: string?,
+	targetPosition: Vector3?,
+	replaceExistingKind: boolean?,
 }
 
 local MAX_POPUP_COUNT = 8
@@ -77,6 +84,24 @@ local function sanitizeAmount(valueRaw: any): number
 	return math.max(0, math.floor(valueRaw + 0.5))
 end
 
+local function sanitizeOptionalString(valueRaw: any): string?
+	if typeof(valueRaw) ~= "string" then
+		return nil
+	end
+	local value = string.match(valueRaw, "^%s*(.-)%s*$") or ""
+	if value == "" then
+		return nil
+	end
+	return value
+end
+
+local function sanitizeOptionalVector3(valueRaw: any): Vector3?
+	if typeof(valueRaw) ~= "Vector3" then
+		return nil
+	end
+	return valueRaw
+end
+
 local function clonePopups(popupsRaw: { InfoPlayerPopup }): { InfoPlayerPopup }
 	return Sift.Array.map(popupsRaw, function(popup: InfoPlayerPopup): InfoPlayerPopup
 		return {
@@ -88,6 +113,9 @@ local function clonePopups(popupsRaw: { InfoPlayerPopup }): { InfoPlayerPopup }
 			description = popup.description,
 			amount = popup.amount,
 			amountPrefix = popup.amountPrefix,
+			targetKind = popup.targetKind,
+			targetRuntimeId = popup.targetRuntimeId,
+			targetPosition = popup.targetPosition,
 			createdAt = popup.createdAt,
 		}
 	end)
@@ -107,9 +135,11 @@ local function formatWordsFromToken(tokenRaw: string): string
 	if compact == "" then
 		return "Item"
 	end
-	return (string.gsub(compact, "(%a)([%w_']*)", function(first: string, tail: string): string
-		return string.upper(first) .. string.lower(tail)
-	end))
+	return (
+		string.gsub(compact, "(%a)([%w_']*)", function(first: string, tail: string): string
+			return string.upper(first) .. string.lower(tail)
+		end)
+	)
 end
 
 local function getInfoPlayerState(): InfoPlayerState
@@ -118,7 +148,7 @@ end
 
 local function setInfoPlayerState(stateRaw: any): InfoPlayerState
 	local current = infoPlayerStateAtom()
-	local source = if typeof(stateRaw) == "table" then (stateRaw :: { [string]: any }) else {}
+	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {}
 	local enabled = if typeof(source.enabled) == "boolean" then source.enabled else current.enabled
 	local sequenceRaw = if typeof(source.sequence) == "number" and source.sequence == source.sequence
 		then source.sequence
@@ -144,7 +174,11 @@ local function setInfoPlayerState(stateRaw: any): InfoPlayerState
 				description = sanitizeString(popupSource.description, ""),
 				amount = popupAmount,
 				amountPrefix = sanitizeString(popupSource.amountPrefix, "+"),
-				createdAt = if typeof(popupSource.createdAt) == "number" and popupSource.createdAt == popupSource.createdAt
+				targetKind = sanitizeOptionalString(popupSource.targetKind),
+				targetRuntimeId = sanitizeOptionalString(popupSource.targetRuntimeId),
+				targetPosition = sanitizeOptionalVector3(popupSource.targetPosition),
+				createdAt = if typeof(popupSource.createdAt) == "number"
+						and popupSource.createdAt == popupSource.createdAt
 					then popupSource.createdAt
 					else os.clock(),
 			})
@@ -164,7 +198,7 @@ local function setInfoPlayerState(stateRaw: any): InfoPlayerState
 end
 
 local function pushPopup(payloadRaw: any): InfoPlayerPopup?
-	local payload = if typeof(payloadRaw) == "table" then (payloadRaw :: { [string]: any }) else {}
+	local payload = if typeof(payloadRaw) == "table" then payloadRaw :: { [string]: any } else {}
 	local current = infoPlayerStateAtom()
 	if current.enabled ~= true then
 		return nil
@@ -177,19 +211,30 @@ local function pushPopup(payloadRaw: any): InfoPlayerPopup?
 
 	local nextSequence = current.sequence + 1
 	local eventId = sanitizeString(payload.id, ("event_%d"):format(nextSequence))
+	local popupKind = sanitizePopupKind(payload.kind)
 	local popup: InfoPlayerPopup = {
 		id = eventId,
 		eventToken = ("%s::%d"):format(eventId, nextSequence),
-		kind = sanitizePopupKind(payload.kind),
+		kind = popupKind,
 		title = sanitizeString(payload.title, "Update"),
 		subtitle = sanitizeString(payload.subtitle, ""),
 		description = sanitizeString(payload.description, ""),
 		amount = amount,
 		amountPrefix = sanitizeString(payload.amountPrefix, "+"),
+		targetKind = sanitizeOptionalString(payload.targetKind),
+		targetRuntimeId = sanitizeOptionalString(payload.targetRuntimeId),
+		targetPosition = sanitizeOptionalVector3(payload.targetPosition),
 		createdAt = os.clock(),
 	}
 
-	local nextPopups = limitPopups(Sift.Array.prepend(clonePopups(current.popups), popup))
+	local basePopups = clonePopups(current.popups)
+	if payload.replaceExistingKind == true then
+		basePopups = Sift.Array.filter(basePopups, function(existingPopup: InfoPlayerPopup): boolean
+			return existingPopup.kind ~= popupKind
+		end)
+	end
+
+	local nextPopups = limitPopups(Sift.Array.prepend(basePopups, popup))
 
 	infoPlayerStateAtom({
 		enabled = true,
@@ -218,11 +263,12 @@ local function pushPickup(itemIdRaw: any, amountRaw: any): InfoPlayerPopup?
 	})
 end
 
-local function pushDamageDealt(amountRaw: any): InfoPlayerPopup?
+local function pushDamageDealt(amountRaw: any, targetRaw: any?): InfoPlayerPopup?
 	local amount = sanitizeAmount(amountRaw)
 	if amount <= 0 then
 		return nil
 	end
+	local target = if typeof(targetRaw) == "table" then targetRaw :: { [string]: any } else {}
 
 	return pushPopup({
 		kind = "damage_dealt",
@@ -231,6 +277,10 @@ local function pushDamageDealt(amountRaw: any): InfoPlayerPopup?
 		description = "You dealt damage",
 		amount = amount,
 		amountPrefix = "-",
+		targetKind = target.targetKind,
+		targetRuntimeId = target.targetRuntimeId,
+		targetPosition = target.targetPosition,
+		replaceExistingKind = true,
 	})
 end
 

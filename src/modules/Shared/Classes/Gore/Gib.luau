@@ -1,11 +1,12 @@
 --!strict
+local HttpService = game:GetService("HttpService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Curve = require(script:FindFirstAncestor("game").Shared.Modules.Math.Curve)
 local Ease = require(script:FindFirstAncestor("game").Shared.Modules.Math.Ease)
+local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Vec = require(script:FindFirstAncestor("game").Shared.Modules.Math.Vec)
 
 local Gib = {}
@@ -31,7 +32,7 @@ export type GibConfig = {
 }
 
 type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (any),
+	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
 	Clean: (self: JanitorClass) -> (),
 	Destroy: (self: JanitorClass) -> (),
 }
@@ -112,7 +113,7 @@ local function ensurePartSource(config: GibConfig): BasePart
 	end
 
 	local fallback = Instance.new("Part")
-	fallback.Name = "GibSource"
+	fallback.Name = HttpService:GenerateGUID(false)
 	fallback.Size = Vector3.new(1, 1, 1)
 	fallback.Material = Enum.Material.SmoothPlastic
 	fallback.Color = Color3.fromRGB(117, 0, 0)
@@ -166,11 +167,11 @@ local function resolveRestPosition(self: Gib, startCFrame: CFrame): Vector3
 end
 
 function Gib.New(configRaw: GibConfig?): Gib
-	local config = if typeof(configRaw) == "table" then (configRaw :: GibConfig) else ({} :: GibConfig)
+	local config = if typeof(configRaw) == "table" then configRaw :: GibConfig else {} :: GibConfig
 	local source = ensurePartSource(config)
 	local clone = source:Clone()
 	clearConstraintsAndJoints(clone)
-	clone.Name = (source.Name ~= "" and source.Name or "GibSource") .. "_Runtime"
+	clone.Name = HttpService:GenerateGUID(false)
 
 	local startCFrame = if typeof(config.originCFrame) == "CFrame" then config.originCFrame else source.CFrame
 	local restCFrame = config.restCFrame

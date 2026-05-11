@@ -1,5 +1,6 @@
 --!strict
 
+local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Cache = require(script.Parent.SimulationCache)
@@ -66,7 +67,7 @@ function Render.New(configRaw: any, cacheRaw: any, debugRaw: any)
 
 	self.partPool = cache:createObjectPool(function()
 		local part = Instance.new("Part")
-		part.Name = "ClusterTile"
+		part.Name = HttpService:GenerateGUID(false)
 		part.Anchored = true
 		part.Locked = true
 		part.CanCollide = false
@@ -95,9 +96,7 @@ function Render:BindChunkFolderGuard(chunksFolder: Folder)
 		if ownedByRender then
 			return
 		end
-		error(
-			`[WorldSimulationService] Chunk Model created outside Render:SpawnChunkModel ({child:GetFullName()})`
-		)
+		error(`[WorldSimulationService] Chunk Model created outside Render:SpawnChunkModel ({child:GetFullName()})`)
 	end)
 end
 
@@ -194,7 +193,7 @@ function Render:SpawnChunkModel(coordRaw: any, chunkDataRaw: any): ChunkVisual?
 	end
 
 	local model = Instance.new("Model")
-	model.Name = `Chunk_{coord.chunkX}_{coord.chunkY}_{coord.chunkZ}`
+	model.Name = HttpService:GenerateGUID(false)
 	model:SetAttribute("ChunkKey", key)
 	model:SetAttribute("Revision", snapshot.revision)
 	model:SetAttribute(MODEL_OWNER_ATTRIBUTE, true)
@@ -216,7 +215,8 @@ function Render:SpawnChunkModel(coordRaw: any, chunkDataRaw: any): ChunkVisual?
 		local biomeId = snapshot.clusterChosenBiomeIds[clusterIndex]
 		local color = BIOME_COLORS[biomeId] or BIOME_COLORS[Shared.BIOME_ID.FOREST]
 
-		local localClusterX, localClusterY, localClusterZ = decodeClusterIndex(clusterIndex, clusterCountX, clusterCountY)
+		local localClusterX, localClusterY, localClusterZ =
+			decodeClusterIndex(clusterIndex, clusterCountX, clusterCountY)
 		local worldTileX = baseTileX + localClusterX * clusterSize + clusterSize * 0.5
 		local worldTileY = baseTileY + localClusterY * clusterSize + clusterSize * 0.5
 		local worldTileZ = baseTileZ + localClusterZ * clusterSize + clusterSize * 0.5

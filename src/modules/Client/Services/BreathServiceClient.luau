@@ -1,5 +1,6 @@
 --!strict
 
+local HttpService = game:GetService("HttpService")
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -28,14 +29,14 @@ local BreathServiceClient = {}
 function BreathServiceClient:EnsureEffects()
 	if self.colorCorrection == nil or self.colorCorrection.Parent == nil then
 		local effect = Instance.new("ColorCorrectionEffect")
-		effect.Name = "BreathService_UnderwaterColor"
+		effect.Name = HttpService:GenerateGUID(false)
 		effect.Enabled = false
 		effect.Parent = Lighting
 		self.colorCorrection = effect
 	end
 	if self.blur == nil or self.blur.Parent == nil then
 		local effect = Instance.new("BlurEffect")
-		effect.Name = "BreathService_UnderwaterBlur"
+		effect.Name = HttpService:GenerateGUID(false)
 		effect.Enabled = false
 		effect.Size = 0
 		effect.Parent = Lighting

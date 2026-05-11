@@ -1,4 +1,6 @@
 --!strict
+local HttpService = game:GetService("HttpService")
+
 local LimbDestruction = {}
 LimbDestruction.__index = LimbDestruction
 
@@ -79,7 +81,7 @@ end
 
 local function cloneLimbForGib(limb: BasePart): BasePart
 	local clone = limb:Clone()
-	clone.Name = limb.Name .. "_Gib"
+	clone.Name = HttpService:GenerateGUID(false)
 	clone.Anchored = true
 	clone.AssemblyLinearVelocity = Vector3.zero
 	clone.AssemblyAngularVelocity = Vector3.zero

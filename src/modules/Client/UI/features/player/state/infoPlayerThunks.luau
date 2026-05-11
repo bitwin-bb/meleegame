@@ -1,29 +1,28 @@
 --!strict
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
-local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
-local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
-local infoPlayerSlice = require(script:FindFirstAncestor("game").Client.UI.features.player.state.infoPlayerSlice)
 local BossServiceClient = require(script:FindFirstAncestor("game").Client.Services.BossServiceClient)
-local InventoryServiceClient = require(script:FindFirstAncestor("game").Client.Services.InventoryServiceClient)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
+local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
 local HpServiceClient = require(script:FindFirstAncestor("game").Client.Services.HpServiceClient)
 local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.HpServiceUtils)
+local InventoryServiceClient = require(script:FindFirstAncestor("game").Client.Services.InventoryServiceClient)
+local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
 local NpcServiceClient = require(script:FindFirstAncestor("game").Client.Services.NpcServiceClient)
+local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
+local infoPlayerSlice = require(script:FindFirstAncestor("game").Client.UI.features.player.state.infoPlayerSlice)
 
 type InfoPlayerState = infoPlayerSlice.InfoPlayerState
 type InventoryState = InventoryServiceUtils.InventoryState
 type HpServiceState = HpServiceUtils.HpServiceState
 type NpcServiceClientState = {
-	byId: { [string]: { hp: number } },
+	byId: { [string]: { hp: number, position: Vector3? } },
 	orderedIds: { string },
 	updatedAt: number,
 }
 
 type BossServiceClientState = {
-	byId: { [string]: { hp: number } },
+	byId: { [string]: { hp: number, position: Vector3? } },
 	orderedIds: { string },
 	updatedAt: number,
 }
@@ -211,7 +210,7 @@ local function onHpStateChanged(nextStateRaw: any)
 end
 
 local function onNpcStateChanged(nextStateRaw: any)
-	local nextState = if typeof(nextStateRaw) == "table" then (nextStateRaw :: NpcServiceClientState) else nil
+	local nextState = if typeof(nextStateRaw) == "table" then nextStateRaw :: NpcServiceClientState else nil
 	if nextState == nil then
 		return
 	end
@@ -223,18 +222,19 @@ local function onNpcStateChanged(nextStateRaw: any)
 		return
 	end
 
-	local totalDealt = 0
+	local now = os.clock()
 	for runtimeId, nextHp in nextHpById do
 		local previousHp = runtime.previousNpcHpById[runtimeId]
 		if previousHp ~= nil and previousHp > nextHp then
-			totalDealt += math.max(0, previousHp - nextHp)
-		end
-	end
-
-	if totalDealt > 0 then
-		local now = os.clock()
-		if now - runtime.lastCombatIntentAt <= DAMAGE_DEALT_INPUT_WINDOW_SECONDS then
-			infoPlayerSlice.pushDamageDealt(totalDealt)
+			local damageDealt = math.max(0, previousHp - nextHp)
+			if damageDealt > 0 and now - runtime.lastCombatIntentAt <= DAMAGE_DEALT_INPUT_WINDOW_SECONDS then
+				local snapshot = nextState.byId[runtimeId]
+				infoPlayerSlice.pushDamageDealt(damageDealt, {
+					targetKind = "npc",
+					targetRuntimeId = runtimeId,
+					targetPosition = if snapshot ~= nil then snapshot.position else nil,
+				})
+			end
 		end
 	end
 
@@ -242,7 +242,7 @@ local function onNpcStateChanged(nextStateRaw: any)
 end
 
 local function onBossStateChanged(nextStateRaw: any)
-	local nextState = if typeof(nextStateRaw) == "table" then (nextStateRaw :: BossServiceClientState) else nil
+	local nextState = if typeof(nextStateRaw) == "table" then nextStateRaw :: BossServiceClientState else nil
 	if nextState == nil then
 		return
 	end
@@ -254,18 +254,19 @@ local function onBossStateChanged(nextStateRaw: any)
 		return
 	end
 
-	local totalDealt = 0
+	local now = os.clock()
 	for runtimeId, nextHp in nextHpById do
 		local previousHp = runtime.previousBossHpById[runtimeId]
 		if previousHp ~= nil and previousHp > nextHp then
-			totalDealt += math.max(0, previousHp - nextHp)
-		end
-	end
-
-	if totalDealt > 0 then
-		local now = os.clock()
-		if now - runtime.lastCombatIntentAt <= DAMAGE_DEALT_INPUT_WINDOW_SECONDS then
-			infoPlayerSlice.pushDamageDealt(totalDealt)
+			local damageDealt = math.max(0, previousHp - nextHp)
+			if damageDealt > 0 and now - runtime.lastCombatIntentAt <= DAMAGE_DEALT_INPUT_WINDOW_SECONDS then
+				local snapshot = nextState.byId[runtimeId]
+				infoPlayerSlice.pushDamageDealt(damageDealt, {
+					targetKind = "boss",
+					targetRuntimeId = runtimeId,
+					targetPosition = if snapshot ~= nil then snapshot.position else nil,
+				})
+			end
 		end
 	end
 
@@ -340,35 +341,47 @@ function infoPlayerThunks.Start(): () -> ()
 	runtime.hasPrimedBoss = false
 	runtime.lastCombatIntentAt = -math.huge
 
-	runtime.inventoryStateChangedConnection =
-		ServiceSync.connectStateChanged(InventoryServiceClient, function(nextState: InventoryState)
+	runtime.inventoryStateChangedConnection = ServiceSync.connectStateChanged(
+		InventoryServiceClient,
+		function(nextState: InventoryState)
 			onInventoryStateChanged(nextState)
-		end)
+		end
+	)
 
-	runtime.hpStateChangedConnection = ServiceSync.connectStateChanged(HpServiceClient, function(nextState: HpServiceState)
-		onHpStateChanged(nextState)
-	end)
+	runtime.hpStateChangedConnection = ServiceSync.connectStateChanged(
+		HpServiceClient,
+		function(nextState: HpServiceState)
+			onHpStateChanged(nextState)
+		end
+	)
 
-	runtime.npcStateChangedConnection = ServiceSync.connectStateChanged(NpcServiceClient, function(nextState: NpcServiceClientState)
-		onNpcStateChanged(nextState)
-	end)
+	runtime.npcStateChangedConnection = ServiceSync.connectStateChanged(
+		NpcServiceClient,
+		function(nextState: NpcServiceClientState)
+			onNpcStateChanged(nextState)
+		end
+	)
 
-	runtime.bossStateChangedConnection =
-		ServiceSync.connectStateChanged(BossServiceClient, function(nextState: BossServiceClientState)
+	runtime.bossStateChangedConnection = ServiceSync.connectStateChanged(
+		BossServiceClient,
+		function(nextState: BossServiceClientState)
 			onBossStateChanged(nextState)
-		end)
+		end
+	)
 
-	runtime.inputBeganConnection = UserInputService.InputBegan:Connect(function(inputObject: InputObject, gameProcessed: boolean)
-		if gameProcessed then
-			return
+	runtime.inputBeganConnection = UserInputService.InputBegan:Connect(
+		function(inputObject: InputObject, gameProcessed: boolean)
+			if gameProcessed then
+				return
+			end
+			if UserInputService:GetFocusedTextBox() ~= nil then
+				return
+			end
+			if isCombatIntentInput(inputObject) then
+				runtime.lastCombatIntentAt = os.clock()
+			end
 		end
-		if UserInputService:GetFocusedTextBox() ~= nil then
-			return
-		end
-		if isCombatIntentInput(inputObject) then
-			runtime.lastCombatIntentAt = os.clock()
-		end
-	end)
+	)
 
 	syncFromServices()
 

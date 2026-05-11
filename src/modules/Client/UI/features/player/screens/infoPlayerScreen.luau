@@ -1,8 +1,12 @@
 --!strict
+local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
+local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossServiceUtils)
 local DropsInfo = require(script:FindFirstAncestor("game").Client.UI.core.components.DropsInfo)
+local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.NpcServiceUtils)
 local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerServiceUtils)
 local React = require(ReplicatedStorage.Packages.React)
 local infoPlayerSlice = require(script:FindFirstAncestor("game").Client.UI.features.player.state.infoPlayerSlice)
@@ -46,6 +50,65 @@ local function resolveCharacterRootPart(localPlayer: Player): BasePart?
 	return character:FindFirstChildWhichIsA("BasePart")
 end
 
+local function resolveModelRootPart(model: Model?): BasePart?
+	if model == nil then
+		return nil
+	end
+
+	local bossRootPart = BossServiceUtils.resolveRootPart(model)
+	if bossRootPart ~= nil then
+		return bossRootPart
+	end
+
+	local humanoidRootPart = model:FindFirstChild("HumanoidRootPart")
+	if humanoidRootPart ~= nil and humanoidRootPart:IsA("BasePart") then
+		return humanoidRootPart
+	end
+
+	if model.PrimaryPart ~= nil then
+		return model.PrimaryPart
+	end
+
+	return model:FindFirstChildWhichIsA("BasePart", true)
+end
+
+local function resolveRuntimeModelByAttribute(attributeName: string, runtimeId: string): Model?
+	local gameFolder = PlayerServiceUtils.getOrCreateWorkspaceGameFolder()
+	local searchRoots = { gameFolder, Workspace }
+	for _, root in searchRoots do
+		for _, descendant in root:GetDescendants() do
+			if descendant:IsA("Model") and descendant:GetAttribute(attributeName) == runtimeId then
+				return descendant
+			end
+		end
+	end
+	return nil
+end
+
+local function resolvePopupTargetRootPart(localPlayer: Player, popup: InfoPlayerPopup): BasePart?
+	if popup.kind ~= "damage_dealt" then
+		return resolveCharacterRootPart(localPlayer)
+	end
+
+	local runtimeId = popup.targetRuntimeId
+	if runtimeId == nil or runtimeId == "" then
+		return nil
+	end
+
+	local runtimeAttribute = nil :: string?
+	if popup.targetKind == "npc" then
+		runtimeAttribute = NpcServiceUtils.RUNTIME_ID_ATTRIBUTE
+	elseif popup.targetKind == "boss" then
+		runtimeAttribute = BossServiceUtils.RUNTIME_ID_ATTRIBUTE
+	end
+
+	if runtimeAttribute == nil then
+		return nil
+	end
+
+	return resolveModelRootPart(resolveRuntimeModelByAttribute(runtimeAttribute, runtimeId))
+end
+
 local function resolveThemeByPopupKind(kind: infoPlayerSlice.InfoPlayerPopupKind): { [string]: any }
 	if kind == "damage_taken" then
 		return {
@@ -82,9 +145,8 @@ local function resolveThemeByPopupKind(kind: infoPlayerSlice.InfoPlayerPopupKind
 end
 
 local function PopupEntry(props: PopupEntryProps): React.ReactNode
-	local rootPart = resolveCharacterRootPart(props.localPlayer)
-
 	local popup = props.popup
+	local targetRootPart = resolvePopupTargetRootPart(props.localPlayer, popup)
 	local stackOffset = (props.index - 1) * 1.55
 	local popupZIndex = props.zIndex + props.index
 	local textValue = ""
@@ -114,13 +176,14 @@ local function PopupEntry(props: PopupEntryProps): React.ReactNode
 
 	local anchorPart, setAnchorPart = React.useState(nil :: BasePart?)
 	React.useEffect(function()
-		if rootPart == nil then
+		local anchorPosition = if targetRootPart ~= nil then targetRootPart.Position else popup.targetPosition
+		if anchorPosition == nil then
 			setAnchorPart(nil)
 			return nil
 		end
 
 		local createdAnchor = Instance.new("Part")
-		createdAnchor.Name = ("InfoPlayerPopupAnchor_%s"):format(popup.id)
+		createdAnchor.Name = HttpService:GenerateGUID(false)
 		createdAnchor.Anchored = true
 		createdAnchor.CanCollide = false
 		createdAnchor.CanTouch = false
@@ -128,7 +191,7 @@ local function PopupEntry(props: PopupEntryProps): React.ReactNode
 		createdAnchor.CastShadow = false
 		createdAnchor.Transparency = 1
 		createdAnchor.Size = Vector3.new(0.1, 0.1, 0.1)
-		createdAnchor.CFrame = CFrame.new(rootPart.Position)
+		createdAnchor.CFrame = CFrame.new(anchorPosition)
 		createdAnchor.Parent = PlayerServiceUtils.getOrCreateWorkspaceGameFolder()
 		setAnchorPart(createdAnchor)
 
@@ -143,7 +206,7 @@ local function PopupEntry(props: PopupEntryProps): React.ReactNode
 				return currentAnchorPart
 			end)
 		end
-	end, { rootPart, popup.id })
+	end, { targetRootPart, popup.id, popup.targetPosition })
 
 	local adornee = anchorPart
 	if adornee == nil then
@@ -186,6 +249,7 @@ local function createPopupElement(
 	zIndex: number
 ): React.ReactNode
 	return e(PopupEntry, {
+		key = popup.eventToken,
 		localPlayer = localPlayer,
 		popup = popup,
 		index = index,

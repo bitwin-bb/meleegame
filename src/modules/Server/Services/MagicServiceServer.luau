@@ -1,4 +1,5 @@
 --!strict
+local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -673,10 +674,9 @@ end
 
 function MagicServiceServer.CreateProjectilePart(
 	self: MagicServiceServer,
-	weaponIdRaw: any,
+	_weaponIdRaw: any,
 	config: WeaponRuntimeConfig
 ): BasePart
-	local weaponId = trim(weaponIdRaw)
 	local template = config.projectile.template
 	local part = if template ~= nil then template:Clone() else nil
 	if part == nil then
@@ -684,7 +684,7 @@ function MagicServiceServer.CreateProjectilePart(
 		part.Shape = Enum.PartType.Ball
 		part.Size = Vector3.new(0.4, 0.4, 0.4)
 	end
-	part.Name = ("MagicProjectile_%s"):format(if weaponId ~= "" then weaponId else "Unknown")
+	part.Name = HttpService:GenerateGUID(false)
 	part.Anchored = true
 	part.CanCollide = false
 	part.CanQuery = false

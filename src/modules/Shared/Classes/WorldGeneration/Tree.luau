@@ -5,6 +5,7 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local Workspace = game:GetService("Workspace")
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local Height = require(script.Parent.Height)
+local TileMaterial = require(script:FindFirstAncestor("game").Shared.Modules.Game.Render.TileMaterial)
 local WorldGenerationColor = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationColor)
 
 local ProceduralTree = {}
@@ -765,7 +766,12 @@ function ProceduralTree.CreateBranchPart(self: ProceduralTree, descriptor: Branc
 	part.Size = Vector3.new(descriptor.thickness, descriptor.thickness, length)
 	part.CFrame = CFrame.lookAt(midpoint, midpoint + direction.Unit)
 	part.Color = self.config.BranchColor
-	part.Material = Enum.Material.Plastic
+	part.MaterialVariant = ""
+	if self.config.BranchMaterial == Enum.Material.Wood then
+		TileMaterial.ApplyWoodMaterial(part)
+	else
+		part.Material = self.config.BranchMaterial
+	end
 	applyStudSurfaces(part)
 	part.CastShadow = false
 	part.CanCollide = self.config.BranchCanCollide
@@ -792,7 +798,12 @@ function ProceduralTree.CreateLeafPart(self: ProceduralTree, descriptor: LeafDes
 			math.rad(descriptor.rotation.Z)
 		)
 	part.Color = self.config.LeafColor
-	part.Material = Enum.Material.Plastic
+	part.MaterialVariant = ""
+	if self.config.LeafMaterial == DEFAULT_LEAF_MATERIAL then
+		TileMaterial.ApplyLeafMaterial(part)
+	else
+		part.Material = self.config.LeafMaterial
+	end
 	applyStudSurfaces(part)
 	part.CastShadow = false
 	part.CanCollide = false

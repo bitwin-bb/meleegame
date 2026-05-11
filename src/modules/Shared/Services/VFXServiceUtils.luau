@@ -1,4 +1,5 @@
 --!strict
+local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
@@ -277,12 +278,8 @@ function VFXServiceUtils.SanitizePlaybackOptions(optionsRaw: any): VFXPlaybackOp
 		0,
 		VFXServiceUtils.MAX_DURATION
 	)
-	local followDuration = sanitizeNumber(
-		(source :: any).followDuration,
-		enabledDuration,
-		0,
-		VFXServiceUtils.MAX_DURATION
-	)
+	local followDuration =
+		sanitizeNumber((source :: any).followDuration, enabledDuration, 0, VFXServiceUtils.MAX_DURATION)
 
 	local cleanupDelayRaw = (source :: any).cleanupDelay
 	if cleanupDelayRaw == nil then
@@ -422,9 +419,9 @@ function VFXServiceUtils.EnsureRuntimeFolder(): Folder
 	return WorkspaceFolders.getOrCreateFolderInGame(VFXServiceUtils.RUNTIME_FOLDER_NAME)
 end
 
-function VFXServiceUtils.CreateRuntimeCarrier(effectNameRaw: any): Part
+function VFXServiceUtils.CreateRuntimeCarrier(_effectNameRaw: any): Part
 	local carrier = Instance.new("Part")
-	carrier.Name = if trim(effectNameRaw) ~= "" then trim(effectNameRaw) .. "_Carrier" else "VFXCarrier"
+	carrier.Name = HttpService:GenerateGUID(false)
 	carrier.Size = Vector3.new(0.2, 0.2, 0.2)
 	carrier.Transparency = 1
 	carrier.Material = Enum.Material.SmoothPlastic
@@ -467,7 +464,6 @@ function VFXServiceUtils.CreateRuntimeEffect(effectTemplateRaw: any, runtimePare
 		local templateParent = template.Parent
 		if templateParent ~= nil and templateParent:IsA("BasePart") then
 			local carrierClone = templateParent:Clone() :: BasePart
-			carrierClone.Name = template.Name .. "_Carrier"
 			VFXServiceUtils.PrepareRuntimeRoot(carrierClone, true)
 			carrierClone.Parent = runtimeParent
 			return carrierClone
@@ -490,7 +486,8 @@ function VFXServiceUtils.SetRuntimeEffectEnabled(runtimeRootRaw: any, enabled: b
 	end
 
 	for _, descendant in runtimeRoot:GetDescendants() do
-		if descendant:IsA("ParticleEmitter")
+		if
+			descendant:IsA("ParticleEmitter")
 			or descendant:IsA("Trail")
 			or descendant:IsA("Beam")
 			or descendant:IsA("Smoke")

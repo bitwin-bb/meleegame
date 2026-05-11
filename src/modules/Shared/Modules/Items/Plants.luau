@@ -1,14 +1,32 @@
 return {
 	overworld = {
-		top = "rbxassetid://118819017678239",
-		side = "rbxassetid://91276960164956",
+		top = {
+			color = "rbxassetid://90513640363066",
+			normal = "rbxassetid://113493075224115",
+		},
+		side = {
+			color = "rbxassetid://113018887807236",
+			normal = "rbxassetid://120615106269797",
+		},
 	},
 	corruption = {
-		top = "rbxassetid://112047065210635",
-		side = "rbxassetid://93801948539117",
+		top = {
+			color = "rbxassetid://119802114005999",
+			normal = "rbxassetid://106265023079218",
+		},
+		side = {
+			color = "rbxassetid://88194003641710",
+			normal = "rbxassetid://123439814183707",
+		},
 	},
 	jungle = {
-		top = "rbxassetid://117700487986464",
-		side = "rbxassetid://98768419949823",
+		top = {
+			color = "rbxassetid://126124691456639",
+			normal = "rbxassetid://135130298555649",
+		},
+		side = {
+			color = "rbxassetid://99510857163244",
+			normal = "rbxassetid://126894698119239",
+		},
 	},
 }

@@ -1,5 +1,6 @@
 --!strict
 
+local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 
 local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
@@ -33,12 +34,12 @@ function LightBinder.new(instance: Instance, context: any)
 
 	if #self.lights <= 0 and self.rootPart ~= nil then
 		local attachment = Instance.new("Attachment")
-		attachment.Name = "LightBinderAttachment"
+		attachment.Name = HttpService:GenerateGUID(false)
 		attachment.Parent = self.rootPart
 		self:AddCleanup(attachment)
 
 		local light = Instance.new("PointLight")
-		light.Name = "LightBinderTorchLight"
+		light.Name = HttpService:GenerateGUID(false)
 		light.Parent = attachment
 		self:AddCleanup(light)
 

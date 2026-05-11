@@ -1,6 +1,7 @@
 --!strict
-local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
 local DynamicTextResolver = require(script.Parent.DynamicTextResolver)
 local RichTextFormatter = require(script.Parent.RichTextFormatter)
@@ -73,7 +74,7 @@ end
 
 local function defaultCreateTooltipFrame(): Frame
 	local frame = Instance.new("Frame")
-	frame.Name = "Tooltip"
+	frame.Name = HttpService:GenerateGUID(false)
 	frame.BackgroundColor3 = Color3.fromRGB(15, 15, 18)
 	frame.BackgroundTransparency = 0.15
 	frame.BorderColor3 = Color3.fromRGB(50, 50, 60)
@@ -90,7 +91,7 @@ local function defaultCreateTooltipFrame(): Frame
 	padding.Parent = frame
 
 	local label = Instance.new("TextLabel")
-	label.Name = "Body"
+	label.Name = HttpService:GenerateGUID(false)
 	label.BackgroundTransparency = 1
 	label.Size = UDim2.new(1, 0, 1, 0)
 	label.Position = UDim2.fromOffset(0, 0)
@@ -105,7 +106,7 @@ local function defaultCreateTooltipFrame(): Frame
 	label.Parent = frame
 
 	local uiScale = Instance.new("UIScale")
-	uiScale.Name = "Scale"
+	uiScale.Name = HttpService:GenerateGUID(false)
 	uiScale.Scale = 1
 	uiScale.Parent = frame
 
@@ -122,8 +123,12 @@ function TooltipManager.New(configRaw: TooltipManagerConfig): any
 		resolver = if configRaw.textResolver ~= nil then configRaw.textResolver else DynamicTextResolver.new(),
 		rich = if configRaw.richTextFormatter ~= nil then configRaw.richTextFormatter else RichTextFormatter,
 		stats = if configRaw.statStringBuilder ~= nil then configRaw.statStringBuilder else StatStringBuilder.new(),
-		measure = if configRaw.textMeasurementCache ~= nil then configRaw.textMeasurementCache else TextMeasurementCache.new(),
-		createTooltipFrame = if typeof(configRaw.createTooltipFrame) == "function" then configRaw.createTooltipFrame else defaultCreateTooltipFrame,
+		measure = if configRaw.textMeasurementCache ~= nil
+			then configRaw.textMeasurementCache
+			else TextMeasurementCache.new(),
+		createTooltipFrame = if typeof(configRaw.createTooltipFrame) == "function"
+			then configRaw.createTooltipFrame
+			else defaultCreateTooltipFrame,
 		maxPoolSize = clampInteger(configRaw.maxPoolSize, 12, 1, 100),
 		offset = if typeof(configRaw.offset) == "Vector2" then configRaw.offset else Vector2.new(18, 18),
 		defaultMaxWidth = clampInteger(configRaw.maxWidth, 320, 80, 1200),
@@ -211,7 +216,11 @@ function TooltipManager._animateHide(self: any, frame: Frame)
 	end
 end
 
-function TooltipManager._composeText(self: any, metadataRaw: TooltipMetadata, compareMetadataRaw: TooltipMetadata?): string
+function TooltipManager._composeText(
+	self: any,
+	metadataRaw: TooltipMetadata,
+	compareMetadataRaw: TooltipMetadata?
+): string
 	local metadata = if typeof(metadataRaw) == "table" then metadataRaw else {}
 	local context = if typeof(metadata.context) == "table" then metadata.context else {}
 	local builder = self.rich.new()
@@ -327,14 +336,22 @@ function TooltipManager.Show(self: any, metadataRaw: TooltipMetadata, compareMet
 
 	self.isVisible = true
 	self:_updatePosition()
-	if self.positionToken == nil and self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).scheduleEvery) == "function" then
-		self.positionToken = (self.tickScheduler :: any):scheduleEvery(function()
-			self:_updatePosition()
-		end, 1 / 60, {
-			group = "ui.tooltips",
-			priority = 250,
-			catchUp = false,
-		})
+	if
+		self.positionToken == nil
+		and self.tickScheduler ~= nil
+		and typeof((self.tickScheduler :: any).scheduleEvery) == "function"
+	then
+		self.positionToken = (self.tickScheduler :: any):scheduleEvery(
+			function()
+				self:_updatePosition()
+			end,
+			1 / 60,
+			{
+				group = "ui.tooltips",
+				priority = 250,
+				catchUp = false,
+			}
+		)
 	elseif self.positionConnection == nil then
 		self.positionConnection = RunService.RenderStepped:Connect(function()
 			self:_updatePosition()

@@ -54,8 +54,8 @@ local DEFAULT_TILE_SIZE = 2
 local DEFAULT_TILE_DEPTH = 2
 local DEFAULT_BASE_PLANE_X = 0
 local DEFAULT_WALL_PLANE_OFFSET = 1.65
-local DEFAULT_HORIZON_DEPTH_BLOCKS = 10
-local DEFAULT_BACKGROUND_LAYER_COUNT = 4
+local DEFAULT_HORIZON_DEPTH_BLOCKS = 16
+local DEFAULT_BACKGROUND_LAYER_COUNT = 6
 local DEFAULT_BACKGROUND_LAYER_THICKNESS_BLOCKS = 1
 local DEFAULT_WORLD_ORIGIN = Vector3.zero
 local DEFAULT_MIN_TILE_Y = -360
@@ -173,7 +173,7 @@ function WorldGenerationServiceUtils.SanitizeConfig(
 		backgroundLayerCount = sanitizeInteger(
 			(source :: any).backgroundLayerCount,
 			3,
-			4,
+			6,
 			fallback.backgroundLayerCount
 		),
 		backgroundLayerThicknessBlocks = sanitizeNumber(
