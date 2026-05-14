@@ -1,7 +1,7 @@
 --!strict
 -- selene: allow(undefined_variable)
 
-local ParallaxServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.ParallaxServiceUtils)
+local ParallaxServiceUtils = require(script:FindFirstAncestor("game").Client.Features.parallax.ParallaxServiceUtils)
 
 return function()
 	describe("ParallaxServiceUtils", function()

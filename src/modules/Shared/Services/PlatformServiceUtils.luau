@@ -463,7 +463,7 @@ local function bindingKeyCodeForPrompt(binding: ActionBinding): Enum.KeyCode?
 		return Enum.KeyCode.MouseMiddleButton
 	end
 	if binding.inputType == Enum.UserInputType.Touch then
-		return Enum.KeyCode.Touch
+		return Enum.KeyCode.TouchPosition
 	end
 	return nil
 end

@@ -15,6 +15,7 @@ local biomeThunks = {}
 local BIOME_SAMPLE_INTERVAL = 0.2
 local BIOME_BANNER_DURATION = 2.6
 local BIOME_TYPE_CORRUPTION = 2
+local BIOME_ID_SNOW = 3
 local DEPTH_LAYER_UNDERGROUND = 2
 local DEPTH_LAYER_CAVERN = 3
 local DEPTH_LAYER_DEEP = 4
@@ -25,6 +26,16 @@ local BIOME_ID_TO_NAME: { [number]: string } = {
 	[4] = "The Jungle",
 	[5] = "The Corruption",
 }
+
+local function resolveTundraBiomeKey(depthLayer: number?): string
+	if depthLayer == DEPTH_LAYER_CAVERN or depthLayer == DEPTH_LAYER_DEEP then
+		return "tundra:caverns"
+	end
+	if depthLayer == DEPTH_LAYER_UNDERGROUND then
+		return "tundra:underground"
+	end
+	return "tundra"
+end
 
 local runtime = {
 	started = false,
@@ -98,12 +109,38 @@ local function resolveBiomeAtPosition(worldPosition: Vector3): (string?, string?
 		return nil, nil
 	end
 
+	local biomeId: number?
+	local biomeIdOk, biomeIdResult = pcall(function()
+		return WorldGenerationServiceClient:getBiomeIdAtWorldPosition(worldPosition)
+	end)
+	if biomeIdOk and typeof(biomeIdResult) == "number" then
+		biomeId = math.floor(biomeIdResult)
+	end
+
+	local surfaceBiomeId: number?
+	local surfaceBiomeIdOk, surfaceBiomeIdResult = pcall(function()
+		return (WorldGenerationServiceClient :: any):getSurfaceBiomeIdAtWorldPosition(worldPosition)
+	end)
+	if surfaceBiomeIdOk and typeof(surfaceBiomeIdResult) == "number" then
+		surfaceBiomeId = math.floor(surfaceBiomeIdResult)
+	end
+
 	local depthLayer: number?
 	local depthLayerOk, depthLayerResult = pcall(function()
 		return (WorldGenerationServiceClient :: any):getDepthLayerAtWorldPosition(worldPosition)
 	end)
 	if depthLayerOk and typeof(depthLayerResult) == "number" then
 		depthLayer = math.floor(depthLayerResult)
+	end
+
+	local isUndergroundDepth = depthLayer == DEPTH_LAYER_UNDERGROUND
+		or depthLayer == DEPTH_LAYER_CAVERN
+		or depthLayer == DEPTH_LAYER_DEEP
+	local isSnowBiome = if isUndergroundDepth
+		then surfaceBiomeId == BIOME_ID_SNOW
+		else biomeId == BIOME_ID_SNOW or surfaceBiomeId == BIOME_ID_SNOW
+	if isSnowBiome then
+		return resolveTundraBiomeKey(depthLayer), "Tundra"
 	end
 
 	if depthLayer == DEPTH_LAYER_CAVERN or depthLayer == DEPTH_LAYER_DEEP then
@@ -125,15 +162,10 @@ local function resolveBiomeAtPosition(worldPosition: Vector3): (string?, string?
 		return "corruption", "The Corruption"
 	end
 
-	local biomeId: number?
-	local biomeIdOk, biomeIdResult = pcall(function()
-		return WorldGenerationServiceClient:getBiomeIdAtWorldPosition(worldPosition)
-	end)
-	if not biomeIdOk or typeof(biomeIdResult) ~= "number" then
+	if biomeId == nil then
 		return nil, nil
 	end
 
-	biomeId = math.floor(biomeIdResult)
 	local biomeName = BIOME_ID_TO_NAME[biomeId]
 	if biomeName == nil then
 		return nil, nil

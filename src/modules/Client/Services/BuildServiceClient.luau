@@ -1067,10 +1067,6 @@ function BuildServiceClient.StepTreeFallAnimations(self: BuildServiceClient, del
 			local accelerated = alpha ^ TREE_FALL_ACCELERATION_EXPONENT
 			nextAngle = animation.impactAngle * accelerated
 			animation.angleMotion:immediate(nextAngle)
-		elseif animation.stage == "bounce" then
-			nextAngle = animation.angleMotion:step(deltaTime)
-		elseif animation.stage == "settle" then
-			nextAngle = animation.angleMotion:step(deltaTime)
 		else
 			nextAngle = animation.angleMotion:step(deltaTime)
 		end
@@ -1136,17 +1132,17 @@ function BuildServiceClient.CreatePreviewVisual(self: BuildServiceClient)
 		if
 			child.Name == "BuildPreview"
 			or child.Name == "BuildPreviewBinder"
+			or child.Name == "BuildHoverHighlight"
 			or child:GetAttribute(BUILD_PREVIEW_RUNTIME_ATTRIBUTE) == true
 		then
-			child:Destroy()
-		elseif child.Name == "BuildHoverHighlight" then
 			child:Destroy()
 		end
 	end
 	for _, descendant in self.visualFolder:GetDescendants() do
-		if descendant:IsA("BillboardGui") and descendant.Name == "BreakProgress" then
-			descendant:Destroy()
-		elseif descendant:IsA("Highlight") and descendant.Name == "BuildHoverHighlight" then
+		if
+			(descendant:IsA("BillboardGui") and descendant.Name == "BreakProgress")
+			or (descendant:IsA("Highlight") and descendant.Name == "BuildHoverHighlight")
+		then
 			descendant:Destroy()
 		end
 	end

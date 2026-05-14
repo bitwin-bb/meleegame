@@ -57,6 +57,14 @@ local function forgetManagedFolder(folder: Folder)
 	pruneScheduled[folder] = nil
 end
 
+local function isParentLocked(instance: Instance): boolean
+	local currentParent = instance.Parent
+	local ok = pcall(function()
+		instance.Parent = currentParent
+	end)
+	return not ok
+end
+
 local function mergeFolderContents(target: Folder, source: Folder)
 	for _, child in source:GetChildren() do
 		local existing = target:FindFirstChild(child.Name)
@@ -116,6 +124,11 @@ local function resolveManagedParent(folder: Folder): Instance?
 end
 
 local function attachManagedFolder(folder: Folder)
+	if isParentLocked(folder) then
+		forgetManagedFolder(folder)
+		return
+	end
+
 	local parent = resolveManagedParent(folder)
 	if parent == nil or folder.Parent == parent then
 		return
@@ -130,7 +143,12 @@ local function attachManagedFolder(folder: Folder)
 		end
 	end
 
-	folder.Parent = parent
+	local ok = pcall(function()
+		folder.Parent = parent
+	end)
+	if not ok then
+		forgetManagedFolder(folder)
+	end
 end
 
 local function pruneGameFolderIfEmpty()
@@ -148,8 +166,17 @@ local function schedulePrune(folder: Folder)
 	pruneScheduled[folder] = true
 	task.defer(function()
 		pruneScheduled[folder] = nil
+		if managedFolders[folder] ~= true then
+			return
+		end
 		if folder.Parent ~= nil and isFolderEmpty(folder) then
-			folder.Parent = nil
+			local ok = pcall(function()
+				folder.Parent = nil
+			end)
+			if not ok then
+				forgetManagedFolder(folder)
+				return
+			end
 			pruneGameFolderIfEmpty()
 		end
 	end)
@@ -274,11 +301,16 @@ function WorkspaceFolders.GetOrCreateFolderInGame(folderName: string): Folder
 	end
 
 	for folder in managedFolders do
-		if folder.Name == folderName and folder.Parent == nil then
-			return manageFolder(folder, function()
-				return WorkspaceFolders.GetOrCreateGameFolder()
-			end)
+		if folder.Name ~= folderName or folder.Parent ~= nil then
+			continue
 		end
+		if isParentLocked(folder) then
+			forgetManagedFolder(folder)
+			continue
+		end
+		return manageFolder(folder, function()
+			return WorkspaceFolders.GetOrCreateGameFolder()
+		end)
 	end
 
 	local legacy = Workspace:FindFirstChild(folderName)

@@ -50,10 +50,10 @@ local NETWORK_METHOD_SET_RENDER_DISTANCE = "setRenderDistance"
 
 local DEFAULT_SEED = 13371337
 local DEFAULT_CHUNK_SIZE = 32
-local DEFAULT_TILE_SIZE = 2
-local DEFAULT_TILE_DEPTH = 2
+local DEFAULT_TILE_SIZE = 4
+local DEFAULT_TILE_DEPTH = 4
 local DEFAULT_BASE_PLANE_X = 0
-local DEFAULT_WALL_PLANE_OFFSET = 1.65
+local DEFAULT_WALL_PLANE_OFFSET = 4
 local DEFAULT_HORIZON_DEPTH_BLOCKS = 16
 local DEFAULT_BACKGROUND_LAYER_COUNT = 6
 local DEFAULT_BACKGROUND_LAYER_THICKNESS_BLOCKS = 1
@@ -299,10 +299,7 @@ function WorldGenerationServiceUtils.CreateState(
 end
 
 function WorldGenerationServiceUtils.CloneState(state: WorldGenerationServiceState): WorldGenerationServiceState
-	local statsClone: { [string]: any } = {}
-	for key, value in state.stats do
-		statsClone[key] = value
-	end
+	local statsClone: { [string]: any } = table.clone(state.stats)
 
 	return {
 		seed = state.seed,

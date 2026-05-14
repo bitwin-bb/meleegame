@@ -1,7 +1,7 @@
 --!strict
 
-local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
@@ -15,8 +15,15 @@ local Rx = loader("Rx")
 local RxSignal = loader("RxSignal")
 local ValueObject = loader("ValueObject")
 
-local ParallaxBackgrounds = require(script:FindFirstAncestor("game").Shared.Modules.Items.ParallaxBackgrounds)
-local ParallaxServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.ParallaxServiceUtils)
+local React = require(ReplicatedStorage.Packages.React)
+local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
+
+local ParallaxBackgrounds = require(script.Parent.Parent.modules.ParallaxBackgrounds)
+local ParallaxScreen = require(script.Parent.Parent.ui.screens.ParallaxScreen)
+local ParallaxServiceUtils = require(script.Parent.Parent.ParallaxServiceUtils)
+local ParallaxSlice = require(script.Parent.Parent.ParallaxSlice)
+local ParallaxThunks = require(script.Parent.Parent.ParallaxThunks)
+local Scrolling = require(script.Parent.Parent.modules.Scrolling)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
@@ -27,6 +34,7 @@ type BiomeVariantDefinition = ParallaxServiceUtils.BiomeVariantDefinition
 type LayerDefinition = ParallaxServiceUtils.LayerDefinition
 type PlaneSizing = ParallaxServiceUtils.PlaneSizing
 type ServiceState = ParallaxServiceUtils.ServiceState
+type ParallaxSurfaceState = ParallaxSlice.ParallaxSurfaceState
 
 type MaidClass = {
 	GiveTask: (self: MaidClass, task: any) -> any,
@@ -73,18 +81,9 @@ type WorldLayoutSnapshot = {
 
 type LayoutSnapshot = CameraSnapshot & WorldLayoutSnapshot
 
-type PlaneRuntime = {
-	part: Part,
-	textures: { Texture },
-	lastWidth: number,
-	lastHeight: number,
-	lastRepeatWidth: number,
-}
-
 type LayerRuntime = {
 	definition: LayerDefinition,
-	folder: Folder,
-	plane: PlaneRuntime,
+	layerIndex: number,
 }
 
 type BiomeRuntime = {
@@ -92,24 +91,54 @@ type BiomeRuntime = {
 	variantName: string,
 	definition: BiomeDefinition,
 	variantDefinition: BiomeVariantDefinition,
-	folder: Folder,
 	layers: { LayerRuntime },
 	alpha: number,
 	startAlpha: number,
 	targetAlpha: number,
 }
 
+type SurfaceRuntime = {
+	anchorPart: Part,
+	reactRoot: any,
+}
+
+type LayerMetric = {
+	id: string,
+	image: string,
+	tint: Color3,
+	transparency: number,
+	centerY: number,
+	centerZ: number,
+	width: number,
+	height: number,
+	textureRepeatWidth: number,
+	textureRepeatHeight: number,
+	textureOffsetU: number,
+	textureOffsetV: number,
+	planeDepthBlocks: number,
+	zIndex: number,
+}
+
+local Parallax = {}
+Parallax.__index = Parallax
+
 local WORLD_FOLDER_NAME = "WorldGeneration"
 local ROOT_PARENT_FALLBACK_NAME = "ParallaxService"
-local BASE_TEXTURE_OFFSET_STUDS_U = 0.3
-local BASE_TEXTURE_OFFSET_STUDS_V = 0.3
-local PARALLAX_TEXTURE_MOTION_SCALE = 0.65
-local MIN_PLANE_VERTICAL_COVERAGE_BLEED_FACTOR = 0.14
+local ROOT_FOLDER_NAME = "ParallaxDepth"
+local ANCHOR_PART_NAME = "ParallaxAnchor"
+local SURFACE_BRIGHTNESS = 0.5
+local SURFACE_PIXELS_PER_STUD = 8
+local MAX_SURFACE_CANVAS_PIXELS = 20000
+local MIN_SURFACE_CANVAS_PIXELS = 1
+local SURFACE_EXTRA_TILE_COUNT = 1
+local SURFACE_TILE_SCALE = 1
+local SURFACE_LAYER_MIN_VIEW_HEIGHT_FACTOR = 1.06
+local SURFACE_LAYER_MAX_VIEW_HEIGHT_FACTOR = 1.16
 local MIN_PLANE_VERTICAL_COVERAGE_BLEED_STUDS = 4
 local DEFAULT_CAMERA_FIELD_OF_VIEW = 70
 local DEFAULT_CAMERA_VIEWPORT = Vector2.new(1920, 1080)
 
-local ParallaxServiceClient = {}
+local e: typeof(React.createElement) = React.createElement
 
 local function createFolder(parent: Instance, name: string): Folder
 	local existing = parent:FindFirstChild(name)
@@ -126,48 +155,8 @@ local function createFolder(parent: Instance, name: string): Folder
 	return WorkspaceFolders.manageFolder(folder, parent) or folder
 end
 
-local function toPascalCaseName(valueRaw: any, fallback: string): string
-	local value = if typeof(valueRaw) == "string" then valueRaw else ""
-	local words = {}
-	for word in string.gmatch(value, "[%w]+") do
-		local lower = string.lower(word)
-		words[#words + 1] = string.upper(string.sub(lower, 1, 1)) .. string.sub(lower, 2)
-	end
-
-	if #words <= 0 then
-		return fallback
-	end
-	return table.concat(words, "")
-end
-
-local function resolveBiomeFolderName(biomeDefinition: BiomeDefinition): string
-	return toPascalCaseName(biomeDefinition.name, "UnknownBiome")
-end
-
-local function resolveLayerFolderName(_layerDefinition: LayerDefinition, layerIndex: number): string
-	return `Layer{layerIndex}`
-end
-
-local function isKnownBiomeFolderName(catalog: Catalog, folderName: string): boolean
-	for _, biomeName in catalog.orderedBiomeNames do
-		local biomeDefinition = catalog.biomes[biomeName]
-		if biomeDefinition ~= nil and resolveBiomeFolderName(biomeDefinition) == folderName then
-			return true
-		end
-	end
-	return false
-end
-
 local function getCamera(): Camera?
 	return Workspace.CurrentCamera
-end
-
-local function resolveCameraPosition(): Vector3
-	local camera = getCamera()
-	if camera == nil then
-		return Vector3.zero
-	end
-	return camera.CFrame.Position
 end
 
 local function resolveCameraSnapshot(camera: Camera?): CameraSnapshot
@@ -197,19 +186,8 @@ local function computeVisibleExtentsAtDistance(
 	return visibleWidth, visibleHeight
 end
 
-local function computeAlignedCenterY(
-	verticalAlign: ParallaxServiceUtils.VerticalAlign,
-	cameraY: number,
-	visibleHeight: number,
-	planeHeight: number
-): number
-	if verticalAlign == "Top" then
-		return cameraY + visibleHeight * 0.5 - planeHeight * 0.5
-	end
-	if verticalAlign == "Center" then
-		return cameraY
-	end
-	return cameraY - visibleHeight * 0.5 + planeHeight * 0.5
+local function computeTextureRepeatWidthFromHeight(definition: LayerDefinition, textureRepeatHeight: number): number
+	return math.max(1, (textureRepeatHeight / math.max(definition.heightScale, 0.05)) * definition.imageAspectRatio)
 end
 
 local function blendToLayerTransparency(baseTransparency: number, biomeAlpha: number): number
@@ -218,42 +196,55 @@ local function blendToLayerTransparency(baseTransparency: number, biomeAlpha: nu
 	return 1 - (1 - clampedBaseTransparency) * clampedBiomeAlpha
 end
 
-local function wrapTextureOffsetStuds(offsetStudsRaw: number, repeatWidthRaw: number): number
-	local repeatWidth = math.max(repeatWidthRaw, 0.001)
-	local wrapped = offsetStudsRaw % repeatWidth
-	if wrapped < 0 then
-		wrapped += repeatWidth
-	end
-	return wrapped
-end
-
 local function cloneState(state: ServiceState): ServiceState
 	return ParallaxServiceUtils.cloneState(state)
 end
 
-local function createTexture(part: Part, face: Enum.NormalId, definition: LayerDefinition): Texture
-	local texture = Instance.new("Texture")
-	texture.Name = face.Name
-	texture.Face = face
-	texture.Texture = definition.image
-	texture.Color3 = definition.tint
-	texture.Transparency = 1
-	texture.OffsetStudsU = BASE_TEXTURE_OFFSET_STUDS_U
-	texture.OffsetStudsV = BASE_TEXTURE_OFFSET_STUDS_V
-	texture.Parent = part
-	return texture
+local function resolveSurfacePixelsPerStud(widthStuds: number, heightStuds: number): number
+	local largestAxis = math.max(widthStuds, heightStuds, 1)
+	return math.max(1, math.min(SURFACE_PIXELS_PER_STUD, MAX_SURFACE_CANVAS_PIXELS / largestAxis))
 end
 
-function ParallaxServiceClient._initializeCoreState(self: ParallaxServiceClient)
-	if self.localPlayer == nil then
-		self.localPlayer = Players.LocalPlayer
+local function toCanvasPixels(studs: number, pixelsPerStud: number): number
+	return math.clamp(
+		math.ceil(math.max(studs, 0) * pixelsPerStud),
+		MIN_SURFACE_CANVAS_PIXELS,
+		MAX_SURFACE_CANVAS_PIXELS
+	)
+end
+
+local function resolveLayerRenderId(biomeRuntime: BiomeRuntime, layerRuntime: LayerRuntime): string
+	local layerId = layerRuntime.definition.id
+	if layerId == "" then
+		layerId = `Layer{layerRuntime.layerIndex}`
 	end
-	if self.catalog == nil then
-		self.catalog = ParallaxServiceUtils.normalizeCatalog(ParallaxBackgrounds)
-	end
-	if self.state == nil then
-		self.state = ParallaxServiceUtils.createDefaultState(self.catalog)
-	end
+	return `{biomeRuntime.biomeName}_{biomeRuntime.variantName}_{layerId}`
+end
+
+function Parallax.new(): Parallax
+	local self = setmetatable({}, Parallax)
+	self.localPlayer = Players.LocalPlayer
+	self.catalog = ParallaxServiceUtils.normalizeCatalog(ParallaxBackgrounds)
+	self.state = ParallaxServiceUtils.createDefaultState(self.catalog)
+	self.activeBiomeRuntimes = {}
+	self.preloadedBiomes = {}
+	self.preloadBiomePromises = {}
+	self.selectedBiomeVariantNames = {}
+	self.didPreloadAllAssets = false
+	self.preloadAllAssetsPromise = nil
+	self.referenceGameplayPlaneDistanceX = nil
+	self.transitionActive = false
+	self.transitionStartedAt = 0
+	self.rootFolder = nil
+	self.surfaceRuntime = nil
+	self.worldOrigin = Vector3.zero
+	self.basePlaneX = 0
+	self.renderStepName = nil
+	self.initialized = false
+	return (self :: any) :: Parallax
+end
+
+function Parallax._initializeCoreState(self: Parallax)
 	if self.stateValue == nil then
 		self.stateValue = ValueObject.new(cloneState(self.state), "table") :: any
 	end
@@ -265,41 +256,14 @@ function ParallaxServiceClient._initializeCoreState(self: ParallaxServiceClient)
 	if self.layoutStateValue == nil then
 		self.layoutStateValue = ValueObject.new(self:_resolveCurrentLayoutSnapshot(), "table") :: any
 	end
-	if self.activeBiomeRuntimes == nil then
-		self.activeBiomeRuntimes = {} :: { [string]: BiomeRuntime }
-	end
-	if self.preloadedBiomes == nil then
-		self.preloadedBiomes = {} :: { [string]: boolean }
-	end
-	if self.preloadBiomePromises == nil then
-		self.preloadBiomePromises = {} :: { [string]: any }
-	end
-	if self.selectedBiomeVariantNames == nil then
-		self.selectedBiomeVariantNames = {} :: { [string]: string }
-	end
-	if self.didPreloadAllAssets == nil then
-		self.didPreloadAllAssets = false
-	end
-	if self.preloadAllAssetsPromise == nil then
-		self.preloadAllAssetsPromise = nil
-	end
-	if self.transitionActive == nil then
-		self.transitionActive = false
-	end
-	if self.transitionStartedAt == nil then
-		self.transitionStartedAt = 0
-	end
 end
 
-function ParallaxServiceClient._resolveWorldLayoutSnapshot(
-	self: ParallaxServiceClient,
-	stateRaw: any?
-): WorldLayoutSnapshot
+function Parallax._resolveWorldLayoutSnapshot(_self: Parallax, stateRaw: any?): WorldLayoutSnapshot
 	local fallbackState = ((WorldGenerationServiceClient :: any).state :: { [string]: any }?) or {}
 	local state = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else fallbackState
-	local tileDepth = if typeof(state.tileDepth) == "number" then math.max(state.tileDepth, 0.5) else 2
+	local tileDepth = if typeof(state.tileDepth) == "number" then math.max(state.tileDepth, 0.5) else 4
 	local chunkSize = if typeof(state.chunkSize) == "number" then math.max(1, math.floor(state.chunkSize)) else 32
-	local tileSize = if typeof(state.tileSize) == "number" then math.max(state.tileSize, 0.25) else 2
+	local tileSize = if typeof(state.tileSize) == "number" then math.max(state.tileSize, 0.25) else 4
 	local renderDistanceChunks = if typeof(state.renderDistanceChunks) == "number"
 		then math.max(1, math.floor(state.renderDistanceChunks))
 		else 4
@@ -317,7 +281,7 @@ function ParallaxServiceClient._resolveWorldLayoutSnapshot(
 	}
 end
 
-function ParallaxServiceClient._resolveCurrentLayoutSnapshot(self: ParallaxServiceClient): LayoutSnapshot
+function Parallax._resolveCurrentLayoutSnapshot(self: Parallax): LayoutSnapshot
 	local cameraSnapshot = resolveCameraSnapshot(getCamera())
 	local worldSnapshot = self:_resolveWorldLayoutSnapshot()
 	return {
@@ -331,7 +295,7 @@ function ParallaxServiceClient._resolveCurrentLayoutSnapshot(self: ParallaxServi
 	}
 end
 
-function ParallaxServiceClient._observeCameraSnapshot(self: ParallaxServiceClient): ObservableObject
+function Parallax._observeCameraSnapshot(_self: Parallax): ObservableObject
 	return Rx.fromSignal(Workspace:GetPropertyChangedSignal("CurrentCamera")):Pipe({
 		Rx.start(function()
 			return getCamera()
@@ -358,7 +322,7 @@ function ParallaxServiceClient._observeCameraSnapshot(self: ParallaxServiceClien
 	}) :: ObservableObject
 end
 
-function ParallaxServiceClient._observeWorldLayoutSnapshot(self: ParallaxServiceClient): ObservableObject
+function Parallax._observeWorldLayoutSnapshot(self: Parallax): ObservableObject
 	local worldStateSignal = (WorldGenerationServiceClient :: any).stateChanged
 	if worldStateSignal == nil then
 		return Rx.of(self:_resolveWorldLayoutSnapshot()) :: any
@@ -375,7 +339,7 @@ function ParallaxServiceClient._observeWorldLayoutSnapshot(self: ParallaxService
 	}) :: ObservableObject
 end
 
-function ParallaxServiceClient._bindReactiveStreams(self: ParallaxServiceClient)
+function Parallax._bindReactiveStreams(self: Parallax)
 	if self.reactiveStreamsMaid == nil then
 		return
 	end
@@ -398,6 +362,12 @@ function ParallaxServiceClient._bindReactiveStreams(self: ParallaxServiceClient)
 				renderDistanceChunks = snapshot.world.renderDistanceChunks,
 				horizontalVisionStuds = snapshot.world.horizontalVisionStuds,
 			}
+			if self.initialized then
+				local sampledBiome = self:_resolveCurrentWorldBiome()
+				if sampledBiome ~= self.state.targetBiome then
+					self:SetBiome(sampledBiome)
+				end
+			end
 		end))
 
 	self.reactiveStreamsMaid:GiveTask(
@@ -413,9 +383,23 @@ function ParallaxServiceClient._bindReactiveStreams(self: ParallaxServiceClient)
 				end
 			end)
 	)
+
+	local chunkSnapshotsChanged = (WorldGenerationServiceClient :: any).chunkSnapshotsChanged
+	if chunkSnapshotsChanged ~= nil then
+		self.reactiveStreamsMaid:GiveTask(chunkSnapshotsChanged:Connect(function()
+			if not self.initialized then
+				return
+			end
+
+			local sampledBiome = self:_resolveCurrentWorldBiome()
+			if sampledBiome ~= self.state.targetBiome then
+				self:SetBiome(sampledBiome)
+			end
+		end))
+	end
 end
 
-function ParallaxServiceClient._resolveWorldFolder(self: ParallaxServiceClient): Folder?
+function Parallax._resolveWorldFolder(_self: Parallax): Folder?
 	local worldFolder = WorkspaceFolders.findFolderInGameOrWorkspace(WORLD_FOLDER_NAME)
 	if worldFolder ~= nil and worldFolder:IsA("Folder") then
 		return worldFolder
@@ -423,7 +407,7 @@ function ParallaxServiceClient._resolveWorldFolder(self: ParallaxServiceClient):
 	return nil
 end
 
-function ParallaxServiceClient._resolveRootParent(self: ParallaxServiceClient): Instance
+function Parallax._resolveRootParent(self: Parallax): Instance
 	local worldFolder = self:_resolveWorldFolder()
 	if worldFolder ~= nil then
 		return worldFolder
@@ -431,48 +415,84 @@ function ParallaxServiceClient._resolveRootParent(self: ParallaxServiceClient): 
 	return WorkspaceFolders.getOrCreateFolderInGame(ROOT_PARENT_FALLBACK_NAME)
 end
 
-function ParallaxServiceClient._destroyAllBiomeRuntimes(self: ParallaxServiceClient)
-	local biomeNames: { string } = {}
-	for biomeName in self.activeBiomeRuntimes do
-		table.insert(biomeNames, biomeName)
+function Parallax._destroySurfaceRuntime(self: Parallax)
+	local surfaceRuntime = self.surfaceRuntime
+	if surfaceRuntime == nil then
+		return
 	end
-	for _, biomeName in biomeNames do
-		local runtime = self.activeBiomeRuntimes[biomeName]
-		if runtime ~= nil and runtime.folder.Parent ~= nil then
-			runtime.folder:Destroy()
-		end
-		self.activeBiomeRuntimes[biomeName] = nil
+	surfaceRuntime.reactRoot:unmount()
+	if surfaceRuntime.anchorPart.Parent ~= nil then
+		surfaceRuntime.anchorPart:Destroy()
 	end
+	self.surfaceRuntime = nil
+	ParallaxThunks.clearSurfaceState()
+end
+
+function Parallax._destroyAllBiomeRuntimes(self: Parallax)
+	table.clear(self.activeBiomeRuntimes)
 	if self.rootFolder ~= nil and self.rootFolder.Parent ~= nil and #self.rootFolder:GetChildren() <= 0 then
 		self.rootFolder:Destroy()
 		self.rootFolder = nil
 	end
 end
 
-function ParallaxServiceClient._ensureRootFolder(self: ParallaxServiceClient)
+function Parallax._ensureRootFolder(self: Parallax)
 	local parent = self:_resolveRootParent()
 	if self.rootFolder ~= nil and self.rootFolder.Parent == parent then
-		for _, child in self.rootFolder:GetChildren() do
-			if child:IsA("Folder") and not isKnownBiomeFolderName(self.catalog, child.Name) then
-				child:Destroy()
-			end
-		end
 		return
 	end
 
-	self:_destroyAllBiomeRuntimes()
+	self:_destroySurfaceRuntime()
 	if self.rootFolder ~= nil and self.rootFolder.Parent ~= nil then
 		self.rootFolder:Destroy()
 	end
-	self.rootFolder = createFolder(parent, self.catalog.settings.folderName)
-	for _, child in self.rootFolder:GetChildren() do
-		if child:IsA("Folder") and not isKnownBiomeFolderName(self.catalog, child.Name) then
-			child:Destroy()
-		end
-	end
+	self.rootFolder = createFolder(
+		parent,
+		self.catalog.settings.folderName ~= "" and self.catalog.settings.folderName or ROOT_FOLDER_NAME
+	)
 end
 
-function ParallaxServiceClient._refreshWorldAttributes(self: ParallaxServiceClient)
+function Parallax._ensureSurfaceRuntime(self: Parallax): SurfaceRuntime?
+	self:_ensureRootFolder()
+	local rootFolder = self.rootFolder
+	if rootFolder == nil then
+		return nil
+	end
+
+	local current = self.surfaceRuntime
+	if current ~= nil and current.anchorPart.Parent == rootFolder then
+		return current
+	end
+
+	self:_destroySurfaceRuntime()
+	for _, child in rootFolder:GetChildren() do
+		child:Destroy()
+	end
+
+	local anchorPart = Instance.new("Part")
+	anchorPart.Name = ANCHOR_PART_NAME
+	anchorPart.Anchored = true
+	anchorPart.Locked = true
+	anchorPart.CanCollide = false
+	anchorPart.CanQuery = false
+	anchorPart.CanTouch = false
+	anchorPart.CastShadow = false
+	anchorPart.Transparency = 1
+	anchorPart.Size = Vector3.new(self.catalog.settings.segmentThickness, 1, 1)
+	anchorPart.Parent = rootFolder
+
+	local root = ReactRoblox.createRoot(anchorPart)
+	root:render(e(ParallaxScreen))
+
+	local runtime: SurfaceRuntime = {
+		anchorPart = anchorPart,
+		reactRoot = root,
+	}
+	self.surfaceRuntime = runtime
+	return runtime
+end
+
+function Parallax._refreshWorldAttributes(self: Parallax)
 	local worldFolder = self:_resolveWorldFolder()
 	if worldFolder == nil then
 		self.worldOrigin = Vector3.zero
@@ -501,10 +521,7 @@ function ParallaxServiceClient._refreshWorldAttributes(self: ParallaxServiceClie
 	self.basePlaneX = nextBasePlaneX
 end
 
-function ParallaxServiceClient._resolveGameplayPlaneReferenceDistance(
-	self: ParallaxServiceClient,
-	cameraPositionX: number
-): number
+function Parallax._resolveGameplayPlaneReferenceDistance(self: Parallax, cameraPositionX: number): number
 	local gameplayPlaneX = self.worldOrigin.X + self.basePlaneX
 	local gameplayPlaneDistance = math.max(math.abs(cameraPositionX - gameplayPlaneX), 1)
 
@@ -517,7 +534,7 @@ function ParallaxServiceClient._resolveGameplayPlaneReferenceDistance(
 	return self.referenceGameplayPlaneDistanceX
 end
 
-function ParallaxServiceClient._resolveDisplayedBiomeName(self: ParallaxServiceClient): string
+function Parallax._resolveDisplayedBiomeName(self: Parallax): string
 	local strongestBiome = self.state.targetBiome
 	local strongestAlpha = -math.huge
 	for biomeName, runtime in self.activeBiomeRuntimes do
@@ -529,10 +546,7 @@ function ParallaxServiceClient._resolveDisplayedBiomeName(self: ParallaxServiceC
 	return strongestBiome
 end
 
-function ParallaxServiceClient._resolveSelectedVariantName(
-	self: ParallaxServiceClient,
-	biomeDefinition: BiomeDefinition
-): string
+function Parallax._resolveSelectedVariantName(self: Parallax, biomeDefinition: BiomeDefinition): string
 	local selectedVariantName = self.selectedBiomeVariantNames[biomeDefinition.name]
 	if selectedVariantName ~= nil and biomeDefinition.variants[selectedVariantName] ~= nil then
 		return selectedVariantName
@@ -543,77 +557,29 @@ function ParallaxServiceClient._resolveSelectedVariantName(
 	return nextVariantName
 end
 
-function ParallaxServiceClient._publishState(self: ParallaxServiceClient)
+function Parallax._publishState(self: Parallax)
 	if self.state.targetBiome ~= "" then
 		self.state.currentBiome = self:_resolveDisplayedBiomeName()
 	end
 	self.stateValue.Value = cloneState(self.state)
 end
 
-function ParallaxServiceClient._createPlane(self: ParallaxServiceClient, layerRuntime: LayerRuntime): PlaneRuntime
-	local definition = layerRuntime.definition
-
-	local part = Instance.new("Part")
-	part.Name = HttpService:GenerateGUID(false)
-	part.Anchored = true
-	part.Locked = true
-	part.CanCollide = false
-	part.CanQuery = false
-	part.CanTouch = false
-	part.CastShadow = false
-	part.Material = Enum.Material.Neon
-	part.Color = Color3.new(0, 0, 0)
-	part.Transparency = 1
-	part.Reflectance = 0
-	part.Size = Vector3.new(self.catalog.settings.segmentThickness, 1, 1)
-	part.Parent = layerRuntime.folder
-
-	local textures = {
-		createTexture(part, Enum.NormalId.Left, definition),
-		createTexture(part, Enum.NormalId.Right, definition),
-	}
-
+function Parallax._createLayerRuntime(_self: Parallax, definition: LayerDefinition, layerIndex: number): LayerRuntime
 	return {
-		part = part,
-		textures = textures,
-		lastWidth = 0,
-		lastHeight = 0,
-		lastRepeatWidth = 0,
-	}
-end
-
-function ParallaxServiceClient._createLayerRuntime(
-	self: ParallaxServiceClient,
-	biomeRuntime: BiomeRuntime,
-	definition: LayerDefinition,
-	layerIndex: number
-): LayerRuntime
-	local folder = createFolder(biomeRuntime.folder, resolveLayerFolderName(definition, layerIndex))
-	local runtime: LayerRuntime = {
 		definition = definition,
-		folder = folder,
-		plane = nil :: any,
+		layerIndex = layerIndex,
 	}
-	runtime.plane = self:_createPlane(runtime)
-	return runtime
 end
 
-function ParallaxServiceClient._createBiomeRuntime(self: ParallaxServiceClient, biomeName: string): BiomeRuntime
-	self:_ensureRootFolder()
-
+function Parallax._createBiomeRuntime(self: Parallax, biomeName: string): BiomeRuntime
 	local definition = ParallaxServiceUtils.resolveBiomeDefinition(self.catalog, biomeName)
 	local variantName = self:_resolveSelectedVariantName(definition)
 	local variantDefinition = ParallaxServiceUtils.resolveVariantDefinition(self.catalog, definition.name, variantName)
-	local folder = createFolder(self.rootFolder, resolveBiomeFolderName(definition))
-	for _, child in folder:GetChildren() do
-		child:Destroy()
-	end
 	local runtime: BiomeRuntime = {
 		biomeName = definition.name,
 		variantName = variantName,
 		definition = definition,
 		variantDefinition = variantDefinition,
-		folder = folder,
 		layers = {},
 		alpha = 0,
 		startAlpha = 0,
@@ -621,29 +587,18 @@ function ParallaxServiceClient._createBiomeRuntime(self: ParallaxServiceClient, 
 	}
 
 	for layerIndex, layerDefinition in variantDefinition.layers do
-		table.insert(runtime.layers, self:_createLayerRuntime(runtime, layerDefinition, layerIndex))
+		table.insert(runtime.layers, self:_createLayerRuntime(layerDefinition, layerIndex))
 	end
 
 	self.activeBiomeRuntimes[definition.name] = runtime
 	return runtime
 end
 
-function ParallaxServiceClient._destroyBiomeRuntime(self: ParallaxServiceClient, biomeName: string)
-	local runtime = self.activeBiomeRuntimes[biomeName]
-	if runtime == nil then
-		return
-	end
-	if runtime.folder.Parent ~= nil then
-		runtime.folder:Destroy()
-	end
+function Parallax._destroyBiomeRuntime(self: Parallax, biomeName: string)
 	self.activeBiomeRuntimes[biomeName] = nil
-	if self.rootFolder ~= nil and self.rootFolder.Parent ~= nil and #self.rootFolder:GetChildren() <= 0 then
-		self.rootFolder:Destroy()
-		self.rootFolder = nil
-	end
 end
 
-function ParallaxServiceClient._cleanupInactiveBiomeRuntimes(self: ParallaxServiceClient)
+function Parallax._cleanupInactiveBiomeRuntimes(self: Parallax)
 	local toDestroy: { string } = {}
 	for biomeName, runtime in self.activeBiomeRuntimes do
 		if biomeName ~= self.state.targetBiome and runtime.alpha <= 0.001 then
@@ -655,11 +610,11 @@ function ParallaxServiceClient._cleanupInactiveBiomeRuntimes(self: ParallaxServi
 	end
 end
 
-function ParallaxServiceClient._setBiomeAlpha(self: ParallaxServiceClient, biomeRuntime: BiomeRuntime, alphaRaw: number)
+function Parallax._setBiomeAlpha(_self: Parallax, biomeRuntime: BiomeRuntime, alphaRaw: number)
 	biomeRuntime.alpha = math.clamp(alphaRaw, 0, 1)
 end
 
-function ParallaxServiceClient._stepTransition(self: ParallaxServiceClient, now: number)
+function Parallax._stepTransition(self: Parallax, now: number)
 	if not self.transitionActive then
 		return
 	end
@@ -684,7 +639,7 @@ function ParallaxServiceClient._stepTransition(self: ParallaxServiceClient, now:
 	self:_publishState()
 end
 
-function ParallaxServiceClient._preloadBiomeAssets(self: ParallaxServiceClient, biomeNameRaw: any)
+function Parallax._preloadBiomeAssets(self: Parallax, biomeNameRaw: any)
 	local biomeName = ParallaxServiceUtils.resolveBiomeName(self.catalog, biomeNameRaw)
 	if self.preloadedBiomes[biomeName] then
 		return self.preloadBiomePromises[biomeName]
@@ -712,7 +667,7 @@ function ParallaxServiceClient._preloadBiomeAssets(self: ParallaxServiceClient, 
 	return preloadPromise
 end
 
-function ParallaxServiceClient._preloadAllAssets(self: ParallaxServiceClient)
+function Parallax._preloadAllAssets(self: Parallax)
 	if self.didPreloadAllAssets then
 		return self.preloadAllAssetsPromise
 	end
@@ -737,7 +692,7 @@ function ParallaxServiceClient._preloadAllAssets(self: ParallaxServiceClient)
 	return self.preloadAllAssetsPromise
 end
 
-function ParallaxServiceClient._resolveCurrentWorldBiome(self: ParallaxServiceClient): string
+function Parallax._resolveCurrentWorldBiome(self: Parallax): string
 	local rawState = (WorldGenerationServiceClient :: any).state
 	if typeof(rawState) ~= "table" or (rawState :: any).ready ~= true then
 		return self.catalog.settings.defaultBiome
@@ -755,7 +710,7 @@ function ParallaxServiceClient._resolveCurrentWorldBiome(self: ParallaxServiceCl
 	return ParallaxServiceUtils.resolveBiomeNameFromWorldSample(self.catalog, biomeId, biomeType, depthLayer)
 end
 
-function ParallaxServiceClient._syncBiomeFromWorldSampleNow(self: ParallaxServiceClient): string
+function Parallax._syncBiomeFromWorldSampleNow(self: Parallax): string
 	local sampledBiome = self:_resolveCurrentWorldBiome()
 	self.state.currentBiome = sampledBiome
 	self.state.targetBiome = sampledBiome
@@ -763,13 +718,13 @@ function ParallaxServiceClient._syncBiomeFromWorldSampleNow(self: ParallaxServic
 	return sampledBiome
 end
 
-function ParallaxServiceClient._updateLayerRuntime(
-	self: ParallaxServiceClient,
+function Parallax._resolveLayerMetric(
+	self: Parallax,
+	biomeRuntime: BiomeRuntime,
 	layerRuntime: LayerRuntime,
-	biomeAlpha: number,
 	cameraPosition: Vector3,
-	now: number
-)
+	_now: number
+): LayerMetric?
 	local definition = layerRuntime.definition
 	local layoutSnapshot = self.layoutStateValue.Value
 	if layoutSnapshot == nil then
@@ -803,93 +758,174 @@ function ParallaxServiceClient._updateLayerRuntime(
 		definition.segmentWidthScale,
 		definition.textureStudsPerTileU
 	)
-	local minimumPlaneHeight = planeSizing.textureRepeatHeight
-	local centerShift = definition.verticalOffsetStuds
-		- (cameraPosition.Y - self.worldOrigin.Y) * definition.verticalDepth
-	local candidateCenterY = computeAlignedCenterY(
-		definition.verticalAlign,
-		cameraPosition.Y,
-		visibleHeight,
-		minimumPlaneHeight
-	) + centerShift
-	local visibleTopY = cameraPosition.Y + visibleHeight * 0.5
-	local visibleBottomY = cameraPosition.Y - visibleHeight * 0.5
-	local requiredHalfHeight = math.max(candidateCenterY - visibleBottomY, visibleTopY - candidateCenterY)
-		+ math.max(visibleHeight * MIN_PLANE_VERTICAL_COVERAGE_BLEED_FACTOR, MIN_PLANE_VERTICAL_COVERAGE_BLEED_STUDS)
-	local planeHeight = math.max(minimumPlaneHeight, requiredHalfHeight * 2)
-	planeSizing = ParallaxServiceUtils.resolveDeterministicPlaneSizing(
-		visibleWidth,
-		sizeReferenceWidth,
-		layoutSnapshot.horizontalVisionStuds,
-		definition.imageAspectRatio,
-		definition.heightScale,
-		definition.segmentWidthScale,
-		definition.textureStudsPerTileU,
-		planeHeight
-	)
-	local textureRepeatWidth = planeSizing.textureRepeatWidth
 	local textureRepeatHeight = planeSizing.textureRepeatHeight
-	local centerY = computeAlignedCenterY(definition.verticalAlign, cameraPosition.Y, visibleHeight, planeHeight)
-		+ centerShift
-	local targetTextureTransparency = blendToLayerTransparency(definition.transparency, biomeAlpha)
-	local textureOffsetU = wrapTextureOffsetStuds(
-		BASE_TEXTURE_OFFSET_STUDS_U
-			+ cameraPosition.Z * definition.depth * PARALLAX_TEXTURE_MOTION_SCALE
-			- now * definition.scrollSpeed * PARALLAX_TEXTURE_MOTION_SCALE,
-		textureRepeatWidth
-	)
-	local planeRuntime = layerRuntime.plane
+	local visibleBottomY = cameraPosition.Y - visibleHeight * 0.5
+	local horizonY = self.worldOrigin.Y
+	local verticalCameraDelta = cameraPosition.Y - horizonY
+	local horizonCenterY = horizonY
+		+ visibleHeight * definition.baseYOffset
+		+ definition.verticalOffsetStuds
+		+ verticalCameraDelta * definition.verticalParallax
 
-	planeRuntime.part.Size = Vector3.new(self.catalog.settings.segmentThickness, planeHeight, planeSizing.planeWidth)
-	planeRuntime.part.CFrame = CFrame.new(planeX, centerY, cameraPosition.Z)
-	for _, texture in planeRuntime.textures do
-		texture.Texture = definition.image
-		texture.Color3 = definition.tint
-		texture.Transparency = targetTextureTransparency
-		texture.StudsPerTileU = textureRepeatWidth
-		texture.StudsPerTileV = textureRepeatHeight
-		texture.OffsetStudsU = textureOffsetU
-		texture.OffsetStudsV = BASE_TEXTURE_OFFSET_STUDS_V
+	local minimumViewHeight = visibleHeight * SURFACE_LAYER_MIN_VIEW_HEIGHT_FACTOR
+	local maximumViewHeight = visibleHeight * SURFACE_LAYER_MAX_VIEW_HEIGHT_FACTOR
+	textureRepeatHeight = math.clamp(textureRepeatHeight, minimumViewHeight, maximumViewHeight)
+	local textureRepeatWidth = computeTextureRepeatWidthFromHeight(definition, textureRepeatHeight)
+	local planeWidth = math.max(planeSizing.planeWidth, textureRepeatWidth)
+	local planeHeight = textureRepeatHeight
+	local bottomBleed = math.max(visibleHeight * definition.bottomOverscan, MIN_PLANE_VERTICAL_COVERAGE_BLEED_STUDS)
+	local highestHiddenBottomCenterY = visibleBottomY - bottomBleed + planeHeight * 0.5
+	local centerY = math.min(horizonCenterY, highestHiddenBottomCenterY)
+	local transparency = blendToLayerTransparency(definition.transparency, biomeRuntime.alpha)
+	if transparency >= 0.999 then
+		return nil
 	end
-	planeRuntime.lastWidth = planeSizing.planeWidth
-	planeRuntime.lastHeight = planeHeight
-	planeRuntime.lastRepeatWidth = textureRepeatWidth
+
+	return {
+		id = resolveLayerRenderId(biomeRuntime, layerRuntime),
+		image = definition.image,
+		tint = definition.tint,
+		transparency = transparency,
+		centerY = centerY,
+		centerZ = cameraPosition.Z,
+		width = planeWidth,
+		height = planeHeight,
+		textureRepeatWidth = textureRepeatWidth,
+		textureRepeatHeight = textureRepeatHeight,
+		textureOffsetU = Scrolling.computeHorizontalOffsetStuds(
+			cameraPosition.Z,
+			definition.depth,
+			definition.scrollSpeed,
+			textureRepeatWidth,
+			_now
+		),
+		textureOffsetV = Scrolling.computeVerticalOffsetStuds(textureRepeatHeight),
+		planeDepthBlocks = definition.planeDepthBlocks,
+		zIndex = 1000 - layerRuntime.layerIndex,
+	}
 end
 
-function ParallaxServiceClient._updateBiomeRuntime(
-	self: ParallaxServiceClient,
-	biomeRuntime: BiomeRuntime,
-	cameraPosition: Vector3,
-	now: number
-)
-	for _, layerRuntime in biomeRuntime.layers do
-		self:_updateLayerRuntime(layerRuntime, biomeRuntime.alpha, cameraPosition, now)
+function Parallax._collectLayerMetrics(self: Parallax, cameraPosition: Vector3, now: number): { LayerMetric }
+	local metrics: { LayerMetric } = {}
+	for _, biomeRuntime in self.activeBiomeRuntimes do
+		for _, layerRuntime in biomeRuntime.layers do
+			local metric = self:_resolveLayerMetric(biomeRuntime, layerRuntime, cameraPosition, now)
+			if metric ~= nil then
+				table.insert(metrics, metric)
+			end
+		end
 	end
+	table.sort(metrics, function(left: LayerMetric, right: LayerMetric): boolean
+		if left.zIndex == right.zIndex then
+			return left.id < right.id
+		end
+		return left.zIndex < right.zIndex
+	end)
+	return metrics
 end
 
-function ParallaxServiceClient._render(self: ParallaxServiceClient)
+function Parallax._publishSurfaceState(self: Parallax, metrics: { LayerMetric }, cameraPosition: Vector3)
+	local surfaceRuntime = self:_ensureSurfaceRuntime()
+	if surfaceRuntime == nil or #metrics <= 0 then
+		ParallaxThunks.clearSurfaceState()
+		return
+	end
+
+	local minY = math.huge
+	local maxY = -math.huge
+	local minZ = math.huge
+	local maxZ = -math.huge
+	local minPlaneDepthBlocks = math.huge
+	for _, metric in metrics do
+		minY = math.min(minY, metric.centerY - metric.height * 0.5)
+		maxY = math.max(maxY, metric.centerY + metric.height * 0.5)
+		minZ = math.min(minZ, metric.centerZ - metric.width * 0.5)
+		maxZ = math.max(maxZ, metric.centerZ + metric.width * 0.5)
+		minPlaneDepthBlocks = math.min(minPlaneDepthBlocks, metric.planeDepthBlocks)
+	end
+
+	local anchorHeightStuds = math.max(maxY - minY, 1)
+	local anchorWidthStuds = math.max(maxZ - minZ, 1)
+	local anchorCenterY = (minY + maxY) * 0.5
+	local anchorCenterZ = (minZ + maxZ) * 0.5
+	local anchorPlaneX = self.worldOrigin.X
+		+ self.basePlaneX
+		- minPlaneDepthBlocks * self.layoutStateValue.Value.tileDepth
+	local pixelsPerStud = resolveSurfacePixelsPerStud(anchorWidthStuds, anchorHeightStuds)
+	local canvasWidth = toCanvasPixels(anchorWidthStuds, pixelsPerStud)
+	local canvasHeight = toCanvasPixels(anchorHeightStuds, pixelsPerStud)
+
+	surfaceRuntime.anchorPart.Size =
+		Vector3.new(self.catalog.settings.segmentThickness, anchorHeightStuds, anchorWidthStuds)
+	surfaceRuntime.anchorPart.CFrame = CFrame.new(anchorPlaneX, anchorCenterY, anchorCenterZ)
+	local surfaceFace = if cameraPosition.X >= anchorPlaneX then Enum.NormalId.Right else Enum.NormalId.Left
+
+	local layers = table.create(#metrics)
+	local anchorMinZ = anchorCenterZ - anchorWidthStuds * 0.5
+	local anchorMaxY = anchorCenterY + anchorHeightStuds * 0.5
+	for index, metric in metrics do
+		local frameWidth = math.max(metric.width * pixelsPerStud, 1)
+		local frameHeight = math.max(metric.height * pixelsPerStud, 1)
+		local frameCenterX = (metric.centerZ - anchorMinZ) * pixelsPerStud
+		local frameCenterY = (anchorMaxY - metric.centerY) * pixelsPerStud
+		local tileWidth = math.max(metric.textureRepeatWidth * pixelsPerStud * SURFACE_TILE_SCALE, 1)
+		local tileHeight = math.max(metric.textureRepeatHeight * pixelsPerStud * SURFACE_TILE_SCALE, 1)
+		local imageOffsetX = Scrolling.computeOffsetPixels(metric.textureOffsetU, metric.textureRepeatWidth, tileWidth)
+		local imageOffsetY =
+			Scrolling.computeOffsetPixels(metric.textureOffsetV, metric.textureRepeatHeight, tileHeight)
+		local extraWidth = tileWidth * SURFACE_EXTRA_TILE_COUNT
+		local extraHeight = tileHeight * SURFACE_EXTRA_TILE_COUNT
+
+		layers[index] = {
+			id = metric.id,
+			image = metric.image,
+			imageColor = metric.tint,
+			imageTransparency = metric.transparency,
+			framePosition = UDim2.fromOffset(frameCenterX, frameCenterY),
+			frameSize = UDim2.fromOffset(frameWidth, frameHeight),
+			imagePosition = UDim2.fromOffset(-imageOffsetX, -imageOffsetY),
+			imageSize = UDim2.fromOffset(frameWidth + extraWidth, frameHeight + extraHeight),
+			tileSize = UDim2.fromOffset(tileWidth, tileHeight),
+			zIndex = metric.zIndex,
+		}
+	end
+
+	ParallaxThunks.publishSurfaceState({
+		visible = true,
+		adornee = surfaceRuntime.anchorPart,
+		face = surfaceFace,
+		brightness = SURFACE_BRIGHTNESS,
+		canvasSize = Vector2.new(canvasWidth, canvasHeight),
+		layers = layers,
+	} :: ParallaxSurfaceState)
+end
+
+function Parallax._render(self: Parallax)
 	if not self.initialized then
 		return
 	end
 
-	self:_ensureRootFolder()
 	self:_refreshWorldAttributes()
+	local surfaceRuntime = self:_ensureSurfaceRuntime()
+	if surfaceRuntime == nil then
+		return
+	end
 
 	local now = os.clock()
 	self:_stepTransition(now)
 
 	local camera = getCamera()
 	if camera == nil then
+		ParallaxThunks.clearSurfaceState()
 		return
 	end
 
-	local cameraPosition = resolveCameraPosition()
-	for _, biomeRuntime in self.activeBiomeRuntimes do
-		self:_updateBiomeRuntime(biomeRuntime, cameraPosition, now)
-	end
+	local cameraPosition = camera.CFrame.Position
+	local metrics = self:_collectLayerMetrics(cameraPosition, now)
+	self:_publishSurfaceState(metrics, cameraPosition)
 end
 
-function ParallaxServiceClient.Init(self: ParallaxServiceClient, _container: Instance?)
+function Parallax.Init(self: Parallax, _container: Instance?)
 	self:_initializeCoreState()
 
 	if self.maid == nil then
@@ -903,6 +939,7 @@ function ParallaxServiceClient.Init(self: ParallaxServiceClient, _container: Ins
 				RunService:UnbindFromRenderStep(self.renderStepName)
 				self.renderStepName = nil
 			end
+			self:_destroySurfaceRuntime()
 			self:_destroyAllBiomeRuntimes()
 			if self.rootFolder ~= nil and self.rootFolder.Parent ~= nil then
 				self.rootFolder:Destroy()
@@ -917,6 +954,7 @@ function ParallaxServiceClient.Init(self: ParallaxServiceClient, _container: Ins
 	end
 
 	self:_ensureRootFolder()
+	self:_ensureSurfaceRuntime()
 	self:_refreshWorldAttributes()
 	self.initialized = true
 	self.state.initialized = true
@@ -930,13 +968,13 @@ function ParallaxServiceClient.Init(self: ParallaxServiceClient, _container: Ins
 	self:_setBiomeAlpha(runtime, 1)
 	self:_publishState()
 
-	self.renderStepName = ("ParallaxServiceRender_%d"):format(math.floor(os.clock() * 1000))
+	self.renderStepName = ("ParallaxFeatureRender_%d"):format(math.floor(os.clock() * 1000))
 	RunService:BindToRenderStep(self.renderStepName, Enum.RenderPriority.Camera.Value + 5, function()
 		self:_render()
 	end)
 end
 
-function ParallaxServiceClient.SetBiome(self: ParallaxServiceClient, biomeNameRaw: any)
+function Parallax.SetBiome(self: Parallax, biomeNameRaw: any)
 	if not self.initialized then
 		self:Init(nil)
 	end
@@ -982,7 +1020,7 @@ function ParallaxServiceClient.SetBiome(self: ParallaxServiceClient, biomeNameRa
 	self:_publishState()
 end
 
-function ParallaxServiceClient.ForceRefresh(self: ParallaxServiceClient)
+function Parallax.ForceRefresh(self: Parallax)
 	self.catalog = ParallaxServiceUtils.normalizeCatalog(ParallaxBackgrounds)
 	self.preloadedBiomes = {}
 	self.preloadBiomePromises = {}
@@ -992,6 +1030,7 @@ function ParallaxServiceClient.ForceRefresh(self: ParallaxServiceClient)
 	self.referenceGameplayPlaneDistanceX = nil
 	self:_destroyAllBiomeRuntimes()
 	self:_ensureRootFolder()
+	self:_ensureSurfaceRuntime()
 	self:_refreshWorldAttributes()
 	self:_bindReactiveStreams()
 
@@ -1008,7 +1047,7 @@ function ParallaxServiceClient.ForceRefresh(self: ParallaxServiceClient)
 	self:_publishState()
 end
 
-function ParallaxServiceClient.ObserveState(self: ParallaxServiceClient): ObservableObject
+function Parallax.ObserveState(self: Parallax): ObservableObject
 	self:_initializeCoreState()
 
 	if self.stateObservable == nil then
@@ -1022,21 +1061,21 @@ function ParallaxServiceClient.ObserveState(self: ParallaxServiceClient): Observ
 	return self.stateObservable
 end
 
-function ParallaxServiceClient.GetStateChangedSignal(self: ParallaxServiceClient): RxSignalObject
+function Parallax.GetStateChangedSignal(self: Parallax): RxSignalObject
 	self:_initializeCoreState()
 	return self.stateChangedSignal
 end
 
-function ParallaxServiceClient.GetState(self: ParallaxServiceClient): ServiceState
+function Parallax.GetState(self: Parallax): ServiceState
 	self:_initializeCoreState()
 	return cloneState(self.state)
 end
 
-function ParallaxServiceClient.GetCurrentBiome(self: ParallaxServiceClient): string
+function Parallax.GetCurrentBiome(self: Parallax): string
 	return self:GetState().currentBiome
 end
 
-function ParallaxServiceClient.Destroy(self: ParallaxServiceClient)
+function Parallax.Destroy(self: Parallax)
 	if self.activeBiomeRuntimes ~= nil then
 		self:_destroyAllBiomeRuntimes()
 	end
@@ -1062,39 +1101,43 @@ function ParallaxServiceClient.Destroy(self: ParallaxServiceClient)
 	self.initialized = false
 end
 
-ParallaxServiceClient.init = ParallaxServiceClient.Init
-ParallaxServiceClient.setBiome = ParallaxServiceClient.SetBiome
-ParallaxServiceClient.forceRefresh = ParallaxServiceClient.ForceRefresh
-ParallaxServiceClient.observeState = ParallaxServiceClient.ObserveState
-ParallaxServiceClient.getStateChangedSignal = ParallaxServiceClient.GetStateChangedSignal
-ParallaxServiceClient.getState = ParallaxServiceClient.GetState
-ParallaxServiceClient.getCurrentBiome = ParallaxServiceClient.GetCurrentBiome
-ParallaxServiceClient.destroy = ParallaxServiceClient.Destroy
+Parallax.init = Parallax.Init
+Parallax.setBiome = Parallax.SetBiome
+Parallax.forceRefresh = Parallax.ForceRefresh
+Parallax.observeState = Parallax.ObserveState
+Parallax.getStateChangedSignal = Parallax.GetStateChangedSignal
+Parallax.getState = Parallax.GetState
+Parallax.getCurrentBiome = Parallax.GetCurrentBiome
+Parallax.destroy = Parallax.Destroy
 
-type ParallaxServiceClient = typeof(ParallaxServiceClient) & {
-	localPlayer: Player,
-	maid: MaidClass?,
-	reactiveStreamsMaid: MaidClass?,
-	catalog: Catalog,
-	state: ServiceState,
-	stateValue: ValueObjectClass<ServiceState>,
-	stateObservable: ObservableObject?,
-	stateChangedSignal: RxSignalObject,
-	layoutStateValue: ValueObjectClass<LayoutSnapshot>,
-	activeBiomeRuntimes: { [string]: BiomeRuntime },
-	preloadedBiomes: { [string]: boolean },
-	preloadBiomePromises: { [string]: any },
-	selectedBiomeVariantNames: { [string]: string },
-	didPreloadAllAssets: boolean,
-	preloadAllAssetsPromise: any?,
-	referenceGameplayPlaneDistanceX: number?,
-	transitionActive: boolean,
-	transitionStartedAt: number,
-	rootFolder: Folder?,
-	worldOrigin: Vector3,
-	basePlaneX: number,
-	renderStepName: string?,
-	initialized: boolean,
-}
+export type Parallax = typeof(setmetatable(
+	{} :: {
+		localPlayer: Player,
+		maid: MaidClass?,
+		reactiveStreamsMaid: MaidClass?,
+		catalog: Catalog,
+		state: ServiceState,
+		stateValue: ValueObjectClass<ServiceState>?,
+		stateObservable: ObservableObject?,
+		stateChangedSignal: RxSignalObject?,
+		layoutStateValue: ValueObjectClass<LayoutSnapshot>?,
+		activeBiomeRuntimes: { [string]: BiomeRuntime },
+		preloadedBiomes: { [string]: boolean },
+		preloadBiomePromises: { [string]: any },
+		selectedBiomeVariantNames: { [string]: string },
+		didPreloadAllAssets: boolean,
+		preloadAllAssetsPromise: any?,
+		referenceGameplayPlaneDistanceX: number?,
+		transitionActive: boolean,
+		transitionStartedAt: number,
+		rootFolder: Folder?,
+		surfaceRuntime: SurfaceRuntime?,
+		worldOrigin: Vector3,
+		basePlaneX: number,
+		renderStepName: string?,
+		initialized: boolean,
+	},
+	{} :: typeof({ __index = Parallax })
+))
 
-return ParallaxServiceClient :: ParallaxServiceClient
+return Parallax

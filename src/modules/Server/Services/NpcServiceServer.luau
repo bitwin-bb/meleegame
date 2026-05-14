@@ -1730,7 +1730,6 @@ function NpcServiceServer.EnsureRuntimeAnimationEventBindings(self: NpcServiceSe
 					self:onRuntimeAnimationEvent(runtime, trackName, "Marker", markerName, parameter, actions)
 				end))
 				boundConnections += 1
-			else
 			end
 		end
 

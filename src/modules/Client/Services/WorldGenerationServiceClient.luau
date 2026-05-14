@@ -78,6 +78,7 @@ type ChunkSnapshot = {
 	depthLayers: { number },
 	depthBelowSurface: { number },
 	biomeIds: { number },
+	surfaceBiomeIds: { number },
 	biomeTypes: { number },
 	dominantBiomeId: number,
 	dominantBiomeType: number,
@@ -182,6 +183,7 @@ local BIOME_TYPE_NORMAL = 1
 local BIOME_TYPE_CORRUPTION = 2
 local BIOME_ID_FOREST = 1
 local BIOME_ID_DESERT = 2
+local BIOME_ID_SNOW = 3
 local BIOME_ID_JUNGLE = 4
 local PROP_ID_CORRUPTION_SPIKE = 1
 local PROP_ID_DESERT_CACTUS = 2
@@ -615,6 +617,24 @@ local function computeTreeSignature(snapshot: ChunkSnapshot): string
 		}, ":")
 	end
 	return table.concat(chunks, "|")
+end
+
+local function pruneTreesFolderToSnapshot(treesFolder: Instance?, snapshot: ChunkSnapshot)
+	if treesFolder == nil or not treesFolder:IsA("Folder") then
+		return
+	end
+
+	local nextTreeIds = {}
+	for _, tree in snapshot.trees do
+		nextTreeIds[BuildServiceUtils.computeTreeId(tree.tileX, tree.tileY, tree.seed)] = true
+	end
+
+	for _, child in treesFolder:GetChildren() do
+		local treeId = child:GetAttribute("BuildTreeId")
+		if typeof(treeId) ~= "string" or nextTreeIds[treeId] ~= true then
+			child:Destroy()
+		end
+	end
 end
 
 local function isFiniteNumber(value: any): boolean
@@ -1106,7 +1126,10 @@ local function resolveTextureNormalAsset(definitionRaw: any): string?
 		return nil
 	end
 
-	local normalAsset = definitionRaw.normal or definitionRaw.NormalMapContent or definitionRaw.normalMap
+	local normalAsset = definitionRaw.normal
+		or definitionRaw.NormalMap
+		or definitionRaw.NormalMapContent
+		or definitionRaw.normalMap
 	if typeof(normalAsset) == "string" and normalAsset ~= "" then
 		return normalAsset
 	end
@@ -1114,15 +1137,44 @@ local function resolveTextureNormalAsset(definitionRaw: any): string?
 	return nil
 end
 
+local function resolveTextureContent(asset: string): any?
+	local ok, content = pcall(function()
+		return Content.fromUri(asset)
+	end)
+	if ok then
+		return content
+	end
+
+	return nil
+end
+
+local function assignTextureProperty(texture: Texture, propertyName: string, value: any): boolean
+	local ok = pcall(function()
+		(texture :: any)[propertyName] = value
+	end)
+	return ok
+end
+
 local function assignTextureContent(texture: Texture, colorAsset: string, normalAsset: string?)
 	texture.Texture = colorAsset
-	pcall(function()
-		(texture :: any).ColorMapContent = colorAsset
-	end)
+	assignTextureProperty(texture, "ColorMap", colorAsset)
+	assignTextureProperty(texture, "TextureContent", colorAsset)
+	assignTextureProperty(texture, "ColorMapContent", colorAsset)
+
+	local colorContent = resolveTextureContent(colorAsset)
+	if colorContent ~= nil then
+		assignTextureProperty(texture, "TextureContent", colorContent)
+		assignTextureProperty(texture, "ColorMapContent", colorContent)
+	end
+
 	if normalAsset ~= nil then
-		pcall(function()
-			(texture :: any).NormalMapContent = normalAsset
-		end)
+		assignTextureProperty(texture, "NormalMap", normalAsset)
+		assignTextureProperty(texture, "NormalMapContent", normalAsset)
+
+		local normalContent = resolveTextureContent(normalAsset)
+		if normalContent ~= nil then
+			assignTextureProperty(texture, "NormalMapContent", normalContent)
+		end
 	end
 end
 
@@ -1902,7 +1954,12 @@ function WorldGenerationServiceClient.ReplaceChunkVisualContents(
 		if preservedChildren[child.Name] ~= nil then
 			child:Destroy()
 		else
-			child.Parent = targetModel
+			local ok = pcall(function()
+				child.Parent = targetModel
+			end)
+			if not ok then
+				child:Destroy()
+			end
 		end
 	end
 	rebuiltModel:Destroy()
@@ -2047,6 +2104,17 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 			biomeIds[tileIndex] = sanitizeInteger(rawBiomeId, BIOME_ID_FOREST, BIOME_ID_JUNGLE, dominantBiomeId)
 		end
 	end
+	local hasSurfaceBiomeIds = typeof(source.surfaceBiomeIds) == "table"
+	local surfaceBiomeIds = Sift.Array.create(width, if hasSurfaceBiomeIds then dominantBiomeId else BIOME_ID_FOREST)
+	local surfaceBiomeIdsRaw = if hasSurfaceBiomeIds then source.surfaceBiomeIds :: { any } else {}
+	for localX = 0, width - 1 do
+		local rawBiomeId = surfaceBiomeIdsRaw[localX + 1]
+		if isFiniteNumber(rawBiomeId) then
+			surfaceBiomeIds[localX + 1] = sanitizeInteger(rawBiomeId, BIOME_ID_FOREST, BIOME_ID_JUNGLE, dominantBiomeId)
+		elseif hasSurfaceBiomeIds then
+			surfaceBiomeIds[localX + 1] = dominantBiomeId
+		end
+	end
 
 	local dominantBiomeType =
 		sanitizeInteger(source.dominantBiomeType, BIOME_TYPE_NORMAL, BIOME_TYPE_CORRUPTION, BIOME_TYPE_NORMAL)
@@ -2179,6 +2247,7 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 		depthLayers = depthLayers,
 		depthBelowSurface = depthBelowSurface,
 		biomeIds = biomeIds,
+		surfaceBiomeIds = surfaceBiomeIds,
 		biomeTypes = biomeTypes,
 		dominantBiomeId = dominantBiomeId,
 		dominantBiomeType = dominantBiomeType,
@@ -2198,6 +2267,7 @@ function WorldGenerationServiceClient.OnChunkSnapshot(self: WorldGenerationServi
 	local existingVisual = self.chunkVisuals[snapshot.key]
 	local wasAlreadyCurrentRevision = existingVisual ~= nil and existingVisual.revision == snapshot.revision
 	self.chunkSnapshots[snapshot.key] = snapshot
+	self.chunkSnapshotsChanged:Fire(snapshot.key)
 	if not ENABLE_CLIENT_VISUALS then
 		return
 	end
@@ -2214,6 +2284,7 @@ function WorldGenerationServiceClient.OnChunkUnloaded(self: WorldGenerationServi
 	end
 
 	self.chunkSnapshots[chunkKeyRaw] = nil
+	self.chunkSnapshotsChanged:Fire(chunkKeyRaw)
 	self.visibleChunkKeys[chunkKeyRaw] = nil
 	self.dirtyChunkLookup[chunkKeyRaw] = nil
 	self.rebuildLookup[chunkKeyRaw] = nil
@@ -2631,10 +2702,14 @@ function WorldGenerationServiceClient.ProcessChunkRebuildQueue(self: WorldGenera
 			end
 			shouldSkipChunkAnimation = true
 			local preservedChildNames = {} :: { [string]: boolean }
-			if existing.treeSignature == nextTreeSignature then
+			local existingTreesFolder = existing.model:FindFirstChild("Trees")
+			if existing.treeSignature == nextTreeSignature or (nextTreeSignature ~= "" and existingTreesFolder ~= nil) then
 				preservedChildNames.Trees = true
 			end
 			self:replaceChunkVisualContents(existing.model, model, preservedChildNames)
+			if preservedChildNames.Trees then
+				pruneTreesFolderToSnapshot(existingTreesFolder, snapshot)
+			end
 			visualModel = existing.model
 		end
 
@@ -2857,6 +2932,58 @@ function WorldGenerationServiceClient.GetBiomeIdAtWorldPosition(
 	return snapshot.biomeIds[index] or snapshot.dominantBiomeId
 end
 
+function WorldGenerationServiceClient.GetSurfaceBiomeIdAtWorldPosition(
+	self: WorldGenerationServiceClient,
+	worldPosition: Vector3
+): number
+	local tileX = toTileCoordinate(worldPosition.Z - self.worldOrigin.Z, self.state.tileSize)
+	local tileY = toTileCoordinate(worldPosition.Y - self.worldOrigin.Y, self.state.tileSize)
+	local chunkX = toChunkCoordinate(tileX, self.state.chunkSize)
+	local chunkY = toChunkCoordinate(tileY, self.state.chunkSize)
+	local snapshot = self.chunkSnapshots[packChunkKey(chunkX, chunkY)]
+	local fallbackBiomeId = if snapshot ~= nil then snapshot.dominantBiomeId else BIOME_ID_FOREST
+
+	if snapshot ~= nil then
+		local localX = tileX - snapshot.tileMinX
+		if localX >= 0 and localX < snapshot.width then
+			local surfaceBiomeId = snapshot.surfaceBiomeIds[localX + 1]
+			if typeof(surfaceBiomeId) == "number" then
+				local sanitizedSurfaceBiomeId =
+					sanitizeInteger(surfaceBiomeId, BIOME_ID_FOREST, BIOME_ID_JUNGLE, fallbackBiomeId)
+				if sanitizedSurfaceBiomeId == BIOME_ID_SNOW then
+					return BIOME_ID_SNOW
+				end
+				fallbackBiomeId = sanitizedSurfaceBiomeId
+			end
+		end
+	end
+
+	for _, candidateSnapshot in self.chunkSnapshots do
+		if candidateSnapshot.chunkX ~= chunkX then
+			continue
+		end
+
+		local localX = tileX - candidateSnapshot.tileMinX
+		if localX < 0 or localX >= candidateSnapshot.width then
+			continue
+		end
+
+		local surfaceBiomeId = candidateSnapshot.surfaceBiomeIds[localX + 1]
+		if typeof(surfaceBiomeId) ~= "number" then
+			continue
+		end
+
+		local sanitizedSurfaceBiomeId =
+			sanitizeInteger(surfaceBiomeId, BIOME_ID_FOREST, BIOME_ID_JUNGLE, candidateSnapshot.dominantBiomeId)
+		if sanitizedSurfaceBiomeId == BIOME_ID_SNOW then
+			return BIOME_ID_SNOW
+		end
+		fallbackBiomeId = sanitizedSurfaceBiomeId
+	end
+
+	return fallbackBiomeId
+end
+
 function WorldGenerationServiceClient.GetDepthLayerAtWorldPosition(
 	self: WorldGenerationServiceClient,
 	worldPosition: Vector3
@@ -2907,6 +3034,7 @@ function WorldGenerationServiceClient.Init(self: WorldGenerationServiceClient)
 	self.janitor = Janitor.new()
 	self.state = WorldGenerationServiceUtils.createDefaultState()
 	self.stateChanged = Signal.new()
+	self.chunkSnapshotsChanged = Signal.new()
 
 	self.worldFolder = nil :: Folder?
 	self.chunksFolder = nil :: Folder?
@@ -2936,6 +3064,9 @@ function WorldGenerationServiceClient.Init(self: WorldGenerationServiceClient)
 	end)
 	self.janitor:GiveChore(function()
 		self.stateChanged:Destroy()
+	end)
+	self.janitor:GiveChore(function()
+		self.chunkSnapshotsChanged:Destroy()
 	end)
 	self.janitor:GiveChore(RunService.Heartbeat:Connect(function(deltaTime: number)
 		self:onHeartbeat(deltaTime)
@@ -3010,6 +3141,8 @@ WorldGenerationServiceClient.getState = WorldGenerationServiceClient.GetState
 WorldGenerationServiceClient.getRenderDistance = WorldGenerationServiceClient.GetRenderDistance
 WorldGenerationServiceClient.getBiomeTypeAtWorldPosition = WorldGenerationServiceClient.GetBiomeTypeAtWorldPosition
 WorldGenerationServiceClient.getBiomeIdAtWorldPosition = WorldGenerationServiceClient.GetBiomeIdAtWorldPosition
+WorldGenerationServiceClient.getSurfaceBiomeIdAtWorldPosition =
+	WorldGenerationServiceClient.GetSurfaceBiomeIdAtWorldPosition
 WorldGenerationServiceClient.getDepthLayerAtWorldPosition = WorldGenerationServiceClient.GetDepthLayerAtWorldPosition
 WorldGenerationServiceClient.getDepthBelowSurfaceAtWorldPosition =
 	WorldGenerationServiceClient.GetDepthBelowSurfaceAtWorldPosition
@@ -3022,6 +3155,7 @@ type WorldGenerationServiceClient = typeof(WorldGenerationServiceClient) & {
 	janitor: JanitorClass,
 	state: WorldGenerationServiceState,
 	stateChanged: SignalObject,
+	chunkSnapshotsChanged: SignalObject,
 	worldFolder: Folder?,
 	chunksFolder: Folder?,
 	worldOrigin: Vector3,

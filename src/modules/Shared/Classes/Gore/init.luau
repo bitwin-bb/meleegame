@@ -367,7 +367,6 @@ function Gore.New(configRaw: GoreConfig?): Gore
 	end)
 	if ok then
 		self.bloodEngine = engineOrError
-	else
 	end
 
 	self.janitor:GiveChore(function()

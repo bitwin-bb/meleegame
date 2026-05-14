@@ -1262,7 +1262,7 @@ function Biome.ResolveTileForDepth(self, column: ColumnProfile, depthBelowSurfac
 			end
 		end
 
-		return self.tileId.STONE
+		return self.tileId.ICE
 	end
 
 	if depthBelowSurface < column.stoneStartDepth then

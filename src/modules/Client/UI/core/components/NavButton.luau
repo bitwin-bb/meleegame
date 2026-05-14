@@ -286,7 +286,7 @@ function NavButton:render()
 					Size = UDim2.fromScale(1, 1),
 					BackgroundTransparency = 1,
 					LayoutOrder = 2,
-					Font = props.font or Enum.Font.GothamSemibold,
+					Font = props.font or Enum.Font.GothamMedium,
 					Text = props.label or "",
 					TextColor3 = textColor,
 					TextSize = props.textSize or 16,

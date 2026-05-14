@@ -458,14 +458,13 @@ function MeleeServiceClient.Init(self: MeleeServiceClient)
 	end)
 	if cameraShakerOk then
 		self.cameraShaker = cameraShakerOrError :: CameraShakerObject
-		local startOk, startError = pcall(function()
+		local startOk = pcall(function()
 			local cameraShaker = self.cameraShaker :: CameraShakerObject
 			cameraShaker:Start()
 		end)
 		if not startOk then
 			self.cameraShaker = nil
 		end
-	else
 	end
 
 	self.janitor:GiveChore(function()

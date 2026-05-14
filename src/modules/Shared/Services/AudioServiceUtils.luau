@@ -181,11 +181,7 @@ function AudioServiceUtils.SanitizeVolume(value: any, fallback: number?): number
 end
 
 function AudioServiceUtils.CloneCategoryVolumes(source: { [string]: number }): { [string]: number }
-	local cloned = {}
-	for key, value in source do
-		cloned[key] = value
-	end
-	return cloned
+	return table.clone(source)
 end
 
 function AudioServiceUtils.CreateDefaultCategoryVolumes(): { [string]: number }

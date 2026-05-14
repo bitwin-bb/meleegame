@@ -95,11 +95,7 @@ local function cloneMetadata(metadataRaw: any): { [string]: any }?
 		return nil
 	end
 
-	local metadata = {}
-	for key, value in metadataRaw do
-		metadata[key] = value
-	end
-	return metadata
+	return table.clone(metadataRaw)
 end
 
 local function createResolvedTarget(

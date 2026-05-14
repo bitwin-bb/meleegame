@@ -366,12 +366,7 @@ end
 local function getParentGuiSize(gui: GuiObject, fallback: Vector2): Vector2
 	local parent = gui.Parent
 	while parent ~= nil do
-		if parent:IsA("GuiObject") then
-			local abs = parent.AbsoluteSize
-			if abs.X > 0 and abs.Y > 0 then
-				return Vector2.new(abs.X, abs.Y)
-			end
-		elseif parent:IsA("ScreenGui") then
+		if parent:IsA("GuiObject") or parent:IsA("ScreenGui") then
 			local abs = parent.AbsoluteSize
 			if abs.X > 0 and abs.Y > 0 then
 				return Vector2.new(abs.X, abs.Y)
@@ -385,12 +380,7 @@ end
 local function getLayoutParentSize(layout: LayoutInstance, fallback: Vector2): Vector2
 	local parent = layout.Parent
 	while parent ~= nil do
-		if parent:IsA("GuiObject") then
-			local abs = parent.AbsoluteSize
-			if abs.X > 0 and abs.Y > 0 then
-				return Vector2.new(abs.X, abs.Y)
-			end
-		elseif parent:IsA("ScreenGui") then
+		if parent:IsA("GuiObject") or parent:IsA("ScreenGui") then
 			local abs = parent.AbsoluteSize
 			if abs.X > 0 and abs.Y > 0 then
 				return Vector2.new(abs.X, abs.Y)

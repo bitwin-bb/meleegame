@@ -132,6 +132,7 @@ type ChunkData = {
 	depthLayers: { number },
 	depthBelowSurface: { number },
 	biomeIds: { number },
+	surfaceBiomeIds: { number },
 	biomeTypes: { number },
 	dominantBiomeId: number,
 	dominantBiomeType: number,
@@ -435,10 +436,10 @@ local TREE_PALETTE_SNOW_2 = WorldGenerationColor.TREE_PALETTES.Snow2
 
 local DEFAULT_SEED = 93847583
 local DEFAULT_CHUNK_SIZE = 32
-local DEFAULT_TILE_SIZE = 2
-local DEFAULT_TILE_DEPTH = 2
+local DEFAULT_TILE_SIZE = 4
+local DEFAULT_TILE_DEPTH = 4
 local DEFAULT_BASE_PLANE_X = 0
-local DEFAULT_WALL_PLANE_OFFSET = 1.65
+local DEFAULT_WALL_PLANE_OFFSET = 4
 local DEFAULT_HORIZON_DEPTH_BLOCKS = 10
 local DEFAULT_BACKGROUND_LAYER_COUNT = 6
 local DEFAULT_BACKGROUND_LAYER_THICKNESS_BLOCKS = 1
@@ -455,8 +456,8 @@ local DEFAULT_MESHING_RECTS_PER_YIELD = 64
 local DEFAULT_MAX_CACHED_CHUNK_DATA = 1200
 local DEFAULT_MAX_CACHED_CHUNK_VISUALS = 0
 local DEFAULT_POOL_SIZE = 9000
-local FIXED_TILE_SIZE_STUDS = 2
-local FIXED_TILE_DEPTH_STUDS = 2
+local FIXED_TILE_SIZE_STUDS = 4
+local FIXED_TILE_DEPTH_STUDS = 4
 local DEFAULT_PRELOAD_FOCUS_SURFACE_OFFSET_TILES = 4
 local DEFAULT_WORLD_FOLDER_NAME = "WorldGeneration"
 local DEFAULT_WORLD_CHUNKS_FOLDER_NAME = "Chunks"
@@ -653,6 +654,41 @@ end
 
 local function computeTileIndex(localX: number, localY: number, width: number): number
 	return localY * width + localX + 1
+end
+
+local function resolveTileMetadataId(self: WorldGeneration, tileIdRaw: any): number
+	if not isFiniteNumber(tileIdRaw) then
+		return self.tileId.AIR
+	end
+
+	return sanitizeInteger(tileIdRaw, self.tileId.AIR, MAX_TILE_ID, self.tileId.AIR)
+end
+
+local function resolveTileMetadataRectValue(rectangleRaw: { [any]: any }): any
+	return rectangleRaw.tileId or rectangleRaw.value or rectangleRaw.id
+end
+
+local function resolveTileMetadataRectAxis(
+	startRaw: any,
+	sizeRaw: any,
+	endRaw: any,
+	maxExclusive: number
+): (number?, number?)
+	if maxExclusive <= 0 then
+		return nil
+	end
+
+	local start = sanitizeInteger(startRaw, 0, maxExclusive - 1, 0)
+	local size = if isFiniteNumber(sizeRaw)
+		then sanitizeInteger(sizeRaw, 1, maxExclusive - start, 1)
+		elseif isFiniteNumber(endRaw)
+			then sanitizeInteger((endRaw :: number) - start + 1, 1, maxExclusive - start, 1)
+		else 1
+	if size <= 0 then
+		return nil
+	end
+
+	return start, math.min(maxExclusive - 1, start + size - 1)
 end
 
 local function encodeDepthLayer(depthLayer: DepthLayer): number
@@ -1252,9 +1288,21 @@ local function populateChunkBiomeIdsFromColumns(self: WorldGeneration, chunkData
 	end
 end
 
+local function populateChunkSurfaceBiomeIds(self: WorldGeneration, chunkData: ChunkData, surfaceBiomeIds: { number })
+	for localX = 0, chunkData.width - 1 do
+		local worldTileX = chunkData.tileMinX + localX
+		local column = self.biomeGenerator:getColumnProfile(worldTileX)
+		surfaceBiomeIds[localX + 1] = column.biomeId
+	end
+end
+
 local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 	local chunkDataRaw = chunkData :: any
 	if chunkDataRaw._metadataValidated == true then
+		if typeof(chunkDataRaw.surfaceBiomeIds) ~= "table" then
+			chunkDataRaw.surfaceBiomeIds = Sift.Array.create(chunkData.width, self.biomeId.FOREST)
+			populateChunkSurfaceBiomeIds(self, chunkData, chunkDataRaw.surfaceBiomeIds)
+		end
 		return
 	end
 	local totalTiles = chunkData.width * chunkData.height
@@ -1264,6 +1312,10 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 	if typeof(chunkDataRaw.biomeIds) ~= "table" then
 		chunkDataRaw.biomeIds = Sift.Array.create(totalTiles, self.biomeId.FOREST)
 		populateChunkBiomeIdsFromColumns(self, chunkData, chunkDataRaw.biomeIds)
+	end
+	if typeof(chunkDataRaw.surfaceBiomeIds) ~= "table" then
+		chunkDataRaw.surfaceBiomeIds = Sift.Array.create(chunkData.width, self.biomeId.FOREST)
+		populateChunkSurfaceBiomeIds(self, chunkData, chunkDataRaw.surfaceBiomeIds)
 	end
 	if typeof(chunkDataRaw.depthLayers) ~= "table" then
 		chunkDataRaw.depthLayers = Sift.Array.create(totalTiles)
@@ -1277,6 +1329,7 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 
 	local biomeTypes = chunkDataRaw.biomeTypes :: { number }
 	local biomeIds = chunkDataRaw.biomeIds :: { number }
+	local surfaceBiomeIds = chunkDataRaw.surfaceBiomeIds :: { number }
 	local depthLayers = chunkDataRaw.depthLayers :: { number }
 	local depthBelowSurface = chunkDataRaw.depthBelowSurface :: { number }
 	for tileIndex = 1, totalTiles do
@@ -1343,6 +1396,18 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 			continue
 		end
 		biomeIds[tileIndex] = self.biomeId.FOREST
+	end
+	for columnIndex = 1, chunkData.width do
+		local biomeId = surfaceBiomeIds[columnIndex]
+		if
+			biomeId == self.biomeId.FOREST
+			or biomeId == self.biomeId.DESERT
+			or biomeId == self.biomeId.SNOW
+			or biomeId == self.biomeId.JUNGLE
+		then
+			continue
+		end
+		surfaceBiomeIds[columnIndex] = self.biomeId.FOREST
 	end
 
 	local treesRaw = chunkDataRaw.trees
@@ -1760,6 +1825,119 @@ local function ensureChunkLiquidData(self: WorldGeneration, chunkData: ChunkData
 		scanColumnMinX = scanColumnMinX,
 	})
 	chunkDataRaw._liquidValidated = true
+end
+
+function WorldGeneration.RepairIntersectingTileMetadata(
+	self: WorldGeneration,
+	tilesRaw: any,
+	widthRaw: any,
+	heightRaw: any
+): ({ number }, number)
+	local width = sanitizeInteger(widthRaw, 1, 512, self.chunkSize)
+	local height = sanitizeInteger(heightRaw, 1, 512, self.chunkSize)
+	local totalTiles = width * height
+	if typeof(tilesRaw) ~= "table" then
+		return Sift.Array.create(totalTiles, self.tileId.AIR), 0
+	end
+
+	local tiles = tilesRaw :: { [any]: any }
+	local hasRectangleMetadata = false
+	for _, tileValue in tiles do
+		if typeof(tileValue) == "table" then
+			hasRectangleMetadata = true
+			break
+		end
+	end
+	if not hasRectangleMetadata then
+		return tilesRaw :: { number }, 0
+	end
+
+	local repairedTiles = Sift.Array.create(totalTiles, self.tileId.AIR)
+	local occupiedTiles = Sift.Array.create(totalTiles, false)
+	local overlapCount = 0
+
+	local function assignTile(tileIndex: number, tileId: number)
+		if tileIndex < 1 or tileIndex > totalTiles or tileId == self.tileId.AIR then
+			return
+		end
+		if occupiedTiles[tileIndex] then
+			overlapCount += 1
+			return
+		end
+
+		occupiedTiles[tileIndex] = true
+		repairedTiles[tileIndex] = tileId
+	end
+
+	for tileIndex = 1, totalTiles do
+		local tileValue = tiles[tileIndex]
+		if typeof(tileValue) == "table" then
+			continue
+		end
+
+		assignTile(tileIndex, resolveTileMetadataId(self, tileValue))
+	end
+
+	for _, rectangleRaw in tiles do
+		if typeof(rectangleRaw) ~= "table" then
+			continue
+		end
+
+		local rectangle = rectangleRaw :: { [any]: any }
+		local tileId = resolveTileMetadataId(self, resolveTileMetadataRectValue(rectangle))
+		if tileId == self.tileId.AIR then
+			continue
+		end
+
+		local minX, maxX = resolveTileMetadataRectAxis(
+			rectangle.x or rectangle.localX or rectangle.minX,
+			rectangle.width,
+			rectangle.maxX,
+			width
+		)
+		local minY, maxY = resolveTileMetadataRectAxis(
+			rectangle.y or rectangle.localY or rectangle.minY,
+			rectangle.height,
+			rectangle.maxY,
+			height
+		)
+		if minX == nil or maxX == nil or minY == nil or maxY == nil then
+			continue
+		end
+
+		for localY = minY, maxY do
+			for localX = minX, maxX do
+				assignTile(computeTileIndex(localX, localY, width), tileId)
+			end
+		end
+	end
+
+	return repairedTiles, overlapCount
+end
+
+function WorldGeneration.RepairChunkTileMetadataOverlaps(
+	self: WorldGeneration,
+	chunkData: ChunkData,
+	forceRepairRaw: any?
+): number
+	local chunkDataRaw = chunkData :: any
+	if forceRepairRaw ~= true and chunkDataRaw._tileMetadataOverlapRepaired == true then
+		return 0
+	end
+
+	local repairedTiles, overlapCount =
+		self:RepairIntersectingTileMetadata(chunkData.tiles, chunkData.width, chunkData.height)
+	chunkData.tiles = repairedTiles
+
+	for _, layerData in chunkData.backgroundLayers do
+		local repairedLayerTiles, layerOverlapCount =
+			self:RepairIntersectingTileMetadata(layerData.tiles, layerData.width, layerData.height)
+		layerData.tiles = repairedLayerTiles
+		overlapCount += layerOverlapCount
+	end
+
+	chunkDataRaw._tileMetadataOverlapRepaired = true
+	return overlapCount
 end
 
 function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
@@ -3844,6 +4022,7 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 	local depthLayers = Sift.Array.create(width * height, DEPTH_LAYER_CODE.SKY)
 	local depthBelowSurface = Sift.Array.create(width * height, -1)
 	local biomeIds = Sift.Array.create(width * height, self.biomeId.FOREST)
+	local surfaceBiomeIds = Sift.Array.create(width, self.biomeId.FOREST)
 	local biomeTypes = Sift.Array.create(width * height, self.biomeType.NORMAL)
 	local backgroundPadding = BACKGROUND_LAYER_BOUNDS_PADDING_TILES
 	local backgroundWidth = width + backgroundPadding * 2
@@ -4132,7 +4311,9 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 	end
 
 	for localX = 0, width - 1 do
-		columnProfiles[localX + 1] = backgroundColumnProfiles[localX + backgroundPadding + 1]
+		local column = backgroundColumnProfiles[localX + backgroundPadding + 1]
+		columnProfiles[localX + 1] = column
+		surfaceBiomeIds[localX + 1] = column.biomeId
 	end
 
 	for localY = 0, height - 1 do
@@ -4691,6 +4872,11 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 		end
 	end
 
+	tiles = select(1, self:RepairIntersectingTileMetadata(tiles, width, height))
+	for _, layerData in backgroundLayers do
+		layerData.tiles = select(1, self:RepairIntersectingTileMetadata(layerData.tiles, layerData.width, layerData.height))
+	end
+
 	local dominantBiomeType = resolveDominantBiomeType(biomeTypes, self.biomeType.NORMAL)
 	local dominantBiomeId = resolveDominantBiomeId(biomeIds, self.biomeId.FOREST)
 	local liquids = if self.liquidGenerator ~= nil
@@ -4728,6 +4914,7 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 		depthLayers = depthLayers,
 		depthBelowSurface = depthBelowSurface,
 		biomeIds = biomeIds,
+		surfaceBiomeIds = surfaceBiomeIds,
 		biomeTypes = biomeTypes,
 		dominantBiomeId = dominantBiomeId,
 		dominantBiomeType = dominantBiomeType,
@@ -4740,6 +4927,7 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 	local generatedRaw = generated :: any
 	generatedRaw._metadataValidated = true
 	generatedRaw._liquidValidated = true
+	generatedRaw._tileMetadataOverlapRepaired = true
 	return generated
 end
 
@@ -4748,6 +4936,10 @@ function WorldGeneration.GetOrGenerateChunkData(self: WorldGeneration, chunkX: n
 	local cache = self.cache
 	local cached = if cache then cache:getChunkData(key) :: ChunkData? else nil
 	if cached then
+		local repairedOverlapCount = self:RepairChunkTileMetadataOverlaps(cached)
+		if repairedOverlapCount > 0 then
+			(cached :: any)._liquidValidated = false
+		end
 		ensureChunkBiomeMetadata(self, cached)
 		ensureChunkLiquidData(self, cached)
 		return cached
@@ -4757,24 +4949,38 @@ function WorldGeneration.GetOrGenerateChunkData(self: WorldGeneration, chunkX: n
 	ensureChunkBiomeMetadata(self, generated)
 	ensureChunkLiquidData(self, generated)
 	local chunkOverrides = self.chunkOverrides[key]
+	local tileOverridesApplied = false
 	if chunkOverrides ~= nil then
 		for tileIndex, overrideTileId in chunkOverrides do
 			if tileIndex >= 1 and tileIndex <= #generated.tiles then
 				generated.tiles[tileIndex] = overrideTileId
+				tileOverridesApplied = true
 			end
 		end
 	end
 
 	local chunkBiomeOverrides = self.chunkBiomeOverrides[key]
+	local biomeOverridesApplied = false
 	if chunkBiomeOverrides ~= nil then
 		for tileIndex, overrideBiomeType in chunkBiomeOverrides do
 			if tileIndex >= 1 and tileIndex <= #generated.biomeTypes then
 				generated.biomeTypes[tileIndex] = overrideBiomeType
 				generated.tiles[tileIndex] =
 					self.biomeGenerator:convertTileToBiomeType(generated.tiles[tileIndex], overrideBiomeType)
+				biomeOverridesApplied = true
 			end
 		end
 		generated.dominantBiomeType = resolveDominantBiomeType(generated.biomeTypes, self.biomeType.NORMAL)
+	end
+
+	if tileOverridesApplied or biomeOverridesApplied then
+		(generated :: any)._tileMetadataOverlapRepaired = false
+	end
+	local repairedOverlapCount =
+		self:RepairChunkTileMetadataOverlaps(generated, tileOverridesApplied or biomeOverridesApplied)
+	if repairedOverlapCount > 0 then
+		(generated :: any)._liquidValidated = false
+		ensureChunkLiquidData(self, generated)
 	end
 
 	local chunkLiquidOverrides = self.chunkLiquidOverrides[key]
@@ -5397,6 +5603,7 @@ function WorldGeneration.GetChunkSnapshotByKey(self: WorldGeneration, chunkKeyRa
 		depthLayers = Sift.Dictionary.copy(chunkData.depthLayers),
 		depthBelowSurface = Sift.Dictionary.copy(chunkData.depthBelowSurface),
 		biomeIds = Sift.Dictionary.copy(chunkData.biomeIds),
+		surfaceBiomeIds = Sift.Dictionary.copy(chunkData.surfaceBiomeIds),
 		biomeTypes = Sift.Dictionary.copy(chunkData.biomeTypes),
 		dominantBiomeId = chunkData.dominantBiomeId,
 		dominantBiomeType = chunkData.dominantBiomeType,
@@ -5946,6 +6153,8 @@ WorldGeneration.hasTreeAirClearance = WorldGeneration.HasTreeAirClearance
 WorldGeneration.hasAirClearance = WorldGeneration.HasAirClearance
 WorldGeneration.isWithinBiomeTransitionBuffer = WorldGeneration.IsWithinBiomeTransitionBuffer
 WorldGeneration.resolveDesertPropVariantIndex = WorldGeneration.ResolveDesertPropVariantIndex
+WorldGeneration.repairIntersectingTileMetadata = WorldGeneration.RepairIntersectingTileMetadata
+WorldGeneration.repairChunkTileMetadataOverlaps = WorldGeneration.RepairChunkTileMetadataOverlaps
 WorldGeneration.generateChunkData = WorldGeneration.GenerateChunkData
 WorldGeneration.getOrGenerateChunkData = WorldGeneration.GetOrGenerateChunkData
 WorldGeneration.buildGreedyRectangles = WorldGeneration.BuildGreedyRectangles

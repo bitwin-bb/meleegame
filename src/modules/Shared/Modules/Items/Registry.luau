@@ -196,19 +196,11 @@ function Registry.ResolveDefinition(itemIdRaw: any): ItemDefinition?
 end
 
 function Registry.GetItemIdLookup(): { [string]: string }
-	local lookup = {}
-	for alias, canonicalItemId in buildRegistry().canonicalByAlias do
-		lookup[alias] = canonicalItemId
-	end
-	return lookup
+	return table.clone(buildRegistry().canonicalByAlias)
 end
 
 function Registry.GetDefinitionsById(): { [string]: ItemDefinition }
-	local definitions = {}
-	for itemId, definition in buildRegistry().definitionsById do
-		definitions[itemId] = definition
-	end
-	return definitions
+	return table.clone(buildRegistry().definitionsById)
 end
 
 function Registry.ClearCache()

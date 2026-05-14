@@ -96863,7 +96863,7 @@ function ParallaxServiceClient._createPlane(self: ParallaxServiceClient, layerRu
 end
 
 function ParallaxServiceClient._createLayerRuntime(
-	self: ParallaxServiceClient,
+	self:  ServiceClient,
 	biomeRuntime: BiomeRuntime,
 	definition: LayerDefinition
 ): LayerRuntime

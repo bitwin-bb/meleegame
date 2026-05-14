@@ -60,11 +60,7 @@ local RollingMetrics = Matter.component("WorldSimulationRollingMetrics", {
 })
 
 local function cloneTable(source: { [string]: any }): { [string]: any }
-	local cloned = {}
-	for key, value in source do
-		cloned[key] = value
-	end
-	return cloned
+	return table.clone(source)
 end
 
 local function average(previous: number, nextValue: number, sampleCount: number): number

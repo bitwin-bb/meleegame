@@ -182,7 +182,6 @@ function ManaServiceServer.LoadPersistedState(self: ManaServiceServer, player: P
 		end)
 		if readSuccess then
 			persistedRaw = readResult
-		else
 		end
 	end
 

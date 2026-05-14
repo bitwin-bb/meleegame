@@ -50,6 +50,7 @@ local CORRUPTION_SOUNDTRACK_BIOME = "Corruption"
 local SNOW_SOUNDTRACK_BIOME = "Snow"
 local JUNGLE_SOUNDTRACK_BIOME = "Jungle"
 local UNDERGROUND_SOUNDTRACK_BIOME = "Underground"
+local UNDERGROUND_SNOW_SOUNDTRACK_BIOME = "UndergroundSnow"
 local UNDERGROUND_CORRUPTION_SOUNDTRACK_BIOME = "UndergroundCorruption"
 local CAVERN_SOUNDTRACK_BIOME = "Cavern"
 local RAIN_SOUNDTRACK_BIOME = "Rain"
@@ -73,6 +74,7 @@ local SOUNDTRACK_TRACK_KEYS_BY_BIOME: { [string]: { string } } = {
 	Snow = { "Snow" },
 	Jungle = { "Jungle" },
 	Underground = { "Underground" },
+	UndergroundSnow = { "UndergroundSnow" },
 	UndergroundCorruption = { "UndergroundCorruption" },
 	Cavern = { "Cavern" },
 	Rain = { "Rain" },
@@ -91,6 +93,7 @@ local SOUNDTRACK_LOOPED_BY_BIOME: { [string]: boolean } = {
 	Snow = true,
 	Jungle = true,
 	Underground = true,
+	UndergroundSnow = true,
 	UndergroundCorruption = true,
 	Cavern = true,
 	Rain = true,
@@ -242,6 +245,33 @@ function AudioServiceClient.ResolveBiomeIdAtWorldPosition(self: AudioServiceClie
 	return BIOME_ID_FOREST
 end
 
+function AudioServiceClient.ResolveSurfaceBiomeIdAtWorldPosition(self: AudioServiceClient, worldPosition: Vector3): number
+	if typeof((WorldGenerationServiceClient :: any).state) ~= "table" then
+		return BIOME_ID_FOREST
+	end
+
+	local worldState = WorldGenerationServiceClient:getState()
+	if worldState.ready ~= true then
+		return BIOME_ID_FOREST
+	end
+
+	local ok, biomeIdOrError = pcall(function()
+		return (WorldGenerationServiceClient :: any):getSurfaceBiomeIdAtWorldPosition(worldPosition)
+	end)
+	if not ok or typeof(biomeIdOrError) ~= "number" then
+		return self:resolveBiomeIdAtWorldPosition(worldPosition)
+	end
+
+	local biomeId = math.floor(biomeIdOrError)
+	if biomeId == BIOME_ID_SNOW then
+		return BIOME_ID_SNOW
+	end
+	if biomeId == BIOME_ID_JUNGLE then
+		return BIOME_ID_JUNGLE
+	end
+	return BIOME_ID_FOREST
+end
+
 function AudioServiceClient.ResolveDepthLayerAtWorldPosition(self: AudioServiceClient, worldPosition: Vector3): number?
 	if typeof((WorldGenerationServiceClient :: any).state) ~= "table" then
 		return nil
@@ -329,16 +359,24 @@ function AudioServiceClient.ResolveSoundtrackBiomeForLocalPlayer(self: AudioServ
 	local worldPosition = rootPart.Position
 
 	local biomeType = self:resolveBiomeTypeAtWorldPosition(worldPosition)
+	local biomeId = self:resolveBiomeIdAtWorldPosition(worldPosition)
+	local surfaceBiomeId = self:resolveSurfaceBiomeIdAtWorldPosition(worldPosition)
 	local depthLayer = self:resolveDepthLayerAtWorldPosition(worldPosition)
 	if depthLayer == DEPTH_LAYER_CAVERN or depthLayer == DEPTH_LAYER_DEEP then
 		if biomeType == BIOME_TYPE_CORRUPTION then
 			return UNDERGROUND_CORRUPTION_SOUNDTRACK_BIOME
+		end
+		if surfaceBiomeId == BIOME_ID_SNOW then
+			return UNDERGROUND_SNOW_SOUNDTRACK_BIOME
 		end
 		return CAVERN_SOUNDTRACK_BIOME
 	end
 	if depthLayer == DEPTH_LAYER_UNDERGROUND then
 		if biomeType == BIOME_TYPE_CORRUPTION then
 			return UNDERGROUND_CORRUPTION_SOUNDTRACK_BIOME
+		end
+		if surfaceBiomeId == BIOME_ID_SNOW then
+			return UNDERGROUND_SNOW_SOUNDTRACK_BIOME
 		end
 		return UNDERGROUND_SOUNDTRACK_BIOME
 	end
@@ -351,7 +389,6 @@ function AudioServiceClient.ResolveSoundtrackBiomeForLocalPlayer(self: AudioServ
 		return CORRUPTION_SOUNDTRACK_BIOME
 	end
 
-	local biomeId = self:resolveBiomeIdAtWorldPosition(worldPosition)
 	if biomeId == BIOME_ID_SNOW then
 		return SNOW_SOUNDTRACK_BIOME
 	end
@@ -755,6 +792,7 @@ end
 AudioServiceClient.refreshSoundtrackAssetIds = AudioServiceClient.RefreshSoundtrackAssetIds
 AudioServiceClient.resolveBiomeTypeAtWorldPosition = AudioServiceClient.ResolveBiomeTypeAtWorldPosition
 AudioServiceClient.resolveBiomeIdAtWorldPosition = AudioServiceClient.ResolveBiomeIdAtWorldPosition
+AudioServiceClient.resolveSurfaceBiomeIdAtWorldPosition = AudioServiceClient.ResolveSurfaceBiomeIdAtWorldPosition
 AudioServiceClient.resolveDepthLayerAtWorldPosition = AudioServiceClient.ResolveDepthLayerAtWorldPosition
 AudioServiceClient.attachBossStateListenerIfNeeded = AudioServiceClient.AttachBossStateListenerIfNeeded
 AudioServiceClient.resolveBossSoundtrackBiome = AudioServiceClient.ResolveBossSoundtrackBiome
@@ -784,6 +822,7 @@ type AudioServiceClient = typeof(AudioServiceClient) & {
 	refreshSoundtrackAssetIds: (self: AudioServiceClient) -> (),
 	resolveBiomeTypeAtWorldPosition: (self: AudioServiceClient, worldPosition: Vector3) -> number,
 	resolveBiomeIdAtWorldPosition: (self: AudioServiceClient, worldPosition: Vector3) -> number,
+	resolveSurfaceBiomeIdAtWorldPosition: (self: AudioServiceClient, worldPosition: Vector3) -> number,
 	resolveDepthLayerAtWorldPosition: (self: AudioServiceClient, worldPosition: Vector3) -> number?,
 	attachBossStateListenerIfNeeded: (self: AudioServiceClient) -> (),
 	resolveBossSoundtrackBiome: (self: AudioServiceClient) -> string?,

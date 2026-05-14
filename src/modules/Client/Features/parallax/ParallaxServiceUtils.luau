@@ -29,6 +29,11 @@ export type LayerDefinition = {
 	verticalAlign: VerticalAlign,
 	verticalOffsetStuds: number,
 	verticalDepth: number,
+	verticalParallax: number,
+	baseYOffset: number,
+	bottomOverscan: number,
+	minY: number,
+	maxY: number,
 }
 
 export type BiomeVariantDefinition = {
@@ -118,6 +123,10 @@ local IMPLICIT_LAYER_VERTICAL_OFFSET_BASE = -18
 local IMPLICIT_LAYER_VERTICAL_OFFSET_STEP = 10
 local IMPLICIT_LAYER_VERTICAL_DEPTH_BASE = 0.008
 local IMPLICIT_LAYER_VERTICAL_DEPTH_STEP = 0.004
+local IMPLICIT_LAYER_BASE_Y_OFFSET = 0.04
+local IMPLICIT_LAYER_BOTTOM_OVERSCAN = 0.08
+local IMPLICIT_LAYER_MIN_Y = -0.06
+local IMPLICIT_LAYER_MAX_Y = 0.1
 local DEFAULT_HORIZONTAL_VISION_STUDS = 576
 local MINIMUM_TEXTURE_REPEAT_WIDTH_STUDS = 12
 local MINIMUM_HORIZONTAL_PLANE_BLEED_STUDS = 8
@@ -193,6 +202,14 @@ local function sanitizeColor3(valueRaw: any, fallback: Color3): Color3
 		return valueRaw
 	end
 	return fallback
+end
+
+local function readSourceValue(source: { [string]: any }, camelName: string, pascalName: string): any
+	local camelValue = source[camelName]
+	if camelValue ~= nil then
+		return camelValue
+	end
+	return source[pascalName]
 end
 
 local function resolveImageAspectRatio(source: { [string]: any }, fallback: number): number
@@ -272,6 +289,11 @@ local function resolveImplicitLayerDefaults(
 		verticalAlign = "Center",
 		verticalOffsetStuds = IMPLICIT_LAYER_VERTICAL_OFFSET_BASE + stackIndex * IMPLICIT_LAYER_VERTICAL_OFFSET_STEP,
 		verticalDepth = IMPLICIT_LAYER_VERTICAL_DEPTH_BASE + stackIndex * IMPLICIT_LAYER_VERTICAL_DEPTH_STEP,
+		verticalParallax = IMPLICIT_LAYER_VERTICAL_DEPTH_BASE + stackIndex * IMPLICIT_LAYER_VERTICAL_DEPTH_STEP,
+		baseYOffset = IMPLICIT_LAYER_BASE_Y_OFFSET,
+		bottomOverscan = IMPLICIT_LAYER_BOTTOM_OVERSCAN,
+		minY = IMPLICIT_LAYER_MIN_Y,
+		maxY = IMPLICIT_LAYER_MAX_Y,
 	}
 end
 
@@ -339,6 +361,11 @@ local function createImplicitLayerSource(
 		verticalAlign = defaults.verticalAlign,
 		verticalOffsetStuds = defaults.verticalOffsetStuds,
 		verticalDepth = defaults.verticalDepth,
+		verticalParallax = defaults.verticalParallax,
+		baseYOffset = defaults.baseYOffset,
+		bottomOverscan = defaults.bottomOverscan,
+		minY = defaults.minY,
+		maxY = defaults.maxY,
 	}
 end
 
@@ -373,6 +400,12 @@ local function sanitizeLayerDefinition(
 	end
 
 	local defaults = resolveImplicitLayerDefaults(biomeName, layerIndex, totalLayers)
+	local minY = sanitizeNumber(readSourceValue(source, "minY", "MinY"), defaults.minY, -4, 4)
+	local maxY = sanitizeNumber(readSourceValue(source, "maxY", "MaxY"), defaults.maxY, -4, 4)
+	if minY > maxY then
+		minY, maxY = maxY, minY
+	end
+
 	return {
 		id = trim(source.id) ~= "" and trim(source.id) or fallbackId,
 		image = image,
@@ -391,6 +424,21 @@ local function sanitizeLayerDefinition(
 		verticalAlign = sanitizeVerticalAlign(source.verticalAlign, defaults.verticalAlign),
 		verticalOffsetStuds = sanitizeNumber(source.verticalOffsetStuds, defaults.verticalOffsetStuds, -4096, 4096),
 		verticalDepth = sanitizeNumber(source.verticalDepth, defaults.verticalDepth, 0, 1),
+		verticalParallax = sanitizeNumber(
+			readSourceValue(source, "verticalParallax", "VerticalParallax"),
+			defaults.verticalParallax,
+			0,
+			1
+		),
+		baseYOffset = sanitizeNumber(readSourceValue(source, "baseYOffset", "BaseYOffset"), defaults.baseYOffset, -4, 4),
+		bottomOverscan = sanitizeNumber(
+			readSourceValue(source, "bottomOverscan", "BottomOverscan"),
+			defaults.bottomOverscan,
+			0,
+			2
+		),
+		minY = minY,
+		maxY = maxY,
 	}
 end
 
@@ -678,7 +726,7 @@ function ParallaxServiceUtils.ComputeHorizontalVisionStuds(
 	renderDistanceChunksRaw: any
 ): number
 	local chunkSize = sanitizeInteger(chunkSizeRaw, 32, 1, 512)
-	local tileSize = sanitizeNumber(tileSizeRaw, 2, 0.25, 128)
+	local tileSize = sanitizeNumber(tileSizeRaw, 4, 0.25, 128)
 	local renderDistanceChunks = sanitizeInteger(renderDistanceChunksRaw, 4, 1, 128)
 	return math.max(DEFAULT_HORIZONTAL_VISION_STUDS, (renderDistanceChunks * 2 + 1) * chunkSize * tileSize)
 end

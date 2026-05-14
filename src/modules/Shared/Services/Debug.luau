@@ -82,11 +82,7 @@ function Debug:GetCounters(): { [string]: number }
 	if not self.enabled then
 		return {}
 	end
-	local cloned = {}
-	for name, value in self.counters do
-		cloned[name] = value
-	end
-	return cloned
+	return table.clone(self.counters)
 end
 
 function Debug:ValidateChunkArrays(chunkRaw: any): boolean

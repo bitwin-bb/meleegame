@@ -1003,7 +1003,7 @@ function LiquidServiceServer:CreateStateSnapshot(): LiquidServiceState
 	local world = self.world
 	return LiquidServiceUtils.createState({
 		ready = world ~= nil,
-		tileSize = if world ~= nil and isFiniteNumber((world :: any).tileSize) then (world :: any).tileSize else 2,
+		tileSize = if world ~= nil and isFiniteNumber((world :: any).tileSize) then (world :: any).tileSize else 4,
 		chunkSize = if world ~= nil and isFiniteNumber((world :: any).chunkSize)
 			then math.floor((world :: any).chunkSize)
 			else 32,
@@ -2206,7 +2206,7 @@ function LiquidServiceServer:GetPlayerQuery(player: Player): LiquidQueryResult
 	end
 
 	local query = LiquidQuery.queryCharacter({
-		tileSize = if self.world ~= nil then self.world.tileSize else 2,
+		tileSize = if self.world ~= nil then self.world.tileSize else 4,
 		worldOrigin = if self.world ~= nil then self.world.worldOrigin else Vector3.zero,
 		getCellAt = function(tileX: number, tileY: number): number
 			if self.world == nil then

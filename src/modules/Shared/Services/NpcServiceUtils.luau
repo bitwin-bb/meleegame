@@ -650,7 +650,7 @@ function NpcServiceUtils.ResolveBiomeNameFromWorld(worldRaw: any, worldPosition:
 
 	local world = worldRaw :: { [string]: any }
 	local worldOrigin = if typeof(world.worldOrigin) == "Vector3" then world.worldOrigin else Vector3.zero
-	local tileSize = if typeof(world.tileSize) == "number" and world.tileSize > 0 then world.tileSize else 2
+	local tileSize = if typeof(world.tileSize) == "number" and world.tileSize > 0 then world.tileSize else 4
 	local biomeGenerator = world.biomeGenerator
 	local biomeIdMap = world.biomeId
 

@@ -275,9 +275,7 @@ function UIController._playTransition(self: UIController, screen: any, opening: 
 	local property = if typeof(transition.property) == "string" then transition.property else "BackgroundTransparency"
 	local target = if opening then transition.openedValue else transition.closedValue
 	if target == nil then
-		if property == "BackgroundTransparency" then
-			target = if opening then 0 else 1
-		elseif property == "GroupTransparency" then
+		if property == "BackgroundTransparency" or property == "GroupTransparency" then
 			target = if opening then 0 else 1
 		end
 	end

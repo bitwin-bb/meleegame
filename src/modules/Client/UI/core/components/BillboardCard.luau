@@ -34,6 +34,7 @@ export type BillboardCardProps = {
 	icon: string?,
 	nativeBillboard: { [any]: any }?,
 	nativeCard: { [any]: any }?,
+	billboardKey: string?,
 	cardVisible: boolean?,
 	children: { React.ReactNode }?,
 }
@@ -132,7 +133,12 @@ return function(props: BillboardCardProps): React.ReactNode
 		})
 	end
 
-	local element = e("BillboardGui", billboardProps, billboardChildren)
+	local billboardElement = e("BillboardGui", billboardProps, billboardChildren)
+	local element = if typeof(props.billboardKey) == "string" and props.billboardKey ~= ""
+		then e(React.Fragment, nil, {
+			[props.billboardKey] = billboardElement,
+		})
+		else billboardElement
 
 	local portalTarget = resolvePortalTarget(props)
 	if portalTarget ~= nil then

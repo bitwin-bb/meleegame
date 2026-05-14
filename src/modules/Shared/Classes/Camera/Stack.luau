@@ -66,11 +66,7 @@ local function cloneDictionary(sourceRaw: any): { [string]: any }?
 	if typeof(sourceRaw) ~= "table" then
 		return nil
 	end
-	local clone = {}
-	for key, value in sourceRaw do
-		clone[key] = value
-	end
-	return clone
+	return table.clone(sourceRaw)
 end
 
 local function cloneEntry(entry: OverrideEntry): OverrideEntry

@@ -96,11 +96,7 @@ end
 
 local function cloneTableShallow(sourceRaw: any): { [any]: any }
 	local source = if typeof(sourceRaw) == "table" then sourceRaw else {}
-	local clone = {}
-	for key, value in source do
-		clone[key] = value
-	end
-	return clone
+	return table.clone(source)
 end
 
 local function cloneBooleanLookup(sourceRaw: any): { [string]: boolean }
@@ -869,9 +865,7 @@ function WorldGenerationServiceServer.SyncPlayerChunkStream(
 		if not world:isChunkCollisionReadyByKey(chunkKey) then
 			continue
 		end
-		if stream.sentRevisions[chunkKey] ~= revision then
-			enqueueChunkForStream(stream, chunkKey)
-		elseif stream.interestKeys[chunkKey] == nil then
+		if stream.sentRevisions[chunkKey] ~= revision or stream.interestKeys[chunkKey] == nil then
 			enqueueChunkForStream(stream, chunkKey)
 		end
 	end

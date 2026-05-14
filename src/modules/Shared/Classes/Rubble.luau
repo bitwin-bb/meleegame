@@ -80,6 +80,7 @@ type Slot = {
 	active: boolean,
 	token: number,
 	expiresAt: number,
+	baseSize: Vector3,
 	baseTransparency: number,
 	fadeOut: boolean,
 	fadeDuration: number,
@@ -103,6 +104,8 @@ type ExpiryNode = { expiresAt: number, slotId: number, token: number }
 
 local ZERO = Vector3.zero
 local NEGINF = -math.huge
+local SHRINK_END_SCALE = 0.02
+local SHRINK_MIN_SIZE = 0.01
 
 local DEFAULT_TUNING: Tuning = {
 	initialPoolSize = 128,
@@ -170,6 +173,14 @@ local function clampMag(v: Vector3, maxMag: number): Vector3
 		return v
 	end
 	return v * (maxMag / m)
+end
+
+local function scaleSize(size: Vector3, scale: number): Vector3
+	return Vector3.new(
+		math.max(SHRINK_MIN_SIZE, size.X * scale),
+		math.max(SHRINK_MIN_SIZE, size.Y * scale),
+		math.max(SHRINK_MIN_SIZE, size.Z * scale)
+	)
 end
 
 local function now(): number
@@ -454,6 +465,8 @@ function Rubble.New(configRaw: Config?): Rubble
 
 	safeRegisterCollisionGroup(activeGroup)
 	safeRegisterCollisionGroup(inactiveGroup)
+	safeRegisterCollisionGroup(PLAYER_COLLISION_GROUP)
+	safeRegisterCollisionGroup(ENEMY_COLLISION_GROUP)
 	safeSetCollisionGroupCollidable(inactiveGroup, activeGroup, false)
 	safeSetCollisionGroupCollidable(inactiveGroup, inactiveGroup, false)
 	safeSetCollisionGroupCollidable(activeGroup, activeGroup, true)
@@ -482,6 +495,22 @@ function Rubble.New(configRaw: Config?): Rubble
 		end)
 	end
 	return self
+end
+
+function Rubble:_attachRuntimeFolders()
+	local gameFolder = WorkspaceFolders.getOrCreateGameFolder()
+	if self.root.Parent ~= gameFolder then
+		self.root.Parent = gameFolder
+	end
+	if self.active.Parent ~= self.root then
+		self.active.Parent = self.root
+	end
+	if self.inactive.Parent ~= self.root then
+		self.inactive.Parent = self.root
+	end
+	WorkspaceFolders.manageFolder(self.root, gameFolder)
+	WorkspaceFolders.manageFolder(self.active, self.root)
+	WorkspaceFolders.manageFolder(self.inactive, self.root)
 end
 
 function Rubble:_heapPush(node: ExpiryNode)
@@ -566,13 +595,14 @@ function Rubble:_makeSlot(): Slot?
 	part.AssemblyAngularVelocity = ZERO
 	part.CFrame = self.parkingCFrame
 	part.CollisionGroup = self.inactiveGroup
-	part.Parent = self.inactive
+	part.Parent = nil
 	local slot: Slot = {
 		id = id,
 		part = part,
 		active = false,
 		token = 0,
 		expiresAt = NEGINF,
+		baseSize = part.Size,
 		baseTransparency = 0,
 		fadeOut = false,
 		fadeDuration = 0,
@@ -649,7 +679,7 @@ function Rubble:_resetPart(part: BasePart)
 	part.CustomPhysicalProperties = self.templatePhysical
 	part.CollisionGroup = self.inactiveGroup
 	part.CFrame = self.parkingCFrame
-	part.Parent = self.inactive
+	part.Parent = nil
 end
 
 function Rubble:_recycleSlot(slot: Slot)
@@ -745,7 +775,7 @@ function Rubble:_updateSlot(slot: Slot, dt: number, currentNow: number, checkLod
 		local remaining = slot.expiresAt - currentNow
 		if remaining <= slot.fadeDuration then
 			local a = 1 - math.clamp(remaining / slot.fadeDuration, 0, 1)
-			part.Transparency = math.clamp(slot.baseTransparency + (1 - slot.baseTransparency) * a, 0, 1)
+			part.Size = scaleSize(slot.baseSize, 1 + (SHRINK_END_SCALE - 1) * a)
 		end
 	end
 	if checkLod and self.tuning.lodDistance > 0 then
@@ -917,9 +947,11 @@ function Rubble:Spawn(paramsRaw: SpawnParams?): BasePart?
 		math.floor(n(g(params, "maxFlingBounces", "MaxFlingBounces"), self.tuning.maxFlingBounces, 0, 20))
 
 	local part = slot.part
+	self:_attachRuntimeFolders()
 	slot.token += 1
 	slot.active = true
 	slot.expiresAt = now() + lifetime
+	slot.baseSize = size
 	slot.baseTransparency = transparency
 	slot.fadeOut = fadeOut
 	slot.fadeDuration = fadeDuration
@@ -1065,9 +1097,7 @@ function Rubble:Destroy()
 	end
 	self:RecycleAll()
 	for _, slot in self.slotById do
-		if slot.part.Parent ~= nil then
-			slot.part:Destroy()
-		end
+		slot.part:Destroy()
 	end
 	table.clear(self.slotById)
 	table.clear(self.idByPart)

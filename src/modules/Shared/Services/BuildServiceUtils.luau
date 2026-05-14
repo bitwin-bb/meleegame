@@ -752,7 +752,7 @@ end
 function BuildServiceUtils.CreateDefaultState(): BuildServiceState
 	return {
 		ready = false,
-		tileSize = 2,
+		tileSize = 4,
 		chunkSize = 32,
 		worldOrigin = Vector3.zero,
 		basePlaneX = 0,
@@ -1246,7 +1246,7 @@ end
 
 function BuildServiceUtils.ComputeTreePivotOffset(heightTilesRaw: any, tileSizeRaw: any): Vector3
 	local heightTiles = sanitizeInteger(heightTilesRaw, 1, 128, DEFAULT_TREE_TRUNK_HEIGHT_MIN)
-	local tileSize = sanitizeNumber(tileSizeRaw, 0.05, 64, 2)
+	local tileSize = sanitizeNumber(tileSizeRaw, 0.05, 64, 4)
 	return Vector3.new(0, math.max(tileSize * 0.5, heightTiles * tileSize * 0.45), 0)
 end
 
@@ -1260,7 +1260,7 @@ function BuildServiceUtils.ComputeTreePivotCFrame(
 	local rootTileX = BuildServiceUtils.SanitizeTileCoordinate(rootTileXRaw) or 0
 	local rootTileY = BuildServiceUtils.SanitizeTileCoordinate(rootTileYRaw) or 0
 	local worldOrigin = if typeof(worldOriginRaw) == "Vector3" then worldOriginRaw else Vector3.zero
-	local tileSize = sanitizeNumber(tileSizeRaw, 0.05, 64, 2)
+	local tileSize = sanitizeNumber(tileSizeRaw, 0.05, 64, 4)
 	local basePlaneX = sanitizeNumber(basePlaneXRaw, -32768, 32768, 0)
 	local pivotPosition =
 		BuildServiceUtils.TileToWorldCenter(rootTileX, rootTileY + 1, worldOrigin, tileSize, basePlaneX)
@@ -1276,7 +1276,7 @@ function BuildServiceUtils.ComputeTreeImpactPosition(
 	local pivotCFrame = if typeof(pivotCFrameRaw) == "CFrame" then pivotCFrameRaw else CFrame.new()
 	local direction = BuildServiceUtils.NormalizeFallDirection(fallDirectionRaw)
 	local heightTiles = sanitizeInteger(heightTilesRaw, 1, 128, DEFAULT_TREE_TRUNK_HEIGHT_MIN)
-	local tileSize = sanitizeNumber(tileSizeRaw, 0.05, 64, 2)
+	local tileSize = sanitizeNumber(tileSizeRaw, 0.05, 64, 4)
 	local horizontalDistance = math.max(tileSize * 1.1, heightTiles * tileSize * 0.65)
 	local impactOffset = BuildServiceUtils.ComputeTreeFallVector2D(direction) * horizontalDistance
 	return pivotCFrame.Position + impactOffset + Vector3.new(0, -tileSize * 0.12, 0)

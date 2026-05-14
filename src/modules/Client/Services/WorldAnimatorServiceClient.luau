@@ -47,6 +47,8 @@ local WorldAnimatorServiceClient = {}
 local RUNTIME_FOLDER_NAME = "WorldAnimatorRuntime"
 local SKIP_WORLD_ANIMATOR_ATTRIBUTE = "SkipWorldAnimator"
 local ANIMATING_WORLD_ANIMATOR_ATTRIBUTE = "WorldAnimatorAnimating"
+local CAMERA_VIEW_PADDING_PIXELS = 64
+local CAMERA_VIEW_MIN_HALF_SIZE = 0.001
 
 local function safeGetModelPivot(model: Model): (boolean, CFrame)
 	local ok, result = pcall(function()
@@ -56,6 +58,16 @@ local function safeGetModelPivot(model: Model): (boolean, CFrame)
 		return false, CFrame.new()
 	end
 	return true, result :: CFrame
+end
+
+local function safeGetModelBounds(model: Model): (boolean, CFrame, Vector3)
+	local ok, boundsCFrame, boundsSize = pcall(function()
+		return model:GetBoundingBox()
+	end)
+	if not ok or typeof(boundsCFrame) ~= "CFrame" or typeof(boundsSize) ~= "Vector3" then
+		return false, CFrame.new(), Vector3.zero
+	end
+	return true, boundsCFrame :: CFrame, boundsSize :: Vector3
 end
 
 local function collectModelParts(model: Model, maxCount: number): { BasePart }
@@ -136,6 +148,79 @@ local function computePositionRelativeFadeAlpha(startPivot: CFrame, currentPivot
 
 	local currentDistance = (currentPivot.Position - startPosition).Magnitude
 	return math.clamp(currentDistance / totalDistance, 0, 1)
+end
+
+local function isBoundsInCameraView(camera: Camera, boundsCFrame: CFrame, boundsSize: Vector3): boolean
+	local viewportSize = camera.ViewportSize
+	if viewportSize.X <= 0 or viewportSize.Y <= 0 then
+		return true
+	end
+
+	local halfSize = Vector3.new(
+		math.max(math.abs(boundsSize.X) * 0.5, CAMERA_VIEW_MIN_HALF_SIZE),
+		math.max(math.abs(boundsSize.Y) * 0.5, CAMERA_VIEW_MIN_HALF_SIZE),
+		math.max(math.abs(boundsSize.Z) * 0.5, CAMERA_VIEW_MIN_HALF_SIZE)
+	)
+
+	local cameraLocalPosition = boundsCFrame:PointToObjectSpace(camera.CFrame.Position)
+	if
+		math.abs(cameraLocalPosition.X) <= halfSize.X
+		and math.abs(cameraLocalPosition.Y) <= halfSize.Y
+		and math.abs(cameraLocalPosition.Z) <= halfSize.Z
+	then
+		return true
+	end
+
+	local minViewportX = math.huge
+	local minViewportY = math.huge
+	local maxViewportX = -math.huge
+	local maxViewportY = -math.huge
+	local hasProjectedPoint = false
+
+	for xIndex = 1, 2 do
+		local x = if xIndex == 1 then -halfSize.X else halfSize.X
+		for yIndex = 1, 2 do
+			local y = if yIndex == 1 then -halfSize.Y else halfSize.Y
+			for zIndex = 1, 2 do
+				local z = if zIndex == 1 then -halfSize.Z else halfSize.Z
+				local viewportPoint, isOnScreen =
+					camera:WorldToViewportPoint(boundsCFrame:PointToWorldSpace(Vector3.new(x, y, z)))
+				if viewportPoint.Z > 0 then
+					hasProjectedPoint = true
+					if isOnScreen then
+						return true
+					end
+					minViewportX = math.min(minViewportX, viewportPoint.X)
+					minViewportY = math.min(minViewportY, viewportPoint.Y)
+					maxViewportX = math.max(maxViewportX, viewportPoint.X)
+					maxViewportY = math.max(maxViewportY, viewportPoint.Y)
+				end
+			end
+		end
+	end
+
+	if not hasProjectedPoint then
+		return false
+	end
+
+	return maxViewportX >= -CAMERA_VIEW_PADDING_PIXELS
+		and minViewportX <= viewportSize.X + CAMERA_VIEW_PADDING_PIXELS
+		and maxViewportY >= -CAMERA_VIEW_PADDING_PIXELS
+		and minViewportY <= viewportSize.Y + CAMERA_VIEW_PADDING_PIXELS
+end
+
+local function isChunkModelInCameraView(chunkModel: Model): boolean
+	local camera = Workspace.CurrentCamera
+	if camera == nil then
+		return true
+	end
+
+	local ok, boundsCFrame, boundsSize = safeGetModelBounds(chunkModel)
+	if not ok then
+		return true
+	end
+
+	return isBoundsInCameraView(camera, boundsCFrame, boundsSize)
 end
 
 function WorldAnimatorServiceClient.EnsureRuntimeFolder(self: WorldAnimatorServiceClient): Folder
@@ -223,6 +308,10 @@ function WorldAnimatorServiceClient.StepAnimations(self: WorldAnimatorServiceCli
 			self:stopAnimation(animation, true)
 			continue
 		end
+		if not isChunkModelInCameraView(animation.chunkModel) then
+			self:stopAnimation(animation, true)
+			continue
+		end
 
 		local elapsed = now - animation.startedAt
 		local alpha = math.clamp(elapsed / animation.duration, 0, 1)
@@ -284,6 +373,9 @@ function WorldAnimatorServiceClient.EvaluateChunkAnimation(
 		return "skip", nil
 	end
 	if self.animationsByChunk[chunkModel] ~= nil then
+		return "skip", nil
+	end
+	if not isChunkModelInCameraView(chunkModel) then
 		return "skip", nil
 	end
 	if #self.activeAnimations >= self.settings.maxConcurrentAnimations then

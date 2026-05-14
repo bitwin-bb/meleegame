@@ -86,6 +86,7 @@ return function(props: MiningProgressScreenProps?): React.ReactNode
 		studsOffset = Vector3.zero,
 		studsOffsetWorldSpace = Vector3.zero,
 		zIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		billboardKey = "Mining",
 		cardVisible = false,
 		nativeBillboard = {
 			ref = billboardRef,

@@ -48,11 +48,7 @@ local function trim(textRaw: any): string
 end
 
 local function cloneCountMap(countsRaw: { [string]: number }): { [string]: number }
-	local output: { [string]: number } = {}
-	for key, value in countsRaw do
-		output[key] = value
-	end
-	return output
+	return table.clone(countsRaw)
 end
 
 local function countMapEquals(lhs: { [string]: number }, rhs: { [string]: number }): boolean

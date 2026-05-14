@@ -355,9 +355,7 @@ function WorldSimulationServiceServer:SyncPlayerStream(player: Player)
 
 	for chunkKey, priority in nextInterest do
 		local chunk = self.world.chunksByKey[chunkKey]
-		if chunk == nil then
-			Stream.enqueueChunk(stream, chunkKey, priority)
-		elseif Stream.isRevisionOutOfDate(stream, chunkKey, chunk.revision) then
+		if chunk == nil or Stream.isRevisionOutOfDate(stream, chunkKey, chunk.revision) then
 			Stream.enqueueChunk(stream, chunkKey, priority)
 		end
 	end

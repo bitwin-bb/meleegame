@@ -225,12 +225,7 @@ function Resolve.Resolve(self: Resolve, contextRaw: any): ResolutionResult
 		else nil
 
 	local resolvedViewConfig = cloneViewConfig(baseViewConfig)
-	if targetPosition ~= nil and override ~= nil and (override :: any).disableRoom ~= true then
-		local roomBehavior = (context :: any).roomBehavior
-		if typeof(roomBehavior) == "table" and typeof((roomBehavior :: any).resolveViewConfig) == "function" then
-			resolvedViewConfig = (roomBehavior :: any):resolveViewConfig(resolvedViewConfig, targetPosition)
-		end
-	elseif targetPosition ~= nil and override == nil then
+	if targetPosition ~= nil and (override == nil or (override :: any).disableRoom ~= true) then
 		local roomBehavior = (context :: any).roomBehavior
 		if typeof(roomBehavior) == "table" and typeof((roomBehavior :: any).resolveViewConfig) == "function" then
 			resolvedViewConfig = (roomBehavior :: any):resolveViewConfig(resolvedViewConfig, targetPosition)

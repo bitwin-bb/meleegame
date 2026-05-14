@@ -798,9 +798,7 @@ function LootServiceServer.TransitionState(
 		self:setRuntimePhysics(runtime, true, true, true, true, false)
 		runtime.rootPart.AssemblyLinearVelocity = Vector3.zero
 		runtime.rootPart.AssemblyAngularVelocity = Vector3.zero
-	elseif nextState == LootServiceUtils.STATE_MAGNETIZED then
-		self:setRuntimePhysics(runtime, true, false, false, false, false)
-	elseif nextState == LootServiceUtils.STATE_COLLECTED then
+	elseif nextState == LootServiceUtils.STATE_MAGNETIZED or nextState == LootServiceUtils.STATE_COLLECTED then
 		self:setRuntimePhysics(runtime, true, false, false, false, false)
 	end
 
@@ -955,7 +953,6 @@ function LootServiceServer.SpawnLootRuntime(
 	if instance == nil or rootPart == nil then
 		if template == nil then
 			self:warnMissingTemplateOnce(itemId)
-		else
 		end
 		instance, rootPart = self:createFallbackLootInstance(itemId, rarity)
 	end

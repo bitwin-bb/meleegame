@@ -415,7 +415,7 @@ function BossServiceServer.GetSurfaceYAtWorldPosition(self: BossServiceServer, w
 		else Vector3.zero
 	local tileSize = if typeof((world :: any).tileSize) == "number" and (world :: any).tileSize > 0
 		then (world :: any).tileSize
-		else 2
+		else 4
 	local biomeGenerator = (world :: any).biomeGenerator
 	if typeof(biomeGenerator) ~= "table" or typeof((biomeGenerator :: any).getColumnProfile) ~= "function" then
 		return nil

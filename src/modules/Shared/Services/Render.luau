@@ -201,7 +201,7 @@ function Render:SpawnChunkModel(coordRaw: any, chunkDataRaw: any): ChunkVisual?
 
 	local parts = {}
 	local clusterSize = math.max(1, self.config.clusterSize or Shared.CLUSTER_SIZE)
-	local tileSize = math.max(0.001, self.config.tileSize or 2)
+	local tileSize = math.max(0.001, self.config.tileSize or 4)
 	local clusterWorldSize = clusterSize * tileSize
 	local baseTileX = coord.chunkX * (self.config.chunkSize or 32)
 	local baseTileY = coord.chunkY * (self.config.chunkHeight or 32)
