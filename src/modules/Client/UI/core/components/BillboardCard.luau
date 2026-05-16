@@ -1,8 +1,8 @@
 --!strict
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local FloatingCard = require(script.Parent.FloatingCard)
+local PortalTargets = require(script.Parent.Parent.utils.PortalTargets)
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 
@@ -78,13 +78,7 @@ local function resolvePortalTarget(props: BillboardCardProps): Instance?
 		return props.portalTarget
 	end
 
-	local localPlayer = Players.LocalPlayer
-	if localPlayer == nil then
-		return nil
-	end
-
-	local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui")
-	return playerGui
+	return PortalTargets.resolveUiScreenGui()
 end
 
 return function(props: BillboardCardProps): React.ReactNode

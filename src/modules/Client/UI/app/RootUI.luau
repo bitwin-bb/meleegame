@@ -15,6 +15,7 @@ local MouseScreen = require(script:FindFirstAncestor("game").Client.UI.features.
 local PadScreen = require(script:FindFirstAncestor("game").Client.UI.features.pad.screens.pad)
 local React = require(ReplicatedStorage.Packages.React)
 local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
+local TileBreakScreen = require(script:FindFirstAncestor("game").Client.Features.tile.ui.screen.Break)
 
 local e: typeof(React.createElement) = React.createElement
 
@@ -65,6 +66,7 @@ return function(props: RootUIProps)
 			e(MiningProgressScreen, {
 				zIndex = 170,
 			}),
+			e(TileBreakScreen),
 			e(CraftingSlotsScreen, {
 				zIndex = 175,
 			}),

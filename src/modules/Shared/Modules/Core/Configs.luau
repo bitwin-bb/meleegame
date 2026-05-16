@@ -217,7 +217,7 @@ local Configs = {
 		recoveryDelay = 0.45,
 		recoveryDuration = 1.8,
 		drowningTickRate = 0.2,
-		drowningDamage = 2,
+		drowningDamage = 10,
 		updateRate = 8,
 		statePushInterval = 0.12,
 	},

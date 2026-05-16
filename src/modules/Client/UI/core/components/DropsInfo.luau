@@ -1,8 +1,8 @@
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local PortalTargets = require(script.Parent.Parent.utils.PortalTargets)
 local RarityPill = require(script.Parent.RarityPill)
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
@@ -399,17 +399,7 @@ function DropsInfo:ResolvePortalTarget(): Instance?
 		return self.props.portalTarget
 	end
 
-	local localPlayer = Players.LocalPlayer
-	if localPlayer == nil then
-		return nil
-	end
-
-	local playerGui = localPlayer:FindFirstChildOfClass("PlayerGui")
-	if playerGui and playerGui:IsA("PlayerGui") then
-		return playerGui
-	end
-
-	return nil
+	return PortalTargets.resolveUiScreenGui()
 end
 
 function DropsInfo:render()

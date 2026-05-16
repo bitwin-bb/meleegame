@@ -15,6 +15,7 @@ local LightBinder = require(script.Parent.LightBinder)
 local LiquidBinder = require(script.Parent.LiquidBinder)
 local PreviewBinder = require(script.Parent.PreviewBinder)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
+local TileBinder = require(script:FindFirstAncestor("game").Client.Features.tile.binders.TileBinder)
 local UseBinder = require(script.Parent.UseBinder)
 
 local function createContext(primaryTag: string, serviceBag: any): { tags: { string }, serviceBag: any }
@@ -39,6 +40,7 @@ local ClientBinderSupport = BinderProvider.new("ClientBinderSupport", function(s
 	addBinder(self, TagBinder.Tags.Light_Torch, LightBinder)
 	addBinder(self, TagBinder.Tags.Liquid, LiquidBinder)
 	addBinder(self, TagBinder.Tags.Preview, PreviewBinder)
+	addBinder(self, TileBinder.TAG_NAME, TileBinder)
 	addBinder(self, TagBinder.Tags.Use, UseBinder)
 end)
 

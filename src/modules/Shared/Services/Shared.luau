@@ -276,13 +276,14 @@ function Shared.SampleHumidity(seed: number, worldX: number, worldZ: number): nu
 	)
 end
 
-function Shared.SampleSurfaceHeight(seed: number, worldX: number, worldZ: number): number
-	local biomeId = Shared.ResolveBiomeId(seed, worldX, worldZ, {})
+function Shared.SampleSurfaceHeight(seed: number, worldX: number, _worldZ: number): number
+	local surfaceWorldZ = 0
+	local biomeId = Shared.ResolveBiomeId(seed, worldX, surfaceWorldZ, {})
 	local broad = Shared.SampleFractalNoise3D(
 		seed,
 		worldX,
 		0,
-		worldZ,
+		surfaceWorldZ,
 		0.0024,
 		4,
 		2.1,
@@ -294,7 +295,7 @@ function Shared.SampleSurfaceHeight(seed: number, worldX: number, worldZ: number
 		seed + 187,
 		worldX,
 		0,
-		worldZ,
+		surfaceWorldZ,
 		0.0062,
 		3,
 		2.05,
@@ -306,7 +307,7 @@ function Shared.SampleSurfaceHeight(seed: number, worldX: number, worldZ: number
 		seed + 421,
 		worldX,
 		0,
-		worldZ,
+		surfaceWorldZ,
 		0.015,
 		2,
 		2,
@@ -319,7 +320,7 @@ function Shared.SampleSurfaceHeight(seed: number, worldX: number, worldZ: number
 			seed - 113,
 			worldX,
 			0,
-			worldZ,
+			surfaceWorldZ,
 			0.0088,
 			2,
 			2,
@@ -336,7 +337,7 @@ function Shared.SampleSurfaceHeight(seed: number, worldX: number, worldZ: number
 			seed + 911,
 			worldX,
 			0,
-			worldZ,
+			surfaceWorldZ,
 			0.0042,
 			3,
 			1.92,

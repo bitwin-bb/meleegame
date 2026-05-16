@@ -2,15 +2,15 @@
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = require(loaderUtils.Parent).load(packageRoot)
 
 local ScreenGuiService = loader("ScreenGuiService")
 local SnackbarServiceClient = loader("SnackbarServiceClient")
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
 local AquariaBackupTranslator = require(script:FindFirstAncestor("game").Shared.AquariaBackupTranslator)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
 local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
 
 local SnackbarNotifications = {}
 
@@ -53,7 +53,10 @@ local function playNotificationSoundWhenShown(snackbar: any)
 		return
 	end
 
-	if typeof((snackbar :: any).VisibleChanged) ~= "table" or typeof((snackbar :: any).VisibleChanged.Connect) ~= "function" then
+	if
+		typeof((snackbar :: any).VisibleChanged) ~= "table"
+		or typeof((snackbar :: any).VisibleChanged.Connect) ~= "function"
+	then
 		playNotificationSound()
 		return
 	end
@@ -158,8 +161,10 @@ function SnackbarNotifications.ShowText(textRaw: any, optionsRaw: any?)
 		return nil
 	end
 
-	local options = if typeof(optionsRaw) == "table" then (optionsRaw :: { [string]: any }) else {}
-	local dedupeKey = if typeof(options.dedupeKey) == "string" and options.dedupeKey ~= "" then options.dedupeKey else text
+	local options = if typeof(optionsRaw) == "table" then optionsRaw :: { [string]: any } else {}
+	local dedupeKey = if typeof(options.dedupeKey) == "string" and options.dedupeKey ~= ""
+		then options.dedupeKey
+		else text
 	if shouldSuppress(dedupeKey, options.dedupeWindowSeconds) then
 		return nil
 	end
@@ -171,7 +176,7 @@ function SnackbarNotifications.ShowText(textRaw: any, optionsRaw: any?)
 	end
 
 	local snackbarOptions = if typeof(options.snackbarOptions) == "table"
-		then (options.snackbarOptions :: { [string]: any })
+		then options.snackbarOptions :: { [string]: any }
 		else nil
 
 	local snackbar = getSnackbarService():ShowSnackbar(text, snackbarOptions)

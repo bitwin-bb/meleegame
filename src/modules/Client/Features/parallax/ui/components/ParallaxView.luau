@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
 
 local ParallaxSlice = require(script:FindFirstAncestor("parallax").ParallaxSlice)
+local useCrossFade = require(script.Parent.Parent.hooks.useCrossFade)
 
 type ParallaxSurfaceState = ParallaxSlice.ParallaxSurfaceState
 type ParallaxLayerView = ParallaxSlice.ParallaxLayerView
@@ -14,7 +15,13 @@ export type ParallaxProps = {
 	state: ParallaxSurfaceState,
 }
 
-local function renderLayer(layer: ParallaxLayerView): React.ReactNode
+local function ParallaxLayer(props: { layer: ParallaxLayerView }): React.ReactNode
+	local layer = props.layer
+	local imageTransparency = useCrossFade({
+		id = layer.id,
+		targetTransparency = layer.imageTransparency,
+	})
+
 	return e("Frame", {
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = layer.framePosition,
@@ -32,7 +39,7 @@ local function renderLayer(layer: ParallaxLayerView): React.ReactNode
 			BorderSizePixel = 0,
 			Image = layer.image,
 			ImageColor3 = layer.imageColor,
-			ImageTransparency = layer.imageTransparency,
+			ImageTransparency = imageTransparency,
 			ResampleMode = Enum.ResamplerMode.Pixelated,
 			ScaleType = Enum.ScaleType.Tile,
 			TileSize = layer.tileSize,
@@ -49,7 +56,9 @@ return function(props: ParallaxProps): React.ReactNode
 
 	local children = {}
 	for _, layer in state.layers do
-		table.insert(children, renderLayer(layer))
+		children[layer.id] = e(ParallaxLayer, {
+			layer = layer,
+		})
 	end
 
 	return e("Frame", {

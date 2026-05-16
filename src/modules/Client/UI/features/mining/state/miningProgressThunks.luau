@@ -1,5 +1,4 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
@@ -20,6 +19,7 @@ type BuildProgressPayload = {
 	progressMode: string?,
 	progressUnits: number?,
 	progressTotal: number?,
+	targetKind: string?,
 	updatedAt: number,
 }
 
@@ -147,6 +147,11 @@ local function applyBuildBreakProgress(payloadRaw: any): MiningProgressState
 	end
 
 	local payload = payloadRaw :: { [string]: any }
+	if payload.targetKind == "tile" then
+		hideMiningProgressVisual()
+		return miningProgressSlice.getMiningProgressState()
+	end
+
 	if payload.isActive ~= true then
 		hideMiningProgressVisual()
 		return miningProgressSlice.getMiningProgressState()

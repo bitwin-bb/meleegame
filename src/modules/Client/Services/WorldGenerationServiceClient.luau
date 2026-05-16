@@ -208,6 +208,7 @@ local CORRUPT_GRASS_TILE_ID = 14
 local JUNGLE_GRASS_TILE_ID = 17
 local ORE_TEXTURE_NAME = "OreTexture"
 local GRASS_TEXTURE_NAME = "GrassTexture"
+local TILE_BINDER_TAG_NAME = "Tile"
 local ORE_TEXTURE_FACES = {
 	Enum.NormalId.Front,
 	Enum.NormalId.Back,
@@ -1095,6 +1096,38 @@ local function applyOreTextures(part: BasePart, tileId: number, tileSize: number
 	end
 end
 
+local function isOreTileId(tileId: number): boolean
+	return ORE_ASSET_KEYS_BY_TILE_ID[tileId] ~= nil
+end
+
+local function resolveTileName(tileId: number): string
+	local tileRule = BuildServiceUtils.getTileRule(tileId)
+	if typeof(tileRule) == "table" and typeof(tileRule.name) == "string" then
+		return tileRule.name
+	end
+	return tostring(tileId)
+end
+
+local function applyTileBinderMetadata(
+	part: BasePart,
+	tileMinX: number,
+	tileMinY: number,
+	width: number,
+	height: number,
+	tileId: number
+)
+	part:SetAttribute("TileId", tileId)
+	part:SetAttribute("TileName", resolveTileName(tileId))
+	part:SetAttribute("TileMinX", tileMinX)
+	part:SetAttribute("TileMinY", tileMinY)
+	part:SetAttribute("TileWidth", width)
+	part:SetAttribute("TileHeight", height)
+	part:SetAttribute("TileIsOre", isOreTileId(tileId))
+	if not CollectionService:HasTag(part, TILE_BINDER_TAG_NAME) then
+		CollectionService:AddTag(part, TILE_BINDER_TAG_NAME)
+	end
+end
+
 local function resolveGrassTextureScale(face: Enum.NormalId, tileSize: number, tileDepth: number): (number, number)
 	if face == Enum.NormalId.Left or face == Enum.NormalId.Right then
 		return tileSize, tileSize
@@ -1533,6 +1566,7 @@ function WorldGenerationServiceClient.CreateForegroundRectPart(
 	local centerTileX = tileMinX + width * 0.5
 	local centerTileY = tileMinY + height * 0.5
 	part.CFrame = CFrame.new(self:computeTileCenterPosition(centerTileX, centerTileY, 0))
+	applyTileBinderMetadata(part, tileMinX, tileMinY, width, height, tileId)
 	return part
 end
 

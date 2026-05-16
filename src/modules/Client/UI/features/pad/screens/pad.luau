@@ -35,11 +35,7 @@ local IDLE_EXPANDED_SIZE = Vector2.new(52, 52)
 local IDLE_PHASE_DURATION = 0.7
 local FALLBACK_PRESENTATION_RADIUS_PIXELS = 48
 local RETURN_SPEED = 10
-local DEBUG_GAMEPAD_NAV_PRESENTATION = true
-local DEBUG_PRESENTATION_PRINT_INTERVAL = 0.2
 local THUMBSTICK_ACTIVE_EPSILON = GamepadNav.THUMBSTICK_ACTIVE_EPSILON
-
-local lastPresentationDebugAt = 0
 
 local function resolveCharacterRootPart(localPlayer: Player): BasePart?
 	local character = localPlayer.Character
@@ -57,49 +53,6 @@ local function resolveCharacterRootPart(localPlayer: Player): BasePart?
 	end
 
 	return character:FindFirstChildWhichIsA("BasePart")
-end
-
-local function formatVector2(valueRaw: any): string
-	if typeof(valueRaw) ~= "Vector2" then
-		return tostring(valueRaw)
-	end
-
-	local value = valueRaw :: Vector2
-	return string.format("(%.3f, %.3f)", value.X, value.Y)
-end
-
-local function formatVector3(valueRaw: any): string
-	if typeof(valueRaw) ~= "Vector3" then
-		return tostring(valueRaw)
-	end
-
-	local value = valueRaw :: Vector3
-	return string.format("(%.3f, %.3f, %.3f)", value.X, value.Y, value.Z)
-end
-
-local function formatStickState(stick: padSlice.PadStickState): string
-	return string.format(
-		"pos=%s active=%s mag=%.3f",
-		formatVector2(stick.position),
-		tostring(stick.active),
-		stick.magnitude
-	)
-end
-
-local function debugPrintActiveChoice(source: string, state: PadState, selectedVector: Vector2?)
-	if not DEBUG_GAMEPAD_NAV_PRESENTATION then
-		return
-	end
-
-	print(
-		string.format(
-			"[gamepadNav-debug][pad.choice] source=%s selectedVector=%s | pad.left{%s} | pad.right{%s}",
-			source,
-			formatVector2(selectedVector),
-			formatStickState(state.leftStick),
-			formatStickState(state.rightStick)
-		)
-	)
 end
 
 local function resolveWorldTileSizeStuds(): number
@@ -165,45 +118,6 @@ end
 
 local function isStickPresentationActive(state: PadState, stick: padSlice.PadStickState): boolean
 	return stick.active and stick.magnitude > resolvePresentationDeadzoneMagnitude(state)
-end
-
-local function debugPrintPresentation(state: PadState, activeIndicator: ActiveIndicatorState, rootPart: BasePart)
-	if not DEBUG_GAMEPAD_NAV_PRESENTATION then
-		return
-	end
-
-	local now = os.clock()
-	if now - lastPresentationDebugAt < DEBUG_PRESENTATION_PRINT_INTERVAL then
-		return
-	end
-	lastPresentationDebugAt = now
-
-	local presentationDeadzoneMagnitude = resolvePresentationDeadzoneMagnitude(state)
-	local presentationVector = resolvePresentationVector(state, activeIndicator.position)
-	local tileSizeStuds = resolveWorldTileSizeStuds()
-	local backendReachStuds = GamepadPointer.resolveReachStuds(tileSizeStuds)
-	local guiPixelOffset = getPresentationPixelOffset(state, activeIndicator.position, rootPart)
-	local imageCenterPixels = Vector2.new(BILLBOARD_SIZE.X * 0.5, BILLBOARD_SIZE.Y * 0.5) + guiPixelOffset
-
-	print(
-		string.format(
-			"[gamepadNav-debug][pad.presentation] indicatorVector=%s presentationVector=%s hideOnCenter=%s stickDeadzone=%.3f navigationDeadzone=%.3f presentationDeadzoneMag=%.3f tileSizeStuds=%.3f backendReachStuds=%.3f | guiPixelOffset=%s imageCenterPx=%s | BillboardGui.StudsOffsetWorldSpace=%s | rootPosition=%s | pad.left{%s} | pad.right{%s}",
-			formatVector2(activeIndicator.position),
-			formatVector2(presentationVector),
-			tostring(activeIndicator.hideOnCenter),
-			state.stickDeadzone,
-			state.navigationDeadzone,
-			presentationDeadzoneMagnitude,
-			tileSizeStuds,
-			backendReachStuds,
-			formatVector2(guiPixelOffset),
-			formatVector2(imageCenterPixels),
-			formatVector3(Vector3.zero),
-			formatVector3(rootPart.Position),
-			formatStickState(state.leftStick),
-			formatStickState(state.rightStick)
-		)
-	)
 end
 
 local function getPresentationPosition(state: PadState, position: Vector2, rootPart: BasePart): UDim2
@@ -293,7 +207,6 @@ return function(props: PadScreenProps?): React.ReactNode
 
 	React.useEffect(function()
 		if isStickPresentationActive(state, state.rightStick) then
-			debugPrintActiveChoice("Right", state, state.rightStick.position)
 			setActiveIndicator({
 				position = state.rightStick.position,
 				hideOnCenter = false,
@@ -302,7 +215,6 @@ return function(props: PadScreenProps?): React.ReactNode
 		end
 
 		if isStickPresentationActive(state, state.leftStick) then
-			debugPrintActiveChoice("Left", state, state.leftStick.position)
 			setActiveIndicator({
 				position = state.leftStick.position,
 				hideOnCenter = false,
@@ -312,10 +224,8 @@ return function(props: PadScreenProps?): React.ReactNode
 
 		setActiveIndicator(function(current: ActiveIndicatorState?): ActiveIndicatorState?
 			if current == nil then
-				debugPrintActiveChoice("None", state, nil)
 				return nil
 			end
-			debugPrintActiveChoice("ReturnToCenter", state, current.position)
 			return {
 				position = current.position,
 				hideOnCenter = true,
@@ -389,8 +299,6 @@ return function(props: PadScreenProps?): React.ReactNode
 	if activeIndicator == nil then
 		return nil
 	end
-
-	debugPrintPresentation(state, activeIndicator, rootPart)
 
 	return e(BillboardCard, {
 		adornee = rootPart,

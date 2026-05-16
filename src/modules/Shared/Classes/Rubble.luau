@@ -15,6 +15,7 @@ Rubble.__index = Rubble
 local DEFAULT_COLLISION_GROUP = "Default"
 local PLAYER_COLLISION_GROUP = "PlayersCharacters"
 local ENEMY_COLLISION_GROUP = "NpcEnemies"
+local DEFAULT_PHYSICAL_PROPERTIES = PhysicalProperties.new(1, 0.2, 0.7, 1, 1)
 
 type ReusePolicy = "RecycleOldest" | "DropSpawn"
 
@@ -46,6 +47,7 @@ export type Tuning = {
 	lodFarDisableCollision: boolean?,
 	enableNoGravityCompensation: boolean?,
 	autoServerNetworkOwnership: boolean?,
+	ignorePlayers: boolean?,
 	defaultCanCollide: boolean?,
 	defaultCanTouch: boolean?,
 	defaultCanQuery: boolean?,
@@ -96,6 +98,8 @@ type Slot = {
 	requestedCanTouch: boolean,
 	requestedCanQuery: boolean,
 	requestedCollisionGroup: string,
+	ignorePlayers: boolean,
+	playerNoCollisionConstraints: { NoCollisionConstraint },
 	lodFar: boolean,
 	lodReference: any?,
 }
@@ -135,6 +139,7 @@ local DEFAULT_TUNING: Tuning = {
 	lodFarDisableCollision = true,
 	enableNoGravityCompensation = true,
 	autoServerNetworkOwnership = true,
+	ignorePlayers = true,
 	defaultCanCollide = true,
 	defaultCanTouch = false,
 	defaultCanQuery = false,
@@ -286,7 +291,9 @@ local function resolvePhysical(
 	size: Vector3,
 	fallback: PhysicalProperties?
 ): PhysicalProperties?
-	local result = if typeof(customProps) == "PhysicalProperties" then customProps :: PhysicalProperties else fallback
+	local result = if typeof(customProps) == "PhysicalProperties"
+		then customProps :: PhysicalProperties
+		else fallback or DEFAULT_PHYSICAL_PROPERTIES
 	if typeof(massOverride) ~= "number" or massOverride ~= massOverride or massOverride <= 0 then
 		return result
 	end
@@ -301,7 +308,13 @@ local function resolvePhysical(
 			result.ElasticityWeight
 		)
 	end
-	return PhysicalProperties.new(density, 0.3, 0.1, 1, 1)
+	return PhysicalProperties.new(
+		density,
+		DEFAULT_PHYSICAL_PROPERTIES.Friction,
+		DEFAULT_PHYSICAL_PROPERTIES.Elasticity,
+		DEFAULT_PHYSICAL_PROPERTIES.FrictionWeight,
+		DEFAULT_PHYSICAL_PROPERTIES.ElasticityWeight
+	)
 end
 
 local function sanitizeVector3(raw: any, fallback: Vector3): Vector3
@@ -339,6 +352,13 @@ local function safeSetCollisionGroupCollidable(groupA: string, groupB: string, c
 	pcall(function()
 		PhysicsService:CollisionGroupSetCollidable(groupA, groupB, collidable)
 	end)
+end
+
+local function safeCollisionGroupsAreCollidable(groupA: string, groupB: string): boolean
+	local ok, result = pcall(function()
+		return PhysicsService:CollisionGroupsAreCollidable(groupA, groupB)
+	end)
+	return if ok and typeof(result) == "boolean" then result else true
 end
 
 function Rubble.New(configRaw: Config?): Rubble
@@ -386,6 +406,7 @@ function Rubble.New(configRaw: Config?): Rubble
 		b(tuning.enableNoGravityCompensation, DEFAULT_TUNING.enableNoGravityCompensation :: boolean)
 	tuning.autoServerNetworkOwnership =
 		b(tuning.autoServerNetworkOwnership, DEFAULT_TUNING.autoServerNetworkOwnership :: boolean)
+	tuning.ignorePlayers = b(tuning.ignorePlayers, DEFAULT_TUNING.ignorePlayers :: boolean)
 	tuning.defaultCanCollide = b(tuning.defaultCanCollide, DEFAULT_TUNING.defaultCanCollide :: boolean)
 	tuning.defaultCanTouch = b(tuning.defaultCanTouch, DEFAULT_TUNING.defaultCanTouch :: boolean)
 	tuning.defaultCanQuery = b(tuning.defaultCanQuery, DEFAULT_TUNING.defaultCanQuery :: boolean)
@@ -618,6 +639,8 @@ function Rubble:_makeSlot(): Slot?
 		requestedCanTouch = false,
 		requestedCanQuery = false,
 		requestedCollisionGroup = self.activeGroup,
+		ignorePlayers = self.tuning.ignorePlayers,
+		playerNoCollisionConstraints = {},
 		lodFar = false,
 		lodReference = nil,
 	}
@@ -663,6 +686,50 @@ function Rubble:_activeRemove(slot: Slot)
 	end
 end
 
+function Rubble:_clearPlayerNoCollision(slot: Slot)
+	for _, noCollision in slot.playerNoCollisionConstraints do
+		noCollision:Destroy()
+	end
+	table.clear(slot.playerNoCollisionConstraints)
+end
+
+function Rubble:_addPlayerNoCollisionForCharacter(slot: Slot, character: Model?)
+	if character == nil then
+		return
+	end
+
+	local part = slot.part
+	for _, descendant in character:GetDescendants() do
+		if
+			descendant:IsA("BasePart")
+			and safeCollisionGroupsAreCollidable(part.CollisionGroup, descendant.CollisionGroup)
+		then
+			local noCollision = Instance.new("NoCollisionConstraint")
+			noCollision.Name = HttpService:GenerateGUID(false)
+			noCollision.Part0 = part
+			noCollision.Part1 = descendant
+			noCollision.Parent = part
+			table.insert(slot.playerNoCollisionConstraints, noCollision)
+		end
+	end
+end
+
+function Rubble:_applyPlayerNoCollision(slot: Slot)
+	self:_clearPlayerNoCollision(slot)
+
+	if RunService:IsClient() then
+		local localPlayer = Players.LocalPlayer
+		if localPlayer ~= nil then
+			self:_addPlayerNoCollisionForCharacter(slot, localPlayer.Character)
+		end
+		return
+	end
+
+	for _, player in Players:GetPlayers() do
+		self:_addPlayerNoCollisionForCharacter(slot, player.Character)
+	end
+end
+
 function Rubble:_resetPart(part: BasePart)
 	part.AssemblyLinearVelocity = ZERO
 	part.AssemblyAngularVelocity = ZERO
@@ -691,6 +758,8 @@ function Rubble:_recycleSlot(slot: Slot)
 	slot.canFling = false
 	slot.noGravity = false
 	slot.fadeOut = false
+	slot.ignorePlayers = self.tuning.ignorePlayers
+	self:_clearPlayerNoCollision(slot)
 	slot.lodFar = false
 	slot.lodReference = nil
 	self:_activeRemove(slot)
@@ -929,6 +998,7 @@ function Rubble:Spawn(paramsRaw: SpawnParams?): BasePart?
 	local canTouch = if visualOnly then false else b(g(params, "canTouch", "CanTouch"), self.tuning.defaultCanTouch)
 	local canQuery = if visualOnly then false else b(g(params, "canQuery", "CanQuery"), self.tuning.defaultCanQuery)
 	local collisionGroup = s(g(params, "collisionGroup", "CollisionGroup"), self.activeGroup)
+	local ignorePlayers = b(g(params, "ignorePlayers", "IgnorePlayers"), self.tuning.ignorePlayers)
 	local lifetime = n(
 		g(params, "lifetime", "Lifetime"),
 		self.tuning.defaultLifetime,
@@ -967,6 +1037,7 @@ function Rubble:Spawn(paramsRaw: SpawnParams?): BasePart?
 	slot.requestedCanTouch = canTouch
 	slot.requestedCanQuery = canQuery
 	slot.requestedCollisionGroup = collisionGroup
+	slot.ignorePlayers = ignorePlayers
 	slot.lodFar = false
 	slot.lodReference = g(params, "lodReference", "LodReference")
 
@@ -992,6 +1063,11 @@ function Rubble:Spawn(paramsRaw: SpawnParams?): BasePart?
 	part.CanTouch = canTouch
 	part.CanQuery = canQuery
 	part.Anchored = slot.requestedAnchored
+	if ignorePlayers and canCollide then
+		self:_applyPlayerNoCollision(slot)
+	else
+		self:_clearPlayerNoCollision(slot)
+	end
 
 	if not part.Anchored then
 		if RunService:IsServer() and self.tuning.autoServerNetworkOwnership and not visualOnly then

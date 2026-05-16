@@ -104,8 +104,6 @@ local SEED_Y_MULTIPLIER = 0.000271
 local TEMPERATURE_OFFSET = 71.217
 local HUMIDITY_OFFSET = 143.903
 local SURFACE_OFFSET = 233.119
-local SURFACE_DEPTH_OFFSET = 281.443
-local SURFACE_DEPTH_SAMPLE_SCALE = 24
 local SURFACE_SMOOTH_CENTER_WEIGHT = 5
 local SURFACE_SMOOTH_NEAR_WEIGHT = 2
 local SURFACE_SMOOTH_FAR_WEIGHT = 1
@@ -113,12 +111,6 @@ local SURFACE_MAX_NEIGHBOR_STEP_TILES = 3
 local SURFACE_SLOPE_LIMIT_RADIUS_TILES = 10
 local BIOME_DEPTH_SAMPLE_SCALE = 18
 local RIDGE_OFFSET = 319.727
-local RIDGE_DEPTH_OFFSET = 367.883
-local DEPTH_SURFACE_OFFSET_FREQUENCY = 0.006
-local DEPTH_SURFACE_LAYER_SAMPLE_SCALE = 14
-local DEPTH_SURFACE_OFFSET_MAX_TILES = 2
-local DEPTH_SURFACE_OFFSET_X = 2879.137
-local DEPTH_SURFACE_OFFSET_Z = 3011.449
 local STONE_DEPTH_OFFSET = 421.519
 local CORRUPTION_PRIMARY_OFFSET = 541.913
 local CORRUPTION_SECONDARY_OFFSET = 637.271
@@ -217,13 +209,6 @@ local function resolveTileIdByName(tileIdMap: TileIdMap, nameRaw: any, fallback:
 		return tileId
 	end
 	return fallback
-end
-
-local function roundToInteger(value: number): number
-	if value >= 0 then
-		return math.floor(value + 0.5)
-	end
-	return math.ceil(value - 0.5)
 end
 
 local function sampleOctaveNoise(
@@ -930,74 +915,28 @@ function Biome.ResolveBiomeId(
 	return selectedBiomeId
 end
 
-local function sampleRawSurfaceHeight(self, tileX: number, biomeId: number, surfaceDepthRaw: number?): number
-	local unscaledSurfaceDepth = if isFiniteNumber(surfaceDepthRaw) then surfaceDepthRaw :: number else 0
-	local useDepthNoise = math.abs(unscaledSurfaceDepth) > 0.0001
-	local surfaceDepth = unscaledSurfaceDepth * SURFACE_DEPTH_SAMPLE_SCALE
-	local function sampleSurfaceBand(
-		seedOffset: number,
-		frequencyScale: number,
-		octaves: number,
-		offsetX: number,
-		offsetY: number,
-		offsetZ: number
-	): number
-		local frequency = self.surfaceFrequency * frequencyScale
-		if useDepthNoise then
-			return sampleOctaveNoise3D(
-				self.seed + seedOffset,
-				tileX,
-				surfaceDepth,
-				frequency,
-				octaves,
-				self.surfaceLacunarity,
-				self.surfacePersistence,
-				offsetX,
-				offsetZ
-			)
-		end
-
-		return sampleOctaveNoise(
-			self.seed + seedOffset,
-			tileX,
-			frequency,
-			octaves,
-			self.surfaceLacunarity,
-			self.surfacePersistence,
-			offsetX,
-			offsetY
-		)
-	end
-
-	local broadWave = sampleSurfaceBand(
-		0,
-		0.42,
+local function sampleRawSurfaceHeight(self, tileX: number, biomeId: number, _surfaceDepthRaw: number?): number
+	local broadWave = sampleOctaveNoise(
+		self.seed,
+		tileX,
+		self.surfaceFrequency * 0.42,
 		math.max(2, math.min(self.surfaceOctaves, 3)),
+		self.surfaceLacunarity,
+		self.surfacePersistence,
 		SURFACE_OFFSET,
-		11.97,
-		SURFACE_DEPTH_OFFSET
+		11.97
 	)
-	local rollingWave = sampleSurfaceBand(
-		187,
-		1.05,
+	local rollingWave = sampleOctaveNoise(
+		self.seed + 187,
+		tileX,
+		self.surfaceFrequency * 1.05,
 		math.max(2, math.min(self.surfaceOctaves, 3)),
+		self.surfaceLacunarity,
+		self.surfacePersistence,
 		SURFACE_OFFSET + 43.7,
-		31.41,
-		SURFACE_DEPTH_OFFSET + 59.2
+		31.41
 	)
-	local rawRidgeWave = if useDepthNoise
-		then sampleOctaveNoise3D(
-			self.seed,
-			tileX,
-			surfaceDepth,
-			self.ridgeFrequency,
-			2,
-			2,
-			0.5,
-			RIDGE_OFFSET,
-			RIDGE_DEPTH_OFFSET
-		)
-		else sampleOctaveNoise(self.seed, tileX, self.ridgeFrequency, 2, 2, 0.5, RIDGE_OFFSET, 29.04)
+	local rawRidgeWave = sampleOctaveNoise(self.seed, tileX, self.ridgeFrequency, 2, 2, 0.5, RIDGE_OFFSET, 29.04)
 	local ridgeWave = math.max(0, math.abs(rawRidgeWave) - 0.34)
 	local terrainHeight = broadWave * self.surfaceAmplitude * 0.78 + rollingWave * self.surfaceAmplitude * 0.22
 
@@ -1094,64 +1033,12 @@ function Biome.SampleStoneStartDepth(self, tileX: number, biomeId: number): numb
 	return math.max(1, math.floor(depth))
 end
 
-local function copyColumnProfileWithSurfaceY(column: ColumnProfile, surfaceY: number): ColumnProfile
-	if column.surfaceY == surfaceY then
-		return column
-	end
-
-	return {
-		biomeId = column.biomeId,
-		biomeType = column.biomeType,
-		surfaceY = surfaceY,
-		stoneStartDepth = column.stoneStartDepth,
-		topTileId = column.topTileId,
-		subsurfaceTileId = column.subsurfaceTileId,
-		deepTileId = column.deepTileId,
-		snowDetailNoise = column.snowDetailNoise,
-		snowIceNoise = column.snowIceNoise,
-	}
-end
-
-local function sampleDepthSurfaceOffset(self: any, tileX: number, layerIndexRaw: number): number
-	if not isFiniteNumber(layerIndexRaw) then
-		return 0
-	end
-
-	local layerIndex = math.max(0, math.floor(layerIndexRaw))
-	if layerIndex <= 0 then
-		return 0
-	end
-
-	local sharedWave = sampleOctaveNoise(
-		self.seed + 6131,
-		tileX,
-		DEPTH_SURFACE_OFFSET_FREQUENCY * 0.62,
-		2,
-		2,
-		0.5,
-		DEPTH_SURFACE_OFFSET_X,
-		41.73
-	)
-	local layerWave = sampleOctaveNoise3D(
-		self.seed + 6679,
-		tileX,
-		layerIndex * DEPTH_SURFACE_LAYER_SAMPLE_SCALE,
-		DEPTH_SURFACE_OFFSET_FREQUENCY,
-		2,
-		2,
-		0.48,
-		DEPTH_SURFACE_OFFSET_X,
-		DEPTH_SURFACE_OFFSET_Z
-	)
-	local offsetScale = math.min(DEPTH_SURFACE_OFFSET_MAX_TILES, 0.75 + layerIndex * 0.35)
-	local offset = (sharedWave * 0.45 + layerWave * 0.55) * offsetScale
-	return math.clamp(roundToInteger(offset), -DEPTH_SURFACE_OFFSET_MAX_TILES, DEPTH_SURFACE_OFFSET_MAX_TILES)
-end
-
 function Biome.GetColumnProfile(self, tileX: number, surfaceDepth: number?): ColumnProfile
 	local temperature, humidity = self:sampleTemperatureHumidity(tileX, surfaceDepth)
 	local biomeId = self:resolveBiomeId(tileX, temperature, humidity, surfaceDepth)
-	local surfaceY = self:sampleSurfaceHeight(tileX, biomeId, surfaceDepth)
+	local surfaceTemperature, surfaceHumidity = self:sampleTemperatureHumidity(tileX, nil)
+	local surfaceBiomeId = self:resolveBiomeId(tileX, surfaceTemperature, surfaceHumidity, nil)
+	local surfaceY = self:sampleSurfaceHeight(tileX, surfaceBiomeId, nil)
 	local biomeType = self:resolveBiomeType(tileX, surfaceY, biomeId, surfaceDepth)
 	local stoneStartDepth = self:sampleStoneStartDepth(tileX, biomeId)
 	local snowDetailNoise = sampleOctaveNoise(
@@ -1193,9 +1080,8 @@ function Biome.GetColumnProfile(self, tileX: number, surfaceDepth: number?): Col
 end
 
 -- Background depth columns inherit the foreground profile so every layer reads as one terrain mass.
-function Biome.GetDepthColumnProfile(self, tileX: number, layerIndex: number, baseColumn: ColumnProfile): ColumnProfile
-	local surfaceOffset = sampleDepthSurfaceOffset(self, tileX, layerIndex)
-	return copyColumnProfileWithSurfaceY(baseColumn, baseColumn.surfaceY + surfaceOffset)
+function Biome.GetDepthColumnProfile(_self, _tileX: number, _layerIndex: number, baseColumn: ColumnProfile): ColumnProfile
+	return baseColumn
 end
 
 function Biome.ResolveTileForDepth(self, column: ColumnProfile, depthBelowSurface: number): number

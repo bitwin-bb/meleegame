@@ -7,7 +7,7 @@ local Workspace = game:GetService("Workspace")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = require(loaderUtils.Parent).load(packageRoot)
 
 local ContentProviderUtils = loader("ContentProviderUtils")
 local Maid = loader("Maid")
@@ -135,6 +135,9 @@ local SURFACE_TILE_SCALE = 1
 local SURFACE_LAYER_MIN_VIEW_HEIGHT_FACTOR = 1.06
 local SURFACE_LAYER_MAX_VIEW_HEIGHT_FACTOR = 1.16
 local MIN_PLANE_VERTICAL_COVERAGE_BLEED_STUDS = 4
+local SURFACE_ANCHOR_VERTICAL_OVERSCAN_FACTOR = 0.14
+local SURFACE_ANCHOR_HORIZONTAL_OVERSCAN_FACTOR = 0.18
+local MIN_SURFACE_ANCHOR_OVERSCAN_STUDS = 8
 local DEFAULT_CAMERA_FIELD_OF_VIEW = 70
 local DEFAULT_CAMERA_VIEWPORT = Vector2.new(1920, 1080)
 
@@ -843,6 +846,16 @@ function Parallax._publishSurfaceState(self: Parallax, metrics: { LayerMetric },
 		maxZ = math.max(maxZ, metric.centerZ + metric.width * 0.5)
 		minPlaneDepthBlocks = math.min(minPlaneDepthBlocks, metric.planeDepthBlocks)
 	end
+	local rawAnchorHeightStuds = math.max(maxY - minY, 1)
+	local rawAnchorWidthStuds = math.max(maxZ - minZ, 1)
+	local verticalOverscan =
+		math.max(rawAnchorHeightStuds * SURFACE_ANCHOR_VERTICAL_OVERSCAN_FACTOR, MIN_SURFACE_ANCHOR_OVERSCAN_STUDS)
+	local horizontalOverscan =
+		math.max(rawAnchorWidthStuds * SURFACE_ANCHOR_HORIZONTAL_OVERSCAN_FACTOR, MIN_SURFACE_ANCHOR_OVERSCAN_STUDS)
+	minY -= verticalOverscan
+	maxY += verticalOverscan
+	minZ -= horizontalOverscan
+	maxZ += horizontalOverscan
 
 	local anchorHeightStuds = math.max(maxY - minY, 1)
 	local anchorWidthStuds = math.max(maxZ - minZ, 1)

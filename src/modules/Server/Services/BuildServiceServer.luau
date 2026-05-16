@@ -584,7 +584,8 @@ function BuildServiceServer.PushBreakProgress(
 	toolPower: number,
 	progressModeRaw: any?,
 	progressUnitsRaw: any?,
-	progressTotalRaw: any?
+	progressTotalRaw: any?,
+	targetKindRaw: any?
 )
 	local progressUnits = if isFiniteNumber(progressUnitsRaw) then math.max(0, progressUnitsRaw) else nil
 	local progressTotal = if isFiniteNumber(progressTotalRaw) then math.max(0, progressTotalRaw) else nil
@@ -598,6 +599,7 @@ function BuildServiceServer.PushBreakProgress(
 		progressMode = if typeof(progressModeRaw) == "string" then progressModeRaw else nil,
 		progressUnits = progressUnits,
 		progressTotal = progressTotal,
+		targetKind = if typeof(targetKindRaw) == "string" then targetKindRaw else nil,
 		updatedAt = os.clock(),
 	})
 end
@@ -1464,7 +1466,8 @@ function BuildServiceServer.ProcessBreakIntents(self: BuildServiceServer, deltaT
 					intent.toolPower,
 					"hits",
 					currentHits,
-					totalHits
+					totalHits,
+					"tile"
 				)
 				if progress >= 1 then
 					self.tileDamage[tileKey] = nil
@@ -1544,7 +1547,8 @@ function BuildServiceServer.ProcessBreakIntents(self: BuildServiceServer, deltaT
 				intent.toolPower,
 				"hits",
 				currentHits,
-				totalHits
+				totalHits,
+				"tree"
 			)
 
 			if treeProgress >= 1 then

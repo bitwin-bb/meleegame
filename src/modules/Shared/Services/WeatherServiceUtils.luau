@@ -1,5 +1,4 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Range = require(script:FindFirstAncestor("game").Shared.Modules.Math.Range)
 local WorldSimulationShared = require(script:FindFirstAncestor("game").Shared.Services.Shared)
@@ -75,9 +74,9 @@ local DEFAULT_CONFIG: WeatherServiceConfig = {
 	defaultCloudTransitionSeconds = 4,
 	defaultRainTransitionSeconds = 1.2,
 	biomeSampleIntervalSeconds = 0.3,
-	clearWeatherWeight = 0.58,
-	rainstormWeatherWeight = 0.3,
-	thunderstormWeatherWeight = 0.12,
+	clearWeatherWeight = 0.995,
+	rainstormWeatherWeight = 0.004,
+	thunderstormWeatherWeight = 0.001,
 }
 
 local RAIN_INTENSITY_BY_WEATHER: { [WeatherType]: number } = {
@@ -200,19 +199,12 @@ function WeatherServiceUtils.CreateDefaultConfig(): WeatherServiceConfig
 	}
 end
 
-function WeatherServiceUtils.ResolveConfig(
-	configRaw: any,
-	fallbackRaw: WeatherServiceConfig?
-): WeatherServiceConfig
+function WeatherServiceUtils.ResolveConfig(configRaw: any, fallbackRaw: WeatherServiceConfig?): WeatherServiceConfig
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else WeatherServiceUtils.CreateDefaultConfig()
-	local source = if typeof(configRaw) == "table" then (configRaw :: { [string]: any }) else {}
+	local source = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else {}
 
-	local weatherDurationMinSeconds = sanitizeNumber(
-		source.weatherDurationMinSeconds,
-		fallback.weatherDurationMinSeconds,
-		8,
-		3600
-	)
+	local weatherDurationMinSeconds =
+		sanitizeNumber(source.weatherDurationMinSeconds, fallback.weatherDurationMinSeconds, 8, 3600)
 	local weatherDurationMaxSeconds = sanitizeNumber(
 		source.weatherDurationMaxSeconds,
 		fallback.weatherDurationMaxSeconds,
@@ -223,12 +215,8 @@ function WeatherServiceUtils.ResolveConfig(
 	local clearWeatherWeight = sanitizeNumber(source.clearWeatherWeight, fallback.clearWeatherWeight, 0, 1000)
 	local rainstormWeatherWeight =
 		sanitizeNumber(source.rainstormWeatherWeight, fallback.rainstormWeatherWeight, 0, 1000)
-	local thunderstormWeatherWeight = sanitizeNumber(
-		source.thunderstormWeatherWeight,
-		fallback.thunderstormWeatherWeight,
-		0,
-		1000
-	)
+	local thunderstormWeatherWeight =
+		sanitizeNumber(source.thunderstormWeatherWeight, fallback.thunderstormWeatherWeight, 0, 1000)
 
 	return {
 		enabled = sanitizeBoolean(source.enabled, fallback.enabled),
@@ -239,8 +227,18 @@ function WeatherServiceUtils.ResolveConfig(
 		initialWeatherType = sanitizeWeatherType(source.initialWeatherType, fallback.initialWeatherType),
 		weatherDurationMinSeconds = weatherDurationMinSeconds,
 		weatherDurationMaxSeconds = weatherDurationMaxSeconds,
-		weatherTransitionSeconds = sanitizeNumber(source.weatherTransitionSeconds, fallback.weatherTransitionSeconds, 0, 60),
-		statePushIntervalSeconds = sanitizeNumber(source.statePushIntervalSeconds, fallback.statePushIntervalSeconds, 0.05, 5),
+		weatherTransitionSeconds = sanitizeNumber(
+			source.weatherTransitionSeconds,
+			fallback.weatherTransitionSeconds,
+			0,
+			60
+		),
+		statePushIntervalSeconds = sanitizeNumber(
+			source.statePushIntervalSeconds,
+			fallback.statePushIntervalSeconds,
+			0.05,
+			5
+		),
 		defaultSkyTransitionSeconds = sanitizeNumber(
 			source.defaultSkyTransitionSeconds,
 			fallback.defaultSkyTransitionSeconds,
@@ -285,7 +283,7 @@ function WeatherServiceUtils.ChooseWeightedWeatherType(
 	configRaw: any,
 	currentWeatherTypeRaw: any?
 ): WeatherType
-	local randomObject = if typeof(randomObjectRaw) == "Random" then (randomObjectRaw :: Random) else Random.new()
+	local randomObject = if typeof(randomObjectRaw) == "Random" then randomObjectRaw :: Random else Random.new()
 	local config = WeatherServiceUtils.ResolveConfig(configRaw, nil)
 
 	local clearWeight = config.clearWeatherWeight
@@ -314,11 +312,14 @@ function WeatherServiceUtils.ChooseWeightedWeatherType(
 		return rolled
 	end
 
-	if totalWeight <= (if currentWeatherType == "Clear"
-		then clearWeight
-		elseif currentWeatherType == "Rainstorm"
-		then rainstormWeight
-		else thunderstormWeight)
+	if
+		totalWeight
+		<= (
+			if currentWeatherType == "Clear"
+				then clearWeight
+				elseif currentWeatherType == "Rainstorm" then rainstormWeight
+				else thunderstormWeight
+		)
 	then
 		return rolled
 	end
@@ -350,12 +351,9 @@ function WeatherServiceUtils.CreateStateFromConfig(configRaw: any): WeatherServi
 	}
 end
 
-function WeatherServiceUtils.SanitizeState(
-	stateRaw: any,
-	fallbackRaw: WeatherServiceState?
-): WeatherServiceState
+function WeatherServiceUtils.SanitizeState(stateRaw: any, fallbackRaw: WeatherServiceState?): WeatherServiceState
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else WeatherServiceUtils.CreateStateFromConfig(nil)
-	local source = if typeof(stateRaw) == "table" then (stateRaw :: { [string]: any }) else {}
+	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {}
 
 	local dayNightCycleEnabled = sanitizeBoolean(source.dayNightCycleEnabled, fallback.dayNightCycleEnabled)
 	local clockSpeed = sanitizeNumber(source.clockSpeed, fallback.clockSpeed, -100, 100)
@@ -364,12 +362,8 @@ function WeatherServiceUtils.SanitizeState(
 	end
 
 	local weatherType = sanitizeWeatherType(source.weatherType, fallback.weatherType)
-	local rainIntensity = sanitizeNumber(
-		source.rainIntensity,
-		WeatherServiceUtils.GetRainIntensityForWeather(weatherType),
-		0,
-		1
-	)
+	local rainIntensity =
+		sanitizeNumber(source.rainIntensity, WeatherServiceUtils.GetRainIntensityForWeather(weatherType), 0, 1)
 
 	return {
 		ready = sanitizeBoolean(source.ready, fallback.ready),
@@ -438,12 +432,17 @@ function WeatherServiceUtils.ResolveSkyKeyFromWorldSample(
 	biomeTypeRaw: any,
 	_depthLayerRaw: any
 ): SkyKey
-	local biomeType = if typeof(biomeTypeRaw) == "number" then math.floor(biomeTypeRaw) else WeatherServiceUtils.BIOME_TYPE_NORMAL
+	local biomeType = if typeof(biomeTypeRaw) == "number"
+		then math.floor(biomeTypeRaw)
+		else WeatherServiceUtils.BIOME_TYPE_NORMAL
 	local biomeId = if typeof(biomeIdRaw) == "number"
 		then math.floor(biomeIdRaw)
 		else WorldSimulationShared.BIOME_ID.FOREST
 
-	if biomeId == WorldSimulationShared.BIOME_ID.CORRUPTION or biomeType == WeatherServiceUtils.BIOME_TYPE_CORRUPTION then
+	if
+		biomeId == WorldSimulationShared.BIOME_ID.CORRUPTION
+		or biomeType == WeatherServiceUtils.BIOME_TYPE_CORRUPTION
+	then
 		return WeatherServiceUtils.SKY_KEY_CORRUPTION
 	end
 	if biomeId == WorldSimulationShared.BIOME_ID.SNOW then

@@ -1780,11 +1780,13 @@ function BuildServiceClient.OnBreakProgress(self: BuildServiceClient, payloadRaw
 	local progressModeRaw = payload.progressMode
 	local progressUnitsRaw = payload.progressUnits
 	local progressTotalRaw = payload.progressTotal
+	local targetKindRaw = payload.targetKind
 	local progress = if isFiniteNumber(progressRaw) then math.clamp(progressRaw, 0, 1) else 0
 	local breakDuration = if isFiniteNumber(breakDurationRaw) then math.max(0, breakDurationRaw) else 0
 	local progressMode = if typeof(progressModeRaw) == "string" then progressModeRaw else nil
 	local progressUnits = if isFiniteNumber(progressUnitsRaw) then math.max(0, progressUnitsRaw) else nil
 	local progressTotal = if isFiniteNumber(progressTotalRaw) then math.max(0, progressTotalRaw) else nil
+	local targetKind = if typeof(targetKindRaw) == "string" then targetKindRaw else nil
 	local isActive = payload.isActive == true and tileX ~= nil and tileY ~= nil
 
 	if isActive then
@@ -1797,6 +1799,7 @@ function BuildServiceClient.OnBreakProgress(self: BuildServiceClient, payloadRaw
 			progressMode = progressMode,
 			progressUnits = progressUnits,
 			progressTotal = progressTotal,
+			targetKind = targetKind,
 			updatedAt = os.clock(),
 		}
 		self.hitFeedback:Fire(tileX, tileY, progress)
@@ -2157,6 +2160,7 @@ function BuildServiceClient.Init(self: BuildServiceClient)
 		progressMode: string?,
 		progressUnits: number?,
 		progressTotal: number?,
+		targetKind: string?,
 		updatedAt: number,
 	}?
 	self.cursorTileX = nil :: number?
@@ -2425,6 +2429,7 @@ type BuildServiceClient = typeof(BuildServiceClient) & {
 		progressMode: string?,
 		progressUnits: number?,
 		progressTotal: number?,
+		targetKind: string?,
 		updatedAt: number,
 	}?,
 	cursorTileX: number?,

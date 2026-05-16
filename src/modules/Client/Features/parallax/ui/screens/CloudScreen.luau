@@ -5,8 +5,8 @@ local PortalTargets = require(script:FindFirstAncestor("game").Client.UI.core.ut
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 
-local ParallaxComponent = require(script.Parent.Parent.components.ParallaxView)
-local ParallaxSlice = require(script:FindFirstAncestor("parallax").ParallaxSlice)
+local CloudComponent = require(script.Parent.Parent.components.CloudView)
+local CloudServiceUtils = require(script:FindFirstAncestor("parallax").CloudServiceUtils)
 local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
 local e: typeof(React.createElement) = React.createElement
@@ -19,8 +19,8 @@ local function resolveAspectRatio(canvasSize: Vector2): number
 end
 
 return function(): React.ReactNode
-	local state = (useStore(ParallaxSlice.surfaceStateAtom) :: ParallaxSlice.ParallaxSurfaceState?)
-		or ParallaxSlice.getSurfaceState()
+	local state = (useStore(CloudServiceUtils.surfaceStateAtom) :: CloudServiceUtils.CloudSurfaceState?)
+		or CloudServiceUtils.getSurfaceState()
 	local portalTarget = PortalTargets.resolveUiScreenGui()
 
 	if state.adornee == nil or portalTarget == nil then
@@ -29,7 +29,7 @@ return function(): React.ReactNode
 
 	return ReactRoblox.createPortal(
 		e(React.Fragment, nil, {
-			Parallax = e("SurfaceGui", {
+			Clouds = e("SurfaceGui", {
 				Adornee = state.adornee,
 				AlwaysOnTop = false,
 				Brightness = state.brightness,
@@ -53,7 +53,7 @@ return function(): React.ReactNode
 						AspectRatio = resolveAspectRatio(state.canvasSize),
 						DominantAxis = Enum.DominantAxis.Width,
 					}),
-					e(ParallaxComponent, {
+					e(CloudComponent, {
 						state = state,
 					}),
 				}),

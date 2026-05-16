@@ -28,65 +28,11 @@ local DEFAULT_IMAGE_ID = if typeof((ImageIds :: any).platform) == "table"
 	then ((ImageIds :: any).platform :: any).gamepadNav :: string
 	else ""
 
-local DEBUG_GAMEPAD_NAV_PRESENTATION = true
 local THUMBSTICK_ACTIVE_EPSILON = GamepadNav.THUMBSTICK_ACTIVE_EPSILON
 
 local function sanitizeDeadzone(valueRaw: any, fallback: number): number
 	local value = if typeof(valueRaw) == "number" and valueRaw == valueRaw then valueRaw else fallback
 	return math.clamp(value, 0, 1)
-end
-
-local function formatVector2(valueRaw: any): string
-	if typeof(valueRaw) ~= "Vector2" then
-		return tostring(valueRaw)
-	end
-
-	local value = valueRaw :: Vector2
-	return string.format("(%.3f, %.3f)", value.X, value.Y)
-end
-
-local function formatStickSnapshot(stickRaw: any): string
-	if typeof(stickRaw) ~= "table" then
-		return "nil"
-	end
-
-	local stick = stickRaw :: any
-	return string.format(
-		"raw=%s screen=%s active=%s mag=%s",
-		formatVector2(stick.raw),
-		formatVector2(stick.screen),
-		tostring(stick.active == true),
-		if typeof(stick.magnitude) == "number"
-			then string.format("%.3f", stick.magnitude)
-			else tostring(stick.magnitude)
-	)
-end
-
-local function debugPrintThumbstickState(snapshotRaw: any, nextState: PadState)
-	if not DEBUG_GAMEPAD_NAV_PRESENTATION then
-		return
-	end
-
-	local snapshot = if typeof(snapshotRaw) == "table" then snapshotRaw :: any else {}
-	print(
-		string.format(
-			"[gamepadNav-debug][padSlice.updateThumbsticks] dominant=%s lastUpdatedAt=%s stickDeadzone=%.3f navigationDeadzone=%.3f | gamepad.left{%s} -> pad.left{pos=%s active=%s mag=%.3f} | gamepad.right{%s} -> pad.right{pos=%s active=%s mag=%.3f}",
-			tostring(snapshot.dominant),
-			if typeof(snapshot.lastUpdatedAt) == "number"
-				then string.format("%.3f", snapshot.lastUpdatedAt)
-				else tostring(snapshot.lastUpdatedAt),
-			sanitizeDeadzone(snapshot.stickDeadzone, nextState.stickDeadzone),
-			sanitizeDeadzone(snapshot.navigationDeadzone, nextState.navigationDeadzone),
-			formatStickSnapshot(snapshot.left),
-			formatVector2(nextState.leftStick.position),
-			tostring(nextState.leftStick.active),
-			nextState.leftStick.magnitude,
-			formatStickSnapshot(snapshot.right),
-			formatVector2(nextState.rightStick.position),
-			tostring(nextState.rightStick.active),
-			nextState.rightStick.magnitude
-		)
-	)
 end
 
 local function createStickState(positionRaw: any, activeRaw: any): PadStickState
@@ -163,7 +109,6 @@ local function updateThumbsticks(snapshotRaw: any): PadState
 		stickDeadzone = sanitizeDeadzone((snapshot :: any).stickDeadzone, current.stickDeadzone),
 		navigationDeadzone = sanitizeDeadzone((snapshot :: any).navigationDeadzone, current.navigationDeadzone),
 	}
-	debugPrintThumbstickState(snapshotRaw, nextState)
 	padStateAtom(nextState)
 	return nextState
 end
