@@ -8,6 +8,7 @@ local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Mis
 local loader = require(loaderUtils.Parent).load(script)
 
 local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
+local EyeOfCthulhuRoot = require(script:FindFirstAncestor("game").Shared.Features.npc.components.EyeOfCthulhuRoot)
 local CancelToken = loader("CancelToken")
 local Promise = loader("Promise")
 local Rx = loader("Rx")
@@ -150,6 +151,13 @@ export type Boss = typeof(setmetatable(
 ))
 local DEFAULT_BOSS_FOLDER_NAME = "BossRuntime"
 local MISSING_ASSET_ERROR = "no asset found!"
+local MODEL_TEMPLATE_FACTORIES = {
+	EyeOfCthulhu = function(phaseModel: string): Model
+		return EyeOfCthulhuRoot.createModel({
+			phaseModel = phaseModel,
+		})
+	end,
+}
 
 local function trim(valueRaw: any): string
 	return BossServiceUtils.trim(valueRaw)
@@ -281,6 +289,11 @@ local function resolveBossModelTemplate(definition: BossRegistryEntry, phaseMode
 				return descendant
 			end
 		end
+	end
+
+	local factory = MODEL_TEMPLATE_FACTORIES[definition.id]
+	if factory ~= nil then
+		return factory(if phaseModelName ~= "" then phaseModelName else "Phase1")
 	end
 
 	error(MISSING_ASSET_ERROR, 0)

@@ -747,7 +747,7 @@ end
 local function cloneTemplateByVariant(templates: { Instance }, variantIndexRaw: any): Instance?
 	local count = #templates
 	if count <= 0 then
-		error(MISSING_ASSET_ERROR, 0)
+		return nil
 	end
 	local variantIndex = 1
 	if
@@ -761,24 +761,60 @@ local function cloneTemplateByVariant(templates: { Instance }, variantIndexRaw: 
 	local normalizedIndex = ((variantIndex - 1) % count) + 1
 	local source = templates[normalizedIndex]
 	if source == nil then
-		error(MISSING_ASSET_ERROR, 0)
+		return nil
 	end
 	if source:IsA("Model") or source:IsA("BasePart") then
 		return source:Clone()
 	end
-	error(MISSING_ASSET_ERROR, 0)
+	return nil
+end
+
+local function createFallbackPropTemplate(propId: number, variantIndexRaw: any): BasePart?
+	local variantIndex = sanitizeInteger(variantIndexRaw, 1, 12, 1)
+	local sizeScale = 0.85 + (variantIndex % 4) * 0.1
+	local part: BasePart
+
+	if propId == PROP_ID_CORRUPTION_SPIKE then
+		local wedge = Instance.new("WedgePart")
+		wedge.Size = Vector3.new(1.1 * sizeScale, 3.6 * sizeScale, 1.1 * sizeScale)
+		wedge.Color = Color3.fromRGB(94, 49, 125)
+		wedge.Material = Enum.Material.Slate
+		part = wedge
+	elseif propId == PROP_ID_DESERT_ROCK then
+		local rock = Instance.new("Part")
+		rock.Shape = Enum.PartType.Ball
+		rock.Size = Vector3.new(1.6 * sizeScale, 0.9 * sizeScale, 1.9 * sizeScale)
+		rock.Color = Color3.fromRGB(154, 125, 88)
+		rock.Material = Enum.Material.Rock
+		part = rock
+	elseif propId == PROP_ID_SNOW_PILE then
+		local snow = Instance.new("Part")
+		snow.Shape = Enum.PartType.Ball
+		snow.Size = Vector3.new(2.2 * sizeScale, 0.45 * sizeScale, 1.7 * sizeScale)
+		snow.Color = Color3.fromRGB(235, 241, 245)
+		snow.Material = Enum.Material.Snow
+		part = snow
+	else
+		return nil
+	end
+
+	part.Name = `GeneratedProp_{propId}`
+	return part
 end
 
 local function clonePropTemplateById(
-	templatesByPropId: { [string]: { Instance } },
-	propId: string,
+	templatesByPropId: { [number]: { Instance } },
+	propId: number,
 	variantIndexRaw: any
 ): Instance?
 	local templates = templatesByPropId[propId]
-	if templates == nil then
-		error(MISSING_ASSET_ERROR, 0)
+	if templates ~= nil then
+		local clone = cloneTemplateByVariant(templates, variantIndexRaw)
+		if clone ~= nil then
+			return clone
+		end
 	end
-	return cloneTemplateByVariant(templates, variantIndexRaw)
+	return createFallbackPropTemplate(propId, variantIndexRaw)
 end
 
 local function resolvePlayerRootPart(player: Player): BasePart?

@@ -4,6 +4,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local WorldGeneration = require(script:FindFirstAncestor("game").Shared.Classes.WorldGeneration)
+local WorldGenerationServiceClient = require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
+local WorldGenerationServiceUtils =
+	require(script:FindFirstAncestor("game").Shared.Services.WorldGenerationServiceUtils)
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
@@ -46,6 +49,64 @@ end
 
 return function()
 	describe("WorldGeneration Nevermore integrations", function()
+		it("builds chunk visuals when prop templates are unavailable", function()
+			local client = setmetatable({
+				state = WorldGenerationServiceUtils.createDefaultState(),
+				worldOrigin = Vector3.zero,
+				basePlaneX = 0,
+				treeVariantDefinitions = {},
+				propTemplatesByPropId = {},
+			}, {
+				__index = WorldGenerationServiceClient,
+			})
+
+			local snapshot = {
+				key = "missing-prop-template",
+				chunkX = 0,
+				chunkY = 0,
+				tileMinX = 0,
+				tileMinY = 0,
+				width = 1,
+				height = 1,
+				tiles = { 0 },
+				depthLayers = { 0 },
+				depthBelowSurface = { 0 },
+				biomeIds = { 2 },
+				surfaceBiomeIds = { 2 },
+				biomeTypes = { 1 },
+				dominantBiomeId = 2,
+				dominantBiomeType = 1,
+				backgroundLayers = {},
+				trees = {},
+				props = {
+					{
+						tileX = 0,
+						tileY = 0,
+						propId = 4,
+						variantIndex = 1,
+						seed = 1,
+						biomeType = 1,
+						biomeId = 2,
+					},
+				},
+				revision = 1,
+			}
+
+			local model = nil
+			local ok, err = pcall(function()
+				model = (WorldGenerationServiceClient :: any).BuildChunkVisualModel(client, snapshot)
+			end)
+
+			local propCount = if model ~= nil then (model :: Model):GetAttribute("PropCount") else nil
+			if model ~= nil then
+				(model :: Model):Destroy()
+			end
+
+			expect(ok).to.equal(true)
+			expect(err).to.equal(nil)
+			expect(propCount).to.equal(1)
+		end)
+
 		it("uses generated tile templates when asset templates are unavailable", function()
 			local existingAssets = ReplicatedStorage:FindFirstChild("Assets")
 			local existingAssetsParent = if existingAssets ~= nil then existingAssets.Parent else nil

@@ -223,5 +223,22 @@ return function()
 			service:destroy()
 			assetTemplates:Destroy()
 		end)
+
+		it("spawns the eye controller when authored asset templates are absent", function()
+			local service = createTestService()
+			local boss, reason = service:spawnBoss({
+				bossId = "EyeOfCthulhu",
+				spawnSource = "DebugCommand",
+				encounterChannel = "spec.assetless_spawn",
+				spawnPosition = Vector3.new(0, 35, 18),
+			})
+
+			expect(reason).to.equal(nil)
+			expect(boss ~= nil).to.equal(true)
+			expect(service.controllersById[(boss :: any).id]).to.equal(boss)
+			expect(((boss :: any).model :: Instance):GetAttribute("BossSpriteRoot")).to.equal(true)
+
+			service:destroy()
+		end)
 	end)
 end
