@@ -67,20 +67,4 @@ return {
 			},
 		},
 	},
-	Npcs = {
-		Slimes = {
-			Default = {
-				Hurt = "rbxassetid://89128223653882",
-				Idle = "rbxassetid://117167161352299",
-				Jump = "rbxassetid://112646426055746",
-				Land = "rbxassetid://106901523417421",
-			},
-			GreenSlime = {
-				Hurt = "rbxassetid://89128223653882",
-				Idle = "rbxassetid://117167161352299",
-				Jump = "rbxassetid://112646426055746",
-				Land = "rbxassetid://106901523417421",
-			},
-		},
-	},
 }

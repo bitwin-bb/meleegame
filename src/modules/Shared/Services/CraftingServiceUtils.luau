@@ -7,7 +7,7 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
+local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
 local CraftingTree = require(script.Parent.CraftingTree)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)

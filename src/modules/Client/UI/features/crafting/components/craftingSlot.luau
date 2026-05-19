@@ -20,6 +20,7 @@ type CraftingSlotProps = {
 }
 
 local e: typeof(React.createElement) = React.createElement
+local MISSING_ASSET_ERROR = "no asset found!"
 
 return function(props: CraftingSlotProps): React.ReactNode
 	local recipe = props.recipe
@@ -38,7 +39,9 @@ return function(props: CraftingSlotProps): React.ReactNode
 		else 1
 	local coinSpriteSheet = CoinSprites.resolveSpriteSheet(recipe.resultItemId)
 	local resolvedIcon = itemThunks.resolveItemIconByType(nil, recipe.resultItemId)
-	local icon = if typeof(resolvedIcon) == "string" and resolvedIcon ~= "" then resolvedIcon else ImageIds.questionMark
+	if typeof(resolvedIcon) ~= "string" or resolvedIcon == "" then
+		error(MISSING_ASSET_ERROR, 0)
+	end
 	local maxDisplayAmount = if recipe.category == "Currency"
 		then math.max(0, recipe.maxCraftableQuantity * resultAmountPerCraft)
 		else math.max(0, recipe.maxCraftableQuantity)
@@ -81,7 +84,7 @@ return function(props: CraftingSlotProps): React.ReactNode
 				Position = UDim2.fromScale(0.5, 0.5),
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				BackgroundTransparency = 1,
-				Image = if typeof(icon) == "string" then icon else ImageIds.questionMark,
+				Image = resolvedIcon,
 				ScaleType = Enum.ScaleType.Fit,
 				ImageTransparency = if canCraft then 0 else 0.25,
 				ZIndex = zIndex + 1,

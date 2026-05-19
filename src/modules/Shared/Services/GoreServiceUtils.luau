@@ -8,7 +8,6 @@ GoreServiceUtils.NETWORK_METHOD_SET_BLOOD_COLOR = "setBloodColor"
 GoreServiceUtils.NETWORK_METHOD_DESTROY_LIMB = "destroyLimb"
 GoreServiceUtils.NETWORK_METHOD_EMIT_BLOOD = "emitBlood"
 GoreServiceUtils.NETWORK_METHOD_SPAWN_GIBS = "spawnGibs"
-GoreServiceUtils.NETWORK_METHOD_EMIT_SLIME_BLOOD = "emitSlimeBlood"
 
 GoreServiceUtils.DEFAULT_PLAYER_BLOOD_COLOR = Color3.fromRGB(105, 0, 0)
 GoreServiceUtils.DEFAULT_NPC_BLOOD_COLOR = Color3.fromRGB(39, 145, 58)

@@ -5,6 +5,9 @@ local BiomeNameScreen = require(script:FindFirstAncestor("game").Client.UI.featu
 local CraftingSlotsScreen = require(script:FindFirstAncestor("game").Client.UI.features.crafting.screens.craftingSlots)
 local DeathScreen = require(script:FindFirstAncestor("game").Client.UI.features.death.screens.deathScreen)
 local EntityInfoScreen = require(script:FindFirstAncestor("game").Client.UI.features.entity.screens.entityInfoScreen)
+local EyeOfCthulhuScreen = require(script:FindFirstAncestor("game").Shared.Features.npc.ui.screens.EyeOfCthulhuScreen)
+local EyeOfCthulhuServantScreen =
+	require(script:FindFirstAncestor("game").Shared.Features.npc.ui.screens.EyeOfCthulhuServantScreen)
 local HUD = require(script:FindFirstAncestor("game").Client.UI.hud)
 local InfoPlayerScreen = require(script:FindFirstAncestor("game").Client.UI.features.player.screens.infoPlayerScreen)
 local InfoScreen = require(script:FindFirstAncestor("game").Client.UI.features.info.screens.infoScreen)
@@ -15,6 +18,7 @@ local MouseScreen = require(script:FindFirstAncestor("game").Client.UI.features.
 local PadScreen = require(script:FindFirstAncestor("game").Client.UI.features.pad.screens.pad)
 local React = require(ReplicatedStorage.Packages.React)
 local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
+local SlimeScreen = require(script:FindFirstAncestor("game").Shared.Features.npc.ui.screens.SlimeScreen)
 local TileBreakScreen = require(script:FindFirstAncestor("game").Client.Features.tile.ui.screen.Break)
 
 local e: typeof(React.createElement) = React.createElement
@@ -36,6 +40,15 @@ return function(props: RootUIProps)
 	end, { props.onCanvasMounted })
 
 	return e(Responsive.Provider, {}, {
+		EyeOfCthulhuScreen = e(EyeOfCthulhuScreen, {
+			zIndex = 166,
+		}),
+		EyeOfCthulhuServantScreen = e(EyeOfCthulhuServantScreen, {
+			zIndex = 167,
+		}),
+		SlimeScreen = e(SlimeScreen, {
+			zIndex = 168,
+		}),
 		RootCanvas = e("Frame", {
 			ref = canvasRef,
 			AnchorPoint = Vector2.new(0.5, 0.5),
@@ -46,40 +59,40 @@ return function(props: RootUIProps)
 			Active = false,
 			Selectable = false,
 		}, {
-			e(HUD, props.hudProps),
-			props.currentScreen,
-			e(InfoScreen, {
+			HUD = e(HUD, props.hudProps),
+			CurrentScreen = props.currentScreen,
+			InfoScreen = e(InfoScreen, {
 				zIndex = 140,
 			}),
-			e(InfoPlayerScreen, {
+			InfoPlayerScreen = e(InfoPlayerScreen, {
 				zIndex = 145,
 			}),
-			e(BiomeNameScreen, {
+			BiomeNameScreen = e(BiomeNameScreen, {
 				zIndex = 150,
 			}),
-			e(EntityInfoScreen, {
+			EntityInfoScreen = e(EntityInfoScreen, {
 				zIndex = 160,
 			}),
-			e(MarkerScreen, {
+			MarkerScreen = e(MarkerScreen, {
 				zIndex = 165,
 			}),
-			e(MiningProgressScreen, {
+			MiningProgressScreen = e(MiningProgressScreen, {
 				zIndex = 170,
 			}),
-			e(TileBreakScreen),
-			e(CraftingSlotsScreen, {
+			TileBreakScreen = e(TileBreakScreen),
+			CraftingSlotsScreen = e(CraftingSlotsScreen, {
 				zIndex = 175,
 			}),
-			e(BindingHintScreen, {
+			BindingHintScreen = e(BindingHintScreen, {
 				zIndex = 180,
 			}),
-			e(MouseScreen, {
-				zIndex = 1000,
+			MouseScreen = e(MouseScreen, {
+				zIndex = 999999999,
 			}),
-			e(PadScreen, {
+			PadScreen = e(PadScreen, {
 				zIndex = 980,
 			}),
-			e(DeathScreen, {
+			DeathScreen = e(DeathScreen, {
 				zIndex = 230,
 			}),
 		}),

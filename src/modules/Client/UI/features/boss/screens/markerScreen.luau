@@ -4,7 +4,7 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossServiceUtils)
+local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
 local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
 local Layer = require(script:FindFirstAncestor("game").Client.UI.shared.Layer)
 local Marker = require(script:FindFirstAncestor("game").Client.UI.features.boss.components.marker)
@@ -36,14 +36,18 @@ local EDGE_PADDING = 72
 local MARKER_SIZE = UDim2.fromOffset(70, 70)
 local ROTATION_OFFSET_DEGREES = 90
 local DEFAULT_DIRECTION = Vector2.new(0, -1)
-local UNKNOWN_BOSS_ICON = ImageIds.questionMark
+local MISSING_ASSET_ERROR = "no asset found!"
 
 local BOSS_ICON_BY_ID: { [BossId]: string } = {
 	EyeOfCthulhu = ImageIds.eocIcon,
 }
 
 local function resolveBossIcon(bossId: BossId): string
-	return BOSS_ICON_BY_ID[bossId] or UNKNOWN_BOSS_ICON
+	local icon = BOSS_ICON_BY_ID[bossId]
+	if typeof(icon) == "string" and icon ~= "" then
+		return icon
+	end
+	error(MISSING_ASSET_ERROR, 0)
 end
 
 local function resolveBossPosition(snapshot: BossSnapshot): Vector3?

@@ -10,11 +10,11 @@ local Workspace = game:GetService("Workspace")
 
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
-local CameraShaker = require(ReplicatedStorage.Packages.EZCameraShake)
+local CameraShaker = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("EZCameraShake"))
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.WeatherServiceUtils)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
 

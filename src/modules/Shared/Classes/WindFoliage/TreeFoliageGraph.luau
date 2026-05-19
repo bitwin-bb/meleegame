@@ -2,9 +2,9 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local DeterministicRNG = require(script:FindFirstAncestor("game").Shared.Modules.Core.DeterministicRNG)
-local Damp = require(script:FindFirstAncestor("game").Shared.Modules.Math.Damp)
-local Vec = require(script:FindFirstAncestor("game").Shared.Modules.Math.Vec)
+local DeterministicRNG = require(script:FindFirstAncestor("game").Shared.Core.DeterministicRNG)
+local Damp = require(script:FindFirstAncestor("game").Shared.Core.Math.Damp)
+local Vec = require(script:FindFirstAncestor("game").Shared.Core.Math.Vec)
 
 local TreeFoliageGraph = {}
 TreeFoliageGraph.__index = TreeFoliageGraph

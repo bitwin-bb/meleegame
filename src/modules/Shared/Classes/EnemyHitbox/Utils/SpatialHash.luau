@@ -1,7 +1,7 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Bounds = require(script:FindFirstAncestor("game").Shared.Modules.Math.Bounds)
+local Bounds = require(script:FindFirstAncestor("game").Shared.Core.Math.Bounds)
 
 local SpatialHash = {}
 SpatialHash.__index = SpatialHash

@@ -1,17 +1,13 @@
 --!strict
-local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
-local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Gore = require(script:FindFirstAncestor("game").Shared.Classes.Gore)
 local GoreServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.GoreServiceUtils)
-local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Modules.Platform.InstanceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
 
 type JanitorClass = {
 	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
@@ -23,14 +19,6 @@ local GoreServiceClient = {}
 local NPC_RUNTIME_ID_ATTRIBUTE = "NpcRuntimeId"
 local PLAYER_PREFIX = "player:"
 local NPC_PREFIX = "npc:"
-local EFFECTS_JUNK_FOLDER_NAME = "EffectsJunk"
-local DEFAULT_SLIME_BLOOD_CLEANUP_BUFFER_SECONDS = 0.3
-local MIN_SLIME_BLOOD_CLEANUP_SECONDS = 1
-local DEFAULT_SLIME_BLOOD_EMIT_COUNT = 50
-local DEFAULT_SLIME_BLOOD_FOLLOW_DURATION = 0.1
-local DEFAULT_SLIME_BLOOD_DROPLET_AMOUNT = 100
-local SLIME_BLOOD_EMIT_WINDOW_SECONDS = 0.1
-local FALLBACK_SLIME_BLOOD_COLOR = Color3.fromRGB(39, 145, 58)
 
 local function sanitizeEntityId(entityIdRaw: any): string?
 	return GoreServiceUtils.sanitizeEntityId(entityIdRaw)
@@ -52,80 +40,6 @@ local function parseEntityId(entityId: string): (string?, string?)
 	end
 
 	return nil, nil
-end
-
-local function resolveSlimeBloodEffectTemplate(): BasePart?
-	local assets = ReplicatedStorage:FindFirstChild("Assets")
-	local effects = if assets ~= nil then assets:FindFirstChild("Effects") else nil
-	if effects ~= nil then
-		local directPart = InstanceUtils.resolveFirstBasePart(effects:FindFirstChild("SlimeBlood"))
-		if directPart ~= nil then
-			return directPart
-		end
-
-		local nestedSlimeBlood = InstanceUtils.findDescendantBasePartByToken(effects, "SlimeBlood")
-		if nestedSlimeBlood ~= nil then
-			return nestedSlimeBlood
-		end
-
-		local fallbackBlood = InstanceUtils.resolveFirstBasePart(effects:FindFirstChild("Blood"))
-		if fallbackBlood ~= nil then
-			return fallbackBlood
-		end
-	end
-
-	return InstanceUtils.findDescendantBasePartByToken(ReplicatedStorage, "SlimeBlood")
-end
-
-local function createFallbackSlimeBloodEffect(): BasePart
-	local part = Instance.new("Part")
-	part.Name = HttpService:GenerateGUID(false)
-	part.Size = Vector3.new(0.2, 0.2, 0.2)
-	part.Transparency = 1
-	part.Color = FALLBACK_SLIME_BLOOD_COLOR
-	part.Anchored = true
-	part.CanCollide = false
-	part.CanTouch = false
-	part.CanQuery = false
-
-	local emitter = Instance.new("ParticleEmitter")
-	emitter.Name = HttpService:GenerateGUID(false)
-	emitter.Enabled = false
-	emitter.Rate = 0
-	emitter.Color = ColorSequence.new(FALLBACK_SLIME_BLOOD_COLOR)
-	emitter.Lifetime = NumberRange.new(0.25, 0.9)
-	emitter.Speed = NumberRange.new(7, 13)
-	emitter.SpreadAngle = Vector2.new(55, 55)
-	emitter.Drag = 3
-	emitter.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	emitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.3),
-		NumberSequenceKeypoint.new(1, 0),
-	})
-	emitter.Parent = part
-
-	return part
-end
-
-local function getOrCreateEffectsJunkFolder(): Folder
-	return WorkspaceFolders.getOrCreateFolderInGame(EFFECTS_JUNK_FOLDER_NAME)
-end
-
-local function resolveModelPivotCFrame(model: Model): CFrame?
-	if model.Parent == nil then
-		return nil
-	end
-
-	local ok, pivotOrError = pcall(function()
-		return model:GetPivot()
-	end)
-	if ok and typeof(pivotOrError) == "CFrame" then
-		return pivotOrError
-	end
-	return nil
 end
 
 function GoreServiceClient.ResolveModelFromEntityId(self: GoreServiceClient, entityIdRaw: any): Model?
@@ -278,152 +192,6 @@ function GoreServiceClient.EmitBlood(
 	return controller:emitBlood(originRaw, directionRaw, amountRaw, settingsRaw)
 end
 
-function GoreServiceClient.EmitSlimeBlood(
-	self: GoreServiceClient,
-	entityIdRaw: any,
-	originRaw: any,
-	emitCountRaw: any?,
-	followDurationRaw: any?,
-	dropletAmountRaw: any?
-): boolean
-	local model = self:resolveModelFromEntityId(entityIdRaw)
-	if model == nil then
-		local controller = self:getEntity(entityIdRaw)
-		if controller ~= nil then
-			model = controller.entityModel
-		end
-	end
-
-	local template = resolveSlimeBloodEffectTemplate()
-	local bloodEffect = (if template ~= nil then template:Clone() else createFallbackSlimeBloodEffect()) :: BasePart
-	bloodEffect.Anchored = true
-	bloodEffect.CanCollide = false
-	bloodEffect.CanTouch = false
-	bloodEffect.CanQuery = false
-	bloodEffect.Parent = getOrCreateEffectsJunkFolder()
-
-	local initialPosition: Vector3? = nil
-	if typeof(originRaw) == "Vector3" then
-		initialPosition = originRaw
-	elseif typeof(originRaw) == "Instance" and originRaw:IsA("BasePart") then
-		initialPosition = originRaw.Position
-	end
-	if initialPosition == nil and model ~= nil then
-		local sourcePart = GoreServiceUtils.resolveOriginPart(model, originRaw)
-		if sourcePart ~= nil then
-			initialPosition = sourcePart.Position
-		else
-			local pivot = resolveModelPivotCFrame(model)
-			if pivot ~= nil then
-				initialPosition = pivot.Position
-			end
-		end
-	end
-	if initialPosition == nil then
-		bloodEffect:Destroy()
-		return false
-	end
-	bloodEffect.CFrame = CFrame.new(initialPosition)
-
-	local emitCount = GoreServiceUtils.sanitizeBloodAmount(emitCountRaw, DEFAULT_SLIME_BLOOD_EMIT_COUNT)
-	local followDuration =
-		GoreServiceUtils.sanitizeEffectDuration(followDurationRaw, DEFAULT_SLIME_BLOOD_FOLLOW_DURATION)
-	followDuration = math.min(followDuration, SLIME_BLOOD_EMIT_WINDOW_SECONDS)
-	local dropletAmount = GoreServiceUtils.sanitizeBloodAmount(dropletAmountRaw, DEFAULT_SLIME_BLOOD_DROPLET_AMOUNT)
-	local maxEmitterLifetime = 0
-	local emitted = false
-	local effectEmitters = {} :: { ParticleEmitter }
-	for _, descendant in bloodEffect:GetDescendants() do
-		if descendant:IsA("ParticleEmitter") then
-			local lifetime = descendant.Lifetime
-			local clampedLifetimeMax = math.max(0, lifetime.Min, lifetime.Max)
-			descendant.Enabled = true
-			descendant:Emit(emitCount)
-			maxEmitterLifetime = math.max(maxEmitterLifetime, clampedLifetimeMax)
-			emitted = true
-			table.insert(effectEmitters, descendant)
-		end
-	end
-
-	if not emitted then
-		bloodEffect:Destroy()
-		return false
-	end
-
-	local controller = self:getEntity(entityIdRaw)
-	if controller ~= nil then
-		controller:emitBlood(initialPosition, nil, dropletAmount, nil)
-	end
-
-	local startedAt = os.clock()
-	local trackedModel = model
-	local followConnection: RBXScriptConnection? = nil
-	followConnection = RunService.Heartbeat:Connect(function()
-		if bloodEffect.Parent == nil then
-			if followConnection ~= nil then
-				followConnection:Disconnect()
-				followConnection = nil
-			end
-			return
-		end
-
-		if os.clock() - startedAt >= followDuration then
-			if followConnection ~= nil then
-				followConnection:Disconnect()
-				followConnection = nil
-			end
-			return
-		end
-
-		if trackedModel == nil then
-			trackedModel = self:resolveModelFromEntityId(entityIdRaw)
-			if trackedModel == nil then
-				local controller = self:getEntity(entityIdRaw)
-				if controller ~= nil then
-					trackedModel = controller.entityModel
-				end
-			end
-		end
-
-		if trackedModel ~= nil then
-			local followPart = GoreServiceUtils.resolveOriginPart(trackedModel, nil)
-			if followPart ~= nil then
-				bloodEffect.CFrame = followPart.CFrame
-				return
-			end
-
-			local pivot = resolveModelPivotCFrame(trackedModel)
-			if pivot ~= nil then
-				bloodEffect.CFrame = pivot
-			end
-		end
-	end)
-
-	task.delay(SLIME_BLOOD_EMIT_WINDOW_SECONDS, function()
-		if followConnection ~= nil then
-			followConnection:Disconnect()
-			followConnection = nil
-		end
-		for _, emitter in effectEmitters do
-			if emitter.Parent ~= nil then
-				emitter.Enabled = false
-			end
-		end
-	end)
-
-	local cleanupDelay = math.max(
-		MIN_SLIME_BLOOD_CLEANUP_SECONDS,
-		SLIME_BLOOD_EMIT_WINDOW_SECONDS + maxEmitterLifetime + DEFAULT_SLIME_BLOOD_CLEANUP_BUFFER_SECONDS
-	)
-	task.delay(cleanupDelay, function()
-		if bloodEffect.Parent ~= nil then
-			bloodEffect:Destroy()
-		end
-	end)
-
-	return true
-end
-
 function GoreServiceClient.SpawnGibs(
 	self: GoreServiceClient,
 	entityIdRaw: any,
@@ -535,7 +303,6 @@ GoreServiceClient.removeEntity = GoreServiceClient.RemoveEntity
 GoreServiceClient.setBloodColor = GoreServiceClient.SetBloodColor
 GoreServiceClient.destroyLimb = GoreServiceClient.DestroyLimb
 GoreServiceClient.emitBlood = GoreServiceClient.EmitBlood
-GoreServiceClient.emitSlimeBlood = GoreServiceClient.EmitSlimeBlood
 GoreServiceClient.spawnGibs = GoreServiceClient.SpawnGibs
 GoreServiceClient.init = GoreServiceClient.Init
 GoreServiceClient.destroy = GoreServiceClient.Destroy

@@ -8,11 +8,11 @@ local RunService = game:GetService("RunService")
 
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
-local BossServiceClient = require(script:FindFirstAncestor("game").Client.Services.BossServiceClient)
+local BossServiceClient = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceClient)
 local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
 local WeatherServiceClient = require(script:FindFirstAncestor("game").Client.Services.WeatherServiceClient)
 local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.WeatherServiceUtils)
 local WorldGenerationServiceClient =
@@ -45,6 +45,7 @@ local SOUNDTRACK_FADE_SECONDS = 1.1
 local SOUNDTRACK_TRACK_GAP_SECONDS = 0
 local SOUNDTRACK_BIOME_SAMPLE_INTERVAL = 0.35
 local DEFAULT_SOUNDTRACK_BIOME = "Overworld"
+local MISSING_ASSET_ERROR = "no asset found!"
 local OVERWORLD_NIGHT_SOUNDTRACK_BIOME = "OverworldNight"
 local CORRUPTION_SOUNDTRACK_BIOME = "Corruption"
 local SNOW_SOUNDTRACK_BIOME = "Snow"
@@ -409,7 +410,7 @@ end
 function AudioServiceClient.GetNextTrackForSoundtrackBiome(self: AudioServiceClient, soundtrackBiome: string): string?
 	local assetIds = self.soundtrackAssetIdsByBiome[soundtrackBiome]
 	if assetIds == nil or #assetIds <= 0 then
-		return nil
+		error(MISSING_ASSET_ERROR, 0)
 	end
 
 	local shuffleBag = self.soundtrackShuffleBagByBiome[soundtrackBiome]
@@ -448,9 +449,7 @@ function AudioServiceClient.PlayNextSoundtrackTrack(self: AudioServiceClient, pl
 
 	local nextTrackAssetId = self:getNextTrackForSoundtrackBiome(soundtrackBiome)
 	if nextTrackAssetId == nil then
-		self:stopChannel(SOUNDTRACK_CHANNEL_NAME, SOUNDTRACK_FADE_SECONDS)
-		self.soundtrackActiveTrack = nil
-		return
+		error(MISSING_ASSET_ERROR, 0)
 	end
 	local shouldLoop = SOUNDTRACK_LOOPED_BY_BIOME[soundtrackBiome] == true
 
@@ -508,7 +507,7 @@ function AudioServiceClient.SetSoundtrackBiome(self: AudioServiceClient, soundtr
 
 	local tracks = self.soundtrackAssetIdsByBiome[soundtrackBiome]
 	if tracks == nil or #tracks <= 0 then
-		soundtrackBiome = DEFAULT_SOUNDTRACK_BIOME
+		error(MISSING_ASSET_ERROR, 0)
 	end
 
 	local activeTrack = self.soundtrackActiveTrack
@@ -665,7 +664,7 @@ function AudioServiceClient.PlaySound(
 	local soundAssetId, options =
 		AudioServiceUtils.resolvePlaybackRequest(soundAssetIdRaw, optionsRaw, fallbackCategory)
 	if soundAssetId == nil then
-		return nil
+		error(MISSING_ASSET_ERROR, 0)
 	end
 
 	if self.runtimeFolder == nil then

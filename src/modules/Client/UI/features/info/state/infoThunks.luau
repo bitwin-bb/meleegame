@@ -3,8 +3,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
 local infoState = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoState)
-local Input = require(script:FindFirstAncestor("game").Shared.Modules.Platform.Input)
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
+local Input = require(script:FindFirstAncestor("game").Shared.Core.Platform.Input)
+local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
 
 type HoverInfoState = infoState.HoverInfoState
 

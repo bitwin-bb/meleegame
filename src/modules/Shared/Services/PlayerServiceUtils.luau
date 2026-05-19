@@ -1,12 +1,12 @@
 --!strict
 local Workspace = game:GetService("Workspace")
 
-local Angle = require(script:FindFirstAncestor("game").Shared.Modules.Math.Angle)
+local Angle = require(script:FindFirstAncestor("game").Shared.Core.Math.Angle)
 local Audio = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
-local Plane = require(script:FindFirstAncestor("game").Shared.Modules.Math.Plane)
-local Trig = require(script:FindFirstAncestor("game").Shared.Modules.Math.Trig)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
+local Plane = require(script:FindFirstAncestor("game").Shared.Core.Math.Plane)
+local Trig = require(script:FindFirstAncestor("game").Shared.Core.Math.Trig)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 
 local PlayerServiceUtils = {}
 

@@ -3,7 +3,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local CoreObjectPool = require(script:FindFirstAncestor("game").Shared.Modules.Core.ObjectPool)
+local CoreObjectPool = require(script:FindFirstAncestor("game").Shared.Core.ObjectPool)
 
 local Cache = {}
 Cache.__index = Cache

@@ -1,0 +1,11 @@
+[package]
+name = "megamonsta2/table"
+description = "A fork of Xan The Dragon's table module, used for PartCache and FastCastRedux. Includes strict typechecking and bits of documentation."
+version = "1.0.3"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+authors = ["Xan_TheDragon", "megamonsta2"]
+exclude = ["**"]
+include = ["src", "src/**", "wally.toml", "default.project.json"]
+
+[dependencies]

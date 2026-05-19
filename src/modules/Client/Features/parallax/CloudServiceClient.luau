@@ -21,7 +21,7 @@ local CloudServiceUtils = require(script.Parent.CloudServiceUtils)
 local Clouds = require(script.Parent.modules.Clouds)
 local ParallaxBackgrounds = require(script.Parent.modules.ParallaxBackgrounds)
 local ParallaxServiceUtils = require(script.Parent.ParallaxServiceUtils)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
 

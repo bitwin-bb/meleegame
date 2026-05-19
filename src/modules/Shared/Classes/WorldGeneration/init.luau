@@ -21,13 +21,13 @@ local Signal = loader("Signal")
 local Biome = require(script.Biome)
 local Cache = require(script.Utils.GenerationCache)
 local Cave = require(script.Cave)
-local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
+local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
 local Liquid = require(script.Liquid)
 local ProceduralTree = require(script.Tree)
 local Structures = require(script.Structures)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
-local TileMaterial = require(script:FindFirstAncestor("game").Shared.Modules.Game.Render.TileMaterial)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
+local TileMaterial = require(script:FindFirstAncestor("game").Shared.Game.Render.TileMaterial)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldGenerationColor = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationColor)
 local WorldGenerationDesert = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationDesert)
 local WorldGenerationSnow = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationSnow)
@@ -462,7 +462,10 @@ local DEFAULT_PRELOAD_FOCUS_SURFACE_OFFSET_TILES = 4
 local DEFAULT_WORLD_FOLDER_NAME = "WorldGeneration"
 local DEFAULT_WORLD_CHUNKS_FOLDER_NAME = "Chunks"
 local DEFAULT_WORLD_COLLISION_FOLDER_NAME = "CollisionChunks"
+local SKIP_WORLD_ANIMATOR_ATTRIBUTE = "SkipWorldAnimator"
+local WORLD_ANIMATOR_CHUNK_ATTRIBUTE = "WorldAnimatorChunk"
 local BACKGROUND_LAYER_BOUNDS_PADDING_TILES = 5
+local MISSING_ASSET_ERROR = "no asset found!"
 
 local BG_SEED_X_MULTIPLIER = 0.000193
 local BG_SEED_Y_MULTIPLIER = 0.000327
@@ -838,6 +841,28 @@ local function resolveTilesTemplateFolder(): Folder?
 		return tiles
 	end
 	return nil
+end
+
+local function resolveAssetTemplate(parent: Instance?, childName: string): Instance?
+	if parent == nil then
+		return nil
+	end
+
+	local child = parent:FindFirstChild(childName)
+	if child == nil then
+		return nil
+	end
+	return child
+end
+
+local function createFallbackTileTemplate(templateName: string): BasePart
+	local part = createPartTemplate()
+	part.Name = templateName
+	return part
+end
+
+local function resolveTileTemplate(parent: Instance?, childName: string): Instance
+	return resolveAssetTemplate(parent, childName) or createFallbackTileTemplate(childName)
 end
 
 local function resolveTreesTemplateFolder(): Folder?
@@ -2161,16 +2186,14 @@ function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
 
 	local tilesFolder = resolveTilesTemplateFolder()
 	self.tileTemplatesByTileId = {
-		[self.tileId.STONE] = if tilesFolder ~= nil then tilesFolder:FindFirstChild("Stone") else nil,
-		[self.tileId.DIRT] = if tilesFolder ~= nil then tilesFolder:FindFirstChild("Dirt") else nil,
-		[self.tileId.GRASS] = if tilesFolder ~= nil then tilesFolder:FindFirstChild("Grass") else nil,
-		[self.tileId.JUNGLE_GRASS] = if tilesFolder ~= nil
-			then (tilesFolder:FindFirstChild("JungleGrass") or tilesFolder:FindFirstChild("Grass"))
-			else nil,
-		[self.tileId.WOOD] = if tilesFolder ~= nil then tilesFolder:FindFirstChild("Wood") else nil,
-		[self.tileId.CORRUPT_STONE] = if tilesFolder ~= nil then tilesFolder:FindFirstChild("CorruptStone") else nil,
-		[self.tileId.CORRUPT_SOIL] = if tilesFolder ~= nil then tilesFolder:FindFirstChild("CorruptSoil") else nil,
-		[self.tileId.CORRUPT_GRASS] = if tilesFolder ~= nil then tilesFolder:FindFirstChild("CorruptGrass") else nil,
+		[self.tileId.STONE] = resolveTileTemplate(tilesFolder, "Stone"),
+		[self.tileId.DIRT] = resolveTileTemplate(tilesFolder, "Dirt"),
+		[self.tileId.GRASS] = resolveTileTemplate(tilesFolder, "Grass"),
+		[self.tileId.JUNGLE_GRASS] = resolveTileTemplate(tilesFolder, "JungleGrass"),
+		[self.tileId.WOOD] = resolveTileTemplate(tilesFolder, "Wood"),
+		[self.tileId.CORRUPT_STONE] = resolveTileTemplate(tilesFolder, "CorruptStone"),
+		[self.tileId.CORRUPT_SOIL] = resolveTileTemplate(tilesFolder, "CorruptSoil"),
+		[self.tileId.CORRUPT_GRASS] = resolveTileTemplate(tilesFolder, "CorruptGrass"),
 	}
 	self.treeVariantConfigs = createProceduralTreeVariantConfigs()
 
@@ -3499,9 +3522,13 @@ end
 function WorldGeneration.GetTerrainTileTemplate(self: WorldGeneration, tileId: number): Instance?
 	local templatesByTileId = self.tileTemplatesByTileId
 	if templatesByTileId == nil then
-		return nil
+		error(MISSING_ASSET_ERROR, 0)
 	end
-	return templatesByTileId[tileId]
+	local template = templatesByTileId[tileId]
+	if template == nil then
+		error(MISSING_ASSET_ERROR, 0)
+	end
+	return template
 end
 
 function WorldGeneration.PlaceTerrainTileTemplate(
@@ -3513,7 +3540,7 @@ function WorldGeneration.PlaceTerrainTileTemplate(
 ): boolean
 	local cloned = cloneTileTemplate(tileTemplate)
 	if cloned == nil then
-		return false
+		error(MISSING_ASSET_ERROR, 0)
 	end
 
 	local style = self.tileVisuals[tileId] or self.tileVisuals[self.tileId.STONE]
@@ -3567,7 +3594,7 @@ function WorldGeneration.PlaceBackgroundTileTemplate(
 ): boolean
 	local cloned = cloneTileTemplate(tileTemplate)
 	if cloned == nil then
-		return false
+		error(MISSING_ASSET_ERROR, 0)
 	end
 
 	local style = self.tileVisuals[tileId] or self.tileVisuals[self.tileId.STONE]
@@ -3622,7 +3649,7 @@ function WorldGeneration.PlaceTreeTemplate(
 ): boolean
 	local cloned = cloneTileTemplate(treeTemplate)
 	if cloned == nil then
-		return false
+		error(MISSING_ASSET_ERROR, 0)
 	end
 
 	local placementCFrame = CFrame.new(position)
@@ -5089,6 +5116,8 @@ function WorldGeneration.BuildChunkVisual(self: WorldGeneration, chunkData: Chun
 	model:SetAttribute("DominantBiomeType", chunkData.dominantBiomeType)
 	model:SetAttribute("IsCorruptionChunk", chunkData.dominantBiomeType == self.biomeType.CORRUPTION)
 	model:SetAttribute("ChunkCollisionReady", false)
+	model:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, true)
+	model:SetAttribute(WORLD_ANIMATOR_CHUNK_ATTRIBUTE, false)
 	TagBinder.applyTag(model, TagBinder.Tags.Chunk, CollectionService)
 
 	local terrainFolder: Folder? = nil

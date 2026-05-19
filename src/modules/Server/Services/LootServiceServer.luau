@@ -8,22 +8,22 @@ local Workspace = game:GetService("Workspace")
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
 local AudioServiceServer = require(script:FindFirstAncestor("game").Server.Services.AudioServiceServer)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
-local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Modules.Platform.InstanceUtils)
+local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Core.Platform.InstanceUtils)
 local InventoryServiceServer = require(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
 local LootServiceCache = require(script:FindFirstAncestor("game").Shared.Services.LootCache)
 local LootServiceData = require(script:FindFirstAncestor("game").Shared.Services.Data)
 local LootServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.LootServiceUtils)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
 local PlayerDataServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerDataServiceServer)
-local ResolveItem = require(script:FindFirstAncestor("game").Shared.Modules.Game.Format.ResolveItem)
-local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Modules.Game.Format.ResolveToolInstance)
+local ResolveItem = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveItem)
+local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveToolInstance)
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
 local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
-local StringUtils = require(script:FindFirstAncestor("game").Shared.Modules.Core.StringUtils)
-local Vec = require(script:FindFirstAncestor("game").Shared.Modules.Math.Vec)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
+local StringUtils = require(script:FindFirstAncestor("game").Shared.Core.StringUtils)
+local Vec = require(script:FindFirstAncestor("game").Shared.Core.Math.Vec)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 
 type NumberMotion = Ripple.Motion<number>
 type SpringOptions = Ripple.SpringOptions
@@ -134,14 +134,7 @@ local LootServiceServer = {}
 local EPSILON = 1e-4
 local LOOT_FOLDER_NAME = "LootRuntime"
 local DROP_REQUEST_THROTTLE_SECONDS = 1 / 30
-local FALLBACK_LOOT_COLOR_BY_RARITY: { [LootRarity]: Color3 } = {
-	Common = Color3.fromRGB(202, 202, 202),
-	Uncommon = Color3.fromRGB(102, 210, 132),
-	Rare = Color3.fromRGB(110, 166, 255),
-	Epic = Color3.fromRGB(191, 118, 255),
-	Legendary = Color3.fromRGB(255, 191, 97),
-}
-local FALLBACK_LOOT_DEFAULT_COLOR = Color3.fromRGB(220, 220, 220)
+local MISSING_ASSET_ERROR = "no asset found!"
 local COIN_TYPE_BY_ITEM_TOKEN: { [string]: "copper" | "silver" | "gold" | "platinum" } = {
 	coppercoin = "copper",
 	coincopper = "copper",
@@ -510,7 +503,7 @@ function LootServiceServer.ResolveItemTemplate(self: LootServiceServer, itemIdRa
 	local cached = self.itemTemplateByItemId[itemId]
 	if cached ~= nil then
 		if cached == false then
-			return nil
+			error(MISSING_ASSET_ERROR, 0)
 		end
 		local cachedInstance = cached :: Instance
 		if cachedInstance.Parent ~= nil then
@@ -529,8 +522,7 @@ function LootServiceServer.ResolveItemTemplate(self: LootServiceServer, itemIdRa
 		return resolvedTemplate
 	end
 
-	self.itemTemplateByItemId[itemId] = false
-	return nil
+	error(MISSING_ASSET_ERROR, 0)
 end
 
 function LootServiceServer.CloneLootInstanceFromTemplate(
@@ -569,62 +561,6 @@ function LootServiceServer.CloneLootInstanceFromTemplate(
 	end
 
 	return clone, rootPart
-end
-
-function LootServiceServer.ResolveFallbackLootColor(self: LootServiceServer, rarityRaw: any): Color3
-	if
-		rarityRaw == "Common"
-		or rarityRaw == "Uncommon"
-		or rarityRaw == "Rare"
-		or rarityRaw == "Epic"
-		or rarityRaw == "Legendary"
-	then
-		local rarity = rarityRaw :: LootRarity
-		return FALLBACK_LOOT_COLOR_BY_RARITY[rarity] or FALLBACK_LOOT_DEFAULT_COLOR
-	end
-	return FALLBACK_LOOT_DEFAULT_COLOR
-end
-
-function LootServiceServer.CreateFallbackLootInstance(
-	self: LootServiceServer,
-	itemIdRaw: any,
-	rarityRaw: any
-): (Instance?, BasePart?)
-	local itemId = LootServiceUtils.sanitizeString(itemIdRaw, "Loot") or "Loot"
-	local rarity = LootServiceUtils.sanitizeRarity(rarityRaw, "Common")
-	local token = string.lower(itemId)
-
-	local part = Instance.new("Part")
-	part.Name = itemId
-	part.Material = Enum.Material.SmoothPlastic
-	part.Color = self:resolveFallbackLootColor(rarity)
-	part.TopSurface = Enum.SurfaceType.Smooth
-	part.BottomSurface = Enum.SurfaceType.Smooth
-	part.Size = Vector3.new(1, 1, 1)
-	part:SetAttribute("FallbackLootTemplate", true)
-	part:SetAttribute("FallbackItemId", itemId)
-	part:SetAttribute("FallbackRarity", rarity)
-
-	if string.find(token, "coin", 1, true) ~= nil then
-		part.Shape = Enum.PartType.Cylinder
-		part.Size = Vector3.new(0.2, 0.8, 0.8)
-	elseif string.find(token, "sword", 1, true) ~= nil then
-		part.Size = Vector3.new(0.25, 2.3, 0.25)
-	elseif string.find(token, "crystal", 1, true) ~= nil then
-		part.Shape = Enum.PartType.Ball
-		part.Size = Vector3.new(1.1, 1.1, 1.1)
-	else
-		part.Size = Vector3.new(1, 1, 1)
-	end
-
-	return part, part
-end
-
-function LootServiceServer.WarnMissingTemplateOnce(self: LootServiceServer, itemId: string)
-	if self.missingTemplateWarnedByItemId[itemId] == true then
-		return
-	end
-	self.missingTemplateWarnedByItemId[itemId] = true
 end
 
 function LootServiceServer.ResolveRuntimePlaneX(self: LootServiceServer, runtime: LootRuntime): number?
@@ -951,14 +887,7 @@ function LootServiceServer.SpawnLootRuntime(
 		instance, rootPart = self:cloneLootInstanceFromTemplate(template, itemId)
 	end
 	if instance == nil or rootPart == nil then
-		if template == nil then
-			self:warnMissingTemplateOnce(itemId)
-		end
-		instance, rootPart = self:createFallbackLootInstance(itemId, rarity)
-	end
-
-	if instance == nil or rootPart == nil then
-		return nil
+		error(MISSING_ASSET_ERROR, 0)
 	end
 
 	if self.lootById[lootId] ~= nil then
@@ -1645,7 +1574,6 @@ function LootServiceServer.Init(self: LootServiceServer)
 	self.coinDropSoundAssetIds = {} :: { string }
 	self.coinPickupSoundAssetIds = {} :: { string }
 	self:refreshPickupSoundTemplates()
-	self.missingTemplateWarnedByItemId = {}
 	self.lastDropRequestAtByPlayer = {}
 	self.simulationAccumulator = 0
 	self.lootFolder = self:ensureLootFolder()
@@ -1707,9 +1635,6 @@ LootServiceServer.playCoinDropSound = LootServiceServer.PlayCoinDropSound
 LootServiceServer.playPickupSound = LootServiceServer.PlayPickupSound
 LootServiceServer.resolveItemTemplate = LootServiceServer.ResolveItemTemplate
 LootServiceServer.cloneLootInstanceFromTemplate = LootServiceServer.CloneLootInstanceFromTemplate
-LootServiceServer.resolveFallbackLootColor = LootServiceServer.ResolveFallbackLootColor
-LootServiceServer.createFallbackLootInstance = LootServiceServer.CreateFallbackLootInstance
-LootServiceServer.warnMissingTemplateOnce = LootServiceServer.WarnMissingTemplateOnce
 LootServiceServer.resolveRuntimePlaneX = LootServiceServer.ResolveRuntimePlaneX
 LootServiceServer.clampPositionToRuntimePlane = LootServiceServer.ClampPositionToRuntimePlane
 LootServiceServer.applyRuntimePlaneConstraint = LootServiceServer.ApplyRuntimePlaneConstraint
@@ -1763,7 +1688,6 @@ type LootServiceServer = typeof(LootServiceServer) & {
 	itemPickupSoundAssetIds: { string },
 	coinDropSoundAssetIds: { string },
 	coinPickupSoundAssetIds: { string },
-	missingTemplateWarnedByItemId: { [string]: boolean },
 	lastDropRequestAtByPlayer: { [Player]: number },
 	simulationAccumulator: number,
 	playerRemovingConnection: RBXScriptConnection?,

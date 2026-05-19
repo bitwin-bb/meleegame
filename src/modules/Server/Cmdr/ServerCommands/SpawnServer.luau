@@ -2,9 +2,9 @@
 local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for SpawnServer.")
 
-local BossServiceServer = require(gameRoot.Server.Services.BossServiceServer)
-local BossServiceUtils = require(gameRoot.Shared.Services.BossServiceUtils)
-local NpcServiceServer = require(gameRoot.Server.Services.NpcServiceServer)
+local BossServiceServer = require(gameRoot.Shared.Features.npc.BossServiceServer)
+local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
+local NpcServiceServer = require(gameRoot.Shared.Features.npc.NpcServiceServer)
 
 type EntityEntry = {
 	Id: string,

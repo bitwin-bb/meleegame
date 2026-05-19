@@ -4,8 +4,8 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
-local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Modules.Platform.GamepadPointer)
+local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
+local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Core.Platform.GamepadPointer)
 local InventoryServiceClient = require(script:FindFirstAncestor("game").Client.Services.InventoryServiceClient)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
@@ -13,7 +13,7 @@ local MagicServiceUtils = require(script:FindFirstAncestor("game").Shared.Servic
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
 local Signal = require(ReplicatedStorage.Packages.Signal)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 
 type InventoryState = InventoryServiceUtils.InventoryState
 type ReplicatedState = MagicServiceUtils.ReplicatedState

@@ -1,6 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
+local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
 
 local CatchUpPlayer = {}
 CatchUpPlayer.__index = CatchUpPlayer

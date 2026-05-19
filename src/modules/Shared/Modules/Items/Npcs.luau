@@ -1,8 +1,3 @@
-return {
-	["GreenSlime"] = {
-		name = "Green Slime",
-		health = 14,
-		attack = 5,
-		defense = 0,
-	},
-}
+--!strict
+
+return require(script:FindFirstAncestor("game").Shared.Features.npc.npc.Definitions)

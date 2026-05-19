@@ -9,6 +9,8 @@ type AudioServiceState = AudioServiceUtils.AudioServiceState
 
 local AudioServiceServer = {}
 
+local MISSING_ASSET_ERROR = "no asset found!"
+
 local function fireForPlayers(networker: Networker.Server, players: { Player }, methodName: string, ...: any)
 	for _, player in players do
 		networker:fire(player, methodName, ...)
@@ -91,7 +93,7 @@ function AudioServiceServer.PlaySfxForPlayer(
 )
 	local soundAssetId, options = AudioServiceUtils.resolvePlaybackRequest(soundAssetIdRaw, optionsRaw, "SFX")
 	if soundAssetId == nil then
-		return
+		error(MISSING_ASSET_ERROR, 0)
 	end
 	self.networker:fire(player, "playSfx", soundAssetId, AudioServiceUtils.serializePlaybackOptions(options, "SFX"))
 end
@@ -99,7 +101,7 @@ end
 function AudioServiceServer.PlaySfxForAll(self: AudioServiceServer, soundAssetIdRaw: any, optionsRaw: any)
 	local soundAssetId, options = AudioServiceUtils.resolvePlaybackRequest(soundAssetIdRaw, optionsRaw, "SFX")
 	if soundAssetId == nil then
-		return
+		error(MISSING_ASSET_ERROR, 0)
 	end
 	fireForPlayers(
 		self.networker,
@@ -118,7 +120,7 @@ function AudioServiceServer.PlayMusicForPlayer(
 )
 	local soundAssetId, options = AudioServiceUtils.resolvePlaybackRequest(soundAssetIdRaw, optionsRaw, "Music")
 	if soundAssetId == nil then
-		return
+		error(MISSING_ASSET_ERROR, 0)
 	end
 	self.networker:fire(player, "playMusic", soundAssetId, AudioServiceUtils.serializePlaybackOptions(options, "Music"))
 end
@@ -126,7 +128,7 @@ end
 function AudioServiceServer.PlayMusicForAll(self: AudioServiceServer, soundAssetIdRaw: any, optionsRaw: any)
 	local soundAssetId, options = AudioServiceUtils.resolvePlaybackRequest(soundAssetIdRaw, optionsRaw, "Music")
 	if soundAssetId == nil then
-		return
+		error(MISSING_ASSET_ERROR, 0)
 	end
 	fireForPlayers(
 		self.networker,

@@ -16,8 +16,8 @@ local ProceduralCactus = require(script:FindFirstAncestor("game").Shared.Classes
 local ProceduralTree = require(script:FindFirstAncestor("game").Shared.Classes.WorldGeneration.Tree)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
-local TileMaterial = require(script:FindFirstAncestor("game").Shared.Modules.Game.Render.TileMaterial)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
+local TileMaterial = require(script:FindFirstAncestor("game").Shared.Game.Render.TileMaterial)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldGenerationColor = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationColor)
 local WorldGenerationServiceUtils =
 	require(script:FindFirstAncestor("game").Shared.Services.WorldGenerationServiceUtils)
@@ -176,6 +176,7 @@ local FOREGROUND_TILE_AIR_ID = 0
 local TREE_PLANE_DEPTH_ALPHA = 0.5
 local TREE_SURFACE_OFFSET_Y_TILES = 1
 local SKIP_WORLD_ANIMATOR_ATTRIBUTE = "SkipWorldAnimator"
+local WORLD_ANIMATOR_CHUNK_ATTRIBUTE = "WorldAnimatorChunk"
 local ANIMATING_WORLD_ANIMATOR_ATTRIBUTE = "WorldAnimatorAnimating"
 local MIN_INT32 = -2147483648
 local MAX_INT32 = 2147483647
@@ -209,6 +210,7 @@ local JUNGLE_GRASS_TILE_ID = 17
 local ORE_TEXTURE_NAME = "OreTexture"
 local GRASS_TEXTURE_NAME = "GrassTexture"
 local TILE_BINDER_TAG_NAME = "Tile"
+local MISSING_ASSET_ERROR = "no asset found!"
 local ORE_TEXTURE_FACES = {
 	Enum.NormalId.Front,
 	Enum.NormalId.Back,
@@ -730,13 +732,22 @@ local function resolvePropTemplatesByPropId(): { [number]: { Instance } }
 		end
 	end
 
+	local desertRockFolder = propsFolder:FindFirstChild("DesertRock")
+	if desertRockFolder ~= nil then
+		if desertRockFolder:IsA("Folder") then
+			templatesByPropId[PROP_ID_DESERT_ROCK] = collectTemplateInstances(desertRockFolder)
+		elseif desertRockFolder:IsA("Model") or desertRockFolder:IsA("BasePart") then
+			templatesByPropId[PROP_ID_DESERT_ROCK] = { desertRockFolder }
+		end
+	end
+
 	return templatesByPropId
 end
 
 local function cloneTemplateByVariant(templates: { Instance }, variantIndexRaw: any): Instance?
 	local count = #templates
 	if count <= 0 then
-		return nil
+		error(MISSING_ASSET_ERROR, 0)
 	end
 	local variantIndex = 1
 	if
@@ -750,152 +761,24 @@ local function cloneTemplateByVariant(templates: { Instance }, variantIndexRaw: 
 	local normalizedIndex = ((variantIndex - 1) % count) + 1
 	local source = templates[normalizedIndex]
 	if source == nil then
-		return nil
+		error(MISSING_ASSET_ERROR, 0)
 	end
 	if source:IsA("Model") or source:IsA("BasePart") then
 		return source:Clone()
 	end
-	return nil
+	error(MISSING_ASSET_ERROR, 0)
 end
 
-local function createCorruptionSpikeFallbackModel(variantIndex: number, seed: number): Model
-	local randomObject = Random.new(seed)
-	local model = Instance.new("Model")
-	model.Name = HttpService:GenerateGUID(false)
-
-	local segmentCount = if variantIndex % 2 == 0 then 2 else 1
-	for segment = 1, segmentCount do
-		local wedge = Instance.new("WedgePart")
-		wedge.Name = HttpService:GenerateGUID(false)
-		wedge.Anchored = true
-		wedge.CanCollide = false
-		wedge.CanQuery = false
-		wedge.CanTouch = false
-		wedge.Material = Enum.Material.Slate
-		wedge.Color = Color3.fromRGB(
-			76 + randomObject:NextInteger(-6, 6),
-			56 + randomObject:NextInteger(-5, 5),
-			122 + randomObject:NextInteger(-8, 8)
-		)
-		local height = if segment == 1 then randomObject:NextNumber(3.2, 4.4) else randomObject:NextNumber(2.1, 3.1)
-		local width = randomObject:NextNumber(0.7, 1.1)
-		local depth = randomObject:NextNumber(0.9, 1.4)
-		wedge.Size = Vector3.new(width, height, depth)
-		local yaw = math.rad(randomObject:NextNumber(0, 360))
-		local yOffset = if segment == 1 then height * 0.5 else height * 0.5 + 1.3
-		wedge.CFrame = CFrame.new(0, yOffset, 0) * CFrame.Angles(0, yaw, 0)
-		wedge.Parent = model
+local function clonePropTemplateById(
+	templatesByPropId: { [string]: { Instance } },
+	propId: string,
+	variantIndexRaw: any
+): Instance?
+	local templates = templatesByPropId[propId]
+	if templates == nil then
+		error(MISSING_ASSET_ERROR, 0)
 	end
-
-	return model
-end
-
-local function createDeadBushFallbackModel(variantIndex: number, seed: number): Model
-	local randomObject = Random.new(seed)
-	local model = Instance.new("Model")
-	model.Name = HttpService:GenerateGUID(false)
-
-	local stemCount = math.max(2, math.min(5, variantIndex + 1))
-	for _ = 1, stemCount do
-		local stem = Instance.new("Part")
-		stem.Name = HttpService:GenerateGUID(false)
-		stem.Anchored = true
-		stem.CanCollide = false
-		stem.CanQuery = false
-		stem.CanTouch = false
-		stem.CastShadow = false
-		stem.Material = Enum.Material.Wood
-		stem.Color = Color3.fromRGB(
-			119 + randomObject:NextInteger(-12, 12),
-			94 + randomObject:NextInteger(-10, 10),
-			58 + randomObject:NextInteger(-8, 8)
-		)
-		local height = randomObject:NextNumber(1.1, 2.2)
-		local thickness = randomObject:NextNumber(0.12, 0.2)
-		stem.Size = Vector3.new(thickness, height, thickness)
-		local angle = math.rad(randomObject:NextNumber(-28, 28))
-		local yaw = math.rad(randomObject:NextNumber(-35, 35))
-		stem.CFrame = CFrame.new(randomObject:NextNumber(-0.35, 0.35), height * 0.5, randomObject:NextNumber(-0.2, 0.2))
-			* CFrame.Angles(0, yaw, angle)
-		stem.Parent = model
-	end
-
-	return model
-end
-
-local function createDesertRockFallbackModel(variantIndex: number, seed: number): Model
-	local randomObject = Random.new(seed)
-	local model = Instance.new("Model")
-	model.Name = HttpService:GenerateGUID(false)
-
-	local stoneCount = if variantIndex % 2 == 0 then 2 else 3
-	for _ = 1, stoneCount do
-		local rock = Instance.new("Part")
-		rock.Name = HttpService:GenerateGUID(false)
-		rock.Shape = Enum.PartType.Block
-		rock.Anchored = true
-		rock.CanCollide = false
-		rock.CanQuery = false
-		rock.CanTouch = false
-		rock.CastShadow = false
-		rock.Material = Enum.Material.Sandstone
-		rock.Color = Color3.fromRGB(
-			187 + randomObject:NextInteger(-12, 10),
-			157 + randomObject:NextInteger(-10, 10),
-			111 + randomObject:NextInteger(-9, 9)
-		)
-		rock.Size = Vector3.new(
-			randomObject:NextNumber(0.7, 1.4),
-			randomObject:NextNumber(0.45, 0.95),
-			randomObject:NextNumber(0.45, 1.1)
-		)
-		rock.CFrame = CFrame.new(
-			randomObject:NextNumber(-0.45, 0.45),
-			rock.Size.Y * 0.5,
-			randomObject:NextNumber(-0.18, 0.18)
-		) * CFrame.Angles(
-			math.rad(randomObject:NextNumber(-15, 15)),
-			math.rad(randomObject:NextNumber(-25, 25)),
-			math.rad(randomObject:NextNumber(-12, 12))
-		)
-		rock.Parent = model
-	end
-
-	return model
-end
-
-local function createSnowPileFallbackModel(variantIndex: number, seed: number): Model
-	local randomObject = Random.new(seed)
-	local model = Instance.new("Model")
-	model.Name = HttpService:GenerateGUID(false)
-
-	local moundCount = math.max(1, math.min(3, variantIndex))
-	for _ = 1, moundCount do
-		local mound = Instance.new("Part")
-		mound.Name = HttpService:GenerateGUID(false)
-		mound.Shape = Enum.PartType.Ball
-		mound.Anchored = true
-		mound.CanCollide = false
-		mound.CanQuery = false
-		mound.CanTouch = false
-		mound.CastShadow = false
-		mound.Material = Enum.Material.Snow
-		mound.Color = Color3.fromRGB(
-			228 + randomObject:NextInteger(-8, 8),
-			239 + randomObject:NextInteger(-6, 6),
-			248 + randomObject:NextInteger(-6, 6)
-		)
-		mound.Size = Vector3.new(
-			randomObject:NextNumber(0.9, 1.8),
-			randomObject:NextNumber(0.45, 0.85),
-			randomObject:NextNumber(0.7, 1.4)
-		)
-		mound.CFrame =
-			CFrame.new(randomObject:NextNumber(-0.25, 0.25), mound.Size.Y * 0.5, randomObject:NextNumber(-0.12, 0.12))
-		mound.Parent = model
-	end
-
-	return model
+	return cloneTemplateByVariant(templates, variantIndexRaw)
 end
 
 local function resolvePlayerRootPart(player: Player): BasePart?
@@ -1413,11 +1296,12 @@ end
 local function getOrCreateChunkLayerModel(
 	parent: Instance,
 	snapshot: ChunkSnapshot,
-	skipWorldAnimation: boolean
+	_skipWorldAnimation: boolean
 ): Model
 	local existing = parent:FindFirstChild(snapshot.key)
 	if existing ~= nil and existing:IsA("Model") then
-		existing:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, skipWorldAnimation)
+		existing:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, true)
+		existing:SetAttribute(WORLD_ANIMATOR_CHUNK_ATTRIBUTE, false)
 		return existing
 	end
 	if existing ~= nil then
@@ -1429,7 +1313,8 @@ local function getOrCreateChunkLayerModel(
 	model:SetAttribute("ChunkX", snapshot.chunkX)
 	model:SetAttribute("ChunkY", snapshot.chunkY)
 	model:SetAttribute("ChunkKey", snapshot.key)
-	model:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, skipWorldAnimation)
+	model:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, true)
+	model:SetAttribute(WORLD_ANIMATOR_CHUNK_ATTRIBUTE, false)
 	TagBinder.applyTag(model, TagBinder.Tags.Chunk, CollectionService)
 	model.Parent = parent
 	return model
@@ -1441,6 +1326,7 @@ local function prepareChunkLayerModel(model: Model, snapshot: ChunkSnapshot, ski
 	model:SetAttribute("ChunkY", snapshot.chunkY)
 	model:SetAttribute("ChunkKey", snapshot.key)
 	model:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, skipWorldAnimation)
+	model:SetAttribute(WORLD_ANIMATOR_CHUNK_ATTRIBUTE, not skipWorldAnimation)
 	TagBinder.applyTag(model, TagBinder.Tags.Chunk, CollectionService)
 end
 
@@ -1928,7 +1814,7 @@ function WorldGenerationServiceClient.CommitChunkVisualParts(
 		local layerFolder = backgroundLayerFolders[layerIndex]
 		if layerFolder ~= nil then
 			backgroundLayerModelsByLayer[layerIndex] =
-				getOrCreateChunkLayerModel(layerFolder, snapshot, skipWorldAnimation)
+				getOrCreateChunkLayerModel(layerFolder, snapshot, true)
 		end
 	end
 
@@ -2351,6 +2237,8 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 	model:SetAttribute("DominantBiomeId", snapshot.dominantBiomeId)
 	model:SetAttribute("DominantBiomeType", snapshot.dominantBiomeType)
 	model:SetAttribute("IsCorruptionChunk", snapshot.dominantBiomeType == BIOME_TYPE_CORRUPTION)
+	model:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, true)
+	model:SetAttribute(WORLD_ANIMATOR_CHUNK_ATTRIBUTE, false)
 
 	TagBinder.applyTag(model, TagBinder.Tags.Chunk, CollectionService)
 
@@ -2532,14 +2420,12 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 		local position = self:computeTileCenterPosition(centerTileX, centerTileY, treePlaneOffset)
 		local propInstance: Instance?
 		local useGeneratedBoundsPlacement = false
-		if propSpawnData.propId == PROP_ID_CORRUPTION_SPIKE then
-			local templates = self.propTemplatesByPropId[propSpawnData.propId]
-			propInstance = if templates ~= nil
-				then cloneTemplateByVariant(templates, propSpawnData.variantIndex)
-				else nil
-			if propInstance == nil then
-				propInstance = createCorruptionSpikeFallbackModel(propSpawnData.variantIndex, propSpawnData.seed)
-			end
+		if
+			propSpawnData.propId == PROP_ID_CORRUPTION_SPIKE
+			or propSpawnData.propId == PROP_ID_DESERT_ROCK
+			or propSpawnData.propId == PROP_ID_SNOW_PILE
+		then
+			propInstance = clonePropTemplateById(self.propTemplatesByPropId, propSpawnData.propId, propSpawnData.variantIndex)
 		elseif propSpawnData.propId == PROP_ID_DESERT_CACTUS then
 			local cactusColor = if propSpawnData.biomeId == BIOME_ID_DESERT
 				then Color3.fromRGB(90, 147, 78)
@@ -2569,22 +2455,12 @@ function WorldGenerationServiceClient.BuildChunkVisualModel(
 			})
 			propInstance = cactusGenerator:Generate(position)
 			useGeneratedBoundsPlacement = true
-		elseif propSpawnData.propId == PROP_ID_DESERT_ROCK then
-			propInstance = createDesertRockFallbackModel(propSpawnData.variantIndex, propSpawnData.seed)
-		elseif propSpawnData.propId == PROP_ID_SNOW_PILE then
-			local templates = self.propTemplatesByPropId[propSpawnData.propId]
-			propInstance = if templates ~= nil
-				then cloneTemplateByVariant(templates, propSpawnData.variantIndex)
-				else nil
-			if propInstance == nil then
-				propInstance = createSnowPileFallbackModel(propSpawnData.variantIndex, propSpawnData.seed)
-			end
 		else
 			continue
 		end
 
 		if propInstance == nil then
-			continue
+			error(MISSING_ASSET_ERROR, 0)
 		end
 
 		local generatedPartCount = 0
@@ -2757,7 +2633,8 @@ function WorldGenerationServiceClient.ProcessChunkRebuildQueue(self: WorldGenera
 		end
 
 		for _, layerModel in backgroundLayerModelsByLayer do
-			layerModel:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, shouldSkipChunkAnimation)
+			layerModel:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, true)
+			layerModel:SetAttribute(WORLD_ANIMATOR_CHUNK_ATTRIBUTE, false)
 		end
 
 		self.chunkVisuals[chunkKey] = {

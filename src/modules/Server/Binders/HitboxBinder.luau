@@ -12,7 +12,7 @@ local npcServiceServer = nil
 
 local function getBossServiceServer()
 	if bossServiceServer == nil then
-		bossServiceServer = require(script:FindFirstAncestor("game").Server.Services.BossServiceServer)
+		bossServiceServer = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceServer)
 	end
 	return bossServiceServer
 end
@@ -26,7 +26,7 @@ end
 
 local function getNpcServiceServer()
 	if npcServiceServer == nil then
-		npcServiceServer = require(script:FindFirstAncestor("game").Server.Services.NpcServiceServer)
+		npcServiceServer = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceServer)
 	end
 	return npcServiceServer
 end

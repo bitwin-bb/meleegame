@@ -1,5 +1,7 @@
 --!strict
 
+local MISSING_ASSET_ERROR = "no asset found!"
+
 local function normalizeImageId(valueRaw: any): string?
 	if typeof(valueRaw) == "number" then
 		if valueRaw ~= valueRaw or valueRaw <= 0 then
@@ -32,8 +34,12 @@ local function normalizeImageId(valueRaw: any): string?
 	return value
 end
 
-local function resolveImageId(valueRaw: any, fallbackRaw: any?): string
-	return normalizeImageId(valueRaw) or normalizeImageId(fallbackRaw) or ""
+local function resolveImageId(valueRaw: any, _fallbackRaw: any?): string
+	local imageId = normalizeImageId(valueRaw)
+	if imageId == nil then
+		error(MISSING_ASSET_ERROR, 0)
+	end
+	return imageId
 end
 
 return resolveImageId

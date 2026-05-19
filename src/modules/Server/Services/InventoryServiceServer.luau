@@ -10,15 +10,15 @@ local InventoryProfile = require(script:FindFirstAncestor("game").Shared.Service
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
 local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local MiningPower = require(script:FindFirstAncestor("game").Shared.Modules.Math.MiningPower)
+local MiningPower = require(script:FindFirstAncestor("game").Shared.Core.Math.MiningPower)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local PlayerDataServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerDataServiceServer)
 local PlayerDataServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerDataServiceUtils)
-local ResolveItem = require(script:FindFirstAncestor("game").Shared.Modules.Game.Format.ResolveItem)
-local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Modules.Game.Format.ResolveToolInstance)
+local ResolveItem = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveItem)
+local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveToolInstance)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local ToolBinder = require(script:FindFirstAncestor("game").Shared.Binders.ToolBinder)
-local TorchTilt = require(script:FindFirstAncestor("game").Shared.Modules.Math.TorchTilt)
+local TorchTilt = require(script:FindFirstAncestor("game").Shared.Core.Math.TorchTilt)
 local WorldGenerationServiceServer =
 	require(script:FindFirstAncestor("game").Server.Services.WorldGenerationServiceServer)
 
@@ -96,6 +96,7 @@ local FALLBACK_PERSISTENCE_TIMEOUT_SECONDS = 4
 local PLAYER_DATA_SETTLE_TIMEOUT_SECONDS = 8
 local SAVE_DEBOUNCE_SECONDS = 0.25
 local SAVE_RETRY_SECONDS = 5
+local MISSING_ASSET_ERROR = "no asset found!"
 local TOOL_IMPORT_ATTRIBUTE_NAME = "itemId"
 local TOOL_IMPORT_TYPE_ATTRIBUTE_NAME = "itemType"
 local TOOL_IMPORT_METADATA_TYPE_KEY = "itemType"
@@ -237,19 +238,6 @@ local function applyToolVisualProperties(part: BasePart)
 	part.Massless = true
 end
 
-local function createFallbackToolHandle(tool: Tool, itemIdRaw: any): BasePart
-	local handle = Instance.new("Part")
-	handle.Name = "Handle"
-	handle.Size = Vector3.new(0.45, 2.2, 0.45)
-	handle.Material = Enum.Material.Metal
-	handle.Color = if string.find(string.lower(sanitizeItemId(itemIdRaw) or tool.Name), "copper", 1, true) ~= nil
-		then Color3.fromRGB(184, 115, 51)
-		else Color3.fromRGB(163, 162, 165)
-	handle.Parent = tool
-	applyToolHandleProperties(handle)
-	return handle
-end
-
 local function clearGeneratedToolWelds(tool: Tool)
 	for _, descendant in tool:GetDescendants() do
 		if descendant:IsA("WeldConstraint") and descendant:GetAttribute(GENERATED_TOOL_WELD_ATTRIBUTE_NAME) == true then
@@ -282,7 +270,7 @@ local function bindToolDescendantsToHandle(tool: Tool, handle: BasePart)
 	end
 end
 
-local function ensureToolHasVisibleHandle(tool: Tool, itemIdRaw: any): BasePart
+local function ensureToolHasVisibleHandle(tool: Tool, _itemIdRaw: any): BasePart
 	tool.RequiresHandle = true
 	local existingHandle = tool:FindFirstChild("Handle")
 	if existingHandle ~= nil and existingHandle:IsA("BasePart") then
@@ -305,22 +293,7 @@ local function ensureToolHasVisibleHandle(tool: Tool, itemIdRaw: any): BasePart
 		bindToolDescendantsToHandle(tool, clonedHandle)
 		return clonedHandle
 	end
-	local fallback = createFallbackToolHandle(tool, itemIdRaw)
-	bindToolDescendantsToHandle(tool, fallback)
-	return fallback
-end
-
-local function createFallbackManagedTool(itemIdRaw: any): Tool?
-	local itemId = sanitizeItemId(itemIdRaw)
-	if itemId == nil then
-		return nil
-	end
-
-	local tool = Instance.new("Tool")
-	tool.Name = itemId
-	tool.CanBeDropped = false
-	tool.RequiresHandle = true
-	return tool
+	error(MISSING_ASSET_ERROR, 0)
 end
 
 local function configureManagedToolForInventoryStack(tool: Tool, itemIdRaw: any, stackRaw: any, selectedSlotRaw: any)
@@ -355,10 +328,7 @@ local function cloneToolForInventoryStack(itemIdRaw: any, stackRaw: any, selecte
 	end
 	local clone = ResolveItem.cloneToolTemplate(itemId)
 	if clone == nil then
-		clone = createFallbackManagedTool(itemId)
-	end
-	if clone == nil then
-		return nil
+		error(MISSING_ASSET_ERROR, 0)
 	end
 	configureManagedToolForInventoryStack(clone, itemId, stackRaw, selectedSlotRaw)
 	return clone

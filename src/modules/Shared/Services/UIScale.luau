@@ -2,7 +2,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local BaseUIScaling = require(script:FindFirstAncestor("game").Shared.Modules.UI.UIScaling)
+local BaseUIScaling = require(script:FindFirstAncestor("game").Shared.Core.UI.UIScaling)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local PlatformServiceUtils = require(script.Parent.PlatformServiceUtils)
 local Signal = require(ReplicatedStorage.Packages.Signal)

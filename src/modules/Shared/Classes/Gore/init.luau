@@ -3,11 +3,11 @@ local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local BloodEngine = require(ReplicatedStorage.Packages.BloodEngine)
+local BloodEngine = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("BloodEngine"))
 local Gib = require(script.Gib)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local LimbDestruction = require(script.LimbDestruction)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 
 type JanitorClass = {
 	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,

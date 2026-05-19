@@ -6,8 +6,8 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
-local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Modules.Platform.GamepadPointer)
+local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
+local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Core.Platform.GamepadPointer)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local LootServiceClient = require(script:FindFirstAncestor("game").Client.Services.LootServiceClient)
@@ -16,7 +16,7 @@ local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Se
 local PlayerDataServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlayerDataServiceClient)
 local PlayerDataServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerDataServiceUtils)
 local Signal = require(ReplicatedStorage.Packages.Signal)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
 

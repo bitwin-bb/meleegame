@@ -5,7 +5,7 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local Workspace = game:GetService("Workspace")
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local Height = require(script.Parent.Height)
-local TileMaterial = require(script:FindFirstAncestor("game").Shared.Modules.Game.Render.TileMaterial)
+local TileMaterial = require(script:FindFirstAncestor("game").Shared.Game.Render.TileMaterial)
 local WorldGenerationColor = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationColor)
 
 local ProceduralTree = {}

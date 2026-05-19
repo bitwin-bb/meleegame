@@ -1,6 +1,6 @@
 --!strict
 
-local DeterministicRNG = require(script:FindFirstAncestor("game").Shared.Modules.Core.DeterministicRNG)
+local DeterministicRNG = require(script:FindFirstAncestor("game").Shared.Core.DeterministicRNG)
 
 local TreeHeightVariation = {}
 

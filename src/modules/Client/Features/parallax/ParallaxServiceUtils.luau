@@ -3,7 +3,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local Lerp = require(script:FindFirstAncestor("game").Shared.Modules.Math.Lerp)
+local Lerp = require(script:FindFirstAncestor("game").Shared.Core.Math.Lerp)
 local WorldSimulationShared = require(script:FindFirstAncestor("game").Shared.Services.Shared)
 
 local ParallaxServiceUtils = {}

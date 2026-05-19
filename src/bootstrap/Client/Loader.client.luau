@@ -27,8 +27,9 @@ local ITEM_REGISTRY_STABLE_PASSES_REQUIRED = 2
 local MODULE_REQUIRE_BATCH_SIZE = 12
 local ASSET_PRELOAD_BATCH_SIZE = 40
 local ASSET_PROGRESS_INTERVAL = 5
-local BLOOD_ENGINE_INDEX_TOKEN = "blood-engine@"
-local BLOOD_ENGINE_PACKAGE_FOLDER_NAME = "blood-engine"
+local BLOOD_ENGINE_PACKAGE_NAME = "BloodEngine"
+local SHARED_FOLDER_NAME = "Shared"
+local VENDOR_FOLDER_NAME = "Vendor"
 
 local STAGE_WEIGHT_REPLICATION = 10
 local STAGE_WEIGHT_FRAMEWORK = 12
@@ -54,6 +55,9 @@ local RUNTIME_WALLY_PACKAGES = {
 	"Janitor",
 	"Matter",
 	"Plasma",
+}
+
+local RUNTIME_VENDOR_PACKAGES = {
 	"FastCast",
 	"PartCache",
 	"RaycastHitbox",
@@ -89,6 +93,27 @@ local SKIPPED_MODULE_NAMES = {
 	BlinkServer = true,
 }
 
+local SKIPPED_MODULE_PATHS = {
+	["Client/Features/app/RootUI"] = true,
+	["Features/app/RootUI"] = true,
+	["Features/npc/BossServiceServer"] = true,
+	["Features/npc/components/QueenBeeRoot"] = true,
+	["Features/npc/modules/QueenBeeSpriteSheet"] = true,
+	["Features/npc/NpcRoot"] = true,
+	["Features/npc/NpcServiceServer"] = true,
+	["Features/npc/npc/QueenBee"] = true,
+	["Features/npc/ui/components/QueenBee"] = true,
+	["Features/npc/ui/screens/QueenBeeScreen"] = true,
+	["Shared/Features/npc/BossServiceServer"] = true,
+	["Shared/Features/npc/components/QueenBeeRoot"] = true,
+	["Shared/Features/npc/modules/QueenBeeSpriteSheet"] = true,
+	["Shared/Features/npc/NpcRoot"] = true,
+	["Shared/Features/npc/NpcServiceServer"] = true,
+	["Shared/Features/npc/npc/QueenBee"] = true,
+	["Shared/Features/npc/ui/components/QueenBee"] = true,
+	["Shared/Features/npc/ui/screens/QueenBeeScreen"] = true,
+}
+
 type LoaderSnapshot = {
 	status: string,
 	stage: string,
@@ -119,6 +144,7 @@ type ReplicatedContext = {
 	clientRoot: Instance,
 	sharedRoot: Instance,
 	packagesRoot: Instance,
+	vendorRoot: Instance,
 	loaderModule: ModuleScript,
 	loaderUtils: Instance,
 }
@@ -338,26 +364,6 @@ local function waitForRequiredDescendant(parent: Instance, name: string, timeout
 	return existing
 end
 
-local function findBloodEnginePackageRoot(packagesRoot: Instance): Instance?
-	local indexRoot = packagesRoot:FindFirstChild("_Index")
-	if indexRoot == nil then
-		return nil
-	end
-
-	for _, packageFolder in indexRoot:GetChildren() do
-		if string.find(packageFolder.Name, BLOOD_ENGINE_INDEX_TOKEN, 1, true) == nil then
-			continue
-		end
-
-		local bloodEngineRoot = packageFolder:FindFirstChild(BLOOD_ENGINE_PACKAGE_FOLDER_NAME)
-		if bloodEngineRoot ~= nil then
-			return bloodEngineRoot
-		end
-	end
-
-	return nil
-end
-
 local function waitForInstancePath(root: Instance, path: { string }, timeoutSeconds: number): Instance
 	local deadline = os.clock() + timeoutSeconds
 	local current = root
@@ -393,6 +399,22 @@ local function waitForRequiredModule(root: Instance, path: { string }, timeoutSe
 	end
 
 	return current
+end
+
+local function findLoaderModule(packageRoot: Instance): ModuleScript
+	local loaderUtils = waitForRequiredDescendant(packageRoot, "LoaderUtils", REPLICATION_TIMEOUT_SECONDS)
+	local loader = loaderUtils.Parent
+	if loader == nil or not loader:IsA("ModuleScript") then
+		error("replicated loader is not a ModuleScript")
+	end
+
+	waitForRequiredChild(loader, "Dependencies", REPLICATION_TIMEOUT_SECONDS)
+	waitForRequiredChild(loader, "LoaderLink", REPLICATION_TIMEOUT_SECONDS)
+	waitForRequiredChild(loader, "Replication", REPLICATION_TIMEOUT_SECONDS)
+	waitForRequiredChild(loader, "Maid", REPLICATION_TIMEOUT_SECONDS)
+	waitForRequiredChild(loader, "Utils", REPLICATION_TIMEOUT_SECONDS)
+
+	return loader
 end
 
 local function getLocalPlayer(): Player
@@ -482,7 +504,22 @@ local function collectAssetIdsFromTree(root: Instance, assetIds: { string }, ass
 	end
 end
 
-local function shouldPrewarmModule(moduleScript: ModuleScript): boolean
+local function getRelativeModulePath(root: Instance, moduleScript: ModuleScript): string?
+	local names = {}
+	local current: Instance? = moduleScript
+	while current ~= nil and current ~= root do
+		table.insert(names, 1, current.Name)
+		current = current.Parent
+	end
+
+	if current ~= root then
+		return nil
+	end
+
+	return table.concat(names, "/")
+end
+
+local function shouldPrewarmModule(root: Instance, moduleScript: ModuleScript): boolean
 	if SKIPPED_MODULE_NAMES[moduleScript.Name] == true then
 		return false
 	end
@@ -492,6 +529,10 @@ local function shouldPrewarmModule(moduleScript: ModuleScript): boolean
 	if string.find(moduleScript.Name, ".story", 1, true) ~= nil then
 		return false
 	end
+	local relativePath = getRelativeModulePath(root, moduleScript)
+	if relativePath ~= nil and SKIPPED_MODULE_PATHS[relativePath] == true then
+		return false
+	end
 
 	return true
 end
@@ -499,7 +540,7 @@ end
 local function collectModuleScripts(root: Instance): { ModuleScript }
 	local modules = {}
 	for _, descendant in root:GetDescendants() do
-		if descendant:IsA("ModuleScript") and shouldPrewarmModule(descendant) then
+		if descendant:IsA("ModuleScript") and shouldPrewarmModule(root, descendant) then
 			modules[#modules + 1] = descendant
 		end
 	end
@@ -540,15 +581,23 @@ local function requireModule(
 end
 
 local function resolveWorkspaceFoldersModule(context: ReplicatedContext): ModuleScript?
+	local coreFolder = context.sharedRoot:FindFirstChild("Core")
+	if coreFolder ~= nil then
+		local workspaceFoldersModule = coreFolder:FindFirstChild("WorkspaceFolders")
+		if workspaceFoldersModule ~= nil and workspaceFoldersModule:IsA("ModuleScript") then
+			return workspaceFoldersModule
+		end
+	end
+
 	local modulesFolder = context.sharedRoot:FindFirstChild("Modules")
 	if modulesFolder == nil then
 		return nil
 	end
-	local coreFolder = modulesFolder:FindFirstChild("Core")
-	if coreFolder == nil then
+	local modulesCoreFolder = modulesFolder:FindFirstChild("Core")
+	if modulesCoreFolder == nil then
 		return nil
 	end
-	local workspaceFoldersModule = coreFolder:FindFirstChild("WorkspaceFolders")
+	local workspaceFoldersModule = modulesCoreFolder:FindFirstChild("WorkspaceFolders")
 	if workspaceFoldersModule ~= nil and workspaceFoldersModule:IsA("ModuleScript") then
 		return workspaceFoldersModule
 	end
@@ -624,13 +673,11 @@ local function waitForReplicatedContext(): ReplicatedContext
 	local gameRoot = waitForRequiredChild(packageRoot, "game", REPLICATION_TIMEOUT_SECONDS)
 	local clientRoot = waitForRequiredChild(gameRoot, "Client", REPLICATION_TIMEOUT_SECONDS)
 	local sharedRoot = waitForRequiredChild(gameRoot, "Shared", REPLICATION_TIMEOUT_SECONDS)
+	local sourceSharedRoot = waitForRequiredChild(ReplicatedStorage, SHARED_FOLDER_NAME, REPLICATION_TIMEOUT_SECONDS)
 	local packagesRoot = waitForRequiredChild(ReplicatedStorage, "Packages", REPLICATION_TIMEOUT_SECONDS)
-	local loader = waitForRequiredChild(packageRoot, "loader", REPLICATION_TIMEOUT_SECONDS)
+	local vendorRoot = waitForRequiredChild(sourceSharedRoot, VENDOR_FOLDER_NAME, REPLICATION_TIMEOUT_SECONDS)
+	local loader = findLoaderModule(packageRoot)
 	local loaderUtils = waitForRequiredDescendant(packageRoot, "LoaderUtils", REPLICATION_TIMEOUT_SECONDS)
-
-	if not loader:IsA("ModuleScript") then
-		error("replicated loader is not a ModuleScript")
-	end
 
 	completeStage("replication", "replicated game package is ready", STAGE_WEIGHT_REPLICATION)
 	return {
@@ -639,6 +686,7 @@ local function waitForReplicatedContext(): ReplicatedContext
 		clientRoot = clientRoot,
 		sharedRoot = sharedRoot,
 		packagesRoot = packagesRoot,
+		vendorRoot = vendorRoot,
 		loaderModule = loader,
 		loaderUtils = loaderUtils,
 	}
@@ -681,17 +729,8 @@ local function waitForNetwork()
 	completeStage("network", "network remotes are ready", STAGE_WEIGHT_NETWORK)
 end
 
-local function waitForBloodEngineAssets(packagesRoot: Instance)
-	local deadline = os.clock() + REPLICATION_TIMEOUT_SECONDS
-	local bloodEngineRoot = findBloodEnginePackageRoot(packagesRoot)
-	while bloodEngineRoot == nil and os.clock() < deadline do
-		task.wait(0.05)
-		bloodEngineRoot = findBloodEnginePackageRoot(packagesRoot)
-	end
-
-	if bloodEngineRoot == nil then
-		error("timed out waiting for BloodEngine package root")
-	end
+local function waitForBloodEngineAssets(vendorRoot: Instance)
+	local bloodEngineRoot = waitForRequiredChild(vendorRoot, BLOOD_ENGINE_PACKAGE_NAME, REPLICATION_TIMEOUT_SECONDS)
 
 	for _, path in
 		{
@@ -712,7 +751,8 @@ local function prewarmRuntimePackages(
 	assetSet: { [string]: boolean }
 )
 	setStageProgress("packages", "loading runtime packages", 0, STAGE_WEIGHT_PACKAGES)
-	waitForBloodEngineAssets(context.packagesRoot)
+	waitForBloodEngineAssets(context.vendorRoot)
+	local runtimePackageCount = #RUNTIME_WALLY_PACKAGES + #RUNTIME_VENDOR_PACKAGES
 
 	for index, packageName in RUNTIME_WALLY_PACKAGES do
 		local packageModule = context.packagesRoot:FindFirstChild(packageName)
@@ -724,8 +764,25 @@ local function prewarmRuntimePackages(
 
 		setStageProgress(
 			"packages",
-			`loading runtime packages {index}/{#RUNTIME_WALLY_PACKAGES}`,
-			index / #RUNTIME_WALLY_PACKAGES,
+			`loading runtime packages {index}/{runtimePackageCount}`,
+			index / runtimePackageCount,
+			STAGE_WEIGHT_PACKAGES
+		)
+	end
+
+	for index, packageName in RUNTIME_VENDOR_PACKAGES do
+		local completedPackageCount = #RUNTIME_WALLY_PACKAGES + index
+		local packageModule = context.vendorRoot:FindFirstChild(packageName)
+		if packageModule == nil or not packageModule:IsA("ModuleScript") then
+			recordFailure("vendor package " .. packageName, "missing package module")
+		else
+			requireModule(packageModule, "vendor package " .. packageName, warmedModules, assetIds, assetSet, false)
+		end
+
+		setStageProgress(
+			"packages",
+			`loading runtime packages {completedPackageCount}/{runtimePackageCount}`,
+			completedPackageCount / runtimePackageCount,
 			STAGE_WEIGHT_PACKAGES
 		)
 	end
@@ -743,12 +800,12 @@ local function prewarmCriticalModules(
 		{
 			key = "Configs",
 			label = "core configs",
-			path = { "Shared", "Modules", "Core", "Configs" },
+			path = { "Shared", "Core", "Configs" },
 		},
 		{
 			key = "Runtime",
 			label = "core runtime",
-			path = { "Shared", "Modules", "Core", "Runtime" },
+			path = { "Shared", "Core", "Runtime" },
 		},
 		{
 			key = "Networker",
@@ -934,10 +991,6 @@ local function preloadAssets(assetIds: { string })
 			STAGE_WEIGHT_ASSETS
 		)
 		task.wait()
-	end
-
-	if snapshot.assetFailedCount > 0 then
-		recordWarning("content preload", `{snapshot.assetFailedCount} content ids did not report success`)
 	end
 
 	completeStage("assets", "content preload finished", STAGE_WEIGHT_ASSETS)

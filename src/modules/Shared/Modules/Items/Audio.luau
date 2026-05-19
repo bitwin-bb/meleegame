@@ -22,52 +22,6 @@ return {
 		UndergroundSnow = "rbxassetid://92651409708176",
 	},
 	Npcs = {
-		Slimes = {
-			Default = {
-				Hurt = {
-					"rbxassetid://128251385051448",
-					"rbxassetid://82369877422855",
-					"rbxassetid://88152194616240",
-				},
-				Death = {
-					"rbxassetid://95350652986257",
-					"rbxassetid://131057043336047",
-					"rbxassetid://129751945121242",
-				},
-				Jump = {
-					"rbxassetid://87722006933286",
-					"rbxassetid://128495657900967",
-					"rbxassetid://103426790889570",
-				},
-				Land = {
-					"rbxassetid://120212590065651",
-					"rbxassetid://92516935838935",
-					"rbxassetid://101135542203579",
-				},
-			},
-			GreenSlime = {
-				Hurt = {
-					"rbxassetid://128251385051448",
-					"rbxassetid://82369877422855",
-					"rbxassetid://88152194616240",
-				},
-				Death = {
-					"rbxassetid://95350652986257",
-					"rbxassetid://131057043336047",
-					"rbxassetid://129751945121242",
-				},
-				Jump = {
-					"rbxassetid://87722006933286",
-					"rbxassetid://128495657900967",
-					"rbxassetid://103426790889570",
-				},
-				Land = {
-					"rbxassetid://120212590065651",
-					"rbxassetid://92516935838935",
-					"rbxassetid://101135542203579",
-				},
-			},
-		},
 		Bosses = {
 			EyeOfCthulhu = {
 				roar = "rbxassetid://80990251150303",

@@ -8,8 +8,8 @@ local Maid = loader("Maid")
 local Observable = loader("Observable")
 local Rx = loader("Rx")
 
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
-local GamepadNav = require(script:FindFirstAncestor("game").Shared.Modules.Platform.GamepadNav)
+local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
+local GamepadNav = require(script:FindFirstAncestor("game").Shared.Core.Platform.GamepadNav)
 local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
 local padSlice = require(script:FindFirstAncestor("game").Client.UI.features.pad.state.padSlice)
 

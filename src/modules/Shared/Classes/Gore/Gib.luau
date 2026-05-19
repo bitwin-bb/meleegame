@@ -4,10 +4,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local Curve = require(script:FindFirstAncestor("game").Shared.Modules.Math.Curve)
-local Ease = require(script:FindFirstAncestor("game").Shared.Modules.Math.Ease)
+local Curve = require(script:FindFirstAncestor("game").Shared.Core.Math.Curve)
+local Ease = require(script:FindFirstAncestor("game").Shared.Core.Math.Ease)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Vec = require(script:FindFirstAncestor("game").Shared.Modules.Math.Vec)
+local Vec = require(script:FindFirstAncestor("game").Shared.Core.Math.Vec)
 
 local Gib = {}
 Gib.__index = Gib

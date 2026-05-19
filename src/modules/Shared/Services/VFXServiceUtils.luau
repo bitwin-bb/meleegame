@@ -3,7 +3,7 @@ local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 
 local VFXServiceUtils = {}
 
@@ -33,6 +33,8 @@ VFXServiceUtils.DEFAULT_CLEANUP_BUFFER = 0.2
 VFXServiceUtils.MIN_CLEANUP_DELAY = 0.35
 VFXServiceUtils.MAX_DURATION = 60
 VFXServiceUtils.MAX_EMIT_COUNT = 512
+
+local MISSING_ASSET_ERROR = "no asset found!"
 
 local function trim(valueRaw: any): string
 	if typeof(valueRaw) ~= "string" then
@@ -213,7 +215,7 @@ function VFXServiceUtils.ResolveEffectTemplate(effectSourceRaw: any): Instance?
 
 	local effectsRoot = resolveEffectsRoot()
 	if effectsRoot == nil then
-		return nil
+		error(MISSING_ASSET_ERROR, 0)
 	end
 
 	local byPath = resolveDescendantByPath(effectsRoot, effectName)
@@ -237,7 +239,7 @@ function VFXServiceUtils.ResolveEffectTemplate(effectSourceRaw: any): Instance?
 		end
 	end
 
-	return nil
+	error(MISSING_ASSET_ERROR, 0)
 end
 
 function VFXServiceUtils.SanitizePlaybackOptions(optionsRaw: any): VFXPlaybackOptions

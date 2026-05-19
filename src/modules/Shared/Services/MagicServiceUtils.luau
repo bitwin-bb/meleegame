@@ -1,10 +1,10 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Trig = require(script:FindFirstAncestor("game").Shared.Modules.Math.Trig)
-local Vec = require(script:FindFirstAncestor("game").Shared.Modules.Math.Vec)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
-local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Modules.Game.Format.ResolveToolInstance)
+local Trig = require(script:FindFirstAncestor("game").Shared.Core.Math.Trig)
+local Vec = require(script:FindFirstAncestor("game").Shared.Core.Math.Vec)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
+local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveToolInstance)
 
 local MagicServiceUtils = {}
 

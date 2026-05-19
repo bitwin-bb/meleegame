@@ -4,7 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
 local deathSlice = require(script:FindFirstAncestor("game").Client.UI.features.death.state.deathSlice)
-local PlayerSpawnCooldown = require(script:FindFirstAncestor("game").Shared.Modules.Game.Player.PlayerSpawnCooldown)
+local PlayerSpawnCooldown = require(script:FindFirstAncestor("game").Shared.Game.Player.PlayerSpawnCooldown)
 
 type DeathState = deathSlice.DeathState
 

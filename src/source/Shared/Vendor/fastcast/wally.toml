@@ -1,0 +1,13 @@
+[package]
+name = "megamonsta2/fastcast"
+description = "A fork of Xan The Dragon's FastCastRedux module. Includes strict typechecking, exported types, and usage of PartCache and Table as dependancies (instead of embedded in the module)."
+version = "1.0.0"
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+authors = ["Xan_TheDragon", "megamonsta2"]
+exclude = ["**"]
+include = ["src", "src/**", "wally.toml", "default.project.json"]
+
+[dependencies]
+Table = "megamonsta2/table@1.0.3"
+PartCache = "megamonsta2/partcache@1.0.1"

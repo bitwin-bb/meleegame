@@ -3,28 +3,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local REPLICATION_TIMEOUT_SECONDS = 60
-local BLOOD_ENGINE_INDEX_TOKEN = "blood-engine@"
-local BLOOD_ENGINE_PACKAGE_FOLDER_NAME = "blood-engine"
-
-local function findBloodEnginePackageRoot(packagesRoot: Instance): Instance?
-	local indexRoot = packagesRoot:FindFirstChild("_Index")
-	if indexRoot == nil then
-		return nil
-	end
-
-	for _, packageFolder in indexRoot:GetChildren() do
-		if string.find(packageFolder.Name, BLOOD_ENGINE_INDEX_TOKEN, 1, true) == nil then
-			continue
-		end
-
-		local bloodEngineRoot = packageFolder:FindFirstChild(BLOOD_ENGINE_PACKAGE_FOLDER_NAME)
-		if bloodEngineRoot ~= nil then
-			return bloodEngineRoot
-		end
-	end
-
-	return nil
-end
+local BLOOD_ENGINE_PACKAGE_NAME = "BloodEngine"
+local SHARED_FOLDER_NAME = "Shared"
+local VENDOR_FOLDER_NAME = "Vendor"
 
 local function waitForInstancePath(root: Instance, path: { string }, timeoutSeconds: number): Instance
 	local deadline = os.clock() + timeoutSeconds
@@ -50,17 +31,53 @@ local function waitForInstancePath(root: Instance, path: { string }, timeoutSeco
 	return current
 end
 
-local function waitForBloodEngineAssets(packagesRoot: Instance)
-	local deadline = os.clock() + REPLICATION_TIMEOUT_SECONDS
-	local bloodEngineRoot = findBloodEnginePackageRoot(packagesRoot)
-	while bloodEngineRoot == nil and os.clock() < deadline do
+local function waitForRequiredDescendant(parent: Instance, name: string, timeoutSeconds: number): Instance
+	local deadline = os.clock() + timeoutSeconds
+	local existing = parent:FindFirstChild(name, true)
+	while existing == nil and os.clock() < deadline do
 		task.wait(0.05)
-		bloodEngineRoot = findBloodEnginePackageRoot(packagesRoot)
+		existing = parent:FindFirstChild(name, true)
 	end
 
-	if bloodEngineRoot == nil then
-		error("timed out waiting for BloodEngine package root")
+	if existing == nil then
+		error(`timed out waiting for descendant {name} under {parent:GetFullName()}`)
 	end
+
+	return existing
+end
+
+local function waitForRequiredChild(parent: Instance, name: string, timeoutSeconds: number): Instance
+	local child = parent:FindFirstChild(name)
+	if child ~= nil then
+		return child
+	end
+
+	local waitedChild = parent:WaitForChild(name, timeoutSeconds)
+	if waitedChild == nil then
+		error(`timed out waiting for child {name} under {parent:GetFullName()}`)
+	end
+
+	return waitedChild
+end
+
+local function findLoaderModule(packageRoot: Instance): ModuleScript
+	local loaderUtils = waitForRequiredDescendant(packageRoot, "LoaderUtils", REPLICATION_TIMEOUT_SECONDS)
+	local loader = loaderUtils.Parent
+	if loader == nil or not loader:IsA("ModuleScript") then
+		error("replicated loader is not a ModuleScript")
+	end
+
+	waitForRequiredChild(loader, "Dependencies", REPLICATION_TIMEOUT_SECONDS)
+	waitForRequiredChild(loader, "LoaderLink", REPLICATION_TIMEOUT_SECONDS)
+	waitForRequiredChild(loader, "Replication", REPLICATION_TIMEOUT_SECONDS)
+	waitForRequiredChild(loader, "Maid", REPLICATION_TIMEOUT_SECONDS)
+	waitForRequiredChild(loader, "Utils", REPLICATION_TIMEOUT_SECONDS)
+
+	return loader
+end
+
+local function waitForBloodEngineAssets(vendorRoot: Instance)
+	local bloodEngineRoot = waitForInstancePath(vendorRoot, { BLOOD_ENGINE_PACKAGE_NAME }, REPLICATION_TIMEOUT_SECONDS)
 
 	for _, path in
 		{
@@ -77,10 +94,12 @@ end
 local packageRoot = ReplicatedStorage:WaitForChild("AquariaBackup")
 local gameRoot = packageRoot:WaitForChild("game")
 local ItemRegistry = require(gameRoot.Shared.Modules.Items.Registry)
+local vendorRoot =
+	waitForInstancePath(ReplicatedStorage, { SHARED_FOLDER_NAME, VENDOR_FOLDER_NAME }, REPLICATION_TIMEOUT_SECONDS)
 
-local loader = packageRoot:WaitForChild("loader")
+local loader = findLoaderModule(packageRoot)
 local loaderRequire = require(loader).bootstrapGame(packageRoot)
-waitForBloodEngineAssets(ReplicatedStorage:WaitForChild("Packages"))
+waitForBloodEngineAssets(vendorRoot)
 
 local ServiceBag = loaderRequire("ServiceBag")
 local NevermoreSupport = loaderRequire("NevermoreSupport")

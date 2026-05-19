@@ -2,13 +2,13 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 
-local BossServiceClient = require(script:FindFirstAncestor("game").Client.Services.BossServiceClient)
+local BossServiceClient = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceClient)
 local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
 local HpServiceClient = require(script:FindFirstAncestor("game").Client.Services.HpServiceClient)
 local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.HpServiceUtils)
 local InventoryServiceClient = require(script:FindFirstAncestor("game").Client.Services.InventoryServiceClient)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
-local NpcServiceClient = require(script:FindFirstAncestor("game").Client.Services.NpcServiceClient)
+local NpcServiceClient = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceClient)
 local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
 local infoPlayerSlice = require(script:FindFirstAncestor("game").Client.UI.features.player.state.infoPlayerSlice)
 

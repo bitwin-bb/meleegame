@@ -6,12 +6,28 @@ local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networ
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local DataTemplate = require(script:FindFirstAncestor("game").Shared.Modules.Core.DataTemplate)
+local DataTemplate = require(script:FindFirstAncestor("game").Shared.Core.DataTemplate)
 local PlayerDataServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerDataServiceUtils)
-local ProfileStore =
-	require(game:GetService("ServerScriptService"):WaitForChild("ServerPackages"):WaitForChild("ProfileStore"))
 local loader = require(loaderUtils.Parent).load(script)
 local Promise = loader("Promise")
+
+local SERVER_PACKAGE_LOAD_TIMEOUT_SECONDS = 10
+
+local function resolveServerPackage(packageName: string): ModuleScript
+	local serverPackages = game:GetService("ServerScriptService"):FindFirstChild("ServerPackages")
+		or game:GetService("ServerScriptService"):WaitForChild("ServerPackages", SERVER_PACKAGE_LOAD_TIMEOUT_SECONDS)
+	assert(serverPackages ~= nil, `[PlayerDataServiceServer] Missing ServerScriptService.ServerPackages.`)
+
+	local package = serverPackages:FindFirstChild(packageName) or serverPackages:WaitForChild(
+		packageName,
+		SERVER_PACKAGE_LOAD_TIMEOUT_SECONDS
+	)
+	assert(package ~= nil and package:IsA("ModuleScript"), `[PlayerDataServiceServer] Missing ServerPackages.{packageName}.`)
+
+	return package
+end
+
+local ProfileStore = require(resolveServerPackage("ProfileStore"))
 
 type PlayerData = PlayerDataServiceUtils.PlayerData
 type LoadState = PlayerDataServiceUtils.LoadState

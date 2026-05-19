@@ -1,0 +1,9 @@
+[package]
+name = "arakodev/rbxcamerashaker"
+version = "0.1.1"
+description = "Roblox camera shake module ported from sleitnick/RbxCameraShaker."
+license = "MIT"
+authors = ["Stephen Leitnick"]
+registry = "https://github.com/UpliftGames/wally-index"
+realm = "shared"
+exclude = ["rokit.toml", "selene.toml"]

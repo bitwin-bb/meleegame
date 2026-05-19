@@ -4,7 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GoreServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.GoreServiceUtils)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
 local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 
 local GoreServiceServer = {}
@@ -13,9 +13,6 @@ local SHARED_LARGE_BLOOD_POOL_SIZE_Y = NumberRange.new(0.16, 0.28)
 local SHARED_LARGE_BLOOD_POOL_STARTING_SIZE = Vector3.new(0.2, 0.42, 0.2)
 local SHARED_LARGE_BLOOD_POOL_MAX_SIZE = 1.8
 local SHARED_LARGE_BLOOD_POOL_EXPANSE_DIVIDER = 2
-local DEFAULT_SLIME_BLOOD_EMIT_COUNT = 22
-local DEFAULT_SLIME_BLOOD_FOLLOW_DURATION = 0.1
-local DEFAULT_SLIME_BLOOD_DROPLET_AMOUNT = 8
 
 type EntityRuntime = {
 	entityId: string,
@@ -369,46 +366,6 @@ function GoreServiceServer.OnNpcDied(self: GoreServiceServer, runtimeIdRaw: any,
 	return self:emitEntityDeath(entityId, originRaw)
 end
 
-function GoreServiceServer.EmitNpcSlimeBlood(
-	self: GoreServiceServer,
-	runtimeIdRaw: any,
-	originRaw: any,
-	emitCountRaw: any?,
-	followDurationRaw: any?,
-	dropletAmountRaw: any?
-): boolean
-	local entityId = GoreServiceUtils.makeNpcEntityId(runtimeIdRaw)
-	if entityId == nil then
-		return false
-	end
-
-	local runtime = self:getEntityRuntime(entityId)
-	if runtime == nil then
-		return false
-	end
-
-	local origin = GoreServiceUtils.resolveBloodOrigin(runtime.model, originRaw)
-	if origin == nil then
-		return false
-	end
-
-	local emitCount = GoreServiceUtils.sanitizeBloodAmount(emitCountRaw, DEFAULT_SLIME_BLOOD_EMIT_COUNT)
-	local followDuration =
-		GoreServiceUtils.sanitizeEffectDuration(followDurationRaw, DEFAULT_SLIME_BLOOD_FOLLOW_DURATION)
-	local dropletAmount = GoreServiceUtils.sanitizeBloodAmount(dropletAmountRaw, DEFAULT_SLIME_BLOOD_DROPLET_AMOUNT)
-	local originPosition = if typeof(origin) == "Vector3" then origin else (origin :: BasePart).Position
-
-	self:broadcast(
-		GoreServiceUtils.NETWORK_METHOD_EMIT_SLIME_BLOOD,
-		entityId,
-		originPosition,
-		emitCount,
-		followDuration,
-		dropletAmount
-	)
-	return true
-end
-
 function GoreServiceServer.Init(self: GoreServiceServer)
 	self.networker = Networker.server.new("GoreService", self, {
 		self.RequestSync,
@@ -445,7 +402,6 @@ GoreServiceServer.registerNpcEntity = GoreServiceServer.RegisterNpcEntity
 GoreServiceServer.unregisterNpcEntity = GoreServiceServer.UnregisterNpcEntity
 GoreServiceServer.onNpcDamaged = GoreServiceServer.OnNpcDamaged
 GoreServiceServer.onNpcDied = GoreServiceServer.OnNpcDied
-GoreServiceServer.emitNpcSlimeBlood = GoreServiceServer.EmitNpcSlimeBlood
 GoreServiceServer.init = GoreServiceServer.Init
 GoreServiceServer.destroy = GoreServiceServer.Destroy
 

@@ -2,7 +2,7 @@
 local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local DataTemplate = require(script:FindFirstAncestor("game").Shared.Modules.Core.DataTemplate)
+local DataTemplate = require(script:FindFirstAncestor("game").Shared.Core.DataTemplate)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
 local PlayerDataServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerDataServiceUtils)
 

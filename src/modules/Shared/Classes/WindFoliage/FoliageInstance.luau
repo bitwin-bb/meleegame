@@ -4,8 +4,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Damp = require(script:FindFirstAncestor("game").Shared.Modules.Math.Damp)
-local Vec = require(script:FindFirstAncestor("game").Shared.Modules.Math.Vec)
+local Damp = require(script:FindFirstAncestor("game").Shared.Core.Math.Damp)
+local Vec = require(script:FindFirstAncestor("game").Shared.Core.Math.Vec)
 local TreeFoliageGraph = require(script.Parent.TreeFoliageGraph)
 
 local FoliageInstance = {}

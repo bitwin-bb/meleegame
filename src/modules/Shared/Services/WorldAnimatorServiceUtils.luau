@@ -2,9 +2,9 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
-local Ease = require(script:FindFirstAncestor("game").Shared.Modules.Math.Ease)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
+local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
+local Ease = require(script:FindFirstAncestor("game").Shared.Core.Math.Ease)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 
 local WorldAnimatorServiceUtils = {}
 
@@ -32,9 +32,9 @@ local DEFAULT_SETTINGS: ChunkAnimatorSettings = {
 	verticalOffset = 14,
 	transparencyRelativeToChunkPosition = false,
 	minPlayerDistanceToAnimate = 16,
-	maxConcurrentAnimations = 8,
+	maxConcurrentAnimations = 3,
 	animateExistingChunks = true,
-	maxAnimatedPartsPerChunk = 100000,
+	maxAnimatedPartsPerChunk = 300,
 }
 
 local WORLD_FOLDER_NAME = "WorldGeneration"
@@ -94,7 +94,7 @@ function WorldAnimatorServiceUtils.SanitizeSettings(
 		maxConcurrentAnimations = clampInteger(
 			(settings :: any).maxConcurrentAnimations,
 			1,
-			256,
+			16,
 			fallback.maxConcurrentAnimations
 		),
 		animateExistingChunks = if typeof((settings :: any).animateExistingChunks) == "boolean"
@@ -103,7 +103,7 @@ function WorldAnimatorServiceUtils.SanitizeSettings(
 		maxAnimatedPartsPerChunk = clampInteger(
 			(settings :: any).maxAnimatedPartsPerChunk,
 			50,
-			100000,
+			5000,
 			fallback.maxAnimatedPartsPerChunk
 		),
 	}

@@ -2,7 +2,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Noise = require(script:FindFirstAncestor("game").Shared.Modules.Math.Noise)
+local Noise = require(script:FindFirstAncestor("game").Shared.Core.Math.Noise)
 
 local Structures = {}
 Structures.__index = Structures

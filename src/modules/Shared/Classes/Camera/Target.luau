@@ -3,7 +3,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BossServiceClient = require(script:FindFirstAncestor("game").Client.Services.BossServiceClient)
+local BossServiceClient = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceClient)
 
 local Target = {}
 Target.__index = Target

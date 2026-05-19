@@ -36,6 +36,7 @@ type CraftingSlotsProps = {
 
 local e: typeof(React.createElement) = React.createElement
 
+local MISSING_ASSET_ERROR = "no asset found!"
 local PANEL_OPEN_START_OFFSET = Vector2.new(0, 96)
 local PANEL_MIN_SCALE = 0.2
 local RECIPE_SLOT_PADDING = 8
@@ -238,16 +239,16 @@ local function buildIngredientRows(
 		local isSufficient = ingredient.isSufficient == true
 
 		local resolvedIcon = itemThunks.resolveItemIconByType(nil, itemId)
-		local icon = if typeof(resolvedIcon) == "string" and resolvedIcon ~= ""
-			then resolvedIcon
-			else ImageIds.questionMark
+		if typeof(resolvedIcon) ~= "string" or resolvedIcon == "" then
+			error(MISSING_ASSET_ERROR, 0)
+		end
 
 		rows[#rows + 1] = e(IngredientSlot, {
 			layoutOrder = index,
 			itemId = itemId,
 			required = required,
 			isSufficient = isSufficient,
-			icon = icon,
+			icon = resolvedIcon,
 			size = UDim2.fromOffset(requirementSlotSize, requirementSlotSize),
 			iconSize = UDim2.fromOffset(requirementIconSize, requirementIconSize),
 			zIndex = zIndex,

@@ -2,10 +2,10 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local DeterministicRNG = require(script:FindFirstAncestor("game").Shared.Modules.Core.DeterministicRNG)
-local Noise = require(script:FindFirstAncestor("game").Shared.Modules.Math.Noise)
-local Trig = require(script:FindFirstAncestor("game").Shared.Modules.Math.Trig)
-local Vec = require(script:FindFirstAncestor("game").Shared.Modules.Math.Vec)
+local DeterministicRNG = require(script:FindFirstAncestor("game").Shared.Core.DeterministicRNG)
+local Noise = require(script:FindFirstAncestor("game").Shared.Core.Math.Noise)
+local Trig = require(script:FindFirstAncestor("game").Shared.Core.Math.Trig)
+local Vec = require(script:FindFirstAncestor("game").Shared.Core.Math.Vec)
 
 local WindField = {}
 WindField.__index = WindField

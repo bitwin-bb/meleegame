@@ -1,7 +1,7 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local StringUtils = require(script:FindFirstAncestor("game").Shared.Modules.Core.StringUtils)
+local StringUtils = require(script:FindFirstAncestor("game").Shared.Core.StringUtils)
 
 return function()
 	describe("StringUtils", function()

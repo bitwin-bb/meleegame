@@ -1,6 +1,6 @@
 --!strict
 
-local Range = require(script:FindFirstAncestor("game").Shared.Modules.Math.Range)
+local Range = require(script:FindFirstAncestor("game").Shared.Core.Math.Range)
 local WorldSimulationShared = require(script:FindFirstAncestor("game").Shared.Services.Shared)
 
 local WeatherServiceUtils = {}

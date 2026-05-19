@@ -8,7 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
 local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
 local mouseSlice = require(script:FindFirstAncestor("game").Client.UI.features.mouse.state.mouseSlice)
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
+local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
 
 type MouseState = mouseSlice.MouseState
 

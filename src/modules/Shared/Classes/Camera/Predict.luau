@@ -2,7 +2,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Vec = require(script:FindFirstAncestor("game").Shared.Modules.Math.Vec)
+local Vec = require(script:FindFirstAncestor("game").Shared.Core.Math.Vec)
 
 local Predict = {}
 Predict.__index = Predict

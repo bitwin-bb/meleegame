@@ -4,10 +4,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
-local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
+local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
+local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
 local WindFoliage = require(script:FindFirstAncestor("game").Shared.Classes.WindFoliage)
 
 type JanitorClass = {

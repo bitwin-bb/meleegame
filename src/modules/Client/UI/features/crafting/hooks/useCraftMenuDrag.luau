@@ -5,7 +5,7 @@ local UserInputService = game:GetService("UserInputService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local Damp = require(script:FindFirstAncestor("game").Shared.Modules.Math.Damp)
+local Damp = require(script:FindFirstAncestor("game").Shared.Core.Math.Damp)
 local useEvent = require(script:FindFirstAncestor("game").Client.UI.shared.useEvent)
 local useToggle = require(script:FindFirstAncestor("game").Client.UI.shared.useToggle)
 

@@ -1,7 +1,6 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Noise = require(script:FindFirstAncestor("game").Shared.Modules.Math.Noise)
+local Noise = require(script:FindFirstAncestor("game").Shared.Core.Math.Noise)
 
 local Biome = {}
 Biome.__index = Biome
@@ -89,8 +88,8 @@ local DEFAULT_BIOME_FREQUENCY = 0.0035
 local DEFAULT_BIOME_OCTAVES = 3
 local DEFAULT_BIOME_LACUNARITY = 2
 local DEFAULT_BIOME_PERSISTENCE = 0.52
-local DEFAULT_STONE_DEPTH_MIN = 4
-local DEFAULT_STONE_DEPTH_MAX = 14
+local DEFAULT_STONE_DEPTH_MIN = 10
+local DEFAULT_STONE_DEPTH_MAX = 28
 local DEFAULT_CORRUPTION_FREQUENCY = 0.0021
 local DEFAULT_CORRUPTION_OCTAVES = 3
 local DEFAULT_CORRUPTION_LACUNARITY = 2.05
@@ -1089,6 +1088,46 @@ function Biome.ResolveTileForDepth(self, column: ColumnProfile, depthBelowSurfac
 		return self.tileId.AIR
 	end
 
+	if column.biomeId == self.biomeId.SNOW and column.biomeType ~= self.biomeType.CORRUPTION then
+		if depthBelowSurface == 0 then
+			if column.snowIceNoise >= self.snowIceDensity + 0.18 then
+				return self.tileId.ICE
+			end
+			return self.tileId.SNOW
+		end
+
+		if depthBelowSurface <= self.snowCapDepth then
+			if depthBelowSurface >= 2 and column.snowIceNoise >= self.snowIceDensity + 0.08 then
+				return self.tileId.ICE
+			end
+			return self.tileId.SNOW
+		end
+
+		local coldSoilDepthLimit =
+			math.max(self.snowCapDepth + 1, math.min(column.stoneStartDepth, self.snowColdSoilDepth))
+		if depthBelowSurface < coldSoilDepthLimit then
+			if column.snowIceNoise >= self.snowIceDensity then
+				return self.tileId.ICE
+			end
+			return self.tileId.SNOW
+		end
+
+		local iceDepthStart = math.max(column.stoneStartDepth, self.snowIceDepthStart)
+		if depthBelowSurface >= iceDepthStart then
+			local iceDepthAlpha =
+				math.clamp((depthBelowSurface - iceDepthStart) / math.max(1, self.snowIceBandThickness), 0, 1)
+			local iceThreshold = self.snowIceDensity - iceDepthAlpha * 0.18
+			if column.snowIceNoise >= iceThreshold then
+				return self.tileId.ICE
+			end
+			if iceDepthAlpha < 0.45 and column.snowDetailNoise >= self.snowPackedSnowDensity then
+				return self.tileId.SNOW
+			end
+		end
+
+		return self.tileId.ICE
+	end
+
 	if depthBelowSurface == 0 then
 		return column.topTileId
 	end
@@ -1113,42 +1152,6 @@ function Biome.ResolveTileForDepth(self, column: ColumnProfile, depthBelowSurfac
 			return self.desertDeepTileId
 		end
 		return self.desertDeepTileId
-	end
-
-	if column.biomeId == self.biomeId.SNOW then
-		if depthBelowSurface <= self.snowCapDepth then
-			return self.tileId.SNOW
-		end
-
-		local coldSoilDepthLimit =
-			math.max(self.snowCapDepth + 1, math.min(column.stoneStartDepth, self.snowColdSoilDepth))
-		if depthBelowSurface < coldSoilDepthLimit then
-			if column.snowDetailNoise >= self.snowPackedSnowDensity then
-				return self.tileId.SNOW
-			end
-			if
-				depthBelowSurface >= math.max(2, coldSoilDepthLimit - 2)
-				and column.snowIceNoise >= self.snowIceDensity + 0.14
-			then
-				return self.tileId.ICE
-			end
-			return self.tileId.DIRT
-		end
-
-		local iceDepthStart = math.max(column.stoneStartDepth, self.snowIceDepthStart)
-		if depthBelowSurface >= iceDepthStart then
-			local iceDepthAlpha =
-				math.clamp((depthBelowSurface - iceDepthStart) / math.max(1, self.snowIceBandThickness), 0, 1)
-			local iceThreshold = self.snowIceDensity - iceDepthAlpha * 0.18
-			if column.snowIceNoise >= iceThreshold then
-				return self.tileId.ICE
-			end
-			if iceDepthAlpha < 0.45 and column.snowDetailNoise >= self.snowPackedSnowDensity then
-				return self.tileId.SNOW
-			end
-		end
-
-		return self.tileId.ICE
 	end
 
 	if depthBelowSurface < column.stoneStartDepth then

@@ -1,14 +1,51 @@
 --!strict
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
 local loader = require(loaderUtils.Parent).load(script)
 
 local Maid = loader("Maid")
-local BossBase = require(script:FindFirstAncestor("game").Shared.Classes.Boss)
-local BossServiceServer = require(script:FindFirstAncestor("game").Server.Services.BossServiceServer)
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossServiceUtils)
-local EyeOfCthulhuConfig = require(script:FindFirstAncestor("game").Shared.Classes.Boss.EyeOfCthulhu.Config)
+local BossBase = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss)
+local BossServiceServer = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceServer)
+local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
+local EyeOfCthulhuConfig =
+	require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.EyeOfCthulhu.Config)
+
+local function createBossAssetTemplates()
+	local assets = Instance.new("Folder")
+	assets.Name = "Assets"
+	assets.Parent = ReplicatedStorage
+
+	local npcs = Instance.new("Folder")
+	npcs.Name = "Npcs"
+	npcs.Parent = assets
+
+	local bosses = Instance.new("Folder")
+	bosses.Name = "Bosses"
+	bosses.Parent = npcs
+
+	local eye = Instance.new("Folder")
+	eye.Name = "EyeOfCthulhu"
+	eye.Parent = bosses
+
+	local phase = Instance.new("Folder")
+	phase.Name = "Phase1"
+	phase.Parent = eye
+
+	local model = Instance.new("Model")
+	model.Name = "EyeOfCthulhu"
+	model.Parent = phase
+
+	local rootPart = Instance.new("Part")
+	rootPart.Name = "RootPart"
+	rootPart.Anchored = true
+	rootPart.Parent = model
+	model.PrimaryPart = rootPart
+
+	return assets
+end
 
 local function createTestService()
 	local service = setmetatable({
@@ -64,6 +101,7 @@ end
 return function()
 	describe("Boss reactive lifecycle", function()
 		it("exposes stateful Rx streams and promise waits on the boss base class", function()
+			local assetTemplates = createBossAssetTemplates()
 			local service = createTestService()
 			local boss = createTestBoss(service)
 			local maid = Maid.new()
@@ -113,9 +151,11 @@ return function()
 
 			maid:Destroy()
 			service:destroy()
+			assetTemplates:Destroy()
 		end)
 
 		it("wires controller tracking through reactive service helpers", function()
+			local assetTemplates = createBossAssetTemplates()
 			local service = createTestService()
 			local boss = createTestBoss(service)
 			local maid = Maid.new()
@@ -161,9 +201,11 @@ return function()
 
 			maid:Destroy()
 			service:destroy()
+			assetTemplates:Destroy()
 		end)
 
 		it("provides promise-based spawn helpers on the service", function()
+			local assetTemplates = createBossAssetTemplates()
 			local service = createTestService()
 			local spawnPromise = service:spawnBossPromise({
 				bossId = "EyeOfCthulhu",
@@ -179,6 +221,7 @@ return function()
 			expect(service.controllersById[(boss :: any).id]).to.equal(boss)
 
 			service:destroy()
+			assetTemplates:Destroy()
 		end)
 	end)
 end

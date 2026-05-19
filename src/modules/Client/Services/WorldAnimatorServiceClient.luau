@@ -7,10 +7,10 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
-local Configs = require(script:FindFirstAncestor("game").Shared.Modules.Core.Configs)
+local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Modules.Core.WorkspaceFolders)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
+local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldAnimatorServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.WorldAnimatorServiceUtils)
 
 type ChunkAnimatorSettings = WorldAnimatorServiceUtils.ChunkAnimatorSettings
@@ -46,6 +46,7 @@ local WorldAnimatorServiceClient = {}
 
 local RUNTIME_FOLDER_NAME = "WorldAnimatorRuntime"
 local SKIP_WORLD_ANIMATOR_ATTRIBUTE = "SkipWorldAnimator"
+local WORLD_ANIMATOR_CHUNK_ATTRIBUTE = "WorldAnimatorChunk"
 local ANIMATING_WORLD_ANIMATOR_ATTRIBUTE = "WorldAnimatorAnimating"
 local CAMERA_VIEW_PADDING_PIXELS = 64
 local CAMERA_VIEW_MIN_HALF_SIZE = 0.001
@@ -372,6 +373,9 @@ function WorldAnimatorServiceClient.EvaluateChunkAnimation(
 	if not self.settings.enabled then
 		return "skip", nil
 	end
+	if chunkModel:GetAttribute(WORLD_ANIMATOR_CHUNK_ATTRIBUTE) ~= true then
+		return "skip", nil
+	end
 	if self.animationsByChunk[chunkModel] ~= nil then
 		return "skip", nil
 	end
@@ -529,6 +533,9 @@ function WorldAnimatorServiceClient.OnChunkAdded(self: WorldAnimatorServiceClien
 
 	local chunkModel = chunkRaw :: Model
 	if chunkModel:GetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE) == true then
+		return
+	end
+	if chunkModel:GetAttribute(WORLD_ANIMATOR_CHUNK_ATTRIBUTE) ~= true then
 		return
 	end
 	if hasSiblingChunkWithSameIdentity(chunkModel) then

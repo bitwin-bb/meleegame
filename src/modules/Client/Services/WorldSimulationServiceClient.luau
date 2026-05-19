@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Modules.Core.Runtime)
+local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local packageRoot = script:FindFirstAncestor("game").Parent

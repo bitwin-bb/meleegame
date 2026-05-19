@@ -1,8 +1,8 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BossServiceClient = require(script:FindFirstAncestor("game").Client.Services.BossServiceClient)
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BossServiceUtils)
+local BossServiceClient = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceClient)
+local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
 local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
 local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
 local markerSlice = require(script:FindFirstAncestor("game").Client.UI.features.boss.state.markerSlice)

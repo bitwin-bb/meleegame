@@ -4,10 +4,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Height = require(script:FindFirstAncestor("game").Shared.Classes.WorldGeneration.Height)
 local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
-local MiningPower = require(script:FindFirstAncestor("game").Shared.Modules.Math.MiningPower)
-local Noise = require(script:FindFirstAncestor("game").Shared.Modules.Math.Noise)
-local Plane = require(script:FindFirstAncestor("game").Shared.Modules.Math.Plane)
-local Vec = require(script:FindFirstAncestor("game").Shared.Modules.Math.Vec)
+local MiningPower = require(script:FindFirstAncestor("game").Shared.Core.Math.MiningPower)
+local Noise = require(script:FindFirstAncestor("game").Shared.Core.Math.Noise)
+local Plane = require(script:FindFirstAncestor("game").Shared.Core.Math.Plane)
+local Vec = require(script:FindFirstAncestor("game").Shared.Core.Math.Vec)
 
 local BuildServiceUtils = {}
 

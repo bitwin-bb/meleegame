@@ -2,7 +2,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Charm = require(ReplicatedStorage.Packages.Charm)
-local GamepadNav = require(script:FindFirstAncestor("game").Shared.Modules.Platform.GamepadNav)
+local GamepadNav = require(script:FindFirstAncestor("game").Shared.Core.Platform.GamepadNav)
 local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
 
 export type PadStickState = {

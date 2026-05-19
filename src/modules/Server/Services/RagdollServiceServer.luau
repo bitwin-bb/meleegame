@@ -5,7 +5,7 @@ local RunService = game:GetService("RunService")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Modules.Core.NevermoreSupport)
+local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
 local RagdollServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.RagdollServiceUtils)
 local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 
