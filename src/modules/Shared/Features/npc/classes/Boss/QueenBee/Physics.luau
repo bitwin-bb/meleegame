@@ -195,17 +195,15 @@ function Physics.ComputeHoverVelocity(
 	local desiredVelocity = Vector3.zero
 	if distance > EPSILON and speed > 0 then
 		local direction = offset.Unit
-		local desiredSpeed = speed
-		if arriveRadius > 0 and distance < arriveRadius * 2 then
-			desiredSpeed *= math.clamp(distance / (arriveRadius * 2), 0, 1)
-		end
-		desiredVelocity = direction * desiredSpeed
+		desiredVelocity = direction * speed
 	end
 
 	local nextVelocity = Physics.ApproachVelocity(currentVelocity, desiredVelocity, acceleration * dt)
+	if speed > 0 and nextVelocity.Magnitude > speed then
+		nextVelocity = nextVelocity.Unit * speed
+	end
 	if arriveRadius > 0 and distance <= arriveRadius and damping > 0 then
-		local alpha = 1 - math.exp(-damping * dt)
-		nextVelocity = nextVelocity:Lerp(Vector3.zero, math.clamp(alpha, 0, 1))
+		nextVelocity *= math.exp(-damping * dt)
 	end
 
 	return nextVelocity

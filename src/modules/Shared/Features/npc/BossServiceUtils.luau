@@ -20,17 +20,39 @@ export type BossEncounterState =
 	"Dormant"
 	| "SpawnIntro"
 	| "Phase1Hover"
+	| "Phase1HoverIdle"
 	| "Phase1ServantBurst"
+	| "Phase1RamAlign"
+	| "Phase1RamCharge"
+	| "Phase1RamRecover"
+	| "Phase1FakeBeeSummon"
+	| "Phase1FakeStingerShoot"
 	| "Phase1ChargeWindup"
 	| "Phase1Charge"
 	| "Phase1Recovery"
+	| "Phase1PostChargeRecover"
 	| "Transform"
 	| "Phase2HoverIdle"
 	| "Phase2Hover"
+	| "Phase2RamAlign"
+	| "Phase2RamCharge"
+	| "Phase2RamRecover"
+	| "Phase2FakeBeeSummon"
+	| "Phase2FakeStingerShoot"
 	| "Phase2ChargeWindup"
 	| "Phase2Charge"
 	| "Phase2Recovery"
+	| "Phase2PostChargeRecover"
 	| "Phase2RapidChain"
+	| "Phase3HoverIdle"
+	| "Phase3RamAlign"
+	| "Phase3RamCharge"
+	| "Phase3RamRecover"
+	| "Phase3FakeBeeSummon"
+	| "Phase3FakeStingerShoot"
+	| "Phase3ChargeWindup"
+	| "Phase3Charge"
+	| "Phase3PostChargeRecover"
 	| "Death"
 	| "Despawn"
 
@@ -72,7 +94,17 @@ export type BossMotionState = {
 	hoverAnchor: Vector3?,
 	distanceToAnchor: number?,
 	lockedChargeDirection: Vector3?,
+	targetDirection: Vector3?,
+	acceleration: Vector3?,
+	currentVelocity: Vector3?,
+	currentPattern: string?,
+	patternTimer: number?,
+	ramCount: number?,
+	maxRamCount: number?,
+	nextPattern: string?,
 	chargeTimeRemaining: number?,
+	comboChargeIndex: number?,
+	phaseCounter: number?,
 	motionOwner: string,
 	localPresentationOffset: Vector3?,
 }
@@ -155,7 +187,17 @@ local DEFAULT_MOTION: BossMotionState = {
 	hoverAnchor = nil,
 	distanceToAnchor = nil,
 	lockedChargeDirection = nil,
+	targetDirection = nil,
+	acceleration = nil,
+	currentVelocity = nil,
+	currentPattern = nil,
+	patternTimer = nil,
+	ramCount = nil,
+	maxRamCount = nil,
+	nextPattern = nil,
 	chargeTimeRemaining = nil,
+	comboChargeIndex = nil,
+	phaseCounter = nil,
 	motionOwner = "None",
 	localPresentationOffset = nil,
 }
@@ -266,7 +308,17 @@ local function cloneMotionState(source: BossMotionState): BossMotionState
 		hoverAnchor = source.hoverAnchor,
 		distanceToAnchor = source.distanceToAnchor,
 		lockedChargeDirection = source.lockedChargeDirection,
+		targetDirection = source.targetDirection,
+		acceleration = source.acceleration,
+		currentVelocity = source.currentVelocity,
+		currentPattern = source.currentPattern,
+		patternTimer = source.patternTimer,
+		ramCount = source.ramCount,
+		maxRamCount = source.maxRamCount,
+		nextPattern = source.nextPattern,
 		chargeTimeRemaining = source.chargeTimeRemaining,
+		comboChargeIndex = source.comboChargeIndex,
+		phaseCounter = source.phaseCounter,
 		motionOwner = source.motionOwner,
 		localPresentationOffset = source.localPresentationOffset,
 	}
@@ -291,17 +343,39 @@ local function sanitizeStateName(stateRaw: any, fallback: BossEncounterState): B
 	if stateRaw == "Dormant"
 		or stateRaw == "SpawnIntro"
 		or stateRaw == "Phase1Hover"
+		or stateRaw == "Phase1HoverIdle"
 		or stateRaw == "Phase1ServantBurst"
+		or stateRaw == "Phase1RamAlign"
+		or stateRaw == "Phase1RamCharge"
+		or stateRaw == "Phase1RamRecover"
+		or stateRaw == "Phase1FakeBeeSummon"
+		or stateRaw == "Phase1FakeStingerShoot"
 		or stateRaw == "Phase1ChargeWindup"
 		or stateRaw == "Phase1Charge"
 		or stateRaw == "Phase1Recovery"
+		or stateRaw == "Phase1PostChargeRecover"
 		or stateRaw == "Transform"
 		or stateRaw == "Phase2HoverIdle"
 		or stateRaw == "Phase2Hover"
+		or stateRaw == "Phase2RamAlign"
+		or stateRaw == "Phase2RamCharge"
+		or stateRaw == "Phase2RamRecover"
+		or stateRaw == "Phase2FakeBeeSummon"
+		or stateRaw == "Phase2FakeStingerShoot"
 		or stateRaw == "Phase2ChargeWindup"
 		or stateRaw == "Phase2Charge"
 		or stateRaw == "Phase2Recovery"
+		or stateRaw == "Phase2PostChargeRecover"
 		or stateRaw == "Phase2RapidChain"
+		or stateRaw == "Phase3HoverIdle"
+		or stateRaw == "Phase3RamAlign"
+		or stateRaw == "Phase3RamCharge"
+		or stateRaw == "Phase3RamRecover"
+		or stateRaw == "Phase3FakeBeeSummon"
+		or stateRaw == "Phase3FakeStingerShoot"
+		or stateRaw == "Phase3ChargeWindup"
+		or stateRaw == "Phase3Charge"
+		or stateRaw == "Phase3PostChargeRecover"
 		or stateRaw == "Death"
 		or stateRaw == "Despawn" then
 		return stateRaw
@@ -409,9 +483,39 @@ function BossServiceUtils.SanitizeMotionState(motionRaw: any, fallbackRaw: BossM
 		lockedChargeDirection = if typeof((source :: any).lockedChargeDirection) == "Vector3"
 			then (source :: any).lockedChargeDirection
 			else fallback.lockedChargeDirection,
+		targetDirection = if typeof((source :: any).targetDirection) == "Vector3"
+			then (source :: any).targetDirection
+			else fallback.targetDirection,
+		acceleration = if typeof((source :: any).acceleration) == "Vector3"
+			then (source :: any).acceleration
+			else fallback.acceleration,
+		currentVelocity = if typeof((source :: any).currentVelocity) == "Vector3"
+			then (source :: any).currentVelocity
+			else fallback.currentVelocity,
+		currentPattern = if typeof((source :: any).currentPattern) == "string" and (source :: any).currentPattern ~= ""
+			then (source :: any).currentPattern
+			else fallback.currentPattern,
+		patternTimer = if typeof((source :: any).patternTimer) == "number"
+			then sanitizeNumber((source :: any).patternTimer, 0, 0, 10 ^ 6)
+			else fallback.patternTimer,
+		ramCount = if typeof((source :: any).ramCount) == "number"
+			then math.floor(sanitizeNumber((source :: any).ramCount, 0, 0, 1000))
+			else fallback.ramCount,
+		maxRamCount = if typeof((source :: any).maxRamCount) == "number"
+			then math.floor(sanitizeNumber((source :: any).maxRamCount, 0, 0, 1000))
+			else fallback.maxRamCount,
+		nextPattern = if typeof((source :: any).nextPattern) == "string" and (source :: any).nextPattern ~= ""
+			then (source :: any).nextPattern
+			else fallback.nextPattern,
 		chargeTimeRemaining = if typeof((source :: any).chargeTimeRemaining) == "number"
 			then sanitizeNumber((source :: any).chargeTimeRemaining, 0, 0, 10 ^ 6)
 			else fallback.chargeTimeRemaining,
+		comboChargeIndex = if typeof((source :: any).comboChargeIndex) == "number"
+			then math.floor(sanitizeNumber((source :: any).comboChargeIndex, 0, 0, 1000))
+			else fallback.comboChargeIndex,
+		phaseCounter = if typeof((source :: any).phaseCounter) == "number"
+			then math.floor(sanitizeNumber((source :: any).phaseCounter, 0, 0, 1000))
+			else fallback.phaseCounter,
 		motionOwner = if typeof((source :: any).motionOwner) == "string" and (source :: any).motionOwner ~= ""
 			then (source :: any).motionOwner
 			else fallback.motionOwner,

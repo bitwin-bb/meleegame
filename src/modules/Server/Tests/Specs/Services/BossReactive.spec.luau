@@ -287,10 +287,37 @@ return function()
 			expect(rootPart ~= nil).to.equal(true)
 			expect((rootPart :: BasePart).Size).to.equal(Vector3.new(6, 13.5, 18))
 			expect(math.abs((rootPart :: BasePart).CFrame.UpVector.Y - 1) < 0.001).to.equal(true)
+			expect((boss :: any).state).to.equal("Phase1RamAlign")
 
-			local appliedDamage = (boss :: any):takeDamage(100)
+			local queenBee = boss :: any
+			local startPosition = queenBee.position
+			local defaults = QueenBeeConfig.getDefaults()
+			expect(queenBee:getMaxSimulationStep()).to.equal(QueenBeeConfig.getDefaults().MaxDt)
+			service:onHeartbeat(0.1)
+			expect(queenBee.velocity.Magnitude > 0).to.equal(true)
+			expect((queenBee.position - startPosition).Magnitude > 0).to.equal(true)
+			expect(queenBee.motion.motionOwner).to.equal("QueenBeeRamAlign")
+			expect(queenBee.motion.acceleration ~= nil).to.equal(true)
+			expect(queenBee.motion.currentPattern).to.equal("Ram")
+			expect(queenBee.motion.ramCount).to.equal(0)
+			expect(queenBee.motion.maxRamCount).to.equal(defaults.ChargesPerComboByPhase[1])
+
+			queenBee._chargeDirection = Vector3.zAxis
+			queenBee:changeState("Phase1RamCharge", "spec_horizontal_charge")
+			service:onHeartbeat(0.05)
+			expect(queenBee.state).to.equal("Phase1RamCharge")
+			expect(math.abs(queenBee.velocity.Y) < 0.001).to.equal(true)
+			expect(math.abs(queenBee.motion.lockedChargeDirection.Y) < 0.001).to.equal(true)
+			expect(queenBee.motion.motionOwner).to.equal("QueenBeeRamCharge")
+
+			queenBee:changeState("Phase1FakeBeeSummon", "spec_fake_gate")
+			service:onHeartbeat(defaults.FakeBeeSummonDurationByPhase[1] + 0.05)
+			expect(queenBee.state).to.equal("Phase1RamAlign")
+			expect(queenBee.motion.currentPattern).to.equal("Ram")
+
+			local appliedDamage = queenBee:takeDamage(100)
 			expect(appliedDamage > 0).to.equal(true)
-			expect((boss :: any).hp < (boss :: any).maxHp).to.equal(true)
+			expect(queenBee.hp < queenBee.maxHp).to.equal(true)
 
 			service:destroy()
 		end)

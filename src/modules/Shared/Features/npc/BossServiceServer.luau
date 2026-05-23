@@ -1349,7 +1349,22 @@ function BossServiceServer.OnHeartbeat(self: BossServiceServer, dtRaw: any)
 			simulationSpeed = BossServiceUtils.sanitizeNumber(getSimulationSpeed(boss), 1, 0.05, 5)
 		end
 
-		boss:step(dt * simulationSpeed)
+		local simulationDt = dt * simulationSpeed
+		local maxSimulationStep = simulationDt
+		local getMaxSimulationStep = (boss :: any).getMaxSimulationStep
+		if typeof(getMaxSimulationStep) == "function" then
+			maxSimulationStep = BossServiceUtils.sanitizeNumber(getMaxSimulationStep(boss), simulationDt, 1 / 240, simulationDt)
+		end
+
+		local remainingDt = simulationDt
+		while remainingDt > 0 do
+			local stepDt = math.min(remainingDt, maxSimulationStep)
+			boss:step(stepDt)
+			remainingDt -= stepDt
+			if boss.removeRequested == true then
+				break
+			end
+		end
 		self:refreshControllerModelBinding(boss)
 
 		if boss.removeRequested == true then

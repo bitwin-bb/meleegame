@@ -11,9 +11,9 @@ local Maid = loader("Maid")
 local Rx = loader("Rx")
 local Signal = loader("Signal")
 
+local Bee = require(script.Bee)
 local BossBase = require(script.Parent)
 local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local Bee = require(script.Bee)
 local Configs = require(script.Configs)
 local Physics = require(script.Physics)
 local Render = require(script.Render)
@@ -121,19 +121,37 @@ export type QueenBee = typeof(setmetatable(
 	QueenBee
 ))
 
+type QueenBeeAttackPattern = "Ram" | "FakeBeeSummon" | "FakeStingerShoot"
+
 export type QueenBeeBossController = Boss & {
 	_queenConfig: QueenBeeConfig,
 	_simulationSpeed: number,
 	_aggressiveness: number,
 	_sideSign: number,
-	_nextChargeDelay: number,
 	_chargeDirection: Vector3?,
+	_targetDirection: Vector3,
+	_currentAcceleration: Vector3,
+	_currentPattern: QueenBeeAttackPattern,
+	_nextPattern: QueenBeeAttackPattern,
+	_patternTimer: number,
+	_ramCount: number,
+	_maxRamCount: number,
+	_patternCursor: number,
+	_comboChargeIndex: number,
+	_phaseCounter: number,
 }
 
 local DEFAULT_MAX_HP = 3400
 local DEFAULT_HP = DEFAULT_MAX_HP
 local MISSING_ASSET_ERROR = "no asset found!"
 local UPRIGHT_FACING = Vector3.zAxis
+local PATTERN_RAM: QueenBeeAttackPattern = "Ram"
+local PATTERN_FAKE_BEE_SUMMON: QueenBeeAttackPattern = "FakeBeeSummon"
+local PATTERN_FAKE_STINGER_SHOOT: QueenBeeAttackPattern = "FakeStingerShoot"
+local FAKE_PATTERN_SEQUENCE: { QueenBeeAttackPattern } = table.freeze({
+	PATTERN_FAKE_STINGER_SHOOT,
+	PATTERN_FAKE_BEE_SUMMON,
+}) :: any
 
 local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
@@ -293,7 +311,9 @@ local function resolveRuntimeParent(configParent: Instance?, serviceParent: Inst
 end
 
 local function resolveBossDefaultConfig(serviceRaw: any, bossId: string): any?
-	local defaultConfigByBossId = if typeof(serviceRaw) == "table" then (serviceRaw :: any).defaultConfigByBossId else nil
+	local defaultConfigByBossId = if typeof(serviceRaw) == "table"
+		then (serviceRaw :: any).defaultConfigByBossId
+		else nil
 	if typeof(defaultConfigByBossId) ~= "table" then
 		return nil
 	end
@@ -308,6 +328,19 @@ end
 local function getPhaseNumberValue(values: { [number]: number }, phaseRaw: any, fallback: number): number
 	local phase = math.clamp(math.floor(sanitizeNumber(phaseRaw, 1, 1, 3)), 1, 3)
 	return sanitizeNumber(values[phase], fallback, 0, nil)
+end
+
+local function getPhaseStateName(self: QueenBeeBossController, suffix: string): string
+	local phase = math.clamp(math.floor(sanitizeNumber(self.phase, 1, 1, 3)), 1, 3)
+	return string.format("Phase%d%s", phase, suffix)
+end
+
+local function stateHasSuffix(state: string, suffix: string): boolean
+	return string.sub(state, -#suffix) == suffix
+end
+
+local function changePhaseState(self: QueenBeeBossController, suffix: string, reason: string)
+	self:changeState(getPhaseStateName(self, suffix), reason)
 end
 
 local function resolveBossSideSign(spawnRequest: BossSpawnRequest): number
@@ -330,7 +363,10 @@ local function resolveBossSideSign(spawnRequest: BossSpawnRequest): number
 	return 1
 end
 
-local function resolveBossInitialSpawnRequest(spawnRequestRaw: BossSpawnRequest, config: QueenBeeConfig): BossSpawnRequest
+local function resolveBossInitialSpawnRequest(
+	spawnRequestRaw: BossSpawnRequest,
+	config: QueenBeeConfig
+): BossSpawnRequest
 	local resolved: BossSpawnRequest = {
 		bossId = spawnRequestRaw.bossId,
 		targetPlayer = spawnRequestRaw.targetPlayer,
@@ -366,14 +402,6 @@ local function resolveBossInitialSpawnRequest(spawnRequestRaw: BossSpawnRequest,
 	return resolved
 end
 
-local function rollBossDelay(self: QueenBeeBossController, minimum: number, maximum: number): number
-	local randomObject = (self.service :: any).random
-	if randomObject ~= nil then
-		return randomObject:NextNumber(minimum, maximum)
-	end
-	return minimum + (maximum - minimum) * math.random()
-end
-
 local function resolveBossAggression(self: QueenBeeBossController): number
 	return math.clamp(sanitizeNumber(self._aggressiveness, 1, 0.1, 3), 0.1, 3)
 end
@@ -386,28 +414,109 @@ local function scaleBossDuration(self: QueenBeeBossController, duration: number)
 	return duration / math.sqrt(resolveBossAggression(self))
 end
 
-local function rollNextChargeDelay(self: QueenBeeBossController): number
-	local config = self._queenConfig
-	local baseDelay = getPhaseNumberValue(config.ChargeRepositionMaxTimeByPhase, self.phase, 1.2)
-	return scaleBossDuration(self, rollBossDelay(self, baseDelay * 0.75, baseDelay * 1.2))
+local function resolveBossMaxRamCount(self: QueenBeeBossController): number
+	return math.max(1, math.floor(getPhaseNumberValue(self._queenConfig.ChargesPerComboByPhase, self.phase, 3) + 0.5))
 end
 
-local function resolveBossHoverAnchor(self: QueenBeeBossController): Vector3
+local function selectBossFakePattern(self: QueenBeeBossController): QueenBeeAttackPattern
+	local sequenceIndex = ((self._patternCursor - 1) % #FAKE_PATTERN_SEQUENCE) + 1
+	self._patternCursor += 1
+	return FAKE_PATTERN_SEQUENCE[sequenceIndex]
+end
+
+local function setBossAttackPattern(
+	self: QueenBeeBossController,
+	pattern: QueenBeeAttackPattern,
+	nextPattern: QueenBeeAttackPattern
+)
+	self._currentPattern = pattern
+	self._nextPattern = nextPattern
+	self._patternTimer = 0
+	if pattern == PATTERN_RAM then
+		self._ramCount = 0
+		self._maxRamCount = resolveBossMaxRamCount(self)
+		self._comboChargeIndex = 0
+	end
+end
+
+local function beginBossRamPattern(self: QueenBeeBossController, reason: string)
+	setBossAttackPattern(self, PATTERN_RAM, selectBossFakePattern(self))
+	self._chargeDirection = nil
+	changePhaseState(self, "RamAlign", reason)
+end
+
+local function beginBossFakePattern(self: QueenBeeBossController, pattern: QueenBeeAttackPattern, reason: string)
+	local suffix = if pattern == PATTERN_FAKE_BEE_SUMMON then "FakeBeeSummon" else "FakeStingerShoot"
+	setBossAttackPattern(self, pattern, PATTERN_RAM)
+	self._chargeDirection = nil
+	self._ramCount = 0
+	self._comboChargeIndex = 0
+	changePhaseState(self, suffix, reason)
+end
+
+local function resolveBossRamAlignAnchor(self: QueenBeeBossController): (Vector3, Vector3?)
 	local config = self._queenConfig
 	local targetPosition = self:resolveTargetPosition()
 	if targetPosition == nil then
-		return self.position + Vector3.new(0, math.sin(self.stateTime * 2.25) * 1.2, 0)
+		return self.position + self._targetDirection * config.RamAlignSideDistance, nil
 	end
 
-	local targetVelocity = self:resolveTargetVelocity()
-	if targetVelocity.Z > 2 then
-		self._sideSign = -1
-	elseif targetVelocity.Z < -2 then
-		self._sideSign = 1
+	return targetPosition + Vector3.new(0, 0, config.RamAlignSideDistance * self._sideSign), targetPosition
+end
+
+local function resolveBossFakePatternAnchor(self: QueenBeeBossController): Vector3
+	local config = self._queenConfig
+	local targetPosition = self:resolveTargetPosition()
+	if targetPosition == nil then
+		return self.position + self._targetDirection * config.FakePatternSideDistance
 	end
 
-	return targetPosition
-		+ Vector3.new(0, config.HoverAboveOffset, config.HoverSideDistance * self._sideSign)
+	return targetPosition + Vector3.new(0, config.FakePatternAboveOffset, config.FakePatternSideDistance * self._sideSign)
+end
+
+local function isBossRamAligned(self: QueenBeeBossController, targetPosition: Vector3?): boolean
+	if targetPosition == nil then
+		return false
+	end
+
+	local config = self._queenConfig
+	local yAligned = math.abs(self.position.Y - targetPosition.Y) <= config.RamAlignToleranceY
+	local sideDistance = math.abs(self.position.Z - targetPosition.Z)
+	local zAligned = math.abs(sideDistance - config.RamAlignSideDistance) <= config.RamAlignToleranceZ
+	return yAligned and zAligned
+end
+
+local function resolveBossFakePatternDuration(self: QueenBeeBossController): number
+	local config = self._queenConfig
+	local durations = if self._currentPattern == PATTERN_FAKE_BEE_SUMMON
+		then config.FakeBeeSummonDurationByPhase
+		else config.FakeStingerShootDurationByPhase
+	local fallback = if self._currentPattern == PATTERN_FAKE_BEE_SUMMON then 3.2 else 4.0
+	return scaleBossDuration(self, getPhaseNumberValue(durations, self.phase, fallback))
+end
+
+local function accelerateBossTowardPoint(
+	self: QueenBeeBossController,
+	targetPositionRaw: Vector3,
+	speedRaw: number,
+	accelerationRaw: number,
+	dt: number
+): number
+	local targetPosition = self:projectToPlane(targetPositionRaw)
+	local offset = targetPosition - self.position
+	local distance = offset.Magnitude
+	local direction = safeUnit(offset, self._targetDirection)
+	local speed = scaleBossSpeed(self, speedRaw)
+	local acceleration = scaleBossSpeed(self, accelerationRaw)
+
+	self._targetDirection = direction
+	self._currentAcceleration = direction * acceleration
+	self:accelerateTowardVelocity(direction * speed, acceleration, dt)
+	if speed > 0 and self.velocity.Magnitude > speed then
+		self:setVelocity(safeUnit(self.velocity, direction) * speed)
+	end
+	setBossSpriteFacing(self, direction)
+	return distance
 end
 
 local function setBossMotionDebug(
@@ -423,20 +532,34 @@ local function setBossMotionDebug(
 		hoverAnchor = hoverAnchor,
 		distanceToAnchor = if hoverAnchor ~= nil then (hoverAnchor - self.position).Magnitude else nil,
 		lockedChargeDirection = self._chargeDirection,
+		targetDirection = self._targetDirection,
+		acceleration = self._currentAcceleration,
+		currentVelocity = self.velocity,
+		currentPattern = self._currentPattern,
+		patternTimer = self._patternTimer,
+		ramCount = self._ramCount,
+		maxRamCount = self._maxRamCount,
+		nextPattern = self._nextPattern,
 		chargeTimeRemaining = chargeTimeRemaining,
+		comboChargeIndex = self._comboChargeIndex,
+		phaseCounter = self._phaseCounter,
 		motionOwner = motionOwner,
-		localPresentationOffset = Vector3.new(0, math.sin(self.stateTime * 7.5) * 0.18, 0),
+		localPresentationOffset = Vector3.zero,
 	})
 end
 
 local function refreshBossPhase(self: QueenBeeBossController)
 	local nextPhase = Configs.ResolvePhase(self.hp, self.maxHp, self._queenConfig)
 	if nextPhase ~= self.phase then
-		self:setPhase(nextPhase, "Phase1")
+		self:setPhase(nextPhase, string.format("Phase%d", nextPhase))
+		self._phaseCounter += 1
+		if self._currentPattern == PATTERN_RAM then
+			self._maxRamCount = resolveBossMaxRamCount(self)
+		end
 	end
 end
 
-local function beginBossCharge(self: QueenBeeBossController)
+local function lockBossChargeDirection(self: QueenBeeBossController): Vector3
 	local config = self._queenConfig
 	local targetPosition = self:resolveTargetPosition()
 	if targetPosition == nil then
@@ -444,14 +567,26 @@ local function beginBossCharge(self: QueenBeeBossController)
 	end
 
 	local targetVelocity = self:resolveTargetVelocity()
-	local predictedPosition = targetPosition + targetVelocity * config.ChargePredictionTime
-	local direction = safeUnit(predictedPosition - self.position, self.facing)
+	local predictedPosition = targetPosition + Vector3.new(0, 0, targetVelocity.Z * config.ChargePredictionTime)
+	-- aistyle 43 queen bee commits to a horizontal pass
+	local direction = safeUnit(Vector3.new(0, 0, predictedPosition.Z - self.position.Z), self._targetDirection)
 	self._chargeDirection = direction
+	self._targetDirection = direction
+	self._currentAcceleration = Vector3.zero
+	setBossSpriteFacing(self, direction)
+	return direction
+end
+
+local function beginBossCharge(self: QueenBeeBossController)
+	local config = self._queenConfig
+	local direction = safeUnit(self._chargeDirection or lockBossChargeDirection(self), self.facing)
 	self.chargeIndex += 1
+	self._ramCount = math.min(self._ramCount + 1, self._maxRamCount)
+	self._comboChargeIndex = self._ramCount
 	setBossSpriteFacing(self, direction)
 	self:setVelocity(direction * scaleBossSpeed(self, getPhaseNumberValue(config.ChargeSpeedByPhase, self.phase, 118)))
 	self:incrementPresentationToken("dashPulseToken")
-	self:changeState("Phase1Charge", "Charge")
+	changePhaseState(self, "RamCharge", "RamCharge")
 end
 
 function QueenBee.CreateBossController(
@@ -477,8 +612,17 @@ function QueenBee.CreateBossController(
 	self._simulationSpeed = sanitizeNumber(spawnRequestRaw.simulationSpeed, 1, 0.05, 5)
 	self._aggressiveness = sanitizeNumber(spawnRequestRaw.aggressiveness, 1, 0.1, 3)
 	self._sideSign = resolveBossSideSign(spawnRequest)
-	self._nextChargeDelay = rollNextChargeDelay(self)
 	self._chargeDirection = nil
+	self._targetDirection = Vector3.new(0, 0, self._sideSign)
+	self._currentAcceleration = Vector3.zero
+	self._currentPattern = PATTERN_RAM
+	self._nextPattern = PATTERN_FAKE_STINGER_SHOOT
+	self._patternTimer = 0
+	self._ramCount = 0
+	self._maxRamCount = resolveBossMaxRamCount(self)
+	self._patternCursor = 1
+	self._comboChargeIndex = 0
+	self._phaseCounter = 0
 
 	self:setPhase(1, "Phase1")
 	return self
@@ -488,15 +632,28 @@ function QueenBeeBossController:GetSimulationSpeed(): number
 	return self._simulationSpeed
 end
 
+function QueenBeeBossController:GetMaxSimulationStep(): number
+	return self._queenConfig.MaxDt
+end
+
 function QueenBeeBossController:AfterSpawn()
 	self:setTarget(self.spawnRequest.targetPlayer or self.service:resolveEncounterTarget(self))
-	self:changeState("Phase1Hover", "Spawn")
+	beginBossRamPattern(self, "Spawn")
 end
 
 function QueenBeeBossController:OnStateChanged(nextState: string, _previousState: string, _reason: string)
-	self.contactDamageActive = nextState == "Phase1Charge"
-	self:setPresentationFlag("isHurtWindowActive", nextState ~= "Phase1Charge" and nextState ~= "Death")
-	self:setPresentationFlag("isRoaring", nextState == "Phase1ChargeWindup")
+	if stateHasSuffix(nextState, "RamAlign") and self._currentPattern ~= PATTERN_RAM then
+		setBossAttackPattern(self, PATTERN_RAM, selectBossFakePattern(self))
+	elseif stateHasSuffix(nextState, "FakeBeeSummon") and self._currentPattern ~= PATTERN_FAKE_BEE_SUMMON then
+		setBossAttackPattern(self, PATTERN_FAKE_BEE_SUMMON, PATTERN_RAM)
+	elseif stateHasSuffix(nextState, "FakeStingerShoot") and self._currentPattern ~= PATTERN_FAKE_STINGER_SHOOT then
+		setBossAttackPattern(self, PATTERN_FAKE_STINGER_SHOOT, PATTERN_RAM)
+	end
+
+	local isCharge = stateHasSuffix(nextState, "Charge") and not stateHasSuffix(nextState, "ChargeWindup")
+	self.contactDamageActive = isCharge
+	self:setPresentationFlag("isHurtWindowActive", not isCharge and nextState ~= "Death")
+	self:setPresentationFlag("isRoaring", false)
 end
 
 function QueenBeeBossController:OnDamageTaken(_damage: number, _sourceRaw: any?, _hp: number)
@@ -505,6 +662,7 @@ end
 
 function QueenBeeBossController:OnDeath(_killerRaw: any?)
 	self._chargeDirection = nil
+	self._currentAcceleration = Vector3.zero
 	self:setVelocity(Vector3.zero)
 end
 
@@ -521,64 +679,88 @@ function QueenBeeBossController:UpdateModelPivot()
 	end
 end
 
-function QueenBeeBossController:StepHover(dt: number)
+function QueenBeeBossController:StepRamAlign(dt: number)
 	local config = self._queenConfig
-	local hoverAnchor = resolveBossHoverAnchor(self)
-	self:moveTowardPoint(
-		hoverAnchor,
-		scaleBossSpeed(self, getPhaseNumberValue(config.HoverSpeedByPhase, self.phase, 36)),
-		scaleBossSpeed(self, getPhaseNumberValue(config.HoverAccelerationByPhase, self.phase, 165)),
-		config.HoverDamping,
+	local alignAnchor, targetPosition = resolveBossRamAlignAnchor(self)
+	-- terraria queen bee lines up beside the player before committing to a horizontal pass
+	accelerateBossTowardPoint(
+		self,
+		alignAnchor,
+		getPhaseNumberValue(config.RamAlignSpeedByPhase, self.phase, 48),
+		getPhaseNumberValue(config.RamAlignAccelerationByPhase, self.phase, 210),
 		dt
 	)
 
-	local targetPosition = self:resolveTargetPosition()
-	setBossMotionDebug(self, "QueenBeeHover", hoverAnchor, nil)
+	local maxAlignTime = scaleBossDuration(self, getPhaseNumberValue(config.RamAlignMaxTimeByPhase, self.phase, 1.35))
+	setBossMotionDebug(self, "QueenBeeRamAlign", alignAnchor, nil)
 
-	if targetPosition ~= nil and self.stateTime >= self._nextChargeDelay then
-		self:changeState("Phase1ChargeWindup", "ChargeWindup")
-	end
-end
-
-function QueenBeeBossController:StepChargeWindup(dt: number)
-	self:dampVelocity(6, dt)
-
-	local windupDuration =
-		scaleBossDuration(self, getPhaseNumberValue(self._queenConfig.ChargeWindupByPhase, self.phase, 0.52))
-	setBossMotionDebug(self, "QueenBeeChargeWindup", nil, math.max(0, windupDuration - self.stateTime))
-	if self.stateTime >= windupDuration then
+	if isBossRamAligned(self, targetPosition) or (targetPosition == nil and self.stateTime >= maxAlignTime) then
+		lockBossChargeDirection(self)
 		beginBossCharge(self)
 	end
 end
 
-function QueenBeeBossController:StepCharge(_dt: number)
+function QueenBeeBossController:StepRamCharge(_dt: number)
 	local config = self._queenConfig
-	local direction = safeUnit(self._chargeDirection or self.facing, self.facing)
+	local direction = safeUnit(self._chargeDirection or lockBossChargeDirection(self), self.facing)
 	local speed = scaleBossSpeed(self, getPhaseNumberValue(config.ChargeSpeedByPhase, self.phase, 118))
 	local duration = scaleBossDuration(self, getPhaseNumberValue(config.ChargeDurationByPhase, self.phase, 0.72))
+	-- charge stays committed until its timer expires instead of easing toward an endpoint
+	self._targetDirection = direction
+	self._currentAcceleration = Vector3.zero
 	self:setVelocity(direction * speed)
 	setBossSpriteFacing(self, direction)
-	setBossMotionDebug(self, "QueenBeeCharge", nil, math.max(0, duration - self.stateTime))
+	setBossMotionDebug(self, "QueenBeeRamCharge", nil, math.max(0, duration - self.stateTime))
 
 	if self.stateTime >= duration then
-		self:changeState("Phase1Recovery", "ChargeComplete")
+		changePhaseState(self, "RamRecover", "RamChargeComplete")
 	end
 end
 
-function QueenBeeBossController:StepRecovery(dt: number)
+function QueenBeeBossController:StepRamRecover(dt: number)
 	self._chargeDirection = nil
-	self:dampVelocity(4.5, dt)
-	setBossMotionDebug(self, "QueenBeeRecovery", nil, nil)
+	-- recovery damps dash velocity so the next state inherits momentum
+	self:dampVelocity(self._queenConfig.HoverDamping, dt)
+	self._currentAcceleration = Vector3.zero
+	setBossMotionDebug(self, "QueenBeeRamRecover", nil, nil)
 	if self.stateTime >= self._queenConfig.PostChargeRecoverTime then
+		if self._ramCount < self._maxRamCount then
+			self._sideSign *= -1
+			changePhaseState(self, "RamAlign", "RamComboContinue")
+			return
+		end
+
 		self._sideSign *= -1
-		self._nextChargeDelay = rollNextChargeDelay(self)
-		self:changeState("Phase1Hover", "RecoveryComplete")
+		beginBossFakePattern(self, self._nextPattern, "RamComboComplete")
+	end
+end
+
+function QueenBeeBossController:StepFakePattern(dt: number)
+	local config = self._queenConfig
+	local hoverAnchor = resolveBossFakePatternAnchor(self)
+	-- fake Terraria attack slots are invisible gates; they only spend time before ram can be selected again
+	accelerateBossTowardPoint(
+		self,
+		hoverAnchor,
+		getPhaseNumberValue(config.HoverSpeedByPhase, self.phase, 36) * config.FakePatternHoverSpeedMultiplier,
+		getPhaseNumberValue(config.HoverAccelerationByPhase, self.phase, 165) * config.FakePatternHoverSpeedMultiplier,
+		dt
+	)
+
+	local duration = resolveBossFakePatternDuration(self)
+	setBossMotionDebug(self, `QueenBee{self._currentPattern}`, hoverAnchor, math.max(0, duration - self.stateTime))
+	if self.stateTime >= duration then
+		beginBossRamPattern(self, "FakePatternComplete")
 	end
 end
 
 function QueenBeeBossController:StepDespawn(dt: number)
 	local targetPosition = self:resolveTargetPosition()
-	local direction = if targetPosition ~= nil then safeUnit(self.position - targetPosition, self.facing) else self.facing
+	local direction = if targetPosition ~= nil
+		then safeUnit(self.position - targetPosition, self.facing)
+		else self.facing
+	self._targetDirection = direction
+	self._currentAcceleration = direction * self._queenConfig.DespawnAcceleration
 	self:accelerateTowardVelocity(direction * self._queenConfig.DespawnSpeed, self._queenConfig.DespawnAcceleration, dt)
 	setBossMotionDebug(self, "QueenBeeDespawn", nil, nil)
 	if self.stateTime >= self._queenConfig.DespawnDuration then
@@ -588,6 +770,7 @@ end
 
 function QueenBeeBossController:StepDeath(dt: number)
 	self:dampVelocity(4.5, dt)
+	self._currentAcceleration = Vector3.zero
 	setBossMotionDebug(self, "QueenBeeDeath", nil, nil)
 	if self.stateTime >= 1.6 then
 		self:requestRemoval("DeathComplete")
@@ -600,21 +783,22 @@ function QueenBeeBossController:OnStep(dt: number)
 	end
 
 	refreshBossPhase(self)
+	self._patternTimer += dt
 
-	if self.state == "Phase1Hover" then
-		self:stepHover(dt)
+	if stateHasSuffix(self.state, "RamAlign") then
+		self:stepRamAlign(dt)
 		return
 	end
-	if self.state == "Phase1ChargeWindup" then
-		self:stepChargeWindup(dt)
+	if stateHasSuffix(self.state, "RamCharge") then
+		self:stepRamCharge(dt)
 		return
 	end
-	if self.state == "Phase1Charge" then
-		self:stepCharge(dt)
+	if stateHasSuffix(self.state, "RamRecover") then
+		self:stepRamRecover(dt)
 		return
 	end
-	if self.state == "Phase1Recovery" then
-		self:stepRecovery(dt)
+	if stateHasSuffix(self.state, "FakeBeeSummon") or stateHasSuffix(self.state, "FakeStingerShoot") then
+		self:stepFakePattern(dt)
 		return
 	end
 	if self.state == "Despawn" then
@@ -1613,15 +1797,16 @@ QueenBee.takeDamage = QueenBee.TakeDamage
 QueenBee.createBossController = QueenBee.CreateBossController
 
 QueenBeeBossController.getSimulationSpeed = QueenBeeBossController.GetSimulationSpeed
+QueenBeeBossController.getMaxSimulationStep = QueenBeeBossController.GetMaxSimulationStep
 QueenBeeBossController.afterSpawn = QueenBeeBossController.AfterSpawn
 QueenBeeBossController.onStateChanged = QueenBeeBossController.OnStateChanged
 QueenBeeBossController.onDamageTaken = QueenBeeBossController.OnDamageTaken
 QueenBeeBossController.onDeath = QueenBeeBossController.OnDeath
 QueenBeeBossController.updateModelPivot = QueenBeeBossController.UpdateModelPivot
-QueenBeeBossController.stepHover = QueenBeeBossController.StepHover
-QueenBeeBossController.stepChargeWindup = QueenBeeBossController.StepChargeWindup
-QueenBeeBossController.stepCharge = QueenBeeBossController.StepCharge
-QueenBeeBossController.stepRecovery = QueenBeeBossController.StepRecovery
+QueenBeeBossController.stepRamAlign = QueenBeeBossController.StepRamAlign
+QueenBeeBossController.stepRamCharge = QueenBeeBossController.StepRamCharge
+QueenBeeBossController.stepRamRecover = QueenBeeBossController.StepRamRecover
+QueenBeeBossController.stepFakePattern = QueenBeeBossController.StepFakePattern
 QueenBeeBossController.stepDespawn = QueenBeeBossController.StepDespawn
 QueenBeeBossController.stepDeath = QueenBeeBossController.StepDeath
 QueenBeeBossController.onStep = QueenBeeBossController.OnStep

@@ -55,7 +55,7 @@ local function getAnimation(animationName: string): any
 end
 
 local function resolveAnimationName(snapshot: BossSnapshot): string
-	if string.find(snapshot.state, "Charge", 1, true) ~= nil then
+	if string.match(snapshot.state, "^Phase%d+RamCharge$") ~= nil or string.match(snapshot.state, "^Phase%d+Charge$") ~= nil then
 		return "Charge"
 	end
 	return "Idle"
@@ -188,7 +188,7 @@ local function resolveRuntimeRootPart(runtimeId: string): BasePart?
 	return nil
 end
 
-local function resolvePresentationPosition(snapshot: BossSnapshot, renderClock: number): Vector3?
+local function resolvePresentationPosition(snapshot: BossSnapshot, _renderClock: number): Vector3?
 	local rootPart = resolveRuntimeRootPart(snapshot.id)
 	local basePosition = if rootPart ~= nil then rootPart.Position else snapshot.position
 	if basePosition == nil then
@@ -198,8 +198,7 @@ local function resolvePresentationPosition(snapshot: BossSnapshot, renderClock: 
 		return nil
 	end
 
-	local hoverLift = math.sin((renderClock + snapshot.stateTime) * 4.5) * 0.18
-	return basePosition + (snapshot.motion.localPresentationOffset or Vector3.zero) + Vector3.new(0, hoverLift, 0)
+	return basePosition + (snapshot.motion.localPresentationOffset or Vector3.zero)
 end
 
 local function resolveRootSize(snapshot: BossSnapshot): Vector3

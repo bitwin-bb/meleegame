@@ -45,6 +45,12 @@ export type QueenBeeConfig = {
 	HoverAccelerationByPhase: { [number]: number },
 	HoverDamping: number,
 	ChargeRepositionMaxTimeByPhase: { [number]: number },
+	RamAlignSideDistance: number,
+	RamAlignToleranceY: number,
+	RamAlignToleranceZ: number,
+	RamAlignMaxTimeByPhase: { [number]: number },
+	RamAlignSpeedByPhase: { [number]: number },
+	RamAlignAccelerationByPhase: { [number]: number },
 	ChargePredictionTime: number,
 	ChargeWindupByPhase: { [number]: number },
 	ChargeSpeedByPhase: { [number]: number },
@@ -52,6 +58,11 @@ export type QueenBeeConfig = {
 	ChargePassDistance: number,
 	PostChargeRecoverTime: number,
 	ChargesPerComboByPhase: { [number]: number },
+	FakeBeeSummonDurationByPhase: { [number]: number },
+	FakeStingerShootDurationByPhase: { [number]: number },
+	FakePatternSideDistance: number,
+	FakePatternAboveOffset: number,
+	FakePatternHoverSpeedMultiplier: number,
 	StingerHoverDuration: number,
 	StingerSideDistance: number,
 	StingerAboveOffset: number,
@@ -130,6 +141,24 @@ local DEFAULTS: QueenBeeConfig = {
 		[2] = 1.2,
 		[3] = 0.95,
 	},
+	RamAlignSideDistance = 62,
+	RamAlignToleranceY = 2.5,
+	RamAlignToleranceZ = 4,
+	RamAlignMaxTimeByPhase = {
+		[1] = 1.35,
+		[2] = 1.08,
+		[3] = 0.86,
+	},
+	RamAlignSpeedByPhase = {
+		[1] = 48,
+		[2] = 58,
+		[3] = 72,
+	},
+	RamAlignAccelerationByPhase = {
+		[1] = 210,
+		[2] = 280,
+		[3] = 360,
+	},
 	ChargePredictionTime = 0.18,
 	ChargeWindupByPhase = {
 		[1] = 0.52,
@@ -153,6 +182,19 @@ local DEFAULTS: QueenBeeConfig = {
 		[2] = 4,
 		[3] = 6,
 	},
+	FakeBeeSummonDurationByPhase = {
+		[1] = 3.2,
+		[2] = 2.7,
+		[3] = 2.2,
+	},
+	FakeStingerShootDurationByPhase = {
+		[1] = 4.0,
+		[2] = 3.35,
+		[3] = 2.7,
+	},
+	FakePatternSideDistance = 42,
+	FakePatternAboveOffset = 18,
+	FakePatternHoverSpeedMultiplier = 0.72,
 	StingerHoverDuration = 4.0,
 	StingerSideDistance = 42,
 	StingerAboveOffset = 18,
@@ -289,6 +331,12 @@ local function cloneDefaults(): QueenBeeConfig
 		HoverAccelerationByPhase = cloneNumberMap(DEFAULTS.HoverAccelerationByPhase),
 		HoverDamping = DEFAULTS.HoverDamping,
 		ChargeRepositionMaxTimeByPhase = cloneNumberMap(DEFAULTS.ChargeRepositionMaxTimeByPhase),
+		RamAlignSideDistance = DEFAULTS.RamAlignSideDistance,
+		RamAlignToleranceY = DEFAULTS.RamAlignToleranceY,
+		RamAlignToleranceZ = DEFAULTS.RamAlignToleranceZ,
+		RamAlignMaxTimeByPhase = cloneNumberMap(DEFAULTS.RamAlignMaxTimeByPhase),
+		RamAlignSpeedByPhase = cloneNumberMap(DEFAULTS.RamAlignSpeedByPhase),
+		RamAlignAccelerationByPhase = cloneNumberMap(DEFAULTS.RamAlignAccelerationByPhase),
 		ChargePredictionTime = DEFAULTS.ChargePredictionTime,
 		ChargeWindupByPhase = cloneNumberMap(DEFAULTS.ChargeWindupByPhase),
 		ChargeSpeedByPhase = cloneNumberMap(DEFAULTS.ChargeSpeedByPhase),
@@ -296,6 +344,11 @@ local function cloneDefaults(): QueenBeeConfig
 		ChargePassDistance = DEFAULTS.ChargePassDistance,
 		PostChargeRecoverTime = DEFAULTS.PostChargeRecoverTime,
 		ChargesPerComboByPhase = cloneNumberMap(DEFAULTS.ChargesPerComboByPhase),
+		FakeBeeSummonDurationByPhase = cloneNumberMap(DEFAULTS.FakeBeeSummonDurationByPhase),
+		FakeStingerShootDurationByPhase = cloneNumberMap(DEFAULTS.FakeStingerShootDurationByPhase),
+		FakePatternSideDistance = DEFAULTS.FakePatternSideDistance,
+		FakePatternAboveOffset = DEFAULTS.FakePatternAboveOffset,
+		FakePatternHoverSpeedMultiplier = DEFAULTS.FakePatternHoverSpeedMultiplier,
 		StingerHoverDuration = DEFAULTS.StingerHoverDuration,
 		StingerSideDistance = DEFAULTS.StingerSideDistance,
 		StingerAboveOffset = DEFAULTS.StingerAboveOffset,
@@ -357,6 +410,14 @@ function Configs.Resolve(configRaw: any): QueenBeeConfig
 	config.HoverDamping = sanitizeNumber(source.HoverDamping, config.HoverDamping, 0, 1000)
 	config.ChargeRepositionMaxTimeByPhase =
 		resolveNumberMap(source, "ChargeRepositionMaxTimeByPhase", config.ChargeRepositionMaxTimeByPhase, 0.01, 60)
+	config.RamAlignSideDistance = sanitizeNumber(source.RamAlignSideDistance, config.RamAlignSideDistance, 0, 10 ^ 5)
+	config.RamAlignToleranceY = sanitizeNumber(source.RamAlignToleranceY, config.RamAlignToleranceY, 0, 10 ^ 5)
+	config.RamAlignToleranceZ = sanitizeNumber(source.RamAlignToleranceZ, config.RamAlignToleranceZ, 0, 10 ^ 5)
+	config.RamAlignMaxTimeByPhase =
+		resolveNumberMap(source, "RamAlignMaxTimeByPhase", config.RamAlignMaxTimeByPhase, 0.01, 60)
+	config.RamAlignSpeedByPhase = resolveNumberMap(source, "RamAlignSpeedByPhase", config.RamAlignSpeedByPhase, 0, 10 ^ 5)
+	config.RamAlignAccelerationByPhase =
+		resolveNumberMap(source, "RamAlignAccelerationByPhase", config.RamAlignAccelerationByPhase, 0, 10 ^ 5)
 	config.ChargePredictionTime = sanitizeNumber(source.ChargePredictionTime, config.ChargePredictionTime, 0, 5)
 	config.ChargeWindupByPhase = resolveNumberMap(source, "ChargeWindupByPhase", config.ChargeWindupByPhase, 0.01, 10)
 	config.ChargeSpeedByPhase = resolveNumberMap(source, "ChargeSpeedByPhase", config.ChargeSpeedByPhase, 0, 10 ^ 5)
@@ -369,6 +430,16 @@ function Configs.Resolve(configRaw: any): QueenBeeConfig
 	config.ChargesPerComboByPhase[1] = sanitizeInteger(config.ChargesPerComboByPhase[1], 3, 1, 16)
 	config.ChargesPerComboByPhase[2] = sanitizeInteger(config.ChargesPerComboByPhase[2], 4, 1, 16)
 	config.ChargesPerComboByPhase[3] = sanitizeInteger(config.ChargesPerComboByPhase[3], 6, 1, 16)
+	config.FakeBeeSummonDurationByPhase =
+		resolveNumberMap(source, "FakeBeeSummonDurationByPhase", config.FakeBeeSummonDurationByPhase, 0.05, 30)
+	config.FakeStingerShootDurationByPhase =
+		resolveNumberMap(source, "FakeStingerShootDurationByPhase", config.FakeStingerShootDurationByPhase, 0.05, 30)
+	config.FakePatternSideDistance =
+		sanitizeNumber(source.FakePatternSideDistance, config.FakePatternSideDistance, 0, 10 ^ 5)
+	config.FakePatternAboveOffset =
+		sanitizeNumber(source.FakePatternAboveOffset, config.FakePatternAboveOffset, -10 ^ 5, 10 ^ 5)
+	config.FakePatternHoverSpeedMultiplier =
+		sanitizeNumber(source.FakePatternHoverSpeedMultiplier, config.FakePatternHoverSpeedMultiplier, 0, 10)
 	config.StingerHoverDuration = sanitizeNumber(source.StingerHoverDuration, config.StingerHoverDuration, 0.05, 30)
 	config.StingerSideDistance = sanitizeNumber(source.StingerSideDistance, config.StingerSideDistance, 0, 10 ^ 5)
 	config.StingerAboveOffset = sanitizeNumber(source.StingerAboveOffset, config.StingerAboveOffset, -10 ^ 5, 10 ^ 5)
