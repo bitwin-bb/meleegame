@@ -35,8 +35,8 @@ local RagdollServiceServer = require(gameRoot.Server.Services.RagdollServiceServ
 local ServerBinderSupport = require(gameRoot.Server.Binders.ServerBinderSupport)
 local VFXServiceServer = require(gameRoot.Server.Services.VFXServiceServer)
 local WeatherServiceServer = require(gameRoot.Server.Services.WeatherServiceServer)
-local WorldGenerationServiceServer = require(gameRoot.Server.Services.WorldGenerationServiceServer)
-local WorldSimulationServiceServer = require(gameRoot.Server.Services.WorldSimulationServiceServer)
+local WorldGenerationServiceServer = require(gameRoot.Shared.Features.worldGeneration.WorldGenerationServiceServer)
+local WorldSimulationServiceServer = require(gameRoot.Shared.Features.worldGeneration.WorldSimulationServiceServer)
 
 local CmdrService = loader("CmdrService")
 

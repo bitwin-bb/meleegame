@@ -29,7 +29,7 @@ local SnackbarNotifications = require(script:FindFirstAncestor("game").Client.Sn
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
 local itemSlice = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemSlice)
 
 type BuildServiceState = BuildServiceUtils.BuildServiceState

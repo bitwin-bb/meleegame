@@ -1,8 +1,7 @@
 --!strict
+-- selene: allow(undefined_variable)
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local Diagnostics = require(script:FindFirstAncestor("game").Shared.Services.Diagnostics)
+local Diagnostics = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.Diagnostics)
 
 local function createDebugStub()
 	return {

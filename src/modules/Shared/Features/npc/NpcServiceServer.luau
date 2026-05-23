@@ -20,7 +20,7 @@ local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Bind
 local SlimeNpc = require(script:FindFirstAncestor("game").Shared.Features.npc.npc.Slime)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldGenerationServiceServer =
-	require(script:FindFirstAncestor("game").Server.Services.WorldGenerationServiceServer)
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer)
 
 type RuntimeNpc = any
 type EnemyHitboxManager = EnemyHitbox.EnemyHitbox

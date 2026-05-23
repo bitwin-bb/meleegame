@@ -21,7 +21,6 @@ type ItemDefinition = {
 
 local itemThunks = {}
 local cachedItemDefinitions: { [string]: ItemDefinition } = {}
-local MISSING_ASSET_ERROR = "no asset found!"
 
 local function joinStrings(values: { string }, delimiter: string): string
 	local output = ""
@@ -221,6 +220,9 @@ function itemThunks.ResolveItemIconByType(itemTypeRaw: any, itemIdRaw: any?): st
 	local normalizedType = normalizeTypeKey(itemTypeRaw)
 	local normalizedItemId = normalizeTypeKey(itemIdRaw)
 	local itemIcons = if typeof(ImageIds.itemIcons) == "table" then ImageIds.itemIcons :: { [string]: any } else nil
+	if normalizedType == nil and normalizedItemId ~= nil then
+		normalizedType = resolveItemTypeFromItemId(itemIdRaw)
+	end
 
 	if itemIcons ~= nil and normalizedItemId ~= nil then
 		local byItemId = itemIcons[normalizedItemId]
@@ -242,7 +244,19 @@ function itemThunks.ResolveItemIconByType(itemTypeRaw: any, itemIdRaw: any?): st
 		end
 	end
 
-	error(MISSING_ASSET_ERROR, 0)
+	if itemIcons ~= nil then
+		local fallbackIcon = itemIcons.default
+		if typeof(fallbackIcon) == "string" and fallbackIcon ~= "" then
+			return fallbackIcon
+		end
+	end
+
+	local questionMarkIcon = ImageIds.questionMark
+	if typeof(questionMarkIcon) == "string" and questionMarkIcon ~= "" then
+		return questionMarkIcon
+	end
+
+	return nil
 end
 
 function itemThunks.ResolveIconForStack(stackRaw: any): string?

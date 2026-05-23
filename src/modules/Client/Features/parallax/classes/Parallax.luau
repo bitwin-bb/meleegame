@@ -26,7 +26,7 @@ local ParallaxThunks = require(script.Parent.Parent.ParallaxThunks)
 local Scrolling = require(script.Parent.Parent.modules.Scrolling)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
 
 type Catalog = ParallaxServiceUtils.Catalog
 type BiomeDefinition = ParallaxServiceUtils.BiomeDefinition

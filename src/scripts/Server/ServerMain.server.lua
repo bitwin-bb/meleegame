@@ -9,10 +9,13 @@ local PACKAGE_TRACKER_IGNORED_MODULE_PATHS = {
 	"game/Shared/Classes/Npc",
 	"game/Shared/Features/npc/npc/EyeOfCthulhu",
 	"game/Shared/Features/npc/npc/QueenBee",
+	"game/Shared/Services/NpcServiceUtils",
+}
+
+local REQUIRED_ARCHIVABLE_MODULE_PATHS = {
 	"game/Shared/Features/npc/ui/components/EyeOfCthulhu",
 	"game/Shared/Features/npc/ui/components/QueenBee",
 	"game/Shared/Features/npc/ui/components/Slime",
-	"game/Shared/Services/NpcServiceUtils",
 }
 
 local PACKAGE_TRACKER_IGNORE_TIMEOUT_SECONDS = 5
@@ -38,6 +41,18 @@ end
 
 local function disableDuplicatePackageTrackerModules(packageRoot: Instance)
 	local deadline = os.clock() + PACKAGE_TRACKER_IGNORE_TIMEOUT_SECONDS
+
+	for _, path in REQUIRED_ARCHIVABLE_MODULE_PATHS do
+		local remaining = deadline - os.clock()
+		if remaining <= 0 then
+			return
+		end
+
+		local moduleScript = waitForDescendantByPath(packageRoot, path, remaining)
+		if moduleScript ~= nil and moduleScript:IsA("ModuleScript") then
+			moduleScript.Archivable = true
+		end
+	end
 
 	for _, path in PACKAGE_TRACKER_IGNORED_MODULE_PATHS do
 		local remaining = deadline - os.clock()

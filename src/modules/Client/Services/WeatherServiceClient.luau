@@ -16,7 +16,7 @@ local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networ
 local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.WeatherServiceUtils)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
 
 type WeatherServiceState = WeatherServiceUtils.WeatherServiceState
 type SkyKey = WeatherServiceUtils.SkyKey

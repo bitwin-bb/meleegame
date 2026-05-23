@@ -18,7 +18,7 @@ local PlayerDataServiceUtils = require(script:FindFirstAncestor("game").Shared.S
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
 
 type InventoryState = InventoryServiceUtils.InventoryState
 type InventorySlot = InventoryServiceUtils.InventorySlot

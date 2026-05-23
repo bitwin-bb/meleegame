@@ -19,7 +19,7 @@ local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Ser
 local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerServiceUtils)
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
 local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
 
 type FacingSign = PlayerServiceUtils.FacingSign
 type CharacterRig = PlayerServiceUtils.CharacterRig

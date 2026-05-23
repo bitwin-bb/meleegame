@@ -24,6 +24,8 @@ local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
 local EyeOfCthulhuConfig =
 	require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.EyeOfCthulhu.Config)
 local EyeOfCthulhuController = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.EyeOfCthulhu)
+local QueenBeeConfig = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local QueenBeeController = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.QueenBee)
 local HpServiceServer = require(script:FindFirstAncestor("game").Server.Services.HpServiceServer)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
@@ -31,7 +33,7 @@ local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Serv
 local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local WeatherServiceServer = require(script:FindFirstAncestor("game").Server.Services.WeatherServiceServer)
 local WorldGenerationServiceServer =
-	require(script:FindFirstAncestor("game").Server.Services.WorldGenerationServiceServer)
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer)
 
 type BossId = BossServiceUtils.BossId
 type BossSnapshot = BossServiceUtils.BossSnapshot
@@ -130,6 +132,13 @@ local CONTROLLER_CONSTRUCTORS = {
 	): BossObject
 		return EyeOfCthulhuController.new(service, definition, spawnRequest)
 	end,
+	QueenBee = function(
+		service: BossServiceServer,
+		definition: BossRegistryEntry,
+		spawnRequest: BossSpawnRequest
+	): BossObject
+		return QueenBeeController.createBossController(service, definition, spawnRequest)
+	end,
 }
 
 local DEFAULT_STATE_PUSH_INTERVAL = BossServiceUtils.DEFAULT_STATE_PUSH_INTERVAL
@@ -154,6 +163,15 @@ local function resolveEyeConfigSource(): { [string]: any }?
 	local eyeConfig = (bossSettings :: any).eyeOfCthulhu
 	if typeof(eyeConfig) == "table" then
 		return eyeConfig
+	end
+	return nil
+end
+
+local function resolveQueenBeeConfigSource(): { [string]: any }?
+	local bossSettings = resolveBossSettingsSource()
+	local queenBeeConfig = (bossSettings :: any).queenBee
+	if typeof(queenBeeConfig) == "table" then
+		return queenBeeConfig
 	end
 	return nil
 end
@@ -1384,6 +1402,7 @@ function BossServiceServer.Init(self: BossServiceServer)
 	self.allowClientManualSummon = false
 	self.defaultConfigByBossId = {
 		EyeOfCthulhu = EyeOfCthulhuConfig.resolve(resolveEyeConfigSource()),
+		QueenBee = QueenBeeConfig.resolve(resolveQueenBeeConfigSource()),
 	}
 	self.previousClockTime = self:getClockTime()
 	self.binders = NevermoreSupport.getService(ServerBinderSupport)

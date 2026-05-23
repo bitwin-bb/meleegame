@@ -12,7 +12,7 @@ local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networ
 local PlayerDataServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerDataServiceServer)
 local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
 local WorldGenerationServiceServer =
-	require(script:FindFirstAncestor("game").Server.Services.WorldGenerationServiceServer)
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer)
 
 type RecipeRegistry = CraftingServiceUtils.RecipeRegistry
 type CraftingServiceConfig = CraftingServiceUtils.CraftingServiceConfig

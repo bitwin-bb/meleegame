@@ -1,7 +1,7 @@
 --!strict
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local PortalTargets = require(script:FindFirstAncestor("game").Client.UI.core.utils.PortalTargets)
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 
@@ -18,10 +18,18 @@ local function resolveAspectRatio(canvasSize: Vector2): number
 	return math.clamp(canvasSize.X / canvasSize.Y, 0.01, 100)
 end
 
+local function resolvePortalTarget(): PlayerGui?
+	local localPlayer = Players.LocalPlayer
+	if localPlayer == nil then
+		return nil
+	end
+	return localPlayer:FindFirstChildOfClass("PlayerGui")
+end
+
 return function(): React.ReactNode
 	local state = (useStore(ParallaxSlice.surfaceStateAtom) :: ParallaxSlice.ParallaxSurfaceState?)
 		or ParallaxSlice.getSurfaceState()
-	local portalTarget = PortalTargets.resolveUiScreenGui()
+	local portalTarget = resolvePortalTarget()
 
 	if state.adornee == nil or portalTarget == nil then
 		return nil

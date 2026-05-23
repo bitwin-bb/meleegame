@@ -2,7 +2,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Height = require(script:FindFirstAncestor("game").Shared.Classes.WorldGeneration.Height)
+local Height = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.classes.WorldGeneration.Height)
 local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
 local MiningPower = require(script:FindFirstAncestor("game").Shared.Core.Math.MiningPower)
 local Noise = require(script:FindFirstAncestor("game").Shared.Core.Math.Noise)

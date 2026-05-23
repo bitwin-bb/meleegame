@@ -3,10 +3,12 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local WorldGeneration = require(script:FindFirstAncestor("game").Shared.Classes.WorldGeneration)
-local WorldGenerationServiceClient = require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
+local WorldGeneration =
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.classes.WorldGeneration)
+local WorldGenerationServiceClient =
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
 local WorldGenerationServiceUtils =
-	require(script:FindFirstAncestor("game").Shared.Services.WorldGenerationServiceUtils)
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceUtils)
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
@@ -105,6 +107,40 @@ return function()
 			expect(ok).to.equal(true)
 			expect(err).to.equal(nil)
 			expect(propCount).to.equal(1)
+		end)
+
+		it("computes client visual chunk bounds from tile and depth extents", function()
+			local state = WorldGenerationServiceUtils.createDefaultState()
+			local snapshot = {
+				tileMinX = 32,
+				tileMinY = -16,
+				width = 32,
+				height = 32,
+				backgroundLayers = {
+					{},
+					{},
+					{},
+				},
+			}
+
+			local boundsCFrame, boundsSize = (WorldGenerationServiceClient :: any).ComputeChunkSnapshotVisualBounds(
+				snapshot,
+				state,
+				Vector3.zero,
+				0
+			)
+
+			expect(boundsCFrame.Position.Z).to.equal(192)
+			expect(boundsCFrame.Position.Y).to.equal(0)
+			expect(boundsSize.Z).to.equal(128)
+			expect(boundsSize.Y).to.equal(128)
+			expect(boundsSize.X).to.equal(16)
+		end)
+
+		it("only binds terrain parts that need tile binder behavior", function()
+			expect((WorldGenerationServiceClient :: any).ShouldBindTerrainTile(10)).to.equal(true)
+			expect((WorldGenerationServiceClient :: any).ShouldBindTerrainTile(3)).to.equal(false)
+			expect((WorldGenerationServiceClient :: any).ShouldBindTerrainTile(1)).to.equal(false)
 		end)
 
 		it("uses generated tile templates when asset templates are unavailable", function()

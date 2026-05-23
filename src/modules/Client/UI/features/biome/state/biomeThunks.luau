@@ -5,7 +5,7 @@ local RunService = game:GetService("RunService")
 
 local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
 local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
 local biomeSlice = require(script:FindFirstAncestor("game").Client.UI.features.biome.state.biomeSlice)
 
 type BiomeState = biomeSlice.BiomeState

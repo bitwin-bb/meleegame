@@ -23,9 +23,9 @@ local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBin
 local TickSchedulerModule = require(script:FindFirstAncestor("game").Shared.Core.TickScheduler)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
 local WorldMutationQueue = require(script:FindFirstAncestor("game").Shared.Core.WorldMutationQueue)
-local WorldSimulationDebug = require(script:FindFirstAncestor("game").Shared.Services.Debug)
+local WorldSimulationDebug = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.Debug)
 
 type LiquidServiceConfig = LiquidServiceUtils.LiquidServiceConfig
 type LiquidServiceState = LiquidServiceUtils.LiquidServiceState

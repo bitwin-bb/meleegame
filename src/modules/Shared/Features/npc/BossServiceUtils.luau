@@ -15,7 +15,7 @@ local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBin
 
 local BossServiceUtils = {}
 
-export type BossId = "EyeOfCthulhu"
+export type BossId = "EyeOfCthulhu" | "QueenBee"
 export type BossEncounterState =
 	"Dormant"
 	| "SpawnIntro"
@@ -174,14 +174,33 @@ local EYE_OF_CTHULHU_REGISTRY_ENTRY: BossRegistryEntry = {
 	singletonPerChannel = true,
 }
 
+local QUEEN_BEE_REGISTRY_ENTRY: BossRegistryEntry = {
+	id = "QueenBee",
+	displayName = "Queen Bee",
+	controllerId = "QueenBee",
+	presentationId = "QueenBee",
+	modelHierarchy = "QueenBee",
+	encounterChannel = "world.queenBee",
+	manualSummonTokens = { "queen", "bee", "queenbee", "qb" },
+	supportsNaturalSpawn = false,
+	nightOnlySummon = false,
+	naturalSpawnAnnouncement = nil,
+	singletonPerChannel = true,
+}
+
 local REGISTRY_BY_ID: { [BossId]: BossRegistryEntry } = {
 	EyeOfCthulhu = EYE_OF_CTHULHU_REGISTRY_ENTRY,
+	QueenBee = QUEEN_BEE_REGISTRY_ENTRY,
 }
 
 local REGISTRY_BY_TOKEN = {
 	eye = EYE_OF_CTHULHU_REGISTRY_ENTRY,
 	eoc = EYE_OF_CTHULHU_REGISTRY_ENTRY,
 	eyeofcthulhu = EYE_OF_CTHULHU_REGISTRY_ENTRY,
+	queen = QUEEN_BEE_REGISTRY_ENTRY,
+	bee = QUEEN_BEE_REGISTRY_ENTRY,
+	queenbee = QUEEN_BEE_REGISTRY_ENTRY,
+	qb = QUEEN_BEE_REGISTRY_ENTRY,
 }
 
 local function trim(valueRaw: any): string
@@ -256,6 +275,9 @@ end
 local function sanitizeBossId(bossIdRaw: any, fallback: BossId?): BossId?
 	if bossIdRaw == "EyeOfCthulhu" then
 		return "EyeOfCthulhu"
+	end
+	if bossIdRaw == "QueenBee" then
+		return "QueenBee"
 	end
 
 	local entry = REGISTRY_BY_TOKEN[normalizeToken(bossIdRaw)]
@@ -566,7 +588,7 @@ function BossServiceUtils.GetRegistryEntryByToken(tokenRaw: any): BossRegistryEn
 end
 
 function BossServiceUtils.GetRegistryEntries(): { BossRegistryEntry }
-	return { EYE_OF_CTHULHU_REGISTRY_ENTRY }
+	return { EYE_OF_CTHULHU_REGISTRY_ENTRY, QUEEN_BEE_REGISTRY_ENTRY }
 end
 
 function BossServiceUtils.SanitizeSpawnRequest(requestRaw: any, fallbackRaw: BossSpawnRequest?): BossSpawnRequest?

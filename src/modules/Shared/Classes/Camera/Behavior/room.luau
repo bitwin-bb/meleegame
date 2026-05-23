@@ -7,7 +7,7 @@ local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Servic
 local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
 local RoomScaleFactor = require(script:FindFirstAncestor("game").Shared.Core.Math.RoomScaleFactor)
 local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
 
 local Room = {}
 Room.__index = Room

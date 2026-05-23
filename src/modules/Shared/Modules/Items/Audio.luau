@@ -20,6 +20,7 @@ return {
 		UndergroundCorruption = "rbxassetid://133175187074428",
 		EyeOfCthulhuRedux = "rbxassetid://73783286159203",
 		UndergroundSnow = "rbxassetid://92651409708176",
+		QueenBee = "rbxassetid://74013306149777",
 	},
 	Npcs = {
 		Bosses = {

@@ -12,7 +12,7 @@ local PlayerDataServiceClient = require(script:FindFirstAncestor("game").Client.
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local SnackbarNotifications = require(script:FindFirstAncestor("game").Client.SnackbarNotifications)
 local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
 
 type RecipeRegistry = CraftingServiceUtils.RecipeRegistry
 type CraftingServiceConfig = CraftingServiceUtils.CraftingServiceConfig

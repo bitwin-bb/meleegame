@@ -23,7 +23,7 @@ local ParallaxBackgrounds = require(script.Parent.modules.ParallaxBackgrounds)
 local ParallaxServiceUtils = require(script.Parent.ParallaxServiceUtils)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
 
 type CloudAssetDefinition = CloudServiceUtils.CloudAssetDefinition
 type CloudSurfaceState = CloudServiceUtils.CloudSurfaceState

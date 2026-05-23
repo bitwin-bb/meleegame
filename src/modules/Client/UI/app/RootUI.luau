@@ -1,5 +1,9 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local packageRoot = script:FindFirstAncestor("game").Parent
+local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
+local loader = require(loaderUtils.Parent).load(script)
+
 local BindingHintScreen = require(script:FindFirstAncestor("game").Client.UI.features.binding.screens.bindingHintScreen)
 local BiomeNameScreen = require(script:FindFirstAncestor("game").Client.UI.features.biome.screens.biomeNameScreen)
 local CraftingSlotsScreen = require(script:FindFirstAncestor("game").Client.UI.features.crafting.screens.craftingSlots)
@@ -17,6 +21,8 @@ local MiningProgressScreen =
 local MouseScreen = require(script:FindFirstAncestor("game").Client.UI.features.mouse.screen.mouseScreen)
 local PadScreen = require(script:FindFirstAncestor("game").Client.UI.features.pad.screens.pad)
 local React = require(ReplicatedStorage.Packages.React)
+local Maid = loader("Maid")
+local QueenBeeScreen = require(script:FindFirstAncestor("game").Shared.Features.npc.ui.screens.QueenBeeScreen)
 local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
 local SlimeScreen = require(script:FindFirstAncestor("game").Shared.Features.npc.ui.screens.SlimeScreen)
 local TileBreakScreen = require(script:FindFirstAncestor("game").Client.Features.tile.ui.screen.Break)
@@ -33,9 +39,14 @@ return function(props: RootUIProps)
 	local canvasRef = React.useRef(nil :: Frame?)
 
 	React.useEffect(function()
+		local maid = Maid.new()
 		local canvas = canvasRef.current
 		if canvas ~= nil and props.onCanvasMounted ~= nil then
 			props.onCanvasMounted(canvas)
+		end
+
+		return function()
+			maid:DoCleaning()
 		end
 	end, { props.onCanvasMounted })
 
@@ -48,6 +59,9 @@ return function(props: RootUIProps)
 		}),
 		SlimeScreen = e(SlimeScreen, {
 			zIndex = 168,
+		}),
+		QueenBeeScreen = e(QueenBeeScreen, {
+			zIndex = 169,
 		}),
 		RootCanvas = e("Frame", {
 			ref = canvasRef,

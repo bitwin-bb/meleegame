@@ -9,6 +9,7 @@ local loader = require(loaderUtils.Parent).load(script)
 
 local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
 local EyeOfCthulhuRoot = require(script:FindFirstAncestor("game").Shared.Features.npc.components.EyeOfCthulhuRoot)
+local QueenBeeRoot = require(script:FindFirstAncestor("game").Shared.Features.npc.components.QueenBeeRoot)
 local CancelToken = loader("CancelToken")
 local Promise = loader("Promise")
 local Rx = loader("Rx")
@@ -154,6 +155,11 @@ local MISSING_ASSET_ERROR = "no asset found!"
 local MODEL_TEMPLATE_FACTORIES = {
 	EyeOfCthulhu = function(phaseModel: string): Model
 		return EyeOfCthulhuRoot.createModel({
+			phaseModel = phaseModel,
+		})
+	end,
+	QueenBee = function(phaseModel: string): Model
+		return QueenBeeRoot.createModel({
 			phaseModel = phaseModel,
 		})
 	end,

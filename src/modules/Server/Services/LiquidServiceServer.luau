@@ -19,9 +19,9 @@ local SpatialHashGrid = require(script:FindFirstAncestor("game").Shared.Core.Spa
 local TickSchedulerModule = require(script:FindFirstAncestor("game").Shared.Core.TickScheduler)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldGenerationServiceServer =
-	require(script:FindFirstAncestor("game").Server.Services.WorldGenerationServiceServer)
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer)
 local WorldMutationQueue = require(script:FindFirstAncestor("game").Shared.Core.WorldMutationQueue)
-local WorldSimulationDebug = require(script:FindFirstAncestor("game").Shared.Services.Debug)
+local WorldSimulationDebug = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.Debug)
 
 type LiquidServiceConfig = LiquidServiceUtils.LiquidServiceConfig
 type LiquidServiceState = LiquidServiceUtils.LiquidServiceState

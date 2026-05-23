@@ -20,7 +20,7 @@ local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBin
 local ToolBinder = require(script:FindFirstAncestor("game").Shared.Binders.ToolBinder)
 local TorchTilt = require(script:FindFirstAncestor("game").Shared.Core.Math.TorchTilt)
 local WorldGenerationServiceServer =
-	require(script:FindFirstAncestor("game").Server.Services.WorldGenerationServiceServer)
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer)
 
 type InventoryState = InventoryServiceUtils.InventoryState
 type AddItemResult = InventoryServiceUtils.AddItemResult

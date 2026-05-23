@@ -10,8 +10,11 @@ local Maid = loader("Maid")
 local BossBase = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss)
 local BossServiceServer = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceServer)
 local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
+local EntityCatalog = require(script:FindFirstAncestor("game").Shared.Cmdr.EntityCatalog)
 local EyeOfCthulhuConfig =
 	require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.EyeOfCthulhu.Config)
+local QueenBeeConfig = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local QueenBeeSpriteSheet = require(script:FindFirstAncestor("game").Shared.Features.npc.modules.QueenBeeSpriteSheet)
 
 local function createBossAssetTemplates()
 	local assets = Instance.new("Folder")
@@ -74,6 +77,7 @@ local function createTestService()
 		allowClientManualSummon = false,
 		defaultConfigByBossId = {
 			EyeOfCthulhu = EyeOfCthulhuConfig.getDefaults(),
+			QueenBee = QueenBeeConfig.getDefaults(),
 		},
 		previousClockTime = 12,
 	}, {
@@ -237,6 +241,56 @@ return function()
 			expect(boss ~= nil).to.equal(true)
 			expect(service.controllersById[(boss :: any).id]).to.equal(boss)
 			expect(((boss :: any).model :: Instance):GetAttribute("BossSpriteRoot")).to.equal(true)
+
+			service:destroy()
+		end)
+
+		it("registers queen bee for command spawning and exposes the requested sprite rows", function()
+			local definition = BossServiceUtils.getRegistryEntryByToken("queenbee")
+			expect(definition ~= nil).to.equal(true)
+			expect((definition :: any).id).to.equal("QueenBee")
+			expect((definition :: any).displayName).to.equal("Queen Bee")
+
+			local catalogEntry = EntityCatalog.resolve("queenbee")
+			expect(catalogEntry ~= nil).to.equal(true)
+			expect((catalogEntry :: any).Id).to.equal("QueenBee")
+			expect((catalogEntry :: any).Kind).to.equal("Boss")
+
+			expect(QueenBeeSpriteSheet.rows).to.equal(12)
+			expect(QueenBeeSpriteSheet.columns).to.equal(1)
+			expect(QueenBeeSpriteSheet.frameSize).to.equal(Vector2.new(172, 152))
+			expect(#QueenBeeSpriteSheet.animations.Charge.frames).to.equal(4)
+			expect(#QueenBeeSpriteSheet.animations.Idle.frames).to.equal(8)
+			expect(QueenBeeSpriteSheet.animations.Charge.frames[1]).to.equal(1)
+			expect(QueenBeeSpriteSheet.animations.Idle.frames[1]).to.equal(5)
+		end)
+
+		it("spawns a queen bee boss from the base boss service when authored assets are absent", function()
+			local service = createTestService()
+			local boss, reason = service:spawnBoss({
+				bossId = "QueenBee",
+				spawnSource = "DebugCommand",
+				encounterChannel = "spec.queenbee_spawn",
+				spawnPosition = Vector3.new(0, 42, 12),
+			})
+
+			expect(reason).to.equal(nil)
+			expect(boss ~= nil).to.equal(true)
+			expect((boss :: any).bossId).to.equal("QueenBee")
+			expect((boss :: any).displayName).to.equal("Queen Bee")
+			expect((boss :: any).hp).to.equal((boss :: any).maxHp)
+			expect(((boss :: any).model :: Instance):GetAttribute("BossSpriteRoot")).to.equal(true)
+			expect(((boss :: any).model :: Instance):GetAttribute(BossServiceUtils.RUNTIME_BOSS_ID_ATTRIBUTE)).to.equal(
+				"QueenBee"
+			)
+			local rootPart = BossServiceUtils.resolveRootPart((boss :: any).model)
+			expect(rootPart ~= nil).to.equal(true)
+			expect((rootPart :: BasePart).Size).to.equal(Vector3.new(6, 13.5, 18))
+			expect(math.abs((rootPart :: BasePart).CFrame.UpVector.Y - 1) < 0.001).to.equal(true)
+
+			local appliedDamage = (boss :: any):takeDamage(100)
+			expect(appliedDamage > 0).to.equal(true)
+			expect((boss :: any).hp < (boss :: any).maxHp).to.equal(true)
 
 			service:destroy()
 		end)

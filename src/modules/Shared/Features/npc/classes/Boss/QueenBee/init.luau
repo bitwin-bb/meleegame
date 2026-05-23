@@ -11,14 +11,25 @@ local Maid = loader("Maid")
 local Rx = loader("Rx")
 local Signal = loader("Signal")
 
+local BossBase = require(script.Parent)
+local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
 local Bee = require(script.Bee)
 local Configs = require(script.Configs)
 local Physics = require(script.Physics)
 local Render = require(script.Render)
 local Stinger = require(script.Stinger)
 
+type Boss = BossBase.Boss
+type BossRegistryEntry = BossServiceUtils.BossRegistryEntry
+type BossSpawnRequest = BossServiceUtils.BossSpawnRequest
+type QueenBeeConfig = Configs.QueenBeeConfig
+
 local QueenBee = {}
 QueenBee.__index = QueenBee
+
+local QueenBeeBossController = {}
+QueenBeeBossController.__index = QueenBeeBossController
+setmetatable(QueenBeeBossController, { __index = BossBase })
 
 type MaidClass = {
 	GiveTask: (self: MaidClass, task: any) -> any,
@@ -110,9 +121,19 @@ export type QueenBee = typeof(setmetatable(
 	QueenBee
 ))
 
+export type QueenBeeBossController = Boss & {
+	_queenConfig: QueenBeeConfig,
+	_simulationSpeed: number,
+	_aggressiveness: number,
+	_sideSign: number,
+	_nextChargeDelay: number,
+	_chargeDirection: Vector3?,
+}
+
 local DEFAULT_MAX_HP = 3400
 local DEFAULT_HP = DEFAULT_MAX_HP
 local MISSING_ASSET_ERROR = "no asset found!"
+local UPRIGHT_FACING = Vector3.zAxis
 
 local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
@@ -138,6 +159,18 @@ local function safeUnit(vector: Vector3, fallbackRaw: Vector3?): Vector3
 		return fallback.Unit
 	end
 	return vector.Unit
+end
+
+local function resolveHorizontalFacing(direction: Vector3, fallbackRaw: Vector3?): Vector3
+	local fallback = if typeof(fallbackRaw) == "Vector3" then fallbackRaw else UPRIGHT_FACING
+	if math.abs(direction.Z) <= 1e-3 then
+		return if fallback.Z < 0 then -Vector3.zAxis else Vector3.zAxis
+	end
+	return if direction.Z < 0 then -Vector3.zAxis else Vector3.zAxis
+end
+
+local function setBossSpriteFacing(self: QueenBeeBossController, direction: Vector3)
+	self:setFacing(resolveHorizontalFacing(direction, self.facing))
 end
 
 local function dampVelocity(velocity: Vector3, dampingRaw: any, dtRaw: any): Vector3
@@ -257,6 +290,341 @@ local function resolveRuntimeParent(configParent: Instance?, serviceParent: Inst
 		return configParent
 	end
 	return serviceParent
+end
+
+local function resolveBossDefaultConfig(serviceRaw: any, bossId: string): any?
+	local defaultConfigByBossId = if typeof(serviceRaw) == "table" then (serviceRaw :: any).defaultConfigByBossId else nil
+	if typeof(defaultConfigByBossId) ~= "table" then
+		return nil
+	end
+
+	local config = (defaultConfigByBossId :: any)[bossId]
+	if typeof(config) == "table" then
+		return config
+	end
+	return nil
+end
+
+local function getPhaseNumberValue(values: { [number]: number }, phaseRaw: any, fallback: number): number
+	local phase = math.clamp(math.floor(sanitizeNumber(phaseRaw, 1, 1, 3)), 1, 3)
+	return sanitizeNumber(values[phase], fallback, 0, nil)
+end
+
+local function resolveBossSideSign(spawnRequest: BossSpawnRequest): number
+	local targetPlayer = spawnRequest.targetPlayer
+	if targetPlayer ~= nil then
+		local velocity = BossServiceUtils.resolveCharacterVelocity(targetPlayer)
+		if velocity.Z < -1e-3 then
+			return 1
+		end
+		if velocity.Z > 1e-3 then
+			return -1
+		end
+
+		local rootPart = BossServiceUtils.resolveCharacterRootPart(targetPlayer)
+		if rootPart ~= nil and typeof(spawnRequest.spawnPosition) == "Vector3" then
+			return if (spawnRequest.spawnPosition :: Vector3).Z < rootPart.Position.Z then -1 else 1
+		end
+	end
+
+	return 1
+end
+
+local function resolveBossInitialSpawnRequest(spawnRequestRaw: BossSpawnRequest, config: QueenBeeConfig): BossSpawnRequest
+	local resolved: BossSpawnRequest = {
+		bossId = spawnRequestRaw.bossId,
+		targetPlayer = spawnRequestRaw.targetPlayer,
+		spawnSource = spawnRequestRaw.spawnSource,
+		encounterChannel = spawnRequestRaw.encounterChannel,
+		spawnPosition = spawnRequestRaw.spawnPosition,
+		planeX = spawnRequestRaw.planeX,
+		simulationSpeed = spawnRequestRaw.simulationSpeed,
+		aggressiveness = spawnRequestRaw.aggressiveness,
+		expertBehaviorEnabled = spawnRequestRaw.expertBehaviorEnabled,
+	}
+
+	if resolved.targetPlayer == nil then
+		return resolved
+	end
+
+	local rootPart = BossServiceUtils.resolveCharacterRootPart(resolved.targetPlayer)
+	if rootPart == nil then
+		return resolved
+	end
+
+	if resolved.planeX == nil then
+		resolved.planeX = rootPart.Position.X
+	end
+	if resolved.spawnPosition == nil then
+		local sideSign = resolveBossSideSign(resolved)
+		resolved.spawnPosition = BossServiceUtils.projectPositionToPlaneX(
+			rootPart.Position + Vector3.new(0, config.HoverAboveOffset + 10, config.HoverSideDistance * sideSign),
+			resolved.planeX
+		)
+	end
+
+	return resolved
+end
+
+local function rollBossDelay(self: QueenBeeBossController, minimum: number, maximum: number): number
+	local randomObject = (self.service :: any).random
+	if randomObject ~= nil then
+		return randomObject:NextNumber(minimum, maximum)
+	end
+	return minimum + (maximum - minimum) * math.random()
+end
+
+local function resolveBossAggression(self: QueenBeeBossController): number
+	return math.clamp(sanitizeNumber(self._aggressiveness, 1, 0.1, 3), 0.1, 3)
+end
+
+local function scaleBossSpeed(self: QueenBeeBossController, speed: number): number
+	return speed * resolveBossAggression(self)
+end
+
+local function scaleBossDuration(self: QueenBeeBossController, duration: number): number
+	return duration / math.sqrt(resolveBossAggression(self))
+end
+
+local function rollNextChargeDelay(self: QueenBeeBossController): number
+	local config = self._queenConfig
+	local baseDelay = getPhaseNumberValue(config.ChargeRepositionMaxTimeByPhase, self.phase, 1.2)
+	return scaleBossDuration(self, rollBossDelay(self, baseDelay * 0.75, baseDelay * 1.2))
+end
+
+local function resolveBossHoverAnchor(self: QueenBeeBossController): Vector3
+	local config = self._queenConfig
+	local targetPosition = self:resolveTargetPosition()
+	if targetPosition == nil then
+		return self.position + Vector3.new(0, math.sin(self.stateTime * 2.25) * 1.2, 0)
+	end
+
+	local targetVelocity = self:resolveTargetVelocity()
+	if targetVelocity.Z > 2 then
+		self._sideSign = -1
+	elseif targetVelocity.Z < -2 then
+		self._sideSign = 1
+	end
+
+	return targetPosition
+		+ Vector3.new(0, config.HoverAboveOffset, config.HoverSideDistance * self._sideSign)
+end
+
+local function setBossMotionDebug(
+	self: QueenBeeBossController,
+	motionOwner: string,
+	hoverAnchor: Vector3?,
+	chargeTimeRemaining: number?
+)
+	self:setMotionState({
+		state = self.state,
+		position = self.position,
+		velocity = self.velocity,
+		hoverAnchor = hoverAnchor,
+		distanceToAnchor = if hoverAnchor ~= nil then (hoverAnchor - self.position).Magnitude else nil,
+		lockedChargeDirection = self._chargeDirection,
+		chargeTimeRemaining = chargeTimeRemaining,
+		motionOwner = motionOwner,
+		localPresentationOffset = Vector3.new(0, math.sin(self.stateTime * 7.5) * 0.18, 0),
+	})
+end
+
+local function refreshBossPhase(self: QueenBeeBossController)
+	local nextPhase = Configs.ResolvePhase(self.hp, self.maxHp, self._queenConfig)
+	if nextPhase ~= self.phase then
+		self:setPhase(nextPhase, "Phase1")
+	end
+end
+
+local function beginBossCharge(self: QueenBeeBossController)
+	local config = self._queenConfig
+	local targetPosition = self:resolveTargetPosition()
+	if targetPosition == nil then
+		targetPosition = self.position + self.facing * 128
+	end
+
+	local targetVelocity = self:resolveTargetVelocity()
+	local predictedPosition = targetPosition + targetVelocity * config.ChargePredictionTime
+	local direction = safeUnit(predictedPosition - self.position, self.facing)
+	self._chargeDirection = direction
+	self.chargeIndex += 1
+	setBossSpriteFacing(self, direction)
+	self:setVelocity(direction * scaleBossSpeed(self, getPhaseNumberValue(config.ChargeSpeedByPhase, self.phase, 118)))
+	self:incrementPresentationToken("dashPulseToken")
+	self:changeState("Phase1Charge", "Charge")
+end
+
+function QueenBee.CreateBossController(
+	service: any,
+	definition: BossRegistryEntry,
+	spawnRequestRaw: BossSpawnRequest
+): QueenBeeBossController
+	local config = Configs.Resolve(resolveBossDefaultConfig(service, definition.id))
+	local spawnRequest = resolveBossInitialSpawnRequest(spawnRequestRaw, config)
+	local base = BossBase.new(service, definition, spawnRequest, {
+		maxHp = DEFAULT_MAX_HP,
+		defense = 8,
+		contactDamage = config.ContactDamage,
+		contactDamageRadius = config.ContactHitRadius,
+		contactDamageCooldown = config.ContactCooldown,
+		faceVelocityWhenMoving = false,
+		faceTargetWhenIdle = false,
+		targetLostGraceSeconds = config.TargetLostGraceTime,
+	})
+	local self = setmetatable(base :: any, QueenBeeBossController) :: QueenBeeBossController
+
+	self._queenConfig = config
+	self._simulationSpeed = sanitizeNumber(spawnRequestRaw.simulationSpeed, 1, 0.05, 5)
+	self._aggressiveness = sanitizeNumber(spawnRequestRaw.aggressiveness, 1, 0.1, 3)
+	self._sideSign = resolveBossSideSign(spawnRequest)
+	self._nextChargeDelay = rollNextChargeDelay(self)
+	self._chargeDirection = nil
+
+	self:setPhase(1, "Phase1")
+	return self
+end
+
+function QueenBeeBossController:GetSimulationSpeed(): number
+	return self._simulationSpeed
+end
+
+function QueenBeeBossController:AfterSpawn()
+	self:setTarget(self.spawnRequest.targetPlayer or self.service:resolveEncounterTarget(self))
+	self:changeState("Phase1Hover", "Spawn")
+end
+
+function QueenBeeBossController:OnStateChanged(nextState: string, _previousState: string, _reason: string)
+	self.contactDamageActive = nextState == "Phase1Charge"
+	self:setPresentationFlag("isHurtWindowActive", nextState ~= "Phase1Charge" and nextState ~= "Death")
+	self:setPresentationFlag("isRoaring", nextState == "Phase1ChargeWindup")
+end
+
+function QueenBeeBossController:OnDamageTaken(_damage: number, _sourceRaw: any?, _hp: number)
+	refreshBossPhase(self)
+end
+
+function QueenBeeBossController:OnDeath(_killerRaw: any?)
+	self._chargeDirection = nil
+	self:setVelocity(Vector3.zero)
+end
+
+function QueenBeeBossController:UpdateModelPivot()
+	local model = self.model
+	if model == nil then
+		return
+	end
+
+	model:PivotTo(CFrame.new(self.position))
+	self.rootPart = BossServiceUtils.resolveRootPart(model)
+	if self.rootPart ~= nil and model.PrimaryPart == nil then
+		model.PrimaryPart = self.rootPart
+	end
+end
+
+function QueenBeeBossController:StepHover(dt: number)
+	local config = self._queenConfig
+	local hoverAnchor = resolveBossHoverAnchor(self)
+	self:moveTowardPoint(
+		hoverAnchor,
+		scaleBossSpeed(self, getPhaseNumberValue(config.HoverSpeedByPhase, self.phase, 36)),
+		scaleBossSpeed(self, getPhaseNumberValue(config.HoverAccelerationByPhase, self.phase, 165)),
+		config.HoverDamping,
+		dt
+	)
+
+	local targetPosition = self:resolveTargetPosition()
+	setBossMotionDebug(self, "QueenBeeHover", hoverAnchor, nil)
+
+	if targetPosition ~= nil and self.stateTime >= self._nextChargeDelay then
+		self:changeState("Phase1ChargeWindup", "ChargeWindup")
+	end
+end
+
+function QueenBeeBossController:StepChargeWindup(dt: number)
+	self:dampVelocity(6, dt)
+
+	local windupDuration =
+		scaleBossDuration(self, getPhaseNumberValue(self._queenConfig.ChargeWindupByPhase, self.phase, 0.52))
+	setBossMotionDebug(self, "QueenBeeChargeWindup", nil, math.max(0, windupDuration - self.stateTime))
+	if self.stateTime >= windupDuration then
+		beginBossCharge(self)
+	end
+end
+
+function QueenBeeBossController:StepCharge(_dt: number)
+	local config = self._queenConfig
+	local direction = safeUnit(self._chargeDirection or self.facing, self.facing)
+	local speed = scaleBossSpeed(self, getPhaseNumberValue(config.ChargeSpeedByPhase, self.phase, 118))
+	local duration = scaleBossDuration(self, getPhaseNumberValue(config.ChargeDurationByPhase, self.phase, 0.72))
+	self:setVelocity(direction * speed)
+	setBossSpriteFacing(self, direction)
+	setBossMotionDebug(self, "QueenBeeCharge", nil, math.max(0, duration - self.stateTime))
+
+	if self.stateTime >= duration then
+		self:changeState("Phase1Recovery", "ChargeComplete")
+	end
+end
+
+function QueenBeeBossController:StepRecovery(dt: number)
+	self._chargeDirection = nil
+	self:dampVelocity(4.5, dt)
+	setBossMotionDebug(self, "QueenBeeRecovery", nil, nil)
+	if self.stateTime >= self._queenConfig.PostChargeRecoverTime then
+		self._sideSign *= -1
+		self._nextChargeDelay = rollNextChargeDelay(self)
+		self:changeState("Phase1Hover", "RecoveryComplete")
+	end
+end
+
+function QueenBeeBossController:StepDespawn(dt: number)
+	local targetPosition = self:resolveTargetPosition()
+	local direction = if targetPosition ~= nil then safeUnit(self.position - targetPosition, self.facing) else self.facing
+	self:accelerateTowardVelocity(direction * self._queenConfig.DespawnSpeed, self._queenConfig.DespawnAcceleration, dt)
+	setBossMotionDebug(self, "QueenBeeDespawn", nil, nil)
+	if self.stateTime >= self._queenConfig.DespawnDuration then
+		self:requestRemoval("DespawnComplete")
+	end
+end
+
+function QueenBeeBossController:StepDeath(dt: number)
+	self:dampVelocity(4.5, dt)
+	setBossMotionDebug(self, "QueenBeeDeath", nil, nil)
+	if self.stateTime >= 1.6 then
+		self:requestRemoval("DeathComplete")
+	end
+end
+
+function QueenBeeBossController:OnStep(dt: number)
+	if self.targetPlayer == nil then
+		self:setTarget(self.service:resolveEncounterTarget(self))
+	end
+
+	refreshBossPhase(self)
+
+	if self.state == "Phase1Hover" then
+		self:stepHover(dt)
+		return
+	end
+	if self.state == "Phase1ChargeWindup" then
+		self:stepChargeWindup(dt)
+		return
+	end
+	if self.state == "Phase1Charge" then
+		self:stepCharge(dt)
+		return
+	end
+	if self.state == "Phase1Recovery" then
+		self:stepRecovery(dt)
+		return
+	end
+	if self.state == "Despawn" then
+		self:stepDespawn(dt)
+		return
+	end
+	if self.state == "Death" then
+		self:stepDeath(dt)
+		return
+	end
 end
 
 function QueenBee.New(configRaw: QueenBeeNewConfig?): QueenBee
@@ -1242,5 +1610,20 @@ QueenBee.getState = QueenBee.GetState
 QueenBee.getPhase = QueenBee.GetPhase
 QueenBee.setHealth = QueenBee.SetHealth
 QueenBee.takeDamage = QueenBee.TakeDamage
+QueenBee.createBossController = QueenBee.CreateBossController
+
+QueenBeeBossController.getSimulationSpeed = QueenBeeBossController.GetSimulationSpeed
+QueenBeeBossController.afterSpawn = QueenBeeBossController.AfterSpawn
+QueenBeeBossController.onStateChanged = QueenBeeBossController.OnStateChanged
+QueenBeeBossController.onDamageTaken = QueenBeeBossController.OnDamageTaken
+QueenBeeBossController.onDeath = QueenBeeBossController.OnDeath
+QueenBeeBossController.updateModelPivot = QueenBeeBossController.UpdateModelPivot
+QueenBeeBossController.stepHover = QueenBeeBossController.StepHover
+QueenBeeBossController.stepChargeWindup = QueenBeeBossController.StepChargeWindup
+QueenBeeBossController.stepCharge = QueenBeeBossController.StepCharge
+QueenBeeBossController.stepRecovery = QueenBeeBossController.StepRecovery
+QueenBeeBossController.stepDespawn = QueenBeeBossController.StepDespawn
+QueenBeeBossController.stepDeath = QueenBeeBossController.StepDeath
+QueenBeeBossController.onStep = QueenBeeBossController.OnStep
 
 return QueenBee

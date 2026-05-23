@@ -19,7 +19,7 @@ local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Serv
 local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local WorldGenerationServiceServer =
-	require(script:FindFirstAncestor("game").Server.Services.WorldGenerationServiceServer)
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer)
 
 type BuildServiceConfig = BuildServiceUtils.BuildServiceConfig
 type BuildServiceState = BuildServiceUtils.BuildServiceState

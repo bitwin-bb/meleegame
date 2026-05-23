@@ -21,7 +21,8 @@ local NpcBinder = require(script:FindFirstAncestor("game").Shared.Features.npc.b
 local PickupBinder = require(script.Parent.PickupBinder)
 local PlaceableBinder = require(script.Parent.PlaceableBinder)
 local RagdollBinder = require(script.Parent.RagdollBinder)
-local ServerChunkBinder = require(script.Parent.ServerChunkBinder)
+local ServerChunkBinder =
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.binders.ServerChunkBinder)
 local StationBinder = require(script.Parent.StationBinder)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local UnitBinder = require(script.Parent.UnitBinder)

@@ -1,5 +1,5 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local WorldGenerationColor = require(script:FindFirstAncestor("game").Shared.Modules.Items.WorldGenerationColor)
+local WorldGenerationColor =
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.modules.WorldGenerationColor)
 
 local liquidDefinitions = WorldGenerationColor.LIQUID_DEFINITIONS
 local liquidBiomeTints = WorldGenerationColor.LIQUID_BIOME_TINTS
@@ -130,6 +130,10 @@ local Configs = {
 		maxCachedChunkData = 1200,
 		maxCachedChunkVisuals = 0,
 		maxCollisionPartsPerChunk = 4096,
+		clientVisualPreloadMarginPixels = 96,
+		clientVisualBuildTimeBudgetSeconds = 0.0035,
+		clientVisualUnloadTimeBudgetSeconds = 0.002,
+		maxPooledVisualParts = 6000,
 	},
 
 	liquid = {

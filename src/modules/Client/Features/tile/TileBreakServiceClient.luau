@@ -13,7 +13,7 @@ local BuildServiceClient = require(script:FindFirstAncestor("game").Client.Servi
 local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
 local Sheet = require(script.Parent.modules.Sheet)
 local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
 local tileThunks = require(script.Parent.tileThunks)
 
 type MaidClass = {

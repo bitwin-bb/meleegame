@@ -1,10 +1,13 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Sift = require(ReplicatedStorage.Packages.Sift)
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local RobloxSoundService = game:GetService("SoundService")
 local RunService = game:GetService("RunService")
+
+local packageRoot = script:FindFirstAncestor("game").Parent
+local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
+local loader = require(loaderUtils.Parent).load(script)
 
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
@@ -13,10 +16,11 @@ local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Bind
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
+local Table = loader("Table")
 local WeatherServiceClient = require(script:FindFirstAncestor("game").Client.Services.WeatherServiceClient)
 local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.WeatherServiceUtils)
 local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Client.Services.WorldGenerationServiceClient)
+	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
 
 type SoundCategory = AudioServiceUtils.SoundCategory
 type AudioServiceState = AudioServiceUtils.AudioServiceState
@@ -56,6 +60,7 @@ local UNDERGROUND_CORRUPTION_SOUNDTRACK_BIOME = "UndergroundCorruption"
 local CAVERN_SOUNDTRACK_BIOME = "Cavern"
 local RAIN_SOUNDTRACK_BIOME = "Rain"
 local EYE_OF_CTHULHU_SOUNDTRACK_BIOME = "EyeOfCthulhu"
+local QUEEN_BEE_SOUNDTRACK_BIOME = "QueenBee"
 local BIOME_TYPE_NORMAL = 1
 local BIOME_TYPE_CORRUPTION = 2
 local BIOME_ID_FOREST = 1
@@ -80,6 +85,12 @@ local SOUNDTRACK_TRACK_KEYS_BY_BIOME: { [string]: { string } } = {
 	Cavern = { "Cavern" },
 	Rain = { "Rain" },
 	EyeOfCthulhu = { "EyeOfCthulhuRedux" },
+	QueenBee = { "QueenBee" },
+}
+
+local BOSS_SOUNDTRACK_BIOME_BY_ID: { [string]: string } = {
+	EyeOfCthulhu = EYE_OF_CTHULHU_SOUNDTRACK_BIOME,
+	QueenBee = QUEEN_BEE_SOUNDTRACK_BIOME,
 }
 
 local SOUNDTRACK_BIOME_BY_BIOME_TYPE: { [number]: string } = {
@@ -99,6 +110,7 @@ local SOUNDTRACK_LOOPED_BY_BIOME: { [string]: boolean } = {
 	Cavern = true,
 	Rain = true,
 	EyeOfCthulhu = true,
+	QueenBee = true,
 }
 
 local function isRainActive(): boolean
@@ -329,13 +341,14 @@ function AudioServiceClient.ResolveBossSoundtrackBiome(self: AudioServiceClient)
 		if typeof(snapshot) ~= "table" then
 			continue
 		end
-		if (snapshot :: any).bossId ~= "EyeOfCthulhu" or (snapshot :: any).isAlive ~= true then
+		local bossSoundtrackBiome = BOSS_SOUNDTRACK_BIOME_BY_ID[(snapshot :: any).bossId]
+		if bossSoundtrackBiome == nil or (snapshot :: any).isAlive ~= true then
 			continue
 		end
 
 		local state = (snapshot :: any).state
 		if state ~= "Dormant" and state ~= "Death" and state ~= "Despawn" then
-			return EYE_OF_CTHULHU_SOUNDTRACK_BIOME
+			return bossSoundtrackBiome
 		end
 	end
 
@@ -415,7 +428,7 @@ function AudioServiceClient.GetNextTrackForSoundtrackBiome(self: AudioServiceCli
 
 	local shuffleBag = self.soundtrackShuffleBagByBiome[soundtrackBiome]
 	if shuffleBag == nil or #shuffleBag <= 0 then
-		shuffleBag = Sift.Dictionary.copy(assetIds)
+		shuffleBag = Table.copy(assetIds)
 		shuffleStringsInPlace(self.random, shuffleBag)
 		self.soundtrackShuffleBagByBiome[soundtrackBiome] = shuffleBag
 	end
