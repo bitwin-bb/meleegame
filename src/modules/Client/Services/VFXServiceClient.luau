@@ -43,7 +43,7 @@ function VFXServiceClient.Play(self: VFXServiceClient, effectSourceRaw: any, opt
 		self:stopChannel(options.channel)
 	end
 
-	local runtimeParent = self.runtimeFolder
+	local runtimeParent: Instance = self.runtimeFolder
 	if options.parent ~= nil and options.parent.Parent ~= nil then
 		runtimeParent = options.parent
 	end
@@ -144,12 +144,13 @@ function VFXServiceClient.StopChannel(self: VFXServiceClient, channelNameRaw: an
 		return
 	end
 
-	local runtimeRoot = self.channelRuntimes[channelName]
+	local channelRuntimes = self.channelRuntimes :: { [string]: BasePart? }
+	local runtimeRoot = channelRuntimes[channelName]
 	if runtimeRoot == nil then
 		return
 	end
 
-	self.channelRuntimes[channelName] = nil
+	channelRuntimes[channelName] = nil
 	if runtimeRoot.Parent ~= nil then
 		runtimeRoot:Destroy()
 	end

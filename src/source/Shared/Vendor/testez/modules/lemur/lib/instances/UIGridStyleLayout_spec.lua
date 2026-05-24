@@ -1,3 +1,4 @@
+--!nocheck
 local FillDirection = import("../Enum/FillDirection")
 local HorizontalAlignment = import("../Enum/HorizontalAlignment")
 local SortOrder = import("../Enum/SortOrder")

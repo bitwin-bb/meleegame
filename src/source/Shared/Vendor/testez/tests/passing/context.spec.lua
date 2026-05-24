@@ -1,3 +1,4 @@
+--!nocheck
 -- luacheck: globals describe beforeAll beforeEach it expect afterEach afterAll
 
 return function()

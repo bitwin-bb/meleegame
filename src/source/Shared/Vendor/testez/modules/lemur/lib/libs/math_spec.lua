@@ -1,3 +1,4 @@
+--!nocheck
 local math = import("./math")
 
 describe("libs.math", function()

@@ -5,7 +5,7 @@ local RunService = game:GetService("RunService")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local CmdrService = loader("CmdrService")
 local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Cmdr.CmdrUtils)

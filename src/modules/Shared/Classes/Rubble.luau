@@ -362,7 +362,7 @@ local function safeCollisionGroupsAreCollidable(groupA: string, groupB: string):
 end
 
 function Rubble.New(configRaw: Config?): Rubble
-	local cfg = if typeof(configRaw) == "table" then configRaw else {}
+	local cfg = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local tuning: Tuning = Sift.Dictionary.copy(DEFAULT_TUNING)
 	if typeof(cfg.tuning) == "table" then
 		for key, value in cfg.tuning :: any do
@@ -518,7 +518,7 @@ function Rubble.New(configRaw: Config?): Rubble
 	return self
 end
 
-function Rubble:_attachRuntimeFolders()
+function Rubble._attachRuntimeFolders(self: Rubble)
 	local gameFolder = WorkspaceFolders.getOrCreateGameFolder()
 	if self.root.Parent ~= gameFolder then
 		self.root.Parent = gameFolder
@@ -534,7 +534,7 @@ function Rubble:_attachRuntimeFolders()
 	WorkspaceFolders.manageFolder(self.inactive, self.root)
 end
 
-function Rubble:_heapPush(node: ExpiryNode)
+function Rubble._heapPush(self: Rubble, node: ExpiryNode)
 	local heap = self.expiryHeap
 	local i = #heap + 1
 	heap[i] = node
@@ -548,7 +548,7 @@ function Rubble:_heapPush(node: ExpiryNode)
 	end
 end
 
-function Rubble:_heapPop(): ExpiryNode?
+function Rubble._heapPop(self: Rubble): ExpiryNode?
 	local heap = self.expiryHeap
 	if #heap == 0 then
 		return nil
@@ -580,12 +580,12 @@ function Rubble:_heapPop(): ExpiryNode?
 	return root
 end
 
-function Rubble:_pushFree(slot: Slot)
+function Rubble._pushFree(self: Rubble, slot: Slot)
 	self.freeTop += 1
 	self.free[self.freeTop] = slot.id
 end
 
-function Rubble:_popFree(): Slot?
+function Rubble._popFree(self: Rubble): Slot?
 	if self.freeTop <= 0 then
 		return nil
 	end
@@ -595,7 +595,7 @@ function Rubble:_popFree(): Slot?
 	return if id then self.slotById[id] else nil
 end
 
-function Rubble:_makeSlot(): Slot?
+function Rubble._makeSlot(self: Rubble): Slot?
 	if self.nextSlotId >= self.tuning.maxPoolSize then
 		return nil
 	end
@@ -650,7 +650,7 @@ function Rubble:_makeSlot(): Slot?
 	return slot
 end
 
-function Rubble:WarmPool(countRaw: any): number
+function Rubble.WarmPool(self: Rubble, countRaw: any): number
 	local count = math.floor(n(countRaw, 0, 0, self.tuning.maxPoolSize))
 	local added = 0
 	for _ = 1, count do
@@ -662,7 +662,7 @@ function Rubble:WarmPool(countRaw: any): number
 	return added
 end
 
-function Rubble:_activeAdd(slot: Slot)
+function Rubble._activeAdd(self: Rubble, slot: Slot)
 	local index = #self.activeIds + 1
 	self.activeIds[index] = slot.id
 	self.activeIndex[slot.id] = index
@@ -671,7 +671,7 @@ function Rubble:_activeAdd(slot: Slot)
 	end
 end
 
-function Rubble:_activeRemove(slot: Slot)
+function Rubble._activeRemove(self: Rubble, slot: Slot)
 	local i = self.activeIndex[slot.id]
 	if i == nil then
 		return
@@ -686,14 +686,14 @@ function Rubble:_activeRemove(slot: Slot)
 	end
 end
 
-function Rubble:_clearPlayerNoCollision(slot: Slot)
+function Rubble._clearPlayerNoCollision(self: Rubble, slot: Slot)
 	for _, noCollision in slot.playerNoCollisionConstraints do
 		noCollision:Destroy()
 	end
 	table.clear(slot.playerNoCollisionConstraints)
 end
 
-function Rubble:_addPlayerNoCollisionForCharacter(slot: Slot, character: Model?)
+function Rubble._addPlayerNoCollisionForCharacter(self: Rubble, slot: Slot, character: Model?)
 	if character == nil then
 		return
 	end
@@ -714,7 +714,7 @@ function Rubble:_addPlayerNoCollisionForCharacter(slot: Slot, character: Model?)
 	end
 end
 
-function Rubble:_applyPlayerNoCollision(slot: Slot)
+function Rubble._applyPlayerNoCollision(self: Rubble, slot: Slot)
 	self:_clearPlayerNoCollision(slot)
 
 	if RunService:IsClient() then
@@ -730,7 +730,7 @@ function Rubble:_applyPlayerNoCollision(slot: Slot)
 	end
 end
 
-function Rubble:_resetPart(part: BasePart)
+function Rubble._resetPart(self: Rubble, part: BasePart)
 	part.AssemblyLinearVelocity = ZERO
 	part.AssemblyAngularVelocity = ZERO
 	part.Anchored = true
@@ -749,7 +749,7 @@ function Rubble:_resetPart(part: BasePart)
 	part.Parent = nil
 end
 
-function Rubble:_recycleSlot(slot: Slot)
+function Rubble._recycleSlot(self: Rubble, slot: Slot)
 	if not slot.active then
 		return
 	end
@@ -768,7 +768,7 @@ function Rubble:_recycleSlot(slot: Slot)
 	self.totalRecycles += 1
 end
 
-function Rubble:_acquireSlot(): Slot?
+function Rubble._acquireSlot(self: Rubble): Slot?
 	local slot = self:_popFree()
 	if slot then
 		return slot
@@ -792,7 +792,7 @@ function Rubble:_acquireSlot(): Slot?
 	end
 end
 
-function Rubble:_resolveLodOrigin(slot: Slot, sharedOrigin: Vector3?): Vector3?
+function Rubble._resolveLodOrigin(self: Rubble, slot: Slot, sharedOrigin: Vector3?): Vector3?
 	if slot.lodReference ~= nil then
 		if typeof(slot.lodReference) == "function" then
 			local ok, out = pcall(slot.lodReference)
@@ -812,7 +812,7 @@ function Rubble:_resolveLodOrigin(slot: Slot, sharedOrigin: Vector3?): Vector3?
 	return sharedOrigin
 end
 
-function Rubble:_updateSlot(slot: Slot, dt: number, currentNow: number, checkLod: boolean, sharedLodOrigin: Vector3?)
+function Rubble._updateSlot(self: Rubble, slot: Slot, dt: number, currentNow: number, checkLod: boolean, sharedLodOrigin: Vector3?)
 	local part = slot.part
 	if part.Parent == nil then
 		self:_recycleSlot(slot)
@@ -873,7 +873,7 @@ function Rubble:_updateSlot(slot: Slot, dt: number, currentNow: number, checkLod
 	end
 end
 
-function Rubble:_onHeartbeat(dt: number)
+function Rubble._onHeartbeat(self: Rubble, dt: number)
 	if self.destroyed then
 		return
 	end
@@ -931,7 +931,7 @@ function Rubble:_onHeartbeat(dt: number)
 	end
 end
 
-function Rubble:Spawn(paramsRaw: SpawnParams?): BasePart?
+function Rubble.Spawn(self: Rubble, paramsRaw: SpawnParams?): BasePart?
 	if self.destroyed then
 		return nil
 	end
@@ -941,7 +941,7 @@ function Rubble:Spawn(paramsRaw: SpawnParams?): BasePart?
 	end
 	self.spawnBudget -= 1
 
-	local params = if typeof(paramsRaw) == "table" then paramsRaw else {}
+	local params = if typeof(paramsRaw) == "table" then paramsRaw else ({} :: any)
 	local slot = self:_acquireSlot()
 	if slot == nil then
 		self.totalDropped += 1
@@ -1116,7 +1116,7 @@ function Rubble:Spawn(paramsRaw: SpawnParams?): BasePart?
 	return part
 end
 
-function Rubble:Recycle(target: any): boolean
+function Rubble.Recycle(self: Rubble, target: any): boolean
 	local slot: Slot? = nil
 	if typeof(target) == "number" then
 		slot = self.slotById[math.floor(target)]
@@ -1133,7 +1133,7 @@ function Rubble:Recycle(target: any): boolean
 	return true
 end
 
-function Rubble:RecycleAll()
+function Rubble.RecycleAll(self: Rubble)
 	for i = #self.activeIds, 1, -1 do
 		local id = self.activeIds[i]
 		local slot = if id then self.slotById[id] else nil
@@ -1146,7 +1146,7 @@ function Rubble:RecycleAll()
 	end
 end
 
-function Rubble:GetStats(): { [string]: number }
+function Rubble.GetStats(self: Rubble): { [string]: number }
 	return {
 		active = #self.activeIds,
 		pooled = self.freeTop,
@@ -1158,7 +1158,7 @@ function Rubble:GetStats(): { [string]: number }
 	}
 end
 
-function Rubble:Destroy()
+function Rubble.Destroy(self: Rubble)
 	if self.destroyed then
 		return
 	end
@@ -1191,3 +1191,4 @@ Rubble.DefaultTuning = DEFAULT_TUNING
 Rubble.new = Rubble.New
 
 return Rubble
+

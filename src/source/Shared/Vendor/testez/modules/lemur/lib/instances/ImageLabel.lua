@@ -1,3 +1,4 @@
+--!nocheck
 local Color3 = import("../types/Color3")
 local GuiObject = import("./GuiObject")
 local InstanceProperty = import("../InstanceProperty")

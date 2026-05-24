@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(packageRoot)
+local loader = (require :: any)(loaderUtils.Parent).load(packageRoot)
 
 local Flipbook = loader("Flipbook")
 local FlipbookPlayer = loader("FlipbookPlayer")
@@ -79,7 +79,7 @@ local function ShinySpeck(props: { speck: ShinySpeckState }): React.ReactNode
 		return function()
 			maid:DoCleaning()
 		end
-	end, {
+	end, ({
 		speck.id,
 		speck.image,
 		speck.columns,
@@ -87,13 +87,13 @@ local function ShinySpeck(props: { speck: ShinySpeckState }): React.ReactNode
 		speck.frameSize.X,
 		speck.frameSize.Y,
 		speck.frameRate,
-	})
+	} :: { any }))
 
 	return e("SurfaceGui", {
 		Adornee = speck.adornee,
 		AlwaysOnTop = false,
 		Brightness = SHINY_BRIGHTNESS,
-		Enabled = speck.adornee ~= nil and speck.image ~= "",
+		Enabled = speck.image ~= "",
 		Face = speck.face,
 		LightInfluence = 0,
 		PixelsPerStud = SHINY_SURFACE_PIXELS_PER_STUD,
@@ -147,7 +147,7 @@ return function(props: BreakProps): React.ReactNode
 		}),
 	} :: { [any]: React.ReactNode }
 
-	for _, speck in props.shinySpecks or {} do
+	for _, speck in props.shinySpecks or ({} :: any) do
 		children[#children + 1] = e(ShinySpeck, {
 			speck = speck,
 		})

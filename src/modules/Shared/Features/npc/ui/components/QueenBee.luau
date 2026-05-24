@@ -4,7 +4,7 @@ local Workspace = game:GetService("Workspace")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local Flipbook = loader("Flipbook")
 local Sprite = loader("Sprite")
@@ -28,6 +28,10 @@ local BOSS_RUNTIME_FOLDER_NAME = "BossRuntime"
 local DEFAULT_ROOT_SIZE = Vector3.new(6, 13.5, 18)
 local FRAME_COUNT = math.max(1, QueenBeeSpriteSheet.frameCount or (QueenBeeSpriteSheet.columns * QueenBeeSpriteSheet.rows))
 local runtimeRootPartCache: { [string]: BasePart } = {}
+
+local function dependencyArray(...: any): { any }
+	return { ... }
+end
 
 type AnimationPlayback = {
 	animationName: string,
@@ -159,7 +163,7 @@ local function resolveModelRootPart(model: Model): BasePart?
 end
 
 local function resolveRuntimeRootPart(runtimeId: string): BasePart?
-	local cachedRootPart = runtimeRootPartCache[runtimeId]
+	local cachedRootPart = (runtimeRootPartCache :: { [string]: BasePart? })[runtimeId]
 	if cachedRootPart ~= nil and cachedRootPart:IsDescendantOf(Workspace) then
 		return cachedRootPart
 	end
@@ -251,13 +255,13 @@ return function(props: QueenBeeProps): React.ReactNode
 
 	local flipbook = React.useMemo(function()
 		return createAnimationFlipbook(playback)
-	end, {
+	end, dependencyArray(
 		QueenBeeSpriteSheet.image,
 		QueenBeeSpriteSheet.frameSize.X,
 		QueenBeeSpriteSheet.frameSize.Y,
 		playback.animationName,
-		playback.frameRate,
-	})
+		playback.frameRate
+	))
 	local frameOffset = resolveActiveFrameOffset(flipbook, playback, props.renderClock)
 
 	local children: { [string]: React.ReactNode } = {

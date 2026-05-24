@@ -20,7 +20,7 @@ local Melee = require(script:FindFirstAncestor("game").Shared.Classes.Melee)
 local MeleeServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.MeleeServiceUtils)
 local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
 local RagdollServiceClient = require(script:FindFirstAncestor("game").Client.Services.RagdollServiceClient)
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 local Promise = loader("Promise")
 
 type MeleeWeaponConfig = MeleeServiceUtils.MeleeWeaponConfig
@@ -140,7 +140,7 @@ local function promiseAll(promises: { any }): any
 end
 
 local function promiseFromSignal(signal: any, predicate: ((...any) -> boolean)?): any
-	local connection = nil
+	local connection = nil :: RBXScriptConnection?
 	local promise = Promise.new(function(resolve, reject)
 		local settled = false
 
@@ -762,11 +762,12 @@ function MeleeServiceClient.ResolveToolSound(self: MeleeServiceClient, soundName
 		return nil
 	end
 
-	local direct = self.equippedToolSounds[soundName]
+	local equippedToolSounds = self.equippedToolSounds :: { [string]: string }
+	local direct = equippedToolSounds[soundName]
 	if direct ~= nil then
 		return direct
 	end
-	return self.equippedToolSounds[string.lower(soundName)]
+	return equippedToolSounds[string.lower(soundName)]
 end
 
 function MeleeServiceClient.ResolveRandomSwingSound(self: MeleeServiceClient, swingGroupRaw: any): string?
@@ -775,7 +776,8 @@ function MeleeServiceClient.ResolveRandomSwingSound(self: MeleeServiceClient, sw
 		return nil
 	end
 
-	local pool = self.equippedToolSwingSounds[swingGroup]
+	local equippedToolSwingSounds = self.equippedToolSwingSounds :: { [string]: { string } }
+	local pool = equippedToolSwingSounds[swingGroup]
 	if pool == nil or #pool <= 0 then
 		return nil
 	end
@@ -785,7 +787,8 @@ function MeleeServiceClient.ResolveRandomSwingSound(self: MeleeServiceClient, sw
 end
 
 function MeleeServiceClient.ResolveSwingSoundGroupFromContext(self: MeleeServiceClient, contextRaw: any): string?
-	local context = if typeof(contextRaw) == "table" then contextRaw else {}
+	local context = if typeof(contextRaw) == "table" then contextRaw else ({} :: any)
+	local equippedToolSwingSounds = self.equippedToolSwingSounds :: { [string]: { string } }
 
 	local fromClipName = normalizeSwingSoundGroup(context.clipName)
 	if fromClipName ~= nil then
@@ -796,7 +799,7 @@ function MeleeServiceClient.ResolveSwingSoundGroupFromContext(self: MeleeService
 	if typeof(clipIndexRaw) == "number" and clipIndexRaw == clipIndexRaw then
 		local clipIndex = math.max(1, math.floor(clipIndexRaw))
 		local directGroup = normalizeSwingSoundGroup("swing" .. tostring(clipIndex))
-		if directGroup ~= nil and self.equippedToolSwingSounds[directGroup] ~= nil then
+		if directGroup ~= nil and equippedToolSwingSounds[directGroup] ~= nil then
 			return directGroup
 		end
 	end
@@ -804,7 +807,7 @@ function MeleeServiceClient.ResolveSwingSoundGroupFromContext(self: MeleeService
 	local swingIndexRaw = context.swingIndex
 	if typeof(swingIndexRaw) == "number" and swingIndexRaw == swingIndexRaw then
 		local swingIndex = math.max(1, math.floor(swingIndexRaw))
-		local orderedGroups = resolveOrderedSwingGroups(self.equippedToolSwingSounds)
+		local orderedGroups = resolveOrderedSwingGroups(equippedToolSwingSounds)
 		if #orderedGroups > 0 then
 			local cycledIndex = ((swingIndex - 1) % #orderedGroups) + 1
 			return orderedGroups[cycledIndex]
@@ -839,7 +842,7 @@ function MeleeServiceClient.PlayToolSoundByEvent(
 	local normalizedEventName = normalizeEventKey(eventName)
 	local eventType = trim(eventTypeRaw)
 	local normalizedEventType = normalizeEventKey(eventType)
-	local fallbackNames = if typeof(fallbackNamesRaw) == "table" then fallbackNamesRaw else {}
+	local fallbackNames = if typeof(fallbackNamesRaw) == "table" then fallbackNamesRaw else ({} :: any)
 
 	if normalizedEventName ~= "" then
 		local eventSound = self:resolveToolSound(eventName)
@@ -902,8 +905,8 @@ function MeleeServiceClient.BindEquippedTool(self: MeleeServiceClient, toolRaw: 
 
 	self.toolJanitor:Clean()
 	self.equippedTool = tool
-	self.equippedToolSounds = if tool ~= nil then MeleeServiceUtils.resolveToolSounds(tool) else {}
-	self.equippedToolSwingSounds = if tool ~= nil then MeleeServiceUtils.resolveToolSwingSounds(tool) else {}
+	self.equippedToolSounds = if tool ~= nil then MeleeServiceUtils.resolveToolSounds(tool) else ({} :: any)
+	self.equippedToolSwingSounds = if tool ~= nil then MeleeServiceUtils.resolveToolSwingSounds(tool) else ({} :: any)
 
 	if tool == nil then
 		return
@@ -992,7 +995,7 @@ function MeleeServiceClient.OnMeleeAttackFinished(self: MeleeServiceClient, _con
 end
 
 function MeleeServiceClient.OnMeleeAnimationEvent(self: MeleeServiceClient, contextRaw: any)
-	local context = if typeof(contextRaw) == "table" then contextRaw else {}
+	local context = if typeof(contextRaw) == "table" then contextRaw else ({} :: any)
 	local eventName = context.eventName
 	local eventType = context.eventType
 
@@ -1066,7 +1069,7 @@ function MeleeServiceClient.OnCharacterAdded(self: MeleeServiceClient, character
 
 		if child:IsA("Humanoid") then
 			self:refreshHumanoidReference()
-			if child == self.humanoid then
+			if child == (self.humanoid :: any) then
 				bindHumanoidSignals(child)
 			end
 			return
@@ -1081,7 +1084,7 @@ function MeleeServiceClient.OnCharacterAdded(self: MeleeServiceClient, character
 			self:applyDebugHitboxPoints()
 		end
 
-		if child == self.humanoid then
+		if child == (self.humanoid :: any) then
 			self.humanoid = nil
 			return
 		end
@@ -1303,8 +1306,8 @@ type MeleeServiceClient = typeof(MeleeServiceClient) & {
 	equippedSlot: number?,
 	equippedWeaponConfig: MeleeWeaponConfig?,
 	equippedTool: Tool?,
-	equippedToolSounds: { [string]: string },
-	equippedToolSwingSounds: { [string]: { string } },
+	equippedToolSounds: any,
+	equippedToolSwingSounds: any,
 	replicatedItemId: string?,
 	replicatedSlot: number?,
 	cameraShaker: CameraShakerObject?,

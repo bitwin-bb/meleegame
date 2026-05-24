@@ -11,7 +11,7 @@ export type EyeConfig = Default.DefaultNpcConfig & {
 }
 
 function Eye.New(configRaw: EyeConfig?): Eye
-	local config = if typeof(configRaw) == "table" then table.clone(configRaw :: any) else {}
+	local config = if typeof(configRaw) == "table" then table.clone(configRaw :: any) else ({} :: any)
 	if config.archetype == nil then
 		config.archetype = "DemonEye"
 	end

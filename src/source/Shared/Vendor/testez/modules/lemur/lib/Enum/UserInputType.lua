@@ -1,3 +1,4 @@
+--!nocheck
 local createEnum = import("../createEnum")
 
 return createEnum("UserInputType", {

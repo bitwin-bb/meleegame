@@ -7,7 +7,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local ManaServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.ManaServiceUtils)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local PlayerDataServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerDataServiceServer)
-local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
+local PlayerServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
 
 type ManaServiceState = ManaServiceUtils.ManaServiceState
 

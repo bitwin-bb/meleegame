@@ -9,7 +9,7 @@ local Workspace = game:GetService("Workspace")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(packageRoot)
+local loader = (require :: any)(loaderUtils.Parent).load(packageRoot)
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require(ReplicatedStorage.Packages.Signal)
@@ -36,10 +36,10 @@ type JanitorClass = {
 }
 
 type PlatformKind = PlatformServiceUtils.PlatformKind
-type PlatformStateBase = PlatformServiceUtils.PlatformState
-type ActionDefinition = PlatformServiceUtils.ActionDefinition
-type ActionBinding = PlatformServiceUtils.ActionBinding
-type PromptBinding = PlatformServiceUtils.PromptBinding
+type PlatformStateBase = any
+type ActionDefinition = any
+type ActionBinding = any
+type PromptBinding = any
 
 type SignalConnection = {
 	Disconnect: (self: SignalConnection) -> (),
@@ -78,7 +78,7 @@ type PlatformChangedSignal = {
 	Destroy: (self: PlatformChangedSignal) -> (),
 }
 
-export type ActionPhase = "Began" | "Changed" | "Ended"
+export type ActionPhase = string
 
 export type ActionContext = {
 	actionName: string,
@@ -139,11 +139,47 @@ local PlatformServiceClient = {}
 
 PlatformServiceClient.ACTIONS = PlatformServiceUtils.ACTIONS
 
+export type PlatformServiceClient = typeof(PlatformServiceClient) & {
+	runtimeContext: any?,
+	janitor: any,
+	stateChanged: any,
+	platformChanged: any,
+	actionDefinitionChanged: any,
+	actionTriggered: any,
+	stateChangedSignal: any,
+	platformSignal: any,
+	deviceClassSignal: any,
+	platformChangedSignal: any,
+	uiScaleChangedSignal: any,
+	actionTriggeredSignal: any,
+	stateObservable: ObservableObject?,
+	platformObservable: ObservableObject?,
+	deviceClassObservable: ObservableObject?,
+	platformChangedObservable: ObservableObject?,
+	uiScaleObservable: ObservableObject?,
+	allActionsObservable: ObservableObject?,
+	promptObservables: any,
+	actionObservables: any,
+	promptSignals: any,
+	actionSignals: any,
+	actions: any,
+	state: PlatformClientState?,
+	lastInputType: Enum.UserInputType?,
+	gamepadFamily: string?,
+	nevermorePlatformSetup: boolean?,
+	nevermoreServiceBag: any?,
+	nevermoreInputModeService: any?,
+	inputModeSelector: any?,
+	gamepadInputModeSelector: any?,
+	mouseShiftLockService: any?,
+	uiScale: any?,
+}
+
 local TOUCH_MOVEMENT_GUARD_WIDTH = 0.42
 local TOUCH_MOVEMENT_GUARD_HEIGHT = 0.44
 local TOUCH_JUMP_BUTTON_PADDING = 12
 local GAMEPAD_CURSOR_ACTIVE_ATTRIBUTE = "CustomCursorGamepadActive"
-local GAMEPAD_HINTS = if typeof((ImageIds :: any).hints) == "table" then (ImageIds :: any).hints :: any else {}
+local GAMEPAD_HINTS = if typeof((ImageIds :: any).hints) == "table" then (ImageIds :: any).hints :: any else ({} :: any)
 local MOUSE_LOCK_POLICY_KEY = {}
 
 local function cloneBinding(binding: ActionBinding): ActionBinding
@@ -248,7 +284,7 @@ local function resolveKeyCodeByName(keyCodeNameRaw: any): Enum.KeyCode?
 		return nil
 	end
 	local ok, keyCodeOrError = pcall(function()
-		return Enum.KeyCode[keyCodeName]
+		return (Enum.KeyCode :: any)[keyCodeName]
 	end)
 	if ok and typeof(keyCodeOrError) == "EnumItem" then
 		return keyCodeOrError :: Enum.KeyCode
@@ -307,7 +343,7 @@ local function resolveControlPrompt(promptRaw: any): any
 end
 
 local function resolvePromptForActionOnPlatform(
-	self: typeof(PlatformServiceClient),
+	self: PlatformServiceClient,
 	actionNameRaw: any,
 	platformKindRaw: any
 ): PromptBinding?
@@ -367,7 +403,7 @@ local function resolvePromptForActionOnPlatform(
 	return output
 end
 
-local function resolveControlEntry(self: typeof(PlatformServiceClient), entryRaw: any, platformKindRaw: any): any
+local function resolveControlEntry(self: PlatformServiceClient, entryRaw: any, platformKindRaw: any): any
 	local prompts = {}
 	if typeof(entryRaw) == "table" and typeof(entryRaw.prompts) == "table" then
 		for index = 1, #entryRaw.prompts do
@@ -391,7 +427,7 @@ local function resolveControlEntry(self: typeof(PlatformServiceClient), entryRaw
 end
 
 local function resolveControlSections(
-	self: typeof(PlatformServiceClient),
+	self: PlatformServiceClient,
 	layoutRaw: any,
 	platformKindRaw: any
 ): { any }
@@ -904,7 +940,7 @@ local function isTouchReservedRegion(position: Vector2, viewport: Vector2): bool
 end
 
 function PlatformServiceClient._resolveCapabilities(
-	self: typeof(PlatformServiceClient)
+	self: PlatformServiceClient
 ): PlatformServiceUtils.CapabilitySnapshot
 	local runtimePlatform = if self.runtimeContext ~= nil then (self.runtimeContext :: any).platform else nil
 	if runtimePlatform ~= nil and typeof((runtimePlatform :: any).getSnapshot) == "function" then
@@ -932,7 +968,7 @@ function PlatformServiceClient._resolveCapabilities(
 	}
 end
 
-function PlatformServiceClient._resolveViewport(self: typeof(PlatformServiceClient)): Vector2
+function PlatformServiceClient._resolveViewport(self: PlatformServiceClient): Vector2
 	local camera = Workspace.CurrentCamera
 	if camera ~= nil then
 		return Vector2.new(math.max(1, camera.ViewportSize.X), math.max(1, camera.ViewportSize.Y))
@@ -944,7 +980,7 @@ function PlatformServiceClient._resolveViewport(self: typeof(PlatformServiceClie
 	return Vector2.new(1920, 1080)
 end
 
-function PlatformServiceClient._setupNevermorePlatformSupport(self: typeof(PlatformServiceClient))
+function PlatformServiceClient._setupNevermorePlatformSupport(self: PlatformServiceClient)
 	if self.nevermorePlatformSetup == true then
 		return
 	end
@@ -1011,7 +1047,7 @@ function PlatformServiceClient._setupNevermorePlatformSupport(self: typeof(Platf
 	end
 end
 
-function PlatformServiceClient._applySystemPolicies(self: typeof(PlatformServiceClient), state: PlatformClientState)
+function PlatformServiceClient._applySystemPolicies(self: PlatformServiceClient, state: PlatformClientState)
 	local allowShiftLock = shouldAllowShiftLockForState(state)
 
 	if allowShiftLock then
@@ -1034,7 +1070,7 @@ function PlatformServiceClient._applySystemPolicies(self: typeof(PlatformService
 	end)
 end
 
-function PlatformServiceClient._resolveState(self: typeof(PlatformServiceClient)): PlatformClientState
+function PlatformServiceClient._resolveState(self: PlatformServiceClient): PlatformClientState
 	self:_setupNevermorePlatformSupport()
 
 	local preferredInput = nil
@@ -1110,7 +1146,7 @@ function PlatformServiceClient._resolveState(self: typeof(PlatformServiceClient)
 		end
 	end
 
-	local provisionalState: PlatformClientState = {
+	local provisionalState: PlatformClientState = ({
 		platform = platformState.platform,
 		deviceClass = platformState.deviceClass,
 		preferredInputName = platformState.preferredInputName,
@@ -1132,13 +1168,13 @@ function PlatformServiceClient._resolveState(self: typeof(PlatformServiceClient)
 		shiftLockAllowed = false,
 		customCursorEnabled = false,
 		updatedAt = 0,
-	}
+	} :: any)
 	provisionalState.shiftLockAllowed = shouldAllowShiftLockForState(provisionalState)
 	provisionalState.updatedAt = os.clock()
 	return provisionalState
 end
 
-function PlatformServiceClient._resolveGamepadFamily(_self: typeof(PlatformServiceClient)): string
+function PlatformServiceClient._resolveGamepadFamily(_self: PlatformServiceClient): string
 	local familyFromPlatform = resolveGamepadFamilyFromPlatformName(resolvePlatformName())
 	if familyFromPlatform ~= nil then
 		return familyFromPlatform
@@ -1152,7 +1188,7 @@ function PlatformServiceClient._resolveGamepadFamily(_self: typeof(PlatformServi
 	return "xbox"
 end
 
-function PlatformServiceClient._ensureInitialized(self: typeof(PlatformServiceClient))
+function PlatformServiceClient._ensureInitialized(self: PlatformServiceClient)
 	if self.janitor ~= nil then
 		return
 	end
@@ -1160,7 +1196,7 @@ function PlatformServiceClient._ensureInitialized(self: typeof(PlatformServiceCl
 	self:Init()
 end
 
-function PlatformServiceClient._updateActionBindingsForPlatform(self: typeof(PlatformServiceClient))
+function PlatformServiceClient._updateActionBindingsForPlatform(self: PlatformServiceClient)
 	for _, actionRuntime in self.actions do
 		if hasActionSubscribers(actionRuntime) then
 			self:_unbindContextAction(actionRuntime)
@@ -1169,7 +1205,7 @@ function PlatformServiceClient._updateActionBindingsForPlatform(self: typeof(Pla
 	end
 end
 
-function PlatformServiceClient._refreshState(self: typeof(PlatformServiceClient), forceEmit: boolean?)
+function PlatformServiceClient._refreshState(self: PlatformServiceClient, forceEmit: boolean?)
 	local nextState = self:_resolveState()
 	nextState.customCursorEnabled = shouldUseCustomCursorForState(nextState)
 	local previousState = self.state
@@ -1208,14 +1244,14 @@ function PlatformServiceClient._refreshState(self: typeof(PlatformServiceClient)
 end
 
 function PlatformServiceClient._getActionRuntime(
-	self: typeof(PlatformServiceClient),
+	self: PlatformServiceClient,
 	actionName: string
 ): ActionRuntime?
 	return self.actions[actionName]
 end
 
 function PlatformServiceClient._ensureActionRuntime(
-	self: typeof(PlatformServiceClient),
+	self: PlatformServiceClient,
 	actionNameRaw: any,
 	overrideDefinitionRaw: any?
 ): ActionRuntime?
@@ -1255,7 +1291,7 @@ function PlatformServiceClient._ensureActionRuntime(
 	return runtime
 end
 
-function PlatformServiceClient._unbindContextAction(_self: typeof(PlatformServiceClient), actionRuntime: ActionRuntime)
+function PlatformServiceClient._unbindContextAction(_self: PlatformServiceClient, actionRuntime: ActionRuntime)
 	if not actionRuntime.isBound then
 		return
 	end
@@ -1265,7 +1301,7 @@ function PlatformServiceClient._unbindContextAction(_self: typeof(PlatformServic
 end
 
 function PlatformServiceClient._contextInputsForBindings(
-	_self: typeof(PlatformServiceClient),
+	_self: PlatformServiceClient,
 	bindings: { ActionBinding }
 ): { any }
 	local output = {}
@@ -1287,7 +1323,7 @@ function PlatformServiceClient._contextInputsForBindings(
 end
 
 function PlatformServiceClient._findMatchingBinding(
-	_self: typeof(PlatformServiceClient),
+	_self: PlatformServiceClient,
 	bindings: { ActionBinding },
 	inputObject: InputObject?
 ): ActionBinding?
@@ -1307,7 +1343,7 @@ function PlatformServiceClient._findMatchingBinding(
 end
 
 function PlatformServiceClient._shouldIgnoreAction(
-	self: typeof(PlatformServiceClient),
+	self: PlatformServiceClient,
 	actionRuntime: ActionRuntime,
 	inputObject: InputObject?
 ): boolean
@@ -1346,7 +1382,7 @@ function PlatformServiceClient._shouldIgnoreAction(
 end
 
 function PlatformServiceClient._dispatchAction(
-	self: typeof(PlatformServiceClient),
+	self: PlatformServiceClient,
 	actionRuntime: ActionRuntime,
 	inputState: Enum.UserInputState,
 	inputObject: InputObject?
@@ -1414,7 +1450,7 @@ function PlatformServiceClient._dispatchAction(
 	return Enum.ContextActionResult.Pass
 end
 
-function PlatformServiceClient._bindContextAction(self: typeof(PlatformServiceClient), actionRuntime: ActionRuntime)
+function PlatformServiceClient._bindContextAction(self: PlatformServiceClient, actionRuntime: ActionRuntime)
 	if actionRuntime.isEnabled ~= true then
 		return
 	end
@@ -1442,7 +1478,7 @@ function PlatformServiceClient._bindContextAction(self: typeof(PlatformServiceCl
 	actionRuntime.isBound = true
 end
 
-function PlatformServiceClient.Init(self: typeof(PlatformServiceClient))
+function PlatformServiceClient.Init(self: PlatformServiceClient)
 	if self.janitor ~= nil then
 		return
 	end
@@ -1495,10 +1531,11 @@ function PlatformServiceClient.Init(self: typeof(PlatformServiceClient))
 	self.inputModeSelector = nil
 	self.gamepadInputModeSelector = nil
 	self.mouseShiftLockService = nil
-	self.uiScale = PlatformUIScale.new({
+	local uiScale = PlatformUIScale.new({
 		platformService = self,
 	})
-	self.uiScale:init()
+	self.uiScale = uiScale
+	uiScale:init()
 	self:_setupNevermorePlatformSupport()
 
 	self.janitor:GiveChore(function()
@@ -1569,12 +1606,12 @@ function PlatformServiceClient.Init(self: typeof(PlatformServiceClient))
 	self:_refreshState(true)
 end
 
-function PlatformServiceClient.RequestSync(self: typeof(PlatformServiceClient))
+function PlatformServiceClient.RequestSync(self: PlatformServiceClient)
 	self:_ensureInitialized()
 	self:_refreshState(true)
 end
 
-function PlatformServiceClient.GetState(self: typeof(PlatformServiceClient)): PlatformClientState
+function PlatformServiceClient.GetState(self: PlatformServiceClient): PlatformClientState
 	self:_ensureInitialized()
 	if self.state == nil then
 		self:_refreshState(true)
@@ -1582,63 +1619,63 @@ function PlatformServiceClient.GetState(self: typeof(PlatformServiceClient)): Pl
 	return cloneState(self.state :: PlatformClientState)
 end
 
-function PlatformServiceClient.IsReady(self: typeof(PlatformServiceClient)): boolean
+function PlatformServiceClient.IsReady(self: PlatformServiceClient): boolean
 	return self.janitor ~= nil
 end
 
-function PlatformServiceClient.GetPlatform(self: typeof(PlatformServiceClient)): PlatformKind
+function PlatformServiceClient.GetPlatform(self: PlatformServiceClient): PlatformKind
 	return self:getState().platform
 end
 
-function PlatformServiceClient.IsTouch(self: typeof(PlatformServiceClient)): boolean
+function PlatformServiceClient.IsTouch(self: PlatformServiceClient): boolean
 	return self:getPlatform() == "Touch"
 end
 
-function PlatformServiceClient.IsGamepad(self: typeof(PlatformServiceClient)): boolean
+function PlatformServiceClient.IsGamepad(self: PlatformServiceClient): boolean
 	return self:getPlatform() == "Gamepad"
 end
 
-function PlatformServiceClient.IsKeyboardMouse(self: typeof(PlatformServiceClient)): boolean
+function PlatformServiceClient.IsKeyboardMouse(self: PlatformServiceClient): boolean
 	return self:getPlatform() == "KeyboardMouse"
 end
 
-function PlatformServiceClient.GetGamepadFamily(self: typeof(PlatformServiceClient)): string?
+function PlatformServiceClient.GetGamepadFamily(self: PlatformServiceClient): string?
 	return self:getState().gamepadFamily
 end
 
-function PlatformServiceClient.GetMachineFamily(self: typeof(PlatformServiceClient)): string
+function PlatformServiceClient.GetMachineFamily(self: PlatformServiceClient): string
 	return self:getState().machineFamily
 end
 
-function PlatformServiceClient.GetPlayerInputMode(self: typeof(PlatformServiceClient)): string
+function PlatformServiceClient.GetPlayerInputMode(self: PlatformServiceClient): string
 	return self:getState().playerInputMode
 end
 
-function PlatformServiceClient.GetActiveInputModeName(self: typeof(PlatformServiceClient)): string
+function PlatformServiceClient.GetActiveInputModeName(self: PlatformServiceClient): string
 	return self:getState().activeInputModeName
 end
 
-function PlatformServiceClient.GetActiveGamepadInputName(self: typeof(PlatformServiceClient)): string?
+function PlatformServiceClient.GetActiveGamepadInputName(self: PlatformServiceClient): string?
 	return self:getState().activeGamepadInputName
 end
 
-function PlatformServiceClient.GetPlatformName(self: typeof(PlatformServiceClient)): string?
+function PlatformServiceClient.GetPlatformName(self: PlatformServiceClient): string?
 	return self:getState().platformName
 end
 
-function PlatformServiceClient.GetConnectedGamepadCount(self: typeof(PlatformServiceClient)): number
+function PlatformServiceClient.GetConnectedGamepadCount(self: PlatformServiceClient): number
 	return self:getState().connectedGamepadCount
 end
 
-function PlatformServiceClient.IsShiftLockAllowed(self: typeof(PlatformServiceClient)): boolean
+function PlatformServiceClient.IsShiftLockAllowed(self: PlatformServiceClient): boolean
 	return self:getState().shiftLockAllowed == true
 end
 
-function PlatformServiceClient.ShouldUseCustomCursor(self: typeof(PlatformServiceClient)): boolean
+function PlatformServiceClient.ShouldUseCustomCursor(self: PlatformServiceClient): boolean
 	return self:getState().customCursorEnabled == true
 end
 
-function PlatformServiceClient.OnPlatformChanged(self: typeof(PlatformServiceClient), callbackRaw: any): () -> ()
+function PlatformServiceClient.OnPlatformChanged(self: PlatformServiceClient, callbackRaw: any): () -> ()
 	self:_ensureInitialized()
 	if typeof(callbackRaw) ~= "function" then
 		return function() end
@@ -1649,7 +1686,7 @@ function PlatformServiceClient.OnPlatformChanged(self: typeof(PlatformServiceCli
 	end
 end
 
-function PlatformServiceClient.ObserveState(self: typeof(PlatformServiceClient)): ObservableObject
+function PlatformServiceClient.ObserveState(self: PlatformServiceClient): ObservableObject
 	self:_ensureInitialized()
 
 	if self.stateObservable == nil then
@@ -1663,7 +1700,7 @@ function PlatformServiceClient.ObserveState(self: typeof(PlatformServiceClient))
 	return self.stateObservable :: ObservableObject
 end
 
-function PlatformServiceClient.ObservePlatform(self: typeof(PlatformServiceClient)): ObservableObject
+function PlatformServiceClient.ObservePlatform(self: PlatformServiceClient): ObservableObject
 	self:_ensureInitialized()
 
 	if self.platformObservable == nil then
@@ -1678,7 +1715,7 @@ function PlatformServiceClient.ObservePlatform(self: typeof(PlatformServiceClien
 	return self.platformObservable :: ObservableObject
 end
 
-function PlatformServiceClient.ObserveDeviceClass(self: typeof(PlatformServiceClient)): ObservableObject
+function PlatformServiceClient.ObserveDeviceClass(self: PlatformServiceClient): ObservableObject
 	self:_ensureInitialized()
 
 	if self.deviceClassObservable == nil then
@@ -1693,7 +1730,7 @@ function PlatformServiceClient.ObserveDeviceClass(self: typeof(PlatformServiceCl
 	return self.deviceClassObservable :: ObservableObject
 end
 
-function PlatformServiceClient.ObservePlatformChanged(self: typeof(PlatformServiceClient)): ObservableObject
+function PlatformServiceClient.ObservePlatformChanged(self: PlatformServiceClient): ObservableObject
 	self:_ensureInitialized()
 
 	if self.platformChangedObservable == nil then
@@ -1703,7 +1740,7 @@ function PlatformServiceClient.ObservePlatformChanged(self: typeof(PlatformServi
 	return self.platformChangedObservable :: ObservableObject
 end
 
-function PlatformServiceClient.ObserveUIScale(self: typeof(PlatformServiceClient)): ObservableObject
+function PlatformServiceClient.ObserveUIScale(self: PlatformServiceClient): ObservableObject
 	self:_ensureInitialized()
 
 	if self.uiScaleObservable == nil then
@@ -1722,7 +1759,7 @@ function PlatformServiceClient.ObserveUIScale(self: typeof(PlatformServiceClient
 	return self.uiScaleObservable :: ObservableObject
 end
 
-function PlatformServiceClient.ObserveAllActions(self: typeof(PlatformServiceClient)): ObservableObject
+function PlatformServiceClient.ObserveAllActions(self: PlatformServiceClient): ObservableObject
 	self:_ensureInitialized()
 
 	if self.allActionsObservable == nil then
@@ -1732,7 +1769,7 @@ function PlatformServiceClient.ObserveAllActions(self: typeof(PlatformServiceCli
 	return self.allActionsObservable :: ObservableObject
 end
 
-function PlatformServiceClient.ObserveAction(self: typeof(PlatformServiceClient), actionNameRaw: any): ObservableObject
+function PlatformServiceClient.ObserveAction(self: PlatformServiceClient, actionNameRaw: any): ObservableObject
 	self:_ensureInitialized()
 
 	if typeof(actionNameRaw) ~= "string" or actionNameRaw == "" then
@@ -1767,7 +1804,7 @@ function PlatformServiceClient.ObserveAction(self: typeof(PlatformServiceClient)
 end
 
 function PlatformServiceClient.ObservePromptForAction(
-	self: typeof(PlatformServiceClient),
+	self: PlatformServiceClient,
 	actionNameRaw: any
 ): ObservableObject
 	self:_ensureInitialized()
@@ -1801,37 +1838,37 @@ function PlatformServiceClient.ObservePromptForAction(
 	return cached
 end
 
-function PlatformServiceClient.GetStateChangedSignal(self: typeof(PlatformServiceClient)): RxSignalObject
+function PlatformServiceClient.GetStateChangedSignal(self: PlatformServiceClient): RxSignalObject
 	self:_ensureInitialized()
 	return self.stateChangedSignal :: RxSignalObject
 end
 
-function PlatformServiceClient.GetPlatformSignal(self: typeof(PlatformServiceClient)): RxSignalObject
+function PlatformServiceClient.GetPlatformSignal(self: PlatformServiceClient): RxSignalObject
 	self:_ensureInitialized()
 	return self.platformSignal :: RxSignalObject
 end
 
-function PlatformServiceClient.GetDeviceClassSignal(self: typeof(PlatformServiceClient)): RxSignalObject
+function PlatformServiceClient.GetDeviceClassSignal(self: PlatformServiceClient): RxSignalObject
 	self:_ensureInitialized()
 	return self.deviceClassSignal :: RxSignalObject
 end
 
-function PlatformServiceClient.GetPlatformChangedSignal(self: typeof(PlatformServiceClient)): RxSignalObject
+function PlatformServiceClient.GetPlatformChangedSignal(self: PlatformServiceClient): RxSignalObject
 	self:_ensureInitialized()
 	return self.platformChangedSignal :: RxSignalObject
 end
 
-function PlatformServiceClient.GetUIScaleChangedSignal(self: typeof(PlatformServiceClient)): RxSignalObject
+function PlatformServiceClient.GetUIScaleChangedSignal(self: PlatformServiceClient): RxSignalObject
 	self:_ensureInitialized()
 	return self.uiScaleChangedSignal :: RxSignalObject
 end
 
-function PlatformServiceClient.GetActionTriggeredSignal(self: typeof(PlatformServiceClient)): RxSignalObject
+function PlatformServiceClient.GetActionTriggeredSignal(self: PlatformServiceClient): RxSignalObject
 	self:_ensureInitialized()
 	return self.actionTriggeredSignal :: RxSignalObject
 end
 
-function PlatformServiceClient.GetActionSignal(self: typeof(PlatformServiceClient), actionNameRaw: any): RxSignalObject
+function PlatformServiceClient.GetActionSignal(self: PlatformServiceClient, actionNameRaw: any): RxSignalObject
 	self:_ensureInitialized()
 
 	if typeof(actionNameRaw) ~= "string" or actionNameRaw == "" then
@@ -1850,7 +1887,7 @@ function PlatformServiceClient.GetActionSignal(self: typeof(PlatformServiceClien
 	return cached
 end
 
-function PlatformServiceClient.GetPromptSignal(self: typeof(PlatformServiceClient), actionNameRaw: any): RxSignalObject
+function PlatformServiceClient.GetPromptSignal(self: PlatformServiceClient, actionNameRaw: any): RxSignalObject
 	self:_ensureInitialized()
 
 	if typeof(actionNameRaw) ~= "string" or actionNameRaw == "" then
@@ -1870,7 +1907,7 @@ function PlatformServiceClient.GetPromptSignal(self: typeof(PlatformServiceClien
 end
 
 function PlatformServiceClient.RegisterAction(
-	self: typeof(PlatformServiceClient),
+	self: PlatformServiceClient,
 	actionNameRaw: any,
 	definitionRaw: any
 ): boolean
@@ -1888,7 +1925,7 @@ function PlatformServiceClient.RegisterAction(
 end
 
 function PlatformServiceClient.RebindAction(
-	self: typeof(PlatformServiceClient),
+	self: PlatformServiceClient,
 	actionNameRaw: any,
 	platformKindRaw: any,
 	bindingsRaw: any,
@@ -1900,10 +1937,10 @@ function PlatformServiceClient.RebindAction(
 		return false
 	end
 	local platformKind = sanitizePlatformKind(platformKindRaw)
-	runtime.definition.bindingsByPlatform = runtime.definition.bindingsByPlatform or {}
+	runtime.definition.bindingsByPlatform = runtime.definition.bindingsByPlatform or ({} :: any)
 	runtime.definition.bindingsByPlatform[platformKind] = sanitizeBindingsTable(bindingsRaw)
 	if promptBindingsRaw ~= nil then
-		runtime.definition.promptBindingsByPlatform = runtime.definition.promptBindingsByPlatform or {}
+		runtime.definition.promptBindingsByPlatform = runtime.definition.promptBindingsByPlatform or ({} :: any)
 		runtime.definition.promptBindingsByPlatform[platformKind] = sanitizeBindingsTable(promptBindingsRaw)
 	end
 	self:_unbindContextAction(runtime)
@@ -1915,7 +1952,7 @@ function PlatformServiceClient.RebindAction(
 end
 
 function PlatformServiceClient.SetActionEnabled(
-	self: typeof(PlatformServiceClient),
+	self: PlatformServiceClient,
 	actionNameRaw: any,
 	enabledRaw: any
 ): boolean
@@ -1936,7 +1973,7 @@ function PlatformServiceClient.SetActionEnabled(
 end
 
 function PlatformServiceClient.BindAction(
-	self: typeof(PlatformServiceClient),
+	self: PlatformServiceClient,
 	actionNameRaw: any,
 	callbackRaw: any,
 	overrideDefinitionRaw: any?
@@ -1971,7 +2008,7 @@ function PlatformServiceClient.BindAction(
 end
 
 function PlatformServiceClient.GetPromptForAction(
-	self: typeof(PlatformServiceClient),
+	self: PlatformServiceClient,
 	actionNameRaw: any
 ): PromptBinding?
 	self:_ensureInitialized()
@@ -2030,12 +2067,12 @@ function PlatformServiceClient.GetPromptForAction(
 	return output
 end
 
-function PlatformServiceClient.GetUIScale(self: typeof(PlatformServiceClient)): any?
+function PlatformServiceClient.GetUIScale(self: PlatformServiceClient): any?
 	self:_ensureInitialized()
 	return self.uiScale
 end
 
-function PlatformServiceClient.GetControls(self: typeof(PlatformServiceClient), platformKindRaw: any): any
+function PlatformServiceClient.GetControls(self: PlatformServiceClient, platformKindRaw: any): any
 	self:_ensureInitialized()
 	local requestedPlatform = if platformKindRaw == "Gamepad" or platformKindRaw == "Touch"
 		then platformKindRaw
@@ -2048,11 +2085,11 @@ function PlatformServiceClient.GetControls(self: typeof(PlatformServiceClient), 
 		platform = requestedPlatform,
 		deviceClass = state.deviceClass,
 		gamepadFamily = if requestedPlatform == "Gamepad" then state.gamepadFamily else nil,
-		sections = if layout ~= nil then resolveControlSections(self, layout, requestedPlatform) else {},
+		sections = if layout ~= nil then resolveControlSections(self, layout, requestedPlatform) else ({} :: any),
 	}
 end
 
-function PlatformServiceClient.SetScreenGui(self: typeof(PlatformServiceClient), screenGuiRaw: any): boolean
+function PlatformServiceClient.SetScreenGui(self: PlatformServiceClient, screenGuiRaw: any): boolean
 	self:_ensureInitialized()
 	if self.uiScale == nil then
 		return false
@@ -2060,7 +2097,7 @@ function PlatformServiceClient.SetScreenGui(self: typeof(PlatformServiceClient),
 	return self.uiScale:setScreenGui(screenGuiRaw)
 end
 
-function PlatformServiceClient.SetScaleTarget(self: typeof(PlatformServiceClient), targetRaw: any): boolean
+function PlatformServiceClient.SetScaleTarget(self: PlatformServiceClient, targetRaw: any): boolean
 	self:_ensureInitialized()
 	if self.uiScale == nil then
 		return false
@@ -2068,7 +2105,7 @@ function PlatformServiceClient.SetScaleTarget(self: typeof(PlatformServiceClient
 	return self.uiScale:setScaleTarget(targetRaw)
 end
 
-function PlatformServiceClient.Destroy(self: typeof(PlatformServiceClient))
+function PlatformServiceClient.Destroy(self: PlatformServiceClient)
 	if typeof(self.actions) == "table" then
 		for _, actionRuntime in self.actions do
 			self:_unbindContextAction(actionRuntime)
@@ -2169,4 +2206,4 @@ PlatformServiceClient.setScreenGui = PlatformServiceClient.SetScreenGui
 PlatformServiceClient.setScaleTarget = PlatformServiceClient.SetScaleTarget
 PlatformServiceClient.destroy = PlatformServiceClient.Destroy
 
-return PlatformServiceClient
+return PlatformServiceClient :: PlatformServiceClient

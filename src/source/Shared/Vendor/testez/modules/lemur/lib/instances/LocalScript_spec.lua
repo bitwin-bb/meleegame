@@ -1,3 +1,4 @@
+--!nocheck
 local Instance = import("../Instance")
 
 describe("instances.LocalScript", function()

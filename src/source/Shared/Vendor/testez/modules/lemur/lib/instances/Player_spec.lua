@@ -1,3 +1,4 @@
+--!nocheck
 local Player = import("./Player")
 
 describe("instances.Player", function()

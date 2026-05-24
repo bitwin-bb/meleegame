@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
 local EyeOfCthulhuRoot = require(script:FindFirstAncestor("game").Shared.Features.npc.components.EyeOfCthulhuRoot)
@@ -356,7 +356,7 @@ function Boss.New(
 	spawnRequest: BossSpawnRequest,
 	configRaw: { [string]: any }
 ): Boss
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local modelTemplate = resolveBossModelTemplate(definition, "Phase1")
 	local spawnPosition = if typeof(spawnRequest.spawnPosition) == "Vector3"
 		then spawnRequest.spawnPosition

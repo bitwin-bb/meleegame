@@ -9,24 +9,24 @@ local Bounds = require(script:FindFirstAncestor("game").Shared.Core.Math.Bounds)
 local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
 local EnemyHitbox = require(script:FindFirstAncestor("game").Shared.Classes.EnemyHitbox)
 local EyeOfCthulhuNpc = require(script:FindFirstAncestor("game").Shared.Features.npc.npc.EyeOfCthulhu)
-local HpServiceServer = require(script:FindFirstAncestor("game").Server.Services.HpServiceServer)
+local HpServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.HpServiceServer)
 local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Core.Platform.InstanceUtils)
-local LootServiceServer = require(script:FindFirstAncestor("game").Server.Services.LootServiceServer)
+local LootServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.LootServiceServer)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
 local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceUtils)
-local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
-local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local PlayerServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
+local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local SlimeNpc = require(script:FindFirstAncestor("game").Shared.Features.npc.npc.Slime)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldGenerationServiceServer =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer)
+	(require :: any)(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer)
 
 type RuntimeNpc = any
 type EnemyHitboxManager = EnemyHitbox.EnemyHitbox
 type NpcType = NpcServiceUtils.NpcType
-type NpcRuntimeState = NpcServiceUtils.NpcRuntimeState
-type BiomeName = NpcServiceUtils.BiomeName
+type NpcRuntimeState = string
+type BiomeName = string
 type StateMachineGraph = NpcServiceUtils.StateMachineGraph
 type NpcSnapshot = NpcServiceUtils.NpcSnapshot
 type SlimeSpawnConfig = NpcServiceUtils.SlimeSpawnConfig
@@ -481,7 +481,7 @@ function NpcServiceServer.ResolveRuntimeHurtbox(self: NpcServiceServer, runtime:
 		math.max(MIN_RUNTIME_HURTBOX_SIZE.Y, size.Y + DEFAULT_RUNTIME_HURTBOX_PADDING.Y),
 		math.max(MIN_RUNTIME_HURTBOX_SIZE.Z, size.Z + DEFAULT_RUNTIME_HURTBOX_PADDING.Z)
 	)
-	return center, paddedSize
+	return center :: Vector3, paddedSize
 end
 
 function NpcServiceServer.DamageNpcsInBox(
@@ -660,12 +660,13 @@ function NpcServiceServer.ResolveSurfaceSpawnCFrame(
 ): CFrame?
 	local raycastParams = RaycastParams.new()
 	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
-	local excludeInstances = {}
+	local excludeInstances: { Instance } = {}
 	if characterToIgnore ~= nil then
 		table.insert(excludeInstances, characterToIgnore)
 	end
-	if self.npcFolder ~= nil then
-		table.insert(excludeInstances, self.npcFolder)
+	local npcFolder = self.npcFolder :: Folder?
+	if npcFolder ~= nil then
+		table.insert(excludeInstances, npcFolder)
 	end
 	raycastParams.FilterDescendantsInstances = excludeInstances
 	raycastParams.IgnoreWater = false
@@ -701,12 +702,13 @@ function NpcServiceServer.IsSpawnGapClear(
 	local overlapParams = OverlapParams.new()
 	overlapParams.FilterType = Enum.RaycastFilterType.Exclude
 
-	local excludeInstances = {}
+	local excludeInstances: { Instance } = {}
 	if characterToIgnore ~= nil then
 		table.insert(excludeInstances, characterToIgnore)
 	end
-	if self.npcFolder ~= nil then
-		table.insert(excludeInstances, self.npcFolder)
+	local npcFolder = self.npcFolder :: Folder?
+	if npcFolder ~= nil then
+		table.insert(excludeInstances, npcFolder)
 	end
 	overlapParams.FilterDescendantsInstances = excludeInstances
 	overlapParams.MaxParts = DEFAULT_SPAWN_EMPTY_GAP_MAX_PARTS
@@ -1348,7 +1350,9 @@ function NpcServiceServer.Destroy(self: NpcServiceServer)
 	end
 
 	for player, connection in self.playerCharacterAddedConnections do
-		connection:Disconnect()
+		if connection ~= nil then
+			connection:Disconnect()
+		end
 		self.playerCharacterAddedConnections[player] = nil
 	end
 
@@ -1435,7 +1439,7 @@ type NpcServiceServer = typeof(NpcServiceServer) & {
 	enemyHitbox: EnemyHitboxManager?,
 	lootService: LootServiceServerObject?,
 	collisionGroupsReady: boolean,
-	playerCharacterAddedConnections: { [Player]: RBXScriptConnection },
+	playerCharacterAddedConnections: { [Player]: RBXScriptConnection? },
 	world: any?,
 	npcFolder: Folder,
 	slimeSpawnSettings: SlimeSpawnSettings,
@@ -1449,6 +1453,7 @@ type NpcServiceServer = typeof(NpcServiceServer) & {
 	playerAddedConnection: RBXScriptConnection?,
 	playerRemovingConnection: RBXScriptConnection?,
 	heartbeatConnection: RBXScriptConnection?,
+	binders: any,
 }
 
 return NpcServiceServer :: NpcServiceServer

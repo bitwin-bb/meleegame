@@ -117,7 +117,7 @@ local function useAsync<TValue>(callbackRaw: any, options: AsyncOptions<TValue>?
 		end
 	end, { cancel, initialValue, mountedRef })
 
-	local execute = React.useCallback(function(...): number
+	local execute = (React.useCallback :: any)(function(...): number
 		requestIdRef.current += 1
 		local requestId = requestIdRef.current
 		cancelPromise(activePromiseRef.current)
@@ -178,7 +178,7 @@ local function useAsync<TValue>(callbackRaw: any, options: AsyncOptions<TValue>?
 		end
 
 		return requestId
-	end, { callback, mountedRef, onSuccess, onError })
+	end, ({ callback, mountedRef, onSuccess, onError } :: { any }))
 
 	React.useEffect(function()
 		return function()

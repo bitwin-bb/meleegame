@@ -1,3 +1,4 @@
+--!nocheck
 --[[
 	Provides an interface to quickly run and report tests from a given object.
 ]]
@@ -50,7 +51,7 @@ local function toStringPath(tablePath)
 end
 
 function TestBootstrap:getModulesImpl(root, modules, current)
-	modules = modules or {}
+	modules = modules or ({} :: any)
 	current = current or root
 
 	if isSpecScript(current) then
@@ -99,10 +100,10 @@ end
 function TestBootstrap:run(roots, reporter, otherOptions)
 	reporter = reporter or TextReporter
 
-	otherOptions = otherOptions or {}
+	otherOptions = otherOptions or ({} :: any)
 	local showTimingInfo = otherOptions["showTimingInfo"] or false
 	local testNamePattern = otherOptions["testNamePattern"]
-	local extraEnvironment = otherOptions["extraEnvironment"] or {}
+	local extraEnvironment = otherOptions["extraEnvironment"] or ({} :: any)
 
 	if type(roots) ~= "table" then
 		error(("Bad argument #1 to TestBootstrap:run. Expected table, got %s"):format(typeof(roots)), 2)

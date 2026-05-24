@@ -142,7 +142,7 @@ local function clearTouchState(state: TouchState)
 end
 
 function Gestures.New(configRaw: GesturesConfig?): Gestures
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local self = setmetatable({
 		eventBus = config.eventBus,
 		eventChannel = normalizeEventName(config.eventChannel, "gestures"),
@@ -381,7 +381,8 @@ function Gestures._changeTouch(self: Gestures, input: InputObject)
 	if state == nil then
 		return
 	end
-	local current = input.Position
+	local position = input.Position
+	local current = Vector2.new(position.X, position.Y)
 	local delta = current - state.lastPos
 	state.movedDistance += delta.Magnitude
 	state.lastPos = current

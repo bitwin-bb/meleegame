@@ -1,3 +1,4 @@
+--!nocheck
 local warn = import("./warn")
 
 local function setupWarnDetour()

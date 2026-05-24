@@ -1,3 +1,4 @@
+--!nocheck
 local TestEZ = require(script.Parent.Parent.TestEZ)
 
 return {

@@ -101,7 +101,7 @@ local function detectDeviceType(platform: any?): string
 end
 
 function HUDScaler.New(configRaw: HUDScalerConfig?): HUDScaler
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local self = setmetatable({
 		platform = config.platform,
 		layoutEngine = config.layoutEngine,
@@ -310,7 +310,7 @@ function HUDScaler.Register(self: HUDScaler, configRaw: ElementConfig): string?
 		id = string.format("element_%d", self.nextElementId)
 	end
 
-	local record: ElementRecord = {
+	local record: ElementRecord = ({
 		id = id,
 		gui = gui,
 		baseSize = gui.Size,
@@ -320,7 +320,7 @@ function HUDScaler.Register(self: HUDScaler, configRaw: ElementConfig): string?
 		minScale = clampNumber(configRaw.minScale, self.minScale, 0.1, 5),
 		maxScale = clampNumber(configRaw.maxScale, self.maxScale, 0.1, 5),
 		onApply = if typeof(configRaw.onApply) == "function" then configRaw.onApply else nil,
-	}
+	} :: any)
 
 	if self.elements[id] == nil then
 		self.orderedIds[#self.orderedIds + 1] = id

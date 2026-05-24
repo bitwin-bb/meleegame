@@ -1,3 +1,4 @@
+--!nocheck
 local Vector3 = import("./Vector3")
 
 local function extractValues(v)

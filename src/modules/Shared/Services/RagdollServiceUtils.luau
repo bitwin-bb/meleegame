@@ -507,7 +507,7 @@ function RagdollServiceUtils.CreateDefaultState(): RagdollServiceState
 end
 
 function RagdollServiceUtils.SanitizeState(stateRaw: any, fallback: RagdollServiceState?): RagdollServiceState
-	local source = if typeof(stateRaw) == "table" then stateRaw else {}
+	local source = if typeof(stateRaw) == "table" then stateRaw else ({} :: any)
 	local fallbackState = if fallback then fallback else RagdollServiceUtils.CreateDefaultState()
 
 	return RagdollServiceUtils.CreateState(

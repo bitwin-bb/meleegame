@@ -325,8 +325,12 @@ local function SanitizeString(valueRaw: any, fallback: string): string
 end
 
 local function ResolveArchetype(valueRaw: any, fallback: CactusArchetype): CactusArchetype
-	if valueRaw == "Saguaro" or valueRaw == "Barrel" or valueRaw == "PricklyPear" then
-		return valueRaw
+	if valueRaw == "Saguaro" then
+		return "Saguaro"
+	elseif valueRaw == "Barrel" then
+		return "Barrel"
+	elseif valueRaw == "PricklyPear" then
+		return "PricklyPear"
 	end
 	return fallback
 end
@@ -395,13 +399,13 @@ local function CreateWeld(part0: BasePart, part1: BasePart)
 end
 
 local function ResolveConfig(configRaw: CactusConfig?): ResolvedCactusConfig
-	local source = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else {}
-	local archetype = ResolveArchetype(source.Archetype, DEFAULT_CONFIG.Archetype)
+	local source = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else ({} :: any)
+	local archetype: CactusArchetype = ResolveArchetype(source.Archetype, DEFAULT_CONFIG.Archetype)
 	local profile = ARCHETYPE_PROFILES[archetype]
 	local resolvedMinHeight = ClampNumber(source.MinHeight, 0, 160, profile.MinHeight)
 	local resolvedMaxHeight = ClampNumber(source.MaxHeight, resolvedMinHeight, 220, profile.MaxHeight)
 
-	return {
+	return ({
 		Archetype = archetype,
 		Seed = ClampInteger(source.Seed, -2147483648, 2147483647, DEFAULT_CONFIG.Seed),
 		Iterations = ClampInteger(source.Iterations, 2, 16, DEFAULT_CONFIG.Iterations),
@@ -433,7 +437,7 @@ local function ResolveConfig(configRaw: CactusConfig?): ResolvedCactusConfig
 		MaxHeight = resolvedMaxHeight,
 		NodeSpacing = ClampNumber(source.NodeSpacing, 0, 12, DEFAULT_CONFIG.NodeSpacing),
 		DetailDensity = ClampNumber(source.DetailDensity, 0.2, 2.5, DEFAULT_CONFIG.DetailDensity),
-	}
+	} :: ResolvedCactusConfig)
 end
 
 function CactusGenerator.New(configRaw: CactusConfig?): CactusGenerator
@@ -915,7 +919,7 @@ function CactusGenerator.ApplyDetails(
 	self: CactusGenerator,
 	model: Model,
 	skeleton: Skeleton,
-	partsByIndex: { [number]: BasePart }
+	partsByIndex: { [number]: BasePart? }
 )
 	local detailFolder = CactusComponent.CreateFolder({
 		name = "Details",
@@ -1117,7 +1121,7 @@ function CactusGenerator.BuildGeometry(self: CactusGenerator, skeleton: Skeleton
 		parent = model,
 	})
 
-	local partsByIndex: { [number]: BasePart } = {}
+	local partsByIndex: { [number]: BasePart? } = {}
 	local primaryPart: BasePart? = nil
 
 	for _, segment in skeleton.Segments do
@@ -1183,7 +1187,7 @@ function CactusGenerator.BuildModel(self: CactusGenerator, skeletonOrSegments: a
 		return self:BuildGeometry(skeletonOrSegments :: Skeleton, origin)
 	end
 
-	local segments = if typeof(skeletonOrSegments) == "table" then skeletonOrSegments :: { Segment } else {}
+	local segments = if typeof(skeletonOrSegments) == "table" then skeletonOrSegments :: { Segment } else ({} :: any)
 	local skeleton: Skeleton = {
 		Nodes = {},
 		Segments = segments,

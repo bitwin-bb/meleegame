@@ -1,4 +1,9 @@
 --!strict
+local testEnvironment = getfenv() :: any
+local describe = testEnvironment.describe :: any
+local it = testEnvironment.it :: any
+local expect = testEnvironment.expect :: any
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
@@ -29,7 +34,7 @@ return function()
 			expect(state.selectedSlot).to.equal(2)
 			expect(state.occupiedSlotCount).to.equal(1)
 			expect(state.totalItemCount).to.equal(1)
-			expect(InventoryServiceUtils.getStack(state, 2).itemId).to.equal("CopperPickaxe")
+			expect((InventoryServiceUtils.getStack(state, 2) :: any).itemId).to.equal("CopperPickaxe")
 		end)
 
 		it("moves partial stacks into empty slots deterministically", function()
@@ -40,8 +45,8 @@ return function()
 
 			expect(result.changed).to.equal(true)
 			expect(result.movedAmount).to.equal(4)
-			expect(InventoryServiceUtils.getStack(state, 1).amount).to.equal(6)
-			expect(InventoryServiceUtils.getStack(state, 3).amount).to.equal(4)
+			expect((InventoryServiceUtils.getStack(state, 1) :: any).amount).to.equal(6)
+			expect((InventoryServiceUtils.getStack(state, 3) :: any).amount).to.equal(4)
 		end)
 
 		it("splits stacks without mutating the selected slot contract", function()
@@ -53,8 +58,8 @@ return function()
 
 			expect(result.changed).to.equal(true)
 			expect(state.selectedSlot).to.equal(1)
-			expect(InventoryServiceUtils.getStack(state, 1).amount).to.equal(6)
-			expect(InventoryServiceUtils.getStack(state, 2).amount).to.equal(3)
+			expect((InventoryServiceUtils.getStack(state, 1) :: any).amount).to.equal(6)
+			expect((InventoryServiceUtils.getStack(state, 2) :: any).amount).to.equal(3)
 		end)
 
 		it("trashes the selected slot through the same pure mutation path the UI uses", function()
@@ -66,7 +71,7 @@ return function()
 
 			expect(result.changed).to.equal(true)
 			expect(result.removedAmount).to.equal(2)
-			expect(InventoryServiceUtils.getStack(state, 1).amount).to.equal(3)
+			expect((InventoryServiceUtils.getStack(state, 1) :: any).amount).to.equal(3)
 		end)
 	end)
 end

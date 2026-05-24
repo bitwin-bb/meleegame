@@ -65,7 +65,7 @@ local DEFAULT_SPLIT_HOLD_CONFIG: SplitHoldConfig = {
 	minimumIntervalSeconds = 0.035,
 	accelerationRampSeconds = 1.1,
 }
-local UI_AUDIO = (AudioRegistry :: any).UI or {}
+local UI_AUDIO = (AudioRegistry :: any).UI or ({} :: any)
 local UI_ITEM_PICKUP_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.ItemPickup)
 local UI_ITEM_PUT_DOWN_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.ItemPutDown)
 
@@ -339,9 +339,9 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 	React.useEffect(function()
 		local unsubscribe = Charm.subscribe(itemSlice.dragStateAtom, function(nextState: ItemDragState)
 			setDragState(nextState)
-		end, {
+		end, ({
 			inclusive = true,
-		})
+		} :: { any }))
 
 		return function()
 			unsubscribe()

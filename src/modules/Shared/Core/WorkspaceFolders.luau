@@ -7,10 +7,10 @@ local GAME_FOLDER_NAME = "Game"
 
 WorkspaceFolders.GAME_FOLDER_NAME = GAME_FOLDER_NAME
 
-local managedFolders = setmetatable({}, { __mode = "k" }) :: { [Folder]: true }
-local managedParents = setmetatable({}, { __mode = "k" }) :: { [Folder]: () -> Instance? }
-local managedConnections = setmetatable({}, { __mode = "k" }) :: { [Folder]: { RBXScriptConnection } }
-local pruneScheduled = setmetatable({}, { __mode = "k" }) :: { [Folder]: boolean }
+local managedFolders = setmetatable({} :: any, { __mode = "k" }) :: { [Folder]: true }
+local managedParents = setmetatable({} :: any, { __mode = "k" }) :: { [Folder]: () -> Instance? }
+local managedConnections = setmetatable({} :: any, { __mode = "k" }) :: { [Folder]: { RBXScriptConnection } }
+local pruneScheduled = setmetatable({} :: any, { __mode = "k" }) :: { [Folder]: boolean }
 local workspaceGameConnection: RBXScriptConnection? = nil
 
 local function asFolder(instance: Instance?): Folder?

@@ -370,12 +370,12 @@ local function applyDeltaRecursive(previous: any, delta: any): any
 		end
 	end
 
-	local removals = (deltaTable.removals or {}) :: { any }
+	local removals = (deltaTable.removals or ({} :: any)) :: { any }
 	for _, key in removals do
 		out[key] = nil
 	end
 
-	local changes = (deltaTable.changes or {}) :: { [any]: any }
+	local changes = (deltaTable.changes or ({} :: any)) :: { [any]: any }
 	for key, value in changes do
 		out[key] = applyDeltaRecursive(out[key], value)
 	end
@@ -494,7 +494,7 @@ local function validateSchemaNode(schemaRaw: any, value: any, path: string, erro
 			return
 		end
 		local objectValue = value :: { [string]: any }
-		local fields = schema.fields or {}
+		local fields = schema.fields or ({} :: any)
 		for fieldName, fieldSchema in fields do
 			validateSchemaNode(fieldSchema, objectValue[fieldName], string.format("%s.%s", path, fieldName), errors)
 		end

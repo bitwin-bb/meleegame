@@ -5,8 +5,8 @@ local WorldSimulationShared = require(script:FindFirstAncestor("game").Shared.Fe
 
 local WeatherServiceUtils = {}
 
-export type WeatherType = "Clear" | "Rainstorm" | "Thunderstorm"
-export type SkyKey = "Overworld" | "Corruption" | "Underground" | "SnowBiome"
+export type WeatherType = string
+export type SkyKey = string
 
 export type WeatherServiceConfig = {
 	enabled: boolean,
@@ -201,7 +201,7 @@ end
 
 function WeatherServiceUtils.ResolveConfig(configRaw: any, fallbackRaw: WeatherServiceConfig?): WeatherServiceConfig
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else WeatherServiceUtils.CreateDefaultConfig()
-	local source = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else {}
+	local source = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else ({} :: any)
 
 	local weatherDurationMinSeconds =
 		sanitizeNumber(source.weatherDurationMinSeconds, fallback.weatherDurationMinSeconds, 8, 3600)
@@ -353,7 +353,7 @@ end
 
 function WeatherServiceUtils.SanitizeState(stateRaw: any, fallbackRaw: WeatherServiceState?): WeatherServiceState
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else WeatherServiceUtils.CreateStateFromConfig(nil)
-	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {}
+	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else ({} :: any)
 
 	local dayNightCycleEnabled = sanitizeBoolean(source.dayNightCycleEnabled, fallback.dayNightCycleEnabled)
 	local clockSpeed = sanitizeNumber(source.clockSpeed, fallback.clockSpeed, -100, 100)

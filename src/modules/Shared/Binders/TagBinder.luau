@@ -25,11 +25,11 @@ local function copyStringList(source: { string }): { string }
 	return list
 end
 
-local function freezeDictionary<T>(source: T): T
+local function freezeDictionary(source: any): any
 	return table.freeze(source)
 end
 
-local Tags = freezeDictionary({
+local Tags: { [string]: string } = freezeDictionary({
 	Npc = "Npc",
 	Npc_Slime = "Npc_Slime",
 	Npc_Flying = "Npc_Flying",
@@ -116,15 +116,16 @@ local ImpliedTags = freezeDictionary({
 	[Tags.Breath_Air] = table.freeze({ Tags.Breath }),
 })
 
-local CanonicalTags = {}
+local CanonicalTags: { string } = {}
 local CanonicalTagLookup = {} :: { [string]: boolean }
 local CanonicalByAlias = {} :: { [string]: string }
 local DirectImplyingTags = {} :: { [string]: { string } }
 
 for _, canonicalTag in Tags do
-	CanonicalTags[#CanonicalTags + 1] = canonicalTag
-	CanonicalTagLookup[canonicalTag] = true
-	CanonicalByAlias[canonicalTag] = canonicalTag
+	local canonicalTagName = canonicalTag :: string
+	CanonicalTags[#CanonicalTags + 1] = canonicalTagName
+	CanonicalTagLookup[canonicalTagName] = true
+	CanonicalByAlias[canonicalTagName] = canonicalTagName
 end
 
 for canonicalTag, aliases in LegacyAliases do

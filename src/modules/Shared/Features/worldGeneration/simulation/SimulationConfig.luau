@@ -118,7 +118,7 @@ local function sanitizeBoolean(valueRaw: any, fallback: boolean): boolean
 end
 
 local function sanitizeBiomeThresholds(source: any, fallback: BiomeThresholdConfig): BiomeThresholdConfig
-	local raw = if typeof(source) == "table" then source else {}
+	local raw = if typeof(source) == "table" then source else ({} :: any)
 	return {
 		desertHeat = sanitizeNumber((raw :: any).desertHeat, -1, 1, fallback.desertHeat),
 		snowCold = sanitizeNumber((raw :: any).snowCold, -1, 1, fallback.snowCold),
@@ -175,7 +175,7 @@ end
 
 function Config.Sanitize(configRaw: any, fallbackRaw: SimulationConfig?): SimulationConfig
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else Config.CreateDefault()
-	local source = if typeof(configRaw) == "table" then configRaw else {}
+	local source = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local chunkSize = sanitizeInteger((source :: any).chunkSize, 8, 128, fallback.chunkSize)
 	local chunkHeight = sanitizeInteger((source :: any).chunkHeight, 8, 256, fallback.chunkHeight)
 	local chunkDepth = sanitizeInteger((source :: any).chunkDepth, 8, 128, fallback.chunkDepth)

@@ -1,3 +1,4 @@
+--!nocheck
 local instances = import("./instances")
 
 local Instance = {}

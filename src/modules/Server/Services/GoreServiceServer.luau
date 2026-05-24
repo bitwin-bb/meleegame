@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GoreServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.GoreServiceUtils)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 
 local GoreServiceServer = {}
 local SHARED_LARGE_BLOOD_POOL_SIZE = NumberRange.new(0.95, 1.7)
@@ -38,7 +38,7 @@ local function isModel(value: any): boolean
 end
 
 local function buildRuntimeFromConfig(entityId: string, model: Model, configRaw: any): EntityRuntime
-	local source = if typeof(configRaw) == "table" then configRaw else {}
+	local source = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local isPlayerEntity = GoreServiceUtils.sanitizeBoolean((source :: any).isPlayerEntity, false)
 
 	local defaultBloodColor = if isPlayerEntity
@@ -371,7 +371,7 @@ function GoreServiceServer.Init(self: GoreServiceServer)
 		self.RequestSync,
 	})
 	self.entitiesById = {} :: { [string]: EntityRuntime }
-	self.binders = NevermoreSupport.getService(ServerBinderSupport)
+	;(self :: any).binders = NevermoreSupport.getService(ServerBinderSupport)
 end
 
 function GoreServiceServer.Destroy(self: GoreServiceServer)

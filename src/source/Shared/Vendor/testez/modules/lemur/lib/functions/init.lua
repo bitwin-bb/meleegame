@@ -1,3 +1,4 @@
+--!nocheck
 local names = {
 	"typeof",
 	"warn",

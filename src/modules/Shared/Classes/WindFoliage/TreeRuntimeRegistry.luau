@@ -2,7 +2,7 @@
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 local Octree = loader("Octree")
 local FoliageInstance = require(script.Parent.FoliageInstance)
 local RippleMotion = require(script.Parent.RippleMotion)
@@ -153,7 +153,7 @@ local function resolveRuntimeShape(foliage: any): (number, number, number, numbe
 end
 
 function TreeRuntimeRegistry.New(configRaw: any?): TreeRuntimeRegistry
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local gridCellSize = clampNumber(config.gridCellSize, 18, 1, 2048)
 	local octreeMaxDepth = math.max(1, math.floor(clampNumber(config.octreeMaxDepth, 4, 1, 12)))
 	local octreeMaxRegionSize =
@@ -184,7 +184,7 @@ function TreeRuntimeRegistry.Register(self: TreeRuntimeRegistry, instanceRaw: an
 		return existing
 	end
 
-	local config = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else {}
+	local config = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else ({} :: any)
 	local foliage = FoliageInstance.new(instance, config)
 	if foliage == nil then
 		return nil

@@ -1,10 +1,15 @@
 --!strict
 
+local testEnvironment = getfenv() :: any
+local describe = testEnvironment.describe :: any
+local it = testEnvironment.it :: any
+local expect = testEnvironment.expect :: any
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local Maid = loader("Maid")
 local BossBase = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss)
@@ -81,8 +86,8 @@ local function createTestService()
 		},
 		previousClockTime = 12,
 	}, {
-		__index = BossServiceServer,
-	})
+		__index = BossServiceServer :: any,
+	}) :: any
 
 	service:initReactiveState()
 	return service

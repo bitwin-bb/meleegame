@@ -100,7 +100,7 @@ local function buildEntries(): { EntityEntry }
 		return left.Name < right.Name
 	end)
 
-	return entries
+	return entries :: any
 end
 
 local ENTRIES = buildEntries()

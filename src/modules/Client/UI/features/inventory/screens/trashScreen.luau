@@ -89,7 +89,7 @@ return function(props: TrashScreenProps): React.ReactNode
 			id = TRASH_HOVER_ID,
 			text = resolveHoverText(state, dragState),
 		})
-	end, { state.updatedAt, state.isHovered, dragState.updatedAt, dragState.active })
+	end, ({ state.updatedAt, state.isHovered, dragState.updatedAt, dragState.active } :: { any }))
 
 	if props.visible == false then
 		return nil

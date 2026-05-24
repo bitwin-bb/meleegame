@@ -7,7 +7,7 @@ local Workspace = game:GetService("Workspace")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local CancelToken = loader("CancelToken")
 local Maid = loader("Maid")
@@ -26,14 +26,14 @@ local EyeOfCthulhuConfig =
 local EyeOfCthulhuController = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.EyeOfCthulhu)
 local QueenBeeConfig = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.QueenBee.Configs)
 local QueenBeeController = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.QueenBee)
-local HpServiceServer = require(script:FindFirstAncestor("game").Server.Services.HpServiceServer)
+local HpServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.HpServiceServer)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
-local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
-local WeatherServiceServer = require(script:FindFirstAncestor("game").Server.Services.WeatherServiceServer)
+local PlayerServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
+local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local WeatherServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.WeatherServiceServer)
 local WorldGenerationServiceServer =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer)
+	(require :: any)(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer)
 
 type BossId = BossServiceUtils.BossId
 type BossSnapshot = BossServiceUtils.BossSnapshot
@@ -1064,7 +1064,7 @@ function BossServiceServer.SummonBossForPlayer(
 		return nil, "night_only"
 	end
 
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else {}
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
 	return self:spawnBoss({
 		bossId = definition.id,
 		targetPlayer = playerRaw,
@@ -1420,7 +1420,7 @@ function BossServiceServer.Init(self: BossServiceServer)
 		QueenBee = QueenBeeConfig.resolve(resolveQueenBeeConfigSource()),
 	}
 	self.previousClockTime = self:getClockTime()
-	self.binders = NevermoreSupport.getService(ServerBinderSupport)
+	;(self :: any).binders = NevermoreSupport.getService(ServerBinderSupport)
 	self:initReactiveState()
 
 	self.maid:GiveTask(Rx.fromSignal(Players.PlayerAdded)

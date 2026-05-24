@@ -23,31 +23,7 @@ local EyeOfCthulhuController = {}
 EyeOfCthulhuController.__index = EyeOfCthulhuController
 setmetatable(EyeOfCthulhuController, { __index = BossBase })
 
-export type EyeOfCthulhuController = Boss & {
-	_eyeConfig: EyeConfig,
-	_sideSign: number,
-	_lockedCharge: ChargeLock?,
-	_servants: { [number]: ServantRuntime },
-	_nextServantId: number,
-	_servantBurstRemaining: number,
-	_servantBurstNextAt: number,
-	_servantBurstFinishAt: number,
-	_rapidChainMode: string,
-	_rapidChainRemaining: number,
-	_rapidChainTimer: number,
-	_servantFolder: Folder?,
-	_nextChargeDelay: number,
-	_nextPhase2AttackDelay: number,
-	_chargeCountInSet: number,
-	_phase2ChargeCountInSet: number,
-	_phase2IdleCyclesSinceRapidChain: number,
-	_phase1BurstPending: boolean,
-	_servantBurstElapsed: number,
-	_servantsToSpawn: number,
-	_servantsSpawned: number,
-	_didInitializeBurst: boolean,
-	_transformBaseFacing: Vector3,
-}
+export type EyeOfCthulhuController = any
 
 local LEGACY_PATH_MARKED = false
 
@@ -461,11 +437,11 @@ function EyeOfCthulhuController.New(
 	return self
 end
 
-function EyeOfCthulhuController:GetSimulationSpeed(): number
+function EyeOfCthulhuController.GetSimulationSpeed(self: EyeOfCthulhuController): number
 	return self._eyeConfig.simulationSpeed
 end
 
-function EyeOfCthulhuController:AfterSpawn()
+function EyeOfCthulhuController.AfterSpawn(self: EyeOfCthulhuController)
 	self._servantFolder = getServantFolder()
 	assert(getmetatable(self) == EyeOfCthulhuController, "[BossService] Eye controller metatable mismatch")
 	markLegacyEyePathDisabled()
@@ -473,7 +449,7 @@ function EyeOfCthulhuController:AfterSpawn()
 	self:incrementPresentationToken("roarPulseToken")
 end
 
-function EyeOfCthulhuController:OnStateChanged(
+function EyeOfCthulhuController.OnStateChanged(self: EyeOfCthulhuController, 
 	nextState: BossServiceUtils.BossEncounterState,
 	previousState: BossServiceUtils.BossEncounterState,
 	_reason: string
@@ -590,17 +566,17 @@ function EyeOfCthulhuController:OnStateChanged(
 	end
 end
 
-function EyeOfCthulhuController:OnDamageTaken(_damage: number, sourceRaw: any?, _hp: number)
+function EyeOfCthulhuController.OnDamageTaken(self: EyeOfCthulhuController, _damage: number, sourceRaw: any?, _hp: number)
 	if typeof(sourceRaw) == "Instance" and sourceRaw:IsA("Player") then
 		self:setTarget(sourceRaw)
 	end
 end
 
-function EyeOfCthulhuController:OnDeath(_killerRaw: any?)
+function EyeOfCthulhuController.OnDeath(self: EyeOfCthulhuController, _killerRaw: any?)
 	clearServants(self)
 end
 
-function EyeOfCthulhuController:StepSpawnIntro(dt: number)
+function EyeOfCthulhuController.StepSpawnIntro(self: EyeOfCthulhuController, dt: number)
 	local targetSnapshot = createTargetSnapshot(self)
 	if targetSnapshot.position == nil then
 		self:despawn("MissingTarget")
@@ -627,7 +603,7 @@ function EyeOfCthulhuController:StepSpawnIntro(dt: number)
 	end
 end
 
-function EyeOfCthulhuController:StepPhase1Hover(dt: number)
+function EyeOfCthulhuController.StepPhase1Hover(self: EyeOfCthulhuController, dt: number)
 	local targetSnapshot = createTargetSnapshot(self)
 	if targetSnapshot.position == nil then
 		self:despawn("MissingTarget")
@@ -659,7 +635,7 @@ function EyeOfCthulhuController:StepPhase1Hover(dt: number)
 	self:changeState("Phase1ChargeWindup", "Phase1ChargeSetReady")
 end
 
-function EyeOfCthulhuController:StepPhase1ServantBurst(dt: number)
+function EyeOfCthulhuController.StepPhase1ServantBurst(self: EyeOfCthulhuController, dt: number)
 	local targetSnapshot = createTargetSnapshot(self)
 	if targetSnapshot.position == nil then
 		self:despawn("MissingTarget")
@@ -705,7 +681,7 @@ function EyeOfCthulhuController:StepPhase1ServantBurst(dt: number)
 	end
 end
 
-function EyeOfCthulhuController:StepPhase1ChargeWindup(dt: number)
+function EyeOfCthulhuController.StepPhase1ChargeWindup(self: EyeOfCthulhuController, dt: number)
 	local targetSnapshot = createTargetSnapshot(self)
 	local result = EyeOfCthulhuMotion.solveChargeWindupMotion(createMotionContext(self), targetSnapshot, {
 		duration = scaleDuration(self, self._eyeConfig.phase1ChargeWindupDuration),
@@ -721,7 +697,7 @@ function EyeOfCthulhuController:StepPhase1ChargeWindup(dt: number)
 	end
 end
 
-function EyeOfCthulhuController:StepPhase1Charge(dt: number)
+function EyeOfCthulhuController.StepPhase1Charge(self: EyeOfCthulhuController, dt: number)
 	local result = EyeOfCthulhuMotion.solveCommittedChargeMotion(
 		createMotionContext(self),
 		createTargetSnapshot(self),
@@ -742,7 +718,7 @@ function EyeOfCthulhuController:StepPhase1Charge(dt: number)
 	end
 end
 
-function EyeOfCthulhuController:StepPhase1Recovery(dt: number)
+function EyeOfCthulhuController.StepPhase1Recovery(self: EyeOfCthulhuController, dt: number)
 	local targetSnapshot = createTargetSnapshot(self)
 	local result = EyeOfCthulhuMotion.solveRecoveryMotion(createMotionContext(self), targetSnapshot, {
 		duration = scaleDuration(self, self._eyeConfig.phase1ChargeRecoveryDuration),
@@ -766,7 +742,7 @@ function EyeOfCthulhuController:StepPhase1Recovery(dt: number)
 	self:changeState("Phase1ChargeWindup", "RecoveryComplete")
 end
 
-function EyeOfCthulhuController:StepTransform(dt: number)
+function EyeOfCthulhuController.StepTransform(self: EyeOfCthulhuController, dt: number)
 	local result = EyeOfCthulhuMotion.solveTransformMotion(createMotionContext(self), createTargetSnapshot(self), {
 		transformDuration = scaleDuration(self, self._eyeConfig.transformDuration),
 		transformSpinTurns = self._eyeConfig.transformSpinTurns,
@@ -779,7 +755,7 @@ function EyeOfCthulhuController:StepTransform(dt: number)
 	end
 end
 
-function EyeOfCthulhuController:StepPhase2HoverIdle(dt: number)
+function EyeOfCthulhuController.StepPhase2HoverIdle(self: EyeOfCthulhuController, dt: number)
 	local targetSnapshot = createTargetSnapshot(self)
 	if targetSnapshot.position == nil then
 		self:despawn("MissingTarget")
@@ -812,7 +788,7 @@ function EyeOfCthulhuController:StepPhase2HoverIdle(dt: number)
 	self:changeState("Phase2ChargeWindup", "Phase2HoverIdleComplete")
 end
 
-function EyeOfCthulhuController:StepPhase2ChargeWindup(dt: number)
+function EyeOfCthulhuController.StepPhase2ChargeWindup(self: EyeOfCthulhuController, dt: number)
 	if self._phase2ChargeCountInSet >= self._eyeConfig.phase2ChargeCount then
 		self:changeState("Phase2HoverIdle", "Phase2ChargeSetGuard")
 		return
@@ -833,7 +809,7 @@ function EyeOfCthulhuController:StepPhase2ChargeWindup(dt: number)
 	end
 end
 
-function EyeOfCthulhuController:StepPhase2Charge(dt: number)
+function EyeOfCthulhuController.StepPhase2Charge(self: EyeOfCthulhuController, dt: number)
 	local result = EyeOfCthulhuMotion.solvePhase2ChargeMotion(
 		createMotionContext(self),
 		createTargetSnapshot(self),
@@ -852,7 +828,7 @@ function EyeOfCthulhuController:StepPhase2Charge(dt: number)
 	end
 end
 
-function EyeOfCthulhuController:StepPhase2Recovery(dt: number)
+function EyeOfCthulhuController.StepPhase2Recovery(self: EyeOfCthulhuController, dt: number)
 	local targetSnapshot = createTargetSnapshot(self)
 	local result = EyeOfCthulhuMotion.solveRecoveryMotion(createMotionContext(self), targetSnapshot, {
 		duration = scaleDuration(self, self._eyeConfig.phase2ChargeRecoveryDuration),
@@ -876,7 +852,7 @@ function EyeOfCthulhuController:StepPhase2Recovery(dt: number)
 	self:changeState("Phase2ChargeWindup", "Phase2RecoveryContinue")
 end
 
-function EyeOfCthulhuController:StepRapidChain(dt: number)
+function EyeOfCthulhuController.StepRapidChain(self: EyeOfCthulhuController, dt: number)
 	local targetSnapshot = createTargetSnapshot(self)
 	if targetSnapshot.position == nil then
 		self:despawn("MissingTarget")
@@ -963,7 +939,7 @@ function EyeOfCthulhuController:StepRapidChain(dt: number)
 	self:changeState("Phase2HoverIdle", "RapidChainComplete")
 end
 
-function EyeOfCthulhuController:StepDespawn(dt: number)
+function EyeOfCthulhuController.StepDespawn(self: EyeOfCthulhuController, dt: number)
 	local result = EyeOfCthulhuMotion.solveDespawnMotion(
 		createMotionContext(self),
 		createTargetSnapshot(self),
@@ -977,7 +953,7 @@ function EyeOfCthulhuController:StepDespawn(dt: number)
 	end
 end
 
-function EyeOfCthulhuController:StepDeath(dt: number)
+function EyeOfCthulhuController.StepDeath(self: EyeOfCthulhuController, dt: number)
 	self:dampVelocity(4.5, dt)
 	self:setMotionState({
 		state = self.state,
@@ -997,7 +973,7 @@ function EyeOfCthulhuController:StepDeath(dt: number)
 	end
 end
 
-function EyeOfCthulhuController:OnStep(dt: number)
+function EyeOfCthulhuController.OnStep(self: EyeOfCthulhuController, dt: number)
 	stepServants(self, dt)
 
 	if self.targetPlayer == nil then
@@ -1094,7 +1070,7 @@ function EyeOfCthulhuController:OnStep(dt: number)
 	end
 end
 
-function EyeOfCthulhuController:Destroy()
+function EyeOfCthulhuController.Destroy(self: EyeOfCthulhuController)
 	clearServants(self)
 	BossBase.destroy(self)
 end
@@ -1123,3 +1099,4 @@ EyeOfCthulhuController.onStep = EyeOfCthulhuController.OnStep
 EyeOfCthulhuController.destroy = EyeOfCthulhuController.Destroy
 
 return EyeOfCthulhuController
+

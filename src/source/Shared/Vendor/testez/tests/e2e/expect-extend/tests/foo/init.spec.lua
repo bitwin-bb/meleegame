@@ -1,3 +1,4 @@
+--!nocheck
 return function()
 	beforeAll(function()
 		print("init.spec")

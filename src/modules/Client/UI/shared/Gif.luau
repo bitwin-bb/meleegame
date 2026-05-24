@@ -4,7 +4,7 @@ local RunService = game:GetService("RunService")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local Flipbook = loader("Flipbook")
 local FlipbookPlayer = loader("FlipbookPlayer")
@@ -188,7 +188,7 @@ local function Gif(props: GifProps)
 		loopCountRef.current = 0
 		completedRef.current = nextStartFrameIndex >= frameCount - 1
 		setFrameIndex(nextStartFrameIndex)
-	end, {
+	end, ({
 		props.image,
 		props.startFrame,
 		props.startFrameIndex,
@@ -200,7 +200,7 @@ local function Gif(props: GifProps)
 		frameOrigin.Y,
 		framePadding.X,
 		framePadding.Y,
-	})
+	} :: { any }))
 
 	React.useEffect(function()
 		if not playing or frameCount <= 1 then
@@ -251,14 +251,14 @@ local function Gif(props: GifProps)
 		return function()
 			connection:Disconnect()
 		end
-	end, {
+	end, ({
 		playing,
 		looped,
 		frameCount,
 		frameDuration,
 		props.onLooped,
 		props.onCompleted,
-	})
+	} :: { any }))
 
 	React.useEffect(function()
 		frameIndexRef.current = frameIndex
@@ -318,7 +318,7 @@ local function Gif(props: GifProps)
 			alive = false
 			maid:DoCleaning()
 		end
-	end, {
+	end, ({
 		useNevermoreFlipbook,
 		props.image,
 		frameCount,
@@ -330,7 +330,7 @@ local function Gif(props: GifProps)
 		looped,
 		startFrameIndex,
 		props.onCompleted,
-	})
+	} :: { any }))
 
 	if useNevermoreFlipbook then
 		local activeSlice = resolveGridFrameSlice(startFrameIndex, columns, fallbackFrameSize)

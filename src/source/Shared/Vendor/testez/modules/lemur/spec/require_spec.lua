@@ -1,3 +1,4 @@
+--!nocheck
 package.path = "./?/init.lua;" .. package.path
 local lemur = require("lib")
 

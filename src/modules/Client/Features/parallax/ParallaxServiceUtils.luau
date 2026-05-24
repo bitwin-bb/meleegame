@@ -312,7 +312,7 @@ local function sanitizeVerticalAlign(valueRaw: any, fallback: VerticalAlign): Ve
 end
 
 local function collectSortedNumericIndices(sourceRaw: any): { number }
-	local source = if typeof(sourceRaw) == "table" then sourceRaw :: { [any]: any } else {}
+	local source = if typeof(sourceRaw) == "table" then sourceRaw :: { [any]: any } else ({} :: any)
 	local indices: { number } = {}
 	for key in source do
 		if typeof(key) == "number" and key % 1 == 0 then
@@ -324,7 +324,7 @@ local function collectSortedNumericIndices(sourceRaw: any): { number }
 end
 
 local function collectSortedStringKeys(sourceRaw: any): { string }
-	local source = if typeof(sourceRaw) == "table" then sourceRaw :: { [any]: any } else {}
+	local source = if typeof(sourceRaw) == "table" then sourceRaw :: { [any]: any } else ({} :: any)
 	local keys: { string } = {}
 	for key in source do
 		if typeof(key) == "string" then
@@ -511,7 +511,7 @@ local function sanitizeBiomeDefinition(nameRaw: any, biomeRaw: any): BiomeDefini
 	end
 
 	local source = biomeRaw :: { [string]: any }
-	local aliasesRaw = if typeof(source.aliases) == "table" then source.aliases :: { any } else {}
+	local aliasesRaw = if typeof(source.aliases) == "table" then source.aliases :: { any } else ({} :: any)
 	local aliases: { string } = {}
 	for _, alias in aliasesRaw do
 		local text = trim(alias)
@@ -577,8 +577,8 @@ local function sanitizeBiomeDefinition(nameRaw: any, biomeRaw: any): BiomeDefini
 end
 
 function ParallaxServiceUtils.NormalizeCatalog(rawCatalog: any): Catalog
-	local source = if typeof(rawCatalog) == "table" then rawCatalog :: { [string]: any } else {}
-	local settingsRaw = if typeof(source.settings) == "table" then source.settings :: { [string]: any } else {}
+	local source = if typeof(rawCatalog) == "table" then rawCatalog :: { [string]: any } else ({} :: any)
+	local settingsRaw = if typeof(source.settings) == "table" then source.settings :: { [string]: any } else ({} :: any)
 	local rawBiomes = if typeof(source.biomes) == "table" then source.biomes :: { [string]: any } else source
 
 	local biomes: { [string]: BiomeDefinition } = {}
@@ -684,7 +684,7 @@ end
 function ParallaxServiceUtils.CollectAssetIds(catalog: Catalog, biomeNamesRaw: { any }?): { string }
 	local assetIds: { string } = {}
 	local seen: { [string]: boolean } = {}
-	local biomeNames = if biomeNamesRaw ~= nil then biomeNamesRaw else catalog.orderedBiomeNames
+	local biomeNames: { any } = if biomeNamesRaw ~= nil then biomeNamesRaw else (catalog.orderedBiomeNames :: any)
 
 	for _, biomeNameRaw in biomeNames do
 		local biome = ParallaxServiceUtils.ResolveBiomeDefinition(catalog, biomeNameRaw)

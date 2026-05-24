@@ -221,8 +221,8 @@ function TooltipManager._composeText(
 	metadataRaw: TooltipMetadata,
 	compareMetadataRaw: TooltipMetadata?
 ): string
-	local metadata = if typeof(metadataRaw) == "table" then metadataRaw else {}
-	local context = if typeof(metadata.context) == "table" then metadata.context else {}
+	local metadata = if typeof(metadataRaw) == "table" then metadataRaw else ({} :: any)
+	local context = if typeof(metadata.context) == "table" then metadata.context else ({} :: any)
 	local builder = self.rich.new()
 
 	if typeof(metadata.title) == "string" and metadata.title ~= "" then
@@ -316,7 +316,7 @@ end
 
 function TooltipManager.Show(self: any, metadataRaw: TooltipMetadata, compareMetadataRaw: TooltipMetadata?)
 	self:hide()
-	local metadata = if typeof(metadataRaw) == "table" then metadataRaw else {}
+	local metadata = if typeof(metadataRaw) == "table" then metadataRaw else ({} :: any)
 	local compareMetadata = if typeof(compareMetadataRaw) == "table" then compareMetadataRaw else nil
 	local primary = self:_acquire()
 	local primaryText = self:_composeText(metadata, compareMetadata)

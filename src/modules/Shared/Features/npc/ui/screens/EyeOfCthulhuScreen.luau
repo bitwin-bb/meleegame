@@ -5,7 +5,7 @@ local Workspace = game:GetService("Workspace")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local Maid = loader("Maid")
 
@@ -28,7 +28,7 @@ export type EyeOfCthulhuScreenProps = {
 
 local e: typeof(React.createElement) = React.createElement
 local BOSS_RUNTIME_FOLDER_NAME = "BossRuntime"
-local runtimeRootPartCache: { [string]: BasePart } = {}
+local runtimeRootPartCache: { [string]: BasePart? } = {}
 
 local function resolveRuntimeRootPart(runtimeId: string): BasePart?
 	local cachedRootPart = runtimeRootPartCache[runtimeId]

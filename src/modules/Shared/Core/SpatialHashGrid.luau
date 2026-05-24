@@ -233,7 +233,7 @@ function SpatialHashGrid.queryCell<T>(self: SpatialHashGrid<T>, cellXRaw: any, c
 	local cellX = if typeof(cellXRaw) == "number" then math.floor(cellXRaw) else 0
 	local cellY = if typeof(cellYRaw) == "number" then math.floor(cellYRaw) else 0
 	local cellZ = if typeof(cellZRaw) == "number" then math.floor(cellZRaw) else 0
-	local out = if outRaw ~= nil then outRaw else {}
+	local out = if outRaw ~= nil then outRaw else ({} :: any)
 	clearArray(out)
 
 	local bucket = self.cells[key3(cellX, cellY, cellZ)]
@@ -252,7 +252,7 @@ function SpatialHashGrid.queryChunk<T>(self: SpatialHashGrid<T>, chunkXRaw: any,
 	local chunkX = if typeof(chunkXRaw) == "number" then math.floor(chunkXRaw) else 0
 	local chunkY = if typeof(chunkYRaw) == "number" then math.floor(chunkYRaw) else 0
 	local chunkZ = if typeof(chunkZRaw) == "number" then math.floor(chunkZRaw) else 0
-	local out = if outRaw ~= nil then outRaw else {}
+	local out = if outRaw ~= nil then outRaw else ({} :: any)
 	clearArray(out)
 
 	local bucket = self.chunks[key3(chunkX, chunkY, chunkZ)]
@@ -275,7 +275,7 @@ function SpatialHashGrid.queryRadius<T>(self: SpatialHashGrid<T>, xRaw: any, yRa
 	local y = if typeof(yRaw) == "number" then yRaw else 0
 	local z = if typeof(zRaw) == "number" then zRaw else 0
 	local radius = clampNumber(radiusRaw, 0, 0, 1000000)
-	local out = if outRaw ~= nil then outRaw else {}
+	local out = if outRaw ~= nil then outRaw else ({} :: any)
 	clearArray(out)
 
 	local minCellX = floorDiv(x - radius, self.cellSize)

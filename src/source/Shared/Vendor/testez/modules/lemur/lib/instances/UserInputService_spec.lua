@@ -1,3 +1,4 @@
+--!nocheck
 local UserInputService = import("./UserInputService")
 
 describe("instances.UserInputService", function()

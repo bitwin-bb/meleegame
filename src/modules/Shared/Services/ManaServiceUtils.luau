@@ -90,7 +90,7 @@ function ManaServiceUtils.CreateDefaultState(): ManaServiceState
 end
 
 function ManaServiceUtils.SanitizeState(stateRaw: any, fallbackRaw: ManaServiceState?): ManaServiceState
-	local source = if typeof(stateRaw) == "table" then (stateRaw :: { [string]: any }) else {}
+	local source = if typeof(stateRaw) == "table" then (stateRaw :: { [string]: any }) else ({} :: any)
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else ManaServiceUtils.CreateDefaultState()
 	local nextState = ManaServiceUtils.CreateState(
 		source.mana,

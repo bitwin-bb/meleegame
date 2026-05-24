@@ -1,3 +1,4 @@
+--!nocheck
 local MarketplaceService = import("./MarketplaceService")
 
 describe("instances.MarketplaceService", function()

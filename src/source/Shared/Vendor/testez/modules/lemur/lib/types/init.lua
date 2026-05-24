@@ -1,3 +1,4 @@
+--!nocheck
 local names = {
 	"Color3",
 	"Rect",

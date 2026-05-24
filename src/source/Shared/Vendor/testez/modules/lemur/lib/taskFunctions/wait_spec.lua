@@ -1,3 +1,4 @@
+--!nocheck
 local createWait = import("./wait")
 local TaskScheduler = import("../TaskScheduler")
 

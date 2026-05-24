@@ -1,3 +1,4 @@
+--!nocheck
 local typeKey = import("../typeKey")
 
 local function typeof(object)

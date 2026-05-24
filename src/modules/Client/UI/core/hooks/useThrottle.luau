@@ -5,6 +5,10 @@ local Cleanup = require(script.Parent.internal.cleanup)
 local React = require(ReplicatedStorage.Packages.React)
 local useLatest = require(script.Parent.internal.useLatest)
 
+local function dependencyArray(...: any): { any }
+	return { ... }
+end
+
 export type ThrottleOptions<T> = {
 	leading: boolean?,
 	trailing: boolean?,
@@ -54,13 +58,14 @@ local function useThrottle<T>(value: T, intervalSecondsRaw: any, options: Thrott
 	local emit = React.useCallback(function(nextValue: T)
 		cancel()
 		windowStartedAtRef.current = os.clock()
-		if equalityRef.current(throttledValueRef.current, nextValue) then
+		local equality = equalityRef.current :: (T, T) -> boolean
+		if equality(throttledValueRef.current, nextValue) then
 			return
 		end
 
 		throttledValueRef.current = nextValue
 		setThrottledValue(nextValue)
-	end, { cancel, equalityRef })
+	end, dependencyArray(cancel, equalityRef))
 
 	local flush = React.useCallback(function()
 		if pendingValueRef.current == nil then
@@ -68,7 +73,7 @@ local function useThrottle<T>(value: T, intervalSecondsRaw: any, options: Thrott
 		end
 
 		emit(pendingValueRef.current :: T)
-	end, { emit })
+	end, dependencyArray(emit))
 
 	local scheduleTrailing = React.useCallback(function(delaySeconds: number, nextValue: T)
 		cancel()
@@ -87,7 +92,7 @@ local function useThrottle<T>(value: T, intervalSecondsRaw: any, options: Thrott
 			setPending(false)
 			emit(valueToEmit)
 		end)
-	end, { cancel, emit })
+	end, dependencyArray(cancel, emit))
 
 	React.useEffect(function()
 		if intervalSeconds <= 0 then
@@ -95,7 +100,8 @@ local function useThrottle<T>(value: T, intervalSecondsRaw: any, options: Thrott
 			return
 		end
 
-		if equalityRef.current(throttledValueRef.current, value) and pendingValueRef.current == nil then
+		local equality = equalityRef.current :: (T, T) -> boolean
+		if equality(throttledValueRef.current, value) and pendingValueRef.current == nil then
 			return
 		end
 
@@ -117,13 +123,13 @@ local function useThrottle<T>(value: T, intervalSecondsRaw: any, options: Thrott
 		elseif trailing then
 			scheduleTrailing(intervalSeconds - elapsed, value)
 		end
-	end, { value, intervalSeconds, leading, trailing, emit, scheduleTrailing, equalityRef })
+	end, dependencyArray(value, intervalSeconds, leading, trailing, emit, scheduleTrailing, equalityRef))
 
 	React.useEffect(function()
 		return function()
 			cancel()
 		end
-	end, { cancel })
+	end, dependencyArray(cancel))
 
 	return {
 		value = throttledValue,

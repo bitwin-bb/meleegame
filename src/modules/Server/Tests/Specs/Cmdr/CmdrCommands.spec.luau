@@ -1,4 +1,9 @@
 --!strict
+local testEnvironment = getfenv() :: any
+local describe = testEnvironment.describe :: any
+local it = testEnvironment.it :: any
+local expect = testEnvironment.expect :: any
+
 -- selene: allow(undefined_variable)
 
 local gameRoot = script:FindFirstAncestor("game")
@@ -45,7 +50,7 @@ return function()
 				end
 
 				sharedCount += 1
-				local commandData = require(child)
+				local commandData = (require :: any)(child)
 				expect(typeof(commandData)).to.equal("table")
 				expect(trim((commandData :: any).Name) ~= "").to.equal(true)
 
@@ -57,7 +62,7 @@ return function()
 				end
 				expect(serverModule:IsA("ModuleScript")).to.equal(true)
 
-				local execute = require(serverModule)
+				local execute = (require :: any)(serverModule)
 				expect(typeof(execute)).to.equal("function")
 			end
 

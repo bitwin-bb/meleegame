@@ -18,7 +18,7 @@ export type CoinState = {
 	updatedAt: number,
 }
 
-local COIN_VALUE_TO_COPPER: { [CoinType]: number } = {
+local COIN_VALUE_TO_COPPER: { [string]: number } = {
 	copper = 1,
 	silver = 100,
 	gold = 10_000,
@@ -70,7 +70,7 @@ end
 local function totalCopperToCoinAmounts(totalCopperRaw: any): CoinAmounts
 	local remaining = sanitizeWholeNumber(totalCopperRaw, 0)
 	local amounts = createDefaultCoinAmounts()
-	local amountMap = amounts :: { [CoinType]: number }
+	local amountMap = amounts :: { [string]: number }
 
 	for _, coinType in COIN_TYPE_ORDER_DESCENDING do
 		local coinValue = COIN_VALUE_TO_COPPER[coinType]
@@ -144,7 +144,7 @@ local function getCoinState(): CoinState
 end
 
 local function setCoinState(stateRaw: any): CoinState
-	local source = if typeof(stateRaw) == "table" then stateRaw else {}
+	local source = if typeof(stateRaw) == "table" then stateRaw else ({} :: any)
 	local sourceTable = source :: { [string]: any }
 	local coinsData = if sourceTable.amounts ~= nil then sourceTable.amounts else sourceTable
 	local nextState = createStateFromData(coinsData, sourceTable.loadState, coinStateAtom())

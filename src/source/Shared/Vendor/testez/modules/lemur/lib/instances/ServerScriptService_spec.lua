@@ -1,3 +1,4 @@
+--!nocheck
 local ServerScriptService = import("./ServerScriptService")
 
 describe("instances.ServerScriptService", function()

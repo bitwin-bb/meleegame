@@ -220,7 +220,7 @@ end
 
 local function resolveDesertStructureSettings(configRaw: any): DesertStructureSettings
 	local settingsRaw = if typeof(configRaw) == "table" then (configRaw :: any).Structures else nil
-	local settings = if typeof(settingsRaw) == "table" then settingsRaw else {}
+	local settings = if typeof(settingsRaw) == "table" then settingsRaw else ({} :: any)
 
 	return {
 		PyramidCellWidth = sanitizeInteger(
@@ -352,7 +352,7 @@ local function isInsidePyramidChamber(pyramid: PyramidDefinition, worldTileX: nu
 end
 
 function Structures.New(configRaw: any)
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local tileId = (config :: any).tileId :: TileIdMap
 
 	local desertStructureSettings = resolveDesertStructureSettings((config :: any).desertConfig)
@@ -423,7 +423,7 @@ function Structures.New(configRaw: any)
 end
 
 function Structures.ResolveOreTile(
-	self,
+	self: Structures,
 	baseTileId: number,
 	tileX: number,
 	tileY: number,
@@ -503,7 +503,7 @@ function Structures.ResolveOreTile(
 end
 
 function Structures.ResolvePyramidForCell(
-	self,
+	self: Structures,
 	cellX: number,
 	getColumnProfile: (worldTileX: number) -> ColumnProfile
 ): PyramidDefinition?
@@ -573,7 +573,7 @@ function Structures.ResolvePyramidForCell(
 	}
 end
 
-function Structures.GenerateChunkStructures(self, context: StructureChunkContext): StructureGenerationResult
+function Structures.GenerateChunkStructures(self: Structures, context: StructureChunkContext): StructureGenerationResult
 	local tileOverrides: { [number]: number } = {}
 	local reservedSurfaceTiles: { [number]: boolean } = {}
 	local reservations: { StructureReservation } = {}

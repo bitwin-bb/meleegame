@@ -1,4 +1,9 @@
 --!strict
+local testEnvironment = getfenv() :: any
+local describe = testEnvironment.describe :: any
+local it = testEnvironment.it :: any
+local expect = testEnvironment.expect :: any
+
 -- selene: allow(undefined_variable)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -52,9 +57,9 @@ return function()
 			expect(definition ~= nil).to.equal(true)
 
 			local keyboardPrompt =
-				PlatformServiceUtils.resolvePromptForAction(definition, "KeyboardMouse", "Desktop", "xbox")
-			local gamepadPrompt = PlatformServiceUtils.resolvePromptForAction(definition, "Gamepad", "Console", "xbox")
-			local touchPrompt = PlatformServiceUtils.resolvePromptForAction(definition, "Touch", "Phone", "xbox")
+				PlatformServiceUtils.resolvePromptForAction(definition, "KeyboardMouse", "Desktop", "xbox") :: any
+			local gamepadPrompt = PlatformServiceUtils.resolvePromptForAction(definition, "Gamepad", "Console", "xbox") :: any
+			local touchPrompt = PlatformServiceUtils.resolvePromptForAction(definition, "Touch", "Phone", "xbox") :: any
 
 			expect(keyboardPrompt.text).to.equal("LMB")
 			expect(gamepadPrompt.text).to.equal("RT")
@@ -73,9 +78,9 @@ return function()
 			local jumpBindings = PlatformServiceUtils.resolveBindingsForPlatform(jumpDefinition, "KeyboardMouse")
 			local moveUpBindings = PlatformServiceUtils.resolveBindingsForPlatform(moveUpDefinition, "KeyboardMouse")
 			local jumpPrompt =
-				PlatformServiceUtils.resolvePromptForAction(jumpDefinition, "KeyboardMouse", "Desktop", "xbox")
+				PlatformServiceUtils.resolvePromptForAction(jumpDefinition, "KeyboardMouse", "Desktop", "xbox") :: any
 			local gamepadJumpPrompt =
-				PlatformServiceUtils.resolvePromptForAction(jumpDefinition, "Gamepad", "Console", "xbox")
+				PlatformServiceUtils.resolvePromptForAction(jumpDefinition, "Gamepad", "Console", "xbox") :: any
 
 			expect(#jumpBindings).to.equal(1)
 			expect(jumpBindings[1].playerAction).to.equal(Enum.PlayerActions.CharacterJump)
@@ -91,7 +96,7 @@ return function()
 
 			expect(definition ~= nil).to.equal(true)
 
-			local gamepadPrompt = PlatformServiceUtils.resolvePromptForAction(definition, "Gamepad", "Console", "xbox")
+			local gamepadPrompt = PlatformServiceUtils.resolvePromptForAction(definition, "Gamepad", "Console", "xbox") :: any
 
 			expect(gamepadPrompt.text).to.equal("Y")
 			expect(gamepadPrompt.keyCode).to.equal(Enum.KeyCode.ButtonY)

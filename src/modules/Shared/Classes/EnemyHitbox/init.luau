@@ -165,7 +165,7 @@ local function runCallback(callback: ((...any) -> any)?, defaultValue: any, ...:
 end
 
 function EnemyHitbox.New(configRaw: EnemyHitboxConfig?): EnemyHitbox
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 
 	local self = setmetatable({
 		enemySpatial = SpatialHash.new(sanitizeNumber(config.cellSize, DEFAULT_CELL_SIZE, 0.5, 256)),

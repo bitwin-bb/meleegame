@@ -1,3 +1,4 @@
+--!nocheck
 local names = {
 	"AnalyticsService",
 	"BindableEvent",

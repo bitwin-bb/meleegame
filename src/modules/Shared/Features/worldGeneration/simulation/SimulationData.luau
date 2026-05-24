@@ -414,12 +414,12 @@ function Data.IngestWorldGenerationChunkSnapshot(world: WorldData, chunkSnapshot
 		chunk.clusterSurfaceY[clusterIndex] = chunkY * tileCountY
 	end
 
-	local chunkSnapshot = if typeof(chunkSnapshotRaw) == "table" then chunkSnapshotRaw :: { [string]: any } else {}
-	local sourceTiles = if typeof(chunkSnapshot.tiles) == "table" then chunkSnapshot.tiles :: { any } else {}
-	local sourceBiomeIds = if typeof(chunkSnapshot.biomeIds) == "table" then chunkSnapshot.biomeIds :: { any } else {}
+	local chunkSnapshot = if typeof(chunkSnapshotRaw) == "table" then chunkSnapshotRaw :: { [string]: any } else ({} :: any)
+	local sourceTiles = if typeof(chunkSnapshot.tiles) == "table" then chunkSnapshot.tiles :: { any } else ({} :: any)
+	local sourceBiomeIds = if typeof(chunkSnapshot.biomeIds) == "table" then chunkSnapshot.biomeIds :: { any } else ({} :: any)
 	local sourceBiomeTypes = if typeof(chunkSnapshot.biomeTypes) == "table"
 		then chunkSnapshot.biomeTypes :: { any }
-		else {}
+		else ({} :: any)
 	local sourceTileMinY = sanitizeInteger(chunkSnapshot.tileMinY, -1000000, 1000000, chunkY * tileCountY)
 	local sourceWidth = sanitizeInteger(chunkSnapshot.width, 1, tileCountX, tileCountX)
 	local sourceHeight = sanitizeInteger(chunkSnapshot.height, 1, tileCountY, tileCountY)

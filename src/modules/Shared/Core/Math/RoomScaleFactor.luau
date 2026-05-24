@@ -94,7 +94,7 @@ function RoomScaleFactor.SanitizeConfig(
 	configRaw: any,
 	fallbackConfigRaw: RoomScaleFactorConfig?
 ): RoomScaleFactorConfig
-	local source = if typeof(configRaw) == "table" then (configRaw :: RoomScaleFactorConfig) else {}
+	local source = if typeof(configRaw) == "table" then (configRaw :: RoomScaleFactorConfig) else ({} :: any)
 	local fallback = if typeof(fallbackConfigRaw) == "table" then fallbackConfigRaw else DEFAULT_CONFIG
 
 	local minimumEnclosedWidthTiles = clampNumber(

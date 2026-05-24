@@ -32,7 +32,7 @@ local function sanitizeSize(valueRaw: any): Vector3
 end
 
 function EyeOfCthulhuServantRoot.CreateModel(configRaw: EyeOfCthulhuServantRootConfig?): Model
-	local config = (if typeof(configRaw) == "table" then configRaw else {}) :: EyeOfCthulhuServantRootConfig
+	local config = (if typeof(configRaw) == "table" then configRaw else ({} :: any)) :: EyeOfCthulhuServantRootConfig
 	local scope = Fusion.scoped(Fusion)
 	local rootPart = scope:New "Part" {
 		Name = "RootPart",
@@ -52,7 +52,7 @@ function EyeOfCthulhuServantRoot.CreateModel(configRaw: EyeOfCthulhuServantRootC
 	} :: Model
 
 	model:SetAttribute("BossServantSpriteRoot", true)
-	model.PrimaryPart = rootPart
+	model.PrimaryPart = rootPart :: BasePart
 	if typeof(config.cframe) == "CFrame" then
 		model:PivotTo(config.cframe :: CFrame)
 	end

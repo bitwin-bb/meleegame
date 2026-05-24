@@ -16,7 +16,7 @@ ExpectationContext.__index = ExpectationContext
 
 function ExpectationContext.new(parent)
 	local self = {
-		_extensions = parent and copy(parent._extensions) or {},
+		_extensions = parent and copy(parent._extensions) or ({} :: any),
 	}
 
 	return setmetatable(self, ExpectationContext)

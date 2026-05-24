@@ -1,7 +1,7 @@
 --!strict
 local InventoryServiceUtils = {}
 
-export type InventoryLoadState = "Unloaded" | "Loading" | "Loaded" | "Failed"
+export type InventoryLoadState = string
 export type InventoryItemMetadata = { [string]: any }
 export type InventoryItemStack = { stackId: string, itemId: string, amount: number, maxStack: number, metadata: InventoryItemMetadata? }
 export type InventorySlot = { index: number, stack: InventoryItemStack? }
@@ -429,7 +429,7 @@ end
 
 function InventoryServiceUtils.CreateState(stateRaw: any, fallbackStateRaw: any): InventoryState
 	local fallback = if typeof(fallbackStateRaw) == "table" then (fallbackStateRaw :: InventoryState) else InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)
-	local source = if typeof(stateRaw) == "table" then (stateRaw :: { [string]: any }) else {}
+	local source = if typeof(stateRaw) == "table" then (stateRaw :: { [string]: any }) else ({} :: any)
 	local state: InventoryState = {
 		capacity = normalizeCapacity(source.capacity, fallback.capacity),
 		slots = normalizeSlots(source.slots, normalizeCapacity(source.capacity, fallback.capacity)),
@@ -446,7 +446,7 @@ end
 
 function InventoryServiceUtils.CreateStateFromData(dataRaw: any, fallbackStateRaw: any, loadStateRaw: any): InventoryState
 	local fallback = if typeof(fallbackStateRaw) == "table" then (fallbackStateRaw :: InventoryState) else InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)
-	local dataTable = if typeof(dataRaw) == "table" then (dataRaw :: { [string]: any }) else {}
+	local dataTable = if typeof(dataRaw) == "table" then (dataRaw :: { [string]: any }) else ({} :: any)
 	local slotsRaw = if typeof(dataTable.slots) == "table" then dataTable.slots else dataTable.items
 	local state = InventoryServiceUtils.CreateState({
 		capacity = dataTable.capacity,

@@ -587,8 +587,8 @@ function BuildServiceServer.PushBreakProgress(
 	progressTotalRaw: any?,
 	targetKindRaw: any?
 )
-	local progressUnits = if isFiniteNumber(progressUnitsRaw) then math.max(0, progressUnitsRaw) else nil
-	local progressTotal = if isFiniteNumber(progressTotalRaw) then math.max(0, progressTotalRaw) else nil
+	local progressUnits = if isFiniteNumber(progressUnitsRaw) then math.max(0, progressUnitsRaw :: number) else nil
+	local progressTotal = if isFiniteNumber(progressTotalRaw) then math.max(0, progressTotalRaw :: number) else nil
 	self.networker:fire(player, BuildServiceUtils.CLIENT_METHOD_ON_BREAK_PROGRESS, {
 		isActive = isActive,
 		tileX = tileX,
@@ -617,7 +617,7 @@ function BuildServiceServer.SendActionResult(
 	if requestId <= 0 then
 		return
 	end
-	local deltas = if deltasRaw ~= nil then cloneTileDeltaList(deltasRaw) else {}
+	local deltas = if deltasRaw ~= nil then cloneTileDeltaList(deltasRaw) else ({} :: any)
 	self.networker:fire(player, BuildServiceUtils.CLIENT_METHOD_ON_ACTION_RESULT, {
 		requestId = requestId,
 		actionType = actionType,
@@ -1723,7 +1723,7 @@ type BuildServiceServer = typeof(BuildServiceServer) & {
 	config: BuildServiceConfig,
 	state: BuildServiceState,
 	worldGenerationService: WorldGenerationServiceServerObject,
-	inventoryService: InventoryServiceServerObject?,
+	inventoryService: InventoryServiceServerObject,
 	lootService: LootServiceServerObject?,
 	world: any,
 	pendingTileDeltas: { TileDelta },
@@ -1738,6 +1738,7 @@ type BuildServiceServer = typeof(BuildServiceServer) & {
 	heartbeatConnection: RBXScriptConnection?,
 	playerAddedConnection: RBXScriptConnection?,
 	playerRemovingConnection: RBXScriptConnection?,
+	binders: any,
 }
 
 return BuildServiceServer :: BuildServiceServer

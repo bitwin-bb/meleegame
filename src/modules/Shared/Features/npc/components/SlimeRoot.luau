@@ -41,7 +41,7 @@ local function sanitizeSize(valueRaw: any): Vector3
 end
 
 function SlimeRoot.CreateModel(configRaw: SlimeRootConfig?): Model
-	local config = (if typeof(configRaw) == "table" then configRaw else {}) :: SlimeRootConfig
+	local config = (if typeof(configRaw) == "table" then configRaw else ({} :: any)) :: SlimeRootConfig
 	local scope = Fusion.scoped(Fusion)
 	local rootPart = scope:New "Part" {
 		Name = "RootPart",
@@ -67,7 +67,7 @@ function SlimeRoot.CreateModel(configRaw: SlimeRootConfig?): Model
 		},
 	} :: Model
 
-	model.PrimaryPart = rootPart
+	model.PrimaryPart = rootPart :: BasePart
 	if typeof(config.cframe) == "CFrame" then
 		model:PivotTo(config.cframe :: CFrame)
 	end

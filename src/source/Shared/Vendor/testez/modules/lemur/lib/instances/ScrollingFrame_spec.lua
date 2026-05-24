@@ -1,3 +1,4 @@
+--!nocheck
 local Instance = import("../Instance")
 local ScrollingDirection = import("../Enum/ScrollingDirection")
 local ScrollBarInset = import("../Enum/ScrollBarInset")

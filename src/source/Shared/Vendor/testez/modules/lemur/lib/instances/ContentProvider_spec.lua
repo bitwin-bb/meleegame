@@ -1,3 +1,4 @@
+--!nocheck
 local ContentProvider = import("./ContentProvider")
 
 describe("instances.ContentProvider", function()

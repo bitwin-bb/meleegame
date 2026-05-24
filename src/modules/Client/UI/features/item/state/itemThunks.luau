@@ -65,9 +65,10 @@ local function toTitleCase(textRaw: any): string
 	value = string.gsub(value, "_", " ")
 	value = string.gsub(value, "-", " ")
 	value = string.gsub(value, "%s+", " ")
-	return string.gsub(value, "(%a)([%w']*)", function(first: string, rest: string)
+	local title = (string.gsub :: any)(value, "(%a)([%w']*)", function(first: string, rest: string)
 		return string.upper(first) .. string.lower(rest)
-	end)
+	end) :: string
+	return title
 end
 
 local function resolveItemTypeFromItemId(itemIdRaw: any): string?

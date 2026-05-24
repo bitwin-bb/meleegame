@@ -1,3 +1,4 @@
+--!nocheck
 -- Camera Shake Presets
 -- Stephen Leitnick
 -- February 26, 2018

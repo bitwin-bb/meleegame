@@ -1,4 +1,9 @@
 --!strict
+local testEnvironment = getfenv() :: any
+local describe = testEnvironment.describe :: any
+local it = testEnvironment.it :: any
+local expect = testEnvironment.expect :: any
+
 -- selene: allow(undefined_variable)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -64,19 +69,19 @@ return function()
 			targetResolver:setExplicitTarget(explicitTarget)
 			targetResolver:setTemporaryOverride(temporaryTarget)
 
-			local temporaryResolution = targetResolver:resolve()
+			local temporaryResolution = targetResolver:resolve() :: any
 			expect(temporaryResolution ~= nil).to.equal(true)
 			expect(temporaryResolution.kind).to.equal("TemporaryOverride")
 			expect(temporaryResolution.basePart).to.equal(temporaryTarget)
 
 			targetResolver:clearTemporaryOverride()
-			local explicitResolution = targetResolver:resolve()
+			local explicitResolution = targetResolver:resolve() :: any
 			expect(explicitResolution ~= nil).to.equal(true)
 			expect(explicitResolution.kind).to.equal("ExplicitTarget")
 			expect(explicitResolution.basePart).to.equal(explicitTarget)
 
 			targetResolver:setExplicitTarget(nil)
-			local characterResolution = targetResolver:resolve()
+			local characterResolution = targetResolver:resolve() :: any
 			expect(characterResolution ~= nil).to.equal(true)
 			expect(characterResolution.kind).to.equal("Character")
 			expect(characterResolution.basePart).to.equal(character.PrimaryPart)
@@ -102,13 +107,13 @@ return function()
 				expiresAt = 0,
 			})
 
-			local resolved = stack:resolve(os.clock())
+			local resolved = stack:resolve(os.clock()) :: any
 			expect(resolved ~= nil).to.equal(true)
 			expect(resolved.id).to.equal(highPriorityId)
 			expect(resolved.position).to.equal(Vector3.new(5, 0, 0))
 
 			stack:remove(highPriorityId)
-			local afterRemoval = stack:resolve(os.clock())
+			local afterRemoval = stack:resolve(os.clock()) :: any
 			expect(afterRemoval ~= nil).to.equal(true)
 			expect(afterRemoval.id).to.equal(lowPriorityId)
 		end)

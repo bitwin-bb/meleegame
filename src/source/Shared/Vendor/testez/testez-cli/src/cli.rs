@@ -72,4 +72,4 @@ impl fmt::Display for TargetConvertError {
     }
 }
 
-impl Error for TargetConvertError {}
+impl Error for TargetConvertError ({} :: any)

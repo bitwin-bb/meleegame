@@ -1,3 +1,4 @@
+--!nocheck
 local Rect = import("./Rect")
 local Vector2 = import("./Vector2")
 local typeof = import("../functions/typeof")

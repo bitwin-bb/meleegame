@@ -3,7 +3,7 @@ local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.It
 local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
 
-local UI_AUDIO = (AudioRegistry :: any).UI or {}
+local UI_AUDIO = (AudioRegistry :: any).UI or ({} :: any)
 
 local UiSound = {} :: any
 

@@ -1,3 +1,4 @@
+--!nocheck
 local BaseInstance = import("./BaseInstance")
 
 local AnalyticsService = import("./AnalyticsService")

@@ -48,6 +48,8 @@ local HIGHLIGHT_OUTLINE_COLOR = HIGHLIGHT_FILL_COLOR
 local HIGHLIGHT_FILL_TRANSPARENCY = 1
 local HIGHLIGHT_OUTLINE_TRANSPARENCY = 0
 local ENTITY_HOVER_WORLD_RADIUS = 2.5
+local HOVER_KIND_BOSS: HoverEntityKind = "Boss"
+local HOVER_KIND_NPC: HoverEntityKind = "Npc"
 
 local runtime = {
 	started = false,
@@ -329,7 +331,7 @@ local function resolveHoveredEntity(targetRaw: any): (Model?, string?, HoverEnti
 	if bossModel ~= nil then
 		local bossRuntimeId = BossServiceUtils.resolveRuntimeIdFromInstance(bossModel)
 		if bossRuntimeId ~= nil and bossRuntimeId ~= "" then
-			return bossModel, bossRuntimeId, "Boss"
+			return bossModel, bossRuntimeId, HOVER_KIND_BOSS
 		end
 	end
 
@@ -343,7 +345,7 @@ local function resolveHoveredEntity(targetRaw: any): (Model?, string?, HoverEnti
 		return nil, nil, nil
 	end
 
-	return model, runtimeId, "Npc"
+	return model, runtimeId, HOVER_KIND_NPC
 end
 
 local function resolveHoverGuiPositionFromWorldPosition(worldPosition: Vector3, fallback: Vector2): Vector2
@@ -402,11 +404,11 @@ local function resolveHoveredEntityFromWorldPosition(worldPosition: Vector3): (M
 		end
 	end
 
-	return bestModel, bestRuntimeId, bestEntityKind
+	return bestModel, bestRuntimeId, bestEntityKind :: HoverEntityKind?
 end
 
 local function showHover(runtimeId: string, entityKind: HoverEntityKind, model: Model, mousePosition: Vector2)
-	local snapshot = getCachedSnapshot(runtimeId, entityKind)
+	local snapshot = getCachedSnapshot(runtimeId, entityKind :: HoverEntityKind)
 	if snapshot == nil then
 		clearHover()
 		return
@@ -434,7 +436,7 @@ local function showHover(runtimeId: string, entityKind: HoverEntityKind, model: 
 end
 
 local function refreshHoveredSnapshot()
-	local entityKind = runtime.hoveredEntityKind
+	local entityKind = runtime.hoveredEntityKind :: HoverEntityKind?
 	local runtimeId = runtime.hoveredRuntimeId
 	local hoveredModel = runtime.hoveredModel
 	if entityKind == nil or runtimeId == nil or hoveredModel == nil or hoveredModel.Parent == nil then
@@ -442,7 +444,7 @@ local function refreshHoveredSnapshot()
 		return
 	end
 
-	local snapshot = getCachedSnapshot(runtimeId, entityKind)
+	local snapshot = getCachedSnapshot(runtimeId, entityKind :: any)
 	if snapshot == nil then
 		clearHover()
 		return
@@ -496,7 +498,7 @@ local function stepHoverState()
 			return
 		end
 
-		showHover(runtimeId, entityKind, hoveredModel, hoverPosition)
+		showHover(runtimeId, entityKind :: HoverEntityKind, hoveredModel, hoverPosition)
 		return
 	end
 
@@ -509,7 +511,7 @@ local function stepHoverState()
 		return
 	end
 
-	local targetPart = mouse.Target
+	local targetPart = mouse.Target :: BasePart?
 	if targetPart == nil then
 		clearHover()
 		return
@@ -532,7 +534,7 @@ local function stepHoverState()
 		return
 	end
 
-	showHover(runtimeId, entityKind, hoveredModel, mousePosition)
+	showHover(runtimeId, entityKind :: HoverEntityKind, hoveredModel, mousePosition)
 end
 
 function entityInfoThunks.Start(): () -> ()
@@ -546,8 +548,8 @@ function entityInfoThunks.Start(): () -> ()
 		local ok, resolvedMouse = pcall(function()
 			return (runtime.localPlayer :: Player):GetMouse()
 		end)
-		if ok and resolvedMouse ~= nil then
-			runtime.mouse = resolvedMouse
+		if ok then
+			runtime.mouse = resolvedMouse :: Mouse
 		end
 	end
 

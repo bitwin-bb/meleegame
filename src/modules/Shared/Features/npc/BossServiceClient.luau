@@ -276,7 +276,7 @@ function BossServiceClient.OnBossRemoved(self: BossServiceClient, runtimeIdRaw: 
 end
 
 function BossServiceClient.OnAnnouncement(self: BossServiceClient, payloadRaw: any)
-	local payload = if typeof(payloadRaw) == "table" then payloadRaw else {}
+	local payload = if typeof(payloadRaw) == "table" then payloadRaw else ({} :: any)
 	local text = trim((payload :: any).text)
 	if text == "" then
 		return
@@ -354,7 +354,7 @@ function BossServiceClient.Init(self: BossServiceClient)
 		self:stepVisuals(dt)
 	end))
 	self.janitor:GiveChore(function()
-		for runtimeId in self.visualsById do
+		for runtimeId in pairs(self.visualsById) do
 			self:destroyVisual(runtimeId)
 		end
 	end)

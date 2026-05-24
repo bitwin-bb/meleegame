@@ -102,7 +102,7 @@ function Expectation.checkMatcherNameCollisions(name)
 end
 
 function Expectation:extend(matchers)
-	self.matchers = matchers or {}
+	self.matchers = matchers or ({} :: any)
 
 	for name, implementation in pairs(self.matchers) do
 		self._boundMatchers[name] = bindSelf(self, function(_self, ...)

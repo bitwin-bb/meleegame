@@ -104,8 +104,8 @@ local SHARED_BASE_WALK_SPEED_ATTRIBUTE = "PlayerService_BaseWalkSpeed"
 local MAGIC_WALK_SPEED_MULTIPLIER_ATTRIBUTE = "MagicService_WalkSpeedMultiplier"
 local LIQUID_WALK_SPEED_MULTIPLIER_ATTRIBUTE = "LiquidService_WalkSpeedMultiplier"
 local MIN_EFFECTIVE_WALK_SPEED = 2
-local PLAYER_AUDIO = (Audio :: any).Player or {}
-local PLAYER_LAND_AUDIO = PLAYER_AUDIO.Land or {}
+local PLAYER_AUDIO = (Audio :: any).Player or ({} :: any)
+local PLAYER_LAND_AUDIO = PLAYER_AUDIO.Land or ({} :: any)
 
 local function createAudioBackedLandingConfig(audioEntries: any, config: LandingSoundConfig): LandingSoundConfig
 	return {
@@ -307,7 +307,7 @@ function PlayerServiceUtils.ComputeRespawnMaxHealthFromDeath(maxHealthRaw: any, 
 end
 
 function PlayerServiceUtils.SanitizeInvincibilityFramesConfig(configRaw: any): InvincibilityFramesConfig
-	local source = if typeof(configRaw) == "table" then configRaw else {}
+	local source = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local duration = if typeof((source :: any).duration) == "number"
 			and (source :: any).duration == (source :: any).duration
 		then math.max(MIN_INVINCIBILITY_FRAMES_DURATION, (source :: any).duration)

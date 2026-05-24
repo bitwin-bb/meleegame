@@ -1,3 +1,4 @@
+--!nocheck
 local TestService = import("./TestService")
 
 describe("instances.TestService", function()

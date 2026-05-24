@@ -1,3 +1,4 @@
+--!nocheck
 local string = import("./string")
 
 describe("libs.string", function()

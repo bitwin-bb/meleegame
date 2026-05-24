@@ -226,7 +226,7 @@ function Class.Emit(self: Class, Origin: Vector3, Direction: Vector3, InputData:
 
 	-- Create a clone of the default settings, and apply specific settings if provided
 	local Data = table.clone(self.Settings)
-	Data:UpdateSettings((InputData or {}) :: Settings.Settings)
+	Data:UpdateSettings((InputData or ({} :: any)) :: Settings.Settings)
 
 	-- Variable definitions
 	local Velocity = Functions.NextNumber(Data.DropletVelocity) * 10

@@ -103,7 +103,7 @@ function HopMotion.ComputeArcHeight(horizontalDistanceRaw: any, minArcHeightRaw:
 end
 
 function HopMotion.New(configRaw: HopConfig?): HopMotion
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local minArcHeight = sanitizeNumber(config.minArcHeight, DEFAULT_MIN_ARC_HEIGHT, 0, nil)
 	local maxArcHeight = sanitizeNumber(config.maxArcHeight, DEFAULT_MAX_ARC_HEIGHT, minArcHeight, nil)
 	local duration = sanitizeNumber(config.duration, DEFAULT_DURATION, 0.03, 8)

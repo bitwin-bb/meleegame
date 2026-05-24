@@ -100,7 +100,7 @@ export type PlaceableItemConfig = {
 }
 
 export type TreeTileType = "trunk" | "leaf"
-export type TreeState = "Alive" | "Felled"
+export type TreeState = string
 
 export type TreeSnapshot = {
 	treeId: string,
@@ -710,7 +710,7 @@ end
 
 function BuildServiceUtils.SanitizeConfig(configRaw: any, fallbackRaw: BuildServiceConfig?): BuildServiceConfig
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else BuildServiceUtils.CreateDefaultConfig()
-	local source = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else {}
+	local source = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else ({} :: any)
 	return {
 		maxInteractionDistanceTiles = sanitizeNumber(
 			source.maxInteractionDistanceTiles,
@@ -766,7 +766,7 @@ end
 
 function BuildServiceUtils.CreateState(stateRaw: any, fallbackRaw: BuildServiceState?): BuildServiceState
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else BuildServiceUtils.CreateDefaultState()
-	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {}
+	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else ({} :: any)
 	return {
 		ready = if typeof(source.ready) == "boolean" then source.ready else fallback.ready,
 		tileSize = sanitizeNumber(source.tileSize, 0.5, 64, fallback.tileSize),
@@ -935,13 +935,13 @@ function BuildServiceUtils.CreateTreeSnapshot(chunkXRaw: any, chunkYRaw: any, tr
 end
 
 function BuildServiceUtils.ResolveTreeTrunkHeight(treeRaw: any): number
-	local source = if typeof(treeRaw) == "table" then treeRaw :: { [string]: any } else {}
+	local source = if typeof(treeRaw) == "table" then treeRaw :: { [string]: any } else ({} :: any)
 	local seed = sanitizeInteger(source.seed, -2147483648, 2147483647, 0)
 	return Height.ResolveHeightTiles(seed, DEFAULT_TREE_TRUNK_HEIGHT_MIN, DEFAULT_TREE_TRUNK_HEIGHT_MAX)
 end
 
 function BuildServiceUtils.ResolveTreeCanopyRadius(treeRaw: any): number
-	local source = if typeof(treeRaw) == "table" then treeRaw :: { [string]: any } else {}
+	local source = if typeof(treeRaw) == "table" then treeRaw :: { [string]: any } else ({} :: any)
 	local seed = sanitizeInteger(source.seed, -2147483648, 2147483647, 0)
 	local variantIndex = sanitizeInteger(source.variantIndex, 1, 128, 1)
 	local biomeType = sanitizeInteger(source.biomeType, TREE_BIOME_TYPE_NORMAL, 32, TREE_BIOME_TYPE_NORMAL)
@@ -952,7 +952,7 @@ function BuildServiceUtils.ResolveTreeCanopyRadius(treeRaw: any): number
 end
 
 function BuildServiceUtils.FloodTreeFootprint(treeRaw: any): TreeFootprint
-	local source = if typeof(treeRaw) == "table" then treeRaw :: { [string]: any } else {}
+	local source = if typeof(treeRaw) == "table" then treeRaw :: { [string]: any } else ({} :: any)
 	local rootTileX = BuildServiceUtils.SanitizeTileCoordinate(source.rootTileX or source.tileX) or 0
 	local rootTileY = BuildServiceUtils.SanitizeTileCoordinate(source.rootTileY or source.tileY) or 0
 	local trunkHeight = BuildServiceUtils.ResolveTreeTrunkHeight(source)
@@ -1120,7 +1120,7 @@ function BuildServiceUtils.ResolveTreeAtTile(
 				bestHit = {
 					tree = tree,
 					footprint = footprint,
-					tileType = tileType,
+					tileType = tileType :: any,
 				}
 			end
 		end
@@ -1130,7 +1130,7 @@ function BuildServiceUtils.ResolveTreeAtTile(
 end
 
 function BuildServiceUtils.ResolveTreeDropTableId(treeRaw: any): string
-	local source = if typeof(treeRaw) == "table" then treeRaw :: { [string]: any } else {}
+	local source = if typeof(treeRaw) == "table" then treeRaw :: { [string]: any } else ({} :: any)
 	local biomeType = if isFiniteNumber(source.biomeType) then math.floor(source.biomeType) else TREE_BIOME_TYPE_NORMAL
 	local biomeId = if isFiniteNumber(source.biomeId) then math.floor(source.biomeId) else TREE_BIOME_ID_FOREST
 	if biomeType == TREE_BIOME_TYPE_CORRUPTION then
@@ -1157,7 +1157,7 @@ function BuildServiceUtils.ResolveTreeFallDuration(heightTilesRaw: any): number
 end
 
 function BuildServiceUtils.ResolveTreeBreakProfile(treeRaw: any, toolPowerRaw: any): TreeBreakProfile
-	local source = if typeof(treeRaw) == "table" then treeRaw :: { [string]: any } else {}
+	local source = if typeof(treeRaw) == "table" then treeRaw :: { [string]: any } else ({} :: any)
 	local heightTiles = if isFiniteNumber(source.heightTiles)
 		then sanitizeInteger(source.heightTiles, 1, 128, DEFAULT_TREE_TRUNK_HEIGHT_MIN)
 		else BuildServiceUtils.ResolveTreeTrunkHeight(source) + 1
@@ -1221,7 +1221,7 @@ function BuildServiceUtils.ComputeTreeFallDirection(
 	preferredDirectionRaw: any?
 ): number
 	local preferredDirection = BuildServiceUtils.NormalizeFallDirection(preferredDirectionRaw)
-	if isFiniteNumber(preferredDirectionRaw) and math.sign(preferredDirectionRaw) ~= 0 then
+	if isFiniteNumber(preferredDirectionRaw) and math.sign(preferredDirectionRaw :: number) ~= 0 then
 		return preferredDirection
 	end
 	if typeof(preferredDirectionRaw) == "string" and preferredDirectionRaw ~= "" then
@@ -1283,7 +1283,7 @@ function BuildServiceUtils.ComputeTreeImpactPosition(
 end
 
 function BuildServiceUtils.RollTreeDrops(treeRaw: any): { TreeDropEntry }
-	local source = if typeof(treeRaw) == "table" then treeRaw :: { [string]: any } else {}
+	local source = if typeof(treeRaw) == "table" then treeRaw :: { [string]: any } else ({} :: any)
 	local dropTableId = BuildServiceUtils.ResolveTreeDropTableId(source)
 	local dropTable = TREE_DROP_TABLES[dropTableId]
 	if dropTable == nil then
@@ -1385,7 +1385,7 @@ function BuildServiceUtils.ResolvePlaceableItemConfig(itemIdRaw: any): Placeable
 		then definitionTable.build :: { [string]: any }
 		else if typeof(definitionTable.placement) == "table"
 			then definitionTable.placement :: { [string]: any }
-			else {}
+			else ({} :: any)
 	local tileId = BuildServiceUtils.ResolveTileIdFromAlias(
 		placement.tileId
 			or placement.buildTileId
@@ -1643,8 +1643,8 @@ function BuildServiceUtils.CanPlaceAt(
 		}
 	end
 
-	local minTileY = if isFiniteNumber(minTileYRaw) then math.floor(minTileYRaw) else -65536
-	local maxTileY = if isFiniteNumber(maxTileYRaw) then math.floor(maxTileYRaw) else 65536
+	local minTileY = if isFiniteNumber(minTileYRaw) then math.floor(minTileYRaw :: number) else -65536
+	local maxTileY = if isFiniteNumber(maxTileYRaw) then math.floor(maxTileYRaw :: number) else 65536
 	if tileY < minTileY or tileY > maxTileY then
 		return {
 			canPlace = false,

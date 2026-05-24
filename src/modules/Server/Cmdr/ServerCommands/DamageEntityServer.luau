@@ -239,7 +239,7 @@ end
 
 local function applyNpcDamage(runtime: NpcRuntime, player: Player, amountRaw: number?): (number, string, string)
 	local requestedDamage = if amountRaw ~= nil then amountRaw else KILL_DAMAGE
-	local appliedDamage = NpcServiceServer:applyRuntimeDamage(runtime, requestedDamage, player, "DebugCommand")
+	local appliedDamage = NpcServiceServer:applyRuntimeDamage(runtime :: any, requestedDamage, player, "DebugCommand")
 	local currentHp = runtime.hp
 	local maxHp = runtime.maxHp
 

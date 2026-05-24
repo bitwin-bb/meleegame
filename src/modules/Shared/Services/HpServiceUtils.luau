@@ -125,7 +125,7 @@ function HpServiceUtils.CreateStateFromHumanoid(
 end
 
 function HpServiceUtils.SanitizeState(stateRaw: any, fallback: HpServiceState?): HpServiceState
-	local source = if typeof(stateRaw) == "table" then stateRaw else {}
+	local source = if typeof(stateRaw) == "table" then stateRaw else ({} :: any)
 	local fallbackState = if fallback then fallback else HpServiceUtils.CreateDefaultState()
 	local nextState =
 		HpServiceUtils.CreateState((source :: any).health, (source :: any).maxHealth, (source :: any).heartValue, fallbackState)

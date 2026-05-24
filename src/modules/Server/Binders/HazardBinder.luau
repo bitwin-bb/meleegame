@@ -15,28 +15,28 @@ local npcServiceServer = nil
 
 local function getBossServiceServer()
 	if bossServiceServer == nil then
-		bossServiceServer = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceServer)
+		bossServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceServer)
 	end
 	return bossServiceServer
 end
 
 local function getHpServiceServer()
 	if hpServiceServer == nil then
-		hpServiceServer = require(script:FindFirstAncestor("game").Server.Services.HpServiceServer)
+		hpServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.HpServiceServer)
 	end
 	return hpServiceServer
 end
 
 local function getLiquidServiceServer()
 	if liquidServiceServer == nil then
-		liquidServiceServer = require(script:FindFirstAncestor("game").Server.Services.LiquidServiceServer)
+		liquidServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.LiquidServiceServer)
 	end
 	return liquidServiceServer
 end
 
 local function getNpcServiceServer()
 	if npcServiceServer == nil then
-		npcServiceServer = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceServer)
+		npcServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceServer)
 	end
 	return npcServiceServer
 end

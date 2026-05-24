@@ -85,7 +85,7 @@ end
 
 local function updateThumbsticks(snapshotRaw: any): PadState
 	local current = padStateAtom()
-	local snapshot = if typeof(snapshotRaw) == "table" then snapshotRaw else {}
+	local snapshot = if typeof(snapshotRaw) == "table" then snapshotRaw else ({} :: any)
 	local left = if typeof((snapshot :: any).left) == "table" then (snapshot :: any).left else nil
 	local right = if typeof((snapshot :: any).right) == "table" then (snapshot :: any).right else nil
 	local nextState: PadState = {

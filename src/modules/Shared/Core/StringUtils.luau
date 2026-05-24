@@ -21,7 +21,8 @@ function StringUtils.CompactToken(valueRaw: any): string
 	if value == "" then
 		return ""
 	end
-	return string.lower(string.gsub(value, "[%s_%-%.]+", ""))
+	local normalized = string.gsub(value, "[%s_%-%.]+", "")
+	return string.lower(normalized)
 end
 
 StringUtils.trim = StringUtils.Trim

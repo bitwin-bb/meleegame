@@ -1,3 +1,4 @@
+--!nocheck
 -- luacheck: globals describe beforeAll expect it
 
 local customEqualMatcher = function(received, expected)

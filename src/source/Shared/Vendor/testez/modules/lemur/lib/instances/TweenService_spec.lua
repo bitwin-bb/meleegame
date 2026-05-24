@@ -1,3 +1,4 @@
+--!nocheck
 local TweenService = import("./TweenService")
 
 describe("instances.TweenService", function()

@@ -76,8 +76,8 @@ local function resetEntryDrivers(entry: any)
 end
 
 function FoliageUpdateManager.New(configRaw: any?, registry: any, windField: any, lodController: any, bufferPool: any): FoliageUpdateManager
-	local config = if typeof(configRaw) == "table" then configRaw else {}
-	local runtime = if typeof(config.runtime) == "table" then config.runtime else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local runtime = if typeof(config.runtime) == "table" then config.runtime else ({} :: any)
 	local self = setmetatable({
 		config = config,
 		runtimeConfig = runtime,

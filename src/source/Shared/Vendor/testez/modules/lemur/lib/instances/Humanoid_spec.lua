@@ -1,3 +1,4 @@
+--!nocheck
 local Humanoid = import("./Humanoid")
 local Instance = import("../Instance")
 local Workspace = import("./Workspace")

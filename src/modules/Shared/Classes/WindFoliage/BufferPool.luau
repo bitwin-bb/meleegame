@@ -17,7 +17,7 @@ local function clampInteger(valueRaw: any, fallback: number, minimum: number, ma
 end
 
 function BufferPool.New(configRaw: any?): BufferPool
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local self = setmetatable({
 		maxAvailable = clampInteger(config.maxAvailable, 32, 1, 1024),
 		arrays = {} :: { { any } },

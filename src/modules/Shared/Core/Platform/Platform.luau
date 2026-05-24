@@ -147,7 +147,7 @@ local function safeDisconnect(connection: RBXScriptConnection?)
 end
 
 function Platform.New(configRaw: PlatformConfig?): Platform
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local self = setmetatable({
 		eventBus = config.eventBus,
 		eventChannel = normalizeEventName(config.eventChannel, "platform"),

@@ -1,3 +1,4 @@
+--!nocheck
 local StarterCharacterScripts = import("./StarterCharacterScripts")
 
 describe("instances.StarterCharacterScripts", function()

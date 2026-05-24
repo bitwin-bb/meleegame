@@ -1,3 +1,4 @@
+--!nocheck
 local BaseInstance = import("./BaseInstance")
 local Color3 = import("../types/Color3")
 local InstanceProperty = import("../InstanceProperty")

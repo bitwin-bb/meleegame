@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local Flipbook = loader("Flipbook")
 local FlipbookPlayer = loader("FlipbookPlayer")
@@ -50,7 +50,7 @@ return function(props: EyeOfCthulhuServantProps): React.ReactNode
 		return function()
 			maid:DoCleaning()
 		end
-	end, {
+	end, ({
 		ServantSpriteSheet.image,
 		ServantSpriteSheet.frameSize.X,
 		ServantSpriteSheet.frameSize.Y,
@@ -58,7 +58,7 @@ return function(props: EyeOfCthulhuServantProps): React.ReactNode
 		ServantSpriteSheet.columns,
 		FRAME_COUNT,
 		ServantSpriteSheet.frameRate,
-	})
+	} :: { any }))
 
 	return e("ImageLabel", {
 		ref = imageRef,

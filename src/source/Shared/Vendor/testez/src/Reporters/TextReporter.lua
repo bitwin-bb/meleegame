@@ -1,3 +1,4 @@
+--!nocheck
 --[[
 	The TextReporter uses the results from a completed test to output text to
 	standard output and TestService.
@@ -22,7 +23,7 @@ local function compareNodes(a, b)
 end
 
 local function reportNode(node, buffer, level)
-	buffer = buffer or {}
+	buffer = buffer or ({} :: any)
 	level = level or 0
 
 	if node.status == TestEnum.TestStatus.Skipped then

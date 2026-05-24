@@ -109,7 +109,7 @@ local function applyToBillboard(state: MiningProgressState)
 
 	if state.visible ~= true or state.worldPosition == nil then
 		billboardGui.Enabled = false
-		billboardGui.Adornee = nil
+		billboardGui.Adornee = nil :: any
 		hideAnchorPart()
 		return
 	end

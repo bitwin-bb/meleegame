@@ -315,6 +315,34 @@ export type LiquidSolverAccess = {
 	recordMetric: ((metricName: string, amountRaw: any?) -> ())?,
 }
 
+type OccupancyInfo = {
+	queryable: boolean,
+	canOccupy: boolean,
+	fill: number,
+	blockedBySolid: boolean,
+	waitingOnChunkReady: boolean,
+	dependencyChunkKey: string?,
+}
+
+type LeakPathInfo = {
+	found: boolean,
+	boundaryDependency: boolean,
+	waitingOnChunkReady: boolean,
+	dependencyChunkKey: string?,
+	distance: number,
+	pathTiles: { LiquidTileCoordinate },
+	reason: string,
+}
+
+type DetailedLiquidCellInspection = LiquidCellInspection & {
+	leftCanEqualize: boolean,
+	rightCanEqualize: boolean,
+	leftLeak: LeakPathInfo?,
+	rightLeak: LeakPathInfo?,
+	leftNeighborFill: number,
+	rightNeighborFill: number,
+}
+
 local UINT8_MASK = 0xFF
 local TYPE_SHIFT = 8
 local FLOW_SHIFT = 11
@@ -488,9 +516,9 @@ local function createDefaultDefinitions(): { [number]: LiquidDefinition }
 		[LiquidServiceUtils.LIQUID_TYPE.WATER] = {
 			id = LiquidServiceUtils.LIQUID_TYPE.WATER,
 			name = "Water",
-			baseColor = (DEFAULT_LIQUID_COLOR_DEFINITIONS[LiquidServiceUtils.LIQUID_TYPE.WATER] or {}).baseColor
+			baseColor = (DEFAULT_LIQUID_COLOR_DEFINITIONS[LiquidServiceUtils.LIQUID_TYPE.WATER] or ({} :: any)).baseColor
 				or Color3.fromRGB(74, 174, 225),
-			surfaceColor = (DEFAULT_LIQUID_COLOR_DEFINITIONS[LiquidServiceUtils.LIQUID_TYPE.WATER] or {}).surfaceColor
+			surfaceColor = (DEFAULT_LIQUID_COLOR_DEFINITIONS[LiquidServiceUtils.LIQUID_TYPE.WATER] or ({} :: any)).surfaceColor
 				or Color3.fromRGB(124, 216, 245),
 			movementSpeedMultiplier = 0.72,
 			material = Enum.Material.SmoothPlastic,
@@ -514,9 +542,9 @@ local function createDefaultDefinitions(): { [number]: LiquidDefinition }
 		[LiquidServiceUtils.LIQUID_TYPE.LAVA] = {
 			id = LiquidServiceUtils.LIQUID_TYPE.LAVA,
 			name = "Lava",
-			baseColor = (DEFAULT_LIQUID_COLOR_DEFINITIONS[LiquidServiceUtils.LIQUID_TYPE.LAVA] or {}).baseColor
+			baseColor = (DEFAULT_LIQUID_COLOR_DEFINITIONS[LiquidServiceUtils.LIQUID_TYPE.LAVA] or ({} :: any)).baseColor
 				or Color3.fromRGB(246, 104, 31),
-			surfaceColor = (DEFAULT_LIQUID_COLOR_DEFINITIONS[LiquidServiceUtils.LIQUID_TYPE.LAVA] or {}).surfaceColor
+			surfaceColor = (DEFAULT_LIQUID_COLOR_DEFINITIONS[LiquidServiceUtils.LIQUID_TYPE.LAVA] or ({} :: any)).surfaceColor
 				or Color3.fromRGB(255, 187, 76),
 			movementSpeedMultiplier = 0.3,
 			material = Enum.Material.Neon,
@@ -541,7 +569,7 @@ local function createDefaultDefinitions(): { [number]: LiquidDefinition }
 end
 
 local function sanitizeDefinition(liquidType: number, sourceRaw: any, fallback: LiquidDefinition): LiquidDefinition
-	local source = if typeof(sourceRaw) == "table" then sourceRaw else {}
+	local source = if typeof(sourceRaw) == "table" then sourceRaw else ({} :: any)
 	return {
 		id = liquidType,
 		name = if typeof(source.name) == "string" and source.name ~= "" then source.name else fallback.name,
@@ -554,7 +582,7 @@ local function sanitizeDefinition(liquidType: number, sourceRaw: any, fallback: 
 			fallback.movementSpeedMultiplier
 		),
 		material = if typeof(source.material) == "EnumItem" and source.material.EnumType == Enum.Material
-			then source.material
+			then source.material :: Enum.Material
 			else fallback.material,
 		interiorTransparency = sanitizeNumber(source.interiorTransparency, 0, 1, fallback.interiorTransparency),
 		surfaceTransparency = sanitizeNumber(source.surfaceTransparency, 0, 1, fallback.surfaceTransparency),
@@ -657,19 +685,19 @@ end
 
 function LiquidServiceUtils.SanitizeConfig(configRaw: any, fallbackRaw: LiquidServiceConfig?): LiquidServiceConfig
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else LiquidServiceUtils.CreateDefaultConfig()
-	local source = if typeof(configRaw) == "table" then configRaw else {}
+	local source = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local definitions: { [number]: LiquidDefinition } = {}
-	local definitionSource = if typeof(source.definitions) == "table" then source.definitions else {}
+	local definitionSource = if typeof(source.definitions) == "table" then source.definitions else ({} :: any)
 	for liquidType, fallbackDefinition in fallback.definitions do
 		local sourceDefinition = if typeof(definitionSource) == "table" then definitionSource[liquidType] else nil
 		definitions[liquidType] = sanitizeDefinition(liquidType, sourceDefinition, fallbackDefinition)
 	end
 
-	local simulationSource = if typeof(source.simulation) == "table" then source.simulation else {}
-	local generationSource = if typeof(source.generation) == "table" then source.generation else {}
-	local renderSource = if typeof(source.render) == "table" then source.render else {}
-	local biomeTintsSource = if typeof(source.biomeTints) == "table" then source.biomeTints else {}
-	local debugSource = if typeof(source.debug) == "table" then source.debug else {}
+	local simulationSource = if typeof(source.simulation) == "table" then source.simulation else ({} :: any)
+	local generationSource = if typeof(source.generation) == "table" then source.generation else ({} :: any)
+	local renderSource = if typeof(source.render) == "table" then source.render else ({} :: any)
+	local biomeTintsSource = if typeof(source.biomeTints) == "table" then source.biomeTints else ({} :: any)
+	local debugSource = if typeof(source.debug) == "table" then source.debug else ({} :: any)
 
 	return {
 		maxFill = sanitizeInteger(source.maxFill, 32, MAX_FILL, fallback.maxFill),
@@ -965,7 +993,7 @@ end
 
 function LiquidServiceUtils.CreateState(stateRaw: any, fallbackRaw: LiquidServiceState?): LiquidServiceState
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else LiquidServiceUtils.CreateDefaultState()
-	local source = if typeof(stateRaw) == "table" then stateRaw else {}
+	local source = if typeof(stateRaw) == "table" then stateRaw else ({} :: any)
 	return {
 		ready = if typeof(source.ready) == "boolean" then source.ready else fallback.ready,
 		tileSize = sanitizeNumber(source.tileSize, 0.05, 64, fallback.tileSize),
@@ -1003,8 +1031,8 @@ function LiquidColor.ResolveWaterTint(config: LiquidServiceConfig, biomeIdRaw: a
 	local baseColor = if waterDefinition ~= nil then waterDefinition.baseColor else Color3.fromRGB(74, 174, 225)
 	local biomeId = sanitizeInteger(biomeIdRaw, -2048, 2048, 1)
 	local biomeType = sanitizeInteger(biomeTypeRaw, -2048, 2048, 1)
-	local typeColor = config.biomeTints.byBiomeType[biomeType]
-	local biomeColor = config.biomeTints.byBiomeId[biomeId]
+	local typeColor = config.biomeTints.byBiomeType[biomeType] :: Color3?
+	local biomeColor = config.biomeTints.byBiomeId[biomeId] :: Color3?
 	local blended = baseColor
 	if typeColor ~= nil then
 		blended = lerpColor(blended, typeColor, 0.45)
@@ -1018,15 +1046,17 @@ end
 function LiquidColor.ResolveLavaAmbientTint(config: LiquidServiceConfig, biomeIdRaw: any, biomeTypeRaw: any): Color3?
 	local biomeId = sanitizeInteger(biomeIdRaw, -2048, 2048, 1)
 	local biomeType = sanitizeInteger(biomeTypeRaw, -2048, 2048, 1)
-	local typeColor = config.biomeTints.lavaAmbientByBiomeType[biomeType]
-	local biomeColor = config.biomeTints.lavaAmbientByBiomeId[biomeId]
-	if typeColor == nil and biomeColor == nil then
+	local typeColorRaw = (config.biomeTints.lavaAmbientByBiomeType :: any)[biomeType]
+	local biomeColorRaw = (config.biomeTints.lavaAmbientByBiomeId :: any)[biomeId]
+	local hasTypeColor = typeof(typeColorRaw) == "Color3"
+	local hasBiomeColor = typeof(biomeColorRaw) == "Color3"
+	if not hasTypeColor and not hasBiomeColor then
 		return nil
 	end
-	if typeColor ~= nil and biomeColor ~= nil then
-		return lerpColor(typeColor, biomeColor, 0.5)
+	if hasTypeColor and hasBiomeColor then
+		return lerpColor(typeColorRaw :: Color3, biomeColorRaw :: Color3, 0.5)
 	end
-	return if biomeColor ~= nil then biomeColor else typeColor
+	return if hasBiomeColor then biomeColorRaw :: Color3 else typeColorRaw :: Color3
 end
 
 function LiquidColor.SampleWaterColorAtWorldPosition(
@@ -1134,7 +1164,7 @@ function LiquidMesher.BuildBackgroundVisualCells(
 		tileMinY = sanitizeInteger(layerSource.tileMinY, -10000000, 10000000, tileMinY),
 		width = layerWidth,
 		height = layerHeight,
-		tiles = if typeof(layerSource.tiles) == "table" then layerSource.tiles :: { number } else {},
+		tiles = if typeof(layerSource.tiles) == "table" then layerSource.tiles :: { number } else ({} :: any),
 	}
 	local minVisibleFill = math.max(1, config.render.minVisibleFill)
 	local maxLateralSpread = math.max(0, math.min(3, layerListIndex - 1))
@@ -1526,7 +1556,7 @@ local function inspectOccupancy(
 	tileX: number,
 	tileY: number,
 	liquidType: number
-)
+): OccupancyInfo
 	local targetChunkX, targetChunkY = getChunkCoordinatesForTile(access, tileX, tileY)
 	if
 		(targetChunkX ~= sourceChunkX or targetChunkY ~= sourceChunkY)
@@ -1653,7 +1683,7 @@ local function scanLeakPath(
 	tileY: number,
 	liquidType: number,
 	direction: number
-)
+): LeakPathInfo
 	local wakeTiles: { LiquidTileCoordinate } = {}
 	local wakeLookup: { [string]: boolean } = {}
 	local maxDistance = getLeakScanDistance(access)
@@ -1723,7 +1753,7 @@ local function scanLeakPath(
 	}
 end
 
-local function inspectCellDetailed(access: LiquidSolverAccess, tileX: number, tileY: number)
+local function inspectCellDetailed(access: LiquidSolverAccess, tileX: number, tileY: number): DetailedLiquidCellInspection
 	if access.isSolid(tileX, tileY) then
 		return {
 			hasLiquid = false,

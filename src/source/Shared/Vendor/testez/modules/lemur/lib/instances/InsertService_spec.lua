@@ -1,3 +1,4 @@
+--!nocheck
 local InsertService = import("./InsertService")
 
 describe("instances.InsertService", function()

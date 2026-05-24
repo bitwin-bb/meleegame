@@ -1,3 +1,4 @@
+--!nocheck
 local Instance = import("../Instance")
 local typeof = import("../functions/typeof")
 local ZIndexBehavior = import("../Enum/ZIndexBehavior")

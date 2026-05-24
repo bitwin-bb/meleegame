@@ -105,7 +105,7 @@ return function(props: BillboardCardProps): React.ReactNode
 	}
 	applyNativeProps(billboardProps, props.nativeBillboard)
 
-	local billboardChildren: { React.ReactNode } = {}
+	local billboardChildren: { [any]: React.ReactNode } = {}
 	if props.cardVisible == false then
 		if props.children ~= nil then
 			for key, child in props.children do

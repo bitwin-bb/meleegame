@@ -388,7 +388,7 @@ function EyeOfCthulhuPresentation.Step(runtime: PresentationRuntime, dtRaw: any)
 			continue
 		end
 
-		local base = runtime.baseLocalCFrames[part]
+		local base = runtime.baseLocalCFrames[part] :: CFrame?
 		if base ~= nil then
 			part.CFrame = rootPart.CFrame * shellCFrame * base
 		end
@@ -399,7 +399,7 @@ function EyeOfCthulhuPresentation.Step(runtime: PresentationRuntime, dtRaw: any)
 
 	local iris = runtime.partRefs.iris
 	if iris ~= nil and iris.Parent ~= nil then
-		local base = runtime.baseLocalCFrames[iris]
+		local base = runtime.baseLocalCFrames[iris] :: CFrame?
 		if base ~= nil then
 			iris.CFrame = rootPart.CFrame
 				* shellCFrame
@@ -410,7 +410,7 @@ function EyeOfCthulhuPresentation.Step(runtime: PresentationRuntime, dtRaw: any)
 
 	local pupil = runtime.partRefs.pupil
 	if pupil ~= nil and pupil.Parent ~= nil then
-		local base = runtime.baseLocalCFrames[pupil]
+		local base = runtime.baseLocalCFrames[pupil] :: CFrame?
 		if base ~= nil then
 			pupil.CFrame = rootPart.CFrame * shellCFrame * base * CFrame.new(pupilOffset)
 		end
@@ -418,7 +418,7 @@ function EyeOfCthulhuPresentation.Step(runtime: PresentationRuntime, dtRaw: any)
 
 	local jaw = runtime.partRefs.jaw
 	if jaw ~= nil and jaw.Parent ~= nil then
-		local base = runtime.baseLocalCFrames[jaw]
+		local base = runtime.baseLocalCFrames[jaw] :: CFrame?
 		if base ~= nil then
 			local jawOpenAlpha = if snapshot.phase <= 1
 				then roar * 0.3 + transform * 0.45

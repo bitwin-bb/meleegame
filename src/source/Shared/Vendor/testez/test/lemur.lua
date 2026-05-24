@@ -1,3 +1,4 @@
+--!nocheck
 --[[
 	Loads TestEZ and all of its dependencies, then runs our test entrypoint.
 ]]

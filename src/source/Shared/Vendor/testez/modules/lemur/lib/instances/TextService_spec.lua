@@ -1,3 +1,4 @@
+--!nocheck
 local Font = import("../Enum/Font")
 local Vector2 = import("../types/Vector2")
 local typeof = import("../functions/typeof")

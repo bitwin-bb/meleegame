@@ -1,3 +1,4 @@
+--!nocheck
 local BaseInstance = import("./BaseInstance")
 local FillDirection = import("../Enum/FillDirection")
 local HorizontalAlignment = import("../Enum/HorizontalAlignment")

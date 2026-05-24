@@ -1,3 +1,4 @@
+--!nocheck
 local UIGridStyleLayout = import("./UIGridStyleLayout")
 local InstanceProperty = import("../InstanceProperty")
 local UDim = import("../types/UDim")

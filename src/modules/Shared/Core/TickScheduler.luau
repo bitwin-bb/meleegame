@@ -16,6 +16,7 @@ export type CancellationToken = {
 	id: number,
 	cancelled: boolean,
 	group: string,
+	Cancel: (self: CancellationToken) -> (),
 	cancel: (self: CancellationToken) -> (),
 }
 
@@ -93,7 +94,7 @@ local function clearArray(array: { any })
 end
 
 function TickScheduler.New(configRaw: SchedulerConfig?): TickScheduler
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local fixedStep = clampPositiveNumber(config.fixedStep, 1 / 60, 1 / 240, 1)
 	local self = setmetatable({
 		now = 0,
@@ -138,7 +139,7 @@ function TickScheduler.Schedule(self: TickScheduler, callbackRaw: any, delayRaw:
 		error("TickScheduler.Schedule expects a callback")
 	end
 
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else {}
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
 	local delay = clampPositiveNumber(delayRaw, 0, 0, 1e9)
 	local interval = clampPositiveNumber(options.interval, 0, 0, 1e9)
 	local repeatCount = if typeof(options.repeatCount) == "number" then math.floor(options.repeatCount) else 1
@@ -177,7 +178,7 @@ function TickScheduler.Schedule(self: TickScheduler, callbackRaw: any, delayRaw:
 end
 
 function TickScheduler.ScheduleEvery(self: TickScheduler, callbackRaw: any, intervalRaw: any, optionsRaw: ScheduleOptions?): CancellationToken
-	local options = if typeof(optionsRaw) == "table" then Sift.Dictionary.copy(optionsRaw) else {}
+	local options = if typeof(optionsRaw) == "table" then Sift.Dictionary.copy(optionsRaw) else ({} :: any)
 	options.interval = intervalRaw
 	options.repeatCount = -1
 	return self:schedule(callbackRaw, intervalRaw, options)
@@ -185,7 +186,7 @@ end
 
 function TickScheduler.ScheduleFixed(self: TickScheduler, callbackRaw: any, stepsRaw: any, optionsRaw: ScheduleOptions?): CancellationToken
 	local steps = if typeof(stepsRaw) == "number" then math.max(1, math.floor(stepsRaw)) else 1
-	local options = if typeof(optionsRaw) == "table" then Sift.Dictionary.copy(optionsRaw) else {}
+	local options = if typeof(optionsRaw) == "table" then Sift.Dictionary.copy(optionsRaw) else ({} :: any)
 	options.fixed = true
 	options.interval = self.fixedStep * steps
 	if options.repeatCount == nil then

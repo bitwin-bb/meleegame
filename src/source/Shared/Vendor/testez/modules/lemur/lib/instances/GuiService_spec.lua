@@ -1,3 +1,4 @@
+--!nocheck
 local GuiService = import("./GuiService")
 local typeof = import("../functions/typeof")
 

@@ -1,3 +1,4 @@
+--!nocheck
 -- Shared test cases asserting lifecycle hooks are firing in the correct order
 
 return function()

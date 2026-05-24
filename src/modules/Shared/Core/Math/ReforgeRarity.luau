@@ -33,7 +33,7 @@ function ReforgeRarity.GetRank(rarityRaw: any): number
 	if typeof(rarityRaw) ~= "string" then
 		return 0
 	end
-	return (RARITY_RANK :: { [string]: number })[rarityRaw] or 0
+	return (RARITY_RANK :: any)[rarityRaw] or 0
 end
 
 function ReforgeRarity.Compare(leftRaw: any, rightRaw: any): number
@@ -41,7 +41,7 @@ function ReforgeRarity.Compare(leftRaw: any, rightRaw: any): number
 end
 
 function ReforgeRarity.Roll(randomOrSeedRaw: any?, weightsRaw: { RarityWeight }?): (Rarity, number?)
-	local value, nextSeed = DropChance.pickWeighted(weightsRaw or DEFAULT_WEIGHTS, randomOrSeedRaw)
+	local value, nextSeed = DropChance.pickWeighted((weightsRaw :: any) or DEFAULT_WEIGHTS, randomOrSeedRaw)
 	return (value or "Common") :: Rarity, nextSeed
 end
 

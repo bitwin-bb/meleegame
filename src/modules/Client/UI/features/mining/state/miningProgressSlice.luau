@@ -50,7 +50,7 @@ end
 
 local function setMiningProgressState(stateRaw: any): MiningProgressState
 	local current = miningProgressStateAtom()
-	local source = if typeof(stateRaw) == "table" then stateRaw else {}
+	local source = if typeof(stateRaw) == "table" then stateRaw else ({} :: any)
 	local isVisible = (source :: any).visible == true
 	local nextState: MiningProgressState = {
 		visible = isVisible,
@@ -73,7 +73,7 @@ local function setMiningProgressState(stateRaw: any): MiningProgressState
 end
 
 local function showMiningProgress(payloadRaw: any): MiningProgressState
-	local payload = if typeof(payloadRaw) == "table" then payloadRaw else {}
+	local payload = if typeof(payloadRaw) == "table" then payloadRaw else ({} :: any)
 	local nextState: MiningProgressState = {
 		visible = true,
 		progress = sanitizeProgress((payload :: any).progress, 0),

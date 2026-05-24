@@ -90,7 +90,7 @@ local function useInterval(callbackRaw: any, intervalSecondsRaw: any, options: I
 		else
 			cancel()
 		end
-	end, { enabled, autoStart, intervalSeconds, restart, cancel })
+	end, ({ enabled, autoStart, intervalSeconds, restart, cancel } :: { any }))
 
 	React.useEffect(function()
 		return function()

@@ -17,21 +17,9 @@ setmetatable(ComputedState, BaseValue)
 
 export type Subscription = () -> ()
 
-export type BaseValue<T> = {
-	kind: string,
-	id: number,
-	destroyed: boolean,
-	get: (self: BaseValue<T>) -> T,
-	subscribe: (self: BaseValue<T>, callback: (nextValue: T, prevValue: T) -> ()) -> Subscription,
-	destroy: (self: BaseValue<T>) -> (),
-}
-
-export type MutableState<T> = BaseValue<T> & {
-	set: (self: MutableState<T>, nextValue: T) -> boolean,
-	update: (self: MutableState<T>, updater: (prevValue: T) -> T) -> boolean,
-}
-
-export type ComputedState<T> = BaseValue<T>
+export type BaseValue<T> = any
+export type MutableState<T> = any
+export type ComputedState<T> = any
 
 local nextValueId = 0
 local nextSubscriberId = 0

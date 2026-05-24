@@ -88,10 +88,10 @@ local function runProtectedWithTimeout(timeoutSeconds: number, callback: () -> (
 end
 
 local function resolveDefaultInventoryDataTemplate(): { [string]: any }
-	local templateRoot = if typeof(DataTemplate) == "table" then DataTemplate else {}
+	local templateRoot = if typeof(DataTemplate) == "table" then DataTemplate else ({} :: any)
 	local playerDataTemplate = if typeof((templateRoot :: any).playerData) == "table"
 		then (templateRoot :: any).playerData
-		else {}
+		else ({} :: any)
 	local inventoryTemplate = PlayerDataServiceUtils.getValueAtPath(
 		playerDataTemplate,
 		InventoryServiceUtils.getDefaultDataPath(),
@@ -159,7 +159,7 @@ function InventoryProfile.New(
 	playerDataService: PlayerDataServiceServerObject?,
 	configRaw: InventoryProfileConfig?
 ): InventoryProfile
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local dataPath = InventoryServiceUtils.getDefaultDataPath()
 	if typeof(config.dataPath) == "table" then
 		dataPath = InventoryServiceUtils.clonePath(config.dataPath)

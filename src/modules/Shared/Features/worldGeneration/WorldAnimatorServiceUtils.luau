@@ -82,7 +82,7 @@ function WorldAnimatorServiceUtils.SanitizeSettings(
 	fallbackRaw: ChunkAnimatorSettings?
 ): ChunkAnimatorSettings
 	local fallback = fallbackRaw or DEFAULT_SETTINGS
-	local settings = if typeof(settingsRaw) == "table" then settingsRaw else {}
+	local settings = if typeof(settingsRaw) == "table" then settingsRaw else ({} :: any)
 
 	return {
 		enabled = if typeof((settings :: any).enabled) == "boolean"

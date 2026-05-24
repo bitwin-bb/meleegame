@@ -7,7 +7,7 @@ local Lava = {}
 export type LavaPartConfig = Tile.PartConfig
 
 function Lava.CreatePart(configRaw: LavaPartConfig?): Part
-	local config = table.clone(if typeof(configRaw) == "table" then configRaw :: LavaPartConfig else {})
+	local config = table.clone(if typeof(configRaw) == "table" then configRaw :: LavaPartConfig else ({} :: any))
 	config.name = config.name or "Lava"
 	config.material = config.material or Enum.Material.Neon
 	config.color = config.color or Color3.fromRGB(235, 92, 35)

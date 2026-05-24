@@ -1,6 +1,6 @@
 --!strict
 
-return {
+return ({
 	platform = "Gamepad",
 	family = "playstation",
 	sections = {
@@ -23,7 +23,7 @@ return {
 				{
 					id = "cycle_hotbar",
 					label = "Previous / next hotbar item",
-					prompts = { { text = "L1/R1" } },
+					prompts = { { keyCode = "", text = "L1/R1" } },
 				},
 			},
 		},
@@ -47,4 +47,4 @@ return {
 			},
 		},
 	},
-}
+} :: any)

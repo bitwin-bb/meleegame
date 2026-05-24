@@ -1,3 +1,4 @@
+--!nocheck
 -- luacheck: globals describe it SKIP
 
 return function()

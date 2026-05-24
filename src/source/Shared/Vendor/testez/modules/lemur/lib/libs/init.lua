@@ -1,3 +1,4 @@
+--!nocheck
 local names = {
 	"bit32",
 	"math",

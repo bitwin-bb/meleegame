@@ -10,7 +10,7 @@
 local isRobloxCli, ProcessService = pcall(game.GetService, game, "ProcessService")
 
 local function findUnitTests(container, foundTests)
-	foundTests = foundTests or {}
+	foundTests = foundTests or ({} :: any)
 
 	for _, child in ipairs(container:GetChildren()) do
 		if child:IsA("ModuleScript") then

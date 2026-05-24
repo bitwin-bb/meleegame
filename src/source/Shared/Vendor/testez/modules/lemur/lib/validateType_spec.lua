@@ -1,3 +1,4 @@
+--!nocheck
 local validateType = import("./validateType")
 
 describe("validateType", function()

@@ -36,9 +36,9 @@ return function(props: TrashButtonProps): React.ReactNode
 		AutoButtonColor = false,
 		Active = props.active,
 		Selectable = props.selectable,
-		[React.Event.MouseEnter] = props.onMouseEnter,
-		[React.Event.MouseLeave] = props.onMouseLeave,
-		[React.Event.InputBegan] = props.onInputBegan,
-		[React.Event.Activated] = props.onActivated,
+		[React.Event.MouseEnter] = props.onMouseEnter :: any,
+		[React.Event.MouseLeave] = props.onMouseLeave :: any,
+		[React.Event.InputBegan] = props.onInputBegan :: any,
+		[React.Event.Activated] = props.onActivated :: any,
 	})
 end

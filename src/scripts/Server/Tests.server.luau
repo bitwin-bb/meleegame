@@ -20,12 +20,13 @@ if script:GetAttribute("RunTests") == true then
 	assert(serverRoot ~= nil, `[runTests] Missing game.Server folder in {packageRoot:GetFullName()}.`)
 
 	local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-	require(loaderUtils.Parent).bootstrapGame(packageRoot)
+	;(require :: any)(loaderUtils.Parent).bootstrapGame(packageRoot)
 
 	local TestEZ = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("TestEZ"))
 	local serverTests = serverRoot:WaitForChild("Tests", PACKAGE_LOAD_TIMEOUT_SECONDS)
 
-	TestEZ.TestBootstrap:run({
+	local testBootstrap = TestEZ.TestBootstrap :: any
+	testBootstrap.run(testBootstrap, {
 		serverTests:WaitForChild("Specs"),
 	})
 end

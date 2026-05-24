@@ -8,7 +8,7 @@ local BreathBinder = {}
 BreathBinder.__index = BreathBinder
 setmetatable(BreathBinder, ModelBinder)
 
-local ACTIVE_BINDERS = {} :: { [BreathBinder]: boolean }
+local ACTIVE_BINDERS = {} :: { [any]: boolean }
 
 local function containsPointInPart(part: BasePart, worldPosition: Vector3): boolean
 	local localPosition = part.CFrame:PointToObjectSpace(worldPosition)

@@ -530,7 +530,7 @@ local function normalizeConfig(
 		legacyDefense = sanitizeNumber(defense, DEFAULT_DEFENSE, 0, nil)
 	end
 
-	local rawStats = if typeof(rawConfig.stats) == "table" then rawConfig.stats else {}
+	local rawStats = if typeof(rawConfig.stats) == "table" then rawConfig.stats else ({} :: any)
 	local maxHp = sanitizeNumber(rawStats.maxHp or rawConfig.maxHp or rawConfig.hp, legacyHp, 1, nil)
 	local hp = sanitizeNumber(rawStats.hp or rawConfig.hp, maxHp, 0, maxHp)
 	local baseDamage = sanitizeNumber(rawStats.damage or rawConfig.damage or rawConfig.dmg, legacyDamage, 0, nil)
@@ -546,7 +546,7 @@ local function normalizeConfig(
 		then resolveModelTemplate(legacyTemplate, rawConfig.modelName, archetype)
 		else nil
 
-	local rawMovement = if typeof(rawConfig.movement) == "table" then rawConfig.movement else {}
+	local rawMovement = if typeof(rawConfig.movement) == "table" then rawConfig.movement else ({} :: any)
 	local detectionRange = sanitizeNumber(rawMovement.detectionRange, DEFAULT_DETECTION_RANGE, 0, nil)
 	local loseTargetRange = sanitizeNumber(rawMovement.loseTargetRange, DEFAULT_LOSE_TARGET_RANGE, detectionRange, nil)
 
@@ -564,7 +564,7 @@ local function normalizeConfig(
 		autoRotate = sanitizeBoolean(rawMovement.autoRotate, true),
 	}
 
-	local rawCombat = if typeof(rawConfig.combat) == "table" then rawConfig.combat else {}
+	local rawCombat = if typeof(rawConfig.combat) == "table" then rawConfig.combat else ({} :: any)
 	local combat: RuntimeCombatConfig = {
 		attackRange = sanitizeNumber(rawCombat.attackRange, DEFAULT_ATTACK_RANGE, 0, nil),
 		attackCooldown = sanitizeNumber(rawCombat.attackCooldown, DEFAULT_ATTACK_COOLDOWN, 0, nil),
@@ -575,7 +575,7 @@ local function normalizeConfig(
 		allowFriendlyFire = sanitizeBoolean(rawCombat.allowFriendlyFire, false),
 	}
 
-	local rawLifecycle = if typeof(rawConfig.lifecycle) == "table" then rawConfig.lifecycle else {}
+	local rawLifecycle = if typeof(rawConfig.lifecycle) == "table" then rawConfig.lifecycle else ({} :: any)
 	local spawnParent = if typeof(rawLifecycle.spawnParent) == "Instance" then rawLifecycle.spawnParent else Workspace
 	local spawnCFrame = if typeof(rawLifecycle.spawnCFrame) == "CFrame" then rawLifecycle.spawnCFrame else nil
 	local lifecycle: RuntimeLifecycleConfig = {
@@ -585,7 +585,7 @@ local function normalizeConfig(
 		autoDestroyModelOnDeath = sanitizeBoolean(rawLifecycle.autoDestroyModelOnDeath, true),
 	}
 
-	local rawBehavior = if typeof(rawConfig.behavior) == "table" then rawConfig.behavior else {}
+	local rawBehavior = if typeof(rawConfig.behavior) == "table" then rawConfig.behavior else ({} :: any)
 	local behavior: NpcBehaviorConfig = {
 		acquireTarget = asFunction(rawBehavior.acquireTarget) :: any,
 		shouldTarget = asFunction(rawBehavior.shouldTarget) :: any,
@@ -862,7 +862,7 @@ function Npc.Destroy(self: Npc)
 	self:stop(true)
 	self._isDestroyed = true
 
-	for _, signalObject in self.signals do
+	for _, signalObject in pairs(self.signals :: any) do
 		signalObject:Destroy()
 	end
 end
@@ -1008,7 +1008,7 @@ function Npc.AcquireTarget(self: Npc): any?
 
 	if self.combat.targetNpcs then
 		for _, npcObject in ACTIVE_NPCS_BY_ID do
-			if npcObject ~= self then
+			if (npcObject :: any) ~= (self :: any) then
 				considerTarget(npcObject)
 			end
 		end

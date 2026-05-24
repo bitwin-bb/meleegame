@@ -195,7 +195,7 @@ local function findRootScale(parent: Instance): UIScale?
 end
 
 function PlatformUIScale.New(configRaw: UIScaleConfig?): typeof(setmetatable({} :: any, PlatformUIScale))
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local self = setmetatable({
 		platformService = config.platformService,
 		screenGui = if typeof(config.screenGui) == "Instance" and config.screenGui:IsA("ScreenGui")

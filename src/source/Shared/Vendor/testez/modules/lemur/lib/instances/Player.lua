@@ -1,3 +1,4 @@
+--!nocheck
 local BaseInstance = import("./BaseInstance")
 local InstanceProperty = import("../InstanceProperty")
 local Player = BaseInstance:extend("Player")

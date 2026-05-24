@@ -86,7 +86,7 @@ local function collectMatchingChildren(root: Instance, lookup: { [string]: boole
 end
 
 local function collectExcludedToolRoots(root: Instance): { Instance }
-	local excluded = {}
+	local excluded: { Instance } = {}
 	for _, child in root:GetChildren() do
 		if child:IsA("Tool") or isPreferredBranch(child, PREFERRED_TOOL_BRANCH_NAMES) then
 			table.insert(excluded, child)

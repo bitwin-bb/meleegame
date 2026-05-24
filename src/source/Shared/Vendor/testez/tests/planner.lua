@@ -1,3 +1,4 @@
+--!nocheck
 local TestEZ = script.Parent.Parent.TestEZ
 local TestPlanner = require(TestEZ.TestPlanner)
 local TestBootstrap = require(TestEZ.TestBootstrap)

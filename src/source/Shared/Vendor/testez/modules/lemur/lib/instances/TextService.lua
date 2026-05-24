@@ -1,3 +1,4 @@
+--!nocheck
 local BaseInstance = import("./BaseInstance")
 local Font = import("../Enum/Font")
 local typeof = import("../functions/typeof")

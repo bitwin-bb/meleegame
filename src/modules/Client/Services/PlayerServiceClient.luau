@@ -51,8 +51,8 @@ local LOOK_FACING_WORLD_HYSTERESIS_STUDS = 0.15
 local DEBUG_MOVEMENT_INPUT_ATTRIBUTE = "PlayerService_DebugMovementInput"
 local DEBUG_MOVEMENT_RAW_AXIS_INTERVAL = 0.25
 local RANDOM = Random.new()
-local PLAYER_AUDIO = (AudioRegistry :: any).Player or {}
-local PLAYER_HURT_AUDIO = PLAYER_AUDIO.Hurt or {}
+local PLAYER_AUDIO = (AudioRegistry :: any).Player or ({} :: any)
+local PLAYER_HURT_AUDIO = PLAYER_AUDIO.Hurt or ({} :: any)
 
 local AIRBORNE_STATES: { [Enum.HumanoidStateType]: boolean } = {
 	[Enum.HumanoidStateType.Jumping] = true,
@@ -689,11 +689,13 @@ function PlayerServiceClient.GetGamepadAimVector(self: PlayerServiceClient): Vec
 		return navAimVector
 	end
 
-	if self.gamepadAimVector.Magnitude > 1e-4 then
-		return self.gamepadAimVector
+	local gamepadAimVector = self.gamepadAimVector :: Vector2
+	if gamepadAimVector.Magnitude > 1e-4 then
+		return gamepadAimVector
 	end
-	if self.gamepadMoveVector.Magnitude > 1e-4 then
-		return Vector2.new(self.gamepadMoveVector.X, -self.gamepadMoveVector.Y)
+	local gamepadMoveVector = self.gamepadMoveVector :: Vector2
+	if gamepadMoveVector.Magnitude > 1e-4 then
+		return Vector2.new(gamepadMoveVector.X, -gamepadMoveVector.Y)
 	end
 	return nil
 end
@@ -896,7 +898,8 @@ function PlayerServiceClient.PickHurtSoundAssetId(self: PlayerServiceClient): st
 		return nil
 	end
 
-	return self.hurtSoundAssetIds[RANDOM:NextInteger(1, count)]
+	local hurtSoundAssetIds = self.hurtSoundAssetIds :: { string }
+	return hurtSoundAssetIds[RANDOM:NextInteger(1, count)]
 end
 
 function PlayerServiceClient.PlayHurtFeedback(self: PlayerServiceClient)
@@ -1052,8 +1055,9 @@ function PlayerServiceClient.TryResolveWorldUnlock(self: PlayerServiceClient, ri
 		return
 	end
 
-	self.worldUnlockCheckAccumulator += deltaTime
-	if self.worldUnlockCheckAccumulator < self.worldUnlockCheckInterval then
+	local worldUnlockCheckAccumulator = (self.worldUnlockCheckAccumulator :: number) + deltaTime
+	self.worldUnlockCheckAccumulator = worldUnlockCheckAccumulator
+	if worldUnlockCheckAccumulator < (self.worldUnlockCheckInterval :: number) then
 		return
 	end
 	self.worldUnlockCheckAccumulator = 0
@@ -1069,8 +1073,9 @@ function PlayerServiceClient.TryResolveWorldUnlock(self: PlayerServiceClient, ri
 		self.worldUnlockConsecutiveSurfaceHits = 0
 		return
 	end
-	self.worldUnlockConsecutiveSurfaceHits += 1
-	if self.worldUnlockConsecutiveSurfaceHits < WORLD_UNLOCK_REQUIRED_SURFACE_HITS then
+	local consecutiveSurfaceHits = (self.worldUnlockConsecutiveSurfaceHits :: number) + 1
+	self.worldUnlockConsecutiveSurfaceHits = consecutiveSurfaceHits
+	if consecutiveSurfaceHits < WORLD_UNLOCK_REQUIRED_SURFACE_HITS then
 		return
 	end
 
@@ -1101,7 +1106,7 @@ function PlayerServiceClient.RequestJump(self: PlayerServiceClient): boolean
 end
 
 function PlayerServiceClient.ApplyJumpInput(self: PlayerServiceClient, rig: CharacterRig): boolean
-	local shouldJump = self.jumpActionValue > 0
+	local shouldJump = (self.jumpActionValue :: number) > 0
 		and not self.flyEnabled
 		and not self.movementLocked
 		and PlayerServiceUtils.isHumanoidAlive(rig.humanoid)

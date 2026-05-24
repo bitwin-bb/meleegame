@@ -44,7 +44,7 @@ local BAR_WIDTH = math.max(1, FRAME_WIDTH - (BAR_INSET_X * 2))
 local BAR_HEIGHT = math.max(1, FRAME_HEIGHT - (BAR_INSET_Y * 2))
 
 return function(props: MiningProgressScreenProps?): React.ReactNode
-	local resolvedProps: MiningProgressScreenProps = if props ~= nil then props else {}
+	local resolvedProps: MiningProgressScreenProps = if props ~= nil then props else ({} :: any)
 	local miningProgressState = (useStore(miningProgressSlice.miningProgressStateAtom) :: MiningProgressState?)
 		or miningProgressSlice.miningProgressStateAtom()
 	local billboardRef = React.useRef(nil :: BillboardGui?)

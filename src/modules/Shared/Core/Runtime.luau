@@ -126,7 +126,7 @@ local function buildClientModules(self: RuntimeContext, config: RuntimeConfig)
 end
 
 function Runtime.New(configRaw: RuntimeConfig?): RuntimeContext
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local self = setmetatable({
 		isClient = RunService:IsClient(),
 		eventBus = if config.eventBus ~= nil then config.eventBus else EventBus.new(),
@@ -213,7 +213,7 @@ function Runtime.GetHUDScaler(self: RuntimeContext, configRaw: any?): any
 		return nil
 	end
 	local HUDScaler = require(script.Parent.Platform.HUDScaler)
-	local config = if typeof(configRaw) == "table" then Sift.Dictionary.copy(configRaw) else {}
+	local config = if typeof(configRaw) == "table" then Sift.Dictionary.copy(configRaw) else ({} :: any)
 	if config.platform == nil then
 		config.platform = self.platform
 	end

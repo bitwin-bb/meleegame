@@ -1,3 +1,4 @@
+--!nocheck
 local createSettings = import("./createSettings")
 local functions = import("./functions")
 local libs = import("./libs")

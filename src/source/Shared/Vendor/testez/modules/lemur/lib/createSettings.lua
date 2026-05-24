@@ -1,3 +1,4 @@
+--!nocheck
 --[[
 	This file creates the settings() method.
 	Since settings implements the GetFFlag method, we need to pass fast flags
@@ -46,11 +47,11 @@ end
 
 function Settings.new(settings)
 	local internalInstance = {
-		settings = settings or {},
+		settings = settings or ({} :: any),
 		Rendering = RenderSettings.new()
 	}
 
-	internalInstance.settings.flags = internalInstance.settings.flags or {}
+	internalInstance.settings.flags = internalInstance.settings.flags or ({} :: any)
 
 	local instance = newproxy(true)
 

@@ -1,3 +1,4 @@
+--!nocheck
 local ReplicatedStorage = import("./ReplicatedStorage")
 
 describe("instances.ReplicatedStorage", function()

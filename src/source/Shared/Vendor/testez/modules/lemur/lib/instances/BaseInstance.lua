@@ -1,3 +1,4 @@
+--!nocheck
 --[[
 	Provides a base implementation for all Instances in Lemur.
 
@@ -387,7 +388,7 @@ function BaseInstance:extend(name, options)
 	newClass.properties = assign({}, self.properties)
 	newClass.prototype = assign({}, self.prototype)
 	newClass.metatable = assign({}, self.metatable)
-	newClass.options = assign({}, self.options, options or {})
+	newClass.options = assign({}, self.options, options or ({} :: any))
 
 	return newClass
 end

@@ -184,7 +184,7 @@ local function TextLabel(props: TextLabelProps)
 	local pulse = if effects then effects.pulse else nil
 
 	local rainbowEnabled = rainbow ~= nil and rainbow.enabled ~= false
-	local rainbowGradientEnabled = rainbowEnabled and rainbow.gradient == true
+	local rainbowGradientEnabled = rainbow ~= nil and rainbowEnabled and rainbow.gradient == true
 	local rainbowSpeed = sanitizeNumber(if rainbow then rainbow.speed else nil, DEFAULT_RAINBOW_SPEED, 0, 8)
 	local rainbowSaturation =
 		sanitizeNumber(if rainbow then rainbow.saturation else nil, DEFAULT_RAINBOW_SATURATION, 0, 1)
@@ -268,7 +268,7 @@ local function TextLabel(props: TextLabelProps)
 		return function()
 			connection:Disconnect()
 		end
-	end, {
+	end, ({
 		baseTextColor,
 		baseGradientColor,
 		baseGradientOffset,
@@ -285,7 +285,7 @@ local function TextLabel(props: TextLabelProps)
 		pulseSpeed,
 		pulseMinScale,
 		pulseMaxScale,
-	})
+	} :: { any }))
 
 	local resolvedTextColor = if rainbowEnabled and not rainbowGradientEnabled then animatedTextColor else baseTextColor
 	local resolvedGradientColor = if rainbowEnabled and rainbowGradientEnabled

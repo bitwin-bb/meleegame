@@ -1,3 +1,4 @@
+--!nocheck
 -- luacheck: globals describe it expect
 return function()
 	local function helper()

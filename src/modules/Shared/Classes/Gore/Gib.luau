@@ -215,7 +215,7 @@ function Gib.New(configRaw: GibConfig?): Gib
 	if typeof(restCFrame) == "CFrame" then
 		self.restCFrame = restCFrame
 	else
-		self.restCFrame = CFrame.new(restPosition) * defaultRestRotation
+		self.restCFrame = CFrame.new(restPosition :: Vector3) * defaultRestRotation
 	end
 
 	local arcHeight = sanitizeNumber(config.arcHeight, DEFAULT_ARC_HEIGHT, 0, 200)

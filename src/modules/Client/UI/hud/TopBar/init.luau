@@ -47,7 +47,7 @@ return function(props: TopBarProps)
 	local topPadding = responsive.safeArea.top
 	local leftPadding = responsive.safeArea.left
 	local rightPadding = responsive.safeArea.right
-	local buttons = props.buttons or {}
+	local buttons = props.buttons or ({} :: any)
 	local zIndex = props.zIndex or 10
 	local buttonListChildren = {
 		e("UIPadding", {

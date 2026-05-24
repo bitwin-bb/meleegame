@@ -4,13 +4,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local DataTemplate = require(script:FindFirstAncestor("game").Shared.Core.DataTemplate)
-local GoreServiceServer = require(script:FindFirstAncestor("game").Server.Services.GoreServiceServer)
+local GoreServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.GoreServiceServer)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
 local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerServiceUtils)
 local PlayerSpawnCooldown = require(script:FindFirstAncestor("game").Shared.Game.Player.PlayerSpawnCooldown)
-local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 
 type FacingSign = PlayerServiceUtils.FacingSign
@@ -75,14 +75,14 @@ local DAMAGE_FEEDBACK_MIN_INTERVAL = 0.12
 local LOADING_SCREEN_READY_REMOTE_NAME = "AquariaLoadingScreenReady"
 
 local function resolveInvincibilityFramesConfigFromTemplate(): InvincibilityFramesConfig
-	local template = if typeof(DataTemplate) == "table" then DataTemplate else {}
-	local playerData = if typeof((template :: any).playerData) == "table" then (template :: any).playerData else {}
+	local template = if typeof(DataTemplate) == "table" then DataTemplate else ({} :: any)
+	local playerData = if typeof((template :: any).playerData) == "table" then (template :: any).playerData else ({} :: any)
 	return PlayerServiceUtils.sanitizeInvincibilityFramesConfig((playerData :: any).invincibilityFrames)
 end
 
 local function resolveAllowMovementFreezeFromTemplate(): boolean
-	local template = if typeof(DataTemplate) == "table" then DataTemplate else {}
-	local playerData = if typeof((template :: any).playerData) == "table" then (template :: any).playerData else {}
+	local template = if typeof(DataTemplate) == "table" then DataTemplate else ({} :: any)
+	local playerData = if typeof((template :: any).playerData) == "table" then (template :: any).playerData else ({} :: any)
 	local allowMovementFreeze = (playerData :: any).allowMovementFreeze
 	if typeof(allowMovementFreeze) == "boolean" then
 		return allowMovementFreeze
@@ -168,11 +168,12 @@ function PlayerServiceServer.Init(self: PlayerServiceServer)
 		self.RequestState,
 		self.SetWorldReadyForMovement,
 	})
-	self.loadingScreenReadyRemote = ensureRemoteEvent(ReplicatedStorage, LOADING_SCREEN_READY_REMOTE_NAME)
-	self.loadingScreenReadyConnection = self.loadingScreenReadyRemote.OnServerEvent:Connect(function(player, statusRaw)
+	local loadingScreenReadyRemote = ensureRemoteEvent(ReplicatedStorage, LOADING_SCREEN_READY_REMOTE_NAME) :: RemoteEvent
+	self.loadingScreenReadyRemote = loadingScreenReadyRemote
+	self.loadingScreenReadyConnection = loadingScreenReadyRemote.OnServerEvent:Connect(function(player, statusRaw)
 		self:onLoadingScreenReady(player, statusRaw)
 	end)
-	self.binders = NevermoreSupport.getService(ServerBinderSupport)
+	;(self :: any).binders = NevermoreSupport.getService(ServerBinderSupport)
 
 	for _, player in Players:GetPlayers() do
 		self:trackPlayer(player)

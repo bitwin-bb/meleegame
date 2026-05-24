@@ -1,3 +1,4 @@
+--!nocheck
 -- This module has variables preprended to it by the TestEZ CLI that inform it
 -- what modules need to be loaded.
 

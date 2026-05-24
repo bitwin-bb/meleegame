@@ -1,3 +1,4 @@
+--!nocheck
 local Workspace = import("./Workspace")
 local typeof = import("../functions/typeof")
 

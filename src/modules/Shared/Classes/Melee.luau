@@ -367,11 +367,11 @@ local function mergeUniqueStringLists(...: { string }): { string }
 	return out
 end
 
-local AnimationController = {}
+local AnimationController = {} :: any
 AnimationController.__index = AnimationController
 
 function AnimationController.New(configRaw: any)
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local self = setmetatable({
 		janitor = Janitor.new(),
 		trackJanitor = Janitor.new(),
@@ -574,7 +574,7 @@ function AnimationController:PlayNext(playbackRaw: any): { [string]: any }?
 	end
 
 	local clip = self.clips[index]
-	local playback = if typeof(playbackRaw) == "table" then playbackRaw else {}
+	local playback = if typeof(playbackRaw) == "table" then playbackRaw else ({} :: any)
 
 	for _, otherTrack in self.trackCache do
 		if otherTrack ~= track and otherTrack.IsPlaying then
@@ -616,13 +616,13 @@ function AnimationController:Destroy()
 	self.janitor:Destroy()
 end
 
-local Melee = {}
+local Melee = {} :: any
 Melee.__index = Melee
 Melee.AnimationController = AnimationController
 
 function Melee.New(configRaw: any)
-	local config = if typeof(configRaw) == "table" then configRaw else {}
-	local projectile = if typeof(config.projectile) == "table" then config.projectile else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local projectile = if typeof(config.projectile) == "table" then config.projectile else ({} :: any)
 
 	local startSet, startMarkers = buildEventSet(config.startSwingEvents, DEFAULT_START_EVENTS)
 	local endSet, endMarkers = buildEventSet(config.endSwingEvents, DEFAULT_END_EVENTS)
@@ -690,7 +690,7 @@ function Melee.New(configRaw: any)
 			inputHeldChanged = Signal.new(),
 			enabledChanged = Signal.new(),
 		},
-		callbacks = if typeof(config.callbacks) == "table" then config.callbacks else {},
+		callbacks = if typeof(config.callbacks) == "table" then config.callbacks else ({} :: any),
 		startEventSet = startSet,
 		endEventSet = endSet,
 		projectileEventSet = projectileSet,
@@ -938,7 +938,7 @@ function Melee:_playNamedState(stateKeyRaw: any, optionsRaw: any): boolean
 		return false
 	end
 
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else {}
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
 	if self.presentationState == stateKey and self.presentationTrack == track and track.IsPlaying then
 		return true
 	end
@@ -1475,7 +1475,7 @@ function Melee:BindTool(toolRaw: any, optionsRaw: any): boolean
 	self.toolJanitor:Clean()
 	self.boundTool = tool
 
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else {}
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
 	local resolveAnimatorOnEquip = toBool(options.resolveAnimatorOnEquip, true)
 	local cancelOnUnequip = toBool(options.cancelOnUnequip, true)
 

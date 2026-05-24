@@ -376,7 +376,7 @@ local function appendMergedItemAmount(
 	local itemIds = if itemIdsRaw ~= nil and #itemIdsRaw > 0 then cloneStringArray(itemIdsRaw) else nil
 	for _, existing in target do
 		local existingItemIds = if existing.itemIds ~= nil and #existing.itemIds > 0 then existing.itemIds else nil
-		if existing.itemId == itemId and stringArrayEquals(existingItemIds or {}, itemIds or {}) then
+		if existing.itemId == itemId and stringArrayEquals(existingItemIds or ({} :: any), itemIds or ({} :: any)) then
 			existing.amount += amount
 			return
 		end
@@ -389,7 +389,7 @@ local function appendMergedItemAmount(
 end
 
 local function resolveRequirementItemIds(requirementRaw: ItemAmount): { string }
-	local itemIds = if requirementRaw.itemIds ~= nil then cloneStringArray(requirementRaw.itemIds) else {}
+	local itemIds = if requirementRaw.itemIds ~= nil then cloneStringArray(requirementRaw.itemIds) else ({} :: any)
 	if #itemIds <= 0 then
 		itemIds = { requirementRaw.itemId }
 	end
@@ -479,8 +479,8 @@ end
 
 local function resolveStationDefinitionsFromTree(treeRaw: any): { [string]: StationDefinition }
 	local output: { [string]: StationDefinition } = {}
-	local tree = if typeof(treeRaw) == "table" then treeRaw else {}
-	local stationsRaw = if typeof((tree :: any).stations) == "table" then (tree :: any).stations else {}
+	local tree = if typeof(treeRaw) == "table" then treeRaw else ({} :: any)
+	local stationsRaw = if typeof((tree :: any).stations) == "table" then (tree :: any).stations else ({} :: any)
 
 	for key, stationRaw in stationsRaw do
 		if typeof(stationRaw) ~= "table" then
@@ -530,7 +530,7 @@ function CraftingServiceUtils.GetDefaultDataPath(): { string }
 end
 
 function CraftingServiceUtils.ResolveConfig(configRaw: any): CraftingServiceConfig
-	local source = if typeof(configRaw) == "table" then (configRaw :: { [string]: any }) else {}
+	local source = if typeof(configRaw) == "table" then (configRaw :: { [string]: any }) else ({} :: any)
 	local stationTagPrefix = sanitizeString(source.stationTagPrefix, DEFAULT_STATION_TAG_PREFIX) or DEFAULT_STATION_TAG_PREFIX
 
 	local stationDefinitions = resolveStationDefinitionsFromTree(CraftingTree)
@@ -541,7 +541,7 @@ function CraftingServiceUtils.ResolveConfig(configRaw: any): CraftingServiceConf
 
 	local stationTagOverrides = if typeof(source.stationTagById) == "table"
 		then (source.stationTagById :: { [string]: any })
-		else {}
+		else ({} :: any)
 
 	for stationIdRaw, tagRaw in stationTagOverrides do
 		local stationId = sanitizeString(stationIdRaw, nil)
@@ -1003,7 +1003,7 @@ local function sanitizeRecipeGroup(groupRaw: any, fallbackId: string, recipesByI
 end
 
 function RecipeIndexer.BuildRegistry(treeRaw: any, configRaw: any): RecipeRegistry
-	local tree = if typeof(treeRaw) == "table" then (treeRaw :: { [string]: any }) else {}
+	local tree = if typeof(treeRaw) == "table" then (treeRaw :: { [string]: any }) else ({} :: any)
 	local config = CraftingServiceUtils.ResolveConfig(configRaw)
 	local stationDefinitionsFromTree = resolveStationDefinitionsFromTree(tree)
 	local stationDefinitions: { [string]: StationDefinition } = {}
@@ -1030,7 +1030,7 @@ function RecipeIndexer.BuildRegistry(treeRaw: any, configRaw: any): RecipeRegist
 		stationTagById[stationId] = stationTag
 	end
 
-	local rawRecipes = if typeof(tree.recipes) == "table" then tree.recipes else {}
+	local rawRecipes = if typeof(tree.recipes) == "table" then tree.recipes else ({} :: any)
 	local mutableRecipes: { RecipeDefinition } = {}
 	local recipesById: { [string]: RecipeDefinition } = {}
 	for index, recipeRaw in rawRecipes do
@@ -1151,7 +1151,7 @@ function RecipeIndexer.BuildRegistry(treeRaw: any, configRaw: any): RecipeRegist
 	local groups: { [string]: RecipeGroup } = {}
 	local groupIdsOrdered: { string } = {}
 	local groupIdByRecipeId: { [string]: string } = {}
-	local groupsRaw = if typeof(tree.groups) == "table" then tree.groups else {}
+	local groupsRaw = if typeof(tree.groups) == "table" then tree.groups else ({} :: any)
 
 	for groupKey, groupRaw in groupsRaw do
 		local fallbackId = if typeof(groupKey) == "string" then groupKey else "group"
@@ -1374,7 +1374,7 @@ function CraftingServiceUtils.SanitizePersistentState(
 	valueRaw: any,
 	registryRaw: RecipeRegistry?
 ): CraftingPersistentState
-	local source = if typeof(valueRaw) == "table" then (valueRaw :: { [string]: any }) else {}
+	local source = if typeof(valueRaw) == "table" then (valueRaw :: { [string]: any }) else ({} :: any)
 	local knownRecipeIds = cloneStringSet(source.knownRecipeIds)
 	local discoveredItemIds = cloneStringSet(source.discoveredItemIds)
 	local progressionFlags = cloneStringSet(source.progressionFlags)
@@ -1435,7 +1435,7 @@ function CraftingServiceUtils.SanitizeServiceStateSnapshot(
 	fallbackRaw: CraftingServiceStateSnapshot?
 ): CraftingServiceStateSnapshot
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else CraftingServiceUtils.CreateDefaultServiceStateSnapshot(nil)
-	local source = if typeof(valueRaw) == "table" then (valueRaw :: { [string]: any }) else {}
+	local source = if typeof(valueRaw) == "table" then (valueRaw :: { [string]: any }) else ({} :: any)
 	return {
 		knownRecipeIds = cloneStringSet(if source.knownRecipeIds ~= nil then source.knownRecipeIds else fallback.knownRecipeIds),
 		discoveredItemIds = cloneStringSet(
@@ -1475,7 +1475,7 @@ function CraftingServiceUtils.BuildAvailableRecipeIds(
 	end
 
 	local availableRecipeIds = {}
-	local biomeTokens = if biomeTokensRaw ~= nil then biomeTokensRaw else {}
+	local biomeTokens = if biomeTokensRaw ~= nil then biomeTokensRaw else ({} :: any)
 	for recipeId in candidateRecipeIdSet do
 		local recipe = registry.recipesById[recipeId]
 		if recipe == nil then
@@ -1571,7 +1571,7 @@ function CraftingServiceUtils.BuildRecipePreview(
 
 	local missingStations = RecipeValidator.GetMissingStations(recipeRaw, activeStationsRaw)
 	local biomeSatisfied = RecipeValidator.IsBiomeSatisfied(recipeRaw, biomeTokensRaw)
-	local knownRecipeIds = if knownRecipeIdsRaw ~= nil then knownRecipeIdsRaw else {}
+	local knownRecipeIds = if knownRecipeIdsRaw ~= nil then knownRecipeIdsRaw else ({} :: any)
 	local isKnown = knownRecipeIdsRaw == nil or knownRecipeIds[recipeRaw.id] == true
 	local maxCraftableQuantity = CraftingServiceUtils.ComputeMaxCraftableQuantity(recipeRaw, inventoryItemCountsRaw)
 
@@ -1791,7 +1791,7 @@ type ClientStationDetectorRuntime = {
 }
 
 function StationDetector.NewClientDetector(optionsRaw: any): ClientStationDetector
-	local options = if typeof(optionsRaw) == "table" then (optionsRaw :: { [string]: any }) else {}
+	local options = if typeof(optionsRaw) == "table" then (optionsRaw :: { [string]: any }) else ({} :: any)
 	local localPlayer = if typeof(options.localPlayer) == "Instance" and options.localPlayer:IsA("Player")
 		then options.localPlayer
 		else Players.LocalPlayer
@@ -1835,7 +1835,7 @@ function StationDetector.NewClientDetector(optionsRaw: any): ClientStationDetect
 				runtime.radius,
 				runtime.stationIds
 			)
-			else {}
+			else ({} :: any)
 
 		if stringSetEquals(runtime.activeStations, nextStations) then
 			return
@@ -2272,8 +2272,8 @@ function CraftTransaction.Execute(
 			reason = reason,
 			recipeId = recipeRaw.id,
 			quantity = quantity,
-			consumed = if consumedRaw ~= nil then consumedRaw else {},
-			granted = if grantedRaw ~= nil then grantedRaw else {},
+			consumed = if consumedRaw ~= nil then consumedRaw else ({} :: any),
+			granted = if grantedRaw ~= nil then grantedRaw else ({} :: any),
 		}
 	end
 

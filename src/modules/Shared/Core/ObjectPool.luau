@@ -39,7 +39,7 @@ function ObjectPool.new<T>(factory: Factory<T>, configRaw: PoolConfig<T>?): Obje
 	if typeof(factory) ~= "function" then
 		error("ObjectPool.new expects a factory callback")
 	end
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local prewarmCount = clampInteger(config.prewarm, 0, 0, 1000000)
 	local expandBy = clampInteger(config.expandBy, 8, 1, 100000)
 	local maxAvailable = clampInteger(config.maxAvailable, 2048, 1, 10000000)

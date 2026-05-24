@@ -1,3 +1,4 @@
+--!nocheck
 return function()
 	describe("lower", function()
 		beforeAll(function()

@@ -110,7 +110,7 @@ local function navigationModeFromPrimaryInput(primaryInputTypeRaw: any): string
 end
 
 function UIController.New(configRaw: UIControllerConfig?): UIController
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local self = setmetatable({
 		registry = {} :: { [string]: any },
 		activeScreenKey = nil :: string?,
@@ -240,8 +240,8 @@ function UIController.RegisterScreen(self: UIController, definitionRaw: any): bo
 		zIndex = clampInteger(definitionRaw.zIndex, self.screenBaseZ, 1, 10000),
 		closable = if definitionRaw.closable == nil then true else definitionRaw.closable == true,
 		initialFocus = if typeof(definitionRaw.initialFocus) == "Instance" then definitionRaw.initialFocus else nil,
-		hooks = if typeof(definitionRaw.hooks) == "table" then definitionRaw.hooks else {},
-		transition = if typeof(definitionRaw.transition) == "table" then definitionRaw.transition else {},
+		hooks = if typeof(definitionRaw.hooks) == "table" then definitionRaw.hooks else ({} :: any),
+		transition = if typeof(definitionRaw.transition) == "table" then definitionRaw.transition else ({} :: any),
 	}
 	setVisible(self.registry[key].frame, false)
 	return true

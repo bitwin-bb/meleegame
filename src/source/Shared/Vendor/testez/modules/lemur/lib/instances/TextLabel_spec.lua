@@ -1,3 +1,4 @@
+--!nocheck
 local Font = import("../Enum/Font")
 local Instance = import("../Instance")
 local TextTruncate = import("../Enum/TextTruncate")

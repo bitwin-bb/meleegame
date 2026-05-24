@@ -63,12 +63,12 @@ local function useInfoPopUp(options: InfoPopUpOptions?): InfoPopUpState
 	local elapsedRef = React.useRef(0)
 	local progress, setProgress = React.useState(0)
 
-	React.useEffect(function()
+	;(React.useEffect :: any)(function()
 		elapsedRef.current = 0
 		setProgress(0)
-	end, { eventToken, enabled, riseDuration, holdDuration, shrinkDuration, fromYOffsetStuds, toYOffsetStuds, minScale })
+	end, ({ eventToken, enabled, riseDuration, holdDuration, shrinkDuration, fromYOffsetStuds, toYOffsetStuds, minScale } :: { any }))
 
-	React.useEffect(function()
+	;(React.useEffect :: any)(function(): (() -> ())?
 		if not enabled then
 			return nil
 		end
@@ -87,7 +87,7 @@ local function useInfoPopUp(options: InfoPopUpOptions?): InfoPopUpState
 		return function()
 			connection:Disconnect()
 		end
-	end, { enabled, riseDuration, holdDuration, shrinkDuration, eventToken, totalDuration })
+	end, ({ enabled, riseDuration, holdDuration, shrinkDuration, eventToken, totalDuration } :: { any }))
 
 	local clampedProgress = math.clamp(progress, 0, 1)
 	local elapsed = clampedProgress * totalDuration

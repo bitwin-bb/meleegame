@@ -1,3 +1,4 @@
+--!nocheck
 local ReplicatedFirst = import("./ReplicatedFirst")
 
 describe("instances.ReplicatedFirst", function()

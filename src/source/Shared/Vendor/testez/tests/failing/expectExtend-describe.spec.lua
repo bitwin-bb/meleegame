@@ -1,3 +1,4 @@
+--!nocheck
 -- luacheck: globals describe expect
 
 local noOptMatcher = function(_received, _expected)

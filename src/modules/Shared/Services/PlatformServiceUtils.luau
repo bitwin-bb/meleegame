@@ -1,12 +1,10 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
 local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
 
 local PlatformServiceUtils = {}
 
-export type PlatformKind = "KeyboardMouse" | "Gamepad" | "Touch"
-export type DeviceClass = "Phone" | "Tablet" | "Desktop" | "Console"
+export type PlatformKind = string
+export type DeviceClass = string
 
 export type CapabilitySnapshot = {
 	touchEnabled: boolean,
@@ -111,7 +109,7 @@ local PLAYER_ACTION_TEXT_OVERRIDES: { [Enum.PlayerActions]: string } = {
 	[Enum.PlayerActions.CharacterBackward] = "Move Down",
 }
 
-local HINTS = if typeof((ImageIds :: any).hints) == "table" then (ImageIds :: any).hints else {}
+local HINTS = if typeof((ImageIds :: any).hints) == "table" then (ImageIds :: any).hints else ({} :: any)
 
 local DEFAULT_GAMEPAD_FAMILY = "xbox"
 
@@ -449,7 +447,7 @@ function PlatformServiceUtils.HasThumbstickPassedDeadzone(vectorRaw: any, deadzo
 	return PlatformServiceUtils.ApplyThumbstickDeadzone(vectorRaw, deadzoneRaw).Magnitude > 0
 end
 
-local function bindingKeyCodeForPrompt(binding: ActionBinding): Enum.KeyCode?
+local function bindingKeyCodeForPrompt(binding: ActionBinding): any
 	if binding.keyCode ~= nil then
 		return binding.keyCode
 	end
@@ -463,7 +461,7 @@ local function bindingKeyCodeForPrompt(binding: ActionBinding): Enum.KeyCode?
 		return Enum.KeyCode.MouseMiddleButton
 	end
 	if binding.inputType == Enum.UserInputType.Touch then
-		return Enum.KeyCode.TouchPosition
+		return Enum.UserInputType.Touch
 	end
 	return nil
 end

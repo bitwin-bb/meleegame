@@ -95,7 +95,7 @@ local DEFAULT_FOV_SPRING: SpringOptions = {
 	damping = 1,
 }
 
-local DEFAULT_SIDE_VIEW_CONFIG = Configs.cameraData :: SideViewConfig
+local DEFAULT_SIDE_VIEW_CONFIG = (Configs.cameraData :: any) :: SideViewConfig
 local SIDE_VIEW_RENDER_PRIORITY = Enum.RenderPriority.Camera.Value
 local sideViewInstanceCount = 0
 

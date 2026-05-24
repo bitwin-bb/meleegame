@@ -63,7 +63,7 @@ function State.SetEnabled(self: State, enabledRaw: any)
 end
 
 function State.Resolve(self: State, contextRaw: any): StateSnapshot
-	local context = if typeof(contextRaw) == "table" then contextRaw else {}
+	local context = if typeof(contextRaw) == "table" then contextRaw else ({} :: any)
 	local target = if typeof((context :: any).target) == "table" then (context :: any).target else nil
 	local override = if typeof((context :: any).override) == "table" then (context :: any).override else nil
 	local hasTarget = target ~= nil and typeof((target :: any).position) == "Vector3"

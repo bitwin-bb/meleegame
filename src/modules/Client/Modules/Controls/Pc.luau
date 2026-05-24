@@ -28,7 +28,7 @@ return {
 				{
 					id = "cycle_hotbar",
 					label = "Previous / next hotbar item",
-					prompts = { { text = "Mouse Wheel" } },
+					prompts = { { keyCode = "", text = "Mouse Wheel" } },
 				},
 			},
 		},
@@ -46,4 +46,4 @@ return {
 			},
 		},
 	},
-}
+} :: any

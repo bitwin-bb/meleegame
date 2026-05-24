@@ -227,7 +227,7 @@ function NavButton:render()
 			self:updateHover(false)
 			self:updatePressed(false)
 		end,
-		[React.Event.InputBegan] = function(_rbx: GuiObject, inputObject: InputObject)
+		[React.Event.InputBegan] = (function(_rbx: GuiObject, inputObject: InputObject)
 			if isDisabled then
 				return
 			end
@@ -235,16 +235,16 @@ function NavButton:render()
 			if isPressInput(inputObject) then
 				self:updatePressed(true)
 			end
-		end,
-		[React.Event.InputEnded] = function(_rbx: GuiObject, inputObject: InputObject)
+		end) :: any,
+		[React.Event.InputEnded] = (function(_rbx: GuiObject, inputObject: InputObject)
 			if isPressInput(inputObject) then
 				self:updatePressed(false)
 			end
-		end,
-		[React.Event.Activated] = function(_rbx: GuiButton, inputObject: InputObject?)
+		end) :: any,
+		[React.Event.Activated] = (function(_rbx: GuiButton, inputObject: InputObject?)
 			self:updatePressed(false)
 			self:emitActivated(inputObject)
-		end,
+		end) :: any,
 	}, {
 		e("UICorner", {
 			CornerRadius = props.cornerRadius or UDim.new(0, 10),

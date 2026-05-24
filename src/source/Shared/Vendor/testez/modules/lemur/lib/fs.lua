@@ -1,3 +1,4 @@
+--!nocheck
 local ok, lfs = pcall(require, "lfs")
 
 if not ok then

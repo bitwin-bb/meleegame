@@ -1,3 +1,4 @@
+--!nocheck
 local function taskCompare(a, b)
 	return a.time > b.time
 end

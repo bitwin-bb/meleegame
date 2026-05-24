@@ -287,7 +287,7 @@ local function HintItem(props: {
 end
 
 return function(props: BindingHintBottomBarProps): React.ReactNode
-	local hints = props.hints or {}
+	local hints = props.hints or ({} :: any)
 	if props.visible == false or #hints <= 0 then
 		return nil
 	end

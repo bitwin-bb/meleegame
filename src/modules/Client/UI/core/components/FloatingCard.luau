@@ -87,7 +87,7 @@ local function applyNativeProps(target: { [any]: any }, nativeProps: { [any]: an
 	end
 end
 
-local function addChildren(target: { React.ReactNode }, children: { React.ReactNode }?)
+local function addChildren(target: { [any]: React.ReactNode }, children: { React.ReactNode }?)
 	if children == nil then
 		return
 	end
@@ -98,7 +98,7 @@ local function addChildren(target: { React.ReactNode }, children: { React.ReactN
 end
 
 return function(props: FloatingCardProps): React.ReactNode
-	local theme = props.theme or {}
+	local theme = props.theme or ({} :: any)
 	local zIndex = props.zIndex or 1
 	local backgroundColor = sanitizeColor(props.backgroundColor or theme.backgroundColor, DEFAULT_BACKGROUND_COLOR)
 	local strokeColor = sanitizeColor(props.strokeColor or theme.strokeColor, DEFAULT_STROKE_COLOR)
@@ -129,7 +129,7 @@ return function(props: FloatingCardProps): React.ReactNode
 	}
 	applyNativeProps(frameProps, props.native)
 
-	local children: { React.ReactNode } = {
+	local children: { [any]: React.ReactNode } = {
 		UICorner = e("UICorner", {
 			CornerRadius = props.cornerRadius or DEFAULT_CORNER_RADIUS,
 		}),
@@ -169,7 +169,7 @@ return function(props: FloatingCardProps): React.ReactNode
 	end
 
 	if hasText then
-		local contentChildren: { React.ReactNode } = {
+		local contentChildren: { [string]: React.ReactNode } = {
 			Layout = e("UIListLayout", {
 				FillDirection = Enum.FillDirection.Vertical,
 				HorizontalAlignment = Enum.HorizontalAlignment.Left,

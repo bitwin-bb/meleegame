@@ -1,3 +1,4 @@
+--!nocheck
 local CorePackages = import("./CorePackages")
 
 describe("instances.CorePackages", function()

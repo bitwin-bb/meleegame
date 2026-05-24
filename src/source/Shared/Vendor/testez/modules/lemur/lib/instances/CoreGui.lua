@@ -1,3 +1,4 @@
+--!nocheck
 local BaseInstance = import("./BaseInstance")
 local CoreGui = BaseInstance:extend("CoreGui")
 local ScreenGui = import("./ScreenGui")

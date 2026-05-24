@@ -2,13 +2,13 @@
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(packageRoot)
+local loader = (require :: any)(loaderUtils.Parent).load(packageRoot)
 
 local ScreenGuiService = loader("ScreenGuiService")
 local SnackbarServiceClient = loader("SnackbarServiceClient")
 local AquariaBackupTranslator = require(script:FindFirstAncestor("game").Shared.AquariaBackupTranslator)
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
+local AudioServiceClient = (require :: any)(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
 
@@ -18,7 +18,7 @@ local screenGuiCleanup = nil :: (() -> ())?
 local lastShownAtByKey = {} :: { [string]: number }
 
 local DEFAULT_DEDUPE_WINDOW_SECONDS = 0.6
-local SYSTEM_AUDIO = (AudioRegistry :: any).System or {}
+local SYSTEM_AUDIO = (AudioRegistry :: any).System or ({} :: any)
 local NOTIFICATION_SOUND_ASSET_ID = AudioServiceUtils.normalizeSoundAssetId(SYSTEM_AUDIO.Notification)
 
 local function getTranslator()
@@ -161,7 +161,7 @@ function SnackbarNotifications.ShowText(textRaw: any, optionsRaw: any?)
 		return nil
 	end
 
-	local options = if typeof(optionsRaw) == "table" then optionsRaw :: { [string]: any } else {}
+	local options = if typeof(optionsRaw) == "table" then optionsRaw :: { [string]: any } else ({} :: any)
 	local dedupeKey = if typeof(options.dedupeKey) == "string" and options.dedupeKey ~= ""
 		then options.dedupeKey
 		else text

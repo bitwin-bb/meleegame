@@ -1,3 +1,4 @@
+--!nocheck
 local Signal = import("../Signal")
 local BaseInstance = import("./BaseInstance")
 local InstanceProperty = import("../InstanceProperty")

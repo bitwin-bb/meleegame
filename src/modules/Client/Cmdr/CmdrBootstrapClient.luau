@@ -7,7 +7,7 @@ local StarterGui = game:GetService("StarterGui")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local Maid = loader("Maid")
 local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Cmdr.CmdrUtils)
@@ -79,7 +79,7 @@ local function ensureCmdrClient(): any
 		return nil
 	end
 
-	cmdrClient = require(cmdrClientModule)
+	cmdrClient = (require :: any)(cmdrClientModule)
 	cmdrClient:SetActivationUnlocksMouse(true)
 	cmdrClient:SetActivationKeys({ Enum.KeyCode.F2 })
 	cmdrClient:SetEnabled(false)
@@ -161,29 +161,30 @@ function CmdrBootstrapClient.Start(_serviceBag: any)
 		return
 	end
 	started = true
-	maid = Maid.new() :: MaidClass
+	local runtimeMaid = Maid.new() :: MaidClass
+	maid = runtimeMaid
 
-	maid:GiveTask(localPlayer:GetAttributeChangedSignal(CmdrUtils.CMDR_ENABLED_ATTRIBUTE):Connect(function()
+	runtimeMaid:GiveTask(localPlayer:GetAttributeChangedSignal(CmdrUtils.CMDR_ENABLED_ATTRIBUTE):Connect(function()
 		CmdrBootstrapClient.ApplyCmdrAccess()
 	end))
-	maid:GiveTask(
+	runtimeMaid:GiveTask(
 		localPlayer:GetAttributeChangedSignal(CmdrUtils.MATTER_DEBUG_MENU_ENABLED_ATTRIBUTE):Connect(function()
 			applyMatterDebugMenuAccess()
 		end)
 	)
-	maid:GiveTask(localPlayer.ChildAdded:Connect(function(child)
+	runtimeMaid:GiveTask(localPlayer.ChildAdded:Connect(function(child)
 		if child:IsA("PlayerGui") then
 			CmdrBootstrapClient.ApplyCmdrAccess()
 		end
 	end))
-	maid:GiveTask(ReplicatedStorage.ChildAdded:Connect(function(child)
+	runtimeMaid:GiveTask(ReplicatedStorage.ChildAdded:Connect(function(child)
 		if child.Name == "CmdrClient" then
 			CmdrBootstrapClient.ApplyCmdrAccess()
 		elseif child.Name == MATTER_DEBUGGER_REMOTE_NAME then
 			applyMatterDebugMenuAccess()
 		end
 	end))
-	maid:GiveTask(StarterGui.ChildAdded:Connect(function(child)
+	runtimeMaid:GiveTask(StarterGui.ChildAdded:Connect(function(child)
 		if child.Name == "Cmdr" then
 			CmdrBootstrapClient.ApplyCmdrAccess()
 		end

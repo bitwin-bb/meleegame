@@ -126,7 +126,7 @@ return function(props: ManaTopRightBarProps)
 			id = hoverId,
 			text = hoverText,
 		})
-	end, { starsHover.hovered, hoverText })
+	end, ({ starsHover.hovered, hoverText } :: { any }))
 
 	React.useEffect(function()
 		return function()

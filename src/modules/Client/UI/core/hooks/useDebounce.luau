@@ -37,15 +37,16 @@ local function useDebounce<T>(value: T, delaySecondsRaw: any, options: DebounceO
 	local debouncedValueRef = React.useRef(value)
 	local debouncedValue, setDebouncedValue = React.useState(value)
 
-	local commitLatestValue = React.useCallback(function()
+	local commitLatestValue = (React.useCallback :: any)(function()
 		local nextValue = latestValueRef.current
-		if equalityRef.current(debouncedValueRef.current, nextValue) then
+		local isEqual = equalityRef.current :: (any, any) -> boolean
+		if isEqual(debouncedValueRef.current, nextValue) then
 			return
 		end
 
 		debouncedValueRef.current = nextValue
 		setDebouncedValue(nextValue)
-	end, { latestValueRef, equalityRef })
+	end, ({ latestValueRef, equalityRef } :: { any }))
 
 	local timeout = useTimeout(commitLatestValue, delaySeconds, {
 		enabled = true,
@@ -56,7 +57,8 @@ local function useDebounce<T>(value: T, delaySecondsRaw: any, options: DebounceO
 	local isTimeoutScheduled = timeout.isScheduled
 
 	React.useEffect(function()
-		if equalityRef.current(debouncedValueRef.current, value) then
+		local isEqual = equalityRef.current :: (any, any) -> boolean
+		if isEqual(debouncedValueRef.current, value) then
 			cancelTimeout()
 			return
 		end
@@ -72,7 +74,7 @@ local function useDebounce<T>(value: T, delaySecondsRaw: any, options: DebounceO
 		end
 
 		restartTimeout(delaySeconds)
-	end, {
+	end, ({
 		value,
 		delaySeconds,
 		leading,
@@ -81,7 +83,7 @@ local function useDebounce<T>(value: T, delaySecondsRaw: any, options: DebounceO
 		restartTimeout,
 		commitLatestValue,
 		equalityRef,
-	})
+	} :: { any }))
 
 	return {
 		value = debouncedValue,

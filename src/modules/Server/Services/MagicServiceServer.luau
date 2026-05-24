@@ -6,19 +6,19 @@ local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local BossServiceServer = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceServer)
-local HpServiceServer = require(script:FindFirstAncestor("game").Server.Services.HpServiceServer)
-local InventoryServiceServer = require(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
+local BossServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceServer)
+local HpServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.HpServiceServer)
+local InventoryServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Magic = require(script:FindFirstAncestor("game").Shared.Classes.Magic)
 local MagicServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.MagicServiceUtils)
-local ManaServiceServer = require(script:FindFirstAncestor("game").Server.Services.ManaServiceServer)
+local ManaServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.ManaServiceServer)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local NpcServiceServer = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceServer)
-local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
+local NpcServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceServer)
+local PlayerServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
 local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerServiceUtils)
-local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 
 type WeaponRuntimeConfig = MagicServiceUtils.WeaponRuntimeConfig
 type ModifierStats = MagicServiceUtils.ModifierStats
@@ -387,7 +387,7 @@ function MagicServiceServer.BuildRuntimeConfigWithOverrides(
 	local patched = shallowCopy(weaponConfig)
 	local baseDefinition = if typeof((weaponConfig :: any).definition) == "table"
 		then shallowCopy((weaponConfig :: any).definition)
-		else {}
+		else ({} :: any)
 	baseDefinition.magicWeapon = override
 	patched.definition = baseDefinition
 	return MagicServiceUtils.buildWeaponRuntimeConfig(patched)
@@ -490,7 +490,7 @@ function MagicServiceServer.OnMagicCastRequested(
 	if player == nil or runtime == nil then
 		return false
 	end
-	local context = if typeof(contextRaw) == "table" then contextRaw else {}
+	local context = if typeof(contextRaw) == "table" then contextRaw else ({} :: any)
 	if not MagicServiceUtils.isHumanoidAlive(runtime.humanoid) then
 		return false
 	end
@@ -539,7 +539,7 @@ function MagicServiceServer.CanConsumeMana(
 	if manaService == nil then
 		return false
 	end
-	local context = if typeof(contextRaw) == "table" then shallowCopy(contextRaw) else {}
+	local context = if typeof(contextRaw) == "table" then shallowCopy(contextRaw) else ({} :: any)
 	context.castToken = castToken
 	if castData ~= nil then
 		context.itemId = castData.itemId
@@ -576,7 +576,7 @@ function MagicServiceServer.ConsumeMana(
 	if manaService == nil then
 		return false
 	end
-	local context = if typeof(contextRaw) == "table" then shallowCopy(contextRaw) else {}
+	local context = if typeof(contextRaw) == "table" then shallowCopy(contextRaw) else ({} :: any)
 	context.castToken = castToken
 	if castData ~= nil then
 		context.itemId = castData.itemId
@@ -680,19 +680,21 @@ function MagicServiceServer.CreateProjectilePart(
 	local template = config.projectile.template
 	local part = if template ~= nil then template:Clone() else nil
 	if part == nil then
-		part = Instance.new("Part")
-		part.Shape = Enum.PartType.Ball
-		part.Size = Vector3.new(0.4, 0.4, 0.4)
+		local fallbackPart = Instance.new("Part")
+		fallbackPart.Shape = Enum.PartType.Ball
+		fallbackPart.Size = Vector3.new(0.4, 0.4, 0.4)
+		part = fallbackPart
 	end
-	part.Name = HttpService:GenerateGUID(false)
-	part.Anchored = true
-	part.CanCollide = false
-	part.CanQuery = false
-	part.CanTouch = false
-	part.CastShadow = false
-	part.Transparency = 1
-	part.Parent = self.projectileFolder
-	return part
+	local projectilePart = part :: BasePart
+	projectilePart.Name = HttpService:GenerateGUID(false)
+	projectilePart.Anchored = true
+	projectilePart.CanCollide = false
+	projectilePart.CanQuery = false
+	projectilePart.CanTouch = false
+	projectilePart.CastShadow = false
+	projectilePart.Transparency = 1
+	projectilePart.Parent = self.projectileFolder
+	return projectilePart
 end
 
 function MagicServiceServer.AcquireProjectilePart(
@@ -808,7 +810,7 @@ function MagicServiceServer.IsValidHumanoidTarget(
 	projectile: any,
 	humanoid: Humanoid?
 ): boolean
-	if not MagicServiceUtils.isHumanoidAlive(humanoid) then
+	if humanoid == nil or not MagicServiceUtils.isHumanoidAlive(humanoid) then
 		return false
 	end
 
@@ -934,10 +936,6 @@ function MagicServiceServer.ApplySplashEffect(
 	end
 	local parts = self:collectOverlapParts(projectile, hitPosition, radius)
 	for _, part in parts do
-		if part == nil then
-			continue
-		end
-
 		local model = part:FindFirstAncestorOfClass("Model")
 		local npcDamaged = false
 		if
@@ -1505,7 +1503,7 @@ function MagicServiceServer.OnMagicCastCommitted(
 	if player == nil or runtime == nil then
 		return
 	end
-	local context = if typeof(contextRaw) == "table" then contextRaw else {}
+	local context = if typeof(contextRaw) == "table" then contextRaw else ({} :: any)
 	local castToken = resolveCastToken(context)
 	if castToken < 1 then
 		return
@@ -1602,7 +1600,7 @@ function MagicServiceServer.CreateMagicController(self: MagicServiceServer, play
 	if runtime.magicController ~= nil then
 		runtime.magicController:destroy()
 	end
-	local controller = Magic.new({
+	local controller = Magic.new(({
 		ownerPlayer = player,
 		character = runtime.character,
 		service = self,
@@ -1610,7 +1608,7 @@ function MagicServiceServer.CreateMagicController(self: MagicServiceServer, play
 		autoRepeatWhileHeld = false,
 		allowQueueOnCooldown = true,
 		validateDefinitionItemType = true,
-	}) :: any
+	} :: any)) :: any
 	runtime.magicController = controller
 end
 
@@ -1927,7 +1925,7 @@ type MagicServiceServer = typeof(MagicServiceServer) & {
 	bossService: BossServiceServerObject?,
 	hpService: HpServiceServerObject?,
 	playerRuntimes: { [Player]: PlayerRuntime },
-	projectilePools: { [string]: { [string]: any } },
+	projectilePools: { [string]: { any } },
 	activeProjectiles: { [number]: any },
 	activeEffectsByHumanoid: { [Humanoid]: { [string]: any } },
 	modifierProviders: { [string]: (...any) -> any },
@@ -1938,6 +1936,7 @@ type MagicServiceServer = typeof(MagicServiceServer) & {
 	playerAddedConnection: RBXScriptConnection?,
 	playerRemovingConnection: RBXScriptConnection?,
 	heartbeatConnection: RBXScriptConnection?,
+	binders: any,
 }
 
 return MagicServiceServer :: MagicServiceServer

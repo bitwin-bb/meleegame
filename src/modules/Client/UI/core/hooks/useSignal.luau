@@ -65,8 +65,9 @@ local function useSignal<TValue>(signalRaw: any, selectorRaw: any, options: Sign
 	local valueRef = React.useRef(initialValue)
 	local value, setValue = React.useState(initialValue)
 
-	local applyValue = React.useCallback(function(nextValue: TValue?)
-		if equalityRef.current(valueRef.current, nextValue) then
+	local applyValue = (React.useCallback :: any)(function(nextValue: TValue?)
+		local isEqual = equalityRef.current :: (any, any) -> boolean
+		if isEqual(valueRef.current, nextValue) then
 			return
 		end
 
@@ -80,7 +81,8 @@ local function useSignal<TValue>(signalRaw: any, selectorRaw: any, options: Sign
 		end
 
 		local connection = connectSignal(signalRaw, function(...)
-			local nextValue = selectorRef.current(...)
+			local selectorCallback = selectorRef.current :: (...any) -> any
+			local nextValue = selectorCallback(...)
 			applyValue(nextValue)
 		end)
 

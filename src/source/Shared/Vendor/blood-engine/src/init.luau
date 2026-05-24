@@ -70,7 +70,7 @@ end
 	This is useful when you want to control the emission
 	loop externally.
 ]]
-function Class:Emit(Origin: Vector3 | BasePart?, Direction: Vector3?, Data: Settings?)
+function Class.Emit(self: Class, Origin: Vector3 | BasePart?, Direction: Vector3?, Data: Settings?)
 	-- Get pos
 	local Pos: Vector3
 	if not Origin then
@@ -124,3 +124,4 @@ function Class.Destroy(self: Class)
 end
 
 return Class.new
+

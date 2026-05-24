@@ -19,7 +19,7 @@ type BindingHintScreenProps = {
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: BindingHintScreenProps?): React.ReactNode
-	local resolvedProps: BindingHintScreenProps = if props ~= nil then props else {}
+	local resolvedProps: BindingHintScreenProps = if props ~= nil then props else ({} :: any)
 	local bindingState = (useStore(bindingSlice.bindingStateAtom) :: BindingHintState?)
 		or bindingSlice.getBindingState()
 

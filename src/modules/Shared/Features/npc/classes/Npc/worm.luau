@@ -5,7 +5,7 @@ local Workspace = game:GetService("Workspace")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local CFrameUtils = loader("CFrameUtils")
 local Maid = loader("Maid")
@@ -248,14 +248,14 @@ local function resolveLockedAxis(valueRaw: any): LockedAxis
 	if typeof(valueRaw) == "string" then
 		local upper = string.upper(valueRaw)
 		if upper == "X" then
-			return "X"
+			return "X" :: LockedAxis
 		elseif upper == "Y" then
-			return "Y"
+			return "Y" :: LockedAxis
 		elseif upper == "Z" then
-			return "Z"
+			return "Z" :: LockedAxis
 		end
 	end
-	return "X"
+	return "X" :: LockedAxis
 end
 
 local function resolveAxisDepth(config: WormConfig, axis: LockedAxis): number?
@@ -653,7 +653,7 @@ function Worm._projectPosition(self: Worm, position: Vector3): Vector3
 	local lockedAxis = self._lockedAxis
 	local lockedDepth = self._lockedDepth
 	if lockedAxis ~= nil and lockedDepth ~= nil then
-		return withAxisValue(position, lockedAxis, lockedDepth)
+		return withAxisValue(position, lockedAxis :: LockedAxis, lockedDepth)
 	end
 
 	local planeDistance = self._planeDistance
@@ -724,7 +724,8 @@ function Worm._refreshCollisionRaycastParams(self: Worm)
 	raycastParams.IgnoreWater = false
 
 	local filter = {}
-	for _, instance in self._collisionFilterDescendants do
+	local collisionFilterDescendants: { Instance } = (self._collisionFilterDescendants :: any) or {}
+	for _, instance in collisionFilterDescendants do
 		table.insert(filter, instance)
 	end
 
@@ -934,8 +935,9 @@ end
 
 function Worm._clearSegments(self: Worm)
 	for _, segment in self._segments do
-		if self._ownsSegments and segment.model ~= nil then
-			segment.model:Destroy()
+		local segmentModel = segment.model :: Model?
+		if self._ownsSegments and segmentModel ~= nil then
+			segmentModel:Destroy()
 		end
 	end
 
@@ -1110,7 +1112,7 @@ end
 
 function Worm.New(configRaw: WormConfig?): Worm
 	local config = if typeof(configRaw) == "table" then configRaw :: WormConfig else {} :: WormConfig
-	local lockedAxis = resolveLockedAxis(config.lockedAxis or config.lockAxis)
+	local lockedAxis: LockedAxis = resolveLockedAxis(config.lockedAxis or config.lockAxis)
 	local lockedDepth = resolveAxisDepth(config, lockedAxis)
 	local planeNormal = if typeof(config.planeNormal) == "Vector3" and config.planeNormal.Magnitude > 0
 		then config.planeNormal.Unit
@@ -1165,7 +1167,7 @@ function Worm.New(configRaw: WormConfig?): Worm
 	local collisionFilterDescendants: { Instance } = if typeof(collisionConfig.filterDescendantsInstances)
 			== "table"
 		then collisionConfig.filterDescendantsInstances
-		else {}
+		else ({} :: any)
 	local collisionExcludeSegments: boolean = sanitizeBoolean(collisionConfig.excludeSegments, true)
 	local collisionLookAheadDistance: number =
 		sanitizeNumber(collisionConfig.lookAheadDistance, DEFAULT_LOOK_AHEAD_DISTANCE, 0.1, nil)
@@ -1231,7 +1233,7 @@ function Worm.New(configRaw: WormConfig?): Worm
 		_maid = Maid.new() :: MaidClass,
 		_stepMaid = Maid.new() :: MaidClass,
 		_targetObservableMaid = Maid.new() :: MaidClass,
-	}, Worm) :: Worm
+	}, Worm) :: any
 
 	self._maid:GiveTask(self._targetObservableMaid)
 	self._maid:GiveTask(function()

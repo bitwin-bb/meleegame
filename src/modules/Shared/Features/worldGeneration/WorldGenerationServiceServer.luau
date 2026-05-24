@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local Maid = loader("Maid")
 local Rx = loader("Rx")
@@ -14,14 +14,14 @@ local Signal = loader("Signal")
 local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local WorldGeneration =
 	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.classes.WorldGeneration)
 local WorldGenerationServiceUtils =
 	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceUtils)
 local WorldSimulationServiceServer =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldSimulationServiceServer)
+	(require :: any)(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldSimulationServiceServer)
 
 type WorldGenerationClass = WorldGeneration.WorldGeneration
 type WorldGenerationConfig = WorldGenerationServiceUtils.WorldGenerationConfig
@@ -95,7 +95,7 @@ local function resolveConfigSource(): any
 end
 
 local function cloneTableShallow(sourceRaw: any): { [any]: any }
-	local source = if typeof(sourceRaw) == "table" then sourceRaw else {}
+	local source = if typeof(sourceRaw) == "table" then sourceRaw else ({} :: any)
 	return table.clone(source)
 end
 
@@ -273,7 +273,7 @@ function WorldGenerationServiceServer.Init(self: WorldGenerationServiceServer)
 	local configSource = resolveConfigSource()
 	self.config = WorldGenerationServiceUtils.sanitizeConfig(configSource, nil)
 	self.config.seed = resolveRuntimeSeed(configSource, self.config)
-	self.world = WorldGeneration.new(self.config)
+	self.world = (WorldGeneration.new :: any)(self.config)
 	self.world:init()
 	self.latestWorldStats = self.world:getStats()
 	self:pushSeedToWorldSimulation()
@@ -377,7 +377,7 @@ function WorldGenerationServiceServer.ResetStreamingState(self: WorldGenerationS
 end
 
 function WorldGenerationServiceServer.LoadWorld(self: WorldGenerationServiceServer, worldRaw: any)
-	local worldSource = if typeof(worldRaw) == "table" then worldRaw else {}
+	local worldSource = if typeof(worldRaw) == "table" then worldRaw else ({} :: any)
 	local configSource = cloneTableShallow(resolveConfigSource())
 	for key, value in worldSource do
 		if
@@ -407,7 +407,7 @@ function WorldGenerationServiceServer.LoadWorld(self: WorldGenerationServiceServ
 	self.boundChunkRuntimeCount = 0
 
 	self.config = nextConfig
-	self.world = WorldGeneration.new(self.config)
+	self.world = (WorldGeneration.new :: any)(self.config)
 	self.world:init()
 	self.latestWorldStats = self.world:getStats()
 	self:connectReactiveWorldObservers()

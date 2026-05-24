@@ -1,3 +1,4 @@
+--!nocheck
 local Expectation = require(script.Expectation)
 local TestBootstrap = require(script.TestBootstrap)
 local TestEnum = require(script.TestEnum)

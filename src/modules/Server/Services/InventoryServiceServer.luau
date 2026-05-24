@@ -20,7 +20,7 @@ local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBin
 local ToolBinder = require(script:FindFirstAncestor("game").Shared.Binders.ToolBinder)
 local TorchTilt = require(script:FindFirstAncestor("game").Shared.Core.Math.TorchTilt)
 local WorldGenerationServiceServer =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer)
+	(require :: any)(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer)
 
 type InventoryState = InventoryServiceUtils.InventoryState
 type AddItemResult = InventoryServiceUtils.AddItemResult
@@ -49,20 +49,12 @@ type PlayerDataServiceServerObject = {
 	) -> boolean,
 }
 
-type InventoryProfileObject = {
-	cloneDefaultInventoryData: (self: InventoryProfileObject) -> { [string]: any },
-	getDataPath: (self: InventoryProfileObject) -> { string },
-	getDataPathString: (self: InventoryProfileObject) -> string,
-	hasAuthoritativeProfile: (self: InventoryProfileObject, player: Player) -> boolean,
-	saveProfile: (self: InventoryProfileObject, player: Player) -> (boolean, string),
-	saveState: (self: InventoryProfileObject, player: Player, stateRaw: any) -> (boolean, string),
-	writeState: (self: InventoryProfileObject, player: Player, stateRaw: any) -> (boolean, string),
-}
+type InventoryProfileObject = any
 
 type PendingToolImport = { itemId: string, itemType: string, amount: number }
 type PlayerRuntime = {
 	userId: number,
-	player: Player,
+	player: Player?,
 	state: InventoryState,
 	isLoading: boolean,
 	isLoaded: boolean,
@@ -76,7 +68,7 @@ type PlayerRuntime = {
 	playerJanitor: JanitorClass,
 	characterJanitor: JanitorClass,
 	pendingToolImports: { [string]: PendingToolImport },
-	suppressedToolImports: { [string]: number },
+	suppressedToolImports: { [string]: number? },
 	resolvedSource: string,
 	joinToken: number,
 	loadToken: number,
@@ -338,7 +330,7 @@ local function destroyManagedToolsExcept(player: Player, preserveToolRaw: any)
 	local preserveTool = if typeof(preserveToolRaw) == "Instance" and preserveToolRaw:IsA("Tool")
 		then preserveToolRaw :: Tool
 		else nil
-	for _, container in { player.Character, player:FindFirstChildOfClass("Backpack") } do
+	for _, container in ({ player.Character :: Instance?, player:FindFirstChildOfClass("Backpack") :: Instance? } :: { Instance? }) do
 		if typeof(container) ~= "Instance" then
 			continue
 		end
@@ -564,12 +556,12 @@ local function buildTorchTilePlacement(
 	end
 
 	local finalCFrame = supportCFrame * boundingRotation
-	return {
+	return ({
 		tileX = tileX,
 		tileY = tileY,
 		supportKind = supportKind,
 		cframe = CFrame.new(tileCenter) * finalCFrame.Rotation,
-	}
+	} :: any)
 end
 
 local function resolveTorchPlacementAtTargetTile(
@@ -814,12 +806,12 @@ local function resolveTorchDeployablePlacement(
 		end
 		local tileCenter = BuildServiceUtils.TileToWorldCenter(tileX, tileY, worldOrigin, tileSize, basePlaneX)
 
-		return {
+		return ({
 			tileX = tileX,
 			tileY = tileY,
 			supportKind = supportKind,
 			cframe = CFrame.new(tileCenter) * finalCFrame.Rotation,
-		}
+		} :: any)
 	end
 
 	local wallPlacement = nil :: TorchTilt.TilePlacement?
@@ -1097,7 +1089,7 @@ function InventoryServiceServer.GetOrCreateRuntime(self: InventoryServiceServer,
 		runtime.player = player
 		return runtime
 	end
-	runtime = self:createRuntime(player)
+	local runtime = self:createRuntime(player)
 	self.playerRuntimesByUserId[player.UserId] = runtime
 	return runtime
 end
@@ -1399,7 +1391,7 @@ function InventoryServiceServer.FindMatchingTool(_self: InventoryServiceServer, 
 	end
 	local desiredStackId = sanitizeItemId(stack.stackId)
 	local fallback = nil :: Tool?
-	for _, container in { player.Character, player:FindFirstChildOfClass("Backpack") } do
+	for _, container in ({ player.Character :: Instance?, player:FindFirstChildOfClass("Backpack") :: Instance? } :: { Instance? }) do
 		if typeof(container) ~= "Instance" then
 			continue
 		end
@@ -1759,7 +1751,7 @@ function InventoryServiceServer.Init(self: InventoryServiceServer)
 		self.RequestPlaceSelectedDeployable,
 	})
 	self.playerDataService = PlayerDataServiceServer :: PlayerDataServiceServerObject
-	self.persistence = InventoryProfile.new(self.playerDataService, {
+	self.persistence = (InventoryProfile.new :: any)(self.playerDataService, {
 		dataPath = InventoryServiceUtils.getDefaultDataPath(),
 		primaryTimeoutSeconds = PRIMARY_PERSISTENCE_TIMEOUT_SECONDS,
 		fallbackTimeoutSeconds = FALLBACK_PERSISTENCE_TIMEOUT_SECONDS,
@@ -1958,7 +1950,7 @@ function InventoryServiceServer.TrackPlayer(self: InventoryServiceServer, player
 		return
 	end
 
-	runtime = self:createRuntime(player)
+	local runtime = self:createRuntime(player)
 	self.playerRuntimesByUserId[player.UserId] = runtime
 	runtime.joinToken += 1
 	runtime.loadToken += 1
@@ -2156,7 +2148,7 @@ function InventoryServiceServer.AddItem(
 	if runtime == nil then
 		return createEmptyAddItemResult()
 	end
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else {}
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
 	local nextState = InventoryServiceUtils.cloneState(runtime.state)
 	local result = InventoryServiceUtils.addItem(
 		nextState,
@@ -2183,7 +2175,7 @@ function InventoryServiceServer.RemoveItem(
 	if runtime == nil then
 		return createEmptyRemoveItemResult()
 	end
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else {}
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
 	local nextState = InventoryServiceUtils.cloneState(runtime.state)
 	local result = InventoryServiceUtils.removeItem(
 		nextState,
@@ -2505,7 +2497,7 @@ InventoryServiceServer.clearInventory = InventoryServiceServer.ClearInventory
 InventoryServiceServer.destroy = InventoryServiceServer.Destroy
 
 type InventoryServiceServer = typeof(InventoryServiceServer) & {
-	networker: Networker.Server,
+	networker: Networker.Server?,
 	playerDataService: PlayerDataServiceServerObject,
 	persistence: InventoryProfileObject,
 	playerRuntimesByUserId: { [number]: PlayerRuntime },

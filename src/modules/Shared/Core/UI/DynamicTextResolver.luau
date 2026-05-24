@@ -92,7 +92,7 @@ local function toStringValue(value: any): string
 end
 
 function DynamicTextResolver.New(configRaw: ResolverConfig?): DynamicTextResolver
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local self = setmetatable({
 		maxDepth = clampInteger(config.maxDepth, 4, 1, 20),
 		keepUnknownPlaceholders = if config.keepUnknownPlaceholders == nil then true else config.keepUnknownPlaceholders == true,
@@ -152,7 +152,7 @@ function DynamicTextResolver._applyModifier(self: DynamicTextResolver, value: an
 		if typeof(value) ~= "number" then
 			return toStringValue(value)
 		end
-		return string.format("%.*f", math.max(0, math.floor(precision)), value)
+		return string.format(`%.{math.max(0, math.floor(precision))}f`, value)
 	end
 
 	local fixedDigits = string.match(modifier, "^fixed(%d+)$")
@@ -161,7 +161,7 @@ function DynamicTextResolver._applyModifier(self: DynamicTextResolver, value: an
 			return toStringValue(value)
 		end
 		local precision = math.max(0, math.floor(tonumber(fixedDigits) or 0))
-		return string.format("%.*f", precision, value)
+		return string.format(`%.{precision}f`, value)
 	end
 
 	return toStringValue(value)
@@ -184,24 +184,24 @@ function DynamicTextResolver._resolveConditionals(
 			break
 		end
 
-		local nextText = string.gsub(resolved, "%[if:([%w_%.]+)%](.-)%[/if%]", function(key: string, body: string)
+		local nextText = (string.gsub :: any)(resolved, "%[if:([%w_%.]+)%](.-)%[/if%]", function(key: string, body: string)
 			changed = true
 			local value = resolvePath(context, key)
 			if isTruthy(value) then
 				return self:_resolveInternal(body, context, depth + 1, options)
 			end
 			return ""
-		end)
+		end) :: string
 		resolved = nextText
 
-		nextText = string.gsub(resolved, "%[ifnot:([%w_%.]+)%](.-)%[/ifnot%]", function(key: string, body: string)
+		nextText = (string.gsub :: any)(resolved, "%[ifnot:([%w_%.]+)%](.-)%[/ifnot%]", function(key: string, body: string)
 			changed = true
 			local value = resolvePath(context, key)
 			if not isTruthy(value) then
 				return self:_resolveInternal(body, context, depth + 1, options)
 			end
 			return ""
-		end)
+		end) :: string
 		resolved = nextText
 	end
 
@@ -218,8 +218,8 @@ function DynamicTextResolver._resolveInternal(
 	if typeof(templateRaw) ~= "string" then
 		return ""
 	end
-	local context = if typeof(contextRaw) == "table" then contextRaw else {}
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else {}
+	local context = if typeof(contextRaw) == "table" then contextRaw else ({} :: any)
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
 	local maxDepth = clampInteger(options.maxDepth, self.maxDepth, 1, 20)
 	if depth >= maxDepth then
 		return templateRaw
@@ -259,17 +259,17 @@ function DynamicTextResolver.Resolve(self: DynamicTextResolver, templateRaw: any
 	if typeof(templateRaw) ~= "string" then
 		return ""
 	end
-	local context = if typeof(contextRaw) == "table" then contextRaw else {}
+	local context = if typeof(contextRaw) == "table" then contextRaw else ({} :: any)
 	return self:_resolveInternal(templateRaw, context, 0, optionsRaw)
 end
 
 function DynamicTextResolver.ResolveMany(self: DynamicTextResolver, templatesRaw: any, contextRaw: any, outRaw: { string }?): { string }
-	local out = if outRaw ~= nil then outRaw else {}
+	local out = if outRaw ~= nil then outRaw else ({} :: any)
 	if typeof(templatesRaw) ~= "table" then
 		table.clear(out)
 		return out
 	end
-	local context = if typeof(contextRaw) == "table" then contextRaw else {}
+	local context = if typeof(contextRaw) == "table" then contextRaw else ({} :: any)
 	table.clear(out)
 	for index = 1, #templatesRaw do
 		out[index] = self:resolve(templatesRaw[index], context)

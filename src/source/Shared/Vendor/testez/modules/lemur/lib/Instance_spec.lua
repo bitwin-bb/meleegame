@@ -1,3 +1,4 @@
+--!nocheck
 local Instance = import("./Instance")
 
 describe("Instance", function()

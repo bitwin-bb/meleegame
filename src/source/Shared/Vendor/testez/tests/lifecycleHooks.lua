@@ -1,3 +1,4 @@
+--!nocheck
 local TestEZ = require(script.Parent.Parent.TestEZ)
 
 local function expectShallowEquals(array1, array2)

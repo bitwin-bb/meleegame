@@ -32,7 +32,7 @@ export type Room = typeof(setmetatable(
 	Room
 ))
 
-local DEFAULT_CONFIG = RoomScaleFactor.sanitizeConfig(((Configs.cameraData :: any).room or {}) :: RoomConfig)
+local DEFAULT_CONFIG = RoomScaleFactor.sanitizeConfig(((Configs.cameraData :: any).room or ({} :: any)) :: RoomConfig)
 local AIR_TILE_ID = BuildServiceUtils.AIR_TILE_ID
 
 local function resolveWorldSpace(): (Vector3?, number?)

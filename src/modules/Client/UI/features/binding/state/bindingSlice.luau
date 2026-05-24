@@ -191,7 +191,7 @@ end
 
 local function setBindingState(stateRaw: any): BindingHintState
 	local current = bindingStateAtom()
-	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {}
+	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else ({} :: any)
 	local nextHints = if source.hints ~= nil then cloneHints(source.hints) else cloneHints(current.hints)
 
 	local nextState: BindingHintState = {

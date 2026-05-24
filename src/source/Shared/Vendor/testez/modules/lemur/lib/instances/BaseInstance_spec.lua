@@ -1,3 +1,4 @@
+--!nocheck
 local Game = import("./Game")
 local Folder = import("./Folder")
 local typeof = import("../functions/typeof")

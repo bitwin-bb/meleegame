@@ -67,7 +67,7 @@ local function useCraftMenuDrag(options: CraftMenuDragOptions?): CraftMenuDragRe
 			dragging.disable()
 			targetOffsetRef.current = offsetRef.current
 		end
-	end, { enabled, dragging.disable })
+	end, ({ enabled, dragging.disable } :: { any }))
 
 	local onDragInputBegan = useEvent(function(_rbx: GuiObject, inputObject: InputObject)
 		if not enabled or not isPrimaryDragInput(inputObject) then
@@ -138,7 +138,7 @@ local function useCraftMenuDrag(options: CraftMenuDragOptions?): CraftMenuDragRe
 			changedConnection:Disconnect()
 			endedConnection:Disconnect()
 		end
-	end, { enabled, dragging.value, dragging.disable })
+	end, ({ enabled, dragging.value, dragging.disable } :: { any }))
 
 	React.useEffect(function()
 		local connection = RunService.RenderStepped:Connect(function(deltaTime: number)

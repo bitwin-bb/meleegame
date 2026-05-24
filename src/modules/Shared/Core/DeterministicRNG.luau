@@ -29,6 +29,10 @@ export type RNG = {
 
 export type NoiseWrapper = {
 	seed: number,
+	Sample2D: (self: NoiseWrapper, x: number, y: number, scale: number?) -> number,
+	Sample3D: (self: NoiseWrapper, x: number, y: number, z: number, scale: number?) -> number,
+	Fbm2D: (self: NoiseWrapper, x: number, y: number, octaves: number?, persistence: number?, lacunarity: number?) -> number,
+	Fbm3D: (self: NoiseWrapper, x: number, y: number, z: number, octaves: number?, persistence: number?, lacunarity: number?) -> number,
 	sample2D: (self: NoiseWrapper, x: number, y: number, scale: number?) -> number,
 	sample3D: (self: NoiseWrapper, x: number, y: number, z: number, scale: number?) -> number,
 	fbm2D: (self: NoiseWrapper, x: number, y: number, octaves: number?, persistence: number?, lacunarity: number?) -> number,
@@ -142,7 +146,7 @@ function DeterministicRNG.New(seedRaw: any): RNG
 		state = seed,
 		initialSeed = seed,
 	}, RNG)
-	return self
+	return self :: any
 end
 
 function RNG.NextUInt32(self: RNG): number

@@ -119,7 +119,7 @@ local hints = {
 		[Enum.KeyCode.DPadRight] = "rbxassetid://70780762403440",
 	},
 	mobile = {
-		[Enum.KeyCode.TouchPosition] = "rbxassetid://104057783653073",
+		[Enum.UserInputType.Touch] = "rbxassetid://104057783653073",
 	},
 }
 

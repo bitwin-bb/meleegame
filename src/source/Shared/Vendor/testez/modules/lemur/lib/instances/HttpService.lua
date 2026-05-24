@@ -1,3 +1,4 @@
+--!nocheck
 local BaseInstance = import("./BaseInstance")
 local typeof = import("../functions/typeof")
 local json = import("../json")

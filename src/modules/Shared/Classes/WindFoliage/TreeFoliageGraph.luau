@@ -201,18 +201,15 @@ function TreeFoliageGraph.New(modelRaw: any, configRaw: any): TreeFoliageGraph?
 			continue
 		end
 
-		local nodeIndex = descendant:GetAttribute(NODE_INDEX_ATTRIBUTE)
-		if typeof(nodeIndex) ~= "number" then
+		local nodeIndexRaw = descendant:GetAttribute(NODE_INDEX_ATTRIBUTE)
+		if typeof(nodeIndexRaw) ~= "number" then
 			continue
 		end
-		local parentIndex = descendant:GetAttribute(PARENT_INDEX_ATTRIBUTE)
-		if typeof(parentIndex) ~= "number" then
-			parentIndex = 0
-		end
-		local depth = descendant:GetAttribute(DEPTH_ATTRIBUTE)
-		if typeof(depth) ~= "number" then
-			depth = 0
-		end
+		local nodeIndex = nodeIndexRaw :: number
+		local parentIndexRaw = descendant:GetAttribute(PARENT_INDEX_ATTRIBUTE)
+		local parentIndex = if typeof(parentIndexRaw) == "number" then parentIndexRaw :: number else 0
+		local depthRaw = descendant:GetAttribute(DEPTH_ATTRIBUTE)
+		local depth = if typeof(depthRaw) == "number" then depthRaw :: number else 0
 
 		if nodeType == "Trunk" then
 			trunkPart = descendant

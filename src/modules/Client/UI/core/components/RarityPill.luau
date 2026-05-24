@@ -27,7 +27,7 @@ export type RarityPillProps = {
 
 local e: typeof(React.createElement) = React.createElement
 
-local RARITY_COLORS: { [Rarity]: Color3 } = {
+local RARITY_COLORS: { [string]: Color3 } = {
 	Common = Color3.fromRGB(171, 177, 186),
 	Uncommon = Color3.fromRGB(104, 223, 117),
 	Rare = Color3.fromRGB(74, 163, 255),
@@ -40,7 +40,7 @@ local RarityPill = {}
 
 function RarityPill.ResolveColor(rarityRaw: any, fallback: Color3?): Color3
 	if typeof(rarityRaw) == "string" then
-		local color = (RARITY_COLORS :: { [string]: Color3 })[rarityRaw]
+		local color = (RARITY_COLORS :: { [string]: Color3? })[rarityRaw]
 		if color ~= nil then
 			return color
 		end
@@ -49,7 +49,7 @@ function RarityPill.ResolveColor(rarityRaw: any, fallback: Color3?): Color3
 end
 
 function RarityPill.GetColors(): { [Rarity]: Color3 }
-	return table.clone(RARITY_COLORS)
+	return table.clone(RARITY_COLORS) :: any
 end
 
 function RarityPill.Component(props: RarityPillProps): React.ReactNode

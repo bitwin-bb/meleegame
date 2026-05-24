@@ -1,3 +1,4 @@
+--!nocheck
 return function()
 	describe("When a failure occurs in an it block", function()
 		it("Should fail", function()

@@ -24,7 +24,7 @@ type MatterDebugMenuClient = typeof(MatterDebugMenuClient) & {
 	initialized: boolean,
 }
 
-function MatterDebugMenuClient:ApplyEnabledState()
+function MatterDebugMenuClient.ApplyEnabledState(self: MatterDebugMenuClient)
 	local localPlayer = self.localPlayer
 	local debugger = self.debugger
 	if localPlayer == nil or debugger == nil then
@@ -40,7 +40,7 @@ function MatterDebugMenuClient:ApplyEnabledState()
 	end
 end
 
-function MatterDebugMenuClient:Init()
+function MatterDebugMenuClient.Init(self: MatterDebugMenuClient)
 	if self.initialized then
 		return
 	end
@@ -50,13 +50,13 @@ function MatterDebugMenuClient:Init()
 		return
 	end
 
-	local world = Matter.World.new()
-	local loop = Matter.Loop.new(world, self)
-	local debugger = Matter.Debugger.new(Plasma)
+	local world = (Matter.World.new :: any)()
+	local loop = (Matter.Loop.new :: any)(world, self)
+	local debugger = (Matter.Debugger.new :: any)(Plasma)
 	debugger:autoInitialize(loop)
-	local connection = loop:begin({
+	local connection: ConnectionMap = loop:begin({
 		default = RunService.Heartbeat,
-	})
+	}) :: any
 	local attributeConnection = localPlayer
 		:GetAttributeChangedSignal(CmdrUtils.MATTER_DEBUG_MENU_ENABLED_ATTRIBUTE)
 		:Connect(function()
@@ -73,7 +73,7 @@ function MatterDebugMenuClient:Init()
 	self:applyEnabledState()
 end
 
-function MatterDebugMenuClient:Destroy()
+function MatterDebugMenuClient.Destroy(self: MatterDebugMenuClient)
 	if self.attributeConnection ~= nil then
 		self.attributeConnection:Disconnect()
 		self.attributeConnection = nil
@@ -94,3 +94,4 @@ MatterDebugMenuClient.init = MatterDebugMenuClient.Init
 MatterDebugMenuClient.destroy = MatterDebugMenuClient.Destroy
 
 return MatterDebugMenuClient :: MatterDebugMenuClient
+

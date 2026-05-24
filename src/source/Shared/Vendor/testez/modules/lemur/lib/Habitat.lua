@@ -1,3 +1,4 @@
+--!nocheck
 --[[
 	A Lemur Habitat is an instance of an emulated Roblox environment.
 
@@ -23,7 +24,7 @@ function Habitat.new(settings)
 	local habitat = {
 		game = Game:new(),
 		taskScheduler = TaskScheduler.new(),
-		settings = settings or {},
+		settings = settings or ({} :: any),
 		environment = nil,
 	}
 

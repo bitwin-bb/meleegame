@@ -24,10 +24,14 @@ export type LongPressResult = {
 }
 
 local DEFAULT_DURATION_SECONDS = 0.45
-local DEFAULT_INPUT_TYPES = {
+local DEFAULT_INPUT_TYPES: { Enum.UserInputType } = {
 	Enum.UserInputType.MouseButton1,
 	Enum.UserInputType.Touch,
 }
+
+local function dependencyArray(...: any): { any }
+	return { ... }
+end
 
 local function sanitizeDurationSeconds(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
@@ -37,7 +41,7 @@ local function sanitizeDurationSeconds(valueRaw: any): number
 end
 
 local function matchesInputType(inputObject: InputObject, inputTypesRaw: { Enum.UserInputType }?): boolean
-	local inputTypes = if type(inputTypesRaw) == "table" and #inputTypesRaw > 0
+	local inputTypes: { Enum.UserInputType } = if type(inputTypesRaw) == "table" and #inputTypesRaw > 0
 		then inputTypesRaw
 		else DEFAULT_INPUT_TYPES
 	for _, inputType in inputTypes do
@@ -90,7 +94,7 @@ local function useLongPress(options: LongPressOptions?): LongPressResult
 		local inputObject = if resolvedInputObject ~= nil then resolvedInputObject else activeInputRef.current
 		cancel()
 		onPressEnd(didLongPress, inputObject)
-	end, { cancel, onPressEnd })
+	end, dependencyArray(cancel, onPressEnd))
 
 	local beginPress = React.useCallback(function(inputObject: InputObject)
 		if not enabled or not matchesInputType(inputObject, inputTypes) then
@@ -127,21 +131,21 @@ local function useLongPress(options: LongPressOptions?): LongPressResult
 				finishPress(endedInputObject)
 			end
 		end)
-	end, {
+	end, dependencyArray(
 		enabled,
 		inputTypes,
 		cancel,
 		durationSeconds,
 		onPressStart,
 		onLongPress,
-		finishPress,
-	})
+		finishPress
+	))
 
 	React.useEffect(function()
 		return function()
 			cancel()
 		end
-	end, { cancel })
+	end, dependencyArray(cancel))
 
 	return {
 		pressing = pressing,

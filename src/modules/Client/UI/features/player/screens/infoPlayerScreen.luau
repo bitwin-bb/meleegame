@@ -175,7 +175,7 @@ local function PopupEntry(props: PopupEntryProps): React.ReactNode
 	local renderedTextSize = math.max(6, math.floor(textSize * popUpAnimation.scale + 0.5))
 
 	local anchorPart, setAnchorPart = React.useState(nil :: BasePart?)
-	React.useEffect(function()
+	;(React.useEffect :: any)(function(): (() -> ())?
 		local anchorPosition = if targetRootPart ~= nil then targetRootPart.Position else popup.targetPosition
 		if anchorPosition == nil then
 			setAnchorPart(nil)
@@ -206,7 +206,7 @@ local function PopupEntry(props: PopupEntryProps): React.ReactNode
 				return currentAnchorPart
 			end)
 		end
-	end, { targetRootPart, popup.id, popup.targetPosition })
+	end, ({ targetRootPart, popup.id, popup.targetPosition } :: { any }))
 
 	local adornee = anchorPart
 	if adornee == nil then
@@ -258,7 +258,7 @@ local function createPopupElement(
 end
 
 return function(props: InfoPlayerScreenProps?): React.ReactNode
-	local resolvedProps: InfoPlayerScreenProps = if props ~= nil then props else {}
+	local resolvedProps: InfoPlayerScreenProps = if props ~= nil then props else ({} :: any)
 	local localPlayer = Players.LocalPlayer
 	local infoPlayerState = (useStore(infoPlayerSlice.infoPlayerStateAtom) :: InfoPlayerState?)
 		or infoPlayerSlice.infoPlayerStateAtom()

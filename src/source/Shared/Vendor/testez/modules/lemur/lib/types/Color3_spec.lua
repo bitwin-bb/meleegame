@@ -1,3 +1,4 @@
+--!nocheck
 local Color3 = import("./Color3")
 
 local typeof = import("../functions/typeof")

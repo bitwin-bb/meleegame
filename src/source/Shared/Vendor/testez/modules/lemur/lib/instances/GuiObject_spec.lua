@@ -1,3 +1,4 @@
+--!nocheck
 local ScreenGui = import("./ScreenGui")
 local UDim2 = import("../types/UDim2")
 local typeof = import("../functions/typeof")

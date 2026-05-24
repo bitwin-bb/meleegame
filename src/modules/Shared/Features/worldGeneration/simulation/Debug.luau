@@ -17,7 +17,7 @@ local function isFiniteNumber(value: any): boolean
 end
 
 function Debug.New(configRaw: any)
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local self = setmetatable({
 		enabled = (config :: any).enabled == true,
 		profilingEnabled = (config :: any).profilingEnabled == true,
@@ -29,11 +29,11 @@ function Debug.New(configRaw: any)
 	return self
 end
 
-function Debug:IsEnabled(): boolean
+function Debug.IsEnabled(self: Debug): boolean
 	return self.enabled
 end
 
-function Debug:BeginFrameScope(label: string): number?
+function Debug.BeginFrameScope(self: Debug, label: string): number?
 	if not self.enabled or not self.profilingEnabled then
 		return nil
 	end
@@ -41,7 +41,7 @@ function Debug:BeginFrameScope(label: string): number?
 	return self.frameTimers[label]
 end
 
-function Debug:EndFrameScope(label: string, token: number?)
+function Debug.EndFrameScope(self: Debug, label: string, token: number?)
 	if not self.enabled or not self.profilingEnabled then
 		return
 	end
@@ -54,7 +54,7 @@ function Debug:EndFrameScope(label: string, token: number?)
 	self.frameTimers[label] = nil
 end
 
-function Debug:IncrementCounter(name: string, amountRaw: any)
+function Debug.IncrementCounter(self: Debug, name: string, amountRaw: any)
 	if not self.enabled then
 		return
 	end
@@ -62,7 +62,7 @@ function Debug:IncrementCounter(name: string, amountRaw: any)
 	self.counters[name] = (self.counters[name] or 0) + amount
 end
 
-function Debug:SetCounter(name: string, valueRaw: any)
+function Debug.SetCounter(self: Debug, name: string, valueRaw: any)
 	if not self.enabled then
 		return
 	end
@@ -70,7 +70,7 @@ function Debug:SetCounter(name: string, valueRaw: any)
 	self.counters[name] = value
 end
 
-function Debug:ResetFrameCounters()
+function Debug.ResetFrameCounters(self: Debug)
 	if not self.enabled then
 		return
 	end
@@ -78,14 +78,14 @@ function Debug:ResetFrameCounters()
 	table.clear(self.frameTimers)
 end
 
-function Debug:GetCounters(): { [string]: number }
+function Debug.GetCounters(self: Debug): { [string]: number }
 	if not self.enabled then
 		return {}
 	end
 	return table.clone(self.counters)
 end
 
-function Debug:ValidateChunkArrays(chunkRaw: any): boolean
+function Debug.ValidateChunkArrays(self: Debug, chunkRaw: any): boolean
 	if not self.enabled then
 		return true
 	end
@@ -129,7 +129,7 @@ function Debug:ValidateChunkArrays(chunkRaw: any): boolean
 	return valid
 end
 
-function Debug:EnsureVisualFolder(parentRaw: any): Folder?
+function Debug.EnsureVisualFolder(self: Debug, parentRaw: any): Folder?
 	if not self.enabled then
 		return nil
 	end
@@ -144,15 +144,16 @@ function Debug:EnsureVisualFolder(parentRaw: any): Folder?
 		return existing
 	end
 
-	local folder = TileComponent.CreateFolder({
+	local folder = TileComponent.CreateFolder(({
 		name = DEFAULT_FOLDER_NAME,
 		parent = parent,
-	})
+	} :: any)) :: any
+	folder = folder :: Folder
 	self.visualFolder = folder
 	return folder
 end
 
-function Debug:DrawChunkBox(chunkKey: string, center: Vector3, size: Vector3, color: Color3?)
+function Debug.DrawChunkBox(self: Debug, chunkKey: string, center: Vector3, size: Vector3, color: Color3?)
 	if not self.enabled then
 		return
 	end
@@ -181,7 +182,7 @@ function Debug:DrawChunkBox(chunkKey: string, center: Vector3, size: Vector3, co
 	part.Color = color or Color3.fromRGB(75, 190, 255)
 end
 
-function Debug:ClearChunkBox(chunkKey: string)
+function Debug.ClearChunkBox(self: Debug, chunkKey: string)
 	local part = self.chunkVisuals[chunkKey]
 	if part ~= nil then
 		self.chunkVisuals[chunkKey] = nil
@@ -189,7 +190,7 @@ function Debug:ClearChunkBox(chunkKey: string)
 	end
 end
 
-function Debug:Destroy()
+function Debug.Destroy(self: Debug)
 	for chunkKey, part in self.chunkVisuals do
 		self.chunkVisuals[chunkKey] = nil
 		part:Destroy()
@@ -217,3 +218,4 @@ Debug.clearChunkBox = Debug.ClearChunkBox
 Debug.destroy = Debug.Destroy
 
 return Debug
+

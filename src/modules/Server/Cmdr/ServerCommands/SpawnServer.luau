@@ -20,7 +20,8 @@ local function formatReason(reasonRaw: any): string
 	if typeof(reasonRaw) ~= "string" or reasonRaw == "" then
 		return "unknown reason"
 	end
-	return string.lower(string.gsub(reasonRaw, "_", " "))
+	local normalized = string.gsub(reasonRaw, "_", " ")
+	return string.lower(normalized)
 end
 
 local function spawnBossForPlayer(entity: EntityEntry, player: Player, spawnIndex: number): (boolean, string?)

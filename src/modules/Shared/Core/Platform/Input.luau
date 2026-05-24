@@ -163,11 +163,11 @@ local function normalizeBindings(bindingsRaw: any): { InputBinding }
 		if keyCode == nil and inputType == nil then
 			continue
 		end
-		out[#out + 1] = {
+		out[#out + 1] = ({
 			keyCode = keyCode,
 			inputType = inputType,
 			deadzone = bindingRaw.deadzone,
-		}
+		} :: any)
 	end
 	return out
 end
@@ -199,7 +199,7 @@ local function hasDeadzonePassed(input: InputObject, deadzone: number): boolean
 end
 
 function Input.New(configRaw: InputConfig?): Input
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local self = setmetatable({
 		eventBus = config.eventBus,
 		eventChannel = normalizeEventName(config.eventChannel, "input"),
@@ -493,7 +493,7 @@ function Input.BindAction(self: Input, actionNameRaw: any, callbackRaw: any, opt
 		return false
 	end
 
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else {}
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
 	local actionName = actionNameRaw :: string
 	local layer = normalizeLayer(options.layer)
 	local action: ActionRecord = {

@@ -26,7 +26,7 @@ type JanitorClass = {
 
 local BreathServiceClient = {}
 
-function BreathServiceClient:EnsureEffects()
+function BreathServiceClient.EnsureEffects(self: BreathServiceClient)
 	if self.colorCorrection == nil or self.colorCorrection.Parent == nil then
 		local effect = Instance.new("ColorCorrectionEffect")
 		effect.Name = HttpService:GenerateGUID(false)
@@ -44,7 +44,7 @@ function BreathServiceClient:EnsureEffects()
 	end
 end
 
-function BreathServiceClient:ApplyFeedback()
+function BreathServiceClient.ApplyFeedback(self: BreathServiceClient)
 	self:ensureEffects()
 	local state = self.state
 	local correction = self.colorCorrection
@@ -78,19 +78,19 @@ function BreathServiceClient:ApplyFeedback()
 	blur.Size = 5 * strength + if state.isDrowning then 4 else 0
 end
 
-function BreathServiceClient:OnRenderStep(deltaTime: number)
+function BreathServiceClient.OnRenderStep(self: BreathServiceClient, deltaTime: number)
 	if self.eventPulse > 0 then
 		self.eventPulse = math.max(0, self.eventPulse - deltaTime * 2.4)
 	end
 	self:applyFeedback()
 end
 
-function BreathServiceClient:ApplyState(stateRaw: any)
+function BreathServiceClient.ApplyState(self: BreathServiceClient, stateRaw: any)
 	self.state = BreathServiceUtils.createState(stateRaw, self.state)
 	self.stateChanged:Fire(BreathServiceUtils.cloneState(self.state))
 end
 
-function BreathServiceClient:OnEvent(payloadRaw: any)
+function BreathServiceClient.OnEvent(self: BreathServiceClient, payloadRaw: any)
 	if typeof(payloadRaw) ~= "table" then
 		return
 	end
@@ -101,19 +101,19 @@ function BreathServiceClient:OnEvent(payloadRaw: any)
 	self.eventReceived:Fire(payload)
 end
 
-function BreathServiceClient:RequestSync()
+function BreathServiceClient.RequestSync(self: BreathServiceClient)
 	self.networker:fire(BreathServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
-function BreathServiceClient:GetState(): BreathServiceState
+function BreathServiceClient.GetState(self: BreathServiceClient): BreathServiceState
 	return BreathServiceUtils.cloneState(self.state)
 end
 
-function BreathServiceClient:IsReady(): boolean
+function BreathServiceClient.IsReady(self: BreathServiceClient): boolean
 	return self.state.ready == true
 end
 
-function BreathServiceClient:Init()
+function BreathServiceClient.Init(self: BreathServiceClient)
 	self.localPlayer = Players.LocalPlayer
 	self.networker = Networker.client.new("BreathService", self)
 	self.janitor = Janitor.new()
@@ -146,7 +146,7 @@ function BreathServiceClient:Init()
 	self:requestSync()
 end
 
-function BreathServiceClient:Destroy()
+function BreathServiceClient.Destroy(self: BreathServiceClient)
 	if self.janitor ~= nil then
 		self.janitor:Destroy()
 	end
@@ -178,3 +178,4 @@ type BreathServiceClient = typeof(BreathServiceClient) & {
 }
 
 return BreathServiceClient :: BreathServiceClient
+

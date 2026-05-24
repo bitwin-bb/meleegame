@@ -39,7 +39,7 @@ local function magnitudeSq(value: SpringValue): number
 	if typeof(value) == "number" then
 		return value * value
 	end
-	return value:Dot(value)
+	return (value :: any):Dot(value)
 end
 
 function Spring.state<T>(value: T, velocity: T?): State<T>

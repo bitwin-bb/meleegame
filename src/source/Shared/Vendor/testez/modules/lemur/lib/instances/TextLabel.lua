@@ -1,3 +1,4 @@
+--!nocheck
 local Color3 = import("../types/Color3")
 local Font = import("../Enum/Font")
 local GuiObject = import("./GuiObject")

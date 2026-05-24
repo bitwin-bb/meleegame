@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 local Maid = loader("Maid")
 local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Core.Platform.InstanceUtils)
 local TagBinder = require(script.Parent.TagBinder)
@@ -62,7 +62,7 @@ function ModelBinder.CollectLights(instanceRaw: any): { Instance }
 	end
 
 	local instance = instanceRaw :: Instance
-	local lights = {}
+	local lights: { Instance } = {}
 	for _, descendant in instance:GetDescendants() do
 		if descendant:IsA("PointLight") or descendant:IsA("SpotLight") or descendant:IsA("SurfaceLight") then
 			lights[#lights + 1] = descendant
@@ -179,7 +179,7 @@ function ModelBinder.ResolveWorldPosition(instanceRaw: any): Vector3?
 	return nil
 end
 
-function ModelBinder.new(instanceRaw: any, contextRaw: any, classRaw: any?): ModelBinder
+function ModelBinder.new(instanceRaw: any, contextRaw: any, classRaw: any?): any
 	if typeof(instanceRaw) ~= "Instance" then
 		error("ModelBinder.new expects an Instance")
 	end

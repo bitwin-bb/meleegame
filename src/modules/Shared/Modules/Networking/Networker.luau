@@ -29,32 +29,12 @@ export type NetworkTag = string | Instance
 local NetworkerClient = {}
 NetworkerClient.__index = NetworkerClient
 
-export type Client = typeof(setmetatable(
-	{} :: {
-		networkTag: string,
-		module: { [string]: any },
-		disconnect: (() -> ())?,
-		changedSignals: { [string]: Signal.Signal<any> },
-		destroyed: boolean,
-	},
-	NetworkerClient
-))
+export type Client = any
 
 local NetworkerServer = {}
 NetworkerServer.__index = NetworkerServer
 
-export type Server = typeof(setmetatable(
-	{} :: {
-		networkTag: string,
-		module: { [string]: any }?,
-		clientAccess: ClientAccess?,
-		instance: Instance?,
-		instanceConn: RBXScriptConnection?,
-		recipients: { Player }?,
-		destroyed: boolean,
-	},
-	NetworkerServer
-))
+export type Server = any
 
 local serverRegistry: { [string]: Server } = {}
 local serverListenersBound = false
@@ -285,14 +265,15 @@ function NetworkerServer.new(networkTag: NetworkTag, module: { [string]: any }?,
 	local instanceConn: RBXScriptConnection? = nil
 
 	if typeof(networkTag) == "Instance" then
-		instance = networkTag :: Instance
+		local resolvedInstance = networkTag :: Instance
+		instance = resolvedInstance
 		assert(
-			instance:GetAttribute(INSTANCE_ATTRIBUTE) == nil,
+			resolvedInstance:GetAttribute(INSTANCE_ATTRIBUTE) == nil,
 			"NetworkerServer instance already has a networkTag attribute"
 		)
 
 		resolvedTag = HttpService:GenerateGUID(false):sub(1, 13)
-		instance:SetAttribute(INSTANCE_ATTRIBUTE, resolvedTag)
+		resolvedInstance:SetAttribute(INSTANCE_ATTRIBUTE, resolvedTag)
 	end
 
 	assert(serverRegistry[resolvedTag] == nil, "NetworkerServer with the same name already exists")

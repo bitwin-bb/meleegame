@@ -167,7 +167,7 @@ function TagQuery.GetTagged(self: TagQuery, tagRaw: any): { any }
 		self:_refreshTag(tagRaw)
 	end
 	self:_ensureTagSignals(tagRaw)
-	return self.tagLists[tagRaw] or {}
+	return self.tagLists[tagRaw] or ({} :: any)
 end
 
 function TagQuery.HasTag(self: TagQuery, instance: any, tagRaw: any): boolean

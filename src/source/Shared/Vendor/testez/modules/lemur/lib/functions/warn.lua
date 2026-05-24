@@ -1,3 +1,4 @@
+--!nocheck
 local function warn(...)
 	local count = select("#", ...)
 	for i = 1, count do

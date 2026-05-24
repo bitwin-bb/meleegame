@@ -1,3 +1,4 @@
+--!nocheck
 local CoreGui = import("./CoreGui")
 
 describe("instances.CoreGui", function()

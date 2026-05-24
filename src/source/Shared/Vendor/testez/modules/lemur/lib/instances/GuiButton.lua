@@ -1,3 +1,4 @@
+--!nocheck
 local GuiObject = import("./GuiObject")
 local InstanceProperty = import("../InstanceProperty")
 local Signal = import("../Signal")

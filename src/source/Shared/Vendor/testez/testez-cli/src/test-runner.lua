@@ -1,3 +1,4 @@
+--!nocheck
 --[[
 	This test runner is invoked in all the environments that we want to test our
 	project in.

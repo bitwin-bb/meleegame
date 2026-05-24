@@ -82,7 +82,8 @@ local function bindPointerTrackingWithInputModule(): boolean
 		end
 		local inputObject = if typeof(context) == "table" then context.input else nil
 		if typeof(inputObject) == "InputObject" and shouldTrackInput(inputObject) then
-			infoState.updateMousePosition(toGuiPosition((inputObject :: InputObject).Position))
+			local position = (inputObject :: InputObject).Position
+			infoState.updateMousePosition(toGuiPosition(Vector2.new(position.X, position.Y)))
 		end
 		return false
 	end, {
@@ -134,7 +135,7 @@ function infoThunks.Start(): () -> ()
 	if not boundWithInputModule then
 		runtime.inputChangedConnection = UserInputService.InputChanged:Connect(function(inputObject: InputObject)
 			if shouldTrackInput(inputObject) then
-				infoState.updateMousePosition(toGuiPosition(inputObject.Position))
+				infoState.updateMousePosition(toGuiPosition(Vector2.new(inputObject.Position.X, inputObject.Position.Y)))
 			end
 		end)
 	end

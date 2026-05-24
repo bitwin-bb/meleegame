@@ -1,3 +1,4 @@
+--!nocheck
 -- luacheck: globals describe beforeAll it expect
 
 return function()

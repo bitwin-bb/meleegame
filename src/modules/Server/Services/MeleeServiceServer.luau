@@ -4,19 +4,19 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local BossServiceServer = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceServer)
-local InventoryServiceServer = require(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
+local BossServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceServer)
+local InventoryServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Melee = require(script:FindFirstAncestor("game").Shared.Classes.Melee)
 local MeleeServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.MeleeServiceUtils)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local NpcServiceServer = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceServer)
-local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
-local RagdollServiceServer = require(script:FindFirstAncestor("game").Server.Services.RagdollServiceServer)
+local NpcServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceServer)
+local PlayerServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
+local RagdollServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.RagdollServiceServer)
 local RaycastHitbox = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("RaycastHitbox"))
-local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 
 type MeleeWeaponConfig = MeleeServiceUtils.MeleeWeaponConfig
 type InventoryState = InventoryServiceUtils.InventoryState
@@ -382,7 +382,7 @@ function MeleeServiceServer.Init(self: MeleeServiceServer)
 	self.inventoryService = InventoryServiceServer :: InventoryServiceServerObject
 	self.ragdollService = RagdollServiceServer :: RagdollServiceServerObject
 	self.playerRuntimes = {}
-	self.binders = NevermoreSupport.getService(ServerBinderSupport)
+	;(self :: any).binders = NevermoreSupport.getService(ServerBinderSupport)
 
 	for _, player in Players:GetPlayers() do
 		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
@@ -870,7 +870,7 @@ function MeleeServiceServer.SetEquippedWeaponConfig(
 	if runtime.inputHeld then
 		self:enforceInputAllowed(player, runtime, "EquipWhileHeld")
 		if runtime.inputHeld then
-			runtime.meleeController:inputBegan("EquipWhileHeld")
+			(runtime.meleeController :: MeleeController):inputBegan("EquipWhileHeld")
 		end
 	end
 end

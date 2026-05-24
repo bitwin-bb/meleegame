@@ -48,7 +48,7 @@ return function(props: LeftSideBarProps)
 	local inventoryTokens = responsive.tokens.inventory
 	local inventoryHudState = (useStore(inventorySlice.inventoryHudStateAtom) :: InventoryHudState?)
 		or inventorySlice.getInventoryHudState()
-	local buttons = props.buttons or {}
+	local buttons = props.buttons or ({} :: any)
 	local zIndex = props.zIndex or 10
 	local buttonListChildren = {
 		e("UIPadding", {

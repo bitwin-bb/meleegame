@@ -89,7 +89,7 @@ local function useTimeout(callbackRaw: any, delaySecondsRaw: any, options: Timeo
 		else
 			cancel()
 		end
-	end, { enabled, autoStart, delaySeconds, restart, cancel })
+	end, ({ enabled, autoStart, delaySeconds, restart, cancel } :: { any }))
 
 	React.useEffect(function()
 		return function()

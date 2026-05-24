@@ -1,3 +1,4 @@
+--!nocheck
 local baste = require((...) .. ".baste")
 
 local Habitat = baste.import("./Habitat")

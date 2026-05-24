@@ -44,7 +44,7 @@ return function(props: RightSideBarProps)
 	local responsive = Responsive.useResponsiveMetrics()
 	local hudTokens = responsive.tokens.hud
 	local meterTokens = responsive.tokens.meter
-	local buttons = props.buttons or {}
+	local buttons = props.buttons or ({} :: any)
 	local zIndex = props.zIndex or 10
 	local buttonListChildren = {
 		e("UIPadding", {

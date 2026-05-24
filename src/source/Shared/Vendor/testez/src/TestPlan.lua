@@ -1,3 +1,4 @@
+--!nocheck
 --[[
 	Represents a tree of tests that have been loaded but not necessarily
 	executed yet.

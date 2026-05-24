@@ -21,7 +21,7 @@ function EnemySubject.Resolve(optionsRaw: EnemySubjectOptions?): Target.Resolved
 end
 
 function EnemySubject.New(optionsRaw: EnemySubjectOptions?): EnemySubjectOptions
-	return optionsRaw or {}
+	return optionsRaw or ({} :: any)
 end
 
 EnemySubject.resolve = EnemySubject.Resolve

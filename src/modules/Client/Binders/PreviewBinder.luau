@@ -14,7 +14,7 @@ local buildServiceClient = nil
 
 local function getBuildServiceClient()
 	if buildServiceClient == nil then
-		buildServiceClient = require(script:FindFirstAncestor("game").Client.Services.BuildServiceClient)
+		buildServiceClient = (require :: any)(script:FindFirstAncestor("game").Client.Services.BuildServiceClient)
 	end
 	return buildServiceClient
 end

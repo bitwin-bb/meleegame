@@ -5,7 +5,7 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local Animations = require(script.Parent.Animations)
 local BuildAnimationMelee = require(script:FindFirstAncestor("game").Shared.Game.Render.BuildAnimationMelee)
 
-local pickaxeAnimationIds = (((Animations :: any).Items or {}).Pickaxes or {}) :: { [string]: any }
+local pickaxeAnimationIds = (((Animations :: any).Items or ({} :: any)).Pickaxes or ({} :: any)) :: { [string]: any }
 
 local rawPickaxes = {
 	["CopperPickaxe"] = {
@@ -20,8 +20,8 @@ local rawPickaxes = {
 
 local pickaxes = {}
 for itemId, definition in rawPickaxes do
-	local enrichedDefinition = Sift.Dictionary.copy(definition)
-	local pickaxeAnimations = BuildAnimationMelee(pickaxeAnimationIds[itemId], {
+	local enrichedDefinition = Sift.Dictionary.copy(definition :: any)
+	local pickaxeAnimations = BuildAnimationMelee((pickaxeAnimationIds :: any)[itemId], {
 		swingPriority = Enum.AnimationPriority.Action,
 		returnNilIfEmpty = true,
 	})

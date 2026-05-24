@@ -46,7 +46,7 @@ end
 
 local function setBiomeState(stateRaw: any): BiomeState
 	local current = biomeStateAtom()
-	local source = if typeof(stateRaw) == "table" then stateRaw else {}
+	local source = if typeof(stateRaw) == "table" then stateRaw else ({} :: any)
 	local visible = (source :: any).visible == true
 	local biomeKey = sanitizeBiomeKey((source :: any).biomeKey)
 	local biomeName = sanitizeBiomeName((source :: any).biomeName, current.biomeName)
@@ -81,7 +81,7 @@ end
 
 local function showBiomeName(payloadRaw: any): BiomeState
 	local current = biomeStateAtom()
-	local payload = if typeof(payloadRaw) == "table" then payloadRaw else {}
+	local payload = if typeof(payloadRaw) == "table" then payloadRaw else ({} :: any)
 	local biomeKey = sanitizeBiomeKey((payload :: any).biomeKey)
 	local biomeName = sanitizeBiomeName((payload :: any).biomeName, current.biomeName)
 

@@ -19,6 +19,9 @@ export type ObjectPool<T> = {
 	acquire: (self: ObjectPool<T>) -> T,
 	release: (self: ObjectPool<T>, value: T) -> (),
 	destroy: (self: ObjectPool<T>) -> (),
+	Acquire: (self: ObjectPool<T>) -> T,
+	Release: (self: ObjectPool<T>, value: T) -> (),
+	Destroy: (self: ObjectPool<T>) -> (),
 	available: number,
 	inUse: number,
 }
@@ -43,7 +46,7 @@ local function ensureNumberArrayLength(array: { number }, length: number, fillVa
 end
 
 function Cache.New(configRaw: any)
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local self = setmetatable({
 		tablePool = {} :: { { [any]: any } },
 		numberArrayPool = {} :: { { number } },

@@ -1,3 +1,4 @@
+--!nocheck
 local BaseInstance = import("./BaseInstance")
 local validateType = import("../validateType")
 local ContextActionService = BaseInstance:extend("ContextActionService")

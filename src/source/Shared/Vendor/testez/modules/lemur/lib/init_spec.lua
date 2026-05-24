@@ -1,3 +1,4 @@
+--!nocheck
 local lemur = require("lib")
 
 describe("init", function()

@@ -149,8 +149,8 @@ local function springStep(position: number, velocity: number, target: number, dt
 end
 
 function UISpringAnimator.New(configRaw: AnimatorConfig?): UISpringAnimator
-	local config = if typeof(configRaw) == "table" then configRaw else {}
-	local defaultConfig = if typeof(config.defaultConfig) == "table" then config.defaultConfig else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local defaultConfig = if typeof(config.defaultConfig) == "table" then config.defaultConfig else ({} :: any)
 	local self = setmetatable({
 		tickScheduler = config.tickScheduler,
 		updateHz = clampNumber(config.updateHz, 60, 1, 360),
@@ -336,7 +336,7 @@ function UISpringAnimator.Animate(
 		fillComponents(kind, targetValue, state.target)
 	end
 
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	state.dampingRatio = clampNumber(config.dampingRatio, state.dampingRatio, 0.01, 10)
 	state.frequency = clampNumber(config.frequency, state.frequency, 0.01, 60)
 	state.mass = clampNumber(config.mass, state.mass, 0.001, 1000)

@@ -138,11 +138,12 @@ local function rankToTier(rank: number): TierName
 end
 
 function PerfTier.New(configRaw: PerfTierConfig?): PerfTier
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local defaultTiers = DEFAULT_TIERS :: any
 	local tierTable = {
-		Low = Sift.Dictionary.copy(DEFAULT_TIERS.Low),
-		Medium = Sift.Dictionary.copy(DEFAULT_TIERS.Medium),
-		High = Sift.Dictionary.copy(DEFAULT_TIERS.High),
+		Low = Sift.Dictionary.copy(defaultTiers.Low),
+		Medium = Sift.Dictionary.copy(defaultTiers.Medium),
+		High = Sift.Dictionary.copy(defaultTiers.High),
 	}
 	if typeof(config.tiers) == "table" then
 		for key, value in config.tiers do

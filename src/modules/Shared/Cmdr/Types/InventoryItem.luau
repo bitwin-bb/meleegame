@@ -31,7 +31,7 @@ end
 
 local gameRoot = resolveGameRoot()
 
-local ItemRegistry = require(gameRoot.Shared.Modules.Items.Registry)
+local ItemRegistry = (require :: any)((gameRoot :: any).Shared.Modules.Items.Registry)
 
 type ItemAutocompleteEntry = {
 	Name: string,

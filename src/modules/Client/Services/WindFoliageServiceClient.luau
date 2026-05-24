@@ -3,7 +3,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
+local ClientBinderSupport = (require :: any)(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
 local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
@@ -163,7 +163,7 @@ end
 
 local function resolveConfig(): { [string]: any }
 	local configSource = if typeof(Configs) == "table" then (Configs :: any).windFoliage else nil
-	return if typeof(configSource) == "table" then Sift.Dictionary.copy(configSource) else {}
+	return if typeof(configSource) == "table" then Sift.Dictionary.copy(configSource) else ({} :: any)
 end
 
 function WindFoliageServiceClient.Init(self: any)

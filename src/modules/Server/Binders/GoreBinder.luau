@@ -18,7 +18,7 @@ local goreServiceServer = nil
 
 local function getGoreServiceServer()
 	if goreServiceServer == nil then
-		goreServiceServer = require(script:FindFirstAncestor("game").Server.Services.GoreServiceServer)
+		goreServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.GoreServiceServer)
 	end
 	return goreServiceServer
 end

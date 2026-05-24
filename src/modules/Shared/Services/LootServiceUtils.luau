@@ -1,8 +1,8 @@
 --!strict
 local LootServiceUtils = {}
 
-export type LootRarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary"
-export type LootState = "Dropped" | "Settling" | "Idle" | "Magnetized" | "Collected"
+export type LootRarity = string
+export type LootState = string
 export type LootMetadata = { [string]: any }
 
 export type LootItemConfig = {
@@ -538,7 +538,7 @@ end
 
 function LootServiceUtils.ResolveSettings(dataRaw: any): LootSettings
 	local settingsRaw = if typeof(dataRaw) == "table" then (dataRaw :: { [string]: any }).settings else nil
-	local settings = if typeof(settingsRaw) == "table" then settingsRaw else {}
+	local settings = if typeof(settingsRaw) == "table" then settingsRaw else ({} :: any)
 
 	local scatterRadiusMin = sanitizeNumber(
 		(settings :: any).scatterRadiusMin,
@@ -837,7 +837,7 @@ function LootServiceUtils.RollDropTable(
 	end
 
 	local randomObject = if typeof(randomObjectRaw) == "Random" then (randomObjectRaw :: Random) else Random.new()
-	local context = if typeof(contextRaw) == "table" then contextRaw else {}
+	local context = if typeof(contextRaw) == "table" then contextRaw else ({} :: any)
 	local luck = sanitizeNumber((context :: any).luck, 0, -1, 1)
 	local quantityMultiplier = sanitizeNumber((context :: any).quantityMultiplier, 1, 0.01, 100)
 	local sourceType = sanitizeString((context :: any).sourceType, sanitizeString((dropTable :: any).sourceType, nil))

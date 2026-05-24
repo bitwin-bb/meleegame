@@ -90,10 +90,10 @@ local DEFAULT_FOOTSTEP_KEYFRAMES = {
 }
 local DEFAULT_JUMP_MARKERS = { "Jump", "JumpStart", "Takeoff" }
 local DEFAULT_JUMP_KEYFRAMES = { "Jump", "JumpStart", "Takeoff" }
-local PLAYER_AUDIO = (Audio :: any).Player or {}
-local PLAYER_WALK_AUDIO = PLAYER_AUDIO.Walk or {}
-local PLAYER_JUMP_AUDIO = PLAYER_AUDIO.Jump or {}
-local PLAYER_ANIMATION_REGISTRY = (((Animations :: any).Player or {}).Profiles or {})[DEFAULT_PROFILE_NAME] or {}
+local PLAYER_AUDIO = (Audio :: any).Player or ({} :: any)
+local PLAYER_WALK_AUDIO = PLAYER_AUDIO.Walk or ({} :: any)
+local PLAYER_JUMP_AUDIO = PLAYER_AUDIO.Jump or ({} :: any)
+local PLAYER_ANIMATION_REGISTRY = (((Animations :: any).Player or ({} :: any)).Profiles or ({} :: any))[DEFAULT_PROFILE_NAME] or ({} :: any)
 local PLAYER_ANIMATION_IDS = PLAYER_ANIMATION_REGISTRY :: { [string]: any }
 
 local function normalizeAssetId(rawId: any): string?
@@ -618,14 +618,14 @@ function AnimationServiceUtils.SanitizeFootstepSoundConfig(
 end
 
 function AnimationServiceUtils.SanitizeProfile(profile: any, fallback: AnimationProfile?): AnimationProfile
-	local source = if typeof(profile) == "table" then profile else {}
+	local source = if typeof(profile) == "table" then profile else ({} :: any)
 	local defaultProfile = if fallback then fallback else DEFAULT_PROFILE
 
 	local profileName = if typeof((source :: any).name) == "string" and (source :: any).name ~= ""
 		then (source :: any).name
 		else defaultProfile.name
 
-	local animationsSource = if typeof((source :: any).animations) == "table" then (source :: any).animations else {}
+	local animationsSource = if typeof((source :: any).animations) == "table" then (source :: any).animations else ({} :: any)
 	local sanitizedAnimations: { [AnimationClipName]: AnimationClipConfig } = {}
 
 	for clipName, defaultClip in defaultProfile.animations do
@@ -908,7 +908,8 @@ function AnimationServiceUtils.ResolveFootstepSoundAssetIdAndOptions(
 		return nil, nil
 	end
 
-	local soundAssetId = AnimationServiceUtils.PickRandomSoundAssetId(soundConfig.soundAssetIds)
+	local resolvedSoundConfig = soundConfig :: JumpSoundConfig
+	local soundAssetId = AnimationServiceUtils.PickRandomSoundAssetId(resolvedSoundConfig.soundAssetIds)
 	if not soundAssetId then
 		return nil, nil
 	end
@@ -926,12 +927,13 @@ function AnimationServiceUtils.ResolveJumpSoundAssetIdAndOptions(
 		return nil, nil
 	end
 
-	local soundAssetId = AnimationServiceUtils.PickRandomSoundAssetId(soundConfig.soundAssetIds)
+	local resolvedSoundConfig = soundConfig :: JumpSoundConfig
+	local soundAssetId = AnimationServiceUtils.PickRandomSoundAssetId(resolvedSoundConfig.soundAssetIds)
 	if not soundAssetId then
 		return nil, nil
 	end
 
-	local options = AnimationServiceUtils.CreateJumpPlaybackOptions(rootPart, soundConfig)
+	local options = AnimationServiceUtils.CreateJumpPlaybackOptions(rootPart, resolvedSoundConfig)
 	return soundAssetId, options
 end
 

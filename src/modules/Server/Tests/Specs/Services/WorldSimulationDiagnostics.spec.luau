@@ -1,4 +1,9 @@
 --!strict
+local testEnvironment = getfenv() :: any
+local describe = testEnvironment.describe :: any
+local it = testEnvironment.it :: any
+local expect = testEnvironment.expect :: any
+
 -- selene: allow(undefined_variable)
 
 local Diagnostics = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.Diagnostics)

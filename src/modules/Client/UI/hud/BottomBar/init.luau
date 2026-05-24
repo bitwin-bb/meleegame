@@ -39,7 +39,7 @@ type BottomBarProps = {
 return function(props: BottomBarProps)
 	local responsive = Responsive.useResponsiveMetrics()
 	local hudTokens = responsive.tokens.hud
-	local buttons = props.buttons or {}
+	local buttons = props.buttons or ({} :: any)
 	local zIndex = props.zIndex or 10
 	local children = {
 		e("UIPadding", {

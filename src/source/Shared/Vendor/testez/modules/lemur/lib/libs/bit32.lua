@@ -1,3 +1,4 @@
+--!nocheck
 local exists, bit32 = pcall(require, "bit32")
 
 if exists then

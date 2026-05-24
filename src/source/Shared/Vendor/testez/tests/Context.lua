@@ -1,3 +1,4 @@
+--!nocheck
 local TestEZ = script.Parent.Parent.TestEZ
 local Context = require(TestEZ.Context)
 

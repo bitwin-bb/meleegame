@@ -144,7 +144,7 @@ function TorchTilt.ResolveTileAlignedCFrame(
 	if forwardCandidate.Magnitude <= 1e-4 then
 		forwardCandidate = projectOntoPlane(-surfaceNormal, torchUp)
 	end
-	return buildFrame(tileCenter, torchUp, forwardCandidate), supportKind
+	return buildFrame(tileCenter, torchUp, forwardCandidate), supportKind :: SupportKind
 end
 
 function TorchTilt.ResolveTilePlacement(
@@ -188,12 +188,12 @@ function TorchTilt.ResolveTilePlacement(
 		return nil
 	end
 
-	return {
+	return ({
 		tileX = tileX,
 		tileY = tileY,
-		supportKind = supportKind,
+		supportKind = supportKind :: SupportKind,
 		cframe = alignedCFrame,
-	}
+	} :: any) :: TilePlacement
 end
 
 function TorchTilt.ResolvePlacementCFrame(

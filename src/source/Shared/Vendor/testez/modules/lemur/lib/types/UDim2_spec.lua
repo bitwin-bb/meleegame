@@ -1,3 +1,4 @@
+--!nocheck
 local UDim = import("./UDim")
 local UDim2 = import("./UDim2")
 

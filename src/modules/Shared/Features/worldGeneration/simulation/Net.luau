@@ -217,12 +217,12 @@ function Net.BuildChunkDelta(chunk: { [string]: any }, previousRevision: number?
 		clusterSolidMaskRle = Net.EncodeRle(chunk.clusterSolidMask),
 		clusterSurfaceYRle = Net.EncodeRle(chunk.clusterSurfaceY),
 		entityCount = entityCount,
-		entityIds = if entityCount > 0 then copyEntitySlice(entities.ids, entityCount) else {},
-		entityKinds = if entityCount > 0 then copyEntitySlice(entities.kinds, entityCount) else {},
-		entityFlags = if entityCount > 0 then copyEntitySlice(entities.flags, entityCount) else {},
-		entityPosX = if entityCount > 0 then copyEntitySlice(entities.posX, entityCount) else {},
-		entityPosY = if entityCount > 0 then copyEntitySlice(entities.posY, entityCount) else {},
-		entityPosZ = if entityCount > 0 then copyEntitySlice(entities.posZ, entityCount) else {},
+		entityIds = if entityCount > 0 then copyEntitySlice(entities.ids, entityCount) else ({} :: any),
+		entityKinds = if entityCount > 0 then copyEntitySlice(entities.kinds, entityCount) else ({} :: any),
+		entityFlags = if entityCount > 0 then copyEntitySlice(entities.flags, entityCount) else ({} :: any),
+		entityPosX = if entityCount > 0 then copyEntitySlice(entities.posX, entityCount) else ({} :: any),
+		entityPosY = if entityCount > 0 then copyEntitySlice(entities.posY, entityCount) else ({} :: any),
+		entityPosZ = if entityCount > 0 then copyEntitySlice(entities.posZ, entityCount) else ({} :: any),
 	}
 end
 
@@ -254,12 +254,12 @@ function Net.DecodeChunkDelta(deltaRaw: any): { [string]: any }?
 		clusterSolidMask = clusterSolidMask,
 		clusterSurfaceY = clusterSurfaceY,
 		entityCount = sanitizeInteger((deltaRaw :: any).entityCount, 0, 100000, 0),
-		entityIds = if typeof((deltaRaw :: any).entityIds) == "table" then (deltaRaw :: any).entityIds else {},
-		entityKinds = if typeof((deltaRaw :: any).entityKinds) == "table" then (deltaRaw :: any).entityKinds else {},
-		entityFlags = if typeof((deltaRaw :: any).entityFlags) == "table" then (deltaRaw :: any).entityFlags else {},
-		entityPosX = if typeof((deltaRaw :: any).entityPosX) == "table" then (deltaRaw :: any).entityPosX else {},
-		entityPosY = if typeof((deltaRaw :: any).entityPosY) == "table" then (deltaRaw :: any).entityPosY else {},
-		entityPosZ = if typeof((deltaRaw :: any).entityPosZ) == "table" then (deltaRaw :: any).entityPosZ else {},
+		entityIds = if typeof((deltaRaw :: any).entityIds) == "table" then (deltaRaw :: any).entityIds else ({} :: any),
+		entityKinds = if typeof((deltaRaw :: any).entityKinds) == "table" then (deltaRaw :: any).entityKinds else ({} :: any),
+		entityFlags = if typeof((deltaRaw :: any).entityFlags) == "table" then (deltaRaw :: any).entityFlags else ({} :: any),
+		entityPosX = if typeof((deltaRaw :: any).entityPosX) == "table" then (deltaRaw :: any).entityPosX else ({} :: any),
+		entityPosY = if typeof((deltaRaw :: any).entityPosY) == "table" then (deltaRaw :: any).entityPosY else ({} :: any),
+		entityPosZ = if typeof((deltaRaw :: any).entityPosZ) == "table" then (deltaRaw :: any).entityPosZ else ({} :: any),
 	}
 end
 
@@ -391,9 +391,9 @@ function Net.DecodeLegacyChunkTransitional(legacyRaw: any): { [string]: any }?
 				else fallbackSurface
 		end
 	else
-		local tiles = if typeof(legacy.tiles) == "table" then legacy.tiles :: { any } else {}
-		local biomeIds = if typeof(legacy.biomeIds) == "table" then legacy.biomeIds :: { any } else {}
-		local biomeTypes = if typeof(legacy.biomeTypes) == "table" then legacy.biomeTypes :: { any } else {}
+		local tiles = if typeof(legacy.tiles) == "table" then legacy.tiles :: { any } else ({} :: any)
+		local biomeIds = if typeof(legacy.biomeIds) == "table" then legacy.biomeIds :: { any } else ({} :: any)
+		local biomeTypes = if typeof(legacy.biomeTypes) == "table" then legacy.biomeTypes :: { any } else ({} :: any)
 		local blendWeightsRaw = if typeof(legacy.blendWeights) == "table" then legacy.blendWeights :: { any } else nil
 
 		local layerArea = tileCountX * tileCountY
@@ -530,12 +530,12 @@ function Net.TranslateLegacyChunkToChunkDeltaTransitional(legacyRaw: any): Chunk
 		clusterSolidMaskRle = Net.EncodeRle(decoded.clusterSolidMask),
 		clusterSurfaceYRle = Net.EncodeRle(decoded.clusterSurfaceY),
 		entityCount = entityCount,
-		entityIds = if entityCount > 0 then copyEntitySlice(decoded.entityIds, entityCount) else {},
-		entityKinds = if entityCount > 0 then copyEntitySlice(decoded.entityKinds, entityCount) else {},
-		entityFlags = if entityCount > 0 then copyEntitySlice(decoded.entityFlags, entityCount) else {},
-		entityPosX = if entityCount > 0 then copyEntitySlice(decoded.entityPosX, entityCount) else {},
-		entityPosY = if entityCount > 0 then copyEntitySlice(decoded.entityPosY, entityCount) else {},
-		entityPosZ = if entityCount > 0 then copyEntitySlice(decoded.entityPosZ, entityCount) else {},
+		entityIds = if entityCount > 0 then copyEntitySlice(decoded.entityIds, entityCount) else ({} :: any),
+		entityKinds = if entityCount > 0 then copyEntitySlice(decoded.entityKinds, entityCount) else ({} :: any),
+		entityFlags = if entityCount > 0 then copyEntitySlice(decoded.entityFlags, entityCount) else ({} :: any),
+		entityPosX = if entityCount > 0 then copyEntitySlice(decoded.entityPosX, entityCount) else ({} :: any),
+		entityPosY = if entityCount > 0 then copyEntitySlice(decoded.entityPosY, entityCount) else ({} :: any),
+		entityPosZ = if entityCount > 0 then copyEntitySlice(decoded.entityPosZ, entityCount) else ({} :: any),
 	}
 end
 

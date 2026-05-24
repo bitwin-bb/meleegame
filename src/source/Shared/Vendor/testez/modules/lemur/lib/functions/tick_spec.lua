@@ -1,3 +1,4 @@
+--!nocheck
 local tick = import("./tick")
 
 describe("functions.tick", function()

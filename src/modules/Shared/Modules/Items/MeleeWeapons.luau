@@ -3,7 +3,7 @@
 local Animations = require(script.Parent.Animations)
 local BuildAnimationMelee = require(script:FindFirstAncestor("game").Shared.Game.Render.BuildAnimationMelee)
 
-local weaponAnimationIds = (((Animations :: any).Items or {}).Weapons or {}) :: { [string]: any }
+local weaponAnimationIds = (((Animations :: any).Items or ({} :: any)).Weapons or ({} :: any)) :: { [string]: any }
 
 return {
 	["CopperShortSword"] = {

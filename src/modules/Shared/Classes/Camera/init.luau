@@ -107,7 +107,7 @@ end
 
 function Camera.New(config: CameraNewConfig?): Camera
 	local sideViewNewConfig = if config then config.SideView else nil
-	local sideViewBaseConfig = Configs.cameraData :: SideView.SideViewConfig
+	local sideViewBaseConfig = (Configs.cameraData :: any) :: SideView.SideViewConfig
 	local sideViewConfig =
 		mergeSideViewConfig(sideViewBaseConfig, if sideViewNewConfig then sideViewNewConfig.config else nil)
 	local sideView = SideView.new(sideViewConfig)

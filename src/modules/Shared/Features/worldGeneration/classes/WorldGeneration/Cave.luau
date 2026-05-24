@@ -130,7 +130,7 @@ local function resolveWallByBiome(self, biomeId: number, layer: DepthLayer): num
 end
 
 function Cave.New(configRaw: any)
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local tileId = (config :: any).tileId :: TileIdMap
 	local wallId = (config :: any).wallId :: WallIdMap
 	local biomeId = (config :: any).biomeId :: BiomeIdMap
@@ -157,8 +157,8 @@ function Cave.New(configRaw: any)
 		snowPocketThresholdDelta = DEFAULT_SNOW_POCKET_THRESHOLD_DELTA,
 	}, Cave)
 
-	local snowConfig = if typeof((config :: any).snowConfig) == "table" then (config :: any).snowConfig else {}
-	local snowCavesConfig = if typeof((snowConfig :: any).Caves) == "table" then (snowConfig :: any).Caves else {}
+	local snowConfig = if typeof((config :: any).snowConfig) == "table" then (config :: any).snowConfig else ({} :: any)
+	local snowCavesConfig = if typeof((snowConfig :: any).Caves) == "table" then (snowConfig :: any).Caves else ({} :: any)
 	self.snowUndergroundThresholdDelta =
 		clampNumber(snowCavesConfig.UndergroundThresholdDelta, -0.25, 0.25, DEFAULT_SNOW_UNDERGROUND_THRESHOLD_DELTA)
 	self.snowCavernThresholdDelta =
@@ -172,7 +172,7 @@ function Cave.New(configRaw: any)
 	return self
 end
 
-function Cave.ResolveDepthLayer(self, surfaceY: number, tileY: number): (DepthLayer, number)
+function Cave.ResolveDepthLayer(self: Cave, surfaceY: number, tileY: number): (DepthLayer, number)
 	local depth = surfaceY - tileY
 	if depth < 0 then
 		return "Sky", depth
@@ -193,7 +193,7 @@ function Cave.ResolveDepthLayer(self, surfaceY: number, tileY: number): (DepthLa
 	return "Deep", depth
 end
 
-function Cave.SampleDensity(self, tileX: number, tileY: number): number
+function Cave.SampleDensity(self: Cave, tileX: number, tileY: number): number
 	return sampleOctaveNoise(
 		self.seed,
 		tileX,
@@ -208,7 +208,7 @@ function Cave.SampleDensity(self, tileX: number, tileY: number): number
 end
 
 function Cave.ShouldCarve(
-	self,
+	self: Cave,
 	tileX: number,
 	tileY: number,
 	biomeId: number,
@@ -267,19 +267,20 @@ function Cave.ShouldCarve(
 		pocketThreshold += (1 - undergroundDepthAlpha) * 0.04
 	end
 
-	if biomeId == self.biomeId.DESERT and depthLayer == "Underground" then
+	local depthLayerName = depthLayer :: string
+	if biomeId == self.biomeId.DESERT and depthLayerName == "Underground" then
 		threshold += 0.04
 		tunnelThreshold -= 0.01
 	elseif biomeId == self.biomeId.SNOW then
-		if depthLayer == "Underground" then
+		if depthLayerName == "Underground" then
 			threshold += self.snowUndergroundThresholdDelta
 			pocketThreshold += self.snowPocketThresholdDelta * 0.66
-		elseif depthLayer == "Cavern" or depthLayer == "Deep" then
+		elseif depthLayerName == "Cavern" or depthLayerName == "Deep" then
 			threshold += self.snowCavernThresholdDelta
 			pocketThreshold += self.snowPocketThresholdDelta
 			tunnelThreshold += 0.01
 		end
-	elseif biomeId == self.biomeId.JUNGLE and depthLayer ~= "Surface" then
+	elseif biomeId == self.biomeId.JUNGLE and depthLayerName ~= "Surface" then
 		threshold -= 0.04
 	end
 
@@ -308,7 +309,7 @@ function Cave.ShouldCarve(
 end
 
 function Cave.ResolveWall(
-	self,
+	self: Cave,
 	tileId: number,
 	biomeId: number,
 	depthLayer: DepthLayer,
@@ -352,6 +353,9 @@ export type Cave = typeof(setmetatable(
 		tunnelFrequency: number,
 		pocketFrequency: number,
 		crackFrequency: number,
+		snowUndergroundThresholdDelta: number,
+		snowCavernThresholdDelta: number,
+		snowPocketThresholdDelta: number,
 	},
 	Cave
 ))

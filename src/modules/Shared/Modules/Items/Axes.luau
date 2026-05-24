@@ -6,7 +6,7 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local Animations = require(script.Parent.Animations)
 local BuildAnimationMelee = require(script:FindFirstAncestor("game").Shared.Game.Render.BuildAnimationMelee)
 
-local axeAnimationIds = (((Animations :: any).Items or {}).Axes or {}) :: { [string]: any }
+local axeAnimationIds = (((Animations :: any).Items or ({} :: any)).Axes or ({} :: any)) :: { [string]: any }
 
 local rawAxes = {
 	["CopperAxe"] = {
@@ -21,8 +21,8 @@ local rawAxes = {
 
 local axes = {}
 for itemId, definition in rawAxes do
-	local enrichedDefinition = Sift.Dictionary.copy(definition)
-	local axeAnimations = BuildAnimationMelee(axeAnimationIds[itemId], {
+	local enrichedDefinition = Sift.Dictionary.copy(definition :: any)
+	local axeAnimations = BuildAnimationMelee((axeAnimationIds :: any)[itemId], {
 		swingPriority = Enum.AnimationPriority.Action,
 		returnNilIfEmpty = true,
 	})

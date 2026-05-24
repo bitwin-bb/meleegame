@@ -62,7 +62,7 @@ local function useParallax(options: ParallaxOptions?): ParallaxResult
 				screenPosition = Vector2.new(mousePosition.X, mousePosition.Y)
 			end
 
-			setNormalized(computeNormalizedPosition(screenPosition, viewportState.viewport))
+			setNormalized(computeNormalizedPosition(screenPosition :: Vector2, viewportState.viewport))
 		end
 
 		updateFromInput(nil)
@@ -84,7 +84,7 @@ local function useParallax(options: ParallaxOptions?): ParallaxResult
 			changedConnection:Disconnect()
 			lastInputConnection:Disconnect()
 		end
-	end, { enabled, viewportState.viewport })
+	end, ({ enabled, viewportState.viewport } :: { any }))
 
 	local direction = if invert then -1 else 1
 	local targetOffset = if enabled

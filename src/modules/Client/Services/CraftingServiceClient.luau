@@ -35,7 +35,7 @@ type JanitorClass = {
 type CachedRecipeList = {
 	filterRevision: number,
 	inventoryRevision: number,
-	recipes: { [string]: any },
+	recipes: { any },
 }
 
 local CraftingServiceClient = {}
@@ -65,8 +65,8 @@ local function countMapEquals(lhs: { [string]: number }, rhs: { [string]: number
 	return true
 end
 
-local function cloneRecipeEntries(entriesRaw: { [string]: any }): { [string]: any }
-	local output = {}
+local function cloneRecipeEntries(entriesRaw: { any }): { any }
+	local output: { any } = {}
 	for _, entry in entriesRaw do
 		table.insert(output, entry)
 	end
@@ -201,8 +201,8 @@ function CraftingServiceClient.ApplyState(self: CraftingServiceClient, stateRaw:
 end
 
 function CraftingServiceClient.OnCraftResult(self: CraftingServiceClient, resultRaw: any)
-	local source = if typeof(resultRaw) == "table" then resultRaw :: { [string]: any } else {}
-	self.lastCraftResult = {
+	local source = if typeof(resultRaw) == "table" then resultRaw :: { [string]: any } else ({} :: any)
+	local result = {
 		success = source.success == true,
 		reason = if typeof(source.reason) == "string" then source.reason else nil,
 		recipeId = if typeof(source.recipeId) == "string" then source.recipeId else nil,
@@ -211,8 +211,9 @@ function CraftingServiceClient.OnCraftResult(self: CraftingServiceClient, result
 			else 0,
 		updatedAt = os.clock(),
 	}
-	if self.lastCraftResult.success ~= true or self.bulkCraftToken == nil then
-		SnackbarNotifications.showCraftResult(self.lastCraftResult, self)
+	self.lastCraftResult = result
+	if result.success ~= true or self.bulkCraftToken == nil then
+		SnackbarNotifications.showCraftResult(result, self)
 	end
 	self:emitStateChanged()
 end
@@ -309,8 +310,8 @@ function CraftingServiceClient.GetRecipePreview(
 	)
 end
 
-function CraftingServiceClient.GetRecipes(self: CraftingServiceClient, optionsRaw: any?): { [string]: any }
-	local options = if typeof(optionsRaw) == "table" then optionsRaw :: { [string]: any } else {}
+function CraftingServiceClient.GetRecipes(self: CraftingServiceClient, optionsRaw: any?): { any }
+	local options = if typeof(optionsRaw) == "table" then optionsRaw :: { [string]: any } else ({} :: any)
 	local category = trim(options.category)
 	local searchText = trim(options.searchText)
 	if category == "" then
@@ -334,7 +335,7 @@ function CraftingServiceClient.GetRecipes(self: CraftingServiceClient, optionsRa
 		if searchText ~= "" then searchText else nil
 	)
 
-	local entries = {}
+	local entries: { any } = {}
 	for _, recipeId in filteredRecipeIds do
 		local recipe = self.registry.recipesById[recipeId]
 		if recipe == nil then
@@ -367,9 +368,9 @@ end
 function CraftingServiceClient.GetRecipesByCategory(
 	self: CraftingServiceClient,
 	searchTextRaw: any?
-): { [string]: { [string]: any } }
+): { [string]: { any } }
 	local searchText = trim(searchTextRaw)
-	local byCategory: { [string]: { [string]: any } } = {}
+	local byCategory: { [string]: { any } } = {}
 	local entries = self:getRecipes({
 		searchText = searchText,
 	})
@@ -494,8 +495,9 @@ function CraftingServiceClient.Init(self: CraftingServiceClient)
 	end
 
 	self.janitor:GiveChore(RunService.Heartbeat:Connect(function(dt: number)
-		self.biomeScanAccumulator += dt
-		if self.biomeScanAccumulator < self.biomeScanIntervalSeconds then
+		local nextAccumulator = (self.biomeScanAccumulator :: number) + dt
+		self.biomeScanAccumulator = nextAccumulator
+		if nextAccumulator < (self.biomeScanIntervalSeconds :: number) then
 			return
 		end
 		self.biomeScanAccumulator = 0

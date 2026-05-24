@@ -1,3 +1,4 @@
+--!nocheck
 local createSpawn = import("./spawn")
 local TaskScheduler = import("../TaskScheduler")
 

@@ -19,7 +19,7 @@ local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
 
 type WeatherServiceState = WeatherServiceUtils.WeatherServiceState
-type SkyKey = WeatherServiceUtils.SkyKey
+type SkyKey = string
 
 type JanitorClass = {
 	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
@@ -98,7 +98,7 @@ local LIGHTNING_CAMERA_SHAKE_FADE_IN = 0.02
 local LIGHTNING_CAMERA_SHAKE_FADE_OUT = 0.45
 local LIGHTNING_CAMERA_SHAKE_POSITION_INFLUENCE = Vector3.new(0.18, 0.3, 0.14)
 local LIGHTNING_CAMERA_SHAKE_ROTATION_INFLUENCE = Vector3.new(1.4, 2.6, 1.1)
-local WEATHER_AUDIO = ((AudioRegistry :: any).Misc or {}).Weather or {}
+local WEATHER_AUDIO = ((AudioRegistry :: any).Misc or ({} :: any)).Weather or ({} :: any)
 local WEATHER_RAIN_SOUND_ASSET_ID = AudioServiceUtils.normalizeSoundAssetId(WEATHER_AUDIO.Rain)
 local WEATHER_THUNDER_SOUND_ASSET_IDS = AudioServiceUtils.collectSoundAssetIds(WEATHER_AUDIO.Thunder)
 
@@ -373,7 +373,7 @@ local function getAudioServiceClient(): any?
 	end
 
 	local ok, moduleOrError = pcall(function()
-		return require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
+		return (require :: any)(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
 	end)
 	if not ok then
 		return nil
@@ -389,7 +389,7 @@ local function getWindFoliageServiceClient(): any?
 	end
 
 	local ok, moduleOrError = pcall(function()
-		return require(script:FindFirstAncestor("game").Client.Services.WindFoliageServiceClient)
+		return (require :: any)(script:FindFirstAncestor("game").Client.Services.WindFoliageServiceClient)
 	end)
 	if not ok then
 		return nil
@@ -996,13 +996,14 @@ function WeatherServiceClient.EnsureRainRuntime(self: WeatherServiceClient): Rai
 		table.insert(emitters, self:createRainEmitter(attachment))
 	end
 
-	self.rainRuntime = {
+	local runtime: RainRuntime = {
 		anchorPart = anchorPart,
 		emitters = emitters,
 		lastAnchorPosition = nil :: Vector3?,
 		lastEmitterRate = -1,
 	}
-	return self.rainRuntime
+	self.rainRuntime = runtime
+	return runtime
 end
 
 function WeatherServiceClient.DestroyRainRuntime(self: WeatherServiceClient)
@@ -1011,7 +1012,7 @@ function WeatherServiceClient.DestroyRainRuntime(self: WeatherServiceClient)
 		return
 	end
 
-	if runtime.anchorPart ~= nil and runtime.anchorPart.Parent ~= nil then
+	if runtime.anchorPart.Parent ~= nil then
 		runtime.anchorPart:Destroy()
 	end
 	self.rainRuntime = nil
@@ -1233,9 +1234,11 @@ function WeatherServiceClient.RequestSync(self: WeatherServiceClient)
 end
 
 function WeatherServiceClient.CleanupVisualRuntime(self: WeatherServiceClient)
-	for key, tween in self.tweensByKey do
-		tween:Cancel()
-		tween:Destroy()
+	for key, tween in pairs(self.tweensByKey :: { [string]: Tween? }) do
+		if tween ~= nil then
+			tween:Cancel()
+			tween:Destroy()
+		end
 		self.tweensByKey[key] = nil
 	end
 
@@ -1389,7 +1392,7 @@ type WeatherServiceClient = typeof(WeatherServiceClient) & {
 	missingSkyWarnedByKey: { [string]: boolean },
 	biomeSampleAccumulator: number,
 	thunderFlashTimer: number,
-	tweensByKey: { [string]: Tween },
+	tweensByKey: { [string]: Tween? },
 	runtimeSky: Sky?,
 	runtimeAtmosphere: Atmosphere?,
 	runtimeColorCorrection: ColorCorrectionEffect?,

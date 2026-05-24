@@ -1,3 +1,4 @@
+--!nocheck
 local LocalizationService = import("./LocalizationService")
 
 describe("instances.LocalizationService", function()

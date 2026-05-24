@@ -1,3 +1,4 @@
+--!nocheck
 local ScrollingDirection = import("../Enum/ScrollingDirection")
 local ScrollBarInset = import("../Enum/ScrollBarInset")
 local VerticalScrollBarPosition = import("../Enum/VerticalScrollBarPosition")

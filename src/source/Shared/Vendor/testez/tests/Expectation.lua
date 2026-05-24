@@ -1,3 +1,4 @@
+--!nocheck
 local TestEZ = script.Parent.Parent.TestEZ
 local Expectation = require(TestEZ.Expectation)
 

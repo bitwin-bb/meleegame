@@ -6,7 +6,7 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
+local ClientBinderSupport = (require :: any)(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
 local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
@@ -413,7 +413,7 @@ function WorldAnimatorServiceClient.StartChunkAnimation(
 
 	local eligibility, targetPivot = self:evaluateChunkAnimation(chunkModel)
 	if eligibility ~= "started" or targetPivot == nil then
-		return eligibility
+		return eligibility :: StartAnimationResult
 	end
 
 	local originalParts = collectModelParts(chunkModel, self.settings.maxAnimatedPartsPerChunk + 1)
@@ -622,7 +622,7 @@ function WorldAnimatorServiceClient.Init(self: WorldAnimatorServiceClient)
 	self.pendingChunks = {}
 	self.pendingChunkLookup = {}
 	self.renderConnection = nil :: RBXScriptConnection?
-	self.binders = NevermoreSupport.getService(ClientBinderSupport)
+	;(self :: any).binders = NevermoreSupport.getService(ClientBinderSupport)
 
 	local function onWorldFolderAdded(child: Instance)
 		if child.Name ~= WorldAnimatorServiceUtils.WORLD_FOLDER_NAME then

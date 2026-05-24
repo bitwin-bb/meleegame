@@ -1,3 +1,4 @@
+--!nocheck
 local typeof = import("./functions/typeof")
 
 return function(name, value, expectedTypeAsString)

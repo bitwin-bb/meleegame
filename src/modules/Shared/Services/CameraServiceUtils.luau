@@ -152,7 +152,7 @@ function CameraServiceUtils.SanitizeSpringOptions(
 	end
 
 	local source = options :: SideViewSpringOptions
-	local spring: SideViewSpringOptions = defaultSpring or {}
+	local spring: SideViewSpringOptions = defaultSpring or ({} :: any)
 
 	for _, key in SPRING_OPTION_KEYS do
 		local value = (source :: any)[key]
@@ -173,7 +173,7 @@ function CameraServiceUtils.SanitizePredictConfig(
 	fallbackRaw: SideViewPredictConfig?
 ): SideViewPredictConfig?
 	local fallback = clonePredictConfig(fallbackRaw) or clonePredictConfig((RAW_DEFAULT_SIDE_VIEW_CONFIG :: any).predict)
-	local source = if typeof(configRaw) == "table" then configRaw else {}
+	local source = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	if fallback == nil and typeof(configRaw) ~= "table" then
 		return nil
 	end
@@ -211,8 +211,8 @@ function CameraServiceUtils.SanitizePredictConfig(
 end
 
 local function sanitizeSideViewConfigWithFallback(config: any, fallbackConfig: any): SideViewConfig
-	local source = if typeof(config) == "table" then config else {}
-	local defaultConfig = if typeof(fallbackConfig) == "table" then fallbackConfig else {}
+	local source = if typeof(config) == "table" then config else ({} :: any)
+	local defaultConfig = if typeof(fallbackConfig) == "table" then fallbackConfig else ({} :: any)
 	local defaultDistance = clampNumber((defaultConfig :: any).distance, 4, 200, 38)
 	local defaultHeight = clampNumber((defaultConfig :: any).height, -100, 100, 8)
 	local defaultLookHeight = clampNumber((defaultConfig :: any).lookHeight, -100, 100, 3)

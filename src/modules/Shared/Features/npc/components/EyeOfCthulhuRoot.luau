@@ -41,7 +41,7 @@ local function sanitizeSize(valueRaw: any, fallback: Vector3): Vector3
 end
 
 function EyeOfCthulhuRoot.CreateModel(configRaw: EyeOfCthulhuRootConfig?): Model
-	local config = (if typeof(configRaw) == "table" then configRaw else {}) :: EyeOfCthulhuRootConfig
+	local config = (if typeof(configRaw) == "table" then configRaw else ({} :: any)) :: EyeOfCthulhuRootConfig
 	local phaseModel = if typeof(config.phaseModel) == "string" and config.phaseModel ~= ""
 		then config.phaseModel
 		else "Phase1"
@@ -65,7 +65,7 @@ function EyeOfCthulhuRoot.CreateModel(configRaw: EyeOfCthulhuRootConfig?): Model
 
 	model:SetAttribute("BossPhaseModel", phaseModel)
 	model:SetAttribute("BossSpriteRoot", true)
-	model.PrimaryPart = rootPart
+	model.PrimaryPart = rootPart :: BasePart
 	if typeof(config.cframe) == "CFrame" then
 		model:PivotTo(config.cframe :: CFrame)
 	end

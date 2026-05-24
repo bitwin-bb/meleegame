@@ -141,7 +141,8 @@ end
 
 local function setAuxiliaryVisualHidden(instance: Instance)
 	if instance:IsA("Decal") or instance:IsA("Texture") then
-		instance.Transparency = 1
+		local texture = instance :: any
+		texture.Transparency = 1
 	end
 end
 
@@ -151,7 +152,7 @@ local function getParticleEmitterLifetimeMax(emitter: ParticleEmitter): number
 end
 
 function VFXServiceUtils.CloneDictionary(sourceRaw: any): { [string]: any }
-	local source = if typeof(sourceRaw) == "table" then sourceRaw else {}
+	local source = if typeof(sourceRaw) == "table" then sourceRaw else ({} :: any)
 	return Sift.Dictionary.copy(source)
 end
 
@@ -243,7 +244,7 @@ function VFXServiceUtils.ResolveEffectTemplate(effectSourceRaw: any): Instance?
 end
 
 function VFXServiceUtils.SanitizePlaybackOptions(optionsRaw: any): VFXPlaybackOptions
-	local source = if typeof(optionsRaw) == "table" then optionsRaw else {}
+	local source = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
 
 	local offsetRaw = (source :: any).offset
 	if offsetRaw == nil then

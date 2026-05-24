@@ -65,7 +65,7 @@ local function useSpring<T>(target: T, options: SpringOptions?): SpringResult<T>
 				return
 			end
 
-			motion:spring(targetRef.current, spring)
+			motion:spring(targetRef.current, spring :: any)
 			applyValue(motion:step(deltaTime))
 		end)
 
@@ -74,7 +74,7 @@ local function useSpring<T>(target: T, options: SpringOptions?): SpringResult<T>
 			motion:destroy()
 			motionRef.current = nil
 		end
-	end, { enabled, spring })
+	end, ({ enabled, spring } :: { any }))
 
 	local setTarget = React.useCallback(function(nextTarget: T)
 		targetRef.current = nextTarget

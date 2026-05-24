@@ -116,7 +116,7 @@ function GoreServiceClient.RegisterEntity(
 		return nil
 	end
 
-	local config = if typeof(configRaw) == "table" then Sift.Dictionary.copy(configRaw) else {}
+	local config = if typeof(configRaw) == "table" then Sift.Dictionary.copy(configRaw) else ({} :: any)
 	local model = if isModel(modelRaw) then modelRaw :: Model else self:resolveModelFromEntityId(entityId)
 	if model == nil then
 		self.pendingEntityConfigById[entityId] = config
@@ -220,7 +220,7 @@ function GoreServiceClient.SpawnGibs(
 		end
 	end
 
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else {}
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
 	local spawned = 0
 	for index = 1, gibCount do
 		local part = sourcePart
@@ -265,8 +265,10 @@ function GoreServiceClient.Init(self: GoreServiceClient)
 		self.networker:destroy()
 	end)
 	self.janitor:GiveChore(function()
-		for _, controller in self.controllersByEntityId do
-			controller:destroy()
+		for _, controller in pairs(self.controllersByEntityId :: { [string]: Gore.Gore? }) do
+			if controller ~= nil then
+				controller:destroy()
+			end
 		end
 		table.clear(self.controllersByEntityId)
 		table.clear(self.pendingEntityConfigById)
@@ -277,7 +279,7 @@ function GoreServiceClient.Init(self: GoreServiceClient)
 
 	task.spawn(function()
 		while not self.isDestroyed do
-			for entityId in self.pendingEntityConfigById do
+			for entityId in pairs(self.pendingEntityConfigById :: { [string]: { [string]: any }? }) do
 				self:tryResolvePendingEntity(entityId)
 			end
 			task.wait(0.25)
@@ -311,10 +313,10 @@ type GoreServiceClient = typeof(GoreServiceClient) & {
 	resolveModelFromEntityId: (self: GoreServiceClient, entityIdRaw: any) -> Model?,
 	tryResolvePendingEntity: (self: GoreServiceClient, entityIdRaw: any) -> Gore.Gore?,
 	networker: Networker.Client,
-	janitor: JanitorClass,
+	janitor: any,
 	random: Random,
-	controllersByEntityId: { [string]: Gore.Gore },
-	pendingEntityConfigById: { [string]: { [string]: any } },
+	controllersByEntityId: { [string]: Gore.Gore? },
+	pendingEntityConfigById: { [string]: { [string]: any }? },
 	isDestroyed: boolean,
 }
 

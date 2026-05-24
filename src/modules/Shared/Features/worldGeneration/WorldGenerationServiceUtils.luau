@@ -169,7 +169,7 @@ function WorldGenerationServiceUtils.SanitizeConfig(
 	fallbackConfig: WorldGenerationConfig?
 ): WorldGenerationConfig
 	local fallback = if fallbackConfig then fallbackConfig else WorldGenerationServiceUtils.CreateDefaultConfig()
-	local source = if typeof(configRaw) == "table" then configRaw else {}
+	local source = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 
 	local minTileY = sanitizeInteger((source :: any).minTileY, -2048, 2048, fallback.minTileY)
 	local maxTileY = sanitizeInteger((source :: any).maxTileY, -2048, 2048, fallback.maxTileY)
@@ -309,7 +309,7 @@ function WorldGenerationServiceUtils.CreateState(
 	fallbackStateRaw: WorldGenerationServiceState?
 ): WorldGenerationServiceState
 	local fallback = if fallbackStateRaw then fallbackStateRaw else WorldGenerationServiceUtils.CreateDefaultState()
-	local source = if typeof(stateRaw) == "table" then stateRaw else {}
+	local source = if typeof(stateRaw) == "table" then stateRaw else ({} :: any)
 	local minTileY = sanitizeInteger((source :: any).minTileY, -2048, 2048, fallback.minTileY)
 	local maxTileY = sanitizeInteger((source :: any).maxTileY, -2048, 2048, fallback.maxTileY)
 

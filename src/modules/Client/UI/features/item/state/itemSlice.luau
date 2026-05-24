@@ -176,7 +176,7 @@ local function beginDrag(
 	local dragAmount = sanitizePositiveInteger(if options ~= nil then options.dragAmount else nil, stack.amount, 1, maxDragAmount)
 	stack.amount = dragAmount
 
-	local nextState: ItemDragState = {
+	local nextState: ItemDragState = ({
 		active = true,
 		sourceSlot = sourceSlot,
 		hoveredSlot = sourceSlot,
@@ -187,7 +187,7 @@ local function beginDrag(
 		mode = mode,
 		sourceStackAmount = sourceStackAmount,
 		updatedAt = os.clock(),
-	}
+	} :: any)
 	dragStateAtom(nextState)
 	return nextState
 end

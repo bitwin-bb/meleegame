@@ -1,3 +1,4 @@
+--!nocheck
 local rbxString = {}
 
 for key, value in pairs(string) do

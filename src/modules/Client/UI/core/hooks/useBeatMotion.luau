@@ -103,7 +103,7 @@ local function useBeatMotion(options: BeatMotionOptions?): BeatMotionResult
 				nextTarget = baseScale + (primaryScale - baseScale) * alpha
 			end
 
-			motion:spring(nextTarget, spring)
+			motion:spring(nextTarget, spring :: any)
 			setScale(motion:step(deltaTime))
 		end)
 
@@ -113,7 +113,7 @@ local function useBeatMotion(options: BeatMotionOptions?): BeatMotionResult
 			motion:destroy()
 			motionRef.current = nil
 		end
-	end, { enabled, auto, bpm, baseScale, primaryScale, secondaryScale, spring })
+	end, ({ enabled, auto, bpm, baseScale, primaryScale, secondaryScale, spring } :: { any }))
 
 	React.useEffect(function()
 		local motion = motionRef.current
@@ -125,24 +125,24 @@ local function useBeatMotion(options: BeatMotionOptions?): BeatMotionResult
 		setScale(baseScale)
 	end, { baseScale })
 
-	local beat = React.useCallback(function()
+	local beat = (React.useCallback :: any)(function()
 		local motion = motionRef.current
 		if not motion or not aliveRef.current then
 			return
 		end
 
 		manualBeatUntilRef.current = recoverDelay
-		motion:spring(primaryScale, spring)
+		motion:spring(primaryScale, spring :: any)
 		task.delay(secondaryDelay, function()
 			if not aliveRef.current then
 				return
 			end
 			local nextMotion = motionRef.current
 			if nextMotion then
-				nextMotion:spring(secondaryScale, spring)
+				nextMotion:spring(secondaryScale, spring :: any)
 			end
 		end)
-	end, { baseScale, primaryScale, secondaryScale, secondaryDelay, recoverDelay, spring })
+	end, ({ baseScale, primaryScale, secondaryScale, secondaryDelay, recoverDelay, spring } :: { any }))
 
 	return {
 		scale = scale,

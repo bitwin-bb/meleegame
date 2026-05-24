@@ -54,14 +54,14 @@ function Slime.SyncVitals(_self: typeof(Slime), runtime: Runtime)
 	runtime.isAlive = slime.isAlive
 end
 
-function Slime.RegisterEnemyHitbox(_self: typeof(Slime), service: Service, runtime: Runtime)
+function Slime.RegisterEnemyHitbox(_self: any, service: Service, runtime: Runtime): ()
 	local enemyHitbox = service.enemyHitbox
 	if enemyHitbox == nil then
 		return
 	end
 
 	local runtimeId = runtime.id
-	local didRegister = enemyHitbox:registerEnemy({
+	local didRegister = (enemyHitbox.registerEnemy :: any)(enemyHitbox, {
 		id = runtimeId,
 		owner = runtime,
 		model = runtime.slime.model,
@@ -268,7 +268,7 @@ function Slime.Spawn(_self: typeof(Slime), service: Service, spawnConfig: SlimeS
 	return runtime
 end
 
-function Slime.SpawnLoot(_self: typeof(Slime), service: Service, runtime: Runtime)
+function Slime.SpawnLoot(_self: any, service: Service, runtime: Runtime): ()
 	local lootService = service.lootService
 	if lootService == nil then
 		return
@@ -285,10 +285,10 @@ function Slime.SpawnLoot(_self: typeof(Slime), service: Service, runtime: Runtim
 		return
 	end
 
-	lootService:spawnLootRuntime(SLIME_GEL_DROP_ITEM_ID, SLIME_GEL_DROP_AMOUNT, deathPosition, {
+	;(lootService.spawnLootRuntime :: any)(lootService, SLIME_GEL_DROP_ITEM_ID, SLIME_GEL_DROP_AMOUNT, deathPosition, {
 		sourceType = runtime.displayName,
 	})
-	lootService:spawnDropsFromSource(runtime.displayName, deathPosition, {
+	;(lootService.spawnDropsFromSource :: any)(lootService, runtime.displayName, deathPosition, {
 		sourceType = runtime.displayName,
 	})
 end

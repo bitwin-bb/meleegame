@@ -5,7 +5,7 @@ local RunService = game:GetService("RunService")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local Maid = loader("Maid")
 local Rx = loader("Rx")
@@ -123,23 +123,7 @@ export type QueenBee = typeof(setmetatable(
 
 type QueenBeeAttackPattern = "Ram" | "FakeBeeSummon" | "FakeStingerShoot"
 
-export type QueenBeeBossController = Boss & {
-	_queenConfig: QueenBeeConfig,
-	_simulationSpeed: number,
-	_aggressiveness: number,
-	_sideSign: number,
-	_chargeDirection: Vector3?,
-	_targetDirection: Vector3,
-	_currentAcceleration: Vector3,
-	_currentPattern: QueenBeeAttackPattern,
-	_nextPattern: QueenBeeAttackPattern,
-	_patternTimer: number,
-	_ramCount: number,
-	_maxRamCount: number,
-	_patternCursor: number,
-	_comboChargeIndex: number,
-	_phaseCounter: number,
-}
+export type QueenBeeBossController = any
 
 local DEFAULT_MAX_HP = 3400
 local DEFAULT_HP = DEFAULT_MAX_HP
@@ -628,20 +612,20 @@ function QueenBee.CreateBossController(
 	return self
 end
 
-function QueenBeeBossController:GetSimulationSpeed(): number
+function QueenBeeBossController.GetSimulationSpeed(self: QueenBeeBossController): number
 	return self._simulationSpeed
 end
 
-function QueenBeeBossController:GetMaxSimulationStep(): number
+function QueenBeeBossController.GetMaxSimulationStep(self: QueenBeeBossController): number
 	return self._queenConfig.MaxDt
 end
 
-function QueenBeeBossController:AfterSpawn()
+function QueenBeeBossController.AfterSpawn(self: QueenBeeBossController)
 	self:setTarget(self.spawnRequest.targetPlayer or self.service:resolveEncounterTarget(self))
 	beginBossRamPattern(self, "Spawn")
 end
 
-function QueenBeeBossController:OnStateChanged(nextState: string, _previousState: string, _reason: string)
+function QueenBeeBossController.OnStateChanged(self: QueenBeeBossController, nextState: string, _previousState: string, _reason: string)
 	if stateHasSuffix(nextState, "RamAlign") and self._currentPattern ~= PATTERN_RAM then
 		setBossAttackPattern(self, PATTERN_RAM, selectBossFakePattern(self))
 	elseif stateHasSuffix(nextState, "FakeBeeSummon") and self._currentPattern ~= PATTERN_FAKE_BEE_SUMMON then
@@ -656,17 +640,17 @@ function QueenBeeBossController:OnStateChanged(nextState: string, _previousState
 	self:setPresentationFlag("isRoaring", false)
 end
 
-function QueenBeeBossController:OnDamageTaken(_damage: number, _sourceRaw: any?, _hp: number)
+function QueenBeeBossController.OnDamageTaken(self: QueenBeeBossController, _damage: number, _sourceRaw: any?, _hp: number)
 	refreshBossPhase(self)
 end
 
-function QueenBeeBossController:OnDeath(_killerRaw: any?)
+function QueenBeeBossController.OnDeath(self: QueenBeeBossController, _killerRaw: any?)
 	self._chargeDirection = nil
 	self._currentAcceleration = Vector3.zero
 	self:setVelocity(Vector3.zero)
 end
 
-function QueenBeeBossController:UpdateModelPivot()
+function QueenBeeBossController.UpdateModelPivot(self: QueenBeeBossController)
 	local model = self.model
 	if model == nil then
 		return
@@ -679,7 +663,7 @@ function QueenBeeBossController:UpdateModelPivot()
 	end
 end
 
-function QueenBeeBossController:StepRamAlign(dt: number)
+function QueenBeeBossController.StepRamAlign(self: QueenBeeBossController, dt: number)
 	local config = self._queenConfig
 	local alignAnchor, targetPosition = resolveBossRamAlignAnchor(self)
 	-- terraria queen bee lines up beside the player before committing to a horizontal pass
@@ -700,7 +684,7 @@ function QueenBeeBossController:StepRamAlign(dt: number)
 	end
 end
 
-function QueenBeeBossController:StepRamCharge(_dt: number)
+function QueenBeeBossController.StepRamCharge(self: QueenBeeBossController, _dt: number)
 	local config = self._queenConfig
 	local direction = safeUnit(self._chargeDirection or lockBossChargeDirection(self), self.facing)
 	local speed = scaleBossSpeed(self, getPhaseNumberValue(config.ChargeSpeedByPhase, self.phase, 118))
@@ -717,7 +701,7 @@ function QueenBeeBossController:StepRamCharge(_dt: number)
 	end
 end
 
-function QueenBeeBossController:StepRamRecover(dt: number)
+function QueenBeeBossController.StepRamRecover(self: QueenBeeBossController, dt: number)
 	self._chargeDirection = nil
 	-- recovery damps dash velocity so the next state inherits momentum
 	self:dampVelocity(self._queenConfig.HoverDamping, dt)
@@ -735,7 +719,7 @@ function QueenBeeBossController:StepRamRecover(dt: number)
 	end
 end
 
-function QueenBeeBossController:StepFakePattern(dt: number)
+function QueenBeeBossController.StepFakePattern(self: QueenBeeBossController, dt: number)
 	local config = self._queenConfig
 	local hoverAnchor = resolveBossFakePatternAnchor(self)
 	-- fake Terraria attack slots are invisible gates; they only spend time before ram can be selected again
@@ -754,7 +738,7 @@ function QueenBeeBossController:StepFakePattern(dt: number)
 	end
 end
 
-function QueenBeeBossController:StepDespawn(dt: number)
+function QueenBeeBossController.StepDespawn(self: QueenBeeBossController, dt: number)
 	local targetPosition = self:resolveTargetPosition()
 	local direction = if targetPosition ~= nil
 		then safeUnit(self.position - targetPosition, self.facing)
@@ -768,7 +752,7 @@ function QueenBeeBossController:StepDespawn(dt: number)
 	end
 end
 
-function QueenBeeBossController:StepDeath(dt: number)
+function QueenBeeBossController.StepDeath(self: QueenBeeBossController, dt: number)
 	self:dampVelocity(4.5, dt)
 	self._currentAcceleration = Vector3.zero
 	setBossMotionDebug(self, "QueenBeeDeath", nil, nil)
@@ -777,7 +761,7 @@ function QueenBeeBossController:StepDeath(dt: number)
 	end
 end
 
-function QueenBeeBossController:OnStep(dt: number)
+function QueenBeeBossController.OnStep(self: QueenBeeBossController, dt: number)
 	if self.targetPlayer == nil then
 		self:setTarget(self.service:resolveEncounterTarget(self))
 	end
@@ -812,7 +796,7 @@ function QueenBeeBossController:OnStep(dt: number)
 end
 
 function QueenBee.New(configRaw: QueenBeeNewConfig?): QueenBee
-	local raw = (if typeof(configRaw) == "table" then configRaw else {}) :: any
+	local raw = (if typeof(configRaw) == "table" then configRaw else ({} :: any)) :: any
 	local model, rootPart, ownsModel = resolveModelAndRoot(raw)
 	local services = resolveServices(raw)
 	local config = Configs.Resolve(if raw.config ~= nil then raw.config else raw)
@@ -925,7 +909,7 @@ function QueenBee._configureModel(self: QueenBee)
 end
 
 function QueenBee._applyDebugAttributes(self: QueenBee)
-	for _, instance in { self.model, self.rootPart } do
+	for _, instance in ({ self.model, self.rootPart } :: { Instance? }) do
 		setAttribute(instance, "QueenBeeState", self.state)
 		setAttribute(instance, "QueenBeePhase", self.phase)
 		setAttribute(instance, "QueenBeeEnraged", self.enraged)
@@ -1195,8 +1179,9 @@ end
 function QueenBee._lockChargeDirection(self: QueenBee)
 	local targetCenter = self:_getBestTargetCenter()
 	if targetCenter == nil then
-		self.chargeDirection = Physics.GetCombatSideVector(self.arenaCFrame) * self.sideSign
-		self.chargeTargetPosition = self.position + self.chargeDirection * self.config.ChargePassDistance
+		local chargeDirection = Physics.GetCombatSideVector(self.arenaCFrame) * self.sideSign
+		self.chargeDirection = chargeDirection
+		self.chargeTargetPosition = self.position + chargeDirection * self.config.ChargePassDistance
 		return
 	end
 
@@ -1205,8 +1190,9 @@ function QueenBee._lockChargeDirection(self: QueenBee)
 		Physics.ProjectToCombatPlane(targetCenter + targetVelocity * self.config.ChargePredictionTime, self.arenaCFrame)
 	local direction = Physics.ProjectVectorToCombatPlane(predicted - self.position, self.arenaCFrame)
 	self.chargeTargetPosition = predicted
-	self.chargeDirection = safeUnit(direction, Physics.GetCombatSideVector(self.arenaCFrame) * self.sideSign)
-	self.facingSign = if self.chargeDirection:Dot(Physics.GetCombatSideVector(self.arenaCFrame)) >= 0 then 1 else -1
+	local chargeDirection = safeUnit(direction, Physics.GetCombatSideVector(self.arenaCFrame) * self.sideSign)
+	self.chargeDirection = chargeDirection
+	self.facingSign = if chargeDirection:Dot(Physics.GetCombatSideVector(self.arenaCFrame)) >= 0 then 1 else -1
 end
 
 function QueenBee._bindStingerCadence(self: QueenBee)
@@ -1267,6 +1253,7 @@ function QueenBee._fireStinger(self: QueenBee)
 		random = self.random,
 		damagePlayer = function(player: Player, damage: number)
 			self:_damagePlayer(player, damage)
+			return nil :: any
 		end,
 	})
 	self.projectileMaid:GiveTask(projectile)
@@ -1812,3 +1799,4 @@ QueenBeeBossController.stepDeath = QueenBeeBossController.StepDeath
 QueenBeeBossController.onStep = QueenBeeBossController.OnStep
 
 return QueenBee
+

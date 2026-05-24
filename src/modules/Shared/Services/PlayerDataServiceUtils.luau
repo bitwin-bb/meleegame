@@ -1,7 +1,7 @@
 --!strict
 local PlayerDataServiceUtils = {}
 
-export type LoadState = "Unloaded" | "Loading" | "Loaded" | "Failed"
+export type LoadState = string
 export type DataPathSegment = string | number
 export type DataPath = string | { DataPathSegment }
 export type PlayerData = { [any]: any }
@@ -73,7 +73,7 @@ end
 
 local function clonePath(pathRaw: any, fallbackPathRaw: any): { DataPathSegment }
 	local source = if typeof(pathRaw) == "table" then pathRaw else fallbackPathRaw
-	local output = {}
+	local output: { DataPathSegment } = {}
 	for _, segmentRaw in source do
 		local segmentType = typeof(segmentRaw)
 		if segmentType == "string" then
@@ -142,7 +142,7 @@ local function mergeDataInternal(target: { [any]: any }, incoming: { [any]: any 
 end
 
 local function normalizeStringPath(path: string): { DataPathSegment }?
-	local normalizedPath = {}
+	local normalizedPath: { DataPathSegment } = {}
 	local trimmedPath = trim(path)
 	if trimmedPath == "" then
 		return nil
@@ -187,13 +187,13 @@ function PlayerDataServiceUtils.GetDefaultCoinsDataPath(): { DataPathSegment }
 end
 
 function PlayerDataServiceUtils.CreateDefaultData(templateRaw: any): PlayerData
-	local template = if typeof(templateRaw) == "table" then templateRaw else {}
+	local template = if typeof(templateRaw) == "table" then templateRaw else ({} :: any)
 	return cloneDeepInternal(template, {})
 end
 
 function PlayerDataServiceUtils.ReconcileData(dataRaw: any, templateRaw: any): PlayerData
-	local data = if typeof(dataRaw) == "table" then dataRaw else {}
-	local template = if typeof(templateRaw) == "table" then templateRaw else {}
+	local data = if typeof(dataRaw) == "table" then dataRaw else ({} :: any)
+	local template = if typeof(templateRaw) == "table" then templateRaw else ({} :: any)
 	reconcileDataInternal(data, template)
 	return data
 end
@@ -256,7 +256,7 @@ function PlayerDataServiceUtils.CreateState(
 ): PlayerDataServiceState
 	local fallback = if fallbackState then fallbackState else PlayerDataServiceUtils.CreateDefaultState()
 	local sourceData = if typeof(dataRaw) == "table" then dataRaw else fallback.data
-	local metadata = if typeof(metadataRaw) == "table" then metadataRaw :: { [string]: any } else {}
+	local metadata = if typeof(metadataRaw) == "table" then metadataRaw :: { [string]: any } else ({} :: any)
 	local loadState = PlayerDataServiceUtils.SanitizeLoadState(loadStateRaw, fallback.loadState)
 	local hasResolvedInitialLoad = if metadata.hasResolvedInitialLoad ~= nil
 		then sanitizeBoolean(metadata.hasResolvedInitialLoad, PlayerDataServiceUtils.IsTerminalLoadState(loadState))
@@ -303,7 +303,7 @@ function PlayerDataServiceUtils.NormalizePath(pathRaw: any): { DataPathSegment }
 		return nil
 	end
 
-	local normalizedPath = {}
+	local normalizedPath: { DataPathSegment } = {}
 	for _, segment in pathRaw do
 		local segmentType = typeof(segment)
 		if segmentType == "string" then

@@ -141,7 +141,8 @@ local function normalizeToken(valueRaw: any): string
 	if typeof(valueRaw) ~= "string" then
 		return ""
 	end
-	return string.lower(string.gsub(string.match(valueRaw, "^%s*(.-)%s*$") or "", "[%s_%-%.]", ""))
+	local normalized = string.gsub(string.match(valueRaw, "^%s*(.-)%s*$") or "", "[%s_%-%.]", "")
+	return string.lower(normalized)
 end
 
 local function ensureFolder(parent: Instance, name: string): Folder
@@ -211,7 +212,7 @@ local function buildRaycastParams(filter: { Instance }): RaycastParams
 end
 
 local function resolveCleanupDelaySeconds(bloodSettingsRaw: any, gibTravelTime: number, gibLifetime: number): number
-	local bloodSettings = if typeof(bloodSettingsRaw) == "table" then bloodSettingsRaw else {}
+	local bloodSettings = if typeof(bloodSettingsRaw) == "table" then bloodSettingsRaw else ({} :: any)
 	local tweens = if typeof(bloodSettings.Tweens) == "table" then bloodSettings.Tweens else nil
 	local decayDelaySeconds = getRangeMaximum(bloodSettings.DecayDelay, DEFAULT_BLOOD_DECAY_DELAY_SECONDS)
 	local decayTweenSeconds =
@@ -223,7 +224,7 @@ local function resolveCleanupDelaySeconds(bloodSettingsRaw: any, gibTravelTime: 
 end
 
 function Gore._resolveBloodColor(self: Gore, limb: BasePart, optionsRaw: any, profileRaw: LimbProfile?): Color3
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else {}
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
 	local profile = if typeof(profileRaw) == "table" then profileRaw else nil
 
 	if typeof(options.bloodColor) == "Color3" then
@@ -321,7 +322,7 @@ function Gore.New(configRaw: GoreConfig?): Gore
 		gibTravelTime = sanitizeNumber(config and config.gibTravelTime, DEFAULT_GIB_TRAVEL_TIME, 0.1, 12),
 		gibRestDistance = sanitizeRange(config and config.gibRestDistance, DEFAULT_GIB_REST_DISTANCE),
 		cleanupDelaySeconds = 0,
-		bloodEngine = nil,
+		bloodEngine = nil :: any,
 		limbDestruction = LimbDestruction.new({
 			model = entityModel,
 			destroyedTransparency = 1,
@@ -443,14 +444,14 @@ function Gore.SpawnGib(self: Gore, sourceRaw: any, optionsRaw: any?): Gib.Gib?
 		return nil
 	end
 
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else {}
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
 	local originCFrame = if typeof(options.originCFrame) == "CFrame" then options.originCFrame else sourcePart.CFrame
 	local restPosition = options.restPosition
 	if typeof(restPosition) ~= "Vector3" then
 		restPosition = self:_resolveGibRestPosition(originCFrame, sourcePart)
 	end
 
-	local gib = Gib.new({
+	local gib = Gib.new(({
 		source = sourcePart,
 		parent = self.runtimeFolder,
 		originCFrame = originCFrame,
@@ -464,7 +465,7 @@ function Gore.SpawnGib(self: Gore, sourceRaw: any, optionsRaw: any?): Gib.Gib?
 		canTouch = false,
 		canQuery = false,
 		anchoredAtRest = true,
-	})
+	} :: any))
 	gib:play()
 	self:_trackGib(gib)
 	return gib
@@ -492,8 +493,12 @@ function Gore.DestroyLimb(self: Gore, limbRaw: any, optionsRaw: DestroyLimbOptio
 
 	local gib: Gib.Gib? = nil
 	if options.spawnGib ~= false then
-		local arcHeightDefault = if limbProfile ~= nil then limbProfile.arcHeight else self.gibArcHeight
-		local travelTimeDefault = if limbProfile ~= nil then limbProfile.travelTime else self.gibTravelTime
+		local arcHeightDefault = if limbProfile ~= nil and limbProfile.arcHeight ~= nil
+			then limbProfile.arcHeight
+			else self.gibArcHeight
+		local travelTimeDefault = if limbProfile ~= nil and limbProfile.travelTime ~= nil
+			then limbProfile.travelTime
+			else self.gibTravelTime
 		local restDistanceDefault = if limbProfile ~= nil and limbProfile.restDistance ~= nil
 			then limbProfile.restDistance
 			else self.gibRestDistance

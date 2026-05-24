@@ -36,8 +36,8 @@ local function waitForPackageModule(name: string): ModuleScript
 end
 
 local LoaderGui = require(script.Parent.Parent.UI.Components.LoaderGui)
-local React = require(waitForPackageModule(REACT_NAME))
-local ReactRoblox = require(waitForPackageModule(REACT_ROBLOX_NAME))
+local React = (require :: any)(waitForPackageModule(REACT_NAME))
+local ReactRoblox = (require :: any)(waitForPackageModule(REACT_ROBLOX_NAME))
 local e: typeof(React.createElement) = React.createElement
 
 type LoaderSnapshot = {
@@ -118,7 +118,7 @@ local function sanitizeStringArray(valueRaw: any): { string }
 end
 
 local function sanitizeSnapshot(valueRaw: any): LoaderSnapshot
-	local value: { [string]: any } = if typeof(valueRaw) == "table" then valueRaw :: { [string]: any } else {}
+	local value: { [string]: any } = if typeof(valueRaw) == "table" then valueRaw :: { [string]: any } else ({} :: any)
 
 	return {
 		status = sanitizeString(value.status, DEFAULT_SNAPSHOT.status),
@@ -273,7 +273,7 @@ local function fireSpawnReady(snapshot: LoaderSnapshot): boolean
 	return false
 end
 
-local function LoadingScreenApp(props: LoadingScreenAppProps): React.ReactNode
+local function LoadingScreenApp(props: LoadingScreenAppProps): any
 	local snapshot, setSnapshot = React.useState(function(): LoaderSnapshot
 		return readBridgeSnapshot()
 	end)

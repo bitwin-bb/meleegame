@@ -7,7 +7,7 @@ local Workspace = game:GetService("Workspace")
 
 local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local PlayerServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
+local PlayerServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
 local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.WeatherServiceUtils)
 
 type WeatherType = WeatherServiceUtils.WeatherType

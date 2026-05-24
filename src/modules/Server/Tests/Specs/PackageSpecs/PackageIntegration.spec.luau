@@ -1,5 +1,10 @@
 --!strict
 
+local testEnvironment = getfenv() :: any
+local describe = testEnvironment.describe :: any
+local it = testEnvironment.it :: any
+local expect = testEnvironment.expect :: any
+
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -7,7 +12,7 @@ local Matter = require(ReplicatedStorage.Packages.Matter)
 local TestEZ = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("TestEZ"))
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local Binder = loader("Binder")
 local Brio = loader("Brio")
@@ -51,9 +56,9 @@ return function()
 		end)
 
 		it("lets Matter worlds and loops run scheduled systems", function()
-			local Position = Matter.component("PackageIntegrationPosition")
-			local world = Matter.World.new()
-			local loop = Matter.Loop.new(world)
+			local Position = (Matter.component :: any)("PackageIntegrationPosition")
+			local world = (Matter.World.new :: any)()
+			local loop = (Matter.Loop.new :: any)(world)
 			local tick = Instance.new("BindableEvent")
 			local entityId = world:spawn(Position({
 				x = 5,
@@ -70,7 +75,7 @@ return function()
 				end
 			end)
 
-			local connections = loop:begin({
+			local connections = (loop.begin :: any)(loop, {
 				default = tick.Event,
 			})
 

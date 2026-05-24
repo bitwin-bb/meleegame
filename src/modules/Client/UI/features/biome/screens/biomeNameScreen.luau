@@ -29,7 +29,7 @@ local TEXT_SIZE = Vector2.new(520, 60)
 local UNDERLINE_BASE_SIZE = Vector2.new(236, 14)
 
 return function(props: BiomeNameScreenProps?): React.ReactNode
-	local resolvedProps: BiomeNameScreenProps = if props ~= nil then props else {}
+	local resolvedProps: BiomeNameScreenProps = if props ~= nil then props else ({} :: any)
 	local biomeState = (useStore(biomeSlice.biomeStateAtom) :: BiomeState?) or biomeSlice.biomeStateAtom()
 
 	React.useEffect(function()

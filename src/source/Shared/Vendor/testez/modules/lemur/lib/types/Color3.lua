@@ -1,3 +1,4 @@
+--!nocheck
 local assign = import("../assign")
 local typeKey = import("../typeKey")
 

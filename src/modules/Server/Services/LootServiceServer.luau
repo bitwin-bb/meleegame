@@ -9,7 +9,7 @@ local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.It
 local AudioServiceServer = require(script:FindFirstAncestor("game").Server.Services.AudioServiceServer)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
 local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Core.Platform.InstanceUtils)
-local InventoryServiceServer = require(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
+local InventoryServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
 local LootServiceCache = require(script:FindFirstAncestor("game").Shared.Services.LootCache)
 local LootServiceData = require(script:FindFirstAncestor("game").Shared.Services.Data)
@@ -20,7 +20,7 @@ local PlayerDataServiceServer = require(script:FindFirstAncestor("game").Server.
 local ResolveItem = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveItem)
 local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveToolInstance)
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
-local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local StringUtils = require(script:FindFirstAncestor("game").Shared.Core.StringUtils)
 local Vec = require(script:FindFirstAncestor("game").Shared.Core.Math.Vec)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
@@ -28,11 +28,11 @@ local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.Wo
 type NumberMotion = Ripple.Motion<number>
 type SpringOptions = Ripple.SpringOptions
 
-type LootState = LootServiceUtils.LootState
+type LootState = string
 type LootSettings = LootServiceUtils.LootSettings
 type LootMetadata = LootServiceUtils.LootMetadata
 type LootRollContext = LootServiceUtils.LootRollContext
-type LootRarity = LootServiceUtils.LootRarity
+type LootRarity = string
 type LootRollResult = LootServiceUtils.LootRollResult
 
 type InventoryState = InventoryServiceUtils.InventoryState
@@ -146,10 +146,10 @@ local COIN_TYPE_BY_ITEM_TOKEN: { [string]: "copper" | "silver" | "gold" | "plati
 	coinplatinum = "platinum",
 }
 local KATANA_DROP_TOKEN = "katana"
-local LOOT_AUDIO = (AudioRegistry :: any).Loot or {}
-local LOOT_ITEM_PICKUP_AUDIO = LOOT_AUDIO.ItemPickup or {}
-local LOOT_COIN_DROP_AUDIO = LOOT_AUDIO.CoinDrop or {}
-local LOOT_COIN_PICKUP_AUDIO = LOOT_AUDIO.CoinPickup or {}
+local LOOT_AUDIO = (AudioRegistry :: any).Loot or ({} :: any)
+local LOOT_ITEM_PICKUP_AUDIO = LOOT_AUDIO.ItemPickup or ({} :: any)
+local LOOT_COIN_DROP_AUDIO = LOOT_AUDIO.CoinDrop or ({} :: any)
+local LOOT_COIN_PICKUP_AUDIO = LOOT_AUDIO.CoinPickup or ({} :: any)
 local LOOT_PICKUP_VOLUME = 1.5
 
 local function sanitizeOwnerUserId(userIdRaw: any): number?
@@ -259,7 +259,7 @@ function LootServiceServer.IsToolMatchingItemId(self: LootServiceServer, tool: T
 	end
 
 	local resolvedToolItemId = ResolveToolInstance.resolveToolItemId(tool)
-	local idCandidates = {
+	local idCandidates: { any } = {
 		resolvedToolItemId,
 		tool:GetAttribute("itemId"),
 		tool:GetAttribute("ItemId"),
@@ -374,7 +374,7 @@ end
 function LootServiceServer.ResolveCoinTypeFromItemId(
 	self: LootServiceServer,
 	itemIdRaw: any
-): ("copper" | "silver" | "gold" | "platinum")?
+): string?
 	local itemId = LootServiceUtils.sanitizeString(itemIdRaw, nil)
 	if itemId == nil then
 		return nil
@@ -598,9 +598,9 @@ function LootServiceServer.ApplyRuntimePlaneConstraint(self: LootServiceServer, 
 
 	local rootPosition = runtime.rootPart.Position
 	if math.abs(rootPosition.X - planeX) > EPSILON then
-		local pivot = runtime.instance:GetPivot()
+		local pivot = (runtime.instance :: any):GetPivot()
 		local rotationOnly = pivot - pivot.Position
-		runtime.instance:PivotTo(CFrame.new(planeX, rootPosition.Y, rootPosition.Z) * rotationOnly)
+		;(runtime.instance :: any):PivotTo(CFrame.new(planeX, rootPosition.Y, rootPosition.Z) * rotationOnly)
 	end
 
 	local updatedRootPosition = runtime.rootPart.Position
@@ -614,9 +614,9 @@ function LootServiceServer.SetRuntimePosition(self: LootServiceServer, runtime: 
 		return
 	end
 
-	local pivot = runtime.instance:GetPivot()
+	local pivot = (runtime.instance :: any):GetPivot()
 	local rotationOnly = pivot - pivot.Position
-	runtime.instance:PivotTo(CFrame.new(position) * rotationOnly)
+	;(runtime.instance :: any):PivotTo(CFrame.new(position) * rotationOnly)
 	runtime.lastKnownPosition = position
 end
 
@@ -672,7 +672,7 @@ function LootServiceServer.SetRuntimePhysics(
 		part.CanQuery = canQuery
 
 		if applyBounceProperties then
-			local current = part.CustomPhysicalProperties
+			local current = part.CustomPhysicalProperties :: PhysicalProperties?
 			local density = if current ~= nil then current.Density else 0.7
 			local frictionWeight = if current ~= nil then current.FrictionWeight else 1
 			part.CustomPhysicalProperties = PhysicalProperties.new(
@@ -862,7 +862,7 @@ function LootServiceServer.SpawnLootRuntime(
 	end
 
 	local itemConfig = LootServiceUtils.resolveItemConfig(self.data, itemId)
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else {}
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
 	local amount = LootServiceUtils.sanitizeInteger(amountRaw, 1, 1, 999999)
 	local maxStack = LootServiceUtils.sanitizeInteger((options :: any).maxStack, itemConfig.maxStack, 1, 999999)
 	local rarity = LootServiceUtils.sanitizeRarity((options :: any).rarity, itemConfig.rarity)
@@ -975,10 +975,10 @@ function LootServiceServer.SpawnDropsFromTable(
 	originRaw: any,
 	optionsRaw: any
 ): { [string]: any }
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else {}
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
 	local onlyCoinLoot = (options :: any).onlyCoinLoot == true
 	local origin = LootServiceUtils.sanitizeVector3(originRaw, Vector3.zero)
-	local context = if typeof((options :: any).context) == "table" then shallowCopy((options :: any).context) else {}
+	local context = if typeof((options :: any).context) == "table" then shallowCopy((options :: any).context) else ({} :: any)
 	local mutableContext = context :: any
 	local sourceType = LootServiceUtils.sanitizeString((options :: any).sourceType, nil)
 	if sourceType ~= nil then
@@ -1022,7 +1022,7 @@ function LootServiceServer.SpawnDropsFromTable(
 		end
 	end
 
-	return output
+	return output :: any
 end
 
 function LootServiceServer.SpawnDropsFromSource(
@@ -1036,7 +1036,7 @@ function LootServiceServer.SpawnDropsFromSource(
 		return {}
 	end
 
-	local options = if typeof(optionsRaw) == "table" then shallowCopy(optionsRaw) else {}
+	local options = if typeof(optionsRaw) == "table" then shallowCopy(optionsRaw) else ({} :: any)
 	local mutableOptions = options :: any
 	local sourceType = LootServiceUtils.sanitizeString(mutableOptions.sourceType, nil)
 	if sourceType == nil then
@@ -1612,8 +1612,9 @@ function LootServiceServer.Destroy(self: LootServiceServer)
 	for _, runtimeId in runtimeIds do
 		self:removeRuntimeById(runtimeId, "Cleanup")
 	end
-	if self.cache ~= nil then
-		self.cache:destroy()
+	local cache = self.cache :: LootServiceCacheObject?
+	if cache ~= nil then
+		cache:destroy()
 	end
 
 	if self.networker ~= nil then
@@ -1692,6 +1693,7 @@ type LootServiceServer = typeof(LootServiceServer) & {
 	simulationAccumulator: number,
 	playerRemovingConnection: RBXScriptConnection?,
 	heartbeatConnection: RBXScriptConnection?,
+	binders: any,
 }
 
 return LootServiceServer :: LootServiceServer

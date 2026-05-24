@@ -33,17 +33,17 @@ local function usePressState(options: PressStateOptions?): PressStateResult
 	local hovered, setHoveredState = React.useState(options ~= nil and options.initialHovered == true)
 	local pressed, setPressedState = React.useState(options ~= nil and options.initialPressed == true)
 
-	local setHovered = React.useCallback(function(nextHoveredRaw: boolean)
+	local setHovered = (React.useCallback :: any)(function(nextHoveredRaw: boolean)
 		local nextHovered = nextHoveredRaw == true and not disabled
 		setHoveredState(nextHovered)
 		onHoverChanged(nextHovered)
-	end, { disabled, onHoverChanged })
+	end, ({ disabled, onHoverChanged } :: { any }))
 
-	local setPressed = React.useCallback(function(nextPressedRaw: boolean)
+	local setPressed = (React.useCallback :: any)(function(nextPressedRaw: boolean)
 		local nextPressed = nextPressedRaw == true and not disabled
 		setPressedState(nextPressed)
 		onPressedChanged(nextPressed)
-	end, { disabled, onPressedChanged })
+	end, ({ disabled, onPressedChanged } :: { any }))
 
 	local onMouseEnter = React.useCallback(function()
 		setHovered(true)

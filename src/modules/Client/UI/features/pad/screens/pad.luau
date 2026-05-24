@@ -37,6 +37,10 @@ local FALLBACK_PRESENTATION_RADIUS_PIXELS = 48
 local RETURN_SPEED = 10
 local THUMBSTICK_ACTIVE_EPSILON = GamepadNav.THUMBSTICK_ACTIVE_EPSILON
 
+local function dependencyArray(...: any): { any }
+	return { ... }
+end
+
 local function resolveCharacterRootPart(localPlayer: Player): BasePart?
 	local character = localPlayer.Character
 	if character == nil then
@@ -146,7 +150,7 @@ local function renderStickIndicator(
 end
 
 return function(props: PadScreenProps?): React.ReactNode
-	local resolvedProps: PadScreenProps = if props ~= nil then props else {}
+	local resolvedProps: PadScreenProps = if props ~= nil then props else ({} :: any)
 	local localPlayer = Players.LocalPlayer
 	local state = (useStore(padSlice.padStateAtom) :: PadState?) or padSlice.getPadState()
 	local rootPart, setRootPart = React.useState(resolveCharacterRootPart(localPlayer) :: BasePart?)
@@ -233,16 +237,16 @@ return function(props: PadScreenProps?): React.ReactNode
 		end)
 
 		return nil
-	end, {
+	end, dependencyArray(
 		state.leftStick.active,
 		state.leftStick.position,
 		state.rightStick.active,
 		state.rightStick.position,
 		state.stickDeadzone,
-		state.navigationDeadzone,
-	})
+		state.navigationDeadzone
+	))
 
-	React.useEffect(function()
+	;(React.useEffect :: any)(function(): (() -> ())?
 		local current = activeIndicator
 		if current == nil then
 			return nil
@@ -284,7 +288,7 @@ return function(props: PadScreenProps?): React.ReactNode
 		return function()
 			connection:Disconnect()
 		end
-	end, { activeIndicator })
+	end, dependencyArray(activeIndicator))
 
 	if resolvedProps.visible == false or state.visible ~= true or rootPart == nil then
 		return nil

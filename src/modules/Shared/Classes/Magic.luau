@@ -371,7 +371,7 @@ local function resolveWeaponConfig(
 		if cached == false then
 			return nil
 		end
-		local cloned = cloneWeaponConfig(cached)
+		local cloned = cloneWeaponConfig(cached :: any)
 		cloned.itemType = expectedTypeLabel
 		return cloned
 	end
@@ -383,8 +383,8 @@ local function resolveWeaponConfig(
 		return nil
 	end
 
-	local magicData = if typeof(definition.magic) == "table" then definition.magic :: { [string]: any } else {}
-	local stats = if typeof(definition.stats) == "table" then definition.stats :: { [string]: any } else {}
+	local magicData = if typeof(definition.magic) == "table" then definition.magic :: { [string]: any } else ({} :: any)
+	local stats = if typeof(definition.stats) == "table" then definition.stats :: { [string]: any } else ({} :: any)
 
 	local definitionTypeToken =
 		normalizeTypeToken(definition.itemType or definition.type or definition.weaponType or magicData.itemType)
@@ -490,7 +490,7 @@ local function mergeContext(base: { [string]: any }, extra: { [string]: any }?):
 end
 
 function Magic.New(configRaw: MagicConfig?): Magic
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local expectedTypeLabel = normalizeTypeLabel(config.expectedItemType, DEFAULT_EXPECTED_ITEM_TYPE)
 	local expectedTypeToken = normalizeTypeToken(expectedTypeLabel)
 
@@ -507,7 +507,7 @@ function Magic.New(configRaw: MagicConfig?): Magic
 			inputHeldChanged = Signal.new(),
 			enabledChanged = Signal.new(),
 		},
-		callbacks = if typeof(config.callbacks) == "table" then config.callbacks else {},
+		callbacks = if typeof(config.callbacks) == "table" then config.callbacks else ({} :: any),
 		service = if typeof(config.service) == "table" then config.service else nil,
 		boundTool = nil,
 		character = if typeof(config.character) == "Instance" and config.character:IsA("Model")
@@ -555,7 +555,7 @@ function Magic.New(configRaw: MagicConfig?): Magic
 	return self
 end
 
-function Magic:_invokeCallback(name: string, ...: any)
+function Magic._invokeCallback(self: Magic, name: string, ...: any)
 	local callback = (self.callbacks :: any)[name]
 	if typeof(callback) ~= "function" then
 		return
@@ -563,7 +563,7 @@ function Magic:_invokeCallback(name: string, ...: any)
 	pcall(callback, self, ...)
 end
 
-function Magic:_callServiceBoolean(methodName: string, amount: number, context: { [string]: any }): boolean?
+function Magic._callServiceBoolean(self: Magic, methodName: string, amount: number, context: { [string]: any }): boolean?
 	if self.service == nil then
 		return nil
 	end
@@ -583,7 +583,7 @@ function Magic:_callServiceBoolean(methodName: string, amount: number, context: 
 	return result == true
 end
 
-function Magic:_serviceAllowsCast(context: { [string]: any }): boolean
+function Magic._serviceAllowsCast(self: Magic, context: { [string]: any }): boolean
 	if self.service == nil then
 		return true
 	end
@@ -600,7 +600,7 @@ function Magic:_serviceAllowsCast(context: { [string]: any }): boolean
 	return result ~= false
 end
 
-function Magic:_serviceCanConsumeMana(amount: number, context: { [string]: any }): boolean
+function Magic._serviceCanConsumeMana(self: Magic, amount: number, context: { [string]: any }): boolean
 	if amount <= 0 or self.service == nil then
 		return true
 	end
@@ -630,7 +630,7 @@ function Magic:_serviceCanConsumeMana(amount: number, context: { [string]: any }
 	return true
 end
 
-function Magic:_serviceConsumeMana(amount: number, context: { [string]: any }): boolean
+function Magic._serviceConsumeMana(self: Magic, amount: number, context: { [string]: any }): boolean
 	if amount <= 0 or self.service == nil then
 		return true
 	end
@@ -648,7 +648,7 @@ function Magic:_serviceConsumeMana(amount: number, context: { [string]: any }): 
 	return true
 end
 
-function Magic:_notifyServiceCommitted(context: { [string]: any })
+function Magic._notifyServiceCommitted(self: Magic, context: { [string]: any })
 	if self.service == nil then
 		return
 	end
@@ -661,7 +661,7 @@ function Magic:_notifyServiceCommitted(context: { [string]: any })
 	pcall(onCommitted, self.service, self, context)
 end
 
-function Magic:_emitFailed(reason: string, contextExtra: { [string]: any }?)
+function Magic._emitFailed(self: Magic, reason: string, contextExtra: { [string]: any }?)
 	self.lastError = reason
 	local context = mergeContext({
 		now = os.clock(),
@@ -674,7 +674,7 @@ function Magic:_emitFailed(reason: string, contextExtra: { [string]: any }?)
 	self:_invokeCallback("onCastFailed", context)
 end
 
-function Magic:_emitFinished(success: boolean, reason: string, contextExtra: { [string]: any }?)
+function Magic._emitFinished(self: Magic, success: boolean, reason: string, contextExtra: { [string]: any }?)
 	local context = mergeContext({
 		now = os.clock(),
 		success = success,
@@ -687,7 +687,7 @@ function Magic:_emitFinished(success: boolean, reason: string, contextExtra: { [
 	self:_invokeCallback("onCastFinished", context)
 end
 
-function Magic:_scheduleQueue(waitTime: number)
+function Magic._scheduleQueue(self: Magic, waitTime: number)
 	if self.destroyed then
 		return
 	end
@@ -702,7 +702,7 @@ function Magic:_scheduleQueue(waitTime: number)
 	end)
 end
 
-function Magic:_processQueue(triggerRaw: any)
+function Magic._processQueue(self: Magic, triggerRaw: any)
 	if self.destroyed or not self.enabled or not self.queued or self.casting then
 		return
 	end
@@ -719,7 +719,7 @@ function Magic:_processQueue(triggerRaw: any)
 	self:_startCast(triggerRaw)
 end
 
-function Magic:_commitCast(token: number, baseContext: { [string]: any })
+function Magic._commitCast(self: Magic, token: number, baseContext: { [string]: any })
 	if self.destroyed or not self.casting or self.castToken ~= token then
 		return
 	end
@@ -765,7 +765,7 @@ function Magic:_commitCast(token: number, baseContext: { [string]: any })
 	end
 end
 
-function Magic:_startCast(triggerRaw: any)
+function Magic._startCast(self: Magic, triggerRaw: any)
 	if self.destroyed or not self.enabled or self.casting then
 		return
 	end
@@ -828,7 +828,7 @@ function Magic:_startCast(triggerRaw: any)
 	end)
 end
 
-function Magic:QueueCast(triggerRaw: any): boolean
+function Magic.QueueCast(self: Magic, triggerRaw: any): boolean
 	if self.destroyed or not self.enabled then
 		return false
 	end
@@ -849,15 +849,15 @@ function Magic:QueueCast(triggerRaw: any): boolean
 	return true
 end
 
-function Magic:Cast(triggerRaw: any): boolean
+function Magic.Cast(self: Magic, triggerRaw: any): boolean
 	return self:queueCast(triggerRaw or "Cast")
 end
 
-function Magic:Tap(triggerRaw: any): boolean
+function Magic.Tap(self: Magic, triggerRaw: any): boolean
 	return self:queueCast(triggerRaw or "Tap")
 end
 
-function Magic:InputBegan(triggerRaw: any): boolean
+function Magic.InputBegan(self: Magic, triggerRaw: any): boolean
 	local wasHeld = self.inputHeld
 	self.inputHeld = true
 	if wasHeld ~= self.inputHeld then
@@ -867,7 +867,7 @@ function Magic:InputBegan(triggerRaw: any): boolean
 	return self:queueCast(triggerRaw or "InputBegan")
 end
 
-function Magic:InputEnded(_: any): boolean
+function Magic.InputEnded(self: Magic, _: any): boolean
 	local wasHeld = self.inputHeld
 	self.inputHeld = false
 	if wasHeld ~= self.inputHeld then
@@ -877,7 +877,7 @@ function Magic:InputEnded(_: any): boolean
 	return true
 end
 
-function Magic:SetEnabled(enabledRaw: any)
+function Magic.SetEnabled(self: Magic, enabledRaw: any)
 	local enabled = sanitizeBoolean(enabledRaw, self.enabled)
 	if enabled == self.enabled then
 		return
@@ -893,19 +893,19 @@ function Magic:SetEnabled(enabledRaw: any)
 	end
 end
 
-function Magic:SetService(serviceRaw: any)
+function Magic.SetService(self: Magic, serviceRaw: any)
 	self.service = if typeof(serviceRaw) == "table" then serviceRaw else nil
 end
 
-function Magic:SetOwnerPlayer(playerRaw: any)
+function Magic.SetOwnerPlayer(self: Magic, playerRaw: any)
 	self.ownerPlayer = if typeof(playerRaw) == "Instance" and playerRaw:IsA("Player") then playerRaw else nil
 end
 
-function Magic:SetCharacter(characterRaw: any)
+function Magic.SetCharacter(self: Magic, characterRaw: any)
 	self.character = if typeof(characterRaw) == "Instance" and characterRaw:IsA("Model") then characterRaw else nil
 end
 
-function Magic:SetExpectedItemType(itemTypeRaw: any)
+function Magic.SetExpectedItemType(self: Magic, itemTypeRaw: any)
 	local label = normalizeTypeLabel(itemTypeRaw, DEFAULT_EXPECTED_ITEM_TYPE)
 	local token = normalizeTypeToken(label)
 	if token == "" then
@@ -917,7 +917,7 @@ function Magic:SetExpectedItemType(itemTypeRaw: any)
 	self:refreshWeaponConfig()
 end
 
-function Magic:RefreshWeaponConfig(): MagicWeaponConfig?
+function Magic.RefreshWeaponConfig(self: Magic): MagicWeaponConfig?
 	local tool = self.boundTool
 	if tool == nil then
 		self.weaponConfig = nil
@@ -987,7 +987,7 @@ function Magic:RefreshWeaponConfig(): MagicWeaponConfig?
 	return cloneWeaponConfig(weaponConfig)
 end
 
-function Magic:BindTool(toolRaw: any): boolean
+function Magic.BindTool(self: Magic, toolRaw: any): boolean
 	local tool = if typeof(toolRaw) == "Instance" and toolRaw:IsA("Tool") then toolRaw else nil
 	if tool == nil then
 		return false
@@ -1035,7 +1035,7 @@ function Magic:BindTool(toolRaw: any): boolean
 	return true
 end
 
-function Magic:UnbindTool()
+function Magic.UnbindTool(self: Magic)
 	self.toolJanitor:Clean()
 	self.boundTool = nil
 	self.weaponConfig = nil
@@ -1046,23 +1046,23 @@ function Magic:UnbindTool()
 	self.retryToken += 1
 end
 
-function Magic:ResolveBoundWeaponConfig(): MagicWeaponConfig?
+function Magic.ResolveBoundWeaponConfig(self: Magic): MagicWeaponConfig?
 	return self:refreshWeaponConfig()
 end
 
-function Magic:GetBoundItemId(): string?
+function Magic.GetBoundItemId(self: Magic): string?
 	return self.resolvedItemId
 end
 
-function Magic:GetBoundItemType(): string?
+function Magic.GetBoundItemType(self: Magic): string?
 	return self.resolvedItemType
 end
 
-function Magic:GetLastError(): string?
+function Magic.GetLastError(self: Magic): string?
 	return self.lastError
 end
 
-function Magic:On(signalNameRaw: any, callback: (...any) -> ()): RBXScriptConnection?
+function Magic.On(self: Magic, signalNameRaw: any, callback: (...any) -> ()): RBXScriptConnection?
 	if typeof(signalNameRaw) ~= "string" or typeof(callback) ~= "function" then
 		return nil
 	end
@@ -1074,7 +1074,7 @@ function Magic:On(signalNameRaw: any, callback: (...any) -> ()): RBXScriptConnec
 	return (signalObject :: SignalObject):Connect(callback)
 end
 
-function Magic:Cancel(reasonRaw: any)
+function Magic.Cancel(self: Magic, reasonRaw: any)
 	self.queued = false
 	self.retryToken += 1
 
@@ -1094,7 +1094,7 @@ function Magic:Cancel(reasonRaw: any)
 	end
 end
 
-function Magic:Destroy()
+function Magic.Destroy(self: Magic)
 	if self.destroyed then
 		return
 	end
@@ -1132,3 +1132,4 @@ Magic.cancel = Magic.Cancel
 Magic.destroy = Magic.Destroy
 
 return Magic
+

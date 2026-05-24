@@ -1,3 +1,4 @@
+--!nocheck
 -- luacheck: globals describe it itFOCUS
 return function()
 	itFOCUS("run this", function()

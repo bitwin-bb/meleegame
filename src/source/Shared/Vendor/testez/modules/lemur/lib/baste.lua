@@ -1,3 +1,4 @@
+--!nocheck
 -- luacheck: ignore
 
 --[[

@@ -17,7 +17,7 @@ export type LayerProps = {
 local DEFAULT_Z_INDEX = 1
 
 return function(props: LayerProps): React.ReactNode
-	local native = if props.native ~= nil then table.clone(props.native) else {}
+	local native = if props.native ~= nil then table.clone(props.native) else ({} :: any)
 	if props.name ~= nil then
 		native.Name = props.name
 	end

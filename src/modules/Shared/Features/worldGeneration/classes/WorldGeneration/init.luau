@@ -8,7 +8,7 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local Workspace = game:GetService("Workspace")
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local Brio = loader("Brio")
 local Maid = loader("Maid")
@@ -1420,7 +1420,7 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 		if biomeType == self.biomeType.NORMAL or biomeType == self.biomeType.CORRUPTION then
 			continue
 		end
-		biomeTypes[tileIndex] = self.biomeType.NORMAL
+		biomeTypes[tileIndex] = self.biomeType.NORMAL :: number
 	end
 	for tileIndex = 1, totalTiles do
 		local biomeId = biomeIds[tileIndex]
@@ -1432,7 +1432,7 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 		then
 			continue
 		end
-		biomeIds[tileIndex] = self.biomeId.FOREST
+		biomeIds[tileIndex] = self.biomeId.FOREST :: number
 	end
 	for columnIndex = 1, chunkData.width do
 		local biomeId = surfaceBiomeIds[columnIndex]
@@ -1444,7 +1444,7 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 		then
 			continue
 		end
-		surfaceBiomeIds[columnIndex] = self.biomeId.FOREST
+		surfaceBiomeIds[columnIndex] = self.biomeId.FOREST :: number
 	end
 
 	local treesRaw = chunkDataRaw.trees
@@ -1484,9 +1484,9 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 			else
 				propDataAny.biomeType = sanitizeInteger(
 					propDataAny.biomeType,
-					self.biomeType.NORMAL,
-					self.biomeType.CORRUPTION,
-					self.biomeType.NORMAL
+					self.biomeType.NORMAL :: number,
+					self.biomeType.CORRUPTION :: number,
+					self.biomeType.NORMAL :: number
 				)
 			end
 			if not isFiniteNumber(propDataAny.biomeId) then
@@ -1502,13 +1502,13 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 				propDataAny.biomeId = fallbackBiomeId
 			else
 				propDataAny.biomeId =
-					sanitizeInteger(propDataAny.biomeId, self.biomeId.FOREST, self.biomeId.JUNGLE, self.biomeId.FOREST)
+					sanitizeInteger(propDataAny.biomeId, self.biomeId.FOREST :: number, self.biomeId.JUNGLE :: number, self.biomeId.FOREST :: number)
 			end
 		end
 	end
 
-	chunkDataRaw.dominantBiomeType = resolveDominantBiomeType(biomeTypes, self.biomeType.NORMAL)
-	chunkDataRaw.dominantBiomeId = resolveDominantBiomeId(biomeIds, self.biomeId.FOREST)
+	chunkDataRaw.dominantBiomeType = resolveDominantBiomeType(biomeTypes, self.biomeType.NORMAL :: number)
+	chunkDataRaw.dominantBiomeId = resolveDominantBiomeId(biomeIds, self.biomeId.FOREST :: number)
 	chunkDataRaw._metadataValidated = true
 end
 
@@ -1978,7 +1978,7 @@ function WorldGeneration.RepairChunkTileMetadataOverlaps(
 end
 
 function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local parent = if typeof((config :: any).parent) == "Instance"
 		then (config :: any).parent :: Instance
 		else WorkspaceFolders.getOrCreateGameFolder()
@@ -2190,11 +2190,11 @@ function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
 	self.maid:GiveTask(self._trackedPlayerBrioSignal)
 	self.maid:GiveTask(self._statsPulseSignal)
 
-	self.cache = Cache.new({
+	self.cache = Cache.new(({
 		maxPoolSize = self.maxPoolSize,
 		maxCachedChunkData = self.maxCachedChunkData,
 		createPart = createPartTemplate,
-	})
+	} :: any))
 
 	local tilesFolder = resolveTilesTemplateFolder()
 	self.tileTemplatesByTileId = {
@@ -2266,16 +2266,16 @@ function WorldGeneration.CreateFolders(self: WorldGeneration)
 	})
 	WorkspaceFolders.manageFolder(worldFolder, self.parent)
 
-	local chunksFolder = TileComponent.CreateFolder({
+	local chunksFolder = TileComponent.CreateFolder(({
 		name = DEFAULT_WORLD_CHUNKS_FOLDER_NAME,
 		parent = worldFolder,
-	})
+	} :: any))
 	WorkspaceFolders.manageFolder(chunksFolder, worldFolder)
 
-	local collisionChunksFolder = TileComponent.CreateFolder({
+	local collisionChunksFolder = TileComponent.CreateFolder(({
 		name = DEFAULT_WORLD_COLLISION_FOLDER_NAME,
 		parent = worldFolder,
-	})
+	} :: any))
 	WorkspaceFolders.manageFolder(collisionChunksFolder, worldFolder)
 
 	self.worldFolder = worldFolder
@@ -2570,7 +2570,7 @@ function WorldGeneration.RebuildLoadedChunkByKey(self: WorldGeneration, chunkKey
 	if previousVisual == nil then
 		return false
 	end
-	local context = if typeof(contextRaw) == "table" then contextRaw :: { [string]: any } else {}
+	local context = if typeof(contextRaw) == "table" then contextRaw :: { [string]: any } else ({} :: any)
 
 	local chunkX, chunkY = unpackChunkKey(chunkKey)
 	if chunkX == nil or chunkY == nil then
@@ -4606,11 +4606,11 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 	local desertDecorationSettings = if typeof(self.desertConfig) == "table"
 			and typeof((self.desertConfig :: any).Decoration) == "table"
 		then (self.desertConfig :: any).Decoration :: { [string]: any }
-		else {}
+		else ({} :: any)
 	local snowDecorationSettings = if typeof(self.snowConfig) == "table"
 			and typeof((self.snowConfig :: any).Decoration) == "table"
 		then (self.snowConfig :: any).Decoration :: { [string]: any }
-		else {}
+		else ({} :: any)
 	local chunkTileMaxY = tileMinY + height - 1
 	local function hasReservedSurfaceTileNear(worldTileX: number, radius: number): boolean
 		for scanTileX = worldTileX - radius, worldTileX + radius do
@@ -5174,10 +5174,10 @@ function WorldGeneration.BuildChunkVisual(self: WorldGeneration, chunkData: Chun
 		part.Size = Vector3.new(self.tileDepth, self.tileSize * rect.height, self.tileSize * rect.width)
 		part.CFrame = CFrame.new(self:computeTileCenterPosition(centerTileX, centerTileY, 0))
 		if terrainFolder == nil then
-			terrainFolder = TileComponent.CreateFolder({
+			terrainFolder = TileComponent.CreateFolder(({
 				name = "Terrain",
 				parent = model,
-			})
+			} :: any))
 			WorkspaceFolders.manageFolder(terrainFolder, model)
 		end
 		part.Parent = terrainFolder
@@ -5312,7 +5312,7 @@ function WorldGeneration.LoadChunkByKey(self: WorldGeneration, chunkKey: string,
 		return
 	end
 
-	local context = if typeof(contextRaw) == "table" then contextRaw :: { [string]: any } else {}
+	local context = if typeof(contextRaw) == "table" then contextRaw :: { [string]: any } else ({} :: any)
 	local chunkX, chunkY = unpackChunkKey(chunkKey)
 	if chunkX == nil or chunkY == nil then
 		return

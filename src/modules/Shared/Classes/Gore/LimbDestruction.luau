@@ -58,7 +58,8 @@ local function normalizeToken(valueRaw: any): string
 	if typeof(valueRaw) ~= "string" then
 		return ""
 	end
-	return string.lower(string.gsub(string.match(valueRaw, "^%s*(.-)%s*$") or "", "[%s_%-%.]", ""))
+	local normalized = string.gsub(string.match(valueRaw, "^%s*(.-)%s*$") or "", "[%s_%-%.]", "")
+	return string.lower(normalized)
 end
 
 local function resolveEntityModel(configRaw: LimbDestructionConfig?): Model?
@@ -204,7 +205,7 @@ function LimbDestruction.DestroyLimb(self: LimbDestruction, limbRaw: any, option
 		return nil
 	end
 
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else {}
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
 	local destroyedTransparency = sanitizeNumber(options.destroyedTransparency, self.destroyedTransparency, 0, 1)
 	local record: DestroyedLimbRecord = {
 		part = limb,

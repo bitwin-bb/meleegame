@@ -1,3 +1,4 @@
+--!nocheck
 local ServerStorage = import("./ServerStorage")
 
 describe("instances.ServerStorage", function()

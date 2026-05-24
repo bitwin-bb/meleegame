@@ -4,7 +4,7 @@ local RunService = game:GetService("RunService")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(packageRoot)
+local loader = (require :: any)(loaderUtils.Parent).load(packageRoot)
 
 local Maid = loader("Maid")
 

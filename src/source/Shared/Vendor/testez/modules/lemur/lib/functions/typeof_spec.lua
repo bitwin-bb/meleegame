@@ -1,3 +1,4 @@
+--!nocheck
 local typeof = import("./typeof")
 
 describe("functions.typeof", function()

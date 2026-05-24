@@ -1,3 +1,4 @@
+--!nocheck
 return function()
 	describe("When an error occurs in an afterEach block", function()
 		it("Should pass", function()

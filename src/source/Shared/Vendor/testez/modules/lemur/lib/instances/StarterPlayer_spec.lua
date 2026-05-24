@@ -1,3 +1,4 @@
+--!nocheck
 local StarterPlayer = import("./StarterPlayer")
 
 describe("instances.StarterPlayer", function()

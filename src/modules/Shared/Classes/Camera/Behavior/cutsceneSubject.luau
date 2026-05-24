@@ -20,7 +20,7 @@ function CutsceneSubject.Resolve(optionsRaw: CutsceneSubjectOptions?): Target.Re
 end
 
 function CutsceneSubject.New(optionsRaw: CutsceneSubjectOptions?): CutsceneSubjectOptions
-	return optionsRaw or {}
+	return optionsRaw or ({} :: any)
 end
 
 CutsceneSubject.resolve = CutsceneSubject.Resolve

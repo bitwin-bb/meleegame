@@ -93,7 +93,7 @@ return function(props: HpTopRightBarProps)
 			id = heartsHoverId,
 			text = heartsHoverText,
 		})
-	end, { heartsHover.hovered, heartsHoverText })
+	end, ({ heartsHover.hovered, heartsHoverText } :: { any }))
 
 	React.useEffect(function()
 		return function()

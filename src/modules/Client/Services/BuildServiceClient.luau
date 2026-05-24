@@ -9,10 +9,10 @@ local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
+local AudioServiceClient = (require :: any)(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
 local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
-local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
+local ClientBinderSupport = (require :: any)(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
 local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Core.Platform.GamepadPointer)
 local GamepadTargetServiceClient = require(script:FindFirstAncestor("game").Client.Services.GamepadTargetServiceClient)
@@ -25,7 +25,7 @@ local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Se
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
 local Rubble = require(script:FindFirstAncestor("game").Shared.Classes.Rubble)
 local Signal = require(ReplicatedStorage.Packages.Signal)
-local SnackbarNotifications = require(script:FindFirstAncestor("game").Client.SnackbarNotifications)
+local SnackbarNotifications = (require :: any)(script:FindFirstAncestor("game").Client.SnackbarNotifications)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =
@@ -259,12 +259,12 @@ local INPUT_ACTION_PRIMARY = "BuildService.Primary"
 local CURSOR_VISUAL_RAYCAST_DISTANCE_STUDS = 4096
 local BUILD_TREE_ROOT_TILE_X_ATTRIBUTE = "BuildTreeRootTileX"
 local BUILD_TREE_ROOT_TILE_Y_ATTRIBUTE = "BuildTreeRootTileY"
-local TREE_AUDIO = (((AudioRegistry :: any).Misc or {}).Tree or {})
-local TREE_CHOP_AUDIO = TREE_AUDIO.Chop or {}
-local TREE_FALL_AUDIO = TREE_AUDIO.Fall or {}
-local TILE_AUDIO = (((AudioRegistry :: any).Misc or {}).Tile or {})
-local TILE_HIT_AUDIO = TILE_AUDIO.Hit or {}
-local TILE_BREAK_AUDIO = TILE_AUDIO.Break or {}
+local TREE_AUDIO = (((AudioRegistry :: any).Misc or ({} :: any)).Tree or ({} :: any))
+local TREE_CHOP_AUDIO = TREE_AUDIO.Chop or ({} :: any)
+local TREE_FALL_AUDIO = TREE_AUDIO.Fall or ({} :: any)
+local TILE_AUDIO = (((AudioRegistry :: any).Misc or ({} :: any)).Tile or ({} :: any))
+local TILE_HIT_AUDIO = TILE_AUDIO.Hit or ({} :: any)
+local TILE_BREAK_AUDIO = TILE_AUDIO.Break or ({} :: any)
 
 local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
@@ -863,7 +863,7 @@ function BuildServiceClient.FadeTreeFallSoundIfPlaying(
 	end
 
 	local fadeSeconds = if isFiniteNumber(fadeSecondsRaw)
-		then math.max(0, fadeSecondsRaw)
+		then math.max(0, fadeSecondsRaw :: number)
 		else TREE_FALL_SOUND_FADE_OUT_SECONDS
 	AudioServiceUtils.stopAndDestroySound(sound, fadeSeconds)
 end
@@ -1679,11 +1679,11 @@ local function spawnDebrisBurst(
 end
 
 function BuildServiceClient.SpawnHitDebris(self: BuildServiceClient, tileX: number, tileY: number, tileId: number)
-	spawnDebrisBurst(self, tileX, tileY, tileId, 1, 2, 0.12, 0.24, 0.55, 0.18, 0.7, 0.85, 0.3, 0.55)
+	spawnDebrisBurst(self :: any, tileX, tileY, tileId, 1, 2, 0.12, 0.24, 0.55, 0.18, 0.7, 0.85, 0.3, 0.55)
 end
 
 function BuildServiceClient.SpawnBreakDebris(self: BuildServiceClient, tileX: number, tileY: number, tileId: number)
-	spawnDebrisBurst(self, tileX, tileY, tileId, 4, 7, 0.18, 0.4, 1.15, 0.45, 1.55, 1.7, 0.55, 1.05)
+	spawnDebrisBurst(self :: any, tileX, tileY, tileId, 4, 7, 0.18, 0.4, 1.15, 0.45, 1.55, 1.7, 0.55, 1.05)
 end
 
 function BuildServiceClient.PlayHoveredTileBreakFeedback(self: BuildServiceClient): boolean
@@ -1792,8 +1792,8 @@ function BuildServiceClient.OnBreakProgress(self: BuildServiceClient, payloadRaw
 	if isActive then
 		self.currentBreakProgress = {
 			isActive = true,
-			tileX = tileX,
-			tileY = tileY,
+			tileX = tileX :: number,
+			tileY = tileY :: number,
 			progress = progress,
 			breakDuration = breakDuration,
 			progressMode = progressMode,
@@ -2268,7 +2268,7 @@ function BuildServiceClient.Destroy(self: BuildServiceClient)
 	if typeof(clearHoveredTerrainTile) == "function" then
 		(WorldGenerationServiceClient :: any):clearHoveredTerrainTile()
 	end
-	for treeId in self.treeFallAnimations do
+	for treeId in pairs(self.treeFallAnimations :: { [string]: TreeFallAnimation }) do
 		self:stopTreeFallAnimation(treeId, true)
 	end
 	table.clear(self.treeFallAnimationOrder)

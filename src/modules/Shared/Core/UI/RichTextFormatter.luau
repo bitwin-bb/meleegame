@@ -12,6 +12,7 @@ export type FormatterConfig = {
 }
 
 export type Builder = {
+	parts: { string },
 	_append: (self: Builder, text: string) -> Builder,
 	raw: (self: Builder, textRaw: any) -> Builder,
 	append: (self: Builder, textRaw: any) -> Builder,
@@ -144,7 +145,7 @@ function RichTextFormatter.WrapTag(tag: string, contentRaw: any, attributesRaw: 
 end
 
 function RichTextFormatter.New(configRaw: FormatterConfig?): Builder
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	if typeof(config.cacheLimit) == "number" then
 		globalCache.limit = clampInteger(config.cacheLimit, globalCache.limit, 8, 100000)
 	end
@@ -157,7 +158,7 @@ function RichTextFormatter.New(configRaw: FormatterConfig?): Builder
 	end
 	return setmetatable({
 		parts = {} :: { string },
-	}, Builder)
+	}, Builder) :: any
 end
 
 function Builder._append(self: Builder, text: string): Builder

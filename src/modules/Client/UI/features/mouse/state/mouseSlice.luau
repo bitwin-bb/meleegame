@@ -50,15 +50,15 @@ end
 
 local function createMouseState(source: MouseStateSource): MouseState
 	local cursorState = resolveCursorState(source)
-	return {
+	return ({
 		visible = source.visible,
 		position = source.position,
 		isHoveringGui = source.isHoveringGui,
 		hoveredGuiPath = if source.isHoveringGui then source.hoveredGuiPath else nil,
 		isMouseDown = source.isMouseDown,
 		cursorState = cursorState,
-		imageId = resolveCursorImageId(cursorState),
-	}
+		imageId = resolveCursorImageId(cursorState :: any),
+	} :: MouseState)
 end
 
 local DEFAULT_STATE: MouseState = createMouseState({
@@ -115,7 +115,7 @@ end
 
 local function setMouseState(stateRaw: any): MouseState
 	local current = mouseStateAtom()
-	local source = if typeof(stateRaw) == "table" then stateRaw else {}
+	local source = if typeof(stateRaw) == "table" then stateRaw else ({} :: any)
 	local nextState = createMouseState({
 		visible = sanitizeBool((source :: any).visible, current.visible),
 		position = sanitizePosition((source :: any).position),

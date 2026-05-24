@@ -69,7 +69,7 @@ local function applyFromService(): CraftingState
 		categoryFilter = serviceState.categoryFilter
 	end
 
-	local recipes: { [string]: any } = {}
+	local recipes: { any } = {}
 	local didReadRecipes = pcall(function()
 		recipes = CraftingServiceClient:getRecipes({
 			category = categoryFilter,
@@ -80,7 +80,7 @@ local function applyFromService(): CraftingState
 		recipes = {}
 	end
 
-	local availableCategories = if typeof(serviceState.availableCategories) == "table" then serviceState.availableCategories else {}
+	local availableCategories = if typeof(serviceState.availableCategories) == "table" then serviceState.availableCategories else ({} :: any)
 	local activeStations = toStringArrayFromSet(serviceState.activeStations)
 	local selectedRecipeId = currentState.selectedRecipeId
 	if typeof(selectedRecipeId) ~= "string" or selectedRecipeId == "" then

@@ -81,7 +81,7 @@ return function(props: SegmentIconProps): React.ReactNode
 	}
 	applyNativeProps(emptyProps, props.nativeEmpty)
 
-	local children: { React.ReactNode } = {
+	local children: { [any]: React.ReactNode } = {
 		Empty = e("ImageLabel", emptyProps),
 	}
 

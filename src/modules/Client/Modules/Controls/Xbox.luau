@@ -1,6 +1,6 @@
 --!strict
 
-return {
+return ({
 	platform = "Gamepad",
 	family = "xbox",
 	sections = {
@@ -57,6 +57,7 @@ return {
 					label = "Previous / next hotbar item",
 					prompts = {
 						{
+							keyCode = "",
 							text = "LB/RB",
 						},
 					},
@@ -115,4 +116,4 @@ return {
 			},
 		},
 	},
-}
+} :: any)

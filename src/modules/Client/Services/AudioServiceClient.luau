@@ -7,17 +7,17 @@ local RunService = game:GetService("RunService")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
 local BossServiceClient = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceClient)
-local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
+local ClientBinderSupport = (require :: any)(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
 local Table = loader("Table")
-local WeatherServiceClient = require(script:FindFirstAncestor("game").Client.Services.WeatherServiceClient)
+local WeatherServiceClient = (require :: any)(script:FindFirstAncestor("game").Client.Services.WeatherServiceClient)
 local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.WeatherServiceUtils)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
@@ -71,7 +71,7 @@ local DEPTH_LAYER_CAVERN = 3
 local DEPTH_LAYER_DEEP = 4
 local NIGHT_CLOCK_START = 19
 local NIGHT_CLOCK_END = 5.5
-local MUSIC_AUDIO = (AudioRegistry :: any).Music or {}
+local MUSIC_AUDIO = (AudioRegistry :: any).Music or ({} :: any)
 
 local SOUNDTRACK_TRACK_KEYS_BY_BIOME: { [string]: { string } } = {
 	Overworld = { "OverworldDay" },
@@ -693,7 +693,8 @@ function AudioServiceClient.PlaySound(
 		self.channelSounds = {}
 	end
 
-	local categoryGroup = self.categoryGroups[options.category]
+	local categoryGroups = self.categoryGroups :: { [string]: SoundGroup? }
+	local categoryGroup = categoryGroups[options.category]
 
 	local shouldReplaceChannel = if options.replaceChannel == nil then true else options.replaceChannel
 	if options.channel and shouldReplaceChannel then
@@ -707,12 +708,13 @@ function AudioServiceClient.PlaySound(
 
 	local channelName = options.channel
 	if channelName then
-		self.channelSounds[channelName] = sound
+		local channelSounds = self.channelSounds :: { [string]: Sound? }
+		channelSounds[channelName] = sound
 
 		local channelConnection: RBXScriptConnection?
 		channelConnection = sound.Destroying:Connect(function()
-			if self.channelSounds[channelName] == sound then
-				self.channelSounds[channelName] = nil
+			if channelSounds[channelName] == sound then
+				channelSounds[channelName] = nil
 			end
 			if channelConnection then
 				channelConnection:Disconnect()
@@ -774,18 +776,19 @@ function AudioServiceClient.StopChannel(self: AudioServiceClient, channelNameRaw
 		return
 	end
 
-	local sound = self.channelSounds[channelNameRaw]
+	local channelSounds = self.channelSounds :: { [string]: Sound? }
+	local sound = channelSounds[channelNameRaw]
 	if not sound then
 		return
 	end
 
-	self.channelSounds[channelNameRaw] = nil
+	channelSounds[channelNameRaw] = nil
 	AudioServiceUtils.stopAndDestroySound(sound, fadeTimeRaw)
 end
 
 function AudioServiceClient.StopAll(self: AudioServiceClient, fadeTimeRaw: any)
 	local channels: { string } = {}
-	for channelName in self.channelSounds do
+	for channelName in pairs(self.channelSounds :: { [string]: Sound? }) do
 		table.insert(channels, channelName)
 	end
 
@@ -846,12 +849,12 @@ type AudioServiceClient = typeof(AudioServiceClient) & {
 	updateBiomeSoundtrack: (self: AudioServiceClient, deltaTime: number) -> (),
 	localPlayer: Player,
 	networker: Networker.Client,
-	janitor: JanitorClass,
+	janitor: any,
 	characterSoundJanitor: JanitorClass,
 	state: AudioServiceState,
 	runtimeFolder: Folder,
-	categoryGroups: { [string]: SoundGroup },
-	channelSounds: { [string]: Sound },
+	categoryGroups: { [string]: SoundGroup? },
+	channelSounds: { [string]: Sound? },
 	random: Random,
 	soundtrackAssetIdsByBiome: { [string]: { string } },
 	soundtrackShuffleBagByBiome: { [string]: { string } },

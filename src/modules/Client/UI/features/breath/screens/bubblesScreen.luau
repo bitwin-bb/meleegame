@@ -133,7 +133,7 @@ return function(props: BubblesScreenProps)
 			id = hoverId,
 			text = hoverText,
 		})
-	end, { bubblesHover.hovered, hoverText })
+	end, ({ bubblesHover.hovered, hoverText } :: { any }))
 
 	React.useEffect(function()
 		return function()

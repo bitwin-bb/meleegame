@@ -38,7 +38,7 @@ local function useEvent(eventOrCallback: any, callbackOrOptions: any?, optionsRa
 	local enabled = if options ~= nil and options.enabled ~= nil then options.enabled == true else true
 	local once = options ~= nil and options.once == true
 
-	React.useEffect(function()
+	;(React.useEffect :: any)(function(): (() -> ())?
 		if signal == nil or not enabled then
 			return nil
 		end
@@ -58,7 +58,7 @@ local function useEvent(eventOrCallback: any, callbackOrOptions: any?, optionsRa
 				connection = nil
 			end
 		end
-	end, { signal, enabled, once, stableCallback })
+	end, ({ signal, enabled, once, stableCallback } :: { any }))
 
 	return stableCallback
 end

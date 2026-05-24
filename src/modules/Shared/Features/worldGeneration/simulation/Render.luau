@@ -51,7 +51,7 @@ local function decodeClusterIndex(index: number, countX: number, countY: number)
 end
 
 function Render.New(configRaw: any, cacheRaw: any, debugRaw: any)
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local cache = if cacheRaw ~= nil then cacheRaw else Cache.new(nil)
 	local self = setmetatable({
 		config = config,
@@ -84,7 +84,7 @@ function Render.New(configRaw: any, cacheRaw: any, debugRaw: any)
 	return self
 end
 
-function Render:BindChunkFolderGuard(chunksFolder: Folder)
+function Render.BindChunkFolderGuard(self: Render, chunksFolder: Folder)
 	if self.chunkFolderGuardConnection ~= nil then
 		return
 	end
@@ -101,7 +101,7 @@ function Render:BindChunkFolderGuard(chunksFolder: Folder)
 	end)
 end
 
-function Render:GetExistingChunksFolder(): Folder?
+function Render.GetExistingChunksFolder(self: Render): Folder?
 	local worldFolder = WorkspaceFolders.findFolderInGameOrWorkspace(WORLD_FOLDER_NAME)
 	if worldFolder == nil or not worldFolder:IsA("Folder") then
 		return nil
@@ -113,7 +113,7 @@ function Render:GetExistingChunksFolder(): Folder?
 	return chunksFolder
 end
 
-function Render:BindExistingChunkFolderGuard()
+function Render.BindExistingChunkFolderGuard(self: Render)
 	local chunksFolder = self:getExistingChunksFolder()
 	if chunksFolder == nil then
 		return
@@ -123,7 +123,7 @@ function Render:BindExistingChunkFolderGuard()
 	self:bindChunkFolderGuard(chunksFolder)
 end
 
-function Render:EnsureFolders(parentRaw: any): Folder?
+function Render.EnsureFolders(self: Render, parentRaw: any): Folder?
 	local parent = if typeof(parentRaw) == "Instance" then parentRaw else WorkspaceFolders.getOrCreateGameFolder()
 	if self.worldFolder ~= nil and self.worldFolder.Parent ~= nil then
 		if self.chunksFolder ~= nil and self.chunksFolder.Parent ~= nil then
@@ -133,27 +133,29 @@ function Render:EnsureFolders(parentRaw: any): Folder?
 
 	local worldFolder = parent:FindFirstChild(WORLD_FOLDER_NAME)
 	if worldFolder == nil or not worldFolder:IsA("Folder") then
-		worldFolder = TileComponent.CreateFolder({
+		worldFolder = TileComponent.CreateFolder(({
 			name = WORLD_FOLDER_NAME,
 			parent = parent,
-		})
+		} :: any)) :: any
 	end
+	local resolvedWorldFolder = worldFolder :: Folder
 
-	local chunksFolder = worldFolder:FindFirstChild(CHUNKS_FOLDER_NAME)
+	local chunksFolder = resolvedWorldFolder:FindFirstChild(CHUNKS_FOLDER_NAME)
 	if chunksFolder == nil or not chunksFolder:IsA("Folder") then
-		chunksFolder = TileComponent.CreateFolder({
+		chunksFolder = TileComponent.CreateFolder(({
 			name = CHUNKS_FOLDER_NAME,
-			parent = worldFolder,
-		})
+			parent = resolvedWorldFolder,
+		} :: any)) :: any
 	end
+	local resolvedChunksFolder = chunksFolder :: Folder
 
-	self.worldFolder = worldFolder
-	self.chunksFolder = chunksFolder
-	self:bindChunkFolderGuard(chunksFolder)
-	return chunksFolder
+	self.worldFolder = resolvedWorldFolder
+	self.chunksFolder = resolvedChunksFolder
+	self:bindChunkFolderGuard(resolvedChunksFolder)
+	return resolvedChunksFolder
 end
 
-function Render:ReleaseChunkVisual(chunkKey: string)
+function Render.ReleaseChunkVisual(self: Render, chunkKey: string)
 	local visual = self.chunkVisuals[chunkKey]
 	if visual == nil then
 		return
@@ -168,7 +170,7 @@ function Render:ReleaseChunkVisual(chunkKey: string)
 	visual.model:Destroy()
 end
 
-function Render:SpawnChunkModel(coordRaw: any, chunkDataRaw: any): ChunkVisual?
+function Render.SpawnChunkModel(self: Render, coordRaw: any, chunkDataRaw: any): ChunkVisual?
 	if typeof(coordRaw) ~= "table" or typeof(chunkDataRaw) ~= "table" then
 		return nil
 	end
@@ -261,7 +263,7 @@ function Render:SpawnChunkModel(coordRaw: any, chunkDataRaw: any): ChunkVisual?
 	return visual
 end
 
-function Render:ApplyChunkSnapshot(snapshotRaw: any): boolean
+function Render.ApplyChunkSnapshot(self: Render, snapshotRaw: any): boolean
 	if typeof(snapshotRaw) ~= "table" then
 		return false
 	end
@@ -294,7 +296,7 @@ function Render:ApplyChunkSnapshot(snapshotRaw: any): boolean
 	return true
 end
 
-function Render:UnloadChunk(chunkKeyRaw: any)
+function Render.UnloadChunk(self: Render, chunkKeyRaw: any)
 	if typeof(chunkKeyRaw) ~= "string" or chunkKeyRaw == "" then
 		return
 	end
@@ -304,7 +306,7 @@ function Render:UnloadChunk(chunkKeyRaw: any)
 	end
 end
 
-function Render:Destroy()
+function Render.Destroy(self: Render)
 	for chunkKey in self.chunkVisuals do
 		self:releaseChunkVisual(chunkKey)
 	end
@@ -323,7 +325,7 @@ function Render:Destroy()
 	end
 end
 
-function Render:GetActiveChunkCount(): number
+function Render.GetActiveChunkCount(self: Render): number
 	local count = 0
 	for _ in self.chunkVisuals do
 		count += 1
@@ -331,7 +333,7 @@ function Render:GetActiveChunkCount(): number
 	return count
 end
 
-function Render:GetChunkFolderModelCount(): number
+function Render.GetChunkFolderModelCount(self: Render): number
 	local chunksFolder = self:getExistingChunksFolder()
 	if chunksFolder == nil then
 		return 0
@@ -345,11 +347,11 @@ function Render:GetChunkFolderModelCount(): number
 	return count
 end
 
-function Render:BeginStreamingTick()
+function Render.BeginStreamingTick(self: Render)
 	self.streamingTickActive = true
 end
 
-function Render:EndStreamingTick()
+function Render.EndStreamingTick(self: Render)
 	self.streamingTickActive = false
 end
 
@@ -368,3 +370,4 @@ Render.beginStreamingTick = Render.BeginStreamingTick
 Render.endStreamingTick = Render.EndStreamingTick
 
 return Render
+

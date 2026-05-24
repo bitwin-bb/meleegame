@@ -42,8 +42,8 @@ local function trim(valueRaw: any): string
 end
 
 local function getInstanceCacheKey(instance: Instance): string
-	local ok, debugIdOrError = pcall(function()
-		return instance:GetDebugId(0)
+	local ok, debugIdOrError = (pcall :: any)(function()
+		return (instance :: any):GetDebugId(0)
 	end)
 	if ok and typeof(debugIdOrError) == "string" and debugIdOrError ~= "" then
 		return debugIdOrError
@@ -152,7 +152,7 @@ local function resolveBossSnapshotByRuntimeId(runtimeIdRaw: any): any?
 end
 
 local function resolveBossSnapshotByFilters(filtersRaw: any): any?
-	local filters = if typeof(filtersRaw) == "table" then filtersRaw else {}
+	local filters = if typeof(filtersRaw) == "table" then filtersRaw else ({} :: any)
 	local state = getBossState()
 	if
 		typeof(state) ~= "table"
@@ -189,7 +189,7 @@ local function resolveBossSnapshotByFilters(filtersRaw: any): any?
 end
 
 local function resolveBossSnapshot(sourceRaw: any): any?
-	local source = if typeof(sourceRaw) == "table" then sourceRaw else {}
+	local source = if typeof(sourceRaw) == "table" then sourceRaw else ({} :: any)
 	local runtimeId = trim((source :: any).runtimeId)
 	if runtimeId ~= "" then
 		return resolveBossSnapshotByRuntimeId(runtimeId)
@@ -203,7 +203,7 @@ local function createBossTarget(sourceRaw: any, snapshotRaw: any): ResolvedTarge
 		return nil
 	end
 
-	local motion = if typeof((snapshot :: any).motion) == "table" then (snapshot :: any).motion else {}
+	local motion = if typeof((snapshot :: any).motion) == "table" then (snapshot :: any).motion else ({} :: any)
 	local position = if typeof((motion :: any).position) == "Vector3"
 		then (motion :: any).position
 		else (snapshot :: any).position
@@ -238,7 +238,7 @@ local function createBossTarget(sourceRaw: any, snapshotRaw: any): ResolvedTarge
 end
 
 function Target.New(optionsRaw: any?): Target
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else {}
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
 
 	return setmetatable({
 		localPlayer = if typeof((options :: any).localPlayer) == "Instance"
@@ -332,11 +332,12 @@ function Target.ResolveAny(self: Target, sourceRaw: any, kindFallback: string?):
 		end
 
 		if sourceRaw:IsA("Attachment") then
-			if sourceRaw.Parent == nil then
+			local attachmentParent = sourceRaw.Parent :: Instance?
+			if attachmentParent == nil then
 				return nil
 			end
-			local parentPart = if sourceRaw.Parent ~= nil and sourceRaw.Parent:IsA("BasePart")
-				then sourceRaw.Parent
+			local parentPart = if attachmentParent:IsA("BasePart")
+				then attachmentParent
 				else nil
 			return createResolvedTarget(
 				kindFallback or "Attachment",
@@ -345,7 +346,7 @@ function Target.ResolveAny(self: Target, sourceRaw: any, kindFallback: string?):
 				nil,
 				getInstanceCacheKey(sourceRaw),
 				sourceRaw,
-				if sourceRaw.Parent ~= nil and sourceRaw.Parent:IsA("Model") then sourceRaw.Parent else nil,
+				if attachmentParent:IsA("Model") then attachmentParent else nil,
 				parentPart,
 				sourceRaw,
 				sourceRaw,
@@ -494,7 +495,7 @@ function Target.ResolveCharacterTarget(self: Target, characterRaw: any?): Resolv
 end
 
 function Target.Resolve(self: Target, optionsRaw: any?): ResolvedTarget?
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else {}
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
 	if self.temporaryOverrideExpiresAt ~= nil and os.clock() >= self.temporaryOverrideExpiresAt then
 		self:clearTemporaryOverride()
 	end
@@ -520,7 +521,7 @@ function Target.Resolve(self: Target, optionsRaw: any?): ResolvedTarget?
 		return explicitTarget
 	end
 
-	local characterTarget = self:resolveCharacterTarget((options :: any).character)
+	local characterTarget = self:ResolveCharacterTarget((options :: any).character)
 	if characterTarget ~= nil then
 		return characterTarget
 	end

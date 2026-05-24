@@ -211,7 +211,7 @@ end
 
 function EyeOfCthulhuConfig.Resolve(configRaw: any): EyeOfCthulhuConfig
 	local config = cloneDefaults()
-	local source = if typeof(configRaw) == "table" then configRaw else {}
+	local source = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 
 	config.maxHp = sanitizeInteger((source :: any).maxHp, config.maxHp, 1, 10 ^ 9)
 	config.defensePhase1 =

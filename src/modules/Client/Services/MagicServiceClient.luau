@@ -527,7 +527,7 @@ function MagicServiceClient.Init(self: MagicServiceClient)
 		self.stateChanged:Destroy()
 	end)
 	self.janitor:GiveChore(function()
-		for _, pool in self.visualPools do
+		for _, pool in pairs(self.visualPools :: { [string]: { VisualPoolEntry } }) do
 			for _, entry in pool do
 				if entry.part.Parent ~= nil then
 					entry.part:Destroy()
@@ -550,10 +550,12 @@ function MagicServiceClient.Init(self: MagicServiceClient)
 			self:stepHeldCast()
 		end
 
-		self.visualAccumulator += dt
+		local visualAccumulator = (self.visualAccumulator :: number) + dt
+		self.visualAccumulator = visualAccumulator
 		local steps = 0
-		while self.visualAccumulator >= CLIENT_VISUAL_STEP and steps < 4 do
-			self.visualAccumulator -= CLIENT_VISUAL_STEP
+		while visualAccumulator >= CLIENT_VISUAL_STEP and steps < 4 do
+			visualAccumulator -= CLIENT_VISUAL_STEP
+			self.visualAccumulator = visualAccumulator
 			steps += 1
 			self:stepVisuals(CLIENT_VISUAL_STEP)
 		end

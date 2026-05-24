@@ -88,7 +88,7 @@ end
 
 local function setEntityInfoState(stateRaw: any): EntityInfoState
 	local current = entityInfoStateAtom()
-	local source = if typeof(stateRaw) == "table" then stateRaw else {}
+	local source = if typeof(stateRaw) == "table" then stateRaw else ({} :: any)
 
 	local maxHp = sanitizeMaxHp((source :: any).maxHp, current.maxHp)
 	local nextState: EntityInfoState = {
@@ -115,7 +115,7 @@ end
 
 local function showEntityInfo(payloadRaw: any): EntityInfoState
 	local current = entityInfoStateAtom()
-	local payload = if typeof(payloadRaw) == "table" then payloadRaw else {}
+	local payload = if typeof(payloadRaw) == "table" then payloadRaw else ({} :: any)
 	local maxHp = sanitizeMaxHp((payload :: any).maxHp, current.maxHp)
 	local nextState: EntityInfoState = {
 		visible = true,

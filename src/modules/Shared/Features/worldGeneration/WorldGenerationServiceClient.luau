@@ -38,8 +38,8 @@ type JanitorClass = {
 }
 
 type SignalObject = {
-	Connect: (self: SignalObject, callback: (state: WorldGenerationServiceState) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, state: WorldGenerationServiceState) -> (),
+	Connect: (self: SignalObject, callback: (...any) -> ()) -> RBXScriptConnection,
+	Fire: (self: SignalObject, ...any) -> (),
 	Destroy: (self: SignalObject) -> (),
 }
 
@@ -280,7 +280,7 @@ local TERRAIN_TILE_ATTRIBUTE_NAMES = {
 }
 
 local TILE_VISUALS: { [number]: TileVisual } = WorldGenerationColor.TILE_VISUALS
-local GRASS_TEXTURES: { [string]: GrassTextureDefinition } = PlantRegistry
+local GRASS_TEXTURES: { [string]: GrassTextureDefinition } = PlantRegistry :: any
 local TREE_PALETTE_CORRUPTION_1 = WorldGenerationColor.TREE_PALETTES.Corruption1
 	or {
 		BranchColor = Color3.fromRGB(56, 39, 89),
@@ -774,7 +774,7 @@ local function resolveWorldGenerationConfigSource(): { [string]: any }
 		return {}
 	end
 	local worldGenerationConfig = (Configs :: any).worldGeneration
-	return if typeof(worldGenerationConfig) == "table" then worldGenerationConfig else {}
+	return if typeof(worldGenerationConfig) == "table" then worldGenerationConfig else ({} :: any)
 end
 
 local function resolveClientVisualSettings(): (number, number, number, number)
@@ -801,8 +801,8 @@ local function computeChunkSnapshotVisualBounds(
 	worldOriginRaw: any,
 	basePlaneXRaw: any
 ): (CFrame, Vector3)
-	local snapshot = if typeof(snapshotRaw) == "table" then snapshotRaw :: { [string]: any } else {}
-	local state = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {}
+	local snapshot = if typeof(snapshotRaw) == "table" then snapshotRaw :: { [string]: any } else ({} :: any)
+	local state = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else ({} :: any)
 	local tileSize = sanitizeNumber(state.tileSize, 1, 64, WorldGenerationServiceUtils.CreateDefaultState().tileSize)
 	local tileDepth =
 		sanitizeNumber(state.tileDepth, 0.5, 64, WorldGenerationServiceUtils.CreateDefaultState().tileDepth)
@@ -998,7 +998,7 @@ local function cloneTemplateByVariant(templates: { Instance }, variantIndexRaw: 
 		variantIndex = math.max(1, math.floor(variantIndexRaw))
 	end
 	local normalizedIndex = ((variantIndex - 1) % count) + 1
-	local source = templates[normalizedIndex]
+	local source = templates[normalizedIndex] :: Instance?
 	if source == nil then
 		return nil
 	end
@@ -1455,7 +1455,7 @@ local function sanitizeTileCoordinate(valueRaw: any): number?
 end
 
 local function createTerrainHoverHighlight(targetPart: BasePart): Highlight
-	return TileComponent.CreateHighlight({
+	return TileComponent.CreateHighlight(({
 		name = TERRAIN_HOVER_HIGHLIGHT_NAME,
 		adornee = targetPart,
 		depthMode = Enum.HighlightDepthMode.AlwaysOnTop,
@@ -1465,7 +1465,7 @@ local function createTerrainHoverHighlight(targetPart: BasePart): Highlight
 		outlineTransparency = TERRAIN_HOVER_OUTLINE_TRANSPARENCY,
 		enabled = true,
 		parent = targetPart,
-	})
+	} :: any))
 end
 
 function WorldGenerationServiceClient.ResolveWorldFolder(self: WorldGenerationServiceClient): Folder?
@@ -1499,10 +1499,10 @@ function WorldGenerationServiceClient.ResolveChunksFolder(self: WorldGenerationS
 		return folder
 	end
 
-	local folder = TileComponent.CreateFolder({
+	local folder = TileComponent.CreateFolder(({
 		name = CHUNKS_FOLDER_NAME,
 		parent = worldFolder,
-	})
+	} :: any))
 	WorkspaceFolders.manageFolder(folder, worldFolder)
 	self.chunksFolder = folder
 	return folder
@@ -1567,7 +1567,7 @@ local function getOrCreateTerrainHoverFolder(visual: ChunkVisualRuntime): Folder
 
 	folder = getOrCreateChildFolder(visual.model, TERRAIN_HOVER_FOLDER_NAME)
 	visual.terrainHoverFolder = folder
-	return folder
+	return folder :: Folder
 end
 
 local function getOrCreateChunkLayerModel(
@@ -1684,13 +1684,13 @@ function WorldGenerationServiceClient.RefreshWorldAttributes(self: WorldGenerati
 	local originY = worldFolder:GetAttribute("WorldOriginY")
 	local originZ = worldFolder:GetAttribute("WorldOriginZ")
 	self.worldOrigin = Vector3.new(
-		if isFiniteNumber(originX) then originX else DEFAULT_WORLD_ORIGIN.X,
-		if isFiniteNumber(originY) then originY else DEFAULT_WORLD_ORIGIN.Y,
-		if isFiniteNumber(originZ) then originZ else DEFAULT_WORLD_ORIGIN.Z
+		if isFiniteNumber(originX) then originX :: number else DEFAULT_WORLD_ORIGIN.X,
+		if isFiniteNumber(originY) then originY :: number else DEFAULT_WORLD_ORIGIN.Y,
+		if isFiniteNumber(originZ) then originZ :: number else DEFAULT_WORLD_ORIGIN.Z
 	)
 
 	local basePlaneX = worldFolder:GetAttribute("BasePlaneX")
-	self.basePlaneX = if isFiniteNumber(basePlaneX) then basePlaneX else DEFAULT_BASE_PLANE_X
+	self.basePlaneX = if isFiniteNumber(basePlaneX) then basePlaneX :: number else DEFAULT_BASE_PLANE_X
 end
 
 function WorldGenerationServiceClient.ComputeTileCenterPosition(
@@ -2154,7 +2154,7 @@ function WorldGenerationServiceClient.CommitChunkVisualParts(
 	backgroundPartsByLayer: { { BasePart } },
 	skipWorldAnimation: boolean
 ): (boolean, Model, { Model })
-	local backgroundLayerFolders = {} :: { Folder }
+	local backgroundLayerFolders = {} :: { Folder? }
 	for layerIndex, backgroundParts in backgroundPartsByLayer do
 		if #backgroundParts <= 0 then
 			continue
@@ -2191,13 +2191,13 @@ function WorldGenerationServiceClient.CommitChunkVisualParts(
 	if #terrainParts > 0 then
 		terrainTilesFolder = getOrCreateChildFolder(foregroundModel, TILES_FOLDER_NAME)
 	end
-	local backgroundLayerModelsByLayer = {} :: { Model }
+	local backgroundLayerModelsByLayer = {} :: { Model? }
 	for layerIndex, backgroundParts in backgroundPartsByLayer do
 		if #backgroundParts <= 0 then
 			continue
 		end
 
-		local layerFolder = backgroundLayerFolders[layerIndex]
+		local layerFolder = backgroundLayerFolders[layerIndex] :: Folder?
 		if layerFolder ~= nil then
 			backgroundLayerModelsByLayer[layerIndex] = getOrCreateChunkLayerModel(layerFolder, snapshot, true)
 		end
@@ -2209,7 +2209,7 @@ function WorldGenerationServiceClient.CommitChunkVisualParts(
 		end
 	end
 	for layerIndex, backgroundParts in backgroundPartsByLayer do
-		local layerModel = backgroundLayerModelsByLayer[layerIndex]
+		local layerModel = backgroundLayerModelsByLayer[layerIndex] :: Model?
 		if layerModel == nil then
 			continue
 		end
@@ -2219,7 +2219,7 @@ function WorldGenerationServiceClient.CommitChunkVisualParts(
 		end
 	end
 
-	return true, foregroundModel, backgroundLayerModelsByLayer
+	return true, foregroundModel, backgroundLayerModelsByLayer :: any
 end
 
 function WorldGenerationServiceClient.CommitChunkVisualBuildResult(
@@ -2359,7 +2359,7 @@ function WorldGenerationServiceClient.ReplaceChunkVisualContents(
 	local preservedChildNames = if typeof(preservedChildNamesRaw) == "table"
 		then preservedChildNamesRaw
 		else {} :: { [string]: boolean }
-	local preservedChildren = {} :: { [string]: Instance }
+	local preservedChildren = {} :: { [string]: Instance? }
 	for _, child in targetModel:GetChildren() do
 		if preservedChildNames[child.Name] == true then
 			preservedChildren[child.Name] = child
@@ -2393,7 +2393,7 @@ function WorldGenerationServiceClient.SuppressChunkAnimationForChunkKey(
 	end
 
 	local duration = if isFiniteNumber(durationRaw)
-		then math.clamp(durationRaw, 0.05, MAX_CHUNK_ANIMATION_SKIP_SECONDS)
+		then math.clamp(durationRaw :: number, 0.05, MAX_CHUNK_ANIMATION_SKIP_SECONDS)
 		else DEFAULT_CHUNK_ANIMATION_SKIP_SECONDS
 	local now = os.clock()
 	local skipUntil = now + duration
@@ -2477,7 +2477,7 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 
 	local totalTiles = width * height
 	local tiles = Sift.Array.create(totalTiles, FOREGROUND_TILE_AIR_ID)
-	local tilesRaw = if typeof(source.tiles) == "table" then source.tiles :: { any } else {}
+	local tilesRaw = if typeof(source.tiles) == "table" then source.tiles :: { any } else ({} :: any)
 	for tileIndex = 1, totalTiles do
 		local rawTileId = tilesRaw[tileIndex]
 		if isFiniteNumber(rawTileId) then
@@ -2485,7 +2485,7 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 		end
 	end
 	local depthLayers = Sift.Array.create(totalTiles, DEPTH_LAYER_CODE_UNDERGROUND)
-	local depthLayersRaw = if typeof(source.depthLayers) == "table" then source.depthLayers :: { any } else {}
+	local depthLayersRaw = if typeof(source.depthLayers) == "table" then source.depthLayers :: { any } else ({} :: any)
 	for tileIndex = 1, totalTiles do
 		local rawDepthLayerCode = depthLayersRaw[tileIndex]
 		if isFiniteNumber(rawDepthLayerCode) then
@@ -2502,7 +2502,7 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 	local depthBelowSurface = Sift.Array.create(totalTiles, 0)
 	local depthBelowSurfaceRaw = if typeof(source.depthBelowSurface) == "table"
 		then source.depthBelowSurface :: { any }
-		else {}
+		else ({} :: any)
 	for tileIndex = 1, totalTiles do
 		local rawDepthBelowSurface = depthBelowSurfaceRaw[tileIndex]
 		if isFiniteNumber(rawDepthBelowSurface) then
@@ -2515,7 +2515,7 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 
 	local dominantBiomeId = sanitizeInteger(source.dominantBiomeId, BIOME_ID_FOREST, BIOME_ID_JUNGLE, BIOME_ID_FOREST)
 	local biomeIds = Sift.Array.create(totalTiles, dominantBiomeId)
-	local biomeIdsRaw = if typeof(source.biomeIds) == "table" then source.biomeIds :: { any } else {}
+	local biomeIdsRaw = if typeof(source.biomeIds) == "table" then source.biomeIds :: { any } else ({} :: any)
 	for tileIndex = 1, totalTiles do
 		local rawBiomeId = biomeIdsRaw[tileIndex]
 		if isFiniteNumber(rawBiomeId) then
@@ -2524,7 +2524,7 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 	end
 	local hasSurfaceBiomeIds = typeof(source.surfaceBiomeIds) == "table"
 	local surfaceBiomeIds = Sift.Array.create(width, if hasSurfaceBiomeIds then dominantBiomeId else BIOME_ID_FOREST)
-	local surfaceBiomeIdsRaw = if hasSurfaceBiomeIds then source.surfaceBiomeIds :: { any } else {}
+	local surfaceBiomeIdsRaw = if hasSurfaceBiomeIds then source.surfaceBiomeIds :: { any } else ({} :: any)
 	for localX = 0, width - 1 do
 		local rawBiomeId = surfaceBiomeIdsRaw[localX + 1]
 		if isFiniteNumber(rawBiomeId) then
@@ -2537,7 +2537,7 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 	local dominantBiomeType =
 		sanitizeInteger(source.dominantBiomeType, BIOME_TYPE_NORMAL, BIOME_TYPE_CORRUPTION, BIOME_TYPE_NORMAL)
 	local biomeTypes = Sift.Array.create(totalTiles, dominantBiomeType)
-	local biomeTypesRaw = if typeof(source.biomeTypes) == "table" then source.biomeTypes :: { any } else {}
+	local biomeTypesRaw = if typeof(source.biomeTypes) == "table" then source.biomeTypes :: { any } else ({} :: any)
 	for tileIndex = 1, totalTiles do
 		local rawBiomeType = biomeTypesRaw[tileIndex]
 		if isFiniteNumber(rawBiomeType) then
@@ -2547,7 +2547,7 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 	end
 
 	local backgroundLayers: { ChunkLayerSnapshot } = {}
-	local layersRaw = if typeof(source.backgroundLayers) == "table" then source.backgroundLayers :: { any } else {}
+	local layersRaw = if typeof(source.backgroundLayers) == "table" then source.backgroundLayers :: { any } else ({} :: any)
 	for _, layerRaw in layersRaw do
 		if typeof(layerRaw) ~= "table" then
 			continue
@@ -2561,7 +2561,7 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 		local layerIndex = sanitizeInteger(layer.layerIndex, 1, 64, #backgroundLayers + 1)
 		local layerTotalTiles = layerWidth * layerHeight
 		local layerTiles = Sift.Array.create(layerTotalTiles, FOREGROUND_TILE_AIR_ID)
-		local layerTilesRaw = if typeof(layer.tiles) == "table" then layer.tiles :: { any } else {}
+		local layerTilesRaw = if typeof(layer.tiles) == "table" then layer.tiles :: { any } else ({} :: any)
 		for tileIndex = 1, layerTotalTiles do
 			local rawTileId = layerTilesRaw[tileIndex]
 			if isFiniteNumber(rawTileId) then
@@ -2580,7 +2580,7 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 	end
 
 	local trees: { TreeSpawnSnapshot } = {}
-	local treesRaw = if typeof(source.trees) == "table" then source.trees :: { any } else {}
+	local treesRaw = if typeof(source.trees) == "table" then source.trees :: { any } else ({} :: any)
 	for _, treeRaw in treesRaw do
 		if typeof(treeRaw) ~= "table" then
 			continue
@@ -2616,7 +2616,7 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 	end
 
 	local props: { PropSpawnSnapshot } = {}
-	local propsRaw = if typeof(source.props) == "table" then source.props :: { any } else {}
+	local propsRaw = if typeof(source.props) == "table" then source.props :: { any } else ({} :: any)
 	for _, propRaw in propsRaw do
 		if typeof(propRaw) ~= "table" then
 			continue
@@ -2990,7 +2990,7 @@ function WorldGenerationServiceClient.StepChunkVisualBuildJob(
 				else Color3.fromRGB(82, 136, 74)
 			local cactusComplexity = math.clamp(propSpawnData.variantIndex, 1, 4)
 			job.propsFolder = job.propsFolder or getOrCreateChildFolder(job.model, "Props")
-			local cactusGenerator = ProceduralCactus.new({
+			local cactusGenerator = ProceduralCactus.new(({
 				Seed = propSpawnData.seed,
 				Parent = job.propsFolder,
 				ModelName = `Cactus_{snapshot.chunkX}_{snapshot.chunkY}_{job.propCount + 1}`,
@@ -3010,7 +3010,7 @@ function WorldGenerationServiceClient.StepChunkVisualBuildJob(
 				SegmentColor = cactusColor,
 				UseWelds = true,
 				SegmentCanCollide = false,
-			})
+			} :: any))
 			propInstance = cactusGenerator:Generate(position)
 			useGeneratedBoundsPlacement = true
 		else
@@ -3078,7 +3078,7 @@ function WorldGenerationServiceClient.StepChunkVisualBuildJob(
 		return true
 	end
 
-	return job.stage == "done"
+	return false
 end
 
 function WorldGenerationServiceClient.FinishChunkVisualBuildJob(
@@ -3209,7 +3209,7 @@ function WorldGenerationServiceClient.ProcessChunkRebuildQueue(self: WorldGenera
 	end
 
 	self.isProcessingRebuildQueue = true
-	local ok, result = pcall(function()
+	local ok, result = (pcall :: any)(function()
 		local chunksFolder = self:resolveChunksFolder()
 		if chunksFolder == nil then
 			return
@@ -3306,7 +3306,7 @@ function WorldGenerationServiceClient.RefreshVisibleChunks(self: WorldGeneration
 		end
 	end
 
-	for chunkKey in self.chunkVisuals do
+	for chunkKey in pairs(self.chunkVisuals) do
 		if nextVisible[chunkKey] then
 			continue
 		end
@@ -3334,7 +3334,7 @@ end
 function WorldGenerationServiceClient.ResetActiveWorldState(self: WorldGenerationServiceClient)
 	self:clearHoveredTerrainTile()
 	self:cancelActiveChunkBuildJob(nil)
-	for chunkKey in self.chunkVisuals do
+	for chunkKey in pairs(self.chunkVisuals) do
 		self:destroyChunkVisual(chunkKey)
 	end
 
@@ -3600,7 +3600,8 @@ end
 function WorldGenerationServiceClient.Destroy(self: WorldGenerationServiceClient)
 	self:clearHoveredTerrainTile()
 	self:cancelActiveChunkBuildJob(nil)
-	for chunkKey in self.chunkVisuals do
+	local chunkVisuals = self.chunkVisuals :: { [string]: any }
+	for chunkKey in pairs(chunkVisuals) do
 		self:destroyChunkVisual(chunkKey)
 	end
 	table.clear(self.chunkSnapshots)

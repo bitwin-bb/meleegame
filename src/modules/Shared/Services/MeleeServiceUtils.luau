@@ -121,10 +121,10 @@ MeleeServiceUtils.NETWORK_METHOD_REFRESH_EQUIPPED = "requestRefreshEquipped"
 MeleeServiceUtils.NETWORK_METHOD_SET_INPUT_HELD = "requestSetInputHeld"
 MeleeServiceUtils.DEFAULT_FALLBACK_SWING_PADDING = DEFAULT_FALLBACK_SWING_PADDING
 
-local ITEM_AUDIO = ((AudioRegistry :: any).Items or {}) :: { [string]: any }
-local WEAPON_AUDIO = (ITEM_AUDIO.Weapons or {}) :: { [string]: any }
-local AXE_AUDIO = (ITEM_AUDIO.Axes or {}) :: { [string]: any }
-local PICKAXE_AUDIO = (ITEM_AUDIO.Pickaxes or {}) :: { [string]: any }
+local ITEM_AUDIO = ((AudioRegistry :: any).Items or ({} :: any)) :: { [string]: any }
+local WEAPON_AUDIO = (ITEM_AUDIO.Weapons or ({} :: any)) :: { [string]: any }
+local AXE_AUDIO = (ITEM_AUDIO.Axes or ({} :: any)) :: { [string]: any }
+local PICKAXE_AUDIO = (ITEM_AUDIO.Pickaxes or ({} :: any)) :: { [string]: any }
 local ITEM_AUDIO_BY_TYPE = {
 	axe = AXE_AUDIO,
 	pickaxe = PICKAXE_AUDIO,
@@ -224,9 +224,9 @@ local function sanitizeAttackSpeedToCooldown(valueRaw: any, fallback: number): n
 end
 
 local function resolveConfiguredSwingSpeed(meleeRaw: any, definitionRaw: any, statsRaw: any): number
-	local melee = if typeof(meleeRaw) == "table" then (meleeRaw :: { [string]: any }) else {}
-	local definition = if typeof(definitionRaw) == "table" then (definitionRaw :: { [string]: any }) else {}
-	local stats = if typeof(statsRaw) == "table" then (statsRaw :: { [string]: any }) else {}
+	local melee = if typeof(meleeRaw) == "table" then (meleeRaw :: { [string]: any }) else ({} :: any)
+	local definition = if typeof(definitionRaw) == "table" then (definitionRaw :: { [string]: any }) else ({} :: any)
+	local stats = if typeof(statsRaw) == "table" then (statsRaw :: { [string]: any }) else ({} :: any)
 	return sanitizeNumber(
 		(melee :: any).swingSpeed
 			or (melee :: any).animationSpeed
@@ -482,7 +482,7 @@ function MeleeServiceUtils.ResolveToolAnimationOverrides(toolRaw: any, fallbackA
 
 	local animationConfig = if typeof(fallbackAnimationsRaw) == "table"
 		then shallowCopyTable(fallbackAnimationsRaw)
-		else {}
+		else ({} :: any)
 	local modeRaw = animationsContainer:GetAttribute("mode")
 		or animationsContainer:GetAttribute("animationMode")
 		or animationsContainer:GetAttribute("swingMode")
@@ -508,7 +508,7 @@ function MeleeServiceUtils.ResolveToolAnimationOverrides(toolRaw: any, fallbackA
 	end
 
 	local clips = {}
-	local animationsByLookupKey: { [string]: Animation } = {}
+	local animationsByLookupKey: { [string]: Animation? } = {}
 	for _, indexed in indexedAnimations do
 		local lookupKey = normalizeAnimationLookupKey(indexed.animation.Name)
 		if lookupKey ~= "" and animationsByLookupKey[lookupKey] == nil then
@@ -527,7 +527,7 @@ function MeleeServiceUtils.ResolveToolAnimationOverrides(toolRaw: any, fallbackA
 
 	for _, animationName in DEFAULT_TOOL_ANIMATION_LOOKUP_ORDER do
 		local stateKey = normalizeNamedAnimationStateKey(animationName)
-		local namedAnimation = animationsByLookupKey[normalizeAnimationLookupKey(animationName)]
+		local namedAnimation = (animationsByLookupKey :: { [string]: Animation? })[normalizeAnimationLookupKey(animationName)]
 		if stateKey ~= nil and namedAnimation ~= nil then
 			namedAnimations[stateKey] = namedAnimation
 		end
@@ -968,8 +968,8 @@ local function normalizeNamedAnimationClips(
 	definitionRaw: any
 ): { [string]: { [string]: any } }?
 	local animationTable = if typeof(animationTableRaw) == "table" then (animationTableRaw :: { [string]: any }) else nil
-	local melee = if typeof(meleeRaw) == "table" then (meleeRaw :: { [string]: any }) else {}
-	local definition = if typeof(definitionRaw) == "table" then (definitionRaw :: { [string]: any }) else {}
+	local melee = if typeof(meleeRaw) == "table" then (meleeRaw :: { [string]: any }) else ({} :: any)
+	local definition = if typeof(definitionRaw) == "table" then (definitionRaw :: { [string]: any }) else ({} :: any)
 
 	local namedAnimations: { [string]: { [string]: any } } = {}
 	local function parseNamedClip(clipRaw: any, fallbackNameRaw: any): { [string]: any }?
@@ -1126,8 +1126,8 @@ end
 
 local function sanitizeAnimations(animationsRaw: any, meleeRaw: any, definitionRaw: any): { [string]: any }?
 	local animationTable = if typeof(animationsRaw) == "table" then (animationsRaw :: { [string]: any }) else nil
-	local melee = if typeof(meleeRaw) == "table" then (meleeRaw :: { [string]: any }) else {}
-	local definition = if typeof(definitionRaw) == "table" then (definitionRaw :: { [string]: any }) else {}
+	local melee = if typeof(meleeRaw) == "table" then (meleeRaw :: { [string]: any }) else ({} :: any)
+	local definition = if typeof(definitionRaw) == "table" then (definitionRaw :: { [string]: any }) else ({} :: any)
 
 	local clipsRaw = nil
 	if animationTable ~= nil then
@@ -1281,7 +1281,7 @@ function MeleeServiceUtils.ResolveWeaponConfig(itemIdRaw: any): MeleeWeaponConfi
 		if cached == false then
 			return nil
 		end
-		return cloneWeaponConfig(cached)
+		return cloneWeaponConfig(cached :: MeleeWeaponConfig)
 	end
 
 	local definitionRaw = getItemDefinition(itemId)
@@ -1298,8 +1298,8 @@ function MeleeServiceUtils.ResolveWeaponConfig(itemIdRaw: any): MeleeWeaponConfi
 	end
 
 	local definition = definitionRaw :: { [string]: any }
-	local stats = if typeof(definition.stats) == "table" then definition.stats else {}
-	local melee = if typeof(definition.melee) == "table" then definition.melee else {}
+	local stats = if typeof(definition.stats) == "table" then definition.stats else ({} :: any)
+	local melee = if typeof(definition.melee) == "table" then definition.melee else ({} :: any)
 
 	local damage = sanitizeNumber(
 		(melee :: any).damage or (stats :: any).dmg or definition.damage,
@@ -1405,11 +1405,11 @@ function MeleeServiceUtils.CreateMeleeClassConfig(weaponConfigRaw: any, override
 	end
 
 	local weaponConfig = weaponConfigRaw :: MeleeWeaponConfig
-	local overrides = if typeof(overridesRaw) == "table" then overridesRaw else {}
+	local overrides = if typeof(overridesRaw) == "table" then overridesRaw else ({} :: any)
 	local overrideAnimations = (overrides :: any).animations
 	local weaponAnimations = weaponConfig.animations
 	local animations = if overrideAnimations ~= nil then overrideAnimations else weaponAnimations
-	local callbacks = if typeof((overrides :: any).callbacks) == "table" then (overrides :: any).callbacks else {}
+	local callbacks = if typeof((overrides :: any).callbacks) == "table" then (overrides :: any).callbacks else ({} :: any)
 
 	return {
 		enabled = true,
@@ -1501,7 +1501,7 @@ local function resolveNamedAnimationComparableTokens(namedRaw: any): { [string]:
 
 		local token = resolveClipComparableToken(value)
 		if token ~= "" then
-			comparable[normalizedKey] = token
+			comparable[normalizedKey :: string] = token
 		end
 	end
 

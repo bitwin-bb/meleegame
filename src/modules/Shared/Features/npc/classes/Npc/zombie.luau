@@ -10,7 +10,7 @@ export type ZombieConfig = Default.DefaultNpcConfig & {
 }
 
 function Zombie.New(configRaw: ZombieConfig?): Zombie
-	local config = if typeof(configRaw) == "table" then table.clone(configRaw :: any) else {}
+	local config = if typeof(configRaw) == "table" then table.clone(configRaw :: any) else ({} :: any)
 	if config.archetype == nil then
 		config.archetype = "Zombie"
 	end

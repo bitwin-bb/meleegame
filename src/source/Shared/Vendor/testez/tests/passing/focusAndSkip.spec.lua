@@ -1,3 +1,4 @@
+--!nocheck
 -- luacheck: globals fdescribe it xit
 
 return function()

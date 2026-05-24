@@ -31,7 +31,7 @@ local function sanitizeInteger(valueRaw: any, minimum: number, maximum: number, 
 end
 
 function Cache.New(configRaw: CacheConfig?): Cache
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local createPartCallback = if typeof((config :: any).createPart) == "function"
 		then (config :: any).createPart :: () -> BasePart
 		else nil

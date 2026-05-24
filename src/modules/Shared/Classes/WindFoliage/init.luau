@@ -76,7 +76,7 @@ local TREE_GRAPH_ATTRIBUTE = "WindFoliageTreeGraph"
 local RUNTIME_ATTRIBUTE_LOD = "WindRuntimeLOD"
 local RUNTIME_ATTRIBUTE_WRITES = "WindRuntimeWrites"
 
-local ATTRIBUTES = {
+local ATTRIBUTES: { [string]: string } = {
 	foliageEnabled = "WindFoliageEnabled",
 	preset = "WindFoliagePreset",
 	representation = "WindFoliageRepresentation",
@@ -950,7 +950,7 @@ function WindFoliage.UntrackDisturber(self: any, instanceRaw: any)
 end
 
 function WindFoliage.AddDisturbance(self: any, paramsRaw: any): number?
-	local params = if typeof(paramsRaw) == "table" then paramsRaw else {}
+	local params = if typeof(paramsRaw) == "table" then paramsRaw else ({} :: any)
 	local position = if typeof(params.position) == "Vector3" then params.position else nil
 	if position == nil then
 		return nil

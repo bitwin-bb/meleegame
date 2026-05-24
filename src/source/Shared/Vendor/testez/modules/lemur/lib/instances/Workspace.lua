@@ -1,3 +1,4 @@
+--!nocheck
 local BaseInstance = import("./BaseInstance")
 local Camera = import("./Camera")
 local InstanceProperty = import("../InstanceProperty")

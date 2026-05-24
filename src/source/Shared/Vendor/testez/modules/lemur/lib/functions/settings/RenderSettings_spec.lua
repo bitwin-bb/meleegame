@@ -1,3 +1,4 @@
+--!nocheck
 local RenderSettings = import("./RenderSettings")
 local typeof = import("../typeof")
 

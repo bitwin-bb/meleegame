@@ -97,9 +97,11 @@ local function useStore<TSelected>(sourceRaw: any, selectorRaw: any?, options: S
 	local valueRef = React.useRef(initialValue)
 	local value, setValue = React.useState(initialValue)
 
-	local applySelection = React.useCallback(function()
-		local nextValue = selectorRef.current(readStoreState(sourceRaw))
-		if equalityRef.current(valueRef.current, nextValue) then
+	local applySelection = (React.useCallback :: any)(function()
+		local selectorCallback = selectorRef.current :: (any) -> any
+		local nextValue = selectorCallback(readStoreState(sourceRaw))
+		local isEqual = equalityRef.current :: (any, any) -> boolean
+		if isEqual(valueRef.current, nextValue) then
 			return
 		end
 

@@ -1,3 +1,4 @@
+--!nocheck
 describe("fs", function()
 	local fs = import("./fs")
 

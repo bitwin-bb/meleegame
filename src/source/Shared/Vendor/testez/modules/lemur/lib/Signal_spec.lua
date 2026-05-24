@@ -1,3 +1,4 @@
+--!nocheck
 local Signal = import("./Signal")
 
 describe("Signal", function()

@@ -11,7 +11,7 @@ local meleeServiceServer = nil
 
 local function getMeleeServiceServer()
 	if meleeServiceServer == nil then
-		meleeServiceServer = require(script:FindFirstAncestor("game").Server.Services.MeleeServiceServer)
+		meleeServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.MeleeServiceServer)
 	end
 	return meleeServiceServer
 end

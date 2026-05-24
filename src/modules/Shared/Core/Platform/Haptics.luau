@@ -77,7 +77,7 @@ end
 
 local function resolveInputType(inputTypeRaw: any): Enum.UserInputType
 	if typeof(inputTypeRaw) == "EnumItem" and string.sub((inputTypeRaw :: Enum.UserInputType).Name, 1, 7) == "Gamepad" then
-		return inputTypeRaw
+		return inputTypeRaw :: any
 	end
 
 	local ok, connected = pcall(function()
@@ -94,7 +94,7 @@ local function resolveInputType(inputTypeRaw: any): Enum.UserInputType
 end
 
 function Haptics.New(configRaw: HapticsConfig?): Haptics
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local self = setmetatable({
 		eventBus = config.eventBus,
 		eventChannel = normalizeEventName(config.eventChannel, "haptics"),
@@ -138,7 +138,7 @@ function Haptics.Pulse(self: Haptics, patternRaw: any, configRaw: PulseConfig?):
 		return false
 	end
 
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local pattern = if typeof(patternRaw) == "table" then patternRaw else PATTERN_BY_KEY[if typeof(patternRaw) == "string" then patternRaw else "selection"]
 	if typeof(pattern) ~= "table" then
 		return false

@@ -161,7 +161,7 @@ return function(props: CoinScreenProps): React.ReactNode
 		else DEFAULT_COIN_SLOT_SIZE
 	local iconTop = math.max(0, COIN_ICON_TOP_PADDING)
 	local amountTop = iconTop + COIN_ICON_SIZE + COIN_AMOUNT_GAP
-	local spriteSheets = if typeof(ImageIds.spriteSheets) == "table" then ImageIds.spriteSheets else {}
+	local spriteSheets = if typeof(ImageIds.spriteSheets) == "table" then ImageIds.spriteSheets else ({} :: any)
 	local renderedCoinCount = 0
 	local coinRowItems: { any } = {}
 

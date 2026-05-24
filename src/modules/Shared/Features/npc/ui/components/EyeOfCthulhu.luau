@@ -9,11 +9,11 @@ local flipbookPackage = assert(quentyPackages:FindFirstChild("flipbook"), "Missi
 local maidPackage = assert(quentyPackages:FindFirstChild("maid"), "Missing maid package")
 local spritesPackage = assert(quentyPackages:FindFirstChild("sprites"), "Missing sprites package")
 
-local Flipbook = require(assert(assert(flipbookPackage:FindFirstChild("Client")):FindFirstChild("Flipbook")))
+local Flipbook = (require :: any)(assert(assert(flipbookPackage:FindFirstChild("Client")):FindFirstChild("Flipbook")))
 local FlipbookPlayer =
-	require(assert(assert(flipbookPackage:FindFirstChild("Client")):FindFirstChild("Player")).FlipbookPlayer)
-local Maid = require(assert(assert(maidPackage:FindFirstChild("Shared")):FindFirstChild("Maid")))
-local Sprite = require(
+	(require :: any)(assert(assert(flipbookPackage:FindFirstChild("Client")):FindFirstChild("Player")).FlipbookPlayer)
+local Maid = (require :: any)(assert(assert(maidPackage:FindFirstChild("Shared")):FindFirstChild("Maid")))
+local Sprite = (require :: any)(
 	assert(assert(assert(spritesPackage:FindFirstChild("Shared")):FindFirstChild("Sprite")):FindFirstChild("Sprite"))
 )
 
@@ -37,7 +37,7 @@ local BOSS_RUNTIME_FOLDER_NAME = "BossRuntime"
 local DEFAULT_ROOT_SIZE = Vector3.new(14, 14, 14)
 local FRAME_COUNT =
 	math.max(1, EyeOfCthulhuSpriteSheet.frameCount or (EyeOfCthulhuSpriteSheet.columns * EyeOfCthulhuSpriteSheet.rows))
-local runtimeRootPartCache: { [string]: BasePart } = {}
+local runtimeRootPartCache: { [string]: BasePart? } = {}
 
 type PhasePlayback = {
 	phaseName: string,
@@ -268,13 +268,13 @@ return function(props: EyeOfCthulhuProps): React.ReactNode
 
 		player:SetFlipbook(createPhaseFlipbook(playback))
 		player:Play()
-	end, {
+	end, ({
 		EyeOfCthulhuSpriteSheet.image,
 		EyeOfCthulhuSpriteSheet.frameSize.X,
 		EyeOfCthulhuSpriteSheet.frameSize.Y,
 		playback.phaseName,
 		playback.frameRate,
-	})
+	} :: { any }))
 
 	local children = nil
 	if isSurfaceGui then

@@ -86,7 +86,7 @@ end
 local function defaultDamageTypeStage(context: any, result: any)
 	if typeof(context.damageTypes) == "table" then
 		local total = 0
-		local resistances = if typeof(context.resistances) == "table" then context.resistances else {}
+		local resistances = if typeof(context.resistances) == "table" then context.resistances else ({} :: any)
 		for damageType, amount in context.damageTypes do
 			if typeof(amount) ~= "number" then
 				continue
@@ -111,7 +111,7 @@ local function defaultDamageTypeStage(context: any, result: any)
 end
 
 local function defaultStatusStage(context: any, result: any)
-	local statuses = if typeof(context.statusEffects) == "table" then context.statusEffects else {}
+	local statuses = if typeof(context.statusEffects) == "table" then context.statusEffects else ({} :: any)
 	if #statuses == 0 then
 		return
 	end
@@ -217,7 +217,7 @@ function DamagePipeline.UsePostHook(self: DamagePipeline, handler: StageHandler,
 end
 
 function DamagePipeline.Process(self: DamagePipeline, contextRaw: any): any
-	local context = if typeof(contextRaw) == "table" then contextRaw else {}
+	local context = if typeof(contextRaw) == "table" then contextRaw else ({} :: any)
 	local result = {
 		attacker = context.attacker,
 		defender = context.defender,

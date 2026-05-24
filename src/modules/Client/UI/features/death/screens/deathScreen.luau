@@ -29,7 +29,7 @@ local DEFAULT_MAIN_TEXT = "You were slain..."
 local COUNTDOWN_APPEAR_DELAY_SECONDS = 2
 
 return function(props: DeathScreenProps?): React.ReactNode
-	local resolvedProps: DeathScreenProps = if props ~= nil then props else {}
+	local resolvedProps: DeathScreenProps = if props ~= nil then props else ({} :: any)
 	local deathState = (useStore(deathSlice.deathStateAtom) :: DeathState?) or deathSlice.deathStateAtom()
 
 	React.useEffect(function()

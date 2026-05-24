@@ -4,6 +4,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
 local useStableCallback = require(script.Parent.internal.useStableCallback)
 
+local function dependencyArray(...: any): { any }
+	return { ... }
+end
+
 export type TooltipPayload = {
 	id: string,
 	text: string,
@@ -35,20 +39,20 @@ local function useTooltip(options: TooltipOptions)
 			id = id,
 			text = text,
 		})
-	end, { enabled, hovered, id, text, show })
+	end, dependencyArray(enabled, hovered, id, text, show))
 
 	React.useEffect(function()
 		if enabled and hovered then
 			return
 		end
 		hide(id)
-	end, { enabled, hovered, id, hide })
+	end, dependencyArray(enabled, hovered, id, hide))
 
 	React.useEffect(function()
 		return function()
 			hide(id)
 		end
-	end, { id, hide })
+	end, dependencyArray(id, hide))
 end
 
 return useTooltip

@@ -1,3 +1,4 @@
+--!nocheck
 -- Camera Shaker
 -- Stephen Leitnick
 -- February 26, 2018

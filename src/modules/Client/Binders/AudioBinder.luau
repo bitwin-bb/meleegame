@@ -10,7 +10,7 @@ local audioServiceClient = nil
 
 local function getAudioServiceClient()
 	if audioServiceClient == nil then
-		audioServiceClient = require(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
+		audioServiceClient = (require :: any)(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
 	end
 	return audioServiceClient
 end
@@ -38,7 +38,7 @@ function AudioBinder.new(instance: Instance, context: any)
 	self.rootPart = ModelBinder.resolveRootPart(instance)
 	self.playingSound = nil :: Sound?
 	self.existingSound = instance:FindFirstChildWhichIsA("Sound", true)
-	self.channel = `AudioBinder_{instance:GetDebugId(0)}`
+	self.channel = `AudioBinder_{(instance :: any):GetDebugId(0)}`
 
 	self:refresh()
 	self:ObserveAttribute("AudioEnabled", function()

@@ -1,3 +1,4 @@
+--!nocheck
 local Stats = import("./Stats")
 
 describe("instances.Stats", function()

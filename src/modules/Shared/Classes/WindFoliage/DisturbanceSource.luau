@@ -46,7 +46,7 @@ function DisturbanceSource.Reset(source: DisturbanceSource)
 end
 
 function DisturbanceSource.Populate(source: DisturbanceSource, paramsRaw: any, nowRaw: any, defaultLifetimeRaw: any?): DisturbanceSource
-	local params = if typeof(paramsRaw) == "table" then paramsRaw else {}
+	local params = if typeof(paramsRaw) == "table" then paramsRaw else ({} :: any)
 	local now = if typeof(nowRaw) == "number" and nowRaw == nowRaw then nowRaw else 0
 	local defaultLifetime =
 		if typeof(defaultLifetimeRaw) == "number" and defaultLifetimeRaw == defaultLifetimeRaw then defaultLifetimeRaw else 0.2

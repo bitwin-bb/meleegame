@@ -8,7 +8,7 @@ local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
 local DataTemplate = require(script:FindFirstAncestor("game").Shared.Core.DataTemplate)
 local PlayerDataServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerDataServiceUtils)
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 local Promise = loader("Promise")
 
 local SERVER_PACKAGE_LOAD_TIMEOUT_SECONDS = 10
@@ -27,12 +27,12 @@ local function resolveServerPackage(packageName: string): ModuleScript
 	return package
 end
 
-local ProfileStore = require(resolveServerPackage("ProfileStore"))
+local ProfileStore = (require :: any)(resolveServerPackage("ProfileStore"))
 
 type PlayerData = PlayerDataServiceUtils.PlayerData
-type LoadState = PlayerDataServiceUtils.LoadState
-type Profile = ProfileStore.Profile<PlayerData>
-type ProfileStoreObject = ProfileStore.ProfileStore<PlayerData>
+type LoadState = string
+type Profile = any
+type ProfileStoreObject = any
 type ProfileSignalConnection = {
 	Disconnect: (self: ProfileSignalConnection) -> (),
 }
@@ -67,7 +67,7 @@ local DATA_SESSION_ENDED_KICK_MESSAGE = "Your data session ended. Please rejoin.
 local PROFILE_FALLBACK_DATASTORE_TIMEOUT_SECONDS = 2
 local PROFILE_SESSION_START_TIMEOUT_SECONDS = 5
 
-local function promiseTry<T...>(callback: () -> T...): Promise.Promise<T...>
+local function promiseTry<T...>(callback: () -> T...): any
 	return Promise.spawn(function(resolve, reject)
 		local results = table.pack(pcall(callback))
 		if results[1] then
@@ -79,10 +79,10 @@ local function promiseTry<T...>(callback: () -> T...): Promise.Promise<T...>
 end
 
 local function resolvePlayerDataTemplate(): PlayerData
-	local templateRoot = if typeof(DataTemplate) == "table" then DataTemplate else {}
+	local templateRoot = if typeof(DataTemplate) == "table" then DataTemplate else ({} :: any)
 	local playerData = if typeof((templateRoot :: any).playerData) == "table"
 		then (templateRoot :: any).playerData
-		else {}
+		else ({} :: any)
 	return PlayerDataServiceUtils.createDefaultData(playerData)
 end
 
@@ -503,7 +503,7 @@ function PlayerDataServiceServer.LoadProfilePromise(self: PlayerDataServiceServe
 
 		local loadDeadline = os.clock() + PROFILE_SESSION_START_TIMEOUT_SECONDS
 		local profile: Profile? = nil
-		local success, resultOrError = pcall(function()
+		local success, resultOrError = (pcall :: any)(function()
 			return self.profileStore:StartSessionAsync(profileKey, {
 				Cancel = function()
 					local currentRuntime = self.playerRuntimes[player]
@@ -551,7 +551,7 @@ function PlayerDataServiceServer.LoadProfilePromise(self: PlayerDataServiceServe
 					primaryFailureReason .. "|" .. fallbackReason,
 					nil
 				)
-				return fallbackData
+				return fallbackData :: any
 			end
 			self:finalizeFailedRuntime(player, runtime, loadToken, primaryFailureReason .. "|" .. fallbackReason)
 			return nil
@@ -703,7 +703,7 @@ function PlayerDataServiceServer.WaitForDataPromise(
 	end
 
 	return Promise.new(function(resolve, _reject)
-		local connection = nil
+		local connection = nil :: RBXScriptConnection?
 		local settled = false
 
 		local function cleanup()

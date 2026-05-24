@@ -1,3 +1,4 @@
+--!nocheck
 local UDim = import("./UDim")
 
 local function extractValues(udim)

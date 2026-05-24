@@ -62,9 +62,9 @@ local function buildTier(
 end
 
 function LODController.New(configRaw: any?): LODController
-	local config = if typeof(configRaw) == "table" then configRaw else {}
-	local runtime = if typeof(config.runtime) == "table" then config.runtime else {}
-	local lod = if typeof(config.lod) == "table" then config.lod else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local runtime = if typeof(config.runtime) == "table" then config.runtime else ({} :: any)
+	local lod = if typeof(config.lod) == "table" then config.lod else ({} :: any)
 
 	local nearFallback = clampNumber(lod.nearDistance, 54, 0, 5000)
 	local nearDistance = clampNumber(runtime.nearDistance, nearFallback, 0, 5000)

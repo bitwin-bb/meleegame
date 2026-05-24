@@ -1,3 +1,4 @@
+--!nocheck
 local HttpRbxApiService = import("./HttpRbxApiService")
 
 describe("instances.HttpRbxApiService", function()

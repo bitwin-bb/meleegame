@@ -41,7 +41,7 @@ local function normalizeCount(countRaw: any): number
 end
 
 function LocalizationEngine.New(configRaw: LocalizationConfig?): LocalizationEngine
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local defaultLanguage = if isValidLanguageCode(config.defaultLanguage) then config.defaultLanguage else "en"
 	local fallbackLanguage = if isValidLanguageCode(config.fallbackLanguage) then config.fallbackLanguage else defaultLanguage
 	local resolver = if config.resolver ~= nil then config.resolver else DynamicTextResolver.new({
@@ -69,7 +69,7 @@ function LocalizationEngine.RegisterLanguage(self: LocalizationEngine, languageR
 		return false
 	end
 	local language = languageRaw :: string
-	local copy = {}
+	local copy: LanguageTable = {}
 	for key, value in tableRaw do
 		if typeof(key) ~= "string" then
 			continue
@@ -77,7 +77,7 @@ function LocalizationEngine.RegisterLanguage(self: LocalizationEngine, languageR
 		if typeof(value) == "string" then
 			copy[key] = value
 		elseif typeof(value) == "table" then
-			local forms = {}
+			local forms: { [string]: string } = {}
 			for form, text in value do
 				if typeof(form) == "string" and typeof(text) == "string" then
 					forms[form] = text
@@ -178,8 +178,8 @@ function LocalizationEngine.Translate(self: LocalizationEngine, keyRaw: any, par
 	if typeof(keyRaw) ~= "string" or keyRaw == "" then
 		return ""
 	end
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else {}
-	local params = if typeof(paramsRaw) == "table" then paramsRaw else {}
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
+	local params = if typeof(paramsRaw) == "table" then paramsRaw else ({} :: any)
 	local language = if isValidLanguageCode(options.language) then options.language else self.currentLanguage
 	local fallbackLanguage = if isValidLanguageCode(options.fallbackLanguage) then options.fallbackLanguage else self.fallbackLanguage
 

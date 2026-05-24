@@ -410,7 +410,8 @@ return function(props: InventoryHotbarProps)
 			end
 
 			local step = if wheelDelta > 0 then -1 else 1
-			local nextSelectedSlot = ((currentSelectedSlot - 1 + step) % HOTBAR_SLOT_COUNT) + 1
+			local selectedSlot = currentSelectedSlot :: number
+			local nextSelectedSlot = ((selectedSlot - 1 + step) % HOTBAR_SLOT_COUNT) + 1
 			inventoryThunks.selectSlot(nextSelectedSlot)
 		end
 
@@ -421,12 +422,12 @@ return function(props: InventoryHotbarProps)
 			beganConnection:Disconnect()
 			changedConnection:Disconnect()
 		end
-	end, {
+	end, ({
 		props.visible,
 		renderState.loadState,
 		isInventoryStateInitialized,
 		isInventoryExpanded,
-	})
+	} :: { any }))
 
 	React.useEffect(function()
 		if not isInventoryStateInitialized then
@@ -452,14 +453,14 @@ return function(props: InventoryHotbarProps)
 			id = SLOT_HOVER_ID_PREFIX .. tostring(hoveredSlotIndex),
 			text = resolveSlotHoverText(hoveredSlot),
 		})
-	end, {
+	end, ({
 		hoveredSlotIndex,
 		hoveredSlotSource,
 		renderState.updatedAt,
 		renderState.capacity,
 		isInventoryStateInitialized,
 		drag.dragState.updatedAt,
-	})
+	} :: { any }))
 
 	React.useEffect(function()
 		return function()

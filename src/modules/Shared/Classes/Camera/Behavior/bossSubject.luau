@@ -19,7 +19,7 @@ function BossSubject.Resolve(optionsRaw: BossSubjectOptions?): Target.ResolvedTa
 end
 
 function BossSubject.New(optionsRaw: BossSubjectOptions?): BossSubjectOptions
-	return optionsRaw or {}
+	return optionsRaw or ({} :: any)
 end
 
 BossSubject.resolve = BossSubject.Resolve

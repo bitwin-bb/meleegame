@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(packageRoot)
+local loader = (require :: any)(loaderUtils.Parent).load(packageRoot)
 
 local Flipbook = loader("Flipbook")
 local FlipbookPlayer = loader("FlipbookPlayer")
@@ -58,7 +58,7 @@ local function useBreakAnim(imageRef: { current: ImageLabel? }, options: BreakAn
 		return function()
 			maid:DoCleaning()
 		end
-	end, {
+	end, ({
 		imageRef,
 		image,
 		frameIndex,
@@ -67,7 +67,7 @@ local function useBreakAnim(imageRef: { current: ImageLabel? }, options: BreakAn
 		frameCount,
 		frameSize.X,
 		frameSize.Y,
-	})
+	} :: { any }))
 end
 
 return useBreakAnim

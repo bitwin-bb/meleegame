@@ -1,3 +1,4 @@
+--!nocheck
 local createSettings = import("./createSettings")
 local typeof = import("./functions/typeof")
 

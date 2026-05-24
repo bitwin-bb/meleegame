@@ -65,7 +65,7 @@ local RUNTIME_VENDOR_PACKAGES = {
 	"EZCameraShake",
 }
 
-local CONTENT_PROPERTIES_BY_CLASS = {
+local CONTENT_PROPERTIES_BY_CLASS: { [string]: { string } } = {
 	Animation = { "AnimationId" },
 	Beam = { "Texture" },
 	Decal = { "Texture" },
@@ -517,7 +517,7 @@ local function collectAssetIdsFromValue(
 	valueRaw: any,
 	assetIds: { string },
 	assetSet: { [string]: boolean },
-	seenTables: { [table]: boolean }?,
+	seenTables: { [any]: boolean }?,
 	depthRaw: number?
 )
 	addAssetId(assetIds, assetSet, valueRaw)
@@ -531,8 +531,8 @@ local function collectAssetIdsFromValue(
 		return
 	end
 
-	local seen = seenTables or {}
-	local valueTable = valueRaw :: table
+	local seen = seenTables or ({} :: any)
+	local valueTable = valueRaw :: any
 	if seen[valueTable] then
 		return
 	end
@@ -762,7 +762,7 @@ local function bootstrapFramework(context: ReplicatedContext): FrameworkContext
 
 	disableDuplicatePackageTrackerModules(context.packageRoot)
 
-	local loaderApi = require(context.loaderModule)
+	local loaderApi = (require :: any)(context.loaderModule)
 	local gameRequire = (loaderApi :: any).bootstrapGame(context.packageRoot)
 	local framework = {
 		gameRequire = gameRequire,
@@ -972,7 +972,7 @@ local function warmItemRegistry(itemRegistryRaw: any, assetIds: { string }, asse
 
 		definitionsById = if typeof(itemRegistryRaw.getDefinitionsById) == "function"
 			then itemRegistryRaw.getDefinitionsById()
-			else {}
+			else ({} :: any)
 
 		local definitionCount = countDictionaryEntries(definitionsById)
 		if definitionCount > 0 then
@@ -1176,7 +1176,7 @@ local function runLoader()
 	publish("complete", "complete", "loader complete", 1)
 end
 
-local ok, err = xpcall(runLoader, debug.traceback)
+local ok, err = (xpcall :: any)(runLoader, debug.traceback)
 if not ok then
 	recordFailure("loader", err)
 	publish("failed", "failed", "loader failed", math.max(snapshot.progress, completedWeight / TOTAL_STAGE_WEIGHT))

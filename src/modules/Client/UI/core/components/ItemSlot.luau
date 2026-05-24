@@ -31,20 +31,20 @@ return function(props: ItemSlotProps): React.ReactNode
 	end
 
 	if props.keyHintText ~= nil then
-		local keyHintProps: { [any]: any } = props.keyHintProps or {}
+		local keyHintProps: { [any]: any } = props.keyHintProps or ({} :: any)
 		keyHintProps.Text = props.keyHintText
 		children[#children + 1] = e("TextLabel", keyHintProps)
 	end
 
 	if props.amount ~= nil or props.amountText ~= nil then
-		local stackLabelProps: { [any]: any } = props.stackLabelProps or {}
+		local stackLabelProps: { [any]: any } = props.stackLabelProps or ({} :: any)
 		stackLabelProps.amount = props.amount
 		stackLabelProps.text = props.amountText
 		children[#children + 1] = e(StackAmountLabel, stackLabelProps)
 	end
 
 	if props.icon ~= nil then
-		local iconProps: { [any]: any } = props.iconProps or {}
+		local iconProps: { [any]: any } = props.iconProps or ({} :: any)
 		iconProps.icon = props.icon
 		children[#children + 1] = e(ItemIcon, iconProps)
 	end

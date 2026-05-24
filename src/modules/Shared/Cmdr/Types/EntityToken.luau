@@ -31,9 +31,13 @@ end
 
 local gameRoot = resolveGameRoot()
 
-local EntityCatalog = require(gameRoot.Shared.Cmdr.EntityCatalog)
+local EntityCatalog = (require :: any)((gameRoot :: any).Shared.Cmdr.EntityCatalog)
 
-type EntityEntry = EntityCatalog.EntityEntry
+type EntityEntry = {
+	Id: string,
+	Kind: string,
+	Name: string,
+}
 
 return function(registry)
 	local cmdrUtil = registry.Cmdr.Util

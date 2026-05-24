@@ -1,3 +1,4 @@
+--!nocheck
 local TestService = game:GetService("TestService")
 
 local TestEnum = require(script.Parent.Parent.TestEnum)
@@ -33,7 +34,7 @@ local function teamCityFailCase(caseName, errorMessage)
 end
 
 local function reportNode(node, buffer, level)
-	buffer = buffer or {}
+	buffer = buffer or ({} :: any)
 	level = level or 0
 	if node.status == TestEnum.TestStatus.Skipped then
 		return buffer

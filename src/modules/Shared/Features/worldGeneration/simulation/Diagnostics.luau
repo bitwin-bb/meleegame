@@ -8,9 +8,7 @@ local TileComponent = require(script:FindFirstAncestor("game").Shared.Features.w
 local Diagnostics = {}
 Diagnostics.__index = Diagnostics
 
-type DebugObject = {
-	setCounter: ((self: DebugObject, name: string, valueRaw: any) -> ())?,
-}
+type DebugObject = any
 
 type RuntimeSampleData = {
 	worldTick: number,
@@ -140,7 +138,7 @@ function Diagnostics.New(debugModuleRaw: any): Diagnostics
 		entityId = 0,
 		pendingSample = nil :: RuntimeSampleData?,
 		lastSample = nil :: RuntimeSampleData?,
-	}, Diagnostics)
+	}, Diagnostics) :: Diagnostics
 
 	self.entityId = self.world:spawn(RuntimeSample(), RollingMetrics())
 	self.loop = Matter.Loop.new(self.world, self)

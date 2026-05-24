@@ -2,7 +2,7 @@
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local Table = loader("Table")
 
@@ -393,7 +393,7 @@ end
 
 function Configs.Resolve(configRaw: any): QueenBeeConfig
 	local config = cloneDefaults()
-	local source = (if typeof(configRaw) == "table" then configRaw else {}) :: any
+	local source = (if typeof(configRaw) == "table" then configRaw else ({} :: any)) :: any
 
 	config.Phase2HealthRatio = sanitizeNumber(source.Phase2HealthRatio, config.Phase2HealthRatio, 0.05, 0.95)
 	config.Phase3HealthRatio =

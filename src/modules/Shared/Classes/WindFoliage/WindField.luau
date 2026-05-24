@@ -62,7 +62,7 @@ local function remapNoise(sample: number): number
 end
 
 function WindField.New(configRaw: Config?): WindField
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local seed = DeterministicRNG.seedFrom(config.seed or "WindFoliage")
 
 	local self = setmetatable({

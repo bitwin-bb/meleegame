@@ -1,3 +1,4 @@
+--!nocheck
 local createEnumGroup = import("../createEnumGroup")
 
 local names = {

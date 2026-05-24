@@ -31,7 +31,7 @@ end
 
 local gameRoot = resolveGameRoot()
 
-local WeatherServiceUtils = require(gameRoot.Shared.Services.WeatherServiceUtils)
+local WeatherServiceUtils = (require :: any)((gameRoot :: any).Shared.Services.WeatherServiceUtils)
 
 local WEATHER_OPTIONS = {
 	{
@@ -54,7 +54,8 @@ local function normalizeToken(valueRaw: any): string
 	end
 
 	local trimmed = string.match(valueRaw, "^%s*(.-)%s*$") or ""
-	return string.lower(string.gsub(trimmed, "[%s_%-%.]", ""))
+	local normalized = string.gsub(trimmed, "[%s_%-%.]", "")
+	return string.lower(normalized)
 end
 
 local function resolveWeatherValue(valueRaw: any): string?

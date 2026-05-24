@@ -10,7 +10,7 @@ local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networ
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 local Maid = loader("Maid")
 local Rx = loader("Rx")
 
@@ -124,7 +124,7 @@ local function resolveRootPart(player: Player): BasePart?
 	return nil
 end
 
-function WorldSimulationServiceClient:GetCenterChunk(): (number, number, number)
+function WorldSimulationServiceClient.GetCenterChunk(self: WorldSimulationServiceClient): (number, number, number)
 	local rootPart = resolveRootPart(self.localPlayer)
 	if rootPart == nil then
 		return 0, 0, 0
@@ -137,7 +137,7 @@ function WorldSimulationServiceClient:GetCenterChunk(): (number, number, number)
 		Shared.toChunkCoordinate(tileZ, self.config.chunkDepth)
 end
 
-function WorldSimulationServiceClient:GetRenderChunkRadii(): (number, number)
+function WorldSimulationServiceClient.GetRenderChunkRadii(self: WorldSimulationServiceClient): (number, number)
 	local horizontal = self.config.renderRadiusChunks
 	if horizontal == nil then
 		horizontal = self.config.streamRadiusChunks
@@ -150,7 +150,7 @@ function WorldSimulationServiceClient:GetRenderChunkRadii(): (number, number)
 		math.max(1, math.min(vertical, self.config.streamVerticalRadiusChunks))
 end
 
-function WorldSimulationServiceClient:StreamInChunk(snapshot: { [string]: any }): boolean
+function WorldSimulationServiceClient.StreamInChunk(self: WorldSimulationServiceClient, snapshot: { [string]: any }): boolean
 	if typeof(snapshot) ~= "table" then
 		return false
 	end
@@ -174,7 +174,7 @@ function WorldSimulationServiceClient:StreamInChunk(snapshot: { [string]: any })
 	return false
 end
 
-function WorldSimulationServiceClient:StreamOutChunk(chunkKeyRaw: any)
+function WorldSimulationServiceClient.StreamOutChunk(self: WorldSimulationServiceClient, chunkKeyRaw: any)
 	if typeof(chunkKeyRaw) ~= "string" or chunkKeyRaw == "" then
 		return
 	end
@@ -187,7 +187,7 @@ function WorldSimulationServiceClient:StreamOutChunk(chunkKeyRaw: any)
 	end
 end
 
-function WorldSimulationServiceClient:RunChunkModelInvariantCheck(label: string)
+function WorldSimulationServiceClient.RunChunkModelInvariantCheck(self: WorldSimulationServiceClient, label: string)
 	local renderRadius, renderVerticalRadius = self:getRenderChunkRadii()
 	local theoreticalMax = computeTheoreticalMaxActiveChunkModels(renderRadius, renderVerticalRadius)
 	local activeCount = countLookupEntries(self.activeChunkModels)
@@ -233,7 +233,7 @@ function WorldSimulationServiceClient:RunChunkModelInvariantCheck(label: string)
 	end
 end
 
-function WorldSimulationServiceClient:AssertStartupChunkFolderEmpty()
+function WorldSimulationServiceClient.AssertStartupChunkFolderEmpty(self: WorldSimulationServiceClient)
 	local folderModelCount = self.render:getChunkFolderModelCount()
 	if self.debug ~= nil and self.debug.setCounter then
 		self.debug:setCounter("startup_chunk_folder_models", folderModelCount)
@@ -245,7 +245,7 @@ function WorldSimulationServiceClient:AssertStartupChunkFolderEmpty()
 	end
 end
 
-function WorldSimulationServiceClient:ReconcileRenderWindow(centerX: number, centerY: number, centerZ: number)
+function WorldSimulationServiceClient.ReconcileRenderWindow(self: WorldSimulationServiceClient, centerX: number, centerY: number, centerZ: number)
 	local renderRadius, renderVerticalRadius = self:getRenderChunkRadii()
 	local desiredLookup = {} :: { [string]: boolean }
 
@@ -294,7 +294,7 @@ function WorldSimulationServiceClient:ReconcileRenderWindow(centerX: number, cen
 	self.activeStreamingSet = desiredLookup
 end
 
-function WorldSimulationServiceClient:ApplyState(stateRaw: any)
+function WorldSimulationServiceClient.ApplyState(self: WorldSimulationServiceClient, stateRaw: any)
 	self.config = Config.sanitize(stateRaw, self.config)
 	self.render.config = self.config
 	self.debug.enabled = self.config.enableDebug
@@ -303,7 +303,7 @@ function WorldSimulationServiceClient:ApplyState(stateRaw: any)
 	self.stateChanged:Fire(self:getState())
 end
 
-function WorldSimulationServiceClient:OnChunkDelta(deltaRaw: any)
+function WorldSimulationServiceClient.OnChunkDelta(self: WorldSimulationServiceClient, deltaRaw: any)
 	local decoded = Net.decodeChunkDelta(deltaRaw)
 	if decoded == nil then
 		decoded = Net.decodeLegacyChunkTransitional(deltaRaw)
@@ -317,14 +317,15 @@ function WorldSimulationServiceClient:OnChunkDelta(deltaRaw: any)
 	if self.debug ~= nil then
 		self.debug:validateChunkArrays(decoded)
 	end
-	self.chunkSnapshotsByKey[decoded.key] = decoded
+	local chunkSnapshot = decoded :: { [string]: any }
+	self.chunkSnapshotsByKey[chunkSnapshot.key] = chunkSnapshot
 	local centerX, centerY, centerZ = self:getCenterChunk()
 	local priority =
-		Net.chunkPriorityFromCenter(decoded.chunkX, decoded.chunkY, decoded.chunkZ, centerX, centerY, centerZ)
-	Stream.pushClientSnapshot(self.streamState, decoded, priority)
+		Net.chunkPriorityFromCenter(chunkSnapshot.chunkX, chunkSnapshot.chunkY, chunkSnapshot.chunkZ, centerX, centerY, centerZ)
+	Stream.pushClientSnapshot(self.streamState, chunkSnapshot, priority)
 end
 
-function WorldSimulationServiceClient:OnChunkUnloaded(chunkKeyRaw: any)
+function WorldSimulationServiceClient.OnChunkUnloaded(self: WorldSimulationServiceClient, chunkKeyRaw: any)
 	if typeof(chunkKeyRaw) == "string" and chunkKeyRaw ~= "" then
 		self.chunkSnapshotsByKey[chunkKeyRaw] = nil
 	end
@@ -332,14 +333,14 @@ function WorldSimulationServiceClient:OnChunkUnloaded(chunkKeyRaw: any)
 	self:StreamOutChunk(chunkKeyRaw)
 end
 
-function WorldSimulationServiceClient:OnEntityDelta(payloadRaw: any)
+function WorldSimulationServiceClient.OnEntityDelta(self: WorldSimulationServiceClient, payloadRaw: any)
 	if typeof(payloadRaw) ~= "table" then
 		return
 	end
 	self.lastEntityDelta = payloadRaw
 end
 
-function WorldSimulationServiceClient:OnDebugCounters(countersRaw: any)
+function WorldSimulationServiceClient.OnDebugCounters(self: WorldSimulationServiceClient, countersRaw: any)
 	if typeof(countersRaw) ~= "table" then
 		return
 	end
@@ -349,19 +350,19 @@ function WorldSimulationServiceClient:OnDebugCounters(countersRaw: any)
 	end
 end
 
-function WorldSimulationServiceClient:RequestSync()
+function WorldSimulationServiceClient.RequestSync(self: WorldSimulationServiceClient)
 	self.networker:fire(Net.NETWORK_METHOD_REQUEST_SYNC)
 end
 
-function WorldSimulationServiceClient:SetStreamRadius(streamRadiusRaw: any, verticalRadiusRaw: any)
+function WorldSimulationServiceClient.SetStreamRadius(self: WorldSimulationServiceClient, streamRadiusRaw: any, verticalRadiusRaw: any)
 	self.networker:fire(Net.NETWORK_METHOD_SET_STREAM_RADIUS, streamRadiusRaw, verticalRadiusRaw)
 end
 
-function WorldSimulationServiceClient:SubmitInput(inputPayload: { [string]: any })
+function WorldSimulationServiceClient.SubmitInput(self: WorldSimulationServiceClient, inputPayload: { [string]: any })
 	self.networker:fire(Net.NETWORK_METHOD_SUBMIT_INPUT, inputPayload)
 end
 
-function WorldSimulationServiceClient:GetState(): { [string]: any }
+function WorldSimulationServiceClient.GetState(self: WorldSimulationServiceClient): { [string]: any }
 	return {
 		seed = self.config.seed,
 		tileSize = self.config.tileSize,
@@ -378,7 +379,7 @@ function WorldSimulationServiceClient:GetState(): { [string]: any }
 	}
 end
 
-function WorldSimulationServiceClient:ObserveState(): ObservableObject
+function WorldSimulationServiceClient.ObserveState(self: WorldSimulationServiceClient): ObservableObject
 	if self.stateChanged == nil then
 		error("[WorldSimulationService] init must be called before ObserveState", 2)
 	end
@@ -389,10 +390,10 @@ function WorldSimulationServiceClient:ObserveState(): ObservableObject
 			end),
 		}) :: ObservableObject
 	end
-	return self.stateObservable
+	return self.stateObservable :: ObservableObject
 end
 
-function WorldSimulationServiceClient:ObserveDebugCounters(): ObservableObject
+function WorldSimulationServiceClient.ObserveDebugCounters(self: WorldSimulationServiceClient): ObservableObject
 	if self.debugCountersChanged == nil then
 		error("[WorldSimulationService] init must be called before ObserveDebugCounters", 2)
 	end
@@ -403,10 +404,10 @@ function WorldSimulationServiceClient:ObserveDebugCounters(): ObservableObject
 			end),
 		}) :: ObservableObject
 	end
-	return self.debugCountersObservable
+	return self.debugCountersObservable :: ObservableObject
 end
 
-function WorldSimulationServiceClient:OnHeartbeat(dt: number)
+function WorldSimulationServiceClient.OnHeartbeat(self: WorldSimulationServiceClient, dt: number)
 	self.render:bindExistingChunkFolderGuard()
 	local centerX, centerY, centerZ = self:getCenterChunk()
 	self:reconcileRenderWindow(centerX, centerY, centerZ)
@@ -448,7 +449,7 @@ function WorldSimulationServiceClient:OnHeartbeat(dt: number)
 	end
 end
 
-function WorldSimulationServiceClient:Init()
+function WorldSimulationServiceClient.Init(self: WorldSimulationServiceClient)
 	if self.maid ~= nil then
 		return
 	end
@@ -526,7 +527,7 @@ function WorldSimulationServiceClient:Init()
 	self:requestSync()
 end
 
-function WorldSimulationServiceClient:Destroy()
+function WorldSimulationServiceClient.Destroy(self: WorldSimulationServiceClient)
 	if self.maid ~= nil then
 		self.maid:Destroy()
 		self.maid = nil
@@ -587,7 +588,7 @@ type WorldSimulationServiceClient = typeof(WorldSimulationServiceClient) & {
 	activeStreamingSet: { [string]: boolean },
 	invariantCheckAccumulator: number,
 	networker: Networker.Client,
-	maid: MaidClass,
+	maid: any,
 	stateChanged: SignalObject,
 	debugCountersChanged: SignalObject,
 	stateObservable: ObservableObject?,
@@ -597,3 +598,4 @@ type WorldSimulationServiceClient = typeof(WorldSimulationServiceClient) & {
 }
 
 return WorldSimulationServiceClient :: WorldSimulationServiceClient
+

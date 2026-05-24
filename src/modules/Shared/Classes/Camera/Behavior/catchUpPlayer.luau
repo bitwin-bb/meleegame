@@ -43,7 +43,7 @@ export type CatchUpPlayer = typeof(setmetatable(
 	CatchUpPlayer
 ))
 
-local DEFAULT_CONFIG = ((Configs.cameraData :: any).catchUpPlayer or {}) :: CatchUpPlayerConfig
+local DEFAULT_CONFIG = ((Configs.cameraData :: any).catchUpPlayer or ({} :: any)) :: CatchUpPlayerConfig
 local ACCELERATION_DISTANCE_DURATION_MULTIPLIER = 2
 
 local function clampNumber(value: any, min: number, max: number, fallback: number): number
@@ -75,8 +75,8 @@ local function resolveConfiguredNumber(
 end
 
 local function sanitizeConfig(config: any, fallbackConfig: CatchUpPlayerConfig?): CatchUpPlayerConfig
-	local source = if typeof(config) == "table" then config else {}
-	local fallback = if typeof(fallbackConfig) == "table" then fallbackConfig else {}
+	local source = if typeof(config) == "table" then config else ({} :: any)
+	local fallback = if typeof(fallbackConfig) == "table" then fallbackConfig else ({} :: any)
 
 	local defaultEnabled = if typeof((fallback :: any).enabled) == "boolean" then (fallback :: any).enabled else true
 	local startDistance =

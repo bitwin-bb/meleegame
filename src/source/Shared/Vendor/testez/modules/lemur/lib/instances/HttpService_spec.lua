@@ -1,3 +1,4 @@
+--!nocheck
 local HttpService = import("./HttpService")
 
 describe("instances.HttpService", function()

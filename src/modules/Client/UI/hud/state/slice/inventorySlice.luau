@@ -86,7 +86,7 @@ end
 
 local function setInventoryHudState(stateRaw: any): InventoryHudState
 	local current = inventoryHudStateAtom()
-	local source: { [string]: any } = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {}
+	local source: { [string]: any } = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else ({} :: any)
 
 	local nextIsHotbarExpanded = sanitizeBoolean(source.isHotbarExpanded, current.isHotbarExpanded)
 	local nextIsInventoryPanelOpen = sanitizeBoolean(source.isInventoryPanelOpen, nextIsHotbarExpanded)

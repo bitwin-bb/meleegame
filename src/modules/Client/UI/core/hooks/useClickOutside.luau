@@ -24,15 +24,19 @@ export type ClickOutsideResult = {
 	lastInteractionInside: boolean,
 }
 
-local DEFAULT_INPUT_TYPES = {
+local DEFAULT_INPUT_TYPES: { Enum.UserInputType } = {
 	Enum.UserInputType.MouseButton1,
 	Enum.UserInputType.Touch,
 }
 
 local EMPTY_IGNORE_REFS = {} :: { RefObject<GuiObject?> }
 
+local function dependencyArray(...: any): { any }
+	return { ... }
+end
+
 local function matchesInputType(inputObject: InputObject, inputTypesRaw: { Enum.UserInputType }?): boolean
-	local inputTypes = if type(inputTypesRaw) == "table" and #inputTypesRaw > 0
+	local inputTypes: { Enum.UserInputType } = if type(inputTypesRaw) == "table" and #inputTypesRaw > 0
 		then inputTypesRaw
 		else DEFAULT_INPUT_TYPES
 	for _, inputType in inputTypes do
@@ -116,7 +120,7 @@ local function useClickOutside(options: ClickOutsideOptions?): ClickOutsideResul
 		return function()
 			connection:Disconnect()
 		end
-	end, { enabled, targetRef, ignoreRefs, inputTypes, onClickInside, onClickOutside })
+	end, dependencyArray(enabled, targetRef, ignoreRefs, inputTypes, onClickInside, onClickOutside))
 
 	return {
 		ref = targetRef,

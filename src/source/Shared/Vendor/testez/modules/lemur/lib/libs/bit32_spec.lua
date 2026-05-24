@@ -1,3 +1,4 @@
+--!nocheck
 local bit32 = import("./bit32")
 
 describe("libs.bit32", function()

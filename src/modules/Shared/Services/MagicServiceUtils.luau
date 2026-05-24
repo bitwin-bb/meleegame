@@ -357,7 +357,7 @@ function MagicServiceUtils.SanitizeReplicatedState(raw: any, fallbackRaw: any): 
 			cooldowns = {},
 			updatedAt = os.clock(),
 		}
-	local source = if typeof(raw) == "table" then (raw :: { [string]: any }) else {}
+	local source = if typeof(raw) == "table" then (raw :: { [string]: any }) else ({} :: any)
 	local maxMana = num(source.maxMana, fallback.maxMana, 1, 100000)
 	local mana = num(source.mana, fallback.mana, 0, maxMana)
 	local regenPerSecond = num(source.regenPerSecond, fallback.regenPerSecond, 0, 10000)
@@ -378,7 +378,7 @@ function MagicServiceUtils.SanitizeReplicatedState(raw: any, fallbackRaw: any): 
 			end
 		end
 	else
-		for key, value in fallback.cooldowns do
+		for key, value in pairs(fallback.cooldowns) do
 			cooldowns[key] = value
 		end
 	end
@@ -395,7 +395,7 @@ function MagicServiceUtils.SanitizeReplicatedState(raw: any, fallbackRaw: any): 
 end
 
 function MagicServiceUtils.SanitizeCastRequest(raw: any): CastRequest
-	local source = if typeof(raw) == "table" then (raw :: { [string]: any }) else {}
+	local source = if typeof(raw) == "table" then (raw :: { [string]: any }) else ({} :: any)
 	return {
 		trigger = trim(source.trigger) ~= "" and trim(source.trigger) or "Cast",
 		aimDirection = asVector3(source.aimDirection),
@@ -475,15 +475,15 @@ function MagicServiceUtils.BuildWeaponRuntimeConfig(weaponConfigRaw: any): Weapo
 		return nil
 	end
 	local weaponConfig = weaponConfigRaw :: { [string]: any }
-	local definition = if typeof(weaponConfig.definition) == "table" then weaponConfig.definition else {}
+	local definition = if typeof(weaponConfig.definition) == "table" then weaponConfig.definition else ({} :: any)
 	local root = if typeof((definition :: any).magicWeapon) == "table"
 		then (definition :: any).magicWeapon
-		else if typeof((definition :: any).magic) == "table" then (definition :: any).magic else {}
-	local stats = if typeof((definition :: any).stats) == "table" then (definition :: any).stats else {}
-	local baseProjectile = if typeof(weaponConfig.projectile) == "table" then weaponConfig.projectile else {}
+		else if typeof((definition :: any).magic) == "table" then (definition :: any).magic else ({} :: any)
+	local stats = if typeof((definition :: any).stats) == "table" then (definition :: any).stats else ({} :: any)
+	local baseProjectile = if typeof(weaponConfig.projectile) == "table" then weaponConfig.projectile else ({} :: any)
 	local projectileExtra = if typeof((root :: any).projectile) == "table"
 		then (root :: any).projectile
-		else if typeof((definition :: any).projectile) == "table" then (definition :: any).projectile else {}
+		else if typeof((definition :: any).projectile) == "table" then (definition :: any).projectile else ({} :: any)
 	local homingRaw = (projectileExtra :: any).homing
 	local homingTable = if typeof(homingRaw) == "table" then (homingRaw :: { [string]: any }) else nil
 	local collisionBehavior = token((projectileExtra :: any).collisionBehavior)
@@ -525,7 +525,7 @@ function MagicServiceUtils.BuildWeaponRuntimeConfig(weaponConfigRaw: any): Weapo
 		if attackSpeedCooldownValue ~= nil then attackSpeedCooldownValue else num(weaponConfig.cooldown, 0.42, 0, 60)
 	local callbacksRaw = if typeof((root :: any).callbacks) == "table"
 		then (root :: any).callbacks
-		else if typeof((definition :: any).callbacks) == "table" then (definition :: any).callbacks else {}
+		else if typeof((definition :: any).callbacks) == "table" then (definition :: any).callbacks else ({} :: any)
 
 	return {
 		itemId = trim(weaponConfig.itemId) ~= "" and trim(weaponConfig.itemId) or "unknownMagicWeapon",
@@ -615,7 +615,7 @@ function MagicServiceUtils.CreateDefaultModifier(): ModifierStats
 end
 
 function MagicServiceUtils.SanitizeModifier(raw: any): ModifierStats
-	local source = if typeof(raw) == "table" then (raw :: { [string]: any }) else {}
+	local source = if typeof(raw) == "table" then (raw :: { [string]: any }) else ({} :: any)
 	local modifier = MagicServiceUtils.CreateDefaultModifier()
 	modifier.damageMultiplier = num(source.damageMultiplier, 1, 0, 100)
 	modifier.damageBonus = num(source.damageBonus, 0, -100000, 100000)

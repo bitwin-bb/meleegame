@@ -164,7 +164,7 @@ function TileMetadataRegistry.Register(self: TileMetadataRegistry, tileIdRaw: an
 		corruptionSusceptibility = clampNumber(metadataRaw.corruptionSusceptibility, 0, 0, 1),
 		lightBlocking = clampNumber(metadataRaw.lightBlocking, 0, 0, 1),
 		toolTier = clampInteger(metadataRaw.toolTier, 0, 0, 100),
-		attributes = if typeof(metadataRaw.attributes) == "table" then Sift.Dictionary.copy(metadataRaw.attributes) else {},
+		attributes = if typeof(metadataRaw.attributes) == "table" then Sift.Dictionary.copy(metadataRaw.attributes) else ({} :: any),
 	} :: TileMetadata
 
 	local hadExisting = self.entries[tileIdRaw] ~= nil

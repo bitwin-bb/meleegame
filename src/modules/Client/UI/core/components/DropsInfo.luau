@@ -409,7 +409,7 @@ function DropsInfo:render()
 	end
 
 	local rarityColor = resolveRarityColor(props.rarity)
-	local theme = props.theme or {}
+	local theme = props.theme or ({} :: any)
 
 	local accentColor = sanitizeColor(theme.accentColor, rarityColor or DEFAULT_THEME.accentColor)
 	local backgroundColor = sanitizeColor(theme.backgroundColor, DEFAULT_THEME.backgroundColor)

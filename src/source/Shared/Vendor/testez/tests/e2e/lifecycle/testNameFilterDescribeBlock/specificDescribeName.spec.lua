@@ -1,3 +1,4 @@
+--!nocheck
 local completeLifecycleOrderTests = require(script:FindFirstAncestor("lifecycle").completeLifecycleOrderTests)
 
 return function()

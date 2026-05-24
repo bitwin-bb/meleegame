@@ -26,7 +26,7 @@ local function waitForPackageModule(name: string): ModuleScript
 	return module
 end
 
-local React = require(waitForPackageModule(REACT_NAME))
+local React = (require :: any)(waitForPackageModule(REACT_NAME))
 local e: typeof(React.createElement) = React.createElement
 
 export type LoaderSnapshot = {
@@ -122,7 +122,7 @@ local function sanitizeStringArray(valueRaw: any): { string }
 end
 
 local function sanitizeSnapshot(valueRaw: any): LoaderSnapshot
-	local value: { [string]: any } = if typeof(valueRaw) == "table" then valueRaw :: { [string]: any } else {}
+	local value: { [string]: any } = if typeof(valueRaw) == "table" then valueRaw :: { [string]: any } else ({} :: any)
 
 	return {
 		status = sanitizeString(value.status, DEFAULT_SNAPSHOT.status),
@@ -160,7 +160,7 @@ local function formatPercent(progress: number): string
 	return `{math.floor(math.clamp(progress, 0, 1) * 100 + 0.5)}%`
 end
 
-local function LoaderGui(props: LoaderGuiProps): React.ReactNode
+local function LoaderGui(props: LoaderGuiProps): any
 	local snapshot = sanitizeSnapshot(props.snapshot)
 	local progress = math.clamp(snapshot.progress, 0, 1)
 

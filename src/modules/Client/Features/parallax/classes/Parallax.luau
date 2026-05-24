@@ -7,7 +7,7 @@ local Workspace = game:GetService("Workspace")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(packageRoot)
+local loader = (require :: any)(loaderUtils.Parent).load(packageRoot)
 
 local ContentProviderUtils = loader("ContentProviderUtils")
 local Maid = loader("Maid")
@@ -262,7 +262,7 @@ function Parallax._initializeCoreState(self: Parallax)
 end
 
 function Parallax._resolveWorldLayoutSnapshot(_self: Parallax, stateRaw: any?): WorldLayoutSnapshot
-	local fallbackState = ((WorldGenerationServiceClient :: any).state :: { [string]: any }?) or {}
+	local fallbackState = ((WorldGenerationServiceClient :: any).state :: { [string]: any }?) or ({} :: any)
 	local state = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else fallbackState
 	local tileDepth = if typeof(state.tileDepth) == "number" then math.max(state.tileDepth, 0.5) else 4
 	local chunkSize = if typeof(state.chunkSize) == "number" then math.max(1, math.floor(state.chunkSize)) else 32
@@ -534,7 +534,7 @@ function Parallax._resolveGameplayPlaneReferenceDistance(self: Parallax, cameraP
 		self.referenceGameplayPlaneDistanceX = math.min(self.referenceGameplayPlaneDistanceX, gameplayPlaneDistance)
 	end
 
-	return self.referenceGameplayPlaneDistanceX
+	return self.referenceGameplayPlaneDistanceX :: number
 end
 
 function Parallax._resolveDisplayedBiomeName(self: Parallax): string
@@ -1126,14 +1126,14 @@ Parallax.destroy = Parallax.Destroy
 export type Parallax = typeof(setmetatable(
 	{} :: {
 		localPlayer: Player,
-		maid: MaidClass?,
-		reactiveStreamsMaid: MaidClass?,
+		maid: any,
+		reactiveStreamsMaid: any,
 		catalog: Catalog,
 		state: ServiceState,
-		stateValue: ValueObjectClass<ServiceState>?,
-		stateObservable: ObservableObject?,
-		stateChangedSignal: RxSignalObject?,
-		layoutStateValue: ValueObjectClass<LayoutSnapshot>?,
+		stateValue: any,
+		stateObservable: any,
+		stateChangedSignal: any,
+		layoutStateValue: any,
 		activeBiomeRuntimes: { [string]: BiomeRuntime },
 		preloadedBiomes: { [string]: boolean },
 		preloadBiomePromises: { [string]: any },

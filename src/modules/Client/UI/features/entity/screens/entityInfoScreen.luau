@@ -65,7 +65,7 @@ return function(props: EntityInfoScreenProps): React.ReactNode
 		end
 
 		healthSpring.setTarget(hpPercent)
-	end, { entityState.runtimeId, previousRuntimeId, hpPercent, healthSpring.setTarget, healthSpring.jumpTo })
+	end, ({ entityState.runtimeId, previousRuntimeId, hpPercent, healthSpring.setTarget, healthSpring.jumpTo } :: { any }))
 
 	local healthColor = healthSpring.binding:map(function(value: number)
 		return resolveHealthColor(value)

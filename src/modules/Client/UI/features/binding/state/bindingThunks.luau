@@ -191,12 +191,12 @@ local function resolvePromptData(actionName: string): PromptData
 	local prompt = promptOrError :: { [string]: any }
 	local promptText = trim(prompt.text)
 	local promptIcon = trim(prompt.icon)
-	return {
+	return ({
 		text = if promptText ~= "" then promptText else nil,
 		icon = if promptIcon ~= "" then promptIcon else nil,
 		keyCode = if typeof(prompt.keyCode) == "EnumItem" then prompt.keyCode else nil,
 		inputType = if typeof(prompt.inputType) == "EnumItem" then prompt.inputType else nil,
-	}
+	} :: PromptData)
 end
 
 local function isMousePrompt(promptData: PromptData): boolean
@@ -307,7 +307,7 @@ local function formatTreeBreakFailureReason(reasonRaw: any): string?
 	return "cannot chop"
 end
 
-local function resolveMiningToolContext(inventoryState: InventoryState)
+local function resolveMiningToolContext(inventoryState: InventoryState): { [string]: any }?
 	local ok, toolContextOrError = pcall(function()
 		return MiningPower.resolveSelectedToolContextFromInventoryState(inventoryState)
 	end)
@@ -338,7 +338,7 @@ local function tryBuildPlaceHint(hints: { BindingHintEntry }, selectedStack: any
 	local detail = "No Target"
 	if typeof(cursorTileX) == "number" and typeof(cursorTileY) == "number" then
 		local placeOk, canPlaceOrError, reasonOrError = pcall(function()
-			return BuildServiceClient:canPlaceAt(cursorTileX, cursorTileY, config.tileId)
+			return (BuildServiceClient.canPlaceAt :: any)(BuildServiceClient, cursorTileX, cursorTileY, config.tileId)
 		end)
 		if placeOk then
 			canPlace = canPlaceOrError == true

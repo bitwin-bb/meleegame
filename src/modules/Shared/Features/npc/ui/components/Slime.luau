@@ -9,11 +9,11 @@ local flipbookPackage = assert(quentyPackages:FindFirstChild("flipbook"), "Missi
 local maidPackage = assert(quentyPackages:FindFirstChild("maid"), "Missing maid package")
 local spritesPackage = assert(quentyPackages:FindFirstChild("sprites"), "Missing sprites package")
 
-local Flipbook = require(assert(assert(flipbookPackage:FindFirstChild("Client")):FindFirstChild("Flipbook")))
+local Flipbook = (require :: any)(assert(assert(flipbookPackage:FindFirstChild("Client")):FindFirstChild("Flipbook")))
 local FlipbookPlayer =
-	require(assert(assert(flipbookPackage:FindFirstChild("Client")):FindFirstChild("Player")).FlipbookPlayer)
-local Maid = require(assert(assert(maidPackage:FindFirstChild("Shared")):FindFirstChild("Maid")))
-local Sprite = require(
+	(require :: any)(assert(assert(flipbookPackage:FindFirstChild("Client")):FindFirstChild("Player")).FlipbookPlayer)
+local Maid = (require :: any)(assert(assert(maidPackage:FindFirstChild("Shared")):FindFirstChild("Maid")))
+local Sprite = (require :: any)(
 	assert(assert(assert(spritesPackage:FindFirstChild("Shared")):FindFirstChild("Sprite")):FindFirstChild("Sprite"))
 )
 
@@ -42,7 +42,7 @@ local FALLBACK_ROOT_SIZE = Vector3.new(4, 3, 4)
 local CONTENT_BOUNDS_MIN = SlimeSpriteSheet.contentBounds.min
 local CONTENT_BOUNDS_MAX = SlimeSpriteSheet.contentBounds.max
 local GORE_ANCHOR_POINT = Vector2.new(0.5, 0.5)
-local runtimeRootPartCache: { [string]: BasePart } = {}
+local runtimeRootPartCache: { [string]: BasePart? } = {}
 
 type SpritePlayback = {
 	playing: boolean,
@@ -398,7 +398,7 @@ local function SpriteImage(props: SpriteImageProps)
 			flipbookRef.current = nil
 			maid:DoCleaning()
 		end
-	end, {
+	end, ({
 		SlimeSpriteSheet.image,
 		FRAME_COUNT,
 		SlimeSpriteSheet.rows,
@@ -407,16 +407,16 @@ local function SpriteImage(props: SpriteImageProps)
 		SlimeSpriteSheet.frameSize.Y,
 		restFrame,
 		flipX,
-	})
+	} :: { any }))
 
 	React.useEffect(function()
 		local flipbook = flipbookRef.current
 		if flipbook ~= nil then
 			flipbook:SetFrameRate(frameRate)
 		end
-	end, {
+	end, ({
 		frameRate,
-	})
+	} :: { any }))
 
 	React.useEffect(function()
 		local player = playerRef.current
@@ -428,9 +428,9 @@ local function SpriteImage(props: SpriteImageProps)
 		else
 			player:Stop()
 		end
-	end, {
+	end, ({
 		playback.playing,
-	})
+	} :: { any }))
 
 	local children = nil
 	if isSurfaceGui then

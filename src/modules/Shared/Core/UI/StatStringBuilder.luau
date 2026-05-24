@@ -106,7 +106,7 @@ local function sortDefinitions(definitions: { StatDefinition })
 end
 
 function StatStringBuilder.New(configRaw: BuilderConfig?): StatStringBuilder
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local self = setmetatable({
 		attributeCache = config.attributeCache,
 		positiveColor = if typeof(config.positiveColor) == "string" then config.positiveColor else "green",
@@ -174,11 +174,11 @@ function StatStringBuilder.BuildTokens(
 	modifierBreakdownRaw: any?,
 	optionsRaw: BuildOptions?
 ): { StatToken }
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else {}
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
 	local includeHidden = options.includeHidden == true
 	local showUnchanged = if options.showUnchanged == nil then true else options.showUnchanged == true
 	local deltaThreshold = clampNumber(options.deltaThreshold, 0, 0, 1e9)
-	local modifierBreakdown = if typeof(modifierBreakdownRaw) == "table" then modifierBreakdownRaw else {}
+	local modifierBreakdown = if typeof(modifierBreakdownRaw) == "table" then modifierBreakdownRaw else ({} :: any)
 
 	local definitions = self:_normalizeDefinitions(definitionsRaw, currentSource)
 	local tokens = {}
@@ -260,7 +260,7 @@ function StatStringBuilder.BuildTokens(
 			}
 		end
 	end
-	return tokens
+	return tokens :: any
 end
 
 function StatStringBuilder.TokensToRichText(self: StatStringBuilder, tokensRaw: any): string

@@ -39,6 +39,10 @@ export type KeybindResult = {
 	lastContext: KeybindContext?,
 }
 
+local function dependencyArray(...: any): { any }
+	return { ... }
+end
+
 local function keyCodeMatchesInput(inputObject: InputObject, keyCode: Enum.KeyCode): boolean
 	if inputObject.KeyCode == keyCode then
 		return true
@@ -202,15 +206,15 @@ local function useKeybind(options: KeybindOptions?): KeybindResult
 			Cleanup.Call(changedConnection)
 			Cleanup.Call(endedConnection)
 		end
-	end, {
+	end, dependencyArray(
 		enabled,
 		actionName,
 		keyCodes,
 		inputTypes,
 		captureProcessed,
 		overrideDefinition,
-		onTriggered,
-	})
+		onTriggered
+	))
 
 	return {
 		isPressed = isPressed,

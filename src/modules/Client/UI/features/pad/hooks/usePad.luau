@@ -4,6 +4,10 @@ local RunService = game:GetService("RunService")
 
 local React = require(ReplicatedStorage.Packages.React)
 
+local function dependencyArray(...: any): { any }
+	return { ... }
+end
+
 export type PadOptions = {
 	enabled: boolean?,
 	collapsedSize: Vector2?,
@@ -70,9 +74,9 @@ local function usePad(options: PadOptions?): PadState
 		phaseElapsedRef.current = 0
 		expandingRef.current = true
 		setPadState(createPadState(collapsedSize, 0, true))
-	end, { enabled, collapsedSize, expandedSize, phaseDuration })
+	end, dependencyArray(enabled, collapsedSize, expandedSize, phaseDuration))
 
-	React.useEffect(function()
+	;(React.useEffect :: any)(function(): (() -> ())?
 		if not enabled then
 			setPadState(createPadState(collapsedSize, 0, true))
 			return nil
@@ -99,7 +103,7 @@ local function usePad(options: PadOptions?): PadState
 		return function()
 			connection:Disconnect()
 		end
-	end, { enabled, collapsedSize, expandedSize, phaseDuration })
+	end, dependencyArray(enabled, collapsedSize, expandedSize, phaseDuration))
 
 	return padState
 end

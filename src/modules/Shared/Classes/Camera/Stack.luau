@@ -116,7 +116,7 @@ function Stack.New(): Stack
 end
 
 function Stack.Push(self: Stack, entryRaw: any): number
-	local source = if typeof(entryRaw) == "table" then entryRaw else {}
+	local source = if typeof(entryRaw) == "table" then entryRaw else ({} :: any)
 	self.nextId += 1
 	self.nextOrder += 1
 

@@ -1,3 +1,4 @@
+--!nocheck
 local names = {
 	"delay",
 	"spawn",

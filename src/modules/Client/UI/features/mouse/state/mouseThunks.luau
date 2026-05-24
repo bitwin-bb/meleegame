@@ -245,7 +245,7 @@ function mouseThunks.Start(): () -> ()
 				return
 			end
 			if isMouseMovementInput(inputObject.UserInputType) then
-				applyPointerStateFromScreenPosition(inputObject.Position)
+				applyPointerStateFromScreenPosition(Vector2.new(inputObject.Position.X, inputObject.Position.Y))
 			end
 		end)
 

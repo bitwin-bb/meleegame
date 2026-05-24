@@ -202,7 +202,7 @@ function BinaryStreaming.CreateWriter(initialCapacityRaw: any): Writer
 		capacity = initialCapacity,
 		length = 0,
 	}, Writer)
-	return self
+	return self :: any
 end
 
 function Writer.WriteUInt8(self: Writer, valueRaw: any)
@@ -294,7 +294,7 @@ function BinaryStreaming.CreateReader(payload: buffer, payloadSizeRaw: any): Rea
 		length = payloadSize,
 		cursor = 0,
 	}, Reader)
-	return self
+	return self :: any
 end
 
 local function assertCanRead(self: Reader, byteCount: number)

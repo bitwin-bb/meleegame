@@ -20,7 +20,7 @@ local UNKNOWN_STATUS_SYMBOL = "?"
 local TextReporterQuiet = {}
 
 local function reportNode(node, buffer, level)
-	buffer = buffer or {}
+	buffer = buffer or ({} :: any)
 	level = level or 0
 
 	if node.status == TestEnum.TestStatus.Skipped then

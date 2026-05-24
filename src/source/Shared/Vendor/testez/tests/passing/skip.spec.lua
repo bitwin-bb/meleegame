@@ -1,3 +1,4 @@
+--!nocheck
 -- luacheck: globals describe it itSKIP SKIP
 return function()
 	itSKIP("skip a failing test", function()

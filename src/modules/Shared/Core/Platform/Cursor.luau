@@ -220,7 +220,7 @@ local function statesEqual(a: CursorState, b: CursorState): boolean
 end
 
 function Cursor.New(configRaw: CursorConfig?): Cursor
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local defaultScreenPosition = Vector2.zero
 	local ok, mouseLocation = pcall(function()
 		return UserInputService:GetMouseLocation()
@@ -359,7 +359,8 @@ function Cursor._activateHoveredGui(self: Cursor)
 	if hoveredGui ~= nil then
 		self:_syncSelectedObject(hoveredGui)
 		if hoveredGui:IsA("GuiButton") then
-			hoveredGui:Activate()
+			local guiButton = hoveredGui :: any
+			guiButton:Activate()
 			return
 		end
 	end

@@ -1,3 +1,4 @@
+--!nocheck
 local VirtualInputManager = import("./VirtualInputManager")
 
 describe("instances.VirtualInputManager", function()

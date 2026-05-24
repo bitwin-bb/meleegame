@@ -1,3 +1,4 @@
+--!nocheck
 local ContextActionService = import("./ContextActionService")
 
 describe("instances.ContextActionService", function()

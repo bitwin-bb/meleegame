@@ -53,7 +53,7 @@ local Slime = {}
 Slime.__index = Slime
 setmetatable(Slime, { __index = Npc })
 
-export type Slime = BaseNpc & {
+export type Slime = BaseNpc & typeof(Slime) & {
 	aggroOnPlayer: boolean,
 	passiveUntilHit: boolean,
 	hasBeenHit: boolean,
@@ -109,7 +109,8 @@ local function toOptionalNumber(value: any): number?
 end
 
 local function normalizeToken(value: string): string
-	return string.lower(string.gsub(value, "[%s_%-%.]", ""))
+	local normalized = string.gsub(value, "[%s_%-%.]", "")
+	return string.lower(normalized)
 end
 
 local function resolveSlimeLabel(config: { [string]: any }): string
@@ -259,7 +260,7 @@ local function resolvePositionFromTarget(target: any): Vector3?
 	return nil
 end
 
-function Slime:_configureRootPhysics()
+function Slime._configureRootPhysics(self: Slime)
 	local rootPart = self.rootPart
 	if rootPart == nil then
 		return
@@ -278,7 +279,7 @@ function Slime:_configureRootPhysics()
 	end)
 end
 
-function Slime:_isAggroEnabled(): boolean
+function Slime._isAggroEnabled(self: Slime): boolean
 	if not self.aggroOnPlayer then
 		return false
 	end
@@ -288,7 +289,7 @@ function Slime:_isAggroEnabled(): boolean
 	return true
 end
 
-function Slime:_resolve2DPlaneX(): number?
+function Slime._resolve2DPlaneX(self: Slime): number?
 	if not self.lockTo2DPlane then
 		return nil
 	end
@@ -306,7 +307,7 @@ function Slime:_resolve2DPlaneX(): number?
 	return self.planeX
 end
 
-function Slime:_projectTo2DPlane(position: Vector3): Vector3
+function Slime._projectTo2DPlane(self: Slime, position: Vector3): Vector3
 	local planeX = self:_resolve2DPlaneX()
 	if planeX == nil then
 		return position
@@ -314,7 +315,7 @@ function Slime:_projectTo2DPlane(position: Vector3): Vector3
 	return Vector3.new(planeX, position.Y, position.Z)
 end
 
-function Slime:_enforce2DPlane()
+function Slime._enforce2DPlane(self: Slime)
 	local planeX = self:_resolve2DPlaneX()
 	if planeX == nil then
 		return
@@ -360,7 +361,7 @@ function Slime:_enforce2DPlane()
 	model:PivotTo(CFrame.new(fixedPosition))
 end
 
-function Slime:SetAggroOnPlayer(enabled: boolean)
+function Slime.SetAggroOnPlayer(self: Slime, enabled: boolean)
 	self.aggroOnPlayer = enabled
 	if self:_isAggroEnabled() then
 		return
@@ -372,7 +373,7 @@ function Slime:SetAggroOnPlayer(enabled: boolean)
 	end
 end
 
-function Slime:_resolveHopDestination(): Vector3?
+function Slime._resolveHopDestination(self: Slime): Vector3?
 	local currentPosition = self:getPosition()
 	if currentPosition == nil then
 		return nil
@@ -398,10 +399,15 @@ function Slime:_resolveHopDestination(): Vector3?
 		hopDestination = currentPosition + Vector3.new(0, 0, directionSign * self.hopDistance)
 	end
 
-	return self:_projectTo2DPlane(hopDestination)
+	local resolvedHopDestination: Vector3 = hopDestination or currentPosition
+	local projectedDestination: Vector3? = (self:_projectTo2DPlane(resolvedHopDestination) :: any)
+	if projectedDestination == nil then
+		return currentPosition
+	end
+	return projectedDestination
 end
 
-function Slime:_refreshHopCollisionQueryParams()
+function Slime._refreshHopCollisionQueryParams(self: Slime)
 	local model = self.model
 	if model == nil then
 		self._hopRaycastParams = nil
@@ -424,7 +430,7 @@ function Slime:_refreshHopCollisionQueryParams()
 	self._hopSupportsBlockcast = nil
 end
 
-function Slime:_resolveHopHalfExtents(): Vector3
+function Slime._resolveHopHalfExtents(self: Slime): Vector3
 	local rootPart = self.rootPart
 	if rootPart ~= nil then
 		local size = rootPart.Size
@@ -433,7 +439,7 @@ function Slime:_resolveHopHalfExtents(): Vector3
 	return Vector3.new(1.3, 1, 1.3)
 end
 
-function Slime:_resolveGroundSnapY(position: Vector3, halfExtents: Vector3): number?
+function Slime._resolveGroundSnapY(self: Slime, position: Vector3, halfExtents: Vector3): number?
 	local raycastParams = self._hopRaycastParams
 	if raycastParams == nil then
 		return nil
@@ -455,7 +461,7 @@ function Slime:_resolveGroundSnapY(position: Vector3, halfExtents: Vector3): num
 	return hit.Position.Y + halfExtents.Y + DEFAULT_HOP_BLOCKCAST_PADDING
 end
 
-function Slime:_hasBlockingOverlap(position: Vector3, lookDirectionRaw: Vector3): boolean
+function Slime._hasBlockingOverlap(self: Slime, position: Vector3, lookDirectionRaw: Vector3): boolean
 	local overlapParams = self._hopOverlapParams
 	if overlapParams == nil then
 		return false
@@ -477,7 +483,7 @@ function Slime:_hasBlockingOverlap(position: Vector3, lookDirectionRaw: Vector3)
 	return false
 end
 
-function Slime:_resolveHopCollisionPosition(
+function Slime._resolveHopCollisionPosition(self: Slime, 
 	previousPositionRaw: Vector3,
 	desiredPositionRaw: Vector3,
 	lookDirectionRaw: Vector3
@@ -545,7 +551,7 @@ function Slime:_resolveHopCollisionPosition(
 	return self:_projectTo2DPlane(resolvedPosition)
 end
 
-function Slime:_resolveEmbeddedRestState()
+function Slime._resolveEmbeddedRestState(self: Slime)
 	local rootPart = self.rootPart
 	if rootPart == nil then
 		return
@@ -572,7 +578,7 @@ function Slime:_resolveEmbeddedRestState()
 	self._lastResolvedHopPosition = resolvedPosition
 end
 
-function Slime:_applyHopTransform(positionRaw: any, velocityRaw: any)
+function Slime._applyHopTransform(self: Slime, positionRaw: any, velocityRaw: any)
 	if typeof(positionRaw) ~= "Vector3" then
 		return
 	end
@@ -595,26 +601,31 @@ function Slime:_applyHopTransform(positionRaw: any, velocityRaw: any)
 	self._facingSign = lookSign
 
 	local lookDirection = Vector3.new(0, 0, lookSign)
-	local previousPosition = self._lastResolvedHopPosition
-	if previousPosition == nil then
+	local previousPositionRaw = self._lastResolvedHopPosition
+	if previousPositionRaw == nil then
 		local rootPart = self.rootPart
 		if rootPart ~= nil then
-			previousPosition = self:_projectTo2DPlane(rootPart.Position)
+			previousPositionRaw = self:_projectTo2DPlane(rootPart.Position)
 		else
-			previousPosition = desiredPosition
+			previousPositionRaw = desiredPosition
 		end
 	end
+	local previousPosition: Vector3 = previousPositionRaw or desiredPosition
 
-	local position = self:_resolveHopCollisionPosition(previousPosition, desiredPosition, lookDirection)
-	self._lastResolvedHopPosition = position
+	local position: Vector3? = (self:_resolveHopCollisionPosition(previousPosition, desiredPosition, lookDirection) :: any)
+	if position == nil then
+		position = desiredPosition
+	end
+	local resolvedPosition = (position :: any) :: Vector3
+	self._lastResolvedHopPosition = resolvedPosition
 	local zVelocity = velocity.Z
-	if math.abs(position.Z - previousPosition.Z) <= 1e-4 then
+	if math.abs(resolvedPosition.Z - previousPosition.Z) <= 1e-4 then
 		zVelocity = 0
 	end
 
 	local rootPart = self.rootPart
 	if rootPart ~= nil then
-		rootPart.CFrame = CFrame.new(position)
+		rootPart.CFrame = CFrame.new(resolvedPosition)
 		rootPart.AssemblyLinearVelocity = Vector3.new(0, 0, zVelocity)
 		rootPart.AssemblyAngularVelocity = Vector3.zero
 		return
@@ -622,11 +633,11 @@ function Slime:_applyHopTransform(positionRaw: any, velocityRaw: any)
 
 	local model = self.model
 	if model ~= nil then
-		model:PivotTo(CFrame.new(position))
+		model:PivotTo(CFrame.new(resolvedPosition))
 	end
 end
 
-function Slime:_startHopMotion(destinationRaw: any): boolean
+function Slime._startHopMotion(self: Slime, destinationRaw: any): boolean
 	if typeof(destinationRaw) ~= "Vector3" then
 		return false
 	end
@@ -658,7 +669,7 @@ function Slime:_startHopMotion(destinationRaw: any): boolean
 	return true
 end
 
-function Slime:_stopHopMotion(snapToDestinationRaw: any)
+function Slime._stopHopMotion(self: Slime, snapToDestinationRaw: any)
 	local snapToDestination = snapToDestinationRaw == true
 	self._hopMotion:stop(snapToDestination)
 	if snapToDestination and self._hopDestination ~= nil then
@@ -675,7 +686,7 @@ function Slime:_stopHopMotion(snapToDestinationRaw: any)
 	self._hopDestination = nil
 end
 
-function Slime:_updateHopMotion(dt: number)
+function Slime._updateHopMotion(self: Slime, dt: number)
 	if self._isResting then
 		return
 	end
@@ -690,7 +701,7 @@ function Slime:_updateHopMotion(dt: number)
 	end
 end
 
-function Slime:_connectHopMotionHeartbeat()
+function Slime._connectHopMotionHeartbeat(self: Slime)
 	if self._hopMotionConnection ~= nil then
 		return
 	end
@@ -705,14 +716,14 @@ function Slime:_connectHopMotionHeartbeat()
 	end)
 end
 
-function Slime:_disconnectHopMotionHeartbeat()
+function Slime._disconnectHopMotionHeartbeat(self: Slime)
 	if self._hopMotionConnection ~= nil then
 		self._hopMotionConnection:Disconnect()
 		self._hopMotionConnection = nil
 	end
 end
 
-function Slime:_beginRest()
+function Slime._beginRest(self: Slime)
 	self._isResting = true
 	self.restElapsed = 0
 	self.hopElapsed = 0
@@ -721,7 +732,7 @@ function Slime:_beginRest()
 	self:stopMoving()
 end
 
-function Slime:_beginHop()
+function Slime._beginHop(self: Slime)
 	if not self.isAlive then
 		return
 	end
@@ -745,7 +756,7 @@ function Slime:_beginHop()
 	end
 end
 
-function Slime:_finishHop()
+function Slime._finishHop(self: Slime)
 	if not self.isAlive or self._isResting then
 		return
 	end
@@ -756,7 +767,7 @@ function Slime:_finishHop()
 	self:_beginRest()
 end
 
-function Slime:_slimeOnSpawn()
+function Slime._slimeOnSpawn(self: Slime)
 	self._baseCanMove = self.movement.canMove
 	if self.passiveUntilHit then
 		self.hasBeenHit = false
@@ -770,7 +781,7 @@ function Slime:_slimeOnSpawn()
 	self:_enforce2DPlane()
 end
 
-function Slime:_slimeOnThink(dt: number)
+function Slime._slimeOnThink(self: Slime, dt: number)
 	if not self.isAlive then
 		return
 	end
@@ -800,7 +811,7 @@ function Slime:_slimeOnThink(dt: number)
 	end
 end
 
-function Slime:_slimeOnDamage(source: any?)
+function Slime._slimeOnDamage(self: Slime, source: any?)
 	if self.passiveUntilHit and not self.hasBeenHit then
 		self.hasBeenHit = true
 	end
@@ -810,7 +821,7 @@ function Slime:_slimeOnDamage(source: any?)
 	end
 end
 
-function Slime:_slimeOnDeath()
+function Slime._slimeOnDeath(self: Slime)
 	self:_disconnectHopMotionHeartbeat()
 	self:_stopHopMotion(false)
 	self._lastResolvedHopPosition = nil
@@ -819,12 +830,16 @@ function Slime:_slimeOnDeath()
 end
 
 function Slime.New(configRaw: SlimeConfig?): Slime
-	local config = if typeof(configRaw) == "table" then Sift.Dictionary.copy(configRaw :: any) else {}
+	local config = (if typeof(configRaw) == "table" then Sift.Dictionary.copy(configRaw :: any) else ({} :: any)) :: SlimeConfig & {
+		[string]: any,
+	}
 	local baseBehavior = if typeof(config.behavior) == "table"
 		then config.behavior :: NpcBehaviorConfig
 		else {} :: NpcBehaviorConfig
 
-	local movement = if typeof(config.movement) == "table" then Sift.Dictionary.copy(config.movement) else {}
+	local movement = (if typeof(config.movement) == "table" then Sift.Dictionary.copy(config.movement) else ({} :: any)) :: {
+		[string]: any,
+	}
 	if movement.canWander == nil then
 		movement.canWander = false
 	end
@@ -833,7 +848,9 @@ function Slime.New(configRaw: SlimeConfig?): Slime
 	end
 	config.movement = movement
 
-	local lifecycle = if typeof(config.lifecycle) == "table" then Sift.Dictionary.copy(config.lifecycle) else {}
+	local lifecycle = (if typeof(config.lifecycle) == "table" then Sift.Dictionary.copy(config.lifecycle) else ({} :: any)) :: {
+		[string]: any,
+	}
 	local autoStart = toBoolean(lifecycle.autoStart, false)
 	lifecycle.autoStart = false
 	config.lifecycle = lifecycle
@@ -896,7 +913,7 @@ function Slime.New(configRaw: SlimeConfig?): Slime
 	local self = setmetatable(npcObject :: any, Slime) :: Slime
 
 	local planeXRaw = if config.planeX ~= nil then config.planeX else config.twoDPlaneX
-	local hopMotionSpringRaw = if typeof(config.hopMotionSpring) == "table" then config.hopMotionSpring else {}
+	local hopMotionSpringRaw = if typeof(config.hopMotionSpring) == "table" then config.hopMotionSpring else ({} :: any)
 	local hopMotionSpring = {
 		frequency = toNumber((hopMotionSpringRaw :: any).frequency, DEFAULT_HOP_SPRING_FREQUENCY, 0.01, 120),
 		damping = toNumber((hopMotionSpringRaw :: any).damping, DEFAULT_HOP_SPRING_DAMPING, 0, 20),
@@ -953,3 +970,4 @@ Slime.setAggroOnPlayer = Slime.SetAggroOnPlayer
 Slime.new = Slime.New
 
 return Slime
+

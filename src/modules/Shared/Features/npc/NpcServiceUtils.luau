@@ -5,17 +5,9 @@ local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBin
 
 local NpcServiceUtils = {}
 
-export type NpcType = "Slime"
-export type NpcRuntimeState =
-	"Dormant"
-	| "Spawning"
-	| "AwaitingBiome"
-	| "Idle"
-	| "Searching"
-	| "Aggro"
-	| "Attacking"
-	| "Dead"
-export type BiomeName = "Unknown" | "Forest" | "Desert" | "Snow" | "Jungle"
+export type NpcType = string
+export type NpcRuntimeState = string
+export type BiomeName = string
 
 export type StateMachineGraph = {
 	[NpcRuntimeState]: { [NpcRuntimeState]: boolean },
@@ -185,7 +177,7 @@ end
 
 function NpcServiceUtils.SanitizeSlimeSpawnSettings(settingsRaw: any, fallback: SlimeSpawnSettings?): SlimeSpawnSettings
 	local base = if fallback ~= nil then fallback else DEFAULT_SLIME_SPAWN_SETTINGS
-	local settings = if typeof(settingsRaw) == "table" then settingsRaw else {}
+	local settings = if typeof(settingsRaw) == "table" then settingsRaw else ({} :: any)
 
 	return {
 		enabled = if typeof((settings :: any).enabled) == "boolean" then (settings :: any).enabled else base.enabled,
@@ -251,7 +243,7 @@ function NpcServiceUtils.ResolveBiomeNameFromWorld(worldRaw: any, worldPosition:
 
 	for biomeKey, biomeName in BIOME_ID_TO_NAME do
 		if (biomeIdMap :: any)[biomeKey] == biomeId then
-			return biomeName, true
+			return biomeName :: string, true
 		end
 	end
 
@@ -309,6 +301,7 @@ function NpcServiceUtils.CreateDefaultSlimeSpawnConfigs(spawnCFrames: { CFrame }
 	if cframes == nil or #cframes == 0 then
 		cframes = NpcServiceUtils.CollectSpawnCFrames(3)
 	end
+	local resolvedCFrames = cframes :: { CFrame }
 
 	local variants = {
 		{
@@ -321,8 +314,8 @@ function NpcServiceUtils.CreateDefaultSlimeSpawnConfigs(spawnCFrames: { CFrame }
 	}
 
 	local out = {}
-	local planeX = if #cframes > 0 then cframes[1].Position.X else 0
-	for index, spawnCFrame in cframes do
+	local planeX = if #resolvedCFrames > 0 then resolvedCFrames[1].Position.X else 0
+	for index, spawnCFrame in resolvedCFrames do
 		local variant = variants[((index - 1) % #variants) + 1]
 		local spawnPosition = spawnCFrame.Position
 		local projectedCFrame = CFrame.new(Vector3.new(planeX, spawnPosition.Y, spawnPosition.Z))

@@ -232,7 +232,7 @@ local function thumbstickStatesEqual(a: ThumbstickState, b: ThumbstickState): bo
 end
 
 function GamepadNav.New(configRaw: GamepadNavConfig?): GamepadNav
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local stickDeadzone = clampNumber(config.stickDeadzone, DEFAULT_STICK_DEADZONE, 0, 1)
 	local navigationDeadzone = clampNumber(config.navigationDeadzone, DEFAULT_NAVIGATION_DEADZONE, 0, 1)
 	local thumbstickSnapshot: ThumbstickSnapshot = {
@@ -697,7 +697,7 @@ function GamepadNav.RegisterLayout(self: GamepadNav, keyRaw: any, elementsRaw: a
 	if #elements == 0 then
 		return false
 	end
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local record: LayoutRecord = {
 		key = keyRaw,
 		elements = elements,

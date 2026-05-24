@@ -1,5 +1,10 @@
 --!strict
 
+local testEnvironment = getfenv() :: any
+local describe = testEnvironment.describe :: any
+local it = testEnvironment.it :: any
+local expect = testEnvironment.expect :: any
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
@@ -12,7 +17,7 @@ local WorldGenerationServiceUtils =
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local Maid = loader("Maid")
 
@@ -156,7 +161,7 @@ return function()
 
 			local world = nil
 			local ok, err = pcall(function()
-				world = WorldGeneration.new({
+				world = (WorldGeneration.new :: any)({
 					parent = parent,
 					maxCachedChunkVisuals = 0,
 					maxConcurrentChunkLoads = 1,
@@ -189,7 +194,7 @@ return function()
 
 			local assetTemplates = createTileAssetTemplates()
 			local maid = Maid.new()
-			local world = WorldGeneration.new({
+			local world = (WorldGeneration.new :: any)({
 				parent = parent,
 				maxCachedChunkVisuals = 0,
 				maxConcurrentChunkLoads = 1,

@@ -200,7 +200,7 @@ local DEFAULT_ASPECT_RULES: { AspectRule } = {
 	},
 }
 
-local ROLE_PRESETS: { [string]: any } = {
+local ROLE_PRESETS: any = {
 	Hotbar = {
 		anchorPoint = Vector2.new(0.5, 1),
 		useSafeZone = true,
@@ -210,18 +210,20 @@ local ROLE_PRESETS: { [string]: any } = {
 			minTextSize = 11,
 			maxTextSize = 28,
 		},
-		aspectRules = {
-			{
+		aspectRules = ({
+			({
 				maxAspect = 1.4,
+				minAspect = nil :: number?,
 				sizeMultiplier = Vector2.new(1.08, 1.1),
 				positionNudge = Vector2.new(0, -0.02),
-			},
-			{
+			} :: any),
+			({
+				maxAspect = nil :: number?,
 				minAspect = 2.2,
 				sizeMultiplier = Vector2.new(0.93, 1.0),
 				positionNudge = Vector2.new(0, 0.01),
-			},
-		},
+			} :: any),
+		} :: any),
 	},
 	HealthBar = {
 		anchorPoint = Vector2.new(0, 0),
@@ -236,16 +238,18 @@ local ROLE_PRESETS: { [string]: any } = {
 	InventoryGrid = {
 		anchorPoint = Vector2.new(0.5, 0.5),
 		useSafeZone = true,
-		aspectRules = {
-			{
+		aspectRules = ({
+			({
 				maxAspect = 1.5,
+				minAspect = nil :: number?,
 				sizeMultiplier = Vector2.new(1.04, 1.04),
-			},
-			{
+			} :: any),
+			({
+				maxAspect = nil :: number?,
 				minAspect = 2.1,
 				sizeMultiplier = Vector2.new(0.92, 0.92),
-			},
-		},
+			} :: any),
+		} :: any),
 	},
 	Tooltip = {
 		anchorPoint = Vector2.new(0, 0),
@@ -518,7 +522,7 @@ local function buildAspectConstraint(roleRaw: any, configRaw: any): AspectConstr
 end
 
 function UIScaling.New(configRaw: UIScalingConfig?): UIScaling
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local referenceResolution = vector2Or(config.referenceResolution, DEFAULT_REFERENCE_RESOLUTION)
 
 	local self = setmetatable({
@@ -699,8 +703,9 @@ function UIScaling._applyTextRule(self: UIScaling, gui: GuiObject, textRule: Tex
 		textGui.TextScaled = true
 		local constraint = textGui:FindFirstChildOfClass("UITextSizeConstraint") :: UITextSizeConstraint?
 		if constraint == nil then
-			constraint = Instance.new("UITextSizeConstraint")
-			constraint.Parent = textGui
+			local newConstraint = Instance.new("UITextSizeConstraint")
+			newConstraint.Parent = textGui
+			constraint = newConstraint
 		end
 		local textConstraint = constraint :: UITextSizeConstraint
 		textConstraint.MinTextSize = minText
@@ -714,8 +719,9 @@ function UIScaling._applyAspectConstraint(self: UIScaling, gui: GuiObject, aspec
 	end
 	local constraint = gui:FindFirstChildOfClass("UIAspectRatioConstraint") :: UIAspectRatioConstraint?
 	if constraint == nil then
-		constraint = Instance.new("UIAspectRatioConstraint")
-		constraint.Parent = gui
+		local newConstraint = Instance.new("UIAspectRatioConstraint")
+		newConstraint.Parent = gui
+		constraint = newConstraint
 	end
 	local ratioConstraint = constraint :: UIAspectRatioConstraint
 	ratioConstraint.AspectRatio = aspectConstraint.ratio
@@ -979,19 +985,20 @@ function UIScaling.RegisterElement(self: UIScaling, configRaw: ElementConfig): s
 		self.nextElementId += 1
 		id = string.format("ui_%d", self.nextElementId)
 	end
+	local recordId = id :: string
 
 	local anchorPoint = if typeof(configRaw.anchorPoint) == "Vector2" then configRaw.anchorPoint else if typeof(rolePreset) == "table" and typeof(rolePreset.anchorPoint) == "Vector2" then rolePreset.anchorPoint else gui.AnchorPoint
 	local useSafeZone = if configRaw.useSafeZone == nil then if typeof(rolePreset) == "table" and rolePreset.useSafeZone ~= nil then rolePreset.useSafeZone == true else true else configRaw.useSafeZone == true
 	local safePadding = if typeof(configRaw.safePadding) == "Vector2" then configRaw.safePadding else Vector2.zero
 	local sizeMultiplier = if typeof(configRaw.sizeMultiplier) == "Vector2" then configRaw.sizeMultiplier else VECTOR2_ONE
 	local positionNudge = if typeof(configRaw.positionNudge) == "Vector2" then configRaw.positionNudge else Vector2.zero
-	local aspectRules = if typeof(configRaw.aspectRules) == "table" then copyAspectRules(configRaw.aspectRules) else if typeof(rolePreset) == "table" and typeof(rolePreset.aspectRules) == "table" then copyAspectRules(rolePreset.aspectRules) else {}
+	local aspectRules = if typeof(configRaw.aspectRules) == "table" then copyAspectRules(configRaw.aspectRules) else if typeof(rolePreset) == "table" and typeof(rolePreset.aspectRules) == "table" then copyAspectRules(rolePreset.aspectRules) else ({} :: any)
 	local textRule = buildTextRule(if typeof(rolePreset) == "table" then rolePreset.text else nil, configRaw.text)
 	local aspectConstraint = buildAspectConstraint(if typeof(rolePreset) == "table" then rolePreset.aspectConstraint else nil, configRaw.aspectConstraint)
 	local onApply = if typeof(configRaw.onApply) == "function" then configRaw.onApply else nil
 
 	local record: ElementRecord = {
-		id = id,
+		id = recordId,
 		role = role,
 		gui = gui,
 		baseSize = gui.Size,
@@ -1059,9 +1066,10 @@ function UIScaling.RegisterLayout(self: UIScaling, configRaw: LayoutConfig): str
 		self.nextLayoutId += 1
 		id = string.format("layout_%d", self.nextLayoutId)
 	end
+	local recordId = id :: string
 
 	local record: LayoutRecord = {
-		id = id,
+		id = recordId,
 		layout = layoutInstance,
 		basePadding = if layoutInstance:IsA("UIListLayout") then layoutInstance.Padding else nil,
 		baseCellSize = if layoutInstance:IsA("UIGridLayout") then layoutInstance.CellSize else nil,

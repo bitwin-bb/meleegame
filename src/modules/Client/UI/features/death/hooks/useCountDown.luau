@@ -87,6 +87,10 @@ local function smoothstep(alphaRaw: number): number
 	return alpha * alpha * (3 - 2 * alpha)
 end
 
+local function dependencyArray(...: any): { any }
+	return { ... }
+end
+
 local function resolveInitialCountdownSeconds(respawnAt: number?, diedAt: number?): number
 	if respawnAt == nil then
 		return 0
@@ -140,7 +144,7 @@ local function useCountDown(options: CountDownOptions?): CountDownState
 		return 0
 	end)
 
-	React.useEffect(function()
+	;(React.useEffect :: any)(function()
 		local nextRevealed = shouldRevealCountdown(enabled, respawnAt, diedAt, appearDelay)
 		revealRef.current = nextRevealed
 		setRevealed(nextRevealed)
@@ -153,9 +157,9 @@ local function useCountDown(options: CountDownOptions?): CountDownState
 		else
 			setSecondsLeft(0)
 		end
-	end, { enabled, respawnAt, diedAt, appearDelay, initialCountdownSeconds })
+	end, dependencyArray(enabled, respawnAt, diedAt, appearDelay, initialCountdownSeconds))
 
-	React.useEffect(function()
+	;(React.useEffect :: any)(function()
 		local motion: NumberMotion = Ripple.createMotion(progress)
 		local connection = RunService.RenderStepped:Connect(function(deltaTime: number)
 			local nextRevealed = shouldRevealCountdown(enabled, respawnAt, diedAt, appearDelay)
@@ -172,9 +176,9 @@ local function useCountDown(options: CountDownOptions?): CountDownState
 			connection:Disconnect()
 			motion:destroy()
 		end
-	end, { enabled, respawnAt, diedAt, appearDelay, spring })
+	end, dependencyArray(enabled, respawnAt, diedAt, appearDelay, spring))
 
-	React.useEffect(function()
+	;(React.useEffect :: any)(function()
 		if not enabled then
 			setSecondsLeft(0)
 			return
@@ -204,7 +208,7 @@ local function useCountDown(options: CountDownOptions?): CountDownState
 		return function()
 			connection:Disconnect()
 		end
-	end, { enabled, respawnAt, diedAt, appearDelay, initialCountdownSeconds })
+	end, dependencyArray(enabled, respawnAt, diedAt, appearDelay, initialCountdownSeconds))
 
 	local fluidProgress = smoothstep(progress)
 	local offset = fromOffset:Lerp(toOffset, fluidProgress)

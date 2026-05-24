@@ -105,7 +105,7 @@ local function sortDefinitions(a: any, b: any): boolean
 end
 
 function HUDLayoutEngine.New(configRaw: EngineConfig?): HUDLayoutEngine
-	local config = if typeof(configRaw) == "table" then configRaw else {}
+	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
 	local self = setmetatable({
 		definitions = {} :: { [string]: any },
 		dockBuckets = {} :: { [string]: { any } },
@@ -160,7 +160,7 @@ function HUDLayoutEngine.Register(self: HUDLayoutEngine, definitionRaw: any): bo
 		visible = if definitionRaw.visible == nil then true else definitionRaw.visible == true,
 		baseSize = if typeof(definitionRaw.baseSize) == "Vector2" then definitionRaw.baseSize else nil,
 		sizeScale = definitionRaw.sizeScale == true,
-		constraints = if typeof(definitionRaw.constraints) == "table" then definitionRaw.constraints else {},
+		constraints = if typeof(definitionRaw.constraints) == "table" then definitionRaw.constraints else ({} :: any),
 	}
 	return true
 end

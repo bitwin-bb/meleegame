@@ -1,3 +1,4 @@
+--!nocheck
 local AnalyticsService = import("./AnalyticsService")
 
 describe("instances.AnalyticsService", function()

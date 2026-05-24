@@ -21,7 +21,8 @@ local function trim(valueRaw: any): string
 end
 
 local function normalizeToken(valueRaw: any): string
-	return string.lower(string.gsub(trim(valueRaw), "[%s_%-%.]", ""))
+	local normalized = string.gsub(trim(valueRaw), "[%s_%-%.]", "")
+	return string.lower(normalized)
 end
 
 local function parseBooleanToken(valueRaw: any): boolean?

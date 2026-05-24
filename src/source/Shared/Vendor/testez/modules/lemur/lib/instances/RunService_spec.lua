@@ -1,3 +1,4 @@
+--!nocheck
 local RunService = import("./RunService")
 local Signal = import("../Signal")
 

@@ -74,7 +74,7 @@ CraftingTree.recipes = {
 		category = "Light Sources",
 		ingredients = {
 			{ itemId = "Wood", itemIds = { "Wood", "RichMahogany", "Ebonwood" }, amount = 1 },
-			{ itemId = "Gel", amount = 1 },
+			{ itemId = "Gel", itemIds = { "Gel" }, amount = 1 },
 		},
 		results = {
 			{ itemId = "Torch", amount = 1 },

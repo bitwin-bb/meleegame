@@ -1,3 +1,4 @@
+--!nocheck
 -- luacheck: globals describe it fail
 return function()
 	describe("should fail", function()

@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = require(loaderUtils.Parent).load(script)
+local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local CharacterUtils = loader("CharacterUtils")
 local String = loader("String")
@@ -15,48 +15,10 @@ local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBin
 
 local BossServiceUtils = {}
 
-export type BossId = "EyeOfCthulhu" | "QueenBee"
-export type BossEncounterState =
-	"Dormant"
-	| "SpawnIntro"
-	| "Phase1Hover"
-	| "Phase1HoverIdle"
-	| "Phase1ServantBurst"
-	| "Phase1RamAlign"
-	| "Phase1RamCharge"
-	| "Phase1RamRecover"
-	| "Phase1FakeBeeSummon"
-	| "Phase1FakeStingerShoot"
-	| "Phase1ChargeWindup"
-	| "Phase1Charge"
-	| "Phase1Recovery"
-	| "Phase1PostChargeRecover"
-	| "Transform"
-	| "Phase2HoverIdle"
-	| "Phase2Hover"
-	| "Phase2RamAlign"
-	| "Phase2RamCharge"
-	| "Phase2RamRecover"
-	| "Phase2FakeBeeSummon"
-	| "Phase2FakeStingerShoot"
-	| "Phase2ChargeWindup"
-	| "Phase2Charge"
-	| "Phase2Recovery"
-	| "Phase2PostChargeRecover"
-	| "Phase2RapidChain"
-	| "Phase3HoverIdle"
-	| "Phase3RamAlign"
-	| "Phase3RamCharge"
-	| "Phase3RamRecover"
-	| "Phase3FakeBeeSummon"
-	| "Phase3FakeStingerShoot"
-	| "Phase3ChargeWindup"
-	| "Phase3Charge"
-	| "Phase3PostChargeRecover"
-	| "Death"
-	| "Despawn"
+export type BossId = string
+export type BossEncounterState = string
 
-export type BossSpawnSource = "ManualSummon" | "NaturalSpawn" | "DebugCommand"
+export type BossSpawnSource = string
 
 export type BossRegistryEntry = {
 	id: BossId,
@@ -253,7 +215,8 @@ local function trim(valueRaw: any): string
 end
 
 local function normalizeToken(valueRaw: any): string
-	return string.lower(string.gsub(trim(valueRaw), "[%s_%-%.]", ""))
+	local normalized = string.gsub(trim(valueRaw), "[%s_%-%.]", "")
+	return string.lower(normalized)
 end
 
 local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
@@ -436,7 +399,7 @@ function BossServiceUtils.SanitizePresentation(
 	fallbackRaw: BossPresentationState?
 ): BossPresentationState
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else DEFAULT_PRESENTATION
-	local source = if typeof(presentationRaw) == "table" then presentationRaw else {}
+	local source = if typeof(presentationRaw) == "table" then presentationRaw else ({} :: any)
 
 	return {
 		phaseModel = if typeof((source :: any).phaseModel) == "string" and (source :: any).phaseModel ~= ""
@@ -462,7 +425,7 @@ end
 
 function BossServiceUtils.SanitizeMotionState(motionRaw: any, fallbackRaw: BossMotionState?): BossMotionState
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else DEFAULT_MOTION
-	local source = if typeof(motionRaw) == "table" then motionRaw else {}
+	local source = if typeof(motionRaw) == "table" then motionRaw else ({} :: any)
 
 	return {
 		state = if typeof((source :: any).state) == "string" and (source :: any).state ~= ""

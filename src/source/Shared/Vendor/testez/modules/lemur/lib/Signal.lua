@@ -1,3 +1,4 @@
+--!nocheck
 --[[
 	A limited, simple implementation of a Signal.
 
