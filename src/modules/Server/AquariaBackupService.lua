@@ -13,7 +13,7 @@ local CoreRuntime = (require :: any)(gameRoot.Shared.Core.Runtime)
 
 local AnimationServiceServer = (require :: any)(gameRoot.Server.Services.AnimationServiceServer)
 local AquariaBackupTranslator = (require :: any)(gameRoot.Shared.AquariaBackupTranslator)
-local AudioServiceServer = (require :: any)(gameRoot.Server.Services.AudioServiceServer)
+local AudioServiceServer = (require :: any)(gameRoot.Client.Features.audio.AudioServiceServer)
 local BossServiceServer = (require :: any)(gameRoot.Shared.Features.npc.BossServiceServer)
 local BreathServiceServer = (require :: any)(gameRoot.Server.Services.BreathServiceServer)
 local BuildServiceServer = (require :: any)(gameRoot.Server.Services.BuildServiceServer)

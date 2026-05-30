@@ -6,7 +6,7 @@ local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local Binder = loader("Binder")
 local BinderProvider = loader("BinderProvider")
-local AudioBinder = (require :: any)(script.Parent.AudioBinder)
+local AudioBinder = (require :: any)(script:FindFirstAncestor("game").Client.Features.audio.binders.AudioBinder)
 local ChunkBinder = (require :: any)(script:FindFirstAncestor("game").Shared.Features.worldGeneration.binders.ChunkBinder)
 local DisturberBinder = (require :: any)(script.Parent.DisturberBinder)
 local FoliageBinder = (require :: any)(script.Parent.FoliageBinder)

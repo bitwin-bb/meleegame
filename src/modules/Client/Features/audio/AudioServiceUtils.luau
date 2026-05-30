@@ -192,7 +192,7 @@ function AudioServiceUtils.SanitizeCategoryVolumes(
 	rawVolumes: any,
 	fallbackVolumes: { [string]: number }?
 ): { [string]: number }
-	local source = if typeof(rawVolumes) == "table" then rawVolumes else ({} :: any)
+	local source = if typeof(rawVolumes) == "table" then rawVolumes else {} :: any
 	local base = if fallbackVolumes then fallbackVolumes else DEFAULT_CATEGORY_VOLUMES
 	local result = {}
 
@@ -266,7 +266,7 @@ function AudioServiceUtils.WithCategoryVolume(
 end
 
 function AudioServiceUtils.SanitizePlaybackOptions(optionsRaw: any, fallbackCategory: SoundCategory?): PlaybackOptions
-	local source = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
+	local source = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 	local category: SoundCategory =
 		AudioServiceUtils.SanitizeCategory((source :: any).category, fallbackCategory or DEFAULT_CATEGORY)
 

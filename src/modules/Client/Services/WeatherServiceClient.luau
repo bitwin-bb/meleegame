@@ -9,7 +9,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
+local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
 local CameraShaker = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("EZCameraShake"))
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
@@ -373,7 +373,7 @@ local function getAudioServiceClient(): any?
 	end
 
 	local ok, moduleOrError = pcall(function()
-		return (require :: any)(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
+		return (require :: any)(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceClient)
 	end)
 	if not ok then
 		return nil

@@ -9,6 +9,8 @@ local Configs = {
 	gameName = "Aquaria",
 	maxPlayers = 4,
 
+	addMock = false,
+
 	playerData = {},
 
 	cameraSettings = {

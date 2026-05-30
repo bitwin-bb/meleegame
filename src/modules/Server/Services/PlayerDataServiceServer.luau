@@ -6,6 +6,7 @@ local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networ
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
+local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
 local DataTemplate = require(script:FindFirstAncestor("game").Shared.Core.DataTemplate)
 local PlayerDataServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerDataServiceUtils)
 local loader = (require :: any)(loaderUtils.Parent).load(script)
@@ -193,6 +194,10 @@ function PlayerDataServiceServer.GetRuntimeLoadElapsedSeconds(
 		return 0
 	end
 	return math.max(0, os.clock() - runtime.loadStartedAt)
+end
+
+function PlayerDataServiceServer.IsMockDataEnabled(_self: PlayerDataServiceServer): boolean
+	return typeof(Configs) == "table" and (Configs :: any).addMock == true
 end
 
 function PlayerDataServiceServer.GetRuntimeStateMetadata(
@@ -494,6 +499,12 @@ function PlayerDataServiceServer.LoadProfilePromise(self: PlayerDataServiceServe
 			return nil
 		end
 		self:logEvent("load_begin", player, runtime, nil)
+
+		if self:isMockDataEnabled() then
+			local mockData = PlayerDataServiceUtils.createDefaultData(self.dataTemplate)
+			self:finalizeLoadedRuntime(player, runtime, loadToken, mockData, "mock", "mock_enabled", nil)
+			return mockData :: any
+		end
 
 		local profileKey = PlayerDataServiceUtils.getProfileKey(player)
 		if profileKey == nil then
@@ -911,7 +922,7 @@ function PlayerDataServiceServer.SavePlayerDataPromise(self: PlayerDataServiceSe
 			return false
 		end
 
-		local success, resultOrError = pcall(function()
+		local success = pcall(function()
 			profile:Save()
 		end)
 		if not success then
@@ -961,6 +972,7 @@ PlayerDataServiceServer.init = PlayerDataServiceServer.Init
 PlayerDataServiceServer.createRuntime = PlayerDataServiceServer.CreateRuntime
 PlayerDataServiceServer.getRuntime = PlayerDataServiceServer.GetRuntime
 PlayerDataServiceServer.getRuntimeLoadElapsedSeconds = PlayerDataServiceServer.GetRuntimeLoadElapsedSeconds
+PlayerDataServiceServer.isMockDataEnabled = PlayerDataServiceServer.IsMockDataEnabled
 PlayerDataServiceServer.getRuntimeStateMetadata = PlayerDataServiceServer.GetRuntimeStateMetadata
 PlayerDataServiceServer.logEvent = PlayerDataServiceServer.LogEvent
 PlayerDataServiceServer.disconnectProfileEndedConnection = PlayerDataServiceServer.DisconnectProfileEndedConnection

@@ -1,7 +1,7 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RobloxSoundService = game:GetService("SoundService")
 local RunService = game:GetService("RunService")
 
@@ -10,7 +10,7 @@ local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Mis
 local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
+local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
 local BossServiceClient = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceClient)
 local ClientBinderSupport = (require :: any)(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
@@ -207,7 +207,7 @@ function AudioServiceClient.RefreshSoundtrackAssetIds(self: AudioServiceClient)
 	self.soundtrackShuffleBagByBiome = {}
 end
 
-function AudioServiceClient.ResolveBiomeTypeAtWorldPosition(self: AudioServiceClient, worldPosition: Vector3): number
+function AudioServiceClient.ResolveBiomeTypeAtWorldPosition(_self: AudioServiceClient, worldPosition: Vector3): number
 	if typeof((WorldGenerationServiceClient :: any).state) ~= "table" then
 		return BIOME_TYPE_NORMAL
 	end
@@ -231,7 +231,7 @@ function AudioServiceClient.ResolveBiomeTypeAtWorldPosition(self: AudioServiceCl
 	return BIOME_TYPE_NORMAL
 end
 
-function AudioServiceClient.ResolveBiomeIdAtWorldPosition(self: AudioServiceClient, worldPosition: Vector3): number
+function AudioServiceClient.ResolveBiomeIdAtWorldPosition(_self: AudioServiceClient, worldPosition: Vector3): number
 	if typeof((WorldGenerationServiceClient :: any).state) ~= "table" then
 		return BIOME_ID_FOREST
 	end
@@ -258,7 +258,10 @@ function AudioServiceClient.ResolveBiomeIdAtWorldPosition(self: AudioServiceClie
 	return BIOME_ID_FOREST
 end
 
-function AudioServiceClient.ResolveSurfaceBiomeIdAtWorldPosition(self: AudioServiceClient, worldPosition: Vector3): number
+function AudioServiceClient.ResolveSurfaceBiomeIdAtWorldPosition(
+	self: AudioServiceClient,
+	worldPosition: Vector3
+): number
 	if typeof((WorldGenerationServiceClient :: any).state) ~= "table" then
 		return BIOME_ID_FOREST
 	end
@@ -285,7 +288,7 @@ function AudioServiceClient.ResolveSurfaceBiomeIdAtWorldPosition(self: AudioServ
 	return BIOME_ID_FOREST
 end
 
-function AudioServiceClient.ResolveDepthLayerAtWorldPosition(self: AudioServiceClient, worldPosition: Vector3): number?
+function AudioServiceClient.ResolveDepthLayerAtWorldPosition(_self: AudioServiceClient, worldPosition: Vector3): number?
 	if typeof((WorldGenerationServiceClient :: any).state) ~= "table" then
 		return nil
 	end
@@ -324,7 +327,7 @@ function AudioServiceClient.AttachBossStateListenerIfNeeded(self: AudioServiceCl
 	self.soundtrackSampleAccumulator = SOUNDTRACK_BIOME_SAMPLE_INTERVAL
 end
 
-function AudioServiceClient.ResolveBossSoundtrackBiome(self: AudioServiceClient): string?
+function AudioServiceClient.ResolveBossSoundtrackBiome(_self: AudioServiceClient): string?
 	local bossState = (BossServiceClient :: any).state
 	if typeof(bossState) ~= "table" then
 		return nil

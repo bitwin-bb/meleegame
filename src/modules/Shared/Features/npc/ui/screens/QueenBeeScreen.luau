@@ -91,22 +91,6 @@ local function renderSurfaceBoss(snapshot: BossSnapshot, rootPart: BasePart, zIn
 	})
 end
 
-local function renderScreenBoss(snapshot: BossSnapshot, zIndex: number, renderClock: number)
-	return e("ScreenGui", {
-		DisplayOrder = zIndex,
-		IgnoreGuiInset = true,
-		ResetOnSpawn = false,
-		ScreenInsets = Enum.ScreenInsets.None,
-		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-	}, {
-		e(QueenBee, {
-			snapshot = snapshot,
-			renderClock = renderClock,
-			zIndex = zIndex,
-		}),
-	})
-end
-
 return function(props: QueenBeeScreenProps): React.ReactNode
 	local zIndex = if typeof(props.zIndex) == "number" then props.zIndex else 169
 	local renderClock, setRenderClock = React.useState(os.clock())
@@ -125,7 +109,7 @@ return function(props: QueenBeeScreenProps): React.ReactNode
 		end
 	end, {})
 
-	local children: { React.ReactNode } = {}
+	local children: { [string]: React.ReactNode } = {}
 	for index, runtimeId in bossState.orderedIds do
 		local snapshot = bossState.byId[runtimeId]
 		if not isQueenBeeSnapshot(snapshot) then
@@ -134,9 +118,11 @@ return function(props: QueenBeeScreenProps): React.ReactNode
 
 		local displayOrder = zIndex + index
 		local rootPart = resolveRuntimeRootPart(runtimeId)
-		children[#children + 1] = if rootPart ~= nil
-			then renderSurfaceBoss(snapshot :: BossSnapshot, rootPart, displayOrder, renderClock)
-			else renderScreenBoss(snapshot :: BossSnapshot, displayOrder, renderClock)
+		if rootPart == nil then
+			continue
+		end
+
+		children[runtimeId] = renderSurfaceBoss(snapshot :: BossSnapshot, rootPart, displayOrder, renderClock)
 	end
 
 	return e(React.Fragment, nil, children)

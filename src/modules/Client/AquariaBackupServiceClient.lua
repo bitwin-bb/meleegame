@@ -14,7 +14,7 @@ local ui = (require :: any)(gameRoot.Client.UI)
 
 local AnimationServiceClient = (require :: any)(gameRoot.Client.Services.AnimationServiceClient)
 local AquariaBackupTranslator = (require :: any)(gameRoot.Shared.AquariaBackupTranslator)
-local AudioServiceClient = (require :: any)(gameRoot.Client.Services.AudioServiceClient)
+local AudioServiceClient = (require :: any)(gameRoot.Client.Features.audio.AudioServiceClient)
 local BossServiceClient = (require :: any)(gameRoot.Shared.Features.npc.BossServiceClient)
 local BreathServiceClient = (require :: any)(gameRoot.Client.Services.BreathServiceClient)
 local BuildServiceClient = (require :: any)(gameRoot.Client.Services.BuildServiceClient)

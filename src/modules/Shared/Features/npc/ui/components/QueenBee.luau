@@ -138,6 +138,14 @@ local function resolveSheetPosition(frameOffset: Vector2): UDim2
 	return UDim2.fromScale(xScale, yScale)
 end
 
+local function resolveSpriteSheetImage(snapshot: BossSnapshot): string
+	local flippedImage = QueenBeeSpriteSheet.flipped
+	if typeof(flippedImage) ~= "string" or flippedImage == "" then
+		return QueenBeeSpriteSheet.image
+	end
+	return if snapshot.facing.Z < -1e-3 then flippedImage else QueenBeeSpriteSheet.image
+end
+
 local function resolveActiveFrameOffset(flipbook: any, playback: AnimationPlayback, renderClock: number): Vector2
 	local sprite = flipbook:GetSprite(resolvePlaybackIndex(playback, renderClock))
 	if sprite ~= nil and typeof(sprite.Position) == "Vector2" then
@@ -263,13 +271,14 @@ return function(props: QueenBeeProps): React.ReactNode
 		playback.frameRate
 	))
 	local frameOffset = resolveActiveFrameOffset(flipbook, playback, props.renderClock)
+	local spriteSheetImage = resolveSpriteSheetImage(snapshot)
 
 	local children: { [string]: React.ReactNode } = {
 		SpriteSheet = e("ImageLabel", {
 			AnchorPoint = Vector2.zero,
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
-			Image = QueenBeeSpriteSheet.image,
+			Image = spriteSheetImage,
 			ImageRectOffset = Vector2.zero,
 			ImageRectSize = Vector2.zero,
 			Position = resolveSheetPosition(frameOffset),

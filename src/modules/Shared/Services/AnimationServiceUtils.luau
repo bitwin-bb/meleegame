@@ -5,7 +5,7 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local Animations = require(script:FindFirstAncestor("game").Shared.Modules.Items.Animations)
 local Audio = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.AudioServiceUtils)
+local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
 
 local AnimationServiceUtils = {}
 

@@ -1,9 +1,26 @@
 --!strict
-local Pickaxes = require(script.Parent.Pickaxes)
+local packageRoot = script:FindFirstAncestor("game").Parent
+local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
+local loader = (require :: any)(loaderUtils.Parent).load(script)
+
+local Table = loader("Table")
+
+local OVERWORLD_DAY_ASSET_ID = "rbxassetid://122358683605709"
+local ALTERNATE_DAY_ASSET_ID = "rbxassetid://120374478041198"
+local DAY_MUSIC_ASSET_IDS = {
+	OVERWORLD_DAY_ASSET_ID,
+	ALTERNATE_DAY_ASSET_ID,
+}
+local dayMusicRandom = Random.new()
+
+local function resolveDayMusicAssetId(): string
+	local choices = Table.copy(DAY_MUSIC_ASSET_IDS)
+	return choices[dayMusicRandom:NextInteger(1, #choices)]
+end
 
 return {
 	Music = {
-		OverworldDay = "rbxassetid://122358683605709",
+		OverworldDay = resolveDayMusicAssetId(),
 		OverworldNight = "rbxassetid://132162981071821",
 		Corruption = "rbxassetid://89421894972000",
 		Jungle = "rbxassetid://88997911200453",
@@ -21,6 +38,7 @@ return {
 		EyeOfCthulhuRedux = "rbxassetid://73783286159203",
 		UndergroundSnow = "rbxassetid://92651409708176",
 		QueenBee = "rbxassetid://74013306149777",
+		AlternateDay = resolveDayMusicAssetId(),
 	},
 	Npcs = {
 		Bosses = {

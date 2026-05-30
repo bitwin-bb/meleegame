@@ -10,7 +10,7 @@ local audioServiceClient = nil
 
 local function getAudioServiceClient()
 	if audioServiceClient == nil then
-		audioServiceClient = (require :: any)(script:FindFirstAncestor("game").Client.Services.AudioServiceClient)
+		audioServiceClient = (require :: any)(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceClient)
 	end
 	return audioServiceClient
 end

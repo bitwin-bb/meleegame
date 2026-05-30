@@ -44,6 +44,9 @@ export type QueenBeeConfig = {
 	HoverSpeedByPhase: { [number]: number },
 	HoverAccelerationByPhase: { [number]: number },
 	HoverDamping: number,
+	HoverIdleDurationByPhase: { [number]: number },
+	HoverIdleSpeedMultiplier: number,
+	HoverIdleAccelerationMultiplier: number,
 	ChargeRepositionMaxTimeByPhase: { [number]: number },
 	RamAlignSideDistance: number,
 	RamAlignToleranceY: number,
@@ -126,16 +129,23 @@ local DEFAULTS: QueenBeeConfig = {
 	HoverAboveOffset = 22,
 	HoverArriveRadius = 4.5,
 	HoverSpeedByPhase = {
-		[1] = 36,
-		[2] = 45,
-		[3] = 58,
+		[1] = 28,
+		[2] = 35,
+		[3] = 44,
 	},
 	HoverAccelerationByPhase = {
-		[1] = 165,
-		[2] = 220,
-		[3] = 290,
+		[1] = 95,
+		[2] = 130,
+		[3] = 170,
 	},
-	HoverDamping = 5.2,
+	HoverDamping = 3.8,
+	HoverIdleDurationByPhase = {
+		[1] = 0.85,
+		[2] = 0.68,
+		[3] = 0.5,
+	},
+	HoverIdleSpeedMultiplier = 0.62,
+	HoverIdleAccelerationMultiplier = 0.48,
 	ChargeRepositionMaxTimeByPhase = {
 		[1] = 1.45,
 		[2] = 1.2,
@@ -166,14 +176,14 @@ local DEFAULTS: QueenBeeConfig = {
 		[3] = 0.28,
 	},
 	ChargeSpeedByPhase = {
-		[1] = 118,
-		[2] = 145,
-		[3] = 176,
+		[1] = 86,
+		[2] = 108,
+		[3] = 132,
 	},
 	ChargeDurationByPhase = {
-		[1] = 0.72,
-		[2] = 0.64,
-		[3] = 0.56,
+		[1] = 1.3,
+		[2] = 1.16,
+		[3] = 1.0,
 	},
 	ChargePassDistance = 18,
 	PostChargeRecoverTime = 0.28,
@@ -192,9 +202,9 @@ local DEFAULTS: QueenBeeConfig = {
 		[2] = 3.35,
 		[3] = 2.7,
 	},
-	FakePatternSideDistance = 42,
-	FakePatternAboveOffset = 18,
-	FakePatternHoverSpeedMultiplier = 0.72,
+	FakePatternSideDistance = 0,
+	FakePatternAboveOffset = 26,
+	FakePatternHoverSpeedMultiplier = 0.58,
 	StingerHoverDuration = 4.0,
 	StingerSideDistance = 42,
 	StingerAboveOffset = 18,
@@ -330,6 +340,9 @@ local function cloneDefaults(): QueenBeeConfig
 		HoverSpeedByPhase = cloneNumberMap(DEFAULTS.HoverSpeedByPhase),
 		HoverAccelerationByPhase = cloneNumberMap(DEFAULTS.HoverAccelerationByPhase),
 		HoverDamping = DEFAULTS.HoverDamping,
+		HoverIdleDurationByPhase = cloneNumberMap(DEFAULTS.HoverIdleDurationByPhase),
+		HoverIdleSpeedMultiplier = DEFAULTS.HoverIdleSpeedMultiplier,
+		HoverIdleAccelerationMultiplier = DEFAULTS.HoverIdleAccelerationMultiplier,
 		ChargeRepositionMaxTimeByPhase = cloneNumberMap(DEFAULTS.ChargeRepositionMaxTimeByPhase),
 		RamAlignSideDistance = DEFAULTS.RamAlignSideDistance,
 		RamAlignToleranceY = DEFAULTS.RamAlignToleranceY,
@@ -408,6 +421,12 @@ function Configs.Resolve(configRaw: any): QueenBeeConfig
 	config.HoverAccelerationByPhase =
 		resolveNumberMap(source, "HoverAccelerationByPhase", config.HoverAccelerationByPhase, 0, 10 ^ 5)
 	config.HoverDamping = sanitizeNumber(source.HoverDamping, config.HoverDamping, 0, 1000)
+	config.HoverIdleDurationByPhase =
+		resolveNumberMap(source, "HoverIdleDurationByPhase", config.HoverIdleDurationByPhase, 0.05, 30)
+	config.HoverIdleSpeedMultiplier =
+		sanitizeNumber(source.HoverIdleSpeedMultiplier, config.HoverIdleSpeedMultiplier, 0, 10)
+	config.HoverIdleAccelerationMultiplier =
+		sanitizeNumber(source.HoverIdleAccelerationMultiplier, config.HoverIdleAccelerationMultiplier, 0, 10)
 	config.ChargeRepositionMaxTimeByPhase =
 		resolveNumberMap(source, "ChargeRepositionMaxTimeByPhase", config.ChargeRepositionMaxTimeByPhase, 0.01, 60)
 	config.RamAlignSideDistance = sanitizeNumber(source.RamAlignSideDistance, config.RamAlignSideDistance, 0, 10 ^ 5)
