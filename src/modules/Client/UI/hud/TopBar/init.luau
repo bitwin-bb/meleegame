@@ -1,6 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local HpTopRightBar = require(script:FindFirstAncestor("game").Client.UI.hud.TopBar.HpTopRightBar)
+local HealthRoot = require(script:FindFirstAncestor("game").Shared.Features.health.ui.HealthRoot)
 local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
 local React = require(ReplicatedStorage.Packages.React)
 local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
@@ -142,7 +142,7 @@ return function(props: TopBarProps)
 				Selectable = false,
 				ZIndex = zIndex,
 			}, buttonListChildren),
-			e(HpTopRightBar, hpBarProps),
+			e(HealthRoot, hpBarProps),
 		}),
 	})
 end

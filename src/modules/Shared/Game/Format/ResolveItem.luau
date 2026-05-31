@@ -5,7 +5,7 @@ local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Core.Platf
 local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
 local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveToolInstance)
 local LootServiceData = require(script:FindFirstAncestor("game").Shared.Services.Data)
-local LootServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.LootServiceUtils)
+local LootServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.loot.LootServiceUtils)
 
 local ResolveItem = {}
 

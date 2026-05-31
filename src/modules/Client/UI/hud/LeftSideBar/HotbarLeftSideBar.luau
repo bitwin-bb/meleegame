@@ -3,19 +3,18 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local CoinScreen = require(script:FindFirstAncestor("game").Client.UI.features.inventory.screens.coinScreen)
 local HotbarRow = require(script:FindFirstAncestor("game").Client.UI.features.inventory.components.HotbarRow)
 local HotbarSlot = require(script:FindFirstAncestor("game").Client.UI.features.inventory.components.HotbarSlot)
 local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
 local InventoryGrid = require(script:FindFirstAncestor("game").Client.UI.features.inventory.components.InventoryGrid)
+local InventoryRoot = require(script:FindFirstAncestor("game").Client.UI.features.inventory.InventoryRoot)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
 local InventorySlotComponent =
 	require(script:FindFirstAncestor("game").Client.UI.features.inventory.components.InventorySlot)
-local ItemScreen = require(script:FindFirstAncestor("game").Client.UI.features.item.screen.itemScreen)
+local ItemRoot = require(script:FindFirstAncestor("game").Client.UI.features.item.ItemRoot)
 local LeftSideBarButtons = require(script.Parent.LeftSideBarButtons)
 local React = require(ReplicatedStorage.Packages.React)
 local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
-local TrashScreen = require(script:FindFirstAncestor("game").Client.UI.features.inventory.screens.trashScreen)
 local UiSound = require(script:FindFirstAncestor("game").Client.UI.core.utils.UiSound)
 local hudInventorySlice = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.inventorySlice)
 local hudInventoryThunks = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.inventoryThunks)
@@ -330,137 +329,143 @@ return function(props: InventoryHotbarProps)
 		end
 	end, {})
 
-	React.useEffect(function()
-		if props.visible == false then
-			return
-		end
-
-		local function onInputBegan(inputObject: InputObject, gameProcessed: boolean)
-			if gameProcessed then
-				return
-			end
-			if UserInputService:GetFocusedTextBox() ~= nil then
-				return
-			end
-			if not isInventoryStateInitialized then
-				return
-			end
-			if not InventoryServiceUtils.isLoadedState(renderState.loadState) then
+	React.useEffect(
+		function()
+			if props.visible == false then
 				return
 			end
 
-			if inputObject.UserInputType == Enum.UserInputType.Keyboard then
-				local selectedFromKey = KEYCODE_TO_SLOT_INDEX[inputObject.KeyCode]
-				if selectedFromKey == nil then
+			local function onInputBegan(inputObject: InputObject, gameProcessed: boolean)
+				if gameProcessed then
+					return
+				end
+				if UserInputService:GetFocusedTextBox() ~= nil then
+					return
+				end
+				if not isInventoryStateInitialized then
+					return
+				end
+				if not InventoryServiceUtils.isLoadedState(renderState.loadState) then
 					return
 				end
 
-				inventoryThunks.selectSlot(selectedFromKey)
-				return
+				if inputObject.UserInputType == Enum.UserInputType.Keyboard then
+					local selectedFromKey = KEYCODE_TO_SLOT_INDEX[inputObject.KeyCode]
+					if selectedFromKey == nil then
+						return
+					end
+
+					inventoryThunks.selectSlot(selectedFromKey)
+					return
+				end
+
+				if not isGamepadInputType(inputObject.UserInputType) then
+					return
+				end
+
+				if inputObject.KeyCode == GAMEPAD_INVENTORY_TOGGLE_KEY then
+					playUiPressSound()
+					hudInventoryThunks.toggleInventory()
+					return
+				end
+
+				if inputObject.KeyCode == GAMEPAD_DROP_TRASH_KEY then
+					handleSelectedSlotDropOrTrash(isInventoryExpanded)
+					return
+				end
+
+				if inputObject.KeyCode == GAMEPAD_HOTBAR_PREVIOUS_KEY then
+					cycleHotbarSelection(-1)
+					return
+				end
+
+				if inputObject.KeyCode == GAMEPAD_HOTBAR_NEXT_KEY then
+					cycleHotbarSelection(1)
+				end
 			end
 
-			if not isGamepadInputType(inputObject.UserInputType) then
-				return
+			local function onInputChanged(inputObject: InputObject)
+				if inputObject.UserInputType ~= Enum.UserInputType.MouseWheel then
+					return
+				end
+				if UserInputService:GetFocusedTextBox() ~= nil then
+					return
+				end
+				if not isInventoryStateInitialized then
+					return
+				end
+				if not InventoryServiceUtils.isLoadedState(renderState.loadState) then
+					return
+				end
+
+				local wheelDelta = inputObject.Position.Z
+				if wheelDelta == 0 then
+					return
+				end
+
+				local currentState = inventorySlice.getInventoryState()
+				local currentSelectedSlot = currentState.selectedSlot
+				if currentSelectedSlot == nil or currentSelectedSlot < 1 or currentSelectedSlot > HOTBAR_SLOT_COUNT then
+					currentSelectedSlot = 1
+				end
+
+				local step = if wheelDelta > 0 then -1 else 1
+				local selectedSlot = currentSelectedSlot :: number
+				local nextSelectedSlot = ((selectedSlot - 1 + step) % HOTBAR_SLOT_COUNT) + 1
+				inventoryThunks.selectSlot(nextSelectedSlot)
 			end
 
-			if inputObject.KeyCode == GAMEPAD_INVENTORY_TOGGLE_KEY then
-				playUiPressSound()
-				hudInventoryThunks.toggleInventory()
-				return
-			end
+			local beganConnection = UserInputService.InputBegan:Connect(onInputBegan)
+			local changedConnection = UserInputService.InputChanged:Connect(onInputChanged)
 
-			if inputObject.KeyCode == GAMEPAD_DROP_TRASH_KEY then
-				handleSelectedSlotDropOrTrash(isInventoryExpanded)
-				return
+			return function()
+				beganConnection:Disconnect()
+				changedConnection:Disconnect()
 			end
+		end,
+		{
+			props.visible,
+			renderState.loadState,
+			isInventoryStateInitialized,
+			isInventoryExpanded,
+		} :: { any }
+	)
 
-			if inputObject.KeyCode == GAMEPAD_HOTBAR_PREVIOUS_KEY then
-				cycleHotbarSelection(-1)
-				return
-			end
-
-			if inputObject.KeyCode == GAMEPAD_HOTBAR_NEXT_KEY then
-				cycleHotbarSelection(1)
-			end
-		end
-
-		local function onInputChanged(inputObject: InputObject)
-			if inputObject.UserInputType ~= Enum.UserInputType.MouseWheel then
-				return
-			end
-			if UserInputService:GetFocusedTextBox() ~= nil then
-				return
-			end
+	React.useEffect(
+		function()
 			if not isInventoryStateInitialized then
 				return
 			end
-			if not InventoryServiceUtils.isLoadedState(renderState.loadState) then
+			local currentInteractiveLimit = math.min(renderState.capacity, TOTAL_VISIBLE_SLOTS)
+			if hoveredSlotIndex == nil then
+				return
+			end
+			if hoveredSlotSource == nil then
+				return
+			end
+			if hoveredSlotIndex < 1 or hoveredSlotIndex > currentInteractiveLimit then
 				return
 			end
 
-			local wheelDelta = inputObject.Position.Z
-			if wheelDelta == 0 then
-				return
-			end
-
-			local currentState = inventorySlice.getInventoryState()
-			local currentSelectedSlot = currentState.selectedSlot
-			if currentSelectedSlot == nil or currentSelectedSlot < 1 or currentSelectedSlot > HOTBAR_SLOT_COUNT then
-				currentSelectedSlot = 1
-			end
-
-			local step = if wheelDelta > 0 then -1 else 1
-			local selectedSlot = currentSelectedSlot :: number
-			local nextSelectedSlot = ((selectedSlot - 1 + step) % HOTBAR_SLOT_COUNT) + 1
-			inventoryThunks.selectSlot(nextSelectedSlot)
-		end
-
-		local beganConnection = UserInputService.InputBegan:Connect(onInputBegan)
-		local changedConnection = UserInputService.InputChanged:Connect(onInputChanged)
-
-		return function()
-			beganConnection:Disconnect()
-			changedConnection:Disconnect()
-		end
-	end, ({
-		props.visible,
-		renderState.loadState,
-		isInventoryStateInitialized,
-		isInventoryExpanded,
-	} :: { any }))
-
-	React.useEffect(function()
-		if not isInventoryStateInitialized then
-			return
-		end
-		local currentInteractiveLimit = math.min(renderState.capacity, TOTAL_VISIBLE_SLOTS)
-		if hoveredSlotIndex == nil then
-			return
-		end
-		if hoveredSlotSource == nil then
-			return
-		end
-		if hoveredSlotIndex < 1 or hoveredSlotIndex > currentInteractiveLimit then
-			return
-		end
-
-		local hoveredSlot = resolveSlot(renderState, hoveredSlotIndex)
-		hoveredSlot = {
-			index = hoveredSlot.index,
-			stack = resolveDisplayedStackForSlot(hoveredSlot, drag.dragState),
-		}
-		infoThunks.showHover({
-			id = SLOT_HOVER_ID_PREFIX .. tostring(hoveredSlotIndex),
-			text = resolveSlotHoverText(hoveredSlot),
-		})
-	end, ({
-		hoveredSlotIndex,
-		hoveredSlotSource,
-		renderState.updatedAt,
-		renderState.capacity,
-		isInventoryStateInitialized,
-		drag.dragState.updatedAt,
-	} :: { any }))
+			local hoveredSlot = resolveSlot(renderState, hoveredSlotIndex)
+			hoveredSlot = {
+				index = hoveredSlot.index,
+				stack = resolveDisplayedStackForSlot(hoveredSlot, drag.dragState),
+			}
+			infoThunks.showHover({
+				id = SLOT_HOVER_ID_PREFIX .. tostring(hoveredSlotIndex),
+				text = resolveSlotHoverText(hoveredSlot),
+			})
+		end,
+		{
+			hoveredSlotIndex,
+			hoveredSlotSource,
+			renderState.updatedAt,
+			renderState.capacity,
+			isInventoryStateInitialized,
+			drag.dragState.updatedAt,
+		} :: { any }
+	)
 
 	React.useEffect(function()
 		return function()
@@ -828,15 +833,17 @@ return function(props: InventoryHotbarProps)
 			gap = hotbarGap,
 			children = hotbarChildren,
 		}),
-		e(TrashScreen, {
-			layoutOrder = 3,
-			visible = showTrashScreen,
-			zIndex = zIndex + 7,
-			position = trashPosition,
-			anchorPoint = Vector2.new(0, 0),
-			size = expanderSize,
-			emergeOffset = trashAppear.offset,
-			emergeTransparency = trashAppear.transparency,
+		e(InventoryRoot, {
+			trashScreenProps = {
+				layoutOrder = 3,
+				visible = showTrashScreen,
+				zIndex = zIndex + 7,
+				position = trashPosition,
+				anchorPoint = Vector2.new(0, 0),
+				size = expanderSize,
+				emergeOffset = trashAppear.offset,
+				emergeTransparency = trashAppear.transparency,
+			},
 		}),
 	}
 
@@ -850,15 +857,17 @@ return function(props: InventoryHotbarProps)
 			revealOverlayZIndex = zIndex + 6,
 			children = gridChildren,
 			extraChildren = {
-				e(CoinScreen, {
-					layoutOrder = 2,
-					visible = showExpandedGrid,
-					zIndex = zIndex + 7,
-					position = UDim2.new(1, 0, 1, hotbarGap),
-					anchorPoint = Vector2.new(1, 0),
-					slotSize = gridSlotSize,
-					emergeOffset = coinEmerge.offset,
-					emergeTransparency = coinEmerge.transparency,
+				e(InventoryRoot, {
+					coinScreenProps = {
+						layoutOrder = 2,
+						visible = showExpandedGrid,
+						zIndex = zIndex + 7,
+						position = UDim2.new(1, 0, 1, hotbarGap),
+						anchorPoint = Vector2.new(1, 0),
+						slotSize = gridSlotSize,
+						emergeOffset = coinEmerge.offset,
+						emergeTransparency = coinEmerge.transparency,
+					},
 				}),
 			},
 		})
@@ -886,7 +895,7 @@ return function(props: InventoryHotbarProps)
 			ZIndex = zIndex + 6,
 		})
 		else nil
-	rootChildren[#rootChildren + 1] = e(ItemScreen, {
+	rootChildren[#rootChildren + 1] = e(ItemRoot, {
 		layoutOrder = 99,
 		visible = props.visible ~= false,
 		zIndex = zIndex + 120,

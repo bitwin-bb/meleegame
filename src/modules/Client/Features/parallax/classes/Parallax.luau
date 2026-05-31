@@ -19,7 +19,7 @@ local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 
 local ParallaxBackgrounds = require(script.Parent.Parent.modules.ParallaxBackgrounds)
-local ParallaxScreen = require(script.Parent.Parent.ui.screens.ParallaxScreen)
+local ParallaxRoot = require(script.Parent.Parent.ParallaxRoot)
 local ParallaxServiceUtils = require(script.Parent.Parent.ParallaxServiceUtils)
 local ParallaxSlice = require(script.Parent.Parent.ParallaxSlice)
 local ParallaxThunks = require(script.Parent.Parent.ParallaxThunks)
@@ -485,7 +485,9 @@ function Parallax._ensureSurfaceRuntime(self: Parallax): SurfaceRuntime?
 	anchorPart.Parent = rootFolder
 
 	local root = ReactRoblox.createRoot(anchorPart)
-	root:render(e(ParallaxScreen))
+	root:render(e(ParallaxRoot, {
+		cloudsVisible = false,
+	}))
 
 	local runtime: SurfaceRuntime = {
 		anchorPart = anchorPart,

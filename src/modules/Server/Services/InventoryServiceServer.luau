@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
+local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
 local InventoryProfile = require(script:FindFirstAncestor("game").Shared.Services.Profile)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
 local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)

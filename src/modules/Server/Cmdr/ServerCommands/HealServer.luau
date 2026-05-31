@@ -2,7 +2,7 @@
 local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for HealServer.")
 
-local HpServiceServer = require(gameRoot.Server.Services.HpServiceServer)
+local HpServiceServer = require(gameRoot.Shared.Features.health.HpServiceServer)
 
 return function(_context, players: { Player }, amountRaw: number?)
 	local healed = {}

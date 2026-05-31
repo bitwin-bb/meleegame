@@ -2,7 +2,7 @@
 local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for TimeServer.")
 
-local WeatherServiceServer = require(gameRoot.Server.Services.WeatherServiceServer)
+local WeatherServiceServer = require(gameRoot.Shared.Features.world.WeatherServiceServer)
 
 local TIME_PRESETS = {
 	day = 8.5,

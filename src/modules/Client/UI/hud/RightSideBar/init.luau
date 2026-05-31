@@ -1,7 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BubblesScreen = require(script:FindFirstAncestor("game").Client.UI.features.breath.screens.bubblesScreen)
-local ManaTopRightBar = require(script:FindFirstAncestor("game").Client.UI.hud.TopBar.ManaTopRightBar)
+local BreathRoot = require(script:FindFirstAncestor("game").Client.UI.features.breath.BreathRoot)
+local ManaRoot = require(script:FindFirstAncestor("game").Shared.Features.mana.ui.ManaRoot)
 local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
 local React = require(ReplicatedStorage.Packages.React)
 local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
@@ -155,8 +155,8 @@ return function(props: RightSideBarProps)
 				Selectable = false,
 				ZIndex = zIndex,
 			}, buttonListChildren),
-			e(ManaTopRightBar, manaBarProps),
-			e(BubblesScreen, breathBarProps),
+			e(ManaRoot, manaBarProps),
+			e(BreathRoot, breathBarProps),
 		}),
 	})
 end

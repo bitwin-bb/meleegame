@@ -10,7 +10,7 @@ local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime
 local Matter = require(ReplicatedStorage.Packages.Matter)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local Plasma = require(ReplicatedStorage.Packages.Plasma)
-local PlayerServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
+local PlayerServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer)
 
 local Cache = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.SimulationCache)
 local Config = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.SimulationConfig)

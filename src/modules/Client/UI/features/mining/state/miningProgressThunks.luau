@@ -2,8 +2,8 @@
 local Workspace = game:GetService("Workspace")
 
 local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
-local BuildServiceClient = require(script:FindFirstAncestor("game").Client.Services.BuildServiceClient)
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
+local BuildServiceClient = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceClient)
+local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local miningProgressSlice = require(script:FindFirstAncestor("game").Client.UI.features.mining.state.miningProgressSlice)
 

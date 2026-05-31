@@ -4,7 +4,7 @@ local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.
 local InventoryServiceClient = require(script:FindFirstAncestor("game").Client.Services.InventoryServiceClient)
 local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
 local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
-local craftingThunks = require(script:FindFirstAncestor("game").Client.UI.features.crafting.state.craftingThunks)
+local craftingThunks = require(script:FindFirstAncestor("game").Shared.Features.crafting.ui.state.craftingThunks)
 local inventorySlice = require(script.Parent.inventorySlice)
 
 type InventoryHudState = inventorySlice.InventoryHudState

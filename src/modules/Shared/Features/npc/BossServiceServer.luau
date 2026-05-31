@@ -26,12 +26,12 @@ local EyeOfCthulhuConfig =
 local EyeOfCthulhuController = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.EyeOfCthulhu)
 local QueenBeeConfig = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.QueenBee.Configs)
 local QueenBeeController = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.QueenBee)
-local HpServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.HpServiceServer)
+local HpServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.health.HpServiceServer)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local PlayerServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.PlayerServiceServer)
+local PlayerServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer)
 local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
-local WeatherServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.WeatherServiceServer)
+local WeatherServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.world.WeatherServiceServer)
 local WorldGenerationServiceServer =
 	(require :: any)(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer)
 

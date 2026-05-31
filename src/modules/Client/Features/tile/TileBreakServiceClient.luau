@@ -9,8 +9,8 @@ local ContentProviderUtils = loader("ContentProviderUtils")
 local Maid = loader("Maid")
 local Rx = loader("Rx")
 
-local BuildServiceClient = require(script:FindFirstAncestor("game").Client.Services.BuildServiceClient)
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
+local BuildServiceClient = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceClient)
+local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
 local Sheet = require(script.Parent.modules.Sheet)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)

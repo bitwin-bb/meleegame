@@ -2,7 +2,7 @@
 local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for WeatherServer.")
 
-local WeatherServiceServer = require(gameRoot.Server.Services.WeatherServiceServer)
+local WeatherServiceServer = require(gameRoot.Shared.Features.world.WeatherServiceServer)
 
 return function(_context, weatherKind: string, transitionSecondsRaw: number?)
 	local appliedWeather = WeatherServiceServer:setWeather(weatherKind, transitionSecondsRaw, true)

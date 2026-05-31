@@ -31,7 +31,7 @@ end
 
 local gameRoot = resolveGameRoot()
 
-local WeatherServiceUtils = (require :: any)((gameRoot :: any).Shared.Services.WeatherServiceUtils)
+local WeatherServiceUtils = (require :: any)((gameRoot :: any).Shared.Features.world.WeatherServiceUtils)
 
 local WEATHER_OPTIONS = {
 	{

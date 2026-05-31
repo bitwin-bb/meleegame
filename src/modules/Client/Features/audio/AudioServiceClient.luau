@@ -17,8 +17,8 @@ local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
 local Table = loader("Table")
-local WeatherServiceClient = (require :: any)(script:FindFirstAncestor("game").Client.Services.WeatherServiceClient)
-local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.WeatherServiceUtils)
+local WeatherServiceClient = (require :: any)(script:FindFirstAncestor("game").Shared.Features.world.WeatherServiceClient)
+local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.WeatherServiceUtils)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
 

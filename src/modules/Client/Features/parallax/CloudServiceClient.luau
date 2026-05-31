@@ -16,10 +16,10 @@ local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 
 local Cloud = require(script.Parent.classes.Cloud)
-local CloudScreen = require(script.Parent.ui.screens.CloudScreen)
 local CloudServiceUtils = require(script.Parent.CloudServiceUtils)
 local Clouds = require(script.Parent.modules.Clouds)
 local ParallaxBackgrounds = require(script.Parent.modules.ParallaxBackgrounds)
+local ParallaxRoot = require(script.Parent.ParallaxRoot)
 local ParallaxServiceUtils = require(script.Parent.ParallaxServiceUtils)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =
@@ -243,7 +243,9 @@ local function ensureSurfaceRuntime(): SurfaceRuntime?
 	anchorPart.Parent = rootFolder
 
 	local reactRoot = ReactRoblox.createRoot(anchorPart)
-	reactRoot:render(e(CloudScreen))
+	reactRoot:render(e(ParallaxRoot, {
+		parallaxVisible = false,
+	}))
 
 	local runtime: SurfaceRuntime = {
 		anchorPart = anchorPart,

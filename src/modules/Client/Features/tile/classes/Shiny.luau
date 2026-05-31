@@ -11,7 +11,7 @@ local ContentProviderUtils = loader("ContentProviderUtils")
 local Maid = loader("Maid")
 local Rx = loader("Rx")
 
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.BuildServiceUtils)
+local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
 local ShinySheet = require(script.Parent.Parent.modules.ShinySheet) :: any
 local tileThunks = require(script.Parent.Parent.tileThunks)
 
