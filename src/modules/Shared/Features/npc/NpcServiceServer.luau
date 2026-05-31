@@ -10,17 +10,63 @@ local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
 local EnemyHitbox = require(script:FindFirstAncestor("game").Shared.Features.combat.classes.EnemyHitbox)
 local EyeOfCthulhuNpc = require(script:FindFirstAncestor("game").Shared.Features.npc.npc.EyeOfCthulhu)
 local HpServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.health.HpServiceServer)
-local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Core.Platform.InstanceUtils)
+local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.InstanceUtils)
 local LootServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.loot.LootServiceServer)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local NpcServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).NpcService
+
+local function sendPacket(player: Player, methodName: string, ...: any)
+	local packet = NpcServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for NpcService`)
+		return
+	end
+
+	packet.sendTo(PacketPayload.pack(...), player)
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = NpcServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for NpcService`)
+		return
+	end
+
+	packet.listen(function(payload: any, player: Player?)
+		if player == nil then
+			return
+		end
+
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, player, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "requestSync")
+end
+
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
 local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceUtils)
-local PlayerServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer)
+local PlayerServiceServer = (require :: any)(
+	script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer
+)
 local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local SlimeNpc = require(script:FindFirstAncestor("game").Shared.Features.npc.npc.Slime)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
-local WorldGenerationServiceServer =
-	(require :: any)(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer)
+local WorldGenerationServiceServer = (require :: any)(
+	script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer
+)
 
 type RuntimeNpc = any
 type EnemyHitboxManager = EnemyHitbox.EnemyHitbox
@@ -108,9 +154,9 @@ local function getSnapshotSpriteStateKey(snapshot: NpcSnapshot): string?
 	return `{snapshot.spritePhase}:{snapshot.spriteFrame or ""}`
 end
 
-local function fireForPlayers(networker: Networker.Server, players: { Player }, methodName: string, ...: any)
+local function fireForPlayers(players: { Player }, methodName: string, ...: any)
 	for _, player in players do
-		networker:fire(player, methodName, ...)
+		sendPacket(player, methodName, ...)
 	end
 end
 
@@ -971,11 +1017,11 @@ function NpcServiceServer.Broadcast(self: NpcServiceServer, methodName: string, 
 			recipients[#recipients + 1] = player
 		end
 	end
-	fireForPlayers(self.networker, recipients, methodName, ...)
+	fireForPlayers(recipients, methodName, ...)
 end
 
 function NpcServiceServer.PushState(self: NpcServiceServer, player: Player)
-	self.networker:fire(player, NpcServiceUtils.CLIENT_METHOD_APPLY_STATE, self:createStatePayload())
+	sendPacket(player, NpcServiceUtils.CLIENT_METHOD_APPLY_STATE, self:createStatePayload())
 end
 
 function NpcServiceServer.RequestSync(self: NpcServiceServer, player: Player)
@@ -1289,9 +1335,7 @@ function NpcServiceServer.OnHeartbeat(self: NpcServiceServer, dt: number)
 end
 
 function NpcServiceServer.Init(self: NpcServiceServer)
-	self.networker = Networker.server.new("NpcService", self, {
-		self.RequestSync,
-	})
+	bindPackets(self)
 	self.npcModulesByType = {}
 	self:initNpcModules()
 	self.runtimes = {}
@@ -1374,9 +1418,6 @@ function NpcServiceServer.Destroy(self: NpcServiceServer)
 		self.enemyHitbox = nil
 	end
 
-	if self.networker then
-		self.networker:destroy()
-	end
 	self.lootService = nil
 end
 
@@ -1432,7 +1473,6 @@ NpcServiceServer.getRuntimeModule = NpcServiceServer.GetRuntimeModule
 NpcServiceServer.sanitizeNumber = NpcServiceServer.SanitizeNumber
 
 type NpcServiceServer = typeof(NpcServiceServer) & {
-	networker: Networker.Server,
 	npcModulesByType: { [string]: any },
 	runtimes: { [string]: NpcRuntime },
 	runtimesByModel: { [Model]: NpcRuntime },

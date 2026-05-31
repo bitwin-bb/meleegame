@@ -5,13 +5,56 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
-local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Core.Platform.GamepadPointer)
-local InventoryServiceClient = require(script:FindFirstAncestor("game").Client.Services.InventoryServiceClient)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
+local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.GamepadPointer)
+local InventoryServiceClient =
+	require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceClient)
+local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local MagicServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.combat.MagicServiceUtils)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local MagicServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).MagicService
+
+local function sendPacket(methodName: string, ...: any)
+	local packet = MagicServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for MagicService`)
+		return
+	end
+
+	packet.send(PacketPayload.pack(...))
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = MagicServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for MagicService`)
+		return
+	end
+
+	packet.listen(function(payload: any)
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "applyState")
+	bindPacket(self, "onCastVisual")
+	bindPacket(self, "onImpactVisual")
+	bindPacket(self, "requestSync")
+end
+
+local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 
@@ -201,7 +244,7 @@ function MagicServiceClient.RefreshEquipped(self: MagicServiceClient)
 	if self.equippedTool == nil and self.inputHeld then
 		self:setInputHeld(false, "Unequipped")
 	end
-	self.networker:fire(MagicServiceUtils.NETWORK_METHOD_REQUEST_REFRESH_EQUIPPED)
+	sendPacket(MagicServiceUtils.NETWORK_METHOD_REQUEST_REFRESH_EQUIPPED)
 end
 
 function MagicServiceClient.BuildCastRequest(self: MagicServiceClient, triggerRaw: any): MagicServiceUtils.CastRequest
@@ -259,7 +302,7 @@ function MagicServiceClient.SendCast(self: MagicServiceClient, triggerRaw: any)
 	self.lastCastRequestAt = os.clock()
 	local castRequest = self:buildCastRequest(triggerRaw)
 	self.lastCastRequest = castRequest
-	self.networker:fire(MagicServiceUtils.NETWORK_METHOD_REQUEST_CAST, castRequest)
+	sendPacket(MagicServiceUtils.NETWORK_METHOD_REQUEST_CAST, castRequest)
 	if self.hapticsModule ~= nil and typeof((self.hapticsModule :: any).confirm) == "function" then
 		local hapticsAny = self.hapticsModule :: any
 		hapticsAny:confirm()
@@ -274,7 +317,7 @@ function MagicServiceClient.SetInputHeld(self: MagicServiceClient, isHeld: boole
 
 	local castRequest = self:buildCastRequest(triggerRaw)
 	self.lastCastRequest = castRequest
-	self.networker:fire(MagicServiceUtils.NETWORK_METHOD_REQUEST_SET_INPUT_HELD, isHeld, castRequest)
+	sendPacket(MagicServiceUtils.NETWORK_METHOD_REQUEST_SET_INPUT_HELD, isHeld, castRequest)
 	if isHeld then
 		self:sendCast(triggerRaw)
 	end
@@ -292,7 +335,7 @@ function MagicServiceClient.StepHeldCast(self: MagicServiceClient)
 	else
 		self.lastCastRequest = self:buildCastRequest(self.lastCastRequest.trigger)
 	end
-	self.networker:fire(MagicServiceUtils.NETWORK_METHOD_REQUEST_SET_INPUT_HELD, true, self.lastCastRequest)
+	sendPacket(MagicServiceUtils.NETWORK_METHOD_REQUEST_SET_INPUT_HELD, true, self.lastCastRequest)
 	self:sendCast("Hold")
 end
 
@@ -492,12 +535,12 @@ function MagicServiceClient.OnCharacterAdded(self: MagicServiceClient, character
 end
 
 function MagicServiceClient.RequestSync(self: MagicServiceClient)
-	self.networker:fire(MagicServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
+	sendPacket(MagicServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
 function MagicServiceClient.Init(self: MagicServiceClient)
 	self.localPlayer = Players.LocalPlayer
-	self.networker = Networker.client.new("MagicService", self)
+	bindPackets(self)
 	self.janitor = Janitor.new()
 	self.characterJanitor = Janitor.new()
 	self.janitor:GiveChore(self.characterJanitor)
@@ -520,9 +563,6 @@ function MagicServiceClient.Init(self: MagicServiceClient)
 
 	self.visualFolder = WorkspaceFolders.getOrCreateFolderInGame(CLIENT_VISUAL_FOLDER_NAME)
 
-	self.janitor:GiveChore(function()
-		self.networker:destroy()
-	end)
 	self.janitor:GiveChore(function()
 		self.stateChanged:Destroy()
 	end)
@@ -621,7 +661,6 @@ type MagicServiceClient = typeof(MagicServiceClient) & {
 	hapticsModule: any?,
 	gamepadNav: any?,
 	localPlayer: Player,
-	networker: Networker.Client,
 	janitor: JanitorClass,
 	characterJanitor: JanitorClass,
 	stateChanged: SignalObject,

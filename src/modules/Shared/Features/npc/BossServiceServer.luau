@@ -27,13 +27,62 @@ local EyeOfCthulhuController = require(script:FindFirstAncestor("game").Shared.F
 local QueenBeeConfig = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.QueenBee.Configs)
 local QueenBeeController = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.QueenBee)
 local HpServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.health.HpServiceServer)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local BossServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).BossService
+
+local function sendPacket(player: Player, methodName: string, ...: any)
+	local packet = BossServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for BossService`)
+		return
+	end
+
+	packet.sendTo(PacketPayload.pack(...), player)
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = BossServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for BossService`)
+		return
+	end
+
+	packet.listen(function(payload: any, player: Player?)
+		if player == nil then
+			return
+		end
+
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, player, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "requestManualSummon")
+	bindPacket(self, "requestSync")
+end
+
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local PlayerServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer)
+local PlayerServiceServer = (require :: any)(
+	script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer
+)
 local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
-local WeatherServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.world.WeatherServiceServer)
-local WorldGenerationServiceServer =
-	(require :: any)(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer)
+local WeatherServiceServer = (require :: any)(
+	script:FindFirstAncestor("game").Shared.Features.world.WeatherServiceServer
+)
+local WorldGenerationServiceServer = (require :: any)(
+	script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer
+)
 
 type BossId = BossServiceUtils.BossId
 type BossSnapshot = BossServiceUtils.BossSnapshot
@@ -566,7 +615,7 @@ end
 function BossServiceServer.Broadcast(self: BossServiceServer, methodName: string, ...: any)
 	for _, player in Players:GetPlayers() do
 		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
-			self.networker:fire(player, methodName, ...)
+			sendPacket(player, methodName, ...)
 		end
 	end
 end
@@ -575,7 +624,7 @@ function BossServiceServer.PushState(self: BossServiceServer, playerRaw: any?)
 	local snapshot = self:createStateSnapshot()
 	if playerRaw ~= nil then
 		if typeof(playerRaw) == "Instance" and playerRaw:IsA("Player") then
-			self.networker:fire(playerRaw, BossServiceUtils.CLIENT_METHOD_APPLY_STATE, snapshot)
+			sendPacket(playerRaw, BossServiceUtils.CLIENT_METHOD_APPLY_STATE, snapshot)
 		end
 		return
 	end
@@ -1064,7 +1113,7 @@ function BossServiceServer.SummonBossForPlayer(
 		return nil, "night_only"
 	end
 
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 	return self:spawnBoss({
 		bossId = definition.id,
 		targetPlayer = playerRaw,
@@ -1353,7 +1402,8 @@ function BossServiceServer.OnHeartbeat(self: BossServiceServer, dtRaw: any)
 		local maxSimulationStep = simulationDt
 		local getMaxSimulationStep = (boss :: any).getMaxSimulationStep
 		if typeof(getMaxSimulationStep) == "function" then
-			maxSimulationStep = BossServiceUtils.sanitizeNumber(getMaxSimulationStep(boss), simulationDt, 1 / 240, simulationDt)
+			maxSimulationStep =
+				BossServiceUtils.sanitizeNumber(getMaxSimulationStep(boss), simulationDt, 1 / 240, simulationDt)
 		end
 
 		local remainingDt = simulationDt
@@ -1391,16 +1441,7 @@ end
 
 function BossServiceServer.Init(self: BossServiceServer)
 	self.maid = Maid.new() :: MaidClass
-	self.networker = Networker.server.new("BossService", self, {
-		self.RequestSync,
-		self.RequestManualSummon,
-	})
-	self.maid:GiveTask(function()
-		if self.networker ~= nil then
-			self.networker:destroy()
-			self.networker = nil
-		end
-	end)
+	bindPackets(self)
 	self.hpService = HpServiceServer :: HpServiceServerObject
 	self.weatherService = WeatherServiceServer :: WeatherServiceServerObject
 	self.worldGenerationService = WorldGenerationServiceServer :: WorldGenerationServiceServerObject
@@ -1419,8 +1460,8 @@ function BossServiceServer.Init(self: BossServiceServer)
 		EyeOfCthulhu = EyeOfCthulhuConfig.resolve(resolveEyeConfigSource()),
 		QueenBee = QueenBeeConfig.resolve(resolveQueenBeeConfigSource()),
 	}
-	self.previousClockTime = self:getClockTime()
-	;(self :: any).binders = NevermoreSupport.getService(ServerBinderSupport)
+	self.previousClockTime = self:getClockTime();
+	(self :: any).binders = NevermoreSupport.getService(ServerBinderSupport)
 	self:initReactiveState()
 
 	self.maid:GiveTask(Rx.fromSignal(Players.PlayerAdded)
@@ -1522,7 +1563,6 @@ BossServiceServer.destroy = BossServiceServer.Destroy
 
 type BossServiceServer = typeof(BossServiceServer) & {
 	maid: MaidClass,
-	networker: Networker.Server,
 	hpService: HpServiceServerObject,
 	weatherService: WeatherServiceServerObject,
 	worldGenerationService: WorldGenerationServiceServerObject,

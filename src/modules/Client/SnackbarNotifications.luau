@@ -7,7 +7,7 @@ local loader = (require :: any)(loaderUtils.Parent).load(packageRoot)
 local ScreenGuiService = loader("ScreenGuiService")
 local SnackbarServiceClient = loader("SnackbarServiceClient")
 local AquariaBackupTranslator = require(script:FindFirstAncestor("game").Shared.AquariaBackupTranslator)
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
+local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
 local AudioServiceClient = (require :: any)(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceClient)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
@@ -161,7 +161,7 @@ function SnackbarNotifications.ShowText(textRaw: any, optionsRaw: any?)
 		return nil
 	end
 
-	local options = if typeof(optionsRaw) == "table" then optionsRaw :: { [string]: any } else ({} :: any)
+	local options = if typeof(optionsRaw) == "table" then optionsRaw :: { [string]: any } else {} :: any
 	local dedupeKey = if typeof(options.dedupeKey) == "string" and options.dedupeKey ~= ""
 		then options.dedupeKey
 		else text

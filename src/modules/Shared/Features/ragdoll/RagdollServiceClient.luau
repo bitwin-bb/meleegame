@@ -3,7 +3,49 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local RagdollServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).RagdollService
+
+local function sendPacket(methodName: string, ...: any)
+	local packet = RagdollServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for RagdollService`)
+		return
+	end
+
+	packet.send(PacketPayload.pack(...))
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = RagdollServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for RagdollService`)
+		return
+	end
+
+	packet.listen(function(payload: any)
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "applyState")
+	bindPacket(self, "requestSelfRagdoll")
+	bindPacket(self, "requestSelfRecover")
+	bindPacket(self, "requestSync")
+end
+
 local RagdollServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.ragdoll.RagdollServiceUtils)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 
@@ -48,19 +90,16 @@ end
 
 function RagdollServiceClient.Init(self: RagdollServiceClient)
 	self.localPlayer = Players.LocalPlayer
-	self.networker = Networker.client.new("RagdollService", self)
+	bindPackets(self)
 	self.janitor = Janitor.new()
 	self.state = RagdollServiceUtils.createDefaultState()
 	self.stateChanged = Signal.new()
 
 	self.janitor:GiveChore(function()
-		self.networker:destroy()
-	end)
-	self.janitor:GiveChore(function()
 		self.stateChanged:Destroy()
 	end)
 
-	self.networker:fire("requestSync")
+	sendPacket("requestSync")
 end
 
 function RagdollServiceClient.ApplyState(self: RagdollServiceClient, stateRaw: any)
@@ -74,7 +113,7 @@ function RagdollServiceClient.ApplyState(self: RagdollServiceClient, stateRaw: a
 end
 
 function RagdollServiceClient.RequestSync(self: RagdollServiceClient)
-	self.networker:fire("requestSync")
+	sendPacket("requestSync")
 end
 
 function RagdollServiceClient.RequestSelfRagdoll(
@@ -91,11 +130,11 @@ function RagdollServiceClient.RequestSelfRagdoll(
 	)
 	local reason = RagdollServiceUtils.sanitizeReason(reasonRaw, SELF_REQUEST_REASON)
 	local impulse = if typeof(impulseRaw) == "Vector3" then impulseRaw else nil
-	self.networker:fire("requestSelfRagdoll", duration, reason, impulse)
+	sendPacket("requestSelfRagdoll", duration, reason, impulse)
 end
 
 function RagdollServiceClient.RequestSelfRecover(self: RagdollServiceClient)
-	self.networker:fire("requestSelfRecover")
+	sendPacket("requestSelfRecover")
 end
 
 function RagdollServiceClient.GetState(self: RagdollServiceClient): RagdollServiceState
@@ -123,7 +162,6 @@ RagdollServiceClient.destroy = RagdollServiceClient.Destroy
 
 export type RagdollServiceClient = typeof(RagdollServiceClient) & {
 	localPlayer: Player,
-	networker: Networker.Client,
 	janitor: JanitorClass,
 	state: RagdollServiceState,
 	stateChanged: SignalObject,

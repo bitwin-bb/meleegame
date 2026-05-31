@@ -9,11 +9,59 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
 local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local InventoryServiceServer = require(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
+local InventoryServiceServer =
+	require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceServer)
+local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
 local LootServiceServer = require(script:FindFirstAncestor("game").Shared.Features.loot.LootServiceServer)
 local MiningPower = require(script:FindFirstAncestor("game").Shared.Core.Math.MiningPower)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local BuildServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).BuildService
+
+local function sendPacket(player: Player, methodName: string, ...: any)
+	local packet = BuildServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for BuildService`)
+		return
+	end
+
+	packet.sendTo(PacketPayload.pack(...), player)
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = BuildServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for BuildService`)
+		return
+	end
+
+	packet.listen(function(payload: any, player: Player?)
+		if player == nil then
+			return
+		end
+
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, player, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "canPlaceAt")
+	bindPacket(self, "getTileAt")
+	bindPacket(self, "requestBreakTile")
+	bindPacket(self, "requestPlaceTile")
+	bindPacket(self, "requestSync")
+end
+
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
 local PlayerServiceServer = require(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer)
 local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
@@ -310,7 +358,7 @@ end
 
 function BuildServiceServer.PushState(self: BuildServiceServer, player: Player)
 	self.state = self:createStateSnapshot()
-	self.networker:fire(player, BuildServiceUtils.CLIENT_METHOD_APPLY_STATE, BuildServiceUtils.cloneState(self.state))
+	sendPacket(player, BuildServiceUtils.CLIENT_METHOD_APPLY_STATE, BuildServiceUtils.cloneState(self.state))
 end
 
 function BuildServiceServer.CreateBreakIntent(self: BuildServiceServer): PlayerBreakIntent
@@ -380,7 +428,10 @@ function BuildServiceServer.GetTileAt(self: BuildServiceServer, _player: Player,
 	if tileX == nil or tileY == nil then
 		return BuildServiceUtils.AIR_TILE_ID
 	end
-	return self:getTileAtInternal(tileX, tileY)
+
+	local tileId = self:getTileAtInternal(tileX, tileY)
+	sendPacket(_player, BuildServiceUtils.CLIENT_METHOD_ON_TILE_FETCHED, tileX, tileY, tileId)
+	return tileId
 end
 
 function BuildServiceServer.GetTreesForChunk(self: BuildServiceServer, chunkX: number, chunkY: number): { any }?
@@ -589,7 +640,7 @@ function BuildServiceServer.PushBreakProgress(
 )
 	local progressUnits = if isFiniteNumber(progressUnitsRaw) then math.max(0, progressUnitsRaw :: number) else nil
 	local progressTotal = if isFiniteNumber(progressTotalRaw) then math.max(0, progressTotalRaw :: number) else nil
-	self.networker:fire(player, BuildServiceUtils.CLIENT_METHOD_ON_BREAK_PROGRESS, {
+	sendPacket(player, BuildServiceUtils.CLIENT_METHOD_ON_BREAK_PROGRESS, {
 		isActive = isActive,
 		tileX = tileX,
 		tileY = tileY,
@@ -617,8 +668,8 @@ function BuildServiceServer.SendActionResult(
 	if requestId <= 0 then
 		return
 	end
-	local deltas = if deltasRaw ~= nil then cloneTileDeltaList(deltasRaw) else ({} :: any)
-	self.networker:fire(player, BuildServiceUtils.CLIENT_METHOD_ON_ACTION_RESULT, {
+	local deltas = if deltasRaw ~= nil then cloneTileDeltaList(deltasRaw) else {} :: any
+	sendPacket(player, BuildServiceUtils.CLIENT_METHOD_ON_ACTION_RESULT, {
 		requestId = requestId,
 		actionType = actionType,
 		accepted = accepted,
@@ -933,11 +984,6 @@ function BuildServiceServer.FlushTileDeltas(self: BuildServiceServer)
 	if count <= 0 then
 		return
 	end
-	if self.networker == nil then
-		table.clear(self.pendingTileDeltas)
-		table.clear(self.pendingTileDeltaLookup)
-		return
-	end
 
 	local batchMax = math.max(1, self.config.deltaBatchMax)
 	local startIndex = 1
@@ -957,7 +1003,7 @@ function BuildServiceServer.FlushTileDeltas(self: BuildServiceServer)
 		end
 		for _, player in Players:GetPlayers() do
 			if shouldReplicateToPlayer(player) then
-				self.networker:fire(player, BuildServiceUtils.CLIENT_METHOD_ON_TILE_DELTAS, {
+				sendPacket(player, BuildServiceUtils.CLIENT_METHOD_ON_TILE_DELTAS, {
 					deltas = batch,
 					updatedAt = os.clock(),
 				})
@@ -1298,11 +1344,9 @@ function BuildServiceServer.ProcessTreeBreakCompletion(
 		seed = tree.seed,
 		fallDuration = treeBreakProfile.fallDuration,
 	}
-	if self.networker ~= nil then
-		for _, listedPlayer in Players:GetPlayers() do
-			if shouldReplicateToPlayer(listedPlayer) then
-				self.networker:fire(listedPlayer, BuildServiceUtils.CLIENT_METHOD_ON_TREE_FELLED, payload)
-			end
+	for _, listedPlayer in Players:GetPlayers() do
+		if shouldReplicateToPlayer(listedPlayer) then
+			sendPacket(listedPlayer, BuildServiceUtils.CLIENT_METHOD_ON_TREE_FELLED, payload)
 		end
 	end
 
@@ -1620,13 +1664,7 @@ function BuildServiceServer.Init(self: BuildServiceServer)
 	self.damagePruneAccumulator = 0
 	self.binders = NevermoreSupport.getService(ServerBinderSupport)
 
-	self.networker = Networker.server.new("BuildService", self, {
-		self.RequestSync,
-		self.RequestPlaceTile,
-		self.RequestBreakTile,
-		self.GetTileAt,
-		self.CanPlaceAt,
-	})
+	bindPackets(self)
 
 	for _, player in Players:GetPlayers() do
 		if shouldReplicateToPlayer(player) then
@@ -1669,10 +1707,6 @@ function BuildServiceServer.Destroy(self: BuildServiceServer)
 	table.clear(self.playerBreakIntents)
 	table.clear(self.multiTileAnchors)
 	table.clear(self.multiTileMembers)
-
-	if self.networker ~= nil then
-		self.networker:destroy()
-	end
 end
 
 BuildServiceServer.createStateSnapshot = BuildServiceServer.CreateStateSnapshot
@@ -1719,7 +1753,6 @@ BuildServiceServer.init = BuildServiceServer.Init
 BuildServiceServer.destroy = BuildServiceServer.Destroy
 
 type BuildServiceServer = typeof(BuildServiceServer) & {
-	networker: Networker.Server,
 	config: BuildServiceConfig,
 	state: BuildServiceState,
 	worldGenerationService: WorldGenerationServiceServerObject,

@@ -1,10 +1,10 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local HotbarLeftSideBar = require(script.HotbarLeftSideBar)
+local HotbarLeftSideBar = require(script:FindFirstAncestor("game").Shared.Features.inventory.ui.hud.LeftSideBar.HotbarLeftSideBar)
 local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
 local React = require(ReplicatedStorage.Packages.React)
 local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
-local inventorySlice = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.inventorySlice)
+local inventorySlice = require(script:FindFirstAncestor("game").Shared.Features.inventory.ui.hud.state.slice.inventorySlice)
 local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
 local e: typeof(React.createElement) = React.createElement

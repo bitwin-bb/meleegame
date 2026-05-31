@@ -3,7 +3,47 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local LootServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.loot.LootServiceUtils)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local LootServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).LootService
+
+local function sendPacket(methodName: string, ...: any)
+	local packet = LootServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for LootService`)
+		return
+	end
+
+	packet.send(PacketPayload.pack(...))
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = LootServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for LootService`)
+		return
+	end
+
+	packet.listen(function(payload: any)
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "requestDropFromSlot")
+	bindPacket(self, "requestDropSelectedSlot")
+	bindPacket(self, "requestSync")
+end
 
 type JanitorClass = {
 	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
@@ -15,7 +55,7 @@ local LootServiceClient = {}
 function LootServiceClient.ApplyState(self: LootServiceClient, _payloadRaw: any) end
 
 function LootServiceClient.RequestSync(self: LootServiceClient)
-	self.networker:fire(LootServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
+	sendPacket(LootServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
 function LootServiceClient.RequestDropFromSlot(
@@ -24,11 +64,11 @@ function LootServiceClient.RequestDropFromSlot(
 	amountRaw: any,
 	throwDirectionRaw: any
 )
-	self.networker:fire(LootServiceUtils.NETWORK_METHOD_REQUEST_DROP_SLOT, slotIndexRaw, amountRaw, throwDirectionRaw)
+	sendPacket(LootServiceUtils.NETWORK_METHOD_REQUEST_DROP_SLOT, slotIndexRaw, amountRaw, throwDirectionRaw)
 end
 
 function LootServiceClient.RequestDropSelectedSlot(self: LootServiceClient, amountRaw: any, throwDirectionRaw: any)
-	self.networker:fire(LootServiceUtils.NETWORK_METHOD_REQUEST_DROP_SELECTED, amountRaw, throwDirectionRaw)
+	sendPacket(LootServiceUtils.NETWORK_METHOD_REQUEST_DROP_SELECTED, amountRaw, throwDirectionRaw)
 end
 
 function LootServiceClient.ResolveDropAmount(self: LootServiceClient, amountRaw: any, fallbackAmountRaw: any?): number
@@ -36,11 +76,8 @@ function LootServiceClient.ResolveDropAmount(self: LootServiceClient, amountRaw:
 end
 
 function LootServiceClient.Init(self: LootServiceClient)
-	self.networker = Networker.client.new("LootService", self)
+	bindPackets(self)
 	self.janitor = Janitor.new()
-	self.janitor:GiveChore(function()
-		self.networker:destroy()
-	end)
 	self:requestSync()
 end
 
@@ -59,7 +96,6 @@ LootServiceClient.init = LootServiceClient.Init
 LootServiceClient.destroy = LootServiceClient.Destroy
 
 type LootServiceClient = typeof(LootServiceClient) & {
-	networker: Networker.Client,
 	janitor: JanitorClass,
 }
 

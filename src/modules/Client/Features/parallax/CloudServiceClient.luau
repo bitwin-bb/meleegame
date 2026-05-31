@@ -16,10 +16,11 @@ local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 
 local Cloud = require(script.Parent.classes.Cloud)
+local CloudConstants = require(script.Parent.CloudConstants)
 local CloudServiceUtils = require(script.Parent.CloudServiceUtils)
 local Clouds = require(script.Parent.modules.Clouds)
 local ParallaxBackgrounds = require(script.Parent.modules.ParallaxBackgrounds)
-local ParallaxRoot = require(script.Parent.ParallaxRoot)
+local ParallaxRoot = require(script.Parent.ui.ParallaxRoot)
 local ParallaxServiceUtils = require(script.Parent.ParallaxServiceUtils)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =
@@ -65,38 +66,6 @@ type CloudSizing = {
 local CloudServiceClient = {}
 CloudServiceClient.ServiceName = "CloudServiceClient"
 
-local WORLD_FOLDER_NAME = "WorldGeneration"
-local ROOT_PARENT_FALLBACK_NAME = "ParallaxService"
-local ROOT_FOLDER_NAME = "CloudDepth"
-local ANCHOR_PART_NAME = "CloudAnchor"
-local SURFACE_BRIGHTNESS = 0.5
-local SURFACE_PIXELS_PER_STUD = 8
-local MAX_SURFACE_CANVAS_PIXELS = 20000
-local MIN_SURFACE_CANVAS_PIXELS = 1
-local DEFAULT_CAMERA_FIELD_OF_VIEW = 70
-local DEFAULT_CAMERA_VIEWPORT = Vector2.new(1920, 1080)
-local CLOUD_PLANE_DEPTH_BLOCKS = 40
-local CLOUD_SURFACE_WIDTH_FACTOR = 2.65
-local CLOUD_SURFACE_HEIGHT_FACTOR = 0.68
-local CLOUD_HORIZON_CENTER_OFFSET_FACTOR = 0.78
-local CLOUD_SPAWN_LEFT_MIN_FACTOR = 0.9
-local CLOUD_SPAWN_LEFT_MAX_FACTOR = 0.66
-local CLOUD_OFFSCREEN_MARGIN_FACTOR = 0.35
-local CLOUD_MIN_SCALE = 0.95
-local CLOUD_MAX_SCALE = 1.9
-local CLOUD_MIN_DEPTH_FACTOR = 0.06
-local CLOUD_MAX_DEPTH_FACTOR = 0.36
-local CLOUD_MIN_HEIGHT_FACTOR = 0.15
-local CLOUD_MAX_HEIGHT_FACTOR = 0.3
-local CLOUD_MIN_VERTICAL_ALPHA = 0.02
-local CLOUD_MAX_VERTICAL_ALPHA = 0.34
-local CLOUD_MIN_WIND_SPEED_STUDS_PER_SECOND = 2.5
-local CLOUD_MAX_WIND_SPEED_STUDS_PER_SECOND = 6.5
-local CLOUD_FADE_SECONDS = 0.9
-local CLOUD_MIN_COUNT = 5
-local CLOUD_MAX_COUNT = 10
-local CLOUD_TARGET_VIEWPORT_PIXELS = 320
-
 local e: typeof(React.createElement) = React.createElement
 
 local catalog: Catalog = ParallaxServiceUtils.normalizeCatalog(ParallaxBackgrounds)
@@ -135,8 +104,8 @@ end
 local function resolveCameraSnapshot(camera: Camera?): CameraSnapshot
 	if camera == nil then
 		return {
-			fieldOfView = DEFAULT_CAMERA_FIELD_OF_VIEW,
-			viewportSize = DEFAULT_CAMERA_VIEWPORT,
+			fieldOfView = CloudConstants.DEFAULT_CAMERA_FIELD_OF_VIEW,
+			viewportSize = CloudConstants.DEFAULT_CAMERA_VIEWPORT,
 		}
 	end
 
@@ -161,19 +130,19 @@ end
 
 local function resolveSurfacePixelsPerStud(widthStuds: number, heightStuds: number): number
 	local largestAxis = math.max(widthStuds, heightStuds, 1)
-	return math.max(1, math.min(SURFACE_PIXELS_PER_STUD, MAX_SURFACE_CANVAS_PIXELS / largestAxis))
+	return math.max(1, math.min(CloudConstants.SURFACE_PIXELS_PER_STUD, CloudConstants.MAX_SURFACE_CANVAS_PIXELS / largestAxis))
 end
 
 local function toCanvasPixels(studs: number, pixelsPerStud: number): number
 	return math.clamp(
 		math.ceil(math.max(studs, 0) * pixelsPerStud),
-		MIN_SURFACE_CANVAS_PIXELS,
-		MAX_SURFACE_CANVAS_PIXELS
+		CloudConstants.MIN_SURFACE_CANVAS_PIXELS,
+		CloudConstants.MAX_SURFACE_CANVAS_PIXELS
 	)
 end
 
 local function resolveWorldFolder(): Folder?
-	local worldFolder = WorkspaceFolders.findFolderInGameOrWorkspace(WORLD_FOLDER_NAME)
+	local worldFolder = WorkspaceFolders.findFolderInGameOrWorkspace(CloudConstants.WORLD_FOLDER_NAME)
 	if worldFolder ~= nil and worldFolder:IsA("Folder") then
 		return worldFolder
 	end
@@ -185,7 +154,7 @@ local function resolveRootParent(): Instance
 	if worldFolder ~= nil then
 		return worldFolder
 	end
-	return WorkspaceFolders.getOrCreateFolderInGame(ROOT_PARENT_FALLBACK_NAME)
+	return WorkspaceFolders.getOrCreateFolderInGame(CloudConstants.ROOT_PARENT_FALLBACK_NAME)
 end
 
 local function destroySurfaceRuntime()
@@ -211,7 +180,7 @@ local function ensureRootFolder()
 	if rootFolder ~= nil and rootFolder.Parent ~= nil then
 		rootFolder:Destroy()
 	end
-	rootFolder = createFolder(parent, ROOT_FOLDER_NAME)
+	rootFolder = createFolder(parent, CloudConstants.ROOT_FOLDER_NAME)
 end
 
 local function ensureSurfaceRuntime(): SurfaceRuntime?
@@ -231,7 +200,7 @@ local function ensureSurfaceRuntime(): SurfaceRuntime?
 	end
 
 	local anchorPart = Instance.new("Part")
-	anchorPart.Name = ANCHOR_PART_NAME
+	anchorPart.Name = CloudConstants.ANCHOR_PART_NAME
 	anchorPart.Anchored = true
 	anchorPart.Locked = true
 	anchorPart.CanCollide = false
@@ -335,8 +304,8 @@ local function resolveGameplayPlaneReferenceDistance(cameraPositionX: number): n
 end
 
 local function resolveCloudSizing(visibleHeight: number, cloud: Cloud.Cloud): CloudSizing
-	local scaleAlpha = math.clamp((cloud.scale - CLOUD_MIN_SCALE) / (CLOUD_MAX_SCALE - CLOUD_MIN_SCALE), 0, 1)
-	local heightFactor = CLOUD_MIN_HEIGHT_FACTOR + (CLOUD_MAX_HEIGHT_FACTOR - CLOUD_MIN_HEIGHT_FACTOR) * scaleAlpha
+	local scaleAlpha = math.clamp((cloud.scale - CloudConstants.CLOUD_MIN_SCALE) / (CloudConstants.CLOUD_MAX_SCALE - CloudConstants.CLOUD_MIN_SCALE), 0, 1)
+	local heightFactor = CloudConstants.CLOUD_MIN_HEIGHT_FACTOR + (CloudConstants.CLOUD_MAX_HEIGHT_FACTOR - CloudConstants.CLOUD_MIN_HEIGHT_FACTOR) * scaleAlpha
 	local height = math.max(visibleHeight * heightFactor, 1)
 	local asset = cloud.asset
 	local aspectRatio = if asset ~= nil then asset.imageAspectRatio else 2.75
@@ -347,8 +316,8 @@ local function resolveCloudSizing(visibleHeight: number, cloud: Cloud.Cloud): Cl
 end
 
 local function resolveTargetCloudCount(viewportSize: Vector2): number
-	local target = math.floor(viewportSize.X / CLOUD_TARGET_VIEWPORT_PIXELS + 0.5)
-	return math.clamp(target, CLOUD_MIN_COUNT, CLOUD_MAX_COUNT)
+	local target = math.floor(viewportSize.X / CloudConstants.CLOUD_TARGET_VIEWPORT_PIXELS + 0.5)
+	return math.clamp(target, CloudConstants.CLOUD_MIN_COUNT, CloudConstants.CLOUD_MAX_COUNT)
 end
 
 local function borrowCloud(): Cloud.Cloud
@@ -378,22 +347,22 @@ local function spawnCloud(cameraZ: number, visibleWidth: number)
 
 	nextCloudId += 1
 	local cloud = borrowCloud()
-	local spawnMinOffsetZ = -visibleWidth * CLOUD_SPAWN_LEFT_MIN_FACTOR
-	local spawnMaxOffsetZ = -visibleWidth * CLOUD_SPAWN_LEFT_MAX_FACTOR
-	local scale = random:NextNumber(CLOUD_MIN_SCALE, CLOUD_MAX_SCALE)
+	local spawnMinOffsetZ = -visibleWidth * CloudConstants.CLOUD_SPAWN_LEFT_MIN_FACTOR
+	local spawnMaxOffsetZ = -visibleWidth * CloudConstants.CLOUD_SPAWN_LEFT_MAX_FACTOR
+	local scale = random:NextNumber(CloudConstants.CLOUD_MIN_SCALE, CloudConstants.CLOUD_MAX_SCALE)
 	cloud:reset({
 		id = tostring(nextCloudId),
 		asset = asset,
 		scale = scale,
 		baseOffsetZ = random:NextNumber(spawnMinOffsetZ, spawnMaxOffsetZ),
-		verticalAlpha = random:NextNumber(CLOUD_MIN_VERTICAL_ALPHA, CLOUD_MAX_VERTICAL_ALPHA),
+		verticalAlpha = random:NextNumber(CloudConstants.CLOUD_MIN_VERTICAL_ALPHA, CloudConstants.CLOUD_MAX_VERTICAL_ALPHA),
 		spawnCameraZ = cameraZ,
-		windSpeed = random:NextNumber(CLOUD_MIN_WIND_SPEED_STUDS_PER_SECOND, CLOUD_MAX_WIND_SPEED_STUDS_PER_SECOND),
-		fadeSeconds = CLOUD_FADE_SECONDS,
-		minScale = CLOUD_MIN_SCALE,
-		maxScale = CLOUD_MAX_SCALE,
-		minDepthFactor = CLOUD_MIN_DEPTH_FACTOR,
-		maxDepthFactor = CLOUD_MAX_DEPTH_FACTOR,
+		windSpeed = random:NextNumber(CloudConstants.CLOUD_MIN_WIND_SPEED_STUDS_PER_SECOND, CloudConstants.CLOUD_MAX_WIND_SPEED_STUDS_PER_SECOND),
+		fadeSeconds = CloudConstants.CLOUD_FADE_SECONDS,
+		minScale = CloudConstants.CLOUD_MIN_SCALE,
+		maxScale = CloudConstants.CLOUD_MAX_SCALE,
+		minDepthFactor = CloudConstants.CLOUD_MIN_DEPTH_FACTOR,
+		maxDepthFactor = CloudConstants.CLOUD_MAX_DEPTH_FACTOR,
 	}, os.clock())
 	table.insert(activeClouds, cloud)
 end
@@ -461,16 +430,16 @@ local function render()
 
 	local layoutSnapshot = resolveCurrentLayoutSnapshot()
 	local cameraPosition = camera.CFrame.Position
-	local planeX = worldOrigin.X + basePlaneX - CLOUD_PLANE_DEPTH_BLOCKS * layoutSnapshot.tileDepth
+	local planeX = worldOrigin.X + basePlaneX - CloudConstants.CLOUD_PLANE_DEPTH_BLOCKS * layoutSnapshot.tileDepth
 	local gameplayReferenceDistance = resolveGameplayPlaneReferenceDistance(cameraPosition.X)
 	local coverageDistance = gameplayReferenceDistance + math.abs((worldOrigin.X + basePlaneX) - planeX)
 	local visibleWidth, visibleHeight =
 		computeVisibleExtentsAtDistance(layoutSnapshot.fieldOfView, layoutSnapshot.viewportSize, coverageDistance)
-	local surfaceWidth = math.max(visibleWidth * CLOUD_SURFACE_WIDTH_FACTOR, 1)
-	local surfaceHeight = math.max(visibleHeight * CLOUD_SURFACE_HEIGHT_FACTOR, 1)
+	local surfaceWidth = math.max(visibleWidth * CloudConstants.CLOUD_SURFACE_WIDTH_FACTOR, 1)
+	local surfaceHeight = math.max(visibleHeight * CloudConstants.CLOUD_SURFACE_HEIGHT_FACTOR, 1)
 	local surfaceHalfWidth = surfaceWidth * 0.5
 	local retireHalfWidth = visibleWidth * 0.5
-	local offscreenMargin = visibleWidth * CLOUD_OFFSCREEN_MARGIN_FACTOR
+	local offscreenMargin = visibleWidth * CloudConstants.CLOUD_OFFSCREEN_MARGIN_FACTOR
 
 	updateCloudPool(resolveTargetCloudCount(layoutSnapshot.viewportSize), cameraPosition.Z, visibleWidth)
 
@@ -481,7 +450,7 @@ local function render()
 	end
 	removeInactiveClouds()
 
-	local anchorCenterY = worldOrigin.Y + visibleHeight * CLOUD_HORIZON_CENTER_OFFSET_FACTOR
+	local anchorCenterY = worldOrigin.Y + visibleHeight * CloudConstants.CLOUD_HORIZON_CENTER_OFFSET_FACTOR
 	local anchorCenterZ = cameraPosition.Z
 	local pixelsPerStud = resolveSurfacePixelsPerStud(surfaceWidth, surfaceHeight)
 	local canvasWidth = toCanvasPixels(surfaceWidth, pixelsPerStud)
@@ -523,7 +492,7 @@ local function render()
 		visible = true,
 		adornee = currentSurfaceRuntime.anchorPart,
 		face = surfaceFace,
-		brightness = SURFACE_BRIGHTNESS,
+		brightness = CloudConstants.SURFACE_BRIGHTNESS,
 		canvasSize = Vector2.new(canvasWidth, canvasHeight),
 		clouds = cloudViews,
 	} :: CloudSurfaceState)

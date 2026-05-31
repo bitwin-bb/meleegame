@@ -4,8 +4,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local Cleanup = require(script.Parent.internal.cleanup)
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
-local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlatformServiceUtils)
+local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
+local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceUtils)
 local React = require(ReplicatedStorage.Packages.React)
 
 type PlatformState = PlatformServiceUtils.PlatformState

@@ -7,7 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
+local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
 local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceClient)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
 local ClientBinderSupport = require(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
@@ -16,7 +16,51 @@ local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Lerp = require(script:FindFirstAncestor("game").Shared.Core.Math.Lerp)
 local LiquidServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.LiquidServiceUtils)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local LiquidServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).LiquidService
+
+local function sendPacket(methodName: string, ...: any)
+	local packet = LiquidServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for LiquidService`)
+		return
+	end
+
+	packet.send(PacketPayload.pack(...))
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = LiquidServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for LiquidService`)
+		return
+	end
+
+	packet.listen(function(payload: any)
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "applyState")
+	bindPacket(self, "onChunkDelta")
+	bindPacket(self, "onChunkSnapshot")
+	bindPacket(self, "onChunkUnloaded")
+	bindPacket(self, "onEffectEvent")
+	bindPacket(self, "requestSync")
+end
+
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
@@ -134,7 +178,7 @@ function LiquidServiceClient.CreateChunkSnapshot(self: LiquidServiceClient, snap
 		else self.state.chunkSize
 	local total = width * height
 	local cells = Sift.Array.create(total, 0)
-	local sourceCells = if typeof(source.cells) == "table" then source.cells else ({} :: any)
+	local sourceCells = if typeof(source.cells) == "table" then source.cells else {} :: any
 	for index = 1, total do
 		local packed = sourceCells[index]
 		cells[index] = if isFiniteNumber(packed) then math.max(0, math.floor(packed)) else 0
@@ -214,7 +258,8 @@ function LiquidServiceClient.GetWorldChunkSnapshot(self: LiquidServiceClient, ch
 	return chunkSnapshots[chunkKey]
 end
 
-function LiquidServiceClient.GetLayerVisual(self: LiquidServiceClient, 
+function LiquidServiceClient.GetLayerVisual(
+	self: LiquidServiceClient,
 	chunkVisual: ChunkVisual,
 	layerContext: LayerRenderContext
 ): ChunkLayerVisual
@@ -233,7 +278,11 @@ function LiquidServiceClient.GetLayerVisual(self: LiquidServiceClient,
 	return layerVisual
 end
 
-function LiquidServiceClient.GetRowVisual(self: LiquidServiceClient, layerVisual: ChunkLayerVisual, rowY: number): RowVisual
+function LiquidServiceClient.GetRowVisual(
+	self: LiquidServiceClient,
+	layerVisual: ChunkLayerVisual,
+	rowY: number
+): RowVisual
 	local rowVisual = layerVisual.rows[rowY]
 	if rowVisual ~= nil then
 		return rowVisual
@@ -279,7 +328,7 @@ function LiquidServiceClient.ComputeWorldDependencySignature(self: LiquidService
 		else 0
 	local backgroundLayers = if typeof((worldSnapshot :: any).backgroundLayers) == "table"
 		then (worldSnapshot :: any).backgroundLayers :: { any }
-		else ({} :: any)
+		else {} :: any
 	return `{revision}:{#backgroundLayers}:{basePlaneX}:{tileDepth}`
 end
 
@@ -308,7 +357,7 @@ function LiquidServiceClient.UpdateChunkVisualDebug(self: LiquidServiceClient, c
 	local chunkVisual = self:getChunkVisual(chunkKey)
 	local snapshot = self.chunkSnapshots[chunkKey]
 	local worldSnapshot = self:getWorldChunkSnapshot(chunkKey)
-	local extra = if typeof(extraRaw) == "table" then extraRaw :: { [string]: any } else ({} :: any)
+	local extra = if typeof(extraRaw) == "table" then extraRaw :: { [string]: any } else {} :: any
 	chunkVisual.model:SetAttribute("ChunkKey", chunkKey)
 	if snapshot ~= nil then
 		chunkVisual.model:SetAttribute("AuthoritativeRevision", snapshot.revision)
@@ -455,7 +504,8 @@ function LiquidServiceClient.GetBiomeAtTile(self: LiquidServiceClient, tileX: nu
 	return biomeId, biomeType
 end
 
-function LiquidServiceClient.CreateLayerRenderContext(self: LiquidServiceClient, 
+function LiquidServiceClient.CreateLayerRenderContext(
+	self: LiquidServiceClient,
 	chunkVisual: ChunkVisual,
 	layerListIndex: number,
 	backgroundLayerCount: number
@@ -484,7 +534,8 @@ function LiquidServiceClient.CreateLayerRenderContext(self: LiquidServiceClient,
 	}
 end
 
-function LiquidServiceClient.ApplyPartDescriptor(self: LiquidServiceClient, 
+function LiquidServiceClient.ApplyPartDescriptor(
+	self: LiquidServiceClient,
 	part: BasePart,
 	snapshot: ClientChunkSnapshot,
 	descriptor: LiquidStripDescriptor,
@@ -571,7 +622,8 @@ function LiquidServiceClient.FadeAndDestroyPart(self: LiquidServiceClient, part:
 	end
 end
 
-function LiquidServiceClient.RebuildLayerRow(self: LiquidServiceClient, 
+function LiquidServiceClient.RebuildLayerRow(
+	self: LiquidServiceClient,
 	chunkVisual: ChunkVisual,
 	snapshot: ClientChunkSnapshot,
 	rowY: number,
@@ -621,7 +673,8 @@ function LiquidServiceClient.RebuildLayerRow(self: LiquidServiceClient,
 	end
 end
 
-function LiquidServiceClient.ClearInactiveLayerRows(self: LiquidServiceClient, 
+function LiquidServiceClient.ClearInactiveLayerRows(
+	self: LiquidServiceClient,
 	chunkVisual: ChunkVisual,
 	rowY: number,
 	activeLayerKeys: { [string]: boolean }
@@ -652,7 +705,7 @@ function LiquidServiceClient.RebuildRow(self: LiquidServiceClient, chunkKey: str
 	local backgroundLayers: { any } = if typeof(worldSnapshot) == "table"
 			and typeof((worldSnapshot :: any).backgroundLayers) == "table"
 		then (worldSnapshot :: any).backgroundLayers :: { any }
-		else ({} :: any)
+		else {} :: any
 
 	local frontLayerContext = self:createLayerRenderContext(chunkVisual, 0, #backgroundLayers)
 	activeLayerKeys[frontLayerContext.layerKey] = true
@@ -769,7 +822,7 @@ function LiquidServiceClient.OnChunkDelta(self: LiquidServiceClient, deltaRaw: a
 	end
 
 	local changedIndices: { number } = {}
-	local changes = if typeof(source.changes) == "table" then source.changes else ({} :: any)
+	local changes = if typeof(source.changes) == "table" then source.changes else {} :: any
 	for _, changeRaw in changes do
 		if typeof(changeRaw) ~= "table" then
 			continue
@@ -1045,7 +1098,7 @@ function LiquidServiceClient.ApplyState(self: LiquidServiceClient, stateRaw: any
 end
 
 function LiquidServiceClient.RequestSync(self: LiquidServiceClient)
-	self.networker:fire(LiquidServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
+	sendPacket(LiquidServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
 function LiquidServiceClient.Init(self: LiquidServiceClient)
@@ -1061,7 +1114,7 @@ function LiquidServiceClient.Init(self: LiquidServiceClient)
 		enabled = self.config.debug.enabled,
 		profilingEnabled = self.config.debug.enabled,
 	})
-	self.networker = Networker.client.new("LiquidService", self)
+	bindPackets(self)
 	self.janitor = Janitor.new()
 	self.stateChanged = Signal.new()
 	self.effectEvent = Signal.new()
@@ -1081,9 +1134,6 @@ function LiquidServiceClient.Init(self: LiquidServiceClient)
 	self:refreshWaterSplashSoundAssetIds()
 	self:recreateRebuildQueue()
 
-	self.janitor:GiveChore(function()
-		self.networker:destroy()
-	end)
 	self.janitor:GiveChore(function()
 		self.stateChanged:Destroy()
 		self.effectEvent:Destroy()
@@ -1202,7 +1252,6 @@ type LiquidServiceClient = typeof(LiquidServiceClient) & {
 	config: LiquidServiceConfig,
 	state: LiquidServiceState,
 	debug: DebugObject?,
-	networker: Networker.Client,
 	janitor: JanitorClass,
 	stateChanged: SignalObject,
 	effectEvent: SignalObject,
@@ -1223,4 +1272,3 @@ type LiquidServiceClient = typeof(LiquidServiceClient) & {
 }
 
 return LiquidServiceClient :: LiquidServiceClient
-

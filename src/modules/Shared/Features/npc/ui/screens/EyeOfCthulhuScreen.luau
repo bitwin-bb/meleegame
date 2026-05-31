@@ -15,8 +15,8 @@ local EyeOfCthulhuSpriteSheet =
 	require(script:FindFirstAncestor("game").Shared.Features.npc.modules.EyeOfCthulhuSpriteSheet)
 local React = require(ReplicatedStorage.Packages.React)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
-local markerSlice = require(script:FindFirstAncestor("game").Client.UI.features.boss.state.markerSlice)
-local markerThunks = require(script:FindFirstAncestor("game").Client.UI.features.boss.state.markerThunks)
+local markerSlice = require(script:FindFirstAncestor("game").Shared.Features.npc.ui.boss.state.markerSlice)
+local markerThunks = require(script:FindFirstAncestor("game").Shared.Features.npc.ui.boss.state.markerThunks)
 local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
 type BossServiceState = BossServiceUtils.BossServiceState

@@ -7,8 +7,8 @@ local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.compon
 local React = require(ReplicatedStorage.Packages.React)
 local craftingSlice = require(script:FindFirstAncestor("game").Shared.Features.crafting.ui.state.craftingSlice)
 local craftingThunks = require(script:FindFirstAncestor("game").Shared.Features.crafting.ui.state.craftingThunks)
-local hudInventorySlice = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.inventorySlice)
-local hudInventoryThunks = require(script:FindFirstAncestor("game").Client.UI.hud.state.slice.inventoryThunks)
+local hudInventorySlice = require(script:FindFirstAncestor("game").Shared.Features.inventory.ui.hud.state.slice.inventorySlice)
+local hudInventoryThunks = require(script:FindFirstAncestor("game").Shared.Features.inventory.ui.hud.state.slice.inventoryThunks)
 local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
 type CraftingState = craftingSlice.CraftingState

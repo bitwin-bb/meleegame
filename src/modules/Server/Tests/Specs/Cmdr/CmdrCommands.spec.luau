@@ -9,8 +9,8 @@ local expect = testEnvironment.expect :: any
 local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for CmdrCommands.spec.")
 
-local sharedCommands = gameRoot.Shared.Cmdr.Commands
-local serverCommands = gameRoot.Server.Cmdr.ServerCommands
+local sharedCommands = gameRoot.Shared.Features.commander.Commands
+local serverCommands = gameRoot.Server.Features.commander.ServerCommands
 
 local function trim(valueRaw: any): string
 	if typeof(valueRaw) ~= "string" then

@@ -6,16 +6,58 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
+local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
 local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceClient)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
-local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Cmdr.CmdrUtils)
+local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Features.commander.CmdrUtils)
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
-local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Core.Platform.GamepadPointer)
+local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.GamepadPointer)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
-local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlatformServiceUtils)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local PlayerServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).PlayerService
+
+local function sendPacket(methodName: string, ...: any)
+	local packet = PlayerServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for PlayerService`)
+		return
+	end
+
+	packet.send(PacketPayload.pack(...))
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = PlayerServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for PlayerService`)
+		return
+	end
+
+	packet.listen(function(payload: any)
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "applyFacing")
+	bindPacket(self, "applyMovementLock")
+	bindPacket(self, "onDamaged")
+	bindPacket(self, "setFacing")
+end
+
+local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
+local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceUtils)
 local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceUtils)
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
 local WorldGenerationServiceClient =
@@ -282,7 +324,7 @@ end
 
 function PlayerServiceClient.Init(self: PlayerServiceClient)
 	self.localPlayer = Players.LocalPlayer
-	self.networker = Networker.client.new("PlayerService", self)
+	bindPackets(self)
 	self.janitor = Janitor.new()
 	self.characterJanitor = Janitor.new()
 	self.janitor:GiveChore(self.characterJanitor)
@@ -350,9 +392,6 @@ function PlayerServiceClient.Init(self: PlayerServiceClient)
 	self:refreshHurtSoundTemplates()
 
 	self.janitor:GiveChore(function()
-		self.networker:destroy()
-	end)
-	self.janitor:GiveChore(function()
 		self.moveAxisMotion:destroy()
 	end)
 	self.janitor:GiveChore(function()
@@ -395,7 +434,7 @@ function PlayerServiceClient.Init(self: PlayerServiceClient)
 	end
 	self:refreshCmdrFlyState()
 
-	self.networker:fire("requestState")
+	sendPacket("requestState")
 end
 
 function PlayerServiceClient.ResetMovementInputState(self: PlayerServiceClient)
@@ -1086,7 +1125,7 @@ function PlayerServiceClient.TryResolveWorldUnlock(self: PlayerServiceClient, ri
 		return
 	end
 	self.lastWorldUnlockRequestAt = now
-	self.networker:fire(PlayerServiceUtils.NETWORK_METHOD_SET_WORLD_READY_FOR_MOVEMENT, true)
+	sendPacket(PlayerServiceUtils.NETWORK_METHOD_SET_WORLD_READY_FOR_MOVEMENT, true)
 end
 
 function PlayerServiceClient.RequestJump(self: PlayerServiceClient): boolean
@@ -1512,7 +1551,7 @@ function PlayerServiceClient.SetFacing(self: PlayerServiceClient, facingSignRaw:
 	end
 
 	if replicateToServer then
-		self.networker:fire("setFacing", self.facingSign)
+		sendPacket("setFacing", self.facingSign)
 	end
 end
 
@@ -1673,7 +1712,6 @@ type PlayerServiceClient = typeof(PlayerServiceClient) & {
 	disableMouseFacing: (self: PlayerServiceClient) -> (),
 	isMouseFacingEnabled: (self: PlayerServiceClient) -> boolean,
 	localPlayer: Player,
-	networker: Networker.Client,
 	janitor: JanitorClass,
 	characterJanitor: JanitorClass,
 	horizontalDeadzone: number,

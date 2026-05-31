@@ -8,11 +8,52 @@ local Terrain = workspace.Terrain
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
+local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
-local CameraShaker = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("EZCameraShake"))
+local CameraShaker =
+	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("EZCameraShake"))
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local WeatherServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).WeatherService
+
+local function sendPacket(methodName: string, ...: any)
+	local packet = WeatherServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for WeatherService`)
+		return
+	end
+
+	packet.send(PacketPayload.pack(...))
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = WeatherServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for WeatherService`)
+		return
+	end
+
+	packet.listen(function(payload: any)
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "applyState")
+	bindPacket(self, "requestSync")
+end
+
 local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.WeatherServiceUtils)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =
@@ -1230,7 +1271,7 @@ function WeatherServiceClient.ApplyState(self: WeatherServiceClient, stateRaw: a
 end
 
 function WeatherServiceClient.RequestSync(self: WeatherServiceClient)
-	self.networker:fire(WeatherServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
+	sendPacket(WeatherServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
 function WeatherServiceClient.CleanupVisualRuntime(self: WeatherServiceClient)
@@ -1275,7 +1316,7 @@ end
 
 function WeatherServiceClient.Init(self: WeatherServiceClient)
 	self.localPlayer = Players.LocalPlayer
-	self.networker = Networker.client.new("WeatherService", self)
+	bindPackets(self)
 	self.janitor = Janitor.new()
 	self.random = Random.new()
 
@@ -1311,9 +1352,6 @@ function WeatherServiceClient.Init(self: WeatherServiceClient)
 	self.cloudTransitionSeconds = self.state.cloudTransitionSeconds
 	self:initializeCameraShaker()
 
-	self.janitor:GiveChore(function()
-		self.networker:destroy()
-	end)
 	self.janitor:GiveChore(function()
 		self:cleanupVisualRuntime()
 	end)
@@ -1383,7 +1421,6 @@ WeatherServiceClient.destroy = WeatherServiceClient.Destroy
 
 type WeatherServiceClient = typeof(WeatherServiceClient) & {
 	localPlayer: Player,
-	networker: Networker.Client,
 	janitor: JanitorClass,
 	random: Random,
 	state: WeatherServiceState,

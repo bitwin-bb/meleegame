@@ -3,12 +3,58 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Cmdr.CmdrUtils)
+local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Features.commander.CmdrUtils)
 local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.health.HpServiceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local PlayerDataServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerDataServiceServer)
-local PlayerServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local HpServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).HpService
+
+local function sendPacket(player: Player, methodName: string, ...: any)
+	local packet = HpServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for HpService`)
+		return
+	end
+
+	packet.sendTo(PacketPayload.pack(...), player)
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = HpServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for HpService`)
+		return
+	end
+
+	packet.listen(function(payload: any, player: Player?)
+		if player == nil then
+			return
+		end
+
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, player, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "requestSync")
+end
+
+local PlayerDataServiceServer =
+	require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceServer)
+local PlayerServiceServer = (require :: any)(
+	script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer
+)
 
 type HpServiceState = HpServiceUtils.HpServiceState
 
@@ -75,9 +121,7 @@ local function applyHumanoidPresentationSettings(humanoid: Humanoid)
 end
 
 function HpServiceServer.Init(self: HpServiceServer)
-	self.networker = Networker.server.new("HpService", self, {
-		self.RequestSync,
-	})
+	bindPackets(self)
 	self.playerRuntimes = {}
 	self.heartValue = HpServiceUtils.DEFAULT_HEART_VALUE
 	self.playerDataService = PlayerDataServiceServer :: PlayerDataServiceServerObject
@@ -166,7 +210,7 @@ end
 
 function HpServiceServer.PushState(self: HpServiceServer, player: Player)
 	local runtime = self:getRuntime(player)
-	self.networker:fire(player, "applyState", HpServiceUtils.cloneState(runtime.state))
+	sendPacket(player, "applyState", HpServiceUtils.cloneState(runtime.state))
 end
 
 function HpServiceServer.PersistRuntime(self: HpServiceServer, player: Player, runtime: PlayerRuntime): boolean
@@ -664,10 +708,6 @@ function HpServiceServer.Destroy(self: HpServiceServer)
 		runtime.characterJanitor:Destroy()
 		self.playerRuntimes[player] = nil
 	end
-
-	if self.networker then
-		self.networker:destroy()
-	end
 end
 
 HpServiceServer.init = HpServiceServer.Init
@@ -695,7 +735,6 @@ HpServiceServer.healPlayer = HpServiceServer.HealPlayer
 HpServiceServer.destroy = HpServiceServer.Destroy
 
 export type HpServiceServer = typeof(HpServiceServer) & {
-	networker: Networker.Server,
 	playerRuntimes: { [Player]: PlayerRuntime },
 	heartValue: number,
 	playerDataService: PlayerDataServiceServerObject,

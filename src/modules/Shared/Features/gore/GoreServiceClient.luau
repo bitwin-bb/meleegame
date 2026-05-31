@@ -7,7 +7,50 @@ local Workspace = game:GetService("Workspace")
 local Gore = require(script:FindFirstAncestor("game").Shared.Features.gore.classes.Gore)
 local GoreServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.gore.GoreServiceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local GoreServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).GoreService
+
+local function sendPacket(methodName: string, ...: any)
+	local packet = GoreServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for GoreService`)
+		return
+	end
+
+	packet.send(PacketPayload.pack(...))
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = GoreServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for GoreService`)
+		return
+	end
+
+	packet.listen(function(payload: any)
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "destroyLimb")
+	bindPacket(self, "emitBlood")
+	bindPacket(self, "registerEntity")
+	bindPacket(self, "removeEntity")
+	bindPacket(self, "setBloodColor")
+	bindPacket(self, "spawnGibs")
+end
 
 type JanitorClass = {
 	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
@@ -116,7 +159,7 @@ function GoreServiceClient.RegisterEntity(
 		return nil
 	end
 
-	local config = if typeof(configRaw) == "table" then Sift.Dictionary.copy(configRaw) else ({} :: any)
+	local config = if typeof(configRaw) == "table" then Sift.Dictionary.copy(configRaw) else {} :: any
 	local model = if isModel(modelRaw) then modelRaw :: Model else self:resolveModelFromEntityId(entityId)
 	if model == nil then
 		self.pendingEntityConfigById[entityId] = config
@@ -220,7 +263,7 @@ function GoreServiceClient.SpawnGibs(
 		end
 	end
 
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 	local spawned = 0
 	for index = 1, gibCount do
 		local part = sourcePart
@@ -254,16 +297,13 @@ function GoreServiceClient.Init(self: GoreServiceClient)
 	if self.janitor ~= nil then
 		return
 	end
-	self.networker = Networker.client.new("GoreService", self)
+	bindPackets(self)
 	self.janitor = Janitor.new()
 	self.random = Random.new()
 	self.controllersByEntityId = {} :: { [string]: Gore.Gore }
 	self.pendingEntityConfigById = {} :: { [string]: { [string]: any } }
 	self.isDestroyed = false
 
-	self.janitor:GiveChore(function()
-		self.networker:destroy()
-	end)
 	self.janitor:GiveChore(function()
 		for _, controller in pairs(self.controllersByEntityId :: { [string]: Gore.Gore? }) do
 			if controller ~= nil then
@@ -286,7 +326,7 @@ function GoreServiceClient.Init(self: GoreServiceClient)
 		end
 	end)
 
-	self.networker:fire(GoreServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
+	sendPacket(GoreServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
 function GoreServiceClient.Destroy(self: GoreServiceClient)
@@ -312,7 +352,6 @@ GoreServiceClient.destroy = GoreServiceClient.Destroy
 type GoreServiceClient = typeof(GoreServiceClient) & {
 	resolveModelFromEntityId: (self: GoreServiceClient, entityIdRaw: any) -> Model?,
 	tryResolvePendingEntity: (self: GoreServiceClient, entityIdRaw: any) -> Gore.Gore?,
-	networker: Networker.Client,
 	janitor: any,
 	random: Random,
 	controllersByEntityId: { [string]: Gore.Gore? },

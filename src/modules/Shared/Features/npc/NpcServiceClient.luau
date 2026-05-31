@@ -3,7 +3,50 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local NpcServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).NpcService
+
+local function sendPacket(methodName: string, ...: any)
+	local packet = NpcServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for NpcService`)
+		return
+	end
+
+	packet.send(PacketPayload.pack(...))
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = NpcServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for NpcService`)
+		return
+	end
+
+	packet.listen(function(payload: any)
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "applyState")
+	bindPacket(self, "onNpcAdded")
+	bindPacket(self, "onNpcRemoved")
+	bindPacket(self, "onNpcStateChanged")
+	bindPacket(self, "requestSync")
+end
+
 local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceUtils)
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local Signal = require(ReplicatedStorage.Packages.Signal)
@@ -158,7 +201,7 @@ function NpcServiceClient.OnNpcStateChanged(self: NpcServiceClient, snapshotRaw:
 end
 
 function NpcServiceClient.RequestSync(self: NpcServiceClient)
-	self.networker:fire(NpcServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
+	sendPacket(NpcServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
 function NpcServiceClient.GetState(self: NpcServiceClient): NpcServiceClientState
@@ -167,7 +210,7 @@ end
 
 function NpcServiceClient.Init(self: NpcServiceClient)
 	self.localPlayer = Players.LocalPlayer
-	self.networker = Networker.client.new("NpcService", self)
+	bindPackets(self)
 	self.janitor = Janitor.new()
 	self.stateChanged = Signal.new()
 	self.state = {
@@ -176,9 +219,6 @@ function NpcServiceClient.Init(self: NpcServiceClient)
 		updatedAt = os.clock(),
 	}
 
-	self.janitor:GiveChore(function()
-		self.networker:destroy()
-	end)
 	self.janitor:GiveChore(function()
 		self.stateChanged:Destroy()
 	end)
@@ -205,7 +245,6 @@ NpcServiceClient.destroy = NpcServiceClient.Destroy
 
 type NpcServiceClient = typeof(NpcServiceClient) & {
 	localPlayer: Player,
-	networker: Networker.Client,
 	janitor: JanitorClass,
 	stateChanged: SignalObject,
 	state: NpcServiceClientState,

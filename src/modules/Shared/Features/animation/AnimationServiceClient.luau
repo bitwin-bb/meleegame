@@ -5,7 +5,49 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local AnimationServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.animation.AnimationServiceUtils)
 local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceClient)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local AnimationServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).AnimationService
+
+local function sendPacket(methodName: string, ...: any)
+	local packet = AnimationServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for AnimationService`)
+		return
+	end
+
+	packet.send(PacketPayload.pack(...))
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = AnimationServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for AnimationService`)
+		return
+	end
+
+	packet.listen(function(payload: any)
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "applyState")
+	bindPacket(self, "requestSync")
+	bindPacket(self, "setFootstepsEnabled")
+	bindPacket(self, "setProfile")
+end
+
 local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceUtils)
 
 type AnimationClipConfig = AnimationServiceUtils.AnimationClipConfig
@@ -127,7 +169,7 @@ end
 
 function AnimationServiceClient.Init(self: AnimationServiceClient)
 	self.localPlayer = Players.LocalPlayer
-	self.networker = Networker.client.new("AnimationService", self)
+	bindPackets(self)
 	self.janitor = Janitor.new()
 	self.characterJanitor = Janitor.new()
 	self.runtimeJanitor = Janitor.new()
@@ -139,9 +181,6 @@ function AnimationServiceClient.Init(self: AnimationServiceClient)
 
 	self.janitor:GiveChore(self.characterJanitor)
 	self.characterJanitor:GiveChore(self.runtimeJanitor)
-	self.janitor:GiveChore(function()
-		self.networker:destroy()
-	end)
 
 	self.janitor:GiveChore(self.localPlayer.CharacterAdded:Connect(function(character: Model)
 		self:onCharacterAdded(character)
@@ -164,7 +203,7 @@ function AnimationServiceClient.Init(self: AnimationServiceClient)
 		self:onCharacterAdded(self.localPlayer.Character)
 	end
 
-	self.networker:fire("requestSync")
+	sendPacket("requestSync")
 end
 
 function AnimationServiceClient.OnCharacterAdded(self: AnimationServiceClient, character: Model)
@@ -536,15 +575,15 @@ function AnimationServiceClient.ApplyState(self: AnimationServiceClient, profile
 end
 
 function AnimationServiceClient.SetProfile(self: AnimationServiceClient, profileName: string)
-	self.networker:fire("setProfile", profileName)
+	sendPacket("setProfile", profileName)
 end
 
 function AnimationServiceClient.SetFootstepsEnabled(self: AnimationServiceClient, enabled: boolean)
-	self.networker:fire("setFootstepsEnabled", enabled)
+	sendPacket("setFootstepsEnabled", enabled)
 end
 
 function AnimationServiceClient.RequestSync(self: AnimationServiceClient)
-	self.networker:fire("requestSync")
+	sendPacket("requestSync")
 end
 
 function AnimationServiceClient.Destroy(self: AnimationServiceClient)
@@ -580,7 +619,6 @@ AnimationServiceClient.destroy = AnimationServiceClient.Destroy
 
 type AnimationServiceClient = typeof(AnimationServiceClient) & {
 	localPlayer: Player,
-	networker: Networker.Client,
 	janitor: JanitorClass,
 	characterJanitor: JanitorClass,
 	runtimeJanitor: JanitorClass,

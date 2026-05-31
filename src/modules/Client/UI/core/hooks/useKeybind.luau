@@ -3,8 +3,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
 local Cleanup = require(script.Parent.internal.cleanup)
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
-local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlatformServiceUtils)
+local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
+local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceUtils)
 local React = require(ReplicatedStorage.Packages.React)
 local useStableCallback = require(script.Parent.internal.useStableCallback)
 

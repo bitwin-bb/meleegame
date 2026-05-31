@@ -1,6 +1,7 @@
 --!strict
 
 local Noise = require(script:FindFirstAncestor("game").Shared.Core.Math.Noise)
+local BiomeConstants = require(script.Parent.BiomeConstants)
 
 local Biome = {}
 Biome.__index = Biome
@@ -76,111 +77,6 @@ export type BiomeConfig = {
 	snowConfig: any?,
 }
 
-local DEFAULT_SURFACE_BASE_HEIGHT = 18
-local DEFAULT_SURFACE_AMPLITUDE = 22
-local DEFAULT_SURFACE_FREQUENCY = 0.012
-local DEFAULT_SURFACE_OCTAVES = 4
-local DEFAULT_SURFACE_LACUNARITY = 2.1
-local DEFAULT_SURFACE_PERSISTENCE = 0.48
-local DEFAULT_RIDGE_FREQUENCY = 0.028
-local DEFAULT_RIDGE_AMPLITUDE = 6
-local DEFAULT_BIOME_FREQUENCY = 0.0035
-local DEFAULT_BIOME_OCTAVES = 3
-local DEFAULT_BIOME_LACUNARITY = 2
-local DEFAULT_BIOME_PERSISTENCE = 0.52
-local DEFAULT_STONE_DEPTH_MIN = 10
-local DEFAULT_STONE_DEPTH_MAX = 28
-local DEFAULT_CORRUPTION_FREQUENCY = 0.0021
-local DEFAULT_CORRUPTION_OCTAVES = 3
-local DEFAULT_CORRUPTION_LACUNARITY = 2.05
-local DEFAULT_CORRUPTION_PERSISTENCE = 0.54
-local DEFAULT_CORRUPTION_THRESHOLD = 0.44
-local DEFAULT_CORRUPTION_RADIUS_START = 180
-local DEFAULT_CORRUPTION_DISTANCE_SCALE = 0.0022
-
-local SEED_X_MULTIPLIER = 0.000137
-local SEED_Y_MULTIPLIER = 0.000271
-local TEMPERATURE_OFFSET = 71.217
-local HUMIDITY_OFFSET = 143.903
-local SURFACE_OFFSET = 233.119
-local SURFACE_SMOOTH_CENTER_WEIGHT = 5
-local SURFACE_SMOOTH_NEAR_WEIGHT = 2
-local SURFACE_SMOOTH_FAR_WEIGHT = 1
-local SURFACE_MAX_NEIGHBOR_STEP_TILES = 3
-local SURFACE_SLOPE_LIMIT_RADIUS_TILES = 10
-local BIOME_DEPTH_SAMPLE_SCALE = 18
-local RIDGE_OFFSET = 319.727
-local STONE_DEPTH_OFFSET = 421.519
-local CORRUPTION_PRIMARY_OFFSET = 541.913
-local CORRUPTION_SECONDARY_OFFSET = 637.271
-local CORRUPTION_DETAIL_OFFSET_X = 733.849
-local CORRUPTION_DETAIL_OFFSET_Y = 829.413
-local JUNGLE_PRIMARY_OFFSET = 913.267
-local JUNGLE_DETAIL_OFFSET_X = 1049.733
-local JUNGLE_DETAIL_OFFSET_Y = 1171.221
-local JUNGLE_HUMIDITY_MIN = -0.08
-local JUNGLE_REGION_THRESHOLD = 0.19
-local JUNGLE_SIDE_OFFSET = 1267.531
-local JUNGLE_MODE_OFFSET = 1393.117
-local JUNGLE_ANCHOR_OFFSET = 1519.881
-local JUNGLE_BAND_NOISE_OFFSET = 1673.447
-local JUNGLE_BAND_HALF_WIDTH_MIN = 90
-local JUNGLE_BAND_HALF_WIDTH_MAX = 220
-local JUNGLE_BAND_FEATHER_WIDTH = 110
-local DESERT_SIDE_OFFSET = 1827.913
-local DESERT_ANCHOR_OFFSET = 1949.307
-local DESERT_BAND_NOISE_OFFSET = 2063.771
-local DESERT_BAND_HALF_WIDTH_MIN = 110
-local DESERT_BAND_HALF_WIDTH_MAX = 240
-local DESERT_BAND_FEATHER_WIDTH = 125
-local DESERT_HUMIDITY_MAX = 0.32
-local DESERT_TEMPERATURE_MIN = -0.08
-local DESERT_REGION_THRESHOLD = 0.22
-local DEFAULT_DESERT_HEIGHT_OFFSET = -3
-local DEFAULT_DESERT_DUNE_AMPLITUDE = 8.5
-local DEFAULT_DESERT_DUNE_FREQUENCY = 0.0052
-local DEFAULT_DESERT_DUNE_OCTAVES = 3
-local DEFAULT_DESERT_DUNE_LACUNARITY = 1.92
-local DEFAULT_DESERT_DUNE_PERSISTENCE = 0.52
-local DEFAULT_DESERT_DETAIL_AMPLITUDE = 1.85
-local DEFAULT_DESERT_DETAIL_FREQUENCY = 0.018
-local DEFAULT_DESERT_BASE_TERRAIN_INFLUENCE = 0.22
-local DEFAULT_DESERT_STONE_DEPTH_OFFSET = 3
-local DEFAULT_DESERT_SUBSURFACE_SAND_DEPTH = 7
-local DEFAULT_DESERT_SANDSTONE_DEPTH = 16
-local SNOW_SIDE_OFFSET = 2147.331
-local SNOW_ANCHOR_OFFSET = 2261.117
-local SNOW_BAND_MACRO_OFFSET = 2379.541
-local SNOW_BAND_BORDER_OFFSET = 2497.873
-local SNOW_DETAIL_OFFSET = 2611.409
-local SNOW_ICE_OFFSET = 2729.667
-local DEFAULT_SNOW_REGION_WEIGHT = 1.08
-local DEFAULT_SNOW_TEMPERATURE_MAX = 0.18
-local DEFAULT_SNOW_HUMIDITY_MAX = 0.42
-local DEFAULT_SNOW_REGION_THRESHOLD = 0.2
-local DEFAULT_SNOW_BAND_HALF_WIDTH_MIN = 120
-local DEFAULT_SNOW_BAND_HALF_WIDTH_MAX = 235
-local DEFAULT_SNOW_BAND_FEATHER_WIDTH = 132
-local DEFAULT_SNOW_ANCHOR_DISTANCE_BASE = 220
-local DEFAULT_SNOW_ANCHOR_DISTANCE_JITTER = 108
-local DEFAULT_SNOW_MACRO_FREQUENCY_SCALE = 0.88
-local DEFAULT_SNOW_BORDER_FREQUENCY_SCALE = 1.38
-local DEFAULT_SNOW_DETAIL_FREQUENCY_SCALE = 2.16
-local DEFAULT_SNOW_HEIGHT_OFFSET = 0
-local DEFAULT_SNOW_SMOOTHED_RIDGE_SCALE = 0.78
-local DEFAULT_SNOW_STONE_DEPTH_OFFSET = 2
-local DEFAULT_SNOW_CAP_DEPTH = 3
-local DEFAULT_SNOW_COLD_SOIL_DEPTH = 6
-local DEFAULT_SNOW_ICE_DEPTH_START = 11
-local DEFAULT_SNOW_ICE_BAND_THICKNESS = 10
-local DEFAULT_SNOW_ICE_DENSITY = 0.34
-local DEFAULT_SNOW_PACKED_SNOW_DENSITY = 0.52
-
-local DEFAULT_BIOME_TYPE: BiomeTypeMap = {
-	NORMAL = 1,
-	CORRUPTION = 2,
-}
-
 local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
@@ -224,8 +120,8 @@ local function sampleOctaveNoise(
 		local sampleFrequency = baseFrequency * frequency
 		return math.noise(
 			(x + offsetX + octave * 0.73) * sampleFrequency,
-			offsetY + octave * 3.11 + seed * SEED_Y_MULTIPLIER,
-			seed * SEED_X_MULTIPLIER + octave * 0.17
+			offsetY + octave * 3.11 + seed * BiomeConstants.SEED_Y_MULTIPLIER,
+			seed * BiomeConstants.SEED_X_MULTIPLIER + octave * 0.17
 		)
 	end)
 end
@@ -246,7 +142,7 @@ local function sampleOctaveNoise3D(
 		return math.noise(
 			(x + offsetX + octave * 0.73) * sampleFrequency,
 			(z + offsetZ + octave * 0.41) * sampleFrequency,
-			seed * SEED_X_MULTIPLIER + octave * 0.17
+			seed * BiomeConstants.SEED_X_MULTIPLIER + octave * 0.17
 		)
 	end)
 end
@@ -312,33 +208,33 @@ local function sampleCorruptionScore(self: Biome, tileX: number, surfaceY: numbe
 		self.seed + 971,
 		tileX,
 		surfaceDepthRaw,
-		BIOME_DEPTH_SAMPLE_SCALE,
+		BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE,
 		self.corruptionFrequency,
 		self.corruptionOctaves,
 		self.corruptionLacunarity,
 		self.corruptionPersistence,
-		CORRUPTION_PRIMARY_OFFSET,
+		BiomeConstants.CORRUPTION_PRIMARY_OFFSET,
 		37.21,
-		CORRUPTION_PRIMARY_OFFSET + 209.47
+		BiomeConstants.CORRUPTION_PRIMARY_OFFSET + 209.47
 	)
 	local secondaryNoise = sampleDepthAwareOctaveNoise(
 		self.seed - 563,
 		tileX,
 		surfaceDepthRaw,
-		BIOME_DEPTH_SAMPLE_SCALE,
+		BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE,
 		self.corruptionFrequency * 0.48,
 		2,
 		2,
 		0.5,
-		CORRUPTION_SECONDARY_OFFSET,
+		BiomeConstants.CORRUPTION_SECONDARY_OFFSET,
 		81.37,
-		CORRUPTION_SECONDARY_OFFSET + 187.83
+		BiomeConstants.CORRUPTION_SECONDARY_OFFSET + 187.83
 	)
-	local _, surfaceDepth = resolveDepthNoiseSample(surfaceDepthRaw, BIOME_DEPTH_SAMPLE_SCALE)
+	local _, surfaceDepth = resolveDepthNoiseSample(surfaceDepthRaw, BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE)
 	local detailNoise = math.noise(
-		(tileX + CORRUPTION_DETAIL_OFFSET_X) * (self.corruptionFrequency * 1.33),
-		(surfaceY + CORRUPTION_DETAIL_OFFSET_Y) * 0.016,
-		surfaceDepth * 0.019 + self.seed * SEED_X_MULTIPLIER
+		(tileX + BiomeConstants.CORRUPTION_DETAIL_OFFSET_X) * (self.corruptionFrequency * 1.33),
+		(surfaceY + BiomeConstants.CORRUPTION_DETAIL_OFFSET_Y) * 0.016,
+		surfaceDepth * 0.019 + self.seed * BiomeConstants.SEED_X_MULTIPLIER
 	)
 	local distanceBias =
 		math.clamp(math.max(0, math.abs(tileX) - self.corruptionRadiusStart) * self.corruptionDistanceScale, 0, 0.52)
@@ -357,20 +253,20 @@ local function sampleJungleScore(
 		self.seed + 1873,
 		tileX,
 		surfaceDepthRaw,
-		BIOME_DEPTH_SAMPLE_SCALE,
+		BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE,
 		self.biomeFrequency * 0.92,
 		math.max(2, self.biomeOctaves - 1),
 		self.biomeLacunarity,
 		self.biomePersistence,
-		JUNGLE_PRIMARY_OFFSET,
+		BiomeConstants.JUNGLE_PRIMARY_OFFSET,
 		129.53,
-		JUNGLE_PRIMARY_OFFSET + 233.19
+		BiomeConstants.JUNGLE_PRIMARY_OFFSET + 233.19
 	)
-	local _, surfaceDepth = resolveDepthNoiseSample(surfaceDepthRaw, BIOME_DEPTH_SAMPLE_SCALE)
+	local _, surfaceDepth = resolveDepthNoiseSample(surfaceDepthRaw, BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE)
 	local jungleDetailNoise = math.noise(
-		(tileX + JUNGLE_DETAIL_OFFSET_X) * (self.biomeFrequency * 1.41),
-		JUNGLE_DETAIL_OFFSET_Y + surfaceDepth * 0.021,
-		self.seed * SEED_X_MULTIPLIER
+		(tileX + BiomeConstants.JUNGLE_DETAIL_OFFSET_X) * (self.biomeFrequency * 1.41),
+		BiomeConstants.JUNGLE_DETAIL_OFFSET_Y + surfaceDepth * 0.021,
+		self.seed * BiomeConstants.SEED_X_MULTIPLIER
 	)
 	local humidityScore = humidity * 0.42
 	local warmthScore = temperature * 0.08
@@ -381,21 +277,21 @@ local function sampleJungleScore(
 end
 
 local function resolveJunglePlacement(self: Biome): (number, number, number, number, string)
-	local sideNoise = math.noise(self.seed * SEED_X_MULTIPLIER + JUNGLE_SIDE_OFFSET, 19.37, 71.19)
+	local sideNoise = math.noise(self.seed * BiomeConstants.SEED_X_MULTIPLIER + BiomeConstants.JUNGLE_SIDE_OFFSET, 19.37, 71.19)
 	local preferredSideSign = if sideNoise >= 0 then 1 else -1
 
-	local modeNoise = math.noise(self.seed * SEED_Y_MULTIPLIER + JUNGLE_MODE_OFFSET, 43.21, 12.08)
+	local modeNoise = math.noise(self.seed * BiomeConstants.SEED_Y_MULTIPLIER + BiomeConstants.JUNGLE_MODE_OFFSET, 43.21, 12.08)
 	local placementMode = if modeNoise >= 0 then 2 else 1
 
-	local anchorNoise = math.noise(self.seed * 0.001173 + JUNGLE_ANCHOR_OFFSET, 0, 0)
-	local widthNoise = math.noise(self.seed * 0.001571 + JUNGLE_ANCHOR_OFFSET + 33.7, 0, 0)
+	local anchorNoise = math.noise(self.seed * 0.001173 + BiomeConstants.JUNGLE_ANCHOR_OFFSET, 0, 0)
+	local widthNoise = math.noise(self.seed * 0.001571 + BiomeConstants.JUNGLE_ANCHOR_OFFSET + 33.7, 0, 0)
 
 	local bandHalfWidth = math.floor(
 		math.clamp(
-			JUNGLE_BAND_HALF_WIDTH_MIN
-				+ (widthNoise + 1) * 0.5 * (JUNGLE_BAND_HALF_WIDTH_MAX - JUNGLE_BAND_HALF_WIDTH_MIN),
-			JUNGLE_BAND_HALF_WIDTH_MIN,
-			JUNGLE_BAND_HALF_WIDTH_MAX
+			BiomeConstants.JUNGLE_BAND_HALF_WIDTH_MIN
+				+ (widthNoise + 1) * 0.5 * (BiomeConstants.JUNGLE_BAND_HALF_WIDTH_MAX - BiomeConstants.JUNGLE_BAND_HALF_WIDTH_MIN),
+			BiomeConstants.JUNGLE_BAND_HALF_WIDTH_MIN,
+			BiomeConstants.JUNGLE_BAND_HALF_WIDTH_MAX
 		)
 	)
 
@@ -420,37 +316,37 @@ local function sampleJungleBandWeight(self: Biome, tileX: number, surfaceDepthRa
 		return 0
 	end
 
-	local useDepthNoise, surfaceDepth = resolveDepthNoiseSample(surfaceDepthRaw, BIOME_DEPTH_SAMPLE_SCALE)
+	local useDepthNoise, surfaceDepth = resolveDepthNoiseSample(surfaceDepthRaw, BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE)
 	local sideDistance = math.abs(tileX)
 	local anchorWarp = if useDepthNoise
 		then math.noise(
-			(tileX + JUNGLE_ANCHOR_OFFSET) * (self.biomeFrequency * 0.72),
-			(surfaceDepth + JUNGLE_MODE_OFFSET) * (self.biomeFrequency * 0.72),
-			self.seed * SEED_X_MULTIPLIER
-		) * JUNGLE_BAND_FEATHER_WIDTH * 0.45
+			(tileX + BiomeConstants.JUNGLE_ANCHOR_OFFSET) * (self.biomeFrequency * 0.72),
+			(surfaceDepth + BiomeConstants.JUNGLE_MODE_OFFSET) * (self.biomeFrequency * 0.72),
+			self.seed * BiomeConstants.SEED_X_MULTIPLIER
+		) * BiomeConstants.JUNGLE_BAND_FEATHER_WIDTH * 0.45
 		else 0
 	local distanceFromAnchor = math.abs(sideDistance - (self.jungleAnchorDistance + anchorWarp))
-	local fullWidth = self.jungleBandHalfWidth + JUNGLE_BAND_FEATHER_WIDTH
+	local fullWidth = self.jungleBandHalfWidth + BiomeConstants.JUNGLE_BAND_FEATHER_WIDTH
 	if distanceFromAnchor > fullWidth then
 		return 0
 	end
 
 	local coreAlpha = 1 - math.clamp(distanceFromAnchor / self.jungleBandHalfWidth, 0, 1)
 	local featherAlpha = 1
-		- math.clamp((distanceFromAnchor - self.jungleBandHalfWidth) / JUNGLE_BAND_FEATHER_WIDTH, 0, 1)
+		- math.clamp((distanceFromAnchor - self.jungleBandHalfWidth) / BiomeConstants.JUNGLE_BAND_FEATHER_WIDTH, 0, 1)
 
 	local bandNoise = sampleDepthAwareOctaveNoise(
 		self.seed + 2441,
 		tileX,
 		surfaceDepthRaw,
-		BIOME_DEPTH_SAMPLE_SCALE,
+		BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE,
 		self.biomeFrequency * 1.21,
 		2,
 		2,
 		0.5,
-		JUNGLE_BAND_NOISE_OFFSET,
+		BiomeConstants.JUNGLE_BAND_NOISE_OFFSET,
 		57.37,
-		JUNGLE_BAND_NOISE_OFFSET + 271.43
+		BiomeConstants.JUNGLE_BAND_NOISE_OFFSET + 271.43
 	)
 
 	return math.clamp(coreAlpha * 0.78 + featherAlpha * 0.34 + bandNoise * 0.19, 0, 1)
@@ -459,18 +355,18 @@ end
 local function resolveDesertPlacement(self: Biome): (number, number, number)
 	local preferredSideSign = -self.junglePreferredSideSign
 	if preferredSideSign == 0 then
-		local sideNoise = math.noise(self.seed * SEED_X_MULTIPLIER + DESERT_SIDE_OFFSET, 57.81, 21.17)
+		local sideNoise = math.noise(self.seed * BiomeConstants.SEED_X_MULTIPLIER + BiomeConstants.DESERT_SIDE_OFFSET, 57.81, 21.17)
 		preferredSideSign = if sideNoise >= 0 then 1 else -1
 	end
 
-	local anchorNoise = math.noise(self.seed * 0.001391 + DESERT_ANCHOR_OFFSET, 0, 0)
-	local widthNoise = math.noise(self.seed * 0.001713 + DESERT_ANCHOR_OFFSET + 41.3, 0, 0)
+	local anchorNoise = math.noise(self.seed * 0.001391 + BiomeConstants.DESERT_ANCHOR_OFFSET, 0, 0)
+	local widthNoise = math.noise(self.seed * 0.001713 + BiomeConstants.DESERT_ANCHOR_OFFSET + 41.3, 0, 0)
 	local bandHalfWidth = math.floor(
 		math.clamp(
-			DESERT_BAND_HALF_WIDTH_MIN
-				+ (widthNoise + 1) * 0.5 * (DESERT_BAND_HALF_WIDTH_MAX - DESERT_BAND_HALF_WIDTH_MIN),
-			DESERT_BAND_HALF_WIDTH_MIN,
-			DESERT_BAND_HALF_WIDTH_MAX
+			BiomeConstants.DESERT_BAND_HALF_WIDTH_MIN
+				+ (widthNoise + 1) * 0.5 * (BiomeConstants.DESERT_BAND_HALF_WIDTH_MAX - BiomeConstants.DESERT_BAND_HALF_WIDTH_MIN),
+			BiomeConstants.DESERT_BAND_HALF_WIDTH_MIN,
+			BiomeConstants.DESERT_BAND_HALF_WIDTH_MAX
 		)
 	)
 
@@ -486,37 +382,37 @@ local function sampleDesertBandWeight(self: Biome, tileX: number, surfaceDepthRa
 		return 0
 	end
 
-	local useDepthNoise, surfaceDepth = resolveDepthNoiseSample(surfaceDepthRaw, BIOME_DEPTH_SAMPLE_SCALE)
+	local useDepthNoise, surfaceDepth = resolveDepthNoiseSample(surfaceDepthRaw, BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE)
 	local sideDistance = math.abs(tileX)
 	local anchorWarp = if useDepthNoise
 		then math.noise(
-			(tileX + DESERT_ANCHOR_OFFSET) * (self.biomeFrequency * 0.68),
-			(surfaceDepth + DESERT_SIDE_OFFSET) * (self.biomeFrequency * 0.68),
-			self.seed * SEED_X_MULTIPLIER
-		) * DESERT_BAND_FEATHER_WIDTH * 0.42
+			(tileX + BiomeConstants.DESERT_ANCHOR_OFFSET) * (self.biomeFrequency * 0.68),
+			(surfaceDepth + BiomeConstants.DESERT_SIDE_OFFSET) * (self.biomeFrequency * 0.68),
+			self.seed * BiomeConstants.SEED_X_MULTIPLIER
+		) * BiomeConstants.DESERT_BAND_FEATHER_WIDTH * 0.42
 		else 0
 	local distanceFromAnchor = math.abs(sideDistance - (self.desertAnchorDistance + anchorWarp))
-	local fullWidth = self.desertBandHalfWidth + DESERT_BAND_FEATHER_WIDTH
+	local fullWidth = self.desertBandHalfWidth + BiomeConstants.DESERT_BAND_FEATHER_WIDTH
 	if distanceFromAnchor > fullWidth then
 		return 0
 	end
 
 	local coreAlpha = 1 - math.clamp(distanceFromAnchor / self.desertBandHalfWidth, 0, 1)
 	local featherAlpha = 1
-		- math.clamp((distanceFromAnchor - self.desertBandHalfWidth) / DESERT_BAND_FEATHER_WIDTH, 0, 1)
+		- math.clamp((distanceFromAnchor - self.desertBandHalfWidth) / BiomeConstants.DESERT_BAND_FEATHER_WIDTH, 0, 1)
 
 	local bandNoise = sampleDepthAwareOctaveNoise(
 		self.seed + 3181,
 		tileX,
 		surfaceDepthRaw,
-		BIOME_DEPTH_SAMPLE_SCALE,
+		BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE,
 		self.biomeFrequency * 1.06,
 		math.max(2, self.biomeOctaves - 1),
 		self.biomeLacunarity,
 		self.biomePersistence,
-		DESERT_BAND_NOISE_OFFSET,
+		BiomeConstants.DESERT_BAND_NOISE_OFFSET,
 		63.19,
-		DESERT_BAND_NOISE_OFFSET + 241.17
+		BiomeConstants.DESERT_BAND_NOISE_OFFSET + 241.17
 	)
 
 	return math.clamp(coreAlpha * 0.84 + featherAlpha * 0.28 + bandNoise * 0.16, 0, 1)
@@ -525,12 +421,12 @@ end
 local function resolveSnowPlacement(self: Biome): (number, number, number)
 	local preferredSideSign = self.junglePreferredSideSign
 	if preferredSideSign == 0 then
-		local sideNoise = math.noise(self.seed * SEED_X_MULTIPLIER + SNOW_SIDE_OFFSET, 61.53, 37.91)
+		local sideNoise = math.noise(self.seed * BiomeConstants.SEED_X_MULTIPLIER + BiomeConstants.SNOW_SIDE_OFFSET, 61.53, 37.91)
 		preferredSideSign = if sideNoise >= 0 then 1 else -1
 	end
 
-	local anchorNoise = math.noise(self.seed * 0.001913 + SNOW_ANCHOR_OFFSET, 0, 0)
-	local widthNoise = math.noise(self.seed * 0.002173 + SNOW_ANCHOR_OFFSET + 27.4, 0, 0)
+	local anchorNoise = math.noise(self.seed * 0.001913 + BiomeConstants.SNOW_ANCHOR_OFFSET, 0, 0)
+	local widthNoise = math.noise(self.seed * 0.002173 + BiomeConstants.SNOW_ANCHOR_OFFSET + 27.4, 0, 0)
 	local bandHalfWidth = math.floor(
 		math.clamp(
 			self.snowBandHalfWidthMin + (widthNoise + 1) * 0.5 * (self.snowBandHalfWidthMax - self.snowBandHalfWidthMin),
@@ -551,13 +447,13 @@ local function sampleSnowBandWeight(self: Biome, tileX: number, surfaceDepthRaw:
 		return 0
 	end
 
-	local useDepthNoise, surfaceDepth = resolveDepthNoiseSample(surfaceDepthRaw, BIOME_DEPTH_SAMPLE_SCALE)
+	local useDepthNoise, surfaceDepth = resolveDepthNoiseSample(surfaceDepthRaw, BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE)
 	local sideDistance = math.abs(tileX)
 	local anchorWarp = if useDepthNoise
 		then math.noise(
-			(tileX + SNOW_ANCHOR_OFFSET) * (self.biomeFrequency * 0.7),
-			(surfaceDepth + SNOW_SIDE_OFFSET) * (self.biomeFrequency * 0.7),
-			self.seed * SEED_X_MULTIPLIER
+			(tileX + BiomeConstants.SNOW_ANCHOR_OFFSET) * (self.biomeFrequency * 0.7),
+			(surfaceDepth + BiomeConstants.SNOW_SIDE_OFFSET) * (self.biomeFrequency * 0.7),
+			self.seed * BiomeConstants.SEED_X_MULTIPLIER
 		) * self.snowBandFeatherWidth * 0.44
 		else 0
 	local distanceFromAnchor = math.abs(sideDistance - (self.snowAnchorDistance + anchorWarp))
@@ -573,32 +469,32 @@ local function sampleSnowBandWeight(self: Biome, tileX: number, surfaceDepthRaw:
 		self.seed + 3511,
 		tileX,
 		surfaceDepthRaw,
-		BIOME_DEPTH_SAMPLE_SCALE,
+		BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE,
 		self.biomeFrequency * self.snowMacroFrequencyScale,
 		math.max(2, self.biomeOctaves - 1),
 		self.biomeLacunarity,
 		self.biomePersistence,
-		SNOW_BAND_MACRO_OFFSET,
+		BiomeConstants.SNOW_BAND_MACRO_OFFSET,
 		73.11,
-		SNOW_BAND_MACRO_OFFSET + 219.81
+		BiomeConstants.SNOW_BAND_MACRO_OFFSET + 219.81
 	)
 	local borderNoise = sampleDepthAwareOctaveNoise(
 		self.seed + 3791,
 		tileX,
 		surfaceDepthRaw,
-		BIOME_DEPTH_SAMPLE_SCALE,
+		BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE,
 		self.biomeFrequency * self.snowBorderFrequencyScale,
 		2,
 		2,
 		0.52,
-		SNOW_BAND_BORDER_OFFSET,
+		BiomeConstants.SNOW_BAND_BORDER_OFFSET,
 		91.47,
-		SNOW_BAND_BORDER_OFFSET + 191.67
+		BiomeConstants.SNOW_BAND_BORDER_OFFSET + 191.67
 	)
 	local detailNoise = math.noise(
-		(tileX + SNOW_DETAIL_OFFSET) * (self.biomeFrequency * self.snowDetailFrequencyScale),
-		SNOW_DETAIL_OFFSET + surfaceDepth * 0.023,
-		self.seed * SEED_X_MULTIPLIER
+		(tileX + BiomeConstants.SNOW_DETAIL_OFFSET) * (self.biomeFrequency * self.snowDetailFrequencyScale),
+		BiomeConstants.SNOW_DETAIL_OFFSET + surfaceDepth * 0.023,
+		self.seed * BiomeConstants.SEED_X_MULTIPLIER
 	)
 
 	return math.clamp(
@@ -614,53 +510,53 @@ function Biome.New(configRaw: any): Biome
 	local biomeId = (config :: any).biomeId :: BiomeIdMap
 	local biomeType = if typeof((config :: any).biomeType) == "table"
 		then (config :: any).biomeType :: BiomeTypeMap
-		else DEFAULT_BIOME_TYPE
+		else BiomeConstants.DEFAULT_BIOME_TYPE
 
 	local self = setmetatable({
 		seed = clampNumber((config :: any).seed, -2147483648, 2147483647, 13371337),
 		tileId = tileId,
 		biomeId = biomeId,
 		biomeType = biomeType,
-		surfaceBaseHeight = clampNumber((config :: any).surfaceBaseHeight, -1024, 1024, DEFAULT_SURFACE_BASE_HEIGHT),
-		surfaceAmplitude = clampNumber((config :: any).surfaceAmplitude, 0, 512, DEFAULT_SURFACE_AMPLITUDE),
-		surfaceFrequency = clampNumber((config :: any).surfaceFrequency, 0.0001, 1, DEFAULT_SURFACE_FREQUENCY),
-		surfaceOctaves = sanitizeOctaveCount((config :: any).surfaceOctaves, DEFAULT_SURFACE_OCTAVES),
-		surfaceLacunarity = clampNumber((config :: any).surfaceLacunarity, 1, 4, DEFAULT_SURFACE_LACUNARITY),
-		surfacePersistence = clampNumber((config :: any).surfacePersistence, 0.1, 0.95, DEFAULT_SURFACE_PERSISTENCE),
-		ridgeFrequency = clampNumber((config :: any).ridgeFrequency, 0.0001, 1, DEFAULT_RIDGE_FREQUENCY),
-		ridgeAmplitude = clampNumber((config :: any).ridgeAmplitude, 0, 512, DEFAULT_RIDGE_AMPLITUDE),
-		biomeFrequency = clampNumber((config :: any).biomeFrequency, 0.0001, 1, DEFAULT_BIOME_FREQUENCY),
-		biomeOctaves = sanitizeOctaveCount((config :: any).biomeOctaves, DEFAULT_BIOME_OCTAVES),
-		biomeLacunarity = clampNumber((config :: any).biomeLacunarity, 1, 4, DEFAULT_BIOME_LACUNARITY),
-		biomePersistence = clampNumber((config :: any).biomePersistence, 0.1, 0.95, DEFAULT_BIOME_PERSISTENCE),
-		stoneDepthMin = math.floor(clampNumber((config :: any).stoneDepthMin, 1, 64, DEFAULT_STONE_DEPTH_MIN)),
-		stoneDepthMax = math.floor(clampNumber((config :: any).stoneDepthMax, 2, 128, DEFAULT_STONE_DEPTH_MAX)),
+		surfaceBaseHeight = clampNumber((config :: any).surfaceBaseHeight, -1024, 1024, BiomeConstants.DEFAULT_SURFACE_BASE_HEIGHT),
+		surfaceAmplitude = clampNumber((config :: any).surfaceAmplitude, 0, 512, BiomeConstants.DEFAULT_SURFACE_AMPLITUDE),
+		surfaceFrequency = clampNumber((config :: any).surfaceFrequency, 0.0001, 1, BiomeConstants.DEFAULT_SURFACE_FREQUENCY),
+		surfaceOctaves = sanitizeOctaveCount((config :: any).surfaceOctaves, BiomeConstants.DEFAULT_SURFACE_OCTAVES),
+		surfaceLacunarity = clampNumber((config :: any).surfaceLacunarity, 1, 4, BiomeConstants.DEFAULT_SURFACE_LACUNARITY),
+		surfacePersistence = clampNumber((config :: any).surfacePersistence, 0.1, 0.95, BiomeConstants.DEFAULT_SURFACE_PERSISTENCE),
+		ridgeFrequency = clampNumber((config :: any).ridgeFrequency, 0.0001, 1, BiomeConstants.DEFAULT_RIDGE_FREQUENCY),
+		ridgeAmplitude = clampNumber((config :: any).ridgeAmplitude, 0, 512, BiomeConstants.DEFAULT_RIDGE_AMPLITUDE),
+		biomeFrequency = clampNumber((config :: any).biomeFrequency, 0.0001, 1, BiomeConstants.DEFAULT_BIOME_FREQUENCY),
+		biomeOctaves = sanitizeOctaveCount((config :: any).biomeOctaves, BiomeConstants.DEFAULT_BIOME_OCTAVES),
+		biomeLacunarity = clampNumber((config :: any).biomeLacunarity, 1, 4, BiomeConstants.DEFAULT_BIOME_LACUNARITY),
+		biomePersistence = clampNumber((config :: any).biomePersistence, 0.1, 0.95, BiomeConstants.DEFAULT_BIOME_PERSISTENCE),
+		stoneDepthMin = math.floor(clampNumber((config :: any).stoneDepthMin, 1, 64, BiomeConstants.DEFAULT_STONE_DEPTH_MIN)),
+		stoneDepthMax = math.floor(clampNumber((config :: any).stoneDepthMax, 2, 128, BiomeConstants.DEFAULT_STONE_DEPTH_MAX)),
 		corruptionFrequency = clampNumber(
 			(config :: any).corruptionFrequency,
 			0.0001,
 			0.5,
-			DEFAULT_CORRUPTION_FREQUENCY
+			BiomeConstants.DEFAULT_CORRUPTION_FREQUENCY
 		),
-		corruptionOctaves = sanitizeOctaveCount((config :: any).corruptionOctaves, DEFAULT_CORRUPTION_OCTAVES),
-		corruptionLacunarity = clampNumber((config :: any).corruptionLacunarity, 1, 4, DEFAULT_CORRUPTION_LACUNARITY),
+		corruptionOctaves = sanitizeOctaveCount((config :: any).corruptionOctaves, BiomeConstants.DEFAULT_CORRUPTION_OCTAVES),
+		corruptionLacunarity = clampNumber((config :: any).corruptionLacunarity, 1, 4, BiomeConstants.DEFAULT_CORRUPTION_LACUNARITY),
 		corruptionPersistence = clampNumber(
 			(config :: any).corruptionPersistence,
 			0.1,
 			0.95,
-			DEFAULT_CORRUPTION_PERSISTENCE
+			BiomeConstants.DEFAULT_CORRUPTION_PERSISTENCE
 		),
-		corruptionThreshold = clampNumber((config :: any).corruptionThreshold, -1, 1, DEFAULT_CORRUPTION_THRESHOLD),
+		corruptionThreshold = clampNumber((config :: any).corruptionThreshold, -1, 1, BiomeConstants.DEFAULT_CORRUPTION_THRESHOLD),
 		corruptionRadiusStart = clampNumber(
 			(config :: any).corruptionRadiusStart,
 			0,
 			100000,
-			DEFAULT_CORRUPTION_RADIUS_START
+			BiomeConstants.DEFAULT_CORRUPTION_RADIUS_START
 		),
 		corruptionDistanceScale = clampNumber(
 			(config :: any).corruptionDistanceScale,
 			0,
 			0.02,
-			DEFAULT_CORRUPTION_DISTANCE_SCALE
+			BiomeConstants.DEFAULT_CORRUPTION_DISTANCE_SCALE
 		),
 		junglePreferredSideSign = 1,
 		junglePlacementMode = 1,
@@ -670,45 +566,45 @@ function Biome.New(configRaw: any): Biome
 		desertPreferredSideSign = -1,
 		desertAnchorDistance = 220,
 		desertBandHalfWidth = 150,
-		desertHeightOffset = DEFAULT_DESERT_HEIGHT_OFFSET,
-		desertDuneAmplitude = DEFAULT_DESERT_DUNE_AMPLITUDE,
-		desertDuneFrequency = DEFAULT_DESERT_DUNE_FREQUENCY,
-		desertDuneOctaves = DEFAULT_DESERT_DUNE_OCTAVES,
-		desertDuneLacunarity = DEFAULT_DESERT_DUNE_LACUNARITY,
-		desertDunePersistence = DEFAULT_DESERT_DUNE_PERSISTENCE,
-		desertDetailAmplitude = DEFAULT_DESERT_DETAIL_AMPLITUDE,
-		desertDetailFrequency = DEFAULT_DESERT_DETAIL_FREQUENCY,
-		desertBaseTerrainInfluence = DEFAULT_DESERT_BASE_TERRAIN_INFLUENCE,
-		desertStoneDepthOffset = DEFAULT_DESERT_STONE_DEPTH_OFFSET,
-		desertSubsurfaceSandDepth = DEFAULT_DESERT_SUBSURFACE_SAND_DEPTH,
-		desertSandstoneDepth = DEFAULT_DESERT_SANDSTONE_DEPTH,
+		desertHeightOffset = BiomeConstants.DEFAULT_DESERT_HEIGHT_OFFSET,
+		desertDuneAmplitude = BiomeConstants.DEFAULT_DESERT_DUNE_AMPLITUDE,
+		desertDuneFrequency = BiomeConstants.DEFAULT_DESERT_DUNE_FREQUENCY,
+		desertDuneOctaves = BiomeConstants.DEFAULT_DESERT_DUNE_OCTAVES,
+		desertDuneLacunarity = BiomeConstants.DEFAULT_DESERT_DUNE_LACUNARITY,
+		desertDunePersistence = BiomeConstants.DEFAULT_DESERT_DUNE_PERSISTENCE,
+		desertDetailAmplitude = BiomeConstants.DEFAULT_DESERT_DETAIL_AMPLITUDE,
+		desertDetailFrequency = BiomeConstants.DEFAULT_DESERT_DETAIL_FREQUENCY,
+		desertBaseTerrainInfluence = BiomeConstants.DEFAULT_DESERT_BASE_TERRAIN_INFLUENCE,
+		desertStoneDepthOffset = BiomeConstants.DEFAULT_DESERT_STONE_DEPTH_OFFSET,
+		desertSubsurfaceSandDepth = BiomeConstants.DEFAULT_DESERT_SUBSURFACE_SAND_DEPTH,
+		desertSandstoneDepth = BiomeConstants.DEFAULT_DESERT_SANDSTONE_DEPTH,
 		desertSurfaceTileId = tileId.SAND,
 		desertFillerTileId = tileId.SAND,
 		desertDeepTileId = tileId.SANDSTONE,
 		snowPreferredSideSign = 1,
 		snowAnchorDistance = 260,
 		snowBandHalfWidth = 150,
-		snowBandHalfWidthMin = DEFAULT_SNOW_BAND_HALF_WIDTH_MIN,
-		snowBandHalfWidthMax = DEFAULT_SNOW_BAND_HALF_WIDTH_MAX,
-		snowBandFeatherWidth = DEFAULT_SNOW_BAND_FEATHER_WIDTH,
-		snowRegionWeight = DEFAULT_SNOW_REGION_WEIGHT,
-		snowTemperatureMax = DEFAULT_SNOW_TEMPERATURE_MAX,
-		snowHumidityMax = DEFAULT_SNOW_HUMIDITY_MAX,
-		snowRegionThreshold = DEFAULT_SNOW_REGION_THRESHOLD,
-		snowAnchorDistanceBase = DEFAULT_SNOW_ANCHOR_DISTANCE_BASE,
-		snowAnchorDistanceJitter = DEFAULT_SNOW_ANCHOR_DISTANCE_JITTER,
-		snowMacroFrequencyScale = DEFAULT_SNOW_MACRO_FREQUENCY_SCALE,
-		snowBorderFrequencyScale = DEFAULT_SNOW_BORDER_FREQUENCY_SCALE,
-		snowDetailFrequencyScale = DEFAULT_SNOW_DETAIL_FREQUENCY_SCALE,
-		snowHeightOffset = DEFAULT_SNOW_HEIGHT_OFFSET,
-		snowSmoothedRidgeScale = DEFAULT_SNOW_SMOOTHED_RIDGE_SCALE,
-		snowStoneDepthOffset = DEFAULT_SNOW_STONE_DEPTH_OFFSET,
-		snowCapDepth = DEFAULT_SNOW_CAP_DEPTH,
-		snowColdSoilDepth = DEFAULT_SNOW_COLD_SOIL_DEPTH,
-		snowIceDepthStart = DEFAULT_SNOW_ICE_DEPTH_START,
-		snowIceBandThickness = DEFAULT_SNOW_ICE_BAND_THICKNESS,
-		snowIceDensity = DEFAULT_SNOW_ICE_DENSITY,
-		snowPackedSnowDensity = DEFAULT_SNOW_PACKED_SNOW_DENSITY,
+		snowBandHalfWidthMin = BiomeConstants.DEFAULT_SNOW_BAND_HALF_WIDTH_MIN,
+		snowBandHalfWidthMax = BiomeConstants.DEFAULT_SNOW_BAND_HALF_WIDTH_MAX,
+		snowBandFeatherWidth = BiomeConstants.DEFAULT_SNOW_BAND_FEATHER_WIDTH,
+		snowRegionWeight = BiomeConstants.DEFAULT_SNOW_REGION_WEIGHT,
+		snowTemperatureMax = BiomeConstants.DEFAULT_SNOW_TEMPERATURE_MAX,
+		snowHumidityMax = BiomeConstants.DEFAULT_SNOW_HUMIDITY_MAX,
+		snowRegionThreshold = BiomeConstants.DEFAULT_SNOW_REGION_THRESHOLD,
+		snowAnchorDistanceBase = BiomeConstants.DEFAULT_SNOW_ANCHOR_DISTANCE_BASE,
+		snowAnchorDistanceJitter = BiomeConstants.DEFAULT_SNOW_ANCHOR_DISTANCE_JITTER,
+		snowMacroFrequencyScale = BiomeConstants.DEFAULT_SNOW_MACRO_FREQUENCY_SCALE,
+		snowBorderFrequencyScale = BiomeConstants.DEFAULT_SNOW_BORDER_FREQUENCY_SCALE,
+		snowDetailFrequencyScale = BiomeConstants.DEFAULT_SNOW_DETAIL_FREQUENCY_SCALE,
+		snowHeightOffset = BiomeConstants.DEFAULT_SNOW_HEIGHT_OFFSET,
+		snowSmoothedRidgeScale = BiomeConstants.DEFAULT_SNOW_SMOOTHED_RIDGE_SCALE,
+		snowStoneDepthOffset = BiomeConstants.DEFAULT_SNOW_STONE_DEPTH_OFFSET,
+		snowCapDepth = BiomeConstants.DEFAULT_SNOW_CAP_DEPTH,
+		snowColdSoilDepth = BiomeConstants.DEFAULT_SNOW_COLD_SOIL_DEPTH,
+		snowIceDepthStart = BiomeConstants.DEFAULT_SNOW_ICE_DEPTH_START,
+		snowIceBandThickness = BiomeConstants.DEFAULT_SNOW_ICE_BAND_THICKNESS,
+		snowIceDensity = BiomeConstants.DEFAULT_SNOW_ICE_DENSITY,
+		snowPackedSnowDensity = BiomeConstants.DEFAULT_SNOW_PACKED_SNOW_DENSITY,
 	}, Biome)
 
 	local desertConfig = if typeof((config :: any).desertConfig) == "table" then (config :: any).desertConfig else ({} :: any)
@@ -716,20 +612,20 @@ function Biome.New(configRaw: any): Biome
 	local desertSurfaceConfig = if typeof((desertConfig :: any).Surface) == "table"
 		then (desertConfig :: any).Surface
 		else ({} :: any)
-	self.desertHeightOffset = clampNumber(duneConfig.HeightOffset, -64, 64, DEFAULT_DESERT_HEIGHT_OFFSET)
-	self.desertDuneAmplitude = clampNumber(duneConfig.Amplitude, 0, 128, DEFAULT_DESERT_DUNE_AMPLITUDE)
-	self.desertDuneFrequency = clampNumber(duneConfig.Frequency, 0.0001, 1, DEFAULT_DESERT_DUNE_FREQUENCY)
-	self.desertDuneOctaves = sanitizeOctaveCount(duneConfig.Octaves, DEFAULT_DESERT_DUNE_OCTAVES)
-	self.desertDuneLacunarity = clampNumber(duneConfig.Lacunarity, 1, 4, DEFAULT_DESERT_DUNE_LACUNARITY)
-	self.desertDunePersistence = clampNumber(duneConfig.Persistence, 0.1, 0.95, DEFAULT_DESERT_DUNE_PERSISTENCE)
-	self.desertDetailAmplitude = clampNumber(duneConfig.DetailAmplitude, 0, 64, DEFAULT_DESERT_DETAIL_AMPLITUDE)
-	self.desertDetailFrequency = clampNumber(duneConfig.DetailFrequency, 0.0001, 1, DEFAULT_DESERT_DETAIL_FREQUENCY)
+	self.desertHeightOffset = clampNumber(duneConfig.HeightOffset, -64, 64, BiomeConstants.DEFAULT_DESERT_HEIGHT_OFFSET)
+	self.desertDuneAmplitude = clampNumber(duneConfig.Amplitude, 0, 128, BiomeConstants.DEFAULT_DESERT_DUNE_AMPLITUDE)
+	self.desertDuneFrequency = clampNumber(duneConfig.Frequency, 0.0001, 1, BiomeConstants.DEFAULT_DESERT_DUNE_FREQUENCY)
+	self.desertDuneOctaves = sanitizeOctaveCount(duneConfig.Octaves, BiomeConstants.DEFAULT_DESERT_DUNE_OCTAVES)
+	self.desertDuneLacunarity = clampNumber(duneConfig.Lacunarity, 1, 4, BiomeConstants.DEFAULT_DESERT_DUNE_LACUNARITY)
+	self.desertDunePersistence = clampNumber(duneConfig.Persistence, 0.1, 0.95, BiomeConstants.DEFAULT_DESERT_DUNE_PERSISTENCE)
+	self.desertDetailAmplitude = clampNumber(duneConfig.DetailAmplitude, 0, 64, BiomeConstants.DEFAULT_DESERT_DETAIL_AMPLITUDE)
+	self.desertDetailFrequency = clampNumber(duneConfig.DetailFrequency, 0.0001, 1, BiomeConstants.DEFAULT_DESERT_DETAIL_FREQUENCY)
 	self.desertBaseTerrainInfluence =
-		clampNumber(duneConfig.BaseTerrainInfluence, 0, 1, DEFAULT_DESERT_BASE_TERRAIN_INFLUENCE)
-	self.desertStoneDepthOffset = clampNumber(duneConfig.StoneDepthOffset, 0, 32, DEFAULT_DESERT_STONE_DEPTH_OFFSET)
+		clampNumber(duneConfig.BaseTerrainInfluence, 0, 1, BiomeConstants.DEFAULT_DESERT_BASE_TERRAIN_INFLUENCE)
+	self.desertStoneDepthOffset = clampNumber(duneConfig.StoneDepthOffset, 0, 32, BiomeConstants.DEFAULT_DESERT_STONE_DEPTH_OFFSET)
 	self.desertSubsurfaceSandDepth =
-		clampNumber(desertSurfaceConfig.SubsurfaceSandDepth, 1, 64, DEFAULT_DESERT_SUBSURFACE_SAND_DEPTH)
-	self.desertSandstoneDepth = clampNumber(desertSurfaceConfig.SandstoneDepth, 1, 96, DEFAULT_DESERT_SANDSTONE_DEPTH)
+		clampNumber(desertSurfaceConfig.SubsurfaceSandDepth, 1, 64, BiomeConstants.DEFAULT_DESERT_SUBSURFACE_SAND_DEPTH)
+	self.desertSandstoneDepth = clampNumber(desertSurfaceConfig.SandstoneDepth, 1, 96, BiomeConstants.DEFAULT_DESERT_SANDSTONE_DEPTH)
 	self.desertSurfaceTileId = resolveTileIdByName(self.tileId, desertSurfaceConfig.SurfaceTile, self.tileId.SAND)
 	self.desertFillerTileId = resolveTileIdByName(self.tileId, desertSurfaceConfig.FillerTile, self.tileId.SAND)
 	self.desertDeepTileId = resolveTileIdByName(self.tileId, desertSurfaceConfig.DeepTile, self.tileId.SANDSTONE)
@@ -739,45 +635,45 @@ function Biome.New(configRaw: any): Biome
 	local snowTerrainConfig = if typeof((snowConfig :: any).Terrain) == "table" then (snowConfig :: any).Terrain else ({} :: any)
 	local snowSurfaceConfig = if typeof((snowConfig :: any).Surface) == "table" then (snowConfig :: any).Surface else ({} :: any)
 	self.snowBandHalfWidthMin =
-		math.floor(clampNumber(snowRegionConfig.BandHalfWidthMin, 32, 1024, DEFAULT_SNOW_BAND_HALF_WIDTH_MIN))
+		math.floor(clampNumber(snowRegionConfig.BandHalfWidthMin, 32, 1024, BiomeConstants.DEFAULT_SNOW_BAND_HALF_WIDTH_MIN))
 	self.snowBandHalfWidthMax = math.floor(
 		clampNumber(
 			snowRegionConfig.BandHalfWidthMax,
 			self.snowBandHalfWidthMin,
 			2048,
-			DEFAULT_SNOW_BAND_HALF_WIDTH_MAX
+			BiomeConstants.DEFAULT_SNOW_BAND_HALF_WIDTH_MAX
 		)
 	)
 	self.snowBandFeatherWidth =
-		math.floor(clampNumber(snowRegionConfig.BandFeatherWidth, 24, 512, DEFAULT_SNOW_BAND_FEATHER_WIDTH))
-	self.snowRegionWeight = clampNumber(snowRegionConfig.Weight, 0.1, 4, DEFAULT_SNOW_REGION_WEIGHT)
-	self.snowTemperatureMax = clampNumber(snowRegionConfig.TemperatureMax, -1, 1, DEFAULT_SNOW_TEMPERATURE_MAX)
-	self.snowHumidityMax = clampNumber(snowRegionConfig.HumidityMax, -1, 1, DEFAULT_SNOW_HUMIDITY_MAX)
-	self.snowRegionThreshold = clampNumber(snowRegionConfig.PrimaryThreshold, 0, 1, DEFAULT_SNOW_REGION_THRESHOLD)
+		math.floor(clampNumber(snowRegionConfig.BandFeatherWidth, 24, 512, BiomeConstants.DEFAULT_SNOW_BAND_FEATHER_WIDTH))
+	self.snowRegionWeight = clampNumber(snowRegionConfig.Weight, 0.1, 4, BiomeConstants.DEFAULT_SNOW_REGION_WEIGHT)
+	self.snowTemperatureMax = clampNumber(snowRegionConfig.TemperatureMax, -1, 1, BiomeConstants.DEFAULT_SNOW_TEMPERATURE_MAX)
+	self.snowHumidityMax = clampNumber(snowRegionConfig.HumidityMax, -1, 1, BiomeConstants.DEFAULT_SNOW_HUMIDITY_MAX)
+	self.snowRegionThreshold = clampNumber(snowRegionConfig.PrimaryThreshold, 0, 1, BiomeConstants.DEFAULT_SNOW_REGION_THRESHOLD)
 	self.snowAnchorDistanceBase =
-		clampNumber(snowRegionConfig.AnchorDistanceBase, 32, 4096, DEFAULT_SNOW_ANCHOR_DISTANCE_BASE)
+		clampNumber(snowRegionConfig.AnchorDistanceBase, 32, 4096, BiomeConstants.DEFAULT_SNOW_ANCHOR_DISTANCE_BASE)
 	self.snowAnchorDistanceJitter =
-		clampNumber(snowRegionConfig.AnchorDistanceJitter, 0, 2048, DEFAULT_SNOW_ANCHOR_DISTANCE_JITTER)
+		clampNumber(snowRegionConfig.AnchorDistanceJitter, 0, 2048, BiomeConstants.DEFAULT_SNOW_ANCHOR_DISTANCE_JITTER)
 	self.snowMacroFrequencyScale =
-		clampNumber(snowRegionConfig.MacroFrequencyScale, 0.1, 4, DEFAULT_SNOW_MACRO_FREQUENCY_SCALE)
+		clampNumber(snowRegionConfig.MacroFrequencyScale, 0.1, 4, BiomeConstants.DEFAULT_SNOW_MACRO_FREQUENCY_SCALE)
 	self.snowBorderFrequencyScale =
-		clampNumber(snowRegionConfig.BorderFrequencyScale, 0.1, 6, DEFAULT_SNOW_BORDER_FREQUENCY_SCALE)
+		clampNumber(snowRegionConfig.BorderFrequencyScale, 0.1, 6, BiomeConstants.DEFAULT_SNOW_BORDER_FREQUENCY_SCALE)
 	self.snowDetailFrequencyScale =
-		clampNumber(snowRegionConfig.DetailFrequencyScale, 0.1, 8, DEFAULT_SNOW_DETAIL_FREQUENCY_SCALE)
-	self.snowHeightOffset = clampNumber(snowTerrainConfig.HeightOffset, -64, 64, DEFAULT_SNOW_HEIGHT_OFFSET)
+		clampNumber(snowRegionConfig.DetailFrequencyScale, 0.1, 8, BiomeConstants.DEFAULT_SNOW_DETAIL_FREQUENCY_SCALE)
+	self.snowHeightOffset = clampNumber(snowTerrainConfig.HeightOffset, -64, 64, BiomeConstants.DEFAULT_SNOW_HEIGHT_OFFSET)
 	self.snowSmoothedRidgeScale =
-		clampNumber(snowTerrainConfig.SmoothedRidgeScale, 0, 2, DEFAULT_SNOW_SMOOTHED_RIDGE_SCALE)
-	self.snowStoneDepthOffset = clampNumber(snowTerrainConfig.StoneDepthOffset, 0, 32, DEFAULT_SNOW_STONE_DEPTH_OFFSET)
-	self.snowCapDepth = math.floor(clampNumber(snowSurfaceConfig.SnowCapDepth, 1, 16, DEFAULT_SNOW_CAP_DEPTH))
+		clampNumber(snowTerrainConfig.SmoothedRidgeScale, 0, 2, BiomeConstants.DEFAULT_SNOW_SMOOTHED_RIDGE_SCALE)
+	self.snowStoneDepthOffset = clampNumber(snowTerrainConfig.StoneDepthOffset, 0, 32, BiomeConstants.DEFAULT_SNOW_STONE_DEPTH_OFFSET)
+	self.snowCapDepth = math.floor(clampNumber(snowSurfaceConfig.SnowCapDepth, 1, 16, BiomeConstants.DEFAULT_SNOW_CAP_DEPTH))
 	self.snowColdSoilDepth =
-		math.floor(clampNumber(snowSurfaceConfig.ColdSoilDepth, 1, 32, DEFAULT_SNOW_COLD_SOIL_DEPTH))
+		math.floor(clampNumber(snowSurfaceConfig.ColdSoilDepth, 1, 32, BiomeConstants.DEFAULT_SNOW_COLD_SOIL_DEPTH))
 	self.snowIceDepthStart =
-		math.floor(clampNumber(snowSurfaceConfig.IceDepthStart, 1, 64, DEFAULT_SNOW_ICE_DEPTH_START))
+		math.floor(clampNumber(snowSurfaceConfig.IceDepthStart, 1, 64, BiomeConstants.DEFAULT_SNOW_ICE_DEPTH_START))
 	self.snowIceBandThickness =
-		math.floor(clampNumber(snowSurfaceConfig.IceBandThickness, 1, 64, DEFAULT_SNOW_ICE_BAND_THICKNESS))
-	self.snowIceDensity = clampNumber(snowSurfaceConfig.IceDensity, 0, 1, DEFAULT_SNOW_ICE_DENSITY)
+		math.floor(clampNumber(snowSurfaceConfig.IceBandThickness, 1, 64, BiomeConstants.DEFAULT_SNOW_ICE_BAND_THICKNESS))
+	self.snowIceDensity = clampNumber(snowSurfaceConfig.IceDensity, 0, 1, BiomeConstants.DEFAULT_SNOW_ICE_DENSITY)
 	self.snowPackedSnowDensity =
-		clampNumber(snowSurfaceConfig.PackedSnowDensity, 0, 1, DEFAULT_SNOW_PACKED_SNOW_DENSITY)
+		clampNumber(snowSurfaceConfig.PackedSnowDensity, 0, 1, BiomeConstants.DEFAULT_SNOW_PACKED_SNOW_DENSITY)
 
 	if self.stoneDepthMax < self.stoneDepthMin then
 		self.stoneDepthMax = self.stoneDepthMin
@@ -830,27 +726,27 @@ function Biome.SampleTemperatureHumidity(self: Biome, tileX: number, surfaceDept
 		self.seed,
 		tileX,
 		surfaceDepthRaw,
-		BIOME_DEPTH_SAMPLE_SCALE,
+		BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE,
 		self.biomeFrequency,
 		self.biomeOctaves,
 		self.biomeLacunarity,
 		self.biomePersistence,
-		TEMPERATURE_OFFSET,
+		BiomeConstants.TEMPERATURE_OFFSET,
 		37.45,
-		TEMPERATURE_OFFSET + 227.11
+		BiomeConstants.TEMPERATURE_OFFSET + 227.11
 	)
 	local humidity = sampleDepthAwareOctaveNoise(
 		self.seed,
 		tileX,
 		surfaceDepthRaw,
-		BIOME_DEPTH_SAMPLE_SCALE,
+		BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE,
 		self.biomeFrequency,
 		self.biomeOctaves,
 		self.biomeLacunarity,
 		self.biomePersistence,
-		HUMIDITY_OFFSET,
+		BiomeConstants.HUMIDITY_OFFSET,
 		83.91,
-		HUMIDITY_OFFSET + 251.37
+		BiomeConstants.HUMIDITY_OFFSET + 251.37
 	)
 	return temperature, humidity
 end
@@ -871,15 +767,15 @@ function Biome.ResolveBiomeId(
 	local desertBandWeight = sampleDesertBandWeight(self, tileX, surfaceDepthRaw)
 	if desertBandWeight > 0 then
 		desertScore += desertBandWeight * 1.26
-		if temperature >= DESERT_TEMPERATURE_MIN and humidity <= DESERT_HUMIDITY_MAX then
+		if temperature >= BiomeConstants.DESERT_TEMPERATURE_MIN and humidity <= BiomeConstants.DESERT_HUMIDITY_MAX then
 			desertScore += 0.18 + desertBandWeight * 0.12
 		end
 	end
 
 	local jungleBandWeight = sampleJungleBandWeight(self, tileX, surfaceDepthRaw)
-	if humidity >= JUNGLE_HUMIDITY_MIN and jungleBandWeight > 0 then
+	if humidity >= BiomeConstants.JUNGLE_HUMIDITY_MIN and jungleBandWeight > 0 then
 		local weightedJungleScore = jungleScore + jungleBandWeight * 1.18
-		if weightedJungleScore >= JUNGLE_REGION_THRESHOLD then
+		if weightedJungleScore >= BiomeConstants.JUNGLE_REGION_THRESHOLD then
 			return self.biomeId.JUNGLE
 		end
 	end
@@ -895,9 +791,9 @@ function Biome.ResolveBiomeId(
 	local selectedBiomeId = self.biomeId.FOREST
 	local selectedScore = forestScore
 
-	local qualifiesForBandDesert = desertBandWeight >= DESERT_REGION_THRESHOLD
-		and temperature >= DESERT_TEMPERATURE_MIN
-		and humidity <= DESERT_HUMIDITY_MAX + 0.08
+	local qualifiesForBandDesert = desertBandWeight >= BiomeConstants.DESERT_REGION_THRESHOLD
+		and temperature >= BiomeConstants.DESERT_TEMPERATURE_MIN
+		and humidity <= BiomeConstants.DESERT_HUMIDITY_MAX + 0.08
 	if qualifiesForBandDesert or desertScore > selectedScore then
 		selectedBiomeId = self.biomeId.DESERT
 		selectedScore = desertScore
@@ -922,7 +818,7 @@ local function sampleRawSurfaceHeight(self: Biome, tileX: number, biomeId: numbe
 		math.max(2, math.min(self.surfaceOctaves, 3)),
 		self.surfaceLacunarity,
 		self.surfacePersistence,
-		SURFACE_OFFSET,
+		BiomeConstants.SURFACE_OFFSET,
 		11.97
 	)
 	local rollingWave = sampleOctaveNoise(
@@ -932,10 +828,10 @@ local function sampleRawSurfaceHeight(self: Biome, tileX: number, biomeId: numbe
 		math.max(2, math.min(self.surfaceOctaves, 3)),
 		self.surfaceLacunarity,
 		self.surfacePersistence,
-		SURFACE_OFFSET + 43.7,
+		BiomeConstants.SURFACE_OFFSET + 43.7,
 		31.41
 	)
-	local rawRidgeWave = sampleOctaveNoise(self.seed, tileX, self.ridgeFrequency, 2, 2, 0.5, RIDGE_OFFSET, 29.04)
+	local rawRidgeWave = sampleOctaveNoise(self.seed, tileX, self.ridgeFrequency, 2, 2, 0.5, BiomeConstants.RIDGE_OFFSET, 29.04)
 	local ridgeWave = math.max(0, math.abs(rawRidgeWave) - 0.34)
 	local terrainHeight = broadWave * self.surfaceAmplitude * 0.78 + rollingWave * self.surfaceAmplitude * 0.22
 
@@ -977,11 +873,11 @@ local function sampleWeightedSurfaceHeight(self: Biome, tileX: number, centerBio
 	local farLeftHeight = sampleRawSurfaceHeightAt(self, tileX - 2, surfaceDepthRaw)
 	local farRightHeight = sampleRawSurfaceHeightAt(self, tileX + 2, surfaceDepthRaw)
 
-	local totalWeight = SURFACE_SMOOTH_CENTER_WEIGHT + SURFACE_SMOOTH_NEAR_WEIGHT * 2 + SURFACE_SMOOTH_FAR_WEIGHT * 2
+	local totalWeight = BiomeConstants.SURFACE_SMOOTH_CENTER_WEIGHT + BiomeConstants.SURFACE_SMOOTH_NEAR_WEIGHT * 2 + BiomeConstants.SURFACE_SMOOTH_FAR_WEIGHT * 2
 	return (
-		centerHeight * SURFACE_SMOOTH_CENTER_WEIGHT
-		+ (nearLeftHeight + nearRightHeight) * SURFACE_SMOOTH_NEAR_WEIGHT
-		+ (farLeftHeight + farRightHeight) * SURFACE_SMOOTH_FAR_WEIGHT
+		centerHeight * BiomeConstants.SURFACE_SMOOTH_CENTER_WEIGHT
+		+ (nearLeftHeight + nearRightHeight) * BiomeConstants.SURFACE_SMOOTH_NEAR_WEIGHT
+		+ (farLeftHeight + farRightHeight) * BiomeConstants.SURFACE_SMOOTH_FAR_WEIGHT
 	) / totalWeight
 end
 
@@ -1004,13 +900,13 @@ function Biome.SampleSurfaceHeight(self: Biome, tileX: number, biomeId: number, 
 	local smoothedHeight = resolveWeightedHeight(tileX, biomeId)
 	local upperSlopeBound = smoothedHeight
 	local lowerSlopeBound = smoothedHeight
-	for offset = -SURFACE_SLOPE_LIMIT_RADIUS_TILES, SURFACE_SLOPE_LIMIT_RADIUS_TILES do
+	for offset = -BiomeConstants.SURFACE_SLOPE_LIMIT_RADIUS_TILES, BiomeConstants.SURFACE_SLOPE_LIMIT_RADIUS_TILES do
 		if offset == 0 then
 			continue
 		end
 
 		local sampleHeight = resolveWeightedHeight(tileX + offset, nil)
-		local allowedStep = math.abs(offset) * SURFACE_MAX_NEIGHBOR_STEP_TILES
+		local allowedStep = math.abs(offset) * BiomeConstants.SURFACE_MAX_NEIGHBOR_STEP_TILES
 		upperSlopeBound = math.min(upperSlopeBound, sampleHeight + allowedStep)
 		lowerSlopeBound = math.max(lowerSlopeBound, sampleHeight - allowedStep)
 	end
@@ -1021,7 +917,7 @@ end
 
 function Biome.SampleStoneStartDepth(self: Biome, tileX: number, biomeId: number): number
 	local noiseValue =
-		sampleOctaveNoise(self.seed, tileX, self.surfaceFrequency * 1.25, 3, 2, 0.5, STONE_DEPTH_OFFSET, 53.08)
+		sampleOctaveNoise(self.seed, tileX, self.surfaceFrequency * 1.25, 3, 2, 0.5, BiomeConstants.STONE_DEPTH_OFFSET, 53.08)
 	local alpha = (noiseValue + 1) * 0.5
 	local depth = self.stoneDepthMin + (self.stoneDepthMax - self.stoneDepthMin) * alpha
 	if biomeId == self.biomeId.DESERT then
@@ -1047,7 +943,7 @@ function Biome.GetColumnProfile(self: Biome, tileX: number, surfaceDepth: number
 		2,
 		2,
 		0.56,
-		SNOW_DETAIL_OFFSET,
+		BiomeConstants.SNOW_DETAIL_OFFSET,
 		47.23
 	)
 	local snowIceNoise = sampleOctaveNoise(
@@ -1057,7 +953,7 @@ function Biome.GetColumnProfile(self: Biome, tileX: number, surfaceDepth: number
 		3,
 		2,
 		0.52,
-		SNOW_ICE_OFFSET,
+		BiomeConstants.SNOW_ICE_OFFSET,
 		63.77
 	)
 	if biomeType == self.biomeType.CORRUPTION then

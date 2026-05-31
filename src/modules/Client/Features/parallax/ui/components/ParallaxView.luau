@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
 
-local ParallaxSlice = require(script:FindFirstAncestor("parallax").ParallaxSlice)
+local ParallaxSlice = require(script.Parent.Parent.state.ParallaxSlice)
 local useCrossFade = require(script.Parent.Parent.hooks.useCrossFade)
 
 type ParallaxSurfaceState = ParallaxSlice.ParallaxSurfaceState

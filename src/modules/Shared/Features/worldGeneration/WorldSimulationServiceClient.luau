@@ -6,7 +6,52 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local WorldSimulationServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).WorldSimulationService
+
+local function sendPacket(methodName: string, ...: any)
+	local packet = WorldSimulationServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for WorldSimulationService`)
+		return
+	end
+
+	packet.send(PacketPayload.pack(...))
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = WorldSimulationServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for WorldSimulationService`)
+		return
+	end
+
+	packet.listen(function(payload: any)
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "applyState")
+	bindPacket(self, "onChunkDelta")
+	bindPacket(self, "onChunkUnloaded")
+	bindPacket(self, "onDebugCounters")
+	bindPacket(self, "requestSync")
+	bindPacket(self, "setStreamRadius")
+	bindPacket(self, "submitInput")
+end
+
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
@@ -150,7 +195,10 @@ function WorldSimulationServiceClient.GetRenderChunkRadii(self: WorldSimulationS
 		math.max(1, math.min(vertical, self.config.streamVerticalRadiusChunks))
 end
 
-function WorldSimulationServiceClient.StreamInChunk(self: WorldSimulationServiceClient, snapshot: { [string]: any }): boolean
+function WorldSimulationServiceClient.StreamInChunk(
+	self: WorldSimulationServiceClient,
+	snapshot: { [string]: any }
+): boolean
 	if typeof(snapshot) ~= "table" then
 		return false
 	end
@@ -245,7 +293,12 @@ function WorldSimulationServiceClient.AssertStartupChunkFolderEmpty(self: WorldS
 	end
 end
 
-function WorldSimulationServiceClient.ReconcileRenderWindow(self: WorldSimulationServiceClient, centerX: number, centerY: number, centerZ: number)
+function WorldSimulationServiceClient.ReconcileRenderWindow(
+	self: WorldSimulationServiceClient,
+	centerX: number,
+	centerY: number,
+	centerZ: number
+)
 	local renderRadius, renderVerticalRadius = self:getRenderChunkRadii()
 	local desiredLookup = {} :: { [string]: boolean }
 
@@ -320,8 +373,14 @@ function WorldSimulationServiceClient.OnChunkDelta(self: WorldSimulationServiceC
 	local chunkSnapshot = decoded :: { [string]: any }
 	self.chunkSnapshotsByKey[chunkSnapshot.key] = chunkSnapshot
 	local centerX, centerY, centerZ = self:getCenterChunk()
-	local priority =
-		Net.chunkPriorityFromCenter(chunkSnapshot.chunkX, chunkSnapshot.chunkY, chunkSnapshot.chunkZ, centerX, centerY, centerZ)
+	local priority = Net.chunkPriorityFromCenter(
+		chunkSnapshot.chunkX,
+		chunkSnapshot.chunkY,
+		chunkSnapshot.chunkZ,
+		centerX,
+		centerY,
+		centerZ
+	)
 	Stream.pushClientSnapshot(self.streamState, chunkSnapshot, priority)
 end
 
@@ -351,15 +410,19 @@ function WorldSimulationServiceClient.OnDebugCounters(self: WorldSimulationServi
 end
 
 function WorldSimulationServiceClient.RequestSync(self: WorldSimulationServiceClient)
-	self.networker:fire(Net.NETWORK_METHOD_REQUEST_SYNC)
+	sendPacket(Net.NETWORK_METHOD_REQUEST_SYNC)
 end
 
-function WorldSimulationServiceClient.SetStreamRadius(self: WorldSimulationServiceClient, streamRadiusRaw: any, verticalRadiusRaw: any)
-	self.networker:fire(Net.NETWORK_METHOD_SET_STREAM_RADIUS, streamRadiusRaw, verticalRadiusRaw)
+function WorldSimulationServiceClient.SetStreamRadius(
+	self: WorldSimulationServiceClient,
+	streamRadiusRaw: any,
+	verticalRadiusRaw: any
+)
+	sendPacket(Net.NETWORK_METHOD_SET_STREAM_RADIUS, streamRadiusRaw, verticalRadiusRaw)
 end
 
 function WorldSimulationServiceClient.SubmitInput(self: WorldSimulationServiceClient, inputPayload: { [string]: any })
-	self.networker:fire(Net.NETWORK_METHOD_SUBMIT_INPUT, inputPayload)
+	sendPacket(Net.NETWORK_METHOD_SUBMIT_INPUT, inputPayload)
 end
 
 function WorldSimulationServiceClient.GetState(self: WorldSimulationServiceClient): { [string]: any }
@@ -485,11 +548,8 @@ function WorldSimulationServiceClient.Init(self: WorldSimulationServiceClient)
 	self.stateObservable = nil
 	self.debugCountersObservable = nil
 
-	self.networker = Networker.client.new("WorldSimulationService", self)
+	bindPackets(self)
 	self.maid = Maid.new()
-	self.maid:GiveTask(function()
-		self.networker:destroy()
-	end)
 	self.maid:GiveTask(function()
 		self.stateChanged:Destroy()
 	end)
@@ -587,7 +647,6 @@ type WorldSimulationServiceClient = typeof(WorldSimulationServiceClient) & {
 	activeChunkModels: { [string]: boolean },
 	activeStreamingSet: { [string]: boolean },
 	invariantCheckAccumulator: number,
-	networker: Networker.Client,
 	maid: any,
 	stateChanged: SignalObject,
 	debugCountersChanged: SignalObject,
@@ -598,4 +657,3 @@ type WorldSimulationServiceClient = typeof(WorldSimulationServiceClient) & {
 }
 
 return WorldSimulationServiceClient :: WorldSimulationServiceClient
-

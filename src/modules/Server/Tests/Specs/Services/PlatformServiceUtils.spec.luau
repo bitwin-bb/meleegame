@@ -7,7 +7,7 @@ local expect = testEnvironment.expect :: any
 -- selene: allow(undefined_variable)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlatformServiceUtils)
+local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceUtils)
 
 local DEFAULT_CAPABILITIES: PlatformServiceUtils.CapabilitySnapshot = {
 	touchEnabled = false,

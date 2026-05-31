@@ -1,0 +1,50 @@
+--!strict
+
+export type WorldGenerationConfig = {
+	seed: number,
+	chunkSize: number,
+	tileSize: number,
+	tileDepth: number,
+	basePlaneX: number,
+	wallPlaneOffset: number,
+	horizonDepthBlocks: number,
+	backgroundLayerCount: number,
+	backgroundLayerThicknessBlocks: number,
+	worldOrigin: Vector3,
+	minTileY: number,
+	maxTileY: number,
+	bedrockThickness: number,
+	defaultRenderDistanceChunks: number,
+	defaultVerticalRenderDistanceChunks: number,
+	playerRefreshInterval: number,
+	maxConcurrentChunkLoads: number,
+	maxChunkUnloadsPerHeartbeat: number,
+	maxChunkRebuildsPerHeartbeat: number,
+	generationRowsPerYield: number,
+	meshingRowsPerYield: number,
+	maxCachedChunkData: number,
+	maxCachedChunkVisuals: number,
+	maxCollisionPartsPerChunk: number,
+	clientVisualPreloadMarginPixels: number,
+	clientVisualBuildTimeBudgetSeconds: number,
+	clientVisualUnloadTimeBudgetSeconds: number,
+	maxPooledVisualParts: number,
+	maxPoolSize: number,
+	debugLog: boolean,
+}
+
+export type WorldGenerationServiceState = {
+	seed: number,
+	chunkSize: number,
+	tileSize: number,
+	tileDepth: number,
+	renderDistanceChunks: number,
+	verticalRenderDistanceChunks: number,
+	minTileY: number,
+	maxTileY: number,
+	ready: boolean,
+	stats: { [string]: any },
+	updatedAt: number,
+}
+
+return {}

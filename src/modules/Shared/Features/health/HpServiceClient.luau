@@ -5,9 +5,51 @@ local StarterGui = game:GetService("StarterGui")
 
 local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.health.HpServiceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local PlayerDataServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlayerDataServiceClient)
-local PlayerDataServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerDataServiceUtils)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local HpServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).HpService
+
+local function sendPacket(methodName: string, ...: any)
+	local packet = HpServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for HpService`)
+		return
+	end
+
+	packet.send(PacketPayload.pack(...))
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = HpServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for HpService`)
+		return
+	end
+
+	packet.listen(function(payload: any)
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "applyState")
+	bindPacket(self, "requestSync")
+end
+
+local PlayerDataServiceClient =
+	require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceClient)
+local PlayerDataServiceUtils =
+	require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceUtils)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 
 type HpServiceState = HpServiceUtils.HpServiceState
@@ -79,7 +121,7 @@ end
 
 function HpServiceClient.Init(self: HpServiceClient)
 	self.localPlayer = Players.LocalPlayer
-	self.networker = Networker.client.new("HpService", self)
+	bindPackets(self)
 	self.janitor = Janitor.new()
 	self.state = HpServiceUtils.createDefaultState()
 	self.isStateReady = false
@@ -104,13 +146,10 @@ function HpServiceClient.Init(self: HpServiceClient)
 	end
 
 	self.janitor:GiveChore(function()
-		self.networker:destroy()
-	end)
-	self.janitor:GiveChore(function()
 		self.stateChanged:Destroy()
 	end)
 
-	self.networker:fire("requestSync")
+	sendPacket("requestSync")
 end
 
 function HpServiceClient.ApplyState(self: HpServiceClient, stateRaw: any)
@@ -121,7 +160,7 @@ function HpServiceClient.ApplyState(self: HpServiceClient, stateRaw: any)
 end
 
 function HpServiceClient.RequestSync(self: HpServiceClient)
-	self.networker:fire("requestSync")
+	sendPacket("requestSync")
 end
 
 function HpServiceClient.GetState(self: HpServiceClient): HpServiceState
@@ -153,7 +192,6 @@ HpServiceClient.destroy = HpServiceClient.Destroy
 
 export type HpServiceClient = typeof(HpServiceClient) & {
 	localPlayer: Player,
-	networker: Networker.Client,
 	janitor: JanitorClass,
 	state: HpServiceState,
 	hasReceivedServerState: boolean,

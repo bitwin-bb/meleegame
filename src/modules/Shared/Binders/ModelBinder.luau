@@ -6,7 +6,7 @@ local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
 local loader = (require :: any)(loaderUtils.Parent).load(script)
 local Maid = loader("Maid")
-local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Core.Platform.InstanceUtils)
+local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.InstanceUtils)
 local TagBinder = require(script.Parent.TagBinder)
 
 type MaidClass = {

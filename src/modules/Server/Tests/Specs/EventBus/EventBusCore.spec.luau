@@ -1,0 +1,362 @@
+--!strict
+local testEnvironment = getfenv() :: any
+local describe = testEnvironment.describe :: any
+local it = testEnvironment.it :: any
+local expect = testEnvironment.expect :: any
+
+local gameRoot = script:FindFirstAncestor("game")
+
+local SharedEventBus = require(gameRoot.Shared.SharedEventBus)
+local ServerEventBus = require(gameRoot.Server.ServerEventBus)
+local ClientEventBus = require(gameRoot.Client.ClientEventBus)
+
+local function waitUntil(predicate: () -> boolean, label: string)
+	local timeoutAt = os.clock() + 1
+	while not predicate() do
+		if os.clock() >= timeoutAt then
+			error("timed out waiting for " .. label, 2)
+		end
+
+		task.wait()
+	end
+end
+
+local function withErrorOnUnknownEvent(utils: any, enabled: boolean, callback: () -> ())
+	local previousErrorOnUnknownEvent = utils.ERROR_ON_UNKNOWN_EVENT
+	utils.ERROR_ON_UNKNOWN_EVENT = enabled
+
+	local ok, result = pcall(callback)
+	utils.ERROR_ON_UNKNOWN_EVENT = previousErrorOnUnknownEvent
+
+	if not ok then
+		error(tostring(result), 2)
+	end
+end
+
+return function()
+	describe("SharedEventBus Signal", function()
+		it("connects, fires, disconnects, and reports connection count", function()
+			local signal = SharedEventBus.Core.signals.Signal.new()
+			local total = 0
+			local connection = signal:Connect(function(value)
+				total += value
+			end)
+
+			expect(connection.Connected).to.equal(true)
+			expect(signal:GetConnectionCount()).to.equal(1)
+
+			signal:Fire(3)
+			waitUntil(function()
+				return total == 3
+			end, "signal listener delivery")
+
+			connection:Disconnect()
+			signal:Fire(5)
+
+			expect(total).to.equal(3)
+			expect(connection.Connected).to.equal(false)
+			expect(signal:GetConnectionCount()).to.equal(0)
+
+			signal:Destroy()
+		end)
+
+		it("disconnects once listeners after the first fire", function()
+			local signal = SharedEventBus.Core.signals.Signal.new()
+			local count = 0
+
+			signal:Once(function()
+				count += 1
+			end)
+
+			signal:Fire()
+			signal:Fire()
+
+			waitUntil(function()
+				return count == 1
+			end, "once signal delivery")
+
+			expect(count).to.equal(1)
+			expect(signal:GetConnectionCount()).to.equal(0)
+
+			signal:Destroy()
+		end)
+
+		it("disconnects all listeners and prevents later fires", function()
+			local signal = SharedEventBus.Core.signals.Signal.new()
+			local count = 0
+			local firstConnection = signal:Connect(function()
+				count += 1
+			end)
+			local secondConnection = signal:Connect(function()
+				count += 1
+			end)
+
+			expect(signal:GetConnectionCount()).to.equal(2)
+
+			signal:DisconnectAll()
+			signal:Fire()
+
+			expect(count).to.equal(0)
+			expect(firstConnection.Connected).to.equal(false)
+			expect(secondConnection.Connected).to.equal(false)
+			expect(signal:GetConnectionCount()).to.equal(0)
+
+			signal:Destroy()
+		end)
+
+		it("skips listeners disconnected before async delivery", function()
+			local signal = SharedEventBus.Core.signals.Signal.new()
+			local count = 0
+			local connection = signal:Connect(function()
+				count += 1
+			end)
+
+			signal:Fire()
+			connection:Disconnect()
+			task.wait()
+
+			expect(count).to.equal(0)
+			expect(signal:GetConnectionCount()).to.equal(0)
+
+			signal:Destroy()
+		end)
+
+		it("skips listeners after destroy before async delivery", function()
+			local signal = SharedEventBus.Core.signals.Signal.new()
+			local count = 0
+
+			signal:Connect(function()
+				count += 1
+			end)
+
+			signal:Fire()
+			signal:Destroy()
+			task.wait()
+
+			expect(count).to.equal(0)
+			expect(signal:GetConnectionCount()).to.equal(0)
+		end)
+
+		it("skips claimed once listeners after disconnect all before async delivery", function()
+			local signal = SharedEventBus.Core.signals.Signal.new()
+			local count = 0
+
+			signal:Once(function()
+				count += 1
+			end)
+
+			signal:Fire()
+			signal:DisconnectAll()
+			task.wait()
+
+			expect(count).to.equal(0)
+			expect(signal:GetConnectionCount()).to.equal(0)
+
+			signal:Destroy()
+		end)
+
+		it("keeps firing listeners after one listener errors", function()
+			local signal = SharedEventBus.Core.signals.Signal.new()
+			local count = 0
+
+			signal:Connect(function()
+				error("expected test error")
+			end)
+
+			signal:Connect(function()
+				count += 1
+			end)
+
+			signal:Fire()
+
+			waitUntil(function()
+				return count == 1
+			end, "listener after error delivery")
+
+			expect(count).to.equal(1)
+
+			signal:Destroy()
+		end)
+
+		it("waits for the next signal fire", function()
+			local signal = SharedEventBus.Core.signals.Signal.new()
+			local received = nil
+			local waiterReady = false
+
+			task.spawn(function()
+				waiterReady = true
+				received = signal:Wait()
+			end)
+
+			waitUntil(function()
+				return waiterReady
+			end, "signal waiter readiness")
+
+			signal:Fire("ready")
+
+			waitUntil(function()
+				return received ~= nil
+			end, "signal wait result")
+
+			expect(received).to.equal("ready")
+
+			signal:Destroy()
+		end)
+
+		it("destroys owned listeners and ignores repeated destroy calls", function()
+			local signal = SharedEventBus.Core.signals.Signal.new()
+			local count = 0
+			local connection = signal:Connect(function()
+				count += 1
+			end)
+
+			signal:Destroy()
+			signal:Fire()
+			signal:Destroy()
+
+			expect(count).to.equal(0)
+			expect(connection.Connected).to.equal(false)
+			expect(signal:GetConnectionCount()).to.equal(0)
+
+			local ok = pcall(function()
+				signal:Connect(function() end)
+			end)
+			expect(ok).to.equal(false)
+		end)
+	end)
+
+	describe("SharedEventBus EventBus", function()
+		it("supports On, Fire, Has, Off, Clear, and GetEventNames", function()
+			local bus = SharedEventBus.Core.EventBus.new("test")
+			local fired = 0
+
+			bus:On("InventoryChanged", function(amount)
+				fired += amount
+			end)
+
+			expect(bus:Has("InventoryChanged")).to.equal(true)
+			bus:Fire("InventoryChanged", 2)
+			waitUntil(function()
+				return fired == 2
+			end, "event bus listener delivery")
+
+			expect(fired).to.equal(2)
+
+			local names = bus:GetEventNames()
+			expect(#names).to.equal(1)
+			expect(names[1]).to.equal("InventoryChanged")
+
+			bus:Off("InventoryChanged")
+			bus:Fire("InventoryChanged", 2)
+			expect(fired).to.equal(2)
+			expect(bus:Has("InventoryChanged")).to.equal(false)
+
+			bus:On("A", function() end)
+			bus:On("B", function() end)
+			bus:Clear()
+			expect(#bus:GetEventNames()).to.equal(0)
+
+			bus:Destroy()
+		end)
+
+		it("supports Once and Wait on named events", function()
+			local bus = SharedEventBus.Core.EventBus.new("test")
+			local count = 0
+			local received = nil
+			local waiterReady = false
+
+			bus:Once("EnemyDied", function()
+				count += 1
+			end)
+
+			task.spawn(function()
+				waiterReady = true
+				received = bus:Wait("EnemyDied")
+			end)
+
+			waitUntil(function()
+				return waiterReady
+			end, "event bus waiter readiness")
+
+			bus:Fire("EnemyDied", "slime")
+
+			waitUntil(function()
+				return count == 1 and received ~= nil
+			end, "event bus once and wait result")
+
+			bus:Fire("EnemyDied", "zombie")
+
+			expect(count).to.equal(1)
+			expect(received).to.equal("slime")
+
+			bus:Destroy()
+		end)
+
+		it("observes events through Nevermore Rx", function()
+			local bus = SharedEventBus.Core.EventBus.new("test")
+			local values = {}
+			local subscription = bus:Observe("UIOpened"):Subscribe(function(screenName)
+				values[#values + 1] = screenName
+			end)
+
+			bus:Fire("UIOpened", "Inventory")
+			waitUntil(function()
+				return #values >= 1
+			end, "first observed event")
+
+			bus:Fire("UIOpened", "Crafting")
+			waitUntil(function()
+				return #values >= 2
+			end, "second observed event")
+
+			expect(#values).to.equal(2)
+			expect(values[1]).to.equal("Inventory")
+			expect(values[2]).to.equal("Crafting")
+
+			subscription:Destroy()
+			bus:Destroy()
+		end)
+	end)
+
+	describe("realm event registries", function()
+		it("accepts known server events and rejects unknown server events", function()
+			local registry = ServerEventBus.Core.ServerEventRegistry
+			local utils = ServerEventBus.Utils
+
+			expect(registry.Has(ServerEventBus.Core.ServerEvents.EnemyDied)).to.equal(true)
+			expect(registry.Has("NotARealServerEvent")).to.equal(false)
+			expect(registry.Assert(ServerEventBus.Core.ServerEvents.EnemyDied)).to.equal(true)
+
+			withErrorOnUnknownEvent(utils, false, function()
+				expect(registry.Assert("NotARealServerEvent")).to.equal(false)
+			end)
+
+			withErrorOnUnknownEvent(utils, true, function()
+				local ok = pcall(function()
+					registry.Assert("NotARealServerEvent")
+				end)
+				expect(ok).to.equal(false)
+			end)
+		end)
+
+		it("accepts known client events and rejects unknown client events", function()
+			local registry = ClientEventBus.Core.ClientEventRegistry
+			local utils = ClientEventBus.Utils
+
+			expect(registry.Has(ClientEventBus.Core.ClientEvents.UIOpened)).to.equal(true)
+			expect(registry.Has("NotARealClientEvent")).to.equal(false)
+			expect(registry.Assert(ClientEventBus.Core.ClientEvents.UIOpened)).to.equal(true)
+
+			withErrorOnUnknownEvent(utils, false, function()
+				expect(registry.Assert("NotARealClientEvent")).to.equal(false)
+			end)
+
+			withErrorOnUnknownEvent(utils, true, function()
+				local ok = pcall(function()
+					registry.Assert("NotARealClientEvent")
+				end)
+				expect(ok).to.equal(false)
+			end)
+		end)
+	end)
+end

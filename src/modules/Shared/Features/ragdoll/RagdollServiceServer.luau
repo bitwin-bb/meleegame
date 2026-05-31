@@ -4,7 +4,52 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local RagdollServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).RagdollService
+
+local function sendPacket(player: Player, methodName: string, ...: any)
+	local packet = RagdollServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for RagdollService`)
+		return
+	end
+
+	packet.sendTo(PacketPayload.pack(...), player)
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = RagdollServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for RagdollService`)
+		return
+	end
+
+	packet.listen(function(payload: any, player: Player?)
+		if player == nil then
+			return
+		end
+
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, player, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "requestSelfRagdoll")
+	bindPacket(self, "requestSelfRecover")
+	bindPacket(self, "requestSync")
+end
+
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
 local RagdollServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.ragdoll.RagdollServiceUtils)
 local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
@@ -38,13 +83,9 @@ local TIMER_RECOVER_REASON = "TimerRecovery"
 local SERVER_RECOVER_REASON = "ServerRecovery"
 
 function RagdollServiceServer.Init(self: RagdollServiceServer)
-	self.networker = Networker.server.new("RagdollService", self, {
-		self.RequestSync,
-		self.RequestSelfRagdoll,
-		self.RequestSelfRecover,
-	})
+	bindPackets(self)
 	self.playerRuntimes = {}
-	;(self :: any).binders = NevermoreSupport.getService(ServerBinderSupport)
+	(self :: any).binders = NevermoreSupport.getService(ServerBinderSupport)
 
 	for _, player in Players:GetPlayers() do
 		self:trackPlayer(player)
@@ -89,7 +130,7 @@ end
 
 function RagdollServiceServer.PushState(self: RagdollServiceServer, player: Player)
 	local runtime = self:getRuntime(player)
-	self.networker:fire(player, "applyState", RagdollServiceUtils.cloneState(runtime.state))
+	sendPacket(player, "applyState", RagdollServiceUtils.cloneState(runtime.state))
 end
 
 function RagdollServiceServer.CommitState(
@@ -453,10 +494,6 @@ function RagdollServiceServer.Destroy(self: RagdollServiceServer)
 		runtime.characterJanitor:Destroy()
 		self.playerRuntimes[player] = nil
 	end
-
-	if self.networker then
-		self.networker:destroy()
-	end
 end
 
 RagdollServiceServer.init = RagdollServiceServer.Init
@@ -484,7 +521,6 @@ RagdollServiceServer.forceRecoverPlayer = RagdollServiceServer.ForceRecoverPlaye
 RagdollServiceServer.destroy = RagdollServiceServer.Destroy
 
 export type RagdollServiceServer = typeof(RagdollServiceServer) & {
-	networker: Networker.Server,
 	playerRuntimes: { [Player]: PlayerRuntime },
 	playerAddedConnection: RBXScriptConnection?,
 	playerRemovingConnection: RBXScriptConnection?,

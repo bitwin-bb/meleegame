@@ -17,6 +17,7 @@ Janitor = "kartzrbx/janitor@1.1.0"
 Matter = "evaera/matter@0.7.0"
 Plasma = "evaera/plasma@0.4.2"
 Fusion = "elttob/fusion@0.3.0"
+ByteNet = "ffrostflame/bytenet@0.4.6"
 
 [server-dependencies]
 ProfileStore = "ddashdev/profilestore@1.0.4"

@@ -4,7 +4,7 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
-local Platform = require(script.Parent.Parent.Platform.Platform)
+local Platform = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.Platform)
 
 local UIController = {}
 UIController.__index = UIController

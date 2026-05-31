@@ -17,7 +17,7 @@ local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Feature
 local Configs = require(script.Configs)
 local Physics = require(script.Physics)
 local Render = require(script.Render)
-local StateMachine = require(script:FindFirstAncestor("game").Shared.Core.StateMachine)
+local StateMachine = require(script:FindFirstAncestor("game").Shared.StateMachine.Core.StateMachine)
 local Stinger = require(script.Stinger)
 
 type Boss = BossBase.Boss

@@ -5,164 +5,23 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local Lerp = require(script:FindFirstAncestor("game").Shared.Core.Math.Lerp)
 local WorldSimulationShared = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.Shared)
+local ParallaxConstants = require(script.Parent.ParallaxConstants)
+local ParallaxTypes = require(script.Parent.ParallaxTypes)
 
 local ParallaxServiceUtils = {}
 
-export type TransitionState = "Idle" | "Blending" | "Interrupting"
-export type VerticalAlign = "Top" | "Center" | "Bottom"
+export type TransitionState = ParallaxTypes.TransitionState
+export type VerticalAlign = ParallaxTypes.VerticalAlign
+export type LayerDefinition = ParallaxTypes.LayerDefinition
+export type BiomeVariantDefinition = ParallaxTypes.BiomeVariantDefinition
+export type BiomeDefinition = ParallaxTypes.BiomeDefinition
+export type CatalogSettings = ParallaxTypes.CatalogSettings
+export type Catalog = ParallaxTypes.Catalog
+export type ServiceState = ParallaxTypes.ServiceState
+export type PlaneSizing = ParallaxTypes.PlaneSizing
 
-export type LayerDefinition = {
-	id: string,
-	image: string,
-	imageAspectRatio: number,
-	depth: number,
-	planeDepthBlocks: number,
-	heightScale: number,
-	segmentWidthScale: number,
-	minSegments: number,
-	overscanSegments: number,
-	tint: Color3,
-	transparency: number,
-	scrollSpeed: number,
-	textureStudsPerTileU: number,
-	textureStudsPerTileV: number,
-	verticalAlign: VerticalAlign,
-	verticalOffsetStuds: number,
-	verticalDepth: number,
-	verticalParallax: number,
-	baseYOffset: number,
-	bottomOverscan: number,
-	minY: number,
-	maxY: number,
-}
-
-export type BiomeVariantDefinition = {
-	name: string,
-	layers: { LayerDefinition },
-}
-
-export type BiomeDefinition = {
-	name: string,
-	aliases: { string },
-	defaultVariantName: string,
-	orderedVariantNames: { string },
-	variants: { [string]: BiomeVariantDefinition },
-}
-
-export type CatalogSettings = {
-	defaultBiome: string,
-	transitionSeconds: number,
-	biomeSampleIntervalSeconds: number,
-	folderName: string,
-	segmentThickness: number,
-}
-
-export type Catalog = {
-	settings: CatalogSettings,
-	biomes: { [string]: BiomeDefinition },
-	orderedBiomeNames: { string },
-	aliases: { [string]: string },
-}
-
-export type ServiceState = {
-	initialized: boolean,
-	currentBiome: string,
-	targetBiome: string,
-	transitionState: TransitionState,
-}
-
-export type PlaneSizing = {
-	planeWidth: number,
-	textureRepeatWidth: number,
-	textureRepeatHeight: number,
-}
-
-ParallaxServiceUtils.DEPTH_LAYER_SKY = 0
-ParallaxServiceUtils.DEPTH_LAYER_UNDERGROUND = 2
-
-local BIOME_RESERVED_KEYS = {
-	settings = true,
-	aliases = true,
-	layers = true,
-	variants = true,
-	defaultVariant = true,
-	selectedVariant = true,
-}
-
-local BUILT_IN_BIOME_ALIASES = {
-	overworld = { "Forest", "Default", "Overworld", "Surface" },
-	forest = { "Forest", "Default", "Overworld", "Surface" },
-	desert = { "Desert", "Sand", "Dunes" },
-	snow = { "Snow", "Tundra", "Ice" },
-	jungle = { "Jungle", "Rainforest" },
-	corruption = { "Corruption", "Corrupt", "Evil" },
-	underground = { "Underground", "Cavern", "Caves" },
-}
-
-local IMPLICIT_BIOME_TINTS = {
-	overworld = Color3.fromRGB(175, 214, 188),
-	forest = Color3.fromRGB(175, 214, 188),
-	desert = Color3.fromRGB(229, 205, 160),
-	snow = Color3.fromRGB(208, 227, 255),
-	jungle = Color3.fromRGB(141, 190, 132),
-	corruption = Color3.fromRGB(166, 140, 208),
-	underground = Color3.fromRGB(132, 144, 170),
-}
-
-local IMPLICIT_LAYER_FALLBACK_IMAGE_ASPECT_RATIO = 3.3
-local IMPLICIT_LAYER_BASE_TEXTURE_TILE_STUDS = 96
-local IMPLICIT_LAYER_DEPTH_BASE = 0.32
-local IMPLICIT_LAYER_DEPTH_STEP = 0.08
-local IMPLICIT_LAYER_PLANE_DEPTH_BASE = 40
-local IMPLICIT_LAYER_PLANE_DEPTH_STEP = 16
-local IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_BASE = 0.54
-local IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_STEP = 0.09
-local IMPLICIT_LAYER_TRANSPARENCY_BASE = 0
-local IMPLICIT_LAYER_TRANSPARENCY_STEP = 0
-local IMPLICIT_LAYER_VERTICAL_OFFSET_BASE = -18
-local IMPLICIT_LAYER_VERTICAL_OFFSET_STEP = 10
-local IMPLICIT_LAYER_VERTICAL_DEPTH_BASE = 0.008
-local IMPLICIT_LAYER_VERTICAL_DEPTH_STEP = 0.004
-local IMPLICIT_LAYER_BASE_Y_OFFSET = 0.04
-local IMPLICIT_LAYER_BOTTOM_OVERSCAN = 0.08
-local IMPLICIT_LAYER_MIN_Y = -0.06
-local IMPLICIT_LAYER_MAX_Y = 0.1
-local DEFAULT_HORIZONTAL_VISION_STUDS = 576
-local MINIMUM_TEXTURE_REPEAT_WIDTH_STUDS = 12
-local MINIMUM_HORIZONTAL_PLANE_BLEED_STUDS = 8
-local HORIZONTAL_PLANE_BLEED_FACTOR = 0.08
-local IMPLICIT_PARALLAX_SOURCE_DIMENSIONS = {
-	overworld = {
-		[1] = { width = 1024, height = 533 },
-		[2] = { width = 1024, height = 600 },
-		[3] = { width = 1024, height = 660 },
-		[4] = { width = 1024, height = 699 },
-	},
-	corruption = {
-		[1] = { width = 1024, height = 533 },
-		[2] = { width = 1024, height = 533 },
-		[3] = { width = 1024, height = 533 },
-		[4] = { width = 1024, height = 371 },
-	},
-	jungle = {
-		[1] = { width = 1024, height = 768 },
-		[2] = { width = 1024, height = 533 },
-		[3] = { width = 1024, height = 540 },
-		[4] = { width = 1024, height = 533 },
-	},
-	desert = {
-		[1] = { width = 1024, height = 400 },
-		[2] = { width = 1024, height = 500 },
-		[3] = { width = 1024, height = 434 },
-		[4] = { width = 1024, height = 434 },
-	},
-	snow = {
-		[1] = { width = 1024, height = 529 },
-		[2] = { width = 1024, height = 529 },
-		[3] = { width = 1024, height = 600 },
-		[4] = { width = 1024, height = 600 },
-	},
-}
+ParallaxServiceUtils.DEPTH_LAYER_SKY = ParallaxConstants.DEPTH_LAYER_SKY
+ParallaxServiceUtils.DEPTH_LAYER_UNDERGROUND = ParallaxConstants.DEPTH_LAYER_UNDERGROUND
 
 local function trim(valueRaw: any): string
 	if typeof(valueRaw) ~= "string" then
@@ -238,7 +97,7 @@ local function lerpColor3(from: Color3, to: Color3, alpha: number): Color3
 end
 
 local function resolveImplicitBiomeTint(biomeName: string, farAlpha: number): Color3
-	local baseTint = IMPLICIT_BIOME_TINTS[normalizeToken(biomeName)] or Color3.fromRGB(190, 205, 220)
+	local baseTint = ParallaxConstants.IMPLICIT_BIOME_TINTS[normalizeToken(biomeName)] or Color3.fromRGB(190, 205, 220)
 	return lerpColor3(Color3.new(1, 1, 1), baseTint, 0.14 + farAlpha * 0.16)
 end
 
@@ -248,7 +107,7 @@ local function resolveImplicitSourceImageAspectRatio(biomeName: string, layerInd
 		normalizedBiomeName = "overworld"
 	end
 
-	local biomeDimensions = IMPLICIT_PARALLAX_SOURCE_DIMENSIONS[normalizedBiomeName]
+	local biomeDimensions = ParallaxConstants.IMPLICIT_PARALLAX_SOURCE_DIMENSIONS[normalizedBiomeName]
 	if biomeDimensions == nil then
 		return nil
 	end
@@ -270,30 +129,30 @@ local function resolveImplicitLayerDefaults(
 	local stackIndex = math.max(layerIndex - 1, 0)
 	local farAlpha = if total <= 1 then 0 else (layerIndex - 1) / (total - 1)
 	local imageAspectRatio = resolveImplicitSourceImageAspectRatio(biomeName, layerIndex)
-		or IMPLICIT_LAYER_FALLBACK_IMAGE_ASPECT_RATIO
+		or ParallaxConstants.IMPLICIT_LAYER_FALLBACK_IMAGE_ASPECT_RATIO
 
 	return {
 		imageAspectRatio = imageAspectRatio,
-		depth = math.clamp(IMPLICIT_LAYER_DEPTH_BASE - stackIndex * IMPLICIT_LAYER_DEPTH_STEP, 0.05, 0.98),
-		planeDepthBlocks = IMPLICIT_LAYER_PLANE_DEPTH_BASE + stackIndex * IMPLICIT_LAYER_PLANE_DEPTH_STEP,
+		depth = math.clamp(ParallaxConstants.IMPLICIT_LAYER_DEPTH_BASE - stackIndex * ParallaxConstants.IMPLICIT_LAYER_DEPTH_STEP, 0.05, 0.98),
+		planeDepthBlocks = ParallaxConstants.IMPLICIT_LAYER_PLANE_DEPTH_BASE + stackIndex * ParallaxConstants.IMPLICIT_LAYER_PLANE_DEPTH_STEP,
 		heightScale = 1,
-		segmentWidthScale = IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_BASE
-			+ stackIndex * IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_STEP,
+		segmentWidthScale = ParallaxConstants.IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_BASE
+			+ stackIndex * ParallaxConstants.IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_STEP,
 		minSegments = 2,
 		overscanSegments = 4,
 		tint = resolveImplicitBiomeTint(biomeName, farAlpha),
-		transparency = IMPLICIT_LAYER_TRANSPARENCY_BASE + stackIndex * IMPLICIT_LAYER_TRANSPARENCY_STEP,
+		transparency = ParallaxConstants.IMPLICIT_LAYER_TRANSPARENCY_BASE + stackIndex * ParallaxConstants.IMPLICIT_LAYER_TRANSPARENCY_STEP,
 		scrollSpeed = 0,
-		textureStudsPerTileU = IMPLICIT_LAYER_BASE_TEXTURE_TILE_STUDS,
-		textureStudsPerTileV = IMPLICIT_LAYER_BASE_TEXTURE_TILE_STUDS,
+		textureStudsPerTileU = ParallaxConstants.IMPLICIT_LAYER_BASE_TEXTURE_TILE_STUDS,
+		textureStudsPerTileV = ParallaxConstants.IMPLICIT_LAYER_BASE_TEXTURE_TILE_STUDS,
 		verticalAlign = "Center",
-		verticalOffsetStuds = IMPLICIT_LAYER_VERTICAL_OFFSET_BASE + stackIndex * IMPLICIT_LAYER_VERTICAL_OFFSET_STEP,
-		verticalDepth = IMPLICIT_LAYER_VERTICAL_DEPTH_BASE + stackIndex * IMPLICIT_LAYER_VERTICAL_DEPTH_STEP,
-		verticalParallax = IMPLICIT_LAYER_VERTICAL_DEPTH_BASE + stackIndex * IMPLICIT_LAYER_VERTICAL_DEPTH_STEP,
-		baseYOffset = IMPLICIT_LAYER_BASE_Y_OFFSET,
-		bottomOverscan = IMPLICIT_LAYER_BOTTOM_OVERSCAN,
-		minY = IMPLICIT_LAYER_MIN_Y,
-		maxY = IMPLICIT_LAYER_MAX_Y,
+		verticalOffsetStuds = ParallaxConstants.IMPLICIT_LAYER_VERTICAL_OFFSET_BASE + stackIndex * ParallaxConstants.IMPLICIT_LAYER_VERTICAL_OFFSET_STEP,
+		verticalDepth = ParallaxConstants.IMPLICIT_LAYER_VERTICAL_DEPTH_BASE + stackIndex * ParallaxConstants.IMPLICIT_LAYER_VERTICAL_DEPTH_STEP,
+		verticalParallax = ParallaxConstants.IMPLICIT_LAYER_VERTICAL_DEPTH_BASE + stackIndex * ParallaxConstants.IMPLICIT_LAYER_VERTICAL_DEPTH_STEP,
+		baseYOffset = ParallaxConstants.IMPLICIT_LAYER_BASE_Y_OFFSET,
+		bottomOverscan = ParallaxConstants.IMPLICIT_LAYER_BOTTOM_OVERSCAN,
+		minY = ParallaxConstants.IMPLICIT_LAYER_MIN_Y,
+		maxY = ParallaxConstants.IMPLICIT_LAYER_MAX_Y,
 	}
 end
 
@@ -486,7 +345,7 @@ local function sanitizeVariantDefinition(
 end
 
 local function appendBuiltInAliases(aliases: { string }, biomeName: string)
-	local builtIns = BUILT_IN_BIOME_ALIASES[normalizeToken(biomeName)]
+	local builtIns = ParallaxConstants.BUILT_IN_BIOME_ALIASES[normalizeToken(biomeName)]
 	if builtIns == nil then
 		return
 	end
@@ -547,7 +406,7 @@ local function sanitizeBiomeDefinition(nameRaw: any, biomeRaw: any): BiomeDefini
 		end
 	else
 		for _, variantName in collectSortedStringKeys(source) do
-			if BIOME_RESERVED_KEYS[variantName] then
+			if ParallaxConstants.BIOME_RESERVED_KEYS[variantName] then
 				continue
 			end
 			local variant = sanitizeVariantDefinition(name, variantName, source[variantName])
@@ -586,7 +445,7 @@ function ParallaxServiceUtils.NormalizeCatalog(rawCatalog: any): Catalog
 	local aliases: { [string]: string } = {}
 
 	for _, biomeName in collectSortedStringKeys(rawBiomes) do
-		if BIOME_RESERVED_KEYS[biomeName] or biomeName == "settings" then
+		if ParallaxConstants.BIOME_RESERVED_KEYS[biomeName] or biomeName == "settings" then
 			continue
 		end
 
@@ -728,7 +587,7 @@ function ParallaxServiceUtils.ComputeHorizontalVisionStuds(
 	local chunkSize = sanitizeInteger(chunkSizeRaw, 32, 1, 512)
 	local tileSize = sanitizeNumber(tileSizeRaw, 4, 0.25, 128)
 	local renderDistanceChunks = sanitizeInteger(renderDistanceChunksRaw, 4, 1, 128)
-	return math.max(DEFAULT_HORIZONTAL_VISION_STUDS, (renderDistanceChunks * 2 + 1) * chunkSize * tileSize)
+	return math.max(ParallaxConstants.DEFAULT_HORIZONTAL_VISION_STUDS, (renderDistanceChunks * 2 + 1) * chunkSize * tileSize)
 end
 
 function ParallaxServiceUtils.ResolveDeterministicPlaneSizing(
@@ -743,19 +602,19 @@ function ParallaxServiceUtils.ResolveDeterministicPlaneSizing(
 ): PlaneSizing
 	local visibleWidth = sanitizeNumber(visibleWidthRaw, 0, 0, 1000000)
 	local sizeReferenceWidth = sanitizeNumber(sizeReferenceWidthRaw, visibleWidth, 0, 1000000)
-	local horizontalVisionStuds = sanitizeNumber(horizontalVisionStudsRaw, DEFAULT_HORIZONTAL_VISION_STUDS, 0, 1000000)
-	local imageAspectRatio = sanitizeNumber(imageAspectRatioRaw, IMPLICIT_LAYER_FALLBACK_IMAGE_ASPECT_RATIO, 0.05, 64)
+	local horizontalVisionStuds = sanitizeNumber(horizontalVisionStudsRaw, ParallaxConstants.DEFAULT_HORIZONTAL_VISION_STUDS, 0, 1000000)
+	local imageAspectRatio = sanitizeNumber(imageAspectRatioRaw, ParallaxConstants.IMPLICIT_LAYER_FALLBACK_IMAGE_ASPECT_RATIO, 0.05, 64)
 	local heightScale = sanitizeNumber(heightScaleRaw, 1, 0.05, 4)
-	local segmentWidthScale = sanitizeNumber(segmentWidthScaleRaw, IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_BASE, 0.25, 8)
+	local segmentWidthScale = sanitizeNumber(segmentWidthScaleRaw, ParallaxConstants.IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_BASE, 0.25, 8)
 	local textureStudsPerTileU =
-		sanitizeNumber(textureStudsPerTileURaw, IMPLICIT_LAYER_BASE_TEXTURE_TILE_STUDS, 1, 4096)
+		sanitizeNumber(textureStudsPerTileURaw, ParallaxConstants.IMPLICIT_LAYER_BASE_TEXTURE_TILE_STUDS, 1, 4096)
 
-	local minimumTextureRepeatWidth = math.max(textureStudsPerTileU * 0.25, MINIMUM_TEXTURE_REPEAT_WIDTH_STUDS)
+	local minimumTextureRepeatWidth = math.max(textureStudsPerTileU * 0.25, ParallaxConstants.MINIMUM_TEXTURE_REPEAT_WIDTH_STUDS)
 	local baseTextureRepeatWidth = math.max(sizeReferenceWidth * segmentWidthScale, minimumTextureRepeatWidth)
 	local baseTextureRepeatHeight = math.max(1, (baseTextureRepeatWidth / imageAspectRatio) * heightScale)
 	local textureRepeatHeight = math.max(baseTextureRepeatHeight, sanitizeNumber(requiredPlaneHeightRaw, 0, 0, 1000000))
 	local textureRepeatWidth = math.max(baseTextureRepeatWidth, (textureRepeatHeight / heightScale) * imageAspectRatio)
-	local horizontalBleed = math.max(visibleWidth * HORIZONTAL_PLANE_BLEED_FACTOR, MINIMUM_HORIZONTAL_PLANE_BLEED_STUDS)
+	local horizontalBleed = math.max(visibleWidth * ParallaxConstants.HORIZONTAL_PLANE_BLEED_FACTOR, ParallaxConstants.MINIMUM_HORIZONTAL_PLANE_BLEED_STUDS)
 	local planeWidth =
 		math.max(textureRepeatWidth, visibleWidth + horizontalBleed, horizontalVisionStuds + horizontalBleed)
 

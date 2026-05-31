@@ -14,7 +14,9 @@ local STATE_CHANGED_NAME = "StateChanged"
 local GET_SNAPSHOT_NAME = "GetSnapshot"
 local CLIENT_SCRIPT_FOLDER_NAME = "AquariaBackupScripts"
 local CLIENT_BOOT_SCRIPT_NAME = "ClientMain"
-local NETWORK_REMOTE_PREFIX = "AQUARIA_NETWORKER_BLINK"
+local BYTE_NET_RELIABLE_REMOTE_NAME = "ByteNetReliable"
+local BYTE_NET_UNRELIABLE_REMOTE_NAME = "ByteNetUnreliable"
+local BYTE_NET_STORAGE_NAME = "BytenetStorage"
 local PART_CACHE_FOLDER_NAME = "Part Cache"
 
 local REPLICATION_TIMEOUT_SECONDS = 60
@@ -43,7 +45,34 @@ local STAGE_WEIGHT_SCRIPTS = 4
 local TOTAL_STAGE_WEIGHT = 100
 local CRITICAL_MODULE_PROGRESS_SHARE = 0.25
 
+local BYTE_NET_NAMESPACE_NAMES = {
+	"AnimationService",
+	"AudioService",
+	"BossService",
+	"BreathService",
+	"BuildService",
+	"CameraService",
+	"CraftingService",
+	"GoreService",
+	"HpService",
+	"InventoryService",
+	"LiquidService",
+	"LootService",
+	"MagicService",
+	"ManaService",
+	"MeleeService",
+	"NpcService",
+	"PlayerDataService",
+	"PlayerService",
+	"RagdollService",
+	"VFXService",
+	"WeatherService",
+	"WorldGenerationService",
+	"WorldSimulationService",
+}
+
 local RUNTIME_WALLY_PACKAGES = {
+	"ByteNet",
 	"React",
 	"ReactRoblox",
 	"ReactCharm",
@@ -89,8 +118,11 @@ local CONTENT_PROPERTIES_BY_CLASS: { [string]: { string } } = {
 	VideoFrame = { "Video" },
 }
 
-local SKIPPED_MODULE_NAMES = {
-	BlinkServer = true,
+local SKIPPED_MODULE_NAMES = {}
+
+local SERVER_ONLY_MODULE_NAME_SUFFIXES = {
+	"ServiceServer",
+	"Server",
 }
 
 local SKIPPED_MODULE_PATHS = {
@@ -99,7 +131,7 @@ local SKIPPED_MODULE_PATHS = {
 	["Features/npc/BossServiceServer"] = true,
 	["Features/npc/components/QueenBeeRoot"] = true,
 	["Features/npc/modules/QueenBeeSpriteSheet"] = true,
-	["Features/npc/NpcRoot"] = true,
+	["Features/npc/ui/NpcRoot"] = true,
 	["Features/npc/NpcServiceServer"] = true,
 	["Features/npc/npc/QueenBee"] = true,
 	["Features/npc/ui/components/QueenBee"] = true,
@@ -107,7 +139,7 @@ local SKIPPED_MODULE_PATHS = {
 	["Shared/Features/npc/BossServiceServer"] = true,
 	["Shared/Features/npc/components/QueenBeeRoot"] = true,
 	["Shared/Features/npc/modules/QueenBeeSpriteSheet"] = true,
-	["Shared/Features/npc/NpcRoot"] = true,
+	["Shared/Features/npc/ui/NpcRoot"] = true,
 	["Shared/Features/npc/NpcServiceServer"] = true,
 	["Shared/Features/npc/npc/QueenBee"] = true,
 	["Shared/Features/npc/ui/components/QueenBee"] = true,
@@ -414,6 +446,22 @@ local function waitForRequiredChild(parent: Instance, name: string, timeoutSecon
 	return found
 end
 
+local function waitForByteNetNamespace(storage: Instance, namespaceName: string, timeoutSeconds: number)
+	local namespaceValue = waitForRequiredChild(storage, namespaceName, timeoutSeconds)
+	if not namespaceValue:IsA("StringValue") then
+		error(`expected ByteNet namespace {namespaceName} to be a StringValue`)
+	end
+
+	local deadline = os.clock() + timeoutSeconds
+	while namespaceValue.Value == "" and os.clock() < deadline do
+		task.wait(0.05)
+	end
+
+	if namespaceValue.Value == "" then
+		error(`timed out waiting for ByteNet namespace {namespaceName} to be ready`)
+	end
+end
+
 local function waitForRequiredDescendant(parent: Instance, name: string, timeoutSeconds: number): Instance
 	local deadline = os.clock() + timeoutSeconds
 	local existing = parent:FindFirstChild(name, true)
@@ -584,8 +632,25 @@ local function getRelativeModulePath(root: Instance, moduleScript: ModuleScript)
 	return table.concat(names, "/")
 end
 
+local function endsWith(text: string, suffix: string): boolean
+	return string.sub(text, -#suffix) == suffix
+end
+
+local function isServerOnlyModuleName(moduleName: string): boolean
+	for _, suffix in SERVER_ONLY_MODULE_NAME_SUFFIXES do
+		if endsWith(moduleName, suffix) then
+			return true
+		end
+	end
+
+	return false
+end
+
 local function shouldPrewarmModule(root: Instance, moduleScript: ModuleScript): boolean
 	if SKIPPED_MODULE_NAMES[moduleScript.Name] == true then
+		return false
+	end
+	if isServerOnlyModuleName(moduleScript.Name) then
 		return false
 	end
 	if string.find(moduleScript.Name, ".spec", 1, true) ~= nil then
@@ -790,8 +855,13 @@ end
 local function waitForNetwork()
 	setStageProgress("network", "waiting for network remotes", 0, STAGE_WEIGHT_NETWORK)
 
-	waitForRequiredChild(ReplicatedStorage, NETWORK_REMOTE_PREFIX .. "_RELIABLE_REMOTE", NETWORK_TIMEOUT_SECONDS)
-	waitForRequiredChild(ReplicatedStorage, NETWORK_REMOTE_PREFIX .. "_UNRELIABLE_REMOTE", NETWORK_TIMEOUT_SECONDS)
+	waitForRequiredChild(ReplicatedStorage, BYTE_NET_RELIABLE_REMOTE_NAME, NETWORK_TIMEOUT_SECONDS)
+	waitForRequiredChild(ReplicatedStorage, BYTE_NET_UNRELIABLE_REMOTE_NAME, NETWORK_TIMEOUT_SECONDS)
+
+	local byteNetStorage = waitForRequiredChild(ReplicatedStorage, BYTE_NET_STORAGE_NAME, NETWORK_TIMEOUT_SECONDS)
+	for _, namespaceName in BYTE_NET_NAMESPACE_NAMES do
+		waitForByteNetNamespace(byteNetStorage, namespaceName, NETWORK_TIMEOUT_SECONDS)
+	end
 
 	completeStage("network", "network remotes are ready", STAGE_WEIGHT_NETWORK)
 end
@@ -875,14 +945,9 @@ local function prewarmCriticalModules(
 			path = { "Shared", "Core", "Runtime" },
 		},
 		{
-			key = "Networker",
-			label = "networker",
-			path = { "Shared", "Modules", "Networking", "Networker" },
-		},
-		{
 			key = "ItemRegistry",
 			label = "item registry",
-			path = { "Shared", "Modules", "Items", "Registry" },
+			path = { "Shared", "Features", "item", "modules", "Registry" },
 		},
 		{
 			key = "ImageIds",
@@ -892,7 +957,7 @@ local function prewarmCriticalModules(
 		{
 			key = "RootUI",
 			label = "react root ui",
-			path = { "Client", "UI", "app", "RootUI" },
+			path = { "Client", "Features", "app", "RootUI" },
 		},
 		{
 			key = "AquariaBackupServiceClient",
@@ -972,7 +1037,7 @@ local function warmItemRegistry(itemRegistryRaw: any, assetIds: { string }, asse
 
 		definitionsById = if typeof(itemRegistryRaw.getDefinitionsById) == "function"
 			then itemRegistryRaw.getDefinitionsById()
-			else ({} :: any)
+			else {} :: any
 
 		local definitionCount = countDictionaryEntries(definitionsById)
 		if definitionCount > 0 then

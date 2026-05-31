@@ -44,7 +44,7 @@ Package-level style profile:
 - `ui`: 58 files, 53.45% strict, mostly camelCase file names, React functional composition
 - `modules`: 34 files, mostly static data/config exports, very low strict usage
 - `startup`: 2 files, orchestration-only entrypoints
-- `Packages/_Index/leifstout_networker@0.2.1/networker/src`: explicit RPC wrapper style with low abstraction and predictable naming
+- `Packages/_Index/ffrostflame_bytenet@0.4.6/bytenet/src`: packet-first transport with shared namespace contracts and direct client/server sends
 
 ## Global Hard Rules
 
@@ -86,29 +86,32 @@ Package-level style profile:
 
 ## Package Conventions
 
-### `Packages/Networker` (Highest Priority)
-Observed in `NetworkerClient.luau`, `NetworkerServer.luau`, `NetworkerUtils.luau`.
+### `Packages/ByteNet` (Highest Priority)
+Observed in `src/modules/Shared/NetShared`, `src/modules/Server/Net`, and `src/modules/Client/NetClient`.
 
 - Transport model:
-  - One remotes folder per network tag under `_remotes`.
-  - Uses `RemoteEvent` for fire-and-forget and `RemoteFunction` for fetch/invoke.
+  - Shared packet definitions live under `Shared/NetShared`.
+  - Server-owned packet access lives under `Server/Net`.
+  - Client-owned packet access lives under `Client/NetClient`.
+  - Use ByteNet packet `send`, `sendTo`, `sendToAll`, and `listen` directly.
 - Construction:
-  - Server: `Networker.server.new("ServiceTag", self, { self.allowedMethod, ... })`
-  - Client: `Networker.client.new("ServiceTag", self)`
+  - Define packet namespaces with `ByteNet.defineNamespace`.
+  - Define each endpoint as a concrete `ByteNet.definePacket`.
+  - Do not recreate an RPC abstraction over ByteNet.
 - Security model:
-  - Server only executes whitelisted methods passed through `clientAccess`.
-  - Unrecognized/restricted calls warn and return.
+  - Server only listens to explicitly intended client request packets.
+  - Server methods remain authoritative and sanitize all client payloads.
 - Naming intent:
   - Client->server calls are verb requests (`request*`, `set*`, action verbs).
   - Server->client calls are application/event verbs (`apply*`, `on*`, `play*`, `stop*`).
 - Payload shape:
-  - Simple updates often use positional args.
-  - Complex events use a single table payload.
+  - Preserve established endpoint names and payload compatibility during migrations.
+  - Prefer one table payload for new complex packets.
 - Design bias:
-  - Explicit dispatch, no reflection-heavy abstraction, no hidden middleware.
+  - Explicit packet definitions, explicit sends/listeners, no hidden middleware.
   - Keep endpoint names readable and concrete.
 
-Hard rule: for networking, follow the above pattern exactly unless the user explicitly requests a different transport design.
+Hard rule: for networking, use ByteNet directly through the three networking realms unless the user explicitly requests a different transport design.
 
 ### `src/services`
 
@@ -187,7 +190,7 @@ Hard rule: preserve init order unless there is an explicit dependency fix reques
 
 Actively required in source:
 
-- `Networker`, `Janitor`, `React`, `ReactRoblox`, `Charm`, `Signal`, `Ripple`, `EZCameraShake`, `ProfileStore`, `RaycastHitbox`, `BloodEngine`, `Promise`
+- `ByteNet`, `Janitor`, `React`, `ReactRoblox`, `Charm`, `Signal`, `Ripple`, `EZCameraShake`, `ProfileStore`, `RaycastHitbox`, `BloodEngine`, `Promise`
 
 Installed but currently low/zero direct usage in source:
 

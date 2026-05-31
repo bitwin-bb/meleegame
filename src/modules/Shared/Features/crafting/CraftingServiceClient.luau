@@ -5,12 +5,57 @@ local RunService = game:GetService("RunService")
 
 local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
 local CraftingServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.crafting.CraftingServiceUtils)
-local InventoryServiceClient = require(script:FindFirstAncestor("game").Client.Services.InventoryServiceClient)
+local InventoryServiceClient =
+	require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceClient)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local PlayerDataServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlayerDataServiceClient)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local CraftingServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).CraftingService
+
+local function sendPacket(methodName: string, ...: any)
+	local packet = CraftingServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for CraftingService`)
+		return
+	end
+
+	packet.send(PacketPayload.pack(...))
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = CraftingServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for CraftingService`)
+		return
+	end
+
+	packet.listen(function(payload: any)
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "applyState")
+	bindPacket(self, "onCraftResult")
+	bindPacket(self, "requestCraft")
+	bindPacket(self, "requestSync")
+end
+
+local PlayerDataServiceClient =
+	require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceClient)
 local Signal = require(ReplicatedStorage.Packages.Signal)
-local SnackbarNotifications = require(script:FindFirstAncestor("game").Client.SnackbarNotifications)
+local SnackbarNotifications =
+	require(script:FindFirstAncestor("game").Client.Features.notification.SnackbarNotifications)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
 
@@ -201,7 +246,7 @@ function CraftingServiceClient.ApplyState(self: CraftingServiceClient, stateRaw:
 end
 
 function CraftingServiceClient.OnCraftResult(self: CraftingServiceClient, resultRaw: any)
-	local source = if typeof(resultRaw) == "table" then resultRaw :: { [string]: any } else ({} :: any)
+	local source = if typeof(resultRaw) == "table" then resultRaw :: { [string]: any } else {} :: any
 	local result = {
 		success = source.success == true,
 		reason = if typeof(source.reason) == "string" then source.reason else nil,
@@ -219,7 +264,7 @@ function CraftingServiceClient.OnCraftResult(self: CraftingServiceClient, result
 end
 
 function CraftingServiceClient.RequestSync(self: CraftingServiceClient)
-	self.networker:fire(CraftingServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
+	sendPacket(CraftingServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
 function CraftingServiceClient.RequestCraft(self: CraftingServiceClient, recipeIdRaw: any, quantityRaw: any): boolean
@@ -238,7 +283,7 @@ function CraftingServiceClient.RequestCraft(self: CraftingServiceClient, recipeI
 	end
 
 	self.lastCraftRequestAt = now
-	self.networker:fire(CraftingServiceUtils.NETWORK_METHOD_REQUEST_CRAFT, recipeId, quantity)
+	sendPacket(CraftingServiceUtils.NETWORK_METHOD_REQUEST_CRAFT, recipeId, quantity)
 	return true
 end
 
@@ -311,7 +356,7 @@ function CraftingServiceClient.GetRecipePreview(
 end
 
 function CraftingServiceClient.GetRecipes(self: CraftingServiceClient, optionsRaw: any?): { any }
-	local options = if typeof(optionsRaw) == "table" then optionsRaw :: { [string]: any } else ({} :: any)
+	local options = if typeof(optionsRaw) == "table" then optionsRaw :: { [string]: any } else {} :: any
 	local category = trim(options.category)
 	local searchText = trim(options.searchText)
 	if category == "" then
@@ -435,7 +480,7 @@ function CraftingServiceClient.Init(self: CraftingServiceClient)
 	self.localPlayer = Players.LocalPlayer
 	self.config = CraftingServiceUtils.resolveEffectiveConfig((Configs :: any).crafting)
 	self.registry = CraftingServiceUtils.getRegistry(self.config)
-	self.networker = Networker.client.new("CraftingService", self)
+	bindPackets(self)
 	self.janitor = Janitor.new()
 	self.stateChanged = Signal.new()
 	self.serverState = CraftingServiceUtils.createDefaultServiceStateSnapshot(self.registry)
@@ -510,9 +555,6 @@ function CraftingServiceClient.Init(self: CraftingServiceClient)
 		end
 	end)
 	self.janitor:GiveChore(function()
-		self.networker:destroy()
-	end)
-	self.janitor:GiveChore(function()
 		self.stateChanged:Destroy()
 	end)
 
@@ -555,7 +597,6 @@ type CraftingServiceClient = typeof(CraftingServiceClient) & {
 	localPlayer: Player,
 	config: CraftingServiceConfig,
 	registry: RecipeRegistry,
-	networker: Networker.Client,
 	janitor: JanitorClass,
 	stateChanged: SignalObject,
 	serverState: CraftingServiceStateSnapshot,

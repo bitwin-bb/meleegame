@@ -9,7 +9,7 @@ local Configs = {
 	gameName = "Aquaria",
 	maxPlayers = 4,
 
-	addMock = false,
+	addMock = true,
 
 	playerData = {},
 
@@ -19,7 +19,7 @@ local Configs = {
 	},
 
 	cameraData = {
-		distance = 60,
+		distance = 90,
 		height = 8,
 		lookHeight = 8,
 		sideSign = 1,

@@ -5,17 +5,58 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
 local BossServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceServer)
-local InventoryServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
+local InventoryServiceServer = (require :: any)(
+	script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceServer
+)
+local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Melee = require(script:FindFirstAncestor("game").Shared.Features.combat.classes.Melee)
 local MeleeServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.combat.MeleeServiceUtils)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local MeleeServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).MeleeService
+
+local function bindPacket(self: any, methodName: string)
+	local packet = MeleeServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for MeleeService`)
+		return
+	end
+
+	packet.listen(function(payload: any, player: Player?)
+		if player == nil then
+			return
+		end
+
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, player, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "requestRefreshEquipped")
+	bindPacket(self, "requestSetInputHeld")
+end
+
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
 local NpcServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceServer)
-local PlayerServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer)
-local RagdollServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.ragdoll.RagdollServiceServer)
-local RaycastHitbox = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("RaycastHitbox"))
+local PlayerServiceServer = (require :: any)(
+	script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer
+)
+local RagdollServiceServer = (require :: any)(
+	script:FindFirstAncestor("game").Shared.Features.ragdoll.RagdollServiceServer
+)
+local RaycastHitbox =
+	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("RaycastHitbox"))
 local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 
 type MeleeWeaponConfig = MeleeServiceUtils.MeleeWeaponConfig
@@ -375,14 +416,11 @@ local function isWeaponConfigEquivalent(lhsRaw: any, rhsRaw: any): boolean
 end
 
 function MeleeServiceServer.Init(self: MeleeServiceServer)
-	self.networker = Networker.server.new("MeleeService", self, {
-		self.RequestRefreshEquipped,
-		self.RequestSetInputHeld,
-	})
+	bindPackets(self)
 	self.inventoryService = InventoryServiceServer :: InventoryServiceServerObject
 	self.ragdollService = RagdollServiceServer :: RagdollServiceServerObject
 	self.playerRuntimes = {}
-	;(self :: any).binders = NevermoreSupport.getService(ServerBinderSupport)
+	(self :: any).binders = NevermoreSupport.getService(ServerBinderSupport)
 
 	for _, player in Players:GetPlayers() do
 		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
@@ -1069,10 +1107,6 @@ function MeleeServiceServer.Destroy(self: MeleeServiceServer)
 		runtime.characterJanitor:Destroy()
 		self.playerRuntimes[player] = nil
 	end
-
-	if self.networker ~= nil then
-		self.networker:destroy()
-	end
 end
 
 MeleeServiceServer.init = MeleeServiceServer.Init
@@ -1100,7 +1134,6 @@ MeleeServiceServer.requestSetInputHeld = MeleeServiceServer.RequestSetInputHeld
 MeleeServiceServer.destroy = MeleeServiceServer.Destroy
 
 type MeleeServiceServer = typeof(MeleeServiceServer) & {
-	networker: Networker.Server,
 	inventoryService: InventoryServiceServerObject,
 	ragdollService: RagdollServiceServerObject,
 	playerRuntimes: { [Player]: PlayerRuntime },

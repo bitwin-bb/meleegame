@@ -3,8 +3,8 @@ local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local Animations = require(script:FindFirstAncestor("game").Shared.Modules.Items.Animations)
-local Audio = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
+local Animations = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Animations)
+local Audio = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
 
 local AnimationServiceUtils = {}

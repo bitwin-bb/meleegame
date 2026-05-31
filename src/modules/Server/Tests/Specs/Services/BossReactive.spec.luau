@@ -15,7 +15,7 @@ local Maid = loader("Maid")
 local BossBase = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss)
 local BossServiceServer = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceServer)
 local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local EntityCatalog = require(script:FindFirstAncestor("game").Shared.Cmdr.EntityCatalog)
+local EntityCatalog = require(script:FindFirstAncestor("game").Shared.Features.commander.EntityCatalog)
 local EyeOfCthulhuConfig =
 	require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.EyeOfCthulhu.Config)
 local QueenBeeConfig = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.QueenBee.Configs)
@@ -58,14 +58,6 @@ end
 local function createTestService()
 	local service = setmetatable({
 		maid = Maid.new(),
-		networker = {
-			fire = function()
-				return
-			end,
-			destroy = function()
-				return
-			end,
-		},
 		hpService = nil,
 		weatherService = nil,
 		worldGenerationService = nil,

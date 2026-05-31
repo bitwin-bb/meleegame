@@ -4,10 +4,8 @@ local describe = testEnvironment.describe :: any
 local it = testEnvironment.it :: any
 local expect = testEnvironment.expect :: any
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local InventoryProfile = require(script:FindFirstAncestor("game").Shared.Services.Profile)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
+local InventoryProfile = require(script:FindFirstAncestor("game").Shared.Features.inventory.Profile)
+local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
 
 local function createPlayer(): Player
 	return {
@@ -18,6 +16,26 @@ end
 
 return function()
 	describe("InventoryProfile", function()
+		it("seeds new profiles with copper starter tools in the first three hotbar slots", function()
+			local adapter = InventoryProfile.new(nil :: any)
+
+			local defaultInventory = adapter:cloneDefaultInventoryData()
+
+			expect(defaultInventory.selectedSlot).to.equal(nil)
+			expect(defaultInventory.slots[1].index).to.equal(1)
+			expect(defaultInventory.slots[1].itemId).to.equal("CopperBroadSword")
+			expect(defaultInventory.slots[1].amount).to.equal(1)
+			expect(defaultInventory.slots[1].maxStack).to.equal(1)
+			expect(defaultInventory.slots[2].index).to.equal(2)
+			expect(defaultInventory.slots[2].itemId).to.equal("CopperPickaxe")
+			expect(defaultInventory.slots[2].amount).to.equal(1)
+			expect(defaultInventory.slots[2].maxStack).to.equal(1)
+			expect(defaultInventory.slots[3].index).to.equal(3)
+			expect(defaultInventory.slots[3].itemId).to.equal("CopperAxe")
+			expect(defaultInventory.slots[3].amount).to.equal(1)
+			expect(defaultInventory.slots[3].maxStack).to.equal(1)
+		end)
+
 		it("writes loaded inventory state back into the live profile data path without saving immediately", function()
 			local saveCalls = 0
 			local profile = {

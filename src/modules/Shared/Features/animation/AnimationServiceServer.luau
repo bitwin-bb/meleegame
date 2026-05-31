@@ -3,7 +3,51 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local AnimationServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.animation.AnimationServiceUtils)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local AnimationServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).AnimationService
+
+local function sendPacket(player: Player, methodName: string, ...: any)
+	local packet = AnimationServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for AnimationService`)
+		return
+	end
+
+	packet.sendTo(PacketPayload.pack(...), player)
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = AnimationServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for AnimationService`)
+		return
+	end
+
+	packet.listen(function(payload: any, player: Player?)
+		if player == nil then
+			return
+		end
+
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, player, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "requestSync")
+	bindPacket(self, "setFootstepsEnabled")
+	bindPacket(self, "setProfile")
+end
 
 type AnimationProfile = AnimationServiceUtils.AnimationProfile
 type AnimationServiceState = AnimationServiceUtils.AnimationServiceState
@@ -13,11 +57,7 @@ local AnimationServiceServer = {}
 function AnimationServiceServer.Init(self: AnimationServiceServer)
 	self.profileRegistry = AnimationServiceUtils.createDefaultProfileRegistry()
 	self.playerStates = {}
-	self.networker = Networker.server.new("AnimationService", self, {
-		self.RequestSync,
-		self.SetProfile,
-		self.SetFootstepsEnabled,
-	})
+	bindPackets(self)
 
 	for _, player in Players:GetPlayers() do
 		self.playerStates[player] = AnimationServiceUtils.createDefaultState()
@@ -45,7 +85,7 @@ end
 
 function AnimationServiceServer.PushState(self: AnimationServiceServer, player: Player)
 	local state = self:getState(player)
-	self.networker:fire(player, "applyState", state.profileName, state.footstepsEnabled)
+	sendPacket(player, "applyState", state.profileName, state.footstepsEnabled)
 end
 
 function AnimationServiceServer.RequestSync(self: AnimationServiceServer, player: Player)
@@ -94,10 +134,6 @@ function AnimationServiceServer.Destroy(self: AnimationServiceServer)
 		self.playerRemovingConnection:Disconnect()
 		self.playerRemovingConnection = nil
 	end
-
-	if self.networker then
-		self.networker:destroy()
-	end
 end
 
 AnimationServiceServer.init = AnimationServiceServer.Init
@@ -110,7 +146,6 @@ AnimationServiceServer.getProfileRegistry = AnimationServiceServer.GetProfileReg
 AnimationServiceServer.destroy = AnimationServiceServer.Destroy
 
 type AnimationServiceServer = typeof(AnimationServiceServer) & {
-	networker: Networker.Server,
 	playerStates: { [Player]: AnimationServiceState },
 	profileRegistry: { [string]: AnimationProfile },
 	playerAddedConnection: RBXScriptConnection?,

@@ -3,7 +3,50 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GoreServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.gore.GoreServiceUtils)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local GoreServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).GoreService
+
+local function sendPacket(player: Player, methodName: string, ...: any)
+	local packet = GoreServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for GoreService`)
+		return
+	end
+
+	packet.sendTo(PacketPayload.pack(...), player)
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = GoreServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for GoreService`)
+		return
+	end
+
+	packet.listen(function(payload: any, player: Player?)
+		if player == nil then
+			return
+		end
+
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, player, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "requestSync")
+end
+
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
 local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 
@@ -38,7 +81,7 @@ local function isModel(value: any): boolean
 end
 
 local function buildRuntimeFromConfig(entityId: string, model: Model, configRaw: any): EntityRuntime
-	local source = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local source = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local isPlayerEntity = GoreServiceUtils.sanitizeBoolean((source :: any).isPlayerEntity, false)
 
 	local defaultBloodColor = if isPlayerEntity
@@ -83,10 +126,7 @@ local function buildRuntimeFromConfig(entityId: string, model: Model, configRaw:
 end
 
 function GoreServiceServer.FireClient(self: GoreServiceServer, player: Player, methodName: string, ...: any)
-	if self.networker == nil then
-		return
-	end
-	self.networker:fire(player, methodName, ...)
+	sendPacket(player, methodName, ...)
 end
 
 function GoreServiceServer.Broadcast(self: GoreServiceServer, methodName: string, ...: any)
@@ -367,19 +407,14 @@ function GoreServiceServer.OnNpcDied(self: GoreServiceServer, runtimeIdRaw: any,
 end
 
 function GoreServiceServer.Init(self: GoreServiceServer)
-	self.networker = Networker.server.new("GoreService", self, {
-		self.RequestSync,
-	})
+	bindPackets(self)
 	self.entitiesById = {} :: { [string]: EntityRuntime }
-	;(self :: any).binders = NevermoreSupport.getService(ServerBinderSupport)
+	(self :: any).binders = NevermoreSupport.getService(ServerBinderSupport)
 end
 
 function GoreServiceServer.Destroy(self: GoreServiceServer)
 	if self.entitiesById ~= nil then
 		table.clear(self.entitiesById)
-	end
-	if self.networker ~= nil then
-		self.networker:destroy()
 	end
 end
 
@@ -406,7 +441,6 @@ GoreServiceServer.init = GoreServiceServer.Init
 GoreServiceServer.destroy = GoreServiceServer.Destroy
 
 type GoreServiceServer = typeof(GoreServiceServer) & {
-	networker: Networker.Server,
 	entitiesById: { [string]: EntityRuntime },
 }
 

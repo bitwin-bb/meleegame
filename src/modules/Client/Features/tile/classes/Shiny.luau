@@ -13,7 +13,7 @@ local Rx = loader("Rx")
 
 local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
 local ShinySheet = require(script.Parent.Parent.modules.ShinySheet) :: any
-local tileThunks = require(script.Parent.Parent.tileThunks)
+local tileThunks = require(script.Parent.Parent.ui.state.tileThunks)
 
 type MaidClass = {
 	GiveTask: (self: MaidClass, task: any) -> number,

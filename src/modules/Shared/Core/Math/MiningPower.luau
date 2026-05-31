@@ -2,7 +2,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
+local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Registry)
 
 local MiningPower = {}
 

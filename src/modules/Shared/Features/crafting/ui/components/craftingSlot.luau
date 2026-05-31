@@ -6,7 +6,7 @@ local Gif = require(script:FindFirstAncestor("game").Client.UI.shared.Gif)
 local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
 local React = require(ReplicatedStorage.Packages.React)
 local craftingSlice = require(script:FindFirstAncestor("game").Shared.Features.crafting.ui.state.craftingSlice)
-local itemThunks = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemThunks)
+local itemThunks = require(script:FindFirstAncestor("game").Shared.Features.item.ui.state.itemThunks)
 
 type CraftingRecipeEntry = craftingSlice.CraftingRecipeEntry
 

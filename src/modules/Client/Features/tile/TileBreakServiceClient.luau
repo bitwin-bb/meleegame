@@ -14,7 +14,7 @@ local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Featur
 local Sheet = require(script.Parent.modules.Sheet)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
-local tileThunks = require(script.Parent.tileThunks)
+local tileThunks = require(script.Parent.ui.state.tileThunks)
 
 type MaidClass = {
 	GiveTask: (self: MaidClass, task: any) -> any,

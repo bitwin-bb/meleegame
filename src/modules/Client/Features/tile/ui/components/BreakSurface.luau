@@ -10,7 +10,7 @@ local FlipbookPlayer = loader("FlipbookPlayer")
 local Maid = loader("Maid")
 local React = require(ReplicatedStorage.Packages.React)
 
-local tileSlice = require(script:FindFirstAncestor("tile").tileSlice)
+local tileSlice = require(script.Parent.Parent.state.tileSlice)
 local useBreakAnim = require(script.Parent.Parent.hooks.useBreakAnim)
 
 type BreakState = tileSlice.BreakState

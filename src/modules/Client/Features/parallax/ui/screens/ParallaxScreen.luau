@@ -6,7 +6,7 @@ local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 
 local ParallaxComponent = require(script.Parent.Parent.components.ParallaxView)
-local ParallaxSlice = require(script:FindFirstAncestor("parallax").ParallaxSlice)
+local ParallaxSlice = require(script.Parent.Parent.state.ParallaxSlice)
 local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
 local e: typeof(React.createElement) = React.createElement

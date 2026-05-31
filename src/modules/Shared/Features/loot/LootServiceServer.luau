@@ -5,19 +5,57 @@ local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
+local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
 local AudioServiceServer = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceServer)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
-local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Core.Platform.InstanceUtils)
-local InventoryServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
+local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.InstanceUtils)
+local InventoryServiceServer = (require :: any)(
+	script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceServer
+)
+local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
 local LootServiceCache = require(script:FindFirstAncestor("game").Shared.Features.loot.modules.LootCache)
-local LootServiceData = require(script:FindFirstAncestor("game").Shared.Services.Data)
+local LootServiceData = require(script:FindFirstAncestor("game").Shared.Features.loot.modules.Data)
 local LootServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.loot.LootServiceUtils)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local LootServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).LootService
+
+local function bindPacket(self: any, methodName: string)
+	local packet = LootServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for LootService`)
+		return
+	end
+
+	packet.listen(function(payload: any, player: Player?)
+		if player == nil then
+			return
+		end
+
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, player, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "requestDropFromSlot")
+	bindPacket(self, "requestDropSelectedSlot")
+	bindPacket(self, "requestSync")
+end
+
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local PlayerDataServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerDataServiceServer)
-local ResolveItem = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveItem)
+local PlayerDataServiceServer =
+	require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceServer)
+local ResolveItem = require(script:FindFirstAncestor("game").Shared.Features.item.modules.ResolveItem)
 local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveToolInstance)
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
 local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
@@ -371,10 +409,7 @@ function LootServiceServer.RestoreCachedDropTools(
 	end
 end
 
-function LootServiceServer.ResolveCoinTypeFromItemId(
-	self: LootServiceServer,
-	itemIdRaw: any
-): string?
+function LootServiceServer.ResolveCoinTypeFromItemId(self: LootServiceServer, itemIdRaw: any): string?
 	local itemId = LootServiceUtils.sanitizeString(itemIdRaw, nil)
 	if itemId == nil then
 		return nil
@@ -438,7 +473,7 @@ end
 
 function LootServiceServer.PlayCoinDropSound(self: LootServiceServer, runtime: LootRuntime)
 	local soundService = self.soundService
-	if soundService == nil or (soundService :: any).networker == nil then
+	if soundService == nil then
 		return
 	end
 
@@ -463,7 +498,7 @@ end
 
 function LootServiceServer.PlayPickupSound(self: LootServiceServer, runtime: LootRuntime, player: Player)
 	local soundService = self.soundService
-	if soundService == nil or (soundService :: any).networker == nil then
+	if soundService == nil then
 		return
 	end
 
@@ -599,8 +634,8 @@ function LootServiceServer.ApplyRuntimePlaneConstraint(self: LootServiceServer, 
 	local rootPosition = runtime.rootPart.Position
 	if math.abs(rootPosition.X - planeX) > EPSILON then
 		local pivot = (runtime.instance :: any):GetPivot()
-		local rotationOnly = pivot - pivot.Position
-		;(runtime.instance :: any):PivotTo(CFrame.new(planeX, rootPosition.Y, rootPosition.Z) * rotationOnly)
+		local rotationOnly = pivot - pivot.Position;
+		(runtime.instance :: any):PivotTo(CFrame.new(planeX, rootPosition.Y, rootPosition.Z) * rotationOnly)
 	end
 
 	local updatedRootPosition = runtime.rootPart.Position
@@ -615,8 +650,8 @@ function LootServiceServer.SetRuntimePosition(self: LootServiceServer, runtime: 
 	end
 
 	local pivot = (runtime.instance :: any):GetPivot()
-	local rotationOnly = pivot - pivot.Position
-	;(runtime.instance :: any):PivotTo(CFrame.new(position) * rotationOnly)
+	local rotationOnly = pivot - pivot.Position;
+	(runtime.instance :: any):PivotTo(CFrame.new(position) * rotationOnly)
 	runtime.lastKnownPosition = position
 end
 
@@ -862,7 +897,7 @@ function LootServiceServer.SpawnLootRuntime(
 	end
 
 	local itemConfig = LootServiceUtils.resolveItemConfig(self.data, itemId)
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 	local amount = LootServiceUtils.sanitizeInteger(amountRaw, 1, 1, 999999)
 	local maxStack = LootServiceUtils.sanitizeInteger((options :: any).maxStack, itemConfig.maxStack, 1, 999999)
 	local rarity = LootServiceUtils.sanitizeRarity((options :: any).rarity, itemConfig.rarity)
@@ -975,10 +1010,12 @@ function LootServiceServer.SpawnDropsFromTable(
 	originRaw: any,
 	optionsRaw: any
 ): { [string]: any }
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 	local onlyCoinLoot = (options :: any).onlyCoinLoot == true
 	local origin = LootServiceUtils.sanitizeVector3(originRaw, Vector3.zero)
-	local context = if typeof((options :: any).context) == "table" then shallowCopy((options :: any).context) else ({} :: any)
+	local context = if typeof((options :: any).context) == "table"
+		then shallowCopy((options :: any).context)
+		else {} :: any
 	local mutableContext = context :: any
 	local sourceType = LootServiceUtils.sanitizeString((options :: any).sourceType, nil)
 	if sourceType ~= nil then
@@ -1036,7 +1073,7 @@ function LootServiceServer.SpawnDropsFromSource(
 		return {}
 	end
 
-	local options = if typeof(optionsRaw) == "table" then shallowCopy(optionsRaw) else ({} :: any)
+	local options = if typeof(optionsRaw) == "table" then shallowCopy(optionsRaw) else {} :: any
 	local mutableOptions = options :: any
 	local sourceType = LootServiceUtils.sanitizeString(mutableOptions.sourceType, nil)
 	if sourceType == nil then
@@ -1556,11 +1593,7 @@ function LootServiceServer.RequestDropSelectedSlot(
 end
 
 function LootServiceServer.Init(self: LootServiceServer)
-	self.networker = Networker.server.new("LootService", self, {
-		self.RequestSync,
-		self.RequestDropFromSlot,
-		self.RequestDropSelectedSlot,
-	})
+	bindPackets(self)
 	self.inventoryService = InventoryServiceServer :: InventoryServiceServerObject
 	self.playerDataService = PlayerDataServiceServer :: PlayerDataServiceServerObject
 	self.soundService = AudioServiceServer :: AudioServiceServerObject
@@ -1617,9 +1650,6 @@ function LootServiceServer.Destroy(self: LootServiceServer)
 		cache:destroy()
 	end
 
-	if self.networker ~= nil then
-		self.networker:destroy()
-	end
 	self.soundService = nil
 end
 
@@ -1675,7 +1705,6 @@ LootServiceServer.init = LootServiceServer.Init
 LootServiceServer.destroy = LootServiceServer.Destroy
 
 type LootServiceServer = typeof(LootServiceServer) & {
-	networker: Networker.Server,
 	inventoryService: InventoryServiceServerObject,
 	playerDataService: PlayerDataServiceServerObject,
 	soundService: AudioServiceServerObject?,

@@ -19,10 +19,10 @@ local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 
 local ParallaxBackgrounds = require(script.Parent.Parent.modules.ParallaxBackgrounds)
-local ParallaxRoot = require(script.Parent.Parent.ParallaxRoot)
+local ParallaxRoot = require(script.Parent.Parent.ui.ParallaxRoot)
 local ParallaxServiceUtils = require(script.Parent.Parent.ParallaxServiceUtils)
-local ParallaxSlice = require(script.Parent.Parent.ParallaxSlice)
-local ParallaxThunks = require(script.Parent.Parent.ParallaxThunks)
+local ParallaxSlice = require(script.Parent.Parent.ui.state.ParallaxSlice)
+local ParallaxThunks = require(script.Parent.Parent.ui.state.ParallaxThunks)
 local Scrolling = require(script.Parent.Parent.modules.Scrolling)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =

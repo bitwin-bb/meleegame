@@ -9,7 +9,7 @@ return Table.copy({
 	MovementHandler = require(script.MovementHandler),
 	CombatInputHandler = require(script.CombatInputHandler),
 	ToolHandler = require(script.ToolHandler),
-	CameraHandler = require(script.CameraHandler),
+	CameraHandler = require(script:FindFirstAncestor("game").Shared.Features.camera.handlers.CameraHandler),
 	UIHandler = require(script.UIHandler),
 	EffectHandler = require(script.EffectHandler),
 	SoundHandler = require(script.SoundHandler),

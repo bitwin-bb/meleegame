@@ -3,8 +3,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local MeleeServiceUtils = {}
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
+local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
+local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Registry)
 local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveToolInstance)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
 

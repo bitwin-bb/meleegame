@@ -9,15 +9,64 @@ local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
 local loader = (require :: any)(loaderUtils.Parent).load(script)
 
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
+local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
 local BossServiceClient = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceClient)
 local ClientBinderSupport = (require :: any)(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local AudioServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).AudioService
+
+local function sendPacket(methodName: string, ...: any)
+	local packet = AudioServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for AudioService`)
+		return
+	end
+
+	packet.send(PacketPayload.pack(...))
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = AudioServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for AudioService`)
+		return
+	end
+
+	packet.listen(function(payload: any)
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "applyState")
+	bindPacket(self, "playMusic")
+	bindPacket(self, "playSfx")
+	bindPacket(self, "requestSync")
+	bindPacket(self, "setCategoryVolume")
+	bindPacket(self, "setMasterVolume")
+	bindPacket(self, "setMuted")
+	bindPacket(self, "stopAll")
+	bindPacket(self, "stopChannel")
+end
+
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
 local Table = loader("Table")
-local WeatherServiceClient = (require :: any)(script:FindFirstAncestor("game").Shared.Features.world.WeatherServiceClient)
+local WeatherServiceClient = (require :: any)(
+	script:FindFirstAncestor("game").Shared.Features.world.WeatherServiceClient
+)
 local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.WeatherServiceUtils)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
@@ -557,7 +606,7 @@ function AudioServiceClient.Init(self: AudioServiceClient)
 		return
 	end
 	self.localPlayer = Players.LocalPlayer
-	self.networker = Networker.client.new("AudioService", self)
+	bindPackets(self)
 	self.janitor = Janitor.new()
 	self.characterSoundJanitor = Janitor.new()
 	self.state = AudioServiceUtils.createDefaultState()
@@ -590,9 +639,6 @@ function AudioServiceClient.Init(self: AudioServiceClient)
 	end))
 
 	self.janitor:GiveChore(function()
-		self.networker:destroy()
-	end)
-	self.janitor:GiveChore(function()
 		self:clearActiveSoundtrackConnections()
 		self:stopAll(0)
 	end)
@@ -601,7 +647,7 @@ function AudioServiceClient.Init(self: AudioServiceClient)
 		self:onCharacterAdded(self.localPlayer.Character)
 	end
 
-	self.networker:fire("requestSync")
+	sendPacket("requestSync")
 end
 
 function AudioServiceClient.OnCharacterAdded(self: AudioServiceClient, character: Model)
@@ -635,7 +681,7 @@ function AudioServiceClient.SetMasterVolume(self: AudioServiceClient, masterVolu
 	self.state = AudioServiceUtils.withMasterVolume(self.state, masterVolumeRaw)
 	AudioServiceUtils.applyStateToCategoryGroups(self.state, self.categoryGroups)
 	if replicateToServer ~= false then
-		self.networker:fire("setMasterVolume", self.state.masterVolume)
+		sendPacket("setMasterVolume", self.state.masterVolume)
 	end
 end
 
@@ -643,7 +689,7 @@ function AudioServiceClient.SetMuted(self: AudioServiceClient, mutedRaw: any, re
 	self.state = AudioServiceUtils.withMuted(self.state, mutedRaw)
 	AudioServiceUtils.applyStateToCategoryGroups(self.state, self.categoryGroups)
 	if replicateToServer ~= false then
-		self.networker:fire("setMuted", self.state.muted)
+		sendPacket("setMuted", self.state.muted)
 	end
 end
 
@@ -658,7 +704,7 @@ function AudioServiceClient.SetCategoryVolume(
 	if replicateToServer ~= false then
 		local category = AudioServiceUtils.normalizeCategoryOrNil(categoryRaw)
 		if category then
-			self.networker:fire("setCategoryVolume", category, volumeRaw)
+			sendPacket("setCategoryVolume", category, volumeRaw)
 		end
 	end
 end
@@ -668,7 +714,7 @@ function AudioServiceClient.ToggleMute(self: AudioServiceClient, replicateToServ
 end
 
 function AudioServiceClient.RequestSync(self: AudioServiceClient)
-	self.networker:fire("requestSync")
+	sendPacket("requestSync")
 end
 
 function AudioServiceClient.PlaySound(
@@ -851,7 +897,6 @@ type AudioServiceClient = typeof(AudioServiceClient) & {
 	setSoundtrackBiome: (self: AudioServiceClient, soundtrackBiomeRaw: any) -> (),
 	updateBiomeSoundtrack: (self: AudioServiceClient, deltaTime: number) -> (),
 	localPlayer: Player,
-	networker: Networker.Client,
 	janitor: any,
 	characterSoundJanitor: JanitorClass,
 	state: AudioServiceState,

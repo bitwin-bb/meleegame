@@ -8,29 +8,82 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Audio)
+local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
 local AudioServiceClient = (require :: any)(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceClient)
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
 local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
 local ClientBinderSupport = (require :: any)(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
-local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Core.Platform.GamepadPointer)
-local GamepadTargetServiceClient = require(script:FindFirstAncestor("game").Client.Services.GamepadTargetServiceClient)
-local InventoryServiceClient = require(script:FindFirstAncestor("game").Client.Services.InventoryServiceClient)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
+local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.GamepadPointer)
+local GamepadTargetServiceClient =
+	require(script:FindFirstAncestor("game").Shared.Features.platform.GamepadTargetServiceClient)
+local InventoryServiceClient =
+	require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceClient)
+local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local BuildServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).BuildService
+
+local function sendPacket(methodName: string, ...: any)
+	local packet = BuildServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for BuildService`)
+		return
+	end
+
+	packet.send(PacketPayload.pack(...))
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = BuildServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for BuildService`)
+		return
+	end
+
+	packet.listen(function(payload: any)
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "applyState")
+	bindPacket(self, "canPlaceAt")
+	bindPacket(self, "getTileAt")
+	bindPacket(self, "onActionResult")
+	bindPacket(self, "onBreakProgress")
+	bindPacket(self, "onTileFetched")
+	bindPacket(self, "onTileDeltas")
+	bindPacket(self, "onTreeFelled")
+	bindPacket(self, "requestBreakTile")
+	bindPacket(self, "requestPlaceTile")
+	bindPacket(self, "requestSync")
+end
+
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
+local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
-local Rubble = require(script:FindFirstAncestor("game").Shared.Classes.Rubble)
+local Rubble = require(script:FindFirstAncestor("game").Shared.Features.world.classes.Rubble)
 local Signal = require(ReplicatedStorage.Packages.Signal)
-local SnackbarNotifications = (require :: any)(script:FindFirstAncestor("game").Client.SnackbarNotifications)
+local SnackbarNotifications = (require :: any)(
+	script:FindFirstAncestor("game").Client.Features.notification.SnackbarNotifications
+)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
 local WorldGenerationServiceClient =
 	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
-local itemSlice = require(script:FindFirstAncestor("game").Client.UI.features.item.state.itemSlice)
+local itemSlice = require(script:FindFirstAncestor("game").Shared.Features.item.ui.state.itemSlice)
 
 type BuildServiceState = BuildServiceUtils.BuildServiceState
 type PlaceableItemConfig = BuildServiceUtils.PlaceableItemConfig
@@ -1409,21 +1462,19 @@ function BuildServiceClient.GetTileAt(
 	end
 	self.tileFetchCooldownByTileKey[tileKey] = now + TILE_QUERY_FETCH_COOLDOWN
 
-	local ok, tileIdOrError = pcall(function()
-		return self.networker:fetch(BuildServiceUtils.NETWORK_METHOD_GET_TILE_AT, tileX, tileY)
-	end)
-	if not ok then
-		return BuildServiceUtils.AIR_TILE_ID
+	sendPacket(BuildServiceUtils.NETWORK_METHOD_GET_TILE_AT, tileX, tileY)
+	return BuildServiceUtils.AIR_TILE_ID
+end
+
+function BuildServiceClient.OnTileFetched(self: BuildServiceClient, tileXRaw: any, tileYRaw: any, tileIdRaw: any)
+	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
+	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
+	local tileId = BuildServiceUtils.sanitizeTileId(tileIdRaw)
+	if tileX == nil or tileY == nil or tileId == nil then
+		return
 	end
-	if not isFiniteNumber(tileIdOrError) then
-		return BuildServiceUtils.AIR_TILE_ID
-	end
-	local tileId = BuildServiceUtils.sanitizeTileId(tileIdOrError)
-	if tileId == nil then
-		return BuildServiceUtils.AIR_TILE_ID
-	end
-	self.authoritativeDeltaCache[tileKey] = tileId
-	return tileId
+
+	self.authoritativeDeltaCache[BuildServiceUtils.packTileKey(tileX, tileY)] = tileId
 end
 
 function BuildServiceClient.CanPlaceAt(
@@ -1524,14 +1575,7 @@ function BuildServiceClient.RequestPlaceTile(
 		return requestId
 	end
 	self:createPlacePrediction(requestId, tileX, tileY, tileId)
-	self.networker:fire(
-		BuildServiceUtils.NETWORK_METHOD_REQUEST_PLACE_TILE,
-		tileX,
-		tileY,
-		tileId,
-		requestId,
-		sourceSlot
-	)
+	sendPacket(BuildServiceUtils.NETWORK_METHOD_REQUEST_PLACE_TILE, tileX, tileY, tileId, requestId, sourceSlot)
 	return requestId
 end
 
@@ -1548,14 +1592,7 @@ function BuildServiceClient.RequestBreakTile(
 	local registerHit = BuildServiceUtils.sanitizeBoolean(registerHitRaw, false)
 	local requestId = self.nextRequestId
 	self.nextRequestId += 1
-	self.networker:fire(
-		BuildServiceUtils.NETWORK_METHOD_REQUEST_BREAK_TILE,
-		tileX,
-		tileY,
-		isBreaking,
-		requestId,
-		registerHit
-	)
+	sendPacket(BuildServiceUtils.NETWORK_METHOD_REQUEST_BREAK_TILE, tileX, tileY, isBreaking, requestId, registerHit)
 	return requestId
 end
 
@@ -1862,14 +1899,7 @@ function BuildServiceClient.FlushHeldBreakInput(self: BuildServiceClient, now: n
 	local state = self.breakInput
 	if not state.isHeld then
 		if state.lastSentTileKey ~= nil then
-			self.networker:fire(
-				BuildServiceUtils.NETWORK_METHOD_REQUEST_BREAK_TILE,
-				state.tileX,
-				state.tileY,
-				false,
-				0,
-				false
-			)
+			sendPacket(BuildServiceUtils.NETWORK_METHOD_REQUEST_BREAK_TILE, state.tileX, state.tileY, false, 0, false)
 			state.lastSentTileKey = nil
 		end
 		return
@@ -1884,7 +1914,7 @@ function BuildServiceClient.FlushHeldBreakInput(self: BuildServiceClient, now: n
 	end
 	state.lastSentAt = now
 	state.lastSentTileKey = tileKey
-	self.networker:fire(BuildServiceUtils.NETWORK_METHOD_REQUEST_BREAK_TILE, state.tileX, state.tileY, true, 0, false)
+	sendPacket(BuildServiceUtils.NETWORK_METHOD_REQUEST_BREAK_TILE, state.tileX, state.tileY, true, 0, false)
 end
 
 function BuildServiceClient.FlushHeldPlaceInput(self: BuildServiceClient, now: number)
@@ -2114,12 +2144,12 @@ function BuildServiceClient.ApplyState(self: BuildServiceClient, stateRaw: any)
 end
 
 function BuildServiceClient.RequestSync(self: BuildServiceClient)
-	self.networker:fire(BuildServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
+	sendPacket(BuildServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
 function BuildServiceClient.Init(self: BuildServiceClient)
 	self.localPlayer = Players.LocalPlayer
-	self.networker = Networker.client.new("BuildService", self)
+	bindPackets(self)
 	self.janitor = Janitor.new()
 	self.state = BuildServiceUtils.createDefaultState()
 	self.stateChanged = Signal.new()
@@ -2210,9 +2240,6 @@ function BuildServiceClient.Init(self: BuildServiceClient)
 		(WorldGenerationServiceClient :: any):clearHoveredTerrainTile()
 	end
 
-	self.janitor:GiveChore(function()
-		self.networker:destroy()
-	end)
 	self.janitor:GiveChore(function()
 		self.stateChanged:Destroy()
 		self.actionAccepted:Destroy()
@@ -2360,6 +2387,7 @@ BuildServiceClient.resolveCursorTile = BuildServiceClient.ResolveCursorTile
 BuildServiceClient.resolveTerrainHoverTile = BuildServiceClient.ResolveTerrainHoverTile
 BuildServiceClient.getTileFromWorldGenerationSnapshot = BuildServiceClient.GetTileFromWorldGenerationSnapshot
 BuildServiceClient.getTileAt = BuildServiceClient.GetTileAt
+BuildServiceClient.onTileFetched = BuildServiceClient.OnTileFetched
 BuildServiceClient.canPlaceAt = BuildServiceClient.CanPlaceAt
 BuildServiceClient.cleanupPendingAction = BuildServiceClient.CleanupPendingAction
 BuildServiceClient.rollbackPendingAction = BuildServiceClient.RollbackPendingAction
@@ -2400,7 +2428,6 @@ type BuildServiceClient = typeof(BuildServiceClient) & {
 	runtimeContext: any?,
 	cursorModule: any?,
 	hapticsModule: any?,
-	networker: Networker.Client,
 	localPlayer: Player,
 	janitor: JanitorClass,
 	state: BuildServiceState,

@@ -6,7 +6,7 @@ local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 
 local BreakComponent = require(script.Parent.Parent.components.BreakSurface)
-local tileSlice = require(script:FindFirstAncestor("tile").tileSlice)
+local tileSlice = require(script.Parent.Parent.state.tileSlice)
 local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 
 type BreakState = tileSlice.BreakState

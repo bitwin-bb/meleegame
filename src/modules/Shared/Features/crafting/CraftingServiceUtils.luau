@@ -9,7 +9,7 @@ local Workspace = game:GetService("Workspace")
 
 local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
 local CraftingTree = require(script.Parent.modules.CraftingTree)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
+local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
 
 local CraftingServiceUtils = {}

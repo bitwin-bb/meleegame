@@ -6,11 +6,57 @@ local StarterGui = game:GetService("StarterGui")
 local Workspace = game:GetService("Workspace")
 
 local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local CameraShaker = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("EZCameraShake"))
+local CameraShaker =
+	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("EZCameraShake"))
 local EyeOfCthulhuPresentation =
 	require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.EyeOfCthulhu.Presentation)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local BossServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).BossService
+
+local function sendPacket(methodName: string, ...: any)
+	local packet = BossServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for BossService`)
+		return
+	end
+
+	packet.send(PacketPayload.pack(...))
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = BossServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for BossService`)
+		return
+	end
+
+	packet.listen(function(payload: any)
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "applyState")
+	bindPacket(self, "onAnnouncement")
+	bindPacket(self, "onBossAdded")
+	bindPacket(self, "onBossRemoved")
+	bindPacket(self, "onBossUpdated")
+	bindPacket(self, "requestManualSummon")
+	bindPacket(self, "requestSync")
+end
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
@@ -276,7 +322,7 @@ function BossServiceClient.OnBossRemoved(self: BossServiceClient, runtimeIdRaw: 
 end
 
 function BossServiceClient.OnAnnouncement(self: BossServiceClient, payloadRaw: any)
-	local payload = if typeof(payloadRaw) == "table" then payloadRaw else ({} :: any)
+	local payload = if typeof(payloadRaw) == "table" then payloadRaw else {} :: any
 	local text = trim((payload :: any).text)
 	if text == "" then
 		return
@@ -287,11 +333,11 @@ function BossServiceClient.OnAnnouncement(self: BossServiceClient, payloadRaw: a
 end
 
 function BossServiceClient.RequestSync(self: BossServiceClient)
-	self.networker:fire(BossServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
+	sendPacket(BossServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
 function BossServiceClient.RequestManualSummon(self: BossServiceClient, bossTokenRaw: any, optionsRaw: any?)
-	self.networker:fire(BossServiceUtils.NETWORK_METHOD_REQUEST_MANUAL_SUMMON, bossTokenRaw, optionsRaw)
+	sendPacket(BossServiceUtils.NETWORK_METHOD_REQUEST_MANUAL_SUMMON, bossTokenRaw, optionsRaw)
 end
 
 function BossServiceClient.GetState(self: BossServiceClient): BossServiceState
@@ -324,7 +370,7 @@ end
 
 function BossServiceClient.Init(self: BossServiceClient)
 	self.localPlayer = Players.LocalPlayer
-	self.networker = Networker.client.new("BossService", self)
+	bindPackets(self)
 	self.janitor = Janitor.new()
 	self.stateChanged = Signal.new()
 	self.announcementReceived = Signal.new()
@@ -372,9 +418,6 @@ function BossServiceClient.Init(self: BossServiceClient)
 	self.janitor:GiveChore(function()
 		self.announcementReceived:Destroy()
 	end)
-	self.janitor:GiveChore(function()
-		self.networker:destroy()
-	end)
 
 	self:requestSync()
 end
@@ -406,7 +449,6 @@ BossServiceClient.destroy = BossServiceClient.Destroy
 
 type BossServiceClient = typeof(BossServiceClient) & {
 	localPlayer: Player,
-	networker: Networker.Client,
 	janitor: JanitorClass,
 	stateChanged: SignalObject,
 	announcementReceived: SignalObject,

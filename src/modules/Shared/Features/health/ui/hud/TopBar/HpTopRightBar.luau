@@ -8,7 +8,7 @@ local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks
 local UiSound = require(script:FindFirstAncestor("game").Client.UI.core.utils.UiSound)
 local hpSlice = require(script:FindFirstAncestor("game").Shared.Features.health.ui.hud.state.slice.hpSlice)
 local hpThunks = require(script:FindFirstAncestor("game").Shared.Features.health.ui.hud.state.thunk.hpThunks)
-local infoThunks = require(script:FindFirstAncestor("game").Client.UI.features.info.state.infoThunks)
+local infoThunks = require(script:FindFirstAncestor("game").Client.Features.info.ui.state.infoThunks)
 local useHover = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useHover)
 local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
 

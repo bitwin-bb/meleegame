@@ -1,7 +1,7 @@
 --!strict
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
+local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Registry)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveToolInstance)
 local Signal = require(ReplicatedStorage.Packages.Signal)

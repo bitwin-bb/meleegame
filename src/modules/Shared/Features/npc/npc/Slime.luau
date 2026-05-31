@@ -2,7 +2,7 @@
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Core.Platform.InstanceUtils)
+local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.InstanceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceUtils)
 local SlimeAi = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Npc.slime)

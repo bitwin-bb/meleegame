@@ -2,7 +2,52 @@
 local Players = game:GetService("Players")
 
 local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local AudioServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).AudioService
+
+local function sendPacket(player: Player, methodName: string, ...: any)
+	local packet = AudioServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for AudioService`)
+		return
+	end
+
+	packet.sendTo(PacketPayload.pack(...), player)
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = AudioServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for AudioService`)
+		return
+	end
+
+	packet.listen(function(payload: any, player: Player?)
+		if player == nil then
+			return
+		end
+
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, player, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "requestSync")
+	bindPacket(self, "setCategoryVolume")
+	bindPacket(self, "setMasterVolume")
+	bindPacket(self, "setMuted")
+end
 
 type AudioServiceState = AudioServiceUtils.AudioServiceState
 
@@ -10,20 +55,15 @@ local AudioServiceServer = {}
 
 local MISSING_ASSET_ERROR = "no asset found!"
 
-local function fireForPlayers(networker: Networker.Server, players: { Player }, methodName: string, ...: any)
+local function fireForPlayers(players: { Player }, methodName: string, ...: any)
 	for _, player in players do
-		networker:fire(player, methodName, ...)
+		sendPacket(player, methodName, ...)
 	end
 end
 
 function AudioServiceServer.Init(self: AudioServiceServer)
 	self.playerStates = {}
-	self.networker = Networker.server.new("AudioService", self, {
-		self.RequestSync,
-		self.SetMasterVolume,
-		self.SetCategoryVolume,
-		self.SetMuted,
-	})
+	bindPackets(self)
 
 	for _, player in Players:GetPlayers() do
 		self.playerStates[player] = AudioServiceUtils.createDefaultState()
@@ -51,7 +91,7 @@ end
 
 function AudioServiceServer.PushState(self: AudioServiceServer, player: Player)
 	local state = self:getState(player)
-	self.networker:fire(player, "applyState", state.masterVolume, state.muted, state.categoryVolumes)
+	sendPacket(player, "applyState", state.masterVolume, state.muted, state.categoryVolumes)
 end
 
 function AudioServiceServer.RequestSync(self: AudioServiceServer, player: Player)
@@ -94,7 +134,7 @@ function AudioServiceServer.PlaySfxForPlayer(
 	if soundAssetId == nil then
 		error(MISSING_ASSET_ERROR, 0)
 	end
-	self.networker:fire(player, "playSfx", soundAssetId, AudioServiceUtils.serializePlaybackOptions(options, "SFX"))
+	sendPacket(player, "playSfx", soundAssetId, AudioServiceUtils.serializePlaybackOptions(options, "SFX"))
 end
 
 function AudioServiceServer.PlaySfxForAll(self: AudioServiceServer, soundAssetIdRaw: any, optionsRaw: any)
@@ -103,7 +143,6 @@ function AudioServiceServer.PlaySfxForAll(self: AudioServiceServer, soundAssetId
 		error(MISSING_ASSET_ERROR, 0)
 	end
 	fireForPlayers(
-		self.networker,
 		Players:GetPlayers(),
 		"playSfx",
 		soundAssetId,
@@ -121,7 +160,7 @@ function AudioServiceServer.PlayMusicForPlayer(
 	if soundAssetId == nil then
 		error(MISSING_ASSET_ERROR, 0)
 	end
-	self.networker:fire(player, "playMusic", soundAssetId, AudioServiceUtils.serializePlaybackOptions(options, "Music"))
+	sendPacket(player, "playMusic", soundAssetId, AudioServiceUtils.serializePlaybackOptions(options, "Music"))
 end
 
 function AudioServiceServer.PlayMusicForAll(self: AudioServiceServer, soundAssetIdRaw: any, optionsRaw: any)
@@ -130,7 +169,6 @@ function AudioServiceServer.PlayMusicForAll(self: AudioServiceServer, soundAsset
 		error(MISSING_ASSET_ERROR, 0)
 	end
 	fireForPlayers(
-		self.networker,
 		Players:GetPlayers(),
 		"playMusic",
 		soundAssetId,
@@ -144,19 +182,19 @@ function AudioServiceServer.StopChannelForPlayer(
 	channelNameRaw: any,
 	fadeTimeRaw: any
 )
-	self.networker:fire(player, "stopChannel", channelNameRaw, fadeTimeRaw)
+	sendPacket(player, "stopChannel", channelNameRaw, fadeTimeRaw)
 end
 
 function AudioServiceServer.StopChannelForAll(self: AudioServiceServer, channelNameRaw: any, fadeTimeRaw: any)
-	fireForPlayers(self.networker, Players:GetPlayers(), "stopChannel", channelNameRaw, fadeTimeRaw)
+	fireForPlayers(Players:GetPlayers(), "stopChannel", channelNameRaw, fadeTimeRaw)
 end
 
 function AudioServiceServer.StopAllForPlayer(self: AudioServiceServer, player: Player, fadeTimeRaw: any)
-	self.networker:fire(player, "stopAll", fadeTimeRaw)
+	sendPacket(player, "stopAll", fadeTimeRaw)
 end
 
 function AudioServiceServer.StopAllForAll(self: AudioServiceServer, fadeTimeRaw: any)
-	fireForPlayers(self.networker, Players:GetPlayers(), "stopAll", fadeTimeRaw)
+	fireForPlayers(Players:GetPlayers(), "stopAll", fadeTimeRaw)
 end
 
 function AudioServiceServer.Destroy(self: AudioServiceServer)
@@ -167,9 +205,6 @@ function AudioServiceServer.Destroy(self: AudioServiceServer)
 	if self.playerRemovingConnection then
 		self.playerRemovingConnection:Disconnect()
 		self.playerRemovingConnection = nil
-	end
-	if self.networker then
-		self.networker:destroy()
 	end
 end
 
@@ -191,7 +226,6 @@ AudioServiceServer.stopAllForAll = AudioServiceServer.StopAllForAll
 AudioServiceServer.destroy = AudioServiceServer.Destroy
 
 type AudioServiceServer = typeof(AudioServiceServer) & {
-	networker: Networker.Server,
 	playerStates: { [Player]: AudioServiceState },
 	playerAddedConnection: RBXScriptConnection?,
 	playerRemovingConnection: RBXScriptConnection?,

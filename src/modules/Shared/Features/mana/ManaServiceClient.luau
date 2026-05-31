@@ -4,9 +4,51 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local ManaServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.mana.ManaServiceUtils)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local PlayerDataServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlayerDataServiceClient)
-local PlayerDataServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.PlayerDataServiceUtils)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local ManaServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).ManaService
+
+local function sendPacket(methodName: string, ...: any)
+	local packet = ManaServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for ManaService`)
+		return
+	end
+
+	packet.send(PacketPayload.pack(...))
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = ManaServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for ManaService`)
+		return
+	end
+
+	packet.listen(function(payload: any)
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "applyState")
+	bindPacket(self, "requestSync")
+end
+
+local PlayerDataServiceClient =
+	require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceClient)
+local PlayerDataServiceUtils =
+	require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceUtils)
 local Signal = require(ReplicatedStorage.Packages.Signal)
 
 type ManaServiceState = ManaServiceUtils.ManaServiceState
@@ -48,7 +90,7 @@ end
 
 function ManaServiceClient.Init(self: ManaServiceClient)
 	self.localPlayer = Players.LocalPlayer
-	self.networker = Networker.client.new("ManaService", self)
+	bindPackets(self)
 	self.janitor = Janitor.new()
 	self.state = ManaServiceUtils.createDefaultState()
 	self.isStateReady = false
@@ -69,9 +111,6 @@ function ManaServiceClient.Init(self: ManaServiceClient)
 	end
 
 	self.janitor:GiveChore(function()
-		self.networker:destroy()
-	end)
-	self.janitor:GiveChore(function()
 		self.stateChanged:Destroy()
 	end)
 
@@ -86,7 +125,7 @@ function ManaServiceClient.ApplyState(self: ManaServiceClient, stateRaw: any)
 end
 
 function ManaServiceClient.RequestSync(self: ManaServiceClient)
-	self.networker:fire(ManaServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
+	sendPacket(ManaServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
 function ManaServiceClient.GetState(self: ManaServiceClient): ManaServiceState
@@ -112,7 +151,6 @@ ManaServiceClient.destroy = ManaServiceClient.Destroy
 
 export type ManaServiceClient = typeof(ManaServiceClient) & {
 	localPlayer: Player,
-	networker: Networker.Client,
 	janitor: JanitorClass,
 	state: ManaServiceState,
 	hasReceivedServerState: boolean,

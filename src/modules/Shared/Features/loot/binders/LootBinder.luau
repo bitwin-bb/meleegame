@@ -1,6 +1,6 @@
 --!strict
 
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
+local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Registry)
 local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
 
 local LootBinder = {}

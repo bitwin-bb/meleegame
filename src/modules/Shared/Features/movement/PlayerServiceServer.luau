@@ -6,7 +6,52 @@ local Workspace = game:GetService("Workspace")
 local DataTemplate = require(script:FindFirstAncestor("game").Shared.Core.DataTemplate)
 local GoreServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.gore.GoreServiceServer)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local PlayerServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).PlayerService
+
+local function sendPacket(player: Player, methodName: string, ...: any)
+	local packet = PlayerServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for PlayerService`)
+		return
+	end
+
+	packet.sendTo(PacketPayload.pack(...), player)
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = PlayerServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for PlayerService`)
+		return
+	end
+
+	packet.listen(function(payload: any, player: Player?)
+		if player == nil then
+			return
+		end
+
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, player, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "requestState")
+	bindPacket(self, "setFacing")
+	bindPacket(self, "setWorldReadyForMovement")
+end
+
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
 local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceUtils)
 local PlayerSpawnCooldown = require(script:FindFirstAncestor("game").Shared.Game.Player.PlayerSpawnCooldown)
@@ -75,14 +120,18 @@ local DAMAGE_FEEDBACK_MIN_INTERVAL = 0.12
 local LOADING_SCREEN_READY_REMOTE_NAME = "AquariaLoadingScreenReady"
 
 local function resolveInvincibilityFramesConfigFromTemplate(): InvincibilityFramesConfig
-	local template = if typeof(DataTemplate) == "table" then DataTemplate else ({} :: any)
-	local playerData = if typeof((template :: any).playerData) == "table" then (template :: any).playerData else ({} :: any)
+	local template = if typeof(DataTemplate) == "table" then DataTemplate else {} :: any
+	local playerData = if typeof((template :: any).playerData) == "table"
+		then (template :: any).playerData
+		else {} :: any
 	return PlayerServiceUtils.sanitizeInvincibilityFramesConfig((playerData :: any).invincibilityFrames)
 end
 
 local function resolveAllowMovementFreezeFromTemplate(): boolean
-	local template = if typeof(DataTemplate) == "table" then DataTemplate else ({} :: any)
-	local playerData = if typeof((template :: any).playerData) == "table" then (template :: any).playerData else ({} :: any)
+	local template = if typeof(DataTemplate) == "table" then DataTemplate else {} :: any
+	local playerData = if typeof((template :: any).playerData) == "table"
+		then (template :: any).playerData
+		else {} :: any
 	local allowMovementFreeze = (playerData :: any).allowMovementFreeze
 	if typeof(allowMovementFreeze) == "boolean" then
 		return allowMovementFreeze
@@ -146,7 +195,7 @@ function PlayerServiceServer.FireDamageFeedback(self: PlayerServiceServer, playe
 	end
 
 	runtime.lastDamageFeedbackAt = now
-	self.networker:fire(player, "onDamaged", damageAmount)
+	sendPacket(player, "onDamaged", damageAmount)
 end
 
 function PlayerServiceServer.Init(self: PlayerServiceServer)
@@ -163,17 +212,14 @@ function PlayerServiceServer.Init(self: PlayerServiceServer)
 	self.goreService = GoreServiceServer :: GoreServiceServerObject
 	self.ragdollService =
 		require(script:FindFirstAncestor("game").Shared.Features.ragdoll.RagdollServiceServer) :: RagdollServiceServerObject
-	self.networker = Networker.server.new("PlayerService", self, {
-		self.SetFacing,
-		self.RequestState,
-		self.SetWorldReadyForMovement,
-	})
-	local loadingScreenReadyRemote = ensureRemoteEvent(ReplicatedStorage, LOADING_SCREEN_READY_REMOTE_NAME) :: RemoteEvent
+	bindPackets(self)
+	local loadingScreenReadyRemote =
+		ensureRemoteEvent(ReplicatedStorage, LOADING_SCREEN_READY_REMOTE_NAME) :: RemoteEvent
 	self.loadingScreenReadyRemote = loadingScreenReadyRemote
 	self.loadingScreenReadyConnection = loadingScreenReadyRemote.OnServerEvent:Connect(function(player, statusRaw)
 		self:onLoadingScreenReady(player, statusRaw)
-	end)
-	;(self :: any).binders = NevermoreSupport.getService(ServerBinderSupport)
+	end);
+	(self :: any).binders = NevermoreSupport.getService(ServerBinderSupport)
 
 	for _, player in Players:GetPlayers() do
 		self:trackPlayer(player)
@@ -323,8 +369,8 @@ function PlayerServiceServer.SetMovementLocked(
 	local runtime = self:getRuntime(player)
 	self:applyMovementLockToRuntime(runtime, player, movementLocked)
 
-	if replicateToClient ~= false and self.networker then
-		self.networker:fire(player, PlayerServiceUtils.NETWORK_METHOD_APPLY_MOVEMENT_LOCK, movementLocked)
+	if replicateToClient ~= false then
+		sendPacket(player, PlayerServiceUtils.NETWORK_METHOD_APPLY_MOVEMENT_LOCK, movementLocked)
 	end
 end
 
@@ -900,8 +946,8 @@ function PlayerServiceServer.RequestState(self: PlayerServiceServer, player: Pla
 		PlayerServiceUtils.snapRootPartFacing(rig.rootPart, state.facingSign)
 	end
 	self:applyMovementLockToRuntime(runtime, player, state.movementLocked)
-	self.networker:fire(player, "applyFacing", state.facingSign)
-	self.networker:fire(player, PlayerServiceUtils.NETWORK_METHOD_APPLY_MOVEMENT_LOCK, state.movementLocked)
+	sendPacket(player, "applyFacing", state.facingSign)
+	sendPacket(player, PlayerServiceUtils.NETWORK_METHOD_APPLY_MOVEMENT_LOCK, state.movementLocked)
 end
 
 function PlayerServiceServer.SetWorldReadyForMovement(self: PlayerServiceServer, player: Player, worldReadyRaw: any)
@@ -959,10 +1005,6 @@ function PlayerServiceServer.Destroy(self: PlayerServiceServer)
 	if self.loadingScreenReadyConnection then
 		self.loadingScreenReadyConnection:Disconnect()
 		self.loadingScreenReadyConnection = nil
-	end
-
-	if self.networker then
-		self.networker:destroy()
 	end
 
 	for player, runtime in self.playerRuntimes do
@@ -1030,7 +1072,6 @@ type PlayerServiceServer = typeof(PlayerServiceServer) & {
 		isDeathRaw: any,
 		damageRaw: any?
 	) -> (),
-	networker: Networker.Server,
 	goreService: GoreServiceServerObject?,
 	ragdollService: RagdollServiceServerObject?,
 	invincibilityFramesConfig: InvincibilityFramesConfig,

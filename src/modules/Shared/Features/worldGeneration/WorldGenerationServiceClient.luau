@@ -11,9 +11,52 @@ local Workspace = game:GetService("Workspace")
 local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
 local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local OreRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Ores)
-local PlantRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Plants)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local WorldGenerationServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).WorldGenerationService
+
+local function sendPacket(methodName: string, ...: any)
+	local packet = WorldGenerationServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for WorldGenerationService`)
+		return
+	end
+
+	packet.send(PacketPayload.pack(...))
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = WorldGenerationServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for WorldGenerationService`)
+		return
+	end
+
+	packet.listen(function(payload: any)
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "applyState")
+	bindPacket(self, "onChunkSnapshot")
+	bindPacket(self, "onChunkUnloaded")
+	bindPacket(self, "requestSync")
+	bindPacket(self, "setRenderDistance")
+end
+
+local OreRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Ores)
+local PlantRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Plants)
 local ProceduralCactus =
 	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.classes.WorldGeneration.Cactus)
 local ProceduralTree =
@@ -774,7 +817,7 @@ local function resolveWorldGenerationConfigSource(): { [string]: any }
 		return {}
 	end
 	local worldGenerationConfig = (Configs :: any).worldGeneration
-	return if typeof(worldGenerationConfig) == "table" then worldGenerationConfig else ({} :: any)
+	return if typeof(worldGenerationConfig) == "table" then worldGenerationConfig else {} :: any
 end
 
 local function resolveClientVisualSettings(): (number, number, number, number)
@@ -801,8 +844,8 @@ local function computeChunkSnapshotVisualBounds(
 	worldOriginRaw: any,
 	basePlaneXRaw: any
 ): (CFrame, Vector3)
-	local snapshot = if typeof(snapshotRaw) == "table" then snapshotRaw :: { [string]: any } else ({} :: any)
-	local state = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else ({} :: any)
+	local snapshot = if typeof(snapshotRaw) == "table" then snapshotRaw :: { [string]: any } else {} :: any
+	local state = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {} :: any
 	local tileSize = sanitizeNumber(state.tileSize, 1, 64, WorldGenerationServiceUtils.CreateDefaultState().tileSize)
 	local tileDepth =
 		sanitizeNumber(state.tileDepth, 0.5, 64, WorldGenerationServiceUtils.CreateDefaultState().tileDepth)
@@ -1455,7 +1498,7 @@ local function sanitizeTileCoordinate(valueRaw: any): number?
 end
 
 local function createTerrainHoverHighlight(targetPart: BasePart): Highlight
-	return TileComponent.CreateHighlight(({
+	return TileComponent.CreateHighlight({
 		name = TERRAIN_HOVER_HIGHLIGHT_NAME,
 		adornee = targetPart,
 		depthMode = Enum.HighlightDepthMode.AlwaysOnTop,
@@ -1465,7 +1508,7 @@ local function createTerrainHoverHighlight(targetPart: BasePart): Highlight
 		outlineTransparency = TERRAIN_HOVER_OUTLINE_TRANSPARENCY,
 		enabled = true,
 		parent = targetPart,
-	} :: any))
+	} :: any)
 end
 
 function WorldGenerationServiceClient.ResolveWorldFolder(self: WorldGenerationServiceClient): Folder?
@@ -1499,10 +1542,10 @@ function WorldGenerationServiceClient.ResolveChunksFolder(self: WorldGenerationS
 		return folder
 	end
 
-	local folder = TileComponent.CreateFolder(({
+	local folder = TileComponent.CreateFolder({
 		name = CHUNKS_FOLDER_NAME,
 		parent = worldFolder,
-	} :: any))
+	} :: any)
 	WorkspaceFolders.manageFolder(folder, worldFolder)
 	self.chunksFolder = folder
 	return folder
@@ -2477,7 +2520,7 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 
 	local totalTiles = width * height
 	local tiles = Sift.Array.create(totalTiles, FOREGROUND_TILE_AIR_ID)
-	local tilesRaw = if typeof(source.tiles) == "table" then source.tiles :: { any } else ({} :: any)
+	local tilesRaw = if typeof(source.tiles) == "table" then source.tiles :: { any } else {} :: any
 	for tileIndex = 1, totalTiles do
 		local rawTileId = tilesRaw[tileIndex]
 		if isFiniteNumber(rawTileId) then
@@ -2485,7 +2528,7 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 		end
 	end
 	local depthLayers = Sift.Array.create(totalTiles, DEPTH_LAYER_CODE_UNDERGROUND)
-	local depthLayersRaw = if typeof(source.depthLayers) == "table" then source.depthLayers :: { any } else ({} :: any)
+	local depthLayersRaw = if typeof(source.depthLayers) == "table" then source.depthLayers :: { any } else {} :: any
 	for tileIndex = 1, totalTiles do
 		local rawDepthLayerCode = depthLayersRaw[tileIndex]
 		if isFiniteNumber(rawDepthLayerCode) then
@@ -2502,7 +2545,7 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 	local depthBelowSurface = Sift.Array.create(totalTiles, 0)
 	local depthBelowSurfaceRaw = if typeof(source.depthBelowSurface) == "table"
 		then source.depthBelowSurface :: { any }
-		else ({} :: any)
+		else {} :: any
 	for tileIndex = 1, totalTiles do
 		local rawDepthBelowSurface = depthBelowSurfaceRaw[tileIndex]
 		if isFiniteNumber(rawDepthBelowSurface) then
@@ -2515,7 +2558,7 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 
 	local dominantBiomeId = sanitizeInteger(source.dominantBiomeId, BIOME_ID_FOREST, BIOME_ID_JUNGLE, BIOME_ID_FOREST)
 	local biomeIds = Sift.Array.create(totalTiles, dominantBiomeId)
-	local biomeIdsRaw = if typeof(source.biomeIds) == "table" then source.biomeIds :: { any } else ({} :: any)
+	local biomeIdsRaw = if typeof(source.biomeIds) == "table" then source.biomeIds :: { any } else {} :: any
 	for tileIndex = 1, totalTiles do
 		local rawBiomeId = biomeIdsRaw[tileIndex]
 		if isFiniteNumber(rawBiomeId) then
@@ -2524,7 +2567,7 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 	end
 	local hasSurfaceBiomeIds = typeof(source.surfaceBiomeIds) == "table"
 	local surfaceBiomeIds = Sift.Array.create(width, if hasSurfaceBiomeIds then dominantBiomeId else BIOME_ID_FOREST)
-	local surfaceBiomeIdsRaw = if hasSurfaceBiomeIds then source.surfaceBiomeIds :: { any } else ({} :: any)
+	local surfaceBiomeIdsRaw = if hasSurfaceBiomeIds then source.surfaceBiomeIds :: { any } else {} :: any
 	for localX = 0, width - 1 do
 		local rawBiomeId = surfaceBiomeIdsRaw[localX + 1]
 		if isFiniteNumber(rawBiomeId) then
@@ -2537,7 +2580,7 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 	local dominantBiomeType =
 		sanitizeInteger(source.dominantBiomeType, BIOME_TYPE_NORMAL, BIOME_TYPE_CORRUPTION, BIOME_TYPE_NORMAL)
 	local biomeTypes = Sift.Array.create(totalTiles, dominantBiomeType)
-	local biomeTypesRaw = if typeof(source.biomeTypes) == "table" then source.biomeTypes :: { any } else ({} :: any)
+	local biomeTypesRaw = if typeof(source.biomeTypes) == "table" then source.biomeTypes :: { any } else {} :: any
 	for tileIndex = 1, totalTiles do
 		local rawBiomeType = biomeTypesRaw[tileIndex]
 		if isFiniteNumber(rawBiomeType) then
@@ -2547,7 +2590,9 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 	end
 
 	local backgroundLayers: { ChunkLayerSnapshot } = {}
-	local layersRaw = if typeof(source.backgroundLayers) == "table" then source.backgroundLayers :: { any } else ({} :: any)
+	local layersRaw = if typeof(source.backgroundLayers) == "table"
+		then source.backgroundLayers :: { any }
+		else {} :: any
 	for _, layerRaw in layersRaw do
 		if typeof(layerRaw) ~= "table" then
 			continue
@@ -2561,7 +2606,7 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 		local layerIndex = sanitizeInteger(layer.layerIndex, 1, 64, #backgroundLayers + 1)
 		local layerTotalTiles = layerWidth * layerHeight
 		local layerTiles = Sift.Array.create(layerTotalTiles, FOREGROUND_TILE_AIR_ID)
-		local layerTilesRaw = if typeof(layer.tiles) == "table" then layer.tiles :: { any } else ({} :: any)
+		local layerTilesRaw = if typeof(layer.tiles) == "table" then layer.tiles :: { any } else {} :: any
 		for tileIndex = 1, layerTotalTiles do
 			local rawTileId = layerTilesRaw[tileIndex]
 			if isFiniteNumber(rawTileId) then
@@ -2580,7 +2625,7 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 	end
 
 	local trees: { TreeSpawnSnapshot } = {}
-	local treesRaw = if typeof(source.trees) == "table" then source.trees :: { any } else ({} :: any)
+	local treesRaw = if typeof(source.trees) == "table" then source.trees :: { any } else {} :: any
 	for _, treeRaw in treesRaw do
 		if typeof(treeRaw) ~= "table" then
 			continue
@@ -2616,7 +2661,7 @@ function WorldGenerationServiceClient.SanitizeChunkSnapshot(
 	end
 
 	local props: { PropSpawnSnapshot } = {}
-	local propsRaw = if typeof(source.props) == "table" then source.props :: { any } else ({} :: any)
+	local propsRaw = if typeof(source.props) == "table" then source.props :: { any } else {} :: any
 	for _, propRaw in propsRaw do
 		if typeof(propRaw) ~= "table" then
 			continue
@@ -2990,7 +3035,7 @@ function WorldGenerationServiceClient.StepChunkVisualBuildJob(
 				else Color3.fromRGB(82, 136, 74)
 			local cactusComplexity = math.clamp(propSpawnData.variantIndex, 1, 4)
 			job.propsFolder = job.propsFolder or getOrCreateChildFolder(job.model, "Props")
-			local cactusGenerator = ProceduralCactus.new(({
+			local cactusGenerator = ProceduralCactus.new({
 				Seed = propSpawnData.seed,
 				Parent = job.propsFolder,
 				ModelName = `Cactus_{snapshot.chunkX}_{snapshot.chunkY}_{job.propCount + 1}`,
@@ -3010,7 +3055,7 @@ function WorldGenerationServiceClient.StepChunkVisualBuildJob(
 				SegmentColor = cactusColor,
 				UseWelds = true,
 				SegmentCanCollide = false,
-			} :: any))
+			} :: any)
 			propInstance = cactusGenerator:Generate(position)
 			useGeneratedBoundsPlacement = true
 		else
@@ -3370,7 +3415,7 @@ function WorldGenerationServiceClient.ApplyState(self: WorldGenerationServiceCli
 end
 
 function WorldGenerationServiceClient.RequestSync(self: WorldGenerationServiceClient)
-	self.networker:fire(WorldGenerationServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
+	sendPacket(WorldGenerationServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
 function WorldGenerationServiceClient.SetRenderDistance(
@@ -3378,7 +3423,7 @@ function WorldGenerationServiceClient.SetRenderDistance(
 	renderDistanceRaw: any,
 	verticalRenderDistanceRaw: any?
 )
-	self.networker:fire(
+	sendPacket(
 		WorldGenerationServiceUtils.NETWORK_METHOD_SET_RENDER_DISTANCE,
 		renderDistanceRaw,
 		verticalRenderDistanceRaw
@@ -3535,7 +3580,7 @@ end
 
 function WorldGenerationServiceClient.Init(self: WorldGenerationServiceClient)
 	self.localPlayer = Players.LocalPlayer
-	self.networker = Networker.client.new("WorldGenerationService", self)
+	bindPackets(self)
 	self.janitor = Janitor.new()
 	self.state = WorldGenerationServiceUtils.createDefaultState()
 	self.stateChanged = Signal.new()
@@ -3577,9 +3622,6 @@ function WorldGenerationServiceClient.Init(self: WorldGenerationServiceClient)
 	self.hoveredTerrainChunkKey = nil :: string?
 	self.hoveredTerrainRuntime = nil :: TerrainHoverRuntime?
 
-	self.janitor:GiveChore(function()
-		self.networker:destroy()
-	end)
 	self.janitor:GiveChore(function()
 		self.stateChanged:Destroy()
 	end)
@@ -3690,7 +3732,6 @@ WorldGenerationServiceClient.destroy = WorldGenerationServiceClient.Destroy
 
 type WorldGenerationServiceClient = typeof(WorldGenerationServiceClient) & {
 	localPlayer: Player,
-	networker: Networker.Client,
 	janitor: JanitorClass,
 	state: WorldGenerationServiceState,
 	stateChanged: SignalObject,

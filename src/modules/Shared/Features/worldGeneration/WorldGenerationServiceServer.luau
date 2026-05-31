@@ -12,7 +12,51 @@ local RxSignal = loader("RxSignal")
 local Signal = loader("Signal")
 
 local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local WorldGenerationServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).WorldGenerationService
+
+local function sendPacket(player: Player, methodName: string, ...: any)
+	local packet = WorldGenerationServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for WorldGenerationService`)
+		return
+	end
+
+	packet.sendTo(PacketPayload.pack(...), player)
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = WorldGenerationServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for WorldGenerationService`)
+		return
+	end
+
+	packet.listen(function(payload: any, player: Player?)
+		if player == nil then
+			return
+		end
+
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, player, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "requestSync")
+	bindPacket(self, "setRenderDistance")
+end
+
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
 local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
@@ -20,8 +64,9 @@ local WorldGeneration =
 	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.classes.WorldGeneration)
 local WorldGenerationServiceUtils =
 	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceUtils)
-local WorldSimulationServiceServer =
-	(require :: any)(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldSimulationServiceServer)
+local WorldSimulationServiceServer = (require :: any)(
+	script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldSimulationServiceServer
+)
 
 type WorldGenerationClass = WorldGeneration.WorldGeneration
 type WorldGenerationConfig = WorldGenerationServiceUtils.WorldGenerationConfig
@@ -95,7 +140,7 @@ local function resolveConfigSource(): any
 end
 
 local function cloneTableShallow(sourceRaw: any): { [any]: any }
-	local source = if typeof(sourceRaw) == "table" then sourceRaw else ({} :: any)
+	local source = if typeof(sourceRaw) == "table" then sourceRaw else {} :: any
 	return table.clone(source)
 end
 
@@ -300,16 +345,7 @@ function WorldGenerationServiceServer.Init(self: WorldGenerationServiceServer)
 		return self:observeStateChanged()
 	end) :: RxSignalObject
 	self.maid:GiveTask(self._stateChangedSignal)
-	self.networker = Networker.server.new("WorldGenerationService", self, {
-		self.RequestSync,
-		self.SetRenderDistance,
-	})
-	self.maid:GiveTask(function()
-		if self.networker ~= nil then
-			self.networker:destroy()
-			self.networker = nil
-		end
-	end)
+	bindPackets(self)
 	self:connectReactiveWorldObservers()
 	self:connectChunkBinderObservers()
 
@@ -350,10 +386,8 @@ end
 
 function WorldGenerationServiceServer.ResetStreamingState(self: WorldGenerationServiceServer)
 	for player, stream in self.playerChunkStreams do
-		if self.networker ~= nil then
-			for chunkKey in stream.interestKeys do
-				self.networker:fire(player, "onChunkUnloaded", chunkKey)
-			end
+		for chunkKey in stream.interestKeys do
+			sendPacket(player, "onChunkUnloaded", chunkKey)
 		end
 
 		table.clear(stream.interestKeys)
@@ -377,7 +411,7 @@ function WorldGenerationServiceServer.ResetStreamingState(self: WorldGenerationS
 end
 
 function WorldGenerationServiceServer.LoadWorld(self: WorldGenerationServiceServer, worldRaw: any)
-	local worldSource = if typeof(worldRaw) == "table" then worldRaw else ({} :: any)
+	local worldSource = if typeof(worldRaw) == "table" then worldRaw else {} :: any
 	local configSource = cloneTableShallow(resolveConfigSource())
 	for key, value in worldSource do
 		if
@@ -534,12 +568,8 @@ function WorldGenerationServiceServer.CreateStateSnapshot(
 end
 
 function WorldGenerationServiceServer.PushState(self: WorldGenerationServiceServer, player: Player)
-	if self.networker == nil then
-		return
-	end
-
 	local snapshot = self:createStateSnapshot(player)
-	self.networker:fire(player, "applyState", snapshot)
+	sendPacket(player, "applyState", snapshot)
 	self:emitStateChanged(player, snapshot)
 end
 
@@ -875,9 +905,7 @@ function WorldGenerationServiceServer.SyncPlayerChunkStream(
 			continue
 		end
 		stream.sentRevisions[chunkKey] = nil
-		if self.networker then
-			self.networker:fire(player, "onChunkUnloaded", chunkKey)
-		end
+		sendPacket(player, "onChunkUnloaded", chunkKey)
 	end
 
 	stream.interestKeys = nextInterest
@@ -917,9 +945,7 @@ function WorldGenerationServiceServer.ProcessChunkStreamQueues(self: WorldGenera
 				continue
 			end
 
-			if self.networker then
-				self.networker:fire(player, "onChunkSnapshot", snapshot)
-			end
+			sendPacket(player, "onChunkSnapshot", snapshot)
 			stream.sentRevisions[chunkKey] = revision
 			perPlayerProcessed += 1
 			totalProcessed += 1
@@ -1191,7 +1217,6 @@ WorldGenerationServiceServer.destroy = WorldGenerationServiceServer.Destroy
 
 type WorldGenerationServiceServer = typeof(WorldGenerationServiceServer) & {
 	maid: MaidClass,
-	networker: Networker.Server,
 	world: WorldGenerationClass,
 	config: WorldGenerationConfig,
 	binders: any,

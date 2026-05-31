@@ -2,10 +2,10 @@
 
 local Players = game:GetService("Players")
 
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Modules.Items.Registry)
+local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Registry)
 local MagicServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.combat.MagicServiceUtils)
 local MeleeServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.combat.MeleeServiceUtils)
-local ResolveItem = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveItem)
+local ResolveItem = require(script:FindFirstAncestor("game").Shared.Features.item.modules.ResolveItem)
 local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveToolInstance)
 local TagBinder = require(script.Parent.TagBinder)
 

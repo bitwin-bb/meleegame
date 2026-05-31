@@ -1,6 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BreathRoot = require(script:FindFirstAncestor("game").Client.UI.features.breath.BreathRoot)
+local BreathRoot = require(script:FindFirstAncestor("game").Shared.Features.breath.ui.BreathRoot)
 local ManaRoot = require(script:FindFirstAncestor("game").Shared.Features.mana.ui.ManaRoot)
 local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
 local React = require(ReplicatedStorage.Packages.React)

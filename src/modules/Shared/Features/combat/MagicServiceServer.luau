@@ -8,15 +8,65 @@ local Workspace = game:GetService("Workspace")
 
 local BossServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceServer)
 local HpServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.health.HpServiceServer)
-local InventoryServiceServer = (require :: any)(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
+local InventoryServiceServer = (require :: any)(
+	script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceServer
+)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Magic = require(script:FindFirstAncestor("game").Shared.Features.combat.classes.Magic)
 local MagicServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.combat.MagicServiceUtils)
 local ManaServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.mana.ManaServiceServer)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local MagicServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).MagicService
+
+local function sendPacket(player: Player, methodName: string, ...: any)
+	local packet = MagicServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for MagicService`)
+		return
+	end
+
+	packet.sendTo(PacketPayload.pack(...), player)
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = MagicServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for MagicService`)
+		return
+	end
+
+	packet.listen(function(payload: any, player: Player?)
+		if player == nil then
+			return
+		end
+
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, player, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "requestCast")
+	bindPacket(self, "requestRefreshEquipped")
+	bindPacket(self, "requestSetInputHeld")
+	bindPacket(self, "requestSync")
+end
+
 local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
 local NpcServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceServer)
-local PlayerServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer)
+local PlayerServiceServer = (require :: any)(
+	script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer
+)
 local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceUtils)
 local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
 
@@ -298,7 +348,7 @@ function MagicServiceServer.PushState(self: MagicServiceServer, player: Player, 
 	end
 	runtime.lastStatePushAt = now
 	local mana, maxMana, regenPerSecond = self:resolveManaStateSnapshot(player)
-	self.networker:fire(player, MagicServiceUtils.CLIENT_METHOD_APPLY_STATE, {
+	sendPacket(player, MagicServiceUtils.CLIENT_METHOD_APPLY_STATE, {
 		mana = mana,
 		maxMana = maxMana,
 		regenPerSecond = regenPerSecond,
@@ -387,7 +437,7 @@ function MagicServiceServer.BuildRuntimeConfigWithOverrides(
 	local patched = shallowCopy(weaponConfig)
 	local baseDefinition = if typeof((weaponConfig :: any).definition) == "table"
 		then shallowCopy((weaponConfig :: any).definition)
-		else ({} :: any)
+		else {} :: any
 	baseDefinition.magicWeapon = override
 	patched.definition = baseDefinition
 	return MagicServiceUtils.buildWeaponRuntimeConfig(patched)
@@ -490,7 +540,7 @@ function MagicServiceServer.OnMagicCastRequested(
 	if player == nil or runtime == nil then
 		return false
 	end
-	local context = if typeof(contextRaw) == "table" then contextRaw else ({} :: any)
+	local context = if typeof(contextRaw) == "table" then contextRaw else {} :: any
 	if not MagicServiceUtils.isHumanoidAlive(runtime.humanoid) then
 		return false
 	end
@@ -539,7 +589,7 @@ function MagicServiceServer.CanConsumeMana(
 	if manaService == nil then
 		return false
 	end
-	local context = if typeof(contextRaw) == "table" then shallowCopy(contextRaw) else ({} :: any)
+	local context = if typeof(contextRaw) == "table" then shallowCopy(contextRaw) else {} :: any
 	context.castToken = castToken
 	if castData ~= nil then
 		context.itemId = castData.itemId
@@ -576,7 +626,7 @@ function MagicServiceServer.ConsumeMana(
 	if manaService == nil then
 		return false
 	end
-	local context = if typeof(contextRaw) == "table" then shallowCopy(contextRaw) else ({} :: any)
+	local context = if typeof(contextRaw) == "table" then shallowCopy(contextRaw) else {} :: any
 	context.castToken = castToken
 	if castData ~= nil then
 		context.itemId = castData.itemId
@@ -1042,7 +1092,7 @@ function MagicServiceServer.ApplyChainEffect(
 		if self:damageHumanoidTarget(projectile, targetHumanoid, chainDamage, true) then
 			for _, listedPlayer in Players:GetPlayers() do
 				if PlayerServiceServer:isGameplayActiveForPlayer(listedPlayer) then
-					self.networker:fire(listedPlayer, MagicServiceUtils.CLIENT_METHOD_ON_IMPACT_VISUAL, {
+					sendPacket(listedPlayer, MagicServiceUtils.CLIENT_METHOD_ON_IMPACT_VISUAL, {
 						castId = projectile.castId,
 						weaponId = projectile.weaponId,
 						position = targetPosition,
@@ -1105,7 +1155,7 @@ function MagicServiceServer.ExpireProjectile(
 	self:releaseProjectile(projectile)
 	for _, listedPlayer in Players:GetPlayers() do
 		if PlayerServiceServer:isGameplayActiveForPlayer(listedPlayer) then
-			self.networker:fire(listedPlayer, MagicServiceUtils.CLIENT_METHOD_ON_IMPACT_VISUAL, {
+			sendPacket(listedPlayer, MagicServiceUtils.CLIENT_METHOD_ON_IMPACT_VISUAL, {
 				castId = projectile.castId,
 				weaponId = projectile.weaponId,
 				position = position,
@@ -1446,7 +1496,7 @@ function MagicServiceServer.SpawnProjectile(
 
 	for _, listedPlayer in Players:GetPlayers() do
 		if PlayerServiceServer:isGameplayActiveForPlayer(listedPlayer) then
-			self.networker:fire(listedPlayer, MagicServiceUtils.CLIENT_METHOD_ON_CAST_VISUAL, {
+			sendPacket(listedPlayer, MagicServiceUtils.CLIENT_METHOD_ON_CAST_VISUAL, {
 				castId = castId,
 				casterUserId = player.UserId,
 				weaponId = config.itemId,
@@ -1503,7 +1553,7 @@ function MagicServiceServer.OnMagicCastCommitted(
 	if player == nil or runtime == nil then
 		return
 	end
-	local context = if typeof(contextRaw) == "table" then contextRaw else ({} :: any)
+	local context = if typeof(contextRaw) == "table" then contextRaw else {} :: any
 	local castToken = resolveCastToken(context)
 	if castToken < 1 then
 		return
@@ -1600,7 +1650,7 @@ function MagicServiceServer.CreateMagicController(self: MagicServiceServer, play
 	if runtime.magicController ~= nil then
 		runtime.magicController:destroy()
 	end
-	local controller = Magic.new(({
+	local controller = Magic.new({
 		ownerPlayer = player,
 		character = runtime.character,
 		service = self,
@@ -1608,7 +1658,7 @@ function MagicServiceServer.CreateMagicController(self: MagicServiceServer, play
 		autoRepeatWhileHeld = false,
 		allowQueueOnCooldown = true,
 		validateDefinitionItemType = true,
-	} :: any)) :: any
+	} :: any) :: any
 	runtime.magicController = controller
 end
 
@@ -1768,12 +1818,7 @@ function MagicServiceServer.RegisterDefinitionsFromFolder(self: MagicServiceServ
 end
 
 function MagicServiceServer.Init(self: MagicServiceServer)
-	self.networker = Networker.server.new("MagicService", self, {
-		self.RequestSync,
-		self.RequestRefreshEquipped,
-		self.RequestSetInputHeld,
-		self.RequestCast,
-	})
+	bindPackets(self)
 	self.inventoryService = InventoryServiceServer :: InventoryServiceServerObject
 	self.manaService = ManaServiceServer :: ManaServiceServerObject
 	self.npcService = NpcServiceServer :: NpcServiceServerObject
@@ -1792,20 +1837,11 @@ function MagicServiceServer.Init(self: MagicServiceServer)
 
 	local gameRoot = script:FindFirstAncestor("game")
 	local sharedRoot = if gameRoot ~= nil then gameRoot:FindFirstChild("Shared") else nil
-	local modulesRoot = if sharedRoot ~= nil then sharedRoot:FindFirstChild("Modules") else nil
-	if modulesRoot ~= nil and modulesRoot:IsA("Folder") then
-		local itemsFolder = modulesRoot:FindFirstChild("Items")
-		if itemsFolder ~= nil and itemsFolder:IsA("Folder") then
-			self:registerDefinitionsFromFolder(itemsFolder)
-		end
-
-		local gameFolder = modulesRoot:FindFirstChild("Game")
-		if gameFolder ~= nil and gameFolder:IsA("Folder") then
-			local magicFolder = gameFolder:FindFirstChild("MagicWeapons")
-			if magicFolder ~= nil and magicFolder:IsA("Folder") then
-				self:registerDefinitionsFromFolder(magicFolder)
-			end
-		end
+	local featuresRoot = if sharedRoot ~= nil then sharedRoot:FindFirstChild("Features") else nil
+	local itemFeature = if featuresRoot ~= nil then featuresRoot:FindFirstChild("item") else nil
+	local itemModules = if itemFeature ~= nil then itemFeature:FindFirstChild("modules") else nil
+	if itemModules ~= nil and itemModules:IsA("Folder") then
+		self:registerDefinitionsFromFolder(itemModules)
 	end
 
 	for _, player in Players:GetPlayers() do
@@ -1853,10 +1889,6 @@ function MagicServiceServer.Destroy(self: MagicServiceServer)
 	end
 	self.projectilePools = {}
 	self.activeProjectiles = {}
-
-	if self.networker ~= nil then
-		self.networker:destroy()
-	end
 end
 
 MagicServiceServer.createRuntime = MagicServiceServer.CreateRuntime
@@ -1918,7 +1950,6 @@ MagicServiceServer.init = MagicServiceServer.Init
 MagicServiceServer.destroy = MagicServiceServer.Destroy
 
 type MagicServiceServer = typeof(MagicServiceServer) & {
-	networker: Networker.Server,
 	inventoryService: InventoryServiceServerObject,
 	manaService: ManaServiceServerObject?,
 	npcService: NpcServiceServerObject?,

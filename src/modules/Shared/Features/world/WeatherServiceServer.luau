@@ -6,8 +6,53 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
 local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local PlayerServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local WeatherServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).WeatherService
+
+local function sendPacket(player: Player, methodName: string, ...: any)
+	local packet = WeatherServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for WeatherService`)
+		return
+	end
+
+	packet.sendTo(PacketPayload.pack(...), player)
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = WeatherServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for WeatherService`)
+		return
+	end
+
+	packet.listen(function(payload: any, player: Player?)
+		if player == nil then
+			return
+		end
+
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, player, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "requestSync")
+end
+
+local PlayerServiceServer = (require :: any)(
+	script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer
+)
 local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.WeatherServiceUtils)
 
 type WeatherType = WeatherServiceUtils.WeatherType
@@ -38,10 +83,6 @@ function WeatherServiceServer.CreateStateSnapshot(self: WeatherServiceServer): W
 end
 
 function WeatherServiceServer.PushState(self: WeatherServiceServer, playerRaw: any?, forceRaw: any?)
-	if self.networker == nil then
-		return
-	end
-
 	local force = forceRaw == true
 	local now = os.clock()
 	if not force and now - self.lastStatePushAt < self.config.statePushIntervalSeconds then
@@ -53,14 +94,14 @@ function WeatherServiceServer.PushState(self: WeatherServiceServer, playerRaw: a
 	local player = playerRaw
 	if player ~= nil then
 		if typeof(player) == "Instance" and player:IsA("Player") then
-			self.networker:fire(player, WeatherServiceUtils.CLIENT_METHOD_APPLY_STATE, snapshot)
+			sendPacket(player, WeatherServiceUtils.CLIENT_METHOD_APPLY_STATE, snapshot)
 		end
 		return
 	end
 
 	for _, listedPlayer in Players:GetPlayers() do
 		if PlayerServiceServer:isGameplayActiveForPlayer(listedPlayer) then
-			self.networker:fire(listedPlayer, WeatherServiceUtils.CLIENT_METHOD_APPLY_STATE, snapshot)
+			sendPacket(listedPlayer, WeatherServiceUtils.CLIENT_METHOD_APPLY_STATE, snapshot)
 		end
 	end
 	self.stateDirty = false
@@ -169,9 +210,6 @@ function WeatherServiceServer.OnHeartbeat(self: WeatherServiceServer, dtRaw: any
 end
 
 function WeatherServiceServer.TrackPlayer(self: WeatherServiceServer, player: Player)
-	if self.networker == nil then
-		return
-	end
 	self:pushState(player, true)
 end
 
@@ -196,9 +234,7 @@ function WeatherServiceServer.Init(self: WeatherServiceServer)
 	self.lastStatePushAt = 0
 	self.weatherSecondsRemaining = self:rollNextWeatherDurationSeconds()
 
-	self.networker = Networker.server.new("WeatherService", self, {
-		self.RequestSync,
-	})
+	bindPackets(self)
 
 	for _, player in Players:GetPlayers() do
 		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
@@ -236,10 +272,6 @@ function WeatherServiceServer.Destroy(self: WeatherServiceServer)
 		self.heartbeatConnection:Disconnect()
 		self.heartbeatConnection = nil
 	end
-
-	if self.networker ~= nil then
-		self.networker:destroy()
-	end
 end
 
 WeatherServiceServer.rollNextWeatherDurationSeconds = WeatherServiceServer.RollNextWeatherDurationSeconds
@@ -259,7 +291,6 @@ WeatherServiceServer.init = WeatherServiceServer.Init
 WeatherServiceServer.destroy = WeatherServiceServer.Destroy
 
 export type WeatherServiceServer = typeof(WeatherServiceServer) & {
-	networker: Networker.Server,
 	config: WeatherServiceConfig,
 	state: WeatherServiceState,
 	random: Random,

@@ -3,10 +3,24 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local CameraShaker = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("EZCameraShake"))
+local CameraShaker =
+	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("EZCameraShake"))
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local RaycastHitbox = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("RaycastHitbox"))
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local MeleeServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).MeleeService
+
+local function sendPacket(methodName: string, ...: any)
+	local packet = MeleeServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for MeleeService`)
+		return
+	end
+
+	packet.send(PacketPayload.pack(...))
+end
+
+local RaycastHitbox =
+	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("RaycastHitbox"))
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
 local AnimationServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.animation.AnimationServiceUtils)
@@ -14,11 +28,12 @@ local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Featu
 local BuildServiceClient = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceClient)
 local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
 local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
-local InventoryServiceClient = require(script:FindFirstAncestor("game").Client.Services.InventoryServiceClient)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
+local InventoryServiceClient =
+	require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceClient)
+local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
 local Melee = require(script:FindFirstAncestor("game").Shared.Features.combat.classes.Melee)
 local MeleeServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.combat.MeleeServiceUtils)
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
+local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
 local RagdollServiceClient = require(script:FindFirstAncestor("game").Shared.Features.ragdoll.RagdollServiceClient)
 local loader = (require :: any)(loaderUtils.Parent).load(script)
 local Promise = loader("Promise")
@@ -416,7 +431,6 @@ end
 
 function MeleeServiceClient.Init(self: MeleeServiceClient)
 	self.localPlayer = Players.LocalPlayer
-	self.networker = Networker.client.new("MeleeService", self)
 	self.janitor = Janitor.new()
 	self.characterJanitor = Janitor.new()
 	self.toolJanitor = Janitor.new()
@@ -466,10 +480,6 @@ function MeleeServiceClient.Init(self: MeleeServiceClient)
 			self.cameraShaker = nil
 		end
 	end
-
-	self.janitor:GiveChore(function()
-		self.networker:destroy()
-	end)
 
 	self.janitor:GiveChore(function()
 		local activeCameraShaker = self.cameraShaker
@@ -605,7 +615,7 @@ function MeleeServiceClient.ReplicateEquippedState(self: MeleeServiceClient, for
 
 	self.replicatedItemId = self.equippedItemId
 	self.replicatedSlot = self.equippedSlot
-	self.networker:fire(MeleeServiceUtils.NETWORK_METHOD_REFRESH_EQUIPPED)
+	sendPacket(MeleeServiceUtils.NETWORK_METHOD_REFRESH_EQUIPPED)
 end
 
 function MeleeServiceClient.RefreshHumanoidReference(self: MeleeServiceClient)
@@ -787,7 +797,7 @@ function MeleeServiceClient.ResolveRandomSwingSound(self: MeleeServiceClient, sw
 end
 
 function MeleeServiceClient.ResolveSwingSoundGroupFromContext(self: MeleeServiceClient, contextRaw: any): string?
-	local context = if typeof(contextRaw) == "table" then contextRaw else ({} :: any)
+	local context = if typeof(contextRaw) == "table" then contextRaw else {} :: any
 	local equippedToolSwingSounds = self.equippedToolSwingSounds :: { [string]: { string } }
 
 	local fromClipName = normalizeSwingSoundGroup(context.clipName)
@@ -842,7 +852,7 @@ function MeleeServiceClient.PlayToolSoundByEvent(
 	local normalizedEventName = normalizeEventKey(eventName)
 	local eventType = trim(eventTypeRaw)
 	local normalizedEventType = normalizeEventKey(eventType)
-	local fallbackNames = if typeof(fallbackNamesRaw) == "table" then fallbackNamesRaw else ({} :: any)
+	local fallbackNames = if typeof(fallbackNamesRaw) == "table" then fallbackNamesRaw else {} :: any
 
 	if normalizedEventName ~= "" then
 		local eventSound = self:resolveToolSound(eventName)
@@ -905,8 +915,8 @@ function MeleeServiceClient.BindEquippedTool(self: MeleeServiceClient, toolRaw: 
 
 	self.toolJanitor:Clean()
 	self.equippedTool = tool
-	self.equippedToolSounds = if tool ~= nil then MeleeServiceUtils.resolveToolSounds(tool) else ({} :: any)
-	self.equippedToolSwingSounds = if tool ~= nil then MeleeServiceUtils.resolveToolSwingSounds(tool) else ({} :: any)
+	self.equippedToolSounds = if tool ~= nil then MeleeServiceUtils.resolveToolSounds(tool) else {} :: any
+	self.equippedToolSwingSounds = if tool ~= nil then MeleeServiceUtils.resolveToolSwingSounds(tool) else {} :: any
 
 	if tool == nil then
 		return
@@ -995,7 +1005,7 @@ function MeleeServiceClient.OnMeleeAttackFinished(self: MeleeServiceClient, _con
 end
 
 function MeleeServiceClient.OnMeleeAnimationEvent(self: MeleeServiceClient, contextRaw: any)
-	local context = if typeof(contextRaw) == "table" then contextRaw else ({} :: any)
+	local context = if typeof(contextRaw) == "table" then contextRaw else {} :: any
 	local eventName = context.eventName
 	local eventType = context.eventType
 
@@ -1139,7 +1149,7 @@ function MeleeServiceClient.SetInputHeld(self: MeleeServiceClient, isHeld: boole
 		self:stopDebugHitbox()
 	end
 
-	self.networker:fire(MeleeServiceUtils.NETWORK_METHOD_SET_INPUT_HELD, isHeld)
+	sendPacket(MeleeServiceUtils.NETWORK_METHOD_SET_INPUT_HELD, isHeld)
 	if isHeld then
 		self:replicateEquippedState(false)
 	end
@@ -1293,7 +1303,6 @@ type MeleeServiceClient = typeof(MeleeServiceClient) & {
 	onMeleeSwingEnded: (self: MeleeServiceClient, context: { [string]: any }) -> (),
 	onMeleeAttackFinished: (self: MeleeServiceClient, context: { [string]: any }) -> (),
 	localPlayer: Player,
-	networker: Networker.Client,
 	janitor: JanitorClass,
 	characterJanitor: JanitorClass,
 	toolJanitor: JanitorClass,

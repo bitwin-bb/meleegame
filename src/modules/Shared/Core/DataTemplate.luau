@@ -5,7 +5,29 @@ local DataTemplate = {
 		inventory = {
 			capacity = 72,
 			selectedSlot = nil,
-			slots = {},
+			slots = {
+				{
+					index = 1,
+					stackId = "starter_copper_broadsword",
+					itemId = "CopperBroadSword",
+					amount = 1,
+					maxStack = 1,
+				},
+				{
+					index = 2,
+					stackId = "starter_copper_pickaxe",
+					itemId = "CopperPickaxe",
+					amount = 1,
+					maxStack = 1,
+				},
+				{
+					index = 3,
+					stackId = "starter_copper_axe",
+					itemId = "CopperAxe",
+					amount = 1,
+					maxStack = 1,
+				},
+			},
 		},
 		coins = {
 			copper = 0,

@@ -9,12 +9,12 @@ local expect = testEnvironment.expect :: any
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local Cache = require(script:FindFirstAncestor("game").Shared.Classes.Camera.Cache)
-local Predict = require(script:FindFirstAncestor("game").Shared.Classes.Camera.Predict)
-local Resolve = require(script:FindFirstAncestor("game").Shared.Classes.Camera.Resolve)
-local Stack = require(script:FindFirstAncestor("game").Shared.Classes.Camera.Stack)
-local State = require(script:FindFirstAncestor("game").Shared.Classes.Camera.State)
-local Target = require(script:FindFirstAncestor("game").Shared.Classes.Camera.Target)
+local Cache = require(script:FindFirstAncestor("game").Shared.Features.camera.classes.Camera.Cache)
+local Predict = require(script:FindFirstAncestor("game").Shared.Features.camera.classes.Camera.Predict)
+local Resolve = require(script:FindFirstAncestor("game").Shared.Features.camera.classes.Camera.Resolve)
+local Stack = require(script:FindFirstAncestor("game").Shared.Features.camera.classes.Camera.Stack)
+local State = require(script:FindFirstAncestor("game").Shared.Features.camera.classes.Camera.State)
+local Target = require(script:FindFirstAncestor("game").Shared.Features.camera.classes.Camera.Target)
 
 local function expectVectorNear(actualRaw: any, expectedRaw: any, epsilon: number?)
 	if typeof(actualRaw) ~= "Vector3" or typeof(expectedRaw) ~= "Vector3" then

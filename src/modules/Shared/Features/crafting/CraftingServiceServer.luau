@@ -6,10 +6,56 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
 local CraftingServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.crafting.CraftingServiceUtils)
-local InventoryServiceServer = require(script:FindFirstAncestor("game").Server.Services.InventoryServiceServer)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local PlayerDataServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerDataServiceServer)
+local InventoryServiceServer =
+	require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceServer)
+local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local CraftingServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).CraftingService
+
+local function sendPacket(player: Player, methodName: string, ...: any)
+	local packet = CraftingServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for CraftingService`)
+		return
+	end
+
+	packet.sendTo(PacketPayload.pack(...), player)
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = CraftingServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for CraftingService`)
+		return
+	end
+
+	packet.listen(function(payload: any, player: Player?)
+		if player == nil then
+			return
+		end
+
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, player, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "requestCraft")
+	bindPacket(self, "requestSync")
+end
+
+local PlayerDataServiceServer =
+	require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceServer)
 local PlayerServiceServer = require(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer)
 local WorldGenerationServiceServer =
 	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer)
@@ -138,7 +184,7 @@ function CraftingServiceServer.PushState(
 	end
 
 	runtime.lastStatePushAt = now
-	self.networker:fire(player, CraftingServiceUtils.CLIENT_METHOD_APPLY_STATE, self:createStateSnapshot(runtime))
+	sendPacket(player, CraftingServiceUtils.CLIENT_METHOD_APPLY_STATE, self:createStateSnapshot(runtime))
 end
 
 function CraftingServiceServer.PushCraftResult(
@@ -148,7 +194,7 @@ function CraftingServiceServer.PushCraftResult(
 	reasonRaw: any?
 )
 	local reason = if typeof(reasonRaw) == "string" then reasonRaw else transactionResult.reason
-	self.networker:fire(player, CraftingServiceUtils.CLIENT_METHOD_CRAFT_RESULT, {
+	sendPacket(player, CraftingServiceUtils.CLIENT_METHOD_CRAFT_RESULT, {
 		success = transactionResult.success == true,
 		reason = reason,
 		recipeId = transactionResult.recipeId,
@@ -662,10 +708,7 @@ function CraftingServiceServer.Init(self: CraftingServiceServer)
 	self.inventoryProvider =
 		CraftingServiceUtils.CraftTransaction.createInventoryProvider(self.inventoryService, self.playerDataService)
 
-	self.networker = Networker.server.new("CraftingService", self, {
-		self.RequestSync,
-		self.RequestCraft,
-	})
+	bindPackets(self)
 
 	for _, player in Players:GetPlayers() do
 		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
@@ -706,10 +749,6 @@ function CraftingServiceServer.Destroy(self: CraftingServiceServer)
 		self:persistRuntime(player, runtime)
 		self.playerRuntimes[player] = nil
 	end
-
-	if self.networker ~= nil then
-		self.networker:destroy()
-	end
 end
 
 CraftingServiceServer.createRuntime = CraftingServiceServer.CreateRuntime
@@ -737,7 +776,6 @@ CraftingServiceServer.init = CraftingServiceServer.Init
 CraftingServiceServer.destroy = CraftingServiceServer.Destroy
 
 type CraftingServiceServer = typeof(CraftingServiceServer) & {
-	networker: Networker.Server,
 	config: CraftingServiceConfig,
 	registry: RecipeRegistry,
 	playerRuntimes: { [Player]: PlayerRuntime },

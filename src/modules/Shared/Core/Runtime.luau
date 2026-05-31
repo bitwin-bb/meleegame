@@ -64,7 +64,7 @@ local singletonClient: RuntimeContext? = nil
 local singletonServer: RuntimeContext? = nil
 
 local function buildClientModules(self: RuntimeContext, config: RuntimeConfig)
-	local platformFolder = script.Parent.Platform
+	local platformFolder = script:FindFirstAncestor("game").Shared.Features.platform.modules
 	local Platform = require(platformFolder.Platform)
 	local Input = require(platformFolder.Input)
 	local Gestures = require(platformFolder.Gestures)
@@ -191,7 +191,7 @@ function Runtime.GetGamepadNav(self: RuntimeContext, configRaw: any?): any
 	if not self.isClient then
 		return nil
 	end
-	local GamepadNav = require(script.Parent.Platform.GamepadNav)
+	local GamepadNav = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.GamepadNav)
 	self.gamepadNav = GamepadNav.new(if typeof(configRaw) == "table"
 		then configRaw
 		else {
@@ -212,7 +212,7 @@ function Runtime.GetHUDScaler(self: RuntimeContext, configRaw: any?): any
 	if not self.isClient then
 		return nil
 	end
-	local HUDScaler = require(script.Parent.Platform.HUDScaler)
+	local HUDScaler = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.HUDScaler)
 	local config = if typeof(configRaw) == "table" then Sift.Dictionary.copy(configRaw) else ({} :: any)
 	if config.platform == nil then
 		config.platform = self.platform

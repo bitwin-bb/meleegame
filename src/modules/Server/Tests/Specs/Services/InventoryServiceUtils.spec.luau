@@ -6,7 +6,7 @@ local expect = testEnvironment.expect :: any
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Services.InventoryServiceUtils)
+local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
 
 return function()
 	describe("InventoryServiceUtils", function()

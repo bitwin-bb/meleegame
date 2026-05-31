@@ -4,11 +4,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Client.Services.PlatformServiceClient)
+local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 local RootUI = require(script:FindFirstAncestor("game").Client.Features.app.RootUI)
-local SnackbarNotifications = require(script:FindFirstAncestor("game").Client.SnackbarNotifications)
+local SnackbarNotifications = require(script:FindFirstAncestor("game").Client.Features.notification.SnackbarNotifications)
 
 local e: typeof(React.createElement) = React.createElement
 

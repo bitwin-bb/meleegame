@@ -5,9 +5,55 @@ local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local ManaServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.mana.ManaServiceUtils)
-local Networker = require(script:FindFirstAncestor("game").Shared.Modules.Networking.Networker)
-local PlayerDataServiceServer = require(script:FindFirstAncestor("game").Server.Services.PlayerDataServiceServer)
-local PlayerServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer)
+local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
+local ManaServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).ManaService
+
+local function sendPacket(player: Player, methodName: string, ...: any)
+	local packet = ManaServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for ManaService`)
+		return
+	end
+
+	packet.sendTo(PacketPayload.pack(...), player)
+end
+
+local function bindPacket(self: any, methodName: string)
+	local packet = ManaServicePackets[methodName]
+	if packet == nil then
+		warn(`missing ByteNet packet {methodName} for ManaService`)
+		return
+	end
+
+	packet.listen(function(payload: any, player: Player?)
+		if player == nil then
+			return
+		end
+
+		local handler = self[methodName]
+		if typeof(handler) ~= "function" then
+			return
+		end
+
+		local count, arguments = PacketPayload.unpack(payload)
+		handler(self, player, table.unpack(arguments, 1, count))
+	end)
+end
+
+local function bindPackets(self: any)
+	if self.packetsBound == true then
+		return
+	end
+
+	self.packetsBound = true
+	bindPacket(self, "requestSync")
+end
+
+local PlayerDataServiceServer =
+	require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceServer)
+local PlayerServiceServer = (require :: any)(
+	script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer
+)
 
 type ManaServiceState = ManaServiceUtils.ManaServiceState
 
@@ -93,7 +139,7 @@ function ManaServiceServer.PushState(self: ManaServiceServer, player: Player, ru
 	end
 
 	runtime.lastStatePushAt = now
-	self.networker:fire(player, ManaServiceUtils.CLIENT_METHOD_APPLY_STATE, ManaServiceUtils.cloneState(runtime.state))
+	sendPacket(player, ManaServiceUtils.CLIENT_METHOD_APPLY_STATE, ManaServiceUtils.cloneState(runtime.state))
 end
 
 function ManaServiceServer.PersistRuntime(self: ManaServiceServer, player: Player, runtime: PlayerRuntime): boolean
@@ -495,9 +541,7 @@ function ManaServiceServer.OnHeartbeat(self: ManaServiceServer, dt: number)
 end
 
 function ManaServiceServer.Init(self: ManaServiceServer)
-	self.networker = Networker.server.new("ManaService", self, {
-		self.RequestSync,
-	})
+	bindPackets(self)
 	self.playerDataService = PlayerDataServiceServer :: PlayerDataServiceServerObject
 	self.playerRuntimes = {}
 	self.dataPath = ManaServiceUtils.getDefaultDataPath()
@@ -541,10 +585,6 @@ function ManaServiceServer.Destroy(self: ManaServiceServer)
 	for player in self.playerRuntimes do
 		self:untrackPlayer(player)
 	end
-
-	if self.networker ~= nil then
-		self.networker:destroy()
-	end
 end
 
 ManaServiceServer.createRuntime = ManaServiceServer.CreateRuntime
@@ -573,7 +613,6 @@ ManaServiceServer.init = ManaServiceServer.Init
 ManaServiceServer.destroy = ManaServiceServer.Destroy
 
 export type ManaServiceServer = typeof(ManaServiceServer) & {
-	networker: Networker.Server,
 	playerDataService: PlayerDataServiceServerObject,
 	playerRuntimes: { [Player]: PlayerRuntime },
 	dataPath: { string },
