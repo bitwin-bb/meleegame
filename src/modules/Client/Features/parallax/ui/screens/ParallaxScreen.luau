@@ -1,13 +1,17 @@
 --!strict
-local Players = game:GetService("Players")
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Players = game:GetService("Players")
 
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 
-local ParallaxComponent = require(script.Parent.Parent.components.ParallaxView)
-local ParallaxSlice = require(script.Parent.Parent.state.ParallaxSlice)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local ParallaxComponent = require(gameRoot.Client.Features.parallax.ui.components.ParallaxView)
+local ParallaxSlice = require(gameRoot.Client.Features.parallax.ui.state.ParallaxSlice)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
 
 local e: typeof(React.createElement) = React.createElement
 

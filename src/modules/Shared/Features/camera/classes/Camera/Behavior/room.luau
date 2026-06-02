@@ -1,13 +1,12 @@
 --!strict
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 
-local BuildServiceClient = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceClient)
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local RoomScaleFactor = require(script:FindFirstAncestor("game").Shared.Core.Math.RoomScaleFactor)
-local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
+local BuildServiceClient = require(gameRoot.Shared.Features.world.BuildServiceClient)
+local BuildServiceUtils = require(gameRoot.Shared.Features.world.BuildServiceUtils)
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local RoomScaleFactor = require(gameRoot.Shared.Core.Math.RoomScaleFactor)
+local WorldGenerationServiceClient = require(gameRoot.Shared.Features.worldGeneration.WorldGenerationServiceClient)
 
 local Room = {}
 Room.__index = Room

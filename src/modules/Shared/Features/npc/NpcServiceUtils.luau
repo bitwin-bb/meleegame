@@ -1,7 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local Workspace = game:GetService("Workspace")
 
-local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
+local TagBinder = require(gameRoot.Shared.Binders.TagBinder)
 
 local NpcServiceUtils = {}
 
@@ -177,7 +180,7 @@ end
 
 function NpcServiceUtils.SanitizeSlimeSpawnSettings(settingsRaw: any, fallback: SlimeSpawnSettings?): SlimeSpawnSettings
 	local base = if fallback ~= nil then fallback else DEFAULT_SLIME_SPAWN_SETTINGS
-	local settings = if typeof(settingsRaw) == "table" then settingsRaw else ({} :: any)
+	local settings = if typeof(settingsRaw) == "table" then settingsRaw else {} :: any
 
 	return {
 		enabled = if typeof((settings :: any).enabled) == "boolean" then (settings :: any).enabled else base.enabled,

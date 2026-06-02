@@ -1,6 +1,8 @@
 --!strict
 
-local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ModelBinder = require(gameRoot.Shared.Binders.ModelBinder)
 
 local DropBinder = {}
 DropBinder.__index = DropBinder
@@ -10,7 +12,7 @@ local lootServiceServer = nil
 
 local function getLootServiceServer()
 	if lootServiceServer == nil then
-		lootServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.loot.LootServiceServer)
+		lootServiceServer = (require :: any)(gameRoot.Shared.Features.loot.LootServiceServer)
 	end
 	return lootServiceServer
 end

@@ -1,23 +1,24 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
-
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local EyeOfCthulhuRoot = require(script:FindFirstAncestor("game").Shared.Features.npc.components.EyeOfCthulhuRoot)
-local QueenBeeRoot = require(script:FindFirstAncestor("game").Shared.Features.npc.components.QueenBeeRoot)
-local CancelToken = loader("CancelToken")
-local Promise = loader("Promise")
-local Rx = loader("Rx")
-local RxSignal = loader("RxSignal")
-local Signal = loader("Signal")
-local ValueObject = loader("ValueObject")
-local Maid = loader("Maid")
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
+local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
+local CancelToken = require(quentyPackages.canceltoken.Shared.CancelToken)
+local EyeOfCthulhuRoot = require(gameRoot.Shared.Features.npc.components.EyeOfCthulhuRoot)
+local Maid = require(quentyPackages.maid.Shared.Maid)
+local Promise = require(quentyPackages.promise.Shared.Promise)
+local QueenBeeRoot = require(gameRoot.Shared.Features.npc.components.QueenBeeRoot)
+local Rx = require(quentyPackages.rx.Shared.Rx)
+local RxSignal = require(quentyPackages.rxsignal.Shared.RxSignal)
+local Signal = require(quentyPackages.signal.Shared.Signal)
+local ValueObject = require(quentyPackages.valueobject.Shared.ValueObject)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
 
 type BossId = BossServiceUtils.BossId
 type BossEncounterState = BossServiceUtils.BossEncounterState
@@ -356,7 +357,7 @@ function Boss.New(
 	spawnRequest: BossSpawnRequest,
 	configRaw: { [string]: any }
 ): Boss
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local modelTemplate = resolveBossModelTemplate(definition, "Phase1")
 	local spawnPosition = if typeof(spawnRequest.spawnPosition) == "Vector3"
 		then spawnRequest.spawnPosition

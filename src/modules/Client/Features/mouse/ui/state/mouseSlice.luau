@@ -1,8 +1,11 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local Charm = require(ReplicatedStorage.Packages.Charm)
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
+local ImageIds = require(gameRoot.Client.UI.core.ImageIds)
 
 export type MouseCursorState = "default" | "hover" | "click"
 export type MouseState = {
@@ -24,8 +27,12 @@ type MouseStateSource = {
 }
 
 local DEFAULT_MOUSE_IMAGE_ID = if typeof(ImageIds.mouse) == "string" then ImageIds.mouse else ""
-local HOVER_MOUSE_IMAGE_ID = if typeof(ImageIds.mouseHover) == "string" then ImageIds.mouseHover else DEFAULT_MOUSE_IMAGE_ID
-local CLICK_MOUSE_IMAGE_ID = if typeof(ImageIds.mouseClick) == "string" then ImageIds.mouseClick else HOVER_MOUSE_IMAGE_ID
+local HOVER_MOUSE_IMAGE_ID = if typeof(ImageIds.mouseHover) == "string"
+	then ImageIds.mouseHover
+	else DEFAULT_MOUSE_IMAGE_ID
+local CLICK_MOUSE_IMAGE_ID = if typeof(ImageIds.mouseClick) == "string"
+	then ImageIds.mouseClick
+	else HOVER_MOUSE_IMAGE_ID
 local DEFAULT_MOUSE_POSITION = Vector2.new(0, 0)
 
 local function resolveCursorState(source: MouseStateSource): MouseCursorState
@@ -50,7 +57,7 @@ end
 
 local function createMouseState(source: MouseStateSource): MouseState
 	local cursorState = resolveCursorState(source)
-	return ({
+	return {
 		visible = source.visible,
 		position = source.position,
 		isHoveringGui = source.isHoveringGui,
@@ -58,7 +65,7 @@ local function createMouseState(source: MouseStateSource): MouseState
 		isMouseDown = source.isMouseDown,
 		cursorState = cursorState,
 		imageId = resolveCursorImageId(cursorState :: any),
-	} :: MouseState)
+	} :: MouseState
 end
 
 local DEFAULT_STATE: MouseState = createMouseState({
@@ -115,7 +122,7 @@ end
 
 local function setMouseState(stateRaw: any): MouseState
 	local current = mouseStateAtom()
-	local source = if typeof(stateRaw) == "table" then stateRaw else ({} :: any)
+	local source = if typeof(stateRaw) == "table" then stateRaw else {} :: any
 	local nextState = createMouseState({
 		visible = sanitizeBool((source :: any).visible, current.visible),
 		position = sanitizePosition((source :: any).position),

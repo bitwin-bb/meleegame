@@ -1,4 +1,5 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Sift = require(ReplicatedStorage.Packages.Sift)
@@ -125,10 +126,14 @@ function HpServiceUtils.CreateStateFromHumanoid(
 end
 
 function HpServiceUtils.SanitizeState(stateRaw: any, fallback: HpServiceState?): HpServiceState
-	local source = if typeof(stateRaw) == "table" then stateRaw else ({} :: any)
+	local source = if typeof(stateRaw) == "table" then stateRaw else {} :: any
 	local fallbackState = if fallback then fallback else HpServiceUtils.CreateDefaultState()
-	local nextState =
-		HpServiceUtils.CreateState((source :: any).health, (source :: any).maxHealth, (source :: any).heartValue, fallbackState)
+	local nextState = HpServiceUtils.CreateState(
+		(source :: any).health,
+		(source :: any).maxHealth,
+		(source :: any).heartValue,
+		fallbackState
+	)
 
 	local sourceUpdatedAt = (source :: any).updatedAt
 	if typeof(sourceUpdatedAt) == "number" and sourceUpdatedAt == sourceUpdatedAt then
@@ -232,10 +237,10 @@ function HpServiceUtils.ResolvePersistedHealthAndMaxHealth(
 	healthDataRaw: any,
 	fallbackMaxHealthRaw: any
 ): (number?, number)
-	local fallbackMaxHealth =
-		if typeof(fallbackMaxHealthRaw) == "number" and fallbackMaxHealthRaw == fallbackMaxHealthRaw
-			then math.max(1, fallbackMaxHealthRaw)
-			else DEFAULT_MAX_HEALTH
+	local fallbackMaxHealth = if typeof(fallbackMaxHealthRaw) == "number"
+			and fallbackMaxHealthRaw == fallbackMaxHealthRaw
+		then math.max(1, fallbackMaxHealthRaw)
+		else DEFAULT_MAX_HEALTH
 
 	if typeof(healthDataRaw) == "number" and healthDataRaw == healthDataRaw then
 		return math.max(0, healthDataRaw), fallbackMaxHealth
@@ -252,10 +257,9 @@ function HpServiceUtils.ResolvePersistedHealthAndMaxHealth(
 	end
 
 	local maxHealthRaw = source.maxHealth
-	local maxHealth =
-		if typeof(maxHealthRaw) == "number" and maxHealthRaw == maxHealthRaw
-			then math.max(1, maxHealthRaw)
-			else fallbackMaxHealth
+	local maxHealth = if typeof(maxHealthRaw) == "number" and maxHealthRaw == maxHealthRaw
+		then math.max(1, maxHealthRaw)
+		else fallbackMaxHealth
 
 	return math.max(0, healthRaw), maxHealth
 end

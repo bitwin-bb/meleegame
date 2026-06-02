@@ -1,13 +1,15 @@
 --!strict
 
-local Nevermore = require(script:FindFirstAncestor("game").Shared.StateMachine.Nevermore)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Nevermore = require(gameRoot.Shared.Goap.Nevermore)
 local Table = Nevermore.Get("Table")
 
 return Table.copy({
-	PlayerController = require(script.PlayerController),
-	CombatController = require(script.CombatController),
-	CameraController = require(script:FindFirstAncestor("game").Shared.Features.camera.controllers.CameraController),
-	UIController = require(script.UIController),
-	InputController = require(script.InputController),
-	ToolController = require(script.ToolController),
+	PlayerController = require(gameRoot.Client.Controllers.PlayerController),
+	CombatController = require(gameRoot.Client.Controllers.CombatController),
+	CameraController = require(gameRoot.Shared.Features.camera.controllers.CameraController),
+	UIController = require(gameRoot.Client.Controllers.UIController),
+	InputController = require(gameRoot.Client.Controllers.InputController),
+	ToolController = require(gameRoot.Client.Controllers.ToolController),
 })

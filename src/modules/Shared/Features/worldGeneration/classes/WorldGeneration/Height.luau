@@ -1,6 +1,8 @@
 --!strict
 
-local DeterministicRNG = require(script:FindFirstAncestor("game").Shared.Core.DeterministicRNG)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local DeterministicRNG = require(gameRoot.Shared.Core.DeterministicRNG)
 
 local TreeHeightVariation = {}
 

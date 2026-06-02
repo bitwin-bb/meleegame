@@ -1,8 +1,12 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
 local UserInputService = game:GetService("UserInputService")
 
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
 local Gestures = {}
 Gestures.__index = Gestures
@@ -142,7 +146,7 @@ local function clearTouchState(state: TouchState)
 end
 
 function Gestures.New(configRaw: GesturesConfig?): Gestures
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local self = setmetatable({
 		eventBus = config.eventBus,
 		eventChannel = normalizeEventName(config.eventChannel, "gestures"),

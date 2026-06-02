@@ -1,12 +1,13 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.InstanceUtils)
+local InstanceUtils = require(gameRoot.Shared.Features.platform.modules.InstanceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceUtils)
-local SlimeAi = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Npc.slime)
-local SlimeRoot = require(script:FindFirstAncestor("game").Shared.Features.npc.components.SlimeRoot)
+local NpcServiceUtils = require(gameRoot.Shared.Features.npc.NpcServiceUtils)
+local SlimeAi = require(gameRoot.Shared.Features.npc.classes.Npc.slime)
+local SlimeRoot = require(gameRoot.Shared.Features.npc.components.SlimeRoot)
 
 type SlimeSpawnConfig = NpcServiceUtils.SlimeSpawnConfig
 type NpcRuntimeState = NpcServiceUtils.NpcRuntimeState
@@ -284,11 +285,10 @@ function Slime.SpawnLoot(_self: any, service: Service, runtime: Runtime): ()
 	if deathPosition == nil then
 		return
 	end
-
-	;(lootService.spawnLootRuntime :: any)(lootService, SLIME_GEL_DROP_ITEM_ID, SLIME_GEL_DROP_AMOUNT, deathPosition, {
+	(lootService.spawnLootRuntime :: any)(lootService, SLIME_GEL_DROP_ITEM_ID, SLIME_GEL_DROP_AMOUNT, deathPosition, {
 		sourceType = runtime.displayName,
-	})
-	;(lootService.spawnDropsFromSource :: any)(lootService, runtime.displayName, deathPosition, {
+	});
+	(lootService.spawnDropsFromSource :: any)(lootService, runtime.displayName, deathPosition, {
 		sourceType = runtime.displayName,
 	})
 end

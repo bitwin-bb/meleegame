@@ -1,10 +1,12 @@
 --!strict
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local GoreServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.gore.GoreServiceUtils)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local GoreServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).GoreService
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Players = game:GetService("Players")
+
+local GoreServiceUtils = require(gameRoot.Shared.Features.gore.GoreServiceUtils)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local GoreServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).GoreService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = GoreServicePackets[methodName]
@@ -47,8 +49,8 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local NevermoreSupport = require(gameRoot.Shared.Core.NevermoreSupport)
+local ServerBinderSupport = (require :: any)(gameRoot.Server.Binders.ServerBinderSupport)
 
 local GoreServiceServer = {}
 local SHARED_LARGE_BLOOD_POOL_SIZE = NumberRange.new(0.95, 1.7)

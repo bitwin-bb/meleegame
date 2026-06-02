@@ -1,17 +1,21 @@
 --!strict
 
-local Players = game:GetService("Players")
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Players = game:GetService("Players")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
-local HpServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.health.HpServiceServer)
-local LiquidServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.LiquidServiceUtils)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local LiquidServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).LiquidService
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local CoreRuntime = require(gameRoot.Shared.Core.Runtime)
+local HpServiceServer = (require :: any)(gameRoot.Shared.Features.health.HpServiceServer)
+local LiquidServiceUtils = require(gameRoot.Shared.Features.world.LiquidServiceUtils)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local LiquidServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).LiquidService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = LiquidServicePackets[methodName]
@@ -54,20 +58,20 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local ObjectPool = require(script:FindFirstAncestor("game").Shared.Core.ObjectPool)
+local ObjectPool = require(gameRoot.Shared.Core.ObjectPool)
 local PlayerServiceServer = (require :: any)(
 	script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer
 )
-local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceUtils)
-local Signal = require(ReplicatedStorage.Packages.Signal)
-local SpatialHashGrid = require(script:FindFirstAncestor("game").Shared.Core.SpatialHashGrid)
-local TickSchedulerModule = require(script:FindFirstAncestor("game").Shared.Core.TickScheduler)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
+local PlayerServiceUtils = require(gameRoot.Shared.Features.movement.PlayerServiceUtils)
+local Signal = require(quentyPackages.signal.Shared.Signal)
+local SpatialHashGrid = require(gameRoot.Shared.Core.SpatialHashGrid)
+local TickSchedulerModule = require(gameRoot.Shared.Core.TickScheduler)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
 local WorldGenerationServiceServer = (require :: any)(
 	script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer
 )
-local WorldMutationQueue = require(script:FindFirstAncestor("game").Shared.Core.WorldMutationQueue)
-local WorldSimulationDebug = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.Debug)
+local WorldMutationQueue = require(gameRoot.Shared.Core.WorldMutationQueue)
+local WorldSimulationDebug = require(gameRoot.Shared.Features.worldGeneration.simulation.Debug)
 
 type LiquidServiceConfig = LiquidServiceUtils.LiquidServiceConfig
 type LiquidServiceState = LiquidServiceUtils.LiquidServiceState

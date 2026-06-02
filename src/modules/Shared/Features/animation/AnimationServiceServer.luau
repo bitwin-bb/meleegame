@@ -1,10 +1,12 @@
 --!strict
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local AnimationServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.animation.AnimationServiceUtils)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local AnimationServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).AnimationService
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Players = game:GetService("Players")
+
+local AnimationServiceUtils = require(gameRoot.Shared.Features.animation.AnimationServiceUtils)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local AnimationServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).AnimationService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = AnimationServicePackets[methodName]

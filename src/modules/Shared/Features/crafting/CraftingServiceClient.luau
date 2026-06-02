@@ -1,15 +1,19 @@
 --!strict
-local Players = game:GetService("Players")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local CraftingServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.crafting.CraftingServiceUtils)
-local InventoryServiceClient =
-	require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceClient)
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local CraftingServiceUtils = require(gameRoot.Shared.Features.crafting.CraftingServiceUtils)
+local InventoryServiceClient = require(gameRoot.Shared.Features.inventory.InventoryServiceClient)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local CraftingServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).CraftingService
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local CraftingServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).CraftingService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = CraftingServicePackets[methodName]
@@ -51,13 +55,10 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local PlayerDataServiceClient =
-	require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceClient)
-local Signal = require(ReplicatedStorage.Packages.Signal)
-local SnackbarNotifications =
-	require(script:FindFirstAncestor("game").Client.Features.notification.SnackbarNotifications)
-local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
+local PlayerDataServiceClient = require(gameRoot.Shared.Features.playerData.PlayerDataServiceClient)
+local Signal = require(quentyPackages.signal.Shared.Signal)
+local SnackbarNotifications = require(gameRoot.Client.Features.notification.SnackbarNotifications)
+local WorldGenerationServiceClient = require(gameRoot.Shared.Features.worldGeneration.WorldGenerationServiceClient)
 
 type RecipeRegistry = CraftingServiceUtils.RecipeRegistry
 type CraftingServiceConfig = CraftingServiceUtils.CraftingServiceConfig

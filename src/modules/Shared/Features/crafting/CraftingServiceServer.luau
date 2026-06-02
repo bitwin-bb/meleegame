@@ -1,16 +1,17 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local CraftingServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.crafting.CraftingServiceUtils)
-local InventoryServiceServer =
-	require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceServer)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local CraftingServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).CraftingService
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local CraftingServiceUtils = require(gameRoot.Shared.Features.crafting.CraftingServiceUtils)
+local InventoryServiceServer = require(gameRoot.Shared.Features.inventory.InventoryServiceServer)
+local InventoryServiceUtils = require(gameRoot.Shared.Features.inventory.InventoryServiceUtils)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local CraftingServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).CraftingService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = CraftingServicePackets[methodName]
@@ -54,11 +55,9 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local PlayerDataServiceServer =
-	require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceServer)
-local PlayerServiceServer = require(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer)
-local WorldGenerationServiceServer =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer)
+local PlayerDataServiceServer = require(gameRoot.Shared.Features.playerData.PlayerDataServiceServer)
+local PlayerServiceServer = require(gameRoot.Shared.Features.movement.PlayerServiceServer)
+local WorldGenerationServiceServer = require(gameRoot.Shared.Features.worldGeneration.WorldGenerationServiceServer)
 
 type RecipeRegistry = CraftingServiceUtils.RecipeRegistry
 type CraftingServiceConfig = CraftingServiceUtils.CraftingServiceConfig

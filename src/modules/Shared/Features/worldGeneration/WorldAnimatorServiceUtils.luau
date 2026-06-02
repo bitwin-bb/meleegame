@@ -1,9 +1,12 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local Players = game:GetService("Players")
 
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local Ease = require(script:FindFirstAncestor("game").Shared.Core.Math.Ease)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local Ease = require(gameRoot.Shared.Core.Math.Ease)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
 
 local WorldAnimatorServiceUtils = {}
 
@@ -82,7 +85,7 @@ function WorldAnimatorServiceUtils.SanitizeSettings(
 	fallbackRaw: ChunkAnimatorSettings?
 ): ChunkAnimatorSettings
 	local fallback = fallbackRaw or DEFAULT_SETTINGS
-	local settings = if typeof(settingsRaw) == "table" then settingsRaw else ({} :: any)
+	local settings = if typeof(settingsRaw) == "table" then settingsRaw else {} :: any
 
 	return {
 		enabled = if typeof((settings :: any).enabled) == "boolean"

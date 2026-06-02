@@ -1,9 +1,11 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Cleanup = require(script.Parent.internal.cleanup)
+local Cleanup = require(gameRoot.Client.UI.core.hooks.internal.cleanup)
 local React = require(ReplicatedStorage.Packages.React)
-local useLatest = require(script.Parent.internal.useLatest)
+local useLatest = require(gameRoot.Client.UI.core.hooks.internal.useLatest)
 
 local function dependencyArray(...: any): { any }
 	return { ... }

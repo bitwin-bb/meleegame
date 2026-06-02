@@ -1,13 +1,16 @@
 --!strict
-local Players = game:GetService("Players")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
-local Camera = require(script:FindFirstAncestor("game").Shared.Features.camera.classes.Camera)
-local CameraServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.camera.CameraServiceUtils)
+local Camera = require(gameRoot.Shared.Features.camera.classes.Camera)
+local CameraServiceUtils = require(gameRoot.Shared.Features.camera.CameraServiceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local CameraServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).CameraService
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local CameraServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).CameraService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = CameraServicePackets[methodName]

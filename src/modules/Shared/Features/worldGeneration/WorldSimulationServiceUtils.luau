@@ -1,16 +1,18 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local Utils = {}
 
-Utils.Shared = require(script.Parent.simulation.Shared)
-Utils.Config = require(script.Parent.simulation.SimulationConfig)
-Utils.State = require(script.Parent.simulation.SimulationState)
-Utils.Cache = require(script.Parent.simulation.SimulationCache)
-Utils.Debug = require(script.Parent.simulation.Debug)
-Utils.Net = require(script.Parent.simulation.Net)
-Utils.Stream = require(script.Parent.simulation.Stream)
-Utils.Data = require(script.Parent.simulation.SimulationData)
-Utils.Runtime = require(script.Parent.simulation.SimulationRuntime)
-Utils.Render = require(script.Parent.simulation.Render)
+Utils.Shared = require(gameRoot.Shared.Features.worldGeneration.simulation.Shared)
+Utils.Config = require(gameRoot.Shared.Features.worldGeneration.simulation.SimulationConfig)
+Utils.State = require(gameRoot.Shared.Features.worldGeneration.simulation.SimulationState)
+Utils.Cache = require(gameRoot.Shared.Features.worldGeneration.simulation.SimulationCache)
+Utils.Debug = require(gameRoot.Shared.Features.worldGeneration.simulation.Debug)
+Utils.Net = require(gameRoot.Shared.Features.worldGeneration.simulation.Net)
+Utils.Stream = require(gameRoot.Shared.Features.worldGeneration.simulation.Stream)
+Utils.Data = require(gameRoot.Shared.Features.worldGeneration.simulation.SimulationData)
+Utils.Runtime = require(gameRoot.Shared.Features.worldGeneration.simulation.SimulationRuntime)
+Utils.Render = require(gameRoot.Shared.Features.worldGeneration.simulation.Render)
 
 return Utils

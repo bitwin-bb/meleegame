@@ -1,8 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Charm = require(ReplicatedStorage.Packages.Charm)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
+local InventoryServiceUtils = require(gameRoot.Shared.Features.inventory.InventoryServiceUtils)
 
 type InventoryState = InventoryServiceUtils.InventoryState
 type InventoryItemStack = InventoryServiceUtils.InventoryItemStack
@@ -26,7 +28,9 @@ local function cloneStack(stackRaw: any): InventoryItemStack?
 		return nil
 	end
 
-	local amount = if typeof(stack.amount) == "number" and stack.amount == stack.amount then math.max(0, stack.amount) else 0
+	local amount = if typeof(stack.amount) == "number" and stack.amount == stack.amount
+		then math.max(0, stack.amount)
+		else 0
 	local maxStack = if typeof(stack.maxStack) == "number" and stack.maxStack == stack.maxStack
 		then math.max(1, stack.maxStack)
 		else 1
@@ -52,8 +56,10 @@ local function createDefaultState(): TrashState
 end
 
 local function createStateFromInventory(inventoryStateRaw: any, fallbackStateRaw: any): TrashState
-	local fallback = if typeof(fallbackStateRaw) == "table" then (fallbackStateRaw :: TrashState) else createDefaultState()
-	local inventoryState = if typeof(inventoryStateRaw) == "table" then (inventoryStateRaw :: InventoryState) else nil
+	local fallback = if typeof(fallbackStateRaw) == "table"
+		then fallbackStateRaw :: TrashState
+		else createDefaultState()
+	local inventoryState = if typeof(inventoryStateRaw) == "table" then inventoryStateRaw :: InventoryState else nil
 	if inventoryState == nil then
 		return fallback
 	end

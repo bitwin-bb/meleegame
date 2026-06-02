@@ -1,6 +1,8 @@
 --!strict
 
-local SnackbarNotifications = require(script.Parent.SnackbarNotifications)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local SnackbarNotifications = require(gameRoot.Client.Features.notification.SnackbarNotifications)
 
 local NotificationServiceClient = {}
 

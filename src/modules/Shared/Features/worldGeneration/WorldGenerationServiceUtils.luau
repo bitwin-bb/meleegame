@@ -1,7 +1,9 @@
 --!strict
 
-local WorldGenerationConstants = require(script.Parent.WorldGenerationConstants)
-local WorldGenerationTypes = require(script.Parent.WorldGenerationTypes)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local WorldGenerationConstants = require(gameRoot.Shared.Features.worldGeneration.WorldGenerationConstants)
+local WorldGenerationTypes = require(gameRoot.Shared.Features.worldGeneration.WorldGenerationTypes)
 
 local WorldGenerationServiceUtils = {}
 
@@ -9,9 +11,11 @@ export type WorldGenerationConfig = WorldGenerationTypes.WorldGenerationConfig
 export type WorldGenerationServiceState = WorldGenerationTypes.WorldGenerationServiceState
 
 WorldGenerationServiceUtils.NETWORK_METHOD_REQUEST_SYNC = WorldGenerationConstants.NETWORK_METHOD_REQUEST_SYNC
-WorldGenerationServiceUtils.NETWORK_METHOD_SET_RENDER_DISTANCE = WorldGenerationConstants.NETWORK_METHOD_SET_RENDER_DISTANCE
+WorldGenerationServiceUtils.NETWORK_METHOD_SET_RENDER_DISTANCE =
+	WorldGenerationConstants.NETWORK_METHOD_SET_RENDER_DISTANCE
 WorldGenerationServiceUtils.DEFAULT_RENDER_DISTANCE_CHUNKS = WorldGenerationConstants.DEFAULT_RENDER_DISTANCE_CHUNKS
-WorldGenerationServiceUtils.DEFAULT_VERTICAL_RENDER_DISTANCE_CHUNKS = WorldGenerationConstants.DEFAULT_VERTICAL_RENDER_DISTANCE_CHUNKS
+WorldGenerationServiceUtils.DEFAULT_VERTICAL_RENDER_DISTANCE_CHUNKS =
+	WorldGenerationConstants.DEFAULT_VERTICAL_RENDER_DISTANCE_CHUNKS
 WorldGenerationServiceUtils.MIN_RENDER_DISTANCE_CHUNKS = WorldGenerationConstants.MIN_RENDER_DISTANCE_CHUNKS
 WorldGenerationServiceUtils.MAX_RENDER_DISTANCE_CHUNKS = WorldGenerationConstants.MAX_RENDER_DISTANCE_CHUNKS
 
@@ -92,7 +96,7 @@ function WorldGenerationServiceUtils.SanitizeConfig(
 	fallbackConfig: WorldGenerationConfig?
 ): WorldGenerationConfig
 	local fallback = if fallbackConfig then fallbackConfig else WorldGenerationServiceUtils.CreateDefaultConfig()
-	local source = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local source = if typeof(configRaw) == "table" then configRaw else {} :: any
 
 	local minTileY = sanitizeInteger((source :: any).minTileY, -2048, 2048, fallback.minTileY)
 	local maxTileY = sanitizeInteger((source :: any).maxTileY, -2048, 2048, fallback.maxTileY)
@@ -232,7 +236,7 @@ function WorldGenerationServiceUtils.CreateState(
 	fallbackStateRaw: WorldGenerationServiceState?
 ): WorldGenerationServiceState
 	local fallback = if fallbackStateRaw then fallbackStateRaw else WorldGenerationServiceUtils.CreateDefaultState()
-	local source = if typeof(stateRaw) == "table" then stateRaw else ({} :: any)
+	local source = if typeof(stateRaw) == "table" then stateRaw else {} :: any
 	local minTileY = sanitizeInteger((source :: any).minTileY, -2048, 2048, fallback.minTileY)
 	local maxTileY = sanitizeInteger((source :: any).maxTileY, -2048, 2048, fallback.maxTileY)
 

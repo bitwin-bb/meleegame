@@ -1,14 +1,17 @@
-local Players = game:GetService("Players")
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local require = require(script.Parent.loader).load(assert(script:FindFirstAncestor("AquariaBackup"), "Missing AquariaBackup package root"))
+
+local Players = game:GetService("Players")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
+local PlatformServiceClient = require(gameRoot.Shared.Features.platform.PlatformServiceClient)
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
-local RootUI = require(script:FindFirstAncestor("game").Client.Features.app.RootUI)
-local SnackbarNotifications = require(script:FindFirstAncestor("game").Client.Features.notification.SnackbarNotifications)
+local RootUI = require(gameRoot.Client.Features.app.RootUI)
+local SnackbarNotifications = require("SnackbarNotifications")
 
 local e: typeof(React.createElement) = React.createElement
 

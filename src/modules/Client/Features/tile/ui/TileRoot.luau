@@ -1,7 +1,9 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BreakScreen = require(script.Parent.screen.Break)
+local BreakScreen = require(gameRoot.Client.Features.tile.ui.screen.Break)
 local React = require(ReplicatedStorage.Packages.React)
 
 local e: typeof(React.createElement) = React.createElement

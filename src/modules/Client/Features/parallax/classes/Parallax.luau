@@ -1,32 +1,31 @@
 --!strict
 
-local Players = game:GetService("Players")
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(packageRoot)
-
-local ContentProviderUtils = loader("ContentProviderUtils")
-local Maid = loader("Maid")
-local Rx = loader("Rx")
-local RxSignal = loader("RxSignal")
-local ValueObject = loader("ValueObject")
+local ContentProviderUtils = require(quentyPackages.contentproviderutils.Client.ContentProviderUtils)
+local Maid = require(quentyPackages.maid.Shared.Maid)
+local Rx = require(quentyPackages.rx.Shared.Rx)
+local RxSignal = require(quentyPackages.rxsignal.Shared.RxSignal)
+local ValueObject = require(quentyPackages.valueobject.Shared.ValueObject)
 
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 
-local ParallaxBackgrounds = require(script.Parent.Parent.modules.ParallaxBackgrounds)
-local ParallaxRoot = require(script.Parent.Parent.ui.ParallaxRoot)
-local ParallaxServiceUtils = require(script.Parent.Parent.ParallaxServiceUtils)
-local ParallaxSlice = require(script.Parent.Parent.ui.state.ParallaxSlice)
-local ParallaxThunks = require(script.Parent.Parent.ui.state.ParallaxThunks)
-local Scrolling = require(script.Parent.Parent.modules.Scrolling)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
-local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
+local ParallaxBackgrounds = require(gameRoot.Client.Features.parallax.modules.ParallaxBackgrounds)
+local ParallaxRoot = require(gameRoot.Client.Features.parallax.ui.ParallaxRoot)
+local ParallaxServiceUtils = require(gameRoot.Client.Features.parallax.ParallaxServiceUtils)
+local ParallaxSlice = require(gameRoot.Client.Features.parallax.ui.state.ParallaxSlice)
+local ParallaxThunks = require(gameRoot.Client.Features.parallax.ui.state.ParallaxThunks)
+local Scrolling = require(gameRoot.Client.Features.parallax.modules.Scrolling)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
+local WorldGenerationServiceClient = require(gameRoot.Shared.Features.worldGeneration.WorldGenerationServiceClient)
 
 type Catalog = ParallaxServiceUtils.Catalog
 type BiomeDefinition = ParallaxServiceUtils.BiomeDefinition

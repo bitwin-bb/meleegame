@@ -1,6 +1,8 @@
 --!strict
 
-local Nevermore = require(script.Parent.Parent.Nevermore)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Nevermore = require(gameRoot.Shared.StateMachine.Nevermore)
 local AnimationPromiseUtils = Nevermore.Get("AnimationPromiseUtils")
 local AnimationTrackUtils = Nevermore.Get("AnimationTrackUtils")
 local Maid = Nevermore.Get("Maid")

@@ -1,18 +1,17 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BillboardCard = require(script:FindFirstAncestor("game").Client.UI.core.components.BillboardCard)
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
-local MiningProgressBar =
-	require(script:FindFirstAncestor("game").Client.Features.mining.ui.components.MiningProgressBar)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local BillboardCard = require(gameRoot.Client.UI.core.components.BillboardCard)
+local ImageIds = require(gameRoot.Client.UI.core.ImageIds)
+local MiningProgressBar = require(gameRoot.Client.Features.mining.ui.components.MiningProgressBar)
 local React = require(ReplicatedStorage.Packages.React)
-local miningProgressSlice =
-	require(script:FindFirstAncestor("game").Client.Features.mining.ui.state.miningProgressSlice)
-local miningProgressThunks =
-	require(script:FindFirstAncestor("game").Client.Features.mining.ui.state.miningProgressThunks)
-local useProgressBarSmoothing =
-	require(script:FindFirstAncestor("game").Client.Features.mining.ui.hooks.useProgressBarSmoothing)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local miningProgressSlice = require(gameRoot.Client.Features.mining.ui.state.miningProgressSlice)
+local miningProgressThunks = require(gameRoot.Client.Features.mining.ui.state.miningProgressThunks)
+local useProgressBarSmoothing = require(gameRoot.Client.Features.mining.ui.hooks.useProgressBarSmoothing)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
 
 type MiningProgressState = miningProgressSlice.MiningProgressState
 
@@ -44,7 +43,7 @@ local BAR_WIDTH = math.max(1, FRAME_WIDTH - (BAR_INSET_X * 2))
 local BAR_HEIGHT = math.max(1, FRAME_HEIGHT - (BAR_INSET_Y * 2))
 
 return function(props: MiningProgressScreenProps?): React.ReactNode
-	local resolvedProps: MiningProgressScreenProps = if props ~= nil then props else ({} :: any)
+	local resolvedProps: MiningProgressScreenProps = if props ~= nil then props else {} :: any
 	local miningProgressState = (useStore(miningProgressSlice.miningProgressStateAtom) :: MiningProgressState?)
 		or miningProgressSlice.miningProgressStateAtom()
 	local billboardRef = React.useRef(nil :: BillboardGui?)

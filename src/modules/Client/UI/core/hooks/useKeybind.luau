@@ -1,12 +1,15 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local UserInputService = game:GetService("UserInputService")
 
-local Cleanup = require(script.Parent.internal.cleanup)
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
-local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceUtils)
+local Cleanup = require(gameRoot.Client.UI.core.hooks.internal.cleanup)
+local PlatformServiceClient = require(gameRoot.Shared.Features.platform.PlatformServiceClient)
+local PlatformServiceUtils = require(gameRoot.Shared.Features.platform.PlatformServiceUtils)
 local React = require(ReplicatedStorage.Packages.React)
-local useStableCallback = require(script.Parent.internal.useStableCallback)
+local useStableCallback = require(gameRoot.Client.UI.core.hooks.internal.useStableCallback)
 
 type PromptBinding = PlatformServiceUtils.PromptBinding
 type ActionDefinition = PlatformServiceUtils.ActionDefinition
@@ -206,15 +209,7 @@ local function useKeybind(options: KeybindOptions?): KeybindResult
 			Cleanup.Call(changedConnection)
 			Cleanup.Call(endedConnection)
 		end
-	end, dependencyArray(
-		enabled,
-		actionName,
-		keyCodes,
-		inputTypes,
-		captureProcessed,
-		overrideDefinition,
-		onTriggered
-	))
+	end, dependencyArray(enabled, actionName, keyCodes, inputTypes, captureProcessed, overrideDefinition, onTriggered))
 
 	return {
 		isPressed = isPressed,

@@ -1,7 +1,9 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ManaTopRightBar = require(script.Parent.hud.TopBar.ManaTopRightBar)
+local ManaTopRightBar = require(gameRoot.Shared.Features.mana.ui.hud.TopBar.ManaTopRightBar)
 local React = require(ReplicatedStorage.Packages.React)
 
 type ManaRootProps = {

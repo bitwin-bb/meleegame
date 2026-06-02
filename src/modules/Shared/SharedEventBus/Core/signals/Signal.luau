@@ -1,13 +1,14 @@
 --!strict
 
 local gameRoot = assert(script:FindFirstAncestor("game"), "Missing game root")
-local packageRoot = gameRoot.Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 
-local Maid = loader("Maid")
 
-local Connection = require(script.Parent.Connection)
+local Maid = require(quentyPackages.maid.Shared.Maid)
+
+local Connection = require(gameRoot.Shared.SharedEventBus.Core.signals.Connection)
+local Utils = require(gameRoot.Shared.SharedEventBus.Utils)
 
 type Connection = Connection.Connection
 
@@ -25,16 +26,21 @@ type DispatchItem = {
 local Signal = {}
 Signal.__index = Signal
 
-export type Signal = typeof(setmetatable({} :: {
-	_destroyed: boolean,
-	_listeners: { Listener },
-	_pendingOnceConnections: { Connection },
-	_waitingThreads: { thread },
-	_maid: any,
-}, Signal))
+export type Signal = typeof(setmetatable(
+	{} :: {
+		_destroyed: boolean,
+		_listeners: { Listener },
+		_pendingOnceConnections: { Connection },
+		_waitingThreads: { thread },
+		_maid: any,
+	},
+	Signal
+))
 
 local function reportCallbackError(message: string)
-	warn("[EventBus] listener error " .. message)
+	if Utils.DEBUG_WARN_CALLBACK_ERRORS then
+		Utils.Warn("listener error " .. message)
+	end
 end
 
 function Signal.new(): Signal

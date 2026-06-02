@@ -1,18 +1,21 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
 local Workspace = game:GetService("Workspace")
 
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local CameraShaker =
-	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("EZCameraShake"))
-local EyeOfCthulhuPresentation =
-	require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.EyeOfCthulhu.Presentation)
+local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
+local CameraShaker = require(ReplicatedStorage.Shared.Vendor.EZCameraShake)
+local EyeOfCthulhuPresentation = require(gameRoot.Shared.Features.npc.classes.Boss.EyeOfCthulhu.Presentation)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local BossServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).BossService
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local BossServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).BossService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = BossServicePackets[methodName]
@@ -58,8 +61,8 @@ local function bindPackets(self: any)
 end
 
 local Sift = require(ReplicatedStorage.Packages.Sift)
-local Signal = require(ReplicatedStorage.Packages.Signal)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
+local Signal = require(quentyPackages.signal.Shared.Signal)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
 
 type BossSnapshot = BossServiceUtils.BossSnapshot
 type BossServiceState = BossServiceUtils.BossServiceState

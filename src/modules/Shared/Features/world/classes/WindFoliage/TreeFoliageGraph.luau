@@ -1,10 +1,10 @@
 --!strict
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 
-local DeterministicRNG = require(script:FindFirstAncestor("game").Shared.Core.DeterministicRNG)
-local Damp = require(script:FindFirstAncestor("game").Shared.Core.Math.Damp)
-local Vec = require(script:FindFirstAncestor("game").Shared.Core.Math.Vec)
+local Damp = require(gameRoot.Shared.Core.Math.Damp)
+local DeterministicRNG = require(gameRoot.Shared.Core.DeterministicRNG)
+local Vec = require(gameRoot.Shared.Core.Math.Vec)
 
 local TreeFoliageGraph = {}
 TreeFoliageGraph.__index = TreeFoliageGraph
@@ -127,7 +127,12 @@ local function resolveTrunkBasePosition(part: BasePart): Vector3
 	return resolveBranchBaseFrame(part).Position
 end
 
-local function resolvePlanarAngles(referenceFrame: CFrame, bendWorld: Vector3, maxAngleRadians: number, yawAmount: number): (number, number, number)
+local function resolvePlanarAngles(
+	referenceFrame: CFrame,
+	bendWorld: Vector3,
+	maxAngleRadians: number,
+	yawAmount: number
+): (number, number, number)
 	local planar = Vec.flattenY(bendWorld)
 	local magnitude = planar.Magnitude
 	if magnitude <= 1e-5 or maxAngleRadians <= 0 then
@@ -321,8 +326,7 @@ function TreeFoliageGraph.New(modelRaw: any, configRaw: any): TreeFoliageGraph?
 
 		local parentBranch = branchNodesByIndex[candidate.parentIndex]
 		local inheritedScale = if parentBranch ~= nil then 0.9 + math.min(0.4, parentBranch.depth * 0.05) else 0.95
-		local phaseOffset, amplitudeScale =
-			resolveDeterministicPhase(config.seed, ("leaf:%d"):format(candidate.index))
+		local phaseOffset, amplitudeScale = resolveDeterministicPhase(config.seed, ("leaf:%d"):format(candidate.index))
 
 		leafNodes[#leafNodes + 1] = {
 			part = part,
@@ -455,8 +459,9 @@ function TreeFoliageGraph.Step(
 		local jointRestWorld = parentAttachmentWorld * branch.restLocal
 		local phaseWave = math.sin(simulationTime * 0.8 + branch.phaseOffset)
 
-		local target =
-			(windSample.vector * swayAmplitude + windSample.direction * windSample.gustAlpha * gustSensitivity)
+		local target = (
+			windSample.vector * swayAmplitude + windSample.direction * windSample.gustAlpha * gustSensitivity
+		)
 			* branch.swayScale
 			* lod.windScale
 		target += windSample.detailVector * detailAmplitude * branch.detailScale * lod.detailScale

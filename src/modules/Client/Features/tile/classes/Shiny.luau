@@ -1,19 +1,19 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
 local HttpService = game:GetService("HttpService")
 local Workspace = game:GetService("Workspace")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(packageRoot)
+local ContentProviderUtils = require(quentyPackages.contentproviderutils.Client.ContentProviderUtils)
+local Maid = require(quentyPackages.maid.Shared.Maid)
+local Rx = require(quentyPackages.rx.Shared.Rx)
 
-local ContentProviderUtils = loader("ContentProviderUtils")
-local Maid = loader("Maid")
-local Rx = loader("Rx")
-
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
-local ShinySheet = require(script.Parent.Parent.modules.ShinySheet) :: any
-local tileThunks = require(script.Parent.Parent.ui.state.tileThunks)
+local BuildServiceUtils = require(gameRoot.Shared.Features.world.BuildServiceUtils)
+local ShinySheet = require(gameRoot.Client.Features.tile.modules.ShinySheet) :: any
+local tileThunks = require(gameRoot.Client.Features.tile.ui.state.tileThunks)
 
 type MaidClass = {
 	GiveTask: (self: MaidClass, task: any) -> number,

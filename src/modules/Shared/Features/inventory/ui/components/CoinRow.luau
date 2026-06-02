@@ -1,10 +1,13 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local CoinSprites = require(script:FindFirstAncestor("game").Client.UI.core.utils.CoinSprites)
-local Gif = require(script:FindFirstAncestor("game").Client.UI.shared.Gif)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local CoinSprites = require(gameRoot.Client.UI.core.utils.CoinSprites)
+local Gif = require(gameRoot.Client.UI.shared.Gif)
 local React = require(ReplicatedStorage.Packages.React)
-local formatNumber = require(script:FindFirstAncestor("game").Client.UI.core.utils.formatNumber)
+local formatNumber = require(gameRoot.Client.UI.core.utils.formatNumber)
 
 export type CoinRowItem = {
 	id: string,

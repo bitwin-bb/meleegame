@@ -1,10 +1,12 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local LootServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.loot.LootServiceUtils)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local LootServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).LootService
+local LootServiceUtils = require(gameRoot.Shared.Features.loot.LootServiceUtils)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local LootServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).LootService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = LootServicePackets[methodName]

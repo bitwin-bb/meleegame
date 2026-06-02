@@ -1,7 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 -- Variance and standard-deviation helpers.
 
-local Avg = require(script.Parent.Avg)
+local Avg = require(gameRoot.Shared.Core.Math.Avg)
 
 local Stat = {}
 

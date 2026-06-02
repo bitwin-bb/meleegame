@@ -1,14 +1,15 @@
 --!strict
-local Players = game:GetService("Players")
-local CollectionService = game:GetService("CollectionService")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
-local mouseSlice = require(script:FindFirstAncestor("game").Client.Features.mouse.ui.state.mouseSlice)
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local ConnectionUtils = require(gameRoot.Client.UI.core.utils.ConnectionUtils)
+local CoreRuntime = require(gameRoot.Shared.Core.Runtime)
+local PlatformServiceClient = require(gameRoot.Shared.Features.platform.PlatformServiceClient)
+local mouseSlice = require(gameRoot.Client.Features.mouse.ui.state.mouseSlice)
 
 type MouseState = mouseSlice.MouseState
 
@@ -127,7 +128,9 @@ local function applyPointerStateFromCursorState(cursorStateRaw: any)
 		then cursorStateRaw.screenPosition
 		else if typeof(cursorStateRaw.guiPosition) == "Vector2" then cursorStateRaw.guiPosition else Vector2.zero
 	local isHoveringGui = cursorStateRaw.isHoveringGui == true
-	local hoveredGuiPath = if typeof(cursorStateRaw.hoveredGuiPath) == "string" then cursorStateRaw.hoveredGuiPath else nil
+	local hoveredGuiPath = if typeof(cursorStateRaw.hoveredGuiPath) == "string"
+		then cursorStateRaw.hoveredGuiPath
+		else nil
 	mouseSlice.setMouseVisible(cursorStateRaw.visible == true)
 	mouseSlice.setMouseDown(cursorStateRaw.mouseDown == true)
 	mouseSlice.updatePointer(pointerPosition, isHoveringGui, hoveredGuiPath)
@@ -136,7 +139,11 @@ end
 local function applyPointerStateFromScreenPosition(screenPosition: Vector2)
 	local guiPosition = toGuiPosition(screenPosition)
 	local hoveredGui = resolveHoveredGuiObject(guiPosition)
-	mouseSlice.updatePointer(guiPosition, hoveredGui ~= nil, if hoveredGui ~= nil then hoveredGui:GetFullName() else nil)
+	mouseSlice.updatePointer(
+		guiPosition,
+		hoveredGui ~= nil,
+		if hoveredGui ~= nil then hoveredGui:GetFullName() else nil
+	)
 end
 
 local function syncPointerFromMouseLocation()
@@ -196,7 +203,11 @@ local function applyCursorPolicy()
 	runtime.customCursorAllowed = PlatformServiceClient:shouldUseCustomCursor()
 	local machineFamily = PlatformServiceClient:getMachineFamily()
 
-	if runtime.usingSharedCursor and runtime.cursor ~= nil and typeof((runtime.cursor :: any).setEnabled) == "function" then
+	if
+		runtime.usingSharedCursor
+		and runtime.cursor ~= nil
+		and typeof((runtime.cursor :: any).setEnabled) == "function"
+	then
 		local cursorAny = runtime.cursor :: any
 		cursorAny:setEnabled(runtime.customCursorAllowed)
 		if runtime.customCursorAllowed then
@@ -220,7 +231,9 @@ local function applyCursorPolicy()
 	end
 
 	if runtime.defaultMouseIconEnabled ~= nil then
-		UserInputService.MouseIconEnabled = if machineFamily == "desktop" then runtime.defaultMouseIconEnabled else false
+		UserInputService.MouseIconEnabled = if machineFamily == "desktop"
+			then runtime.defaultMouseIconEnabled
+			else false
 	else
 		UserInputService.MouseIconEnabled = machineFamily == "desktop"
 	end
@@ -353,7 +366,11 @@ function mouseThunks.SyncPointer()
 end
 
 function mouseThunks.SetMouseDown(isMouseDown: boolean)
-	if runtime.usingSharedCursor and runtime.cursor ~= nil and typeof((runtime.cursor :: any).setMouseDown) == "function" then
+	if
+		runtime.usingSharedCursor
+		and runtime.cursor ~= nil
+		and typeof((runtime.cursor :: any).setMouseDown) == "function"
+	then
 		local cursorAny = runtime.cursor :: any
 		cursorAny:setMouseDown(isMouseDown)
 	end

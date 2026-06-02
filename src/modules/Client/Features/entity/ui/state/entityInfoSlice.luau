@@ -1,4 +1,5 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Charm = require(ReplicatedStorage.Packages.Charm)
@@ -88,7 +89,7 @@ end
 
 local function setEntityInfoState(stateRaw: any): EntityInfoState
 	local current = entityInfoStateAtom()
-	local source = if typeof(stateRaw) == "table" then stateRaw else ({} :: any)
+	local source = if typeof(stateRaw) == "table" then stateRaw else {} :: any
 
 	local maxHp = sanitizeMaxHp((source :: any).maxHp, current.maxHp)
 	local nextState: EntityInfoState = {
@@ -115,7 +116,7 @@ end
 
 local function showEntityInfo(payloadRaw: any): EntityInfoState
 	local current = entityInfoStateAtom()
-	local payload = if typeof(payloadRaw) == "table" then payloadRaw else ({} :: any)
+	local payload = if typeof(payloadRaw) == "table" then payloadRaw else {} :: any
 	local maxHp = sanitizeMaxHp((payload :: any).maxHp, current.maxHp)
 	local nextState: EntityInfoState = {
 		visible = true,

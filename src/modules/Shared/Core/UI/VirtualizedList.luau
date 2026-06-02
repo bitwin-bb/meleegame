@@ -1,5 +1,7 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local VirtualizedList = {}
@@ -67,8 +69,7 @@ local function defaultCreateItem(_: GuiObject?): GuiObject
 	return frame
 end
 
-local function defaultBindItem(_: GuiObject, _: any, _: number)
-end
+local function defaultBindItem(_: GuiObject, _: any, _: number) end
 
 local function defaultResetItem(item: GuiObject)
 	item.Visible = false
@@ -104,9 +105,11 @@ function VirtualizedList.New(configRaw: VirtualizedListConfig): VirtualizedList
 		totalHeight = 0,
 	}, VirtualizedList)
 
-	self.connections[#self.connections + 1] = scrollingFrame:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
-		self:_renderVisible()
-	end)
+	self.connections[#self.connections + 1] = scrollingFrame
+		:GetPropertyChangedSignal("CanvasPosition")
+		:Connect(function()
+			self:_renderVisible()
+		end)
 	self.connections[#self.connections + 1] = scrollingFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
 		self:_renderVisible()
 	end)
@@ -305,7 +308,8 @@ function VirtualizedList.ScrollToIndex(self: VirtualizedList, indexRaw: any, ali
 		targetY = top - (viewportHeight - height)
 	end
 
-	self.scrollingFrame.CanvasPosition = Vector2.new(self.scrollingFrame.CanvasPosition.X, math.max(0, math.floor(targetY + 0.5)))
+	self.scrollingFrame.CanvasPosition =
+		Vector2.new(self.scrollingFrame.CanvasPosition.X, math.max(0, math.floor(targetY + 0.5)))
 	self:_renderVisible()
 end
 

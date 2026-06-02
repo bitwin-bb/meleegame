@@ -1,12 +1,14 @@
 --!strict
 
-local Nevermore = require(script:FindFirstAncestor("Goap").Nevermore)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Nevermore = require(gameRoot.Shared.Goap.Nevermore)
 local packages = Nevermore.GetRolePackages("Debug")
 local Table = packages.Table
 
-local PlanPrinter = require(script.Parent.PlanPrinter)
-local Utils = require(script:FindFirstAncestor("Goap").Utils)
-local WorldStateViewer = require(script.Parent.WorldStateViewer)
+local PlanPrinter = require(gameRoot.Shared.Goap.Debug.PlanPrinter)
+local Utils = require(gameRoot.Shared.Goap.Utils)
+local WorldStateViewer = require(gameRoot.Shared.Goap.Debug.WorldStateViewer)
 
 local GoalDebugger = {}
 

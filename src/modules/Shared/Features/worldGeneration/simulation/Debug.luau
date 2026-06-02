@@ -1,9 +1,11 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local HttpService = game:GetService("HttpService")
 
-local TileComponent = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.components.Tile)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
+local TileComponent = require(gameRoot.Shared.Features.worldGeneration.components.Tile)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
 
 local Debug = {}
 Debug.__index = Debug
@@ -17,7 +19,7 @@ local function isFiniteNumber(value: any): boolean
 end
 
 function Debug.New(configRaw: any)
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local self = setmetatable({
 		enabled = (config :: any).enabled == true,
 		profilingEnabled = (config :: any).profilingEnabled == true,
@@ -144,10 +146,10 @@ function Debug.EnsureVisualFolder(self: Debug, parentRaw: any): Folder?
 		return existing
 	end
 
-	local folder = TileComponent.CreateFolder(({
+	local folder = TileComponent.CreateFolder({
 		name = DEFAULT_FOLDER_NAME,
 		parent = parent,
-	} :: any)) :: any
+	} :: any) :: any
 	folder = folder :: Folder
 	self.visualFolder = folder
 	return folder
@@ -218,4 +220,3 @@ Debug.clearChunkBox = Debug.ClearChunkBox
 Debug.destroy = Debug.Destroy
 
 return Debug
-

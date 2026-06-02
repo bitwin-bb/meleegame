@@ -1,13 +1,13 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(packageRoot)
-
-local Flipbook = loader("Flipbook")
-local FlipbookPlayer = loader("FlipbookPlayer")
-local Maid = loader("Maid")
+local Flipbook = require(quentyPackages.flipbook.Client.Flipbook)
+local FlipbookPlayer = require(quentyPackages.flipbook.Client.Player.FlipbookPlayer)
+local Maid = require(quentyPackages.maid.Shared.Maid)
 
 local React = require(ReplicatedStorage.Packages.React)
 
@@ -34,40 +34,43 @@ local function useBreakAnim(imageRef: { current: ImageLabel? }, options: BreakAn
 	local frameIndex = sanitizeInteger(options.frameIndex, 1, 1, frameCount)
 	local frameSize = if typeof(options.frameSize) == "Vector2" then options.frameSize else Vector2.new(1, 1)
 
-	React.useEffect(function()
-		local imageLabel = imageRef.current
-		if imageLabel == nil or image == "" then
-			return
-		end
+	React.useEffect(
+		function()
+			local imageLabel = imageRef.current
+			if imageLabel == nil or image == "" then
+				return
+			end
 
-		local maid = Maid.new()
-		local flipbook = Flipbook.new({
-			image = image,
-			frameCount = frameCount,
-			rows = rows,
-			columns = columns,
-			imageRectSize = frameSize,
-			frameRate = 60,
-			restFrame = frameIndex,
-		})
-		local player = FlipbookPlayer.new(imageLabel)
-		maid:GiveTask(player)
-		player:SetFlipbook(flipbook)
-		player:Stop()
+			local maid = Maid.new()
+			local flipbook = Flipbook.new({
+				image = image,
+				frameCount = frameCount,
+				rows = rows,
+				columns = columns,
+				imageRectSize = frameSize,
+				frameRate = 60,
+				restFrame = frameIndex,
+			})
+			local player = FlipbookPlayer.new(imageLabel)
+			maid:GiveTask(player)
+			player:SetFlipbook(flipbook)
+			player:Stop()
 
-		return function()
-			maid:DoCleaning()
-		end
-	end, ({
-		imageRef,
-		image,
-		frameIndex,
-		columns,
-		rows,
-		frameCount,
-		frameSize.X,
-		frameSize.Y,
-	} :: { any }))
+			return function()
+				maid:DoCleaning()
+			end
+		end,
+		{
+			imageRef,
+			image,
+			frameIndex,
+			columns,
+			rows,
+			frameCount,
+			frameSize.X,
+			frameSize.Y,
+		} :: { any }
+	)
 end
 
 return useBreakAnim

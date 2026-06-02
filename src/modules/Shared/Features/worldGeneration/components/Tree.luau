@@ -1,6 +1,8 @@
 --!strict
 
-local Tile = require(script.Parent.Tile)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Tile = require(gameRoot.Shared.Features.worldGeneration.components.Tile)
 
 local Tree = {}
 

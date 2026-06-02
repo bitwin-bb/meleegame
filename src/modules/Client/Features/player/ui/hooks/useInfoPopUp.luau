@@ -1,5 +1,7 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local RunService = game:GetService("RunService")
 
 local React = require(ReplicatedStorage.Packages.React)
@@ -48,8 +50,10 @@ end
 
 local function useInfoPopUp(options: InfoPopUpOptions?): InfoPopUpState
 	local enabled = if options ~= nil and options.enabled ~= nil then options.enabled == true else true
-	local riseDuration = sanitizeNumber(if options ~= nil then options.riseDuration else nil, DEFAULT_RISE_DURATION, 0.05, 20)
-	local holdDuration = sanitizeNumber(if options ~= nil then options.holdDuration else nil, DEFAULT_HOLD_DURATION, 0, 30)
+	local riseDuration =
+		sanitizeNumber(if options ~= nil then options.riseDuration else nil, DEFAULT_RISE_DURATION, 0.05, 20)
+	local holdDuration =
+		sanitizeNumber(if options ~= nil then options.holdDuration else nil, DEFAULT_HOLD_DURATION, 0, 30)
 	local shrinkDuration =
 		sanitizeNumber(if options ~= nil then options.shrinkDuration else nil, DEFAULT_SHRINK_DURATION, 0.05, 20)
 	local fromYOffsetStuds =
@@ -61,14 +65,24 @@ local function useInfoPopUp(options: InfoPopUpOptions?): InfoPopUpState
 	local totalDuration = riseDuration + holdDuration + shrinkDuration
 
 	local elapsedRef = React.useRef(0)
-	local progress, setProgress = React.useState(0)
-
-	;(React.useEffect :: any)(function()
-		elapsedRef.current = 0
-		setProgress(0)
-	end, ({ eventToken, enabled, riseDuration, holdDuration, shrinkDuration, fromYOffsetStuds, toYOffsetStuds, minScale } :: { any }))
-
-	;(React.useEffect :: any)(function(): (() -> ())?
+	local progress, setProgress = React.useState(0);
+	(React.useEffect :: any)(
+		function()
+			elapsedRef.current = 0
+			setProgress(0)
+		end,
+		{
+			eventToken,
+			enabled,
+			riseDuration,
+			holdDuration,
+			shrinkDuration,
+			fromYOffsetStuds,
+			toYOffsetStuds,
+			minScale,
+		} :: { any }
+	);
+	(React.useEffect :: any)(function(): (() -> ())?
 		if not enabled then
 			return nil
 		end
@@ -87,7 +101,7 @@ local function useInfoPopUp(options: InfoPopUpOptions?): InfoPopUpState
 		return function()
 			connection:Disconnect()
 		end
-	end, ({ enabled, riseDuration, holdDuration, shrinkDuration, eventToken, totalDuration } :: { any }))
+	end, { enabled, riseDuration, holdDuration, shrinkDuration, eventToken, totalDuration } :: { any })
 
 	local clampedProgress = math.clamp(progress, 0, 1)
 	local elapsed = clampedProgress * totalDuration
@@ -114,9 +128,7 @@ local function useInfoPopUp(options: InfoPopUpOptions?): InfoPopUpState
 		local shrinkAlpha = math.clamp(shrinkElapsed / math.max(0.05, shrinkDuration), 0, 1)
 		offsetYStuds = toYOffsetStuds
 		scale = 1 - (1 - minScale) * shrinkAlpha
-		local scaleAlpha = if 1 - minScale <= 1e-4
-			then 1
-			else math.clamp((scale - minScale) / (1 - minScale), 0, 1)
+		local scaleAlpha = if 1 - minScale <= 1e-4 then 1 else math.clamp((scale - minScale) / (1 - minScale), 0, 1)
 		transparency = math.clamp(1 - scaleAlpha, 0, 1)
 	end
 

@@ -1,8 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Charm = require(ReplicatedStorage.Packages.Charm)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
+local InventoryServiceUtils = require(gameRoot.Shared.Features.inventory.InventoryServiceUtils)
 
 type InventoryState = InventoryServiceUtils.InventoryState
 type InventorySlot = InventoryServiceUtils.InventorySlot
@@ -86,7 +88,7 @@ end
 
 local function setInventoryHudState(stateRaw: any): InventoryHudState
 	local current = inventoryHudStateAtom()
-	local source: { [string]: any } = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else ({} :: any)
+	local source: { [string]: any } = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {} :: any
 
 	local nextIsHotbarExpanded = sanitizeBoolean(source.isHotbarExpanded, current.isHotbarExpanded)
 	local nextIsInventoryPanelOpen = sanitizeBoolean(source.isInventoryPanelOpen, nextIsHotbarExpanded)

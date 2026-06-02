@@ -1,7 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 -- Common easing curves for interpolation timing.
 
-local Num = require(script.Parent.Num)
+local Num = require(gameRoot.Shared.Core.Math.Num)
 
 local Ease = {}
 

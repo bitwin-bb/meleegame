@@ -1,10 +1,12 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local TransparentFrame = require(script.Parent.Parent.primitives.TransparentFrame)
-local useHover = require(script.Parent.Parent.hooks.useHover)
-local useTooltip = require(script.Parent.Parent.hooks.useTooltip)
+local TransparentFrame = require(gameRoot.Client.UI.core.primitives.TransparentFrame)
+local useHover = require(gameRoot.Client.UI.core.hooks.useHover)
+local useTooltip = require(gameRoot.Client.UI.core.hooks.useTooltip)
 
 export type TooltipAnchorProps = {
 	id: string,

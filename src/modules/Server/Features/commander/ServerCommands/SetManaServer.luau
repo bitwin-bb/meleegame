@@ -1,8 +1,11 @@
 --!strict
+
+local require = require(script.Parent.loader).load(assert(script:FindFirstAncestor("AquariaBackup"), "Missing AquariaBackup package root"))
+
 local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for SetManaServer.")
 
-local ManaServiceServer = require(gameRoot.Shared.Features.mana.ManaServiceServer)
+local ManaServiceServer = require("ManaServiceServer")
 
 local function joinParts(parts: { string }): string
 	return table.concat(parts, ", ")
@@ -28,7 +31,8 @@ return function(_context, players: { Player }, amountRaw: number)
 		responseParts[#responseParts + 1] = `Set permanent max mana for {joinParts(updated)} and refilled it.`
 	end
 	if #failed > 0 then
-		responseParts[#responseParts + 1] = `Could not update {joinParts(failed)} because their mana runtime was unavailable.`
+		responseParts[#responseParts + 1] =
+			`Could not update {joinParts(failed)} because their mana runtime was unavailable.`
 	end
 
 	return table.concat(responseParts, " ")

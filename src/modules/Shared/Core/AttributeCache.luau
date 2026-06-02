@@ -1,10 +1,14 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local Codec = require(script.Parent.Codec)
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local Codec = require(gameRoot.Shared.Core.Codec)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
 local AttributeCache = {}
 AttributeCache.__index = AttributeCache
@@ -115,7 +119,11 @@ function AttributeCache.New(): AttributeCache
 	return self
 end
 
-function AttributeCache._getListenerSignal(self: AttributeCache, record: InstanceRecord, attribute: string): AttributeChangedSignal
+function AttributeCache._getListenerSignal(
+	self: AttributeCache,
+	record: InstanceRecord,
+	attribute: string
+): AttributeChangedSignal
 	local signal = record.listenerSignals[attribute]
 	if signal ~= nil then
 		return signal
@@ -137,7 +145,14 @@ function AttributeCache._registerDirtyInstance(self: AttributeCache, instance: I
 	self.dirtyInstances[#self.dirtyInstances + 1] = instance
 end
 
-function AttributeCache._notifyListeners(self: AttributeCache, record: InstanceRecord, instance: Instance, attribute: string, newValue: any, oldValue: any)
+function AttributeCache._notifyListeners(
+	self: AttributeCache,
+	record: InstanceRecord,
+	instance: Instance,
+	attribute: string,
+	newValue: any,
+	oldValue: any
+)
 	local byAttribute = record.listenerSignals[attribute]
 	if byAttribute ~= nil then
 		byAttribute:Fire(instance, attribute, newValue, oldValue)
@@ -148,7 +163,14 @@ function AttributeCache._notifyListeners(self: AttributeCache, record: InstanceR
 	end
 end
 
-function AttributeCache._recordDiff(self: AttributeCache, instance: Instance, record: InstanceRecord, attribute: string, oldValue: any, newValue: any)
+function AttributeCache._recordDiff(
+	self: AttributeCache,
+	instance: Instance,
+	record: InstanceRecord,
+	attribute: string,
+	oldValue: any,
+	newValue: any
+)
 	if oldValue == newValue then
 		return
 	end
@@ -210,7 +232,12 @@ function AttributeCache._resolveAttribute(self: AttributeCache, record: Instance
 	return baseValue
 end
 
-function AttributeCache._applyResolved(self: AttributeCache, instance: Instance, record: InstanceRecord, attribute: string)
+function AttributeCache._applyResolved(
+	self: AttributeCache,
+	instance: Instance,
+	record: InstanceRecord,
+	attribute: string
+)
 	local oldValue = record.cache[attribute]
 	local resolved = self:_resolveAttribute(record, attribute)
 	record.cache[attribute] = resolved
@@ -353,7 +380,12 @@ function AttributeCache.Increment(self: AttributeCache, instanceRaw: any, attrib
 	return nextValue
 end
 
-function AttributeCache.OnChanged(self: AttributeCache, instanceRaw: any, attributeRaw: any, listener: ChangeListener): () -> ()
+function AttributeCache.OnChanged(
+	self: AttributeCache,
+	instanceRaw: any,
+	attributeRaw: any,
+	listener: ChangeListener
+): () -> ()
 	if typeof(instanceRaw) ~= "Instance" then
 		return function() end
 	end
@@ -433,7 +465,12 @@ function AttributeCache.ApplyModifier(
 	return true
 end
 
-function AttributeCache.RemoveModifier(self: AttributeCache, instanceRaw: any, attributeRaw: any, modifierIdRaw: any): boolean
+function AttributeCache.RemoveModifier(
+	self: AttributeCache,
+	instanceRaw: any,
+	attributeRaw: any,
+	modifierIdRaw: any
+): boolean
 	if typeof(instanceRaw) ~= "Instance" then
 		return false
 	end

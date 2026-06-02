@@ -1,11 +1,16 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Workspace = game:GetService("Workspace")
 
-local BaseUIScaling = require(script:FindFirstAncestor("game").Shared.Core.UI.UIScaling)
+local BaseUIScaling = require(gameRoot.Shared.Core.UI.UIScaling)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PlatformServiceUtils = require(script.Parent.PlatformServiceUtils)
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local PlatformServiceUtils = require(gameRoot.Shared.Features.platform.PlatformServiceUtils)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
 type PlatformState = PlatformServiceUtils.PlatformState
 type PlatformKind = PlatformServiceUtils.PlatformKind
@@ -195,7 +200,7 @@ local function findRootScale(parent: Instance): UIScale?
 end
 
 function PlatformUIScale.New(configRaw: UIScaleConfig?): typeof(setmetatable({} :: any, PlatformUIScale))
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local self = setmetatable({
 		platformService = config.platformService,
 		screenGui = if typeof(config.screenGui) == "Instance" and config.screenGui:IsA("ScreenGui")

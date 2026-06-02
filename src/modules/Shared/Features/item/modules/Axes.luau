@@ -1,10 +1,12 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-
-local Animations = require(script.Parent.Animations)
-local BuildAnimationMelee = require(script:FindFirstAncestor("game").Shared.Game.Render.BuildAnimationMelee)
+local Animations = require(gameRoot.Shared.Features.item.modules.Animations)
+local BuildAnimationMelee = require(gameRoot.Shared.Game.Render.BuildAnimationMelee)
 
 local axeAnimationIds = (((Animations :: any).Items or ({} :: any)).Axes or ({} :: any)) :: { [string]: any }
 

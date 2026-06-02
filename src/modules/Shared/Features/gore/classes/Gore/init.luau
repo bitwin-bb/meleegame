@@ -1,13 +1,16 @@
 --!strict
-local HttpService = game:GetService("HttpService")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local HttpService = game:GetService("HttpService")
 local Workspace = game:GetService("Workspace")
 
-local BloodEngine = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("BloodEngine"))
-local Gib = require(script.Gib)
+local BloodEngine = require(ReplicatedStorage.Shared.Vendor.BloodEngine)
+local Gib = require(gameRoot.Shared.Features.gore.classes.Gore.Gib)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local LimbDestruction = require(script.LimbDestruction)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
+local LimbDestruction = require(gameRoot.Shared.Features.gore.classes.Gore.LimbDestruction)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
 
 type JanitorClass = {
 	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
@@ -212,7 +215,7 @@ local function buildRaycastParams(filter: { Instance }): RaycastParams
 end
 
 local function resolveCleanupDelaySeconds(bloodSettingsRaw: any, gibTravelTime: number, gibLifetime: number): number
-	local bloodSettings = if typeof(bloodSettingsRaw) == "table" then bloodSettingsRaw else ({} :: any)
+	local bloodSettings = if typeof(bloodSettingsRaw) == "table" then bloodSettingsRaw else {} :: any
 	local tweens = if typeof(bloodSettings.Tweens) == "table" then bloodSettings.Tweens else nil
 	local decayDelaySeconds = getRangeMaximum(bloodSettings.DecayDelay, DEFAULT_BLOOD_DECAY_DELAY_SECONDS)
 	local decayTweenSeconds =
@@ -224,7 +227,7 @@ local function resolveCleanupDelaySeconds(bloodSettingsRaw: any, gibTravelTime: 
 end
 
 function Gore._resolveBloodColor(self: Gore, limb: BasePart, optionsRaw: any, profileRaw: LimbProfile?): Color3
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 	local profile = if typeof(profileRaw) == "table" then profileRaw else nil
 
 	if typeof(options.bloodColor) == "Color3" then
@@ -444,14 +447,14 @@ function Gore.SpawnGib(self: Gore, sourceRaw: any, optionsRaw: any?): Gib.Gib?
 		return nil
 	end
 
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 	local originCFrame = if typeof(options.originCFrame) == "CFrame" then options.originCFrame else sourcePart.CFrame
 	local restPosition = options.restPosition
 	if typeof(restPosition) ~= "Vector3" then
 		restPosition = self:_resolveGibRestPosition(originCFrame, sourcePart)
 	end
 
-	local gib = Gib.new(({
+	local gib = Gib.new({
 		source = sourcePart,
 		parent = self.runtimeFolder,
 		originCFrame = originCFrame,
@@ -465,7 +468,7 @@ function Gore.SpawnGib(self: Gore, sourceRaw: any, optionsRaw: any?): Gib.Gib?
 		canTouch = false,
 		canQuery = false,
 		anchoredAtRest = true,
-	} :: any))
+	} :: any)
 	gib:play()
 	self:_trackGib(gib)
 	return gib

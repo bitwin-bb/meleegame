@@ -1,4 +1,5 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Fusion = require(ReplicatedStorage.Packages.Fusion)
@@ -32,7 +33,7 @@ local function sanitizeSize(valueRaw: any): Vector3
 end
 
 function EyeOfCthulhuServantRoot.CreateModel(configRaw: EyeOfCthulhuServantRootConfig?): Model
-	local config = (if typeof(configRaw) == "table" then configRaw else ({} :: any)) :: EyeOfCthulhuServantRootConfig
+	local config = (if typeof(configRaw) == "table" then configRaw else {} :: any) :: EyeOfCthulhuServantRootConfig
 	local scope = Fusion.scoped(Fusion)
 	local rootPart = scope:New "Part" {
 		Name = "RootPart",

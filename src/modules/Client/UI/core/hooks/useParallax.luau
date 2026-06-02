@@ -1,12 +1,15 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local UserInputService = game:GetService("UserInputService")
 
-local GuiUtils = require(script.Parent.internal.gui)
+local GuiUtils = require(gameRoot.Client.UI.core.hooks.internal.gui)
 local React = require(ReplicatedStorage.Packages.React)
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
-local useSpring = require(script.Parent.useSpring)
-local useViewport = require(script.Parent.useViewport)
+local useSpring = require(gameRoot.Client.UI.core.hooks.useSpring)
+local useViewport = require(gameRoot.Client.UI.core.hooks.useViewport)
 
 export type ParallaxOptions = {
 	enabled: boolean?,
@@ -84,7 +87,7 @@ local function useParallax(options: ParallaxOptions?): ParallaxResult
 			changedConnection:Disconnect()
 			lastInputConnection:Disconnect()
 		end
-	end, ({ enabled, viewportState.viewport } :: { any }))
+	end, { enabled, viewportState.viewport } :: { any })
 
 	local direction = if invert then -1 else 1
 	local targetOffset = if enabled

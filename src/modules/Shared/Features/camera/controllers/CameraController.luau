@@ -2,7 +2,7 @@
 
 local gameRoot = script:FindFirstAncestor("game")
 local Handlers = require(gameRoot.Client.Handlers)
-local Nevermore = require(gameRoot.Shared.StateMachine.Nevermore)
+local Nevermore = require(gameRoot.Shared.Goap.Nevermore)
 local Maid = Nevermore.Get("Maid")
 local Signal = Nevermore.Get("Signal")
 

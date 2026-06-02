@@ -1,10 +1,12 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Charm = require(ReplicatedStorage.Packages.Charm)
-local InventoryServiceClient = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceClient)
-local inventorySlice = require(script:FindFirstAncestor("game").Shared.Features.inventory.ui.hud.state.slice.inventorySlice)
-local trashSlice = require(script:FindFirstAncestor("game").Shared.Features.inventory.ui.state.trashSlice)
+local InventoryServiceClient = require(gameRoot.Shared.Features.inventory.InventoryServiceClient)
+local inventorySlice = require(gameRoot.Shared.Features.inventory.ui.hud.state.slice.inventorySlice)
+local trashSlice = require(gameRoot.Shared.Features.inventory.ui.state.trashSlice)
 
 local trashThunks = {}
 

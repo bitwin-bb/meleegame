@@ -1,10 +1,13 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local UserInputService = game:GetService("UserInputService")
 
-local Cleanup = require(script.Parent.internal.cleanup)
+local Cleanup = require(gameRoot.Client.UI.core.hooks.internal.cleanup)
 local React = require(ReplicatedStorage.Packages.React)
-local useStableCallback = require(script.Parent.internal.useStableCallback)
+local useStableCallback = require(gameRoot.Client.UI.core.hooks.internal.useStableCallback)
 
 export type LongPressOptions = {
 	duration: number?,
@@ -131,15 +134,7 @@ local function useLongPress(options: LongPressOptions?): LongPressResult
 				finishPress(endedInputObject)
 			end
 		end)
-	end, dependencyArray(
-		enabled,
-		inputTypes,
-		cancel,
-		durationSeconds,
-		onPressStart,
-		onLongPress,
-		finishPress
-	))
+	end, dependencyArray(enabled, inputTypes, cancel, durationSeconds, onPressStart, onLongPress, finishPress))
 
 	React.useEffect(function()
 		return function()

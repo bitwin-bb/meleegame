@@ -1,9 +1,12 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local React = require(ReplicatedStorage.Packages.React)
-local SegmentMeter = require(script:FindFirstAncestor("game").Client.UI.core.components.SegmentMeter)
-local bubbleComponent = require(script.Parent.bubble)
+local SegmentMeter = require(gameRoot.Client.UI.core.components.SegmentMeter)
+local bubbleComponent = require(gameRoot.Shared.Features.breath.ui.components.bubble)
 
 export type BreathSegment = {
 	index: number,

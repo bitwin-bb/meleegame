@@ -1,7 +1,9 @@
 --!strict
 
-local Range = require(script:FindFirstAncestor("game").Shared.Core.Math.Range)
-local WorldSimulationShared = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.Shared)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Range = require(gameRoot.Shared.Core.Math.Range)
+local WorldSimulationShared = require(gameRoot.Shared.Features.worldGeneration.simulation.Shared)
 
 local WeatherServiceUtils = {}
 
@@ -201,7 +203,7 @@ end
 
 function WeatherServiceUtils.ResolveConfig(configRaw: any, fallbackRaw: WeatherServiceConfig?): WeatherServiceConfig
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else WeatherServiceUtils.CreateDefaultConfig()
-	local source = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else ({} :: any)
+	local source = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else {} :: any
 
 	local weatherDurationMinSeconds =
 		sanitizeNumber(source.weatherDurationMinSeconds, fallback.weatherDurationMinSeconds, 8, 3600)
@@ -353,7 +355,7 @@ end
 
 function WeatherServiceUtils.SanitizeState(stateRaw: any, fallbackRaw: WeatherServiceState?): WeatherServiceState
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else WeatherServiceUtils.CreateStateFromConfig(nil)
-	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else ({} :: any)
+	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {} :: any
 
 	local dayNightCycleEnabled = sanitizeBoolean(source.dayNightCycleEnabled, fallback.dayNightCycleEnabled)
 	local clockSpeed = sanitizeNumber(source.clockSpeed, fallback.clockSpeed, -100, 100)

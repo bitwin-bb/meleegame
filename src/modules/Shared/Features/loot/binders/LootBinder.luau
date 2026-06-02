@@ -1,7 +1,9 @@
 --!strict
 
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Registry)
-local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ItemRegistry = require(gameRoot.Shared.Features.item.modules.Registry)
+local ModelBinder = require(gameRoot.Shared.Binders.ModelBinder)
 
 local LootBinder = {}
 LootBinder.__index = LootBinder

@@ -1,9 +1,11 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 
-local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
+local ModelBinder = require(gameRoot.Shared.Binders.ModelBinder)
 
 local LightBinder = {}
 LightBinder.__index = LightBinder

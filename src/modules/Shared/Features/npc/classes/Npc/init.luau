@@ -1,11 +1,16 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
 local Npc = {}
 Npc.__index = Npc
@@ -530,7 +535,7 @@ local function normalizeConfig(
 		legacyDefense = sanitizeNumber(defense, DEFAULT_DEFENSE, 0, nil)
 	end
 
-	local rawStats = if typeof(rawConfig.stats) == "table" then rawConfig.stats else ({} :: any)
+	local rawStats = if typeof(rawConfig.stats) == "table" then rawConfig.stats else {} :: any
 	local maxHp = sanitizeNumber(rawStats.maxHp or rawConfig.maxHp or rawConfig.hp, legacyHp, 1, nil)
 	local hp = sanitizeNumber(rawStats.hp or rawConfig.hp, maxHp, 0, maxHp)
 	local baseDamage = sanitizeNumber(rawStats.damage or rawConfig.damage or rawConfig.dmg, legacyDamage, 0, nil)
@@ -546,7 +551,7 @@ local function normalizeConfig(
 		then resolveModelTemplate(legacyTemplate, rawConfig.modelName, archetype)
 		else nil
 
-	local rawMovement = if typeof(rawConfig.movement) == "table" then rawConfig.movement else ({} :: any)
+	local rawMovement = if typeof(rawConfig.movement) == "table" then rawConfig.movement else {} :: any
 	local detectionRange = sanitizeNumber(rawMovement.detectionRange, DEFAULT_DETECTION_RANGE, 0, nil)
 	local loseTargetRange = sanitizeNumber(rawMovement.loseTargetRange, DEFAULT_LOSE_TARGET_RANGE, detectionRange, nil)
 
@@ -564,7 +569,7 @@ local function normalizeConfig(
 		autoRotate = sanitizeBoolean(rawMovement.autoRotate, true),
 	}
 
-	local rawCombat = if typeof(rawConfig.combat) == "table" then rawConfig.combat else ({} :: any)
+	local rawCombat = if typeof(rawConfig.combat) == "table" then rawConfig.combat else {} :: any
 	local combat: RuntimeCombatConfig = {
 		attackRange = sanitizeNumber(rawCombat.attackRange, DEFAULT_ATTACK_RANGE, 0, nil),
 		attackCooldown = sanitizeNumber(rawCombat.attackCooldown, DEFAULT_ATTACK_COOLDOWN, 0, nil),
@@ -575,7 +580,7 @@ local function normalizeConfig(
 		allowFriendlyFire = sanitizeBoolean(rawCombat.allowFriendlyFire, false),
 	}
 
-	local rawLifecycle = if typeof(rawConfig.lifecycle) == "table" then rawConfig.lifecycle else ({} :: any)
+	local rawLifecycle = if typeof(rawConfig.lifecycle) == "table" then rawConfig.lifecycle else {} :: any
 	local spawnParent = if typeof(rawLifecycle.spawnParent) == "Instance" then rawLifecycle.spawnParent else Workspace
 	local spawnCFrame = if typeof(rawLifecycle.spawnCFrame) == "CFrame" then rawLifecycle.spawnCFrame else nil
 	local lifecycle: RuntimeLifecycleConfig = {
@@ -585,7 +590,7 @@ local function normalizeConfig(
 		autoDestroyModelOnDeath = sanitizeBoolean(rawLifecycle.autoDestroyModelOnDeath, true),
 	}
 
-	local rawBehavior = if typeof(rawConfig.behavior) == "table" then rawConfig.behavior else ({} :: any)
+	local rawBehavior = if typeof(rawConfig.behavior) == "table" then rawConfig.behavior else {} :: any
 	local behavior: NpcBehaviorConfig = {
 		acquireTarget = asFunction(rawBehavior.acquireTarget) :: any,
 		shouldTarget = asFunction(rawBehavior.shouldTarget) :: any,

@@ -1,4 +1,7 @@
 --!strict
+
+local require = require(script.Parent.loader).load(assert(script:FindFirstAncestor("AquariaBackup"), "Missing AquariaBackup package root"))
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local testEnvironment = getfenv() :: any
 local describe = testEnvironment.describe :: any
 local it = testEnvironment.it :: any
@@ -6,15 +9,14 @@ local expect = testEnvironment.expect :: any
 
 -- selene: allow(undefined_variable)
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local Cache = require(script:FindFirstAncestor("game").Shared.Features.camera.classes.Camera.Cache)
-local Predict = require(script:FindFirstAncestor("game").Shared.Features.camera.classes.Camera.Predict)
-local Resolve = require(script:FindFirstAncestor("game").Shared.Features.camera.classes.Camera.Resolve)
-local Stack = require(script:FindFirstAncestor("game").Shared.Features.camera.classes.Camera.Stack)
-local State = require(script:FindFirstAncestor("game").Shared.Features.camera.classes.Camera.State)
-local Target = require(script:FindFirstAncestor("game").Shared.Features.camera.classes.Camera.Target)
+local Cache = require("Cache")
+local Predict = require("Predict")
+local Resolve = require("Resolve")
+local Stack = require(gameRoot.Shared.Features.camera.classes.Camera.Stack)
+local State = require("State")
+local Target = require("Target")
 
 local function expectVectorNear(actualRaw: any, expectedRaw: any, epsilon: number?)
 	if typeof(actualRaw) ~= "Vector3" or typeof(expectedRaw) ~= "Vector3" then

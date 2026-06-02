@@ -1,20 +1,23 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local Cache = require(script.Parent.Cache)
-local CameraServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.camera.CameraServiceUtils)
-local CatchUpPlayer = require(script.Parent.Behavior.catchUpPlayer)
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
+local Cache = require(gameRoot.Shared.Features.camera.classes.Camera.Cache)
+local CameraServiceUtils = require(gameRoot.Shared.Features.camera.CameraServiceUtils)
+local CatchUpPlayer = require(gameRoot.Shared.Features.camera.classes.Camera.Behavior.catchUpPlayer)
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Predict = require(script.Parent.Predict)
-local Resolve = require(script.Parent.Resolve)
+local Predict = require(gameRoot.Shared.Features.camera.classes.Camera.Predict)
+local Resolve = require(gameRoot.Shared.Features.camera.classes.Camera.Resolve)
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
-local RoomBehavior = require(script.Parent.Behavior.room)
-local Stack = require(script.Parent.Stack)
-local State = require(script.Parent.State)
-local Target = require(script.Parent.Target)
+local RoomBehavior = require(gameRoot.Shared.Features.camera.classes.Camera.Behavior.room)
+local Stack = require(gameRoot.Shared.Features.camera.classes.Camera.Stack)
+local State = require(gameRoot.Shared.Features.camera.classes.Camera.State)
+local Target = require(gameRoot.Shared.Features.camera.classes.Camera.Target)
 
 local SideView = {}
 SideView.__index = SideView

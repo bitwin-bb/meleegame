@@ -1,7 +1,9 @@
 --!strict
 
-local Guards = require(script:FindFirstAncestor("StateMachine").Guards)
-local Transition = require(script:FindFirstAncestor("StateMachine").Core.Transition)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Guards = require(gameRoot.Shared.StateMachine.Guards)
+local Transition = require(gameRoot.Shared.StateMachine.Core.Transition)
 
 local PlayerTransitions = {}
 

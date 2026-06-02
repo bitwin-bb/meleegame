@@ -1,10 +1,12 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
 
-local ParallaxSlice = require(script.Parent.Parent.state.ParallaxSlice)
-local useCrossFade = require(script.Parent.Parent.hooks.useCrossFade)
+local ParallaxSlice = require(gameRoot.Client.Features.parallax.ui.state.ParallaxSlice)
+local useCrossFade = require(gameRoot.Client.Features.parallax.ui.hooks.useCrossFade)
 
 type ParallaxSurfaceState = ParallaxSlice.ParallaxSurfaceState
 type ParallaxLayerView = ParallaxSlice.ParallaxLayerView

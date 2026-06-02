@@ -1,19 +1,21 @@
 --!strict
 
-local Nevermore = require(script:FindFirstAncestor("StateMachine").Nevermore)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Nevermore = require(gameRoot.Shared.StateMachine.Nevermore)
 local Table = Nevermore.Get("Table")
 
 local root = script:FindFirstAncestor("StateMachine")
-local Blackboard = require(root.Core.Blackboard)
-local Guards = require(root.Guards)
-local StateMachine = require(root.Core.StateMachine)
-local Transition = require(root.Core.Transition)
+local Blackboard = require(gameRoot.Shared.StateMachine.Core.Blackboard)
+local Guards = require(gameRoot.Shared.StateMachine.Guards)
+local StateMachine = require(gameRoot.Shared.StateMachine)
+local Transition = require(gameRoot.Shared.StateMachine.Core.Transition)
 
-local ChaseState = require(script.Parent.ChaseState)
-local DeadState = require(script.Parent.DeadState)
-local HurtState = require(script.Parent.HurtState)
-local IdleState = require(script.Parent.IdleState)
-local WanderState = require(script.Parent.WanderState)
+local ChaseState = require(gameRoot.Shared.StateMachine.Machines.Enemies.Slime.ChaseState)
+local DeadState = require(gameRoot.Shared.StateMachine.Machines.Enemies.Slime.DeadState)
+local HurtState = require(gameRoot.Shared.StateMachine.Machines.Enemies.Slime.HurtState)
+local IdleState = require(gameRoot.Shared.StateMachine.Machines.Enemies.Slime.IdleState)
+local WanderState = require(gameRoot.Shared.StateMachine.Machines.Enemies.Slime.WanderState)
 
 local SlimeMachine = {}
 

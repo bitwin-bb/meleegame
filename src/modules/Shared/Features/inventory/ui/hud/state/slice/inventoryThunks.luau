@@ -1,11 +1,13 @@
 --!strict
 
-local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
-local InventoryServiceClient = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceClient)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
-local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
-local craftingThunks = require(script:FindFirstAncestor("game").Shared.Features.crafting.ui.state.craftingThunks)
-local inventorySlice = require(script.Parent.inventorySlice)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ConnectionUtils = require(gameRoot.Client.UI.core.utils.ConnectionUtils)
+local InventoryServiceClient = require(gameRoot.Shared.Features.inventory.InventoryServiceClient)
+local InventoryServiceUtils = require(gameRoot.Shared.Features.inventory.InventoryServiceUtils)
+local ServiceSync = require(gameRoot.Client.UI.core.utils.ServiceSync)
+local craftingThunks = require(gameRoot.Shared.Features.crafting.ui.state.craftingThunks)
+local inventorySlice = require(gameRoot.Shared.Features.inventory.ui.hud.state.slice.inventorySlice)
 
 type InventoryHudState = inventorySlice.InventoryHudState
 type InventoryState = InventoryServiceUtils.InventoryState

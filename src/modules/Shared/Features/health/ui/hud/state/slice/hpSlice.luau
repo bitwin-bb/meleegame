@@ -1,8 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Charm = require(ReplicatedStorage.Packages.Charm)
-local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.health.HpServiceUtils)
+local HpServiceUtils = require(gameRoot.Shared.Features.health.HpServiceUtils)
 
 type HpServiceState = HpServiceUtils.HpServiceState
 type HeartState = HpServiceUtils.HeartState

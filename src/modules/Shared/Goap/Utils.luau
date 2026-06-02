@@ -1,6 +1,8 @@
 --!strict
 
-local Nevermore = require(script.Parent.Nevermore)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Nevermore = require(gameRoot.Shared.Goap.Nevermore)
 local Table = Nevermore.GetRolePackages("Core").Table
 
 local Utils = {}

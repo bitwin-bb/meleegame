@@ -1,17 +1,21 @@
 --!strict
-local Players = game:GetService("Players")
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local BillboardCard = require(script:FindFirstAncestor("game").Client.UI.core.components.BillboardCard)
-local GamepadNav = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.GamepadNav)
-local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.GamepadPointer)
+local BillboardCard = require(gameRoot.Client.UI.core.components.BillboardCard)
+local GamepadNav = require(gameRoot.Shared.Features.platform.modules.GamepadNav)
+local GamepadPointer = require(gameRoot.Shared.Features.platform.modules.GamepadPointer)
 local React = require(ReplicatedStorage.Packages.React)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
-local padSlice = require(script:FindFirstAncestor("game").Client.Features.pad.ui.state.padSlice)
-local usePad = require(script:FindFirstAncestor("game").Client.Features.pad.ui.hooks.usePad)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
+local padSlice = require(gameRoot.Client.Features.pad.ui.state.padSlice)
+local usePad = require(gameRoot.Client.Features.pad.ui.hooks.usePad)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
 
 type PadState = padSlice.PadState
 
@@ -150,7 +154,7 @@ local function renderStickIndicator(
 end
 
 return function(props: PadScreenProps?): React.ReactNode
-	local resolvedProps: PadScreenProps = if props ~= nil then props else ({} :: any)
+	local resolvedProps: PadScreenProps = if props ~= nil then props else {} :: any
 	local localPlayer = Players.LocalPlayer
 	local state = (useStore(padSlice.padStateAtom) :: PadState?) or padSlice.getPadState()
 	local rootPart, setRootPart = React.useState(resolveCharacterRootPart(localPlayer) :: BasePart?)
@@ -209,44 +213,46 @@ return function(props: PadScreenProps?): React.ReactNode
 		end
 	end, { localPlayer })
 
-	React.useEffect(function()
-		if isStickPresentationActive(state, state.rightStick) then
-			setActiveIndicator({
-				position = state.rightStick.position,
-				hideOnCenter = false,
-			})
-			return nil
-		end
-
-		if isStickPresentationActive(state, state.leftStick) then
-			setActiveIndicator({
-				position = state.leftStick.position,
-				hideOnCenter = false,
-			})
-			return nil
-		end
-
-		setActiveIndicator(function(current: ActiveIndicatorState?): ActiveIndicatorState?
-			if current == nil then
+	React.useEffect(
+		function()
+			if isStickPresentationActive(state, state.rightStick) then
+				setActiveIndicator({
+					position = state.rightStick.position,
+					hideOnCenter = false,
+				})
 				return nil
 			end
-			return {
-				position = current.position,
-				hideOnCenter = true,
-			}
-		end)
 
-		return nil
-	end, dependencyArray(
-		state.leftStick.active,
-		state.leftStick.position,
-		state.rightStick.active,
-		state.rightStick.position,
-		state.stickDeadzone,
-		state.navigationDeadzone
-	))
+			if isStickPresentationActive(state, state.leftStick) then
+				setActiveIndicator({
+					position = state.leftStick.position,
+					hideOnCenter = false,
+				})
+				return nil
+			end
 
-	;(React.useEffect :: any)(function(): (() -> ())?
+			setActiveIndicator(function(current: ActiveIndicatorState?): ActiveIndicatorState?
+				if current == nil then
+					return nil
+				end
+				return {
+					position = current.position,
+					hideOnCenter = true,
+				}
+			end)
+
+			return nil
+		end,
+		dependencyArray(
+			state.leftStick.active,
+			state.leftStick.position,
+			state.rightStick.active,
+			state.rightStick.position,
+			state.stickDeadzone,
+			state.navigationDeadzone
+		)
+	);
+	(React.useEffect :: any)(function(): (() -> ())?
 		local current = activeIndicator
 		if current == nil then
 			return nil

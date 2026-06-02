@@ -1,18 +1,21 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local BreathBinder = require(script:FindFirstAncestor("game").Shared.Features.breath.binders.BreathBinder)
-local BreathServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.breath.BreathServiceUtils)
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local HpServiceServer = require(script:FindFirstAncestor("game").Shared.Features.health.HpServiceServer)
-local LiquidServiceServer = require(script:FindFirstAncestor("game").Shared.Features.world.LiquidServiceServer)
-local LiquidServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.LiquidServiceUtils)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local BreathServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).BreathService
+local BreathBinder = require(gameRoot.Shared.Features.breath.binders.BreathBinder)
+local BreathServiceUtils = require(gameRoot.Shared.Features.breath.BreathServiceUtils)
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local HpServiceServer = require(gameRoot.Shared.Features.health.HpServiceServer)
+local LiquidServiceServer = require(gameRoot.Shared.Features.world.LiquidServiceServer)
+local LiquidServiceUtils = require(gameRoot.Shared.Features.world.LiquidServiceUtils)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local BreathServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).BreathService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = BreathServicePackets[methodName]
@@ -55,10 +58,10 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local PlayerServiceServer = require(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer)
-local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local NevermoreSupport = require(gameRoot.Shared.Core.NevermoreSupport)
+local PlayerServiceServer = require(gameRoot.Shared.Features.movement.PlayerServiceServer)
+local ServerBinderSupport = require(gameRoot.Server.Binders.ServerBinderSupport)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
 type BreathServiceConfig = BreathServiceUtils.BreathServiceConfig
 type BreathServiceState = BreathServiceUtils.BreathServiceState

@@ -1,10 +1,13 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local UserInputService = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
-local Platform = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.Platform)
+local UserInputService = game:GetService("UserInputService")
+local Platform = require(gameRoot.Shared.Features.platform.modules.Platform)
 
 local UIController = {}
 UIController.__index = UIController
@@ -110,7 +113,7 @@ local function navigationModeFromPrimaryInput(primaryInputTypeRaw: any): string
 end
 
 function UIController.New(configRaw: UIControllerConfig?): UIController
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local self = setmetatable({
 		registry = {} :: { [string]: any },
 		activeScreenKey = nil :: string?,
@@ -173,26 +176,28 @@ function UIController.Init(self: UIController)
 		return
 	end
 	self.isInitialized = true
-	self.connections[#self.connections + 1] = UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
-		if gameProcessed then
-			return
-		end
-		if self.inputLocked then
-			return
-		end
-		if input.KeyCode == Enum.KeyCode.Escape and self.escEnabled then
-			if #self.modalStack > 0 then
-				self:popModal()
+	self.connections[#self.connections + 1] = UserInputService.InputBegan:Connect(
+		function(input: InputObject, gameProcessed: boolean)
+			if gameProcessed then
 				return
 			end
-			if self.activeScreenKey ~= nil then
-				local screen = self.registry[self.activeScreenKey]
-				if screen ~= nil and screen.closable ~= false then
-					self:closeScreen(self.activeScreenKey)
+			if self.inputLocked then
+				return
+			end
+			if input.KeyCode == Enum.KeyCode.Escape and self.escEnabled then
+				if #self.modalStack > 0 then
+					self:popModal()
+					return
+				end
+				if self.activeScreenKey ~= nil then
+					local screen = self.registry[self.activeScreenKey]
+					if screen ~= nil and screen.closable ~= false then
+						self:closeScreen(self.activeScreenKey)
+					end
 				end
 			end
 		end
-	end)
+	)
 
 	if self.platform ~= nil then
 		if typeof((self.platform :: any).init) == "function" then
@@ -211,13 +216,15 @@ function UIController.Init(self: UIController)
 	end
 
 	if self.platformDisconnect == nil then
-		self.connections[#self.connections + 1] = UserInputService.LastInputTypeChanged:Connect(function(inputType: Enum.UserInputType)
-			if isGamepadInput(inputType) then
-				self.navigationMode = "Gamepad"
-			else
-				self.navigationMode = "KeyboardMouse"
+		self.connections[#self.connections + 1] = UserInputService.LastInputTypeChanged:Connect(
+			function(inputType: Enum.UserInputType)
+				if isGamepadInput(inputType) then
+					self.navigationMode = "Gamepad"
+				else
+					self.navigationMode = "KeyboardMouse"
+				end
 			end
-		end)
+		)
 	end
 end
 
@@ -240,8 +247,8 @@ function UIController.RegisterScreen(self: UIController, definitionRaw: any): bo
 		zIndex = clampInteger(definitionRaw.zIndex, self.screenBaseZ, 1, 10000),
 		closable = if definitionRaw.closable == nil then true else definitionRaw.closable == true,
 		initialFocus = if typeof(definitionRaw.initialFocus) == "Instance" then definitionRaw.initialFocus else nil,
-		hooks = if typeof(definitionRaw.hooks) == "table" then definitionRaw.hooks else ({} :: any),
-		transition = if typeof(definitionRaw.transition) == "table" then definitionRaw.transition else ({} :: any),
+		hooks = if typeof(definitionRaw.hooks) == "table" then definitionRaw.hooks else {} :: any,
+		transition = if typeof(definitionRaw.transition) == "table" then definitionRaw.transition else {} :: any,
 	}
 	setVisible(self.registry[key].frame, false)
 	return true

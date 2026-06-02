@@ -1,7 +1,10 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ProgressBar = require(script:FindFirstAncestor("game").Client.UI.core.components.ProgressBar)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ProgressBar = require(gameRoot.Client.UI.core.components.ProgressBar)
 local React = require(ReplicatedStorage.Packages.React)
 
 export type MiningProgressBarProps = {

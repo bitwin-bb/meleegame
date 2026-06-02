@@ -1,10 +1,12 @@
 --!strict
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local CameraServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.camera.CameraServiceUtils)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local CameraServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).CameraService
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Players = game:GetService("Players")
+
+local CameraServiceUtils = require(gameRoot.Shared.Features.camera.CameraServiceUtils)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local CameraServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).CameraService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = CameraServicePackets[methodName]

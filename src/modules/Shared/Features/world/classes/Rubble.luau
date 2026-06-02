@@ -1,13 +1,16 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local HttpService = game:GetService("HttpService")
 local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
 
 local Rubble = {}
 Rubble.__index = Rubble
@@ -362,7 +365,7 @@ local function safeCollisionGroupsAreCollidable(groupA: string, groupB: string):
 end
 
 function Rubble.New(configRaw: Config?): Rubble
-	local cfg = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local cfg = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local tuning: Tuning = Sift.Dictionary.copy(DEFAULT_TUNING)
 	if typeof(cfg.tuning) == "table" then
 		for key, value in cfg.tuning :: any do
@@ -812,7 +815,14 @@ function Rubble._resolveLodOrigin(self: Rubble, slot: Slot, sharedOrigin: Vector
 	return sharedOrigin
 end
 
-function Rubble._updateSlot(self: Rubble, slot: Slot, dt: number, currentNow: number, checkLod: boolean, sharedLodOrigin: Vector3?)
+function Rubble._updateSlot(
+	self: Rubble,
+	slot: Slot,
+	dt: number,
+	currentNow: number,
+	checkLod: boolean,
+	sharedLodOrigin: Vector3?
+)
 	local part = slot.part
 	if part.Parent == nil then
 		self:_recycleSlot(slot)
@@ -941,7 +951,7 @@ function Rubble.Spawn(self: Rubble, paramsRaw: SpawnParams?): BasePart?
 	end
 	self.spawnBudget -= 1
 
-	local params = if typeof(paramsRaw) == "table" then paramsRaw else ({} :: any)
+	local params = if typeof(paramsRaw) == "table" then paramsRaw else {} :: any
 	local slot = self:_acquireSlot()
 	if slot == nil then
 		self.totalDropped += 1
@@ -1191,4 +1201,3 @@ Rubble.DefaultTuning = DEFAULT_TUNING
 Rubble.new = Rubble.New
 
 return Rubble
-

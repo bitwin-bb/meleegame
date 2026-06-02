@@ -1,7 +1,9 @@
 --!strict
 
-local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
-local ToolBinder = require(script:FindFirstAncestor("game").Shared.Binders.ToolBinder)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ModelBinder = require(gameRoot.Shared.Binders.ModelBinder)
+local ToolBinder = require(gameRoot.Shared.Binders.ToolBinder)
 
 local MeleeBinder = {}
 MeleeBinder.__index = MeleeBinder
@@ -11,7 +13,7 @@ local meleeServiceServer = nil
 
 local function getMeleeServiceServer()
 	if meleeServiceServer == nil then
-		meleeServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.combat.MeleeServiceServer)
+		meleeServiceServer = (require :: any)(gameRoot.Shared.Features.combat.MeleeServiceServer)
 	end
 	return meleeServiceServer
 end

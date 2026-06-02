@@ -1,11 +1,16 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Stats = game:GetService("Stats")
 local UserInputService = game:GetService("UserInputService")
 
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
 local PerfTier = {}
 PerfTier.__index = PerfTier
@@ -138,7 +143,7 @@ local function rankToTier(rank: number): TierName
 end
 
 function PerfTier.New(configRaw: PerfTierConfig?): PerfTier
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local defaultTiers = DEFAULT_TIERS :: any
 	local tierTable = {
 		Low = Sift.Dictionary.copy(defaultTiers.Low),
@@ -152,7 +157,12 @@ function PerfTier.New(configRaw: PerfTierConfig?): PerfTier
 					particleDensity = clampNumber(value.particleDensity, tierTable[key].particleDensity, 0, 4),
 					debrisLimit = clampInteger(value.debrisLimit, tierTable[key].debrisLimit, 0, 100000),
 					lightUpdateHz = clampNumber(value.lightUpdateHz, tierTable[key].lightUpdateHz, 1, 240),
-					chunkStreamDistance = clampNumber(value.chunkStreamDistance, tierTable[key].chunkStreamDistance, 1, 1024),
+					chunkStreamDistance = clampNumber(
+						value.chunkStreamDistance,
+						tierTable[key].chunkStreamDistance,
+						1,
+						1024
+					),
 					tickRateScale = clampNumber(value.tickRateScale, tierTable[key].tickRateScale, 0.1, 5),
 				}
 			end
@@ -287,13 +297,17 @@ function PerfTier.Init(self: PerfTier)
 	end
 	self.isInitialized = true
 	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).scheduleEvery) == "function" then
-		self.loopToken = (self.tickScheduler :: any):scheduleEvery(function(dt: number)
-			self:update(dt)
-		end, 1 / 60, {
-			group = "platform.perf",
-			priority = 90,
-			catchUp = false,
-		})
+		self.loopToken = (self.tickScheduler :: any):scheduleEvery(
+			function(dt: number)
+				self:update(dt)
+			end,
+			1 / 60,
+			{
+				group = "platform.perf",
+				priority = 90,
+				catchUp = false,
+			}
+		)
 	else
 		self.heartbeatConnection = RunService.Heartbeat:Connect(function(dt: number)
 			self:update(dt)

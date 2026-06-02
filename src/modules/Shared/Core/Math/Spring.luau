@@ -1,7 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 -- Stateless spring stepping helpers.
 
-local Angle = require(script.Parent.Angle)
+local Angle = require(gameRoot.Shared.Core.Math.Angle)
 
 local Spring = {}
 
@@ -49,7 +52,14 @@ function Spring.state<T>(value: T, velocity: T?): State<T>
 	}
 end
 
-function Spring.step<T>(state: State<T>, target: T, frequency: number, damping: number, dt: number, mass: number?): State<T>
+function Spring.step<T>(
+	state: State<T>,
+	target: T,
+	frequency: number,
+	damping: number,
+	dt: number,
+	mass: number?
+): State<T>
 	local step = math.max(dt, 0)
 	if step == 0 then
 		return {

@@ -84,7 +84,7 @@ local function cloneSettings(settings: Settings): Settings
 end
 
 local function resolveViewConfig(baseViewConfig: ViewConfig, overrideRaw: any): ViewConfig
-	local override = if typeof(overrideRaw) == "table" then overrideRaw else ({} :: any)
+	local override = if typeof(overrideRaw) == "table" then overrideRaw else {} :: any
 	local overrideViewConfig = if typeof((override :: any).viewConfig) == "table"
 		then (override :: any).viewConfig
 		else nil
@@ -110,7 +110,7 @@ local function resolveViewConfig(baseViewConfig: ViewConfig, overrideRaw: any): 
 end
 
 local function resolveSettings(baseSettings: Settings, overrideRaw: any): Settings
-	local override = if typeof(overrideRaw) == "table" then overrideRaw else ({} :: any)
+	local override = if typeof(overrideRaw) == "table" then overrideRaw else {} :: any
 	local settings = cloneSettings(baseSettings)
 
 	settings.sideSign = sanitizeSign((override :: any).sideSign, settings.sideSign)
@@ -143,7 +143,7 @@ local function resolveSettings(baseSettings: Settings, overrideRaw: any): Settin
 end
 
 function Resolve.New(dependenciesRaw: any?): Resolve
-	local dependencies = if typeof(dependenciesRaw) == "table" then dependenciesRaw else ({} :: any)
+	local dependencies = if typeof(dependenciesRaw) == "table" then dependenciesRaw else {} :: any
 	return setmetatable({
 		cache = (dependencies :: any).cache,
 		predictor = (dependencies :: any).predictor,
@@ -154,7 +154,7 @@ function Resolve.New(dependenciesRaw: any?): Resolve
 end
 
 function Resolve.Resolve(self: Resolve, contextRaw: any): ResolutionResult
-	local context = if typeof(contextRaw) == "table" then contextRaw else ({} :: any)
+	local context = if typeof(contextRaw) == "table" then contextRaw else {} :: any
 	local now = sanitizeNumber((context :: any).now, os.clock(), 0, nil)
 	local deltaTime = sanitizeNumber((context :: any).deltaTime, 1 / 60, 0, 1)
 

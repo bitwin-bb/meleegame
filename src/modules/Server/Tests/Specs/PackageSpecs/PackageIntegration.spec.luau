@@ -1,28 +1,27 @@
 --!strict
 
+local require = require(script.Parent.loader).load(assert(script:FindFirstAncestor("AquariaBackup"), "Missing AquariaBackup package root"))
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local testEnvironment = getfenv() :: any
 local describe = testEnvironment.describe :: any
 local it = testEnvironment.it :: any
 local expect = testEnvironment.expect :: any
 
 local CollectionService = game:GetService("CollectionService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Matter = require(ReplicatedStorage.Packages.Matter)
-local TestEZ = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("TestEZ"))
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
+local Matter = require("Matter")
+local TestEZ = require("TestEZ")
 
-local Binder = loader("Binder")
-local Brio = loader("Brio")
-local Maid = loader("Maid")
-local Octree = loader("Octree")
-local Rx = loader("Rx")
-local RxSignal = loader("RxSignal")
-local resolveImageId = require(script:FindFirstAncestor("game").Client.UI.core.utils.resolveImageId)
-local ResolveItem = require(script:FindFirstAncestor("game").Shared.Features.item.modules.ResolveItem)
-local VFXServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.vfx.VFXServiceUtils)
+local Binder = require("Binder")
+local Brio = require("Brio")
+local Maid = require("Maid")
+local Octree = require("Octree")
+local ResolveItem = require("ResolveItem")
+local Rx = require("Rx")
+local RxSignal = require("RxSignal")
+local VFXServiceUtils = require("VFXServiceUtils")
+local resolveImageId = require(gameRoot.Client.UI.core.utils.resolveImageId)
 
 return function()
 	describe("Package integrations", function()

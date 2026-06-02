@@ -1,8 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local TransparentFrame = require(script.Parent.TransparentFrame)
+local TransparentFrame = require(gameRoot.Client.UI.core.primitives.TransparentFrame)
 
 export type ScreenLayerProps = {
 	layoutOrder: number?,

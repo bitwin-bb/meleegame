@@ -1,16 +1,16 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
 local Players = game:GetService("Players")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
+local Maid = require(quentyPackages.maid.Shared.Maid)
 
-local Maid = loader("Maid")
-
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local EyeOfCthulhuServantRoot =
-	require(script:FindFirstAncestor("game").Shared.Features.npc.components.EyeOfCthulhuServantRoot)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
+local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
+local EyeOfCthulhuServantRoot = require(gameRoot.Shared.Features.npc.components.EyeOfCthulhuServantRoot)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
 
 export type ServantRuntime = {
 	model: Model,
@@ -120,8 +120,11 @@ function Servant.StepAll(servants: { [number]: ServantRuntime }, config: StepCon
 			if desiredDirection.Magnitude > 1e-4 then
 				facing = desiredDirection
 				local desiredVelocity = desiredDirection.Unit * config.speed
-				servant.velocity =
-					BossServiceUtils.moveTowardsVector(servant.velocity, desiredVelocity, config.turnAcceleration * config.dt)
+				servant.velocity = BossServiceUtils.moveTowardsVector(
+					servant.velocity,
+					desiredVelocity,
+					config.turnAcceleration * config.dt
+				)
 			end
 		end
 

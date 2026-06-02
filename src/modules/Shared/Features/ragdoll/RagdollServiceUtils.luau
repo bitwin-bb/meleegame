@@ -1,6 +1,8 @@
 --!strict
-local HttpService = game:GetService("HttpService")
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local HttpService = game:GetService("HttpService")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local Workspace = game:GetService("Workspace")
@@ -507,7 +509,7 @@ function RagdollServiceUtils.CreateDefaultState(): RagdollServiceState
 end
 
 function RagdollServiceUtils.SanitizeState(stateRaw: any, fallback: RagdollServiceState?): RagdollServiceState
-	local source = if typeof(stateRaw) == "table" then stateRaw else ({} :: any)
+	local source = if typeof(stateRaw) == "table" then stateRaw else {} :: any
 	local fallbackState = if fallback then fallback else RagdollServiceUtils.CreateDefaultState()
 
 	return RagdollServiceUtils.CreateState(

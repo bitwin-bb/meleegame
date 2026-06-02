@@ -1,7 +1,9 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BiomeNameScreen = require(script.Parent.screens.biomeNameScreen)
+local BiomeNameScreen = require(gameRoot.Client.Features.biome.ui.screens.biomeNameScreen)
 local React = require(ReplicatedStorage.Packages.React)
 
 type BiomeRootProps = {

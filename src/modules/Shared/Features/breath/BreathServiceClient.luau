@@ -1,15 +1,19 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local HttpService = game:GetService("HttpService")
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local BreathServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.breath.BreathServiceUtils)
+local BreathServiceUtils = require(gameRoot.Shared.Features.breath.BreathServiceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local BreathServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).BreathService
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local BreathServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).BreathService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = BreathServicePackets[methodName]
@@ -50,7 +54,7 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
 type BreathServiceState = BreathServiceUtils.BreathServiceState
 

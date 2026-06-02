@@ -1,11 +1,14 @@
 --!strict
-local Players = game:GetService("Players")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local RagdollServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).RagdollService
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local RagdollServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).RagdollService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = RagdollServicePackets[methodName]
@@ -50,9 +53,9 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local RagdollServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.ragdoll.RagdollServiceUtils)
-local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local NevermoreSupport = require(gameRoot.Shared.Core.NevermoreSupport)
+local RagdollServiceUtils = require(gameRoot.Shared.Features.ragdoll.RagdollServiceUtils)
+local ServerBinderSupport = (require :: any)(gameRoot.Server.Binders.ServerBinderSupport)
 
 type CharacterRig = RagdollServiceUtils.CharacterRig
 type RagdollContext = RagdollServiceUtils.RagdollContext

@@ -1,22 +1,22 @@
 --!strict
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 
-local Binder = loader("Binder")
-local BinderProvider = loader("BinderProvider")
-local AudioBinder = (require :: any)(script:FindFirstAncestor("game").Client.Features.audio.binders.AudioBinder)
-local ChunkBinder = (require :: any)(script:FindFirstAncestor("game").Shared.Features.worldGeneration.binders.ChunkBinder)
-local DisturberBinder = (require :: any)(script:FindFirstAncestor("game").Shared.Features.world.binders.DisturberBinder)
-local FoliageBinder = (require :: any)(script:FindFirstAncestor("game").Shared.Features.world.binders.FoliageBinder)
-local LayerBinder = require(script:FindFirstAncestor("game").Shared.Features.world.binders.LayerBinder)
-local LightBinder = require(script:FindFirstAncestor("game").Shared.Features.world.binders.LightBinder)
-local LiquidBinder = require(script:FindFirstAncestor("game").Shared.Features.world.binders.LiquidBinder)
-local PreviewBinder = (require :: any)(script:FindFirstAncestor("game").Shared.Features.world.binders.PreviewBinder)
-local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
-local TileBinder = require(script:FindFirstAncestor("game").Client.Features.tile.binders.TileBinder)
-local UseBinder = require(script:FindFirstAncestor("game").Client.Features.interaction.binders.UseBinder)
+local Binder = require(quentyPackages.binder.Shared.Binder)
+local BinderProvider = require(quentyPackages.binder.Shared.BinderProvider)
+local AudioBinder = (require :: any)(gameRoot.Client.Features.audio.binders.AudioBinder)
+local ChunkBinder = (require :: any)(gameRoot.Shared.Features.worldGeneration.binders.ChunkBinder)
+local DisturberBinder = (require :: any)(gameRoot.Shared.Features.world.binders.DisturberBinder)
+local FoliageBinder = (require :: any)(gameRoot.Shared.Features.world.binders.FoliageBinder)
+local LayerBinder = require(gameRoot.Shared.Features.world.binders.LayerBinder)
+local LightBinder = require(gameRoot.Shared.Features.world.binders.LightBinder)
+local LiquidBinder = require(gameRoot.Shared.Features.world.binders.LiquidBinder)
+local PreviewBinder = (require :: any)(gameRoot.Shared.Features.world.binders.PreviewBinder)
+local TagBinder = require(gameRoot.Shared.Binders.TagBinder)
+local TileBinder = require(gameRoot.Client.Features.tile.binders.TileBinder)
+local UseBinder = require(gameRoot.Client.Features.interaction.binders.UseBinder)
 
 local function createContext(primaryTag: string, serviceBag: any): { tags: { string }, serviceBag: any }
 	return table.freeze({

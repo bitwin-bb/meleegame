@@ -1,12 +1,12 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
-
 local Fusion = require(ReplicatedStorage.Packages.Fusion)
-local Maid = loader("Maid")
+local Maid = require(quentyPackages.maid.Shared.Maid)
 
 local Children = Fusion.Children
 
@@ -45,7 +45,7 @@ local function sanitizePhaseModel(valueRaw: any): string
 end
 
 function QueenBeeRoot.CreateModel(configRaw: QueenBeeRootConfig?): Model
-	local config = (if typeof(configRaw) == "table" then configRaw else ({} :: any)) :: QueenBeeRootConfig
+	local config = (if typeof(configRaw) == "table" then configRaw else {} :: any) :: QueenBeeRootConfig
 	local scope = Fusion.scoped(Fusion)
 	local maid = Maid.new()
 	local rootPart = scope:New "Part" {

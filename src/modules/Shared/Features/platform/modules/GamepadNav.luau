@@ -1,10 +1,15 @@
 --!strict
-local GuiService = game:GetService("GuiService")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local GuiService = game:GetService("GuiService")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local UserInputService = game:GetService("UserInputService")
 
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
 local GamepadNav = {}
 GamepadNav.__index = GamepadNav
@@ -232,7 +237,7 @@ local function thumbstickStatesEqual(a: ThumbstickState, b: ThumbstickState): bo
 end
 
 function GamepadNav.New(configRaw: GamepadNavConfig?): GamepadNav
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local stickDeadzone = clampNumber(config.stickDeadzone, DEFAULT_STICK_DEADZONE, 0, 1)
 	local navigationDeadzone = clampNumber(config.navigationDeadzone, DEFAULT_NAVIGATION_DEADZONE, 0, 1)
 	local thumbstickSnapshot: ThumbstickSnapshot = {
@@ -697,7 +702,7 @@ function GamepadNav.RegisterLayout(self: GamepadNav, keyRaw: any, elementsRaw: a
 	if #elements == 0 then
 		return false
 	end
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local record: LayoutRecord = {
 		key = keyRaw,
 		elements = elements,

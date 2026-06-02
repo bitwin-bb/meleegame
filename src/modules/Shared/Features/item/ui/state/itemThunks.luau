@@ -1,12 +1,16 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Registry)
-local inventoryThunks = require(script:FindFirstAncestor("game").Shared.Features.inventory.ui.hud.state.slice.inventoryThunks)
-local itemSlice = require(script:FindFirstAncestor("game").Shared.Features.item.ui.state.itemSlice)
+local ImageIds = require(gameRoot.Client.UI.core.ImageIds)
+local InventoryServiceUtils = require(gameRoot.Shared.Features.inventory.InventoryServiceUtils)
+local ItemRegistry = require(gameRoot.Shared.Features.item.modules.Registry)
+local inventoryThunks = require(gameRoot.Shared.Features.inventory.ui.hud.state.slice.inventoryThunks)
+local itemSlice = require(gameRoot.Shared.Features.item.ui.state.itemSlice)
 
 type InventoryItemStack = InventoryServiceUtils.InventoryItemStack
 type ItemDragState = itemSlice.ItemDragState

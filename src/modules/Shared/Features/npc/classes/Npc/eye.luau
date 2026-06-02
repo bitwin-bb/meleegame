@@ -1,6 +1,8 @@
 --!strict
 
-local Default = require(script.Parent.Default)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Default = require(gameRoot.Shared.Features.npc.classes.Npc.Default)
 
 local Eye = {}
 
@@ -11,7 +13,7 @@ export type EyeConfig = Default.DefaultNpcConfig & {
 }
 
 function Eye.New(configRaw: EyeConfig?): Eye
-	local config = if typeof(configRaw) == "table" then table.clone(configRaw :: any) else ({} :: any)
+	local config = if typeof(configRaw) == "table" then table.clone(configRaw :: any) else {} :: any
 	if config.archetype == nil then
 		config.archetype = "DemonEye"
 	end

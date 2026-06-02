@@ -1,7 +1,9 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local HpTopRightBar = require(script.Parent.hud.TopBar.HpTopRightBar)
+local HpTopRightBar = require(gameRoot.Shared.Features.health.ui.hud.TopBar.HpTopRightBar)
 local React = require(ReplicatedStorage.Packages.React)
 
 type HealthRootProps = {

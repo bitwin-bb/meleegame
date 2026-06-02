@@ -1,20 +1,20 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
 local Workspace = game:GetService("Workspace")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(packageRoot)
+local ContentProviderUtils = require(quentyPackages.contentproviderutils.Client.ContentProviderUtils)
+local Maid = require(quentyPackages.maid.Shared.Maid)
+local Rx = require(quentyPackages.rx.Shared.Rx)
 
-local ContentProviderUtils = loader("ContentProviderUtils")
-local Maid = loader("Maid")
-local Rx = loader("Rx")
-
-local BuildServiceClient = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceClient)
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
-local Sheet = require(script.Parent.modules.Sheet)
-local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
-local tileThunks = require(script.Parent.ui.state.tileThunks)
+local BuildServiceClient = require(gameRoot.Shared.Features.world.BuildServiceClient)
+local BuildServiceUtils = require(gameRoot.Shared.Features.world.BuildServiceUtils)
+local Sheet = require(gameRoot.Client.Features.tile.modules.Sheet)
+local WorldGenerationServiceClient = require(gameRoot.Shared.Features.worldGeneration.WorldGenerationServiceClient)
+local tileThunks = require(gameRoot.Client.Features.tile.ui.state.tileThunks)
 
 type MaidClass = {
 	GiveTask: (self: MaidClass, task: any) -> any,

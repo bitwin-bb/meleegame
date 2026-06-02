@@ -165,8 +165,8 @@ function TestRunner.runPlanNode(session, planNode, lifecycleHooks)
 				TestRunner.runPlanNode(session, childPlanNode, lifecycleHooks)
 
 				-- Did we have an error trying build a test plan?
-				if childPlanNode.loadError then
-					local message = "Error during planning: " .. childPlanNode.loadError
+				if childPlanNode.loaderror then
+					local message = "Error during planning: " .. childPlanNode.loaderror
 					session:setError(message)
 				else
 					session:setStatusFromChildren()

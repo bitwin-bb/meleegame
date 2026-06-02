@@ -1,12 +1,15 @@
 --!strict
-local Players = game:GetService("Players")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local Matter = require(ReplicatedStorage.Packages.Matter)
 local Plasma = require(ReplicatedStorage.Packages.Plasma)
 
-local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Features.commander.CmdrUtils)
+local CmdrUtils = require(gameRoot.Shared.Features.commander.CmdrUtils)
 
 local MatterDebugMenuClient = {}
 
@@ -94,4 +97,3 @@ MatterDebugMenuClient.init = MatterDebugMenuClient.Init
 MatterDebugMenuClient.destroy = MatterDebugMenuClient.Destroy
 
 return MatterDebugMenuClient :: MatterDebugMenuClient
-

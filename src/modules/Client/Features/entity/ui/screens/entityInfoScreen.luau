@@ -1,14 +1,17 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local DropsInfo = require(script:FindFirstAncestor("game").Client.UI.core.components.DropsInfo)
-local EntityHealthBar = require(script:FindFirstAncestor("game").Client.Features.entity.ui.components.EntityHealthBar)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local DropsInfo = require(gameRoot.Client.UI.core.components.DropsInfo)
+local EntityHealthBar = require(gameRoot.Client.Features.entity.ui.components.EntityHealthBar)
 local React = require(ReplicatedStorage.Packages.React)
-local entityInfoSlice = require(script:FindFirstAncestor("game").Client.Features.entity.ui.state.entityInfoSlice)
-local entityInfoThunks = require(script:FindFirstAncestor("game").Client.Features.entity.ui.state.entityInfoThunks)
-local useLast = require(script:FindFirstAncestor("game").Client.UI.shared.useLast)
-local useSpring = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useSpring)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local entityInfoSlice = require(gameRoot.Client.Features.entity.ui.state.entityInfoSlice)
+local entityInfoThunks = require(gameRoot.Client.Features.entity.ui.state.entityInfoThunks)
+local useLast = require(gameRoot.Client.UI.shared.useLast)
+local useSpring = require(gameRoot.Client.UI.core.hooks.useSpring)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
 
 type EntityInfoState = entityInfoSlice.EntityInfoState
 
@@ -58,14 +61,17 @@ return function(props: EntityInfoScreenProps): React.ReactNode
 		end,
 	})
 
-	React.useEffect(function()
-		if entityState.runtimeId ~= previousRuntimeId then
-			healthSpring.jumpTo(hpPercent)
-			return
-		end
+	React.useEffect(
+		function()
+			if entityState.runtimeId ~= previousRuntimeId then
+				healthSpring.jumpTo(hpPercent)
+				return
+			end
 
-		healthSpring.setTarget(hpPercent)
-	end, ({ entityState.runtimeId, previousRuntimeId, hpPercent, healthSpring.setTarget, healthSpring.jumpTo } :: { any }))
+			healthSpring.setTarget(hpPercent)
+		end,
+		{ entityState.runtimeId, previousRuntimeId, hpPercent, healthSpring.setTarget, healthSpring.jumpTo } :: { any }
+	)
 
 	local healthColor = healthSpring.binding:map(function(value: number)
 		return resolveHealthColor(value)

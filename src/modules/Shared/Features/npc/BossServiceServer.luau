@@ -1,34 +1,34 @@
 --!strict
-local Players = game:GetService("Players")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Players = game:GetService("Players")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
-
-local CancelToken = loader("CancelToken")
-local Maid = loader("Maid")
-local ObservableMap = loader("ObservableMap")
-local ObservableSet = loader("ObservableSet")
-local Promise = loader("Promise")
-local PromiseMaidUtils = loader("PromiseMaidUtils")
-local Rx = loader("Rx")
-local RxSignal = loader("RxSignal")
-local Signal = loader("Signal")
-local ValueObject = loader("ValueObject")
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local EyeOfCthulhuConfig =
-	require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.EyeOfCthulhu.Config)
-local EyeOfCthulhuController = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.EyeOfCthulhu)
-local QueenBeeConfig = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.QueenBee.Configs)
-local QueenBeeController = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.QueenBee)
-local HpServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.health.HpServiceServer)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local BossServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).BossService
+local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
+local CancelToken = require(quentyPackages.canceltoken.Shared.CancelToken)
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local EyeOfCthulhuConfig = require(gameRoot.Shared.Features.npc.classes.Boss.EyeOfCthulhu.Config)
+local EyeOfCthulhuController = require(gameRoot.Shared.Features.npc.classes.Boss.EyeOfCthulhu)
+local Maid = require(quentyPackages.maid.Shared.Maid)
+local ObservableMap = require(quentyPackages.observablecollection.Shared.ObservableMap)
+local ObservableSet = require(quentyPackages.observablecollection.Shared.ObservableSet)
+local Promise = require(quentyPackages.promise.Shared.Promise)
+local PromiseMaidUtils = require(quentyPackages.promisemaid.Shared.PromiseMaidUtils)
+local QueenBeeConfig = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local QueenBeeController = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee)
+local Rx = require(quentyPackages.rx.Shared.Rx)
+local RxSignal = require(quentyPackages.rxsignal.Shared.RxSignal)
+local Signal = require(quentyPackages.signal.Shared.Signal)
+local ValueObject = require(quentyPackages.valueobject.Shared.ValueObject)
+local HpServiceServer = (require :: any)(gameRoot.Shared.Features.health.HpServiceServer)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local BossServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).BossService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = BossServicePackets[methodName]
@@ -72,11 +72,11 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
+local NevermoreSupport = require(gameRoot.Shared.Core.NevermoreSupport)
 local PlayerServiceServer = (require :: any)(
 	script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer
 )
-local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local ServerBinderSupport = (require :: any)(gameRoot.Server.Binders.ServerBinderSupport)
 local WeatherServiceServer = (require :: any)(
 	script:FindFirstAncestor("game").Shared.Features.world.WeatherServiceServer
 )

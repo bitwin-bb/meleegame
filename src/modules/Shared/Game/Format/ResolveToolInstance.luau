@@ -1,7 +1,8 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Registry)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ItemRegistry = require(gameRoot.Shared.Features.item.modules.Registry)
 
 local ResolveToolInstance = {}
 

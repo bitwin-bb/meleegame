@@ -1,6 +1,8 @@
 --!strict
 
-local tileSlice = require(script.Parent.tileSlice)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local tileSlice = require(gameRoot.Client.Features.tile.ui.state.tileSlice)
 
 type BreakState = tileSlice.BreakState
 type ShinySpeckState = tileSlice.ShinySpeckState

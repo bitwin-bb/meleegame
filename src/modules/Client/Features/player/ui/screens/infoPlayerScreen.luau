@@ -1,18 +1,22 @@
 --!strict
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local DropsInfo = require(script:FindFirstAncestor("game").Client.UI.core.components.DropsInfo)
-local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceUtils)
-local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceUtils)
+local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
+local DropsInfo = require(gameRoot.Client.UI.core.components.DropsInfo)
+local NpcServiceUtils = require(gameRoot.Shared.Features.npc.NpcServiceUtils)
+local PlayerServiceUtils = require(gameRoot.Shared.Features.movement.PlayerServiceUtils)
 local React = require(ReplicatedStorage.Packages.React)
-local infoPlayerSlice = require(script:FindFirstAncestor("game").Client.Features.player.ui.state.infoPlayerSlice)
-local infoPlayerThunks = require(script:FindFirstAncestor("game").Client.Features.player.ui.state.infoPlayerThunks)
-local useInfoPopUp = require(script:FindFirstAncestor("game").Client.Features.player.ui.hooks.useInfoPopUp)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local infoPlayerSlice = require(gameRoot.Client.Features.player.ui.state.infoPlayerSlice)
+local infoPlayerThunks = require(gameRoot.Client.Features.player.ui.state.infoPlayerThunks)
+local useInfoPopUp = require(gameRoot.Client.Features.player.ui.hooks.useInfoPopUp)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
 
 type InfoPlayerState = infoPlayerSlice.InfoPlayerState
 type InfoPlayerPopup = infoPlayerSlice.InfoPlayerPopup
@@ -174,8 +178,8 @@ local function PopupEntry(props: PopupEntryProps): React.ReactNode
 	theme.titleTransparency = popUpAnimation.transparency
 	local renderedTextSize = math.max(6, math.floor(textSize * popUpAnimation.scale + 0.5))
 
-	local anchorPart, setAnchorPart = React.useState(nil :: BasePart?)
-	;(React.useEffect :: any)(function(): (() -> ())?
+	local anchorPart, setAnchorPart = React.useState(nil :: BasePart?);
+	(React.useEffect :: any)(function(): (() -> ())?
 		local anchorPosition = if targetRootPart ~= nil then targetRootPart.Position else popup.targetPosition
 		if anchorPosition == nil then
 			setAnchorPart(nil)
@@ -206,7 +210,7 @@ local function PopupEntry(props: PopupEntryProps): React.ReactNode
 				return currentAnchorPart
 			end)
 		end
-	end, ({ targetRootPart, popup.id, popup.targetPosition } :: { any }))
+	end, { targetRootPart, popup.id, popup.targetPosition } :: { any })
 
 	local adornee = anchorPart
 	if adornee == nil then
@@ -258,7 +262,7 @@ local function createPopupElement(
 end
 
 return function(props: InfoPlayerScreenProps?): React.ReactNode
-	local resolvedProps: InfoPlayerScreenProps = if props ~= nil then props else ({} :: any)
+	local resolvedProps: InfoPlayerScreenProps = if props ~= nil then props else {} :: any
 	local localPlayer = Players.LocalPlayer
 	local infoPlayerState = (useStore(infoPlayerSlice.infoPlayerStateAtom) :: InfoPlayerState?)
 		or infoPlayerSlice.infoPlayerStateAtom()

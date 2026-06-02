@@ -1,16 +1,19 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local HeartMeter = require(script.Parent.components.HeartMeter)
-local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.health.HpServiceUtils)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local HeartMeter = require(gameRoot.Shared.Features.health.ui.hud.TopBar.components.HeartMeter)
+local HpServiceUtils = require(gameRoot.Shared.Features.health.HpServiceUtils)
 local React = require(ReplicatedStorage.Packages.React)
-local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
-local UiSound = require(script:FindFirstAncestor("game").Client.UI.core.utils.UiSound)
-local hpSlice = require(script:FindFirstAncestor("game").Shared.Features.health.ui.hud.state.slice.hpSlice)
-local hpThunks = require(script:FindFirstAncestor("game").Shared.Features.health.ui.hud.state.thunk.hpThunks)
-local infoThunks = require(script:FindFirstAncestor("game").Client.Features.info.ui.state.infoThunks)
-local useHover = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useHover)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local Responsive = require(gameRoot.Client.UI.core.hooks.useViewportScale)
+local UiSound = require(gameRoot.Client.UI.core.utils.UiSound)
+local hpSlice = require(gameRoot.Shared.Features.health.ui.hud.state.slice.hpSlice)
+local hpThunks = require(gameRoot.Shared.Features.health.ui.hud.state.thunk.hpThunks)
+local infoThunks = require(gameRoot.Client.Features.info.ui.state.infoThunks)
+local useHover = require(gameRoot.Client.UI.core.hooks.useHover)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
 
 type HeartState = HpServiceUtils.HeartState
 type HpServiceState = HpServiceUtils.HpServiceState
@@ -93,7 +96,7 @@ return function(props: HpTopRightBarProps)
 			id = heartsHoverId,
 			text = heartsHoverText,
 		})
-	end, ({ heartsHover.hovered, heartsHoverText } :: { any }))
+	end, { heartsHover.hovered, heartsHoverText } :: { any })
 
 	React.useEffect(function()
 		return function()

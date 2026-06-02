@@ -1,6 +1,8 @@
 --!strict
 
-local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ModelBinder = require(gameRoot.Shared.Binders.ModelBinder)
 
 local ChunkBinder = {}
 ChunkBinder.__index = ChunkBinder
@@ -13,8 +15,7 @@ local worldAnimatorServiceClient = nil
 
 local function getWorldAnimatorServiceClient()
 	if worldAnimatorServiceClient == nil then
-		worldAnimatorServiceClient =
-			(require :: any)(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldAnimatorServiceClient)
+		worldAnimatorServiceClient = (require :: any)(gameRoot.Shared.Features.worldGeneration.WorldAnimatorServiceClient)
 	end
 	return worldAnimatorServiceClient
 end

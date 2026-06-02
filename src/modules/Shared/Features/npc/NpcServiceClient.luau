@@ -1,10 +1,15 @@
 --!strict
-local Players = game:GetService("Players")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Players = game:GetService("Players")
+
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local NpcServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).NpcService
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local NpcServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).NpcService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = NpcServicePackets[methodName]
@@ -47,9 +52,9 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceUtils)
+local NpcServiceUtils = require(gameRoot.Shared.Features.npc.NpcServiceUtils)
 local Sift = require(ReplicatedStorage.Packages.Sift)
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
 type NpcSnapshot = NpcServiceUtils.NpcSnapshot
 

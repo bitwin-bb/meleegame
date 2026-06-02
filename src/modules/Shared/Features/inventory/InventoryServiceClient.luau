@@ -1,18 +1,23 @@
 --!strict
-local Players = game:GetService("Players")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
-local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.GamepadPointer)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
+local BuildServiceUtils = require(gameRoot.Shared.Features.world.BuildServiceUtils)
+local CoreRuntime = require(gameRoot.Shared.Core.Runtime)
+local GamepadPointer = require(gameRoot.Shared.Features.platform.modules.GamepadPointer)
+local InventoryServiceUtils = require(gameRoot.Shared.Features.inventory.InventoryServiceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local LootServiceClient = require(script:FindFirstAncestor("game").Shared.Features.loot.LootServiceClient)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local InventoryServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).InventoryService
+local LootServiceClient = require(gameRoot.Shared.Features.loot.LootServiceClient)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local InventoryServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).InventoryService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = InventoryServicePackets[methodName]
@@ -53,15 +58,12 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
-local PlayerDataServiceClient =
-	require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceClient)
-local PlayerDataServiceUtils =
-	require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceUtils)
-local Signal = require(ReplicatedStorage.Packages.Signal)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
-local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
+local PlatformServiceClient = require(gameRoot.Shared.Features.platform.PlatformServiceClient)
+local PlayerDataServiceClient = require(gameRoot.Shared.Features.playerData.PlayerDataServiceClient)
+local PlayerDataServiceUtils = require(gameRoot.Shared.Features.playerData.PlayerDataServiceUtils)
+local Signal = require(quentyPackages.signal.Shared.Signal)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
+local WorldGenerationServiceClient = require(gameRoot.Shared.Features.worldGeneration.WorldGenerationServiceClient)
 
 type InventoryState = InventoryServiceUtils.InventoryState
 type InventorySlot = InventoryServiceUtils.InventorySlot

@@ -1,7 +1,9 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local MouseScreen = require(script.Parent.screen.mouseScreen)
+local MouseScreen = require(gameRoot.Client.Features.mouse.ui.screen.mouseScreen)
 local React = require(ReplicatedStorage.Packages.React)
 
 type MouseRootProps = {

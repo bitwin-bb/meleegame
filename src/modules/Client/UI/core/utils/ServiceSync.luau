@@ -1,9 +1,8 @@
 --!strict
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
 
-local Promise = loader("Promise")
+local require = require(script.Parent.loader).load(assert(script:FindFirstAncestor("AquariaBackup"), "Missing AquariaBackup package root"))
+
+local Promise = require("Promise")
 
 type StateGetter<T> = () -> T
 type StateApplier<T> = (nextStateRaw: any) -> T

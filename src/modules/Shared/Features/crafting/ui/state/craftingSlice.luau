@@ -1,5 +1,7 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local Charm = require(ReplicatedStorage.Packages.Charm)
@@ -176,8 +178,10 @@ end
 
 local function setCraftingState(stateRaw: any): CraftingState
 	local current = craftingStateAtom()
-	local source = if typeof(stateRaw) == "table" then (stateRaw :: { [string]: any }) else ({} :: any)
-	local nextRecipes = if source.recipes ~= nil then sanitizeRecipeEntries(source.recipes) else cloneRecipeEntries(current.recipes)
+	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {} :: any
+	local nextRecipes = if source.recipes ~= nil
+		then sanitizeRecipeEntries(source.recipes)
+		else cloneRecipeEntries(current.recipes)
 	local nextAvailableCategories = if source.availableCategories ~= nil
 		then cloneStringArray(source.availableCategories)
 		else cloneStringArray(current.availableCategories)

@@ -1,11 +1,15 @@
 --!strict
-local HttpService = game:GetService("HttpService")
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local HttpService = game:GetService("HttpService")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local Animations = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Animations)
-local Audio = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
+local Animations = require(gameRoot.Shared.Features.item.modules.Animations)
+local Audio = require(gameRoot.Shared.Features.item.modules.Audio)
+local AudioServiceUtils = require(gameRoot.Client.Features.audio.AudioServiceUtils)
 
 local AnimationServiceUtils = {}
 
@@ -93,7 +97,8 @@ local DEFAULT_JUMP_KEYFRAMES = { "Jump", "JumpStart", "Takeoff" }
 local PLAYER_AUDIO = (Audio :: any).Player or ({} :: any)
 local PLAYER_WALK_AUDIO = PLAYER_AUDIO.Walk or ({} :: any)
 local PLAYER_JUMP_AUDIO = PLAYER_AUDIO.Jump or ({} :: any)
-local PLAYER_ANIMATION_REGISTRY = (((Animations :: any).Player or ({} :: any)).Profiles or ({} :: any))[DEFAULT_PROFILE_NAME] or ({} :: any)
+local PLAYER_ANIMATION_REGISTRY = (((Animations :: any).Player or ({} :: any)).Profiles or ({} :: any))[DEFAULT_PROFILE_NAME]
+	or {} :: any
 local PLAYER_ANIMATION_IDS = PLAYER_ANIMATION_REGISTRY :: { [string]: any }
 
 local function normalizeAssetId(rawId: any): string?
@@ -618,14 +623,16 @@ function AnimationServiceUtils.SanitizeFootstepSoundConfig(
 end
 
 function AnimationServiceUtils.SanitizeProfile(profile: any, fallback: AnimationProfile?): AnimationProfile
-	local source = if typeof(profile) == "table" then profile else ({} :: any)
+	local source = if typeof(profile) == "table" then profile else {} :: any
 	local defaultProfile = if fallback then fallback else DEFAULT_PROFILE
 
 	local profileName = if typeof((source :: any).name) == "string" and (source :: any).name ~= ""
 		then (source :: any).name
 		else defaultProfile.name
 
-	local animationsSource = if typeof((source :: any).animations) == "table" then (source :: any).animations else ({} :: any)
+	local animationsSource = if typeof((source :: any).animations) == "table"
+		then (source :: any).animations
+		else {} :: any
 	local sanitizedAnimations: { [AnimationClipName]: AnimationClipConfig } = {}
 
 	for clipName, defaultClip in defaultProfile.animations do

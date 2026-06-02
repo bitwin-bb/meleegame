@@ -1,6 +1,6 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
 
 local function usePrevious<T>(value: T): T?

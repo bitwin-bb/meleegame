@@ -1,8 +1,10 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local Workspace = game:GetService("Workspace")
 
-local CactusComponent = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.components.Cactus)
+local CactusComponent = require(gameRoot.Shared.Features.worldGeneration.classes.WorldGeneration.Cactus)
 
 local function ApplyStudSurfaces(part: BasePart)
 	part.TopSurface = Enum.SurfaceType.Studs
@@ -399,13 +401,13 @@ local function CreateWeld(part0: BasePart, part1: BasePart)
 end
 
 local function ResolveConfig(configRaw: CactusConfig?): ResolvedCactusConfig
-	local source = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else ({} :: any)
+	local source = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else {} :: any
 	local archetype: CactusArchetype = ResolveArchetype(source.Archetype, DEFAULT_CONFIG.Archetype)
 	local profile = ARCHETYPE_PROFILES[archetype]
 	local resolvedMinHeight = ClampNumber(source.MinHeight, 0, 160, profile.MinHeight)
 	local resolvedMaxHeight = ClampNumber(source.MaxHeight, resolvedMinHeight, 220, profile.MaxHeight)
 
-	return ({
+	return {
 		Archetype = archetype,
 		Seed = ClampInteger(source.Seed, -2147483648, 2147483647, DEFAULT_CONFIG.Seed),
 		Iterations = ClampInteger(source.Iterations, 2, 16, DEFAULT_CONFIG.Iterations),
@@ -437,7 +439,7 @@ local function ResolveConfig(configRaw: CactusConfig?): ResolvedCactusConfig
 		MaxHeight = resolvedMaxHeight,
 		NodeSpacing = ClampNumber(source.NodeSpacing, 0, 12, DEFAULT_CONFIG.NodeSpacing),
 		DetailDensity = ClampNumber(source.DetailDensity, 0.2, 2.5, DEFAULT_CONFIG.DetailDensity),
-	} :: ResolvedCactusConfig)
+	} :: ResolvedCactusConfig
 end
 
 function CactusGenerator.New(configRaw: CactusConfig?): CactusGenerator
@@ -1187,7 +1189,7 @@ function CactusGenerator.BuildModel(self: CactusGenerator, skeletonOrSegments: a
 		return self:BuildGeometry(skeletonOrSegments :: Skeleton, origin)
 	end
 
-	local segments = if typeof(skeletonOrSegments) == "table" then skeletonOrSegments :: { Segment } else ({} :: any)
+	local segments = if typeof(skeletonOrSegments) == "table" then skeletonOrSegments :: { Segment } else {} :: any
 	local skeleton: Skeleton = {
 		Nodes = {},
 		Segments = segments,

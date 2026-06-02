@@ -1,8 +1,11 @@
 --!strict
+
+local require = require(script.Parent.loader).load(assert(script:FindFirstAncestor("AquariaBackup"), "Missing AquariaBackup package root"))
+
 local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for SetHealthServer.")
 
-local HpServiceServer = require(gameRoot.Shared.Features.health.HpServiceServer)
+local HpServiceServer = require("HpServiceServer")
 
 local function joinParts(parts: { string }): string
 	return table.concat(parts, ", ")

@@ -1,13 +1,17 @@
 --!strict
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local GuiService = game:GetService("GuiService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Damp = require(gameRoot.Shared.Core.Math.Damp)
 local React = require(ReplicatedStorage.Packages.React)
-local Damp = require(script:FindFirstAncestor("game").Shared.Core.Math.Damp)
-local useEvent = require(script:FindFirstAncestor("game").Client.UI.shared.useEvent)
-local useToggle = require(script:FindFirstAncestor("game").Client.UI.shared.useToggle)
+local useEvent = require(gameRoot.Client.UI.shared.useEvent)
+local useToggle = require(gameRoot.Client.UI.core.hooks.useToggle)
 
 export type CraftMenuDragOptions = {
 	enabled: boolean?,
@@ -38,7 +42,9 @@ end
 local function useCraftMenuDrag(options: CraftMenuDragOptions?): CraftMenuDragResult
 	local enabled = if options and options.enabled ~= nil then options.enabled else false
 	local dragSmoothness = math.clamp(
-		if options and typeof(options.dragSmoothness) == "number" and options.dragSmoothness == options.dragSmoothness
+		if options
+				and typeof(options.dragSmoothness) == "number"
+				and options.dragSmoothness == options.dragSmoothness
 			then options.dragSmoothness
 			else DEFAULT_DRAG_SMOOTHNESS,
 		1,
@@ -67,7 +73,7 @@ local function useCraftMenuDrag(options: CraftMenuDragOptions?): CraftMenuDragRe
 			dragging.disable()
 			targetOffsetRef.current = offsetRef.current
 		end
-	end, ({ enabled, dragging.disable } :: { any }))
+	end, { enabled, dragging.disable } :: { any })
 
 	local onDragInputBegan = useEvent(function(_rbx: GuiObject, inputObject: InputObject)
 		if not enabled or not isPrimaryDragInput(inputObject) then
@@ -138,7 +144,7 @@ local function useCraftMenuDrag(options: CraftMenuDragOptions?): CraftMenuDragRe
 			changedConnection:Disconnect()
 			endedConnection:Disconnect()
 		end
-	end, ({ enabled, dragging.value, dragging.disable } :: { any }))
+	end, { enabled, dragging.value, dragging.disable } :: { any })
 
 	React.useEffect(function()
 		local connection = RunService.RenderStepped:Connect(function(deltaTime: number)

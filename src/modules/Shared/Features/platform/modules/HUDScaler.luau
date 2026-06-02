@@ -101,7 +101,7 @@ local function detectDeviceType(platform: any?): string
 end
 
 function HUDScaler.New(configRaw: HUDScalerConfig?): HUDScaler
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local self = setmetatable({
 		platform = config.platform,
 		layoutEngine = config.layoutEngine,
@@ -170,7 +170,15 @@ function HUDScaler._computeScale(self: HUDScaler): (number, string, ScalePreset,
 	return scale, deviceType, preset, safeTopLeft, safeBottomRight
 end
 
-function HUDScaler._applyRecord(self: HUDScaler, record: ElementRecord, scale: number, preset: ScalePreset, safeTopLeft: Vector2, safeBottomRight: Vector2, viewport: Vector2)
+function HUDScaler._applyRecord(
+	self: HUDScaler,
+	record: ElementRecord,
+	scale: number,
+	preset: ScalePreset,
+	safeTopLeft: Vector2,
+	safeBottomRight: Vector2,
+	viewport: Vector2
+)
 	local gui = record.gui
 	if gui.Parent == nil then
 		return
@@ -182,12 +190,8 @@ function HUDScaler._applyRecord(self: HUDScaler, record: ElementRecord, scale: n
 
 	local size = record.baseSize
 	if record.scaleSizeOffsets then
-		size = UDim2.new(
-			size.X.Scale,
-			round(size.X.Offset * finalScale),
-			size.Y.Scale,
-			round(size.Y.Offset * finalScale)
-		)
+		size =
+			UDim2.new(size.X.Scale, round(size.X.Offset * finalScale), size.Y.Scale, round(size.Y.Offset * finalScale))
 	end
 	gui.Size = size
 
@@ -215,12 +219,8 @@ function HUDScaler._applyRecord(self: HUDScaler, record: ElementRecord, scale: n
 		safeOffsetY = -(safeBottomRight.Y + safePadding.Y)
 	end
 
-	gui.Position = UDim2.new(
-		position.X.Scale,
-		position.X.Offset + safeOffsetX,
-		position.Y.Scale,
-		position.Y.Offset + safeOffsetY
-	)
+	gui.Position =
+		UDim2.new(position.X.Scale, position.X.Offset + safeOffsetX, position.Y.Scale, position.Y.Offset + safeOffsetY)
 
 	if record.onApply ~= nil then
 		record.onApply(gui, finalScale, self.lastDeviceType)
@@ -310,17 +310,19 @@ function HUDScaler.Register(self: HUDScaler, configRaw: ElementConfig): string?
 		id = string.format("element_%d", self.nextElementId)
 	end
 
-	local record: ElementRecord = ({
+	local record: ElementRecord = {
 		id = id,
 		gui = gui,
 		baseSize = gui.Size,
 		basePosition = gui.Position,
 		scaleSizeOffsets = if configRaw.scaleSizeOffsets == nil then true else configRaw.scaleSizeOffsets == true,
-		scalePositionOffsets = if configRaw.scalePositionOffsets == nil then true else configRaw.scalePositionOffsets == true,
+		scalePositionOffsets = if configRaw.scalePositionOffsets == nil
+			then true
+			else configRaw.scalePositionOffsets == true,
 		minScale = clampNumber(configRaw.minScale, self.minScale, 0.1, 5),
 		maxScale = clampNumber(configRaw.maxScale, self.maxScale, 0.1, 5),
 		onApply = if typeof(configRaw.onApply) == "function" then configRaw.onApply else nil,
-	} :: any)
+	} :: any
 
 	if self.elements[id] == nil then
 		self.orderedIds[#self.orderedIds + 1] = id

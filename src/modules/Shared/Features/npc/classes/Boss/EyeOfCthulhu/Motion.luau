@@ -1,8 +1,10 @@
 --!strict
 
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local Damp = require(script:FindFirstAncestor("game").Shared.Core.Math.Damp)
-local Vec = require(script:FindFirstAncestor("game").Shared.Core.Math.Vec)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
+local Damp = require(gameRoot.Shared.Core.Math.Damp)
+local Vec = require(gameRoot.Shared.Core.Math.Vec)
 
 type BossMotionState = BossServiceUtils.BossMotionState
 
@@ -334,8 +336,10 @@ local function solveLockedChargeMotion(
 	local lockedDuration = if chargeLock ~= nil then chargeLock.duration else 0
 	local chargeTimeRemaining = math.max(0, lockedDuration - context.stateTime)
 	local velocity = projectVector(lockedDirection * lockedSpeed, context.planeX)
-	local facing =
-		safeUnit(lockedDirection, resolveFacingTowardTarget(context.position, targetSnapshot, fallbackDirection, context.planeX))
+	local facing = safeUnit(
+		lockedDirection,
+		resolveFacingTowardTarget(context.position, targetSnapshot, fallbackDirection, context.planeX)
+	)
 
 	return createResult(
 		context,

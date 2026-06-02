@@ -1,16 +1,18 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local CraftingTree = require(script.Parent.modules.CraftingTree)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
-local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local CraftingTree = require(gameRoot.Shared.Features.crafting.modules.CraftingTree)
+local InventoryServiceUtils = require(gameRoot.Shared.Features.inventory.InventoryServiceUtils)
+local TagBinder = require(gameRoot.Shared.Binders.TagBinder)
 
 local CraftingServiceUtils = {}
 

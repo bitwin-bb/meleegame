@@ -1,8 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local FloatingCard = require(script.Parent.FloatingCard)
-local PortalTargets = require(script.Parent.Parent.utils.PortalTargets)
+local FloatingCard = require(gameRoot.Client.UI.core.components.FloatingCard)
+local PortalTargets = require(gameRoot.Client.UI.core.utils.PortalTargets)
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 

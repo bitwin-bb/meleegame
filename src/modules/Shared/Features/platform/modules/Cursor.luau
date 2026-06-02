@@ -1,13 +1,17 @@
 --!strict
-local Players = game:GetService("Players")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
 local CollectionService = game:GetService("CollectionService")
 local GuiService = game:GetService("GuiService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
 local Cursor = {}
 Cursor.__index = Cursor
@@ -103,7 +107,8 @@ local function normalizeGamepadCursorVector(vector: Vector2): Vector2
 	if magnitude <= GAMEPAD_CURSOR_DEADZONE or magnitude <= 1e-4 then
 		return Vector2.zero
 	end
-	local scaledMagnitude = math.clamp((magnitude - GAMEPAD_CURSOR_DEADZONE) / math.max(1e-4, 1 - GAMEPAD_CURSOR_DEADZONE), 0, 1)
+	local scaledMagnitude =
+		math.clamp((magnitude - GAMEPAD_CURSOR_DEADZONE) / math.max(1e-4, 1 - GAMEPAD_CURSOR_DEADZONE), 0, 1)
 	return vector.Unit * scaledMagnitude
 end
 
@@ -220,7 +225,7 @@ local function statesEqual(a: CursorState, b: CursorState): boolean
 end
 
 function Cursor.New(configRaw: CursorConfig?): Cursor
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local defaultScreenPosition = Vector2.zero
 	local ok, mouseLocation = pcall(function()
 		return UserInputService:GetMouseLocation()
@@ -232,7 +237,8 @@ function Cursor.New(configRaw: CursorConfig?): Cursor
 	end
 	local state = {
 		enabled = true,
-		visible = UserInputService.MouseEnabled or (UserInputService.GamepadEnabled and not UserInputService.MouseEnabled),
+		visible = UserInputService.MouseEnabled
+			or (UserInputService.GamepadEnabled and not UserInputService.MouseEnabled),
 		mouseDown = false,
 		screenPosition = defaultScreenPosition,
 		guiPosition = toGuiPosition(defaultScreenPosition),
@@ -280,14 +286,14 @@ function Cursor._setState(self: Cursor, partial: { [string]: any })
 		enabled = if partial.enabled ~= nil then partial.enabled == true else current.enabled,
 		visible = if partial.visible ~= nil then partial.visible == true else current.visible,
 		mouseDown = if partial.mouseDown ~= nil then partial.mouseDown == true else current.mouseDown,
-		screenPosition = if typeof(partial.screenPosition) == "Vector2" then partial.screenPosition else current.screenPosition,
+		screenPosition = if typeof(partial.screenPosition) == "Vector2"
+			then partial.screenPosition
+			else current.screenPosition,
 		guiPosition = if typeof(partial.guiPosition) == "Vector2" then partial.guiPosition else current.guiPosition,
 		isHoveringGui = if partial.isHoveringGui ~= nil then partial.isHoveringGui == true else current.isHoveringGui,
 		hoveredGuiPath = if typeof(partial.hoveredGuiPath) == "string" and partial.hoveredGuiPath ~= ""
 			then partial.hoveredGuiPath
-			else if partial.hoveredGuiPath == false
-				then nil
-				else current.hoveredGuiPath,
+			else if partial.hoveredGuiPath == false then nil else current.hoveredGuiPath,
 	}
 	if statesEqual(current, nextState) then
 		return
@@ -303,7 +309,9 @@ function Cursor._applyMouseIcon(self: Cursor)
 	if self.useCustomIcon and self.state.enabled then
 		UserInputService.MouseIconEnabled = false
 	else
-		UserInputService.MouseIconEnabled = if self.defaultMouseIconEnabled ~= nil then self.defaultMouseIconEnabled else true
+		UserInputService.MouseIconEnabled = if self.defaultMouseIconEnabled ~= nil
+			then self.defaultMouseIconEnabled
+			else true
 	end
 end
 
@@ -408,21 +416,23 @@ function Cursor._bindGamepadConnections(self: Cursor)
 		self:_updateGamepadVector(inputObject)
 	end)
 
-	self.gamepadInputBeganConnection = UserInputService.InputBegan:Connect(function(inputObject: InputObject, gameProcessed: boolean)
-		if gameProcessed or not self.state.enabled or not isGamepadInput(inputObject.UserInputType) then
-			return
-		end
+	self.gamepadInputBeganConnection = UserInputService.InputBegan:Connect(
+		function(inputObject: InputObject, gameProcessed: boolean)
+			if gameProcessed or not self.state.enabled or not isGamepadInput(inputObject.UserInputType) then
+				return
+			end
 
-		self.lastInputWasGamepad = true
-		self:_updateVisibility()
+			self.lastInputWasGamepad = true
+			self:_updateVisibility()
 
-		if inputObject.KeyCode == Enum.KeyCode.ButtonA then
-			self:_setState({
-				mouseDown = true,
-			})
-			self:_activateHoveredGui()
+			if inputObject.KeyCode == Enum.KeyCode.ButtonA then
+				self:_setState({
+					mouseDown = true,
+				})
+				self:_activateHoveredGui()
+			end
 		end
-	end)
+	)
 
 	self.gamepadInputEndedConnection = UserInputService.InputEnded:Connect(function(inputObject: InputObject)
 		if not self.state.enabled or not isGamepadInput(inputObject.UserInputType) then
@@ -551,18 +561,22 @@ end
 
 function Cursor._startPolling(self: Cursor)
 	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).scheduleEvery) == "function" then
-		self.pollToken = (self.tickScheduler :: any):scheduleEvery(function()
-			if self.state.enabled then
-				if UserInputService.MouseEnabled and not self.lastInputWasGamepad then
-					self:_syncFromMouseLocation()
+		self.pollToken = (self.tickScheduler :: any):scheduleEvery(
+			function()
+				if self.state.enabled then
+					if UserInputService.MouseEnabled and not self.lastInputWasGamepad then
+						self:_syncFromMouseLocation()
+					end
+					self:_stepGamepadCursor(1 / 60)
 				end
-				self:_stepGamepadCursor(1 / 60)
-			end
-		end, 1 / 60, {
-			group = "cursor.poll",
-			priority = 250,
-			catchUp = false,
-		})
+			end,
+			1 / 60,
+			{
+				group = "cursor.poll",
+				priority = 250,
+				catchUp = false,
+			}
+		)
 		return
 	end
 	self.stepConnection = RunService.RenderStepped:Connect(function(dt: number)
@@ -611,24 +625,28 @@ function Cursor.Init(self: Cursor)
 	end
 	self:_bindGamepadConnections()
 
-	self.lastInputTypeChangedConnection = UserInputService.LastInputTypeChanged:Connect(function(inputType: Enum.UserInputType)
-		local lastInputType = resolveLastInputType(inputType)
-		self.lastInputWasGamepad = if lastInputType ~= nil then isGamepadInput(lastInputType) else self.lastInputWasGamepad
-		if not self.lastInputWasGamepad then
-			self.gamepadMoveVector = Vector2.zero
-		end
-		self:_setState({
-			mouseDown = false,
-		})
-		self:_updateVisibility()
-		if self.lastInputWasGamepad then
-			if self.state.screenPosition.Magnitude <= 1e-4 then
-				self:_applyFromScreenPosition(getCenteredScreenPosition())
+	self.lastInputTypeChangedConnection = UserInputService.LastInputTypeChanged:Connect(
+		function(inputType: Enum.UserInputType)
+			local lastInputType = resolveLastInputType(inputType)
+			self.lastInputWasGamepad = if lastInputType ~= nil
+				then isGamepadInput(lastInputType)
+				else self.lastInputWasGamepad
+			if not self.lastInputWasGamepad then
+				self.gamepadMoveVector = Vector2.zero
 			end
-		else
-			self:_syncFromMouseLocation()
+			self:_setState({
+				mouseDown = false,
+			})
+			self:_updateVisibility()
+			if self.lastInputWasGamepad then
+				if self.state.screenPosition.Magnitude <= 1e-4 then
+					self:_applyFromScreenPosition(getCenteredScreenPosition())
+				end
+			else
+				self:_syncFromMouseLocation()
+			end
 		end
-	end)
+	)
 
 	self:_startPolling()
 end

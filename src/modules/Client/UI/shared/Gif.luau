@@ -1,14 +1,13 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local require = require(script.Parent.loader).load(assert(script:FindFirstAncestor("AquariaBackup"), "Missing AquariaBackup package root"))
+
 local RunService = game:GetService("RunService")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
-
-local Flipbook = loader("Flipbook")
-local FlipbookPlayer = loader("FlipbookPlayer")
-local Maid = loader("Maid")
+local Flipbook = require("Flipbook")
+local FlipbookPlayer = require("FlipbookPlayer")
+local Maid = require("Maid")
 local React = require(ReplicatedStorage.Packages.React)
 
 type FrameSlice = {
@@ -179,86 +178,92 @@ local function Gif(props: GifProps)
 	local completedRef = React.useRef(startFrameIndex >= frameCount - 1)
 	local loopCountRef = React.useRef(0)
 
-	React.useEffect(function()
-		local nextStartFrameIndex = if props.startFrameIndex ~= nil
-			then clampFrameIndex(props.startFrameIndex, frameCount)
-			else clampFrameIndex(if props.startFrame ~= nil then props.startFrame - 1 else 0, frameCount)
-		frameIndexRef.current = nextStartFrameIndex
-		elapsedRef.current = 0
-		loopCountRef.current = 0
-		completedRef.current = nextStartFrameIndex >= frameCount - 1
-		setFrameIndex(nextStartFrameIndex)
-	end, ({
-		props.image,
-		props.startFrame,
-		props.startFrameIndex,
-		frameCount,
-		columns,
-		fallbackFrameSize.X,
-		fallbackFrameSize.Y,
-		frameOrigin.X,
-		frameOrigin.Y,
-		framePadding.X,
-		framePadding.Y,
-	} :: { any }))
+	React.useEffect(
+		function()
+			local nextStartFrameIndex = if props.startFrameIndex ~= nil
+				then clampFrameIndex(props.startFrameIndex, frameCount)
+				else clampFrameIndex(if props.startFrame ~= nil then props.startFrame - 1 else 0, frameCount)
+			frameIndexRef.current = nextStartFrameIndex
+			elapsedRef.current = 0
+			loopCountRef.current = 0
+			completedRef.current = nextStartFrameIndex >= frameCount - 1
+			setFrameIndex(nextStartFrameIndex)
+		end,
+		{
+			props.image,
+			props.startFrame,
+			props.startFrameIndex,
+			frameCount,
+			columns,
+			fallbackFrameSize.X,
+			fallbackFrameSize.Y,
+			frameOrigin.X,
+			frameOrigin.Y,
+			framePadding.X,
+			framePadding.Y,
+		} :: { any }
+	)
 
-	React.useEffect(function()
-		if not playing or frameCount <= 1 then
-			return
-		end
-
-		local connection = RunService.RenderStepped:Connect(function(deltaTime: number)
-			elapsedRef.current += deltaTime
-			if elapsedRef.current < frameDuration then
+	React.useEffect(
+		function()
+			if not playing or frameCount <= 1 then
 				return
 			end
 
-			local advancedFrames = math.floor(elapsedRef.current / frameDuration)
-			elapsedRef.current -= advancedFrames * frameDuration
-			if advancedFrames <= 0 then
-				return
-			end
-
-			local previousFrameIndex = frameIndexRef.current
-			local rawFrameIndex = previousFrameIndex + advancedFrames
-			local nextFrameIndex = previousFrameIndex
-
-			if looped then
-				nextFrameIndex = rawFrameIndex % frameCount
-				if rawFrameIndex >= frameCount and props.onLooped ~= nil then
-					local loopsCompleted = math.floor(rawFrameIndex / frameCount)
-					loopCountRef.current += loopsCompleted
-					props.onLooped(loopCountRef.current)
+			local connection = RunService.RenderStepped:Connect(function(deltaTime: number)
+				elapsedRef.current += deltaTime
+				if elapsedRef.current < frameDuration then
+					return
 				end
-			else
-				nextFrameIndex = math.min(rawFrameIndex, frameCount - 1)
-				if nextFrameIndex >= frameCount - 1 and not completedRef.current then
-					completedRef.current = true
-					if props.onCompleted ~= nil then
-						props.onCompleted()
+
+				local advancedFrames = math.floor(elapsedRef.current / frameDuration)
+				elapsedRef.current -= advancedFrames * frameDuration
+				if advancedFrames <= 0 then
+					return
+				end
+
+				local previousFrameIndex = frameIndexRef.current
+				local rawFrameIndex = previousFrameIndex + advancedFrames
+				local nextFrameIndex = previousFrameIndex
+
+				if looped then
+					nextFrameIndex = rawFrameIndex % frameCount
+					if rawFrameIndex >= frameCount and props.onLooped ~= nil then
+						local loopsCompleted = math.floor(rawFrameIndex / frameCount)
+						loopCountRef.current += loopsCompleted
+						props.onLooped(loopCountRef.current)
+					end
+				else
+					nextFrameIndex = math.min(rawFrameIndex, frameCount - 1)
+					if nextFrameIndex >= frameCount - 1 and not completedRef.current then
+						completedRef.current = true
+						if props.onCompleted ~= nil then
+							props.onCompleted()
+						end
 					end
 				end
+
+				if nextFrameIndex == previousFrameIndex then
+					return
+				end
+
+				frameIndexRef.current = nextFrameIndex
+				setFrameIndex(nextFrameIndex)
+			end)
+
+			return function()
+				connection:Disconnect()
 			end
-
-			if nextFrameIndex == previousFrameIndex then
-				return
-			end
-
-			frameIndexRef.current = nextFrameIndex
-			setFrameIndex(nextFrameIndex)
-		end)
-
-		return function()
-			connection:Disconnect()
-		end
-	end, ({
-		playing,
-		looped,
-		frameCount,
-		frameDuration,
-		props.onLooped,
-		props.onCompleted,
-	} :: { any }))
+		end,
+		{
+			playing,
+			looped,
+			frameCount,
+			frameDuration,
+			props.onLooped,
+			props.onCompleted,
+		} :: { any }
+	)
 
 	React.useEffect(function()
 		frameIndexRef.current = frameIndex
@@ -275,62 +280,65 @@ local function Gif(props: GifProps)
 		and props.onLooped == nil
 	local useViewportMode = (not hasExplicitRects) and not hasGridOffset
 
-	React.useEffect(function()
-		if not useNevermoreFlipbook then
-			return
-		end
-
-		local imageLabel = imageRef.current
-		if imageLabel == nil then
-			return
-		end
-
-		local maid = Maid.new()
-		local flipbook = Flipbook.new({
-			image = props.image,
-			frameCount = frameCount,
-			rows = resolveGridRowCount(frameCount, columns),
-			columns = columns,
-			imageRectSize = fallbackFrameSize,
-			frameRate = fps,
-			restFrame = startFrameIndex + 1,
-		})
-		local player = FlipbookPlayer.new(imageLabel)
-		maid:GiveTask(player)
-		player:SetFlipbook(flipbook)
-
-		local alive = true
-		if playing then
-			if looped then
-				player:Play()
-			else
-				player:PromisePlayRepeat(1):Then(function()
-					if alive and props.onCompleted ~= nil then
-						props.onCompleted()
-					end
-				end)
+	React.useEffect(
+		function()
+			if not useNevermoreFlipbook then
+				return
 			end
-		else
-			player:Stop()
-		end
 
-		return function()
-			alive = false
-			maid:DoCleaning()
-		end
-	end, ({
-		useNevermoreFlipbook,
-		props.image,
-		frameCount,
-		columns,
-		fallbackFrameSize.X,
-		fallbackFrameSize.Y,
-		fps,
-		playing,
-		looped,
-		startFrameIndex,
-		props.onCompleted,
-	} :: { any }))
+			local imageLabel = imageRef.current
+			if imageLabel == nil then
+				return
+			end
+
+			local maid = Maid.new()
+			local flipbook = Flipbook.new({
+				image = props.image,
+				frameCount = frameCount,
+				rows = resolveGridRowCount(frameCount, columns),
+				columns = columns,
+				imageRectSize = fallbackFrameSize,
+				frameRate = fps,
+				restFrame = startFrameIndex + 1,
+			})
+			local player = FlipbookPlayer.new(imageLabel)
+			maid:GiveTask(player)
+			player:SetFlipbook(flipbook)
+
+			local alive = true
+			if playing then
+				if looped then
+					player:Play()
+				else
+					player:PromisePlayRepeat(1):Then(function()
+						if alive and props.onCompleted ~= nil then
+							props.onCompleted()
+						end
+					end)
+				end
+			else
+				player:Stop()
+			end
+
+			return function()
+				alive = false
+				maid:DoCleaning()
+			end
+		end,
+		{
+			useNevermoreFlipbook,
+			props.image,
+			frameCount,
+			columns,
+			fallbackFrameSize.X,
+			fallbackFrameSize.Y,
+			fps,
+			playing,
+			looped,
+			startFrameIndex,
+			props.onCompleted,
+		} :: { any }
+	)
 
 	if useNevermoreFlipbook then
 		local activeSlice = resolveGridFrameSlice(startFrameIndex, columns, fallbackFrameSize)

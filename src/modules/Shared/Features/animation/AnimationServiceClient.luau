@@ -1,12 +1,15 @@
 --!strict
-local Players = game:GetService("Players")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local AnimationServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.animation.AnimationServiceUtils)
-local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceClient)
+local Players = game:GetService("Players")
+
+local AnimationServiceUtils = require(gameRoot.Shared.Features.animation.AnimationServiceUtils)
+local AudioServiceClient = require(gameRoot.Client.Features.audio.AudioServiceClient)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local AnimationServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).AnimationService
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local AnimationServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).AnimationService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = AnimationServicePackets[methodName]
@@ -48,7 +51,7 @@ local function bindPackets(self: any)
 	bindPacket(self, "setProfile")
 end
 
-local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceUtils)
+local PlayerServiceUtils = require(gameRoot.Shared.Features.movement.PlayerServiceUtils)
 
 type AnimationClipConfig = AnimationServiceUtils.AnimationClipConfig
 type AnimationProfile = AnimationServiceUtils.AnimationProfile

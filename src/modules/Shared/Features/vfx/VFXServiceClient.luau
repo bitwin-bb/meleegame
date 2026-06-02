@@ -1,10 +1,13 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local RunService = game:GetService("RunService")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local VFXServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).VFXService
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local VFXServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).VFXService
 
 local function bindPacket(self: any, methodName: string)
 	local packet = VFXServicePackets[methodName]
@@ -35,7 +38,7 @@ local function bindPackets(self: any)
 	bindPacket(self, "stopChannel")
 end
 
-local VFXServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.vfx.VFXServiceUtils)
+local VFXServiceUtils = require(gameRoot.Shared.Features.vfx.VFXServiceUtils)
 
 type VFXPlaybackOptions = VFXServiceUtils.VFXPlaybackOptions
 

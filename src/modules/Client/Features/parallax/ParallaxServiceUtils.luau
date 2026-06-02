@@ -1,12 +1,14 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local Lerp = require(script:FindFirstAncestor("game").Shared.Core.Math.Lerp)
-local WorldSimulationShared = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.Shared)
-local ParallaxConstants = require(script.Parent.ParallaxConstants)
-local ParallaxTypes = require(script.Parent.ParallaxTypes)
+local Lerp = require(gameRoot.Shared.Core.Math.Lerp)
+local ParallaxConstants = require(gameRoot.Client.Features.parallax.ParallaxConstants)
+local ParallaxTypes = require(gameRoot.Client.Features.parallax.ParallaxTypes)
+local WorldSimulationShared = require(gameRoot.Shared.Features.worldGeneration.simulation.Shared)
 
 local ParallaxServiceUtils = {}
 
@@ -133,22 +135,31 @@ local function resolveImplicitLayerDefaults(
 
 	return {
 		imageAspectRatio = imageAspectRatio,
-		depth = math.clamp(ParallaxConstants.IMPLICIT_LAYER_DEPTH_BASE - stackIndex * ParallaxConstants.IMPLICIT_LAYER_DEPTH_STEP, 0.05, 0.98),
-		planeDepthBlocks = ParallaxConstants.IMPLICIT_LAYER_PLANE_DEPTH_BASE + stackIndex * ParallaxConstants.IMPLICIT_LAYER_PLANE_DEPTH_STEP,
+		depth = math.clamp(
+			ParallaxConstants.IMPLICIT_LAYER_DEPTH_BASE - stackIndex * ParallaxConstants.IMPLICIT_LAYER_DEPTH_STEP,
+			0.05,
+			0.98
+		),
+		planeDepthBlocks = ParallaxConstants.IMPLICIT_LAYER_PLANE_DEPTH_BASE
+			+ stackIndex * ParallaxConstants.IMPLICIT_LAYER_PLANE_DEPTH_STEP,
 		heightScale = 1,
 		segmentWidthScale = ParallaxConstants.IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_BASE
 			+ stackIndex * ParallaxConstants.IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_STEP,
 		minSegments = 2,
 		overscanSegments = 4,
 		tint = resolveImplicitBiomeTint(biomeName, farAlpha),
-		transparency = ParallaxConstants.IMPLICIT_LAYER_TRANSPARENCY_BASE + stackIndex * ParallaxConstants.IMPLICIT_LAYER_TRANSPARENCY_STEP,
+		transparency = ParallaxConstants.IMPLICIT_LAYER_TRANSPARENCY_BASE
+			+ stackIndex * ParallaxConstants.IMPLICIT_LAYER_TRANSPARENCY_STEP,
 		scrollSpeed = 0,
 		textureStudsPerTileU = ParallaxConstants.IMPLICIT_LAYER_BASE_TEXTURE_TILE_STUDS,
 		textureStudsPerTileV = ParallaxConstants.IMPLICIT_LAYER_BASE_TEXTURE_TILE_STUDS,
 		verticalAlign = "Center",
-		verticalOffsetStuds = ParallaxConstants.IMPLICIT_LAYER_VERTICAL_OFFSET_BASE + stackIndex * ParallaxConstants.IMPLICIT_LAYER_VERTICAL_OFFSET_STEP,
-		verticalDepth = ParallaxConstants.IMPLICIT_LAYER_VERTICAL_DEPTH_BASE + stackIndex * ParallaxConstants.IMPLICIT_LAYER_VERTICAL_DEPTH_STEP,
-		verticalParallax = ParallaxConstants.IMPLICIT_LAYER_VERTICAL_DEPTH_BASE + stackIndex * ParallaxConstants.IMPLICIT_LAYER_VERTICAL_DEPTH_STEP,
+		verticalOffsetStuds = ParallaxConstants.IMPLICIT_LAYER_VERTICAL_OFFSET_BASE
+			+ stackIndex * ParallaxConstants.IMPLICIT_LAYER_VERTICAL_OFFSET_STEP,
+		verticalDepth = ParallaxConstants.IMPLICIT_LAYER_VERTICAL_DEPTH_BASE
+			+ stackIndex * ParallaxConstants.IMPLICIT_LAYER_VERTICAL_DEPTH_STEP,
+		verticalParallax = ParallaxConstants.IMPLICIT_LAYER_VERTICAL_DEPTH_BASE
+			+ stackIndex * ParallaxConstants.IMPLICIT_LAYER_VERTICAL_DEPTH_STEP,
 		baseYOffset = ParallaxConstants.IMPLICIT_LAYER_BASE_Y_OFFSET,
 		bottomOverscan = ParallaxConstants.IMPLICIT_LAYER_BOTTOM_OVERSCAN,
 		minY = ParallaxConstants.IMPLICIT_LAYER_MIN_Y,
@@ -171,7 +182,7 @@ local function sanitizeVerticalAlign(valueRaw: any, fallback: VerticalAlign): Ve
 end
 
 local function collectSortedNumericIndices(sourceRaw: any): { number }
-	local source = if typeof(sourceRaw) == "table" then sourceRaw :: { [any]: any } else ({} :: any)
+	local source = if typeof(sourceRaw) == "table" then sourceRaw :: { [any]: any } else {} :: any
 	local indices: { number } = {}
 	for key in source do
 		if typeof(key) == "number" and key % 1 == 0 then
@@ -183,7 +194,7 @@ local function collectSortedNumericIndices(sourceRaw: any): { number }
 end
 
 local function collectSortedStringKeys(sourceRaw: any): { string }
-	local source = if typeof(sourceRaw) == "table" then sourceRaw :: { [any]: any } else ({} :: any)
+	local source = if typeof(sourceRaw) == "table" then sourceRaw :: { [any]: any } else {} :: any
 	local keys: { string } = {}
 	for key in source do
 		if typeof(key) == "string" then
@@ -289,7 +300,12 @@ local function sanitizeLayerDefinition(
 			0,
 			1
 		),
-		baseYOffset = sanitizeNumber(readSourceValue(source, "baseYOffset", "BaseYOffset"), defaults.baseYOffset, -4, 4),
+		baseYOffset = sanitizeNumber(
+			readSourceValue(source, "baseYOffset", "BaseYOffset"),
+			defaults.baseYOffset,
+			-4,
+			4
+		),
 		bottomOverscan = sanitizeNumber(
 			readSourceValue(source, "bottomOverscan", "BottomOverscan"),
 			defaults.bottomOverscan,
@@ -370,7 +386,7 @@ local function sanitizeBiomeDefinition(nameRaw: any, biomeRaw: any): BiomeDefini
 	end
 
 	local source = biomeRaw :: { [string]: any }
-	local aliasesRaw = if typeof(source.aliases) == "table" then source.aliases :: { any } else ({} :: any)
+	local aliasesRaw = if typeof(source.aliases) == "table" then source.aliases :: { any } else {} :: any
 	local aliases: { string } = {}
 	for _, alias in aliasesRaw do
 		local text = trim(alias)
@@ -436,8 +452,8 @@ local function sanitizeBiomeDefinition(nameRaw: any, biomeRaw: any): BiomeDefini
 end
 
 function ParallaxServiceUtils.NormalizeCatalog(rawCatalog: any): Catalog
-	local source = if typeof(rawCatalog) == "table" then rawCatalog :: { [string]: any } else ({} :: any)
-	local settingsRaw = if typeof(source.settings) == "table" then source.settings :: { [string]: any } else ({} :: any)
+	local source = if typeof(rawCatalog) == "table" then rawCatalog :: { [string]: any } else {} :: any
+	local settingsRaw = if typeof(source.settings) == "table" then source.settings :: { [string]: any } else {} :: any
 	local rawBiomes = if typeof(source.biomes) == "table" then source.biomes :: { [string]: any } else source
 
 	local biomes: { [string]: BiomeDefinition } = {}
@@ -543,7 +559,7 @@ end
 function ParallaxServiceUtils.CollectAssetIds(catalog: Catalog, biomeNamesRaw: { any }?): { string }
 	local assetIds: { string } = {}
 	local seen: { [string]: boolean } = {}
-	local biomeNames: { any } = if biomeNamesRaw ~= nil then biomeNamesRaw else (catalog.orderedBiomeNames :: any)
+	local biomeNames: { any } = if biomeNamesRaw ~= nil then biomeNamesRaw else catalog.orderedBiomeNames :: any
 
 	for _, biomeNameRaw in biomeNames do
 		local biome = ParallaxServiceUtils.ResolveBiomeDefinition(catalog, biomeNameRaw)
@@ -587,7 +603,10 @@ function ParallaxServiceUtils.ComputeHorizontalVisionStuds(
 	local chunkSize = sanitizeInteger(chunkSizeRaw, 32, 1, 512)
 	local tileSize = sanitizeNumber(tileSizeRaw, 4, 0.25, 128)
 	local renderDistanceChunks = sanitizeInteger(renderDistanceChunksRaw, 4, 1, 128)
-	return math.max(ParallaxConstants.DEFAULT_HORIZONTAL_VISION_STUDS, (renderDistanceChunks * 2 + 1) * chunkSize * tileSize)
+	return math.max(
+		ParallaxConstants.DEFAULT_HORIZONTAL_VISION_STUDS,
+		(renderDistanceChunks * 2 + 1) * chunkSize * tileSize
+	)
 end
 
 function ParallaxServiceUtils.ResolveDeterministicPlaneSizing(
@@ -602,19 +621,26 @@ function ParallaxServiceUtils.ResolveDeterministicPlaneSizing(
 ): PlaneSizing
 	local visibleWidth = sanitizeNumber(visibleWidthRaw, 0, 0, 1000000)
 	local sizeReferenceWidth = sanitizeNumber(sizeReferenceWidthRaw, visibleWidth, 0, 1000000)
-	local horizontalVisionStuds = sanitizeNumber(horizontalVisionStudsRaw, ParallaxConstants.DEFAULT_HORIZONTAL_VISION_STUDS, 0, 1000000)
-	local imageAspectRatio = sanitizeNumber(imageAspectRatioRaw, ParallaxConstants.IMPLICIT_LAYER_FALLBACK_IMAGE_ASPECT_RATIO, 0.05, 64)
+	local horizontalVisionStuds =
+		sanitizeNumber(horizontalVisionStudsRaw, ParallaxConstants.DEFAULT_HORIZONTAL_VISION_STUDS, 0, 1000000)
+	local imageAspectRatio =
+		sanitizeNumber(imageAspectRatioRaw, ParallaxConstants.IMPLICIT_LAYER_FALLBACK_IMAGE_ASPECT_RATIO, 0.05, 64)
 	local heightScale = sanitizeNumber(heightScaleRaw, 1, 0.05, 4)
-	local segmentWidthScale = sanitizeNumber(segmentWidthScaleRaw, ParallaxConstants.IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_BASE, 0.25, 8)
+	local segmentWidthScale =
+		sanitizeNumber(segmentWidthScaleRaw, ParallaxConstants.IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_BASE, 0.25, 8)
 	local textureStudsPerTileU =
 		sanitizeNumber(textureStudsPerTileURaw, ParallaxConstants.IMPLICIT_LAYER_BASE_TEXTURE_TILE_STUDS, 1, 4096)
 
-	local minimumTextureRepeatWidth = math.max(textureStudsPerTileU * 0.25, ParallaxConstants.MINIMUM_TEXTURE_REPEAT_WIDTH_STUDS)
+	local minimumTextureRepeatWidth =
+		math.max(textureStudsPerTileU * 0.25, ParallaxConstants.MINIMUM_TEXTURE_REPEAT_WIDTH_STUDS)
 	local baseTextureRepeatWidth = math.max(sizeReferenceWidth * segmentWidthScale, minimumTextureRepeatWidth)
 	local baseTextureRepeatHeight = math.max(1, (baseTextureRepeatWidth / imageAspectRatio) * heightScale)
 	local textureRepeatHeight = math.max(baseTextureRepeatHeight, sanitizeNumber(requiredPlaneHeightRaw, 0, 0, 1000000))
 	local textureRepeatWidth = math.max(baseTextureRepeatWidth, (textureRepeatHeight / heightScale) * imageAspectRatio)
-	local horizontalBleed = math.max(visibleWidth * ParallaxConstants.HORIZONTAL_PLANE_BLEED_FACTOR, ParallaxConstants.MINIMUM_HORIZONTAL_PLANE_BLEED_STUDS)
+	local horizontalBleed = math.max(
+		visibleWidth * ParallaxConstants.HORIZONTAL_PLANE_BLEED_FACTOR,
+		ParallaxConstants.MINIMUM_HORIZONTAL_PLANE_BLEED_STUDS
+	)
 	local planeWidth =
 		math.max(textureRepeatWidth, visibleWidth + horizontalBleed, horizontalVisionStuds + horizontalBleed)
 

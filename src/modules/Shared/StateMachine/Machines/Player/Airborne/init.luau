@@ -1,9 +1,11 @@
 --!strict
 
-local Nevermore = require(script:FindFirstAncestor("StateMachine").Nevermore)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Nevermore = require(gameRoot.Shared.StateMachine.Nevermore)
 local Table = Nevermore.Get("Table")
 
 return Table.copy({
-	JumpState = require(script.JumpState),
-	FallState = require(script.FallState),
+	JumpState = require(gameRoot.Shared.StateMachine.Machines.Player.Airborne.JumpState),
+	FallState = require(gameRoot.Shared.StateMachine.Machines.Player.Airborne.FallState),
 })

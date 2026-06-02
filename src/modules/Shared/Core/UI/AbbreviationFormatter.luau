@@ -85,7 +85,7 @@ function AbbreviationFormatter.FormatNumber(valueRaw: any, optionsRaw: NumberFor
 		return "-inf"
 	end
 
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 	local trimTrailing = if options.trimTrailingZeros == nil then true else options.trimTrailingZeros == true
 	local minThreshold = if typeof(options.minThreshold) == "number" then math.max(0, options.minThreshold) else 0
 	local forceSign = options.forceSign == true

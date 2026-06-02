@@ -1,5 +1,8 @@
 --!strict
-local Lerp = require(script.Parent.Parent.Math.Lerp)
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Lerp = require(gameRoot.Shared.Core.Math.Lerp)
 
 local RichTextFormatter = {}
 
@@ -145,7 +148,7 @@ function RichTextFormatter.WrapTag(tag: string, contentRaw: any, attributesRaw: 
 end
 
 function RichTextFormatter.New(configRaw: FormatterConfig?): Builder
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	if typeof(config.cacheLimit) == "number" then
 		globalCache.limit = clampInteger(config.cacheLimit, globalCache.limit, 8, 100000)
 	end

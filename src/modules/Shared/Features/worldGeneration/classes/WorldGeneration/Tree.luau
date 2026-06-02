@@ -1,14 +1,15 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local Workspace = game:GetService("Workspace")
-local Height = require(script.Parent.Height)
-local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
-local TileMaterial = require(script:FindFirstAncestor("game").Shared.Game.Render.TileMaterial)
-local TreeComponent = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.components.Tree)
-local WorldGenerationColor =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.modules.WorldGenerationColor)
+local Height = require(gameRoot.Shared.Features.worldGeneration.classes.WorldGeneration.Height)
+local TagBinder = require(gameRoot.Shared.Binders.TagBinder)
+local TileMaterial = require(gameRoot.Shared.Game.Render.TileMaterial)
+local TreeComponent = require(gameRoot.Shared.Features.worldGeneration.classes.WorldGeneration.Tree)
+local WorldGenerationColor = require(gameRoot.Shared.Features.worldGeneration.modules.WorldGenerationColor)
 
 local ProceduralTree = {}
 ProceduralTree.__index = ProceduralTree
@@ -299,7 +300,7 @@ local function sanitizeString(valueRaw: any, fallback: string): string
 end
 
 local function resolveConfig(configRaw: ProceduralTreeConfig?): ResolvedProceduralTreeConfig
-	local source = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else ({} :: any)
+	local source = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else {} :: any
 
 	local minBranches = clampInteger(source.MinBranchesPerNode, 0, 6, DEFAULT_CONFIG.MinBranchesPerNode)
 	local maxBranches = clampInteger(source.MaxBranchesPerNode, minBranches, 8, DEFAULT_CONFIG.MaxBranchesPerNode)
@@ -753,7 +754,7 @@ function ProceduralTree.CreateBranchPart(self: ProceduralTree, descriptor: Branc
 	end
 
 	local midpoint = worldStart + direction * 0.5
-	local part = TreeComponent.CreateBranchPart(({
+	local part = TreeComponent.CreateBranchPart({
 		name = if descriptor.parentIndex == 0
 			then "Trunk"
 			else ("Branch_%d_%d"):format(descriptor.depth, descriptor.index),
@@ -765,13 +766,13 @@ function ProceduralTree.CreateBranchPart(self: ProceduralTree, descriptor: Branc
 		canCollide = self.config.BranchCanCollide,
 		canTouch = self.config.BranchCanCollide,
 		canQuery = self.config.BranchCanCollide,
-		attributes = ({
+		attributes = {
 			[TREE_NODE_TYPE_ATTRIBUTE] = if descriptor.parentIndex == 0 then "Trunk" else "Branch",
 			[TREE_NODE_INDEX_ATTRIBUTE] = descriptor.index :: any,
 			[TREE_PARENT_INDEX_ATTRIBUTE] = descriptor.parentIndex :: any,
 			[TREE_DEPTH_ATTRIBUTE] = descriptor.depth :: any,
-		} :: any),
-	} :: any))
+		} :: any,
+	} :: any)
 	if self.config.BranchMaterial == Enum.Material.Wood then
 		TileMaterial.ApplyWoodMaterial(part)
 	else
@@ -784,7 +785,7 @@ end
 function ProceduralTree.CreateLeafPart(self: ProceduralTree, descriptor: LeafDescriptor, baseCFrame: CFrame): Part
 	local worldPosition = baseCFrame:PointToWorldSpace(descriptor.position)
 	local baseRotation = baseCFrame - baseCFrame.Position
-	local part = TreeComponent.CreateLeafPart(({
+	local part = TreeComponent.CreateLeafPart({
 		name = "Leaf",
 		size = descriptor.size,
 		cframe = CFrame.new(worldPosition) * baseRotation * CFrame.Angles(
@@ -798,13 +799,13 @@ function ProceduralTree.CreateLeafPart(self: ProceduralTree, descriptor: LeafDes
 		canCollide = false,
 		canTouch = false,
 		canQuery = false,
-		attributes = ({
+		attributes = {
 			[TREE_NODE_TYPE_ATTRIBUTE] = "Leaf",
 			[TREE_NODE_INDEX_ATTRIBUTE] = descriptor.index :: any,
 			[TREE_PARENT_INDEX_ATTRIBUTE] = descriptor.parentBranchIndex :: any,
 			[TREE_DEPTH_ATTRIBUTE] = 0 :: any,
-		} :: any),
-	} :: any))
+		} :: any,
+	} :: any)
 	if self.config.LeafMaterial == DEFAULT_LEAF_MATERIAL then
 		TileMaterial.ApplyLeafMaterial(part)
 	else

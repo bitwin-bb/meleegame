@@ -1,5 +1,7 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
 export type Options = {
@@ -12,7 +14,7 @@ local function BuildAnimationMelee(sourceRaw: any, optionsRaw: any): { [string]:
 		return nil
 	end
 
-	local options = if typeof(optionsRaw) == "table" then (optionsRaw :: Options) else nil
+	local options = if typeof(optionsRaw) == "table" then optionsRaw :: Options else nil
 	local source = sourceRaw :: { [string]: any }
 	local swingPriority = if options ~= nil then options.swingPriority else nil
 	local returnNilIfEmpty = if options ~= nil then options.returnNilIfEmpty == true else false

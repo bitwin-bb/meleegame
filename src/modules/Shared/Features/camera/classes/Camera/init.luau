@@ -1,7 +1,7 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local SideView = require(script.SideView)
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local SideView = require(gameRoot.Shared.Features.camera.classes.Camera.SideView)
 
 local Camera = {}
 Camera.__index = Camera

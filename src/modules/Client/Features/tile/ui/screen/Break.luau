@@ -1,13 +1,16 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local PortalTargets = require(script:FindFirstAncestor("game").Client.UI.core.utils.PortalTargets)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local PortalTargets = require(gameRoot.Client.UI.core.utils.PortalTargets)
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 
-local BreakComponent = require(script.Parent.Parent.components.BreakSurface)
-local tileSlice = require(script.Parent.Parent.state.tileSlice)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local BreakComponent = require(gameRoot.Client.Features.tile.ui.components.BreakSurface)
+local tileSlice = require(gameRoot.Client.Features.tile.ui.state.tileSlice)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
 
 type BreakState = tileSlice.BreakState
 type ShinySpeckState = tileSlice.ShinySpeckState

@@ -1,9 +1,13 @@
 --!strict
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local PlayerDataServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).PlayerDataService
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
+local Players = game:GetService("Players")
+
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local PlayerDataServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).PlayerDataService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = PlayerDataServicePackets[methodName]
@@ -46,15 +50,11 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local Signal = require(ReplicatedStorage.Packages.Signal)
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local DataTemplate = require(script:FindFirstAncestor("game").Shared.Core.DataTemplate)
-local PlayerDataServiceUtils =
-	require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceUtils)
-local loader = (require :: any)(loaderUtils.Parent).load(script)
-local Promise = loader("Promise")
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local DataTemplate = require(gameRoot.Shared.Core.DataTemplate)
+local PlayerDataServiceUtils = require(gameRoot.Shared.Features.playerData.PlayerDataServiceUtils)
+local Promise = require(quentyPackages.promise.Shared.Promise)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
 local SERVER_PACKAGE_LOAD_TIMEOUT_SECONDS = 10
 

@@ -1,8 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local ScreenLayer = require(script.Parent.Parent.core.primitives.ScreenLayer)
+local ScreenLayer = require(gameRoot.Client.UI.core.primitives.ScreenLayer)
 
 export type LayerProps = {
 	layoutOrder: number?,
@@ -17,7 +19,7 @@ export type LayerProps = {
 local DEFAULT_Z_INDEX = 1
 
 return function(props: LayerProps): React.ReactNode
-	local native = if props.native ~= nil then table.clone(props.native) else ({} :: any)
+	local native = if props.native ~= nil then table.clone(props.native) else {} :: any
 	if props.name ~= nil then
 		native.Name = props.name
 	end

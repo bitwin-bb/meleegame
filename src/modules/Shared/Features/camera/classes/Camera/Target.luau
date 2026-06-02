@@ -1,9 +1,10 @@
 --!strict
 
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 
-local BossServiceClient = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceClient)
+local Players = game:GetService("Players")
+
+local BossServiceClient = require(gameRoot.Shared.Features.npc.BossServiceClient)
 
 local Target = {}
 Target.__index = Target
@@ -152,7 +153,7 @@ local function resolveBossSnapshotByRuntimeId(runtimeIdRaw: any): any?
 end
 
 local function resolveBossSnapshotByFilters(filtersRaw: any): any?
-	local filters = if typeof(filtersRaw) == "table" then filtersRaw else ({} :: any)
+	local filters = if typeof(filtersRaw) == "table" then filtersRaw else {} :: any
 	local state = getBossState()
 	if
 		typeof(state) ~= "table"
@@ -189,7 +190,7 @@ local function resolveBossSnapshotByFilters(filtersRaw: any): any?
 end
 
 local function resolveBossSnapshot(sourceRaw: any): any?
-	local source = if typeof(sourceRaw) == "table" then sourceRaw else ({} :: any)
+	local source = if typeof(sourceRaw) == "table" then sourceRaw else {} :: any
 	local runtimeId = trim((source :: any).runtimeId)
 	if runtimeId ~= "" then
 		return resolveBossSnapshotByRuntimeId(runtimeId)
@@ -203,7 +204,7 @@ local function createBossTarget(sourceRaw: any, snapshotRaw: any): ResolvedTarge
 		return nil
 	end
 
-	local motion = if typeof((snapshot :: any).motion) == "table" then (snapshot :: any).motion else ({} :: any)
+	local motion = if typeof((snapshot :: any).motion) == "table" then (snapshot :: any).motion else {} :: any
 	local position = if typeof((motion :: any).position) == "Vector3"
 		then (motion :: any).position
 		else (snapshot :: any).position
@@ -238,7 +239,7 @@ local function createBossTarget(sourceRaw: any, snapshotRaw: any): ResolvedTarge
 end
 
 function Target.New(optionsRaw: any?): Target
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 
 	return setmetatable({
 		localPlayer = if typeof((options :: any).localPlayer) == "Instance"
@@ -336,9 +337,7 @@ function Target.ResolveAny(self: Target, sourceRaw: any, kindFallback: string?):
 			if attachmentParent == nil then
 				return nil
 			end
-			local parentPart = if attachmentParent:IsA("BasePart")
-				then attachmentParent
-				else nil
+			local parentPart = if attachmentParent:IsA("BasePart") then attachmentParent else nil
 			return createResolvedTarget(
 				kindFallback or "Attachment",
 				sourceRaw.WorldPosition,
@@ -495,7 +494,7 @@ function Target.ResolveCharacterTarget(self: Target, characterRaw: any?): Resolv
 end
 
 function Target.Resolve(self: Target, optionsRaw: any?): ResolvedTarget?
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 	if self.temporaryOverrideExpiresAt ~= nil and os.clock() >= self.temporaryOverrideExpiresAt then
 		self:clearTemporaryOverride()
 	end

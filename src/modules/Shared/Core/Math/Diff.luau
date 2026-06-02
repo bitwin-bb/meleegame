@@ -48,7 +48,13 @@ function Diff.Gradient2(sample: (number, number) -> number, x: number, y: number
 	return Vector2.new(dx, dy)
 end
 
-function Diff.Gradient3(sample: (number, number, number) -> number, x: number, y: number, z: number, step: number?): Vector3
+function Diff.Gradient3(
+	sample: (number, number, number) -> number,
+	x: number,
+	y: number,
+	z: number,
+	step: number?
+): Vector3
 	local h = math.max(math.abs(step or 1e-3), 1e-8)
 	local dx = (sample(x + h, y, z) - sample(x - h, y, z)) / (2 * h)
 	local dy = (sample(x, y + h, z) - sample(x, y - h, z)) / (2 * h)

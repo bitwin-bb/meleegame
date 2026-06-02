@@ -1,5 +1,7 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local RunService = game:GetService("RunService")
 
 local React = require(ReplicatedStorage.Packages.React)
@@ -33,10 +35,8 @@ end
 local function useSlotSelect(options: SlotSelectOptions?): number
 	local enabled = if options and options.enabled ~= nil then options.enabled else false
 	local normalScale = sanitizeScale(if options then options.normalScale else nil, DEFAULT_NORMAL_SCALE)
-	local selectedScale = math.max(
-		normalScale,
-		sanitizeScale(if options then options.selectedScale else nil, DEFAULT_SELECTED_SCALE)
-	)
+	local selectedScale =
+		math.max(normalScale, sanitizeScale(if options then options.selectedScale else nil, DEFAULT_SELECTED_SCALE))
 	local spring = if options and options.spring ~= nil then options.spring else DEFAULT_SPRING
 	local targetRef = React.useRef(if enabled then 1 else 0)
 	local progress, setProgress = React.useState(targetRef.current)

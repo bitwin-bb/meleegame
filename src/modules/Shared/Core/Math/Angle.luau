@@ -1,8 +1,11 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 -- Angle wrapping, shortest deltas, and signed-angle helpers.
 
-local Num = require(script.Parent.Num)
-local Trig = require(script.Parent.Trig)
+local Num = require(gameRoot.Shared.Core.Math.Num)
+local Trig = require(gameRoot.Shared.Core.Math.Trig)
 
 local Angle = {}
 

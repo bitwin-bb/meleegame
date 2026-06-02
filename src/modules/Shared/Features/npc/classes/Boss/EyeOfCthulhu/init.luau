@@ -1,12 +1,14 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local BossBase = require(script.Parent)
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local EyeOfCthulhuConfig = require(script.Config)
-local EyeOfCthulhuMotion = require(script.Motion)
-local Servant = require(script:FindFirstAncestor("game").Shared.Features.npc.npc.Servant)
+local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
+local EyeOfCthulhuConfig = require(gameRoot.Shared.Features.npc.classes.Boss.EyeOfCthulhu.Config)
+local EyeOfCthulhuMotion = require(gameRoot.Shared.Features.npc.classes.Boss.EyeOfCthulhu.Motion)
+local Servant = require(gameRoot.Shared.Features.npc.npc.Servant)
 
 type Boss = BossBase.Boss
 type BossRegistryEntry = BossServiceUtils.BossRegistryEntry
@@ -449,7 +451,8 @@ function EyeOfCthulhuController.AfterSpawn(self: EyeOfCthulhuController)
 	self:incrementPresentationToken("roarPulseToken")
 end
 
-function EyeOfCthulhuController.OnStateChanged(self: EyeOfCthulhuController, 
+function EyeOfCthulhuController.OnStateChanged(
+	self: EyeOfCthulhuController,
 	nextState: BossServiceUtils.BossEncounterState,
 	previousState: BossServiceUtils.BossEncounterState,
 	_reason: string
@@ -566,7 +569,12 @@ function EyeOfCthulhuController.OnStateChanged(self: EyeOfCthulhuController,
 	end
 end
 
-function EyeOfCthulhuController.OnDamageTaken(self: EyeOfCthulhuController, _damage: number, sourceRaw: any?, _hp: number)
+function EyeOfCthulhuController.OnDamageTaken(
+	self: EyeOfCthulhuController,
+	_damage: number,
+	sourceRaw: any?,
+	_hp: number
+)
 	if typeof(sourceRaw) == "Instance" and sourceRaw:IsA("Player") then
 		self:setTarget(sourceRaw)
 	end
@@ -1099,4 +1107,3 @@ EyeOfCthulhuController.onStep = EyeOfCthulhuController.OnStep
 EyeOfCthulhuController.destroy = EyeOfCthulhuController.Destroy
 
 return EyeOfCthulhuController
-

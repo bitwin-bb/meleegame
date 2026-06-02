@@ -1,18 +1,22 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local BreathMeter = require(script:FindFirstAncestor("game").Shared.Features.breath.ui.components.BreathMeter)
-local BreathServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.breath.BreathServiceUtils)
+local BreathMeter = require(gameRoot.Shared.Features.breath.ui.components.BreathMeter)
+local BreathServiceUtils = require(gameRoot.Shared.Features.breath.BreathServiceUtils)
 local React = require(ReplicatedStorage.Packages.React)
-local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
-local UiSound = require(script:FindFirstAncestor("game").Client.UI.core.utils.UiSound)
-local breathSlice = require(script:FindFirstAncestor("game").Shared.Features.breath.ui.state.breathSlice)
-local breathThunks = require(script:FindFirstAncestor("game").Shared.Features.breath.ui.state.breathThunks)
-local infoThunks = require(script:FindFirstAncestor("game").Client.Features.info.ui.state.infoThunks)
-local useBubbleDeplete = require(script:FindFirstAncestor("game").Shared.Features.breath.ui.hooks.useBubbleDeplete)
-local useHover = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useHover)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local Responsive = require(gameRoot.Client.UI.core.hooks.useViewportScale)
+local UiSound = require(gameRoot.Client.UI.core.utils.UiSound)
+local breathSlice = require(gameRoot.Shared.Features.breath.ui.state.breathSlice)
+local breathThunks = require(gameRoot.Shared.Features.breath.ui.state.breathThunks)
+local infoThunks = require(gameRoot.Client.Features.info.ui.state.infoThunks)
+local useBubbleDeplete = require(gameRoot.Shared.Features.breath.ui.hooks.useBubbleDeplete)
+local useHover = require(gameRoot.Client.UI.core.hooks.useHover)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
 
 type BreathServiceState = BreathServiceUtils.BreathServiceState
 
@@ -133,7 +137,7 @@ return function(props: BubblesScreenProps)
 			id = hoverId,
 			text = hoverText,
 		})
-	end, ({ bubblesHover.hovered, hoverText } :: { any }))
+	end, { bubblesHover.hovered, hoverText } :: { any })
 
 	React.useEffect(function()
 		return function()

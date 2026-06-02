@@ -1,6 +1,8 @@
 --!strict
-local HttpService = game:GetService("HttpService")
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local HttpService = game:GetService("HttpService")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local RunService = game:GetService("RunService")
@@ -166,7 +168,7 @@ function NotificationBus.New(configRaw: NotificationConfig): NotificationBus
 			else defaultFormatPayload,
 		createItem = if typeof(configRaw.createItem) == "function" then configRaw.createItem else defaultCreateItem,
 		resetItem = if typeof(configRaw.resetItem) == "function" then configRaw.resetItem else defaultResetItem,
-		subscriptions = if typeof(configRaw.subscriptions) == "table" then configRaw.subscriptions else ({} :: any),
+		subscriptions = if typeof(configRaw.subscriptions) == "table" then configRaw.subscriptions else {} :: any,
 		active = {} :: { any },
 		activeByMergeKey = {} :: { [string]: any },
 		queue = {} :: { any },
@@ -374,7 +376,7 @@ function NotificationBus.Notify(self: NotificationBus, keyRaw: any, payloadRaw: 
 	if typeof(keyRaw) ~= "string" or keyRaw == "" then
 		return false
 	end
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local payload = self.sanitizePayload(payloadRaw)
 	local priority = clampInteger(config.priority, 0, -1000000, 1000000)
 	local duration = clampNumber(config.duration, self.defaultDuration, 0.1, 60)

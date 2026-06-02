@@ -1,21 +1,22 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local BossServiceClient = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceClient)
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
-local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.GamepadPointer)
-local NpcServiceClient = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceClient)
-local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceUtils)
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
-local entityInfoSlice = require(script:FindFirstAncestor("game").Client.Features.entity.ui.state.entityInfoSlice)
+local BossServiceClient = require(gameRoot.Shared.Features.npc.BossServiceClient)
+local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
+local ConnectionUtils = require(gameRoot.Client.UI.core.utils.ConnectionUtils)
+local CoreRuntime = require(gameRoot.Shared.Core.Runtime)
+local GamepadPointer = require(gameRoot.Shared.Features.platform.modules.GamepadPointer)
+local NpcServiceClient = require(gameRoot.Shared.Features.npc.NpcServiceClient)
+local NpcServiceUtils = require(gameRoot.Shared.Features.npc.NpcServiceUtils)
+local PlatformServiceClient = require(gameRoot.Shared.Features.platform.PlatformServiceClient)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
+local entityInfoSlice = require(gameRoot.Client.Features.entity.ui.state.entityInfoSlice)
 
 type EntityInfoState = entityInfoSlice.EntityInfoState
 type BossSnapshot = BossServiceUtils.BossSnapshot

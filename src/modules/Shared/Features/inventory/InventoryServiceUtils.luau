@@ -3,7 +3,13 @@ local InventoryServiceUtils = {}
 
 export type InventoryLoadState = string
 export type InventoryItemMetadata = { [string]: any }
-export type InventoryItemStack = { stackId: string, itemId: string, amount: number, maxStack: number, metadata: InventoryItemMetadata? }
+export type InventoryItemStack = {
+	stackId: string,
+	itemId: string,
+	amount: number,
+	maxStack: number,
+	metadata: InventoryItemMetadata?,
+}
 export type InventorySlot = { index: number, stack: InventoryItemStack? }
 export type InventoryState = {
 	capacity: number,
@@ -14,8 +20,20 @@ export type InventoryState = {
 	loadState: InventoryLoadState,
 	updatedAt: number,
 }
-export type AddItemResult = { requested: number, added: number, leftover: number, changed: boolean, touchedSlots: { number } }
-export type RemoveItemResult = { requested: number, removed: number, leftover: number, changed: boolean, touchedSlots: { number } }
+export type AddItemResult = {
+	requested: number,
+	added: number,
+	leftover: number,
+	changed: boolean,
+	touchedSlots: { number },
+}
+export type RemoveItemResult = {
+	requested: number,
+	removed: number,
+	leftover: number,
+	changed: boolean,
+	touchedSlots: { number },
+}
 export type SlotMutationResult = {
 	changed: boolean,
 	touchedSlots: { number },
@@ -140,7 +158,12 @@ local function sanitizeMetadata(metadataRaw: any): InventoryItemMetadata?
 end
 
 local function normalizeLoadState(loadStateRaw: any, fallback: InventoryLoadState?): InventoryLoadState
-	if loadStateRaw == LOAD_STATE_UNLOADED or loadStateRaw == LOAD_STATE_LOADING or loadStateRaw == LOAD_STATE_LOADED or loadStateRaw == LOAD_STATE_FAILED then
+	if
+		loadStateRaw == LOAD_STATE_UNLOADED
+		or loadStateRaw == LOAD_STATE_LOADING
+		or loadStateRaw == LOAD_STATE_LOADED
+		or loadStateRaw == LOAD_STATE_FAILED
+	then
 		return loadStateRaw
 	end
 	return fallback or LOAD_STATE_UNLOADED
@@ -180,7 +203,9 @@ local function normalizeItemId(itemIdRaw: any, fallback: string?): string?
 end
 
 local function normalizeUpdatedAt(updatedAtRaw: any, fallback: number?): number
-	local value = if typeof(updatedAtRaw) == "number" and updatedAtRaw == updatedAtRaw then updatedAtRaw else fallback or 0
+	local value = if typeof(updatedAtRaw) == "number" and updatedAtRaw == updatedAtRaw
+		then updatedAtRaw
+		else fallback or 0
 	return math.max(0, math.floor(value))
 end
 
@@ -213,7 +238,8 @@ local function normalizeStack(stackRaw: any, fallbackStackIdRaw: any): Inventory
 	end
 	local amount = sanitizeInteger(stackTable.amount, 1, MIN_STACK, MAX_STACK)
 	local maxStack = sanitizeInteger(stackTable.maxStack, math.max(DEFAULT_MAX_STACK, amount), MIN_STACK, MAX_STACK)
-	local fallbackStackId = sanitizeString(fallbackStackIdRaw, ("stack_%s"):format(itemId)) or ("stack_%s"):format(itemId)
+	local fallbackStackId = sanitizeString(fallbackStackIdRaw, ("stack_%s"):format(itemId))
+		or ("stack_%s"):format(itemId)
 	return {
 		stackId = sanitizeString(stackTable.stackId, fallbackStackId) or fallbackStackId,
 		itemId = itemId,
@@ -276,7 +302,11 @@ local function refreshStateDerived(state: InventoryState, updateTimestamp: boole
 	end
 end
 
-local function metadataMatches(stackMetadata: InventoryItemMetadata?, metadataRaw: any, requireExactMetadata: boolean): boolean
+local function metadataMatches(
+	stackMetadata: InventoryItemMetadata?,
+	metadataRaw: any,
+	requireExactMetadata: boolean
+): boolean
 	if metadataRaw == nil then
 		return (not requireExactMetadata) or stackMetadata == nil
 	end
@@ -392,11 +422,25 @@ function InventoryServiceUtils.SanitizeCapacity(capacityRaw: any, fallbackRaw: a
 end
 
 function InventoryServiceUtils.SanitizeSlotIndex(slotIndexRaw: any, stateOrCapacityRaw: any, fallbackRaw: any?): number?
-	return normalizeSlotIndex(slotIndexRaw, resolveCapacity(stateOrCapacityRaw), if typeof(fallbackRaw) == "number" then math.floor(fallbackRaw) else nil)
+	return normalizeSlotIndex(
+		slotIndexRaw,
+		resolveCapacity(stateOrCapacityRaw),
+		if typeof(fallbackRaw) == "number" then math.floor(fallbackRaw) else nil
+	)
 end
 
-function InventoryServiceUtils.SanitizeAmount(amountRaw: any, fallbackRaw: any, minimumRaw: any?, maximumRaw: any?): number
-	return sanitizeInteger(amountRaw, if typeof(fallbackRaw) == "number" then math.floor(fallbackRaw) else 0, if typeof(minimumRaw) == "number" then math.floor(minimumRaw) else 0, if typeof(maximumRaw) == "number" then math.floor(maximumRaw) else nil)
+function InventoryServiceUtils.SanitizeAmount(
+	amountRaw: any,
+	fallbackRaw: any,
+	minimumRaw: any?,
+	maximumRaw: any?
+): number
+	return sanitizeInteger(
+		amountRaw,
+		if typeof(fallbackRaw) == "number" then math.floor(fallbackRaw) else 0,
+		if typeof(minimumRaw) == "number" then math.floor(minimumRaw) else 0,
+		if typeof(maximumRaw) == "number" then math.floor(maximumRaw) else nil
+	)
 end
 
 function InventoryServiceUtils.SanitizeStack(stackRaw: any, fallbackStackIdRaw: any): InventoryItemStack?
@@ -428,8 +472,10 @@ function InventoryServiceUtils.CreateDefaultState(loadStateRaw: any): InventoryS
 end
 
 function InventoryServiceUtils.CreateState(stateRaw: any, fallbackStateRaw: any): InventoryState
-	local fallback = if typeof(fallbackStateRaw) == "table" then (fallbackStateRaw :: InventoryState) else InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)
-	local source = if typeof(stateRaw) == "table" then (stateRaw :: { [string]: any }) else ({} :: any)
+	local fallback = if typeof(fallbackStateRaw) == "table"
+		then fallbackStateRaw :: InventoryState
+		else InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)
+	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {} :: any
 	local state: InventoryState = {
 		capacity = normalizeCapacity(source.capacity, fallback.capacity),
 		slots = normalizeSlots(source.slots, normalizeCapacity(source.capacity, fallback.capacity)),
@@ -444,9 +490,15 @@ function InventoryServiceUtils.CreateState(stateRaw: any, fallbackStateRaw: any)
 	return state
 end
 
-function InventoryServiceUtils.CreateStateFromData(dataRaw: any, fallbackStateRaw: any, loadStateRaw: any): InventoryState
-	local fallback = if typeof(fallbackStateRaw) == "table" then (fallbackStateRaw :: InventoryState) else InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)
-	local dataTable = if typeof(dataRaw) == "table" then (dataRaw :: { [string]: any }) else ({} :: any)
+function InventoryServiceUtils.CreateStateFromData(
+	dataRaw: any,
+	fallbackStateRaw: any,
+	loadStateRaw: any
+): InventoryState
+	local fallback = if typeof(fallbackStateRaw) == "table"
+		then fallbackStateRaw :: InventoryState
+		else InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)
+	local dataTable = if typeof(dataRaw) == "table" then dataRaw :: { [string]: any } else {} :: any
 	local slotsRaw = if typeof(dataTable.slots) == "table" then dataTable.slots else dataTable.items
 	local state = InventoryServiceUtils.CreateState({
 		capacity = dataTable.capacity,
@@ -464,7 +516,12 @@ function InventoryServiceUtils.SanitizeState(stateRaw: any, fallbackStateRaw: an
 end
 
 function InventoryServiceUtils.CloneState(stateRaw: any): InventoryState
-	local state = if typeof(stateRaw) == "table" then InventoryServiceUtils.SanitizeState(stateRaw, InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)) else InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)
+	local state = if typeof(stateRaw) == "table"
+		then InventoryServiceUtils.SanitizeState(
+			stateRaw,
+			InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)
+		)
+		else InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)
 	local slots = table.create(#state.slots)
 	for index, slot in state.slots do
 		slots[index] = { index = slot.index, stack = if slot.stack ~= nil then cloneStack(slot.stack) else nil }
@@ -481,7 +538,12 @@ function InventoryServiceUtils.CloneState(stateRaw: any): InventoryState
 end
 
 function InventoryServiceUtils.SerializeStateForData(stateRaw: any): { [string]: any }
-	local state = if typeof(stateRaw) == "table" then InventoryServiceUtils.SanitizeState(stateRaw, InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)) else InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)
+	local state = if typeof(stateRaw) == "table"
+		then InventoryServiceUtils.SanitizeState(
+			stateRaw,
+			InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)
+		)
+		else InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)
 	local slots = {}
 	for _, slot in state.slots do
 		if slot.stack ~= nil then
@@ -503,7 +565,12 @@ function InventoryServiceUtils.SerializeStateForData(stateRaw: any): { [string]:
 end
 
 function InventoryServiceUtils.HashState(stateRaw: any): string
-	local state = if typeof(stateRaw) == "table" then InventoryServiceUtils.SanitizeState(stateRaw, InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)) else InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)
+	local state = if typeof(stateRaw) == "table"
+		then InventoryServiceUtils.SanitizeState(
+			stateRaw,
+			InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)
+		)
+		else InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)
 	return stableSerialize({
 		loadState = state.loadState,
 		updatedAt = state.updatedAt,
@@ -565,7 +632,14 @@ function InventoryServiceUtils.Clear(state: InventoryState): boolean
 	return changed
 end
 
-function InventoryServiceUtils.AddItem(state: InventoryState, itemIdRaw: any, amountRaw: any, maxStackRaw: any, metadataRaw: any, stackIdPrefixRaw: any): AddItemResult
+function InventoryServiceUtils.AddItem(
+	state: InventoryState,
+	itemIdRaw: any,
+	amountRaw: any,
+	maxStackRaw: any,
+	metadataRaw: any,
+	stackIdPrefixRaw: any
+): AddItemResult
 	local itemId = normalizeItemId(itemIdRaw, nil)
 	local requested = sanitizeInteger(amountRaw, 0, 0, MAX_STACK * state.capacity)
 	local maxStack = sanitizeInteger(maxStackRaw, DEFAULT_MAX_STACK, MIN_STACK, MAX_STACK)
@@ -620,7 +694,13 @@ function InventoryServiceUtils.AddItem(state: InventoryState, itemIdRaw: any, am
 	return result
 end
 
-function InventoryServiceUtils.RemoveItem(state: InventoryState, itemIdRaw: any, amountRaw: any, metadataRaw: any, requireExactMetadataRaw: any): RemoveItemResult
+function InventoryServiceUtils.RemoveItem(
+	state: InventoryState,
+	itemIdRaw: any,
+	amountRaw: any,
+	metadataRaw: any,
+	requireExactMetadataRaw: any
+): RemoveItemResult
 	local itemId = normalizeItemId(itemIdRaw, nil)
 	local requested = sanitizeInteger(amountRaw, 0, 0, MAX_STACK * state.capacity)
 	local result = emptyRemoveResult(requested)
@@ -635,7 +715,11 @@ function InventoryServiceUtils.RemoveItem(state: InventoryState, itemIdRaw: any,
 		end
 		local slot = state.slots[index]
 		local stack = slot.stack
-		if stack == nil or stack.itemId ~= itemId or not metadataMatches(stack.metadata, metadataRaw, requireExactMetadata) then
+		if
+			stack == nil
+			or stack.itemId ~= itemId
+			or not metadataMatches(stack.metadata, metadataRaw, requireExactMetadata)
+		then
 			continue
 		end
 		local removed = math.min(remaining, stack.amount)
@@ -655,7 +739,11 @@ function InventoryServiceUtils.RemoveItem(state: InventoryState, itemIdRaw: any,
 	return result
 end
 
-function InventoryServiceUtils.RemoveFromSlot(state: InventoryState, slotIndexRaw: any, amountRaw: any): SlotMutationResult
+function InventoryServiceUtils.RemoveFromSlot(
+	state: InventoryState,
+	slotIndexRaw: any,
+	amountRaw: any
+): SlotMutationResult
 	local slot = InventoryServiceUtils.GetSlot(state, slotIndexRaw)
 	if slot == nil or slot.stack == nil then
 		return emptySlotMutation(nil, nil)
@@ -669,14 +757,27 @@ function InventoryServiceUtils.RemoveFromSlot(state: InventoryState, slotIndexRa
 		slot.stack = nil
 	end
 	refreshStateDerived(state, true)
-	return { changed = true, touchedSlots = { slot.index }, fromSlot = slot.index, toSlot = nil, movedAmount = 0, removedAmount = amount, swapped = false }
+	return {
+		changed = true,
+		touchedSlots = { slot.index },
+		fromSlot = slot.index,
+		toSlot = nil,
+		movedAmount = 0,
+		removedAmount = amount,
+		swapped = false,
+	}
 end
 
 function InventoryServiceUtils.TrashSlot(state: InventoryState, slotIndexRaw: any, amountRaw: any): SlotMutationResult
 	return InventoryServiceUtils.RemoveFromSlot(state, slotIndexRaw, amountRaw)
 end
 
-function InventoryServiceUtils.MoveSlot(state: InventoryState, fromSlotRaw: any, toSlotRaw: any, amountRaw: any): SlotMutationResult
+function InventoryServiceUtils.MoveSlot(
+	state: InventoryState,
+	fromSlotRaw: any,
+	toSlotRaw: any,
+	amountRaw: any
+): SlotMutationResult
 	local fromSlot = InventoryServiceUtils.GetSlot(state, fromSlotRaw)
 	local toSlot = InventoryServiceUtils.GetSlot(state, toSlotRaw)
 	if fromSlot == nil or toSlot == nil then
@@ -686,7 +787,9 @@ function InventoryServiceUtils.MoveSlot(state: InventoryState, fromSlotRaw: any,
 		return emptySlotMutation(fromSlot.index, toSlot.index)
 	end
 	local sourceStack = fromSlot.stack
-	local requestedAmount = if amountRaw == nil then sourceStack.amount else sanitizeInteger(amountRaw, 0, 0, sourceStack.amount)
+	local requestedAmount = if amountRaw == nil
+		then sourceStack.amount
+		else sanitizeInteger(amountRaw, 0, 0, sourceStack.amount)
 	if requestedAmount <= 0 then
 		return emptySlotMutation(fromSlot.index, toSlot.index)
 	end
@@ -696,15 +799,32 @@ function InventoryServiceUtils.MoveSlot(state: InventoryState, fromSlotRaw: any,
 			toSlot.stack = sourceStack
 			fromSlot.stack = nil
 			refreshStateDerived(state, true)
-			return { changed = true, touchedSlots = { fromSlot.index, toSlot.index }, fromSlot = fromSlot.index, toSlot = toSlot.index, movedAmount = sourceStack.amount, removedAmount = 0, swapped = false }
+			return {
+				changed = true,
+				touchedSlots = { fromSlot.index, toSlot.index },
+				fromSlot = fromSlot.index,
+				toSlot = toSlot.index,
+				movedAmount = sourceStack.amount,
+				removedAmount = 0,
+				swapped = false,
+			}
 		end
 		sourceStack.amount -= requestedAmount
 		local movedStack = cloneStack(sourceStack)
 		movedStack.amount = requestedAmount
-		movedStack.stackId = nextStackId(state, sourceStack.stackId .. "_move_" .. tostring(toSlot.index), sourceStack.itemId)
+		movedStack.stackId =
+			nextStackId(state, sourceStack.stackId .. "_move_" .. tostring(toSlot.index), sourceStack.itemId)
 		toSlot.stack = movedStack
 		refreshStateDerived(state, true)
-		return { changed = true, touchedSlots = { fromSlot.index, toSlot.index }, fromSlot = fromSlot.index, toSlot = toSlot.index, movedAmount = requestedAmount, removedAmount = 0, swapped = false }
+		return {
+			changed = true,
+			touchedSlots = { fromSlot.index, toSlot.index },
+			fromSlot = fromSlot.index,
+			toSlot = toSlot.index,
+			movedAmount = requestedAmount,
+			removedAmount = 0,
+			swapped = false,
+		}
 	end
 	if sourceStack.itemId == targetStack.itemId and deepEqual(sourceStack.metadata, targetStack.metadata) then
 		local room = math.max(0, targetStack.maxStack - targetStack.amount)
@@ -718,7 +838,15 @@ function InventoryServiceUtils.MoveSlot(state: InventoryState, fromSlotRaw: any,
 			fromSlot.stack = nil
 		end
 		refreshStateDerived(state, true)
-		return { changed = true, touchedSlots = { fromSlot.index, toSlot.index }, fromSlot = fromSlot.index, toSlot = toSlot.index, movedAmount = movedAmount, removedAmount = 0, swapped = false }
+		return {
+			changed = true,
+			touchedSlots = { fromSlot.index, toSlot.index },
+			fromSlot = fromSlot.index,
+			toSlot = toSlot.index,
+			movedAmount = movedAmount,
+			removedAmount = 0,
+			swapped = false,
+		}
 	end
 	if requestedAmount < sourceStack.amount then
 		return emptySlotMutation(fromSlot.index, toSlot.index)
@@ -726,10 +854,23 @@ function InventoryServiceUtils.MoveSlot(state: InventoryState, fromSlotRaw: any,
 	fromSlot.stack = targetStack
 	toSlot.stack = sourceStack
 	refreshStateDerived(state, true)
-	return { changed = true, touchedSlots = { fromSlot.index, toSlot.index }, fromSlot = fromSlot.index, toSlot = toSlot.index, movedAmount = sourceStack.amount, removedAmount = 0, swapped = true }
+	return {
+		changed = true,
+		touchedSlots = { fromSlot.index, toSlot.index },
+		fromSlot = fromSlot.index,
+		toSlot = toSlot.index,
+		movedAmount = sourceStack.amount,
+		removedAmount = 0,
+		swapped = true,
+	}
 end
 
-function InventoryServiceUtils.SplitSlot(state: InventoryState, fromSlotRaw: any, toSlotRaw: any, amountRaw: any): SlotMutationResult
+function InventoryServiceUtils.SplitSlot(
+	state: InventoryState,
+	fromSlotRaw: any,
+	toSlotRaw: any,
+	amountRaw: any
+): SlotMutationResult
 	local fromSlot = InventoryServiceUtils.GetSlot(state, fromSlotRaw)
 	local toSlot = InventoryServiceUtils.GetSlot(state, toSlotRaw)
 	if fromSlot == nil or toSlot == nil then
@@ -747,10 +888,19 @@ function InventoryServiceUtils.SplitSlot(state: InventoryState, fromSlotRaw: any
 	sourceStack.amount -= splitAmount
 	local splitStack = cloneStack(sourceStack)
 	splitStack.amount = splitAmount
-	splitStack.stackId = nextStackId(state, sourceStack.stackId .. "_split_" .. tostring(toSlot.index), sourceStack.itemId)
+	splitStack.stackId =
+		nextStackId(state, sourceStack.stackId .. "_split_" .. tostring(toSlot.index), sourceStack.itemId)
 	toSlot.stack = splitStack
 	refreshStateDerived(state, true)
-	return { changed = true, touchedSlots = { fromSlot.index, toSlot.index }, fromSlot = fromSlot.index, toSlot = toSlot.index, movedAmount = splitAmount, removedAmount = 0, swapped = false }
+	return {
+		changed = true,
+		touchedSlots = { fromSlot.index, toSlot.index },
+		fromSlot = fromSlot.index,
+		toSlot = toSlot.index,
+		movedAmount = splitAmount,
+		removedAmount = 0,
+		swapped = false,
+	}
 end
 
 function InventoryServiceUtils.ConsumeSelected(state: InventoryState, amountRaw: any): SlotMutationResult
@@ -764,7 +914,12 @@ function InventoryServiceUtils.TrashSelected(state: InventoryState, amountRaw: a
 	return InventoryServiceUtils.ConsumeSelected(state, amountRaw)
 end
 
-function InventoryServiceUtils.CountItem(state: InventoryState, itemIdRaw: any, metadataRaw: any, requireExactMetadataRaw: any): number
+function InventoryServiceUtils.CountItem(
+	state: InventoryState,
+	itemIdRaw: any,
+	metadataRaw: any,
+	requireExactMetadataRaw: any
+): number
 	local itemId = normalizeItemId(itemIdRaw, nil)
 	if itemId == nil then
 		return 0
@@ -773,7 +928,11 @@ function InventoryServiceUtils.CountItem(state: InventoryState, itemIdRaw: any, 
 	local total = 0
 	for _, slot in state.slots do
 		local stack = slot.stack
-		if stack ~= nil and stack.itemId == itemId and metadataMatches(stack.metadata, metadataRaw, requireExactMetadata) then
+		if
+			stack ~= nil
+			and stack.itemId == itemId
+			and metadataMatches(stack.metadata, metadataRaw, requireExactMetadata)
+		then
 			total += stack.amount
 		end
 	end

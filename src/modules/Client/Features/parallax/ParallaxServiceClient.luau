@@ -1,7 +1,9 @@
 --!strict
 
-local Parallax = require(script.Parent.classes.Parallax)
-local ParallaxServiceUtils = require(script.Parent.ParallaxServiceUtils)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Parallax = require(gameRoot.Client.Features.parallax.classes.Parallax)
+local ParallaxServiceUtils = require(gameRoot.Client.Features.parallax.ParallaxServiceUtils)
 
 local ParallaxServiceClient = {}
 

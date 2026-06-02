@@ -1,8 +1,11 @@
 --!strict
+
+local require = require(script.Parent.loader).load(assert(script:FindFirstAncestor("AquariaBackup"), "Missing AquariaBackup package root"))
+
 local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for TimeServer.")
 
-local WeatherServiceServer = require(gameRoot.Shared.Features.world.WeatherServiceServer)
+local WeatherServiceServer = require("WeatherServiceServer")
 
 local TIME_PRESETS = {
 	day = 8.5,

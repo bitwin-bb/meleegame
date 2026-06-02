@@ -1,32 +1,34 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
+local AttributeCache = require(gameRoot.Shared.Core.AttributeCache)
+local DeterministicRNG = require(gameRoot.Shared.Core.DeterministicRNG)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local AttributeCache = require(script:FindFirstAncestor("game").Shared.Core.AttributeCache)
-local DeterministicRNG = require(script:FindFirstAncestor("game").Shared.Core.DeterministicRNG)
-local ObjectPool = require(script:FindFirstAncestor("game").Shared.Core.ObjectPool)
-local TagQuery = require(script:FindFirstAncestor("game").Shared.Core.TagQuery)
-local TickSchedulerModule = require(script:FindFirstAncestor("game").Shared.Core.TickScheduler)
-local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
+local ObjectPool = require(gameRoot.Shared.Core.ObjectPool)
+local TagBinder = require(gameRoot.Shared.Binders.TagBinder)
+local TagQuery = require(gameRoot.Shared.Core.TagQuery)
+local TickSchedulerModule = require(gameRoot.Shared.Core.TickScheduler)
 
-local BufferPool = require(script.BufferPool)
-local DisturbanceSourceModule = require(script.DisturbanceSource)
-local FoliageUpdateManager = require(script.FoliageUpdateManager)
-local FoliageInstance = require(script.FoliageInstance)
-local LODController = require(script.LODController)
-local TreeRuntimeRegistry = require(script.TreeRuntimeRegistry)
-local WindField = require(script.WindField)
+local BufferPool = require(gameRoot.Shared.Features.world.classes.WindFoliage.BufferPool)
+local DisturbanceSourceModule = require(gameRoot.Shared.Features.world.classes.WindFoliage.DisturbanceSource)
+local FoliageInstance = require(gameRoot.Shared.Features.world.classes.WindFoliage.FoliageInstance)
+local FoliageUpdateManager = require(gameRoot.Shared.Features.world.classes.WindFoliage.FoliageUpdateManager)
+local LODController = require(gameRoot.Shared.Features.world.classes.WindFoliage.LODController)
+local TreeRuntimeRegistry = require(gameRoot.Shared.Features.world.classes.WindFoliage.TreeRuntimeRegistry)
+local WindField = require(gameRoot.Shared.Features.world.classes.WindFoliage.WindField)
 
 type WindSample = WindField.WindSample
 type DisturbanceSource = DisturbanceSourceModule.DisturbanceSource
 type FoliageObject = FoliageInstance.FoliageInstance
 
 type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (any),
+	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
 	Clean: (self: JanitorClass) -> (),
 	Destroy: (self: JanitorClass) -> (),
 }
@@ -394,7 +396,12 @@ local function resolveWorldPosition(instance: Instance): Vector3?
 	return nil
 end
 
-local function resolveWorldVelocity(instance: Instance, currentPosition: Vector3, previousPosition: Vector3, dt: number): Vector3
+local function resolveWorldVelocity(
+	instance: Instance,
+	currentPosition: Vector3,
+	previousPosition: Vector3,
+	dt: number
+): Vector3
 	if instance:IsA("BasePart") then
 		return instance.AssemblyLinearVelocity
 	end
@@ -498,7 +505,8 @@ function WindFoliage.New(configRaw: Config?): any
 		lod = lodConfig,
 		runtime = config.runtime,
 	})
-	self.updateManager = FoliageUpdateManager.new(config, self.runtimeRegistry, self.windField, self.lodController, self.bufferPool)
+	self.updateManager =
+		FoliageUpdateManager.new(config, self.runtimeRegistry, self.windField, self.lodController, self.bufferPool)
 
 	return self
 end
@@ -623,13 +631,17 @@ function WindFoliage.ShouldTrackDisturber(self: any, instance: Instance): boolea
 	return self.tagQuery:hasTag(instance, disturberTag)
 end
 
-function WindFoliage.ResolveDisturberConfig(self: any, instance: Instance, overrideConfigRaw: any, kind: string): { [string]: any }
+function WindFoliage.ResolveDisturberConfig(
+	self: any,
+	instance: Instance,
+	overrideConfigRaw: any,
+	kind: string
+): { [string]: any }
 	self.attributeCache:bind(instance)
 
-	local baseConfig =
-		if kind == "player" and typeof(self.config.playerDisturber) == "table"
-			then self.config.playerDisturber
-			else self.config.disturberDefaults
+	local baseConfig = if kind == "player" and typeof(self.config.playerDisturber) == "table"
+		then self.config.playerDisturber
+		else self.config.disturberDefaults
 	local config = mergeTables(baseConfig, overrideConfigRaw)
 
 	local radius = self.attributeCache:get(instance, ATTRIBUTES.disturbanceRadius, nil)
@@ -876,7 +888,12 @@ function WindFoliage.UpdateTrackedSource(self: any, record: TrackedDisturberReco
 	}, self.time, lifetime)
 end
 
-function WindFoliage.TrackDisturber(self: any, instanceRaw: any, overrideConfigRaw: any?, kindRaw: any?): TrackedDisturberRecord?
+function WindFoliage.TrackDisturber(
+	self: any,
+	instanceRaw: any,
+	overrideConfigRaw: any?,
+	kindRaw: any?
+): TrackedDisturberRecord?
 	if typeof(instanceRaw) ~= "Instance" then
 		return nil
 	end
@@ -888,7 +905,10 @@ function WindFoliage.TrackDisturber(self: any, instanceRaw: any, overrideConfigR
 			existing.overrideConfig = overrideConfigRaw
 		end
 		existing.kind = kind
-		self:updateTrackedSource(existing, math.max(1 / 60, clampNumber(self.config.trackedRefreshInterval, 0.08, 0.01, 10)))
+		self:updateTrackedSource(
+			existing,
+			math.max(1 / 60, clampNumber(self.config.trackedRefreshInterval, 0.08, 0.01, 10))
+		)
 		return self.trackedDisturbers[instance]
 	end
 
@@ -950,7 +970,7 @@ function WindFoliage.UntrackDisturber(self: any, instanceRaw: any)
 end
 
 function WindFoliage.AddDisturbance(self: any, paramsRaw: any): number?
-	local params = if typeof(paramsRaw) == "table" then paramsRaw else ({} :: any)
+	local params = if typeof(paramsRaw) == "table" then paramsRaw else {} :: any
 	local position = if typeof(params.position) == "Vector3" then params.position else nil
 	if position == nil then
 		return nil
@@ -1201,12 +1221,16 @@ function WindFoliage.Init(self: any)
 		end
 	end
 
-	self.schedulerToken = self.tickScheduler:scheduleFixed(function(dt)
-		self:onFixedStep(dt)
-	end, 1, {
-		group = self.schedulerGroup,
-		priority = TickSchedulerModule.Priority.LOW,
-	})
+	self.schedulerToken = self.tickScheduler:scheduleFixed(
+		function(dt)
+			self:onFixedStep(dt)
+		end,
+		1,
+		{
+			group = self.schedulerGroup,
+			priority = TickSchedulerModule.Priority.LOW,
+		}
+	)
 	janitor:GiveChore(function()
 		if self.schedulerToken ~= nil then
 			self.schedulerToken:cancel()

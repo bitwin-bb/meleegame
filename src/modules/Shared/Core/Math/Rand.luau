@@ -1,7 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 -- Stateless deterministic random helpers built around explicit seeds.
 
-local Num = require(script.Parent.Num)
+local Num = require(gameRoot.Shared.Core.Math.Num)
 
 local Rand = {}
 

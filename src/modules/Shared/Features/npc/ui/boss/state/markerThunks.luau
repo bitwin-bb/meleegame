@@ -1,11 +1,12 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BossServiceClient = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceClient)
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
-local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
-local markerSlice = require(script:FindFirstAncestor("game").Shared.Features.npc.ui.boss.state.markerSlice)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local BossServiceClient = require(gameRoot.Shared.Features.npc.BossServiceClient)
+local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
+local ConnectionUtils = require(gameRoot.Client.UI.core.utils.ConnectionUtils)
+local ServiceSync = require(gameRoot.Client.UI.core.utils.ServiceSync)
+local markerSlice = require(gameRoot.Shared.Features.npc.ui.boss.state.markerSlice)
 
 type MarkerState = BossServiceUtils.BossServiceState
 

@@ -1,7 +1,10 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ItemSlot = require(script:FindFirstAncestor("game").Client.UI.core.components.ItemSlot)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ItemSlot = require(gameRoot.Client.UI.core.components.ItemSlot)
 local React = require(ReplicatedStorage.Packages.React)
 
 export type HotbarSlotProps = {

@@ -1,17 +1,17 @@
 --!strict
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 
-local Maid = loader("Maid")
-local Observable = loader("Observable")
-local Rx = loader("Rx")
+local Maid = require(quentyPackages.maid.Shared.Maid)
+local Observable = require(quentyPackages.rx.Shared.Observable)
+local Rx = require(quentyPackages.rx.Shared.Rx)
 
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
-local GamepadNav = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.GamepadNav)
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
-local padSlice = require(script:FindFirstAncestor("game").Client.Features.pad.ui.state.padSlice)
+local CoreRuntime = require(gameRoot.Shared.Core.Runtime)
+local GamepadNav = require(gameRoot.Shared.Features.platform.modules.GamepadNav)
+local PlatformServiceClient = require(gameRoot.Shared.Features.platform.PlatformServiceClient)
+local padSlice = require(gameRoot.Client.Features.pad.ui.state.padSlice)
 
 type ObservableObject = {
 	Subscribe: (
@@ -185,8 +185,8 @@ end
 function PadNavBinder.Destroy(self)
 	if self._maid ~= nil then
 		self._maid:DoCleaning()
-		self._maid:Destroy()
-		;(self :: any)._maid = nil
+		self._maid:Destroy();
+		(self :: any)._maid = nil
 	end
 
 	self._gamepadNav = nil

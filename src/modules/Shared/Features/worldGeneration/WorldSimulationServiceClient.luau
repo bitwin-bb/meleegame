@@ -1,13 +1,17 @@
 --!strict
 
-local Players = game:GetService("Players")
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Players = game:GetService("Players")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local WorldSimulationServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).WorldSimulationService
+local CoreRuntime = require(gameRoot.Shared.Core.Runtime)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local WorldSimulationServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).WorldSimulationService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = WorldSimulationServicePackets[methodName]
@@ -52,20 +56,17 @@ local function bindPackets(self: any)
 	bindPacket(self, "submitInput")
 end
 
-local Signal = require(ReplicatedStorage.Packages.Signal)
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
-local Maid = loader("Maid")
-local Rx = loader("Rx")
+local Maid = require(quentyPackages.maid.Shared.Maid)
+local Rx = require(quentyPackages.rx.Shared.Rx)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
-local Cache = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.SimulationCache)
-local Config = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.SimulationConfig)
-local Debug = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.Debug)
-local Net = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.Net)
-local Render = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.Render)
-local Shared = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.Shared)
-local Stream = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.Stream)
+local Cache = require(gameRoot.Shared.Features.worldGeneration.simulation.SimulationCache)
+local Config = require(gameRoot.Shared.Features.worldGeneration.simulation.SimulationConfig)
+local Debug = require(gameRoot.Shared.Features.worldGeneration.simulation.Debug)
+local Net = require(gameRoot.Shared.Features.worldGeneration.simulation.Net)
+local Render = require(gameRoot.Shared.Features.worldGeneration.simulation.Render)
+local Shared = require(gameRoot.Shared.Features.worldGeneration.simulation.Shared)
+local Stream = require(gameRoot.Shared.Features.worldGeneration.simulation.Stream)
 
 type MaidClass = {
 	GiveTask: <T>(self: MaidClass, task: T) -> T,

@@ -45,11 +45,18 @@ function DisturbanceSource.Reset(source: DisturbanceSource)
 	source.trackedInstance = nil
 end
 
-function DisturbanceSource.Populate(source: DisturbanceSource, paramsRaw: any, nowRaw: any, defaultLifetimeRaw: any?): DisturbanceSource
-	local params = if typeof(paramsRaw) == "table" then paramsRaw else ({} :: any)
+function DisturbanceSource.Populate(
+	source: DisturbanceSource,
+	paramsRaw: any,
+	nowRaw: any,
+	defaultLifetimeRaw: any?
+): DisturbanceSource
+	local params = if typeof(paramsRaw) == "table" then paramsRaw else {} :: any
 	local now = if typeof(nowRaw) == "number" and nowRaw == nowRaw then nowRaw else 0
-	local defaultLifetime =
-		if typeof(defaultLifetimeRaw) == "number" and defaultLifetimeRaw == defaultLifetimeRaw then defaultLifetimeRaw else 0.2
+	local defaultLifetime = if typeof(defaultLifetimeRaw) == "number"
+			and defaultLifetimeRaw == defaultLifetimeRaw
+		then defaultLifetimeRaw
+		else 0.2
 
 	source.position = if typeof(params.position) == "Vector3" then params.position else ZERO
 	source.velocity = if typeof(params.velocity) == "Vector3" then params.velocity else ZERO
@@ -90,8 +97,9 @@ function DisturbanceSource.ComputeImpulse(source: DisturbanceSource, targetPosit
 	local away = if distance > 1e-4 then delta / distance else if speed > 1e-4 then -direction else Vector3.new(1, 0, 0)
 	local radialAlpha = 1 - math.clamp(distance / source.radius, 0, 1)
 	local falloff = radialAlpha ^ source.falloffCurve
-	local velocityBias =
-		if speed > 1e-4 then direction * (source.propagationWeight * radialAlpha * source.velocityInfluence) else ZERO
+	local velocityBias = if speed > 1e-4
+		then direction * (source.propagationWeight * radialAlpha * source.velocityInfluence)
+		else ZERO
 	local impulseDirection = away + velocityBias
 	local impulseMagnitude = source.strength * falloff * (1 + math.min(1.5, speed / math.max(1, source.radius)) * 0.35)
 

@@ -76,7 +76,10 @@ local function normalizeEventName(valueRaw: any, fallback: string): string
 end
 
 local function resolveInputType(inputTypeRaw: any): Enum.UserInputType
-	if typeof(inputTypeRaw) == "EnumItem" and string.sub((inputTypeRaw :: Enum.UserInputType).Name, 1, 7) == "Gamepad" then
+	if
+		typeof(inputTypeRaw) == "EnumItem"
+		and string.sub((inputTypeRaw :: Enum.UserInputType).Name, 1, 7) == "Gamepad"
+	then
 		return inputTypeRaw :: any
 	end
 
@@ -94,7 +97,7 @@ local function resolveInputType(inputTypeRaw: any): Enum.UserInputType
 end
 
 function Haptics.New(configRaw: HapticsConfig?): Haptics
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local self = setmetatable({
 		eventBus = config.eventBus,
 		eventChannel = normalizeEventName(config.eventChannel, "haptics"),
@@ -138,8 +141,10 @@ function Haptics.Pulse(self: Haptics, patternRaw: any, configRaw: PulseConfig?):
 		return false
 	end
 
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
-	local pattern = if typeof(patternRaw) == "table" then patternRaw else PATTERN_BY_KEY[if typeof(patternRaw) == "string" then patternRaw else "selection"]
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
+	local pattern = if typeof(patternRaw) == "table"
+		then patternRaw
+		else PATTERN_BY_KEY[if typeof(patternRaw) == "string" then patternRaw else "selection"]
 	if typeof(pattern) ~= "table" then
 		return false
 	end
@@ -147,9 +152,16 @@ function Haptics.Pulse(self: Haptics, patternRaw: any, configRaw: PulseConfig?):
 	local inputType = resolveInputType(config.inputType)
 	local intensityScale = clampNumber(config.intensityScale, 1, 0, 4)
 	local durationScale = clampNumber(config.durationScale, 1, 0, 4)
-	local large = clampNumber(config.large, if typeof(pattern.large) == "number" then pattern.large else 0.2, 0, 1) * intensityScale
-	local small = clampNumber(config.small, if typeof(pattern.small) == "number" then pattern.small else 0.2, 0, 1) * intensityScale
-	local duration = clampNumber(config.duration, if typeof(pattern.duration) == "number" then pattern.duration else 0.06, 0.01, 2) * durationScale
+	local large = clampNumber(config.large, if typeof(pattern.large) == "number" then pattern.large else 0.2, 0, 1)
+		* intensityScale
+	local small = clampNumber(config.small, if typeof(pattern.small) == "number" then pattern.small else 0.2, 0, 1)
+		* intensityScale
+	local duration = clampNumber(
+		config.duration,
+		if typeof(pattern.duration) == "number" then pattern.duration else 0.06,
+		0.01,
+		2
+	) * durationScale
 
 	self:_cancelPending(inputType)
 	self:_setMotor(inputType, Enum.VibrationMotor.Large, large)
@@ -166,12 +178,16 @@ function Haptics.Pulse(self: Haptics, patternRaw: any, configRaw: PulseConfig?):
 	end
 
 	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).schedule) == "function" then
-		local token = (self.tickScheduler :: any):schedule(function()
-			stopPulse()
-		end, duration, {
-			group = "haptics.stop",
-			priority = 250,
-		})
+		local token = (self.tickScheduler :: any):schedule(
+			function()
+				stopPulse()
+			end,
+			duration,
+			{
+				group = "haptics.stop",
+				priority = 250,
+			}
+		)
 		self.activeStopByInput[inputType.Name] = function()
 			cancelled = true
 			if typeof(token.cancel) == "function" then

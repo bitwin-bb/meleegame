@@ -161,7 +161,7 @@ function Cache.RememberSubject(
 end
 
 function Cache.StoreFrame(self: Cache, snapshotRaw: any): FrameSnapshot
-	local snapshot = if typeof(snapshotRaw) == "table" then snapshotRaw else ({} :: any)
+	local snapshot = if typeof(snapshotRaw) == "table" then snapshotRaw else {} :: any
 	self.frame += 1
 	self.lastUpdatedAt = sanitizeNumber((snapshot :: any).updatedAt, os.clock(), 0, nil)
 	self.lastDeltaTime = sanitizeNumber((snapshot :: any).deltaTime, self.lastDeltaTime, 0, 1)

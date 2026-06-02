@@ -1,13 +1,15 @@
 --!strict
 
-local Tile = require(script.Parent.Tile)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Tile = require(gameRoot.Shared.Features.worldGeneration.components.Tile)
 
 local Water = {}
 
 export type WaterPartConfig = Tile.PartConfig
 
 function Water.CreatePart(configRaw: WaterPartConfig?): Part
-	local config = table.clone(if typeof(configRaw) == "table" then configRaw :: WaterPartConfig else ({} :: any))
+	local config = table.clone(if typeof(configRaw) == "table" then configRaw :: WaterPartConfig else {} :: any)
 	config.name = config.name or "Water"
 	config.material = config.material or Enum.Material.Water
 	config.color = config.color or Color3.fromRGB(69, 154, 221)

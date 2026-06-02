@@ -1,6 +1,6 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
 
 local CatchUpPlayer = {}
 CatchUpPlayer.__index = CatchUpPlayer
@@ -75,8 +75,8 @@ local function resolveConfiguredNumber(
 end
 
 local function sanitizeConfig(config: any, fallbackConfig: CatchUpPlayerConfig?): CatchUpPlayerConfig
-	local source = if typeof(config) == "table" then config else ({} :: any)
-	local fallback = if typeof(fallbackConfig) == "table" then fallbackConfig else ({} :: any)
+	local source = if typeof(config) == "table" then config else {} :: any
+	local fallback = if typeof(fallbackConfig) == "table" then fallbackConfig else {} :: any
 
 	local defaultEnabled = if typeof((fallback :: any).enabled) == "boolean" then (fallback :: any).enabled else true
 	local startDistance =

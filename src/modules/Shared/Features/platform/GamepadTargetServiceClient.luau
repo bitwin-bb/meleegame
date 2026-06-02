@@ -1,7 +1,10 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
 local GamepadTargetServiceClient = {}
 

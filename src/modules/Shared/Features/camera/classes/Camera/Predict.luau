@@ -1,8 +1,8 @@
 --!strict
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 
-local Vec = require(script:FindFirstAncestor("game").Shared.Core.Math.Vec)
+local Vec = require(gameRoot.Shared.Core.Math.Vec)
 
 local Predict = {}
 Predict.__index = Predict
@@ -55,7 +55,7 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number, 
 end
 
 local function sanitizeConfig(configRaw: any, fallbackRaw: PredictionConfig?): PredictionConfig
-	local source = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local source = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local fallback = if typeof(fallbackRaw) == "table" then fallbackRaw else DEFAULT_CONFIG
 
 	local leadTime = sanitizeNumber((source :: any).leadTime, fallback.leadTime or 0.08, 0, 1)
@@ -129,7 +129,7 @@ end
 
 function Predict.Resolve(self: Predict, targetRaw: any, cacheRaw: any?, optionsRaw: any?): PredictionResult
 	local target = if typeof(targetRaw) == "table" then targetRaw else nil
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 	local configOverride = sanitizeConfig((options :: any).config, {
 		enabled = self.enabled,
 		leadTime = self.leadTime,

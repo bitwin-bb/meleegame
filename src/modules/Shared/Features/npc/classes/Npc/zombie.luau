@@ -1,6 +1,8 @@
 --!strict
 
-local Default = require(script.Parent.Default)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Default = require(gameRoot.Shared.Features.npc.classes.Npc.Default)
 
 local Zombie = {}
 
@@ -10,7 +12,7 @@ export type ZombieConfig = Default.DefaultNpcConfig & {
 }
 
 function Zombie.New(configRaw: ZombieConfig?): Zombie
-	local config = if typeof(configRaw) == "table" then table.clone(configRaw :: any) else ({} :: any)
+	local config = if typeof(configRaw) == "table" then table.clone(configRaw :: any) else {} :: any
 	if config.archetype == nil then
 		config.archetype = "Zombie"
 	end

@@ -1,9 +1,11 @@
 --!strict
 
-local Nevermore = require(script:FindFirstAncestor("StateMachine").Nevermore)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Nevermore = require(gameRoot.Shared.StateMachine.Nevermore)
 local Table = Nevermore.Get("Table")
 
-local Blackboard = require(script:FindFirstAncestor("StateMachine").Core.Blackboard)
+local Blackboard = require(gameRoot.Shared.StateMachine.Core.Blackboard)
 
 local PlayerBlackboard = {}
 

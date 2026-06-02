@@ -1,8 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local BreathServiceUtils = require(gameRoot.Shared.Features.breath.BreathServiceUtils)
 local Charm = require(ReplicatedStorage.Packages.Charm)
-local BreathServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.breath.BreathServiceUtils)
 
 type BreathServiceState = BreathServiceUtils.BreathServiceState
 

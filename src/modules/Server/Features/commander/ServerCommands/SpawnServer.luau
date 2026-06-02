@@ -1,10 +1,13 @@
 --!strict
+
+local require = require(script.Parent.loader).load(assert(script:FindFirstAncestor("AquariaBackup"), "Missing AquariaBackup package root"))
+
 local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for SpawnServer.")
 
-local BossServiceServer = require(gameRoot.Shared.Features.npc.BossServiceServer)
-local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
-local NpcServiceServer = require(gameRoot.Shared.Features.npc.NpcServiceServer)
+local BossServiceServer = require("BossServiceServer")
+local BossServiceUtils = require("BossServiceUtils")
+local NpcServiceServer = require("NpcServiceServer")
 
 type EntityEntry = {
 	Id: string,

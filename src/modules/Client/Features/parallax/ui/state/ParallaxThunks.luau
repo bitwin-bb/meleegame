@@ -1,6 +1,8 @@
 --!strict
 
-local ParallaxSlice = require(script.Parent.ParallaxSlice)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ParallaxSlice = require(gameRoot.Client.Features.parallax.ui.state.ParallaxSlice)
 
 type ParallaxSurfaceState = ParallaxSlice.ParallaxSurfaceState
 

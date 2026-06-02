@@ -1,9 +1,11 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local CoreObjectPool = require(script:FindFirstAncestor("game").Shared.Core.ObjectPool)
+local CoreObjectPool = require(gameRoot.Shared.Core.ObjectPool)
 
 local Cache = {}
 Cache.__index = Cache
@@ -46,7 +48,7 @@ local function ensureNumberArrayLength(array: { number }, length: number, fillVa
 end
 
 function Cache.New(configRaw: any)
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local self = setmetatable({
 		tablePool = {} :: { { [any]: any } },
 		numberArrayPool = {} :: { { number } },

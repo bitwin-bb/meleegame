@@ -1,9 +1,9 @@
 --!strict
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 
-local FusionUtils = require(script:FindFirstAncestor("game").Client.Features.audio.modules.fusionUtils)
+local FusionUtils = require(gameRoot.Client.Features.audio.modules.fusionUtils)
 
-return FusionUtils.CreateInstanceWrapper("EqualizerSoundEffect", "EqualizerSoundEffect", loader("Maid"))
+return FusionUtils.CreateInstanceWrapper("EqualizerSoundEffect", "EqualizerSoundEffect", require(quentyPackages.maid.Shared.Maid))

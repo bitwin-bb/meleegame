@@ -1,8 +1,11 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 -- Projection, rejection, reflection, and closest-point helpers.
 
-local Num = require(script.Parent.Num)
-local Vec = require(script.Parent.Vec)
+local Num = require(gameRoot.Shared.Core.Math.Num)
+local Vec = require(gameRoot.Shared.Core.Math.Vec)
 
 local Proj = {}
 

@@ -538,20 +538,12 @@ end
 
 function LootServiceUtils.ResolveSettings(dataRaw: any): LootSettings
 	local settingsRaw = if typeof(dataRaw) == "table" then (dataRaw :: { [string]: any }).settings else nil
-	local settings = if typeof(settingsRaw) == "table" then settingsRaw else ({} :: any)
+	local settings = if typeof(settingsRaw) == "table" then settingsRaw else {} :: any
 
-	local scatterRadiusMin = sanitizeNumber(
-		(settings :: any).scatterRadiusMin,
-		DEFAULT_SETTINGS.scatterRadiusMin,
-		0,
-		100
-	)
-	local scatterRadiusMax = sanitizeNumber(
-		(settings :: any).scatterRadiusMax,
-		DEFAULT_SETTINGS.scatterRadiusMax,
-		scatterRadiusMin,
-		100
-	)
+	local scatterRadiusMin =
+		sanitizeNumber((settings :: any).scatterRadiusMin, DEFAULT_SETTINGS.scatterRadiusMin, 0, 100)
+	local scatterRadiusMax =
+		sanitizeNumber((settings :: any).scatterRadiusMax, DEFAULT_SETTINGS.scatterRadiusMax, scatterRadiusMin, 100)
 
 	return {
 		despawnSeconds = sanitizeNumber((settings :: any).despawnSeconds, DEFAULT_SETTINGS.despawnSeconds, 1, 3600),
@@ -626,12 +618,7 @@ function LootServiceUtils.ResolveSettings(dataRaw: any): LootSettings
 			0,
 			200
 		),
-		dropBounciness = sanitizeNumber(
-			(settings :: any).dropBounciness,
-			DEFAULT_SETTINGS.dropBounciness,
-			0,
-			1
-		),
+		dropBounciness = sanitizeNumber((settings :: any).dropBounciness, DEFAULT_SETTINGS.dropBounciness, 0, 1),
 		dropFriction = sanitizeNumber((settings :: any).dropFriction, DEFAULT_SETTINGS.dropFriction, 0, 1),
 		dropElasticityWeight = sanitizeNumber(
 			(settings :: any).dropElasticityWeight,
@@ -645,31 +632,16 @@ function LootServiceUtils.ResolveSettings(dataRaw: any): LootSettings
 			0.5,
 			400
 		),
-		collectDistance = sanitizeNumber(
-			(settings :: any).collectDistance,
-			DEFAULT_SETTINGS.collectDistance,
-			0.1,
-			30
-		),
+		collectDistance = sanitizeNumber((settings :: any).collectDistance, DEFAULT_SETTINGS.collectDistance, 0.1, 30),
 		collectOffsetY = sanitizeNumber((settings :: any).collectOffsetY, DEFAULT_SETTINGS.collectOffsetY, 0, 20),
-		magnetBaseSpeed = sanitizeNumber(
-			(settings :: any).magnetBaseSpeed,
-			DEFAULT_SETTINGS.magnetBaseSpeed,
-			0.1,
-			400
-		),
+		magnetBaseSpeed = sanitizeNumber((settings :: any).magnetBaseSpeed, DEFAULT_SETTINGS.magnetBaseSpeed, 0.1, 400),
 		magnetAcceleration = sanitizeNumber(
 			(settings :: any).magnetAcceleration,
 			DEFAULT_SETTINGS.magnetAcceleration,
 			0,
 			4000
 		),
-		magnetMaxSpeed = sanitizeNumber(
-			(settings :: any).magnetMaxSpeed,
-			DEFAULT_SETTINGS.magnetMaxSpeed,
-			0.1,
-			5000
-		),
+		magnetMaxSpeed = sanitizeNumber((settings :: any).magnetMaxSpeed, DEFAULT_SETTINGS.magnetMaxSpeed, 0.1, 5000),
 		magnetSpringFrequency = sanitizeNumber(
 			(settings :: any).magnetSpringFrequency,
 			DEFAULT_SETTINGS.magnetSpringFrequency,
@@ -694,12 +666,7 @@ function LootServiceUtils.ResolveSettings(dataRaw: any): LootSettings
 			0,
 			20
 		),
-		magnetSpeedBlend = sanitizeNumber(
-			(settings :: any).magnetSpeedBlend,
-			DEFAULT_SETTINGS.magnetSpeedBlend,
-			0,
-			1
-		),
+		magnetSpeedBlend = sanitizeNumber((settings :: any).magnetSpeedBlend, DEFAULT_SETTINGS.magnetSpeedBlend, 0, 1),
 		magnetCooldownAfterFailedCollect = sanitizeNumber(
 			(settings :: any).magnetCooldownAfterFailedCollect,
 			DEFAULT_SETTINGS.magnetCooldownAfterFailedCollect,
@@ -745,12 +712,7 @@ function LootServiceUtils.ResolveSettings(dataRaw: any): LootSettings
 			9999
 		),
 		dropAmountMin = sanitizeInteger((settings :: any).dropAmountMin, DEFAULT_SETTINGS.dropAmountMin, 1, 9999),
-		dropAmountMax = sanitizeInteger(
-			(settings :: any).dropAmountMax,
-			DEFAULT_SETTINGS.dropAmountMax,
-			1,
-			999999
-		),
+		dropAmountMax = sanitizeInteger((settings :: any).dropAmountMax, DEFAULT_SETTINGS.dropAmountMax, 1, 999999),
 	}
 end
 
@@ -808,13 +770,15 @@ function LootServiceUtils.ResolveDropTableId(dataRaw: any, sourceRaw: any, fallb
 		if direct ~= nil then
 			return direct
 		end
-		for _, fieldValue in {
-			source.sourceType,
-			source.npcType,
-			source.displayName,
-			source.name,
-			source.itemId,
-		} do
+		for _, fieldValue in
+			{
+				source.sourceType,
+				source.npcType,
+				source.displayName,
+				source.name,
+				source.itemId,
+			}
+		do
 			local resolved = resolveValue(fieldValue)
 			if resolved ~= nil then
 				return resolved
@@ -836,8 +800,8 @@ function LootServiceUtils.RollDropTable(
 		return {}
 	end
 
-	local randomObject = if typeof(randomObjectRaw) == "Random" then (randomObjectRaw :: Random) else Random.new()
-	local context = if typeof(contextRaw) == "table" then contextRaw else ({} :: any)
+	local randomObject = if typeof(randomObjectRaw) == "Random" then randomObjectRaw :: Random else Random.new()
+	local context = if typeof(contextRaw) == "table" then contextRaw else {} :: any
 	local luck = sanitizeNumber((context :: any).luck, 0, -1, 1)
 	local quantityMultiplier = sanitizeNumber((context :: any).quantityMultiplier, 1, 0.01, 100)
 	local sourceType = sanitizeString((context :: any).sourceType, sanitizeString((dropTable :: any).sourceType, nil))
@@ -887,12 +851,7 @@ function LootServiceUtils.ResolveDropAmount(amountRaw: any, fallbackAmountRaw: a
 		DEFAULT_SETTINGS.dropAmountMin,
 		DEFAULT_SETTINGS.dropAmountMax
 	)
-	return sanitizeInteger(
-		amountRaw,
-		fallbackAmount,
-		DEFAULT_SETTINGS.dropAmountMin,
-		DEFAULT_SETTINGS.dropAmountMax
-	)
+	return sanitizeInteger(amountRaw, fallbackAmount, DEFAULT_SETTINGS.dropAmountMin, DEFAULT_SETTINGS.dropAmountMax)
 end
 
 function LootServiceUtils.ResolveItemNameCandidates(dataRaw: any, itemIdRaw: any): { string }
@@ -928,7 +887,7 @@ function LootServiceUtils.ResolveItemNameCandidates(dataRaw: any, itemIdRaw: any
 end
 
 function LootServiceUtils.CreateLootId(randomObjectRaw: any, itemIdRaw: any): string
-	local randomObject = if typeof(randomObjectRaw) == "Random" then (randomObjectRaw :: Random) else Random.new()
+	local randomObject = if typeof(randomObjectRaw) == "Random" then randomObjectRaw :: Random else Random.new()
 	local itemToken = token(itemIdRaw)
 	if itemToken == "" then
 		itemToken = "loot"

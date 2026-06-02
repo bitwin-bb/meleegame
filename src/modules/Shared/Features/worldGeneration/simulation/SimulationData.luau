@@ -1,11 +1,14 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local Config = require(script.Parent.SimulationConfig)
-local Net = require(script.Parent.Net)
-local Shared = require(script.Parent.Shared)
-local State = require(script.Parent.SimulationState)
+local Config = require(gameRoot.Shared.Features.worldGeneration.simulation.SimulationConfig)
+local Net = require(gameRoot.Shared.Features.worldGeneration.simulation.Net)
+local Shared = require(gameRoot.Shared.Features.worldGeneration.simulation.Shared)
+local State = require(gameRoot.Shared.Features.worldGeneration.simulation.SimulationState)
 
 local Data = {}
 
@@ -414,12 +417,16 @@ function Data.IngestWorldGenerationChunkSnapshot(world: WorldData, chunkSnapshot
 		chunk.clusterSurfaceY[clusterIndex] = chunkY * tileCountY
 	end
 
-	local chunkSnapshot = if typeof(chunkSnapshotRaw) == "table" then chunkSnapshotRaw :: { [string]: any } else ({} :: any)
-	local sourceTiles = if typeof(chunkSnapshot.tiles) == "table" then chunkSnapshot.tiles :: { any } else ({} :: any)
-	local sourceBiomeIds = if typeof(chunkSnapshot.biomeIds) == "table" then chunkSnapshot.biomeIds :: { any } else ({} :: any)
+	local chunkSnapshot = if typeof(chunkSnapshotRaw) == "table"
+		then chunkSnapshotRaw :: { [string]: any }
+		else {} :: any
+	local sourceTiles = if typeof(chunkSnapshot.tiles) == "table" then chunkSnapshot.tiles :: { any } else {} :: any
+	local sourceBiomeIds = if typeof(chunkSnapshot.biomeIds) == "table"
+		then chunkSnapshot.biomeIds :: { any }
+		else {} :: any
 	local sourceBiomeTypes = if typeof(chunkSnapshot.biomeTypes) == "table"
 		then chunkSnapshot.biomeTypes :: { any }
-		else ({} :: any)
+		else {} :: any
 	local sourceTileMinY = sanitizeInteger(chunkSnapshot.tileMinY, -1000000, 1000000, chunkY * tileCountY)
 	local sourceWidth = sanitizeInteger(chunkSnapshot.width, 1, tileCountX, tileCountX)
 	local sourceHeight = sanitizeInteger(chunkSnapshot.height, 1, tileCountY, tileCountY)

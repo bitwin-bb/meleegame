@@ -1,6 +1,6 @@
 --!strict
 
-return ({
+return {
 	platform = "Gamepad",
 	family = "xbox",
 	sections = {
@@ -116,4 +116,4 @@ return ({
 			},
 		},
 	},
-} :: any)
+} :: any

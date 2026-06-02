@@ -1,16 +1,18 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 
-local BossServiceClient = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceClient)
-local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
-local HpServiceClient = require(script:FindFirstAncestor("game").Shared.Features.health.HpServiceClient)
-local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.health.HpServiceUtils)
-local InventoryServiceClient = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceClient)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
-local NpcServiceClient = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceClient)
-local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
-local infoPlayerSlice = require(script:FindFirstAncestor("game").Client.Features.player.ui.state.infoPlayerSlice)
+local BossServiceClient = require(gameRoot.Shared.Features.npc.BossServiceClient)
+local ConnectionUtils = require(gameRoot.Client.UI.core.utils.ConnectionUtils)
+local HpServiceClient = require(gameRoot.Shared.Features.health.HpServiceClient)
+local HpServiceUtils = require(gameRoot.Shared.Features.health.HpServiceUtils)
+local InventoryServiceClient = require(gameRoot.Shared.Features.inventory.InventoryServiceClient)
+local InventoryServiceUtils = require(gameRoot.Shared.Features.inventory.InventoryServiceUtils)
+local NpcServiceClient = require(gameRoot.Shared.Features.npc.NpcServiceClient)
+local ServiceSync = require(gameRoot.Client.UI.core.utils.ServiceSync)
+local infoPlayerSlice = require(gameRoot.Client.Features.player.ui.state.infoPlayerSlice)
 
 type InfoPlayerState = infoPlayerSlice.InfoPlayerState
 type InventoryState = InventoryServiceUtils.InventoryState

@@ -1,7 +1,9 @@
 --!strict
 
-local UiSound = require(script.Parent.Parent.utils.UiSound)
-local useEvent = require(script:FindFirstAncestor("game").Client.UI.shared.useEvent)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local UiSound = require(gameRoot.Client.UI.core.utils.UiSound)
+local useEvent = require(gameRoot.Client.UI.shared.useEvent)
 
 export type UiSoundHook = {
 	play: (soundAssetId: string?) -> (),

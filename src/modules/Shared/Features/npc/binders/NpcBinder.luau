@@ -1,8 +1,10 @@
 --!strict
 
-local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
-local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceUtils)
-local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ModelBinder = require(gameRoot.Shared.Binders.ModelBinder)
+local NpcServiceUtils = require(gameRoot.Shared.Features.npc.NpcServiceUtils)
+local TagBinder = require(gameRoot.Shared.Binders.TagBinder)
 
 local NpcBinder = {}
 NpcBinder.__index = NpcBinder

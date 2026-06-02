@@ -1,13 +1,13 @@
 --!strict
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 
-local Height = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.classes.WorldGeneration.Height)
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Registry)
-local MiningPower = require(script:FindFirstAncestor("game").Shared.Core.Math.MiningPower)
-local Noise = require(script:FindFirstAncestor("game").Shared.Core.Math.Noise)
-local Plane = require(script:FindFirstAncestor("game").Shared.Core.Math.Plane)
-local Vec = require(script:FindFirstAncestor("game").Shared.Core.Math.Vec)
+local Height = require(gameRoot.Shared.Features.worldGeneration.classes.WorldGeneration.Height)
+local ItemRegistry = require(gameRoot.Shared.Features.item.modules.Registry)
+local MiningPower = require(gameRoot.Shared.Core.Math.MiningPower)
+local Noise = require(gameRoot.Shared.Core.Math.Noise)
+local Plane = require(gameRoot.Shared.Core.Math.Plane)
+local Vec = require(gameRoot.Shared.Core.Math.Vec)
 
 local BuildServiceUtils = {}
 

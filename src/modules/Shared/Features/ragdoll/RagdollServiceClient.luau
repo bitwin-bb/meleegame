@@ -1,10 +1,15 @@
 --!strict
-local Players = game:GetService("Players")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Players = game:GetService("Players")
+
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local RagdollServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).RagdollService
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local RagdollServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).RagdollService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = RagdollServicePackets[methodName]
@@ -46,8 +51,8 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local RagdollServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.ragdoll.RagdollServiceUtils)
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local RagdollServiceUtils = require(gameRoot.Shared.Features.ragdoll.RagdollServiceUtils)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
 type RagdollServiceState = RagdollServiceUtils.RagdollServiceState
 

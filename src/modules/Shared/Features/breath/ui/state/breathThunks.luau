@@ -1,11 +1,12 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
-local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
-local breathSlice = require(script:FindFirstAncestor("game").Shared.Features.breath.ui.state.breathSlice)
-local BreathServiceClient = require(script:FindFirstAncestor("game").Shared.Features.breath.BreathServiceClient)
-local BreathServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.breath.BreathServiceUtils)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local BreathServiceClient = require(gameRoot.Shared.Features.breath.BreathServiceClient)
+local BreathServiceUtils = require(gameRoot.Shared.Features.breath.BreathServiceUtils)
+local ConnectionUtils = require(gameRoot.Client.UI.core.utils.ConnectionUtils)
+local ServiceSync = require(gameRoot.Client.UI.core.utils.ServiceSync)
+local breathSlice = require(gameRoot.Shared.Features.breath.ui.state.breathSlice)
 
 type BreathServiceState = BreathServiceUtils.BreathServiceState
 
@@ -36,10 +37,13 @@ function breathThunks.Start(): () -> ()
 		syncFromService()
 	end
 
-	runtime.stateChangedConnection = ServiceSync.connectStateChanged(BreathServiceClient, function(nextState: BreathServiceState)
-		applyState(nextState)
-		breathSlice.setBreathReady(true)
-	end)
+	runtime.stateChangedConnection = ServiceSync.connectStateChanged(
+		BreathServiceClient,
+		function(nextState: BreathServiceState)
+			applyState(nextState)
+			breathSlice.setBreathReady(true)
+		end
+	)
 	ServiceSync.requestSync(BreathServiceClient)
 
 	return breathThunks.Stop

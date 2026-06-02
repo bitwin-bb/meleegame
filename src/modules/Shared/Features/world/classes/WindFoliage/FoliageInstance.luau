@@ -1,12 +1,14 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
+local Damp = require(gameRoot.Shared.Core.Math.Damp)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Damp = require(script:FindFirstAncestor("game").Shared.Core.Math.Damp)
-local Vec = require(script:FindFirstAncestor("game").Shared.Core.Math.Vec)
-local TreeFoliageGraph = require(script.Parent.TreeFoliageGraph)
+local TreeFoliageGraph = require(gameRoot.Shared.Features.world.classes.WindFoliage.TreeFoliageGraph)
+local Vec = require(gameRoot.Shared.Core.Math.Vec)
 
 local FoliageInstance = {}
 FoliageInstance.__index = FoliageInstance
@@ -65,7 +67,7 @@ type BoneRecord = {
 }
 
 type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (any),
+	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
 	Clean: (self: JanitorClass) -> (),
 	Destroy: (self: JanitorClass) -> (),
 }
@@ -362,7 +364,7 @@ function FoliageInstance.New(instanceRaw: any, configRaw: Config?): FoliageInsta
 	end
 
 	local instance = instanceRaw :: Instance
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: Config)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: Config
 	local representation = determineRepresentation(instance, config)
 	if representation == nil then
 		return nil
@@ -527,7 +529,12 @@ function FoliageInstance.AddDisturbance(self: FoliageInstance, impulseWorld: Vec
 	self.springVelocity += scaledImpulse * 0.28
 end
 
-function FoliageInstance.ResolveLocalAngles(self: FoliageInstance, bendWorld: Vector3, flutter: number, lod: LODState): (number, number, number, Vector3)
+function FoliageInstance.ResolveLocalAngles(
+	self: FoliageInstance,
+	bendWorld: Vector3,
+	flutter: number,
+	lod: LODState
+): (number, number, number, Vector3)
 	local reference = self.referenceFrame
 	local planar = Vec.flattenY(bendWorld)
 	local magnitude = planar.Magnitude
@@ -557,14 +564,23 @@ function FoliageInstance.ResolveLocalAngles(self: FoliageInstance, bendWorld: Ve
 	local roll = localDirection.X * finalAngle
 	local yaw = flutter * yawWeight * lod.detailScale * angleRadians * 0.35
 
-	local translationDistance =
-		self.objectHeight * clampNumber(self.config.heightMultiplier, 1, 0.1, 8) * translationWeight * magnitude * lod.windScale
+	local translationDistance = self.objectHeight
+		* clampNumber(self.config.heightMultiplier, 1, 0.1, 8)
+		* translationWeight
+		* magnitude
+		* lod.windScale
 	local translationWorld = direction * translationDistance + Vector3.new(0, -translationDistance * 0.06, 0)
 
 	return pitch, yaw, roll, translationWorld
 end
 
-function FoliageInstance.ApplyTransform(self: FoliageInstance, pitch: number, yaw: number, roll: number, translationWorld: Vector3)
+function FoliageInstance.ApplyTransform(
+	self: FoliageInstance,
+	pitch: number,
+	yaw: number,
+	roll: number,
+	translationWorld: Vector3
+)
 	if self.destroyed then
 		return
 	end
@@ -603,14 +619,19 @@ function FoliageInstance.ApplyTransform(self: FoliageInstance, pitch: number, ya
 		end
 
 		local weight = record.weight
-		record.bone.Transform =
-			record.restTransform
+		record.bone.Transform = record.restTransform
 			* CFrame.new(lateralOffset * weight * 0.18)
 			* CFrame.Angles(pitch * weight, yaw * weight, roll * weight)
 	end
 end
 
-function FoliageInstance.Step(self: FoliageInstance, simulationTime: number, dt: number, windSample: WindSample, lod: LODState)
+function FoliageInstance.Step(
+	self: FoliageInstance,
+	simulationTime: number,
+	dt: number,
+	windSample: WindSample,
+	lod: LODState
+)
 	if self.destroyed or dt <= 0 then
 		return
 	end
@@ -632,8 +653,7 @@ function FoliageInstance.Step(self: FoliageInstance, simulationTime: number, dt:
 	local detailAmplitude = clampNumber(self.config.detailAmplitude, 0.22, 0, 10)
 	local heightMultiplier = clampNumber(self.config.heightMultiplier, 1, 0.1, 8)
 
-	local target =
-		(windSample.vector * swayAmplitude + windSample.direction * windSample.gustAlpha * gustSensitivity)
+	local target = (windSample.vector * swayAmplitude + windSample.direction * windSample.gustAlpha * gustSensitivity)
 		* lod.windScale
 	target += windSample.detailVector * detailAmplitude * lod.detailScale
 	target += self.reactiveBend * lod.disturbanceScale
@@ -655,8 +675,7 @@ function FoliageInstance.Step(self: FoliageInstance, simulationTime: number, dt:
 		self.springVelocity = ZERO
 	end
 
-	local pitch, yaw, roll, translationWorld =
-		self:resolveLocalAngles(self.currentBend, windSample.flutter, lod)
+	local pitch, yaw, roll, translationWorld = self:resolveLocalAngles(self.currentBend, windSample.flutter, lod)
 	self:applyTransform(pitch, yaw, roll, translationWorld)
 	self.lastUpdateTime = simulationTime
 end

@@ -1,10 +1,11 @@
 --!strict
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
-local deathSlice = require(script:FindFirstAncestor("game").Client.Features.death.ui.state.deathSlice)
-local PlayerSpawnCooldown = require(script:FindFirstAncestor("game").Shared.Game.Player.PlayerSpawnCooldown)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local Players = game:GetService("Players")
+
+local ConnectionUtils = require(gameRoot.Client.UI.core.utils.ConnectionUtils)
+local PlayerSpawnCooldown = require(gameRoot.Shared.Game.Player.PlayerSpawnCooldown)
+local deathSlice = require(gameRoot.Client.Features.death.ui.state.deathSlice)
 
 type DeathState = deathSlice.DeathState
 

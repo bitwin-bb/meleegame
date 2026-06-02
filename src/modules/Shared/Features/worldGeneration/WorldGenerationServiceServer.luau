@@ -1,19 +1,20 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
 
-local Maid = loader("Maid")
-local Rx = loader("Rx")
-local RxSignal = loader("RxSignal")
-local Signal = loader("Signal")
+local Maid = require(quentyPackages.maid.Shared.Maid)
+local Rx = require(quentyPackages.rx.Shared.Rx)
+local RxSignal = require(quentyPackages.rxsignal.Shared.RxSignal)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local WorldGenerationServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).WorldGenerationService
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local WorldGenerationServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).WorldGenerationService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = WorldGenerationServicePackets[methodName]
@@ -57,13 +58,11 @@ local function bindPackets(self: any)
 	bindPacket(self, "setRenderDistance")
 end
 
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
-local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
-local WorldGeneration =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.classes.WorldGeneration)
-local WorldGenerationServiceUtils =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceUtils)
+local NevermoreSupport = require(gameRoot.Shared.Core.NevermoreSupport)
+local ServerBinderSupport = (require :: any)(gameRoot.Server.Binders.ServerBinderSupport)
+local TagBinder = require(gameRoot.Shared.Binders.TagBinder)
+local WorldGeneration = require(gameRoot.Shared.Features.worldGeneration.classes.WorldGeneration)
+local WorldGenerationServiceUtils = require(gameRoot.Shared.Features.worldGeneration.WorldGenerationServiceUtils)
 local WorldSimulationServiceServer = (require :: any)(
 	script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldSimulationServiceServer
 )

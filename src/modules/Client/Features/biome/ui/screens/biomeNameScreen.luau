@@ -1,16 +1,18 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
-local Layer = require(script:FindFirstAncestor("game").Client.UI.shared.Layer)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ImageIds = require(gameRoot.Client.UI.core.ImageIds)
+local Layer = require(gameRoot.Client.UI.shared.Layer)
 local React = require(ReplicatedStorage.Packages.React)
-local Scale = require(script:FindFirstAncestor("game").Client.UI.shared.Scale)
-local biomeSlice = require(script:FindFirstAncestor("game").Client.Features.biome.ui.state.biomeSlice)
-local biomeThunks = require(script:FindFirstAncestor("game").Client.Features.biome.ui.state.biomeThunks)
-local useBiomeNameAppearance =
-	require(script:FindFirstAncestor("game").Client.Features.biome.ui.hooks.useBiomeNameAppearance)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
-local useTextUnderline = require(script:FindFirstAncestor("game").Client.Features.biome.ui.hooks.useTextUnderline)
+local Scale = require(gameRoot.Client.UI.shared.Scale)
+local biomeSlice = require(gameRoot.Client.Features.biome.ui.state.biomeSlice)
+local biomeThunks = require(gameRoot.Client.Features.biome.ui.state.biomeThunks)
+local useBiomeNameAppearance = require(gameRoot.Client.Features.biome.ui.hooks.useBiomeNameAppearance)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
+local useTextUnderline = require(gameRoot.Client.Features.biome.ui.hooks.useTextUnderline)
 
 type BiomeState = biomeSlice.BiomeState
 
@@ -29,7 +31,7 @@ local TEXT_SIZE = Vector2.new(520, 60)
 local UNDERLINE_BASE_SIZE = Vector2.new(236, 14)
 
 return function(props: BiomeNameScreenProps?): React.ReactNode
-	local resolvedProps: BiomeNameScreenProps = if props ~= nil then props else ({} :: any)
+	local resolvedProps: BiomeNameScreenProps = if props ~= nil then props else {} :: any
 	local biomeState = (useStore(biomeSlice.biomeStateAtom) :: BiomeState?) or biomeSlice.biomeStateAtom()
 
 	React.useEffect(function()

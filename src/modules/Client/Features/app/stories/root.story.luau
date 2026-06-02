@@ -1,10 +1,10 @@
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.health.HpServiceUtils)
-local ManaServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.mana.ManaServiceUtils)
+local HpServiceUtils = require(gameRoot.Shared.Features.health.HpServiceUtils)
+local ManaServiceUtils = require(gameRoot.Shared.Features.mana.ManaServiceUtils)
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
-local RootUI = require(script:FindFirstAncestor("game").Client.Features.app.RootUI)
+local RootUI = require(gameRoot.Client.Features.app.RootUI)
 
 local e: typeof(React.createElement) = React.createElement
 

@@ -1,11 +1,14 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local CraftingButton = require(script:FindFirstAncestor("game").Shared.Features.crafting.ui.components.craftingButton)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local CraftingButton = require(gameRoot.Shared.Features.crafting.ui.components.craftingButton)
 local React = require(ReplicatedStorage.Packages.React)
-local craftingSlice = require(script:FindFirstAncestor("game").Shared.Features.crafting.ui.state.craftingSlice)
-local craftingThunks = require(script:FindFirstAncestor("game").Shared.Features.crafting.ui.state.craftingThunks)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local craftingSlice = require(gameRoot.Shared.Features.crafting.ui.state.craftingSlice)
+local craftingThunks = require(gameRoot.Shared.Features.crafting.ui.state.craftingThunks)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
 
 type CraftingState = craftingSlice.CraftingState
 

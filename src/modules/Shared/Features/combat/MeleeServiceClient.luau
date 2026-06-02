@@ -1,13 +1,17 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local CameraShaker =
-	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("EZCameraShake"))
+local CameraShaker = require(ReplicatedStorage.Shared.Vendor.EZCameraShake)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local MeleeServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).MeleeService
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local MeleeServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).MeleeService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = MeleeServicePackets[methodName]
@@ -19,24 +23,19 @@ local function sendPacket(methodName: string, ...: any)
 	packet.send(PacketPayload.pack(...))
 end
 
-local RaycastHitbox =
-	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("RaycastHitbox"))
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local AnimationServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.animation.AnimationServiceUtils)
-local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceClient)
-local BuildServiceClient = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceClient)
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
-local InventoryServiceClient =
-	require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceClient)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
-local Melee = require(script:FindFirstAncestor("game").Shared.Features.combat.classes.Melee)
-local MeleeServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.combat.MeleeServiceUtils)
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
-local RagdollServiceClient = require(script:FindFirstAncestor("game").Shared.Features.ragdoll.RagdollServiceClient)
-local loader = (require :: any)(loaderUtils.Parent).load(script)
-local Promise = loader("Promise")
+local AnimationServiceUtils = require(gameRoot.Shared.Features.animation.AnimationServiceUtils)
+local AudioServiceClient = require(gameRoot.Client.Features.audio.AudioServiceClient)
+local BuildServiceClient = require(gameRoot.Shared.Features.world.BuildServiceClient)
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local CoreRuntime = require(gameRoot.Shared.Core.Runtime)
+local InventoryServiceClient = require(gameRoot.Shared.Features.inventory.InventoryServiceClient)
+local InventoryServiceUtils = require(gameRoot.Shared.Features.inventory.InventoryServiceUtils)
+local Melee = require(gameRoot.Shared.Features.combat.classes.Melee)
+local MeleeServiceUtils = require(gameRoot.Shared.Features.combat.MeleeServiceUtils)
+local PlatformServiceClient = require(gameRoot.Shared.Features.platform.PlatformServiceClient)
+local Promise = require(quentyPackages.promise.Shared.Promise)
+local RagdollServiceClient = require(gameRoot.Shared.Features.ragdoll.RagdollServiceClient)
+local RaycastHitbox = require(ReplicatedStorage.Shared.Vendor.RaycastHitbox)
 
 type MeleeWeaponConfig = MeleeServiceUtils.MeleeWeaponConfig
 type InventoryState = InventoryServiceUtils.InventoryState

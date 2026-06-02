@@ -1,7 +1,9 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local EntityInfoScreen = require(script.Parent.screens.entityInfoScreen)
+local EntityInfoScreen = require(gameRoot.Client.Features.entity.ui.screens.entityInfoScreen)
 local React = require(ReplicatedStorage.Packages.React)
 
 type EntityRootProps = {

@@ -1,4 +1,5 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Charm = require(ReplicatedStorage.Packages.Charm)
@@ -112,7 +113,7 @@ function tileSlice.GetBreakState(): BreakState
 end
 
 function tileSlice.SetBreakState(stateRaw: any): BreakState
-	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else ({} :: any)
+	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {} :: any
 	local columns = sanitizeInteger(source.columns, DEFAULT_STATE.columns, 1, 128)
 	local rows = sanitizeInteger(source.rows, DEFAULT_STATE.rows, 1, 128)
 	local frameSize = sanitizeVector2(source.frameSize, DEFAULT_STATE.frameSize)

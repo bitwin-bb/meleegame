@@ -1,10 +1,14 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Registry)
+local ItemRegistry = require(gameRoot.Shared.Features.item.modules.Registry)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveToolInstance)
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local ResolveToolInstance = require(gameRoot.Shared.Game.Format.ResolveToolInstance)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
 local Magic = {}
 Magic.__index = Magic
@@ -383,8 +387,8 @@ local function resolveWeaponConfig(
 		return nil
 	end
 
-	local magicData = if typeof(definition.magic) == "table" then definition.magic :: { [string]: any } else ({} :: any)
-	local stats = if typeof(definition.stats) == "table" then definition.stats :: { [string]: any } else ({} :: any)
+	local magicData = if typeof(definition.magic) == "table" then definition.magic :: { [string]: any } else {} :: any
+	local stats = if typeof(definition.stats) == "table" then definition.stats :: { [string]: any } else {} :: any
 
 	local definitionTypeToken =
 		normalizeTypeToken(definition.itemType or definition.type or definition.weaponType or magicData.itemType)
@@ -490,7 +494,7 @@ local function mergeContext(base: { [string]: any }, extra: { [string]: any }?):
 end
 
 function Magic.New(configRaw: MagicConfig?): Magic
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local expectedTypeLabel = normalizeTypeLabel(config.expectedItemType, DEFAULT_EXPECTED_ITEM_TYPE)
 	local expectedTypeToken = normalizeTypeToken(expectedTypeLabel)
 
@@ -507,7 +511,7 @@ function Magic.New(configRaw: MagicConfig?): Magic
 			inputHeldChanged = Signal.new(),
 			enabledChanged = Signal.new(),
 		},
-		callbacks = if typeof(config.callbacks) == "table" then config.callbacks else ({} :: any),
+		callbacks = if typeof(config.callbacks) == "table" then config.callbacks else {} :: any,
 		service = if typeof(config.service) == "table" then config.service else nil,
 		boundTool = nil,
 		character = if typeof(config.character) == "Instance" and config.character:IsA("Model")
@@ -563,7 +567,12 @@ function Magic._invokeCallback(self: Magic, name: string, ...: any)
 	pcall(callback, self, ...)
 end
 
-function Magic._callServiceBoolean(self: Magic, methodName: string, amount: number, context: { [string]: any }): boolean?
+function Magic._callServiceBoolean(
+	self: Magic,
+	methodName: string,
+	amount: number,
+	context: { [string]: any }
+): boolean?
 	if self.service == nil then
 		return nil
 	end
@@ -1132,4 +1141,3 @@ Magic.cancel = Magic.Cancel
 Magic.destroy = Magic.Destroy
 
 return Magic
-

@@ -1,8 +1,11 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local React = require(ReplicatedStorage.Packages.React)
-local Scale = require(script:FindFirstAncestor("game").Client.UI.shared.Scale)
+local Scale = require(gameRoot.Client.UI.shared.Scale)
 
 export type CraftingPanelProps = {
 	size: UDim2,

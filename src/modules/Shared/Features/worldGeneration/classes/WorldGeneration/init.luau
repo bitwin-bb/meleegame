@@ -1,40 +1,38 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
 local CollectionService = game:GetService("CollectionService")
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local Workspace = game:GetService("Workspace")
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
 
-local Brio = loader("Brio")
-local Maid = loader("Maid")
-local Octree = loader("Octree")
-local Rx = loader("Rx")
-local RxBrioUtils = loader("RxBrioUtils")
-local RxSignal = loader("RxSignal")
-local Signal = loader("Signal")
+local Brio = require(quentyPackages.brio.Shared.Brio)
+local Maid = require(quentyPackages.maid.Shared.Maid)
+local Octree = require(quentyPackages.octree.Shared.Octree)
+local Rx = require(quentyPackages.rx.Shared.Rx)
+local RxBrioUtils = require(quentyPackages.brio.Shared.RxBrioUtils)
+local RxSignal = require(quentyPackages.rxsignal.Shared.RxSignal)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
-local Biome = require(script.Biome)
-local Cache = require(script.Utils.GenerationCache)
-local Cave = require(script.Cave)
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local Liquid = require(script.Liquid)
-local ProceduralTree = require(script.Tree)
-local Structures = require(script.Structures)
-local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
-local TileComponent = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.components.Tile)
-local TileMaterial = require(script:FindFirstAncestor("game").Shared.Game.Render.TileMaterial)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
-local WorldGenerationColor =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.modules.WorldGenerationColor)
-local WorldGenerationDesert =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.modules.WorldGenerationDesert)
-local WorldGenerationSnow =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.modules.WorldGenerationSnow)
+local Biome = require(gameRoot.Shared.Features.worldGeneration.classes.WorldGeneration.Biome)
+local Cache = require(gameRoot.Shared.Features.worldGeneration.classes.WorldGeneration.Utils.GenerationCache)
+local Cave = require(gameRoot.Shared.Features.worldGeneration.classes.WorldGeneration.Cave)
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local Liquid = require(gameRoot.Shared.Features.worldGeneration.classes.WorldGeneration.Liquid)
+local ProceduralTree = require(gameRoot.Shared.Features.worldGeneration.classes.WorldGeneration.Tree)
+local Structures = require(gameRoot.Shared.Features.worldGeneration.classes.WorldGeneration.Structures)
+local TagBinder = require(gameRoot.Shared.Binders.TagBinder)
+local TileComponent = require(gameRoot.Shared.Features.worldGeneration.components.Tile)
+local TileMaterial = require(gameRoot.Shared.Game.Render.TileMaterial)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
+local WorldGenerationColor = require(gameRoot.Shared.Features.worldGeneration.modules.WorldGenerationColor)
+local WorldGenerationDesert = require(gameRoot.Shared.Features.worldGeneration.modules.WorldGenerationDesert)
+local WorldGenerationSnow = require(gameRoot.Shared.Features.worldGeneration.modules.WorldGenerationSnow)
 
 type BiomeClass = Biome.Biome
 type CaveClass = Cave.Cave
@@ -1501,8 +1499,12 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 				end
 				propDataAny.biomeId = fallbackBiomeId
 			else
-				propDataAny.biomeId =
-					sanitizeInteger(propDataAny.biomeId, self.biomeId.FOREST :: number, self.biomeId.JUNGLE :: number, self.biomeId.FOREST :: number)
+				propDataAny.biomeId = sanitizeInteger(
+					propDataAny.biomeId,
+					self.biomeId.FOREST :: number,
+					self.biomeId.JUNGLE :: number,
+					self.biomeId.FOREST :: number
+				)
 			end
 		end
 	end
@@ -1978,7 +1980,7 @@ function WorldGeneration.RepairChunkTileMetadataOverlaps(
 end
 
 function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local parent = if typeof((config :: any).parent) == "Instance"
 		then (config :: any).parent :: Instance
 		else WorkspaceFolders.getOrCreateGameFolder()
@@ -2190,11 +2192,11 @@ function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
 	self.maid:GiveTask(self._trackedPlayerBrioSignal)
 	self.maid:GiveTask(self._statsPulseSignal)
 
-	self.cache = Cache.new(({
+	self.cache = Cache.new({
 		maxPoolSize = self.maxPoolSize,
 		maxCachedChunkData = self.maxCachedChunkData,
 		createPart = createPartTemplate,
-	} :: any))
+	} :: any)
 
 	local tilesFolder = resolveTilesTemplateFolder()
 	self.tileTemplatesByTileId = {
@@ -2266,16 +2268,16 @@ function WorldGeneration.CreateFolders(self: WorldGeneration)
 	})
 	WorkspaceFolders.manageFolder(worldFolder, self.parent)
 
-	local chunksFolder = TileComponent.CreateFolder(({
+	local chunksFolder = TileComponent.CreateFolder({
 		name = DEFAULT_WORLD_CHUNKS_FOLDER_NAME,
 		parent = worldFolder,
-	} :: any))
+	} :: any)
 	WorkspaceFolders.manageFolder(chunksFolder, worldFolder)
 
-	local collisionChunksFolder = TileComponent.CreateFolder(({
+	local collisionChunksFolder = TileComponent.CreateFolder({
 		name = DEFAULT_WORLD_COLLISION_FOLDER_NAME,
 		parent = worldFolder,
-	} :: any))
+	} :: any)
 	WorkspaceFolders.manageFolder(collisionChunksFolder, worldFolder)
 
 	self.worldFolder = worldFolder
@@ -2570,7 +2572,7 @@ function WorldGeneration.RebuildLoadedChunkByKey(self: WorldGeneration, chunkKey
 	if previousVisual == nil then
 		return false
 	end
-	local context = if typeof(contextRaw) == "table" then contextRaw :: { [string]: any } else ({} :: any)
+	local context = if typeof(contextRaw) == "table" then contextRaw :: { [string]: any } else {} :: any
 
 	local chunkX, chunkY = unpackChunkKey(chunkKey)
 	if chunkX == nil or chunkY == nil then
@@ -4606,11 +4608,11 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 	local desertDecorationSettings = if typeof(self.desertConfig) == "table"
 			and typeof((self.desertConfig :: any).Decoration) == "table"
 		then (self.desertConfig :: any).Decoration :: { [string]: any }
-		else ({} :: any)
+		else {} :: any
 	local snowDecorationSettings = if typeof(self.snowConfig) == "table"
 			and typeof((self.snowConfig :: any).Decoration) == "table"
 		then (self.snowConfig :: any).Decoration :: { [string]: any }
-		else ({} :: any)
+		else {} :: any
 	local chunkTileMaxY = tileMinY + height - 1
 	local function hasReservedSurfaceTileNear(worldTileX: number, radius: number): boolean
 		for scanTileX = worldTileX - radius, worldTileX + radius do
@@ -5174,10 +5176,10 @@ function WorldGeneration.BuildChunkVisual(self: WorldGeneration, chunkData: Chun
 		part.Size = Vector3.new(self.tileDepth, self.tileSize * rect.height, self.tileSize * rect.width)
 		part.CFrame = CFrame.new(self:computeTileCenterPosition(centerTileX, centerTileY, 0))
 		if terrainFolder == nil then
-			terrainFolder = TileComponent.CreateFolder(({
+			terrainFolder = TileComponent.CreateFolder({
 				name = "Terrain",
 				parent = model,
-			} :: any))
+			} :: any)
 			WorkspaceFolders.manageFolder(terrainFolder, model)
 		end
 		part.Parent = terrainFolder
@@ -5312,7 +5314,7 @@ function WorldGeneration.LoadChunkByKey(self: WorldGeneration, chunkKey: string,
 		return
 	end
 
-	local context = if typeof(contextRaw) == "table" then contextRaw :: { [string]: any } else ({} :: any)
+	local context = if typeof(contextRaw) == "table" then contextRaw :: { [string]: any } else {} :: any
 	local chunkX, chunkY = unpackChunkKey(chunkKey)
 	if chunkX == nil or chunkY == nil then
 		return
@@ -5416,13 +5418,13 @@ function WorldGeneration.PumpLoadQueue(self: WorldGeneration)
 		self:pulseStatsChanged()
 
 		task.spawn(function()
-			local ok, loadError = pcall(function()
+			local ok, loaderror = pcall(function()
 				self:loadChunkByKey(chunkKey)
 			end)
 			self.loadingLookup[chunkKey] = nil
 			self.activeLoadWorkers = math.max(0, self.activeLoadWorkers - 1)
 			if not ok and (self.chunkDemand[chunkKey] or 0) > 0 then
-				warn(`WorldGeneration failed to load collision chunk {chunkKey}: {loadError}`)
+				warn(`WorldGeneration failed to load collision chunk {chunkKey}: {loaderror}`)
 				self:enqueueLoadByKey(chunkKey)
 			end
 			self:pulseStatsChanged()

@@ -27,7 +27,12 @@ function RippleMotion.CreateVectorMotion(initialValue: Vector3): any
 	return RippleMotion.CreateMotion(initialValue)
 end
 
-function RippleMotion.ResolveSpring(stiffnessRaw: any, dampingRaw: any, fallbackStiffness: number, fallbackDamping: number): { [string]: number }
+function RippleMotion.ResolveSpring(
+	stiffnessRaw: any,
+	dampingRaw: any,
+	fallbackStiffness: number,
+	fallbackDamping: number
+): { [string]: number }
 	local stiffness = clampNumber(stiffnessRaw, fallbackStiffness, 0.01, 200)
 	local damping = clampNumber(dampingRaw, fallbackDamping, 0, 100)
 	local omega = math.sqrt(stiffness)

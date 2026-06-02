@@ -1,4 +1,5 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Fusion = require(ReplicatedStorage.Packages.Fusion)
@@ -41,7 +42,7 @@ local function sanitizeSize(valueRaw: any, fallback: Vector3): Vector3
 end
 
 function EyeOfCthulhuRoot.CreateModel(configRaw: EyeOfCthulhuRootConfig?): Model
-	local config = (if typeof(configRaw) == "table" then configRaw else ({} :: any)) :: EyeOfCthulhuRootConfig
+	local config = (if typeof(configRaw) == "table" then configRaw else {} :: any) :: EyeOfCthulhuRootConfig
 	local phaseModel = if typeof(config.phaseModel) == "string" and config.phaseModel ~= ""
 		then config.phaseModel
 		else "Phase1"

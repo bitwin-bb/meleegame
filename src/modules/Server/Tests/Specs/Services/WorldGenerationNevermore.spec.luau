@@ -1,5 +1,7 @@
 --!strict
 
+local require = require(script.Parent.loader).load(assert(script:FindFirstAncestor("AquariaBackup"), "Missing AquariaBackup package root"))
+
 local testEnvironment = getfenv() :: any
 local describe = testEnvironment.describe :: any
 local it = testEnvironment.it :: any
@@ -8,18 +10,11 @@ local expect = testEnvironment.expect :: any
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local WorldGeneration =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.classes.WorldGeneration)
-local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
-local WorldGenerationServiceUtils =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceUtils)
+local WorldGeneration = require("WorldGeneration")
+local WorldGenerationServiceClient = require("WorldGenerationServiceClient")
+local WorldGenerationServiceUtils = require("WorldGenerationServiceUtils")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
-
-local Maid = loader("Maid")
+local Maid = require("Maid")
 
 local REQUIRED_TILE_TEMPLATE_NAMES = {
 	"Stone",

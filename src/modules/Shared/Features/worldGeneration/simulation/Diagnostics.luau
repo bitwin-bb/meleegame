@@ -1,9 +1,10 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Matter = require(ReplicatedStorage.Packages.Matter)
-local TileComponent = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.components.Tile)
+local TileComponent = require(gameRoot.Shared.Features.worldGeneration.components.Tile)
 
 local Diagnostics = {}
 Diagnostics.__index = Diagnostics

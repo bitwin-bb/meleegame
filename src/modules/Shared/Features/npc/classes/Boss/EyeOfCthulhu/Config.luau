@@ -1,7 +1,8 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
 
 local EyeOfCthulhuConfig = {}
 
@@ -211,7 +212,7 @@ end
 
 function EyeOfCthulhuConfig.Resolve(configRaw: any): EyeOfCthulhuConfig
 	local config = cloneDefaults()
-	local source = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local source = if typeof(configRaw) == "table" then configRaw else {} :: any
 
 	config.maxHp = sanitizeInteger((source :: any).maxHp, config.maxHp, 1, 10 ^ 9)
 	config.defensePhase1 =

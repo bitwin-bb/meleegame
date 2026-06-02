@@ -1,8 +1,12 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
 local UserInputService = game:GetService("UserInputService")
 
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
 local Platform = {}
 Platform.__index = Platform
@@ -52,7 +56,12 @@ local function isGamepadInput(inputType: Enum.UserInputType): boolean
 	return string.sub(inputType.Name, 1, 7) == "Gamepad"
 end
 
-local function computePrimaryInputType(lastInputType: Enum.UserInputType?, touchEnabled: boolean, keyboardEnabled: boolean, gamepadEnabled: boolean): string
+local function computePrimaryInputType(
+	lastInputType: Enum.UserInputType?,
+	touchEnabled: boolean,
+	keyboardEnabled: boolean,
+	gamepadEnabled: boolean
+): string
 	if lastInputType ~= nil then
 		if isGamepadInput(lastInputType) then
 			return "Gamepad"
@@ -60,7 +69,8 @@ local function computePrimaryInputType(lastInputType: Enum.UserInputType?, touch
 		if lastInputType == Enum.UserInputType.Touch then
 			return "Touch"
 		end
-		if lastInputType == Enum.UserInputType.MouseButton1
+		if
+			lastInputType == Enum.UserInputType.MouseButton1
 			or lastInputType == Enum.UserInputType.MouseButton2
 			or lastInputType == Enum.UserInputType.MouseButton3
 			or lastInputType == Enum.UserInputType.MouseMovement
@@ -90,7 +100,7 @@ local function buildSnapshot(lastInputType: Enum.UserInputType?): PlatformSnapsh
 	local isMobile = touchEnabled and not keyboardEnabled and not gamepadEnabled
 	local isConsole = gamepadEnabled and not keyboardEnabled and not mouseEnabled
 	local isDesktop = keyboardEnabled and mouseEnabled
-	
+
 	local supportsHover = mouseEnabled
 	local supportsRightClick = mouseEnabled and keyboardEnabled
 
@@ -147,7 +157,7 @@ local function safeDisconnect(connection: RBXScriptConnection?)
 end
 
 function Platform.New(configRaw: PlatformConfig?): Platform
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local self = setmetatable({
 		eventBus = config.eventBus,
 		eventChannel = normalizeEventName(config.eventChannel, "platform"),
@@ -188,10 +198,12 @@ function Platform.Init(self: Platform)
 	end
 	self.isInitialized = true
 	self.snapshot = buildSnapshot(self.lastInputType)
-	self.connections[#self.connections + 1] = UserInputService.LastInputTypeChanged:Connect(function(inputType: Enum.UserInputType)
-		self.lastInputType = inputType
-		self:_refresh()
-	end)
+	self.connections[#self.connections + 1] = UserInputService.LastInputTypeChanged:Connect(
+		function(inputType: Enum.UserInputType)
+			self.lastInputType = inputType
+			self:_refresh()
+		end
+	)
 	self.connections[#self.connections + 1] = UserInputService.GamepadConnected:Connect(function()
 		self:_refresh()
 	end)

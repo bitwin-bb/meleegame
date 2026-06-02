@@ -94,13 +94,7 @@ function Num.InverseLerp(a: number, b: number, value: number): number
 	return (value - a) / delta
 end
 
-function Num.Remap(
-	value: number,
-	fromMin: number,
-	fromMax: number,
-	toMin: number,
-	toMax: number
-): number
+function Num.Remap(value: number, fromMin: number, fromMax: number, toMin: number, toMax: number): number
 	return toMin + (toMax - toMin) * Num.InverseLerp(fromMin, fromMax, value)
 end
 

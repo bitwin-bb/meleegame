@@ -1,18 +1,22 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local ManaMeter = require(script.Parent.components.ManaMeter)
-local ManaServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.mana.ManaServiceUtils)
+local ManaMeter = require(gameRoot.Shared.Features.mana.ui.hud.TopBar.components.ManaMeter)
+local ManaServiceUtils = require(gameRoot.Shared.Features.mana.ManaServiceUtils)
 local React = require(ReplicatedStorage.Packages.React)
-local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
-local UiSound = require(script:FindFirstAncestor("game").Client.UI.core.utils.UiSound)
-local infoThunks = require(script:FindFirstAncestor("game").Client.Features.info.ui.state.infoThunks)
-local manaSlice = require(script:FindFirstAncestor("game").Shared.Features.mana.ui.hud.state.slice.manaSlice)
-local manaThunks = require(script:FindFirstAncestor("game").Shared.Features.mana.ui.hud.state.thunk.manaThunks)
-local useHover = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useHover)
-local useManaTransparency = require(script:FindFirstAncestor("game").Shared.Features.mana.ui.hooks.useManaTransparency)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local Responsive = require(gameRoot.Client.UI.core.hooks.useViewportScale)
+local UiSound = require(gameRoot.Client.UI.core.utils.UiSound)
+local infoThunks = require(gameRoot.Client.Features.info.ui.state.infoThunks)
+local manaSlice = require(gameRoot.Shared.Features.mana.ui.hud.state.slice.manaSlice)
+local manaThunks = require(gameRoot.Shared.Features.mana.ui.hud.state.thunk.manaThunks)
+local useHover = require(gameRoot.Client.UI.core.hooks.useHover)
+local useManaTransparency = require(gameRoot.Shared.Features.mana.ui.hooks.useManaTransparency)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
 
 type ManaServiceState = ManaServiceUtils.ManaServiceState
 
@@ -126,7 +130,7 @@ return function(props: ManaTopRightBarProps)
 			id = hoverId,
 			text = hoverText,
 		})
-	end, ({ starsHover.hovered, hoverText } :: { any }))
+	end, { starsHover.hovered, hoverText } :: { any })
 
 	React.useEffect(function()
 		return function()

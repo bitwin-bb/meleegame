@@ -1,5 +1,9 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
 local CollectionService = game:GetService("CollectionService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -8,11 +12,11 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
+local BuildServiceUtils = require(gameRoot.Shared.Features.world.BuildServiceUtils)
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local WorldGenerationServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).WorldGenerationService
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local WorldGenerationServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).WorldGenerationService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = WorldGenerationServicePackets[methodName]
@@ -55,21 +59,17 @@ local function bindPackets(self: any)
 	bindPacket(self, "setRenderDistance")
 end
 
-local OreRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Ores)
-local PlantRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Plants)
-local ProceduralCactus =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.classes.WorldGeneration.Cactus)
-local ProceduralTree =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.classes.WorldGeneration.Tree)
-local Signal = require(ReplicatedStorage.Packages.Signal)
-local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
-local TileComponent = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.components.Tile)
-local TileMaterial = require(script:FindFirstAncestor("game").Shared.Game.Render.TileMaterial)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
-local WorldGenerationColor =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.modules.WorldGenerationColor)
-local WorldGenerationServiceUtils =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceUtils)
+local OreRegistry = require(gameRoot.Shared.Features.item.modules.Ores)
+local PlantRegistry = require(gameRoot.Shared.Features.item.modules.Plants)
+local ProceduralCactus = require(gameRoot.Shared.Features.worldGeneration.classes.WorldGeneration.Cactus)
+local ProceduralTree = require(gameRoot.Shared.Features.worldGeneration.classes.WorldGeneration.Tree)
+local Signal = require(quentyPackages.signal.Shared.Signal)
+local TagBinder = require(gameRoot.Shared.Binders.TagBinder)
+local TileComponent = require(gameRoot.Shared.Features.worldGeneration.components.Tile)
+local TileMaterial = require(gameRoot.Shared.Game.Render.TileMaterial)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
+local WorldGenerationColor = require(gameRoot.Shared.Features.worldGeneration.modules.WorldGenerationColor)
+local WorldGenerationServiceUtils = require(gameRoot.Shared.Features.worldGeneration.WorldGenerationServiceUtils)
 
 type WorldGenerationServiceState = WorldGenerationServiceUtils.WorldGenerationServiceState
 type ProceduralTreeConfig = ProceduralTree.ProceduralTreeConfig

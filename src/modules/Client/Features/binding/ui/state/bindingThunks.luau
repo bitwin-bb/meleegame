@@ -1,21 +1,23 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local RunService = game:GetService("RunService")
 
-local BuildServiceClient = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceClient)
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
-local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
-local InventoryServiceClient = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceClient)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Registry)
-local MagicServiceClient = require(script:FindFirstAncestor("game").Shared.Features.combat.MagicServiceClient)
-local MagicServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.combat.MagicServiceUtils)
-local MeleeServiceClient = require(script:FindFirstAncestor("game").Shared.Features.combat.MeleeServiceClient)
-local MiningPower = require(script:FindFirstAncestor("game").Shared.Core.Math.MiningPower)
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
-local PlayerServiceClient = require(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceClient)
-local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
-local bindingSlice = require(script:FindFirstAncestor("game").Client.Features.binding.ui.state.bindingSlice)
-local itemThunks = require(script:FindFirstAncestor("game").Shared.Features.item.ui.state.itemThunks)
+local BuildServiceClient = require(gameRoot.Shared.Features.world.BuildServiceClient)
+local BuildServiceUtils = require(gameRoot.Shared.Features.world.BuildServiceUtils)
+local ConnectionUtils = require(gameRoot.Client.UI.core.utils.ConnectionUtils)
+local InventoryServiceClient = require(gameRoot.Shared.Features.inventory.InventoryServiceClient)
+local InventoryServiceUtils = require(gameRoot.Shared.Features.inventory.InventoryServiceUtils)
+local ItemRegistry = require(gameRoot.Shared.Features.item.modules.Registry)
+local MagicServiceClient = require(gameRoot.Shared.Features.combat.MagicServiceClient)
+local MagicServiceUtils = require(gameRoot.Shared.Features.combat.MagicServiceUtils)
+local MeleeServiceClient = require(gameRoot.Shared.Features.combat.MeleeServiceClient)
+local MiningPower = require(gameRoot.Shared.Core.Math.MiningPower)
+local PlatformServiceClient = require(gameRoot.Shared.Features.platform.PlatformServiceClient)
+local PlayerServiceClient = require(gameRoot.Shared.Features.movement.PlayerServiceClient)
+local ServiceSync = require(gameRoot.Client.UI.core.utils.ServiceSync)
+local bindingSlice = require(gameRoot.Client.Features.binding.ui.state.bindingSlice)
+local itemThunks = require(gameRoot.Shared.Features.item.ui.state.itemThunks)
 
 type BindingHintEntry = bindingSlice.BindingHintEntry
 type BindingHintState = bindingSlice.BindingHintState
@@ -191,12 +193,12 @@ local function resolvePromptData(actionName: string): PromptData
 	local prompt = promptOrError :: { [string]: any }
 	local promptText = trim(prompt.text)
 	local promptIcon = trim(prompt.icon)
-	return ({
+	return {
 		text = if promptText ~= "" then promptText else nil,
 		icon = if promptIcon ~= "" then promptIcon else nil,
 		keyCode = if typeof(prompt.keyCode) == "EnumItem" then prompt.keyCode else nil,
 		inputType = if typeof(prompt.inputType) == "EnumItem" then prompt.inputType else nil,
-	} :: PromptData)
+	} :: PromptData
 end
 
 local function isMousePrompt(promptData: PromptData): boolean

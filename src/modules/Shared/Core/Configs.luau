@@ -1,5 +1,6 @@
-local WorldGenerationColor =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.modules.WorldGenerationColor)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local WorldGenerationColor = require(gameRoot.Shared.Features.worldGeneration.modules.WorldGenerationColor)
 
 local liquidDefinitions = WorldGenerationColor.LIQUID_DEFINITIONS
 local liquidBiomeTints = WorldGenerationColor.LIQUID_BIOME_TINTS

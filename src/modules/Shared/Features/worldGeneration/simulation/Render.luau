@@ -1,11 +1,13 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local HttpService = game:GetService("HttpService")
 
-local Cache = require(script.Parent.SimulationCache)
-local Shared = require(script.Parent.Shared)
-local TileComponent = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.components.Tile)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
+local Cache = require(gameRoot.Shared.Features.worldGeneration.simulation.SimulationCache)
+local Shared = require(gameRoot.Shared.Features.worldGeneration.simulation.Shared)
+local TileComponent = require(gameRoot.Shared.Features.worldGeneration.components.Tile)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
 
 local Render = {}
 Render.__index = Render
@@ -51,7 +53,7 @@ local function decodeClusterIndex(index: number, countX: number, countY: number)
 end
 
 function Render.New(configRaw: any, cacheRaw: any, debugRaw: any)
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local cache = if cacheRaw ~= nil then cacheRaw else Cache.new(nil)
 	local self = setmetatable({
 		config = config,
@@ -133,19 +135,19 @@ function Render.EnsureFolders(self: Render, parentRaw: any): Folder?
 
 	local worldFolder = parent:FindFirstChild(WORLD_FOLDER_NAME)
 	if worldFolder == nil or not worldFolder:IsA("Folder") then
-		worldFolder = TileComponent.CreateFolder(({
+		worldFolder = TileComponent.CreateFolder({
 			name = WORLD_FOLDER_NAME,
 			parent = parent,
-		} :: any)) :: any
+		} :: any) :: any
 	end
 	local resolvedWorldFolder = worldFolder :: Folder
 
 	local chunksFolder = resolvedWorldFolder:FindFirstChild(CHUNKS_FOLDER_NAME)
 	if chunksFolder == nil or not chunksFolder:IsA("Folder") then
-		chunksFolder = TileComponent.CreateFolder(({
+		chunksFolder = TileComponent.CreateFolder({
 			name = CHUNKS_FOLDER_NAME,
 			parent = resolvedWorldFolder,
-		} :: any)) :: any
+		} :: any) :: any
 	end
 	local resolvedChunksFolder = chunksFolder :: Folder
 
@@ -370,4 +372,3 @@ Render.beginStreamingTick = Render.BeginStreamingTick
 Render.endStreamingTick = Render.EndStreamingTick
 
 return Render
-

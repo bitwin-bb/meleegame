@@ -1,19 +1,22 @@
 --!strict
-local Players = game:GetService("Players")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Players = game:GetService("Players")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local BossServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceServer)
+local BossServiceServer = (require :: any)(gameRoot.Shared.Features.npc.BossServiceServer)
 local InventoryServiceServer = (require :: any)(
 	script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceServer
 )
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
+local InventoryServiceUtils = require(gameRoot.Shared.Features.inventory.InventoryServiceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Melee = require(script:FindFirstAncestor("game").Shared.Features.combat.classes.Melee)
-local MeleeServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.combat.MeleeServiceUtils)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local MeleeServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).MeleeService
+local Melee = require(gameRoot.Shared.Features.combat.classes.Melee)
+local MeleeServiceUtils = require(gameRoot.Shared.Features.combat.MeleeServiceUtils)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local MeleeServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).MeleeService
 
 local function bindPacket(self: any, methodName: string)
 	local packet = MeleeServicePackets[methodName]
@@ -47,17 +50,16 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSetInputHeld")
 end
 
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local NpcServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceServer)
+local NevermoreSupport = require(gameRoot.Shared.Core.NevermoreSupport)
+local NpcServiceServer = (require :: any)(gameRoot.Shared.Features.npc.NpcServiceServer)
 local PlayerServiceServer = (require :: any)(
 	script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer
 )
 local RagdollServiceServer = (require :: any)(
 	script:FindFirstAncestor("game").Shared.Features.ragdoll.RagdollServiceServer
 )
-local RaycastHitbox =
-	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("RaycastHitbox"))
-local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local RaycastHitbox = require(ReplicatedStorage.Shared.Vendor.RaycastHitbox)
+local ServerBinderSupport = (require :: any)(gameRoot.Server.Binders.ServerBinderSupport)
 
 type MeleeWeaponConfig = MeleeServiceUtils.MeleeWeaponConfig
 type InventoryState = InventoryServiceUtils.InventoryState

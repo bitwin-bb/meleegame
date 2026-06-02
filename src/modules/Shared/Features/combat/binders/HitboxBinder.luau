@@ -1,6 +1,8 @@
 --!strict
 
-local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ModelBinder = require(gameRoot.Shared.Binders.ModelBinder)
 
 local HitboxBinder = {}
 HitboxBinder.__index = HitboxBinder
@@ -12,21 +14,21 @@ local npcServiceServer = nil
 
 local function getBossServiceServer()
 	if bossServiceServer == nil then
-		bossServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceServer)
+		bossServiceServer = (require :: any)(gameRoot.Shared.Features.npc.BossServiceServer)
 	end
 	return bossServiceServer
 end
 
 local function getHpServiceServer()
 	if hpServiceServer == nil then
-		hpServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.health.HpServiceServer)
+		hpServiceServer = (require :: any)(gameRoot.Shared.Features.health.HpServiceServer)
 	end
 	return hpServiceServer
 end
 
 local function getNpcServiceServer()
 	if npcServiceServer == nil then
-		npcServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceServer)
+		npcServiceServer = (require :: any)(gameRoot.Shared.Features.npc.NpcServiceServer)
 	end
 	return npcServiceServer
 end

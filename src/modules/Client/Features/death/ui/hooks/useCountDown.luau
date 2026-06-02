@@ -1,5 +1,7 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local RunService = game:GetService("RunService")
 
 local React = require(ReplicatedStorage.Packages.React)
@@ -147,8 +149,7 @@ local function useCountDown(options: CountDownOptions?): CountDownState
 			return initialCountdownSeconds
 		end
 		return 0
-	end)
-;
+	end);
 	(React.useEffect :: any)(function()
 		local nextRevealed = shouldRevealCountdown(enabled, respawnAt, diedAt, appearDelay)
 		revealRef.current = nextRevealed
@@ -162,8 +163,7 @@ local function useCountDown(options: CountDownOptions?): CountDownState
 		else
 			setSecondsLeft(0)
 		end
-	end, dependencyArray(enabled, respawnAt, diedAt, appearDelay, initialCountdownSeconds))
-;
+	end, dependencyArray(enabled, respawnAt, diedAt, appearDelay, initialCountdownSeconds));
 	(React.useEffect :: any)(function()
 		local motion: NumberMotion = Ripple.createMotion(progress)
 		local connection = RunService.RenderStepped:Connect(function(deltaTime: number)
@@ -181,8 +181,7 @@ local function useCountDown(options: CountDownOptions?): CountDownState
 			connection:Disconnect()
 			motion:destroy()
 		end
-	end, dependencyArray(enabled, respawnAt, diedAt, appearDelay, spring))
-;
+	end, dependencyArray(enabled, respawnAt, diedAt, appearDelay, spring));
 	(React.useEffect :: any)(function()
 		if not enabled then
 			setSecondsLeft(0)

@@ -1,8 +1,10 @@
 --!strict
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local DataTemplate = require(script:FindFirstAncestor("game").Shared.Core.DataTemplate)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Players = game:GetService("Players")
+
+local DataTemplate = require(gameRoot.Shared.Core.DataTemplate)
 
 local PlayerSpawnCooldown = {}
 
@@ -27,7 +29,9 @@ local function resolveConfiguredRespawnDelayFromTemplate(): number?
 		return nil
 	end
 
-	local playerData = if typeof((DataTemplate :: any).playerData) == "table" then (DataTemplate :: any).playerData else nil
+	local playerData = if typeof((DataTemplate :: any).playerData) == "table"
+		then (DataTemplate :: any).playerData
+		else nil
 	if playerData == nil then
 		return nil
 	end

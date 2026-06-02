@@ -1,6 +1,8 @@
 --!strict
 
-local Shared = require(script.Parent.Shared)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Shared = require(gameRoot.Shared.Features.worldGeneration.simulation.Shared)
 
 local State = {}
 

@@ -1,15 +1,17 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local CraftingButton = require(script:FindFirstAncestor("game").Shared.Features.crafting.ui.components.craftingButton)
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
-local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
+local CraftingButton = require(gameRoot.Shared.Features.crafting.ui.components.craftingButton)
+local ImageIds = require(gameRoot.Client.UI.core.ImageIds)
+local NavButton = require(gameRoot.Client.UI.core.components.NavButton)
 local React = require(ReplicatedStorage.Packages.React)
-local craftingSlice = require(script:FindFirstAncestor("game").Shared.Features.crafting.ui.state.craftingSlice)
-local craftingThunks = require(script:FindFirstAncestor("game").Shared.Features.crafting.ui.state.craftingThunks)
-local hudInventorySlice = require(script:FindFirstAncestor("game").Shared.Features.inventory.ui.hud.state.slice.inventorySlice)
-local hudInventoryThunks = require(script:FindFirstAncestor("game").Shared.Features.inventory.ui.hud.state.slice.inventoryThunks)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local craftingSlice = require(gameRoot.Shared.Features.crafting.ui.state.craftingSlice)
+local craftingThunks = require(gameRoot.Shared.Features.crafting.ui.state.craftingThunks)
+local hudInventorySlice = require(gameRoot.Shared.Features.inventory.ui.hud.state.slice.inventorySlice)
+local hudInventoryThunks = require(gameRoot.Shared.Features.inventory.ui.hud.state.slice.inventoryThunks)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
 
 type CraftingState = craftingSlice.CraftingState
 type InventoryHudState = hudInventorySlice.InventoryHudState

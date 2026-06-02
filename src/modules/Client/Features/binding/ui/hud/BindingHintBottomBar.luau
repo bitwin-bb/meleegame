@@ -1,9 +1,11 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local TextLabel = require(script:FindFirstAncestor("game").Client.UI.core.primitives.TextLabel)
-local bindingSlice = require(script:FindFirstAncestor("game").Client.Features.binding.ui.state.bindingSlice)
+local TextLabel = require(gameRoot.Client.UI.core.primitives.TextLabel)
+local bindingSlice = require(gameRoot.Client.Features.binding.ui.state.bindingSlice)
 
 type BindingHintEntry = bindingSlice.BindingHintEntry
 

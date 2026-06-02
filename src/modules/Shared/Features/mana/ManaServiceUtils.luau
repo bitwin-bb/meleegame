@@ -1,4 +1,5 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Sift = require(ReplicatedStorage.Packages.Sift)
@@ -90,15 +91,10 @@ function ManaServiceUtils.CreateDefaultState(): ManaServiceState
 end
 
 function ManaServiceUtils.SanitizeState(stateRaw: any, fallbackRaw: ManaServiceState?): ManaServiceState
-	local source = if typeof(stateRaw) == "table" then (stateRaw :: { [string]: any }) else ({} :: any)
+	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {} :: any
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else ManaServiceUtils.CreateDefaultState()
-	local nextState = ManaServiceUtils.CreateState(
-		source.mana,
-		source.maxMana,
-		source.regenPerSecond,
-		source.isLoaded,
-		fallback
-	)
+	local nextState =
+		ManaServiceUtils.CreateState(source.mana, source.maxMana, source.regenPerSecond, source.isLoaded, fallback)
 	local updatedAtRaw = source.updatedAt
 	if typeof(updatedAtRaw) == "number" and updatedAtRaw == updatedAtRaw then
 		nextState.updatedAt = updatedAtRaw

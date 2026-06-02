@@ -1,10 +1,11 @@
-local UserInputService = game:GetService("UserInputService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 
-local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
-local infoState = require(script:FindFirstAncestor("game").Client.Features.info.ui.state.infoState)
-local Input = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.Input)
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
+local UserInputService = game:GetService("UserInputService")
+
+local ConnectionUtils = require(gameRoot.Client.UI.core.utils.ConnectionUtils)
+local CoreRuntime = require(gameRoot.Shared.Core.Runtime)
+local Input = require(gameRoot.Shared.Features.platform.modules.Input)
+local infoState = require(gameRoot.Client.Features.info.ui.state.infoState)
 
 type HoverInfoState = infoState.HoverInfoState
 
@@ -111,7 +112,11 @@ end
 
 local function unbindPointerTrackingWithInputModule()
 	local inputRouter = runtime.inputRouter
-	if inputRouter ~= nil and runtime.pointerActionBound and typeof((inputRouter :: any).unbindAction) == "function" then
+	if
+		inputRouter ~= nil
+		and runtime.pointerActionBound
+		and typeof((inputRouter :: any).unbindAction) == "function"
+	then
 		local inputRouterAny = inputRouter :: any
 		inputRouterAny:unbindAction(POINTER_TRACK_ACTION)
 	end
@@ -135,7 +140,9 @@ function infoThunks.Start(): () -> ()
 	if not boundWithInputModule then
 		runtime.inputChangedConnection = UserInputService.InputChanged:Connect(function(inputObject: InputObject)
 			if shouldTrackInput(inputObject) then
-				infoState.updateMousePosition(toGuiPosition(Vector2.new(inputObject.Position.X, inputObject.Position.Y)))
+				infoState.updateMousePosition(
+					toGuiPosition(Vector2.new(inputObject.Position.X, inputObject.Position.Y))
+				)
 			end
 		end)
 	end

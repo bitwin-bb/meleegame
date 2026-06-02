@@ -1,15 +1,15 @@
 --!strict
 
 local gameRoot = assert(script:FindFirstAncestor("game"), "Missing game root")
-local packageRoot = gameRoot.Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 
-local Rx = loader("Rx") :: any
-local RxSignal = loader("RxSignal") :: any
 
-local EventName = require(script.Parent.EventName)
-local Signal = require(script.Parent.signals.Signal)
+local Rx = require(quentyPackages.rx.Shared.Rx) :: any
+local RxSignal = require(quentyPackages.rxsignal.Shared.RxSignal) :: any
+
+local EventName = require(gameRoot.Shared.SharedEventBus.Core.EventName)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
 type Signal = Signal.Signal
 
@@ -22,12 +22,15 @@ type RxSignalObject = {
 local EventBus = {}
 EventBus.__index = EventBus
 
-export type EventBus = typeof(setmetatable({} :: {
-	Name: string,
-	_destroyed: boolean,
-	_signals: { [string]: Signal },
-	_rxSignals: { [string]: RxSignalObject },
-}, EventBus))
+export type EventBus = typeof(setmetatable(
+	{} :: {
+		Name: string,
+		_destroyed: boolean,
+		_signals: { [string]: Signal? },
+		_rxSignals: { [string]: RxSignalObject? },
+	},
+	EventBus
+))
 
 local function getSortedKeys(source: { [string]: any }): { string }
 	local keys: { string } = {}
@@ -37,6 +40,24 @@ local function getSortedKeys(source: { [string]: any }): { string }
 
 	table.sort(keys)
 	return keys
+end
+
+local function createRxSignalWrapper(signal: Signal): RxSignalObject
+	local rxSignal = RxSignal.new(Rx.fromSignal(signal)) :: RxSignalObject
+
+	return {
+		Connect = function(_self: RxSignalObject, callback: (...any) -> ())
+			return rxSignal:Connect(callback)
+		end,
+
+		Once = function(_self: RxSignalObject, callback: (...any) -> ())
+			return rxSignal:Once(callback)
+		end,
+
+		Wait = function(_self: RxSignalObject): ...any
+			return signal:Wait()
+		end,
+	}
 end
 
 function EventBus.new(name: string?): EventBus
@@ -61,10 +82,10 @@ function EventBus.GetSignal(self: EventBus, eventNameRaw: any): Signal
 		return signal
 	end
 
-	signal = Signal.new()
-	self._signals[eventName] = signal
+	local newSignal = Signal.new()
+	self._signals[eventName] = newSignal
 
-	return signal
+	return newSignal
 end
 
 function EventBus.On(self: EventBus, eventNameRaw: any, callback: (...any) -> ())
@@ -161,13 +182,11 @@ function EventBus.GetRxSignal(self: EventBus, eventNameRaw: any): RxSignalObject
 		return rxSignal
 	end
 
-	rxSignal = RxSignal.new(function()
-		return self:Observe(eventName)
-	end) :: RxSignalObject
+	local newRxSignal = createRxSignalWrapper(self:GetSignal(eventName))
 
-	self._rxSignals[eventName] = rxSignal
+	self._rxSignals[eventName] = newRxSignal
 
-	return rxSignal
+	return newRxSignal
 end
 
 EventBus.on = EventBus.On

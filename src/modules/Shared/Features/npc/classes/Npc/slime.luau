@@ -1,11 +1,14 @@
 --!strict
-local Players = game:GetService("Players")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Players = game:GetService("Players")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local HopMotion = require(script:FindFirstAncestor("game").Shared.Core.Math.HopMotion)
+local HopMotion = require(gameRoot.Shared.Core.Math.HopMotion)
 local Npc = require(script.Parent)
 
 type NpcBehaviorConfig = Npc.NpcBehaviorConfig
@@ -400,7 +403,7 @@ function Slime._resolveHopDestination(self: Slime): Vector3?
 	end
 
 	local resolvedHopDestination: Vector3 = hopDestination or currentPosition
-	local projectedDestination: Vector3? = (self:_projectTo2DPlane(resolvedHopDestination) :: any)
+	local projectedDestination: Vector3? = self:_projectTo2DPlane(resolvedHopDestination) :: any
 	if projectedDestination == nil then
 		return currentPosition
 	end
@@ -483,7 +486,8 @@ function Slime._hasBlockingOverlap(self: Slime, position: Vector3, lookDirection
 	return false
 end
 
-function Slime._resolveHopCollisionPosition(self: Slime, 
+function Slime._resolveHopCollisionPosition(
+	self: Slime,
 	previousPositionRaw: Vector3,
 	desiredPositionRaw: Vector3,
 	lookDirectionRaw: Vector3
@@ -612,7 +616,8 @@ function Slime._applyHopTransform(self: Slime, positionRaw: any, velocityRaw: an
 	end
 	local previousPosition: Vector3 = previousPositionRaw or desiredPosition
 
-	local position: Vector3? = (self:_resolveHopCollisionPosition(previousPosition, desiredPosition, lookDirection) :: any)
+	local position: Vector3? =
+		self:_resolveHopCollisionPosition(previousPosition, desiredPosition, lookDirection) :: any
 	if position == nil then
 		position = desiredPosition
 	end
@@ -830,14 +835,18 @@ function Slime._slimeOnDeath(self: Slime)
 end
 
 function Slime.New(configRaw: SlimeConfig?): Slime
-	local config = (if typeof(configRaw) == "table" then Sift.Dictionary.copy(configRaw :: any) else ({} :: any)) :: SlimeConfig & {
+	local config = (
+		if typeof(configRaw) == "table" then Sift.Dictionary.copy(configRaw :: any) else {} :: any
+	) :: SlimeConfig & {
 		[string]: any,
 	}
 	local baseBehavior = if typeof(config.behavior) == "table"
 		then config.behavior :: NpcBehaviorConfig
 		else {} :: NpcBehaviorConfig
 
-	local movement = (if typeof(config.movement) == "table" then Sift.Dictionary.copy(config.movement) else ({} :: any)) :: {
+	local movement = (
+		if typeof(config.movement) == "table" then Sift.Dictionary.copy(config.movement) else {} :: any
+	) :: {
 		[string]: any,
 	}
 	if movement.canWander == nil then
@@ -848,7 +857,9 @@ function Slime.New(configRaw: SlimeConfig?): Slime
 	end
 	config.movement = movement
 
-	local lifecycle = (if typeof(config.lifecycle) == "table" then Sift.Dictionary.copy(config.lifecycle) else ({} :: any)) :: {
+	local lifecycle = (
+		if typeof(config.lifecycle) == "table" then Sift.Dictionary.copy(config.lifecycle) else {} :: any
+	) :: {
 		[string]: any,
 	}
 	local autoStart = toBoolean(lifecycle.autoStart, false)
@@ -913,7 +924,7 @@ function Slime.New(configRaw: SlimeConfig?): Slime
 	local self = setmetatable(npcObject :: any, Slime) :: Slime
 
 	local planeXRaw = if config.planeX ~= nil then config.planeX else config.twoDPlaneX
-	local hopMotionSpringRaw = if typeof(config.hopMotionSpring) == "table" then config.hopMotionSpring else ({} :: any)
+	local hopMotionSpringRaw = if typeof(config.hopMotionSpring) == "table" then config.hopMotionSpring else {} :: any
 	local hopMotionSpring = {
 		frequency = toNumber((hopMotionSpringRaw :: any).frequency, DEFAULT_HOP_SPRING_FREQUENCY, 0.01, 120),
 		damping = toNumber((hopMotionSpringRaw :: any).damping, DEFAULT_HOP_SPRING_DAMPING, 0, 20),
@@ -970,4 +981,3 @@ Slime.setAggroOnPlayer = Slime.SetAggroOnPlayer
 Slime.new = Slime.New
 
 return Slime
-

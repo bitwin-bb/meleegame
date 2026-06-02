@@ -1,10 +1,11 @@
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BreathRoot = require(script:FindFirstAncestor("game").Shared.Features.breath.ui.BreathRoot)
-local ManaRoot = require(script:FindFirstAncestor("game").Shared.Features.mana.ui.ManaRoot)
-local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
+local BreathRoot = require(gameRoot.Shared.Features.breath.ui.BreathRoot)
+local ManaRoot = require(gameRoot.Shared.Features.mana.ui.ManaRoot)
+local NavButton = require(gameRoot.Client.UI.core.components.NavButton)
 local React = require(ReplicatedStorage.Packages.React)
-local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
+local Responsive = require(gameRoot.Client.UI.core.hooks.useViewportScale)
 
 local e: typeof(React.createElement) = React.createElement
 

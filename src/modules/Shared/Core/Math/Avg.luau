@@ -1,7 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 -- Mean and moving-average helpers.
 
-local Num = require(script.Parent.Num)
+local Num = require(gameRoot.Shared.Core.Math.Num)
 
 local Avg = {}
 
@@ -51,7 +54,12 @@ function Avg.Running(previousAverage: number, previousCount: number, sample: num
 	return average, count
 end
 
-function Avg.Sliding(previousAverage: number, windowSize: number, outgoingSample: number, incomingSample: number): number
+function Avg.Sliding(
+	previousAverage: number,
+	windowSize: number,
+	outgoingSample: number,
+	incomingSample: number
+): number
 	local size = math.max(1, math.floor(windowSize))
 	return previousAverage + (incomingSample - outgoingSample) / size
 end

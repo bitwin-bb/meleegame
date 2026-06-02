@@ -62,9 +62,9 @@ local function buildTier(
 end
 
 function LODController.New(configRaw: any?): LODController
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
-	local runtime = if typeof(config.runtime) == "table" then config.runtime else ({} :: any)
-	local lod = if typeof(config.lod) == "table" then config.lod else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
+	local runtime = if typeof(config.runtime) == "table" then config.runtime else {} :: any
+	local lod = if typeof(config.lod) == "table" then config.lod else {} :: any
 
 	local nearFallback = clampNumber(lod.nearDistance, 54, 0, 5000)
 	local nearDistance = clampNumber(runtime.nearDistance, nearFallback, 0, 5000)
@@ -124,20 +124,7 @@ function LODController.New(configRaw: any?): LODController
 			false,
 			runtime.enableCanopyOnlyFar == true
 		),
-		tierFrozen = buildTier(
-			"Frozen",
-			runtime.frozenUpdateInterval,
-			0.75,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			0,
-			true,
-			false
-		),
+		tierFrozen = buildTier("Frozen", runtime.frozenUpdateInterval, 0.75, 0, 0, 0, 0, 0, 0, 0, true, false),
 	}, LODController)
 
 	return self
@@ -167,7 +154,12 @@ function LODController.IsVisible(self: LODController, worldPosition: Vector3, bo
 	return dot >= self.viewDotCull
 end
 
-function LODController.Resolve(self: LODController, distanceSquared: number, worldPosition: Vector3, boundingRadius: number): TierState?
+function LODController.Resolve(
+	self: LODController,
+	distanceSquared: number,
+	worldPosition: Vector3,
+	boundingRadius: number
+): TierState?
 	if distanceSquared > self.cullDistanceSquared then
 		return nil
 	end

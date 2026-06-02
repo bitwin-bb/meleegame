@@ -1,6 +1,10 @@
 --!strict
 
-local Nevermore = require(script.Parent.Parent.Nevermore)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
+local Nevermore = require(gameRoot.Shared.StateMachine.Nevermore)
 local Brio = Nevermore.Get("Brio")
 local Maid = Nevermore.Get("Maid")
 local Promise = Nevermore.Get("Promise")
@@ -9,9 +13,9 @@ local Signal = Nevermore.Get("Signal")
 local Table = Nevermore.Get("Table")
 local ValueObject = Nevermore.Get("ValueObject")
 
-local Blackboard = require(script.Parent.Blackboard)
-local StateStack = require(script.Parent.StateStack)
-local StateTree = require(script.Parent.StateTree)
+local Blackboard = require(gameRoot.Shared.StateMachine.Core.Blackboard)
+local StateStack = require(quentyPackages.statestack.Shared.StateStack)
+local StateTree = require(gameRoot.Shared.StateMachine.Core.StateTree)
 
 local WILDCARD_STATE = "*"
 

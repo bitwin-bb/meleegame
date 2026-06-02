@@ -1,7 +1,9 @@
 --!strict
 
-local SpawnHitboxAction = require(script:FindFirstAncestor("StateMachine").Actions.SpawnHitboxAction)
-local State = require(script:FindFirstAncestor("StateMachine").Core.State)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local SpawnHitboxAction = require(gameRoot.Shared.StateMachine.Actions.SpawnHitboxAction)
+local State = require(gameRoot.Shared.StateMachine.Core.State)
 
 local ActiveState = {}
 

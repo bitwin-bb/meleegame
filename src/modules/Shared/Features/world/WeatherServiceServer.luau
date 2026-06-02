@@ -1,13 +1,15 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local WeatherServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).WeatherService
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local WeatherServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).WeatherService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = WeatherServicePackets[methodName]
@@ -53,7 +55,7 @@ end
 local PlayerServiceServer = (require :: any)(
 	script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer
 )
-local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.WeatherServiceUtils)
+local WeatherServiceUtils = require(gameRoot.Shared.Features.world.WeatherServiceUtils)
 
 type WeatherType = WeatherServiceUtils.WeatherType
 type WeatherServiceConfig = WeatherServiceUtils.WeatherServiceConfig

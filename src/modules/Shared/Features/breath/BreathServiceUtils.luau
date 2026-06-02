@@ -1,4 +1,5 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Sift = require(ReplicatedStorage.Packages.Sift)
@@ -69,7 +70,7 @@ end
 
 function BreathServiceUtils.SanitizeConfig(configRaw: any, fallbackRaw: BreathServiceConfig?): BreathServiceConfig
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else BreathServiceUtils.CreateDefaultConfig()
-	local source = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local source = if typeof(configRaw) == "table" then configRaw else {} :: any
 	return {
 		maxBreathSeconds = sanitizeNumber(source.maxBreathSeconds, 1, 120, fallback.maxBreathSeconds),
 		graceDuration = sanitizeNumber(source.graceDuration, 0, 10, fallback.graceDuration),
@@ -99,7 +100,7 @@ end
 
 function BreathServiceUtils.CreateState(stateRaw: any, fallbackRaw: BreathServiceState?): BreathServiceState
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else BreathServiceUtils.CreateDefaultState()
-	local source = if typeof(stateRaw) == "table" then stateRaw else ({} :: any)
+	local source = if typeof(stateRaw) == "table" then stateRaw else {} :: any
 	local maxBreath = sanitizeNumber(source.maxBreath, 1, 120, fallback.maxBreath)
 	return {
 		ready = sanitizeBoolean(source.ready, fallback.ready),

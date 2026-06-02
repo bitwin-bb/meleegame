@@ -1,5 +1,4 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local function withAliases(baseIcons: { [string]: string }, aliasByKey: { [string]: { string } }): { [string]: string }

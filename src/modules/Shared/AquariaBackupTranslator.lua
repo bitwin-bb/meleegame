@@ -1,13 +1,14 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
 --[[
 	@class AquariaBackupTranslator
 ]]
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
-
-return loader("JSONTranslator").new("AquariaBackupTranslator", "en", {
+return require(quentyPackages.clienttranslator.Shared.JSONTranslator).new("AquariaBackupTranslator", "en", {
 	gameName = "AquariaBackup",
 	notifications = {
 		build = {

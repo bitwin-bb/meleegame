@@ -1,10 +1,12 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
 
-local CloudServiceUtils = require(script:FindFirstAncestor("parallax").CloudServiceUtils)
-local useCloudAppear = require(script.Parent.Parent.hooks.useCloudAppear)
+local CloudServiceUtils = require(gameRoot.Client.Features.parallax.CloudServiceUtils)
+local useCloudAppear = require(gameRoot.Client.Features.parallax.ui.hooks.useCloudAppear)
 
 type CloudSurfaceState = CloudServiceUtils.CloudSurfaceState
 type CloudView = CloudServiceUtils.CloudView

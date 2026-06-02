@@ -1,34 +1,36 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+
 local CollectionService = game:GetService("CollectionService")
 local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(packageRoot)
-
+local CoreGuiEnabler = require(quentyPackages.coreguienabler.Client.CoreGuiEnabler)
+local CoreRuntime = require(gameRoot.Shared.Core.Runtime)
+local ImageIds = require(gameRoot.Client.UI.core.ImageIds)
+local InputModeServiceClient = require(quentyPackages.inputmode.Client.InputModeServiceClient)
+local InputModeTypeSelector = require(quentyPackages.inputmode.Client.InputModeTypeSelector)
+local InputModeTypes = require(quentyPackages.inputmode.Shared.InputModeTypes)
+local InputObjectUtils = require(quentyPackages.inputobjectutils.Client.InputObjectUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Signal = require(ReplicatedStorage.Packages.Signal)
-local Rx = loader("Rx")
-local CoreGuiEnabler = loader("CoreGuiEnabler")
-local InputModeServiceClient = loader("InputModeServiceClient")
-local InputModeTypeSelector = loader("InputModeTypeSelector")
-local InputModeTypes = loader("InputModeTypes")
-local InputObjectUtils = loader("InputObjectUtils")
-local JumpButtonUtils = loader("JumpButtonUtils")
-local MouseShiftLockService = loader("MouseShiftLockService")
-local PlayerInputModeTypes = loader("PlayerInputModeTypes")
-local RxSignal = loader("RxSignal")
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceUtils)
-local PlatformUIScale = require(script:FindFirstAncestor("game").Shared.Features.platform.UIScale)
-local XboxControls = require(script:FindFirstAncestor("game").Client.Modules.Controls.Xbox)
+local JumpButtonUtils = require(quentyPackages.jumpbuttonutils.Client.JumpButtonUtils)
+local MouseShiftLockService = require(quentyPackages.mouseshiftlockservice.Client.MouseShiftLockService)
+local NevermoreSupport = require(gameRoot.Shared.Core.NevermoreSupport)
+local PlatformServiceUtils = require(gameRoot.Shared.Features.platform.PlatformServiceUtils)
+local PlatformUIScale = require(gameRoot.Shared.Features.platform.UIScale)
+local PlayerInputModeTypes = require(quentyPackages.playerinputmode.Shared.PlayerInputModeTypes)
+local Rx = require(quentyPackages.rx.Shared.Rx)
+local RxSignal = require(quentyPackages.rxsignal.Shared.RxSignal)
+local Signal = require(quentyPackages.signal.Shared.Signal)
+local XboxControls = require(gameRoot.Client.Modules.Controls.Xbox)
 
 type JanitorClass = {
 	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
@@ -179,7 +181,7 @@ local TOUCH_MOVEMENT_GUARD_WIDTH = 0.42
 local TOUCH_MOVEMENT_GUARD_HEIGHT = 0.44
 local TOUCH_JUMP_BUTTON_PADDING = 12
 local GAMEPAD_CURSOR_ACTIVE_ATTRIBUTE = "CustomCursorGamepadActive"
-local GAMEPAD_HINTS = if typeof((ImageIds :: any).hints) == "table" then (ImageIds :: any).hints :: any else ({} :: any)
+local GAMEPAD_HINTS = if typeof((ImageIds :: any).hints) == "table" then (ImageIds :: any).hints :: any else {} :: any
 local MOUSE_LOCK_POLICY_KEY = {}
 
 local function cloneBinding(binding: ActionBinding): ActionBinding
@@ -426,11 +428,7 @@ local function resolveControlEntry(self: PlatformServiceClient, entryRaw: any, p
 	}
 end
 
-local function resolveControlSections(
-	self: PlatformServiceClient,
-	layoutRaw: any,
-	platformKindRaw: any
-): { any }
+local function resolveControlSections(self: PlatformServiceClient, layoutRaw: any, platformKindRaw: any): { any }
 	local output = {}
 	if typeof(layoutRaw) ~= "table" or typeof(layoutRaw.sections) ~= "table" then
 		return output
@@ -1146,7 +1144,7 @@ function PlatformServiceClient._resolveState(self: PlatformServiceClient): Platf
 		end
 	end
 
-	local provisionalState: PlatformClientState = ({
+	local provisionalState: PlatformClientState = {
 		platform = platformState.platform,
 		deviceClass = platformState.deviceClass,
 		preferredInputName = platformState.preferredInputName,
@@ -1168,7 +1166,7 @@ function PlatformServiceClient._resolveState(self: PlatformServiceClient): Platf
 		shiftLockAllowed = false,
 		customCursorEnabled = false,
 		updatedAt = 0,
-	} :: any)
+	} :: any
 	provisionalState.shiftLockAllowed = shouldAllowShiftLockForState(provisionalState)
 	provisionalState.updatedAt = os.clock()
 	return provisionalState
@@ -1243,10 +1241,7 @@ function PlatformServiceClient._refreshState(self: PlatformServiceClient, forceE
 	end
 end
 
-function PlatformServiceClient._getActionRuntime(
-	self: PlatformServiceClient,
-	actionName: string
-): ActionRuntime?
+function PlatformServiceClient._getActionRuntime(self: PlatformServiceClient, actionName: string): ActionRuntime?
 	return self.actions[actionName]
 end
 
@@ -1803,10 +1798,7 @@ function PlatformServiceClient.ObserveAction(self: PlatformServiceClient, action
 	return cached
 end
 
-function PlatformServiceClient.ObservePromptForAction(
-	self: PlatformServiceClient,
-	actionNameRaw: any
-): ObservableObject
+function PlatformServiceClient.ObservePromptForAction(self: PlatformServiceClient, actionNameRaw: any): ObservableObject
 	self:_ensureInitialized()
 
 	if typeof(actionNameRaw) ~= "string" or actionNameRaw == "" then
@@ -2007,10 +1999,7 @@ function PlatformServiceClient.BindAction(
 	end
 end
 
-function PlatformServiceClient.GetPromptForAction(
-	self: PlatformServiceClient,
-	actionNameRaw: any
-): PromptBinding?
+function PlatformServiceClient.GetPromptForAction(self: PlatformServiceClient, actionNameRaw: any): PromptBinding?
 	self:_ensureInitialized()
 	if typeof(actionNameRaw) ~= "string" then
 		return nil
@@ -2085,7 +2074,7 @@ function PlatformServiceClient.GetControls(self: PlatformServiceClient, platform
 		platform = requestedPlatform,
 		deviceClass = state.deviceClass,
 		gamepadFamily = if requestedPlatform == "Gamepad" then state.gamepadFamily else nil,
-		sections = if layout ~= nil then resolveControlSections(self, layout, requestedPlatform) else ({} :: any),
+		sections = if layout ~= nil then resolveControlSections(self, layout, requestedPlatform) else {} :: any,
 	}
 end
 

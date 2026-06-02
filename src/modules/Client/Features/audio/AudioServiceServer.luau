@@ -1,9 +1,11 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local Players = game:GetService("Players")
 
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local AudioServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).AudioService
+local AudioServiceUtils = require(gameRoot.Client.Features.audio.AudioServiceUtils)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local AudioServicePackets = (require :: any)(gameRoot.Client.NetClient.Packets).AudioService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = AudioServicePackets[methodName]

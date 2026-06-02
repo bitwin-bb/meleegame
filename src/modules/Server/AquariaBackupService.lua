@@ -1,41 +1,41 @@
 --!strict
+
+local require = require(script.Parent.loader).load(assert(script:FindFirstAncestor("AquariaBackup"), "Missing AquariaBackup package root"))
+
 --[=[
 	@class AquariaBackupService
 ]=]
 
 local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
-local packageRoot = gameRoot.Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
 
-local Configs = (require :: any)(gameRoot.Shared.Core.Configs)
-local CoreRuntime = (require :: any)(gameRoot.Shared.Core.Runtime)
-local ServerNetPackets = (require :: any)(gameRoot.Server.Net.Packets)
+local Configs = (require :: any)("Configs")
+local CoreRuntime = (require :: any)("Runtime")
+local ServerNetPackets = (require :: any)("Packets")
 
-local AnimationServiceServer = (require :: any)(gameRoot.Shared.Features.animation.AnimationServiceServer)
-local AquariaBackupTranslator = (require :: any)(gameRoot.Shared.AquariaBackupTranslator)
+local AnimationServiceServer = (require :: any)("AnimationServiceServer")
+local AquariaBackupTranslator = (require :: any)("AquariaBackupTranslator")
 local AudioServiceServer = (require :: any)(gameRoot.Client.Features.audio.AudioServiceServer)
-local BossServiceServer = (require :: any)(gameRoot.Shared.Features.npc.BossServiceServer)
-local BreathServiceServer = (require :: any)(gameRoot.Shared.Features.breath.BreathServiceServer)
-local BuildServiceServer = (require :: any)(gameRoot.Shared.Features.world.BuildServiceServer)
-local CameraServiceServer = (require :: any)(gameRoot.Shared.Features.camera.CameraServiceServer)
-local CraftingServiceServer = (require :: any)(gameRoot.Shared.Features.crafting.CraftingServiceServer)
-local GoreServiceServer = (require :: any)(gameRoot.Shared.Features.gore.GoreServiceServer)
-local HpServiceServer = (require :: any)(gameRoot.Shared.Features.health.HpServiceServer)
-local InventoryServiceServer = (require :: any)(gameRoot.Shared.Features.inventory.InventoryServiceServer)
-local LiquidServiceServer = (require :: any)(gameRoot.Shared.Features.world.LiquidServiceServer)
-local LootServiceServer = (require :: any)(gameRoot.Shared.Features.loot.LootServiceServer)
-local MagicServiceServer = (require :: any)(gameRoot.Shared.Features.combat.MagicServiceServer)
-local ManaServiceServer = (require :: any)(gameRoot.Shared.Features.mana.ManaServiceServer)
-local MeleeServiceServer = (require :: any)(gameRoot.Shared.Features.combat.MeleeServiceServer)
-local NpcServiceServer = (require :: any)(gameRoot.Shared.Features.npc.NpcServiceServer)
-local PlatformServiceServer = (require :: any)(gameRoot.Shared.Features.platform.PlatformServiceServer)
-local PlayerDataServiceServer = (require :: any)(gameRoot.Shared.Features.playerData.PlayerDataServiceServer)
-local PlayerServiceServer = (require :: any)(gameRoot.Shared.Features.movement.PlayerServiceServer)
-local RagdollServiceServer = (require :: any)(gameRoot.Shared.Features.ragdoll.RagdollServiceServer)
-local ServerBinderSupport = (require :: any)(gameRoot.Server.Binders.ServerBinderSupport)
-local VFXServiceServer = (require :: any)(gameRoot.Shared.Features.vfx.VFXServiceServer)
-local WeatherServiceServer = (require :: any)(gameRoot.Shared.Features.world.WeatherServiceServer)
+local BossServiceServer = (require :: any)("BossServiceServer")
+local BreathServiceServer = (require :: any)("BreathServiceServer")
+local BuildServiceServer = (require :: any)("BuildServiceServer")
+local CameraServiceServer = (require :: any)("CameraServiceServer")
+local CraftingServiceServer = (require :: any)("CraftingServiceServer")
+local GoreServiceServer = (require :: any)("GoreServiceServer")
+local HpServiceServer = (require :: any)("HpServiceServer")
+local InventoryServiceServer = (require :: any)("InventoryServiceServer")
+local LiquidServiceServer = (require :: any)("LiquidServiceServer")
+local LootServiceServer = (require :: any)("LootServiceServer")
+local MagicServiceServer = (require :: any)("MagicServiceServer")
+local ManaServiceServer = (require :: any)("ManaServiceServer")
+local MeleeServiceServer = (require :: any)("MeleeServiceServer")
+local NpcServiceServer = (require :: any)("NpcServiceServer")
+local PlatformServiceServer = (require :: any)("PlatformServiceServer")
+local PlayerDataServiceServer = (require :: any)("PlayerDataServiceServer")
+local PlayerServiceServer = (require :: any)("PlayerServiceServer")
+local RagdollServiceServer = (require :: any)("RagdollServiceServer")
+local ServerBinderSupport = (require :: any)("ServerBinderSupport")
+local VFXServiceServer = (require :: any)("VFXServiceServer")
+local WeatherServiceServer = (require :: any)("WeatherServiceServer")
 local WorldGenerationServiceServer = (require :: any)(
 	gameRoot.Shared.Features.worldGeneration.WorldGenerationServiceServer
 )
@@ -43,7 +43,7 @@ local WorldSimulationServiceServer = (require :: any)(
 	gameRoot.Shared.Features.worldGeneration.WorldSimulationServiceServer
 )
 
-local CmdrService = loader("CmdrService")
+local CmdrService = require("CmdrService")
 
 local AquariaBackupService = {}
 AquariaBackupService.ServiceName = "AquariaBackupService"

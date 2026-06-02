@@ -1,9 +1,13 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
 local TagQuery = {}
 TagQuery.__index = TagQuery
@@ -218,7 +222,12 @@ function TagQuery.Subscribe(self: TagQuery, tagRaw: any, listener: TagListener):
 	end
 end
 
-function TagQuery.ObserveTag(self: TagQuery, tagRaw: any, onAdded: ((instance: any, tag: string) -> ())?, onRemoved: ((instance: any, tag: string) -> ())?): () -> ()
+function TagQuery.ObserveTag(
+	self: TagQuery,
+	tagRaw: any,
+	onAdded: ((instance: any, tag: string) -> ())?,
+	onRemoved: ((instance: any, tag: string) -> ())?
+): () -> ()
 	if typeof(tagRaw) ~= "string" or tagRaw == "" then
 		return function() end
 	end

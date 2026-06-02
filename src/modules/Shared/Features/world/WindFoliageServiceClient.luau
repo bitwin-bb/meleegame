@@ -1,14 +1,16 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local ClientBinderSupport = (require :: any)(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
+local ClientBinderSupport = (require :: any)(gameRoot.Client.Binders.ClientBinderSupport)
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local CoreRuntime = require(gameRoot.Shared.Core.Runtime)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local WindFoliage = require(script:FindFirstAncestor("game").Shared.Features.world.classes.WindFoliage)
+local NevermoreSupport = require(gameRoot.Shared.Core.NevermoreSupport)
+local WindFoliage = require(gameRoot.Shared.Features.world.classes.WindFoliage)
 
 type JanitorClass = {
 	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
@@ -163,7 +165,7 @@ end
 
 local function resolveConfig(): { [string]: any }
 	local configSource = if typeof(Configs) == "table" then (Configs :: any).windFoliage else nil
-	return if typeof(configSource) == "table" then Sift.Dictionary.copy(configSource) else ({} :: any)
+	return if typeof(configSource) == "table" then Sift.Dictionary.copy(configSource) else {} :: any
 end
 
 function WindFoliageServiceClient.Init(self: any)

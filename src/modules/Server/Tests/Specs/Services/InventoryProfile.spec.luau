@@ -1,11 +1,13 @@
 --!strict
+
+local require = require(script.Parent.loader).load(assert(script:FindFirstAncestor("AquariaBackup"), "Missing AquariaBackup package root"))
 local testEnvironment = getfenv() :: any
 local describe = testEnvironment.describe :: any
 local it = testEnvironment.it :: any
 local expect = testEnvironment.expect :: any
 
-local InventoryProfile = require(script:FindFirstAncestor("game").Shared.Features.inventory.Profile)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
+local InventoryProfile = require("Profile")
+local InventoryServiceUtils = require("InventoryServiceUtils")
 
 local function createPlayer(): Player
 	return {

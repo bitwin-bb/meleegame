@@ -1,6 +1,8 @@
 --!strict
 
-local useSmoothedProgress = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useSmoothedProgress)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local useSmoothedProgress = require(gameRoot.Client.UI.core.hooks.useSmoothedProgress)
 
 export type ProgressBarSmoothingOptions = {
 	progress: number,

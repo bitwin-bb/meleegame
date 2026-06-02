@@ -1,7 +1,9 @@
 --!strict
 
-local Nevermore = require(script:FindFirstAncestor("StateMachine").Nevermore)
-local Utils = require(script:FindFirstAncestor("StateMachine").Utils)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Nevermore = require(gameRoot.Shared.StateMachine.Nevermore)
+local Utils = require(gameRoot.Shared.StateMachine.Utils)
 
 local AttributeUtils = Nevermore.Get("AttributeUtils")
 

@@ -1,10 +1,13 @@
 --!strict
+
+local require = require(script.Parent.loader).load(assert(script:FindFirstAncestor("AquariaBackup"), "Missing AquariaBackup package root"))
+
 local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for DamageEntityServer.")
 
-local BossServiceServer = require(gameRoot.Shared.Features.npc.BossServiceServer)
-local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
-local NpcServiceServer = require(gameRoot.Shared.Features.npc.NpcServiceServer)
+local BossServiceServer = require("BossServiceServer")
+local BossServiceUtils = require("BossServiceUtils")
+local NpcServiceServer = require("NpcServiceServer")
 
 type EntityEntry = {
 	Id: string,
@@ -268,7 +271,8 @@ return function(_context, entity: EntityEntry, players: { Player }, amountRaw: n
 	for _, player in players do
 		local rootPart = resolvePlayerRootPart(player)
 		if rootPart == nil then
-			responseParts[#responseParts + 1] = `Could not target anything for {player.Name} because their character was unavailable.`
+			responseParts[#responseParts + 1] =
+				`Could not target anything for {player.Name} because their character was unavailable.`
 			continue
 		end
 
@@ -286,9 +290,8 @@ return function(_context, entity: EntityEntry, players: { Player }, amountRaw: n
 				if runtime.hp <= 0 then
 					responseParts[#responseParts + 1] = `Killed {displayName} near {player.Name} ({healthText}).`
 				else
-					responseParts[#responseParts + 1] = `Damaged {displayName} near {player.Name} for {math.floor(
-						appliedDamage + 0.5
-					)} ({healthText}).`
+					responseParts[#responseParts + 1] =
+						`Damaged {displayName} near {player.Name} for {math.floor(appliedDamage + 0.5)} ({healthText}).`
 				end
 			else
 				responseParts[#responseParts + 1] = `Could not damage {displayName} near {player.Name}.`
@@ -307,9 +310,8 @@ return function(_context, entity: EntityEntry, players: { Player }, amountRaw: n
 				if boss.hp <= 0 then
 					responseParts[#responseParts + 1] = `Killed {displayName} near {player.Name} ({healthText}).`
 				else
-					responseParts[#responseParts + 1] = `Damaged {displayName} near {player.Name} for {math.floor(
-						appliedDamage + 0.5
-					)} ({healthText}).`
+					responseParts[#responseParts + 1] =
+						`Damaged {displayName} near {player.Name} for {math.floor(appliedDamage + 0.5)} ({healthText}).`
 				end
 			else
 				responseParts[#responseParts + 1] = `Could not damage {displayName} near {player.Name}.`

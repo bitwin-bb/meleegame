@@ -1,15 +1,18 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local React = require(ReplicatedStorage.Packages.React)
-local TrashButton = require(script:FindFirstAncestor("game").Shared.Features.inventory.ui.components.TrashButton)
-local UiSound = require(script:FindFirstAncestor("game").Client.UI.core.utils.UiSound)
-local infoThunks = require(script:FindFirstAncestor("game").Client.Features.info.ui.state.infoThunks)
-local itemSlice = require(script:FindFirstAncestor("game").Shared.Features.item.ui.state.itemSlice)
-local itemThunks = require(script:FindFirstAncestor("game").Shared.Features.item.ui.state.itemThunks)
-local trashSlice = require(script:FindFirstAncestor("game").Shared.Features.inventory.ui.state.trashSlice)
-local trashThunks = require(script:FindFirstAncestor("game").Shared.Features.inventory.ui.state.trashThunks)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local TrashButton = require(gameRoot.Shared.Features.inventory.ui.components.TrashButton)
+local UiSound = require(gameRoot.Client.UI.core.utils.UiSound)
+local infoThunks = require(gameRoot.Client.Features.info.ui.state.infoThunks)
+local itemSlice = require(gameRoot.Shared.Features.item.ui.state.itemSlice)
+local itemThunks = require(gameRoot.Shared.Features.item.ui.state.itemThunks)
+local trashSlice = require(gameRoot.Shared.Features.inventory.ui.state.trashSlice)
+local trashThunks = require(gameRoot.Shared.Features.inventory.ui.state.trashThunks)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
 
 type TrashState = trashSlice.TrashState
 type ItemDragState = itemSlice.ItemDragState
@@ -89,7 +92,7 @@ return function(props: TrashScreenProps): React.ReactNode
 			id = TRASH_HOVER_ID,
 			text = resolveHoverText(state, dragState),
 		})
-	end, ({ state.updatedAt, state.isHovered, dragState.updatedAt, dragState.active } :: { any }))
+	end, { state.updatedAt, state.isHovered, dragState.updatedAt, dragState.active } :: { any })
 
 	if props.visible == false then
 		return nil

@@ -1,6 +1,8 @@
 --!strict
 
-local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ModelBinder = require(gameRoot.Shared.Binders.ModelBinder)
 
 local UseBinder = {}
 UseBinder.__index = UseBinder
@@ -10,7 +12,7 @@ local inventoryServiceClient = nil
 
 local function getInventoryServiceClient()
 	if inventoryServiceClient == nil then
-		inventoryServiceClient = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceClient)
+		inventoryServiceClient = require(gameRoot.Shared.Features.inventory.InventoryServiceClient)
 	end
 	return inventoryServiceClient
 end

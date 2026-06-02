@@ -1,6 +1,8 @@
 --!strict
 
-local Rand = require(script.Parent.Rand)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Rand = require(gameRoot.Shared.Core.Math.Rand)
 
 local RandomNumber = {}
 

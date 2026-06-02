@@ -1,15 +1,17 @@
 --!strict
 
-local Players = game:GetService("Players")
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Features.commander.CmdrUtils)
-local CoreConfigs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
+local CmdrUtils = require(gameRoot.Shared.Features.commander.CmdrUtils)
+local CoreConfigs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local CoreRuntime = require(gameRoot.Shared.Core.Runtime)
 local Matter = require(ReplicatedStorage.Packages.Matter)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local WorldSimulationServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).WorldSimulationService
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local WorldSimulationServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).WorldSimulationService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = WorldSimulationServicePackets[methodName]
@@ -59,15 +61,15 @@ local PlayerServiceServer = (require :: any)(
 	script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer
 )
 
-local Cache = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.SimulationCache)
-local Config = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.SimulationConfig)
-local Data = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.SimulationData)
-local Debug = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.Debug)
-local Net = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.Net)
-local Runtime = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.SimulationRuntime)
-local Shared = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.Shared)
-local State = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.SimulationState)
-local Stream = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.simulation.Stream)
+local Cache = require(gameRoot.Shared.Features.worldGeneration.simulation.SimulationCache)
+local Config = require(gameRoot.Shared.Features.worldGeneration.simulation.SimulationConfig)
+local Data = require(gameRoot.Shared.Features.worldGeneration.simulation.SimulationData)
+local Debug = require(gameRoot.Shared.Features.worldGeneration.simulation.Debug)
+local Net = require(gameRoot.Shared.Features.worldGeneration.simulation.Net)
+local Runtime = require(gameRoot.Shared.Features.worldGeneration.simulation.SimulationRuntime)
+local Shared = require(gameRoot.Shared.Features.worldGeneration.simulation.Shared)
+local State = require(gameRoot.Shared.Features.worldGeneration.simulation.SimulationState)
+local Stream = require(gameRoot.Shared.Features.worldGeneration.simulation.Stream)
 
 type SimulationConfig = Config.SimulationConfig
 type WorldData = Data.WorldData

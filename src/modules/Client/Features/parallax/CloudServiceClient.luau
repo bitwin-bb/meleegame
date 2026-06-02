@@ -1,30 +1,29 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(packageRoot)
-
-local ContentProviderUtils = loader("ContentProviderUtils")
-local Maid = loader("Maid")
-local Rx = loader("Rx")
+local ContentProviderUtils = require(quentyPackages.contentproviderutils.Client.ContentProviderUtils)
+local Maid = require(quentyPackages.maid.Shared.Maid)
+local Rx = require(quentyPackages.rx.Shared.Rx)
 
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 
-local Cloud = require(script.Parent.classes.Cloud)
-local CloudConstants = require(script.Parent.CloudConstants)
-local CloudServiceUtils = require(script.Parent.CloudServiceUtils)
-local Clouds = require(script.Parent.modules.Clouds)
-local ParallaxBackgrounds = require(script.Parent.modules.ParallaxBackgrounds)
-local ParallaxRoot = require(script.Parent.ui.ParallaxRoot)
-local ParallaxServiceUtils = require(script.Parent.ParallaxServiceUtils)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
-local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
+local Cloud = require(gameRoot.Client.Features.parallax.classes.Cloud)
+local CloudConstants = require(gameRoot.Client.Features.parallax.CloudConstants)
+local CloudServiceUtils = require(gameRoot.Client.Features.parallax.CloudServiceUtils)
+local Clouds = require(gameRoot.Client.Features.parallax.modules.Clouds)
+local ParallaxBackgrounds = require(gameRoot.Client.Features.parallax.modules.ParallaxBackgrounds)
+local ParallaxRoot = require(gameRoot.Client.Features.parallax.ui.ParallaxRoot)
+local ParallaxServiceUtils = require(gameRoot.Client.Features.parallax.ParallaxServiceUtils)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
+local WorldGenerationServiceClient = require(gameRoot.Shared.Features.worldGeneration.WorldGenerationServiceClient)
 
 type CloudAssetDefinition = CloudServiceUtils.CloudAssetDefinition
 type CloudSurfaceState = CloudServiceUtils.CloudSurfaceState
@@ -130,7 +129,10 @@ end
 
 local function resolveSurfacePixelsPerStud(widthStuds: number, heightStuds: number): number
 	local largestAxis = math.max(widthStuds, heightStuds, 1)
-	return math.max(1, math.min(CloudConstants.SURFACE_PIXELS_PER_STUD, CloudConstants.MAX_SURFACE_CANVAS_PIXELS / largestAxis))
+	return math.max(
+		1,
+		math.min(CloudConstants.SURFACE_PIXELS_PER_STUD, CloudConstants.MAX_SURFACE_CANVAS_PIXELS / largestAxis)
+	)
 end
 
 local function toCanvasPixels(studs: number, pixelsPerStud: number): number
@@ -304,8 +306,14 @@ local function resolveGameplayPlaneReferenceDistance(cameraPositionX: number): n
 end
 
 local function resolveCloudSizing(visibleHeight: number, cloud: Cloud.Cloud): CloudSizing
-	local scaleAlpha = math.clamp((cloud.scale - CloudConstants.CLOUD_MIN_SCALE) / (CloudConstants.CLOUD_MAX_SCALE - CloudConstants.CLOUD_MIN_SCALE), 0, 1)
-	local heightFactor = CloudConstants.CLOUD_MIN_HEIGHT_FACTOR + (CloudConstants.CLOUD_MAX_HEIGHT_FACTOR - CloudConstants.CLOUD_MIN_HEIGHT_FACTOR) * scaleAlpha
+	local scaleAlpha = math.clamp(
+		(cloud.scale - CloudConstants.CLOUD_MIN_SCALE)
+			/ (CloudConstants.CLOUD_MAX_SCALE - CloudConstants.CLOUD_MIN_SCALE),
+		0,
+		1
+	)
+	local heightFactor = CloudConstants.CLOUD_MIN_HEIGHT_FACTOR
+		+ (CloudConstants.CLOUD_MAX_HEIGHT_FACTOR - CloudConstants.CLOUD_MIN_HEIGHT_FACTOR) * scaleAlpha
 	local height = math.max(visibleHeight * heightFactor, 1)
 	local asset = cloud.asset
 	local aspectRatio = if asset ~= nil then asset.imageAspectRatio else 2.75
@@ -355,9 +363,15 @@ local function spawnCloud(cameraZ: number, visibleWidth: number)
 		asset = asset,
 		scale = scale,
 		baseOffsetZ = random:NextNumber(spawnMinOffsetZ, spawnMaxOffsetZ),
-		verticalAlpha = random:NextNumber(CloudConstants.CLOUD_MIN_VERTICAL_ALPHA, CloudConstants.CLOUD_MAX_VERTICAL_ALPHA),
+		verticalAlpha = random:NextNumber(
+			CloudConstants.CLOUD_MIN_VERTICAL_ALPHA,
+			CloudConstants.CLOUD_MAX_VERTICAL_ALPHA
+		),
 		spawnCameraZ = cameraZ,
-		windSpeed = random:NextNumber(CloudConstants.CLOUD_MIN_WIND_SPEED_STUDS_PER_SECOND, CloudConstants.CLOUD_MAX_WIND_SPEED_STUDS_PER_SECOND),
+		windSpeed = random:NextNumber(
+			CloudConstants.CLOUD_MIN_WIND_SPEED_STUDS_PER_SECOND,
+			CloudConstants.CLOUD_MAX_WIND_SPEED_STUDS_PER_SECOND
+		),
 		fadeSeconds = CloudConstants.CLOUD_FADE_SECONDS,
 		minScale = CloudConstants.CLOUD_MIN_SCALE,
 		maxScale = CloudConstants.CLOUD_MAX_SCALE,

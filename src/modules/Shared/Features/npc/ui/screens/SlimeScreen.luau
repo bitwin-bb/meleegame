@@ -1,23 +1,25 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
+local Maid = require(quentyPackages.maid.Shared.Maid)
 
-local Maid = loader("Maid")
-
-local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceUtils)
-local NpcSlice = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcSlice)
-local NpcThunks = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcThunks)
+local NpcServiceUtils = require(gameRoot.Shared.Features.npc.NpcServiceUtils)
+local NpcSlice = require(gameRoot.Shared.Features.npc.NpcSlice)
+local NpcThunks = require(gameRoot.Shared.Features.npc.NpcThunks)
 local React = require(ReplicatedStorage.Packages.React)
-local Slime = require(script:FindFirstAncestor("game").Shared.Features.npc.ui.components.Slime)
-local SlimeSpriteSheet = require(script:FindFirstAncestor("game").Shared.Features.npc.modules.SlimeSpriteSheet)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
-local useDie = require(script:FindFirstAncestor("game").Shared.Features.npc.useDie)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local Slime = (require :: any)(script.Parent.Parent.components.Slime)
+local SlimeSpriteSheet = require(gameRoot.Shared.Features.npc.modules.SlimeSpriteSheet)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
+local useDie = require(gameRoot.Shared.Features.npc.useDie)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
 
 type NpcViewState = NpcSlice.NpcViewState
 type SlimeGoreSprite = NpcSlice.SlimeGoreSprite

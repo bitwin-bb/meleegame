@@ -1,9 +1,11 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-
-local RippleMotion = require(script.Parent.RippleMotion)
+local RippleMotion = require(gameRoot.Shared.Features.world.classes.WindFoliage.RippleMotion)
 
 local FoliageUpdateManager = {}
 FoliageUpdateManager.__index = FoliageUpdateManager
@@ -75,9 +77,15 @@ local function resetEntryDrivers(entry: any)
 	resolved.flutter = 0
 end
 
-function FoliageUpdateManager.New(configRaw: any?, registry: any, windField: any, lodController: any, bufferPool: any): FoliageUpdateManager
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
-	local runtime = if typeof(config.runtime) == "table" then config.runtime else ({} :: any)
+function FoliageUpdateManager.New(
+	configRaw: any?,
+	registry: any,
+	windField: any,
+	lodController: any,
+	bufferPool: any
+): FoliageUpdateManager
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
+	local runtime = if typeof(config.runtime) == "table" then config.runtime else {} :: any
 	local self = setmetatable({
 		config = config,
 		runtimeConfig = runtime,
@@ -89,7 +97,10 @@ function FoliageUpdateManager.New(configRaw: any?, registry: any, windField: any
 		enableSecondaryFlutter = runtime.enableSecondaryFlutter ~= false,
 		maxActiveTrees = math.max(1, math.floor(clampNumber(runtime.maxActiveTrees, 128, 1, 4096))),
 		maxInteractiveTrees = math.max(1, math.floor(clampNumber(runtime.maxInteractiveTrees, 24, 1, 1024))),
-		maxTransformWritesPerStep = math.max(1, math.floor(clampNumber(runtime.maxTransformWritesPerStep, 24000, 1, 1000000))),
+		maxTransformWritesPerStep = math.max(
+			1,
+			math.floor(clampNumber(runtime.maxTransformWritesPerStep, 24000, 1, 1000000))
+		),
 		branchCapPerTree = math.max(1, math.floor(clampNumber(runtime.branchCapPerTree, 99999, 1, 999999))),
 		leafClusterCapPerTree = math.max(1, math.floor(clampNumber(runtime.leafClusterCapPerTree, 99999, 1, 999999))),
 		debugEnabled = if typeof(runtime.debug) == "table" then runtime.debug.enabled == true else false,
@@ -105,23 +116,50 @@ function FoliageUpdateManager.New(configRaw: any?, registry: any, windField: any
 			transformWrites = 0,
 			averageUpdateCostMs = 0,
 		},
-		primarySpring = RippleMotion.resolveSpring(runtime.primaryDriverStiffness, runtime.primaryDriverDamping, 8, 5.5),
-		secondarySpring = RippleMotion.resolveSpring(runtime.secondaryDriverStiffness, runtime.secondaryDriverDamping, 12, 6.5),
-		interactionSpring = RippleMotion.resolveSpring(runtime.interactionDriverStiffness, runtime.interactionDriverDamping, 7.5, 5.2),
-		flutterSpring = RippleMotion.resolveSpring(runtime.flutterDriverStiffness, runtime.flutterDriverDamping, 14, 7.5),
+		primarySpring = RippleMotion.resolveSpring(
+			runtime.primaryDriverStiffness,
+			runtime.primaryDriverDamping,
+			8,
+			5.5
+		),
+		secondarySpring = RippleMotion.resolveSpring(
+			runtime.secondaryDriverStiffness,
+			runtime.secondaryDriverDamping,
+			12,
+			6.5
+		),
+		interactionSpring = RippleMotion.resolveSpring(
+			runtime.interactionDriverStiffness,
+			runtime.interactionDriverDamping,
+			7.5,
+			5.2
+		),
+		flutterSpring = RippleMotion.resolveSpring(
+			runtime.flutterDriverStiffness,
+			runtime.flutterDriverDamping,
+			14,
+			7.5
+		),
 	}, FoliageUpdateManager)
 
 	return self
 end
 
-function FoliageUpdateManager.ApplyInteractionImpulse(_self: FoliageUpdateManager, entry: any, impulseWorld: Vector3, originWorldRaw: any?)
+function FoliageUpdateManager.ApplyInteractionImpulse(
+	_self: FoliageUpdateManager,
+	entry: any,
+	impulseWorld: Vector3,
+	originWorldRaw: any?
+)
 	entry.interactionBendMotion:impulse(impulseWorld * 0.18)
 	entry.foliage:addDisturbance(impulseWorld, originWorldRaw)
 end
 
 function FoliageUpdateManager.UpdateEntryDrivers(self: FoliageUpdateManager, entry: any, baseSample: any, dt: number)
 	local primaryTarget = Vector3.new(baseSample.vector.X, 0, baseSample.vector.Z)
-	local secondaryTarget = if self.enableSecondaryFlutter then baseSample.detailVector * baseSample.detailAlpha else ZERO
+	local secondaryTarget = if self.enableSecondaryFlutter
+		then baseSample.detailVector * baseSample.detailAlpha
+		else ZERO
 
 	entry.primarySwayMotion:spring(primaryTarget, self.primarySpring)
 	entry.primarySwayMotion:step(dt)
@@ -149,7 +187,12 @@ function FoliageUpdateManager.UpdateEntryDrivers(self: FoliageUpdateManager, ent
 	return resolved
 end
 
-function FoliageUpdateManager.Update(self: FoliageUpdateManager, simulationTime: number, _dt: number, referencePosition: Vector3)
+function FoliageUpdateManager.Update(
+	self: FoliageUpdateManager,
+	simulationTime: number,
+	_dt: number,
+	referencePosition: Vector3
+)
 	local startClock = os.clock()
 	local entries = self.registry.entries
 	local entryCount = #entries

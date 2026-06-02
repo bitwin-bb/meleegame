@@ -1,23 +1,27 @@
 --!strict
-local Players = game:GetService("Players")
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
-local AudioServiceServer = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceServer)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
-local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.InstanceUtils)
+local AudioRegistry = require(gameRoot.Shared.Features.item.modules.Audio)
+local AudioServiceServer = require(gameRoot.Client.Features.audio.AudioServiceServer)
+local AudioServiceUtils = require(gameRoot.Client.Features.audio.AudioServiceUtils)
+local InstanceUtils = require(gameRoot.Shared.Features.platform.modules.InstanceUtils)
 local InventoryServiceServer = (require :: any)(
 	script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceServer
 )
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
-local LootServiceCache = require(script:FindFirstAncestor("game").Shared.Features.loot.modules.LootCache)
-local LootServiceData = require(script:FindFirstAncestor("game").Shared.Features.loot.modules.Data)
-local LootServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.loot.LootServiceUtils)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local LootServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).LootService
+local InventoryServiceUtils = require(gameRoot.Shared.Features.inventory.InventoryServiceUtils)
+local LootServiceCache = require(gameRoot.Shared.Features.loot.modules.LootCache)
+local LootServiceData = require(gameRoot.Shared.Features.loot.modules.Data)
+local LootServiceUtils = require(gameRoot.Shared.Features.loot.LootServiceUtils)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local LootServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).LootService
 
 local function bindPacket(self: any, methodName: string)
 	local packet = LootServicePackets[methodName]
@@ -52,16 +56,15 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local PlayerDataServiceServer =
-	require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceServer)
-local ResolveItem = require(script:FindFirstAncestor("game").Shared.Features.item.modules.ResolveItem)
-local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveToolInstance)
+local NevermoreSupport = require(gameRoot.Shared.Core.NevermoreSupport)
+local PlayerDataServiceServer = require(gameRoot.Shared.Features.playerData.PlayerDataServiceServer)
+local ResolveItem = require(gameRoot.Shared.Features.item.modules.ResolveItem)
+local ResolveToolInstance = require(gameRoot.Shared.Game.Format.ResolveToolInstance)
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
-local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
-local StringUtils = require(script:FindFirstAncestor("game").Shared.Core.StringUtils)
-local Vec = require(script:FindFirstAncestor("game").Shared.Core.Math.Vec)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
+local ServerBinderSupport = (require :: any)(gameRoot.Server.Binders.ServerBinderSupport)
+local StringUtils = require(gameRoot.Shared.Core.StringUtils)
+local Vec = require(gameRoot.Shared.Core.Math.Vec)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
 
 type NumberMotion = Ripple.Motion<number>
 type SpringOptions = Ripple.SpringOptions

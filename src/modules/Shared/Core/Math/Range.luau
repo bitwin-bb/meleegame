@@ -1,7 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 -- Interval helpers for wrapping, normalization, and overlap tests.
 
-local Num = require(script.Parent.Num)
+local Num = require(gameRoot.Shared.Core.Math.Num)
 
 local Range = {}
 
@@ -66,13 +69,7 @@ function Range.Contains(value: number, minValue: number, maxValue: number, inclu
 	return value >= low and value <= high
 end
 
-function Range.Overlaps(
-	aMin: number,
-	aMax: number,
-	bMin: number,
-	bMax: number,
-	inclusive: boolean?
-): boolean
+function Range.Overlaps(aMin: number, aMax: number, bMin: number, bMax: number, inclusive: boolean?): boolean
 	local aLow, aHigh = sortBounds(aMin, aMax)
 	local bLow, bHigh = sortBounds(bMin, bMax)
 	if inclusive == false then

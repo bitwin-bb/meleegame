@@ -1,7 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 -- Plane construction, distances, projections, and intersections.
 
-local Vec = require(script.Parent.Vec)
+local Vec = require(gameRoot.Shared.Core.Math.Vec)
 
 local Plane = {}
 

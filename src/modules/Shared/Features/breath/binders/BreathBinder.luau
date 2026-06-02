@@ -1,8 +1,10 @@
 --!strict
 
-local LiquidServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.LiquidServiceUtils)
-local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
-local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local LiquidServiceUtils = require(gameRoot.Shared.Features.world.LiquidServiceUtils)
+local ModelBinder = require(gameRoot.Shared.Binders.ModelBinder)
+local TagBinder = require(gameRoot.Shared.Binders.TagBinder)
 
 local BreathBinder = {}
 BreathBinder.__index = BreathBinder

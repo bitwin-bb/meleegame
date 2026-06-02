@@ -1,19 +1,23 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local React = require(ReplicatedStorage.Packages.React)
+local AudioRegistry = require(gameRoot.Shared.Features.item.modules.Audio)
+local AudioServiceClient = require(gameRoot.Client.Features.audio.AudioServiceClient)
+local AudioServiceUtils = require(gameRoot.Client.Features.audio.AudioServiceUtils)
+local BuildServiceUtils = require(gameRoot.Shared.Features.world.BuildServiceUtils)
 local Charm = require(ReplicatedStorage.Packages.Charm)
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local Damp = require(script:FindFirstAncestor("game").Shared.Core.Math.Damp)
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
-local itemSlice = require(script:FindFirstAncestor("game").Shared.Features.item.ui.state.itemSlice)
-local itemThunks = require(script:FindFirstAncestor("game").Shared.Features.item.ui.state.itemThunks)
-local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceClient)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local Damp = require(gameRoot.Shared.Core.Math.Damp)
+local InventoryServiceUtils = require(gameRoot.Shared.Features.inventory.InventoryServiceUtils)
+local React = require(ReplicatedStorage.Packages.React)
+local itemSlice = require(gameRoot.Shared.Features.item.ui.state.itemSlice)
+local itemThunks = require(gameRoot.Shared.Features.item.ui.state.itemThunks)
 
 type ItemDragState = itemSlice.ItemDragState
 type InventoryItemStack = InventoryServiceUtils.InventoryItemStack
@@ -252,7 +256,9 @@ local function cloneStack(stackRaw: any): InventoryItemStack?
 	end
 
 	local amountRaw = stack.amount
-	local amount = if typeof(amountRaw) == "number" and amountRaw == amountRaw then math.max(0, math.floor(amountRaw)) else 0
+	local amount = if typeof(amountRaw) == "number" and amountRaw == amountRaw
+		then math.max(0, math.floor(amountRaw))
+		else 0
 	local maxStackRaw = stack.maxStack
 	local maxStack = if typeof(maxStackRaw) == "number" and maxStackRaw == maxStackRaw
 		then math.max(1, math.floor(maxStackRaw))
@@ -337,11 +343,15 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 	end
 
 	React.useEffect(function()
-		local unsubscribe = Charm.subscribe(itemSlice.dragStateAtom, function(nextState: ItemDragState)
-			setDragState(nextState)
-		end, ({
-			inclusive = true,
-		} :: { any }))
+		local unsubscribe = Charm.subscribe(
+			itemSlice.dragStateAtom,
+			function(nextState: ItemDragState)
+				setDragState(nextState)
+			end,
+			{
+				inclusive = true,
+			} :: { any }
+		)
 
 		return function()
 			unsubscribe()
@@ -492,11 +502,7 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 		end
 	end, {})
 
-	local handleSlotInput = React.useCallback(function(
-		slotIndexRaw: any,
-		stackRaw: any,
-		inputObjectRaw: any?
-	)
+	local handleSlotInput = React.useCallback(function(slotIndexRaw: any, stackRaw: any, inputObjectRaw: any?)
 		local slotIndex = sanitizeSlot(slotIndexRaw)
 		if slotIndex == nil then
 			return
@@ -534,7 +540,11 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 		if typeof(stackRaw) ~= "table" then
 			return
 		end
-		if inputType ~= nil and inputType ~= Enum.UserInputType.MouseButton1 and inputType ~= Enum.UserInputType.Touch then
+		if
+			inputType ~= nil
+			and inputType ~= Enum.UserInputType.MouseButton1
+			and inputType ~= Enum.UserInputType.Touch
+		then
 			return
 		end
 
@@ -548,27 +558,26 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 		setActivationSuppression(suppressionRef, slotIndex, slotIndex)
 	end, {})
 
-	local handleSlotSecondaryInput = React.useCallback(function(
-		slotIndexRaw: any,
-		stackRaw: any,
-		pointerPositionRaw: any?
-	)
-		local slotIndex = sanitizeSlot(slotIndexRaw)
-		if slotIndex == nil then
-			return
-		end
-		if itemSlice.getDragState().active then
-			return
-		end
-		if typeof(stackRaw) ~= "table" then
-			return
-		end
+	local handleSlotSecondaryInput = React.useCallback(
+		function(slotIndexRaw: any, stackRaw: any, pointerPositionRaw: any?)
+			local slotIndex = sanitizeSlot(slotIndexRaw)
+			if slotIndex == nil then
+				return
+			end
+			if itemSlice.getDragState().active then
+				return
+			end
+			if typeof(stackRaw) ~= "table" then
+				return
+			end
 
-		lastSlotInputTimeRef.current = os.clock()
-		local pointerPosition = resolvePointerFromInput(pointerPositionRaw)
-		syncPointerRefs(targetPointerRef, smoothedPointerRef, hasSmoothedPointerRef, pointerPosition)
-		beginPendingSplitHold(slotIndex, stackRaw, pointerPosition)
-	end, {})
+			lastSlotInputTimeRef.current = os.clock()
+			local pointerPosition = resolvePointerFromInput(pointerPositionRaw)
+			syncPointerRefs(targetPointerRef, smoothedPointerRef, hasSmoothedPointerRef, pointerPosition)
+			beginPendingSplitHold(slotIndex, stackRaw, pointerPosition)
+		end,
+		{}
+	)
 
 	local cancelDrag = React.useCallback(function()
 		clearPendingSplitHold()

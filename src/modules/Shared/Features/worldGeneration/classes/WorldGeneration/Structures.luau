@@ -1,6 +1,8 @@
 --!strict
 
-local Noise = require(script:FindFirstAncestor("game").Shared.Core.Math.Noise)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Noise = require(gameRoot.Shared.Core.Math.Noise)
 
 local Structures = {}
 Structures.__index = Structures
@@ -220,7 +222,7 @@ end
 
 local function resolveDesertStructureSettings(configRaw: any): DesertStructureSettings
 	local settingsRaw = if typeof(configRaw) == "table" then (configRaw :: any).Structures else nil
-	local settings = if typeof(settingsRaw) == "table" then settingsRaw else ({} :: any)
+	local settings = if typeof(settingsRaw) == "table" then settingsRaw else {} :: any
 
 	return {
 		PyramidCellWidth = sanitizeInteger(
@@ -352,7 +354,7 @@ local function isInsidePyramidChamber(pyramid: PyramidDefinition, worldTileX: nu
 end
 
 function Structures.New(configRaw: any)
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local tileId = (config :: any).tileId :: TileIdMap
 
 	local desertStructureSettings = resolveDesertStructureSettings((config :: any).desertConfig)

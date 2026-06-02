@@ -1,9 +1,10 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
+local Responsive = require(gameRoot.Client.UI.core.hooks.useViewportScale)
 
 export type ScaleProps = {
 	scale: number?,

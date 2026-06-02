@@ -1,6 +1,8 @@
 --!strict
 
-local Utils = require(script:FindFirstAncestor("StateMachine").Utils)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Utils = require(gameRoot.Shared.StateMachine.Utils)
 
 local FireRemoteAction = {}
 

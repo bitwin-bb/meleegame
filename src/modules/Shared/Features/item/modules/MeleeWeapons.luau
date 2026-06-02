@@ -1,7 +1,9 @@
 --!strict
 
-local Animations = require(script.Parent.Animations)
-local BuildAnimationMelee = require(script:FindFirstAncestor("game").Shared.Game.Render.BuildAnimationMelee)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Animations = require(gameRoot.Shared.Features.item.modules.Animations)
+local BuildAnimationMelee = require(gameRoot.Shared.Game.Render.BuildAnimationMelee)
 
 local weaponAnimationIds = (((Animations :: any).Items or ({} :: any)).Weapons or ({} :: any)) :: { [string]: any }
 

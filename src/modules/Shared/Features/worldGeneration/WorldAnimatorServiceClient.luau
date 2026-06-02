@@ -1,18 +1,20 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local CollectionService = game:GetService("CollectionService")
 local HttpService = game:GetService("HttpService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local ClientBinderSupport = (require :: any)(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
+local ClientBinderSupport = (require :: any)(gameRoot.Client.Binders.ClientBinderSupport)
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
-local WorldAnimatorServiceUtils =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldAnimatorServiceUtils)
+local NevermoreSupport = require(gameRoot.Shared.Core.NevermoreSupport)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
+local WorldAnimatorServiceUtils = require(gameRoot.Shared.Features.worldGeneration.WorldAnimatorServiceUtils)
 
 type ChunkAnimatorSettings = WorldAnimatorServiceUtils.ChunkAnimatorSettings
 type ChunkAnimationType = WorldAnimatorServiceUtils.ChunkAnimationType
@@ -622,7 +624,7 @@ function WorldAnimatorServiceClient.Init(self: WorldAnimatorServiceClient)
 	self.pendingChunks = {}
 	self.pendingChunkLookup = {}
 	self.renderConnection = nil :: RBXScriptConnection?
-	;(self :: any).binders = NevermoreSupport.getService(ClientBinderSupport)
+	(self :: any).binders = NevermoreSupport.getService(ClientBinderSupport)
 
 	local function onWorldFolderAdded(child: Instance)
 		if child.Name ~= WorldAnimatorServiceUtils.WORLD_FOLDER_NAME then

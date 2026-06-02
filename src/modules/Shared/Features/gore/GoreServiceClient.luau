@@ -1,14 +1,17 @@
 --!strict
-local Players = game:GetService("Players")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Players = game:GetService("Players")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local Workspace = game:GetService("Workspace")
 
-local Gore = require(script:FindFirstAncestor("game").Shared.Features.gore.classes.Gore)
-local GoreServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.gore.GoreServiceUtils)
+local Gore = require(gameRoot.Shared.Features.gore.classes.Gore)
+local GoreServiceUtils = require(gameRoot.Shared.Features.gore.GoreServiceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local GoreServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).GoreService
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local GoreServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).GoreService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = GoreServicePackets[methodName]

@@ -1,14 +1,17 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Layer = require(gameRoot.Client.UI.shared.Layer)
 local React = require(ReplicatedStorage.Packages.React)
-local Layer = require(script:FindFirstAncestor("game").Client.UI.shared.Layer)
-local Scale = require(script:FindFirstAncestor("game").Client.UI.shared.Scale)
-local deathSlice = require(script:FindFirstAncestor("game").Client.Features.death.ui.state.deathSlice)
-local deathThunks = require(script:FindFirstAncestor("game").Client.Features.death.ui.state.deathThunks)
-local useCountDown = require(script:FindFirstAncestor("game").Client.Features.death.ui.hooks.useCountDown)
-local useDeathScreen = require(script:FindFirstAncestor("game").Client.Features.death.ui.hooks.useDeathScreen)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local Scale = require(gameRoot.Client.UI.shared.Scale)
+local deathSlice = require(gameRoot.Client.Features.death.ui.state.deathSlice)
+local deathThunks = require(gameRoot.Client.Features.death.ui.state.deathThunks)
+local useCountDown = require(gameRoot.Client.Features.death.ui.hooks.useCountDown)
+local useDeathScreen = require(gameRoot.Client.Features.death.ui.hooks.useDeathScreen)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
 
 type DeathState = deathSlice.DeathState
 
@@ -29,7 +32,7 @@ local DEFAULT_MAIN_TEXT = "You were slain..."
 local COUNTDOWN_APPEAR_DELAY_SECONDS = 2
 
 return function(props: DeathScreenProps?): React.ReactNode
-	local resolvedProps: DeathScreenProps = if props ~= nil then props else ({} :: any)
+	local resolvedProps: DeathScreenProps = if props ~= nil then props else {} :: any
 	local deathState = (useStore(deathSlice.deathStateAtom) :: DeathState?) or deathSlice.deathStateAtom()
 
 	React.useEffect(function()

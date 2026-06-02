@@ -1,21 +1,22 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local InventoryServiceServer =
-	require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceServer)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
-local LootServiceServer = require(script:FindFirstAncestor("game").Shared.Features.loot.LootServiceServer)
-local MiningPower = require(script:FindFirstAncestor("game").Shared.Core.Math.MiningPower)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local BuildServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).BuildService
+local BuildServiceUtils = require(gameRoot.Shared.Features.world.BuildServiceUtils)
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local InventoryServiceServer = require(gameRoot.Shared.Features.inventory.InventoryServiceServer)
+local InventoryServiceUtils = require(gameRoot.Shared.Features.inventory.InventoryServiceUtils)
+local LootServiceServer = require(gameRoot.Shared.Features.loot.LootServiceServer)
+local MiningPower = require(gameRoot.Shared.Core.Math.MiningPower)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local BuildServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).BuildService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = BuildServicePackets[methodName]
@@ -62,12 +63,11 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local PlayerServiceServer = require(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer)
-local ServerBinderSupport = require(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
-local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
-local WorldGenerationServiceServer =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer)
+local NevermoreSupport = require(gameRoot.Shared.Core.NevermoreSupport)
+local PlayerServiceServer = require(gameRoot.Shared.Features.movement.PlayerServiceServer)
+local ServerBinderSupport = require(gameRoot.Server.Binders.ServerBinderSupport)
+local TagBinder = require(gameRoot.Shared.Binders.TagBinder)
+local WorldGenerationServiceServer = require(gameRoot.Shared.Features.worldGeneration.WorldGenerationServiceServer)
 
 type BuildServiceConfig = BuildServiceUtils.BuildServiceConfig
 type BuildServiceState = BuildServiceUtils.BuildServiceState

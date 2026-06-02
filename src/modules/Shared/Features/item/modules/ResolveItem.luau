@@ -1,11 +1,13 @@
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local StringUtils = require(script:FindFirstAncestor("game").Shared.Core.StringUtils)
-local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.InstanceUtils)
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Registry)
-local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveToolInstance)
-local LootServiceData = require(script:FindFirstAncestor("game").Shared.Features.loot.modules.Data)
-local LootServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.loot.LootServiceUtils)
+local InstanceUtils = require(gameRoot.Shared.Features.platform.modules.InstanceUtils)
+local ItemRegistry = require(gameRoot.Shared.Features.item.modules.Registry)
+local LootServiceData = require(gameRoot.Shared.Features.loot.modules.Data)
+local LootServiceUtils = require(gameRoot.Shared.Features.loot.LootServiceUtils)
+local ResolveToolInstance = require(gameRoot.Shared.Game.Format.ResolveToolInstance)
+local StringUtils = require(gameRoot.Shared.Core.StringUtils)
 
 local ResolveItem = {}
 
@@ -47,7 +49,9 @@ local function resolveAssetSearchRoots(): { Instance }
 	end
 
 	local roots = {}
-	local pathsRaw = if typeof(LootServiceData) == "table" then (LootServiceData :: { [string]: any }).assetSearchRoots else nil
+	local pathsRaw = if typeof(LootServiceData) == "table"
+		then (LootServiceData :: { [string]: any }).assetSearchRoots
+		else nil
 	if typeof(pathsRaw) == "table" then
 		for _, pathRaw in pathsRaw do
 			if typeof(pathRaw) ~= "table" then
@@ -162,8 +166,8 @@ local function readCachedResolution(itemId: string): ItemTemplateResolution?
 	end
 
 	return {
-		primaryTemplate = if cached.primaryTemplate == false then nil else (cached.primaryTemplate :: Instance),
-		toolTemplate = if cached.toolTemplate == false then nil else (cached.toolTemplate :: Tool),
+		primaryTemplate = if cached.primaryTemplate == false then nil else cached.primaryTemplate :: Instance,
+		toolTemplate = if cached.toolTemplate == false then nil else cached.toolTemplate :: Tool,
 	}
 end
 

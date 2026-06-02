@@ -1,13 +1,15 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local GoreServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.gore.GoreServiceUtils)
-local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
-local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceUtils)
-local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
+local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
+local GoreServiceUtils = require(gameRoot.Shared.Features.gore.GoreServiceUtils)
+local ModelBinder = require(gameRoot.Shared.Binders.ModelBinder)
+local NpcServiceUtils = require(gameRoot.Shared.Features.npc.NpcServiceUtils)
+local TagBinder = require(gameRoot.Shared.Binders.TagBinder)
 
 local GoreBinder = {}
 GoreBinder.__index = GoreBinder
@@ -18,7 +20,7 @@ local goreServiceServer = nil
 
 local function getGoreServiceServer()
 	if goreServiceServer == nil then
-		goreServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.gore.GoreServiceServer)
+		goreServiceServer = (require :: any)(gameRoot.Shared.Features.gore.GoreServiceServer)
 	end
 	return goreServiceServer
 end

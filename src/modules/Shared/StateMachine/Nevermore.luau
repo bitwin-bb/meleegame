@@ -1,9 +1,5 @@
 --!strict
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
-
 local PACKAGE_ROLES = table.freeze({
 	Core = table.freeze({
 		"Maid",
@@ -72,7 +68,7 @@ function Nevermore.Get(packageNameRaw: any): any
 
 	local package = packageCache[packageNameRaw]
 	if package == nil then
-		package = loader(packageNameRaw)
+		package = require(packageNameRaw)
 		packageCache[packageNameRaw] = package
 	end
 
@@ -84,8 +80,8 @@ function Nevermore.GetOptional(packageNameRaw: any): any?
 	return if ok then package else nil
 end
 
-function Nevermore.GetLoader(): any
-	return loader
+function Nevermore.Getloader(): any
+	return require
 end
 
 function Nevermore.GetRolePackages(roleRaw: any): { [string]: any }
@@ -114,7 +110,7 @@ end
 
 Nevermore.get = Nevermore.Get
 Nevermore.getOptional = Nevermore.GetOptional
-Nevermore.getLoader = Nevermore.GetLoader
+Nevermore.getloader = Nevermore.Getloader
 Nevermore.getRolePackages = Nevermore.GetRolePackages
 Nevermore.copyArray = Nevermore.CopyArray
 Nevermore.copyDictionary = Nevermore.CopyDictionary

@@ -1,10 +1,15 @@
 --!strict
-local Players = game:GetService("Players")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Players = game:GetService("Players")
+
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local PlayerDataServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).PlayerDataService
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local PlayerDataServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).PlayerDataService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = PlayerDataServicePackets[methodName]
@@ -44,9 +49,8 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local PlayerDataServiceUtils =
-	require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceUtils)
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local PlayerDataServiceUtils = require(gameRoot.Shared.Features.playerData.PlayerDataServiceUtils)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
 type PlayerData = PlayerDataServiceUtils.PlayerData
 type LoadState = PlayerDataServiceUtils.LoadState

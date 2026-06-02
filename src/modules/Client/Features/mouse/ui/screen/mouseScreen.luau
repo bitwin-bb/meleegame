@@ -1,13 +1,16 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local PortalTargets = require(script:FindFirstAncestor("game").Client.UI.core.utils.PortalTargets)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Layer = require(gameRoot.Client.UI.shared.Layer)
+local PortalTargets = require(gameRoot.Client.UI.core.utils.PortalTargets)
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
-local Layer = require(script:FindFirstAncestor("game").Client.UI.shared.Layer)
-local mouseSlice = require(script:FindFirstAncestor("game").Client.Features.mouse.ui.state.mouseSlice)
-local mouseThunks = require(script:FindFirstAncestor("game").Client.Features.mouse.ui.state.mouseThunks)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local mouseSlice = require(gameRoot.Client.Features.mouse.ui.state.mouseSlice)
+local mouseThunks = require(gameRoot.Client.Features.mouse.ui.state.mouseThunks)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
 
 type MouseState = mouseSlice.MouseState
 

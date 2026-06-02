@@ -1,18 +1,21 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
-local InventoryProfile = require(script:FindFirstAncestor("game").Shared.Features.inventory.Profile)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Registry)
+local BuildServiceUtils = require(gameRoot.Shared.Features.world.BuildServiceUtils)
+local InventoryProfile = require(gameRoot.Shared.Features.inventory.Profile)
+local InventoryServiceUtils = require(gameRoot.Shared.Features.inventory.InventoryServiceUtils)
+local ItemRegistry = require(gameRoot.Shared.Features.item.modules.Registry)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local MiningPower = require(script:FindFirstAncestor("game").Shared.Core.Math.MiningPower)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local InventoryServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).InventoryService
+local MiningPower = require(gameRoot.Shared.Core.Math.MiningPower)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local InventoryServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).InventoryService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = InventoryServicePackets[methodName]
@@ -63,15 +66,13 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestUseSelectedSlot")
 end
 
-local PlayerDataServiceServer =
-	require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceServer)
-local PlayerDataServiceUtils =
-	require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceUtils)
-local ResolveItem = require(script:FindFirstAncestor("game").Shared.Features.item.modules.ResolveItem)
-local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveToolInstance)
-local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
-local ToolBinder = require(script:FindFirstAncestor("game").Shared.Binders.ToolBinder)
-local TorchTilt = require(script:FindFirstAncestor("game").Shared.Core.Math.TorchTilt)
+local PlayerDataServiceServer = require(gameRoot.Shared.Features.playerData.PlayerDataServiceServer)
+local PlayerDataServiceUtils = require(gameRoot.Shared.Features.playerData.PlayerDataServiceUtils)
+local ResolveItem = require(gameRoot.Shared.Features.item.modules.ResolveItem)
+local ResolveToolInstance = require(gameRoot.Shared.Game.Format.ResolveToolInstance)
+local TagBinder = require(gameRoot.Shared.Binders.TagBinder)
+local ToolBinder = require(gameRoot.Shared.Binders.ToolBinder)
+local TorchTilt = require(gameRoot.Shared.Core.Math.TorchTilt)
 local WorldGenerationServiceServer = (require :: any)(
 	script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer
 )

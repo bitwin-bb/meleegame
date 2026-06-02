@@ -1,5 +1,7 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local RunService = game:GetService("RunService")
 
 local React = require(ReplicatedStorage.Packages.React)
@@ -52,19 +54,15 @@ end
 
 local function usePad(options: PadOptions?): PadState
 	local enabled = if options ~= nil and options.enabled ~= nil then options.enabled == true else true
-	local collapsedSize = sanitizeVector2(
-		if options ~= nil then options.collapsedSize else nil,
-		DEFAULT_COLLAPSED_SIZE
-	)
-	local requestedExpandedSize = sanitizeVector2(
-		if options ~= nil then options.expandedSize else nil,
-		DEFAULT_EXPANDED_SIZE
-	)
+	local collapsedSize = sanitizeVector2(if options ~= nil then options.collapsedSize else nil, DEFAULT_COLLAPSED_SIZE)
+	local requestedExpandedSize =
+		sanitizeVector2(if options ~= nil then options.expandedSize else nil, DEFAULT_EXPANDED_SIZE)
 	local expandedSize = Vector2.new(
 		math.max(collapsedSize.X, requestedExpandedSize.X),
 		math.max(collapsedSize.Y, requestedExpandedSize.Y)
 	)
-	local phaseDuration = sanitizeDuration(if options ~= nil then options.phaseDuration else nil, DEFAULT_PHASE_DURATION)
+	local phaseDuration =
+		sanitizeDuration(if options ~= nil then options.phaseDuration else nil, DEFAULT_PHASE_DURATION)
 
 	local phaseElapsedRef = React.useRef(0)
 	local expandingRef = React.useRef(true)
@@ -74,9 +72,8 @@ local function usePad(options: PadOptions?): PadState
 		phaseElapsedRef.current = 0
 		expandingRef.current = true
 		setPadState(createPadState(collapsedSize, 0, true))
-	end, dependencyArray(enabled, collapsedSize, expandedSize, phaseDuration))
-
-	;(React.useEffect :: any)(function(): (() -> ())?
+	end, dependencyArray(enabled, collapsedSize, expandedSize, phaseDuration));
+	(React.useEffect :: any)(function(): (() -> ())?
 		if not enabled then
 			setPadState(createPadState(collapsedSize, 0, true))
 			return nil

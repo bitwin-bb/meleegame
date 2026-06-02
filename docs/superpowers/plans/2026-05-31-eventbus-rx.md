@@ -612,7 +612,7 @@ Create `src/modules/Shared/SharedEventBus/Core/EventBus.luau`:
 --!strict
 
 local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
+local loaderUtils = assert(packageRoot:FindFirstChild("loaderUtils", true), "Missing loaderUtils")
 local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local Rx = loader("Rx")

@@ -1,17 +1,21 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
-local Layer = require(script:FindFirstAncestor("game").Client.UI.shared.Layer)
-local Marker = require(script:FindFirstAncestor("game").Shared.Features.npc.ui.boss.components.marker)
+local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
+local ImageIds = require(gameRoot.Client.UI.core.ImageIds)
+local Layer = require(gameRoot.Client.UI.shared.Layer)
+local Marker = require(gameRoot.Shared.Features.npc.ui.boss.components.marker)
 local React = require(ReplicatedStorage.Packages.React)
-local markerSlice = require(script:FindFirstAncestor("game").Shared.Features.npc.ui.boss.state.markerSlice)
-local markerThunks = require(script:FindFirstAncestor("game").Shared.Features.npc.ui.boss.state.markerThunks)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local markerSlice = require(gameRoot.Shared.Features.npc.ui.boss.state.markerSlice)
+local markerThunks = require(gameRoot.Shared.Features.npc.ui.boss.state.markerThunks)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
 
 type MarkerState = markerSlice.MarkerState
 type BossSnapshot = BossServiceUtils.BossSnapshot

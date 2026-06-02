@@ -1,10 +1,12 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Charm = require(ReplicatedStorage.Packages.Charm)
-local NpcServiceUtils = require(script.Parent.NpcServiceUtils)
-local SlimeSpriteSheet = require(script.Parent.modules.SlimeSpriteSheet)
-local SlimeTints = require(script.Parent.modules.SlimeTints)
+local NpcServiceUtils = require(gameRoot.Shared.Features.npc.NpcServiceUtils)
+local SlimeSpriteSheet = require(gameRoot.Shared.Features.npc.modules.SlimeSpriteSheet)
+local SlimeTints = require(gameRoot.Shared.Features.npc.modules.SlimeTints)
 
 export type NpcSnapshot = NpcServiceUtils.NpcSnapshot
 

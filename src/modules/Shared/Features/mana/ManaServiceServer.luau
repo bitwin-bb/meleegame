@@ -1,12 +1,14 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local ManaServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.mana.ManaServiceUtils)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local ManaServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).ManaService
+local ManaServiceUtils = require(gameRoot.Shared.Features.mana.ManaServiceUtils)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local ManaServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).ManaService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = ManaServicePackets[methodName]
@@ -49,8 +51,7 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local PlayerDataServiceServer =
-	require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceServer)
+local PlayerDataServiceServer = require(gameRoot.Shared.Features.playerData.PlayerDataServiceServer)
 local PlayerServiceServer = (require :: any)(
 	script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer
 )

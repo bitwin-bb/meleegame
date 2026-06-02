@@ -27,8 +27,10 @@
       }
     },
     "ReplicatedStorage": {
-      "$path": "src/source",
       "$ignoreUnknownInstances": true,
+      "Packages": {
+        "$path": "Packages"
+      },
       "Shared": {
         "$path": "src/source/Shared",
         "Vendor": {
@@ -58,9 +60,6 @@
             "$path": "src/source/Shared/Vendor/testez/src"
           }
         }
-      },
-      "Packages": {
-        "$path": "Packages"
       }
     },
     "ReplicatedFirst": {
@@ -76,7 +75,49 @@
           "$path": "src/modules"
         },
         "node_modules": {
-          "$path": "node_modules"
+          "$path": "node_modules",
+          "_Index": {
+            "$path": "Packages/_Index"
+          },
+          "ByteNet": {
+            "$path": "Packages/ByteNet.lua"
+          },
+          "Charm": {
+            "$path": "Packages/Charm.lua"
+          },
+          "Fusion": {
+            "$path": "Packages/Fusion.lua"
+          },
+          "Janitor": {
+            "$path": "Packages/Janitor.lua"
+          },
+          "Matter": {
+            "$path": "Packages/Matter.lua"
+          },
+          "Plasma": {
+            "$path": "Packages/Plasma.lua"
+          },
+          "React": {
+            "$path": "Packages/React.lua"
+          },
+          "ReactCharm": {
+            "$path": "Packages/ReactCharm.lua"
+          },
+          "ReactRoblox": {
+            "$path": "Packages/ReactRoblox.lua"
+          },
+          "ReactRodux": {
+            "$path": "Packages/ReactRodux.lua"
+          },
+          "Ripple": {
+            "$path": "Packages/Ripple.lua"
+          },
+          "Sift": {
+            "$path": "Packages/Sift.lua"
+          },
+          "Signal": {
+            "$path": "Packages/Signal.lua"
+          }
         }
       },
       "AquariaBackupScripts": {

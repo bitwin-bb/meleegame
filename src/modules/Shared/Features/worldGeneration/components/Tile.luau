@@ -180,7 +180,7 @@ local function applyBasePartProps(props: any, config: PartConfig)
 end
 
 function Tile.CreatePart(configRaw: PartConfig?): Part
-	local config = if typeof(configRaw) == "table" then configRaw :: PartConfig else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw :: PartConfig else {} :: any
 	local scope = Fusion.scoped(Fusion)
 	local props = {} :: any
 	applyBasePartProps(props, config)
@@ -188,7 +188,7 @@ function Tile.CreatePart(configRaw: PartConfig?): Part
 end
 
 function Tile.CreateWedgePart(configRaw: PartConfig?): WedgePart
-	local config = if typeof(configRaw) == "table" then configRaw :: PartConfig else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw :: PartConfig else {} :: any
 	local scope = Fusion.scoped(Fusion)
 	local props = {} :: any
 	applyBasePartProps(props, config)
@@ -196,7 +196,7 @@ function Tile.CreateWedgePart(configRaw: PartConfig?): WedgePart
 end
 
 function Tile.CreateTexture(configRaw: TextureConfig?): Texture
-	local config = if typeof(configRaw) == "table" then configRaw :: TextureConfig else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw :: TextureConfig else {} :: any
 	local scope = Fusion.scoped(Fusion)
 	local props = {} :: any
 	assignString(props, "Name", config.name)
@@ -211,7 +211,7 @@ function Tile.CreateTexture(configRaw: TextureConfig?): Texture
 end
 
 function Tile.CreateHighlight(configRaw: HighlightConfig?): Highlight
-	local config = if typeof(configRaw) == "table" then configRaw :: HighlightConfig else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw :: HighlightConfig else {} :: any
 	local scope = Fusion.scoped(Fusion)
 	local props = {} :: any
 	assignString(props, "Name", config.name)
@@ -227,7 +227,7 @@ function Tile.CreateHighlight(configRaw: HighlightConfig?): Highlight
 end
 
 function Tile.CreateModel(configRaw: ModelConfig?): Model
-	local config = if typeof(configRaw) == "table" then configRaw :: ModelConfig else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw :: ModelConfig else {} :: any
 	local scope = Fusion.scoped(Fusion)
 	local props = {} :: any
 	assignString(props, "Name", config.name)
@@ -238,7 +238,7 @@ function Tile.CreateModel(configRaw: ModelConfig?): Model
 end
 
 function Tile.CreateFolder(configRaw: FolderConfig?): Folder
-	local config = if typeof(configRaw) == "table" then configRaw :: FolderConfig else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw :: FolderConfig else {} :: any
 	local scope = Fusion.scoped(Fusion)
 	local props = {} :: any
 	assignString(props, "Name", config.name)
@@ -249,7 +249,7 @@ function Tile.CreateFolder(configRaw: FolderConfig?): Folder
 end
 
 function Tile.CreateAttachment(configRaw: AttachmentConfig?): Attachment
-	local config = if typeof(configRaw) == "table" then configRaw :: AttachmentConfig else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw :: AttachmentConfig else {} :: any
 	local scope = Fusion.scoped(Fusion)
 	local props = {} :: any
 	assignString(props, "Name", config.name)
@@ -261,7 +261,7 @@ function Tile.CreateAttachment(configRaw: AttachmentConfig?): Attachment
 end
 
 function Tile.CreateWeldConstraint(configRaw: WeldConfig?): WeldConstraint
-	local config = if typeof(configRaw) == "table" then configRaw :: WeldConfig else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw :: WeldConfig else {} :: any
 	local scope = Fusion.scoped(Fusion)
 	local props = {} :: any
 	assignString(props, "Name", config.name)
@@ -274,7 +274,7 @@ function Tile.CreateWeldConstraint(configRaw: WeldConfig?): WeldConstraint
 end
 
 function Tile.CreateBindableEvent(configRaw: BindableEventConfig?): BindableEvent
-	local config = if typeof(configRaw) == "table" then configRaw :: BindableEventConfig else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw :: BindableEventConfig else {} :: any
 	local scope = Fusion.scoped(Fusion)
 	local props = {} :: any
 	assignString(props, "Name", config.name)

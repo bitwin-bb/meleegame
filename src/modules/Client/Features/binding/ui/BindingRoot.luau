@@ -1,7 +1,8 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BindingHintScreen = require(script.Parent.screens.bindingHintScreen)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local BindingHintScreen = require(gameRoot.Client.Features.binding.ui.screens.bindingHintScreen)
 local React = require(ReplicatedStorage.Packages.React)
 
 type BindingRootProps = {

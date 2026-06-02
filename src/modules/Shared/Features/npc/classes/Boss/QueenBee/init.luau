@@ -1,24 +1,24 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
+local Maid = require(quentyPackages.maid.Shared.Maid)
+local Rx = require(quentyPackages.rx.Shared.Rx)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
-local Maid = loader("Maid")
-local Rx = loader("Rx")
-local Signal = loader("Signal")
-
-local Bee = require(script.Bee)
+local Bee = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Bee)
 local BossBase = require(script.Parent)
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local Configs = require(script.Configs)
-local Physics = require(script.Physics)
-local Render = require(script.Render)
-local StateMachine = require(script:FindFirstAncestor("game").Shared.StateMachine.Core.StateMachine)
-local Stinger = require(script.Stinger)
+local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local Physics = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Physics)
+local Render = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Render)
+local StateMachine = require(gameRoot.Shared.StateMachine)
+local Stinger = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Stinger)
 
 type Boss = BossBase.Boss
 type BossRegistryEntry = BossServiceUtils.BossRegistryEntry
@@ -596,16 +596,18 @@ local function hoverBossTowardPoint(
 
 	self._targetDirection = direction
 	self._currentAcceleration = direction * acceleration
-	self:setVelocity(Physics.ComputeHoverVelocity(
-		self.position,
-		self.velocity,
-		targetPosition,
-		speed,
-		acceleration,
-		self._queenConfig.HoverDamping,
-		self._queenConfig.HoverArriveRadius,
-		dt
-	))
+	self:setVelocity(
+		Physics.ComputeHoverVelocity(
+			self.position,
+			self.velocity,
+			targetPosition,
+			speed,
+			acceleration,
+			self._queenConfig.HoverDamping,
+			self._queenConfig.HoverArriveRadius,
+			dt
+		)
+	)
 	return distance
 end
 
@@ -755,7 +757,12 @@ local function createBossStateMachine(self: QueenBeeBossController): any
 				{
 					event = DECISION_EVENT_HOVER_COMPLETE,
 					to = DECISION_STATE_RAM_ALIGN,
-					guard = function(_context: QueenBeeBossController, _eventName: string?, _payload: any?, _machine: any): boolean
+					guard = function(
+						_context: QueenBeeBossController,
+						_eventName: string?,
+						_payload: any?,
+						_machine: any
+					): boolean
 						return true
 					end,
 					priority = -1,
@@ -956,7 +963,12 @@ function QueenBeeBossController.AfterSpawn(self: QueenBeeBossController)
 	dispatchBossDecision(self, DECISION_EVENT_SPAWN, "Spawn")
 end
 
-function QueenBeeBossController.OnStateChanged(self: QueenBeeBossController, nextState: string, _previousState: string, _reason: string)
+function QueenBeeBossController.OnStateChanged(
+	self: QueenBeeBossController,
+	nextState: string,
+	_previousState: string,
+	_reason: string
+)
 	if stateHasSuffix(nextState, "HoverIdle") and self._currentPattern ~= PATTERN_HOVER_IDLE then
 		self._currentPattern = PATTERN_HOVER_IDLE
 		self._patternTimer = 0
@@ -978,7 +990,12 @@ function QueenBeeBossController.OnStateChanged(self: QueenBeeBossController, nex
 	syncBossDecisionState(self, nextState)
 end
 
-function QueenBeeBossController.OnDamageTaken(self: QueenBeeBossController, _damage: number, _sourceRaw: any?, _hp: number)
+function QueenBeeBossController.OnDamageTaken(
+	self: QueenBeeBossController,
+	_damage: number,
+	_sourceRaw: any?,
+	_hp: number
+)
 	refreshBossPhase(self)
 end
 
@@ -1174,7 +1191,7 @@ function QueenBeeBossController.OnStep(self: QueenBeeBossController, dt: number)
 end
 
 function QueenBee.New(configRaw: QueenBeeNewConfig?): QueenBee
-	local raw = (if typeof(configRaw) == "table" then configRaw else ({} :: any)) :: any
+	local raw = (if typeof(configRaw) == "table" then configRaw else {} :: any) :: any
 	local model, rootPart, ownsModel = resolveModelAndRoot(raw)
 	local services = resolveServices(raw)
 	local config = Configs.Resolve(if raw.config ~= nil then raw.config else raw)
@@ -1287,7 +1304,7 @@ function QueenBee._configureModel(self: QueenBee)
 end
 
 function QueenBee._applyDebugAttributes(self: QueenBee)
-	for _, instance in ({ self.model, self.rootPart } :: { Instance? }) do
+	for _, instance in { self.model, self.rootPart } :: { Instance? } do
 		setAttribute(instance, "QueenBeeState", self.state)
 		setAttribute(instance, "QueenBeePhase", self.phase)
 		setAttribute(instance, "QueenBeeEnraged", self.enraged)
@@ -2178,4 +2195,3 @@ QueenBeeBossController.stepDeath = QueenBeeBossController.StepDeath
 QueenBeeBossController.onStep = QueenBeeBossController.OnStep
 
 return QueenBee
-

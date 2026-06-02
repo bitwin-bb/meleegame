@@ -1,5 +1,7 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local UserInputService = game:GetService("UserInputService")
@@ -163,11 +165,11 @@ local function normalizeBindings(bindingsRaw: any): { InputBinding }
 		if keyCode == nil and inputType == nil then
 			continue
 		end
-		out[#out + 1] = ({
+		out[#out + 1] = {
 			keyCode = keyCode,
 			inputType = inputType,
 			deadzone = bindingRaw.deadzone,
-		} :: any)
+		} :: any
 	end
 	return out
 end
@@ -199,7 +201,7 @@ local function hasDeadzonePassed(input: InputObject, deadzone: number): boolean
 end
 
 function Input.New(configRaw: InputConfig?): Input
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local self = setmetatable({
 		eventBus = config.eventBus,
 		eventChannel = normalizeEventName(config.eventChannel, "input"),
@@ -231,7 +233,8 @@ function Input.New(configRaw: InputConfig?): Input
 					self.layerEnabled[layerName] = layerConfig.enabled == true
 				end
 				if layerConfig.priority ~= nil then
-					self.layerPriorities[layerName] = clampPriority(layerConfig.priority, self.layerPriorities[layerName] or 0)
+					self.layerPriorities[layerName] =
+						clampPriority(layerConfig.priority, self.layerPriorities[layerName] or 0)
 				end
 			end
 		end
@@ -287,21 +290,25 @@ function Input._scheduleLongPress(self: Input, inputObject: InputObject, action:
 		return
 	end
 	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).schedule) == "function" then
-		local token = (self.tickScheduler :: any):schedule(function()
-			local inputPresses = self.activePresses[inputObject]
-			if inputPresses == nil then
-				return
-			end
-			local runtimePress = inputPresses[action.name]
-			if runtimePress == nil or runtimePress.longPressTriggered then
-				return
-			end
-			runtimePress.longPressTriggered = true
-			self:_dispatchAction(action, press.inputKey, inputObject, "LongPress", false, runtimePress.startTime)
-		end, action.longPressTime, {
-			group = "input.longpress",
-			priority = 200,
-		})
+		local token = (self.tickScheduler :: any):schedule(
+			function()
+				local inputPresses = self.activePresses[inputObject]
+				if inputPresses == nil then
+					return
+				end
+				local runtimePress = inputPresses[action.name]
+				if runtimePress == nil or runtimePress.longPressTriggered then
+					return
+				end
+				runtimePress.longPressTriggered = true
+				self:_dispatchAction(action, press.inputKey, inputObject, "LongPress", false, runtimePress.startTime)
+			end,
+			action.longPressTime,
+			{
+				group = "input.longpress",
+				priority = 200,
+			}
+		)
 		press.longPressCancel = function()
 			if typeof(token.cancel) == "function" then
 				token:cancel()
@@ -474,15 +481,21 @@ function Input.Init(self: Input)
 		return
 	end
 	self.isInitialized = true
-	self.connections[#self.connections + 1] = UserInputService.InputBegan:Connect(function(input: InputObject, gameProcessed: boolean)
-		self:_handleInput(input, "Began", gameProcessed)
-	end)
-	self.connections[#self.connections + 1] = UserInputService.InputChanged:Connect(function(input: InputObject, gameProcessed: boolean)
-		self:_handleInput(input, "Changed", gameProcessed)
-	end)
-	self.connections[#self.connections + 1] = UserInputService.InputEnded:Connect(function(input: InputObject, gameProcessed: boolean)
-		self:_handleInput(input, "Ended", gameProcessed)
-	end)
+	self.connections[#self.connections + 1] = UserInputService.InputBegan:Connect(
+		function(input: InputObject, gameProcessed: boolean)
+			self:_handleInput(input, "Began", gameProcessed)
+		end
+	)
+	self.connections[#self.connections + 1] = UserInputService.InputChanged:Connect(
+		function(input: InputObject, gameProcessed: boolean)
+			self:_handleInput(input, "Changed", gameProcessed)
+		end
+	)
+	self.connections[#self.connections + 1] = UserInputService.InputEnded:Connect(
+		function(input: InputObject, gameProcessed: boolean)
+			self:_handleInput(input, "Ended", gameProcessed)
+		end
+	)
 end
 
 function Input.BindAction(self: Input, actionNameRaw: any, callbackRaw: any, optionsRaw: ActionOptions?): boolean
@@ -493,7 +506,7 @@ function Input.BindAction(self: Input, actionNameRaw: any, callbackRaw: any, opt
 		return false
 	end
 
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 	local actionName = actionNameRaw :: string
 	local layer = normalizeLayer(options.layer)
 	local action: ActionRecord = {

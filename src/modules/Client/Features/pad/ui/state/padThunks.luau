@@ -1,5 +1,8 @@
 --!strict
-local padSlice = require(script:FindFirstAncestor("game").Client.Features.pad.ui.state.padSlice)
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local padSlice = require(gameRoot.Client.Features.pad.ui.state.padSlice)
 
 local padThunks = {}
 

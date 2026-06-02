@@ -1,9 +1,12 @@
 --!strict
+
+local require = require(script.Parent.loader).load(assert(script:FindFirstAncestor("AquariaBackup"), "Missing AquariaBackup package root"))
+
 local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for FlyServer.")
 
-local CmdrUtils = require(gameRoot.Shared.Features.commander.CmdrUtils)
-local PlayerServiceServer = require(gameRoot.Shared.Features.movement.PlayerServiceServer)
+local CmdrUtils = require("CmdrUtils")
+local PlayerServiceServer = require("PlayerServiceServer")
 
 local function setFlyEnabled(player: Player, enabledRaw: any, speedRaw: any): number
 	local enabled = enabledRaw == true

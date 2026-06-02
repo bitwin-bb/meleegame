@@ -1,22 +1,24 @@
 --!strict
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local BossServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceServer)
-local HpServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.health.HpServiceServer)
+local BossServiceServer = (require :: any)(gameRoot.Shared.Features.npc.BossServiceServer)
+local HpServiceServer = (require :: any)(gameRoot.Shared.Features.health.HpServiceServer)
 local InventoryServiceServer = (require :: any)(
 	script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceServer
 )
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Magic = require(script:FindFirstAncestor("game").Shared.Features.combat.classes.Magic)
-local MagicServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.combat.MagicServiceUtils)
-local ManaServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.mana.ManaServiceServer)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local MagicServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).MagicService
+local Magic = require(gameRoot.Shared.Features.combat.classes.Magic)
+local MagicServiceUtils = require(gameRoot.Shared.Features.combat.MagicServiceUtils)
+local ManaServiceServer = (require :: any)(gameRoot.Shared.Features.mana.ManaServiceServer)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local MagicServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).MagicService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = MagicServicePackets[methodName]
@@ -62,13 +64,13 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local NpcServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceServer)
+local NevermoreSupport = require(gameRoot.Shared.Core.NevermoreSupport)
+local NpcServiceServer = (require :: any)(gameRoot.Shared.Features.npc.NpcServiceServer)
 local PlayerServiceServer = (require :: any)(
 	script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer
 )
-local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceUtils)
-local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
+local PlayerServiceUtils = require(gameRoot.Shared.Features.movement.PlayerServiceUtils)
+local ServerBinderSupport = (require :: any)(gameRoot.Server.Binders.ServerBinderSupport)
 
 type WeaponRuntimeConfig = MagicServiceUtils.WeaponRuntimeConfig
 type ModifierStats = MagicServiceUtils.ModifierStats

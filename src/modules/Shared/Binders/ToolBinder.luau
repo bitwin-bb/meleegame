@@ -1,13 +1,15 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local Players = game:GetService("Players")
 
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Registry)
-local MagicServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.combat.MagicServiceUtils)
-local MeleeServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.combat.MeleeServiceUtils)
-local ResolveItem = require(script:FindFirstAncestor("game").Shared.Features.item.modules.ResolveItem)
-local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveToolInstance)
-local TagBinder = require(script.Parent.TagBinder)
+local ItemRegistry = require(gameRoot.Shared.Features.item.modules.Registry)
+local MagicServiceUtils = require(gameRoot.Shared.Features.combat.MagicServiceUtils)
+local MeleeServiceUtils = require(gameRoot.Shared.Features.combat.MeleeServiceUtils)
+local ResolveItem = require(gameRoot.Shared.Features.item.modules.ResolveItem)
+local ResolveToolInstance = require(gameRoot.Shared.Game.Format.ResolveToolInstance)
+local TagBinder = require(gameRoot.Shared.Binders.TagBinder)
 
 local ToolBinder = {}
 

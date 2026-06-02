@@ -187,13 +187,13 @@ function PlayerDataServiceUtils.GetDefaultCoinsDataPath(): { DataPathSegment }
 end
 
 function PlayerDataServiceUtils.CreateDefaultData(templateRaw: any): PlayerData
-	local template = if typeof(templateRaw) == "table" then templateRaw else ({} :: any)
+	local template = if typeof(templateRaw) == "table" then templateRaw else {} :: any
 	return cloneDeepInternal(template, {})
 end
 
 function PlayerDataServiceUtils.ReconcileData(dataRaw: any, templateRaw: any): PlayerData
-	local data = if typeof(dataRaw) == "table" then dataRaw else ({} :: any)
-	local template = if typeof(templateRaw) == "table" then templateRaw else ({} :: any)
+	local data = if typeof(dataRaw) == "table" then dataRaw else {} :: any
+	local template = if typeof(templateRaw) == "table" then templateRaw else {} :: any
 	reconcileDataInternal(data, template)
 	return data
 end
@@ -256,7 +256,7 @@ function PlayerDataServiceUtils.CreateState(
 ): PlayerDataServiceState
 	local fallback = if fallbackState then fallbackState else PlayerDataServiceUtils.CreateDefaultState()
 	local sourceData = if typeof(dataRaw) == "table" then dataRaw else fallback.data
-	local metadata = if typeof(metadataRaw) == "table" then metadataRaw :: { [string]: any } else ({} :: any)
+	local metadata = if typeof(metadataRaw) == "table" then metadataRaw :: { [string]: any } else {} :: any
 	local loadState = PlayerDataServiceUtils.SanitizeLoadState(loadStateRaw, fallback.loadState)
 	local hasResolvedInitialLoad = if metadata.hasResolvedInitialLoad ~= nil
 		then sanitizeBoolean(metadata.hasResolvedInitialLoad, PlayerDataServiceUtils.IsTerminalLoadState(loadState))

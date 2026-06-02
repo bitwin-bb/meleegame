@@ -1,11 +1,12 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
-local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
-local manaSlice = require(script:FindFirstAncestor("game").Shared.Features.mana.ui.hud.state.slice.manaSlice)
-local ManaServiceClient = require(script:FindFirstAncestor("game").Shared.Features.mana.ManaServiceClient)
-local ManaServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.mana.ManaServiceUtils)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ConnectionUtils = require(gameRoot.Client.UI.core.utils.ConnectionUtils)
+local ManaServiceClient = require(gameRoot.Shared.Features.mana.ManaServiceClient)
+local ManaServiceUtils = require(gameRoot.Shared.Features.mana.ManaServiceUtils)
+local ServiceSync = require(gameRoot.Client.UI.core.utils.ServiceSync)
+local manaSlice = require(gameRoot.Shared.Features.mana.ui.hud.state.slice.manaSlice)
 
 type ManaServiceState = ManaServiceUtils.ManaServiceState
 
@@ -36,10 +37,13 @@ function manaThunks.Start(): () -> ()
 		syncFromService()
 	end
 
-	runtime.stateChangedConnection = ServiceSync.connectStateChanged(ManaServiceClient, function(nextState: ManaServiceState)
-		applyState(nextState)
-		manaSlice.setManaReady(true)
-	end)
+	runtime.stateChangedConnection = ServiceSync.connectStateChanged(
+		ManaServiceClient,
+		function(nextState: ManaServiceState)
+			applyState(nextState)
+			manaSlice.setManaReady(true)
+		end
+	)
 	ServiceSync.requestSync(ManaServiceClient)
 
 	return manaThunks.Stop

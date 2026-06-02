@@ -1,8 +1,11 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local SpatialHash = require(script.Utils.SpatialHash)
+local SpatialHash = require(gameRoot.Shared.Features.combat.classes.EnemyHitbox.Utils.SpatialHash)
 
 local EnemyHitbox = {}
 EnemyHitbox.__index = EnemyHitbox
@@ -165,7 +168,7 @@ local function runCallback(callback: ((...any) -> any)?, defaultValue: any, ...:
 end
 
 function EnemyHitbox.New(configRaw: EnemyHitboxConfig?): EnemyHitbox
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 
 	local self = setmetatable({
 		enemySpatial = SpatialHash.new(sanitizeNumber(config.cellSize, DEFAULT_CELL_SIZE, 0.5, 256)),
@@ -426,8 +429,12 @@ function EnemyHitbox._refreshEnemy(self: EnemyHitbox, record: EnemyRecord)
 	record.attackAabbMin = attackAabbMin
 	record.attackAabbMax = attackAabbMax
 	record.damage = sanitizeNumber(runCallback(config.getDamage, DEFAULT_DAMAGE, owner), DEFAULT_DAMAGE, 0, 100000)
-	record.attackCooldown =
-		sanitizeNumber(runCallback(config.getAttackCooldown, DEFAULT_ATTACK_COOLDOWN, owner), DEFAULT_ATTACK_COOLDOWN, 0.05, 30)
+	record.attackCooldown = sanitizeNumber(
+		runCallback(config.getAttackCooldown, DEFAULT_ATTACK_COOLDOWN, owner),
+		DEFAULT_ATTACK_COOLDOWN,
+		0.05,
+		30
+	)
 
 	self.enemySpatial:upsert(record.id, aabbMin, aabbMax, record)
 end
@@ -469,12 +476,14 @@ function EnemyHitbox._processEnemyAttacks(self: EnemyHitbox, now: number)
 				continue
 			end
 
-			if not SpatialHash.aabbIntersects(
-				record.attackAabbMin,
-				record.attackAabbMax,
-				playerRecord.aabbMin,
-				playerRecord.aabbMax
-			) then
+			if
+				not SpatialHash.aabbIntersects(
+					record.attackAabbMin,
+					record.attackAabbMax,
+					playerRecord.aabbMin,
+					playerRecord.aabbMax
+				)
+			then
 				continue
 			end
 

@@ -1,10 +1,12 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Charm = require(ReplicatedStorage.Packages.Charm)
-local Cleanup = require(script.Parent.internal.cleanup)
+local Cleanup = require(gameRoot.Client.UI.core.hooks.internal.cleanup)
 local React = require(ReplicatedStorage.Packages.React)
-local useLatest = require(script.Parent.internal.useLatest)
+local useLatest = require(gameRoot.Client.UI.core.hooks.internal.useLatest)
 
 export type StoreOptions<TSelected> = {
 	equalityFn: ((TSelected?, TSelected?) -> boolean)?,

@@ -1,5 +1,7 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local RunService = game:GetService("RunService")
 
 local React = require(ReplicatedStorage.Packages.React)
@@ -79,9 +81,7 @@ local function useTrashAppear(options: TrashAppearOptions?): TrashAppearState
 	local offset = fromOffset:Lerp(toOffset, fluidProgress)
 	local totalDistance = (toOffset - fromOffset).Magnitude
 	local remainingDistance = (toOffset - offset).Magnitude
-	local transparency = if totalDistance <= 0.0001
-		then 0
-		else sanitizeTransparency(remainingDistance / totalDistance)
+	local transparency = if totalDistance <= 0.0001 then 0 else sanitizeTransparency(remainingDistance / totalDistance)
 
 	return {
 		progress = progress,

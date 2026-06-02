@@ -1,13 +1,16 @@
 --!strict
-local HttpService = game:GetService("HttpService")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local Curve = require(script:FindFirstAncestor("game").Shared.Core.Math.Curve)
-local Ease = require(script:FindFirstAncestor("game").Shared.Core.Math.Ease)
+local Curve = require(gameRoot.Shared.Core.Math.Curve)
+local Ease = require(gameRoot.Shared.Core.Math.Ease)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Vec = require(script:FindFirstAncestor("game").Shared.Core.Math.Vec)
+local Vec = require(gameRoot.Shared.Core.Math.Vec)
 
 local Gib = {}
 Gib.__index = Gib

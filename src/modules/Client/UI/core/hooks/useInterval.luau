@@ -1,9 +1,11 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Cleanup = require(script.Parent.internal.cleanup)
+local Cleanup = require(gameRoot.Client.UI.core.hooks.internal.cleanup)
 local React = require(ReplicatedStorage.Packages.React)
-local useStableCallback = require(script.Parent.internal.useStableCallback)
+local useStableCallback = require(gameRoot.Client.UI.core.hooks.internal.useStableCallback)
 
 export type IntervalOptions = {
 	enabled: boolean?,
@@ -90,7 +92,7 @@ local function useInterval(callbackRaw: any, intervalSecondsRaw: any, options: I
 		else
 			cancel()
 		end
-	end, ({ enabled, autoStart, intervalSeconds, restart, cancel } :: { any }))
+	end, { enabled, autoStart, intervalSeconds, restart, cancel } :: { any })
 
 	React.useEffect(function()
 		return function()

@@ -1,12 +1,14 @@
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local RunService = game:GetService("RunService")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PortalTargets = require(script.Parent.Parent.utils.PortalTargets)
-local RarityPill = require(script.Parent.RarityPill)
+local PortalTargets = require(gameRoot.Client.UI.core.utils.PortalTargets)
+local RarityPill = require(gameRoot.Client.UI.core.components.RarityPill)
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
-local formatNumber = require(script:FindFirstAncestor("game").Client.UI.core.utils.formatNumber)
+local formatNumber = require(gameRoot.Client.UI.core.utils.formatNumber)
 
 local e: typeof(React.createElement) = React.createElement
 

@@ -1,28 +1,31 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+
 local CollectionService = game:GetService("CollectionService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
-local AudioServiceClient = (require :: any)(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceClient)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
-local ClientBinderSupport = (require :: any)(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
-local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.GamepadPointer)
-local GamepadTargetServiceClient =
-	require(script:FindFirstAncestor("game").Shared.Features.platform.GamepadTargetServiceClient)
-local InventoryServiceClient =
-	require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceClient)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
+local AudioRegistry = require(gameRoot.Shared.Features.item.modules.Audio)
+local AudioServiceClient = (require :: any)(gameRoot.Client.Features.audio.AudioServiceClient)
+local AudioServiceUtils = require(gameRoot.Client.Features.audio.AudioServiceUtils)
+local BuildServiceUtils = require(gameRoot.Shared.Features.world.BuildServiceUtils)
+local ClientBinderSupport = (require :: any)(gameRoot.Client.Binders.ClientBinderSupport)
+local CoreRuntime = require(gameRoot.Shared.Core.Runtime)
+local GamepadPointer = require(gameRoot.Shared.Features.platform.modules.GamepadPointer)
+local GamepadTargetServiceClient = require(gameRoot.Shared.Features.platform.GamepadTargetServiceClient)
+local InventoryServiceClient = require(gameRoot.Shared.Features.inventory.InventoryServiceClient)
+local InventoryServiceUtils = require(gameRoot.Shared.Features.inventory.InventoryServiceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local BuildServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).BuildService
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local BuildServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).BuildService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = BuildServicePackets[methodName]
@@ -71,19 +74,18 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
+local NevermoreSupport = require(gameRoot.Shared.Core.NevermoreSupport)
+local PlatformServiceClient = require(gameRoot.Shared.Features.platform.PlatformServiceClient)
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
-local Rubble = require(script:FindFirstAncestor("game").Shared.Features.world.classes.Rubble)
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local Rubble = require(gameRoot.Shared.Features.world.classes.Rubble)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 local SnackbarNotifications = (require :: any)(
 	script:FindFirstAncestor("game").Client.Features.notification.SnackbarNotifications
 )
-local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
-local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
-local itemSlice = require(script:FindFirstAncestor("game").Shared.Features.item.ui.state.itemSlice)
+local TagBinder = require(gameRoot.Shared.Binders.TagBinder)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
+local WorldGenerationServiceClient = require(gameRoot.Shared.Features.worldGeneration.WorldGenerationServiceClient)
+local itemSlice = require(gameRoot.Shared.Features.item.ui.state.itemSlice)
 
 type BuildServiceState = BuildServiceUtils.BuildServiceState
 type PlaceableItemConfig = BuildServiceUtils.PlaceableItemConfig

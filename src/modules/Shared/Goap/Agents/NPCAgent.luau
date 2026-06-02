@@ -1,13 +1,15 @@
 --!strict
 
-local Nevermore = require(script:FindFirstAncestor("Goap").Nevermore)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Nevermore = require(gameRoot.Shared.Goap.Nevermore)
 local packages = Nevermore.GetRolePackages("Examples")
 local Table = packages.Table
 
-local Actions = require(script:FindFirstAncestor("Goap").Actions)
-local Agent = require(script:FindFirstAncestor("Goap").Core.Agent)
-local Goals = require(script:FindFirstAncestor("Goap").Goals)
-local Sensors = require(script:FindFirstAncestor("Goap").Sensors)
+local Actions = require(gameRoot.Shared.Goap.Actions)
+local Agent = require(gameRoot.Shared.Goap.Core.Agent)
+local Goals = require(gameRoot.Shared.Goap.Goals)
+local Sensors = require(gameRoot.Shared.Goap.Sensors)
 
 local NPCAgent = {}
 

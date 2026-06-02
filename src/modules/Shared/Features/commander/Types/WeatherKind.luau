@@ -18,7 +18,8 @@ local function resolveGameRoot(): Instance
 		end
 	end
 
-	local replicatedPackage = ReplicatedStorage:FindFirstChild(PACKAGE_NAME) or ReplicatedStorage:WaitForChild(PACKAGE_NAME, 5)
+	local replicatedPackage = ReplicatedStorage:FindFirstChild(PACKAGE_NAME)
+		or ReplicatedStorage:WaitForChild(PACKAGE_NAME, 5)
 	if replicatedPackage ~= nil then
 		local replicatedGameRoot = replicatedPackage:FindFirstChild("game")
 		if replicatedGameRoot ~= nil then

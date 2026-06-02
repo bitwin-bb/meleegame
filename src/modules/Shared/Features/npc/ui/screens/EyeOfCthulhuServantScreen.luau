@@ -1,18 +1,18 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local RunService = game:GetService("RunService")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
+local Maid = require(quentyPackages.maid.Shared.Maid)
 
-local Maid = loader("Maid")
-
-local EyeOfCthulhuServant =
-	require(script:FindFirstAncestor("game").Shared.Features.npc.ui.components.EyeOfCthulhuServant)
+local EyeOfCthulhuServant = require(gameRoot.Shared.Features.npc.ui.components.EyeOfCthulhuServant)
 local React = require(ReplicatedStorage.Packages.React)
-local ServantSpriteSheet = require(script:FindFirstAncestor("game").Shared.Features.npc.modules.ServantSpriteSheet)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
+local ServantSpriteSheet = require(gameRoot.Shared.Features.npc.modules.ServantSpriteSheet)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
 
 export type EyeOfCthulhuServantScreenProps = {
 	zIndex: number?,

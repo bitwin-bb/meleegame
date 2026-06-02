@@ -1,8 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local CloudScreen = require(script.Parent.screens.CloudScreen)
-local ParallaxScreen = require(script.Parent.screens.ParallaxScreen)
+local CloudScreen = require(gameRoot.Client.Features.parallax.ui.screens.CloudScreen)
+local ParallaxScreen = require(gameRoot.Client.Features.parallax.ui.screens.ParallaxScreen)
 local React = require(ReplicatedStorage.Packages.React)
 
 type ParallaxRootProps = {

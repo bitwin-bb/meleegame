@@ -1,7 +1,9 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local CraftingSlotsScreen = require(script.Parent.screens.craftingSlots)
+local CraftingSlotsScreen = require(gameRoot.Shared.Features.crafting.ui.screens.craftingSlots)
 local React = require(ReplicatedStorage.Packages.React)
 
 type CraftingRootProps = {

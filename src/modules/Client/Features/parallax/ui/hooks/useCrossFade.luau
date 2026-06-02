@@ -1,12 +1,13 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local RunService = game:GetService("RunService")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(packageRoot)
-
-local Maid = loader("Maid")
+local Maid = require(quentyPackages.maid.Shared.Maid)
 
 local React = require(ReplicatedStorage.Packages.React)
 
@@ -70,7 +71,7 @@ local function useCrossFade(options: CrossFadeOptions): number
 		return function()
 			maid:DoCleaning()
 		end
-	end, ({ options.id, fadeSeconds } :: { any }))
+	end, { options.id, fadeSeconds } :: { any })
 
 	return transparency
 end

@@ -1,4 +1,5 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Charm = require(ReplicatedStorage.Packages.Charm)
@@ -135,9 +136,13 @@ local function formatWordsFromToken(tokenRaw: string): string
 	if compact == "" then
 		return "Item"
 	end
-	local formatted = (string.gsub :: any)(compact, "(%a)([%w_']*)", function(first: string, tail: string): string
-		return string.upper(first) .. string.lower(tail)
-	end) :: string
+	local formatted = (string.gsub :: any)(
+			compact,
+			"(%a)([%w_']*)",
+			function(first: string, tail: string): string
+				return string.upper(first) .. string.lower(tail)
+			end
+		) :: string
 	return formatted
 end
 
@@ -147,7 +152,7 @@ end
 
 local function setInfoPlayerState(stateRaw: any): InfoPlayerState
 	local current = infoPlayerStateAtom()
-	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else ({} :: any)
+	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {} :: any
 	local enabled = if typeof(source.enabled) == "boolean" then source.enabled else current.enabled
 	local sequenceRaw = if typeof(source.sequence) == "number" and source.sequence == source.sequence
 		then source.sequence
@@ -197,7 +202,7 @@ local function setInfoPlayerState(stateRaw: any): InfoPlayerState
 end
 
 local function pushPopup(payloadRaw: any): InfoPlayerPopup?
-	local payload = if typeof(payloadRaw) == "table" then payloadRaw :: { [string]: any } else ({} :: any)
+	local payload = if typeof(payloadRaw) == "table" then payloadRaw :: { [string]: any } else {} :: any
 	local current = infoPlayerStateAtom()
 	if current.enabled ~= true then
 		return nil
@@ -211,7 +216,7 @@ local function pushPopup(payloadRaw: any): InfoPlayerPopup?
 	local nextSequence = current.sequence + 1
 	local eventId = sanitizeString(payload.id, ("event_%d"):format(nextSequence))
 	local popupKind = sanitizePopupKind(payload.kind)
-	local popup: InfoPlayerPopup = ({
+	local popup: InfoPlayerPopup = {
 		id = eventId,
 		eventToken = ("%s::%d"):format(eventId, nextSequence),
 		kind = popupKind,
@@ -224,7 +229,7 @@ local function pushPopup(payloadRaw: any): InfoPlayerPopup?
 		targetRuntimeId = sanitizeOptionalString(payload.targetRuntimeId),
 		targetPosition = sanitizeOptionalVector3(payload.targetPosition),
 		createdAt = os.clock(),
-	} :: any)
+	} :: any
 
 	local basePopups = clonePopups(current.popups)
 	if payload.replaceExistingKind == true then
@@ -267,7 +272,7 @@ local function pushDamageDealt(amountRaw: any, targetRaw: any?): InfoPlayerPopup
 	if amount <= 0 then
 		return nil
 	end
-	local target = if typeof(targetRaw) == "table" then targetRaw :: { [string]: any } else ({} :: any)
+	local target = if typeof(targetRaw) == "table" then targetRaw :: { [string]: any } else {} :: any
 
 	return pushPopup({
 		kind = "damage_dealt",
@@ -349,7 +354,7 @@ local function setEnabled(enabledRaw: any): InfoPlayerState
 
 	local nextState: InfoPlayerState = {
 		enabled = enabled,
-		popups = if enabled then current.popups else ({} :: any),
+		popups = if enabled then current.popups else {} :: any,
 		sequence = current.sequence,
 		updatedAt = os.clock(),
 	}

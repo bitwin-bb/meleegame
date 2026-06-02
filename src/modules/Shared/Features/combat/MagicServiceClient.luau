@@ -1,18 +1,22 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
-local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.GamepadPointer)
-local InventoryServiceClient =
-	require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceClient)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
+local CoreRuntime = require(gameRoot.Shared.Core.Runtime)
+local GamepadPointer = require(gameRoot.Shared.Features.platform.modules.GamepadPointer)
+local InventoryServiceClient = require(gameRoot.Shared.Features.inventory.InventoryServiceClient)
+local InventoryServiceUtils = require(gameRoot.Shared.Features.inventory.InventoryServiceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local MagicServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.combat.MagicServiceUtils)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local MagicServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).MagicService
+local MagicServiceUtils = require(gameRoot.Shared.Features.combat.MagicServiceUtils)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local MagicServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).MagicService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = MagicServicePackets[methodName]
@@ -54,9 +58,9 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
-local Signal = require(ReplicatedStorage.Packages.Signal)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
+local PlatformServiceClient = require(gameRoot.Shared.Features.platform.PlatformServiceClient)
+local Signal = require(quentyPackages.signal.Shared.Signal)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
 
 type InventoryState = InventoryServiceUtils.InventoryState
 type ReplicatedState = MagicServiceUtils.ReplicatedState

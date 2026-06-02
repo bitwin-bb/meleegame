@@ -1,13 +1,16 @@
 --!strict
-local Players = game:GetService("Players")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Players = game:GetService("Players")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Features.commander.CmdrUtils)
-local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.health.HpServiceUtils)
+local CmdrUtils = require(gameRoot.Shared.Features.commander.CmdrUtils)
+local HpServiceUtils = require(gameRoot.Shared.Features.health.HpServiceUtils)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local HpServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).HpService
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local HpServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).HpService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = HpServicePackets[methodName]
@@ -50,8 +53,7 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local PlayerDataServiceServer =
-	require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceServer)
+local PlayerDataServiceServer = require(gameRoot.Shared.Features.playerData.PlayerDataServiceServer)
 local PlayerServiceServer = (require :: any)(
 	script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer
 )

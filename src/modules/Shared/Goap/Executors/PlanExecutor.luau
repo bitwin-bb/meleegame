@@ -1,11 +1,13 @@
 --!strict
 
-local Nevermore = require(script:FindFirstAncestor("Goap").Nevermore)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Nevermore = require(gameRoot.Shared.Goap.Nevermore)
 local packages = Nevermore.GetRolePackages("Runtime")
 local Maid = packages.Maid
 local Table = packages.Table
 
-local ActionRunner = require(script.Parent.ActionRunner)
+local ActionRunner = require(gameRoot.Shared.Goap.Executors.ActionRunner)
 
 local PlanExecutor = {}
 PlanExecutor.__index = PlanExecutor

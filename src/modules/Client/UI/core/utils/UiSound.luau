@@ -1,7 +1,10 @@
 --!strict
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
-local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceClient)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local AudioRegistry = require(gameRoot.Shared.Features.item.modules.Audio)
+local AudioServiceClient = require(gameRoot.Client.Features.audio.AudioServiceClient)
+local AudioServiceUtils = require(gameRoot.Client.Features.audio.AudioServiceUtils)
 
 local UI_AUDIO = (AudioRegistry :: any).UI or ({} :: any)
 

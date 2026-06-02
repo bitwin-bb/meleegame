@@ -1,6 +1,8 @@
 --!strict
 
-local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ModelBinder = require(gameRoot.Shared.Binders.ModelBinder)
 
 local AudioBinder = {}
 AudioBinder.__index = AudioBinder
@@ -10,7 +12,7 @@ local audioServiceClient = nil
 
 local function getAudioServiceClient()
 	if audioServiceClient == nil then
-		audioServiceClient = (require :: any)(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceClient)
+		audioServiceClient = (require :: any)(gameRoot.Client.Features.audio.AudioServiceClient)
 	end
 	return audioServiceClient
 end

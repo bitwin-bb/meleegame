@@ -1,15 +1,18 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local CoinRow = require(script:FindFirstAncestor("game").Shared.Features.inventory.ui.components.CoinRow)
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Registry)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local CoinRow = require(gameRoot.Shared.Features.inventory.ui.components.CoinRow)
+local ImageIds = require(gameRoot.Client.UI.core.ImageIds)
+local ItemRegistry = require(gameRoot.Shared.Features.item.modules.Registry)
 local React = require(ReplicatedStorage.Packages.React)
-local coinSlice = require(script:FindFirstAncestor("game").Shared.Features.inventory.ui.state.coinSlice)
-local coinThunks = require(script:FindFirstAncestor("game").Shared.Features.inventory.ui.state.coinThunks)
-local formatNumber = require(script:FindFirstAncestor("game").Client.UI.core.utils.formatNumber)
-local infoThunks = require(script:FindFirstAncestor("game").Client.Features.info.ui.state.infoThunks)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local coinSlice = require(gameRoot.Shared.Features.inventory.ui.state.coinSlice)
+local coinThunks = require(gameRoot.Shared.Features.inventory.ui.state.coinThunks)
+local formatNumber = require(gameRoot.Client.UI.core.utils.formatNumber)
+local infoThunks = require(gameRoot.Client.Features.info.ui.state.infoThunks)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
 
 type CoinType = coinSlice.CoinType
 type CoinState = coinSlice.CoinState
@@ -161,7 +164,7 @@ return function(props: CoinScreenProps): React.ReactNode
 		else DEFAULT_COIN_SLOT_SIZE
 	local iconTop = math.max(0, COIN_ICON_TOP_PADDING)
 	local amountTop = iconTop + COIN_ICON_SIZE + COIN_AMOUNT_GAP
-	local spriteSheets = if typeof(ImageIds.spriteSheets) == "table" then ImageIds.spriteSheets else ({} :: any)
+	local spriteSheets = if typeof(ImageIds.spriteSheets) == "table" then ImageIds.spriteSheets else {} :: any
 	local renderedCoinCount = 0
 	local coinRowItems: { any } = {}
 

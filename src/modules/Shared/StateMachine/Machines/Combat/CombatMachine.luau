@@ -1,17 +1,19 @@
 --!strict
 
-local Nevermore = require(script:FindFirstAncestor("StateMachine").Nevermore)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Nevermore = require(gameRoot.Shared.StateMachine.Nevermore)
 local Table = Nevermore.Get("Table")
 
 local root = script:FindFirstAncestor("StateMachine")
-local Blackboard = require(root.Core.Blackboard)
-local StateMachine = require(root.Core.StateMachine)
-local Transition = require(root.Core.Transition)
+local Blackboard = require(gameRoot.Shared.StateMachine.Core.Blackboard)
+local StateMachine = require(gameRoot.Shared.StateMachine)
+local Transition = require(gameRoot.Shared.StateMachine.Core.Transition)
 
-local ActiveState = require(script.Parent.ActiveState)
-local IdleState = require(script.Parent.IdleState)
-local RecoveryState = require(script.Parent.RecoveryState)
-local StartupState = require(script.Parent.StartupState)
+local ActiveState = require(gameRoot.Shared.StateMachine.Machines.Combat.ActiveState)
+local IdleState = require(gameRoot.Shared.StateMachine.Machines.Combat.IdleState)
+local RecoveryState = require(gameRoot.Shared.StateMachine.Machines.Combat.RecoveryState)
+local StartupState = require(gameRoot.Shared.StateMachine.Machines.Combat.StartupState)
 
 local CombatMachine = {}
 

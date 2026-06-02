@@ -1,6 +1,8 @@
 --!strict
 
-local DropChance = require(script.Parent.DropChance)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local DropChance = require(gameRoot.Shared.Core.Math.DropChance)
 
 local ReforgeRarity = {}
 

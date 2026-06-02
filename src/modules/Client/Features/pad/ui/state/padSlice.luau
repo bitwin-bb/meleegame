@@ -1,9 +1,12 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local Charm = require(ReplicatedStorage.Packages.Charm)
-local GamepadNav = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.GamepadNav)
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
+local GamepadNav = require(gameRoot.Shared.Features.platform.modules.GamepadNav)
+local ImageIds = require(gameRoot.Client.UI.core.ImageIds)
 
 export type PadStickState = {
 	position: Vector2,
@@ -85,7 +88,7 @@ end
 
 local function updateThumbsticks(snapshotRaw: any): PadState
 	local current = padStateAtom()
-	local snapshot = if typeof(snapshotRaw) == "table" then snapshotRaw else ({} :: any)
+	local snapshot = if typeof(snapshotRaw) == "table" then snapshotRaw else {} :: any
 	local left = if typeof((snapshot :: any).left) == "table" then (snapshot :: any).left else nil
 	local right = if typeof((snapshot :: any).right) == "table" then (snapshot :: any).right else nil
 	local nextState: PadState = {

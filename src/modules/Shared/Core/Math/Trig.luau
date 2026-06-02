@@ -1,7 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 -- Trigonometric helpers and safe conversions.
 
-local Num = require(script.Parent.Num)
+local Num = require(gameRoot.Shared.Core.Math.Num)
 
 local Trig = {}
 

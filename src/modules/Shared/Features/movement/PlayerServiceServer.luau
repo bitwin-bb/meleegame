@@ -1,13 +1,16 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local DataTemplate = require(script:FindFirstAncestor("game").Shared.Core.DataTemplate)
-local GoreServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.gore.GoreServiceServer)
+local DataTemplate = require(gameRoot.Shared.Core.DataTemplate)
+local GoreServiceServer = (require :: any)(gameRoot.Shared.Features.gore.GoreServiceServer)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local PlayerServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).PlayerService
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local PlayerServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).PlayerService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = PlayerServicePackets[methodName]
@@ -52,11 +55,11 @@ local function bindPackets(self: any)
 	bindPacket(self, "setWorldReadyForMovement")
 end
 
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceUtils)
-local PlayerSpawnCooldown = require(script:FindFirstAncestor("game").Shared.Game.Player.PlayerSpawnCooldown)
-local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
-local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
+local NevermoreSupport = require(gameRoot.Shared.Core.NevermoreSupport)
+local PlayerServiceUtils = require(gameRoot.Shared.Features.movement.PlayerServiceUtils)
+local PlayerSpawnCooldown = require(gameRoot.Shared.Game.Player.PlayerSpawnCooldown)
+local ServerBinderSupport = (require :: any)(gameRoot.Server.Binders.ServerBinderSupport)
+local TagBinder = require(gameRoot.Shared.Binders.TagBinder)
 
 type FacingSign = PlayerServiceUtils.FacingSign
 type InvincibilityFramesConfig = PlayerServiceUtils.InvincibilityFramesConfig
@@ -210,8 +213,7 @@ function PlayerServiceServer.Init(self: PlayerServiceServer)
 	PlayerServiceUtils.getOrCreateWorkspacePlayersFolder()
 	PlayerSpawnCooldown.applyConfiguredRespawnDelay()
 	self.goreService = GoreServiceServer :: GoreServiceServerObject
-	self.ragdollService =
-		require(script:FindFirstAncestor("game").Shared.Features.ragdoll.RagdollServiceServer) :: RagdollServiceServerObject
+	self.ragdollService = require(gameRoot.Shared.Features.ragdoll.RagdollServiceServer) :: RagdollServiceServerObject
 	bindPackets(self)
 	local loadingScreenReadyRemote =
 		ensureRemoteEvent(ReplicatedStorage, LOADING_SCREEN_READY_REMOTE_NAME) :: RemoteEvent

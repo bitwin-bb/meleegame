@@ -1,12 +1,13 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local EyeOfCthulhuScreen = require(script.Parent.screens.EyeOfCthulhuScreen)
-local EyeOfCthulhuServantScreen = require(script.Parent.screens.EyeOfCthulhuServantScreen)
-local QueenBeeScreen = require(script.Parent.screens.QueenBeeScreen)
+local EyeOfCthulhuScreen = require(gameRoot.Shared.Features.npc.ui.screens.EyeOfCthulhuScreen)
+local EyeOfCthulhuServantScreen = require(gameRoot.Shared.Features.npc.ui.screens.EyeOfCthulhuServantScreen)
+local QueenBeeScreen = require(gameRoot.Shared.Features.npc.ui.screens.QueenBeeScreen)
 local React = require(ReplicatedStorage.Packages.React)
-local SlimeScreen = require(script.Parent.screens.SlimeScreen)
+local SlimeScreen = require(gameRoot.Shared.Features.npc.ui.screens.SlimeScreen)
 
 type NpcRootProps = {
 	eyeOfCthulhuZIndex: number?,

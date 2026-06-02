@@ -1,9 +1,12 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local Charm = require(ReplicatedStorage.Packages.Charm)
-local InventoryServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.inventory.InventoryServiceUtils)
+local InventoryServiceUtils = require(gameRoot.Shared.Features.inventory.InventoryServiceUtils)
 
 type InventoryItemStack = InventoryServiceUtils.InventoryItemStack
 
@@ -107,7 +110,9 @@ local function cloneStack(stackRaw: any): InventoryItemStack?
 		return nil
 	end
 
-	local amount = if typeof(stack.amount) == "number" and stack.amount == stack.amount then math.max(0, stack.amount) else 0
+	local amount = if typeof(stack.amount) == "number" and stack.amount == stack.amount
+		then math.max(0, stack.amount)
+		else 0
 	local maxStack = if typeof(stack.maxStack) == "number" and stack.maxStack == stack.maxStack
 		then math.max(1, stack.maxStack)
 		else 1
@@ -161,7 +166,7 @@ local function beginDrag(
 		return dragStateAtom()
 	end
 
-	local options = if typeof(optionsRaw) == "table" then (optionsRaw :: ItemDragBeginOptions) else nil
+	local options = if typeof(optionsRaw) == "table" then optionsRaw :: ItemDragBeginOptions else nil
 	local mode = sanitizeDragMode(if options ~= nil then options.mode else nil)
 	local sourceStackAmount = nil :: number?
 	if mode == "SplitHold" then
@@ -173,10 +178,11 @@ local function beginDrag(
 		)
 	end
 	local maxDragAmount = if sourceStackAmount ~= nil then sourceStackAmount else stack.amount
-	local dragAmount = sanitizePositiveInteger(if options ~= nil then options.dragAmount else nil, stack.amount, 1, maxDragAmount)
+	local dragAmount =
+		sanitizePositiveInteger(if options ~= nil then options.dragAmount else nil, stack.amount, 1, maxDragAmount)
 	stack.amount = dragAmount
 
-	local nextState: ItemDragState = ({
+	local nextState: ItemDragState = {
 		active = true,
 		sourceSlot = sourceSlot,
 		hoveredSlot = sourceSlot,
@@ -187,7 +193,7 @@ local function beginDrag(
 		mode = mode,
 		sourceStackAmount = sourceStackAmount,
 		updatedAt = os.clock(),
-	} :: any)
+	} :: any
 	dragStateAtom(nextState)
 	return nextState
 end

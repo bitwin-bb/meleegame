@@ -1,5 +1,8 @@
 --!strict
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ImageIds = require(gameRoot.Client.UI.core.ImageIds)
 
 local CoinSprites = {} :: any
 

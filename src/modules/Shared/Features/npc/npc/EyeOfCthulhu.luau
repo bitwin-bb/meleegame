@@ -1,6 +1,8 @@
 --!strict
 
-local EyeOfCthulhuController = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.EyeOfCthulhu)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local EyeOfCthulhuController = require(gameRoot.Shared.Features.npc.npc.EyeOfCthulhu)
 
 local EyeOfCthulhu = {}
 

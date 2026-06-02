@@ -1,13 +1,13 @@
 --!strict
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 
-local Maid = loader("Maid")
+local Maid = require(quentyPackages.maid.Shared.Maid)
 
-local Configs = require(script.Parent.Configs)
-local Physics = require(script.Parent.Physics)
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local Physics = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Physics)
 
 local Render = {}
 

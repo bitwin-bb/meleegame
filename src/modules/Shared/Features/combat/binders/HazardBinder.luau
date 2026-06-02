@@ -1,8 +1,10 @@
 --!strict
 
-local LiquidServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.LiquidServiceUtils)
-local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
-local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local LiquidServiceUtils = require(gameRoot.Shared.Features.world.LiquidServiceUtils)
+local ModelBinder = require(gameRoot.Shared.Binders.ModelBinder)
+local TagBinder = require(gameRoot.Shared.Binders.TagBinder)
 
 local HazardBinder = {}
 HazardBinder.__index = HazardBinder
@@ -15,28 +17,28 @@ local npcServiceServer = nil
 
 local function getBossServiceServer()
 	if bossServiceServer == nil then
-		bossServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceServer)
+		bossServiceServer = (require :: any)(gameRoot.Shared.Features.npc.BossServiceServer)
 	end
 	return bossServiceServer
 end
 
 local function getHpServiceServer()
 	if hpServiceServer == nil then
-		hpServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.health.HpServiceServer)
+		hpServiceServer = (require :: any)(gameRoot.Shared.Features.health.HpServiceServer)
 	end
 	return hpServiceServer
 end
 
 local function getLiquidServiceServer()
 	if liquidServiceServer == nil then
-		liquidServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.world.LiquidServiceServer)
+		liquidServiceServer = (require :: any)(gameRoot.Shared.Features.world.LiquidServiceServer)
 	end
 	return liquidServiceServer
 end
 
 local function getNpcServiceServer()
 	if npcServiceServer == nil then
-		npcServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceServer)
+		npcServiceServer = (require :: any)(gameRoot.Shared.Features.npc.NpcServiceServer)
 	end
 	return npcServiceServer
 end

@@ -1,6 +1,8 @@
 --!strict
 
-local Noise = require(script:FindFirstAncestor("game").Shared.Core.Math.Noise)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Noise = require(gameRoot.Shared.Core.Math.Noise)
 
 local Cave = {}
 Cave.__index = Cave
@@ -130,7 +132,7 @@ local function resolveWallByBiome(self, biomeId: number, layer: DepthLayer): num
 end
 
 function Cave.New(configRaw: any)
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local tileId = (config :: any).tileId :: TileIdMap
 	local wallId = (config :: any).wallId :: WallIdMap
 	local biomeId = (config :: any).biomeId :: BiomeIdMap
@@ -157,8 +159,10 @@ function Cave.New(configRaw: any)
 		snowPocketThresholdDelta = DEFAULT_SNOW_POCKET_THRESHOLD_DELTA,
 	}, Cave)
 
-	local snowConfig = if typeof((config :: any).snowConfig) == "table" then (config :: any).snowConfig else ({} :: any)
-	local snowCavesConfig = if typeof((snowConfig :: any).Caves) == "table" then (snowConfig :: any).Caves else ({} :: any)
+	local snowConfig = if typeof((config :: any).snowConfig) == "table" then (config :: any).snowConfig else {} :: any
+	local snowCavesConfig = if typeof((snowConfig :: any).Caves) == "table"
+		then (snowConfig :: any).Caves
+		else {} :: any
 	self.snowUndergroundThresholdDelta =
 		clampNumber(snowCavesConfig.UndergroundThresholdDelta, -0.25, 0.25, DEFAULT_SNOW_UNDERGROUND_THRESHOLD_DELTA)
 	self.snowCavernThresholdDelta =

@@ -1,8 +1,11 @@
 --!strict
+
+local require = require(script.Parent.loader).load(assert(script:FindFirstAncestor("AquariaBackup"), "Missing AquariaBackup package root"))
+
 local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for HealServer.")
 
-local HpServiceServer = require(gameRoot.Shared.Features.health.HpServiceServer)
+local HpServiceServer = require("HpServiceServer")
 
 return function(_context, players: { Player }, amountRaw: number?)
 	local healed = {}
@@ -29,7 +32,8 @@ return function(_context, players: { Player }, amountRaw: number?)
 		responseParts[#responseParts + 1] = `Healed {table.concat(healed, ", ")}.`
 	end
 	if #failed > 0 then
-		responseParts[#responseParts + 1] = `Could not heal {table.concat(failed, ", ")} because their humanoid was unavailable.`
+		responseParts[#responseParts + 1] =
+			`Could not heal {table.concat(failed, ", ")} because their humanoid was unavailable.`
 	end
 
 	return table.concat(responseParts, " ")

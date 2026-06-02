@@ -1,12 +1,13 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
 --[=[
 	@class AquariaBackupServiceClient
 ]=]
 
-local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
-local packageRoot = gameRoot.Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local Configs = (require :: any)(gameRoot.Shared.Core.Configs)
 local CoreRuntime = (require :: any)(gameRoot.Shared.Core.Runtime)
@@ -37,7 +38,7 @@ local ParallaxServiceClient = (require :: any)(gameRoot.Client.Features.parallax
 local PlatformServiceClient = (require :: any)(gameRoot.Shared.Features.platform.PlatformServiceClient)
 local PlayerDataServiceClient = (require :: any)(gameRoot.Shared.Features.playerData.PlayerDataServiceClient)
 local PlayerServiceClient = (require :: any)(gameRoot.Shared.Features.movement.PlayerServiceClient)
-local RagdollServiceClient = (require :: any)(gameRoot.Shared.Features.ragdoll.RagdollServiceClient)
+local RagdollServiceClient = (require :: any)(quentyPackages.ragdoll.Client.RagdollServiceClient)
 local TileBreakServiceClient = (require :: any)(gameRoot.Client.Features.tile.TileBreakServiceClient)
 local VFXServiceClient = (require :: any)(gameRoot.Shared.Features.vfx.VFXServiceClient)
 local WeatherServiceClient = (require :: any)(gameRoot.Shared.Features.world.WeatherServiceClient)
@@ -51,8 +52,8 @@ local WorldSimulationServiceClient = (require :: any)(
 )
 
 local CmdrBootstrapClient = (require :: any)(gameRoot.Client.Features.commander.CmdrBootstrapClient)
-local ScreenGuiService = loader("ScreenGuiService")
-local SnackbarServiceClient = loader("SnackbarServiceClient")
+local ScreenGuiService = require(quentyPackages.genericscreenguiprovider.Client.ScreenGuiService)
+local SnackbarServiceClient = require(quentyPackages.snackbar.Client.SnackbarServiceClient)
 
 local AquariaBackupServiceClient = {}
 AquariaBackupServiceClient.ServiceName = "AquariaBackupServiceClient"

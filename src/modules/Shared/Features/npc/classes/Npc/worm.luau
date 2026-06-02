@@ -1,20 +1,21 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
+local CFrameUtils = require(quentyPackages.cframeutils.Shared.CFrameUtils)
+local Maid = require(quentyPackages.maid.Shared.Maid)
+local Rx = require(quentyPackages.rx.Shared.Rx)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
-local CFrameUtils = loader("CFrameUtils")
-local Maid = loader("Maid")
-local Rx = loader("Rx")
-local Signal = loader("Signal")
-
-local Angle = require(script:FindFirstAncestor("game").Shared.Core.Math.Angle)
-local Plane = require(script:FindFirstAncestor("game").Shared.Core.Math.Plane)
-local Vec = require(script:FindFirstAncestor("game").Shared.Core.Math.Vec)
+local Angle = require(gameRoot.Shared.Core.Math.Angle)
+local Plane = require(gameRoot.Shared.Core.Math.Plane)
+local Vec = require(gameRoot.Shared.Core.Math.Vec)
 
 type MaidClass = {
 	GiveTask: (self: MaidClass, task: any) -> number,
@@ -1167,7 +1168,7 @@ function Worm.New(configRaw: WormConfig?): Worm
 	local collisionFilterDescendants: { Instance } = if typeof(collisionConfig.filterDescendantsInstances)
 			== "table"
 		then collisionConfig.filterDescendantsInstances
-		else ({} :: any)
+		else {} :: any
 	local collisionExcludeSegments: boolean = sanitizeBoolean(collisionConfig.excludeSegments, true)
 	local collisionLookAheadDistance: number =
 		sanitizeNumber(collisionConfig.lookAheadDistance, DEFAULT_LOOK_AHEAD_DISTANCE, 0.1, nil)

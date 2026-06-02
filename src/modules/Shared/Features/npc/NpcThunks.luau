@@ -1,7 +1,9 @@
 --!strict
 
-local NpcServiceClient = require(script.Parent.NpcServiceClient)
-local NpcSlice = require(script.Parent.NpcSlice)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local NpcServiceClient = require(gameRoot.Shared.Features.npc.NpcServiceClient)
+local NpcSlice = require(gameRoot.Shared.Features.npc.NpcSlice)
 
 type NpcViewState = NpcSlice.NpcViewState
 type SlimeGoreSprite = NpcSlice.SlimeGoreSprite

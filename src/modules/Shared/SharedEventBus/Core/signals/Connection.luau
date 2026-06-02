@@ -1,21 +1,24 @@
 --!strict
 
 local gameRoot = assert(script:FindFirstAncestor("game"), "Missing game root")
-local packageRoot = gameRoot.Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 
-local Maid = loader("Maid")
+
+local Maid = require(quentyPackages.maid.Shared.Maid)
 
 local Connection = {}
 Connection.__index = Connection
 
 export type DisconnectCallback = () -> ()
 
-export type Connection = typeof(setmetatable({} :: {
-	Connected: boolean,
-	_disconnectMaid: any,
-}, Connection))
+export type Connection = typeof(setmetatable(
+	{} :: {
+		Connected: boolean,
+		_disconnectMaid: any,
+	},
+	Connection
+))
 
 function Connection.new(disconnect: DisconnectCallback): Connection
 	local maid = Maid.new()

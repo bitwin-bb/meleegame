@@ -1,10 +1,13 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ImageIds = require(gameRoot.Client.UI.core.ImageIds)
 local React = require(ReplicatedStorage.Packages.React)
-local SegmentIcon = require(script:FindFirstAncestor("game").Client.UI.core.components.SegmentIcon)
-local SegmentMeter = require(script:FindFirstAncestor("game").Client.UI.core.components.SegmentMeter)
+local SegmentIcon = require(gameRoot.Client.UI.core.components.SegmentIcon)
+local SegmentMeter = require(gameRoot.Client.UI.core.components.SegmentMeter)
 
 export type ManaSegment = {
 	index: number,

@@ -1,9 +1,12 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
 
 local VFXServiceUtils = {}
 
@@ -152,7 +155,7 @@ local function getParticleEmitterLifetimeMax(emitter: ParticleEmitter): number
 end
 
 function VFXServiceUtils.CloneDictionary(sourceRaw: any): { [string]: any }
-	local source = if typeof(sourceRaw) == "table" then sourceRaw else ({} :: any)
+	local source = if typeof(sourceRaw) == "table" then sourceRaw else {} :: any
 	return Sift.Dictionary.copy(source)
 end
 
@@ -244,7 +247,7 @@ function VFXServiceUtils.ResolveEffectTemplate(effectSourceRaw: any): Instance?
 end
 
 function VFXServiceUtils.SanitizePlaybackOptions(optionsRaw: any): VFXPlaybackOptions
-	local source = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
+	local source = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 
 	local offsetRaw = (source :: any).offset
 	if offsetRaw == nil then

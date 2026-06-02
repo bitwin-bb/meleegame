@@ -1,6 +1,8 @@
 --!strict
 
-local State = require(script:FindFirstAncestor("StateMachine").Core.State)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local State = require(gameRoot.Shared.StateMachine.Core.State)
 
 local FallState = {}
 

@@ -1,28 +1,23 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Workspace = game:GetService("Workspace")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local nodeModules = assert(packageRoot:FindFirstChild("node_modules"), "Missing node_modules")
-local quentyPackages = assert(nodeModules:FindFirstChild("@quenty"), "Missing @quenty packages")
-local flipbookPackage = assert(quentyPackages:FindFirstChild("flipbook"), "Missing flipbook package")
-local maidPackage = assert(quentyPackages:FindFirstChild("maid"), "Missing maid package")
-local spritesPackage = assert(quentyPackages:FindFirstChild("sprites"), "Missing sprites package")
+local Flipbook = require(quentyPackages.flipbook.Client.Flipbook)
+local FlipbookPlayer = require(quentyPackages.flipbook.Client.Player.FlipbookPlayer)
+local Maid = require(quentyPackages.maid.Shared.Maid)
+local Sprite = require(quentyPackages.sprites.Shared.Sprite.Sprite)
 
-local Flipbook = (require :: any)(assert(assert(flipbookPackage:FindFirstChild("Client")):FindFirstChild("Flipbook")))
-local FlipbookPlayer =
-	(require :: any)(assert(assert(flipbookPackage:FindFirstChild("Client")):FindFirstChild("Player")).FlipbookPlayer)
-local Maid = (require :: any)(assert(assert(maidPackage:FindFirstChild("Shared")):FindFirstChild("Maid")))
-local Sprite = (require :: any)(
-	assert(assert(assert(spritesPackage:FindFirstChild("Shared")):FindFirstChild("Sprite")):FindFirstChild("Sprite"))
-)
-
-local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceUtils)
-local NpcSlice = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcSlice)
+local NpcServiceUtils = require(gameRoot.Shared.Features.npc.NpcServiceUtils)
+local NpcSlice = require(gameRoot.Shared.Features.npc.NpcSlice)
 local React = require(ReplicatedStorage.Packages.React)
-local SlimeSpriteSheet = require(script:FindFirstAncestor("game").Shared.Features.npc.modules.SlimeSpriteSheet)
-local SlimeTints = require(script:FindFirstAncestor("game").Shared.Features.npc.modules.SlimeTints)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
+local SlimeSpriteSheet = require(gameRoot.Shared.Features.npc.modules.SlimeSpriteSheet)
+local SlimeTints = require(gameRoot.Shared.Features.npc.modules.SlimeTints)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
 
 type NpcSnapshot = NpcServiceUtils.NpcSnapshot
 type SlimeGoreSprite = NpcSlice.SlimeGoreSprite
@@ -374,63 +369,72 @@ local function SpriteImage(props: SpriteImageProps)
 	local frameRate = sanitizeFrameRate(playback.frameRate, 1)
 	local flipX = if typeof(props.facingSign) == "number" then props.facingSign < 0 else false
 
-	React.useEffect(function()
-		local imageLabel = imageRef.current
-		if imageLabel == nil then
-			return
-		end
+	React.useEffect(
+		function()
+			local imageLabel = imageRef.current
+			if imageLabel == nil then
+				return
+			end
 
-		local maid = Maid.new()
-		local flipbook = createFlipbook(frameRate, restFrame, flipX)
-		local player = FlipbookPlayer.new(imageLabel)
-		flipbookRef.current = flipbook
-		playerRef.current = player
-		maid:GiveTask(player)
-		player:SetFlipbook(flipbook)
-		if playback.playing then
-			player:Play()
-		else
-			player:Stop()
-		end
+			local maid = Maid.new()
+			local flipbook = createFlipbook(frameRate, restFrame, flipX)
+			local player = FlipbookPlayer.new(imageLabel)
+			flipbookRef.current = flipbook
+			playerRef.current = player
+			maid:GiveTask(player)
+			player:SetFlipbook(flipbook)
+			if playback.playing then
+				player:Play()
+			else
+				player:Stop()
+			end
 
-		return function()
-			playerRef.current = nil
-			flipbookRef.current = nil
-			maid:DoCleaning()
-		end
-	end, ({
-		SlimeSpriteSheet.image,
-		FRAME_COUNT,
-		SlimeSpriteSheet.rows,
-		SlimeSpriteSheet.columns,
-		SlimeSpriteSheet.frameSize.X,
-		SlimeSpriteSheet.frameSize.Y,
-		restFrame,
-		flipX,
-	} :: { any }))
+			return function()
+				playerRef.current = nil
+				flipbookRef.current = nil
+				maid:DoCleaning()
+			end
+		end,
+		{
+			SlimeSpriteSheet.image,
+			FRAME_COUNT,
+			SlimeSpriteSheet.rows,
+			SlimeSpriteSheet.columns,
+			SlimeSpriteSheet.frameSize.X,
+			SlimeSpriteSheet.frameSize.Y,
+			restFrame,
+			flipX,
+		} :: { any }
+	)
 
-	React.useEffect(function()
-		local flipbook = flipbookRef.current
-		if flipbook ~= nil then
-			flipbook:SetFrameRate(frameRate)
-		end
-	end, ({
-		frameRate,
-	} :: { any }))
+	React.useEffect(
+		function()
+			local flipbook = flipbookRef.current
+			if flipbook ~= nil then
+				flipbook:SetFrameRate(frameRate)
+			end
+		end,
+		{
+			frameRate,
+		} :: { any }
+	)
 
-	React.useEffect(function()
-		local player = playerRef.current
-		if player == nil then
-			return
-		end
-		if playback.playing then
-			player:Play()
-		else
-			player:Stop()
-		end
-	end, ({
-		playback.playing,
-	} :: { any }))
+	React.useEffect(
+		function()
+			local player = playerRef.current
+			if player == nil then
+				return
+			end
+			if playback.playing then
+				player:Play()
+			else
+				player:Stop()
+			end
+		end,
+		{
+			playback.playing,
+		} :: { any }
+	)
 
 	local children = nil
 	if isSurfaceGui then

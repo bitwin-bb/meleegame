@@ -1,5 +1,8 @@
 --!strict
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ImageIds = require(gameRoot.Client.UI.core.ImageIds)
 
 local PlatformServiceUtils = {}
 
@@ -109,7 +112,7 @@ local PLAYER_ACTION_TEXT_OVERRIDES: { [Enum.PlayerActions]: string } = {
 	[Enum.PlayerActions.CharacterBackward] = "Move Down",
 }
 
-local HINTS = if typeof((ImageIds :: any).hints) == "table" then (ImageIds :: any).hints else ({} :: any)
+local HINTS = if typeof((ImageIds :: any).hints) == "table" then (ImageIds :: any).hints else {} :: any
 
 local DEFAULT_GAMEPAD_FAMILY = "xbox"
 

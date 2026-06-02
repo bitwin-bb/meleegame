@@ -1,7 +1,9 @@
 --!strict
 
-local ApplyKnockbackAction = require(script:FindFirstAncestor("StateMachine").Actions.ApplyKnockbackAction)
-local State = require(script:FindFirstAncestor("StateMachine").Core.State)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ApplyKnockbackAction = require(gameRoot.Shared.StateMachine.Actions.ApplyKnockbackAction)
+local State = require(gameRoot.Shared.StateMachine.Core.State)
 
 local KnockbackState = {}
 

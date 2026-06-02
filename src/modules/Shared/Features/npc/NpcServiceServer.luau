@@ -1,19 +1,22 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
-local Bounds = require(script:FindFirstAncestor("game").Shared.Core.Math.Bounds)
-local Configs = require(script:FindFirstAncestor("game").Shared.Core.Configs)
-local EnemyHitbox = require(script:FindFirstAncestor("game").Shared.Features.combat.classes.EnemyHitbox)
-local EyeOfCthulhuNpc = require(script:FindFirstAncestor("game").Shared.Features.npc.npc.EyeOfCthulhu)
-local HpServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.health.HpServiceServer)
-local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.InstanceUtils)
-local LootServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.loot.LootServiceServer)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local NpcServicePackets = (require :: any)(script:FindFirstAncestor("game").Server.Net.Packets).NpcService
+local Bounds = require(gameRoot.Shared.Core.Math.Bounds)
+local Configs = require(gameRoot.Shared.Features.npc.classes.Boss.QueenBee.Configs)
+local EnemyHitbox = require(gameRoot.Shared.Features.combat.classes.EnemyHitbox)
+local EyeOfCthulhuNpc = require(gameRoot.Shared.Features.npc.classes.Boss.EyeOfCthulhu)
+local HpServiceServer = (require :: any)(gameRoot.Shared.Features.health.HpServiceServer)
+local InstanceUtils = require(gameRoot.Shared.Features.platform.modules.InstanceUtils)
+local LootServiceServer = (require :: any)(gameRoot.Shared.Features.loot.LootServiceServer)
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local NpcServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).NpcService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = NpcServicePackets[methodName]
@@ -56,14 +59,14 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local NpcServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.NpcServiceUtils)
+local NevermoreSupport = require(gameRoot.Shared.Core.NevermoreSupport)
+local NpcServiceUtils = require(gameRoot.Shared.Features.npc.NpcServiceUtils)
 local PlayerServiceServer = (require :: any)(
 	script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceServer
 )
-local ServerBinderSupport = (require :: any)(script:FindFirstAncestor("game").Server.Binders.ServerBinderSupport)
-local SlimeNpc = require(script:FindFirstAncestor("game").Shared.Features.npc.npc.Slime)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
+local ServerBinderSupport = (require :: any)(gameRoot.Server.Binders.ServerBinderSupport)
+local SlimeNpc = require(gameRoot.Shared.Features.npc.npc.Slime)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
 local WorldGenerationServiceServer = (require :: any)(
 	script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceServer
 )

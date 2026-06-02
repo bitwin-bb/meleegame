@@ -1,8 +1,11 @@
 --!strict
+
+local require = require(script.Parent.loader).load(assert(script:FindFirstAncestor("AquariaBackup"), "Missing AquariaBackup package root"))
+
 local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for WeatherServer.")
 
-local WeatherServiceServer = require(gameRoot.Shared.Features.world.WeatherServiceServer)
+local WeatherServiceServer = require("WeatherServiceServer")
 
 return function(_context, weatherKind: string, transitionSecondsRaw: number?)
 	local appliedWeather = WeatherServiceServer:setWeather(weatherKind, transitionSecondsRaw, true)

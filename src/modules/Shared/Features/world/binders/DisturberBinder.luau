@@ -1,6 +1,8 @@
 --!strict
 
-local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ModelBinder = require(gameRoot.Shared.Binders.ModelBinder)
 
 local DisturberBinder = {}
 DisturberBinder.__index = DisturberBinder
@@ -10,7 +12,7 @@ local windFoliageServiceClient = nil
 
 local function getWindFoliageServiceClient()
 	if windFoliageServiceClient == nil then
-		windFoliageServiceClient = (require :: any)(script:FindFirstAncestor("game").Shared.Features.world.WindFoliageServiceClient)
+		windFoliageServiceClient = (require :: any)(gameRoot.Shared.Features.world.WindFoliageServiceClient)
 	end
 	return windFoliageServiceClient
 end

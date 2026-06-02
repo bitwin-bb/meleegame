@@ -1,4 +1,6 @@
 --!strict
+
+local require = require(script.Parent.loader).load(assert(script:FindFirstAncestor("AquariaBackup"), "Missing AquariaBackup package root"))
 local testEnvironment = getfenv() :: any
 local describe = testEnvironment.describe :: any
 local it = testEnvironment.it :: any
@@ -6,9 +8,7 @@ local expect = testEnvironment.expect :: any
 
 -- selene: allow(undefined_variable)
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local WindFoliageServiceClient = require(script:FindFirstAncestor("game").Shared.Features.world.WindFoliageServiceClient)
+local WindFoliageServiceClient = require("WindFoliageServiceClient")
 
 local function createWeatherWindStub()
 	local baseline = {

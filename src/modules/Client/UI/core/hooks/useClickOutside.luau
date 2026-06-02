@@ -1,10 +1,13 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local UserInputService = game:GetService("UserInputService")
 
-local GuiUtils = require(script.Parent.internal.gui)
+local GuiUtils = require(gameRoot.Client.UI.core.hooks.internal.gui)
 local React = require(ReplicatedStorage.Packages.React)
-local useStableCallback = require(script.Parent.internal.useStableCallback)
+local useStableCallback = require(gameRoot.Client.UI.core.hooks.internal.useStableCallback)
 
 export type RefObject<T> = {
 	current: T,

@@ -1,8 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local useLatest = require(script.Parent.useLatest)
+local useLatest = require(gameRoot.Client.UI.core.hooks.internal.useLatest)
 
 local function useStableCallback(callbackRaw: any): (...any) -> ...any
 	local callbackRef = useLatest(callbackRaw)

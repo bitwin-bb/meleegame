@@ -1,9 +1,11 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ItemIcon = require(script.Parent.ItemIcon)
+local ItemIcon = require(gameRoot.Client.UI.core.components.ItemIcon)
 local React = require(ReplicatedStorage.Packages.React)
-local StackAmountLabel = require(script.Parent.StackAmountLabel)
+local StackAmountLabel = require(gameRoot.Client.UI.core.components.StackAmountLabel)
 
 export type ItemSlotProps = {
 	buttonProps: { [any]: any },

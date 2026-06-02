@@ -1,11 +1,13 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local Workspace = game:GetService("Workspace")
 
-local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
-local BuildServiceClient = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceClient)
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
-local miningProgressSlice = require(script:FindFirstAncestor("game").Client.Features.mining.ui.state.miningProgressSlice)
+local BuildServiceClient = require(gameRoot.Shared.Features.world.BuildServiceClient)
+local BuildServiceUtils = require(gameRoot.Shared.Features.world.BuildServiceUtils)
+local ConnectionUtils = require(gameRoot.Client.UI.core.utils.ConnectionUtils)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
+local miningProgressSlice = require(gameRoot.Client.Features.mining.ui.state.miningProgressSlice)
 
 type BuildServiceState = BuildServiceUtils.BuildServiceState
 type MiningProgressState = miningProgressSlice.MiningProgressState
@@ -130,13 +132,8 @@ local function resolveBreakWorldPosition(tileX: number, tileY: number): Vector3?
 	if state == nil then
 		return nil
 	end
-	local worldCenter = BuildServiceUtils.tileToWorldCenter(
-		tileX,
-		tileY,
-		state.worldOrigin,
-		state.tileSize,
-		state.basePlaneX
-	)
+	local worldCenter =
+		BuildServiceUtils.tileToWorldCenter(tileX, tileY, state.worldOrigin, state.tileSize, state.basePlaneX)
 	return worldCenter + Vector3.new(0, state.tileSize * 0.92, 0)
 end
 
@@ -171,7 +168,9 @@ local function applyBuildBreakProgress(payloadRaw: any): MiningProgressState
 	end
 
 	local progressRaw = payload.progress
-	local progress = if typeof(progressRaw) == "number" and progressRaw == progressRaw then math.clamp(progressRaw, 0, 1) else 0
+	local progress = if typeof(progressRaw) == "number" and progressRaw == progressRaw
+		then math.clamp(progressRaw, 0, 1)
+		else 0
 	local nextState = miningProgressSlice.showMiningProgress({
 		progress = progress,
 		tileX = tileX,
@@ -213,9 +212,7 @@ function miningProgressThunks.Stop()
 end
 
 function miningProgressThunks.BindBillboardGui(guiRaw: any)
-	local billboardGui = if typeof(guiRaw) == "Instance" and guiRaw:IsA("BillboardGui")
-		then guiRaw
-		else nil
+	local billboardGui = if typeof(guiRaw) == "Instance" and guiRaw:IsA("BillboardGui") then guiRaw else nil
 	runtime.billboardGui = billboardGui
 	if billboardGui == nil then
 		return

@@ -1,6 +1,6 @@
 --!strict
 
-return ({
+return {
 	platform = "Touch",
 	family = "mobile",
 	sections = {
@@ -36,8 +36,13 @@ return ({
 					label = "Inventory",
 					prompts = { { keyCode = "Touch", text = "Bag" } },
 				},
-				{ id = "drop_trash", actionName = "", label = "Drop / trash", prompts = { { keyCode = "Touch", text = "Drag" } } },
+				{
+					id = "drop_trash",
+					actionName = "",
+					label = "Drop / trash",
+					prompts = { { keyCode = "Touch", text = "Drag" } },
+				},
 			},
 		},
 	},
-} :: any)
+} :: any

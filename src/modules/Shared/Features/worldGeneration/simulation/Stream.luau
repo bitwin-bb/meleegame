@@ -1,8 +1,11 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local Shared = require(script.Parent.Shared)
+local Shared = require(gameRoot.Shared.Features.worldGeneration.simulation.Shared)
 
 local Stream = {}
 

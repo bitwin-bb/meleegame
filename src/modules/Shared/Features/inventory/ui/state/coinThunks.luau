@@ -1,12 +1,13 @@
 --!strict
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
-local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
-local coinSlice = require(script:FindFirstAncestor("game").Shared.Features.inventory.ui.state.coinSlice)
-local PlayerDataServiceClient = require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceClient)
-local PlayerDataServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceUtils)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local Players = game:GetService("Players")
+
+local ConnectionUtils = require(gameRoot.Client.UI.core.utils.ConnectionUtils)
+local PlayerDataServiceClient = require(gameRoot.Shared.Features.playerData.PlayerDataServiceClient)
+local PlayerDataServiceUtils = require(gameRoot.Shared.Features.playerData.PlayerDataServiceUtils)
+local ServiceSync = require(gameRoot.Client.UI.core.utils.ServiceSync)
+local coinSlice = require(gameRoot.Shared.Features.inventory.ui.state.coinSlice)
 
 type CoinState = coinSlice.CoinState
 type PlayerDataServiceState = PlayerDataServiceUtils.PlayerDataServiceState
@@ -38,7 +39,11 @@ local function logCoinsApplied(nextPlayerDataState: PlayerDataServiceState, next
 		("player=%s"):format(LOCAL_PLAYER.Name),
 		("userId=%d"):format(LOCAL_PLAYER.UserId),
 		("loadToken=%s"):format(stringifyLogValue(nextPlayerDataState.loadToken)),
-		("elapsed=%.3f"):format(if typeof(nextPlayerDataState.loadElapsedSeconds) == "number" then nextPlayerDataState.loadElapsedSeconds else 0),
+		("elapsed=%.3f"):format(
+			if typeof(nextPlayerDataState.loadElapsedSeconds) == "number"
+				then nextPlayerDataState.loadElapsedSeconds
+				else 0
+		),
 		("loadState=%s"):format(stringifyLogValue(nextPlayerDataState.loadState)),
 		("hasResolvedInitialLoad=%s"):format(tostring(nextPlayerDataState.hasResolvedInitialLoad == true)),
 		("isLoading=%s"):format(tostring(nextPlayerDataState.isLoading == true)),
@@ -52,7 +57,7 @@ end
 local function applyPlayerDataState(nextPlayerDataStateRaw: any): CoinState
 	local fallbackState = coinSlice.getCoinState()
 	local nextPlayerDataState = if typeof(nextPlayerDataStateRaw) == "table"
-		then (nextPlayerDataStateRaw :: PlayerDataServiceState)
+		then nextPlayerDataStateRaw :: PlayerDataServiceState
 		else nil
 	if nextPlayerDataState == nil then
 		return fallbackState
@@ -61,7 +66,8 @@ local function applyPlayerDataState(nextPlayerDataStateRaw: any): CoinState
 	local fallbackCoinsData = if PlayerDataServiceUtils.hasResolvedState(nextPlayerDataState)
 		then coinSlice.createDefaultCoinAmounts()
 		else fallbackState.amounts
-	local coinsData = PlayerDataServiceUtils.getValueAtPath(nextPlayerDataState.data, COINS_DATA_PATH, fallbackCoinsData)
+	local coinsData =
+		PlayerDataServiceUtils.getValueAtPath(nextPlayerDataState.data, COINS_DATA_PATH, fallbackCoinsData)
 	local nextCoinState = coinSlice.setCoinsData(coinsData, nextPlayerDataState.loadState)
 	logCoinsApplied(nextPlayerDataState, nextCoinState)
 	return nextCoinState
@@ -79,9 +85,12 @@ function coinThunks.Start(): () -> ()
 	runtime.started = true
 	syncFromService()
 
-	runtime.stateChangedConnection = ServiceSync.connectStateChanged(PlayerDataServiceClient, function(nextState: PlayerDataServiceState)
-		applyPlayerDataState(nextState)
-	end)
+	runtime.stateChangedConnection = ServiceSync.connectStateChanged(
+		PlayerDataServiceClient,
+		function(nextState: PlayerDataServiceState)
+			applyPlayerDataState(nextState)
+		end
+	)
 	ServiceSync.requestSync(PlayerDataServiceClient)
 
 	return coinThunks.Stop

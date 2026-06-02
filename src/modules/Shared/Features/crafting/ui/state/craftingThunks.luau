@@ -1,11 +1,15 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
-local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
-local craftingSlice = require(script:FindFirstAncestor("game").Shared.Features.crafting.ui.state.craftingSlice)
-local CraftingServiceClient = require(script:FindFirstAncestor("game").Shared.Features.crafting.CraftingServiceClient)
+local ConnectionUtils = require(gameRoot.Client.UI.core.utils.ConnectionUtils)
+local CraftingServiceClient = require(gameRoot.Shared.Features.crafting.CraftingServiceClient)
+local ServiceSync = require(gameRoot.Client.UI.core.utils.ServiceSync)
+local craftingSlice = require(gameRoot.Shared.Features.crafting.ui.state.craftingSlice)
 
 type CraftingState = craftingSlice.CraftingState
 
@@ -80,7 +84,9 @@ local function applyFromService(): CraftingState
 		recipes = {}
 	end
 
-	local availableCategories = if typeof(serviceState.availableCategories) == "table" then serviceState.availableCategories else ({} :: any)
+	local availableCategories = if typeof(serviceState.availableCategories) == "table"
+		then serviceState.availableCategories
+		else {} :: any
 	local activeStations = toStringArrayFromSet(serviceState.activeStations)
 	local selectedRecipeId = currentState.selectedRecipeId
 	if typeof(selectedRecipeId) ~= "string" or selectedRecipeId == "" then

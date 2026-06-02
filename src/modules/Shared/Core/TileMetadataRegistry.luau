@@ -1,9 +1,11 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-
-local Codec = require(script.Parent.Codec)
+local Codec = require(gameRoot.Shared.Core.Codec)
 
 local TileMetadataRegistry = {}
 TileMetadataRegistry.__index = TileMetadataRegistry
@@ -103,7 +105,9 @@ function TileMetadataRegistry.DefineFlag(self: TileMetadataRegistry, flagNameRaw
 		return existing
 	end
 
-	local bitIndex = if bitIndexRaw ~= nil then clampInteger(bitIndexRaw, self.nextFlagIndex, 1, MAX_FLAGS) else self.nextFlagIndex
+	local bitIndex = if bitIndexRaw ~= nil
+		then clampInteger(bitIndexRaw, self.nextFlagIndex, 1, MAX_FLAGS)
+		else self.nextFlagIndex
 	self.flagLayout[flagNameRaw] = bitIndex
 	if bitIndex >= self.nextFlagIndex then
 		self.nextFlagIndex = math.min(MAX_FLAGS + 1, bitIndex + 1)
@@ -164,7 +168,9 @@ function TileMetadataRegistry.Register(self: TileMetadataRegistry, tileIdRaw: an
 		corruptionSusceptibility = clampNumber(metadataRaw.corruptionSusceptibility, 0, 0, 1),
 		lightBlocking = clampNumber(metadataRaw.lightBlocking, 0, 0, 1),
 		toolTier = clampInteger(metadataRaw.toolTier, 0, 0, 100),
-		attributes = if typeof(metadataRaw.attributes) == "table" then Sift.Dictionary.copy(metadataRaw.attributes) else ({} :: any),
+		attributes = if typeof(metadataRaw.attributes) == "table"
+			then Sift.Dictionary.copy(metadataRaw.attributes)
+			else {} :: any,
 	} :: TileMetadata
 
 	local hadExisting = self.entries[tileIdRaw] ~= nil

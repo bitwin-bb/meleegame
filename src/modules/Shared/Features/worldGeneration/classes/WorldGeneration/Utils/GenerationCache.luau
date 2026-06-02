@@ -1,6 +1,8 @@
 --!strict
 
-local TileComponent = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.components.Tile)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local TileComponent = require(gameRoot.Shared.Features.worldGeneration.components.Tile)
 
 local Cache = {}
 Cache.__index = Cache
@@ -31,7 +33,7 @@ local function sanitizeInteger(valueRaw: any, minimum: number, maximum: number, 
 end
 
 function Cache.New(configRaw: CacheConfig?): Cache
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local createPartCallback = if typeof((config :: any).createPart) == "function"
 		then (config :: any).createPart :: () -> BasePart
 		else nil

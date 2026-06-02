@@ -1,8 +1,8 @@
 --!strict
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
+local BuildServiceUtils = require(gameRoot.Shared.Features.world.BuildServiceUtils)
 
 local TorchTilt = {}
 
@@ -97,8 +97,7 @@ function TorchTilt.IsWallNormal(normalRaw: any): boolean
 		return false
 	end
 	local unitNormal = normal.Unit
-	return math.abs(unitNormal:Dot(WORLD_UP)) <= MAX_WALL_UP_DOT
-		and math.abs(unitNormal.Z) > math.abs(unitNormal.X)
+	return math.abs(unitNormal:Dot(WORLD_UP)) <= MAX_WALL_UP_DOT and math.abs(unitNormal.Z) > math.abs(unitNormal.X)
 end
 
 function TorchTilt.ResolveSupportKind(normalRaw: any): SupportKind?
@@ -188,12 +187,14 @@ function TorchTilt.ResolveTilePlacement(
 		return nil
 	end
 
-	return ({
-		tileX = tileX,
-		tileY = tileY,
-		supportKind = supportKind :: SupportKind,
-		cframe = alignedCFrame,
-	} :: any) :: TilePlacement
+	return (
+		{
+			tileX = tileX,
+			tileY = tileY,
+			supportKind = supportKind :: SupportKind,
+			cframe = alignedCFrame,
+		} :: any
+	) :: TilePlacement
 end
 
 function TorchTilt.ResolvePlacementCFrame(

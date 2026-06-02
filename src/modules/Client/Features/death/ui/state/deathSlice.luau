@@ -1,4 +1,5 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Charm = require(ReplicatedStorage.Packages.Charm)
@@ -73,7 +74,7 @@ end
 
 local function setDeathState(stateRaw: any): DeathState
 	local current = deathStateAtom()
-	local source = if typeof(stateRaw) == "table" then stateRaw else ({} :: any)
+	local source = if typeof(stateRaw) == "table" then stateRaw else {} :: any
 	local visible = (source :: any).visible == true
 	local message = sanitizeMessage((source :: any).message, current.message)
 	local sequenceRaw = sanitizeFiniteNumber((source :: any).sequence, current.sequence)
@@ -109,7 +110,7 @@ end
 
 local function showDeath(payloadRaw: any): DeathState
 	local current = deathStateAtom()
-	local payload = if typeof(payloadRaw) == "table" then payloadRaw else ({} :: any)
+	local payload = if typeof(payloadRaw) == "table" then payloadRaw else {} :: any
 	local now = os.clock()
 
 	local message = sanitizeMessage((payload :: any).message, DEFAULT_MESSAGE)

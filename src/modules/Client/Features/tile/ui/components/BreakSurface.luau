@@ -1,17 +1,17 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(packageRoot)
-
-local Flipbook = loader("Flipbook")
-local FlipbookPlayer = loader("FlipbookPlayer")
-local Maid = loader("Maid")
+local Flipbook = require(quentyPackages.flipbook.Client.Flipbook)
+local FlipbookPlayer = require(quentyPackages.flipbook.Client.Player.FlipbookPlayer)
+local Maid = require(quentyPackages.maid.Shared.Maid)
 local React = require(ReplicatedStorage.Packages.React)
 
-local tileSlice = require(script.Parent.Parent.state.tileSlice)
-local useBreakAnim = require(script.Parent.Parent.hooks.useBreakAnim)
+local tileSlice = require(gameRoot.Client.Features.tile.ui.state.tileSlice)
+local useBreakAnim = require(gameRoot.Client.Features.tile.ui.hooks.useBreakAnim)
 
 type BreakState = tileSlice.BreakState
 type ShinySpeckState = tileSlice.ShinySpeckState
@@ -55,39 +55,42 @@ local function ShinySpeck(props: { speck: ShinySpeckState }): React.ReactNode
 	local speck = props.speck
 	local imageRef = React.useRef(nil :: ImageLabel?)
 
-	React.useEffect(function()
-		local imageLabel = imageRef.current
-		if imageLabel == nil or speck.image == "" then
-			return
-		end
+	React.useEffect(
+		function()
+			local imageLabel = imageRef.current
+			if imageLabel == nil or speck.image == "" then
+				return
+			end
 
-		local maid = Maid.new()
-		local flipbook = Flipbook.new({
-			image = speck.image,
-			frameCount = math.max(1, speck.columns * speck.rows),
-			rows = speck.rows,
-			columns = speck.columns,
-			imageRectSize = speck.frameSize,
-			frameRate = speck.frameRate,
-			restFrame = 1,
-		})
-		local player = FlipbookPlayer.new(imageLabel)
-		maid:GiveTask(player)
-		player:SetFlipbook(flipbook)
-		player:PromisePlayRepeat(1)
+			local maid = Maid.new()
+			local flipbook = Flipbook.new({
+				image = speck.image,
+				frameCount = math.max(1, speck.columns * speck.rows),
+				rows = speck.rows,
+				columns = speck.columns,
+				imageRectSize = speck.frameSize,
+				frameRate = speck.frameRate,
+				restFrame = 1,
+			})
+			local player = FlipbookPlayer.new(imageLabel)
+			maid:GiveTask(player)
+			player:SetFlipbook(flipbook)
+			player:PromisePlayRepeat(1)
 
-		return function()
-			maid:DoCleaning()
-		end
-	end, ({
-		speck.id,
-		speck.image,
-		speck.columns,
-		speck.rows,
-		speck.frameSize.X,
-		speck.frameSize.Y,
-		speck.frameRate,
-	} :: { any }))
+			return function()
+				maid:DoCleaning()
+			end
+		end,
+		{
+			speck.id,
+			speck.image,
+			speck.columns,
+			speck.rows,
+			speck.frameSize.X,
+			speck.frameSize.Y,
+			speck.frameRate,
+		} :: { any }
+	)
 
 	return e("SurfaceGui", {
 		Adornee = speck.adornee,

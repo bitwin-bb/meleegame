@@ -1,11 +1,12 @@
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local HotbarLeftSideBar = require(script:FindFirstAncestor("game").Shared.Features.inventory.ui.hud.LeftSideBar.HotbarLeftSideBar)
-local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
+local HotbarLeftSideBar = require(gameRoot.Shared.Features.inventory.ui.hud.LeftSideBar.HotbarLeftSideBar)
+local NavButton = require(gameRoot.Client.UI.core.components.NavButton)
 local React = require(ReplicatedStorage.Packages.React)
-local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
-local inventorySlice = require(script:FindFirstAncestor("game").Shared.Features.inventory.ui.hud.state.slice.inventorySlice)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local Responsive = require(gameRoot.Client.UI.core.hooks.useViewportScale)
+local inventorySlice = require(gameRoot.Shared.Features.inventory.ui.hud.state.slice.inventorySlice)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
 
 local e: typeof(React.createElement) = React.createElement
 

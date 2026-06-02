@@ -1,7 +1,9 @@
 --!strict
 
-local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
-local ToolBinder = require(script:FindFirstAncestor("game").Shared.Binders.ToolBinder)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ModelBinder = require(gameRoot.Shared.Binders.ModelBinder)
+local ToolBinder = require(gameRoot.Shared.Binders.ToolBinder)
 
 local MagicBinder = {}
 MagicBinder.__index = MagicBinder
@@ -11,7 +13,7 @@ local magicServiceServer = nil
 
 local function getMagicServiceServer()
 	if magicServiceServer == nil then
-		magicServiceServer = (require :: any)(script:FindFirstAncestor("game").Shared.Features.combat.MagicServiceServer)
+		magicServiceServer = (require :: any)(gameRoot.Shared.Features.combat.MagicServiceServer)
 	end
 	return magicServiceServer
 end

@@ -1,19 +1,21 @@
 --!strict
 
-local Nevermore = require(script:FindFirstAncestor("Goap").Nevermore)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Nevermore = require(gameRoot.Shared.Goap.Nevermore)
 local packages = Nevermore.GetRolePackages("Runtime")
 local Maid = packages.Maid
 local Table = packages.Table
 
-local Blackboard = require(script.Parent.Blackboard)
-local GoalScorer = require(script:FindFirstAncestor("Goap").Scorers.GoalScorer)
-local HealthScorer = require(script:FindFirstAncestor("Goap").Scorers.HealthScorer)
-local PlanExecutor = require(script:FindFirstAncestor("Goap").Executors.PlanExecutor)
-local PlanValidator = require(script:FindFirstAncestor("Goap").Executors.PlanValidator)
-local Planner = require(script.Parent.Planner)
-local PriorityScorer = require(script:FindFirstAncestor("Goap").Scorers.PriorityScorer)
-local ThreatScorer = require(script:FindFirstAncestor("Goap").Scorers.ThreatScorer)
-local WorldState = require(script.Parent.WorldState)
+local Blackboard = require(gameRoot.Shared.Goap.Core.Blackboard)
+local GoalScorer = require(gameRoot.Shared.Goap.Scorers.GoalScorer)
+local HealthScorer = require(gameRoot.Shared.Goap.Scorers.HealthScorer)
+local PlanExecutor = require(gameRoot.Shared.Goap.Executors.PlanExecutor)
+local PlanValidator = require(gameRoot.Shared.Goap.Executors.PlanValidator)
+local Planner = require(gameRoot.Shared.Goap.Core.Planner)
+local PriorityScorer = require(gameRoot.Shared.Goap.Scorers.PriorityScorer)
+local ThreatScorer = require(gameRoot.Shared.Goap.Scorers.ThreatScorer)
+local WorldState = require(gameRoot.Shared.Goap.Core.WorldState)
 
 local Agent = {}
 Agent.__index = Agent

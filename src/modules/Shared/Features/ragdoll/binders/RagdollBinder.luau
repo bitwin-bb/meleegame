@@ -1,9 +1,11 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local Players = game:GetService("Players")
 
-local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
-local RagdollServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.ragdoll.RagdollServiceUtils)
+local ModelBinder = require(gameRoot.Shared.Binders.ModelBinder)
+local RagdollServiceUtils = require(gameRoot.Shared.Features.ragdoll.RagdollServiceUtils)
 
 local RagdollBinder = {}
 RagdollBinder.__index = RagdollBinder

@@ -1,8 +1,10 @@
 --!strict
 
-local Nevermore = require(script.Parent.Parent.Nevermore)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Nevermore = require(gameRoot.Shared.StateMachine.Nevermore)
 local Table = Nevermore.Get("Table")
 
 return Table.copy({
-	Slime = require(script.Slime),
+	Slime = (require :: any)(script.Slime),
 })

@@ -1,17 +1,17 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
-
-local CharacterUtils = loader("CharacterUtils")
-local String = loader("String")
+local CharacterUtils = require(quentyPackages.characterutils.Shared.CharacterUtils)
+local Plane = require(gameRoot.Shared.Core.Math.Plane)
+local Proj = require(gameRoot.Shared.Core.Math.Proj)
 local Sift = require(ReplicatedStorage.Packages.Sift)
-local Plane = require(script:FindFirstAncestor("game").Shared.Core.Math.Plane)
-local Proj = require(script:FindFirstAncestor("game").Shared.Core.Math.Proj)
-local Vec = require(script:FindFirstAncestor("game").Shared.Core.Math.Vec)
-local TagBinder = require(script:FindFirstAncestor("game").Shared.Binders.TagBinder)
+local String = require(quentyPackages.string.Shared.String)
+local TagBinder = require(gameRoot.Shared.Binders.TagBinder)
+local Vec = require(gameRoot.Shared.Core.Math.Vec)
 
 local BossServiceUtils = {}
 
@@ -303,7 +303,8 @@ local function sanitizeBossId(bossIdRaw: any, fallback: BossId?): BossId?
 end
 
 local function sanitizeStateName(stateRaw: any, fallback: BossEncounterState): BossEncounterState
-	if stateRaw == "Dormant"
+	if
+		stateRaw == "Dormant"
 		or stateRaw == "SpawnIntro"
 		or stateRaw == "Phase1Hover"
 		or stateRaw == "Phase1HoverIdle"
@@ -340,7 +341,8 @@ local function sanitizeStateName(stateRaw: any, fallback: BossEncounterState): B
 		or stateRaw == "Phase3Charge"
 		or stateRaw == "Phase3PostChargeRecover"
 		or stateRaw == "Death"
-		or stateRaw == "Despawn" then
+		or stateRaw == "Despawn"
+	then
 		return stateRaw
 	end
 	return fallback
@@ -399,7 +401,7 @@ function BossServiceUtils.SanitizePresentation(
 	fallbackRaw: BossPresentationState?
 ): BossPresentationState
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else DEFAULT_PRESENTATION
-	local source = if typeof(presentationRaw) == "table" then presentationRaw else ({} :: any)
+	local source = if typeof(presentationRaw) == "table" then presentationRaw else {} :: any
 
 	return {
 		phaseModel = if typeof((source :: any).phaseModel) == "string" and (source :: any).phaseModel ~= ""
@@ -410,13 +412,17 @@ function BossServiceUtils.SanitizePresentation(
 		isTransforming = sanitizeBoolean((source :: any).isTransforming, fallback.isTransforming),
 		isDying = sanitizeBoolean((source :: any).isDying, fallback.isDying),
 		isDespawning = sanitizeBoolean((source :: any).isDespawning, fallback.isDespawning),
-		damagePulseToken = math.floor(sanitizeNumber((source :: any).damagePulseToken, fallback.damagePulseToken, 0, 10 ^ 9)),
+		damagePulseToken = math.floor(
+			sanitizeNumber((source :: any).damagePulseToken, fallback.damagePulseToken, 0, 10 ^ 9)
+		),
 		dashPulseToken = math.floor(sanitizeNumber((source :: any).dashPulseToken, fallback.dashPulseToken, 0, 10 ^ 9)),
 		roarPulseToken = math.floor(sanitizeNumber((source :: any).roarPulseToken, fallback.roarPulseToken, 0, 10 ^ 9)),
 		transformPulseToken = math.floor(
 			sanitizeNumber((source :: any).transformPulseToken, fallback.transformPulseToken, 0, 10 ^ 9)
 		),
-		deathPulseToken = math.floor(sanitizeNumber((source :: any).deathPulseToken, fallback.deathPulseToken, 0, 10 ^ 9)),
+		deathPulseToken = math.floor(
+			sanitizeNumber((source :: any).deathPulseToken, fallback.deathPulseToken, 0, 10 ^ 9)
+		),
 		servantPulseToken = math.floor(
 			sanitizeNumber((source :: any).servantPulseToken, fallback.servantPulseToken, 0, 10 ^ 9)
 		),
@@ -425,7 +431,7 @@ end
 
 function BossServiceUtils.SanitizeMotionState(motionRaw: any, fallbackRaw: BossMotionState?): BossMotionState
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else DEFAULT_MOTION
-	local source = if typeof(motionRaw) == "table" then motionRaw else ({} :: any)
+	local source = if typeof(motionRaw) == "table" then motionRaw else {} :: any
 
 	return {
 		state = if typeof((source :: any).state) == "string" and (source :: any).state ~= ""
@@ -455,7 +461,8 @@ function BossServiceUtils.SanitizeMotionState(motionRaw: any, fallbackRaw: BossM
 		currentVelocity = if typeof((source :: any).currentVelocity) == "Vector3"
 			then (source :: any).currentVelocity
 			else fallback.currentVelocity,
-		currentPattern = if typeof((source :: any).currentPattern) == "string" and (source :: any).currentPattern ~= ""
+		currentPattern = if typeof((source :: any).currentPattern) == "string"
+				and (source :: any).currentPattern ~= ""
 			then (source :: any).currentPattern
 			else fallback.currentPattern,
 		patternTimer = if typeof((source :: any).patternTimer) == "number"
@@ -526,7 +533,10 @@ function BossServiceUtils.SanitizeSnapshot(snapshotRaw: any, fallbackRaw: BossSn
 			then source.encounterChannel
 			else if fallback ~= nil then fallback.encounterChannel else REGISTRY_BY_ID[bossId].encounterChannel,
 		state = state,
-		phase = math.max(0, math.floor(sanitizeNumber(source.phase, if fallback ~= nil then fallback.phase else 0, 0, 16))),
+		phase = math.max(
+			0,
+			math.floor(sanitizeNumber(source.phase, if fallback ~= nil then fallback.phase else 0, 0, 16))
+		),
 		hp = hp,
 		maxHp = maxHp,
 		isAlive = isAlive,
@@ -547,7 +557,12 @@ function BossServiceUtils.SanitizeSnapshot(snapshotRaw: any, fallbackRaw: BossSn
 		targetUserId = if typeof(source.targetUserId) == "number"
 			then math.floor(source.targetUserId)
 			else if fallback ~= nil then fallback.targetUserId else nil,
-		updatedAt = sanitizeNumber(source.updatedAt, if fallback ~= nil then fallback.updatedAt else os.clock(), 0, 10 ^ 12),
+		updatedAt = sanitizeNumber(
+			source.updatedAt,
+			if fallback ~= nil then fallback.updatedAt else os.clock(),
+			0,
+			10 ^ 12
+		),
 		lastReason = if typeof(source.lastReason) == "string"
 			then source.lastReason
 			else if fallback ~= nil then fallback.lastReason else "unknown",
@@ -876,7 +891,11 @@ function BossServiceUtils.MoveTowardsVector(current: Vector3, target: Vector3, m
 	return Vec.moveTowards(current, target, maxDelta)
 end
 
-function BossServiceUtils.ComputeFacingVector(_position: Vector3, desiredDirectionRaw: any, fallbackRaw: Vector3?): Vector3
+function BossServiceUtils.ComputeFacingVector(
+	_position: Vector3,
+	desiredDirectionRaw: any,
+	fallbackRaw: Vector3?
+): Vector3
 	local desiredDirection = if typeof(desiredDirectionRaw) == "Vector3" then desiredDirectionRaw else Vector3.zero
 	local fallback = if typeof(fallbackRaw) == "Vector3" then fallbackRaw else Vector3.zAxis
 	local fallbackUnit = Vec.unit(fallback, Vector3.zAxis)

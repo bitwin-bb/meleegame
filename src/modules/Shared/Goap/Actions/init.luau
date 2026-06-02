@@ -1,15 +1,17 @@
 --!strict
 
-local Nevermore = require(script:FindFirstAncestor("Goap").Nevermore)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Nevermore = require(gameRoot.Shared.Goap.Nevermore)
 local Table = Nevermore.GetRolePackages("Exports").Table
 
 return Table.copy({
-	Action = require(script:FindFirstAncestor("Goap").Core.Action),
-	FindTargetAction = require(script.FindTargetAction),
-	MoveToTargetAction = require(script.MoveToTargetAction),
-	AttackTargetAction = require(script.AttackTargetAction),
-	FleeAction = require(script.FleeAction),
-	PatrolAction = require(script.PatrolAction),
-	HealSelfAction = require(script.HealSelfAction),
-	UseAbilityAction = require(script.UseAbilityAction),
+	Action = require(gameRoot.Shared.Goap.Core.Action),
+	FindTargetAction = require(gameRoot.Shared.Goap.Actions.FindTargetAction),
+	MoveToTargetAction = require(gameRoot.Shared.Goap.Actions.MoveToTargetAction),
+	AttackTargetAction = require(gameRoot.Shared.Goap.Actions.AttackTargetAction),
+	FleeAction = require(gameRoot.Shared.Goap.Actions.FleeAction),
+	PatrolAction = require(gameRoot.Shared.Goap.Actions.PatrolAction),
+	HealSelfAction = require(gameRoot.Shared.Goap.Actions.HealSelfAction),
+	UseAbilityAction = require(gameRoot.Shared.Goap.Actions.UseAbilityAction),
 })

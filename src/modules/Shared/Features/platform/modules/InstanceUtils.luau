@@ -1,7 +1,8 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local StringUtils = require(script:FindFirstAncestor("game").Shared.Core.StringUtils)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local StringUtils = require(gameRoot.Shared.Core.StringUtils)
 
 local InstanceUtils = {}
 

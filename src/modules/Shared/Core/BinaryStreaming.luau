@@ -1,9 +1,11 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-
-local Codec = require(script.Parent.Codec)
+local Codec = require(gameRoot.Shared.Core.Codec)
 
 local BinaryStreaming = {}
 
@@ -145,7 +147,11 @@ local function runLengthEncode(payload: buffer, payloadSize: number): (buffer, n
 	while readCursor < payloadSize do
 		local byteValue = buffer.readu8(payload, readCursor)
 		local runLength = 1
-		while readCursor + runLength < payloadSize and runLength < 255 and buffer.readu8(payload, readCursor + runLength) == byteValue do
+		while
+			readCursor + runLength < payloadSize
+			and runLength < 255
+			and buffer.readu8(payload, readCursor + runLength) == byteValue
+		do
 			runLength += 1
 		end
 		buffer.writeu8(out, writeCursor, runLength)
@@ -246,7 +252,9 @@ function Writer.WriteBytes(self: Writer, source: buffer, sourceOffsetRaw: any, b
 	end
 	local sourceSize = buffer.len(source)
 	local sourceOffset = clampInteger(sourceOffsetRaw, 0, sourceSize)
-	local byteCount = if typeof(byteCountRaw) == "number" then clampInteger(byteCountRaw, 0, sourceSize - sourceOffset) else sourceSize - sourceOffset
+	local byteCount = if typeof(byteCountRaw) == "number"
+		then clampInteger(byteCountRaw, 0, sourceSize - sourceOffset)
+		else sourceSize - sourceOffset
 	ensureCapacity(self, byteCount)
 	buffer.copy(self.buffer, self.length, source, sourceOffset, byteCount)
 	self.length += byteCount
@@ -288,7 +296,9 @@ function BinaryStreaming.CreateReader(payload: buffer, payloadSizeRaw: any): Rea
 		error("BinaryStreaming.CreateReader expects a buffer")
 	end
 	local totalSize = buffer.len(payload)
-	local payloadSize = if typeof(payloadSizeRaw) == "number" then clampInteger(payloadSizeRaw, 0, totalSize) else totalSize
+	local payloadSize = if typeof(payloadSizeRaw) == "number"
+		then clampInteger(payloadSizeRaw, 0, totalSize)
+		else totalSize
 	local self = setmetatable({
 		buffer = payload,
 		length = payloadSize,
@@ -369,7 +379,9 @@ function BinaryStreaming.FramePacket(payload: buffer, payloadSizeRaw: any, optio
 		error("BinaryStreaming.FramePacket expects a payload buffer")
 	end
 
-	local payloadSize = if typeof(payloadSizeRaw) == "number" then clampInteger(payloadSizeRaw, 0, buffer.len(payload)) else buffer.len(payload)
+	local payloadSize = if typeof(payloadSizeRaw) == "number"
+		then clampInteger(payloadSizeRaw, 0, buffer.len(payload))
+		else buffer.len(payload)
 	local version = clampInteger(if options then options.version else nil, 0, 255)
 	if version == 0 then
 		version = DEFAULT_VERSION
@@ -474,7 +486,11 @@ function BinaryStreaming.ValidateFrame(packet: buffer, options: FrameOptions?): 
 	return false, tostring(err)
 end
 
-function BinaryStreaming.SafeDispatch(sendFn: (packet: buffer) -> (), packet: buffer, options: FrameOptions?): (boolean, string?)
+function BinaryStreaming.SafeDispatch(
+	sendFn: (packet: buffer) -> (),
+	packet: buffer,
+	options: FrameOptions?
+): (boolean, string?)
 	local ok, err = BinaryStreaming.ValidateFrame(packet, options)
 	if not ok then
 		return false, err
@@ -488,14 +504,18 @@ function BinaryStreaming.CreateChunkBatch(payload: buffer, payloadSizeRaw: any, 
 		error("BinaryStreaming.CreateChunkBatch expects a payload buffer")
 	end
 
-	local payloadSize = if typeof(payloadSizeRaw) == "number" then clampInteger(payloadSizeRaw, 0, buffer.len(payload)) else buffer.len(payload)
+	local payloadSize = if typeof(payloadSizeRaw) == "number"
+		then clampInteger(payloadSizeRaw, 0, buffer.len(payload))
+		else buffer.len(payload)
 	local chunkSize = clampInteger(if options then options.chunkSize else nil, 64, 65535)
 	if chunkSize == 64 then
 		chunkSize = DEFAULT_CHUNK_SIZE
 	end
 
 	local chunkCount = math.max(1, math.ceil(payloadSize / chunkSize))
-	local batchId = if options and options.batchId ~= nil then clampInteger(options.batchId, 1, 4294967295) else Codec.stableHash({ payloadSize = payloadSize, chunkCount = chunkCount })
+	local batchId = if options and options.batchId ~= nil
+		then clampInteger(options.batchId, 1, 4294967295)
+		else Codec.stableHash({ payloadSize = payloadSize, chunkCount = chunkCount })
 	local frames = Sift.Array.create(chunkCount)
 
 	for chunkIndex = 0, chunkCount - 1 do

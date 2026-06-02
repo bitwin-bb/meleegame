@@ -1,18 +1,19 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Workspace = game:GetService("Workspace")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
+local Flipbook = require(quentyPackages.flipbook.Client.Flipbook)
+local Sprite = require(quentyPackages.sprites.Shared.Sprite.Sprite)
 
-local Flipbook = loader("Flipbook")
-local Sprite = loader("Sprite")
-
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local QueenBeeSpriteSheet = require(script:FindFirstAncestor("game").Shared.Features.npc.modules.QueenBeeSpriteSheet)
+local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
+local QueenBeeSpriteSheet = require(gameRoot.Shared.Features.npc.modules.QueenBeeSpriteSheet)
 local React = require(ReplicatedStorage.Packages.React)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
 
 type BossSnapshot = BossServiceUtils.BossSnapshot
 
@@ -26,7 +27,8 @@ export type QueenBeeProps = {
 local e: typeof(React.createElement) = React.createElement
 local BOSS_RUNTIME_FOLDER_NAME = "BossRuntime"
 local DEFAULT_ROOT_SIZE = Vector3.new(6, 13.5, 18)
-local FRAME_COUNT = math.max(1, QueenBeeSpriteSheet.frameCount or (QueenBeeSpriteSheet.columns * QueenBeeSpriteSheet.rows))
+local FRAME_COUNT =
+	math.max(1, QueenBeeSpriteSheet.frameCount or (QueenBeeSpriteSheet.columns * QueenBeeSpriteSheet.rows))
 local runtimeRootPartCache: { [string]: BasePart } = {}
 
 local function dependencyArray(...: any): { any }
@@ -59,7 +61,10 @@ local function getAnimation(animationName: string): any
 end
 
 local function resolveAnimationName(snapshot: BossSnapshot): string
-	if string.match(snapshot.state, "^Phase%d+RamCharge$") ~= nil or string.match(snapshot.state, "^Phase%d+Charge$") ~= nil then
+	if
+		string.match(snapshot.state, "^Phase%d+RamCharge$") ~= nil
+		or string.match(snapshot.state, "^Phase%d+Charge$") ~= nil
+	then
 		return "Charge"
 	end
 	return "Idle"
@@ -261,15 +266,18 @@ return function(props: QueenBeeProps): React.ReactNode
 	end
 	local visible = isSurfaceGui or screenPosition ~= nil
 
-	local flipbook = React.useMemo(function()
-		return createAnimationFlipbook(playback)
-	end, dependencyArray(
-		QueenBeeSpriteSheet.image,
-		QueenBeeSpriteSheet.frameSize.X,
-		QueenBeeSpriteSheet.frameSize.Y,
-		playback.animationName,
-		playback.frameRate
-	))
+	local flipbook = React.useMemo(
+		function()
+			return createAnimationFlipbook(playback)
+		end,
+		dependencyArray(
+			QueenBeeSpriteSheet.image,
+			QueenBeeSpriteSheet.frameSize.X,
+			QueenBeeSpriteSheet.frameSize.Y,
+			playback.animationName,
+			playback.frameRate
+		)
+	)
 	local frameOffset = resolveActiveFrameOffset(flipbook, playback, props.renderClock)
 	local spriteSheetImage = resolveSpriteSheetImage(snapshot)
 

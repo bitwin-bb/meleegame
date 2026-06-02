@@ -1,7 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 -- Axis-aligned bounds helpers for closest points, distances, and ray hits.
 
-local Vec = require(script.Parent.Vec)
+local Vec = require(gameRoot.Shared.Core.Math.Vec)
 
 local Bounds = {}
 
@@ -24,7 +27,12 @@ local function resolvePadding(padding: number | Vector3): Vector3
 	return Vec.abs(padding)
 end
 
-local function intersectAxis(origin: number, direction: number, minValue: number, maxValue: number): (boolean, number, number)
+local function intersectAxis(
+	origin: number,
+	direction: number,
+	minValue: number,
+	maxValue: number
+): (boolean, number, number)
 	if direction == 0 then
 		if origin < minValue or origin > maxValue then
 			return false, 0, 0

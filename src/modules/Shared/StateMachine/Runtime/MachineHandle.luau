@@ -1,11 +1,13 @@
 --!strict
 
-local Nevermore = require(script.Parent.Parent.Nevermore)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Nevermore = require(gameRoot.Shared.StateMachine.Nevermore)
 local Promise = Nevermore.Get("Promise")
 local Signal = Nevermore.Get("Signal")
 local Table = Nevermore.Get("Table")
 
-local MachineJanitor = require(script.Parent.MachineJanitor)
+local MachineJanitor = require(gameRoot.Shared.StateMachine.Runtime.MachineJanitor)
 
 local MachineHandle = {}
 MachineHandle.__index = MachineHandle

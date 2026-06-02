@@ -1,7 +1,9 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BubblesScreen = require(script.Parent.screens.bubblesScreen)
+local BubblesScreen = require(gameRoot.Shared.Features.breath.ui.screens.bubblesScreen)
 local React = require(ReplicatedStorage.Packages.React)
 
 type BreathRootProps = {

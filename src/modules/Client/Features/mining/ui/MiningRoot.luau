@@ -1,7 +1,9 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local MiningProgressScreen = require(script.Parent.screens.miningProgressScreen)
+local MiningProgressScreen = require(gameRoot.Client.Features.mining.ui.screens.miningProgressScreen)
 local React = require(ReplicatedStorage.Packages.React)
 
 type MiningRootProps = {

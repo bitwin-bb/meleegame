@@ -1,21 +1,23 @@
 --!strict
+local require = require(script.Parent.loader).load(script)
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RobloxSoundService = game:GetService("SoundService")
 local RunService = game:GetService("RunService")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
-
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
-local BossServiceClient = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceClient)
-local ClientBinderSupport = (require :: any)(script:FindFirstAncestor("game").Client.Binders.ClientBinderSupport)
+local AudioRegistry = require(gameRoot.Shared.Features.item.modules.Audio)
+local AudioServiceUtils = require(gameRoot.Client.Features.audio.AudioServiceUtils)
+local BossServiceClient = require(gameRoot.Shared.Features.npc.BossServiceClient)
+local ClientBinderSupport = (require :: any)(gameRoot.Client.Binders.ClientBinderSupport)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local AudioServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).AudioService
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local AudioServicePackets = (require :: any)(gameRoot.Client.NetClient.Packets).AudioService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = AudioServicePackets[methodName]
@@ -62,14 +64,13 @@ local function bindPackets(self: any)
 	bindPacket(self, "stopChannel")
 end
 
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
-local Table = loader("Table")
+local NevermoreSupport = require(gameRoot.Shared.Core.NevermoreSupport)
+local Table = require(quentyPackages.table.Shared.Table)
 local WeatherServiceClient = (require :: any)(
 	script:FindFirstAncestor("game").Shared.Features.world.WeatherServiceClient
 )
-local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.WeatherServiceUtils)
-local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
+local WeatherServiceUtils = require(gameRoot.Shared.Features.world.WeatherServiceUtils)
+local WorldGenerationServiceClient = require(gameRoot.Shared.Features.worldGeneration.WorldGenerationServiceClient)
 
 type SoundCategory = AudioServiceUtils.SoundCategory
 type AudioServiceState = AudioServiceUtils.AudioServiceState

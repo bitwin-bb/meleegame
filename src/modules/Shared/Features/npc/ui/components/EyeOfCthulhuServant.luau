@@ -1,16 +1,16 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
-
-local Flipbook = loader("Flipbook")
-local FlipbookPlayer = loader("FlipbookPlayer")
-local Maid = loader("Maid")
+local Flipbook = require(quentyPackages.flipbook.Client.Flipbook)
+local FlipbookPlayer = require(quentyPackages.flipbook.Client.Player.FlipbookPlayer)
+local Maid = require(quentyPackages.maid.Shared.Maid)
 
 local React = require(ReplicatedStorage.Packages.React)
-local ServantSpriteSheet = require(script:FindFirstAncestor("game").Shared.Features.npc.modules.ServantSpriteSheet)
+local ServantSpriteSheet = require(gameRoot.Shared.Features.npc.modules.ServantSpriteSheet)
 
 export type EyeOfCthulhuServantProps = {
 	zIndex: number?,
@@ -35,30 +35,33 @@ end
 return function(props: EyeOfCthulhuServantProps): React.ReactNode
 	local imageRef = React.useRef(nil :: ImageLabel?)
 
-	React.useEffect(function()
-		local imageLabel = imageRef.current
-		if imageLabel == nil then
-			return
-		end
+	React.useEffect(
+		function()
+			local imageLabel = imageRef.current
+			if imageLabel == nil then
+				return
+			end
 
-		local maid = Maid.new()
-		local player = FlipbookPlayer.new(imageLabel)
-		maid:GiveTask(player)
-		player:SetFlipbook(createFlipbook())
-		player:Play()
+			local maid = Maid.new()
+			local player = FlipbookPlayer.new(imageLabel)
+			maid:GiveTask(player)
+			player:SetFlipbook(createFlipbook())
+			player:Play()
 
-		return function()
-			maid:DoCleaning()
-		end
-	end, ({
-		ServantSpriteSheet.image,
-		ServantSpriteSheet.frameSize.X,
-		ServantSpriteSheet.frameSize.Y,
-		ServantSpriteSheet.rows,
-		ServantSpriteSheet.columns,
-		FRAME_COUNT,
-		ServantSpriteSheet.frameRate,
-	} :: { any }))
+			return function()
+				maid:DoCleaning()
+			end
+		end,
+		{
+			ServantSpriteSheet.image,
+			ServantSpriteSheet.frameSize.X,
+			ServantSpriteSheet.frameSize.Y,
+			ServantSpriteSheet.rows,
+			ServantSpriteSheet.columns,
+			FRAME_COUNT,
+			ServantSpriteSheet.frameRate,
+		} :: { any }
+	)
 
 	return e("ImageLabel", {
 		ref = imageRef,

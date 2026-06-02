@@ -1,9 +1,12 @@
 --!strict
+
+local require = require(script.Parent.loader).load(assert(script:FindFirstAncestor("AquariaBackup"), "Missing AquariaBackup package root"))
+
 local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for GiveServer.")
 
-local InventoryServiceServer = require(gameRoot.Shared.Features.inventory.InventoryServiceServer)
-local ItemRegistry = require(gameRoot.Shared.Features.item.modules.Registry)
+local InventoryServiceServer = require("InventoryServiceServer")
+local ItemRegistry = require("Registry")
 
 local function joinNames(names: { string }): string
 	return table.concat(names, ", ")
@@ -44,7 +47,8 @@ return function(_context, itemIdRaw: string, players: { Player }, amountRaw: num
 		responseParts[#responseParts + 1] = `Partially added for {joinNames(partial)}.`
 	end
 	if #failed > 0 then
-		responseParts[#responseParts + 1] = `Failed for {joinNames(failed)} because their inventory was unavailable or full.`
+		responseParts[#responseParts + 1] =
+			`Failed for {joinNames(failed)} because their inventory was unavailable or full.`
 	end
 
 	return table.concat(responseParts, " ")

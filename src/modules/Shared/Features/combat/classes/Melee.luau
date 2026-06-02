@@ -1,8 +1,12 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
 type SignalObject = {
 	Connect: (self: SignalObject, callback: (...any) -> ()) -> RBXScriptConnection,
@@ -371,7 +375,7 @@ local AnimationController = {} :: any
 AnimationController.__index = AnimationController
 
 function AnimationController.New(configRaw: any)
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local self = setmetatable({
 		janitor = Janitor.new(),
 		trackJanitor = Janitor.new(),
@@ -574,7 +578,7 @@ function AnimationController:PlayNext(playbackRaw: any): { [string]: any }?
 	end
 
 	local clip = self.clips[index]
-	local playback = if typeof(playbackRaw) == "table" then playbackRaw else ({} :: any)
+	local playback = if typeof(playbackRaw) == "table" then playbackRaw else {} :: any
 
 	for _, otherTrack in self.trackCache do
 		if otherTrack ~= track and otherTrack.IsPlaying then
@@ -621,8 +625,8 @@ Melee.__index = Melee
 Melee.AnimationController = AnimationController
 
 function Melee.New(configRaw: any)
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
-	local projectile = if typeof(config.projectile) == "table" then config.projectile else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
+	local projectile = if typeof(config.projectile) == "table" then config.projectile else {} :: any
 
 	local startSet, startMarkers = buildEventSet(config.startSwingEvents, DEFAULT_START_EVENTS)
 	local endSet, endMarkers = buildEventSet(config.endSwingEvents, DEFAULT_END_EVENTS)
@@ -690,7 +694,7 @@ function Melee.New(configRaw: any)
 			inputHeldChanged = Signal.new(),
 			enabledChanged = Signal.new(),
 		},
-		callbacks = if typeof(config.callbacks) == "table" then config.callbacks else ({} :: any),
+		callbacks = if typeof(config.callbacks) == "table" then config.callbacks else {} :: any,
 		startEventSet = startSet,
 		endEventSet = endSet,
 		projectileEventSet = projectileSet,
@@ -938,7 +942,7 @@ function Melee:_playNamedState(stateKeyRaw: any, optionsRaw: any): boolean
 		return false
 	end
 
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 	if self.presentationState == stateKey and self.presentationTrack == track and track.IsPlaying then
 		return true
 	end
@@ -1475,7 +1479,7 @@ function Melee:BindTool(toolRaw: any, optionsRaw: any): boolean
 	self.toolJanitor:Clean()
 	self.boundTool = tool
 
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 	local resolveAnimatorOnEquip = toBool(options.resolveAnimatorOnEquip, true)
 	local cancelOnUnequip = toBool(options.cancelOnUnequip, true)
 

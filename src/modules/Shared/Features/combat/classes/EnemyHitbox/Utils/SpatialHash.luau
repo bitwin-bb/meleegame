@@ -1,7 +1,8 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Bounds = require(script:FindFirstAncestor("game").Shared.Core.Math.Bounds)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Bounds = require(gameRoot.Shared.Core.Math.Bounds)
 
 local SpatialHash = {}
 SpatialHash.__index = SpatialHash
@@ -51,7 +52,7 @@ local function ensureAabb(aabbMinRaw: any, aabbMaxRaw: any): (Vector3, Vector3)
 end
 
 local function hashCellKey(cellX: number, cellY: number, cellZ: number): string
-	return (`{cellX}:{cellY}:{cellZ}`)
+	return `{cellX}:{cellY}:{cellZ}`
 end
 
 local function computeCellIndex(value: number, cellSize: number): number
@@ -89,10 +90,12 @@ function SpatialHash.AabbFromCenterSize(centerRaw: any, sizeRaw: any): (Vector3,
 end
 
 function SpatialHash.AabbIntersects(aMinRaw: any, aMaxRaw: any, bMinRaw: any, bMaxRaw: any): boolean
-	if typeof(aMinRaw) ~= "Vector3"
+	if
+		typeof(aMinRaw) ~= "Vector3"
 		or typeof(aMaxRaw) ~= "Vector3"
 		or typeof(bMinRaw) ~= "Vector3"
-		or typeof(bMaxRaw) ~= "Vector3" then
+		or typeof(bMaxRaw) ~= "Vector3"
+	then
 		return false
 	end
 

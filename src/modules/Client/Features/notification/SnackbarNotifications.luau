@@ -1,16 +1,17 @@
 --!strict
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(packageRoot)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 
-local ScreenGuiService = loader("ScreenGuiService")
-local SnackbarServiceClient = loader("SnackbarServiceClient")
-local AquariaBackupTranslator = require(script:FindFirstAncestor("game").Shared.AquariaBackupTranslator)
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
-local AudioServiceClient = (require :: any)(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceClient)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
+
+local AquariaBackupTranslator = require(gameRoot.Shared.AquariaBackupTranslator)
+local AudioRegistry = require(gameRoot.Shared.Features.item.modules.Audio)
+local ScreenGuiService = require(quentyPackages.genericscreenguiprovider.Client.ScreenGuiService)
+local SnackbarServiceClient = require(quentyPackages.snackbar.Client.SnackbarServiceClient)
+local AudioServiceClient = (require :: any)(gameRoot.Client.Features.audio.AudioServiceClient)
+local AudioServiceUtils = require(gameRoot.Client.Features.audio.AudioServiceUtils)
+local NevermoreSupport = require(gameRoot.Shared.Core.NevermoreSupport)
 
 local SnackbarNotifications = {}
 
@@ -161,7 +162,7 @@ function SnackbarNotifications.ShowText(textRaw: any, optionsRaw: any?)
 		return nil
 	end
 
-	local options = if typeof(optionsRaw) == "table" then optionsRaw :: { [string]: any } else ({} :: any)
+	local options = if typeof(optionsRaw) == "table" then optionsRaw :: { [string]: any } else {} :: any
 	local dedupeKey = if typeof(options.dedupeKey) == "string" and options.dedupeKey ~= ""
 		then options.dedupeKey
 		else text

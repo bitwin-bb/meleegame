@@ -1,16 +1,16 @@
 --!strict
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(packageRoot)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 
-local Maid = loader("Maid")
-local Rx = loader("Rx")
-local RxSignal = loader("RxSignal")
-local Signal = loader("Signal")
+local Maid = require(quentyPackages.maid.Shared.Maid)
+local Rx = require(quentyPackages.rx.Shared.Rx)
+local RxSignal = require(quentyPackages.rxsignal.Shared.RxSignal)
+local Signal = require(quentyPackages.signal.Shared.Signal)
 
-local CloudScroll = require(script.Parent.Parent.modules.CloudScroll)
-local CloudServiceUtils = require(script.Parent.Parent.CloudServiceUtils)
+local CloudScroll = require(gameRoot.Client.Features.parallax.modules.CloudScroll)
+local CloudServiceUtils = require(gameRoot.Client.Features.parallax.CloudServiceUtils)
 
 type CloudAssetDefinition = CloudServiceUtils.CloudAssetDefinition
 

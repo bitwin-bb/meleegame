@@ -1,4 +1,5 @@
 --!strict
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -228,64 +229,69 @@ local function TextLabel(props: TextLabelProps)
 	local animatedGradientColor, setAnimatedGradientColor = React.useBinding(baseGradientColor)
 	local pulseScale, setPulseScale = React.useBinding(1)
 
-	React.useEffect(function()
-		setAnimatedTextColor(baseTextColor)
-		setAnimatedGradientOffset(baseGradientOffset)
-		setAnimatedGradientColor(baseGradientColor)
-		setPulseScale(1)
+	React.useEffect(
+		function()
+			setAnimatedTextColor(baseTextColor)
+			setAnimatedGradientOffset(baseGradientOffset)
+			setAnimatedGradientColor(baseGradientColor)
+			setPulseScale(1)
 
-		local isAnimating = rainbowEnabled or gradientAnimated or pulseEnabled
-		if not isAnimating then
-			return
-		end
+			local isAnimating = rainbowEnabled or gradientAnimated or pulseEnabled
+			if not isAnimating then
+				return
+			end
 
-		local elapsed = 0
-		local connection = RunService.RenderStepped:Connect(function(deltaTime: number)
-			elapsed += deltaTime
+			local elapsed = 0
+			local connection = RunService.RenderStepped:Connect(function(deltaTime: number)
+				elapsed += deltaTime
 
-			if rainbowEnabled then
-				local hue = (elapsed * rainbowSpeed) % 1
-				if rainbowGradientEnabled then
-					setAnimatedGradientColor(buildRainbowSequence(hue, rainbowSaturation, rainbowValue, rainbowSpread))
-				else
-					setAnimatedTextColor(Color3.fromHSV(hue, rainbowSaturation, rainbowValue))
+				if rainbowEnabled then
+					local hue = (elapsed * rainbowSpeed) % 1
+					if rainbowGradientEnabled then
+						setAnimatedGradientColor(
+							buildRainbowSequence(hue, rainbowSaturation, rainbowValue, rainbowSpread)
+						)
+					else
+						setAnimatedTextColor(Color3.fromHSV(hue, rainbowSaturation, rainbowValue))
+					end
 				end
-			end
 
-			if gradientAnimated then
-				local shift = math.sin(elapsed * gradientScrollSpeed * math.pi * 2)
-				local displacement = gradientDirection * shift
-				setAnimatedGradientOffset(baseGradientOffset + displacement)
-			end
+				if gradientAnimated then
+					local shift = math.sin(elapsed * gradientScrollSpeed * math.pi * 2)
+					local displacement = gradientDirection * shift
+					setAnimatedGradientOffset(baseGradientOffset + displacement)
+				end
 
-			if pulseEnabled then
-				local alpha = (math.sin(elapsed * pulseSpeed * math.pi * 2) + 1) * 0.5
-				local scaleValue = pulseMinScale + (pulseMaxScale - pulseMinScale) * alpha
-				setPulseScale(scaleValue)
-			end
-		end)
+				if pulseEnabled then
+					local alpha = (math.sin(elapsed * pulseSpeed * math.pi * 2) + 1) * 0.5
+					local scaleValue = pulseMinScale + (pulseMaxScale - pulseMinScale) * alpha
+					setPulseScale(scaleValue)
+				end
+			end)
 
-		return function()
-			connection:Disconnect()
-		end
-	end, ({
-		baseTextColor,
-		baseGradientColor,
-		baseGradientOffset,
-		rainbowEnabled,
-		rainbowGradientEnabled,
-		rainbowSpeed,
-		rainbowSaturation,
-		rainbowValue,
-		rainbowSpread,
-		gradientAnimated,
-		gradientScrollSpeed,
-		gradientDirection,
-		pulseEnabled,
-		pulseSpeed,
-		pulseMinScale,
-		pulseMaxScale,
-	} :: { any }))
+			return function()
+				connection:Disconnect()
+			end
+		end,
+		{
+			baseTextColor,
+			baseGradientColor,
+			baseGradientOffset,
+			rainbowEnabled,
+			rainbowGradientEnabled,
+			rainbowSpeed,
+			rainbowSaturation,
+			rainbowValue,
+			rainbowSpread,
+			gradientAnimated,
+			gradientScrollSpeed,
+			gradientDirection,
+			pulseEnabled,
+			pulseSpeed,
+			pulseMinScale,
+			pulseMaxScale,
+		} :: { any }
+	)
 
 	local resolvedTextColor = if rainbowEnabled and not rainbowGradientEnabled then animatedTextColor else baseTextColor
 	local resolvedGradientColor = if rainbowEnabled and rainbowGradientEnabled

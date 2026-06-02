@@ -1,4 +1,6 @@
 --!strict
+
+local require = require(script.Parent.loader).load(assert(script:FindFirstAncestor("AquariaBackup"), "Missing AquariaBackup package root"))
 local testEnvironment = getfenv() :: any
 local describe = testEnvironment.describe :: any
 local it = testEnvironment.it :: any
@@ -6,7 +8,9 @@ local expect = testEnvironment.expect :: any
 
 -- selene: allow(undefined_variable)
 
-local ParallaxServiceUtils = require(script:FindFirstAncestor("game").Client.Features.parallax.ParallaxServiceUtils)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ParallaxServiceUtils = require(gameRoot.Client.Features.parallax.ParallaxServiceUtils)
 
 return function()
 	describe("ParallaxServiceUtils", function()

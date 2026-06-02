@@ -1,6 +1,8 @@
 --!strict
 
-local Target = require(script.Parent.Parent.Target)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Target = require(gameRoot.Shared.Features.camera.classes.Camera.Target)
 
 local BossSubject = {}
 

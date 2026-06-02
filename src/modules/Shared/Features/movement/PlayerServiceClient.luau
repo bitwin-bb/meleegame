@@ -1,20 +1,24 @@
 --!strict
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
-local AudioServiceClient = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceClient)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
-local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Features.commander.CmdrUtils)
-local CoreRuntime = require(script:FindFirstAncestor("game").Shared.Core.Runtime)
-local GamepadPointer = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.GamepadPointer)
+local AudioRegistry = require(gameRoot.Shared.Features.item.modules.Audio)
+local AudioServiceClient = require(gameRoot.Client.Features.audio.AudioServiceClient)
+local AudioServiceUtils = require(gameRoot.Client.Features.audio.AudioServiceUtils)
+local CmdrUtils = require(gameRoot.Shared.Features.commander.CmdrUtils)
+local CoreRuntime = require(gameRoot.Shared.Core.Runtime)
+local GamepadPointer = require(gameRoot.Shared.Features.platform.modules.GamepadPointer)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local PlayerServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).PlayerService
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local PlayerServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).PlayerService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = PlayerServicePackets[methodName]
@@ -56,12 +60,11 @@ local function bindPackets(self: any)
 	bindPacket(self, "setFacing")
 end
 
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
-local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceUtils)
-local PlayerServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.movement.PlayerServiceUtils)
+local PlatformServiceClient = require(gameRoot.Shared.Features.platform.PlatformServiceClient)
+local PlatformServiceUtils = require(gameRoot.Shared.Features.platform.PlatformServiceUtils)
+local PlayerServiceUtils = require(gameRoot.Shared.Features.movement.PlayerServiceUtils)
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
-local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
+local WorldGenerationServiceClient = require(gameRoot.Shared.Features.worldGeneration.WorldGenerationServiceClient)
 
 type FacingSign = PlayerServiceUtils.FacingSign
 type CharacterRig = PlayerServiceUtils.CharacterRig

@@ -1,22 +1,24 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
+local Maid = require(quentyPackages.maid.Shared.Maid)
 
-local Maid = loader("Maid")
-
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local QueenBee = require(script:FindFirstAncestor("game").Shared.Features.npc.ui.components.QueenBee)
-local QueenBeeSpriteSheet = require(script:FindFirstAncestor("game").Shared.Features.npc.modules.QueenBeeSpriteSheet)
+local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
+local QueenBee = require(gameRoot.Shared.Features.npc.ui.components.QueenBee)
+local QueenBeeSpriteSheet = require(gameRoot.Shared.Features.npc.modules.QueenBeeSpriteSheet)
 local React = require(ReplicatedStorage.Packages.React)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
-local markerSlice = require(script:FindFirstAncestor("game").Shared.Features.npc.ui.boss.state.markerSlice)
-local markerThunks = require(script:FindFirstAncestor("game").Shared.Features.npc.ui.boss.state.markerThunks)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
+local markerSlice = require(gameRoot.Shared.Features.npc.ui.boss.state.markerSlice)
+local markerThunks = require(gameRoot.Shared.Features.npc.ui.boss.state.markerThunks)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
 
 type BossServiceState = BossServiceUtils.BossServiceState
 type BossSnapshot = BossServiceUtils.BossSnapshot

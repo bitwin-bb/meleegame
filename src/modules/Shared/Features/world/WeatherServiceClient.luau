@@ -1,4 +1,7 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local HttpService = game:GetService("HttpService")
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
@@ -8,13 +11,12 @@ local Terrain = workspace.Terrain
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
-local CameraShaker =
-	require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Vendor"):WaitForChild("EZCameraShake"))
+local AudioRegistry = require(gameRoot.Shared.Features.item.modules.Audio)
+local AudioServiceUtils = require(gameRoot.Client.Features.audio.AudioServiceUtils)
+local CameraShaker = require(ReplicatedStorage.Shared.Vendor.EZCameraShake)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local PacketPayload = require(script:FindFirstAncestor("game").Shared.NetShared.PacketPayload)
-local WeatherServicePackets = (require :: any)(script:FindFirstAncestor("game").Client.NetClient.Packets).WeatherService
+local PacketPayload = require(gameRoot.Shared.NetShared.PacketPayload)
+local WeatherServicePackets = (require :: any)(gameRoot.Shared.NetShared.Packets).WeatherService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = WeatherServicePackets[methodName]
@@ -54,10 +56,9 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local WeatherServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.WeatherServiceUtils)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
-local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
+local WeatherServiceUtils = require(gameRoot.Shared.Features.world.WeatherServiceUtils)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
+local WorldGenerationServiceClient = require(gameRoot.Shared.Features.worldGeneration.WorldGenerationServiceClient)
 
 type WeatherServiceState = WeatherServiceUtils.WeatherServiceState
 type SkyKey = string
@@ -414,7 +415,7 @@ local function getAudioServiceClient(): any?
 	end
 
 	local ok, moduleOrError = pcall(function()
-		return (require :: any)(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceClient)
+		return (require :: any)(gameRoot.Client.Features.audio.AudioServiceClient)
 	end)
 	if not ok then
 		return nil
@@ -430,7 +431,7 @@ local function getWindFoliageServiceClient(): any?
 	end
 
 	local ok, moduleOrError = pcall(function()
-		return (require :: any)(script:FindFirstAncestor("game").Shared.Features.world.WindFoliageServiceClient)
+		return (require :: any)(gameRoot.Shared.Features.world.WindFoliageServiceClient)
 	end)
 	if not ok then
 		return nil

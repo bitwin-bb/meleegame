@@ -1,10 +1,11 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Trig = require(script:FindFirstAncestor("game").Shared.Core.Math.Trig)
-local Vec = require(script:FindFirstAncestor("game").Shared.Core.Math.Vec)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
-local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveToolInstance)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ResolveToolInstance = require(gameRoot.Shared.Game.Format.ResolveToolInstance)
+local Trig = require(gameRoot.Shared.Core.Math.Trig)
+local Vec = require(gameRoot.Shared.Core.Math.Vec)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
 
 local MagicServiceUtils = {}
 
@@ -326,15 +327,12 @@ end
 
 function MagicServiceUtils.SanitizeManaState(manaRaw: any): (number, number, number)
 	if typeof(manaRaw) ~= "table" then
-		return MagicServiceUtils.DEFAULT_MAX_MANA, MagicServiceUtils.DEFAULT_MAX_MANA, MagicServiceUtils.DEFAULT_MANA_REGEN
+		return MagicServiceUtils.DEFAULT_MAX_MANA,
+			MagicServiceUtils.DEFAULT_MAX_MANA,
+			MagicServiceUtils.DEFAULT_MANA_REGEN
 	end
 	local source = manaRaw :: { [string]: any }
-	local maxMana = num(
-		source.maxMana or source.maximum or source.max,
-		MagicServiceUtils.DEFAULT_MAX_MANA,
-		1,
-		100000
-	)
+	local maxMana = num(source.maxMana or source.maximum or source.max, MagicServiceUtils.DEFAULT_MAX_MANA, 1, 100000)
 	local mana = num(source.mana or source.current, maxMana, 0, maxMana)
 	local regen = num(
 		source.regenPerSecond or source.manaRegen or source.regen or source.recovery,
@@ -347,7 +345,7 @@ end
 
 function MagicServiceUtils.SanitizeReplicatedState(raw: any, fallbackRaw: any): ReplicatedState
 	local fallback = if typeof(fallbackRaw) == "table"
-		then (fallbackRaw :: ReplicatedState)
+		then fallbackRaw :: ReplicatedState
 		else {
 			mana = MagicServiceUtils.DEFAULT_MAX_MANA,
 			maxMana = MagicServiceUtils.DEFAULT_MAX_MANA,
@@ -357,7 +355,7 @@ function MagicServiceUtils.SanitizeReplicatedState(raw: any, fallbackRaw: any): 
 			cooldowns = {},
 			updatedAt = os.clock(),
 		}
-	local source = if typeof(raw) == "table" then (raw :: { [string]: any }) else ({} :: any)
+	local source = if typeof(raw) == "table" then raw :: { [string]: any } else {} :: any
 	local maxMana = num(source.maxMana, fallback.maxMana, 1, 100000)
 	local mana = num(source.mana, fallback.mana, 0, maxMana)
 	local regenPerSecond = num(source.regenPerSecond, fallback.regenPerSecond, 0, 10000)
@@ -395,7 +393,7 @@ function MagicServiceUtils.SanitizeReplicatedState(raw: any, fallbackRaw: any): 
 end
 
 function MagicServiceUtils.SanitizeCastRequest(raw: any): CastRequest
-	local source = if typeof(raw) == "table" then (raw :: { [string]: any }) else ({} :: any)
+	local source = if typeof(raw) == "table" then raw :: { [string]: any } else {} :: any
 	return {
 		trigger = trim(source.trigger) ~= "" and trim(source.trigger) or "Cast",
 		aimDirection = asVector3(source.aimDirection),
@@ -475,19 +473,23 @@ function MagicServiceUtils.BuildWeaponRuntimeConfig(weaponConfigRaw: any): Weapo
 		return nil
 	end
 	local weaponConfig = weaponConfigRaw :: { [string]: any }
-	local definition = if typeof(weaponConfig.definition) == "table" then weaponConfig.definition else ({} :: any)
+	local definition = if typeof(weaponConfig.definition) == "table" then weaponConfig.definition else {} :: any
 	local root = if typeof((definition :: any).magicWeapon) == "table"
 		then (definition :: any).magicWeapon
-		else if typeof((definition :: any).magic) == "table" then (definition :: any).magic else ({} :: any)
-	local stats = if typeof((definition :: any).stats) == "table" then (definition :: any).stats else ({} :: any)
-	local baseProjectile = if typeof(weaponConfig.projectile) == "table" then weaponConfig.projectile else ({} :: any)
+		else if typeof((definition :: any).magic) == "table" then (definition :: any).magic else {} :: any
+	local stats = if typeof((definition :: any).stats) == "table" then (definition :: any).stats else {} :: any
+	local baseProjectile = if typeof(weaponConfig.projectile) == "table" then weaponConfig.projectile else {} :: any
 	local projectileExtra = if typeof((root :: any).projectile) == "table"
 		then (root :: any).projectile
-		else if typeof((definition :: any).projectile) == "table" then (definition :: any).projectile else ({} :: any)
+		else if typeof((definition :: any).projectile) == "table"
+			then (definition :: any).projectile
+			else {} :: any
 	local homingRaw = (projectileExtra :: any).homing
-	local homingTable = if typeof(homingRaw) == "table" then (homingRaw :: { [string]: any }) else nil
+	local homingTable = if typeof(homingRaw) == "table" then homingRaw :: { [string]: any } else nil
 	local collisionBehavior = token((projectileExtra :: any).collisionBehavior)
-	local collisionMode = if collisionBehavior == "overlap" or collisionBehavior == "pierce" or collisionBehavior == "raycast"
+	local collisionMode = if collisionBehavior == "overlap"
+			or collisionBehavior == "pierce"
+			or collisionBehavior == "raycast"
 		then collisionBehavior
 		else "raycast"
 
@@ -521,17 +523,28 @@ function MagicServiceUtils.BuildWeaponRuntimeConfig(weaponConfigRaw: any): Weapo
 	end
 
 	local attackSpeedCooldownValue = attackSpeedCooldown((stats :: any).attackSpeed)
-	local cooldownFallback =
-		if attackSpeedCooldownValue ~= nil then attackSpeedCooldownValue else num(weaponConfig.cooldown, 0.42, 0, 60)
+	local cooldownFallback = if attackSpeedCooldownValue ~= nil
+		then attackSpeedCooldownValue
+		else num(weaponConfig.cooldown, 0.42, 0, 60)
 	local callbacksRaw = if typeof((root :: any).callbacks) == "table"
 		then (root :: any).callbacks
-		else if typeof((definition :: any).callbacks) == "table" then (definition :: any).callbacks else ({} :: any)
+		else if typeof((definition :: any).callbacks) == "table" then (definition :: any).callbacks else {} :: any
 
 	return {
 		itemId = trim(weaponConfig.itemId) ~= "" and trim(weaponConfig.itemId) or "unknownMagicWeapon",
 		displayName = trim(weaponConfig.displayName) ~= "" and trim(weaponConfig.displayName) or "Magic Weapon",
-		manaCost = num((root :: any).manaCost or weaponConfig.manaCost or (stats :: any).manaCost or (stats :: any).mana, 8, 0, 100000),
-		baseDamage = num((root :: any).damage or weaponConfig.damage or (stats :: any).magicDamage or (stats :: any).dmg, 10, 0, 1_000_000),
+		manaCost = num(
+			(root :: any).manaCost or weaponConfig.manaCost or (stats :: any).manaCost or (stats :: any).mana,
+			8,
+			0,
+			100000
+		),
+		baseDamage = num(
+			(root :: any).damage or weaponConfig.damage or (stats :: any).magicDamage or (stats :: any).dmg,
+			10,
+			0,
+			1_000_000
+		),
 		knockback = knockback((root :: any).knockback or (definition :: any).knockback or (stats :: any).knockback),
 		castTime = num((root :: any).castTime or weaponConfig.castTime, 0.12, 0, 30),
 		cooldown = num((root :: any).cooldown or weaponConfig.cooldown, cooldownFallback, 0, 60),
@@ -542,7 +555,12 @@ function MagicServiceUtils.BuildWeaponRuntimeConfig(weaponConfigRaw: any): Weapo
 			spread = num((projectileExtra :: any).spread or baseProjectile.spread, 0, 0, 120),
 			count = int((projectileExtra :: any).count or baseProjectile.count, 1, 1, 32),
 			lifetime = num((projectileExtra :: any).lifetime or baseProjectile.lifetime, 2, 0.02, 120),
-			pierce = int((projectileExtra :: any).pierce or (projectileExtra :: any).pierceCount or baseProjectile.pierce, 0, 0, 100),
+			pierce = int(
+				(projectileExtra :: any).pierce or (projectileExtra :: any).pierceCount or baseProjectile.pierce,
+				0,
+				0,
+				100
+			),
 			collisionBehavior = collisionMode,
 			radius = num((projectileExtra :: any).radius, 0.5, 0, 64),
 			homingEnabled = bool(
@@ -567,7 +585,8 @@ function MagicServiceUtils.BuildWeaponRuntimeConfig(weaponConfigRaw: any): Weapo
 			destroyOnWorldHit = bool((projectileExtra :: any).destroyOnWorldHit, true),
 			canHitPlayers = bool((projectileExtra :: any).canHitPlayers, true),
 			canHitNpcs = bool((projectileExtra :: any).canHitNpcs, true),
-			template = if typeof((projectileExtra :: any).template) == "Instance" and (projectileExtra :: any).template:IsA("BasePart")
+			template = if typeof((projectileExtra :: any).template) == "Instance"
+					and (projectileExtra :: any).template:IsA("BasePart")
 				then (projectileExtra :: any).template
 				else nil,
 			visualSize = asVector3((projectileExtra :: any).visualSize or (projectileExtra :: any).size),
@@ -577,16 +596,22 @@ function MagicServiceUtils.BuildWeaponRuntimeConfig(weaponConfigRaw: any): Weapo
 		callbacks = {
 			OnCast = if typeof((callbacksRaw :: any).OnCast) == "function"
 				then (callbacksRaw :: any).OnCast
-				else if typeof((callbacksRaw :: any).onCast) == "function" then (callbacksRaw :: any).onCast else nil,
+				else if typeof((callbacksRaw :: any).onCast) == "function"
+					then (callbacksRaw :: any).onCast
+					else nil,
 			OnTick = if typeof((callbacksRaw :: any).OnTick) == "function"
 				then (callbacksRaw :: any).OnTick
-				else if typeof((callbacksRaw :: any).onTick) == "function" then (callbacksRaw :: any).onTick else nil,
+				else if typeof((callbacksRaw :: any).onTick) == "function"
+					then (callbacksRaw :: any).onTick
+					else nil,
 			OnHit = if typeof((callbacksRaw :: any).OnHit) == "function"
 				then (callbacksRaw :: any).OnHit
 				else if typeof((callbacksRaw :: any).onHit) == "function" then (callbacksRaw :: any).onHit else nil,
 			OnExpire = if typeof((callbacksRaw :: any).OnExpire) == "function"
 				then (callbacksRaw :: any).OnExpire
-				else if typeof((callbacksRaw :: any).onExpire) == "function" then (callbacksRaw :: any).onExpire else nil,
+				else if typeof((callbacksRaw :: any).onExpire) == "function"
+					then (callbacksRaw :: any).onExpire
+					else nil,
 		},
 		definition = definition,
 	}
@@ -615,7 +640,7 @@ function MagicServiceUtils.CreateDefaultModifier(): ModifierStats
 end
 
 function MagicServiceUtils.SanitizeModifier(raw: any): ModifierStats
-	local source = if typeof(raw) == "table" then (raw :: { [string]: any }) else ({} :: any)
+	local source = if typeof(raw) == "table" then raw :: { [string]: any } else {} :: any
 	local modifier = MagicServiceUtils.CreateDefaultModifier()
 	modifier.damageMultiplier = num(source.damageMultiplier, 1, 0, 100)
 	modifier.damageBonus = num(source.damageBonus, 0, -100000, 100000)
@@ -679,7 +704,10 @@ function MagicServiceUtils.BuildCastStats(config: WeaponRuntimeConfig, modifierR
 		castTime = math.max(0, config.castTime * modifier.castTimeMultiplier + modifier.castTimeBonus),
 		knockback = math.max(0, config.knockback * modifier.knockbackMultiplier + modifier.knockbackBonus),
 		projectileSpeed = math.max(1, config.projectile.speed * modifier.speedMultiplier + modifier.speedBonus),
-		projectileLifetime = math.max(0.02, config.projectile.lifetime * modifier.lifetimeMultiplier + modifier.lifetimeBonus),
+		projectileLifetime = math.max(
+			0.02,
+			config.projectile.lifetime * modifier.lifetimeMultiplier + modifier.lifetimeBonus
+		),
 		pierce = math.max(0, config.projectile.pierce + modifier.pierceBonus),
 		projectileCount = math.max(1, config.projectile.count + modifier.projectileCountBonus),
 		projectileSpread = math.max(0, config.projectile.spread),

@@ -1,11 +1,11 @@
 --!strict
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 
-local DeterministicRNG = require(script:FindFirstAncestor("game").Shared.Core.DeterministicRNG)
-local Noise = require(script:FindFirstAncestor("game").Shared.Core.Math.Noise)
-local Trig = require(script:FindFirstAncestor("game").Shared.Core.Math.Trig)
-local Vec = require(script:FindFirstAncestor("game").Shared.Core.Math.Vec)
+local DeterministicRNG = require(gameRoot.Shared.Core.DeterministicRNG)
+local Noise = require(gameRoot.Shared.Core.Math.Noise)
+local Trig = require(gameRoot.Shared.Core.Math.Trig)
+local Vec = require(gameRoot.Shared.Core.Math.Vec)
 
 local WindField = {}
 WindField.__index = WindField
@@ -62,7 +62,7 @@ local function remapNoise(sample: number): number
 end
 
 function WindField.New(configRaw: Config?): WindField
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local seed = DeterministicRNG.seedFrom(config.seed or "WindFoliage")
 
 	local self = setmetatable({
@@ -94,8 +94,12 @@ function WindField.Sample(
 	phaseOffsetRaw: any?,
 	amplitudeScaleRaw: any?
 ): WindSample
-	local timeSeconds = if typeof(timeSecondsRaw) == "number" and timeSecondsRaw == timeSecondsRaw then timeSecondsRaw else 0
-	local phaseOffset = if typeof(phaseOffsetRaw) == "number" and phaseOffsetRaw == phaseOffsetRaw then phaseOffsetRaw else 0
+	local timeSeconds = if typeof(timeSecondsRaw) == "number" and timeSecondsRaw == timeSecondsRaw
+		then timeSecondsRaw
+		else 0
+	local phaseOffset = if typeof(phaseOffsetRaw) == "number" and phaseOffsetRaw == phaseOffsetRaw
+		then phaseOffsetRaw
+		else 0
 	local amplitudeScale = clampNumber(amplitudeScaleRaw, 1, 0, 10)
 	local strengthMultiplier = self.strengthMultiplier
 
@@ -182,12 +186,14 @@ function WindField.Sample(
 		)
 	)
 
-	local scalarStrength =
-		(self.baseStrength + self.gustStrength * gustAlpha + self.detailStrength * math.min(1, detailMagnitude))
+	local scalarStrength = (
+		self.baseStrength
+		+ self.gustStrength * gustAlpha
+		+ self.detailStrength * math.min(1, detailMagnitude)
+	)
 		* amplitudeScale
 		* strengthMultiplier
-	local vector =
-		direction * (self.baseStrength + self.gustStrength * gustAlpha) * amplitudeScale * strengthMultiplier
+	local vector = direction * (self.baseStrength + self.gustStrength * gustAlpha) * amplitudeScale * strengthMultiplier
 		+ detailVector * self.detailStrength * amplitudeScale * strengthMultiplier
 
 	return {

@@ -1,27 +1,21 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Workspace = game:GetService("Workspace")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local nodeModules = assert(packageRoot:FindFirstChild("node_modules"), "Missing node_modules")
-local quentyPackages = assert(nodeModules:FindFirstChild("@quenty"), "Missing @quenty packages")
-local flipbookPackage = assert(quentyPackages:FindFirstChild("flipbook"), "Missing flipbook package")
-local maidPackage = assert(quentyPackages:FindFirstChild("maid"), "Missing maid package")
-local spritesPackage = assert(quentyPackages:FindFirstChild("sprites"), "Missing sprites package")
+local Flipbook = require(quentyPackages.flipbook.Client.Flipbook)
+local FlipbookPlayer = require(quentyPackages.flipbook.Client.Player.FlipbookPlayer)
+local Maid = require(quentyPackages.maid.Shared.Maid)
+local Sprite = require(quentyPackages.sprites.Shared.Sprite.Sprite)
 
-local Flipbook = (require :: any)(assert(assert(flipbookPackage:FindFirstChild("Client")):FindFirstChild("Flipbook")))
-local FlipbookPlayer =
-	(require :: any)(assert(assert(flipbookPackage:FindFirstChild("Client")):FindFirstChild("Player")).FlipbookPlayer)
-local Maid = (require :: any)(assert(assert(maidPackage:FindFirstChild("Shared")):FindFirstChild("Maid")))
-local Sprite = (require :: any)(
-	assert(assert(assert(spritesPackage:FindFirstChild("Shared")):FindFirstChild("Sprite")):FindFirstChild("Sprite"))
-)
-
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local EyeOfCthulhuSpriteSheet =
-	require(script:FindFirstAncestor("game").Shared.Features.npc.modules.EyeOfCthulhuSpriteSheet)
+local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
+local EyeOfCthulhuSpriteSheet = require(gameRoot.Shared.Features.npc.modules.EyeOfCthulhuSpriteSheet)
 local React = require(ReplicatedStorage.Packages.React)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
 
 type BossSnapshot = BossServiceUtils.BossSnapshot
 
@@ -260,21 +254,24 @@ return function(props: EyeOfCthulhuProps): React.ReactNode
 		end
 	end, {})
 
-	React.useEffect(function()
-		local player = playerRef.current
-		if player == nil then
-			return
-		end
+	React.useEffect(
+		function()
+			local player = playerRef.current
+			if player == nil then
+				return
+			end
 
-		player:SetFlipbook(createPhaseFlipbook(playback))
-		player:Play()
-	end, ({
-		EyeOfCthulhuSpriteSheet.image,
-		EyeOfCthulhuSpriteSheet.frameSize.X,
-		EyeOfCthulhuSpriteSheet.frameSize.Y,
-		playback.phaseName,
-		playback.frameRate,
-	} :: { any }))
+			player:SetFlipbook(createPhaseFlipbook(playback))
+			player:Play()
+		end,
+		{
+			EyeOfCthulhuSpriteSheet.image,
+			EyeOfCthulhuSpriteSheet.frameSize.X,
+			EyeOfCthulhuSpriteSheet.frameSize.Y,
+			playback.phaseName,
+			playback.frameRate,
+		} :: { any }
+	)
 
 	local children = nil
 	if isSurfaceGui then

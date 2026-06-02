@@ -1,11 +1,12 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
-local ServiceSync = require(script:FindFirstAncestor("game").Client.UI.core.utils.ServiceSync)
-local hpSlice = require(script:FindFirstAncestor("game").Shared.Features.health.ui.hud.state.slice.hpSlice)
-local HpServiceClient = require(script:FindFirstAncestor("game").Shared.Features.health.HpServiceClient)
-local HpServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.health.HpServiceUtils)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local ConnectionUtils = require(gameRoot.Client.UI.core.utils.ConnectionUtils)
+local HpServiceClient = require(gameRoot.Shared.Features.health.HpServiceClient)
+local HpServiceUtils = require(gameRoot.Shared.Features.health.HpServiceUtils)
+local ServiceSync = require(gameRoot.Client.UI.core.utils.ServiceSync)
+local hpSlice = require(gameRoot.Shared.Features.health.ui.hud.state.slice.hpSlice)
 
 type HpServiceState = HpServiceUtils.HpServiceState
 
@@ -36,10 +37,13 @@ function hpThunks.Start(): () -> ()
 		syncFromService()
 	end
 
-	runtime.stateChangedConnection = ServiceSync.connectStateChanged(HpServiceClient, function(nextState: HpServiceState)
-		applyState(nextState)
-		hpSlice.setHpReady(true)
-	end)
+	runtime.stateChangedConnection = ServiceSync.connectStateChanged(
+		HpServiceClient,
+		function(nextState: HpServiceState)
+			applyState(nextState)
+			hpSlice.setHpReady(true)
+		end
+	)
 	ServiceSync.requestSync(HpServiceClient)
 
 	return hpThunks.Stop

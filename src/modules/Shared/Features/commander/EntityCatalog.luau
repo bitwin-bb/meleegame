@@ -1,8 +1,9 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local NpcDefinitions = require(script:FindFirstAncestor("game").Shared.Features.npc.npc.Definitions)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
+local NpcDefinitions = require(gameRoot.Shared.Features.npc.npc.Definitions)
 
 export type EntityKind = "Boss" | "Npc"
 export type EntityEntry = {
@@ -74,7 +75,8 @@ local function buildEntries(): { EntityEntry }
 				continue
 			end
 
-			local displayName = if typeof(definition) == "table" and typeof((definition :: any).name) == "string"
+			local displayName = if typeof(definition) == "table"
+					and typeof((definition :: any).name) == "string"
 				then (definition :: any).name
 				else npcId
 
@@ -134,7 +136,7 @@ function EntityCatalog.GetAutocompleteEntries(): { { Name: string, Entity: Entit
 	local entries = table.create(#ENTRIES)
 	for index, entry in ENTRIES do
 		entries[index] = {
-			Name = (`{entry.Name} [{string.lower(entry.Kind)}]`),
+			Name = `{entry.Name} [{string.lower(entry.Kind)}]`,
 			Entity = cloneEntry(entry),
 		}
 	end

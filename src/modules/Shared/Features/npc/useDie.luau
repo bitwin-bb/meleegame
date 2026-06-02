@@ -1,8 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local NpcServiceUtils = require(script.Parent.NpcServiceUtils)
-local NpcThunks = require(script.Parent.NpcThunks)
+local NpcServiceUtils = require(gameRoot.Shared.Features.npc.NpcServiceUtils)
+local NpcThunks = require(gameRoot.Shared.Features.npc.NpcThunks)
 local React = require(ReplicatedStorage.Packages.React)
 
 type NpcSnapshot = NpcServiceUtils.NpcSnapshot

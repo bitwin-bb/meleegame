@@ -1,12 +1,12 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local ConnectionUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.ConnectionUtils)
-local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
-local biomeSlice = require(script:FindFirstAncestor("game").Client.Features.biome.ui.state.biomeSlice)
+local ConnectionUtils = require(gameRoot.Client.UI.core.utils.ConnectionUtils)
+local WorldGenerationServiceClient = require(gameRoot.Shared.Features.worldGeneration.WorldGenerationServiceClient)
+local biomeSlice = require(gameRoot.Client.Features.biome.ui.state.biomeSlice)
 
 type BiomeState = biomeSlice.BiomeState
 

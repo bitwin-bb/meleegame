@@ -1,12 +1,13 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BindingHintBottomBar =
-	require(script:FindFirstAncestor("game").Client.Features.binding.ui.hud.BindingHintBottomBar)
+local BindingHintBottomBar = require(gameRoot.Client.Features.binding.ui.hud.BindingHintBottomBar)
 local React = require(ReplicatedStorage.Packages.React)
-local bindingSlice = require(script:FindFirstAncestor("game").Client.Features.binding.ui.state.bindingSlice)
-local bindingThunks = require(script:FindFirstAncestor("game").Client.Features.binding.ui.state.bindingThunks)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local bindingSlice = require(gameRoot.Client.Features.binding.ui.state.bindingSlice)
+local bindingThunks = require(gameRoot.Client.Features.binding.ui.state.bindingThunks)
+local useStore = require(gameRoot.Client.UI.core.hooks.useStore)
 
 type BindingHintState = bindingSlice.BindingHintState
 
@@ -19,7 +20,7 @@ type BindingHintScreenProps = {
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: BindingHintScreenProps?): React.ReactNode
-	local resolvedProps: BindingHintScreenProps = if props ~= nil then props else ({} :: any)
+	local resolvedProps: BindingHintScreenProps = if props ~= nil then props else {} :: any
 	local bindingState = (useStore(bindingSlice.bindingStateAtom) :: BindingHintState?)
 		or bindingSlice.getBindingState()
 

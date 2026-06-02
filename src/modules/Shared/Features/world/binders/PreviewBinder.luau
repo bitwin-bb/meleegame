@@ -1,10 +1,12 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 
-local BuildServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceUtils)
-local ModelBinder = require(script:FindFirstAncestor("game").Shared.Binders.ModelBinder)
+local BuildServiceUtils = require(gameRoot.Shared.Features.world.BuildServiceUtils)
+local ModelBinder = require(gameRoot.Shared.Binders.ModelBinder)
 
 local PreviewBinder = {}
 PreviewBinder.__index = PreviewBinder
@@ -14,7 +16,7 @@ local buildServiceClient = nil
 
 local function getBuildServiceClient()
 	if buildServiceClient == nil then
-		buildServiceClient = (require :: any)(script:FindFirstAncestor("game").Shared.Features.world.BuildServiceClient)
+		buildServiceClient = (require :: any)(gameRoot.Shared.Features.world.BuildServiceClient)
 	end
 	return buildServiceClient
 end

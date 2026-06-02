@@ -1,11 +1,14 @@
 --!strict
-local GuiService = game:GetService("GuiService")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local GuiService = game:GetService("GuiService")
 local Workspace = game:GetService("Workspace")
 
-local Cleanup = require(script.Parent.internal.cleanup)
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
-local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceUtils)
+local Cleanup = require(gameRoot.Client.UI.core.hooks.internal.cleanup)
+local PlatformServiceClient = require(gameRoot.Shared.Features.platform.PlatformServiceClient)
+local PlatformServiceUtils = require(gameRoot.Shared.Features.platform.PlatformServiceUtils)
 local React = require(ReplicatedStorage.Packages.React)
 
 type PlatformState = PlatformServiceUtils.PlatformState

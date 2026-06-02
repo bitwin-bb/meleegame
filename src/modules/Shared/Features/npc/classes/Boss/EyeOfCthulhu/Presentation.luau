@@ -1,12 +1,16 @@
 --!strict
-local Players = game:GetService("Players")
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local Players = game:GetService("Players")
 local SoundService = game:GetService("SoundService")
 
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local EyeOfCthulhuMotion = require(script.Parent.Motion)
+local AudioRegistry = require(gameRoot.Shared.Features.item.modules.Audio)
+local AudioServiceUtils = require(gameRoot.Client.Features.audio.AudioServiceUtils)
+local BossServiceUtils = require(gameRoot.Shared.Features.npc.BossServiceUtils)
+local EyeOfCthulhuMotion = require(gameRoot.Shared.Features.npc.classes.Boss.EyeOfCthulhu.Motion)
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
 
 type BossSnapshot = BossServiceUtils.BossSnapshot

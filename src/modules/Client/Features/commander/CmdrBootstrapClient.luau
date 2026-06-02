@@ -1,17 +1,17 @@
 --!strict
 
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+local packageRoot = assert(gameRoot.Parent, "Missing AquariaBackup package root.")
+local quentyPackages = assert(packageRoot.node_modules:FindFirstChild("@quenty"), "Missing @quenty packages.")
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
-
-local Maid = loader("Maid")
-local CmdrUtils = require(script:FindFirstAncestor("game").Shared.Features.commander.CmdrUtils)
-local MatterDebugMenuClient = require(script.Parent.MatterDebugMenuClient)
+local CmdrUtils = require(gameRoot.Shared.Features.commander.CmdrUtils)
+local Maid = require(quentyPackages.maid.Shared.Maid)
+local MatterDebugMenuClient = require(gameRoot.Client.Features.commander.MatterDebugMenuClient)
 
 type MaidClass = {
 	GiveTask: (self: MaidClass, task: any) -> any,

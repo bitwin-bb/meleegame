@@ -1,8 +1,10 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Charm = require(ReplicatedStorage.Packages.Charm)
-local PlayerDataServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.playerData.PlayerDataServiceUtils)
+local PlayerDataServiceUtils = require(gameRoot.Shared.Features.playerData.PlayerDataServiceUtils)
 
 export type CoinType = "copper" | "silver" | "gold" | "platinum"
 export type CoinAmounts = {
@@ -113,7 +115,7 @@ end
 
 local function createStateFromData(coinsDataRaw: any, loadStateRaw: any, fallbackStateRaw: any): CoinState
 	local fallbackState = if typeof(fallbackStateRaw) == "table"
-		then (fallbackStateRaw :: CoinState)
+		then fallbackStateRaw :: CoinState
 		else createDefaultState(PlayerDataServiceUtils.LOAD_STATE_UNLOADED)
 	local loadState = PlayerDataServiceUtils.sanitizeLoadState(loadStateRaw, fallbackState.loadState)
 	local rawAmounts, hasExplicitAmounts = resolveRawCoinAmounts(coinsDataRaw)
@@ -128,8 +130,7 @@ local function createStateFromData(coinsDataRaw: any, loadStateRaw: any, fallbac
 	}
 end
 
-local coinStateAtom: Charm.Atom<CoinState> =
-	Charm.atom(createDefaultState(PlayerDataServiceUtils.LOAD_STATE_UNLOADED))
+local coinStateAtom: Charm.Atom<CoinState> = Charm.atom(createDefaultState(PlayerDataServiceUtils.LOAD_STATE_UNLOADED))
 
 local totalCopperAtom: Charm.Selector<number> = Charm.computed(function(): number
 	return coinStateAtom().totalCopper
@@ -144,7 +145,7 @@ local function getCoinState(): CoinState
 end
 
 local function setCoinState(stateRaw: any): CoinState
-	local source = if typeof(stateRaw) == "table" then stateRaw else ({} :: any)
+	local source = if typeof(stateRaw) == "table" then stateRaw else {} :: any
 	local sourceTable = source :: { [string]: any }
 	local coinsData = if sourceTable.amounts ~= nil then sourceTable.amounts else sourceTable
 	local nextState = createStateFromData(coinsData, sourceTable.loadState, coinStateAtom())

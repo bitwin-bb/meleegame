@@ -1,9 +1,11 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local useMounted = require(script.Parent.useMounted)
-local useStableCallback = require(script.Parent.internal.useStableCallback)
+local useMounted = require(gameRoot.Client.UI.core.hooks.useMounted)
+local useStableCallback = require(gameRoot.Client.UI.core.hooks.internal.useStableCallback)
 
 export type AsyncStatus = "idle" | "loading" | "success" | "error"
 
@@ -178,7 +180,7 @@ local function useAsync<TValue>(callbackRaw: any, options: AsyncOptions<TValue>?
 		end
 
 		return requestId
-	end, ({ callback, mountedRef, onSuccess, onError } :: { any }))
+	end, { callback, mountedRef, onSuccess, onError } :: { any })
 
 	React.useEffect(function()
 		return function()

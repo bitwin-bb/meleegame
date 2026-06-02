@@ -1,6 +1,8 @@
 --!strict
 
-local useDebounce = require(script.Parent.Parent.core.hooks.useDebounce)
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
+
+local useDebounce = require(gameRoot.Client.UI.core.hooks.useDebounce)
 
 export type DebounceValueOptions<T> = {
 	leading: boolean?,

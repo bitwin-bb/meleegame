@@ -1,7 +1,8 @@
 --!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Sift = require(ReplicatedStorage.Packages.Sift)
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local EventBus = {}
 EventBus.__index = EventBus
@@ -122,7 +123,14 @@ function EventBus._getOrCreateBucket(self: EventBus, channel: string): ChannelBu
 	return bucket
 end
 
-function EventBus._addListener(self: EventBus, channelRaw: any, eventNameRaw: any, handler: EventHandler, priorityRaw: any, once: boolean): () -> ()
+function EventBus._addListener(
+	self: EventBus,
+	channelRaw: any,
+	eventNameRaw: any,
+	handler: EventHandler,
+	priorityRaw: any,
+	once: boolean
+): () -> ()
 	if typeof(handler) ~= "function" then
 		return function() end
 	end
@@ -158,11 +166,23 @@ function EventBus._addListener(self: EventBus, channelRaw: any, eventNameRaw: an
 	end
 end
 
-function EventBus.Subscribe(self: EventBus, channelRaw: any, eventNameRaw: any, handler: EventHandler, priorityRaw: any): () -> ()
+function EventBus.Subscribe(
+	self: EventBus,
+	channelRaw: any,
+	eventNameRaw: any,
+	handler: EventHandler,
+	priorityRaw: any
+): () -> ()
 	return self:_addListener(channelRaw, eventNameRaw, handler, priorityRaw, false)
 end
 
-function EventBus.Once(self: EventBus, channelRaw: any, eventNameRaw: any, handler: EventHandler, priorityRaw: any): () -> ()
+function EventBus.Once(
+	self: EventBus,
+	channelRaw: any,
+	eventNameRaw: any,
+	handler: EventHandler,
+	priorityRaw: any
+): () -> ()
 	return self:_addListener(channelRaw, eventNameRaw, handler, priorityRaw, true)
 end
 

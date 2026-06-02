@@ -1,12 +1,14 @@
 --!strict
+
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local Workspace = game:GetService("Workspace")
 
-local Angle = require(script:FindFirstAncestor("game").Shared.Core.Math.Angle)
-local Audio = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
-local Plane = require(script:FindFirstAncestor("game").Shared.Core.Math.Plane)
-local Trig = require(script:FindFirstAncestor("game").Shared.Core.Math.Trig)
-local WorkspaceFolders = require(script:FindFirstAncestor("game").Shared.Core.WorkspaceFolders)
+local Angle = require(gameRoot.Shared.Core.Math.Angle)
+local Audio = require(gameRoot.Shared.Features.item.modules.Audio)
+local AudioServiceUtils = require(gameRoot.Client.Features.audio.AudioServiceUtils)
+local Plane = require(gameRoot.Shared.Core.Math.Plane)
+local Trig = require(gameRoot.Shared.Core.Math.Trig)
+local WorkspaceFolders = require(gameRoot.Shared.Core.WorkspaceFolders)
 
 local PlayerServiceUtils = {}
 
@@ -307,7 +309,7 @@ function PlayerServiceUtils.ComputeRespawnMaxHealthFromDeath(maxHealthRaw: any, 
 end
 
 function PlayerServiceUtils.SanitizeInvincibilityFramesConfig(configRaw: any): InvincibilityFramesConfig
-	local source = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local source = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local duration = if typeof((source :: any).duration) == "number"
 			and (source :: any).duration == (source :: any).duration
 		then math.max(MIN_INVINCIBILITY_FRAMES_DURATION, (source :: any).duration)

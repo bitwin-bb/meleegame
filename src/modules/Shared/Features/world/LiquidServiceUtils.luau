@@ -1,10 +1,12 @@
 --!strict
 
-local LiquidServiceUtils = {}
+local gameRoot = assert(script:FindFirstAncestor("game"), "Missing Nevermore game root.")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local LiquidServiceUtils = {}
+local Lerp = require(gameRoot.Shared.Core.Math.Lerp)
 local Sift = require(ReplicatedStorage.Packages.Sift)
-local Lerp = require(script:FindFirstAncestor("game").Shared.Core.Math.Lerp)
-local WorldGenerationColor = require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.modules.WorldGenerationColor)
+local WorldGenerationColor = require(gameRoot.Shared.Features.worldGeneration.modules.WorldGenerationColor)
 
 LiquidServiceUtils.NETWORK_METHOD_REQUEST_SYNC = "requestSync"
 
@@ -569,7 +571,7 @@ local function createDefaultDefinitions(): { [number]: LiquidDefinition }
 end
 
 local function sanitizeDefinition(liquidType: number, sourceRaw: any, fallback: LiquidDefinition): LiquidDefinition
-	local source = if typeof(sourceRaw) == "table" then sourceRaw else ({} :: any)
+	local source = if typeof(sourceRaw) == "table" then sourceRaw else {} :: any
 	return {
 		id = liquidType,
 		name = if typeof(source.name) == "string" and source.name ~= "" then source.name else fallback.name,
@@ -685,19 +687,19 @@ end
 
 function LiquidServiceUtils.SanitizeConfig(configRaw: any, fallbackRaw: LiquidServiceConfig?): LiquidServiceConfig
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else LiquidServiceUtils.CreateDefaultConfig()
-	local source = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local source = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local definitions: { [number]: LiquidDefinition } = {}
-	local definitionSource = if typeof(source.definitions) == "table" then source.definitions else ({} :: any)
+	local definitionSource = if typeof(source.definitions) == "table" then source.definitions else {} :: any
 	for liquidType, fallbackDefinition in fallback.definitions do
 		local sourceDefinition = if typeof(definitionSource) == "table" then definitionSource[liquidType] else nil
 		definitions[liquidType] = sanitizeDefinition(liquidType, sourceDefinition, fallbackDefinition)
 	end
 
-	local simulationSource = if typeof(source.simulation) == "table" then source.simulation else ({} :: any)
-	local generationSource = if typeof(source.generation) == "table" then source.generation else ({} :: any)
-	local renderSource = if typeof(source.render) == "table" then source.render else ({} :: any)
-	local biomeTintsSource = if typeof(source.biomeTints) == "table" then source.biomeTints else ({} :: any)
-	local debugSource = if typeof(source.debug) == "table" then source.debug else ({} :: any)
+	local simulationSource = if typeof(source.simulation) == "table" then source.simulation else {} :: any
+	local generationSource = if typeof(source.generation) == "table" then source.generation else {} :: any
+	local renderSource = if typeof(source.render) == "table" then source.render else {} :: any
+	local biomeTintsSource = if typeof(source.biomeTints) == "table" then source.biomeTints else {} :: any
+	local debugSource = if typeof(source.debug) == "table" then source.debug else {} :: any
 
 	return {
 		maxFill = sanitizeInteger(source.maxFill, 32, MAX_FILL, fallback.maxFill),
@@ -993,7 +995,7 @@ end
 
 function LiquidServiceUtils.CreateState(stateRaw: any, fallbackRaw: LiquidServiceState?): LiquidServiceState
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else LiquidServiceUtils.CreateDefaultState()
-	local source = if typeof(stateRaw) == "table" then stateRaw else ({} :: any)
+	local source = if typeof(stateRaw) == "table" then stateRaw else {} :: any
 	return {
 		ready = if typeof(source.ready) == "boolean" then source.ready else fallback.ready,
 		tileSize = sanitizeNumber(source.tileSize, 0.05, 64, fallback.tileSize),
@@ -1164,7 +1166,7 @@ function LiquidMesher.BuildBackgroundVisualCells(
 		tileMinY = sanitizeInteger(layerSource.tileMinY, -10000000, 10000000, tileMinY),
 		width = layerWidth,
 		height = layerHeight,
-		tiles = if typeof(layerSource.tiles) == "table" then layerSource.tiles :: { number } else ({} :: any),
+		tiles = if typeof(layerSource.tiles) == "table" then layerSource.tiles :: { number } else {} :: any,
 	}
 	local minVisibleFill = math.max(1, config.render.minVisibleFill)
 	local maxLateralSpread = math.max(0, math.min(3, layerListIndex - 1))
@@ -1753,7 +1755,11 @@ local function scanLeakPath(
 	}
 end
 
-local function inspectCellDetailed(access: LiquidSolverAccess, tileX: number, tileY: number): DetailedLiquidCellInspection
+local function inspectCellDetailed(
+	access: LiquidSolverAccess,
+	tileX: number,
+	tileY: number
+): DetailedLiquidCellInspection
 	if access.isSolid(tileX, tileY) then
 		return {
 			hasLiquid = false,
