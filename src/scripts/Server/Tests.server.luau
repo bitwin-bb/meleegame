@@ -8,9 +8,22 @@ if script:GetAttribute("RunTests") == true then
 	local PACKAGE_NAME = "AquariaBackup"
 	local PACKAGE_LOAD_TIMEOUT_SECONDS = 10
 
-	local packageRoot = ServerScriptService:FindFirstChild(PACKAGE_NAME)
-		or ServerScriptService:WaitForChild(PACKAGE_NAME, PACKAGE_LOAD_TIMEOUT_SECONDS)
-	assert(packageRoot ~= nil, `[runTests] Missing ServerScriptService.{PACKAGE_NAME}.`)
+	local function resolvePackageRoot(): Instance
+		local deadline = os.clock() + PACKAGE_LOAD_TIMEOUT_SECONDS
+
+		while os.clock() < deadline do
+			local packageRoot = ReplicatedStorage:FindFirstChild(PACKAGE_NAME)
+				or ServerScriptService:FindFirstChild(PACKAGE_NAME)
+			if packageRoot ~= nil then
+				return packageRoot
+			end
+			task.wait(0.05)
+		end
+
+		error(`[runTests] Missing {PACKAGE_NAME}.`)
+	end
+
+	local packageRoot = resolvePackageRoot()
 
 	local gameRoot = packageRoot:FindFirstChild("game")
 		or packageRoot:WaitForChild("game", PACKAGE_LOAD_TIMEOUT_SECONDS)

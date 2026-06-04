@@ -1,6 +1,10 @@
 --!strict
 
 local ServerScriptService = game:GetService("ServerScriptService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local PACKAGE_NAME = "AquariaBackup"
+local PACKAGE_LOAD_TIMEOUT_SECONDS = 60
 
 local PACKAGE_TRACKER_IGNORED_MODULE_PATHS = {
 	"game/Shared/Features/npc/npc/EyeOfCthulhu",
@@ -62,8 +66,25 @@ local function disableDuplicatePackageTrackerModules(packageRoot: Instance)
 	end
 end
 
-local packageRoot = ServerScriptService:WaitForChild("AquariaBackup")
-local loader = assert(ServerScriptService:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils").Parent
+local function resolvePackageRoot(): Instance
+	local deadline = os.clock() + PACKAGE_LOAD_TIMEOUT_SECONDS
+
+	while os.clock() < deadline do
+		local packageRoot = ReplicatedStorage:FindFirstChild(PACKAGE_NAME)
+			or ServerScriptService:FindFirstChild(PACKAGE_NAME)
+		if packageRoot ~= nil then
+			return packageRoot
+		end
+		task.wait(0.05)
+	end
+
+	error(`timed out waiting for {PACKAGE_NAME}`)
+end
+
+local packageRoot = resolvePackageRoot()
+local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
+local loader = loaderUtils.Parent
+assert(loader ~= nil and loader:IsA("ModuleScript"), "Resolved loader is not a ModuleScript")
 disableDuplicatePackageTrackerModules(packageRoot)
 local loaderRequire = require(loader).bootstrapGame(packageRoot)
 

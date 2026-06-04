@@ -66,6 +66,9 @@ type JanitorClass = {
 local RagdollServiceClient = {}
 local SELF_REQUEST_REASON = "SelfRequest"
 
+RagdollServiceClient.state = RagdollServiceUtils.createDefaultState()
+RagdollServiceClient.stateChanged = Signal.new()
+
 local function didStateChange(previousState: RagdollServiceState, nextState: RagdollServiceState): boolean
 	if previousState.sequence ~= nextState.sequence then
 		return true
@@ -92,8 +95,8 @@ function RagdollServiceClient.Init(self: RagdollServiceClient)
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
-	self.state = RagdollServiceUtils.createDefaultState()
-	self.stateChanged = Signal.new()
+	self.state = self.state or RagdollServiceUtils.createDefaultState()
+	self.stateChanged = self.stateChanged or Signal.new()
 
 	self.janitor:GiveChore(function()
 		self.stateChanged:Destroy()
@@ -138,11 +141,12 @@ function RagdollServiceClient.RequestSelfRecover(self: RagdollServiceClient)
 end
 
 function RagdollServiceClient.GetState(self: RagdollServiceClient): RagdollServiceState
-	return RagdollServiceUtils.cloneState(self.state)
+	return RagdollServiceUtils.cloneState(self.state or RagdollServiceUtils.createDefaultState())
 end
 
 function RagdollServiceClient.IsRagdolled(self: RagdollServiceClient): boolean
-	return self.state.isRagdolled
+	local state = self.state
+	return state ~= nil and state.isRagdolled == true
 end
 
 function RagdollServiceClient.Destroy(self: RagdollServiceClient)

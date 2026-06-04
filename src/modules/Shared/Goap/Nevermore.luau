@@ -1,5 +1,3 @@
---!strict
-
 local packageRoot = script:FindFirstAncestor("game").Parent
 local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
 local loader = (require :: any)(loaderUtils.Parent).load(script)
@@ -159,7 +157,10 @@ function Nevermore.GetRolePackages(roleRaw: any): { [string]: any }
 
 	local packages = {}
 	for _, packageName in names do
-		packages[packageName] = Nevermore.Get(packageName)
+		local package = Nevermore.GetOptional(packageName)
+		if package ~= nil then
+			packages[packageName] = package
+		end
 	end
 
 	return packages
