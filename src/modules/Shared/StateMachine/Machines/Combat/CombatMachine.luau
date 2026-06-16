@@ -1,17 +1,15 @@
---!strict
-
-local Nevermore = require(script:FindFirstAncestor("StateMachine").Nevermore)
+local require = require(script.Parent.loader).load(script)
+local Nevermore = require("StateMachineNevermore")
 local Table = Nevermore.Get("Table")
 
-local root = script:FindFirstAncestor("StateMachine")
-local Blackboard = require(root.Core.Blackboard)
-local StateMachine = require(root.Core.StateMachine)
-local Transition = require(root.Core.Transition)
+local Blackboard = require("StateMachineBlackboard")
+local StateMachine = require("StateMachineEngine")
+local Transition = require("Transition")
 
-local ActiveState = require(script.Parent.ActiveState)
-local IdleState = require(script.Parent.IdleState)
-local RecoveryState = require(script.Parent.RecoveryState)
-local StartupState = require(script.Parent.StartupState)
+local ActiveState = require("ActiveState")
+local IdleState = require("CombatIdleState")
+local RecoveryState = require("RecoveryState")
+local StartupState = require("StartupState")
 
 local CombatMachine = {}
 

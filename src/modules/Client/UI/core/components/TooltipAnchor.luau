@@ -1,10 +1,11 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local TransparentFrame = require(script.Parent.Parent.primitives.TransparentFrame)
-local useHover = require(script.Parent.Parent.hooks.useHover)
-local useTooltip = require(script.Parent.Parent.hooks.useTooltip)
+local TransparentFrame = require("TransparentFrame")
+local useHover = require("useHover")
+local useTooltip = require("useTooltip")
 
 export type TooltipAnchorProps = {
 	id: string,

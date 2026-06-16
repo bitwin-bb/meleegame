@@ -1,5 +1,6 @@
---!strict
 -- Bezier, Hermite, and Catmull-Rom curve sampling helpers.
+
+local require = require(script.Parent.loader).load(script)
 
 local Curve = {}
 
@@ -13,10 +14,7 @@ end
 
 function Curve.quadratic<T>(p0: T, p1: T, p2: T, t: number): T
 	local u = 1 - t
-	return add(
-		add(mul(p0, u * u), mul(p1, 2 * u * t)),
-		mul(p2, t * t)
-	)
+	return add(add(mul(p0, u * u), mul(p1, 2 * u * t)), mul(p2, t * t))
 end
 
 function Curve.quadraticTangent<T>(p0: T, p1: T, p2: T, t: number): T
@@ -30,10 +28,7 @@ function Curve.cubic<T>(p0: T, p1: T, p2: T, p3: T, t: number): T
 	local u = 1 - t
 	local uu = u * u
 	local tt = t * t
-	return add(
-		add(mul(p0, uu * u), mul(p1, 3 * uu * t)),
-		add(mul(p2, 3 * u * tt), mul(p3, tt * t))
-	)
+	return add(add(mul(p0, uu * u), mul(p1, 3 * uu * t)), add(mul(p2, 3 * u * tt), mul(p3, tt * t)))
 end
 
 function Curve.hermite<T>(p0: T, m0: T, p1: T, m1: T, t: number): T
@@ -44,10 +39,7 @@ function Curve.hermite<T>(p0: T, m0: T, p1: T, m1: T, t: number): T
 	local h01 = -2 * ttt + 3 * tt
 	local h11 = ttt - tt
 
-	return add(
-		add(mul(p0, h00), mul(m0, h10)),
-		add(mul(p1, h01), mul(m1, h11))
-	)
+	return add(add(mul(p0, h00), mul(m0, h10)), add(mul(p1, h01), mul(m1, h11)))
 end
 
 function Curve.catmullRom<T>(p0: T, p1: T, p2: T, p3: T, t: number, tension: number?): T

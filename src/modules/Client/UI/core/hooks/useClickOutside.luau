@@ -1,10 +1,12 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local UserInputService = game:GetService("UserInputService")
 
-local GuiUtils = require(script.Parent.internal.gui)
+local GuiUtils = require("gui")
 local React = require(ReplicatedStorage.Packages.React)
-local useStableCallback = require(script.Parent.internal.useStableCallback)
+local useStableCallback = require("useStableCallback")
 
 export type RefObject<T> = {
 	current: T,

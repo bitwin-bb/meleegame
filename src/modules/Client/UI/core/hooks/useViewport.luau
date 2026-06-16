@@ -1,11 +1,13 @@
---!strict
-local GuiService = game:GetService("GuiService")
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local GuiService = game:GetService("GuiService")
 local Workspace = game:GetService("Workspace")
 
-local Cleanup = require(script.Parent.internal.cleanup)
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
-local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceUtils)
+local Cleanup = require("cleanup")
+local PlatformServiceClient = require("PlatformServiceClient")
+local PlatformServiceUtils = require("PlatformServiceUtils")
 local React = require(ReplicatedStorage.Packages.React)
 
 type PlatformState = PlatformServiceUtils.PlatformState

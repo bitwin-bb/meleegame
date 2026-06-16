@@ -1,9 +1,10 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Cleanup = require(script.Parent.internal.cleanup)
+local Cleanup = require("cleanup")
 local React = require(ReplicatedStorage.Packages.React)
-local useLatest = require(script.Parent.internal.useLatest)
+local useLatest = require("useLatest")
 
 export type SignalOptions<TValue> = {
 	initialValue: TValue?,

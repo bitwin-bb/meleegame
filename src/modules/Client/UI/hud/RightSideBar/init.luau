@@ -1,10 +1,13 @@
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BreathRoot = require(script:FindFirstAncestor("game").Shared.Features.breath.ui.BreathRoot)
-local ManaRoot = require(script:FindFirstAncestor("game").Shared.Features.mana.ui.ManaRoot)
-local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
+local BreathRoot = require("BreathRoot")
+local BuffRoot = require("BuffRoot")
+local ManaRoot = require("ManaRoot")
+local NavButton = require("NavButton")
 local React = require(ReplicatedStorage.Packages.React)
-local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
+local Responsive = require("useViewportScale")
 
 local e: typeof(React.createElement) = React.createElement
 
@@ -36,6 +39,7 @@ type RightSideBarProps = {
 	buttons: { RightSideBarButton }?,
 	navigateEvent: BindableEvent?,
 	manaBarProps: { [string]: any }?,
+	buffBarProps: { [string]: any }?,
 	breathBarProps: { [string]: any }?,
 	onButtonActivated: ((payload: any, inputObject: InputObject?, button: RightSideBarButton) -> ())?,
 }
@@ -105,10 +109,24 @@ return function(props: RightSideBarProps)
 		end
 	end
 
-	local breathBarProps = {
+	local buffContainerHeight = if responsive.isCompactHud then 126 else 150
+	local buffBarProps = {
 		layoutOrder = 7,
 		zIndex = zIndex + 1,
 		position = UDim2.new(1, 0, 0, meterTokens.frameHeight + hudTokens.edgePadding),
+		anchorPoint = Vector2.new(1, 0),
+		size = UDim2.fromOffset(meterTokens.frameWidth, buffContainerHeight),
+	}
+	if props.buffBarProps ~= nil then
+		for key, value in pairs(props.buffBarProps) do
+			buffBarProps[key] = value
+		end
+	end
+
+	local breathBarProps = {
+		layoutOrder = 8,
+		zIndex = zIndex + 1,
+		position = UDim2.new(1, 0, 0, meterTokens.frameHeight + buffContainerHeight + (hudTokens.edgePadding * 2)),
 		anchorPoint = Vector2.new(1, 0),
 		size = UDim2.fromOffset(meterTokens.frameWidth, meterTokens.frameHeight),
 		bubbleSize = UDim2.fromOffset(meterTokens.segmentSize, meterTokens.segmentSize),
@@ -156,6 +174,7 @@ return function(props: RightSideBarProps)
 				ZIndex = zIndex,
 			}, buttonListChildren),
 			e(ManaRoot, manaBarProps),
+			e(BuffRoot, buffBarProps),
 			e(BreathRoot, breathBarProps),
 		}),
 	})

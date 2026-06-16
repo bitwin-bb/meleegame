@@ -1,5 +1,7 @@
---!strict
-local Lerp = require(script.Parent.Parent.Math.Lerp)
+
+local require = require(script.Parent.loader).load(script)
+
+local Lerp = require("Lerp")
 
 local RichTextFormatter = {}
 
@@ -145,7 +147,7 @@ function RichTextFormatter.WrapTag(tag: string, contentRaw: any, attributesRaw: 
 end
 
 function RichTextFormatter.New(configRaw: FormatterConfig?): Builder
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	if typeof(config.cacheLimit) == "number" then
 		globalCache.limit = clampInteger(config.cacheLimit, globalCache.limit, 8, 100000)
 	end

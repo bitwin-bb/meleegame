@@ -1,8 +1,9 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local useLatest = require(script.Parent.useLatest)
+local useLatest = require("useLatest")
 
 local function useStableCallback(callbackRaw: any): (...any) -> ...any
 	local callbackRef = useLatest(callbackRaw)

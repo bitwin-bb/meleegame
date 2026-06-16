@@ -1,6 +1,7 @@
---!strict
 
-local Utils = require(script:FindFirstAncestor("StateMachine").Utils)
+local require = require(script.Parent.loader).load(script)
+
+local Utils = require("StateMachineUtils")
 
 local HealthBelowGuard = {}
 

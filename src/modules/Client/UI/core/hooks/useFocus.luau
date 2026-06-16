@@ -1,8 +1,9 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local useStableCallback = require(script.Parent.internal.useStableCallback)
+local useStableCallback = require("useStableCallback")
 
 export type FocusOptions = {
 	initialFocused: boolean?,

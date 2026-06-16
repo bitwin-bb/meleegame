@@ -6,10 +6,10 @@ local PACKAGES_NAME = "Packages"
 local REACT_NAME = "React"
 local PACKAGE_WAIT_TIMEOUT_SECONDS = 60
 
-local LOADER_FONT = Enum.Font.Code
+local loader_FONT = Enum.Font.Code
 local BACKGROUND_COLOR = Color3.fromRGB(0, 0, 0)
 local TEXT_COLOR = Color3.fromRGB(255, 255, 255)
-local TRACK_COLOR = Color3.fromRGB(46, 46, 46)
+local TRACK_COLOR = Color3.fromRGB(20, 20, 20)
 local BAR_COLOR = Color3.fromRGB(255, 255, 255)
 
 local function waitForPackageModule(name: string): ModuleScript
@@ -29,7 +29,7 @@ end
 local React = (require :: any)(waitForPackageModule(REACT_NAME))
 local e: typeof(React.createElement) = React.createElement
 
-export type LoaderSnapshot = {
+export type loaderSnapshot = {
 	status: string,
 	stage: string,
 	message: string,
@@ -47,11 +47,11 @@ export type LoaderSnapshot = {
 	failures: { string },
 }
 
-export type LoaderGuiProps = {
-	snapshot: LoaderSnapshot?,
+export type loaderGuiProps = {
+	snapshot: loaderSnapshot?,
 }
 
-local DEFAULT_SNAPSHOT: LoaderSnapshot = {
+local DEFAULT_SNAPSHOT: loaderSnapshot = {
 	status = "idle",
 	stage = "boot",
 	message = "starting loader",
@@ -121,7 +121,7 @@ local function sanitizeStringArray(valueRaw: any): { string }
 	return values
 end
 
-local function sanitizeSnapshot(valueRaw: any): LoaderSnapshot
+local function sanitizeSnapshot(valueRaw: any): loaderSnapshot
 	local value: { [string]: any } = if typeof(valueRaw) == "table" then valueRaw :: { [string]: any } else ({} :: any)
 
 	return {
@@ -143,7 +143,7 @@ local function sanitizeSnapshot(valueRaw: any): LoaderSnapshot
 	}
 end
 
-local function resolveLoadingText(snapshot: LoaderSnapshot): string
+local function resolveLoadingText(snapshot: loaderSnapshot): string
 	if snapshot.status == "failed" then
 		return "loader failed"
 	end
@@ -160,7 +160,7 @@ local function formatPercent(progress: number): string
 	return `{math.floor(math.clamp(progress, 0, 1) * 100 + 0.5)}%`
 end
 
-local function LoaderGui(props: LoaderGuiProps): any
+local function loaderGui(props: loaderGuiProps): any
 	local snapshot = sanitizeSnapshot(props.snapshot)
 	local progress = math.clamp(snapshot.progress, 0, 1)
 
@@ -189,7 +189,7 @@ local function LoaderGui(props: LoaderGuiProps): any
 					Position = UDim2.fromOffset(0, 0),
 					BackgroundTransparency = 1,
 					BorderSizePixel = 0,
-					Font = LOADER_FONT,
+					Font = loader_FONT,
 					Text = resolveLoadingText(snapshot),
 					TextColor3 = TEXT_COLOR,
 					TextSize = 16,
@@ -200,7 +200,7 @@ local function LoaderGui(props: LoaderGuiProps): any
 					ZIndex = 1002,
 				}),
 				e("Frame", {
-					Size = UDim2.new(1, 0, 0, 8),
+					Size = UDim2.new(1, 0, 0, 4),
 					Position = UDim2.fromOffset(0, 34),
 					BackgroundColor3 = TRACK_COLOR,
 					BorderSizePixel = 0,
@@ -220,7 +220,7 @@ local function LoaderGui(props: LoaderGuiProps): any
 					Position = UDim2.fromOffset(0, 48),
 					BackgroundTransparency = 1,
 					BorderSizePixel = 0,
-					Font = LOADER_FONT,
+					Font = loader_FONT,
 					Text = formatPercent(progress),
 					TextColor3 = TEXT_COLOR,
 					TextSize = 16,
@@ -233,4 +233,4 @@ local function LoaderGui(props: LoaderGuiProps): any
 	})
 end
 
-return LoaderGui
+return loaderGui

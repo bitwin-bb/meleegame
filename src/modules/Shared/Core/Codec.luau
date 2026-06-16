@@ -1,11 +1,22 @@
---!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local require = require(script.Parent.loader).load(script)
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local Codec = {}
 
-export type SchemaKind = "any" | "nil" | "boolean" | "number" | "integer" | "string" | "array" | "object" | "map" | "literal"
+export type SchemaKind =
+	"any"
+	| "nil"
+	| "boolean"
+	| "number"
+	| "integer"
+	| "string"
+	| "array"
+	| "object"
+	| "map"
+	| "literal"
 
 export type SchemaNode = {
 	kind: SchemaKind,
@@ -365,7 +376,7 @@ local function applyDeltaRecursive(previous: any, delta: any): any
 
 	local out = {}
 	if typeof(previous) == "table" then
-		for key, value in (previous :: { [any]: any }) do
+		for key, value in previous :: { [any]: any } do
 			out[key] = value
 		end
 	end
@@ -547,7 +558,12 @@ local function decodeHexByte(raw: string): number
 	return value
 end
 
-local function encodeCompressedSegmentLiteral(builder: { string }, source: string, startIndex: number, lengthValue: number)
+local function encodeCompressedSegmentLiteral(
+	builder: { string },
+	source: string,
+	startIndex: number,
+	lengthValue: number
+)
 	builder[#builder + 1] = "L"
 	builder[#builder + 1] = tostring(lengthValue)
 	builder[#builder + 1] = ":"
@@ -674,7 +690,11 @@ function Codec.CompressSaveSafe(source: string): string
 		local startCursor = cursor
 		local currentByte = string.byte(source, cursor)
 		local runLength = 1
-		while cursor + runLength <= sourceLength and runLength < 65535 and string.byte(source, cursor + runLength) == currentByte do
+		while
+			cursor + runLength <= sourceLength
+			and runLength < 65535
+			and string.byte(source, cursor + runLength) == currentByte
+		do
 			runLength += 1
 		end
 
@@ -686,7 +706,11 @@ function Codec.CompressSaveSafe(source: string): string
 			while cursor <= sourceLength do
 				local byteValue = string.byte(source, cursor)
 				local innerRun = 1
-				while cursor + innerRun <= sourceLength and innerRun < 4 and string.byte(source, cursor + innerRun) == byteValue do
+				while
+					cursor + innerRun <= sourceLength
+					and innerRun < 4
+					and string.byte(source, cursor + innerRun) == byteValue
+				do
 					innerRun += 1
 				end
 				if innerRun >= 4 then

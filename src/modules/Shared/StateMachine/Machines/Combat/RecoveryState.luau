@@ -1,6 +1,7 @@
---!strict
 
-local State = require(script:FindFirstAncestor("StateMachine").Core.State)
+local require = require(script.Parent.loader).load(script)
+
+local State = require("StateMachineState")
 
 local RecoveryState = {}
 

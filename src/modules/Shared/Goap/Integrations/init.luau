@@ -1,13 +1,14 @@
---!strict
 
-local Nevermore = require(script:FindFirstAncestor("Goap").Nevermore)
+local require = require(script.Parent.loader).load(script)
+
+local Nevermore = require("GoapNevermore")
 local Table = Nevermore.GetRolePackages("Exports").Table
 
 return Table.copy({
-	StateMachineAdapter = require(script.StateMachineAdapter),
-	MovementAdapter = require(script.MovementAdapter),
-	CombatAdapter = require(script.CombatAdapter),
-	AbilityAdapter = require(script.AbilityAdapter),
-	TargetingAdapter = require(script.TargetingAdapter),
-	PathfindingAdapter = require(script.PathfindingAdapter),
+	StateMachineAdapter = require(script:WaitForChild("StateMachineAdapter")),
+	MovementAdapter = require(script:WaitForChild("GoapMovementAdapter")),
+	CombatAdapter = require(script:WaitForChild("CombatAdapter")),
+	AbilityAdapter = require(script:WaitForChild("AbilityAdapter")),
+	TargetingAdapter = require(script:WaitForChild("TargetingAdapter")),
+	PathfindingAdapter = require(script:WaitForChild("PathfindingAdapter")),
 })

@@ -1,9 +1,11 @@
---!strict
+
 -- Deterministic waveform and ping-pong helpers.
 
-local Num = require(script.Parent.Num)
-local Range = require(script.Parent.Range)
-local Trig = require(script.Parent.Trig)
+local require = require(script.Parent.loader).load(script)
+
+local Num = require("Num")
+local Range = require("Range")
+local Trig = require("Trig")
 
 local Osc = {}
 
@@ -20,7 +22,13 @@ function Osc.Sine(time: number, amplitude: number?, frequency: number?, phaseRad
 	return bias + amp * math.sin(Trig.TAU * hz * time + phase)
 end
 
-function Osc.Cosine(time: number, amplitude: number?, frequency: number?, phaseRadians: number?, offset: number?): number
+function Osc.Cosine(
+	time: number,
+	amplitude: number?,
+	frequency: number?,
+	phaseRadians: number?,
+	offset: number?
+): number
 	local amp = amplitude or 1
 	local hz = frequency or 1
 	local phase = phaseRadians or 0
@@ -28,7 +36,13 @@ function Osc.Cosine(time: number, amplitude: number?, frequency: number?, phaseR
 	return bias + amp * math.cos(Trig.TAU * hz * time + phase)
 end
 
-function Osc.Triangle(time: number, amplitude: number?, frequency: number?, phaseRadians: number?, offset: number?): number
+function Osc.Triangle(
+	time: number,
+	amplitude: number?,
+	frequency: number?,
+	phaseRadians: number?,
+	offset: number?
+): number
 	local amp = amplitude or 1
 	local hz = frequency or 1
 	local bias = offset or 0

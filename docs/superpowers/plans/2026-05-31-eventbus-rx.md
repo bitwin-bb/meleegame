@@ -612,7 +612,7 @@ Create `src/modules/Shared/SharedEventBus/Core/EventBus.luau`:
 --!strict
 
 local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
+local loaderUtils = assert(packageRoot:FindFirstChild("loaderUtils", true), "Missing loaderUtils")
 local loader = (require :: any)(loaderUtils.Parent).load(script)
 
 local Rx = loader("Rx")
@@ -1090,7 +1090,7 @@ Create `src/modules/Server/ServerEventBus/Core/signals/ServerSignal.luau`:
 ```lua
 --!strict
 
-return require(script:FindFirstAncestor("game").Shared.SharedEventBus.Core.signals.Signal)
+return require(script:FindFirstAncestor("game").Shared.SharedEventBus.SharedEventBusCore.SharedEventBusSignals.EventBusSignal)
 ```
 
 Create `src/modules/Server/ServerEventBus/Core/signals/init.luau`:
@@ -1340,7 +1340,7 @@ Create `src/modules/Client/ClientEventBus/Core/signals/ClientSignal.luau`:
 ```lua
 --!strict
 
-return require(script:FindFirstAncestor("game").Shared.SharedEventBus.Core.signals.Signal)
+return require(script:FindFirstAncestor("game").Shared.SharedEventBus.SharedEventBusCore.SharedEventBusSignals.EventBusSignal)
 ```
 
 Create `src/modules/Client/ClientEventBus/Core/signals/init.luau`:

@@ -1,9 +1,10 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local useLatest = require(script.Parent.internal.useLatest)
-local useTimeout = require(script.Parent.useTimeout)
+local useLatest = require("useLatest")
+local useTimeout = require("useTimeout")
 
 export type DebounceOptions<T> = {
 	leading: boolean?,
@@ -46,7 +47,7 @@ local function useDebounce<T>(value: T, delaySecondsRaw: any, options: DebounceO
 
 		debouncedValueRef.current = nextValue
 		setDebouncedValue(nextValue)
-	end, ({ latestValueRef, equalityRef } :: { any }))
+	end, { latestValueRef, equalityRef } :: { any })
 
 	local timeout = useTimeout(commitLatestValue, delaySeconds, {
 		enabled = true,
@@ -56,34 +57,37 @@ local function useDebounce<T>(value: T, delaySecondsRaw: any, options: DebounceO
 	local restartTimeout = timeout.restart
 	local isTimeoutScheduled = timeout.isScheduled
 
-	React.useEffect(function()
-		local isEqual = equalityRef.current :: (any, any) -> boolean
-		if isEqual(debouncedValueRef.current, value) then
-			cancelTimeout()
-			return
-		end
+	React.useEffect(
+		function()
+			local isEqual = equalityRef.current :: (any, any) -> boolean
+			if isEqual(debouncedValueRef.current, value) then
+				cancelTimeout()
+				return
+			end
 
-		if delaySeconds <= 0 then
-			commitLatestValue()
-			return
-		end
+			if delaySeconds <= 0 then
+				commitLatestValue()
+				return
+			end
 
-		if leading and not isTimeoutScheduled then
-			debouncedValueRef.current = value
-			setDebouncedValue(value)
-		end
+			if leading and not isTimeoutScheduled then
+				debouncedValueRef.current = value
+				setDebouncedValue(value)
+			end
 
-		restartTimeout(delaySeconds)
-	end, ({
-		value,
-		delaySeconds,
-		leading,
-		isTimeoutScheduled,
-		cancelTimeout,
-		restartTimeout,
-		commitLatestValue,
-		equalityRef,
-	} :: { any }))
+			restartTimeout(delaySeconds)
+		end,
+		{
+			value,
+			delaySeconds,
+			leading,
+			isTimeoutScheduled,
+			cancelTimeout,
+			restartTimeout,
+			commitLatestValue,
+			equalityRef,
+		} :: { any }
+	)
 
 	return {
 		value = debouncedValue,

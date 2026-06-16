@@ -1,5 +1,6 @@
---!strict
 -- Lightweight numerical derivative helpers.
+
+local require = require(script.Parent.loader).load(script)
 
 local Deriv = {}
 

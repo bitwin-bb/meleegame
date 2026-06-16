@@ -1,9 +1,10 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local UiScaleUtils = require(script:FindFirstAncestor("game").Client.UI.core.utils.UiScaleUtils)
-local useViewport = require(script.Parent.useViewport)
+local UiScaleUtils = require("UiScaleUtils")
+local useViewport = require("useViewport")
 
 export type ResponsiveMetrics = UiScaleUtils.ResponsiveMetrics
 

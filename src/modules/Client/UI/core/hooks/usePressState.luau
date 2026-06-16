@@ -1,8 +1,9 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local useStableCallback = require(script.Parent.internal.useStableCallback)
+local useStableCallback = require("useStableCallback")
 
 export type PressStateOptions = {
 	disabled: boolean?,
@@ -37,13 +38,13 @@ local function usePressState(options: PressStateOptions?): PressStateResult
 		local nextHovered = nextHoveredRaw == true and not disabled
 		setHoveredState(nextHovered)
 		onHoverChanged(nextHovered)
-	end, ({ disabled, onHoverChanged } :: { any }))
+	end, { disabled, onHoverChanged } :: { any })
 
 	local setPressed = (React.useCallback :: any)(function(nextPressedRaw: boolean)
 		local nextPressed = nextPressedRaw == true and not disabled
 		setPressedState(nextPressed)
 		onPressedChanged(nextPressed)
-	end, ({ disabled, onPressedChanged } :: { any }))
+	end, { disabled, onPressedChanged } :: { any })
 
 	local onMouseEnter = React.useCallback(function()
 		setHovered(true)

@@ -1,7 +1,9 @@
---!strict
+
 -- Plane construction, distances, projections, and intersections.
 
-local Vec = require(script.Parent.Vec)
+local require = require(script.Parent.loader).load(script)
+
+local Vec = require("Vec")
 
 local Plane = {}
 

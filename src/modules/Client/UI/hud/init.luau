@@ -1,10 +1,12 @@
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local BottomBar = require(script:FindFirstAncestor("game").Client.UI.hud.BottomBar)
-local LeftSideBar = require(script:FindFirstAncestor("game").Client.UI.hud.LeftSideBar)
+local BottomBar = require(script:WaitForChild("BottomBar"))
+local LeftSideBar = require(script:WaitForChild("LeftSideBar"))
 local React = require(ReplicatedStorage.Packages.React)
-local RightSideBar = require(script:FindFirstAncestor("game").Client.UI.hud.RightSideBar)
-local TopBar = require(script:FindFirstAncestor("game").Client.UI.hud.TopBar)
+local RightSideBar = require(script:WaitForChild("RightSideBar"))
+local TopBar = require(script:WaitForChild("TopBar"))
 
 local e: typeof(React.createElement) = React.createElement
 
@@ -27,6 +29,7 @@ type HudProps = {
 	rightButtons: { any }?,
 	hpBarProps: { [string]: any }?,
 	manaBarProps: { [string]: any }?,
+	buffBarProps: { [string]: any }?,
 	breathBarProps: { [string]: any }?,
 	inventoryHotbarProps: { [string]: any }?,
 	onNavigate: ((barName: string, payload: any, inputObject: InputObject?, button: any) -> ())?,
@@ -84,6 +87,7 @@ return function(props: HudProps)
 			buttons = props.rightButtons,
 			navigateEvent = props.navigateEvent,
 			manaBarProps = props.manaBarProps,
+			buffBarProps = props.buffBarProps,
 			breathBarProps = props.breathBarProps,
 			onButtonActivated = function(payload: any, inputObject: InputObject?, button: any)
 				if props.onNavigate then

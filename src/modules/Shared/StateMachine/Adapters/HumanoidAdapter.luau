@@ -1,6 +1,7 @@
---!strict
 
-local Nevermore = require(script.Parent.Parent.Nevermore)
+local require = require(script.Parent.loader).load(script)
+
+local Nevermore = require("StateMachineNevermore")
 local HumanoidUtils = Nevermore.Get("HumanoidUtils")
 local Table = Nevermore.Get("Table")
 

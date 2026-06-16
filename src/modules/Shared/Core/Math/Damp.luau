@@ -1,7 +1,9 @@
---!strict
+
 -- Exponential damping helpers.
 
-local Angle = require(script.Parent.Angle)
+local require = require(script.Parent.loader).load(script)
+
+local Angle = require("Angle")
 
 local Damp = {}
 
@@ -28,12 +30,12 @@ end
 
 function Damp.value<T>(current: T, target: T, lambda: number, dt: number): T
 	local blend = Damp.Factor(lambda, dt)
-	return ((((current :: any) + (((target :: any) - (current :: any)) :: any) * blend) :: any) :: T)
+	return (((current :: any) + (((target :: any) - (current :: any)) :: any) * blend) :: any) :: T
 end
 
 function Damp.halfLifeValue<T>(current: T, target: T, halfLife: number, dt: number): T
 	local blend = Damp.HalfLifeFactor(halfLife, dt)
-	return ((((current :: any) + (((target :: any) - (current :: any)) :: any) * blend) :: any) :: T)
+	return (((current :: any) + (((target :: any) - (current :: any)) :: any) * blend) :: any) :: T
 end
 
 function Damp.AngleRadians(current: number, target: number, lambda: number, dt: number): number

@@ -1,12 +1,8 @@
---!strict
+local require = require(script.Parent.loader).load(script)
 
 local RunService = game:GetService("RunService")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
-
-local ServiceBag = loader("ServiceBag")
+local ServiceBag = require("ServiceBag")
 
 local NevermoreSupport = {}
 

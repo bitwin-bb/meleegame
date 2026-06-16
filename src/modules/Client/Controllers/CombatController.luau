@@ -1,7 +1,6 @@
---!strict
+local require = require(script.Parent.loader).load(script)
 
-local gameRoot = script:FindFirstAncestor("game")
-local StateMachinePackage = require(gameRoot.Shared.StateMachine)
+local StateMachinePackage = require("StateMachine")
 
 local Nevermore = StateMachinePackage.Nevermore
 local Maid = Nevermore.Get("Maid")

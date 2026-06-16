@@ -1,8 +1,10 @@
---!strict
+
 -- Projection, rejection, reflection, and closest-point helpers.
 
-local Num = require(script.Parent.Num)
-local Vec = require(script.Parent.Vec)
+local require = require(script.Parent.loader).load(script)
+
+local Num = require("Num")
+local Vec = require("Vec")
 
 local Proj = {}
 

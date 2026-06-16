@@ -1,5 +1,7 @@
---!strict
-local DynamicTextResolver = require(script.Parent.DynamicTextResolver)
+
+local require = require(script.Parent.loader).load(script)
+
+local DynamicTextResolver = require("DynamicTextResolver")
 
 local LocalizationEngine = {}
 LocalizationEngine.__index = LocalizationEngine
@@ -41,13 +43,17 @@ local function normalizeCount(countRaw: any): number
 end
 
 function LocalizationEngine.New(configRaw: LocalizationConfig?): LocalizationEngine
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local defaultLanguage = if isValidLanguageCode(config.defaultLanguage) then config.defaultLanguage else "en"
-	local fallbackLanguage = if isValidLanguageCode(config.fallbackLanguage) then config.fallbackLanguage else defaultLanguage
-	local resolver = if config.resolver ~= nil then config.resolver else DynamicTextResolver.new({
-		warnOnMissing = false,
-		keepUnknownPlaceholders = true,
-	})
+	local fallbackLanguage = if isValidLanguageCode(config.fallbackLanguage)
+		then config.fallbackLanguage
+		else defaultLanguage
+	local resolver = if config.resolver ~= nil
+		then config.resolver
+		else DynamicTextResolver.new({
+			warnOnMissing = false,
+			keepUnknownPlaceholders = true,
+		})
 
 	local self = setmetatable({
 		languages = {} :: { [string]: LanguageTable },
@@ -139,7 +145,12 @@ function LocalizationEngine.GetAvailableLanguages(self: LocalizationEngine): { s
 	return out
 end
 
-function LocalizationEngine._resolvePlural(self: LocalizationEngine, language: string, value: { [string]: string }, countRaw: any): string?
+function LocalizationEngine._resolvePlural(
+	self: LocalizationEngine,
+	language: string,
+	value: { [string]: string },
+	countRaw: any
+): string?
 	local count = normalizeCount(countRaw)
 	local rule = self.pluralRules[language] or DEFAULT_PLURAL_RULE
 	local form = rule(count)
@@ -174,14 +185,21 @@ function LocalizationEngine._lookup(self: LocalizationEngine, language: string, 
 	return nil
 end
 
-function LocalizationEngine.Translate(self: LocalizationEngine, keyRaw: any, paramsRaw: any?, optionsRaw: TranslateOptions?): string
+function LocalizationEngine.Translate(
+	self: LocalizationEngine,
+	keyRaw: any,
+	paramsRaw: any?,
+	optionsRaw: TranslateOptions?
+): string
 	if typeof(keyRaw) ~= "string" or keyRaw == "" then
 		return ""
 	end
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
-	local params = if typeof(paramsRaw) == "table" then paramsRaw else ({} :: any)
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
+	local params = if typeof(paramsRaw) == "table" then paramsRaw else {} :: any
 	local language = if isValidLanguageCode(options.language) then options.language else self.currentLanguage
-	local fallbackLanguage = if isValidLanguageCode(options.fallbackLanguage) then options.fallbackLanguage else self.fallbackLanguage
+	local fallbackLanguage = if isValidLanguageCode(options.fallbackLanguage)
+		then options.fallbackLanguage
+		else self.fallbackLanguage
 
 	local count = if options.count ~= nil then options.count else params.count
 	local template = self:_lookup(language, keyRaw, count)

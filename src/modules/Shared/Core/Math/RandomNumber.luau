@@ -1,6 +1,7 @@
---!strict
 
-local Rand = require(script.Parent.Rand)
+local require = require(script.Parent.loader).load(script)
+
+local Rand = require("Rand")
 
 local RandomNumber = {}
 

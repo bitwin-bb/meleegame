@@ -1,7 +1,9 @@
---!strict
+
 -- Orthonormal basis construction and local/world conversion helpers.
 
-local Vec = require(script.Parent.Vec)
+local require = require(script.Parent.loader).load(script)
+
+local Vec = require("Vec")
 
 local Basis = {}
 
@@ -83,17 +85,11 @@ function Basis.FromCFrame(frame: CFrame): Basis
 end
 
 function Basis.ToWorldVector(basis: Basis, localVector: Vector3): Vector3
-	return basis.xAxis * localVector.X
-		+ basis.yAxis * localVector.Y
-		+ basis.zAxis * localVector.Z
+	return basis.xAxis * localVector.X + basis.yAxis * localVector.Y + basis.zAxis * localVector.Z
 end
 
 function Basis.ToLocalVector(basis: Basis, worldVector: Vector3): Vector3
-	return Vector3.new(
-		worldVector:Dot(basis.xAxis),
-		worldVector:Dot(basis.yAxis),
-		worldVector:Dot(basis.zAxis)
-	)
+	return Vector3.new(worldVector:Dot(basis.xAxis), worldVector:Dot(basis.yAxis), worldVector:Dot(basis.zAxis))
 end
 
 function Basis.ToWorldPoint(basis: Basis, localPoint: Vector3): Vector3

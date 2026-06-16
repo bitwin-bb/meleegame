@@ -1,19 +1,19 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local testEnvironment = getfenv() :: any
 local describe = testEnvironment.describe :: any
 local it = testEnvironment.it :: any
 local expect = testEnvironment.expect :: any
 
 -- selene: allow(undefined_variable)
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Angle = require(script:FindFirstAncestor("game").Shared.Core.Math.Angle)
-local Bounds = require(script:FindFirstAncestor("game").Shared.Core.Math.Bounds)
-local Damp = require(script:FindFirstAncestor("game").Shared.Core.Math.Damp)
-local Num = require(script:FindFirstAncestor("game").Shared.Core.Math.Num)
-local Proj = require(script:FindFirstAncestor("game").Shared.Core.Math.Proj)
-local Solve = require(script:FindFirstAncestor("game").Shared.Core.Math.Solve)
-local Spring = require(script:FindFirstAncestor("game").Shared.Core.Math.Spring)
+local Angle = require("Angle")
+local Bounds = require("Bounds")
+local Damp = require("Damp")
+local Num = require("Num")
+local Proj = require("Proj")
+local Solve = require("Solve")
+local Spring = require("MathSpring")
 
 return function()
 	local function expectNear(actual: number, expected: number, epsilon: number?)

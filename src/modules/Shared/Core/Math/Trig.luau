@@ -1,7 +1,9 @@
---!strict
+
 -- Trigonometric helpers and safe conversions.
 
-local Num = require(script.Parent.Num)
+local require = require(script.Parent.loader).load(script)
+
+local Num = require("Num")
 
 local Trig = {}
 

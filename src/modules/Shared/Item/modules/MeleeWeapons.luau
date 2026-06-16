@@ -1,0 +1,38 @@
+
+local require = require(script.Parent.loader).load(script)
+
+local Animations = require(script.Parent:WaitForChild("Animations"))
+local BuildAnimationMelee =
+	require(script:FindFirstAncestor("game").Shared.Game.Render:WaitForChild("BuildAnimationMelee"))
+
+local weaponAnimationIds = (((Animations :: any).Items or ({} :: any)).Weapons or ({} :: any)) :: { [string]: any }
+
+return {
+	["CopperShortSword"] = {
+		name = "Copper Shortsword",
+		description = "Your very first weapon!",
+		functionality = "Weapon",
+		damage = 10,
+		melee = {
+			animations = BuildAnimationMelee(weaponAnimationIds.CopperShortSword),
+		},
+	},
+	["CopperBroadSword"] = {
+		name = "Copper Broadsword",
+		description = "Apparently this weapon is quite the heavy hitter! Although time your attacks or else you'll die terribly",
+		functionality = "Weapon",
+		damage = 10,
+		melee = {
+			animations = BuildAnimationMelee(weaponAnimationIds.CopperBroadSword),
+		},
+	},
+	["Katana"] = {
+		name = "Katana",
+		description = "A weapon used by legendary ninjas or samurai. You feel like Bruce Lee",
+		functionality = "Weapon",
+		damage = 10,
+		melee = {
+			animations = BuildAnimationMelee(weaponAnimationIds.Katana),
+		},
+	},
+}

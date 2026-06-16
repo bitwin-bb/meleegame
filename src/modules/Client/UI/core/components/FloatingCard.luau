@@ -1,6 +1,6 @@
---!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local require = require(script.Parent.loader).load(script)
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local React = require(ReplicatedStorage.Packages.React)
 
 export type FloatingCardTheme = {

@@ -1,13 +1,14 @@
---!strict
+
+local require = require(script.Parent.loader).load(script)
 
 local Players = game:GetService("Players")
 
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Registry)
-local MagicServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.combat.MagicServiceUtils)
-local MeleeServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.combat.MeleeServiceUtils)
-local ResolveItem = require(script:FindFirstAncestor("game").Shared.Features.item.modules.ResolveItem)
-local ResolveToolInstance = require(script:FindFirstAncestor("game").Shared.Game.Format.ResolveToolInstance)
-local TagBinder = require(script.Parent.TagBinder)
+local ItemRegistry = require("ItemRegistry")
+local MagicServiceUtils = require("MagicServiceUtils")
+local MeleeServiceUtils = require("MeleeServiceUtils")
+local ResolveItem = require("ResolveItem")
+local ResolveToolInstance = require("ResolveToolInstance")
+local TagBinder = require("TagBinder")
 
 local ToolBinder = {}
 

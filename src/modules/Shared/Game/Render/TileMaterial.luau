@@ -1,4 +1,4 @@
---!strict
+local require = require(script.Parent.loader).load(script)
 
 local MaterialService = game:GetService("MaterialService")
 
@@ -106,11 +106,8 @@ local function resolveOverworldLeafMaterial(): MaterialVariant?
 end
 
 local function resolveOverworldMudMaterial(): MaterialVariant?
-	cachedOverworldMudMaterial = resolveGroupedMaterial(
-		OVERWORLD_MATERIAL_FOLDER_NAME,
-		OVERWORLD_MUD_MATERIAL_NAME,
-		cachedOverworldMudMaterial
-	)
+	cachedOverworldMudMaterial =
+		resolveGroupedMaterial(OVERWORLD_MATERIAL_FOLDER_NAME, OVERWORLD_MUD_MATERIAL_NAME, cachedOverworldMudMaterial)
 	return cachedOverworldMudMaterial
 end
 

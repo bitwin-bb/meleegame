@@ -1,13 +1,15 @@
---!strict
+
 -- Linear interpolation helpers.
 
-local Angle = require(script.Parent.Angle)
-local Num = require(script.Parent.Num)
+local require = require(script.Parent.loader).load(script)
+
+local Angle = require("Angle")
+local Num = require("Num")
 
 local Lerp = {}
 
 function Lerp.value<T>(a: T, b: T, alpha: number): T
-	return ((((a :: any) + (((b :: any) - (a :: any)) :: any) * alpha) :: any) :: T)
+	return (((a :: any) + (((b :: any) - (a :: any)) :: any) * alpha) :: any) :: T
 end
 
 function Lerp.clamped<T>(a: T, b: T, alpha: number): T
@@ -23,11 +25,7 @@ function Lerp.AngleDegrees(a: number, b: number, alpha: number): number
 end
 
 function Lerp.Color3(a: Color3, b: Color3, alpha: number): Color3
-	return Color3.new(
-		a.R + (b.R - a.R) * alpha,
-		a.G + (b.G - a.G) * alpha,
-		a.B + (b.B - a.B) * alpha
-	)
+	return Color3.new(a.R + (b.R - a.R) * alpha, a.G + (b.G - a.G) * alpha, a.B + (b.B - a.B) * alpha)
 end
 
 function Lerp.bilinear<T>(c00: T, c10: T, c01: T, c11: T, tx: number, ty: number): T

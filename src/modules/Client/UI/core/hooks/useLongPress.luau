@@ -1,10 +1,12 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local UserInputService = game:GetService("UserInputService")
 
-local Cleanup = require(script.Parent.internal.cleanup)
+local Cleanup = require("cleanup")
 local React = require(ReplicatedStorage.Packages.React)
-local useStableCallback = require(script.Parent.internal.useStableCallback)
+local useStableCallback = require("useStableCallback")
 
 export type LongPressOptions = {
 	duration: number?,
@@ -131,15 +133,7 @@ local function useLongPress(options: LongPressOptions?): LongPressResult
 				finishPress(endedInputObject)
 			end
 		end)
-	end, dependencyArray(
-		enabled,
-		inputTypes,
-		cancel,
-		durationSeconds,
-		onPressStart,
-		onLongPress,
-		finishPress
-	))
+	end, dependencyArray(enabled, inputTypes, cancel, durationSeconds, onPressStart, onLongPress, finishPress))
 
 	React.useEffect(function()
 		return function()

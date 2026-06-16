@@ -1,8 +1,10 @@
---!strict
+
 -- Seeded deterministic value-noise sampling helpers.
 
-local Rand = require(script.Parent.Rand)
-local Num = require(script.Parent.Num)
+local require = require(script.Parent.loader).load(script)
+
+local Num = require("Num")
+local Rand = require("Rand")
 
 local Noise = {}
 
@@ -157,7 +159,14 @@ function Noise.SampleUnit3(x: number, y: number, z: number, scale: number?, seed
 	return unit3(seed, x / resolvedScale, y / resolvedScale, z / resolvedScale)
 end
 
-function Noise.Fbm1(x: number, scale: number?, seedRaw: SeedInput?, octaves: number?, persistence: number?, lacunarity: number?): number
+function Noise.Fbm1(
+	x: number,
+	scale: number?,
+	seedRaw: SeedInput?,
+	octaves: number?,
+	persistence: number?,
+	lacunarity: number?
+): number
 	local seed = Rand.seed(seedRaw)
 	local resolvedScale = resolveScale(scale)
 	return Noise.FbmOctaves(octaves or 4, persistence or 0.5, lacunarity or 2, function(octave, frequency)
@@ -197,12 +206,14 @@ function Noise.Fbm3(
 	local resolvedScale = resolveScale(scale)
 	return Noise.FbmOctaves(octaves or 4, persistence or 0.5, lacunarity or 2, function(octave, frequency)
 		local octaveSeed = Rand.fork(seed, octave)
-		return Noise.ToSigned(unit3(
-			octaveSeed,
-			x / resolvedScale * frequency,
-			y / resolvedScale * frequency,
-			z / resolvedScale * frequency
-		))
+		return Noise.ToSigned(
+			unit3(
+				octaveSeed,
+				x / resolvedScale * frequency,
+				y / resolvedScale * frequency,
+				z / resolvedScale * frequency
+			)
+		)
 	end)
 end
 

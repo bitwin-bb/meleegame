@@ -1,5 +1,6 @@
---!strict
 -- Core Vector3 helpers.
+
+local require = require(script.Parent.loader).load(script)
 
 local Vec = {}
 
@@ -62,27 +63,15 @@ function Vec.Midpoint(a: Vector3, b: Vector3): Vector3
 end
 
 function Vec.Min(a: Vector3, b: Vector3): Vector3
-	return Vector3.new(
-		math.min(a.X, b.X),
-		math.min(a.Y, b.Y),
-		math.min(a.Z, b.Z)
-	)
+	return Vector3.new(math.min(a.X, b.X), math.min(a.Y, b.Y), math.min(a.Z, b.Z))
 end
 
 function Vec.Max(a: Vector3, b: Vector3): Vector3
-	return Vector3.new(
-		math.max(a.X, b.X),
-		math.max(a.Y, b.Y),
-		math.max(a.Z, b.Z)
-	)
+	return Vector3.new(math.max(a.X, b.X), math.max(a.Y, b.Y), math.max(a.Z, b.Z))
 end
 
 function Vec.Abs(vector: Vector3): Vector3
-	return Vector3.new(
-		math.abs(vector.X),
-		math.abs(vector.Y),
-		math.abs(vector.Z)
-	)
+	return Vector3.new(math.abs(vector.X), math.abs(vector.Y), math.abs(vector.Z))
 end
 
 function Vec.FlattenX(vector: Vector3): Vector3

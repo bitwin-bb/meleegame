@@ -1,4 +1,4 @@
---!strict
+local require = require(script.Parent.loader).load(script)
 
 local PacketPayload = {} :: any
 

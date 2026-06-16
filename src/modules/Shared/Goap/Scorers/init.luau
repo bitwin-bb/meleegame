@@ -1,11 +1,12 @@
---!strict
 
-local Nevermore = require(script:FindFirstAncestor("Goap").Nevermore)
+local require = require(script.Parent.loader).load(script)
+
+local Nevermore = require("GoapNevermore")
 local Table = Nevermore.GetRolePackages("Exports").Table
 
 return Table.copy({
-	GoalScorer = require(script.GoalScorer),
-	PriorityScorer = require(script.PriorityScorer),
-	HealthScorer = require(script.HealthScorer),
-	ThreatScorer = require(script.ThreatScorer),
+	GoalScorer = require(script:WaitForChild("GoalScorer")),
+	PriorityScorer = require(script:WaitForChild("PriorityScorer")),
+	HealthScorer = require(script:WaitForChild("HealthScorer")),
+	ThreatScorer = require(script:WaitForChild("ThreatScorer")),
 })

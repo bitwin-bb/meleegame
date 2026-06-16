@@ -1,12 +1,13 @@
---!strict
 
-local Nevermore = require(script.Parent.Parent.Nevermore)
+local require = require(script.Parent.loader).load(script)
+
+local Nevermore = require("StateMachineNevermore")
 local Table = Nevermore.Get("Table")
 
 return Table.copy({
-	CombatMachine = require(script.CombatMachine),
-	IdleState = require(script.IdleState),
-	StartupState = require(script.StartupState),
-	ActiveState = require(script.ActiveState),
-	RecoveryState = require(script.RecoveryState),
+	CombatMachine = require(script:WaitForChild("CombatMachine")),
+	IdleState = require(script:WaitForChild("CombatIdleState")),
+	StartupState = require(script:WaitForChild("StartupState")),
+	ActiveState = require(script:WaitForChild("ActiveState")),
+	RecoveryState = require(script:WaitForChild("RecoveryState")),
 })

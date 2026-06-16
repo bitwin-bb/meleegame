@@ -1,11 +1,12 @@
---!strict
 
-local Nevermore = require(script.Parent.Nevermore)
+local require = require(script.Parent.loader).load(script)
+
+local Nevermore = require("StateMachineNevermore")
 local Table = Nevermore.Get("Table")
 
 return Table.copy({
-	AnimationAdapter = require(script.AnimationAdapter),
-	CharacterAdapter = require(script.CharacterAdapter),
-	MovementAdapter = require(script.MovementAdapter),
-	HumanoidAdapter = require(script.HumanoidAdapter),
+	AnimationAdapter = require(script:WaitForChild("AnimationAdapter")),
+	CharacterAdapter = require(script:WaitForChild("CharacterAdapter")),
+	MovementAdapter = require(script:WaitForChild("StateMachineMovementAdapter")),
+	HumanoidAdapter = require(script:WaitForChild("HumanoidAdapter")),
 })

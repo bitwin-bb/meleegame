@@ -1,7 +1,9 @@
---!strict
+
 -- Stateless deterministic random helpers built around explicit seeds.
 
-local Num = require(script.Parent.Num)
+local require = require(script.Parent.loader).load(script)
+
+local Num = require("Num")
 
 local Rand = {}
 

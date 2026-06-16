@@ -1,4 +1,5 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -113,7 +114,7 @@ local function useBeatMotion(options: BeatMotionOptions?): BeatMotionResult
 			motion:destroy()
 			motionRef.current = nil
 		end
-	end, ({ enabled, auto, bpm, baseScale, primaryScale, secondaryScale, spring } :: { any }))
+	end, { enabled, auto, bpm, baseScale, primaryScale, secondaryScale, spring } :: { any })
 
 	React.useEffect(function()
 		local motion = motionRef.current
@@ -142,7 +143,7 @@ local function useBeatMotion(options: BeatMotionOptions?): BeatMotionResult
 				nextMotion:spring(secondaryScale, spring :: any)
 			end
 		end)
-	end, ({ baseScale, primaryScale, secondaryScale, secondaryDelay, recoverDelay, spring } :: { any }))
+	end, { baseScale, primaryScale, secondaryScale, secondaryDelay, recoverDelay, spring } :: { any })
 
 	return {
 		scale = scale,

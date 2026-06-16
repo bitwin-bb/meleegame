@@ -1,4 +1,5 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local GuiService = game:GetService("GuiService")
 
 local HUDLayoutEngine = {}
@@ -68,7 +69,11 @@ local function estimateSize(frame: GuiObject, viewport: Vector2): Vector2
 	return Vector2.new(math.max(1, x), math.max(1, y))
 end
 
-local function computeRect(position: Vector2, anchor: Vector2, size: Vector2): { minX: number, minY: number, maxX: number, maxY: number }
+local function computeRect(
+	position: Vector2,
+	anchor: Vector2,
+	size: Vector2
+): { minX: number, minY: number, maxX: number, maxY: number }
 	local minX = position.X - anchor.X * size.X
 	local minY = position.Y - anchor.Y * size.Y
 	return {
@@ -105,7 +110,7 @@ local function sortDefinitions(a: any, b: any): boolean
 end
 
 function HUDLayoutEngine.New(configRaw: EngineConfig?): HUDLayoutEngine
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local self = setmetatable({
 		definitions = {} :: { [string]: any },
 		dockBuckets = {} :: { [string]: { any } },
@@ -153,14 +158,16 @@ function HUDLayoutEngine.Register(self: HUDLayoutEngine, definitionRaw: any): bo
 	self.definitions[id] = {
 		id = id,
 		frame = definitionRaw.frame,
-		dock = if typeof(definitionRaw.dock) == "string" and PRESET_ANCHOR[definitionRaw.dock] ~= nil then definitionRaw.dock else "TopLeft",
+		dock = if typeof(definitionRaw.dock) == "string" and PRESET_ANCHOR[definitionRaw.dock] ~= nil
+			then definitionRaw.dock
+			else "TopLeft",
 		order = if typeof(definitionRaw.order) == "number" then definitionRaw.order else 0,
 		offset = if typeof(definitionRaw.offset) == "Vector2" then definitionRaw.offset else Vector2.zero,
 		spacing = if typeof(definitionRaw.spacing) == "number" then definitionRaw.spacing else nil,
 		visible = if definitionRaw.visible == nil then true else definitionRaw.visible == true,
 		baseSize = if typeof(definitionRaw.baseSize) == "Vector2" then definitionRaw.baseSize else nil,
 		sizeScale = definitionRaw.sizeScale == true,
-		constraints = if typeof(definitionRaw.constraints) == "table" then definitionRaw.constraints else ({} :: any),
+		constraints = if typeof(definitionRaw.constraints) == "table" then definitionRaw.constraints else {} :: any,
 	}
 	return true
 end
@@ -271,7 +278,14 @@ function HUDLayoutEngine._flowDirection(self: HUDLayoutEngine, dock: string): Ve
 	return Vector2.new(0, 1)
 end
 
-function HUDLayoutEngine._resolveConstraint(self: HUDLayoutEngine, definition: any, position: Vector2, anchor: Vector2, size: Vector2, spacing: number): Vector2
+function HUDLayoutEngine._resolveConstraint(
+	self: HUDLayoutEngine,
+	definition: any,
+	position: Vector2,
+	anchor: Vector2,
+	size: Vector2,
+	spacing: number
+): Vector2
 	local constraints = definition.constraints
 	if typeof(constraints) ~= "table" then
 		return position
@@ -281,7 +295,11 @@ function HUDLayoutEngine._resolveConstraint(self: HUDLayoutEngine, definition: a
 		return position
 	end
 
-	local direction = if constraints.pushDirection == "up" then Vector2.new(0, -1) elseif constraints.pushDirection == "left" then Vector2.new(-1, 0) elseif constraints.pushDirection == "right" then Vector2.new(1, 0) else Vector2.new(0, 1)
+	local direction = if constraints.pushDirection == "up"
+		then Vector2.new(0, -1)
+		elseif constraints.pushDirection == "left" then Vector2.new(-1, 0)
+		elseif constraints.pushDirection == "right" then Vector2.new(1, 0)
+		else Vector2.new(0, 1)
 	local rect = computeRect(position, anchor, size)
 	for _, avoidId in avoid do
 		local otherRect = self.placedRects[avoidId]
@@ -321,7 +339,9 @@ function HUDLayoutEngine.Reflow(self: HUDLayoutEngine)
 		for index = 1, #bucket do
 			local definition = bucket[index]
 			local frame = definition.frame :: GuiObject
-			local spacing = (if definition.spacing ~= nil then definition.spacing else self.baseSpacing) * scale * spacingScale
+			local spacing = (if definition.spacing ~= nil then definition.spacing else self.baseSpacing)
+				* scale
+				* spacingScale
 			if definition.baseSize ~= nil and definition.sizeScale then
 				local size = definition.baseSize
 				frame.Size = UDim2.fromOffset(math.floor(size.X * scale + 0.5), math.floor(size.Y * scale + 0.5))

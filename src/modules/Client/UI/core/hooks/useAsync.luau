@@ -1,9 +1,10 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local useMounted = require(script.Parent.useMounted)
-local useStableCallback = require(script.Parent.internal.useStableCallback)
+local useMounted = require("useMounted")
+local useStableCallback = require("useStableCallback")
 
 export type AsyncStatus = "idle" | "loading" | "success" | "error"
 
@@ -178,7 +179,7 @@ local function useAsync<TValue>(callbackRaw: any, options: AsyncOptions<TValue>?
 		end
 
 		return requestId
-	end, ({ callback, mountedRef, onSuccess, onError } :: { any }))
+	end, { callback, mountedRef, onSuccess, onError } :: { any })
 
 	React.useEffect(function()
 		return function()

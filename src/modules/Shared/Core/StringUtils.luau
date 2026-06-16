@@ -1,4 +1,5 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local StringUtils = {}
 
 function StringUtils.Trim(valueRaw: any): string

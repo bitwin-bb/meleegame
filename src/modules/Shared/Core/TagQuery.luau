@@ -1,9 +1,9 @@
---!strict
-
+local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local Signal = require(ReplicatedStorage.Packages.Signal)
+local Signal = require("Signal")
 
 local TagQuery = {}
 TagQuery.__index = TagQuery
@@ -218,7 +218,12 @@ function TagQuery.Subscribe(self: TagQuery, tagRaw: any, listener: TagListener):
 	end
 end
 
-function TagQuery.ObserveTag(self: TagQuery, tagRaw: any, onAdded: ((instance: any, tag: string) -> ())?, onRemoved: ((instance: any, tag: string) -> ())?): () -> ()
+function TagQuery.ObserveTag(
+	self: TagQuery,
+	tagRaw: any,
+	onAdded: ((instance: any, tag: string) -> ())?,
+	onRemoved: ((instance: any, tag: string) -> ())?
+): () -> ()
 	if typeof(tagRaw) ~= "string" or tagRaw == "" then
 		return function() end
 	end

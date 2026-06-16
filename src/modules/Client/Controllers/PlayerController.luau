@@ -1,11 +1,10 @@
---!strict
+local require = require(script.Parent.loader).load(script)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local gameRoot = script:FindFirstAncestor("game")
-local Handlers = require(gameRoot.Client.Handlers)
-local StateMachinePackage = require(gameRoot.Shared.StateMachine)
+local Handlers = require("Handlers")
+local StateMachinePackage = require("StateMachine")
 
 local Nevermore = StateMachinePackage.Nevermore
 local Maid = Nevermore.Get("Maid")

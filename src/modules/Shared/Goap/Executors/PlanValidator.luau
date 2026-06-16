@@ -1,11 +1,12 @@
---!strict
 
-local Nevermore = require(script:FindFirstAncestor("Goap").Nevermore)
+local require = require(script.Parent.loader).load(script)
+
+local Nevermore = require("GoapNevermore")
 local packages = Nevermore.GetRolePackages("Runtime")
 local Maid = packages.Maid
 local Table = packages.Table
 
-local WorldState = require(script:FindFirstAncestor("Goap").Core.WorldState)
+local WorldState = require("WorldState")
 
 local PlanValidator = {}
 PlanValidator.__index = PlanValidator

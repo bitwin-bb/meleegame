@@ -205,7 +205,7 @@ function TestNode:expand()
 	end)
 
 	if not success then
-		self.loadError = result
+		self.loaderror = result
 	end
 end
 

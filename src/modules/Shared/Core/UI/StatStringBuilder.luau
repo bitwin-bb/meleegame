@@ -1,6 +1,8 @@
---!strict
-local AbbreviationFormatter = require(script.Parent.AbbreviationFormatter)
-local RichTextFormatter = require(script.Parent.RichTextFormatter)
+
+local require = require(script.Parent.loader).load(script)
+
+local AbbreviationFormatter = require("AbbreviationFormatter")
+local RichTextFormatter = require("RichTextFormatter")
 
 local StatStringBuilder = {}
 StatStringBuilder.__index = StatStringBuilder
@@ -84,7 +86,11 @@ end
 
 local function autoDetectFormat(statId: string, value: number): string
 	local lowered = string.lower(statId)
-	if string.find(lowered, "percent", 1, true) ~= nil or string.find(lowered, "chance", 1, true) ~= nil or string.find(lowered, "crit", 1, true) ~= nil then
+	if
+		string.find(lowered, "percent", 1, true) ~= nil
+		or string.find(lowered, "chance", 1, true) ~= nil
+		or string.find(lowered, "crit", 1, true) ~= nil
+	then
 		return "percent"
 	end
 	if string.find(lowered, "dps", 1, true) ~= nil then
@@ -106,7 +112,7 @@ local function sortDefinitions(definitions: { StatDefinition })
 end
 
 function StatStringBuilder.New(configRaw: BuilderConfig?): StatStringBuilder
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local self = setmetatable({
 		attributeCache = config.attributeCache,
 		positiveColor = if typeof(config.positiveColor) == "string" then config.positiveColor else "green",
@@ -132,13 +138,23 @@ function StatStringBuilder._read(self: StatStringBuilder, source: any, statId: s
 	return nil
 end
 
-function StatStringBuilder._formatValue(self: StatStringBuilder, statId: string, valueRaw: any, formatRaw: any, precisionRaw: any): string
+function StatStringBuilder._formatValue(
+	self: StatStringBuilder,
+	statId: string,
+	valueRaw: any,
+	formatRaw: any,
+	precisionRaw: any
+): string
 	local value = toNumber(valueRaw, 0)
 	local formatKind = if typeof(formatRaw) == "string" then formatRaw else autoDetectFormat(statId, value)
 	return AbbreviationFormatter.formatValue(value, formatKind, precisionRaw)
 end
 
-function StatStringBuilder._normalizeDefinitions(self: StatStringBuilder, definitionsRaw: any, currentSource: any): { StatDefinition }
+function StatStringBuilder._normalizeDefinitions(
+	self: StatStringBuilder,
+	definitionsRaw: any,
+	currentSource: any
+): { StatDefinition }
 	local definitions = {}
 	if typeof(definitionsRaw) == "table" and #definitionsRaw > 0 then
 		for _, defRaw in definitionsRaw do
@@ -174,11 +190,11 @@ function StatStringBuilder.BuildTokens(
 	modifierBreakdownRaw: any?,
 	optionsRaw: BuildOptions?
 ): { StatToken }
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 	local includeHidden = options.includeHidden == true
 	local showUnchanged = if options.showUnchanged == nil then true else options.showUnchanged == true
 	local deltaThreshold = clampNumber(options.deltaThreshold, 0, 0, 1e9)
-	local modifierBreakdown = if typeof(modifierBreakdownRaw) == "table" then modifierBreakdownRaw else ({} :: any)
+	local modifierBreakdown = if typeof(modifierBreakdownRaw) == "table" then modifierBreakdownRaw else {} :: any
 
 	local definitions = self:_normalizeDefinitions(definitionsRaw, currentSource)
 	local tokens = {}
@@ -241,7 +257,12 @@ function StatStringBuilder.BuildTokens(
 				local base = toNumber(breakdown.base, 0)
 				local add = toNumber(breakdown.additive, 0)
 				local mul = toNumber(breakdown.multiplicative, 1)
-				local breakdownText = string.format(" [base %s, +%s, x%s]", AbbreviationFormatter.formatNumber(base), AbbreviationFormatter.formatNumber(add), AbbreviationFormatter.formatNumber(mul))
+				local breakdownText = string.format(
+					" [base %s, +%s, x%s]",
+					AbbreviationFormatter.formatNumber(base),
+					AbbreviationFormatter.formatNumber(add),
+					AbbreviationFormatter.formatNumber(mul)
+				)
 				tokens[#tokens + 1] = {
 					kind = "breakdown",
 					statId = statId,

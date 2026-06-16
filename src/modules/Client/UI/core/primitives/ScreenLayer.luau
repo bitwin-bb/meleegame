@@ -1,8 +1,9 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local TransparentFrame = require(script.Parent.TransparentFrame)
+local TransparentFrame = require("TransparentFrame")
 
 export type ScreenLayerProps = {
 	layoutOrder: number?,

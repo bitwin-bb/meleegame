@@ -1,6 +1,7 @@
---!strict
 
-local DropChance = require(script.Parent.DropChance)
+local require = require(script.Parent.loader).load(script)
+
+local DropChance = require("DropChance")
 
 local ReforgeRarity = {}
 

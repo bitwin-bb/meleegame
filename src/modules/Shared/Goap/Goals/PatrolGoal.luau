@@ -1,10 +1,11 @@
---!strict
 
-local Nevermore = require(script:FindFirstAncestor("Goap").Nevermore)
+local require = require(script.Parent.loader).load(script)
+
+local Nevermore = require("GoapNevermore")
 local packages = Nevermore.GetRolePackages("Examples")
 local Table = packages.Table
 
-local Goal = require(script:FindFirstAncestor("Goap").Core.Goal)
+local Goal = require("Goal")
 
 local PatrolGoal = {}
 

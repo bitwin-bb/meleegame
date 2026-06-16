@@ -1,8 +1,9 @@
---!strict
-local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local DataTemplate = require(script:FindFirstAncestor("game").Shared.Core.DataTemplate)
+local require = require(script.Parent.loader).load(script)
+
+local Players = game:GetService("Players")
+
+local DataTemplate = require("DataTemplate")
 
 local PlayerSpawnCooldown = {}
 
@@ -27,7 +28,9 @@ local function resolveConfiguredRespawnDelayFromTemplate(): number?
 		return nil
 	end
 
-	local playerData = if typeof((DataTemplate :: any).playerData) == "table" then (DataTemplate :: any).playerData else nil
+	local playerData = if typeof((DataTemplate :: any).playerData) == "table"
+		then (DataTemplate :: any).playerData
+		else nil
 	if playerData == nil then
 		return nil
 	end

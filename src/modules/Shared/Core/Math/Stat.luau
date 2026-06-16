@@ -1,7 +1,9 @@
---!strict
+
 -- Variance and standard-deviation helpers.
 
-local Avg = require(script.Parent.Avg)
+local require = require(script.Parent.loader).load(script)
+
+local Avg = require("Avg")
 
 local Stat = {}
 

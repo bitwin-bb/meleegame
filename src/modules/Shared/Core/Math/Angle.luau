@@ -1,8 +1,10 @@
---!strict
+
 -- Angle wrapping, shortest deltas, and signed-angle helpers.
 
-local Num = require(script.Parent.Num)
-local Trig = require(script.Parent.Trig)
+local require = require(script.Parent.loader).load(script)
+
+local Num = require("Num")
+local Trig = require("Trig")
 
 local Angle = {}
 

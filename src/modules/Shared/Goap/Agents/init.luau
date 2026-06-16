@@ -1,9 +1,10 @@
---!strict
 
-local Nevermore = require(script:FindFirstAncestor("Goap").Nevermore)
+local require = require(script.Parent.loader).load(script)
+
+local Nevermore = require("GoapNevermore")
 local Table = Nevermore.GetRolePackages("Exports").Table
 
 return Table.copy({
-	Agent = require(script:FindFirstAncestor("Goap").Core.Agent),
-	NPCAgent = require(script.NPCAgent),
+	Agent = require("Agent"),
+	NPCAgent = require(script:WaitForChild("NPCAgent")),
 })

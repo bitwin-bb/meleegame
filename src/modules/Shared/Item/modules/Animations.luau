@@ -1,0 +1,70 @@
+local require = require(script.Parent.loader).load(script)
+
+return {
+	Player = {
+		Profiles = {
+			Default = {
+				Idle = "rbxassetid://138568783631888",
+				Walk = "rbxassetid://113533578671192",
+				Jump = "rbxassetid://98667478927886",
+				Fall = "rbxassetid://83522693025815",
+			},
+		},
+	},
+	Items = {
+		Tiles = {
+			Wood = {},
+		},
+		Weapons = {
+			CopperBroadSword = {
+				Equip = "rbxassetid://88895068313648",
+				Idle = "rbxassetid://113314611588581",
+				Swings = {
+					[1] = "rbxassetid://111882242219785",
+					[2] = "rbxassetid://105053600785353",
+					[3] = "rbxassetid://95638648409458",
+				},
+			},
+			CopperShortSword = {
+				Equip = "rbxassetid://133222321566847",
+				Idle = "rbxassetid://133222321566847",
+				Swings = {
+					[1] = "rbxassetid://133222321566847",
+					[2] = "rbxassetid://133222321566847",
+					[3] = "rbxassetid://133222321566847",
+				},
+			},
+			Katana = {
+				Equip = "rbxassetid://96044583317955",
+				Idle = "rbxassetid://100360083410893",
+				Swings = {
+					[1] = "rbxassetid://131055150927912",
+					[2] = "rbxassetid://75190848247206",
+					[3] = "rbxassetid://91569109987129",
+				},
+			},
+		},
+		Axes = {
+			CopperAxe = {
+				Equip = "rbxassetid://133222321566847",
+				Idle = "rbxassetid://133222321566847",
+				Swings = {
+					[1] = "rbxassetid://124728048603736",
+					[2] = "rbxassetid://136985737110517",
+					[3] = "rbxassetid://132384282445787",
+				},
+			},
+		},
+		Pickaxes = {
+			CopperPickaxe = {
+				Equip = "rbxassetid://133222321566847",
+				Idle = "rbxassetid://133222321566847",
+				Swings = {
+					[1] = "rbxassetid://88491511141309",
+					[2] = "rbxassetid://79411035782719",
+					[3] = "rbxassetid://80832799577909",
+				},
+			},
+		},
+	},
+}

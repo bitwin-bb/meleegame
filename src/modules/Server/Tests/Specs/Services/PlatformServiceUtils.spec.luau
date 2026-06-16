@@ -1,13 +1,13 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local testEnvironment = getfenv() :: any
 local describe = testEnvironment.describe :: any
 local it = testEnvironment.it :: any
 local expect = testEnvironment.expect :: any
 
 -- selene: allow(undefined_variable)
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceUtils)
+local PlatformServiceUtils = require("PlatformServiceUtils")
 
 local DEFAULT_CAPABILITIES: PlatformServiceUtils.CapabilitySnapshot = {
 	touchEnabled = false,
@@ -58,7 +58,8 @@ return function()
 
 			local keyboardPrompt =
 				PlatformServiceUtils.resolvePromptForAction(definition, "KeyboardMouse", "Desktop", "xbox") :: any
-			local gamepadPrompt = PlatformServiceUtils.resolvePromptForAction(definition, "Gamepad", "Console", "xbox") :: any
+			local gamepadPrompt =
+				PlatformServiceUtils.resolvePromptForAction(definition, "Gamepad", "Console", "xbox") :: any
 			local touchPrompt = PlatformServiceUtils.resolvePromptForAction(definition, "Touch", "Phone", "xbox") :: any
 
 			expect(keyboardPrompt.text).to.equal("LMB")
@@ -96,7 +97,8 @@ return function()
 
 			expect(definition ~= nil).to.equal(true)
 
-			local gamepadPrompt = PlatformServiceUtils.resolvePromptForAction(definition, "Gamepad", "Console", "xbox") :: any
+			local gamepadPrompt =
+				PlatformServiceUtils.resolvePromptForAction(definition, "Gamepad", "Console", "xbox") :: any
 
 			expect(gamepadPrompt.text).to.equal("Y")
 			expect(gamepadPrompt.keyCode).to.equal(Enum.KeyCode.ButtonY)

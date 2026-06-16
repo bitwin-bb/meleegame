@@ -1,13 +1,14 @@
---!strict
 
-local Nevermore = require(script.Parent.Nevermore)
+local require = require(script.Parent.loader).load(script)
+
+local Nevermore = require("StateMachineNevermore")
 local Table = Nevermore.Get("Table")
 
 return Table.copy({
-	HasTargetGuard = require(script.HasTargetGuard),
-	CooldownReadyGuard = require(script.CooldownReadyGuard),
-	HealthBelowGuard = require(script.HealthBelowGuard),
-	IsAliveGuard = require(script.IsAliveGuard),
-	IsGroundedGuard = require(script.IsGroundedGuard),
-	AnimationFinishedGuard = require(script.AnimationFinishedGuard),
+	HasTargetGuard = require(script:WaitForChild("HasTargetGuard")),
+	CooldownReadyGuard = require(script:WaitForChild("CooldownReadyGuard")),
+	HealthBelowGuard = require(script:WaitForChild("HealthBelowGuard")),
+	IsAliveGuard = require(script:WaitForChild("IsAliveGuard")),
+	IsGroundedGuard = require(script:WaitForChild("IsGroundedGuard")),
+	AnimationFinishedGuard = require(script:WaitForChild("AnimationFinishedGuard")),
 })

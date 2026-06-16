@@ -1,6 +1,7 @@
---!strict
 
-local Nevermore = require(script:FindFirstAncestor("Goap").Nevermore)
+local require = require(script.Parent.loader).load(script)
+
+local Nevermore = require("GoapNevermore")
 local packages = Nevermore.GetRolePackages("Core")
 local Maid = packages.Maid
 local Table = packages.Table

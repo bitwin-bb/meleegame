@@ -1,5 +1,6 @@
---!strict
 -- Focused analytic solvers and simple ray intersection helpers.
+
+local require = require(script.Parent.loader).load(script)
 
 local Solve = {}
 

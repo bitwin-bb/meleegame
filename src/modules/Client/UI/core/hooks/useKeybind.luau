@@ -1,12 +1,14 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local UserInputService = game:GetService("UserInputService")
 
-local Cleanup = require(script.Parent.internal.cleanup)
-local PlatformServiceClient = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceClient)
-local PlatformServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.platform.PlatformServiceUtils)
+local Cleanup = require("cleanup")
+local PlatformServiceClient = require("PlatformServiceClient")
+local PlatformServiceUtils = require("PlatformServiceUtils")
 local React = require(ReplicatedStorage.Packages.React)
-local useStableCallback = require(script.Parent.internal.useStableCallback)
+local useStableCallback = require("useStableCallback")
 
 type PromptBinding = PlatformServiceUtils.PromptBinding
 type ActionDefinition = PlatformServiceUtils.ActionDefinition
@@ -206,15 +208,7 @@ local function useKeybind(options: KeybindOptions?): KeybindResult
 			Cleanup.Call(changedConnection)
 			Cleanup.Call(endedConnection)
 		end
-	end, dependencyArray(
-		enabled,
-		actionName,
-		keyCodes,
-		inputTypes,
-		captureProcessed,
-		overrideDefinition,
-		onTriggered
-	))
+	end, dependencyArray(enabled, actionName, keyCodes, inputTypes, captureProcessed, overrideDefinition, onTriggered))
 
 	return {
 		isPressed = isPressed,

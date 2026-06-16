@@ -1,4 +1,5 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local testEnvironment = getfenv() :: any
 local describe = testEnvironment.describe :: any
 local it = testEnvironment.it :: any
@@ -9,8 +10,8 @@ local expect = testEnvironment.expect :: any
 local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for CmdrCommands.spec.")
 
-local sharedCommands = gameRoot.Shared.Features.commander.Commands
-local serverCommands = gameRoot.Server.Features.commander.ServerCommands
+local sharedCommands = gameRoot.Shared.Commander.Commands
+local serverCommands = gameRoot.Server.Commander.ServerCommands
 
 local function trim(valueRaw: any): string
 	if typeof(valueRaw) ~= "string" then
@@ -50,7 +51,7 @@ return function()
 				end
 
 				sharedCount += 1
-				local commandData = (require :: any)(child)
+				local commandData = require(child)
 				expect(typeof(commandData)).to.equal("table")
 				expect(trim((commandData :: any).Name) ~= "").to.equal(true)
 
@@ -62,7 +63,7 @@ return function()
 				end
 				expect(serverModule:IsA("ModuleScript")).to.equal(true)
 
-				local execute = (require :: any)(serverModule)
+				local execute = require(serverModule)
 				expect(typeof(execute)).to.equal("function")
 			end
 

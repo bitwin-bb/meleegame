@@ -1,12 +1,14 @@
---!strict
+
+local require = require(script.Parent.loader).load(script)
+
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local DynamicTextResolver = require(script.Parent.DynamicTextResolver)
-local RichTextFormatter = require(script.Parent.RichTextFormatter)
-local StatStringBuilder = require(script.Parent.StatStringBuilder)
-local TextMeasurementCache = require(script.Parent.TextMeasurementCache)
+local DynamicTextResolver = require("DynamicTextResolver")
+local RichTextFormatter = require("RichTextFormatter")
+local StatStringBuilder = require("StatStringBuilder")
+local TextMeasurementCache = require("TextMeasurementCache")
 
 local TooltipManager = {}
 TooltipManager.__index = TooltipManager
@@ -221,8 +223,8 @@ function TooltipManager._composeText(
 	metadataRaw: TooltipMetadata,
 	compareMetadataRaw: TooltipMetadata?
 ): string
-	local metadata = if typeof(metadataRaw) == "table" then metadataRaw else ({} :: any)
-	local context = if typeof(metadata.context) == "table" then metadata.context else ({} :: any)
+	local metadata = if typeof(metadataRaw) == "table" then metadataRaw else {} :: any
+	local context = if typeof(metadata.context) == "table" then metadata.context else {} :: any
 	local builder = self.rich.new()
 
 	if typeof(metadata.title) == "string" and metadata.title ~= "" then
@@ -316,7 +318,7 @@ end
 
 function TooltipManager.Show(self: any, metadataRaw: TooltipMetadata, compareMetadataRaw: TooltipMetadata?)
 	self:hide()
-	local metadata = if typeof(metadataRaw) == "table" then metadataRaw else ({} :: any)
+	local metadata = if typeof(metadataRaw) == "table" then metadataRaw else {} :: any
 	local compareMetadata = if typeof(compareMetadataRaw) == "table" then compareMetadataRaw else nil
 	local primary = self:_acquire()
 	local primaryText = self:_composeText(metadata, compareMetadata)

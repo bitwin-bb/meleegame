@@ -1,9 +1,10 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ItemIcon = require(script.Parent.ItemIcon)
+local ItemIcon = require("ItemIcon")
 local React = require(ReplicatedStorage.Packages.React)
-local StackAmountLabel = require(script.Parent.StackAmountLabel)
+local StackAmountLabel = require("StackAmountLabel")
 
 export type ItemSlotProps = {
 	buttonProps: { [any]: any },

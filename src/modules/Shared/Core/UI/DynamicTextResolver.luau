@@ -1,6 +1,7 @@
---!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local AbbreviationFormatter = require(script.Parent.AbbreviationFormatter)
+
+local require = require(script.Parent.loader).load(script)
+
+local AbbreviationFormatter = require("AbbreviationFormatter")
 
 local DynamicTextResolver = {}
 DynamicTextResolver.__index = DynamicTextResolver
@@ -92,10 +93,12 @@ local function toStringValue(value: any): string
 end
 
 function DynamicTextResolver.New(configRaw: ResolverConfig?): DynamicTextResolver
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local self = setmetatable({
 		maxDepth = clampInteger(config.maxDepth, 4, 1, 20),
-		keepUnknownPlaceholders = if config.keepUnknownPlaceholders == nil then true else config.keepUnknownPlaceholders == true,
+		keepUnknownPlaceholders = if config.keepUnknownPlaceholders == nil
+			then true
+			else config.keepUnknownPlaceholders == true,
 		missingValue = if typeof(config.missingValue) == "string" then config.missingValue else "",
 		warnOnMissing = config.warnOnMissing == true,
 		onMissing = config.onMissing,
@@ -103,7 +106,13 @@ function DynamicTextResolver.New(configRaw: ResolverConfig?): DynamicTextResolve
 	return self
 end
 
-function DynamicTextResolver._missing(self: DynamicTextResolver, key: string, template: string, keepUnknown: boolean, missingValue: string): string
+function DynamicTextResolver._missing(
+	self: DynamicTextResolver,
+	key: string,
+	template: string,
+	keepUnknown: boolean,
+	missingValue: string
+): string
 	if self.onMissing ~= nil then
 		self.onMissing(key, template)
 	end
@@ -184,24 +193,32 @@ function DynamicTextResolver._resolveConditionals(
 			break
 		end
 
-		local nextText = (string.gsub :: any)(resolved, "%[if:([%w_%.]+)%](.-)%[/if%]", function(key: string, body: string)
-			changed = true
-			local value = resolvePath(context, key)
-			if isTruthy(value) then
-				return self:_resolveInternal(body, context, depth + 1, options)
+		local nextText = (string.gsub :: any)(
+			resolved,
+			"%[if:([%w_%.]+)%](.-)%[/if%]",
+			function(key: string, body: string)
+				changed = true
+				local value = resolvePath(context, key)
+				if isTruthy(value) then
+					return self:_resolveInternal(body, context, depth + 1, options)
+				end
+				return ""
 			end
-			return ""
-		end) :: string
+		) :: string
 		resolved = nextText
 
-		nextText = (string.gsub :: any)(resolved, "%[ifnot:([%w_%.]+)%](.-)%[/ifnot%]", function(key: string, body: string)
-			changed = true
-			local value = resolvePath(context, key)
-			if not isTruthy(value) then
-				return self:_resolveInternal(body, context, depth + 1, options)
+		nextText = (string.gsub :: any)(
+			resolved,
+			"%[ifnot:([%w_%.]+)%](.-)%[/ifnot%]",
+			function(key: string, body: string)
+				changed = true
+				local value = resolvePath(context, key)
+				if not isTruthy(value) then
+					return self:_resolveInternal(body, context, depth + 1, options)
+				end
+				return ""
 			end
-			return ""
-		end) :: string
+		) :: string
 		resolved = nextText
 	end
 
@@ -218,14 +235,16 @@ function DynamicTextResolver._resolveInternal(
 	if typeof(templateRaw) ~= "string" then
 		return ""
 	end
-	local context = if typeof(contextRaw) == "table" then contextRaw else ({} :: any)
-	local options = if typeof(optionsRaw) == "table" then optionsRaw else ({} :: any)
+	local context = if typeof(contextRaw) == "table" then contextRaw else {} :: any
+	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 	local maxDepth = clampInteger(options.maxDepth, self.maxDepth, 1, 20)
 	if depth >= maxDepth then
 		return templateRaw
 	end
 
-	local keepUnknown = if options.keepUnknownPlaceholders == nil then self.keepUnknownPlaceholders else options.keepUnknownPlaceholders == true
+	local keepUnknown = if options.keepUnknownPlaceholders == nil
+		then self.keepUnknownPlaceholders
+		else options.keepUnknownPlaceholders == true
 	local missingValue = if typeof(options.missingValue) == "string" then options.missingValue else self.missingValue
 
 	local conditioned = self:_resolveConditionals(templateRaw, context, depth, options)
@@ -255,21 +274,31 @@ function DynamicTextResolver._resolveInternal(
 	return resolved
 end
 
-function DynamicTextResolver.Resolve(self: DynamicTextResolver, templateRaw: any, contextRaw: any, optionsRaw: ResolveOptions?): string
+function DynamicTextResolver.Resolve(
+	self: DynamicTextResolver,
+	templateRaw: any,
+	contextRaw: any,
+	optionsRaw: ResolveOptions?
+): string
 	if typeof(templateRaw) ~= "string" then
 		return ""
 	end
-	local context = if typeof(contextRaw) == "table" then contextRaw else ({} :: any)
+	local context = if typeof(contextRaw) == "table" then contextRaw else {} :: any
 	return self:_resolveInternal(templateRaw, context, 0, optionsRaw)
 end
 
-function DynamicTextResolver.ResolveMany(self: DynamicTextResolver, templatesRaw: any, contextRaw: any, outRaw: { string }?): { string }
-	local out = if outRaw ~= nil then outRaw else ({} :: any)
+function DynamicTextResolver.ResolveMany(
+	self: DynamicTextResolver,
+	templatesRaw: any,
+	contextRaw: any,
+	outRaw: { string }?
+): { string }
+	local out = if outRaw ~= nil then outRaw else {} :: any
 	if typeof(templatesRaw) ~= "table" then
 		table.clear(out)
 		return out
 	end
-	local context = if typeof(contextRaw) == "table" then contextRaw else ({} :: any)
+	local context = if typeof(contextRaw) == "table" then contextRaw else {} :: any
 	table.clear(out)
 	for index = 1, #templatesRaw do
 		out[index] = self:resolve(templatesRaw[index], context)

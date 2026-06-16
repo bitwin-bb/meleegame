@@ -1,5 +1,6 @@
---!strict
 -- Lightweight numerical integration and prediction helpers.
+
+local require = require(script.Parent.loader).load(script)
 
 local Integ = {}
 

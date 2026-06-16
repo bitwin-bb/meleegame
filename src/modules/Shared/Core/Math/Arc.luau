@@ -1,8 +1,10 @@
---!strict
+
 -- Circular arc sampling and orbit helpers.
 
-local Vec = require(script.Parent.Vec)
-local Trig = require(script.Parent.Trig)
+local require = require(script.Parent.loader).load(script)
+
+local Trig = require("Trig")
+local Vec = require("Vec")
 
 local Arc = {}
 
@@ -38,13 +40,7 @@ function Arc.Orbit2(center: Vector2, radius: number, angleRadians: number, angul
 	return position, velocity
 end
 
-function Arc.Point3(
-	center: Vector3,
-	radius: number,
-	angleRadians: number,
-	xAxis: Vector3,
-	yAxis: Vector3
-): Vector3
+function Arc.Point3(center: Vector3, radius: number, angleRadians: number, xAxis: Vector3, yAxis: Vector3): Vector3
 	local sinValue, cosValue = Trig.sinCos(angleRadians)
 	local tangentX = Vec.unit(xAxis, Vector3.new(1, 0, 0))
 	local tangentY = Vec.unit(yAxis, Vector3.new(0, 1, 0))

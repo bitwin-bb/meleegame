@@ -1,7 +1,8 @@
---!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local require = require(script.Parent.loader).load(script)
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local RoomScaleFactor = {}
 
@@ -94,7 +95,7 @@ function RoomScaleFactor.SanitizeConfig(
 	configRaw: any,
 	fallbackConfigRaw: RoomScaleFactorConfig?
 ): RoomScaleFactorConfig
-	local source = if typeof(configRaw) == "table" then (configRaw :: RoomScaleFactorConfig) else ({} :: any)
+	local source = if typeof(configRaw) == "table" then configRaw :: RoomScaleFactorConfig else {} :: any
 	local fallback = if typeof(fallbackConfigRaw) == "table" then fallbackConfigRaw else DEFAULT_CONFIG
 
 	local minimumEnclosedWidthTiles = clampNumber(
@@ -118,12 +119,7 @@ function RoomScaleFactor.SanitizeConfig(
 		source.minimumEnclosedHeightTiles,
 		2,
 		256,
-		clampNumber(
-			fallback.minimumEnclosedHeightTiles,
-			2,
-			256,
-			DEFAULT_CONFIG.minimumEnclosedHeightTiles :: number
-		)
+		clampNumber(fallback.minimumEnclosedHeightTiles, 2, 256, DEFAULT_CONFIG.minimumEnclosedHeightTiles :: number)
 	)
 	local maximumEnclosedHeightTiles = clampNumber(
 		source.maximumEnclosedHeightTiles,
@@ -163,23 +159,13 @@ function RoomScaleFactor.SanitizeConfig(
 			source.horizontalScanRadiusTiles,
 			2,
 			256,
-			clampNumber(
-				fallback.horizontalScanRadiusTiles,
-				2,
-				256,
-				DEFAULT_CONFIG.horizontalScanRadiusTiles :: number
-			)
+			clampNumber(fallback.horizontalScanRadiusTiles, 2, 256, DEFAULT_CONFIG.horizontalScanRadiusTiles :: number)
 		),
 		verticalScanRadiusTiles = clampNumber(
 			source.verticalScanRadiusTiles,
 			2,
 			256,
-			clampNumber(
-				fallback.verticalScanRadiusTiles,
-				2,
-				256,
-				DEFAULT_CONFIG.verticalScanRadiusTiles :: number
-			)
+			clampNumber(fallback.verticalScanRadiusTiles, 2, 256, DEFAULT_CONFIG.verticalScanRadiusTiles :: number)
 		),
 		minimumEnclosedWidthTiles = minimumEnclosedWidthTiles,
 		maximumEnclosedWidthTiles = maximumEnclosedWidthTiles,
@@ -189,12 +175,7 @@ function RoomScaleFactor.SanitizeConfig(
 			source.minimumDistanceScale,
 			0.2,
 			1,
-			clampNumber(
-				fallback.minimumDistanceScale,
-				0.2,
-				1,
-				DEFAULT_CONFIG.minimumDistanceScale :: number
-			)
+			clampNumber(fallback.minimumDistanceScale, 0.2, 1, DEFAULT_CONFIG.minimumDistanceScale :: number)
 		),
 		minimumHeightScale = clampNumber(
 			source.minimumHeightScale,
@@ -206,23 +187,13 @@ function RoomScaleFactor.SanitizeConfig(
 			source.minimumLookHeightScale,
 			0.2,
 			1,
-			clampNumber(
-				fallback.minimumLookHeightScale,
-				0.2,
-				1,
-				DEFAULT_CONFIG.minimumLookHeightScale :: number
-			)
+			clampNumber(fallback.minimumLookHeightScale, 0.2, 1, DEFAULT_CONFIG.minimumLookHeightScale :: number)
 		),
 		minimumFieldOfViewScale = clampNumber(
 			source.minimumFieldOfViewScale,
 			0.2,
 			1,
-			clampNumber(
-				fallback.minimumFieldOfViewScale,
-				0.2,
-				1,
-				DEFAULT_CONFIG.minimumFieldOfViewScale :: number
-			)
+			clampNumber(fallback.minimumFieldOfViewScale, 0.2, 1, DEFAULT_CONFIG.minimumFieldOfViewScale :: number)
 		),
 		widthWeight = widthWeight,
 		heightWeight = heightWeight,
@@ -231,7 +202,7 @@ end
 
 function RoomScaleFactor.Resolve(configRaw: any, sourceRaw: any): RoomScaleResult
 	local config = RoomScaleFactor.SanitizeConfig(configRaw)
-	local source = if typeof(sourceRaw) == "table" then (sourceRaw :: RoomScaleSource) else nil
+	local source = if typeof(sourceRaw) == "table" then sourceRaw :: RoomScaleSource else nil
 	if config.enabled ~= true or source == nil or source.isEnclosed ~= true then
 		return RoomScaleFactor.CreateDefaultResult()
 	end
@@ -240,19 +211,26 @@ function RoomScaleFactor.Resolve(configRaw: any, sourceRaw: any): RoomScaleResul
 	local heightTiles = math.max(0, clampNumber(source.heightTiles, 0, 512, 0))
 	local widthAlpha = math.clamp(
 		(widthTiles - (config.minimumEnclosedWidthTiles :: number))
-			/ math.max((config.maximumEnclosedWidthTiles :: number) - (config.minimumEnclosedWidthTiles :: number), 0.001),
+			/ math.max(
+				(config.maximumEnclosedWidthTiles :: number) - (config.minimumEnclosedWidthTiles :: number),
+				0.001
+			),
 		0,
 		1
 	)
 	local heightAlpha = math.clamp(
 		(heightTiles - (config.minimumEnclosedHeightTiles :: number))
-			/ math.max((config.maximumEnclosedHeightTiles :: number) - (config.minimumEnclosedHeightTiles :: number), 0.001),
+			/ math.max(
+				(config.maximumEnclosedHeightTiles :: number) - (config.minimumEnclosedHeightTiles :: number),
+				0.001
+			),
 		0,
 		1
 	)
 	local totalWeight = math.max((config.widthWeight :: number) + (config.heightWeight :: number), 0.001)
-	local weightedAlpha =
-		((widthAlpha * (config.widthWeight :: number)) + (heightAlpha * (config.heightWeight :: number))) / totalWeight
+	local weightedAlpha = (
+		(widthAlpha * (config.widthWeight :: number)) + (heightAlpha * (config.heightWeight :: number))
+	) / totalWeight
 	local geometricAlpha = math.sqrt(widthAlpha * heightAlpha)
 	local scaleAlpha = math.clamp((weightedAlpha * 0.65) + (geometricAlpha * 0.35), 0, 1)
 

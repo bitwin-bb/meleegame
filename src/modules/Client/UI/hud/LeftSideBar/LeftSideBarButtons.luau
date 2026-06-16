@@ -1,15 +1,16 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local CraftingButton = require(script:FindFirstAncestor("game").Shared.Features.crafting.ui.components.craftingButton)
-local ImageIds = require(script:FindFirstAncestor("game").Client.UI.core.ImageIds)
-local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
+local CraftingButton = require("craftingButton")
+local ImageIds = require("ImageIds")
+local NavButton = require("NavButton")
 local React = require(ReplicatedStorage.Packages.React)
-local craftingSlice = require(script:FindFirstAncestor("game").Shared.Features.crafting.ui.state.craftingSlice)
-local craftingThunks = require(script:FindFirstAncestor("game").Shared.Features.crafting.ui.state.craftingThunks)
-local hudInventorySlice = require(script:FindFirstAncestor("game").Shared.Features.inventory.ui.hud.state.slice.inventorySlice)
-local hudInventoryThunks = require(script:FindFirstAncestor("game").Shared.Features.inventory.ui.hud.state.slice.inventoryThunks)
-local useStore = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useStore)
+local craftingSlice = require("craftingSlice")
+local craftingThunks = require("craftingThunks")
+local hudInventorySlice = require("inventorySlice")
+local hudInventoryThunks = require("inventoryThunks")
+local useStore = require("useCoreStore")
 
 type CraftingState = craftingSlice.CraftingState
 type InventoryHudState = hudInventorySlice.InventoryHudState

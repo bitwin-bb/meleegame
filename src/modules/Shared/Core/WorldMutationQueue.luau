@@ -1,9 +1,11 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local BinaryStreaming = require(script.Parent.BinaryStreaming)
-local Codec = require(script.Parent.Codec)
+local BinaryStreaming = require("BinaryStreaming")
+local Codec = require("Codec")
 
 local WorldMutationQueue = {}
 WorldMutationQueue.__index = WorldMutationQueue
@@ -110,7 +112,7 @@ local function rebuildLookup(bucket: any)
 end
 
 function WorldMutationQueue.New(configRaw: QueueConfig?): WorldMutationQueue
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local chunkSize = clampInteger(config.chunkSize, 32, 1, 1024)
 	local flushInterval = clampPositiveNumber(config.flushInterval, 0.1, 0.005, 60)
 	local maxMutationsPerFlush = clampInteger(config.maxMutationsPerFlush, 4096, 1, 1000000)

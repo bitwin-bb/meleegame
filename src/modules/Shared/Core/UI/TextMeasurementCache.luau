@@ -1,4 +1,5 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local TextService = game:GetService("TextService")
 
 local TextMeasurementCache = {}
@@ -61,7 +62,7 @@ local function clearArray(array: { any })
 end
 
 function TextMeasurementCache.New(configRaw: TextMeasurementCacheConfig?): TextMeasurementCache
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local self = setmetatable({
 		entries = {} :: { [string]: { size: Vector2, lastAccess: number } },
 		maxEntries = clampInteger(config.maxEntries, 4096, 32, 200000),
@@ -130,8 +131,12 @@ function TextMeasurementCache.Measure(
 	return size
 end
 
-function TextMeasurementCache.MeasureBatch(self: TextMeasurementCache, requestsRaw: any, outRaw: { Vector2 }?): { Vector2 }
-	local out = if outRaw ~= nil then outRaw else ({} :: any)
+function TextMeasurementCache.MeasureBatch(
+	self: TextMeasurementCache,
+	requestsRaw: any,
+	outRaw: { Vector2 }?
+): { Vector2 }
+	local out = if outRaw ~= nil then outRaw else {} :: any
 	if typeof(requestsRaw) ~= "table" then
 		clearArray(out)
 		return out

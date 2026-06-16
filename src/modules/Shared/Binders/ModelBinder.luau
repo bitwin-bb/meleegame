@@ -1,13 +1,10 @@
---!strict
+local require = require(script.Parent.loader).load(script)
 
 local Players = game:GetService("Players")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
-local Maid = loader("Maid")
-local InstanceUtils = require(script:FindFirstAncestor("game").Shared.Features.platform.modules.InstanceUtils)
-local TagBinder = require(script.Parent.TagBinder)
+local InstanceUtils = require("InstanceUtils")
+local Maid = require("Maid")
+local TagBinder = require("TagBinder")
 
 type MaidClass = {
 	GiveTask: (self: MaidClass, task: any) -> any,

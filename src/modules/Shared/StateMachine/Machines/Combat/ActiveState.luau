@@ -1,7 +1,8 @@
---!strict
 
-local SpawnHitboxAction = require(script:FindFirstAncestor("StateMachine").Actions.SpawnHitboxAction)
-local State = require(script:FindFirstAncestor("StateMachine").Core.State)
+local require = require(script.Parent.loader).load(script)
+
+local SpawnHitboxAction = require("SpawnHitboxAction")
+local State = require("StateMachineState")
 
 local ActiveState = {}
 

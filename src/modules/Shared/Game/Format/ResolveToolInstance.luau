@@ -1,7 +1,7 @@
---!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ItemRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Registry)
+local require = require(script.Parent.loader).load(script)
+
+local ItemRegistry = require("ItemRegistry")
 
 local ResolveToolInstance = {}
 

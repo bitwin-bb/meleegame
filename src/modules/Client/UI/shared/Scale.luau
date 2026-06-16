@@ -1,9 +1,9 @@
---!strict
+local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React = require(ReplicatedStorage.Packages.React)
-local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
+local Responsive = require("useViewportScale")
 
 export type ScaleProps = {
 	scale: number?,

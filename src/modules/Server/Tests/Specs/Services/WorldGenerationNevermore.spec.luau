@@ -1,4 +1,4 @@
---!strict
+local require = require(script.Parent.loader).load(script)
 
 local testEnvironment = getfenv() :: any
 local describe = testEnvironment.describe :: any
@@ -8,18 +8,12 @@ local expect = testEnvironment.expect :: any
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local WorldGeneration =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.classes.WorldGeneration)
-local WorldGenerationServiceClient =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceClient)
-local WorldGenerationServiceUtils =
-	require(script:FindFirstAncestor("game").Shared.Features.worldGeneration.WorldGenerationServiceUtils)
+local WorldGeneration = require("WorldGeneration")
+local WorldGenerationColor = require("WorldGenerationColor")
+local WorldGenerationServiceClient = require("WorldGenerationServiceClient")
+local WorldGenerationServiceUtils = require("WorldGenerationServiceUtils")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
-
-local Maid = loader("Maid")
+local Maid = require("Maid")
 
 local REQUIRED_TILE_TEMPLATE_NAMES = {
 	"Stone",
@@ -31,6 +25,10 @@ local REQUIRED_TILE_TEMPLATE_NAMES = {
 	"CorruptSoil",
 	"CorruptGrass",
 }
+
+local function computeTileIndex(localX: number, localY: number, width: number): number
+	return localY * width + localX + 1
+end
 
 local function createTileAssetTemplates()
 	local assets = Instance.new("Folder")
@@ -142,10 +140,437 @@ return function()
 			expect(boundsSize.X).to.equal(16)
 		end)
 
+		it("keeps background terrain layers at the base tile light level", function()
+			local client = setmetatable({
+				state = WorldGenerationServiceUtils.createDefaultState(),
+				worldOrigin = Vector3.zero,
+				basePlaneX = 0,
+				terrainVisualPartPool = {},
+				treeVariantDefinitions = {},
+				propTemplatesByPropId = {},
+			}, {
+				__index = WorldGenerationServiceClient,
+			})
+
+			local snapshot = {
+				key = "background-lighting",
+				chunkX = 0,
+				chunkY = 0,
+				tileMinX = 0,
+				tileMinY = 0,
+				width = 1,
+				height = 1,
+				tiles = { 0 },
+				depthLayers = { 0 },
+				depthBelowSurface = { 0 },
+				biomeIds = { 1 },
+				surfaceBiomeIds = { 1 },
+				biomeTypes = { 1 },
+				dominantBiomeId = 1,
+				dominantBiomeType = 1,
+				backgroundLayers = {
+					{
+						layerIndex = 1,
+						tileMinX = 0,
+						tileMinY = 0,
+						width = 1,
+						height = 1,
+						tiles = { 3 },
+					},
+					{
+						layerIndex = 2,
+						tileMinX = 0,
+						tileMinY = 0,
+						width = 1,
+						height = 1,
+						tiles = { 3 },
+					},
+				},
+				trees = {},
+				props = {},
+				revision = 1,
+			}
+
+			local model, _, _, terrainParts, backgroundPartsByLayer = (WorldGenerationServiceClient :: any).BuildChunkVisualModel(
+				client,
+				snapshot
+			)
+			local stoneVisual = WorldGenerationColor.GetTileVisual(3)
+			local layerOneColor = backgroundPartsByLayer[1][1].Color
+			local layerTwoColor = backgroundPartsByLayer[2][1].Color;
+			(WorldGenerationServiceClient :: any).ReleaseTerrainVisualParts(client, terrainParts)
+			for _, backgroundParts in backgroundPartsByLayer do
+				(WorldGenerationServiceClient :: any).ReleaseTerrainVisualParts(client, backgroundParts)
+			end
+			(WorldGenerationServiceClient :: any).ClearTerrainVisualPartPool(client)
+			model:Destroy()
+
+			expect(stoneVisual ~= nil).to.equal(true)
+			expect(layerOneColor).to.equal((stoneVisual :: any).color)
+			expect(layerTwoColor).to.equal((stoneVisual :: any).color)
+		end)
+
+		it("preserves background depth layers that share terrain tile coordinates", function()
+			local tileId = WorldGeneration.TILE_ID
+			local generator = setmetatable({
+				chunkSize = 2,
+				tileId = tileId,
+			}, {
+				__index = WorldGeneration,
+			})
+			local function createLayerTiles(width: number, height: number): { number }
+				local tiles = {}
+				for tileIndex = 1, width * height do
+					tiles[tileIndex] = tileId.AIR
+				end
+				return tiles
+			end
+			local function setLayerTile(layerData: any, worldTileX: number, worldTileY: number, value: number)
+				local localX = worldTileX - layerData.tileMinX
+				local localY = worldTileY - layerData.tileMinY
+				layerData.tiles[computeTileIndex(localX, localY, layerData.width)] = value
+			end
+
+			local layerOne = {
+				layerIndex = 1,
+				tileMinX = 9,
+				tileMinY = 19,
+				width = 4,
+				height = 4,
+				tiles = createLayerTiles(4, 4),
+			}
+			local layerTwo = {
+				layerIndex = 2,
+				tileMinX = 9,
+				tileMinY = 19,
+				width = 4,
+				height = 4,
+				tiles = createLayerTiles(4, 4),
+			}
+			setLayerTile(layerOne, 10, 20, tileId.DIRT)
+			setLayerTile(layerOne, 11, 20, tileId.STONE)
+			setLayerTile(layerTwo, 11, 20, tileId.DIRT)
+			setLayerTile(layerTwo, 10, 20, tileId.STONE)
+			local chunkData = {
+				key = "overlap-regression",
+				chunkX = 0,
+				chunkY = 0,
+				tileMinX = 10,
+				tileMinY = 20,
+				width = 2,
+				height = 2,
+				tiles = {
+					tileId.STONE,
+					tileId.AIR,
+					tileId.AIR,
+					tileId.AIR,
+				},
+				backgroundLayers = {
+					layerOne,
+					layerTwo,
+				},
+			}
+
+			local overlapCount = (WorldGeneration :: any).RepairChunkTileMetadataOverlaps(generator, chunkData, true)
+
+			expect(overlapCount).to.equal(0)
+			expect(chunkData.tiles[computeTileIndex(0, 0, chunkData.width)]).to.equal(tileId.STONE)
+			expect(layerOne.tiles[computeTileIndex(1, 1, layerOne.width)]).to.equal(tileId.DIRT)
+			expect(layerOne.tiles[computeTileIndex(2, 1, layerOne.width)]).to.equal(tileId.STONE)
+			expect(layerTwo.tiles[computeTileIndex(2, 1, layerTwo.width)]).to.equal(tileId.DIRT)
+			expect(layerTwo.tiles[computeTileIndex(1, 1, layerTwo.width)]).to.equal(tileId.STONE)
+		end)
+
+		it("clips background layer snapshots to the owning chunk bounds", function()
+			local tileId = WorldGeneration.TILE_ID
+			local layerTiles = {
+				tileId.STONE,
+				tileId.DIRT,
+				tileId.AIR,
+				tileId.AIR,
+				tileId.AIR,
+				tileId.AIR,
+				tileId.AIR,
+				tileId.AIR,
+			}
+			local chunkData = {
+				key = "background-snapshot-ownership",
+				chunkX = 0,
+				chunkY = 0,
+				tileMinX = 0,
+				tileMinY = 0,
+				width = 2,
+				height = 2,
+				tiles = {
+					tileId.AIR,
+					tileId.AIR,
+					tileId.AIR,
+					tileId.AIR,
+				},
+				depthLayers = { 0, 0, 0, 0 },
+				depthBelowSurface = { 0, 0, 0, 0 },
+				biomeIds = { 1, 1, 1, 1 },
+				surfaceBiomeIds = { 1, 1 },
+				biomeTypes = { 1, 1, 1, 1 },
+				dominantBiomeId = 1,
+				dominantBiomeType = 1,
+				backgroundLayers = {
+					{
+						layerIndex = 1,
+						tileMinX = -1,
+						tileMinY = 0,
+						width = 4,
+						height = 2,
+						tiles = layerTiles,
+					},
+				},
+				trees = {},
+				props = {},
+			}
+			local generator = setmetatable({
+				chunkSize = 2,
+				tileId = tileId,
+				getChunkDataByKey = function()
+					return chunkData
+				end,
+				getChunkRevisionByKey = function()
+					return 1
+				end,
+			}, {
+				__index = WorldGeneration,
+			})
+
+			local snapshot = (WorldGeneration :: any).GetChunkSnapshotByKey(generator, chunkData.key)
+			local snapshotLayer = snapshot.backgroundLayers[1]
+
+			expect(snapshotLayer.tileMinX).to.equal(chunkData.tileMinX)
+			expect(snapshotLayer.tileMinY).to.equal(chunkData.tileMinY)
+			expect(snapshotLayer.width).to.equal(chunkData.width)
+			expect(snapshotLayer.height).to.equal(chunkData.height)
+			expect(snapshotLayer.tiles[computeTileIndex(0, 0, snapshotLayer.width)]).to.equal(tileId.DIRT)
+			expect(snapshotLayer.tiles[computeTileIndex(1, 0, snapshotLayer.width)]).to.equal(tileId.AIR)
+			expect(#snapshotLayer.tiles).to.equal(chunkData.width * chunkData.height)
+		end)
+
 		it("only binds terrain parts that need tile binder behavior", function()
 			expect((WorldGenerationServiceClient :: any).ShouldBindTerrainTile(10)).to.equal(true)
 			expect((WorldGenerationServiceClient :: any).ShouldBindTerrainTile(3)).to.equal(false)
 			expect((WorldGenerationServiceClient :: any).ShouldBindTerrainTile(1)).to.equal(false)
+		end)
+
+		it("keeps greedy terrain rects intact while hovering a tile inside them", function()
+			local model = Instance.new("Model")
+			model.Name = "TerrainHoverRuntimeSpec"
+			model.Parent = Workspace
+
+			local state = WorldGenerationServiceUtils.createDefaultState()
+
+			local snapshot = {
+				key = "0:0",
+				chunkX = 0,
+				chunkY = 0,
+				tileMinX = 0,
+				tileMinY = 0,
+				width = 8,
+				height = 8,
+			}
+			local part = Instance.new("Part")
+			part.Name = "GreedyTerrainRect"
+			part.Transparency = 0.35
+			part.Parent = model
+			local rectRuntime = {
+				part = part,
+				tileMinX = 1,
+				tileMinY = 2,
+				width = 4,
+				height = 3,
+				tileId = 10,
+			}
+			part.Size =
+				Vector3.new(state.tileDepth, state.tileSize * rectRuntime.height, state.tileSize * rectRuntime.width)
+
+			local hoveredTileX = 3
+			local hoveredTileY = 4
+			local rectByLocalTileIndex = {}
+			rectByLocalTileIndex[computeTileIndex(hoveredTileX, hoveredTileY, snapshot.width)] = 1
+			local client = setmetatable({
+				state = state,
+				chunkSnapshots = {
+					["0:0"] = snapshot,
+				},
+				chunkVisuals = {
+					["0:0"] = {
+						model = model,
+						partCount = 1,
+						revision = 1,
+						builtAt = 0,
+						treeSignature = "",
+						propSignature = "",
+						terrainHoverFolder = nil,
+						terrainLayerModel = nil,
+						backgroundLayerModelsByLayer = {},
+						terrainParts = { part },
+						terrainRects = { rectRuntime },
+						terrainRectByLocalTileIndex = rectByLocalTileIndex,
+						treeModels = {},
+						propModels = {},
+					},
+				},
+				hoveredTerrainTileX = hoveredTileX,
+				hoveredTerrainTileY = hoveredTileY,
+				hoveredTerrainChunkKey = "0:0",
+				createForegroundRectPart = function()
+					error("hovering a greedy terrain rect should not split it into replacement parts")
+				end,
+			}, {
+				__index = WorldGenerationServiceClient,
+			})
+
+			local ok, err = pcall(function()
+				(WorldGenerationServiceClient :: any).ApplyHoveredTerrainTileRuntime(client)
+			end)
+
+			local runtime = (client :: any).hoveredTerrainRuntime
+			local hoverProxyPart = runtime.hoverProxyPart
+			local clearHoveredTerrainTileRuntime = (WorldGenerationServiceClient :: any).ClearHoveredTerrainTileRuntime
+			clearHoveredTerrainTileRuntime(client)
+			model:Destroy()
+
+			expect(ok).to.equal(true)
+			expect(err).to.equal(nil)
+			expect(runtime.hoverPart).to.equal(part)
+			expect(runtime.localTileX).to.equal(2)
+			expect(runtime.localTileY).to.equal(2)
+			expect(runtime.width).to.equal(4)
+			expect(runtime.height).to.equal(3)
+			expect(runtime.highlight:IsA("SelectionBox")).to.equal(true)
+			expect(runtime.highlight.Adornee).to.equal(hoverProxyPart)
+			expect(runtime.highlight.SurfaceTransparency).to.equal(1)
+			expect(hoverProxyPart.Transparency).to.equal(1)
+			expect(hoverProxyPart.CanQuery).to.equal(false)
+			expect(hoverProxyPart.Size.Y).to.equal(state.tileSize)
+			expect(hoverProxyPart.Size.Z).to.equal(state.tileSize)
+			expect(hoverProxyPart.CFrame).to.equal(part.CFrame * CFrame.new(0, state.tileSize, state.tileSize * 0.5))
+			expect(#runtime.replacementParts).to.equal(0)
+			expect(part.Transparency).to.equal(0.35)
+		end)
+
+		it("preserves unchanged prop folders when replacing chunk visuals", function()
+			local foregroundFolder = Instance.new("Folder")
+			foregroundFolder.Name = "WorldGenerationPropPreserveForegroundSpec"
+			foregroundFolder.Parent = Workspace
+
+			local existingModel = Instance.new("Model")
+			existingModel.Name = "0:0"
+			existingModel.Parent = foregroundFolder
+
+			local existingPropsFolder = Instance.new("Folder")
+			existingPropsFolder.Name = "Props"
+			existingPropsFolder.Parent = existingModel
+
+			local existingCactus = Instance.new("Model")
+			existingCactus.Name = "Cactus_0_0_1"
+			existingCactus.Parent = existingPropsFolder
+
+			local existingCactusSegment = Instance.new("Part")
+			existingCactusSegment.Name = "Segment"
+			existingCactusSegment.Parent = existingCactus
+
+			local rebuiltModel = Instance.new("Model")
+			rebuiltModel.Name = "0:0"
+
+			local propSignature = "4:5:2:3:12345:1:7"
+			local snapshot = {
+				key = "0:0",
+				chunkX = 0,
+				chunkY = 0,
+				tileMinX = 0,
+				tileMinY = 0,
+				width = 8,
+				height = 8,
+				tiles = {},
+				depthLayers = {},
+				depthBelowSurface = {},
+				biomeIds = {},
+				surfaceBiomeIds = {},
+				biomeTypes = {},
+				dominantBiomeId = 7,
+				dominantBiomeType = 1,
+				backgroundLayers = {},
+				trees = {},
+				props = {
+					{
+						tileX = 4,
+						tileY = 5,
+						propId = 2,
+						variantIndex = 3,
+						seed = 12345,
+						biomeType = 1,
+						biomeId = 7,
+					},
+				},
+				revision = 2,
+			}
+			local client = setmetatable({
+				visibleChunkKeys = {
+					["0:0"] = true,
+				},
+				chunkVisuals = {
+					["0:0"] = {
+						model = existingModel,
+						partCount = 1,
+						revision = 1,
+						builtAt = 0,
+						treeSignature = "",
+						propSignature = propSignature,
+						terrainHoverFolder = nil,
+						terrainLayerModel = nil,
+						backgroundLayerModelsByLayer = {},
+						terrainParts = {},
+						backgroundPartsByLayer = {},
+						terrainRects = {},
+						terrainRectByLocalTileIndex = {},
+					},
+				},
+				dirtyChunkLookup = {
+					["0:0"] = true,
+				},
+				totalVisualPartCount = 1,
+				lastChunkBuildAt = {},
+				chunkAnimationSkipUntil = {},
+				resolveForegroundTerrainFolder = function()
+					return foregroundFolder
+				end,
+				resolveBackgroundLayerFolder = function()
+					return nil
+				end,
+				releaseTerrainVisualParts = function() end,
+			}, {
+				__index = WorldGenerationServiceClient,
+			})
+
+			local didCommit = (WorldGenerationServiceClient :: any).CommitChunkVisualBuildResult(
+				client,
+				snapshot,
+				rebuiltModel,
+				0,
+				nil,
+				{},
+				{},
+				{},
+				{},
+				1
+			)
+
+			expect(didCommit).to.equal(true)
+			expect(existingPropsFolder.Parent).to.equal(existingModel)
+			expect(existingCactus.Parent).to.equal(existingPropsFolder)
+			expect(existingCactusSegment.Parent).to.equal(existingCactus)
+			expect(rebuiltModel.Parent).to.equal(nil)
+			expect((client :: any).chunkVisuals["0:0"].partCount).to.equal(1)
+			expect((client :: any).chunkVisuals["0:0"].propSignature).to.equal(propSignature)
+
+			foregroundFolder:Destroy()
 		end)
 
 		it("uses generated tile templates when asset templates are unavailable", function()

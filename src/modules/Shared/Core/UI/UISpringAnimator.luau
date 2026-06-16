@@ -1,7 +1,8 @@
---!strict
+local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
-local Spring = require(script:FindFirstAncestor("game").Shared.Core.Math.Spring)
+local Spring = require("Spring")
 
 local RunService = game:GetService("RunService")
 
@@ -57,7 +58,12 @@ local function clearArray(array: { any })
 end
 
 local function typeIsSupported(kind: string): boolean
-	return kind == "number" or kind == "UDim2" or kind == "Vector2" or kind == "Vector3" or kind == "Color3" or kind == "UDim"
+	return kind == "number"
+		or kind == "UDim2"
+		or kind == "Vector2"
+		or kind == "Vector3"
+		or kind == "Color3"
+		or kind == "UDim"
 end
 
 local function componentCountFor(kind: string): number
@@ -140,7 +146,15 @@ local function fromComponents(kind: string, components: { number }): any
 	return nil
 end
 
-local function springStep(position: number, velocity: number, target: number, dt: number, frequency: number, dampingRatio: number, mass: number): (number, number)
+local function springStep(
+	position: number,
+	velocity: number,
+	target: number,
+	dt: number,
+	frequency: number,
+	dampingRatio: number,
+	mass: number
+): (number, number)
 	local nextState = Spring.step({
 		value = position,
 		velocity = velocity,
@@ -149,8 +163,8 @@ local function springStep(position: number, velocity: number, target: number, dt
 end
 
 function UISpringAnimator.New(configRaw: AnimatorConfig?): UISpringAnimator
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
-	local defaultConfig = if typeof(config.defaultConfig) == "table" then config.defaultConfig else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
+	local defaultConfig = if typeof(config.defaultConfig) == "table" then config.defaultConfig else {} :: any
 	local self = setmetatable({
 		tickScheduler = config.tickScheduler,
 		updateHz = clampNumber(config.updateHz, 60, 1, 360),
@@ -221,13 +235,17 @@ function UISpringAnimator._ensureLoop(self: UISpringAnimator)
 	end
 	self.isRunning = true
 	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).scheduleEvery) == "function" then
-		self.loopToken = (self.tickScheduler :: any):scheduleEvery(function(dt: number)
-			self:step(dt)
-		end, 1 / self.updateHz, {
-			group = "ui.spring",
-			priority = 200,
-			catchUp = false,
-		})
+		self.loopToken = (self.tickScheduler :: any):scheduleEvery(
+			function(dt: number)
+				self:step(dt)
+			end,
+			1 / self.updateHz,
+			{
+				group = "ui.spring",
+				priority = 200,
+				catchUp = false,
+			}
+		)
 		return
 	end
 	self.heartbeatConnection = RunService.Heartbeat:Connect(function(dt)
@@ -336,7 +354,7 @@ function UISpringAnimator.Animate(
 		fillComponents(kind, targetValue, state.target)
 	end
 
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	state.dampingRatio = clampNumber(config.dampingRatio, state.dampingRatio, 0.01, 10)
 	state.frequency = clampNumber(config.frequency, state.frequency, 0.01, 60)
 	state.mass = clampNumber(config.mass, state.mass, 0.001, 1000)
@@ -433,7 +451,10 @@ function UISpringAnimator.Step(self: UISpringAnimator, dtRaw: any)
 				)
 				state.value[componentIndex] = nextValue
 				state.velocity[componentIndex] = nextVelocity
-				if math.abs(nextValue - state.target[componentIndex]) > state.precision or math.abs(nextVelocity) > state.precision then
+				if
+					math.abs(nextValue - state.target[componentIndex]) > state.precision
+					or math.abs(nextVelocity) > state.precision
+				then
 					done = false
 				end
 			end

@@ -1,8 +1,8 @@
---!strict
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Noise = require(script:FindFirstAncestor("game").Shared.Core.Math.Noise)
-local Rand = require(script:FindFirstAncestor("game").Shared.Core.Math.Rand)
+local require = require(script.Parent.loader).load(script)
+
+local Noise = require("Noise")
+local Rand = require("Rand")
 
 local DeterministicRNG = {}
 local RNG = {}
@@ -31,12 +31,42 @@ export type NoiseWrapper = {
 	seed: number,
 	Sample2D: (self: NoiseWrapper, x: number, y: number, scale: number?) -> number,
 	Sample3D: (self: NoiseWrapper, x: number, y: number, z: number, scale: number?) -> number,
-	Fbm2D: (self: NoiseWrapper, x: number, y: number, octaves: number?, persistence: number?, lacunarity: number?) -> number,
-	Fbm3D: (self: NoiseWrapper, x: number, y: number, z: number, octaves: number?, persistence: number?, lacunarity: number?) -> number,
+	Fbm2D: (
+		self: NoiseWrapper,
+		x: number,
+		y: number,
+		octaves: number?,
+		persistence: number?,
+		lacunarity: number?
+	) -> number,
+	Fbm3D: (
+		self: NoiseWrapper,
+		x: number,
+		y: number,
+		z: number,
+		octaves: number?,
+		persistence: number?,
+		lacunarity: number?
+	) -> number,
 	sample2D: (self: NoiseWrapper, x: number, y: number, scale: number?) -> number,
 	sample3D: (self: NoiseWrapper, x: number, y: number, z: number, scale: number?) -> number,
-	fbm2D: (self: NoiseWrapper, x: number, y: number, octaves: number?, persistence: number?, lacunarity: number?) -> number,
-	fbm3D: (self: NoiseWrapper, x: number, y: number, z: number, octaves: number?, persistence: number?, lacunarity: number?) -> number,
+	fbm2D: (
+		self: NoiseWrapper,
+		x: number,
+		y: number,
+		octaves: number?,
+		persistence: number?,
+		lacunarity: number?
+	) -> number,
+	fbm3D: (
+		self: NoiseWrapper,
+		x: number,
+		y: number,
+		z: number,
+		octaves: number?,
+		persistence: number?,
+		lacunarity: number?
+	) -> number,
 }
 
 local UINT32_FLOAT_DENOMINATOR = 4294967296
@@ -70,12 +100,7 @@ local function floorToInteger(value: number): number
 end
 
 local function hashCoordinatesInternal(xRaw: number, yRaw: number, zRaw: number, seedRaw: number): number
-	return Rand.hashCoordinates(
-		Rand.uint32(seedRaw),
-		floorToInteger(xRaw),
-		floorToInteger(yRaw),
-		floorToInteger(zRaw)
-	)
+	return Rand.hashCoordinates(Rand.uint32(seedRaw), floorToInteger(xRaw), floorToInteger(yRaw), floorToInteger(zRaw))
 end
 
 local function hashToUnitFloat(hashValue: number): number

@@ -1,4 +1,4 @@
---!strict
+local require = require(script.Parent.loader).load(script)
 
 local SpatialHashGrid = {}
 SpatialHashGrid.__index = SpatialHashGrid
@@ -67,7 +67,7 @@ local function defaultSortById(a: EntryRecord<any>, b: EntryRecord<any>): boolea
 end
 
 function SpatialHashGrid.new<T>(configRaw: GridConfig): SpatialHashGrid<T>
-	local config = if typeof(configRaw) == "table" then configRaw else ({ cellSize = 8 } :: GridConfig)
+	local config = if typeof(configRaw) == "table" then configRaw else { cellSize = 8 } :: GridConfig
 	local cellSize = clampNumber(config.cellSize, 8, 0.001, 100000)
 	local cellsPerChunk = math.max(1, math.floor(clampNumber(config.cellsPerChunk, 4, 1, 512)))
 	local deterministic = if config.deterministicQueries == nil then true else config.deterministicQueries == true
@@ -85,14 +85,24 @@ function SpatialHashGrid.new<T>(configRaw: GridConfig): SpatialHashGrid<T>
 	return self
 end
 
-function SpatialHashGrid._worldToCell(self: SpatialHashGrid<any>, x: number, y: number, z: number): (number, number, number)
+function SpatialHashGrid._worldToCell(
+	self: SpatialHashGrid<any>,
+	x: number,
+	y: number,
+	z: number
+): (number, number, number)
 	local cellX = floorDiv(x, self.cellSize)
 	local cellY = floorDiv(y, self.cellSize)
 	local cellZ = floorDiv(z, self.cellSize)
 	return cellX, cellY, cellZ
 end
 
-function SpatialHashGrid._cellToChunk(self: SpatialHashGrid<any>, cellX: number, cellY: number, cellZ: number): (number, number, number)
+function SpatialHashGrid._cellToChunk(
+	self: SpatialHashGrid<any>,
+	cellX: number,
+	cellY: number,
+	cellZ: number
+): (number, number, number)
 	local chunkX = floorDiv(cellX, self.cellsPerChunk)
 	local chunkY = floorDiv(cellY, self.cellsPerChunk)
 	local chunkZ = floorDiv(cellZ, self.cellsPerChunk)
@@ -133,7 +143,14 @@ function SpatialHashGrid._detach(self: SpatialHashGrid<any>, record: EntryRecord
 	end
 end
 
-function SpatialHashGrid.insert<T>(self: SpatialHashGrid<T>, idRaw: any, xRaw: any, yRaw: any, zRaw: any, payload: T): boolean
+function SpatialHashGrid.insert<T>(
+	self: SpatialHashGrid<T>,
+	idRaw: any,
+	xRaw: any,
+	yRaw: any,
+	zRaw: any,
+	payload: T
+): boolean
 	local idKind = typeof(idRaw)
 	if idKind ~= "string" and idKind ~= "number" then
 		return false
@@ -182,7 +199,14 @@ function SpatialHashGrid.Remove(self: SpatialHashGrid<any>, idRaw: any): boolean
 	return true
 end
 
-function SpatialHashGrid.update<T>(self: SpatialHashGrid<T>, idRaw: any, xRaw: any, yRaw: any, zRaw: any, payload: T?): boolean
+function SpatialHashGrid.update<T>(
+	self: SpatialHashGrid<T>,
+	idRaw: any,
+	xRaw: any,
+	yRaw: any,
+	zRaw: any,
+	payload: T?
+): boolean
 	local record = self.entries[idRaw]
 	if record == nil then
 		return false
@@ -198,7 +222,14 @@ function SpatialHashGrid.update<T>(self: SpatialHashGrid<T>, idRaw: any, xRaw: a
 		record.payload = payload
 	end
 
-	if cellX == record.cellX and cellY == record.cellY and cellZ == record.cellZ and chunkX == record.chunkX and chunkY == record.chunkY and chunkZ == record.chunkZ then
+	if
+		cellX == record.cellX
+		and cellY == record.cellY
+		and cellZ == record.cellZ
+		and chunkX == record.chunkX
+		and chunkY == record.chunkY
+		and chunkZ == record.chunkZ
+	then
 		record.x = x
 		record.y = y
 		record.z = z
@@ -229,11 +260,17 @@ function SpatialHashGrid.Count(self: SpatialHashGrid<any>): number
 	return self.entryCount
 end
 
-function SpatialHashGrid.queryCell<T>(self: SpatialHashGrid<T>, cellXRaw: any, cellYRaw: any, cellZRaw: any, outRaw: { EntryRecord<T> }?): { EntryRecord<T> }
+function SpatialHashGrid.queryCell<T>(
+	self: SpatialHashGrid<T>,
+	cellXRaw: any,
+	cellYRaw: any,
+	cellZRaw: any,
+	outRaw: { EntryRecord<T> }?
+): { EntryRecord<T> }
 	local cellX = if typeof(cellXRaw) == "number" then math.floor(cellXRaw) else 0
 	local cellY = if typeof(cellYRaw) == "number" then math.floor(cellYRaw) else 0
 	local cellZ = if typeof(cellZRaw) == "number" then math.floor(cellZRaw) else 0
-	local out = if outRaw ~= nil then outRaw else ({} :: any)
+	local out = if outRaw ~= nil then outRaw else {} :: any
 	clearArray(out)
 
 	local bucket = self.cells[key3(cellX, cellY, cellZ)]
@@ -248,11 +285,17 @@ function SpatialHashGrid.queryCell<T>(self: SpatialHashGrid<T>, cellXRaw: any, c
 	return out
 end
 
-function SpatialHashGrid.queryChunk<T>(self: SpatialHashGrid<T>, chunkXRaw: any, chunkYRaw: any, chunkZRaw: any, outRaw: { EntryRecord<T> }?): { EntryRecord<T> }
+function SpatialHashGrid.queryChunk<T>(
+	self: SpatialHashGrid<T>,
+	chunkXRaw: any,
+	chunkYRaw: any,
+	chunkZRaw: any,
+	outRaw: { EntryRecord<T> }?
+): { EntryRecord<T> }
 	local chunkX = if typeof(chunkXRaw) == "number" then math.floor(chunkXRaw) else 0
 	local chunkY = if typeof(chunkYRaw) == "number" then math.floor(chunkYRaw) else 0
 	local chunkZ = if typeof(chunkZRaw) == "number" then math.floor(chunkZRaw) else 0
-	local out = if outRaw ~= nil then outRaw else ({} :: any)
+	local out = if outRaw ~= nil then outRaw else {} :: any
 	clearArray(out)
 
 	local bucket = self.chunks[key3(chunkX, chunkY, chunkZ)]
@@ -270,12 +313,19 @@ function SpatialHashGrid.queryChunk<T>(self: SpatialHashGrid<T>, chunkXRaw: any,
 	return out
 end
 
-function SpatialHashGrid.queryRadius<T>(self: SpatialHashGrid<T>, xRaw: any, yRaw: any, zRaw: any, radiusRaw: any, outRaw: { EntryRecord<T> }?): { EntryRecord<T> }
+function SpatialHashGrid.queryRadius<T>(
+	self: SpatialHashGrid<T>,
+	xRaw: any,
+	yRaw: any,
+	zRaw: any,
+	radiusRaw: any,
+	outRaw: { EntryRecord<T> }?
+): { EntryRecord<T> }
 	local x = if typeof(xRaw) == "number" then xRaw else 0
 	local y = if typeof(yRaw) == "number" then yRaw else 0
 	local z = if typeof(zRaw) == "number" then zRaw else 0
 	local radius = clampNumber(radiusRaw, 0, 0, 1000000)
-	local out = if outRaw ~= nil then outRaw else ({} :: any)
+	local out = if outRaw ~= nil then outRaw else {} :: any
 	clearArray(out)
 
 	local minCellX = floorDiv(x - radius, self.cellSize)
@@ -310,7 +360,12 @@ function SpatialHashGrid.queryRadius<T>(self: SpatialHashGrid<T>, xRaw: any, yRa
 	return out
 end
 
-function SpatialHashGrid.WorldToChunk(self: SpatialHashGrid<any>, xRaw: any, yRaw: any, zRaw: any): (number, number, number)
+function SpatialHashGrid.WorldToChunk(
+	self: SpatialHashGrid<any>,
+	xRaw: any,
+	yRaw: any,
+	zRaw: any
+): (number, number, number)
 	local x = if typeof(xRaw) == "number" then xRaw else 0
 	local y = if typeof(yRaw) == "number" then yRaw else 0
 	local z = if typeof(zRaw) == "number" then zRaw else 0

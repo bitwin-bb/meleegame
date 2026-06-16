@@ -1,16 +1,17 @@
---!strict
 
-local Nevermore = require(script:FindFirstAncestor("game").Shared.StateMachine.Nevermore)
+local require = require(script.Parent.loader).load(script)
+
+local Nevermore = require("GoapNevermore")
 local Table = Nevermore.Get("Table")
 
 return Table.copy({
-	InputHandler = require(script.InputHandler),
-	AnimationHandler = require(script.AnimationHandler),
-	MovementHandler = require(script.MovementHandler),
-	CombatInputHandler = require(script.CombatInputHandler),
-	ToolHandler = require(script.ToolHandler),
-	CameraHandler = require(script:FindFirstAncestor("game").Shared.Features.camera.handlers.CameraHandler),
-	UIHandler = require(script.UIHandler),
-	EffectHandler = require(script.EffectHandler),
-	SoundHandler = require(script.SoundHandler),
+	InputHandler = require(script:WaitForChild("InputHandler")),
+	AnimationHandler = require(script:WaitForChild("AnimationHandler")),
+	MovementHandler = require(script:WaitForChild("MovementHandler")),
+	CombatInputHandler = require(script:WaitForChild("CombatInputHandler")),
+	ToolHandler = require(script:WaitForChild("ToolHandler")),
+	CameraHandler = require("CameraHandler"),
+	UIHandler = require(script:WaitForChild("UIHandler")),
+	EffectHandler = require(script:WaitForChild("EffectHandler")),
+	SoundHandler = require(script:WaitForChild("SoundHandler")),
 })

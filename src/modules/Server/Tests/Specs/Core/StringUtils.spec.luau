@@ -1,12 +1,11 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local testEnvironment = getfenv() :: any
 local describe = testEnvironment.describe :: any
 local it = testEnvironment.it :: any
 local expect = testEnvironment.expect :: any
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local StringUtils = require(script:FindFirstAncestor("game").Shared.Core.StringUtils)
+local StringUtils = require("StringUtils")
 
 return function()
 	describe("StringUtils", function()

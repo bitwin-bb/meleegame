@@ -1,6 +1,7 @@
---!strict
 
-local useDebounce = require(script.Parent.Parent.core.hooks.useDebounce)
+local require = require(script.Parent.loader).load(script)
+
+local useDebounce = require("useDebounce")
 
 export type DebounceValueOptions<T> = {
 	leading: boolean?,

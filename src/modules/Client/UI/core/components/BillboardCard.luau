@@ -1,8 +1,9 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local FloatingCard = require(script.Parent.FloatingCard)
-local PortalTargets = require(script.Parent.Parent.utils.PortalTargets)
+local FloatingCard = require("FloatingCard")
+local PortalTargets = require("PortalTargets")
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 

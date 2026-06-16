@@ -1,4 +1,4 @@
---!strict
+local require = require(script.Parent.loader).load(script)
 
 local testEnvironment = getfenv() :: any
 local describe = testEnvironment.describe :: any
@@ -7,19 +7,14 @@ local expect = testEnvironment.expect :: any
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
-
-local Maid = loader("Maid")
-local BossBase = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss)
-local BossServiceServer = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceServer)
-local BossServiceUtils = require(script:FindFirstAncestor("game").Shared.Features.npc.BossServiceUtils)
-local EntityCatalog = require(script:FindFirstAncestor("game").Shared.Features.commander.EntityCatalog)
-local EyeOfCthulhuConfig =
-	require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.EyeOfCthulhu.Config)
-local QueenBeeConfig = require(script:FindFirstAncestor("game").Shared.Features.npc.classes.Boss.QueenBee.Configs)
-local QueenBeeSpriteSheet = require(script:FindFirstAncestor("game").Shared.Features.npc.modules.QueenBeeSpriteSheet)
+local BossBase = require("Boss")
+local BossServiceServer = require("BossServiceServer")
+local BossServiceUtils = require("BossServiceUtils")
+local EntityCatalog = require("EntityCatalog")
+local EyeOfCthulhuConfig = require("EyeOfCthulhuConfig")
+local Maid = require("Maid")
+local QueenBeeConfig = require("QueenBeeConfigs")
+local QueenBeeSpriteSheet = require("QueenBeeSpriteSheet")
 
 local function createBossAssetTemplates()
 	local assets = Instance.new("Folder")

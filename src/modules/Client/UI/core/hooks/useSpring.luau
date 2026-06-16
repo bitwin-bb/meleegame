@@ -1,4 +1,5 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
@@ -74,7 +75,7 @@ local function useSpring<T>(target: T, options: SpringOptions?): SpringResult<T>
 			motion:destroy()
 			motionRef.current = nil
 		end
-	end, ({ enabled, spring } :: { any }))
+	end, { enabled, spring } :: { any })
 
 	local setTarget = React.useCallback(function(nextTarget: T)
 		targetRef.current = nextTarget

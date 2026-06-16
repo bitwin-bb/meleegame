@@ -1,14 +1,14 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local testEnvironment = getfenv() :: any
 local describe = testEnvironment.describe :: any
 local it = testEnvironment.it :: any
 local expect = testEnvironment.expect :: any
 
-local gameRoot = script:FindFirstAncestor("game")
 
-local SharedEventBus = require(gameRoot.Shared.SharedEventBus)
-local ServerEventBus = require(gameRoot.Server.ServerEventBus)
-local ClientEventBus = require(gameRoot.Client.ClientEventBus)
+local ClientEventBus = require("ClientEventBus")
+local ServerEventBus = require("ServerEventBus")
+local SharedEventBus = require("SharedEventBus")
 
 local function waitUntil(predicate: () -> boolean, label: string)
 	local timeoutAt = os.clock() + 1
@@ -316,6 +316,94 @@ return function()
 			subscription:Destroy()
 			bus:Destroy()
 		end)
+
+		it("keeps retained RxSignal handles from recreating events after Off", function()
+			local bus = SharedEventBus.Core.EventBus.new("test")
+			local rxSignal = bus:GetRxSignal("InventoryChanged")
+
+			expect(bus:Has("InventoryChanged")).to.equal(true)
+			bus:Off("InventoryChanged")
+			expect(bus:Has("InventoryChanged")).to.equal(false)
+
+			local ok = pcall(function()
+				rxSignal:Connect(function() end)
+			end)
+
+			expect(ok).to.equal(false)
+			expect(bus:Has("InventoryChanged")).to.equal(false)
+
+			bus:Destroy()
+		end)
+
+		it("resumes retained RxSignal waits when an event is cleared", function()
+			local bus = SharedEventBus.Core.EventBus.new("test")
+			local rxSignal = bus:GetRxSignal("InventoryChanged")
+			local resumed = false
+			local waiterReady = false
+			local received = nil :: any
+
+			task.spawn(function()
+				waiterReady = true
+				received = rxSignal:Wait()
+				resumed = true
+			end)
+
+			waitUntil(function()
+				return waiterReady
+			end, "retained RxSignal clear waiter readiness")
+
+			bus:Clear("InventoryChanged")
+
+			waitUntil(function()
+				return resumed
+			end, "retained RxSignal wait after clear")
+
+			expect(received).to.equal(nil)
+			expect(bus:Has("InventoryChanged")).to.equal(false)
+
+			local ok = pcall(function()
+				rxSignal:Connect(function() end)
+			end)
+
+			expect(ok).to.equal(false)
+			expect(bus:Has("InventoryChanged")).to.equal(false)
+
+			bus:Destroy()
+		end)
+
+		it("resumes retained RxSignal waits when the bus is destroyed", function()
+			local bus = SharedEventBus.Core.EventBus.new("test")
+			local rxSignal = bus:GetRxSignal("InventoryChanged")
+			local resumed = false
+			local waiterReady = false
+			local received = nil :: any
+
+			task.spawn(function()
+				waiterReady = true
+				received = rxSignal:Wait()
+				resumed = true
+			end)
+
+			waitUntil(function()
+				return waiterReady
+			end, "retained RxSignal destroy waiter readiness")
+
+			bus:Destroy()
+
+			waitUntil(function()
+				return resumed
+			end, "retained RxSignal wait after destroy")
+
+			expect(received).to.equal(nil)
+			expect(bus:Has("InventoryChanged")).to.equal(false)
+
+			local ok = pcall(function()
+				rxSignal:Connect(function() end)
+			end)
+
+			expect(ok).to.equal(false)
+			expect(bus:Has("InventoryChanged")).to.equal(false)
+		end)
 	end)
 
 	describe("realm event registries", function()
@@ -356,6 +444,112 @@ return function()
 					registry.Assert("NotARealClientEvent")
 				end)
 				expect(ok).to.equal(false)
+			end)
+		end)
+	end)
+
+	describe("realm event buses", function()
+		it("delegates server bus wrapper calls and aliases", function()
+			local bus = ServerEventBus.Core.ServerBus
+			local events = ServerEventBus.Core.ServerEvents
+			local callbackValue = nil :: any
+			local observedValue = nil :: any
+			local rxSignalValue = nil :: any
+
+			bus:Clear(events.CommandExecuted)
+			bus:Clear(events.BossDefeated)
+			bus:Clear(events.AbilityUsed)
+
+			local callbackConnection = bus:on(events.CommandExecuted, function(commandName)
+				callbackValue = commandName
+			end)
+			local subscription = bus:observe(events.BossDefeated):Subscribe(function(bossName)
+				observedValue = bossName
+			end)
+			local rxSignalConnection = bus:getRxSignal(events.AbilityUsed):Connect(function(abilityName)
+				rxSignalValue = abilityName
+			end)
+
+			expect(bus:has(events.CommandExecuted)).to.equal(true)
+			expect(bus:has(events.BossDefeated)).to.equal(true)
+			expect(bus:has(events.AbilityUsed)).to.equal(true)
+
+			bus:fire(events.CommandExecuted, "grant")
+			bus:fire(events.BossDefeated, "reef_boss")
+			bus:fire(events.AbilityUsed, "dash")
+
+			waitUntil(function()
+				return callbackValue == "grant" and observedValue == "reef_boss" and rxSignalValue == "dash"
+			end, "server bus wrapper delivery")
+
+			callbackConnection:Disconnect()
+			subscription:Destroy()
+			rxSignalConnection:Destroy()
+
+			bus:off(events.CommandExecuted)
+			bus:off(events.BossDefeated)
+			bus:off(events.AbilityUsed)
+
+			expect(bus:has(events.CommandExecuted)).to.equal(false)
+			expect(bus:has(events.BossDefeated)).to.equal(false)
+			expect(bus:has(events.AbilityUsed)).to.equal(false)
+
+			withErrorOnUnknownEvent(ServerEventBus.Utils, false, function()
+				expect(bus:On("NotARealServerEvent", function() end)).to.equal(nil)
+				expect(bus:Has("NotARealServerEvent")).to.equal(false)
+			end)
+		end)
+
+		it("delegates client bus wrapper calls and aliases", function()
+			local bus = ClientEventBus.Core.ClientBus
+			local events = ClientEventBus.Core.ClientEvents
+			local callbackValue = nil :: any
+			local observedValue = nil :: any
+			local rxSignalValue = nil :: any
+
+			bus:Clear(events.UIOpened)
+			bus:Clear(events.UIClosed)
+			bus:Clear(events.SoundRequested)
+
+			local callbackConnection = bus:on(events.UIOpened, function(screenName)
+				callbackValue = screenName
+			end)
+			local subscription = bus:observe(events.UIClosed):Subscribe(function(screenName)
+				observedValue = screenName
+			end)
+			local rxSignalConnection = bus:getRxSignal(events.SoundRequested):Connect(function(soundName)
+				rxSignalValue = soundName
+			end)
+
+			expect(bus:has(events.UIOpened)).to.equal(true)
+			expect(bus:has(events.UIClosed)).to.equal(true)
+			expect(bus:has(events.SoundRequested)).to.equal(true)
+
+			bus:fire(events.UIOpened, "Inventory")
+			bus:fire(events.UIClosed, "Inventory")
+			bus:fire(events.SoundRequested, "OpenInventory")
+
+			waitUntil(function()
+				return callbackValue == "Inventory"
+					and observedValue == "Inventory"
+					and rxSignalValue == "OpenInventory"
+			end, "client bus wrapper delivery")
+
+			callbackConnection:Disconnect()
+			subscription:Destroy()
+			rxSignalConnection:Destroy()
+
+			bus:off(events.UIOpened)
+			bus:off(events.UIClosed)
+			bus:off(events.SoundRequested)
+
+			expect(bus:has(events.UIOpened)).to.equal(false)
+			expect(bus:has(events.UIClosed)).to.equal(false)
+			expect(bus:has(events.SoundRequested)).to.equal(false)
+
+			withErrorOnUnknownEvent(ClientEventBus.Utils, false, function()
+				expect(bus:On("NotARealClientEvent", function() end)).to.equal(nil)
+				expect(bus:Has("NotARealClientEvent")).to.equal(false)
 			end)
 		end)
 	end)

@@ -1,5 +1,7 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local ReactiveState = {}
@@ -31,8 +33,7 @@ local function clearArray(array: { any })
 	end
 end
 
-local function noop()
-end
+local function noop() end
 
 local function safeDisconnect(connection: any?)
 	if connection == nil then
@@ -231,7 +232,11 @@ function ReactiveState.Bind(instanceRaw: any, propertyRaw: any, sourceRaw: any, 
 	if typeof(propertyRaw) ~= "string" or propertyRaw == "" then
 		return noop
 	end
-	if typeof(sourceRaw) ~= "table" or typeof(sourceRaw.get) ~= "function" or typeof(sourceRaw.subscribe) ~= "function" then
+	if
+		typeof(sourceRaw) ~= "table"
+		or typeof(sourceRaw.get) ~= "function"
+		or typeof(sourceRaw.subscribe) ~= "function"
+	then
 		return noop
 	end
 

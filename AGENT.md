@@ -14,10 +14,47 @@ These rules are must-always-follow requirements. If a priority rule applies, it 
 - Prefer existing Nevermore infrastructure over hand-rolled replacements whenever possible.
 - Common examples include `loader` for package requiring/bootstrap, `ServiceBag` for service initialization, and `Rx` for reactive flows, but any suitable Nevermore package may be used.
 - The AI must always use loader to load nevermore packages, the intended way.
+- In normal project scripts, the loader-backed require line must be exactly `local require = require(script.Parent.loader).load(script)`.
+- Do not use long loader paths such as `script:FindFirstAncestor("AquariaBackup").node_modules["@quenty"].loader`.
 - Always check the official Nevermore documentation page for anything involving Nevermore before scripting, then follow any further instructions after that.
 - Before using Nevermore Engine, always, and ALWAYS look at the API first so we use all relevant Nevermore package features and Nevermore Engine features wherever they are a good fit.
+- Before writing code, always search every installed Nevermore package individually, including source, exports, local usage, and docs where available, to understand how each package functions for the current use case.
+- Also search the Nevermore API docs for the relevant package pages. Use the temporary package knowledge from that audit to choose and apply packages whose purpose fits the script being made or edited.
 
 Hard rule: AI-generated code must rely on Nevermore `node_modules` packages for every script unless the user explicitly requests an exception.
+
+### Nevermore Package Usage Policy
+
+This is a Nevermore-first Roblox Luau project.
+
+Before creating, rewriting, or refactoring any system, perform a Nevermore package audit for the task before writing code.
+
+Required package audit:
+
+- Inspect `package.json`.
+- Inspect `wally.toml`.
+- Inspect `node_modules/@quenty`.
+- Inspect `Packages/`.
+- Inspect `ReplicatedStorage/Nevermore` if present.
+- Inspect existing `require("PackageName")` usage.
+- Inspect the existing loader setup.
+
+Do not rely only on memory. Search each installed Nevermore package individually before writing code, then search the Nevermore API docs for relevant package behavior. Compare docs with local installed source when exact behavior matters.
+
+Use every installed Nevermore or project package that genuinely fits the file or system. There is no maximum package count and no minimum package count. A file may use 2 packages or 25 packages depending on the job. The goal is not fewer dependencies. The goal is not more dependencies. The goal is correct dependency usage.
+
+Before writing custom logic, search for an installed package that already solves it. Prefer existing packages for lifecycle objects, cleanup, services, binders, tags, reactive state, async flow, promises, signals, springs, camera control, character helpers, humanoid helpers, player helpers, adornee helpers, IK, octrees, spatial queries, value objects, observable state, datastore helpers, UI composition, animation smoothing, physics-style motion, networking helpers, utility math, table helpers, and instance helpers.
+
+Never add fake imports. Never import a package just to increase the package count. Every required package must be used directly and meaningfully. However, do not avoid packages for the sake of simplicity if the package is appropriate.
+
+Semicolons are allowed in scripts. They may be used where Luau parsing or local style benefits from them, and they may also be used to separate statements even when they serve no strict technical purpose.
+
+Required response after every task:
+
+- `Package audit`: list every Nevermore/project package considered.
+- `Packages used`: list every package imported and why it was used.
+- `Packages not used`: list relevant packages considered but rejected, with a short reason.
+- `Custom logic`: list any custom logic written because no installed package handled it cleanly.
 
 2. Strictly follow the user's request scope.
 - Do not do tasks that you werent told to do.
@@ -233,4 +270,5 @@ Disallowed in cleanup pass:
 - [ ] Did I keep comments minimal and useful only where needed?
 - [ ] Did I use tabs and existing file layout conventions?
 - [ ] Did I avoid introducing new abstractions when explicit local patterns already exist?
+- [ ] Did I perform the Nevermore package audit and include the required package response sections?
 - [ ] If uncertain, did I copy an existing pattern verbatim?

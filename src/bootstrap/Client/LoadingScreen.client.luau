@@ -11,10 +11,10 @@ end)
 local PACKAGES_NAME = "Packages"
 local REACT_NAME = "React"
 local REACT_ROBLOX_NAME = "ReactRoblox"
-local BRIDGE_NAME = "AquariaLoaderBridge"
+local BRIDGE_NAME = "AquarialoaderBridge"
 local STATE_CHANGED_NAME = "StateChanged"
 local GET_SNAPSHOT_NAME = "GetSnapshot"
-local SCREEN_GUI_NAME = "AquariaLoaderGui"
+local SCREEN_GUI_NAME = "AquarialoaderGui"
 local SPAWN_READY_REMOTE_NAME = "AquariaLoadingScreenReady"
 local PACKAGE_WAIT_TIMEOUT_SECONDS = 60
 local BRIDGE_WAIT_TIMEOUT_SECONDS = 60
@@ -35,12 +35,12 @@ local function waitForPackageModule(name: string): ModuleScript
 	return module
 end
 
-local LoaderGui = require(script.Parent.Parent.UI.Components.LoaderGui)
+local loaderGui = require(script.Parent.Parent.UI.Components.LoaderGui)
 local React = (require :: any)(waitForPackageModule(REACT_NAME))
 local ReactRoblox = (require :: any)(waitForPackageModule(REACT_ROBLOX_NAME))
 local e: typeof(React.createElement) = React.createElement
 
-type LoaderSnapshot = {
+type loaderSnapshot = {
 	status: string,
 	stage: string,
 	message: string,
@@ -59,10 +59,10 @@ type LoaderSnapshot = {
 }
 
 type LoadingScreenAppProps = {
-	onFinished: (LoaderSnapshot) -> (),
+	onFinished: (loaderSnapshot) -> (),
 }
 
-local DEFAULT_SNAPSHOT: LoaderSnapshot = {
+local DEFAULT_SNAPSHOT: loaderSnapshot = {
 	status = "idle",
 	stage = "boot",
 	message = "starting loader",
@@ -117,8 +117,8 @@ local function sanitizeStringArray(valueRaw: any): { string }
 	return values
 end
 
-local function sanitizeSnapshot(valueRaw: any): LoaderSnapshot
-	local value: { [string]: any } = if typeof(valueRaw) == "table" then valueRaw :: { [string]: any } else ({} :: any)
+local function sanitizeSnapshot(valueRaw: any): loaderSnapshot
+	local value: { [string]: any } = if typeof(valueRaw) == "table" then valueRaw :: { [string]: any } else {} :: any
 
 	return {
 		status = sanitizeString(value.status, DEFAULT_SNAPSHOT.status),
@@ -139,7 +139,7 @@ local function sanitizeSnapshot(valueRaw: any): LoaderSnapshot
 	}
 end
 
-local function isTerminalSnapshot(snapshot: LoaderSnapshot): boolean
+local function isTerminalSnapshot(snapshot: loaderSnapshot): boolean
 	return snapshot.status == "complete" or snapshot.status == "failed"
 end
 
@@ -151,29 +151,29 @@ local function findBridge(): Folder?
 	return nil
 end
 
-local function readAttributeSnapshot(): LoaderSnapshot
+local function readAttributeSnapshot(): loaderSnapshot
 	local bridge = findBridge()
 	local source = if bridge ~= nil then bridge else ReplicatedFirst
 
 	return sanitizeSnapshot({
-		status = source:GetAttribute("AquariaLoaderStatus"),
-		stage = source:GetAttribute("AquariaLoaderStage"),
-		message = source:GetAttribute("AquariaLoaderMessage"),
-		progress = source:GetAttribute("AquariaLoaderProgress"),
-		completed = source:GetAttribute("AquariaLoaderCompleted"),
-		total = source:GetAttribute("AquariaLoaderTotal"),
-		startedAt = source:GetAttribute("AquariaLoaderStartedAt"),
-		finishedAt = source:GetAttribute("AquariaLoaderFinishedAt"),
-		moduleCount = source:GetAttribute("AquariaLoaderModuleCount"),
-		assetCount = source:GetAttribute("AquariaLoaderAssetCount"),
-		assetLoadedCount = source:GetAttribute("AquariaLoaderAssetLoadedCount"),
-		assetFailedCount = source:GetAttribute("AquariaLoaderAssetFailedCount"),
-		failureCount = source:GetAttribute("AquariaLoaderFailureCount"),
-		lastError = source:GetAttribute("AquariaLoaderLastError"),
+		status = source:GetAttribute("AquarialoaderStatus"),
+		stage = source:GetAttribute("AquarialoaderStage"),
+		message = source:GetAttribute("AquarialoaderMessage"),
+		progress = source:GetAttribute("AquarialoaderProgress"),
+		completed = source:GetAttribute("AquarialoaderCompleted"),
+		total = source:GetAttribute("AquarialoaderTotal"),
+		startedAt = source:GetAttribute("AquarialoaderStartedAt"),
+		finishedAt = source:GetAttribute("AquarialoaderFinishedAt"),
+		moduleCount = source:GetAttribute("AquarialoaderModuleCount"),
+		assetCount = source:GetAttribute("AquarialoaderAssetCount"),
+		assetLoadedCount = source:GetAttribute("AquarialoaderAssetLoadedCount"),
+		assetFailedCount = source:GetAttribute("AquarialoaderAssetFailedCount"),
+		failureCount = source:GetAttribute("AquarialoaderFailureCount"),
+		lastError = source:GetAttribute("AquarialoaderLastError"),
 	})
 end
 
-local function readBridgeSnapshot(): LoaderSnapshot
+local function readBridgeSnapshot(): loaderSnapshot
 	local bridge = findBridge()
 	if bridge == nil then
 		return readAttributeSnapshot()
@@ -194,7 +194,7 @@ local function readBridgeSnapshot(): LoaderSnapshot
 	return readAttributeSnapshot()
 end
 
-local function subscribeToSnapshots(onSnapshot: (LoaderSnapshot) -> ()): () -> ()
+local function subscribeToSnapshots(onSnapshot: (loaderSnapshot) -> ()): () -> ()
 	local cancelled = false
 	local connection = nil :: RBXScriptConnection?
 
@@ -258,7 +258,7 @@ local function ensureScreenGui(): ScreenGui
 	return screenGui
 end
 
-local function fireSpawnReady(snapshot: LoaderSnapshot): boolean
+local function fireSpawnReady(snapshot: loaderSnapshot): boolean
 	local deadline = os.clock() + SPAWN_READY_WAIT_TIMEOUT_SECONDS
 	while os.clock() < deadline do
 		local remote = ReplicatedStorage:FindFirstChild(SPAWN_READY_REMOTE_NAME)
@@ -274,7 +274,7 @@ local function fireSpawnReady(snapshot: LoaderSnapshot): boolean
 end
 
 local function LoadingScreenApp(props: LoadingScreenAppProps): any
-	local snapshot, setSnapshot = React.useState(function(): LoaderSnapshot
+	local snapshot, setSnapshot = React.useState(function(): loaderSnapshot
 		return readBridgeSnapshot()
 	end)
 	local finishedRef = React.useRef(false)
@@ -292,7 +292,7 @@ local function LoadingScreenApp(props: LoadingScreenAppProps): any
 		props.onFinished(snapshot)
 	end, { snapshot.status })
 
-	return e(LoaderGui, {
+	return e(loaderGui, {
 		snapshot = snapshot,
 	})
 end
@@ -314,7 +314,7 @@ local function destroy()
 	end
 end
 
-local function onFinished(snapshot: LoaderSnapshot)
+local function onFinished(snapshot: loaderSnapshot)
 	if spawnReadyStarted then
 		return
 	end

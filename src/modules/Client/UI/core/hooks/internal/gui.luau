@@ -1,4 +1,5 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local Players = game:GetService("Players")
 
 local GuiUtils = {}

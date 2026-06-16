@@ -1,7 +1,8 @@
---!strict
 
-local UiSound = require(script.Parent.Parent.utils.UiSound)
-local useEvent = require(script:FindFirstAncestor("game").Client.UI.shared.useEvent)
+local require = require(script.Parent.loader).load(script)
+
+local UiSound = require("UiSound")
+local useEvent = require("useSharedEvent")
 
 export type UiSoundHook = {
 	play: (soundAssetId: string?) -> (),

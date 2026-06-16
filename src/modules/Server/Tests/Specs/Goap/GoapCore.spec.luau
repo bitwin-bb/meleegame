@@ -1,11 +1,11 @@
---!strict
+local require = require(script.Parent.loader).load(script)
 
 local testEnvironment = getfenv() :: any
 local describe = testEnvironment.describe :: any
 local it = testEnvironment.it :: any
 local expect = testEnvironment.expect :: any
 
-local Goap = require(script:FindFirstAncestor("game").Shared.Goap)
+local Goap = require("Goap")
 
 return function()
 	describe("Goap core", function()

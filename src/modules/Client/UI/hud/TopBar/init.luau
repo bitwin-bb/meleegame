@@ -1,9 +1,11 @@
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local HealthRoot = require(script:FindFirstAncestor("game").Shared.Features.health.ui.HealthRoot)
-local NavButton = require(script:FindFirstAncestor("game").Client.UI.core.components.NavButton)
+local HealthRoot = require("HealthRoot")
+local NavButton = require("NavButton")
 local React = require(ReplicatedStorage.Packages.React)
-local Responsive = require(script:FindFirstAncestor("game").Client.UI.core.hooks.useViewportScale)
+local Responsive = require("useViewportScale")
 
 local e: typeof(React.createElement) = React.createElement
 

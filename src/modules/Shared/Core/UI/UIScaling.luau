@@ -1,5 +1,7 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
 local GuiService = game:GetService("GuiService")
@@ -210,20 +212,20 @@ local ROLE_PRESETS: any = {
 			minTextSize = 11,
 			maxTextSize = 28,
 		},
-		aspectRules = ({
-			({
+		aspectRules = {
+			{
 				maxAspect = 1.4,
 				minAspect = nil :: number?,
 				sizeMultiplier = Vector2.new(1.08, 1.1),
 				positionNudge = Vector2.new(0, -0.02),
-			} :: any),
-			({
+			} :: any,
+			{
 				maxAspect = nil :: number?,
 				minAspect = 2.2,
 				sizeMultiplier = Vector2.new(0.93, 1.0),
 				positionNudge = Vector2.new(0, 0.01),
-			} :: any),
-		} :: any),
+			} :: any,
+		} :: any,
 	},
 	HealthBar = {
 		anchorPoint = Vector2.new(0, 0),
@@ -238,18 +240,18 @@ local ROLE_PRESETS: any = {
 	InventoryGrid = {
 		anchorPoint = Vector2.new(0.5, 0.5),
 		useSafeZone = true,
-		aspectRules = ({
-			({
+		aspectRules = {
+			{
 				maxAspect = 1.5,
 				minAspect = nil :: number?,
 				sizeMultiplier = Vector2.new(1.04, 1.04),
-			} :: any),
-			({
+			} :: any,
+			{
 				maxAspect = nil :: number?,
 				minAspect = 2.1,
 				sizeMultiplier = Vector2.new(0.92, 0.92),
-			} :: any),
-		} :: any),
+			} :: any,
+		} :: any,
 	},
 	Tooltip = {
 		anchorPoint = Vector2.new(0, 0),
@@ -506,7 +508,10 @@ local function buildAspectConstraint(roleRaw: any, configRaw: any): AspectConstr
 		}
 	end
 	local aspectType = Enum.AspectType.ScaleWithParentSize
-	if source.aspectType == Enum.AspectType.ScaleWithParentSize or source.aspectType == Enum.AspectType.FitWithinMaxSize then
+	if
+		source.aspectType == Enum.AspectType.ScaleWithParentSize
+		or source.aspectType == Enum.AspectType.FitWithinMaxSize
+	then
 		aspectType = source.aspectType
 	end
 	local dominantAxis = Enum.DominantAxis.Width
@@ -522,12 +527,14 @@ local function buildAspectConstraint(roleRaw: any, configRaw: any): AspectConstr
 end
 
 function UIScaling.New(configRaw: UIScalingConfig?): UIScaling
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local referenceResolution = vector2Or(config.referenceResolution, DEFAULT_REFERENCE_RESOLUTION)
 
 	local self = setmetatable({
 		platform = config.platform,
-		screenGui = if typeof(config.screenGui) == "Instance" and config.screenGui:IsA("ScreenGui") then config.screenGui else nil,
+		screenGui = if typeof(config.screenGui) == "Instance" and config.screenGui:IsA("ScreenGui")
+			then config.screenGui
+			else nil,
 		ignoreGuiInset = if config.ignoreGuiInset == nil then true else config.ignoreGuiInset == true,
 		referenceResolution = Vector2.new(math.max(1, referenceResolution.X), math.max(1, referenceResolution.Y)),
 		minGlobalScale = clampNumber(config.minGlobalScale, 0.78, 0.1, 10),
@@ -564,7 +571,9 @@ function UIScaling.New(configRaw: UIScalingConfig?): UIScaling
 					safePadding = if typeof(presetRaw.safePadding) == "Vector2" then presetRaw.safePadding else nil,
 					textMin = if typeof(presetRaw.textMin) == "number" then presetRaw.textMin else nil,
 					textMax = if typeof(presetRaw.textMax) == "number" then presetRaw.textMax else nil,
-					layoutSpacingScale = if typeof(presetRaw.layoutSpacingScale) == "number" then presetRaw.layoutSpacingScale else nil,
+					layoutSpacingScale = if typeof(presetRaw.layoutSpacingScale) == "number"
+						then presetRaw.layoutSpacingScale
+						else nil,
 				}
 			end
 		end
@@ -652,7 +661,9 @@ function UIScaling._computeSnapshot(self: UIScaling): UISnapshot
 	local viewport = self:_getViewport()
 	local guiSize = self:_getRootSize(viewport)
 	local deviceType = detectDeviceType(self.platform)
-	local preset = self.presets[deviceType] or self.presets.Desktop or Sift.Dictionary.copy(DEFAULT_DEVICE_PRESETS.Desktop)
+	local preset = self.presets[deviceType]
+		or self.presets.Desktop
+		or Sift.Dictionary.copy(DEFAULT_DEVICE_PRESETS.Desktop)
 	local globalScale = clampNumber(guiSize.Y / self.referenceResolution.Y, 1, self.minGlobalScale, self.maxGlobalScale)
 
 	local safeTopLeft = Vector2.zero
@@ -729,7 +740,12 @@ function UIScaling._applyAspectConstraint(self: UIScaling, gui: GuiObject, aspec
 	ratioConstraint.DominantAxis = aspectConstraint.dominantAxis
 end
 
-function UIScaling._resolveSizeBounds(self: UIScaling, record: ElementRecord, globalAspectRule: AspectRule?, elementAspectRule: AspectRule?): (Vector2?, Vector2?)
+function UIScaling._resolveSizeBounds(
+	self: UIScaling,
+	record: ElementRecord,
+	globalAspectRule: AspectRule?,
+	elementAspectRule: AspectRule?
+): (Vector2?, Vector2?)
 	local minSize = record.minSize
 	local maxSize = record.maxSize
 
@@ -863,7 +879,9 @@ function UIScaling._applyLayout(self: UIScaling, record: LayoutRecord, snapshot:
 		local axisSize = if layout.FillDirection == Enum.FillDirection.Horizontal then parentSize.X else parentSize.Y
 		local normalizedPadding = normalizeUDim(basePadding, axisSize, record.scalePaddingOffsets)
 		local paddingScaleValue = normalizedPadding.Scale * spacingScale
-		local paddingOffsetValue = if record.scalePaddingOffsets then 0 else round(normalizedPadding.Offset * spacingScale * offsetScale)
+		local paddingOffsetValue = if record.scalePaddingOffsets
+			then 0
+			else round(normalizedPadding.Offset * spacingScale * offsetScale)
 		layout.Padding = UDim.new(paddingScaleValue, paddingOffsetValue)
 		return
 	end
@@ -877,8 +895,12 @@ function UIScaling._applyLayout(self: UIScaling, record: LayoutRecord, snapshot:
 
 		local cellScaleX = normalizedCellSize.X.Scale * uiScale
 		local cellScaleY = normalizedCellSize.Y.Scale * uiScale
-		local cellOffsetX = if record.scaleCellSizeOffsets then 0 else round(normalizedCellSize.X.Offset * uiScale * offsetScale)
-		local cellOffsetY = if record.scaleCellSizeOffsets then 0 else round(normalizedCellSize.Y.Offset * uiScale * offsetScale)
+		local cellOffsetX = if record.scaleCellSizeOffsets
+			then 0
+			else round(normalizedCellSize.X.Offset * uiScale * offsetScale)
+		local cellOffsetY = if record.scaleCellSizeOffsets
+			then 0
+			else round(normalizedCellSize.Y.Offset * uiScale * offsetScale)
 
 		local absoluteCellX = cellScaleX * parentSize.X + cellOffsetX
 		local absoluteCellY = cellScaleY * parentSize.Y + cellOffsetY
@@ -898,9 +920,13 @@ function UIScaling._applyLayout(self: UIScaling, record: LayoutRecord, snapshot:
 		layout.CellSize = UDim2.new(cellScaleX, 0, cellScaleY, 0)
 		layout.CellPadding = UDim2.new(
 			normalizedCellPadding.X.Scale * spacingScale,
-			if record.scaleCellPaddingOffsets then 0 else round(normalizedCellPadding.X.Offset * spacingScale * offsetScale),
+			if record.scaleCellPaddingOffsets
+				then 0
+				else round(normalizedCellPadding.X.Offset * spacingScale * offsetScale),
 			normalizedCellPadding.Y.Scale * spacingScale,
-			if record.scaleCellPaddingOffsets then 0 else round(normalizedCellPadding.Y.Offset * spacingScale * offsetScale)
+			if record.scaleCellPaddingOffsets
+				then 0
+				else round(normalizedCellPadding.Y.Offset * spacingScale * offsetScale)
 		)
 	end
 end
@@ -987,14 +1013,31 @@ function UIScaling.RegisterElement(self: UIScaling, configRaw: ElementConfig): s
 	end
 	local recordId = id :: string
 
-	local anchorPoint = if typeof(configRaw.anchorPoint) == "Vector2" then configRaw.anchorPoint else if typeof(rolePreset) == "table" and typeof(rolePreset.anchorPoint) == "Vector2" then rolePreset.anchorPoint else gui.AnchorPoint
-	local useSafeZone = if configRaw.useSafeZone == nil then if typeof(rolePreset) == "table" and rolePreset.useSafeZone ~= nil then rolePreset.useSafeZone == true else true else configRaw.useSafeZone == true
+	local anchorPoint = if typeof(configRaw.anchorPoint) == "Vector2"
+		then configRaw.anchorPoint
+		else if typeof(rolePreset) == "table" and typeof(rolePreset.anchorPoint) == "Vector2"
+			then rolePreset.anchorPoint
+			else gui.AnchorPoint
+	local useSafeZone = if configRaw.useSafeZone == nil
+		then if typeof(rolePreset) == "table" and rolePreset.useSafeZone ~= nil
+			then rolePreset.useSafeZone == true
+			else true
+		else configRaw.useSafeZone == true
 	local safePadding = if typeof(configRaw.safePadding) == "Vector2" then configRaw.safePadding else Vector2.zero
-	local sizeMultiplier = if typeof(configRaw.sizeMultiplier) == "Vector2" then configRaw.sizeMultiplier else VECTOR2_ONE
+	local sizeMultiplier = if typeof(configRaw.sizeMultiplier) == "Vector2"
+		then configRaw.sizeMultiplier
+		else VECTOR2_ONE
 	local positionNudge = if typeof(configRaw.positionNudge) == "Vector2" then configRaw.positionNudge else Vector2.zero
-	local aspectRules = if typeof(configRaw.aspectRules) == "table" then copyAspectRules(configRaw.aspectRules) else if typeof(rolePreset) == "table" and typeof(rolePreset.aspectRules) == "table" then copyAspectRules(rolePreset.aspectRules) else ({} :: any)
+	local aspectRules = if typeof(configRaw.aspectRules) == "table"
+		then copyAspectRules(configRaw.aspectRules)
+		else if typeof(rolePreset) == "table" and typeof(rolePreset.aspectRules) == "table"
+			then copyAspectRules(rolePreset.aspectRules)
+			else {} :: any
 	local textRule = buildTextRule(if typeof(rolePreset) == "table" then rolePreset.text else nil, configRaw.text)
-	local aspectConstraint = buildAspectConstraint(if typeof(rolePreset) == "table" then rolePreset.aspectConstraint else nil, configRaw.aspectConstraint)
+	local aspectConstraint = buildAspectConstraint(
+		if typeof(rolePreset) == "table" then rolePreset.aspectConstraint else nil,
+		configRaw.aspectConstraint
+	)
 	local onApply = if typeof(configRaw.onApply) == "function" then configRaw.onApply else nil
 
 	local record: ElementRecord = {
@@ -1007,7 +1050,9 @@ function UIScaling.RegisterElement(self: UIScaling, configRaw: ElementConfig): s
 		useSafeZone = useSafeZone,
 		safePadding = safePadding,
 		scaleSizeOffsets = if configRaw.scaleSizeOffsets == nil then true else configRaw.scaleSizeOffsets == true,
-		scalePositionOffsets = if configRaw.scalePositionOffsets == nil then true else configRaw.scalePositionOffsets == true,
+		scalePositionOffsets = if configRaw.scalePositionOffsets == nil
+			then true
+			else configRaw.scalePositionOffsets == true,
 		sizeFineOffset = vector2Or(configRaw.sizeFineOffset, Vector2.zero),
 		positionFineOffset = vector2Or(configRaw.positionFineOffset, Vector2.zero),
 		sizeMultiplier = sizeMultiplier,
@@ -1074,9 +1119,15 @@ function UIScaling.RegisterLayout(self: UIScaling, configRaw: LayoutConfig): str
 		basePadding = if layoutInstance:IsA("UIListLayout") then layoutInstance.Padding else nil,
 		baseCellSize = if layoutInstance:IsA("UIGridLayout") then layoutInstance.CellSize else nil,
 		baseCellPadding = if layoutInstance:IsA("UIGridLayout") then layoutInstance.CellPadding else nil,
-		scalePaddingOffsets = if configRaw.scalePaddingOffsets == nil then true else configRaw.scalePaddingOffsets == true,
-		scaleCellSizeOffsets = if configRaw.scaleCellSizeOffsets == nil then true else configRaw.scaleCellSizeOffsets == true,
-		scaleCellPaddingOffsets = if configRaw.scaleCellPaddingOffsets == nil then true else configRaw.scaleCellPaddingOffsets == true,
+		scalePaddingOffsets = if configRaw.scalePaddingOffsets == nil
+			then true
+			else configRaw.scalePaddingOffsets == true,
+		scaleCellSizeOffsets = if configRaw.scaleCellSizeOffsets == nil
+			then true
+			else configRaw.scaleCellSizeOffsets == true,
+		scaleCellPaddingOffsets = if configRaw.scaleCellPaddingOffsets == nil
+			then true
+			else configRaw.scaleCellPaddingOffsets == true,
 		minCellSize = if typeof(configRaw.minCellSize) == "Vector2" then configRaw.minCellSize else nil,
 		maxCellSize = if typeof(configRaw.maxCellSize) == "Vector2" then configRaw.maxCellSize else nil,
 	}
@@ -1123,7 +1174,9 @@ function UIScaling.SetPreset(self: UIScaling, deviceTypeRaw: any, presetRaw: any
 		safePadding = if typeof(presetRaw.safePadding) == "Vector2" then presetRaw.safePadding else nil,
 		textMin = if typeof(presetRaw.textMin) == "number" then presetRaw.textMin else nil,
 		textMax = if typeof(presetRaw.textMax) == "number" then presetRaw.textMax else nil,
-		layoutSpacingScale = if typeof(presetRaw.layoutSpacingScale) == "number" then presetRaw.layoutSpacingScale else nil,
+		layoutSpacingScale = if typeof(presetRaw.layoutSpacingScale) == "number"
+			then presetRaw.layoutSpacingScale
+			else nil,
 	}
 	if self.isInitialized then
 		self:apply()

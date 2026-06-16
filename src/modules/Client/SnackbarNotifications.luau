@@ -1,16 +1,12 @@
---!strict
+local require = require(script.Parent.loader).load(script)
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(packageRoot)
-
-local ScreenGuiService = loader("ScreenGuiService")
-local SnackbarServiceClient = loader("SnackbarServiceClient")
-local AquariaBackupTranslator = require(script:FindFirstAncestor("game").Shared.AquariaBackupTranslator)
-local AudioRegistry = require(script:FindFirstAncestor("game").Shared.Features.item.modules.Audio)
-local AudioServiceClient = (require :: any)(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceClient)
-local AudioServiceUtils = require(script:FindFirstAncestor("game").Client.Features.audio.AudioServiceUtils)
-local NevermoreSupport = require(script:FindFirstAncestor("game").Shared.Core.NevermoreSupport)
+local AquariaBackupTranslator = require("AquariaBackupTranslator")
+local AudioRegistry = require("Audio")
+local ScreenGuiService = require("ScreenGuiService")
+local SnackbarServiceClient = require("SnackbarServiceClient")
+local AudioServiceClient = require("AudioServiceClient")
+local AudioServiceUtils = require("AudioServiceUtils")
+local NevermoreSupport = require("NevermoreSupport")
 
 local SnackbarNotifications = {}
 

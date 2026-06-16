@@ -1,4 +1,5 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
@@ -103,7 +104,7 @@ function HopMotion.ComputeArcHeight(horizontalDistanceRaw: any, minArcHeightRaw:
 end
 
 function HopMotion.New(configRaw: HopConfig?): HopMotion
-	local config = if typeof(configRaw) == "table" then configRaw else ({} :: any)
+	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local minArcHeight = sanitizeNumber(config.minArcHeight, DEFAULT_MIN_ARC_HEIGHT, 0, nil)
 	local maxArcHeight = sanitizeNumber(config.maxArcHeight, DEFAULT_MAX_ARC_HEIGHT, minArcHeight, nil)
 	local duration = sanitizeNumber(config.duration, DEFAULT_DURATION, 0.03, 8)
@@ -140,13 +141,7 @@ function HopMotion.Sample(self: HopMotion, alphaRaw: any): Vector3
 	return linearPosition + Vector3.new(0, arcOffsetY, 0)
 end
 
-function HopMotion.Start(
-	self: HopMotion,
-	originRaw: any,
-	destinationRaw: any,
-	durationRaw: any,
-	arcHeightRaw: any
-)
+function HopMotion.Start(self: HopMotion, originRaw: any, destinationRaw: any, durationRaw: any, arcHeightRaw: any)
 	if typeof(originRaw) ~= "Vector3" or typeof(destinationRaw) ~= "Vector3" then
 		return
 	end
@@ -156,7 +151,8 @@ function HopMotion.Start(
 	self.duration = sanitizeNumber(durationRaw, self.duration, 0.03, 8)
 
 	local horizontalDelta = Vector3.new(destinationRaw.X - originRaw.X, 0, destinationRaw.Z - originRaw.Z)
-	local computedArcHeight = HopMotion.ComputeArcHeight(horizontalDelta.Magnitude, self.minArcHeight, self.maxArcHeight)
+	local computedArcHeight =
+		HopMotion.ComputeArcHeight(horizontalDelta.Magnitude, self.minArcHeight, self.maxArcHeight)
 	self.arcHeight = if arcHeightRaw ~= nil
 		then sanitizeNumber(arcHeightRaw, computedArcHeight, 0, nil)
 		else computedArcHeight

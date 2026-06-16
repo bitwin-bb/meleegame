@@ -1,19 +1,20 @@
---!strict
 
-local Nevermore = require(script.Nevermore)
+local require = require(script.Parent.loader).load(script)
+
+local Nevermore = require(script:WaitForChild("StateMachineNevermore"))
 local Table = Nevermore.Get("Table")
 
 return Table.copy({
 	Nevermore = Nevermore,
-	Client = require(script.Client),
-	Server = require(script.Server),
-	Utils = require(script.Utils),
+	Client = require(script:WaitForChild("StateMachineClient")),
+	Server = require(script:WaitForChild("StateMachineServer")),
+	Utils = require(script:WaitForChild("StateMachineUtils")),
 
-	Core = require(script.Core),
-	Guards = require(script.Guards),
-	Actions = require(script.Actions),
-	Adapters = require(script.Adapters),
-	Runtime = require(script.Runtime),
-	Machines = require(script.Machines),
-	Debug = require(script.Debug),
+	Core = require(script:WaitForChild("StateMachineCore")),
+	Guards = require(script:WaitForChild("Guards")),
+	Actions = require(script:WaitForChild("StateMachineActions")),
+	Adapters = require(script:WaitForChild("Adapters")),
+	Runtime = require(script:WaitForChild("StateMachineRuntime")),
+	Machines = require(script:WaitForChild("Machines")),
+	Debug = require(script:WaitForChild("StateMachineDebug")),
 })

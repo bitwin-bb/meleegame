@@ -1,13 +1,10 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 --[[
 	@class AquariaBackupTranslator
 ]]
 
-local packageRoot = script:FindFirstAncestor("game").Parent
-local loaderUtils = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils")
-local loader = (require :: any)(loaderUtils.Parent).load(script)
-
-return loader("JSONTranslator").new("AquariaBackupTranslator", "en", {
+return require("JSONTranslator").new("AquariaBackupTranslator", "en", {
 	gameName = "AquariaBackup",
 	notifications = {
 		build = {

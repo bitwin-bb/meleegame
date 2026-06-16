@@ -1,3 +1,5 @@
+local require = require(script.Parent.loader).load(script)
+
 local DataTemplate = {
 	playerData = {
 		allowMovementFreeze = false,

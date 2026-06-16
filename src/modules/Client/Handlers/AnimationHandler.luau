@@ -1,6 +1,7 @@
---!strict
 
-local Nevermore = require(script:FindFirstAncestor("game").Shared.StateMachine.Nevermore)
+local require = require(script.Parent.loader).load(script)
+
+local Nevermore = require("GoapNevermore")
 local AnimationPromiseUtils = Nevermore.Get("AnimationPromiseUtils")
 local AnimationTrackUtils = Nevermore.Get("AnimationTrackUtils")
 local Maid = Nevermore.Get("Maid")

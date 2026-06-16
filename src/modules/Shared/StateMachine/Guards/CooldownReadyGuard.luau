@@ -1,7 +1,8 @@
---!strict
 
-local Nevermore = require(script:FindFirstAncestor("StateMachine").Nevermore)
-local Utils = require(script:FindFirstAncestor("StateMachine").Utils)
+local require = require(script.Parent.loader).load(script)
+
+local Nevermore = require("StateMachineNevermore")
+local Utils = require("StateMachineUtils")
 
 local AttributeUtils = Nevermore.Get("AttributeUtils")
 

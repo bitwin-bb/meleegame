@@ -1,8 +1,9 @@
---!strict
+
+local require = require(script.Parent.loader).load(script)
 
 local UserInputService = game:GetService("UserInputService")
 
-local Nevermore = require(script:FindFirstAncestor("game").Shared.StateMachine.Nevermore)
+local Nevermore = require("GoapNevermore")
 local Maid = Nevermore.Get("Maid")
 local Signal = Nevermore.Get("Signal")
 

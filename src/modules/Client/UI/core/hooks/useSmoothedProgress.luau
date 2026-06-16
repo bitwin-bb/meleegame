@@ -1,8 +1,9 @@
---!strict
+local require = require(script.Parent.loader).load(script)
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local Damp = require(script:FindFirstAncestor("game").Shared.Core.Math.Damp)
+local Damp = require("Damp")
 local React = require(ReplicatedStorage.Packages.React)
 
 export type SmoothedProgressOptions = {
