@@ -141,14 +141,6 @@ local SKIPPED_MODULE_PATHS = {
 	["Npc/npc/QueenBee"] = true,
 	["Npc/ui/components/QueenBee"] = true,
 	["Npc/ui/screens/QueenBeeScreen"] = true,
-	["Shared/Npc/BossServiceServer"] = true,
-	["Shared/Npc/components/QueenBeeRoot"] = true,
-	["Shared/Npc/modules/QueenBeeSpriteSheet"] = true,
-	["Shared/Npc/ui/NpcRoot"] = true,
-	["Shared/Npc/NpcServiceServer"] = true,
-	["Shared/Npc/npc/QueenBee"] = true,
-	["Shared/Npc/ui/components/QueenBee"] = true,
-	["Shared/Npc/ui/screens/QueenBeeScreen"] = true,
 }
 
 local PACKAGE_TRACKER_IGNORED_MODULE_PATHS = {
@@ -156,13 +148,13 @@ local PACKAGE_TRACKER_IGNORED_MODULE_PATHS = {
 	"game/Client/Replication",
 	"game/Client/SnackbarNotifications",
 	"game/Server/Net/ServerNetPackets",
-	"game/Shared/Npc/ui/components/SlimeComponent",
+	"game/Client/Npc/ui/components/SlimeComponent",
 	"game/Client/Services/NpcServiceClient",
 	"game/Server/Binders/NpcBinder",
 	"game/Server/Services/NpcServiceServer",
 	"game/Shared/Classes/Npc",
-	"game/Shared/Npc/npc/EyeOfCthulhuNpc",
-	"game/Shared/Npc/npc/QueenBeeNpc",
+	"game/Server/Npc/npc/EyeOfCthulhuNpc",
+	"game/Server/Npc/npc/QueenBeeNpc",
 	"game/Shared/Replication",
 	"game/Shared/Replication/Packets",
 	"game/Shared/Services/NpcServiceUtils",
@@ -172,8 +164,8 @@ local PACKAGE_TRACKER_IGNORED_MODULE_PATHS = {
 local REQUIRED_ARCHIVABLE_MODULE_PATHS = {
 	"game/Client/Notification/FeatureSnackbarNotifications",
 	"game/Client/NetClient/ClientNetPackets",
-	"game/Shared/Npc/ui/components/EyeOfCthulhuComponent",
-	"game/Shared/Npc/ui/components/QueenBeeComponent",
+	"game/Client/Npc/ui/components/EyeOfCthulhuComponent",
+	"game/Client/Npc/ui/components/QueenBeeComponent",
 }
 
 local PACKAGE_TRACKER_IGNORE_TIMEOUT_SECONDS = 5

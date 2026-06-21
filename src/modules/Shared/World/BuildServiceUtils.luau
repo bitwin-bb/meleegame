@@ -289,6 +289,17 @@ local FIXED_TILE_BREAK_HITS_BY_TILE_ID = {
 	[TILE_ID.STONE] = 3,
 }
 
+local TILE_BREAK_DROP_ITEM_BY_TILE_ID = {
+	[TILE_ID.DIRT] = "Dirt",
+	[TILE_ID.STONE] = "Stone",
+	[TILE_ID.SNOW] = "Snow",
+	[TILE_ID.ICE] = "Ice",
+	[TILE_ID.MUD] = "Mud",
+	[TILE_ID.COPPER_ORE] = "CopperOre",
+	[TILE_ID.CORRUPT_STONE] = "EbonStone",
+	[TILE_ID.WOOD] = "Wood",
+}
+
 local TILE_RULE_BY_ID: { [number]: TileRule } = {
 	[TILE_ID.AIR] = DEFAULT_TILE_RULE,
 	[TILE_ID.GRASS] = {
@@ -1369,6 +1380,14 @@ function BuildServiceUtils.ResolveTileIdFromAlias(tileIdRaw: any): number?
 	return TILE_NAME_TO_ID[normalized]
 end
 
+function BuildServiceUtils.ResolveTileBreakDropItemId(tileIdRaw: any): string?
+	local tileId = BuildServiceUtils.ResolveTileIdFromAlias(tileIdRaw)
+	if tileId == nil then
+		return nil
+	end
+	return TILE_BREAK_DROP_ITEM_BY_TILE_ID[tileId]
+end
+
 function BuildServiceUtils.ResolvePlaceableItemConfig(itemIdRaw: any): PlaceableItemConfig?
 	local canonicalItemId = ItemRegistry.resolveCanonicalItemId(itemIdRaw)
 	if canonicalItemId == nil then
@@ -1912,6 +1931,7 @@ BuildServiceUtils.computeTreeImpactPosition = BuildServiceUtils.ComputeTreeImpac
 BuildServiceUtils.rollTreeDrops = BuildServiceUtils.RollTreeDrops
 BuildServiceUtils.sanitizeTreeFelledPayload = BuildServiceUtils.SanitizeTreeFelledPayload
 BuildServiceUtils.resolveTileIdFromAlias = BuildServiceUtils.ResolveTileIdFromAlias
+BuildServiceUtils.resolveTileBreakDropItemId = BuildServiceUtils.ResolveTileBreakDropItemId
 BuildServiceUtils.resolvePlaceableItemConfig = BuildServiceUtils.ResolvePlaceableItemConfig
 BuildServiceUtils.worldPositionToTile = BuildServiceUtils.WorldPositionToTile
 BuildServiceUtils.tileToWorldCenter = BuildServiceUtils.TileToWorldCenter

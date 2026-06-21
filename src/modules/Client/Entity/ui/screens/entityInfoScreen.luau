@@ -163,7 +163,7 @@ return function(props: EntityInfoScreenProps): React.ReactNode
 					Size = UDim2.new(1, 0, 0, 16),
 					BackgroundTransparency = 1,
 					BorderSizePixel = 0,
-					Font = Enum.Font.GothamBold,
+					Font = Enum.Font.PatrickHand,
 					Text = displayName,
 					TextColor3 = Color3.fromRGB(248, 250, 255),
 					TextSize = 15,

@@ -84,10 +84,13 @@ LootServiceData.itemAssetAliases = {
 	Wood = { "Wood", "wood", "WoodTile", "woodTile" },
 	Dirt = { "Dirt", "dirt", "DirtTile", "dirtTile" },
 	Stone = { "Stone", "stone", "StoneTile", "stoneTile" },
+	Snow = { "Snow", "snow", "SnowTile", "snowTile" },
+	Ice = { "Ice", "ice", "IceTile", "iceTile" },
 	CopperOre = { "CopperOre", "copperOre", "Copper Ore" },
 	Gel = { "Gel", "gel" },
 	Torch = { "Torch", "torch" },
 	Mud = { "Mud", "mud", "MudTile", "mudTile" },
+	RichMahogany = { "RichMahogany", "Rich Mahogany", "richMahogany", "mahoganyWood" },
 	EbonStone = { "EbonStone", "Ebon Stone", "ebonStone", "CorruptStone" },
 }
 
@@ -106,10 +109,13 @@ LootServiceData.items = {
 	Wood = { rarity = "Common", maxStack = 999 },
 	Dirt = { rarity = "Common", maxStack = 999 },
 	Stone = { rarity = "Common", maxStack = 999 },
+	Snow = { rarity = "Common", maxStack = 999 },
+	Ice = { rarity = "Common", maxStack = 999 },
 	CopperOre = { rarity = "Common", maxStack = 999 },
 	Gel = { rarity = "Common", maxStack = 999 },
 	Torch = { rarity = "Common", maxStack = 999 },
 	Mud = { rarity = "Common", maxStack = 999 },
+	RichMahogany = { rarity = "Common", maxStack = 999 },
 	EbonStone = { rarity = "Uncommon", maxStack = 999 },
 }
 

@@ -3,6 +3,8 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Fusion = require(ReplicatedStorage.Packages.Fusion)
+local Blocks = require("Blocks")
 local InstanceUtils = require("InstanceUtils")
 local ItemRegistry = require("ItemRegistry")
 local LootServiceData = require("Data")
@@ -24,9 +26,23 @@ type CachedResolution = {
 
 local assetSearchRootsCache = nil :: { Instance }?
 local resolutionCacheByItemId = {} :: { [string]: CachedResolution }
+local tileToolScopes = {} :: { any }
+local generatedTileToolScope = nil :: any
+local generatedTileToolFolder = nil :: Folder?
 local ITEM_VARIANT_BRANCH_NAMES = {
 	model = true,
 	tool = true,
+}
+local TILE_BLOCK_KEY_BY_ITEM_ID = {
+	Wood = "Wood",
+	Dirt = "Dirt",
+	Stone = "Stone",
+	Snow = "Snow",
+	Ice = "Ice",
+	Mud = "Mud",
+	RichMahogany = "RichMahogany",
+	EbonStone = "EbonStone",
+	CorruptStone = "EbonStone",
 }
 local MISSING_ASSET_ERROR = "no asset found!"
 
@@ -148,6 +164,112 @@ local function resolveTemplatesFromRoot(root: Instance): ItemTemplateResolution
 	}
 end
 
+local function resolveGeneratedTileToolFolder(): Folder
+	if generatedTileToolFolder ~= nil and generatedTileToolFolder.Parent ~= nil then
+		return generatedTileToolFolder
+	end
+
+	local folder = script:FindFirstChild("GeneratedTileToolTemplates")
+	if folder ~= nil and folder:IsA("Folder") then
+		generatedTileToolFolder = folder
+		return folder
+	end
+
+	local scope = Fusion.scoped(Fusion)
+	folder = scope:New "Folder" {
+		Name = "GeneratedTileToolTemplates",
+		Parent = script,
+	}
+	generatedTileToolScope = scope
+	generatedTileToolFolder = folder
+	return folder
+end
+
+local function resolveTileBlockBuilder(itemIdRaw: any): (string?, any?)
+	local itemId = sanitizeItemId(itemIdRaw)
+	if itemId == nil then
+		return nil, nil
+	end
+
+	local canonicalItemId = ItemRegistry.resolveCanonicalItemId(itemId) or itemId
+	local blockKey = TILE_BLOCK_KEY_BY_ITEM_ID[canonicalItemId] or TILE_BLOCK_KEY_BY_ITEM_ID[itemId]
+	if blockKey == nil then
+		return nil, nil
+	end
+
+	local builder = Blocks[blockKey]
+	if typeof(builder) ~= "function" then
+		return nil, nil
+	end
+
+	return canonicalItemId, builder
+end
+
+local function resolveToolPrimaryTemplate(tool: Tool): Instance?
+	local contents = tool:FindFirstChild("Contents")
+	if contents ~= nil then
+		local visual = ResolveToolInstance.resolveVisualTemplate(contents)
+		if visual ~= nil then
+			return visual
+		end
+	end
+
+	local handle = tool:FindFirstChild("Handle")
+	if handle ~= nil and handle:IsA("BasePart") then
+		return handle
+	end
+	return tool
+end
+
+local function resolveTemplatesFromTileBlock(itemIdRaw: any): ItemTemplateResolution?
+	local canonicalItemId, builder = resolveTileBlockBuilder(itemIdRaw)
+	if canonicalItemId == nil or builder == nil then
+		return nil
+	end
+
+	local scope = Fusion.scoped(Fusion)
+	local buildOk, toolRaw = pcall(builder, scope)
+	if not buildOk or typeof(toolRaw) ~= "Instance" or not toolRaw:IsA("Tool") then
+		Fusion.doCleanup(scope)
+		return nil
+	end
+
+	local tool = toolRaw :: Tool
+	scope:Hydrate(tool) {
+		Name = tool.Name ~= "" and tool.Name or canonicalItemId,
+		Parent = resolveGeneratedTileToolFolder(),
+		[Fusion.Attribute("itemId")] = canonicalItemId,
+		[Fusion.Attribute("ItemId")] = canonicalItemId,
+		[Fusion.Attribute("itemType")] = "Tile",
+		[Fusion.Attribute("ItemType")] = "Tile",
+	}
+	tileToolScopes[#tileToolScopes + 1] = scope
+
+	return {
+		primaryTemplate = resolveToolPrimaryTemplate(tool),
+		toolTemplate = tool,
+	}
+end
+
+local function mergeTileComponentToolTemplate(
+	itemId: string,
+	resolution: ItemTemplateResolution
+): ItemTemplateResolution
+	if resolution.toolTemplate ~= nil then
+		return resolution
+	end
+
+	local componentResolution = resolveTemplatesFromTileBlock(itemId)
+	if componentResolution == nil then
+		return resolution
+	end
+
+	return {
+		primaryTemplate = resolution.primaryTemplate or componentResolution.primaryTemplate,
+		toolTemplate = componentResolution.toolTemplate,
+	}
+end
+
 local function isCachedTemplateAlive(templateRaw: Instance | boolean): boolean
 	if templateRaw == false then
 		return true
@@ -218,7 +340,7 @@ function ResolveItem.Resolve(itemIdRaw: any): ItemTemplateResolution
 			if direct ~= nil then
 				local resolution = tryResolveFromMatch(direct)
 				if resolution ~= nil then
-					return cacheResolution(itemId, resolution)
+					return cacheResolution(itemId, mergeTileComponentToolTemplate(itemId, resolution))
 				end
 			end
 		end
@@ -233,10 +355,15 @@ function ResolveItem.Resolve(itemIdRaw: any): ItemTemplateResolution
 
 				local resolution = tryResolveFromMatch(descendant)
 				if resolution ~= nil then
-					return cacheResolution(itemId, resolution)
+					return cacheResolution(itemId, mergeTileComponentToolTemplate(itemId, resolution))
 				end
 			end
 		end
+	end
+
+	local componentResolution = resolveTemplatesFromTileBlock(itemId)
+	if componentResolution ~= nil then
+		return cacheResolution(itemId, componentResolution)
 	end
 
 	error(MISSING_ASSET_ERROR, 0)
@@ -267,6 +394,17 @@ end
 function ResolveItem.ClearCache()
 	assetSearchRootsCache = nil
 	table.clear(resolutionCacheByItemId)
+	for _, scope in tileToolScopes do
+		Fusion.doCleanup(scope)
+	end
+	table.clear(tileToolScopes)
+	if generatedTileToolScope ~= nil then
+		Fusion.doCleanup(generatedTileToolScope)
+	elseif generatedTileToolFolder ~= nil then
+		generatedTileToolFolder:Destroy()
+	end
+	generatedTileToolScope = nil
+	generatedTileToolFolder = nil
 end
 
 ResolveItem.resolve = ResolveItem.Resolve

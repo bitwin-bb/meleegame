@@ -36,6 +36,28 @@ return {
 				consumesOnPlace = true,
 			},
 		},
+		Snow = {
+			name = "Snow",
+			description = "A cold block gathered from snowy terrain",
+			functionality = "Can be placed",
+			itemType = "Tile",
+			useCase = "Placeable tile",
+			build = {
+				tileId = "Snow",
+				consumesOnPlace = true,
+			},
+		},
+		Ice = {
+			name = "Ice",
+			description = "A slick frozen block gathered from icy terrain",
+			functionality = "Can be placed",
+			itemType = "Tile",
+			useCase = "Placeable tile",
+			build = {
+				tileId = "Ice",
+				consumesOnPlace = true,
+			},
+		},
 		RichMahogany = {
 			name = "Rich Mahogany",
 			description = "Wood commonly associated with the vast jungle trees. You can make wooden tools and armor with this",

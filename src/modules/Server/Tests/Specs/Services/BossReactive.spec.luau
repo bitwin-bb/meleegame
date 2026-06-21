@@ -13,7 +13,7 @@ local BossServiceUtils = require("BossServiceUtils")
 local EntityCatalog = require("EntityCatalog")
 local EyeOfCthulhuConfig = require("EyeOfCthulhuConfig")
 local Maid = require("Maid")
-local QueenBeeConfig = require("QueenBeeConfigs")
+local QueenBeeConfig = require(script:FindFirstAncestor("game").Shared:WaitForChild("QueenBeeConfigs"))
 local QueenBeeSpriteSheet = require("QueenBeeSpriteSheet")
 
 local function createBossAssetTemplates()

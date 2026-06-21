@@ -64,7 +64,7 @@ function RarityPill.Component(props: RarityPillProps): React.ReactNode
 		BackgroundColor3 = backgroundColor,
 		BackgroundTransparency = props.backgroundTransparency or 0.2,
 		BorderSizePixel = 0,
-		Font = props.font or Enum.Font.GothamMedium,
+		Font = props.font or Enum.Font.PatrickHand,
 		Text = rarityText,
 		TextColor3 = props.textColor or Color3.fromRGB(255, 255, 255),
 		TextSize = props.textSize or 12,

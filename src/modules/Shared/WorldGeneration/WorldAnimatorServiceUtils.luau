@@ -3,7 +3,7 @@ local require = require(script.Parent.loader).load(script)
 
 local Players = game:GetService("Players")
 
-local Configs = require("QueenBeeConfigs")
+local Configs = require(script:FindFirstAncestor("game").Shared:WaitForChild("QueenBeeConfigs"))
 local Ease = require("Ease")
 local WorkspaceFolders = require("WorkspaceFolders")
 

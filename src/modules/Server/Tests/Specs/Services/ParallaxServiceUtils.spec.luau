@@ -9,6 +9,7 @@ local expect = testEnvironment.expect :: any
 
 local ParallaxBackgrounds = require("ParallaxBackgrounds")
 local ParallaxBiomeResolver = require("ParallaxBiomeResolver")
+local ParallaxConstants = require("ParallaxConstants")
 local ParallaxHorizonResolver = require("ParallaxHorizonResolver")
 local ParallaxMath = require("ParallaxMath")
 local ParallaxProfiles = require("ParallaxProfiles")
@@ -111,32 +112,70 @@ return function()
 	end)
 
 	describe("ParallaxMath", function()
-		it("uses depth from world top for parallax top placement", function()
-			local scAdj = ParallaxMath.ComputeScreenAdjustment(120, 900, 60, 1800)
-			local topPx = ParallaxMath.ComputeBgTopPx(120, 900, 60, 1800, 1500, scAdj, 12)
+		it("converts Roblox world depths into Terraria source pixels", function()
+			local screenTopDepthPx = ParallaxMath.ComputeScreenTopDepthPx(1090, 900, 4)
+			local surfaceDepthPx = ParallaxMath.ComputeDepthWorldToTerrariaPixels(1080, 4)
 
-			expect(math.abs(scAdj) <= 0.001).to.equal(true)
-			expect(math.abs(topPx - 2412) <= 0.001).to.equal(true)
+			expect(math.abs(screenTopDepthPx - 3910) <= 0.001).to.equal(true)
+			expect(math.abs(surfaceDepthPx - 4320) <= 0.001).to.equal(true)
+		end)
+
+		it("matches Terraria surface background vertical placement", function()
+			local scAdj = ParallaxMath.ComputeScreenAdjustment(3910, 900, 4320, 1800)
+			local topPx = ParallaxMath.ComputeBgTopPx(3910, 900, 4320, 1800, 1500, scAdj, 12)
+
+			expect(math.abs(scAdj - -118.416611226611) <= 0.001).to.equal(true)
+			expect(math.abs(topPx - -173.083277893278) <= 0.001).to.equal(true)
+		end)
+
+		it("resolves Terraria UI scale from viewport height", function()
+			local smallerScale = ParallaxMath.ComputeUiScale(540)
+			local defaultScale = ParallaxMath.ComputeUiScale(1080)
+			local tallerScale = ParallaxMath.ComputeUiScale(2160)
+
+			expect(math.abs(smallerScale - 0.78) <= 0.001).to.equal(true)
+			expect(math.abs(defaultScale - 1) <= 0.001).to.equal(true)
+			expect(math.abs(tallerScale - 1.45) <= 0.001).to.equal(true)
 		end)
 
 		it("converts parallax screen top into world center", function()
 			local centerY = ParallaxMath.ScreenTopPxToWorldCenterY(300, 600, 100, 120, 40)
+			local scaledCenterY = ParallaxMath.ScreenTopPxToWorldCenterY(300, 600, 100, 120, 20, 0.5)
 
 			expect(math.abs(centerY - 20) <= 0.001).to.equal(true)
+			expect(math.abs(scaledCenterY - 90) <= 0.001).to.equal(true)
 		end)
 
 		it("sizes textures from source dimensions and wraps parallax horizontally", function()
 			local width, height = ParallaxMath.ComputeTextureSizeWorld(1024, 512, 2, 100, 500)
+			local scaledWidth, scaledHeight = ParallaxMath.ComputeTextureSizeWorld(1024, 512, 2, 100, 500, 0.5)
+			local compactWidth, compactHeight = ParallaxMath.ComputeTextureSizeWorld(
+				1024,
+				512,
+				2,
+				100,
+				500,
+				1,
+				ParallaxConstants.TERRARIA_PARALLAX_LAYER_SIZE_SCALE
+			)
 			local offset = ParallaxMath.ComputeHorizontalTextureOffsetWorld(250, 0.4, 64)
+			local negativeOffset = ParallaxMath.ComputeHorizontalTextureOffsetWorld(-250, 0.4, 64)
 
 			expect(math.abs(width - 409.6) <= 0.001).to.equal(true)
 			expect(math.abs(height - 204.8) <= 0.001).to.equal(true)
-			expect(math.abs(offset - 36) <= 0.001).to.equal(true)
+			expect(math.abs(scaledWidth - 204.8) <= 0.001).to.equal(true)
+			expect(math.abs(scaledHeight - 102.4) <= 0.001).to.equal(true)
+			expect(ParallaxConstants.TERRARIA_PARALLAX_LAYER_SIZE_SCALE).to.equal(0.48)
+			expect(ParallaxConstants.TERRARIA_PARALLAX_ART_TOP_PADDING_PX).to.equal(240)
+			expect(math.abs(compactWidth - 196.608) <= 0.001).to.equal(true)
+			expect(math.abs(compactHeight - 98.304) <= 0.001).to.equal(true)
+			expect(math.abs(offset - 4) <= 0.001).to.equal(true)
+			expect(math.abs(negativeOffset - 60) <= 0.001).to.equal(true)
 		end)
 	end)
 
 	describe("ParallaxHorizonResolver", function()
-		it("smooths a broad terrain horizon and returns depth-from-top values", function()
+		it("uses Terraria world surface for the horizon line and still reports local samples", function()
 			local sampleCount = 0
 			local fakeWorldGenerationService = {
 				getAverageSurfaceYAroundWorldPosition = function(_self: any, _worldPosition: Vector3, _radius: number)
@@ -165,11 +204,12 @@ return function()
 
 			expect(first.globalSurfaceY).to.equal(100)
 			expect(first.localSurfaceY).to.equal(160)
-			expect(first.resolvedHorizonY).to.equal(115)
+			expect(first.resolvedHorizonY).to.equal(100)
 			expect(first.cameraDepthFromTop).to.equal(90)
-			expect(first.surfaceDepthFromTop).to.equal(105)
-			expect(second.resolvedHorizonY > first.resolvedHorizonY).to.equal(true)
-			expect(second.resolvedHorizonY < 125).to.equal(true)
+			expect(first.surfaceDepthFromTop).to.equal(120)
+			expect(second.localSurfaceY).to.equal(200)
+			expect(second.resolvedHorizonY).to.equal(100)
+			expect(second.surfaceDepthFromTop).to.equal(120)
 		end)
 	end)
 
@@ -277,9 +317,17 @@ return function()
 			local nearLayer = profiles[1]
 			local farLayer = profiles[4]
 
+			expect(math.abs(nearLayer.bgScale - 2.68) <= 0.001).to.equal(true)
+			expect(math.abs(nearLayer.parallaxX - 0.49) <= 0.001).to.equal(true)
+			expect(nearLayer.verticalStrength).to.equal(2100)
+			expect(nearLayer.baseScreenY).to.equal(2000)
 			expect(farLayer.bgScale < nearLayer.bgScale).to.equal(true)
 			expect(farLayer.parallaxX < nearLayer.parallaxX).to.equal(true)
 			expect(farLayer.baseScreenY < nearLayer.baseScreenY).to.equal(true)
+			expect(math.abs(farLayer.bgScale - 2) <= 0.001).to.equal(true)
+			expect(math.abs(farLayer.parallaxX - 0.15) <= 0.001).to.equal(true)
+			expect(farLayer.verticalStrength).to.equal(1300)
+			expect(farLayer.baseScreenY).to.equal(1090)
 			expect(farLayer.transparency).to.equal(0)
 			expect(farLayer.tint).to.equal(Color3.new(1, 1, 1))
 		end)

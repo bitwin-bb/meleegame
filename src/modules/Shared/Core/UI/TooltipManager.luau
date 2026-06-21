@@ -97,7 +97,7 @@ local function defaultCreateTooltipFrame(): Frame
 	label.BackgroundTransparency = 1
 	label.Size = UDim2.new(1, 0, 1, 0)
 	label.Position = UDim2.fromOffset(0, 0)
-	label.Font = Enum.Font.Gotham
+	label.Font = Enum.Font.PatrickHand
 	label.TextColor3 = Color3.fromRGB(240, 240, 240)
 	label.TextSize = 14
 	label.TextWrapped = true

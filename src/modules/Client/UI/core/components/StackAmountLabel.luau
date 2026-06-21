@@ -41,7 +41,7 @@ return function(props: StackAmountLabelProps): React.ReactNode
 		Visible = props.visible,
 		BackgroundTransparency = 1,
 		Text = labelText or "",
-		Font = props.font or Enum.Font.GothamBold,
+		Font = props.font or Enum.Font.PatrickHand,
 		TextSize = props.textSize or 13,
 		TextColor3 = props.textColor3 or Color3.fromRGB(248, 253, 255),
 		TextStrokeColor3 = props.textStrokeColor3 or Color3.fromRGB(0, 0, 0),

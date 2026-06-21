@@ -102,7 +102,7 @@ return function(props: BiomeNameScreenProps?): React.ReactNode
 					BackgroundTransparency = 1,
 					BorderSizePixel = 0,
 					Text = biomeState.biomeName,
-					Font = Enum.Font.GothamBlack,
+					Font = Enum.Font.PatrickHand,
 					TextSize = 46,
 					TextColor3 = Color3.fromRGB(247, 246, 234),
 					TextStrokeColor3 = Color3.fromRGB(18, 15, 10),

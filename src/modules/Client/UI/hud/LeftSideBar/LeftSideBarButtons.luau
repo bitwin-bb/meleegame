@@ -6,6 +6,7 @@ local CraftingButton = require("craftingButton")
 local ImageIds = require("ImageIds")
 local NavButton = require("NavButton")
 local React = require(ReplicatedStorage.Packages.React)
+local UiSound = require("UiSound")
 local craftingSlice = require("craftingSlice")
 local craftingThunks = require("craftingThunks")
 local hudInventorySlice = require("inventorySlice")
@@ -94,7 +95,13 @@ local function CraftingHudButton(props: AttachedButtonProps): React.ReactNode
 		position = props.position,
 		anchorPoint = props.anchorPoint,
 		selected = craftingState.visible,
+		onHoverChanged = function(isHovered: boolean)
+			if isHovered then
+				UiSound.playHover()
+			end
+		end,
 		onActivated = function()
+			UiSound.playPress()
 			hudInventoryThunks.toggleCrafting()
 		end,
 	})

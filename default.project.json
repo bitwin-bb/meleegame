@@ -73,7 +73,32 @@
       "AquariaBackup": {
         "$className": "Folder",
         "game": {
-          "$path": "src/modules"
+          "$className": "Folder",
+          "Client": {
+            "$path": "src/modules/Client"
+          },
+          "Server": {
+            "$path": "src/modules/Server"
+          },
+          "Shared": {
+            "$path": "src/modules/Shared",
+            "$className": "Folder",
+            "NpcDefinitions": {
+              "$path": "src/modules/Server/Npc/npc/Definitions.luau"
+            },
+            "EyeOfCthulhuBoss": {
+              "$className": "Folder",
+              "Motion": {
+                "$path": "src/modules/Server/Npc/classes/Boss/EyeOfCthulhuBoss/Motion.luau"
+              },
+              "Presentation": {
+                "$path": "src/modules/Server/Npc/classes/Boss/EyeOfCthulhuBoss/Presentation.luau"
+              }
+            },
+            "QueenBeeConfigs": {
+              "$path": "src/modules/Server/Npc/classes/Boss/QueenBeeBoss/QueenBeeConfigs.luau"
+            }
+          }
         },
         "node_modules": {
           "$path": "node_modules"

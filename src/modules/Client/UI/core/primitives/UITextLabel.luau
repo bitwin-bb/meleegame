@@ -309,7 +309,7 @@ local function TextLabel(props: TextLabelProps)
 		ClipsDescendants = false,
 		Text = props.text or "",
 		RichText = props.richText == true,
-		Font = props.font or Enum.Font.GothamBold,
+		Font = props.font or Enum.Font.PatrickHand,
 		TextSize = props.textSize or 16,
 		TextScaled = props.textScaled == true,
 		TextWrapped = props.textWrapped == true,

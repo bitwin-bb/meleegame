@@ -82,7 +82,7 @@ local function defaultCreateItem(): GuiObject
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.Size = UDim2.new(1, -12, 1, 0)
 	label.Position = UDim2.fromOffset(6, 0)
-	label.Font = Enum.Font.GothamMedium
+	label.Font = Enum.Font.PatrickHand
 	label.TextSize = 14
 	label.TextColor3 = Color3.fromRGB(240, 240, 240)
 	label.RichText = true

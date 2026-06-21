@@ -34,6 +34,7 @@ export type WeatherServiceState = {
 	dayNightCycleEnabled: boolean,
 	clockTime: number,
 	clockSpeed: number,
+	worldDayIndex: number,
 	weatherType: WeatherType,
 	weatherTransitionSeconds: number,
 	rainIntensity: number,
@@ -43,6 +44,11 @@ export type WeatherServiceState = {
 	biomeSampleIntervalSeconds: number,
 	snapshotServerTime: number,
 	updatedAt: number,
+}
+
+export type ClockAdvanceResult = {
+	clockTime: number,
+	dayDelta: number,
 }
 
 WeatherServiceUtils.NETWORK_METHOD_REQUEST_SYNC = "requestSync"
@@ -347,6 +353,7 @@ function WeatherServiceUtils.CreateStateFromConfig(configRaw: any): WeatherServi
 		dayNightCycleEnabled = config.dayNightCycleEnabled,
 		clockTime = normalizeClockTime(config.initialClockTime, DEFAULT_CONFIG.initialClockTime),
 		clockSpeed = clockSpeed,
+		worldDayIndex = 0,
 		weatherType = sanitizeWeatherType(config.initialWeatherType, DEFAULT_CONFIG.initialWeatherType),
 		weatherTransitionSeconds = config.weatherTransitionSeconds,
 		rainIntensity = WeatherServiceUtils.GetRainIntensityForWeather(config.initialWeatherType),
@@ -372,12 +379,17 @@ function WeatherServiceUtils.SanitizeState(stateRaw: any, fallbackRaw: WeatherSe
 	local weatherType = sanitizeWeatherType(source.weatherType, fallback.weatherType)
 	local rainIntensity =
 		sanitizeNumber(source.rainIntensity, WeatherServiceUtils.GetRainIntensityForWeather(weatherType), 0, 1)
+	local fallbackWorldDayIndex = if typeof(fallback.worldDayIndex) == "number" then fallback.worldDayIndex else 0
 
 	return {
 		ready = sanitizeBoolean(source.ready, fallback.ready),
 		dayNightCycleEnabled = dayNightCycleEnabled,
 		clockTime = normalizeClockTime(source.clockTime, fallback.clockTime),
 		clockSpeed = clockSpeed,
+		worldDayIndex = math.max(
+			0,
+			math.floor(sanitizeNumber(source.worldDayIndex, fallbackWorldDayIndex, 0, 10 ^ 9))
+		),
 		weatherType = weatherType,
 		weatherTransitionSeconds = sanitizeNumber(
 			source.weatherTransitionSeconds,
@@ -407,6 +419,7 @@ function WeatherServiceUtils.CloneState(stateRaw: WeatherServiceState): WeatherS
 		dayNightCycleEnabled = state.dayNightCycleEnabled,
 		clockTime = state.clockTime,
 		clockSpeed = state.clockSpeed,
+		worldDayIndex = state.worldDayIndex,
 		weatherType = state.weatherType,
 		weatherTransitionSeconds = state.weatherTransitionSeconds,
 		rainIntensity = state.rainIntensity,
@@ -427,6 +440,29 @@ function WeatherServiceUtils.AdvanceClockTime(clockTimeRaw: any, dtRaw: any, clo
 		return clockTime
 	end
 	return normalizeClockTime(clockTime + dt * clockSpeed, clockTime)
+end
+
+function WeatherServiceUtils.AdvanceClockTimeWithDayDelta(
+	clockTimeRaw: any,
+	dtRaw: any,
+	clockSpeedRaw: any
+): ClockAdvanceResult
+	local clockTime = normalizeClockTime(clockTimeRaw, 12)
+	local dt = sanitizeNumber(dtRaw, 0, 0, 10 ^ 6)
+	local clockSpeed = sanitizeNumber(clockSpeedRaw, 0, -100, 100)
+	if dt <= 0 or clockSpeed == 0 then
+		return {
+			clockTime = clockTime,
+			dayDelta = 0,
+		}
+	end
+
+	local rawClockTime = clockTime + dt * clockSpeed
+	local dayDelta = if clockSpeed > 0 then math.max(0, math.floor(rawClockTime / 24)) else 0
+	return {
+		clockTime = normalizeClockTime(rawClockTime, clockTime),
+		dayDelta = dayDelta,
+	}
 end
 
 function WeatherServiceUtils.ShortestClockDeltaHours(fromClockRaw: any, toClockRaw: any): number
@@ -492,6 +528,7 @@ WeatherServiceUtils.createStateFromConfig = WeatherServiceUtils.CreateStateFromC
 WeatherServiceUtils.sanitizeState = WeatherServiceUtils.SanitizeState
 WeatherServiceUtils.cloneState = WeatherServiceUtils.CloneState
 WeatherServiceUtils.advanceClockTime = WeatherServiceUtils.AdvanceClockTime
+WeatherServiceUtils.advanceClockTimeWithDayDelta = WeatherServiceUtils.AdvanceClockTimeWithDayDelta
 WeatherServiceUtils.shortestClockDeltaHours = WeatherServiceUtils.ShortestClockDeltaHours
 WeatherServiceUtils.resolveSkyKeyFromWorldSample = WeatherServiceUtils.ResolveSkyKeyFromWorldSample
 WeatherServiceUtils.resolveSkyKeyFromBiomeType = WeatherServiceUtils.ResolveSkyKeyFromBiomeType

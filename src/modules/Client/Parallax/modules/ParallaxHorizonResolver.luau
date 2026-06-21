@@ -18,8 +18,6 @@ export type HorizonSample = {
 local DEFAULT_MAX_TILES_Y = 1800
 local DEFAULT_TILE_SIZE = 4
 local DEFAULT_CHUNK_SIZE = 32
-local LOCAL_HORIZON_INFLUENCE = 0.25
-local HORIZON_SMOOTHING_RATE = 4
 local SURFACE_SAMPLE_COUNT = 17
 local WORLD_TOP_DEPTH_FACTOR = 0.15
 local MIN_WORLD_TOP_DEPTH_FACTOR = 0.1
@@ -213,7 +211,7 @@ function Horizon.ResolveHorizon(
 	runtime: any,
 	cameraPosition: Vector3,
 	subjectPosition: Vector3?,
-	dt: number
+	_dt: number
 ): HorizonSample
 	local layoutSnapshot = resolveLayoutSnapshot(runtime)
 	local tileSize = if typeof(layoutSnapshot) == "table"
@@ -230,14 +228,7 @@ function Horizon.ResolveHorizon(
 		subjectPosition,
 		sampleRadiusStuds
 	) or globalSurfaceY
-	local targetHorizonY = globalSurfaceY + (localSurfaceY - globalSurfaceY) * LOCAL_HORIZON_INFLUENCE
-	local previousHorizonY = if typeof(runtime) == "table"
-		then resolveFiniteNumber(runtime.smoothedParallaxHorizonY)
-		else nil
-	local resolvedDt = sanitizeNumber(dt, 0, 0)
-	local alpha = if previousHorizonY == nil then 1 else 1 - math.exp(-resolvedDt * HORIZON_SMOOTHING_RATE)
-	local resolvedHorizonY = (previousHorizonY or targetHorizonY)
-		+ (targetHorizonY - (previousHorizonY or targetHorizonY)) * alpha
+	local resolvedHorizonY = globalSurfaceY
 
 	if typeof(runtime) == "table" then
 		runtime.smoothedParallaxHorizonY = resolvedHorizonY

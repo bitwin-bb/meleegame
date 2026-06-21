@@ -2,7 +2,7 @@
 local require = require(script.Parent.loader).load(script)
 
 local BossServiceUtils = require("BossServiceUtils")
-local NpcDefinitions = require("Definitions")
+local NpcDefinitions = require(script:FindFirstAncestor("game").Shared:WaitForChild("NpcDefinitions"))
 
 export type EntityKind = "Boss" | "Npc"
 export type EntityEntry = {

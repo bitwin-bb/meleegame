@@ -11,9 +11,9 @@ local PACKAGE_TRACKER_IGNORED_MODULE_PATHS = {
 	"game/Client/Audio/network/Replication",
 	"game/Client/Replication",
 	"game/Client/SnackbarNotifications",
-	"game/Shared/Npc/ui/components/SlimeComponent",
-	"game/Shared/Npc/npc/EyeOfCthulhuNpc",
-	"game/Shared/Npc/npc/QueenBeeNpc",
+	"game/Client/Npc/ui/components/SlimeComponent",
+	"game/Server/Npc/npc/EyeOfCthulhuNpc",
+	"game/Server/Npc/npc/QueenBeeNpc",
 	"game/Shared/Replication",
 	"game/Shared/Replication/Packets",
 	"game/Shared/StateMachine/Machines/Enemies/SlimeStateMachine",
@@ -22,8 +22,8 @@ local PACKAGE_TRACKER_IGNORED_MODULE_PATHS = {
 local REQUIRED_ARCHIVABLE_MODULE_PATHS = {
 	"game/Client/Notification/FeatureSnackbarNotifications",
 	"game/Client/NetClient/ClientNetPackets",
-	"game/Shared/Npc/ui/components/EyeOfCthulhuComponent",
-	"game/Shared/Npc/ui/components/QueenBeeComponent",
+	"game/Client/Npc/ui/components/EyeOfCthulhuComponent",
+	"game/Client/Npc/ui/components/QueenBeeComponent",
 }
 
 local PACKAGE_TRACKER_IGNORE_TIMEOUT_SECONDS = 5

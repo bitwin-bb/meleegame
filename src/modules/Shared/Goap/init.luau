@@ -1,13 +1,13 @@
 
 local require = require(script.Parent.loader).load(script)
 
+local RunService = game:GetService("RunService")
+
 local Nevermore = require(script:WaitForChild("GoapNevermore"))
 local Table = Nevermore.GetRolePackages("Exports").Table
 
-return Table.copy({
+local exports = Table.copy({
 	Nevermore = Nevermore,
-	Client = require(script:WaitForChild("GoapClient")),
-	Server = require(script:WaitForChild("GoapServer")),
 	Utils = require(script:WaitForChild("GoapUtils")),
 
 	Core = require(script:WaitForChild("GoapCore")),
@@ -20,3 +20,13 @@ return Table.copy({
 	Integrations = require(script:WaitForChild("Integrations")),
 	Debug = require(script:WaitForChild("GoapDebug")),
 })
+
+if RunService:IsClient() then
+	exports.Client = require("GoapClient")
+end
+
+if RunService:IsServer() then
+	exports.Server = require("GoapServer")
+end
+
+return exports

@@ -8,7 +8,7 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local Configs = require("QueenBeeConfigs")
+local Configs = require(script:FindFirstAncestor("game").Shared:WaitForChild("QueenBeeConfigs"))
 local CraftingTree = require("CraftingTree")
 local InventoryServiceUtils = require("InventoryServiceUtils")
 local TagBinder = require("TagBinder")

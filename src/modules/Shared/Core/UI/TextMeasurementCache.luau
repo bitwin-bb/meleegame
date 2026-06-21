@@ -48,7 +48,7 @@ local function normalizeFont(fontRaw: any): Enum.Font
 			end
 		end
 	end
-	return Enum.Font.SourceSans
+	return Enum.Font.PatrickHand
 end
 
 local function buildKey(text: string, fontSize: number, font: Enum.Font, bounds: Vector2): string

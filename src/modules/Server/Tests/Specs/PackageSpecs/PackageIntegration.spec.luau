@@ -7,22 +7,65 @@ local it = testEnvironment.it :: any
 local expect = testEnvironment.expect :: any
 
 local CollectionService = game:GetService("CollectionService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerScriptService = game:GetService("ServerScriptService")
 
+local Fusion = require(ReplicatedStorage.Packages.Fusion)
 local Matter = require("Matter")
 local TestEZ = require("TestEZ")
 
 local Binder = require("Binder")
 local Brio = require("Brio")
+local Blocks = require("Blocks")
+local BuildServiceUtils = require("BuildServiceUtils")
 local Maid = require("Maid")
 local Octree = require("Octree")
 local ResolveItem = require("ResolveItem")
 local Rx = require("Rx")
 local RxSignal = require("RxSignal")
+local TileItem = require("TileItem")
 local VFXServiceUtils = require("VFXServiceUtils")
 local resolveImageId = require("resolveImageId")
 
+local PACKAGE_NAME = "AquariaBackup"
+
+local function resolvePackageRoot(): Instance
+	return assert(ServerScriptService:FindFirstChild(PACKAGE_NAME), `missing {PACKAGE_NAME} package root`)
+end
+
 return function()
 	describe("Package integrations", function()
+		it("maps shared boss modules into the replicated package tree", function()
+			local packageRoot = resolvePackageRoot()
+			local gameRoot = assert(packageRoot:FindFirstChild("game"), "missing package game root")
+			local sharedRoot = assert(gameRoot:FindFirstChild("Shared"), "missing shared root")
+			local eyeRoot = assert(sharedRoot:FindFirstChild("EyeOfCthulhuBoss"), "missing shared eye boss root")
+			local motion = assert(eyeRoot:FindFirstChild("Motion"), "missing shared eye boss motion module")
+			local presentation =
+				assert(eyeRoot:FindFirstChild("Presentation"), "missing shared eye boss presentation module")
+
+			expect(motion:IsA("ModuleScript")).to.equal(true)
+			expect(presentation:IsA("ModuleScript")).to.equal(true)
+		end)
+
+		it("maps shared boss configs into the replicated package tree", function()
+			local packageRoot = resolvePackageRoot()
+			local gameRoot = assert(packageRoot:FindFirstChild("game"), "missing package game root")
+			local sharedRoot = assert(gameRoot:FindFirstChild("Shared"), "missing shared root")
+			local queenBeeConfigs = assert(sharedRoot:FindFirstChild("QueenBeeConfigs"), "missing shared QueenBeeConfigs module")
+
+			expect(queenBeeConfigs:IsA("ModuleScript")).to.equal(true)
+		end)
+
+		it("maps shared npc definitions into the replicated package tree", function()
+			local packageRoot = resolvePackageRoot()
+			local gameRoot = assert(packageRoot:FindFirstChild("game"), "missing package game root")
+			local sharedRoot = assert(gameRoot:FindFirstChild("Shared"), "missing shared root")
+			local definitions = assert(sharedRoot:FindFirstChild("NpcDefinitions"), "missing shared NpcDefinitions module")
+
+			expect(definitions:IsA("ModuleScript")).to.equal(true)
+		end)
+
 		it("exposes TestEZ through the shared vendor tree", function()
 			expect(typeof(TestEZ.run)).to.equal("function")
 			expect(typeof(TestEZ.TestBootstrap)).to.equal("table")
@@ -110,6 +153,121 @@ return function()
 			expect(values[1]).to.equal("hello")
 			expect(cleaned).to.equal(1)
 			bindable:Destroy()
+		end)
+
+		it("creates side-view loot icon models from inventory icons", function()
+			local LootItemServer = require("LootItemServer")
+			local model = LootItemServer.createModel({
+				itemId = "CopperOre",
+				amount = 3,
+				name = "Loot_CopperOre",
+				cframe = CFrame.new(2, 3, 4),
+			})
+			local root = model:FindFirstChild("Root")
+
+			expect(model:IsA("Model")).to.equal(true)
+			expect(model.Name).to.equal("Loot_CopperOre")
+			expect(root ~= nil).to.equal(true)
+			expect((root :: Instance):IsA("BasePart")).to.equal(true)
+			expect(model.PrimaryPart).to.equal(root)
+			expect((root :: BasePart).AssemblyAngularVelocity).to.equal(Vector3.zero)
+
+			local surfaceGui = (root :: Instance):FindFirstChild("LootIcon")
+			expect(surfaceGui ~= nil).to.equal(true)
+			expect((surfaceGui :: Instance):IsA("SurfaceGui")).to.equal(true)
+			expect((surfaceGui :: SurfaceGui).Face).to.equal(Enum.NormalId.Right)
+
+			local icon = (surfaceGui :: Instance):FindFirstChild("Icon")
+			expect(icon ~= nil).to.equal(true)
+			expect((icon :: Instance):IsA("ImageLabel")).to.equal(true)
+			expect((icon :: ImageLabel).Image).to.equal("rbxassetid://86523519459129")
+
+			model:Destroy()
+		end)
+
+		it("animates dropped coin icons from their spritesheets", function()
+			local LootItemServer = require("LootItemServer")
+			local model = LootItemServer.createModel({
+				itemId = "CopperCoin",
+				amount = 7,
+				name = "Loot_CopperCoin",
+			})
+			local root = model:FindFirstChild("Root")
+			expect(root ~= nil).to.equal(true)
+
+			local surfaceGui = (root :: Instance):FindFirstChild("LootIcon")
+			expect(surfaceGui ~= nil).to.equal(true)
+
+			local icon = (surfaceGui :: Instance):FindFirstChild("Icon")
+			expect(icon ~= nil).to.equal(true)
+			expect((icon :: Instance):IsA("ImageLabel")).to.equal(true)
+			expect((icon :: ImageLabel).Image).to.equal("rbxassetid://138124828857039")
+			expect((icon :: ImageLabel).ImageRectSize).to.equal(Vector2.new(258, 258))
+			expect((icon :: ImageLabel).ImageRectOffset).to.equal(Vector2.zero)
+			expect((icon :: ImageLabel).ResampleMode).to.equal(Enum.ResamplerMode.Pixelated)
+			expect((icon :: Instance):GetAttribute("LootIconAnimated")).to.equal(true)
+
+			task.wait(0.12)
+			expect((icon :: ImageLabel).ImageRectOffset ~= Vector2.zero).to.equal(true)
+
+			model:Destroy()
+		end)
+
+		it("builds tile tools through TileItem and Blocks", function()
+			local scope = Fusion.scoped(Fusion)
+			local tileItem = TileItem.new(scope)
+			local woodTool = tileItem:newTile("Wood")
+
+			expect(woodTool:IsA("Tool")).to.equal(true)
+			expect(woodTool:GetAttribute("itemId")).to.equal("Wood")
+			expect(woodTool:GetAttribute("itemType")).to.equal("Tile")
+			expect(woodTool:FindFirstChild("Handle") ~= nil).to.equal(true)
+			expect(woodTool:FindFirstChild("Contents") ~= nil).to.equal(true)
+
+			Fusion.doCleanup(scope)
+		end)
+
+		it("builds tool templates for every shared tile block", function()
+			local tileItemIds = {
+				"Wood",
+				"Dirt",
+				"Stone",
+				"Snow",
+				"Ice",
+				"Mud",
+				"RichMahogany",
+				"EbonStone",
+			}
+
+			for _, itemId in tileItemIds do
+				expect(typeof(Blocks[itemId])).to.equal("function")
+
+				local resolution = ResolveItem.resolve(itemId)
+				local tool = resolution.toolTemplate
+
+				expect(tool ~= nil).to.equal(true)
+				expect((tool :: Tool):IsA("Tool")).to.equal(true)
+				expect((tool :: Tool):GetAttribute("itemId")).to.equal(itemId)
+				expect((tool :: Tool):GetAttribute("itemType")).to.equal("Tile")
+				expect((tool :: Tool):FindFirstChild("Handle") ~= nil).to.equal(true)
+				expect((tool :: Tool):FindFirstChild("Contents") ~= nil).to.equal(true)
+			end
+		end)
+
+		it("resolves break drops for every shared tile block", function()
+			local expectedDrops = {
+				[BuildServiceUtils.TILE_ID.WOOD] = "Wood",
+				[BuildServiceUtils.TILE_ID.DIRT] = "Dirt",
+				[BuildServiceUtils.TILE_ID.STONE] = "Stone",
+				[BuildServiceUtils.TILE_ID.SNOW] = "Snow",
+				[BuildServiceUtils.TILE_ID.ICE] = "Ice",
+				[BuildServiceUtils.TILE_ID.MUD] = "Mud",
+				[BuildServiceUtils.TILE_ID.CORRUPT_STONE] = "EbonStone",
+			}
+
+			for tileId, expectedItemId in expectedDrops do
+				expect(BuildServiceUtils.resolveTileBreakDropItemId(tileId)).to.equal(expectedItemId)
+			end
 		end)
 
 		it("supports Octree spatial queries and Binder instance lifetimes", function()

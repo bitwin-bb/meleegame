@@ -1104,9 +1104,12 @@ function Parallax._collectParallaxLayerMetrics(
 
 	local gameplayReferenceDistance = self:_resolveGameplayPlaneReferenceDistance(cameraPosition.X)
 	local screenHeight = math.max(layoutSnapshot.viewportSize.Y, 1)
+	local parallaxUiScale = Math.ComputeUiScale(screenHeight)
 	local stylesByProfile = Profile.ByStyle
 	local horizon = Horizon.ResolveHorizon(self, cameraPosition, subjectPosition, dt)
 	self.lastParallaxHorizon = horizon
+	local screenTopDepthPx = Math.ComputeScreenTopDepthPx(horizon.cameraDepthFromTop, screenHeight, layoutSnapshot.tileSize)
+	local surfaceDepthPx = Math.ComputeDepthWorldToTerrariaPixels(horizon.surfaceDepthFromTop, layoutSnapshot.tileSize)
 	local surfaceAlpha = self:_computeSurfaceBackgroundAlpha(cameraPosition.Y)
 	local debugPayload = nil :: { [string]: any }?
 
@@ -1134,29 +1137,27 @@ function Parallax._collectParallaxLayerMetrics(
 				profile.imageHeight or 600,
 				profile.bgScale,
 				visibleHeight,
-				screenHeight
-			)
-			local scAdj = Math.ComputeScreenAdjustment(
-				horizon.cameraDepthFromTop,
 				screenHeight,
-				horizon.surfaceDepthFromTop,
-				self.maxTilesY
+				parallaxUiScale,
+				ParallaxConstants.TERRARIA_PARALLAX_LAYER_SIZE_SCALE
 			)
+			local scAdj = Math.ComputeScreenAdjustment(screenTopDepthPx, screenHeight, surfaceDepthPx, self.maxTilesY)
 			local bgTopPx = Math.ComputeBgTopPx(
-				horizon.cameraDepthFromTop,
+				screenTopDepthPx,
 				screenHeight,
-				horizon.surfaceDepthFromTop,
+				surfaceDepthPx,
 				profile.verticalStrength,
 				profile.baseScreenY,
 				scAdj,
 				profile.offsetY
-			)
+			) + ParallaxConstants.TERRARIA_PARALLAX_ART_TOP_PADDING_PX
 			local centerY = Math.ScreenTopPxToWorldCenterY(
 				bgTopPx,
 				screenHeight,
 				cameraPosition.Y,
 				visibleHeight,
-				textureRepeatHeight
+				textureRepeatHeight,
+				parallaxUiScale
 			)
 			local horizontalBleed = math.max(
 				visibleWidth * ParallaxConstants.HORIZONTAL_PLANE_BLEED_FACTOR,
@@ -1184,10 +1185,14 @@ function Parallax._collectParallaxLayerMetrics(
 					cameraY = cameraPosition.Y,
 					cameraDepthFromTop = horizon.cameraDepthFromTop,
 					surfaceDepthFromTop = horizon.surfaceDepthFromTop,
+					screenTopDepthPx = screenTopDepthPx,
+					surfaceDepthPx = surfaceDepthPx,
 					bgTopPx = bgTopPx,
 					visibleHeight = visibleHeight,
 					layerHeightWorld = textureRepeatHeight,
 					centerY = centerY,
+					uiScale = parallaxUiScale,
+					artTopPaddingPx = ParallaxConstants.TERRARIA_PARALLAX_ART_TOP_PADDING_PX,
 					activeLayerIds = activeLayerIds,
 					parallaxX = profile.parallaxX,
 					bgScale = profile.bgScale,
