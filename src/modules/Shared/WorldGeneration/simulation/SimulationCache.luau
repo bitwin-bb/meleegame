@@ -17,9 +17,6 @@ export type VectorBuffer = {
 }
 
 export type ObjectPool<T> = {
-	acquire: (self: ObjectPool<T>) -> T,
-	release: (self: ObjectPool<T>, value: T) -> (),
-	destroy: (self: ObjectPool<T>) -> (),
 	Acquire: (self: ObjectPool<T>) -> T,
 	Release: (self: ObjectPool<T>, value: T) -> (),
 	Destroy: (self: ObjectPool<T>) -> (),
@@ -163,10 +160,10 @@ function Cache.createObjectPool<T>(_self: Cache, factory: () -> T, resetter: ((T
 	pool.inUse = 0
 
 	local function syncStats(selfPool: ObjectPool<T>)
-		if typeof((runtimePool :: any).getStats) ~= "function" then
+		if typeof((runtimePool :: any).GetStats) ~= "function" then
 			return
 		end
-		local stats = (runtimePool :: any):getStats()
+		local stats = (runtimePool :: any):GetStats()
 		if typeof(stats) ~= "table" then
 			return
 		end
@@ -175,28 +172,23 @@ function Cache.createObjectPool<T>(_self: Cache, factory: () -> T, resetter: ((T
 	end
 
 	function pool.Acquire(selfPool: ObjectPool<T>): T
-		local value = (runtimePool :: any):acquire() :: T
+		local value = (runtimePool :: any):Acquire() :: T
 		syncStats(selfPool)
 		return value
 	end
 
 	function pool.Release(selfPool: ObjectPool<T>, value: T)
 		local runtimePoolAny = runtimePool :: any
-		runtimePoolAny:release(value)
+		runtimePoolAny:Release(value)
 		syncStats(selfPool)
 	end
 
 	function pool.Destroy(selfPool: ObjectPool<T>)
 		local runtimePoolAny = runtimePool :: any
-		runtimePoolAny:destroy()
+		runtimePoolAny:Destroy()
 		selfPool.available = 0
 		selfPool.inUse = 0
 	end
-
-	pool.acquire = pool.Acquire
-	pool.release = pool.Release
-	pool.destroy = pool.Destroy
-
 	syncStats(pool)
 	return pool
 end
@@ -220,15 +212,4 @@ function Cache.Destroy(self: Cache)
 	self.totalArrayAcquires = 0
 	self.totalVectorAcquires = 0
 end
-
-Cache.new = Cache.New
-Cache.acquireTable = Cache.AcquireTable
-Cache.releaseTable = Cache.ReleaseTable
-Cache.acquireNumberArray = Cache.AcquireNumberArray
-Cache.releaseNumberArray = Cache.ReleaseNumberArray
-Cache.acquireVectorBuffer = Cache.AcquireVectorBuffer
-Cache.releaseVectorBuffer = Cache.ReleaseVectorBuffer
-Cache.getStats = Cache.GetStats
-Cache.destroy = Cache.Destroy
-
 return Cache

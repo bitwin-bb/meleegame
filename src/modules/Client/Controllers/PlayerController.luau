@@ -111,9 +111,9 @@ function PlayerController.Start(self: PlayerController): boolean
 end
 
 function PlayerController.PromiseStarted(self: PlayerController): any
-	return Promise.new(function(resolve, reject)
+	return Promise.new(function(fulfill, reject)
 		if self:Start() then
-			resolve(self)
+			fulfill(self)
 		else
 			reject("failed to start player controller")
 		end
@@ -150,12 +150,4 @@ function PlayerController.Destroy(self: PlayerController)
 	self.movementHandler = nil
 	self.animationHandler = nil
 end
-
-PlayerController.setCharacter = PlayerController.SetCharacter
-PlayerController.start = PlayerController.Start
-PlayerController.promiseStarted = PlayerController.PromiseStarted
-PlayerController.update = PlayerController.Update
-PlayerController.stop = PlayerController.Stop
-PlayerController.destroy = PlayerController.Destroy
-
 return PlayerController

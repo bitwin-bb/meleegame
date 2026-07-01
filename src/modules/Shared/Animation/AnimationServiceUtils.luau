@@ -152,7 +152,7 @@ end
 
 local function createAudioBackedSoundConfig(audioEntries: any, config: FootstepSoundConfig): FootstepSoundConfig
 	return {
-		soundAssetIds = AudioServiceUtils.collectSoundAssetIds(audioEntries),
+		soundAssetIds = AudioServiceUtils.CollectSoundAssetIds(audioEntries),
 		volume = config.volume,
 		playbackSpeedMin = config.playbackSpeedMin,
 		playbackSpeedMax = config.playbackSpeedMax,
@@ -449,7 +449,7 @@ local function hasFootstepSounds(config: FootstepSoundConfig?): boolean
 	return #config.soundAssetIds > 0
 end
 
-local function resolveRawSoundAssetIds(source: any): any
+local function GetAwSoundAssetIds(source: any): any
 	if source == nil then
 		return nil
 	end
@@ -462,7 +462,7 @@ local function resolveRawSoundAssetIds(source: any): any
 	return nil
 end
 
-local function sanitizeSoundAssetIds(rawSoundAssetIds: any, fallback: FootstepSoundConfig?): { string }
+local function CoerceSoundAssetIds(rawSoundAssetIds: any, fallback: FootstepSoundConfig?): { string }
 	local soundAssetIds: { string } = {}
 
 	if rawSoundAssetIds then
@@ -526,7 +526,7 @@ function AnimationServiceUtils.ArrayToSet(items: { string }): { [string]: boolea
 	return set
 end
 
-function AnimationServiceUtils.SanitizeAnimationClipConfig(
+function AnimationServiceUtils.CoerceAnimationClipConfig(
 	clipConfig: any,
 	fallback: AnimationClipConfig?
 ): AnimationClipConfig?
@@ -572,7 +572,7 @@ function AnimationServiceUtils.SanitizeAnimationClipConfig(
 	}
 end
 
-function AnimationServiceUtils.SanitizeFootstepSoundConfig(
+function AnimationServiceUtils.CoerceFootstepSoundConfig(
 	config: any,
 	fallback: FootstepSoundConfig?
 ): FootstepSoundConfig?
@@ -582,7 +582,7 @@ function AnimationServiceUtils.SanitizeFootstepSoundConfig(
 		return nil
 	end
 
-	local soundAssetIds = sanitizeSoundAssetIds(resolveRawSoundAssetIds(source), defaultValue)
+	local soundAssetIds = CoerceSoundAssetIds(GetAwSoundAssetIds(source), defaultValue)
 
 	local playbackMin = clampNumber(
 		if source then (source :: any).playbackSpeedMin else nil,
@@ -622,7 +622,7 @@ function AnimationServiceUtils.SanitizeFootstepSoundConfig(
 	}
 end
 
-function AnimationServiceUtils.SanitizeProfile(profile: any, fallback: AnimationProfile?): AnimationProfile
+function AnimationServiceUtils.CoerceProfile(profile: any, fallback: AnimationProfile?): AnimationProfile
 	local source = if typeof(profile) == "table" then profile else {} :: any
 	local defaultProfile = if fallback then fallback else DEFAULT_PROFILE
 
@@ -633,24 +633,24 @@ function AnimationServiceUtils.SanitizeProfile(profile: any, fallback: Animation
 	local animationsSource = if typeof((source :: any).animations) == "table"
 		then (source :: any).animations
 		else {} :: any
-	local sanitizedAnimations: { [AnimationClipName]: AnimationClipConfig } = {}
+	local CoerceDAnimations: { [AnimationClipName]: AnimationClipConfig } = {}
 
 	for clipName, defaultClip in defaultProfile.animations do
-		local sanitized =
-			AnimationServiceUtils.SanitizeAnimationClipConfig((animationsSource :: any)[clipName], defaultClip)
-		if sanitized then
-			sanitizedAnimations[clipName] = sanitized
+		local CoerceD =
+			AnimationServiceUtils.CoerceAnimationClipConfig((animationsSource :: any)[clipName], defaultClip)
+		if CoerceD then
+			CoerceDAnimations[clipName] = CoerceD
 		end
 	end
 
 	for clipName, rawClip in animationsSource do
-		if sanitizedAnimations[clipName] then
+		if CoerceDAnimations[clipName] then
 			continue
 		end
 
-		local sanitized = AnimationServiceUtils.SanitizeAnimationClipConfig(rawClip, nil)
-		if sanitized then
-			sanitizedAnimations[clipName] = sanitized
+		local CoerceD = AnimationServiceUtils.CoerceAnimationClipConfig(rawClip, nil)
+		if CoerceD then
+			CoerceDAnimations[clipName] = CoerceD
 		end
 	end
 
@@ -666,19 +666,19 @@ function AnimationServiceUtils.SanitizeProfile(profile: any, fallback: Animation
 				continue
 			end
 			local base = footstepSounds[materialName]
-			local sanitized = AnimationServiceUtils.SanitizeFootstepSoundConfig(rawSoundConfig, base)
-			if sanitized then
-				footstepSounds[materialName] = sanitized
+			local CoerceD = AnimationServiceUtils.CoerceFootstepSoundConfig(rawSoundConfig, base)
+			if CoerceD then
+				footstepSounds[materialName] = CoerceD
 			end
 		end
 	end
 
-	local fallbackFootstepSound = AnimationServiceUtils.SanitizeFootstepSoundConfig(
+	local fallbackFootstepSound = AnimationServiceUtils.CoerceFootstepSoundConfig(
 		(source :: any).fallbackFootstepSound,
 		defaultProfile.fallbackFootstepSound
 	)
 	local jumpSound =
-		AnimationServiceUtils.SanitizeFootstepSoundConfig((source :: any).jumpSound, defaultProfile.jumpSound)
+		AnimationServiceUtils.CoerceFootstepSoundConfig((source :: any).jumpSound, defaultProfile.jumpSound)
 
 	return {
 		name = profileName,
@@ -690,7 +690,7 @@ function AnimationServiceUtils.SanitizeProfile(profile: any, fallback: Animation
 		),
 		footstepCooldown = clampNumber((source :: any).footstepCooldown, 0, 1, defaultProfile.footstepCooldown),
 		jumpCooldown = clampNumber((source :: any).jumpCooldown, 0, 1, defaultProfile.jumpCooldown),
-		animations = sanitizedAnimations,
+		animations = CoerceDAnimations,
 		footstepMarkers = markers,
 		footstepKeyframes = keyframes,
 		jumpMarkers = jumpMarkers,
@@ -722,7 +722,7 @@ function AnimationServiceUtils.CreateProfileRegistry(
 			continue
 		end
 		local defaultProfileForFallback = registry[profileName] or registry[DEFAULT_PROFILE_NAME]
-		registry[profileName] = AnimationServiceUtils.SanitizeProfile(incomingProfile, defaultProfileForFallback)
+		registry[profileName] = AnimationServiceUtils.CoerceProfile(incomingProfile, defaultProfileForFallback)
 	end
 
 	return registry
@@ -767,7 +767,7 @@ function AnimationServiceUtils.CreateState(
 	}
 end
 
-function AnimationServiceUtils.ResolveCharacterRig(character: Model?): CharacterRig?
+function AnimationServiceUtils.GetCharacterRig(character: Model?): CharacterRig?
 	if not character then
 		return nil
 	end
@@ -790,7 +790,7 @@ function AnimationServiceUtils.ResolveCharacterRig(character: Model?): Character
 	}
 end
 
-function AnimationServiceUtils.ResolveAnimator(humanoid: Humanoid): Animator
+function AnimationServiceUtils.GetAnimator(humanoid: Humanoid): Animator
 	local existingAnimator = humanoid:FindFirstChildOfClass("Animator")
 	if existingAnimator then
 		return existingAnimator
@@ -905,7 +905,7 @@ function AnimationServiceUtils.CreateJumpPlaybackOptions(
 	return createPlaybackOptions(rootPart, soundConfig, MIN_JUMP_ROLLOFF_MAX_DISTANCE, MIN_JUMP_EMITTER_SIZE)
 end
 
-function AnimationServiceUtils.ResolveFootstepSoundAssetIdAndOptions(
+function AnimationServiceUtils.GetFootstepSoundAssetIdAndOptions(
 	rootPart: BasePart,
 	material: Enum.Material,
 	profile: AnimationProfile
@@ -915,8 +915,8 @@ function AnimationServiceUtils.ResolveFootstepSoundAssetIdAndOptions(
 		return nil, nil
 	end
 
-	local resolvedSoundConfig = soundConfig :: JumpSoundConfig
-	local soundAssetId = AnimationServiceUtils.PickRandomSoundAssetId(resolvedSoundConfig.soundAssetIds)
+	local GotSoundConfig = soundConfig :: JumpSoundConfig
+	local soundAssetId = AnimationServiceUtils.PickRandomSoundAssetId(GotSoundConfig.soundAssetIds)
 	if not soundAssetId then
 		return nil, nil
 	end
@@ -925,7 +925,7 @@ function AnimationServiceUtils.ResolveFootstepSoundAssetIdAndOptions(
 	return soundAssetId, options
 end
 
-function AnimationServiceUtils.ResolveJumpSoundAssetIdAndOptions(
+function AnimationServiceUtils.GetJumpSoundAssetIdAndOptions(
 	rootPart: BasePart,
 	profile: AnimationProfile
 ): (string?, JumpPlaybackOptions?)
@@ -934,41 +934,18 @@ function AnimationServiceUtils.ResolveJumpSoundAssetIdAndOptions(
 		return nil, nil
 	end
 
-	local resolvedSoundConfig = soundConfig :: JumpSoundConfig
-	local soundAssetId = AnimationServiceUtils.PickRandomSoundAssetId(resolvedSoundConfig.soundAssetIds)
+	local GotSoundConfig = soundConfig :: JumpSoundConfig
+	local soundAssetId = AnimationServiceUtils.PickRandomSoundAssetId(GotSoundConfig.soundAssetIds)
 	if not soundAssetId then
 		return nil, nil
 	end
 
-	local options = AnimationServiceUtils.CreateJumpPlaybackOptions(rootPart, resolvedSoundConfig)
+	local options = AnimationServiceUtils.CreateJumpPlaybackOptions(rootPart, GotSoundConfig)
 	return soundAssetId, options
 end
 
-AnimationServiceUtils.resolveFootstepSoundTemplateAndOptions =
-	AnimationServiceUtils.ResolveFootstepSoundAssetIdAndOptions
-AnimationServiceUtils.resolveJumpSoundTemplateAndOptions = AnimationServiceUtils.ResolveJumpSoundAssetIdAndOptions
-
-AnimationServiceUtils.normalizeAssetId = AnimationServiceUtils.NormalizeAssetId
-AnimationServiceUtils.arrayToSet = AnimationServiceUtils.ArrayToSet
-AnimationServiceUtils.sanitizeAnimationClipConfig = AnimationServiceUtils.SanitizeAnimationClipConfig
-AnimationServiceUtils.sanitizeFootstepSoundConfig = AnimationServiceUtils.SanitizeFootstepSoundConfig
-AnimationServiceUtils.sanitizeProfile = AnimationServiceUtils.SanitizeProfile
-AnimationServiceUtils.createDefaultProfileRegistry = AnimationServiceUtils.CreateDefaultProfileRegistry
-AnimationServiceUtils.createProfileRegistry = AnimationServiceUtils.CreateProfileRegistry
-AnimationServiceUtils.normalizeProfileName = AnimationServiceUtils.NormalizeProfileName
-AnimationServiceUtils.createDefaultState = AnimationServiceUtils.CreateDefaultState
-AnimationServiceUtils.createState = AnimationServiceUtils.CreateState
-AnimationServiceUtils.resolveCharacterRig = AnimationServiceUtils.ResolveCharacterRig
-AnimationServiceUtils.resolveAnimator = AnimationServiceUtils.ResolveAnimator
-AnimationServiceUtils.createAnimationTrack = AnimationServiceUtils.CreateAnimationTrack
-AnimationServiceUtils.disableDefaultAnimateScript = AnimationServiceUtils.DisableDefaultAnimateScript
-AnimationServiceUtils.getProfile = AnimationServiceUtils.GetProfile
-AnimationServiceUtils.getFootstepSoundConfig = AnimationServiceUtils.GetFootstepSoundConfig
-AnimationServiceUtils.pickRandomSoundAssetId = AnimationServiceUtils.PickRandomSoundAssetId
-AnimationServiceUtils.createFootstepPlaybackOptions = AnimationServiceUtils.CreateFootstepPlaybackOptions
-AnimationServiceUtils.createJumpPlaybackOptions = AnimationServiceUtils.CreateJumpPlaybackOptions
-AnimationServiceUtils.resolveFootstepSoundAssetIdAndOptions =
-	AnimationServiceUtils.ResolveFootstepSoundAssetIdAndOptions
-AnimationServiceUtils.resolveJumpSoundAssetIdAndOptions = AnimationServiceUtils.ResolveJumpSoundAssetIdAndOptions
+AnimationServiceUtils.GetFootstepSoundTemplateAndOptions =
+	AnimationServiceUtils.GetFootstepSoundAssetIdAndOptions
+AnimationServiceUtils.GetJumpSoundTemplateAndOptions = AnimationServiceUtils.GetJumpSoundAssetIdAndOptions
 
 return AnimationServiceUtils

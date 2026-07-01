@@ -9,7 +9,7 @@ local Vec = require("Vec")
 local Proj = {}
 
 function Proj.Scalar(vector: Vector3, onto: Vector3): number
-	local axis = Vec.unit(onto)
+	local axis = Vec.Unit(onto)
 	if axis == Vector3.zero then
 		return 0
 	end
@@ -33,7 +33,7 @@ function Proj.OntoPlane(vector: Vector3, planeNormal: Vector3): Vector3
 end
 
 function Proj.Reflect(vector: Vector3, normal: Vector3): Vector3
-	local unitNormal = Vec.unit(normal)
+	local unitNormal = Vec.Unit(normal)
 	if unitNormal == Vector3.zero then
 		return vector
 	end
@@ -67,17 +67,7 @@ function Proj.PointOnSegment(point: Vector3, a: Vector3, b: Vector3): Vector3
 		return a
 	end
 
-	local t = Num.clamp((point - a):Dot(segment) / denominator, 0, 1)
+	local t = Num.Clamp((point - a):Dot(segment) / denominator, 0, 1)
 	return a + segment * t
 end
-
-Proj.scalar = Proj.Scalar
-Proj.vector = Proj.Vector
-Proj.reject = Proj.Reject
-Proj.ontoPlane = Proj.OntoPlane
-Proj.reflect = Proj.Reflect
-Proj.pointOnLine = Proj.PointOnLine
-Proj.pointOnRay = Proj.PointOnRay
-Proj.pointOnSegment = Proj.PointOnSegment
-
 return Proj

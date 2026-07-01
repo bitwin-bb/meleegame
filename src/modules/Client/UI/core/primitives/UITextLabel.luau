@@ -122,7 +122,7 @@ local DEFAULT_PULSE_SPEED = 1.25
 local DEFAULT_PULSE_MIN_SCALE = 0.95
 local DEFAULT_PULSE_MAX_SCALE = 1.05
 
-local function sanitizeNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
 	end
@@ -137,7 +137,7 @@ local function sanitizeNumber(value: any, fallback: number, minimum: number?, ma
 	return nextValue
 end
 
-local function sanitizeVector2(value: any, fallback: Vector2): Vector2
+local function CoerceVector2(value: any, fallback: Vector2): Vector2
 	if typeof(value) ~= "Vector2" then
 		return fallback
 	end
@@ -147,7 +147,7 @@ local function sanitizeVector2(value: any, fallback: Vector2): Vector2
 	return value
 end
 
-local function sanitizeColor(value: any, fallback: Color3): Color3
+local function CoerceColor(value: any, fallback: Color3): Color3
 	if typeof(value) ~= "Color3" then
 		return fallback
 	end
@@ -186,43 +186,43 @@ local function TextLabel(props: TextLabelProps)
 
 	local rainbowEnabled = rainbow ~= nil and rainbow.enabled ~= false
 	local rainbowGradientEnabled = rainbow ~= nil and rainbowEnabled and rainbow.gradient == true
-	local rainbowSpeed = sanitizeNumber(if rainbow then rainbow.speed else nil, DEFAULT_RAINBOW_SPEED, 0, 8)
+	local rainbowSpeed = CoerceNumber(if rainbow then rainbow.speed else nil, DEFAULT_RAINBOW_SPEED, 0, 8)
 	local rainbowSaturation =
-		sanitizeNumber(if rainbow then rainbow.saturation else nil, DEFAULT_RAINBOW_SATURATION, 0, 1)
-	local rainbowValue = sanitizeNumber(if rainbow then rainbow.value else nil, DEFAULT_RAINBOW_VALUE, 0, 1)
-	local rainbowSpread = sanitizeNumber(if rainbow then rainbow.spread else nil, DEFAULT_RAINBOW_SPREAD, 0.01, 1)
+		CoerceNumber(if rainbow then rainbow.saturation else nil, DEFAULT_RAINBOW_SATURATION, 0, 1)
+	local rainbowValue = CoerceNumber(if rainbow then rainbow.value else nil, DEFAULT_RAINBOW_VALUE, 0, 1)
+	local rainbowSpread = CoerceNumber(if rainbow then rainbow.spread else nil, DEFAULT_RAINBOW_SPREAD, 0.01, 1)
 
 	local gradientEnabled = gradient ~= nil and gradient.enabled ~= false
 	local gradientAnimated = gradientEnabled and gradient ~= nil and gradient.animated == true
 	local gradientScrollSpeed =
-		sanitizeNumber(if gradient then gradient.scrollSpeed else nil, DEFAULT_GRADIENT_SCROLL_SPEED, 0, 8)
+		CoerceNumber(if gradient then gradient.scrollSpeed else nil, DEFAULT_GRADIENT_SCROLL_SPEED, 0, 8)
 	local gradientDirection =
-		normalizeDirection(sanitizeVector2(if gradient then gradient.direction else nil, DEFAULT_GRADIENT_DIRECTION))
-	local gradientRotation = sanitizeNumber(if gradient then gradient.rotation else nil, 0, -360, 360)
+		normalizeDirection(CoerceVector2(if gradient then gradient.direction else nil, DEFAULT_GRADIENT_DIRECTION))
+	local gradientRotation = CoerceNumber(if gradient then gradient.rotation else nil, 0, -360, 360)
 	local gradientTransparency = if gradient and gradient.transparency then gradient.transparency else nil
-	local baseGradientOffset = sanitizeVector2(if gradient then gradient.offset else nil, Vector2.new(0, 0))
+	local baseGradientOffset = CoerceVector2(if gradient then gradient.offset else nil, Vector2.new(0, 0))
 	local baseGradientColor = if gradient and gradient.color then gradient.color else DEFAULT_GRADIENT_COLOR
 
 	local shadowEnabled = shadow ~= nil and shadow.enabled ~= false
-	local shadowColor = sanitizeColor(if shadow then shadow.color else nil, DEFAULT_SHADOW_COLOR)
-	local shadowOffset = sanitizeVector2(if shadow then shadow.offset else nil, DEFAULT_SHADOW_OFFSET)
-	local shadowLayers = math.floor(sanitizeNumber(if shadow then shadow.layers else nil, DEFAULT_SHADOW_LAYERS, 1, 8))
+	local shadowColor = CoerceColor(if shadow then shadow.color else nil, DEFAULT_SHADOW_COLOR)
+	local shadowOffset = CoerceVector2(if shadow then shadow.offset else nil, DEFAULT_SHADOW_OFFSET)
+	local shadowLayers = math.floor(CoerceNumber(if shadow then shadow.layers else nil, DEFAULT_SHADOW_LAYERS, 1, 8))
 	local shadowTransparency =
-		sanitizeNumber(if shadow then shadow.transparency else nil, DEFAULT_SHADOW_TRANSPARENCY, 0, 1)
+		CoerceNumber(if shadow then shadow.transparency else nil, DEFAULT_SHADOW_TRANSPARENCY, 0, 1)
 
 	local outlineEnabled = outline ~= nil and outline.enabled ~= false
-	local outlineColor = sanitizeColor(if outline then outline.color else nil, DEFAULT_OUTLINE_COLOR)
+	local outlineColor = CoerceColor(if outline then outline.color else nil, DEFAULT_OUTLINE_COLOR)
 	local outlineTransparency =
-		sanitizeNumber(if outline then outline.transparency else nil, DEFAULT_OUTLINE_TRANSPARENCY, 0, 1)
-	local outlineThickness = sanitizeNumber(if outline then outline.thickness else nil, DEFAULT_OUTLINE_THICKNESS, 1, 4)
+		CoerceNumber(if outline then outline.transparency else nil, DEFAULT_OUTLINE_TRANSPARENCY, 0, 1)
+	local outlineThickness = CoerceNumber(if outline then outline.thickness else nil, DEFAULT_OUTLINE_THICKNESS, 1, 4)
 
 	local pulseEnabled = pulse ~= nil and pulse.enabled == true
-	local pulseSpeed = sanitizeNumber(if pulse then pulse.speed else nil, DEFAULT_PULSE_SPEED, 0, 12)
-	local pulseMinScale = sanitizeNumber(if pulse then pulse.minScale else nil, DEFAULT_PULSE_MIN_SCALE, 0.01, 100)
-	local pulseMaxScale = sanitizeNumber(if pulse then pulse.maxScale else nil, DEFAULT_PULSE_MAX_SCALE, 0.01, 100)
+	local pulseSpeed = CoerceNumber(if pulse then pulse.speed else nil, DEFAULT_PULSE_SPEED, 0, 12)
+	local pulseMinScale = CoerceNumber(if pulse then pulse.minScale else nil, DEFAULT_PULSE_MIN_SCALE, 0.01, 100)
+	local pulseMaxScale = CoerceNumber(if pulse then pulse.maxScale else nil, DEFAULT_PULSE_MAX_SCALE, 0.01, 100)
 
-	local baseTextColor = sanitizeColor(props.textColor3, DEFAULT_TEXT_COLOR)
-	local baseTextTransparency = sanitizeNumber(props.textTransparency, DEFAULT_TEXT_TRANSPARENCY, 0, 1)
+	local baseTextColor = CoerceColor(props.textColor3, DEFAULT_TEXT_COLOR)
+	local baseTextTransparency = CoerceNumber(props.textTransparency, DEFAULT_TEXT_TRANSPARENCY, 0, 1)
 
 	local animatedTextColor, setAnimatedTextColor = React.useBinding(baseTextColor)
 	local animatedGradientOffset, setAnimatedGradientOffset = React.useBinding(baseGradientOffset)
@@ -293,11 +293,11 @@ local function TextLabel(props: TextLabelProps)
 		} :: { any }
 	)
 
-	local resolvedTextColor = if rainbowEnabled and not rainbowGradientEnabled then animatedTextColor else baseTextColor
-	local resolvedGradientColor = if rainbowEnabled and rainbowGradientEnabled
+	local GotTextColor = if rainbowEnabled and not rainbowGradientEnabled then animatedTextColor else baseTextColor
+	local GotGradientColor = if rainbowEnabled and rainbowGradientEnabled
 		then animatedGradientColor
 		else baseGradientColor
-	local resolvedGradientOffset = if gradientAnimated then animatedGradientOffset else baseGradientOffset
+	local GotGradientOffset = if gradientAnimated then animatedGradientOffset else baseGradientOffset
 
 	local textCommonProps = {
 		BackgroundTransparency = 1,
@@ -409,7 +409,7 @@ local function TextLabel(props: TextLabelProps)
 		Visible = props.visible ~= false,
 		ZIndex = rootZIndex,
 		BackgroundColor3 = props.backgroundColor3,
-		BackgroundTransparency = sanitizeNumber(props.backgroundTransparency, DEFAULT_BACKGROUND_TRANSPARENCY, 0, 1),
+		BackgroundTransparency = CoerceNumber(props.backgroundTransparency, DEFAULT_BACKGROUND_TRANSPARENCY, 0, 1),
 		BorderSizePixel = if props.borderSizePixel ~= nil then props.borderSizePixel else 0,
 		ClipsDescendants = if props.clipsDescendants ~= nil then props.clipsDescendants else false,
 		Text = textCommonProps.Text,
@@ -423,7 +423,7 @@ local function TextLabel(props: TextLabelProps)
 		TextXAlignment = textCommonProps.TextXAlignment,
 		TextYAlignment = textCommonProps.TextYAlignment,
 		LineHeight = textCommonProps.LineHeight,
-		TextColor3 = resolvedTextColor,
+		TextColor3 = GotTextColor,
 		TextTransparency = baseTextTransparency,
 		TextStrokeColor3 = props.textStrokeColor3,
 		TextStrokeTransparency = props.textStrokeTransparency,
@@ -437,8 +437,8 @@ local function TextLabel(props: TextLabelProps)
 
 	if gradientEnabled or rainbowGradientEnabled then
 		children[#children + 1] = e("UIGradient", {
-			Color = resolvedGradientColor,
-			Offset = resolvedGradientOffset,
+			Color = GotGradientColor,
+			Offset = GotGradientOffset,
 			Rotation = gradientRotation,
 			Transparency = gradientTransparency,
 		})

@@ -22,7 +22,7 @@ export type WorldState = typeof(setmetatable(
 	WorldState
 ))
 
-local function sanitizeKey(keyRaw: any): string?
+local function CoerceKey(keyRaw: any): string?
 	if typeof(keyRaw) ~= "string" or keyRaw == "" then
 		return nil
 	end
@@ -72,7 +72,7 @@ function WorldState._syncValueObject(self: WorldState, key: string, value: any)
 end
 
 function WorldState.Set(self: WorldState, keyRaw: any, value: any)
-	local key = sanitizeKey(keyRaw)
+	local key = CoerceKey(keyRaw)
 	if key == nil or self.destroyed then
 		return
 	end
@@ -86,7 +86,7 @@ function WorldState.Set(self: WorldState, keyRaw: any, value: any)
 end
 
 function WorldState.Get(self: WorldState, keyRaw: any): any?
-	local key = sanitizeKey(keyRaw)
+	local key = CoerceKey(keyRaw)
 	if key == nil or self.destroyed then
 		return nil
 	end
@@ -94,12 +94,12 @@ function WorldState.Get(self: WorldState, keyRaw: any): any?
 end
 
 function WorldState.Has(self: WorldState, keyRaw: any): boolean
-	local key = sanitizeKey(keyRaw)
+	local key = CoerceKey(keyRaw)
 	return key ~= nil and not self.destroyed and self.values[key] ~= nil
 end
 
 function WorldState.Remove(self: WorldState, keyRaw: any): any?
-	local key = sanitizeKey(keyRaw)
+	local key = CoerceKey(keyRaw)
 	if key == nil or self.destroyed then
 		return nil
 	end
@@ -177,7 +177,7 @@ function WorldState.ToTable(self: WorldState): { [string]: any }
 end
 
 function WorldState.GetValueObject(self: WorldState, keyRaw: any): any?
-	local key = sanitizeKey(keyRaw)
+	local key = CoerceKey(keyRaw)
 	if key == nil or self.destroyed then
 		return nil
 	end
@@ -203,20 +203,4 @@ function WorldState.Destroy(self: WorldState)
 	table.clear(self.valueObjects)
 	self.maid:DoCleaning()
 end
-
-WorldState.from = WorldState.From
-WorldState.set = WorldState.Set
-WorldState.get = WorldState.Get
-WorldState.has = WorldState.Has
-WorldState.remove = WorldState.Remove
-WorldState.clear = WorldState.Clear
-WorldState.clone = WorldState.Clone
-WorldState.matches = WorldState.Matches
-WorldState.satisfies = WorldState.Satisfies
-WorldState.apply = WorldState.Apply
-WorldState.toTable = WorldState.ToTable
-WorldState.getValueObject = WorldState.GetValueObject
-WorldState.getChangedSignal = WorldState.GetChangedSignal
-WorldState.destroy = WorldState.Destroy
-
 return WorldState

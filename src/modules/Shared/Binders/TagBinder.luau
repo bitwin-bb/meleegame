@@ -403,17 +403,5 @@ TagBinder.LegacyAliases = LegacyAliases
 TagBinder.ImpliedTags = ImpliedTags
 TagBinder.CanonicalTagLookup = CanonicalTagLookup
 
-TagBinder.getCanonicalTag = TagBinder.getCanonicalTag
-TagBinder.getCanonicalTags = TagBinder.getCanonicalTags
-TagBinder.normalizeTags = TagBinder.normalizeTags
-TagBinder.getLegacyAliases = TagBinder.getLegacyAliases
-TagBinder.getImpliedTags = TagBinder.getImpliedTags
-TagBinder.getObservedTags = TagBinder.getObservedTags
-TagBinder.hasTag = TagBinder.hasTag
-TagBinder.hasAnyTag = TagBinder.hasAnyTag
-TagBinder.getMatchedTags = TagBinder.getMatchedTags
-TagBinder.applyTag = TagBinder.applyTag
-TagBinder.applyTags = TagBinder.applyTags
-TagBinder.getTagged = TagBinder.getTagged
 
 return TagBinder

@@ -14,9 +14,9 @@ type ItemRootProps = {
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: ItemRootProps?): React.ReactNode
-	local resolvedProps = if props ~= nil then props else {} :: ItemRootProps
+	local GotProps = if props ~= nil then props else {} :: ItemRootProps
 
 	return e(React.Fragment, nil, {
-		e(ItemScreen, resolvedProps),
+		e(ItemScreen, GotProps),
 	})
 end

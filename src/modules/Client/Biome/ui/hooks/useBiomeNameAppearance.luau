@@ -37,7 +37,7 @@ local DEFAULT_TO_OFFSET = Vector2.zero
 local DEFAULT_MIN_SCALE = 0.82
 local DEFAULT_MAX_SCALE = 1
 
-local function sanitizeVector2(valueRaw: any, fallback: Vector2): Vector2
+local function CoerceVector2(valueRaw: any, fallback: Vector2): Vector2
 	if typeof(valueRaw) ~= "Vector2" then
 		return fallback
 	end
@@ -47,7 +47,7 @@ local function sanitizeVector2(valueRaw: any, fallback: Vector2): Vector2
 	return valueRaw
 end
 
-local function sanitizeScale(valueRaw: any, fallback: number): number
+local function CoerceScale(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
@@ -61,10 +61,10 @@ end
 
 local function useBiomeNameAppearance(options: BiomeNameAppearanceOptions?): BiomeNameAppearanceState
 	local enabled = if options and options.enabled ~= nil then options.enabled else false
-	local fromOffset = sanitizeVector2(if options then options.fromOffset else nil, DEFAULT_FROM_OFFSET)
-	local toOffset = sanitizeVector2(if options then options.toOffset else nil, DEFAULT_TO_OFFSET)
-	local minScale = sanitizeScale(if options then options.minScale else nil, DEFAULT_MIN_SCALE)
-	local maxScale = math.max(minScale, sanitizeScale(if options then options.maxScale else nil, DEFAULT_MAX_SCALE))
+	local fromOffset = CoerceVector2(if options then options.fromOffset else nil, DEFAULT_FROM_OFFSET)
+	local toOffset = CoerceVector2(if options then options.toOffset else nil, DEFAULT_TO_OFFSET)
+	local minScale = CoerceScale(if options then options.minScale else nil, DEFAULT_MIN_SCALE)
+	local maxScale = math.max(minScale, CoerceScale(if options then options.maxScale else nil, DEFAULT_MAX_SCALE))
 	local spring = if options and options.spring ~= nil then options.spring else DEFAULT_SPRING
 
 	local targetRef = React.useRef(if enabled then 1 else 0)

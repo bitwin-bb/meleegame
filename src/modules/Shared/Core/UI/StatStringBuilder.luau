@@ -65,7 +65,7 @@ local function toNumber(valueRaw: any, fallback: number): number
 	return valueRaw
 end
 
-local function resolveDefinition(defRaw: any, statId: string): StatDefinition
+local function GetDefinition(defRaw: any, statId: string): StatDefinition
 	if typeof(defRaw) ~= "table" then
 		return {
 			id = statId,
@@ -130,8 +130,8 @@ function StatStringBuilder._read(self: StatStringBuilder, source: any, statId: s
 		return source[statId]
 	end
 	if typeof(source) == "Instance" then
-		if self.attributeCache ~= nil and typeof(self.attributeCache.get) == "function" then
-			return self.attributeCache:get(source, statId, source:GetAttribute(statId))
+		if self.attributeCache ~= nil and typeof(self.attributeCache.Get) == "function" then
+			return self.attributeCache:Get(source, statId, source:GetAttribute(statId))
 		end
 		return source:GetAttribute(statId)
 	end
@@ -147,7 +147,7 @@ function StatStringBuilder._formatValue(
 ): string
 	local value = toNumber(valueRaw, 0)
 	local formatKind = if typeof(formatRaw) == "string" then formatRaw else autoDetectFormat(statId, value)
-	return AbbreviationFormatter.formatValue(value, formatKind, precisionRaw)
+	return AbbreviationFormatter.FormatValue(value, formatKind, precisionRaw)
 end
 
 function StatStringBuilder._normalizeDefinitions(
@@ -159,21 +159,21 @@ function StatStringBuilder._normalizeDefinitions(
 	if typeof(definitionsRaw) == "table" and #definitionsRaw > 0 then
 		for _, defRaw in definitionsRaw do
 			if typeof(defRaw) == "table" and typeof(defRaw.id) == "string" then
-				definitions[#definitions + 1] = resolveDefinition(defRaw, defRaw.id)
+				definitions[#definitions + 1] = GetDefinition(defRaw, defRaw.id)
 			end
 		end
 	else
 		if typeof(currentSource) == "table" then
 			for key in currentSource do
 				if typeof(key) == "string" then
-					definitions[#definitions + 1] = resolveDefinition(nil, key)
+					definitions[#definitions + 1] = GetDefinition(nil, key)
 				end
 			end
 		elseif typeof(currentSource) == "Instance" then
 			local attributes = currentSource:GetAttributes()
 			for key in attributes do
 				if typeof(key) == "string" then
-					definitions[#definitions + 1] = resolveDefinition(nil, key)
+					definitions[#definitions + 1] = GetDefinition(nil, key)
 				end
 			end
 		end
@@ -259,9 +259,9 @@ function StatStringBuilder.BuildTokens(
 				local mul = toNumber(breakdown.multiplicative, 1)
 				local breakdownText = string.format(
 					" [base %s, +%s, x%s]",
-					AbbreviationFormatter.formatNumber(base),
-					AbbreviationFormatter.formatNumber(add),
-					AbbreviationFormatter.formatNumber(mul)
+					AbbreviationFormatter.FormatNumber(base),
+					AbbreviationFormatter.FormatNumber(add),
+					AbbreviationFormatter.FormatNumber(mul)
 				)
 				tokens[#tokens + 1] = {
 					kind = "breakdown",
@@ -288,23 +288,23 @@ function StatStringBuilder.TokensToRichText(self: StatStringBuilder, tokensRaw: 
 	if typeof(tokensRaw) ~= "table" then
 		return ""
 	end
-	local builder = RichTextFormatter.new()
+	local builder = RichTextFormatter.New()
 	for index = 1, #tokensRaw do
 		local token = tokensRaw[index]
 		if typeof(token) ~= "table" then
 			continue
 		end
 		if token.kind == "newline" then
-			builder:line()
+			builder:Line()
 			continue
 		end
 		if typeof(token.color) == "string" and token.color ~= "" then
-			builder:preset(token.color, token.text)
+			builder:Preset(token.color, token.text)
 		else
-			builder:append(token.text)
+			builder:Append(token.text)
 		end
 	end
-	return builder:toString()
+	return builder:ToString()
 end
 
 function StatStringBuilder.BuildRichText(
@@ -315,13 +315,7 @@ function StatStringBuilder.BuildRichText(
 	modifierBreakdownRaw: any?,
 	optionsRaw: BuildOptions?
 ): string
-	local tokens = self:buildTokens(currentSource, compareSource, definitionsRaw, modifierBreakdownRaw, optionsRaw)
-	return self:tokensToRichText(tokens)
+	local tokens = self:BuildTokens(currentSource, compareSource, definitionsRaw, modifierBreakdownRaw, optionsRaw)
+	return self:TokensToRichText(tokens)
 end
-
-StatStringBuilder.new = StatStringBuilder.New
-StatStringBuilder.buildTokens = StatStringBuilder.BuildTokens
-StatStringBuilder.tokensToRichText = StatStringBuilder.TokensToRichText
-StatStringBuilder.buildRichText = StatStringBuilder.BuildRichText
-
 return StatStringBuilder

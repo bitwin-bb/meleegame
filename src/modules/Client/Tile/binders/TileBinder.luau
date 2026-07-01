@@ -48,7 +48,7 @@ function TileBinder.new(instanceRaw: any, contextRaw: any?): TileBinder
 		self:Destroy()
 	end))
 
-	self:bindTileState()
+	self:BindTileState()
 	return self
 end
 
@@ -64,7 +64,7 @@ function TileBinder.BindTileState(self: TileBinder)
 			end),
 		})
 		:Subscribe(function()
-			self:refresh()
+			self:Refresh()
 		end))
 end
 
@@ -79,7 +79,7 @@ function TileBinder.Refresh(self: TileBinder)
 		return
 	end
 
-	if not Shiny.isOreTile(self.instance) then
+	if not Shiny.IsOreTile(self.instance) then
 		self.maid._shiny = nil
 		self.shiny = nil
 		return
@@ -102,9 +102,4 @@ function TileBinder.Destroy(self: TileBinder)
 	self.destroyed = true
 	self.maid:Destroy()
 end
-
-TileBinder.bindTileState = TileBinder.BindTileState
-TileBinder.refresh = TileBinder.Refresh
-TileBinder.destroy = TileBinder.Destroy
-
 return TileBinder

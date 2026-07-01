@@ -19,7 +19,4 @@ function MoonAssets.GetImageForPhase(phaseNameRaw: any): string
 	local phaseName = if typeof(phaseNameRaw) == "string" then phaseNameRaw else "new"
 	return MoonAssets.ImagesByPhase[phaseName] or MoonAssets.ImagesByPhase.new
 end
-
-MoonAssets.getImageForPhase = MoonAssets.GetImageForPhase
-
 return Table.readonly(MoonAssets)

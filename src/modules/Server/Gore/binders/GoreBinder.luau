@@ -24,20 +24,20 @@ local function getGoreServiceServer()
 	return goreServiceServer
 end
 
-local function resolveEntityId(model: Model): string?
+local function GetEntityId(model: Model): string?
 	local player = Players:GetPlayerFromCharacter(model)
 	if player ~= nil then
 		return nil
 	end
 
-	local bossRuntimeId = BossServiceUtils.resolveRuntimeIdFromInstance(model)
+	local bossRuntimeId = BossServiceUtils.GetUntimeIdFromInstance(model)
 	if bossRuntimeId ~= nil then
 		return ("boss:%s"):format(bossRuntimeId)
 	end
 
-	local npcRuntimeId = NpcServiceUtils.resolveRuntimeIdFromInstance(model)
+	local npcRuntimeId = NpcServiceUtils.GetUntimeIdFromInstance(model)
 	if npcRuntimeId ~= nil then
-		return GoreServiceUtils.makeNpcEntityId(npcRuntimeId)
+		return GoreServiceUtils.MakeNpcEntityId(npcRuntimeId)
 	end
 
 	local existing = model:GetAttribute("GoreEntityId")
@@ -57,7 +57,7 @@ function GoreBinder.new(instance: Instance, context: any)
 		return self
 	end
 
-	self.entityId = resolveEntityId(self.model)
+	self.entityId = GetEntityId(self.model)
 	self.humanoid = self:GetHumanoid()
 	self.lastHealth = if self.humanoid ~= nil then self.humanoid.Health else nil
 	self.registeredByBinder = false
@@ -77,7 +77,7 @@ function GoreBinder.new(instance: Instance, context: any)
 	return self
 end
 
-function GoreBinder.resolveConfig(self: any): { [string]: any }
+function GoreBinder.GetConfig(self: any): { [string]: any }
 	local config = {}
 	if self:HasTag(TagBinder.Tags.Gore_Slime) then
 		config.bloodColor = GoreServiceUtils.DEFAULT_NPC_BLOOD_COLOR
@@ -100,12 +100,12 @@ function GoreBinder.register(self: any)
 	end
 
 	local goreServiceServer = getGoreServiceServer()
-	local existing = goreServiceServer:getEntityRuntime(self.entityId)
+	local existing = goreServiceServer:GetEntityRuntime(self.entityId)
 	if existing ~= nil and existing.model == self.model then
 		return
 	end
 
-	self.registeredByBinder = goreServiceServer:registerEntity(self.entityId, self.model, self:resolveConfig())
+	self.registeredByBinder = goreServiceServer:RegisterEntity(self.entityId, self.model, self:GetConfig())
 	if self.registeredByBinder then
 		self.model:SetAttribute("GoreBinderEntityId", self.entityId)
 	end
@@ -134,7 +134,7 @@ end
 
 function GoreBinder.Cleanup(self: any)
 	if self.registeredByBinder and self.entityId ~= nil then
-		getGoreServiceServer():unregisterEntity(self.entityId)
+		getGoreServiceServer():UnregisterEntity(self.entityId)
 	end
 end
 

@@ -54,20 +54,24 @@ local function runStage(handlers: { RegisteredHandler }, context: any, result: a
 	end
 end
 
+local function getRandomUnit(rngRaw: any, seedRaw: any): number
+	if rngRaw ~= nil and typeof((rngRaw :: any).NextNumber) == "function" then
+		return (rngRaw :: any):NextNumber()
+	end
+	if rngRaw ~= nil and typeof((rngRaw :: any).NextRange) == "function" then
+		return (rngRaw :: any):NextRange(0, 1)
+	end
+	return DeterministicRNG.New(seedRaw or 1):NextRange(0, 1)
+end
+
 local function defaultCritStage(context: any, result: any)
 	local critChance = clampNumber(context.critChance, 0, 0, 1)
 	if critChance <= 0 then
 		result.wasCrit = false
 		return
 	end
-	local rng = context.rng
 	local roll = 1
-	if rng ~= nil and typeof((rng :: any).nextNumber) == "function" then
-		roll = (rng :: any):nextNumber()
-	else
-		local fallback = DeterministicRNG.new(context.seed or 1)
-		roll = fallback:nextNumber()
-	end
+	roll = getRandomUnit(context.rng, context.seed)
 	if roll <= critChance then
 		local critMultiplier = clampNumber(context.critMultiplier, 1.5, 1, 100)
 		result.damage = result.damage * critMultiplier
@@ -116,17 +120,12 @@ local function defaultStatusStage(context: any, result: any)
 	if #statuses == 0 then
 		return
 	end
-	local rng = context.rng
-	if rng == nil or typeof((rng :: any).nextNumber) ~= "function" then
-		rng = DeterministicRNG.new(context.seed or 1)
-	end
-
 	for _, effect in statuses do
 		if typeof(effect) ~= "table" or typeof(effect.id) ~= "string" then
 			continue
 		end
 		local chance = clampNumber(effect.chance, 1, 0, 1)
-		if (rng :: any):nextNumber() <= chance then
+		if getRandomUnit(context.rng, context.seed) <= chance then
 			result.statuses[#result.statuses + 1] = {
 				id = effect.id,
 				duration = clampNumber(effect.duration, 0, 0, 100000),
@@ -167,11 +166,11 @@ function DamagePipeline.New(): DamagePipeline
 		postHooks = {} :: { RegisteredHandler },
 	}, DamagePipeline)
 
-	self:useCrit(defaultCritStage, -1000)
-	self:useDefense(defaultDefenseStage, -1000)
-	self:useDamageTypes(defaultDamageTypeStage, -1000)
-	self:useStatus(defaultStatusStage, -1000)
-	self:useKnockback(defaultKnockbackStage, -1000)
+	self:UseCrit(defaultCritStage, -1000)
+	self:UseDefense(defaultDefenseStage, -1000)
+	self:UseDamageTypes(defaultDamageTypeStage, -1000)
+	self:UseStatus(defaultStatusStage, -1000)
+	self:UseKnockback(defaultKnockbackStage, -1000)
 
 	return self
 end
@@ -247,15 +246,4 @@ function DamagePipeline.Process(self: DamagePipeline, contextRaw: any): any
 	runStage(self.postHooks, context, result, self)
 	return result
 end
-
-DamagePipeline.new = DamagePipeline.New
-DamagePipeline.usePreModifier = DamagePipeline.UsePreModifier
-DamagePipeline.useCrit = DamagePipeline.UseCrit
-DamagePipeline.useDefense = DamagePipeline.UseDefense
-DamagePipeline.useDamageTypes = DamagePipeline.UseDamageTypes
-DamagePipeline.useStatus = DamagePipeline.UseStatus
-DamagePipeline.useKnockback = DamagePipeline.UseKnockback
-DamagePipeline.usePostHook = DamagePipeline.UsePostHook
-DamagePipeline.process = DamagePipeline.Process
-
 return DamagePipeline

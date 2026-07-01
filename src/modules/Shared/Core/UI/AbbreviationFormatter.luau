@@ -171,12 +171,4 @@ function AbbreviationFormatter.FormatValue(valueRaw: any, formatKindRaw: any, pr
 		precision = precisionRaw,
 	})
 end
-
-AbbreviationFormatter.formatNumber = AbbreviationFormatter.FormatNumber
-AbbreviationFormatter.formatPercent = AbbreviationFormatter.FormatPercent
-AbbreviationFormatter.formatDps = AbbreviationFormatter.FormatDps
-AbbreviationFormatter.formatTime = AbbreviationFormatter.FormatTime
-AbbreviationFormatter.formatTimeMMSS = AbbreviationFormatter.FormatTimeMMSS
-AbbreviationFormatter.formatValue = AbbreviationFormatter.FormatValue
-
 return AbbreviationFormatter

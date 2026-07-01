@@ -17,7 +17,7 @@ local TILE_ITEM_IDS = {
 
 local function createTileBuilder(itemId: string)
 	return function(scope)
-		return TileItem.new(scope):newTile(itemId)
+		return TileItem.new(scope):NewTile(itemId)
 	end
 end
 

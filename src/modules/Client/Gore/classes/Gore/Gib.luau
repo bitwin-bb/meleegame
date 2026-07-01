@@ -68,7 +68,7 @@ local DEFAULT_LIFETIME = 10
 local DEFAULT_REST_DISTANCE = NumberRange.new(2, 6)
 local DEFAULT_ROTATION_VELOCITY = Vector3.new(math.pi * 1.2, math.pi * 0.75, math.pi * 1.6)
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -82,21 +82,21 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?,
 	return value
 end
 
-local function sanitizeBoolean(valueRaw: any, fallback: boolean): boolean
+local function CoerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function sanitizeVector3(valueRaw: any, fallback: Vector3): Vector3
+local function CoerceVector3(valueRaw: any, fallback: Vector3): Vector3
 	if typeof(valueRaw) == "Vector3" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function sanitizeRestRange(rangeRaw: any, fallback: NumberRange): NumberRange
+local function CoerceRestRange(rangeRaw: any, fallback: NumberRange): NumberRange
 	if typeof(rangeRaw) == "NumberRange" then
 		local minimum = math.min(rangeRaw.Min, rangeRaw.Max)
 		local maximum = math.max(rangeRaw.Min, rangeRaw.Max)
@@ -140,7 +140,7 @@ local function quadraticTangent(a: Vector3, b: Vector3, c: Vector3, t: number): 
 end
 
 local function easeInOutSine(alpha: number): number
-	return Ease.inOutSine(alpha)
+	return Ease.InOutSine(alpha)
 end
 
 local function randomUnitVector2D(randomObject: Random): Vector3
@@ -148,7 +148,7 @@ local function randomUnitVector2D(randomObject: Random): Vector3
 	return Vector3.new(math.cos(angle), 0, math.sin(angle))
 end
 
-local function resolveRestPosition(self: Gib, startCFrame: CFrame): Vector3
+local function GetEstPosition(self: Gib, startCFrame: CFrame): Vector3
 	local distance = self.random:NextNumber(self.restDistance.Min, self.restDistance.Max)
 	local direction = randomUnitVector2D(self.random)
 	local planarOffset = direction * distance
@@ -187,11 +187,11 @@ function Gib.New(configRaw: GibConfig?): Gib
 		restCFrame = if typeof(restCFrame) == "CFrame" then restCFrame else CFrame.new(),
 		raycastParams = config.raycastParams,
 		controlPoint = Vector3.zero,
-		rotationVelocity = sanitizeVector3(config.rotationVelocity, DEFAULT_ROTATION_VELOCITY),
-		travelTime = sanitizeNumber(config.travelTime, DEFAULT_TRAVEL_TIME, 0.1, 12),
-		lifetime = sanitizeNumber(config.lifetime, DEFAULT_LIFETIME, 0.05, 120),
-		restDistance = sanitizeRestRange(config.restDistance, DEFAULT_REST_DISTANCE),
-		anchoredAtRest = sanitizeBoolean(config.anchoredAtRest, true),
+		rotationVelocity = CoerceVector3(config.rotationVelocity, DEFAULT_ROTATION_VELOCITY),
+		travelTime = CoerceNumber(config.travelTime, DEFAULT_TRAVEL_TIME, 0.1, 12),
+		lifetime = CoerceNumber(config.lifetime, DEFAULT_LIFETIME, 0.05, 120),
+		restDistance = CoerceRestRange(config.restDistance, DEFAULT_REST_DISTANCE),
+		anchoredAtRest = CoerceBoolean(config.anchoredAtRest, true),
 		elapsed = 0,
 		isPlaying = false,
 		isLanded = false,
@@ -200,16 +200,16 @@ function Gib.New(configRaw: GibConfig?): Gib
 	}, Gib)
 
 	clone.Anchored = true
-	clone.CanCollide = sanitizeBoolean(config.canCollide, true)
-	clone.CanTouch = sanitizeBoolean(config.canTouch, false)
-	clone.CanQuery = sanitizeBoolean(config.canQuery, false)
+	clone.CanCollide = CoerceBoolean(config.canCollide, true)
+	clone.CanTouch = CoerceBoolean(config.canTouch, false)
+	clone.CanQuery = CoerceBoolean(config.canQuery, false)
 	clone.CFrame = startCFrame
 	clone.AssemblyLinearVelocity = Vector3.zero
 	clone.AssemblyAngularVelocity = Vector3.zero
 
 	local restPosition = config.restPosition
 	if typeof(restPosition) ~= "Vector3" then
-		restPosition = resolveRestPosition(self, startCFrame)
+		restPosition = GetEstPosition(self, startCFrame)
 	end
 
 	local randomYaw = self.random:NextNumber(-math.pi, math.pi)
@@ -220,7 +220,7 @@ function Gib.New(configRaw: GibConfig?): Gib
 		self.restCFrame = CFrame.new(restPosition :: Vector3) * defaultRestRotation
 	end
 
-	local arcHeight = sanitizeNumber(config.arcHeight, DEFAULT_ARC_HEIGHT, 0, 200)
+	local arcHeight = CoerceNumber(config.arcHeight, DEFAULT_ARC_HEIGHT, 0, 200)
 	local midpoint = (self.startCFrame.Position + self.restCFrame.Position) * 0.5
 	self.controlPoint = midpoint + Vector3.new(0, arcHeight, 0)
 
@@ -252,11 +252,11 @@ function Gib._step(self: Gib, dt: number)
 	end
 
 	local spin = self.rotationVelocity * (self.elapsed / self.travelTime)
-	local cframe = CFrame.lookAt(position, position + Vec.unit(tangent, Vector3.new(0, 0, -1)), Vector3.yAxis)
+	local cframe = CFrame.lookAt(position, position + Vec.Unit(tangent, Vector3.new(0, 0, -1)), Vector3.yAxis)
 	self.part.CFrame = cframe * CFrame.Angles(spin.X, spin.Y, spin.Z)
 
 	if alpha >= 1 then
-		self:land()
+		self:Land()
 	end
 end
 
@@ -309,10 +309,4 @@ function Gib.Destroy(self: Gib)
 	self.motionConnection = nil
 	self.janitor:Destroy()
 end
-
-Gib.new = Gib.New
-Gib.play = Gib.Play
-Gib.land = Gib.Land
-Gib.destroy = Gib.Destroy
-
 return Gib

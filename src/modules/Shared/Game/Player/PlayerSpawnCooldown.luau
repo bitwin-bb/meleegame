@@ -11,7 +11,7 @@ local DEFAULT_RESPAWN_DELAY = 5
 local MIN_RESPAWN_DELAY = 0.1
 local MAX_RESPAWN_DELAY = 120
 
-local function sanitizeRespawnDelay(valueRaw: any, fallbackRaw: any?): number
+local function CoerceRespawnDelay(valueRaw: any, fallbackRaw: any?): number
 	local fallbackValue = if typeof(fallbackRaw) == "number" and fallbackRaw == fallbackRaw
 		then fallbackRaw
 		else DEFAULT_RESPAWN_DELAY
@@ -23,7 +23,7 @@ local function sanitizeRespawnDelay(valueRaw: any, fallbackRaw: any?): number
 	return math.clamp(valueRaw, MIN_RESPAWN_DELAY, MAX_RESPAWN_DELAY)
 end
 
-local function resolveConfiguredRespawnDelayFromTemplate(): number?
+local function GetConfiguredRespawnDelayFromTemplate(): number?
 	if typeof(DataTemplate) ~= "table" then
 		return nil
 	end
@@ -43,15 +43,15 @@ local function resolveConfiguredRespawnDelayFromTemplate(): number?
 		return nil
 	end
 
-	return sanitizeRespawnDelay(configuredDelayRaw, DEFAULT_RESPAWN_DELAY)
+	return CoerceRespawnDelay(configuredDelayRaw, DEFAULT_RESPAWN_DELAY)
 end
 
 function PlayerSpawnCooldown.GetCurrentRespawnDelay(): number
-	return sanitizeRespawnDelay(Players.RespawnTime, DEFAULT_RESPAWN_DELAY)
+	return CoerceRespawnDelay(Players.RespawnTime, DEFAULT_RESPAWN_DELAY)
 end
 
 function PlayerSpawnCooldown.GetConfiguredRespawnDelay(): number
-	local configuredRespawnDelay = resolveConfiguredRespawnDelayFromTemplate()
+	local configuredRespawnDelay = GetConfiguredRespawnDelayFromTemplate()
 	if configuredRespawnDelay ~= nil then
 		return configuredRespawnDelay
 	end
@@ -67,12 +67,4 @@ end
 PlayerSpawnCooldown.DEFAULT_RESPAWN_DELAY = DEFAULT_RESPAWN_DELAY
 PlayerSpawnCooldown.MIN_RESPAWN_DELAY = MIN_RESPAWN_DELAY
 PlayerSpawnCooldown.MAX_RESPAWN_DELAY = MAX_RESPAWN_DELAY
-PlayerSpawnCooldown.GetCurrentRespawnDelay = PlayerSpawnCooldown.GetCurrentRespawnDelay
-PlayerSpawnCooldown.GetConfiguredRespawnDelay = PlayerSpawnCooldown.GetConfiguredRespawnDelay
-PlayerSpawnCooldown.ApplyConfiguredRespawnDelay = PlayerSpawnCooldown.ApplyConfiguredRespawnDelay
-
-PlayerSpawnCooldown.getCurrentRespawnDelay = PlayerSpawnCooldown.GetCurrentRespawnDelay
-PlayerSpawnCooldown.getConfiguredRespawnDelay = PlayerSpawnCooldown.GetConfiguredRespawnDelay
-PlayerSpawnCooldown.applyConfiguredRespawnDelay = PlayerSpawnCooldown.ApplyConfiguredRespawnDelay
-
 return PlayerSpawnCooldown

@@ -76,7 +76,7 @@ Scan performed across `src/*`, `Packages/*`, and dependency manifests.
 
 Package-level style profile:
 
-- `services`: 83 files, 62.65% strict, median function size ~16 lines, strong `request/apply/on/get/set/resolve/sanitize` naming
+- `services`: 83 files, 62.65% strict, median function size ~16 lines, strong `request/apply/on/get/set/Get/Coerce` naming
 - `classes`: 34 files, 44.12% strict, class table + `__index` + constructor pattern
 - `ui`: 58 files, 53.45% strict, mostly camelCase file names, React functional composition
 - `modules`: 34 files, mostly static data/config exports, very low strict usage
@@ -105,7 +105,7 @@ Package-level style profile:
 - Method/field/local names: `camelCase`.
 - Constants: `UPPER_SNAKE_CASE`.
 - Raw untrusted inputs: suffix `Raw`.
-- Optional fallback/input-normalizer helpers: `sanitize*`, `resolve*`, `clone*`, `create*`.
+- Optional fallback/input-normalizer helpers: `Coerce*`, `Get*`, `clone*`, `create*`.
 
 5. Preserve formatting conventions.
 - Tabs for indentation.
@@ -137,7 +137,7 @@ Observed in `src/modules/Shared/NetShared`, `src/modules/Server/Net`, and `src/m
   - Do not recreate an RPC abstraction over ByteNet.
 - Security model:
   - Server only listens to explicitly intended client request packets.
-  - Server methods remain authoritative and sanitize all client payloads.
+  - Server methods remain authoritative and Coerce all client payloads.
 - Naming intent:
   - Client->server calls are verb requests (`request*`, `set*`, action verbs).
   - Server->client calls are application/event verbs (`apply*`, `on*`, `play*`, `stop*`).
@@ -157,7 +157,7 @@ Hard rule: for networking, use ByteNet directly through the three networking rea
 - Responsibility split:
   - `Server`: authority, validation, canonical state, replication.
   - `Client`: input/UI glue, local projection, request emission.
-  - `Utils`: shared types/constants/sanitizers/state transformers.
+  - `Utils`: shared types/constants/CoerceRs/state transformers.
 - Network naming contract:
   - Request methods: `request*`.
   - Server push methods: `apply*`.
@@ -184,7 +184,7 @@ Hard rule: new service endpoints must preserve naming polarity (`request` vs `ap
   - `destroy(...)` cleans connections/resources and is idempotent.
 - Runtime safety:
   - Track `destroyed`/`isDestroyed` state where appropriate.
-  - Prefer explicit `resolve*`/`sanitize*` helpers for instance resolution and numeric bounds.
+  - Prefer explicit `Get*`/`Coerce*` helpers for instance resolution and numeric bounds.
 - Signal/event style:
   - Prefer typed signal objects with explicit `Connect/Fire/Destroy` usage.
 
@@ -242,7 +242,7 @@ When creating/modifying code:
 1. Copy an existing local pattern from the same package first.
 2. Reuse existing naming prefixes/suffixes (`Get`, `Set`, `Bind`, `On`, `Request`, `Payload`, `Context`) when that package already uses them.
 3. Match local function granularity (small, explicit, guard-heavy).
-4. Keep data flow explicit (sanitize input -> mutate runtime -> push clone/snapshot).
+4. Keep data flow explicit (Coerce input -> mutate runtime -> push clone/snapshot).
 5. If uncertain, choose verbatim local pattern reuse over inventing a new pattern.
 
 ## Safe Cleanup Rules

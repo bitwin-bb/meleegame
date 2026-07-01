@@ -1,10 +1,11 @@
 local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local ClientBinderSupport = require("ClientBinderSupport")
+local BinderSupportClient = require("BinderSupportClient")
 local Configs = require(script:FindFirstAncestor("game").Shared:WaitForChild("QueenBeeConfigs"))
 local CoreRuntime = require("CoreRuntime")
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
@@ -22,57 +23,51 @@ local WindFoliageServiceClient = {}
 local MIN_WEATHER_UPDATE_INTERVAL = 1 / 240
 
 local RAIN_WIND_PROFILE = {
-	strengthMultiplier = 1.45,
-	baseStrength = 0.7,
-	gustStrength = 2.2,
-	detailStrength = 1.6,
-	gustTimeScale = 1.1,
-	detailTimeScale = 0.9,
-	gustSpatialScale = 0.22,
-	detailSpatialScale = 0.2,
-	directionJitterRadians = 1.45,
-	nearUpdateIntervalIncrease = 0.45,
-	midUpdateIntervalIncrease = 0.35,
-	farUpdateIntervalIncrease = 0.18,
+	strengthMultiplier = 1.85,
+	baseStrength = 0.95,
+	gustStrength = 3.15,
+	detailStrength = 2.35,
+	gustTimeScale = 0.25,
+	detailTimeScale = 0.18,
+	gustSpatialScale = 0.26,
+	detailSpatialScale = 0.24,
+	directionJitterRadians = 2.05,
+	nearUpdateIntervalIncrease = 0.04,
+	midUpdateIntervalIncrease = 0.08,
+	farUpdateIntervalIncrease = 0.12,
 	frozenUpdateIntervalIncrease = 0,
-	nearWindScale = 0.18,
-	midWindScale = 0.26,
-	farWindScale = 0.42,
-	nearDetailScale = 0.25,
-	midDetailScale = 0.48,
-	farDetailScale = 0.9,
-	maxActiveTreesReduction = 0.42,
-	maxTransformWritesPerStepReduction = 0.58,
-	primarySpringFrequency = 0.45,
-	secondarySpringFrequency = 0.65,
-	flutterSpringFrequency = 0.8,
+	nearWindScale = 0.44,
+	midWindScale = 0.62,
+	farWindScale = 0.88,
+	nearDetailScale = 0.52,
+	midDetailScale = 0.86,
+	farDetailScale = 1.28,
+	maxActiveTreesReduction = 0.12,
+	maxTransformWritesPerStepReduction = 0.18,
 }
 
 local THUNDERSTORM_WIND_PROFILE = {
-	strengthMultiplier = 2.2,
-	baseStrength = 1.1,
-	gustStrength = 3.35,
-	detailStrength = 2.45,
-	gustTimeScale = 1.85,
-	detailTimeScale = 1.45,
-	gustSpatialScale = 0.38,
-	detailSpatialScale = 0.34,
-	directionJitterRadians = 2.8,
-	nearUpdateIntervalIncrease = 0.9,
-	midUpdateIntervalIncrease = 0.65,
-	farUpdateIntervalIncrease = 0.32,
-	frozenUpdateIntervalIncrease = 0.08,
-	nearWindScale = 0.34,
-	midWindScale = 0.52,
-	farWindScale = 0.82,
-	nearDetailScale = 0.38,
-	midDetailScale = 0.72,
-	farDetailScale = 1.4,
-	maxActiveTreesReduction = 0.58,
-	maxTransformWritesPerStepReduction = 0.68,
-	primarySpringFrequency = 0.9,
-	secondarySpringFrequency = 1.15,
-	flutterSpringFrequency = 1.35,
+	strengthMultiplier = 3.6,
+	baseStrength = 1.7,
+	gustStrength = 6.1,
+	detailStrength = 4.1,
+	gustTimeScale = 0.55,
+	detailTimeScale = 0.32,
+	gustSpatialScale = 0.45,
+	detailSpatialScale = 0.4,
+	directionJitterRadians = 3.1,
+	nearUpdateIntervalIncrease = 0.08,
+	midUpdateIntervalIncrease = 0.14,
+	farUpdateIntervalIncrease = 0.2,
+	frozenUpdateIntervalIncrease = 0.03,
+	nearWindScale = 0.86,
+	midWindScale = 1.12,
+	farWindScale = 1.46,
+	nearDetailScale = 0.94,
+	midDetailScale = 1.28,
+	farDetailScale = 1.92,
+	maxActiveTreesReduction = 0.18,
+	maxTransformWritesPerStepReduction = 0.24,
 }
 
 local function snapshotTier(tierRaw: any): { [string]: number }?
@@ -96,22 +91,6 @@ local function snapshotTier(tierRaw: any): { [string]: number }?
 				and typeof(lodState.detailScale) == "number"
 				and lodState.detailScale == lodState.detailScale
 			then lodState.detailScale
-			else nil,
-	}
-end
-
-local function snapshotSpring(springRaw: any): { [string]: number }?
-	if typeof(springRaw) ~= "table" then
-		return nil
-	end
-
-	local spring = springRaw :: any
-	return {
-		frequency = if typeof(spring.frequency) == "number" and spring.frequency == spring.frequency
-			then spring.frequency
-			else nil,
-		damping = if typeof(spring.damping) == "number" and spring.damping == spring.damping
-			then spring.damping
 			else nil,
 	}
 end
@@ -147,24 +126,15 @@ local function applyTierState(
 	end
 end
 
-local function applySpringState(springRaw: any, baselineRaw: any, stormAlpha: number, frequencyBoost: number)
-	if typeof(springRaw) ~= "table" or typeof(baselineRaw) ~= "table" then
-		return
-	end
-
-	local spring = springRaw :: any
-	local baseline = baselineRaw :: any
-	if typeof(baseline.frequency) == "number" then
-		spring.frequency = math.max(0.01, baseline.frequency * (1 + stormAlpha * frequencyBoost))
-	end
-	if typeof(baseline.damping) == "number" then
-		spring.damping = baseline.damping
-	end
-end
-
-local function resolveConfig(): { [string]: any }
+local function GetConfig(): { [string]: any }
 	local configSource = if typeof(Configs) == "table" then (Configs :: any).windFoliage else nil
 	return if typeof(configSource) == "table" then Sift.Dictionary.copy(configSource) else {} :: any
+end
+
+local function RegisterExistingFoliage(simulation: any)
+	for _, descendant in Workspace:GetDescendants() do
+		simulation:ConsiderDescendant(descendant)
+	end
 end
 
 function WindFoliageServiceClient.Init(self: any)
@@ -172,19 +142,20 @@ function WindFoliageServiceClient.Init(self: any)
 		return
 	end
 
-	local config = resolveConfig()
+	local config = GetConfig()
 	if config.enabled == false then
 		return
 	end
 
-	local runtime = CoreRuntime.getClientRuntime()
-	local tickScheduler = runtime:getTickScheduler()
+	local runtime = CoreRuntime.GetClientRuntime()
+	local tickScheduler = runtime:GetTickScheduler()
 	config.tickScheduler = tickScheduler
 	config.observeTaggedInstances = false
 
-	self.simulation = WindFoliage.new(config)
-	self.simulation:init()
-	self.binders = NevermoreSupport.getService(ClientBinderSupport)
+	self.simulation = WindFoliage.New(config)
+	self.simulation:Init()
+	self.binders = NevermoreSupport.GetService(BinderSupportClient)
+	RegisterExistingFoliage(self.simulation)
 	self.janitor = Janitor.new()
 	local windField = self.simulation.windField
 	local lodController = self.simulation.lodController
@@ -209,11 +180,6 @@ function WindFoliageServiceClient.Init(self: any)
 			maxActiveTrees = if updateManager ~= nil then updateManager.maxActiveTrees else nil,
 			maxTransformWritesPerStep = if updateManager ~= nil then updateManager.maxTransformWritesPerStep else nil,
 		},
-		springs = {
-			primary = if updateManager ~= nil then snapshotSpring(updateManager.primarySpring) else nil,
-			secondary = if updateManager ~= nil then snapshotSpring(updateManager.secondarySpring) else nil,
-			flutter = if updateManager ~= nil then snapshotSpring(updateManager.flutterSpring) else nil,
-		},
 	}
 
 	local janitor = self.janitor :: JanitorClass
@@ -221,7 +187,7 @@ function WindFoliageServiceClient.Init(self: any)
 		self.binders = nil
 		self.weatherWindState = nil
 		if self.simulation ~= nil then
-			self.simulation:destroy()
+			self.simulation:Destroy()
 			self.simulation = nil
 		end
 	end)
@@ -324,54 +290,67 @@ function WindFoliageServiceClient.SetWeatherWind(self: any, stormAlphaRaw: any, 
 		end
 	end
 
-	local springs = state.springs
-	if updateManager ~= nil and typeof(springs) == "table" then
-		applySpringState(updateManager.primarySpring, springs.primary, stormAlpha, profile.primarySpringFrequency)
-		applySpringState(updateManager.secondarySpring, springs.secondary, stormAlpha, profile.secondarySpringFrequency)
-		applySpringState(updateManager.flutterSpring, springs.flutter, stormAlpha, profile.flutterSpringFrequency)
+end
+
+function WindFoliageServiceClient.ApplyLightningImpulse(self: any, intensityRaw: any?): number?
+	if self.simulation == nil then
+		return nil
 	end
+
+	local intensity = if typeof(intensityRaw) == "number" and intensityRaw == intensityRaw
+		then math.clamp(intensityRaw, 0, 1)
+		else 1
+	local windField = self.simulation.windField
+	local direction = if windField ~= nil and typeof(windField.baseDirection) == "Vector3"
+		then windField.baseDirection
+		else Vector3.new(1, 0, 0.25)
+
+	return self.simulation:ApplyGlobalImpulse({
+		direction = direction,
+		strength = 8 + intensity * 16,
+	})
 end
 
 function WindFoliageServiceClient.AddDisturbance(self: any, paramsRaw: any): number?
 	if self.simulation == nil then
 		return nil
 	end
-	return self.simulation:addDisturbance(paramsRaw)
+	return self.simulation:AddDisturbance(paramsRaw)
 end
 
 function WindFoliageServiceClient.RegisterFoliage(self: any, instanceRaw: any)
 	if self.simulation == nil then
 		return nil
 	end
-	return self.simulation:registerFoliage(instanceRaw)
+	return self.simulation:RegisterFoliage(instanceRaw)
 end
 
 function WindFoliageServiceClient.UnregisterFoliage(self: any, instanceRaw: any)
 	if self.simulation == nil then
 		return
 	end
-	self.simulation:unregisterFoliage(instanceRaw)
+	self.simulation:UnregisterFoliage(instanceRaw)
 end
 
 function WindFoliageServiceClient.TrackDisturber(self: any, instanceRaw: any, overrideConfigRaw: any?)
 	if self.simulation == nil then
 		return nil
 	end
-	return self.simulation:trackDisturber(instanceRaw, overrideConfigRaw)
+	return self.simulation:TrackDisturber(instanceRaw, overrideConfigRaw)
 end
 
 function WindFoliageServiceClient.UntrackDisturber(self: any, instanceRaw: any)
 	if self.simulation == nil then
 		return
 	end
-	self.simulation:untrackDisturber(instanceRaw)
+	self.simulation:UntrackDisturber(instanceRaw)
 end
 
 function WindFoliageServiceClient.GetStats(self: any): { [string]: number }
 	if self.simulation == nil then
 		return {}
 	end
-	return self.simulation:getStats()
+	return self.simulation:GetStats()
 end
 
 function WindFoliageServiceClient.Destroy(self: any)
@@ -382,15 +361,4 @@ function WindFoliageServiceClient.Destroy(self: any)
 	end
 	self.simulation = nil
 end
-
-WindFoliageServiceClient.init = WindFoliageServiceClient.Init
-WindFoliageServiceClient.setWeatherWind = WindFoliageServiceClient.SetWeatherWind
-WindFoliageServiceClient.addDisturbance = WindFoliageServiceClient.AddDisturbance
-WindFoliageServiceClient.registerFoliage = WindFoliageServiceClient.RegisterFoliage
-WindFoliageServiceClient.unregisterFoliage = WindFoliageServiceClient.UnregisterFoliage
-WindFoliageServiceClient.trackDisturber = WindFoliageServiceClient.TrackDisturber
-WindFoliageServiceClient.untrackDisturber = WindFoliageServiceClient.UntrackDisturber
-WindFoliageServiceClient.getStats = WindFoliageServiceClient.GetStats
-WindFoliageServiceClient.destroy = WindFoliageServiceClient.Destroy
-
 return WindFoliageServiceClient

@@ -141,7 +141,7 @@ function Nevermore.GetOptional(packageNameRaw: any): any?
 	return if ok then package else nil
 end
 
-function Nevermore.Getrequire(): any
+function Nevermore.GetRequire(): any
 	return require
 end
 
@@ -171,14 +171,6 @@ end
 function Nevermore.CopyDictionary<T>(values: { [string]: T }): { [string]: T }
 	return table.clone(values)
 end
-
-Nevermore.get = Nevermore.Get
-Nevermore.getOptional = Nevermore.GetOptional
-Nevermore.getloader = Nevermore.Getloader
-Nevermore.getRolePackages = Nevermore.GetRolePackages
-Nevermore.copyArray = Nevermore.CopyArray
-Nevermore.copyDictionary = Nevermore.CopyDictionary
-
 Nevermore.GetRolePackages("Core")
 
 return Nevermore

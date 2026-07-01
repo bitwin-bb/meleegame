@@ -9,6 +9,13 @@ local CharacterUtils = require("CharacterUtils")
 local Maid = require("Maid")
 local Octree = require("Octree")
 local Promise = require("Promise")
+
+local function fulfilledPromise(...): any
+	local args = table.pack(...)
+	return Promise.new(function(fulfill)
+		fulfill(table.unpack(args, 1, args.n))
+	end)
+end
 local Rx = require("Rx")
 local Signal = require("Signal")
 local Table = require("Table")
@@ -40,14 +47,14 @@ type BuffAreaSource = {
 	node: any,
 }
 
-local function sanitizePlayer(playerRaw: any): Player?
+local function CoercePlayer(playerRaw: any): Player?
 	if typeof(playerRaw) == "Instance" and playerRaw:IsA("Player") then
 		return playerRaw
 	end
 	return nil
 end
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -60,7 +67,7 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number, 
 	return math.clamp(value, minimum, maximum)
 end
 
-local function sanitizePosition(valueRaw: any): Vector3?
+local function CoercePosition(valueRaw: any): Vector3?
 	if typeof(valueRaw) == "Vector3" then
 		return valueRaw
 	end
@@ -91,10 +98,6 @@ local function getRecordList(definitionRaw: any, kindFallback: string): { BuffRe
 		return {}
 	end
 
-	if typeof(definitionRaw.getRecords) == "function" then
-		return definitionRaw:getRecords(kindFallback)
-	end
-
 	if typeof(definitionRaw.GetRecords) == "function" then
 		return definitionRaw:GetRecords(kindFallback)
 	end
@@ -105,7 +108,7 @@ local function getRecordList(definitionRaw: any, kindFallback: string): { BuffRe
 
 	if typeof(definitionRaw.name) == "string" or typeof(definitionRaw.id) == "string" then
 		return {
-			buffUtils.createRecord(kindFallback, definitionRaw, nil, nil, nil, nil, nil),
+			buffUtils.CreateRecord(kindFallback, definitionRaw, nil, nil, nil, nil, nil),
 		}
 	end
 
@@ -117,7 +120,7 @@ local function createRejectedPromise(message: string)
 end
 
 local function encodeReplicatedRecords(records: { BuffRecord }): string
-	local replicatedRecords = buffUtils.createReplicatedRecords(records, os.clock())
+	local replicatedRecords = buffUtils.CreateReplicatedRecords(records, os.clock())
 	return HttpService:JSONEncode(replicatedRecords)
 end
 
@@ -128,7 +131,7 @@ function BuffService.Init(self: BuffService, serviceBag: any)
 	self._maid = Maid.new()
 	self._playerMaids = {}
 	self._runtimeByPlayer = {}
-	self._definitions = BuffShared.new({
+	self._definitions = BuffShared.New({
 		definitionOnly = true,
 	})
 	self._areaOctree = Octree.new()
@@ -150,23 +153,23 @@ function BuffService.Init(self: BuffService, serviceBag: any)
 	self._maid:GiveTask(self.AreaSourceAdded)
 	self._maid:GiveTask(self.AreaSourceRemoved)
 	self._maid:GiveTask(Players.PlayerRemoving:Connect(function(player: Player)
-		self:removePlayer(player)
+		self:RemovePlayer(player)
 	end))
 
-	self:loadDefinitions()
+	self:LoadDefinitions()
 end
 
 function BuffService.Start(self: BuffService)
 	for _, player in Players:GetPlayers() do
-		self:ensurePlayerRuntime(player)
+		self:EnsurePlayerRuntime(player)
 	end
 
 	self._maid:GiveTask(Players.PlayerAdded:Connect(function(player: Player)
-		self:ensurePlayerRuntime(player)
+		self:EnsurePlayerRuntime(player)
 	end))
 
 	self._maid:GiveTask(Rx.timer(0, BuffConstants.AREA_SCAN_INTERVAL_SECONDS):Subscribe(function()
-		self:scanAreaSources()
+		self:ScanAreaSources()
 	end))
 end
 
@@ -179,7 +182,7 @@ function BuffService.LoadDefinitions(self: BuffService)
 
 		for _, child in folder:GetChildren() do
 			if child:IsA("ModuleScript") then
-				self:loadDefinitionModule(child, definitionFolder.kind)
+				self:LoadDefinitionModule(child, definitionFolder.kind)
 			end
 		end
 	end
@@ -195,11 +198,11 @@ function BuffService.LoadDefinitionModule(self: BuffService, moduleScript: Modul
 		return
 	end
 
-	self:registerDefinition(definitionOrError, kindFallback)
+	self:RegisterDefinition(definitionOrError, kindFallback)
 end
 
 function BuffService.RegisterDefinition(self: BuffService, definitionRaw: any, kindFallbackRaw: any?): number
-	local kindFallback = buffUtils.sanitizeKind(kindFallbackRaw)
+	local kindFallback = buffUtils.CoerceKind(kindFallbackRaw)
 	local records = getRecordList(definitionRaw, kindFallback)
 	local registered = 0
 
@@ -212,7 +215,7 @@ function BuffService.RegisterDefinition(self: BuffService, definitionRaw: any, k
 end
 
 function BuffService.EnsurePlayerRuntime(self: BuffService, playerRaw: any): any?
-	local player = sanitizePlayer(playerRaw)
+	local player = CoercePlayer(playerRaw)
 	if player == nil then
 		return nil
 	end
@@ -223,13 +226,13 @@ function BuffService.EnsurePlayerRuntime(self: BuffService, playerRaw: any): any
 	end
 
 	local playerMaid = Maid.new()
-	local runtime = BuffShared.new(self._serviceBag)
+	local runtime = BuffShared.New(self._serviceBag)
 	self._playerMaids[player] = playerMaid
 	self._runtimeByPlayer[player] = runtime
 
 	playerMaid:GiveTask(runtime)
 	playerMaid:GiveTask(runtime.RecordsChanged:Connect(function(records: { BuffRecord }, context: string)
-		self:replicatePlayerRecords(player, records)
+		self:ReplicatePlayerRecords(player, records)
 		self.PlayerRecordsChanged:Fire(player, records, context)
 	end))
 	playerMaid:GiveTask(runtime.RecordAdded:Connect(function(record: BuffRecord)
@@ -242,13 +245,13 @@ function BuffService.EnsurePlayerRuntime(self: BuffService, playerRaw: any): any
 		self.RecordRemoved:Fire(player, record, reason)
 	end))
 
-	self:replicatePlayerRecords(player, runtime:GetRecords())
+	self:ReplicatePlayerRecords(player, runtime:GetRecords())
 
 	return runtime
 end
 
 function BuffService.ReplicatePlayerRecords(self: BuffService, playerRaw: any, recordsRaw: any?)
-	local player = sanitizePlayer(playerRaw)
+	local player = CoercePlayer(playerRaw)
 	if player == nil then
 		return
 	end
@@ -264,7 +267,7 @@ function BuffService.ReplicatePlayerRecords(self: BuffService, playerRaw: any, r
 end
 
 function BuffService.RemovePlayer(self: BuffService, playerRaw: any)
-	local player = sanitizePlayer(playerRaw)
+	local player = CoercePlayer(playerRaw)
 	if player == nil then
 		return
 	end
@@ -279,7 +282,7 @@ function BuffService.RemovePlayer(self: BuffService, playerRaw: any)
 	player:SetAttribute(BuffConstants.PLAYER_ACTIVE_RECORDS_ATTRIBUTE, nil)
 end
 
-function BuffService.ResolveDefinition(self: BuffService, nameRaw: any, kindRaw: any?): BuffRecord?
+function BuffService.GetDefinition(self: BuffService, nameRaw: any, kindRaw: any?): BuffRecord?
 	return self._definitions:GetRecord(nameRaw, kindRaw)
 end
 
@@ -294,12 +297,12 @@ function BuffService.ApplyDefinition(
 	kindRaw: any?,
 	overridesRaw: any?
 ): BuffRecord?
-	local runtime = self:ensurePlayerRuntime(playerRaw)
+	local runtime = self:EnsurePlayerRuntime(playerRaw)
 	if runtime == nil then
 		return nil
 	end
 
-	local definition = self:resolveDefinition(nameRaw, kindRaw)
+	local definition = self:GetDefinition(nameRaw, kindRaw)
 	if definition == nil then
 		return nil
 	end
@@ -322,7 +325,7 @@ function BuffService.ApplyRecord(self: BuffService, playerRaw: any, recordRaw: a
 		return nil
 	end
 
-	local runtime = self:ensurePlayerRuntime(playerRaw)
+	local runtime = self:EnsurePlayerRuntime(playerRaw)
 	if runtime == nil then
 		return nil
 	end
@@ -341,27 +344,27 @@ function BuffService.ApplyRecord(self: BuffService, playerRaw: any, recordRaw: a
 end
 
 function BuffService.ApplyBuff(self: BuffService, playerRaw: any, nameRaw: any, overridesRaw: any?): BuffRecord?
-	return self:applyDefinition(playerRaw, nameRaw, BuffConstants.KIND_BUFF, overridesRaw)
+	return self:ApplyDefinition(playerRaw, nameRaw, BuffConstants.KIND_BUFF, overridesRaw)
 end
 
 function BuffService.ApplyDebuff(self: BuffService, playerRaw: any, nameRaw: any, overridesRaw: any?): BuffRecord?
-	return self:applyDefinition(playerRaw, nameRaw, BuffConstants.KIND_DEBUFF, overridesRaw)
+	return self:ApplyDefinition(playerRaw, nameRaw, BuffConstants.KIND_DEBUFF, overridesRaw)
 end
 
 function BuffService.PromiseApplyBuff(self: BuffService, playerRaw: any, nameRaw: any, overridesRaw: any?)
-	local record = self:applyBuff(playerRaw, nameRaw, overridesRaw)
+	local record = self:ApplyBuff(playerRaw, nameRaw, overridesRaw)
 	if record == nil then
 		return createRejectedPromise("buff could not be applied")
 	end
-	return Promise.resolved(record)
+	return fulfilledPromise(record)
 end
 
 function BuffService.PromiseApplyDebuff(self: BuffService, playerRaw: any, nameRaw: any, overridesRaw: any?)
-	local record = self:applyDebuff(playerRaw, nameRaw, overridesRaw)
+	local record = self:ApplyDebuff(playerRaw, nameRaw, overridesRaw)
 	if record == nil then
 		return createRejectedPromise("debuff could not be applied")
 	end
-	return Promise.resolved(record)
+	return fulfilledPromise(record)
 end
 
 function BuffService.AddBuff(
@@ -374,7 +377,7 @@ function BuffService.AddBuff(
 	affectsRaw: any?,
 	optionsRaw: any?
 ): BuffRecord?
-	local runtime = self:ensurePlayerRuntime(playerRaw)
+	local runtime = self:EnsurePlayerRuntime(playerRaw)
 	if runtime == nil then
 		return nil
 	end
@@ -392,7 +395,7 @@ function BuffService.AddDebuff(
 	affectsRaw: any?,
 	optionsRaw: any?
 ): BuffRecord?
-	local runtime = self:ensurePlayerRuntime(playerRaw)
+	local runtime = self:EnsurePlayerRuntime(playerRaw)
 	if runtime == nil then
 		return nil
 	end
@@ -407,7 +410,7 @@ function BuffService.Remove(
 	reasonRaw: any?,
 	kindRaw: any?
 ): boolean
-	local runtime = self:ensurePlayerRuntime(playerRaw)
+	local runtime = self:EnsurePlayerRuntime(playerRaw)
 	if runtime == nil then
 		return false
 	end
@@ -416,14 +419,14 @@ function BuffService.Remove(
 end
 
 function BuffService.PromiseRemove(self: BuffService, playerRaw: any, idOrNameRaw: any, reasonRaw: any?, kindRaw: any?)
-	if not self:remove(playerRaw, idOrNameRaw, reasonRaw, kindRaw) then
+	if not self:Remove(playerRaw, idOrNameRaw, reasonRaw, kindRaw) then
 		return createRejectedPromise("buff could not be removed")
 	end
-	return Promise.resolved(true)
+	return fulfilledPromise(true)
 end
 
 function BuffService.Clear(self: BuffService, playerRaw: any, kindRaw: any?): number
-	local runtime = self:ensurePlayerRuntime(playerRaw)
+	local runtime = self:EnsurePlayerRuntime(playerRaw)
 	if runtime == nil then
 		return 0
 	end
@@ -432,7 +435,7 @@ function BuffService.Clear(self: BuffService, playerRaw: any, kindRaw: any?): nu
 end
 
 function BuffService.GetActive(self: BuffService, playerRaw: any, kindRaw: any?): { BuffRecord }
-	local runtime = self:ensurePlayerRuntime(playerRaw)
+	local runtime = self:EnsurePlayerRuntime(playerRaw)
 	if runtime == nil then
 		return {}
 	end
@@ -441,7 +444,7 @@ function BuffService.GetActive(self: BuffService, playerRaw: any, kindRaw: any?)
 end
 
 function BuffService.ObservePlayerRecords(self: BuffService, playerRaw: any)
-	local runtime = self:ensurePlayerRuntime(playerRaw)
+	local runtime = self:EnsurePlayerRuntime(playerRaw)
 	if runtime == nil then
 		return Rx.of({})
 	end
@@ -455,12 +458,12 @@ function BuffService.RegisterAreaSource(self: BuffService, areaRaw: any): BuffAr
 	end
 
 	local area = areaRaw :: { [string]: any }
-	local position = sanitizePosition(area.position or area.instance or area.part or area.model)
+	local position = CoercePosition(area.position or area.instance or area.part or area.model)
 	if position == nil then
 		return nil
 	end
 
-	local radius = sanitizeNumber(
+	local radius = CoerceNumber(
 		area.radius,
 		BuffConstants.DEFAULT_AREA_RADIUS,
 		BuffConstants.MIN_AREA_RADIUS,
@@ -468,20 +471,20 @@ function BuffService.RegisterAreaSource(self: BuffService, areaRaw: any): BuffAr
 	)
 	local record = nil
 	if area.record ~= nil then
-		record = buffUtils.applyOverrides(area.record, area.overrides)
+		record = buffUtils.ApplyOverrides(area.record, area.overrides)
 	elseif area.name ~= nil then
-		record = self:resolveDefinition(area.name, area.kind)
+		record = self:GetDefinition(area.name, area.kind)
 	end
 	if record == nil then
 		return nil
 	end
 
-	local id = buffUtils.trim(area.id)
+	local id = buffUtils.Trim(area.id)
 	if id == "" then
 		id = `{record.id}:{math.floor(position.X)}:{math.floor(position.Y)}:{math.floor(position.Z)}`
 	end
 
-	self:removeAreaSource(id)
+	self:RemoveAreaSource(id)
 
 	local source = {
 		id = id,
@@ -498,7 +501,7 @@ function BuffService.RegisterAreaSource(self: BuffService, areaRaw: any): BuffAr
 end
 
 function BuffService.RemoveAreaSource(self: BuffService, idRaw: any): boolean
-	local id = buffUtils.trim(idRaw)
+	local id = buffUtils.Trim(idRaw)
 	if id == "" then
 		return false
 	end
@@ -518,19 +521,19 @@ function BuffService.RemoveAreaSource(self: BuffService, idRaw: any): boolean
 end
 
 function BuffService.GetAreaSourcesNear(self: BuffService, positionRaw: any, radiusRaw: any?): { BuffAreaSource }
-	local position = sanitizePosition(positionRaw)
+	local position = CoercePosition(positionRaw)
 	if position == nil then
 		return {}
 	end
 
 	local radius =
-		sanitizeNumber(radiusRaw, self._maxAreaRadius, BuffConstants.MIN_AREA_RADIUS, BuffConstants.MAX_AREA_RADIUS)
+		CoerceNumber(radiusRaw, self._maxAreaRadius, BuffConstants.MIN_AREA_RADIUS, BuffConstants.MAX_AREA_RADIUS)
 	local sources = self._areaOctree:RadiusSearch(position, radius)
 	return Table.copy(sources)
 end
 
 function BuffService.ScanPlayerAreaSources(self: BuffService, playerRaw: any): number
-	local player = sanitizePlayer(playerRaw)
+	local player = CoercePlayer(playerRaw)
 	if player == nil then
 		return 0
 	end
@@ -541,10 +544,10 @@ function BuffService.ScanPlayerAreaSources(self: BuffService, playerRaw: any): n
 	end
 
 	local applied = 0
-	local sources = self:getAreaSourcesNear(root.Position, self._maxAreaRadius)
+	local sources = self:GetAreaSourcesNear(root.Position, self._maxAreaRadius)
 	for _, source in sources do
 		if (source.position - root.Position).Magnitude <= source.radius then
-			if self:applyRecord(player, source.record) ~= nil then
+			if self:ApplyRecord(player, source.record) ~= nil then
 				applied += 1
 			end
 		end
@@ -559,7 +562,7 @@ function BuffService.ScanAreaSources(self: BuffService)
 	end
 
 	for _, player in Players:GetPlayers() do
-		self:scanPlayerAreaSources(player)
+		self:ScanPlayerAreaSources(player)
 	end
 end
 
@@ -569,7 +572,7 @@ function BuffService.Destroy(self: BuffService)
 		table.insert(players, player)
 	end
 	for _, player in players do
-		self:removePlayer(player)
+		self:RemovePlayer(player)
 	end
 
 	local areaSourceIds = {}
@@ -577,7 +580,7 @@ function BuffService.Destroy(self: BuffService)
 		table.insert(areaSourceIds, id)
 	end
 	for _, id in areaSourceIds do
-		self:removeAreaSource(id)
+		self:RemoveAreaSource(id)
 	end
 
 	if self._maid ~= nil then
@@ -586,35 +589,6 @@ function BuffService.Destroy(self: BuffService)
 
 	self._serviceBag = nil
 end
-
-BuffService.loadDefinitions = BuffService.LoadDefinitions
-BuffService.loadDefinitionModule = BuffService.LoadDefinitionModule
-BuffService.registerDefinition = BuffService.RegisterDefinition
-BuffService.ensurePlayerRuntime = BuffService.EnsurePlayerRuntime
-BuffService.replicatePlayerRecords = BuffService.ReplicatePlayerRecords
-BuffService.removePlayer = BuffService.RemovePlayer
-BuffService.resolveDefinition = BuffService.ResolveDefinition
-BuffService.getDefinitions = BuffService.GetDefinitions
-BuffService.applyDefinition = BuffService.ApplyDefinition
-BuffService.applyRecord = BuffService.ApplyRecord
-BuffService.applyBuff = BuffService.ApplyBuff
-BuffService.applyDebuff = BuffService.ApplyDebuff
-BuffService.promiseApplyBuff = BuffService.PromiseApplyBuff
-BuffService.promiseApplyDebuff = BuffService.PromiseApplyDebuff
-BuffService.addBuff = BuffService.AddBuff
-BuffService.addDebuff = BuffService.AddDebuff
-BuffService.remove = BuffService.Remove
-BuffService.promiseRemove = BuffService.PromiseRemove
-BuffService.clear = BuffService.Clear
-BuffService.getActive = BuffService.GetActive
-BuffService.observePlayerRecords = BuffService.ObservePlayerRecords
-BuffService.registerAreaSource = BuffService.RegisterAreaSource
-BuffService.removeAreaSource = BuffService.RemoveAreaSource
-BuffService.getAreaSourcesNear = BuffService.GetAreaSourcesNear
-BuffService.scanPlayerAreaSources = BuffService.ScanPlayerAreaSources
-BuffService.scanAreaSources = BuffService.ScanAreaSources
-BuffService.destroy = BuffService.Destroy
-
 type BuffService = typeof(BuffService) & {
 	_serviceBag: any,
 	_maid: MaidClass,

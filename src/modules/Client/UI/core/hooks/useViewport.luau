@@ -6,7 +6,6 @@ local GuiService = game:GetService("GuiService")
 local Workspace = game:GetService("Workspace")
 
 local Cleanup = require("cleanup")
-local PlatformServiceClient = require("PlatformServiceClient")
 local PlatformServiceUtils = require("PlatformServiceUtils")
 local React = require(ReplicatedStorage.Packages.React)
 
@@ -28,8 +27,16 @@ export type ViewportOptions = {
 }
 
 local FALLBACK_VIEWPORT = Vector2.new(1920, 1080)
+local platformServiceClient = nil :: any?
 
-local function resolveCurrentViewportSize(): Vector2
+local function getPlatformServiceClient(): any
+	if platformServiceClient == nil then
+		platformServiceClient = require("PlatformServiceClient")
+	end
+	return platformServiceClient
+end
+
+local function GetCurrentViewportSize(): Vector2
 	local camera = Workspace.CurrentCamera
 	if camera ~= nil then
 		local viewportSize = camera.ViewportSize
@@ -38,29 +45,33 @@ local function resolveCurrentViewportSize(): Vector2
 	return FALLBACK_VIEWPORT
 end
 
-local function resolveViewportState(usePlatformState: boolean): ViewportState
+local function GetViewportState(usePlatformState: boolean): ViewportState
 	local camera = Workspace.CurrentCamera
 	local guiInsetTopLeft, guiInsetBottomRight = GuiService:GetGuiInset()
 	local platformState = nil :: PlatformState?
 	if usePlatformState then
-		local ok, resolvedState = pcall(function()
-			return PlatformServiceClient:getState()
+		local PlatformServiceClient = getPlatformServiceClient()
+		local ok, GotState = pcall(function()
+			return PlatformServiceClient:GetState()
 		end)
-		if ok and typeof(resolvedState) == "table" then
-			platformState = resolvedState :: PlatformState
+		if ok and typeof(GotState) == "table" then
+			platformState = GotState :: PlatformState
 		end
 	end
 
 	local uiScaleSnapshot = nil
-	local okUIScale, uiScale = pcall(function()
-		return PlatformServiceClient:getUIScale()
-	end)
-	if okUIScale and uiScale ~= nil and typeof((uiScale :: any).getSnapshot) == "function" then
-		local okSnapshot, resolvedSnapshot = pcall(function()
-			return (uiScale :: any):getSnapshot()
+	if usePlatformState then
+		local PlatformServiceClient = getPlatformServiceClient()
+		local okUIScale, uiScale = pcall(function()
+			return PlatformServiceClient:GetUIScale()
 		end)
-		if okSnapshot and typeof(resolvedSnapshot) == "table" then
-			uiScaleSnapshot = resolvedSnapshot
+		if okUIScale and uiScale ~= nil and typeof((uiScale :: any).GetSnapshot) == "function" then
+			local okSnapshot, GotSnapshot = pcall(function()
+				return (uiScale :: any):GetSnapshot()
+			end)
+			if okSnapshot and typeof(GotSnapshot) == "table" then
+				uiScaleSnapshot = GotSnapshot
+			end
 		end
 	end
 
@@ -75,7 +86,7 @@ local function resolveViewportState(usePlatformState: boolean): ViewportState
 
 	local viewport = if platformState ~= nil and typeof(platformState.viewport) == "Vector2"
 		then platformState.viewport
-		else resolveCurrentViewportSize()
+		else GetCurrentViewportSize()
 
 	return {
 		viewport = viewport,
@@ -94,14 +105,14 @@ local function useViewport(options: ViewportOptions?): ViewportState
 		then options.usePlatformState == true
 		else true
 	local viewportState, setViewportState = React.useState(function(): ViewportState
-		return resolveViewportState(usePlatformState)
+		return GetViewportState(usePlatformState)
 	end)
 
 	React.useEffect(function()
 		local viewportConnection = nil
 
 		local function refresh()
-			setViewportState(resolveViewportState(usePlatformState))
+			setViewportState(GetViewportState(usePlatformState))
 		end
 
 		local function bindViewportConnection()
@@ -116,8 +127,9 @@ local function useViewport(options: ViewportOptions?): ViewportState
 			viewportConnection = camera:GetPropertyChangedSignal("ViewportSize"):Connect(refresh)
 		end
 
-		local stateSignal = PlatformServiceClient:getStateChangedSignal()
-		local uiScaleSignal = PlatformServiceClient:getUIScaleChangedSignal()
+		local PlatformServiceClient = if usePlatformState then getPlatformServiceClient() else nil
+		local stateSignal = if PlatformServiceClient ~= nil then PlatformServiceClient:GetStateChangedSignal() else nil
+		local uiScaleSignal = if PlatformServiceClient ~= nil then PlatformServiceClient:GetUIScaleChangedSignal() else nil
 		local stateConnection = if stateSignal ~= nil and typeof((stateSignal :: any).Connect) == "function"
 			then (stateSignal :: any):Connect(refresh)
 			else nil

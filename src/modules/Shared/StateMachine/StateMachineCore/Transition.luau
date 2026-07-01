@@ -29,7 +29,7 @@ export type Transition = typeof(setmetatable(
 	Transition
 ))
 
-local function sanitizePriority(valueRaw: any): number
+local function CoercePriority(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return 0
 	end
@@ -46,7 +46,7 @@ function Transition.new(configRaw: TransitionConfig): Transition
 		To = to,
 		Guard = if typeof(config.Guard) == "function" then config.Guard else nil,
 		Action = if typeof(config.Action) == "function" then config.Action else nil,
-		Priority = sanitizePriority(config.Priority),
+		Priority = CoercePriority(config.Priority),
 		AllowSelfTransition = config.AllowSelfTransition == true,
 		_order = 0,
 	}, Transition)
@@ -67,8 +67,4 @@ function Transition.RunAction(self: Transition, machine: any)
 	end
 	pcall(self.Action, machine)
 end
-
-Transition.canRun = Transition.CanRun
-Transition.runAction = Transition.RunAction
-
 return Transition

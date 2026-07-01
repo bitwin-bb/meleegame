@@ -21,14 +21,14 @@ export type CloudAppearOptions = {
 local DEFAULT_FADE_SECONDS = 0.85
 local TRANSPARENCY_EPSILON = 0.002
 
-local function sanitizeTransparency(valueRaw: any): number
+local function CoerceTransparency(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return 1
 	end
 	return math.clamp(valueRaw, 0, 1)
 end
 
-local function resolveFadeSeconds(valueRaw: any): number
+local function GetFadeSeconds(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return DEFAULT_FADE_SECONDS
 	end
@@ -36,8 +36,8 @@ local function resolveFadeSeconds(valueRaw: any): number
 end
 
 local function useCloudAppear(options: CloudAppearOptions): number
-	local targetTransparency = sanitizeTransparency(options.targetTransparency)
-	local fadeSeconds = resolveFadeSeconds(options.fadeSeconds)
+	local targetTransparency = CoerceTransparency(options.targetTransparency)
+	local fadeSeconds = GetFadeSeconds(options.fadeSeconds)
 	local transparencyRef = React.useRef(1)
 	local targetRef = React.useRef(targetTransparency)
 	local transparency, setTransparency = React.useState(transparencyRef.current)

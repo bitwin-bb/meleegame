@@ -269,7 +269,7 @@ local DEFAULTS: QueenBeeConfig = {
 Configs.States = STATES
 Configs.DEFAULTS = DEFAULTS
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -284,11 +284,11 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?,
 	return value
 end
 
-local function sanitizeInteger(valueRaw: any, fallback: number, minimum: number, maximum: number): number
-	return math.floor(sanitizeNumber(valueRaw, fallback, minimum, maximum))
+local function CoerceInteger(valueRaw: any, fallback: number, minimum: number, maximum: number): number
+	return math.floor(CoerceNumber(valueRaw, fallback, minimum, maximum))
 end
 
-local function sanitizeBoolean(valueRaw: any, fallback: boolean): boolean
+local function CoerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
@@ -298,13 +298,13 @@ end
 local function cloneNumberMap(source: { [number]: number }): { [number]: number }
 	local copy = Table.copy(source)
 	return {
-		[1] = sanitizeNumber(copy[1], source[1] or 0, 0, nil),
-		[2] = sanitizeNumber(copy[2], source[2] or source[1] or 0, 0, nil),
-		[3] = sanitizeNumber(copy[3], source[3] or source[2] or source[1] or 0, 0, nil),
+		[1] = CoerceNumber(copy[1], source[1] or 0, 0, nil),
+		[2] = CoerceNumber(copy[2], source[2] or source[1] or 0, 0, nil),
+		[3] = CoerceNumber(copy[3], source[3] or source[2] or source[1] or 0, 0, nil),
 	}
 end
 
-local function resolveNumberMap(
+local function GetNumberMap(
 	source: { [any]: any },
 	key: string,
 	fallback: { [number]: number },
@@ -317,9 +317,9 @@ local function resolveNumberMap(
 	end
 
 	return {
-		[1] = sanitizeNumber((raw :: any)[1], fallback[1], minimum, maximum),
-		[2] = sanitizeNumber((raw :: any)[2], fallback[2], minimum, maximum),
-		[3] = sanitizeNumber((raw :: any)[3], fallback[3], minimum, maximum),
+		[1] = CoerceNumber((raw :: any)[1], fallback[1], minimum, maximum),
+		[2] = CoerceNumber((raw :: any)[2], fallback[2], minimum, maximum),
+		[3] = CoerceNumber((raw :: any)[3], fallback[3], minimum, maximum),
 	}
 end
 
@@ -400,107 +400,107 @@ function Configs.GetDefaults(): QueenBeeConfig
 	return cloneDefaults()
 end
 
-function Configs.Resolve(configRaw: any): QueenBeeConfig
+function Configs.Get(configRaw: any): QueenBeeConfig
 	local config = cloneDefaults()
 	local source = (if typeof(configRaw) == "table" then configRaw else {} :: any) :: any
 
-	config.Phase2HealthRatio = sanitizeNumber(source.Phase2HealthRatio, config.Phase2HealthRatio, 0.05, 0.95)
+	config.Phase2HealthRatio = CoerceNumber(source.Phase2HealthRatio, config.Phase2HealthRatio, 0.05, 0.95)
 	config.Phase3HealthRatio =
-		sanitizeNumber(source.Phase3HealthRatio, config.Phase3HealthRatio, 0.01, config.Phase2HealthRatio)
-	config.AggroRange = sanitizeNumber(source.AggroRange, config.AggroRange, 0, 10 ^ 5)
-	config.DespawnRange = sanitizeNumber(source.DespawnRange, config.DespawnRange, config.AggroRange, 10 ^ 5)
-	config.TargetLostGraceTime = sanitizeNumber(source.TargetLostGraceTime, config.TargetLostGraceTime, 0, 60)
-	config.HoverSideDistance = sanitizeNumber(source.HoverSideDistance, config.HoverSideDistance, 0, 10 ^ 5)
-	config.HoverAboveOffset = sanitizeNumber(source.HoverAboveOffset, config.HoverAboveOffset, -10 ^ 5, 10 ^ 5)
-	config.HoverArriveRadius = sanitizeNumber(source.HoverArriveRadius, config.HoverArriveRadius, 0, 10 ^ 5)
-	config.HoverSpeedByPhase = resolveNumberMap(source, "HoverSpeedByPhase", config.HoverSpeedByPhase, 0, 10 ^ 5)
+		CoerceNumber(source.Phase3HealthRatio, config.Phase3HealthRatio, 0.01, config.Phase2HealthRatio)
+	config.AggroRange = CoerceNumber(source.AggroRange, config.AggroRange, 0, 10 ^ 5)
+	config.DespawnRange = CoerceNumber(source.DespawnRange, config.DespawnRange, config.AggroRange, 10 ^ 5)
+	config.TargetLostGraceTime = CoerceNumber(source.TargetLostGraceTime, config.TargetLostGraceTime, 0, 60)
+	config.HoverSideDistance = CoerceNumber(source.HoverSideDistance, config.HoverSideDistance, 0, 10 ^ 5)
+	config.HoverAboveOffset = CoerceNumber(source.HoverAboveOffset, config.HoverAboveOffset, -10 ^ 5, 10 ^ 5)
+	config.HoverArriveRadius = CoerceNumber(source.HoverArriveRadius, config.HoverArriveRadius, 0, 10 ^ 5)
+	config.HoverSpeedByPhase = GetNumberMap(source, "HoverSpeedByPhase", config.HoverSpeedByPhase, 0, 10 ^ 5)
 	config.HoverAccelerationByPhase =
-		resolveNumberMap(source, "HoverAccelerationByPhase", config.HoverAccelerationByPhase, 0, 10 ^ 5)
-	config.HoverDamping = sanitizeNumber(source.HoverDamping, config.HoverDamping, 0, 1000)
+		GetNumberMap(source, "HoverAccelerationByPhase", config.HoverAccelerationByPhase, 0, 10 ^ 5)
+	config.HoverDamping = CoerceNumber(source.HoverDamping, config.HoverDamping, 0, 1000)
 	config.HoverIdleDurationByPhase =
-		resolveNumberMap(source, "HoverIdleDurationByPhase", config.HoverIdleDurationByPhase, 0.05, 30)
+		GetNumberMap(source, "HoverIdleDurationByPhase", config.HoverIdleDurationByPhase, 0.05, 30)
 	config.HoverIdleSpeedMultiplier =
-		sanitizeNumber(source.HoverIdleSpeedMultiplier, config.HoverIdleSpeedMultiplier, 0, 10)
+		CoerceNumber(source.HoverIdleSpeedMultiplier, config.HoverIdleSpeedMultiplier, 0, 10)
 	config.HoverIdleAccelerationMultiplier =
-		sanitizeNumber(source.HoverIdleAccelerationMultiplier, config.HoverIdleAccelerationMultiplier, 0, 10)
+		CoerceNumber(source.HoverIdleAccelerationMultiplier, config.HoverIdleAccelerationMultiplier, 0, 10)
 	config.ChargeRepositionMaxTimeByPhase =
-		resolveNumberMap(source, "ChargeRepositionMaxTimeByPhase", config.ChargeRepositionMaxTimeByPhase, 0.01, 60)
-	config.RamAlignSideDistance = sanitizeNumber(source.RamAlignSideDistance, config.RamAlignSideDistance, 0, 10 ^ 5)
-	config.RamAlignToleranceY = sanitizeNumber(source.RamAlignToleranceY, config.RamAlignToleranceY, 0, 10 ^ 5)
-	config.RamAlignToleranceZ = sanitizeNumber(source.RamAlignToleranceZ, config.RamAlignToleranceZ, 0, 10 ^ 5)
+		GetNumberMap(source, "ChargeRepositionMaxTimeByPhase", config.ChargeRepositionMaxTimeByPhase, 0.01, 60)
+	config.RamAlignSideDistance = CoerceNumber(source.RamAlignSideDistance, config.RamAlignSideDistance, 0, 10 ^ 5)
+	config.RamAlignToleranceY = CoerceNumber(source.RamAlignToleranceY, config.RamAlignToleranceY, 0, 10 ^ 5)
+	config.RamAlignToleranceZ = CoerceNumber(source.RamAlignToleranceZ, config.RamAlignToleranceZ, 0, 10 ^ 5)
 	config.RamAlignMaxTimeByPhase =
-		resolveNumberMap(source, "RamAlignMaxTimeByPhase", config.RamAlignMaxTimeByPhase, 0.01, 60)
+		GetNumberMap(source, "RamAlignMaxTimeByPhase", config.RamAlignMaxTimeByPhase, 0.01, 60)
 	config.RamAlignSpeedByPhase =
-		resolveNumberMap(source, "RamAlignSpeedByPhase", config.RamAlignSpeedByPhase, 0, 10 ^ 5)
+		GetNumberMap(source, "RamAlignSpeedByPhase", config.RamAlignSpeedByPhase, 0, 10 ^ 5)
 	config.RamAlignAccelerationByPhase =
-		resolveNumberMap(source, "RamAlignAccelerationByPhase", config.RamAlignAccelerationByPhase, 0, 10 ^ 5)
-	config.ChargePredictionTime = sanitizeNumber(source.ChargePredictionTime, config.ChargePredictionTime, 0, 5)
-	config.ChargeWindupByPhase = resolveNumberMap(source, "ChargeWindupByPhase", config.ChargeWindupByPhase, 0.01, 10)
-	config.ChargeSpeedByPhase = resolveNumberMap(source, "ChargeSpeedByPhase", config.ChargeSpeedByPhase, 0, 10 ^ 5)
+		GetNumberMap(source, "RamAlignAccelerationByPhase", config.RamAlignAccelerationByPhase, 0, 10 ^ 5)
+	config.ChargePredictionTime = CoerceNumber(source.ChargePredictionTime, config.ChargePredictionTime, 0, 5)
+	config.ChargeWindupByPhase = GetNumberMap(source, "ChargeWindupByPhase", config.ChargeWindupByPhase, 0.01, 10)
+	config.ChargeSpeedByPhase = GetNumberMap(source, "ChargeSpeedByPhase", config.ChargeSpeedByPhase, 0, 10 ^ 5)
 	config.ChargeDurationByPhase =
-		resolveNumberMap(source, "ChargeDurationByPhase", config.ChargeDurationByPhase, 0.01, 10)
-	config.ChargePassDistance = sanitizeNumber(source.ChargePassDistance, config.ChargePassDistance, 0, 10 ^ 5)
-	config.PostChargeRecoverTime = sanitizeNumber(source.PostChargeRecoverTime, config.PostChargeRecoverTime, 0, 10)
+		GetNumberMap(source, "ChargeDurationByPhase", config.ChargeDurationByPhase, 0.01, 10)
+	config.ChargePassDistance = CoerceNumber(source.ChargePassDistance, config.ChargePassDistance, 0, 10 ^ 5)
+	config.PostChargeRecoverTime = CoerceNumber(source.PostChargeRecoverTime, config.PostChargeRecoverTime, 0, 10)
 	config.ChargesPerComboByPhase =
-		resolveNumberMap(source, "ChargesPerComboByPhase", config.ChargesPerComboByPhase, 1, 16)
-	config.ChargesPerComboByPhase[1] = sanitizeInteger(config.ChargesPerComboByPhase[1], 3, 1, 16)
-	config.ChargesPerComboByPhase[2] = sanitizeInteger(config.ChargesPerComboByPhase[2], 4, 1, 16)
-	config.ChargesPerComboByPhase[3] = sanitizeInteger(config.ChargesPerComboByPhase[3], 6, 1, 16)
+		GetNumberMap(source, "ChargesPerComboByPhase", config.ChargesPerComboByPhase, 1, 16)
+	config.ChargesPerComboByPhase[1] = CoerceInteger(config.ChargesPerComboByPhase[1], 3, 1, 16)
+	config.ChargesPerComboByPhase[2] = CoerceInteger(config.ChargesPerComboByPhase[2], 4, 1, 16)
+	config.ChargesPerComboByPhase[3] = CoerceInteger(config.ChargesPerComboByPhase[3], 6, 1, 16)
 	config.FakeBeeSummonDurationByPhase =
-		resolveNumberMap(source, "FakeBeeSummonDurationByPhase", config.FakeBeeSummonDurationByPhase, 0.05, 30)
+		GetNumberMap(source, "FakeBeeSummonDurationByPhase", config.FakeBeeSummonDurationByPhase, 0.05, 30)
 	config.FakeStingerShootDurationByPhase =
-		resolveNumberMap(source, "FakeStingerShootDurationByPhase", config.FakeStingerShootDurationByPhase, 0.05, 30)
+		GetNumberMap(source, "FakeStingerShootDurationByPhase", config.FakeStingerShootDurationByPhase, 0.05, 30)
 	config.FakePatternSideDistance =
-		sanitizeNumber(source.FakePatternSideDistance, config.FakePatternSideDistance, 0, 10 ^ 5)
+		CoerceNumber(source.FakePatternSideDistance, config.FakePatternSideDistance, 0, 10 ^ 5)
 	config.FakePatternAboveOffset =
-		sanitizeNumber(source.FakePatternAboveOffset, config.FakePatternAboveOffset, -10 ^ 5, 10 ^ 5)
+		CoerceNumber(source.FakePatternAboveOffset, config.FakePatternAboveOffset, -10 ^ 5, 10 ^ 5)
 	config.FakePatternHoverSpeedMultiplier =
-		sanitizeNumber(source.FakePatternHoverSpeedMultiplier, config.FakePatternHoverSpeedMultiplier, 0, 10)
-	config.StingerHoverDuration = sanitizeNumber(source.StingerHoverDuration, config.StingerHoverDuration, 0.05, 30)
-	config.StingerSideDistance = sanitizeNumber(source.StingerSideDistance, config.StingerSideDistance, 0, 10 ^ 5)
-	config.StingerAboveOffset = sanitizeNumber(source.StingerAboveOffset, config.StingerAboveOffset, -10 ^ 5, 10 ^ 5)
+		CoerceNumber(source.FakePatternHoverSpeedMultiplier, config.FakePatternHoverSpeedMultiplier, 0, 10)
+	config.StingerHoverDuration = CoerceNumber(source.StingerHoverDuration, config.StingerHoverDuration, 0.05, 30)
+	config.StingerSideDistance = CoerceNumber(source.StingerSideDistance, config.StingerSideDistance, 0, 10 ^ 5)
+	config.StingerAboveOffset = CoerceNumber(source.StingerAboveOffset, config.StingerAboveOffset, -10 ^ 5, 10 ^ 5)
 	config.StingerHoverSpeedMultiplier =
-		sanitizeNumber(source.StingerHoverSpeedMultiplier, config.StingerHoverSpeedMultiplier, 0, 10)
+		CoerceNumber(source.StingerHoverSpeedMultiplier, config.StingerHoverSpeedMultiplier, 0, 10)
 	config.StingerFireIntervalByPhase =
-		resolveNumberMap(source, "StingerFireIntervalByPhase", config.StingerFireIntervalByPhase, 0.01, 30)
-	config.StingerSpeed = sanitizeNumber(source.StingerSpeed, config.StingerSpeed, 0, 10 ^ 5)
-	config.StingerLifetime = sanitizeNumber(source.StingerLifetime, config.StingerLifetime, 0.05, 30)
+		GetNumberMap(source, "StingerFireIntervalByPhase", config.StingerFireIntervalByPhase, 0.01, 30)
+	config.StingerSpeed = CoerceNumber(source.StingerSpeed, config.StingerSpeed, 0, 10 ^ 5)
+	config.StingerLifetime = CoerceNumber(source.StingerLifetime, config.StingerLifetime, 0.05, 30)
 	config.StingerSpreadDegreesByPhase =
-		resolveNumberMap(source, "StingerSpreadDegreesByPhase", config.StingerSpreadDegreesByPhase, 0, 90)
-	config.StingerDamage = sanitizeNumber(source.StingerDamage, config.StingerDamage, 0, 10 ^ 6)
-	config.StingerHitRadius = sanitizeNumber(source.StingerHitRadius, config.StingerHitRadius, 0, 256)
-	config.BeeSummonDuration = sanitizeNumber(source.BeeSummonDuration, config.BeeSummonDuration, 0.05, 30)
-	config.BeeSummonSideDistance = sanitizeNumber(source.BeeSummonSideDistance, config.BeeSummonSideDistance, 0, 10 ^ 5)
+		GetNumberMap(source, "StingerSpreadDegreesByPhase", config.StingerSpreadDegreesByPhase, 0, 90)
+	config.StingerDamage = CoerceNumber(source.StingerDamage, config.StingerDamage, 0, 10 ^ 6)
+	config.StingerHitRadius = CoerceNumber(source.StingerHitRadius, config.StingerHitRadius, 0, 256)
+	config.BeeSummonDuration = CoerceNumber(source.BeeSummonDuration, config.BeeSummonDuration, 0.05, 30)
+	config.BeeSummonSideDistance = CoerceNumber(source.BeeSummonSideDistance, config.BeeSummonSideDistance, 0, 10 ^ 5)
 	config.BeeSummonAboveOffset =
-		sanitizeNumber(source.BeeSummonAboveOffset, config.BeeSummonAboveOffset, -10 ^ 5, 10 ^ 5)
+		CoerceNumber(source.BeeSummonAboveOffset, config.BeeSummonAboveOffset, -10 ^ 5, 10 ^ 5)
 	config.BeeSummonHoverSpeedMultiplier =
-		sanitizeNumber(source.BeeSummonHoverSpeedMultiplier, config.BeeSummonHoverSpeedMultiplier, 0, 10)
+		CoerceNumber(source.BeeSummonHoverSpeedMultiplier, config.BeeSummonHoverSpeedMultiplier, 0, 10)
 	config.BeeSpawnIntervalByPhase =
-		resolveNumberMap(source, "BeeSpawnIntervalByPhase", config.BeeSpawnIntervalByPhase, 0.01, 30)
-	config.BeeBurstCountByPhase = resolveNumberMap(source, "BeeBurstCountByPhase", config.BeeBurstCountByPhase, 0, 32)
-	config.BeeBurstCountByPhase[1] = sanitizeInteger(config.BeeBurstCountByPhase[1], 2, 0, 32)
-	config.BeeBurstCountByPhase[2] = sanitizeInteger(config.BeeBurstCountByPhase[2], 3, 0, 32)
-	config.BeeBurstCountByPhase[3] = sanitizeInteger(config.BeeBurstCountByPhase[3], 4, 0, 32)
-	config.BeeLifetime = sanitizeNumber(source.BeeLifetime, config.BeeLifetime, 0.05, 60)
-	config.BeeScatterDuration = sanitizeNumber(source.BeeScatterDuration, config.BeeScatterDuration, 0, 10)
-	config.BeeScatterSpeed = sanitizeNumber(source.BeeScatterSpeed, config.BeeScatterSpeed, 0, 10 ^ 5)
-	config.BeeSpeedByPhase = resolveNumberMap(source, "BeeSpeedByPhase", config.BeeSpeedByPhase, 0, 10 ^ 5)
+		GetNumberMap(source, "BeeSpawnIntervalByPhase", config.BeeSpawnIntervalByPhase, 0.01, 30)
+	config.BeeBurstCountByPhase = GetNumberMap(source, "BeeBurstCountByPhase", config.BeeBurstCountByPhase, 0, 32)
+	config.BeeBurstCountByPhase[1] = CoerceInteger(config.BeeBurstCountByPhase[1], 2, 0, 32)
+	config.BeeBurstCountByPhase[2] = CoerceInteger(config.BeeBurstCountByPhase[2], 3, 0, 32)
+	config.BeeBurstCountByPhase[3] = CoerceInteger(config.BeeBurstCountByPhase[3], 4, 0, 32)
+	config.BeeLifetime = CoerceNumber(source.BeeLifetime, config.BeeLifetime, 0.05, 60)
+	config.BeeScatterDuration = CoerceNumber(source.BeeScatterDuration, config.BeeScatterDuration, 0, 10)
+	config.BeeScatterSpeed = CoerceNumber(source.BeeScatterSpeed, config.BeeScatterSpeed, 0, 10 ^ 5)
+	config.BeeSpeedByPhase = GetNumberMap(source, "BeeSpeedByPhase", config.BeeSpeedByPhase, 0, 10 ^ 5)
 	config.BeeAccelerationByPhase =
-		resolveNumberMap(source, "BeeAccelerationByPhase", config.BeeAccelerationByPhase, 0, 10 ^ 5)
-	config.BeeDashSpeedByPhase = resolveNumberMap(source, "BeeDashSpeedByPhase", config.BeeDashSpeedByPhase, 0, 10 ^ 5)
-	config.BeeDamage = sanitizeNumber(source.BeeDamage, config.BeeDamage, 0, 10 ^ 6)
-	config.BeeHitRadius = sanitizeNumber(source.BeeHitRadius, config.BeeHitRadius, 0, 256)
-	config.ContactDamage = sanitizeNumber(source.ContactDamage, config.ContactDamage, 0, 10 ^ 6)
-	config.ContactHitRadius = sanitizeNumber(source.ContactHitRadius, config.ContactHitRadius, 0, 256)
-	config.ContactCooldown = sanitizeNumber(source.ContactCooldown, config.ContactCooldown, 0, 30)
-	config.DespawnSpeed = sanitizeNumber(source.DespawnSpeed, config.DespawnSpeed, 0, 10 ^ 5)
-	config.DespawnAcceleration = sanitizeNumber(source.DespawnAcceleration, config.DespawnAcceleration, 0, 10 ^ 5)
-	config.DespawnDuration = sanitizeNumber(source.DespawnDuration, config.DespawnDuration, 0.05, 30)
-	config.MaxDt = sanitizeNumber(source.MaxDt, config.MaxDt, 1 / 240, 1)
-	config.Debug = sanitizeBoolean(source.Debug, config.Debug)
-	config.EnrageSpeedMultiplier = sanitizeNumber(source.EnrageSpeedMultiplier, config.EnrageSpeedMultiplier, 0.01, 10)
+		GetNumberMap(source, "BeeAccelerationByPhase", config.BeeAccelerationByPhase, 0, 10 ^ 5)
+	config.BeeDashSpeedByPhase = GetNumberMap(source, "BeeDashSpeedByPhase", config.BeeDashSpeedByPhase, 0, 10 ^ 5)
+	config.BeeDamage = CoerceNumber(source.BeeDamage, config.BeeDamage, 0, 10 ^ 6)
+	config.BeeHitRadius = CoerceNumber(source.BeeHitRadius, config.BeeHitRadius, 0, 256)
+	config.ContactDamage = CoerceNumber(source.ContactDamage, config.ContactDamage, 0, 10 ^ 6)
+	config.ContactHitRadius = CoerceNumber(source.ContactHitRadius, config.ContactHitRadius, 0, 256)
+	config.ContactCooldown = CoerceNumber(source.ContactCooldown, config.ContactCooldown, 0, 30)
+	config.DespawnSpeed = CoerceNumber(source.DespawnSpeed, config.DespawnSpeed, 0, 10 ^ 5)
+	config.DespawnAcceleration = CoerceNumber(source.DespawnAcceleration, config.DespawnAcceleration, 0, 10 ^ 5)
+	config.DespawnDuration = CoerceNumber(source.DespawnDuration, config.DespawnDuration, 0.05, 30)
+	config.MaxDt = CoerceNumber(source.MaxDt, config.MaxDt, 1 / 240, 1)
+	config.Debug = CoerceBoolean(source.Debug, config.Debug)
+	config.EnrageSpeedMultiplier = CoerceNumber(source.EnrageSpeedMultiplier, config.EnrageSpeedMultiplier, 0.01, 10)
 	config.EnrageCadenceMultiplier =
-		sanitizeNumber(source.EnrageCadenceMultiplier, config.EnrageCadenceMultiplier, 0.05, 10)
+		CoerceNumber(source.EnrageCadenceMultiplier, config.EnrageCadenceMultiplier, 0.05, 10)
 
 	if typeof(source.IsEnraged) == "function" then
 		config.IsEnraged = source.IsEnraged :: (EnrageContext) -> boolean
@@ -509,10 +509,10 @@ function Configs.Resolve(configRaw: any): QueenBeeConfig
 	return config
 end
 
-function Configs.ResolvePhase(healthRaw: any, maxHealthRaw: any, configRaw: QueenBeeConfig?): QueenBeePhase
+function Configs.GetPhase(healthRaw: any, maxHealthRaw: any, configRaw: QueenBeeConfig?): QueenBeePhase
 	local config = if configRaw ~= nil then configRaw else DEFAULTS
-	local maxHealth = sanitizeNumber(maxHealthRaw, 1, 1, 10 ^ 9)
-	local health = sanitizeNumber(healthRaw, maxHealth, 0, maxHealth)
+	local maxHealth = CoerceNumber(maxHealthRaw, 1, 1, 10 ^ 9)
+	local health = CoerceNumber(healthRaw, maxHealth, 0, maxHealth)
 	local ratio = math.clamp(health / maxHealth, 0, 1)
 
 	if ratio <= config.Phase3HealthRatio then
@@ -523,9 +523,5 @@ function Configs.ResolvePhase(healthRaw: any, maxHealthRaw: any, configRaw: Quee
 	end
 	return 1
 end
-
-Configs.getDefaults = Configs.GetDefaults
-Configs.resolve = Configs.Resolve
-Configs.resolvePhase = Configs.ResolvePhase
 
 return Configs

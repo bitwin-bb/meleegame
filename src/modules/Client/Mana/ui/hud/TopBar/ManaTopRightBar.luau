@@ -12,7 +12,6 @@ local Responsive = require("useViewportScale")
 local UiSound = require("UiSound")
 local infoThunks = require("infoThunks")
 local manaSlice = require("manaSlice")
-local manaThunks = require("manaThunks")
 local useHover = require("useHover")
 local useManaTransparency = require("useManaTransparency")
 local useStore = require("useCoreStore")
@@ -93,7 +92,7 @@ return function(props: ManaTopRightBarProps)
 	local hoverText = string.format("%.0f/%.0f", manaState.mana, manaState.maxMana)
 	local starsHover = useHover({
 		onHoverStart = function()
-			infoThunks.showHover({
+			infoThunks.ShowHover({
 				id = hoverId,
 				text = hoverText,
 			})
@@ -101,7 +100,7 @@ return function(props: ManaTopRightBarProps)
 			UiSound.playHover()
 		end,
 		onHoverEnd = function()
-			infoThunks.hideHover(hoverId)
+			infoThunks.HideHover(hoverId)
 		end,
 	})
 	local hoverAlpha = useManaTransparency({
@@ -113,7 +112,8 @@ return function(props: ManaTopRightBarProps)
 			return
 		end
 
-		local stop = manaThunks.start()
+		local manaThunks = require("manaThunks")
+		local stop = manaThunks.Start()
 
 		return function()
 			stop()
@@ -125,7 +125,7 @@ return function(props: ManaTopRightBarProps)
 			return
 		end
 
-		infoThunks.showHover({
+		infoThunks.ShowHover({
 			id = hoverId,
 			text = hoverText,
 		})
@@ -133,7 +133,7 @@ return function(props: ManaTopRightBarProps)
 
 	React.useEffect(function()
 		return function()
-			infoThunks.hideHover(hoverId)
+			infoThunks.HideHover(hoverId)
 		end
 	end, {})
 

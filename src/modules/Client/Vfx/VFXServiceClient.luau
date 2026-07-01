@@ -6,7 +6,7 @@ local RunService = game:GetService("RunService")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
-local VFXServicePackets = require("NetSharedPackets").VFXService
+local VFXServicePackets = require("NetPacketsShared").VFXService
 
 local function bindPacket(self: any, methodName: string)
 	local packet = VFXServicePackets[methodName]
@@ -15,13 +15,14 @@ local function bindPacket(self: any, methodName: string)
 		return
 	end
 
+	local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
 	packet.listen(function(payload: any)
-		local handler = self[methodName]
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, table.unpack(arguments, 1, count))
 	end)
 end
@@ -66,14 +67,14 @@ function VFXServiceClient.TrackRuntime(self: VFXServiceClient, runtimeRoot: Base
 end
 
 function VFXServiceClient.Play(self: VFXServiceClient, effectSourceRaw: any, optionsRaw: any): BasePart?
-	local effectTemplate = VFXServiceUtils.resolveEffectTemplate(effectSourceRaw)
+	local effectTemplate = VFXServiceUtils.GetEffectTemplate(effectSourceRaw)
 	if effectTemplate == nil then
 		return nil
 	end
 
-	local options: VFXPlaybackOptions = VFXServiceUtils.sanitizePlaybackOptions(optionsRaw)
+	local options: VFXPlaybackOptions = VFXServiceUtils.CoercePlaybackOptions(optionsRaw)
 	if options.channel ~= nil and options.replaceChannel then
-		self:stopChannel(options.channel)
+		self:StopChannel(options.channel)
 	end
 
 	local runtimeParent: Instance = self.runtimeFolder
@@ -81,12 +82,12 @@ function VFXServiceClient.Play(self: VFXServiceClient, effectSourceRaw: any, opt
 		runtimeParent = options.parent
 	end
 
-	local runtimeRoot = VFXServiceUtils.createRuntimeEffect(effectTemplate, runtimeParent)
+	local runtimeRoot = VFXServiceUtils.CreateRuntimeEffect(effectTemplate, runtimeParent)
 	if runtimeRoot == nil then
 		return nil
 	end
 
-	local playbackCFrame = VFXServiceUtils.resolvePlaybackCFrame(options)
+	local playbackCFrame = VFXServiceUtils.GetPlaybackCFrame(options)
 	if playbackCFrame ~= nil then
 		runtimeRoot.CFrame = playbackCFrame
 	end
@@ -94,20 +95,20 @@ function VFXServiceClient.Play(self: VFXServiceClient, effectSourceRaw: any, opt
 	if options.channel ~= nil then
 		self.channelRuntimes[options.channel] = runtimeRoot
 	end
-	self:trackRuntime(runtimeRoot, options.channel)
+	self:TrackRuntime(runtimeRoot, options.channel)
 
-	VFXServiceUtils.setRuntimeEffectEnabled(runtimeRoot, true)
+	VFXServiceUtils.SetRuntimeEffectEnabled(runtimeRoot, true)
 	if options.emitCount ~= nil then
-		VFXServiceUtils.emitRuntimeParticles(runtimeRoot, options.emitCount)
+		VFXServiceUtils.EmitRuntimeParticles(runtimeRoot, options.emitCount)
 	end
 
 	local enabledDuration = math.max(0, options.enabledDuration)
 	if enabledDuration <= 0 then
-		VFXServiceUtils.setRuntimeEffectEnabled(runtimeRoot, false)
+		VFXServiceUtils.SetRuntimeEffectEnabled(runtimeRoot, false)
 	else
 		task.delay(enabledDuration, function()
 			if runtimeRoot.Parent ~= nil then
-				VFXServiceUtils.setRuntimeEffectEnabled(runtimeRoot, false)
+				VFXServiceUtils.SetRuntimeEffectEnabled(runtimeRoot, false)
 			end
 		end)
 	end
@@ -142,14 +143,14 @@ function VFXServiceClient.Play(self: VFXServiceClient, effectSourceRaw: any, opt
 				return
 			end
 
-			local followBaseCFrame = VFXServiceUtils.resolveInstanceWorldCFrame(options.followInstance)
+			local followBaseCFrame = VFXServiceUtils.GetInstanceWorldCFrame(options.followInstance)
 			if followBaseCFrame ~= nil then
 				runtimeRoot.CFrame = followBaseCFrame * options.offset
 			end
 		end)
 	end
 
-	local cleanupDelay = VFXServiceUtils.resolveCleanupDelay(runtimeRoot, options)
+	local cleanupDelay = VFXServiceUtils.GetCleanupDelay(runtimeRoot, options)
 	if cleanupDelay <= 0 then
 		runtimeRoot:Destroy()
 	else
@@ -164,15 +165,15 @@ function VFXServiceClient.Play(self: VFXServiceClient, effectSourceRaw: any, opt
 end
 
 function VFXServiceClient.PlayEffect(self: VFXServiceClient, effectSourceRaw: any, optionsRaw: any): BasePart?
-	return self:play(effectSourceRaw, optionsRaw)
+	return self:Play(effectSourceRaw, optionsRaw)
 end
 
 function VFXServiceClient.Emit(self: VFXServiceClient, effectSourceRaw: any, optionsRaw: any): BasePart?
-	return self:play(effectSourceRaw, optionsRaw)
+	return self:Play(effectSourceRaw, optionsRaw)
 end
 
 function VFXServiceClient.StopChannel(self: VFXServiceClient, channelNameRaw: any)
-	local channelName = VFXServiceUtils.sanitizeChannelName(channelNameRaw)
+	local channelName = VFXServiceUtils.CoerceChannelName(channelNameRaw)
 	if channelName == nil then
 		return
 	end
@@ -205,12 +206,12 @@ end
 function VFXServiceClient.Init(self: VFXServiceClient)
 	bindPackets(self)
 	self.janitor = Janitor.new()
-	self.runtimeFolder = VFXServiceUtils.ensureRuntimeFolder()
+	self.runtimeFolder = VFXServiceUtils.EnsureRuntimeFolder()
 	self.activeRuntimes = {} :: { [BasePart]: boolean }
 	self.channelRuntimes = {} :: { [string]: BasePart }
 
 	self.janitor:GiveChore(function()
-		self:stopAll()
+		self:StopAll()
 	end)
 end
 
@@ -219,23 +220,13 @@ function VFXServiceClient.Destroy(self: VFXServiceClient)
 		self.janitor:Destroy()
 	end
 end
-
-VFXServiceClient.trackRuntime = VFXServiceClient.TrackRuntime
-VFXServiceClient.play = VFXServiceClient.Play
-VFXServiceClient.playEffect = VFXServiceClient.PlayEffect
-VFXServiceClient.emit = VFXServiceClient.Emit
-VFXServiceClient.stopChannel = VFXServiceClient.StopChannel
-VFXServiceClient.stopAll = VFXServiceClient.StopAll
-VFXServiceClient.init = VFXServiceClient.Init
-VFXServiceClient.destroy = VFXServiceClient.Destroy
-
 type VFXServiceClient = typeof(VFXServiceClient) & {
-	trackRuntime: (self: VFXServiceClient, runtimeRoot: BasePart, channelName: string?) -> (),
-	play: (self: VFXServiceClient, effectSourceRaw: any, optionsRaw: any) -> BasePart?,
-	playEffect: (self: VFXServiceClient, effectSourceRaw: any, optionsRaw: any) -> BasePart?,
-	emit: (self: VFXServiceClient, effectSourceRaw: any, optionsRaw: any) -> BasePart?,
-	stopChannel: (self: VFXServiceClient, channelNameRaw: any) -> (),
-	stopAll: (self: VFXServiceClient) -> (),
+	TrackRuntime: (self: VFXServiceClient, runtimeRoot: BasePart, channelName: string?) -> (),
+	Play: (self: VFXServiceClient, effectSourceRaw: any, optionsRaw: any) -> BasePart?,
+	PlayEffect: (self: VFXServiceClient, effectSourceRaw: any, optionsRaw: any) -> BasePart?,
+	Emit: (self: VFXServiceClient, effectSourceRaw: any, optionsRaw: any) -> BasePart?,
+	StopChannel: (self: VFXServiceClient, channelNameRaw: any) -> (),
+	StopAll: (self: VFXServiceClient) -> (),
 	janitor: JanitorClass,
 	runtimeFolder: Folder,
 	activeRuntimes: { [BasePart]: boolean },

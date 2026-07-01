@@ -22,7 +22,7 @@ local UiSound = require("UiSound")
 local craftingSlice = require("craftingSlice")
 local craftingThunks = require("craftingThunks")
 local itemThunks = require("itemThunks")
-local resolveImageId = require("resolveImageId")
+local GetImageId = require("GetImageId")
 local useCraftMenuDrag = require("useCraftMenuDrag")
 local useCraftSlide = require("useCraftSlide")
 local useDebounceValue = require("useDebounceValue")
@@ -54,13 +54,13 @@ local function playUiSound(soundAssetId: string?)
 	UiSound.play(soundAssetId)
 end
 
-local CRAFTING_MENU_IMAGE_ID = resolveImageId(ImageIds.craftingMenu, "")
-local CRAFTING_MENU_INNER_IMAGE_ID = resolveImageId(ImageIds.craftingMenuInner, CRAFTING_MENU_IMAGE_ID)
-local CRAFTING_MENU_TEXTBOX_IMAGE_ID = resolveImageId(ImageIds.craftingMenuTextBox, CRAFTING_MENU_INNER_IMAGE_ID)
-local CRAFTING_MENU_CATEGORY_IMAGE_ID = resolveImageId(ImageIds.craftingMenuCategory, CRAFTING_MENU_INNER_IMAGE_ID)
-local resolveSelectedRecipeFromEntries: (entries: { CraftingRecipeEntry }, selectedRecipeIdRaw: any) -> CraftingRecipeEntry?
+local CRAFTING_MENU_IMAGE_ID = GetImageId(ImageIds.craftingMenu, "")
+local CRAFTING_MENU_INNER_IMAGE_ID = GetImageId(ImageIds.craftingMenuInner, CRAFTING_MENU_IMAGE_ID)
+local CRAFTING_MENU_TEXTBOX_IMAGE_ID = GetImageId(ImageIds.craftingMenuTextBox, CRAFTING_MENU_INNER_IMAGE_ID)
+local CRAFTING_MENU_CATEGORY_IMAGE_ID = GetImageId(ImageIds.craftingMenuCategory, CRAFTING_MENU_INNER_IMAGE_ID)
+local GetSelectedRecipeFromEntries: (entries: { CraftingRecipeEntry }, selectedRecipeIdRaw: any) -> CraftingRecipeEntry?
 
-resolveSelectedRecipeFromEntries = function(
+GetSelectedRecipeFromEntries = function(
 	entries: { CraftingRecipeEntry },
 	selectedRecipeIdRaw: any
 ): CraftingRecipeEntry?
@@ -79,7 +79,7 @@ resolveSelectedRecipeFromEntries = function(
 	return nil
 end
 
-local function resolveBestRecipeEntry(entries: { CraftingRecipeEntry }): CraftingRecipeEntry?
+local function GetBestRecipeEntry(entries: { CraftingRecipeEntry }): CraftingRecipeEntry?
 	local preferred = nil :: CraftingRecipeEntry?
 	for _, entry in entries do
 		if preferred == nil then
@@ -115,12 +115,12 @@ local function pickPreferredRecipeEntry(
 	entries: { CraftingRecipeEntry },
 	selectedRecipeIdRaw: any
 ): CraftingRecipeEntry?
-	local selectedRecipe = resolveSelectedRecipeFromEntries(entries, selectedRecipeIdRaw)
+	local selectedRecipe = GetSelectedRecipeFromEntries(entries, selectedRecipeIdRaw)
 	if selectedRecipe ~= nil and selectedRecipe.canCraft then
 		return selectedRecipe
 	end
 
-	local preferred = resolveBestRecipeEntry(entries)
+	local preferred = GetBestRecipeEntry(entries)
 	if preferred ~= nil then
 		return preferred
 	end
@@ -128,7 +128,7 @@ local function pickPreferredRecipeEntry(
 	return selectedRecipe
 end
 
-local function resolveDisplayRecipeGroups(
+local function GetDisplayRecipeGroups(
 	entries: { CraftingRecipeEntry },
 	categoryRaw: any,
 	selectedRecipeIdRaw: any
@@ -187,7 +187,7 @@ local function resolveDisplayRecipeGroups(
 	return visibleEntries, groupsByVisibleRecipeId
 end
 
-local function resolveDisplayedSelectedRecipe(
+local function GetDisplayedSelectedRecipe(
 	displayedRecipes: { CraftingRecipeEntry },
 	displayRecipeGroups: { [string]: { CraftingRecipeEntry } },
 	selectedRecipeIdRaw: any
@@ -241,8 +241,8 @@ local function buildIngredientRows(
 			else 0
 		local isSufficient = ingredient.isSufficient == true
 
-		local resolvedIcon = itemThunks.resolveItemIconByType(nil, itemId)
-		if typeof(resolvedIcon) ~= "string" or resolvedIcon == "" then
+		local itemIcon = itemThunks.GetItemIconByType(nil, itemId)
+		if typeof(itemIcon) ~= "string" or itemIcon == "" then
 			error(MISSING_ASSET_ERROR, 0)
 		end
 
@@ -251,7 +251,7 @@ local function buildIngredientRows(
 			itemId = itemId,
 			required = required,
 			isSufficient = isSufficient,
-			icon = resolvedIcon,
+			icon = itemIcon,
 			size = UDim2.fromOffset(requirementSlotSize, requirementSlotSize),
 			iconSize = UDim2.fromOffset(requirementIconSize, requirementIconSize),
 			zIndex = zIndex,
@@ -280,14 +280,14 @@ return function(props: CraftingSlotsProps): React.ReactNode
 
 		lastAppliedSearchQueryRef.current = nextSearchText
 		searchQueryCommitInFlightRef.current = true
-		craftingThunks.setSearchQuery(nextSearchText)
+		craftingThunks.SetSearchQuery(nextSearchText)
 	end
 
 	React.useEffect(function()
-		local stop = craftingThunks.start()
+		local stop = craftingThunks.Start()
 
 		return function()
-			craftingThunks.stopBulkCraft()
+			craftingThunks.StopBulkCraft()
 			stop()
 		end
 	end, {})
@@ -379,9 +379,9 @@ return function(props: CraftingSlotsProps): React.ReactNode
 	local panelScale = responsivePanelScale * (PANEL_MIN_SCALE + (1 - PANEL_MIN_SCALE) * (1 - panelTransparency))
 	local activeCategory = craftingState.categoryFilter
 	local displayedRecipes, displayRecipeGroups =
-		resolveDisplayRecipeGroups(craftingState.recipes, activeCategory, craftingState.selectedRecipeId)
+		GetDisplayRecipeGroups(craftingState.recipes, activeCategory, craftingState.selectedRecipeId)
 	local selectedRecipe =
-		resolveDisplayedSelectedRecipe(displayedRecipes, displayRecipeGroups, craftingState.selectedRecipeId)
+		GetDisplayedSelectedRecipe(displayedRecipes, displayRecipeGroups, craftingState.selectedRecipeId)
 	local canCraftSelected = selectedRecipe ~= nil and selectedRecipe.canCraft
 	local categoryTabs = { "All" }
 	for _, category in craftingState.availableCategories do
@@ -425,7 +425,7 @@ return function(props: CraftingSlotsProps): React.ReactNode
 						nextRecipeId = group[nextIndex].recipeId
 					end
 				end
-				craftingThunks.selectRecipe(nextRecipeId)
+				craftingThunks.SelectRecipe(nextRecipeId)
 			end,
 		})
 	end
@@ -481,7 +481,7 @@ return function(props: CraftingSlotsProps): React.ReactNode
 						tabPadding = UDim.new(0, 4),
 						textSize = craftingTokens.textSize,
 						onActivated = function(categoryValue: string)
-							craftingThunks.setCategoryFilter(categoryValue)
+							craftingThunks.SetCategoryFilter(categoryValue)
 						end,
 					}),
 					e(RecipeGrid, {
@@ -506,7 +506,13 @@ return function(props: CraftingSlotsProps): React.ReactNode
 					}),
 					e(CraftingButton, {
 						size = UDim2.new(1, -craftingTokens.panelPadding * 2, 0, craftingTokens.craftButtonHeight),
-						position = UDim2.fromOffset(craftingTokens.panelPadding, craftingTokens.craftButtonY),
+						position = UDim2.new(
+							0.5,
+							0,
+							0,
+							craftingTokens.craftButtonY + craftingTokens.craftButtonHeight / 2
+						),
+						anchorPoint = Vector2.new(0.5, 0.5),
 						zIndex = zIndex + 4,
 						disabled = not canCraftSelected,
 						icon = ImageIds.finalCraftButton,
@@ -514,7 +520,7 @@ return function(props: CraftingSlotsProps): React.ReactNode
 						text = if craftingState.isBulkCrafting then "Crafting..." else "Craft",
 						onActivated = function()
 							if canCraftSelected and selectedRecipe ~= nil then
-								craftingThunks.requestCraft(selectedRecipe.recipeId, 1)
+								craftingThunks.RequestCraft(selectedRecipe.recipeId, 1)
 							end
 						end,
 					}),

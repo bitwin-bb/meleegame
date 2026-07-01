@@ -10,7 +10,7 @@ local Charm = require(ReplicatedStorage.Packages.Charm)
 export type MarkerState = BossServiceUtils.BossServiceState
 type BossSnapshot = BossServiceUtils.BossSnapshot
 
-local markerStateAtom: Charm.Atom<MarkerState> = Charm.atom(BossServiceUtils.createDefaultState())
+local markerStateAtom: Charm.Atom<MarkerState> = Charm.atom(BossServiceUtils.CreateDefaultState())
 local markerReadyAtom: Charm.Atom<boolean> = Charm.atom(false)
 
 local aliveBossesAtom: Charm.Selector<{ BossSnapshot }> = Charm.computed(function(): { BossSnapshot }
@@ -36,13 +36,13 @@ local function getMarkerState(): MarkerState
 end
 
 local function setMarkerState(stateRaw: any): MarkerState
-	local nextState = BossServiceUtils.sanitizeState(stateRaw, markerStateAtom())
+	local nextState = BossServiceUtils.CoerceState(stateRaw, markerStateAtom())
 	markerStateAtom(nextState)
 	return nextState
 end
 
 local function resetMarkerState(): MarkerState
-	local nextState = BossServiceUtils.createDefaultState()
+	local nextState = BossServiceUtils.CreateDefaultState()
 	markerStateAtom(nextState)
 	return nextState
 end

@@ -63,13 +63,6 @@ function MovementAdapter.Destroy(self: MovementAdapter)
 	self.root = nil
 	self.humanoid = nil
 end
-
-MovementAdapter.setVelocity = MovementAdapter.SetVelocity
-MovementAdapter.applyImpulse = MovementAdapter.ApplyImpulse
-MovementAdapter.applyForce = MovementAdapter.ApplyForce
-MovementAdapter.setFacing = MovementAdapter.SetFacing
-MovementAdapter.isGrounded = MovementAdapter.IsGrounded
-MovementAdapter.destroy = MovementAdapter.Destroy
 MovementAdapter.copy = Table.copy
 
 return MovementAdapter

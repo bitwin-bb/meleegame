@@ -24,7 +24,7 @@ local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function sanitizeInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+local function CoerceInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
@@ -38,8 +38,8 @@ function Cache.New(configRaw: CacheConfig?): Cache
 		else nil
 
 	local self = setmetatable({
-		maxPoolSize = sanitizeInteger((config :: any).maxPoolSize, 16, 200000, DEFAULT_MAX_POOL_SIZE),
-		maxCachedChunkData = sanitizeInteger(
+		maxPoolSize = CoerceInteger((config :: any).maxPoolSize, 16, 200000, DEFAULT_MAX_POOL_SIZE),
+		maxCachedChunkData = CoerceInteger(
 			(config :: any).maxCachedChunkData,
 			16,
 			4096,
@@ -130,7 +130,7 @@ function Cache.PruneChunkData(self: Cache, shouldKeep: ((chunkKey: string, chunk
 			break
 		end
 
-		self:removeChunkData(evictionKey)
+		self:RemoveChunkData(evictionKey)
 	end
 end
 
@@ -152,7 +152,7 @@ function Cache.Destroy(self: Cache)
 		part:Destroy()
 	end
 	table.clear(self.partPool)
-	self:clearChunkData()
+	self:ClearChunkData()
 end
 
 export type Cache = typeof(setmetatable(
@@ -166,17 +166,4 @@ export type Cache = typeof(setmetatable(
 	},
 	Cache
 ))
-
-Cache.new = Cache.New
-Cache.acquirePart = Cache.AcquirePart
-Cache.releasePart = Cache.ReleasePart
-Cache.getChunkData = Cache.GetChunkData
-Cache.setChunkData = Cache.SetChunkData
-Cache.removeChunkData = Cache.RemoveChunkData
-Cache.pruneChunkData = Cache.PruneChunkData
-Cache.getPooledPartCount = Cache.GetPooledPartCount
-Cache.getCachedChunkCount = Cache.GetCachedChunkCount
-Cache.clearChunkData = Cache.ClearChunkData
-Cache.destroy = Cache.Destroy
-
 return Cache

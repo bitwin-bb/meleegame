@@ -122,7 +122,7 @@ function UIController.New(configRaw: UIControllerConfig?): UIController
 		navigationMode = "KeyboardMouse",
 		escEnabled = if config.escEnabled == nil then true else config.escEnabled == true,
 		springAnimator = config.springAnimator,
-		platform = if config.platform ~= nil then config.platform else Platform.new(),
+		platform = if config.platform ~= nil then config.platform else Platform.New(),
 		ownsPlatform = config.platform == nil,
 		platformDisconnect = nil :: (() -> ())?,
 		screenBaseZ = clampInteger(config.screenBaseZ, 10, 1, 10000),
@@ -147,9 +147,9 @@ function UIController._syncNavigationModeFromPlatform(self: UIController): boole
 		return false
 	end
 
-	if typeof((platform :: any).getSnapshot) == "function" then
+	if typeof((platform :: any).GetSnapshot) == "function" then
 		local ok, snapshot = pcall(function()
-			return (platform :: any):getSnapshot()
+			return (platform :: any):GetSnapshot()
 		end)
 		if ok then
 			self:_setNavigationModeFromPlatformSnapshot(snapshot)
@@ -157,9 +157,9 @@ function UIController._syncNavigationModeFromPlatform(self: UIController): boole
 		end
 	end
 
-	if typeof((platform :: any).getPrimaryInputType) == "function" then
+	if typeof((platform :: any).GetPrimaryInputType) == "function" then
 		local ok, primaryInputType = pcall(function()
-			return (platform :: any):getPrimaryInputType()
+			return (platform :: any):GetPrimaryInputType()
 		end)
 		if ok then
 			self.navigationMode = navigationModeFromPrimaryInput(primaryInputType)
@@ -185,13 +185,13 @@ function UIController.Init(self: UIController)
 			end
 			if input.KeyCode == Enum.KeyCode.Escape and self.escEnabled then
 				if #self.modalStack > 0 then
-					self:popModal()
+					self:PopModal()
 					return
 				end
 				if self.activeScreenKey ~= nil then
 					local screen = self.registry[self.activeScreenKey]
 					if screen ~= nil and screen.closable ~= false then
-						self:closeScreen(self.activeScreenKey)
+						self:CloseScreen(self.activeScreenKey)
 					end
 				end
 			end
@@ -199,16 +199,16 @@ function UIController.Init(self: UIController)
 	)
 
 	if self.platform ~= nil then
-		if typeof((self.platform :: any).init) == "function" then
+		if typeof((self.platform :: any).Init) == "function" then
 			pcall(function()
 				local platformAny = self.platform :: any
-				platformAny:init()
+				platformAny:Init()
 			end)
 		end
 
 		self:_syncNavigationModeFromPlatform()
-		if typeof((self.platform :: any).onChanged) == "function" then
-			self.platformDisconnect = (self.platform :: any):onChanged(function(nextState: any)
+		if typeof((self.platform :: any).OnChanged) == "function" then
+			self.platformDisconnect = (self.platform :: any):OnChanged(function(nextState: any)
 				self:_setNavigationModeFromPlatformSnapshot(nextState)
 			end)
 		end
@@ -258,7 +258,7 @@ function UIController.UnregisterScreen(self: UIController, keyRaw: any)
 		return
 	end
 	if self.activeScreenKey == keyRaw then
-		self:closeScreen(keyRaw)
+		self:CloseScreen(keyRaw)
 	end
 	for index = #self.modalStack, 1, -1 do
 		if self.modalStack[index] == keyRaw then
@@ -291,7 +291,7 @@ function UIController._playTransition(self: UIController, screen: any, opening: 
 
 	if self.springAnimator ~= nil and typeof((self.springAnimator :: any).animate) == "function" then
 		local springAnimatorAny = self.springAnimator :: any
-		springAnimatorAny:animate(frame, property, target, transition.spring)
+		springAnimatorAny:Animate(frame, property, target, transition.spring)
 		return
 	end
 	pcall(function()
@@ -335,7 +335,7 @@ function UIController.OpenScreen(self: UIController, keyRaw: any, payload: any?)
 		return true
 	end
 	if self.activeScreenKey ~= nil then
-		self:closeScreen(self.activeScreenKey)
+		self:CloseScreen(self.activeScreenKey)
 	end
 
 	self.activeScreenKey = keyRaw
@@ -435,7 +435,7 @@ function UIController.PopModal(self: UIController, payload: any?): boolean
 end
 
 function UIController.CloseTopModal(self: UIController, payload: any?): boolean
-	return self:popModal(payload)
+	return self:PopModal(payload)
 end
 
 function UIController.SetInputLocked(self: UIController, lockedRaw: any)
@@ -493,42 +493,12 @@ function UIController.Destroy(self: UIController)
 	if self.ownsPlatform and self.platform ~= nil and typeof((self.platform :: any).destroy) == "function" then
 		pcall(function()
 			local platformAny = self.platform :: any
-			platformAny:destroy()
+			platformAny:Destroy()
 		end)
 	end
 	self.platform = nil
 	self.ownsPlatform = false
 	self.isInitialized = false
 end
-
-UIController.RegisterScreen = UIController.RegisterScreen
-UIController.UnregisterScreen = UIController.UnregisterScreen
-UIController.OpenScreen = UIController.OpenScreen
-UIController.CloseScreen = UIController.CloseScreen
-UIController.PushModal = UIController.PushModal
-UIController.PopModal = UIController.PopModal
-UIController.CloseTopModal = UIController.CloseTopModal
-UIController.SetInputLocked = UIController.SetInputLocked
-UIController.GetActiveScreen = UIController.GetActiveScreen
-UIController.Init = UIController.Init
-UIController.Destroy = UIController.Destroy
-
-UIController.new = UIController.New
-UIController.init = UIController.Init
-UIController.registerScreen = UIController.RegisterScreen
-UIController.unregisterScreen = UIController.UnregisterScreen
-UIController.openScreen = UIController.OpenScreen
-UIController.closeScreen = UIController.CloseScreen
-UIController.pushModal = UIController.PushModal
-UIController.popModal = UIController.PopModal
-UIController.closeTopModal = UIController.CloseTopModal
-UIController.setInputLocked = UIController.SetInputLocked
-UIController.isInputLocked = UIController.IsInputLocked
-UIController.setNavigationMode = UIController.SetNavigationMode
-UIController.getNavigationMode = UIController.GetNavigationMode
-UIController.getActiveScreen = UIController.GetActiveScreen
-UIController.getTopModal = UIController.GetTopModal
-UIController.getModalStack = UIController.GetModalStack
-UIController.destroy = UIController.Destroy
 
 return UIController

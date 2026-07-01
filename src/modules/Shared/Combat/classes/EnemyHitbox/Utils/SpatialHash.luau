@@ -25,7 +25,7 @@ export type SpatialHash<T> = typeof(setmetatable(
 
 local DEFAULT_CELL_SIZE = 8
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -46,7 +46,7 @@ local function ensureAabb(aabbMinRaw: any, aabbMaxRaw: any): (Vector3, Vector3)
 		return Vector3.zero, Vector3.zero
 	end
 
-	local bounds = Bounds.new(aabbMinRaw, aabbMaxRaw)
+	local bounds = Bounds.New(aabbMinRaw, aabbMaxRaw)
 	return bounds.min, bounds.max
 end
 
@@ -69,7 +69,7 @@ end
 
 function SpatialHash.new<T>(cellSizeRaw: any): SpatialHash<T>
 	local self = setmetatable({
-		cellSize = sanitizeNumber(cellSizeRaw, DEFAULT_CELL_SIZE, 0.1, 2048),
+		cellSize = CoerceNumber(cellSizeRaw, DEFAULT_CELL_SIZE, 0.1, 2048),
 		cells = {},
 		entries = {},
 	}, SpatialHash)
@@ -84,7 +84,7 @@ end
 function SpatialHash.AabbFromCenterSize(centerRaw: any, sizeRaw: any): (Vector3, Vector3)
 	local center = if typeof(centerRaw) == "Vector3" then centerRaw else Vector3.zero
 	local size = if typeof(sizeRaw) == "Vector3" then sizeRaw else Vector3.zero
-	local bounds = Bounds.fromCenterSize(center, size)
+	local bounds = Bounds.FromCenterSize(center, size)
 	return bounds.min, bounds.max
 end
 
@@ -98,7 +98,7 @@ function SpatialHash.AabbIntersects(aMinRaw: any, aMaxRaw: any, bMinRaw: any, bM
 		return false
 	end
 
-	return Bounds.intersects(Bounds.new(aMinRaw, aMaxRaw), Bounds.new(bMinRaw, bMaxRaw))
+	return Bounds.Intersects(Bounds.New(aMinRaw, aMaxRaw), Bounds.New(bMinRaw, bMaxRaw))
 end
 
 function SpatialHash._forEachOverlappingCell(
@@ -180,7 +180,7 @@ function SpatialHash.Upsert(
 		return nil
 	end
 
-	self:remove(idRaw)
+	self:Remove(idRaw)
 
 	local entry: SpatialHashEntry<any> = {
 		id = idRaw,
@@ -256,31 +256,19 @@ function SpatialHash.QuerySphere(
 	predicate: ((entry: SpatialHashEntry<any>) -> boolean)?
 ): { SpatialHashEntry<any> }
 	local center = if typeof(centerRaw) == "Vector3" then centerRaw else Vector3.zero
-	local radius = sanitizeNumber(radiusRaw, 0, 0, nil)
+	local radius = CoerceNumber(radiusRaw, 0, 0, nil)
 	local half = Vector3.new(radius, radius, radius)
 	local aabbMin = center - half
 	local aabbMax = center + half
 	local radiusSquared = radius * radius
 
-	return self:queryAabb(aabbMin, aabbMax, function(entry: SpatialHashEntry<any>): boolean
+	return self:QueryAabb(aabbMin, aabbMax, function(entry: SpatialHashEntry<any>): boolean
 		if predicate ~= nil and not predicate(entry) then
 			return false
 		end
 
-		local bounds = Bounds.new(entry.aabbMin, entry.aabbMax)
-		return Bounds.distanceSqToPoint(bounds, center) <= radiusSquared
+		local bounds = Bounds.New(entry.aabbMin, entry.aabbMax)
+		return Bounds.DistanceSqToPoint(bounds, center) <= radiusSquared
 	end)
 end
-
-SpatialHash.cellKey = SpatialHash.CellKey
-SpatialHash.aabbFromCenterSize = SpatialHash.AabbFromCenterSize
-SpatialHash.aabbIntersects = SpatialHash.AabbIntersects
-SpatialHash.has = SpatialHash.Has
-SpatialHash.get = SpatialHash.Get
-SpatialHash.remove = SpatialHash.Remove
-SpatialHash.upsert = SpatialHash.Upsert
-SpatialHash.clear = SpatialHash.Clear
-SpatialHash.queryAabb = SpatialHash.QueryAabb
-SpatialHash.querySphere = SpatialHash.QuerySphere
-
 return SpatialHash

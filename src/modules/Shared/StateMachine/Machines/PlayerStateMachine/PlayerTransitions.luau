@@ -133,7 +133,4 @@ function PlayerTransitions.Register(machine: any)
 		}))
 	end
 end
-
-PlayerTransitions.register = PlayerTransitions.Register
-
 return PlayerTransitions

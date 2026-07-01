@@ -39,7 +39,7 @@ local function encodeClusterIndex(
 	countX: number,
 	countY: number
 ): number
-	return Shared.computeClusterIndex(clusterX, clusterY, clusterZ, countX, countY)
+	return Shared.ComputeClusterIndex(clusterX, clusterY, clusterZ, countX, countY)
 end
 
 local function convertTileToCorruption(tileId: number): number
@@ -52,7 +52,7 @@ local function convertTileToCorruption(tileId: number): number
 	return Shared.TILE_ID.CORRUPT_SOIL
 end
 
-local function resolveSlicePerChunk(totalBudget: number, chunkCount: number, maxSlice: number): number
+local function GetSlicePerChunk(totalBudget: number, chunkCount: number, maxSlice: number): number
 	if chunkCount <= 0 or totalBudget <= 0 then
 		return 0
 	end
@@ -184,7 +184,7 @@ function Runtime.ApplyBiomeToCluster(
 	chunk.clusterChosenBiomeIds[clusterIndex] = biomeId
 	local clusterSize = math.max(1, self.config.clusterSize)
 	local clusterX, clusterY, clusterZ = decodeClusterIndex(clusterIndex, chunk.clusterCountX, chunk.clusterCountY)
-	local minTileX, minTileY, minTileZ, maxTileX, maxTileY, maxTileZ = State.resolveClusterBounds(
+	local minTileX, minTileY, minTileZ, maxTileX, maxTileY, maxTileZ = State.GetClusterBounds(
 		clusterX,
 		clusterY,
 		clusterZ,
@@ -199,10 +199,10 @@ function Runtime.ApplyBiomeToCluster(
 	for tileZ = minTileZ, maxTileZ do
 		for tileY = minTileY, maxTileY do
 			for tileX = minTileX, maxTileX do
-				local tileIndex = Shared.computeTileIndex(tileX, tileY, tileZ, chunk.tileCountX, chunk.tileCountY)
+				local tileIndex = Shared.ComputeTileIndex(tileX, tileY, tileZ, chunk.tileCountX, chunk.tileCountY)
 				local worldY = chunk.chunkY * chunk.tileCountY + tileY
 				local depthBelowSurface = clusterSurfaceY - worldY
-				local tileId = Shared.resolveTileIdForBiomeDepth(biomeId, depthBelowSurface)
+				local tileId = Shared.GetTileIdForBiomeDepth(biomeId, depthBelowSurface)
 				if biomeId == Shared.BIOME_ID.CORRUPTION then
 					tileId = convertTileToCorruption(tileId)
 				end
@@ -260,7 +260,7 @@ function Runtime.StepCorruptionSlice(
 					continue
 				end
 
-				local roll = Shared.unitRandom(
+				local roll = Shared.UnitRandom(
 					self.world.seed + self.world.tick,
 					clusterIndex,
 					neighborIndex,
@@ -268,7 +268,7 @@ function Runtime.StepCorruptionSlice(
 					991
 				)
 				if roll <= spreadChance then
-					if self:applyBiomeToCluster(chunk, neighborIndex, Shared.BIOME_ID.CORRUPTION) then
+					if self:ApplyBiomeToCluster(chunk, neighborIndex, Shared.BIOME_ID.CORRUPTION) then
 						chunk.clusterBlendWeights[neighborIndex] = 255
 						localChanged = true
 					end
@@ -277,7 +277,7 @@ function Runtime.StepCorruptionSlice(
 
 			if decayChance > 0 then
 				local decayRoll =
-					Shared.unitRandom(self.world.seed, chunk.chunkX, chunk.chunkY, chunk.chunkZ + clusterIndex, 421)
+					Shared.UnitRandom(self.world.seed, chunk.chunkX, chunk.chunkY, chunk.chunkZ + clusterIndex, 421)
 				if decayRoll < decayChance * 0.2 then
 					local previous = chunk.clusterBlendWeights[clusterIndex]
 					local nextValue = math.max(0, previous - 1)
@@ -300,7 +300,7 @@ function Runtime.StepCorruptionSlice(
 				corrupted += 1
 			end
 		end
-		chunk.flags = State.applyCorruptionFromWeight(
+		chunk.flags = State.ApplyCorruptionFromWeight(
 			chunk.flags,
 			corrupted / math.max(1, totalClusters),
 			self.config.corruptionActivationThreshold
@@ -379,7 +379,7 @@ function Runtime.StepBiomeSpreadSlice(
 
 			local changed = false
 			if targetBiome ~= chunk.clusterChosenBiomeIds[clusterIndex] then
-				changed = self:applyBiomeToCluster(chunk, clusterIndex, targetBiome)
+				changed = self:ApplyBiomeToCluster(chunk, clusterIndex, targetBiome)
 			end
 			if nextWeight ~= previousWeight then
 				changed = true
@@ -397,7 +397,7 @@ function Runtime.StepAiSlice(self: Runtime, chunk: Data.ChunkData, dt: number, s
 		function(slot: number, entityId: number): boolean
 			local entities = chunk.entities
 			local flags = entities.flags[slot]
-			if not State.shouldSimulateEntity(flags) then
+			if not State.ShouldSimulateEntity(flags) then
 				return false
 			end
 			if entities.kinds[slot] ~= Shared.ENTITY_KIND.CREATURE then
@@ -407,7 +407,7 @@ function Runtime.StepAiSlice(self: Runtime, chunk: Data.ChunkData, dt: number, s
 			local previousVX = entities.velX[slot]
 			local previousVZ = entities.velZ[slot]
 			local previousFlags = flags
-			local moveNoise = Shared.signedRandom(self.world.seed, self.world.tick, entityId, slot, 77)
+			local moveNoise = Shared.SignedRandom(self.world.seed, self.world.tick, entityId, slot, 77)
 			entities.velX[slot] = entities.velX[slot] * 0.86 + moveNoise * 2.3 * dt
 			entities.velZ[slot] = entities.velZ[slot] * 0.86 + moveNoise * 1.9 * dt
 
@@ -441,7 +441,7 @@ function Runtime.StepPhysicsSlice(
 		function(slot: number, _: number): boolean
 			local entities = chunk.entities
 			local flags = entities.flags[slot]
-			if not State.shouldSimulateEntity(flags) then
+			if not State.ShouldSimulateEntity(flags) then
 				return false
 			end
 
@@ -456,7 +456,7 @@ function Runtime.StepPhysicsSlice(
 
 			local tileX = math.floor(entities.posX[slot] / tileSize)
 			local tileZ = math.floor(entities.posZ[slot] / tileSize)
-			local surfaceY = Shared.sampleSurfaceHeight(self.world.seed, tileX, tileZ)
+			local surfaceY = Shared.SampleSurfaceHeight(self.world.seed, tileX, tileZ)
 			local floorY = (surfaceY + 1) * tileSize
 			if entities.posY[slot] < floorY then
 				entities.posY[slot] = floorY
@@ -488,18 +488,18 @@ end
 function Runtime.Tick(self: Runtime, dt: number)
 	local debugModule = self.debug
 	local beginToken = if debugModule and debugModule.beginFrameScope
-		then debugModule:beginFrameScope("runtime_tick")
+		then debugModule:BeginFrameScope("runtime_tick")
 		else nil
 	local frameStartTime = os.clock()
 
 	self.world.tick += 1
-	Data.compactActiveChunkKeys(self.world)
+	Data.CompactActiveChunkKeys(self.world)
 	local activeChunkKeys = self.world.activeChunkKeys
 	local activeCount = #activeChunkKeys
 	if activeCount <= 0 then
 		recordRuntimeDiagnostics(self, frameStartTime, dt, 0, 0, 0, 0, 0, 0, 0, 0)
 		if debugModule and beginToken ~= nil and debugModule.endFrameScope then
-			debugModule:endFrameScope("runtime_tick", beginToken)
+			debugModule:EndFrameScope("runtime_tick", beginToken)
 		end
 		return
 	end
@@ -528,7 +528,7 @@ function Runtime.Tick(self: Runtime, dt: number)
 			self.world.activeChunkLookup[chunkKey] = nil
 			continue
 		end
-		if not State.shouldSimulateChunk(chunk.flags) then
+		if not State.ShouldSimulateChunk(chunk.flags) then
 			continue
 		end
 		selectedChunks[#selectedChunks + 1] = chunk
@@ -538,7 +538,7 @@ function Runtime.Tick(self: Runtime, dt: number)
 	if selectedCount <= 0 then
 		recordRuntimeDiagnostics(self, frameStartTime, dt, activeCount, 0, chunkBudget, 0, 0, 0, 0, 0)
 		if debugModule and beginToken ~= nil and debugModule.endFrameScope then
-			debugModule:endFrameScope("runtime_tick", beginToken)
+			debugModule:EndFrameScope("runtime_tick", beginToken)
 		end
 		return
 	end
@@ -546,12 +546,12 @@ function Runtime.Tick(self: Runtime, dt: number)
 	local clusterSlice = math.max(1, self.config.runtimeClusterSlice)
 	local entitySlice = math.max(1, self.config.runtimeEntitySlice)
 	local corruptionSlicePerChunk =
-		resolveSlicePerChunk(self.config.budgetCorruptionClustersPerTick, selectedCount, clusterSlice)
+		GetSlicePerChunk(self.config.budgetCorruptionClustersPerTick, selectedCount, clusterSlice)
 	local biomeSlicePerChunk =
-		resolveSlicePerChunk(self.config.budgetBiomeSpreadClustersPerTick, selectedCount, clusterSlice)
-	local aiSlicePerChunk = resolveSlicePerChunk(self.config.budgetAiEntitiesPerTick, selectedCount, entitySlice)
+		GetSlicePerChunk(self.config.budgetBiomeSpreadClustersPerTick, selectedCount, clusterSlice)
+	local aiSlicePerChunk = GetSlicePerChunk(self.config.budgetAiEntitiesPerTick, selectedCount, entitySlice)
 	local physicsSlicePerChunk =
-		resolveSlicePerChunk(self.config.budgetPhysicsEntitiesPerTick, selectedCount, entitySlice)
+		GetSlicePerChunk(self.config.budgetPhysicsEntitiesPerTick, selectedCount, entitySlice)
 
 	local processedChunks = 0
 	local processedCorruption = 0
@@ -561,10 +561,10 @@ function Runtime.Tick(self: Runtime, dt: number)
 
 	for _, chunk in selectedChunks do
 		local changed = false
-		local corruptionChanged, corruptionProcessed = self:stepCorruptionSlice(chunk, dt, corruptionSlicePerChunk)
-		local biomeChanged, biomeProcessed = self:stepBiomeSpreadSlice(chunk, dt, biomeSlicePerChunk)
-		local aiChanged, aiProcessed = self:stepAiSlice(chunk, dt, aiSlicePerChunk)
-		local physicsChanged, physicsProcessed = self:stepPhysicsSlice(chunk, dt, physicsSlicePerChunk)
+		local corruptionChanged, corruptionProcessed = self:StepCorruptionSlice(chunk, dt, corruptionSlicePerChunk)
+		local biomeChanged, biomeProcessed = self:StepBiomeSpreadSlice(chunk, dt, biomeSlicePerChunk)
+		local aiChanged, aiProcessed = self:StepAiSlice(chunk, dt, aiSlicePerChunk)
+		local physicsChanged, physicsProcessed = self:StepPhysicsSlice(chunk, dt, physicsSlicePerChunk)
 
 		processedCorruption += corruptionProcessed
 		processedBiome += biomeProcessed
@@ -576,9 +576,9 @@ function Runtime.Tick(self: Runtime, dt: number)
 		end
 
 		if changed then
-			Data.bumpChunkRevision(chunk)
+			Data.BumpChunkRevision(chunk)
 		else
-			Data.clearChunkDirty(chunk)
+			Data.ClearChunkDirty(chunk)
 		end
 
 		processedChunks += 1
@@ -586,14 +586,14 @@ function Runtime.Tick(self: Runtime, dt: number)
 
 	if debugModule ~= nil then
 		if debugModule.incrementCounter then
-			debugModule:incrementCounter("runtime_chunks_processed", processedChunks)
-			debugModule:incrementCounter("runtime_corruption_clusters", processedCorruption)
-			debugModule:incrementCounter("runtime_biome_clusters", processedBiome)
-			debugModule:incrementCounter("runtime_ai_entities", processedAi)
-			debugModule:incrementCounter("runtime_physics_entities", processedPhysics)
+			debugModule:IncrementCounter("runtime_chunks_processed", processedChunks)
+			debugModule:IncrementCounter("runtime_corruption_clusters", processedCorruption)
+			debugModule:IncrementCounter("runtime_biome_clusters", processedBiome)
+			debugModule:IncrementCounter("runtime_ai_entities", processedAi)
+			debugModule:IncrementCounter("runtime_physics_entities", processedPhysics)
 		end
 		if beginToken ~= nil and debugModule.endFrameScope then
-			debugModule:endFrameScope("runtime_tick", beginToken)
+			debugModule:EndFrameScope("runtime_tick", beginToken)
 		end
 	end
 
@@ -618,13 +618,4 @@ function Runtime.Destroy(self: Runtime)
 		self.diagnostics = nil
 	end
 end
-
-Runtime.applyBiomeToCluster = Runtime.ApplyBiomeToCluster
-Runtime.stepCorruptionSlice = Runtime.StepCorruptionSlice
-Runtime.stepBiomeSpreadSlice = Runtime.StepBiomeSpreadSlice
-Runtime.stepAiSlice = Runtime.StepAiSlice
-Runtime.stepPhysicsSlice = Runtime.StepPhysicsSlice
-Runtime.new = Runtime.New
-Runtime.tick = Runtime.Tick
-
 return Runtime

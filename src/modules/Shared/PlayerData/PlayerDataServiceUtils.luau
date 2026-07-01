@@ -11,7 +11,7 @@ export type PlayerDataServiceState = {
 	loadState: LoadState,
 	updatedAt: number,
 	isLoading: boolean,
-	hasResolvedInitialLoad: boolean,
+	hasInitialLoad: boolean,
 	loadToken: number,
 	lastFailureReason: string?,
 	loadElapsedSeconds: number,
@@ -40,28 +40,28 @@ local function trim(text: string): string
 	return string.match(text, "^%s*(.-)%s*$") or ""
 end
 
-local function sanitizeBoolean(valueRaw: any, fallback: boolean): boolean
+local function CoerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function sanitizeWholeNumber(valueRaw: any, fallback: number): number
+local function CoerceWholeNumber(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
 	return math.max(0, math.floor(valueRaw))
 end
 
-local function sanitizeNonNegativeNumber(valueRaw: any, fallback: number): number
+local function CoerceNonNegativeNumber(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
 	return math.max(0, valueRaw)
 end
 
-local function sanitizeOptionalString(valueRaw: any): string?
+local function CoerceOptionalString(valueRaw: any): string?
 	if typeof(valueRaw) ~= "string" then
 		return nil
 	end
@@ -199,7 +199,7 @@ function PlayerDataServiceUtils.ReconcileData(dataRaw: any, templateRaw: any): P
 	return data
 end
 
-function PlayerDataServiceUtils.SanitizeLoadState(loadStateRaw: any, fallback: LoadState?): LoadState
+function PlayerDataServiceUtils.CoerceLoadState(loadStateRaw: any, fallback: LoadState?): LoadState
 	if loadStateRaw == LOAD_STATE_UNLOADED then
 		return LOAD_STATE_UNLOADED
 	end
@@ -216,21 +216,21 @@ function PlayerDataServiceUtils.SanitizeLoadState(loadStateRaw: any, fallback: L
 end
 
 function PlayerDataServiceUtils.IsLoadedState(loadStateRaw: any): boolean
-	return PlayerDataServiceUtils.SanitizeLoadState(loadStateRaw) == LOAD_STATE_LOADED
+	return PlayerDataServiceUtils.CoerceLoadState(loadStateRaw) == LOAD_STATE_LOADED
 end
 
 function PlayerDataServiceUtils.IsTerminalLoadState(loadStateRaw: any): boolean
-	local loadState = PlayerDataServiceUtils.SanitizeLoadState(loadStateRaw)
+	local loadState = PlayerDataServiceUtils.CoerceLoadState(loadStateRaw)
 	return loadState == LOAD_STATE_LOADED or loadState == LOAD_STATE_FAILED
 end
 
-function PlayerDataServiceUtils.HasResolvedState(stateRaw: any): boolean
+function PlayerDataServiceUtils.HasGotState(stateRaw: any): boolean
 	if typeof(stateRaw) ~= "table" then
 		return false
 	end
 
 	local state = stateRaw :: { [string]: any }
-	if sanitizeBoolean(state.hasResolvedInitialLoad, false) then
+	if CoerceBoolean(state.hasInitialLoad, false) then
 		return true
 	end
 	return PlayerDataServiceUtils.IsTerminalLoadState(state.loadState)
@@ -242,7 +242,7 @@ function PlayerDataServiceUtils.CreateDefaultState(): PlayerDataServiceState
 		loadState = LOAD_STATE_UNLOADED,
 		updatedAt = os.clock(),
 		isLoading = false,
-		hasResolvedInitialLoad = false,
+		hasInitialLoad = false,
 		loadToken = 0,
 		lastFailureReason = nil,
 		loadElapsedSeconds = 0,
@@ -258,26 +258,26 @@ function PlayerDataServiceUtils.CreateState(
 	local fallback = if fallbackState then fallbackState else PlayerDataServiceUtils.CreateDefaultState()
 	local sourceData = if typeof(dataRaw) == "table" then dataRaw else fallback.data
 	local metadata = if typeof(metadataRaw) == "table" then metadataRaw :: { [string]: any } else {} :: any
-	local loadState = PlayerDataServiceUtils.SanitizeLoadState(loadStateRaw, fallback.loadState)
-	local hasResolvedInitialLoad = if metadata.hasResolvedInitialLoad ~= nil
-		then sanitizeBoolean(metadata.hasResolvedInitialLoad, PlayerDataServiceUtils.IsTerminalLoadState(loadState))
+	local loadState = PlayerDataServiceUtils.CoerceLoadState(loadStateRaw, fallback.loadState)
+	local hasInitialLoad = if metadata.hasInitialLoad ~= nil
+		then CoerceBoolean(metadata.hasInitialLoad, PlayerDataServiceUtils.IsTerminalLoadState(loadState))
 		else PlayerDataServiceUtils.IsTerminalLoadState(loadState)
 	local isLoading = if metadata.isLoading ~= nil
-		then sanitizeBoolean(metadata.isLoading, loadState == LOAD_STATE_LOADING)
+		then CoerceBoolean(metadata.isLoading, loadState == LOAD_STATE_LOADING)
 		else loadState == LOAD_STATE_LOADING
 	local lastFailureReason = if loadState == LOAD_STATE_FAILED
-		then sanitizeOptionalString(metadata.lastFailureReason) or fallback.lastFailureReason
+		then CoerceOptionalString(metadata.lastFailureReason) or fallback.lastFailureReason
 		else nil
 	return {
 		data = cloneDeepInternal(sourceData, {}),
 		loadState = loadState,
 		updatedAt = os.clock(),
 		isLoading = isLoading,
-		hasResolvedInitialLoad = hasResolvedInitialLoad,
-		loadToken = sanitizeWholeNumber(metadata.loadToken, fallback.loadToken),
+		hasInitialLoad = hasInitialLoad,
+		loadToken = CoerceWholeNumber(metadata.loadToken, fallback.loadToken),
 		lastFailureReason = lastFailureReason,
 		loadElapsedSeconds = if metadata.loadElapsedSeconds ~= nil
-			then sanitizeNonNegativeNumber(metadata.loadElapsedSeconds, fallback.loadElapsedSeconds)
+			then CoerceNonNegativeNumber(metadata.loadElapsedSeconds, fallback.loadElapsedSeconds)
 			else fallback.loadElapsedSeconds,
 	}
 end
@@ -288,7 +288,7 @@ function PlayerDataServiceUtils.CloneState(state: PlayerDataServiceState): Playe
 		loadState = state.loadState,
 		updatedAt = state.updatedAt,
 		isLoading = state.isLoading,
-		hasResolvedInitialLoad = state.hasResolvedInitialLoad,
+		hasInitialLoad = state.hasInitialLoad,
 		loadToken = state.loadToken,
 		lastFailureReason = state.lastFailureReason,
 		loadElapsedSeconds = state.loadElapsedSeconds,
@@ -466,26 +466,4 @@ function PlayerDataServiceUtils.GetProfileKey(playerOrUserIdRaw: any): string?
 
 	return PROFILE_KEY_PREFIX .. tostring(math.floor(userId))
 end
-
-PlayerDataServiceUtils.cloneDeep = PlayerDataServiceUtils.CloneDeep
-PlayerDataServiceUtils.clonePath = PlayerDataServiceUtils.ClonePath
-PlayerDataServiceUtils.getDefaultHpDataPath = PlayerDataServiceUtils.GetDefaultHpDataPath
-PlayerDataServiceUtils.getDefaultCoinsDataPath = PlayerDataServiceUtils.GetDefaultCoinsDataPath
-PlayerDataServiceUtils.createDefaultData = PlayerDataServiceUtils.CreateDefaultData
-PlayerDataServiceUtils.reconcileData = PlayerDataServiceUtils.ReconcileData
-PlayerDataServiceUtils.sanitizeLoadState = PlayerDataServiceUtils.SanitizeLoadState
-PlayerDataServiceUtils.isLoadedState = PlayerDataServiceUtils.IsLoadedState
-PlayerDataServiceUtils.isTerminalLoadState = PlayerDataServiceUtils.IsTerminalLoadState
-PlayerDataServiceUtils.hasResolvedState = PlayerDataServiceUtils.HasResolvedState
-PlayerDataServiceUtils.createDefaultState = PlayerDataServiceUtils.CreateDefaultState
-PlayerDataServiceUtils.createState = PlayerDataServiceUtils.CreateState
-PlayerDataServiceUtils.cloneState = PlayerDataServiceUtils.CloneState
-PlayerDataServiceUtils.normalizePath = PlayerDataServiceUtils.NormalizePath
-PlayerDataServiceUtils.getValueAtPath = PlayerDataServiceUtils.GetValueAtPath
-PlayerDataServiceUtils.setValueAtPath = PlayerDataServiceUtils.SetValueAtPath
-PlayerDataServiceUtils.removeValueAtPath = PlayerDataServiceUtils.RemoveValueAtPath
-PlayerDataServiceUtils.incrementValueAtPath = PlayerDataServiceUtils.IncrementValueAtPath
-PlayerDataServiceUtils.mergeData = PlayerDataServiceUtils.MergeData
-PlayerDataServiceUtils.getProfileKey = PlayerDataServiceUtils.GetProfileKey
-
 return PlayerDataServiceUtils

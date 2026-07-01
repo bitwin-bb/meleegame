@@ -13,7 +13,7 @@ local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Melee = require("Melee")
 local MeleeServiceUtils = require("MeleeServiceUtils")
 local PacketPayload = require("PacketPayload")
-local MeleeServicePackets = require("NetSharedPackets").MeleeService
+local MeleeServicePackets = require("NetPacketsShared").MeleeService
 
 local function bindPacket(self: any, methodName: string)
 	local packet = MeleeServicePackets[methodName]
@@ -27,12 +27,13 @@ local function bindPacket(self: any, methodName: string)
 			return
 		end
 
-		local handler = self[methodName]
+		local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, player, table.unpack(arguments, 1, count))
 	end)
 end
@@ -52,7 +53,7 @@ local NpcServiceServer = require("NpcServiceServer")
 local PlayerServiceServer = require("PlayerServiceServer")
 local RagdollServiceServer = require("RagdollServiceServer")
 local RaycastHitbox = require(ReplicatedStorage.Shared.Vendor.RaycastHitbox)
-local ServerBinderSupport = require("ServerBinderSupport")
+local BinderSupportServer = require("BinderSupportServer")
 
 type MeleeWeaponConfig = MeleeServiceUtils.MeleeWeaponConfig
 type InventoryState = InventoryServiceUtils.InventoryState
@@ -115,22 +116,22 @@ type PlayerRuntime = {
 }
 
 type InventoryServiceServerObject = {
-	getState: (self: InventoryServiceServerObject, player: Player) -> InventoryState,
+	GetState: (self: InventoryServiceServerObject, player: Player) -> InventoryState,
 }
 
 type RagdollServiceServerObject = {
-	isPlayerRagdolled: (self: RagdollServiceServerObject, player: Player) -> boolean,
+	IsPlayerRagdolled: (self: RagdollServiceServerObject, player: Player) -> boolean,
 }
 
 type BossServiceServerObject = {
-	damageBossFromHitPart: (
+	DamageBossFromHitPart: (
 		self: BossServiceServerObject,
 		hitPartRaw: any,
 		damageRaw: any,
 		sourceRaw: any?,
 		damageContextRaw: any?
 	) -> number,
-	damageBossesInBox: (
+	DamageBossesInBox: (
 		self: BossServiceServerObject,
 		boxCFrameRaw: any,
 		boxSizeRaw: any,
@@ -156,7 +157,7 @@ local function isHumanoidAlive(humanoid: Humanoid?): boolean
 	return humanoid:GetState() ~= Enum.HumanoidStateType.Dead
 end
 
-local function resolveHumanoidAndRootPart(character: Model?): (Humanoid?, BasePart?)
+local function GetHumanoidAndRootPart(character: Model?): (Humanoid?, BasePart?)
 	if character == nil then
 		return nil, nil
 	end
@@ -167,7 +168,7 @@ local function resolveHumanoidAndRootPart(character: Model?): (Humanoid?, BasePa
 	return humanoid, rootPart
 end
 
-local function resolveToolHandlePart(toolRaw: any): BasePart?
+local function GetToolHandlePart(toolRaw: any): BasePart?
 	if typeof(toolRaw) ~= "Instance" or not toolRaw:IsA("Tool") then
 		return nil
 	end
@@ -186,7 +187,7 @@ local function resolveToolHandlePart(toolRaw: any): BasePart?
 	return tool:FindFirstChildWhichIsA("BasePart", true)
 end
 
-local function resolveCharacterHandPart(character: Model?): BasePart?
+local function GetCharacterHandPart(character: Model?): BasePart?
 	if character == nil then
 		return nil
 	end
@@ -201,17 +202,17 @@ local function resolveCharacterHandPart(character: Model?): BasePart?
 	return nil
 end
 
-local function resolveHitboxAnchorPart(runtime: PlayerRuntime): BasePart?
+local function GetHitboxAnchorPart(runtime: PlayerRuntime): BasePart?
 	local character = runtime.character
 	local equippedTool = runtime.equippedTool
 	if equippedTool ~= nil and character ~= nil and equippedTool:IsDescendantOf(character) then
-		local toolPart = resolveToolHandlePart(equippedTool)
+		local toolPart = GetToolHandlePart(equippedTool)
 		if toolPart ~= nil then
 			return toolPart
 		end
 	end
 
-	local handPart = resolveCharacterHandPart(character)
+	local handPart = GetCharacterHandPart(character)
 	if handPart ~= nil then
 		return handPart
 	end
@@ -219,17 +220,17 @@ local function resolveHitboxAnchorPart(runtime: PlayerRuntime): BasePart?
 	return runtime.rootPart
 end
 
-local function resolveNpcOverlapAnchorPart(runtime: PlayerRuntime): BasePart?
+local function GetNpcOverlapAnchorPart(runtime: PlayerRuntime): BasePart?
 	if runtime.rootPart ~= nil then
 		return runtime.rootPart
 	end
 
-	local handPart = resolveCharacterHandPart(runtime.character)
+	local handPart = GetCharacterHandPart(runtime.character)
 	if handPart ~= nil then
 		return handPart
 	end
 
-	return resolveHitboxAnchorPart(runtime)
+	return GetHitboxAnchorPart(runtime)
 end
 
 local function applyNpcOverlapDamageFallback(player: Player, runtime: PlayerRuntime, weaponConfig: MeleeWeaponConfig)
@@ -245,7 +246,7 @@ local function applyNpcOverlapDamageFallback(player: Player, runtime: PlayerRunt
 		return
 	end
 
-	local anchorPart = resolveNpcOverlapAnchorPart(runtime)
+	local anchorPart = GetNpcOverlapAnchorPart(runtime)
 	if anchorPart == nil then
 		return
 	end
@@ -288,13 +289,13 @@ local function applyNpcOverlapDamageFallback(player: Player, runtime: PlayerRunt
 			seenModels[model] = true
 		end
 
-		local appliedDamage = (NpcServiceServer :: any):damageNpcFromHitPart(candidate, damage, player, "Melee")
+		local appliedDamage = (NpcServiceServer :: any):DamageNpcFromHitPart(candidate, damage, player, "Melee")
 		if typeof(appliedDamage) == "number" and appliedDamage > 0 then
 			overlapDamageApplied += appliedDamage
 			continue
 		end
 
-		local bossDamage = (BossServiceServer :: BossServiceServerObject):damageBossFromHitPart(
+		local bossDamage = (BossServiceServer :: BossServiceServerObject):DamageBossFromHitPart(
 			candidate,
 			damage,
 			player,
@@ -309,13 +310,13 @@ local function applyNpcOverlapDamageFallback(player: Player, runtime: PlayerRunt
 	end
 
 	local runtimeDamageOk, runtimeDamageOrError = pcall(function()
-		return (NpcServiceServer :: any):damageNpcsInBox(queryCFrame, querySize, damage, player, "Melee")
+		return (NpcServiceServer :: any):DamageNpcsInBox(queryCFrame, querySize, damage, player, "Melee")
 	end)
 	if runtimeDamageOk and typeof(runtimeDamageOrError) == "number" and runtimeDamageOrError > 0 then
 		return
 	end
 
-	local bossRuntimeDamage = (BossServiceServer :: BossServiceServerObject):damageBossesInBox(
+	local bossRuntimeDamage = (BossServiceServer :: BossServiceServerObject):DamageBossesInBox(
 		queryCFrame,
 		querySize,
 		damage,
@@ -403,7 +404,7 @@ local function isWeaponConfigEquivalent(lhsRaw: any, rhsRaw: any): boolean
 	if lhs.canHitNpcs ~= rhs.canHitNpcs then
 		return false
 	end
-	if not MeleeServiceUtils.areAnimationConfigsEquivalent(lhs.animations, rhs.animations) then
+	if not MeleeServiceUtils.AreAnimationConfigsEquivalent(lhs.animations, rhs.animations) then
 		return false
 	end
 
@@ -415,22 +416,22 @@ function MeleeServiceServer.Init(self: MeleeServiceServer)
 	self.inventoryService = InventoryServiceServer :: InventoryServiceServerObject
 	self.ragdollService = RagdollServiceServer :: RagdollServiceServerObject
 	self.playerRuntimes = {}
-	(self :: any).binders = NevermoreSupport.getService(ServerBinderSupport)
+	(self :: any).binders = NevermoreSupport.GetService(BinderSupportServer)
 
 	for _, player in Players:GetPlayers() do
-		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
-			self:trackPlayer(player)
+		if PlayerServiceServer:IsGameplayActiveForPlayer(player) then
+			self:TrackPlayer(player)
 		end
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
-			self:trackPlayer(player)
+		if PlayerServiceServer:IsGameplayActiveForPlayer(player) then
+			self:TrackPlayer(player)
 		end
 	end)
 
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
-		self:untrackPlayer(player)
+		self:UntrackPlayer(player)
 	end)
 end
 
@@ -447,7 +448,7 @@ function MeleeServiceServer.IsAttackBlocked(self: MeleeServiceServer, player: Pl
 	local ragdollService = self.ragdollService
 	if ragdollService ~= nil then
 		local ok, isRagdolledOrError = pcall(function()
-			return ragdollService:isPlayerRagdolled(player)
+			return ragdollService:IsPlayerRagdolled(player)
 		end)
 		if ok and isRagdolledOrError == true then
 			return true
@@ -463,18 +464,18 @@ function MeleeServiceServer.EnforceInputAllowed(
 	runtime: PlayerRuntime,
 	reason: string
 )
-	if not self:isAttackBlocked(player, runtime) then
+	if not self:IsAttackBlocked(player, runtime) then
 		return
 	end
 
 	if runtime.inputHeld then
 		runtime.inputHeld = false
 	end
-	self:stopHitbox(runtime)
+	self:StopHitbox(runtime)
 
 	local meleeController = runtime.meleeController
 	if meleeController ~= nil then
-		meleeController:inputEnded(reason)
+		meleeController:InputEnded(reason)
 	end
 end
 
@@ -505,7 +506,7 @@ function MeleeServiceServer.GetRuntime(self: MeleeServiceServer, player: Player)
 		return runtime
 	end
 
-	local nextRuntime = self:createRuntime()
+	local nextRuntime = self:CreateRuntime()
 	self.playerRuntimes[player] = nextRuntime
 	return nextRuntime
 end
@@ -520,7 +521,7 @@ function MeleeServiceServer.CancelHitboxCleanupPromise(self: MeleeServiceServer,
 end
 
 function MeleeServiceServer.StopHitbox(self: MeleeServiceServer, runtime: PlayerRuntime)
-	self:cancelHitboxCleanupPromise(runtime)
+	self:CancelHitboxCleanupPromise(runtime)
 	local hitbox = runtime.hitbox
 	if hitbox == nil then
 		return
@@ -548,18 +549,18 @@ function MeleeServiceServer.ApplyHitboxPoints(self: MeleeServiceServer, runtime:
 	local hitbox = runtime.hitbox
 	local weaponConfig = runtime.equippedWeaponConfig
 	if hitbox == nil or weaponConfig == nil then
-		self:clearHitboxPoints(runtime)
+		self:ClearHitboxPoints(runtime)
 		return
 	end
 
-	local anchorPart = resolveHitboxAnchorPart(runtime)
+	local anchorPart = GetHitboxAnchorPart(runtime)
 	if anchorPart == nil then
-		self:clearHitboxPoints(runtime)
+		self:ClearHitboxPoints(runtime)
 		return
 	end
 
-	self:clearHitboxPoints(runtime)
-	local points = MeleeServiceUtils.buildHitboxPoints(weaponConfig)
+	self:ClearHitboxPoints(runtime)
+	local points = MeleeServiceUtils.BuildHitboxPoints(weaponConfig)
 	if #points <= 0 then
 		return
 	end
@@ -572,8 +573,8 @@ function MeleeServiceServer.ApplyHitboxPoints(self: MeleeServiceServer, runtime:
 end
 
 function MeleeServiceServer.DestroyHitbox(self: MeleeServiceServer, runtime: PlayerRuntime)
-	self:stopHitbox(runtime)
-	self:clearHitboxPoints(runtime)
+	self:StopHitbox(runtime)
+	self:ClearHitboxPoints(runtime)
 
 	local hitboxConnection = runtime.hitboxConnection
 	runtime.hitboxConnection = nil
@@ -597,7 +598,7 @@ function MeleeServiceServer.DestroyMeleeController(self: MeleeServiceServer, run
 		return
 	end
 	pcall(function()
-		meleeController:destroy()
+		meleeController:Destroy()
 	end)
 end
 
@@ -608,15 +609,15 @@ function MeleeServiceServer.OnHit(
 	hitPart: BasePart,
 	hitHumanoidRaw: Humanoid?
 )
-	local resolvedItemId = nil :: string?
+	local equippedItemId = nil :: string?
 	if runtime.equippedTool ~= nil then
-		resolvedItemId = MeleeServiceUtils.resolveToolItemId(runtime.equippedTool)
+		equippedItemId = MeleeServiceUtils.GetToolItemId(runtime.equippedTool)
 	end
-	if resolvedItemId == nil then
-		resolvedItemId = runtime.equippedItemId
+	if equippedItemId == nil then
+		equippedItemId = runtime.equippedItemId
 	end
 
-	local weaponConfig = if resolvedItemId ~= nil then MeleeServiceUtils.resolveWeaponConfig(resolvedItemId) else nil
+	local weaponConfig = if equippedItemId ~= nil then MeleeServiceUtils.GetWeaponConfig(equippedItemId) else nil
 	if weaponConfig == nil then
 		weaponConfig = runtime.equippedWeaponConfig
 	end
@@ -630,12 +631,12 @@ function MeleeServiceServer.OnHit(
 	end
 
 	if weaponConfig.canHitNpcs then
-		local serviceDamage = (NpcServiceServer :: any):damageNpcFromHitPart(hitPart, damage, player, "Melee")
+		local serviceDamage = (NpcServiceServer :: any):DamageNpcFromHitPart(hitPart, damage, player, "Melee")
 		if typeof(serviceDamage) == "number" and serviceDamage > 0 then
 			return
 		end
 
-		local bossDamage = (BossServiceServer :: BossServiceServerObject):damageBossFromHitPart(
+		local bossDamage = (BossServiceServer :: BossServiceServerObject):DamageBossFromHitPart(
 			hitPart,
 			damage,
 			player,
@@ -685,8 +686,8 @@ function MeleeServiceServer.OnAttackStarted(
 	if currentRuntime ~= runtime then
 		return
 	end
-	if self:isAttackBlocked(player, runtime) then
-		self:enforceInputAllowed(player, runtime, "BlockedAttackStarted")
+	if self:IsAttackBlocked(player, runtime) then
+		self:EnforceInputAllowed(player, runtime, "BlockedAttackStarted")
 		return
 	end
 
@@ -695,8 +696,8 @@ function MeleeServiceServer.OnAttackStarted(
 		return
 	end
 
-	self:cancelHitboxCleanupPromise(runtime)
-	self:applyHitboxPoints(runtime)
+	self:CancelHitboxCleanupPromise(runtime)
+	self:ApplyHitboxPoints(runtime)
 	pcall(function()
 		hitbox:HitStart()
 	end)
@@ -717,7 +718,7 @@ function MeleeServiceServer.OnSwingEnded(
 	if currentRuntime ~= runtime then
 		return
 	end
-	self:stopHitbox(runtime)
+	self:StopHitbox(runtime)
 end
 
 function MeleeServiceServer.OnAttackFinished(
@@ -730,17 +731,17 @@ function MeleeServiceServer.OnAttackFinished(
 	if currentRuntime ~= runtime then
 		return
 	end
-	self:stopHitbox(runtime)
+	self:StopHitbox(runtime)
 end
 
 function MeleeServiceServer.BindCharacter(self: MeleeServiceServer, player: Player, character: Model)
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	runtime.characterJanitor:Clean()
 
 	runtime.character = character
-	runtime.humanoid, runtime.rootPart = resolveHumanoidAndRootPart(character)
+	runtime.humanoid, runtime.rootPart = GetHumanoidAndRootPart(character)
 
-	self:destroyHitbox(runtime)
+	self:DestroyHitbox(runtime)
 	local hitbox = RaycastHitbox.new(character) :: any
 	runtime.hitbox = hitbox :: HitboxObject
 	hitbox.Visualizer = RAYCAST_HITBOX_DEBUG
@@ -754,29 +755,29 @@ function MeleeServiceServer.BindCharacter(self: MeleeServiceServer, player: Play
 
 	runtime.hitboxConnection = hitbox.OnHit:Connect(
 		function(hitPart: BasePart, hitHumanoid: Humanoid?, raycastResult: RaycastResult?, group: string?)
-			self:onHit(player, runtime, hitPart, hitHumanoid)
+			self:OnHit(player, runtime, hitPart, hitHumanoid)
 		end
 	)
 
 	runtime.characterJanitor:GiveChore(character.ChildAdded:Connect(function(child: Instance)
 		if child:IsA("Humanoid") or child.Name == "HumanoidRootPart" then
-			runtime.humanoid, runtime.rootPart = resolveHumanoidAndRootPart(character)
+			runtime.humanoid, runtime.rootPart = GetHumanoidAndRootPart(character)
 			if child:IsA("Humanoid") then
 				runtime.characterJanitor:GiveChore(child.Died:Connect(function()
-					self:enforceInputAllowed(player, runtime, "HumanoidDied")
+					self:EnforceInputAllowed(player, runtime, "HumanoidDied")
 				end))
 				runtime.characterJanitor:GiveChore(child.StateChanged:Connect(function()
-					self:enforceInputAllowed(player, runtime, "HumanoidStateChanged")
+					self:EnforceInputAllowed(player, runtime, "HumanoidStateChanged")
 				end))
 				runtime.characterJanitor:GiveChore(child.HealthChanged:Connect(function()
-					self:enforceInputAllowed(player, runtime, "HumanoidHealthChanged")
+					self:EnforceInputAllowed(player, runtime, "HumanoidHealthChanged")
 				end))
 			end
-			self:applyHitboxPoints(runtime)
+			self:ApplyHitboxPoints(runtime)
 			return
 		end
 		if child:IsA("Tool") then
-			self:refreshEquippedWeaponFromInventory(player, runtime)
+			self:RefreshEquippedWeaponFromInventory(player, runtime)
 		end
 	end))
 
@@ -786,10 +787,10 @@ function MeleeServiceServer.BindCharacter(self: MeleeServiceServer, player: Play
 		end
 		if child == runtime.rootPart then
 			runtime.rootPart = nil
-			self:clearHitboxPoints(runtime)
+			self:ClearHitboxPoints(runtime)
 		end
 		if child:IsA("Tool") then
-			self:refreshEquippedWeaponFromInventory(player, runtime)
+			self:RefreshEquippedWeaponFromInventory(player, runtime)
 		end
 	end))
 
@@ -810,13 +811,13 @@ function MeleeServiceServer.BindCharacter(self: MeleeServiceServer, player: Play
 
 	runtime.characterJanitor:GiveChore(character.DescendantAdded:Connect(function(descendant: Instance)
 		if shouldRefreshFromDescendant(descendant) then
-			self:refreshEquippedWeaponFromInventory(player, runtime)
+			self:RefreshEquippedWeaponFromInventory(player, runtime)
 		end
 	end))
 
 	runtime.characterJanitor:GiveChore(character.DescendantRemoving:Connect(function(descendant: Instance)
 		if shouldRefreshFromDescendant(descendant) then
-			self:refreshEquippedWeaponFromInventory(player, runtime)
+			self:RefreshEquippedWeaponFromInventory(player, runtime)
 		end
 	end))
 
@@ -827,27 +828,27 @@ function MeleeServiceServer.BindCharacter(self: MeleeServiceServer, player: Play
 		runtime.character = nil
 		runtime.humanoid = nil
 		runtime.rootPart = nil
-		self:destroyHitbox(runtime)
+		self:DestroyHitbox(runtime)
 	end))
 
 	local currentHumanoid = runtime.humanoid
 	if currentHumanoid ~= nil then
 		runtime.characterJanitor:GiveChore(currentHumanoid.Died:Connect(function()
-			self:enforceInputAllowed(player, runtime, "HumanoidDied")
+			self:EnforceInputAllowed(player, runtime, "HumanoidDied")
 		end))
 		runtime.characterJanitor:GiveChore(currentHumanoid.StateChanged:Connect(function()
-			self:enforceInputAllowed(player, runtime, "HumanoidStateChanged")
+			self:EnforceInputAllowed(player, runtime, "HumanoidStateChanged")
 		end))
 		runtime.characterJanitor:GiveChore(currentHumanoid.HealthChanged:Connect(function()
-			self:enforceInputAllowed(player, runtime, "HumanoidHealthChanged")
+			self:EnforceInputAllowed(player, runtime, "HumanoidHealthChanged")
 		end))
 	end
 
-	self:applyHitboxPoints(runtime)
+	self:ApplyHitboxPoints(runtime)
 	if runtime.inputHeld and runtime.meleeController ~= nil then
-		self:enforceInputAllowed(player, runtime, "CharacterBound")
+		self:EnforceInputAllowed(player, runtime, "CharacterBound")
 		if runtime.inputHeld then
-			runtime.meleeController:inputBegan("CharacterBound")
+			runtime.meleeController:InputBegan("CharacterBound")
 		end
 	end
 end
@@ -866,27 +867,27 @@ function MeleeServiceServer.SetEquippedWeaponConfig(
 	runtime.equippedTool = selectedTool
 	runtime.equippedWeaponConfig = weaponConfig
 
-	self:destroyMeleeController(runtime)
-	self:stopHitbox(runtime)
-	self:applyHitboxPoints(runtime)
+	self:DestroyMeleeController(runtime)
+	self:StopHitbox(runtime)
+	self:ApplyHitboxPoints(runtime)
 
 	if weaponConfig == nil then
 		return
 	end
 
-	local classConfig = MeleeServiceUtils.createMeleeClassConfig(weaponConfig, {
+	local classConfig = MeleeServiceUtils.CreateMeleeClassConfig(weaponConfig, {
 		autoRepeatWhileHeld = weaponConfig.autoRepeatWhileHeld,
 		namedAnimationPlaybackEnabled = false,
 		animations = false,
 		callbacks = {
 			onAttackStarted = function(_: any, context: { [string]: any })
-				self:onAttackStarted(player, runtime, context)
+				self:OnAttackStarted(player, runtime, context)
 			end,
 			onSwingEnded = function(_: any, context: { [string]: any })
-				self:onSwingEnded(player, runtime, context)
+				self:OnSwingEnded(player, runtime, context)
 			end,
 			onAttackFinished = function(_: any, context: { [string]: any })
-				self:onAttackFinished(player, runtime, context)
+				self:OnAttackFinished(player, runtime, context)
 			end,
 		},
 	})
@@ -896,14 +897,14 @@ function MeleeServiceServer.SetEquippedWeaponConfig(
 	classConfig.fallbackSwingDuration = weaponConfig.hitboxDuration
 	classConfig.fallbackSwingPadding = 0
 
-	local meleeController = Melee.new(classConfig) :: any
+	local meleeController = Melee.New(classConfig) :: any
 	runtime.meleeController = meleeController :: MeleeController
 
-	self:applyHitboxPoints(runtime)
+	self:ApplyHitboxPoints(runtime)
 	if runtime.inputHeld then
-		self:enforceInputAllowed(player, runtime, "EquipWhileHeld")
+		self:EnforceInputAllowed(player, runtime, "EquipWhileHeld")
 		if runtime.inputHeld then
-			(runtime.meleeController :: MeleeController):inputBegan("EquipWhileHeld")
+			(runtime.meleeController :: MeleeController):InputBegan("EquipWhileHeld")
 		end
 	end
 end
@@ -915,31 +916,31 @@ function MeleeServiceServer.RefreshEquippedWeaponFromInventory(
 )
 	local inventoryService = self.inventoryService
 	if inventoryService == nil then
-		self:setEquippedWeaponConfig(player, runtime, nil, nil, nil, nil)
+		self:SetEquippedWeaponConfig(player, runtime, nil, nil, nil, nil)
 		return
 	end
 
-	local state = inventoryService:getState(player)
-	if not InventoryServiceUtils.isLoadedState(state.loadState) then
-		self:setEquippedWeaponConfig(player, runtime, nil, nil, nil, nil)
+	local state = inventoryService:GetState(player)
+	if not InventoryServiceUtils.IsLoadedState(state.loadState) then
+		self:SetEquippedWeaponConfig(player, runtime, nil, nil, nil, nil)
 		return
 	end
 
 	local selectedSlot = state.selectedSlot
-	local stack = if selectedSlot ~= nil then InventoryServiceUtils.getStack(state, selectedSlot) else nil
+	local stack = if selectedSlot ~= nil then InventoryServiceUtils.GetStack(state, selectedSlot) else nil
 	local itemId = if stack ~= nil then stack.itemId else nil
-	local weaponConfig = if itemId ~= nil then MeleeServiceUtils.resolveWeaponConfig(itemId) else nil
+	local weaponConfig = if itemId ~= nil then MeleeServiceUtils.GetWeaponConfig(itemId) else nil
 	local backpack = player:FindFirstChildOfClass("Backpack")
 	local selectedTool = if itemId ~= nil
-		then MeleeServiceUtils.resolveToolByItemId(runtime.character, backpack, itemId)
+		then MeleeServiceUtils.GetToolByItemId(runtime.character, backpack, itemId)
 		else nil
 
-	if selectedTool == nil or not MeleeServiceUtils.isMeleeTool(selectedTool) then
+	if selectedTool == nil or not MeleeServiceUtils.IsMeleeTool(selectedTool) then
 		weaponConfig = nil
 	elseif weaponConfig ~= nil then
 		local nextWeaponConfig = shallowCopyWeaponConfig(weaponConfig)
 		nextWeaponConfig.animations =
-			MeleeServiceUtils.resolveToolAnimationOverrides(selectedTool, weaponConfig.animations)
+			MeleeServiceUtils.GetToolAnimationOverrides(selectedTool, weaponConfig.animations)
 		weaponConfig = nextWeaponConfig
 	end
 
@@ -951,15 +952,15 @@ function MeleeServiceServer.RefreshEquippedWeaponFromInventory(
 	if isSameWeapon then
 		runtime.equippedTool = selectedTool
 		runtime.equippedWeaponConfig = weaponConfig
-		self:applyHitboxPoints(runtime)
+		self:ApplyHitboxPoints(runtime)
 		return
 	end
 
-	self:setEquippedWeaponConfig(player, runtime, itemId, selectedSlot, weaponConfig, selectedTool)
+	self:SetEquippedWeaponConfig(player, runtime, itemId, selectedSlot, weaponConfig, selectedTool)
 end
 
 function MeleeServiceServer.TrackPlayer(self: MeleeServiceServer, player: Player)
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	runtime.playerJanitor:Clean()
 	runtime.characterJanitor:Clean()
 	runtime.character = nil
@@ -967,22 +968,22 @@ function MeleeServiceServer.TrackPlayer(self: MeleeServiceServer, player: Player
 	runtime.rootPart = nil
 	runtime.inputHeld = false
 	runtime.equippedTool = nil
-	self:destroyMeleeController(runtime)
-	self:destroyHitbox(runtime)
+	self:DestroyMeleeController(runtime)
+	self:DestroyHitbox(runtime)
 
 	runtime.playerJanitor:GiveChore(player.CharacterAdded:Connect(function(character: Model)
-		self:bindCharacter(player, character)
+		self:BindCharacter(player, character)
 	end))
 
 	local function bindBackpack(backpack: Backpack)
 		runtime.playerJanitor:GiveChore(backpack.ChildAdded:Connect(function(child: Instance)
 			if child:IsA("Tool") then
-				self:refreshEquippedWeaponFromInventory(player, runtime)
+				self:RefreshEquippedWeaponFromInventory(player, runtime)
 			end
 		end))
 		runtime.playerJanitor:GiveChore(backpack.ChildRemoved:Connect(function(child: Instance)
 			if child:IsA("Tool") then
-				self:refreshEquippedWeaponFromInventory(player, runtime)
+				self:RefreshEquippedWeaponFromInventory(player, runtime)
 			end
 		end))
 
@@ -1003,13 +1004,13 @@ function MeleeServiceServer.TrackPlayer(self: MeleeServiceServer, player: Player
 
 		runtime.playerJanitor:GiveChore(backpack.DescendantAdded:Connect(function(descendant: Instance)
 			if shouldRefreshFromBackpackDescendant(descendant) then
-				self:refreshEquippedWeaponFromInventory(player, runtime)
+				self:RefreshEquippedWeaponFromInventory(player, runtime)
 			end
 		end))
 
 		runtime.playerJanitor:GiveChore(backpack.DescendantRemoving:Connect(function(descendant: Instance)
 			if shouldRefreshFromBackpackDescendant(descendant) then
-				self:refreshEquippedWeaponFromInventory(player, runtime)
+				self:RefreshEquippedWeaponFromInventory(player, runtime)
 			end
 		end))
 	end
@@ -1017,12 +1018,12 @@ function MeleeServiceServer.TrackPlayer(self: MeleeServiceServer, player: Player
 	runtime.playerJanitor:GiveChore(player.ChildAdded:Connect(function(child: Instance)
 		if child:IsA("Backpack") then
 			bindBackpack(child)
-			self:refreshEquippedWeaponFromInventory(player, runtime)
+			self:RefreshEquippedWeaponFromInventory(player, runtime)
 		end
 	end))
 
 	if player.Character ~= nil then
-		self:bindCharacter(player, player.Character)
+		self:BindCharacter(player, player.Character)
 	end
 
 	local backpack = player:FindFirstChildOfClass("Backpack")
@@ -1030,7 +1031,7 @@ function MeleeServiceServer.TrackPlayer(self: MeleeServiceServer, player: Player
 		bindBackpack(backpack)
 	end
 
-	self:refreshEquippedWeaponFromInventory(player, runtime)
+	self:RefreshEquippedWeaponFromInventory(player, runtime)
 end
 
 function MeleeServiceServer.UntrackPlayer(self: MeleeServiceServer, player: Player)
@@ -1040,8 +1041,8 @@ function MeleeServiceServer.UntrackPlayer(self: MeleeServiceServer, player: Play
 	end
 
 	runtime.inputHeld = false
-	self:destroyMeleeController(runtime)
-	self:destroyHitbox(runtime)
+	self:DestroyMeleeController(runtime)
+	self:DestroyHitbox(runtime)
 	runtime.playerJanitor:Destroy()
 	runtime.characterJanitor:Destroy()
 	self.playerRuntimes[player] = nil
@@ -1049,38 +1050,38 @@ end
 
 function MeleeServiceServer.RequestRefreshEquipped(self: MeleeServiceServer, player: Player)
 	if self.playerRuntimes[player] == nil then
-		self:trackPlayer(player)
+		self:TrackPlayer(player)
 	end
-	local runtime = self:getRuntime(player)
-	self:refreshEquippedWeaponFromInventory(player, runtime)
+	local runtime = self:GetRuntime(player)
+	self:RefreshEquippedWeaponFromInventory(player, runtime)
 end
 
 function MeleeServiceServer.RequestSetInputHeld(self: MeleeServiceServer, player: Player, inputHeldRaw: any)
 	if self.playerRuntimes[player] == nil then
-		self:trackPlayer(player)
+		self:TrackPlayer(player)
 	end
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	local inputHeld = inputHeldRaw == true
-	if inputHeld and self:isAttackBlocked(player, runtime) then
+	if inputHeld and self:IsAttackBlocked(player, runtime) then
 		inputHeld = false
 	end
 	runtime.inputHeld = inputHeld
 
-	self:refreshEquippedWeaponFromInventory(player, runtime)
-	self:enforceInputAllowed(player, runtime, "InputHeldRequest")
+	self:RefreshEquippedWeaponFromInventory(player, runtime)
+	self:EnforceInputAllowed(player, runtime, "InputHeldRequest")
 
 	local meleeController = runtime.meleeController
 	if meleeController == nil then
 		if not inputHeld then
-			self:stopHitbox(runtime)
+			self:StopHitbox(runtime)
 		end
 		return
 	end
 
 	if inputHeld then
-		meleeController:inputBegan("ClientInputBegan")
+		meleeController:InputBegan("ClientInputBegan")
 	else
-		meleeController:inputEnded("ClientInputEnded")
+		meleeController:InputEnded("ClientInputEnded")
 	end
 end
 
@@ -1096,38 +1097,13 @@ function MeleeServiceServer.Destroy(self: MeleeServiceServer)
 
 	for player, runtime in self.playerRuntimes do
 		runtime.inputHeld = false
-		self:destroyMeleeController(runtime)
-		self:destroyHitbox(runtime)
+		self:DestroyMeleeController(runtime)
+		self:DestroyHitbox(runtime)
 		runtime.playerJanitor:Destroy()
 		runtime.characterJanitor:Destroy()
 		self.playerRuntimes[player] = nil
 	end
 end
-
-MeleeServiceServer.init = MeleeServiceServer.Init
-MeleeServiceServer.isAttackBlocked = MeleeServiceServer.IsAttackBlocked
-MeleeServiceServer.enforceInputAllowed = MeleeServiceServer.EnforceInputAllowed
-MeleeServiceServer.createRuntime = MeleeServiceServer.CreateRuntime
-MeleeServiceServer.getRuntime = MeleeServiceServer.GetRuntime
-MeleeServiceServer.cancelHitboxCleanupPromise = MeleeServiceServer.CancelHitboxCleanupPromise
-MeleeServiceServer.stopHitbox = MeleeServiceServer.StopHitbox
-MeleeServiceServer.clearHitboxPoints = MeleeServiceServer.ClearHitboxPoints
-MeleeServiceServer.applyHitboxPoints = MeleeServiceServer.ApplyHitboxPoints
-MeleeServiceServer.destroyHitbox = MeleeServiceServer.DestroyHitbox
-MeleeServiceServer.destroyMeleeController = MeleeServiceServer.DestroyMeleeController
-MeleeServiceServer.onHit = MeleeServiceServer.OnHit
-MeleeServiceServer.onAttackStarted = MeleeServiceServer.OnAttackStarted
-MeleeServiceServer.onSwingEnded = MeleeServiceServer.OnSwingEnded
-MeleeServiceServer.onAttackFinished = MeleeServiceServer.OnAttackFinished
-MeleeServiceServer.bindCharacter = MeleeServiceServer.BindCharacter
-MeleeServiceServer.setEquippedWeaponConfig = MeleeServiceServer.SetEquippedWeaponConfig
-MeleeServiceServer.refreshEquippedWeaponFromInventory = MeleeServiceServer.RefreshEquippedWeaponFromInventory
-MeleeServiceServer.trackPlayer = MeleeServiceServer.TrackPlayer
-MeleeServiceServer.untrackPlayer = MeleeServiceServer.UntrackPlayer
-MeleeServiceServer.requestRefreshEquipped = MeleeServiceServer.RequestRefreshEquipped
-MeleeServiceServer.requestSetInputHeld = MeleeServiceServer.RequestSetInputHeld
-MeleeServiceServer.destroy = MeleeServiceServer.Destroy
-
 type MeleeServiceServer = typeof(MeleeServiceServer) & {
 	inventoryService: InventoryServiceServerObject,
 	ragdollService: RagdollServiceServerObject,

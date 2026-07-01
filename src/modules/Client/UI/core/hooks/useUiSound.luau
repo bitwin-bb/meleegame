@@ -2,7 +2,7 @@
 local require = require(script.Parent.loader).load(script)
 
 local UiSound = require("UiSound")
-local useEvent = require("useSharedEvent")
+local useEvent = require("useEventShared")
 
 export type UiSoundHook = {
 	play: (soundAssetId: string?) -> (),

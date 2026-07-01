@@ -28,7 +28,7 @@ local COIN_VALUE_TO_COPPER: { [string]: number } = {
 
 local COIN_TYPE_ORDER_DESCENDING: { CoinType } = { "platinum", "gold", "silver", "copper" }
 
-local function sanitizeWholeNumber(valueRaw: any, fallback: number): number
+local function CoerceWholeNumber(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
@@ -45,17 +45,17 @@ local function createDefaultCoinAmounts(): CoinAmounts
 	}
 end
 
-local function resolveRawCoinAmounts(coinsDataRaw: any): (CoinAmounts, boolean)
+local function GetAwCoinAmounts(coinsDataRaw: any): (CoinAmounts, boolean)
 	if typeof(coinsDataRaw) ~= "table" then
 		return createDefaultCoinAmounts(), false
 	end
 
 	local source = coinsDataRaw :: { [string]: any }
 	local amounts: CoinAmounts = {
-		copper = sanitizeWholeNumber(source.copper, 0),
-		silver = sanitizeWholeNumber(source.silver, 0),
-		gold = sanitizeWholeNumber(source.gold, 0),
-		platinum = sanitizeWholeNumber(source.platinum, 0),
+		copper = CoerceWholeNumber(source.copper, 0),
+		silver = CoerceWholeNumber(source.silver, 0),
+		gold = CoerceWholeNumber(source.gold, 0),
+		platinum = CoerceWholeNumber(source.platinum, 0),
 	}
 	local hasExplicitAmounts = amounts.copper > 0 or amounts.silver > 0 or amounts.gold > 0 or amounts.platinum > 0
 	return amounts, hasExplicitAmounts
@@ -69,7 +69,7 @@ local function coinsToTotalCopper(amounts: CoinAmounts): number
 end
 
 local function totalCopperToCoinAmounts(totalCopperRaw: any): CoinAmounts
-	local remaining = sanitizeWholeNumber(totalCopperRaw, 0)
+	local remaining = CoerceWholeNumber(totalCopperRaw, 0)
 	local amounts = createDefaultCoinAmounts()
 	local amountMap = amounts :: { [string]: number }
 
@@ -83,20 +83,20 @@ local function totalCopperToCoinAmounts(totalCopperRaw: any): CoinAmounts
 	return amounts
 end
 
-local function resolveTotalCopperFromCoinsData(coinsDataRaw: any, fallbackTotalCopper: number): number
+local function GetTotalCopperFromCoinsData(coinsDataRaw: any, fallbackTotalCopper: number): number
 	if typeof(coinsDataRaw) ~= "table" then
 		return fallbackTotalCopper
 	end
 
 	local source = coinsDataRaw :: { [string]: any }
-	local rawAmounts, hasExplicitAmounts = resolveRawCoinAmounts(source)
+	local rawAmounts, hasExplicitAmounts = GetAwCoinAmounts(source)
 	if hasExplicitAmounts then
 		return coinsToTotalCopper(rawAmounts)
 	end
 
 	local explicitTotalCopperRaw = source.totalCopper
 	if typeof(explicitTotalCopperRaw) == "number" and explicitTotalCopperRaw == explicitTotalCopperRaw then
-		return sanitizeWholeNumber(explicitTotalCopperRaw, fallbackTotalCopper)
+		return CoerceWholeNumber(explicitTotalCopperRaw, fallbackTotalCopper)
 	end
 
 	return coinsToTotalCopper(rawAmounts)
@@ -105,7 +105,7 @@ end
 local function createDefaultState(loadStateRaw: any): CoinState
 	local amounts = createDefaultCoinAmounts()
 	return {
-		loadState = PlayerDataServiceUtils.sanitizeLoadState(loadStateRaw, PlayerDataServiceUtils.LOAD_STATE_UNLOADED),
+		loadState = PlayerDataServiceUtils.CoerceLoadState(loadStateRaw, PlayerDataServiceUtils.LOAD_STATE_UNLOADED),
 		amounts = amounts,
 		totalCopper = 0,
 		updatedAt = os.clock(),
@@ -116,9 +116,9 @@ local function createStateFromData(coinsDataRaw: any, loadStateRaw: any, fallbac
 	local fallbackState = if typeof(fallbackStateRaw) == "table"
 		then fallbackStateRaw :: CoinState
 		else createDefaultState(PlayerDataServiceUtils.LOAD_STATE_UNLOADED)
-	local loadState = PlayerDataServiceUtils.sanitizeLoadState(loadStateRaw, fallbackState.loadState)
-	local rawAmounts, hasExplicitAmounts = resolveRawCoinAmounts(coinsDataRaw)
-	local totalCopper = resolveTotalCopperFromCoinsData(coinsDataRaw, fallbackState.totalCopper)
+	local loadState = PlayerDataServiceUtils.CoerceLoadState(loadStateRaw, fallbackState.loadState)
+	local rawAmounts, hasExplicitAmounts = GetAwCoinAmounts(coinsDataRaw)
+	local totalCopper = GetTotalCopperFromCoinsData(coinsDataRaw, fallbackState.totalCopper)
 	local amounts = if hasExplicitAmounts then rawAmounts else totalCopperToCoinAmounts(totalCopper)
 
 	return {

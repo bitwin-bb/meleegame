@@ -9,34 +9,26 @@ type ShinySpeckState = tileSlice.ShinySpeckState
 local tileThunks = {}
 
 function tileThunks.PublishBreak(stateRaw: any): BreakState
-	return tileSlice.setBreakState(stateRaw)
+	return tileSlice.SetBreakState(stateRaw)
 end
 
 function tileThunks.ClearBreak(): BreakState
-	return tileSlice.clearBreakState()
+	return tileSlice.ClearBreakState()
 end
 
 function tileThunks.GetBreakState(): BreakState
-	return tileSlice.getBreakState()
+	return tileSlice.GetBreakState()
 end
 
 function tileThunks.PublishShinySpeck(speckRaw: any): ShinySpeckState?
-	return tileSlice.publishShinySpeck(speckRaw)
+	return tileSlice.PublishShinySpeck(speckRaw)
 end
 
 function tileThunks.RemoveShinySpeck(idRaw: any): boolean
-	return tileSlice.removeShinySpeck(idRaw)
+	return tileSlice.RemoveShinySpeck(idRaw)
 end
 
 function tileThunks.ClearShinySpecksForAdornee(adorneeRaw: any): number
-	return tileSlice.clearShinySpecksForAdornee(adorneeRaw)
+	return tileSlice.ClearShinySpecksForAdornee(adorneeRaw)
 end
-
-tileThunks.publishBreak = tileThunks.PublishBreak
-tileThunks.clearBreak = tileThunks.ClearBreak
-tileThunks.getBreakState = tileThunks.GetBreakState
-tileThunks.publishShinySpeck = tileThunks.PublishShinySpeck
-tileThunks.removeShinySpeck = tileThunks.RemoveShinySpeck
-tileThunks.clearShinySpecksForAdornee = tileThunks.ClearShinySpecksForAdornee
-
 return tileThunks

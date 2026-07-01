@@ -24,7 +24,7 @@ local function trim(valueRaw: any): string
 	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function sanitizeItemId(itemIdRaw: any): string?
+local function CoerceItemId(itemIdRaw: any): string?
 	local itemId = trim(itemIdRaw)
 	if itemId == "" then
 		return nil
@@ -41,7 +41,7 @@ local function findItemsFolder(): Folder?
 end
 
 local function registerAlias(canonicalByAlias: { [string]: string }, aliasRaw: any, canonicalItemId: string)
-	local alias = sanitizeItemId(aliasRaw)
+	local alias = CoerceItemId(aliasRaw)
 	if alias == nil then
 		return
 	end
@@ -98,7 +98,7 @@ local function collectDefinitions(sourceRaw: any, fallbackItemId: string?, regis
 	end
 
 	local source = sourceRaw :: { [any]: any }
-	local explicitItemId = sanitizeItemId(source.id) or sanitizeItemId(source.itemId)
+	local explicitItemId = CoerceItemId(source.id) or CoerceItemId(source.itemId)
 	local canonicalItemId = explicitItemId or fallbackItemId
 	if canonicalItemId ~= nil and looksLikeDefinition(source) then
 		if registry.definitionsById[canonicalItemId] == nil then
@@ -118,7 +118,7 @@ local function collectDefinitions(sourceRaw: any, fallbackItemId: string?, regis
 		end
 
 		local nested = value :: { [any]: any }
-		local nestedItemId = sanitizeItemId(nested.id) or sanitizeItemId(nested.itemId) or sanitizeItemId(key)
+		local nestedItemId = CoerceItemId(nested.id) or CoerceItemId(nested.itemId) or CoerceItemId(key)
 		collectDefinitions(nested, nestedItemId, registry)
 	end
 end
@@ -155,7 +155,7 @@ local function buildRegistry(): RegistryData
 				continue
 			end
 
-			collectDefinitions(moduleResult, sanitizeItemId(child.Name), registry)
+			collectDefinitions(moduleResult, CoerceItemId(child.Name), registry)
 		end
 	else
 		cachedItemsFolder = nil
@@ -175,8 +175,8 @@ local function buildRegistry(): RegistryData
 	return registry
 end
 
-function Registry.ResolveCanonicalItemId(itemIdRaw: any): string?
-	local itemId = sanitizeItemId(itemIdRaw)
+function Registry.GetCanonicalItemId(itemIdRaw: any): string?
+	local itemId = CoerceItemId(itemIdRaw)
 	if itemId == nil then
 		return nil
 	end
@@ -185,8 +185,8 @@ function Registry.ResolveCanonicalItemId(itemIdRaw: any): string?
 	return registry.canonicalByAlias[itemId] or registry.canonicalByAlias[string.lower(itemId)]
 end
 
-function Registry.ResolveDefinition(itemIdRaw: any): ItemDefinition?
-	local canonicalItemId = Registry.ResolveCanonicalItemId(itemIdRaw)
+function Registry.GetDefinition(itemIdRaw: any): ItemDefinition?
+	local canonicalItemId = Registry.GetCanonicalItemId(itemIdRaw)
 	if canonicalItemId == nil then
 		return nil
 	end
@@ -208,11 +208,5 @@ function Registry.ClearCache()
 	cachedItemsFolder = nil
 	cachedItemsFolderChildCount = -1
 end
-
-Registry.resolveCanonicalItemId = Registry.ResolveCanonicalItemId
-Registry.resolveDefinition = Registry.ResolveDefinition
-Registry.getItemIdLookup = Registry.GetItemIdLookup
-Registry.getDefinitionsById = Registry.GetDefinitionsById
-Registry.clearCache = Registry.ClearCache
 
 return Registry

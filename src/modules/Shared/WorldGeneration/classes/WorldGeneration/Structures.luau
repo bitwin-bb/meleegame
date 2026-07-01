@@ -167,14 +167,14 @@ local function clampNumber(valueRaw: any, minimum: number, maximum: number, fall
 	return math.clamp(valueRaw :: number, minimum, maximum)
 end
 
-local function sanitizeOctaveCount(valueRaw: any, fallback: number): number
+local function CoerceOctaveCount(valueRaw: any, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
 	return math.clamp(math.floor(valueRaw :: number), 1, 8)
 end
 
-local function sanitizeInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+local function CoerceInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
@@ -182,7 +182,7 @@ local function sanitizeInteger(valueRaw: any, minimum: number, maximum: number, 
 end
 
 local function toUnitInterval(noiseValue: number): number
-	return Noise.toUnit(noiseValue)
+	return Noise.ToUnit(noiseValue)
 end
 
 local function sampleOctaveNoise(
@@ -196,7 +196,7 @@ local function sampleOctaveNoise(
 	offsetX: number,
 	offsetY: number
 ): number
-	return Noise.fbmOctaves(octaves, persistence, lacunarity, function(octave, frequency)
+	return Noise.FbmOctaves(octaves, persistence, lacunarity, function(octave, frequency)
 		local sampleFrequency = baseFrequency * frequency
 		return math.noise(
 			(x + offsetX + octave * 0.67) * sampleFrequency,
@@ -219,12 +219,12 @@ local function computeSeed(seed: number, x: number, y: number, salt: number): nu
 	return mixed
 end
 
-local function resolveDesertStructureSettings(configRaw: any): DesertStructureSettings
+local function GetDesertStructureSettings(configRaw: any): DesertStructureSettings
 	local settingsRaw = if typeof(configRaw) == "table" then (configRaw :: any).Structures else nil
 	local settings = if typeof(settingsRaw) == "table" then settingsRaw else {} :: any
 
 	return {
-		PyramidCellWidth = sanitizeInteger(
+		PyramidCellWidth = CoerceInteger(
 			settings.PyramidCellWidth,
 			96,
 			1024,
@@ -236,61 +236,61 @@ local function resolveDesertStructureSettings(configRaw: any): DesertStructureSe
 			1,
 			DEFAULT_DESERT_STRUCTURE_SETTINGS.PyramidSpawnChance
 		),
-		PyramidHalfWidthMin = sanitizeInteger(
+		PyramidHalfWidthMin = CoerceInteger(
 			settings.PyramidHalfWidthMin,
 			8,
 			80,
 			DEFAULT_DESERT_STRUCTURE_SETTINGS.PyramidHalfWidthMin
 		),
-		PyramidHalfWidthMax = sanitizeInteger(
+		PyramidHalfWidthMax = CoerceInteger(
 			settings.PyramidHalfWidthMax,
 			8,
 			96,
 			DEFAULT_DESERT_STRUCTURE_SETTINGS.PyramidHalfWidthMax
 		),
-		PyramidHeightMin = sanitizeInteger(
+		PyramidHeightMin = CoerceInteger(
 			settings.PyramidHeightMin,
 			6,
 			64,
 			DEFAULT_DESERT_STRUCTURE_SETTINGS.PyramidHeightMin
 		),
-		PyramidHeightMax = sanitizeInteger(
+		PyramidHeightMax = CoerceInteger(
 			settings.PyramidHeightMax,
 			6,
 			96,
 			DEFAULT_DESERT_STRUCTURE_SETTINGS.PyramidHeightMax
 		),
-		InteriorPadding = sanitizeInteger(
+		InteriorPadding = CoerceInteger(
 			settings.InteriorPadding,
 			2,
 			12,
 			DEFAULT_DESERT_STRUCTURE_SETTINGS.InteriorPadding
 		),
-		EdgeBufferTiles = sanitizeInteger(
+		EdgeBufferTiles = CoerceInteger(
 			settings.EdgeBufferTiles,
 			4,
 			64,
 			DEFAULT_DESERT_STRUCTURE_SETTINGS.EdgeBufferTiles
 		),
-		SurfaceVarianceTolerance = sanitizeInteger(
+		SurfaceVarianceTolerance = CoerceInteger(
 			settings.SurfaceVarianceTolerance,
 			2,
 			32,
 			DEFAULT_DESERT_STRUCTURE_SETTINGS.SurfaceVarianceTolerance
 		),
-		BuriedDepthMin = sanitizeInteger(
+		BuriedDepthMin = CoerceInteger(
 			settings.BuriedDepthMin,
 			0,
 			12,
 			DEFAULT_DESERT_STRUCTURE_SETTINGS.BuriedDepthMin
 		),
-		BuriedDepthMax = sanitizeInteger(
+		BuriedDepthMax = CoerceInteger(
 			settings.BuriedDepthMax,
 			0,
 			16,
 			DEFAULT_DESERT_STRUCTURE_SETTINGS.BuriedDepthMax
 		),
-		EntranceHeight = sanitizeInteger(
+		EntranceHeight = CoerceInteger(
 			settings.EntranceHeight,
 			2,
 			8,
@@ -356,7 +356,7 @@ function Structures.New(configRaw: any)
 	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local tileId = (config :: any).tileId :: TileIdMap
 
-	local desertStructureSettings = resolveDesertStructureSettings((config :: any).desertConfig)
+	local desertStructureSettings = GetDesertStructureSettings((config :: any).desertConfig)
 	if desertStructureSettings.PyramidHalfWidthMax < desertStructureSettings.PyramidHalfWidthMin then
 		desertStructureSettings.PyramidHalfWidthMax = desertStructureSettings.PyramidHalfWidthMin
 	end
@@ -373,7 +373,7 @@ function Structures.New(configRaw: any)
 		biomeId = (config :: any).biomeId :: BiomeIdMap,
 		biomeType = (config :: any).biomeType :: BiomeTypeMap,
 		oreFrequency = clampNumber((config :: any).oreFrequency, 0.0001, 1, DEFAULT_ORE_FREQUENCY),
-		oreOctaves = sanitizeOctaveCount((config :: any).oreOctaves, DEFAULT_ORE_OCTAVES),
+		oreOctaves = CoerceOctaveCount((config :: any).oreOctaves, DEFAULT_ORE_OCTAVES),
 		oreLacunarity = clampNumber((config :: any).oreLacunarity, 1, 4, DEFAULT_ORE_LACUNARITY),
 		orePersistence = clampNumber((config :: any).orePersistence, 0.1, 0.95, DEFAULT_ORE_PERSISTENCE),
 		oreBlobFrequency = clampNumber((config :: any).oreBlobFrequency, 0.0001, 1, DEFAULT_ORE_BLOB_FREQUENCY),
@@ -423,7 +423,7 @@ function Structures.New(configRaw: any)
 	return self
 end
 
-function Structures.ResolveOreTile(
+function Structures.GetOreTile(
 	self: Structures,
 	baseTileId: number,
 	tileX: number,
@@ -503,7 +503,7 @@ function Structures.ResolveOreTile(
 	return baseTileId
 end
 
-function Structures.ResolvePyramidForCell(
+function Structures.GetPyramidForCell(
 	self: Structures,
 	cellX: number,
 	getColumnProfile: (worldTileX: number) -> ColumnProfile
@@ -587,7 +587,7 @@ function Structures.GenerateChunkStructures(self: Structures, context: Structure
 	local maxCell = math.floor((chunkMaxX + searchPadding) / settings.PyramidCellWidth)
 
 	for cellX = minCell, maxCell do
-		local pyramid = self:resolvePyramidForCell(cellX, context.getColumnProfile)
+		local pyramid = self:GetPyramidForCell(cellX, context.getColumnProfile)
 		if pyramid == nil then
 			continue
 		end
@@ -667,10 +667,4 @@ export type Structures = typeof(setmetatable(
 	},
 	Structures
 ))
-
-Structures.new = Structures.New
-Structures.resolveOreTile = Structures.ResolveOreTile
-Structures.resolvePyramidForCell = Structures.ResolvePyramidForCell
-Structures.generateChunkStructures = Structures.GenerateChunkStructures
-
 return Structures

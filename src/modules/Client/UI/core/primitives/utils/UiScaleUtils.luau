@@ -98,7 +98,7 @@ local function scaleNumber(value: number, scale: number, minValue: number?): num
 	return math.max(minValue or 0, snap(value * scale))
 end
 
-local function resolveTrailingInset(viewportAxis: number, trailingValue: number): number
+local function GetTrailingInset(viewportAxis: number, trailingValue: number): number
 	if trailingValue > viewportAxis * 0.5 then
 		return math.max(0, viewportAxis - trailingValue)
 	end
@@ -113,14 +113,14 @@ function UiScaleUtils.scaleNumber(value: number, scale: number, minValue: number
 	return scaleNumber(value, scale, minValue)
 end
 
-function UiScaleUtils.resolveScale(viewport: Vector2): number
+function UiScaleUtils.GetScale(viewport: Vector2): number
 	local safeViewport = Vector2.new(math.max(1, viewport.X), math.max(1, viewport.Y))
 	local rawScale =
 		math.min(safeViewport.X / UiScaleUtils.REFERENCE_VIEWPORT.X, safeViewport.Y / UiScaleUtils.REFERENCE_VIEWPORT.Y)
 	return math.clamp(rawScale, UiScaleUtils.MIN_SCALE, UiScaleUtils.MAX_SCALE)
 end
 
-function UiScaleUtils.resolveBreakpoint(viewport: Vector2): Breakpoint
+function UiScaleUtils.GetBreakpoint(viewport: Vector2): Breakpoint
 	if viewport.X < 900 or viewport.Y < 560 then
 		return "small"
 	end
@@ -130,7 +130,7 @@ function UiScaleUtils.resolveBreakpoint(viewport: Vector2): Breakpoint
 	return "large"
 end
 
-function UiScaleUtils.resolveDeviceClass(viewport: Vector2): DeviceClass
+function UiScaleUtils.GetDeviceClass(viewport: Vector2): DeviceClass
 	if viewport.X < 760 then
 		return "mobile"
 	end
@@ -140,7 +140,7 @@ function UiScaleUtils.resolveDeviceClass(viewport: Vector2): DeviceClass
 	return "desktop"
 end
 
-function UiScaleUtils.resolveSafeArea(
+function UiScaleUtils.GetSafeArea(
 	viewport: Vector2,
 	safeInsetTopLeft: Vector2?,
 	safeInsetBottomRight: Vector2?,
@@ -153,12 +153,12 @@ function UiScaleUtils.resolveSafeArea(
 	return {
 		top = math.max(basePadding, snap(topLeft.Y)),
 		left = math.max(basePadding, snap(topLeft.X)),
-		right = math.max(basePadding, snap(resolveTrailingInset(viewport.X, bottomRight.X))),
-		bottom = math.max(basePadding, snap(resolveTrailingInset(viewport.Y, bottomRight.Y))),
+		right = math.max(basePadding, snap(GetTrailingInset(viewport.X, bottomRight.X))),
+		bottom = math.max(basePadding, snap(GetTrailingInset(viewport.Y, bottomRight.Y))),
 	}
 end
 
-local function resolveInventorySlotSize(viewport: Vector2, safeArea: SafeArea, scale: number, compact: boolean): number
+local function GetInventorySlotSize(viewport: Vector2, safeArea: SafeArea, scale: number, compact: boolean): number
 	local desiredSlot = scaleNumber(if compact then 50 else 58, scale, if compact then 38 else 46)
 	local desiredGap = scaleNumber(if compact then 5 else 6, scale, 4)
 	local availableWidth = math.max(220, viewport.X - safeArea.left - safeArea.right - scaleNumber(24, scale, 12))
@@ -167,7 +167,7 @@ local function resolveInventorySlotSize(viewport: Vector2, safeArea: SafeArea, s
 	return math.clamp(math.min(desiredSlot, maxSlotByWidth), 34, 64)
 end
 
-function UiScaleUtils.resolveTokens(metrics: {
+function UiScaleUtils.GetTokens(metrics: {
 	viewport: Vector2,
 	scale: number,
 	breakpoint: Breakpoint,
@@ -185,7 +185,7 @@ function UiScaleUtils.resolveTokens(metrics: {
 	local sideButtonWidth = scaleNumber(if compact then 132 else 190, scale, 112)
 	local navButtonHeight = scaleNumber(if compact then 34 else 40, scale, 30)
 	local segmentSize = scaleNumber(if compact then 24 else 30, scale, 20)
-	local slotSize = resolveInventorySlotSize(viewport, safeArea, scale, compact)
+	local slotSize = GetInventorySlotSize(viewport, safeArea, scale, compact)
 	local slotGap = scaleNumber(if compact then 5 else 6, scale, 4)
 	local craftingAvailableWidth = math.max(220, viewport.X - safeArea.left - safeArea.right - edgePadding * 2)
 	local craftingAvailableHeight = math.max(260, viewport.Y - safeArea.top - safeArea.bottom - edgePadding * 2)
@@ -246,18 +246,18 @@ function UiScaleUtils.resolveTokens(metrics: {
 	}
 end
 
-function UiScaleUtils.resolveMetrics(
+function UiScaleUtils.GetMetrics(
 	viewportRaw: Vector2?,
 	safeInsetTopLeft: Vector2?,
 	safeInsetBottomRight: Vector2?
 ): ResponsiveMetrics
 	local viewport = viewportRaw or UiScaleUtils.REFERENCE_VIEWPORT
 	viewport = Vector2.new(math.max(1, viewport.X), math.max(1, viewport.Y))
-	local scale = UiScaleUtils.resolveScale(viewport)
-	local breakpoint: Breakpoint = UiScaleUtils.resolveBreakpoint(viewport)
-	local deviceClass: DeviceClass = UiScaleUtils.resolveDeviceClass(viewport)
+	local scale = UiScaleUtils.GetScale(viewport)
+	local breakpoint: Breakpoint = UiScaleUtils.GetBreakpoint(viewport)
+	local deviceClass: DeviceClass = UiScaleUtils.GetDeviceClass(viewport)
 	local compactHud = breakpoint == "small" or viewport.X < 980 or viewport.Y < 620
-	local safeArea = UiScaleUtils.resolveSafeArea(viewport, safeInsetTopLeft, safeInsetBottomRight, scale)
+	local safeArea = UiScaleUtils.GetSafeArea(viewport, safeInsetTopLeft, safeInsetBottomRight, scale)
 
 	local metricInput: {
 		viewport: Vector2,
@@ -284,7 +284,7 @@ function UiScaleUtils.resolveMetrics(
 		isSmall = breakpoint == "small",
 		isCompactHud = compactHud,
 		safeArea = safeArea,
-		tokens = UiScaleUtils.resolveTokens(metricInput),
+		tokens = UiScaleUtils.GetTokens(metricInput),
 	}
 end
 

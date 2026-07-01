@@ -28,7 +28,7 @@ local function trim(valueRaw: any): string
 	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -48,7 +48,7 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?,
 	return value
 end
 
-function GoreServiceUtils.SanitizeEntityId(valueRaw: any): string?
+function GoreServiceUtils.CoerceEntityId(valueRaw: any): string?
 	local value = trim(valueRaw)
 	if value == "" then
 		return nil
@@ -56,26 +56,26 @@ function GoreServiceUtils.SanitizeEntityId(valueRaw: any): string?
 	return value
 end
 
-function GoreServiceUtils.SanitizeBoolean(valueRaw: any, fallback: boolean): boolean
+function GoreServiceUtils.CoerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
 	return fallback
 end
 
-function GoreServiceUtils.SanitizeBloodAmount(valueRaw: any, fallback: number): number
-	return math.floor(sanitizeNumber(valueRaw, fallback, 1, GoreServiceUtils.MAX_BLOOD_AMOUNT) + 0.5)
+function GoreServiceUtils.CoerceBloodAmount(valueRaw: any, fallback: number): number
+	return math.floor(CoerceNumber(valueRaw, fallback, 1, GoreServiceUtils.MAX_BLOOD_AMOUNT) + 0.5)
 end
 
-function GoreServiceUtils.SanitizeGibCount(valueRaw: any, fallback: number): number
-	return math.floor(sanitizeNumber(valueRaw, fallback, 0, GoreServiceUtils.MAX_GIB_COUNT) + 0.5)
+function GoreServiceUtils.CoerceGibCount(valueRaw: any, fallback: number): number
+	return math.floor(CoerceNumber(valueRaw, fallback, 0, GoreServiceUtils.MAX_GIB_COUNT) + 0.5)
 end
 
-function GoreServiceUtils.SanitizeEffectDuration(valueRaw: any, fallback: number): number
-	return sanitizeNumber(valueRaw, fallback, 0.05, GoreServiceUtils.MAX_EFFECT_DURATION_SECONDS)
+function GoreServiceUtils.CoerceEffectDuration(valueRaw: any, fallback: number): number
+	return CoerceNumber(valueRaw, fallback, 0.05, GoreServiceUtils.MAX_EFFECT_DURATION_SECONDS)
 end
 
-function GoreServiceUtils.SanitizeColor(valueRaw: any, fallback: Color3): Color3
+function GoreServiceUtils.CoerceColor(valueRaw: any, fallback: Color3): Color3
 	if typeof(valueRaw) == "Color3" then
 		return valueRaw
 	end
@@ -93,14 +93,14 @@ function GoreServiceUtils.MakePlayerEntityId(playerRaw: any): string?
 end
 
 function GoreServiceUtils.MakeNpcEntityId(runtimeIdRaw: any): string?
-	local runtimeId = GoreServiceUtils.SanitizeEntityId(runtimeIdRaw)
+	local runtimeId = GoreServiceUtils.CoerceEntityId(runtimeIdRaw)
 	if runtimeId == nil then
 		return nil
 	end
 	return "npc:" .. runtimeId
 end
 
-function GoreServiceUtils.ResolveModelRootPart(modelRaw: any): BasePart?
+function GoreServiceUtils.GetModelRootPart(modelRaw: any): BasePart?
 	if typeof(modelRaw) ~= "Instance" or not modelRaw:IsA("Model") then
 		return nil
 	end
@@ -123,7 +123,7 @@ function GoreServiceUtils.ResolveModelRootPart(modelRaw: any): BasePart?
 	return nil
 end
 
-function GoreServiceUtils.ResolveOriginPart(modelRaw: any, originRaw: any): BasePart?
+function GoreServiceUtils.GetOriginPart(modelRaw: any, originRaw: any): BasePart?
 	if typeof(originRaw) == "Instance" and originRaw:IsA("BasePart") then
 		if typeof(modelRaw) == "Instance" and modelRaw:IsA("Model") then
 			if originRaw:IsDescendantOf(modelRaw) then
@@ -134,15 +134,15 @@ function GoreServiceUtils.ResolveOriginPart(modelRaw: any, originRaw: any): Base
 		end
 	end
 
-	return GoreServiceUtils.ResolveModelRootPart(modelRaw)
+	return GoreServiceUtils.GetModelRootPart(modelRaw)
 end
 
-function GoreServiceUtils.ResolveBloodOrigin(modelRaw: any, originRaw: any): (Vector3 | BasePart)?
+function GoreServiceUtils.GetBloodOrigin(modelRaw: any, originRaw: any): (Vector3 | BasePart)?
 	if typeof(originRaw) == "Vector3" then
 		return originRaw
 	end
 
-	local originPart = GoreServiceUtils.ResolveOriginPart(modelRaw, originRaw)
+	local originPart = GoreServiceUtils.GetOriginPart(modelRaw, originRaw)
 	if originPart ~= nil then
 		return originPart
 	end
@@ -163,18 +163,5 @@ function GoreServiceUtils.CloneDictionary(sourceRaw: any): { [string]: any }
 	end
 	return out
 end
-
-GoreServiceUtils.sanitizeEntityId = GoreServiceUtils.SanitizeEntityId
-GoreServiceUtils.sanitizeBoolean = GoreServiceUtils.SanitizeBoolean
-GoreServiceUtils.sanitizeBloodAmount = GoreServiceUtils.SanitizeBloodAmount
-GoreServiceUtils.sanitizeGibCount = GoreServiceUtils.SanitizeGibCount
-GoreServiceUtils.sanitizeEffectDuration = GoreServiceUtils.SanitizeEffectDuration
-GoreServiceUtils.sanitizeColor = GoreServiceUtils.SanitizeColor
-GoreServiceUtils.makePlayerEntityId = GoreServiceUtils.MakePlayerEntityId
-GoreServiceUtils.makeNpcEntityId = GoreServiceUtils.MakeNpcEntityId
-GoreServiceUtils.resolveModelRootPart = GoreServiceUtils.ResolveModelRootPart
-GoreServiceUtils.resolveOriginPart = GoreServiceUtils.ResolveOriginPart
-GoreServiceUtils.resolveBloodOrigin = GoreServiceUtils.ResolveBloodOrigin
-GoreServiceUtils.cloneDictionary = GoreServiceUtils.CloneDictionary
 
 return GoreServiceUtils

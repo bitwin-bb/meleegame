@@ -65,8 +65,4 @@ function PacketPayload.Unpack(payloadRaw: any): (number, { any })
 
 	return count, unpacked
 end
-
-PacketPayload.pack = PacketPayload.Pack
-PacketPayload.unpack = PacketPayload.Unpack
-
 return PacketPayload

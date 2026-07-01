@@ -20,21 +20,21 @@ local DEFAULT_NAME = "GreenSlime"
 local DEFAULT_HP = 14
 local DEFAULT_ROOT_SIZE = Vector3.new(4, 3, 4)
 
-local function sanitizeName(valueRaw: any): string
+local function CoerceName(valueRaw: any): string
 	if typeof(valueRaw) == "string" and valueRaw ~= "" then
 		return valueRaw
 	end
 	return DEFAULT_NAME
 end
 
-local function sanitizeHp(valueRaw: any): number
+local function CoerceHp(valueRaw: any): number
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		return math.max(0, valueRaw)
 	end
 	return DEFAULT_HP
 end
 
-local function sanitizeSize(valueRaw: any): Vector3
+local function CoerceSize(valueRaw: any): Vector3
 	if typeof(valueRaw) == "Vector3" then
 		return Vector3.new(math.max(0.05, valueRaw.X), math.max(0.05, valueRaw.Y), math.max(0.05, valueRaw.Z))
 	end
@@ -46,7 +46,7 @@ function SlimeRoot.CreateModel(configRaw: SlimeRootConfig?): Model
 	local scope = Fusion.scoped(Fusion)
 	local rootPart = scope:New "Part" {
 		Name = "RootPart",
-		Size = sanitizeSize(config.size),
+		Size = CoerceSize(config.size),
 		Transparency = 1,
 		Anchored = false,
 		CanCollide = true,
@@ -57,11 +57,11 @@ function SlimeRoot.CreateModel(configRaw: SlimeRootConfig?): Model
 
 	local hp = scope:New "NumberValue" {
 		Name = "Hp",
-		Value = sanitizeHp(config.hp),
+		Value = CoerceHp(config.hp),
 	}
 
 	local model = scope:New "Model" {
-		Name = sanitizeName(config.name),
+		Name = CoerceName(config.name),
 		[Children] = {
 			hp,
 			rootPart,
@@ -78,7 +78,4 @@ function SlimeRoot.CreateModel(configRaw: SlimeRootConfig?): Model
 
 	return model
 end
-
-SlimeRoot.createModel = SlimeRoot.CreateModel
-
 return SlimeRoot

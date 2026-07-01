@@ -235,7 +235,7 @@ local function cloneDefinition(definition: ActionDefinition): ActionDefinition
 	}
 end
 
-local function sanitizePlatformKind(platformKindRaw: any): PlatformKind
+local function CoercePlatformKind(platformKindRaw: any): PlatformKind
 	if platformKindRaw == "Gamepad" then
 		return "Gamepad"
 	end
@@ -245,7 +245,7 @@ local function sanitizePlatformKind(platformKindRaw: any): PlatformKind
 	return "KeyboardMouse"
 end
 
-local function sanitizeBinding(bindingRaw: any): ActionBinding?
+local function CoerceBinding(bindingRaw: any): ActionBinding?
 	if typeof(bindingRaw) ~= "table" then
 		return nil
 	end
@@ -265,7 +265,7 @@ local function sanitizeBinding(bindingRaw: any): ActionBinding?
 	return binding
 end
 
-local function sanitizeOptionalString(valueRaw: any): string?
+local function CoerceOptionalString(valueRaw: any): string?
 	if typeof(valueRaw) ~= "string" then
 		return nil
 	end
@@ -276,8 +276,8 @@ local function sanitizeOptionalString(valueRaw: any): string?
 	return value
 end
 
-local function resolveKeyCodeByName(keyCodeNameRaw: any): Enum.KeyCode?
-	local keyCodeName = sanitizeOptionalString(keyCodeNameRaw)
+local function GetKeyCodeByName(keyCodeNameRaw: any): Enum.KeyCode?
+	local keyCodeName = CoerceOptionalString(keyCodeNameRaw)
 	if keyCodeName == nil then
 		return nil
 	end
@@ -290,7 +290,7 @@ local function resolveKeyCodeByName(keyCodeNameRaw: any): Enum.KeyCode?
 	return nil
 end
 
-local function resolveImageForKeyCode(keyCode: Enum.KeyCode?): string?
+local function GetImageForKeyCode(keyCode: Enum.KeyCode?): string?
 	if keyCode == nil then
 		return nil
 	end
@@ -303,7 +303,7 @@ local function resolveImageForKeyCode(keyCode: Enum.KeyCode?): string?
 	return nil
 end
 
-local function cloneResolvedPrompt(promptRaw: PromptBinding?): PromptBinding?
+local function cloneGotPrompt(promptRaw: PromptBinding?): PromptBinding?
 	if typeof(promptRaw) ~= "table" then
 		return nil
 	end
@@ -320,9 +320,9 @@ local function cloneResolvedPrompt(promptRaw: PromptBinding?): PromptBinding?
 	}
 end
 
-local function resolveControlPrompt(promptRaw: any): any
-	local keyCode = resolveKeyCodeByName(if typeof(promptRaw) == "table" then promptRaw.keyCode else nil)
-	local text = sanitizeOptionalString(if typeof(promptRaw) == "table" then promptRaw.text else nil)
+local function GetControlPrompt(promptRaw: any): any
+	local keyCode = GetKeyCodeByName(if typeof(promptRaw) == "table" then promptRaw.keyCode else nil)
+	local text = CoerceOptionalString(if typeof(promptRaw) == "table" then promptRaw.text else nil)
 	if text == nil and keyCode ~= nil then
 		local okText, officialText = pcall(function()
 			return UserInputService:GetStringForKeyCode(keyCode)
@@ -333,14 +333,14 @@ local function resolveControlPrompt(promptRaw: any): any
 	end
 	return {
 		text = text,
-		icon = resolveImageForKeyCode(keyCode),
+		icon = GetImageForKeyCode(keyCode),
 		keyCode = keyCode,
-		detail = sanitizeOptionalString(if typeof(promptRaw) == "table" then promptRaw.detail else nil),
+		detail = CoerceOptionalString(if typeof(promptRaw) == "table" then promptRaw.detail else nil),
 		hold = if typeof(promptRaw) == "table" and promptRaw.hold == true then true else false,
 	}
 end
 
-local function resolvePromptForActionOnPlatform(
+local function GetPromptForActionOnPlatform(
 	self: PlatformServiceClient,
 	actionNameRaw: any,
 	platformKindRaw: any
@@ -351,16 +351,16 @@ local function resolvePromptForActionOnPlatform(
 	local runtime = self.actions[actionNameRaw]
 	local definition = if runtime ~= nil
 		then runtime.definition
-		else PlatformServiceUtils.getDefaultActionDefinition(actionNameRaw)
+		else PlatformServiceUtils.GetDefaultActionDefinition(actionNameRaw)
 	if definition == nil then
 		return nil
 	end
 
-	local prompt = PlatformServiceUtils.resolvePromptForAction(
+	local prompt = PlatformServiceUtils.GetPromptForAction(
 		definition,
-		sanitizePlatformKind(platformKindRaw),
-		self:getState().deviceClass,
-		self:getState().gamepadFamily
+		CoercePlatformKind(platformKindRaw),
+		self:GetState().deviceClass,
+		self:GetState().gamepadFamily
 	)
 	if prompt == nil then
 		return nil
@@ -401,30 +401,30 @@ local function resolvePromptForActionOnPlatform(
 	return output
 end
 
-local function resolveControlEntry(self: PlatformServiceClient, entryRaw: any, platformKindRaw: any): any
+local function GetControlEntry(self: PlatformServiceClient, entryRaw: any, platformKindRaw: any): any
 	local prompts = {}
 	if typeof(entryRaw) == "table" and typeof(entryRaw.prompts) == "table" then
 		for index = 1, #entryRaw.prompts do
-			prompts[#prompts + 1] = resolveControlPrompt(entryRaw.prompts[index])
+			prompts[#prompts + 1] = GetControlPrompt(entryRaw.prompts[index])
 		end
 	end
 
-	local actionName = sanitizeOptionalString(if typeof(entryRaw) == "table" then entryRaw.actionName else nil)
-	local resolvedPrompt = if actionName ~= nil
-		then cloneResolvedPrompt(resolvePromptForActionOnPlatform(self, actionName, platformKindRaw))
+	local actionName = CoerceOptionalString(if typeof(entryRaw) == "table" then entryRaw.actionName else nil)
+	local GotPrompt = if actionName ~= nil
+		then cloneGotPrompt(GetPromptForActionOnPlatform(self, actionName, platformKindRaw))
 		else nil
 
 	return {
-		id = sanitizeOptionalString(if typeof(entryRaw) == "table" then entryRaw.id else nil),
-		label = sanitizeOptionalString(if typeof(entryRaw) == "table" then entryRaw.label else nil),
-		detail = sanitizeOptionalString(if typeof(entryRaw) == "table" then entryRaw.detail else nil),
+		id = CoerceOptionalString(if typeof(entryRaw) == "table" then entryRaw.id else nil),
+		label = CoerceOptionalString(if typeof(entryRaw) == "table" then entryRaw.label else nil),
+		detail = CoerceOptionalString(if typeof(entryRaw) == "table" then entryRaw.detail else nil),
 		actionName = actionName,
 		prompts = prompts,
-		resolvedPrompt = resolvedPrompt,
+		GotPrompt = GotPrompt,
 	}
 end
 
-local function resolveControlSections(self: PlatformServiceClient, layoutRaw: any, platformKindRaw: any): { any }
+local function GetControlSections(self: PlatformServiceClient, layoutRaw: any, platformKindRaw: any): { any }
 	local output = {}
 	if typeof(layoutRaw) ~= "table" or typeof(layoutRaw.sections) ~= "table" then
 		return output
@@ -434,25 +434,25 @@ local function resolveControlSections(self: PlatformServiceClient, layoutRaw: an
 		local controls = {}
 		if typeof(sectionRaw) == "table" and typeof(sectionRaw.controls) == "table" then
 			for controlIndex = 1, #sectionRaw.controls do
-				controls[#controls + 1] = resolveControlEntry(self, sectionRaw.controls[controlIndex], platformKindRaw)
+				controls[#controls + 1] = GetControlEntry(self, sectionRaw.controls[controlIndex], platformKindRaw)
 			end
 		end
 		output[#output + 1] = {
-			id = sanitizeOptionalString(if typeof(sectionRaw) == "table" then sectionRaw.id else nil),
-			title = sanitizeOptionalString(if typeof(sectionRaw) == "table" then sectionRaw.title else nil),
+			id = CoerceOptionalString(if typeof(sectionRaw) == "table" then sectionRaw.id else nil),
+			title = CoerceOptionalString(if typeof(sectionRaw) == "table" then sectionRaw.title else nil),
 			controls = controls,
 		}
 	end
 	return output
 end
 
-local function sanitizeBindingsTable(bindingsRaw: any): { ActionBinding }
+local function CoerceBindingsTable(bindingsRaw: any): { ActionBinding }
 	local output: { ActionBinding } = {}
 	if typeof(bindingsRaw) ~= "table" then
 		return output
 	end
 	for index = 1, #bindingsRaw do
-		local binding = sanitizeBinding(bindingsRaw[index])
+		local binding = CoerceBinding(bindingsRaw[index])
 		if binding ~= nil then
 			output[#output + 1] = binding
 		end
@@ -460,20 +460,20 @@ local function sanitizeBindingsTable(bindingsRaw: any): { ActionBinding }
 	return output
 end
 
-local function sanitizeBindingsByPlatform(bindingsRaw: any): { [string]: { ActionBinding } }
+local function CoerceBindingsByPlatform(bindingsRaw: any): { [string]: { ActionBinding } }
 	local output = {}
 	if typeof(bindingsRaw) ~= "table" then
 		return output
 	end
 	for platform, bindings in bindingsRaw do
 		if typeof(platform) == "string" then
-			output[platform] = sanitizeBindingsTable(bindings)
+			output[platform] = CoerceBindingsTable(bindings)
 		end
 	end
 	return output
 end
 
-local function sanitizeActionDefinition(actionName: string, definitionRaw: any): ActionDefinition?
+local function CoerceActionDefinition(actionName: string, definitionRaw: any): ActionDefinition?
 	if typeof(definitionRaw) ~= "table" then
 		return nil
 	end
@@ -492,8 +492,8 @@ local function sanitizeActionDefinition(actionName: string, definitionRaw: any):
 		blockWhenGuiSelected = if definitionRaw.blockWhenGuiSelected == nil
 			then true
 			else definitionRaw.blockWhenGuiSelected == true,
-		bindingsByPlatform = sanitizeBindingsByPlatform(definitionRaw.bindingsByPlatform),
-		promptBindingsByPlatform = sanitizeBindingsByPlatform(definitionRaw.promptBindingsByPlatform),
+		bindingsByPlatform = CoerceBindingsByPlatform(definitionRaw.bindingsByPlatform),
+		promptBindingsByPlatform = CoerceBindingsByPlatform(definitionRaw.promptBindingsByPlatform),
 		touchPrompt = if typeof(definitionRaw.touchPrompt) == "string" then definitionRaw.touchPrompt else nil,
 	}
 end
@@ -510,7 +510,7 @@ local function hasActionSubscribers(actionRuntime: ActionRuntime): boolean
 end
 
 local function cloneState(state: PlatformClientState): PlatformClientState
-	local cloned = PlatformServiceUtils.clonePlatformState(state)
+	local cloned = PlatformServiceUtils.ClonePlatformState(state)
 	return {
 		platform = cloned.platform,
 		deviceClass = cloned.deviceClass,
@@ -536,7 +536,7 @@ local function cloneState(state: PlatformClientState): PlatformClientState
 	}
 end
 
-local function resolvePlatformName(): string?
+local function GetPlatformName(): string?
 	local okPlatform, platformValue = pcall(function()
 		local inputServiceAny = UserInputService :: any
 		if typeof(inputServiceAny.GetPlatform) == "function" then
@@ -585,7 +585,7 @@ local function getInputModeLastEnabledTime(inputModeServiceRaw: any, inputModeTy
 	return 0
 end
 
-local function resolveLatestInputModeName(inputModeServiceRaw: any, inputModeTypeList: { any }): string?
+local function GetLatestInputModeName(inputModeServiceRaw: any, inputModeTypeList: { any }): string?
 	if typeof(inputModeServiceRaw) ~= "table" then
 		return nil
 	end
@@ -601,7 +601,7 @@ local function resolveLatestInputModeName(inputModeServiceRaw: any, inputModeTyp
 	return bestModeName
 end
 
-local function resolvePlatformKindFromInputModeName(modeNameRaw: any): PlatformKind?
+local function GetPlatformKindFromInputModeName(modeNameRaw: any): PlatformKind?
 	if typeof(modeNameRaw) ~= "string" or modeNameRaw == "" then
 		return nil
 	end
@@ -617,8 +617,8 @@ local function resolvePlatformKindFromInputModeName(modeNameRaw: any): PlatformK
 	return nil
 end
 
-local function resolvePrimaryInputTypeFromInputModeName(modeNameRaw: any): string?
-	local platformKind = resolvePlatformKindFromInputModeName(modeNameRaw)
+local function GetPrimaryInputTypeFromInputModeName(modeNameRaw: any): string?
+	local platformKind = GetPlatformKindFromInputModeName(modeNameRaw)
 	if platformKind == "Gamepad" then
 		return "Gamepad"
 	end
@@ -631,7 +631,7 @@ local function resolvePrimaryInputTypeFromInputModeName(modeNameRaw: any): strin
 	return nil
 end
 
-local function resolvePlayerInputMode(platformKind: PlatformKind): string
+local function GetPlayerInputMode(platformKind: PlatformKind): string
 	if platformKind == "Gamepad" then
 		return PlayerInputModeTypes.GAMEPAD
 	end
@@ -641,7 +641,7 @@ local function resolvePlayerInputMode(platformKind: PlatformKind): string
 	return PlayerInputModeTypes.KEYBOARD
 end
 
-local function resolveGamepadFamilyFromPlatformName(platformNameRaw: any): string?
+local function GetGamepadFamilyFromPlatformName(platformNameRaw: any): string?
 	if typeof(platformNameRaw) ~= "string" or platformNameRaw == "" then
 		return nil
 	end
@@ -655,7 +655,7 @@ local function resolveGamepadFamilyFromPlatformName(platformNameRaw: any): strin
 	return nil
 end
 
-local function resolveGamepadFamilyFromButtonImage(): string?
+local function GetGamepadFamilyFromButtonImage(): string?
 	local okButtonImage, buttonAImage = pcall(function()
 		return UserInputService:GetImageForKeyCode(Enum.KeyCode.ButtonA)
 	end)
@@ -674,12 +674,12 @@ local function resolveGamepadFamilyFromButtonImage(): string?
 	return nil
 end
 
-local function resolveMachineFamily(
+local function GetMachineFamily(
 	platformState: PlatformStateBase,
 	platformNameRaw: any,
 	gamepadFamilyRaw: any
 ): string
-	local familyFromPlatformName = resolveGamepadFamilyFromPlatformName(platformNameRaw)
+	local familyFromPlatformName = GetGamepadFamilyFromPlatformName(platformNameRaw)
 	if familyFromPlatformName ~= nil then
 		return familyFromPlatformName
 	end
@@ -749,14 +749,6 @@ local function getRuntimeCursorScreenPosition(runtimeContext: any?): Vector2?
 			return screenPosition
 		end
 	end
-	if typeof(cursorAny.getScreenPosition) == "function" then
-		local ok, screenPosition = pcall(function()
-			return cursorAny:getScreenPosition()
-		end)
-		if ok and typeof(screenPosition) == "Vector2" then
-			return screenPosition
-		end
-	end
 	if typeof(cursorAny.GetState) == "function" then
 		local ok, cursorState = pcall(function()
 			return cursorAny:GetState()
@@ -785,7 +777,7 @@ local function getPointerScreenPosition(runtimeContext: any?, inputObject: Input
 		isMousePointer = InputObjectUtils.isMouseUserInputType(userInputType)
 	end
 	if not isMousePointer and userInputType ~= Enum.UserInputType.Touch then
-		if PlatformServiceUtils.isGamepadInputType(userInputType) and isGamepadCursorActive() then
+		if PlatformServiceUtils.IsGamepadInputType(userInputType) and isGamepadCursorActive() then
 			return getRuntimeCursorScreenPosition(runtimeContext)
 		end
 		return nil
@@ -821,7 +813,7 @@ local function shouldUseAxisValue(inputObject: InputObject?): boolean
 	if inputObject.KeyCode == Enum.KeyCode.Thumbstick1 or inputObject.KeyCode == Enum.KeyCode.Thumbstick2 then
 		return true
 	end
-	if PlatformServiceUtils.isGamepadInputType(inputObject.UserInputType) then
+	if PlatformServiceUtils.IsGamepadInputType(inputObject.UserInputType) then
 		return true
 	end
 	if inputObject.UserInputType == Enum.UserInputType.Touch then
@@ -895,11 +887,11 @@ local function isScreenPositionOverInteractiveGui(screenPositionRaw: any): boole
 	return false
 end
 
-local function resolveAbsoluteUDim(axis: UDim, axisLength: number): number
+local function GetAbsoluteUDim(axis: UDim, axisLength: number): number
 	return axis.Scale * axisLength + axis.Offset
 end
 
-local function resolveTouchJumpButtonBounds(viewport: Vector2): (Vector2?, number?)
+local function GetTouchJumpButtonBounds(viewport: Vector2): (Vector2?, number?)
 	local okJumpButton, jumpButtonPosition, jumpButtonSize = pcall(function()
 		return JumpButtonUtils.getJumpButtonPositionAndSize(viewport)
 	end)
@@ -907,8 +899,8 @@ local function resolveTouchJumpButtonBounds(viewport: Vector2): (Vector2?, numbe
 		return nil
 	end
 	return Vector2.new(
-		resolveAbsoluteUDim(jumpButtonPosition.X, viewport.X),
-		resolveAbsoluteUDim(jumpButtonPosition.Y, viewport.Y)
+		GetAbsoluteUDim(jumpButtonPosition.X, viewport.X),
+		GetAbsoluteUDim(jumpButtonPosition.Y, viewport.Y)
 	),
 		jumpButtonSize
 end
@@ -921,7 +913,7 @@ local function isTouchReservedRegion(position: Vector2, viewport: Vector2): bool
 		return true
 	end
 
-	local jumpButtonPosition, jumpButtonSize = resolveTouchJumpButtonBounds(viewport)
+	local jumpButtonPosition, jumpButtonSize = GetTouchJumpButtonBounds(viewport)
 	if jumpButtonPosition == nil or jumpButtonSize == nil then
 		return false
 	end
@@ -933,13 +925,13 @@ local function isTouchReservedRegion(position: Vector2, viewport: Vector2): bool
 		and position.Y <= jumpButtonPosition.Y + jumpButtonSize + padding
 end
 
-function PlatformServiceClient._resolveCapabilities(
+function PlatformServiceClient._GetCapabilities(
 	self: PlatformServiceClient
 ): PlatformServiceUtils.CapabilitySnapshot
 	local runtimePlatform = if self.runtimeContext ~= nil then (self.runtimeContext :: any).platform else nil
-	if runtimePlatform ~= nil and typeof((runtimePlatform :: any).getSnapshot) == "function" then
+	if runtimePlatform ~= nil and typeof((runtimePlatform :: any).GetSnapshot) == "function" then
 		local ok, snapshot = pcall(function()
-			return (runtimePlatform :: any):getSnapshot()
+			return (runtimePlatform :: any):GetSnapshot()
 		end)
 		if ok and typeof(snapshot) == "table" then
 			return {
@@ -962,7 +954,7 @@ function PlatformServiceClient._resolveCapabilities(
 	}
 end
 
-function PlatformServiceClient._resolveViewport(self: PlatformServiceClient): Vector2
+function PlatformServiceClient._GetViewport(self: PlatformServiceClient): Vector2
 	local camera = Workspace.CurrentCamera
 	if camera ~= nil then
 		return Vector2.new(math.max(1, camera.ViewportSize.X), math.max(1, camera.ViewportSize.Y))
@@ -979,12 +971,12 @@ function PlatformServiceClient._setupNevermorePlatformSupport(self: PlatformServ
 		return
 	end
 
-	if not NevermoreSupport.isStarted() then
+	if not NevermoreSupport.IsStarted() then
 		return
 	end
 
 	local okServiceBag, serviceBag = pcall(function()
-		return NevermoreSupport.getServiceBag()
+		return NevermoreSupport.GetServiceBag()
 	end)
 	if not okServiceBag or typeof(serviceBag) ~= "table" then
 		return
@@ -1064,7 +1056,7 @@ function PlatformServiceClient._applySystemPolicies(self: PlatformServiceClient,
 	end)
 end
 
-function PlatformServiceClient._resolveState(self: PlatformServiceClient): PlatformClientState
+function PlatformServiceClient._GetState(self: PlatformServiceClient): PlatformClientState
 	self:_setupNevermorePlatformSupport()
 
 	local preferredInput = nil
@@ -1075,37 +1067,37 @@ function PlatformServiceClient._resolveState(self: PlatformServiceClient): Platf
 		preferredInput = preferredInputValue
 	end
 
-	local viewport = self:_resolveViewport()
-	local capabilities = self:_resolveCapabilities()
-	local platformName = resolvePlatformName()
-	local activeInputModeName = resolveLatestInputModeName(self.nevermoreInputModeService, {
+	local viewport = self:_GetViewport()
+	local capabilities = self:_GetCapabilities()
+	local platformName = GetPlatformName()
+	local activeInputModeName = GetLatestInputModeName(self.nevermoreInputModeService, {
 		InputModeTypes.KeyboardAndMouse,
 		InputModeTypes.Touch,
 		InputModeTypes.Gamepads,
 	})
-	local rawGamepadInputName = resolveLatestInputModeName(self.nevermoreInputModeService, {
+	local rawGamepadInputName = GetLatestInputModeName(self.nevermoreInputModeService, {
 		InputModeTypes.Thumbsticks,
 		InputModeTypes.DPad,
 		InputModeTypes.Gamepads,
 	})
 	local connectedGamepadCount = countConnectedGamepads()
-	local platformStateBase = PlatformServiceUtils.createPlatformState(
+	local platformStateBase = PlatformServiceUtils.CreatePlatformState(
 		preferredInput,
 		self.lastInputType,
 		capabilities,
 		viewport,
 		GuiService:IsTenFootInterface()
 	)
-	local resolvedPlatform = resolvePlatformKindFromInputModeName(activeInputModeName)
-	if resolvedPlatform == nil then
-		resolvedPlatform = platformStateBase.platform
+	local GotPlatform = GetPlatformKindFromInputModeName(activeInputModeName)
+	if GotPlatform == nil then
+		GotPlatform = platformStateBase.platform
 	end
-	local activeGamepadInputName = if resolvedPlatform == "Gamepad" then rawGamepadInputName else nil
-	local resolvedPrimaryInputType = resolvePrimaryInputTypeFromInputModeName(activeInputModeName)
+	local activeGamepadInputName = if GotPlatform == "Gamepad" then rawGamepadInputName else nil
+	local GotPrimaryInputType = GetPrimaryInputTypeFromInputModeName(activeInputModeName)
 	local platformState: PlatformStateBase = {
-		platform = resolvedPlatform,
-		deviceClass = PlatformServiceUtils.resolveDeviceClass(
-			resolvedPlatform,
+		platform = GotPlatform,
+		deviceClass = PlatformServiceUtils.GetDeviceClass(
+			GotPlatform,
 			viewport,
 			capabilities,
 			GuiService:IsTenFootInterface()
@@ -1118,25 +1110,25 @@ function PlatformServiceClient._resolveState(self: PlatformServiceClient): Platf
 		keyboardEnabled = platformStateBase.keyboardEnabled,
 		mouseEnabled = platformStateBase.mouseEnabled,
 		gamepadEnabled = platformStateBase.gamepadEnabled,
-		basePrimaryInputType = if resolvedPrimaryInputType ~= nil
-			then resolvedPrimaryInputType
+		basePrimaryInputType = if GotPrimaryInputType ~= nil
+			then GotPrimaryInputType
 			else platformStateBase.basePrimaryInputType,
 	}
 	local gamepadFamily = if platformState.gamepadEnabled
 			or connectedGamepadCount > 0
 			or platformState.deviceClass == "Console"
-		then self:_resolveGamepadFamily()
+		then self:_GetGamepadFamily()
 		else nil
-	local machineFamily = resolveMachineFamily(platformState, platformName, gamepadFamily)
-	local playerInputMode = resolvePlayerInputMode(platformState.platform)
-	local resolvedActiveInputModeName = activeInputModeName
-	if resolvedActiveInputModeName == nil or resolvedActiveInputModeName == "" then
+	local machineFamily = GetMachineFamily(platformState, platformName, gamepadFamily)
+	local playerInputMode = GetPlayerInputMode(platformState.platform)
+	local activeInputName = activeInputModeName
+	if activeInputName == nil or activeInputName == "" then
 		if platformState.preferredInputName ~= "" then
-			resolvedActiveInputModeName = platformState.preferredInputName
+			activeInputName = platformState.preferredInputName
 		elseif platformState.lastInputTypeName ~= "" then
-			resolvedActiveInputModeName = platformState.lastInputTypeName
+			activeInputName = platformState.lastInputTypeName
 		else
-			resolvedActiveInputModeName = platformState.platform
+			activeInputName = platformState.platform
 		end
 	end
 
@@ -1155,7 +1147,7 @@ function PlatformServiceClient._resolveState(self: PlatformServiceClient): Platf
 		gamepadFamily = gamepadFamily,
 		machineFamily = machineFamily,
 		playerInputMode = playerInputMode,
-		activeInputModeName = resolvedActiveInputModeName,
+		activeInputModeName = activeInputName,
 		activeGamepadInputName = activeGamepadInputName,
 		platformName = platformName,
 		connectedGamepadCount = connectedGamepadCount,
@@ -1168,13 +1160,13 @@ function PlatformServiceClient._resolveState(self: PlatformServiceClient): Platf
 	return provisionalState
 end
 
-function PlatformServiceClient._resolveGamepadFamily(_self: PlatformServiceClient): string
-	local familyFromPlatform = resolveGamepadFamilyFromPlatformName(resolvePlatformName())
+function PlatformServiceClient._GetGamepadFamily(_self: PlatformServiceClient): string
+	local familyFromPlatform = GetGamepadFamilyFromPlatformName(GetPlatformName())
 	if familyFromPlatform ~= nil then
 		return familyFromPlatform
 	end
 
-	local familyFromButtonImage = resolveGamepadFamilyFromButtonImage()
+	local familyFromButtonImage = GetGamepadFamilyFromButtonImage()
 	if familyFromButtonImage ~= nil then
 		return familyFromButtonImage
 	end
@@ -1200,14 +1192,14 @@ function PlatformServiceClient._updateActionBindingsForPlatform(self: PlatformSe
 end
 
 function PlatformServiceClient._refreshState(self: PlatformServiceClient, forceEmit: boolean?)
-	local nextState = self:_resolveState()
+	local nextState = self:_GetState()
 	nextState.customCursorEnabled = shouldUseCustomCursorForState(nextState)
 	local previousState = self.state
 	self.gamepadFamily = nextState.gamepadFamily
 	self.state = nextState
 	self:_applySystemPolicies(nextState)
 	local didStateChange = previousState == nil
-		or not PlatformServiceUtils.platformStatesEqual(previousState, nextState)
+		or not PlatformServiceUtils.PlatformStatesEqual(previousState, nextState)
 		or previousState.gamepadFamily ~= nextState.gamepadFamily
 		or previousState.machineFamily ~= nextState.machineFamily
 		or previousState.playerInputMode ~= nextState.playerInputMode
@@ -1253,9 +1245,9 @@ function PlatformServiceClient._ensureActionRuntime(
 	local existing = self.actions[actionName]
 	if existing ~= nil then
 		if overrideDefinitionRaw ~= nil then
-			local sanitized = sanitizeActionDefinition(actionName, overrideDefinitionRaw)
-			if sanitized ~= nil then
-				existing.definition = sanitized
+			local CoerceD = CoerceActionDefinition(actionName, overrideDefinitionRaw)
+			if CoerceD ~= nil then
+				existing.definition = CoerceD
 				existing.isEnabled = true
 			end
 		end
@@ -1263,8 +1255,8 @@ function PlatformServiceClient._ensureActionRuntime(
 	end
 
 	local definition = if overrideDefinitionRaw ~= nil
-		then sanitizeActionDefinition(actionName, overrideDefinitionRaw)
-		else PlatformServiceUtils.getDefaultActionDefinition(actionName)
+		then CoerceActionDefinition(actionName, overrideDefinitionRaw)
+		else PlatformServiceUtils.GetDefaultActionDefinition(actionName)
 	if definition == nil then
 		return nil
 	end
@@ -1389,7 +1381,7 @@ function PlatformServiceClient._dispatchAction(
 		return Enum.ContextActionResult.Pass
 	end
 
-	local prompt = self:getPromptForAction(actionRuntime.definition.actionName)
+	local prompt = self:GetPromptForAction(actionRuntime.definition.actionName)
 	local binding = self:_findMatchingBinding(actionRuntime.boundBindings, inputObject)
 	local value = 0
 	if binding ~= nil then
@@ -1402,7 +1394,7 @@ function PlatformServiceClient._dispatchAction(
 				and inputState ~= Enum.UserInputState.Cancel
 			then
 				usedAnalogInput = true
-				local deadzonedVector = PlatformServiceUtils.applyThumbstickDeadzone(inputVector, binding.deadzone)
+				local deadzonedVector = PlatformServiceUtils.ApplyThumbstickDeadzone(inputVector, binding.deadzone)
 				local axisValue = if binding.axis == "Y" then deadzonedVector.Y else deadzonedVector.X
 				local axisSign = if typeof(binding.axisSign) == "number" and binding.axisSign < 0 then -1 else 1
 				value = math.clamp(axisValue * axisSign, 0, 1)
@@ -1420,7 +1412,7 @@ function PlatformServiceClient._dispatchAction(
 		phase = phase,
 		inputState = inputState,
 		inputObject = inputObject,
-		platform = self:getPlatform(),
+		platform = self:GetPlatform(),
 		definition = cloneDefinition(actionRuntime.definition),
 		binding = if binding ~= nil then cloneBinding(binding) else nil,
 		prompt = prompt,
@@ -1445,7 +1437,7 @@ function PlatformServiceClient._bindContextAction(self: PlatformServiceClient, a
 	if actionRuntime.isEnabled ~= true then
 		return
 	end
-	local bindings = PlatformServiceUtils.resolveBindingsForPlatform(actionRuntime.definition, self:getPlatform())
+	local bindings = PlatformServiceUtils.GetBindingsForPlatform(actionRuntime.definition, self:GetPlatform())
 	if #bindings <= 0 then
 		return
 	end
@@ -1474,10 +1466,10 @@ function PlatformServiceClient.Init(self: PlatformServiceClient)
 		return
 	end
 
-	self.runtimeContext = CoreRuntime.getClientRuntime()
-	if self.runtimeContext ~= nil and typeof((self.runtimeContext :: any).init) == "function" then
+	self.runtimeContext = CoreRuntime.GetClientRuntime()
+	if self.runtimeContext ~= nil and typeof((self.runtimeContext :: any).Init) == "function" then
 		local runtimeAny = self.runtimeContext :: any
-		runtimeAny:init()
+		runtimeAny:Init()
 	end
 
 	self.janitor = Janitor.new()
@@ -1515,23 +1507,23 @@ function PlatformServiceClient.Init(self: PlatformServiceClient)
 	end) :: RxSignalObject
 	self.actions = {}
 	self.lastInputType = nil :: Enum.UserInputType?
-	self.gamepadFamily = self:_resolveGamepadFamily()
+	self.gamepadFamily = self:_GetGamepadFamily()
 	self.nevermorePlatformSetup = false
 	self.nevermoreServiceBag = nil
 	self.nevermoreInputModeService = nil
 	self.inputModeSelector = nil
 	self.gamepadInputModeSelector = nil
 	self.mouseShiftLockService = nil
-	local uiScale = PlatformUIScale.new({
+	local uiScale = PlatformUIScale.New({
 		platformService = self,
 	})
 	self.uiScale = uiScale
-	uiScale:init()
+	uiScale:Init()
 	self:_setupNevermorePlatformSupport()
 
 	self.janitor:GiveChore(function()
 		if self.uiScale ~= nil then
-			self.uiScale:destroy()
+			self.uiScale:Destroy()
 			self.uiScale = nil
 		end
 	end)
@@ -1615,55 +1607,55 @@ function PlatformServiceClient.IsReady(self: PlatformServiceClient): boolean
 end
 
 function PlatformServiceClient.GetPlatform(self: PlatformServiceClient): PlatformKind
-	return self:getState().platform
+	return self:GetState().platform
 end
 
 function PlatformServiceClient.IsTouch(self: PlatformServiceClient): boolean
-	return self:getPlatform() == "Touch"
+	return self:GetPlatform() == "Touch"
 end
 
 function PlatformServiceClient.IsGamepad(self: PlatformServiceClient): boolean
-	return self:getPlatform() == "Gamepad"
+	return self:GetPlatform() == "Gamepad"
 end
 
 function PlatformServiceClient.IsKeyboardMouse(self: PlatformServiceClient): boolean
-	return self:getPlatform() == "KeyboardMouse"
+	return self:GetPlatform() == "KeyboardMouse"
 end
 
 function PlatformServiceClient.GetGamepadFamily(self: PlatformServiceClient): string?
-	return self:getState().gamepadFamily
+	return self:GetState().gamepadFamily
 end
 
 function PlatformServiceClient.GetMachineFamily(self: PlatformServiceClient): string
-	return self:getState().machineFamily
+	return self:GetState().machineFamily
 end
 
 function PlatformServiceClient.GetPlayerInputMode(self: PlatformServiceClient): string
-	return self:getState().playerInputMode
+	return self:GetState().playerInputMode
 end
 
 function PlatformServiceClient.GetActiveInputModeName(self: PlatformServiceClient): string
-	return self:getState().activeInputModeName
+	return self:GetState().activeInputModeName
 end
 
 function PlatformServiceClient.GetActiveGamepadInputName(self: PlatformServiceClient): string?
-	return self:getState().activeGamepadInputName
+	return self:GetState().activeGamepadInputName
 end
 
 function PlatformServiceClient.GetPlatformName(self: PlatformServiceClient): string?
-	return self:getState().platformName
+	return self:GetState().platformName
 end
 
 function PlatformServiceClient.GetConnectedGamepadCount(self: PlatformServiceClient): number
-	return self:getState().connectedGamepadCount
+	return self:GetState().connectedGamepadCount
 end
 
 function PlatformServiceClient.IsShiftLockAllowed(self: PlatformServiceClient): boolean
-	return self:getState().shiftLockAllowed == true
+	return self:GetState().shiftLockAllowed == true
 end
 
 function PlatformServiceClient.ShouldUseCustomCursor(self: PlatformServiceClient): boolean
-	return self:getState().customCursorEnabled == true
+	return self:GetState().customCursorEnabled == true
 end
 
 function PlatformServiceClient.OnPlatformChanged(self: PlatformServiceClient, callbackRaw: any): () -> ()
@@ -1683,7 +1675,7 @@ function PlatformServiceClient.ObserveState(self: PlatformServiceClient): Observ
 	if self.stateObservable == nil then
 		self.stateObservable = Rx.fromSignal(self.stateChanged):Pipe({
 			Rx.start(function()
-				return self:getState()
+				return self:GetState()
 			end),
 		}) :: ObservableObject
 	end
@@ -1741,7 +1733,7 @@ function PlatformServiceClient.ObserveUIScale(self: PlatformServiceClient): Obse
 		else
 			self.uiScaleObservable = Rx.fromSignal((uiScale :: any).changed):Pipe({
 				Rx.start(function()
-					return uiScale:getSnapshot()
+					return uiScale:GetSnapshot()
 				end),
 			}) :: ObservableObject
 		end
@@ -1817,7 +1809,7 @@ function PlatformServiceClient.ObservePromptForAction(self: PlatformServiceClien
 			}),
 		}):Pipe({
 			Rx.map(function()
-				return self:getPromptForAction(actionName)
+				return self:GetPromptForAction(actionName)
 			end),
 		}) :: ObservableObject
 		self.promptObservables[actionName] = cached
@@ -1924,12 +1916,12 @@ function PlatformServiceClient.RebindAction(
 	if runtime == nil then
 		return false
 	end
-	local platformKind = sanitizePlatformKind(platformKindRaw)
+	local platformKind = CoercePlatformKind(platformKindRaw)
 	runtime.definition.bindingsByPlatform = runtime.definition.bindingsByPlatform or ({} :: any)
-	runtime.definition.bindingsByPlatform[platformKind] = sanitizeBindingsTable(bindingsRaw)
+	runtime.definition.bindingsByPlatform[platformKind] = CoerceBindingsTable(bindingsRaw)
 	if promptBindingsRaw ~= nil then
 		runtime.definition.promptBindingsByPlatform = runtime.definition.promptBindingsByPlatform or ({} :: any)
-		runtime.definition.promptBindingsByPlatform[platformKind] = sanitizeBindingsTable(promptBindingsRaw)
+		runtime.definition.promptBindingsByPlatform[platformKind] = CoerceBindingsTable(promptBindingsRaw)
 	end
 	self:_unbindContextAction(runtime)
 	if hasActionSubscribers(runtime) then
@@ -2003,16 +1995,16 @@ function PlatformServiceClient.GetPromptForAction(self: PlatformServiceClient, a
 	local runtime = self.actions[actionNameRaw]
 	local definition = if runtime ~= nil
 		then runtime.definition
-		else PlatformServiceUtils.getDefaultActionDefinition(actionNameRaw)
+		else PlatformServiceUtils.GetDefaultActionDefinition(actionNameRaw)
 	if definition == nil then
 		return nil
 	end
 
-	local prompt = PlatformServiceUtils.resolvePromptForAction(
+	local prompt = PlatformServiceUtils.GetPromptForAction(
 		definition,
-		self:getPlatform(),
-		self:getState().deviceClass,
-		self:getState().gamepadFamily
+		self:GetPlatform(),
+		self:GetState().deviceClass,
+		self:GetState().gamepadFamily
 	)
 	if prompt == nil then
 		return nil
@@ -2062,15 +2054,15 @@ function PlatformServiceClient.GetControls(self: PlatformServiceClient, platform
 	local requestedPlatform = if platformKindRaw == "Gamepad" or platformKindRaw == "Touch"
 		then platformKindRaw
 		elseif platformKindRaw == "KeyboardMouse" then "KeyboardMouse"
-		else self:getPlatform()
-	local state = self:getState()
+		else self:GetPlatform()
+	local state = self:GetState()
 
 	local layout = if requestedPlatform == "Gamepad" then XboxControls else nil
 	return {
 		platform = requestedPlatform,
 		deviceClass = state.deviceClass,
 		gamepadFamily = if requestedPlatform == "Gamepad" then state.gamepadFamily else nil,
-		sections = if layout ~= nil then resolveControlSections(self, layout, requestedPlatform) else {} :: any,
+		sections = if layout ~= nil then GetControlSections(self, layout, requestedPlatform) else {} :: any,
 	}
 end
 
@@ -2079,7 +2071,7 @@ function PlatformServiceClient.SetScreenGui(self: PlatformServiceClient, screenG
 	if self.uiScale == nil then
 		return false
 	end
-	return self.uiScale:setScreenGui(screenGuiRaw)
+	return self.uiScale:SetScreenGui(screenGuiRaw)
 end
 
 function PlatformServiceClient.SetScaleTarget(self: PlatformServiceClient, targetRaw: any): boolean
@@ -2087,7 +2079,7 @@ function PlatformServiceClient.SetScaleTarget(self: PlatformServiceClient, targe
 	if self.uiScale == nil then
 		return false
 	end
-	return self.uiScale:setScaleTarget(targetRaw)
+	return self.uiScale:SetScaleTarget(targetRaw)
 end
 
 function PlatformServiceClient.Destroy(self: PlatformServiceClient)
@@ -2145,50 +2137,4 @@ function PlatformServiceClient.Destroy(self: PlatformServiceClient)
 	self.actionSignals = nil
 	self.actions = nil
 end
-
-PlatformServiceClient.init = PlatformServiceClient.Init
-PlatformServiceClient.requestSync = PlatformServiceClient.RequestSync
-PlatformServiceClient.isReady = PlatformServiceClient.IsReady
-PlatformServiceClient.getState = PlatformServiceClient.GetState
-PlatformServiceClient.getPlatform = PlatformServiceClient.GetPlatform
-PlatformServiceClient.isTouch = PlatformServiceClient.IsTouch
-PlatformServiceClient.isGamepad = PlatformServiceClient.IsGamepad
-PlatformServiceClient.isKeyboardMouse = PlatformServiceClient.IsKeyboardMouse
-PlatformServiceClient.getGamepadFamily = PlatformServiceClient.GetGamepadFamily
-PlatformServiceClient.getMachineFamily = PlatformServiceClient.GetMachineFamily
-PlatformServiceClient.getPlayerInputMode = PlatformServiceClient.GetPlayerInputMode
-PlatformServiceClient.getActiveInputModeName = PlatformServiceClient.GetActiveInputModeName
-PlatformServiceClient.getActiveGamepadInputName = PlatformServiceClient.GetActiveGamepadInputName
-PlatformServiceClient.getPlatformName = PlatformServiceClient.GetPlatformName
-PlatformServiceClient.getConnectedGamepadCount = PlatformServiceClient.GetConnectedGamepadCount
-PlatformServiceClient.isShiftLockAllowed = PlatformServiceClient.IsShiftLockAllowed
-PlatformServiceClient.shouldUseCustomCursor = PlatformServiceClient.ShouldUseCustomCursor
-PlatformServiceClient.onPlatformChanged = PlatformServiceClient.OnPlatformChanged
-PlatformServiceClient.observeState = PlatformServiceClient.ObserveState
-PlatformServiceClient.observePlatform = PlatformServiceClient.ObservePlatform
-PlatformServiceClient.observeDeviceClass = PlatformServiceClient.ObserveDeviceClass
-PlatformServiceClient.observePlatformChanged = PlatformServiceClient.ObservePlatformChanged
-PlatformServiceClient.observeUIScale = PlatformServiceClient.ObserveUIScale
-PlatformServiceClient.observeAllActions = PlatformServiceClient.ObserveAllActions
-PlatformServiceClient.observeAction = PlatformServiceClient.ObserveAction
-PlatformServiceClient.observePromptForAction = PlatformServiceClient.ObservePromptForAction
-PlatformServiceClient.getStateChangedSignal = PlatformServiceClient.GetStateChangedSignal
-PlatformServiceClient.getPlatformSignal = PlatformServiceClient.GetPlatformSignal
-PlatformServiceClient.getDeviceClassSignal = PlatformServiceClient.GetDeviceClassSignal
-PlatformServiceClient.getPlatformChangedSignal = PlatformServiceClient.GetPlatformChangedSignal
-PlatformServiceClient.getUIScaleChangedSignal = PlatformServiceClient.GetUIScaleChangedSignal
-PlatformServiceClient.getActionTriggeredSignal = PlatformServiceClient.GetActionTriggeredSignal
-PlatformServiceClient.getActionSignal = PlatformServiceClient.GetActionSignal
-PlatformServiceClient.getPromptSignal = PlatformServiceClient.GetPromptSignal
-PlatformServiceClient.registerAction = PlatformServiceClient.RegisterAction
-PlatformServiceClient.rebindAction = PlatformServiceClient.RebindAction
-PlatformServiceClient.setActionEnabled = PlatformServiceClient.SetActionEnabled
-PlatformServiceClient.bindAction = PlatformServiceClient.BindAction
-PlatformServiceClient.getPromptForAction = PlatformServiceClient.GetPromptForAction
-PlatformServiceClient.getControls = PlatformServiceClient.GetControls
-PlatformServiceClient.getUIScale = PlatformServiceClient.GetUIScale
-PlatformServiceClient.setScreenGui = PlatformServiceClient.SetScreenGui
-PlatformServiceClient.setScaleTarget = PlatformServiceClient.SetScaleTarget
-PlatformServiceClient.destroy = PlatformServiceClient.Destroy
-
 return PlatformServiceClient :: PlatformServiceClient

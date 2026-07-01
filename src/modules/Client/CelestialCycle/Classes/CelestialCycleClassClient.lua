@@ -28,7 +28,7 @@ CelestialCycleClassClient.__index = CelestialCycleClassClient
 
 local ROOT_FOLDER_NAME = "CelestialCycle"
 
-local function resolveWorldDayIndex(): number
+local function GetWorldDayIndex(): number
 	local weatherState = (WeatherServiceClient :: any).state
 	if typeof(weatherState) == "table" and typeof(weatherState.worldDayIndex) == "number" then
 		return weatherState.worldDayIndex
@@ -37,14 +37,14 @@ local function resolveWorldDayIndex(): number
 end
 
 local function cloneState(state: CelestialCycleState): CelestialCycleState
-	return RotationMath.resolveCycleState(state.clockTime, state.worldDayIndex)
+	return RotationMath.GetCycleState(state.clockTime, state.worldDayIndex)
 end
 
 function CelestialCycleClassClient.new(): CelestialCycleClassClient
 	local self = setmetatable({}, CelestialCycleClassClient)
 	self.maid = Maid.new()
 	self.stateValue =
-		ValueObject.new(RotationMath.resolveCycleState(Lighting.ClockTime, resolveWorldDayIndex()), "table")
+		ValueObject.new(RotationMath.GetCycleState(Lighting.ClockTime, GetWorldDayIndex()), "table")
 	self.stateChangedSignal = RxSignal.new(function()
 		return self:ObserveState()
 	end)
@@ -56,27 +56,27 @@ function CelestialCycleClassClient.new(): CelestialCycleClassClient
 end
 
 function CelestialCycleClassClient.PreloadAssets(self: CelestialCycleClassClient)
-	local assets = { SunAsset.getImage() }
+	local assets = { SunAsset.GetImage() }
 	for _, phaseName in CelestialCycleConstants.MOON_PHASES do
-		table.insert(assets, MoonAssets.getImageForPhase(phaseName))
+		table.insert(assets, MoonAssets.GetImageForPhase(phaseName))
 	end
 	self.maid:GivePromise(ContentProviderUtils.promisePreload(assets))
 end
 
 function CelestialCycleClassClient.Publish(self: CelestialCycleClassClient)
-	local cycleState = RotationMath.resolveCycleState(Lighting.ClockTime, resolveWorldDayIndex())
+	local cycleState = RotationMath.GetCycleState(Lighting.ClockTime, GetWorldDayIndex())
 	self.stateValue.Value = cycleState
 	if self.anchorRoot == nil then
 		return
 	end
 
-	self.anchorRoot:update(Workspace.CurrentCamera)
-	CelestialThunks.publishSurfaceState({
+	self.anchorRoot:Update(Workspace.CurrentCamera)
+	CelestialThunks.PublishSurfaceState({
 		visible = true,
-		adornee = self.anchorRoot:getAdornee(),
+		adornee = self.anchorRoot:GetAdornee(),
 		face = CelestialCycleConstants.SURFACE_FACE,
 		brightness = CelestialCycleConstants.SURFACE_BRIGHTNESS,
-		canvasSize = self.anchorRoot:getCanvasSize(),
+		canvasSize = self.anchorRoot:GetCanvasSize(),
 		cycle = cycleState,
 	})
 end
@@ -86,7 +86,7 @@ function CelestialCycleClassClient.Init(self: CelestialCycleClassClient, contain
 		return
 	end
 	self.initialized = true
-	self.rootFolder = WorkspaceFolders.getOrCreateFolderInGame(ROOT_FOLDER_NAME)
+	self.rootFolder = WorkspaceFolders.GetOrCreateFolderInGame(ROOT_FOLDER_NAME)
 	self.anchorRoot = CelestialBodyRoot.new(container or self.rootFolder)
 	self:PreloadAssets()
 	self:Publish()
@@ -112,9 +112,9 @@ function CelestialCycleClassClient.GetState(self: CelestialCycleClassClient): Ce
 end
 
 function CelestialCycleClassClient.Destroy(self: CelestialCycleClassClient)
-	CelestialThunks.clearSurfaceState()
+	CelestialThunks.ClearSurfaceState()
 	if self.anchorRoot ~= nil then
-		self.anchorRoot:destroy()
+		self.anchorRoot:Destroy()
 		self.anchorRoot = nil
 	end
 	if self.maid ~= nil then
@@ -122,15 +122,6 @@ function CelestialCycleClassClient.Destroy(self: CelestialCycleClassClient)
 	end
 	self.initialized = false
 end
-
-CelestialCycleClassClient.preloadAssets = CelestialCycleClassClient.PreloadAssets
-CelestialCycleClassClient.publish = CelestialCycleClassClient.Publish
-CelestialCycleClassClient.init = CelestialCycleClassClient.Init
-CelestialCycleClassClient.observeState = CelestialCycleClassClient.ObserveState
-CelestialCycleClassClient.getStateChangedSignal = CelestialCycleClassClient.GetStateChangedSignal
-CelestialCycleClassClient.getState = CelestialCycleClassClient.GetState
-CelestialCycleClassClient.destroy = CelestialCycleClassClient.Destroy
-
 export type CelestialCycleClassClient = typeof(setmetatable(
 	{} :: {
 		maid: any,

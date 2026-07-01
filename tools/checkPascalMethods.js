@@ -2,7 +2,10 @@ const fs = require("fs");
 const path = require("path");
 
 const ROOT = path.resolve(__dirname, "..");
-const SOURCE_ROOT = path.join(ROOT, "src");
+const SOURCE_ROOTS = [
+	path.join(ROOT, "src", "bootstrap"),
+	path.join(ROOT, "src", "modules"),
+];
 const LUA_EXTENSIONS = new Set([".lua", ".luau"]);
 const COMPONENT_LIFECYCLE_METHODS = new Set([
 	"init",
@@ -20,7 +23,7 @@ function isComponentFile(text) {
 
 function collectViolations() {
 	const violations = [];
-	const pending = [SOURCE_ROOT];
+	const pending = SOURCE_ROOTS.filter((sourceRoot) => fs.existsSync(sourceRoot));
 
 	while (pending.length > 0) {
 		const directory = pending.pop();
@@ -43,6 +46,10 @@ function collectViolations() {
 			const componentFile = isComponentFile(text);
 			const relativePath = path.relative(ROOT, fullPath);
 			const methodPattern = /function\s+([A-Za-z_][A-Za-z0-9_]*)\s*([:.])\s*([a-z][A-Za-z0-9_]*)\s*\(/g;
+			const aliasPattern =
+				/^\s*([A-Za-z_][A-Za-z0-9_]*)\.([a-z][A-Za-z0-9_]*)\s*=\s*\1\.([A-Z][A-Za-z0-9_]*)\s*$/gm;
+			const selfAssignmentPattern =
+				/^\s*([A-Za-z_][A-Za-z0-9_]*)\.([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\1\.\2\s*$/gm;
 
 			let match = methodPattern.exec(text);
 			while (match !== null) {
@@ -53,6 +60,20 @@ function collectViolations() {
 				}
 				match = methodPattern.exec(text);
 			}
+
+			match = aliasPattern.exec(text);
+			while (match !== null) {
+				const line = text.slice(0, match.index).split(/\r?\n/).length;
+				violations.push(`${relativePath}:${line} ${match[1]}.${match[2]} alias for ${match[1]}.${match[3]}`);
+				match = aliasPattern.exec(text);
+			}
+
+			match = selfAssignmentPattern.exec(text);
+			while (match !== null) {
+				const line = text.slice(0, match.index).split(/\r?\n/).length;
+				violations.push(`${relativePath}:${line} ${match[1]}.${match[2]} no-op self-assignment`);
+				match = selfAssignmentPattern.exec(text);
+			}
 		}
 	}
 
@@ -61,11 +82,11 @@ function collectViolations() {
 
 const violations = collectViolations();
 if (violations.length === 0) {
-	console.log("All repo-defined Luau method declarations follow PascalCase.");
+	console.log("All repo-defined Luau methods are PascalCase without redundant method assignments.");
 	process.exit(0);
 }
 
-console.error("Found non-PascalCase Luau method declarations:");
+console.error("Found Luau method casing/export issues:");
 for (const violation of violations) {
 	console.error(`- ${violation}`);
 }

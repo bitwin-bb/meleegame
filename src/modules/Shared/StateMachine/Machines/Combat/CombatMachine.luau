@@ -33,7 +33,7 @@ end
 
 function CombatMachine.new(configRaw: any?): any
 	local config: any = if typeof(configRaw) == "table" then Table.copy(configRaw :: any) else {}
-	local machine = StateMachine.new({
+	local machine = StateMachine.New({
 		Blackboard = createBlackboard(config),
 		Context = config.Context or config.context,
 	})

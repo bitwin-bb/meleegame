@@ -258,23 +258,4 @@ function Agent.Destroy(self: Agent)
 	table.clear(self.Sensors)
 	self.maid:DoCleaning()
 end
-
-Agent.addGoal = Agent.AddGoal
-Agent.addAction = Agent.AddAction
-Agent.addSensor = Agent.AddSensor
-Agent.updateSensors = Agent.UpdateSensors
-Agent.selectBestGoal = Agent.SelectBestGoal
-Agent.replan = Agent.Replan
-Agent.update = Agent.Update
-Agent.setWorldState = Agent.SetWorldState
-Agent.getWorldState = Agent.GetWorldState
-Agent.getWorldStateObject = Agent.GetWorldStateObject
-Agent.getBlackboard = Agent.GetBlackboard
-Agent.getCurrentGoal = Agent.GetCurrentGoal
-Agent.getCurrentPlan = Agent.GetCurrentPlan
-Agent.getGoals = Agent.GetGoals
-Agent.getActions = Agent.GetActions
-Agent.getSensors = Agent.GetSensors
-Agent.destroy = Agent.Destroy
-
 return Agent

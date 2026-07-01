@@ -42,7 +42,7 @@ local function getNpcServiceServer()
 	return npcServiceServer
 end
 
-local function resolveNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
+local function GetNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
@@ -50,9 +50,9 @@ local function resolveNumberAttribute(instance: Instance, attributeName: string,
 	return value
 end
 
-local function resolveHazardDefaults(self: any): (string, number, number)
+local function GetHazardDefaults(self: any): (string, number, number)
 	if self:HasTag(TagBinder.Tags.Hazard_Lava) then
-		local lavaDefinition = LiquidServiceUtils.LiquidDamage.getLavaDefinition(getLiquidServiceServer().config)
+		local lavaDefinition = LiquidServiceUtils.LiquidDamage.GetLavaDefinition(getLiquidServiceServer().config)
 		if lavaDefinition ~= nil then
 			return "Lava", lavaDefinition.lavaTouchDamage, lavaDefinition.lavaTouchInterval
 		end
@@ -71,17 +71,17 @@ function HazardBinder.new(instance: Instance, context: any)
 	local self = ModelBinder.new(instance, context, HazardBinder)
 	self.lastDamageAt = {} :: { [Instance]: number }
 	self:refresh()
-	ModelBinder.bindTouchedParts(instance, self.janitor, function(_part: BasePart, other: BasePart)
+	ModelBinder.BindTouchedParts(instance, self.janitor, function(_part: BasePart, other: BasePart)
 		self:onTouched(other)
 	end)
 	return self
 end
 
 function HazardBinder.refresh(self: any)
-	local kind, defaultDamage, defaultInterval = resolveHazardDefaults(self)
+	local kind, defaultDamage, defaultInterval = GetHazardDefaults(self)
 	self.kind = kind
-	self.damage = math.max(0, resolveNumberAttribute(self.instance, "HazardDamage", defaultDamage))
-	self.interval = math.max(0.05, resolveNumberAttribute(self.instance, "HazardInterval", defaultInterval))
+	self.damage = math.max(0, GetNumberAttribute(self.instance, "HazardDamage", defaultDamage))
+	self.interval = math.max(0.05, GetNumberAttribute(self.instance, "HazardInterval", defaultInterval))
 	self.instance:SetAttribute("HazardTagged", true)
 	self.instance:SetAttribute("HazardKind", kind)
 end
@@ -91,8 +91,8 @@ function HazardBinder.onTouched(self: any, other: BasePart)
 		return
 	end
 
-	local player = ModelBinder.resolvePlayer(other)
-	local humanoid = ModelBinder.resolveHumanoid(other)
+	local player = ModelBinder.GetPlayer(other)
+	local humanoid = ModelBinder.GetHumanoid(other)
 	local cooldownKey = if player ~= nil
 		then player :: Instance
 		else if humanoid ~= nil then humanoid :: Instance else other
@@ -103,14 +103,14 @@ function HazardBinder.onTouched(self: any, other: BasePart)
 	self.lastDamageAt[cooldownKey] = now + self.interval
 
 	if player ~= nil then
-		getHpServiceServer():damagePlayer(player, self.damage)
+		getHpServiceServer():DamagePlayer(player, self.damage)
 		return
 	end
 
-	if getNpcServiceServer():damageNpcFromHitPart(other, self.damage, self.instance) > 0 then
+	if getNpcServiceServer():DamageNpcFromHitPart(other, self.damage, self.instance) > 0 then
 		return
 	end
-	if getBossServiceServer():damageBossFromHitPart(other, self.damage, self.instance, self.kind) > 0 then
+	if getBossServiceServer():DamageBossFromHitPart(other, self.damage, self.instance, self.kind) > 0 then
 		return
 	end
 	if humanoid ~= nil then

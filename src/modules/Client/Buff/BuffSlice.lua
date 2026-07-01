@@ -45,20 +45,20 @@ end
 
 local function cloneState(state: BuffState): BuffState
 	return {
-		records = buffUtils.cloneRecords(state.records),
+		records = buffUtils.CloneRecords(state.records),
 		updatedAt = state.updatedAt,
 		source = state.source,
 	}
 end
 
-local function sanitizeRecord(recordRaw: any): BuffRecord?
+local function CoerceRecord(recordRaw: any): BuffRecord?
 	if typeof(recordRaw) ~= "table" then
 		return nil
 	end
 
 	local source = recordRaw :: { [string]: any }
 	local remainingSeconds = source.remainingSeconds
-	local record = buffUtils.applyOverrides(recordRaw, nil)
+	local record = buffUtils.ApplyOverrides(recordRaw, nil)
 
 	if typeof(remainingSeconds) == "number" then
 		if remainingSeconds <= 0 then
@@ -71,14 +71,14 @@ local function sanitizeRecord(recordRaw: any): BuffRecord?
 			record.duration = remainingSeconds
 		end
 		record.remainingSeconds = nil
-	elseif buffUtils.isExpired(record) then
+	elseif buffUtils.IsExpired(record) then
 		return nil
 	end
 
 	return record
 end
 
-local function sanitizeRecords(recordsRaw: any): { BuffRecord }
+local function CoerceRecords(recordsRaw: any): { BuffRecord }
 	local source = getTableSource(recordsRaw)
 	if source == nil then
 		return {}
@@ -86,7 +86,7 @@ local function sanitizeRecords(recordsRaw: any): { BuffRecord }
 
 	local records = {}
 	for _, recordRaw in source do
-		local record = sanitizeRecord(recordRaw)
+		local record = CoerceRecord(recordRaw)
 		if record ~= nil then
 			records[#records + 1] = record
 		end
@@ -95,7 +95,7 @@ local function sanitizeRecords(recordsRaw: any): { BuffRecord }
 	return records
 end
 
-local function sanitizeState(stateRaw: any, fallbackState: BuffState?): BuffState
+local function CoerceState(stateRaw: any, fallbackState: BuffState?): BuffState
 	local sourceTable = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {}
 	local updatedAt = sourceTable.updatedAt
 	local source = sourceTable.source
@@ -108,7 +108,7 @@ local function sanitizeState(stateRaw: any, fallbackState: BuffState?): BuffStat
 	end
 
 	return {
-		records = sanitizeRecords(stateRaw),
+		records = CoerceRecords(stateRaw),
 		updatedAt = updatedAt,
 		source = source,
 	}
@@ -117,8 +117,8 @@ end
 local function filterActiveRecords(records: { BuffRecord }): { BuffRecord }
 	local activeRecords = {}
 	for _, record in records do
-		if record.hidden ~= true and not buffUtils.isExpired(record) then
-			activeRecords[#activeRecords + 1] = buffUtils.cloneRecord(record)
+		if record.hidden ~= true and not buffUtils.IsExpired(record) then
+			activeRecords[#activeRecords + 1] = buffUtils.CloneRecord(record)
 		end
 	end
 	return activeRecords
@@ -128,7 +128,7 @@ local function filterRecordsByKind(records: { BuffRecord }, kind: string): { Buf
 	local filtered = {}
 	for _, record in records do
 		if record.kind == kind then
-			filtered[#filtered + 1] = buffUtils.cloneRecord(record)
+			filtered[#filtered + 1] = buffUtils.CloneRecord(record)
 		end
 	end
 	return filtered
@@ -138,7 +138,7 @@ local buffStateAtom: Charm.Atom<BuffState> = Charm.atom(createDefaultState())
 local buffReadyAtom: Charm.Atom<boolean> = Charm.atom(false)
 
 local recordsAtom: Charm.Selector<{ BuffRecord }> = Charm.computed(function(): { BuffRecord }
-	return buffUtils.cloneRecords(buffStateAtom().records)
+	return buffUtils.CloneRecords(buffStateAtom().records)
 end)
 
 local activeRecordsAtom: Charm.Selector<{ BuffRecord }> = Charm.computed(function(): { BuffRecord }
@@ -170,14 +170,14 @@ local function getActiveRecords(): { BuffRecord }
 end
 
 local function setBuffState(stateRaw: any): BuffState
-	local nextState = sanitizeState(stateRaw, buffStateAtom())
+	local nextState = CoerceState(stateRaw, buffStateAtom())
 	buffStateAtom(nextState)
 	return cloneState(nextState)
 end
 
 local function setBuffRecords(recordsRaw: any, sourceRaw: any?): BuffState
 	local nextState: BuffState = {
-		records = sanitizeRecords(recordsRaw),
+		records = CoerceRecords(recordsRaw),
 		updatedAt = os.clock(),
 		source = if typeof(sourceRaw) == "string" and sourceRaw ~= "" then sourceRaw else nil,
 	}
@@ -211,8 +211,8 @@ return {
 	debuffsAtom = debuffsAtom,
 	recordCountAtom = recordCountAtom,
 	createDefaultState = createDefaultState,
-	sanitizeRecords = sanitizeRecords,
-	sanitizeState = sanitizeState,
+	CoerceRecords = CoerceRecords,
+	CoerceState = CoerceState,
 	getBuffState = getBuffState,
 	getRecords = getRecords,
 	getActiveRecords = getActiveRecords,

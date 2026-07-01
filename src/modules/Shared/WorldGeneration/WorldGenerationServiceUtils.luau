@@ -22,7 +22,7 @@ local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function sanitizeInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+local function CoerceInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
@@ -30,15 +30,15 @@ local function sanitizeInteger(valueRaw: any, minimum: number, maximum: number, 
 	return math.clamp(value, minimum, maximum)
 end
 
-local function sanitizeNumber(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+local function CoerceNumber(valueRaw: any, minimum: number, maximum: number, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
 	return math.clamp(valueRaw :: number, minimum, maximum)
 end
 
-function WorldGenerationServiceUtils.SanitizeRenderDistance(valueRaw: any, fallback: number?): number
-	return sanitizeInteger(
+function WorldGenerationServiceUtils.CoerceRenderDistance(valueRaw: any, fallback: number?): number
+	return CoerceInteger(
 		valueRaw,
 		WorldGenerationConstants.MIN_RENDER_DISTANCE_CHUNKS,
 		WorldGenerationConstants.MAX_RENDER_DISTANCE_CHUNKS,
@@ -46,8 +46,8 @@ function WorldGenerationServiceUtils.SanitizeRenderDistance(valueRaw: any, fallb
 	)
 end
 
-function WorldGenerationServiceUtils.SanitizeVerticalRenderDistance(valueRaw: any, fallback: number?): number
-	return sanitizeInteger(
+function WorldGenerationServiceUtils.CoerceVerticalRenderDistance(valueRaw: any, fallback: number?): number
+	return CoerceInteger(
 		valueRaw,
 		WorldGenerationConstants.MIN_RENDER_DISTANCE_CHUNKS,
 		WorldGenerationConstants.MAX_RENDER_DISTANCE_CHUNKS,
@@ -90,31 +90,31 @@ function WorldGenerationServiceUtils.CreateDefaultConfig(): WorldGenerationConfi
 	}
 end
 
-function WorldGenerationServiceUtils.SanitizeConfig(
+function WorldGenerationServiceUtils.CoerceConfig(
 	configRaw: any,
 	fallbackConfig: WorldGenerationConfig?
 ): WorldGenerationConfig
 	local fallback = if fallbackConfig then fallbackConfig else WorldGenerationServiceUtils.CreateDefaultConfig()
 	local source = if typeof(configRaw) == "table" then configRaw else {} :: any
 
-	local minTileY = sanitizeInteger((source :: any).minTileY, -2048, 2048, fallback.minTileY)
-	local maxTileY = sanitizeInteger((source :: any).maxTileY, -2048, 2048, fallback.maxTileY)
+	local minTileY = CoerceInteger((source :: any).minTileY, -2048, 2048, fallback.minTileY)
+	local maxTileY = CoerceInteger((source :: any).maxTileY, -2048, 2048, fallback.maxTileY)
 
 	return {
-		seed = sanitizeInteger((source :: any).seed, -2147483648, 2147483647, fallback.seed),
-		chunkSize = sanitizeInteger((source :: any).chunkSize, 8, 128, fallback.chunkSize),
-		tileSize = sanitizeNumber((source :: any).tileSize, 1, 64, fallback.tileSize),
-		tileDepth = sanitizeNumber((source :: any).tileDepth, 0.5, 64, fallback.tileDepth),
-		basePlaneX = sanitizeNumber((source :: any).basePlaneX, -4096, 4096, fallback.basePlaneX),
-		wallPlaneOffset = sanitizeNumber((source :: any).wallPlaneOffset, 0.1, 64, fallback.wallPlaneOffset),
-		horizonDepthBlocks = sanitizeInteger((source :: any).horizonDepthBlocks, 10, 256, fallback.horizonDepthBlocks),
-		backgroundLayerCount = sanitizeInteger(
+		seed = CoerceInteger((source :: any).seed, -2147483648, 2147483647, fallback.seed),
+		chunkSize = CoerceInteger((source :: any).chunkSize, 8, 128, fallback.chunkSize),
+		tileSize = CoerceNumber((source :: any).tileSize, 1, 64, fallback.tileSize),
+		tileDepth = CoerceNumber((source :: any).tileDepth, 0.5, 64, fallback.tileDepth),
+		basePlaneX = CoerceNumber((source :: any).basePlaneX, -4096, 4096, fallback.basePlaneX),
+		wallPlaneOffset = CoerceNumber((source :: any).wallPlaneOffset, 0.1, 64, fallback.wallPlaneOffset),
+		horizonDepthBlocks = CoerceInteger((source :: any).horizonDepthBlocks, 10, 256, fallback.horizonDepthBlocks),
+		backgroundLayerCount = CoerceInteger(
 			(source :: any).backgroundLayerCount,
 			3,
 			6,
 			fallback.backgroundLayerCount
 		),
-		backgroundLayerThicknessBlocks = sanitizeNumber(
+		backgroundLayerThicknessBlocks = CoerceNumber(
 			(source :: any).backgroundLayerThicknessBlocks,
 			0.5,
 			3,
@@ -125,89 +125,89 @@ function WorldGenerationServiceUtils.SanitizeConfig(
 			else fallback.worldOrigin,
 		minTileY = math.min(minTileY, maxTileY),
 		maxTileY = math.max(minTileY, maxTileY),
-		bedrockThickness = sanitizeInteger((source :: any).bedrockThickness, 0, 32, fallback.bedrockThickness),
-		defaultRenderDistanceChunks = WorldGenerationServiceUtils.SanitizeRenderDistance(
+		bedrockThickness = CoerceInteger((source :: any).bedrockThickness, 0, 32, fallback.bedrockThickness),
+		defaultRenderDistanceChunks = WorldGenerationServiceUtils.CoerceRenderDistance(
 			(source :: any).defaultRenderDistanceChunks,
 			fallback.defaultRenderDistanceChunks
 		),
-		defaultVerticalRenderDistanceChunks = WorldGenerationServiceUtils.SanitizeVerticalRenderDistance(
+		defaultVerticalRenderDistanceChunks = WorldGenerationServiceUtils.CoerceVerticalRenderDistance(
 			(source :: any).defaultVerticalRenderDistanceChunks,
 			fallback.defaultVerticalRenderDistanceChunks
 		),
-		playerRefreshInterval = sanitizeNumber(
+		playerRefreshInterval = CoerceNumber(
 			(source :: any).playerRefreshInterval,
 			0.03,
 			2,
 			fallback.playerRefreshInterval
 		),
-		maxConcurrentChunkLoads = sanitizeInteger(
+		maxConcurrentChunkLoads = CoerceInteger(
 			(source :: any).maxConcurrentChunkLoads,
 			1,
 			16,
 			fallback.maxConcurrentChunkLoads
 		),
-		maxChunkUnloadsPerHeartbeat = sanitizeInteger(
+		maxChunkUnloadsPerHeartbeat = CoerceInteger(
 			(source :: any).maxChunkUnloadsPerHeartbeat,
 			1,
 			128,
 			fallback.maxChunkUnloadsPerHeartbeat
 		),
-		maxChunkRebuildsPerHeartbeat = sanitizeInteger(
+		maxChunkRebuildsPerHeartbeat = CoerceInteger(
 			(source :: any).maxChunkRebuildsPerHeartbeat,
 			1,
 			64,
 			fallback.maxChunkRebuildsPerHeartbeat
 		),
-		generationRowsPerYield = sanitizeInteger(
+		generationRowsPerYield = CoerceInteger(
 			(source :: any).generationRowsPerYield,
 			1,
 			64,
 			fallback.generationRowsPerYield
 		),
-		meshingRowsPerYield = sanitizeInteger(
+		meshingRowsPerYield = CoerceInteger(
 			(source :: any).meshingRowsPerYield,
 			1,
 			128,
 			fallback.meshingRowsPerYield
 		),
-		maxCachedChunkData = sanitizeInteger((source :: any).maxCachedChunkData, 16, 4096, fallback.maxCachedChunkData),
-		maxCachedChunkVisuals = sanitizeInteger(
+		maxCachedChunkData = CoerceInteger((source :: any).maxCachedChunkData, 16, 4096, fallback.maxCachedChunkData),
+		maxCachedChunkVisuals = CoerceInteger(
 			(source :: any).maxCachedChunkVisuals,
 			0,
 			512,
 			fallback.maxCachedChunkVisuals
 		),
-		maxCollisionPartsPerChunk = sanitizeInteger(
+		maxCollisionPartsPerChunk = CoerceInteger(
 			(source :: any).maxCollisionPartsPerChunk,
 			64,
 			20000,
 			fallback.maxCollisionPartsPerChunk
 		),
-		clientVisualPreloadMarginPixels = sanitizeInteger(
+		clientVisualPreloadMarginPixels = CoerceInteger(
 			(source :: any).clientVisualPreloadMarginPixels,
 			0,
 			1024,
 			fallback.clientVisualPreloadMarginPixels
 		),
-		clientVisualBuildTimeBudgetSeconds = sanitizeNumber(
+		clientVisualBuildTimeBudgetSeconds = CoerceNumber(
 			(source :: any).clientVisualBuildTimeBudgetSeconds,
 			0.001,
 			0.03,
 			fallback.clientVisualBuildTimeBudgetSeconds
 		),
-		clientVisualUnloadTimeBudgetSeconds = sanitizeNumber(
+		clientVisualUnloadTimeBudgetSeconds = CoerceNumber(
 			(source :: any).clientVisualUnloadTimeBudgetSeconds,
 			0.001,
 			0.03,
 			fallback.clientVisualUnloadTimeBudgetSeconds
 		),
-		maxPooledVisualParts = sanitizeInteger(
+		maxPooledVisualParts = CoerceInteger(
 			(source :: any).maxPooledVisualParts,
 			0,
 			50000,
 			fallback.maxPooledVisualParts
 		),
-		maxPoolSize = sanitizeInteger((source :: any).maxPoolSize, 64, 200000, fallback.maxPoolSize),
+		maxPoolSize = CoerceInteger((source :: any).maxPoolSize, 64, 200000, fallback.maxPoolSize),
 		debugLog = if typeof((source :: any).debugLog) == "boolean"
 			then (source :: any).debugLog
 			else fallback.debugLog,
@@ -236,19 +236,19 @@ function WorldGenerationServiceUtils.CreateState(
 ): WorldGenerationServiceState
 	local fallback = if fallbackStateRaw then fallbackStateRaw else WorldGenerationServiceUtils.CreateDefaultState()
 	local source = if typeof(stateRaw) == "table" then stateRaw else {} :: any
-	local minTileY = sanitizeInteger((source :: any).minTileY, -2048, 2048, fallback.minTileY)
-	local maxTileY = sanitizeInteger((source :: any).maxTileY, -2048, 2048, fallback.maxTileY)
+	local minTileY = CoerceInteger((source :: any).minTileY, -2048, 2048, fallback.minTileY)
+	local maxTileY = CoerceInteger((source :: any).maxTileY, -2048, 2048, fallback.maxTileY)
 
 	return {
-		seed = sanitizeInteger((source :: any).seed, -2147483648, 2147483647, fallback.seed),
-		chunkSize = sanitizeInteger((source :: any).chunkSize, 8, 128, fallback.chunkSize),
-		tileSize = sanitizeNumber((source :: any).tileSize, 1, 64, fallback.tileSize),
-		tileDepth = sanitizeNumber((source :: any).tileDepth, 0.5, 64, fallback.tileDepth),
-		renderDistanceChunks = WorldGenerationServiceUtils.SanitizeRenderDistance(
+		seed = CoerceInteger((source :: any).seed, -2147483648, 2147483647, fallback.seed),
+		chunkSize = CoerceInteger((source :: any).chunkSize, 8, 128, fallback.chunkSize),
+		tileSize = CoerceNumber((source :: any).tileSize, 1, 64, fallback.tileSize),
+		tileDepth = CoerceNumber((source :: any).tileDepth, 0.5, 64, fallback.tileDepth),
+		renderDistanceChunks = WorldGenerationServiceUtils.CoerceRenderDistance(
 			(source :: any).renderDistanceChunks,
 			fallback.renderDistanceChunks
 		),
-		verticalRenderDistanceChunks = WorldGenerationServiceUtils.SanitizeVerticalRenderDistance(
+		verticalRenderDistanceChunks = WorldGenerationServiceUtils.CoerceVerticalRenderDistance(
 			(source :: any).verticalRenderDistanceChunks,
 			fallback.verticalRenderDistanceChunks
 		),
@@ -277,13 +277,5 @@ function WorldGenerationServiceUtils.CloneState(state: WorldGenerationServiceSta
 		updatedAt = state.updatedAt,
 	}
 end
-
-WorldGenerationServiceUtils.sanitizeRenderDistance = WorldGenerationServiceUtils.SanitizeRenderDistance
-WorldGenerationServiceUtils.sanitizeVerticalRenderDistance = WorldGenerationServiceUtils.SanitizeVerticalRenderDistance
-WorldGenerationServiceUtils.createDefaultConfig = WorldGenerationServiceUtils.CreateDefaultConfig
-WorldGenerationServiceUtils.sanitizeConfig = WorldGenerationServiceUtils.SanitizeConfig
-WorldGenerationServiceUtils.createDefaultState = WorldGenerationServiceUtils.CreateDefaultState
-WorldGenerationServiceUtils.createState = WorldGenerationServiceUtils.CreateState
-WorldGenerationServiceUtils.cloneState = WorldGenerationServiceUtils.CloneState
 
 return WorldGenerationServiceUtils

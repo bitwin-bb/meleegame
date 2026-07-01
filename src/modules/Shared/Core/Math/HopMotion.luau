@@ -54,7 +54,7 @@ local DEFAULT_SPRING: SpringOptions = {
 	damping = 1,
 }
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -85,19 +85,19 @@ local function cloneSpringOptions(source: SpringOptions?): SpringOptions
 	end
 
 	if source.frequency ~= nil then
-		spring.frequency = sanitizeNumber(source.frequency, spring.frequency or 9, 0.01, 120)
+		spring.frequency = CoerceNumber(source.frequency, spring.frequency or 9, 0.01, 120)
 	end
 	if source.damping ~= nil then
-		spring.damping = sanitizeNumber(source.damping, spring.damping or 1, 0, 20)
+		spring.damping = CoerceNumber(source.damping, spring.damping or 1, 0, 20)
 	end
 
 	return spring
 end
 
 function HopMotion.ComputeArcHeight(horizontalDistanceRaw: any, minArcHeightRaw: any, maxArcHeightRaw: any): number
-	local horizontalDistance = sanitizeNumber(horizontalDistanceRaw, 0, 0, nil)
-	local minArcHeight = sanitizeNumber(minArcHeightRaw, DEFAULT_MIN_ARC_HEIGHT, 0, nil)
-	local maxArcHeight = sanitizeNumber(maxArcHeightRaw, DEFAULT_MAX_ARC_HEIGHT, minArcHeight, nil)
+	local horizontalDistance = CoerceNumber(horizontalDistanceRaw, 0, 0, nil)
+	local minArcHeight = CoerceNumber(minArcHeightRaw, DEFAULT_MIN_ARC_HEIGHT, 0, nil)
+	local maxArcHeight = CoerceNumber(maxArcHeightRaw, DEFAULT_MAX_ARC_HEIGHT, minArcHeight, nil)
 
 	local scaledHeight = horizontalDistance * DEFAULT_ARC_DISTANCE_MULTIPLIER
 	return math.clamp(scaledHeight, minArcHeight, maxArcHeight)
@@ -105,11 +105,11 @@ end
 
 function HopMotion.New(configRaw: HopConfig?): HopMotion
 	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
-	local minArcHeight = sanitizeNumber(config.minArcHeight, DEFAULT_MIN_ARC_HEIGHT, 0, nil)
-	local maxArcHeight = sanitizeNumber(config.maxArcHeight, DEFAULT_MAX_ARC_HEIGHT, minArcHeight, nil)
-	local duration = sanitizeNumber(config.duration, DEFAULT_DURATION, 0.03, 8)
+	local minArcHeight = CoerceNumber(config.minArcHeight, DEFAULT_MIN_ARC_HEIGHT, 0, nil)
+	local maxArcHeight = CoerceNumber(config.maxArcHeight, DEFAULT_MAX_ARC_HEIGHT, minArcHeight, nil)
+	local duration = CoerceNumber(config.duration, DEFAULT_DURATION, 0.03, 8)
 	local arcHeight = if config.arcHeight ~= nil
-		then sanitizeNumber(config.arcHeight, minArcHeight, 0, nil)
+		then CoerceNumber(config.arcHeight, minArcHeight, 0, nil)
 		else minArcHeight
 
 	local origin = Vector3.zero
@@ -135,7 +135,7 @@ function HopMotion.New(configRaw: HopConfig?): HopMotion
 end
 
 function HopMotion.Sample(self: HopMotion, alphaRaw: any): Vector3
-	local alpha = sanitizeNumber(alphaRaw, 0, 0, 1)
+	local alpha = CoerceNumber(alphaRaw, 0, 0, 1)
 	local linearPosition = self.origin:Lerp(self.destination, alpha)
 	local arcOffsetY = 4 * self.arcHeight * alpha * (1 - alpha)
 	return linearPosition + Vector3.new(0, arcOffsetY, 0)
@@ -148,13 +148,13 @@ function HopMotion.Start(self: HopMotion, originRaw: any, destinationRaw: any, d
 
 	self.origin = originRaw
 	self.destination = destinationRaw
-	self.duration = sanitizeNumber(durationRaw, self.duration, 0.03, 8)
+	self.duration = CoerceNumber(durationRaw, self.duration, 0.03, 8)
 
 	local horizontalDelta = Vector3.new(destinationRaw.X - originRaw.X, 0, destinationRaw.Z - originRaw.Z)
 	local computedArcHeight =
 		HopMotion.ComputeArcHeight(horizontalDelta.Magnitude, self.minArcHeight, self.maxArcHeight)
 	self.arcHeight = if arcHeightRaw ~= nil
-		then sanitizeNumber(arcHeightRaw, computedArcHeight, 0, nil)
+		then CoerceNumber(arcHeightRaw, computedArcHeight, 0, nil)
 		else computedArcHeight
 
 	self.elapsed = 0
@@ -187,7 +187,7 @@ function HopMotion.IsActive(self: HopMotion): boolean
 end
 
 function HopMotion.Step(self: HopMotion, dtRaw: any): HopStep
-	local dt = sanitizeNumber(dtRaw, 0, 0, 1)
+	local dt = CoerceNumber(dtRaw, 0, 0, 1)
 	if not self.active then
 		return {
 			position = self.lastPosition,
@@ -205,7 +205,7 @@ function HopMotion.Step(self: HopMotion, dtRaw: any): HopStep
 	local smoothedAlpha = rawAlpha + (springAlpha - rawAlpha) * 0.2
 	smoothedAlpha = math.clamp(smoothedAlpha, self.lastAlpha, 1)
 
-	local sampledPosition = self:sample(smoothedAlpha)
+	local sampledPosition = self:Sample(smoothedAlpha)
 	local velocity = Vector3.zero
 	if dt > 0 then
 		velocity = (sampledPosition - self.lastPosition) / dt
@@ -242,14 +242,4 @@ function HopMotion.Destroy(self: HopMotion)
 	self.active = false
 	self.completed = true
 end
-
-HopMotion.computeArcHeight = HopMotion.ComputeArcHeight
-HopMotion.new = HopMotion.New
-HopMotion.sample = HopMotion.Sample
-HopMotion.start = HopMotion.Start
-HopMotion.stop = HopMotion.Stop
-HopMotion.isActive = HopMotion.IsActive
-HopMotion.step = HopMotion.Step
-HopMotion.destroy = HopMotion.Destroy
-
 return HopMotion

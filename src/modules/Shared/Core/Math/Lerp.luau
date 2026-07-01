@@ -13,15 +13,15 @@ function Lerp.value<T>(a: T, b: T, alpha: number): T
 end
 
 function Lerp.clamped<T>(a: T, b: T, alpha: number): T
-	return Lerp.value(a, b, Num.saturate(alpha))
+	return Lerp.value(a, b, Num.Saturate(alpha))
 end
 
 function Lerp.AngleRadians(a: number, b: number, alpha: number): number
-	return a + Angle.deltaRadians(a, b) * alpha
+	return a + Angle.DeltaRadians(a, b) * alpha
 end
 
 function Lerp.AngleDegrees(a: number, b: number, alpha: number): number
-	return a + Angle.deltaDegrees(a, b) * alpha
+	return a + Angle.DeltaDegrees(a, b) * alpha
 end
 
 function Lerp.Color3(a: Color3, b: Color3, alpha: number): Color3
@@ -51,9 +51,4 @@ function Lerp.trilinear<T>(
 	local back = Lerp.bilinear(c001, c101, c011, c111, tx, ty)
 	return Lerp.value(front, back, tz)
 end
-
-Lerp.angleRadians = Lerp.AngleRadians
-Lerp.angleDegrees = Lerp.AngleDegrees
-Lerp.color3 = Lerp.Color3
-
 return Lerp

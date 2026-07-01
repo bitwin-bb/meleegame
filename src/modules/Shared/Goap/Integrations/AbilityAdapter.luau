@@ -22,7 +22,4 @@ function AbilityAdapter.UseAbility(agent: any, abilityNameRaw: any?): boolean
 end
 
 AbilityAdapter.copy = Table.copy
-AbilityAdapter.get = AbilityAdapter.Get
-AbilityAdapter.useAbility = AbilityAdapter.UseAbility
-
 return AbilityAdapter

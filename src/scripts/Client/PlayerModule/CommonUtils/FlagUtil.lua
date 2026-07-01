@@ -1,7 +1,7 @@
 --!strict
 -- Utility module for handling User Fast Flags
 export type FlagUtilType = {
-	-- Gets the user fast flag value if it's available, otherwise returns false. Don't include flag prefix.
+	-- gets the user fast flag value if it's available, otherwise returns false. Don't include flag prefix.
 	-- Example: local FFlagUserDoStuff = FlagUtil.getUserFlag("UserDoStuff")
 	getUserFlag: (string) -> boolean,
 }

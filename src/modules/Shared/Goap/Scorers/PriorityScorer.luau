@@ -50,7 +50,4 @@ function PriorityScorer.Destroy(self: PriorityScorer)
 end
 
 PriorityScorer.copy = Table.copy
-PriorityScorer.getScore = PriorityScorer.GetScore
-PriorityScorer.destroy = PriorityScorer.Destroy
-
 return PriorityScorer

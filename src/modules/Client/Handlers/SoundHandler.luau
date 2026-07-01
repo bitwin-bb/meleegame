@@ -54,10 +54,4 @@ function SoundHandler.Destroy(self: SoundHandler)
 	self.maid:DoCleaning()
 	table.clear(self.sounds)
 end
-
-SoundHandler.register = SoundHandler.Register
-SoundHandler.play = SoundHandler.Play
-SoundHandler.promisePlayed = SoundHandler.PromisePlayed
-SoundHandler.destroy = SoundHandler.Destroy
-
 return SoundHandler

@@ -278,7 +278,7 @@ end
 
 function Shared.SampleSurfaceHeight(seed: number, worldX: number, _worldZ: number): number
 	local surfaceWorldZ = 0
-	local biomeId = Shared.ResolveBiomeId(seed, worldX, surfaceWorldZ, {})
+	local biomeId = Shared.GetBiomeId(seed, worldX, surfaceWorldZ, {})
 	local broad = Shared.SampleFractalNoise3D(
 		seed,
 		worldX,
@@ -358,7 +358,7 @@ function Shared.SampleSurfaceHeight(seed: number, worldX: number, _worldZ: numbe
 	return math.floor(height + 0.5)
 end
 
-function Shared.ResolveBiomeId(seed: number, worldX: number, worldZ: number, thresholds: { [string]: number }): number
+function Shared.GetBiomeId(seed: number, worldX: number, worldZ: number, thresholds: { [string]: number }): number
 	local temperature = Shared.SampleTemperature(seed, worldX, worldZ)
 	local humidity = Shared.SampleHumidity(seed, worldX, worldZ)
 	local corruptionNoise = Shared.SampleFractalNoise2D(
@@ -388,7 +388,7 @@ function Shared.ResolveBiomeId(seed: number, worldX: number, worldZ: number, thr
 	return Shared.BIOME_ID.FOREST
 end
 
-function Shared.ResolveTileIdForBiomeDepth(biomeId: number, depthBelowSurface: number): number
+function Shared.GetTileIdForBiomeDepth(biomeId: number, depthBelowSurface: number): number
 	if depthBelowSurface < 0 then
 		return Shared.TILE_ID.AIR
 	end
@@ -428,27 +428,5 @@ function Shared.ResolveTileIdForBiomeDepth(biomeId: number, depthBelowSurface: n
 	end
 	return Shared.TILE_ID.STONE
 end
-
-Shared.clampNumber = Shared.ClampNumber
-Shared.clampInteger = Shared.ClampInteger
-Shared.packChunkKey = Shared.PackChunkKey
-Shared.unpackChunkKey = Shared.UnpackChunkKey
-Shared.toTileCoordinate = Shared.ToTileCoordinate
-Shared.toChunkCoordinate = Shared.ToChunkCoordinate
-Shared.toLocalCoordinate = Shared.ToLocalCoordinate
-Shared.computeTileIndex = Shared.ComputeTileIndex
-Shared.computeClusterCount = Shared.ComputeClusterCount
-Shared.computeClusterIndex = Shared.ComputeClusterIndex
-Shared.toUnsignedInt32 = Shared.ToUnsignedInt32
-Shared.hashInt4 = Shared.HashInt4
-Shared.unitRandom = Shared.UnitRandom
-Shared.signedRandom = Shared.SignedRandom
-Shared.sampleFractalNoise2D = Shared.SampleFractalNoise2D
-Shared.sampleFractalNoise3D = Shared.SampleFractalNoise3D
-Shared.sampleTemperature = Shared.SampleTemperature
-Shared.sampleHumidity = Shared.SampleHumidity
-Shared.sampleSurfaceHeight = Shared.SampleSurfaceHeight
-Shared.resolveBiomeId = Shared.ResolveBiomeId
-Shared.resolveTileIdForBiomeDepth = Shared.ResolveTileIdForBiomeDepth
 
 return Shared

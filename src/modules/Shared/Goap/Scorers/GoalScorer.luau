@@ -92,8 +92,4 @@ function GoalScorer.Destroy(self: GoalScorer)
 end
 
 GoalScorer.copy = Table.copy
-GoalScorer.addScorer = GoalScorer.AddScorer
-GoalScorer.getScore = GoalScorer.GetScore
-GoalScorer.destroy = GoalScorer.Destroy
-
 return GoalScorer

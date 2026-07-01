@@ -41,42 +41,42 @@ local DEFAULT_STATE: EntityInfoState = {
 
 local entityInfoStateAtom: Charm.Atom<EntityInfoState> = Charm.atom(DEFAULT_STATE)
 
-local function sanitizeOptionalId(valueRaw: any): string?
+local function CoerceOptionalId(valueRaw: any): string?
 	if typeof(valueRaw) == "string" and valueRaw ~= "" then
 		return valueRaw
 	end
 	return nil
 end
 
-local function sanitizeDisplayName(valueRaw: any, fallback: string): string
+local function CoerceDisplayName(valueRaw: any, fallback: string): string
 	if typeof(valueRaw) == "string" and valueRaw ~= "" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function sanitizeAdornee(valueRaw: any, fallback: Instance?): Instance?
+local function CoerceAdornee(valueRaw: any, fallback: Instance?): Instance?
 	if typeof(valueRaw) == "Instance" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function sanitizeMousePosition(valueRaw: any, fallback: Vector2): Vector2
+local function CoerceMousePosition(valueRaw: any, fallback: Vector2): Vector2
 	if typeof(valueRaw) == "Vector2" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function sanitizeMaxHp(valueRaw: any, fallback: number): number
+local function CoerceMaxHp(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		return math.max(0, math.floor(valueRaw + 0.5))
 	end
 	return fallback
 end
 
-local function sanitizeHp(valueRaw: any, maxHp: number, fallback: number): number
+local function CoerceHp(valueRaw: any, maxHp: number, fallback: number): number
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		return math.clamp(math.floor(valueRaw + 0.5), 0, math.max(0, maxHp))
 	end
@@ -91,16 +91,16 @@ local function setEntityInfoState(stateRaw: any): EntityInfoState
 	local current = entityInfoStateAtom()
 	local source = if typeof(stateRaw) == "table" then stateRaw else {} :: any
 
-	local maxHp = sanitizeMaxHp((source :: any).maxHp, current.maxHp)
+	local maxHp = CoerceMaxHp((source :: any).maxHp, current.maxHp)
 	local nextState: EntityInfoState = {
 		visible = (source :: any).visible == true,
-		hoverId = sanitizeOptionalId((source :: any).hoverId),
-		runtimeId = sanitizeOptionalId((source :: any).runtimeId),
-		adornee = sanitizeAdornee((source :: any).adornee, current.adornee),
-		displayName = sanitizeDisplayName((source :: any).displayName, current.displayName),
-		hp = sanitizeHp((source :: any).hp, maxHp, current.hp),
+		hoverId = CoerceOptionalId((source :: any).hoverId),
+		runtimeId = CoerceOptionalId((source :: any).runtimeId),
+		adornee = CoerceAdornee((source :: any).adornee, current.adornee),
+		displayName = CoerceDisplayName((source :: any).displayName, current.displayName),
+		hp = CoerceHp((source :: any).hp, maxHp, current.hp),
 		maxHp = maxHp,
-		mousePosition = sanitizeMousePosition((source :: any).mousePosition, current.mousePosition),
+		mousePosition = CoerceMousePosition((source :: any).mousePosition, current.mousePosition),
 		updatedAt = os.clock(),
 	}
 
@@ -117,16 +117,16 @@ end
 local function showEntityInfo(payloadRaw: any): EntityInfoState
 	local current = entityInfoStateAtom()
 	local payload = if typeof(payloadRaw) == "table" then payloadRaw else {} :: any
-	local maxHp = sanitizeMaxHp((payload :: any).maxHp, current.maxHp)
+	local maxHp = CoerceMaxHp((payload :: any).maxHp, current.maxHp)
 	local nextState: EntityInfoState = {
 		visible = true,
-		hoverId = sanitizeOptionalId((payload :: any).hoverId),
-		runtimeId = sanitizeOptionalId((payload :: any).runtimeId),
-		adornee = sanitizeAdornee((payload :: any).adornee, current.adornee),
-		displayName = sanitizeDisplayName((payload :: any).displayName, current.displayName),
-		hp = sanitizeHp((payload :: any).hp, maxHp, current.hp),
+		hoverId = CoerceOptionalId((payload :: any).hoverId),
+		runtimeId = CoerceOptionalId((payload :: any).runtimeId),
+		adornee = CoerceAdornee((payload :: any).adornee, current.adornee),
+		displayName = CoerceDisplayName((payload :: any).displayName, current.displayName),
+		hp = CoerceHp((payload :: any).hp, maxHp, current.hp),
 		maxHp = maxHp,
-		mousePosition = sanitizeMousePosition((payload :: any).mousePosition, current.mousePosition),
+		mousePosition = CoerceMousePosition((payload :: any).mousePosition, current.mousePosition),
 		updatedAt = os.clock(),
 	}
 
@@ -136,7 +136,7 @@ end
 
 local function updateMousePosition(mousePositionRaw: any): EntityInfoState
 	local current = entityInfoStateAtom()
-	local nextMousePosition = sanitizeMousePosition(mousePositionRaw, current.mousePosition)
+	local nextMousePosition = CoerceMousePosition(mousePositionRaw, current.mousePosition)
 	if nextMousePosition == current.mousePosition then
 		return current
 	end
@@ -158,7 +158,7 @@ end
 
 local function hideEntityInfo(hoverIdRaw: any): EntityInfoState
 	local current = entityInfoStateAtom()
-	local hoverId = sanitizeOptionalId(hoverIdRaw)
+	local hoverId = CoerceOptionalId(hoverIdRaw)
 	if hoverId ~= nil and current.hoverId ~= nil and current.hoverId ~= hoverId then
 		return current
 	end

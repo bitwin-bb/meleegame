@@ -15,7 +15,7 @@ export type BreakAnimOptions = {
 	frameSize: Vector2,
 }
 
-local function sanitizeInteger(valueRaw: any, fallback: number, minimum: number, maximum: number): number
+local function CoerceInteger(valueRaw: any, fallback: number, minimum: number, maximum: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
@@ -24,10 +24,10 @@ end
 
 local function useBreakAnim(imageRef: { current: ImageLabel? }, options: BreakAnimOptions)
 	local image = if typeof(options.image) == "string" then options.image else ""
-	local columns = sanitizeInteger(options.columns, 1, 1, 128)
-	local rows = sanitizeInteger(options.rows, 1, 1, 128)
+	local columns = CoerceInteger(options.columns, 1, 1, 128)
+	local rows = CoerceInteger(options.rows, 1, 1, 128)
 	local frameCount = math.max(1, columns * rows)
-	local frameIndex = sanitizeInteger(options.frameIndex, 1, 1, frameCount)
+	local frameIndex = CoerceInteger(options.frameIndex, 1, 1, frameCount)
 	local frameSize = if typeof(options.frameSize) == "Vector2" then options.frameSize else Vector2.new(1, 1)
 
 	React.useEffect(

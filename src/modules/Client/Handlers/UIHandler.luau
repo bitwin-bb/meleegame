@@ -50,10 +50,4 @@ function UIHandler.Destroy(self: UIHandler)
 	self.maid:DoCleaning()
 	table.clear(self.screens)
 end
-
-UIHandler.setScreenVisible = UIHandler.SetScreenVisible
-UIHandler.isScreenVisible = UIHandler.IsScreenVisible
-UIHandler.getSnapshot = UIHandler.GetSnapshot
-UIHandler.destroy = UIHandler.Destroy
-
 return UIHandler

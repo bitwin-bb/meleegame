@@ -345,15 +345,4 @@ function VirtualizedList.Destroy(self: VirtualizedList)
 	self.prefix[1] = 0
 end
 
-VirtualizedList.SetData = VirtualizedList.SetData
-VirtualizedList.ScrollToIndex = VirtualizedList.ScrollToIndex
-VirtualizedList.Refresh = VirtualizedList.Refresh
-
-VirtualizedList.new = VirtualizedList.New
-VirtualizedList.setData = VirtualizedList.SetData
-VirtualizedList.refresh = VirtualizedList.Refresh
-VirtualizedList.scrollToIndex = VirtualizedList.ScrollToIndex
-VirtualizedList.getVisibleRange = VirtualizedList.GetVisibleRange
-VirtualizedList.destroy = VirtualizedList.Destroy
-
 return VirtualizedList

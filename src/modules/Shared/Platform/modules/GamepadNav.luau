@@ -179,13 +179,13 @@ local function normalizeThumbstickVector(vector: Vector2, deadzone: number): Vec
 	return vector.Unit * remappedMagnitude
 end
 
-function GamepadNav.ResolveRemappedDeadzoneMagnitude(sourceDeadzoneRaw: any, targetDeadzoneRaw: any): number
+function GamepadNav.GetEmappedDeadzoneMagnitude(sourceDeadzoneRaw: any, targetDeadzoneRaw: any): number
 	local sourceDeadzone = clampNumber(sourceDeadzoneRaw, DEFAULT_STICK_DEADZONE, 0, 1)
 	local targetDeadzone = clampNumber(targetDeadzoneRaw, DEFAULT_NAVIGATION_DEADZONE, 0, 1)
 	return math.clamp((targetDeadzone - sourceDeadzone) / math.max(THUMBSTICK_ACTIVE_EPSILON, 1 - sourceDeadzone), 0, 1)
 end
 
-local function resolveInputThumbstickVector(input: InputObject, deadzone: number): Vector2?
+local function GetInputThumbstickVector(input: InputObject, deadzone: number): Vector2?
 	local position = input.Position
 	if typeof(position) ~= "Vector3" then
 		return nil
@@ -198,7 +198,7 @@ local function createThumbstickStateFromInput(
 	input: InputObject,
 	deadzone: number
 ): ThumbstickState?
-	local nextRaw = resolveInputThumbstickVector(input, deadzone)
+	local nextRaw = GetInputThumbstickVector(input, deadzone)
 	if nextRaw == nil then
 		return nil
 	end
@@ -212,7 +212,7 @@ local function createThumbstickStateFromInput(
 	}
 end
 
-local function resolveDominantThumbstick(left: ThumbstickState, right: ThumbstickState): ThumbstickKey?
+local function GetDominantThumbstick(left: ThumbstickState, right: ThumbstickState): ThumbstickKey?
 	if right.active then
 		return "Right"
 	end
@@ -301,7 +301,7 @@ function GamepadNav._emitFocusChanged(self: GamepadNav, nextFocused: GuiObject?,
 	end
 	if self.eventBus ~= nil and typeof((self.eventBus :: any).publish) == "function" then
 		local eventBusAny = self.eventBus :: any
-		eventBusAny:publish(self.eventChannel, self.focusEvent, {
+		eventBusAny:Publish(self.eventChannel, self.focusEvent, {
 			layout = self.activeLayoutKey,
 			index = self.activeIndex,
 			focused = nextFocused,
@@ -315,7 +315,7 @@ function GamepadNav._emitThumbstickChanged(self: GamepadNav)
 	self.thumbstickChangedSignal:Fire(snapshot)
 	if self.eventBus ~= nil and typeof((self.eventBus :: any).publish) == "function" then
 		local eventBusAny = self.eventBus :: any
-		eventBusAny:publish(self.eventChannel, self.thumbstickEvent, snapshot)
+		eventBusAny:Publish(self.eventChannel, self.thumbstickEvent, snapshot)
 	end
 end
 
@@ -500,7 +500,7 @@ function GamepadNav._setThumbstickSnapshot(
 	nextLeft: ThumbstickState,
 	nextRight: ThumbstickState
 ): boolean
-	local nextDominant = resolveDominantThumbstick(nextLeft, nextRight)
+	local nextDominant = GetDominantThumbstick(nextLeft, nextRight)
 	if
 		thumbstickStatesEqual(self.thumbstickSnapshot.left, nextLeft)
 		and thumbstickStatesEqual(self.thumbstickSnapshot.right, nextRight)
@@ -575,7 +575,7 @@ function GamepadNav._refreshThumbsticks(self: GamepadNav, gamepadType: Enum.User
 end
 
 function GamepadNav._getNavigationVector(self: GamepadNav, input: InputObject): Vector2
-	return resolveInputThumbstickVector(input, self.navigationDeadzone) or Vector2.zero
+	return GetInputThumbstickVector(input, self.navigationDeadzone) or Vector2.zero
 end
 
 function GamepadNav._resetThumbstick(self: GamepadNav, key: ThumbstickKey)
@@ -823,36 +823,5 @@ function GamepadNav.Destroy(self: GamepadNav)
 	self.activeIndex = 0
 	self.isInitialized = false
 end
-
-GamepadNav.RegisterLayout = GamepadNav.RegisterLayout
-GamepadNav.UnregisterLayout = GamepadNav.UnregisterLayout
-GamepadNav.SetLayout = GamepadNav.SetLayout
-GamepadNav.GetActiveElements = GamepadNav.GetActiveElements
-GamepadNav.GetFocused = GamepadNav.GetFocused
-GamepadNav.Move = GamepadNav.Move
-GamepadNav.FocusIndex = GamepadNav.FocusIndex
-GamepadNav.OnFocusChanged = GamepadNav.OnFocusChanged
-GamepadNav.GetThumbstickState = GamepadNav.GetThumbstickState
-GamepadNav.OnThumbstickChanged = GamepadNav.OnThumbstickChanged
-GamepadNav.ResolveRemappedDeadzoneMagnitude = GamepadNav.ResolveRemappedDeadzoneMagnitude
-GamepadNav.SetEnabled = GamepadNav.SetEnabled
-GamepadNav.Init = GamepadNav.Init
-GamepadNav.Destroy = GamepadNav.Destroy
-
-GamepadNav.new = GamepadNav.New
-GamepadNav.init = GamepadNav.Init
-GamepadNav.registerLayout = GamepadNav.RegisterLayout
-GamepadNav.unregisterLayout = GamepadNav.UnregisterLayout
-GamepadNav.setLayout = GamepadNav.SetLayout
-GamepadNav.getActiveElements = GamepadNav.GetActiveElements
-GamepadNav.getFocused = GamepadNav.GetFocused
-GamepadNav.move = GamepadNav.Move
-GamepadNav.focusIndex = GamepadNav.FocusIndex
-GamepadNav.onFocusChanged = GamepadNav.OnFocusChanged
-GamepadNav.getThumbstickState = GamepadNav.GetThumbstickState
-GamepadNav.onThumbstickChanged = GamepadNav.OnThumbstickChanged
-GamepadNav.resolveRemappedDeadzoneMagnitude = GamepadNav.ResolveRemappedDeadzoneMagnitude
-GamepadNav.setEnabled = GamepadNav.SetEnabled
-GamepadNav.destroy = GamepadNav.Destroy
 
 return GamepadNav

@@ -39,17 +39,17 @@ local function screenVectorsEqual(a: Vector2?, b: Vector2?): boolean
 	return (a - b).Magnitude <= SCREEN_VECTOR_EPSILON
 end
 
-local function sanitizeWorldPosition(worldPositionRaw: any): Vector3?
+local function CoerceWorldPosition(worldPositionRaw: any): Vector3?
 	return if typeof(worldPositionRaw) == "Vector3" then worldPositionRaw :: Vector3 else nil
 end
 
-local function sanitizeScreenVector(screenVectorRaw: any): Vector2?
+local function CoerceScreenVector(screenVectorRaw: any): Vector2?
 	return if typeof(screenVectorRaw) == "Vector2" then screenVectorRaw :: Vector2 else nil
 end
 
 function GamepadTargetServiceClient.SetTarget(worldPositionRaw: any, screenVectorRaw: any?): boolean
-	local nextWorldPosition = sanitizeWorldPosition(worldPositionRaw)
-	local nextScreenVector = sanitizeScreenVector(screenVectorRaw)
+	local nextWorldPosition = CoerceWorldPosition(worldPositionRaw)
+	local nextScreenVector = CoerceScreenVector(screenVectorRaw)
 	local worldChanged = not worldPositionsEqual(targetWorldPosition, nextWorldPosition)
 	local screenChanged = not screenVectorsEqual(targetScreenVector, nextScreenVector)
 	if not worldChanged and not screenChanged then
@@ -94,14 +94,4 @@ function GamepadTargetServiceClient.OnTargetChanged(callbackRaw: any): () -> ()
 		connection:Disconnect()
 	end
 end
-
-GamepadTargetServiceClient.setTarget = GamepadTargetServiceClient.SetTarget
-GamepadTargetServiceClient.setTargetWorldPosition = GamepadTargetServiceClient.SetTargetWorldPosition
-GamepadTargetServiceClient.setTargetScreenVector = GamepadTargetServiceClient.SetTargetScreenVector
-GamepadTargetServiceClient.clearTarget = GamepadTargetServiceClient.ClearTarget
-GamepadTargetServiceClient.getTargetWorldPosition = GamepadTargetServiceClient.GetTargetWorldPosition
-GamepadTargetServiceClient.getTargetScreenVector = GamepadTargetServiceClient.GetTargetScreenVector
-GamepadTargetServiceClient.onTargetChanged = GamepadTargetServiceClient.OnTargetChanged
-GamepadTargetServiceClient.targetChanged = GamepadTargetServiceClient.TargetChanged
-
 return GamepadTargetServiceClient

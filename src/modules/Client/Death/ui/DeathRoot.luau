@@ -14,9 +14,9 @@ type DeathRootProps = {
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: DeathRootProps?): React.ReactNode
-	local resolvedProps = if props ~= nil then props else {} :: DeathRootProps
+	local GotProps = if props ~= nil then props else {} :: DeathRootProps
 
 	return e(React.Fragment, nil, {
-		e(DeathScreen, resolvedProps),
+		e(DeathScreen, GotProps),
 	})
 end

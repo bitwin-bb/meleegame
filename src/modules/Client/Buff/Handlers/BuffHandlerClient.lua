@@ -44,10 +44,6 @@ local function getRecordList(definitionRaw: any, kindFallback: string): { BuffRe
 		return {}
 	end
 
-	if typeof(definitionRaw.getRecords) == "function" then
-		return definitionRaw:getRecords(kindFallback)
-	end
-
 	if typeof(definitionRaw.GetRecords) == "function" then
 		return definitionRaw:GetRecords(kindFallback)
 	end
@@ -58,7 +54,7 @@ local function getRecordList(definitionRaw: any, kindFallback: string): { BuffRe
 
 	if typeof(definitionRaw.name) == "string" or typeof(definitionRaw.id) == "string" then
 		return {
-			buffUtils.createRecord(kindFallback, definitionRaw, nil, nil, nil, nil, nil),
+			buffUtils.CreateRecord(kindFallback, definitionRaw, nil, nil, nil, nil, nil),
 		}
 	end
 
@@ -89,10 +85,10 @@ function BuffHandlerClient.Init(self: BuffHandlerClient)
 
 	self.localPlayer = Players.LocalPlayer
 	self.maid = Maid.new()
-	self.definitions = BuffShared.new({
+	self.definitions = BuffShared.New({
 		definitionOnly = true,
 	})
-	self.active = BuffShared.new()
+	self.active = BuffShared.New()
 	self.definitionChanged = Signal.new()
 	self.activeChanged = Signal.new()
 	self.buffAdded = Signal.new()
@@ -108,13 +104,13 @@ function BuffHandlerClient.Init(self: BuffHandlerClient)
 	self.maid:GiveTask(self.buffRemoved)
 
 	self.maid:GiveTask(self.active.RecordAdded:Connect(function(record: BuffRecord)
-		self:handleRecordAdded(record)
+		self:HandleRecordAdded(record)
 	end))
 	self.maid:GiveTask(self.active.RecordChanged:Connect(function(record: BuffRecord)
-		self:handleRecordChanged(record)
+		self:HandleRecordChanged(record)
 	end))
 	self.maid:GiveTask(self.active.RecordRemoved:Connect(function(record: BuffRecord, reason: string)
-		self:handleRecordRemoved(record, reason)
+		self:HandleRecordRemoved(record, reason)
 	end))
 	self.maid:GiveTask(self.active.RecordsChanged:Connect(function(records: { BuffRecord }, context: string)
 		self.activeChanged:Fire(records, context)
@@ -123,7 +119,7 @@ function BuffHandlerClient.Init(self: BuffHandlerClient)
 		self.definitionChanged:Fire(records, context)
 	end))
 
-	self:loadDefinitions()
+	self:LoadDefinitions()
 end
 
 function BuffHandlerClient.LoadDefinitions(self: BuffHandlerClient)
@@ -135,7 +131,7 @@ function BuffHandlerClient.LoadDefinitions(self: BuffHandlerClient)
 
 		for _, child in folder:GetChildren() do
 			if child:IsA("ModuleScript") then
-				self:loadDefinitionModule(child, definitionFolder.kind)
+				self:LoadDefinitionModule(child, definitionFolder.kind)
 			end
 		end
 	end
@@ -163,7 +159,7 @@ function BuffHandlerClient.RegisterDefinition(
 	definitionRaw: any,
 	kindFallbackRaw: any?
 ): number
-	local kindFallback = buffUtils.sanitizeKind(kindFallbackRaw)
+	local kindFallback = buffUtils.CoerceKind(kindFallbackRaw)
 	local records = getRecordList(definitionRaw, kindFallback)
 	local registered = 0
 
@@ -189,25 +185,25 @@ function BuffHandlerClient.CreateContext(self: BuffHandlerClient): { [string]: a
 end
 
 function BuffHandlerClient.HandleRecordAdded(self: BuffHandlerClient, record: BuffRecord)
-	local context = self:createContext()
+	local context = self:CreateContext()
 	runEffectCallback(record.effects.onAdded or record.effects.OnAdded, context, record, self)
 	self.buffAdded:Fire(record)
 end
 
 function BuffHandlerClient.HandleRecordChanged(self: BuffHandlerClient, record: BuffRecord)
-	local context = self:createContext()
+	local context = self:CreateContext()
 	runEffectCallback(record.effects.onChanged or record.effects.OnChanged, context, record, self)
 	self.buffChanged:Fire(record)
 end
 
 function BuffHandlerClient.HandleRecordRemoved(self: BuffHandlerClient, record: BuffRecord, reason: string)
-	local context = self:createContext()
+	local context = self:CreateContext()
 	context.reason = reason
 	runEffectCallback(record.effects.onRemoved or record.effects.OnRemoved, context, record, self)
 	self.buffRemoved:Fire(record, reason)
 end
 
-function BuffHandlerClient.ResolveDefinition(self: BuffHandlerClient, nameRaw: any, kindRaw: any?): BuffRecord?
+function BuffHandlerClient.GetDefinition(self: BuffHandlerClient, nameRaw: any, kindRaw: any?): BuffRecord?
 	return self.definitions:GetRecord(nameRaw, kindRaw)
 end
 
@@ -217,7 +213,7 @@ function BuffHandlerClient.ApplyDefinition(
 	kindRaw: any?,
 	overridesRaw: any?
 ): BuffRecord?
-	local definition = self:resolveDefinition(nameRaw, kindRaw)
+	local definition = self:GetDefinition(nameRaw, kindRaw)
 	if definition == nil then
 		return nil
 	end
@@ -236,11 +232,11 @@ function BuffHandlerClient.ApplyDefinition(
 end
 
 function BuffHandlerClient.ApplyBuff(self: BuffHandlerClient, nameRaw: any, overridesRaw: any?): BuffRecord?
-	return self:applyDefinition(nameRaw, BuffConstants.KIND_BUFF, overridesRaw)
+	return self:ApplyDefinition(nameRaw, BuffConstants.KIND_BUFF, overridesRaw)
 end
 
 function BuffHandlerClient.ApplyDebuff(self: BuffHandlerClient, nameRaw: any, overridesRaw: any?): BuffRecord?
-	return self:applyDefinition(nameRaw, BuffConstants.KIND_DEBUFF, overridesRaw)
+	return self:ApplyDefinition(nameRaw, BuffConstants.KIND_DEBUFF, overridesRaw)
 end
 
 function BuffHandlerClient.AddBuff(
@@ -293,29 +289,7 @@ function BuffHandlerClient.Destroy(self: BuffHandlerClient)
 		self.maid = nil
 	end
 end
-
-BuffHandlerClient.init = BuffHandlerClient.Init
 BuffHandlerClient.New = BuffHandlerClient.new
-BuffHandlerClient.loadDefinitions = BuffHandlerClient.LoadDefinitions
-BuffHandlerClient.loadDefinitionModule = BuffHandlerClient.LoadDefinitionModule
-BuffHandlerClient.registerDefinition = BuffHandlerClient.RegisterDefinition
-BuffHandlerClient.createContext = BuffHandlerClient.CreateContext
-BuffHandlerClient.handleRecordAdded = BuffHandlerClient.HandleRecordAdded
-BuffHandlerClient.handleRecordChanged = BuffHandlerClient.HandleRecordChanged
-BuffHandlerClient.handleRecordRemoved = BuffHandlerClient.HandleRecordRemoved
-BuffHandlerClient.resolveDefinition = BuffHandlerClient.ResolveDefinition
-BuffHandlerClient.applyDefinition = BuffHandlerClient.ApplyDefinition
-BuffHandlerClient.applyBuff = BuffHandlerClient.ApplyBuff
-BuffHandlerClient.applyDebuff = BuffHandlerClient.ApplyDebuff
-BuffHandlerClient.addBuff = BuffHandlerClient.AddBuff
-BuffHandlerClient.addDebuff = BuffHandlerClient.AddDebuff
-BuffHandlerClient.remove = BuffHandlerClient.Remove
-BuffHandlerClient.clear = BuffHandlerClient.Clear
-BuffHandlerClient.getActive = BuffHandlerClient.GetActive
-BuffHandlerClient.getDefinitions = BuffHandlerClient.GetDefinitions
-BuffHandlerClient.getRemainingSeconds = BuffHandlerClient.GetRemainingSeconds
-BuffHandlerClient.destroy = BuffHandlerClient.Destroy
-
 type BuffHandlerClient = typeof(BuffHandlerClient) & {
 	localPlayer: Player,
 	maid: MaidClass?,

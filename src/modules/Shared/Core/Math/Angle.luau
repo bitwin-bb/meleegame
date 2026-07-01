@@ -76,7 +76,7 @@ function Angle.Signed2D(fromDirection: Vector2, toDirection: Vector2): number
 	end
 
 	local cross = fromUnit.X * toUnit.Y - fromUnit.Y * toUnit.X
-	local dot = Num.clamp(fromUnit:Dot(toUnit), -1, 1)
+	local dot = Num.Clamp(fromUnit:Dot(toUnit), -1, 1)
 	return math.atan2(cross, dot)
 end
 
@@ -85,7 +85,7 @@ function Angle.Signed3D(fromDirection: Vector3, toDirection: Vector3, axis: Vect
 	local fromUnit = safeUnit3(fromDirection, X_AXIS)
 	local toUnit = safeUnit3(toDirection, fromUnit)
 	local cross = fromUnit:Cross(toUnit)
-	local dot = Num.clamp(fromUnit:Dot(toUnit), -1, 1)
+	local dot = Num.Clamp(fromUnit:Dot(toUnit), -1, 1)
 	return math.atan2(axisUnit:Dot(cross), dot)
 end
 
@@ -96,19 +96,7 @@ function Angle.Unsigned3D(fromDirection: Vector3, toDirection: Vector3): number
 		return 0
 	end
 
-	local dot = Num.clamp(fromDirection:Dot(toDirection) / (fromMagnitude * toMagnitude), -1, 1)
+	local dot = Num.Clamp(fromDirection:Dot(toDirection) / (fromMagnitude * toMagnitude), -1, 1)
 	return math.acos(dot)
 end
-
-Angle.wrapRadians = Angle.WrapRadians
-Angle.wrapDegrees = Angle.WrapDegrees
-Angle.deltaRadians = Angle.DeltaRadians
-Angle.deltaDegrees = Angle.DeltaDegrees
-Angle.lerpRadians = Angle.LerpRadians
-Angle.lerpDegrees = Angle.LerpDegrees
-Angle.fromVector2 = Angle.FromVector2
-Angle.signed2D = Angle.Signed2D
-Angle.signed3D = Angle.Signed3D
-Angle.unsigned3D = Angle.Unsigned3D
-
 return Angle

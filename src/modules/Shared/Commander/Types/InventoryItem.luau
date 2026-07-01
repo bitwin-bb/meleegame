@@ -3,7 +3,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local PACKAGE_NAME = "AquariaBackup"
 
-local function resolveGameRoot(): Instance
+local function GetGameRoot(): Instance
 	local directGameRoot = script:FindFirstAncestor("game")
 	if directGameRoot ~= nil then
 		return directGameRoot
@@ -30,7 +30,7 @@ local function resolveGameRoot(): Instance
 end
 
 
-local gameRoot = resolveGameRoot()
+local gameRoot = GetGameRoot()
 local ItemRegistry = require(gameRoot.Shared.Item.modules.ItemRegistry)
 
 type ItemAutocompleteEntry = {
@@ -41,7 +41,7 @@ type ItemAutocompleteEntry = {
 local function getEntries(): { ItemAutocompleteEntry }
 	local entries = {}
 	local seen = {}
-	local definitionsById = ItemRegistry.getDefinitionsById()
+	local definitionsById = ItemRegistry.GetDefinitionsById()
 
 	for itemId, definition in definitionsById do
 		if seen[itemId] == true then
@@ -71,7 +71,7 @@ return function(registry)
 	registry:RegisterType("inventoryItem", {
 		Transform = function(text: string)
 			local entries = getEntries()
-			local exactItemId = ItemRegistry.resolveCanonicalItemId(text)
+			local exactItemId = ItemRegistry.GetCanonicalItemId(text)
 			local findEntry = cmdrUtil.MakeFuzzyFinder(entries)
 			local matches = findEntry(text)
 

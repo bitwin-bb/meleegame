@@ -32,7 +32,7 @@ local function createAlphaTable(maxIndex: number, activeIndex: number): { [numbe
 	return values
 end
 
-local function resolveFarGroup(style: number): number
+local function GetFarGroup(style: number): number
 	if style == Styles.Desert then
 		return FarGroups.Desert
 	end
@@ -78,20 +78,20 @@ local function createState()
 end
 
 function State.Update(self: State, targetStyle: number, dt: number)
-	local resolvedTargetStyle = if typeof(targetStyle) == "number"
+	local GotTargetStyle = if typeof(targetStyle) == "number"
 		then math.clamp(math.floor(targetStyle), 0, CLOSE_STYLE_COUNT)
 		else Styles.Overworld
-	local resolvedDt = if typeof(dt) == "number" and Math.isFinite(dt) then math.max(dt, 0) else 0
+	local deltaSeconds = if typeof(dt) == "number" and Math.isFinite(dt) then math.max(dt, 0) else 0
 
-	self.targetBgStyle = resolvedTargetStyle
-	if resolvedTargetStyle ~= self.bgStyle then
-		if self.pendingBgStyle ~= resolvedTargetStyle then
-			self.pendingBgStyle = resolvedTargetStyle
+	self.targetBgStyle = GotTargetStyle
+	if GotTargetStyle ~= self.bgStyle then
+		if self.pendingBgStyle ~= GotTargetStyle then
+			self.pendingBgStyle = GotTargetStyle
 			self.bgDelay = self.bgDelaySeconds
 		else
-			self.bgDelay = math.max(self.bgDelay - resolvedDt, 0)
+			self.bgDelay = math.max(self.bgDelay - deltaSeconds, 0)
 			if self.bgDelay <= 0 then
-				self.bgStyle = resolvedTargetStyle
+				self.bgStyle = GotTargetStyle
 				self.pendingBgStyle = nil
 			end
 		end
@@ -100,27 +100,26 @@ function State.Update(self: State, targetStyle: number, dt: number)
 		self.bgDelay = 0
 	end
 
-	local alpha = math.clamp(self.tranSpeed * resolvedDt * 60, 0, 1)
+	local alpha = math.clamp(self.tranSpeed * deltaSeconds * 60, 0, 1)
 	fadeAlphaTable(self.bgAlpha, self.bgStyle, CLOSE_STYLE_COUNT, alpha)
-	fadeAlphaTable(self.bgAlpha2, resolveFarGroup(self.bgStyle), FAR_GROUP_COUNT, alpha)
+	fadeAlphaTable(self.bgAlpha2, GetFarGroup(self.bgStyle), FAR_GROUP_COUNT, alpha)
 end
 
 function State.GetStyleAlpha(self: State, style: number): number
-	local resolvedStyle = if typeof(style) == "number"
+	local GotStyle = if typeof(style) == "number"
 		then math.clamp(math.floor(style), 0, CLOSE_STYLE_COUNT)
 		else Styles.Overworld
-	return math.clamp(self.bgAlpha[resolvedStyle] or 0, 0, 1)
+	return math.clamp(self.bgAlpha[GotStyle] or 0, 0, 1)
 end
 
 function State.GetFarAlpha(self: State, groupIndex: number): number
-	local resolvedGroup = resolveFarGroup(groupIndex)
-	return math.clamp(self.bgAlpha2[resolvedGroup] or 0, 0, 1)
+	local GotGroup = GetFarGroup(groupIndex)
+	return math.clamp(self.bgAlpha2[GotGroup] or 0, 0, 1)
 end
 
 State.new = createState
-State.update = State.Update
-State.getStyleAlpha = State.GetStyleAlpha
-State.getFarAlpha = State.GetFarAlpha
+
+
 
 export type State = typeof(setmetatable(
 	{} :: {

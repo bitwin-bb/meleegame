@@ -2,7 +2,6 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-
 local UserInputService = game:GetService("UserInputService")
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
@@ -10,7 +9,6 @@ local HotbarRow = require("HotbarRow")
 local HotbarSlot = require("HotbarSlot")
 local ImageIds = require("ImageIds")
 local InventoryGrid = require("InventoryGrid")
-local InventoryRoot = require("InventoryRoot")
 local InventoryServiceUtils = require("InventoryServiceUtils")
 local InventorySlotComponent = require("InventorySlot")
 local ItemRoot = require("ItemRoot")
@@ -19,13 +17,9 @@ local React = require(ReplicatedStorage.Packages.React)
 local Responsive = require("useViewportScale")
 local UiSound = require("UiSound")
 local hudInventorySlice = require("inventorySlice")
-local hudInventoryThunks = require("inventoryThunks")
 local infoThunks = require("infoThunks")
 local inventorySlice = hudInventorySlice
-local inventoryThunks = hudInventoryThunks
 local itemSlice = require("itemSlice")
-local itemThunks = require("itemThunks")
-local trashThunks = require("trashThunks")
 local useCoinEmerge = require("useCoinEmerge")
 local useDrag = require("useDrag")
 local useInterval = require("useInterval")
@@ -50,6 +44,7 @@ type InventoryHotbarProps = {
 	anchorPoint: Vector2?,
 	slotPadding: UDim?,
 	showKeyHints: boolean?,
+	useServiceState: boolean?,
 }
 
 local e: typeof(React.createElement) = React.createElement
@@ -70,10 +65,17 @@ local DISABLED_SLOT_TINT = Color3.fromRGB(100, 108, 120)
 local EXPANSION_VISIBILITY_EPSILON = 0.001
 local TRASH_VISIBILITY_EPSILON = 0.001
 type HoveredSlotSource = "Hotbar" | "Grid"
+type CursorPlacedItemRecord = {
+	stackId: string,
+}
 local GAMEPAD_INVENTORY_TOGGLE_KEY = Enum.KeyCode.ButtonY
 local GAMEPAD_DROP_TRASH_KEY = Enum.KeyCode.ButtonX
 local GAMEPAD_HOTBAR_PREVIOUS_KEY = Enum.KeyCode.ButtonL1
 local GAMEPAD_HOTBAR_NEXT_KEY = Enum.KeyCode.ButtonR1
+local inventoryRoot = nil :: any?
+local inventoryThunks = nil :: any?
+local itemThunks = nil :: any?
+local trashThunks = nil :: any?
 local KEYCODE_TO_SLOT_INDEX: { [Enum.KeyCode]: number } = {
 	[Enum.KeyCode.One] = 1,
 	[Enum.KeyCode.Two] = 2,
@@ -86,7 +88,35 @@ local KEYCODE_TO_SLOT_INDEX: { [Enum.KeyCode]: number } = {
 }
 
 local DEFAULT_RENDER_INVENTORY_STATE =
-	InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_LOADING)
+	InventoryServiceUtils.CreateDefaultState(InventoryServiceUtils.LOAD_STATE_LOADING)
+
+local function getInventoryRoot(): any
+	if inventoryRoot == nil then
+		inventoryRoot = require("InventoryRoot")
+	end
+	return inventoryRoot
+end
+
+local function getInventoryThunks(): any
+	if inventoryThunks == nil then
+		inventoryThunks = require("inventoryThunks")
+	end
+	return inventoryThunks
+end
+
+local function getItemThunks(): any
+	if itemThunks == nil then
+		itemThunks = require("itemThunks")
+	end
+	return itemThunks
+end
+
+local function getTrashThunks(): any
+	if trashThunks == nil then
+		trashThunks = require("trashThunks")
+	end
+	return trashThunks
+end
 
 local function snapToPixel(value: number): number
 	return math.floor(value + 0.5)
@@ -100,16 +130,16 @@ local function playUiPressSound()
 	UiSound.playPress()
 end
 
-local function sanitizeRenderState(stateRaw: any): InventoryState
-	return InventoryServiceUtils.sanitizeState(stateRaw, DEFAULT_RENDER_INVENTORY_STATE)
+local function CoerceRenderState(stateRaw: any): InventoryState
+	return InventoryServiceUtils.CoerceState(stateRaw, DEFAULT_RENDER_INVENTORY_STATE)
 end
 
-local function resolveSlot(stateRaw: any, slotIndexRaw: any): InventorySlot
+local function GetSlot(stateRaw: any, slotIndexRaw: any): InventorySlot
 	local slotIndex = if typeof(slotIndexRaw) == "number" and slotIndexRaw == slotIndexRaw
 		then math.max(1, math.floor(slotIndexRaw))
 		else 1
-	local state = sanitizeRenderState(stateRaw)
-	local slot = InventoryServiceUtils.getSlot(state, slotIndex)
+	local state = CoerceRenderState(stateRaw)
+	local slot = InventoryServiceUtils.GetSlot(state, slotIndex)
 	if slot == nil or typeof(slot) ~= "table" then
 		return {
 			index = slotIndex,
@@ -129,7 +159,7 @@ local function resolveSlot(stateRaw: any, slotIndexRaw: any): InventorySlot
 	}
 end
 
-local function resolveStackAmount(stackRaw: any): number
+local function GetStackAmount(stackRaw: any): number
 	if typeof(stackRaw) ~= "table" then
 		return 0
 	end
@@ -140,12 +170,12 @@ local function resolveStackAmount(stackRaw: any): number
 	return math.max(0, math.floor(amountRaw))
 end
 
-local function resolveStackIcon(stackRaw: any): string?
+local function GetStackIcon(stackRaw: any): string?
 	if typeof(stackRaw) ~= "table" then
 		return nil
 	end
 	local success, icon = pcall(function()
-		return itemThunks.resolveIconForStack(stackRaw :: InventoryItemStack)
+		return getItemThunks().GetIconForStack(stackRaw :: InventoryItemStack)
 	end)
 	if not success then
 		return nil
@@ -156,14 +186,84 @@ local function resolveStackIcon(stackRaw: any): string?
 	return nil
 end
 
-local function resolveSlotHoverText(slot: InventorySlot): string
+local function GetStackId(stackRaw: any): string?
+	if typeof(stackRaw) ~= "table" then
+		return nil
+	end
+
+	local stackId = (stackRaw :: any).stackId
+	if typeof(stackId) ~= "string" or stackId == "" then
+		return nil
+	end
+	return stackId
+end
+
+local function SetCursorPlacedItemRecord(
+	records: { [number]: CursorPlacedItemRecord },
+	state: InventoryState,
+	slotIndexRaw: any
+)
+	if typeof(slotIndexRaw) ~= "number" or slotIndexRaw ~= slotIndexRaw then
+		return
+	end
+
+	local slotIndex = math.floor(slotIndexRaw)
+	if slotIndex < 1 then
+		return
+	end
+
+	local stackId = GetStackId(GetSlot(state, slotIndex).stack)
+	if stackId == nil then
+		records[slotIndex] = nil
+		return
+	end
+
+	records[slotIndex] = {
+		stackId = stackId,
+	}
+end
+
+local function MarkCursorPlacedItemRecords(
+	records: { [number]: CursorPlacedItemRecord },
+	stateRaw: any,
+	sourceSlotRaw: any,
+	targetSlotRaw: any
+)
+	local state = CoerceRenderState(stateRaw)
+	SetCursorPlacedItemRecord(records, state, sourceSlotRaw)
+	SetCursorPlacedItemRecord(records, state, targetSlotRaw)
+end
+
+local function PruneCursorPlacedItemRecords(records: { [number]: CursorPlacedItemRecord }, stateRaw: any)
+	local state = CoerceRenderState(stateRaw)
+	for slotIndex, record in records do
+		if GetStackId(GetSlot(state, slotIndex).stack) ~= record.stackId then
+			records[slotIndex] = nil
+		end
+	end
+end
+
+local function IsCursorPlacedItem(
+	records: { [number]: CursorPlacedItemRecord },
+	slotIndex: number,
+	stackRaw: any
+): boolean
+	local record = records[slotIndex]
+	if record == nil then
+		return false
+	end
+
+	return GetStackId(stackRaw) == record.stackId
+end
+
+local function GetSlotHoverText(slot: InventorySlot): string
 	local stack = slot.stack
 	if typeof(stack) ~= "table" then
 		return ("Slot %d\nEmpty"):format(slot.index)
 	end
 
 	local success, hoverText = pcall(function()
-		return itemThunks.resolveHoverTextForStack(stack :: InventoryItemStack, slot.index)
+		return getItemThunks().GetHoverTextForStack(stack :: InventoryItemStack, slot.index)
 	end)
 	if success and typeof(hoverText) == "string" then
 		return hoverText
@@ -177,11 +277,11 @@ local function cloneStackWithAmount(stack: InventoryItemStack, amount: number): 
 		itemId = stack.itemId,
 		amount = amount,
 		maxStack = stack.maxStack,
-		metadata = InventoryServiceUtils.cloneDeep(stack.metadata),
+		metadata = InventoryServiceUtils.CloneDeep(stack.metadata),
 	}
 end
 
-local function resolveDisplayedStackForSlot(slot: InventorySlot, dragState: ItemDragState): InventoryItemStack?
+local function GetDisplayedStackForSlot(slot: InventorySlot, dragState: ItemDragState): InventoryItemStack?
 	local stack = slot.stack
 	if stack == nil then
 		return nil
@@ -209,15 +309,19 @@ local function resolveDisplayedStackForSlot(slot: InventorySlot, dragState: Item
 	return cloneStackWithAmount(stack, remainingAmount)
 end
 
-local function selectSlot(slotIndex: number, currentlySelectedSlot: number?)
+local function selectSlot(slotIndex: number, currentlySelectedSlot: number?, useServiceState: boolean)
+	if not useServiceState then
+		return
+	end
+
 	if currentlySelectedSlot == slotIndex then
-		inventoryThunks.clearSelectedSlot()
+		getInventoryThunks().ClearSelectedSlot()
 	else
-		inventoryThunks.selectSlot(slotIndex)
+		getInventoryThunks().SelectSlot(slotIndex)
 	end
 end
 
-local function resolveColumnRevealProgress(progress: number, columnIndex: number, totalColumns: number): number
+local function GetColumnRevealProgress(progress: number, columnIndex: number, totalColumns: number): number
 	local clampedProgress = math.clamp(progress, 0, 1)
 	local start = (columnIndex - 1) / totalColumns
 	local finish = columnIndex / totalColumns
@@ -233,7 +337,7 @@ local function lerpVector2(from: Vector2, to: Vector2, alpha: number): Vector2
 	return Vector2.new(lerpNumber(from.X, to.X, alpha), lerpNumber(from.Y, to.Y, alpha))
 end
 
-local function resolveLoadingInventoryText(dotCountRaw: number): string
+local function GetLoadingInventoryText(dotCountRaw: number): string
 	local dotCount = math.clamp(math.floor(dotCountRaw), 1, 3)
 	return "Loading inventory" .. string.rep(".", dotCount)
 end
@@ -245,8 +349,8 @@ local function isGamepadInputType(inputTypeRaw: any): boolean
 	return string.sub((inputTypeRaw :: Enum.UserInputType).Name, 1, 7) == "Gamepad"
 end
 
-local function resolveHotbarSelectionSlot(stateRaw: any): number
-	local state = sanitizeRenderState(stateRaw)
+local function GetHotbarSelectionSlot(stateRaw: any): number
+	local state = CoerceRenderState(stateRaw)
 	local selectedSlot = state.selectedSlot
 	if typeof(selectedSlot) == "number" and selectedSlot == selectedSlot then
 		selectedSlot = math.floor(selectedSlot)
@@ -259,7 +363,11 @@ local function resolveHotbarSelectionSlot(stateRaw: any): number
 	return selectedSlot
 end
 
-local function cycleHotbarSelection(stepRaw: any)
+local function cycleHotbarSelection(stepRaw: any, useServiceState: boolean)
+	if not useServiceState then
+		return false
+	end
+
 	local step = if typeof(stepRaw) == "number"
 			and stepRaw == stepRaw
 			and stepRaw ~= 0
@@ -269,13 +377,17 @@ local function cycleHotbarSelection(stepRaw: any)
 		return false
 	end
 	local currentState = inventorySlice.getInventoryState()
-	local nextSelectedSlot = ((resolveHotbarSelectionSlot(currentState) - 1 + step) % HOTBAR_SLOT_COUNT) + 1
-	return inventoryThunks.selectSlot(nextSelectedSlot)
+	local nextSelectedSlot = ((GetHotbarSelectionSlot(currentState) - 1 + step) % HOTBAR_SLOT_COUNT) + 1
+	return getInventoryThunks().SelectSlot(nextSelectedSlot)
 end
 
-local function handleSelectedSlotDropOrTrash(isInventoryExpandedRaw: any): boolean
-	local currentState = sanitizeRenderState(inventorySlice.getInventoryState())
-	if not InventoryServiceUtils.isLoadedState(currentState.loadState) then
+local function handleSelectedSlotDropOrTrash(isInventoryExpandedRaw: any, useServiceState: boolean): boolean
+	if not useServiceState then
+		return false
+	end
+
+	local currentState = CoerceRenderState(inventorySlice.getInventoryState())
+	if not InventoryServiceUtils.IsLoadedState(currentState.loadState) then
 		return false
 	end
 
@@ -288,24 +400,26 @@ local function handleSelectedSlotDropOrTrash(isInventoryExpandedRaw: any): boole
 		return false
 	end
 
-	local slot = resolveSlot(currentState, selectedSlot)
+	local slot = GetSlot(currentState, selectedSlot)
 	if slot.stack == nil then
 		return false
 	end
 
-	if isInventoryExpandedRaw == true and trashThunks.trashSelected(nil) then
+	if isInventoryExpandedRaw == true and getTrashThunks().TrashSelected(nil) then
 		return true
 	end
 
-	return inventoryThunks.dropFromSlot(selectedSlot, nil)
+	return getInventoryThunks().DropFromSlot(selectedSlot, nil)
 end
 
 return function(props: InventoryHotbarProps)
 	local responsive = Responsive.useResponsiveMetrics()
 	local inventoryTokens = responsive.tokens.inventory
+	local useServiceState = props.useServiceState ~= false
 	local inventoryState = (useStore(inventorySlice.inventoryStateAtom) :: InventoryState?)
 		or inventorySlice.inventoryStateAtom()
-	local renderState = sanitizeRenderState(inventoryState)
+	local renderState = CoerceRenderState(inventoryState)
+	local isInventoryLoaded = InventoryServiceUtils.IsLoadedState(renderState.loadState)
 	local isInventoryStateInitialized = typeof(renderState.slots) == "table"
 		and #renderState.slots >= math.max(1, renderState.capacity)
 	local hoveredSlotIndex, setHoveredSlotIndex = React.useState(nil :: number?)
@@ -318,18 +432,51 @@ return function(props: InventoryHotbarProps)
 	local drag = useDrag({
 		hoveredSlotIndex = hoveredSlotIndex,
 	})
+	local cursorPlacedItemRecordsRef = React.useRef({} :: { [number]: CursorPlacedItemRecord })
+	local shouldUseInventoryLoadAppear = isInventoryLoaded
 
 	local expansionProgress = useInventorySlide({
 		enabled = isInventoryExpanded,
 	})
 
 	React.useEffect(function()
-		local stop = inventoryThunks.start()
+		if not isInventoryLoaded then
+			cursorPlacedItemRecordsRef.current = {}
+		end
+	end, { isInventoryLoaded })
+
+	React.useEffect(function()
+		PruneCursorPlacedItemRecords(cursorPlacedItemRecordsRef.current, renderState)
+	end, { renderState.updatedAt })
+
+	local handleSlotInput = React.useCallback(function(slotIndexRaw: any, stackRaw: any, inputObjectRaw: any?)
+		local dragStateBeforeInput = itemSlice.getDragState()
+		local wasCursorPlacement = dragStateBeforeInput.active
+		local sourceSlot = dragStateBeforeInput.sourceSlot
+
+		drag.handleSlotInput(slotIndexRaw, stackRaw, inputObjectRaw)
+
+		if wasCursorPlacement and not itemSlice.getDragState().active then
+			MarkCursorPlacedItemRecords(
+				cursorPlacedItemRecordsRef.current,
+				inventorySlice.getInventoryState(),
+				sourceSlot,
+				slotIndexRaw
+			)
+		end
+	end, { drag.handleSlotInput })
+
+	React.useEffect(function()
+		if not useServiceState then
+			return
+		end
+
+		local stop = getInventoryThunks().Start()
 
 		return function()
 			stop()
 		end
-	end, {})
+	end, { useServiceState })
 
 	React.useEffect(
 		function()
@@ -347,7 +494,7 @@ return function(props: InventoryHotbarProps)
 				if not isInventoryStateInitialized then
 					return
 				end
-				if not InventoryServiceUtils.isLoadedState(renderState.loadState) then
+				if not isInventoryLoaded then
 					return
 				end
 
@@ -357,7 +504,9 @@ return function(props: InventoryHotbarProps)
 						return
 					end
 
-					inventoryThunks.selectSlot(selectedFromKey)
+					if useServiceState then
+						getInventoryThunks().SelectSlot(selectedFromKey)
+					end
 					return
 				end
 
@@ -367,22 +516,24 @@ return function(props: InventoryHotbarProps)
 
 				if inputObject.KeyCode == GAMEPAD_INVENTORY_TOGGLE_KEY then
 					playUiPressSound()
-					hudInventoryThunks.toggleInventory()
+					if useServiceState then
+						getInventoryThunks().ToggleInventory()
+					end
 					return
 				end
 
 				if inputObject.KeyCode == GAMEPAD_DROP_TRASH_KEY then
-					handleSelectedSlotDropOrTrash(isInventoryExpanded)
+					handleSelectedSlotDropOrTrash(isInventoryExpanded, useServiceState)
 					return
 				end
 
 				if inputObject.KeyCode == GAMEPAD_HOTBAR_PREVIOUS_KEY then
-					cycleHotbarSelection(-1)
+					cycleHotbarSelection(-1, useServiceState)
 					return
 				end
 
 				if inputObject.KeyCode == GAMEPAD_HOTBAR_NEXT_KEY then
-					cycleHotbarSelection(1)
+					cycleHotbarSelection(1, useServiceState)
 				end
 			end
 
@@ -396,7 +547,7 @@ return function(props: InventoryHotbarProps)
 				if not isInventoryStateInitialized then
 					return
 				end
-				if not InventoryServiceUtils.isLoadedState(renderState.loadState) then
+				if not isInventoryLoaded then
 					return
 				end
 
@@ -414,7 +565,9 @@ return function(props: InventoryHotbarProps)
 				local step = if wheelDelta > 0 then -1 else 1
 				local selectedSlot = currentSelectedSlot :: number
 				local nextSelectedSlot = ((selectedSlot - 1 + step) % HOTBAR_SLOT_COUNT) + 1
-				inventoryThunks.selectSlot(nextSelectedSlot)
+				if useServiceState then
+					getInventoryThunks().SelectSlot(nextSelectedSlot)
+				end
 			end
 
 			local beganConnection = UserInputService.InputBegan:Connect(onInputBegan)
@@ -427,9 +580,10 @@ return function(props: InventoryHotbarProps)
 		end,
 		{
 			props.visible,
-			renderState.loadState,
+			isInventoryLoaded,
 			isInventoryStateInitialized,
 			isInventoryExpanded,
+			useServiceState,
 		} :: { any }
 	)
 
@@ -449,14 +603,14 @@ return function(props: InventoryHotbarProps)
 				return
 			end
 
-			local hoveredSlot = resolveSlot(renderState, hoveredSlotIndex)
+			local hoveredSlot = GetSlot(renderState, hoveredSlotIndex)
 			hoveredSlot = {
 				index = hoveredSlot.index,
-				stack = resolveDisplayedStackForSlot(hoveredSlot, drag.dragState),
+				stack = GetDisplayedStackForSlot(hoveredSlot, drag.dragState),
 			}
-			infoThunks.showHover({
+			infoThunks.ShowHover({
 				id = SLOT_HOVER_ID_PREFIX .. tostring(hoveredSlotIndex),
-				text = resolveSlotHoverText(hoveredSlot),
+				text = GetSlotHoverText(hoveredSlot),
 			})
 		end,
 		{
@@ -471,12 +625,11 @@ return function(props: InventoryHotbarProps)
 
 	React.useEffect(function()
 		return function()
-			infoThunks.hideHover(nil)
+			infoThunks.HideHover(nil)
 		end
 	end, {})
 
-	local isLoading = not InventoryServiceUtils.isLoadedState(renderState.loadState)
-		and renderState.loadState ~= InventoryServiceUtils.LOAD_STATE_FAILED
+	local isLoading = not isInventoryLoaded and renderState.loadState ~= InventoryServiceUtils.LOAD_STATE_FAILED
 	useInterval(
 		function()
 			setLoadingDotCount(function(currentDotCount: number): number
@@ -530,6 +683,9 @@ return function(props: InventoryHotbarProps)
 		else 0
 
 	React.useEffect(function()
+		if not showExpandedGrid then
+			cursorPlacedItemRecordsRef.current = {}
+		end
 		if showExpandedGrid then
 			return
 		end
@@ -539,7 +695,7 @@ return function(props: InventoryHotbarProps)
 
 		setHoveredSlotSource(nil)
 		setHoveredSlotIndex(nil)
-		infoThunks.hideHover(nil)
+		infoThunks.HideHover(nil)
 	end, { showExpandedGrid, hoveredSlotSource })
 
 	local leftPadding = inventoryTokens.leftPadding
@@ -593,8 +749,8 @@ return function(props: InventoryHotbarProps)
 	local hotbarChildren: { React.ReactNode } = {}
 
 	for hotbarIndex = 1, HOTBAR_SLOT_COUNT do
-		local slot = resolveSlot(renderState, hotbarIndex)
-		local displayStack = resolveDisplayedStackForSlot(slot, drag.dragState)
+		local slot = GetSlot(renderState, hotbarIndex)
+		local displayStack = GetDisplayedStackForSlot(slot, drag.dragState)
 		local isSlotAvailable = isInventoryStateInitialized and hotbarIndex <= maxInteractiveSlots
 		local hasItem = isSlotAvailable and typeof(displayStack) == "table"
 		local isSelected = selectedSlot == hotbarIndex
@@ -612,8 +768,10 @@ return function(props: InventoryHotbarProps)
 			else if hasVisibleItem then FILLED_SLOT_TINT else EMPTY_SLOT_TINT
 		local slotImage = if isSelected or isHovered then ImageIds.inventorySlotHovered else ImageIds.inventorySlot
 		local slotZIndex = if isExpanded then zIndex + 3 else zIndex + 2
-		local itemAmount = if hasVisibleItem then resolveStackAmount(displayStack) else 0
-		local itemIcon = if hasVisibleItem then resolveStackIcon(displayStack) else nil
+		local itemAmount = if hasVisibleItem then GetStackAmount(displayStack) else 0
+		local itemIcon = if hasVisibleItem then GetStackIcon(displayStack) else nil
+		local isCursorPlacedItem = hasVisibleItem
+			and IsCursorPlacedItem(cursorPlacedItemRecordsRef.current, hotbarIndex, displayStack)
 
 		hotbarChildren[#hotbarChildren + 1] = e(HotbarSlot, {
 			index = hotbarIndex,
@@ -627,6 +785,10 @@ return function(props: InventoryHotbarProps)
 			showKeyHint = showKeyHints,
 			itemIcon = itemIcon,
 			itemAmount = itemAmount,
+			itemAppearEnabled = shouldUseInventoryLoadAppear
+				and hasVisibleItem
+				and not isSplitPreviewSource
+				and not isCursorPlacedItem,
 			onMouseEnter = function()
 				setHoveredSlotSource("Hotbar")
 				setHoveredSlotIndex(hotbarIndex)
@@ -635,7 +797,7 @@ return function(props: InventoryHotbarProps)
 			onMouseLeave = function()
 				setHoveredSlotSource(nil)
 				setHoveredSlotIndex(nil)
-				infoThunks.hideHover(SLOT_HOVER_ID_PREFIX .. tostring(hotbarIndex))
+				infoThunks.HideHover(SLOT_HOVER_ID_PREFIX .. tostring(hotbarIndex))
 			end,
 			onSecondaryInput = function()
 				if not isSlotAvailable then
@@ -646,7 +808,7 @@ return function(props: InventoryHotbarProps)
 				end
 				drag.handleSlotSecondaryInput(hotbarIndex, if typeof(slot.stack) == "table" then slot.stack else nil)
 			end,
-			onInputBegan = function(_: GuiObject, inputObject: InputObject)
+			onInputBegan = function(_slotGui: GuiObject, inputObject: InputObject)
 				if not isSlotAvailable then
 					return
 				end
@@ -654,11 +816,7 @@ return function(props: InventoryHotbarProps)
 				if userInputType ~= Enum.UserInputType.MouseButton1 and userInputType ~= Enum.UserInputType.Touch then
 					return
 				end
-				drag.handleSlotInput(
-					hotbarIndex,
-					if typeof(slot.stack) == "table" then slot.stack else nil,
-					inputObject
-				)
+				handleSlotInput(hotbarIndex, if typeof(slot.stack) == "table" then slot.stack else nil, inputObject)
 			end,
 			onActivated = function()
 				if not isSlotAvailable then
@@ -670,10 +828,10 @@ return function(props: InventoryHotbarProps)
 				if not isInventoryStateInitialized then
 					return
 				end
-				if not InventoryServiceUtils.isLoadedState(renderState.loadState) then
+				if not isInventoryLoaded then
 					return
 				end
-				selectSlot(hotbarIndex, selectedSlot)
+				selectSlot(hotbarIndex, selectedSlot, useServiceState)
 			end,
 		})
 	end
@@ -700,12 +858,14 @@ return function(props: InventoryHotbarProps)
 		onActivated = function()
 			playUiPressSound()
 		end,
+		useServiceState = useServiceState,
 	})
 
 	hotbarChildren[#hotbarChildren + 1] = e(LeftSideBarButtons.CraftingButton, {
 		layoutOrder = HOTBAR_SLOT_COUNT + 2,
 		size = expanderSize,
 		zIndex = zIndex + 4,
+		useServiceState = useServiceState,
 	})
 
 	local gridChildren: { React.ReactNode } = {}
@@ -715,8 +875,8 @@ return function(props: InventoryHotbarProps)
 
 	for slotIndex = 1, INVENTORY_MAX_SLOTS do
 		local inventorySlotIndex = GRID_SLOT_START_INDEX + slotIndex - 1
-		local slot = resolveSlot(renderState, inventorySlotIndex)
-		local displayStack = resolveDisplayedStackForSlot(slot, drag.dragState)
+		local slot = GetSlot(renderState, inventorySlotIndex)
+		local displayStack = GetDisplayedStackForSlot(slot, drag.dragState)
 		local isSlotAvailable = isInventoryStateInitialized and inventorySlotIndex <= maxInteractiveSlots
 		local hasItem = isSlotAvailable and typeof(displayStack) == "table"
 		local isSelected = isSlotAvailable and selectedSlot == inventorySlotIndex
@@ -730,7 +890,7 @@ return function(props: InventoryHotbarProps)
 		local isHovered = hoveredSlotSource == "Grid" and hoveredSlotIndex == inventorySlotIndex
 		local rowIndex = math.floor((slotIndex - 1) / INVENTORY_COLUMNS)
 		local columnIndex = ((slotIndex - 1) % INVENTORY_COLUMNS) + 1
-		local columnRevealProgress = resolveColumnRevealProgress(expansionProgress, columnIndex, INVENTORY_COLUMNS)
+		local columnRevealProgress = GetColumnRevealProgress(expansionProgress, columnIndex, INVENTORY_COLUMNS)
 		local columnRevealTransparency = 1 - columnRevealProgress
 		local finalSlotOffset = Vector2.new((columnIndex - 1) * gridStepX, rowIndex * gridStepY)
 		local startSlotOffset = Vector2.new(hotbarOriginOffsetX, finalSlotOffset.Y)
@@ -741,13 +901,26 @@ return function(props: InventoryHotbarProps)
 				then SELECTED_SLOT_TINT
 				else if hasVisibleItem then FILLED_SLOT_TINT else EMPTY_SLOT_TINT
 		local slotImage = if isSelected or isHovered then ImageIds.inventorySlotHovered else ImageIds.inventorySlot
-		local itemAmount = if hasVisibleItem then resolveStackAmount(displayStack) else 0
 		local slotZIndex = zIndex + 3
 		local slotBaseTransparency = if isSlotAvailable then 0 else 0.15
 		local slotTransparency =
 			math.clamp(slotBaseTransparency + columnRevealTransparency * (1 - slotBaseTransparency), 0, 1)
-		local itemIcon = if hasVisibleItem then resolveStackIcon(displayStack) else nil
 		local isGridSlotInteractable = isSlotAvailable and columnRevealProgress >= (1 - EXPANSION_VISIBILITY_EPSILON)
+		local isCursorPlacedItem = hasVisibleItem
+			and IsCursorPlacedItem(cursorPlacedItemRecordsRef.current, inventorySlotIndex, displayStack)
+		local isGridItemWaitingForAppear = isInventoryLoaded
+			and hasVisibleItem
+			and not isSplitPreviewSource
+			and not isGridSlotInteractable
+			and not isCursorPlacedItem
+		local shouldShowGridItem = hasVisibleItem and not isGridItemWaitingForAppear
+		local itemAmount = if shouldShowGridItem then GetStackAmount(displayStack) else 0
+		local itemIcon = if shouldShowGridItem then GetStackIcon(displayStack) else nil
+		local itemTransparency = if isGridItemWaitingForAppear then 1 else columnRevealTransparency
+		local stackTextTransparency = if isGridItemWaitingForAppear then 1 else columnRevealTransparency
+		local stackStrokeTransparency = if isGridItemWaitingForAppear
+			then 1
+			else math.clamp(0.3 + columnRevealTransparency * 0.7, 0, 1)
 
 		gridChildren[#gridChildren + 1] = e(InventorySlotComponent, {
 			layoutOrder = slotIndex,
@@ -761,10 +934,14 @@ return function(props: InventoryHotbarProps)
 			selectable = isGridSlotInteractable,
 			itemIcon = itemIcon,
 			itemAmount = itemAmount,
-			itemAppearEnabled = isInventoryExpanded and hasVisibleItem,
-			itemTransparency = columnRevealTransparency,
-			stackTextTransparency = columnRevealTransparency,
-			stackStrokeTransparency = math.clamp(0.3 + columnRevealTransparency * 0.7, 0, 1),
+			itemAppearEnabled = isInventoryLoaded
+				and isGridSlotInteractable
+				and hasVisibleItem
+				and not isSplitPreviewSource
+				and not isCursorPlacedItem,
+			itemTransparency = itemTransparency,
+			stackTextTransparency = stackTextTransparency,
+			stackStrokeTransparency = stackStrokeTransparency,
 			selectedStrokeTransparency = if isSelected
 				then math.clamp(0.15 + columnRevealTransparency * 0.85, 0, 1)
 				else nil,
@@ -780,7 +957,7 @@ return function(props: InventoryHotbarProps)
 				if isGridSlotInteractable then
 					setHoveredSlotSource(nil)
 					setHoveredSlotIndex(nil)
-					infoThunks.hideHover(SLOT_HOVER_ID_PREFIX .. tostring(inventorySlotIndex))
+					infoThunks.HideHover(SLOT_HOVER_ID_PREFIX .. tostring(inventorySlotIndex))
 				end
 			end,
 			onSecondaryInput = function()
@@ -795,7 +972,7 @@ return function(props: InventoryHotbarProps)
 					if typeof(slot.stack) == "table" then slot.stack else nil
 				)
 			end,
-			onInputBegan = function(_: GuiObject, inputObject: InputObject)
+			onInputBegan = function(_slotGui: GuiObject, inputObject: InputObject)
 				if not isGridSlotInteractable then
 					return
 				end
@@ -803,7 +980,7 @@ return function(props: InventoryHotbarProps)
 				if userInputType ~= Enum.UserInputType.MouseButton1 and userInputType ~= Enum.UserInputType.Touch then
 					return
 				end
-				drag.handleSlotInput(
+				handleSlotInput(
 					inventorySlotIndex,
 					if typeof(slot.stack) == "table" then slot.stack else nil,
 					inputObject
@@ -819,10 +996,10 @@ return function(props: InventoryHotbarProps)
 				if not isInventoryStateInitialized then
 					return
 				end
-				if not InventoryServiceUtils.isLoadedState(renderState.loadState) then
+				if not isInventoryLoaded then
 					return
 				end
-				selectSlot(inventorySlotIndex, selectedSlot)
+				selectSlot(inventorySlotIndex, selectedSlot, useServiceState)
 			end,
 		})
 	end
@@ -836,7 +1013,11 @@ return function(props: InventoryHotbarProps)
 			gap = hotbarGap,
 			children = hotbarChildren,
 		}),
-		e(InventoryRoot, {
+	}
+
+	if useServiceState then
+		local InventoryRoot = getInventoryRoot()
+		rootChildren[#rootChildren + 1] = e(InventoryRoot, {
 			trashScreenProps = {
 				layoutOrder = 3,
 				visible = showTrashScreen,
@@ -847,20 +1028,14 @@ return function(props: InventoryHotbarProps)
 				emergeOffset = trashAppear.offset,
 				emergeTransparency = trashAppear.transparency,
 			},
-		}),
-	}
+		})
+	end
 
 	if showExpandedGrid then
-		rootChildren[#rootChildren + 1] = e(InventoryGrid, {
-			size = UDim2.fromOffset(gridContainerWidth, gridContainerHeight),
-			position = inventoryPanelPosition,
-			anchorPoint = inventoryPanelAnchorPoint,
-			zIndex = zIndex + 1,
-			showRevealOverlay = showRevealOverlay,
-			revealOverlayZIndex = zIndex + 6,
-			children = gridChildren,
+		local extraChildren = nil
+		if useServiceState then
 			extraChildren = {
-				e(InventoryRoot, {
+				e(getInventoryRoot(), {
 					coinScreenProps = {
 						layoutOrder = 2,
 						visible = showExpandedGrid,
@@ -872,11 +1047,22 @@ return function(props: InventoryHotbarProps)
 						emergeTransparency = coinEmerge.transparency,
 					},
 				}),
-			},
+			}
+		end
+
+		rootChildren[#rootChildren + 1] = e(InventoryGrid, {
+			size = UDim2.fromOffset(gridContainerWidth, gridContainerHeight),
+			position = inventoryPanelPosition,
+			anchorPoint = inventoryPanelAnchorPoint,
+			zIndex = zIndex + 1,
+			showRevealOverlay = showRevealOverlay,
+			revealOverlayZIndex = zIndex + 6,
+			children = gridChildren,
+			extraChildren = extraChildren,
 		})
 	end
 
-	rootChildren[#rootChildren + 1] = if not InventoryServiceUtils.isLoadedState(renderState.loadState)
+	rootChildren[#rootChildren + 1] = if not isInventoryLoaded
 		then e("TextLabel", {
 			Size = UDim2.fromOffset(0, 18),
 			AutomaticSize = Enum.AutomaticSize.X,
@@ -890,7 +1076,7 @@ return function(props: InventoryHotbarProps)
 			BackgroundTransparency = 1,
 			Text = if renderState.loadState == InventoryServiceUtils.LOAD_STATE_FAILED
 				then "Inventory unavailable"
-				else resolveLoadingInventoryText(loadingDotCount),
+				else GetLoadingInventoryText(loadingDotCount),
 			Font = Enum.Font.PatrickHand,
 			TextSize = 12,
 			TextColor3 = Color3.fromRGB(240, 242, 255),
@@ -903,7 +1089,6 @@ return function(props: InventoryHotbarProps)
 		visible = props.visible ~= false,
 		zIndex = zIndex + 120,
 	})
-
 	return e("Frame", {
 		Size = UDim2.fromScale(1, 1),
 		Position = UDim2.fromScale(0, 0),

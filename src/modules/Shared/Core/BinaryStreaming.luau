@@ -18,29 +18,29 @@ export type Writer = {
 	buffer: buffer,
 	capacity: number,
 	length: number,
-	writeUInt8: (self: Writer, value: number) -> (),
-	writeUInt16: (self: Writer, value: number) -> (),
-	writeUInt32: (self: Writer, value: number) -> (),
-	writeBitmask: (self: Writer, bitmask: number, bits: number?) -> (),
-	writeBytes: (self: Writer, source: buffer, sourceOffset: number?, byteCount: number?) -> (),
-	writeString16: (self: Writer, value: string) -> (),
-	writeString32: (self: Writer, value: string) -> (),
-	toBuffer: (self: Writer) -> (buffer, number),
-	reset: (self: Writer) -> (),
+	WriteUInt8: (self: Writer, value: number) -> (),
+	WriteUInt16: (self: Writer, value: number) -> (),
+	WriteUInt32: (self: Writer, value: number) -> (),
+	WriteBitmask: (self: Writer, bitmask: number, bits: number?) -> (),
+	WriteBytes: (self: Writer, source: buffer, sourceOffset: number?, byteCount: number?) -> (),
+	WriteString16: (self: Writer, value: string) -> (),
+	WriteString32: (self: Writer, value: string) -> (),
+	ToBuffer: (self: Writer) -> (buffer, number),
+	Reset: (self: Writer) -> (),
 }
 
 export type Reader = {
 	buffer: buffer,
 	length: number,
 	cursor: number,
-	readUInt8: (self: Reader) -> number,
-	readUInt16: (self: Reader) -> number,
-	readUInt32: (self: Reader) -> number,
-	readBitmask: (self: Reader, bits: number?) -> number,
-	readBytes: (self: Reader, byteCount: number) -> buffer,
-	readString16: (self: Reader) -> string,
-	readString32: (self: Reader) -> string,
-	remaining: (self: Reader) -> number,
+	ReadUInt8: (self: Reader) -> number,
+	ReadUInt16: (self: Reader) -> number,
+	ReadUInt32: (self: Reader) -> number,
+	ReadBitmask: (self: Reader, bits: number?) -> number,
+	ReadBytes: (self: Reader, byteCount: number) -> buffer,
+	ReadString16: (self: Reader) -> string,
+	ReadString32: (self: Reader) -> string,
+	Remaining: (self: Reader) -> number,
 }
 
 export type FrameOptions = {
@@ -235,14 +235,14 @@ function Writer.WriteBitmask(self: Writer, bitmaskRaw: any, bitsRaw: any)
 	local bits = clampInteger(bitsRaw, 1, 32)
 	local bitmask = clampInteger(bitmaskRaw, 0, 4294967295)
 	if bits <= 8 then
-		self:writeUInt8(bitmask)
+		self:WriteUInt8(bitmask)
 		return
 	end
 	if bits <= 16 then
-		self:writeUInt16(bitmask)
+		self:WriteUInt16(bitmask)
 		return
 	end
-	self:writeUInt32(bitmask)
+	self:WriteUInt32(bitmask)
 end
 
 function Writer.WriteBytes(self: Writer, source: buffer, sourceOffsetRaw: any, byteCountRaw: any)
@@ -265,7 +265,7 @@ function Writer.WriteString16(self: Writer, valueRaw: any)
 	if byteLength > 65535 then
 		error("Writer.WriteString16 exceeds UInt16 length")
 	end
-	self:writeUInt16(byteLength)
+	self:WriteUInt16(byteLength)
 	ensureCapacity(self, byteLength)
 	buffer.writestring(self.buffer, self.length, value)
 	self.length += byteLength
@@ -274,7 +274,7 @@ end
 function Writer.WriteString32(self: Writer, valueRaw: any)
 	local value = if typeof(valueRaw) == "string" then valueRaw else tostring(valueRaw)
 	local byteLength = #value
-	self:writeUInt32(byteLength)
+	self:WriteUInt32(byteLength)
 	ensureCapacity(self, byteLength)
 	buffer.writestring(self.buffer, self.length, value)
 	self.length += byteLength
@@ -336,12 +336,12 @@ end
 function Reader.ReadBitmask(self: Reader, bitsRaw: any): number
 	local bits = clampInteger(bitsRaw, 1, 32)
 	if bits <= 8 then
-		return self:readUInt8()
+		return self:ReadUInt8()
 	end
 	if bits <= 16 then
-		return self:readUInt16()
+		return self:ReadUInt16()
 	end
-	return self:readUInt32()
+	return self:ReadUInt32()
 end
 
 function Reader.ReadBytes(self: Reader, byteCountRaw: any): buffer
@@ -354,7 +354,7 @@ function Reader.ReadBytes(self: Reader, byteCountRaw: any): buffer
 end
 
 function Reader.ReadString16(self: Reader): string
-	local byteCount = self:readUInt16()
+	local byteCount = self:ReadUInt16()
 	assertCanRead(self, byteCount)
 	local value = buffer.readstring(self.buffer, self.cursor, byteCount)
 	self.cursor += byteCount
@@ -362,7 +362,7 @@ function Reader.ReadString16(self: Reader): string
 end
 
 function Reader.ReadString32(self: Reader): string
-	local byteCount = self:readUInt32()
+	local byteCount = self:ReadUInt32()
 	assertCanRead(self, byteCount)
 	local value = buffer.readstring(self.buffer, self.cursor, byteCount)
 	self.cursor += byteCount
@@ -404,15 +404,15 @@ function BinaryStreaming.FramePacket(payload: buffer, payloadSizeRaw: any, optio
 	end
 
 	local writer = BinaryStreaming.CreateWriter(encodedPayloadSize + 16)
-	writer:writeUInt16(DEFAULT_MAGIC)
-	writer:writeUInt8(version)
-	writer:writeUInt8(flags)
-	writer:writeUInt32(encodedPayloadSize)
-	writer:writeBytes(encodedPayload, 0, encodedPayloadSize)
+	writer:WriteUInt16(DEFAULT_MAGIC)
+	writer:WriteUInt8(version)
+	writer:WriteUInt8(flags)
+	writer:WriteUInt32(encodedPayloadSize)
+	writer:WriteBytes(encodedPayload, 0, encodedPayloadSize)
 	if withChecksum then
-		writer:writeUInt32(fnv1aChecksum(encodedPayload, encodedPayloadSize))
+		writer:WriteUInt32(fnv1aChecksum(encodedPayload, encodedPayloadSize))
 	end
-	local framed = writer:toBuffer()
+	local framed = writer:ToBuffer()
 	return framed
 end
 
@@ -422,14 +422,14 @@ function BinaryStreaming.ParseFrame(packet: buffer, options: FrameOptions?): Par
 	end
 
 	local reader = BinaryStreaming.CreateReader(packet)
-	local magic = reader:readUInt16()
+	local magic = reader:ReadUInt16()
 	if magic ~= DEFAULT_MAGIC then
 		error("Malformed frame: magic mismatch")
 	end
 
-	local version = reader:readUInt8()
-	local flags = reader:readUInt8()
-	local payloadSize = reader:readUInt32()
+	local version = reader:ReadUInt8()
+	local flags = reader:ReadUInt8()
+	local payloadSize = reader:ReadUInt32()
 
 	local maxPayloadBytes = clampInteger(if options then options.maxPayloadBytes else nil, 1, 32 * 1024 * 1024)
 	if maxPayloadBytes <= 1 then
@@ -439,25 +439,25 @@ function BinaryStreaming.ParseFrame(packet: buffer, options: FrameOptions?): Par
 		error("Malformed frame: payload exceeds configured cap")
 	end
 
-	if reader:remaining() < payloadSize then
+	if reader:Remaining() < payloadSize then
 		error("Malformed frame: payload truncated")
 	end
-	local payload = reader:readBytes(payloadSize)
+	local payload = reader:ReadBytes(payloadSize)
 
 	local hasChecksum = bit32.band(flags, FLAG_CHECKSUM) ~= 0
 	local checksumValue: number? = nil
 	if hasChecksum then
-		if reader:remaining() < 4 then
+		if reader:Remaining() < 4 then
 			error("Malformed frame: missing checksum")
 		end
-		checksumValue = reader:readUInt32()
+		checksumValue = reader:ReadUInt32()
 		local computed = fnv1aChecksum(payload, payloadSize)
 		if checksumValue ~= computed then
 			error("Malformed frame: checksum mismatch")
 		end
 	end
 
-	if reader:remaining() ~= 0 then
+	if reader:Remaining() ~= 0 then
 		error("Malformed frame: trailing bytes")
 	end
 
@@ -514,7 +514,7 @@ function BinaryStreaming.CreateChunkBatch(payload: buffer, payloadSizeRaw: any, 
 	local chunkCount = math.max(1, math.ceil(payloadSize / chunkSize))
 	local batchId = if options and options.batchId ~= nil
 		then clampInteger(options.batchId, 1, 4294967295)
-		else Codec.stableHash({ payloadSize = payloadSize, chunkCount = chunkCount })
+		else Codec.StableHash({ payloadSize = payloadSize, chunkCount = chunkCount })
 	local frames = Sift.Array.create(chunkCount)
 
 	for chunkIndex = 0, chunkCount - 1 do
@@ -523,12 +523,12 @@ function BinaryStreaming.CreateChunkBatch(payload: buffer, payloadSizeRaw: any, 
 		local take = math.min(chunkSize, remaining)
 
 		local writer = BinaryStreaming.CreateWriter(take + 16)
-		writer:writeUInt32(batchId)
-		writer:writeUInt16(chunkIndex)
-		writer:writeUInt16(chunkCount)
-		writer:writeUInt32(payloadSize)
-		writer:writeBytes(payload, startOffset, take)
-		local chunkPayload, chunkPayloadSize = writer:toBuffer()
+		writer:WriteUInt32(batchId)
+		writer:WriteUInt16(chunkIndex)
+		writer:WriteUInt16(chunkCount)
+		writer:WriteUInt32(payloadSize)
+		writer:WriteBytes(payload, startOffset, take)
+		local chunkPayload, chunkPayloadSize = writer:ToBuffer()
 
 		local framed = BinaryStreaming.FramePacket(chunkPayload, chunkPayloadSize, {
 			version = if options then options.version else nil,
@@ -565,17 +565,17 @@ function BinaryStreaming.CreateChunkAssembler(maxPendingRaw: any)
 
 		local payloadFrame = frame :: ParsedFrame
 		local reader = BinaryStreaming.CreateReader(payloadFrame.payload, payloadFrame.payloadSize)
-		if reader:remaining() < 12 then
+		if reader:Remaining() < 12 then
 			return {
 				completed = false,
 				error = "Chunk payload header is truncated",
 			}
 		end
 
-		local batchId = reader:readUInt32()
-		local chunkIndex = reader:readUInt16()
-		local chunkCount = reader:readUInt16()
-		local fullPayloadSize = reader:readUInt32()
+		local batchId = reader:ReadUInt32()
+		local chunkIndex = reader:ReadUInt16()
+		local chunkCount = reader:ReadUInt16()
+		local fullPayloadSize = reader:ReadUInt32()
 		if chunkCount <= 0 then
 			return {
 				completed = false,
@@ -589,8 +589,8 @@ function BinaryStreaming.CreateChunkAssembler(maxPendingRaw: any)
 			}
 		end
 
-		local chunkPayloadSize = reader:remaining()
-		local chunkPayload = reader:readBytes(chunkPayloadSize)
+		local chunkPayloadSize = reader:Remaining()
+		local chunkPayload = reader:ReadBytes(chunkPayloadSize)
 
 		local batch = state.pending[batchId]
 		if batch == nil then
@@ -682,16 +682,11 @@ function BinaryStreaming.CreateChunkAssembler(maxPendingRaw: any)
 		sortDeterministic(copy :: any)
 		return copy
 	end
-
-	assembler.push = assembler.Push
-	assembler.clear = assembler.Clear
-	assembler.debugPending = assembler.DebugPending
-
 	return assembler
 end
 
 function BinaryStreaming.EncodeMutationDelta(previousState: any, nextState: any, options: FrameOptions?): buffer
-	local delta = Codec.createDelta(previousState, nextState)
+	local delta = Codec.CreateDelta(previousState, nextState)
 	if delta == nil then
 		delta = {
 			__delta = true,
@@ -699,7 +694,7 @@ function BinaryStreaming.EncodeMutationDelta(previousState: any, nextState: any,
 			removals = {},
 		}
 	end
-	local serialized = Codec.serializeDeterministic(delta)
+	local serialized = Codec.SerializeDeterministic(delta)
 	local payload, payloadSize = createStringBuffer(serialized)
 	return BinaryStreaming.FramePacket(payload, payloadSize, options)
 end
@@ -707,36 +702,7 @@ end
 function BinaryStreaming.DecodeMutationDelta(packet: buffer, previousState: any, options: FrameOptions?): any
 	local frame = BinaryStreaming.ParseFrame(packet, options)
 	local serialized = toStringFromBuffer(frame.payload, frame.payloadSize)
-	local delta = Codec.deserializeDeterministic(serialized)
-	return Codec.applyDelta(previousState, delta)
+	local delta = Codec.DeserializeDeterministic(serialized)
+	return Codec.ApplyDelta(previousState, delta)
 end
-
-BinaryStreaming.createWriter = BinaryStreaming.CreateWriter
-Writer.writeUInt8 = Writer.WriteUInt8
-Writer.writeUInt16 = Writer.WriteUInt16
-Writer.writeUInt32 = Writer.WriteUInt32
-Writer.writeBitmask = Writer.WriteBitmask
-Writer.writeBytes = Writer.WriteBytes
-Writer.writeString16 = Writer.WriteString16
-Writer.writeString32 = Writer.WriteString32
-Writer.toBuffer = Writer.ToBuffer
-Writer.reset = Writer.Reset
-BinaryStreaming.createReader = BinaryStreaming.CreateReader
-Reader.readUInt8 = Reader.ReadUInt8
-Reader.readUInt16 = Reader.ReadUInt16
-Reader.readUInt32 = Reader.ReadUInt32
-Reader.readBitmask = Reader.ReadBitmask
-Reader.readBytes = Reader.ReadBytes
-Reader.readString16 = Reader.ReadString16
-Reader.readString32 = Reader.ReadString32
-Reader.remaining = Reader.Remaining
-BinaryStreaming.framePacket = BinaryStreaming.FramePacket
-BinaryStreaming.parseFrame = BinaryStreaming.ParseFrame
-BinaryStreaming.validateFrame = BinaryStreaming.ValidateFrame
-BinaryStreaming.safeDispatch = BinaryStreaming.SafeDispatch
-BinaryStreaming.createChunkBatch = BinaryStreaming.CreateChunkBatch
-BinaryStreaming.createChunkAssembler = BinaryStreaming.CreateChunkAssembler
-BinaryStreaming.encodeMutationDelta = BinaryStreaming.EncodeMutationDelta
-BinaryStreaming.decodeMutationDelta = BinaryStreaming.DecodeMutationDelta
-
 return BinaryStreaming

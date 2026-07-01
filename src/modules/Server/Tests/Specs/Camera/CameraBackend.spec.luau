@@ -11,7 +11,7 @@ local Workspace = game:GetService("Workspace")
 
 local Cache = require("Cache")
 local Predict = require("Predict")
-local Resolve = require("Resolve")
+local CameraBackendGetter = require("CameraBackendGetter")
 local Stack = require("CameraOverrideStack")
 local State = require("CameraOverrideState")
 local Target = require("Target")
@@ -63,25 +63,25 @@ return function()
 			local explicitTarget = createTrackedPart("CameraBackendExplicit", Vector3.new(10, 0, 0), Vector3.zero)
 			local temporaryTarget = createTrackedPart("CameraBackendTemporary", Vector3.new(20, 0, 0), Vector3.zero)
 
-			local targetResolver = Target.new()
+			local targetGetter = Target.New()
 
-			targetResolver:setCharacter(character)
-			targetResolver:setExplicitTarget(explicitTarget)
-			targetResolver:setTemporaryOverride(temporaryTarget)
+			targetGetter:SetCharacter(character)
+			targetGetter:SetExplicitTarget(explicitTarget)
+			targetGetter:SetTemporaryOverride(temporaryTarget)
 
-			local temporaryResolution = targetResolver:resolve() :: any
+			local temporaryResolution = targetGetter:Get() :: any
 			expect(temporaryResolution ~= nil).to.equal(true)
 			expect(temporaryResolution.kind).to.equal("TemporaryOverride")
 			expect(temporaryResolution.basePart).to.equal(temporaryTarget)
 
-			targetResolver:clearTemporaryOverride()
-			local explicitResolution = targetResolver:resolve() :: any
+			targetGetter:ClearTemporaryOverride()
+			local explicitResolution = targetGetter:Get() :: any
 			expect(explicitResolution ~= nil).to.equal(true)
 			expect(explicitResolution.kind).to.equal("ExplicitTarget")
 			expect(explicitResolution.basePart).to.equal(explicitTarget)
 
-			targetResolver:setExplicitTarget(nil)
-			local characterResolution = targetResolver:resolve() :: any
+			targetGetter:SetExplicitTarget(nil)
+			local characterResolution = targetGetter:Get() :: any
 			expect(characterResolution ~= nil).to.equal(true)
 			expect(characterResolution.kind).to.equal("Character")
 			expect(characterResolution.basePart).to.equal(character.PrimaryPart)
@@ -91,38 +91,38 @@ return function()
 			character:Destroy()
 		end)
 
-		it("resolves active overrides by priority and prunes expired entries", function()
-			local stack = Stack.new()
-			local lowPriorityId = stack:push({
+		it("gets active overrides by priority and prunes expired entries", function()
+			local stack = Stack.New()
+			local lowPriorityId = stack:Push({
 				priority = 1,
 				position = Vector3.new(1, 0, 0),
 			})
-			local highPriorityId = stack:push({
+			local highPriorityId = stack:Push({
 				priority = 5,
 				position = Vector3.new(5, 0, 0),
 			})
-			stack:push({
+			stack:Push({
 				priority = 9,
 				position = Vector3.new(9, 0, 0),
 				expiresAt = 0,
 			})
 
-			local resolved = stack:resolve(os.clock()) :: any
-			expect(resolved ~= nil).to.equal(true)
-			expect(resolved.id).to.equal(highPriorityId)
-			expect(resolved.position).to.equal(Vector3.new(5, 0, 0))
+			local Got = stack:Get(os.clock()) :: any
+			expect(Got ~= nil).to.equal(true)
+			expect(Got.id).to.equal(highPriorityId)
+			expect(Got.position).to.equal(Vector3.new(5, 0, 0))
 
-			stack:remove(highPriorityId)
-			local afterRemoval = stack:resolve(os.clock()) :: any
+			stack:Remove(highPriorityId)
+			local afterRemoval = stack:Get(os.clock()) :: any
 			expect(afterRemoval ~= nil).to.equal(true)
 			expect(afterRemoval.id).to.equal(lowPriorityId)
 		end)
 
 		it("predicts forward using cache-derived velocity when live velocity is absent", function()
-			local cache = Cache.new()
-			cache:rememberSubject("camera-test", "Point", Vector3.zero, Vector3.zero, 0)
+			local cache = Cache.New()
+			cache:RememberSubject("camera-test", "Point", Vector3.zero, Vector3.zero, 0)
 
-			local predictor = Predict.new({
+			local predictor = Predict.New({
 				enabled = true,
 				leadTime = 0.1,
 				maxLeadTime = 0.1,
@@ -131,7 +131,7 @@ return function()
 				derivedVelocityWeight = 1,
 			})
 
-			local result = predictor:resolve(
+			local result = predictor:Get(
 				{
 					position = Vector3.new(10, 0, 0),
 					velocity = Vector3.zero,
@@ -150,25 +150,25 @@ return function()
 
 		it("composes a follow goal and records the backend frame snapshot", function()
 			local trackedPart = createTrackedPart("CameraBackendFollow", Vector3.new(4, 2, 0), Vector3.zero)
-			local cache = Cache.new()
-			local predictor = Predict.new({
+			local cache = Cache.New()
+			local predictor = Predict.New({
 				enabled = false,
 			})
-			local stack = Stack.new()
-			local state = State.new()
-			local targetResolver = Target.new()
-			targetResolver:setExplicitTarget(trackedPart)
-			state:setEnabled(true)
+			local stack = Stack.New()
+			local state = State.New()
+			local targetGetter = Target.New()
+			targetGetter:SetExplicitTarget(trackedPart)
+			state:SetEnabled(true)
 
-			local resolver = Resolve.new({
+			local backendGetter = CameraBackendGetter.new({
 				cache = cache,
 				predictor = predictor,
 				stack = stack,
 				state = state,
-				target = targetResolver,
+				target = targetGetter,
 			})
 
-			local resolution = resolver:resolve({
+			local resolution = backendGetter:Get({
 				distance = 10,
 				height = 5,
 				lookHeight = 2,
@@ -186,7 +186,7 @@ return function()
 			expect(resolution.fieldOfView).to.equal(55)
 			expect((resolution.state :: any).mode).to.equal("Follow")
 
-			local frame = cache:getFrame()
+			local frame = cache:GetFrame()
 			expect(frame.mode).to.equal("Follow")
 			expect(frame.subjectKind).to.equal("ExplicitTarget")
 			expectVectorNear(frame.targetPosition :: Vector3, trackedPart.Position, 1e-4)
@@ -195,16 +195,16 @@ return function()
 		end)
 
 		it("lets direct camera overrides take over without replacing the rest of the backend", function()
-			local cache = Cache.new()
-			local predictor = Predict.new({
+			local cache = Cache.New()
+			local predictor = Predict.New({
 				enabled = false,
 			})
-			local stack = Stack.new()
-			local state = State.new()
-			local targetResolver = Target.new()
-			state:setEnabled(true)
+			local stack = Stack.New()
+			local state = State.New()
+			local targetGetter = Target.New()
+			state:SetEnabled(true)
 
-			stack:push({
+			stack:Push({
 				priority = 10,
 				kind = "Cutscene",
 				cameraPosition = Vector3.new(30, 15, 5),
@@ -212,15 +212,15 @@ return function()
 				fieldOfView = 40,
 			})
 
-			local resolver = Resolve.new({
+			local backendGetter = CameraBackendGetter.new({
 				cache = cache,
 				predictor = predictor,
 				stack = stack,
 				state = state,
-				target = targetResolver,
+				target = targetGetter,
 			})
 
-			local resolution = resolver:resolve({
+			local resolution = backendGetter:Get({
 				distance = 10,
 				height = 5,
 				lookHeight = 2,

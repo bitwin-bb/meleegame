@@ -31,7 +31,7 @@ local function toGuiPosition(screenPosition: Vector2): Vector2
 	return screenPosition
 end
 
-local function resolveMousePosition(fallback: Vector2?): Vector2
+local function GetMousePosition(fallback: Vector2?): Vector2
 	if fallback ~= nil then
 		return toGuiPosition(fallback)
 	end
@@ -55,30 +55,30 @@ end
 local function bindPointerTrackingWithInputModule(): boolean
 	local inputRouter = runtime.inputRouter
 	if inputRouter == nil then
-		local sharedRuntime = CoreRuntime.getClientRuntime()
+		local sharedRuntime = CoreRuntime.GetClientRuntime()
 		local sharedInput = if sharedRuntime ~= nil then (sharedRuntime :: any).input else nil
 		if sharedInput ~= nil then
 			inputRouter = sharedInput
 			runtime.ownsInputRouter = false
 		else
-			inputRouter = Input.new()
+			inputRouter = Input.New()
 			runtime.ownsInputRouter = true
 		end
 		runtime.inputRouter = inputRouter
-		if typeof((inputRouter :: any).init) == "function" then
+		if typeof((inputRouter :: any).Init) == "function" then
 			local inputRouterAny = inputRouter :: any
-			inputRouterAny:init()
+			inputRouterAny:Init()
 		end
 	end
 
 	if runtime.pointerActionBound then
 		return true
 	end
-	if typeof((inputRouter :: any).bindAction) ~= "function" then
+	if typeof((inputRouter :: any).BindAction) ~= "function" then
 		return false
 	end
 
-	local bound = (inputRouter :: any):bindAction(POINTER_TRACK_ACTION, function(phase: string, context: any)
+	local bound = (inputRouter :: any):BindAction(POINTER_TRACK_ACTION, function(phase: string, context: any)
 		if phase ~= "Changed" and phase ~= "Began" then
 			return false
 		end
@@ -116,16 +116,16 @@ local function unbindPointerTrackingWithInputModule()
 	if
 		inputRouter ~= nil
 		and runtime.pointerActionBound
-		and typeof((inputRouter :: any).unbindAction) == "function"
+		and typeof((inputRouter :: any).UnbindAction) == "function"
 	then
 		local inputRouterAny = inputRouter :: any
-		inputRouterAny:unbindAction(POINTER_TRACK_ACTION)
+		inputRouterAny:UnbindAction(POINTER_TRACK_ACTION)
 	end
 	runtime.pointerActionBound = false
 
-	if runtime.ownsInputRouter and inputRouter ~= nil and typeof((inputRouter :: any).destroy) == "function" then
+	if runtime.ownsInputRouter and inputRouter ~= nil and typeof((inputRouter :: any).Destroy) == "function" then
 		local inputRouterAny = inputRouter :: any
-		inputRouterAny:destroy()
+		inputRouterAny:Destroy()
 	end
 	runtime.ownsInputRouter = false
 	runtime.inputRouter = nil
@@ -152,7 +152,7 @@ function infoThunks.Start(): () -> ()
 end
 
 function infoThunks.Stop()
-	ConnectionUtils.disconnect(runtime.inputChangedConnection)
+	ConnectionUtils.Disconnect(runtime.inputChangedConnection)
 	runtime.inputChangedConnection = nil
 	unbindPointerTrackingWithInputModule()
 	runtime.started = false
@@ -160,7 +160,7 @@ end
 
 function infoThunks.ShowHover(payload: ShowHoverPayload): HoverInfoState
 	infoThunks.Start()
-	return infoState.showHover(payload.id, payload.text, resolveMousePosition(payload.mousePosition))
+	return infoState.showHover(payload.id, payload.text, GetMousePosition(payload.mousePosition))
 end
 
 function infoThunks.HideHover(hoverId: string?): HoverInfoState
@@ -172,7 +172,7 @@ function infoThunks.UpdateMousePosition(mousePosition: Vector2): HoverInfoState
 end
 
 function infoThunks.SyncMousePosition(): HoverInfoState
-	return infoState.updateMousePosition(resolveMousePosition(nil))
+	return infoState.updateMousePosition(GetMousePosition(nil))
 end
 
 function infoThunks.GetInfoState(): HoverInfoState
@@ -183,14 +183,4 @@ function infoThunks.Reset()
 	infoThunks.Stop()
 	infoState.resetInfoState()
 end
-
-infoThunks.start = infoThunks.Start
-infoThunks.stop = infoThunks.Stop
-infoThunks.showHover = infoThunks.ShowHover
-infoThunks.hideHover = infoThunks.HideHover
-infoThunks.updateMousePosition = infoThunks.UpdateMousePosition
-infoThunks.syncMousePosition = infoThunks.SyncMousePosition
-infoThunks.getInfoState = infoThunks.GetInfoState
-infoThunks.reset = infoThunks.Reset
-
 return infoThunks

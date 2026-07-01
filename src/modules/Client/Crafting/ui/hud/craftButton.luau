@@ -28,7 +28,7 @@ return function(props: CraftButtonProps): React.ReactNode
 		or craftingSlice.getCraftingState()
 
 	React.useEffect(function()
-		local stop = craftingThunks.start()
+		local stop = craftingThunks.Start()
 
 		return function()
 			stop()
@@ -50,7 +50,7 @@ return function(props: CraftButtonProps): React.ReactNode
 		end,
 		onActivated = function()
 			UiSound.playPress()
-			craftingThunks.toggleVisible()
+			craftingThunks.ToggleVisible()
 		end,
 	})
 end

@@ -9,7 +9,6 @@ local React = require(ReplicatedStorage.Packages.React)
 local Responsive = require("useViewportScale")
 local UiSound = require("UiSound")
 local hpSlice = require("hpSlice")
-local hpThunks = require("hpThunks")
 local infoThunks = require("infoThunks")
 local useHover = require("useHover")
 local useStore = require("useCoreStore")
@@ -62,7 +61,7 @@ return function(props: HpTopRightBarProps)
 	local heartsHoverText = string.format("%.0f/%.0f", hpState.health, hpState.maxHealth)
 	local heartsHover = useHover({
 		onHoverStart = function()
-			infoThunks.showHover({
+			infoThunks.ShowHover({
 				id = heartsHoverId,
 				text = heartsHoverText,
 			})
@@ -70,7 +69,7 @@ return function(props: HpTopRightBarProps)
 			UiSound.playHover()
 		end,
 		onHoverEnd = function()
-			infoThunks.hideHover(heartsHoverId)
+			infoThunks.HideHover(heartsHoverId)
 		end,
 	})
 
@@ -79,7 +78,8 @@ return function(props: HpTopRightBarProps)
 			return
 		end
 
-		local stop = hpThunks.start()
+		local hpThunks = require("hpThunks")
+		local stop = hpThunks.Start()
 
 		return function()
 			stop()
@@ -91,7 +91,7 @@ return function(props: HpTopRightBarProps)
 			return
 		end
 
-		infoThunks.showHover({
+		infoThunks.ShowHover({
 			id = heartsHoverId,
 			text = heartsHoverText,
 		})
@@ -99,7 +99,7 @@ return function(props: HpTopRightBarProps)
 
 	React.useEffect(function()
 		return function()
-			infoThunks.hideHover(heartsHoverId)
+			infoThunks.HideHover(heartsHoverId)
 		end
 	end, {})
 
@@ -107,7 +107,7 @@ return function(props: HpTopRightBarProps)
 	local hearts = hpState.hearts
 	local heartSize = props.heartSize or UDim2.fromOffset(meterTokens.segmentSize, meterTokens.segmentSize)
 	local useLifeFruitHearts = hpState.maxHealth > 400
-	local beatHeartIndex = if useServiceState then hpThunks.getBeatHeartIndex() else getBeatHeartIndexFromHearts(hearts)
+	local beatHeartIndex = if useServiceState then hpSlice.beatHeartIndexAtom() else getBeatHeartIndexFromHearts(hearts)
 
 	local children: { React.ReactNode } = {
 		e(HeartMeter, {

@@ -14,9 +14,9 @@ type BossRootProps = {
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: BossRootProps?): React.ReactNode
-	local resolvedProps = if props ~= nil then props else {} :: BossRootProps
+	local GotProps = if props ~= nil then props else {} :: BossRootProps
 
 	return e(React.Fragment, nil, {
-		e(MarkerScreen, resolvedProps),
+		e(MarkerScreen, GotProps),
 	})
 end

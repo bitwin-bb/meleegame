@@ -90,7 +90,7 @@ local function normalizeAttribute(attributeRaw: any): string?
 	return attributeRaw
 end
 
-local function resolveNumber(valueRaw: any, fallback: number): number
+local function GetNumber(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" then
 		return fallback
 	end
@@ -184,7 +184,7 @@ function AttributeCache._recordDiff(
 	self:_notifyListeners(record, instance, attribute, newValue, oldValue)
 end
 
-function AttributeCache._resolveAttribute(self: AttributeCache, record: InstanceRecord, attribute: string): any
+function AttributeCache._GetAttribute(self: AttributeCache, record: InstanceRecord, attribute: string): any
 	local baseValue = record.base[attribute]
 	local modifierBucket = record.modifiers[attribute]
 	if modifierBucket == nil or next(modifierBucket) == nil then
@@ -221,34 +221,34 @@ function AttributeCache._resolveAttribute(self: AttributeCache, record: Instance
 	end
 
 	if hasNumericOps then
-		local numericBase = resolveNumber(baseValue, 0)
+		local numericBase = GetNumber(baseValue, 0)
 		return numericBase * multiplyTotal + addTotal
 	end
 
 	return baseValue
 end
 
-function AttributeCache._applyResolved(
+function AttributeCache._applyGot(
 	self: AttributeCache,
 	instance: Instance,
 	record: InstanceRecord,
 	attribute: string
 )
 	local oldValue = record.cache[attribute]
-	local resolved = self:_resolveAttribute(record, attribute)
-	record.cache[attribute] = resolved
+	local Got = self:_GetAttribute(record, attribute)
+	record.cache[attribute] = Got
 
 	local currentValue = instance:GetAttribute(attribute)
-	if currentValue ~= resolved then
+	if currentValue ~= Got then
 		record.suppress[attribute] = true
 		local ok, err = pcall(function()
-			instance:SetAttribute(attribute, resolved)
+			instance:SetAttribute(attribute, Got)
 		end)
 		if not ok then
 			record.suppress[attribute] = nil
 		end
 	end
-	self:_recordDiff(instance, record, attribute, oldValue, resolved)
+	self:_recordDiff(instance, record, attribute, oldValue, Got)
 end
 
 function AttributeCache.Bind(self: AttributeCache, instanceRaw: any): boolean
@@ -291,7 +291,7 @@ function AttributeCache.Bind(self: AttributeCache, instanceRaw: any): boolean
 		local nextValue = instance:GetAttribute(attribute)
 		runtimeRecord.base[attribute] = nextValue
 		if runtimeRecord.modifiers[attribute] ~= nil then
-			self:_applyResolved(instance, runtimeRecord, attribute)
+			self:_applyGot(instance, runtimeRecord, attribute)
 			return
 		end
 		runtimeRecord.cache[attribute] = nextValue
@@ -338,7 +338,7 @@ function AttributeCache.Get(self: AttributeCache, instanceRaw: any, attributeRaw
 	if attribute == nil then
 		return defaultValue
 	end
-	self:bind(instanceRaw)
+	self:Bind(instanceRaw)
 	local record = self.records[instanceRaw]
 	if record == nil then
 		return defaultValue
@@ -358,21 +358,21 @@ function AttributeCache.Set(self: AttributeCache, instanceRaw: any, attributeRaw
 	if attribute == nil then
 		return false
 	end
-	self:bind(instanceRaw)
+	self:Bind(instanceRaw)
 	local record = self.records[instanceRaw]
 	if record == nil then
 		return false
 	end
 	record.base[attribute] = value
-	self:_applyResolved(instanceRaw, record, attribute)
+	self:_applyGot(instanceRaw, record, attribute)
 	return true
 end
 
 function AttributeCache.Increment(self: AttributeCache, instanceRaw: any, attributeRaw: any, amountRaw: any): number
 	local amount = if typeof(amountRaw) == "number" then amountRaw else 0
-	local currentValue = self:get(instanceRaw, attributeRaw, 0)
-	local nextValue = resolveNumber(currentValue, 0) + amount
-	self:set(instanceRaw, attributeRaw, nextValue)
+	local currentValue = self:Get(instanceRaw, attributeRaw, 0)
+	local nextValue = GetNumber(currentValue, 0) + amount
+	self:Set(instanceRaw, attributeRaw, nextValue)
 	return nextValue
 end
 
@@ -388,7 +388,7 @@ function AttributeCache.OnChanged(
 	if typeof(listener) ~= "function" then
 		return function() end
 	end
-	self:bind(instanceRaw)
+	self:Bind(instanceRaw)
 	local record = self.records[instanceRaw]
 	if record == nil then
 		return function() end
@@ -427,7 +427,7 @@ function AttributeCache.ApplyModifier(
 		return false
 	end
 
-	self:bind(instanceRaw)
+	self:Bind(instanceRaw)
 	local record = self.records[instanceRaw]
 	if record == nil then
 		return false
@@ -457,7 +457,7 @@ function AttributeCache.ApplyModifier(
 		}
 	end
 
-	self:_applyResolved(instanceRaw, record, attribute)
+	self:_applyGot(instanceRaw, record, attribute)
 	return true
 end
 
@@ -490,7 +490,7 @@ function AttributeCache.RemoveModifier(
 	if next(modifierBucket) == nil then
 		record.modifiers[attribute] = nil
 	end
-	self:_applyResolved(instanceRaw, record, attribute)
+	self:_applyGot(instanceRaw, record, attribute)
 	return true
 end
 
@@ -509,7 +509,7 @@ function AttributeCache.ClearModifiers(self: AttributeCache, instanceRaw: any, a
 		end
 		for _, attribute in attributes do
 			record.modifiers[attribute] = nil
-			self:_applyResolved(instanceRaw, record, attribute)
+			self:_applyGot(instanceRaw, record, attribute)
 		end
 		return
 	end
@@ -519,7 +519,7 @@ function AttributeCache.ClearModifiers(self: AttributeCache, instanceRaw: any, a
 	end
 	if record.modifiers[attribute] ~= nil then
 		record.modifiers[attribute] = nil
-		self:_applyResolved(instanceRaw, record, attribute)
+		self:_applyGot(instanceRaw, record, attribute)
 	end
 end
 
@@ -545,7 +545,7 @@ function AttributeCache.Update(self: AttributeCache, dtRaw: any)
 					if next(modifierBucket) == nil then
 						record.modifiers[timer.attribute] = nil
 					end
-					self:_applyResolved(timer.instance, record, timer.attribute)
+					self:_applyGot(timer.instance, record, timer.attribute)
 				end
 			end
 		end
@@ -601,7 +601,7 @@ function AttributeCache.ConsumeDiffs(self: AttributeCache, maxRecordsRaw: any?):
 end
 
 function AttributeCache.BuildReplicationBatch(self: AttributeCache, maxAttributesRaw: any?): { ReplicationChange }
-	local diffs = self:consumeDiffs(maxAttributesRaw)
+	local diffs = self:ConsumeDiffs(maxAttributesRaw)
 	if #diffs == 0 then
 		return {}
 	end
@@ -630,7 +630,7 @@ end
 
 function AttributeCache.SerializeReplicationBatch(self: AttributeCache, batchRaw: any): string
 	if typeof(batchRaw) ~= "table" then
-		return Codec.serializeCompressed({})
+		return Codec.SerializeCompressed({})
 	end
 
 	local normalized = {}
@@ -644,7 +644,7 @@ function AttributeCache.SerializeReplicationBatch(self: AttributeCache, batchRaw
 		}
 	end
 
-	return Codec.serializeCompressed(normalized)
+	return Codec.SerializeCompressed(normalized)
 end
 
 function AttributeCache.DeserializeReplicationBatch(self: AttributeCache, payloadRaw: any): { any }
@@ -652,7 +652,7 @@ function AttributeCache.DeserializeReplicationBatch(self: AttributeCache, payloa
 		return {}
 	end
 	local ok, decoded = pcall(function()
-		return Codec.deserializeCompressed(payloadRaw)
+		return Codec.DeserializeCompressed(payloadRaw)
 	end)
 	if not ok or typeof(decoded) ~= "table" then
 		return {}
@@ -666,7 +666,7 @@ function AttributeCache.Destroy(self: AttributeCache)
 		instances[#instances + 1] = instance
 	end
 	for _, instance in instances do
-		self:unbind(instance)
+		self:Unbind(instance)
 	end
 	table.clear(self.records)
 	table.clear(self.instanceDirtySet)
@@ -674,22 +674,4 @@ function AttributeCache.Destroy(self: AttributeCache)
 	clearArray(self.timedModifiers)
 	self.now = 0
 end
-
-AttributeCache.new = AttributeCache.New
-AttributeCache.bind = AttributeCache.Bind
-AttributeCache.unbind = AttributeCache.Unbind
-AttributeCache.get = AttributeCache.Get
-AttributeCache.set = AttributeCache.Set
-AttributeCache.increment = AttributeCache.Increment
-AttributeCache.onChanged = AttributeCache.OnChanged
-AttributeCache.applyModifier = AttributeCache.ApplyModifier
-AttributeCache.removeModifier = AttributeCache.RemoveModifier
-AttributeCache.clearModifiers = AttributeCache.ClearModifiers
-AttributeCache.update = AttributeCache.Update
-AttributeCache.consumeDiffs = AttributeCache.ConsumeDiffs
-AttributeCache.buildReplicationBatch = AttributeCache.BuildReplicationBatch
-AttributeCache.serializeReplicationBatch = AttributeCache.SerializeReplicationBatch
-AttributeCache.deserializeReplicationBatch = AttributeCache.DeserializeReplicationBatch
-AttributeCache.destroy = AttributeCache.Destroy
-
 return AttributeCache

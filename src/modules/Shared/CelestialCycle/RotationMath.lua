@@ -22,28 +22,28 @@ end
 
 function RotationMath.NormalizeClockTime(clockTimeRaw: any): number
 	local clockTime = if typeof(clockTimeRaw) == "number" and clockTimeRaw == clockTimeRaw then clockTimeRaw else 0
-	return Range.wrap(clockTime, 0, 24)
+	return Range.Wrap(clockTime, 0, 24)
 end
 
-function RotationMath.ResolveDayProgress(clockTimeRaw: any): number
+function RotationMath.GetDayProgress(clockTimeRaw: any): number
 	return RotationMath.NormalizeClockTime(clockTimeRaw) / 24
 end
 
-function RotationMath.ResolveMoonPhase(worldDayIndexRaw: any): MoonPhaseName
+function RotationMath.GetMoonPhase(worldDayIndexRaw: any): MoonPhaseName
 	local worldDayIndex = if typeof(worldDayIndexRaw) == "number" then math.max(0, math.floor(worldDayIndexRaw)) else 0
 	local phaseIndex = (worldDayIndex % CelestialCycleConstants.MOON_PHASE_DAY_COUNT) + 1
 	return CelestialCycleConstants.MOON_PHASES[phaseIndex] :: MoonPhaseName
 end
 
-function RotationMath.ResolveDayPart(clockTimeRaw: any): DayPart
+function RotationMath.GetDayPart(clockTimeRaw: any): DayPart
 	local clockTime = RotationMath.NormalizeClockTime(clockTimeRaw)
-	local resolved = "Night"
+	local Got = "Night"
 	for _, threshold in CelestialCycleConstants.DAY_PARTS do
 		if clockTime >= threshold.startsAt then
-			resolved = threshold.name
+			Got = threshold.name
 		end
 	end
-	return resolved :: DayPart
+	return Got :: DayPart
 end
 
 local function directionToPosition(direction: Vector3): UDim2
@@ -56,7 +56,7 @@ local function directionToAlpha(direction: Vector3): number
 	return clamp01((direction.Y + 0.08) / 0.22)
 end
 
-local function resolveBodyState(
+local function GetBodyState(
 	name: "Sun" | "Moon",
 	image: string,
 	phase: MoonPhaseName?,
@@ -77,29 +77,23 @@ local function resolveBodyState(
 	}
 end
 
-function RotationMath.ResolveCycleState(clockTimeRaw: any, worldDayIndexRaw: any): CelestialCycleState
+function RotationMath.GetCycleState(clockTimeRaw: any, worldDayIndexRaw: any): CelestialCycleState
 	local clockTime = RotationMath.NormalizeClockTime(clockTimeRaw)
 	local worldDayIndex = if typeof(worldDayIndexRaw) == "number" then math.max(0, math.floor(worldDayIndexRaw)) else 0
 	local sunDirection, moonDirection =
 		SunPositionUtils.getSunPosition(clockTime, CelestialCycleConstants.GEO_LATITUDE)
-	local moonPhase = RotationMath.ResolveMoonPhase(worldDayIndex)
+	local moonPhase = RotationMath.GetMoonPhase(worldDayIndex)
 
 	return {
 		ready = true,
 		clockTime = clockTime,
 		worldDayIndex = worldDayIndex,
-		dayProgress = RotationMath.ResolveDayProgress(clockTime),
-		dayPart = RotationMath.ResolveDayPart(clockTime),
+		dayProgress = RotationMath.GetDayProgress(clockTime),
+		dayPart = RotationMath.GetDayPart(clockTime),
 		moonPhase = moonPhase,
-		sun = resolveBodyState("Sun", SunAsset.getImage(), nil, sunDirection, 10),
-		moon = resolveBodyState("Moon", MoonAssets.getImageForPhase(moonPhase), moonPhase, moonDirection, 9),
+		sun = GetBodyState("Sun", SunAsset.GetImage(), nil, sunDirection, 10),
+		moon = GetBodyState("Moon", MoonAssets.GetImageForPhase(moonPhase), moonPhase, moonDirection, 9),
 	}
 end
-
-RotationMath.normalizeClockTime = RotationMath.NormalizeClockTime
-RotationMath.resolveDayProgress = RotationMath.ResolveDayProgress
-RotationMath.resolveMoonPhase = RotationMath.ResolveMoonPhase
-RotationMath.resolveDayPart = RotationMath.ResolveDayPart
-RotationMath.resolveCycleState = RotationMath.ResolveCycleState
 
 return Table.readonly(RotationMath)

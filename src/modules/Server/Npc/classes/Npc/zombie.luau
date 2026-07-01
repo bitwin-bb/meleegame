@@ -15,9 +15,6 @@ function Zombie.New(configRaw: ZombieConfig?): Zombie
 	if config.archetype == nil then
 		config.archetype = "Zombie"
 	end
-	return Default.new(config)
+	return Default.New(config)
 end
-
-Zombie.new = Zombie.New
-
 return Zombie

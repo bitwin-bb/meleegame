@@ -22,8 +22,8 @@ local runtime = {
 	humanoidDiedConnection = nil :: RBXScriptConnection?,
 }
 
-local function resolveRespawnDelay(): number
-	return PlayerSpawnCooldown.getCurrentRespawnDelay()
+local function GetEspawnDelay(): number
+	return PlayerSpawnCooldown.GetCurrentRespawnDelay()
 end
 
 local function isHumanoidDead(humanoidRaw: any): boolean
@@ -35,7 +35,7 @@ local function isHumanoidDead(humanoidRaw: any): boolean
 end
 
 local function unbindHumanoid()
-	ConnectionUtils.disconnect(runtime.humanoidDiedConnection)
+	ConnectionUtils.Disconnect(runtime.humanoidDiedConnection)
 	runtime.humanoidDiedConnection = nil
 	runtime.boundHumanoid = nil
 end
@@ -51,7 +51,7 @@ local function onHumanoidDied(humanoid: Humanoid)
 	runtime.deathShownForHumanoid = humanoid
 	deathSlice.showDeath({
 		message = "You were slain...",
-		respawnDelay = resolveRespawnDelay(),
+		respawnDelay = GetEspawnDelay(),
 	})
 end
 
@@ -90,8 +90,8 @@ local function bindCharacter(characterRaw: any)
 		})
 	end
 
-	ConnectionUtils.disconnect(runtime.characterChildAddedConnection)
-	ConnectionUtils.disconnect(runtime.characterChildRemovedConnection)
+	ConnectionUtils.Disconnect(runtime.characterChildAddedConnection)
+	ConnectionUtils.Disconnect(runtime.characterChildRemovedConnection)
 	runtime.characterChildAddedConnection = character.ChildAdded:Connect(function(child: Instance)
 		if runtime.boundCharacter ~= character then
 			return
@@ -144,7 +144,7 @@ function deathThunks.Start(): () -> ()
 end
 
 function deathThunks.Stop()
-	ConnectionUtils.disconnectMany({
+	ConnectionUtils.DisconnectMany({
 		runtime.characterAddedConnection,
 		runtime.characterChildAddedConnection,
 		runtime.characterChildRemovedConnection,
@@ -166,9 +166,4 @@ end
 function deathThunks.GetDeathState(): DeathState
 	return deathSlice.getDeathState()
 end
-
-deathThunks.start = deathThunks.Start
-deathThunks.stop = deathThunks.Stop
-deathThunks.getDeathState = deathThunks.GetDeathState
-
 return deathThunks

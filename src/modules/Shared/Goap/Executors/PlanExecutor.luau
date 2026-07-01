@@ -112,8 +112,4 @@ function PlanExecutor.Destroy(self: PlanExecutor)
 end
 
 PlanExecutor.copy = Table.copy
-PlanExecutor.update = PlanExecutor.Update
-PlanExecutor.cancel = PlanExecutor.Cancel
-PlanExecutor.destroy = PlanExecutor.Destroy
-
 return PlanExecutor

@@ -13,9 +13,9 @@ type BindingRootProps = {
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: BindingRootProps?): React.ReactNode
-	local resolvedProps = if props ~= nil then props else {} :: BindingRootProps
+	local GotProps = if props ~= nil then props else {} :: BindingRootProps
 
 	return e(React.Fragment, nil, {
-		e(BindingHintScreen, resolvedProps),
+		e(BindingHintScreen, GotProps),
 	})
 end

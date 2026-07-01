@@ -238,7 +238,7 @@ local function clampNumber(valueRaw: any, fallback: number, minValue: number, ma
 	return value
 end
 
-local function sanitizeViewport(viewportRaw: any): Vector2
+local function CoerceViewport(viewportRaw: any): Vector2
 	if typeof(viewportRaw) == "Vector2" then
 		return Vector2.new(math.max(1, viewportRaw.X), math.max(1, viewportRaw.Y))
 	end
@@ -272,7 +272,7 @@ function PlatformServiceUtils.IsPointerInputType(inputTypeRaw: any): boolean
 	return PlatformServiceUtils.IsMouseInputType(inputTypeRaw) or PlatformServiceUtils.IsTouchInputType(inputTypeRaw)
 end
 
-function PlatformServiceUtils.ResolvePlatformKind(
+function PlatformServiceUtils.GetPlatformKind(
 	preferredInputRaw: any,
 	lastInputTypeRaw: any,
 	capabilitiesRaw: CapabilitySnapshot?
@@ -326,7 +326,7 @@ function PlatformServiceUtils.ResolvePlatformKind(
 	return "KeyboardMouse"
 end
 
-function PlatformServiceUtils.ResolveDeviceClass(
+function PlatformServiceUtils.GetDeviceClass(
 	platformKindRaw: any,
 	viewportRaw: any,
 	capabilitiesRaw: CapabilitySnapshot?,
@@ -335,7 +335,7 @@ function PlatformServiceUtils.ResolveDeviceClass(
 	local platformKind = if platformKindRaw == "Touch" or platformKindRaw == "Gamepad"
 		then platformKindRaw
 		else "KeyboardMouse"
-	local viewport = sanitizeViewport(viewportRaw)
+	local viewport = CoerceViewport(viewportRaw)
 	local capabilities = if typeof(capabilitiesRaw) == "table"
 		then capabilitiesRaw
 		else {
@@ -379,9 +379,9 @@ function PlatformServiceUtils.CreatePlatformState(
 			gamepadEnabled = false,
 			basePrimaryInputType = nil,
 		}
-	local viewport = sanitizeViewport(viewportRaw)
-	local platform = PlatformServiceUtils.ResolvePlatformKind(preferredInputRaw, lastInputTypeRaw, capabilities)
-	local deviceClass = PlatformServiceUtils.ResolveDeviceClass(platform, viewport, capabilities, isTenFootInterfaceRaw)
+	local viewport = CoerceViewport(viewportRaw)
+	local platform = PlatformServiceUtils.GetPlatformKind(preferredInputRaw, lastInputTypeRaw, capabilities)
+	local deviceClass = PlatformServiceUtils.GetDeviceClass(platform, viewport, capabilities, isTenFootInterfaceRaw)
 	return {
 		platform = platform,
 		deviceClass = deviceClass,
@@ -468,7 +468,7 @@ local function bindingKeyCodeForPrompt(binding: ActionBinding): any
 	return nil
 end
 
-local function resolvePromptText(binding: ActionBinding, touchPromptRaw: any): string
+local function GetPromptText(binding: ActionBinding, touchPromptRaw: any): string
 	if typeof(binding.label) == "string" and binding.label ~= "" then
 		return binding.label
 	end
@@ -493,7 +493,7 @@ local function resolvePromptText(binding: ActionBinding, touchPromptRaw: any): s
 	return "Action"
 end
 
-local function resolvePromptIcon(binding: ActionBinding, platformKind: PlatformKind, gamepadFamilyRaw: any): string?
+local function GetPromptIcon(binding: ActionBinding, platformKind: PlatformKind, gamepadFamilyRaw: any): string?
 	if typeof(binding.icon) == "string" and binding.icon ~= "" then
 		return binding.icon
 	end
@@ -1054,7 +1054,7 @@ function PlatformServiceUtils.GetDefaultActionDefinition(actionNameRaw: any): Ac
 	return cloneActionDefinition(definition)
 end
 
-function PlatformServiceUtils.ResolveBindingsForPlatform(definitionRaw: any, platformKindRaw: any): { ActionBinding }
+function PlatformServiceUtils.GetBindingsForPlatform(definitionRaw: any, platformKindRaw: any): { ActionBinding }
 	if typeof(definitionRaw) ~= "table" then
 		return {}
 	end
@@ -1068,7 +1068,7 @@ function PlatformServiceUtils.ResolveBindingsForPlatform(definitionRaw: any, pla
 	return cloneBindings(bindingsByPlatform[platformKind])
 end
 
-function PlatformServiceUtils.ResolvePromptBindingsForPlatform(
+function PlatformServiceUtils.GetPromptBindingsForPlatform(
 	definitionRaw: any,
 	platformKindRaw: any
 ): { ActionBinding }
@@ -1085,10 +1085,10 @@ function PlatformServiceUtils.ResolvePromptBindingsForPlatform(
 			return cloneBindings(bindings)
 		end
 	end
-	return PlatformServiceUtils.ResolveBindingsForPlatform(definition, platformKind)
+	return PlatformServiceUtils.GetBindingsForPlatform(definition, platformKind)
 end
 
-function PlatformServiceUtils.ResolvePromptForAction(
+function PlatformServiceUtils.GetPromptForAction(
 	definitionRaw: any,
 	platformKindRaw: any,
 	deviceClassRaw: any,
@@ -1106,7 +1106,7 @@ function PlatformServiceUtils.ResolvePromptForAction(
 			or deviceClassRaw == "Console"
 		then deviceClassRaw
 		else "Desktop"
-	local bindings = PlatformServiceUtils.ResolvePromptBindingsForPlatform(definition, platformKind)
+	local bindings = PlatformServiceUtils.GetPromptBindingsForPlatform(definition, platformKind)
 	if #bindings <= 0 then
 		return nil
 	end
@@ -1116,30 +1116,12 @@ function PlatformServiceUtils.ResolvePromptForAction(
 		displayName = definition.displayName,
 		platform = platformKind,
 		deviceClass = deviceClass,
-		text = resolvePromptText(binding, definition.touchPrompt),
-		icon = resolvePromptIcon(binding, platformKind, gamepadFamilyRaw),
+		text = GetPromptText(binding, definition.touchPrompt),
+		icon = GetPromptIcon(binding, platformKind, gamepadFamilyRaw),
 		keyCode = binding.keyCode,
 		inputType = binding.inputType,
 		playerAction = binding.playerAction,
 	}
 end
-
-PlatformServiceUtils.isGamepadInputType = PlatformServiceUtils.IsGamepadInputType
-PlatformServiceUtils.isTouchInputType = PlatformServiceUtils.IsTouchInputType
-PlatformServiceUtils.isKeyboardInputType = PlatformServiceUtils.IsKeyboardInputType
-PlatformServiceUtils.isMouseInputType = PlatformServiceUtils.IsMouseInputType
-PlatformServiceUtils.isPointerInputType = PlatformServiceUtils.IsPointerInputType
-PlatformServiceUtils.resolvePlatformKind = PlatformServiceUtils.ResolvePlatformKind
-PlatformServiceUtils.resolveDeviceClass = PlatformServiceUtils.ResolveDeviceClass
-PlatformServiceUtils.createPlatformState = PlatformServiceUtils.CreatePlatformState
-PlatformServiceUtils.platformStatesEqual = PlatformServiceUtils.PlatformStatesEqual
-PlatformServiceUtils.clonePlatformState = PlatformServiceUtils.ClonePlatformState
-PlatformServiceUtils.applyThumbstickDeadzone = PlatformServiceUtils.ApplyThumbstickDeadzone
-PlatformServiceUtils.hasThumbstickPassedDeadzone = PlatformServiceUtils.HasThumbstickPassedDeadzone
-PlatformServiceUtils.getDefaultActionDefinitions = PlatformServiceUtils.GetDefaultActionDefinitions
-PlatformServiceUtils.getDefaultActionDefinition = PlatformServiceUtils.GetDefaultActionDefinition
-PlatformServiceUtils.resolveBindingsForPlatform = PlatformServiceUtils.ResolveBindingsForPlatform
-PlatformServiceUtils.resolvePromptBindingsForPlatform = PlatformServiceUtils.ResolvePromptBindingsForPlatform
-PlatformServiceUtils.resolvePromptForAction = PlatformServiceUtils.ResolvePromptForAction
 
 return PlatformServiceUtils

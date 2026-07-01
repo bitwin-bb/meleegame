@@ -61,7 +61,7 @@ function ObjectPool.new<T>(factory: Factory<T>, configRaw: PoolConfig<T>?): Obje
 		totalDestroyed = 0,
 	}, ObjectPool)
 
-	self:prewarm(prewarmCount)
+	self:Prewarm(prewarmCount)
 	return self
 end
 
@@ -182,7 +182,7 @@ function ObjectPool.Clear(self: ObjectPool<any>, destroyInUseRaw: any?)
 end
 
 function ObjectPool.Destroy(self: ObjectPool<any>)
-	self:clear(true)
+	self:Clear(true)
 	clearDenseArray(self.available)
 	table.clear(self.inUse)
 end
@@ -197,13 +197,4 @@ function ObjectPool.GetStats(self: ObjectPool<any>): { [string]: number }
 		totalDestroyed = self.totalDestroyed,
 	}
 end
-
-ObjectPool.prewarm = ObjectPool.Prewarm
-ObjectPool.acquire = ObjectPool.Acquire
-ObjectPool.release = ObjectPool.Release
-ObjectPool.softShrink = ObjectPool.SoftShrink
-ObjectPool.clear = ObjectPool.Clear
-ObjectPool.destroy = ObjectPool.Destroy
-ObjectPool.getStats = ObjectPool.GetStats
-
 return ObjectPool

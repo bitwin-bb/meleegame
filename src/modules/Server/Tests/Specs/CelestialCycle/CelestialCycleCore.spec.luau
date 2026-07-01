@@ -21,10 +21,10 @@ return function()
 
 	describe("CelestialCycle shared math", function()
 		it("normalizes clock time and derives day progress", function()
-			expect(RotationMath.normalizeClockTime(24.5)).to.equal(0.5)
-			expect(RotationMath.normalizeClockTime(-1)).to.equal(23)
-			expectNear(RotationMath.resolveDayProgress(6), 0.25)
-			expectNear(RotationMath.resolveDayProgress(18), 0.75)
+			expect(RotationMath.NormalizeClockTime(24.5)).to.equal(0.5)
+			expect(RotationMath.NormalizeClockTime(-1)).to.equal(23)
+			expectNear(RotationMath.GetDayProgress(6), 0.25)
+			expectNear(RotationMath.GetDayProgress(18), 0.75)
 		end)
 
 		it("walks one real-world style phase per in-game day across eight days", function()
@@ -41,23 +41,23 @@ return function()
 			}
 
 			for dayIndex, phaseName in expected do
-				expect(RotationMath.resolveMoonPhase(dayIndex - 1)).to.equal(phaseName)
+				expect(RotationMath.GetMoonPhase(dayIndex - 1)).to.equal(phaseName)
 			end
 			expect(CelestialCycleConstants.MOON_PHASE_DAY_COUNT).to.equal(8)
 		end)
 
-		it("resolves sun and moon image assets", function()
-			local newMoonImage = MoonAssets.getImageForPhase("new")
+		it("gets sun and moon image assets", function()
+			local newMoonImage = MoonAssets.GetImageForPhase("new")
 
-			expect(SunAsset.getImage()).to.equal("rbxassetid://130185077109129")
+			expect(SunAsset.GetImage()).to.equal("rbxassetid://130185077109129")
 			expect(newMoonImage).to.equal("rbxassetid://73088477000613")
-			expect(MoonAssets.getImageForPhase("fullMoon")).to.equal("rbxassetid://71652201703042")
-			expect(MoonAssets.getImageForPhase("not-a-phase")).to.equal(newMoonImage)
+			expect(MoonAssets.GetImageForPhase("fullMoon")).to.equal("rbxassetid://71652201703042")
+			expect(MoonAssets.GetImageForPhase("not-a-phase")).to.equal(newMoonImage)
 		end)
 
 		it("derives body state from clock time and world day index", function()
-			local noonState = RotationMath.resolveCycleState(12, 4)
-			local midnightState = RotationMath.resolveCycleState(0, 4)
+			local noonState = RotationMath.GetCycleState(12, 4)
+			local midnightState = RotationMath.GetCycleState(0, 4)
 
 			expect(noonState.clockTime).to.equal(12)
 			expect(noonState.worldDayIndex).to.equal(4)
@@ -73,32 +73,32 @@ return function()
 	end)
 
 	describe("WeatherService world day index", function()
-		it("preserves worldDayIndex through sanitize and clone", function()
-			local state = WeatherServiceUtils.sanitizeState({
+		it("preserves worldDayIndex through Coerce and clone", function()
+			local state = WeatherServiceUtils.CoerceState({
 				worldDayIndex = 17,
 			}, nil)
-			local cloned = WeatherServiceUtils.cloneState(state)
+			local cloned = WeatherServiceUtils.CloneState(state)
 
 			expect(state.worldDayIndex).to.equal(17)
 			expect(cloned.worldDayIndex).to.equal(17)
 		end)
 
 		it("reports midnight wraps while advancing the clock", function()
-			local result = WeatherServiceUtils.advanceClockTimeWithDayDelta(23.5, 60, 24 / 120)
+			local result = WeatherServiceUtils.AdvanceClockTimeWithDayDelta(23.5, 60, 24 / 120)
 
 			expectNear(result.clockTime, 11.5)
 			expect(result.dayDelta).to.equal(1)
 		end)
 
 		it("keeps day delta at zero without a midnight wrap", function()
-			local result = WeatherServiceUtils.advanceClockTimeWithDayDelta(10, 10, 0.5)
+			local result = WeatherServiceUtils.AdvanceClockTimeWithDayDelta(10, 10, 0.5)
 
 			expectNear(result.clockTime, 15)
 			expect(result.dayDelta).to.equal(0)
 		end)
 
 		it("reports multiple midnight wraps while advancing the clock", function()
-			local result = WeatherServiceUtils.advanceClockTimeWithDayDelta(23, 130, 24 / 60)
+			local result = WeatherServiceUtils.AdvanceClockTimeWithDayDelta(23, 130, 24 / 60)
 
 			expectNear(result.clockTime, 3)
 			expect(result.dayDelta).to.equal(3)

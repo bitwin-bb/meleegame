@@ -10,14 +10,14 @@ local DAY_MUSIC_ASSET_IDS = {
 }
 local dayMusicRandom = Random.new()
 
-local function resolveDayMusicAssetId(): string
+local function GetDayMusicAssetId(): string
 	local choices = Table.copy(DAY_MUSIC_ASSET_IDS)
 	return choices[dayMusicRandom:NextInteger(1, #choices)]
 end
 
 return {
 	Music = {
-		OverworldDay = resolveDayMusicAssetId(),
+		OverworldDay = GetDayMusicAssetId(),
 		OverworldNight = "rbxassetid://132162981071821",
 		Corruption = "rbxassetid://89421894972000",
 		Jungle = "rbxassetid://88997911200453",
@@ -36,7 +36,7 @@ return {
 		UndergroundSnow = "rbxassetid://92651409708176",
 		QueenBee = "rbxassetid://74013306149777",
 		Space = "rbxassetid://90236104427176",
-		AlternateDay = resolveDayMusicAssetId(),
+		AlternateDay = GetDayMusicAssetId(),
 	},
 	Npcs = {
 		Bosses = {

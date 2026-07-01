@@ -10,7 +10,7 @@ local Gore = require("Gore")
 local GoreServiceUtils = require("GoreServiceUtils")
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
-local GoreServicePackets = require("NetSharedPackets").GoreService
+local GoreServicePackets = require("NetPacketsShared").GoreService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = GoreServicePackets[methodName]
@@ -19,7 +19,7 @@ local function sendPacket(methodName: string, ...: any)
 		return
 	end
 
-	packet.send(PacketPayload.pack(...))
+	packet.send(PacketPayload.Pack(...))
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -29,13 +29,14 @@ local function bindPacket(self: any, methodName: string)
 		return
 	end
 
+	local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
 	packet.listen(function(payload: any)
-		local handler = self[methodName]
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, table.unpack(arguments, 1, count))
 	end)
 end
@@ -65,8 +66,8 @@ local NPC_RUNTIME_ID_ATTRIBUTE = "NpcRuntimeId"
 local PLAYER_PREFIX = "player:"
 local NPC_PREFIX = "npc:"
 
-local function sanitizeEntityId(entityIdRaw: any): string?
-	return GoreServiceUtils.sanitizeEntityId(entityIdRaw)
+local function CoerceEntityId(entityIdRaw: any): string?
+	return GoreServiceUtils.CoerceEntityId(entityIdRaw)
 end
 
 local function isModel(value: any): boolean
@@ -87,8 +88,8 @@ local function parseEntityId(entityId: string): (string?, string?)
 	return nil, nil
 end
 
-function GoreServiceClient.ResolveModelFromEntityId(self: GoreServiceClient, entityIdRaw: any): Model?
-	local entityId = sanitizeEntityId(entityIdRaw)
+function GoreServiceClient.GetModelFromEntityId(self: GoreServiceClient, entityIdRaw: any): Model?
+	local entityId = CoerceEntityId(entityIdRaw)
 	if entityId == nil then
 		return nil
 	end
@@ -126,8 +127,8 @@ function GoreServiceClient.ResolveModelFromEntityId(self: GoreServiceClient, ent
 	return nil
 end
 
-function GoreServiceClient.TryResolvePendingEntity(self: GoreServiceClient, entityIdRaw: any): Gore.Gore?
-	local entityId = sanitizeEntityId(entityIdRaw)
+function GoreServiceClient.TryGetPendingEntity(self: GoreServiceClient, entityIdRaw: any): Gore.Gore?
+	local entityId = CoerceEntityId(entityIdRaw)
 	if entityId == nil then
 		return nil
 	end
@@ -142,12 +143,12 @@ function GoreServiceClient.TryResolvePendingEntity(self: GoreServiceClient, enti
 		return nil
 	end
 
-	local model = self:resolveModelFromEntityId(entityId)
+	local model = self:GetModelFromEntityId(entityId)
 	if model == nil then
 		return nil
 	end
 
-	return self:registerEntity(entityId, model, pendingConfig)
+	return self:RegisterEntity(entityId, model, pendingConfig)
 end
 
 function GoreServiceClient.RegisterEntity(
@@ -156,40 +157,40 @@ function GoreServiceClient.RegisterEntity(
 	modelRaw: any,
 	configRaw: any
 ): Gore.Gore?
-	local entityId = sanitizeEntityId(entityIdRaw)
+	local entityId = CoerceEntityId(entityIdRaw)
 	if entityId == nil then
 		return nil
 	end
 
 	local config = if typeof(configRaw) == "table" then Sift.Dictionary.copy(configRaw) else {} :: any
-	local model = if isModel(modelRaw) then modelRaw :: Model else self:resolveModelFromEntityId(entityId)
+	local model = if isModel(modelRaw) then modelRaw :: Model else self:GetModelFromEntityId(entityId)
 	if model == nil then
 		self.pendingEntityConfigById[entityId] = config
 		return nil
 	end
 
-	self:removeEntity(entityId)
+	self:RemoveEntity(entityId)
 	self.pendingEntityConfigById[entityId] = nil
 	config.model = model
-	local controller = Gore.new(config)
+	local controller = Gore.New(config)
 	self.controllersByEntityId[entityId] = controller
 	return controller
 end
 
 function GoreServiceClient.GetEntity(self: GoreServiceClient, entityIdRaw: any): Gore.Gore?
-	local entityId = sanitizeEntityId(entityIdRaw)
+	local entityId = CoerceEntityId(entityIdRaw)
 	if entityId == nil then
 		return nil
 	end
 
 	if self.controllersByEntityId[entityId] == nil then
-		self:tryResolvePendingEntity(entityId)
+		self:TryGetPendingEntity(entityId)
 	end
 	return self.controllersByEntityId[entityId]
 end
 
 function GoreServiceClient.RemoveEntity(self: GoreServiceClient, entityIdRaw: any)
-	local entityId = sanitizeEntityId(entityIdRaw)
+	local entityId = CoerceEntityId(entityIdRaw)
 	if entityId == nil then
 		return
 	end
@@ -200,26 +201,26 @@ function GoreServiceClient.RemoveEntity(self: GoreServiceClient, entityIdRaw: an
 		return
 	end
 
-	controller:destroy()
+	controller:Destroy()
 	self.controllersByEntityId[entityId] = nil
 	self.pendingEntityConfigById[entityId] = nil
 end
 
 function GoreServiceClient.SetBloodColor(self: GoreServiceClient, entityIdRaw: any, bloodColorRaw: any): boolean
-	local controller = self:getEntity(entityIdRaw)
+	local controller = self:GetEntity(entityIdRaw)
 	if controller == nil then
 		return false
 	end
-	controller:setBloodColor(bloodColorRaw)
+	controller:SetBloodColor(bloodColorRaw)
 	return true
 end
 
 function GoreServiceClient.DestroyLimb(self: GoreServiceClient, entityIdRaw: any, limbRaw: any, optionsRaw: any): any?
-	local controller = self:getEntity(entityIdRaw)
+	local controller = self:GetEntity(entityIdRaw)
 	if controller == nil then
 		return nil
 	end
-	return controller:destroyLimb(limbRaw, optionsRaw)
+	return controller:DestroyLimb(limbRaw, optionsRaw)
 end
 
 function GoreServiceClient.EmitBlood(
@@ -230,11 +231,11 @@ function GoreServiceClient.EmitBlood(
 	amountRaw: any?,
 	settingsRaw: any?
 ): boolean
-	local controller = self:getEntity(entityIdRaw)
+	local controller = self:GetEntity(entityIdRaw)
 	if controller == nil then
 		return false
 	end
-	return controller:emitBlood(originRaw, directionRaw, amountRaw, settingsRaw)
+	return controller:EmitBlood(originRaw, directionRaw, amountRaw, settingsRaw)
 end
 
 function GoreServiceClient.SpawnGibs(
@@ -244,12 +245,12 @@ function GoreServiceClient.SpawnGibs(
 	sourceRaw: any?,
 	optionsRaw: any?
 ): number
-	local controller = self:getEntity(entityIdRaw)
+	local controller = self:GetEntity(entityIdRaw)
 	if controller == nil then
 		return 0
 	end
 
-	local gibCount = GoreServiceUtils.sanitizeGibCount(gibCountRaw, 0)
+	local gibCount = GoreServiceUtils.CoerceGibCount(gibCountRaw, 0)
 	if gibCount <= 0 then
 		return 0
 	end
@@ -281,7 +282,7 @@ function GoreServiceClient.SpawnGibs(
 			originCFrame = sourcePart.CFrame
 		end
 
-		local gib = controller:spawnGib(part, {
+		local gib = controller:SpawnGib(part, {
 			originCFrame = originCFrame,
 			arcHeight = options.arcHeight,
 			travelTime = options.travelTime,
@@ -309,7 +310,7 @@ function GoreServiceClient.Init(self: GoreServiceClient)
 	self.janitor:GiveChore(function()
 		for _, controller in pairs(self.controllersByEntityId :: { [string]: Gore.Gore? }) do
 			if controller ~= nil then
-				controller:destroy()
+				controller:Destroy()
 			end
 		end
 		table.clear(self.controllersByEntityId)
@@ -322,7 +323,7 @@ function GoreServiceClient.Init(self: GoreServiceClient)
 	task.spawn(function()
 		while not self.isDestroyed do
 			for entityId in pairs(self.pendingEntityConfigById :: { [string]: { [string]: any }? }) do
-				self:tryResolvePendingEntity(entityId)
+				self:TryGetPendingEntity(entityId)
 			end
 			task.wait(0.25)
 		end
@@ -339,21 +340,9 @@ function GoreServiceClient.Destroy(self: GoreServiceClient)
 	end
 end
 
-GoreServiceClient.resolveModelFromEntityId = GoreServiceClient.ResolveModelFromEntityId
-GoreServiceClient.tryResolvePendingEntity = GoreServiceClient.TryResolvePendingEntity
-GoreServiceClient.registerEntity = GoreServiceClient.RegisterEntity
-GoreServiceClient.getEntity = GoreServiceClient.GetEntity
-GoreServiceClient.removeEntity = GoreServiceClient.RemoveEntity
-GoreServiceClient.setBloodColor = GoreServiceClient.SetBloodColor
-GoreServiceClient.destroyLimb = GoreServiceClient.DestroyLimb
-GoreServiceClient.emitBlood = GoreServiceClient.EmitBlood
-GoreServiceClient.spawnGibs = GoreServiceClient.SpawnGibs
-GoreServiceClient.init = GoreServiceClient.Init
-GoreServiceClient.destroy = GoreServiceClient.Destroy
-
 type GoreServiceClient = typeof(GoreServiceClient) & {
-	resolveModelFromEntityId: (self: GoreServiceClient, entityIdRaw: any) -> Model?,
-	tryResolvePendingEntity: (self: GoreServiceClient, entityIdRaw: any) -> Gore.Gore?,
+	GetModelFromEntityId: (self: GoreServiceClient, entityIdRaw: any) -> Model?,
+	tryGetPendingEntity: (self: GoreServiceClient, entityIdRaw: any) -> Gore.Gore?,
 	janitor: any,
 	random: Random,
 	controllersByEntityId: { [string]: Gore.Gore? },

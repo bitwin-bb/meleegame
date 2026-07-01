@@ -33,7 +33,7 @@ local DEFAULT_HEART_VALUE = 20
 local DEFAULT_MAX_HEALTH = 100
 local DEFAULT_DATA_PATH = { "hp" }
 
-local function sanitizeNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
 	end
@@ -66,9 +66,9 @@ local function createHeartState(index: number, healthInHeart: number, maxHealthI
 end
 
 function HpServiceUtils.BuildHearts(healthRaw: any, maxHealthRaw: any, heartValueRaw: any): { HeartState }
-	local heartValue = sanitizeNumber(heartValueRaw, DEFAULT_HEART_VALUE, 1, nil)
-	local maxHealth = sanitizeNumber(maxHealthRaw, DEFAULT_MAX_HEALTH, 1, nil)
-	local health = sanitizeNumber(healthRaw, maxHealth, 0, maxHealth)
+	local heartValue = CoerceNumber(heartValueRaw, DEFAULT_HEART_VALUE, 1, nil)
+	local maxHealth = CoerceNumber(maxHealthRaw, DEFAULT_MAX_HEALTH, 1, nil)
+	local health = CoerceNumber(healthRaw, maxHealth, 0, maxHealth)
 
 	local heartCount = math.max(1, math.ceil(maxHealth / heartValue))
 	local hearts: { HeartState } = Sift.Array.create(heartCount)
@@ -90,11 +90,11 @@ function HpServiceUtils.CreateState(
 	fallback: HpServiceState?
 ): HpServiceState
 	local fallbackMaxHealth = if fallback then fallback.maxHealth else DEFAULT_MAX_HEALTH
-	local maxHealth = sanitizeNumber(maxHealthRaw, fallbackMaxHealth, 1, nil)
+	local maxHealth = CoerceNumber(maxHealthRaw, fallbackMaxHealth, 1, nil)
 	local fallbackHealth = if fallback then fallback.health else maxHealth
-	local health = sanitizeNumber(healthRaw, fallbackHealth, 0, maxHealth)
+	local health = CoerceNumber(healthRaw, fallbackHealth, 0, maxHealth)
 	local fallbackHeartValue = if fallback then fallback.heartValue else DEFAULT_HEART_VALUE
-	local heartValue = sanitizeNumber(heartValueRaw, fallbackHeartValue, 1, nil)
+	local heartValue = CoerceNumber(heartValueRaw, fallbackHeartValue, 1, nil)
 	local previousHealth = if fallback then fallback.health else health
 	local delta = health - previousHealth
 
@@ -125,7 +125,7 @@ function HpServiceUtils.CreateStateFromHumanoid(
 	return HpServiceUtils.CreateState(humanoid.Health, humanoid.MaxHealth, heartValueRaw, fallback)
 end
 
-function HpServiceUtils.SanitizeState(stateRaw: any, fallback: HpServiceState?): HpServiceState
+function HpServiceUtils.CoerceState(stateRaw: any, fallback: HpServiceState?): HpServiceState
 	local source = if typeof(stateRaw) == "table" then stateRaw else {} :: any
 	local fallbackState = if fallback then fallback else HpServiceUtils.CreateDefaultState()
 	local nextState = HpServiceUtils.CreateState(
@@ -205,7 +205,7 @@ end
 
 function HpServiceUtils.SerializeStateForData(stateRaw: any): { [string]: any }
 	local state = if typeof(stateRaw) == "table"
-		then HpServiceUtils.SanitizeState(stateRaw, HpServiceUtils.CreateDefaultState())
+		then HpServiceUtils.CoerceState(stateRaw, HpServiceUtils.CreateDefaultState())
 		else HpServiceUtils.CreateDefaultState()
 
 	return {
@@ -215,7 +215,7 @@ function HpServiceUtils.SerializeStateForData(stateRaw: any): { [string]: any }
 	}
 end
 
-function HpServiceUtils.ResolvePersistedHealth(healthDataRaw: any): number?
+function HpServiceUtils.GetPersistedHealth(healthDataRaw: any): number?
 	if typeof(healthDataRaw) == "number" and healthDataRaw == healthDataRaw then
 		return math.max(0, healthDataRaw)
 	end
@@ -233,7 +233,7 @@ function HpServiceUtils.ResolvePersistedHealth(healthDataRaw: any): number?
 	return math.max(0, healthRaw)
 end
 
-function HpServiceUtils.ResolvePersistedHealthAndMaxHealth(
+function HpServiceUtils.GetPersistedHealthAndMaxHealth(
 	healthDataRaw: any,
 	fallbackMaxHealthRaw: any
 ): (number?, number)
@@ -267,17 +267,5 @@ end
 HpServiceUtils.DEFAULT_HEART_VALUE = DEFAULT_HEART_VALUE
 HpServiceUtils.DEFAULT_MAX_HEALTH = DEFAULT_MAX_HEALTH
 HpServiceUtils.DEFAULT_DATA_PATH = DEFAULT_DATA_PATH
-
-HpServiceUtils.buildHearts = HpServiceUtils.BuildHearts
-HpServiceUtils.createState = HpServiceUtils.CreateState
-HpServiceUtils.createDefaultState = HpServiceUtils.CreateDefaultState
-HpServiceUtils.createStateFromHumanoid = HpServiceUtils.CreateStateFromHumanoid
-HpServiceUtils.sanitizeState = HpServiceUtils.SanitizeState
-HpServiceUtils.cloneState = HpServiceUtils.CloneState
-HpServiceUtils.clonePath = HpServiceUtils.ClonePath
-HpServiceUtils.getDefaultDataPath = HpServiceUtils.GetDefaultDataPath
-HpServiceUtils.serializeStateForData = HpServiceUtils.SerializeStateForData
-HpServiceUtils.resolvePersistedHealth = HpServiceUtils.ResolvePersistedHealth
-HpServiceUtils.resolvePersistedHealthAndMaxHealth = HpServiceUtils.ResolvePersistedHealthAndMaxHealth
 
 return HpServiceUtils

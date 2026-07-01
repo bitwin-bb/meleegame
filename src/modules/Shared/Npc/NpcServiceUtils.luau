@@ -177,7 +177,7 @@ function NpcServiceUtils.CreateDefaultStateMachineGraph(): StateMachineGraph
 	return cloneStateGraph(DEFAULT_STATE_MACHINE_GRAPH)
 end
 
-function NpcServiceUtils.SanitizeSlimeSpawnSettings(settingsRaw: any, fallback: SlimeSpawnSettings?): SlimeSpawnSettings
+function NpcServiceUtils.CoerceSlimeSpawnSettings(settingsRaw: any, fallback: SlimeSpawnSettings?): SlimeSpawnSettings
 	local base = if fallback ~= nil then fallback else DEFAULT_SLIME_SPAWN_SETTINGS
 	local settings = if typeof(settingsRaw) == "table" then settingsRaw else {} :: any
 
@@ -206,7 +206,7 @@ function NpcServiceUtils.CanTransition(
 	return transitions[nextState] == true
 end
 
-function NpcServiceUtils.ResolveBiomeNameFromWorld(worldRaw: any, worldPosition: Vector3): (BiomeName, boolean)
+function NpcServiceUtils.GetBiomeNameFromWorld(worldRaw: any, worldPosition: Vector3): (BiomeName, boolean)
 	if typeof(worldRaw) ~= "table" then
 		return "Unknown", false
 	end
@@ -220,13 +220,13 @@ function NpcServiceUtils.ResolveBiomeNameFromWorld(worldRaw: any, worldPosition:
 	if typeof(biomeGenerator) ~= "table" then
 		return "Unknown", false
 	end
-	if typeof((biomeGenerator :: any).getColumnProfile) ~= "function" then
+	if typeof((biomeGenerator :: any).GetColumnProfile) ~= "function" then
 		return "Unknown", false
 	end
 
 	local tileX = math.floor((worldPosition.Z - worldOrigin.Z) / tileSize)
 	local ok, columnOrError = pcall(function()
-		return (biomeGenerator :: any):getColumnProfile(tileX)
+		return (biomeGenerator :: any):GetColumnProfile(tileX)
 	end)
 	if not ok then
 		return "Unknown", false
@@ -303,7 +303,7 @@ function NpcServiceUtils.CreateDefaultSlimeSpawnConfigs(spawnCFrames: { CFrame }
 	if cframes == nil or #cframes == 0 then
 		cframes = NpcServiceUtils.CollectSpawnCFrames(3)
 	end
-	local resolvedCFrames = cframes :: { CFrame }
+	local GotCFrames = cframes :: { CFrame }
 
 	local variants = {
 		{
@@ -316,8 +316,8 @@ function NpcServiceUtils.CreateDefaultSlimeSpawnConfigs(spawnCFrames: { CFrame }
 	}
 
 	local out = {}
-	local planeX = if #resolvedCFrames > 0 then resolvedCFrames[1].Position.X else 0
-	for index, spawnCFrame in resolvedCFrames do
+	local planeX = if #GotCFrames > 0 then GotCFrames[1].Position.X else 0
+	for index, spawnCFrame in GotCFrames do
 		local variant = variants[((index - 1) % #variants) + 1]
 		local spawnPosition = spawnCFrame.Position
 		local projectedCFrame = CFrame.new(Vector3.new(planeX, spawnPosition.Y, spawnPosition.Z))
@@ -376,7 +376,7 @@ function NpcServiceUtils.ApplyRuntimeModelAttributes(
 	return true
 end
 
-function NpcServiceUtils.ResolveRuntimeModelFromInstance(instanceRaw: any): Model?
+function NpcServiceUtils.GetUntimeModelFromInstance(instanceRaw: any): Model?
 	if typeof(instanceRaw) ~= "Instance" then
 		return nil
 	end
@@ -395,8 +395,8 @@ function NpcServiceUtils.ResolveRuntimeModelFromInstance(instanceRaw: any): Mode
 	return nil
 end
 
-function NpcServiceUtils.ResolveRuntimeIdFromInstance(instanceRaw: any): string?
-	local runtimeModel = NpcServiceUtils.ResolveRuntimeModelFromInstance(instanceRaw)
+function NpcServiceUtils.GetUntimeIdFromInstance(instanceRaw: any): string?
+	local runtimeModel = NpcServiceUtils.GetUntimeModelFromInstance(instanceRaw)
 	if runtimeModel == nil then
 		return nil
 	end
@@ -409,7 +409,7 @@ function NpcServiceUtils.ResolveRuntimeIdFromInstance(instanceRaw: any): string?
 	return nil
 end
 
-function NpcServiceUtils.SanitizeSnapshot(snapshotRaw: any, fallback: NpcSnapshot?): NpcSnapshot?
+function NpcServiceUtils.CoerceSnapshot(snapshotRaw: any, fallback: NpcSnapshot?): NpcSnapshot?
 	if typeof(snapshotRaw) ~= "table" then
 		return fallback
 	end
@@ -524,16 +524,5 @@ function NpcServiceUtils.SanitizeSnapshot(snapshotRaw: any, fallback: NpcSnapsho
 		spriteReceivedAt = spriteReceivedAt,
 	}
 end
-
-NpcServiceUtils.createDefaultStateMachineGraph = NpcServiceUtils.CreateDefaultStateMachineGraph
-NpcServiceUtils.sanitizeSlimeSpawnSettings = NpcServiceUtils.SanitizeSlimeSpawnSettings
-NpcServiceUtils.canTransition = NpcServiceUtils.CanTransition
-NpcServiceUtils.resolveBiomeNameFromWorld = NpcServiceUtils.ResolveBiomeNameFromWorld
-NpcServiceUtils.collectSpawnCFrames = NpcServiceUtils.CollectSpawnCFrames
-NpcServiceUtils.createDefaultSlimeSpawnConfigs = NpcServiceUtils.CreateDefaultSlimeSpawnConfigs
-NpcServiceUtils.applyRuntimeModelAttributes = NpcServiceUtils.ApplyRuntimeModelAttributes
-NpcServiceUtils.resolveRuntimeModelFromInstance = NpcServiceUtils.ResolveRuntimeModelFromInstance
-NpcServiceUtils.resolveRuntimeIdFromInstance = NpcServiceUtils.ResolveRuntimeIdFromInstance
-NpcServiceUtils.sanitizeSnapshot = NpcServiceUtils.SanitizeSnapshot
 
 return NpcServiceUtils

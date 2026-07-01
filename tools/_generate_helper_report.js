@@ -65,7 +65,7 @@ function formatList(items, limit) {
 const helperGroups = {
   core: ['Codec', 'BinaryStreaming', 'TickScheduler', 'TickSchedular', 'AttributeCache', 'DamagePipeline', 'ObjectPool', 'WorldMutationQueue'],
   ui: ['UIController', 'UISpringAnimator', 'VirtualizedList', 'ReactiveState', 'TooltipManager', 'NotificationBus', 'HUDLayoutEngine'],
-  strings: ['RichTextFormatter', 'StatStringBuilder', 'LocalizationEngine', 'DynamicTextResolver', 'TextMeasurementCache', 'AbbreviationFormatter'],
+  strings: ['RichTextFormatter', 'StatStringBuilder', 'LocalizationEngine', 'DynamicTextGetter', 'TextMeasurementCache', 'AbbreviationFormatter'],
   platform: ['Platform', 'Input', 'HUDScaler', 'Gestures', 'GamepadNav', 'PerfTier', 'Haptics', 'Cursor'],
 };
 
@@ -108,9 +108,9 @@ md += '## Scope\n';
 md += '- Static inspection of all Luau/Lua files under `src/` (' + dep.totals.scripts + ' scripts).\n';
 md += '- Dependency map built from ' + dep.totals.requireEdges + ' `require(...)` edges.\n';
 md += '- Script-relative cycle analysis: **' + dep.totals.cycles + ' cycles detected**.\n';
-if (dep.unresolvedScriptRequires.length > 0) {
-  md += '- Unresolved script-relative requires (' + dep.unresolvedScriptRequires.length + '):\n';
-  for (const item of dep.unresolvedScriptRequires) {
+if (dep.missingScriptRequires.length > 0) {
+  md += '- Missing script-relative requires (' + dep.missingScriptRequires.length + '):\n';
+  for (const item of dep.missingScriptRequires) {
     md += '  - `' + item.from + '` -> `' + item.expr + '`\n';
   }
 }

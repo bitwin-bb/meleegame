@@ -9,14 +9,10 @@ type CelestialSurfaceState = CelestialSlice.CelestialSurfaceState
 local CelestialThunks = {}
 
 function CelestialThunks.PublishSurfaceState(state: CelestialSurfaceState)
-	CelestialSlice.setSurfaceState(state)
+	CelestialSlice.SetSurfaceState(state)
 end
 
 function CelestialThunks.ClearSurfaceState()
-	CelestialSlice.clearSurfaceState()
+	CelestialSlice.ClearSurfaceState()
 end
-
-CelestialThunks.publishSurfaceState = CelestialThunks.PublishSurfaceState
-CelestialThunks.clearSurfaceState = CelestialThunks.ClearSurfaceState
-
 return Table.readonly(CelestialThunks)

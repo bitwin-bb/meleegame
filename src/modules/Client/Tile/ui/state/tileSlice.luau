@@ -59,29 +59,29 @@ local tileSlice = {}
 local breakStateAtom: Charm.Atom<BreakState> = Charm.atom(DEFAULT_STATE)
 local shinySpecksAtom: Charm.Atom<{ [string]: ShinySpeckState }> = Charm.atom({})
 
-local function sanitizeInteger(valueRaw: any, fallback: number, minimum: number, maximum: number): number
+local function CoerceInteger(valueRaw: any, fallback: number, minimum: number, maximum: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
 	return math.clamp(math.floor(valueRaw), minimum, maximum)
 end
 
-local function sanitizeVector2(valueRaw: any, fallback: Vector2): Vector2
+local function CoerceVector2(valueRaw: any, fallback: Vector2): Vector2
 	return if typeof(valueRaw) == "Vector2" then valueRaw else fallback
 end
 
-local function sanitizeUDim2(valueRaw: any, fallback: UDim2): UDim2
+local function CoerceUDim2(valueRaw: any, fallback: UDim2): UDim2
 	return if typeof(valueRaw) == "UDim2" then valueRaw else fallback
 end
 
-local function sanitizeFace(valueRaw: any, fallback: Enum.NormalId): Enum.NormalId
+local function CoerceFace(valueRaw: any, fallback: Enum.NormalId): Enum.NormalId
 	if valueRaw == Enum.NormalId.Left or valueRaw == Enum.NormalId.Right then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function sanitizeTileCoordinate(valueRaw: any): number?
+local function CoerceTileCoordinate(valueRaw: any): number?
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return nil
 	end
@@ -114,28 +114,28 @@ end
 
 function tileSlice.SetBreakState(stateRaw: any): BreakState
 	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {} :: any
-	local columns = sanitizeInteger(source.columns, DEFAULT_STATE.columns, 1, 128)
-	local rows = sanitizeInteger(source.rows, DEFAULT_STATE.rows, 1, 128)
-	local frameSize = sanitizeVector2(source.frameSize, DEFAULT_STATE.frameSize)
+	local columns = CoerceInteger(source.columns, DEFAULT_STATE.columns, 1, 128)
+	local rows = CoerceInteger(source.rows, DEFAULT_STATE.rows, 1, 128)
+	local frameSize = CoerceVector2(source.frameSize, DEFAULT_STATE.frameSize)
 	local nextState: BreakState = {
 		visible = source.visible == true,
 		adornee = if typeof(source.adornee) == "Instance" and source.adornee:IsA("BasePart")
 			then source.adornee
 			else nil,
 		image = if typeof(source.image) == "string" then source.image else "",
-		frameIndex = sanitizeInteger(source.frameIndex, DEFAULT_STATE.frameIndex, 1, columns * rows),
+		frameIndex = CoerceInteger(source.frameIndex, DEFAULT_STATE.frameIndex, 1, columns * rows),
 		columns = columns,
 		rows = rows,
 		frameSize = frameSize,
-		canvasSize = sanitizeVector2(source.canvasSize, frameSize),
-		face = sanitizeFace(source.face, DEFAULT_STATE.face),
-		imagePosition = sanitizeUDim2(source.imagePosition, DEFAULT_STATE.imagePosition),
-		imageSize = sanitizeUDim2(source.imageSize, DEFAULT_STATE.imageSize),
+		canvasSize = CoerceVector2(source.canvasSize, frameSize),
+		face = CoerceFace(source.face, DEFAULT_STATE.face),
+		imagePosition = CoerceUDim2(source.imagePosition, DEFAULT_STATE.imagePosition),
+		imageSize = CoerceUDim2(source.imageSize, DEFAULT_STATE.imageSize),
 		transparency = if typeof(source.transparency) == "number"
 			then math.clamp(source.transparency, 0, 1)
 			else DEFAULT_STATE.transparency,
-		tileX = sanitizeTileCoordinate(source.tileX),
-		tileY = sanitizeTileCoordinate(source.tileY),
+		tileX = CoerceTileCoordinate(source.tileX),
+		tileY = CoerceTileCoordinate(source.tileY),
 		updatedAt = os.clock(),
 	}
 
@@ -196,19 +196,19 @@ function tileSlice.PublishShinySpeck(speckRaw: any): ShinySpeckState?
 		return nil
 	end
 
-	local columns = sanitizeInteger(source.columns, 1, 1, 128)
-	local rows = sanitizeInteger(source.rows, 1, 1, 128)
+	local columns = CoerceInteger(source.columns, 1, 1, 128)
+	local rows = CoerceInteger(source.rows, 1, 1, 128)
 	local nextSpeck: ShinySpeckState = {
 		id = source.id,
 		adornee = source.adornee,
 		image = if typeof(source.image) == "string" then source.image else "",
 		columns = columns,
 		rows = rows,
-		frameSize = sanitizeVector2(source.frameSize, Vector2.new(32, 32)),
-		frameRate = sanitizeInteger(source.frameRate, 18, 1, 120),
-		face = sanitizeFace(source.face, DEFAULT_STATE.face),
-		position = sanitizeUDim2(source.position, UDim2.fromScale(0.5, 0.5)),
-		size = sanitizeUDim2(source.size, UDim2.fromOffset(32, 32)),
+		frameSize = CoerceVector2(source.frameSize, Vector2.new(32, 32)),
+		frameRate = CoerceInteger(source.frameRate, 18, 1, 120),
+		face = CoerceFace(source.face, DEFAULT_STATE.face),
+		position = CoerceUDim2(source.position, UDim2.fromScale(0.5, 0.5)),
+		size = CoerceUDim2(source.size, UDim2.fromOffset(32, 32)),
 		updatedAt = os.clock(),
 	}
 
@@ -257,12 +257,4 @@ end
 
 tileSlice.breakStateAtom = breakStateAtom
 tileSlice.shinySpecksAtom = shinySpecksAtom
-tileSlice.getBreakState = tileSlice.GetBreakState
-tileSlice.setBreakState = tileSlice.SetBreakState
-tileSlice.clearBreakState = tileSlice.ClearBreakState
-tileSlice.getShinySpecks = tileSlice.GetShinySpecks
-tileSlice.publishShinySpeck = tileSlice.PublishShinySpeck
-tileSlice.removeShinySpeck = tileSlice.RemoveShinySpeck
-tileSlice.clearShinySpecksForAdornee = tileSlice.ClearShinySpecksForAdornee
-
 return tileSlice

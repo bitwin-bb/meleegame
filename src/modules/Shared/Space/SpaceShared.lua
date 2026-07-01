@@ -14,7 +14,7 @@ SpaceShared.SPACE_SAMPLE_INTERVAL_SECONDS = 0.2
 local DEFAULT_TILE_SIZE = 4
 local DEFAULT_WORLD_ORIGIN = Vector3.zero
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and not Math.isNaN(valueRaw) and Math.isFinite(valueRaw) then
 		value = valueRaw
@@ -28,21 +28,21 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?,
 	return value
 end
 
-function SpaceShared.ResolveTileSize(worldStateRaw: any): number
+function SpaceShared.GetTileSize(worldStateRaw: any): number
 	local worldState = if typeof(worldStateRaw) == "table" then worldStateRaw :: { [string]: any } else {} :: any
-	return sanitizeNumber(worldState.tileSize, DEFAULT_TILE_SIZE, 0.25, 1024)
+	return CoerceNumber(worldState.tileSize, DEFAULT_TILE_SIZE, 0.25, 1024)
 end
 
-function SpaceShared.ResolveWorldOrigin(worldOriginRaw: any): Vector3
+function SpaceShared.GetWorldOrigin(worldOriginRaw: any): Vector3
 	if typeof(worldOriginRaw) == "Vector3" then
 		return worldOriginRaw
 	end
 	return DEFAULT_WORLD_ORIGIN
 end
 
-function SpaceShared.ResolveSpaceThresholdY(worldStateRaw: any, worldOriginRaw: any): number
-	local tileSize = SpaceShared.ResolveTileSize(worldStateRaw)
-	local worldOrigin = SpaceShared.ResolveWorldOrigin(worldOriginRaw)
+function SpaceShared.GetSpaceThresholdY(worldStateRaw: any, worldOriginRaw: any): number
+	local tileSize = SpaceShared.GetTileSize(worldStateRaw)
+	local worldOrigin = SpaceShared.GetWorldOrigin(worldOriginRaw)
 	return worldOrigin.Y + tileSize * SpaceShared.SPACE_HEIGHT_TILES
 end
 
@@ -50,12 +50,8 @@ function SpaceShared.IsInSpaceAtWorldPosition(worldPositionRaw: any, worldStateR
 	if typeof(worldPositionRaw) ~= "Vector3" then
 		return false
 	end
-	return (worldPositionRaw :: Vector3).Y >= SpaceShared.ResolveSpaceThresholdY(worldStateRaw, worldOriginRaw)
+	return (worldPositionRaw :: Vector3).Y >= SpaceShared.GetSpaceThresholdY(worldStateRaw, worldOriginRaw)
 end
 
-SpaceShared.resolveTileSize = SpaceShared.ResolveTileSize
-SpaceShared.resolveWorldOrigin = SpaceShared.ResolveWorldOrigin
-SpaceShared.resolveSpaceThresholdY = SpaceShared.ResolveSpaceThresholdY
-SpaceShared.isInSpaceAtWorldPosition = SpaceShared.IsInSpaceAtWorldPosition
 
 return SpaceShared

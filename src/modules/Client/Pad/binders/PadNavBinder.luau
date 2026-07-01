@@ -82,14 +82,14 @@ local function cleanupTask(taskRaw: any)
 	end
 end
 
-local function resolveGamepadNav(runtimeContextRaw: any): any?
+local function GetGamepadNav(runtimeContextRaw: any): any?
 	if runtimeContextRaw == nil then
 		return nil
 	end
 
-	if typeof((runtimeContextRaw :: any).getGamepadNav) == "function" then
+	if typeof((runtimeContextRaw :: any).GetGamepadNav) == "function" then
 		local ok, gamepadNavOrError = pcall(function()
-			return (runtimeContextRaw :: any):getGamepadNav()
+			return (runtimeContextRaw :: any):GetGamepadNav()
 		end)
 		if ok then
 			return gamepadNavOrError
@@ -99,10 +99,10 @@ local function resolveGamepadNav(runtimeContextRaw: any): any?
 	return (runtimeContextRaw :: any).gamepadNav
 end
 
-local function resolveThumbstickSnapshot(gamepadNavRaw: any): ThumbstickSnapshot
-	if gamepadNavRaw ~= nil and typeof((gamepadNavRaw :: any).getThumbstickState) == "function" then
+local function GetThumbstickSnapshot(gamepadNavRaw: any): ThumbstickSnapshot
+	if gamepadNavRaw ~= nil and typeof((gamepadNavRaw :: any).GetThumbstickState) == "function" then
 		local ok, snapshotOrError = pcall(function()
-			return (gamepadNavRaw :: any):getThumbstickState()
+			return (gamepadNavRaw :: any):GetThumbstickState()
 		end)
 		if ok and typeof(snapshotOrError) == "table" then
 			return snapshotOrError :: ThumbstickSnapshot
@@ -121,13 +121,13 @@ function PadNavBinder._observeThumbsticks(self): ObservableObject
 	return Observable.new(function(sub)
 		local disconnect = nil
 
-		if typeof((gamepadNav :: any).onThumbstickChanged) == "function" then
-			disconnect = (gamepadNav :: any):onThumbstickChanged(function(snapshot: any)
+		if typeof((gamepadNav :: any).OnThumbstickChanged) == "function" then
+			disconnect = (gamepadNav :: any):OnThumbstickChanged(function(snapshot: any)
 				sub:Fire(snapshot)
 			end)
 		end
 
-		sub:Fire(resolveThumbstickSnapshot(gamepadNav))
+		sub:Fire(GetThumbstickSnapshot(gamepadNav))
 
 		return function()
 			cleanupTask(disconnect)
@@ -137,10 +137,10 @@ end
 
 function PadNavBinder._bindStreams(self)
 	self._maid:DoCleaning()
-	self._gamepadNav = resolveGamepadNav(self._runtimeContext)
+	self._gamepadNav = GetGamepadNav(self._runtimeContext)
 
-	padSlice.setPlatform(PlatformServiceClient:getPlatform())
-	padSlice.updateThumbsticks(resolveThumbstickSnapshot(self._gamepadNav))
+	padSlice.setPlatform(PlatformServiceClient:GetPlatform())
+	padSlice.updateThumbsticks(GetThumbstickSnapshot(self._gamepadNav))
 
 	self._maid:GiveTask(Rx.combineLatestDefer({
 		platform = PlatformServiceClient:ObservePlatform(),
@@ -162,20 +162,20 @@ function PadNavBinder.Init(self, serviceBag: any)
 	self._serviceBag = assert(serviceBag, "No serviceBag")
 	self._maid = Maid.new() :: MaidClass
 
-	self._runtimeContext = CoreRuntime.getClientRuntime()
-	if self._runtimeContext ~= nil and typeof((self._runtimeContext :: any).init) == "function" then
-		(self._runtimeContext :: any):init()
+	self._runtimeContext = CoreRuntime.GetClientRuntime()
+	if self._runtimeContext ~= nil and typeof((self._runtimeContext :: any).Init) == "function" then
+		(self._runtimeContext :: any):Init()
 	end
 
-	if not PlatformServiceClient:isReady() then
-		PlatformServiceClient:init()
+	if not PlatformServiceClient:IsReady() then
+		PlatformServiceClient:Init()
 	end
 
 	self:_bindStreams()
 end
 
 function PadNavBinder.Start(_self)
-	-- this bridge binds during Init so pad state is ready before the UI mounts
+	-- this bridge binds during Init so pad state is ready before the shitty ui mounts
 end
 
 function PadNavBinder.Destroy(self)

@@ -92,8 +92,8 @@ return function()
 		it("normalizes clock time and derives day progress", function()
 			expect(RotationMath.normalizeClockTime(24.5)).to.equal(0.5)
 			expect(RotationMath.normalizeClockTime(-1)).to.equal(23)
-			expectNear(RotationMath.resolveDayProgress(6), 0.25)
-			expectNear(RotationMath.resolveDayProgress(18), 0.75)
+			expectNear(RotationMath.GetDayProgress(6), 0.25)
+			expectNear(RotationMath.GetDayProgress(18), 0.75)
 		end)
 
 		it("walks one real-world style phase per in-game day across eight days", function()
@@ -110,20 +110,20 @@ return function()
 			}
 
 			for dayIndex, phaseName in expected do
-				expect(RotationMath.resolveMoonPhase(dayIndex - 1)).to.equal(phaseName)
+				expect(RotationMath.GetMoonPhase(dayIndex - 1)).to.equal(phaseName)
 			end
 			expect(CelestialCycleConstants.MOON_PHASE_DAY_COUNT).to.equal(8)
 		end)
 
-		it("resolves sun and moon image assets", function()
+		it("gets sun and moon image assets", function()
 			expect(SunAsset.getImage()).to.equal("rbxassetid://130185077109129")
 			expect(MoonAssets.getImageForPhase("fullMoon")).to.equal("rbxassetid://71652201703042")
 			expect(MoonAssets.getImageForPhase("not-a-phase")).to.equal(MoonAssets.getImageForPhase("new"))
 		end)
 
 		it("derives body state from clock time and world day index", function()
-			local noonState = RotationMath.resolveCycleState(12, 4)
-			local midnightState = RotationMath.resolveCycleState(0, 4)
+			local noonState = RotationMath.GetCycleState(12, 4)
+			local midnightState = RotationMath.GetCycleState(0, 4)
 
 			expect(noonState.clockTime).to.equal(12)
 			expect(noonState.worldDayIndex).to.equal(4)
@@ -138,8 +138,8 @@ return function()
 	end)
 
 	describe("WeatherService world day index", function()
-		it("preserves worldDayIndex through sanitize and clone", function()
-			local state = WeatherServiceUtils.sanitizeState({
+		it("preserves worldDayIndex through Coerce and clone", function()
+			local state = WeatherServiceUtils.CoerceState({
 				worldDayIndex = 17,
 			}, nil)
 			local cloned = WeatherServiceUtils.cloneState(state)
@@ -164,7 +164,7 @@ Run: `rojo serve default.project.json`
 
 In Studio, set `ServerScriptService/AquariaBackup/game/Server/Tests.server` attribute `RunTests` to `true`, press Play, and read the TestEZ output.
 
-Expected: FAIL with missing functions such as `resolveMoonPhase`, `resolveCycleState`, `getImageForPhase`, or `advanceClockTimeWithDayDelta`.
+Expected: FAIL with missing functions such as `GetMoonPhase`, `GetCycleState`, `getImageForPhase`, or `advanceClockTimeWithDayDelta`.
 
 - [ ] **Step 3: Commit the failing spec**
 
@@ -369,25 +369,25 @@ function RotationMath.NormalizeClockTime(clockTimeRaw: any): number
 	return Range.wrap(clockTime, 0, 24)
 end
 
-function RotationMath.ResolveDayProgress(clockTimeRaw: any): number
+function RotationMath.GetDayProgress(clockTimeRaw: any): number
 	return RotationMath.NormalizeClockTime(clockTimeRaw) / 24
 end
 
-function RotationMath.ResolveMoonPhase(worldDayIndexRaw: any): MoonPhaseName
+function RotationMath.GetMoonPhase(worldDayIndexRaw: any): MoonPhaseName
 	local worldDayIndex = if typeof(worldDayIndexRaw) == "number" then math.floor(worldDayIndexRaw) else 0
 	local phaseIndex = (worldDayIndex % CelestialCycleConstants.MOON_PHASE_DAY_COUNT) + 1
 	return CelestialCycleConstants.MOON_PHASES[phaseIndex] :: MoonPhaseName
 end
 
-function RotationMath.ResolveDayPart(clockTimeRaw: any): DayPart
+function RotationMath.GetDayPart(clockTimeRaw: any): DayPart
 	local clockTime = RotationMath.NormalizeClockTime(clockTimeRaw)
-	local resolved = "Night"
+	local Got = "Night"
 	for _, threshold in CelestialCycleConstants.DAY_PARTS do
 		if clockTime >= threshold.startsAt then
-			resolved = threshold.name
+			Got = threshold.name
 		end
 	end
-	return resolved :: DayPart
+	return Got :: DayPart
 end
 
 local function directionToPosition(direction: Vector3): UDim2
@@ -400,7 +400,7 @@ local function directionToAlpha(direction: Vector3): number
 	return clamp01((direction.Y + 0.08) / 0.22)
 end
 
-local function resolveBodyState(
+local function GetBodyState(
 	name: "Sun" | "Moon",
 	image: string,
 	phase: MoonPhaseName?,
@@ -421,30 +421,30 @@ local function resolveBodyState(
 	}
 end
 
-function RotationMath.ResolveCycleState(clockTimeRaw: any, worldDayIndexRaw: any): CelestialCycleState
+function RotationMath.GetCycleState(clockTimeRaw: any, worldDayIndexRaw: any): CelestialCycleState
 	local clockTime = RotationMath.NormalizeClockTime(clockTimeRaw)
 	local worldDayIndex = if typeof(worldDayIndexRaw) == "number" then math.max(0, math.floor(worldDayIndexRaw)) else 0
 	local sunDirection, moonDirection =
 		SunPositionUtils.getSunPosition(clockTime, CelestialCycleConstants.GEO_LATITUDE)
-	local moonPhase = RotationMath.ResolveMoonPhase(worldDayIndex)
+	local moonPhase = RotationMath.GetMoonPhase(worldDayIndex)
 
 	return {
 		ready = true,
 		clockTime = clockTime,
 		worldDayIndex = worldDayIndex,
-		dayProgress = RotationMath.ResolveDayProgress(clockTime),
-		dayPart = RotationMath.ResolveDayPart(clockTime),
+		dayProgress = RotationMath.GetDayProgress(clockTime),
+		dayPart = RotationMath.GetDayPart(clockTime),
 		moonPhase = moonPhase,
-		sun = resolveBodyState("Sun", SunAsset.getImage(), nil, sunDirection, 10),
-		moon = resolveBodyState("Moon", MoonAssets.getImageForPhase(moonPhase), moonPhase, moonDirection, 9),
+		sun = GetBodyState("Sun", SunAsset.getImage(), nil, sunDirection, 10),
+		moon = GetBodyState("Moon", MoonAssets.getImageForPhase(moonPhase), moonPhase, moonDirection, 9),
 	}
 end
 
 RotationMath.normalizeClockTime = RotationMath.NormalizeClockTime
-RotationMath.resolveDayProgress = RotationMath.ResolveDayProgress
-RotationMath.resolveMoonPhase = RotationMath.ResolveMoonPhase
-RotationMath.resolveDayPart = RotationMath.ResolveDayPart
-RotationMath.resolveCycleState = RotationMath.ResolveCycleState
+RotationMath.GetDayProgress = RotationMath.GetDayProgress
+RotationMath.GetMoonPhase = RotationMath.GetMoonPhase
+RotationMath.GetDayPart = RotationMath.GetDayPart
+RotationMath.GetCycleState = RotationMath.GetCycleState
 
 return Table.readonly(RotationMath)
 ```
@@ -485,10 +485,10 @@ In `CreateStateFromConfig`, add:
 		worldDayIndex = 0,
 ```
 
-In `SanitizeState`, add:
+In `CoerceState`, add:
 
 ```lua
-		worldDayIndex = math.max(0, math.floor(sanitizeNumber(source.worldDayIndex, fallback.worldDayIndex, 0, 10 ^ 9))),
+		worldDayIndex = math.max(0, math.floor(CoerceNumber(source.worldDayIndex, fallback.worldDayIndex, 0, 10 ^ 9))),
 ```
 
 In `CloneState`, add:
@@ -513,8 +513,8 @@ function WeatherServiceUtils.AdvanceClockTimeWithDayDelta(
 	clockSpeedRaw: any
 ): ClockAdvanceResult
 	local clockTime = normalizeClockTime(clockTimeRaw, 12)
-	local dt = sanitizeNumber(dtRaw, 0, 0, 60)
-	local clockSpeed = sanitizeNumber(clockSpeedRaw, 0, -100, 100)
+	local dt = CoerceNumber(dtRaw, 0, 0, 60)
+	local clockSpeed = CoerceNumber(clockSpeedRaw, 0, -100, 100)
 	if dt <= 0 or clockSpeed == 0 then
 		return {
 			clockTime = clockTime,
@@ -597,13 +597,13 @@ local CelestialCycleClassServer = {}
 CelestialCycleClassServer.__index = CelestialCycleClassServer
 
 local function cloneState(state: CelestialCycleState): CelestialCycleState
-	return RotationMath.resolveCycleState(state.clockTime, state.worldDayIndex)
+	return RotationMath.GetCycleState(state.clockTime, state.worldDayIndex)
 end
 
 function CelestialCycleClassServer.new(): CelestialCycleClassServer
 	local self = setmetatable({}, CelestialCycleClassServer)
 	self.maid = Maid.new()
-	self.stateValue = ValueObject.new(RotationMath.resolveCycleState(0, 0), "table")
+	self.stateValue = ValueObject.new(RotationMath.GetCycleState(0, 0), "table")
 	self.stateChangedSignal = RxSignal.new(function()
 		return self:ObserveState()
 	end)
@@ -613,7 +613,7 @@ end
 
 function CelestialCycleClassServer.PublishFromWeather(self: CelestialCycleClassServer)
 	local weatherState = WeatherServiceServer:getState()
-	self.stateValue.Value = RotationMath.resolveCycleState(weatherState.clockTime, weatherState.worldDayIndex)
+	self.stateValue.Value = RotationMath.GetCycleState(weatherState.clockTime, weatherState.worldDayIndex)
 end
 
 function CelestialCycleClassServer.Init(self: CelestialCycleClassServer)
@@ -934,7 +934,7 @@ local Hooks = require("useCycle")
 
 local e: typeof(React.createElement) = React.createElement
 
-local function resolvePortalTarget(): PlayerGui?
+local function GetPortalTarget(): PlayerGui?
 	local localPlayer = Players.LocalPlayer
 	if localPlayer == nil then
 		return nil
@@ -942,7 +942,7 @@ local function resolvePortalTarget(): PlayerGui?
 	return localPlayer:FindFirstChildOfClass("PlayerGui")
 end
 
-local function resolveAspectRatio(canvasSize: Vector2): number
+local function GetAspectRatio(canvasSize: Vector2): number
 	if canvasSize.X <= 0 or canvasSize.Y <= 0 then
 		return 1
 	end
@@ -953,7 +953,7 @@ local CelestialBodyScreen = {}
 
 function CelestialBodyScreen.Render(): React.ReactNode
 	local state = Hooks.useCycle()
-	local portalTarget = resolvePortalTarget()
+	local portalTarget = GetPortalTarget()
 	if state.adornee == nil or portalTarget == nil or state.cycle == nil then
 		return nil
 	end
@@ -979,7 +979,7 @@ function CelestialBodyScreen.Render(): React.ReactNode
 			Size = UDim2.fromScale(1, 1),
 		}, {
 			Aspect = e("UIAspectRatioConstraint", {
-				AspectRatio = resolveAspectRatio(state.canvasSize),
+				AspectRatio = GetAspectRatio(state.canvasSize),
 				DominantAxis = Enum.DominantAxis.Width,
 			}),
 			Sun = e(CelestialBody, {
@@ -1088,12 +1088,12 @@ function CelestialBodyRoot.new(parent: Instance): CelestialBodyRoot
 end
 
 function CelestialBodyRoot.Update(self: CelestialBodyRoot, camera: Camera?)
-	local resolvedCamera = camera or Workspace.CurrentCamera
-	if resolvedCamera == nil then
+	local GotCamera = camera or Workspace.CurrentCamera
+	if GotCamera == nil then
 		return
 	end
 
-	local cameraCFrame = resolvedCamera.CFrame
+	local cameraCFrame = GotCamera.CFrame
 	local cameraPosition = cameraCFrame.Position
 	local forward = cameraCFrame.LookVector
 	local right = cameraCFrame.RightVector
@@ -1167,7 +1167,7 @@ CelestialCycleClassClient.__index = CelestialCycleClassClient
 
 local ROOT_FOLDER_NAME = "CelestialCycle"
 
-local function resolveWorldDayIndex(): number
+local function GetWorldDayIndex(): number
 	local weatherState = (WeatherServiceClient :: any).state
 	if typeof(weatherState) == "table" and typeof(weatherState.worldDayIndex) == "number" then
 		return weatherState.worldDayIndex
@@ -1176,13 +1176,13 @@ local function resolveWorldDayIndex(): number
 end
 
 local function cloneState(state: CelestialCycleState): CelestialCycleState
-	return RotationMath.resolveCycleState(state.clockTime, state.worldDayIndex)
+	return RotationMath.GetCycleState(state.clockTime, state.worldDayIndex)
 end
 
 function CelestialCycleClassClient.new(): CelestialCycleClassClient
 	local self = setmetatable({}, CelestialCycleClassClient)
 	self.maid = Maid.new()
-	self.stateValue = ValueObject.new(RotationMath.resolveCycleState(Lighting.ClockTime, resolveWorldDayIndex()), "table")
+	self.stateValue = ValueObject.new(RotationMath.GetCycleState(Lighting.ClockTime, GetWorldDayIndex()), "table")
 	self.stateChangedSignal = RxSignal.new(function()
 		return self:ObserveState()
 	end)
@@ -1199,7 +1199,7 @@ function CelestialCycleClassClient.PreloadAssets(self: CelestialCycleClassClient
 end
 
 function CelestialCycleClassClient.Publish(self: CelestialCycleClassClient)
-	local cycleState = RotationMath.resolveCycleState(Lighting.ClockTime, resolveWorldDayIndex())
+	local cycleState = RotationMath.GetCycleState(Lighting.ClockTime, GetWorldDayIndex())
 	self.stateValue.Value = cycleState
 	if self.anchorRoot ~= nil then
 		self.anchorRoot:update(Workspace.CurrentCamera)
@@ -1471,4 +1471,4 @@ git commit -m "fix: verify celestial cycle integration"
 
 - Spec coverage: The plan covers the user-listed shared, client, UI, component, service, and server files; syncs to Weather world time through `clockTime` and `worldDayIndex`; uses SurfaceGui; uses Rx observable state; uses Charm for atomic UI state; keeps the server class server-specific; and assigns the moon one real-world-style phase per in-game day across an eight-day cycle.
 - Placeholder scan: The plan contains concrete paths, commands, expected outputs, and code snippets. It avoids deferred implementation language and defines every new function name before later tasks use it.
-- Type consistency: `CelestialCycleState`, `CelestialBodyState`, `MoonPhaseName`, `worldDayIndex`, `resolveCycleState`, `observeState`, `getStateChangedSignal`, and `publishSurfaceState` are named consistently across tests, shared modules, client runtime, server runtime, and UI.
+- Type consistency: `CelestialCycleState`, `CelestialBodyState`, `MoonPhaseName`, `worldDayIndex`, `GetCycleState`, `observeState`, `getStateChangedSignal`, and `publishSurfaceState` are named consistently across tests, shared modules, client runtime, server runtime, and UI.

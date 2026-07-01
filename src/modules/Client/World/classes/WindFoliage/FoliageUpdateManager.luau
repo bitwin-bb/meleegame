@@ -4,8 +4,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
-local RippleMotion = require("RippleMotion")
-
 local FoliageUpdateManager = {}
 FoliageUpdateManager.__index = FoliageUpdateManager
 
@@ -37,7 +35,7 @@ local function clampNumber(valueRaw: any, fallback: number, minimum: number, max
 	return value
 end
 
-local function resolveDirectionOrFallback(vector: Vector3, fallback: Vector3): Vector3
+local function GetDirectionOrFallback(vector: Vector3, fallback: Vector3): Vector3
 	local planar = Vector3.new(vector.X, 0, vector.Z)
 	if planar.Magnitude <= 1e-5 then
 		local fallbackPlanar = Vector3.new(fallback.X, 0, fallback.Z)
@@ -47,6 +45,27 @@ local function resolveDirectionOrFallback(vector: Vector3, fallback: Vector3): V
 		return fallbackPlanar.Unit
 	end
 	return planar.Unit
+end
+
+local function approachNumber(current: number, target: number, responseRate: number, dt: number): number
+	local alpha = 1 - math.exp(-math.max(0, responseRate) * dt)
+	return current + (target - current) * alpha
+end
+
+local function approachVector(current: Vector3, target: Vector3, responseRate: number, dt: number): Vector3
+	local alpha = 1 - math.exp(-math.max(0, responseRate) * dt)
+	return current:Lerp(target, alpha)
+end
+
+local function clampVector(vector: Vector3, maximumMagnitude: number): Vector3
+	if maximumMagnitude <= 0 then
+		return ZERO
+	end
+	local magnitude = vector.Magnitude
+	if magnitude <= maximumMagnitude then
+		return vector
+	end
+	return vector.Unit * maximumMagnitude
 end
 
 local function isInAnimatingChunk(instance: Instance): boolean
@@ -61,19 +80,19 @@ local function isInAnimatingChunk(instance: Instance): boolean
 end
 
 local function resetEntryDrivers(entry: any)
-	entry.primarySwayMotion:immediate(ZERO)
-	entry.secondarySwayMotion:immediate(ZERO)
-	entry.interactionBendMotion:immediate(ZERO)
-	entry.canopyFlutterMotion:immediate(0)
+	entry.primarySwayValue = ZERO
+	entry.secondarySwayValue = ZERO
+	entry.interactionBendValue = ZERO
+	entry.canopyFlutterValue = 0
 
-	local resolved = entry.resolvedWindSample
-	resolved.vector = ZERO
-	resolved.direction = Vector3.xAxis
-	resolved.strength = 0
-	resolved.gustAlpha = 0
-	resolved.detailAlpha = 0
-	resolved.detailVector = ZERO
-	resolved.flutter = 0
+	local Got = entry.windSample
+	Got.vector = ZERO
+	Got.direction = Vector3.xAxis
+	Got.strength = 0
+	Got.gustAlpha = 0
+	Got.detailAlpha = 0
+	Got.detailVector = ZERO
+	Got.flutter = 0
 end
 
 function FoliageUpdateManager.New(
@@ -111,34 +130,14 @@ function FoliageUpdateManager.New(
 			midTrees = 0,
 			farTrees = 0,
 			frozenTrees = 0,
-			activeRippleDrivers = 0,
 			transformWrites = 0,
 			averageUpdateCostMs = 0,
 		},
-		primarySpring = RippleMotion.resolveSpring(
-			runtime.primaryDriverStiffness,
-			runtime.primaryDriverDamping,
-			8,
-			5.5
-		),
-		secondarySpring = RippleMotion.resolveSpring(
-			runtime.secondaryDriverStiffness,
-			runtime.secondaryDriverDamping,
-			12,
-			6.5
-		),
-		interactionSpring = RippleMotion.resolveSpring(
-			runtime.interactionDriverStiffness,
-			runtime.interactionDriverDamping,
-			7.5,
-			5.2
-		),
-		flutterSpring = RippleMotion.resolveSpring(
-			runtime.flutterDriverStiffness,
-			runtime.flutterDriverDamping,
-			14,
-			7.5
-		),
+		primaryResponseRate = clampNumber(runtime.primaryDriverResponseRate, 9, 0, 120),
+		secondaryResponseRate = clampNumber(runtime.secondaryDriverResponseRate, 12, 0, 120),
+		interactionDecayRate = clampNumber(runtime.interactionDriverDecayRate, 4.8, 0, 120),
+		flutterResponseRate = clampNumber(runtime.flutterDriverResponseRate, 14, 0, 120),
+		maxInteractionBend = clampNumber(runtime.maxInteractionBend, 3.5, 0, 25),
 	}, FoliageUpdateManager)
 
 	return self
@@ -150,8 +149,8 @@ function FoliageUpdateManager.ApplyInteractionImpulse(
 	impulseWorld: Vector3,
 	originWorldRaw: any?
 )
-	entry.interactionBendMotion:impulse(impulseWorld * 0.18)
-	entry.foliage:addDisturbance(impulseWorld, originWorldRaw)
+	entry.interactionBendValue = clampVector(entry.interactionBendValue + impulseWorld * 0.42, _self.maxInteractionBend)
+	entry.foliage:AddDisturbance(impulseWorld * 1.2, originWorldRaw)
 end
 
 function FoliageUpdateManager.UpdateEntryDrivers(self: FoliageUpdateManager, entry: any, baseSample: any, dt: number)
@@ -160,30 +159,26 @@ function FoliageUpdateManager.UpdateEntryDrivers(self: FoliageUpdateManager, ent
 		then baseSample.detailVector * baseSample.detailAlpha
 		else ZERO
 
-	entry.primarySwayMotion:spring(primaryTarget, self.primarySpring)
-	entry.primarySwayMotion:step(dt)
-	entry.secondarySwayMotion:spring(secondaryTarget, self.secondarySpring)
-	entry.secondarySwayMotion:step(dt)
-	entry.interactionBendMotion:spring(ZERO, self.interactionSpring)
-	entry.interactionBendMotion:step(dt)
-	entry.canopyFlutterMotion:spring(if self.enableSecondaryFlutter then baseSample.flutter else 0, self.flutterSpring)
-	entry.canopyFlutterMotion:step(dt)
+	entry.primarySwayValue = approachVector(entry.primarySwayValue, primaryTarget, self.primaryResponseRate, dt)
+	entry.secondarySwayValue = approachVector(entry.secondarySwayValue, secondaryTarget, self.secondaryResponseRate, dt)
+	entry.interactionBendValue = approachVector(entry.interactionBendValue, ZERO, self.interactionDecayRate, dt)
+	entry.canopyFlutterValue = approachNumber(
+		entry.canopyFlutterValue,
+		if self.enableSecondaryFlutter then baseSample.flutter else 0,
+		self.flutterResponseRate,
+		dt
+	)
 
-	local primaryValue = entry.primarySwayMotion:get()
-	local secondaryValue = entry.secondarySwayMotion:get()
-	local interactionValue = entry.interactionBendMotion:get()
-	local flutterValue = entry.canopyFlutterMotion:get()
-
-	local resolved = entry.resolvedWindSample
-	local combinedVector = primaryValue + interactionValue
-	resolved.vector = combinedVector
-	resolved.direction = resolveDirectionOrFallback(combinedVector, baseSample.direction)
-	resolved.strength = (combinedVector + secondaryValue).Magnitude
-	resolved.gustAlpha = baseSample.gustAlpha
-	resolved.detailAlpha = if self.enableSecondaryFlutter then baseSample.detailAlpha else 0
-	resolved.detailVector = secondaryValue
-	resolved.flutter = if typeof(flutterValue) == "number" then flutterValue else 0
-	return resolved
+	local Got = entry.windSample
+	local combinedVector = entry.primarySwayValue + entry.interactionBendValue
+	Got.vector = combinedVector
+	Got.direction = GetDirectionOrFallback(combinedVector, baseSample.direction)
+	Got.strength = (combinedVector + entry.secondarySwayValue).Magnitude
+	Got.gustAlpha = baseSample.gustAlpha
+	Got.detailAlpha = if self.enableSecondaryFlutter then baseSample.detailAlpha else 0
+	Got.detailVector = entry.secondarySwayValue
+	Got.flutter = entry.canopyFlutterValue
+	return Got
 end
 
 function FoliageUpdateManager.Update(
@@ -212,7 +207,6 @@ function FoliageUpdateManager.Update(
 		self.stats.midTrees = 0
 		self.stats.farTrees = 0
 		self.stats.frozenTrees = 0
-		self.stats.activeRippleDrivers = 0
 		self.stats.transformWrites = 0
 		self.stats.averageUpdateCostMs = 0
 		return
@@ -226,12 +220,12 @@ function FoliageUpdateManager.Update(
 			continue
 		end
 		if entry.instance.Parent == nil or entry.foliage.destroyed then
-			self.registry:unregister(entry.instance)
+			self.registry:Unregister(entry.instance)
 			continue
 		end
 		if isInAnimatingChunk(entry.instance) then
-			entry.foliage:resetPose()
-			entry.rootPosition = entry.foliage:getRootPosition()
+			entry.foliage:ResetPose()
+			entry.rootPosition = entry.foliage:GetRootPosition()
 			resetEntryDrivers(entry)
 			entry.lastUpdateTime = simulationTime
 			continue
@@ -239,7 +233,7 @@ function FoliageUpdateManager.Update(
 
 		local delta = entry.rootPosition - referencePosition
 		local distanceSquared = delta:Dot(delta)
-		local tier = self.lodController:resolve(distanceSquared, entry.rootPosition, entry.boundingRadius)
+		local tier = self.lodController:Get(distanceSquared, entry.rootPosition, entry.boundingRadius)
 		entry.lastDistanceSquared = distanceSquared
 		entry.lastTierName = if tier ~= nil then tier.name else "Culled"
 
@@ -252,7 +246,7 @@ function FoliageUpdateManager.Update(
 		end
 
 		if entry.branchCount > self.branchCapPerTree or entry.leafCount > self.leafClusterCapPerTree then
-			tier = self.lodController:degrade(tier)
+			tier = self.lodController:Degrade(tier)
 			entry.lastTierName = tier.name
 		end
 
@@ -267,8 +261,8 @@ function FoliageUpdateManager.Update(
 		end
 
 		if entry.lastUpdateTime <= 0 then
-			entry.foliage:resetPose()
-			entry.rootPosition = entry.foliage:getRootPosition()
+			entry.foliage:ResetPose()
+			entry.rootPosition = entry.foliage:GetRootPosition()
 			resetEntryDrivers(entry)
 			entry.lastUpdateTime = simulationTime
 			if self.debugEnabled then
@@ -279,8 +273,8 @@ function FoliageUpdateManager.Update(
 
 		local elapsed = simulationTime - entry.lastUpdateTime
 		if elapsed > MAX_STALE_ELAPSED then
-			entry.foliage:resetPose()
-			entry.rootPosition = entry.foliage:getRootPosition()
+			entry.foliage:ResetPose()
+			entry.rootPosition = entry.foliage:GetRootPosition()
 			resetEntryDrivers(entry)
 			entry.lastUpdateTime = simulationTime
 			if self.debugEnabled then
@@ -305,13 +299,13 @@ function FoliageUpdateManager.Update(
 		end
 
 		local baseSample =
-			self.windField:sample(entry.rootPosition, simulationTime, entry.phaseOffset, entry.amplitudeScale)
+			self.windField:Sample(entry.rootPosition, simulationTime, entry.phaseOffset, entry.amplitudeScale)
 		local effectiveDt = math.min(elapsed, MAX_EFFECTIVE_STEP_DT)
-		local resolvedSample = self:updateEntryDrivers(entry, baseSample, effectiveDt)
+		local GotSample = self:UpdateEntryDrivers(entry, baseSample, effectiveDt)
 
 		if not tier.frozen then
-			entry.foliage:step(simulationTime, effectiveDt, resolvedSample, tier.lodState)
-			entry.rootPosition = entry.foliage:getRootPosition()
+			entry.foliage:Step(simulationTime, effectiveDt, GotSample, tier.lodState, elapsed)
+			entry.rootPosition = entry.foliage:GetRootPosition()
 			transformWrites += entry.estimatedTransformWrites
 			activeAnimatedTrees += 1
 		end
@@ -324,14 +318,13 @@ function FoliageUpdateManager.Update(
 	end
 
 	self.entryCursor = startIndex
-	self.stats.registeredTrees = self.registry:count()
+	self.stats.registeredTrees = self.registry:Count()
 	self.stats.activeAnimatedTrees = activeAnimatedTrees
 	self.stats.culledTrees = culledTrees
 	self.stats.nearTrees = nearTrees
 	self.stats.midTrees = midTrees
 	self.stats.farTrees = farTrees
 	self.stats.frozenTrees = frozenTrees
-	self.stats.activeRippleDrivers = self.registry:count() * 4
 	self.stats.transformWrites = transformWrites
 	self.stats.averageUpdateCostMs = (os.clock() - startClock) * 1000
 end
@@ -339,11 +332,4 @@ end
 function FoliageUpdateManager.GetStats(self: FoliageUpdateManager): { [string]: number }
 	return Sift.Dictionary.copy(self.stats)
 end
-
-FoliageUpdateManager.new = FoliageUpdateManager.New
-FoliageUpdateManager.applyInteractionImpulse = FoliageUpdateManager.ApplyInteractionImpulse
-FoliageUpdateManager.updateEntryDrivers = FoliageUpdateManager.UpdateEntryDrivers
-FoliageUpdateManager.update = FoliageUpdateManager.Update
-FoliageUpdateManager.getStats = FoliageUpdateManager.GetStats
-
 return FoliageUpdateManager

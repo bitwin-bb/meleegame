@@ -26,7 +26,7 @@ export type ParallaxResult = {
 
 local DEFAULT_MAX_OFFSET = Vector2.new(18, 14)
 
-local function sanitizeDepth(valueRaw: any): number
+local function CoerceDepth(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return 1
 	end
@@ -45,7 +45,7 @@ end
 
 local function useParallax(options: ParallaxOptions?): ParallaxResult
 	local enabled = if options ~= nil and options.enabled ~= nil then options.enabled == true else true
-	local depth = sanitizeDepth(if options ~= nil then options.depth else nil)
+	local depth = CoerceDepth(if options ~= nil then options.depth else nil)
 	local maxOffset = if options ~= nil and options.maxOffset ~= nil then options.maxOffset else DEFAULT_MAX_OFFSET
 	local invert = if options ~= nil and options.invert ~= nil then options.invert == true else false
 	local viewportState = useViewport()
@@ -58,7 +58,7 @@ local function useParallax(options: ParallaxOptions?): ParallaxResult
 				return
 			end
 
-			local screenPosition = GuiUtils.ResolveScreenPositionFromInput(inputObjectRaw)
+			local screenPosition = GuiUtils.GetScreenPositionFromInput(inputObjectRaw)
 			if screenPosition == nil then
 				local mousePosition = UserInputService:GetMouseLocation()
 				screenPosition = Vector2.new(mousePosition.X, mousePosition.Y)

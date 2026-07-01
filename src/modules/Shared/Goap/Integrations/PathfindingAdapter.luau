@@ -27,7 +27,4 @@ function PathfindingAdapter.ComputePath(agent: any, destinationRaw: any?): any?
 end
 
 PathfindingAdapter.copy = Table.copy
-PathfindingAdapter.get = PathfindingAdapter.Get
-PathfindingAdapter.computePath = PathfindingAdapter.ComputePath
-
 return PathfindingAdapter

@@ -9,8 +9,8 @@ local BossBinder = {}
 BossBinder.__index = BossBinder
 setmetatable(BossBinder, ModelBinder)
 
-local function resolveBossId(self: any, model: Model): string
-	local runtimeBossId = BossServiceUtils.resolveBossIdFromInstance(model)
+local function GetBossId(self: any, model: Model): string
+	local runtimeBossId = BossServiceUtils.GetBossIdFromInstance(model)
 	if runtimeBossId ~= nil then
 		return runtimeBossId
 	end
@@ -36,9 +36,9 @@ function BossBinder.updateMetadata(self: any)
 	end
 
 	model:SetAttribute("BossBinderTagged", true)
-	model:SetAttribute("BossBinderBossId", resolveBossId(self, model))
+	model:SetAttribute("BossBinderBossId", GetBossId(self, model))
 
-	local runtimeId = BossServiceUtils.resolveRuntimeIdFromInstance(model)
+	local runtimeId = BossServiceUtils.GetUntimeIdFromInstance(model)
 	if runtimeId ~= nil then
 		model:SetAttribute("BossBinderRuntimeId", runtimeId)
 	end

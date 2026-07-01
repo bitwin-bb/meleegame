@@ -41,9 +41,4 @@ end
 function ToolController.Destroy(self: ToolController)
 	self.maid:DoCleaning()
 end
-
-ToolController.start = ToolController.Start
-ToolController.getHandler = ToolController.GetHandler
-ToolController.destroy = ToolController.Destroy
-
 return ToolController

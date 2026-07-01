@@ -50,15 +50,15 @@ local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function sanitizeInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+local function CoerceInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
 	return math.clamp(math.floor(valueRaw), minimum, maximum)
 end
 
-local function sanitizeBiomeId(valueRaw: any, fallback: number): number
-	return sanitizeInteger(valueRaw, Shared.BIOME_ID.FOREST, Shared.BIOME_ID.CORRUPTION, fallback)
+local function CoerceBiomeId(valueRaw: any, fallback: number): number
+	return CoerceInteger(valueRaw, Shared.BIOME_ID.FOREST, Shared.BIOME_ID.CORRUPTION, fallback)
 end
 
 local function decodeClusterIndex(index: number, countX: number, countY: number): (number, number, number)
@@ -75,7 +75,7 @@ local function unpackLegacyChunkKey(chunkKeyRaw: any): (number?, number?, number
 		return nil, nil, nil
 	end
 
-	local chunkX, chunkY, chunkZ = Shared.unpackChunkKey(chunkKeyRaw)
+	local chunkX, chunkY, chunkZ = Shared.UnpackChunkKey(chunkKeyRaw)
 	if chunkX ~= nil and chunkY ~= nil and chunkZ ~= nil then
 		return chunkX, chunkY, chunkZ
 	end
@@ -131,7 +131,7 @@ function Net.DecodeRle(rleRaw: any): { number }
 	local totalLength = 0
 	for _, pair in rleRaw do
 		if typeof(pair) == "table" then
-			local length = sanitizeInteger((pair :: any).length, 1, 10000000, 1)
+			local length = CoerceInteger((pair :: any).length, 1, 10000000, 1)
 			totalLength += length
 		end
 	end
@@ -143,7 +143,7 @@ function Net.DecodeRle(rleRaw: any): { number }
 			continue
 		end
 		local value = if isFiniteNumber((pair :: any).value) then (pair :: any).value else 0
-		local length = sanitizeInteger((pair :: any).length, 1, 10000000, 1)
+		local length = CoerceInteger((pair :: any).length, 1, 10000000, 1)
 		for _ = 1, length do
 			output[cursor] = value
 			cursor += 1
@@ -202,7 +202,7 @@ function Net.BuildChunkDelta(chunk: { [string]: any }, previousRevision: number?
 
 	local entities = chunk.entities
 	local entityCount = if typeof(entities) == "table"
-		then sanitizeInteger((entities :: any).count, 0, 1000000, 0)
+		then CoerceInteger((entities :: any).count, 0, 1000000, 0)
 		else 0
 
 	return {
@@ -244,18 +244,18 @@ function Net.DecodeChunkDelta(deltaRaw: any): { [string]: any }?
 
 	return {
 		key = key,
-		chunkX = sanitizeInteger((deltaRaw :: any).chunkX, -1000000, 1000000, 0),
-		chunkY = sanitizeInteger((deltaRaw :: any).chunkY, -1000000, 1000000, 0),
-		chunkZ = sanitizeInteger((deltaRaw :: any).chunkZ, -1000000, 1000000, 0),
-		revision = sanitizeInteger((deltaRaw :: any).revision, 0, 1000000000, 0),
-		clusterCountX = sanitizeInteger((deltaRaw :: any).clusterCountX, 1, 512, 1),
-		clusterCountY = sanitizeInteger((deltaRaw :: any).clusterCountY, 1, 512, 1),
-		clusterCountZ = sanitizeInteger((deltaRaw :: any).clusterCountZ, 1, 512, 1),
+		chunkX = CoerceInteger((deltaRaw :: any).chunkX, -1000000, 1000000, 0),
+		chunkY = CoerceInteger((deltaRaw :: any).chunkY, -1000000, 1000000, 0),
+		chunkZ = CoerceInteger((deltaRaw :: any).chunkZ, -1000000, 1000000, 0),
+		revision = CoerceInteger((deltaRaw :: any).revision, 0, 1000000000, 0),
+		clusterCountX = CoerceInteger((deltaRaw :: any).clusterCountX, 1, 512, 1),
+		clusterCountY = CoerceInteger((deltaRaw :: any).clusterCountY, 1, 512, 1),
+		clusterCountZ = CoerceInteger((deltaRaw :: any).clusterCountZ, 1, 512, 1),
 		clusterChosenBiomeIds = clusterChosenBiomeIds,
 		clusterBlendWeights = clusterBlendWeights,
 		clusterSolidMask = clusterSolidMask,
 		clusterSurfaceY = clusterSurfaceY,
-		entityCount = sanitizeInteger((deltaRaw :: any).entityCount, 0, 100000, 0),
+		entityCount = CoerceInteger((deltaRaw :: any).entityCount, 0, 100000, 0),
 		entityIds = if typeof((deltaRaw :: any).entityIds) == "table" then (deltaRaw :: any).entityIds else {} :: any,
 		entityKinds = if typeof((deltaRaw :: any).entityKinds) == "table"
 			then (deltaRaw :: any).entityKinds
@@ -275,9 +275,9 @@ function Net.DecodeChunkDelta(deltaRaw: any): { [string]: any }?
 	}
 end
 
-local function resolveLegacyBiomeId(biomeIdRaw: any, biomeTypeRaw: any, fallbackBiomeId: number): number
+local function GetLegacyBiomeId(biomeIdRaw: any, biomeTypeRaw: any, fallbackBiomeId: number): number
 	if isFiniteNumber(biomeIdRaw) then
-		return sanitizeBiomeId(biomeIdRaw, fallbackBiomeId)
+		return CoerceBiomeId(biomeIdRaw, fallbackBiomeId)
 	end
 	if isFiniteNumber(biomeTypeRaw) then
 		local biomeType = math.floor(biomeTypeRaw)
@@ -288,46 +288,46 @@ local function resolveLegacyBiomeId(biomeIdRaw: any, biomeTypeRaw: any, fallback
 	return fallbackBiomeId
 end
 
-local function resolveLegacyChunkCoordinates(legacy: { [string]: any }): (number, number, number, string)
-	local chunkX = sanitizeInteger(legacy.chunkX, -1000000, 1000000, 0)
-	local chunkY = sanitizeInteger(legacy.chunkY, -1000000, 1000000, 0)
-	local chunkZ = sanitizeInteger(legacy.chunkZ, -1000000, 1000000, 0)
-	local key = Shared.packChunkKey(chunkX, chunkY, chunkZ)
+local function GetLegacyChunkCoordinates(legacy: { [string]: any }): (number, number, number, string)
+	local chunkX = CoerceInteger(legacy.chunkX, -1000000, 1000000, 0)
+	local chunkY = CoerceInteger(legacy.chunkY, -1000000, 1000000, 0)
+	local chunkZ = CoerceInteger(legacy.chunkZ, -1000000, 1000000, 0)
+	local key = Shared.PackChunkKey(chunkX, chunkY, chunkZ)
 
 	local parsedX, parsedY, parsedZ = unpackLegacyChunkKey(legacy.key)
 	if parsedX ~= nil and parsedY ~= nil and parsedZ ~= nil then
 		chunkX = parsedX
 		chunkY = parsedY
 		chunkZ = parsedZ
-		key = Shared.packChunkKey(chunkX, chunkY, chunkZ)
+		key = Shared.PackChunkKey(chunkX, chunkY, chunkZ)
 	end
 
 	return chunkX, chunkY, chunkZ, key
 end
 
-local function resolveLegacyAxisSize(
+local function GetLegacyAxisSize(
 	legacy: { [string]: any },
 	fieldPrimary: string,
 	fieldSecondary: string,
 	fallback: number
 ): number
-	local primary = sanitizeInteger(legacy[fieldPrimary], 1, LEGACY_AXIS_MAX, 0)
+	local primary = CoerceInteger(legacy[fieldPrimary], 1, LEGACY_AXIS_MAX, 0)
 	if primary > 0 then
 		return primary
 	end
-	local secondary = sanitizeInteger(legacy[fieldSecondary], 1, LEGACY_AXIS_MAX, 0)
+	local secondary = CoerceInteger(legacy[fieldSecondary], 1, LEGACY_AXIS_MAX, 0)
 	if secondary > 0 then
 		return secondary
 	end
 	return fallback
 end
 
-local function resolveLegacyClusterAxisCount(
+local function GetLegacyClusterAxisCount(
 	legacy: { [string]: any },
 	clusterField: string,
 	tileAxisSize: number
 ): number
-	local direct = sanitizeInteger(legacy[clusterField], 1, 512, 0)
+	local direct = CoerceInteger(legacy[clusterField], 1, 512, 0)
 	if direct > 0 then
 		return direct
 	end
@@ -352,20 +352,20 @@ function Net.DecodeLegacyChunkTransitional(legacyRaw: any): { [string]: any }?
 		return nil
 	end
 
-	local chunkX, chunkY, chunkZ, key = resolveLegacyChunkCoordinates(legacy)
-	local tileCountX = resolveLegacyAxisSize(legacy, "tileCountX", "width", Shared.CLUSTER_SIZE)
-	local tileCountY = resolveLegacyAxisSize(legacy, "tileCountY", "height", Shared.CLUSTER_SIZE)
-	local tileCountZ = resolveLegacyAxisSize(legacy, "tileCountZ", "depth", 1)
+	local chunkX, chunkY, chunkZ, key = GetLegacyChunkCoordinates(legacy)
+	local tileCountX = GetLegacyAxisSize(legacy, "tileCountX", "width", Shared.CLUSTER_SIZE)
+	local tileCountY = GetLegacyAxisSize(legacy, "tileCountY", "height", Shared.CLUSTER_SIZE)
+	local tileCountZ = GetLegacyAxisSize(legacy, "tileCountZ", "depth", 1)
 
-	local clusterCountX = resolveLegacyClusterAxisCount(legacy, "clusterCountX", tileCountX)
-	local clusterCountY = resolveLegacyClusterAxisCount(legacy, "clusterCountY", tileCountY)
-	local clusterCountZ = resolveLegacyClusterAxisCount(legacy, "clusterCountZ", tileCountZ)
+	local clusterCountX = GetLegacyClusterAxisCount(legacy, "clusterCountX", tileCountX)
+	local clusterCountY = GetLegacyClusterAxisCount(legacy, "clusterCountY", tileCountY)
+	local clusterCountZ = GetLegacyClusterAxisCount(legacy, "clusterCountZ", tileCountZ)
 	local expectedClusters = clusterCountX * clusterCountY * clusterCountZ
 	local clusterSize = math.max(1, Shared.CLUSTER_SIZE)
 
-	local dominantBiomeId = sanitizeBiomeId(legacy.dominantBiomeId, Shared.BIOME_ID.FOREST)
-	local revision = sanitizeInteger(legacy.revision, 0, 1000000000, 0)
-	local tileMinY = sanitizeInteger(legacy.tileMinY, -1000000, 1000000, chunkY * tileCountY)
+	local dominantBiomeId = CoerceBiomeId(legacy.dominantBiomeId, Shared.BIOME_ID.FOREST)
+	local revision = CoerceInteger(legacy.revision, 0, 1000000000, 0)
+	local tileMinY = CoerceInteger(legacy.tileMinY, -1000000, 1000000, chunkY * tileCountY)
 
 	local clusterChosenBiomeIds = Sift.Array.create(expectedClusters, dominantBiomeId)
 	local clusterBlendWeights = Sift.Array.create(expectedClusters, 0)
@@ -388,18 +388,18 @@ function Net.DecodeLegacyChunkTransitional(legacyRaw: any): { [string]: any }?
 	if clusterChosenBiomeIdsRaw ~= nil then
 		for clusterIndex = 1, expectedClusters do
 			clusterChosenBiomeIds[clusterIndex] =
-				sanitizeBiomeId(clusterChosenBiomeIdsRaw[clusterIndex], dominantBiomeId)
+				CoerceBiomeId(clusterChosenBiomeIdsRaw[clusterIndex], dominantBiomeId)
 			clusterBlendWeights[clusterIndex] = if clusterBlendWeightsRaw ~= nil
-				then sanitizeInteger(clusterBlendWeightsRaw[clusterIndex], 0, 255, 0)
+				then CoerceInteger(clusterBlendWeightsRaw[clusterIndex], 0, 255, 0)
 				else 0
 			clusterSolidMask[clusterIndex] = if clusterSolidMaskRaw ~= nil
-				then sanitizeInteger(clusterSolidMaskRaw[clusterIndex], 0, 1, 0)
+				then CoerceInteger(clusterSolidMaskRaw[clusterIndex], 0, 1, 0)
 				else 0
 
 			local _clusterLocalX, clusterLocalY, _ = decodeClusterIndex(clusterIndex, clusterCountX, clusterCountY)
 			local fallbackSurface = tileMinY + clusterLocalY * clusterSize + (clusterSize - 1)
 			clusterSurfaceY[clusterIndex] = if clusterSurfaceYRaw ~= nil
-				then sanitizeInteger(clusterSurfaceYRaw[clusterIndex], -1000000, 1000000, fallbackSurface)
+				then CoerceInteger(clusterSurfaceYRaw[clusterIndex], -1000000, 1000000, fallbackSurface)
 				else fallbackSurface
 		end
 	else
@@ -412,7 +412,7 @@ function Net.DecodeLegacyChunkTransitional(legacyRaw: any): { [string]: any }?
 		for clusterLocalZ = 0, clusterCountZ - 1 do
 			for clusterLocalY = 0, clusterCountY - 1 do
 				for clusterLocalX = 0, clusterCountX - 1 do
-					local clusterIndex = Shared.computeClusterIndex(
+					local clusterIndex = Shared.ComputeClusterIndex(
 						clusterLocalX,
 						clusterLocalY,
 						clusterLocalZ,
@@ -438,7 +438,7 @@ function Net.DecodeLegacyChunkTransitional(legacyRaw: any): { [string]: any }?
 						for localTileY = minLocalTileY, maxLocalTileY do
 							for localTileX = minTileX, maxTileX do
 								local tileIndex = localTileZ * layerArea + localTileY * tileCountX + localTileX + 1
-								local tileId = sanitizeInteger(tiles[tileIndex], 0, 65535, 0)
+								local tileId = CoerceInteger(tiles[tileIndex], 0, 65535, 0)
 								if tileId ~= 0 then
 									solidMask = 1
 									if localTileY > highestSolidTileY then
@@ -447,7 +447,7 @@ function Net.DecodeLegacyChunkTransitional(legacyRaw: any): { [string]: any }?
 								end
 
 								local biomeId =
-									resolveLegacyBiomeId(biomeIds[tileIndex], biomeTypes[tileIndex], dominantBiomeId)
+									GetLegacyBiomeId(biomeIds[tileIndex], biomeTypes[tileIndex], dominantBiomeId)
 								if biomeId == Shared.BIOME_ID.CORRUPTION then
 									corruptionCount += 1
 								elseif biomeId == Shared.BIOME_ID.JUNGLE then
@@ -490,14 +490,14 @@ function Net.DecodeLegacyChunkTransitional(legacyRaw: any): { [string]: any }?
 					clusterSurfaceY[clusterIndex] = tileMinY
 						+ (if highestSolidTileY >= 0 then highestSolidTileY else maxLocalTileY)
 					clusterBlendWeights[clusterIndex] = if blendWeightsRaw ~= nil
-						then sanitizeInteger(blendWeightsRaw[clusterIndex], 0, 255, 0)
+						then CoerceInteger(blendWeightsRaw[clusterIndex], 0, 255, 0)
 						else 0
 				end
 			end
 		end
 	end
 
-	local entityCount = sanitizeInteger(legacy.entityCount, 0, 100000, 0)
+	local entityCount = CoerceInteger(legacy.entityCount, 0, 100000, 0)
 	return {
 		key = key,
 		chunkX = chunkX,
@@ -527,7 +527,7 @@ function Net.TranslateLegacyChunkToChunkDeltaTransitional(legacyRaw: any): Chunk
 		return nil
 	end
 
-	local entityCount = sanitizeInteger(decoded.entityCount, 0, 100000, 0)
+	local entityCount = CoerceInteger(decoded.entityCount, 0, 100000, 0)
 	return {
 		key = decoded.key,
 		chunkX = decoded.chunkX,
@@ -565,7 +565,7 @@ function Net.ValidateClientInput(inputRaw: any): (boolean, string)
 	end
 
 	local input = inputRaw :: { [string]: any }
-	local entityId = sanitizeInteger(input.entityId, 0, 1000000000, 0)
+	local entityId = CoerceInteger(input.entityId, 0, 1000000000, 0)
 	if entityId <= 0 then
 		return false, "entityId is required"
 	end
@@ -590,8 +590,8 @@ function Net.PredictEntityPosition(
 	return currentX + velocityX * deltaTime, currentY + velocityY * deltaTime, currentZ + velocityZ * deltaTime
 end
 
-function Net.SanitizeStreamRadius(valueRaw: any, fallback: number): number
-	return sanitizeInteger(valueRaw, 1, 32, fallback)
+function Net.CoerceStreamRadius(valueRaw: any, fallback: number): number
+	return CoerceInteger(valueRaw, 1, 32, fallback)
 end
 
 function Net.ChunkPriorityFromCenter(
@@ -609,20 +609,6 @@ function Net.ChunkPriorityFromCenter(
 end
 
 function Net.UnpackChunkKey(chunkKey: string): (number?, number?, number?)
-	return Shared.unpackChunkKey(chunkKey)
+	return Shared.UnpackChunkKey(chunkKey)
 end
-
-Net.encodeRle = Net.EncodeRle
-Net.decodeRle = Net.DecodeRle
-Net.buildChunkDelta = Net.BuildChunkDelta
-Net.decodeChunkDelta = Net.DecodeChunkDelta
-Net.decodeLegacyChunkTransitional = Net.DecodeLegacyChunkTransitional
-Net.translateLegacyChunkToChunkDeltaTransitional = Net.TranslateLegacyChunkToChunkDeltaTransitional
-Net.decodeChunkPayload = Net.DecodeChunkPayload
-Net.validateClientInput = Net.ValidateClientInput
-Net.predictEntityPosition = Net.PredictEntityPosition
-Net.sanitizeStreamRadius = Net.SanitizeStreamRadius
-Net.chunkPriorityFromCenter = Net.ChunkPriorityFromCenter
-Net.unpackChunkKey = Net.UnpackChunkKey
-
 return Net

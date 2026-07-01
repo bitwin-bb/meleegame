@@ -207,12 +207,12 @@ function UISpringAnimator._watchInstance(self: UISpringAnimator, instance: Insta
 	local destroyingConnection = nil
 	if typeof((instance :: any).Destroying) == "RBXScriptSignal" then
 		destroyingConnection = (instance :: any).Destroying:Connect(function()
-			self:stopAllForInstance(instance)
+			self:StopAllForInstance(instance)
 		end)
 	end
 	local ancestryConnection = instance.AncestryChanged:Connect(function(_, parent)
 		if parent == nil then
-			self:stopAllForInstance(instance)
+			self:StopAllForInstance(instance)
 		end
 	end)
 	self.instanceConnections[instance] = { destroyingConnection, ancestryConnection }
@@ -234,10 +234,10 @@ function UISpringAnimator._ensureLoop(self: UISpringAnimator)
 		return
 	end
 	self.isRunning = true
-	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).scheduleEvery) == "function" then
-		self.loopToken = (self.tickScheduler :: any):scheduleEvery(
+	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).ScheduleEvery) == "function" then
+		self.loopToken = (self.tickScheduler :: any):ScheduleEvery(
 			function(dt: number)
-				self:step(dt)
+				self:Step(dt)
 			end,
 			1 / self.updateHz,
 			{
@@ -249,7 +249,7 @@ function UISpringAnimator._ensureLoop(self: UISpringAnimator)
 		return
 	end
 	self.heartbeatConnection = RunService.Heartbeat:Connect(function(dt)
-		self:step(dt)
+		self:Step(dt)
 	end)
 end
 
@@ -259,11 +259,11 @@ function UISpringAnimator._stopLoop(self: UISpringAnimator)
 	end
 	self.isRunning = false
 	if self.loopToken ~= nil then
-		if typeof(self.loopToken.cancel) == "function" then
-			self.loopToken:cancel()
-		elseif self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).cancel) == "function" then
+		if typeof(self.loopToken.Cancel) == "function" then
+			self.loopToken:Cancel()
+		elseif self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).Cancel) == "function" then
 			local schedulerAny = self.tickScheduler :: any
-			schedulerAny:cancel(self.loopToken)
+			schedulerAny:Cancel(self.loopToken)
 		end
 		self.loopToken = nil
 	end
@@ -371,7 +371,7 @@ function UISpringAnimator.Animate(
 		instance = instance,
 		property = property,
 		cancel = function()
-			self:stop(instance, property)
+			self:Stop(instance, property)
 		end,
 	}
 	return handle
@@ -386,7 +386,7 @@ function UISpringAnimator.AnimateBatch(self: UISpringAnimator, requestsRaw: any)
 		if typeof(request) ~= "table" then
 			continue
 		end
-		self:animate(request.instance, request.property, request.targetValue, request.config)
+		self:Animate(request.instance, request.property, request.targetValue, request.config)
 	end
 end
 
@@ -411,7 +411,7 @@ function UISpringAnimator.Stop(self: UISpringAnimator, instanceRaw: any, propert
 end
 
 function UISpringAnimator.StopAllForInstance(self: UISpringAnimator, instanceRaw: any)
-	self:stop(instanceRaw, nil)
+	self:Stop(instanceRaw, nil)
 end
 
 function UISpringAnimator.Step(self: UISpringAnimator, dtRaw: any)
@@ -512,20 +512,5 @@ function UISpringAnimator.Destroy(self: UISpringAnimator)
 	table.clear(self.instancePresence)
 	clearArray(self.activeInstances)
 end
-
-UISpringAnimator.Animate = UISpringAnimator.Animate
-UISpringAnimator.AnimateBatch = UISpringAnimator.AnimateBatch
-UISpringAnimator.Stop = UISpringAnimator.Stop
-UISpringAnimator.StopAllForInstance = UISpringAnimator.StopAllForInstance
-UISpringAnimator.Step = UISpringAnimator.Step
-
-UISpringAnimator.new = UISpringAnimator.New
-UISpringAnimator.setProfileHook = UISpringAnimator.SetProfileHook
-UISpringAnimator.animate = UISpringAnimator.Animate
-UISpringAnimator.animateBatch = UISpringAnimator.AnimateBatch
-UISpringAnimator.stop = UISpringAnimator.Stop
-UISpringAnimator.stopAllForInstance = UISpringAnimator.StopAllForInstance
-UISpringAnimator.step = UISpringAnimator.Step
-UISpringAnimator.destroy = UISpringAnimator.Destroy
 
 return UISpringAnimator

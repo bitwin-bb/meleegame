@@ -182,7 +182,7 @@ local function trim(valueRaw: any): string
 	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function sanitizeItemId(itemIdRaw: any): string?
+local function CoerceItemId(itemIdRaw: any): string?
 	local itemId = trim(itemIdRaw)
 	if itemId == "" then
 		return nil
@@ -241,7 +241,7 @@ function MiningPower.ParsePowerPercent(valueRaw: any): number?
 	return math.max(0, numericValue)
 end
 
-function MiningPower.ResolveToolPower(definitionRaw: any, fallbackRaw: any?): number
+function MiningPower.GetToolPower(definitionRaw: any, fallbackRaw: any?): number
 	local definition = coerceDefinition(definitionRaw)
 	local stats = coerceDefinition(definition.stats)
 	local mining = coerceDefinition(definition.mining)
@@ -260,16 +260,16 @@ function MiningPower.ResolveToolPower(definitionRaw: any, fallbackRaw: any?): nu
 	}
 
 	for _, candidate in candidates do
-		local resolved = MiningPower.ParsePowerPercent(candidate)
-		if resolved ~= nil then
-			return resolved
+		local Got = MiningPower.ParsePowerPercent(candidate)
+		if Got ~= nil then
+			return Got
 		end
 	end
 
 	return 0
 end
 
-function MiningPower.ResolveToolType(definitionRaw: any, fallbackRaw: any?): string?
+function MiningPower.GetToolType(definitionRaw: any, fallbackRaw: any?): string?
 	local definition = coerceDefinition(definitionRaw)
 	local mining = coerceDefinition(definition.mining)
 
@@ -293,30 +293,30 @@ function MiningPower.ResolveToolType(definitionRaw: any, fallbackRaw: any?): str
 	return nil
 end
 
-function MiningPower.ResolveToolProfile(definitionRaw: any, fallbackTypeRaw: any?, fallbackPowerRaw: any?): ToolProfile
+function MiningPower.GetToolProfile(definitionRaw: any, fallbackTypeRaw: any?, fallbackPowerRaw: any?): ToolProfile
 	return {
-		toolType = MiningPower.ResolveToolType(definitionRaw, fallbackTypeRaw),
-		toolPower = MiningPower.ResolveToolPower(definitionRaw, fallbackPowerRaw),
+		toolType = MiningPower.GetToolType(definitionRaw, fallbackTypeRaw),
+		toolPower = MiningPower.GetToolPower(definitionRaw, fallbackPowerRaw),
 	}
 end
 
-function MiningPower.ResolveItemToolProfile(itemIdRaw: any): ToolProfile?
-	local itemId = sanitizeItemId(itemIdRaw)
+function MiningPower.GetItemToolProfile(itemIdRaw: any): ToolProfile?
+	local itemId = CoerceItemId(itemIdRaw)
 	if itemId == nil then
 		return nil
 	end
 
-	local canonicalItemId = ItemRegistry.resolveCanonicalItemId(itemId)
+	local canonicalItemId = ItemRegistry.GetCanonicalItemId(itemId)
 	if canonicalItemId == nil then
 		return nil
 	end
 
-	local definition = ItemRegistry.resolveDefinition(canonicalItemId)
+	local definition = ItemRegistry.GetDefinition(canonicalItemId)
 	if typeof(definition) ~= "table" then
 		return nil
 	end
 
-	local profile = MiningPower.ResolveToolProfile(definition, nil, nil)
+	local profile = MiningPower.GetToolProfile(definition, nil, nil)
 	if profile.toolType == nil then
 		return nil
 	end
@@ -324,7 +324,7 @@ function MiningPower.ResolveItemToolProfile(itemIdRaw: any): ToolProfile?
 	return profile
 end
 
-function MiningPower.ResolveSelectedToolContextFromInventoryState(stateRaw: any): SelectedToolContext?
+function MiningPower.GetSelectedToolContextFromInventoryState(stateRaw: any): SelectedToolContext?
 	if typeof(stateRaw) ~= "table" then
 		return nil
 	end
@@ -361,12 +361,12 @@ function MiningPower.ResolveSelectedToolContextFromInventoryState(stateRaw: any)
 		return nil
 	end
 
-	local canonicalItemId = ItemRegistry.resolveCanonicalItemId(stackTable.itemId)
+	local canonicalItemId = ItemRegistry.GetCanonicalItemId(stackTable.itemId)
 	if canonicalItemId == nil then
 		return nil
 	end
 
-	local profile = MiningPower.ResolveItemToolProfile(canonicalItemId)
+	local profile = MiningPower.GetItemToolProfile(canonicalItemId)
 	if profile == nil then
 		return nil
 	end
@@ -379,7 +379,7 @@ function MiningPower.ResolveSelectedToolContextFromInventoryState(stateRaw: any)
 	}
 end
 
-function MiningPower.ResolveTreeRequirement(treeTypeRaw: any): TreeRequirement
+function MiningPower.GetTreeRequirement(treeTypeRaw: any): TreeRequirement
 	local normalized = normalizeToken(treeTypeRaw)
 	if normalized ~= "" then
 		local direct = TREE_REQUIREMENTS_BY_TOKEN[normalized]
@@ -401,7 +401,7 @@ function MiningPower.ResolveTreeRequirement(treeTypeRaw: any): TreeRequirement
 	return TREE_REQUIREMENTS_BY_TOKEN.defaulttree
 end
 
-function MiningPower.ResolveTileRequirement(tileIdRaw: any, tileNameRaw: any?): TileRequirement
+function MiningPower.GetTileRequirement(tileIdRaw: any, tileNameRaw: any?): TileRequirement
 	if typeof(tileIdRaw) == "number" and tileIdRaw == tileIdRaw then
 		local direct = TILE_REQUIREMENTS_BY_ID[math.floor(tileIdRaw)]
 		if direct ~= nil then
@@ -444,7 +444,7 @@ function MiningPower.ToToolAttributeBundle(
 	fallbackTypeRaw: any?,
 	fallbackPowerRaw: any?
 ): { [string]: any }
-	local profile = MiningPower.ResolveToolProfile(definitionRaw, fallbackTypeRaw, fallbackPowerRaw)
+	local profile = MiningPower.GetToolProfile(definitionRaw, fallbackTypeRaw, fallbackPowerRaw)
 	local attributes: { [string]: any } = {}
 	local toolType = profile.toolType
 	if toolType ~= nil then
@@ -467,15 +467,4 @@ function MiningPower.ToToolAttributeBundle(
 
 	return attributes
 end
-
-MiningPower.parsePowerPercent = MiningPower.ParsePowerPercent
-MiningPower.resolveToolPower = MiningPower.ResolveToolPower
-MiningPower.resolveToolType = MiningPower.ResolveToolType
-MiningPower.resolveToolProfile = MiningPower.ResolveToolProfile
-MiningPower.resolveItemToolProfile = MiningPower.ResolveItemToolProfile
-MiningPower.resolveSelectedToolContextFromInventoryState = MiningPower.ResolveSelectedToolContextFromInventoryState
-MiningPower.resolveTreeRequirement = MiningPower.ResolveTreeRequirement
-MiningPower.resolveTileRequirement = MiningPower.ResolveTileRequirement
-MiningPower.toToolAttributeBundle = MiningPower.ToToolAttributeBundle
-
 return MiningPower

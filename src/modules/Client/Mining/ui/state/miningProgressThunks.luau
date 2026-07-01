@@ -35,7 +35,7 @@ local runtime = {
 	anchorPart = nil :: Part?,
 }
 
-local function sanitizeBuildState(stateRaw: any): BuildServiceState?
+local function CoerceBuildState(stateRaw: any): BuildServiceState?
 	if typeof(stateRaw) ~= "table" then
 		return nil
 	end
@@ -58,7 +58,7 @@ local function ensureAnchorPart(): Part
 		return current
 	end
 
-	local gameFolder = WorkspaceFolders.getOrCreateGameFolder()
+	local gameFolder = WorkspaceFolders.GetOrCreateGameFolder()
 	local existing = gameFolder:FindFirstChild(ANCHOR_PART_NAME)
 	if existing ~= nil then
 		if existing:IsA("Part") then
@@ -126,13 +126,13 @@ local function hideMiningProgressVisual()
 	applyToBillboard(nextState)
 end
 
-local function resolveBreakWorldPosition(tileX: number, tileY: number): Vector3?
-	local state = sanitizeBuildState((BuildServiceClient :: any).state)
+local function GetBreakWorldPosition(tileX: number, tileY: number): Vector3?
+	local state = CoerceBuildState((BuildServiceClient :: any).state)
 	if state == nil then
 		return nil
 	end
 	local worldCenter =
-		BuildServiceUtils.tileToWorldCenter(tileX, tileY, state.worldOrigin, state.tileSize, state.basePlaneX)
+		BuildServiceUtils.TileToWorldCenter(tileX, tileY, state.worldOrigin, state.tileSize, state.basePlaneX)
 	return worldCenter + Vector3.new(0, state.tileSize * 0.92, 0)
 end
 
@@ -153,14 +153,14 @@ local function applyBuildBreakProgress(payloadRaw: any): MiningProgressState
 		return miningProgressSlice.getMiningProgressState()
 	end
 
-	local tileX = BuildServiceUtils.sanitizeTileCoordinate(payload.tileX)
-	local tileY = BuildServiceUtils.sanitizeTileCoordinate(payload.tileY)
+	local tileX = BuildServiceUtils.CoerceTileCoordinate(payload.tileX)
+	local tileY = BuildServiceUtils.CoerceTileCoordinate(payload.tileY)
 	if tileX == nil or tileY == nil then
 		hideMiningProgressVisual()
 		return miningProgressSlice.getMiningProgressState()
 	end
 
-	local worldPosition = resolveBreakWorldPosition(tileX, tileY)
+	local worldPosition = GetBreakWorldPosition(tileX, tileY)
 	if worldPosition == nil then
 		hideMiningProgressVisual()
 		return miningProgressSlice.getMiningProgressState()
@@ -200,7 +200,7 @@ function miningProgressThunks.Start(): () -> ()
 end
 
 function miningProgressThunks.Stop()
-	ConnectionUtils.disconnect(runtime.breakProgressConnection)
+	ConnectionUtils.Disconnect(runtime.breakProgressConnection)
 	runtime.breakProgressConnection = nil
 	runtime.started = false
 	hideMiningProgressVisual()
@@ -222,10 +222,4 @@ end
 function miningProgressThunks.GetState(): MiningProgressState
 	return miningProgressSlice.getMiningProgressState()
 end
-
-miningProgressThunks.start = miningProgressThunks.Start
-miningProgressThunks.stop = miningProgressThunks.Stop
-miningProgressThunks.bindBillboardGui = miningProgressThunks.BindBillboardGui
-miningProgressThunks.getState = miningProgressThunks.GetState
-
 return miningProgressThunks

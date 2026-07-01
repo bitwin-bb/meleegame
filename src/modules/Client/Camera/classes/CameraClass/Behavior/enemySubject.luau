@@ -14,18 +14,15 @@ export type EnemySubjectOptions = {
 	velocity: Vector3?,
 }
 
-function EnemySubject.Resolve(optionsRaw: EnemySubjectOptions?): Target.ResolvedTarget?
-	local resolver = Target.new({
+function EnemySubject.Get(optionsRaw: EnemySubjectOptions?): Target.GotTarget?
+	local targetGetter = Target.New({
 		target = optionsRaw,
 	})
-	return resolver:resolveAny(optionsRaw, "Enemy")
+	return targetGetter:GetAny(optionsRaw, "Enemy")
 end
 
 function EnemySubject.New(optionsRaw: EnemySubjectOptions?): EnemySubjectOptions
 	return optionsRaw or ({} :: any)
 end
-
-EnemySubject.resolve = EnemySubject.Resolve
-EnemySubject.new = EnemySubject.New
 
 return EnemySubject

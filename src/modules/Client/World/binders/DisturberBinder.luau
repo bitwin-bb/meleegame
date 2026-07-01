@@ -85,18 +85,18 @@ function DisturberBinder.refresh(self: any)
 
 	if enabled and not self.isTracked then
 		local ok = pcall(function()
-			getWindFoliageServiceClient():trackDisturber(self.instance, collectOverrideConfig(self.instance))
+			getWindFoliageServiceClient():TrackDisturber(self.instance, collectOverrideConfig(self.instance))
 		end)
 		self.isTracked = ok
 	elseif enabled and self.isTracked then
 		pcall(function()
 			local nextWindFoliageServiceClient = getWindFoliageServiceClient()
-			nextWindFoliageServiceClient:untrackDisturber(self.instance)
-			nextWindFoliageServiceClient:trackDisturber(self.instance, collectOverrideConfig(self.instance))
+			nextWindFoliageServiceClient:UntrackDisturber(self.instance)
+			nextWindFoliageServiceClient:TrackDisturber(self.instance, collectOverrideConfig(self.instance))
 		end)
 	elseif not enabled and self.isTracked then
 		pcall(function()
-			getWindFoliageServiceClient():untrackDisturber(self.instance)
+			getWindFoliageServiceClient():UntrackDisturber(self.instance)
 		end)
 		self.isTracked = false
 	end
@@ -105,7 +105,7 @@ end
 function DisturberBinder.Cleanup(self: any)
 	if self.isTracked then
 		pcall(function()
-			getWindFoliageServiceClient():untrackDisturber(self.instance)
+			getWindFoliageServiceClient():UntrackDisturber(self.instance)
 		end)
 	end
 end

@@ -29,7 +29,7 @@ type MaidPackage = {
 	new: () -> any,
 }
 
-local function resolveMaidPackage(maidPackageRaw: any): MaidPackage
+local function GetMaidPackage(maidPackageRaw: any): MaidPackage
 	if typeof(maidPackageRaw) == "table" and typeof((maidPackageRaw :: any).new) == "function" then
 		return maidPackageRaw :: MaidPackage
 	end
@@ -37,7 +37,7 @@ local function resolveMaidPackage(maidPackageRaw: any): MaidPackage
 	return Maid :: MaidPackage
 end
 
-local function resolveConfig(configRaw: InstanceWrapperConfig?): InstanceWrapperConfig
+local function GetConfig(configRaw: InstanceWrapperConfig?): InstanceWrapperConfig
 	if typeof(configRaw) == "table" then
 		return configRaw :: InstanceWrapperConfig
 	end
@@ -45,7 +45,7 @@ local function resolveConfig(configRaw: InstanceWrapperConfig?): InstanceWrapper
 	return {} :: any
 end
 
-local function resolveClassName(classNameRaw: string): string
+local function GetClassName(classNameRaw: string): string
 	if typeof(classNameRaw) == "string" and classNameRaw ~= "" then
 		return classNameRaw
 	end
@@ -53,7 +53,7 @@ local function resolveClassName(classNameRaw: string): string
 	error("FusionUtils.CreateInstanceWrapper expects a class name", 3)
 end
 
-local function resolveDefaultName(defaultNameRaw: string?): string?
+local function GetDefaultName(defaultNameRaw: string?): string?
 	if typeof(defaultNameRaw) == "string" and defaultNameRaw ~= "" then
 		return defaultNameRaw
 	end
@@ -61,7 +61,7 @@ local function resolveDefaultName(defaultNameRaw: string?): string?
 	return nil
 end
 
-local function resolveInstance(className: string, instanceRaw: any): Instance?
+local function GetInstance(className: string, instanceRaw: any): Instance?
 	if typeof(instanceRaw) ~= "Instance" then
 		return nil
 	end
@@ -180,7 +180,7 @@ local function assignAttributeOutputs(props: { [any]: any }, outsRaw: OutputMap?
 end
 
 local function createProps(configRaw: InstanceWrapperConfig?, defaultName: string?): { [any]: any }
-	local config = resolveConfig(configRaw)
+	local config = GetConfig(configRaw)
 	local props = {}
 
 	copyProps(props, config.props)
@@ -198,7 +198,7 @@ local function createProps(configRaw: InstanceWrapperConfig?, defaultName: strin
 end
 
 local function attachOwnedScopeCleanup(instance: Instance, scope: any, maidPackageRaw: any)
-	local maidPackage = resolveMaidPackage(maidPackageRaw)
+	local maidPackage = GetMaidPackage(maidPackageRaw)
 	local maid = maidPackage.new()
 
 	maid:GiveTask(function()
@@ -215,8 +215,8 @@ function FusionUtils.CreateWithScope(
 	defaultNameRaw: string?,
 	configRaw: InstanceWrapperConfig?
 ): Instance
-	local className = resolveClassName(classNameRaw)
-	local defaultName = resolveDefaultName(defaultNameRaw)
+	local className = GetClassName(classNameRaw)
+	local defaultName = GetDefaultName(defaultNameRaw)
 	local props = createProps(configRaw, defaultName)
 	local scopeAny = scope :: any
 
@@ -233,8 +233,8 @@ function FusionUtils.HydrateWithScope(
 	instanceRaw: any,
 	configRaw: InstanceWrapperConfig?
 ): Instance?
-	local className = resolveClassName(classNameRaw)
-	local instance = resolveInstance(className, instanceRaw)
+	local className = GetClassName(classNameRaw)
+	local instance = GetInstance(className, instanceRaw)
 	if instance == nil then
 		return nil
 	end
@@ -281,9 +281,9 @@ function FusionUtils.Hydrate(
 end
 
 function FusionUtils.CreateInstanceWrapper(classNameRaw: string, defaultNameRaw: string?, maidPackageRaw: any?)
-	local className = resolveClassName(classNameRaw)
-	local defaultName = resolveDefaultName(defaultNameRaw)
-	local maidPackage = resolveMaidPackage(maidPackageRaw)
+	local className = GetClassName(classNameRaw)
+	local defaultName = GetDefaultName(defaultNameRaw)
+	local maidPackage = GetMaidPackage(maidPackageRaw)
 	local wrapper = {
 		ClassName = className,
 		DefaultName = defaultName,
@@ -304,19 +304,6 @@ function FusionUtils.CreateInstanceWrapper(classNameRaw: string, defaultNameRaw:
 	function wrapper.Hydrate(instanceRaw: any, configRaw: InstanceWrapperConfig?): Instance?
 		return FusionUtils.Hydrate(className, instanceRaw, configRaw, maidPackage)
 	end
-
-	wrapper.component = wrapper.Component
-	wrapper.hydrateComponent = wrapper.HydrateComponent
-	wrapper.create = wrapper.Create
-	wrapper.hydrate = wrapper.Hydrate
-
 	return wrapper
 end
-
-FusionUtils.createWithScope = FusionUtils.CreateWithScope
-FusionUtils.hydrateWithScope = FusionUtils.HydrateWithScope
-FusionUtils.create = FusionUtils.Create
-FusionUtils.hydrate = FusionUtils.Hydrate
-FusionUtils.createInstanceWrapper = FusionUtils.CreateInstanceWrapper
-
 return FusionUtils

@@ -22,7 +22,7 @@ export type Blackboard = typeof(setmetatable(
 	Blackboard
 ))
 
-local function sanitizeKey(keyRaw: any): string?
+local function CoerceKey(keyRaw: any): string?
 	if typeof(keyRaw) ~= "string" or keyRaw == "" then
 		return nil
 	end
@@ -51,7 +51,7 @@ function Blackboard._syncValueObject(self: Blackboard, key: string, value: any)
 end
 
 function Blackboard.Set(self: Blackboard, keyRaw: any, value: any)
-	local key = sanitizeKey(keyRaw)
+	local key = CoerceKey(keyRaw)
 	if key == nil or self.destroyed then
 		return
 	end
@@ -65,7 +65,7 @@ function Blackboard.Set(self: Blackboard, keyRaw: any, value: any)
 end
 
 function Blackboard.Get(self: Blackboard, keyRaw: any): any?
-	local key = sanitizeKey(keyRaw)
+	local key = CoerceKey(keyRaw)
 	if key == nil or self.destroyed then
 		return nil
 	end
@@ -73,12 +73,12 @@ function Blackboard.Get(self: Blackboard, keyRaw: any): any?
 end
 
 function Blackboard.Has(self: Blackboard, keyRaw: any): boolean
-	local key = sanitizeKey(keyRaw)
+	local key = CoerceKey(keyRaw)
 	return key ~= nil and not self.destroyed and self.values[key] ~= nil
 end
 
 function Blackboard.Remove(self: Blackboard, keyRaw: any): any?
-	local key = sanitizeKey(keyRaw)
+	local key = CoerceKey(keyRaw)
 	if key == nil or self.destroyed then
 		return nil
 	end
@@ -112,7 +112,7 @@ function Blackboard.ToTable(self: Blackboard): { [string]: any }
 end
 
 function Blackboard.GetValueObject(self: Blackboard, keyRaw: any): any?
-	local key = sanitizeKey(keyRaw)
+	local key = CoerceKey(keyRaw)
 	if key == nil or self.destroyed then
 		return nil
 	end
@@ -138,15 +138,4 @@ function Blackboard.Destroy(self: Blackboard)
 	table.clear(self.valueObjects)
 	self.maid:DoCleaning()
 end
-
-Blackboard.set = Blackboard.Set
-Blackboard.get = Blackboard.Get
-Blackboard.has = Blackboard.Has
-Blackboard.remove = Blackboard.Remove
-Blackboard.clear = Blackboard.Clear
-Blackboard.toTable = Blackboard.ToTable
-Blackboard.getValueObject = Blackboard.GetValueObject
-Blackboard.getChangedSignal = Blackboard.GetChangedSignal
-Blackboard.destroy = Blackboard.Destroy
-
 return Blackboard

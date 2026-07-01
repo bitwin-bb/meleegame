@@ -62,7 +62,7 @@ function MatterDebugMenuClient.Init(self: MatterDebugMenuClient)
 	local attributeConnection = localPlayer
 		:GetAttributeChangedSignal(CmdrUtils.MATTER_DEBUG_MENU_ENABLED_ATTRIBUTE)
 		:Connect(function()
-			self:applyEnabledState()
+			self:ApplyEnabledState()
 		end)
 
 	self.localPlayer = localPlayer
@@ -72,7 +72,7 @@ function MatterDebugMenuClient.Init(self: MatterDebugMenuClient)
 	self.connection = connection
 	self.attributeConnection = attributeConnection
 	self.initialized = true
-	self:applyEnabledState()
+	self:ApplyEnabledState()
 end
 
 function MatterDebugMenuClient.Destroy(self: MatterDebugMenuClient)
@@ -90,9 +90,4 @@ function MatterDebugMenuClient.Destroy(self: MatterDebugMenuClient)
 	self.localPlayer = nil
 	self.initialized = false
 end
-
-MatterDebugMenuClient.applyEnabledState = MatterDebugMenuClient.ApplyEnabledState
-MatterDebugMenuClient.init = MatterDebugMenuClient.Init
-MatterDebugMenuClient.destroy = MatterDebugMenuClient.Destroy
-
 return MatterDebugMenuClient :: MatterDebugMenuClient

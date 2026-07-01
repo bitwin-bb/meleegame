@@ -15,7 +15,7 @@ export type CooldownEffectOptions = {
 
 local e: typeof(React.createElement) = React.createElement
 
-local function sanitizeTransparency(valueRaw: any): number
+local function CoerceTransparency(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return 0.35
 	end
@@ -36,7 +36,7 @@ local function useCooldownEffect(options: CooldownEffectOptions): React.ReactNod
 	native.BackgroundColor3 = native.BackgroundColor3 or Color3.fromRGB(0, 0, 0)
 	native.BackgroundTransparency = if native.BackgroundTransparency ~= nil
 		then native.BackgroundTransparency
-		else sanitizeTransparency(options.transparency)
+		else CoerceTransparency(options.transparency)
 	native.BorderSizePixel = native.BorderSizePixel or 0
 	native.ZIndex = native.ZIndex or (options.zIndex or 1)
 

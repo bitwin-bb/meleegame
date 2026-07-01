@@ -9,10 +9,10 @@ local RunService = game:GetService("RunService")
 local AudioRegistry = require("Audio")
 local AudioServiceUtils = require("AudioServiceUtils")
 local BossServiceClient = require("BossServiceClient")
-local ClientBinderSupport = require("ClientBinderSupport")
+local BinderSupportClient = require("BinderSupportClient")
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
-local AudioServicePackets = require("ClientNetPackets").AudioService
+local AudioServicePackets = require("NetPacketsClient").AudioService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = AudioServicePackets[methodName]
@@ -21,7 +21,7 @@ local function sendPacket(methodName: string, ...: any)
 		return
 	end
 
-	packet.send(PacketPayload.pack(...))
+	packet.send(PacketPayload.Pack(...))
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -31,13 +31,14 @@ local function bindPacket(self: any, methodName: string)
 		return
 	end
 
+	local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
 	packet.listen(function(payload: any)
-		local handler = self[methodName]
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, table.unpack(arguments, 1, count))
 	end)
 end
@@ -166,12 +167,12 @@ local function isRainActive(): boolean
 		return false
 	end
 
-	local weatherType = WeatherServiceUtils.sanitizeWeatherType((weatherState :: any).weatherType, "Clear")
+	local weatherType = WeatherServiceUtils.CoerceWeatherType((weatherState :: any).weatherType, "Clear")
 	if weatherType ~= WeatherServiceUtils.WEATHER_TYPE_CLEAR then
 		return true
 	end
 
-	local rainIntensity = WeatherServiceUtils.sanitizeNumber((weatherState :: any).rainIntensity, 0, 0, 1)
+	local rainIntensity = WeatherServiceUtils.CoerceNumber((weatherState :: any).rainIntensity, 0, 0, 1)
 	return rainIntensity > 0.01
 end
 
@@ -179,7 +180,7 @@ local function isNightTime(clockTime: number): boolean
 	return clockTime >= NIGHT_CLOCK_START or clockTime <= NIGHT_CLOCK_END
 end
 
-local function resolveCharacterRootPart(character: Model?): BasePart?
+local function GetCharacterRootPart(character: Model?): BasePart?
 	if character == nil then
 		return nil
 	end
@@ -242,7 +243,7 @@ function AudioServiceClient.RefreshSoundtrackAssetIds(self: AudioServiceClient)
 	for soundtrackBiome, trackKeys in SOUNDTRACK_TRACK_KEYS_BY_BIOME do
 		local trackAssetIds: { string } = {}
 		for _, trackKey in trackKeys do
-			local soundAssetId = AudioServiceUtils.normalizeSoundAssetId((MUSIC_AUDIO :: any)[trackKey])
+			local soundAssetId = AudioServiceUtils.NormalizeSoundAssetId((MUSIC_AUDIO :: any)[trackKey])
 			if soundAssetId ~= nil then
 				table.insert(trackAssetIds, soundAssetId)
 			end
@@ -254,18 +255,18 @@ function AudioServiceClient.RefreshSoundtrackAssetIds(self: AudioServiceClient)
 	self.soundtrackShuffleBagByBiome = {}
 end
 
-function AudioServiceClient.ResolveBiomeTypeAtWorldPosition(_self: AudioServiceClient, worldPosition: Vector3): number
+function AudioServiceClient.GetBiomeTypeAtWorldPosition(_self: AudioServiceClient, worldPosition: Vector3): number
 	if typeof((WorldGenerationServiceClient :: any).state) ~= "table" then
 		return BIOME_TYPE_NORMAL
 	end
 
-	local worldState = WorldGenerationServiceClient:getState()
+	local worldState = WorldGenerationServiceClient:GetState()
 	if worldState.ready ~= true then
 		return BIOME_TYPE_NORMAL
 	end
 
 	local ok, biomeTypeOrError = pcall(function()
-		return WorldGenerationServiceClient:getBiomeTypeAtWorldPosition(worldPosition)
+		return WorldGenerationServiceClient:GetBiomeTypeAtWorldPosition(worldPosition)
 	end)
 	if not ok or typeof(biomeTypeOrError) ~= "number" then
 		return BIOME_TYPE_NORMAL
@@ -278,18 +279,18 @@ function AudioServiceClient.ResolveBiomeTypeAtWorldPosition(_self: AudioServiceC
 	return BIOME_TYPE_NORMAL
 end
 
-function AudioServiceClient.ResolveBiomeIdAtWorldPosition(_self: AudioServiceClient, worldPosition: Vector3): number
+function AudioServiceClient.GetBiomeIdAtWorldPosition(_self: AudioServiceClient, worldPosition: Vector3): number
 	if typeof((WorldGenerationServiceClient :: any).state) ~= "table" then
 		return BIOME_ID_FOREST
 	end
 
-	local worldState = WorldGenerationServiceClient:getState()
+	local worldState = WorldGenerationServiceClient:GetState()
 	if worldState.ready ~= true then
 		return BIOME_ID_FOREST
 	end
 
 	local ok, biomeIdOrError = pcall(function()
-		return WorldGenerationServiceClient:getBiomeIdAtWorldPosition(worldPosition)
+		return WorldGenerationServiceClient:GetBiomeIdAtWorldPosition(worldPosition)
 	end)
 	if not ok or typeof(biomeIdOrError) ~= "number" then
 		return BIOME_ID_FOREST
@@ -305,7 +306,7 @@ function AudioServiceClient.ResolveBiomeIdAtWorldPosition(_self: AudioServiceCli
 	return BIOME_ID_FOREST
 end
 
-function AudioServiceClient.ResolveSurfaceBiomeIdAtWorldPosition(
+function AudioServiceClient.GetSurfaceBiomeIdAtWorldPosition(
 	self: AudioServiceClient,
 	worldPosition: Vector3
 ): number
@@ -313,16 +314,16 @@ function AudioServiceClient.ResolveSurfaceBiomeIdAtWorldPosition(
 		return BIOME_ID_FOREST
 	end
 
-	local worldState = WorldGenerationServiceClient:getState()
+	local worldState = WorldGenerationServiceClient:GetState()
 	if worldState.ready ~= true then
 		return BIOME_ID_FOREST
 	end
 
 	local ok, biomeIdOrError = pcall(function()
-		return (WorldGenerationServiceClient :: any):getSurfaceBiomeIdAtWorldPosition(worldPosition)
+		return (WorldGenerationServiceClient :: any):GetSurfaceBiomeIdAtWorldPosition(worldPosition)
 	end)
 	if not ok or typeof(biomeIdOrError) ~= "number" then
-		return self:resolveBiomeIdAtWorldPosition(worldPosition)
+		return self:GetBiomeIdAtWorldPosition(worldPosition)
 	end
 
 	local biomeId = math.floor(biomeIdOrError)
@@ -335,18 +336,18 @@ function AudioServiceClient.ResolveSurfaceBiomeIdAtWorldPosition(
 	return BIOME_ID_FOREST
 end
 
-function AudioServiceClient.ResolveDepthLayerAtWorldPosition(_self: AudioServiceClient, worldPosition: Vector3): number?
+function AudioServiceClient.GetDepthLayerAtWorldPosition(_self: AudioServiceClient, worldPosition: Vector3): number?
 	if typeof((WorldGenerationServiceClient :: any).state) ~= "table" then
 		return nil
 	end
 
-	local worldState = WorldGenerationServiceClient:getState()
+	local worldState = WorldGenerationServiceClient:GetState()
 	if worldState.ready ~= true then
 		return nil
 	end
 
 	local ok, depthLayerOrError = pcall(function()
-		return (WorldGenerationServiceClient :: any):getDepthLayerAtWorldPosition(worldPosition)
+		return (WorldGenerationServiceClient :: any):GetDepthLayerAtWorldPosition(worldPosition)
 	end)
 	if not ok or typeof(depthLayerOrError) ~= "number" then
 		return nil
@@ -371,7 +372,7 @@ function AudioServiceClient.AttachBossStateListenerIfNeeded(self: AudioServiceCl
 
 	local connection = bossStateChanged:Connect(function()
 		self.soundtrackSampleAccumulator = SOUNDTRACK_BIOME_SAMPLE_INTERVAL
-		self:updateBiomeSoundtrack(SOUNDTRACK_BIOME_SAMPLE_INTERVAL)
+		self:UpdateBiomeSoundtrack(SOUNDTRACK_BIOME_SAMPLE_INTERVAL)
 	end)
 	self.bossStateChangedConnection = connection
 	self.janitor:GiveChore(connection)
@@ -379,7 +380,7 @@ function AudioServiceClient.AttachBossStateListenerIfNeeded(self: AudioServiceCl
 	self.soundtrackSampleAccumulator = SOUNDTRACK_BIOME_SAMPLE_INTERVAL
 end
 
-function AudioServiceClient.ResolveBossSoundtrackBiome(_self: AudioServiceClient): string?
+function AudioServiceClient.GetBossSoundtrackBiome(_self: AudioServiceClient): string?
 	local bossState = (BossServiceClient :: any).state
 	if typeof(bossState) ~= "table" then
 		return nil
@@ -410,8 +411,8 @@ function AudioServiceClient.ResolveBossSoundtrackBiome(_self: AudioServiceClient
 	return nil
 end
 
-function AudioServiceClient.ResolveSoundtrackBiomeForLocalPlayer(self: AudioServiceClient): string?
-	local bossSoundtrackBiome = self:resolveBossSoundtrackBiome()
+function AudioServiceClient.GetSoundtrackBiomeForLocalPlayer(self: AudioServiceClient): string?
+	local bossSoundtrackBiome = self:GetBossSoundtrackBiome()
 	if bossSoundtrackBiome ~= nil then
 		return bossSoundtrackBiome
 	end
@@ -421,32 +422,32 @@ function AudioServiceClient.ResolveSoundtrackBiomeForLocalPlayer(self: AudioServ
 		return nil
 	end
 
-	local rootPart = resolveCharacterRootPart(character)
+	local rootPart = GetCharacterRootPart(character)
 	if rootPart == nil then
 		return nil
 	end
 	local worldPosition = rootPart.Position
 	if typeof((WorldGenerationServiceClient :: any).state) == "table" then
 		local okWorldState, worldState = pcall(function()
-			return WorldGenerationServiceClient:getState()
+			return WorldGenerationServiceClient:GetState()
 		end)
 		if
 			okWorldState
-			and SpaceShared.isInSpaceAtWorldPosition(
+			and SpaceShared.IsInSpaceAtWorldPosition(
 				worldPosition,
 				worldState,
 				(WorldGenerationServiceClient :: any).worldOrigin
 			)
-			and self:hasSoundtrackTracks(SPACE_SOUNDTRACK_BIOME)
+			and self:HasSoundtrackTracks(SPACE_SOUNDTRACK_BIOME)
 		then
 			return SPACE_SOUNDTRACK_BIOME
 		end
 	end
 
-	local biomeType = self:resolveBiomeTypeAtWorldPosition(worldPosition)
-	local biomeId = self:resolveBiomeIdAtWorldPosition(worldPosition)
-	local surfaceBiomeId = self:resolveSurfaceBiomeIdAtWorldPosition(worldPosition)
-	local depthLayer = self:resolveDepthLayerAtWorldPosition(worldPosition)
+	local biomeType = self:GetBiomeTypeAtWorldPosition(worldPosition)
+	local biomeId = self:GetBiomeIdAtWorldPosition(worldPosition)
+	local surfaceBiomeId = self:GetSurfaceBiomeIdAtWorldPosition(worldPosition)
+	local depthLayer = self:GetDepthLayerAtWorldPosition(worldPosition)
 	if depthLayer == DEPTH_LAYER_CAVERN or depthLayer == DEPTH_LAYER_DEEP then
 		if biomeType == BIOME_TYPE_CORRUPTION then
 			return UNDERGROUND_CORRUPTION_SOUNDTRACK_BIOME
@@ -531,13 +532,13 @@ function AudioServiceClient.PlayNextSoundtrackTrack(self: AudioServiceClient, pl
 		return
 	end
 
-	local nextTrackAssetId = self:getNextTrackForSoundtrackBiome(soundtrackBiome)
+	local nextTrackAssetId = self:GetNextTrackForSoundtrackBiome(soundtrackBiome)
 	if nextTrackAssetId == nil then
 		error(MISSING_ASSET_ERROR, 0)
 	end
 	local shouldLoop = SOUNDTRACK_LOOPED_BY_BIOME[soundtrackBiome] == true
 
-	local playingSound = self:playSound(nextTrackAssetId, {
+	local playingSound = self:PlaySound(nextTrackAssetId, {
 		category = "Music",
 		channel = SOUNDTRACK_CHANNEL_NAME,
 		looped = shouldLoop,
@@ -547,13 +548,13 @@ function AudioServiceClient.PlayNextSoundtrackTrack(self: AudioServiceClient, pl
 	}, "Music")
 	if playingSound == nil then
 		task.delay(SOUNDTRACK_TRACK_GAP_SECONDS, function()
-			self:playNextSoundtrackTrack(playbackToken)
+			self:PlayNextSoundtrackTrack(playbackToken)
 		end)
 		return
 	end
 
 	self.soundtrackActiveTrack = playingSound
-	self:clearActiveSoundtrackConnections()
+	self:ClearActiveSoundtrackConnections()
 	if shouldLoop then
 		return
 	end
@@ -564,7 +565,7 @@ function AudioServiceClient.PlayNextSoundtrackTrack(self: AudioServiceClient, pl
 			return
 		end
 		handled = true
-		self:clearActiveSoundtrackConnections()
+		self:ClearActiveSoundtrackConnections()
 		if self.soundtrackActiveTrack == playingSound then
 			self.soundtrackActiveTrack = nil
 		end
@@ -572,7 +573,7 @@ function AudioServiceClient.PlayNextSoundtrackTrack(self: AudioServiceClient, pl
 			return
 		end
 		task.delay(SOUNDTRACK_TRACK_GAP_SECONDS, function()
-			self:playNextSoundtrackTrack(playbackToken)
+			self:PlayNextSoundtrackTrack(playbackToken)
 		end)
 	end
 
@@ -602,22 +603,22 @@ function AudioServiceClient.SetSoundtrackBiome(self: AudioServiceClient, soundtr
 
 	self.soundtrackCurrentBiome = soundtrackBiome
 	self.soundtrackPlaybackToken += 1
-	self:playNextSoundtrackTrack(self.soundtrackPlaybackToken)
+	self:PlayNextSoundtrackTrack(self.soundtrackPlaybackToken)
 end
 
 function AudioServiceClient.UpdateBiomeSoundtrack(self: AudioServiceClient, deltaTime: number)
-	self:attachBossStateListenerIfNeeded()
+	self:AttachBossStateListenerIfNeeded()
 	self.soundtrackSampleAccumulator += deltaTime
 	if self.soundtrackSampleAccumulator < SOUNDTRACK_BIOME_SAMPLE_INTERVAL then
 		return
 	end
 	self.soundtrackSampleAccumulator = 0
 
-	local soundtrackBiome = self:resolveSoundtrackBiomeForLocalPlayer()
+	local soundtrackBiome = self:GetSoundtrackBiomeForLocalPlayer()
 	if soundtrackBiome == nil then
 		return
 	end
-	self:setSoundtrackBiome(soundtrackBiome)
+	self:SetSoundtrackBiome(soundtrackBiome)
 end
 
 function AudioServiceClient.Init(self: AudioServiceClient)
@@ -628,9 +629,9 @@ function AudioServiceClient.Init(self: AudioServiceClient)
 	bindPackets(self)
 	self.janitor = Janitor.new()
 	self.characterSoundJanitor = Janitor.new()
-	self.state = AudioServiceUtils.createDefaultState()
-	self.runtimeFolder = AudioServiceUtils.ensureRuntimeFolder(RobloxSoundService)
-	self.categoryGroups = AudioServiceUtils.ensureCategoryGroups(RobloxSoundService)
+	self.state = AudioServiceUtils.CreateDefaultState()
+	self.runtimeFolder = AudioServiceUtils.EnsureRuntimeFolder(RobloxSoundService)
+	self.categoryGroups = AudioServiceUtils.EnsureCategoryGroups(RobloxSoundService)
 	self.channelSounds = {}
 	self.random = Random.new()
 	self.soundtrackAssetIdsByBiome = {}
@@ -643,27 +644,27 @@ function AudioServiceClient.Init(self: AudioServiceClient)
 	self.soundtrackSampleAccumulator = SOUNDTRACK_BIOME_SAMPLE_INTERVAL
 	self.bossStateChangedConnection = nil
 
-	self.binders = NevermoreSupport.getService(ClientBinderSupport)
-	AudioServiceUtils.applyStateToCategoryGroups(self.state, self.categoryGroups)
+	self.binders = NevermoreSupport.GetService(BinderSupportClient)
+	AudioServiceUtils.ApplyStateToCategoryGroups(self.state, self.categoryGroups)
 	disableDefaultCharacterSoundSystem(self.localPlayer, self.localPlayer.Character)
-	self:refreshSoundtrackAssetIds()
+	self:RefreshSoundtrackAssetIds()
 
 	self.janitor:GiveChore(self.characterSoundJanitor)
 	self.janitor:GiveChore(self.localPlayer.CharacterAdded:Connect(function(character: Model)
-		self:onCharacterAdded(character)
+		self:OnCharacterAdded(character)
 		self.soundtrackSampleAccumulator = SOUNDTRACK_BIOME_SAMPLE_INTERVAL
 	end))
 	self.janitor:GiveChore(RunService.Heartbeat:Connect(function(deltaTime: number)
-		self:updateBiomeSoundtrack(deltaTime)
+		self:UpdateBiomeSoundtrack(deltaTime)
 	end))
 
 	self.janitor:GiveChore(function()
-		self:clearActiveSoundtrackConnections()
-		self:stopAll(0)
+		self:ClearActiveSoundtrackConnections()
+		self:StopAll(0)
 	end)
 
 	if self.localPlayer.Character then
-		self:onCharacterAdded(self.localPlayer.Character)
+		self:OnCharacterAdded(self.localPlayer.Character)
 	end
 
 	sendPacket("requestSync")
@@ -692,21 +693,21 @@ function AudioServiceClient.ApplyState(
 	mutedRaw: any,
 	categoryVolumesRaw: any
 )
-	self.state = AudioServiceUtils.createState(masterVolumeRaw, mutedRaw, categoryVolumesRaw, self.state)
-	AudioServiceUtils.applyStateToCategoryGroups(self.state, self.categoryGroups)
+	self.state = AudioServiceUtils.CreateState(masterVolumeRaw, mutedRaw, categoryVolumesRaw, self.state)
+	AudioServiceUtils.ApplyStateToCategoryGroups(self.state, self.categoryGroups)
 end
 
 function AudioServiceClient.SetMasterVolume(self: AudioServiceClient, masterVolumeRaw: any, replicateToServer: boolean?)
-	self.state = AudioServiceUtils.withMasterVolume(self.state, masterVolumeRaw)
-	AudioServiceUtils.applyStateToCategoryGroups(self.state, self.categoryGroups)
+	self.state = AudioServiceUtils.WithMasterVolume(self.state, masterVolumeRaw)
+	AudioServiceUtils.ApplyStateToCategoryGroups(self.state, self.categoryGroups)
 	if replicateToServer ~= false then
 		sendPacket("setMasterVolume", self.state.masterVolume)
 	end
 end
 
 function AudioServiceClient.SetMuted(self: AudioServiceClient, mutedRaw: any, replicateToServer: boolean?)
-	self.state = AudioServiceUtils.withMuted(self.state, mutedRaw)
-	AudioServiceUtils.applyStateToCategoryGroups(self.state, self.categoryGroups)
+	self.state = AudioServiceUtils.WithMuted(self.state, mutedRaw)
+	AudioServiceUtils.ApplyStateToCategoryGroups(self.state, self.categoryGroups)
 	if replicateToServer ~= false then
 		sendPacket("setMuted", self.state.muted)
 	end
@@ -718,10 +719,10 @@ function AudioServiceClient.SetCategoryVolume(
 	volumeRaw: any,
 	replicateToServer: boolean?
 )
-	self.state = AudioServiceUtils.withCategoryVolume(self.state, categoryRaw, volumeRaw)
-	AudioServiceUtils.applyStateToCategoryGroups(self.state, self.categoryGroups)
+	self.state = AudioServiceUtils.WithCategoryVolume(self.state, categoryRaw, volumeRaw)
+	AudioServiceUtils.ApplyStateToCategoryGroups(self.state, self.categoryGroups)
 	if replicateToServer ~= false then
-		local category = AudioServiceUtils.normalizeCategoryOrNil(categoryRaw)
+		local category = AudioServiceUtils.NormalizeCategoryOrNil(categoryRaw)
 		if category then
 			sendPacket("setCategoryVolume", category, volumeRaw)
 		end
@@ -729,10 +730,10 @@ function AudioServiceClient.SetCategoryVolume(
 end
 
 function AudioServiceClient.ToggleMute(self: AudioServiceClient, replicateToServer: boolean?)
-	self:setMuted(not self.state.muted, replicateToServer)
+	self:SetMuted(not self.state.muted, replicateToServer)
 end
 
-function AudioServiceClient.RequestSync(self: AudioServiceClient)
+function AudioServiceClient.RequestSync(_self: AudioServiceClient)
 	sendPacket("requestSync")
 end
 
@@ -743,19 +744,19 @@ function AudioServiceClient.PlaySound(
 	fallbackCategory: SoundCategory?
 ): Sound?
 	local soundAssetId, options =
-		AudioServiceUtils.resolvePlaybackRequest(soundAssetIdRaw, optionsRaw, fallbackCategory)
+		AudioServiceUtils.GetPlaybackRequest(soundAssetIdRaw, optionsRaw, fallbackCategory)
 	if soundAssetId == nil then
 		error(MISSING_ASSET_ERROR, 0)
 	end
 
 	if self.runtimeFolder == nil then
-		self.runtimeFolder = AudioServiceUtils.ensureRuntimeFolder(RobloxSoundService)
+		self.runtimeFolder = AudioServiceUtils.EnsureRuntimeFolder(RobloxSoundService)
 	end
 	if self.categoryGroups == nil then
-		self.categoryGroups = AudioServiceUtils.ensureCategoryGroups(RobloxSoundService)
-		local state = self.state or AudioServiceUtils.createDefaultState()
+		self.categoryGroups = AudioServiceUtils.EnsureCategoryGroups(RobloxSoundService)
+		local state = self.state or AudioServiceUtils.CreateDefaultState()
 		self.state = state
-		AudioServiceUtils.applyStateToCategoryGroups(state, self.categoryGroups)
+		AudioServiceUtils.ApplyStateToCategoryGroups(state, self.categoryGroups)
 	end
 	if self.channelSounds == nil then
 		self.channelSounds = {}
@@ -766,10 +767,10 @@ function AudioServiceClient.PlaySound(
 
 	local shouldReplaceChannel = if options.replaceChannel == nil then true else options.replaceChannel
 	if options.channel and shouldReplaceChannel then
-		self:stopChannel(options.channel, options.fadeOutTime)
+		self:StopChannel(options.channel, options.fadeOutTime)
 	end
 
-	local sound = AudioServiceUtils.createSoundInstance(soundAssetId, options, self.runtimeFolder, categoryGroup)
+	local sound = AudioServiceUtils.CreateSoundInstance(soundAssetId, options, self.runtimeFolder, categoryGroup)
 	if not sound then
 		return nil
 	end
@@ -795,7 +796,7 @@ function AudioServiceClient.PlaySound(
 	if fadeInTime and fadeInTime > 0 then
 		local targetVolume: number = if options.volume ~= nil then options.volume else sound.Volume
 		sound.Volume = 0
-		AudioServiceUtils.fadeSoundVolume(sound, targetVolume, fadeInTime)
+		AudioServiceUtils.FadeSoundVolume(sound, targetVolume, fadeInTime)
 	end
 
 	local shouldAutoDestroy = if options.autoDestroy == nil then not sound.Looped else options.autoDestroy
@@ -817,15 +818,15 @@ function AudioServiceClient.PlaySound(
 end
 
 function AudioServiceClient.PlaySfx(self: AudioServiceClient, soundAssetIdRaw: any, optionsRaw: any): Sound?
-	return self:playSound(soundAssetIdRaw, optionsRaw, "SFX")
+	return self:PlaySound(soundAssetIdRaw, optionsRaw, "SFX")
 end
 
 function AudioServiceClient.PlayUi(self: AudioServiceClient, soundAssetIdRaw: any, optionsRaw: any): Sound?
-	return self:playSound(soundAssetIdRaw, optionsRaw, "UI")
+	return self:PlaySound(soundAssetIdRaw, optionsRaw, "UI")
 end
 
 function AudioServiceClient.PlayMusic(self: AudioServiceClient, soundAssetIdRaw: any, optionsRaw: any): Sound?
-	local options = AudioServiceUtils.sanitizePlaybackOptions(optionsRaw, "Music")
+	local options = AudioServiceUtils.CoercePlaybackOptions(optionsRaw, "Music")
 	if options.channel == nil then
 		options.channel = "music"
 	end
@@ -836,7 +837,7 @@ function AudioServiceClient.PlayMusic(self: AudioServiceClient, soundAssetIdRaw:
 	if options.fadeInTime == nil or options.fadeInTime <= 0 then
 		options.fadeInTime = 0.2
 	end
-	return self:playSound(soundAssetIdRaw, options, "Music")
+	return self:PlaySound(soundAssetIdRaw, options, "Music")
 end
 
 function AudioServiceClient.StopChannel(self: AudioServiceClient, channelNameRaw: any, fadeTimeRaw: any)
@@ -851,7 +852,7 @@ function AudioServiceClient.StopChannel(self: AudioServiceClient, channelNameRaw
 	end
 
 	channelSounds[channelNameRaw] = nil
-	AudioServiceUtils.stopAndDestroySound(sound, fadeTimeRaw)
+	AudioServiceUtils.StopAndDestroySound(sound, fadeTimeRaw)
 end
 
 function AudioServiceClient.StopAll(self: AudioServiceClient, fadeTimeRaw: any)
@@ -861,7 +862,7 @@ function AudioServiceClient.StopAll(self: AudioServiceClient, fadeTimeRaw: any)
 	end
 
 	for _, channelName in channels do
-		self:stopChannel(channelName, fadeTimeRaw)
+		self:StopChannel(channelName, fadeTimeRaw)
 	end
 end
 
@@ -872,51 +873,22 @@ function AudioServiceClient.Destroy(self: AudioServiceClient)
 	end
 end
 
-AudioServiceClient.refreshSoundtrackAssetIds = AudioServiceClient.RefreshSoundtrackAssetIds
-AudioServiceClient.resolveBiomeTypeAtWorldPosition = AudioServiceClient.ResolveBiomeTypeAtWorldPosition
-AudioServiceClient.resolveBiomeIdAtWorldPosition = AudioServiceClient.ResolveBiomeIdAtWorldPosition
-AudioServiceClient.resolveSurfaceBiomeIdAtWorldPosition = AudioServiceClient.ResolveSurfaceBiomeIdAtWorldPosition
-AudioServiceClient.resolveDepthLayerAtWorldPosition = AudioServiceClient.ResolveDepthLayerAtWorldPosition
-AudioServiceClient.hasSoundtrackTracks = AudioServiceClient.HasSoundtrackTracks
-AudioServiceClient.attachBossStateListenerIfNeeded = AudioServiceClient.AttachBossStateListenerIfNeeded
-AudioServiceClient.resolveBossSoundtrackBiome = AudioServiceClient.ResolveBossSoundtrackBiome
-AudioServiceClient.resolveSoundtrackBiomeForLocalPlayer = AudioServiceClient.ResolveSoundtrackBiomeForLocalPlayer
-AudioServiceClient.getNextTrackForSoundtrackBiome = AudioServiceClient.GetNextTrackForSoundtrackBiome
-AudioServiceClient.clearActiveSoundtrackConnections = AudioServiceClient.ClearActiveSoundtrackConnections
-AudioServiceClient.playNextSoundtrackTrack = AudioServiceClient.PlayNextSoundtrackTrack
-AudioServiceClient.setSoundtrackBiome = AudioServiceClient.SetSoundtrackBiome
-AudioServiceClient.updateBiomeSoundtrack = AudioServiceClient.UpdateBiomeSoundtrack
-AudioServiceClient.init = AudioServiceClient.Init
-AudioServiceClient.onCharacterAdded = AudioServiceClient.OnCharacterAdded
-AudioServiceClient.applyState = AudioServiceClient.ApplyState
-AudioServiceClient.setMasterVolume = AudioServiceClient.SetMasterVolume
-AudioServiceClient.setMuted = AudioServiceClient.SetMuted
-AudioServiceClient.setCategoryVolume = AudioServiceClient.SetCategoryVolume
-AudioServiceClient.toggleMute = AudioServiceClient.ToggleMute
-AudioServiceClient.requestSync = AudioServiceClient.RequestSync
-AudioServiceClient.playSound = AudioServiceClient.PlaySound
-AudioServiceClient.playSfx = AudioServiceClient.PlaySfx
-AudioServiceClient.playUi = AudioServiceClient.PlayUi
-AudioServiceClient.playMusic = AudioServiceClient.PlayMusic
-AudioServiceClient.stopChannel = AudioServiceClient.StopChannel
-AudioServiceClient.stopAll = AudioServiceClient.StopAll
-AudioServiceClient.destroy = AudioServiceClient.Destroy
 
 type AudioServiceClient = typeof(AudioServiceClient) & {
-	refreshSoundtrackAssetIds: (self: AudioServiceClient) -> (),
-	resolveBiomeTypeAtWorldPosition: (self: AudioServiceClient, worldPosition: Vector3) -> number,
-	resolveBiomeIdAtWorldPosition: (self: AudioServiceClient, worldPosition: Vector3) -> number,
-	resolveSurfaceBiomeIdAtWorldPosition: (self: AudioServiceClient, worldPosition: Vector3) -> number,
-	resolveDepthLayerAtWorldPosition: (self: AudioServiceClient, worldPosition: Vector3) -> number?,
-	hasSoundtrackTracks: (self: AudioServiceClient, soundtrackBiome: string) -> boolean,
-	attachBossStateListenerIfNeeded: (self: AudioServiceClient) -> (),
-	resolveBossSoundtrackBiome: (self: AudioServiceClient) -> string?,
-	resolveSoundtrackBiomeForLocalPlayer: (self: AudioServiceClient) -> string?,
-	getNextTrackForSoundtrackBiome: (self: AudioServiceClient, soundtrackBiome: string) -> string?,
-	clearActiveSoundtrackConnections: (self: AudioServiceClient) -> (),
-	playNextSoundtrackTrack: (self: AudioServiceClient, playbackToken: number) -> (),
-	setSoundtrackBiome: (self: AudioServiceClient, soundtrackBiomeRaw: any) -> (),
-	updateBiomeSoundtrack: (self: AudioServiceClient, deltaTime: number) -> (),
+	RefreshSoundtrackAssetIds: (self: AudioServiceClient) -> (),
+	GetBiomeTypeAtWorldPosition: (self: AudioServiceClient, worldPosition: Vector3) -> number,
+	GetBiomeIdAtWorldPosition: (self: AudioServiceClient, worldPosition: Vector3) -> number,
+	GetSurfaceBiomeIdAtWorldPosition: (self: AudioServiceClient, worldPosition: Vector3) -> number,
+	GetDepthLayerAtWorldPosition: (self: AudioServiceClient, worldPosition: Vector3) -> number?,
+	HasSoundtrackTracks: (self: AudioServiceClient, soundtrackBiome: string) -> boolean,
+	AttachBossStateListenerIfNeeded: (self: AudioServiceClient) -> (),
+	GetBossSoundtrackBiome: (self: AudioServiceClient) -> string?,
+	GetSoundtrackBiomeForLocalPlayer: (self: AudioServiceClient) -> string?,
+	GetNextTrackForSoundtrackBiome: (self: AudioServiceClient, soundtrackBiome: string) -> string?,
+	ClearActiveSoundtrackConnections: (self: AudioServiceClient) -> (),
+	PlayNextSoundtrackTrack: (self: AudioServiceClient, playbackToken: number) -> (),
+	SetSoundtrackBiome: (self: AudioServiceClient, soundtrackBiomeRaw: any) -> (),
+	UpdateBiomeSoundtrack: (self: AudioServiceClient, deltaTime: number) -> (),
 	localPlayer: Player,
 	janitor: any,
 	characterSoundJanitor: JanitorClass,

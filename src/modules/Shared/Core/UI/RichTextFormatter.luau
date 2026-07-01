@@ -84,7 +84,7 @@ local function colorToHex(color: Color3): string
 	return string.format("#%02X%02X%02X", r, g, b)
 end
 
-local function resolveColor(colorRaw: any): string?
+local function GetColor(colorRaw: any): string?
 	local kind = typeof(colorRaw)
 	if kind == "Color3" then
 		return colorToHex(colorRaw)
@@ -105,7 +105,7 @@ local function resolveColor(colorRaw: any): string?
 end
 
 local function interpolateColor(a: Color3, b: Color3, t: number): Color3
-	return Lerp.color3(a, b, t)
+	return Lerp.Color3(a, b, t)
 end
 
 local function cachePut(key: string, value: string)
@@ -178,7 +178,7 @@ end
 
 function Builder.Line(self: Builder, textRaw: any?): Builder
 	if textRaw ~= nil then
-		self:append(textRaw)
+		self:Append(textRaw)
 	end
 	return self:_append("\n")
 end
@@ -206,15 +206,15 @@ function Builder.Size(self: Builder, sizeRaw: any, textRaw: any): Builder
 end
 
 function Builder.Color(self: Builder, colorRaw: any, textRaw: any): Builder
-	local colorHex = resolveColor(colorRaw)
+	local colorHex = GetColor(colorRaw)
 	if colorHex == nil then
-		return self:append(textRaw)
+		return self:Append(textRaw)
 	end
 	return self:_append(RichTextFormatter.WrapTag("font", textRaw, { color = colorHex }))
 end
 
 function Builder.Preset(self: Builder, presetRaw: any, textRaw: any): Builder
-	return self:color(presetRaw, textRaw)
+	return self:Color(presetRaw, textRaw)
 end
 
 function Builder.Gradient(self: Builder, fromRaw: any, toRaw: any, textRaw: any): Builder
@@ -226,7 +226,7 @@ function Builder.Gradient(self: Builder, fromRaw: any, toRaw: any, textRaw: any)
 	local toColor = if typeof(toRaw) == "Color3" then toRaw else fromColor
 	local charCount = utf8.len(text) or #text
 	if charCount <= 1 then
-		return self:color(fromColor, text)
+		return self:Color(fromColor, text)
 	end
 	local charIndex = 0
 	for char in string.gmatch(text, utf8.charpattern) do
@@ -293,26 +293,4 @@ function RichTextFormatter.ClearCache()
 	table.clear(globalCache.values)
 	clearArray(globalCache.order)
 end
-
-RichTextFormatter.escape = RichTextFormatter.Escape
-RichTextFormatter.wrapTag = RichTextFormatter.WrapTag
-RichTextFormatter.new = RichTextFormatter.New
-Builder.append = Builder.Append
-Builder.raw = Builder.Raw
-Builder.line = Builder.Line
-Builder.bold = Builder.Bold
-Builder.italic = Builder.Italic
-Builder.underline = Builder.Underline
-Builder.font = Builder.Font
-Builder.size = Builder.Size
-Builder.color = Builder.Color
-Builder.preset = Builder.Preset
-Builder.gradient = Builder.Gradient
-Builder.toString = Builder.ToString
-Builder.clear = Builder.Clear
-RichTextFormatter.formatCached = RichTextFormatter.FormatCached
-RichTextFormatter.setColorPreset = RichTextFormatter.SetColorPreset
-RichTextFormatter.getColorPreset = RichTextFormatter.GetColorPreset
-RichTextFormatter.clearCache = RichTextFormatter.ClearCache
-
 return RichTextFormatter

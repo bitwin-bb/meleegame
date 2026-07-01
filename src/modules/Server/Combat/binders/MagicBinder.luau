@@ -29,7 +29,7 @@ local TOOL_ATTRIBUTE_NAMES = {
 
 function MagicBinder.new(instance: Instance, context: any)
 	local self = ModelBinder.new(instance, context, MagicBinder)
-	self.tool = ToolBinder.resolveTool(instance)
+	self.tool = ToolBinder.GetTool(instance)
 	if self.tool == nil then
 		return self
 	end
@@ -52,13 +52,13 @@ function MagicBinder.refresh(self: any)
 		return
 	end
 
-	local resolution = ToolBinder.resolve(self.tool)
+	local resolution = ToolBinder.Get(self.tool)
 	self.tool:SetAttribute("ToolBinderItemId", resolution.itemId)
 	self.tool:SetAttribute("ToolBinderItemType", resolution.itemType)
 	self.tool:SetAttribute("ToolBinderMagic", resolution.isMagic)
 
 	if resolution.ownerPlayer ~= nil then
-		getMagicServiceServer():requestRefreshEquipped(resolution.ownerPlayer)
+		getMagicServiceServer():RequestRefreshEquipped(resolution.ownerPlayer)
 	end
 end
 

@@ -40,7 +40,4 @@ function WorldStateViewer.ToString(worldState: any): string
 end
 
 WorldStateViewer.copy = Table.copy
-WorldStateViewer.toLines = WorldStateViewer.ToLines
-WorldStateViewer.toString = WorldStateViewer.ToString
-
 return WorldStateViewer

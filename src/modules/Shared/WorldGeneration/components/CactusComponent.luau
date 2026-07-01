@@ -33,12 +33,4 @@ end
 function Cactus.CreateWeld(config: WeldConfig): WeldConstraint
 	return Tile.CreateWeldConstraint(config)
 end
-
-Cactus.createSegmentPart = Cactus.CreateSegmentPart
-Cactus.createDetailPart = Cactus.CreateDetailPart
-Cactus.createAnchorPart = Cactus.CreateAnchorPart
-Cactus.createModel = Cactus.CreateModel
-Cactus.createFolder = Cactus.CreateFolder
-Cactus.createWeld = Cactus.CreateWeld
-
 return Cactus

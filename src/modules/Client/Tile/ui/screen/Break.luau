@@ -17,10 +17,10 @@ type ShinySpeckState = tileSlice.ShinySpeckState
 local e: typeof(React.createElement) = React.createElement
 
 return function(): React.ReactNode
-	local state = (useStore(tileSlice.breakStateAtom) :: BreakState?) or tileSlice.getBreakState()
+	local state = (useStore(tileSlice.breakStateAtom) :: BreakState?) or tileSlice.GetBreakState()
 	local shinySpecks = (useStore(tileSlice.shinySpecksAtom) :: { [string]: ShinySpeckState }?)
-		or tileSlice.getShinySpecks()
-	local portalTarget = PortalTargets.resolveUiScreenGui()
+		or tileSlice.GetShinySpecks()
+	local portalTarget = PortalTargets.GetUiScreenGui()
 
 	if portalTarget == nil then
 		return nil

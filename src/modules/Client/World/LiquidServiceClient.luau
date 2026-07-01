@@ -11,14 +11,14 @@ local RunService = game:GetService("RunService")
 local AudioRegistry = require("Audio")
 local AudioServiceClient = require("AudioServiceClient")
 local AudioServiceUtils = require("AudioServiceUtils")
-local ClientBinderSupport = require("ClientBinderSupport")
+local BinderSupportClient = require("BinderSupportClient")
 local Configs = require(script:FindFirstAncestor("game").Shared:WaitForChild("QueenBeeConfigs"))
 local CoreRuntime = require("CoreRuntime")
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Lerp = require("Lerp")
 local LiquidServiceUtils = require("LiquidServiceUtils")
 local PacketPayload = require("PacketPayload")
-local LiquidServicePackets = require("NetSharedPackets").LiquidService
+local LiquidServicePackets = require("NetPacketsShared").LiquidService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = LiquidServicePackets[methodName]
@@ -27,7 +27,7 @@ local function sendPacket(methodName: string, ...: any)
 		return
 	end
 
-	packet.send(PacketPayload.pack(...))
+	packet.send(PacketPayload.Pack(...))
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -37,13 +37,14 @@ local function bindPacket(self: any, methodName: string)
 		return
 	end
 
+	local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
 	packet.listen(function(payload: any)
-		local handler = self[methodName]
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, table.unpack(arguments, 1, count))
 	end)
 end
@@ -150,7 +151,7 @@ local function isFiniteNumber(value: any): boolean
 end
 
 local function lerpColor(a: Color3, b: Color3, alpha: number): Color3
-	return Lerp.color3(a, b, alpha)
+	return Lerp.Color3(a, b, alpha)
 end
 
 local function darkenColor(color: Color3, amountRaw: any): Color3
@@ -159,9 +160,9 @@ local function darkenColor(color: Color3, amountRaw: any): Color3
 	return Color3.new(color.R * scale, color.G * scale, color.B * scale)
 end
 
-local function sanitizeSourceConfig(): LiquidServiceConfig
+local function CoerceSourceConfig(): LiquidServiceConfig
 	local source = if typeof(Configs) == "table" then (Configs :: any).liquid else nil
-	return LiquidServiceUtils.sanitizeConfig(source, nil)
+	return LiquidServiceUtils.CoerceConfig(source, nil)
 end
 
 function LiquidServiceClient.CreateChunkSnapshot(self: LiquidServiceClient, snapshotRaw: any): ClientChunkSnapshot?
@@ -229,7 +230,7 @@ function LiquidServiceClient.GetChunkVisual(self: LiquidServiceClient, chunkKey:
 	if visual ~= nil then
 		return visual
 	end
-	visual = self:createChunkVisual(chunkKey)
+	visual = self:CreateChunkVisual(chunkKey)
 	self.chunkVisuals[chunkKey] = visual
 	return visual
 end
@@ -259,7 +260,7 @@ function LiquidServiceClient.GetWorldChunkSnapshot(self: LiquidServiceClient, ch
 end
 
 function LiquidServiceClient.IsChunkVisualRelevant(self: LiquidServiceClient, chunkKey: string): boolean
-	if typeof(self:getWorldChunkSnapshot(chunkKey)) ~= "table" then
+	if typeof(self:GetWorldChunkSnapshot(chunkKey)) ~= "table" then
 		return false
 	end
 
@@ -320,19 +321,19 @@ function LiquidServiceClient.MarkAllRowsDirtyForChunk(self: LiquidServiceClient,
 	for rowY = 0, snapshot.height - 1 do
 		allRows[#allRows + 1] = rowY
 	end
-	self:markRowsDirty(chunkKey, allRows)
+	self:MarkRowsDirty(chunkKey, allRows)
 end
 
 function LiquidServiceClient.MarkAllChunksDirty(self: LiquidServiceClient)
 	for chunkKey in self.chunkSnapshots do
-		self:markAllRowsDirtyForChunk(chunkKey)
+		self:MarkAllRowsDirtyForChunk(chunkKey)
 	end
 end
 
 function LiquidServiceClient.ComputeWorldDependencySignature(self: LiquidServiceClient, chunkKey: string): string
-	local basePlaneX = math.round(self:getBasePlaneX() * 1000) / 1000
-	local tileDepth = math.round(self:getTileDepth() * 1000) / 1000
-	local worldSnapshot = self:getWorldChunkSnapshot(chunkKey)
+	local basePlaneX = math.round(self:GetBasePlaneX() * 1000) / 1000
+	local tileDepth = math.round(self:GetTileDepth() * 1000) / 1000
+	local worldSnapshot = self:GetWorldChunkSnapshot(chunkKey)
 	if typeof(worldSnapshot) ~= "table" then
 		return `missing:{basePlaneX}:{tileDepth}`
 	end
@@ -347,30 +348,30 @@ end
 
 function LiquidServiceClient.SyncWorldChunkDependencies(self: LiquidServiceClient)
 	for chunkKey in self.chunkSnapshots do
-		local isRelevant = self:isChunkVisualRelevant(chunkKey)
+		local isRelevant = self:IsChunkVisualRelevant(chunkKey)
 		local wasRelevant = self.liquidVisualRelevanceByChunk[chunkKey] == true
 		if isRelevant ~= wasRelevant then
 			if isRelevant then
 				self.liquidVisualRelevanceByChunk[chunkKey] = true
-				self.worldDependencySignatureByChunk[chunkKey] = self:computeWorldDependencySignature(chunkKey)
-				self:markAllRowsDirtyForChunk(chunkKey)
+				self.worldDependencySignatureByChunk[chunkKey] = self:ComputeWorldDependencySignature(chunkKey)
+				self:MarkAllRowsDirtyForChunk(chunkKey)
 			else
 				self.liquidVisualRelevanceByChunk[chunkKey] = nil
 				self.worldDependencySignatureByChunk[chunkKey] = nil
-				self:clearQueuedRowsForChunk(chunkKey)
-				self:destroyChunkVisual(chunkKey)
+				self:ClearQueuedRowsForChunk(chunkKey)
+				self:DestroyChunkVisual(chunkKey)
 			end
 			continue
 		end
 		if not isRelevant then
 			continue
 		end
-		local signature = self:computeWorldDependencySignature(chunkKey)
+		local signature = self:ComputeWorldDependencySignature(chunkKey)
 		if self.worldDependencySignatureByChunk[chunkKey] == signature then
 			continue
 		end
 		self.worldDependencySignatureByChunk[chunkKey] = signature
-		self:markAllRowsDirtyForChunk(chunkKey)
+		self:MarkAllRowsDirtyForChunk(chunkKey)
 	end
 	local staleChunkKeys = {} :: { string }
 	for chunkKey in self.worldDependencySignatureByChunk do
@@ -388,13 +389,13 @@ end
 function LiquidServiceClient.UpdateChunkVisualDebug(self: LiquidServiceClient, chunkKey: string, extraRaw: any?)
 	local chunkVisual = self.chunkVisuals[chunkKey]
 	if chunkVisual == nil then
-		if not self:isChunkVisualRelevant(chunkKey) then
+		if not self:IsChunkVisualRelevant(chunkKey) then
 			return
 		end
-		chunkVisual = self:getChunkVisual(chunkKey)
+		chunkVisual = self:GetChunkVisual(chunkKey)
 	end
 	local snapshot = self.chunkSnapshots[chunkKey]
-	local worldSnapshot = self:getWorldChunkSnapshot(chunkKey)
+	local worldSnapshot = self:GetWorldChunkSnapshot(chunkKey)
 	local extra = if typeof(extraRaw) == "table" then extraRaw :: { [string]: any } else {} :: any
 	chunkVisual.model:SetAttribute("ChunkKey", chunkKey)
 	if snapshot ~= nil then
@@ -433,7 +434,7 @@ function LiquidServiceClient.UpdateClientDebugStats(self: LiquidServiceClient)
 	if visualFolder == nil then
 		return
 	end
-	local queuedRows = if self.rebuildQueue ~= nil then self.rebuildQueue:getPendingCount() else 0
+	local queuedRows = if self.rebuildQueue ~= nil then self.rebuildQueue:GetPendingCount() else 0
 	local visualChunkCount = 0
 	local worldChunkSnapshots = (WorldGenerationServiceClient :: any).chunkSnapshots
 	if typeof(worldChunkSnapshots) == "table" then
@@ -450,7 +451,7 @@ function LiquidServiceClient.UpdateClientDebugStats(self: LiquidServiceClient)
 	self.visualFolder:SetAttribute("VisualChunksLoaded", visualChunkCount)
 	self.visualFolder:SetAttribute("LiquidChunksLoaded", liquidChunkCount)
 	if self.debug ~= nil then
-		local counters = self.debug:getCounters()
+		local counters = self.debug:GetCounters()
 		self.visualFolder:SetAttribute(
 			"TimeClientRebuildMs",
 			math.round(((counters.time_liquid_client_rebuild or 0) * 1000) * 100) / 100
@@ -483,12 +484,12 @@ function LiquidServiceClient.MarkRowsDirty(self: LiquidServiceClient, chunkKey: 
 	if snapshot == nil then
 		return
 	end
-	if not self:isChunkVisualRelevant(chunkKey) then
+	if not self:IsChunkVisualRelevant(chunkKey) then
 		self.liquidVisualRelevanceByChunk[chunkKey] = nil
 		self.worldDependencySignatureByChunk[chunkKey] = nil
-		self:clearQueuedRowsForChunk(chunkKey)
-		self:destroyChunkVisual(chunkKey)
-		self:updateClientDebugStats()
+		self:ClearQueuedRowsForChunk(chunkKey)
+		self:DestroyChunkVisual(chunkKey)
+		self:UpdateClientDebugStats()
 		return
 	end
 	self.liquidVisualRelevanceByChunk[chunkKey] = true
@@ -503,7 +504,7 @@ function LiquidServiceClient.MarkRowsDirty(self: LiquidServiceClient, chunkKey: 
 			self.queuedChunkCount += 1
 		end
 		self.queuedRowCountsByChunk[chunkKey] = (self.queuedRowCountsByChunk[chunkKey] or 0) + 1
-		self.rebuildQueue:enqueue({
+		self.rebuildQueue:Enqueue({
 			x = snapshot.tileMinX,
 			y = snapshot.tileMinY + rowY,
 			z = 0,
@@ -516,18 +517,18 @@ function LiquidServiceClient.MarkRowsDirty(self: LiquidServiceClient, chunkKey: 
 		queuedCount += 1
 	end
 	if self.debug ~= nil and queuedCount > 0 then
-		self.debug:incrementCounter("liquid_client_rebuild_requests", queuedCount)
+		self.debug:IncrementCounter("liquid_client_rebuild_requests", queuedCount)
 	end
-	self:updateChunkVisualDebug(chunkKey)
-	self:updateClientDebugStats()
+	self:UpdateChunkVisualDebug(chunkKey)
+	self:UpdateClientDebugStats()
 end
 
 function LiquidServiceClient.GetBiomeAtTile(self: LiquidServiceClient, tileX: number, tileY: number): (number, number)
 	local chunkSnapshots = (WorldGenerationServiceClient :: any).chunkSnapshots
 	local chunkSize = math.max(1, self.state.chunkSize)
-	local chunkX = LiquidServiceUtils.toChunkCoordinate(tileX, chunkSize)
-	local chunkY = LiquidServiceUtils.toChunkCoordinate(tileY, chunkSize)
-	local chunkKey = LiquidServiceUtils.packChunkKey(chunkX, chunkY)
+	local chunkX = LiquidServiceUtils.ToChunkCoordinate(tileX, chunkSize)
+	local chunkY = LiquidServiceUtils.ToChunkCoordinate(tileY, chunkSize)
+	local chunkKey = LiquidServiceUtils.PackChunkKey(chunkX, chunkY)
 	local snapshot = if typeof(chunkSnapshots) == "table" then chunkSnapshots[chunkKey] else nil
 	if typeof(snapshot) ~= "table" then
 		return 1, 1
@@ -539,7 +540,7 @@ function LiquidServiceClient.GetBiomeAtTile(self: LiquidServiceClient, tileX: nu
 		return snapshot.dominantBiomeId or 1, snapshot.dominantBiomeType or 1
 	end
 
-	local index = LiquidServiceUtils.computeTileIndex(localX, localY, snapshot.width)
+	local index = LiquidServiceUtils.ComputeTileIndex(localX, localY, snapshot.width)
 	local biomeIds = snapshot.biomeIds
 	local biomeTypes = snapshot.biomeTypes
 	local biomeId = if typeof(biomeIds) == "table" and isFiniteNumber(biomeIds[index])
@@ -569,7 +570,7 @@ function LiquidServiceClient.CreateLayerRenderContext(
 		}
 	end
 
-	local tileDepth = self:getTileDepth()
+	local tileDepth = self:GetTileDepth()
 	return {
 		layerKey = `{BACKGROUND_LAYER_KEY_PREFIX}_{layerListIndex}`,
 		folderName = `Layer_{layerListIndex}`,
@@ -593,7 +594,7 @@ function LiquidServiceClient.ApplyPartDescriptor(
 		return
 	end
 	local tileSize = self.state.tileSize
-	local tileDepth = self:getTileDepth()
+	local tileDepth = self:GetTileDepth()
 	local worldOrigin = self.state.worldOrigin
 	local centerTileX = snapshot.tileMinX + descriptor.startX + descriptor.widthTiles * 0.5
 	local worldZ = worldOrigin.Z + centerTileX * tileSize
@@ -602,23 +603,23 @@ function LiquidServiceClient.ApplyPartDescriptor(
 		then math.max(tileSize * 0.04, descriptor.fillAlpha * tileSize)
 		else tileSize
 	local centerY = bottomY + heightStuds * 0.5
-	local worldX = worldOrigin.X + self:getBasePlaneX() + layerContext.planeOffsetX
+	local worldX = worldOrigin.X + self:GetBasePlaneX() + layerContext.planeOffsetX
 	local targetCFrame = CFrame.new(worldX, centerY, worldZ)
 	local targetSize = Vector3.new(tileDepth, heightStuds, descriptor.widthTiles * tileSize)
 	local samplePosition = Vector3.new(worldX, centerY, worldZ)
 	local biomeId, biomeType =
-		self:getBiomeAtTile(snapshot.tileMinX + descriptor.startX, snapshot.tileMinY + descriptor.rowY)
+		self:GetBiomeAtTile(snapshot.tileMinX + descriptor.startX, snapshot.tileMinY + descriptor.rowY)
 	local baseColor = if descriptor.typeId == LIQUID_TYPE.WATER
-		then LiquidColor.sampleWaterColorAtWorldPosition(
+		then LiquidColor.SampleWaterColorAtWorldPosition(
 			self.config,
 			samplePosition,
 			tileSize,
 			worldOrigin,
 			function(tileX: number, tileY: number): (number, number)
-				return self:getBiomeAtTile(tileX, tileY)
+				return self:GetBiomeAtTile(tileX, tileY)
 			end
 		)
-		else LiquidColor.resolveLiquidColor(self.config, descriptor.typeId, biomeId, biomeType)
+		else LiquidColor.GetLiquidColor(self.config, descriptor.typeId, biomeId, biomeType)
 	local surfaceBlendAlpha = if layerContext.layerListIndex > 0 then 0.28 else 0.42
 	local surfaceColor = lerpColor(baseColor, definition.surfaceColor, surfaceBlendAlpha)
 	local targetColor = if descriptor.isSurface then surfaceColor else baseColor
@@ -677,7 +678,7 @@ function LiquidServiceClient.RebuildLayerRow(
 	cells: { number },
 	layerContext: LayerRenderContext
 )
-	local descriptors = LiquidMesher.buildRowDescriptors(self.config, cells, snapshot.width, snapshot.height, rowY)
+	local descriptors = LiquidMesher.BuildRowDescriptors(self.config, cells, snapshot.width, snapshot.height, rowY)
 	local existingLayerVisual = chunkVisual.layers[layerContext.layerKey]
 	local existingRowVisual = if existingLayerVisual ~= nil then existingLayerVisual.rows[rowY] else nil
 	if #descriptors <= 0 and existingRowVisual == nil then
@@ -686,11 +687,11 @@ function LiquidServiceClient.RebuildLayerRow(
 
 	local layerVisual = existingLayerVisual
 	if layerVisual == nil then
-		layerVisual = self:getLayerVisual(chunkVisual, layerContext)
+		layerVisual = self:GetLayerVisual(chunkVisual, layerContext)
 	end
 	local rowVisual = existingRowVisual
 	if rowVisual == nil then
-		rowVisual = self:getRowVisual(layerVisual, rowY)
+		rowVisual = self:GetRowVisual(layerVisual, rowY)
 	end
 	local nextKeys: { [string]: boolean } = {}
 
@@ -702,13 +703,13 @@ function LiquidServiceClient.RebuildLayerRow(
 			local newPart = Instance.new("Part")
 			newPart.Name = HttpService:GenerateGUID(false)
 			newPart.Size =
-				Vector3.new(self:getTileDepth(), 0.02, math.max(0.02, descriptor.widthTiles * self.state.tileSize))
+				Vector3.new(self:GetTileDepth(), 0.02, math.max(0.02, descriptor.widthTiles * self.state.tileSize))
 			newPart.Transparency = 1
 			newPart.Parent = rowVisual.folder
 			rowParts[descriptor.key] = newPart
 			part = newPart
 		end
-		self:applyPartDescriptor(part :: BasePart, snapshot, descriptor, layerContext)
+		self:ApplyPartDescriptor(part :: BasePart, snapshot, descriptor, layerContext)
 	end
 
 	for key, part in rowVisual.parts do
@@ -716,7 +717,7 @@ function LiquidServiceClient.RebuildLayerRow(
 			continue
 		end
 		rowVisual.parts[key] = nil
-		self:fadeAndDestroyPart(part)
+		self:FadeAndDestroyPart(part)
 	end
 end
 
@@ -736,7 +737,7 @@ function LiquidServiceClient.ClearInactiveLayerRows(
 		end
 		for key, part in rowVisual.parts do
 			rowVisual.parts[key] = nil
-			self:fadeAndDestroyPart(part)
+			self:FadeAndDestroyPart(part)
 		end
 	end
 end
@@ -746,29 +747,29 @@ function LiquidServiceClient.RebuildRow(self: LiquidServiceClient, chunkKey: str
 	if snapshot == nil then
 		return
 	end
-	if not self:isChunkVisualRelevant(chunkKey) then
+	if not self:IsChunkVisualRelevant(chunkKey) then
 		self.liquidVisualRelevanceByChunk[chunkKey] = nil
 		self.worldDependencySignatureByChunk[chunkKey] = nil
-		self:clearQueuedRowsForChunk(chunkKey)
-		self:destroyChunkVisual(chunkKey)
+		self:ClearQueuedRowsForChunk(chunkKey)
+		self:DestroyChunkVisual(chunkKey)
 		return
 	end
 	self.liquidVisualRelevanceByChunk[chunkKey] = true
-	local chunkVisual = self:getChunkVisual(chunkKey)
-	local worldSnapshot = self:getWorldChunkSnapshot(chunkKey)
+	local chunkVisual = self:GetChunkVisual(chunkKey)
+	local worldSnapshot = self:GetWorldChunkSnapshot(chunkKey)
 	local activeLayerKeys: { [string]: boolean } = {}
 	local backgroundLayers: { any } = if typeof(worldSnapshot) == "table"
 			and typeof((worldSnapshot :: any).backgroundLayers) == "table"
 		then (worldSnapshot :: any).backgroundLayers :: { any }
 		else {} :: any
 
-	local frontLayerContext = self:createLayerRenderContext(chunkVisual, 0, #backgroundLayers)
+	local frontLayerContext = self:CreateLayerRenderContext(chunkVisual, 0, #backgroundLayers)
 	activeLayerKeys[frontLayerContext.layerKey] = true
-	self:rebuildLayerRow(chunkVisual, snapshot, rowY, snapshot.cells, frontLayerContext)
+	self:RebuildLayerRow(chunkVisual, snapshot, rowY, snapshot.cells, frontLayerContext)
 
 	local sourceCells = snapshot.cells
 	for layerListIndex, layerData in backgroundLayers do
-		local derivedCells = LiquidMesher.buildBackgroundVisualCells(
+		local derivedCells = LiquidMesher.BuildBackgroundVisualCells(
 			self.config,
 			sourceCells,
 			snapshot.tileMinX,
@@ -778,24 +779,24 @@ function LiquidServiceClient.RebuildRow(self: LiquidServiceClient, chunkKey: str
 			layerData,
 			layerListIndex
 		)
-		local layerContext = self:createLayerRenderContext(chunkVisual, layerListIndex, #backgroundLayers)
+		local layerContext = self:CreateLayerRenderContext(chunkVisual, layerListIndex, #backgroundLayers)
 		activeLayerKeys[layerContext.layerKey] = true
-		self:rebuildLayerRow(chunkVisual, snapshot, rowY, derivedCells, layerContext)
+		self:RebuildLayerRow(chunkVisual, snapshot, rowY, derivedCells, layerContext)
 		sourceCells = derivedCells
 	end
 
-	self:clearInactiveLayerRows(chunkVisual, rowY, activeLayerKeys)
+	self:ClearInactiveLayerRows(chunkVisual, rowY, activeLayerKeys)
 end
 
 function LiquidServiceClient.ProcessDirtyRows(self: LiquidServiceClient, deltaTimeRaw: any?)
 	if self.debug ~= nil then
-		self.debug:resetFrameCounters()
+		self.debug:ResetFrameCounters()
 	end
-	local token = if self.debug ~= nil then self.debug:beginFrameScope("liquid_client_rebuild") else nil
+	local token = if self.debug ~= nil then self.debug:BeginFrameScope("liquid_client_rebuild") else nil
 	local deltaTime = if isFiniteNumber(deltaTimeRaw) and deltaTimeRaw > 0
 		then deltaTimeRaw
 		else self.config.render.rebuildFlushInterval
-	local batches = self.rebuildQueue:update(deltaTime)
+	local batches = self.rebuildQueue:Update(deltaTime)
 	for _, batch in batches do
 		for _, chunkBatch in batch.chunks do
 			for _, mutation in chunkBatch.mutations do
@@ -805,7 +806,7 @@ function LiquidServiceClient.ProcessDirtyRows(self: LiquidServiceClient, deltaTi
 				local metadata = if typeof(mutation.metadata) == "table" then mutation.metadata else nil
 				local chunkKey = if metadata ~= nil and typeof(metadata.chunkKey) == "string"
 					then metadata.chunkKey
-					else LiquidServiceUtils.packChunkKey(chunkBatch.chunkX, chunkBatch.chunkY)
+					else LiquidServiceUtils.PackChunkKey(chunkBatch.chunkX, chunkBatch.chunkY)
 				local rowY = if metadata ~= nil and isFiniteNumber(metadata.rowY)
 					then math.floor(metadata.rowY)
 					else nil
@@ -825,50 +826,50 @@ function LiquidServiceClient.ProcessDirtyRows(self: LiquidServiceClient, deltaTi
 						self.queuedRowCountsByChunk[chunkKey] = nextCount
 					end
 				end
-				self:rebuildRow(chunkKey, rowY)
-				self:updateChunkVisualDebug(chunkKey)
+				self:RebuildRow(chunkKey, rowY)
+				self:UpdateChunkVisualDebug(chunkKey)
 				if self.debug ~= nil then
-					self.debug:incrementCounter("liquid_client_rows_rebuilt")
+					self.debug:IncrementCounter("liquid_client_rows_rebuilt")
 				end
 			end
 		end
 	end
 	if self.debug ~= nil then
-		self.debug:setCounter(
+		self.debug:SetCounter(
 			"liquid_client_queued_rows",
-			if self.rebuildQueue ~= nil then self.rebuildQueue:getPendingCount() else 0
+			if self.rebuildQueue ~= nil then self.rebuildQueue:GetPendingCount() else 0
 		)
-		self.debug:setCounter("liquid_client_queued_chunks", self.queuedChunkCount)
-		self.debug:endFrameScope("liquid_client_rebuild", token)
+		self.debug:SetCounter("liquid_client_queued_chunks", self.queuedChunkCount)
+		self.debug:EndFrameScope("liquid_client_rebuild", token)
 	end
-	self:updateClientDebugStats()
+	self:UpdateClientDebugStats()
 end
 
 function LiquidServiceClient.OnChunkSnapshot(self: LiquidServiceClient, snapshotRaw: any)
-	local snapshot = self:createChunkSnapshot(snapshotRaw)
+	local snapshot = self:CreateChunkSnapshot(snapshotRaw)
 	if snapshot == nil then
 		return
 	end
 	self.chunkSnapshots[snapshot.key] = snapshot
-	if not self:isChunkVisualRelevant(snapshot.key) then
+	if not self:IsChunkVisualRelevant(snapshot.key) then
 		self.liquidVisualRelevanceByChunk[snapshot.key] = nil
 		self.worldDependencySignatureByChunk[snapshot.key] = nil
-		self:clearQueuedRowsForChunk(snapshot.key)
-		self:destroyChunkVisual(snapshot.key)
-		self:updateClientDebugStats()
+		self:ClearQueuedRowsForChunk(snapshot.key)
+		self:DestroyChunkVisual(snapshot.key)
+		self:UpdateClientDebugStats()
 		return
 	end
 	self.liquidVisualRelevanceByChunk[snapshot.key] = true
-	self.worldDependencySignatureByChunk[snapshot.key] = self:computeWorldDependencySignature(snapshot.key)
-	self:updateChunkVisualDebug(snapshot.key, {
+	self.worldDependencySignatureByChunk[snapshot.key] = self:ComputeWorldDependencySignature(snapshot.key)
+	self:UpdateChunkVisualDebug(snapshot.key, {
 		LastUpdateKind = "snapshot",
 		LastServerUpdatedAt = if typeof(snapshotRaw) == "table"
 				and isFiniteNumber((snapshotRaw :: any).updatedAt)
 			then (snapshotRaw :: any).updatedAt
 			else nil,
 	})
-	self:markAllRowsDirtyForChunk(snapshot.key)
-	self:updateClientDebugStats()
+	self:MarkAllRowsDirtyForChunk(snapshot.key)
+	self:UpdateClientDebugStats()
 end
 
 function LiquidServiceClient.OnChunkDelta(self: LiquidServiceClient, deltaRaw: any)
@@ -881,7 +882,7 @@ function LiquidServiceClient.OnChunkDelta(self: LiquidServiceClient, deltaRaw: a
 	end
 	local snapshot = self.chunkSnapshots[source.key]
 	if snapshot == nil then
-		self:requestSync()
+		self:RequestSync()
 		return
 	end
 
@@ -906,25 +907,25 @@ function LiquidServiceClient.OnChunkDelta(self: LiquidServiceClient, deltaRaw: a
 		then math.max(snapshot.revision, math.floor(source.revision))
 		else snapshot.revision
 	snapshot.updatedAt = os.clock()
-	if not self:isChunkVisualRelevant(source.key) then
+	if not self:IsChunkVisualRelevant(source.key) then
 		self.liquidVisualRelevanceByChunk[source.key] = nil
 		self.worldDependencySignatureByChunk[source.key] = nil
-		self:clearQueuedRowsForChunk(source.key)
-		self:destroyChunkVisual(source.key)
-		self:updateClientDebugStats()
+		self:ClearQueuedRowsForChunk(source.key)
+		self:DestroyChunkVisual(source.key)
+		self:UpdateClientDebugStats()
 		return
 	end
 	self.liquidVisualRelevanceByChunk[source.key] = true
-	self:updateChunkVisualDebug(source.key, {
+	self:UpdateChunkVisualDebug(source.key, {
 		LastDeltaCells = #changedIndices,
 		LastUpdateKind = "delta",
 		LastServerUpdatedAt = if isFiniteNumber(source.updatedAt) then source.updatedAt else nil,
 	})
-	self:markRowsDirty(
+	self:MarkRowsDirty(
 		source.key,
-		LiquidMesher.getAffectedRowsForChanges(snapshot.width, snapshot.height, changedIndices)
+		LiquidMesher.GetAffectedRowsForChanges(snapshot.width, snapshot.height, changedIndices)
 	)
-	self:updateClientDebugStats()
+	self:UpdateClientDebugStats()
 end
 
 function LiquidServiceClient.DestroyChunkVisual(self: LiquidServiceClient, chunkKey: string)
@@ -950,9 +951,9 @@ function LiquidServiceClient.OnChunkUnloaded(self: LiquidServiceClient, chunkKey
 	self.chunkSnapshots[chunkKeyRaw] = nil
 	self.worldDependencySignatureByChunk[chunkKeyRaw] = nil
 	self.liquidVisualRelevanceByChunk[chunkKeyRaw] = nil
-	self:clearQueuedRowsForChunk(chunkKeyRaw)
-	self:destroyChunkVisual(chunkKeyRaw)
-	self:updateClientDebugStats()
+	self:ClearQueuedRowsForChunk(chunkKeyRaw)
+	self:DestroyChunkVisual(chunkKeyRaw)
+	self:UpdateClientDebugStats()
 end
 
 function LiquidServiceClient.GetBurnAttachment(self: LiquidServiceClient): Attachment?
@@ -977,7 +978,7 @@ function LiquidServiceClient.GetBurnAttachment(self: LiquidServiceClient): Attac
 end
 
 function LiquidServiceClient.SetBurningVisualEnabled(self: LiquidServiceClient, enabled: boolean)
-	local attachment = self:getBurnAttachment()
+	local attachment = self:GetBurnAttachment()
 	if attachment == nil then
 		return
 	end
@@ -1002,12 +1003,12 @@ function LiquidServiceClient.SetBurningVisualEnabled(self: LiquidServiceClient, 
 end
 
 function LiquidServiceClient.RefreshWaterSplashSoundAssetIds(self: LiquidServiceClient)
-	self.waterSplashSoundAssetIds = AudioServiceUtils.collectSoundAssetIds(WATER_SPLASH_AUDIO)
+	self.waterSplashSoundAssetIds = AudioServiceUtils.CollectSoundAssetIds(WATER_SPLASH_AUDIO)
 end
 
 function LiquidServiceClient.PickWaterSplashSoundAssetId(self: LiquidServiceClient): string?
 	if #self.waterSplashSoundAssetIds <= 0 then
-		self:refreshWaterSplashSoundAssetIds()
+		self:RefreshWaterSplashSoundAssetIds()
 	end
 	local count = #self.waterSplashSoundAssetIds
 	if count <= 0 then
@@ -1030,12 +1031,12 @@ function LiquidServiceClient.PlayWaterSplashSound(self: LiquidServiceClient)
 		return
 	end
 
-	local soundAssetId = self:pickWaterSplashSoundAssetId()
+	local soundAssetId = self:PickWaterSplashSoundAssetId()
 	if soundAssetId == nil then
 		return
 	end
 
-	AudioServiceClient:playSfx(soundAssetId, {
+	AudioServiceClient:PlaySfx(soundAssetId, {
 		parent = rootPart,
 		volume = 0.68,
 		playbackSpeed = RANDOM:NextNumber(0.94, 1.08),
@@ -1087,15 +1088,15 @@ function LiquidServiceClient.OnEffectEvent(self: LiquidServiceClient, payloadRaw
 	local eventType = if typeof(payload.eventType) == "string" then payload.eventType else ""
 	local liquidType = if isFiniteNumber(payload.liquidType) then math.floor(payload.liquidType) else 0
 	if eventType == LiquidServiceUtils.EFFECT_EVENT.ENTER or eventType == LiquidServiceUtils.EFFECT_EVENT.EXIT then
-		self:emitSplash(liquidType)
+		self:EmitSplash(liquidType)
 	end
 	if eventType == LiquidServiceUtils.EFFECT_EVENT.ENTER and liquidType == LIQUID_TYPE.WATER then
-		self:playWaterSplashSound()
+		self:PlayWaterSplashSound()
 	end
 	if eventType == LiquidServiceUtils.EFFECT_EVENT.BURN_START then
-		self:setBurningVisualEnabled(true)
+		self:SetBurningVisualEnabled(true)
 	elseif eventType == LiquidServiceUtils.EFFECT_EVENT.BURN_END then
-		self:setBurningVisualEnabled(false)
+		self:SetBurningVisualEnabled(false)
 	end
 	self.effectEvent:Fire(payload)
 end
@@ -1119,25 +1120,25 @@ function LiquidServiceClient.StepSurfaceAnimation(self: LiquidServiceClient, now
 end
 
 function LiquidServiceClient.OnRenderStep(self: LiquidServiceClient, _deltaTime: number)
-	local token = if self.debug ~= nil then self.debug:beginFrameScope("liquid_client_surface") else nil
+	local token = if self.debug ~= nil then self.debug:BeginFrameScope("liquid_client_surface") else nil
 	self.dependencySyncAccumulator += if isFiniteNumber(_deltaTime) then math.max(0, _deltaTime) else 0
 	if self.dependencySyncAccumulator >= WORLD_DEPENDENCY_SYNC_INTERVAL then
 		self.dependencySyncAccumulator = 0
-		self:syncWorldChunkDependencies()
+		self:SyncWorldChunkDependencies()
 	end
 	if self.rebuildToken == nil then
-		self:processDirtyRows(_deltaTime)
+		self:ProcessDirtyRows(_deltaTime)
 	end
-	self:stepSurfaceAnimation(os.clock())
+	self:StepSurfaceAnimation(os.clock())
 	if self.debug ~= nil then
-		self.debug:endFrameScope("liquid_client_surface", token)
+		self.debug:EndFrameScope("liquid_client_surface", token)
 	end
-	self:updateClientDebugStats()
+	self:UpdateClientDebugStats()
 end
 
 function LiquidServiceClient.RecreateRebuildQueue(self: LiquidServiceClient)
 	if self.rebuildQueue ~= nil then
-		self.rebuildQueue:destroy()
+		self.rebuildQueue:Destroy()
 	end
 	if self.queuedRowLookup ~= nil then
 		table.clear(self.queuedRowLookup)
@@ -1146,7 +1147,7 @@ function LiquidServiceClient.RecreateRebuildQueue(self: LiquidServiceClient)
 		table.clear(self.queuedRowCountsByChunk)
 	end
 	self.queuedChunkCount = 0
-	self.rebuildQueue = WorldMutationQueue.new({
+	self.rebuildQueue = WorldMutationQueue.New({
 		chunkSize = math.max(1, self.state.chunkSize),
 		flushInterval = self.config.render.rebuildFlushInterval,
 		maxMutationsPerFlush = self.config.render.rebuildRowsPerFrame,
@@ -1156,9 +1157,9 @@ end
 function LiquidServiceClient.ApplyState(self: LiquidServiceClient, stateRaw: any)
 	local previousState = self.state
 	local previousChunkSize = if self.state ~= nil then self.state.chunkSize else nil
-	self.state = LiquidServiceUtils.createState(stateRaw, self.state)
+	self.state = LiquidServiceUtils.CreateState(stateRaw, self.state)
 	if previousChunkSize == nil or previousChunkSize ~= self.state.chunkSize then
-		self:recreateRebuildQueue()
+		self:RecreateRebuildQueue()
 	end
 	local geometryChanged = previousState == nil
 		or previousState.tileSize ~= self.state.tileSize
@@ -1166,9 +1167,9 @@ function LiquidServiceClient.ApplyState(self: LiquidServiceClient, stateRaw: any
 		or previousState.maxFill ~= self.state.maxFill
 		or previousState.interpolationTime ~= self.state.interpolationTime
 	if geometryChanged then
-		self:markAllChunksDirty()
+		self:MarkAllChunksDirty()
 	end
-	self.stateChanged:Fire(LiquidServiceUtils.cloneState(self.state))
+	self.stateChanged:Fire(LiquidServiceUtils.CloneState(self.state))
 end
 
 function LiquidServiceClient.RequestSync(self: LiquidServiceClient)
@@ -1177,14 +1178,14 @@ end
 
 function LiquidServiceClient.Init(self: LiquidServiceClient)
 	self.localPlayer = Players.LocalPlayer
-	self.runtimeContext = CoreRuntime.getClientRuntime()
-	if self.runtimeContext ~= nil and typeof((self.runtimeContext :: any).init) == "function" then
+	self.runtimeContext = CoreRuntime.GetClientRuntime()
+	if self.runtimeContext ~= nil and typeof((self.runtimeContext :: any).Init) == "function" then
 		local runtimeAny = self.runtimeContext :: any
-		runtimeAny:init()
+		runtimeAny:Init()
 	end
-	self.config = sanitizeSourceConfig()
-	self.state = LiquidServiceUtils.createDefaultState()
-	self.debug = WorldSimulationDebug.new({
+	self.config = CoerceSourceConfig()
+	self.state = LiquidServiceUtils.CreateDefaultState()
+	self.debug = WorldSimulationDebug.New({
 		enabled = self.config.debug.enabled,
 		profilingEnabled = self.config.debug.enabled,
 	})
@@ -1202,12 +1203,12 @@ function LiquidServiceClient.Init(self: LiquidServiceClient)
 	self.worldDependencySignatureByChunk = {} :: { [string]: string }
 	self.liquidVisualRelevanceByChunk = {} :: { [string]: boolean }
 	self.dependencySyncAccumulator = WORLD_DEPENDENCY_SYNC_INTERVAL
-	self.visualFolder = WorkspaceFolders.getOrCreateFolderInGame(VISUAL_FOLDER_NAME)
+	self.visualFolder = WorkspaceFolders.GetOrCreateFolderInGame(VISUAL_FOLDER_NAME)
 	self.burnAttachment = nil :: Attachment?
 	self.burnEmitter = nil :: ParticleEmitter?
-	self.binders = NevermoreSupport.getService(ClientBinderSupport)
-	self:refreshWaterSplashSoundAssetIds()
-	self:recreateRebuildQueue()
+	self.binders = NevermoreSupport.GetService(BinderSupportClient)
+	self:RefreshWaterSplashSoundAssetIds()
+	self:RecreateRebuildQueue()
 
 	self.janitor:GiveChore(function()
 		self.stateChanged:Destroy()
@@ -1216,20 +1217,20 @@ function LiquidServiceClient.Init(self: LiquidServiceClient)
 	local worldStateChanged = (WorldGenerationServiceClient :: any).stateChanged
 	if worldStateChanged ~= nil and typeof((worldStateChanged :: any).Connect) == "function" then
 		self.janitor:GiveChore((worldStateChanged :: any):Connect(function()
-			self:markAllChunksDirty()
+			self:MarkAllChunksDirty()
 		end))
 	end
 	self.janitor:GiveChore(RunService.RenderStepped:Connect(function(deltaTime: number)
-		self:onRenderStep(deltaTime)
+		self:OnRenderStep(deltaTime)
 	end))
 	self.janitor:GiveChore(self.localPlayer.CharacterAdded:Connect(function()
-		self:setBurningVisualEnabled(false)
+		self:SetBurningVisualEnabled(false)
 	end))
 	local tickScheduler = if self.runtimeContext ~= nil then (self.runtimeContext :: any).tickScheduler else nil
-	if tickScheduler ~= nil and typeof((tickScheduler :: any).scheduleEvery) == "function" then
-		self.rebuildToken = (tickScheduler :: any):scheduleEvery(
+	if tickScheduler ~= nil and typeof((tickScheduler :: any).ScheduleEvery) == "function" then
+		self.rebuildToken = (tickScheduler :: any):ScheduleEvery(
 			function(deltaTime: number)
-				self:processDirtyRows(deltaTime)
+				self:ProcessDirtyRows(deltaTime)
 			end,
 			self.config.render.rebuildFlushInterval,
 			{
@@ -1239,14 +1240,14 @@ function LiquidServiceClient.Init(self: LiquidServiceClient)
 			}
 		)
 		self.janitor:GiveChore(function()
-			if self.rebuildToken ~= nil and typeof(self.rebuildToken.cancel) == "function" then
-				self.rebuildToken:cancel()
+			if self.rebuildToken ~= nil and typeof(self.rebuildToken.Cancel) == "function" then
+				self.rebuildToken:Cancel()
 				self.rebuildToken = nil
 			end
 		end)
 	end
 
-	self:requestSync()
+	self:RequestSync()
 end
 
 function LiquidServiceClient.Destroy(self: LiquidServiceClient)
@@ -1254,7 +1255,7 @@ function LiquidServiceClient.Destroy(self: LiquidServiceClient)
 		self.janitor:Destroy()
 	end
 	for chunkKey in pairs(self.chunkVisuals :: { [string]: ChunkVisual }) do
-		self:destroyChunkVisual(chunkKey)
+		self:DestroyChunkVisual(chunkKey)
 	end
 	table.clear(self.chunkSnapshots)
 	table.clear(self.surfaceParts)
@@ -1263,10 +1264,10 @@ function LiquidServiceClient.Destroy(self: LiquidServiceClient)
 	table.clear(self.worldDependencySignatureByChunk)
 	table.clear(self.liquidVisualRelevanceByChunk)
 	if self.rebuildQueue ~= nil then
-		self.rebuildQueue:destroy()
+		self.rebuildQueue:Destroy()
 	end
 	if self.debug ~= nil then
-		self.debug:destroy()
+		self.debug:Destroy()
 	end
 	if self.visualFolder ~= nil then
 		self.visualFolder:Destroy()
@@ -1278,51 +1279,6 @@ function LiquidServiceClient.Destroy(self: LiquidServiceClient)
 		self.burnAttachment:Destroy()
 	end
 end
-
-LiquidServiceClient.createChunkSnapshot = LiquidServiceClient.CreateChunkSnapshot
-LiquidServiceClient.createChunkVisual = LiquidServiceClient.CreateChunkVisual
-LiquidServiceClient.getChunkVisual = LiquidServiceClient.GetChunkVisual
-LiquidServiceClient.getTileDepth = LiquidServiceClient.GetTileDepth
-LiquidServiceClient.getBasePlaneX = LiquidServiceClient.GetBasePlaneX
-LiquidServiceClient.getWorldChunkSnapshot = LiquidServiceClient.GetWorldChunkSnapshot
-LiquidServiceClient.isChunkVisualRelevant = LiquidServiceClient.IsChunkVisualRelevant
-LiquidServiceClient.getLayerVisual = LiquidServiceClient.GetLayerVisual
-LiquidServiceClient.getRowVisual = LiquidServiceClient.GetRowVisual
-LiquidServiceClient.markAllRowsDirtyForChunk = LiquidServiceClient.MarkAllRowsDirtyForChunk
-LiquidServiceClient.markAllChunksDirty = LiquidServiceClient.MarkAllChunksDirty
-LiquidServiceClient.computeWorldDependencySignature = LiquidServiceClient.ComputeWorldDependencySignature
-LiquidServiceClient.syncWorldChunkDependencies = LiquidServiceClient.SyncWorldChunkDependencies
-LiquidServiceClient.updateChunkVisualDebug = LiquidServiceClient.UpdateChunkVisualDebug
-LiquidServiceClient.updateClientDebugStats = LiquidServiceClient.UpdateClientDebugStats
-LiquidServiceClient.clearQueuedRowsForChunk = LiquidServiceClient.ClearQueuedRowsForChunk
-LiquidServiceClient.markRowsDirty = LiquidServiceClient.MarkRowsDirty
-LiquidServiceClient.getBiomeAtTile = LiquidServiceClient.GetBiomeAtTile
-LiquidServiceClient.createLayerRenderContext = LiquidServiceClient.CreateLayerRenderContext
-LiquidServiceClient.applyPartDescriptor = LiquidServiceClient.ApplyPartDescriptor
-LiquidServiceClient.fadeAndDestroyPart = LiquidServiceClient.FadeAndDestroyPart
-LiquidServiceClient.rebuildLayerRow = LiquidServiceClient.RebuildLayerRow
-LiquidServiceClient.clearInactiveLayerRows = LiquidServiceClient.ClearInactiveLayerRows
-LiquidServiceClient.rebuildRow = LiquidServiceClient.RebuildRow
-LiquidServiceClient.processDirtyRows = LiquidServiceClient.ProcessDirtyRows
-LiquidServiceClient.onChunkSnapshot = LiquidServiceClient.OnChunkSnapshot
-LiquidServiceClient.onChunkDelta = LiquidServiceClient.OnChunkDelta
-LiquidServiceClient.destroyChunkVisual = LiquidServiceClient.DestroyChunkVisual
-LiquidServiceClient.onChunkUnloaded = LiquidServiceClient.OnChunkUnloaded
-LiquidServiceClient.getBurnAttachment = LiquidServiceClient.GetBurnAttachment
-LiquidServiceClient.setBurningVisualEnabled = LiquidServiceClient.SetBurningVisualEnabled
-LiquidServiceClient.refreshWaterSplashSoundAssetIds = LiquidServiceClient.RefreshWaterSplashSoundAssetIds
-LiquidServiceClient.pickWaterSplashSoundAssetId = LiquidServiceClient.PickWaterSplashSoundAssetId
-LiquidServiceClient.playWaterSplashSound = LiquidServiceClient.PlayWaterSplashSound
-LiquidServiceClient.emitSplash = LiquidServiceClient.EmitSplash
-LiquidServiceClient.onEffectEvent = LiquidServiceClient.OnEffectEvent
-LiquidServiceClient.stepSurfaceAnimation = LiquidServiceClient.StepSurfaceAnimation
-LiquidServiceClient.onRenderStep = LiquidServiceClient.OnRenderStep
-LiquidServiceClient.recreateRebuildQueue = LiquidServiceClient.RecreateRebuildQueue
-LiquidServiceClient.applyState = LiquidServiceClient.ApplyState
-LiquidServiceClient.requestSync = LiquidServiceClient.RequestSync
-LiquidServiceClient.init = LiquidServiceClient.Init
-LiquidServiceClient.destroy = LiquidServiceClient.Destroy
-
 type LiquidServiceClient = typeof(LiquidServiceClient) & {
 	runtimeContext: any?,
 	localPlayer: Player,

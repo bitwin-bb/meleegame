@@ -84,7 +84,7 @@ local DEFAULT_DASH_INTERVAL_MAX = 1.05
 local DEFAULT_DASH_DURATION = 0.18
 local MAX_DT = 1 / 20
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -110,7 +110,7 @@ local function safeUnit(vector: Vector3, fallbackRaw: Vector3?): Vector3
 	return vector.Unit
 end
 
-local function resolveParent(parentRaw: Instance?): Instance
+local function GetParent(parentRaw: Instance?): Instance
 	if parentRaw ~= nil then
 		return parentRaw
 	end
@@ -172,7 +172,7 @@ local function findHitPlayer(position: Vector3, hitRadius: number, owner: any?):
 end
 
 local function createPart(context: SpawnContext): BasePart
-	local hitRadius = sanitizeNumber(context.hitRadius, DEFAULT_HIT_RADIUS, 0.1, 64)
+	local hitRadius = CoerceNumber(context.hitRadius, DEFAULT_HIT_RADIUS, 0.1, 64)
 	local part = Instance.new("Part")
 	part.Name = "Bee"
 	part.Anchored = true
@@ -182,7 +182,7 @@ local function createPart(context: SpawnContext): BasePart
 	part.CastShadow = false
 	part.Size = Vector3.new(hitRadius, hitRadius * 0.72, hitRadius)
 	part.CFrame = CFrame.new(context.origin)
-	part.Parent = resolveParent(context.parent)
+	part.Parent = GetParent(context.parent)
 	return part
 end
 
@@ -210,20 +210,20 @@ function Bee.Spawn(contextRaw: SpawnContext): BeeRuntime
 		maid = maid,
 		part = part,
 		position = position,
-		velocity = scatterDirection * sanitizeNumber(context.scatterSpeed, DEFAULT_SCATTER_SPEED, 0, 10 ^ 5),
+		velocity = scatterDirection * CoerceNumber(context.scatterSpeed, DEFAULT_SCATTER_SPEED, 0, 10 ^ 5),
 		targetPlayer = context.targetPlayer,
 		arenaCFrame = context.arenaCFrame,
 		owner = context.owner,
 		random = random,
-		lifetime = sanitizeNumber(context.lifetime, DEFAULT_LIFETIME, 0.05, 60),
+		lifetime = CoerceNumber(context.lifetime, DEFAULT_LIFETIME, 0.05, 60),
 		elapsed = 0,
-		scatterDuration = sanitizeNumber(context.scatterDuration, DEFAULT_SCATTER_DURATION, 0, 10),
-		scatterSpeed = sanitizeNumber(context.scatterSpeed, DEFAULT_SCATTER_SPEED, 0, 10 ^ 5),
-		speed = sanitizeNumber(context.speed, DEFAULT_SPEED, 0, 10 ^ 5),
-		acceleration = sanitizeNumber(context.acceleration, DEFAULT_ACCELERATION, 0, 10 ^ 5),
-		dashSpeed = sanitizeNumber(context.dashSpeed, DEFAULT_DASH_SPEED, 0, 10 ^ 5),
-		damage = sanitizeNumber(context.damage, DEFAULT_DAMAGE, 0, 10 ^ 6),
-		hitRadius = sanitizeNumber(context.hitRadius, DEFAULT_HIT_RADIUS, 0.1, 256),
+		scatterDuration = CoerceNumber(context.scatterDuration, DEFAULT_SCATTER_DURATION, 0, 10),
+		scatterSpeed = CoerceNumber(context.scatterSpeed, DEFAULT_SCATTER_SPEED, 0, 10 ^ 5),
+		speed = CoerceNumber(context.speed, DEFAULT_SPEED, 0, 10 ^ 5),
+		acceleration = CoerceNumber(context.acceleration, DEFAULT_ACCELERATION, 0, 10 ^ 5),
+		dashSpeed = CoerceNumber(context.dashSpeed, DEFAULT_DASH_SPEED, 0, 10 ^ 5),
+		damage = CoerceNumber(context.damage, DEFAULT_DAMAGE, 0, 10 ^ 6),
+		hitRadius = CoerceNumber(context.hitRadius, DEFAULT_HIT_RADIUS, 0.1, 256),
 		damagePlayer = context.damagePlayer,
 		mode = "Scatter",
 		modeTime = 0,
@@ -243,9 +243,9 @@ end
 
 function Bee.SpawnBurst(contextRaw: BurstContext): { BeeRuntime }
 	local context = contextRaw
-	local count = math.max(0, math.floor(sanitizeNumber(context.count, 0, 0, 64)))
+	local count = math.max(0, math.floor(CoerceNumber(context.count, 0, 0, 64)))
 	local random = if context.random ~= nil then context.random else Random.new()
-	local radius = sanitizeNumber(context.spawnRadius, 7, 0, 128)
+	local radius = CoerceNumber(context.spawnRadius, 7, 0, 128)
 	local side = Physics.GetCombatSideVector(context.arenaCFrame)
 	local up = Physics.GetCombatUpVector(context.arenaCFrame)
 	local bees = {}
@@ -267,7 +267,7 @@ function Bee.Step(self: BeeRuntime, dtRaw: any)
 		return
 	end
 
-	local dt = sanitizeNumber(dtRaw, 0, 0, MAX_DT)
+	local dt = CoerceNumber(dtRaw, 0, 0, MAX_DT)
 	if dt <= 0 then
 		return
 	end
@@ -334,10 +334,4 @@ function Bee.Destroy(self: BeeRuntime)
 	self.part = nil
 	self.maid:Destroy()
 end
-
-Bee.spawn = Bee.Spawn
-Bee.spawnBurst = Bee.SpawnBurst
-Bee.step = Bee.Step
-Bee.destroy = Bee.Destroy
-
 return Bee

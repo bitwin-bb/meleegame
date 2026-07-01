@@ -37,13 +37,4 @@ end
 function Tree.CreateWeld(config: WeldConfig): WeldConstraint
 	return Tile.CreateWeldConstraint(config)
 end
-
-Tree.createBranchPart = Tree.CreateBranchPart
-Tree.createLeafPart = Tree.CreateLeafPart
-Tree.createAnchorPart = Tree.CreateAnchorPart
-Tree.createTreeModel = Tree.CreateTreeModel
-Tree.createPartGroup = Tree.CreatePartGroup
-Tree.createPivotAttachment = Tree.CreatePivotAttachment
-Tree.createWeld = Tree.CreateWeld
-
 return Tree

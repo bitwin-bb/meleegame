@@ -219,14 +219,14 @@ local function destroySignals(signals: WormSignals)
 	end
 end
 
-local function sanitizeBoolean(valueRaw: any, fallback: boolean): boolean
+local function CoerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = if typeof(valueRaw) == "number" and valueRaw == valueRaw then valueRaw else fallback
 	if minimum ~= nil and value < minimum then
 		value = minimum
@@ -237,11 +237,11 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?,
 	return value
 end
 
-local function sanitizeInteger(valueRaw: any, fallback: number, minimum: number, maximum: number): number
-	return math.floor(sanitizeNumber(valueRaw, fallback, minimum, maximum))
+local function CoerceInteger(valueRaw: any, fallback: number, minimum: number, maximum: number): number
+	return math.floor(CoerceNumber(valueRaw, fallback, minimum, maximum))
 end
 
-local function resolveLockedAxis(valueRaw: any): LockedAxis
+local function GetLockedAxis(valueRaw: any): LockedAxis
 	if typeof(valueRaw) == "string" then
 		local upper = string.upper(valueRaw)
 		if upper == "X" then
@@ -255,7 +255,7 @@ local function resolveLockedAxis(valueRaw: any): LockedAxis
 	return "X" :: LockedAxis
 end
 
-local function resolveAxisDepth(config: WormConfig, axis: LockedAxis): number?
+local function GetAxisDepth(config: WormConfig, axis: LockedAxis): number?
 	local lockedDepth = config.lockedDepth or config.depth or config.planeDepth
 	if typeof(lockedDepth) == "number" and lockedDepth == lockedDepth then
 		return lockedDepth
@@ -295,7 +295,7 @@ local function withAxisValue(position: Vector3, axis: LockedAxis, value: number)
 	return Vector3.new(position.X, position.Y, value)
 end
 
-local function resolveRootPart(model: Model?): BasePart?
+local function GetRootPart(model: Model?): BasePart?
 	if model == nil then
 		return nil
 	end
@@ -318,7 +318,7 @@ local function resolveRootPart(model: Model?): BasePart?
 	return nil
 end
 
-local function resolveTemplateFromContainer(container: Model?, segmentName: string): Model?
+local function GetTemplateFromContainer(container: Model?, segmentName: string): Model?
 	if container == nil then
 		return nil
 	end
@@ -371,7 +371,7 @@ local function applyServerOwnership(model: Model)
 	end
 end
 
-local function resolvePositionFromTarget(target: WormTarget?): Vector3?
+local function GetPositionFromTarget(target: WormTarget?): Vector3?
 	if target == nil then
 		return nil
 	end
@@ -385,7 +385,7 @@ local function resolvePositionFromTarget(target: WormTarget?): Vector3?
 	end
 
 	if typeof(target) == "table" then
-		local getPosition = (target :: any).GetPosition or (target :: any).getPosition
+		local getPosition = (target :: any).GetPosition
 		if typeof(getPosition) == "function" then
 			local ok, positionOrError = pcall(getPosition, target)
 			if ok and typeof(positionOrError) == "Vector3" then
@@ -412,7 +412,7 @@ local function resolvePositionFromTarget(target: WormTarget?): Vector3?
 	end
 
 	if target:IsA("Model") then
-		local rootPart = resolveRootPart(target)
+		local rootPart = GetRootPart(target)
 		if rootPart then
 			return rootPart.Position
 		end
@@ -422,7 +422,7 @@ local function resolvePositionFromTarget(target: WormTarget?): Vector3?
 	if target:IsA("Humanoid") then
 		local character = target.Parent
 		if character and character:IsA("Model") then
-			local rootPart = resolveRootPart(character)
+			local rootPart = GetRootPart(character)
 			if rootPart then
 				return rootPart.Position
 			end
@@ -431,7 +431,7 @@ local function resolvePositionFromTarget(target: WormTarget?): Vector3?
 
 	if target:IsA("Player") then
 		local character = (target :: Player).Character
-		local rootPart = resolveRootPart(character)
+		local rootPart = GetRootPart(character)
 		if rootPart then
 			return rootPart.Position
 		end
@@ -465,7 +465,7 @@ local function callTargetProvider(provider: WormTargetProvider?, self: Worm): Wo
 		end
 	end
 
-	local getPosition = (provider :: any).GetPosition or (provider :: any).getPosition
+	local getPosition = (provider :: any).GetPosition
 	if typeof(getPosition) == "function" then
 		local ok, positionOrError = pcall(getPosition, provider, self)
 		if ok and typeof(positionOrError) == "Vector3" then
@@ -536,19 +536,19 @@ export type Worm = typeof(setmetatable(
 	Worm
 ))
 
-local function resolveLookUpVector(self: Worm, directionRaw: Vector3): Vector3
-	local direction = Vec.unit(directionRaw, self._heading)
-	local lookUpVector = Vec.unit(self._lookUpVector, Vector3.yAxis)
+local function GetLookUpVector(self: Worm, directionRaw: Vector3): Vector3
+	local direction = Vec.Unit(directionRaw, self._heading)
+	local lookUpVector = Vec.Unit(self._lookUpVector, Vector3.yAxis)
 	if math.abs(lookUpVector:Dot(direction)) < 0.98 then
 		return lookUpVector
 	end
 
-	local planeNormal = Vec.unit(self._planeNormal, Vector3.xAxis)
+	local planeNormal = Vec.Unit(self._planeNormal, Vector3.xAxis)
 	if math.abs(planeNormal:Dot(direction)) < 0.98 then
 		return planeNormal
 	end
 
-	return Vec.orthogonal(direction)
+	return Vec.Orthogonal(direction)
 end
 
 local function cloneSegments(segments: { WormSegment }): { WormSegment }
@@ -634,7 +634,7 @@ function Worm.GetSnapshot(self: Worm): WormSnapshot
 		segmentCount = #segments,
 		segmentSpacing = self._segmentSpacing,
 		target = self._target,
-		targetPosition = resolvePositionFromTarget(self._target),
+		targetPosition = GetPositionFromTarget(self._target),
 		targetProvider = self._targetProvider,
 		targetObservable = self._targetObservable,
 		headCFrame = motion.headCFrame,
@@ -658,7 +658,7 @@ function Worm._projectPosition(self: Worm, position: Vector3): Vector3
 		return position
 	end
 
-	return Plane.closestPoint({
+	return Plane.ClosestPoint({
 		normal = self._planeNormal,
 		distance = planeDistance,
 	}, position)
@@ -681,9 +681,9 @@ end
 
 function Worm._createSegmentCFrame(self: Worm, positionRaw: Vector3, directionRaw: Vector3): CFrame
 	local position = self:_projectPosition(positionRaw)
-	local direction = Vec.unit(self:_projectDirection(directionRaw), self._heading)
+	local direction = Vec.Unit(self:_projectDirection(directionRaw), self._heading)
 	local lookTarget = position + direction
-	return CFrameUtils.lookAt(position, lookTarget, resolveLookUpVector(self, direction))
+	return CFrameUtils.lookAt(position, lookTarget, GetLookUpVector(self, direction))
 end
 
 function Worm._pivotSegment(self: Worm, segment: WormSegment, cframeRaw: CFrame)
@@ -736,7 +736,7 @@ function Worm._refreshCollisionRaycastParams(self: Worm)
 	self._collisionRaycastParams = raycastParams
 end
 
-function Worm._resolveHeadDirection(self: Worm, headPosition: Vector3, dt: number): Vector3
+function Worm._GetHeadDirection(self: Worm, headPosition: Vector3, dt: number): Vector3
 	self._targetRefreshElapsed += dt
 	if
 		self._targetProvider ~= nil
@@ -751,14 +751,14 @@ function Worm._resolveHeadDirection(self: Worm, headPosition: Vector3, dt: numbe
 		end
 	end
 
-	local targetPosition = resolvePositionFromTarget(self._target)
+	local targetPosition = GetPositionFromTarget(self._target)
 	if targetPosition == nil then
-		return Vec.unit(self:_projectDirection(self._heading), self._initialDirection)
+		return Vec.Unit(self:_projectDirection(self._heading), self._initialDirection)
 	end
 
 	local projectedTargetPosition = self:_projectPosition(targetPosition)
 	local desiredDirection = self:_projectDirection(projectedTargetPosition - headPosition)
-	return Vec.unit(desiredDirection, self._heading)
+	return Vec.Unit(desiredDirection, self._heading)
 end
 
 function Worm._applyTerrainAvoidance(self: Worm, position: Vector3, desiredDirection: Vector3): Vector3
@@ -772,7 +772,7 @@ function Worm._applyTerrainAvoidance(self: Worm, position: Vector3, desiredDirec
 		return desiredDirection
 	end
 
-	local castDirection = Vec.unit(desiredDirection, self._heading) * self._collisionLookAheadDistance
+	local castDirection = Vec.Unit(desiredDirection, self._heading) * self._collisionLookAheadDistance
 	local hit = Workspace:Raycast(position, castDirection, raycastParams)
 	if hit == nil then
 		return desiredDirection
@@ -784,7 +784,7 @@ function Worm._applyTerrainAvoidance(self: Worm, position: Vector3, desiredDirec
 	end
 
 	local avoidedDirection = desiredDirection + projectedNormal.Unit * self._collisionAvoidStrength
-	return Vec.unit(self:_projectDirection(avoidedDirection), desiredDirection)
+	return Vec.Unit(self:_projectDirection(avoidedDirection), desiredDirection)
 end
 
 function Worm._rotateDirectionToward(
@@ -793,9 +793,9 @@ function Worm._rotateDirectionToward(
 	desiredDirectionRaw: Vector3,
 	dt: number
 ): Vector3
-	local currentDirection = Vec.unit(self:_projectDirection(currentDirectionRaw), self._heading)
-	local desiredDirection = Vec.unit(self:_projectDirection(desiredDirectionRaw), currentDirection)
-	local angle = Angle.signed3D(currentDirection, desiredDirection, self._planeNormal)
+	local currentDirection = Vec.Unit(self:_projectDirection(currentDirectionRaw), self._heading)
+	local desiredDirection = Vec.Unit(self:_projectDirection(desiredDirectionRaw), currentDirection)
+	local angle = Angle.Signed3D(currentDirection, desiredDirection, self._planeNormal)
 	local maxAngle = self._turnSpeed * dt
 
 	if math.abs(angle) <= maxAngle then
@@ -804,10 +804,10 @@ function Worm._rotateDirectionToward(
 
 	local stepAngle = math.sign(angle) * maxAngle
 	local rotatedDirection = CFrame.fromAxisAngle(self._planeNormal, stepAngle):VectorToWorldSpace(currentDirection)
-	return Vec.unit(self:_projectDirection(rotatedDirection), desiredDirection)
+	return Vec.Unit(self:_projectDirection(rotatedDirection), desiredDirection)
 end
 
-function Worm._resolveBlockedHeadPosition(self: Worm, previousPosition: Vector3, desiredPosition: Vector3): Vector3
+function Worm._GetBlockedHeadPosition(self: Worm, previousPosition: Vector3, desiredPosition: Vector3): Vector3
 	if self._canBurrow or not self._collisionEnabled or not self._collisionBlockMovement then
 		return desiredPosition
 	end
@@ -839,25 +839,25 @@ function Worm._updateHead(self: Worm, dt: number)
 	end
 
 	local headPosition = self:_projectPosition(head.model:GetPivot().Position)
-	local desiredDirection = self:_resolveHeadDirection(headPosition, dt)
+	local desiredDirection = self:_GetHeadDirection(headPosition, dt)
 	desiredDirection = self:_applyTerrainAvoidance(headPosition, desiredDirection)
 
 	local currentDirection = if self._velocity.Magnitude > 0.001 then self._velocity else self._heading
 	local steeredDirection = self:_rotateDirectionToward(currentDirection, desiredDirection, dt)
 	local desiredVelocity = steeredDirection * self._speed
-	self._velocity = Vec.moveTowards(self:_projectDirection(self._velocity), desiredVelocity, self._acceleration * dt)
+	self._velocity = Vec.MoveTowards(self:_projectDirection(self._velocity), desiredVelocity, self._acceleration * dt)
 	self._velocity = self:_projectDirection(self._velocity)
 
 	local moveDirection = if self._velocity.Magnitude > 0.001 then self._velocity.Unit else steeredDirection
-	self._heading = Vec.unit(self:_projectDirection(moveDirection), self._heading)
+	self._heading = Vec.Unit(self:_projectDirection(moveDirection), self._heading)
 
 	local desiredPosition = self:_projectPosition(headPosition + self._velocity * dt)
-	local resolvedPosition = self:_resolveBlockedHeadPosition(headPosition, desiredPosition)
-	if (resolvedPosition - desiredPosition).Magnitude > 0.001 then
+	local GotPosition = self:_GetBlockedHeadPosition(headPosition, desiredPosition)
+	if (GotPosition - desiredPosition).Magnitude > 0.001 then
 		self._velocity = Vector3.zero
 	end
 
-	self:_pivotSegment(head, self:_createSegmentCFrame(resolvedPosition, self._heading))
+	self:_pivotSegment(head, self:_createSegmentCFrame(GotPosition, self._heading))
 end
 
 function Worm._updateFollowerSegments(self: Worm)
@@ -875,7 +875,7 @@ function Worm._updateFollowerSegments(self: Worm)
 			direction = self:_projectDirection(previous.model:GetPivot().LookVector)
 		end
 
-		direction = Vec.unit(direction, self._heading)
+		direction = Vec.Unit(direction, self._heading)
 		local nextPosition = previousPosition - direction * self._segmentSpacing
 		self:_pivotSegment(segment, self:_createSegmentCFrame(nextPosition, direction))
 	end
@@ -899,7 +899,7 @@ function Worm._step(self: Worm, dtRaw: number)
 	self._signals.stepped:Fire(dt, motion)
 end
 
-function Worm._resolveSegmentTemplates(config: WormConfig): (Model?, Model?, Model?)
+function Worm._GetSegmentTemplates(config: WormConfig): (Model?, Model?, Model?)
 	local templates = if typeof(config.templates) == "table" then config.templates else nil
 	local container = config.model
 
@@ -908,7 +908,7 @@ function Worm._resolveSegmentTemplates(config: WormConfig): (Model?, Model?, Mod
 		headTemplate = templates.Head or templates.head
 	end
 	if headTemplate == nil then
-		headTemplate = resolveTemplateFromContainer(container, "Head")
+		headTemplate = GetTemplateFromContainer(container, "Head")
 	end
 
 	local bodyTemplate = config.bodyTemplate
@@ -916,7 +916,7 @@ function Worm._resolveSegmentTemplates(config: WormConfig): (Model?, Model?, Mod
 		bodyTemplate = templates.Body or templates.body
 	end
 	if bodyTemplate == nil then
-		bodyTemplate = resolveTemplateFromContainer(container, "Body")
+		bodyTemplate = GetTemplateFromContainer(container, "Body")
 	end
 
 	local tailTemplate = config.tailTemplate
@@ -924,7 +924,7 @@ function Worm._resolveSegmentTemplates(config: WormConfig): (Model?, Model?, Mod
 		tailTemplate = templates.Tail or templates.tail
 	end
 	if tailTemplate == nil then
-		tailTemplate = resolveTemplateFromContainer(container, "Tail")
+		tailTemplate = GetTemplateFromContainer(container, "Tail")
 	end
 
 	return headTemplate, bodyTemplate, tailTemplate
@@ -969,7 +969,7 @@ function Worm._createSegment(
 		else if kind == "Tail" then "WormTail" else "WormBody" .. tostring(index - 1)
 	model.Parent = self._segmentParent or self._spawnParent
 
-	local rootPart = resolveRootPart(model)
+	local rootPart = GetRootPart(model)
 	if model.PrimaryPart == nil and rootPart ~= nil then
 		model.PrimaryPart = rootPart
 	end
@@ -1015,7 +1015,7 @@ function Worm._useExistingSegments(self: Worm, segmentModels: { Model }): boolea
 
 		local kind: SegmentKind = if index == 1 then "Head" else if index == #segmentModels then "Tail" else "Body"
 		local previous = self._segments[index - 1]
-		local rootPart = resolveRootPart(model)
+		local rootPart = GetRootPart(model)
 		if model.PrimaryPart == nil and rootPart ~= nil then
 			model.PrimaryPart = rootPart
 		end
@@ -1098,7 +1098,7 @@ function Worm._buildSegments(self: Worm, spawnCFrame: CFrame)
 	end
 
 	local startPosition = self:_projectPosition(spawnCFrame.Position)
-	local startDirection = Vec.unit(self:_projectDirection(spawnCFrame.LookVector), self._initialDirection)
+	local startDirection = Vec.Unit(self:_projectDirection(spawnCFrame.LookVector), self._initialDirection)
 	self._heading = startDirection
 
 	for index, segment in self._segments do
@@ -1109,8 +1109,8 @@ end
 
 function Worm.New(configRaw: WormConfig?): Worm
 	local config = if typeof(configRaw) == "table" then configRaw :: WormConfig else {} :: WormConfig
-	local lockedAxis: LockedAxis = resolveLockedAxis(config.lockedAxis or config.lockAxis)
-	local lockedDepth = resolveAxisDepth(config, lockedAxis)
+	local lockedAxis: LockedAxis = GetLockedAxis(config.lockedAxis or config.lockAxis)
+	local lockedDepth = GetAxisDepth(config, lockedAxis)
 	local planeNormal = if typeof(config.planeNormal) == "Vector3" and config.planeNormal.Magnitude > 0
 		then config.planeNormal.Unit
 		else AXIS_NORMALS[lockedAxis]
@@ -1122,17 +1122,17 @@ function Worm.New(configRaw: WormConfig?): Worm
 	local behaviorConfig: WormBehaviorConfig = if typeof(config.behavior) == "table"
 		then config.behavior :: WormBehaviorConfig
 		else {} :: WormBehaviorConfig
-	local speed = sanitizeNumber(config.movementSpeed or config.speed, DEFAULT_SPEED, 0, nil)
+	local speed = CoerceNumber(config.movementSpeed or config.speed, DEFAULT_SPEED, 0, nil)
 	local turnSpeed = if typeof(config.turnSpeedDegrees) == "number"
 		then math.rad(config.turnSpeedDegrees)
-		else sanitizeNumber(config.turnSpeed, DEFAULT_TURN_SPEED, 0, nil)
-	local acceleration = sanitizeNumber(config.acceleration, DEFAULT_ACCELERATION, 0, nil)
+		else CoerceNumber(config.turnSpeed, DEFAULT_TURN_SPEED, 0, nil)
+	local acceleration = CoerceNumber(config.acceleration, DEFAULT_ACCELERATION, 0, nil)
 	local bodySegmentCount = config.bodySegmentCount
 	local segmentCount = if typeof(bodySegmentCount) == "number"
 		then math.max(2, math.floor(bodySegmentCount) + 2)
-		else sanitizeInteger(config.segmentCount, DEFAULT_SEGMENT_COUNT, 2, 512)
-	local headTemplate, bodyTemplate, tailTemplate = Worm._resolveSegmentTemplates(config)
-	local fallbackDirection = Vec.orthogonal(planeNormal)
+		else CoerceInteger(config.segmentCount, DEFAULT_SEGMENT_COUNT, 2, 512)
+	local headTemplate, bodyTemplate, tailTemplate = Worm._GetSegmentTemplates(config)
+	local fallbackDirection = Vec.Orthogonal(planeNormal)
 	local initialDirection = if typeof(config.initialDirection) == "Vector3"
 			and config.initialDirection.Magnitude > 0
 		then config.initialDirection.Unit
@@ -1140,39 +1140,39 @@ function Worm.New(configRaw: WormConfig?): Worm
 				and behaviorConfig.idleDirection.Magnitude > 0
 			then behaviorConfig.idleDirection.Unit
 			else fallbackDirection
-	initialDirection = Vec.unit(initialDirection - planeNormal * initialDirection:Dot(planeNormal), fallbackDirection)
-	local collisionEnabled = sanitizeBoolean(collisionConfig.enabled, false)
+	initialDirection = Vec.Unit(initialDirection - planeNormal * initialDirection:Dot(planeNormal), fallbackDirection)
+	local collisionEnabled = CoerceBoolean(collisionConfig.enabled, false)
 	local segmentModels: { Model }? = if typeof(config.segmentModels) == "table" then config.segmentModels else nil
-	local segmentSpacing: number = sanitizeNumber(config.segmentSpacing, DEFAULT_SEGMENT_SPACING, 0.05, nil)
+	local segmentSpacing: number = CoerceNumber(config.segmentSpacing, DEFAULT_SEGMENT_SPACING, 0.05, nil)
 	local spawnParent: Instance = if typeof(config.spawnParent) == "Instance" then config.spawnParent else Workspace
 	local segmentParent: Instance? = if typeof(config.segmentParent) == "Instance" then config.segmentParent else nil
 	local spawnCFrame: CFrame? = if typeof(config.spawnCFrame) == "CFrame" then config.spawnCFrame else nil
-	local destroySegmentsOnDestroy: boolean = sanitizeBoolean(config.destroySegmentsOnDestroy, true)
-	local anchorSegments: boolean = sanitizeBoolean(config.anchorSegments, true)
-	local canCollide: boolean = sanitizeBoolean(config.canCollide, false)
-	local canTouch: boolean = sanitizeBoolean(config.canTouch, true)
-	local canQuery: boolean = sanitizeBoolean(config.canQuery, true)
-	local serverOwned: boolean = sanitizeBoolean(config.serverOwned, true)
-	local createSegmentLinks: boolean = sanitizeBoolean(config.createSegmentLinks, true)
+	local destroySegmentsOnDestroy: boolean = CoerceBoolean(config.destroySegmentsOnDestroy, true)
+	local anchorSegments: boolean = CoerceBoolean(config.anchorSegments, true)
+	local canCollide: boolean = CoerceBoolean(config.canCollide, false)
+	local canTouch: boolean = CoerceBoolean(config.canTouch, true)
+	local canQuery: boolean = CoerceBoolean(config.canQuery, true)
+	local serverOwned: boolean = CoerceBoolean(config.serverOwned, true)
+	local createSegmentLinks: boolean = CoerceBoolean(config.createSegmentLinks, true)
 	local lookUpVector: Vector3 = if typeof(config.lookUpVector) == "Vector3"
 			and config.lookUpVector.Magnitude > 0
 		then config.lookUpVector.Unit
 		else Vector3.yAxis
 	local targetRefreshInterval: number =
-		sanitizeNumber(behaviorConfig.targetRefreshInterval, DEFAULT_TARGET_REFRESH_INTERVAL, 0, nil)
+		CoerceNumber(behaviorConfig.targetRefreshInterval, DEFAULT_TARGET_REFRESH_INTERVAL, 0, nil)
 	local collisionRaycastParams: RaycastParams? = collisionConfig.raycastParams or collisionConfig.params
 	local collisionFilterDescendants: { Instance } = if typeof(collisionConfig.filterDescendantsInstances)
 			== "table"
 		then collisionConfig.filterDescendantsInstances
 		else {} :: any
-	local collisionExcludeSegments: boolean = sanitizeBoolean(collisionConfig.excludeSegments, true)
+	local collisionExcludeSegments: boolean = CoerceBoolean(collisionConfig.excludeSegments, true)
 	local collisionLookAheadDistance: number =
-		sanitizeNumber(collisionConfig.lookAheadDistance, DEFAULT_LOOK_AHEAD_DISTANCE, 0.1, nil)
-	local collisionAvoidStrength: number = sanitizeNumber(collisionConfig.avoidStrength, DEFAULT_AVOID_STRENGTH, 0, nil)
-	local collisionBlockMovement: boolean = sanitizeBoolean(collisionConfig.blockMovement, false)
-	local collisionSurfaceOffset: number = sanitizeNumber(collisionConfig.surfaceOffset, DEFAULT_SURFACE_OFFSET, 0, nil)
-	local canBurrow: boolean = sanitizeBoolean(behaviorConfig.canBurrow, not collisionEnabled)
-	local maxDt: number = sanitizeNumber(behaviorConfig.maxDt, DEFAULT_MAX_DT, 1 / 240, 1)
+		CoerceNumber(collisionConfig.lookAheadDistance, DEFAULT_LOOK_AHEAD_DISTANCE, 0.1, nil)
+	local collisionAvoidStrength: number = CoerceNumber(collisionConfig.avoidStrength, DEFAULT_AVOID_STRENGTH, 0, nil)
+	local collisionBlockMovement: boolean = CoerceBoolean(collisionConfig.blockMovement, false)
+	local collisionSurfaceOffset: number = CoerceNumber(collisionConfig.surfaceOffset, DEFAULT_SURFACE_OFFSET, 0, nil)
+	local canBurrow: boolean = CoerceBoolean(behaviorConfig.canBurrow, not collisionEnabled)
+	local maxDt: number = CoerceNumber(behaviorConfig.maxDt, DEFAULT_MAX_DT, 1 / 240, 1)
 	local signals: WormSignals = createSignals()
 
 	local self = setmetatable({
@@ -1556,7 +1556,7 @@ function Worm.ObserveTargetPosition(self: Worm): ObservableObject
 			motion = self:ObserveMotion(),
 		}):Pipe({
 			Rx.map(function()
-				return resolvePositionFromTarget(self._target)
+				return GetPositionFromTarget(self._target)
 			end),
 			Rx.distinct(),
 			Rx.shareReplay(1),
@@ -1613,42 +1613,4 @@ function Worm.ObserveSnapshot(self: Worm): ObservableObject
 		})
 	end)
 end
-
-Worm.new = Worm.New
-Worm.start = Worm.Start
-Worm.stop = Worm.Stop
-Worm.destroy = Worm.Destroy
-Worm.setTarget = Worm.SetTarget
-Worm.setTargetProvider = Worm.SetTargetProvider
-Worm.setTargetObservable = Worm.SetTargetObservable
-Worm.getHead = Worm.GetHead
-Worm.getSegments = Worm.GetSegments
-Worm.setEnabled = Worm.SetEnabled
-Worm.getMotionSnapshot = Worm.GetMotionSnapshot
-Worm.getSnapshot = Worm.GetSnapshot
-Worm.observeStarted = Worm.ObserveStarted
-Worm.observeStopped = Worm.ObserveStopped
-Worm.observeDestroying = Worm.ObserveDestroying
-Worm.observeStepped = Worm.ObserveStepped
-Worm.observeEnabled = Worm.ObserveEnabled
-Worm.observeRunning = Worm.ObserveRunning
-Worm.observeDestroyed = Worm.ObserveDestroyed
-Worm.observeTarget = Worm.ObserveTarget
-Worm.observeTargetProvider = Worm.ObserveTargetProvider
-Worm.observeTargetObservable = Worm.ObserveTargetObservable
-Worm.observeSegments = Worm.ObserveSegments
-Worm.observeSegment = Worm.ObserveSegment
-Worm.observeSegmentModels = Worm.ObserveSegmentModels
-Worm.observeHead = Worm.ObserveHead
-Worm.observeMotion = Worm.ObserveMotion
-Worm.observeHeadCFrame = Worm.ObserveHeadCFrame
-Worm.observeHeadPosition = Worm.ObserveHeadPosition
-Worm.observeVelocity = Worm.ObserveVelocity
-Worm.observeHeading = Worm.ObserveHeading
-Worm.observeSpeed = Worm.ObserveSpeed
-Worm.observeTargetPosition = Worm.ObserveTargetPosition
-Worm.observeSegmentCFrames = Worm.ObserveSegmentCFrames
-Worm.observeSegmentPositions = Worm.ObserveSegmentPositions
-Worm.observeSnapshot = Worm.ObserveSnapshot
-
 return Worm

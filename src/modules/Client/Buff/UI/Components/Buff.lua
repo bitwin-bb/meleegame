@@ -63,7 +63,7 @@ local function normalizeKey(valueRaw: any): string
 	return string.gsub(value, "[^%w]", "")
 end
 
-local function resolveImageId(valueRaw: any): string
+local function GetImageId(valueRaw: any): string
 	if typeof(valueRaw) == "string" and valueRaw ~= "" then
 		return valueRaw
 	end
@@ -71,22 +71,22 @@ local function resolveImageId(valueRaw: any): string
 	return ""
 end
 
-local function resolveIconFromGroup(iconGroupRaw: any, iconKeyRaw: any): string
+local function GetIconFromGroup(iconGroupRaw: any, iconKeyRaw: any): string
 	if typeof(iconGroupRaw) ~= "table" then
 		return ""
 	end
 
-	return resolveImageId((iconGroupRaw :: { [string]: any })[iconKeyRaw])
+	return GetImageId((iconGroupRaw :: { [string]: any })[iconKeyRaw])
 end
 
-local function resolveRecordIcon(recordRaw: any, propIconRaw: any): string
-	local propIcon = resolveImageId(propIconRaw)
+local function GetEcordIcon(recordRaw: any, propIconRaw: any): string
+	local propIcon = GetImageId(propIconRaw)
 	if propIcon ~= "" then
 		return propIcon
 	end
 
 	local record = if typeof(recordRaw) == "table" then recordRaw :: { [string]: any } else {}
-	local recordIcon = resolveImageId(record.icon or record.iconId)
+	local recordIcon = GetImageId(record.icon or record.iconId)
 	if recordIcon ~= "" then
 		return recordIcon
 	end
@@ -99,37 +99,37 @@ local function resolveRecordIcon(recordRaw: any, propIconRaw: any): string
 
 	local imageFromGroup = ""
 	if record.kind == "Debuff" then
-		imageFromGroup = resolveIconFromGroup((ImageIds :: any).debuffs, alias)
+		imageFromGroup = GetIconFromGroup((ImageIds :: any).debuffs, alias)
 	elseif record.kind == "Buff" then
-		imageFromGroup = resolveIconFromGroup((ImageIds :: any).buffs, alias)
+		imageFromGroup = GetIconFromGroup((ImageIds :: any).buffs, alias)
 	else
-		imageFromGroup = resolveIconFromGroup((ImageIds :: any).debuffs, alias)
+		imageFromGroup = GetIconFromGroup((ImageIds :: any).debuffs, alias)
 		if imageFromGroup == "" then
-			imageFromGroup = resolveIconFromGroup((ImageIds :: any).buffs, alias)
+			imageFromGroup = GetIconFromGroup((ImageIds :: any).buffs, alias)
 		end
 	end
 	if imageFromGroup ~= "" then
 		return imageFromGroup
 	end
 
-	return resolveImageId((ImageIds :: any)[alias])
+	return GetImageId((ImageIds :: any)[alias])
 end
 
-local function resolveSlotImage(slotImageRaw: any): string
-	local slotImage = resolveImageId(slotImageRaw)
+local function GetSlotImage(slotImageRaw: any): string
+	local slotImage = GetImageId(slotImageRaw)
 	if slotImage ~= "" then
 		return slotImage
 	end
 
-	slotImage = resolveImageId((ImageIds :: any).buffSlot)
+	slotImage = GetImageId((ImageIds :: any).buffSlot)
 	if slotImage ~= "" then
 		return slotImage
 	end
 
-	return resolveImageId((ImageIds :: any).skillSlot or (ImageIds :: any).inventorySlot)
+	return GetImageId((ImageIds :: any).skillSlot or (ImageIds :: any).inventorySlot)
 end
 
-local function resolveStacks(recordRaw: any): string?
+local function GetStacks(recordRaw: any): string?
 	if typeof(recordRaw) ~= "table" then
 		return nil
 	end
@@ -180,7 +180,7 @@ local function BuffSlot(props: BuffSlotProps): React.ReactNode
 	}
 	local iconChildren: { [any]: React.ReactNode } = {}
 
-	if resolveImageId(props.IconImage) ~= "" then
+	if GetImageId(props.IconImage) ~= "" then
 		iconChildren.BuffIcon = e("ImageLabel", {
 			Size = UDim2.fromScale(1, 1),
 			Position = UDim2.fromScale(0.5, 0.5),
@@ -232,8 +232,8 @@ return function(props: BuffProps): React.ReactNode
 	local slotHeight = math.ceil(slotSize * (SLOT_IMAGE_SIZE.Y / SLOT_IMAGE_SIZE.X))
 	local frameProps = if props.native ~= nil then Table.copy(props.native) else {}
 	local children: { React.ReactNode } = {}
-	local stackText = resolveStacks(record)
-	local recordIcon = resolveRecordIcon(record, props.icon)
+	local stackText = GetStacks(record)
+	local recordIcon = GetEcordIcon(record, props.icon)
 	local debugInnerBounds = props.DebugInnerBounds == true or props.debugInnerBounds == true
 	local hoverId = `buff_{normalizeKey(if typeof(record) == "table" then (record :: { [string]: any }).id else "")}`
 	local hoverText = composeHoverText(record)
@@ -243,20 +243,20 @@ return function(props: BuffProps): React.ReactNode
 				return
 			end
 
-			infoThunks.showHover({
+			infoThunks.ShowHover({
 				id = hoverId,
 				text = hoverText,
 			})
 			UiSound.playHover()
 		end,
 		onHoverEnd = function()
-			infoThunks.hideHover(hoverId)
+			infoThunks.HideHover(hoverId)
 		end,
 	})
 
 	React.useEffect(function()
 		return function()
-			infoThunks.hideHover(hoverId)
+			infoThunks.HideHover(hoverId)
 		end
 	end, { hoverId })
 
@@ -264,7 +264,7 @@ return function(props: BuffProps): React.ReactNode
 		Size = UDim2.fromOffset(slotSize, slotHeight),
 		Position = UDim2.fromScale(0.5, 0),
 		AnchorPoint = Vector2.new(0.5, 0),
-		SlotImage = resolveSlotImage(props.slotImage),
+		SlotImage = GetSlotImage(props.slotImage),
 		IconImage = recordIcon,
 		ZIndex = zIndex + 1,
 		DebugInnerBounds = debugInnerBounds,

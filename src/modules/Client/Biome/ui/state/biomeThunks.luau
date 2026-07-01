@@ -27,7 +27,7 @@ local BIOME_ID_TO_NAME: { [number]: string } = {
 	[5] = "The Corruption",
 }
 
-local function resolveTundraBiomeKey(depthLayer: number?): string
+local function GetTundraBiomeKey(depthLayer: number?): string
 	if depthLayer == DEPTH_LAYER_CAVERN or depthLayer == DEPTH_LAYER_DEEP then
 		return "tundra:caverns"
 	end
@@ -47,7 +47,7 @@ local runtime = {
 	characterAddedConnection = nil :: RBXScriptConnection?,
 }
 
-local function resolveCharacterRootPart(characterRaw: any): BasePart?
+local function GetCharacterRootPart(characterRaw: any): BasePart?
 	if typeof(characterRaw) ~= "Instance" or not characterRaw:IsA("Model") then
 		return nil
 	end
@@ -75,7 +75,7 @@ local function resolveCharacterRootPart(characterRaw: any): BasePart?
 	return nil
 end
 
-local function resolveLocalPlayerRootPart(): BasePart?
+local function GetLocalPlayerRootPart(): BasePart?
 	local localPlayer = runtime.localPlayer
 	if localPlayer == nil then
 		return nil
@@ -86,7 +86,7 @@ local function resolveLocalPlayerRootPart(): BasePart?
 		return nil
 	end
 
-	return resolveCharacterRootPart(character)
+	return GetCharacterRootPart(character)
 end
 
 local function isWorldReady(): boolean
@@ -95,7 +95,7 @@ local function isWorldReady(): boolean
 	end
 
 	local ok, worldState = pcall(function()
-		return WorldGenerationServiceClient:getState()
+		return WorldGenerationServiceClient:GetState()
 	end)
 	if not ok or typeof(worldState) ~= "table" then
 		return false
@@ -104,14 +104,14 @@ local function isWorldReady(): boolean
 	return (worldState :: any).ready == true
 end
 
-local function resolveBiomeAtPosition(worldPosition: Vector3): (string?, string?)
+local function GetBiomeAtPosition(worldPosition: Vector3): (string?, string?)
 	if not isWorldReady() then
 		return nil, nil
 	end
 
-	local worldState = WorldGenerationServiceClient:getState()
+	local worldState = WorldGenerationServiceClient:GetState()
 	if
-		SpaceShared.isInSpaceAtWorldPosition(
+		SpaceShared.IsInSpaceAtWorldPosition(
 			worldPosition,
 			worldState,
 			(WorldGenerationServiceClient :: any).worldOrigin
@@ -122,7 +122,7 @@ local function resolveBiomeAtPosition(worldPosition: Vector3): (string?, string?
 
 	local biomeId: number?
 	local biomeIdOk, biomeIdResult = pcall(function()
-		return WorldGenerationServiceClient:getBiomeIdAtWorldPosition(worldPosition)
+		return WorldGenerationServiceClient:GetBiomeIdAtWorldPosition(worldPosition)
 	end)
 	if biomeIdOk and typeof(biomeIdResult) == "number" then
 		biomeId = math.floor(biomeIdResult)
@@ -130,7 +130,7 @@ local function resolveBiomeAtPosition(worldPosition: Vector3): (string?, string?
 
 	local surfaceBiomeId: number?
 	local surfaceBiomeIdOk, surfaceBiomeIdResult = pcall(function()
-		return (WorldGenerationServiceClient :: any):getSurfaceBiomeIdAtWorldPosition(worldPosition)
+		return (WorldGenerationServiceClient :: any):GetSurfaceBiomeIdAtWorldPosition(worldPosition)
 	end)
 	if surfaceBiomeIdOk and typeof(surfaceBiomeIdResult) == "number" then
 		surfaceBiomeId = math.floor(surfaceBiomeIdResult)
@@ -138,7 +138,7 @@ local function resolveBiomeAtPosition(worldPosition: Vector3): (string?, string?
 
 	local depthLayer: number?
 	local depthLayerOk, depthLayerResult = pcall(function()
-		return (WorldGenerationServiceClient :: any):getDepthLayerAtWorldPosition(worldPosition)
+		return (WorldGenerationServiceClient :: any):GetDepthLayerAtWorldPosition(worldPosition)
 	end)
 	if depthLayerOk and typeof(depthLayerResult) == "number" then
 		depthLayer = math.floor(depthLayerResult)
@@ -151,7 +151,7 @@ local function resolveBiomeAtPosition(worldPosition: Vector3): (string?, string?
 		then surfaceBiomeId == BIOME_ID_SNOW
 		else biomeId == BIOME_ID_SNOW or surfaceBiomeId == BIOME_ID_SNOW
 	if isSnowBiome then
-		return resolveTundraBiomeKey(depthLayer), "Tundra"
+		return GetTundraBiomeKey(depthLayer), "Tundra"
 	end
 
 	if depthLayer == DEPTH_LAYER_CAVERN or depthLayer == DEPTH_LAYER_DEEP then
@@ -163,7 +163,7 @@ local function resolveBiomeAtPosition(worldPosition: Vector3): (string?, string?
 
 	local biomeType: number?
 	local biomeTypeOk, biomeTypeResult = pcall(function()
-		return WorldGenerationServiceClient:getBiomeTypeAtWorldPosition(worldPosition)
+		return WorldGenerationServiceClient:GetBiomeTypeAtWorldPosition(worldPosition)
 	end)
 	if biomeTypeOk and typeof(biomeTypeResult) == "number" then
 		biomeType = math.floor(biomeTypeResult)
@@ -210,12 +210,12 @@ local function step(deltaTimeRaw: any)
 	end
 	runtime.sampleAccumulator = 0
 
-	local rootPart = resolveLocalPlayerRootPart()
+	local rootPart = GetLocalPlayerRootPart()
 	if rootPart == nil then
 		return
 	end
 
-	local biomeKey, biomeName = resolveBiomeAtPosition(rootPart.Position)
+	local biomeKey, biomeName = GetBiomeAtPosition(rootPart.Position)
 	if biomeKey == nil or biomeName == nil then
 		return
 	end
@@ -260,7 +260,7 @@ function biomeThunks.Start(): () -> ()
 end
 
 function biomeThunks.Stop()
-	ConnectionUtils.disconnectMany({
+	ConnectionUtils.DisconnectMany({
 		runtime.heartbeatConnection,
 		runtime.characterAddedConnection,
 	})
@@ -278,9 +278,4 @@ end
 function biomeThunks.GetBiomeState(): BiomeState
 	return biomeSlice.getBiomeState()
 end
-
-biomeThunks.start = biomeThunks.Start
-biomeThunks.stop = biomeThunks.Stop
-biomeThunks.getBiomeState = biomeThunks.GetBiomeState
-
 return biomeThunks

@@ -8,7 +8,7 @@ local LootBinder = {}
 LootBinder.__index = LootBinder
 setmetatable(LootBinder, ModelBinder)
 
-local function resolveStringAttribute(instance: Instance, attributeName: string): string?
+local function GetStringAttribute(instance: Instance, attributeName: string): string?
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) == "string" and value ~= "" then
 		return value
@@ -23,8 +23,8 @@ function LootBinder.new(instance: Instance, context: any)
 end
 
 function LootBinder.updateMetadata(self: any)
-	local itemId = resolveStringAttribute(self.instance, "LootItemId")
-		or resolveStringAttribute(self.instance, "ItemId")
+	local itemId = GetStringAttribute(self.instance, "LootItemId")
+		or GetStringAttribute(self.instance, "ItemId")
 	local amount = self.instance:GetAttribute("LootAmount")
 	self.instance:SetAttribute("LootTagged", true)
 	if itemId == nil then
@@ -32,7 +32,7 @@ function LootBinder.updateMetadata(self: any)
 	end
 
 	self.instance:SetAttribute("LootItemId", itemId)
-	local definition = ItemRegistry.resolveDefinition(itemId)
+	local definition = ItemRegistry.GetDefinition(itemId)
 	if typeof(definition) == "table" then
 		self.instance:SetAttribute("LootDisplayName", (definition :: { [string]: any }).name or itemId)
 	end

@@ -89,14 +89,14 @@ local function clampNumber(valueRaw: any, minimum: number, maximum: number, fall
 	return math.clamp(valueRaw :: number, minimum, maximum)
 end
 
-local function sanitizeOctaveCount(valueRaw: any, fallback: number): number
+local function CoerceOctaveCount(valueRaw: any, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
 	return math.clamp(math.floor(valueRaw :: number), 1, 8)
 end
 
-local function resolveTileIdByName(tileIdMap: TileIdMap, nameRaw: any, fallback: number): number
+local function GetTileIdByName(tileIdMap: TileIdMap, nameRaw: any, fallback: number): number
 	if typeof(nameRaw) ~= "string" then
 		return fallback
 	end
@@ -117,7 +117,7 @@ local function sampleOctaveNoise(
 	offsetX: number,
 	offsetY: number
 ): number
-	return Noise.fbmOctaves(octaves, persistence, lacunarity, function(octave, frequency)
+	return Noise.FbmOctaves(octaves, persistence, lacunarity, function(octave, frequency)
 		local sampleFrequency = baseFrequency * frequency
 		return math.noise(
 			(x + offsetX + octave * 0.73) * sampleFrequency,
@@ -138,7 +138,7 @@ local function sampleOctaveNoise3D(
 	offsetX: number,
 	offsetZ: number
 ): number
-	return Noise.fbmOctaves(octaves, persistence, lacunarity, function(octave, frequency)
+	return Noise.FbmOctaves(octaves, persistence, lacunarity, function(octave, frequency)
 		local sampleFrequency = baseFrequency * frequency
 		return math.noise(
 			(x + offsetX + octave * 0.73) * sampleFrequency,
@@ -148,7 +148,7 @@ local function sampleOctaveNoise3D(
 	end)
 end
 
-local function resolveDepthNoiseSample(surfaceDepthRaw: number?, scale: number): (boolean, number)
+local function GetDepthNoiseSample(surfaceDepthRaw: number?, scale: number): (boolean, number)
 	local unscaledSurfaceDepth = if isFiniteNumber(surfaceDepthRaw) then surfaceDepthRaw :: number else 0
 	return math.abs(unscaledSurfaceDepth) > 0.0001, unscaledSurfaceDepth * scale
 end
@@ -166,7 +166,7 @@ local function sampleDepthAwareOctaveNoise(
 	offsetY: number,
 	offsetZ: number
 ): number
-	local useDepthNoise, surfaceDepth = resolveDepthNoiseSample(surfaceDepthRaw, depthScale)
+	local useDepthNoise, surfaceDepth = GetDepthNoiseSample(surfaceDepthRaw, depthScale)
 	if useDepthNoise then
 		return sampleOctaveNoise3D(
 			seed,
@@ -184,7 +184,7 @@ local function sampleDepthAwareOctaveNoise(
 	return sampleOctaveNoise(seed, tileX, baseFrequency, octaves, lacunarity, persistence, offsetX, offsetY)
 end
 
-local function resolveBiomeSurfaceTiles(self: Biome, biomeId: number, biomeType: number): (number, number, number)
+local function GetBiomeSurfaceTiles(self: Biome, biomeId: number, biomeType: number): (number, number, number)
 	if biomeType == self.biomeType.CORRUPTION then
 		return self.tileId.CORRUPT_GRASS, self.tileId.CORRUPT_SOIL, self.tileId.CORRUPT_STONE
 	end
@@ -231,7 +231,7 @@ local function sampleCorruptionScore(self: Biome, tileX: number, surfaceY: numbe
 		81.37,
 		BiomeConstants.CORRUPTION_SECONDARY_OFFSET + 187.83
 	)
-	local _, surfaceDepth = resolveDepthNoiseSample(surfaceDepthRaw, BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE)
+	local _, surfaceDepth = GetDepthNoiseSample(surfaceDepthRaw, BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE)
 	local detailNoise = math.noise(
 		(tileX + BiomeConstants.CORRUPTION_DETAIL_OFFSET_X) * (self.corruptionFrequency * 1.33),
 		(surfaceY + BiomeConstants.CORRUPTION_DETAIL_OFFSET_Y) * 0.016,
@@ -263,7 +263,7 @@ local function sampleJungleScore(
 		129.53,
 		BiomeConstants.JUNGLE_PRIMARY_OFFSET + 233.19
 	)
-	local _, surfaceDepth = resolveDepthNoiseSample(surfaceDepthRaw, BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE)
+	local _, surfaceDepth = GetDepthNoiseSample(surfaceDepthRaw, BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE)
 	local jungleDetailNoise = math.noise(
 		(tileX + BiomeConstants.JUNGLE_DETAIL_OFFSET_X) * (self.biomeFrequency * 1.41),
 		BiomeConstants.JUNGLE_DETAIL_OFFSET_Y + surfaceDepth * 0.021,
@@ -277,7 +277,7 @@ local function sampleJungleScore(
 	return humidityScore + warmthScore + jungleBandScore + detailScore
 end
 
-local function resolveJunglePlacement(self: Biome): (number, number, number, number, string)
+local function GetJunglePlacement(self: Biome): (number, number, number, number, string)
 	local sideNoise =
 		math.noise(self.seed * BiomeConstants.SEED_X_MULTIPLIER + BiomeConstants.JUNGLE_SIDE_OFFSET, 19.37, 71.19)
 	local preferredSideSign = if sideNoise >= 0 then 1 else -1
@@ -322,7 +322,7 @@ local function sampleJungleBandWeight(self: Biome, tileX: number, surfaceDepthRa
 	end
 
 	local useDepthNoise, surfaceDepth =
-		resolveDepthNoiseSample(surfaceDepthRaw, BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE)
+		GetDepthNoiseSample(surfaceDepthRaw, BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE)
 	local sideDistance = math.abs(tileX)
 	local anchorWarp = if useDepthNoise
 		then math.noise(
@@ -358,7 +358,7 @@ local function sampleJungleBandWeight(self: Biome, tileX: number, surfaceDepthRa
 	return math.clamp(coreAlpha * 0.78 + featherAlpha * 0.34 + bandNoise * 0.19, 0, 1)
 end
 
-local function resolveDesertPlacement(self: Biome): (number, number, number)
+local function GetDesertPlacement(self: Biome): (number, number, number)
 	local preferredSideSign = -self.junglePreferredSideSign
 	if preferredSideSign == 0 then
 		local sideNoise =
@@ -392,7 +392,7 @@ local function sampleDesertBandWeight(self: Biome, tileX: number, surfaceDepthRa
 	end
 
 	local useDepthNoise, surfaceDepth =
-		resolveDepthNoiseSample(surfaceDepthRaw, BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE)
+		GetDepthNoiseSample(surfaceDepthRaw, BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE)
 	local sideDistance = math.abs(tileX)
 	local anchorWarp = if useDepthNoise
 		then math.noise(
@@ -428,7 +428,7 @@ local function sampleDesertBandWeight(self: Biome, tileX: number, surfaceDepthRa
 	return math.clamp(coreAlpha * 0.84 + featherAlpha * 0.28 + bandNoise * 0.16, 0, 1)
 end
 
-local function resolveSnowPlacement(self: Biome): (number, number, number)
+local function GetSnowPlacement(self: Biome): (number, number, number)
 	local preferredSideSign = self.junglePreferredSideSign
 	if preferredSideSign == 0 then
 		local sideNoise =
@@ -459,7 +459,7 @@ local function sampleSnowBandWeight(self: Biome, tileX: number, surfaceDepthRaw:
 	end
 
 	local useDepthNoise, surfaceDepth =
-		resolveDepthNoiseSample(surfaceDepthRaw, BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE)
+		GetDepthNoiseSample(surfaceDepthRaw, BiomeConstants.BIOME_DEPTH_SAMPLE_SCALE)
 	local sideDistance = math.abs(tileX)
 	local anchorWarp = if useDepthNoise
 		then math.noise(
@@ -547,7 +547,7 @@ function Biome.New(configRaw: any): Biome
 			1,
 			BiomeConstants.DEFAULT_SURFACE_FREQUENCY
 		),
-		surfaceOctaves = sanitizeOctaveCount((config :: any).surfaceOctaves, BiomeConstants.DEFAULT_SURFACE_OCTAVES),
+		surfaceOctaves = CoerceOctaveCount((config :: any).surfaceOctaves, BiomeConstants.DEFAULT_SURFACE_OCTAVES),
 		surfaceLacunarity = clampNumber(
 			(config :: any).surfaceLacunarity,
 			1,
@@ -563,7 +563,7 @@ function Biome.New(configRaw: any): Biome
 		ridgeFrequency = clampNumber((config :: any).ridgeFrequency, 0.0001, 1, BiomeConstants.DEFAULT_RIDGE_FREQUENCY),
 		ridgeAmplitude = clampNumber((config :: any).ridgeAmplitude, 0, 512, BiomeConstants.DEFAULT_RIDGE_AMPLITUDE),
 		biomeFrequency = clampNumber((config :: any).biomeFrequency, 0.0001, 1, BiomeConstants.DEFAULT_BIOME_FREQUENCY),
-		biomeOctaves = sanitizeOctaveCount((config :: any).biomeOctaves, BiomeConstants.DEFAULT_BIOME_OCTAVES),
+		biomeOctaves = CoerceOctaveCount((config :: any).biomeOctaves, BiomeConstants.DEFAULT_BIOME_OCTAVES),
 		biomeLacunarity = clampNumber((config :: any).biomeLacunarity, 1, 4, BiomeConstants.DEFAULT_BIOME_LACUNARITY),
 		biomePersistence = clampNumber(
 			(config :: any).biomePersistence,
@@ -583,7 +583,7 @@ function Biome.New(configRaw: any): Biome
 			0.5,
 			BiomeConstants.DEFAULT_CORRUPTION_FREQUENCY
 		),
-		corruptionOctaves = sanitizeOctaveCount(
+		corruptionOctaves = CoerceOctaveCount(
 			(config :: any).corruptionOctaves,
 			BiomeConstants.DEFAULT_CORRUPTION_OCTAVES
 		),
@@ -677,7 +677,7 @@ function Biome.New(configRaw: any): Biome
 	self.desertDuneAmplitude = clampNumber(duneConfig.Amplitude, 0, 128, BiomeConstants.DEFAULT_DESERT_DUNE_AMPLITUDE)
 	self.desertDuneFrequency =
 		clampNumber(duneConfig.Frequency, 0.0001, 1, BiomeConstants.DEFAULT_DESERT_DUNE_FREQUENCY)
-	self.desertDuneOctaves = sanitizeOctaveCount(duneConfig.Octaves, BiomeConstants.DEFAULT_DESERT_DUNE_OCTAVES)
+	self.desertDuneOctaves = CoerceOctaveCount(duneConfig.Octaves, BiomeConstants.DEFAULT_DESERT_DUNE_OCTAVES)
 	self.desertDuneLacunarity = clampNumber(duneConfig.Lacunarity, 1, 4, BiomeConstants.DEFAULT_DESERT_DUNE_LACUNARITY)
 	self.desertDunePersistence =
 		clampNumber(duneConfig.Persistence, 0.1, 0.95, BiomeConstants.DEFAULT_DESERT_DUNE_PERSISTENCE)
@@ -693,9 +693,9 @@ function Biome.New(configRaw: any): Biome
 		clampNumber(desertSurfaceConfig.SubsurfaceSandDepth, 1, 64, BiomeConstants.DEFAULT_DESERT_SUBSURFACE_SAND_DEPTH)
 	self.desertSandstoneDepth =
 		clampNumber(desertSurfaceConfig.SandstoneDepth, 1, 96, BiomeConstants.DEFAULT_DESERT_SANDSTONE_DEPTH)
-	self.desertSurfaceTileId = resolveTileIdByName(self.tileId, desertSurfaceConfig.SurfaceTile, self.tileId.SAND)
-	self.desertFillerTileId = resolveTileIdByName(self.tileId, desertSurfaceConfig.FillerTile, self.tileId.SAND)
-	self.desertDeepTileId = resolveTileIdByName(self.tileId, desertSurfaceConfig.DeepTile, self.tileId.SANDSTONE)
+	self.desertSurfaceTileId = GetTileIdByName(self.tileId, desertSurfaceConfig.SurfaceTile, self.tileId.SAND)
+	self.desertFillerTileId = GetTileIdByName(self.tileId, desertSurfaceConfig.FillerTile, self.tileId.SAND)
+	self.desertDeepTileId = GetTileIdByName(self.tileId, desertSurfaceConfig.DeepTile, self.tileId.SANDSTONE)
 
 	local snowConfig = if typeof((config :: any).snowConfig) == "table" then (config :: any).snowConfig else {} :: any
 	local snowRegionConfig = if typeof((snowConfig :: any).Region) == "table"
@@ -760,17 +760,17 @@ function Biome.New(configRaw: any): Biome
 		self.stoneDepthMax = self.stoneDepthMin
 	end
 
-	local preferredSideSign, placementMode, anchorDistance, bandHalfWidth, placementLabel = resolveJunglePlacement(self)
+	local preferredSideSign, placementMode, anchorDistance, bandHalfWidth, placementLabel = GetJunglePlacement(self)
 	self.junglePreferredSideSign = preferredSideSign
 	self.junglePlacementMode = placementMode
 	self.jungleAnchorDistance = anchorDistance
 	self.jungleBandHalfWidth = bandHalfWidth
 	self.junglePlacementLabel = placementLabel
-	local desertPreferredSideSign, desertAnchorDistance, desertBandHalfWidth = resolveDesertPlacement(self)
+	local desertPreferredSideSign, desertAnchorDistance, desertBandHalfWidth = GetDesertPlacement(self)
 	self.desertPreferredSideSign = desertPreferredSideSign
 	self.desertAnchorDistance = desertAnchorDistance
 	self.desertBandHalfWidth = desertBandHalfWidth
-	local snowPreferredSideSign, snowAnchorDistance, snowBandHalfWidth = resolveSnowPlacement(self)
+	local snowPreferredSideSign, snowAnchorDistance, snowBandHalfWidth = GetSnowPlacement(self)
 	self.snowPreferredSideSign = snowPreferredSideSign
 	self.snowAnchorDistance = snowAnchorDistance
 	self.snowBandHalfWidth = snowBandHalfWidth
@@ -778,7 +778,7 @@ function Biome.New(configRaw: any): Biome
 	return self
 end
 
-function Biome.ResolveBiomeType(
+function Biome.GetBiomeType(
 	self: Biome,
 	tileX: number,
 	surfaceY: number,
@@ -832,7 +832,7 @@ function Biome.SampleTemperatureHumidity(self: Biome, tileX: number, surfaceDept
 	return temperature, humidity
 end
 
-function Biome.ResolveBiomeId(
+function Biome.GetBiomeId(
 	self: Biome,
 	tileX: number,
 	temperature: number,
@@ -938,13 +938,13 @@ local function sampleRawSurfaceHeight(self: Biome, tileX: number, biomeId: numbe
 	return height + biomeHeightOffset
 end
 
-local function resolveSurfaceBiomeIdAt(self: Biome, tileX: number, surfaceDepthRaw: number?): number
-	local temperature, humidity = self:sampleTemperatureHumidity(tileX, surfaceDepthRaw)
-	return self:resolveBiomeId(tileX, temperature, humidity, surfaceDepthRaw)
+local function GetSurfaceBiomeIdAt(self: Biome, tileX: number, surfaceDepthRaw: number?): number
+	local temperature, humidity = self:SampleTemperatureHumidity(tileX, surfaceDepthRaw)
+	return self:GetBiomeId(tileX, temperature, humidity, surfaceDepthRaw)
 end
 
 local function sampleRawSurfaceHeightAt(self: Biome, tileX: number, surfaceDepthRaw: number?): number
-	local biomeId = resolveSurfaceBiomeIdAt(self, tileX, surfaceDepthRaw)
+	local biomeId = GetSurfaceBiomeIdAt(self, tileX, surfaceDepthRaw)
 	return sampleRawSurfaceHeight(self, tileX, biomeId, surfaceDepthRaw)
 end
 
@@ -972,21 +972,21 @@ end
 
 function Biome.SampleSurfaceHeight(self: Biome, tileX: number, biomeId: number, surfaceDepthRaw: number?): number
 	local weightedHeightCache = {} :: { [number]: number }
-	local function resolveWeightedHeight(sampleTileX: number, sampleBiomeId: number?): number
+	local function GetWeightedHeight(sampleTileX: number, sampleBiomeId: number?): number
 		local cached = weightedHeightCache[sampleTileX]
 		if cached ~= nil then
 			return cached
 		end
 
-		local resolvedBiomeId = if sampleBiomeId ~= nil
+		local GotBiomeId = if sampleBiomeId ~= nil
 			then sampleBiomeId
-			else resolveSurfaceBiomeIdAt(self, sampleTileX, surfaceDepthRaw)
-		local height = sampleWeightedSurfaceHeight(self, sampleTileX, resolvedBiomeId, surfaceDepthRaw)
+			else GetSurfaceBiomeIdAt(self, sampleTileX, surfaceDepthRaw)
+		local height = sampleWeightedSurfaceHeight(self, sampleTileX, GotBiomeId, surfaceDepthRaw)
 		weightedHeightCache[sampleTileX] = height
 		return height
 	end
 
-	local smoothedHeight = resolveWeightedHeight(tileX, biomeId)
+	local smoothedHeight = GetWeightedHeight(tileX, biomeId)
 	local upperSlopeBound = smoothedHeight
 	local lowerSlopeBound = smoothedHeight
 	for offset = -BiomeConstants.SURFACE_SLOPE_LIMIT_RADIUS_TILES, BiomeConstants.SURFACE_SLOPE_LIMIT_RADIUS_TILES do
@@ -994,7 +994,7 @@ function Biome.SampleSurfaceHeight(self: Biome, tileX: number, biomeId: number, 
 			continue
 		end
 
-		local sampleHeight = resolveWeightedHeight(tileX + offset, nil)
+		local sampleHeight = GetWeightedHeight(tileX + offset, nil)
 		local allowedStep = math.abs(offset) * BiomeConstants.SURFACE_MAX_NEIGHBOR_STEP_TILES
 		upperSlopeBound = math.min(upperSlopeBound, sampleHeight + allowedStep)
 		lowerSlopeBound = math.max(lowerSlopeBound, sampleHeight - allowedStep)
@@ -1026,13 +1026,13 @@ function Biome.SampleStoneStartDepth(self: Biome, tileX: number, biomeId: number
 end
 
 function Biome.GetColumnProfile(self: Biome, tileX: number, surfaceDepth: number?): ColumnProfile
-	local temperature, humidity = self:sampleTemperatureHumidity(tileX, surfaceDepth)
-	local biomeId = self:resolveBiomeId(tileX, temperature, humidity, surfaceDepth)
-	local surfaceTemperature, surfaceHumidity = self:sampleTemperatureHumidity(tileX, nil)
-	local surfaceBiomeId = self:resolveBiomeId(tileX, surfaceTemperature, surfaceHumidity, nil)
-	local surfaceY = self:sampleSurfaceHeight(tileX, surfaceBiomeId, nil)
-	local biomeType = self:resolveBiomeType(tileX, surfaceY, biomeId, surfaceDepth)
-	local stoneStartDepth = self:sampleStoneStartDepth(tileX, biomeId)
+	local temperature, humidity = self:SampleTemperatureHumidity(tileX, surfaceDepth)
+	local biomeId = self:GetBiomeId(tileX, temperature, humidity, surfaceDepth)
+	local surfaceTemperature, surfaceHumidity = self:SampleTemperatureHumidity(tileX, nil)
+	local surfaceBiomeId = self:GetBiomeId(tileX, surfaceTemperature, surfaceHumidity, nil)
+	local surfaceY = self:SampleSurfaceHeight(tileX, surfaceBiomeId, nil)
+	local biomeType = self:GetBiomeType(tileX, surfaceY, biomeId, surfaceDepth)
+	local stoneStartDepth = self:SampleStoneStartDepth(tileX, biomeId)
 	local snowDetailNoise = sampleOctaveNoise(
 		self.seed + 4129,
 		tileX,
@@ -1056,7 +1056,7 @@ function Biome.GetColumnProfile(self: Biome, tileX: number, surfaceDepth: number
 	if biomeType == self.biomeType.CORRUPTION then
 		stoneStartDepth = math.max(2, stoneStartDepth + 2)
 	end
-	local topTileId, subsurfaceTileId, deepTileId = resolveBiomeSurfaceTiles(self, biomeId, biomeType)
+	local topTileId, subsurfaceTileId, deepTileId = GetBiomeSurfaceTiles(self, biomeId, biomeType)
 
 	return {
 		biomeId = biomeId,
@@ -1081,7 +1081,7 @@ function Biome.GetDepthColumnProfile(
 	return baseColumn
 end
 
-function Biome.ResolveTileForDepth(self: Biome, column: ColumnProfile, depthBelowSurface: number): number
+function Biome.GetTileForDepth(self: Biome, column: ColumnProfile, depthBelowSurface: number): number
 	if depthBelowSurface < 0 then
 		return self.tileId.AIR
 	end
@@ -1267,16 +1267,4 @@ export type Biome = typeof(setmetatable(
 	},
 	Biome
 ))
-
-Biome.new = Biome.New
-Biome.resolveBiomeType = Biome.ResolveBiomeType
-Biome.sampleTemperatureHumidity = Biome.SampleTemperatureHumidity
-Biome.resolveBiomeId = Biome.ResolveBiomeId
-Biome.sampleSurfaceHeight = Biome.SampleSurfaceHeight
-Biome.sampleStoneStartDepth = Biome.SampleStoneStartDepth
-Biome.getColumnProfile = Biome.GetColumnProfile
-Biome.getDepthColumnProfile = Biome.GetDepthColumnProfile
-Biome.resolveTileForDepth = Biome.ResolveTileForDepth
-Biome.convertTileToBiomeType = Biome.ConvertTileToBiomeType
-
 return Biome

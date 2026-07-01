@@ -354,7 +354,7 @@ local TILE_ID: TileIdMap = {
 	WOOD = 18,
 }
 
-local function resolveMaxTileId(tileIdMap: { [string]: number }): number
+local function GetMaxTileId(tileIdMap: { [string]: number }): number
 	local maxTileId = 0
 	for _, tileId in tileIdMap do
 		if tileId > maxTileId then
@@ -364,7 +364,7 @@ local function resolveMaxTileId(tileIdMap: { [string]: number }): number
 	return maxTileId
 end
 
-local MAX_TILE_ID = resolveMaxTileId(TILE_ID)
+local MAX_TILE_ID = GetMaxTileId(TILE_ID)
 
 local WALL_ID: WallIdMap = {
 	NONE = 0,
@@ -556,7 +556,7 @@ local function clampNumber(valueRaw: any, minimum: number, maximum: number, fall
 	return math.clamp(valueRaw :: number, minimum, maximum)
 end
 
-local function sanitizeInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+local function CoerceInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
@@ -661,19 +661,19 @@ local function computeTileIndex(localX: number, localY: number, width: number): 
 	return localY * width + localX + 1
 end
 
-local function resolveTileMetadataId(self: WorldGeneration, tileIdRaw: any): number
+local function GetTileMetadataId(self: WorldGeneration, tileIdRaw: any): number
 	if not isFiniteNumber(tileIdRaw) then
 		return self.tileId.AIR
 	end
 
-	return sanitizeInteger(tileIdRaw, self.tileId.AIR, MAX_TILE_ID, self.tileId.AIR)
+	return CoerceInteger(tileIdRaw, self.tileId.AIR, MAX_TILE_ID, self.tileId.AIR)
 end
 
-local function resolveTileMetadataRectValue(rectangleRaw: { [any]: any }): any
+local function GetTileMetadataRectValue(rectangleRaw: { [any]: any }): any
 	return rectangleRaw.tileId or rectangleRaw.value or rectangleRaw.id
 end
 
-local function resolveTileMetadataRectAxis(
+local function GetTileMetadataRectAxis(
 	startRaw: any,
 	sizeRaw: any,
 	endRaw: any,
@@ -683,10 +683,10 @@ local function resolveTileMetadataRectAxis(
 		return nil
 	end
 
-	local start = sanitizeInteger(startRaw, 0, maxExclusive - 1, 0)
+	local start = CoerceInteger(startRaw, 0, maxExclusive - 1, 0)
 	local size = if isFiniteNumber(sizeRaw)
-		then sanitizeInteger(sizeRaw, 1, maxExclusive - start, 1)
-		elseif isFiniteNumber(endRaw) then sanitizeInteger(
+		then CoerceInteger(sizeRaw, 1, maxExclusive - start, 1)
+		elseif isFiniteNumber(endRaw) then CoerceInteger(
 			(endRaw :: number) - start + 1,
 			1,
 			maxExclusive - start,
@@ -825,7 +825,7 @@ local function createPartTemplate(): Part
 	return part
 end
 
-local function resolveWorldGenerationAssetsFolder(): Folder?
+local function GetWorldGenerationAssetsFolder(): Folder?
 	local assets = ReplicatedStorage:FindFirstChild("Assets")
 	if assets == nil then
 		return nil
@@ -837,8 +837,8 @@ local function resolveWorldGenerationAssetsFolder(): Folder?
 	return nil
 end
 
-local function resolveTilesTemplateFolder(): Folder?
-	local worldGeneration = resolveWorldGenerationAssetsFolder()
+local function GetTilesTemplateFolder(): Folder?
+	local worldGeneration = GetWorldGenerationAssetsFolder()
 	if worldGeneration == nil then
 		return nil
 	end
@@ -849,7 +849,7 @@ local function resolveTilesTemplateFolder(): Folder?
 	return nil
 end
 
-local function resolveAssetTemplate(parent: Instance?, childName: string): Instance?
+local function GetAssetTemplate(parent: Instance?, childName: string): Instance?
 	if parent == nil then
 		return nil
 	end
@@ -867,12 +867,12 @@ local function createFallbackTileTemplate(templateName: string): BasePart
 	return part
 end
 
-local function resolveTileTemplate(parent: Instance?, childName: string): Instance
-	return resolveAssetTemplate(parent, childName) or createFallbackTileTemplate(childName)
+local function GetTileTemplate(parent: Instance?, childName: string): Instance
+	return GetAssetTemplate(parent, childName) or createFallbackTileTemplate(childName)
 end
 
-local function _resolveTreesTemplateFolder(): Folder?
-	local worldGeneration = resolveWorldGenerationAssetsFolder()
+local function _GetTreesTemplateFolder(): Folder?
+	local worldGeneration = GetWorldGenerationAssetsFolder()
 	if worldGeneration == nil then
 		return nil
 	end
@@ -907,7 +907,7 @@ local function isTreeSurfaceTile(self: WorldGeneration, tileId: number): boolean
 		or tileId == self.tileId.SNOW
 end
 
-local function resolveExposedSurfaceCapTileId(
+local function GetExposedSurfaceCapTileId(
 	self: WorldGeneration,
 	tileId: number,
 	biomeId: number,
@@ -1217,7 +1217,7 @@ local function createProceduralTreeVariantConfigs(): { TreeVariantConfig }
 	}
 end
 
-local function resolveTreeVariantIndexByAlpha(treeVariantCount: number, alpha: number): number
+local function GetTreeVariantIndexByAlpha(treeVariantCount: number, alpha: number): number
 	local count = math.max(1, treeVariantCount)
 	return math.clamp(math.floor(alpha * count) + 1, 1, count)
 end
@@ -1269,7 +1269,7 @@ local function copyColumnWithSurfaceY(column: ColumnProfile, surfaceY: number): 
 	}
 end
 
-local function resolveDominantBiomeType(biomeTypes: { number }, fallbackBiomeType: number): number
+local function GetDominantBiomeType(biomeTypes: { number }, fallbackBiomeType: number): number
 	local counts: { [number]: number } = {}
 	local selectedBiomeType = fallbackBiomeType
 	local selectedCount = 0
@@ -1286,7 +1286,7 @@ local function resolveDominantBiomeType(biomeTypes: { number }, fallbackBiomeTyp
 	return selectedBiomeType
 end
 
-local function resolveDominantBiomeId(biomeIds: { number }, fallbackBiomeId: number): number
+local function GetDominantBiomeId(biomeIds: { number }, fallbackBiomeId: number): number
 	local counts: { [number]: number } = {}
 	local selectedBiomeId = fallbackBiomeId
 	local selectedCount = 0
@@ -1307,7 +1307,7 @@ local function populateChunkBiomeIdsFromColumns(self: WorldGeneration, chunkData
 	local biomeIdByColumn = Sift.Array.create(chunkData.width, self.biomeId.FOREST)
 	for localX = 0, chunkData.width - 1 do
 		local worldTileX = chunkData.tileMinX + localX
-		local column = self.biomeGenerator:getColumnProfile(worldTileX)
+		local column = self.biomeGenerator:GetColumnProfile(worldTileX)
 		biomeIdByColumn[localX + 1] = column.biomeId
 	end
 
@@ -1322,7 +1322,7 @@ end
 local function populateChunkSurfaceBiomeIds(self: WorldGeneration, chunkData: ChunkData, surfaceBiomeIds: { number })
 	for localX = 0, chunkData.width - 1 do
 		local worldTileX = chunkData.tileMinX + localX
-		local column = self.biomeGenerator:getColumnProfile(worldTileX)
+		local column = self.biomeGenerator:GetColumnProfile(worldTileX)
 		surfaceBiomeIds[localX + 1] = column.biomeId
 	end
 end
@@ -1367,7 +1367,7 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 		local depthLayerCodeRaw = depthLayers[tileIndex]
 		local hasDepthLayerCode = isFiniteNumber(depthLayerCodeRaw)
 		if hasDepthLayerCode then
-			depthLayers[tileIndex] = sanitizeInteger(
+			depthLayers[tileIndex] = CoerceInteger(
 				depthLayerCodeRaw,
 				DEPTH_LAYER_CODE.SKY,
 				DEPTH_LAYER_CODE.DEEP,
@@ -1378,7 +1378,7 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 		local depthBelowSurfaceRaw = depthBelowSurface[tileIndex]
 		local hasDepthBelowSurface = isFiniteNumber(depthBelowSurfaceRaw)
 		if hasDepthBelowSurface then
-			depthBelowSurface[tileIndex] = sanitizeInteger(depthBelowSurfaceRaw, -8192, 8192, 0)
+			depthBelowSurface[tileIndex] = CoerceInteger(depthBelowSurfaceRaw, -8192, 8192, 0)
 		end
 
 		if hasDepthLayerCode and hasDepthBelowSurface then
@@ -1400,8 +1400,8 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 		end
 
 		local worldTileX = chunkData.tileMinX + localX
-		local column = self.biomeGenerator:getColumnProfile(worldTileX)
-		local depthLayer, depthValue = self.caveGenerator:resolveDepthLayer(column.surfaceY, worldTileY)
+		local column = self.biomeGenerator:GetColumnProfile(worldTileX)
+		local depthLayer, depthValue = self.caveGenerator:GetDepthLayer(column.surfaceY, worldTileY)
 		if not hasDepthLayerCode then
 			depthLayers[tileIndex] = encodeDepthLayer(depthLayer)
 		end
@@ -1476,7 +1476,7 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 			if not isFiniteNumber(propDataAny.biomeType) then
 				propDataAny.biomeType = self.biomeType.NORMAL
 			else
-				propDataAny.biomeType = sanitizeInteger(
+				propDataAny.biomeType = CoerceInteger(
 					propDataAny.biomeType,
 					self.biomeType.NORMAL :: number,
 					self.biomeType.CORRUPTION :: number,
@@ -1495,7 +1495,7 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 				end
 				propDataAny.biomeId = fallbackBiomeId
 			else
-				propDataAny.biomeId = sanitizeInteger(
+				propDataAny.biomeId = CoerceInteger(
 					propDataAny.biomeId,
 					self.biomeId.FOREST :: number,
 					self.biomeId.JUNGLE :: number,
@@ -1505,8 +1505,8 @@ local function ensureChunkBiomeMetadata(self, chunkData: ChunkData)
 		end
 	end
 
-	chunkDataRaw.dominantBiomeType = resolveDominantBiomeType(biomeTypes, self.biomeType.NORMAL :: number)
-	chunkDataRaw.dominantBiomeId = resolveDominantBiomeId(biomeIds, self.biomeId.FOREST :: number)
+	chunkDataRaw.dominantBiomeType = GetDominantBiomeType(biomeTypes, self.biomeType.NORMAL :: number)
+	chunkDataRaw.dominantBiomeId = GetDominantBiomeId(biomeIds, self.biomeId.FOREST :: number)
 	chunkDataRaw._metadataValidated = true
 end
 
@@ -1816,7 +1816,7 @@ local function ensureChunkLiquidData(self: WorldGeneration, chunkData: ChunkData
 		if typeof(liquidConfig) == "table" and typeof(liquidConfig.generation) == "table" then
 			scanRadius = math.max(
 				scanRadius,
-				sanitizeInteger(
+				CoerceInteger(
 					(liquidConfig.generation :: any).depressionScanRadius,
 					1,
 					64,
@@ -1832,16 +1832,16 @@ local function ensureChunkLiquidData(self: WorldGeneration, chunkData: ChunkData
 	local columnProfiles: { ColumnProfile } = Sift.Array.create(chunkData.width)
 	for localX = 0, scanWidth - 1 do
 		local worldTileX = scanColumnMinX + localX
-		local column = self.biomeGenerator:getColumnProfile(worldTileX)
+		local column = self.biomeGenerator:GetColumnProfile(worldTileX)
 		scanColumnProfiles[localX + 1] = column
 		if localX >= scanRadius and localX < scanRadius + chunkData.width then
 			columnProfiles[localX - scanRadius + 1] = column
 		end
 	end
 
-	chunkDataRaw.dominantBiomeType = resolveDominantBiomeType(chunkData.biomeTypes, self.biomeType.NORMAL)
-	chunkDataRaw.dominantBiomeId = resolveDominantBiomeId(chunkData.biomeIds, self.biomeId.FOREST)
-	chunkDataRaw.liquids = self.liquidGenerator:generateChunkLiquids({
+	chunkDataRaw.dominantBiomeType = GetDominantBiomeType(chunkData.biomeTypes, self.biomeType.NORMAL)
+	chunkDataRaw.dominantBiomeId = GetDominantBiomeId(chunkData.biomeIds, self.biomeId.FOREST)
+	chunkDataRaw.liquids = self.liquidGenerator:GenerateChunkLiquids({
 		seed = self.seed,
 		chunkX = chunkData.chunkX,
 		chunkY = chunkData.chunkY,
@@ -1868,8 +1868,8 @@ function WorldGeneration.RepairIntersectingTileMetadata(
 	widthRaw: any,
 	heightRaw: any
 ): ({ number }, number)
-	local width = sanitizeInteger(widthRaw, 1, 512, self.chunkSize)
-	local height = sanitizeInteger(heightRaw, 1, 512, self.chunkSize)
+	local width = CoerceInteger(widthRaw, 1, 512, self.chunkSize)
+	local height = CoerceInteger(heightRaw, 1, 512, self.chunkSize)
 	local totalTiles = width * height
 	if typeof(tilesRaw) ~= "table" then
 		return Sift.Array.create(totalTiles, self.tileId.AIR), 0
@@ -1910,7 +1910,7 @@ function WorldGeneration.RepairIntersectingTileMetadata(
 			continue
 		end
 
-		assignTile(tileIndex, resolveTileMetadataId(self, tileValue))
+		assignTile(tileIndex, GetTileMetadataId(self, tileValue))
 	end
 
 	for _, rectangleRaw in tiles do
@@ -1919,18 +1919,18 @@ function WorldGeneration.RepairIntersectingTileMetadata(
 		end
 
 		local rectangle = rectangleRaw :: { [any]: any }
-		local tileId = resolveTileMetadataId(self, resolveTileMetadataRectValue(rectangle))
+		local tileId = GetTileMetadataId(self, GetTileMetadataRectValue(rectangle))
 		if tileId == self.tileId.AIR then
 			continue
 		end
 
-		local minX, maxX = resolveTileMetadataRectAxis(
+		local minX, maxX = GetTileMetadataRectAxis(
 			rectangle.x or rectangle.localX or rectangle.minX,
 			rectangle.width,
 			rectangle.maxX,
 			width
 		)
-		local minY, maxY = resolveTileMetadataRectAxis(
+		local minY, maxY = GetTileMetadataRectAxis(
 			rectangle.y or rectangle.localY or rectangle.minY,
 			rectangle.height,
 			rectangle.maxY,
@@ -1979,12 +1979,12 @@ function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
 	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local parent = if typeof((config :: any).parent) == "Instance"
 		then (config :: any).parent :: Instance
-		else WorkspaceFolders.getOrCreateGameFolder()
+		else WorkspaceFolders.GetOrCreateGameFolder()
 
-	local chunkSize = sanitizeInteger((config :: any).chunkSize, 8, 128, DEFAULT_CHUNK_SIZE)
-	local minTileY = sanitizeInteger((config :: any).minTileY, -2048, 2048, DEFAULT_MIN_TILE_Y)
-	local maxTileY = sanitizeInteger((config :: any).maxTileY, -2048, 2048, DEFAULT_MAX_TILE_Y)
-	local seed = sanitizeInteger((config :: any).seed, -2147483648, 2147483647, DEFAULT_SEED)
+	local chunkSize = CoerceInteger((config :: any).chunkSize, 8, 128, DEFAULT_CHUNK_SIZE)
+	local minTileY = CoerceInteger((config :: any).minTileY, -2048, 2048, DEFAULT_MIN_TILE_Y)
+	local maxTileY = CoerceInteger((config :: any).maxTileY, -2048, 2048, DEFAULT_MAX_TILE_Y)
+	local seed = CoerceInteger((config :: any).seed, -2147483648, 2147483647, DEFAULT_SEED)
 	local desertConfig = if typeof((config :: any).desertConfig) == "table"
 		then (config :: any).desertConfig
 		else WorldGenerationDesert
@@ -2000,13 +2000,13 @@ function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
 		tileDepth = FIXED_TILE_DEPTH_STUDS,
 		basePlaneX = clampNumber((config :: any).basePlaneX, -4096, 4096, DEFAULT_BASE_PLANE_X),
 		wallPlaneOffset = clampNumber((config :: any).wallPlaneOffset, 0.1, 64, DEFAULT_WALL_PLANE_OFFSET),
-		horizonDepthBlocks = sanitizeInteger(
+		horizonDepthBlocks = CoerceInteger(
 			(config :: any).horizonDepthBlocks,
 			DEFAULT_HORIZON_DEPTH_BLOCKS,
 			256,
 			DEFAULT_HORIZON_DEPTH_BLOCKS
 		),
-		backgroundLayerCount = sanitizeInteger(
+		backgroundLayerCount = CoerceInteger(
 			(config :: any).backgroundLayerCount,
 			3,
 			6,
@@ -2023,14 +2023,14 @@ function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
 			else Vector3.zero,
 		minTileY = math.min(minTileY, maxTileY),
 		maxTileY = math.max(minTileY, maxTileY),
-		bedrockThickness = sanitizeInteger((config :: any).bedrockThickness, 0, 32, DEFAULT_BEDROCK_THICKNESS),
-		defaultRenderDistanceChunks = sanitizeInteger(
+		bedrockThickness = CoerceInteger((config :: any).bedrockThickness, 0, 32, DEFAULT_BEDROCK_THICKNESS),
+		defaultRenderDistanceChunks = CoerceInteger(
 			(config :: any).defaultRenderDistanceChunks,
 			1,
 			24,
 			DEFAULT_RENDER_DISTANCE_CHUNKS
 		),
-		defaultVerticalRenderDistanceChunks = sanitizeInteger(
+		defaultVerticalRenderDistanceChunks = CoerceInteger(
 			(config :: any).defaultVerticalRenderDistanceChunks,
 			1,
 			24,
@@ -2042,44 +2042,44 @@ function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
 			2,
 			DEFAULT_PLAYER_REFRESH_INTERVAL
 		),
-		maxConcurrentChunkLoads = sanitizeInteger(
+		maxConcurrentChunkLoads = CoerceInteger(
 			(config :: any).maxConcurrentChunkLoads,
 			1,
 			16,
 			DEFAULT_MAX_CONCURRENT_CHUNK_LOADS
 		),
-		maxChunkUnloadsPerHeartbeat = sanitizeInteger(
+		maxChunkUnloadsPerHeartbeat = CoerceInteger(
 			(config :: any).maxChunkUnloadsPerHeartbeat,
 			1,
 			128,
 			DEFAULT_MAX_CHUNK_UNLOADS_PER_HEARTBEAT
 		),
-		generationRowsPerYield = sanitizeInteger(
+		generationRowsPerYield = CoerceInteger(
 			(config :: any).generationRowsPerYield,
 			1,
 			64,
 			DEFAULT_GENERATION_ROWS_PER_YIELD
 		),
-		meshingRectsPerYield = sanitizeInteger(
+		meshingRectsPerYield = CoerceInteger(
 			(config :: any).meshingRowsPerYield,
 			1,
 			128,
 			DEFAULT_MESHING_RECTS_PER_YIELD
 		),
-		maxCachedChunkData = sanitizeInteger(
+		maxCachedChunkData = CoerceInteger(
 			(config :: any).maxCachedChunkData,
 			16,
 			4096,
 			DEFAULT_MAX_CACHED_CHUNK_DATA
 		),
-		maxCachedChunkVisuals = sanitizeInteger(
+		maxCachedChunkVisuals = CoerceInteger(
 			(config :: any).maxCachedChunkVisuals,
 			0,
 			512,
 			DEFAULT_MAX_CACHED_CHUNK_VISUALS
 		),
-		maxCollisionPartsPerChunk = sanitizeInteger((config :: any).maxCollisionPartsPerChunk, 64, 20000, 4096),
-		maxPoolSize = sanitizeInteger((config :: any).maxPoolSize, 64, 200000, DEFAULT_POOL_SIZE),
+		maxCollisionPartsPerChunk = CoerceInteger((config :: any).maxCollisionPartsPerChunk, 64, 20000, 4096),
+		maxPoolSize = CoerceInteger((config :: any).maxPoolSize, 64, 200000, DEFAULT_POOL_SIZE),
 		parent = parent,
 		desertConfig = desertConfig,
 		snowConfig = snowConfig,
@@ -2097,13 +2097,13 @@ function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
 		playerRuntimes = {} :: { [Player]: PlayerRuntime },
 		playerFocusOctree = configureOctree(Octree.new(), math.max(512, chunkSize * FIXED_TILE_SIZE_STUDS * 64), 6),
 		playerFocusNodes = {} :: { [Player]: OctreeNodeObject },
-		maxTrackedRenderDistanceChunks = sanitizeInteger(
+		maxTrackedRenderDistanceChunks = CoerceInteger(
 			(config :: any).defaultRenderDistanceChunks,
 			1,
 			24,
 			DEFAULT_RENDER_DISTANCE_CHUNKS
 		),
-		maxTrackedVerticalRenderDistanceChunks = sanitizeInteger(
+		maxTrackedVerticalRenderDistanceChunks = CoerceInteger(
 			(config :: any).defaultVerticalRenderDistanceChunks,
 			1,
 			24,
@@ -2140,7 +2140,7 @@ function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
 		pendingRebuildLookup = {} :: { [string]: boolean },
 		chunkLifecycleObservers = {} :: { [number]: ChunkLifecycleObserver },
 		nextChunkLifecycleObserverId = 0,
-		maxChunkRebuildsPerHeartbeat = sanitizeInteger((config :: any).maxChunkRebuildsPerHeartbeat, 1, 64, 4),
+		maxChunkRebuildsPerHeartbeat = CoerceInteger((config :: any).maxChunkRebuildsPerHeartbeat, 1, 64, 4),
 		cachePruneAccumulator = 0,
 		loadedChunkAuditAccumulator = 0,
 		liquidGenerator = nil :: LiquidGenerationClass?,
@@ -2159,25 +2159,25 @@ function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
 	self.backgroundLayerCount = math.min(self.backgroundLayerCount, maxLayersByDepth)
 	self.focusUpdateMinimumDistanceStuds = math.max(0.5, self.tileSize * 0.5)
 	self.statsChangedSignal = RxSignal.new(function(): ObservableObject
-		return self:observeStats() :: ObservableObject
+		return self:ObserveStats() :: ObservableObject
 	end) :: RxSignalObject
 	self.chunkCollisionReadySignal = RxSignal.new(function(): ObservableObject
-		return self:observeChunkCollisionReady() :: ObservableObject
+		return self:ObserveChunkCollisionReady() :: ObservableObject
 	end) :: RxSignalObject
 	self.chunkCollisionUnloadedSignal = RxSignal.new(function(): ObservableObject
-		return self:observeChunkCollisionUnloaded() :: ObservableObject
+		return self:ObserveChunkCollisionUnloaded() :: ObservableObject
 	end) :: RxSignalObject
 	self.chunkTerrainChangedSignal = RxSignal.new(function(): ObservableObject
-		return self:observeChunkTerrainChanged() :: ObservableObject
+		return self:ObserveChunkTerrainChanged() :: ObservableObject
 	end) :: RxSignalObject
 	self.playerInterestChangedSignal = RxSignal.new(function(): ObservableObject
-		return self:observePlayerInterest() :: ObservableObject
+		return self:ObservePlayerInterest() :: ObservableObject
 	end) :: RxSignalObject
 	self.playerFocusChangedSignal = RxSignal.new(function(): ObservableObject
-		return self:observePlayerFocusChanged() :: ObservableObject
+		return self:ObservePlayerFocusChanged() :: ObservableObject
 	end) :: RxSignalObject
 	self.trackedPlayerBrioSignal = RxSignal.new(function(): ObservableObject
-		return self:observeTrackedPlayersBrio() :: ObservableObject
+		return self:ObserveTrackedPlayersBrio() :: ObservableObject
 	end) :: RxSignalObject
 	self.maid:GiveTask(self._chunkCollisionReadySignal)
 	self.maid:GiveTask(self._chunkCollisionUnloadedSignal)
@@ -2188,26 +2188,26 @@ function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
 	self.maid:GiveTask(self._trackedPlayerBrioSignal)
 	self.maid:GiveTask(self._statsPulseSignal)
 
-	self.cache = Cache.new({
+	self.cache = Cache.New({
 		maxPoolSize = self.maxPoolSize,
 		maxCachedChunkData = self.maxCachedChunkData,
 		createPart = createPartTemplate,
 	} :: any)
 
-	local tilesFolder = resolveTilesTemplateFolder()
+	local tilesFolder = GetTilesTemplateFolder()
 	self.tileTemplatesByTileId = {
-		[self.tileId.STONE] = resolveTileTemplate(tilesFolder, "Stone"),
-		[self.tileId.DIRT] = resolveTileTemplate(tilesFolder, "Dirt"),
-		[self.tileId.GRASS] = resolveTileTemplate(tilesFolder, "Grass"),
-		[self.tileId.JUNGLE_GRASS] = resolveTileTemplate(tilesFolder, "JungleGrass"),
-		[self.tileId.WOOD] = resolveTileTemplate(tilesFolder, "Wood"),
-		[self.tileId.CORRUPT_STONE] = resolveTileTemplate(tilesFolder, "CorruptStone"),
-		[self.tileId.CORRUPT_SOIL] = resolveTileTemplate(tilesFolder, "CorruptSoil"),
-		[self.tileId.CORRUPT_GRASS] = resolveTileTemplate(tilesFolder, "CorruptGrass"),
+		[self.tileId.STONE] = GetTileTemplate(tilesFolder, "Stone"),
+		[self.tileId.DIRT] = GetTileTemplate(tilesFolder, "Dirt"),
+		[self.tileId.GRASS] = GetTileTemplate(tilesFolder, "Grass"),
+		[self.tileId.JUNGLE_GRASS] = GetTileTemplate(tilesFolder, "JungleGrass"),
+		[self.tileId.WOOD] = GetTileTemplate(tilesFolder, "Wood"),
+		[self.tileId.CORRUPT_STONE] = GetTileTemplate(tilesFolder, "CorruptStone"),
+		[self.tileId.CORRUPT_SOIL] = GetTileTemplate(tilesFolder, "CorruptSoil"),
+		[self.tileId.CORRUPT_GRASS] = GetTileTemplate(tilesFolder, "CorruptGrass"),
 	}
 	self.treeVariantConfigs = createProceduralTreeVariantConfigs()
 
-	self.biomeGenerator = Biome.new({
+	self.biomeGenerator = Biome.New({
 		seed = self.seed,
 		tileId = self.tileId,
 		biomeId = self.biomeId,
@@ -2215,7 +2215,7 @@ function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
 		desertConfig = self.desertConfig,
 		snowConfig = self.snowConfig,
 	})
-	self.caveGenerator = Cave.new({
+	self.caveGenerator = Cave.New({
 		seed = self.seed,
 		tileId = {
 			AIR = self.tileId.AIR,
@@ -2224,7 +2224,7 @@ function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
 		biomeId = self.biomeId,
 		snowConfig = self.snowConfig,
 	})
-	self.structuresGenerator = Structures.new({
+	self.structuresGenerator = Structures.New({
 		seed = self.seed,
 		tileId = self.tileId,
 		biomeId = self.biomeId,
@@ -2235,7 +2235,7 @@ function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
 	if typeof(liquidConfigSource) ~= "table" and typeof(Configs) == "table" then
 		liquidConfigSource = (Configs :: any).liquid
 	end
-	self.liquidGenerator = Liquid.new(liquidConfigSource)
+	self.liquidGenerator = Liquid.New(liquidConfigSource)
 
 	return self
 end
@@ -2262,19 +2262,19 @@ function WorldGeneration.CreateFolders(self: WorldGeneration)
 			WorldOriginZ = self.worldOrigin.Z,
 		},
 	})
-	WorkspaceFolders.manageFolder(worldFolder, self.parent)
+	WorkspaceFolders.ManageFolder(worldFolder, self.parent)
 
 	local chunksFolder = TileComponent.CreateFolder({
 		name = DEFAULT_WORLD_CHUNKS_FOLDER_NAME,
 		parent = worldFolder,
 	} :: any)
-	WorkspaceFolders.manageFolder(chunksFolder, worldFolder)
+	WorkspaceFolders.ManageFolder(chunksFolder, worldFolder)
 
 	local collisionChunksFolder = TileComponent.CreateFolder({
 		name = DEFAULT_WORLD_COLLISION_FOLDER_NAME,
 		parent = worldFolder,
 	} :: any)
-	WorkspaceFolders.manageFolder(collisionChunksFolder, worldFolder)
+	WorkspaceFolders.ManageFolder(collisionChunksFolder, worldFolder)
 
 	self.worldFolder = worldFolder
 	self.chunksFolder = chunksFolder
@@ -2286,24 +2286,24 @@ function WorldGeneration.Init(self: WorldGeneration)
 		return
 	end
 
-	self:createFolders()
+	self:CreateFolders()
 	self.initialized = true
 	self.heartbeatConnection = RunService.Heartbeat:Connect(function(deltaTime: number)
-		self:onHeartbeat(deltaTime)
+		self:OnHeartbeat(deltaTime)
 	end)
 	self.maid:GiveTask(self.heartbeatConnection)
-	self:pulseStatsChanged()
+	self:PulseStatsChanged()
 end
 
 function WorldGeneration.OnHeartbeat(self: WorldGeneration, deltaTime: number)
-	self:updateTrackedPlayers(deltaTime)
-	self:auditLoadedChunksForUnload(deltaTime)
-	self:processDirtyChunkQueue()
-	self:processUnloadQueue()
-	self:pumpLoadQueue()
-	self:processChunkRebuildQueue()
-	self:pruneChunkDataCache(deltaTime)
-	self:pruneCachedChunkVisuals()
+	self:UpdateTrackedPlayers(deltaTime)
+	self:AuditLoadedChunksForUnload(deltaTime)
+	self:ProcessDirtyChunkQueue()
+	self:ProcessUnloadQueue()
+	self:PumpLoadQueue()
+	self:ProcessChunkRebuildQueue()
+	self:PruneChunkDataCache(deltaTime)
+	self:PruneCachedChunkVisuals()
 end
 
 function WorldGeneration.IsChunkYWithinWorldBounds(self: WorldGeneration, chunkY: number): boolean
@@ -2332,7 +2332,7 @@ function WorldGeneration.EnqueueLoadByKey(self: WorldGeneration, chunkKey: strin
 	self.pendingLoadLookup[chunkKey] = true
 	self.loadQueueTail += 1
 	self.loadQueue[self.loadQueueTail] = chunkKey
-	self:pulseStatsChanged()
+	self:PulseStatsChanged()
 end
 
 function WorldGeneration.EnqueueUnloadByKey(self: WorldGeneration, chunkKey: string)
@@ -2343,10 +2343,10 @@ function WorldGeneration.EnqueueUnloadByKey(self: WorldGeneration, chunkKey: str
 	self.pendingUnloadLookup[chunkKey] = true
 	self.unloadQueueTail += 1
 	self.unloadQueue[self.unloadQueueTail] = chunkKey
-	self:pulseStatsChanged()
+	self:PulseStatsChanged()
 end
 
-function WorldGeneration.ResolveChunkLoadPriority(self: WorldGeneration, chunkKey: string): number
+function WorldGeneration.GetChunkLoadPriority(self: WorldGeneration, chunkKey: string): number
 	local chunkX, chunkY = unpackChunkKey(chunkKey)
 	if chunkX == nil or chunkY == nil then
 		return math.huge
@@ -2427,7 +2427,7 @@ function WorldGeneration.DequeueLoadKey(self: WorldGeneration): string?
 			continue
 		end
 
-		local priority = self:resolveChunkLoadPriority(queuedChunkKey)
+		local priority = self:GetChunkLoadPriority(queuedChunkKey)
 		if bestIndex == nil or priority < bestPriority then
 			bestIndex = queueIndex
 			bestChunkKey = queuedChunkKey
@@ -2436,12 +2436,12 @@ function WorldGeneration.DequeueLoadKey(self: WorldGeneration): string?
 	end
 
 	if bestIndex == nil or bestChunkKey == nil then
-		self:compactLoadQueue()
+		self:CompactLoadQueue()
 		return nil
 	end
 
 	self.loadQueue[bestIndex] = nil
-	self:compactLoadQueue()
+	self:CompactLoadQueue()
 
 	return bestChunkKey
 end
@@ -2479,7 +2479,7 @@ function WorldGeneration.MarkChunkDirtyByKey(self: WorldGeneration, chunkKey: st
 	self.dirtyChunkLookup[chunkKey] = true
 	self.dirtyChunkQueueTail += 1
 	self.dirtyChunkQueue[self.dirtyChunkQueueTail] = chunkKey
-	self:pulseStatsChanged()
+	self:PulseStatsChanged()
 end
 
 function WorldGeneration.DequeueDirtyChunkKey(self: WorldGeneration): string?
@@ -2516,7 +2516,7 @@ function WorldGeneration.EnqueueChunkRebuildByKey(self: WorldGeneration, chunkKe
 	self.pendingRebuildLookup[chunkKey] = true
 	self.chunkRebuildQueueTail += 1
 	self.chunkRebuildQueue[self.chunkRebuildQueueTail] = chunkKey
-	self:pulseStatsChanged()
+	self:PulseStatsChanged()
 end
 
 function WorldGeneration.DequeueChunkRebuildKey(self: WorldGeneration): string?
@@ -2550,7 +2550,7 @@ function WorldGeneration.ProcessDirtyChunkQueue(self: WorldGeneration)
 	local maxProcessed = 256
 
 	while processed < maxProcessed do
-		local chunkKey = self:dequeueDirtyChunkKey()
+		local chunkKey = self:DequeueDirtyChunkKey()
 		if chunkKey == nil then
 			break
 		end
@@ -2558,7 +2558,7 @@ function WorldGeneration.ProcessDirtyChunkQueue(self: WorldGeneration)
 		processed += 1
 		self.dirtyChunkLookup[chunkKey] = nil
 		if self.loadedChunkVisuals[chunkKey] ~= nil then
-			self:enqueueChunkRebuildByKey(chunkKey)
+			self:EnqueueChunkRebuildByKey(chunkKey)
 		end
 	end
 end
@@ -2574,7 +2574,7 @@ function WorldGeneration.RebuildLoadedChunkByKey(self: WorldGeneration, chunkKey
 	if chunkX == nil or chunkY == nil then
 		return false
 	end
-	if not self:isChunkYWithinWorldBounds(chunkY) then
+	if not self:IsChunkYWithinWorldBounds(chunkY) then
 		return false
 	end
 
@@ -2582,27 +2582,27 @@ function WorldGeneration.RebuildLoadedChunkByKey(self: WorldGeneration, chunkKey
 	if cachedVisual ~= nil then
 		self.cachedChunkVisuals[chunkKey] = nil
 		self.cachedChunkVisualCount = math.max(0, self.cachedChunkVisualCount - 1)
-		self:releaseChunkVisual(cachedVisual)
+		self:ReleaseChunkVisual(cachedVisual)
 	end
 
-	local chunkData = self:getOrGenerateChunkData(chunkX, chunkY)
+	local chunkData = self:GetOrGenerateChunkData(chunkX, chunkY)
 	chunkData.lastAccessedAt = os.clock()
-	local replacementVisual = self:buildChunkVisual(chunkData)
+	local replacementVisual = self:BuildChunkVisual(chunkData)
 	local currentVisual = self.loadedChunkVisuals[chunkKey]
 	if currentVisual ~= previousVisual then
-		self:releaseChunkVisual(replacementVisual)
+		self:ReleaseChunkVisual(replacementVisual)
 		return false
 	end
 
 	if (self.chunkDemand[chunkKey] or 0) <= 0 then
-		self:releaseChunkVisual(replacementVisual)
+		self:ReleaseChunkVisual(replacementVisual)
 		return false
 	end
 
 	self.loadedChunkVisuals[chunkKey] = replacementVisual
-	self:attachChunkVisual(replacementVisual)
-	self:releaseChunkVisual(previousVisual)
-	self:notifyChunkCollisionReady(chunkKey, {
+	self:AttachChunkVisual(replacementVisual)
+	self:ReleaseChunkVisual(previousVisual)
+	self:NotifyChunkCollisionReady(chunkKey, {
 		reason = if typeof(context.reason) == "string" then context.reason else "rebuildReady",
 		fromCache = false,
 		rebuilt = true,
@@ -2613,7 +2613,7 @@ end
 function WorldGeneration.ProcessChunkRebuildQueue(self: WorldGeneration)
 	local processed = 0
 	while processed < self.maxChunkRebuildsPerHeartbeat do
-		local chunkKey = self:dequeueChunkRebuildKey()
+		local chunkKey = self:DequeueChunkRebuildKey()
 		if chunkKey == nil then
 			break
 		end
@@ -2623,11 +2623,11 @@ function WorldGeneration.ProcessChunkRebuildQueue(self: WorldGeneration)
 			continue
 		end
 		if self.loadingLookup[chunkKey] then
-			self:enqueueChunkRebuildByKey(chunkKey)
+			self:EnqueueChunkRebuildByKey(chunkKey)
 			continue
 		end
 
-		self:rebuildLoadedChunkByKey(chunkKey, {
+		self:RebuildLoadedChunkByKey(chunkKey, {
 			reason = "rebuildReady",
 		})
 		processed += 1
@@ -2988,7 +2988,7 @@ function WorldGeneration.NotifyChunkCollisionReady(self: WorldGeneration, chunkK
 		reason = if typeof(context.reason) == "string" then context.reason else "loaded",
 		context = context,
 	})
-	self:pulseStatsChanged()
+	self:PulseStatsChanged()
 end
 
 function WorldGeneration.NotifyChunkCollisionUnloaded(self: WorldGeneration, chunkKey: string, contextRaw: any?)
@@ -3015,7 +3015,7 @@ function WorldGeneration.NotifyChunkCollisionUnloaded(self: WorldGeneration, chu
 		reason = if typeof(context.reason) == "string" then context.reason else "unloaded",
 		context = context,
 	})
-	self:pulseStatsChanged()
+	self:PulseStatsChanged()
 end
 
 function WorldGeneration.NotifyChunkTerrainChanged(
@@ -3048,7 +3048,7 @@ function WorldGeneration.NotifyChunkTerrainChanged(
 		reason = if typeof(context.reason) == "string" then context.reason else "terrainChanged",
 		context = context,
 	})
-	self:pulseStatsChanged()
+	self:PulseStatsChanged()
 end
 
 function WorldGeneration.IsChunkCollisionReady(self: WorldGeneration, chunkXRaw: any, chunkYRaw: any): boolean
@@ -3058,7 +3058,7 @@ function WorldGeneration.IsChunkCollisionReady(self: WorldGeneration, chunkXRaw:
 
 	local chunkX = math.floor(chunkXRaw :: number)
 	local chunkY = math.floor(chunkYRaw :: number)
-	if not self:isChunkYWithinWorldBounds(chunkY) then
+	if not self:IsChunkYWithinWorldBounds(chunkY) then
 		return false
 	end
 
@@ -3087,7 +3087,7 @@ function WorldGeneration.IsChunkCollisionReadyByKey(self: WorldGeneration, chunk
 	if chunkX == nil or chunkY == nil then
 		return false
 	end
-	return self:isChunkCollisionReady(chunkX, chunkY)
+	return self:IsChunkCollisionReady(chunkX, chunkY)
 end
 
 function WorldGeneration.GetLoadedCollisionChunkCount(self: WorldGeneration): number
@@ -3103,7 +3103,7 @@ function WorldGeneration.AuditLoadedChunksForUnload(self: WorldGeneration, delta
 
 	for chunkKey in self.loadedChunkVisuals do
 		if (self.chunkDemand[chunkKey] or 0) <= 0 then
-			self:enqueueUnloadByKey(chunkKey)
+			self:EnqueueUnloadByKey(chunkKey)
 		end
 	end
 
@@ -3120,8 +3120,8 @@ function WorldGeneration.AuditLoadedChunksForUnload(self: WorldGeneration, delta
 				and not self.dirtyChunkLookup[chunkKey]
 				and not self.pendingRebuildLookup[chunkKey]
 			then
-				self:attachChunkVisual(visual)
-				self:notifyChunkCollisionReady(chunkKey, {
+				self:AttachChunkVisual(visual)
+				self:NotifyChunkCollisionReady(chunkKey, {
 					reason = "auditReady",
 					selfHealed = true,
 				})
@@ -3132,7 +3132,7 @@ function WorldGeneration.AuditLoadedChunksForUnload(self: WorldGeneration, delta
 			continue
 		end
 
-		self:enqueueLoadByKey(chunkKey)
+		self:EnqueueLoadByKey(chunkKey)
 	end
 end
 
@@ -3150,20 +3150,20 @@ function WorldGeneration.AdjustChunkDemand(self: WorldGeneration, chunkKey: stri
 	if nextDemand == 0 then
 		if current ~= 0 then
 			self.chunkDemand[chunkKey] = nil
-			self:enqueueUnloadByKey(chunkKey)
+			self:EnqueueUnloadByKey(chunkKey)
 			self._chunkDemandChangedSignal:Fire({
 				chunkKey = chunkKey,
 				previousDemand = current,
 				nextDemand = 0,
 			})
-			self:pulseStatsChanged()
+			self:PulseStatsChanged()
 		end
 		return
 	end
 
 	self.chunkDemand[chunkKey] = nextDemand
 	if current == 0 then
-		self:enqueueLoadByKey(chunkKey)
+		self:EnqueueLoadByKey(chunkKey)
 	end
 	if current ~= nextDemand then
 		self._chunkDemandChangedSignal:Fire({
@@ -3171,7 +3171,7 @@ function WorldGeneration.AdjustChunkDemand(self: WorldGeneration, chunkKey: stri
 			previousDemand = current,
 			nextDemand = nextDemand,
 		})
-		self:pulseStatsChanged()
+		self:PulseStatsChanged()
 	end
 end
 
@@ -3182,8 +3182,8 @@ function WorldGeneration.ClearPlayerInterest(self: WorldGeneration, player: Play
 	end
 
 	for _, chunkKey in chunkKeys do
-		self:adjustChunkDemand(chunkKey, -1)
-		self:setPlayerChunkInterest(player, runtime, chunkKey, false)
+		self:AdjustChunkDemand(chunkKey, -1)
+		self:SetPlayerChunkInterest(player, runtime, chunkKey, false)
 	end
 end
 
@@ -3194,13 +3194,13 @@ function WorldGeneration.TrackPlayer(
 	verticalRenderDistanceRaw: any?
 )
 	if self.playerRuntimes[player] then
-		self:setPlayerRenderDistance(player, renderDistanceRaw, verticalRenderDistanceRaw)
+		self:SetPlayerRenderDistance(player, renderDistanceRaw, verticalRenderDistanceRaw)
 		return
 	end
 
-	local renderDistance = sanitizeInteger(renderDistanceRaw, 1, 24, self.defaultRenderDistanceChunks)
+	local renderDistance = CoerceInteger(renderDistanceRaw, 1, 24, self.defaultRenderDistanceChunks)
 	local verticalRenderDistance =
-		sanitizeInteger(verticalRenderDistanceRaw, 1, 24, self.defaultVerticalRenderDistanceChunks)
+		CoerceInteger(verticalRenderDistanceRaw, 1, 24, self.defaultVerticalRenderDistanceChunks)
 	local runtimeMaid = Maid.new() :: MaidClass
 
 	local runtime: PlayerRuntime = {
@@ -3230,10 +3230,10 @@ function WorldGeneration.TrackPlayer(
 	end))
 
 	self.playerRuntimes[player] = runtime
-	self:recomputeTrackedRenderDistanceBounds()
+	self:RecomputeTrackedRenderDistanceBounds()
 	self._trackedPlayerBrioSignal:Fire(runtimeBrio)
-	self:pulseStatsChanged()
-	self:refreshPlayerInterest(player, runtime)
+	self:PulseStatsChanged()
+	self:RefreshPlayerInterest(player, runtime)
 end
 function WorldGeneration.UntrackPlayer(self: WorldGeneration, player: Player)
 	local runtime = self.playerRuntimes[player]
@@ -3241,13 +3241,13 @@ function WorldGeneration.UntrackPlayer(self: WorldGeneration, player: Player)
 		return
 	end
 
-	self:clearPlayerInterest(player, runtime)
-	self:updateTrackedPlayerFocusIndex(player, runtime, nil)
+	self:ClearPlayerInterest(player, runtime)
+	self:UpdateTrackedPlayerFocusIndex(player, runtime, nil)
 	runtime.brio:Kill()
 	runtime.maid:Destroy()
 	self.playerRuntimes[player] = nil
-	self:recomputeTrackedRenderDistanceBounds()
-	self:pulseStatsChanged()
+	self:RecomputeTrackedRenderDistanceBounds()
+	self:PulseStatsChanged()
 end
 
 function WorldGeneration.SetPlayerRenderDistance(
@@ -3258,12 +3258,12 @@ function WorldGeneration.SetPlayerRenderDistance(
 )
 	local runtime = self.playerRuntimes[player]
 	if runtime == nil then
-		self:trackPlayer(player, renderDistanceRaw, verticalRenderDistanceRaw)
+		self:TrackPlayer(player, renderDistanceRaw, verticalRenderDistanceRaw)
 		return
 	end
 
-	local nextRenderDistance = sanitizeInteger(renderDistanceRaw, 1, 24, runtime.renderDistance)
-	local nextVerticalRenderDistance = sanitizeInteger(verticalRenderDistanceRaw, 1, 24, runtime.verticalRenderDistance)
+	local nextRenderDistance = CoerceInteger(renderDistanceRaw, 1, 24, runtime.renderDistance)
+	local nextVerticalRenderDistance = CoerceInteger(verticalRenderDistanceRaw, 1, 24, runtime.verticalRenderDistance)
 
 	if runtime.renderDistance ~= nextRenderDistance then
 		runtime.renderDistance = nextRenderDistance
@@ -3277,8 +3277,8 @@ function WorldGeneration.SetPlayerRenderDistance(
 	if runtime.forceRefresh then
 		runtime.refreshAccumulator = self.playerRefreshInterval
 	end
-	self:recomputeTrackedRenderDistanceBounds()
-	self:pulseStatsChanged()
+	self:RecomputeTrackedRenderDistanceBounds()
+	self:PulseStatsChanged()
 end
 
 function WorldGeneration.GetPlayerRenderDistance(self: WorldGeneration, player: Player): (number, number)
@@ -3353,7 +3353,7 @@ function WorldGeneration.GetPlayerFocusPosition(self: WorldGeneration, player: P
 
 	local character = player.Character
 	if character == nil then
-		return self:resolveDefaultPlayerFocusPosition()
+		return self:GetDefaultPlayerFocusPosition()
 	end
 
 	local ok, pivot = pcall(function(): CFrame
@@ -3363,17 +3363,17 @@ function WorldGeneration.GetPlayerFocusPosition(self: WorldGeneration, player: P
 		return (pivot :: CFrame).Position
 	end
 
-	return self:resolveDefaultPlayerFocusPosition()
+	return self:GetDefaultPlayerFocusPosition()
 end
 
-function WorldGeneration.ResolveDefaultPlayerFocusPosition(self: WorldGeneration): Vector3
+function WorldGeneration.GetDefaultPlayerFocusPosition(self: WorldGeneration): Vector3
 	local spawnLocation = Workspace:FindFirstChild("SpawnLocation", true)
 	if spawnLocation ~= nil and spawnLocation:IsA("BasePart") then
 		return Vector3.new(self.worldOrigin.X + self.basePlaneX, spawnLocation.Position.Y, spawnLocation.Position.Z)
 	end
 
-	local column = self.biomeGenerator:getColumnProfile(0)
-	return self:computeTileCenterPosition(0.5, column.surfaceY + DEFAULT_PRELOAD_FOCUS_SURFACE_OFFSET_TILES, 0)
+	local column = self.biomeGenerator:GetColumnProfile(0)
+	return self:ComputeTileCenterPosition(0.5, column.surfaceY + DEFAULT_PRELOAD_FOCUS_SURFACE_OFFSET_TILES, 0)
 end
 
 function WorldGeneration.RefreshPlayerInterest(self: WorldGeneration, player: Player, runtimeRaw: PlayerRuntime?)
@@ -3383,20 +3383,20 @@ function WorldGeneration.RefreshPlayerInterest(self: WorldGeneration, player: Pl
 	end
 
 	local previousFocusPosition = runtime.focusPosition
-	local focusPosition = self:getPlayerFocusPosition(player)
+	local focusPosition = self:GetPlayerFocusPosition(player)
 	if focusPosition == nil then
 		if next(runtime.interestKeys) ~= nil then
-			self:clearPlayerInterest(player, runtime)
+			self:ClearPlayerInterest(player, runtime)
 			self._playerInterestChangedSignal:Fire(self:BuildPlayerInterestChangedEvent(player, runtime, nil, nil, nil))
 		end
 		if previousFocusPosition ~= nil then
 			self._playerFocusChangedSignal:Fire(self:BuildPlayerInterestChangedEvent(player, runtime, nil, nil, nil))
 		end
-		self:updateTrackedPlayerFocusIndex(player, runtime, nil)
+		self:UpdateTrackedPlayerFocusIndex(player, runtime, nil)
 		runtime.lastChunkX = nil
 		runtime.lastChunkY = nil
 		runtime.forceRefresh = false
-		self:pulseStatsChanged()
+		self:PulseStatsChanged()
 		return
 	end
 
@@ -3411,7 +3411,7 @@ function WorldGeneration.RefreshPlayerInterest(self: WorldGeneration, player: Pl
 		didVectorMeaningfullyChange(previousFocusPosition, focusPosition, self.focusUpdateMinimumDistanceStuds)
 
 	if focusChanged then
-		self:updateTrackedPlayerFocusIndex(player, runtime, focusPosition)
+		self:UpdateTrackedPlayerFocusIndex(player, runtime, focusPosition)
 		self._playerFocusChangedSignal:Fire(
 			self:BuildPlayerInterestChangedEvent(player, runtime, focusPosition, centerChunkX, centerChunkY)
 		)
@@ -3428,7 +3428,7 @@ function WorldGeneration.RefreshPlayerInterest(self: WorldGeneration, player: Pl
 
 	for offsetY = -runtime.verticalRenderDistance, runtime.verticalRenderDistance do
 		local chunkY = centerChunkY + offsetY
-		if not self:isChunkYWithinWorldBounds(chunkY) then
+		if not self:IsChunkYWithinWorldBounds(chunkY) then
 			continue
 		end
 
@@ -3459,16 +3459,16 @@ function WorldGeneration.RefreshPlayerInterest(self: WorldGeneration, player: Pl
 		if previousInterest[chunkKey] then
 			continue
 		end
-		self:adjustChunkDemand(chunkKey, 1)
-		self:setPlayerChunkInterest(player, runtime, chunkKey, true)
+		self:AdjustChunkDemand(chunkKey, 1)
+		self:SetPlayerChunkInterest(player, runtime, chunkKey, true)
 	end
 
 	for chunkKey in previousInterest do
 		if nextInterest[chunkKey] then
 			continue
 		end
-		self:adjustChunkDemand(chunkKey, -1)
-		self:setPlayerChunkInterest(player, runtime, chunkKey, false)
+		self:AdjustChunkDemand(chunkKey, -1)
+		self:SetPlayerChunkInterest(player, runtime, chunkKey, false)
 	end
 
 	runtime.lastChunkX = centerChunkX
@@ -3477,7 +3477,7 @@ function WorldGeneration.RefreshPlayerInterest(self: WorldGeneration, player: Pl
 	self._playerInterestChangedSignal:Fire(
 		self:BuildPlayerInterestChangedEvent(player, runtime, focusPosition, centerChunkX, centerChunkY)
 	)
-	self:pulseStatsChanged()
+	self:PulseStatsChanged()
 end
 
 function WorldGeneration.UpdateTrackedPlayers(self: WorldGeneration, deltaTime: number)
@@ -3485,7 +3485,7 @@ function WorldGeneration.UpdateTrackedPlayers(self: WorldGeneration, deltaTime: 
 		runtime.refreshAccumulator += deltaTime
 		if runtime.forceRefresh or runtime.refreshAccumulator >= self.playerRefreshInterval then
 			runtime.refreshAccumulator = 0
-			self:refreshPlayerInterest(player, runtime)
+			self:RefreshPlayerInterest(player, runtime)
 		end
 	end
 end
@@ -3495,7 +3495,7 @@ function WorldGeneration.AcquirePart(self: WorldGeneration): BasePart
 	if cache == nil then
 		return createPartTemplate()
 	end
-	return cache:acquirePart()
+	return cache:AcquirePart()
 end
 
 function WorldGeneration.ReleasePart(self: WorldGeneration, part: BasePart)
@@ -3504,7 +3504,7 @@ function WorldGeneration.ReleasePart(self: WorldGeneration, part: BasePart)
 		part:Destroy()
 		return
 	end
-	cache:releasePart(part)
+	cache:ReleasePart(part)
 end
 
 function WorldGeneration.ComputeTileCenterPosition(
@@ -3826,7 +3826,7 @@ function WorldGeneration.ShouldFillBackgroundLayer(
 	return not shouldCarve
 end
 
-function WorldGeneration.ResolveBackgroundTileIdForLayer(
+function WorldGeneration.GetBackgroundTileIdForLayer(
 	self: WorldGeneration,
 	layerIndex: number,
 	column: ColumnProfile,
@@ -3842,10 +3842,10 @@ function WorldGeneration.ResolveBackgroundTileIdForLayer(
 
 	local soilDepthLimit = math.max(2, math.min(column.stoneStartDepth - 1, 6))
 	if depthBelowSurface <= soilDepthLimit then
-		return self.biomeGenerator:resolveTileForDepth(column, depthBelowSurface)
+		return self.biomeGenerator:GetTileForDepth(column, depthBelowSurface)
 	end
 
-	if not self:shouldFillBackgroundLayer(layerIndex, sharedDensity, tileX, tileY, depthLayer, depthBelowSurface) then
+	if not self:ShouldFillBackgroundLayer(layerIndex, sharedDensity, tileX, tileY, depthLayer, depthBelowSurface) then
 		return self.tileId.AIR
 	end
 
@@ -3854,30 +3854,30 @@ function WorldGeneration.ResolveBackgroundTileIdForLayer(
 		backgroundDepth += 1
 	end
 	backgroundDepth = math.max(soilDepthLimit + 1, backgroundDepth)
-	return self.biomeGenerator:resolveTileForDepth(column, backgroundDepth)
+	return self.biomeGenerator:GetTileForDepth(column, backgroundDepth)
 end
 
-function WorldGeneration.ResolveForegroundTileAt(
+function WorldGeneration.GetForegroundTileAt(
 	self: WorldGeneration,
 	column: ColumnProfile,
 	worldTileX: number,
 	worldTileY: number
 ): (number, DepthLayer, number)
-	local depthLayer, depthBelowSurface = self.caveGenerator:resolveDepthLayer(column.surfaceY, worldTileY)
+	local depthLayer, depthBelowSurface = self.caveGenerator:GetDepthLayer(column.surfaceY, worldTileY)
 
 	local tileId = self.tileId.AIR
 	if depthBelowSurface >= 0 then
-		local baseTileId = self.biomeGenerator:resolveTileForDepth(column, depthBelowSurface)
+		local baseTileId = self.biomeGenerator:GetTileForDepth(column, depthBelowSurface)
 		local isBedrock = worldTileY <= self.minTileY + self.bedrockThickness
 		if isBedrock then
 			tileId = self.tileId.STONE
 		else
 			local shouldCarve =
-				self.caveGenerator:shouldCarve(worldTileX, worldTileY, column.biomeId, depthLayer, depthBelowSurface)
+				self.caveGenerator:ShouldCarve(worldTileX, worldTileY, column.biomeId, depthLayer, depthBelowSurface)
 			if shouldCarve then
 				tileId = self.tileId.AIR
 			else
-				tileId = self.structuresGenerator:resolveOreTile(
+				tileId = self.structuresGenerator:GetOreTile(
 					baseTileId,
 					worldTileX,
 					worldTileY,
@@ -3926,14 +3926,14 @@ function WorldGeneration.IsSurfaceAnchorTile(
 	return worldTileX == anchorCell * spacing + slot
 end
 
-function WorldGeneration.ResolveTreeTemplateIndex(
+function WorldGeneration.GetTreeTemplateIndex(
 	self: WorldGeneration,
 	worldTileX: number,
 	surfaceTileY: number,
 	biomeType: number,
 	biomeId: number
 ): number?
-	if not self:isTreeAnchorTile(worldTileX) then
+	if not self:IsTreeAnchorTile(worldTileX) then
 		return nil
 	end
 
@@ -3975,7 +3975,7 @@ function WorldGeneration.ResolveTreeTemplateIndex(
 		0,
 		1
 	)
-	local variantSlot = resolveTreeVariantIndexByAlpha(#matchingVariants, variantAlpha)
+	local variantSlot = GetTreeVariantIndexByAlpha(#matchingVariants, variantAlpha)
 	return matchingVariants[variantSlot]
 end
 
@@ -3985,7 +3985,7 @@ function WorldGeneration.HasTreeAirClearance(
 	worldTileX: number,
 	surfaceTileY: number
 ): boolean
-	return self:hasAirClearance(column, worldTileX, surfaceTileY, TREE_REQUIRED_AIR_CLEARANCE)
+	return self:HasAirClearance(column, worldTileX, surfaceTileY, TREE_REQUIRED_AIR_CLEARANCE)
 end
 
 function WorldGeneration.HasAirClearance(
@@ -4001,7 +4001,7 @@ function WorldGeneration.HasAirClearance(
 			continue
 		end
 
-		local scanTileId = self:resolveForegroundTileAt(column, worldTileX, scanTileY)
+		local scanTileId = self:GetForegroundTileAt(column, worldTileX, scanTileY)
 		if scanTileId ~= self.tileId.AIR then
 			return false
 		end
@@ -4028,7 +4028,7 @@ function WorldGeneration.IsWithinBiomeTransitionBuffer(
 	return true
 end
 
-function WorldGeneration.ResolveDesertPropVariantIndex(
+function WorldGeneration.GetDesertPropVariantIndex(
 	self: WorldGeneration,
 	worldTileX: number,
 	surfaceTileY: number,
@@ -4102,12 +4102,12 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 			return cached
 		end
 
-		local sampled = self.biomeGenerator:getColumnProfile(worldTileX)
+		local sampled = self.biomeGenerator:GetColumnProfile(worldTileX)
 		biomeBlendColumnCache[worldTileX] = sampled
 		return sampled
 	end
 
-	local function resolveBiomeBlendAxisData(clusterX: number): BiomeBlendAxisData
+	local function GetBiomeBlendAxisData(clusterX: number): BiomeBlendAxisData
 		local cached = biomeBlendAxisCache[clusterX]
 		if cached ~= nil then
 			return cached
@@ -4149,7 +4149,7 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 		return axisData
 	end
 
-	local function resolveClusterBlendedColumn(
+	local function GetClusterBlendedColumn(
 		worldTileX: number,
 		worldTileY: number,
 		blendDepthBelowSurface: number,
@@ -4168,7 +4168,7 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 			return copyColumnWithSurfaceY(cached, baseColumn.surfaceY)
 		end
 
-		local axisData = resolveBiomeBlendAxisData(clusterX)
+		local axisData = GetBiomeBlendAxisData(clusterX)
 		local selectedColumn = axisData.primaryColumn
 		local secondaryColumn = axisData.secondaryColumn
 
@@ -4196,13 +4196,13 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 		return copyColumnWithSurfaceY(selectedColumn, baseColumn.surfaceY)
 	end
 
-	local function resolveBlendedColumnForTile(
+	local function GetBlendedColumnForTile(
 		worldTileX: number,
 		worldTileY: number,
 		baseColumn: ColumnProfile
 	): ColumnProfile
-		local _, blendDepthBelowSurface = self.caveGenerator:resolveDepthLayer(baseColumn.surfaceY, worldTileY)
-		return resolveClusterBlendedColumn(worldTileX, worldTileY, blendDepthBelowSurface, baseColumn)
+		local _, blendDepthBelowSurface = self.caveGenerator:GetDepthLayer(baseColumn.surfaceY, worldTileY)
+		return GetClusterBlendedColumn(worldTileX, worldTileY, blendDepthBelowSurface, baseColumn)
 	end
 
 	local function getBackgroundColumnProfileForBlend(layerIndex: number, worldTileX: number): ColumnProfile
@@ -4213,12 +4213,12 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 		end
 
 		local baseColumn = getColumnProfileForBlend(worldTileX)
-		local sampled = self.biomeGenerator:getDepthColumnProfile(worldTileX, layerIndex, baseColumn)
+		local sampled = self.biomeGenerator:GetDepthColumnProfile(worldTileX, layerIndex, baseColumn)
 		layerCache[worldTileX] = sampled
 		return sampled
 	end
 
-	local function resolveBackgroundBiomeBlendAxisData(layerIndex: number, clusterX: number): BiomeBlendAxisData
+	local function GetBackgroundBiomeBlendAxisData(layerIndex: number, clusterX: number): BiomeBlendAxisData
 		local layerAxisCache = backgroundBiomeBlendAxisCaches[layerIndex]
 		local cached = layerAxisCache[clusterX]
 		if cached ~= nil then
@@ -4262,7 +4262,7 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 		return axisData
 	end
 
-	local function resolveBackgroundClusterBlendedColumn(
+	local function GetBackgroundClusterBlendedColumn(
 		layerIndex: number,
 		worldTileX: number,
 		worldTileY: number,
@@ -4283,7 +4283,7 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 			return copyColumnWithSurfaceY(cached, baseColumn.surfaceY)
 		end
 
-		local axisData = resolveBackgroundBiomeBlendAxisData(layerIndex, clusterX)
+		local axisData = GetBackgroundBiomeBlendAxisData(layerIndex, clusterX)
 		local selectedColumn = axisData.primaryColumn
 		local secondaryColumn = axisData.secondaryColumn
 
@@ -4317,14 +4317,14 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 		return copyColumnWithSurfaceY(selectedColumn, baseColumn.surfaceY)
 	end
 
-	local function resolveBackgroundBlendedColumnForTile(
+	local function GetBackgroundBlendedColumnForTile(
 		layerIndex: number,
 		worldTileX: number,
 		worldTileY: number,
 		baseColumn: ColumnProfile
 	): ColumnProfile
-		local _, blendDepthBelowSurface = self.caveGenerator:resolveDepthLayer(baseColumn.surfaceY, worldTileY)
-		return resolveBackgroundClusterBlendedColumn(
+		local _, blendDepthBelowSurface = self.caveGenerator:GetDepthLayer(baseColumn.surfaceY, worldTileY)
+		return GetBackgroundClusterBlendedColumn(
 			layerIndex,
 			worldTileX,
 			worldTileY,
@@ -4335,12 +4335,12 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 
 	for localX = 0, backgroundWidth - 1 do
 		local worldTileX = backgroundTileMinX + localX
-		local column = self.biomeGenerator:getColumnProfile(worldTileX)
+		local column = self.biomeGenerator:GetColumnProfile(worldTileX)
 		backgroundColumnProfiles[localX + 1] = column
 		biomeBlendColumnCache[worldTileX] = column
 
 		for layerIndex = 1, self.backgroundLayerCount do
-			local backgroundColumn = self.biomeGenerator:getDepthColumnProfile(worldTileX, layerIndex, column)
+			local backgroundColumn = self.biomeGenerator:GetDepthColumnProfile(worldTileX, layerIndex, column)
 			backgroundDepthColumnProfiles[layerIndex][localX + 1] = backgroundColumn
 			backgroundBiomeBlendColumnCaches[layerIndex][worldTileX] = backgroundColumn
 		end
@@ -4367,11 +4367,11 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 				continue
 			end
 
-			local column = resolveBlendedColumnForTile(worldTileX, worldTileY, baseColumn)
+			local column = GetBlendedColumnForTile(worldTileX, worldTileY, baseColumn)
 			biomeIds[index] = column.biomeId
 			biomeTypes[index] = column.biomeType
 			local tileId, depthLayer, tileDepthBelowSurface =
-				self:resolveForegroundTileAt(column, worldTileX, worldTileY)
+				self:GetForegroundTileAt(column, worldTileX, worldTileY)
 			tiles[index] = tileId
 			depthLayers[index] = encodeDepthLayer(depthLayer)
 			depthBelowSurface[index] = tileDepthBelowSurface
@@ -4395,7 +4395,7 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 		columnProfiles
 	)
 
-	local structureGenerationResult: StructureGenerationResult = self.structuresGenerator:generateChunkStructures({
+	local structureGenerationResult: StructureGenerationResult = self.structuresGenerator:GenerateChunkStructures({
 		chunkX = chunkX,
 		chunkY = chunkY,
 		tileMinX = tileMinX,
@@ -4429,8 +4429,8 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 					local worldTileX = tileMinX + localX
 					local worldTileAboveY = worldTileY - 1
 					local baseAboveColumn = columnProfiles[localX + 1]
-					local aboveColumn = resolveBlendedColumnForTile(worldTileX, worldTileAboveY, baseAboveColumn)
-					aboveTileId = select(1, self:resolveForegroundTileAt(aboveColumn, worldTileX, worldTileAboveY))
+					local aboveColumn = GetBlendedColumnForTile(worldTileX, worldTileAboveY, baseAboveColumn)
+					aboveTileId = select(1, self:GetForegroundTileAt(aboveColumn, worldTileX, worldTileAboveY))
 				end
 			end
 
@@ -4440,7 +4440,7 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 
 			local biomeId = biomeIds[tileIndex]
 			local biomeType = biomeTypes[tileIndex]
-			tiles[tileIndex] = resolveExposedSurfaceCapTileId(self, tileId, biomeId, biomeType)
+			tiles[tileIndex] = GetExposedSurfaceCapTileId(self, tileId, biomeId, biomeType)
 		end
 
 		if localY > 0 and localY % self.generationRowsPerYield == 0 then
@@ -4457,18 +4457,18 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 		for localX = 0, backgroundWidth - 1 do
 			local worldTileX = backgroundTileMinX + localX
 			local backgroundIndex = computeTileIndex(localX, localY, backgroundWidth)
-			local sharedBackgroundDensity = self:sampleSharedBackgroundDensity(worldTileX, worldTileY)
+			local sharedBackgroundDensity = self:SampleSharedBackgroundDensity(worldTileX, worldTileY)
 			for layerIndex = 1, self.backgroundLayerCount do
 				local baseColumn = backgroundDepthColumnProfiles[layerIndex][localX + 1]
-				local column = resolveBackgroundBlendedColumnForTile(layerIndex, worldTileX, worldTileY, baseColumn)
+				local column = GetBackgroundBlendedColumnForTile(layerIndex, worldTileX, worldTileY, baseColumn)
 				local _, depthLayer, tileDepthBelowSurface =
-					self:resolveForegroundTileAt(column, worldTileX, worldTileY)
+					self:GetForegroundTileAt(column, worldTileX, worldTileY)
 				if tileDepthBelowSurface < 0 then
 					continue
 				end
 
 				local layerData = backgroundLayers[layerIndex]
-				local backgroundTileId = self:resolveBackgroundTileIdForLayer(
+				local backgroundTileId = self:GetBackgroundTileIdForLayer(
 					layerIndex,
 					column,
 					sharedBackgroundDensity,
@@ -4530,9 +4530,9 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 
 				local worldTileX = backgroundTileMinX + localX
 				local baseColumn = backgroundDepthColumnProfiles[layerIndex][localX + 1]
-				local column = resolveBackgroundBlendedColumnForTile(layerIndex, worldTileX, worldTileY, baseColumn)
+				local column = GetBackgroundBlendedColumnForTile(layerIndex, worldTileX, worldTileY, baseColumn)
 				local _, depthLayer, tileDepthBelowSurface =
-					self:resolveForegroundTileAt(column, worldTileX, worldTileY)
+					self:GetForegroundTileAt(column, worldTileX, worldTileY)
 				if tileDepthBelowSurface < 0 then
 					continue
 				end
@@ -4550,7 +4550,7 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 				end
 
 				local connectionDepth = math.max(0, tileDepthBelowSurface + layerIndex - 1)
-				currentTiles[index] = self.biomeGenerator:resolveTileForDepth(column, connectionDepth)
+				currentTiles[index] = self.biomeGenerator:GetTileForDepth(column, connectionDepth)
 			end
 
 			if localY > 0 and localY % self.generationRowsPerYield == 0 then
@@ -4577,14 +4577,14 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 				local worldTileX = backgroundTileMinX + localX
 				local baseColumn = backgroundDepthColumnProfiles[self.backgroundLayerCount][localX + 1]
 				local column =
-					resolveBackgroundBlendedColumnForTile(self.backgroundLayerCount, worldTileX, worldTileY, baseColumn)
-				local _, _, tileDepthBelowSurface = self:resolveForegroundTileAt(column, worldTileX, worldTileY)
+					GetBackgroundBlendedColumnForTile(self.backgroundLayerCount, worldTileX, worldTileY, baseColumn)
+				local _, _, tileDepthBelowSurface = self:GetForegroundTileAt(column, worldTileX, worldTileY)
 				if tileDepthBelowSurface < 0 then
 					continue
 				end
 
 				lastLayerTiles[index] =
-					self.biomeGenerator:resolveTileForDepth(column, tileDepthBelowSurface + self.backgroundLayerCount)
+					self.biomeGenerator:GetTileForDepth(column, tileDepthBelowSurface + self.backgroundLayerCount)
 			end
 
 			if localY > 0 and localY % self.generationRowsPerYield == 0 then
@@ -4613,7 +4613,7 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 		return false
 	end
 
-	local function resolveValidationTileId(worldTileX: number, worldTileY: number, column: ColumnProfile): number
+	local function GetValidationTileId(worldTileX: number, worldTileY: number, column: ColumnProfile): number
 		local localValidationX = worldTileX - tileMinX
 		local localValidationY = worldTileY - tileMinY
 		if
@@ -4625,7 +4625,7 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 			return tiles[computeTileIndex(localValidationX, localValidationY, width)]
 		end
 
-		local tileId = self:resolveForegroundTileAt(column, worldTileX, worldTileY)
+		local tileId = self:GetForegroundTileAt(column, worldTileX, worldTileY)
 		return tileId
 	end
 
@@ -4635,7 +4635,7 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 			return true
 		end
 
-		return resolveValidationTileId(worldTileX, supportTileY, column) ~= self.tileId.AIR
+		return GetValidationTileId(worldTileX, supportTileY, column) ~= self.tileId.AIR
 	end
 
 	local function hasNearbyHigherPriorityTreeAnchor(worldTileX: number, surfaceTileY: number): boolean
@@ -4647,7 +4647,7 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 			end
 
 			local scanTileX = worldTileX + offset
-			if not self:isTreeAnchorTile(scanTileX) then
+			if not self:IsTreeAnchorTile(scanTileX) then
 				continue
 			end
 
@@ -4698,7 +4698,7 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 				return false
 			end
 
-			local scanSurfaceTileId = resolveValidationTileId(scanTileX, scanColumn.surfaceY, scanColumn)
+			local scanSurfaceTileId = GetValidationTileId(scanTileX, scanColumn.surfaceY, scanColumn)
 			if scanSurfaceTileId == self.tileId.AIR then
 				return false
 			end
@@ -4742,17 +4742,17 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 		end
 
 		local canSupportTree = isTreePlacementSupported(worldTileX, surfaceTileY, column, surfaceTileId)
-		local hasAirClearance = canSupportTree and self:hasTreeAirClearance(column, worldTileX, surfaceTileY)
+		local hasAirClearance = canSupportTree and self:HasTreeAirClearance(column, worldTileX, surfaceTileY)
 		local treeVariantIndex = if canSupportTree
-			then self:resolveTreeTemplateIndex(worldTileX, surfaceTileY, column.biomeType, column.biomeId)
+			then self:GetTreeTemplateIndex(worldTileX, surfaceTileY, column.biomeType, column.biomeId)
 			else nil
 		local canSpawnTree = treeVariantIndex ~= nil and hasAirClearance
 		local didSpawnTree = false
 		if canSpawnTree and column.biomeId == self.biomeId.SNOW and column.biomeType == self.biomeType.NORMAL then
 			local snowTreeChance = clampNumber(snowDecorationSettings.TreeChance, 0, 1, 0.38)
-			local snowTreeEdgeBuffer = sanitizeInteger(snowDecorationSettings.TreeEdgeBufferTiles, 0, 48, 8)
+			local snowTreeEdgeBuffer = CoerceInteger(snowDecorationSettings.TreeEdgeBufferTiles, 0, 48, 8)
 			if
-				not self:isWithinBiomeTransitionBuffer(
+				not self:IsWithinBiomeTransitionBuffer(
 					getColumnProfileForBlend,
 					worldTileX,
 					self.biomeId.SNOW,
@@ -4784,11 +4784,11 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 		if not didSpawnTree and column.biomeId == self.biomeId.SNOW and column.biomeType == self.biomeType.NORMAL then
 			local isSnowSurfaceTile = surfaceTileId == self.tileId.SNOW or surfaceTileId == self.tileId.ICE
 			if isSnowSurfaceTile then
-				local propEdgeBuffer = sanitizeInteger(snowDecorationSettings.PropEdgeBufferTiles, 0, 48, 6)
-				local propStructureBuffer = sanitizeInteger(snowDecorationSettings.PropStructureBufferTiles, 0, 48, 10)
-				local _propAirClearance = sanitizeInteger(snowDecorationSettings.PropAirClearanceTiles, 1, 24, 5)
+				local propEdgeBuffer = CoerceInteger(snowDecorationSettings.PropEdgeBufferTiles, 0, 48, 6)
+				local propStructureBuffer = CoerceInteger(snowDecorationSettings.PropStructureBufferTiles, 0, 48, 10)
+				local _propAirClearance = CoerceInteger(snowDecorationSettings.PropAirClearanceTiles, 1, 24, 5)
 				if
-					self:isWithinBiomeTransitionBuffer(
+					self:IsWithinBiomeTransitionBuffer(
 						getColumnProfileForBlend,
 						worldTileX,
 						self.biomeId.SNOW,
@@ -4797,12 +4797,12 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 					) and not hasReservedSurfaceTileNear(worldTileX, propStructureBuffer)
 				then
 					local snowPileChance = clampNumber(snowDecorationSettings.SnowPileChance, 0, 1, 0.24)
-					local snowPileSpacing = sanitizeInteger(snowDecorationSettings.SnowPileSpacingTiles, 4, 64, 11)
-					if self:isSurfaceAnchorTile(worldTileX, snowPileSpacing, SNOW_PILE_SLOT_NOISE_FREQUENCY, 1223) then
+					local snowPileSpacing = CoerceInteger(snowDecorationSettings.SnowPileSpacingTiles, 4, 64, 11)
+					if self:IsSurfaceAnchorTile(worldTileX, snowPileSpacing, SNOW_PILE_SLOT_NOISE_FREQUENCY, 1223) then
 						local snowPileRoll =
 							deterministicUnitInterval(self.seed, worldTileX, surfaceTileY, self.propId.SNOW_PILE, 2179)
 						if snowPileRoll <= snowPileChance then
-							local variantIndex = self:resolveDesertPropVariantIndex(worldTileX, surfaceTileY, 3)
+							local variantIndex = self:GetDesertPropVariantIndex(worldTileX, surfaceTileY, 3)
 							props[#props + 1] = {
 								tileX = worldTileX,
 								tileY = surfaceTileY,
@@ -4830,10 +4830,10 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 			continue
 		end
 
-		local cactusEdgeBuffer = sanitizeInteger(desertDecorationSettings.CactusEdgeBufferTiles, 0, 48, 7)
-		local cactusStructureBuffer = sanitizeInteger(desertDecorationSettings.CactusStructureBufferTiles, 0, 48, 10)
+		local cactusEdgeBuffer = CoerceInteger(desertDecorationSettings.CactusEdgeBufferTiles, 0, 48, 7)
+		local cactusStructureBuffer = CoerceInteger(desertDecorationSettings.CactusStructureBufferTiles, 0, 48, 10)
 		if
-			not self:isWithinBiomeTransitionBuffer(
+			not self:IsWithinBiomeTransitionBuffer(
 				getColumnProfileForBlend,
 				worldTileX,
 				self.biomeId.DESERT,
@@ -4848,20 +4848,20 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 		end
 
 		local cactusChance = clampNumber(desertDecorationSettings.CactusChance, 0, 1, 0.68)
-		local cactusSpacing = sanitizeInteger(desertDecorationSettings.CactusSpacingTiles, 4, 64, 11)
-		local cactusAirClearance = sanitizeInteger(desertDecorationSettings.CactusAirClearanceTiles, 3, 32, 14)
+		local cactusSpacing = CoerceInteger(desertDecorationSettings.CactusSpacingTiles, 4, 64, 11)
+		local cactusAirClearance = CoerceInteger(desertDecorationSettings.CactusAirClearanceTiles, 3, 32, 14)
 		local rockChance = clampNumber(desertDecorationSettings.RockChance, 0, 1, 0.12)
-		local rockSpacing = sanitizeInteger(desertDecorationSettings.RockSpacingTiles, 4, 64, 16)
+		local rockSpacing = CoerceInteger(desertDecorationSettings.RockSpacingTiles, 4, 64, 16)
 		local didSpawnDesertProp = false
 
 		if
-			self:isSurfaceAnchorTile(worldTileX, cactusSpacing, DESERT_CACTUS_SLOT_NOISE_FREQUENCY, 211)
-			and self:hasAirClearance(column, worldTileX, surfaceTileY, cactusAirClearance)
+			self:IsSurfaceAnchorTile(worldTileX, cactusSpacing, DESERT_CACTUS_SLOT_NOISE_FREQUENCY, 211)
+			and self:HasAirClearance(column, worldTileX, surfaceTileY, cactusAirClearance)
 		then
 			local cactusRoll =
 				deterministicUnitInterval(self.seed, worldTileX, surfaceTileY, self.propId.DESERT_CACTUS, 617)
 			if cactusRoll <= cactusChance then
-				local variantIndex = self:resolveDesertPropVariantIndex(worldTileX, surfaceTileY, 4)
+				local variantIndex = self:GetDesertPropVariantIndex(worldTileX, surfaceTileY, 4)
 				local propSeed = computeProceduralTreeSeed(
 					self.seed + self.propId.DESERT_CACTUS * 97,
 					worldTileX,
@@ -4885,11 +4885,11 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 			continue
 		end
 
-		if self:isSurfaceAnchorTile(worldTileX, rockSpacing, DESERT_ROCK_SLOT_NOISE_FREQUENCY, 487) then
+		if self:IsSurfaceAnchorTile(worldTileX, rockSpacing, DESERT_ROCK_SLOT_NOISE_FREQUENCY, 487) then
 			local rockRoll =
 				deterministicUnitInterval(self.seed, worldTileX, surfaceTileY, self.propId.DESERT_ROCK, 1181)
 			if rockRoll <= rockChance then
-				local variantIndex = self:resolveDesertPropVariantIndex(worldTileX, surfaceTileY, 2)
+				local variantIndex = self:GetDesertPropVariantIndex(worldTileX, surfaceTileY, 2)
 				props[#props + 1] = {
 					tileX = worldTileX,
 					tileY = surfaceTileY,
@@ -4910,10 +4910,10 @@ function WorldGeneration.GenerateChunkData(self: WorldGeneration, chunkX: number
 
 	tiles = select(1, self:RepairIntersectingTileMetadata(tiles, width, height))
 
-	local dominantBiomeType = resolveDominantBiomeType(biomeTypes, self.biomeType.NORMAL)
-	local dominantBiomeId = resolveDominantBiomeId(biomeIds, self.biomeId.FOREST)
+	local dominantBiomeType = GetDominantBiomeType(biomeTypes, self.biomeType.NORMAL)
+	local dominantBiomeId = GetDominantBiomeId(biomeIds, self.biomeId.FOREST)
 	local liquids = if self.liquidGenerator ~= nil
-		then self.liquidGenerator:generateChunkLiquids({
+		then self.liquidGenerator:GenerateChunkLiquids({
 			seed = self.seed,
 			chunkX = chunkX,
 			chunkY = chunkY,
@@ -4968,7 +4968,7 @@ end
 function WorldGeneration.GetOrGenerateChunkData(self: WorldGeneration, chunkX: number, chunkY: number): ChunkData
 	local key = packChunkKey(chunkX, chunkY)
 	local cache = self.cache
-	local cached = if cache then cache:getChunkData(key) :: ChunkData? else nil
+	local cached = if cache then cache:GetChunkData(key) :: ChunkData? else nil
 	if cached then
 		local repairedOverlapCount = self:RepairChunkTileMetadataOverlaps(cached)
 		if repairedOverlapCount > 0 then
@@ -4979,7 +4979,7 @@ function WorldGeneration.GetOrGenerateChunkData(self: WorldGeneration, chunkX: n
 		return cached
 	end
 
-	local generated = self:generateChunkData(chunkX, chunkY)
+	local generated = self:GenerateChunkData(chunkX, chunkY)
 	ensureChunkBiomeMetadata(self, generated)
 	ensureChunkLiquidData(self, generated)
 	local chunkOverrides = self.chunkOverrides[key]
@@ -5000,11 +5000,11 @@ function WorldGeneration.GetOrGenerateChunkData(self: WorldGeneration, chunkX: n
 			if tileIndex >= 1 and tileIndex <= #generated.biomeTypes then
 				generated.biomeTypes[tileIndex] = overrideBiomeType
 				generated.tiles[tileIndex] =
-					self.biomeGenerator:convertTileToBiomeType(generated.tiles[tileIndex], overrideBiomeType)
+					self.biomeGenerator:ConvertTileToBiomeType(generated.tiles[tileIndex], overrideBiomeType)
 				biomeOverridesApplied = true
 			end
 		end
-		generated.dominantBiomeType = resolveDominantBiomeType(generated.biomeTypes, self.biomeType.NORMAL)
+		generated.dominantBiomeType = GetDominantBiomeType(generated.biomeTypes, self.biomeType.NORMAL)
 	end
 
 	if tileOverridesApplied or biomeOverridesApplied then
@@ -5027,7 +5027,7 @@ function WorldGeneration.GetOrGenerateChunkData(self: WorldGeneration, chunkX: n
 	end
 
 	if cache then
-		cache:setChunkData(key, generated)
+		cache:SetChunkData(key, generated)
 	end
 	return generated
 end
@@ -5109,7 +5109,7 @@ end
 function WorldGeneration.BuildChunkVisual(self: WorldGeneration, chunkData: ChunkData): ChunkVisual
 	local collisionChunksFolder = self.collisionChunksFolder
 	if collisionChunksFolder == nil then
-		self:createFolders()
+		self:CreateFolders()
 		collisionChunksFolder = self.collisionChunksFolder :: Folder
 	end
 
@@ -5133,7 +5133,7 @@ function WorldGeneration.BuildChunkVisual(self: WorldGeneration, chunkData: Chun
 	local terrainFolder: Folder? = nil
 
 	local parts: { BasePart } = {}
-	local collisionRects = self:buildGreedyRectangles(
+	local collisionRects = self:BuildGreedyRectangles(
 		chunkData.tiles,
 		chunkData.width,
 		chunkData.height,
@@ -5149,7 +5149,7 @@ function WorldGeneration.BuildChunkVisual(self: WorldGeneration, chunkData: Chun
 
 		local centerTileX = chunkData.tileMinX + rect.x + rect.width * 0.5
 		local centerTileY = chunkData.tileMinY + rect.y + rect.height * 0.5
-		local part = self:acquirePart()
+		local part = self:AcquirePart()
 		part.Name = HttpService:GenerateGUID(false)
 		part.Anchored = true
 		part.Locked = true
@@ -5161,13 +5161,13 @@ function WorldGeneration.BuildChunkVisual(self: WorldGeneration, chunkData: Chun
 		part.CanTouch = false
 		part.CastShadow = false
 		part.Size = Vector3.new(self.tileDepth, self.tileSize * rect.height, self.tileSize * rect.width)
-		part.CFrame = CFrame.new(self:computeTileCenterPosition(centerTileX, centerTileY, 0))
+		part.CFrame = CFrame.new(self:ComputeTileCenterPosition(centerTileX, centerTileY, 0))
 		if terrainFolder == nil then
 			terrainFolder = TileComponent.CreateFolder({
 				name = "Terrain",
 				parent = model,
 			} :: any)
-			WorkspaceFolders.manageFolder(terrainFolder, model)
+			WorkspaceFolders.ManageFolder(terrainFolder, model)
 		end
 		part.Parent = terrainFolder
 		table.insert(parts, part)
@@ -5197,7 +5197,7 @@ end
 function WorldGeneration.AttachChunkVisual(self: WorldGeneration, visual: ChunkVisual)
 	local collisionChunksFolder = self.collisionChunksFolder
 	if collisionChunksFolder == nil then
-		self:createFolders()
+		self:CreateFolders()
 		collisionChunksFolder = self.collisionChunksFolder :: Folder
 	end
 
@@ -5240,14 +5240,14 @@ function WorldGeneration.PruneCachedChunkVisuals(self: WorldGeneration)
 		self.cachedChunkVisuals[evictionKey] = nil
 		self.cachedChunkVisualCount = math.max(0, self.cachedChunkVisualCount - 1)
 		if visual ~= nil then
-			self:releaseChunkVisual(visual)
+			self:ReleaseChunkVisual(visual)
 		end
 	end
 end
 
 function WorldGeneration.CacheChunkVisual(self: WorldGeneration, chunkKey: string, visual: ChunkVisual)
 	if self.maxCachedChunkVisuals <= 0 then
-		self:releaseChunkVisual(visual)
+		self:ReleaseChunkVisual(visual)
 		return
 	end
 
@@ -5262,12 +5262,12 @@ function WorldGeneration.CacheChunkVisual(self: WorldGeneration, chunkKey: strin
 		return
 	end
 	if existing ~= nil and existing ~= visual then
-		self:releaseChunkVisual(existing)
+		self:ReleaseChunkVisual(existing)
 	else
 		self.cachedChunkVisualCount += 1
 	end
 	self.cachedChunkVisuals[chunkKey] = visual
-	self:pruneCachedChunkVisuals()
+	self:PruneCachedChunkVisuals()
 end
 
 function WorldGeneration.ReleaseChunkVisual(self: WorldGeneration, visual: ChunkVisual)
@@ -5275,7 +5275,7 @@ function WorldGeneration.ReleaseChunkVisual(self: WorldGeneration, visual: Chunk
 		if part.Parent ~= nil then
 			part.Parent = nil
 		end
-		self:releasePart(part)
+		self:ReleasePart(part)
 	end
 	table.clear(visual.parts)
 	visual.model:SetAttribute("ChunkCollisionReady", false)
@@ -5290,8 +5290,8 @@ function WorldGeneration.UnloadChunkByKey(self: WorldGeneration, chunkKey: strin
 
 	self.loadedChunkVisuals[chunkKey] = nil
 	self.loadedChunkCount = math.max(0, self.loadedChunkCount - 1)
-	self:cacheChunkVisual(chunkKey, visual)
-	self:notifyChunkCollisionUnloaded(chunkKey, {
+	self:CacheChunkVisual(chunkKey, visual)
+	self:NotifyChunkCollisionUnloaded(chunkKey, {
 		reason = "unloaded",
 	})
 end
@@ -5307,28 +5307,28 @@ function WorldGeneration.LoadChunkByKey(self: WorldGeneration, chunkKey: string,
 		return
 	end
 
-	if not self:isChunkYWithinWorldBounds(chunkY) then
+	if not self:IsChunkYWithinWorldBounds(chunkY) then
 		return
 	end
 
-	local cachedVisual = self:takeCachedChunkVisual(chunkKey)
+	local cachedVisual = self:TakeCachedChunkVisual(chunkKey)
 	if cachedVisual ~= nil then
 		if (self.chunkDemand[chunkKey] or 0) > 0 then
-			self:attachChunkVisual(cachedVisual)
+			self:AttachChunkVisual(cachedVisual)
 			cachedVisual.model:SetAttribute("ChunkRevision", self.chunkRevisions[chunkKey] or 0)
 			self.loadedChunkVisuals[chunkKey] = cachedVisual
 			self.loadedChunkCount += 1
-			self:notifyChunkCollisionReady(chunkKey, {
+			self:NotifyChunkCollisionReady(chunkKey, {
 				reason = if typeof(context.reason) == "string" then context.reason else "loaded",
 				fromCache = true,
 			})
 		else
-			self:cacheChunkVisual(chunkKey, cachedVisual)
+			self:CacheChunkVisual(chunkKey, cachedVisual)
 		end
 		return
 	end
 
-	local chunkData = self:getOrGenerateChunkData(chunkX, chunkY)
+	local chunkData = self:GetOrGenerateChunkData(chunkX, chunkY)
 	chunkData.lastAccessedAt = os.clock()
 	if (self.chunkDemand[chunkKey] or 0) <= 0 then
 		return
@@ -5338,17 +5338,17 @@ function WorldGeneration.LoadChunkByKey(self: WorldGeneration, chunkKey: string,
 		return
 	end
 
-	local visual = self:buildChunkVisual(chunkData)
+	local visual = self:BuildChunkVisual(chunkData)
 	if (self.chunkDemand[chunkKey] or 0) <= 0 then
-		self:releaseChunkVisual(visual)
+		self:ReleaseChunkVisual(visual)
 		return
 	end
 
-	self:attachChunkVisual(visual)
+	self:AttachChunkVisual(visual)
 	self.loadedChunkVisuals[chunkKey] = visual
 	self.loadedChunkCount += 1
 	visual.model:SetAttribute("ChunkRevision", self.chunkRevisions[chunkKey] or 0)
-	self:notifyChunkCollisionReady(chunkKey, {
+	self:NotifyChunkCollisionReady(chunkKey, {
 		reason = if typeof(context.reason) == "string" then context.reason else "loaded",
 		fromCache = false,
 	})
@@ -5363,7 +5363,7 @@ function WorldGeneration.ProcessUnloadQueue(self: WorldGeneration)
 
 	local processed = 0
 	while processed < unloadBudget do
-		local chunkKey = self:dequeueUnloadKey()
+		local chunkKey = self:DequeueUnloadKey()
 		if chunkKey == nil then
 			break
 		end
@@ -5373,18 +5373,18 @@ function WorldGeneration.ProcessUnloadQueue(self: WorldGeneration)
 			continue
 		end
 
-		self:unloadChunkByKey(chunkKey)
+		self:UnloadChunkByKey(chunkKey)
 		processed += 1
 	end
 
 	if processed > 0 then
-		self:pulseStatsChanged()
+		self:PulseStatsChanged()
 	end
 end
 
 function WorldGeneration.PumpLoadQueue(self: WorldGeneration)
 	while self.activeLoadWorkers < self.maxConcurrentChunkLoads do
-		local chunkKey = self:dequeueLoadKey()
+		local chunkKey = self:DequeueLoadKey()
 		if chunkKey == nil then
 			break
 		end
@@ -5402,19 +5402,19 @@ function WorldGeneration.PumpLoadQueue(self: WorldGeneration)
 
 		self.loadingLookup[chunkKey] = true
 		self.activeLoadWorkers += 1
-		self:pulseStatsChanged()
+		self:PulseStatsChanged()
 
 		task.spawn(function()
 			local ok, loaderror = pcall(function()
-				self:loadChunkByKey(chunkKey)
+				self:LoadChunkByKey(chunkKey)
 			end)
 			self.loadingLookup[chunkKey] = nil
 			self.activeLoadWorkers = math.max(0, self.activeLoadWorkers - 1)
 			if not ok and (self.chunkDemand[chunkKey] or 0) > 0 then
 				warn(`WorldGeneration failed to load collision chunk {chunkKey}: {loaderror}`)
-				self:enqueueLoadByKey(chunkKey)
+				self:EnqueueLoadByKey(chunkKey)
 			end
-			self:pulseStatsChanged()
+			self:PulseStatsChanged()
 		end)
 	end
 end
@@ -5431,7 +5431,7 @@ function WorldGeneration.PruneChunkDataCache(self: WorldGeneration, deltaTime: n
 		return
 	end
 
-	cache:pruneChunkData(function(chunkKey: string): boolean
+	cache:PruneChunkData(function(chunkKey: string): boolean
 		if self.loadedChunkVisuals[chunkKey] ~= nil then
 			return true
 		end
@@ -5458,11 +5458,11 @@ function WorldGeneration.GetTileAt(self: WorldGeneration, tileXRaw: any, tileYRa
 
 	local chunkX = toChunkCoordinate(tileX, self.chunkSize)
 	local chunkY = toChunkCoordinate(tileY, self.chunkSize)
-	if not self:isChunkYWithinWorldBounds(chunkY) then
+	if not self:IsChunkYWithinWorldBounds(chunkY) then
 		return self.tileId.AIR, self.wallId.NONE
 	end
 
-	local chunkData = self:getOrGenerateChunkData(chunkX, chunkY)
+	local chunkData = self:GetOrGenerateChunkData(chunkX, chunkY)
 	chunkData.lastAccessedAt = os.clock()
 
 	local localX = tileX - chunkData.tileMinX
@@ -5488,11 +5488,11 @@ function WorldGeneration.GetBiomeTypeAt(self: WorldGeneration, tileXRaw: any, ti
 
 	local chunkX = toChunkCoordinate(tileX, self.chunkSize)
 	local chunkY = toChunkCoordinate(tileY, self.chunkSize)
-	if not self:isChunkYWithinWorldBounds(chunkY) then
+	if not self:IsChunkYWithinWorldBounds(chunkY) then
 		return self.biomeType.NORMAL
 	end
 
-	local chunkData = self:getOrGenerateChunkData(chunkX, chunkY)
+	local chunkData = self:GetOrGenerateChunkData(chunkX, chunkY)
 	chunkData.lastAccessedAt = os.clock()
 	local localX = tileX - chunkData.tileMinX
 	local localY = tileY - chunkData.tileMinY
@@ -5517,11 +5517,11 @@ function WorldGeneration.GetBiomeIdAt(self: WorldGeneration, tileXRaw: any, tile
 
 	local chunkX = toChunkCoordinate(tileX, self.chunkSize)
 	local chunkY = toChunkCoordinate(tileY, self.chunkSize)
-	if not self:isChunkYWithinWorldBounds(chunkY) then
+	if not self:IsChunkYWithinWorldBounds(chunkY) then
 		return self.biomeId.FOREST
 	end
 
-	local chunkData = self:getOrGenerateChunkData(chunkX, chunkY)
+	local chunkData = self:GetOrGenerateChunkData(chunkX, chunkY)
 	chunkData.lastAccessedAt = os.clock()
 	local localX = tileX - chunkData.tileMinX
 	local localY = tileY - chunkData.tileMinY
@@ -5536,19 +5536,19 @@ end
 function WorldGeneration.GetTileAtWorldPosition(self: WorldGeneration, worldPosition: Vector3): (number, number)
 	local tileX = toTileCoordinate(worldPosition.Z - self.worldOrigin.Z, self.tileSize)
 	local tileY = toTileCoordinate(worldPosition.Y - self.worldOrigin.Y, self.tileSize)
-	return self:getTileAt(tileX, tileY)
+	return self:GetTileAt(tileX, tileY)
 end
 
 function WorldGeneration.GetBiomeTypeAtWorldPosition(self: WorldGeneration, worldPosition: Vector3): number
 	local tileX = toTileCoordinate(worldPosition.Z - self.worldOrigin.Z, self.tileSize)
 	local tileY = toTileCoordinate(worldPosition.Y - self.worldOrigin.Y, self.tileSize)
-	return self:getBiomeTypeAt(tileX, tileY)
+	return self:GetBiomeTypeAt(tileX, tileY)
 end
 
 function WorldGeneration.GetBiomeIdAtWorldPosition(self: WorldGeneration, worldPosition: Vector3): number
 	local tileX = toTileCoordinate(worldPosition.Z - self.worldOrigin.Z, self.tileSize)
 	local tileY = toTileCoordinate(worldPosition.Y - self.worldOrigin.Y, self.tileSize)
-	return self:getBiomeIdAt(tileX, tileY)
+	return self:GetBiomeIdAt(tileX, tileY)
 end
 
 function WorldGeneration.GetChunkData(self: WorldGeneration, chunkXRaw: any, chunkYRaw: any): ChunkData?
@@ -5558,11 +5558,11 @@ function WorldGeneration.GetChunkData(self: WorldGeneration, chunkXRaw: any, chu
 
 	local chunkX = math.floor(chunkXRaw :: number)
 	local chunkY = math.floor(chunkYRaw :: number)
-	if not self:isChunkYWithinWorldBounds(chunkY) then
+	if not self:IsChunkYWithinWorldBounds(chunkY) then
 		return nil
 	end
 
-	local chunkData = self:getOrGenerateChunkData(chunkX, chunkY)
+	local chunkData = self:GetOrGenerateChunkData(chunkX, chunkY)
 	chunkData.lastAccessedAt = os.clock()
 	return chunkData
 end
@@ -5576,11 +5576,11 @@ function WorldGeneration.GetChunkDataByKey(self: WorldGeneration, chunkKeyRaw: a
 	if chunkX == nil or chunkY == nil then
 		return nil
 	end
-	return self:getChunkData(chunkX, chunkY)
+	return self:GetChunkData(chunkX, chunkY)
 end
 
 function WorldGeneration.GetChunkDominantBiomeTypeByKey(self: WorldGeneration, chunkKeyRaw: any): number
-	local chunkData = self:getChunkDataByKey(chunkKeyRaw)
+	local chunkData = self:GetChunkDataByKey(chunkKeyRaw)
 	if chunkData == nil then
 		return self.biomeType.NORMAL
 	end
@@ -5609,7 +5609,7 @@ local function copyBackgroundLayerSnapshotWithinChunkBounds(
 
 			local sourceIndex = computeTileIndex(sourceLocalX, sourceLocalY, layerData.width)
 			local targetIndex = computeTileIndex(localX, localY, chunkData.width)
-			snapshotTiles[targetIndex] = resolveTileMetadataId(self, layerData.tiles[sourceIndex])
+			snapshotTiles[targetIndex] = GetTileMetadataId(self, layerData.tiles[sourceIndex])
 		end
 	end
 
@@ -5624,7 +5624,7 @@ local function copyBackgroundLayerSnapshotWithinChunkBounds(
 end
 
 function WorldGeneration.GetChunkSnapshotByKey(self: WorldGeneration, chunkKeyRaw: any): { [string]: any }?
-	local chunkData = self:getChunkDataByKey(chunkKeyRaw)
+	local chunkData = self:GetChunkDataByKey(chunkKeyRaw)
 	if chunkData == nil then
 		return nil
 	end
@@ -5681,12 +5681,12 @@ function WorldGeneration.GetChunkSnapshotByKey(self: WorldGeneration, chunkKeyRa
 		backgroundLayers = backgroundLayersSnapshot,
 		trees = treesSnapshot,
 		props = propsSnapshot,
-		revision = self:getChunkRevisionByKey(chunkData.key),
+		revision = self:GetChunkRevisionByKey(chunkData.key),
 	}
 end
 
 function WorldGeneration.GetLiquidChunkSnapshotByKey(self: WorldGeneration, chunkKeyRaw: any): { [string]: any }?
-	local chunkData = self:getChunkDataByKey(chunkKeyRaw)
+	local chunkData = self:GetChunkDataByKey(chunkKeyRaw)
 	if chunkData == nil then
 		return nil
 	end
@@ -5717,11 +5717,11 @@ function WorldGeneration.GetLiquidCellAt(self: WorldGeneration, tileXRaw: any, t
 
 	local chunkX = toChunkCoordinate(tileX, self.chunkSize)
 	local chunkY = toChunkCoordinate(tileY, self.chunkSize)
-	if not self:isChunkYWithinWorldBounds(chunkY) then
+	if not self:IsChunkYWithinWorldBounds(chunkY) then
 		return 0
 	end
 
-	local chunkData = self:getOrGenerateChunkData(chunkX, chunkY)
+	local chunkData = self:GetOrGenerateChunkData(chunkX, chunkY)
 	chunkData.lastAccessedAt = os.clock()
 	local localX = tileX - chunkData.tileMinX
 	local localY = tileY - chunkData.tileMinY
@@ -5754,11 +5754,11 @@ function WorldGeneration.SetLiquidCellAt(
 
 	local chunkX = toChunkCoordinate(tileX, self.chunkSize)
 	local chunkY = toChunkCoordinate(tileY, self.chunkSize)
-	if not self:isChunkYWithinWorldBounds(chunkY) then
+	if not self:IsChunkYWithinWorldBounds(chunkY) then
 		return false, 0, 0
 	end
 
-	local chunkData = self:getOrGenerateChunkData(chunkX, chunkY)
+	local chunkData = self:GetOrGenerateChunkData(chunkX, chunkY)
 	chunkData.lastAccessedAt = os.clock()
 	local localX = tileX - chunkData.tileMinX
 	local localY = tileY - chunkData.tileMinY
@@ -5809,11 +5809,11 @@ function WorldGeneration.SetTileAt(
 
 	local chunkX = toChunkCoordinate(tileX, self.chunkSize)
 	local chunkY = toChunkCoordinate(tileY, self.chunkSize)
-	if not self:isChunkYWithinWorldBounds(chunkY) then
+	if not self:IsChunkYWithinWorldBounds(chunkY) then
 		return false, self.tileId.AIR, self.tileId.AIR
 	end
 
-	local chunkData = self:getOrGenerateChunkData(chunkX, chunkY)
+	local chunkData = self:GetOrGenerateChunkData(chunkX, chunkY)
 	chunkData.lastAccessedAt = os.clock()
 
 	local localX = tileX - chunkData.tileMinX
@@ -5844,14 +5844,14 @@ function WorldGeneration.SetTileAt(
 		end
 		touchedChunkKeys[chunkKey] = true
 		touchedChunkBounds[chunkKey] = dirtyBounds
-		self:bumpChunkRevisionByKey(chunkKey)
-		self:markChunkDirtyByKey(chunkKey)
+		self:BumpChunkRevisionByKey(chunkKey)
+		self:MarkChunkDirtyByKey(chunkKey)
 
 		local cachedVisual = self.cachedChunkVisuals[chunkKey]
 		if cachedVisual ~= nil then
 			self.cachedChunkVisuals[chunkKey] = nil
 			self.cachedChunkVisualCount = math.max(0, self.cachedChunkVisualCount - 1)
-			self:releaseChunkVisual(cachedVisual)
+			self:ReleaseChunkVisual(cachedVisual)
 		end
 	end
 
@@ -5880,7 +5880,7 @@ function WorldGeneration.SetTileAt(
 	end
 	if localY == 0 then
 		local belowChunkY = chunkY - 1
-		if self:isChunkYWithinWorldBounds(belowChunkY) then
+		if self:IsChunkYWithinWorldBounds(belowChunkY) then
 			touchChunk(packChunkKey(chunkX, belowChunkY), {
 				minTileX = tileX,
 				minTileY = belowChunkY * self.chunkSize + self.chunkSize - 1,
@@ -5890,7 +5890,7 @@ function WorldGeneration.SetTileAt(
 		end
 	elseif localY == chunkData.height - 1 then
 		local aboveChunkY = chunkY + 1
-		if self:isChunkYWithinWorldBounds(aboveChunkY) then
+		if self:IsChunkYWithinWorldBounds(aboveChunkY) then
 			touchChunk(packChunkKey(chunkX, aboveChunkY), {
 				minTileX = tileX,
 				minTileY = aboveChunkY * self.chunkSize,
@@ -5901,7 +5901,7 @@ function WorldGeneration.SetTileAt(
 	end
 
 	for touchedChunkKey, dirtyBounds in touchedChunkBounds do
-		self:notifyChunkTerrainChanged(touchedChunkKey, dirtyBounds, {
+		self:NotifyChunkTerrainChanged(touchedChunkKey, dirtyBounds, {
 			reason = "setTileAt",
 			sourceTileX = tileX,
 			sourceTileY = tileY,
@@ -5941,11 +5941,11 @@ function WorldGeneration.SetBiomeTypeAt(
 
 	local chunkX = toChunkCoordinate(tileX, self.chunkSize)
 	local chunkY = toChunkCoordinate(tileY, self.chunkSize)
-	if not self:isChunkYWithinWorldBounds(chunkY) then
+	if not self:IsChunkYWithinWorldBounds(chunkY) then
 		return false, self.biomeType.NORMAL, self.biomeType.NORMAL
 	end
 
-	local chunkData = self:getOrGenerateChunkData(chunkX, chunkY)
+	local chunkData = self:GetOrGenerateChunkData(chunkX, chunkY)
 	chunkData.lastAccessedAt = os.clock()
 	local localX = tileX - chunkData.tileMinX
 	local localY = tileY - chunkData.tileMinY
@@ -5960,8 +5960,8 @@ function WorldGeneration.SetBiomeTypeAt(
 	end
 
 	chunkData.biomeTypes[tileIndex] = nextBiomeType
-	chunkData.tiles[tileIndex] = self.biomeGenerator:convertTileToBiomeType(chunkData.tiles[tileIndex], nextBiomeType)
-	chunkData.dominantBiomeType = resolveDominantBiomeType(chunkData.biomeTypes, self.biomeType.NORMAL)
+	chunkData.tiles[tileIndex] = self.biomeGenerator:ConvertTileToBiomeType(chunkData.tiles[tileIndex], nextBiomeType)
+	chunkData.dominantBiomeType = GetDominantBiomeType(chunkData.biomeTypes, self.biomeType.NORMAL)
 
 	local chunkBiomeOverrides = self.chunkBiomeOverrides[chunkData.key]
 	if chunkBiomeOverrides == nil then
@@ -5976,14 +5976,14 @@ function WorldGeneration.SetBiomeTypeAt(
 			return
 		end
 		touchedChunkKeys[chunkKey] = true
-		self:bumpChunkRevisionByKey(chunkKey)
-		self:markChunkDirtyByKey(chunkKey)
+		self:BumpChunkRevisionByKey(chunkKey)
+		self:MarkChunkDirtyByKey(chunkKey)
 
 		local cachedVisual = self.cachedChunkVisuals[chunkKey]
 		if cachedVisual ~= nil then
 			self.cachedChunkVisuals[chunkKey] = nil
 			self.cachedChunkVisualCount = math.max(0, self.cachedChunkVisualCount - 1)
-			self:releaseChunkVisual(cachedVisual)
+			self:ReleaseChunkVisual(cachedVisual)
 		end
 	end
 
@@ -5995,12 +5995,12 @@ function WorldGeneration.SetBiomeTypeAt(
 	end
 	if localY == 0 then
 		local belowChunkY = chunkY - 1
-		if self:isChunkYWithinWorldBounds(belowChunkY) then
+		if self:IsChunkYWithinWorldBounds(belowChunkY) then
 			touchChunk(packChunkKey(chunkX, belowChunkY))
 		end
 	elseif localY == chunkData.height - 1 then
 		local aboveChunkY = chunkY + 1
-		if self:isChunkYWithinWorldBounds(aboveChunkY) then
+		if self:IsChunkYWithinWorldBounds(aboveChunkY) then
 			touchChunk(packChunkKey(chunkX, aboveChunkY))
 		end
 	end
@@ -6015,7 +6015,7 @@ function WorldGeneration.SetTileAtWorldPosition(
 ): (boolean, number, number)
 	local tileX = toTileCoordinate(worldPosition.Z - self.worldOrigin.Z, self.tileSize)
 	local tileY = toTileCoordinate(worldPosition.Y - self.worldOrigin.Y, self.tileSize)
-	return self:setTileAt(tileX, tileY, tileIdRaw)
+	return self:SetTileAt(tileX, tileY, tileIdRaw)
 end
 
 function WorldGeneration.SetBiomeTypeAtWorldPosition(
@@ -6025,7 +6025,7 @@ function WorldGeneration.SetBiomeTypeAtWorldPosition(
 ): (boolean, number, number)
 	local tileX = toTileCoordinate(worldPosition.Z - self.worldOrigin.Z, self.tileSize)
 	local tileY = toTileCoordinate(worldPosition.Y - self.worldOrigin.Y, self.tileSize)
-	return self:setBiomeTypeAt(tileX, tileY, biomeTypeRaw)
+	return self:SetBiomeTypeAt(tileX, tileY, biomeTypeRaw)
 end
 
 function WorldGeneration.ForceRefreshAllPlayers(self: WorldGeneration)
@@ -6053,10 +6053,10 @@ function WorldGeneration.GetStats(self: WorldGeneration): { [string]: any }
 		backgroundLayerThicknessBlocks = self.backgroundLayerThicknessBlocks,
 		maxCollisionPartsPerChunk = self.maxCollisionPartsPerChunk,
 		loadedChunks = self.loadedChunkCount,
-		cachedChunkData = if self.cache then self.cache:getCachedChunkCount() else 0,
+		cachedChunkData = if self.cache then self.cache:GetCachedChunkCount() else 0,
 		cachedChunkVisuals = self.cachedChunkVisualCount,
 		demandedChunks = demandedChunks,
-		pooledParts = if self.cache then self.cache:getPooledPartCount() else 0,
+		pooledParts = if self.cache then self.cache:GetPooledPartCount() else 0,
 		activeLoadWorkers = self.activeLoadWorkers,
 		queuedLoads = math.max(0, self.loadQueueTail - self.loadQueueHead + 1),
 		queuedUnloads = math.max(0, self.unloadQueueTail - self.unloadQueueHead + 1),
@@ -6067,7 +6067,7 @@ function WorldGeneration.GetStats(self: WorldGeneration): { [string]: any }
 		maxTrackedRenderDistanceChunks = self.maxTrackedRenderDistanceChunks,
 		maxTrackedVerticalRenderDistanceChunks = self.maxTrackedVerticalRenderDistanceChunks,
 		treeVariants = #self.treeVariantConfigs,
-		trackedPlayers = #self:getTrackedPlayers(),
+		trackedPlayers = #self:GetTrackedPlayers(),
 		minTileY = self.minTileY,
 		maxTileY = self.maxTileY,
 	}
@@ -6082,9 +6082,9 @@ function WorldGeneration.GetTrackedPlayers(self: WorldGeneration): { Player }
 end
 
 function WorldGeneration.Destroy(self: WorldGeneration)
-	local trackedPlayers = self:getTrackedPlayers()
+	local trackedPlayers = self:GetTrackedPlayers()
 	for _, player in trackedPlayers do
-		self:untrackPlayer(player)
+		self:UntrackPlayer(player)
 	end
 
 	local loadedChunkKeys = {}
@@ -6092,17 +6092,17 @@ function WorldGeneration.Destroy(self: WorldGeneration)
 		table.insert(loadedChunkKeys, chunkKey)
 	end
 	for _, chunkKey in loadedChunkKeys do
-		self:unloadChunkByKey(chunkKey)
+		self:UnloadChunkByKey(chunkKey)
 	end
 
 	for chunkKey, visual in self.cachedChunkVisuals do
 		self.cachedChunkVisuals[chunkKey] = nil
-		self:releaseChunkVisual(visual)
+		self:ReleaseChunkVisual(visual)
 	end
 	self.cachedChunkVisualCount = 0
 
 	if self.cache then
-		self.cache:destroy()
+		self.cache:Destroy()
 		self.cache = nil
 	end
 
@@ -6145,121 +6145,4 @@ function WorldGeneration.Destroy(self: WorldGeneration)
 	self.heartbeatConnection = nil
 	self.initialized = false
 end
-
-WorldGeneration.new = WorldGeneration.New
-WorldGeneration.createFolders = WorldGeneration.CreateFolders
-WorldGeneration.init = WorldGeneration.Init
-WorldGeneration.onHeartbeat = WorldGeneration.OnHeartbeat
-WorldGeneration.isChunkYWithinWorldBounds = WorldGeneration.IsChunkYWithinWorldBounds
-WorldGeneration.enqueueLoadByKey = WorldGeneration.EnqueueLoadByKey
-WorldGeneration.enqueueUnloadByKey = WorldGeneration.EnqueueUnloadByKey
-WorldGeneration.resolveChunkLoadPriority = WorldGeneration.ResolveChunkLoadPriority
-WorldGeneration.compactLoadQueue = WorldGeneration.CompactLoadQueue
-WorldGeneration.dequeueLoadKey = WorldGeneration.DequeueLoadKey
-WorldGeneration.dequeueUnloadKey = WorldGeneration.DequeueUnloadKey
-WorldGeneration.markChunkDirtyByKey = WorldGeneration.MarkChunkDirtyByKey
-WorldGeneration.dequeueDirtyChunkKey = WorldGeneration.DequeueDirtyChunkKey
-WorldGeneration.enqueueChunkRebuildByKey = WorldGeneration.EnqueueChunkRebuildByKey
-WorldGeneration.dequeueChunkRebuildKey = WorldGeneration.DequeueChunkRebuildKey
-WorldGeneration.processDirtyChunkQueue = WorldGeneration.ProcessDirtyChunkQueue
-WorldGeneration.rebuildLoadedChunkByKey = WorldGeneration.RebuildLoadedChunkByKey
-WorldGeneration.processChunkRebuildQueue = WorldGeneration.ProcessChunkRebuildQueue
-WorldGeneration.bumpChunkRevisionByKey = WorldGeneration.BumpChunkRevisionByKey
-WorldGeneration.getChunkRevisionByKey = WorldGeneration.GetChunkRevisionByKey
-WorldGeneration.pulseStatsChanged = WorldGeneration.PulseStatsChanged
-WorldGeneration.recomputeTrackedRenderDistanceBounds = WorldGeneration.RecomputeTrackedRenderDistanceBounds
-WorldGeneration.updateTrackedPlayerFocusIndex = WorldGeneration.UpdateTrackedPlayerFocusIndex
-WorldGeneration.setPlayerChunkInterest = WorldGeneration.SetPlayerChunkInterest
-WorldGeneration.buildPlayerInterestChangedEvent = WorldGeneration.BuildPlayerInterestChangedEvent
-WorldGeneration.observeStats = WorldGeneration.ObserveStats
-WorldGeneration.observeChunkCollisionReady = WorldGeneration.ObserveChunkCollisionReady
-WorldGeneration.observeChunkCollisionUnloaded = WorldGeneration.ObserveChunkCollisionUnloaded
-WorldGeneration.observeChunkTerrainChanged = WorldGeneration.ObserveChunkTerrainChanged
-WorldGeneration.observeChunkDemand = WorldGeneration.ObserveChunkDemand
-WorldGeneration.observePlayerInterest = WorldGeneration.ObservePlayerInterest
-WorldGeneration.observePlayerFocusChanged = WorldGeneration.ObservePlayerFocusChanged
-WorldGeneration.observeTrackedPlayersBrio = WorldGeneration.ObserveTrackedPlayersBrio
-WorldGeneration.observePlayerFocus = WorldGeneration.ObservePlayerFocus
-WorldGeneration.registerChunkLifecycleObserver = WorldGeneration.RegisterChunkLifecycleObserver
-WorldGeneration.notifyChunkCollisionReady = WorldGeneration.NotifyChunkCollisionReady
-WorldGeneration.notifyChunkCollisionUnloaded = WorldGeneration.NotifyChunkCollisionUnloaded
-WorldGeneration.notifyChunkTerrainChanged = WorldGeneration.NotifyChunkTerrainChanged
-WorldGeneration.isChunkCollisionReady = WorldGeneration.IsChunkCollisionReady
-WorldGeneration.isChunkCollisionReadyByKey = WorldGeneration.IsChunkCollisionReadyByKey
-WorldGeneration.getLoadedCollisionChunkCount = WorldGeneration.GetLoadedCollisionChunkCount
-WorldGeneration.auditLoadedChunksForUnload = WorldGeneration.AuditLoadedChunksForUnload
-WorldGeneration.adjustChunkDemand = WorldGeneration.AdjustChunkDemand
-WorldGeneration.clearPlayerInterest = WorldGeneration.ClearPlayerInterest
-WorldGeneration.trackPlayer = WorldGeneration.TrackPlayer
-WorldGeneration.untrackPlayer = WorldGeneration.UntrackPlayer
-WorldGeneration.setPlayerRenderDistance = WorldGeneration.SetPlayerRenderDistance
-WorldGeneration.getPlayerRenderDistance = WorldGeneration.GetPlayerRenderDistance
-WorldGeneration.getPlayerInterestKeys = WorldGeneration.GetPlayerInterestKeys
-WorldGeneration.getTrackedPlayerFocusPosition = WorldGeneration.GetTrackedPlayerFocusPosition
-WorldGeneration.getPlayersInterestedInChunk = WorldGeneration.GetPlayersInterestedInChunk
-WorldGeneration.getPlayersNearWorldPosition = WorldGeneration.GetPlayersNearWorldPosition
-WorldGeneration.getPlayersNearChunk = WorldGeneration.GetPlayersNearChunk
-WorldGeneration.getPlayerRootPart = WorldGeneration.GetPlayerRootPart
-WorldGeneration.getPlayerFocusPosition = WorldGeneration.GetPlayerFocusPosition
-WorldGeneration.resolveDefaultPlayerFocusPosition = WorldGeneration.ResolveDefaultPlayerFocusPosition
-WorldGeneration.refreshPlayerInterest = WorldGeneration.RefreshPlayerInterest
-WorldGeneration.updateTrackedPlayers = WorldGeneration.UpdateTrackedPlayers
-WorldGeneration.acquirePart = WorldGeneration.AcquirePart
-WorldGeneration.releasePart = WorldGeneration.ReleasePart
-WorldGeneration.computeTileCenterPosition = WorldGeneration.ComputeTileCenterPosition
-WorldGeneration.styleTerrainPart = WorldGeneration.StyleTerrainPart
-WorldGeneration.getTerrainTileTemplate = WorldGeneration.GetTerrainTileTemplate
-WorldGeneration.placeTerrainTileTemplate = WorldGeneration.PlaceTerrainTileTemplate
-WorldGeneration.placeBackgroundTileTemplate = WorldGeneration.PlaceBackgroundTileTemplate
-WorldGeneration.placeTreeTemplate = WorldGeneration.PlaceTreeTemplate
-WorldGeneration.styleBackgroundPart = WorldGeneration.StyleBackgroundPart
-WorldGeneration.sampleSharedBackgroundDensity = WorldGeneration.SampleSharedBackgroundDensity
-WorldGeneration.shouldFillBackgroundLayer = WorldGeneration.ShouldFillBackgroundLayer
-WorldGeneration.resolveBackgroundTileIdForLayer = WorldGeneration.ResolveBackgroundTileIdForLayer
-WorldGeneration.resolveForegroundTileAt = WorldGeneration.ResolveForegroundTileAt
-WorldGeneration.isTreeAnchorTile = WorldGeneration.IsTreeAnchorTile
-WorldGeneration.isSurfaceAnchorTile = WorldGeneration.IsSurfaceAnchorTile
-WorldGeneration.resolveTreeTemplateIndex = WorldGeneration.ResolveTreeTemplateIndex
-WorldGeneration.hasTreeAirClearance = WorldGeneration.HasTreeAirClearance
-WorldGeneration.hasAirClearance = WorldGeneration.HasAirClearance
-WorldGeneration.isWithinBiomeTransitionBuffer = WorldGeneration.IsWithinBiomeTransitionBuffer
-WorldGeneration.resolveDesertPropVariantIndex = WorldGeneration.ResolveDesertPropVariantIndex
-WorldGeneration.repairIntersectingTileMetadata = WorldGeneration.RepairIntersectingTileMetadata
-WorldGeneration.repairChunkTileMetadataOverlaps = WorldGeneration.RepairChunkTileMetadataOverlaps
-WorldGeneration.generateChunkData = WorldGeneration.GenerateChunkData
-WorldGeneration.getOrGenerateChunkData = WorldGeneration.GetOrGenerateChunkData
-WorldGeneration.buildGreedyRectangles = WorldGeneration.BuildGreedyRectangles
-WorldGeneration.buildChunkVisual = WorldGeneration.BuildChunkVisual
-WorldGeneration.attachChunkVisual = WorldGeneration.AttachChunkVisual
-WorldGeneration.takeCachedChunkVisual = WorldGeneration.TakeCachedChunkVisual
-WorldGeneration.pruneCachedChunkVisuals = WorldGeneration.PruneCachedChunkVisuals
-WorldGeneration.cacheChunkVisual = WorldGeneration.CacheChunkVisual
-WorldGeneration.releaseChunkVisual = WorldGeneration.ReleaseChunkVisual
-WorldGeneration.unloadChunkByKey = WorldGeneration.UnloadChunkByKey
-WorldGeneration.loadChunkByKey = WorldGeneration.LoadChunkByKey
-WorldGeneration.processUnloadQueue = WorldGeneration.ProcessUnloadQueue
-WorldGeneration.pumpLoadQueue = WorldGeneration.PumpLoadQueue
-WorldGeneration.pruneChunkDataCache = WorldGeneration.PruneChunkDataCache
-WorldGeneration.getTileAt = WorldGeneration.GetTileAt
-WorldGeneration.getBiomeTypeAt = WorldGeneration.GetBiomeTypeAt
-WorldGeneration.getBiomeIdAt = WorldGeneration.GetBiomeIdAt
-WorldGeneration.getTileAtWorldPosition = WorldGeneration.GetTileAtWorldPosition
-WorldGeneration.getBiomeTypeAtWorldPosition = WorldGeneration.GetBiomeTypeAtWorldPosition
-WorldGeneration.getBiomeIdAtWorldPosition = WorldGeneration.GetBiomeIdAtWorldPosition
-WorldGeneration.getChunkData = WorldGeneration.GetChunkData
-WorldGeneration.getChunkDataByKey = WorldGeneration.GetChunkDataByKey
-WorldGeneration.getChunkDominantBiomeTypeByKey = WorldGeneration.GetChunkDominantBiomeTypeByKey
-WorldGeneration.getChunkSnapshotByKey = WorldGeneration.GetChunkSnapshotByKey
-WorldGeneration.getLiquidChunkSnapshotByKey = WorldGeneration.GetLiquidChunkSnapshotByKey
-WorldGeneration.getLiquidCellAt = WorldGeneration.GetLiquidCellAt
-WorldGeneration.setLiquidCellAt = WorldGeneration.SetLiquidCellAt
-WorldGeneration.setTileAt = WorldGeneration.SetTileAt
-WorldGeneration.setBiomeTypeAt = WorldGeneration.SetBiomeTypeAt
-WorldGeneration.setTileAtWorldPosition = WorldGeneration.SetTileAtWorldPosition
-WorldGeneration.setBiomeTypeAtWorldPosition = WorldGeneration.SetBiomeTypeAtWorldPosition
-WorldGeneration.forceRefreshAllPlayers = WorldGeneration.ForceRefreshAllPlayers
-WorldGeneration.getStats = WorldGeneration.GetStats
-WorldGeneration.getTrackedPlayers = WorldGeneration.GetTrackedPlayers
-WorldGeneration.destroy = WorldGeneration.Destroy
-
 return WorldGeneration

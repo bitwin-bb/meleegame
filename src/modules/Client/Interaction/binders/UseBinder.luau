@@ -16,7 +16,7 @@ local function getInventoryServiceClient()
 	return inventoryServiceClient
 end
 
-local function resolveStringAttribute(instance: Instance, attributeName: string, fallback: string): string
+local function GetStringAttribute(instance: Instance, attributeName: string, fallback: string): string
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) == "string" and value ~= "" then
 		return value
@@ -24,7 +24,7 @@ local function resolveStringAttribute(instance: Instance, attributeName: string,
 	return fallback
 end
 
-local function resolveNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
+local function GetNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
@@ -34,8 +34,8 @@ end
 
 function UseBinder.new(instance: Instance, context: any)
 	local self = ModelBinder.new(instance, context, UseBinder)
-	self.adornee = ModelBinder.resolveAdornee(instance)
-	self.rootPart = ModelBinder.resolveRootPart(instance)
+	self.adornee = self:GetAdornee()
+	self.rootPart = self:GetRootPart()
 	self.highlight = self:createHighlight()
 	self.prompt = self:createPrompt()
 
@@ -123,9 +123,9 @@ end
 
 function UseBinder.refresh(self: any)
 	local enabled = self.instance:GetAttribute("UseEnabled") ~= false
-	local actionText = resolveStringAttribute(self.instance, "UseActionText", "Use")
-	local objectText = resolveStringAttribute(self.instance, "UseObjectText", self.instance.Name)
-	local maxDistance = resolveNumberAttribute(self.instance, "UseMaxDistance", 12)
+	local actionText = GetStringAttribute(self.instance, "UseActionText", "Use")
+	local objectText = GetStringAttribute(self.instance, "UseObjectText", self.instance.Name)
+	local maxDistance = GetNumberAttribute(self.instance, "UseMaxDistance", 12)
 
 	self.instance:SetAttribute("UseTagged", true)
 	self.instance:SetAttribute("UseFocused", false)

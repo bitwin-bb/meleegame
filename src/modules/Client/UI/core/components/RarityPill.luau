@@ -38,7 +38,7 @@ local RARITY_COLORS: { [string]: Color3 } = {
 
 local RarityPill = {}
 
-function RarityPill.ResolveColor(rarityRaw: any, fallback: Color3?): Color3
+function RarityPill.GetColor(rarityRaw: any, fallback: Color3?): Color3
 	if typeof(rarityRaw) == "string" then
 		local color = (RARITY_COLORS :: { [string]: Color3? })[rarityRaw]
 		if color ~= nil then
@@ -54,7 +54,7 @@ end
 
 function RarityPill.Component(props: RarityPillProps): React.ReactNode
 	local rarityText = props.text or props.rarity or "Common"
-	local backgroundColor = props.color or RarityPill.ResolveColor(props.rarity, nil)
+	local backgroundColor = props.color or RarityPill.GetColor(props.rarity, nil)
 	local labelProps: { [any]: any } = {
 		AutomaticSize = props.automaticSize or Enum.AutomaticSize.XY,
 		Size = props.size or UDim2.fromOffset(0, 0),
@@ -92,8 +92,5 @@ function RarityPill.Component(props: RarityPillProps): React.ReactNode
 		}),
 	})
 end
-
-RarityPill.resolveColor = RarityPill.ResolveColor
-RarityPill.getColors = RarityPill.GetColors
 
 return RarityPill

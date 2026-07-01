@@ -11,7 +11,4 @@ SunAsset.Images = Table.deepReadonly({
 function SunAsset.GetImage(): string
 	return SunAsset.Images[1]
 end
-
-SunAsset.getImage = SunAsset.GetImage
-
 return Table.readonly(SunAsset)

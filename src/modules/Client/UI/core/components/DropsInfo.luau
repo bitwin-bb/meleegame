@@ -172,7 +172,7 @@ local DEFAULT_THEME = {
 	}),
 }
 
-local function sanitizeNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
 	end
@@ -187,14 +187,14 @@ local function sanitizeNumber(value: any, fallback: number, minimum: number?, ma
 	return nextValue
 end
 
-local function sanitizeColor(value: any, fallback: Color3): Color3
+local function CoerceColor(value: any, fallback: Color3): Color3
 	if typeof(value) ~= "Color3" then
 		return fallback
 	end
 	return value
 end
 
-local function sanitizeVector3(value: any, fallback: Vector3): Vector3
+local function CoerceVector3(value: any, fallback: Vector3): Vector3
 	if typeof(value) ~= "Vector3" then
 		return fallback
 	end
@@ -204,11 +204,11 @@ local function sanitizeVector3(value: any, fallback: Vector3): Vector3
 	return value
 end
 
-local function sanitizeTransparency(value: any, fallback: number): number
-	return sanitizeNumber(value, fallback, 0, 1)
+local function CoerceTransparency(value: any, fallback: number): number
+	return CoerceNumber(value, fallback, 0, 1)
 end
 
-local function sanitizeString(value: any, fallback: string): string
+local function CoerceString(value: any, fallback: string): string
 	if typeof(value) ~= "string" then
 		return fallback
 	end
@@ -221,11 +221,11 @@ local function withAlpha(baseTransparency: number, alpha: number): number
 	return 1 - ((1 - safeBase) * safeAlpha)
 end
 
-local function resolveRarityColor(rarity: DropsInfoRarity?): Color3?
+local function GetArityColor(rarity: DropsInfoRarity?): Color3?
 	if rarity == nil then
 		return nil
 	end
-	return RarityPill.ResolveColor(rarity, nil)
+	return RarityPill.GetColor(rarity, nil)
 end
 
 local function applyNativeProps(targetProps: { [string]: any }, nativeProps: { [string]: any }?)
@@ -238,13 +238,13 @@ local function applyNativeProps(targetProps: { [string]: any }, nativeProps: { [
 	end
 end
 
-local function resolveAmountText(props: DropsInfoProps): string?
+local function GetAmountText(props: DropsInfoProps): string?
 	if props.amountText ~= nil and props.amountText ~= "" then
 		return props.amountText
 	end
 
 	if typeof(props.amount) == "number" then
-		local amountPrefix = sanitizeString(props.amountPrefix, "+")
+		local amountPrefix = CoerceString(props.amountPrefix, "+")
 		local amountValue = math.floor(props.amount)
 		return amountPrefix .. formatNumber(amountValue)
 	end
@@ -269,12 +269,12 @@ function DropsInfo:init()
 	self.gradientOffsetBinding, self.setGradientOffsetBinding = React.createBinding(Vector2.new(0, 0))
 	self.glowTransparencyBinding, self.setGlowTransparencyBinding = React.createBinding(1)
 
-	self:resetAnimation(false)
+	self:ResetAnimation(false)
 end
 
 function DropsInfo:didMount()
 	local connection = RunService.RenderStepped:Connect(function(deltaTime: number)
-		self:stepAnimation(deltaTime)
+		self:StepAnimation(deltaTime)
 	end)
 	self.janitor:GiveChore(connection)
 end
@@ -285,15 +285,15 @@ end
 
 function DropsInfo:didUpdate(previousProps: DropsInfoProps)
 	if previousProps.eventToken ~= self.props.eventToken then
-		self:resetAnimation(true)
+		self:ResetAnimation(true)
 	end
 
 	if previousProps.visible == false and self.props.visible ~= false then
-		self:resetAnimation(true)
+		self:ResetAnimation(true)
 	end
 
 	if previousProps.paused == true and self.props.paused ~= true and self.state.expired then
-		self:resetAnimation(true)
+		self:ResetAnimation(true)
 	end
 end
 
@@ -328,9 +328,9 @@ function DropsInfo:StepAnimation(deltaTime: number)
 	self.elapsed += deltaTime
 
 	local animationEnabled = props.animationEnabled ~= false
-	local fadeInTime = sanitizeNumber(props.fadeInTime, DEFAULT_FADE_IN_TIME, 0, 10)
-	local fadeOutTime = sanitizeNumber(props.fadeOutTime, DEFAULT_FADE_OUT_TIME, 0, 10)
-	local lifetime = sanitizeNumber(props.lifetime, DEFAULT_LIFETIME, 0, 600)
+	local fadeInTime = CoerceNumber(props.fadeInTime, DEFAULT_FADE_IN_TIME, 0, 10)
+	local fadeOutTime = CoerceNumber(props.fadeOutTime, DEFAULT_FADE_OUT_TIME, 0, 10)
+	local lifetime = CoerceNumber(props.lifetime, DEFAULT_LIFETIME, 0, 600)
 
 	local alpha = 1
 	if animationEnabled and fadeInTime > 0 then
@@ -349,11 +349,11 @@ function DropsInfo:StepAnimation(deltaTime: number)
 	self.setAlphaBinding(alpha)
 
 	if animationEnabled then
-		local floatAmplitude = sanitizeNumber(props.floatAmplitude, DEFAULT_FLOAT_AMPLITUDE, 0, 60)
-		local floatSpeed = sanitizeNumber(props.floatSpeed, DEFAULT_FLOAT_SPEED, 0, 15)
-		local pulseAmplitude = sanitizeNumber(props.pulseScaleAmplitude, DEFAULT_PULSE_AMPLITUDE, 0, 0.45)
-		local pulseSpeed = sanitizeNumber(props.pulseSpeed, DEFAULT_PULSE_SPEED, 0, 24)
-		local gradientScrollSpeed = sanitizeNumber(props.gradientScrollSpeed, DEFAULT_GRADIENT_SCROLL_SPEED, 0, 16)
+		local floatAmplitude = CoerceNumber(props.floatAmplitude, DEFAULT_FLOAT_AMPLITUDE, 0, 60)
+		local floatSpeed = CoerceNumber(props.floatSpeed, DEFAULT_FLOAT_SPEED, 0, 15)
+		local pulseAmplitude = CoerceNumber(props.pulseScaleAmplitude, DEFAULT_PULSE_AMPLITUDE, 0, 0.45)
+		local pulseSpeed = CoerceNumber(props.pulseSpeed, DEFAULT_PULSE_SPEED, 0, 24)
+		local gradientScrollSpeed = CoerceNumber(props.gradientScrollSpeed, DEFAULT_GRADIENT_SCROLL_SPEED, 0, 16)
 
 		local wave = math.sin(self.elapsed * floatSpeed * math.pi * 2)
 		self.setFloatOffsetBinding(-wave * floatAmplitude)
@@ -393,7 +393,7 @@ function DropsInfo:StepAnimation(deltaTime: number)
 	end
 end
 
-function DropsInfo:ResolvePortalTarget(): Instance?
+function DropsInfo:GetPortalTarget(): Instance?
 	if self.props.disablePortal == true then
 		return nil
 	end
@@ -402,7 +402,7 @@ function DropsInfo:ResolvePortalTarget(): Instance?
 		return self.props.portalTarget
 	end
 
-	return PortalTargets.resolveUiScreenGui()
+	return PortalTargets.GetUiScreenGui()
 end
 
 function DropsInfo:render()
@@ -411,35 +411,35 @@ function DropsInfo:render()
 		return nil
 	end
 
-	local rarityColor = resolveRarityColor(props.rarity)
+	local rarityColor = GetArityColor(props.rarity)
 	local theme = props.theme or ({} :: any)
 
-	local accentColor = sanitizeColor(theme.accentColor, rarityColor or DEFAULT_THEME.accentColor)
-	local backgroundColor = sanitizeColor(theme.backgroundColor, DEFAULT_THEME.backgroundColor)
+	local accentColor = CoerceColor(theme.accentColor, rarityColor or DEFAULT_THEME.accentColor)
+	local backgroundColor = CoerceColor(theme.backgroundColor, DEFAULT_THEME.backgroundColor)
 	local backgroundTransparency =
-		sanitizeTransparency(theme.backgroundTransparency, DEFAULT_THEME.backgroundTransparency)
-	local strokeColor = sanitizeColor(theme.strokeColor, accentColor:Lerp(DEFAULT_THEME.strokeColor, 0.4))
-	local strokeTransparency = sanitizeTransparency(theme.strokeTransparency, DEFAULT_THEME.strokeTransparency)
-	local titleColor = sanitizeColor(theme.titleColor, accentColor:Lerp(DEFAULT_THEME.titleColor, 0.9))
-	local titleTransparency = sanitizeTransparency(theme.titleTransparency, DEFAULT_THEME.titleTransparency)
-	local subtitleColor = sanitizeColor(theme.subtitleColor, DEFAULT_THEME.subtitleColor)
-	local subtitleTransparency = sanitizeTransparency(theme.subtitleTransparency, DEFAULT_THEME.subtitleTransparency)
-	local descriptionColor = sanitizeColor(theme.descriptionColor, DEFAULT_THEME.descriptionColor)
+		CoerceTransparency(theme.backgroundTransparency, DEFAULT_THEME.backgroundTransparency)
+	local strokeColor = CoerceColor(theme.strokeColor, accentColor:Lerp(DEFAULT_THEME.strokeColor, 0.4))
+	local strokeTransparency = CoerceTransparency(theme.strokeTransparency, DEFAULT_THEME.strokeTransparency)
+	local titleColor = CoerceColor(theme.titleColor, accentColor:Lerp(DEFAULT_THEME.titleColor, 0.9))
+	local titleTransparency = CoerceTransparency(theme.titleTransparency, DEFAULT_THEME.titleTransparency)
+	local subtitleColor = CoerceColor(theme.subtitleColor, DEFAULT_THEME.subtitleColor)
+	local subtitleTransparency = CoerceTransparency(theme.subtitleTransparency, DEFAULT_THEME.subtitleTransparency)
+	local descriptionColor = CoerceColor(theme.descriptionColor, DEFAULT_THEME.descriptionColor)
 	local descriptionTransparency =
-		sanitizeTransparency(theme.descriptionTransparency, DEFAULT_THEME.descriptionTransparency)
-	local amountColor = sanitizeColor(theme.amountColor, DEFAULT_THEME.amountColor)
-	local amountTransparency = sanitizeTransparency(theme.amountTransparency, DEFAULT_THEME.amountTransparency)
-	local iconColor = sanitizeColor(theme.iconColor, DEFAULT_THEME.iconColor)
-	local iconTransparency = sanitizeTransparency(theme.iconTransparency, DEFAULT_THEME.iconTransparency)
-	local glowColor = sanitizeColor(theme.glowColor, accentColor)
-	local shadowTransparency = sanitizeTransparency(theme.shadowTransparency, DEFAULT_THEME.shadowTransparency)
+		CoerceTransparency(theme.descriptionTransparency, DEFAULT_THEME.descriptionTransparency)
+	local amountColor = CoerceColor(theme.amountColor, DEFAULT_THEME.amountColor)
+	local amountTransparency = CoerceTransparency(theme.amountTransparency, DEFAULT_THEME.amountTransparency)
+	local iconColor = CoerceColor(theme.iconColor, DEFAULT_THEME.iconColor)
+	local iconTransparency = CoerceTransparency(theme.iconTransparency, DEFAULT_THEME.iconTransparency)
+	local glowColor = CoerceColor(theme.glowColor, accentColor)
+	local shadowTransparency = CoerceTransparency(theme.shadowTransparency, DEFAULT_THEME.shadowTransparency)
 	local gradientColor = if theme.gradientColor ~= nil then theme.gradientColor else DEFAULT_THEME.gradientColor
 	local gradientTransparency = if theme.gradientTransparency ~= nil
 		then theme.gradientTransparency
 		else DEFAULT_THEME.gradientTransparency
 
 	local showIcon = props.showIcon ~= false and props.icon ~= nil and props.icon ~= ""
-	local amountText = resolveAmountText(props)
+	local amountText = GetAmountText(props)
 	local showAmount = props.showAmount ~= false and amountText ~= nil
 	local showRarityPill = props.showRarityPill == true and props.rarity ~= nil
 	local showSubtitle = props.subtitle ~= nil and props.subtitle ~= ""
@@ -452,12 +452,12 @@ function DropsInfo:render()
 	local rootAnchorPoint = props.cardAnchorPoint or DEFAULT_CARD_ANCHOR_POINT
 
 	if useTextOnly then
-		local textValue = sanitizeString(props.title, "")
+		local textValue = CoerceString(props.title, "")
 		if textValue == "" then
-			textValue = sanitizeString(props.subtitle, "")
+			textValue = CoerceString(props.subtitle, "")
 		end
 		if textValue == "" then
-			textValue = sanitizeString(props.description, "")
+			textValue = CoerceString(props.description, "")
 		end
 		if textValue == "" and amountText ~= nil then
 			textValue = amountText
@@ -492,11 +492,11 @@ function DropsInfo:render()
 			ClipsDescendants = props.clipsDescendants == true,
 			ZIndexBehavior = props.zIndexBehavior or Enum.ZIndexBehavior.Sibling,
 			Size = props.billboardSize or DEFAULT_BILLBOARD_SIZE,
-			MaxDistance = sanitizeNumber(props.maxDistance, DEFAULT_MAX_DISTANCE, 0, 20000),
-			LightInfluence = sanitizeNumber(props.lightInfluence, DEFAULT_LIGHT_INFLUENCE, 0, 1),
-			StudsOffset = sanitizeVector3(props.studsOffset, DEFAULT_STUDS_OFFSET),
-			StudsOffsetWorldSpace = sanitizeVector3(props.studsOffsetWorldSpace, DEFAULT_STUDS_OFFSET_WORLD),
-			ExtentsOffset = sanitizeVector3(props.extentsOffset, DEFAULT_EXTENTS_OFFSET),
+			MaxDistance = CoerceNumber(props.maxDistance, DEFAULT_MAX_DISTANCE, 0, 20000),
+			LightInfluence = CoerceNumber(props.lightInfluence, DEFAULT_LIGHT_INFLUENCE, 0, 1),
+			StudsOffset = CoerceVector3(props.studsOffset, DEFAULT_STUDS_OFFSET),
+			StudsOffsetWorldSpace = CoerceVector3(props.studsOffsetWorldSpace, DEFAULT_STUDS_OFFSET_WORLD),
+			ExtentsOffset = CoerceVector3(props.extentsOffset, DEFAULT_EXTENTS_OFFSET),
 		}
 		applyNativeProps(billboardProps, props.nativeBillboard)
 
@@ -521,7 +521,7 @@ function DropsInfo:render()
 					Font = props.titleFont or Enum.Font.PatrickHand,
 					Text = textValue,
 					TextColor3 = titleColor,
-					TextSize = sanitizeNumber(props.titleTextSize, 28, 8, 80),
+					TextSize = CoerceNumber(props.titleTextSize, 28, 8, 80),
 					TextTransparency = textTransparencyBinding,
 					TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
 					TextStrokeTransparency = textStrokeTransparencyBinding,
@@ -533,7 +533,7 @@ function DropsInfo:render()
 			}),
 		})
 
-		local portalTarget = self:resolvePortalTarget()
+		local portalTarget = self:GetPortalTarget()
 		if portalTarget ~= nil then
 			return ReactRoblox.createPortal(billboardElement, portalTarget)
 		end
@@ -599,7 +599,7 @@ function DropsInfo:render()
 		Font = props.titleFont or Enum.Font.PatrickHand,
 		Text = props.title or "Picked Up",
 		TextColor3 = titleColor,
-		TextSize = sanitizeNumber(props.titleTextSize, 17, 8, 48),
+		TextSize = CoerceNumber(props.titleTextSize, 17, 8, 48),
 		TextTransparency = titleTransparencyBinding,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Center,
@@ -615,7 +615,7 @@ function DropsInfo:render()
 		Font = props.subtitleFont or Enum.Font.PatrickHand,
 		Text = props.subtitle or "",
 		TextColor3 = subtitleColor,
-		TextSize = sanitizeNumber(props.subtitleTextSize, 14, 8, 38),
+		TextSize = CoerceNumber(props.subtitleTextSize, 14, 8, 38),
 		TextTransparency = subtitleTransparencyBinding,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Center,
@@ -631,7 +631,7 @@ function DropsInfo:render()
 		Font = props.descriptionFont or Enum.Font.PatrickHand,
 		Text = props.description or "",
 		TextColor3 = descriptionColor,
-		TextSize = sanitizeNumber(props.descriptionTextSize, 12, 8, 34),
+		TextSize = CoerceNumber(props.descriptionTextSize, 12, 8, 34),
 		TextTransparency = descriptionTransparencyBinding,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Center,
@@ -651,7 +651,7 @@ function DropsInfo:render()
 		Font = props.amountFont or Enum.Font.PatrickHand,
 		Text = amountText or "",
 		TextColor3 = amountColor,
-		TextSize = sanitizeNumber(props.amountTextSize, 14, 8, 36),
+		TextSize = CoerceNumber(props.amountTextSize, 14, 8, 36),
 		TextWrapped = false,
 		TextXAlignment = Enum.TextXAlignment.Center,
 		TextYAlignment = Enum.TextYAlignment.Center,
@@ -679,7 +679,7 @@ function DropsInfo:render()
 		e("UIStroke", {
 			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 			Color = strokeColor,
-			Thickness = sanitizeNumber(props.strokeThickness, DEFAULT_STROKE_THICKNESS, 0, 8),
+			Thickness = CoerceNumber(props.strokeThickness, DEFAULT_STROKE_THICKNESS, 0, 8),
 			Transparency = cardStrokeTransparencyBinding,
 		}),
 		e("Frame", {
@@ -799,11 +799,11 @@ function DropsInfo:render()
 		ClipsDescendants = props.clipsDescendants == true,
 		ZIndexBehavior = props.zIndexBehavior or Enum.ZIndexBehavior.Sibling,
 		Size = props.billboardSize or DEFAULT_BILLBOARD_SIZE,
-		MaxDistance = sanitizeNumber(props.maxDistance, DEFAULT_MAX_DISTANCE, 0, 20000),
-		LightInfluence = sanitizeNumber(props.lightInfluence, DEFAULT_LIGHT_INFLUENCE, 0, 1),
-		StudsOffset = sanitizeVector3(props.studsOffset, DEFAULT_STUDS_OFFSET),
-		StudsOffsetWorldSpace = sanitizeVector3(props.studsOffsetWorldSpace, DEFAULT_STUDS_OFFSET_WORLD),
-		ExtentsOffset = sanitizeVector3(props.extentsOffset, DEFAULT_EXTENTS_OFFSET),
+		MaxDistance = CoerceNumber(props.maxDistance, DEFAULT_MAX_DISTANCE, 0, 20000),
+		LightInfluence = CoerceNumber(props.lightInfluence, DEFAULT_LIGHT_INFLUENCE, 0, 1),
+		StudsOffset = CoerceVector3(props.studsOffset, DEFAULT_STUDS_OFFSET),
+		StudsOffsetWorldSpace = CoerceVector3(props.studsOffsetWorldSpace, DEFAULT_STUDS_OFFSET_WORLD),
+		ExtentsOffset = CoerceVector3(props.extentsOffset, DEFAULT_EXTENTS_OFFSET),
 	}
 	applyNativeProps(billboardProps, props.nativeBillboard)
 
@@ -811,16 +811,12 @@ function DropsInfo:render()
 		e("Frame", cardProps, cardChildren),
 	})
 
-	local portalTarget = self:resolvePortalTarget()
+	local portalTarget = self:GetPortalTarget()
 	if portalTarget ~= nil then
 		return ReactRoblox.createPortal(billboardElement, portalTarget)
 	end
 
 	return billboardElement
 end
-
-DropsInfo.resetAnimation = DropsInfo.ResetAnimation
-DropsInfo.stepAnimation = DropsInfo.StepAnimation
-DropsInfo.resolvePortalTarget = DropsInfo.ResolvePortalTarget
 
 return DropsInfo

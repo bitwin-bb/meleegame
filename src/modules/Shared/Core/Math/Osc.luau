@@ -11,7 +11,7 @@ local Osc = {}
 
 function Osc.Phase01(time: number, frequency: number, phaseRadians: number?): number
 	local cycles = time * frequency + (phaseRadians or 0) / Trig.TAU
-	return Range.wrap(cycles, 0, 1)
+	return Range.Wrap(cycles, 0, 1)
 end
 
 function Osc.Sine(time: number, amplitude: number?, frequency: number?, phaseRadians: number?, offset: number?): number
@@ -70,7 +70,7 @@ function Osc.Square(
 	local amp = amplitude or 1
 	local hz = frequency or 1
 	local bias = offset or 0
-	local duty = Num.clamp(dutyCycle or 0.5, 0, 1)
+	local duty = Num.Clamp(dutyCycle or 0.5, 0, 1)
 	local phase = Osc.Phase01(time, hz, phaseRadians)
 	local wave = if phase < duty then 1 else -1
 	return bias + amp * wave
@@ -82,16 +82,7 @@ function Osc.PingPong(time: number, length: number): number
 		return 0
 	end
 
-	local wrapped = Range.wrap(time, 0, extent * 2)
+	local wrapped = Range.Wrap(time, 0, extent * 2)
 	return extent - math.abs(wrapped - extent)
 end
-
-Osc.phase01 = Osc.Phase01
-Osc.sine = Osc.Sine
-Osc.cosine = Osc.Cosine
-Osc.triangle = Osc.Triangle
-Osc.saw = Osc.Saw
-Osc.square = Osc.Square
-Osc.pingPong = Osc.PingPong
-
 return Osc

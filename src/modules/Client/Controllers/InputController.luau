@@ -41,9 +41,4 @@ end
 function InputController.Destroy(self: InputController)
 	self.maid:DoCleaning()
 end
-
-InputController.start = InputController.Start
-InputController.getHandler = InputController.GetHandler
-InputController.destroy = InputController.Destroy
-
 return InputController

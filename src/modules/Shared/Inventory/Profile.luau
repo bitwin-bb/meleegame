@@ -10,14 +10,14 @@ local PlayerDataServiceUtils = require("PlayerDataServiceUtils")
 type InventoryState = InventoryServiceUtils.InventoryState
 
 type PlayerDataServiceServerObject = {
-	getValue: (self: PlayerDataServiceServerObject, player: Player, pathRaw: any, fallback: any) -> any,
-	getLoadState: (self: PlayerDataServiceServerObject, player: Player) -> string,
-	getProfile: (self: PlayerDataServiceServerObject, player: Player) -> any,
-	isLoaded: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
-	requestSync: (self: PlayerDataServiceServerObject, player: Player) -> (),
-	savePlayerData: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
-	waitForData: (self: PlayerDataServiceServerObject, player: Player, timeoutSecondsRaw: any) -> any,
-	setValue: (
+	GetValue: (self: PlayerDataServiceServerObject, player: Player, pathRaw: any, fallback: any) -> any,
+	GetLoadState: (self: PlayerDataServiceServerObject, player: Player) -> string,
+	GetProfile: (self: PlayerDataServiceServerObject, player: Player) -> any,
+	IsLoaded: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
+	RequestSync: (self: PlayerDataServiceServerObject, player: Player) -> (),
+	SavePlayerData: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
+	WaitForData: (self: PlayerDataServiceServerObject, player: Player, timeoutSecondsRaw: any) -> any,
+	SetValue: (
 		self: PlayerDataServiceServerObject,
 		player: Player,
 		pathRaw: any,
@@ -55,7 +55,7 @@ type InventoryProfile = typeof(setmetatable(
 local InventoryProfile = {}
 InventoryProfile.__index = InventoryProfile
 
-local function sanitizeTimeout(timeoutRaw: any, fallback: number): number
+local function CoerceTimeout(timeoutRaw: any, fallback: number): number
 	if typeof(timeoutRaw) ~= "number" or timeoutRaw ~= timeoutRaw then
 		return fallback
 	end
@@ -88,19 +88,19 @@ local function runProtectedWithTimeout(timeoutSeconds: number, callback: () -> (
 	return status, success, result, extra
 end
 
-local function resolveDefaultInventoryDataTemplate(): { [string]: any }
+local function GetDefaultInventoryDataTemplate(): { [string]: any }
 	local templateRoot = if typeof(DataTemplate) == "table" then DataTemplate else {} :: any
 	local playerDataTemplate = if typeof((templateRoot :: any).playerData) == "table"
 		then (templateRoot :: any).playerData
 		else {} :: any
 	local inventoryTemplate =
-		PlayerDataServiceUtils.getValueAtPath(playerDataTemplate, InventoryServiceUtils.getDefaultDataPath(), nil)
+		PlayerDataServiceUtils.GetValueAtPath(playerDataTemplate, InventoryServiceUtils.GetDefaultDataPath(), nil)
 	if typeof(inventoryTemplate) == "table" then
-		return PlayerDataServiceUtils.cloneDeep(inventoryTemplate)
+		return PlayerDataServiceUtils.CloneDeep(inventoryTemplate)
 	end
 
-	return InventoryServiceUtils.serializeStateForData(
-		InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_LOADED)
+	return InventoryServiceUtils.SerializeStateForData(
+		InventoryServiceUtils.CreateDefaultState(InventoryServiceUtils.LOAD_STATE_LOADED)
 	)
 end
 
@@ -142,7 +142,7 @@ local function dataPathToString(path: { string }): string
 	return table.concat(parts, ".")
 end
 
-local function resolveProfileDataRoot(profileRaw: any): { [any]: any }?
+local function GetProfileDataRoot(profileRaw: any): { [any]: any }?
 	if typeof(profileRaw) ~= "table" then
 		return nil
 	end
@@ -158,9 +158,9 @@ function InventoryProfile.New(
 	configRaw: InventoryProfileConfig?
 ): InventoryProfile
 	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
-	local dataPath = InventoryServiceUtils.getDefaultDataPath()
+	local dataPath = InventoryServiceUtils.GetDefaultDataPath()
 	if typeof(config.dataPath) == "table" then
-		dataPath = InventoryServiceUtils.clonePath(config.dataPath)
+		dataPath = InventoryServiceUtils.ClonePath(config.dataPath)
 	end
 
 	local getDataStoreSuccess, fallbackDataStore = pcall(function()
@@ -171,10 +171,10 @@ function InventoryProfile.New(
 		playerDataService = playerDataService,
 		dataPath = dataPath,
 		defaultInventoryData = if typeof(config.defaultInventoryData) == "table"
-			then PlayerDataServiceUtils.cloneDeep(config.defaultInventoryData)
-			else resolveDefaultInventoryDataTemplate(),
-		primaryTimeoutSeconds = sanitizeTimeout(config.primaryTimeoutSeconds, 3),
-		fallbackTimeoutSeconds = sanitizeTimeout(config.fallbackTimeoutSeconds, 4),
+			then PlayerDataServiceUtils.CloneDeep(config.defaultInventoryData)
+			else GetDefaultInventoryDataTemplate(),
+		primaryTimeoutSeconds = CoerceTimeout(config.primaryTimeoutSeconds, 3),
+		fallbackTimeoutSeconds = CoerceTimeout(config.fallbackTimeoutSeconds, 4),
 		fallbackDataStore = if getDataStoreSuccess then fallbackDataStore else nil,
 	}, InventoryProfile)
 
@@ -182,11 +182,11 @@ function InventoryProfile.New(
 end
 
 function InventoryProfile.CloneDefaultInventoryData(self: InventoryProfile): { [string]: any }
-	return PlayerDataServiceUtils.cloneDeep(self.defaultInventoryData)
+	return PlayerDataServiceUtils.CloneDeep(self.defaultInventoryData)
 end
 
 function InventoryProfile.GetDataPath(self: InventoryProfile): { string }
-	return InventoryServiceUtils.clonePath(self.dataPath)
+	return InventoryServiceUtils.ClonePath(self.dataPath)
 end
 
 function InventoryProfile.GetDataPathString(self: InventoryProfile): string
@@ -200,7 +200,7 @@ function InventoryProfile.HasAuthoritativeProfile(self: InventoryProfile, player
 	end
 
 	local success, profile = pcall(function()
-		return playerDataService:getProfile(player)
+		return playerDataService:GetProfile(player)
 	end)
 	return success and profile ~= nil
 end
@@ -216,9 +216,9 @@ function InventoryProfile.LoadFromPrimary(self: InventoryProfile, player: Player
 		}
 	end
 
-	local timeoutSeconds = sanitizeTimeout(timeoutSecondsRaw, self.primaryTimeoutSeconds)
+	local timeoutSeconds = CoerceTimeout(timeoutSecondsRaw, self.primaryTimeoutSeconds)
 	local requestSyncSuccess = pcall(function()
-		playerDataService:requestSync(player)
+		playerDataService:RequestSync(player)
 	end)
 	if not requestSyncSuccess then
 		return {
@@ -230,18 +230,18 @@ function InventoryProfile.LoadFromPrimary(self: InventoryProfile, player: Player
 	end
 
 	local completionStatus, callSuccess, resultKind, resultDetail = runProtectedWithTimeout(timeoutSeconds, function()
-		local hasActiveProfile = self:hasAuthoritativeProfile(player)
-		if hasActiveProfile and playerDataService:isLoaded(player) then
-			return "loaded", playerDataService:getValue(player, self.dataPath, nil)
+		local hasActiveProfile = self:HasAuthoritativeProfile(player)
+		if hasActiveProfile and playerDataService:IsLoaded(player) then
+			return "loaded", playerDataService:GetValue(player, self.dataPath, nil)
 		end
 
-		local waitedData = playerDataService:waitForData(player, timeoutSeconds)
+		local waitedData = playerDataService:WaitForData(player, timeoutSeconds)
 		if waitedData ~= nil and typeof(waitedData) ~= "table" then
 			return "not_loaded", "player_data_not_table"
 		end
 
-		local loadState = playerDataService:getLoadState(player)
-		hasActiveProfile = self:hasAuthoritativeProfile(player)
+		local loadState = playerDataService:GetLoadState(player)
+		hasActiveProfile = self:HasAuthoritativeProfile(player)
 		if waitedData == nil and loadState ~= "Loaded" then
 			return "not_loaded", loadState
 		end
@@ -249,7 +249,7 @@ function InventoryProfile.LoadFromPrimary(self: InventoryProfile, player: Player
 			return "not_loaded", "loaded_without_profile"
 		end
 
-		return "loaded", playerDataService:getValue(player, self.dataPath, nil)
+		return "loaded", playerDataService:GetValue(player, self.dataPath, nil)
 	end)
 
 	if completionStatus == "timed_out" then
@@ -290,15 +290,15 @@ function InventoryProfile.LoadFromPrimary(self: InventoryProfile, player: Player
 	return {
 		success = true,
 		inventoryData = if resultDetail ~= nil
-			then PlayerDataServiceUtils.cloneDeep(resultDetail)
-			else self:cloneDefaultInventoryData(),
+			then PlayerDataServiceUtils.CloneDeep(resultDetail)
+			else self:CloneDefaultInventoryData(),
 		source = "player-data-service",
 		reason = validationReason,
 	}
 end
 
 function InventoryProfile.LoadFromFallback(self: InventoryProfile, player: Player, timeoutSecondsRaw: any): LoadResult
-	local profileKey = PlayerDataServiceUtils.getProfileKey(player)
+	local profileKey = PlayerDataServiceUtils.GetProfileKey(player)
 	if profileKey == nil then
 		return {
 			success = false,
@@ -317,7 +317,7 @@ function InventoryProfile.LoadFromFallback(self: InventoryProfile, player: Playe
 		}
 	end
 
-	local timeoutSeconds = sanitizeTimeout(timeoutSecondsRaw, self.fallbackTimeoutSeconds)
+	local timeoutSeconds = CoerceTimeout(timeoutSecondsRaw, self.fallbackTimeoutSeconds)
 	local completionStatus, callSuccess, rawProfileData = runProtectedWithTimeout(timeoutSeconds, function()
 		return self.fallbackDataStore:GetAsync(profileKey)
 	end)
@@ -341,7 +341,7 @@ function InventoryProfile.LoadFromFallback(self: InventoryProfile, player: Playe
 	if rawProfileData == nil then
 		return {
 			success = true,
-			inventoryData = self:cloneDefaultInventoryData(),
+			inventoryData = self:CloneDefaultInventoryData(),
 			source = "default",
 			reason = "profile_missing",
 		}
@@ -377,7 +377,7 @@ function InventoryProfile.LoadFromFallback(self: InventoryProfile, player: Playe
 		}
 	end
 
-	local rawInventory = PlayerDataServiceUtils.getValueAtPath(persistedDataRoot, self.dataPath, nil)
+	local rawInventory = PlayerDataServiceUtils.GetValueAtPath(persistedDataRoot, self.dataPath, nil)
 	local isValid, validationReason = validatePersistedInventoryData(rawInventory)
 	if not isValid then
 		return {
@@ -391,32 +391,32 @@ function InventoryProfile.LoadFromFallback(self: InventoryProfile, player: Playe
 	return {
 		success = true,
 		inventoryData = if rawInventory ~= nil
-			then PlayerDataServiceUtils.cloneDeep(rawInventory)
-			else self:cloneDefaultInventoryData(),
+			then PlayerDataServiceUtils.CloneDeep(rawInventory)
+			else self:CloneDefaultInventoryData(),
 		source = if rawInventory ~= nil then "datastore" else "default",
 		reason = if rawInventory ~= nil then "datastore_inventory" else "inventory_missing",
 	}
 end
 
-function InventoryProfile.ResolvePersistedInventory(
+function InventoryProfile.GetPersistedInventory(
 	self: InventoryProfile,
 	player: Player,
 	primaryTimeoutSecondsRaw: any,
 	fallbackTimeoutSecondsRaw: any
 ): LoadResult
-	local primaryResult = self:loadFromPrimary(player, primaryTimeoutSecondsRaw)
+	local primaryResult = self:LoadFromPrimary(player, primaryTimeoutSecondsRaw)
 	if primaryResult.success then
 		return primaryResult
 	end
 
-	local fallbackResult = self:loadFromFallback(player, fallbackTimeoutSecondsRaw)
+	local fallbackResult = self:LoadFromFallback(player, fallbackTimeoutSecondsRaw)
 	if fallbackResult.success then
 		return fallbackResult
 	end
 
 	return {
 		success = false,
-		inventoryData = self:cloneDefaultInventoryData(),
+		inventoryData = self:CloneDefaultInventoryData(),
 		source = fallbackResult.source,
 		reason = fallbackResult.reason,
 	}
@@ -426,7 +426,7 @@ function InventoryProfile.WriteState(self: InventoryProfile, player: Player, sta
 	if typeof(stateRaw) ~= "table" then
 		return false, "state_not_table"
 	end
-	if not InventoryServiceUtils.isLoadedState((stateRaw :: any).loadState) then
+	if not InventoryServiceUtils.IsLoadedState((stateRaw :: any).loadState) then
 		return false, "state_not_loaded"
 	end
 
@@ -436,20 +436,20 @@ function InventoryProfile.WriteState(self: InventoryProfile, player: Player, sta
 	end
 
 	local profileSuccess, profileRaw = pcall(function()
-		return playerDataService:getProfile(player)
+		return playerDataService:GetProfile(player)
 	end)
 	if not profileSuccess then
 		return false, "profile_lookup_error:" .. tostring(profileRaw)
 	end
 
-	local profileData = resolveProfileDataRoot(profileRaw)
+	local profileData = GetProfileDataRoot(profileRaw)
 	if profileData == nil then
 		return false, "profile_data_unavailable"
 	end
 
-	local serializedState = PlayerDataServiceUtils.cloneDeep(InventoryServiceUtils.serializeStateForData(stateRaw))
+	local serializedState = PlayerDataServiceUtils.CloneDeep(InventoryServiceUtils.SerializeStateForData(stateRaw))
 	local writeSuccess, didWrite = pcall(function()
-		return PlayerDataServiceUtils.setValueAtPath(profileData, self.dataPath, serializedState)
+		return PlayerDataServiceUtils.SetValueAtPath(profileData, self.dataPath, serializedState)
 	end)
 	if not writeSuccess then
 		return false, "profile_write_error:" .. tostring(didWrite)
@@ -458,7 +458,7 @@ function InventoryProfile.WriteState(self: InventoryProfile, player: Player, sta
 		return false, "profile_write_failed"
 	end
 
-	return true, "written:" .. self:getDataPathString()
+	return true, "written:" .. self:GetDataPathString()
 end
 
 function InventoryProfile.SaveProfile(self: InventoryProfile, player: Player): (boolean, string)
@@ -468,7 +468,7 @@ function InventoryProfile.SaveProfile(self: InventoryProfile, player: Player): (
 	end
 
 	local saveSuccess, didSave = pcall(function()
-		return playerDataService:savePlayerData(player)
+		return playerDataService:SavePlayerData(player)
 	end)
 	if not saveSuccess then
 		return false, "profile_save_error:" .. tostring(didSave)
@@ -477,28 +477,15 @@ function InventoryProfile.SaveProfile(self: InventoryProfile, player: Player): (
 		return false, "profile_save_failed"
 	end
 
-	return true, "saved:" .. self:getDataPathString()
+	return true, "saved:" .. self:GetDataPathString()
 end
 
 function InventoryProfile.SaveState(self: InventoryProfile, player: Player, stateRaw: any): (boolean, string)
-	local didWrite, writeReason = self:writeState(player, stateRaw)
+	local didWrite, writeReason = self:WriteState(player, stateRaw)
 	if didWrite ~= true then
 		return false, writeReason
 	end
 
-	return self:saveProfile(player)
+	return self:SaveProfile(player)
 end
-
-InventoryProfile.new = InventoryProfile.New
-InventoryProfile.cloneDefaultInventoryData = InventoryProfile.CloneDefaultInventoryData
-InventoryProfile.getDataPath = InventoryProfile.GetDataPath
-InventoryProfile.getDataPathString = InventoryProfile.GetDataPathString
-InventoryProfile.hasAuthoritativeProfile = InventoryProfile.HasAuthoritativeProfile
-InventoryProfile.loadFromPrimary = InventoryProfile.LoadFromPrimary
-InventoryProfile.loadFromFallback = InventoryProfile.LoadFromFallback
-InventoryProfile.resolvePersistedInventory = InventoryProfile.ResolvePersistedInventory
-InventoryProfile.writeState = InventoryProfile.WriteState
-InventoryProfile.saveProfile = InventoryProfile.SaveProfile
-InventoryProfile.saveState = InventoryProfile.SaveState
-
 return InventoryProfile

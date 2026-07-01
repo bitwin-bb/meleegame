@@ -55,10 +55,4 @@ function BufferPool.Destroy(self: BufferPool)
 		self.arrays[index] = nil
 	end
 end
-
-BufferPool.new = BufferPool.New
-BufferPool.acquireArray = BufferPool.AcquireArray
-BufferPool.releaseArray = BufferPool.ReleaseArray
-BufferPool.destroy = BufferPool.Destroy
-
 return BufferPool

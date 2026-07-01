@@ -55,14 +55,14 @@ local function trim(textRaw: any): string
 	return string.match(textRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function sanitizeBoolean(valueRaw: any, fallback: boolean): boolean
+local function CoerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function sanitizeInteger(valueRaw: any, fallback: number, minimum: number, maximum: number): number
+local function CoerceInteger(valueRaw: any, fallback: number, minimum: number, maximum: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
@@ -83,7 +83,7 @@ local function cloneStringArray(arrayRaw: any): { string }
 	return output
 end
 
-local function sanitizeRecipeEntries(entriesRaw: any): { CraftingRecipeEntry }
+local function CoerceRecipeEntries(entriesRaw: any): { CraftingRecipeEntry }
 	local output: { CraftingRecipeEntry } = {}
 	if typeof(entriesRaw) ~= "table" then
 		return output
@@ -114,9 +114,9 @@ local function sanitizeRecipeEntries(entriesRaw: any): { CraftingRecipeEntry }
 			category = category,
 			resultItemId = if trim(entry.resultItemId) ~= "" then trim(entry.resultItemId) else nil,
 			canCraft = entry.canCraft == true,
-			maxCraftableQuantity = sanitizeInteger(entry.maxCraftableQuantity, 0, 0, 999_999),
+			maxCraftableQuantity = CoerceInteger(entry.maxCraftableQuantity, 0, 0, 999_999),
 			groupId = if trim(entry.groupId) ~= "" then trim(entry.groupId) else nil,
-			sortOrder = sanitizeInteger(entry.sortOrder, index, -999_999, 999_999),
+			sortOrder = CoerceInteger(entry.sortOrder, index, -999_999, 999_999),
 			preview = if typeof(entry.preview) == "table" then entry.preview else nil,
 		}
 	end
@@ -180,7 +180,7 @@ local function setCraftingState(stateRaw: any): CraftingState
 	local current = craftingStateAtom()
 	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {} :: any
 	local nextRecipes = if source.recipes ~= nil
-		then sanitizeRecipeEntries(source.recipes)
+		then CoerceRecipeEntries(source.recipes)
 		else cloneRecipeEntries(current.recipes)
 	local nextAvailableCategories = if source.availableCategories ~= nil
 		then cloneStringArray(source.availableCategories)
@@ -196,15 +196,15 @@ local function setCraftingState(stateRaw: any): CraftingState
 	)
 
 	local nextState: CraftingState = {
-		started = sanitizeBoolean(source.started, current.started),
-		visible = sanitizeBoolean(source.visible, current.visible),
+		started = CoerceBoolean(source.started, current.started),
+		visible = CoerceBoolean(source.visible, current.visible),
 		searchQuery = if source.searchQuery ~= nil then trim(source.searchQuery) else current.searchQuery,
 		categoryFilter = if source.categoryFilter ~= nil then trim(source.categoryFilter) else current.categoryFilter,
 		selectedRecipeId = nextSelectedRecipeId,
 		availableCategories = nextAvailableCategories,
 		recipes = nextRecipes,
 		activeStations = nextActiveStations,
-		isBulkCrafting = sanitizeBoolean(source.isBulkCrafting, current.isBulkCrafting),
+		isBulkCrafting = CoerceBoolean(source.isBulkCrafting, current.isBulkCrafting),
 		lastCraftResult = if typeof(source.lastCraftResult) == "table"
 			then source.lastCraftResult
 			else if source.lastCraftResult == nil then current.lastCraftResult else nil,

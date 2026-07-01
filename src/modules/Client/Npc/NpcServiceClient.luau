@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
-local NpcServicePackets = require("NetSharedPackets").NpcService
+local NpcServicePackets = require("NetPacketsShared").NpcService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = NpcServicePackets[methodName]
@@ -14,7 +14,7 @@ local function sendPacket(methodName: string, ...: any)
 		return
 	end
 
-	packet.send(PacketPayload.pack(...))
+	packet.send(PacketPayload.Pack(...))
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -24,13 +24,14 @@ local function bindPacket(self: any, methodName: string)
 		return
 	end
 
+	local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
 	packet.listen(function(payload: any)
-		local handler = self[methodName]
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, table.unpack(arguments, 1, count))
 	end)
 end
@@ -72,7 +73,18 @@ type NpcServiceClientState = {
 	updatedAt: number,
 }
 
-local NpcServiceClient = {}
+local function createDefaultState(): NpcServiceClientState
+	return {
+		byId = {},
+		orderedIds = {},
+		updatedAt = os.clock(),
+	}
+end
+
+local NpcServiceClient = {
+	state = createDefaultState(),
+	stateChanged = Signal.new(),
+}
 
 local function cloneSnapshot(snapshot: NpcSnapshot): NpcSnapshot
 	return {
@@ -97,13 +109,21 @@ local function cloneSnapshot(snapshot: NpcSnapshot): NpcSnapshot
 	}
 end
 
-local function cloneState(state: NpcServiceClientState): NpcServiceClientState
+local function cloneState(stateRaw: any?): NpcServiceClientState
+	if typeof(stateRaw) ~= "table" then
+		return createDefaultState()
+	end
+	local state = stateRaw :: NpcServiceClientState
+	local sourceById = if typeof(state.byId) == "table" then state.byId else {}
+	local sourceOrderedIds = if typeof(state.orderedIds) == "table" then state.orderedIds else {}
+	local updatedAt = if typeof(state.updatedAt) == "number" then state.updatedAt else os.clock()
+
 	return {
-		byId = Sift.Dictionary.map(state.byId, function(snapshot: NpcSnapshot): NpcSnapshot
+		byId = Sift.Dictionary.map(sourceById, function(snapshot: NpcSnapshot): NpcSnapshot
 			return cloneSnapshot(snapshot)
 		end),
-		orderedIds = Sift.Array.copy(state.orderedIds),
-		updatedAt = state.updatedAt,
+		orderedIds = Sift.Array.copy(sourceOrderedIds),
+		updatedAt = updatedAt,
 	}
 end
 
@@ -120,7 +140,7 @@ local function buildStateFromSnapshots(snapshotsRaw: any): NpcServiceClientState
 
 	if typeof(snapshotsRaw) == "table" then
 		for _, rawSnapshot in snapshotsRaw do
-			local snapshot = NpcServiceUtils.sanitizeSnapshot(rawSnapshot, nil)
+			local snapshot = NpcServiceUtils.CoerceSnapshot(rawSnapshot, nil)
 			if snapshot ~= nil then
 				snapshot.spriteReceivedAt = os.clock()
 				byId[snapshot.id] = snapshot
@@ -144,7 +164,7 @@ function NpcServiceClient.UpsertSnapshot(self: NpcServiceClient, snapshot: NpcSn
 		orderedIds = appendUniqueOrderedId(self.state.orderedIds, snapshot.id),
 		updatedAt = os.clock(),
 	}
-	self.stateChanged:Fire(self:getState())
+	self.stateChanged:Fire(self:GetState())
 end
 
 function NpcServiceClient.RemoveSnapshot(self: NpcServiceClient, runtimeIdRaw: any)
@@ -163,24 +183,24 @@ function NpcServiceClient.RemoveSnapshot(self: NpcServiceClient, runtimeIdRaw: a
 		end),
 		updatedAt = os.clock(),
 	}
-	self.stateChanged:Fire(self:getState())
+	self.stateChanged:Fire(self:GetState())
 end
 
 function NpcServiceClient.ApplyState(self: NpcServiceClient, snapshotsRaw: any)
 	self.state = buildStateFromSnapshots(snapshotsRaw)
-	self.stateChanged:Fire(self:getState())
+	self.stateChanged:Fire(self:GetState())
 end
 
 function NpcServiceClient.OnNpcAdded(self: NpcServiceClient, snapshotRaw: any)
-	local snapshot = NpcServiceUtils.sanitizeSnapshot(snapshotRaw, nil)
+	local snapshot = NpcServiceUtils.CoerceSnapshot(snapshotRaw, nil)
 	if snapshot == nil then
 		return
 	end
-	self:upsertSnapshot(snapshot)
+	self:UpsertSnapshot(snapshot)
 end
 
 function NpcServiceClient.OnNpcRemoved(self: NpcServiceClient, runtimeIdRaw: any)
-	self:removeSnapshot(runtimeIdRaw)
+	self:RemoveSnapshot(runtimeIdRaw)
 end
 
 function NpcServiceClient.OnNpcStateChanged(self: NpcServiceClient, snapshotRaw: any)
@@ -194,14 +214,14 @@ function NpcServiceClient.OnNpcStateChanged(self: NpcServiceClient, snapshotRaw:
 	end
 
 	local existingSnapshot = self.state.byId[runtimeId]
-	local snapshot = NpcServiceUtils.sanitizeSnapshot(snapshotRaw, existingSnapshot)
+	local snapshot = NpcServiceUtils.CoerceSnapshot(snapshotRaw, existingSnapshot)
 	if snapshot == nil then
 		return
 	end
-	self:upsertSnapshot(snapshot)
+	self:UpsertSnapshot(snapshot)
 end
 
-function NpcServiceClient.RequestSync(self: NpcServiceClient)
+function NpcServiceClient.RequestSync(_self: NpcServiceClient)
 	sendPacket(NpcServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
@@ -213,18 +233,14 @@ function NpcServiceClient.Init(self: NpcServiceClient)
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
-	self.stateChanged = Signal.new()
-	self.state = {
-		byId = {},
-		orderedIds = {},
-		updatedAt = os.clock(),
-	}
+	self.stateChanged = self.stateChanged or Signal.new()
+	self.state = createDefaultState()
 
 	self.janitor:GiveChore(function()
 		self.stateChanged:Destroy()
 	end)
 
-	self:requestSync()
+	self:RequestSync()
 end
 
 function NpcServiceClient.Destroy(self: NpcServiceClient)
@@ -232,18 +248,6 @@ function NpcServiceClient.Destroy(self: NpcServiceClient)
 		self.janitor:Destroy()
 	end
 end
-
-NpcServiceClient.upsertSnapshot = NpcServiceClient.UpsertSnapshot
-NpcServiceClient.removeSnapshot = NpcServiceClient.RemoveSnapshot
-NpcServiceClient.applyState = NpcServiceClient.ApplyState
-NpcServiceClient.onNpcAdded = NpcServiceClient.OnNpcAdded
-NpcServiceClient.onNpcRemoved = NpcServiceClient.OnNpcRemoved
-NpcServiceClient.onNpcStateChanged = NpcServiceClient.OnNpcStateChanged
-NpcServiceClient.requestSync = NpcServiceClient.RequestSync
-NpcServiceClient.getState = NpcServiceClient.GetState
-NpcServiceClient.init = NpcServiceClient.Init
-NpcServiceClient.destroy = NpcServiceClient.Destroy
-
 type NpcServiceClient = typeof(NpcServiceClient) & {
 	localPlayer: Player,
 	janitor: JanitorClass,

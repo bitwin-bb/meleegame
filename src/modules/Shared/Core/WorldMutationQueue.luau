@@ -77,7 +77,7 @@ local function worldToChunk(value: number, chunkSize: number): number
 	return math.floor(value / chunkSize)
 end
 
-local function sanitizeMutation(raw: any): TileMutation?
+local function CoerceMutation(raw: any): TileMutation?
 	if typeof(raw) ~= "table" then
 		return nil
 	end
@@ -151,7 +151,7 @@ function WorldMutationQueue._getOrCreateBucket(self: WorldMutationQueue, chunkX:
 end
 
 function WorldMutationQueue.Enqueue(self: WorldMutationQueue, mutationRaw: any): boolean
-	local mutation = sanitizeMutation(mutationRaw)
+	local mutation = CoerceMutation(mutationRaw)
 	if mutation == nil then
 		return false
 	end
@@ -179,7 +179,7 @@ function WorldMutationQueue.EnqueueBatch(self: WorldMutationQueue, listRaw: any)
 	end
 	local accepted = 0
 	for _, mutation in listRaw do
-		if self:enqueue(mutation) then
+		if self:Enqueue(mutation) then
 			accepted += 1
 		end
 	end
@@ -336,7 +336,7 @@ function WorldMutationQueue.Update(
 
 	local flushed = {}
 	while self.elapsed >= self.flushInterval and self.pendingCount > 0 do
-		local batch = self:flush(nil, onFlush)
+		local batch = self:Flush(nil, onFlush)
 		if batch == nil then
 			break
 		end
@@ -355,9 +355,9 @@ function WorldMutationQueue.EncodeBatch(self: WorldMutationQueue, batch: FlushBa
 		chunks = batch.chunks,
 	}
 	if shouldCompress then
-		return Codec.serializeCompressed(payload)
+		return Codec.SerializeCompressed(payload)
 	end
-	return Codec.serializeDeterministic(payload)
+	return Codec.SerializeDeterministic(payload)
 end
 
 function WorldMutationQueue.DecodeBatch(self: WorldMutationQueue, payloadRaw: any, compressedRaw: any?): FlushBatch?
@@ -366,8 +366,8 @@ function WorldMutationQueue.DecodeBatch(self: WorldMutationQueue, payloadRaw: an
 	end
 	local compressed = compressedRaw ~= false
 	local decoded = if compressed
-		then Codec.deserializeCompressed(payloadRaw)
-		else Codec.deserializeDeterministic(payloadRaw)
+		then Codec.DeserializeCompressed(payloadRaw)
+		else Codec.DeserializeDeterministic(payloadRaw)
 	if typeof(decoded) ~= "table" then
 		return nil
 	end
@@ -375,10 +375,10 @@ function WorldMutationQueue.DecodeBatch(self: WorldMutationQueue, payloadRaw: an
 end
 
 function WorldMutationQueue.EncodeBatchFrame(self: WorldMutationQueue, batch: FlushBatch, options: any?): buffer
-	local serialized = self:encodeBatch(batch, true)
+	local serialized = self:EncodeBatch(batch, true)
 	local payload = buffer.create(#serialized)
 	buffer.writestring(payload, 0, serialized)
-	return BinaryStreaming.framePacket(payload, #serialized, options)
+	return BinaryStreaming.FramePacket(payload, #serialized, options)
 end
 
 function WorldMutationQueue.Destroy(self: WorldMutationQueue)
@@ -387,18 +387,4 @@ function WorldMutationQueue.Destroy(self: WorldMutationQueue)
 	self.pendingCount = 0
 	self.elapsed = 0
 end
-
-WorldMutationQueue.new = WorldMutationQueue.New
-WorldMutationQueue.enqueue = WorldMutationQueue.Enqueue
-WorldMutationQueue.enqueueBatch = WorldMutationQueue.EnqueueBatch
-WorldMutationQueue.setFlushInterval = WorldMutationQueue.SetFlushInterval
-WorldMutationQueue.setMaxMutationsPerFlush = WorldMutationQueue.SetMaxMutationsPerFlush
-WorldMutationQueue.getPendingCount = WorldMutationQueue.GetPendingCount
-WorldMutationQueue.flush = WorldMutationQueue.Flush
-WorldMutationQueue.update = WorldMutationQueue.Update
-WorldMutationQueue.encodeBatch = WorldMutationQueue.EncodeBatch
-WorldMutationQueue.decodeBatch = WorldMutationQueue.DecodeBatch
-WorldMutationQueue.encodeBatchFrame = WorldMutationQueue.EncodeBatchFrame
-WorldMutationQueue.destroy = WorldMutationQueue.Destroy
-
 return WorldMutationQueue

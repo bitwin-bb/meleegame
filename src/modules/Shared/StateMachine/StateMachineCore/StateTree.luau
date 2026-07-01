@@ -17,7 +17,7 @@ export type StateTree = typeof(setmetatable(
 	StateTree
 ))
 
-local function resolvePathParent(stateName: string): string?
+local function GetPathParent(stateName: string): string?
 	local lastDot = string.find(stateName, "%.[^%.]*$")
 	if lastDot == nil or lastDot <= 1 then
 		return nil
@@ -40,7 +40,7 @@ function StateTree.Register(self: StateTree, stateNameRaw: any, parentRaw: any?)
 
 	local parent = if typeof(parentRaw) == "string" and parentRaw ~= ""
 		then parentRaw
-		else resolvePathParent(stateNameRaw)
+		else GetPathParent(stateNameRaw)
 	self.parents[stateNameRaw] = parent
 	if parent ~= nil then
 		if self.children[parent] == nil then
@@ -92,11 +92,4 @@ function StateTree.Destroy(self: StateTree)
 	table.clear(self.children)
 	self.Registered:Destroy()
 end
-
-StateTree.register = StateTree.Register
-StateTree.getParent = StateTree.GetParent
-StateTree.getPath = StateTree.GetPath
-StateTree.getChildren = StateTree.GetChildren
-StateTree.destroy = StateTree.Destroy
-
 return StateTree

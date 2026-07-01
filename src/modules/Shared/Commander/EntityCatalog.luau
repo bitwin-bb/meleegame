@@ -16,7 +16,7 @@ export type EntityEntry = {
 local EntityCatalog = {}
 
 local function normalizeToken(valueRaw: any): string
-	return BossServiceUtils.normalizeToken(valueRaw)
+	return BossServiceUtils.NormalizeToken(valueRaw)
 end
 
 local function cloneTokens(tokens: { string }): { string }
@@ -50,7 +50,7 @@ end
 local function buildEntries(): { EntityEntry }
 	local entries = {}
 
-	for _, bossEntry in BossServiceUtils.getRegistryEntries() do
+	for _, bossEntry in BossServiceUtils.GetRegistryEntries() do
 		local tokens = {}
 		local seen = {}
 		for _, token in bossEntry.manualSummonTokens do
@@ -114,7 +114,7 @@ function EntityCatalog.GetEntries(): { EntityEntry }
 	return copy
 end
 
-function EntityCatalog.Resolve(tokenRaw: any): EntityEntry?
+function EntityCatalog.Get(tokenRaw: any): EntityEntry?
 	local normalizedToken = normalizeToken(tokenRaw)
 	if normalizedToken == "" then
 		return nil
@@ -141,9 +141,4 @@ function EntityCatalog.GetAutocompleteEntries(): { { Name: string, Entity: Entit
 	end
 	return entries
 end
-
-EntityCatalog.getEntries = EntityCatalog.GetEntries
-EntityCatalog.resolve = EntityCatalog.Resolve
-EntityCatalog.getAutocompleteEntries = EntityCatalog.GetAutocompleteEntries
-
 return EntityCatalog

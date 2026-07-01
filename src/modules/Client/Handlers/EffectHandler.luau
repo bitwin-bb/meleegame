@@ -36,8 +36,4 @@ end
 function EffectHandler.Destroy(self: EffectHandler)
 	self.maid:DoCleaning()
 end
-
-EffectHandler.emit = EffectHandler.Emit
-EffectHandler.destroy = EffectHandler.Destroy
-
 return EffectHandler

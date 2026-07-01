@@ -27,7 +27,7 @@ local function defaultEquality<T>(a: T, b: T): boolean
 	return a == b
 end
 
-local function sanitizeIntervalSeconds(valueRaw: any): number
+local function CoerceIntervalSeconds(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return 0
 	end
@@ -35,7 +35,7 @@ local function sanitizeIntervalSeconds(valueRaw: any): number
 end
 
 local function useThrottle<T>(value: T, intervalSecondsRaw: any, options: ThrottleOptions<T>?): ThrottleResult<T>
-	local intervalSeconds = sanitizeIntervalSeconds(intervalSecondsRaw)
+	local intervalSeconds = CoerceIntervalSeconds(intervalSecondsRaw)
 	local leading = if options ~= nil and options.leading ~= nil then options.leading == true else true
 	local trailing = if options ~= nil and options.trailing ~= nil then options.trailing == true else true
 	local equalityFn = if options ~= nil and options.equalityFn ~= nil then options.equalityFn else defaultEquality

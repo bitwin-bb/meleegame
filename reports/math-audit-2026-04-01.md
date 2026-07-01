@@ -6,7 +6,7 @@ This audit was a repo-wide pass across shared modules, client/server services, g
 
 Search patterns used included:
 
-- `math.clamp`, manual `isFinite` / sanitize helpers, sign/snap/remap patterns
+- `math.clamp`, manual `isFinite` / Coerce helpers, sign/snap/remap patterns
 - shortest-angle wrapping, `math.rad` / `math.deg`, `math.atan2`, `math.acos`
 - safe unit-vector code, planar flattening, projection/rejection, plane/ray helpers
 - spring stepping, exponential damping, easing, sine/cosine motion, bezier sampling
@@ -19,7 +19,7 @@ High-signal files were then reviewed manually before refactoring.
 
 | Candidate helper | Representative locations found during audit | Existing duplication / inconsistency | Destination | Disposition |
 | --- | --- | --- | --- | --- |
-| Scalar clamp / remap / finite checks | `src/services/AudioService/Utils.luau`, `src/services/AnimationService/Utils.luau`, `src/services/BuildService/Utils.luau`, `src/classes/WorldGeneration/{Biome,Cave,Structures}.luau`, `src/services/WorldSimulationService/{Shared,Config,Net,Data}.luau` | Many copies of finite-number guards and clamp wrappers; naming varies between `clampNumber`, `sanitizeNumber`, `isFiniteNumber` | `Math.Num`, `Math.Range` | Extract reusable math primitives only. Boundary sanitizers stay local because they also encode fallback policy, accepted input types, and service-specific constraints. |
+| Scalar clamp / remap / finite checks | `src/services/AudioService/Utils.luau`, `src/services/AnimationService/Utils.luau`, `src/services/BuildService/Utils.luau`, `src/classes/WorldGeneration/{Biome,Cave,Structures}.luau`, `src/services/WorldSimulationService/{Shared,Config,Net,Data}.luau` | Many copies of finite-number guards and clamp wrappers; naming varies between `clampNumber`, `CoerceNumber`, `isFiniteNumber` | `Math.Num`, `Math.Range` | Extract reusable math primitives only. Boundary CoerceRs stay local because they also encode fallback policy, accepted input types, and service-specific constraints. |
 | Weighted averages / variance / moving averages | Sparse ad hoc local calculations, mostly in stats-like UI and data helpers | No cohesive shared location before this pass | `Math.Avg`, `Math.Stat` | Shared modules added as the standard library target. No forced repo-wide rewrites where local code was already business-specific. |
 | Shortest-angle math / wrapping | `src/services/PlayerService/Utils.luau`, `src/services/WeatherService/Utils.luau`, boss/camera helpers, marker/UI rotation code | Manual `%` wrapping and bespoke shortest-delta logic existed in multiple shapes | `Math.Angle`, `Math.Trig`, `Math.Arc` | Refactored player look-angle wrapping and weather clock deltas to shared helpers. Remaining direct trig/orbit math that is domain-specific stays inline. |
 | Projection / rejection / plane hits | `src/services/BossService/Utils.luau`, `src/services/BuildService/Utils.luau`, `src/services/PlayerService/Utils.luau` | Plane intersection and projection math repeated in slightly different shapes | `Math.Proj`, `Math.Plane`, `Math.Ray` | Refactored shared plane/raycast/project helpers into callers. |
@@ -59,7 +59,7 @@ The following call sites were moved onto the shared math layer in this pass:
 
 These patterns were inspected and intentionally not extracted:
 
-- Service boundary sanitizers that accept loose `any` input and encode service-specific fallback behavior.
+- Service boundary CoerceRs that accept loose `any` input and encode service-specific fallback behavior.
 - Gameplay-specific random rolls using live `Random.new()` where determinism is not required, such as moment-to-moment SFX variation and visual-only client effects.
 - Feature-authored springs that own domain state and semantics, especially the foliage bend integrators.
 - Domain geometry in world generation and presentation code where the formula is tied to authored content rather than a reusable primitive.

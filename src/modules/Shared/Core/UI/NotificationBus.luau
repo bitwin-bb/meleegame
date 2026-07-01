@@ -22,7 +22,7 @@ export type NotificationConfig = {
 	defaultDuration: number?,
 	mergeWindow: number?,
 	layoutDirection: "Down" | "Up"?,
-	sanitizePayload: ((payload: any) -> any)?,
+	CoercePayload: ((payload: any) -> any)?,
 	formatPayload: ((key: string, payload: any, count: number) -> string)?,
 	createItem: (() -> GuiObject)?,
 	resetItem: ((item: GuiObject) -> ())?,
@@ -103,7 +103,7 @@ local function defaultResetItem(item: GuiObject)
 	item.BackgroundTransparency = 0.2
 end
 
-local function defaultSanitizePayload(payload: any): any
+local function defaultCoercePayload(payload: any): any
 	if typeof(payload) == "table" then
 		return Sift.Dictionary.copy(payload)
 	end
@@ -160,9 +160,9 @@ function NotificationBus.New(configRaw: NotificationConfig): NotificationBus
 		defaultDuration = clampNumber(configRaw.defaultDuration, 2.5, 0.1, 30),
 		mergeWindow = clampNumber(configRaw.mergeWindow, 0.6, 0, 10),
 		layoutDirection = if configRaw.layoutDirection == "Up" then "Up" else "Down",
-		sanitizePayload = if typeof(configRaw.sanitizePayload) == "function"
-			then configRaw.sanitizePayload
-			else defaultSanitizePayload,
+		CoercePayload = if typeof(configRaw.CoercePayload) == "function"
+			then configRaw.CoercePayload
+			else defaultCoercePayload,
 		formatPayload = if typeof(configRaw.formatPayload) == "function"
 			then configRaw.formatPayload
 			else defaultFormatPayload,
@@ -189,10 +189,10 @@ function NotificationBus._ensureLoop(self: NotificationBus)
 	if self.loopToken ~= nil or self.heartbeatConnection ~= nil then
 		return
 	end
-	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).scheduleEvery) == "function" then
-		self.loopToken = (self.tickScheduler :: any):scheduleEvery(
+	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).ScheduleEvery) == "function" then
+		self.loopToken = (self.tickScheduler :: any):ScheduleEvery(
 			function(dt: number)
-				self:update(dt)
+				self:Update(dt)
 			end,
 			1 / 30,
 			{
@@ -204,7 +204,7 @@ function NotificationBus._ensureLoop(self: NotificationBus)
 		return
 	end
 	self.heartbeatConnection = RunService.Heartbeat:Connect(function(dt)
-		self:update(dt)
+		self:Update(dt)
 	end)
 end
 
@@ -245,12 +245,12 @@ function NotificationBus._animateIn(self: NotificationBus, entry: any)
 	end
 	if self.springAnimator ~= nil and typeof((self.springAnimator :: any).animate) == "function" then
 		local springAnimatorAny = self.springAnimator :: any
-		springAnimatorAny:animate(item, "BackgroundTransparency", 0.2, {
+		springAnimatorAny:Animate(item, "BackgroundTransparency", 0.2, {
 			frequency = 7,
 			dampingRatio = 1,
 		})
 		if label ~= nil and label:IsA("TextLabel") then
-			springAnimatorAny:animate(label, "TextTransparency", 0, {
+			springAnimatorAny:Animate(label, "TextTransparency", 0, {
 				frequency = 7,
 				dampingRatio = 1,
 			})
@@ -268,12 +268,12 @@ function NotificationBus._animateOut(self: NotificationBus, entry: any)
 	local label = item:FindFirstChild("Label")
 	if self.springAnimator ~= nil and typeof((self.springAnimator :: any).animate) == "function" then
 		local springAnimatorAny = self.springAnimator :: any
-		springAnimatorAny:animate(item, "BackgroundTransparency", 1, {
+		springAnimatorAny:Animate(item, "BackgroundTransparency", 1, {
 			frequency = 7,
 			dampingRatio = 1,
 		})
 		if label ~= nil and label:IsA("TextLabel") then
-			springAnimatorAny:animate(label, "TextTransparency", 1, {
+			springAnimatorAny:Animate(label, "TextTransparency", 1, {
 				frequency = 7,
 				dampingRatio = 1,
 			})
@@ -377,7 +377,7 @@ function NotificationBus.Notify(self: NotificationBus, keyRaw: any, payloadRaw: 
 		return false
 	end
 	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
-	local payload = self.sanitizePayload(payloadRaw)
+	local payload = self.CoercePayload(payloadRaw)
 	local priority = clampInteger(config.priority, 0, -1000000, 1000000)
 	local duration = clampNumber(config.duration, self.defaultDuration, 0.1, 60)
 	local mergeKey = if typeof(config.mergeKey) == "string" and config.mergeKey ~= "" then config.mergeKey else keyRaw
@@ -443,7 +443,7 @@ function NotificationBus.NotifyDamageResult(self: NotificationBus, resultRaw: an
 	if typeof(configRaw) == "table" and typeof(configRaw.key) == "string" and configRaw.key ~= "" then
 		key = configRaw.key
 	end
-	return self:notify(key, payload, configRaw)
+	return self:Notify(key, payload, configRaw)
 end
 
 function NotificationBus.Update(self: NotificationBus, dtRaw: any)
@@ -485,16 +485,16 @@ function NotificationBus.Init(self: NotificationBus)
 				continue
 			end
 			local eventName = if typeof(sub.event) == "string" then sub.event else "*"
-			local disconnect = (self.eventBus :: any):subscribe(sub.channel, eventName, function(payload: any)
+			local disconnect = (self.eventBus :: any):Subscribe(sub.channel, eventName, function(payload: any)
 				local mapped = nil
 				if typeof(sub.map) == "function" then
 					mapped = sub.map(payload)
 				end
 				if mapped ~= nil and typeof(mapped) == "table" and typeof(mapped.key) == "string" then
-					self:notify(mapped.key, mapped.payload, mapped.config)
+					self:Notify(mapped.key, mapped.payload, mapped.config)
 					return
 				end
-				self:notify(eventName, payload, nil)
+				self:Notify(eventName, payload, nil)
 			end)
 			self.connections[#self.connections + 1] = {
 				disconnect = disconnect,
@@ -505,11 +505,11 @@ end
 
 function NotificationBus.Destroy(self: NotificationBus)
 	if self.loopToken ~= nil then
-		if typeof(self.loopToken.cancel) == "function" then
-			self.loopToken:cancel()
-		elseif self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).cancel) == "function" then
+		if typeof(self.loopToken.Cancel) == "function" then
+			self.loopToken:Cancel()
+		elseif self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).Cancel) == "function" then
 			local schedulerAny = self.tickScheduler :: any
-			schedulerAny:cancel(self.loopToken)
+			schedulerAny:Cancel(self.loopToken)
 		end
 		self.loopToken = nil
 	end
@@ -546,17 +546,5 @@ function NotificationBus.Destroy(self: NotificationBus)
 	table.clear(self.recentTimestamps)
 	self.isInitialized = false
 end
-
-NotificationBus.Notify = NotificationBus.Notify
-NotificationBus.NotifyDamageResult = NotificationBus.NotifyDamageResult
-NotificationBus.Init = NotificationBus.Init
-NotificationBus.Update = NotificationBus.Update
-
-NotificationBus.new = NotificationBus.New
-NotificationBus.notify = NotificationBus.Notify
-NotificationBus.notifyDamageResult = NotificationBus.NotifyDamageResult
-NotificationBus.update = NotificationBus.Update
-NotificationBus.init = NotificationBus.Init
-NotificationBus.destroy = NotificationBus.Destroy
 
 return NotificationBus

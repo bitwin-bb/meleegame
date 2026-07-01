@@ -46,19 +46,19 @@ local DEFAULT_CONFIG: PredictionConfig = {
 	derivedVelocityWeight = 0.35,
 }
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
 	return math.clamp(valueRaw, minimum, maximum)
 end
 
-local function sanitizeConfig(configRaw: any, fallbackRaw: PredictionConfig?): PredictionConfig
+local function CoerceConfig(configRaw: any, fallbackRaw: PredictionConfig?): PredictionConfig
 	local source = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local fallback = if typeof(fallbackRaw) == "table" then fallbackRaw else DEFAULT_CONFIG
 
-	local leadTime = sanitizeNumber((source :: any).leadTime, fallback.leadTime or 0.08, 0, 1)
-	local maxLeadTime = sanitizeNumber((source :: any).maxLeadTime, fallback.maxLeadTime or leadTime, leadTime, 1)
+	local leadTime = CoerceNumber((source :: any).leadTime, fallback.leadTime or 0.08, 0, 1)
+	local maxLeadTime = CoerceNumber((source :: any).maxLeadTime, fallback.maxLeadTime or leadTime, leadTime, 1)
 
 	return {
 		enabled = if typeof((source :: any).enabled) == "boolean"
@@ -66,9 +66,9 @@ local function sanitizeConfig(configRaw: any, fallbackRaw: PredictionConfig?): P
 			else fallback.enabled ~= false,
 		leadTime = leadTime,
 		maxLeadTime = maxLeadTime,
-		minimumSpeed = sanitizeNumber((source :: any).minimumSpeed, fallback.minimumSpeed or 2, 0, 1024),
-		maximumDistance = sanitizeNumber((source :: any).maximumDistance, fallback.maximumDistance or 18, 0, 4096),
-		derivedVelocityWeight = sanitizeNumber(
+		minimumSpeed = CoerceNumber((source :: any).minimumSpeed, fallback.minimumSpeed or 2, 0, 1024),
+		maximumDistance = CoerceNumber((source :: any).maximumDistance, fallback.maximumDistance or 18, 0, 4096),
+		derivedVelocityWeight = CoerceNumber(
 			(source :: any).derivedVelocityWeight,
 			fallback.derivedVelocityWeight or 0.35,
 			0,
@@ -97,7 +97,7 @@ local function buildResult(
 end
 
 function Predict.New(configRaw: PredictionConfig?): Predict
-	local config = sanitizeConfig(configRaw, DEFAULT_CONFIG)
+	local config = CoerceConfig(configRaw, DEFAULT_CONFIG)
 	return setmetatable({
 		enabled = config.enabled ~= false,
 		leadTime = config.leadTime or 0.08,
@@ -109,7 +109,7 @@ function Predict.New(configRaw: PredictionConfig?): Predict
 end
 
 function Predict.ApplyConfig(self: Predict, configRaw: PredictionConfig?)
-	local config = sanitizeConfig(configRaw, {
+	local config = CoerceConfig(configRaw, {
 		enabled = self.enabled,
 		leadTime = self.leadTime,
 		maxLeadTime = self.maxLeadTime,
@@ -126,10 +126,10 @@ function Predict.ApplyConfig(self: Predict, configRaw: PredictionConfig?)
 	self.derivedVelocityWeight = config.derivedVelocityWeight or self.derivedVelocityWeight
 end
 
-function Predict.Resolve(self: Predict, targetRaw: any, cacheRaw: any?, optionsRaw: any?): PredictionResult
+function Predict.Get(self: Predict, targetRaw: any, cacheRaw: any?, optionsRaw: any?): PredictionResult
 	local target = if typeof(targetRaw) == "table" then targetRaw else nil
 	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
-	local configOverride = sanitizeConfig((options :: any).config, {
+	local configOverride = CoerceConfig((options :: any).config, {
 		enabled = self.enabled,
 		leadTime = self.leadTime,
 		maxLeadTime = self.maxLeadTime,
@@ -150,8 +150,8 @@ function Predict.Resolve(self: Predict, targetRaw: any, cacheRaw: any?, optionsR
 	local cache = if typeof(cacheRaw) == "table" then cacheRaw else nil
 	local subjectKey = if typeof((target :: any).cacheKey) == "string" then (target :: any).cacheKey else nil
 
-	if cache ~= nil and subjectKey ~= nil and typeof((cache :: any).resolveDerivedVelocity) == "function" then
-		derivedVelocity = (cache :: any):resolveDerivedVelocity(
+	if cache ~= nil and subjectKey ~= nil and typeof((cache :: any).GetDerivedVelocity) == "function" then
+		derivedVelocity = (cache :: any):GetDerivedVelocity(
 			subjectKey,
 			basePosition,
 			(options :: any).now,
@@ -166,7 +166,7 @@ function Predict.Resolve(self: Predict, targetRaw: any, cacheRaw: any?, optionsR
 	end
 
 	local speed = velocity.Magnitude
-	local leadTime = sanitizeNumber(
+	local leadTime = CoerceNumber(
 		(options :: any).leadTime,
 		configOverride.leadTime or 0.08,
 		0,
@@ -176,16 +176,12 @@ function Predict.Resolve(self: Predict, targetRaw: any, cacheRaw: any?, optionsR
 		return buildResult(false, basePosition, basePosition, velocity, 0, Vector3.zero)
 	end
 
-	local offset = Vec.clampMagnitude(velocity * leadTime, configOverride.maximumDistance or 18)
+	local offset = Vec.ClampMagnitude(velocity * leadTime, configOverride.maximumDistance or 18)
 	if offset.Magnitude <= 1e-4 then
 		return buildResult(false, basePosition, basePosition, velocity, leadTime, Vector3.zero)
 	end
 
 	return buildResult(true, basePosition + offset, basePosition, velocity, leadTime, offset)
 end
-
-Predict.new = Predict.New
-Predict.applyConfig = Predict.ApplyConfig
-Predict.resolve = Predict.Resolve
 
 return Predict

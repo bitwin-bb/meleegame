@@ -11,7 +11,7 @@ local CoreRuntime = require("CoreRuntime")
 local HpServiceServer = require("HpServiceServer")
 local LiquidServiceUtils = require("LiquidServiceUtils")
 local PacketPayload = require("PacketPayload")
-local LiquidServicePackets = require("NetSharedPackets").LiquidService
+local LiquidServicePackets = require("NetPacketsShared").LiquidService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = LiquidServicePackets[methodName]
@@ -20,7 +20,7 @@ local function sendPacket(player: Player, methodName: string, ...: any)
 		return
 	end
 
-	packet.sendTo(PacketPayload.pack(...), player)
+	packet.sendTo(PacketPayload.Pack(...), player)
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -35,12 +35,13 @@ local function bindPacket(self: any, methodName: string)
 			return
 		end
 
-		local handler = self[methodName]
+		local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, player, table.unpack(arguments, 1, count))
 	end)
 end
@@ -98,19 +99,19 @@ type WorldObject = {
 	worldOrigin: Vector3,
 	basePlaneX: number?,
 	tileId: { AIR: number },
-	getPlayerInterestKeys: (self: WorldObject, player: Player) -> { [string]: boolean },
-	registerChunkLifecycleObserver: (self: WorldObject, observerRaw: any) -> ChunkLifecycleConnection?,
-	isChunkCollisionReadyByKey: (self: WorldObject, chunkKeyRaw: any) -> boolean,
-	isChunkCollisionReady: (self: WorldObject, chunkXRaw: any, chunkYRaw: any) -> boolean,
-	getLoadedCollisionChunkCount: (self: WorldObject) -> number,
-	getLiquidChunkSnapshotByKey: (self: WorldObject, chunkKeyRaw: any) -> { [string]: any }?,
-	getLiquidCellAt: (self: WorldObject, tileXRaw: any, tileYRaw: any) -> number,
-	setLiquidCellAt: (self: WorldObject, tileXRaw: any, tileYRaw: any, packedCellRaw: any) -> (boolean, number, number),
-	getTileAt: (self: WorldObject, tileXRaw: any, tileYRaw: any) -> (number, number),
+	GetPlayerInterestKeys: (self: WorldObject, player: Player) -> { [string]: boolean },
+	RegisterChunkLifecycleObserver: (self: WorldObject, observerRaw: any) -> ChunkLifecycleConnection?,
+	IsChunkCollisionReadyByKey: (self: WorldObject, chunkKeyRaw: any) -> boolean,
+	IsChunkCollisionReady: (self: WorldObject, chunkXRaw: any, chunkYRaw: any) -> boolean,
+	GetLoadedCollisionChunkCount: (self: WorldObject) -> number,
+	GetLiquidChunkSnapshotByKey: (self: WorldObject, chunkKeyRaw: any) -> { [string]: any }?,
+	GetLiquidCellAt: (self: WorldObject, tileXRaw: any, tileYRaw: any) -> number,
+	SetLiquidCellAt: (self: WorldObject, tileXRaw: any, tileYRaw: any, packedCellRaw: any) -> (boolean, number, number),
+	GetTileAt: (self: WorldObject, tileXRaw: any, tileYRaw: any) -> (number, number),
 }
 
 type WorldGenerationServiceServerObject = {
-	getWorld: (self: WorldGenerationServiceServerObject) -> WorldObject,
+	GetWorld: (self: WorldGenerationServiceServerObject) -> WorldObject,
 }
 
 type PlayerServiceServerObject = {
@@ -226,7 +227,7 @@ local function isGameplayReplicationActive(player: Player): boolean
 		return true
 	end
 	local ok, isActive = pcall(function()
-		return (PlayerServiceServer :: any):isGameplayActiveForPlayer(player)
+		return (PlayerServiceServer :: any):IsGameplayActiveForPlayer(player)
 	end)
 	return ok and isActive == true
 end
@@ -257,7 +258,7 @@ local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function resolveSourceConfig(): any
+local function GetSourceConfig(): any
 	if typeof(Configs) ~= "table" then
 		return nil
 	end
@@ -306,7 +307,7 @@ local function dequeueString(
 	return value, head, tail
 end
 
-local function sanitizeChunkDebugName(chunkKey: string): string
+local function CoerceChunkDebugName(chunkKey: string): string
 	return string.gsub(chunkKey, ":", "_")
 end
 
@@ -343,7 +344,7 @@ local function createSimulationTickStats(): SimulationTickStats
 	}
 end
 
-local function resolvePlayerCharacter(player: Player): Model?
+local function GetPlayerCharacter(player: Player): Model?
 	local character = player.Character
 	if character ~= nil and character:IsA("Model") then
 		return character
@@ -351,7 +352,7 @@ local function resolvePlayerCharacter(player: Player): Model?
 	return nil
 end
 
-local function resolveCharacterRootPart(character: Model?): BasePart?
+local function GetCharacterRootPart(character: Model?): BasePart?
 	if character == nil then
 		return nil
 	end
@@ -370,7 +371,7 @@ local function resolveCharacterRootPart(character: Model?): BasePart?
 	return nil
 end
 
-local function resolveCharacterHumanoid(character: Model?): Humanoid?
+local function GetCharacterHumanoid(character: Model?): Humanoid?
 	if character == nil then
 		return nil
 	end
@@ -427,7 +428,7 @@ function LiquidServiceServer.GetChunkRuntime(self: LiquidServiceServer, chunkKey
 	if runtime ~= nil then
 		return runtime
 	end
-	runtime = self:createChunkRuntime(chunkKey)
+	runtime = self:CreateChunkRuntime(chunkKey)
 	self.chunkRuntimes[chunkKey] = runtime
 	return runtime
 end
@@ -437,7 +438,7 @@ function LiquidServiceServer.IsCollisionChunkReadyByKey(self: LiquidServiceServe
 	if world == nil then
 		return false
 	end
-	local readinessMethod = (world :: any).isChunkCollisionReadyByKey
+	local readinessMethod = (world :: any).IsChunkCollisionReadyByKey
 	if typeof(readinessMethod) == "function" then
 		return readinessMethod(world, chunkKey) == true
 	end
@@ -449,7 +450,7 @@ function LiquidServiceServer.GetLoadedCollisionChunkCount(self: LiquidServiceSer
 	if world == nil then
 		return 0
 	end
-	local countMethod = (world :: any).getLoadedCollisionChunkCount
+	local countMethod = (world :: any).GetLoadedCollisionChunkCount
 	if typeof(countMethod) == "function" then
 		local count = countMethod(world)
 		if isFiniteNumber(count) then
@@ -479,7 +480,7 @@ function LiquidServiceServer.SetChunkRegionState(
 		runtime.waitingOnChunkReady = false
 		runtime.dependencyChunkKey = ""
 	end
-	self:updateChunkDebugAttributes(chunkKey, runtime)
+	self:UpdateChunkDebugAttributes(chunkKey, runtime)
 end
 
 function LiquidServiceServer.RestoreQueuedDirtyCellsForChunk(
@@ -491,7 +492,7 @@ function LiquidServiceServer.RestoreQueuedDirtyCellsForChunk(
 	if runtime == nil or getDirtyCount(runtime) <= 0 then
 		return 0
 	end
-	local snapshot = self:getChunkSnapshot(chunkKey)
+	local snapshot = self:GetChunkSnapshot(chunkKey)
 	if snapshot == nil then
 		return 0
 	end
@@ -501,7 +502,7 @@ function LiquidServiceServer.RestoreQueuedDirtyCellsForChunk(
 		local zeroIndex = index - 1
 		local localY = math.floor(zeroIndex / snapshot.width)
 		local localX = zeroIndex - localY * snapshot.width
-		self:requeueDirtyMutation({
+		self:RequeueDirtyMutation({
 			x = snapshot.tileMinX + localX,
 			y = snapshot.tileMinY + localY,
 			z = 0,
@@ -545,7 +546,7 @@ function LiquidServiceServer.WakeChunkBounds(
 
 	for tileY = math.max(chunkMinY, minTileY), math.min(chunkMaxY, maxTileY) do
 		for tileX = math.max(chunkMinX, minTileX), math.min(chunkMaxX, maxTileX) do
-			if self:markTileDirty(tileX, tileY, reason, sourceTileX, sourceTileY) then
+			if self:MarkTileDirty(tileX, tileY, reason, sourceTileX, sourceTileY) then
 				marked += 1
 			end
 		end
@@ -569,24 +570,24 @@ function LiquidServiceServer.WakeChunkDependencyNeighborhood(
 		for offsetX = -1, 1 do
 			local neighborChunkX = chunkX + offsetX
 			local neighborChunkY = chunkY + offsetY
-			local neighborKey = LiquidServiceUtils.packChunkKey(neighborChunkX, neighborChunkY)
+			local neighborKey = LiquidServiceUtils.PackChunkKey(neighborChunkX, neighborChunkY)
 			local runtime = if offsetX == 0 and offsetY == 0
-				then self:getChunkRuntime(neighborKey)
+				then self:GetChunkRuntime(neighborKey)
 				else self.chunkRuntimes[neighborKey]
-			if self:isCollisionChunkReadyByKey(neighborKey) then
+			if self:IsCollisionChunkReadyByKey(neighborKey) then
 				if runtime == nil then
 					continue
 				end
-				local restored = self:restoreQueuedDirtyCellsForChunk(neighborKey, `{reason}:restoreDirty`)
+				local restored = self:RestoreQueuedDirtyCellsForChunk(neighborKey, `{reason}:restoreDirty`)
 				if restored == 0 then
-					self:primeChunkRuntime(neighborKey, reason)
+					self:PrimeChunkRuntime(neighborKey, reason)
 				end
-				self:setChunkRegionState(neighborKey, runtime, CELL_DEBUG_STATE.ACTIVE, reason)
+				self:SetChunkRegionState(neighborKey, runtime, CELL_DEBUG_STATE.ACTIVE, reason)
 			else
 				if runtime == nil then
 					continue
 				end
-				self:setChunkRegionState(
+				self:SetChunkRegionState(
 					neighborKey,
 					runtime,
 					CELL_DEBUG_STATE.DEFERRED_WAITING_FOR_CHUNK,
@@ -609,14 +610,14 @@ function LiquidServiceServer.OnChunkCollisionReady(
 	end
 	local chunkX = math.floor(chunkXRaw)
 	local chunkY = math.floor(chunkYRaw)
-	local chunkKey = LiquidServiceUtils.packChunkKey(chunkX, chunkY)
+	local chunkKey = LiquidServiceUtils.PackChunkKey(chunkX, chunkY)
 	local context = if typeof(contextRaw) == "table" then contextRaw :: { [string]: any } else {} :: any
 	self.pendingChunkReadinessWakeups += 1
-	self:debugLog(
+	self:DebugLog(
 		"logActivations",
 		`{chunkKey} collision-ready ({if typeof(context.reason) == "string" then context.reason else "ready"})`
 	)
-	self:wakeChunkDependencyNeighborhood(chunkX, chunkY, "chunkCollisionReady")
+	self:WakeChunkDependencyNeighborhood(chunkX, chunkY, "chunkCollisionReady")
 end
 
 function LiquidServiceServer.OnChunkCollisionUnloaded(
@@ -630,16 +631,16 @@ function LiquidServiceServer.OnChunkCollisionUnloaded(
 	end
 	local chunkX = math.floor(chunkXRaw)
 	local chunkY = math.floor(chunkYRaw)
-	local chunkKey = LiquidServiceUtils.packChunkKey(chunkX, chunkY)
-	local runtime = self:getChunkRuntime(chunkKey)
-	self:setChunkRegionState(
+	local chunkKey = LiquidServiceUtils.PackChunkKey(chunkX, chunkY)
+	local runtime = self:GetChunkRuntime(chunkKey)
+	self:SetChunkRegionState(
 		chunkKey,
 		runtime,
 		CELL_DEBUG_STATE.DEFERRED_WAITING_FOR_CHUNK,
 		`awaitingCollisionChunk {chunkKey}`,
 		chunkKey
 	)
-	self:debugLog("logStableTransitions", `{chunkKey} deferred (collision chunk unloaded)`)
+	self:DebugLog("logStableTransitions", `{chunkKey} deferred (collision chunk unloaded)`)
 	for offsetY = -1, 1 do
 		for offsetX = -1, 1 do
 			if offsetX == 0 and offsetY == 0 then
@@ -647,13 +648,13 @@ function LiquidServiceServer.OnChunkCollisionUnloaded(
 			end
 			local neighborChunkX = chunkX + offsetX
 			local neighborChunkY = chunkY + offsetY
-			local neighborKey = LiquidServiceUtils.packChunkKey(neighborChunkX, neighborChunkY)
+			local neighborKey = LiquidServiceUtils.PackChunkKey(neighborChunkX, neighborChunkY)
 			local neighborRuntime = self.chunkRuntimes[neighborKey]
-			if neighborRuntime == nil or not self:isCollisionChunkReadyByKey(neighborKey) then
+			if neighborRuntime == nil or not self:IsCollisionChunkReadyByKey(neighborKey) then
 				continue
 			end
-			self:primeChunkRuntime(neighborKey, "neighborCollisionUnavailable")
-			self:setChunkRegionState(
+			self:PrimeChunkRuntime(neighborKey, "neighborCollisionUnavailable")
+			self:SetChunkRegionState(
 				neighborKey,
 				neighborRuntime,
 				CELL_DEBUG_STATE.DEFERRED_WAITING_FOR_CHUNK,
@@ -676,9 +677,9 @@ function LiquidServiceServer.OnChunkTerrainChanged(
 	end
 	local chunkX = math.floor(chunkXRaw)
 	local chunkY = math.floor(chunkYRaw)
-	local chunkKey = LiquidServiceUtils.packChunkKey(chunkX, chunkY)
+	local chunkKey = LiquidServiceUtils.PackChunkKey(chunkX, chunkY)
 	local context = if typeof(contextRaw) == "table" then contextRaw :: { [string]: any } else {} :: any
-	local runtime = self:getChunkRuntime(chunkKey)
+	local runtime = self:GetChunkRuntime(chunkKey)
 	local sourceTileX = if isFiniteNumber(context.sourceTileX) then math.floor(context.sourceTileX) else nil
 	local sourceTileY = if isFiniteNumber(context.sourceTileY) then math.floor(context.sourceTileY) else nil
 	local nextTileId = if isFiniteNumber(context.nextTileId) then math.floor(context.nextTileId) else nil
@@ -693,23 +694,23 @@ function LiquidServiceServer.OnChunkTerrainChanged(
 		and self.world ~= nil
 		and nextTileId ~= self.world.tileId.AIR
 	then
-		local packedCell = self.world:getLiquidCellAt(sourceTileX, sourceTileY)
+		local packedCell = self.world:GetLiquidCellAt(sourceTileX, sourceTileY)
 		if packedCell ~= 0 then
-			self:setPackedCell(sourceTileX, sourceTileY, 0)
-			self:redistributeDisplacedLiquid(sourceTileX, sourceTileY, packedCell)
+			self:SetPackedCell(sourceTileX, sourceTileY, 0)
+			self:RedistributeDisplacedLiquid(sourceTileX, sourceTileY, packedCell)
 		end
 	end
 
-	self:setChunkRegionState(
+	self:SetChunkRegionState(
 		chunkKey,
 		runtime,
 		CELL_DEBUG_STATE.DEFERRED_WAITING_FOR_CHUNK,
 		`awaitingCollisionChunk {chunkKey}`,
 		chunkKey
 	)
-	self:wakeChunkBounds(chunkX, chunkY, dirtyBoundsRaw, reason, sourceTileX, sourceTileY)
+	self:WakeChunkBounds(chunkX, chunkY, dirtyBoundsRaw, reason, sourceTileX, sourceTileY)
 	if sourceTileX ~= nil and sourceTileY ~= nil then
-		self:wakeLiquidRegion(sourceTileX, sourceTileY, reason, {
+		self:WakeLiquidRegion(sourceTileX, sourceTileY, reason, {
 			radius = 2,
 			sourceTileX = sourceTileX,
 			sourceTileY = sourceTileY,
@@ -723,7 +724,7 @@ function LiquidServiceServer.IsDebugEnabled(self: LiquidServiceServer): boolean
 end
 
 function LiquidServiceServer.ShouldDebugLog(self: LiquidServiceServer, flagName: string): boolean
-	if not self:isDebugEnabled() then
+	if not self:IsDebugEnabled() then
 		return false
 	end
 	return (self.config.debug :: any)[flagName] == true
@@ -734,7 +735,7 @@ function LiquidServiceServer.DebugLog(self: LiquidServiceServer, _flagName: stri
 end
 
 function LiquidServiceServer.GetDebugFolder(self: LiquidServiceServer): Folder?
-	if not self:isDebugEnabled() then
+	if not self:IsDebugEnabled() then
 		return nil
 	end
 	if not self.config.debug.visualizeChunks and not self.config.debug.visualizeCells then
@@ -743,16 +744,16 @@ function LiquidServiceServer.GetDebugFolder(self: LiquidServiceServer): Folder?
 	if self.debugFolder ~= nil and self.debugFolder.Parent ~= nil then
 		return self.debugFolder
 	end
-	self.debugFolder = WorkspaceFolders.getOrCreateFolderInGame("LiquidDebug")
+	self.debugFolder = WorkspaceFolders.GetOrCreateFolderInGame("LiquidDebug")
 	return self.debugFolder
 end
 
 function LiquidServiceServer.GetChunkDebugFolder(self: LiquidServiceServer, chunkKey: string): Folder?
-	local debugFolder = self:getDebugFolder()
+	local debugFolder = self:GetDebugFolder()
 	if debugFolder == nil then
 		return nil
 	end
-	local folderName = `Chunk_{sanitizeChunkDebugName(chunkKey)}`
+	local folderName = `Chunk_{CoerceChunkDebugName(chunkKey)}`
 	local existing = debugFolder:FindFirstChild(folderName)
 	if existing ~= nil and existing:IsA("Folder") then
 		return existing
@@ -770,7 +771,7 @@ function LiquidServiceServer.GetChunkCellDebugFolder(self: LiquidServiceServer, 
 	if not self.config.debug.visualizeCells then
 		return nil
 	end
-	local chunkFolder = self:getChunkDebugFolder(chunkKey)
+	local chunkFolder = self:GetChunkDebugFolder(chunkKey)
 	if chunkFolder == nil then
 		return nil
 	end
@@ -788,35 +789,35 @@ function LiquidServiceServer.GetChunkCellDebugFolder(self: LiquidServiceServer, 
 end
 
 function LiquidServiceServer.UpdateSimulationDebugStats(self: LiquidServiceServer)
-	local debugFolder = self:getDebugFolder()
-	local debugCounters = if self.debug ~= nil then self.debug:getCounters() else {} :: any
+	local debugFolder = self:GetDebugFolder()
+	local debugCounters = if self.debug ~= nil then self.debug:GetCounters() else {} :: any
 	local wakePoolStats = if self.wakeRequestPool ~= nil
-			and typeof((self.wakeRequestPool :: any).getStats) == "function"
-		then (self.wakeRequestPool :: any):getStats()
+			and typeof((self.wakeRequestPool :: any).GetStats) == "function"
+		then (self.wakeRequestPool :: any):GetStats()
 		else {} :: any
 	if debugFolder == nil then
 		if self.debug ~= nil then
-			self.debug:setCounter("liquid_active_chunks", self.currentSimulationStats.activeChunks)
-			self.debug:setCounter("liquid_dirty_chunks", self.currentSimulationStats.dirtyChunks)
-			self.debug:setCounter("liquid_queued_cells", self.currentSimulationStats.queuedCells)
-			self.debug:setCounter("liquid_pending_wake_requests", self:getPendingWakeRequestCount())
-			self.debug:setCounter("liquid_wake_requests_queued", self.currentSimulationStats.wakeRequestsQueued)
-			self.debug:setCounter("liquid_wake_requests_processed", self.currentSimulationStats.wakeRequestsProcessed)
-			self.debug:setCounter("liquid_cells_processed", self.currentSimulationStats.cellsProcessed)
-			self.debug:setCounter("liquid_active_cells", self.currentSimulationStats.activeCells)
-			self.debug:setCounter("liquid_cross_chunk_wakeups", self.currentSimulationStats.crossChunkWakeups)
-			self.debug:setCounter("liquid_downward_transfer", self.currentSimulationStats.downwardTransfers)
-			self.debug:setCounter("liquid_lateral_transfer", self.currentSimulationStats.lateralTransfers)
-			self.debug:setCounter("liquid_solver_iterations", self.currentSimulationStats.solverIterations)
-			self.debug:setCounter("liquid_consistency_requeues", self.currentSimulationStats.consistencyRequeues)
-			self.debug:setCounter("liquid_deferred_chunks", self.currentSimulationStats.deferredChunks)
-			self.debug:setCounter("liquid_chunk_readiness_wakeups", self.currentSimulationStats.chunkReadinessWakeups)
-			self.debug:setCounter("liquid_collision_chunks_loaded", self.currentSimulationStats.collisionChunksLoaded)
-			self.debug:setCounter(
+			self.debug:SetCounter("liquid_active_chunks", self.currentSimulationStats.activeChunks)
+			self.debug:SetCounter("liquid_dirty_chunks", self.currentSimulationStats.dirtyChunks)
+			self.debug:SetCounter("liquid_queued_cells", self.currentSimulationStats.queuedCells)
+			self.debug:SetCounter("liquid_pending_wake_requests", self:GetPendingWakeRequestCount())
+			self.debug:SetCounter("liquid_wake_requests_queued", self.currentSimulationStats.wakeRequestsQueued)
+			self.debug:SetCounter("liquid_wake_requests_processed", self.currentSimulationStats.wakeRequestsProcessed)
+			self.debug:SetCounter("liquid_cells_processed", self.currentSimulationStats.cellsProcessed)
+			self.debug:SetCounter("liquid_active_cells", self.currentSimulationStats.activeCells)
+			self.debug:SetCounter("liquid_cross_chunk_wakeups", self.currentSimulationStats.crossChunkWakeups)
+			self.debug:SetCounter("liquid_downward_transfer", self.currentSimulationStats.downwardTransfers)
+			self.debug:SetCounter("liquid_lateral_transfer", self.currentSimulationStats.lateralTransfers)
+			self.debug:SetCounter("liquid_solver_iterations", self.currentSimulationStats.solverIterations)
+			self.debug:SetCounter("liquid_consistency_requeues", self.currentSimulationStats.consistencyRequeues)
+			self.debug:SetCounter("liquid_deferred_chunks", self.currentSimulationStats.deferredChunks)
+			self.debug:SetCounter("liquid_chunk_readiness_wakeups", self.currentSimulationStats.chunkReadinessWakeups)
+			self.debug:SetCounter("liquid_collision_chunks_loaded", self.currentSimulationStats.collisionChunksLoaded)
+			self.debug:SetCounter(
 				"liquid_wake_pool_available",
 				if typeof(wakePoolStats.available) == "number" then wakePoolStats.available else 0
 			)
-			self.debug:setCounter(
+			self.debug:SetCounter(
 				"liquid_wake_pool_in_use",
 				if typeof(wakePoolStats.inUse) == "number" then wakePoolStats.inUse else 0
 			)
@@ -827,7 +828,7 @@ function LiquidServiceServer.UpdateSimulationDebugStats(self: LiquidServiceServe
 	debugFolder:SetAttribute("ActiveChunks", self.currentSimulationStats.activeChunks)
 	debugFolder:SetAttribute("DirtyChunks", self.currentSimulationStats.dirtyChunks)
 	debugFolder:SetAttribute("QueuedCells", self.currentSimulationStats.queuedCells)
-	debugFolder:SetAttribute("PendingWakeRequests", self:getPendingWakeRequestCount())
+	debugFolder:SetAttribute("PendingWakeRequests", self:GetPendingWakeRequestCount())
 	debugFolder:SetAttribute("WakeRequestsQueued", self.currentSimulationStats.wakeRequestsQueued)
 	debugFolder:SetAttribute("WakeRequestsProcessed", self.currentSimulationStats.wakeRequestsProcessed)
 	debugFolder:SetAttribute("ActiveCells", self.currentSimulationStats.activeCells)
@@ -857,27 +858,27 @@ function LiquidServiceServer.UpdateSimulationDebugStats(self: LiquidServiceServe
 		math.round(((debugCounters.time_liquid_consistency_sweep or 0) * 1000) * 100) / 100
 	)
 	if self.debug ~= nil then
-		self.debug:setCounter("liquid_active_chunks", self.currentSimulationStats.activeChunks)
-		self.debug:setCounter("liquid_dirty_chunks", self.currentSimulationStats.dirtyChunks)
-		self.debug:setCounter("liquid_queued_cells", self.currentSimulationStats.queuedCells)
-		self.debug:setCounter("liquid_pending_wake_requests", self:getPendingWakeRequestCount())
-		self.debug:setCounter("liquid_wake_requests_queued", self.currentSimulationStats.wakeRequestsQueued)
-		self.debug:setCounter("liquid_wake_requests_processed", self.currentSimulationStats.wakeRequestsProcessed)
-		self.debug:setCounter("liquid_cells_processed", self.currentSimulationStats.cellsProcessed)
-		self.debug:setCounter("liquid_active_cells", self.currentSimulationStats.activeCells)
-		self.debug:setCounter("liquid_cross_chunk_wakeups", self.currentSimulationStats.crossChunkWakeups)
-		self.debug:setCounter("liquid_downward_transfer", self.currentSimulationStats.downwardTransfers)
-		self.debug:setCounter("liquid_lateral_transfer", self.currentSimulationStats.lateralTransfers)
-		self.debug:setCounter("liquid_solver_iterations", self.currentSimulationStats.solverIterations)
-		self.debug:setCounter("liquid_consistency_requeues", self.currentSimulationStats.consistencyRequeues)
-		self.debug:setCounter("liquid_deferred_chunks", self.currentSimulationStats.deferredChunks)
-		self.debug:setCounter("liquid_chunk_readiness_wakeups", self.currentSimulationStats.chunkReadinessWakeups)
-		self.debug:setCounter("liquid_collision_chunks_loaded", self.currentSimulationStats.collisionChunksLoaded)
-		self.debug:setCounter(
+		self.debug:SetCounter("liquid_active_chunks", self.currentSimulationStats.activeChunks)
+		self.debug:SetCounter("liquid_dirty_chunks", self.currentSimulationStats.dirtyChunks)
+		self.debug:SetCounter("liquid_queued_cells", self.currentSimulationStats.queuedCells)
+		self.debug:SetCounter("liquid_pending_wake_requests", self:GetPendingWakeRequestCount())
+		self.debug:SetCounter("liquid_wake_requests_queued", self.currentSimulationStats.wakeRequestsQueued)
+		self.debug:SetCounter("liquid_wake_requests_processed", self.currentSimulationStats.wakeRequestsProcessed)
+		self.debug:SetCounter("liquid_cells_processed", self.currentSimulationStats.cellsProcessed)
+		self.debug:SetCounter("liquid_active_cells", self.currentSimulationStats.activeCells)
+		self.debug:SetCounter("liquid_cross_chunk_wakeups", self.currentSimulationStats.crossChunkWakeups)
+		self.debug:SetCounter("liquid_downward_transfer", self.currentSimulationStats.downwardTransfers)
+		self.debug:SetCounter("liquid_lateral_transfer", self.currentSimulationStats.lateralTransfers)
+		self.debug:SetCounter("liquid_solver_iterations", self.currentSimulationStats.solverIterations)
+		self.debug:SetCounter("liquid_consistency_requeues", self.currentSimulationStats.consistencyRequeues)
+		self.debug:SetCounter("liquid_deferred_chunks", self.currentSimulationStats.deferredChunks)
+		self.debug:SetCounter("liquid_chunk_readiness_wakeups", self.currentSimulationStats.chunkReadinessWakeups)
+		self.debug:SetCounter("liquid_collision_chunks_loaded", self.currentSimulationStats.collisionChunksLoaded)
+		self.debug:SetCounter(
 			"liquid_wake_pool_available",
 			if typeof(wakePoolStats.available) == "number" then wakePoolStats.available else 0
 		)
-		self.debug:setCounter(
+		self.debug:SetCounter(
 			"liquid_wake_pool_in_use",
 			if typeof(wakePoolStats.inUse) == "number" then wakePoolStats.inUse else 0
 		)
@@ -893,18 +894,18 @@ function LiquidServiceServer.UpdateCellDebugVisual(
 	fill: number,
 	liquidType: number
 )
-	if not self:isDebugEnabled() or not self.config.debug.visualizeCells then
+	if not self:IsDebugEnabled() or not self.config.debug.visualizeCells then
 		return
 	end
 	local world = self.world
 	if world == nil then
 		return
 	end
-	local chunkKey = LiquidServiceUtils.packChunkKey(
-		LiquidServiceUtils.toChunkCoordinate(tileX, world.chunkSize),
-		LiquidServiceUtils.toChunkCoordinate(tileY, world.chunkSize)
+	local chunkKey = LiquidServiceUtils.PackChunkKey(
+		LiquidServiceUtils.ToChunkCoordinate(tileX, world.chunkSize),
+		LiquidServiceUtils.ToChunkCoordinate(tileY, world.chunkSize)
 	)
-	local folder = self:getChunkCellDebugFolder(chunkKey)
+	local folder = self:GetChunkCellDebugFolder(chunkKey)
 	if folder == nil then
 		return
 	end
@@ -937,7 +938,7 @@ function LiquidServiceServer.UpdateCellDebugVisual(
 	local debugPart = part :: Part
 
 	local basePlaneX = if isFiniteNumber((world :: any).basePlaneX) then (world :: any).basePlaneX else 0
-	local center = LiquidServiceUtils.tileToWorldCenter(tileX, tileY, world.worldOrigin, world.tileSize, basePlaneX)
+	local center = LiquidServiceUtils.TileToWorldCenter(tileX, tileY, world.worldOrigin, world.tileSize, basePlaneX)
 	debugPart.CFrame = CFrame.new(center.X - 0.9, center.Y, center.Z)
 	debugPart.Size = Vector3.new(CELL_DEBUG_PART_DEPTH, world.tileSize * 0.22, world.tileSize * 0.22)
 	debugPart.Color = CELL_DEBUG_COLORS[state] or Color3.fromRGB(255, 255, 255)
@@ -963,7 +964,7 @@ function LiquidServiceServer.UpdateChunkDebugAttributes(
 	if not self.config.debug.visualizeChunks then
 		return
 	end
-	local folder = self:getChunkDebugFolder(chunkKey)
+	local folder = self:GetChunkDebugFolder(chunkKey)
 	if folder == nil then
 		return
 	end
@@ -999,7 +1000,7 @@ function LiquidServiceServer.UpdateChunkDebugAttributes(
 	folder:SetAttribute("LastDeferredReason", runtime.lastDeferredReason)
 	folder:SetAttribute("RegionState", runtime.regionState)
 	folder:SetAttribute("RegionReason", runtime.regionReason)
-	folder:SetAttribute("CollisionChunkReady", self:isCollisionChunkReadyByKey(chunkKey))
+	folder:SetAttribute("CollisionChunkReady", self:IsCollisionChunkReadyByKey(chunkKey))
 	if extra.InActiveSet ~= nil then
 		folder:SetAttribute("InActiveSet", extra.InActiveSet == true)
 	end
@@ -1039,7 +1040,7 @@ function LiquidServiceServer.GetPlayerStream(self: LiquidServiceServer, player: 
 	if stream ~= nil then
 		return stream
 	end
-	stream = self:createPlayerStream()
+	stream = self:CreatePlayerStream()
 	self.playerStreams[player] = stream
 	return stream
 end
@@ -1068,14 +1069,14 @@ function LiquidServiceServer.GetHazardRuntime(self: LiquidServiceServer, player:
 	if runtime ~= nil then
 		return runtime
 	end
-	runtime = self:createHazardRuntime()
+	runtime = self:CreateHazardRuntime()
 	self.playerHazards[player] = runtime
 	return runtime
 end
 
 function LiquidServiceServer.CreateStateSnapshot(self: LiquidServiceServer): LiquidServiceState
 	local world = self.world
-	return LiquidServiceUtils.createState({
+	return LiquidServiceUtils.CreateState({
 		ready = world ~= nil,
 		tileSize = if world ~= nil and isFiniteNumber((world :: any).tileSize) then (world :: any).tileSize else 4,
 		chunkSize = if world ~= nil and isFiniteNumber((world :: any).chunkSize)
@@ -1090,8 +1091,8 @@ function LiquidServiceServer.CreateStateSnapshot(self: LiquidServiceServer): Liq
 end
 
 function LiquidServiceServer.PushState(self: LiquidServiceServer, player: Player)
-	self.state = self:createStateSnapshot()
-	sendPacket(player, LiquidServiceUtils.CLIENT_METHOD_APPLY_STATE, LiquidServiceUtils.cloneState(self.state))
+	self.state = self:CreateStateSnapshot()
+	sendPacket(player, LiquidServiceUtils.CLIENT_METHOD_APPLY_STATE, LiquidServiceUtils.CloneState(self.state))
 end
 
 function LiquidServiceServer.GetDefinition(self: LiquidServiceServer, liquidType: number): LiquidDefinition?
@@ -1103,12 +1104,12 @@ function LiquidServiceServer.GetChunkSnapshot(self: LiquidServiceServer, chunkKe
 	if world == nil then
 		return nil
 	end
-	local snapshotRaw = world:getLiquidChunkSnapshotByKey(chunkKey)
+	local snapshotRaw = world:GetLiquidChunkSnapshotByKey(chunkKey)
 	if typeof(snapshotRaw) ~= "table" then
 		return nil
 	end
 	local source = snapshotRaw :: { [string]: any }
-	local runtime = self:getChunkRuntime(chunkKey)
+	local runtime = self:GetChunkRuntime(chunkKey)
 	return {
 		key = if typeof(source.key) == "string" then source.key else chunkKey,
 		chunkX = if isFiniteNumber(source.chunkX) then math.floor(source.chunkX) else 0,
@@ -1138,9 +1139,9 @@ function LiquidServiceServer.MarkChunkStable(
 	local stableState = if runtime.regionState == CELL_DEBUG_STATE.BLOCKED_BY_LOADED_TERRAIN
 		then CELL_DEBUG_STATE.BLOCKED_BY_LOADED_TERRAIN
 		else CELL_DEBUG_STATE.STABLE
-	self:setChunkRegionState(chunkKey, runtime, stableState, reason)
-	self:updateChunkDebugAttributes(chunkKey, runtime)
-	self:debugLog("logStableTransitions", `{chunkKey} stable ({reason})`)
+	self:SetChunkRegionState(chunkKey, runtime, stableState, reason)
+	self:UpdateChunkDebugAttributes(chunkKey, runtime)
+	self:DebugLog("logStableTransitions", `{chunkKey} stable ({reason})`)
 end
 
 function LiquidServiceServer.RecordSimulationMetric(
@@ -1214,7 +1215,7 @@ function LiquidServiceServer.TrackRecentChunkActivity(
 )
 	local touchedAt = os.clock()
 	self.recentChunkTouchedAt[chunkKey] = touchedAt
-	local worldX, worldY, worldZ = self:getChunkWorldPosition(chunkX, chunkY)
+	local worldX, worldY, worldZ = self:GetChunkWorldPosition(chunkX, chunkY)
 	local payload: RecentChunkActivity = {
 		key = chunkKey,
 		chunkX = chunkX,
@@ -1234,7 +1235,7 @@ function LiquidServiceServer.PruneRecentChunkActivity(self: LiquidServiceServer)
 			continue
 		end
 		self.recentChunkTouchedAt[chunkKey] = nil
-		self.recentChunkGrid:remove(chunkKey)
+		self.recentChunkGrid:Remove(chunkKey)
 	end
 end
 
@@ -1242,13 +1243,13 @@ function LiquidServiceServer.RequeueDirtyMutation(self: LiquidServiceServer, mut
 	if typeof(mutationRaw) ~= "table" then
 		return
 	end
-	self.dirtyCellQueue:enqueue(mutationRaw)
+	self.dirtyCellQueue:Enqueue(mutationRaw)
 end
 
 function LiquidServiceServer.PrimeChunkRuntime(self: LiquidServiceServer, chunkKey: string, reasonRaw: any?): number
-	local runtime = self:getChunkRuntime(chunkKey)
-	if not self:isCollisionChunkReadyByKey(chunkKey) then
-		self:setChunkRegionState(
+	local runtime = self:GetChunkRuntime(chunkKey)
+	if not self:IsCollisionChunkReadyByKey(chunkKey) then
+		self:SetChunkRegionState(
 			chunkKey,
 			runtime,
 			CELL_DEBUG_STATE.DEFERRED_WAITING_FOR_CHUNK,
@@ -1256,19 +1257,19 @@ function LiquidServiceServer.PrimeChunkRuntime(self: LiquidServiceServer, chunkK
 			chunkKey
 		)
 		runtime.lastPrimedCells = 0
-		self:updateChunkDebugAttributes(chunkKey, runtime)
+		self:UpdateChunkDebugAttributes(chunkKey, runtime)
 		return 0
 	end
 	if getDirtyCount(runtime) > 0 then
 		runtime.lastPrimedCells = 0
-		self:updateChunkDebugAttributes(chunkKey, runtime)
+		self:UpdateChunkDebugAttributes(chunkKey, runtime)
 		return 0
 	end
 
-	local snapshot = self:getChunkSnapshot(chunkKey)
+	local snapshot = self:GetChunkSnapshot(chunkKey)
 	if snapshot == nil then
 		runtime.lastPrimedCells = 0
-		self:updateChunkDebugAttributes(chunkKey, runtime)
+		self:UpdateChunkDebugAttributes(chunkKey, runtime)
 		return 0
 	end
 
@@ -1283,7 +1284,7 @@ function LiquidServiceServer.PrimeChunkRuntime(self: LiquidServiceServer, chunkK
 		local localX = zeroIndex - localY * snapshot.width
 		local tileX = snapshot.tileMinX + localX
 		local tileY = snapshot.tileMinY + localY
-		if self:markTileDirty(tileX, tileY, reasonRaw or "activation") then
+		if self:MarkTileDirty(tileX, tileY, reasonRaw or "activation") then
 			primedCount += 1
 		end
 	end
@@ -1291,14 +1292,14 @@ function LiquidServiceServer.PrimeChunkRuntime(self: LiquidServiceServer, chunkK
 	runtime.lastPrimedCells = primedCount
 	if primedCount > 0 then
 		runtime.lastDisturbedAt = os.clock()
-		self:debugLog(
+		self:DebugLog(
 			"logActivations",
 			`{chunkKey} primed {primedCount} liquid cells ({if typeof(reasonRaw) == "string"
 				then reasonRaw
 				else "activation"})`
 		)
 	end
-	self:updateChunkDebugAttributes(chunkKey, runtime)
+	self:UpdateChunkDebugAttributes(chunkKey, runtime)
 	return primedCount
 end
 
@@ -1317,13 +1318,13 @@ function LiquidServiceServer.ExpandInterestKeys(
 
 	local expanded: { [string]: boolean } = {}
 	for chunkKey in baseInterest do
-		local chunkX, chunkY = LiquidServiceUtils.unpackChunkKey(chunkKey)
+		local chunkX, chunkY = LiquidServiceUtils.UnpackChunkKey(chunkKey)
 		if chunkX == nil or chunkY == nil then
 			continue
 		end
 		for offsetY = -margin, margin do
 			for offsetX = -margin, margin do
-				expanded[LiquidServiceUtils.packChunkKey(chunkX + offsetX, chunkY + offsetY)] = true
+				expanded[LiquidServiceUtils.PackChunkKey(chunkX + offsetX, chunkY + offsetY)] = true
 			end
 		end
 	end
@@ -1335,16 +1336,16 @@ function LiquidServiceServer.RefreshPlayerInterest(self: LiquidServiceServer, pl
 	if world == nil then
 		return
 	end
-	local stream = self:getPlayerStream(player)
+	local stream = self:GetPlayerStream(player)
 	if not stream.ready then
 		return
 	end
-	local nextInterest = world:getPlayerInterestKeys(player)
-	local nextSimulationInterest = self:expandInterestKeys(nextInterest)
+	local nextInterest = world:GetPlayerInterestKeys(player)
+	local nextSimulationInterest = self:ExpandInterestKeys(nextInterest)
 
 	for chunkKey in nextInterest do
 		if stream.interestKeys[chunkKey] == nil or stream.sentRevisions[chunkKey] == nil then
-			self:enqueueFullSnapshot(stream, chunkKey)
+			self:EnqueueFullSnapshot(stream, chunkKey)
 		end
 	end
 
@@ -1373,27 +1374,27 @@ function LiquidServiceServer.MarkTileDirty(
 		return false
 	end
 	local chunkSize = math.max(1, world.chunkSize)
-	local chunkX = LiquidServiceUtils.toChunkCoordinate(tileX, chunkSize)
-	local chunkY = LiquidServiceUtils.toChunkCoordinate(tileY, chunkSize)
-	local chunkKey = LiquidServiceUtils.packChunkKey(chunkX, chunkY)
-	local runtime = self:getChunkRuntime(chunkKey)
+	local chunkX = LiquidServiceUtils.ToChunkCoordinate(tileX, chunkSize)
+	local chunkY = LiquidServiceUtils.ToChunkCoordinate(tileY, chunkSize)
+	local chunkKey = LiquidServiceUtils.PackChunkKey(chunkX, chunkY)
+	local runtime = self:GetChunkRuntime(chunkKey)
 	local localX = tileX - chunkX * chunkSize
 	local localY = tileY - chunkY * chunkSize
 	if localX < 0 or localX >= chunkSize or localY < 0 or localY >= chunkSize then
 		return false
 	end
-	local index = LiquidServiceUtils.computeTileIndex(localX, localY, chunkSize)
+	local index = LiquidServiceUtils.ComputeTileIndex(localX, localY, chunkSize)
 	if runtime.dirtyLookup[index] then
 		return false
 	end
 	local sourceTileX = if isFiniteNumber(sourceTileXRaw) then math.floor(sourceTileXRaw :: number) else nil
 	local sourceTileY = if isFiniteNumber(sourceTileYRaw) then math.floor(sourceTileYRaw :: number) else nil
 	if sourceTileX ~= nil and sourceTileY ~= nil then
-		local sourceChunkX = LiquidServiceUtils.toChunkCoordinate(sourceTileX, chunkSize)
-		local sourceChunkY = LiquidServiceUtils.toChunkCoordinate(sourceTileY, chunkSize)
-		local sourceChunkKey = LiquidServiceUtils.packChunkKey(sourceChunkX, sourceChunkY)
+		local sourceChunkX = LiquidServiceUtils.ToChunkCoordinate(sourceTileX, chunkSize)
+		local sourceChunkY = LiquidServiceUtils.ToChunkCoordinate(sourceTileY, chunkSize)
+		local sourceChunkKey = LiquidServiceUtils.PackChunkKey(sourceChunkX, sourceChunkY)
 		if sourceChunkKey ~= chunkKey then
-			self:recordSimulationMetric("crossChunkWakeups", 1, runtime)
+			self:RecordSimulationMetric("crossChunkWakeups", 1, runtime)
 		end
 	end
 	runtime.dirtyLookup[index] = true
@@ -1401,7 +1402,7 @@ function LiquidServiceServer.MarkTileDirty(
 	runtime.lastDisturbedAt = os.clock()
 	runtime.dirtyMarkCount += 1
 	local reason = if typeof(reasonRaw) == "string" and reasonRaw ~= "" then reasonRaw else "unspecified"
-	self.dirtyCellQueue:enqueue({
+	self.dirtyCellQueue:Enqueue({
 		x = tileX,
 		y = tileY,
 		z = 0,
@@ -1413,15 +1414,15 @@ function LiquidServiceServer.MarkTileDirty(
 			sourceTileY = sourceTileY,
 		},
 	})
-	self:trackRecentChunkActivity(chunkKey, chunkX, chunkY)
-	self:updateChunkDebugAttributes(chunkKey, runtime, {
+	self:TrackRecentChunkActivity(chunkKey, chunkX, chunkY)
+	self:UpdateChunkDebugAttributes(chunkKey, runtime, {
 		LastQueuedTileX = tileX,
 		LastQueuedTileY = tileY,
 		LastDirtyReason = reason,
 	})
-	self:debugLog("logDirtyMarks", `{chunkKey} queued tile {tileX},{tileY} ({reason})`)
+	self:DebugLog("logDirtyMarks", `{chunkKey} queued tile {tileX},{tileY} ({reason})`)
 	if self.debug ~= nil then
-		self.debug:incrementCounter("liquid_dirty_marks")
+		self.debug:IncrementCounter("liquid_dirty_marks")
 	end
 	return true
 end
@@ -1433,7 +1434,7 @@ function LiquidServiceServer.MarkAreaDirty(
 	radiusRaw: any?,
 	reasonRaw: any?
 )
-	self:wakeLiquidRegion(tileX, tileY, reasonRaw, {
+	self:WakeLiquidRegion(tileX, tileY, reasonRaw, {
 		radius = radiusRaw,
 		sourceTileX = tileX,
 		sourceTileY = tileY,
@@ -1464,7 +1465,7 @@ function LiquidServiceServer.WakeLiquidRegion(
 		return false
 	end
 
-	local request = self.wakeRequestPool:acquire() :: WakeRequest
+	local request = self.wakeRequestPool:Acquire() :: WakeRequest
 	request.key = key
 	request.tileX = tileX
 	request.tileY = tileY
@@ -1478,7 +1479,7 @@ function LiquidServiceServer.WakeLiquidRegion(
 	self.pendingWakeTail += 1
 	self.pendingWakeQueue[self.pendingWakeTail] = request
 	if self.debug ~= nil then
-		self.debug:incrementCounter("liquid_wake_requests_enqueued")
+		self.debug:IncrementCounter("liquid_wake_requests_enqueued")
 	end
 	return true
 end
@@ -1488,7 +1489,7 @@ function LiquidServiceServer.ApplyWakeRequest(self: LiquidServiceServer, request
 	local sourceTileY = if request.sourceTileY ~= nil then request.sourceTileY else request.tileY
 	for offsetY = -request.radius, request.radius do
 		for offsetX = -request.radius, request.radius do
-			self:markTileDirty(
+			self:MarkTileDirty(
 				request.tileX + offsetX,
 				request.tileY + offsetY,
 				request.reason,
@@ -1510,13 +1511,13 @@ function LiquidServiceServer.ApplyWakeRequest(self: LiquidServiceServer, request
 	local verticalAbove = 7 + request.radius
 	for scanY = request.tileY - verticalBelow, request.tileY + verticalAbove do
 		for scanX = request.tileX - horizontalRadius, request.tileX + horizontalRadius do
-			if not self:isTileCollisionReady(scanX, scanY) then
+			if not self:IsTileCollisionReady(scanX, scanY) then
 				continue
 			end
-			if world:getLiquidCellAt(scanX, scanY) == 0 then
+			if world:GetLiquidCellAt(scanX, scanY) == 0 then
 				continue
 			end
-			self:markTileDirty(scanX, scanY, `{request.reason}:nearbyLiquid`, request.tileX, request.tileY)
+			self:MarkTileDirty(scanX, scanY, `{request.reason}:nearbyLiquid`, request.tileX, request.tileY)
 		end
 	end
 end
@@ -1542,12 +1543,12 @@ function LiquidServiceServer.FlushWakeRequests(self: LiquidServiceServer, maxReq
 			continue
 		end
 		self.pendingWakeLookup[request.key] = nil
-		self:applyWakeRequest(request)
-		self.wakeRequestPool:release(request)
+		self:ApplyWakeRequest(request)
+		self.wakeRequestPool:Release(request)
 		processed += 1
 	end
 	if processed > 0 and self.debug ~= nil then
-		self.debug:incrementCounter("liquid_wake_requests_processed", processed)
+		self.debug:IncrementCounter("liquid_wake_requests_processed", processed)
 	end
 	return processed
 end
@@ -1563,11 +1564,11 @@ function LiquidServiceServer.RegisterCellMutation(
 		return
 	end
 	local chunkSize = math.max(1, world.chunkSize)
-	local chunkX = LiquidServiceUtils.toChunkCoordinate(tileX, chunkSize)
-	local chunkY = LiquidServiceUtils.toChunkCoordinate(tileY, chunkSize)
-	local chunkKey = LiquidServiceUtils.packChunkKey(chunkX, chunkY)
-	local runtime = self:getChunkRuntime(chunkKey)
-	local liquidType, fill = LiquidCell.unpack(packedCell)
+	local chunkX = LiquidServiceUtils.ToChunkCoordinate(tileX, chunkSize)
+	local chunkY = LiquidServiceUtils.ToChunkCoordinate(tileY, chunkSize)
+	local chunkKey = LiquidServiceUtils.PackChunkKey(chunkX, chunkY)
+	local runtime = self:GetChunkRuntime(chunkKey)
+	local liquidType, fill = LiquidCell.Unpack(packedCell)
 	runtime.revision += 1
 	runtime.lastDisturbedAt = os.clock()
 	runtime.mutationCount += 1
@@ -1576,15 +1577,15 @@ function LiquidServiceServer.RegisterCellMutation(
 	runtime.lastMutationFill = fill
 	runtime.lastMutationType = liquidType
 	self.changedChunkKeys[chunkKey] = true
-	self:updateChunkDebugAttributes(chunkKey, runtime)
-	self:debugLog("logSimulationSteps", `{chunkKey} mutated tile {tileX},{tileY} -> type={liquidType} fill={fill}`)
+	self:UpdateChunkDebugAttributes(chunkKey, runtime)
+	self:DebugLog("logSimulationSteps", `{chunkKey} mutated tile {tileX},{tileY} -> type={liquidType} fill={fill}`)
 	if runtime.forceFullResync then
 		return
 	end
 
 	local localX = tileX - chunkX * chunkSize
 	local localY = tileY - chunkY * chunkSize
-	local index = LiquidServiceUtils.computeTileIndex(localX, localY, chunkSize)
+	local index = LiquidServiceUtils.ComputeTileIndex(localX, localY, chunkSize)
 	if runtime.pendingDeltaByIndex[index] == nil then
 		runtime.pendingDeltaCount += 1
 		table.insert(runtime.pendingDeltaIndices, index)
@@ -1608,9 +1609,9 @@ function LiquidServiceServer.SetPackedCell(
 	if world == nil then
 		return false
 	end
-	local changed, _, nextPackedCell = world:setLiquidCellAt(tileX, tileY, packedCell)
+	local changed, _, nextPackedCell = world:SetLiquidCellAt(tileX, tileY, packedCell)
 	if changed then
-		self:registerCellMutation(tileX, tileY, nextPackedCell)
+		self:RegisterCellMutation(tileX, tileY, nextPackedCell)
 	end
 	return changed
 end
@@ -1620,7 +1621,7 @@ function LiquidServiceServer.IsSolid(self: LiquidServiceServer, tileX: number, t
 	if world == nil then
 		return true
 	end
-	local tileId = select(1, world:getTileAt(tileX, tileY))
+	local tileId = select(1, world:GetTileAt(tileX, tileY))
 	return tileId ~= world.tileId.AIR
 end
 
@@ -1630,9 +1631,9 @@ function LiquidServiceServer.IsTileCollisionReady(self: LiquidServiceServer, til
 		return false
 	end
 	local chunkSize = math.max(1, world.chunkSize)
-	local chunkX = LiquidServiceUtils.toChunkCoordinate(tileX, chunkSize)
-	local chunkY = LiquidServiceUtils.toChunkCoordinate(tileY, chunkSize)
-	return world:isChunkCollisionReady(chunkX, chunkY)
+	local chunkX = LiquidServiceUtils.ToChunkCoordinate(tileX, chunkSize)
+	local chunkY = LiquidServiceUtils.ToChunkCoordinate(tileY, chunkSize)
+	return world:IsChunkCollisionReady(chunkX, chunkY)
 end
 
 function LiquidServiceServer.BuildSolverAccess(self: LiquidServiceServer, runtime: ChunkRuntime): LiquidSolverAccess
@@ -1645,29 +1646,29 @@ function LiquidServiceServer.BuildSolverAccess(self: LiquidServiceServer, runtim
 			if world == nil then
 				return 0
 			end
-			return world:getLiquidCellAt(tileX, tileY)
+			return world:GetLiquidCellAt(tileX, tileY)
 		end,
 		setCell = function(tileX: number, tileY: number, packedCell: number): boolean
-			return self:setPackedCell(tileX, tileY, packedCell)
+			return self:SetPackedCell(tileX, tileY, packedCell)
 		end,
 		isSolid = function(tileX: number, tileY: number): boolean
-			return self:isSolid(tileX, tileY)
+			return self:IsSolid(tileX, tileY)
 		end,
 		isChunkReady = function(chunkX: number, chunkY: number): boolean
 			if world == nil then
 				return false
 			end
-			local readinessMethod = (world :: any).isChunkCollisionReady
+			local readinessMethod = (world :: any).IsChunkCollisionReady
 			if typeof(readinessMethod) == "function" then
 				return readinessMethod(world, chunkX, chunkY) == true
 			end
 			return true
 		end,
 		pushDirty = function(tileX: number, tileY: number, reason: string?, sourceTileX: number?, sourceTileY: number?)
-			self:markTileDirty(tileX, tileY, reason or "solverCascade", sourceTileX, sourceTileY)
+			self:MarkTileDirty(tileX, tileY, reason or "solverCascade", sourceTileX, sourceTileY)
 		end,
 		getDefinition = function(liquidType: number): LiquidDefinition?
-			return self:getDefinition(liquidType)
+			return self:GetDefinition(liquidType)
 		end,
 		reportCellState = function(
 			tileX: number,
@@ -1677,10 +1678,10 @@ function LiquidServiceServer.BuildSolverAccess(self: LiquidServiceServer, runtim
 			fill: number,
 			liquidType: number
 		)
-			self:updateCellDebugVisual(tileX, tileY, state, reason, fill, liquidType)
+			self:UpdateCellDebugVisual(tileX, tileY, state, reason, fill, liquidType)
 		end,
 		recordMetric = function(metricName: string, amountRaw: any?)
-			self:recordSimulationMetric(metricName, amountRaw, runtime)
+			self:RecordSimulationMetric(metricName, amountRaw, runtime)
 		end,
 	}
 	return access
@@ -1696,16 +1697,16 @@ function LiquidServiceServer.StepChunk(
 	if world == nil then
 		return 0, 0
 	end
-	local snapshot = self:getChunkSnapshot(chunkKey)
+	local snapshot = self:GetChunkSnapshot(chunkKey)
 	if snapshot == nil then
 		return 0, 0
 	end
-	local runtime = self:getChunkRuntime(chunkKey)
+	local runtime = self:GetChunkRuntime(chunkKey)
 	local budget = if isFiniteNumber(budgetRaw)
 		then math.max(1, math.floor(budgetRaw))
 		else self.config.simulation.maxCellsPerChunkStep
 	local mutations = if typeof(mutationsRaw) == "table" then mutationsRaw :: { [number]: any } else {} :: any
-	local access = self:buildSolverAccess(runtime)
+	local access = self:BuildSolverAccess(runtime)
 	runtime.lastActiveCellCount = 0
 	runtime.lastDownwardTransfer = 0
 	runtime.lastLateralTransfer = 0
@@ -1716,7 +1717,7 @@ function LiquidServiceServer.StepChunk(
 	for mutationIndex = 1, #mutations do
 		local mutation = mutations[mutationIndex]
 		if processed >= budget then
-			self:requeueDirtyMutation(mutation)
+			self:RequeueDirtyMutation(mutation)
 			continue
 		end
 		if typeof(mutation) ~= "table" then
@@ -1732,7 +1733,7 @@ function LiquidServiceServer.StepChunk(
 		if localX < 0 or localX >= snapshot.width or localY < 0 or localY >= snapshot.height then
 			continue
 		end
-		local index = LiquidServiceUtils.computeTileIndex(localX, localY, snapshot.width)
+		local index = LiquidServiceUtils.ComputeTileIndex(localX, localY, snapshot.width)
 		if not runtime.dirtyLookup[index] then
 			continue
 		end
@@ -1740,12 +1741,12 @@ function LiquidServiceServer.StepChunk(
 		if runtime.queuedDirtyCount > 0 then
 			runtime.queuedDirtyCount -= 1
 		end
-		local stepResult: LiquidSolverStepResult = LiquidSolver.stepCell(access, tileX, tileY)
+		local stepResult: LiquidSolverStepResult = LiquidSolver.StepCell(access, tileX, tileY)
 		if stepResult.changed then
 			changed += 1
 		end
 		if stepResult.waitingOnChunkReady then
-			self:setChunkRegionState(
+			self:SetChunkRegionState(
 				chunkKey,
 				runtime,
 				CELL_DEBUG_STATE.DEFERRED_WAITING_FOR_CHUNK,
@@ -1753,21 +1754,21 @@ function LiquidServiceServer.StepChunk(
 				stepResult.dependencyChunkKey
 			)
 		elseif stepResult.active then
-			self:setChunkRegionState(chunkKey, runtime, CELL_DEBUG_STATE.ACTIVE, stepResult.reason)
+			self:SetChunkRegionState(chunkKey, runtime, CELL_DEBUG_STATE.ACTIVE, stepResult.reason)
 		elseif stepResult.state == CELL_DEBUG_STATE.BLOCKED_BY_LOADED_TERRAIN then
-			self:setChunkRegionState(chunkKey, runtime, CELL_DEBUG_STATE.BLOCKED_BY_LOADED_TERRAIN, stepResult.reason)
+			self:SetChunkRegionState(chunkKey, runtime, CELL_DEBUG_STATE.BLOCKED_BY_LOADED_TERRAIN, stepResult.reason)
 		end
 		processed += 1
 	end
 	runtime.lastProcessedAt = os.clock()
 	runtime.lastProcessedCells = processed
 	runtime.lastChangedCells = changed
-	self:recordSimulationMetric("cellsProcessed", processed, runtime)
-	self:updateChunkDebugAttributes(chunkKey, runtime, {
+	self:RecordSimulationMetric("cellsProcessed", processed, runtime)
+	self:UpdateChunkDebugAttributes(chunkKey, runtime, {
 		LastStepBudget = budget,
 	})
 	if processed > 0 then
-		self:debugLog(
+		self:DebugLog(
 			"logSimulationSteps",
 			`{chunkKey} stepped processed={processed} changed={changed} active={runtime.lastActiveCellCount} down={runtime.lastDownwardTransfer} lateral={runtime.lastLateralTransfer} remainingDirty={getDirtyCount(
 				runtime
@@ -1783,9 +1784,9 @@ function LiquidServiceServer.VerifyChunkStability(
 	runtime: ChunkRuntime,
 	reasonRaw: any?
 ): (boolean, string, number)
-	if not self:isCollisionChunkReadyByKey(chunkKey) then
+	if not self:IsCollisionChunkReadyByKey(chunkKey) then
 		local deferredReason = `awaitingCollisionChunk {chunkKey}`
-		self:setChunkRegionState(
+		self:SetChunkRegionState(
 			chunkKey,
 			runtime,
 			CELL_DEBUG_STATE.DEFERRED_WAITING_FOR_CHUNK,
@@ -1796,13 +1797,13 @@ function LiquidServiceServer.VerifyChunkStability(
 		return false, deferredReason, runtime.lastStabilityScanUnstableCells
 	end
 
-	local snapshot = self:getChunkSnapshot(chunkKey)
+	local snapshot = self:GetChunkSnapshot(chunkKey)
 	if snapshot == nil then
 		runtime.lastStabilityScanUnstableCells = 0
 		return true, "missingSnapshot", 0
 	end
 
-	local access = self:buildSolverAccess(runtime)
+	local access = self:BuildSolverAccess(runtime)
 	local unstableCount = 0
 	local deferredCount = 0
 	local firstReason = nil :: string?
@@ -1817,7 +1818,7 @@ function LiquidServiceServer.VerifyChunkStability(
 		local localX = zeroIndex - localY * snapshot.width
 		local tileX = snapshot.tileMinX + localX
 		local tileY = snapshot.tileMinY + localY
-		local inspection = LiquidSolver.inspectCell(access, tileX, tileY)
+		local inspection = LiquidSolver.InspectCell(access, tileX, tileY)
 		if inspection.hasLiquid and not inspection.isStable then
 			if inspection.waitingOnChunkReady then
 				deferredCount += 1
@@ -1830,9 +1831,9 @@ function LiquidServiceServer.VerifyChunkStability(
 				if firstReason == nil then
 					firstReason = inspection.reason
 				end
-				self:markTileDirty(tileX, tileY, `stabilityScan:{inspection.state}`)
+				self:MarkTileDirty(tileX, tileY, `stabilityScan:{inspection.state}`)
 				for _, wakeTileEntry in inspection.wakeTiles do
-					self:markTileDirty(
+					self:MarkTileDirty(
 						wakeTileEntry.tileX,
 						wakeTileEntry.tileY,
 						`stabilityScan:{inspection.state}`,
@@ -1845,10 +1846,10 @@ function LiquidServiceServer.VerifyChunkStability(
 	end
 
 	runtime.lastStabilityScanUnstableCells = unstableCount + deferredCount
-	self:updateChunkDebugAttributes(chunkKey, runtime)
+	self:UpdateChunkDebugAttributes(chunkKey, runtime)
 	if deferredCount > 0 then
 		local deferredReason = firstReason or `awaitingCollisionChunk {dependencyChunkKey or chunkKey}`
-		self:setChunkRegionState(
+		self:SetChunkRegionState(
 			chunkKey,
 			runtime,
 			CELL_DEBUG_STATE.DEFERRED_WAITING_FOR_CHUNK,
@@ -1858,10 +1859,10 @@ function LiquidServiceServer.VerifyChunkStability(
 		return false, deferredReason, deferredCount
 	end
 	if unstableCount > 0 then
-		self:setChunkRegionState(chunkKey, runtime, CELL_DEBUG_STATE.ACTIVE, firstReason or "unstable")
+		self:SetChunkRegionState(chunkKey, runtime, CELL_DEBUG_STATE.ACTIVE, firstReason or "unstable")
 		local reopenedReason =
 			`{if typeof(reasonRaw) == "string" then reasonRaw else "stabilityScan"} reopened; unstableCells={unstableCount}; first={firstReason or "unknown"}`
-		self:debugLog("logStableTransitions", `{chunkKey} reopened ({reopenedReason})`)
+		self:DebugLog("logStableTransitions", `{chunkKey} reopened ({reopenedReason})`)
 		return false, reopenedReason, unstableCount
 	end
 
@@ -1920,22 +1921,22 @@ end
 
 function LiquidServiceServer.ProcessSimulationStep(self: LiquidServiceServer)
 	if self.debug ~= nil then
-		self.debug:resetFrameCounters()
+		self.debug:ResetFrameCounters()
 	end
-	local solveToken = if self.debug ~= nil then self.debug:beginFrameScope("liquid_server_solve") else nil
+	local solveToken = if self.debug ~= nil then self.debug:BeginFrameScope("liquid_server_solve") else nil
 	self.simulationStepId += 1
 	self.currentSimulationStats = createSimulationTickStats()
 	self.currentSimulationStats.chunkReadinessWakeups = self.pendingChunkReadinessWakeups
 	self.pendingChunkReadinessWakeups = 0
-	self.currentSimulationStats.collisionChunksLoaded = self:getLoadedCollisionChunkCount()
-	self.currentSimulationStats.wakeRequestsQueued = self:getPendingWakeRequestCount()
+	self.currentSimulationStats.collisionChunksLoaded = self:GetLoadedCollisionChunkCount()
+	self.currentSimulationStats.wakeRequestsQueued = self:GetPendingWakeRequestCount()
 	self.currentSimulationStats.wakeRequestsProcessed =
-		self:flushWakeRequests(self.config.simulation.maxWakeRequestsPerTick)
-	local activeKeys, activeReasons, activeLookup = self:collectActiveChunkKeys()
+		self:FlushWakeRequests(self.config.simulation.maxWakeRequestsPerTick)
+	local activeKeys, activeReasons, activeLookup = self:CollectActiveChunkKeys()
 	self.currentSimulationStats.activeChunks = #activeKeys
 	local reactivatedChunks: { [string]: boolean } = {}
 	for _, chunkKey in activeKeys do
-		local runtime = self:getChunkRuntime(chunkKey)
+		local runtime = self:GetChunkRuntime(chunkKey)
 		local activeReason = activeReasons[chunkKey] or "active"
 		local wasActiveLastStep = runtime.lastActiveStepId > 0 and runtime.lastActiveStepId == self.simulationStepId - 1
 		reactivatedChunks[chunkKey] = not wasActiveLastStep
@@ -1943,14 +1944,14 @@ function LiquidServiceServer.ProcessSimulationStep(self: LiquidServiceServer)
 		if not wasActiveLastStep then
 			runtime.lastActivationAt = os.clock()
 			runtime.lastActivationReason = activeReason
-			if self:isCollisionChunkReadyByKey(chunkKey) then
-				local restored = self:restoreQueuedDirtyCellsForChunk(chunkKey, `{activeReason}:reactivationRestore`)
+			if self:IsCollisionChunkReadyByKey(chunkKey) then
+				local restored = self:RestoreQueuedDirtyCellsForChunk(chunkKey, `{activeReason}:reactivationRestore`)
 				if restored == 0 then
-					self:primeChunkRuntime(chunkKey, activeReason)
+					self:PrimeChunkRuntime(chunkKey, activeReason)
 				end
-				self:setChunkRegionState(chunkKey, runtime, CELL_DEBUG_STATE.ACTIVE, activeReason)
+				self:SetChunkRegionState(chunkKey, runtime, CELL_DEBUG_STATE.ACTIVE, activeReason)
 			else
-				self:setChunkRegionState(
+				self:SetChunkRegionState(
 					chunkKey,
 					runtime,
 					CELL_DEBUG_STATE.DEFERRED_WAITING_FOR_CHUNK,
@@ -1958,22 +1959,22 @@ function LiquidServiceServer.ProcessSimulationStep(self: LiquidServiceServer)
 					chunkKey
 				)
 			end
-			self:updateChunkDebugAttributes(chunkKey, runtime, {
+			self:UpdateChunkDebugAttributes(chunkKey, runtime, {
 				InActiveSet = true,
 				ActiveReason = activeReason,
 			})
-			self:debugLog("logActivations", `{chunkKey} entered active set ({activeReason})`)
+			self:DebugLog("logActivations", `{chunkKey} entered active set ({activeReason})`)
 		end
 	end
-	self.currentSimulationStats.queuedCells = self.dirtyCellQueue:getPendingCount()
+	self.currentSimulationStats.queuedCells = self.dirtyCellQueue:GetPendingCount()
 	for _, chunkKey in activeKeys do
-		if getDirtyCount(self:getChunkRuntime(chunkKey)) > 0 then
+		if getDirtyCount(self:GetChunkRuntime(chunkKey)) > 0 then
 			self.currentSimulationStats.dirtyChunks += 1
 		end
 	end
-	if self:isDebugEnabled() and self.config.debug.visualizeChunks then
+	if self:IsDebugEnabled() and self.config.debug.visualizeChunks then
 		for chunkKey, runtime in self.chunkRuntimes do
-			self:updateChunkDebugAttributes(chunkKey, runtime, {
+			self:UpdateChunkDebugAttributes(chunkKey, runtime, {
 				InActiveSet = activeLookup[chunkKey] == true,
 				ActiveReason = activeReasons[chunkKey] or "",
 			})
@@ -1983,19 +1984,19 @@ function LiquidServiceServer.ProcessSimulationStep(self: LiquidServiceServer)
 	local processedChunks = 0
 	local touchedChunks: { [string]: boolean } = {}
 	local maxMutationBudget = self.config.simulation.maxChunkStepsPerTick * self.config.simulation.maxCellsPerChunkStep
-	local flushBatch = self.dirtyCellQueue:flush(maxMutationBudget)
+	local flushBatch = self.dirtyCellQueue:Flush(maxMutationBudget)
 	if flushBatch ~= nil then
 		for _, chunkBatch in flushBatch.chunks do
-			local chunkKey = LiquidServiceUtils.packChunkKey(chunkBatch.chunkX, chunkBatch.chunkY)
+			local chunkKey = LiquidServiceUtils.PackChunkKey(chunkBatch.chunkX, chunkBatch.chunkY)
 			if processedChunks >= self.config.simulation.maxChunkStepsPerTick then
 				for _, mutation in chunkBatch.mutations do
-					self:requeueDirtyMutation(mutation)
+					self:RequeueDirtyMutation(mutation)
 				end
 				continue
 			end
-			local runtime = self:getChunkRuntime(chunkKey)
-			if not self:isCollisionChunkReadyByKey(chunkKey) then
-				self:setChunkRegionState(
+			local runtime = self:GetChunkRuntime(chunkKey)
+			if not self:IsCollisionChunkReadyByKey(chunkKey) then
+				self:SetChunkRegionState(
 					chunkKey,
 					runtime,
 					CELL_DEBUG_STATE.DEFERRED_WAITING_FOR_CHUNK,
@@ -2005,16 +2006,16 @@ function LiquidServiceServer.ProcessSimulationStep(self: LiquidServiceServer)
 				continue
 			end
 			local processedCells, _changedCells =
-				self:stepChunk(chunkKey, chunkBatch.mutations, self.config.simulation.maxCellsPerChunkStep)
+				self:StepChunk(chunkKey, chunkBatch.mutations, self.config.simulation.maxCellsPerChunkStep)
 			if processedCells <= 0 then
 				continue
 			end
 			processedChunks += 1
 			touchedChunks[chunkKey] = true
 			if getDirtyCount(runtime) <= 0 then
-				local isStable, stableReason = self:verifyChunkStability(chunkKey, runtime, "dirtyQueueDrained")
+				local isStable, stableReason = self:VerifyChunkStability(chunkKey, runtime, "dirtyQueueDrained")
 				if isStable then
-					self:markChunkStable(chunkKey, runtime, stableReason)
+					self:MarkChunkStable(chunkKey, runtime, stableReason)
 				end
 			end
 		end
@@ -2024,19 +2025,19 @@ function LiquidServiceServer.ProcessSimulationStep(self: LiquidServiceServer)
 		if touchedChunks[chunkKey] then
 			continue
 		end
-		local runtime = self:getChunkRuntime(chunkKey)
+		local runtime = self:GetChunkRuntime(chunkKey)
 		if getDirtyCount(runtime) > 0 then
 			continue
 		end
 		if reactivatedChunks[chunkKey] then
-			local isStable, stableReason = self:verifyChunkStability(chunkKey, runtime, "reactivatedWithoutDirtyWork")
+			local isStable, stableReason = self:VerifyChunkStability(chunkKey, runtime, "reactivatedWithoutDirtyWork")
 			if isStable then
-				self:markChunkStable(chunkKey, runtime, stableReason)
+				self:MarkChunkStable(chunkKey, runtime, stableReason)
 			end
 		end
 	end
 
-	self.currentSimulationStats.queuedCells = self.dirtyCellQueue:getPendingCount()
+	self.currentSimulationStats.queuedCells = self.dirtyCellQueue:GetPendingCount()
 	self.currentSimulationStats.dirtyChunks = 0
 	self.currentSimulationStats.deferredChunks = 0
 	for _, runtime in self.chunkRuntimes do
@@ -2047,11 +2048,11 @@ function LiquidServiceServer.ProcessSimulationStep(self: LiquidServiceServer)
 			self.currentSimulationStats.deferredChunks += 1
 		end
 	end
-	self.currentSimulationStats.collisionChunksLoaded = self:getLoadedCollisionChunkCount()
+	self.currentSimulationStats.collisionChunksLoaded = self:GetLoadedCollisionChunkCount()
 	if self.debug ~= nil then
-		self.debug:endFrameScope("liquid_server_solve", solveToken)
+		self.debug:EndFrameScope("liquid_server_solve", solveToken)
 	end
-	self:updateSimulationDebugStats()
+	self:UpdateSimulationDebugStats()
 end
 
 function LiquidServiceServer.ProcessConsistencySweep(self: LiquidServiceServer)
@@ -2059,10 +2060,10 @@ function LiquidServiceServer.ProcessConsistencySweep(self: LiquidServiceServer)
 	if world == nil then
 		return
 	end
-	local debugToken = if self.debug ~= nil then self.debug:beginFrameScope("liquid_consistency_sweep") else nil
-	self:pruneRecentChunkActivity()
+	local debugToken = if self.debug ~= nil then self.debug:BeginFrameScope("liquid_consistency_sweep") else nil
+	self:PruneRecentChunkActivity()
 
-	local queryResults = self.sweepResultPool:acquire() :: { any }
+	local queryResults = self.sweepResultPool:Acquire() :: { any }
 	local candidateLookup: { [string]: boolean } = {}
 	local candidateKeys: { string } = {}
 	local sweepRadiusStuds = world.chunkSize
@@ -2070,7 +2071,7 @@ function LiquidServiceServer.ProcessConsistencySweep(self: LiquidServiceServer)
 		* math.max(1, self.config.simulation.activeSafetyMarginChunks + 2)
 
 	for player in self.playerStreams do
-		local rootPart = resolveCharacterRootPart(resolvePlayerCharacter(player))
+		local rootPart = GetCharacterRootPart(GetPlayerCharacter(player))
 		if rootPart == nil then
 			continue
 		end
@@ -2095,7 +2096,7 @@ function LiquidServiceServer.ProcessConsistencySweep(self: LiquidServiceServer)
 	end
 
 	table.clear(queryResults)
-	self.sweepResultPool:release(queryResults)
+	self.sweepResultPool:Release(queryResults)
 	table.sort(candidateKeys)
 
 	local processed = 0
@@ -2110,20 +2111,20 @@ function LiquidServiceServer.ProcessConsistencySweep(self: LiquidServiceServer)
 		if
 			runtime.waitingOnChunkReady
 			and runtime.dependencyChunkKey ~= ""
-			and self:isCollisionChunkReadyByKey(chunkKey)
-			and self:isCollisionChunkReadyByKey(runtime.dependencyChunkKey)
+			and self:IsCollisionChunkReadyByKey(chunkKey)
+			and self:IsCollisionChunkReadyByKey(runtime.dependencyChunkKey)
 		then
-			local restored = self:restoreQueuedDirtyCellsForChunk(chunkKey, "consistencyChunkReady")
+			local restored = self:RestoreQueuedDirtyCellsForChunk(chunkKey, "consistencyChunkReady")
 			if restored == 0 then
-				self:primeChunkRuntime(chunkKey, "consistencyChunkReady")
+				self:PrimeChunkRuntime(chunkKey, "consistencyChunkReady")
 			end
-			self:setChunkRegionState(chunkKey, runtime, CELL_DEBUG_STATE.ACTIVE, "consistencyChunkReady")
-			self:recordSimulationMetric("consistencyRequeues", 1, runtime)
+			self:SetChunkRegionState(chunkKey, runtime, CELL_DEBUG_STATE.ACTIVE, "consistencyChunkReady")
+			self:RecordSimulationMetric("consistencyRequeues", 1, runtime)
 			processed += 1
 			continue
 		end
-		if not self:isCollisionChunkReadyByKey(chunkKey) then
-			self:setChunkRegionState(
+		if not self:IsCollisionChunkReadyByKey(chunkKey) then
+			self:SetChunkRegionState(
 				chunkKey,
 				runtime,
 				CELL_DEBUG_STATE.DEFERRED_WAITING_FOR_CHUNK,
@@ -2133,21 +2134,21 @@ function LiquidServiceServer.ProcessConsistencySweep(self: LiquidServiceServer)
 			processed += 1
 			continue
 		end
-		local isStable = self:verifyChunkStability(chunkKey, runtime, "consistencySweep")
+		local isStable = self:VerifyChunkStability(chunkKey, runtime, "consistencySweep")
 		if not isStable then
-			self:recordSimulationMetric("consistencyRequeues", 1, runtime)
+			self:RecordSimulationMetric("consistencyRequeues", 1, runtime)
 		end
 		processed += 1
 	end
 
 	if self.debug ~= nil then
-		self.debug:setCounter("liquid_consistency_candidates", #candidateKeys)
-		self.debug:setCounter("liquid_consistency_processed", processed)
-		self.debug:endFrameScope("liquid_consistency_sweep", debugToken)
+		self.debug:SetCounter("liquid_consistency_candidates", #candidateKeys)
+		self.debug:SetCounter("liquid_consistency_processed", processed)
+		self.debug:EndFrameScope("liquid_consistency_sweep", debugToken)
 	end
-	local debugFolder = self:getDebugFolder()
+	local debugFolder = self:GetDebugFolder()
 	if debugFolder ~= nil and self.debug ~= nil then
-		local counters = self.debug:getCounters()
+		local counters = self.debug:GetCounters()
 		debugFolder:SetAttribute("ConsistencyCandidates", #candidateKeys)
 		debugFolder:SetAttribute("ConsistencyProcessed", processed)
 		debugFolder:SetAttribute(
@@ -2163,7 +2164,7 @@ function LiquidServiceServer.RedistributeDisplacedLiquid(
 	tileY: number,
 	packedCell: number
 )
-	local liquidType, fill = LiquidCell.unpack(packedCell)
+	local liquidType, fill = LiquidCell.Unpack(packedCell)
 	if liquidType == LIQUID_TYPE.NONE or fill <= 0 then
 		return
 	end
@@ -2181,11 +2182,11 @@ function LiquidServiceServer.RedistributeDisplacedLiquid(
 		end
 		local targetX = target[1]
 		local targetY = target[2]
-		if self:isSolid(targetX, targetY) then
+		if self:IsSolid(targetX, targetY) then
 			continue
 		end
-		local existingCell = if self.world ~= nil then self.world:getLiquidCellAt(targetX, targetY) else 0
-		local existingType, existingFill = LiquidCell.unpack(existingCell)
+		local existingCell = if self.world ~= nil then self.world:GetLiquidCellAt(targetX, targetY) else 0
+		local existingType, existingFill = LiquidCell.Unpack(existingCell)
 		if existingType ~= LIQUID_TYPE.NONE and existingType ~= liquidType then
 			continue
 		end
@@ -2194,12 +2195,12 @@ function LiquidServiceServer.RedistributeDisplacedLiquid(
 			continue
 		end
 		remaining -= transfer
-		self:setPackedCell(
+		self:SetPackedCell(
 			targetX,
 			targetY,
-			LiquidCell.make(liquidType, existingFill + transfer, LiquidServiceUtils.FLOW_STATE.SPREADING)
+			LiquidCell.Make(liquidType, existingFill + transfer, LiquidServiceUtils.FLOW_STATE.SPREADING)
 		)
-		self:wakeLiquidRegion(targetX, targetY, "displacedLiquid", {
+		self:WakeLiquidRegion(targetX, targetY, "displacedLiquid", {
 			radius = 1,
 			sourceTileX = tileX,
 			sourceTileY = tileY,
@@ -2215,7 +2216,7 @@ function LiquidServiceServer.ReactivateNearbyLiquid(
 	reasonRaw: any?
 )
 	local reason = if typeof(reasonRaw) == "string" and reasonRaw ~= "" then reasonRaw else "terrainChange"
-	self:wakeLiquidRegion(tileX, tileY, reason, {
+	self:WakeLiquidRegion(tileX, tileY, reason, {
 		radius = 2,
 		sourceTileX = tileX,
 		sourceTileY = tileY,
@@ -2240,8 +2241,8 @@ function LiquidServiceServer.NotifyTerrainChanged(
 	if world == nil then
 		return
 	end
-	local chunkX = LiquidServiceUtils.toChunkCoordinate(tileX, world.chunkSize)
-	local chunkY = LiquidServiceUtils.toChunkCoordinate(tileY, world.chunkSize)
+	local chunkX = LiquidServiceUtils.ToChunkCoordinate(tileX, world.chunkSize)
+	local chunkY = LiquidServiceUtils.ToChunkCoordinate(tileY, world.chunkSize)
 	self:OnChunkTerrainChanged(chunkX, chunkY, {
 		minTileX = tileX,
 		minTileY = tileY,
@@ -2272,10 +2273,10 @@ function LiquidServiceServer.ProcessFullSnapshotQueues(self: LiquidServiceServer
 			if stream.interestKeys[chunkKey] == nil then
 				continue
 			end
-			if not self:isCollisionChunkReadyByKey(chunkKey) then
+			if not self:IsCollisionChunkReadyByKey(chunkKey) then
 				continue
 			end
-			local snapshot = self:getChunkSnapshot(chunkKey)
+			local snapshot = self:GetChunkSnapshot(chunkKey)
 			if snapshot == nil then
 				continue
 			end
@@ -2297,10 +2298,10 @@ function LiquidServiceServer.ProcessChangedChunks(self: LiquidServiceServer)
 		end
 		table.sort(runtime.pendingDeltaIndices)
 
-		local snapshot = if runtime.forceFullResync then self:getChunkSnapshot(chunkKey) else nil
+		local snapshot = if runtime.forceFullResync then self:GetChunkSnapshot(chunkKey) else nil
 		local deltaPayload = nil :: { [string]: any }?
 		if not runtime.forceFullResync then
-			local chunkSnapshot = self:getChunkSnapshot(chunkKey)
+			local chunkSnapshot = self:GetChunkSnapshot(chunkKey)
 			if chunkSnapshot ~= nil then
 				local changes = Sift.Array.create(#runtime.pendingDeltaIndices)
 				for index, cellIndex in runtime.pendingDeltaIndices do
@@ -2330,7 +2331,7 @@ function LiquidServiceServer.ProcessChangedChunks(self: LiquidServiceServer)
 				continue
 			end
 			if stream.sentRevisions[chunkKey] == nil then
-				self:enqueueFullSnapshot(stream, chunkKey)
+				self:EnqueueFullSnapshot(stream, chunkKey)
 				continue
 			end
 
@@ -2354,28 +2355,28 @@ function LiquidServiceServer.ProcessChangedChunks(self: LiquidServiceServer)
 end
 
 function LiquidServiceServer.GetPlayerQuery(self: LiquidServiceServer, player: Player): LiquidQueryResult
-	local hazard = self:getHazardRuntime(player)
+	local hazard = self:GetHazardRuntime(player)
 	local now = os.clock()
 	if hazard.lastQuery ~= nil and now - hazard.lastQueryAt <= QUERY_CACHE_WINDOW then
 		return hazard.lastQuery
 	end
 
-	local query = LiquidQuery.queryCharacter({
+	local query = LiquidQuery.QueryCharacter({
 		tileSize = if self.world ~= nil then self.world.tileSize else 4,
 		worldOrigin = if self.world ~= nil then self.world.worldOrigin else Vector3.zero,
 		getCellAt = function(tileX: number, tileY: number): number
 			if self.world == nil then
 				return 0
 			end
-			if not self:isTileCollisionReady(tileX, tileY) then
+			if not self:IsTileCollisionReady(tileX, tileY) then
 				return 0
 			end
-			return self.world:getLiquidCellAt(tileX, tileY)
+			return self.world:GetLiquidCellAt(tileX, tileY)
 		end,
 		getLiquidDefinition = function(liquidType: number): LiquidDefinition?
-			return self:getDefinition(liquidType)
+			return self:GetDefinition(liquidType)
 		end,
-	}, resolvePlayerCharacter(player))
+	}, GetPlayerCharacter(player))
 	hazard.lastQuery = query
 	hazard.lastQueryAt = now
 	return query
@@ -2388,7 +2389,7 @@ function LiquidServiceServer.FireEffectEvent(
 	liquidType: number,
 	query: LiquidQueryResult
 )
-	if not self:isPlayerStreamReady(player) then
+	if not self:IsPlayerStreamReady(player) then
 		return
 	end
 	sendPacket(player, LiquidServiceUtils.CLIENT_METHOD_ON_EFFECT_EVENT, {
@@ -2404,20 +2405,20 @@ function LiquidServiceServer.ApplyLiquidMovementSpeed(
 	player: Player,
 	query: LiquidQueryResult
 )
-	local humanoid = resolveCharacterHumanoid(resolvePlayerCharacter(player))
-	if humanoid == nil or not PlayerServiceUtils.isHumanoidAlive(humanoid) then
+	local humanoid = GetCharacterHumanoid(GetPlayerCharacter(player))
+	if humanoid == nil or not PlayerServiceUtils.IsHumanoidAlive(humanoid) then
 		return
 	end
 
 	local multiplier = nil :: number?
 	if query.inLiquid then
-		local definition = self:getDefinition(query.dominantType)
+		local definition = self:GetDefinition(query.dominantType)
 		if definition ~= nil and definition.movementSpeedMultiplier < 0.999 then
 			multiplier = definition.movementSpeedMultiplier
 		end
 	end
 
-	PlayerServiceUtils.setMovementSpeedMultiplier(
+	PlayerServiceUtils.SetMovementSpeedMultiplier(
 		humanoid,
 		PlayerServiceUtils.LIQUID_WALK_SPEED_MULTIPLIER_ATTRIBUTE,
 		multiplier
@@ -2425,34 +2426,34 @@ function LiquidServiceServer.ApplyLiquidMovementSpeed(
 end
 
 function LiquidServiceServer.ProcessHazards(self: LiquidServiceServer)
-	local lavaDefinition = LiquidDamage.getLavaDefinition(self.config)
+	local lavaDefinition = LiquidDamage.GetLavaDefinition(self.config)
 	local now = os.clock()
 
 	for player in self.playerStreams do
-		if not self:isPlayerStreamReady(player) then
+		if not self:IsPlayerStreamReady(player) then
 			continue
 		end
-		local hazard = self:getHazardRuntime(player)
-		local query = self:getPlayerQuery(player)
-		self:applyLiquidMovementSpeed(player, query)
+		local hazard = self:GetHazardRuntime(player)
+		local query = self:GetPlayerQuery(player)
+		self:ApplyLiquidMovementSpeed(player, query)
 
 		if query.inLiquid ~= hazard.wasInLiquid then
 			if query.inLiquid then
 				self.enteredLiquid:Fire(player, query)
-				self:fireEffectEvent(player, LiquidServiceUtils.EFFECT_EVENT.ENTER, query.dominantType, query)
+				self:FireEffectEvent(player, LiquidServiceUtils.EFFECT_EVENT.ENTER, query.dominantType, query)
 			else
 				self.exitedLiquid:Fire(player, hazard.lastDominantType, query)
-				self:fireEffectEvent(player, LiquidServiceUtils.EFFECT_EVENT.EXIT, hazard.lastDominantType, query)
+				self:FireEffectEvent(player, LiquidServiceUtils.EFFECT_EVENT.EXIT, hazard.lastDominantType, query)
 			end
 		end
 
 		if query.meaningfulSubmersion ~= hazard.wasMeaningfullySubmerged then
 			if query.meaningfulSubmersion then
 				self.submergedStarted:Fire(player, query)
-				self:fireEffectEvent(player, LiquidServiceUtils.EFFECT_EVENT.SUBMERGED_START, query.dominantType, query)
+				self:FireEffectEvent(player, LiquidServiceUtils.EFFECT_EVENT.SUBMERGED_START, query.dominantType, query)
 			else
 				self.submergedEnded:Fire(player, hazard.lastDominantType, query)
-				self:fireEffectEvent(
+				self:FireEffectEvent(
 					player,
 					LiquidServiceUtils.EFFECT_EVENT.SUBMERGED_END,
 					hazard.lastDominantType,
@@ -2461,9 +2462,9 @@ function LiquidServiceServer.ProcessHazards(self: LiquidServiceServer)
 			end
 		end
 
-		if lavaDefinition ~= nil and LiquidDamage.shouldApplyLavaContact(self.config, query) then
+		if lavaDefinition ~= nil and LiquidDamage.ShouldApplyLavaContact(self.config, query) then
 			if now - hazard.lastLavaDamageAt >= lavaDefinition.lavaTouchInterval then
-				self.hpService:damagePlayer(player, lavaDefinition.lavaTouchDamage)
+				self.hpService:DamagePlayer(player, lavaDefinition.lavaTouchDamage)
 				hazard.lastLavaDamageAt = now
 			end
 			hazard.burnEndsAt = math.max(hazard.burnEndsAt, now + lavaDefinition.burnDuration)
@@ -2471,17 +2472,17 @@ function LiquidServiceServer.ProcessHazards(self: LiquidServiceServer)
 
 		local isBurning = hazard.burnEndsAt > now
 		if isBurning and lavaDefinition ~= nil and now - hazard.lastBurnDamageAt >= lavaDefinition.burnInterval then
-			self.hpService:damagePlayer(player, lavaDefinition.burnDamage)
+			self.hpService:DamagePlayer(player, lavaDefinition.burnDamage)
 			hazard.lastBurnDamageAt = now
 		end
 
 		if isBurning ~= hazard.wasBurning then
 			if isBurning then
 				self.burnStarted:Fire(player, hazard.burnEndsAt - now)
-				self:fireEffectEvent(player, LiquidServiceUtils.EFFECT_EVENT.BURN_START, LIQUID_TYPE.LAVA, query)
+				self:FireEffectEvent(player, LiquidServiceUtils.EFFECT_EVENT.BURN_START, LIQUID_TYPE.LAVA, query)
 			else
 				self.burnEnded:Fire(player)
-				self:fireEffectEvent(player, LiquidServiceUtils.EFFECT_EVENT.BURN_END, LIQUID_TYPE.LAVA, query)
+				self:FireEffectEvent(player, LiquidServiceUtils.EFFECT_EVENT.BURN_END, LIQUID_TYPE.LAVA, query)
 			end
 		end
 
@@ -2493,7 +2494,7 @@ function LiquidServiceServer.ProcessHazards(self: LiquidServiceServer)
 end
 
 function LiquidServiceServer.OnHeartbeat(self: LiquidServiceServer, deltaTime: number)
-	self:refreshWorldBinding()
+	self:RefreshWorldBinding()
 
 	self.streamAccumulator += deltaTime
 	self.simulationAccumulator += deltaTime
@@ -2503,39 +2504,39 @@ function LiquidServiceServer.OnHeartbeat(self: LiquidServiceServer, deltaTime: n
 	if self.streamAccumulator >= self.config.simulation.streamSyncInterval then
 		self.streamAccumulator = 0
 		for player in self.playerStreams do
-			self:refreshPlayerInterest(player)
+			self:RefreshPlayerInterest(player)
 		end
-		self:processFullSnapshotQueues()
+		self:ProcessFullSnapshotQueues()
 	end
 
 	local simulationStep = 1 / self.config.simulation.stepRate
 	while self.simulationAccumulator >= simulationStep do
 		self.simulationAccumulator -= simulationStep
-		self:processSimulationStep()
+		self:ProcessSimulationStep()
 	end
 
 	local hazardStep = 1 / self.config.simulation.hazardCheckRate
 	while self.hazardAccumulator >= hazardStep do
 		self.hazardAccumulator -= hazardStep
-		self:processHazards()
+		self:ProcessHazards()
 	end
 
 	local consistencyStep = self.config.simulation.consistencySweepInterval
 	while self.consistencyAccumulator >= consistencyStep do
 		self.consistencyAccumulator -= consistencyStep
-		self:processConsistencySweep()
+		self:ProcessConsistencySweep()
 	end
 
-	self:processChangedChunks()
+	self:ProcessChangedChunks()
 end
 
 function LiquidServiceServer.TrackPlayer(self: LiquidServiceServer, player: Player)
 	local stream = self.playerStreams[player]
 	if stream == nil then
-		stream = self:createPlayerStream()
+		stream = self:CreatePlayerStream()
 		self.playerStreams[player] = stream
 	end
-	self.playerHazards[player] = self:createHazardRuntime()
+	self.playerHazards[player] = self:CreateHazardRuntime()
 end
 
 function LiquidServiceServer.UntrackPlayer(self: LiquidServiceServer, player: Player)
@@ -2545,10 +2546,10 @@ end
 
 function LiquidServiceServer.RequestSync(self: LiquidServiceServer, player: Player)
 	if self.playerStreams[player] == nil then
-		self:trackPlayer(player)
+		self:TrackPlayer(player)
 	end
-	self:refreshWorldBinding()
-	local stream = self:getPlayerStream(player)
+	self:RefreshWorldBinding()
+	local stream = self:GetPlayerStream(player)
 	stream.ready = true
 	table.clear(stream.interestKeys)
 	table.clear(stream.simulationInterestKeys)
@@ -2557,16 +2558,16 @@ function LiquidServiceServer.RequestSync(self: LiquidServiceServer, player: Play
 	table.clear(stream.fullQueueLookup)
 	stream.fullQueueHead = 1
 	stream.fullQueueTail = 0
-	self:pushState(player)
-	self:refreshPlayerInterest(player)
+	self:PushState(player)
+	self:RefreshPlayerInterest(player)
 end
 
 function LiquidServiceServer.GetPlayerLiquidQuery(self: LiquidServiceServer, player: Player): LiquidQueryResult
-	return self:getPlayerQuery(player)
+	return self:GetPlayerQuery(player)
 end
 
 function LiquidServiceServer.RefreshWorldBinding(self: LiquidServiceServer)
-	local latestWorld = self.worldGenerationService:getWorld()
+	local latestWorld = self.worldGenerationService:GetWorld()
 	if latestWorld == self.world then
 		return
 	end
@@ -2576,9 +2577,9 @@ function LiquidServiceServer.RefreshWorldBinding(self: LiquidServiceServer)
 		self.chunkLifecycleConnection = nil
 	end
 	self.world = latestWorld
-	if self.world ~= nil and typeof((self.world :: any).registerChunkLifecycleObserver) == "function" then
+	if self.world ~= nil and typeof((self.world :: any).RegisterChunkLifecycleObserver) == "function" then
 		self.chunkLifecycleConnection = (
-			(self.world :: any):registerChunkLifecycleObserver(self)
+			(self.world :: any):RegisterChunkLifecycleObserver(self)
 		) :: ChunkLifecycleConnection?
 	end
 
@@ -2592,9 +2593,9 @@ function LiquidServiceServer.RefreshWorldBinding(self: LiquidServiceServer)
 	self.currentSimulationStats = createSimulationTickStats()
 
 	if self.dirtyCellQueue ~= nil then
-		self.dirtyCellQueue:destroy()
+		self.dirtyCellQueue:Destroy()
 	end
-	self.dirtyCellQueue = WorldMutationQueue.new({
+	self.dirtyCellQueue = WorldMutationQueue.New({
 		chunkSize = if self.world ~= nil then self.world.chunkSize else 32,
 		flushInterval = 1 / self.config.simulation.stepRate,
 		maxMutationsPerFlush = self.config.simulation.maxChunkStepsPerTick
@@ -2614,33 +2615,33 @@ function LiquidServiceServer.RefreshWorldBinding(self: LiquidServiceServer)
 	end
 
 	for player, stream in self.playerStreams do
-		local nextStream = self:createPlayerStream()
+		local nextStream = self:CreatePlayerStream()
 		nextStream.ready = stream.ready
 		self.playerStreams[player] = nextStream
 	end
 	for player in self.playerHazards do
-		self.playerHazards[player] = self:createHazardRuntime()
+		self.playerHazards[player] = self:CreateHazardRuntime()
 	end
 end
 
 function LiquidServiceServer.Init(self: LiquidServiceServer)
-	self.runtimeContext = CoreRuntime.getServerRuntime()
-	if self.runtimeContext ~= nil and typeof((self.runtimeContext :: any).init) == "function" then
+	self.runtimeContext = CoreRuntime.GetServerRuntime()
+	if self.runtimeContext ~= nil and typeof((self.runtimeContext :: any).Init) == "function" then
 		local runtimeAny = self.runtimeContext :: any
-		runtimeAny:init()
+		runtimeAny:Init()
 	end
-	self.config = LiquidServiceUtils.sanitizeConfig(resolveSourceConfig(), nil)
-	self.state = LiquidServiceUtils.createDefaultState()
+	self.config = LiquidServiceUtils.CoerceConfig(GetSourceConfig(), nil)
+	self.state = LiquidServiceUtils.CreateDefaultState()
 	self.worldGenerationService = WorldGenerationServiceServer :: WorldGenerationServiceServerObject
-	self.world = self.worldGenerationService:getWorld()
+	self.world = self.worldGenerationService:GetWorld()
 	self.chunkLifecycleConnection = nil :: ChunkLifecycleConnection?
-	if self.world ~= nil and typeof((self.world :: any).registerChunkLifecycleObserver) == "function" then
+	if self.world ~= nil and typeof((self.world :: any).RegisterChunkLifecycleObserver) == "function" then
 		self.chunkLifecycleConnection = (
-			(self.world :: any):registerChunkLifecycleObserver(self)
+			(self.world :: any):RegisterChunkLifecycleObserver(self)
 		) :: ChunkLifecycleConnection?
 	end
 	self.hpService = HpServiceServer :: HpServiceServerObject
-	self.debug = WorldSimulationDebug.new({
+	self.debug = WorldSimulationDebug.New({
 		enabled = self.config.debug.enabled,
 		profilingEnabled = self.config.debug.enabled,
 	})
@@ -2648,7 +2649,7 @@ function LiquidServiceServer.Init(self: LiquidServiceServer)
 	self.playerStreams = {} :: { [Player]: PlayerStream }
 	self.playerHazards = {} :: { [Player]: PlayerHazardRuntime }
 	self.changedChunkKeys = {} :: { [string]: boolean }
-	self.dirtyCellQueue = WorldMutationQueue.new({
+	self.dirtyCellQueue = WorldMutationQueue.New({
 		chunkSize = if self.world ~= nil then self.world.chunkSize else 32,
 		flushInterval = 1 / self.config.simulation.stepRate,
 		maxMutationsPerFlush = self.config.simulation.maxChunkStepsPerTick
@@ -2718,17 +2719,17 @@ function LiquidServiceServer.Init(self: LiquidServiceServer)
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
 		if isGameplayReplicationActive(player) then
-			self:trackPlayer(player)
+			self:TrackPlayer(player)
 		end
 	end)
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
-		self:untrackPlayer(player)
+		self:UntrackPlayer(player)
 	end)
 	local tickScheduler = if self.runtimeContext ~= nil then (self.runtimeContext :: any).tickScheduler else nil
-	if tickScheduler ~= nil and typeof((tickScheduler :: any).scheduleEvery) == "function" then
-		self.heartbeatToken = (tickScheduler :: any):scheduleEvery(
+	if tickScheduler ~= nil and typeof((tickScheduler :: any).ScheduleEvery) == "function" then
+		self.heartbeatToken = (tickScheduler :: any):ScheduleEvery(
 			function(deltaTime: number)
-				self:onHeartbeat(deltaTime)
+				self:OnHeartbeat(deltaTime)
 			end,
 			1 / 60,
 			{
@@ -2737,10 +2738,10 @@ function LiquidServiceServer.Init(self: LiquidServiceServer)
 				catchUp = false,
 			}
 		)
-		self.poolMaintenanceToken = (tickScheduler :: any):scheduleEvery(
+		self.poolMaintenanceToken = (tickScheduler :: any):ScheduleEvery(
 			function()
-				self.wakeRequestPool:softShrink(24)
-				self.sweepResultPool:softShrink(6)
+				self.wakeRequestPool:SoftShrink(24)
+				self.sweepResultPool:SoftShrink(6)
 			end,
 			2.5,
 			{
@@ -2751,18 +2752,18 @@ function LiquidServiceServer.Init(self: LiquidServiceServer)
 		)
 	else
 		self.heartbeatConnection = RunService.Heartbeat:Connect(function(deltaTime: number)
-			self:onHeartbeat(deltaTime)
+			self:OnHeartbeat(deltaTime)
 		end)
 	end
 end
 
 function LiquidServiceServer.Destroy(self: LiquidServiceServer)
-	if self.heartbeatToken ~= nil and typeof(self.heartbeatToken.cancel) == "function" then
-		self.heartbeatToken:cancel()
+	if self.heartbeatToken ~= nil and typeof(self.heartbeatToken.Cancel) == "function" then
+		self.heartbeatToken:Cancel()
 		self.heartbeatToken = nil
 	end
-	if self.poolMaintenanceToken ~= nil and typeof(self.poolMaintenanceToken.cancel) == "function" then
-		self.poolMaintenanceToken:cancel()
+	if self.poolMaintenanceToken ~= nil and typeof(self.poolMaintenanceToken.Cancel) == "function" then
+		self.poolMaintenanceToken:Cancel()
 		self.poolMaintenanceToken = nil
 	end
 	if self.heartbeatConnection ~= nil then
@@ -2794,19 +2795,19 @@ function LiquidServiceServer.Destroy(self: LiquidServiceServer)
 	table.clear(self.playerHazards)
 	table.clear(self.changedChunkKeys)
 	if self.dirtyCellQueue ~= nil then
-		self.dirtyCellQueue:destroy()
+		self.dirtyCellQueue:Destroy()
 	end
 	if self.wakeRequestPool ~= nil then
-		self.wakeRequestPool:destroy()
+		self.wakeRequestPool:Destroy()
 	end
 	if self.sweepResultPool ~= nil then
-		self.sweepResultPool:destroy()
+		self.sweepResultPool:Destroy()
 	end
 	if self.recentChunkGrid ~= nil then
-		self.recentChunkGrid:clear()
+		self.recentChunkGrid:Clear()
 	end
 	if self.debug ~= nil then
-		self.debug:destroy()
+		self.debug:Destroy()
 		self.debug = nil
 	end
 	if self.debugFolder ~= nil and self.debugFolder.Parent ~= nil then
@@ -2814,77 +2815,6 @@ function LiquidServiceServer.Destroy(self: LiquidServiceServer)
 		self.debugFolder = nil
 	end
 end
-
-LiquidServiceServer.createChunkRuntime = LiquidServiceServer.CreateChunkRuntime
-LiquidServiceServer.getChunkRuntime = LiquidServiceServer.GetChunkRuntime
-LiquidServiceServer.isCollisionChunkReadyByKey = LiquidServiceServer.IsCollisionChunkReadyByKey
-LiquidServiceServer.getLoadedCollisionChunkCount = LiquidServiceServer.GetLoadedCollisionChunkCount
-LiquidServiceServer.setChunkRegionState = LiquidServiceServer.SetChunkRegionState
-LiquidServiceServer.restoreQueuedDirtyCellsForChunk = LiquidServiceServer.RestoreQueuedDirtyCellsForChunk
-LiquidServiceServer.wakeChunkBounds = LiquidServiceServer.WakeChunkBounds
-LiquidServiceServer.wakeChunkDependencyNeighborhood = LiquidServiceServer.WakeChunkDependencyNeighborhood
-LiquidServiceServer.isDebugEnabled = LiquidServiceServer.IsDebugEnabled
-LiquidServiceServer.shouldDebugLog = LiquidServiceServer.ShouldDebugLog
-LiquidServiceServer.debugLog = LiquidServiceServer.DebugLog
-LiquidServiceServer.getDebugFolder = LiquidServiceServer.GetDebugFolder
-LiquidServiceServer.getChunkDebugFolder = LiquidServiceServer.GetChunkDebugFolder
-LiquidServiceServer.getChunkCellDebugFolder = LiquidServiceServer.GetChunkCellDebugFolder
-LiquidServiceServer.updateSimulationDebugStats = LiquidServiceServer.UpdateSimulationDebugStats
-LiquidServiceServer.updateCellDebugVisual = LiquidServiceServer.UpdateCellDebugVisual
-LiquidServiceServer.updateChunkDebugAttributes = LiquidServiceServer.UpdateChunkDebugAttributes
-LiquidServiceServer.createPlayerStream = LiquidServiceServer.CreatePlayerStream
-LiquidServiceServer.getPlayerStream = LiquidServiceServer.GetPlayerStream
-LiquidServiceServer.isPlayerStreamReady = LiquidServiceServer.IsPlayerStreamReady
-LiquidServiceServer.createHazardRuntime = LiquidServiceServer.CreateHazardRuntime
-LiquidServiceServer.getHazardRuntime = LiquidServiceServer.GetHazardRuntime
-LiquidServiceServer.createStateSnapshot = LiquidServiceServer.CreateStateSnapshot
-LiquidServiceServer.pushState = LiquidServiceServer.PushState
-LiquidServiceServer.getDefinition = LiquidServiceServer.GetDefinition
-LiquidServiceServer.getChunkSnapshot = LiquidServiceServer.GetChunkSnapshot
-LiquidServiceServer.enqueueFullSnapshot = LiquidServiceServer.EnqueueFullSnapshot
-LiquidServiceServer.markChunkStable = LiquidServiceServer.MarkChunkStable
-LiquidServiceServer.recordSimulationMetric = LiquidServiceServer.RecordSimulationMetric
-LiquidServiceServer.getPendingWakeRequestCount = LiquidServiceServer.GetPendingWakeRequestCount
-LiquidServiceServer.getChunkWorldPosition = LiquidServiceServer.GetChunkWorldPosition
-LiquidServiceServer.trackRecentChunkActivity = LiquidServiceServer.TrackRecentChunkActivity
-LiquidServiceServer.pruneRecentChunkActivity = LiquidServiceServer.PruneRecentChunkActivity
-LiquidServiceServer.requeueDirtyMutation = LiquidServiceServer.RequeueDirtyMutation
-LiquidServiceServer.primeChunkRuntime = LiquidServiceServer.PrimeChunkRuntime
-LiquidServiceServer.expandInterestKeys = LiquidServiceServer.ExpandInterestKeys
-LiquidServiceServer.refreshPlayerInterest = LiquidServiceServer.RefreshPlayerInterest
-LiquidServiceServer.markTileDirty = LiquidServiceServer.MarkTileDirty
-LiquidServiceServer.markAreaDirty = LiquidServiceServer.MarkAreaDirty
-LiquidServiceServer.wakeLiquidRegion = LiquidServiceServer.WakeLiquidRegion
-LiquidServiceServer.applyWakeRequest = LiquidServiceServer.ApplyWakeRequest
-LiquidServiceServer.flushWakeRequests = LiquidServiceServer.FlushWakeRequests
-LiquidServiceServer.registerCellMutation = LiquidServiceServer.RegisterCellMutation
-LiquidServiceServer.setPackedCell = LiquidServiceServer.SetPackedCell
-LiquidServiceServer.isSolid = LiquidServiceServer.IsSolid
-LiquidServiceServer.isTileCollisionReady = LiquidServiceServer.IsTileCollisionReady
-LiquidServiceServer.buildSolverAccess = LiquidServiceServer.BuildSolverAccess
-LiquidServiceServer.stepChunk = LiquidServiceServer.StepChunk
-LiquidServiceServer.verifyChunkStability = LiquidServiceServer.VerifyChunkStability
-LiquidServiceServer.collectActiveChunkKeys = LiquidServiceServer.CollectActiveChunkKeys
-LiquidServiceServer.processSimulationStep = LiquidServiceServer.ProcessSimulationStep
-LiquidServiceServer.processConsistencySweep = LiquidServiceServer.ProcessConsistencySweep
-LiquidServiceServer.redistributeDisplacedLiquid = LiquidServiceServer.RedistributeDisplacedLiquid
-LiquidServiceServer.reactivateNearbyLiquid = LiquidServiceServer.ReactivateNearbyLiquid
-LiquidServiceServer.notifyTerrainChanged = LiquidServiceServer.NotifyTerrainChanged
-LiquidServiceServer.processFullSnapshotQueues = LiquidServiceServer.ProcessFullSnapshotQueues
-LiquidServiceServer.processChangedChunks = LiquidServiceServer.ProcessChangedChunks
-LiquidServiceServer.getPlayerQuery = LiquidServiceServer.GetPlayerQuery
-LiquidServiceServer.fireEffectEvent = LiquidServiceServer.FireEffectEvent
-LiquidServiceServer.applyLiquidMovementSpeed = LiquidServiceServer.ApplyLiquidMovementSpeed
-LiquidServiceServer.processHazards = LiquidServiceServer.ProcessHazards
-LiquidServiceServer.onHeartbeat = LiquidServiceServer.OnHeartbeat
-LiquidServiceServer.trackPlayer = LiquidServiceServer.TrackPlayer
-LiquidServiceServer.untrackPlayer = LiquidServiceServer.UntrackPlayer
-LiquidServiceServer.requestSync = LiquidServiceServer.RequestSync
-LiquidServiceServer.getPlayerLiquidQuery = LiquidServiceServer.GetPlayerLiquidQuery
-LiquidServiceServer.refreshWorldBinding = LiquidServiceServer.RefreshWorldBinding
-LiquidServiceServer.init = LiquidServiceServer.Init
-LiquidServiceServer.destroy = LiquidServiceServer.Destroy
-
 type LiquidServiceServer = typeof(LiquidServiceServer) & {
 	runtimeContext: any?,
 	config: LiquidServiceConfig,

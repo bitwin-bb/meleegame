@@ -43,9 +43,9 @@ local function safeInit(value: any?)
 	if value == nil then
 		return
 	end
-	if typeof(value.init) == "function" then
+	if typeof(value.Init) == "function" then
 		pcall(function()
-			value:init()
+			value:Init()
 		end)
 	end
 end
@@ -54,9 +54,9 @@ local function safeDestroy(value: any?)
 	if value == nil then
 		return
 	end
-	if typeof(value.destroy) == "function" then
+	if typeof(value.Destroy) == "function" then
 		pcall(function()
-			value:destroy()
+			value:Destroy()
 		end)
 	end
 end
@@ -75,14 +75,14 @@ local function buildClientModules(self: RuntimeContext, config: RuntimeConfig)
 
 	self.platform = if config.platform ~= nil
 		then config.platform
-		else Platform.new({
+		else Platform.New({
 			eventBus = self.eventBus,
 			eventChannel = "platform",
 			changeEvent = "changed",
 		})
 	self.input = if config.input ~= nil
 		then config.input
-		else Input.new({
+		else Input.New({
 			eventBus = self.eventBus,
 			eventChannel = "input",
 			actionEvent = "action",
@@ -90,14 +90,14 @@ local function buildClientModules(self: RuntimeContext, config: RuntimeConfig)
 		})
 	self.gestures = if config.gestures ~= nil
 		then config.gestures
-		else Gestures.new({
+		else Gestures.New({
 			eventBus = self.eventBus,
 			eventChannel = "gestures",
 			tickScheduler = self.tickScheduler,
 		})
 	self.haptics = if config.haptics ~= nil
 		then config.haptics
-		else Haptics.new({
+		else Haptics.New({
 			eventBus = self.eventBus,
 			eventChannel = "haptics",
 			tickScheduler = self.tickScheduler,
@@ -105,7 +105,7 @@ local function buildClientModules(self: RuntimeContext, config: RuntimeConfig)
 		})
 	self.cursor = if config.cursor ~= nil
 		then config.cursor
-		else Cursor.new({
+		else Cursor.New({
 			input = self.input,
 			eventBus = self.eventBus,
 			eventChannel = "cursor",
@@ -115,7 +115,7 @@ local function buildClientModules(self: RuntimeContext, config: RuntimeConfig)
 		})
 	self.perfTier = if config.perfTier ~= nil
 		then config.perfTier
-		else PerfTier.new({
+		else PerfTier.New({
 			eventBus = self.eventBus,
 			eventChannel = "perf",
 			changeEvent = "tierChanged",
@@ -130,10 +130,10 @@ function Runtime.New(configRaw: RuntimeConfig?): RuntimeContext
 	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local self = setmetatable({
 		isClient = RunService:IsClient(),
-		eventBus = if config.eventBus ~= nil then config.eventBus else EventBus.new(),
+		eventBus = if config.eventBus ~= nil then config.eventBus else EventBus.New(),
 		tickScheduler = if config.tickScheduler ~= nil
 			then config.tickScheduler
-			else TickScheduler.new({
+			else TickScheduler.New({
 				fixedStep = clampNumber(config.fixedStep, 1 / 60, 1 / 240, 1),
 			}),
 		platform = nil,
@@ -161,9 +161,9 @@ function Runtime._ensureHeartbeat(self: RuntimeContext)
 	end
 	self.heartbeatConnection = RunService.Heartbeat:Connect(function(dt: number)
 		local scheduler = self.tickScheduler
-		if scheduler ~= nil and typeof((scheduler :: any).update) == "function" then
+		if scheduler ~= nil and typeof((scheduler :: any).Update) == "function" then
 			local schedulerAny = scheduler :: any
-			schedulerAny:update(dt)
+			schedulerAny:Update(dt)
 		end
 	end)
 end
@@ -193,7 +193,7 @@ function Runtime.GetGamepadNav(self: RuntimeContext, configRaw: any?): any
 		return nil
 	end
 	local GamepadNav = require("GamepadNav")
-	self.gamepadNav = GamepadNav.new(if typeof(configRaw) == "table"
+	self.gamepadNav = GamepadNav.New(if typeof(configRaw) == "table"
 		then configRaw
 		else {
 			eventBus = self.eventBus,
@@ -221,7 +221,7 @@ function Runtime.GetHUDScaler(self: RuntimeContext, configRaw: any?): any
 	if config.eventBus == nil then
 		config.eventBus = self.eventBus
 	end
-	self.hudScaler = HUDScaler.new(config)
+	self.hudScaler = HUDScaler.New(config)
 	if self.isInitialized then
 		safeInit(self.hudScaler)
 	end
@@ -287,7 +287,7 @@ function Runtime.DestroyClientRuntime()
 	if singletonClient == nil then
 		return
 	end
-	singletonClient:destroy()
+	singletonClient:Destroy()
 	singletonClient = nil
 end
 
@@ -295,28 +295,8 @@ function Runtime.DestroyServerRuntime()
 	if singletonServer == nil then
 		return
 	end
-	singletonServer:destroy()
+	singletonServer:Destroy()
 	singletonServer = nil
 end
-
-Runtime.Init = Runtime.Init
-Runtime.Destroy = Runtime.Destroy
-Runtime.GetGamepadNav = Runtime.GetGamepadNav
-Runtime.GetHUDScaler = Runtime.GetHUDScaler
-Runtime.GetEventBus = Runtime.GetEventBus
-Runtime.GetTickScheduler = Runtime.GetTickScheduler
-
-Runtime.new = Runtime.New
-Runtime.init = Runtime.Init
-Runtime.getGamepadNav = Runtime.GetGamepadNav
-Runtime.getHUDScaler = Runtime.GetHUDScaler
-Runtime.getEventBus = Runtime.GetEventBus
-Runtime.getTickScheduler = Runtime.GetTickScheduler
-Runtime.destroy = Runtime.Destroy
-Runtime.getClientRuntime = Runtime.GetClientRuntime
-Runtime.getServerRuntime = Runtime.GetServerRuntime
-Runtime.getSharedRuntime = Runtime.GetSharedRuntime
-Runtime.destroyClientRuntime = Runtime.DestroyClientRuntime
-Runtime.destroyServerRuntime = Runtime.DestroyServerRuntime
 
 return Runtime

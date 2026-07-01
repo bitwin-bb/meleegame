@@ -54,13 +54,6 @@ end
 function CharacterAdapter.Destroy(self: CharacterAdapter)
 	self.character = nil
 end
-
-CharacterAdapter.setCharacter = CharacterAdapter.SetCharacter
-CharacterAdapter.getCharacter = CharacterAdapter.GetCharacter
-CharacterAdapter.getHumanoid = CharacterAdapter.GetHumanoid
-CharacterAdapter.getRoot = CharacterAdapter.GetRoot
-CharacterAdapter.isAlive = CharacterAdapter.IsAlive
-CharacterAdapter.destroy = CharacterAdapter.Destroy
 CharacterAdapter.copy = Table.copy
 
 return CharacterAdapter

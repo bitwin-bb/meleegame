@@ -151,7 +151,7 @@ local ALLOWED_STATE_TRANSITIONS: { [LootState]: { [LootState]: boolean } } = {
 	Collected = {},
 }
 
-type SanitizedDropEntry = {
+type CoerceDDropEntry = {
 	itemId: string,
 	weight: number,
 	amountMin: number,
@@ -169,7 +169,7 @@ local function trim(textRaw: any): string
 	return string.match(textRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function sanitizeString(raw: any, fallback: string?): string?
+local function CoerceString(raw: any, fallback: string?): string?
 	local value = trim(raw)
 	if value == "" then
 		return fallback
@@ -185,7 +185,7 @@ local function token(raw: any): string
 	return string.gsub(value, "[%s_%-%.]+", "")
 end
 
-local function sanitizeNumber(raw: any, fallback: number, minValue: number?, maxValue: number?): number
+local function CoerceNumber(raw: any, fallback: number, minValue: number?, maxValue: number?): number
 	local value = fallback
 	if typeof(raw) == "number" and raw == raw then
 		value = raw
@@ -205,8 +205,8 @@ local function sanitizeNumber(raw: any, fallback: number, minValue: number?, max
 	return value
 end
 
-local function sanitizeInteger(raw: any, fallback: number, minValue: number, maxValue: number?): number
-	local value = math.floor(sanitizeNumber(raw, fallback, minValue, maxValue))
+local function CoerceInteger(raw: any, fallback: number, minValue: number, maxValue: number?): number
+	local value = math.floor(CoerceNumber(raw, fallback, minValue, maxValue))
 	if value < minValue then
 		value = minValue
 	end
@@ -216,7 +216,7 @@ local function sanitizeInteger(raw: any, fallback: number, minValue: number, max
 	return value
 end
 
-local function sanitizeVector3(raw: any, fallback: Vector3): Vector3
+local function CoerceVector3(raw: any, fallback: Vector3): Vector3
 	if typeof(raw) == "Vector3" then
 		return raw
 	end
@@ -291,7 +291,7 @@ local function deepEqualInternal(lhs: any, rhs: any, seen: { [any]: any }): bool
 	return true
 end
 
-local function sanitizeRarity(raw: any, fallback: LootRarity?): LootRarity
+local function CoerceRarity(raw: any, fallback: LootRarity?): LootRarity
 	if raw == "Common" then
 		return "Common"
 	end
@@ -310,7 +310,7 @@ local function sanitizeRarity(raw: any, fallback: LootRarity?): LootRarity
 	return fallback or DEFAULT_RARITY
 end
 
-local function sanitizeState(raw: any, fallback: LootState?): LootState
+local function CoerceState(raw: any, fallback: LootState?): LootState
 	if raw == "Dropped" then
 		return "Dropped"
 	end
@@ -329,7 +329,7 @@ local function sanitizeState(raw: any, fallback: LootState?): LootState
 	return fallback or "Dropped"
 end
 
-local function sanitizeMetadata(raw: any): LootMetadata?
+local function CoerceMetadata(raw: any): LootMetadata?
 	if typeof(raw) ~= "table" then
 		return nil
 	end
@@ -340,7 +340,7 @@ local function hasDropTable(dropTablesRaw: any, tableIdRaw: any): boolean
 	if typeof(dropTablesRaw) ~= "table" then
 		return false
 	end
-	local tableId = sanitizeString(tableIdRaw, nil)
+	local tableId = CoerceString(tableIdRaw, nil)
 	if tableId == nil then
 		return false
 	end
@@ -360,7 +360,7 @@ local function normalizeDropTableAliasMap(dataRaw: any): { [string]: string }
 
 	for aliasRaw, tableIdRaw in aliasesRaw do
 		local alias = token(aliasRaw)
-		local tableId = sanitizeString(tableIdRaw, nil)
+		local tableId = CoerceString(tableIdRaw, nil)
 		if alias ~= "" and tableId ~= nil then
 			output[alias] = tableId
 		end
@@ -369,46 +369,46 @@ local function normalizeDropTableAliasMap(dataRaw: any): { [string]: string }
 	return output
 end
 
-local function sanitizeDropEntry(raw: any): SanitizedDropEntry?
+local function CoerceDropEntry(raw: any): CoerceDDropEntry?
 	if typeof(raw) ~= "table" then
 		return nil
 	end
 
 	local source = raw :: { [string]: any }
-	local itemId = sanitizeString(source.itemId, nil)
+	local itemId = CoerceString(source.itemId, nil)
 	if itemId == nil then
 		return nil
 	end
 
-	local weight = sanitizeNumber(source.weight, 1, 0, 100000)
+	local weight = CoerceNumber(source.weight, 1, 0, 100000)
 	if weight <= 0 then
 		return nil
 	end
 
-	local amountMin = sanitizeInteger(source.amountMin, 1, 1, 100000)
-	local amountMax = sanitizeInteger(source.amountMax, amountMin, amountMin, 100000)
+	local amountMin = CoerceInteger(source.amountMin, 1, 1, 100000)
+	local amountMax = CoerceInteger(source.amountMax, amountMin, amountMin, 100000)
 
 	return {
 		itemId = itemId,
 		weight = weight,
 		amountMin = amountMin,
 		amountMax = amountMax,
-		chance = sanitizeNumber(source.chance, 1, 0, 1),
-		luckChanceScale = sanitizeNumber(source.luckChanceScale, 0, -4, 4),
-		luckWeightScale = sanitizeNumber(source.luckWeightScale, 0, -10000, 10000),
-		metadata = sanitizeMetadata(source.metadata),
+		chance = CoerceNumber(source.chance, 1, 0, 1),
+		luckChanceScale = CoerceNumber(source.luckChanceScale, 0, -4, 4),
+		luckWeightScale = CoerceNumber(source.luckWeightScale, 0, -10000, 10000),
+		metadata = CoerceMetadata(source.metadata),
 	}
 end
 
-local function chooseWeightedEntry(entriesRaw: any, randomObject: Random, luck: number): SanitizedDropEntry?
+local function chooseWeightedEntry(entriesRaw: any, randomObject: Random, luck: number): CoerceDDropEntry?
 	if typeof(entriesRaw) ~= "table" then
 		return nil
 	end
 
-	local weightedEntries: { { entry: SanitizedDropEntry, weight: number } } = {}
+	local weightedEntries: { { entry: CoerceDDropEntry, weight: number } } = {}
 	local totalWeight = 0
 	for _, rawEntry in entriesRaw do
-		local entry = sanitizeDropEntry(rawEntry)
+		local entry = CoerceDropEntry(rawEntry)
 		if entry == nil then
 			continue
 		end
@@ -449,7 +449,7 @@ end
 local function appendDropResult(
 	output: { LootRollResult },
 	dataRaw: any,
-	entry: SanitizedDropEntry,
+	entry: CoerceDDropEntry,
 	randomObject: Random,
 	quantityMultiplier: number,
 	sourceType: string
@@ -458,7 +458,7 @@ local function appendDropResult(
 		then randomObject:NextInteger(entry.amountMin, entry.amountMax)
 		else entry.amountMin
 	local amount = math.max(1, math.floor(baseAmount * quantityMultiplier + 0.5))
-	local itemConfig = LootServiceUtils.ResolveItemConfig(dataRaw, entry.itemId)
+	local itemConfig = LootServiceUtils.GetItemConfig(dataRaw, entry.itemId)
 	table.insert(output, {
 		itemId = entry.itemId,
 		amount = amount,
@@ -478,7 +478,7 @@ local function getDropTable(dataRaw: any, tableIdRaw: any): { [string]: any }?
 		return nil
 	end
 
-	local tableId = sanitizeString(tableIdRaw, nil)
+	local tableId = CoerceString(tableIdRaw, nil)
 	if tableId == nil then
 		return nil
 	end
@@ -490,7 +490,7 @@ local function getDropTable(dataRaw: any, tableIdRaw: any): { [string]: any }?
 end
 
 local function appendUniqueString(output: { string }, seen: { [string]: boolean }, valueRaw: any)
-	local value = sanitizeString(valueRaw, nil)
+	local value = CoerceString(valueRaw, nil)
 	if value == nil then
 		return
 	end
@@ -501,32 +501,32 @@ local function appendUniqueString(output: { string }, seen: { [string]: boolean 
 	table.insert(output, value)
 end
 
-function LootServiceUtils.SanitizeString(raw: any, fallback: string?): string?
-	return sanitizeString(raw, fallback)
+function LootServiceUtils.CoerceString(raw: any, fallback: string?): string?
+	return CoerceString(raw, fallback)
 end
 
 function LootServiceUtils.Token(raw: any): string
 	return token(raw)
 end
 
-function LootServiceUtils.SanitizeNumber(raw: any, fallback: number, minValue: number?, maxValue: number?): number
-	return sanitizeNumber(raw, fallback, minValue, maxValue)
+function LootServiceUtils.CoerceNumber(raw: any, fallback: number, minValue: number?, maxValue: number?): number
+	return CoerceNumber(raw, fallback, minValue, maxValue)
 end
 
-function LootServiceUtils.SanitizeInteger(raw: any, fallback: number, minValue: number, maxValue: number?): number
-	return sanitizeInteger(raw, fallback, minValue, maxValue)
+function LootServiceUtils.CoerceInteger(raw: any, fallback: number, minValue: number, maxValue: number?): number
+	return CoerceInteger(raw, fallback, minValue, maxValue)
 end
 
-function LootServiceUtils.SanitizeVector3(raw: any, fallback: Vector3): Vector3
-	return sanitizeVector3(raw, fallback)
+function LootServiceUtils.CoerceVector3(raw: any, fallback: Vector3): Vector3
+	return CoerceVector3(raw, fallback)
 end
 
-function LootServiceUtils.SanitizeRarity(raw: any, fallback: LootRarity?): LootRarity
-	return sanitizeRarity(raw, fallback)
+function LootServiceUtils.CoerceRarity(raw: any, fallback: LootRarity?): LootRarity
+	return CoerceRarity(raw, fallback)
 end
 
-function LootServiceUtils.SanitizeState(raw: any, fallback: LootState?): LootState
-	return sanitizeState(raw, fallback)
+function LootServiceUtils.CoerceState(raw: any, fallback: LootState?): LootState
+	return CoerceState(raw, fallback)
 end
 
 function LootServiceUtils.CloneDeep(value: any): any
@@ -537,19 +537,19 @@ function LootServiceUtils.DeepEqual(lhs: any, rhs: any): boolean
 	return deepEqualInternal(lhs, rhs, {})
 end
 
-function LootServiceUtils.ResolveSettings(dataRaw: any): LootSettings
+function LootServiceUtils.GetSettings(dataRaw: any): LootSettings
 	local settingsRaw = if typeof(dataRaw) == "table" then (dataRaw :: { [string]: any }).settings else nil
 	local settings = if typeof(settingsRaw) == "table" then settingsRaw else {} :: any
 
 	local scatterRadiusMin =
-		sanitizeNumber((settings :: any).scatterRadiusMin, DEFAULT_SETTINGS.scatterRadiusMin, 0, 100)
+		CoerceNumber((settings :: any).scatterRadiusMin, DEFAULT_SETTINGS.scatterRadiusMin, 0, 100)
 	local scatterRadiusMax =
-		sanitizeNumber((settings :: any).scatterRadiusMax, DEFAULT_SETTINGS.scatterRadiusMax, scatterRadiusMin, 100)
+		CoerceNumber((settings :: any).scatterRadiusMax, DEFAULT_SETTINGS.scatterRadiusMax, scatterRadiusMin, 100)
 
 	return {
-		despawnSeconds = sanitizeNumber((settings :: any).despawnSeconds, DEFAULT_SETTINGS.despawnSeconds, 1, 3600),
-		fixedStep = sanitizeNumber((settings :: any).fixedStep, DEFAULT_SETTINGS.fixedStep, 1 / 240, 1 / 10),
-		maxSimulationStepsPerHeartbeat = sanitizeInteger(
+		despawnSeconds = CoerceNumber((settings :: any).despawnSeconds, DEFAULT_SETTINGS.despawnSeconds, 1, 3600),
+		fixedStep = CoerceNumber((settings :: any).fixedStep, DEFAULT_SETTINGS.fixedStep, 1 / 240, 1 / 10),
+		maxSimulationStepsPerHeartbeat = CoerceInteger(
 			(settings :: any).maxSimulationStepsPerHeartbeat,
 			DEFAULT_SETTINGS.maxSimulationStepsPerHeartbeat,
 			1,
@@ -558,147 +558,147 @@ function LootServiceUtils.ResolveSettings(dataRaw: any): LootSettings
 		lockTo2DPlane = if (settings :: any).lockTo2DPlane == nil
 			then DEFAULT_SETTINGS.lockTo2DPlane
 			else (settings :: any).lockTo2DPlane == true,
-		droppedStateDuration = sanitizeNumber(
+		droppedStateDuration = CoerceNumber(
 			(settings :: any).droppedStateDuration,
 			DEFAULT_SETTINGS.droppedStateDuration,
 			0,
 			2
 		),
-		settleMinDuration = sanitizeNumber(
+		settleMinDuration = CoerceNumber(
 			(settings :: any).settleMinDuration,
 			DEFAULT_SETTINGS.settleMinDuration,
 			0,
 			4
 		),
-		settleMaxDuration = sanitizeNumber(
+		settleMaxDuration = CoerceNumber(
 			(settings :: any).settleMaxDuration,
 			DEFAULT_SETTINGS.settleMaxDuration,
 			0.05,
 			12
 		),
-		settleLinearSpeedThreshold = sanitizeNumber(
+		settleLinearSpeedThreshold = CoerceNumber(
 			(settings :: any).settleLinearSpeedThreshold,
 			DEFAULT_SETTINGS.settleLinearSpeedThreshold,
 			0.01,
 			100
 		),
-		settleAngularSpeedThreshold = sanitizeNumber(
+		settleAngularSpeedThreshold = CoerceNumber(
 			(settings :: any).settleAngularSpeedThreshold,
 			DEFAULT_SETTINGS.settleAngularSpeedThreshold,
 			0.01,
 			200
 		),
-		settleStableDuration = sanitizeNumber(
+		settleStableDuration = CoerceNumber(
 			(settings :: any).settleStableDuration,
 			DEFAULT_SETTINGS.settleStableDuration,
 			0.01,
 			4
 		),
-		dropImpulseForward = sanitizeNumber(
+		dropImpulseForward = CoerceNumber(
 			(settings :: any).dropImpulseForward,
 			DEFAULT_SETTINGS.dropImpulseForward,
 			0,
 			300
 		),
-		dropImpulseUp = sanitizeNumber((settings :: any).dropImpulseUp, DEFAULT_SETTINGS.dropImpulseUp, 0, 300),
-		dropImpulseRandomHorizontal = sanitizeNumber(
+		dropImpulseUp = CoerceNumber((settings :: any).dropImpulseUp, DEFAULT_SETTINGS.dropImpulseUp, 0, 300),
+		dropImpulseRandomHorizontal = CoerceNumber(
 			(settings :: any).dropImpulseRandomHorizontal,
 			DEFAULT_SETTINGS.dropImpulseRandomHorizontal,
 			0,
 			300
 		),
-		dropImpulseRandomUp = sanitizeNumber(
+		dropImpulseRandomUp = CoerceNumber(
 			(settings :: any).dropImpulseRandomUp,
 			DEFAULT_SETTINGS.dropImpulseRandomUp,
 			0,
 			300
 		),
-		dropAngularVelocity = sanitizeNumber(
+		dropAngularVelocity = CoerceNumber(
 			(settings :: any).dropAngularVelocity,
 			DEFAULT_SETTINGS.dropAngularVelocity,
 			0,
 			200
 		),
-		dropBounciness = sanitizeNumber((settings :: any).dropBounciness, DEFAULT_SETTINGS.dropBounciness, 0, 1),
-		dropFriction = sanitizeNumber((settings :: any).dropFriction, DEFAULT_SETTINGS.dropFriction, 0, 1),
-		dropElasticityWeight = sanitizeNumber(
+		dropBounciness = CoerceNumber((settings :: any).dropBounciness, DEFAULT_SETTINGS.dropBounciness, 0, 1),
+		dropFriction = CoerceNumber((settings :: any).dropFriction, DEFAULT_SETTINGS.dropFriction, 0, 1),
+		dropElasticityWeight = CoerceNumber(
 			(settings :: any).dropElasticityWeight,
 			DEFAULT_SETTINGS.dropElasticityWeight,
 			0,
 			100
 		),
-		pickupScanRadius = sanitizeNumber(
+		pickupScanRadius = CoerceNumber(
 			(settings :: any).pickupScanRadius,
 			DEFAULT_SETTINGS.pickupScanRadius,
 			0.5,
 			400
 		),
-		collectDistance = sanitizeNumber((settings :: any).collectDistance, DEFAULT_SETTINGS.collectDistance, 0.1, 30),
-		collectOffsetY = sanitizeNumber((settings :: any).collectOffsetY, DEFAULT_SETTINGS.collectOffsetY, 0, 20),
-		magnetBaseSpeed = sanitizeNumber((settings :: any).magnetBaseSpeed, DEFAULT_SETTINGS.magnetBaseSpeed, 0.1, 400),
-		magnetAcceleration = sanitizeNumber(
+		collectDistance = CoerceNumber((settings :: any).collectDistance, DEFAULT_SETTINGS.collectDistance, 0.1, 30),
+		collectOffsetY = CoerceNumber((settings :: any).collectOffsetY, DEFAULT_SETTINGS.collectOffsetY, 0, 20),
+		magnetBaseSpeed = CoerceNumber((settings :: any).magnetBaseSpeed, DEFAULT_SETTINGS.magnetBaseSpeed, 0.1, 400),
+		magnetAcceleration = CoerceNumber(
 			(settings :: any).magnetAcceleration,
 			DEFAULT_SETTINGS.magnetAcceleration,
 			0,
 			4000
 		),
-		magnetMaxSpeed = sanitizeNumber((settings :: any).magnetMaxSpeed, DEFAULT_SETTINGS.magnetMaxSpeed, 0.1, 5000),
-		magnetSpringFrequency = sanitizeNumber(
+		magnetMaxSpeed = CoerceNumber((settings :: any).magnetMaxSpeed, DEFAULT_SETTINGS.magnetMaxSpeed, 0.1, 5000),
+		magnetSpringFrequency = CoerceNumber(
 			(settings :: any).magnetSpringFrequency,
 			DEFAULT_SETTINGS.magnetSpringFrequency,
 			0.01,
 			120
 		),
-		magnetSpringFrequencyRamp = sanitizeNumber(
+		magnetSpringFrequencyRamp = CoerceNumber(
 			(settings :: any).magnetSpringFrequencyRamp,
 			DEFAULT_SETTINGS.magnetSpringFrequencyRamp,
 			0,
 			200
 		),
-		magnetSpringFrequencyCloseBoost = sanitizeNumber(
+		magnetSpringFrequencyCloseBoost = CoerceNumber(
 			(settings :: any).magnetSpringFrequencyCloseBoost,
 			DEFAULT_SETTINGS.magnetSpringFrequencyCloseBoost,
 			0,
 			200
 		),
-		magnetSpringDamping = sanitizeNumber(
+		magnetSpringDamping = CoerceNumber(
 			(settings :: any).magnetSpringDamping,
 			DEFAULT_SETTINGS.magnetSpringDamping,
 			0,
 			20
 		),
-		magnetSpeedBlend = sanitizeNumber((settings :: any).magnetSpeedBlend, DEFAULT_SETTINGS.magnetSpeedBlend, 0, 1),
-		magnetCooldownAfterFailedCollect = sanitizeNumber(
+		magnetSpeedBlend = CoerceNumber((settings :: any).magnetSpeedBlend, DEFAULT_SETTINGS.magnetSpeedBlend, 0, 1),
+		magnetCooldownAfterFailedCollect = CoerceNumber(
 			(settings :: any).magnetCooldownAfterFailedCollect,
 			DEFAULT_SETTINGS.magnetCooldownAfterFailedCollect,
 			0,
 			4
 		),
-		ownerLockSeconds = sanitizeNumber(
+		ownerLockSeconds = CoerceNumber(
 			(settings :: any).ownerLockSeconds,
 			DEFAULT_SETTINGS.ownerLockSeconds,
 			0,
 			120
 		),
-		playerDropOwnerLockSeconds = sanitizeNumber(
+		playerDropOwnerLockSeconds = CoerceNumber(
 			(settings :: any).playerDropOwnerLockSeconds,
 			DEFAULT_SETTINGS.playerDropOwnerLockSeconds,
 			0,
 			120
 		),
-		playerDropForwardOffset = sanitizeNumber(
+		playerDropForwardOffset = CoerceNumber(
 			(settings :: any).playerDropForwardOffset,
 			DEFAULT_SETTINGS.playerDropForwardOffset,
 			0,
 			100
 		),
-		playerDropUpOffset = sanitizeNumber(
+		playerDropUpOffset = CoerceNumber(
 			(settings :: any).playerDropUpOffset,
 			DEFAULT_SETTINGS.playerDropUpOffset,
 			0,
 			100
 		),
-		spawnHeightOffset = sanitizeNumber(
+		spawnHeightOffset = CoerceNumber(
 			(settings :: any).spawnHeightOffset,
 			DEFAULT_SETTINGS.spawnHeightOffset,
 			-50,
@@ -706,19 +706,19 @@ function LootServiceUtils.ResolveSettings(dataRaw: any): LootSettings
 		),
 		scatterRadiusMin = scatterRadiusMin,
 		scatterRadiusMax = scatterRadiusMax,
-		dropAmountDefault = sanitizeInteger(
+		dropAmountDefault = CoerceInteger(
 			(settings :: any).dropAmountDefault,
 			DEFAULT_SETTINGS.dropAmountDefault,
 			1,
 			9999
 		),
-		dropAmountMin = sanitizeInteger((settings :: any).dropAmountMin, DEFAULT_SETTINGS.dropAmountMin, 1, 9999),
-		dropAmountMax = sanitizeInteger((settings :: any).dropAmountMax, DEFAULT_SETTINGS.dropAmountMax, 1, 999999),
+		dropAmountMin = CoerceInteger((settings :: any).dropAmountMin, DEFAULT_SETTINGS.dropAmountMin, 1, 9999),
+		dropAmountMax = CoerceInteger((settings :: any).dropAmountMax, DEFAULT_SETTINGS.dropAmountMax, 1, 999999),
 	}
 end
 
-function LootServiceUtils.ResolveItemConfig(dataRaw: any, itemIdRaw: any): LootItemConfig
-	local itemId = sanitizeString(itemIdRaw, nil)
+function LootServiceUtils.GetItemConfig(dataRaw: any, itemIdRaw: any): LootItemConfig
+	local itemId = CoerceString(itemIdRaw, nil)
 	if itemId == nil then
 		return DEFAULT_ITEM_CONFIG
 	end
@@ -736,18 +736,18 @@ function LootServiceUtils.ResolveItemConfig(dataRaw: any, itemIdRaw: any): LootI
 
 	local config = configRaw :: { [string]: any }
 	return {
-		maxStack = sanitizeInteger(config.maxStack, DEFAULT_ITEM_MAX_STACK, 1, 9999),
-		rarity = sanitizeRarity(config.rarity, DEFAULT_RARITY),
+		maxStack = CoerceInteger(config.maxStack, DEFAULT_ITEM_MAX_STACK, 1, 9999),
+		rarity = CoerceRarity(config.rarity, DEFAULT_RARITY),
 	}
 end
 
-function LootServiceUtils.ResolveDropTableId(dataRaw: any, sourceRaw: any, fallbackRaw: any): string?
+function LootServiceUtils.GotRopTableId(dataRaw: any, sourceRaw: any, fallbackRaw: any): string?
 	local aliases = normalizeDropTableAliasMap(dataRaw)
 	local dropTablesRaw = if typeof(dataRaw) == "table" then (dataRaw :: { [string]: any }).dropTables else nil
-	local fallback = sanitizeString(fallbackRaw, nil)
+	local fallback = CoerceString(fallbackRaw, nil)
 
-	local function resolveValue(valueRaw: any): string?
-		local value = sanitizeString(valueRaw, nil)
+	local function GetValue(valueRaw: any): string?
+		local value = CoerceString(valueRaw, nil)
 		if value == nil then
 			return nil
 		end
@@ -762,12 +762,12 @@ function LootServiceUtils.ResolveDropTableId(dataRaw: any, sourceRaw: any, fallb
 	end
 
 	if typeof(sourceRaw) == "string" then
-		return resolveValue(sourceRaw) or resolveValue(fallback)
+		return GetValue(sourceRaw) or GetValue(fallback)
 	end
 
 	if typeof(sourceRaw) == "table" then
 		local source = sourceRaw :: { [string]: any }
-		local direct = resolveValue(source.dropTableId)
+		local direct = GetValue(source.dropTableId)
 		if direct ~= nil then
 			return direct
 		end
@@ -780,14 +780,14 @@ function LootServiceUtils.ResolveDropTableId(dataRaw: any, sourceRaw: any, fallb
 				source.itemId,
 			}
 		do
-			local resolved = resolveValue(fieldValue)
-			if resolved ~= nil then
-				return resolved
+			local Got = GetValue(fieldValue)
+			if Got ~= nil then
+				return Got
 			end
 		end
 	end
 
-	return resolveValue(fallback)
+	return GetValue(fallback)
 end
 
 function LootServiceUtils.RollDropTable(
@@ -803,18 +803,18 @@ function LootServiceUtils.RollDropTable(
 
 	local randomObject = if typeof(randomObjectRaw) == "Random" then randomObjectRaw :: Random else Random.new()
 	local context = if typeof(contextRaw) == "table" then contextRaw else {} :: any
-	local luck = sanitizeNumber((context :: any).luck, 0, -1, 1)
-	local quantityMultiplier = sanitizeNumber((context :: any).quantityMultiplier, 1, 0.01, 100)
-	local sourceType = sanitizeString((context :: any).sourceType, sanitizeString((dropTable :: any).sourceType, nil))
+	local luck = CoerceNumber((context :: any).luck, 0, -1, 1)
+	local quantityMultiplier = CoerceNumber((context :: any).quantityMultiplier, 1, 0.01, 100)
+	local sourceType = CoerceString((context :: any).sourceType, CoerceString((dropTable :: any).sourceType, nil))
 		or DEFAULT_SOURCE_TYPE
 
-	local rollsMin = sanitizeInteger((dropTable :: any).rollsMin, 1, 0, 100)
-	local rollsMax = sanitizeInteger((dropTable :: any).rollsMax, rollsMin, rollsMin, 100)
+	local rollsMin = CoerceInteger((dropTable :: any).rollsMin, 1, 0, 100)
+	local rollsMax = CoerceInteger((dropTable :: any).rollsMax, rollsMin, rollsMin, 100)
 	local rollCount = if rollsMax > rollsMin then randomObject:NextInteger(rollsMin, rollsMax) else rollsMin
 
-	local bonusRollChance = sanitizeNumber((dropTable :: any).bonusRollChance, 0, 0, 1)
-	local bonusRollChanceFromLuck = sanitizeNumber((dropTable :: any).bonusRollChanceFromLuck, 0, 0, 1)
-	local maxBonusRolls = sanitizeInteger((dropTable :: any).maxBonusRolls, 0, 0, 12)
+	local bonusRollChance = CoerceNumber((dropTable :: any).bonusRollChance, 0, 0, 1)
+	local bonusRollChanceFromLuck = CoerceNumber((dropTable :: any).bonusRollChanceFromLuck, 0, 0, 1)
+	local maxBonusRolls = CoerceInteger((dropTable :: any).maxBonusRolls, 0, 0, 12)
 	local effectiveBonusChance = math.clamp(bonusRollChance + luck * bonusRollChanceFromLuck, 0, 1)
 	local bonusRolls = 0
 	while bonusRolls < maxBonusRolls and randomObject:NextNumber() <= effectiveBonusChance do
@@ -825,7 +825,7 @@ function LootServiceUtils.RollDropTable(
 	local guaranteedDropsRaw = (dropTable :: any).guaranteedDrops
 	if typeof(guaranteedDropsRaw) == "table" then
 		for _, rawEntry in guaranteedDropsRaw do
-			local entry = sanitizeDropEntry(rawEntry)
+			local entry = CoerceDropEntry(rawEntry)
 			if entry ~= nil then
 				appendDropResult(output, dataRaw, entry, randomObject, quantityMultiplier, sourceType)
 			end
@@ -845,21 +845,21 @@ function LootServiceUtils.RollDropTable(
 	return output
 end
 
-function LootServiceUtils.ResolveDropAmount(amountRaw: any, fallbackAmountRaw: any): number
-	local fallbackAmount = sanitizeInteger(
+function LootServiceUtils.GotRopAmount(amountRaw: any, fallbackAmountRaw: any): number
+	local fallbackAmount = CoerceInteger(
 		fallbackAmountRaw,
 		DEFAULT_SETTINGS.dropAmountDefault,
 		DEFAULT_SETTINGS.dropAmountMin,
 		DEFAULT_SETTINGS.dropAmountMax
 	)
-	return sanitizeInteger(amountRaw, fallbackAmount, DEFAULT_SETTINGS.dropAmountMin, DEFAULT_SETTINGS.dropAmountMax)
+	return CoerceInteger(amountRaw, fallbackAmount, DEFAULT_SETTINGS.dropAmountMin, DEFAULT_SETTINGS.dropAmountMax)
 end
 
-function LootServiceUtils.ResolveItemNameCandidates(dataRaw: any, itemIdRaw: any): { string }
+function LootServiceUtils.GetItemNameCandidates(dataRaw: any, itemIdRaw: any): { string }
 	local candidates = {}
 	local seen = {}
 
-	local itemId = sanitizeString(itemIdRaw, nil)
+	local itemId = CoerceString(itemIdRaw, nil)
 	if itemId == nil then
 		return candidates
 	end
@@ -899,31 +899,13 @@ function LootServiceUtils.CreateLootId(randomObjectRaw: any, itemIdRaw: any): st
 end
 
 function LootServiceUtils.IsAllowedStateTransition(currentRaw: any, nextRaw: any): boolean
-	local currentState = sanitizeState(currentRaw, "Dropped")
-	local nextState = sanitizeState(nextRaw, currentState)
+	local currentState = CoerceState(currentRaw, "Dropped")
+	local nextState = CoerceState(nextRaw, currentState)
 	if currentState == nextState then
 		return true
 	end
 	local allowedNext = ALLOWED_STATE_TRANSITIONS[currentState]
 	return allowedNext[nextState] == true
 end
-
-LootServiceUtils.sanitizeString = LootServiceUtils.SanitizeString
-LootServiceUtils.token = LootServiceUtils.Token
-LootServiceUtils.sanitizeNumber = LootServiceUtils.SanitizeNumber
-LootServiceUtils.sanitizeInteger = LootServiceUtils.SanitizeInteger
-LootServiceUtils.sanitizeVector3 = LootServiceUtils.SanitizeVector3
-LootServiceUtils.sanitizeRarity = LootServiceUtils.SanitizeRarity
-LootServiceUtils.sanitizeState = LootServiceUtils.SanitizeState
-LootServiceUtils.cloneDeep = LootServiceUtils.CloneDeep
-LootServiceUtils.deepEqual = LootServiceUtils.DeepEqual
-LootServiceUtils.resolveSettings = LootServiceUtils.ResolveSettings
-LootServiceUtils.resolveItemConfig = LootServiceUtils.ResolveItemConfig
-LootServiceUtils.resolveDropTableId = LootServiceUtils.ResolveDropTableId
-LootServiceUtils.rollDropTable = LootServiceUtils.RollDropTable
-LootServiceUtils.resolveDropAmount = LootServiceUtils.ResolveDropAmount
-LootServiceUtils.resolveItemNameCandidates = LootServiceUtils.ResolveItemNameCandidates
-LootServiceUtils.createLootId = LootServiceUtils.CreateLootId
-LootServiceUtils.isAllowedStateTransition = LootServiceUtils.IsAllowedStateTransition
 
 return LootServiceUtils

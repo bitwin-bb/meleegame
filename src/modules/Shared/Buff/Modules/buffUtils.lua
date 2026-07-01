@@ -35,7 +35,7 @@ local function trim(valueRaw: any): string
 	return string.gsub(valueRaw, "^%s*(.-)%s*$", "%1")
 end
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -49,7 +49,7 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number, 
 	return math.clamp(value, minimum, maximum)
 end
 
-local function sanitizeBoolean(valueRaw: any, fallback: boolean?): boolean?
+local function CoerceBoolean(valueRaw: any, fallback: boolean?): boolean?
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
@@ -67,7 +67,7 @@ function buffUtils.Trim(valueRaw: any): string
 	return trim(valueRaw)
 end
 
-function buffUtils.SanitizeKind(kindRaw: any, fallbackRaw: any?): string
+function buffUtils.CoerceKind(kindRaw: any, fallbackRaw: any?): string
 	if kindRaw == BuffConstants.KIND_DEBUFF then
 		return BuffConstants.KIND_DEBUFF
 	end
@@ -80,7 +80,7 @@ function buffUtils.SanitizeKind(kindRaw: any, fallbackRaw: any?): string
 	return BuffConstants.KIND_BUFF
 end
 
-function buffUtils.SanitizeName(nameRaw: any): string
+function buffUtils.CoerceName(nameRaw: any): string
 	local name = trim(nameRaw)
 	if name == "" then
 		return BuffConstants.UNKNOWN_BUFF_NAME
@@ -88,8 +88,8 @@ function buffUtils.SanitizeName(nameRaw: any): string
 	return name
 end
 
-function buffUtils.SanitizeDuration(durationRaw: any): number
-	return sanitizeNumber(
+function buffUtils.CoerceDuration(durationRaw: any): number
+	return CoerceNumber(
 		durationRaw,
 		BuffConstants.DEFAULT_DURATION_SECONDS,
 		BuffConstants.MIN_DURATION_SECONDS,
@@ -97,16 +97,16 @@ function buffUtils.SanitizeDuration(durationRaw: any): number
 	)
 end
 
-function buffUtils.SanitizeStacks(stacksRaw: any): number
-	return math.max(1, math.floor(sanitizeNumber(stacksRaw, BuffConstants.DEFAULT_STACKS, 1, 999)))
+function buffUtils.CoerceStacks(stacksRaw: any): number
+	return math.max(1, math.floor(CoerceNumber(stacksRaw, BuffConstants.DEFAULT_STACKS, 1, 999)))
 end
 
-function buffUtils.SanitizeMaxStacks(maxStacksRaw: any): number
-	return math.max(1, math.floor(sanitizeNumber(maxStacksRaw, BuffConstants.DEFAULT_MAX_STACKS, 1, 999)))
+function buffUtils.CoerceMaxStacks(maxStacksRaw: any): number
+	return math.max(1, math.floor(CoerceNumber(maxStacksRaw, BuffConstants.DEFAULT_MAX_STACKS, 1, 999)))
 end
 
-function buffUtils.SanitizeStackMode(stackModeRaw: any): string
-	if BuffConstants.isStackMode(stackModeRaw) then
+function buffUtils.CoerceStackMode(stackModeRaw: any): string
+	if BuffConstants.IsStackMode(stackModeRaw) then
 		return stackModeRaw
 	end
 	return BuffConstants.STACK_MODE_REFRESH
@@ -149,8 +149,8 @@ function buffUtils.CloneRecords(records: { BuffRecord }): { BuffRecord }
 end
 
 function buffUtils.CreateId(kindRaw: any, nameRaw: any): string
-	local kind = buffUtils.SanitizeKind(kindRaw)
-	local name = buffUtils.SanitizeName(nameRaw)
+	local kind = buffUtils.CoerceKind(kindRaw)
+	local name = buffUtils.CoerceName(nameRaw)
 	return `{kind}:{string.lower(name)}`
 end
 
@@ -182,21 +182,21 @@ function buffUtils.CreateRecord(
 	local source = getTable(if typeof(nameRaw) == "table" then nameRaw else optionsRaw)
 	local positional = typeof(nameRaw) ~= "table"
 
-	local kind = buffUtils.SanitizeKind(source.kind or source.type or source.category or kindRaw)
-	local name = buffUtils.SanitizeName(if positional then nameRaw else source.name or source.buffName or source.id)
+	local kind = buffUtils.CoerceKind(source.kind or source.type or source.category or kindRaw)
+	local name = buffUtils.CoerceName(if positional then nameRaw else source.name or source.buffName or source.id)
 	local duration =
-		buffUtils.SanitizeDuration(if positional then durationRaw else source.duration or source.durationSeconds)
+		buffUtils.CoerceDuration(if positional then durationRaw else source.duration or source.durationSeconds)
 	local effects = buffUtils.CloneEffects(if positional then effectsRaw else source.effects or source.specialEffects)
 	local description = trim(if positional then descriptionRaw else source.description or source.tooltip)
 	local affects = trim(if positional then affectsRaw else source.affects or source.playerEffect or source.affectsPlayer)
-	local appliedAt = sanitizeNumber(source.appliedAt, os.clock(), 0, math.huge)
+	local appliedAt = CoerceNumber(source.appliedAt, os.clock(), 0, math.huge)
 	local id = trim(source.id)
 	if id == "" then
 		id = buffUtils.CreateId(kind, name)
 	end
 
-	local maxStacks = buffUtils.SanitizeMaxStacks(source.maxStacks)
-	local stacks = math.min(buffUtils.SanitizeStacks(source.stacks), maxStacks)
+	local maxStacks = buffUtils.CoerceMaxStacks(source.maxStacks)
+	local stacks = math.min(buffUtils.CoerceStacks(source.stacks), maxStacks)
 	local expiresAt = nil
 	if duration > 0 then
 		expiresAt = appliedAt + duration
@@ -214,10 +214,10 @@ function buffUtils.CreateRecord(
 		expiresAt = expiresAt,
 		stacks = stacks,
 		maxStacks = maxStacks,
-		stackMode = buffUtils.SanitizeStackMode(source.stackMode or effects.stackMode),
+		stackMode = buffUtils.CoerceStackMode(source.stackMode or effects.stackMode),
 		source = trim(source.source),
 		icon = trim(source.icon or source.iconId),
-		hidden = sanitizeBoolean(source.hidden, nil),
+		hidden = CoerceBoolean(source.hidden, nil),
 	}
 end
 
@@ -250,23 +250,15 @@ function buffUtils.ApplyOverrides(recordRaw: any, overridesRaw: any?): BuffRecor
 	return buffUtils.CreateRecord(merged.kind, merged, nil, nil, nil, nil, nil)
 end
 
-buffUtils.trim = buffUtils.Trim
-buffUtils.sanitizeKind = buffUtils.SanitizeKind
-buffUtils.sanitizeName = buffUtils.SanitizeName
-buffUtils.sanitizeDuration = buffUtils.SanitizeDuration
-buffUtils.sanitizeStacks = buffUtils.SanitizeStacks
-buffUtils.sanitizeMaxStacks = buffUtils.SanitizeMaxStacks
-buffUtils.sanitizeStackMode = buffUtils.SanitizeStackMode
-buffUtils.cloneEffects = buffUtils.CloneEffects
-buffUtils.cloneRecord = buffUtils.CloneRecord
-buffUtils.cloneRecords = buffUtils.CloneRecords
-buffUtils.createReplicatedRecord = buffUtils.CreateReplicatedRecord
-buffUtils.createReplicatedRecords = buffUtils.CreateReplicatedRecords
-buffUtils.createId = buffUtils.CreateId
-buffUtils.getRemainingSeconds = buffUtils.GetRemainingSeconds
-buffUtils.isExpired = buffUtils.IsExpired
-buffUtils.createRecord = buffUtils.CreateRecord
-buffUtils.mergeRecord = buffUtils.MergeRecord
-buffUtils.applyOverrides = buffUtils.ApplyOverrides
+
+
+
+
+
+
+
+
+
+
 
 return buffUtils

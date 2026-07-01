@@ -21,7 +21,7 @@ return function()
 	describe("PlatformServiceUtils", function()
 		it("prefers PreferredInput when resolving the current platform", function()
 			local state =
-				PlatformServiceUtils.createPlatformState(Enum.PreferredInput.Gamepad, Enum.UserInputType.MouseButton1, {
+				PlatformServiceUtils.CreatePlatformState(Enum.PreferredInput.Gamepad, Enum.UserInputType.MouseButton1, {
 					touchEnabled = true,
 					keyboardEnabled = true,
 					mouseEnabled = true,
@@ -34,17 +34,17 @@ return function()
 		end)
 
 		it("classifies touch viewports into phone and tablet buckets", function()
-			expect(PlatformServiceUtils.resolveDeviceClass("Touch", Vector2.new(390, 844), DEFAULT_CAPABILITIES, false)).to.equal(
+			expect(PlatformServiceUtils.GetDeviceClass("Touch", Vector2.new(390, 844), DEFAULT_CAPABILITIES, false)).to.equal(
 				"Phone"
 			)
 			expect(
-				PlatformServiceUtils.resolveDeviceClass("Touch", Vector2.new(1280, 800), DEFAULT_CAPABILITIES, false)
+				PlatformServiceUtils.GetDeviceClass("Touch", Vector2.new(1280, 800), DEFAULT_CAPABILITIES, false)
 			).to.equal("Tablet")
 		end)
 
 		it("applies thumbstick deadzones without losing normalized direction", function()
-			local inactive = PlatformServiceUtils.applyThumbstickDeadzone(Vector2.new(0.12, 0), 0.2)
-			local active = PlatformServiceUtils.applyThumbstickDeadzone(Vector2.new(0.8, 0), 0.2)
+			local inactive = PlatformServiceUtils.ApplyThumbstickDeadzone(Vector2.new(0.12, 0), 0.2)
+			local active = PlatformServiceUtils.ApplyThumbstickDeadzone(Vector2.new(0.8, 0), 0.2)
 
 			expect(inactive.Magnitude).to.equal(0)
 			expect(active.X ~= 0).to.equal(true)
@@ -53,14 +53,14 @@ return function()
 
 		it("returns normalized prompts for each supported gameplay platform", function()
 			local definition =
-				PlatformServiceUtils.getDefaultActionDefinition(PlatformServiceUtils.ACTIONS.MELEE_ATTACK)
+				PlatformServiceUtils.GetDefaultActionDefinition(PlatformServiceUtils.ACTIONS.MELEE_ATTACK)
 			expect(definition ~= nil).to.equal(true)
 
 			local keyboardPrompt =
-				PlatformServiceUtils.resolvePromptForAction(definition, "KeyboardMouse", "Desktop", "xbox") :: any
+				PlatformServiceUtils.GetPromptForAction(definition, "KeyboardMouse", "Desktop", "xbox") :: any
 			local gamepadPrompt =
-				PlatformServiceUtils.resolvePromptForAction(definition, "Gamepad", "Console", "xbox") :: any
-			local touchPrompt = PlatformServiceUtils.resolvePromptForAction(definition, "Touch", "Phone", "xbox") :: any
+				PlatformServiceUtils.GetPromptForAction(definition, "Gamepad", "Console", "xbox") :: any
+			local touchPrompt = PlatformServiceUtils.GetPromptForAction(definition, "Touch", "Phone", "xbox") :: any
 
 			expect(keyboardPrompt.text).to.equal("LMB")
 			expect(gamepadPrompt.text).to.equal("RT")
@@ -69,19 +69,19 @@ return function()
 		end)
 
 		it("keeps jump separate from fly-up controls", function()
-			local jumpDefinition = PlatformServiceUtils.getDefaultActionDefinition(PlatformServiceUtils.ACTIONS.JUMP)
+			local jumpDefinition = PlatformServiceUtils.GetDefaultActionDefinition(PlatformServiceUtils.ACTIONS.JUMP)
 			local moveUpDefinition =
-				PlatformServiceUtils.getDefaultActionDefinition(PlatformServiceUtils.ACTIONS.MOVE_UP)
+				PlatformServiceUtils.GetDefaultActionDefinition(PlatformServiceUtils.ACTIONS.MOVE_UP)
 
 			expect(jumpDefinition ~= nil).to.equal(true)
 			expect(moveUpDefinition ~= nil).to.equal(true)
 
-			local jumpBindings = PlatformServiceUtils.resolveBindingsForPlatform(jumpDefinition, "KeyboardMouse")
-			local moveUpBindings = PlatformServiceUtils.resolveBindingsForPlatform(moveUpDefinition, "KeyboardMouse")
+			local jumpBindings = PlatformServiceUtils.GetBindingsForPlatform(jumpDefinition, "KeyboardMouse")
+			local moveUpBindings = PlatformServiceUtils.GetBindingsForPlatform(moveUpDefinition, "KeyboardMouse")
 			local jumpPrompt =
-				PlatformServiceUtils.resolvePromptForAction(jumpDefinition, "KeyboardMouse", "Desktop", "xbox") :: any
+				PlatformServiceUtils.GetPromptForAction(jumpDefinition, "KeyboardMouse", "Desktop", "xbox") :: any
 			local gamepadJumpPrompt =
-				PlatformServiceUtils.resolvePromptForAction(jumpDefinition, "Gamepad", "Console", "xbox") :: any
+				PlatformServiceUtils.GetPromptForAction(jumpDefinition, "Gamepad", "Console", "xbox") :: any
 
 			expect(#jumpBindings).to.equal(1)
 			expect(jumpBindings[1].playerAction).to.equal(Enum.PlayerActions.CharacterJump)
@@ -93,12 +93,12 @@ return function()
 
 		it("exposes the Xbox inventory prompt on Y", function()
 			local definition =
-				PlatformServiceUtils.getDefaultActionDefinition(PlatformServiceUtils.ACTIONS.OPEN_INVENTORY)
+				PlatformServiceUtils.GetDefaultActionDefinition(PlatformServiceUtils.ACTIONS.OPEN_INVENTORY)
 
 			expect(definition ~= nil).to.equal(true)
 
 			local gamepadPrompt =
-				PlatformServiceUtils.resolvePromptForAction(definition, "Gamepad", "Console", "xbox") :: any
+				PlatformServiceUtils.GetPromptForAction(definition, "Gamepad", "Console", "xbox") :: any
 
 			expect(gamepadPrompt.text).to.equal("Y")
 			expect(gamepadPrompt.keyCode).to.equal(Enum.KeyCode.ButtonY)

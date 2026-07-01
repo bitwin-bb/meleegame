@@ -79,12 +79,4 @@ function State.Destroy(self: State)
 	end
 	table.clear(self._data)
 end
-
-State.enter = State.Enter
-State.exit = State.Exit
-State.update = State.Update
-State.canEnter = State.CanEnter
-State.canExit = State.CanExit
-State.destroy = State.Destroy
-
 return State

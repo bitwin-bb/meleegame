@@ -7,7 +7,7 @@ local StarterGui = game:GetService("StarterGui")
 local HpServiceUtils = require("HpServiceUtils")
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
-local HpServicePackets = require("NetSharedPackets").HpService
+local HpServicePackets = require("NetPacketsShared").HpService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = HpServicePackets[methodName]
@@ -16,7 +16,7 @@ local function sendPacket(methodName: string, ...: any)
 		return
 	end
 
-	packet.send(PacketPayload.pack(...))
+	packet.send(PacketPayload.Pack(...))
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -26,13 +26,14 @@ local function bindPacket(self: any, methodName: string)
 		return
 	end
 
+	local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
 	packet.listen(function(payload: any)
-		local handler = self[methodName]
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, table.unpack(arguments, 1, count))
 	end)
 end
@@ -97,24 +98,24 @@ local function disableDefaultHealthUi()
 end
 
 local function applyPersistedHpSnapshotFromPlayerData(self: HpServiceClient): boolean
-	if PlayerDataServiceClient.isLoaded == nil or not PlayerDataServiceClient:isLoaded() then
+	if PlayerDataServiceClient.IsLoaded == nil or not PlayerDataServiceClient:IsLoaded() then
 		return false
 	end
 
-	local persistedHpRaw = PlayerDataServiceClient:getHpData(nil)
+	local persistedHpRaw = PlayerDataServiceClient:GetHpData(nil)
 	local persistedHealth, persistedMaxHealth =
-		HpServiceUtils.resolvePersistedHealthAndMaxHealth(persistedHpRaw, self.state.maxHealth)
+		HpServiceUtils.GetPersistedHealthAndMaxHealth(persistedHpRaw, self.state.maxHealth)
 	if persistedHealth == nil then
 		return false
 	end
 
-	local nextState = HpServiceUtils.createState(persistedHealth, persistedMaxHealth, self.state.heartValue, self.state)
+	local nextState = HpServiceUtils.CreateState(persistedHealth, persistedMaxHealth, self.state.heartValue, self.state)
 	nextState.delta = 0
 	nextState.lastDamage = 0
 	nextState.lastHeal = 0
 	self.state = nextState
 	self.isStateReady = true
-	self.stateChanged:Fire(HpServiceUtils.cloneState(self.state))
+	self.stateChanged:Fire(HpServiceUtils.CloneState(self.state))
 	return true
 end
 
@@ -122,7 +123,7 @@ function HpServiceClient.Init(self: HpServiceClient)
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
-	self.state = HpServiceUtils.createDefaultState()
+	self.state = HpServiceUtils.CreateDefaultState()
 	self.isStateReady = false
 	self.stateChanged = Signal.new()
 	self.hasReceivedServerState = false
@@ -135,11 +136,11 @@ function HpServiceClient.Init(self: HpServiceClient)
 	end))
 	if PlayerDataServiceClient.stateChanged ~= nil then
 		self.janitor:GiveChore(PlayerDataServiceClient.stateChanged:Connect(function(nextState: PlayerDataServiceState)
-			if PlayerDataServiceUtils.isLoadedState(nextState.loadState) then
+			if PlayerDataServiceUtils.IsLoadedState(nextState.loadState) then
 				if not self.hasReceivedServerState then
 					applyPersistedHpSnapshotFromPlayerData(self)
 				end
-				self:requestSync()
+				self:RequestSync()
 			end
 		end))
 	end
@@ -152,10 +153,10 @@ function HpServiceClient.Init(self: HpServiceClient)
 end
 
 function HpServiceClient.ApplyState(self: HpServiceClient, stateRaw: any)
-	self.state = HpServiceUtils.sanitizeState(stateRaw, self.state)
+	self.state = HpServiceUtils.CoerceState(stateRaw, self.state)
 	self.hasReceivedServerState = true
 	self.isStateReady = true
-	self.stateChanged:Fire(HpServiceUtils.cloneState(self.state))
+	self.stateChanged:Fire(HpServiceUtils.CloneState(self.state))
 end
 
 function HpServiceClient.RequestSync(self: HpServiceClient)
@@ -163,11 +164,11 @@ function HpServiceClient.RequestSync(self: HpServiceClient)
 end
 
 function HpServiceClient.GetState(self: HpServiceClient): HpServiceState
-	return HpServiceUtils.cloneState(self.state)
+	return HpServiceUtils.CloneState(self.state)
 end
 
 function HpServiceClient.GetHearts(self: HpServiceClient): { HeartState }
-	local state = self:getState()
+	local state = self:GetState()
 	return state.hearts
 end
 
@@ -180,15 +181,6 @@ function HpServiceClient.Destroy(self: HpServiceClient)
 		self.janitor:Destroy()
 	end
 end
-
-HpServiceClient.init = HpServiceClient.Init
-HpServiceClient.applyState = HpServiceClient.ApplyState
-HpServiceClient.requestSync = HpServiceClient.RequestSync
-HpServiceClient.getState = HpServiceClient.GetState
-HpServiceClient.getHearts = HpServiceClient.GetHearts
-HpServiceClient.isReady = HpServiceClient.IsReady
-HpServiceClient.destroy = HpServiceClient.Destroy
-
 export type HpServiceClient = typeof(HpServiceClient) & {
 	localPlayer: Player,
 	janitor: JanitorClass,

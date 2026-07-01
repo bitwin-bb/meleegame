@@ -7,7 +7,7 @@ local ManaServiceUtils = require("ManaServiceUtils")
 
 type ManaServiceState = ManaServiceUtils.ManaServiceState
 
-local manaStateAtom: Charm.Atom<ManaServiceState> = Charm.atom(ManaServiceUtils.createDefaultState())
+local manaStateAtom: Charm.Atom<ManaServiceState> = Charm.atom(ManaServiceUtils.CreateDefaultState())
 local manaReadyAtom: Charm.Atom<boolean> = Charm.atom(false)
 
 local manaAtom: Charm.Selector<number> = Charm.computed(function(): number
@@ -31,13 +31,13 @@ local function getManaState(): ManaServiceState
 end
 
 local function setManaState(stateRaw: any): ManaServiceState
-	local nextState = ManaServiceUtils.sanitizeState(stateRaw, manaStateAtom())
+	local nextState = ManaServiceUtils.CoerceState(stateRaw, manaStateAtom())
 	manaStateAtom(nextState)
 	return nextState
 end
 
 local function resetManaState(): ManaServiceState
-	local nextState = ManaServiceUtils.createDefaultState()
+	local nextState = ManaServiceUtils.CreateDefaultState()
 	manaStateAtom(nextState)
 	return nextState
 end

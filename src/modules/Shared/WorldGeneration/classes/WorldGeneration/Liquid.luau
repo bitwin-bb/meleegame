@@ -79,7 +79,7 @@ end
 
 function LiquidGeneration.New(configRaw: any?): LiquidGeneration
 	local self = setmetatable({}, LiquidGeneration)
-	self.config = LiquidServiceUtils.sanitizeConfig(configRaw, nil)
+	self.config = LiquidServiceUtils.CoerceConfig(configRaw, nil)
 	self.maxFill = self.config.maxFill
 	return self
 end
@@ -109,11 +109,11 @@ function LiquidGeneration.TrySetCell(
 	if localX < 0 or localX >= context.width or localY < 0 or localY >= context.height then
 		return false
 	end
-	if self:isSolidTile(context, localX, localY) then
+	if self:IsSolidTile(context, localX, localY) then
 		return false
 	end
 	local index = computeTileIndex(localX, localY, context.width)
-	local existingType, existingFill = LiquidCell.unpack(cells[index] or 0)
+	local existingType, existingFill = LiquidCell.Unpack(cells[index] or 0)
 	if existingType ~= LIQUID_TYPE.NONE and existingType ~= liquidType then
 		return false
 	end
@@ -124,7 +124,7 @@ function LiquidGeneration.TrySetCell(
 	if existingType == liquidType and existingFill == nextFill then
 		return false
 	end
-	cells[index] = LiquidCell.make(liquidType, nextFill, LiquidServiceUtils.FLOW_STATE.SETTLING)
+	cells[index] = LiquidCell.Make(liquidType, nextFill, LiquidServiceUtils.FLOW_STATE.SETTLING)
 	return true
 end
 
@@ -176,7 +176,7 @@ function LiquidGeneration.SeedSurfacePoolSpan(
 			end
 			local fillAlpha = if fillTileY >= columnWaterLine then config.surfacePoolFillChance else 1
 			local fillAmount = math.max(1, math.floor(self.maxFill * fillAlpha))
-			if self:trySetCell(context, cells, localX, localY, LIQUID_TYPE.WATER, fillAmount) then
+			if self:TrySetCell(context, cells, localX, localY, LIQUID_TYPE.WATER, fillAmount) then
 				didSeed = true
 			end
 		end
@@ -207,11 +207,11 @@ function LiquidGeneration.SeedSurfacePools(
 		local rightRim = -math.huge
 
 		for scanOffset = 1, radius do
-			local leftColumn = self:getSurfaceColumn(context, worldTileX - scanOffset)
+			local leftColumn = self:GetSurfaceColumn(context, worldTileX - scanOffset)
 			if leftColumn ~= nil then
 				leftRim = math.max(leftRim, leftColumn.surfaceY)
 			end
-			local rightColumn = self:getSurfaceColumn(context, worldTileX + scanOffset)
+			local rightColumn = self:GetSurfaceColumn(context, worldTileX + scanOffset)
 			if rightColumn ~= nil then
 				rightRim = math.max(rightRim, rightColumn.surfaceY)
 			end
@@ -248,7 +248,7 @@ function LiquidGeneration.SeedSurfacePools(
 			continue
 		end
 
-		if self:seedSurfacePoolSpan(context, cells, localX, waterLine, radius) then
+		if self:SeedSurfacePoolSpan(context, cells, localX, waterLine, radius) then
 			didSeed = true
 		end
 	end
@@ -256,7 +256,7 @@ function LiquidGeneration.SeedSurfacePools(
 	if not didSeed and bestCandidate ~= nil then
 		local fallbackRoll = sampleUnit(context.seed, context.chunkX, context.chunkY, SURFACE_POOL_SALT + 977)
 		if fallbackRoll < 0.6 then
-			didSeed = self:seedSurfacePoolSpan(context, cells, bestCandidate.localX, bestCandidate.waterLine, radius)
+			didSeed = self:SeedSurfacePoolSpan(context, cells, bestCandidate.localX, bestCandidate.waterLine, radius)
 				or didSeed
 		end
 	end
@@ -300,7 +300,7 @@ function LiquidGeneration.FillFloodPocket(
 		if y > waterLevelY then
 			continue
 		end
-		if self:isSolidTile(context, x, y) then
+		if self:IsSolidTile(context, x, y) then
 			continue
 		end
 
@@ -311,7 +311,7 @@ function LiquidGeneration.FillFloodPocket(
 		end
 
 		local fillAmount = if y >= waterLevelY then math.floor(self.maxFill * 0.78) else self.maxFill
-		if self:trySetCell(context, cells, x, y, liquidType, fillAmount) then
+		if self:TrySetCell(context, cells, x, y, liquidType, fillAmount) then
 			didSeed = true
 		end
 
@@ -353,7 +353,7 @@ function LiquidGeneration.SeedUndergroundPockets(
 
 	for localY = 0, context.height - 1 do
 		for localX = 0, context.width - 1 do
-			if self:isSolidTile(context, localX, localY) then
+			if self:IsSolidTile(context, localX, localY) then
 				continue
 			end
 
@@ -363,12 +363,12 @@ function LiquidGeneration.SeedUndergroundPockets(
 				continue
 			end
 
-			local hasSolidFloor = self:isSolidTile(context, localX, localY - 1)
+			local hasSolidFloor = self:IsSolidTile(context, localX, localY - 1)
 			local sideWalls = 0
-			if self:isSolidTile(context, localX - 1, localY) then
+			if self:IsSolidTile(context, localX - 1, localY) then
 				sideWalls += 1
 			end
-			if self:isSolidTile(context, localX + 1, localY) then
+			if self:IsSolidTile(context, localX + 1, localY) then
 				sideWalls += 1
 			end
 			if not hasSolidFloor or sideWalls <= 0 then
@@ -404,7 +404,7 @@ function LiquidGeneration.SeedUndergroundPockets(
 				local caveChance = config.cavePocketChance * getBiomePoolChanceMultiplier(biomeId, biomeType)
 				local caveRoll = sampleUnit(context.seed, worldTileX, worldTileY, CAVE_POCKET_SALT)
 				if caveRoll < caveChance then
-					if self:fillFloodPocket(context, cells, localX, localY, LIQUID_TYPE.WATER, radius, waterLevelY) then
+					if self:FillFloodPocket(context, cells, localX, localY, LIQUID_TYPE.WATER, radius, waterLevelY) then
 						didSeed = true
 					end
 				end
@@ -433,7 +433,7 @@ function LiquidGeneration.SeedUndergroundPockets(
 
 				local reservoirRoll = sampleUnit(context.seed, worldTileX, worldTileY, RESERVOIR_SALT)
 				if reservoirRoll < config.reservoirChance then
-					if self:fillFloodPocket(context, cells, localX, localY, LIQUID_TYPE.WATER, radius, waterLevelY) then
+					if self:FillFloodPocket(context, cells, localX, localY, LIQUID_TYPE.WATER, radius, waterLevelY) then
 						didSeed = true
 					end
 				end
@@ -444,7 +444,7 @@ function LiquidGeneration.SeedUndergroundPockets(
 	if not didSeed and bestCandidate ~= nil then
 		local fallbackRoll = sampleUnit(context.seed, context.chunkX, context.chunkY, RESERVOIR_SALT + 991)
 		if fallbackRoll < 0.7 then
-			didSeed = self:fillFloodPocket(
+			didSeed = self:FillFloodPocket(
 				context,
 				cells,
 				bestCandidate.localX,
@@ -468,7 +468,7 @@ function LiquidGeneration.SeedLavaPockets(
 
 	for localY = 0, context.height - 1 do
 		for localX = 0, context.width - 1 do
-			if self:isSolidTile(context, localX, localY) then
+			if self:IsSolidTile(context, localX, localY) then
 				continue
 			end
 
@@ -478,12 +478,12 @@ function LiquidGeneration.SeedLavaPockets(
 				continue
 			end
 
-			local hasSolidFloor = self:isSolidTile(context, localX, localY - 1)
+			local hasSolidFloor = self:IsSolidTile(context, localX, localY - 1)
 			local sideWalls = 0
-			if self:isSolidTile(context, localX - 1, localY) then
+			if self:IsSolidTile(context, localX - 1, localY) then
 				sideWalls += 1
 			end
-			if self:isSolidTile(context, localX + 1, localY) then
+			if self:IsSolidTile(context, localX + 1, localY) then
 				sideWalls += 1
 			end
 			if not hasSolidFloor or sideWalls <= 0 then
@@ -510,7 +510,7 @@ function LiquidGeneration.SeedLavaPockets(
 							+ (config.lavaPocketMaxRadius - config.lavaPocketMinRadius) * radiusAlpha
 					)
 				)
-				self:fillFloodPocket(
+				self:FillFloodPocket(
 					context,
 					cells,
 					localX,
@@ -534,7 +534,7 @@ function LiquidGeneration.SeedLavaPockets(
 								+ (config.lavaPocketMaxRadius - config.lavaPocketMinRadius) * radiusAlpha
 						)
 					)
-					self:fillFloodPocket(
+					self:FillFloodPocket(
 						context,
 						cells,
 						localX,
@@ -556,33 +556,21 @@ function LiquidGeneration.GenerateChunkLiquids(
 	local context = contextRaw
 	local cells = Sift.Array.create(context.width * context.height, 0)
 
-	self:seedSurfacePools(context, cells)
-	self:seedUndergroundPockets(context, cells)
-	self:seedLavaPockets(context, cells)
+	self:SeedSurfacePools(context, cells)
+	self:SeedUndergroundPockets(context, cells)
+	self:SeedLavaPockets(context, cells)
 
-	local settled = LiquidSolver.settleGrid(
+	local settled = LiquidSolver.SettleGrid(
 		self.config,
 		cells,
 		context.width,
 		context.height,
 		function(localX: number, localY: number): boolean
-			return self:isSolidTile(context, localX, localY)
+			return self:IsSolidTile(context, localX, localY)
 		end,
 		self.config.simulation.generationSettlePasses
 	)
 
 	return settled
 end
-
-LiquidGeneration.new = LiquidGeneration.New
-LiquidGeneration.isSolidTile = LiquidGeneration.IsSolidTile
-LiquidGeneration.trySetCell = LiquidGeneration.TrySetCell
-LiquidGeneration.getSurfaceColumn = LiquidGeneration.GetSurfaceColumn
-LiquidGeneration.seedSurfacePoolSpan = LiquidGeneration.SeedSurfacePoolSpan
-LiquidGeneration.seedSurfacePools = LiquidGeneration.SeedSurfacePools
-LiquidGeneration.fillFloodPocket = LiquidGeneration.FillFloodPocket
-LiquidGeneration.seedUndergroundPockets = LiquidGeneration.SeedUndergroundPockets
-LiquidGeneration.seedLavaPockets = LiquidGeneration.SeedLavaPockets
-LiquidGeneration.generateChunkLiquids = LiquidGeneration.GenerateChunkLiquids
-
 return LiquidGeneration

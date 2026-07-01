@@ -91,7 +91,7 @@ function RoomScaleFactor.CreateDefaultResult(): RoomScaleResult
 	}
 end
 
-function RoomScaleFactor.SanitizeConfig(
+function RoomScaleFactor.CoerceConfig(
 	configRaw: any,
 	fallbackConfigRaw: RoomScaleFactorConfig?
 ): RoomScaleFactorConfig
@@ -200,8 +200,8 @@ function RoomScaleFactor.SanitizeConfig(
 	}
 end
 
-function RoomScaleFactor.Resolve(configRaw: any, sourceRaw: any): RoomScaleResult
-	local config = RoomScaleFactor.SanitizeConfig(configRaw)
+function RoomScaleFactor.Get(configRaw: any, sourceRaw: any): RoomScaleResult
+	local config = RoomScaleFactor.CoerceConfig(configRaw)
 	local source = if typeof(sourceRaw) == "table" then sourceRaw :: RoomScaleSource else nil
 	if config.enabled ~= true or source == nil or source.isEnclosed ~= true then
 		return RoomScaleFactor.CreateDefaultResult()
@@ -251,10 +251,5 @@ function RoomScaleFactor.Resolve(configRaw: any, sourceRaw: any): RoomScaleResul
 		or result.fieldOfViewScale < 0.999
 	return result
 end
-
-RoomScaleFactor.createDefaultConfig = RoomScaleFactor.CreateDefaultConfig
-RoomScaleFactor.createDefaultResult = RoomScaleFactor.CreateDefaultResult
-RoomScaleFactor.sanitizeConfig = RoomScaleFactor.SanitizeConfig
-RoomScaleFactor.resolve = RoomScaleFactor.Resolve
 
 return RoomScaleFactor

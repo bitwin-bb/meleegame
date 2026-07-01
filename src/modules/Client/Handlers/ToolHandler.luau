@@ -55,11 +55,4 @@ function ToolHandler.Destroy(self: ToolHandler)
 	self.maid:DoCleaning()
 	self.tool = nil
 end
-
-ToolHandler.setTool = ToolHandler.SetTool
-ToolHandler.getTool = ToolHandler.GetTool
-ToolHandler.getEquippedHumanoid = ToolHandler.GetEquippedHumanoid
-ToolHandler.getEquippedPlayer = ToolHandler.GetEquippedPlayer
-ToolHandler.destroy = ToolHandler.Destroy
-
 return ToolHandler

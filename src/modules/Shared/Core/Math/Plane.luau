@@ -21,7 +21,7 @@ local EPSILON = 1e-8
 local Y_AXIS = Vector3.new(0, 1, 0)
 
 function Plane.New(normal: Vector3, distance: number): Plane
-	local unitNormal = Vec.unit(normal, Y_AXIS)
+	local unitNormal = Vec.Unit(normal, Y_AXIS)
 	return {
 		normal = unitNormal,
 		distance = distance,
@@ -29,7 +29,7 @@ function Plane.New(normal: Vector3, distance: number): Plane
 end
 
 function Plane.FromPointNormal(point: Vector3, normal: Vector3): Plane
-	local unitNormal = Vec.unit(normal, Y_AXIS)
+	local unitNormal = Vec.Unit(normal, Y_AXIS)
 	return {
 		normal = unitNormal,
 		distance = unitNormal:Dot(point),
@@ -37,7 +37,7 @@ function Plane.FromPointNormal(point: Vector3, normal: Vector3): Plane
 end
 
 function Plane.FromPoints(a: Vector3, b: Vector3, c: Vector3): Plane
-	local unitNormal = Vec.unit((b - a):Cross(c - a), Y_AXIS)
+	local unitNormal = Vec.Unit((b - a):Cross(c - a), Y_AXIS)
 	return {
 		normal = unitNormal,
 		distance = unitNormal:Dot(a),
@@ -81,15 +81,4 @@ function Plane.Raycast(plane: Plane, origin: Vector3, direction: Vector3): Inter
 	end
 	return hit
 end
-
-Plane.new = Plane.New
-Plane.fromPointNormal = Plane.FromPointNormal
-Plane.fromPoints = Plane.FromPoints
-Plane.signedDistance = Plane.SignedDistance
-Plane.closestPoint = Plane.ClosestPoint
-Plane.projectPoint = Plane.ProjectPoint
-Plane.reflectPoint = Plane.ReflectPoint
-Plane.intersectLine = Plane.IntersectLine
-Plane.raycast = Plane.Raycast
-
 return Plane

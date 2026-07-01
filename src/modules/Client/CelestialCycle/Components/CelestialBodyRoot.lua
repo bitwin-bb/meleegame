@@ -21,7 +21,7 @@ local function computeVisibleExtentsAtDistance(camera: Camera, distance: number)
 		math.max(visibleHeight, CelestialCycleConstants.ANCHOR_HEIGHT_STUDS)
 end
 
-local function resolveCanvasSize(widthStuds: number, heightStuds: number): Vector2
+local function GetCanvasSize(widthStuds: number, heightStuds: number): Vector2
 	local pixelsPerStud = CelestialCycleConstants.SURFACE_PIXELS_PER_STUD
 	local minCanvas = CelestialCycleConstants.SURFACE_MIN_CANVAS
 	local maxCanvas = CelestialCycleConstants.SURFACE_MAX_CANVAS
@@ -36,7 +36,7 @@ function CelestialBodyRoot.new(parent: Instance): CelestialBodyRoot
 	self.maid = Maid.new()
 	self.scope = Fusion.scoped(Fusion)
 	self.canvasSize =
-		resolveCanvasSize(CelestialCycleConstants.ANCHOR_WIDTH_STUDS, CelestialCycleConstants.ANCHOR_HEIGHT_STUDS)
+		GetCanvasSize(CelestialCycleConstants.ANCHOR_WIDTH_STUDS, CelestialCycleConstants.ANCHOR_HEIGHT_STUDS)
 	self.anchorPart = self.scope:New "Part" {
 		Name = "CelestialBodyRoot",
 		Anchored = true,
@@ -56,28 +56,21 @@ function CelestialBodyRoot.new(parent: Instance): CelestialBodyRoot
 end
 
 function CelestialBodyRoot.Update(self: CelestialBodyRoot, camera: Camera?)
-	local resolvedCamera = camera or Workspace.CurrentCamera
-	if resolvedCamera == nil then
+	local GotCamera = camera or Workspace.CurrentCamera
+	if GotCamera == nil then
 		return
 	end
 
-	local cameraCFrame = resolvedCamera.CFrame
+	local cameraCFrame = GotCamera.CFrame
 	local cameraPosition = cameraCFrame.Position
 	local forward = cameraCFrame.LookVector
-	local flatForward = Vector3.new(forward.X, 0, forward.Z)
-	if flatForward.Magnitude < 0.001 then
-		flatForward = Vector3.zAxis
-	end
-
-	local forwardUnit = flatForward.Unit
 	local widthStuds, heightStuds =
-		computeVisibleExtentsAtDistance(resolvedCamera, CelestialCycleConstants.ANCHOR_DISTANCE_STUDS)
-	local anchorCenter = Vector3.new(cameraPosition.X, CelestialCycleConstants.ANCHOR_WORLD_Y, cameraPosition.Z)
-		+ forwardUnit * CelestialCycleConstants.ANCHOR_DISTANCE_STUDS
+		computeVisibleExtentsAtDistance(GotCamera, CelestialCycleConstants.ANCHOR_DISTANCE_STUDS)
+	local anchorCenter = cameraPosition + forward * CelestialCycleConstants.ANCHOR_DISTANCE_STUDS
 
 	self.anchorPart.Size = Vector3.new(1, heightStuds, widthStuds)
-	self.anchorPart.CFrame = CFrame.fromMatrix(anchorCenter, -forwardUnit, Vector3.yAxis)
-	self.canvasSize = resolveCanvasSize(widthStuds, heightStuds)
+	self.anchorPart.CFrame = CFrame.fromMatrix(anchorCenter, -forward, cameraCFrame.UpVector)
+	self.canvasSize = GetCanvasSize(widthStuds, heightStuds)
 end
 
 function CelestialBodyRoot.GetAdornee(self: CelestialBodyRoot): BasePart
@@ -91,12 +84,6 @@ end
 function CelestialBodyRoot.Destroy(self: CelestialBodyRoot)
 	self.maid:Destroy()
 end
-
-CelestialBodyRoot.update = CelestialBodyRoot.Update
-CelestialBodyRoot.getAdornee = CelestialBodyRoot.GetAdornee
-CelestialBodyRoot.getCanvasSize = CelestialBodyRoot.GetCanvasSize
-CelestialBodyRoot.destroy = CelestialBodyRoot.Destroy
-
 export type CelestialBodyRoot = typeof(setmetatable(
 	{} :: {
 		maid: any,

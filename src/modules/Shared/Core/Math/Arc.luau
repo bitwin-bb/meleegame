@@ -24,12 +24,12 @@ function Arc.Chord(radius: number, angleRadians: number): number
 end
 
 function Arc.Point2(center: Vector2, radius: number, angleRadians: number): Vector2
-	local sinValue, cosValue = Trig.sinCos(angleRadians)
+	local sinValue, cosValue = Trig.SinCos(angleRadians)
 	return center + Vector2.new(cosValue, sinValue) * radius
 end
 
 function Arc.Tangent2(radius: number, angleRadians: number): Vector2
-	local sinValue, cosValue = Trig.sinCos(angleRadians)
+	local sinValue, cosValue = Trig.SinCos(angleRadians)
 	return Vector2.new(-sinValue, cosValue) * radius
 end
 
@@ -41,16 +41,16 @@ function Arc.Orbit2(center: Vector2, radius: number, angleRadians: number, angul
 end
 
 function Arc.Point3(center: Vector3, radius: number, angleRadians: number, xAxis: Vector3, yAxis: Vector3): Vector3
-	local sinValue, cosValue = Trig.sinCos(angleRadians)
-	local tangentX = Vec.unit(xAxis, Vector3.new(1, 0, 0))
-	local tangentY = Vec.unit(yAxis, Vector3.new(0, 1, 0))
+	local sinValue, cosValue = Trig.SinCos(angleRadians)
+	local tangentX = Vec.Unit(xAxis, Vector3.new(1, 0, 0))
+	local tangentY = Vec.Unit(yAxis, Vector3.new(0, 1, 0))
 	return center + tangentX * (cosValue * radius) + tangentY * (sinValue * radius)
 end
 
 function Arc.Tangent3(radius: number, angleRadians: number, xAxis: Vector3, yAxis: Vector3): Vector3
-	local sinValue, cosValue = Trig.sinCos(angleRadians)
-	local tangentX = Vec.unit(xAxis, Vector3.new(1, 0, 0))
-	local tangentY = Vec.unit(yAxis, Vector3.new(0, 1, 0))
+	local sinValue, cosValue = Trig.SinCos(angleRadians)
+	local tangentX = Vec.Unit(xAxis, Vector3.new(1, 0, 0))
+	local tangentY = Vec.Unit(yAxis, Vector3.new(0, 1, 0))
 	return (-tangentX * sinValue + tangentY * cosValue) * radius
 end
 
@@ -67,15 +67,4 @@ function Arc.Orbit3(
 	local velocity = Arc.Tangent3(radius, angleRadians, xAxis, yAxis) * velocityScale
 	return position, velocity
 end
-
-Arc.length = Arc.Length
-Arc.angleFromLength = Arc.AngleFromLength
-Arc.chord = Arc.Chord
-Arc.point2 = Arc.Point2
-Arc.tangent2 = Arc.Tangent2
-Arc.orbit2 = Arc.Orbit2
-Arc.point3 = Arc.Point3
-Arc.tangent3 = Arc.Tangent3
-Arc.orbit3 = Arc.Orbit3
-
 return Arc

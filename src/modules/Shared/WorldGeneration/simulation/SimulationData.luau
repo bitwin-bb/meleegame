@@ -122,7 +122,7 @@ local function createChunk(
 	local tileVolume = tileCountX * tileCountY * tileCountZ
 	local clusterVolume = clusterCountX * clusterCountY * clusterCountZ
 	return {
-		key = Shared.packChunkKey(chunkX, chunkY, chunkZ),
+		key = Shared.PackChunkKey(chunkX, chunkY, chunkZ),
 		chunkX = chunkX,
 		chunkY = chunkY,
 		chunkZ = chunkZ,
@@ -152,7 +152,7 @@ local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function sanitizeInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+local function CoerceInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
@@ -160,7 +160,7 @@ local function sanitizeInteger(valueRaw: any, minimum: number, maximum: number, 
 end
 
 local function mapWorldGenerationTileIdToSimulation(tileIdRaw: any): number
-	local tileId = sanitizeInteger(tileIdRaw, 0, 65535, WG_TILE_ID.AIR)
+	local tileId = CoerceInteger(tileIdRaw, 0, 65535, WG_TILE_ID.AIR)
 	if tileId == WG_TILE_ID.AIR then
 		return Shared.TILE_ID.AIR
 	end
@@ -201,8 +201,8 @@ local function mapWorldGenerationTileIdToSimulation(tileIdRaw: any): number
 	return Shared.TILE_ID.STONE
 end
 
-local function sanitizeWorldGenerationBiomeId(biomeIdRaw: any, biomeTypeRaw: any, fallback: number): number
-	local biomeId = sanitizeInteger(biomeIdRaw, Shared.BIOME_ID.FOREST, Shared.BIOME_ID.CORRUPTION, fallback)
+local function CoerceWorldGenerationBiomeId(biomeIdRaw: any, biomeTypeRaw: any, fallback: number): number
+	local biomeId = CoerceInteger(biomeIdRaw, Shared.BIOME_ID.FOREST, Shared.BIOME_ID.CORRUPTION, fallback)
 	if
 		biomeId == Shared.BIOME_ID.FOREST
 		or biomeId == Shared.BIOME_ID.DESERT
@@ -210,18 +210,18 @@ local function sanitizeWorldGenerationBiomeId(biomeIdRaw: any, biomeTypeRaw: any
 		or biomeId == Shared.BIOME_ID.JUNGLE
 		or biomeId == Shared.BIOME_ID.CORRUPTION
 	then
-		if sanitizeInteger(biomeTypeRaw, 1, 2, 1) == LEGACY_BIOME_TYPE_CORRUPTION then
+		if CoerceInteger(biomeTypeRaw, 1, 2, 1) == LEGACY_BIOME_TYPE_CORRUPTION then
 			return Shared.BIOME_ID.CORRUPTION
 		end
 		return biomeId
 	end
-	if sanitizeInteger(biomeTypeRaw, 1, 2, 1) == LEGACY_BIOME_TYPE_CORRUPTION then
+	if CoerceInteger(biomeTypeRaw, 1, 2, 1) == LEGACY_BIOME_TYPE_CORRUPTION then
 		return Shared.BIOME_ID.CORRUPTION
 	end
 	return fallback
 end
 
-local function resolveChunkFlagsFromContent(chunk: ChunkData, currentFlags: number): number
+local function GetChunkFlagsFromContent(chunk: ChunkData, currentFlags: number): number
 	local isCorrupted = false
 	for clusterIndex = 1, #chunk.clusterChosenBiomeIds do
 		if chunk.clusterChosenBiomeIds[clusterIndex] == Shared.BIOME_ID.CORRUPTION then
@@ -229,8 +229,8 @@ local function resolveChunkFlagsFromContent(chunk: ChunkData, currentFlags: numb
 			break
 		end
 	end
-	local flags = State.markChunkCorrupted(currentFlags, isCorrupted)
-	flags = State.markChunkDirty(flags, true)
+	local flags = State.MarkChunkCorrupted(currentFlags, isCorrupted)
+	flags = State.MarkChunkDirty(flags, true)
 	return flags
 end
 
@@ -264,13 +264,13 @@ local function resetEntityTail(buffer: ChunkEntityBuffer)
 end
 
 function Data.CreateWorldData(configRaw: any): WorldData
-	local config = Config.sanitize(configRaw, nil)
+	local config = Config.Coerce(configRaw, nil)
 	return {
 		seed = config.seed,
 		config = config,
 		tick = 0,
 		nextEntityId = 1,
-		systemFlags = State.createSystemFlags(config.enableDebug),
+		systemFlags = State.CreateSystemFlags(config.enableDebug),
 		chunksByKey = {},
 		chunkKeys = {},
 		chunkDemand = {},
@@ -280,7 +280,7 @@ function Data.CreateWorldData(configRaw: any): WorldData
 end
 
 function Data.GetChunk(world: WorldData, chunkX: number, chunkY: number, chunkZ: number): ChunkData?
-	return world.chunksByKey[Shared.packChunkKey(chunkX, chunkY, chunkZ)]
+	return world.chunksByKey[Shared.PackChunkKey(chunkX, chunkY, chunkZ)]
 end
 
 function Data.GetChunkByKey(world: WorldData, chunkKeyRaw: any): ChunkData?
@@ -308,7 +308,7 @@ function Data.SetChunkDemandByKey(world: WorldData, chunkKey: string, delta: num
 				world.activeChunkLookup[chunkKey] = true
 				world.activeChunkKeys[#world.activeChunkKeys + 1] = chunkKey
 			end
-			chunk.flags = State.markChunkActive(chunk.flags, true)
+			chunk.flags = State.MarkChunkActive(chunk.flags, true)
 		end
 		return
 	end
@@ -316,23 +316,23 @@ function Data.SetChunkDemandByKey(world: WorldData, chunkKey: string, delta: num
 	world.activeChunkLookup[chunkKey] = nil
 	local chunk = world.chunksByKey[chunkKey]
 	if chunk ~= nil then
-		chunk.flags = State.markChunkActive(chunk.flags, false)
+		chunk.flags = State.MarkChunkActive(chunk.flags, false)
 	end
 end
 
 function Data.IngestWorldGenerationChunkSnapshot(world: WorldData, chunkSnapshotRaw: any, chunkZRaw: any?): ChunkData?
-	local decoded = Net.decodeLegacyChunkTransitional(chunkSnapshotRaw)
+	local decoded = Net.DecodeLegacyChunkTransitional(chunkSnapshotRaw)
 	if decoded == nil then
 		return nil
 	end
 
 	local config = world.config
 	local clusterSize = math.max(1, config.clusterSize)
-	local chunkX = sanitizeInteger(decoded.chunkX, -1000000, 1000000, 0)
-	local chunkY = sanitizeInteger(decoded.chunkY, -1000000, 1000000, 0)
-	local chunkZ = sanitizeInteger(chunkZRaw, -1000000, 1000000, sanitizeInteger(decoded.chunkZ, -1000000, 1000000, 0))
-	local key = Shared.packChunkKey(chunkX, chunkY, chunkZ)
-	local sourceRevision = sanitizeInteger(decoded.revision, 0, 1000000000, 0)
+	local chunkX = CoerceInteger(decoded.chunkX, -1000000, 1000000, 0)
+	local chunkY = CoerceInteger(decoded.chunkY, -1000000, 1000000, 0)
+	local chunkZ = CoerceInteger(chunkZRaw, -1000000, 1000000, CoerceInteger(decoded.chunkZ, -1000000, 1000000, 0))
+	local key = Shared.PackChunkKey(chunkX, chunkY, chunkZ)
+	local sourceRevision = CoerceInteger(decoded.revision, 0, 1000000000, 0)
 	local chunk = world.chunksByKey[key]
 	local hadExistingChunk = chunk ~= nil
 
@@ -340,9 +340,9 @@ function Data.IngestWorldGenerationChunkSnapshot(world: WorldData, chunkSnapshot
 		return chunk
 	end
 
-	local clusterCountX = sanitizeInteger(decoded.clusterCountX, 1, 512, 1)
-	local clusterCountY = sanitizeInteger(decoded.clusterCountY, 1, 512, 1)
-	local clusterCountZ = sanitizeInteger(decoded.clusterCountZ, 1, 512, 1)
+	local clusterCountX = CoerceInteger(decoded.clusterCountX, 1, 512, 1)
+	local clusterCountY = CoerceInteger(decoded.clusterCountY, 1, 512, 1)
+	local clusterCountZ = CoerceInteger(decoded.clusterCountZ, 1, 512, 1)
 	local tileCountX = math.max(clusterSize, clusterCountX * clusterSize)
 	local tileCountY = math.max(clusterSize, clusterCountY * clusterSize)
 	local tileCountZ = math.max(clusterSize, clusterCountZ * clusterSize)
@@ -382,7 +382,7 @@ function Data.IngestWorldGenerationChunkSnapshot(world: WorldData, chunkSnapshot
 		chunk.flags = existingFlags
 		world.chunksByKey[key] = chunk
 		if world.activeChunkLookup[key] then
-			chunk.flags = State.markChunkActive(chunk.flags, true)
+			chunk.flags = State.MarkChunkActive(chunk.flags, true)
 		end
 		if not hadExistingChunk then
 			world.chunkKeys[#world.chunkKeys + 1] = key
@@ -426,10 +426,10 @@ function Data.IngestWorldGenerationChunkSnapshot(world: WorldData, chunkSnapshot
 	local sourceBiomeTypes = if typeof(chunkSnapshot.biomeTypes) == "table"
 		then chunkSnapshot.biomeTypes :: { any }
 		else {} :: any
-	local sourceTileMinY = sanitizeInteger(chunkSnapshot.tileMinY, -1000000, 1000000, chunkY * tileCountY)
-	local sourceWidth = sanitizeInteger(chunkSnapshot.width, 1, tileCountX, tileCountX)
-	local sourceHeight = sanitizeInteger(chunkSnapshot.height, 1, tileCountY, tileCountY)
-	local dominantBiomeId = sanitizeWorldGenerationBiomeId(
+	local sourceTileMinY = CoerceInteger(chunkSnapshot.tileMinY, -1000000, 1000000, chunkY * tileCountY)
+	local sourceWidth = CoerceInteger(chunkSnapshot.width, 1, tileCountX, tileCountX)
+	local sourceHeight = CoerceInteger(chunkSnapshot.height, 1, tileCountY, tileCountY)
+	local dominantBiomeId = CoerceWorldGenerationBiomeId(
 		chunkSnapshot.dominantBiomeId,
 		chunkSnapshot.dominantBiomeType,
 		Shared.BIOME_ID.FOREST
@@ -438,7 +438,7 @@ function Data.IngestWorldGenerationChunkSnapshot(world: WorldData, chunkSnapshot
 	for clusterLocalZ = 0, clusterCountZ - 1 do
 		for clusterLocalY = 0, clusterCountY - 1 do
 			for clusterLocalX = 0, clusterCountX - 1 do
-				local clusterIndex = Shared.computeClusterIndex(
+				local clusterIndex = Shared.ComputeClusterIndex(
 					clusterLocalX,
 					clusterLocalY,
 					clusterLocalZ,
@@ -446,7 +446,7 @@ function Data.IngestWorldGenerationChunkSnapshot(world: WorldData, chunkSnapshot
 					clusterCountY
 				)
 				local clusterMinTileX, clusterMinTileY, clusterMinTileZ, clusterMaxTileX, clusterMaxTileY, clusterMaxTileZ =
-					State.resolveClusterBounds(
+					State.GetClusterBounds(
 						clusterLocalX,
 						clusterLocalY,
 						clusterLocalZ,
@@ -475,7 +475,7 @@ function Data.IngestWorldGenerationChunkSnapshot(world: WorldData, chunkSnapshot
 							continue
 						end
 						local sourceIndex = localTileY * sourceWidth + localTileX + 1
-						local sourceBiome = sanitizeWorldGenerationBiomeId(
+						local sourceBiome = CoerceWorldGenerationBiomeId(
 							sourceBiomeIds[sourceIndex],
 							sourceBiomeTypes[sourceIndex],
 							dominantBiomeId
@@ -491,7 +491,7 @@ function Data.IngestWorldGenerationChunkSnapshot(world: WorldData, chunkSnapshot
 
 						for localTileZ = clusterMinTileZ, clusterMaxTileZ do
 							local tileIndex =
-								Shared.computeTileIndex(localTileX, localTileY, localTileZ, tileCountX, tileCountY)
+								Shared.ComputeTileIndex(localTileX, localTileY, localTileZ, tileCountX, tileCountY)
 							chunk.tileIds[tileIndex] = mappedTileId
 							chunk.biomeIds[tileIndex] = sourceBiome
 							chunk.corruptionLevels[tileIndex] = if sourceBiome == Shared.BIOME_ID.CORRUPTION
@@ -513,7 +513,7 @@ function Data.IngestWorldGenerationChunkSnapshot(world: WorldData, chunkSnapshot
 				chunk.clusterPrimaryBiomeIds[clusterIndex] = chosenBiome
 				chunk.clusterSecondaryBiomeIds[clusterIndex] = chosenBiome
 				chunk.clusterChosenBiomeIds[clusterIndex] = chosenBiome
-				chunk.clusterBlendWeights[clusterIndex] = sanitizeInteger(
+				chunk.clusterBlendWeights[clusterIndex] = CoerceInteger(
 					(
 						if typeof(decoded.clusterBlendWeights) == "table"
 							then (decoded.clusterBlendWeights :: { any })[clusterIndex]
@@ -534,19 +534,19 @@ function Data.IngestWorldGenerationChunkSnapshot(world: WorldData, chunkSnapshot
 	chunk.sourceRevision = sourceRevision
 	local existingRevision = chunk.revision
 	chunk.revision = math.max(sourceRevision, existingRevision + 1)
-	chunk.flags = resolveChunkFlagsFromContent(chunk, chunk.flags)
+	chunk.flags = GetChunkFlagsFromContent(chunk, chunk.flags)
 	if (world.chunkDemand[key] or 0) > 0 then
 		if not world.activeChunkLookup[key] then
 			world.activeChunkLookup[key] = true
 			world.activeChunkKeys[#world.activeChunkKeys + 1] = key
 		end
-		chunk.flags = State.markChunkActive(chunk.flags, true)
+		chunk.flags = State.MarkChunkActive(chunk.flags, true)
 	else
-		chunk.flags = State.markChunkActive(chunk.flags, false)
+		chunk.flags = State.MarkChunkActive(chunk.flags, false)
 	end
 
 	local entities = chunk.entities
-	local entityCount = sanitizeInteger(decoded.entityCount, 0, entities.capacity, 0)
+	local entityCount = CoerceInteger(decoded.entityCount, 0, entities.capacity, 0)
 	entities.count = entityCount
 	copyEntitySlice(entities.ids, decoded.entityIds, entityCount)
 	copyEntitySlice(entities.kinds, decoded.entityKinds, entityCount)
@@ -577,11 +577,11 @@ end
 
 function Data.BumpChunkRevision(chunk: ChunkData)
 	chunk.revision += 1
-	chunk.flags = State.markChunkDirty(chunk.flags, true)
+	chunk.flags = State.MarkChunkDirty(chunk.flags, true)
 end
 
 function Data.ClearChunkDirty(chunk: ChunkData)
-	chunk.flags = State.markChunkDirty(chunk.flags, false)
+	chunk.flags = State.MarkChunkDirty(chunk.flags, false)
 end
 
 function Data.AddEntityToChunk(
@@ -671,19 +671,4 @@ function Data.GetStats(world: WorldData): { [string]: number }
 		tick = world.tick,
 	}
 end
-
-Data.createWorldData = Data.CreateWorldData
-Data.getChunk = Data.GetChunk
-Data.getChunkByKey = Data.GetChunkByKey
-Data.getOrCreateChunk = Data.GetOrCreateChunk
-Data.setChunkDemandByKey = Data.SetChunkDemandByKey
-Data.ingestWorldGenerationChunkSnapshot = Data.IngestWorldGenerationChunkSnapshot
-Data.compactActiveChunkKeys = Data.CompactActiveChunkKeys
-Data.bumpChunkRevision = Data.BumpChunkRevision
-Data.clearChunkDirty = Data.ClearChunkDirty
-Data.addEntityToChunk = Data.AddEntityToChunk
-Data.removeEntitySlot = Data.RemoveEntitySlot
-Data.forEachEntity = Data.ForEachEntity
-Data.getStats = Data.GetStats
-
 return Data

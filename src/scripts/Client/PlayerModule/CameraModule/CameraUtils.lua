@@ -121,7 +121,7 @@ function CameraUtils.getLooseBoundingSphere(parts: { BasePart })
 end
 
 -- canonicalize an angle to +-180 degrees
-function CameraUtils.sanitizeAngle(a: number): number
+function CameraUtils.CoerceAngle(a: number): number
 	return (a + math.pi) % (2 * math.pi) - math.pi
 end
 

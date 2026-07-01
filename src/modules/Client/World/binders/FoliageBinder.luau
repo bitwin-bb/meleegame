@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local ModelBinder = require("ModelBinder")
@@ -33,13 +32,13 @@ function FoliageBinder.refresh(self: any)
 	self.instance:SetAttribute("FoliageTagged", true)
 
 	if enabled and not self.isRegistered then
-		local ok = pcall(function()
-			getWindFoliageServiceClient():registerFoliage(self.instance)
+		local ok, registeredEntry = pcall(function()
+			return getWindFoliageServiceClient():RegisterFoliage(self.instance)
 		end)
-		self.isRegistered = ok
+		self.isRegistered = ok and registeredEntry ~= nil
 	elseif not enabled and self.isRegistered then
 		pcall(function()
-			getWindFoliageServiceClient():unregisterFoliage(self.instance)
+			getWindFoliageServiceClient():UnregisterFoliage(self.instance)
 		end)
 		self.isRegistered = false
 	end
@@ -48,7 +47,7 @@ end
 function FoliageBinder.Cleanup(self: any)
 	if self.isRegistered then
 		pcall(function()
-			getWindFoliageServiceClient():unregisterFoliage(self.instance)
+			getWindFoliageServiceClient():UnregisterFoliage(self.instance)
 		end)
 	end
 end

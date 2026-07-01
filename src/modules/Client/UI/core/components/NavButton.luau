@@ -106,7 +106,7 @@ local function isPressInput(inputObject: InputObject?): boolean
 		or inputObject.KeyCode == Enum.KeyCode.ButtonA
 end
 
-local function resolveInputSource(inputObject: InputObject?): string
+local function GetInputSource(inputObject: InputObject?): string
 	if inputObject == nil then
 		return "unknown"
 	end
@@ -130,14 +130,14 @@ local function resolveInputSource(inputObject: InputObject?): string
 	return "unknown"
 end
 
-local function sanitizeScale(valueRaw: any, fallback: number): number
+local function CoerceScale(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw or valueRaw <= 0 then
 		return fallback
 	end
 	return valueRaw
 end
 
-local function resolveScaleTarget(props: NavButtonProps, state: NavButtonState?): number
+local function GetScaleTarget(props: NavButtonProps, state: NavButtonState?): number
 	if props.disabled == true then
 		return DEFAULT_NORMAL_SCALE
 	end
@@ -163,7 +163,7 @@ function NavButton:init()
 	self.state = {
 		isHovered = false,
 		isPressed = false,
-		renderScale = sanitizeScale(resolveScaleTarget(self.props, nil), DEFAULT_NORMAL_SCALE),
+		renderScale = CoerceScale(GetScaleTarget(self.props, nil), DEFAULT_NORMAL_SCALE),
 	} :: NavButtonState
 	self.scaleTarget = self.state.renderScale
 	self.scaleAnimation = nil :: ScaleAnimation?
@@ -171,11 +171,11 @@ function NavButton:init()
 end
 
 function NavButton:componentDidMount()
-	self:syncScaleTarget()
+	self:SyncScaleTarget()
 end
 
 function NavButton:componentDidUpdate()
-	self:syncScaleTarget()
+	self:SyncScaleTarget()
 end
 
 function NavButton:componentWillUnmount()
@@ -213,7 +213,7 @@ function NavButton:EnsureScaleLoop()
 	end
 
 	self.scaleConnection = RunService.RenderStepped:Connect(function()
-		self:stepScaleAnimation()
+		self:StepScaleAnimation()
 	end)
 end
 
@@ -227,10 +227,10 @@ function NavButton:StopScaleLoop()
 end
 
 function NavButton:AnimateScaleTo(nextTarget: number)
-	local currentScale = sanitizeScale(self.state.renderScale, DEFAULT_NORMAL_SCALE)
+	local currentScale = CoerceScale(self.state.renderScale, DEFAULT_NORMAL_SCALE)
 	if math.abs(currentScale - nextTarget) <= SCALE_EPSILON then
 		self.scaleAnimation = nil
-		self:stopScaleLoop()
+		self:StopScaleLoop()
 		if math.abs(currentScale - nextTarget) > 0 then
 			self:setState({
 				renderScale = nextTarget,
@@ -245,37 +245,37 @@ function NavButton:AnimateScaleTo(nextTarget: number)
 		startedAt = os.clock(),
 		duration = DEFAULT_SCALE_ANIMATION_TIME,
 	}
-	self:ensureScaleLoop()
+	self:EnsureScaleLoop()
 end
 
 function NavButton:SyncScaleTarget()
-	local nextTarget = resolveScaleTarget(self.props, self.state)
+	local nextTarget = GetScaleTarget(self.props, self.state)
 	if self.scaleTarget ~= nil and math.abs(self.scaleTarget - nextTarget) <= SCALE_EPSILON then
 		return
 	end
 
 	self.scaleTarget = nextTarget
-	self:animateScaleTo(nextTarget)
+	self:AnimateScaleTo(nextTarget)
 end
 
 function NavButton:StepScaleAnimation()
 	local animation: ScaleAnimation? = self.scaleAnimation
 	if animation == nil then
-		self:stopScaleLoop()
+		self:StopScaleLoop()
 		return
 	end
 
 	local alpha = math.clamp((os.clock() - animation.startedAt) / animation.duration, 0, 1)
 	local nextScale = animation.toScale
 	if alpha < 1 then
-		local easedAlpha = Ease.outBack(alpha)
+		local easedAlpha = Ease.OutBack(alpha)
 		nextScale = animation.fromScale + (animation.toScale - animation.fromScale) * easedAlpha
 	else
 		self.scaleAnimation = nil
-		self:stopScaleLoop()
+		self:StopScaleLoop()
 	end
 
-	if math.abs(sanitizeScale(self.state.renderScale, DEFAULT_NORMAL_SCALE) - nextScale) <= SCALE_EPSILON then
+	if math.abs(CoerceScale(self.state.renderScale, DEFAULT_NORMAL_SCALE) - nextScale) <= SCALE_EPSILON then
 		return
 	end
 
@@ -292,13 +292,13 @@ function NavButton:EmitActivated(inputObject: InputObject?)
 		return
 	end
 
-	local resolvedRoute = props.route or props.id or props.label or ""
+	local GotRoute = props.route or props.id or props.label or ""
 	local payload: NavButtonActivatePayload = {
-		id = props.id or resolvedRoute,
-		route = resolvedRoute,
+		id = props.id or GotRoute,
+		route = GotRoute,
 		label = props.label,
 		selected = isSelected,
-		source = resolveInputSource(inputObject),
+		source = GetInputSource(inputObject),
 		timestamp = os.clock(),
 	}
 
@@ -361,12 +361,12 @@ function NavButton:render()
 		Image = "",
 		[React.Event.MouseEnter] = function()
 			if not isDisabled then
-				self:updateHover(true)
+				self:UpdateHover(true)
 			end
 		end,
 		[React.Event.MouseLeave] = function()
-			self:updateHover(false)
-			self:updatePressed(false)
+			self:UpdateHover(false)
+			self:UpdatePressed(false)
 		end,
 		[React.Event.InputBegan] = (function(_rbx: GuiObject, inputObject: InputObject)
 			if isDisabled then
@@ -374,17 +374,17 @@ function NavButton:render()
 			end
 
 			if isPressInput(inputObject) then
-				self:updatePressed(true)
+				self:UpdatePressed(true)
 			end
 		end) :: any,
 		[React.Event.InputEnded] = (function(_rbx: GuiObject, inputObject: InputObject)
 			if isPressInput(inputObject) then
-				self:updatePressed(false)
+				self:UpdatePressed(false)
 			end
 		end) :: any,
 		[React.Event.Activated] = (function(_rbx: GuiButton, inputObject: InputObject?)
-			self:updatePressed(false)
-			self:emitActivated(inputObject)
+			self:UpdatePressed(false)
+			self:EmitActivated(inputObject)
 		end) :: any,
 	}, {
 		e("UIScale", {
@@ -443,14 +443,4 @@ function NavButton:render()
 		}),
 	})
 end
-
-NavButton.updateHover = NavButton.UpdateHover
-NavButton.updatePressed = NavButton.UpdatePressed
-NavButton.ensureScaleLoop = NavButton.EnsureScaleLoop
-NavButton.stopScaleLoop = NavButton.StopScaleLoop
-NavButton.animateScaleTo = NavButton.AnimateScaleTo
-NavButton.syncScaleTarget = NavButton.SyncScaleTarget
-NavButton.stepScaleAnimation = NavButton.StepScaleAnimation
-NavButton.emitActivated = NavButton.EmitActivated
-
 return NavButton

@@ -41,9 +41,4 @@ function MovementAdapter.Patrol(agent: any): boolean
 end
 
 MovementAdapter.copy = Table.copy
-MovementAdapter.get = MovementAdapter.Get
-MovementAdapter.moveToTarget = MovementAdapter.MoveToTarget
-MovementAdapter.flee = MovementAdapter.Flee
-MovementAdapter.patrol = MovementAdapter.Patrol
-
 return MovementAdapter

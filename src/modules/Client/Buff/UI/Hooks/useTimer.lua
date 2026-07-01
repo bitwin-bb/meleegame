@@ -18,7 +18,7 @@ local DAY_SECONDS = 86400
 local HOUR_SECONDS = 3600
 local MINUTE_SECONDS = 60
 
-local function sanitizeNumber(valueRaw: any): number?
+local function CoerceNumber(valueRaw: any): number?
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return nil
 	end
@@ -44,18 +44,18 @@ local function abbreviateTime(secondsRaw: number?): string
 	return `{seconds}s`
 end
 
-local function resolveRemainingSeconds(recordRaw: any, now: number): number?
+local function GetEmainingSeconds(recordRaw: any, now: number): number?
 	if typeof(recordRaw) ~= "table" then
 		return nil
 	end
 
 	local record = recordRaw :: { [string]: any }
-	local remainingSeconds = sanitizeNumber(record.remainingSeconds)
+	local remainingSeconds = CoerceNumber(record.remainingSeconds)
 	if remainingSeconds ~= nil then
 		return remainingSeconds
 	end
 
-	local expiresAt = sanitizeNumber(record.expiresAt)
+	local expiresAt = CoerceNumber(record.expiresAt)
 	if expiresAt ~= nil then
 		return math.max(0, expiresAt - now)
 	end
@@ -63,12 +63,12 @@ local function resolveRemainingSeconds(recordRaw: any, now: number): number?
 	return nil
 end
 
-local function resolveProgress(recordRaw: any, remainingSeconds: number?): number
+local function GetProgress(recordRaw: any, remainingSeconds: number?): number
 	if typeof(recordRaw) ~= "table" or remainingSeconds == nil then
 		return 0
 	end
 
-	local duration = sanitizeNumber((recordRaw :: { [string]: any }).duration)
+	local duration = CoerceNumber((recordRaw :: { [string]: any }).duration)
 	if duration == nil or duration <= 0 then
 		return 0
 	end
@@ -89,12 +89,12 @@ local function useTimer(recordRaw: any): TimerResult
 		}
 	)
 
-	local remainingSeconds = resolveRemainingSeconds(recordRaw, now)
+	local remainingSeconds = GetEmainingSeconds(recordRaw, now)
 	local isInfinite = remainingSeconds == nil
 	local result = {
 		text = abbreviateTime(remainingSeconds),
 		remainingSeconds = remainingSeconds,
-		progress = resolveProgress(recordRaw, remainingSeconds),
+		progress = GetProgress(recordRaw, remainingSeconds),
 		isInfinite = isInfinite,
 	}
 

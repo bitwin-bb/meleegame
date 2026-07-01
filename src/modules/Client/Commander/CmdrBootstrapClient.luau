@@ -26,11 +26,11 @@ local cmdrClient = nil :: any
 local pendingCmdrRetry = false
 
 local function findValidStarterGuiCmdr(): ScreenGui?
-	local cmdrGui = CmdrUtils.keepSingleValidCmdrGui(StarterGui)
+	local cmdrGui = CmdrUtils.KeepSingleValidCmdrGui(StarterGui)
 
-	while cmdrGui ~= nil and not CmdrUtils.isValidCmdrGui(cmdrGui) do
+	while cmdrGui ~= nil and not CmdrUtils.IsValidCmdrGui(cmdrGui) do
 		task.wait()
-		cmdrGui = CmdrUtils.keepSingleValidCmdrGui(StarterGui)
+		cmdrGui = CmdrUtils.KeepSingleValidCmdrGui(StarterGui)
 	end
 
 	return cmdrGui
@@ -42,7 +42,7 @@ local function preparePlayerGuiForCmdr(): ScreenGui?
 		return nil
 	end
 
-	return CmdrUtils.keepSingleValidCmdrGui(playerGui)
+	return CmdrUtils.KeepSingleValidCmdrGui(playerGui)
 end
 
 local function ensureCmdrClient(): any
@@ -63,7 +63,7 @@ local function ensureCmdrClient(): any
 
 	if existingGui == nil then
 		starterGuiCmdr:Clone().Parent = playerGui
-		existingGui = CmdrUtils.keepSingleValidCmdrGui(playerGui)
+		existingGui = CmdrUtils.KeepSingleValidCmdrGui(playerGui)
 	end
 
 	if existingGui == nil then
@@ -123,7 +123,7 @@ local function applyMatterDebugMenuAccess()
 	local matterDebugEnabled = localPlayer:GetAttribute(CmdrUtils.MATTER_DEBUG_MENU_ENABLED_ATTRIBUTE) == true
 	if not matterDebugEnabled then
 		matterDebugInitScheduled = false
-		MatterDebugMenuClient:destroy()
+		MatterDebugMenuClient:Destroy()
 		return
 	end
 
@@ -144,7 +144,7 @@ local function applyMatterDebugMenuAccess()
 		end
 
 		local ok, err = pcall(function()
-			MatterDebugMenuClient:init()
+			MatterDebugMenuClient:Init()
 		end)
 		if not ok then
 			warn(`[CmdrBootstrapClient] Failed to initialize Matter debug menu: {err}`)
@@ -191,8 +191,4 @@ function CmdrBootstrapClient.Start(_serviceBag: any)
 		applyMatterDebugMenuAccess()
 	end)
 end
-
-CmdrBootstrapClient.applyCmdrAccess = CmdrBootstrapClient.ApplyCmdrAccess
-CmdrBootstrapClient.start = CmdrBootstrapClient.Start
-
 return CmdrBootstrapClient

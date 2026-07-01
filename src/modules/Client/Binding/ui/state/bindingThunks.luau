@@ -71,12 +71,12 @@ local function readPlatformSnapshot(): PlatformSnapshot
 		deviceClass = "Desktop",
 	}
 
-	if not PlatformServiceClient:isReady() then
+	if not PlatformServiceClient:IsReady() then
 		return fallback
 	end
 
 	local ok, stateOrError = pcall(function()
-		return PlatformServiceClient:getState()
+		return PlatformServiceClient:GetState()
 	end)
 	if not ok or typeof(stateOrError) ~= "table" then
 		return fallback
@@ -92,18 +92,18 @@ local function readPlatformSnapshot(): PlatformSnapshot
 end
 
 local function readInventoryState(): InventoryState
-	local fallback = InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
+	local fallback = InventoryServiceUtils.CreateDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
 	local ok, stateOrError = pcall(function()
-		return InventoryServiceClient:getState()
+		return InventoryServiceClient:GetState()
 	end)
 	if ok then
-		return InventoryServiceUtils.sanitizeState(stateOrError, fallback)
+		return InventoryServiceUtils.CoerceState(stateOrError, fallback)
 	end
-	return InventoryServiceUtils.sanitizeState(InventoryServiceClient.state, fallback)
+	return InventoryServiceUtils.CoerceState(InventoryServiceClient.state, fallback)
 end
 
 local function readMagicState(): MagicServiceUtils.ReplicatedState
-	local fallback = MagicServiceUtils.sanitizeReplicatedState(nil, {
+	local fallback = MagicServiceUtils.CoerceReplicatedState(nil, {
 		mana = MagicServiceUtils.DEFAULT_MAX_MANA,
 		maxMana = MagicServiceUtils.DEFAULT_MAX_MANA,
 		regenPerSecond = MagicServiceUtils.DEFAULT_MANA_REGEN,
@@ -113,12 +113,12 @@ local function readMagicState(): MagicServiceUtils.ReplicatedState
 		updatedAt = os.clock(),
 	})
 	local ok, stateOrError = pcall(function()
-		return MagicServiceClient:getState()
+		return MagicServiceClient:GetState()
 	end)
 	if ok then
-		return MagicServiceUtils.sanitizeReplicatedState(stateOrError, fallback)
+		return MagicServiceUtils.CoerceReplicatedState(stateOrError, fallback)
 	end
-	return MagicServiceUtils.sanitizeReplicatedState(MagicServiceClient.state, fallback)
+	return MagicServiceUtils.CoerceReplicatedState(MagicServiceClient.state, fallback)
 end
 
 local function getMeleeServiceClient(): any
@@ -134,14 +134,14 @@ local function readSelectedStack(inventoryState: InventoryState): InventoryServi
 	if selectedSlot == nil then
 		return nil
 	end
-	return InventoryServiceUtils.getStack(inventoryState, selectedSlot)
+	return InventoryServiceUtils.GetStack(inventoryState, selectedSlot)
 end
 
-local function resolveDisplayNameFromStack(stackRaw: any, fallbackRaw: any?): string
+local function GetDisplayNameFromStack(stackRaw: any, fallbackRaw: any?): string
 	local fallback = trim(fallbackRaw)
 	if typeof(stackRaw) == "table" then
 		local ok, displayNameOrError = pcall(function()
-			return itemThunks.resolveDisplayNameForStack(stackRaw)
+			return itemThunks.GetDisplayNameForStack(stackRaw)
 		end)
 		if ok and typeof(displayNameOrError) == "string" and trim(displayNameOrError) ~= "" then
 			return trim(displayNameOrError)
@@ -153,15 +153,15 @@ local function resolveDisplayNameFromStack(stackRaw: any, fallbackRaw: any?): st
 	return "Action"
 end
 
-local function resolveDeployableItemId(stackRaw: any): string?
+local function GetDeployableItemId(stackRaw: any): string?
 	if typeof(stackRaw) ~= "table" then
 		return nil
 	end
-	local itemId = ItemRegistry.resolveCanonicalItemId((stackRaw :: { [string]: any }).itemId)
+	local itemId = ItemRegistry.GetCanonicalItemId((stackRaw :: { [string]: any }).itemId)
 	if itemId == nil then
 		return nil
 	end
-	local definition = ItemRegistry.resolveDefinition(itemId)
+	local definition = ItemRegistry.GetDefinition(itemId)
 	if typeof(definition) ~= "table" then
 		return nil
 	end
@@ -176,9 +176,9 @@ local function resolveDeployableItemId(stackRaw: any): string?
 	return itemId
 end
 
-local function resolvePromptData(actionName: string): PromptData
+local function GetPromptData(actionName: string): PromptData
 	local ok, promptOrError = pcall(function()
-		return PlatformServiceClient:getPromptForAction(actionName)
+		return PlatformServiceClient:GetPromptForAction(actionName)
 	end)
 	if not ok or typeof(promptOrError) ~= "table" then
 		return {
@@ -229,7 +229,7 @@ local function findExistingHintIndexForPrompt(hints: { BindingHintEntry }, promp
 end
 
 local function pushHint(hints: { BindingHintEntry }, descriptor: HintDescriptor): boolean
-	local promptData = resolvePromptData(descriptor.actionName)
+	local promptData = GetPromptData(descriptor.actionName)
 	if promptData.text == nil and promptData.icon == nil then
 		return false
 	end
@@ -308,9 +308,9 @@ local function formatTreeBreakFailureReason(reasonRaw: any): string?
 	return "cannot chop"
 end
 
-local function resolveMiningToolContext(inventoryState: InventoryState): { [string]: any }?
+local function GetMiningToolContext(inventoryState: InventoryState): { [string]: any }?
 	local ok, toolContextOrError = pcall(function()
-		return MiningPower.resolveSelectedToolContextFromInventoryState(inventoryState)
+		return MiningPower.GetSelectedToolContextFromInventoryState(inventoryState)
 	end)
 	if ok and typeof(toolContextOrError) == "table" then
 		return toolContextOrError :: { [string]: any }
@@ -320,7 +320,7 @@ end
 
 local function tryBuildPlaceHint(hints: { BindingHintEntry }, selectedStack: any): boolean
 	local ok, activePlaceSourceOrError = pcall(function()
-		return BuildServiceClient:resolveActivePlaceSource()
+		return BuildServiceClient:GetActivePlaceSource()
 	end)
 	if not ok or typeof(activePlaceSourceOrError) ~= "table" then
 		return false
@@ -332,14 +332,14 @@ local function tryBuildPlaceHint(hints: { BindingHintEntry }, selectedStack: any
 		return false
 	end
 
-	local itemName = resolveDisplayNameFromStack(selectedStack, config.itemId)
+	local itemName = GetDisplayNameFromStack(selectedStack, config.itemId)
 	local cursorTileX = BuildServiceClient.cursorTileX
 	local cursorTileY = BuildServiceClient.cursorTileY
 	local canPlace = false
 	local detail = "No Target"
 	if typeof(cursorTileX) == "number" and typeof(cursorTileY) == "number" then
 		local placeOk, canPlaceOrError, reasonOrError = pcall(function()
-			return (BuildServiceClient.canPlaceAt :: any)(BuildServiceClient, cursorTileX, cursorTileY, config.tileId)
+			return (BuildServiceClient.CanPlaceAt :: any)(BuildServiceClient, cursorTileX, cursorTileY, config.tileId)
 		end)
 		if placeOk then
 			canPlace = canPlaceOrError == true
@@ -360,7 +360,7 @@ local function tryBuildPlaceHint(hints: { BindingHintEntry }, selectedStack: any
 end
 
 local function tryBuildDeployableHint(hints: { BindingHintEntry }, selectedStack: any): boolean
-	local deployableItemId = resolveDeployableItemId(selectedStack)
+	local deployableItemId = GetDeployableItemId(selectedStack)
 	if deployableItemId == nil then
 		return false
 	end
@@ -371,7 +371,7 @@ local function tryBuildDeployableHint(hints: { BindingHintEntry }, selectedStack
 	return pushHint(hints, {
 		id = "inventory_place_deployable",
 		actionName = PlatformServiceClient.ACTIONS.PLACE_DEPLOYABLE,
-		label = ("Place %s"):format(resolveDisplayNameFromStack(selectedStack, deployableItemId)),
+		label = ("Place %s"):format(GetDisplayNameFromStack(selectedStack, deployableItemId)),
 		detail = if canPlace then nil else "No Target",
 		enabled = canPlace,
 		priority = 110,
@@ -387,7 +387,7 @@ local function tryBuildBreakHint(hints: { BindingHintEntry }, inventoryState: In
 
 	local isBreakable = false
 	local breakableOk, breakableOrError = pcall(function()
-		return BuildServiceClient:isBreakableTarget(cursorTileX, cursorTileY)
+		return BuildServiceClient:IsBreakableTarget(cursorTileX, cursorTileY)
 	end)
 	if breakableOk then
 		isBreakable = breakableOrError == true
@@ -396,16 +396,16 @@ local function tryBuildBreakHint(hints: { BindingHintEntry }, inventoryState: In
 		return false
 	end
 
-	local toolContext = resolveMiningToolContext(inventoryState)
+	local toolContext = GetMiningToolContext(inventoryState)
 	local toolType = if toolContext ~= nil then toolContext.toolType else nil
 	local toolPower = if toolContext ~= nil then toolContext.toolPower else 0
 
 	local treeOk, treeOrError = pcall(function()
-		return BuildServiceClient:resolveTreeHitAtTile(cursorTileX, cursorTileY)
+		return BuildServiceClient:GetTreeHitAtTile(cursorTileX, cursorTileY)
 	end)
 	local treeHit = if treeOk and typeof(treeOrError) == "table" then treeOrError else nil
 	if treeHit ~= nil then
-		local canBreak, reason = BuildServiceUtils.canBreakTree(treeHit, toolType, toolPower)
+		local canBreak, reason = BuildServiceUtils.CanBreakTree(treeHit, toolType, toolPower)
 		return pushHint(hints, {
 			id = "build_break_tree",
 			actionName = PlatformServiceClient.ACTIONS.BUILD_PRIMARY,
@@ -418,7 +418,7 @@ local function tryBuildBreakHint(hints: { BindingHintEntry }, inventoryState: In
 
 	local tileId = BuildServiceUtils.AIR_TILE_ID
 	local tileOk, tileOrError = pcall(function()
-		return BuildServiceClient:getTileAt(cursorTileX, cursorTileY, false)
+		return BuildServiceClient:GetTileAt(cursorTileX, cursorTileY, false)
 	end)
 	if tileOk and typeof(tileOrError) == "number" then
 		tileId = tileOrError
@@ -427,8 +427,8 @@ local function tryBuildBreakHint(hints: { BindingHintEntry }, inventoryState: In
 		return false
 	end
 
-	local tileRule = BuildServiceUtils.getTileRule(tileId)
-	local canBreak, reason = BuildServiceUtils.canBreakTile(tileId, toolType, toolPower)
+	local tileRule = BuildServiceUtils.GetTileRule(tileId)
+	local canBreak, reason = BuildServiceUtils.CanBreakTile(tileId, toolType, toolPower)
 	return pushHint(hints, {
 		id = "build_break_tile",
 		actionName = PlatformServiceClient.ACTIONS.BUILD_PRIMARY,
@@ -469,10 +469,10 @@ local function appendMeleeHint(hints: { BindingHintEntry }, contextualBuildKind:
 
 	local usingHarvestTool = false
 	local axeOk, isAxe = pcall(function()
-		return meleeServiceClient:isEquippedAxe()
+		return meleeServiceClient:IsEquippedAxe()
 	end)
 	local pickaxeOk, isPickaxe = pcall(function()
-		return meleeServiceClient:isEquippedPickaxe()
+		return meleeServiceClient:IsEquippedPickaxe()
 	end)
 	if axeOk and isAxe == true then
 		usingHarvestTool = true
@@ -487,7 +487,7 @@ local function appendMeleeHint(hints: { BindingHintEntry }, contextualBuildKind:
 
 	local blocked = true
 	local blockedOk, blockedOrError = pcall(function()
-		return meleeServiceClient:isAttackBlocked()
+		return meleeServiceClient:IsAttackBlocked()
 	end)
 	if blockedOk then
 		blocked = blockedOrError == true
@@ -503,14 +503,14 @@ local function appendMeleeHint(hints: { BindingHintEntry }, contextualBuildKind:
 	})
 end
 
-local function resolveMagicWeaponConfig(): MagicServiceUtils.WeaponRuntimeConfig?
+local function GetMagicWeaponConfig(): MagicServiceUtils.WeaponRuntimeConfig?
 	local equippedTool = MagicServiceClient.equippedTool
 	if typeof(equippedTool) ~= "Instance" then
 		return nil
 	end
 
 	local ok, configOrError = pcall(function()
-		return MagicServiceUtils.buildWeaponRuntimeConfig(equippedTool)
+		return MagicServiceUtils.BuildWeaponRuntimeConfig(equippedTool)
 	end)
 	if ok and typeof(configOrError) == "table" then
 		return configOrError :: MagicServiceUtils.WeaponRuntimeConfig
@@ -519,7 +519,7 @@ local function resolveMagicWeaponConfig(): MagicServiceUtils.WeaponRuntimeConfig
 end
 
 local function appendMagicHint(hints: { BindingHintEntry })
-	local config = resolveMagicWeaponConfig()
+	local config = GetMagicWeaponConfig()
 	if config == nil then
 		return
 	end
@@ -621,17 +621,17 @@ function bindingThunks.Start(): () -> ()
 	runtime.started = true
 	runtime.lastRefreshAt = -math.huge
 
-	if not PlatformServiceClient:isReady() then
-		PlatformServiceClient:init()
+	if not PlatformServiceClient:IsReady() then
+		PlatformServiceClient:Init()
 	end
 
-	runtime.inventoryStateChangedConnection = ServiceSync.connectStateChanged(InventoryServiceClient, function()
+	runtime.inventoryStateChangedConnection = ServiceSync.ConnectStateChanged(InventoryServiceClient, function()
 		refreshBindingHints(true)
 	end)
-	runtime.buildStateChangedConnection = ServiceSync.connectStateChanged(BuildServiceClient, function()
+	runtime.buildStateChangedConnection = ServiceSync.ConnectStateChanged(BuildServiceClient, function()
 		refreshBindingHints(true)
 	end)
-	runtime.magicStateChangedConnection = ServiceSync.connectStateChanged(MagicServiceClient, function()
+	runtime.magicStateChangedConnection = ServiceSync.ConnectStateChanged(MagicServiceClient, function()
 		refreshBindingHints(true)
 	end)
 
@@ -642,7 +642,7 @@ function bindingThunks.Start(): () -> ()
 		end)
 	end
 
-	runtime.platformDisconnect = PlatformServiceClient:onPlatformChanged(function()
+	runtime.platformDisconnect = PlatformServiceClient:OnPlatformChanged(function()
 		refreshBindingHints(true)
 	end)
 
@@ -650,7 +650,7 @@ function bindingThunks.Start(): () -> ()
 		refreshBindingHints(false)
 	end)
 
-	ServiceSync.requestSyncMany({
+	ServiceSync.RequestSyncMany({
 		PlatformServiceClient,
 		InventoryServiceClient,
 		BuildServiceClient,
@@ -662,14 +662,14 @@ function bindingThunks.Start(): () -> ()
 end
 
 function bindingThunks.Stop()
-	ConnectionUtils.disconnectMany({
+	ConnectionUtils.DisconnectMany({
 		runtime.renderConnection,
 		runtime.inventoryStateChangedConnection,
 		runtime.buildStateChangedConnection,
 		runtime.buildBreakProgressConnection,
 		runtime.magicStateChangedConnection,
 	})
-	ConnectionUtils.call(runtime.platformDisconnect)
+	ConnectionUtils.Call(runtime.platformDisconnect)
 
 	runtime.started = false
 	runtime.lastRefreshAt = -math.huge
@@ -689,10 +689,4 @@ end
 function bindingThunks.GetState(): BindingHintState
 	return bindingSlice.getBindingState()
 end
-
-bindingThunks.start = bindingThunks.Start
-bindingThunks.stop = bindingThunks.Stop
-bindingThunks.refresh = bindingThunks.Refresh
-bindingThunks.getState = bindingThunks.GetState
-
 return bindingThunks

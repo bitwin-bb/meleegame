@@ -60,7 +60,4 @@ function ThreatScorer.Destroy(self: ThreatScorer)
 end
 
 ThreatScorer.copy = Table.copy
-ThreatScorer.getScore = ThreatScorer.GetScore
-ThreatScorer.destroy = ThreatScorer.Destroy
-
 return ThreatScorer

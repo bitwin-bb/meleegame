@@ -256,7 +256,7 @@ function PerfTier._emitChange(self: PerfTier, nextTier: TierName)
 	self.changedSignal:Fire(nextTier, settings)
 	if self.eventBus ~= nil and typeof((self.eventBus :: any).publish) == "function" then
 		local eventBusAny = self.eventBus :: any
-		eventBusAny:publish(self.eventChannel, self.changeEvent, {
+		eventBusAny:Publish(self.eventChannel, self.changeEvent, {
 			tier = nextTier,
 			settings = settings,
 			avgFps = self:_averageFps(),
@@ -292,10 +292,10 @@ function PerfTier.Init(self: PerfTier)
 		return
 	end
 	self.isInitialized = true
-	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).scheduleEvery) == "function" then
-		self.loopToken = (self.tickScheduler :: any):scheduleEvery(
+	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).ScheduleEvery) == "function" then
+		self.loopToken = (self.tickScheduler :: any):ScheduleEvery(
 			function(dt: number)
-				self:update(dt)
+				self:Update(dt)
 			end,
 			1 / 60,
 			{
@@ -306,7 +306,7 @@ function PerfTier.Init(self: PerfTier)
 		)
 	else
 		self.heartbeatConnection = RunService.Heartbeat:Connect(function(dt: number)
-			self:update(dt)
+			self:Update(dt)
 		end)
 	end
 	self:_evaluate()
@@ -363,9 +363,9 @@ function PerfTier.ConfigureTickScheduler(self: PerfTier, schedulerRaw: any?, bas
 	local baseFixedStep = clampNumber(baseFixedStepRaw, 1 / 60, 1 / 240, 1)
 	local scaledStep = baseFixedStep / settings.tickRateScale
 
-	if typeof((scheduler :: any).setFixedStep) == "function" then
+	if typeof((scheduler :: any).SetFixedStep) == "function" then
 		local schedulerAny = scheduler :: any
-		schedulerAny:setFixedStep(scaledStep)
+		schedulerAny:SetFixedStep(scaledStep)
 		return true
 	end
 	if typeof((scheduler :: any).fixedStep) == "number" then
@@ -383,12 +383,12 @@ end
 
 function PerfTier.Destroy(self: PerfTier)
 	if self.loopToken ~= nil then
-		if typeof((self.loopToken :: any).cancel) == "function" then
+		if typeof((self.loopToken :: any).Cancel) == "function" then
 			local loopTokenAny = self.loopToken :: any
-			loopTokenAny:cancel()
-		elseif self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).cancel) == "function" then
+			loopTokenAny:Cancel()
+		elseif self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).Cancel) == "function" then
 			local schedulerAny = self.tickScheduler :: any
-			schedulerAny:cancel(self.loopToken)
+			schedulerAny:Cancel(self.loopToken)
 		end
 		self.loopToken = nil
 	end
@@ -398,28 +398,5 @@ function PerfTier.Destroy(self: PerfTier)
 	self.changedSignal:Destroy()
 	self.isInitialized = false
 end
-
-PerfTier.GetTier = PerfTier.GetTier
-PerfTier.GetSettings = PerfTier.GetSettings
-PerfTier.GetSnapshot = PerfTier.GetSnapshot
-PerfTier.SetManualTier = PerfTier.SetManualTier
-PerfTier.OnChanged = PerfTier.OnChanged
-PerfTier.ConfigureTickScheduler = PerfTier.ConfigureTickScheduler
-PerfTier.GetScaledTickInterval = PerfTier.GetScaledTickInterval
-PerfTier.Update = PerfTier.Update
-PerfTier.Init = PerfTier.Init
-PerfTier.Destroy = PerfTier.Destroy
-
-PerfTier.new = PerfTier.New
-PerfTier.update = PerfTier.Update
-PerfTier.init = PerfTier.Init
-PerfTier.getTier = PerfTier.GetTier
-PerfTier.getSettings = PerfTier.GetSettings
-PerfTier.getSnapshot = PerfTier.GetSnapshot
-PerfTier.onChanged = PerfTier.OnChanged
-PerfTier.setManualTier = PerfTier.SetManualTier
-PerfTier.configureTickScheduler = PerfTier.ConfigureTickScheduler
-PerfTier.getScaledTickInterval = PerfTier.GetScaledTickInterval
-PerfTier.destroy = PerfTier.Destroy
 
 return PerfTier

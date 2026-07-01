@@ -53,7 +53,7 @@ local function token(valueRaw: any): string
 	return string.gsub(value, "[%s_%-%.]+", "")
 end
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -67,7 +67,7 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?,
 	return value
 end
 
-local function sanitizeIntegerOrNil(valueRaw: any, minimum: number, maximum: number): number?
+local function CoerceIntegerOrNil(valueRaw: any, minimum: number, maximum: number): number?
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return nil
 	end
@@ -99,7 +99,7 @@ local function splitPathSegments(pathRaw: string): { string }
 	return segments
 end
 
-local function resolveEffectsRoot(): Instance?
+local function GetEffectsRoot(): Instance?
 	local assets = ReplicatedStorage:FindFirstChild("Assets")
 	if assets == nil then
 		return nil
@@ -112,7 +112,7 @@ local function resolveEffectsRoot(): Instance?
 	return nil
 end
 
-local function resolveDescendantByPath(root: Instance?, pathRaw: string): Instance?
+local function GetDescendantByPath(root: Instance?, pathRaw: string): Instance?
 	local segments = splitPathSegments(pathRaw)
 	if root == nil or #segments <= 0 then
 		return nil
@@ -180,7 +180,7 @@ function VFXServiceUtils.IsAttachmentTemplate(templateRaw: any): boolean
 	return VFXServiceUtils.GetTemplateKind(templateRaw) == "Attachment"
 end
 
-function VFXServiceUtils.SanitizeChannelName(channelNameRaw: any): string?
+function VFXServiceUtils.CoerceChannelName(channelNameRaw: any): string?
 	local channelName = trim(channelNameRaw)
 	if channelName == "" then
 		return nil
@@ -188,7 +188,7 @@ function VFXServiceUtils.SanitizeChannelName(channelNameRaw: any): string?
 	return channelName
 end
 
-function VFXServiceUtils.SanitizeEffectReference(effectSourceRaw: any): any?
+function VFXServiceUtils.CoerceEffectReference(effectSourceRaw: any): any?
 	local templateKind = VFXServiceUtils.GetTemplateKind(effectSourceRaw)
 	if templateKind ~= nil then
 		local template = effectSourceRaw :: Instance
@@ -205,7 +205,7 @@ function VFXServiceUtils.SanitizeEffectReference(effectSourceRaw: any): any?
 	return nil
 end
 
-function VFXServiceUtils.ResolveEffectTemplate(effectSourceRaw: any): Instance?
+function VFXServiceUtils.GetEffectTemplate(effectSourceRaw: any): Instance?
 	local templateKind = VFXServiceUtils.GetTemplateKind(effectSourceRaw)
 	if templateKind ~= nil then
 		return effectSourceRaw :: Instance
@@ -216,12 +216,12 @@ function VFXServiceUtils.ResolveEffectTemplate(effectSourceRaw: any): Instance?
 		return nil
 	end
 
-	local effectsRoot = resolveEffectsRoot()
+	local effectsRoot = GetEffectsRoot()
 	if effectsRoot == nil then
 		error(MISSING_ASSET_ERROR, 0)
 	end
 
-	local byPath = resolveDescendantByPath(effectsRoot, effectName)
+	local byPath = GetDescendantByPath(effectsRoot, effectName)
 	if VFXServiceUtils.GetTemplateKind(byPath) ~= nil then
 		return byPath
 	end
@@ -245,7 +245,7 @@ function VFXServiceUtils.ResolveEffectTemplate(effectSourceRaw: any): Instance?
 	error(MISSING_ASSET_ERROR, 0)
 end
 
-function VFXServiceUtils.SanitizePlaybackOptions(optionsRaw: any): VFXPlaybackOptions
+function VFXServiceUtils.CoercePlaybackOptions(optionsRaw: any): VFXPlaybackOptions
 	local source = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 
 	local offsetRaw = (source :: any).offset
@@ -275,7 +275,7 @@ function VFXServiceUtils.SanitizePlaybackOptions(optionsRaw: any): VFXPlaybackOp
 		followInstance = target
 	end
 
-	local enabledDuration = sanitizeNumber(
+	local enabledDuration = CoerceNumber(
 		if (source :: any).enabledDuration ~= nil
 			then (source :: any).enabledDuration
 			else if (source :: any).duration ~= nil then (source :: any).duration else (source :: any).emitWindow,
@@ -284,7 +284,7 @@ function VFXServiceUtils.SanitizePlaybackOptions(optionsRaw: any): VFXPlaybackOp
 		VFXServiceUtils.MAX_DURATION
 	)
 	local followDuration =
-		sanitizeNumber((source :: any).followDuration, enabledDuration, 0, VFXServiceUtils.MAX_DURATION)
+		CoerceNumber((source :: any).followDuration, enabledDuration, 0, VFXServiceUtils.MAX_DURATION)
 
 	local cleanupDelayRaw = (source :: any).cleanupDelay
 	if cleanupDelayRaw == nil then
@@ -313,11 +313,11 @@ function VFXServiceUtils.SanitizePlaybackOptions(optionsRaw: any): VFXPlaybackOp
 		position = position,
 		cframe = cframe,
 		offset = offset,
-		emitCount = sanitizeIntegerOrNil((source :: any).emitCount, 1, VFXServiceUtils.MAX_EMIT_COUNT),
+		emitCount = CoerceIntegerOrNil((source :: any).emitCount, 1, VFXServiceUtils.MAX_EMIT_COUNT),
 		enabledDuration = enabledDuration,
 		followDuration = if followInstance ~= nil then followDuration else 0,
 		cleanupDelay = cleanupDelay,
-		channel = VFXServiceUtils.SanitizeChannelName((source :: any).channel),
+		channel = VFXServiceUtils.CoerceChannelName((source :: any).channel),
 		replaceChannel = if typeof((source :: any).replaceChannel) == "boolean"
 			then (source :: any).replaceChannel
 			else true,
@@ -325,7 +325,7 @@ function VFXServiceUtils.SanitizePlaybackOptions(optionsRaw: any): VFXPlaybackOp
 end
 
 function VFXServiceUtils.SerializePlaybackOptions(optionsRaw: any): { [string]: any }
-	local options = VFXServiceUtils.SanitizePlaybackOptions(optionsRaw)
+	local options = VFXServiceUtils.CoercePlaybackOptions(optionsRaw)
 	local serialized = {}
 
 	if options.target ~= nil and options.target.Parent ~= nil then
@@ -368,7 +368,7 @@ function VFXServiceUtils.SerializePlaybackOptions(optionsRaw: any): { [string]: 
 	return serialized
 end
 
-function VFXServiceUtils.ResolveInstanceWorldCFrame(instanceRaw: any): CFrame?
+function VFXServiceUtils.GetInstanceWorldCFrame(instanceRaw: any): CFrame?
 	local instance = asInstance(instanceRaw)
 	if instance == nil then
 		return nil
@@ -390,17 +390,17 @@ function VFXServiceUtils.ResolveInstanceWorldCFrame(instanceRaw: any): CFrame?
 	return nil
 end
 
-function VFXServiceUtils.ResolvePlaybackCFrame(optionsRaw: any): CFrame?
-	local options = VFXServiceUtils.SanitizePlaybackOptions(optionsRaw)
+function VFXServiceUtils.GetPlaybackCFrame(optionsRaw: any): CFrame?
+	local options = VFXServiceUtils.CoercePlaybackOptions(optionsRaw)
 	local baseCFrame = options.cframe
 	if baseCFrame == nil and options.position ~= nil then
 		baseCFrame = CFrame.new(options.position)
 	end
 	if baseCFrame == nil then
-		baseCFrame = VFXServiceUtils.ResolveInstanceWorldCFrame(options.target)
+		baseCFrame = VFXServiceUtils.GetInstanceWorldCFrame(options.target)
 	end
 	if baseCFrame == nil then
-		baseCFrame = VFXServiceUtils.ResolveInstanceWorldCFrame(options.followInstance)
+		baseCFrame = VFXServiceUtils.GetInstanceWorldCFrame(options.followInstance)
 	end
 	if baseCFrame == nil then
 		return nil
@@ -408,12 +408,12 @@ function VFXServiceUtils.ResolvePlaybackCFrame(optionsRaw: any): CFrame?
 	return baseCFrame * options.offset
 end
 
-function VFXServiceUtils.ResolveFollowCFrame(optionsRaw: any): CFrame?
-	local options = VFXServiceUtils.SanitizePlaybackOptions(optionsRaw)
+function VFXServiceUtils.GetFollowCFrame(optionsRaw: any): CFrame?
+	local options = VFXServiceUtils.CoercePlaybackOptions(optionsRaw)
 	if options.followInstance == nil then
 		return nil
 	end
-	local followCFrame = VFXServiceUtils.ResolveInstanceWorldCFrame(options.followInstance)
+	local followCFrame = VFXServiceUtils.GetInstanceWorldCFrame(options.followInstance)
 	if followCFrame == nil then
 		return nil
 	end
@@ -421,7 +421,7 @@ function VFXServiceUtils.ResolveFollowCFrame(optionsRaw: any): CFrame?
 end
 
 function VFXServiceUtils.EnsureRuntimeFolder(): Folder
-	return WorkspaceFolders.getOrCreateFolderInGame(VFXServiceUtils.RUNTIME_FOLDER_NAME)
+	return WorkspaceFolders.GetOrCreateFolderInGame(VFXServiceUtils.RUNTIME_FOLDER_NAME)
 end
 
 function VFXServiceUtils.CreateRuntimeCarrier(_effectNameRaw: any): Part
@@ -513,7 +513,7 @@ function VFXServiceUtils.EmitRuntimeParticles(runtimeRootRaw: any, emitCountRaw:
 		return
 	end
 
-	local emitCount = sanitizeIntegerOrNil(emitCountRaw, 1, VFXServiceUtils.MAX_EMIT_COUNT)
+	local emitCount = CoerceIntegerOrNil(emitCountRaw, 1, VFXServiceUtils.MAX_EMIT_COUNT)
 	if emitCount == nil then
 		return
 	end
@@ -542,8 +542,8 @@ function VFXServiceUtils.GetMaxEffectLifetime(runtimeRootRaw: any): number
 	return maxLifetime
 end
 
-function VFXServiceUtils.ResolveCleanupDelay(runtimeRootRaw: any, optionsRaw: any): number
-	local options = VFXServiceUtils.SanitizePlaybackOptions(optionsRaw)
+function VFXServiceUtils.GetCleanupDelay(runtimeRootRaw: any, optionsRaw: any): number
+	local options = VFXServiceUtils.CoercePlaybackOptions(optionsRaw)
 	if options.cleanupDelay ~= nil then
 		return math.max(0, options.cleanupDelay)
 	end
@@ -552,26 +552,5 @@ function VFXServiceUtils.ResolveCleanupDelay(runtimeRootRaw: any, optionsRaw: an
 	local cleanupDelay = options.enabledDuration + lifetime + VFXServiceUtils.DEFAULT_CLEANUP_BUFFER
 	return math.max(VFXServiceUtils.MIN_CLEANUP_DELAY, cleanupDelay)
 end
-
-VFXServiceUtils.cloneDictionary = VFXServiceUtils.CloneDictionary
-VFXServiceUtils.getTemplateKind = VFXServiceUtils.GetTemplateKind
-VFXServiceUtils.isPartTemplate = VFXServiceUtils.IsPartTemplate
-VFXServiceUtils.isAttachmentTemplate = VFXServiceUtils.IsAttachmentTemplate
-VFXServiceUtils.sanitizeChannelName = VFXServiceUtils.SanitizeChannelName
-VFXServiceUtils.sanitizeEffectReference = VFXServiceUtils.SanitizeEffectReference
-VFXServiceUtils.resolveEffectTemplate = VFXServiceUtils.ResolveEffectTemplate
-VFXServiceUtils.sanitizePlaybackOptions = VFXServiceUtils.SanitizePlaybackOptions
-VFXServiceUtils.serializePlaybackOptions = VFXServiceUtils.SerializePlaybackOptions
-VFXServiceUtils.resolveInstanceWorldCFrame = VFXServiceUtils.ResolveInstanceWorldCFrame
-VFXServiceUtils.resolvePlaybackCFrame = VFXServiceUtils.ResolvePlaybackCFrame
-VFXServiceUtils.resolveFollowCFrame = VFXServiceUtils.ResolveFollowCFrame
-VFXServiceUtils.ensureRuntimeFolder = VFXServiceUtils.EnsureRuntimeFolder
-VFXServiceUtils.createRuntimeCarrier = VFXServiceUtils.CreateRuntimeCarrier
-VFXServiceUtils.prepareRuntimeRoot = VFXServiceUtils.PrepareRuntimeRoot
-VFXServiceUtils.createRuntimeEffect = VFXServiceUtils.CreateRuntimeEffect
-VFXServiceUtils.setRuntimeEffectEnabled = VFXServiceUtils.SetRuntimeEffectEnabled
-VFXServiceUtils.emitRuntimeParticles = VFXServiceUtils.EmitRuntimeParticles
-VFXServiceUtils.getMaxEffectLifetime = VFXServiceUtils.GetMaxEffectLifetime
-VFXServiceUtils.resolveCleanupDelay = VFXServiceUtils.ResolveCleanupDelay
 
 return VFXServiceUtils

@@ -24,12 +24,13 @@ type InfoScreenProps = {
 local e: typeof(React.createElement) = React.createElement
 
 local DEFAULT_CURSOR_OFFSET = Vector2.new(16, 20)
+local HOVER_TEXT_LINE_HEIGHT = 1.28
 
 return function(props: InfoScreenProps): React.ReactNode
 	local hoverState = (useStore(infoState.infoStateAtom) :: HoverInfoState?) or infoState.infoStateAtom()
 
 	React.useEffect(function()
-		local stop = infoThunks.start()
+		local stop = infoThunks.Start()
 
 		return function()
 			stop()
@@ -59,6 +60,7 @@ return function(props: InfoScreenProps): React.ReactNode
 				borderSizePixel = 0,
 				textColor3 = Color3.fromRGB(245, 249, 255),
 				textSize = 14,
+				lineHeight = HOVER_TEXT_LINE_HEIGHT,
 				textXAlignment = Enum.TextXAlignment.Left,
 				textYAlignment = Enum.TextYAlignment.Center,
 				zIndex = zIndex + 1,
@@ -92,7 +94,7 @@ return function(props: InfoScreenProps): React.ReactNode
 		},
 	})
 
-	local portalTarget = PortalTargets.resolveUiScreenGui()
+	local portalTarget = PortalTargets.GetUiScreenGui()
 	if portalTarget ~= nil then
 		return ReactRoblox.createPortal(rootElement, portalTarget)
 	end

@@ -9,9 +9,6 @@ local Hooks = {}
 
 function Hooks.UseCycle(): CelestialSlice.CelestialSurfaceState
 	return (useStore(CelestialSlice.surfaceStateAtom) :: CelestialSlice.CelestialSurfaceState?)
-		or CelestialSlice.getSurfaceState()
+		or CelestialSlice.GetSurfaceState()
 end
-
-Hooks.useCycle = Hooks.UseCycle
-
 return Table.readonly(Hooks)

@@ -5,7 +5,7 @@ local Table = require("Table")
 local BuffConstants = require("BuffConstants")
 local BuffShared = require("BuffShared")
 
-local HealingPotionSickness = BuffShared.new({
+local HealingPotionSickness = BuffShared.New({
 	definitionOnly = true,
 })
 local EFFECTS = Table.copy({

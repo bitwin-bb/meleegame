@@ -36,18 +36,10 @@ function Ray.ClosestPoint(ray: Ray, point: Vector3): Vector3
 end
 
 function Ray.DistanceSqToPoint(ray: Ray, point: Vector3): number
-	return Vec.distanceSq(point, Ray.ClosestPoint(ray, point))
+	return Vec.DistanceSq(point, Ray.ClosestPoint(ray, point))
 end
 
 function Ray.DistanceToPoint(ray: Ray, point: Vector3): number
 	return math.sqrt(Ray.DistanceSqToPoint(ray, point))
 end
-
-Ray.new = Ray.New
-Ray.at = Ray.At
-Ray.closestT = Ray.ClosestT
-Ray.closestPoint = Ray.ClosestPoint
-Ray.distanceSqToPoint = Ray.DistanceSqToPoint
-Ray.distanceToPoint = Ray.DistanceToPoint
-
 return Ray

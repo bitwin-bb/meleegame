@@ -44,7 +44,7 @@ function Slime.GetModel(_self: typeof(Slime), runtime: Runtime): Model?
 end
 
 function Slime.GetPosition(_self: typeof(Slime), runtime: Runtime): Vector3?
-	return runtime.slime:getPosition()
+	return runtime.slime:GetPosition()
 end
 
 function Slime.SyncVitals(_self: typeof(Slime), runtime: Runtime)
@@ -61,7 +61,7 @@ function Slime.RegisterEnemyHitbox(_self: any, service: Service, runtime: Runtim
 	end
 
 	local runtimeId = runtime.id
-	local didRegister = (enemyHitbox.registerEnemy :: any)(enemyHitbox, {
+	local didRegister = (enemyHitbox.RegisterEnemy :: any)(enemyHitbox, {
 		id = runtimeId,
 		owner = runtime,
 		model = runtime.slime.model,
@@ -69,28 +69,28 @@ function Slime.RegisterEnemyHitbox(_self: any, service: Service, runtime: Runtim
 			return ownerRuntime.slime.model
 		end,
 		getCenter = function(ownerRuntime: Runtime): Vector3?
-			local center = service:resolveRuntimeHurtbox(ownerRuntime)
+			local center = service:GetUntimeHurtbox(ownerRuntime)
 			return center
 		end,
 		getAlive = function(ownerRuntime: Runtime): boolean
 			return ownerRuntime.isAlive and not ownerRuntime.isRemoving and ownerRuntime.slime.isAlive
 		end,
 		getDamage = function(ownerRuntime: Runtime): number
-			return service:sanitizeNumber(ownerRuntime.slime.damage, 0, 0, 100000)
+			return service:CoerceNumber(ownerRuntime.slime.damage, 0, 0, 100000)
 		end,
 		getAttackCooldown = function(ownerRuntime: Runtime): number
-			return service:sanitizeNumber(ownerRuntime.slime.combat.attackCooldown, 0.85, 0.05, 30)
+			return service:CoerceNumber(ownerRuntime.slime.combat.attackCooldown, 0.85, 0.05, 30)
 		end,
 		getHurtboxSize = function(ownerRuntime: Runtime, _model: Model?, _rootPart: BasePart?): Vector3
-			local _, hurtboxSize = service:resolveRuntimeHurtbox(ownerRuntime)
+			local _, hurtboxSize = service:GetUntimeHurtbox(ownerRuntime)
 			return hurtboxSize
 		end,
 		getAttackSize = function(ownerRuntime: Runtime, model: Model?, rootPart: BasePart?): Vector3
-			local basePart = if rootPart ~= nil then rootPart else InstanceUtils.resolveModelRootPart(model)
+			local basePart = if rootPart ~= nil then rootPart else InstanceUtils.GetModelRootPart(model)
 			local baseSize = if basePart ~= nil then basePart.Size else DEFAULT_RUNTIME_HURTBOX_SIZE
 			local slime = ownerRuntime.slime
-			local attackRange = service:sanitizeNumber(slime.combat.attackRange, 3.5, 0.5, 25)
-			local hopReach = service:sanitizeNumber(slime.hopDistance, 6, 1, 60) * 0.5
+			local attackRange = service:CoerceNumber(slime.combat.attackRange, 3.5, 0.5, 25)
+			local hopReach = service:CoerceNumber(slime.hopDistance, 6, 1, 60) * 0.5
 			local effectiveReach = math.max(attackRange, hopReach, 4)
 			return Vector3.new(
 				math.max(4, baseSize.X + 2),
@@ -110,15 +110,15 @@ function Slime.RegisterEnemyHitbox(_self: any, service: Service, runtime: Runtim
 				return false
 			end
 
-			local distance = slime:getDistanceTo(player)
+			local distance = slime:GetDistanceTo(player)
 			if distance == nil then
 				return false
 			end
-			local maxContactDistance = math.max(5.5, service:sanitizeNumber(slime.hopDistance, 6, 1, 60) * 0.5 + 2)
+			local maxContactDistance = math.max(5.5, service:CoerceNumber(slime.hopDistance, 6, 1, 60) * 0.5 + 2)
 			return distance <= maxContactDistance
 		end,
 		onHitPlayer = function(ownerRuntime: Runtime, player: Player, damage: number)
-			service:onEnemyHitPlayer(ownerRuntime.id, player, damage)
+			service:OnEnemyHitPlayer(ownerRuntime.id, player, damage)
 		end,
 	})
 
@@ -127,7 +127,7 @@ function Slime.RegisterEnemyHitbox(_self: any, service: Service, runtime: Runtim
 	end
 end
 
-function Slime.ResolveRuntimeState(_self: typeof(Slime), _service: Service, runtime: Runtime): NpcRuntimeState
+function Slime.GetUntimeState(_self: typeof(Slime), _service: Service, runtime: Runtime): NpcRuntimeState
 	local npc = runtime.npc
 	if not runtime.isAlive then
 		return "Dead"
@@ -140,9 +140,9 @@ function Slime.ResolveRuntimeState(_self: typeof(Slime), _service: Service, runt
 	end
 
 	local currentTarget = npc.currentTarget
-	local hasTarget = currentTarget ~= nil and npc:isTargetValid(currentTarget)
+	local hasTarget = currentTarget ~= nil and npc:IsTargetValid(currentTarget)
 	if hasTarget then
-		if npc:canAttackTarget(currentTarget) then
+		if npc:CanAttackTarget(currentTarget) then
 			return "Attacking"
 		end
 		return "Aggro"
@@ -190,11 +190,11 @@ function Slime.GetSpriteState(_self: typeof(Slime), _service: Service, runtime: 
 end
 
 function Slime.Spawn(_self: typeof(Slime), service: Service, spawnConfig: SlimeSpawnConfig): Runtime?
-	local slime = SlimeAi.new({
+	local slime = SlimeAi.New({
 		archetype = spawnConfig.slimeType,
 		displayName = spawnConfig.displayName,
 		modelFactory = function(): Model
-			return SlimeRoot.createModel({
+			return SlimeRoot.CreateModel({
 				name = spawnConfig.modelName,
 				hp = DEFAULT_SLIME_HP,
 				size = DEFAULT_RUNTIME_HURTBOX_SIZE,
@@ -226,9 +226,9 @@ function Slime.Spawn(_self: typeof(Slime), service: Service, spawnConfig: SlimeS
 		},
 	})
 
-	local model = slime:start(spawnConfig.spawnCFrame)
+	local model = slime:Start(spawnConfig.spawnCFrame)
 	if model == nil then
-		slime:destroy()
+		slime:Destroy()
 		return nil
 	end
 
@@ -252,7 +252,7 @@ function Slime.Spawn(_self: typeof(Slime), service: Service, spawnConfig: SlimeS
 		lastReason = "spawn",
 		biomeName = "Unknown",
 		biomeReady = false,
-		stateGraph = NpcServiceUtils.createDefaultStateMachineGraph(),
+		stateGraph = NpcServiceUtils.CreateDefaultStateMachineGraph(),
 		updatedAt = os.clock(),
 		janitor = runtimeJanitor,
 		isRemoving = false,
@@ -261,10 +261,10 @@ function Slime.Spawn(_self: typeof(Slime), service: Service, spawnConfig: SlimeS
 		lastSpriteStateKey = nil,
 	}
 
-	service:trackRuntime(runtime)
-	service:transitionRuntimeState(runtime, "Spawning", "spawn", true)
-	service:updateRuntime(runtime, "spawn", true)
-	service:broadcast(NpcServiceUtils.CLIENT_METHOD_NPC_ADDED, service:createSnapshot(runtime))
+	service:TrackRuntime(runtime)
+	service:TransitionRuntimeState(runtime, "Spawning", "spawn", true)
+	service:UpdateRuntime(runtime, "spawn", true)
+	service:Broadcast(NpcServiceUtils.CLIENT_METHOD_NPC_ADDED, service:CreateSnapshot(runtime))
 	return runtime
 end
 
@@ -274,9 +274,9 @@ function Slime.SpawnLoot(_self: any, service: Service, runtime: Runtime): ()
 		return
 	end
 
-	local deathPosition = runtime.slime:getPosition()
+	local deathPosition = runtime.slime:GetPosition()
 	if deathPosition == nil then
-		local rootPart = InstanceUtils.resolveModelRootPart(runtime.slime.model)
+		local rootPart = InstanceUtils.GetModelRootPart(runtime.slime.model)
 		if rootPart ~= nil then
 			deathPosition = rootPart.Position
 		end
@@ -284,23 +284,11 @@ function Slime.SpawnLoot(_self: any, service: Service, runtime: Runtime): ()
 	if deathPosition == nil then
 		return
 	end
-	(lootService.spawnLootRuntime :: any)(lootService, SLIME_GEL_DROP_ITEM_ID, SLIME_GEL_DROP_AMOUNT, deathPosition, {
+	(lootService.SpawnLootRuntime :: any)(lootService, SLIME_GEL_DROP_ITEM_ID, SLIME_GEL_DROP_AMOUNT, deathPosition, {
 		sourceType = runtime.displayName,
 	});
-	(lootService.spawnDropsFromSource :: any)(lootService, runtime.displayName, deathPosition, {
+	(lootService.SpawnDropsFromSource :: any)(lootService, runtime.displayName, deathPosition, {
 		sourceType = runtime.displayName,
 	})
 end
-
-Slime.init = Slime.Init
-Slime.isRuntime = Slime.IsRuntime
-Slime.getModel = Slime.GetModel
-Slime.getPosition = Slime.GetPosition
-Slime.syncVitals = Slime.SyncVitals
-Slime.registerEnemyHitbox = Slime.RegisterEnemyHitbox
-Slime.resolveRuntimeState = Slime.ResolveRuntimeState
-Slime.getSpriteState = Slime.GetSpriteState
-Slime.spawn = Slime.Spawn
-Slime.spawnLoot = Slime.SpawnLoot
-
 return Slime

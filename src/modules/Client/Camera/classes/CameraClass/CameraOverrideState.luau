@@ -62,7 +62,7 @@ function State.SetEnabled(self: State, enabledRaw: any)
 	self.enabled = enabledRaw == true
 end
 
-function State.Resolve(self: State, contextRaw: any): StateSnapshot
+function State.Get(self: State, contextRaw: any): StateSnapshot
 	local context = if typeof(contextRaw) == "table" then contextRaw else {} :: any
 	local target = if typeof((context :: any).target) == "table" then (context :: any).target else nil
 	local override = if typeof((context :: any).override) == "table" then (context :: any).override else nil
@@ -108,16 +108,10 @@ function State.Resolve(self: State, contextRaw: any): StateSnapshot
 		subjectKind = subjectKind,
 		updatedAt = os.clock(),
 	}
-	return self:getSnapshot()
+	return self:GetSnapshot()
 end
 
 function State.GetSnapshot(self: State): StateSnapshot
 	return cloneSnapshot(self.snapshot)
 end
-
-State.new = State.New
-State.setEnabled = State.SetEnabled
-State.resolve = State.Resolve
-State.getSnapshot = State.GetSnapshot
-
 return State

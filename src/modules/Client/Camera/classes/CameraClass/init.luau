@@ -111,17 +111,17 @@ function Camera.New(config: CameraNewConfig?): Camera
 	local sideViewBaseConfig = (Configs.cameraData :: any) :: SideView.SideViewConfig
 	local sideViewConfig =
 		mergeSideViewConfig(sideViewBaseConfig, if sideViewNewConfig then sideViewNewConfig.config else nil)
-	local sideView = SideView.new(sideViewConfig)
+	local sideView = SideView.New(sideViewConfig)
 
 	if sideViewNewConfig and sideViewNewConfig.character then
-		sideView:setCharacter(sideViewNewConfig.character)
+		sideView:SetCharacter(sideViewNewConfig.character)
 	end
 
 	if sideViewNewConfig and sideViewNewConfig.target ~= nil then
 		if sideViewNewConfig.autoEnable == false then
-			sideView:setTarget(sideViewNewConfig.target)
+			sideView:SetTarget(sideViewNewConfig.target)
 		else
-			sideView:init(sideViewNewConfig.target, nil, {
+			sideView:Init(sideViewNewConfig.target, nil, {
 				snapToTarget = if sideViewNewConfig.snapToTargetOnInit ~= nil
 					then sideViewNewConfig.snapToTargetOnInit
 					else true,
@@ -142,74 +142,58 @@ function Camera.UseSideView(
 	config: SideView.SideViewConfig?,
 	snapToTarget: boolean?
 ): SideView.SideView
-	self.SideView:init(target, config, {
+	self.SideView:Init(target, config, {
 		snapToTarget = if snapToTarget ~= nil then snapToTarget else not self.SideView.enabled,
 	})
 	return self.SideView
 end
 
 function Camera.ConfigureSideView(self: Camera, config: SideView.SideViewConfig): SideView.SideView
-	self.SideView:applyConfig(config)
+	self.SideView:ApplyConfig(config)
 	return self.SideView
 end
 
 function Camera.SetSideViewCharacter(self: Camera, character: Model?)
-	self.SideView:setCharacter(character)
+	self.SideView:SetCharacter(character)
 	return self.SideView
 end
 
 function Camera.PushSideViewOverride(self: Camera, overrideRaw: any): number
-	return self.SideView:pushOverride(overrideRaw)
+	return self.SideView:PushOverride(overrideRaw)
 end
 
 function Camera.UpdateSideViewOverride(self: Camera, idRaw: any, patchRaw: any): boolean
-	return self.SideView:updateOverride(idRaw, patchRaw)
+	return self.SideView:UpdateOverride(idRaw, patchRaw)
 end
 
 function Camera.RemoveSideViewOverride(self: Camera, idRaw: any): boolean
-	return self.SideView:removeOverride(idRaw)
+	return self.SideView:RemoveOverride(idRaw)
 end
 
 function Camera.ClearSideViewOverrides(self: Camera)
-	self.SideView:clearOverrides()
+	self.SideView:ClearOverrides()
 	return self.SideView
 end
 
 function Camera.SetTemporarySideViewTarget(self: Camera, targetRaw: any?, durationSecondsRaw: any?)
-	self.SideView:setTemporaryTargetOverride(targetRaw, durationSecondsRaw)
+	self.SideView:SetTemporaryTargetOverride(targetRaw, durationSecondsRaw)
 	return self.SideView
 end
 
 function Camera.ClearTemporarySideViewTarget(self: Camera)
-	self.SideView:clearTemporaryTargetOverride()
+	self.SideView:ClearTemporaryTargetOverride()
 	return self.SideView
 end
 
 function Camera.GetSideViewBackendState(self: Camera): { [string]: any }
-	return self.SideView:getBackendState()
+	return self.SideView:GetBackendState()
 end
 
 function Camera.DisableSideView(self: Camera)
-	self.SideView:disable()
+	self.SideView:Disable()
 end
 
 function Camera.Destroy(self: Camera)
-	self.SideView:destroy()
+	self.SideView:Destroy()
 end
-
-Camera.new = Camera.New
-Camera.init = Camera.Init
-Camera.useSideView = Camera.UseSideView
-Camera.configureSideView = Camera.ConfigureSideView
-Camera.setSideViewCharacter = Camera.SetSideViewCharacter
-Camera.pushSideViewOverride = Camera.PushSideViewOverride
-Camera.updateSideViewOverride = Camera.UpdateSideViewOverride
-Camera.removeSideViewOverride = Camera.RemoveSideViewOverride
-Camera.clearSideViewOverrides = Camera.ClearSideViewOverrides
-Camera.setTemporarySideViewTarget = Camera.SetTemporarySideViewTarget
-Camera.clearTemporarySideViewTarget = Camera.ClearTemporarySideViewTarget
-Camera.getSideViewBackendState = Camera.GetSideViewBackendState
-Camera.disableSideView = Camera.DisableSideView
-Camera.destroy = Camera.Destroy
-
 return Camera

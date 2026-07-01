@@ -117,8 +117,8 @@ local function useKeybind(options: KeybindOptions?): KeybindResult
 		end
 
 		if typeof(actionName) == "string" and actionName ~= "" then
-			setPrompt(PlatformServiceClient:getPromptForAction(actionName))
-			local promptSignal = PlatformServiceClient:getPromptSignal(actionName)
+			setPrompt(PlatformServiceClient:GetPromptForAction(actionName))
+			local promptSignal = PlatformServiceClient:GetPromptSignal(actionName)
 			local promptConnection = if promptSignal ~= nil
 					and typeof((promptSignal :: any).Connect) == "function"
 				then (promptSignal :: any):Connect(function(nextPrompt: PromptBinding?)
@@ -126,10 +126,10 @@ local function useKeybind(options: KeybindOptions?): KeybindResult
 				end)
 				else nil
 
-			local unbind = PlatformServiceClient:bindAction(
+			local unbind = PlatformServiceClient:BindAction(
 				actionName,
 				function(phase: KeybindPhase, actionContext: any)
-					local nextPrompt = PlatformServiceClient:getPromptForAction(actionName)
+					local nextPrompt = PlatformServiceClient:GetPromptForAction(actionName)
 					local context: KeybindContext = {
 						phase = phase,
 						inputObject = if typeof((actionContext :: any).inputObject) == "InputObject"

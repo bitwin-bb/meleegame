@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local testEnvironment = getfenv() :: any
@@ -15,28 +14,29 @@ local Matter = require("Matter")
 local TestEZ = require("TestEZ")
 
 local Binder = require("Binder")
-local Brio = require("Brio")
+local AudioServiceUtils = require("AudioServiceUtils")
 local Blocks = require("Blocks")
+local Brio = require("Brio")
 local BuildServiceUtils = require("BuildServiceUtils")
 local Maid = require("Maid")
 local Octree = require("Octree")
-local ResolveItem = require("ResolveItem")
+local GetItem = require("GetItem")
 local Rx = require("Rx")
 local RxSignal = require("RxSignal")
 local TileItem = require("TileItem")
 local VFXServiceUtils = require("VFXServiceUtils")
-local resolveImageId = require("resolveImageId")
+local GetImageId = require("GetImageId")
 
 local PACKAGE_NAME = "AquariaBackup"
 
-local function resolvePackageRoot(): Instance
+local function GetPackageRoot(): Instance
 	return assert(ServerScriptService:FindFirstChild(PACKAGE_NAME), `missing {PACKAGE_NAME} package root`)
 end
 
 return function()
 	describe("Package integrations", function()
 		it("maps shared boss modules into the replicated package tree", function()
-			local packageRoot = resolvePackageRoot()
+			local packageRoot = GetPackageRoot()
 			local gameRoot = assert(packageRoot:FindFirstChild("game"), "missing package game root")
 			local sharedRoot = assert(gameRoot:FindFirstChild("Shared"), "missing shared root")
 			local eyeRoot = assert(sharedRoot:FindFirstChild("EyeOfCthulhuBoss"), "missing shared eye boss root")
@@ -49,19 +49,21 @@ return function()
 		end)
 
 		it("maps shared boss configs into the replicated package tree", function()
-			local packageRoot = resolvePackageRoot()
+			local packageRoot = GetPackageRoot()
 			local gameRoot = assert(packageRoot:FindFirstChild("game"), "missing package game root")
 			local sharedRoot = assert(gameRoot:FindFirstChild("Shared"), "missing shared root")
-			local queenBeeConfigs = assert(sharedRoot:FindFirstChild("QueenBeeConfigs"), "missing shared QueenBeeConfigs module")
+			local queenBeeConfigs =
+				assert(sharedRoot:FindFirstChild("QueenBeeConfigs"), "missing shared QueenBeeConfigs module")
 
 			expect(queenBeeConfigs:IsA("ModuleScript")).to.equal(true)
 		end)
 
 		it("maps shared npc definitions into the replicated package tree", function()
-			local packageRoot = resolvePackageRoot()
+			local packageRoot = GetPackageRoot()
 			local gameRoot = assert(packageRoot:FindFirstChild("game"), "missing package game root")
 			local sharedRoot = assert(gameRoot:FindFirstChild("Shared"), "missing shared root")
-			local definitions = assert(sharedRoot:FindFirstChild("NpcDefinitions"), "missing shared NpcDefinitions module")
+			local definitions =
+				assert(sharedRoot:FindFirstChild("NpcDefinitions"), "missing shared NpcDefinitions module")
 
 			expect(definitions:IsA("ModuleScript")).to.equal(true)
 		end)
@@ -70,6 +72,17 @@ return function()
 			expect(typeof(TestEZ.run)).to.equal("function")
 			expect(typeof(TestEZ.TestBootstrap)).to.equal("table")
 			expect(TestEZ.Reporters.TextReporter ~= nil).to.equal(true)
+		end)
+
+		it("exposes audio utilities through their canonical method names", function()
+			expect(typeof(AudioServiceUtils.CollectSoundAssetIds)).to.equal("function")
+			expect(typeof(AudioServiceUtils.GetSoundAssetId)).to.equal("function")
+			expect(typeof(AudioServiceUtils.CreateDefaultState)).to.equal("function")
+			expect(typeof(AudioServiceUtils.SerializePlaybackOptions)).to.equal("function")
+			expect(typeof(AudioServiceUtils.CreateSoundInstance)).to.equal("function")
+			expect(AudioServiceUtils.collectSoundAssetIds).to.equal(nil)
+			expect(AudioServiceUtils.createDefaultState).to.equal(nil)
+			expect(AudioServiceUtils.serializePlaybackOptions).to.equal(nil)
 		end)
 
 		it("allows Maid to clean Rx subscriptions deterministically", function()
@@ -105,9 +118,9 @@ return function()
 			}))
 
 			loop:scheduleSystem(function(activeWorld)
-				for entityId, position in activeWorld:query(Position) do
+				for activeEntityId, position in activeWorld:query(Position) do
 					activeWorld:insert(
-						entityId,
+						activeEntityId,
 						Position({
 							x = position.x + 1,
 						})
@@ -124,7 +137,7 @@ return function()
 			tick:Fire()
 			task.wait()
 
-			local position = world:get(entityId, Position)
+			local position = world:Get(entityId, Position)
 			expect(position.x).to.equal(7)
 
 			connections.default:Disconnect()
@@ -157,7 +170,7 @@ return function()
 
 		it("creates side-view loot icon models from inventory icons", function()
 			local LootItemServer = require("LootItemServer")
-			local model = LootItemServer.createModel({
+			local model = LootItemServer.CreateModel({
 				itemId = "CopperOre",
 				amount = 3,
 				name = "Loot_CopperOre",
@@ -170,6 +183,8 @@ return function()
 			expect(root ~= nil).to.equal(true)
 			expect((root :: Instance):IsA("BasePart")).to.equal(true)
 			expect(model.PrimaryPart).to.equal(root)
+			expect((root :: BasePart).CollisionGroup).to.equal("LootItems")
+			expect((root :: BasePart).CanCollide).to.equal(true)
 			expect((root :: BasePart).AssemblyAngularVelocity).to.equal(Vector3.zero)
 
 			local surfaceGui = (root :: Instance):FindFirstChild("LootIcon")
@@ -185,9 +200,9 @@ return function()
 			model:Destroy()
 		end)
 
-		it("animates dropped coin icons from their spritesheets", function()
+		it("creates dropped coin icons from their spritesheets for client viewport playback", function()
 			local LootItemServer = require("LootItemServer")
-			local model = LootItemServer.createModel({
+			local model = LootItemServer.CreateModel({
 				itemId = "CopperCoin",
 				amount = 7,
 				name = "Loot_CopperCoin",
@@ -201,14 +216,14 @@ return function()
 			local icon = (surfaceGui :: Instance):FindFirstChild("Icon")
 			expect(icon ~= nil).to.equal(true)
 			expect((icon :: Instance):IsA("ImageLabel")).to.equal(true)
+			expect((root :: BasePart).CollisionGroup).to.equal("LootItems")
+			expect((root :: BasePart).CanCollide).to.equal(true)
 			expect((icon :: ImageLabel).Image).to.equal("rbxassetid://138124828857039")
 			expect((icon :: ImageLabel).ImageRectSize).to.equal(Vector2.new(258, 258))
 			expect((icon :: ImageLabel).ImageRectOffset).to.equal(Vector2.zero)
 			expect((icon :: ImageLabel).ResampleMode).to.equal(Enum.ResamplerMode.Pixelated)
 			expect((icon :: Instance):GetAttribute("LootIconAnimated")).to.equal(true)
-
-			task.wait(0.12)
-			expect((icon :: ImageLabel).ImageRectOffset ~= Vector2.zero).to.equal(true)
+			expect((icon :: Instance):GetAttribute("LootIconItemId")).to.equal("CopperCoin")
 
 			model:Destroy()
 		end)
@@ -216,7 +231,7 @@ return function()
 		it("builds tile tools through TileItem and Blocks", function()
 			local scope = Fusion.scoped(Fusion)
 			local tileItem = TileItem.new(scope)
-			local woodTool = tileItem:newTile("Wood")
+			local woodTool = tileItem:NewTile("Wood")
 
 			expect(woodTool:IsA("Tool")).to.equal(true)
 			expect(woodTool:GetAttribute("itemId")).to.equal("Wood")
@@ -242,7 +257,7 @@ return function()
 			for _, itemId in tileItemIds do
 				expect(typeof(Blocks[itemId])).to.equal("function")
 
-				local resolution = ResolveItem.resolve(itemId)
+				local resolution = GetItem.Get(itemId)
 				local tool = resolution.toolTemplate
 
 				expect(tool ~= nil).to.equal(true)
@@ -254,7 +269,7 @@ return function()
 			end
 		end)
 
-		it("resolves break drops for every shared tile block", function()
+		it("gets break drops for every shared tile block", function()
 			local expectedDrops = {
 				[BuildServiceUtils.TILE_ID.WOOD] = "Wood",
 				[BuildServiceUtils.TILE_ID.DIRT] = "Dirt",
@@ -266,7 +281,7 @@ return function()
 			}
 
 			for tileId, expectedItemId in expectedDrops do
-				expect(BuildServiceUtils.resolveTileBreakDropItemId(tileId)).to.equal(expectedItemId)
+				expect(BuildServiceUtils.GetTileBreakDropItemId(tileId)).to.equal(expectedItemId)
 			end
 		end)
 
@@ -308,15 +323,15 @@ return function()
 
 		it("throws when asset resolution cannot find a matching asset", function()
 			expect(function()
-				ResolveItem.resolvePrimaryTemplate("__missing_asset_spec__")
+				GetItem.GetPrimaryTemplate("__missing_asset_spec__")
 			end).to.throw("no asset found!")
 
 			expect(function()
-				VFXServiceUtils.resolveEffectTemplate("__missing_asset_spec__")
+				VFXServiceUtils.GetEffectTemplate("__missing_asset_spec__")
 			end).to.throw("no asset found!")
 
 			expect(function()
-				resolveImageId(nil, "rbxassetid://1")
+				GetImageId(nil, "rbxassetid://1")
 			end).to.throw("no asset found!")
 		end)
 	end)

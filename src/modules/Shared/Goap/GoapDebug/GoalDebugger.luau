@@ -31,7 +31,4 @@ function GoalDebugger.DescribePlanForGoal(goal: any, plan: any): string
 end
 
 GoalDebugger.copy = Table.copy
-GoalDebugger.describeGoal = GoalDebugger.DescribeGoal
-GoalDebugger.describePlanForGoal = GoalDebugger.DescribePlanForGoal
-
 return GoalDebugger

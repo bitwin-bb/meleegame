@@ -16,7 +16,7 @@ local function getAudioServiceClient()
 	return audioServiceClient
 end
 
-local function resolveStringAttribute(instance: Instance, attributeNames: { string }): string?
+local function GetStringAttribute(instance: Instance, attributeNames: { string }): string?
 	for _, attributeName in attributeNames do
 		local value = instance:GetAttribute(attributeName)
 		if typeof(value) == "string" and value ~= "" then
@@ -26,7 +26,7 @@ local function resolveStringAttribute(instance: Instance, attributeNames: { stri
 	return nil
 end
 
-local function resolveNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
+local function GetNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
@@ -36,7 +36,7 @@ end
 
 function AudioBinder.new(instance: Instance, context: any)
 	local self = ModelBinder.new(instance, context, AudioBinder)
-	self.rootPart = ModelBinder.resolveRootPart(instance)
+	self.rootPart = self:GetRootPart()
 	self.playingSound = nil :: Sound?
 	self.existingSound = instance:FindFirstChildWhichIsA("Sound", true)
 	self.channel = `AudioBinder_{(instance :: any):GetDebugId(0)}`
@@ -60,10 +60,10 @@ end
 
 function AudioBinder.refresh(self: any)
 	local enabled = self.instance:GetAttribute("AudioEnabled") ~= false
-	local soundId = resolveStringAttribute(self.instance, { "AudioSoundId", "AmbientSoundId", "SoundId" })
-	local volume = resolveNumberAttribute(self.instance, "AudioVolume", 0.65)
-	local maxDistance = resolveNumberAttribute(self.instance, "AudioMaxDistance", 55)
-	local emitterSize = resolveNumberAttribute(self.instance, "AudioEmitterSize", 8)
+	local soundId = GetStringAttribute(self.instance, { "AudioSoundId", "AmbientSoundId", "SoundId" })
+	local volume = GetNumberAttribute(self.instance, "AudioVolume", 0.65)
+	local maxDistance = GetNumberAttribute(self.instance, "AudioMaxDistance", 55)
+	local emitterSize = GetNumberAttribute(self.instance, "AudioEmitterSize", 8)
 	local looped = self.instance:GetAttribute("AudioLooped") ~= false
 
 	self.instance:SetAttribute("AudioTagged", true)
@@ -98,7 +98,7 @@ function AudioBinder.refresh(self: any)
 		return
 	end
 
-	self.playingSound = getAudioServiceClient():playSound(soundId, {
+	self.playingSound = getAudioServiceClient():PlaySound(soundId, {
 		parent = parent,
 		channel = self.channel,
 		looped = looped,

@@ -35,7 +35,7 @@ local function dependencyArray(...: any): { any }
 	return { ... }
 end
 
-local function sanitizeDurationSeconds(valueRaw: any): number
+local function CoerceDurationSeconds(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return DEFAULT_DURATION_SECONDS
 	end
@@ -55,7 +55,7 @@ local function matchesInputType(inputObject: InputObject, inputTypesRaw: { Enum.
 end
 
 local function useLongPress(options: LongPressOptions?): LongPressResult
-	local durationSeconds = sanitizeDurationSeconds(if options ~= nil then options.duration else nil)
+	local durationSeconds = CoerceDurationSeconds(if options ~= nil then options.duration else nil)
 	local enabled = if options ~= nil and options.enabled ~= nil then options.enabled == true else true
 	local inputTypes = if options ~= nil then options.inputTypes else nil
 	local cancelOnPointerLeave = if options ~= nil and options.cancelOnPointerLeave ~= nil
@@ -86,14 +86,14 @@ local function useLongPress(options: LongPressOptions?): LongPressResult
 		setLongPressed(false)
 	end, {})
 
-	local finishPress = React.useCallback(function(resolvedInputObject: InputObject?)
+	local finishPress = React.useCallback(function(inputObjectRaw: InputObject?)
 		if not pressingRef.current and not longPressedRef.current then
 			cancel()
 			return
 		end
 
 		local didLongPress = longPressedRef.current
-		local inputObject = if resolvedInputObject ~= nil then resolvedInputObject else activeInputRef.current
+		local inputObject = if inputObjectRaw ~= nil then inputObjectRaw else activeInputRef.current
 		cancel()
 		onPressEnd(didLongPress, inputObject)
 	end, dependencyArray(cancel, onPressEnd))

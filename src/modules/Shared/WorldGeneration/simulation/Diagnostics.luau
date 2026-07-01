@@ -98,17 +98,17 @@ local function applyPendingSample(self: Diagnostics): boolean
 
 	local debugModule = self.debug
 	if debugModule ~= nil and debugModule.setCounter ~= nil then
-		debugModule:setCounter("runtime_active_chunks", sample.activeChunkCount)
-		debugModule:setCounter("runtime_selected_chunks", sample.selectedChunkCount)
-		debugModule:setCounter("runtime_chunk_budget", sample.chunkBudget)
-		debugModule:setCounter("runtime_tick_elapsed_last", sample.elapsedSeconds)
-		debugModule:setCounter("runtime_samples", sampleCount)
-		debugModule:setCounter("runtime_selected_chunks_avg", nextRolling.averageSelectedChunks)
-		debugModule:setCounter("runtime_chunks_processed_avg", nextRolling.averageProcessedChunks)
-		debugModule:setCounter("runtime_corruption_clusters_avg", nextRolling.averageCorruptionClusters)
-		debugModule:setCounter("runtime_biome_clusters_avg", nextRolling.averageBiomeClusters)
-		debugModule:setCounter("runtime_ai_entities_avg", nextRolling.averageAiEntities)
-		debugModule:setCounter("runtime_physics_entities_avg", nextRolling.averagePhysicsEntities)
+		debugModule:SetCounter("runtime_active_chunks", sample.activeChunkCount)
+		debugModule:SetCounter("runtime_selected_chunks", sample.selectedChunkCount)
+		debugModule:SetCounter("runtime_chunk_budget", sample.chunkBudget)
+		debugModule:SetCounter("runtime_tick_elapsed_last", sample.elapsedSeconds)
+		debugModule:SetCounter("runtime_samples", sampleCount)
+		debugModule:SetCounter("runtime_selected_chunks_avg", nextRolling.averageSelectedChunks)
+		debugModule:SetCounter("runtime_chunks_processed_avg", nextRolling.averageProcessedChunks)
+		debugModule:SetCounter("runtime_corruption_clusters_avg", nextRolling.averageCorruptionClusters)
+		debugModule:SetCounter("runtime_biome_clusters_avg", nextRolling.averageBiomeClusters)
+		debugModule:SetCounter("runtime_ai_entities_avg", nextRolling.averageAiEntities)
+		debugModule:SetCounter("runtime_physics_entities_avg", nextRolling.averagePhysicsEntities)
 	end
 
 	return true
@@ -213,10 +213,4 @@ function Diagnostics.Destroy(self: Diagnostics)
 	self.pendingSample = nil
 	self.lastSample = nil
 end
-
-Diagnostics.new = Diagnostics.New
-Diagnostics.attachDebugger = Diagnostics.AttachDebugger
-Diagnostics.getSnapshot = Diagnostics.GetSnapshot
-Diagnostics.destroy = Diagnostics.Destroy
-
 return Diagnostics

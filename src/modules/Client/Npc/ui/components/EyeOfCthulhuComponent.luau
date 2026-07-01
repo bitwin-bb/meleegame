@@ -36,14 +36,14 @@ type PhasePlayback = {
 	restFrame: number,
 }
 
-local function sanitizeFrame(frameRaw: any): number
+local function CoerceFrame(frameRaw: any): number
 	if typeof(frameRaw) ~= "number" or frameRaw ~= frameRaw then
 		return 1
 	end
 	return math.clamp(math.floor(frameRaw), 1, FRAME_COUNT)
 end
 
-local function sanitizeFrameRate(frameRateRaw: any): number
+local function CoerceFrameRate(frameRateRaw: any): number
 	if typeof(frameRateRaw) ~= "number" or frameRateRaw ~= frameRateRaw then
 		return 1
 	end
@@ -54,34 +54,34 @@ local function getAnimation(animationName: string): any
 	return EyeOfCthulhuSpriteSheet.animations[animationName]
 end
 
-local function resolveAnimationFrame(animationName: string, frameOffset: number?): number
+local function GetAnimationFrame(animationName: string, frameOffset: number?): number
 	local animation = getAnimation(animationName)
 	local frames = animation.frames
 	local frameCount = #frames
 	local offset = if typeof(frameOffset) == "number" then frameOffset else 0
 	local index = offset % frameCount + 1
-	return sanitizeFrame(frames[index])
+	return CoerceFrame(frames[index])
 end
 
-local function resolvePhaseName(snapshot: BossSnapshot): string
+local function GetPhaseName(snapshot: BossSnapshot): string
 	if snapshot.phase >= 2 or string.lower(snapshot.presentation.phaseModel) == "phase2" then
 		return "Phase2"
 	end
 	return "Phase1"
 end
 
-local function resolvePlayback(snapshot: BossSnapshot): PhasePlayback
-	local phaseName = resolvePhaseName(snapshot)
+local function GetPlayback(snapshot: BossSnapshot): PhasePlayback
+	local phaseName = GetPhaseName(snapshot)
 	local animation = getAnimation(phaseName)
 	return {
 		phaseName = phaseName,
-		frameRate = sanitizeFrameRate(animation.frameRate),
+		frameRate = CoerceFrameRate(animation.frameRate),
 		frames = animation.frames,
-		restFrame = resolveAnimationFrame(phaseName, nil),
+		restFrame = GetAnimationFrame(phaseName, nil),
 	}
 end
 
-local function resolveModelRootPart(model: Model): BasePart?
+local function GetModelRootPart(model: Model): BasePart?
 	local rootPart = model:FindFirstChild("RootPart")
 	if rootPart ~= nil and rootPart:IsA("BasePart") then
 		return rootPart
@@ -97,14 +97,14 @@ local function resolveModelRootPart(model: Model): BasePart?
 	return nil
 end
 
-local function resolveRuntimeRootPart(runtimeId: string): BasePart?
+local function GetUntimeRootPart(runtimeId: string): BasePart?
 	local cachedRootPart = runtimeRootPartCache[runtimeId]
 	if cachedRootPart ~= nil and cachedRootPart:IsDescendantOf(Workspace) then
 		return cachedRootPart
 	end
 	runtimeRootPartCache[runtimeId] = nil
 
-	local runtimeFolder = WorkspaceFolders.findFolderInGameOrWorkspace(BOSS_RUNTIME_FOLDER_NAME)
+	local runtimeFolder = WorkspaceFolders.FindFolderInGameOrWorkspace(BOSS_RUNTIME_FOLDER_NAME)
 	if runtimeFolder == nil then
 		return nil
 	end
@@ -117,7 +117,7 @@ local function resolveRuntimeRootPart(runtimeId: string): BasePart?
 			continue
 		end
 
-		local rootPart = resolveModelRootPart(child)
+		local rootPart = GetModelRootPart(child)
 		if rootPart ~= nil then
 			runtimeRootPartCache[runtimeId] = rootPart
 		end
@@ -127,8 +127,8 @@ local function resolveRuntimeRootPart(runtimeId: string): BasePart?
 	return nil
 end
 
-local function resolvePresentationPosition(snapshot: BossSnapshot): Vector3?
-	local rootPart = resolveRuntimeRootPart(snapshot.id)
+local function GetPresentationPosition(snapshot: BossSnapshot): Vector3?
+	local rootPart = GetUntimeRootPart(snapshot.id)
 	local basePosition = if rootPart ~= nil then rootPart.Position else snapshot.position
 	if basePosition == nil then
 		basePosition = snapshot.motion.position
@@ -149,15 +149,15 @@ local function resolvePresentationPosition(snapshot: BossSnapshot): Vector3?
 	return basePosition + suggestedOffset + Vector3.new(0, hoverLift, 0)
 end
 
-local function resolveRootSize(snapshot: BossSnapshot): Vector3
-	local rootPart = resolveRuntimeRootPart(snapshot.id)
+local function GetRootSize(snapshot: BossSnapshot): Vector3
+	local rootPart = GetUntimeRootPart(snapshot.id)
 	if rootPart ~= nil then
 		return rootPart.Size
 	end
 	return DEFAULT_ROOT_SIZE
 end
 
-local function resolveScreenPosition(position: Vector3, rootSize: Vector3): (UDim2?, number)
+local function GetScreenPosition(position: Vector3, rootSize: Vector3): (UDim2?, number)
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
 		return nil, 0
@@ -175,7 +175,7 @@ local function resolveScreenPosition(position: Vector3, rootSize: Vector3): (UDi
 	return UDim2.fromOffset(viewportPoint.X, viewportPoint.Y), size
 end
 
-local function resolveSpriteSize(baseSize: number): UDim2
+local function GetSpriteSize(baseSize: number): UDim2
 	local frameSize = EyeOfCthulhuSpriteSheet.frameSize
 	local height = math.max(1, baseSize)
 	local width = height
@@ -198,7 +198,7 @@ local function createPhaseFlipbook(playback: PhasePlayback): any
 	})
 
 	for index, absoluteFrame in playback.frames do
-		local frame = sanitizeFrame(absoluteFrame)
+		local frame = CoerceFrame(absoluteFrame)
 		local zeroBasedFrame = frame - 1
 		(flipbook :: any):SetSpriteAtIndex(
 			index,
@@ -215,21 +215,21 @@ local function createPhaseFlipbook(playback: PhasePlayback): any
 end
 
 local function getFrameOffset(frameIndex: number): Vector2
-	local zeroBased = math.max(0, sanitizeFrame(frameIndex) - 1)
+	local zeroBased = math.max(0, CoerceFrame(frameIndex) - 1)
 	return Vector2.new(0, zeroBased * EyeOfCthulhuSpriteSheet.frameSize.Y)
 end
 
 return function(props: EyeOfCthulhuProps): React.ReactNode
 	local snapshot = props.snapshot
-	local playback = resolvePlayback(snapshot)
+	local playback = GetPlayback(snapshot)
 	local imageRef = React.useRef(nil :: ImageLabel?)
 	local playerRef = React.useRef(nil :: any)
-	local position = resolvePresentationPosition(snapshot)
+	local position = GetPresentationPosition(snapshot)
 	local isSurfaceGui = props.surfaceGui == true
 	local screenPosition = nil :: UDim2?
 	local baseSize = 0
 	if position ~= nil then
-		screenPosition, baseSize = resolveScreenPosition(position, resolveRootSize(snapshot))
+		screenPosition, baseSize = GetScreenPosition(position, GetRootSize(snapshot))
 	end
 	local visible = isSurfaceGui or screenPosition ~= nil
 
@@ -292,7 +292,7 @@ return function(props: EyeOfCthulhuProps): React.ReactNode
 			else screenPosition or UDim2.fromOffset(-10000, -10000),
 		ResampleMode = Enum.ResamplerMode.Pixelated,
 		ScaleType = Enum.ScaleType.Stretch,
-		Size = if isSurfaceGui then UDim2.fromScale(1, 1) else resolveSpriteSize(baseSize),
+		Size = if isSurfaceGui then UDim2.fromScale(1, 1) else GetSpriteSize(baseSize),
 		Visible = visible,
 		ZIndex = props.zIndex or 1,
 	}, children)

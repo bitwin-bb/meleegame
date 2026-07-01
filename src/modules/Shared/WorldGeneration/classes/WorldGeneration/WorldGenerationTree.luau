@@ -49,7 +49,7 @@ export type ProceduralTreeConfig = {
 	ModelName: string?,
 }
 
-type ResolvedProceduralTreeConfig = {
+type ProceduralTreeRuntimeConfig = {
 	Algorithm: BranchAlgorithm,
 	Seed: number,
 	MaxDepth: number,
@@ -111,7 +111,7 @@ type GrowthNode = {
 
 export type ProceduralTree = typeof(setmetatable(
 	{} :: {
-		config: ResolvedProceduralTreeConfig,
+		config: ProceduralTreeRuntimeConfig,
 		seed: number,
 		model: Model?,
 		lastParent: Instance?,
@@ -120,7 +120,7 @@ export type ProceduralTree = typeof(setmetatable(
 	ProceduralTree
 ))
 
-local function resolveLeafMaterialFallback(): Enum.Material
+local function GetLeafMaterialFallback(): Enum.Material
 	local success, material = pcall(function()
 		return Enum.Material.LeafyGrass
 	end)
@@ -139,7 +139,7 @@ local function applyStudSurfaces(part: BasePart)
 	part.BackSurface = Enum.SurfaceType.Studs
 end
 
-local DEFAULT_LEAF_MATERIAL = resolveLeafMaterialFallback()
+local DEFAULT_LEAF_MATERIAL = GetLeafMaterialFallback()
 local DEFAULT_TREE_PALETTE = WorldGenerationColor.TREE_PALETTES.Default
 	or {
 		BranchColor = Color3.fromRGB(102, 72, 49),
@@ -153,7 +153,7 @@ local TREE_NODE_INDEX_ATTRIBUTE = "WindTreeNodeIndex"
 local TREE_PARENT_INDEX_ATTRIBUTE = "WindTreeParentIndex"
 local TREE_DEPTH_ATTRIBUTE = "WindTreeDepth"
 
-local DEFAULT_CONFIG: ResolvedProceduralTreeConfig = {
+local DEFAULT_CONFIG: ProceduralTreeRuntimeConfig = {
 	Algorithm = "Recursive",
 	Seed = 13371337,
 	MaxDepth = 5,
@@ -202,7 +202,7 @@ local function clampInteger(valueRaw: any, minimum: number, maximum: number, fal
 	return math.floor(clampNumber(valueRaw, minimum, maximum, fallback))
 end
 
-local function sanitizeNumberRange(valueRaw: any, fallback: NumberRange, minimum: number, maximum: number): NumberRange
+local function CoerceNumberRange(valueRaw: any, fallback: NumberRange, minimum: number, maximum: number): NumberRange
 	local minValue = fallback.Min
 	local maxValue = fallback.Max
 
@@ -234,7 +234,7 @@ local function sanitizeNumberRange(valueRaw: any, fallback: NumberRange, minimum
 	return NumberRange.new(minValue, maxValue)
 end
 
-local function sanitizeVector3(valueRaw: any, fallback: Vector3): Vector3
+local function CoerceVector3(valueRaw: any, fallback: Vector3): Vector3
 	if typeof(valueRaw) == "Vector3" then
 		return valueRaw
 	end
@@ -263,7 +263,7 @@ local function sanitizeVector3(valueRaw: any, fallback: Vector3): Vector3
 	return Vector3.new(xRaw, yRaw, zRaw)
 end
 
-local function sanitizeAlgorithm(valueRaw: any, fallback: BranchAlgorithm): BranchAlgorithm
+local function CoerceAlgorithm(valueRaw: any, fallback: BranchAlgorithm): BranchAlgorithm
 	if valueRaw == "Recursive" then
 		return "Recursive"
 	end
@@ -273,21 +273,21 @@ local function sanitizeAlgorithm(valueRaw: any, fallback: BranchAlgorithm): Bran
 	return fallback
 end
 
-local function sanitizeMaterial(valueRaw: any, fallback: Enum.Material): Enum.Material
+local function CoerceMaterial(valueRaw: any, fallback: Enum.Material): Enum.Material
 	if typeof(valueRaw) == "EnumItem" and valueRaw.EnumType == Enum.Material then
 		return valueRaw :: Enum.Material
 	end
 	return fallback
 end
 
-local function sanitizeColor(valueRaw: any, fallback: Color3): Color3
+local function CoerceColor(valueRaw: any, fallback: Color3): Color3
 	if typeof(valueRaw) == "Color3" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function sanitizeString(valueRaw: any, fallback: string): string
+local function CoerceString(valueRaw: any, fallback: string): string
 	if typeof(valueRaw) ~= "string" then
 		return fallback
 	end
@@ -298,7 +298,7 @@ local function sanitizeString(valueRaw: any, fallback: string): string
 	return trimmed
 end
 
-local function resolveConfig(configRaw: ProceduralTreeConfig?): ResolvedProceduralTreeConfig
+local function GetConfig(configRaw: ProceduralTreeConfig?): ProceduralTreeRuntimeConfig
 	local source = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else {} :: any
 
 	local minBranches = clampInteger(source.MinBranchesPerNode, 0, 6, DEFAULT_CONFIG.MinBranchesPerNode)
@@ -307,24 +307,24 @@ local function resolveConfig(configRaw: ProceduralTreeConfig?): ResolvedProcedur
 	local leavesMin = clampInteger(source.LeavesPerTerminalMin, 1, 8, DEFAULT_CONFIG.LeavesPerTerminalMin)
 	local leavesMax = clampInteger(source.LeavesPerTerminalMax, leavesMin, 8, DEFAULT_CONFIG.LeavesPerTerminalMax)
 
-	local leafSizeMin = sanitizeVector3(source.LeafSizeMin, DEFAULT_CONFIG.LeafSizeMin)
-	local leafSizeMax = sanitizeVector3(source.LeafSizeMax, DEFAULT_CONFIG.LeafSizeMax)
-	local resolvedLeafSizeMin = Vector3.new(
+	local leafSizeMin = CoerceVector3(source.LeafSizeMin, DEFAULT_CONFIG.LeafSizeMin)
+	local leafSizeMax = CoerceVector3(source.LeafSizeMax, DEFAULT_CONFIG.LeafSizeMax)
+	local GotLeafSizeMin = Vector3.new(
 		math.max(0.5, math.min(leafSizeMin.X, leafSizeMax.X)),
 		math.max(0.5, math.min(leafSizeMin.Y, leafSizeMax.Y)),
 		math.max(0.5, math.min(leafSizeMin.Z, leafSizeMax.Z))
 	)
-	local resolvedLeafSizeMax = Vector3.new(
-		math.max(resolvedLeafSizeMin.X, leafSizeMin.X, leafSizeMax.X),
-		math.max(resolvedLeafSizeMin.Y, leafSizeMin.Y, leafSizeMax.Y),
-		math.max(resolvedLeafSizeMin.Z, leafSizeMin.Z, leafSizeMax.Z)
+	local GotLeafSizeMax = Vector3.new(
+		math.max(GotLeafSizeMin.X, leafSizeMin.X, leafSizeMax.X),
+		math.max(GotLeafSizeMin.Y, leafSizeMin.Y, leafSizeMax.Y),
+		math.max(GotLeafSizeMin.Z, leafSizeMin.Z, leafSizeMax.Z)
 	)
 
-	local resolved = {
-		Algorithm = sanitizeAlgorithm(source.Algorithm, DEFAULT_CONFIG.Algorithm),
+	local Got = {
+		Algorithm = CoerceAlgorithm(source.Algorithm, DEFAULT_CONFIG.Algorithm),
 		Seed = clampInteger(source.Seed, -2147483648, 2147483647, DEFAULT_CONFIG.Seed),
 		MaxDepth = clampInteger(source.MaxDepth, 1, 12, DEFAULT_CONFIG.MaxDepth),
-		BranchAngleRange = sanitizeNumberRange(source.BranchAngleRange, DEFAULT_CONFIG.BranchAngleRange, 0, 89),
+		BranchAngleRange = CoerceNumberRange(source.BranchAngleRange, DEFAULT_CONFIG.BranchAngleRange, 0, 89),
 		LengthScale = clampNumber(source.LengthScale, 0.25, 0.95, DEFAULT_CONFIG.LengthScale),
 		ThicknessScale = clampNumber(source.ThicknessScale, 0.2, 0.95, DEFAULT_CONFIG.ThicknessScale),
 		BranchChance = clampNumber(source.BranchChance, 0, 1, DEFAULT_CONFIG.BranchChance),
@@ -336,10 +336,10 @@ local function resolveConfig(configRaw: ProceduralTreeConfig?): ResolvedProcedur
 		MinBranchThickness = clampNumber(source.MinBranchThickness, 0.1, 32, DEFAULT_CONFIG.MinBranchThickness),
 		MinBranchesPerNode = minBranches,
 		MaxBranchesPerNode = maxBranches,
-		LengthJitter = sanitizeNumberRange(source.LengthJitter, DEFAULT_CONFIG.LengthJitter, 0.5, 2),
-		ThicknessJitter = sanitizeNumberRange(source.ThicknessJitter, DEFAULT_CONFIG.ThicknessJitter, 0.5, 2),
-		LeafSizeMin = resolvedLeafSizeMin,
-		LeafSizeMax = resolvedLeafSizeMax,
+		LengthJitter = CoerceNumberRange(source.LengthJitter, DEFAULT_CONFIG.LengthJitter, 0.5, 2),
+		ThicknessJitter = CoerceNumberRange(source.ThicknessJitter, DEFAULT_CONFIG.ThicknessJitter, 0.5, 2),
+		LeafSizeMin = GotLeafSizeMin,
+		LeafSizeMax = GotLeafSizeMax,
 		LeafRotationVariance = clampNumber(source.LeafRotationVariance, 0, 90, DEFAULT_CONFIG.LeafRotationVariance),
 		LeavesPerTerminalMin = leavesMin,
 		LeavesPerTerminalMax = leavesMax,
@@ -349,18 +349,18 @@ local function resolveConfig(configRaw: ProceduralTreeConfig?): ResolvedProcedur
 		BranchCanCollide = if source.BranchCanCollide == nil
 			then DEFAULT_CONFIG.BranchCanCollide
 			else source.BranchCanCollide == true,
-		BranchMaterial = sanitizeMaterial(source.BranchMaterial, DEFAULT_CONFIG.BranchMaterial),
-		BranchColor = sanitizeColor(source.BranchColor, DEFAULT_CONFIG.BranchColor),
-		LeafMaterial = sanitizeMaterial(source.LeafMaterial, DEFAULT_CONFIG.LeafMaterial),
-		LeafColor = sanitizeColor(source.LeafColor, DEFAULT_CONFIG.LeafColor),
-		ModelName = sanitizeString(source.ModelName, DEFAULT_CONFIG.ModelName),
+		BranchMaterial = CoerceMaterial(source.BranchMaterial, DEFAULT_CONFIG.BranchMaterial),
+		BranchColor = CoerceColor(source.BranchColor, DEFAULT_CONFIG.BranchColor),
+		LeafMaterial = CoerceMaterial(source.LeafMaterial, DEFAULT_CONFIG.LeafMaterial),
+		LeafColor = CoerceColor(source.LeafColor, DEFAULT_CONFIG.LeafColor),
+		ModelName = CoerceString(source.ModelName, DEFAULT_CONFIG.ModelName),
 	}
 
-	resolved.MinBranchLength = math.min(resolved.MinBranchLength, resolved.InitialLength)
-	resolved.MinBranchThickness = math.min(resolved.MinBranchThickness, resolved.InitialThickness)
-	resolved.MaxLeafParts = math.max(resolved.MaxLeafParts, resolved.LeavesPerTerminalMin)
+	Got.MinBranchLength = math.min(Got.MinBranchLength, Got.InitialLength)
+	Got.MinBranchThickness = math.min(Got.MinBranchThickness, Got.InitialThickness)
+	Got.MaxLeafParts = math.max(Got.MaxLeafParts, Got.LeavesPerTerminalMin)
 
-	return resolved
+	return Got
 end
 
 local function randomInRange(randomObject: Random, range: NumberRange): number
@@ -441,8 +441,8 @@ local function ensureWindFoliagePivotAttachment(rootPart: BasePart): Attachment
 	})
 end
 
-local function resolveWindFoliagePreset(
-	config: ResolvedProceduralTreeConfig
+local function GetWindFoliagePreset(
+	config: ProceduralTreeRuntimeConfig
 ): (string, number, number, number, number, number)
 	local isHeavyTree = config.InitialLength >= 22 or config.InitialThickness >= 3.6 or config.MaxDepth >= 6
 	if isHeavyTree then
@@ -451,9 +451,9 @@ local function resolveWindFoliagePreset(
 	return "BranchSmall", 7.25, 0.46, 0.72, 0.86, 0.42
 end
 
-local function applyWindFoliageMetadata(treeModel: Model, rootPart: BasePart, config: ResolvedProceduralTreeConfig)
+local function applyWindFoliageMetadata(treeModel: Model, rootPart: BasePart, config: ProceduralTreeRuntimeConfig)
 	local presetName, maxBendAngle, swayAmplitude, heightMultiplier, gustSensitivity, disturbanceSensitivity =
-		resolveWindFoliagePreset(config)
+		GetWindFoliagePreset(config)
 
 	ensureWindFoliagePivotAttachment(rootPart)
 
@@ -472,12 +472,12 @@ local function applyWindFoliageMetadata(treeModel: Model, rootPart: BasePart, co
 	treeModel:SetAttribute("WindFoliageTranslationWeight", 0)
 end
 
-local function resolveInitialLength(config: ResolvedProceduralTreeConfig, seed: number): number
-	return config.InitialLength * Height.ResolveHeightScale(seed)
+local function GetInitialLength(config: ProceduralTreeRuntimeConfig, seed: number): number
+	return config.InitialLength * Height.GetHeightScale(seed)
 end
 
 function ProceduralTree.New(configRaw: ProceduralTreeConfig?): ProceduralTree
-	local config = resolveConfig(configRaw)
+	local config = GetConfig(configRaw)
 
 	local self = setmetatable({
 		config = config,
@@ -564,7 +564,7 @@ function ProceduralTree.BuildRecursiveDescriptors(
 		parentIndex: number
 	)
 		if #branches >= self.config.MaxBranchParts then
-			self:addLeafCluster(leaves, randomObject, parentIndex, startPosition, direction)
+			self:AddLeafCluster(leaves, randomObject, parentIndex, startPosition, direction)
 			return
 		end
 
@@ -592,7 +592,7 @@ function ProceduralTree.BuildRecursiveDescriptors(
 			or nextLengthBase < self.config.MinBranchLength
 			or nextThicknessBase < self.config.MinBranchThickness
 		then
-			self:addLeafCluster(leaves, randomObject, branchIndex, endPosition, unitDirection)
+			self:AddLeafCluster(leaves, randomObject, branchIndex, endPosition, unitDirection)
 			return
 		end
 
@@ -627,7 +627,7 @@ function ProceduralTree.BuildRecursiveDescriptors(
 		end
 	end
 
-	grow(Vector3.zero, Vector3.yAxis, resolveInitialLength(self.config, self.seed), self.config.InitialThickness, 0, 0)
+	grow(Vector3.zero, Vector3.yAxis, GetInitialLength(self.config, self.seed), self.config.InitialThickness, 0, 0)
 	return branches, leaves
 end
 
@@ -643,7 +643,7 @@ function ProceduralTree.BuildLSystemStyleDescriptors(
 			parentIndex = 0,
 			startPosition = Vector3.zero,
 			direction = Vector3.yAxis,
-			length = resolveInitialLength(self.config, self.seed),
+			length = GetInitialLength(self.config, self.seed),
 			thickness = self.config.InitialThickness,
 			depth = 0,
 		},
@@ -655,7 +655,7 @@ function ProceduralTree.BuildLSystemStyleDescriptors(
 		cursor += 1
 
 		if #branches >= self.config.MaxBranchParts then
-			self:addLeafCluster(leaves, randomObject, node.parentIndex, node.startPosition, node.direction)
+			self:AddLeafCluster(leaves, randomObject, node.parentIndex, node.startPosition, node.direction)
 			break
 		end
 
@@ -683,7 +683,7 @@ function ProceduralTree.BuildLSystemStyleDescriptors(
 			or nextLengthBase < self.config.MinBranchLength
 			or nextThicknessBase < self.config.MinBranchThickness
 		then
-			self:addLeafCluster(leaves, randomObject, branchIndex, endPosition, unitDirection)
+			self:AddLeafCluster(leaves, randomObject, branchIndex, endPosition, unitDirection)
 			continue
 		end
 
@@ -737,9 +737,9 @@ function ProceduralTree.BuildDescriptors(
 	randomObject: Random
 ): ({ BranchDescriptor }, { LeafDescriptor })
 	if self.config.Algorithm == "LSystemStyle" then
-		return self:buildLSystemStyleDescriptors(randomObject)
+		return self:BuildLSystemStyleDescriptors(randomObject)
 	end
-	return self:buildRecursiveDescriptors(randomObject)
+	return self:BuildRecursiveDescriptors(randomObject)
 end
 
 function ProceduralTree.CreateBranchPart(self: ProceduralTree, descriptor: BranchDescriptor, baseCFrame: CFrame): Part
@@ -827,14 +827,14 @@ function ProceduralTree.Generate(self: ProceduralTree, parentRaw: Instance?, bas
 	end
 
 	local randomObject = Random.new(self.seed)
-	local branchDescriptors, leafDescriptors = self:buildDescriptors(randomObject)
+	local branchDescriptors, leafDescriptors = self:BuildDescriptors(randomObject)
 
 	local treeModel = TreeComponent.CreateTreeModel({
 		name = self.config.ModelName,
 		attributes = {
 			Seed = self.seed,
 			Algorithm = self.config.Algorithm,
-			HeightScale = Height.ResolveHeightScale(self.seed),
+			HeightScale = Height.GetHeightScale(self.seed),
 			BranchCount = #branchDescriptors,
 			LeafCount = #leafDescriptors,
 		},
@@ -853,7 +853,7 @@ function ProceduralTree.Generate(self: ProceduralTree, parentRaw: Instance?, bas
 	local branchParts = Sift.Array.create(#branchDescriptors)
 	local rootPart: BasePart? = nil
 	for index, descriptor in branchDescriptors do
-		local branchPart = self:createBranchPart(descriptor, baseCFrame)
+		local branchPart = self:CreateBranchPart(descriptor, baseCFrame)
 		if rootPart == nil then
 			rootPart = branchPart
 		end
@@ -882,7 +882,7 @@ function ProceduralTree.Generate(self: ProceduralTree, parentRaw: Instance?, bas
 
 	local leafParts = Sift.Array.create(#leafDescriptors)
 	for index, descriptor in leafDescriptors do
-		local leafPart = self:createLeafPart(descriptor, baseCFrame)
+		local leafPart = self:CreateLeafPart(descriptor, baseCFrame)
 		leafPart.Anchored = true
 		leafPart.Massless = false
 		leafPart.Parent = leavesModel
@@ -905,22 +905,8 @@ function ProceduralTree.Regenerate(
 	baseCFrameRaw: CFrame?
 ): Model
 	if seedRaw ~= nil then
-		self:setSeed(seedRaw)
+		self:SetSeed(seedRaw)
 	end
-	return self:generate(parentRaw, baseCFrameRaw)
+	return self:Generate(parentRaw, baseCFrameRaw)
 end
-
-ProceduralTree.new = ProceduralTree.New
-ProceduralTree.setSeed = ProceduralTree.SetSeed
-ProceduralTree.getSeed = ProceduralTree.GetSeed
-ProceduralTree.destroy = ProceduralTree.Destroy
-ProceduralTree.addLeafCluster = ProceduralTree.AddLeafCluster
-ProceduralTree.buildRecursiveDescriptors = ProceduralTree.BuildRecursiveDescriptors
-ProceduralTree.buildLSystemStyleDescriptors = ProceduralTree.BuildLSystemStyleDescriptors
-ProceduralTree.buildDescriptors = ProceduralTree.BuildDescriptors
-ProceduralTree.createBranchPart = ProceduralTree.CreateBranchPart
-ProceduralTree.createLeafPart = ProceduralTree.CreateLeafPart
-ProceduralTree.generate = ProceduralTree.Generate
-ProceduralTree.regenerate = ProceduralTree.Regenerate
-
 return ProceduralTree

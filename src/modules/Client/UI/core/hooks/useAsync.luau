@@ -40,7 +40,7 @@ local function cancelPromise(promiseRaw: any)
 	end
 end
 
-local function attachPromiseHandlers(promiseRaw: any, onResolve: (any) -> (), onReject: (any) -> ())
+local function attachPromiseHandlers(promiseRaw: any, onGet: (any) -> (), onReject: (any) -> ())
 	if typeof(promiseRaw) ~= "table" then
 		return
 	end
@@ -53,13 +53,13 @@ local function attachPromiseHandlers(promiseRaw: any, onResolve: (any) -> (), on
 	local chainedPromise = promiseRaw
 	if typeof(thenMethod) == "function" then
 		local ok, result = pcall(function()
-			return thenMethod(promiseRaw, onResolve)
+			return thenMethod(promiseRaw, onGet)
 		end)
 		if ok and result ~= nil then
 			chainedPromise = result
 		else
 			pcall(function()
-				thenMethod(onResolve)
+				thenMethod(onGet)
 			end)
 		end
 	end
@@ -144,7 +144,7 @@ local function useAsync<TValue>(callbackRaw: any, options: AsyncOptions<TValue>?
 
 		if isPromiseLike(result) then
 			activePromiseRef.current = result
-			attachPromiseHandlers(result, function(resolvedValue: any)
+			attachPromiseHandlers(result, function(GotValue: any)
 				if not mountedRef.current or requestIdRef.current ~= requestId then
 					return
 				end
@@ -152,9 +152,9 @@ local function useAsync<TValue>(callbackRaw: any, options: AsyncOptions<TValue>?
 				activePromiseRef.current = nil
 				setLoading(false)
 				setStatus("success")
-				setValue(resolvedValue)
+				setValue(GotValue)
 				setError(nil)
-				onSuccess(resolvedValue)
+				onSuccess(GotValue)
 			end, function(rejectedValue: any)
 				if not mountedRef.current or requestIdRef.current ~= requestId then
 					return

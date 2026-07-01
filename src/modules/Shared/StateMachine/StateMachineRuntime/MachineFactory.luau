@@ -26,17 +26,15 @@ function MachineFactory.Create(machineSource: any, configRaw: any?): any?
 end
 
 function MachineFactory.PromiseCreate(machineSource: any, configRaw: any?): any
-	return Promise.new(function(resolve, reject)
+	return Promise.new(function(fulfill, reject)
 		local machine = MachineFactory.Create(machineSource, configRaw)
 		if machine ~= nil then
-			resolve(machine)
+			fulfill(machine)
 		else
 			reject("failed to create machine")
 		end
 	end)
 end
-
-MachineFactory.promiseCreate = MachineFactory.PromiseCreate
 MachineFactory.copy = Table.copy
 
 return MachineFactory

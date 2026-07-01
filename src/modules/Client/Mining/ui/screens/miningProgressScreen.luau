@@ -42,13 +42,13 @@ local BAR_WIDTH = math.max(1, FRAME_WIDTH - (BAR_INSET_X * 2))
 local BAR_HEIGHT = math.max(1, FRAME_HEIGHT - (BAR_INSET_Y * 2))
 
 return function(props: MiningProgressScreenProps?): React.ReactNode
-	local resolvedProps: MiningProgressScreenProps = if props ~= nil then props else {} :: any
+	local GotProps: MiningProgressScreenProps = if props ~= nil then props else {} :: any
 	local miningProgressState = (useStore(miningProgressSlice.miningProgressStateAtom) :: MiningProgressState?)
 		or miningProgressSlice.miningProgressStateAtom()
 	local billboardRef = React.useRef(nil :: BillboardGui?)
 
 	React.useEffect(function()
-		local stop = miningProgressThunks.start()
+		local stop = miningProgressThunks.Start()
 
 		return function()
 			stop()
@@ -56,17 +56,17 @@ return function(props: MiningProgressScreenProps?): React.ReactNode
 	end, {})
 
 	React.useEffect(function()
-		miningProgressThunks.bindBillboardGui(billboardRef.current)
+		miningProgressThunks.BindBillboardGui(billboardRef.current)
 		return function()
-			miningProgressThunks.bindBillboardGui(nil)
+			miningProgressThunks.BindBillboardGui(nil)
 		end
 	end, {})
 
-	if resolvedProps.visible == false then
+	if GotProps.visible == false then
 		return nil
 	end
 
-	local zIndex = resolvedProps.zIndex or 170
+	local zIndex = GotProps.zIndex or 170
 	local isVisible = miningProgressState.visible == true
 	local progressScale = useProgressBarSmoothing({
 		progress = miningProgressState.progress,

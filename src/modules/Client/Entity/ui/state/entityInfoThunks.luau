@@ -66,7 +66,7 @@ local runtime = {
 	renderSteppedConnection = nil :: RBXScriptConnection?,
 }
 
-local function resolveModelAdornee(model: Model): BasePart?
+local function GetModelAdornee(model: Model): BasePart?
 	local humanoidRootPart = model:FindFirstChild("HumanoidRootPart")
 	if humanoidRootPart ~= nil and humanoidRootPart:IsA("BasePart") then
 		return humanoidRootPart
@@ -90,7 +90,7 @@ local function toGuiPosition(screenPosition: Vector2): Vector2
 	return Vector2.new(math.max(0, screenPosition.X - topLeftInset.X), math.max(0, screenPosition.Y - topLeftInset.Y))
 end
 
-local function resolveMouseGuiPosition(fallback: Vector2): Vector2
+local function GetMouseGuiPosition(fallback: Vector2): Vector2
 	local success, mousePosition = pcall(function()
 		return UserInputService:GetMouseLocation()
 	end)
@@ -102,10 +102,10 @@ local function resolveMouseGuiPosition(fallback: Vector2): Vector2
 end
 
 local function shouldUseGamepadWorldHover(): boolean
-	return PlatformServiceClient:isGamepad() and PlatformServiceClient:getMachineFamily() ~= "desktop"
+	return PlatformServiceClient:IsGamepad() and PlatformServiceClient:GetMachineFamily() ~= "desktop"
 end
 
-local function resolveCharacterRootPart(playerRaw: any): BasePart?
+local function GetCharacterRootPart(playerRaw: any): BasePart?
 	if typeof(playerRaw) ~= "Instance" or not playerRaw:IsA("Player") then
 		return nil
 	end
@@ -127,26 +127,26 @@ local function resolveCharacterRootPart(playerRaw: any): BasePart?
 	return character:FindFirstChildWhichIsA("BasePart")
 end
 
-local function resolveGamepadNav(): any?
+local function GetGamepadNav(): any?
 	local runtimeContext = nil
 	local ok, runtimeOrError = pcall(function()
-		return CoreRuntime.getClientRuntime()
+		return CoreRuntime.GetClientRuntime()
 	end)
 	if ok then
 		runtimeContext = runtimeOrError
 	end
 
-	if runtimeContext ~= nil and typeof((runtimeContext :: any).init) == "function" then
+	if runtimeContext ~= nil and typeof((runtimeContext :: any).Init) == "function" then
 		pcall(function()
-			(runtimeContext :: any):init()
+			(runtimeContext :: any):Init()
 		end)
 	end
 
-	if runtimeContext ~= nil and typeof((runtimeContext :: any).getGamepadNav) == "function" then
-		local didResolve, gamepadNavOrError = pcall(function()
-			return (runtimeContext :: any):getGamepadNav()
+	if runtimeContext ~= nil and typeof((runtimeContext :: any).GetGamepadNav) == "function" then
+		local didGet, gamepadNavOrError = pcall(function()
+			return (runtimeContext :: any):GetGamepadNav()
 		end)
-		if didResolve then
+		if didGet then
 			return gamepadNavOrError
 		end
 	end
@@ -158,31 +158,31 @@ local function resolveGamepadNav(): any?
 	return nil
 end
 
-local function resolveGamepadWorldPosition(): Vector3?
-	local gamepadNav = resolveGamepadNav()
-	if gamepadNav == nil or typeof((gamepadNav :: any).getThumbstickState) ~= "function" then
+local function GetGamepadWorldPosition(): Vector3?
+	local gamepadNav = GetGamepadNav()
+	if gamepadNav == nil or typeof((gamepadNav :: any).GetThumbstickState) ~= "function" then
 		return nil
 	end
 
 	local ok, snapshotOrError = pcall(function()
-		return (gamepadNav :: any):getThumbstickState()
+		return (gamepadNav :: any):GetThumbstickState()
 	end)
 	if not ok or typeof(snapshotOrError) ~= "table" then
 		return nil
 	end
 
-	local screenVector = GamepadPointer.resolveOwnedVector(snapshotOrError)
+	local screenVector = GamepadPointer.GetOwnedVector(snapshotOrError)
 	if typeof(screenVector) ~= "Vector2" then
 		return nil
 	end
 
-	local rootPart = resolveCharacterRootPart(runtime.localPlayer)
+	local rootPart = GetCharacterRootPart(runtime.localPlayer)
 	if rootPart == nil then
 		return nil
 	end
 
 	local worldOffset =
-		GamepadPointer.resolveWorldOffsetForScreenVector(screenVector, GamepadPointer.DEFAULT_TILE_SIZE_STUDS, rootPart)
+		GamepadPointer.GetWorldOffsetForScreenVector(screenVector, GamepadPointer.DEFAULT_TILE_SIZE_STUDS, rootPart)
 	if worldOffset == nil then
 		return nil
 	end
@@ -200,7 +200,7 @@ local function ensureHighlight(): Highlight
 		return existing
 	end
 
-	local gameFolder = WorkspaceFolders.getOrCreateGameFolder()
+	local gameFolder = WorkspaceFolders.GetOrCreateGameFolder()
 	local existingInGame = gameFolder:FindFirstChild(HIGHLIGHT_NAME)
 	if existingInGame ~= nil then
 		if existingInGame:IsA("Highlight") then
@@ -255,7 +255,7 @@ end
 
 local function syncNpcStateFromService()
 	local success, stateOrError = pcall(function()
-		return NpcServiceClient:getState()
+		return NpcServiceClient:GetState()
 	end)
 	if success and typeof(stateOrError) == "table" then
 		runtime.cachedNpcState = stateOrError :: NpcServiceClientState
@@ -264,7 +264,7 @@ end
 
 local function syncBossStateFromService()
 	local success, stateOrError = pcall(function()
-		return BossServiceClient:getState()
+		return BossServiceClient:GetState()
 	end)
 	if success and typeof(stateOrError) == "table" then
 		runtime.cachedBossState = stateOrError :: BossServiceClientState
@@ -326,21 +326,21 @@ local function clearHover()
 	entityInfoSlice.hideEntityInfo(ENTITY_HOVER_ID)
 end
 
-local function resolveHoveredEntity(targetRaw: any): (Model?, string?, HoverEntityKind?)
-	local bossModel = BossServiceUtils.resolveRuntimeModelFromInstance(targetRaw)
+local function GetHoveredEntity(targetRaw: any): (Model?, string?, HoverEntityKind?)
+	local bossModel = BossServiceUtils.GetUntimeModelFromInstance(targetRaw)
 	if bossModel ~= nil then
-		local bossRuntimeId = BossServiceUtils.resolveRuntimeIdFromInstance(bossModel)
+		local bossRuntimeId = BossServiceUtils.GetUntimeIdFromInstance(bossModel)
 		if bossRuntimeId ~= nil and bossRuntimeId ~= "" then
 			return bossModel, bossRuntimeId, HOVER_KIND_BOSS
 		end
 	end
 
-	local model = NpcServiceUtils.resolveRuntimeModelFromInstance(targetRaw)
+	local model = NpcServiceUtils.GetUntimeModelFromInstance(targetRaw)
 	if model == nil then
 		return nil, nil, nil
 	end
 
-	local runtimeId = NpcServiceUtils.resolveRuntimeIdFromInstance(model)
+	local runtimeId = NpcServiceUtils.GetUntimeIdFromInstance(model)
 	if runtimeId == nil or runtimeId == "" then
 		return nil, nil, nil
 	end
@@ -348,7 +348,7 @@ local function resolveHoveredEntity(targetRaw: any): (Model?, string?, HoverEnti
 	return model, runtimeId, HOVER_KIND_NPC
 end
 
-local function resolveHoverGuiPositionFromWorldPosition(worldPosition: Vector3, fallback: Vector2): Vector2
+local function GetHoverGuiPositionFromWorldPosition(worldPosition: Vector3, fallback: Vector2): Vector2
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
 		return fallback
@@ -362,7 +362,7 @@ local function resolveHoverGuiPositionFromWorldPosition(worldPosition: Vector3, 
 	return toGuiPosition(Vector2.new(viewportPosition.X, viewportPosition.Y))
 end
 
-local function resolveHoveredEntityFromWorldPosition(worldPosition: Vector3): (Model?, string?, HoverEntityKind?)
+local function GetHoveredEntityFromWorldPosition(worldPosition: Vector3): (Model?, string?, HoverEntityKind?)
 	local overlapParams = OverlapParams.new()
 	overlapParams.FilterType = Enum.RaycastFilterType.Exclude
 	overlapParams.MaxParts = 32
@@ -384,13 +384,13 @@ local function resolveHoveredEntityFromWorldPosition(worldPosition: Vector3): (M
 			continue
 		end
 
-		local hoveredModel, runtimeId, entityKind = resolveHoveredEntity(part)
+		local hoveredModel, runtimeId, entityKind = GetHoveredEntity(part)
 		if hoveredModel == nil or runtimeId == nil or entityKind == nil then
 			continue
 		end
 
 		local samplePosition = part.Position
-		local adornee = resolveModelAdornee(hoveredModel)
+		local adornee = GetModelAdornee(hoveredModel)
 		if adornee ~= nil then
 			samplePosition = adornee.Position
 		end
@@ -414,7 +414,7 @@ local function showHover(runtimeId: string, entityKind: HoverEntityKind, model: 
 		return
 	end
 
-	local adornee = resolveModelAdornee(model)
+	local adornee = GetModelAdornee(model)
 	if adornee == nil then
 		clearHover()
 		return
@@ -450,7 +450,7 @@ local function refreshHoveredSnapshot()
 		return
 	end
 
-	local adornee = resolveModelAdornee(hoveredModel)
+	local adornee = GetModelAdornee(hoveredModel)
 	if adornee == nil then
 		clearHover()
 		return
@@ -472,16 +472,16 @@ end
 local function stepHoverState()
 	local currentState = entityInfoSlice.getEntityInfoState()
 	if shouldUseGamepadWorldHover() then
-		local worldPosition = resolveGamepadWorldPosition()
+		local worldPosition = GetGamepadWorldPosition()
 		if worldPosition == nil then
 			clearHover()
 			return
 		end
 
-		local hoverPosition = resolveHoverGuiPositionFromWorldPosition(worldPosition, currentState.mousePosition)
+		local hoverPosition = GetHoverGuiPositionFromWorldPosition(worldPosition, currentState.mousePosition)
 		entityInfoSlice.updateMousePosition(hoverPosition)
 
-		local hoveredModel, runtimeId, entityKind = resolveHoveredEntityFromWorldPosition(worldPosition)
+		local hoveredModel, runtimeId, entityKind = GetHoveredEntityFromWorldPosition(worldPosition)
 		if hoveredModel == nil or runtimeId == nil or entityKind == nil then
 			clearHover()
 			return
@@ -502,7 +502,7 @@ local function stepHoverState()
 		return
 	end
 
-	local mousePosition = resolveMouseGuiPosition(currentState.mousePosition)
+	local mousePosition = GetMouseGuiPosition(currentState.mousePosition)
 	entityInfoSlice.updateMousePosition(mousePosition)
 
 	local mouse = runtime.mouse
@@ -517,7 +517,7 @@ local function stepHoverState()
 		return
 	end
 
-	local hoveredModel, runtimeId, entityKind = resolveHoveredEntity(targetPart)
+	local hoveredModel, runtimeId, entityKind = GetHoveredEntity(targetPart)
 	if hoveredModel == nil or runtimeId == nil or entityKind == nil then
 		clearHover()
 		return
@@ -545,11 +545,11 @@ function entityInfoThunks.Start(): () -> ()
 	runtime.started = true
 	runtime.localPlayer = Players.LocalPlayer
 	if runtime.localPlayer ~= nil then
-		local ok, resolvedMouse = pcall(function()
+		local ok, GotMouse = pcall(function()
 			return (runtime.localPlayer :: Player):GetMouse()
 		end)
 		if ok then
-			runtime.mouse = resolvedMouse :: Mouse
+			runtime.mouse = GotMouse :: Mouse
 		end
 	end
 
@@ -583,7 +583,7 @@ function entityInfoThunks.Start(): () -> ()
 end
 
 function entityInfoThunks.Stop()
-	ConnectionUtils.disconnectMany({
+	ConnectionUtils.DisconnectMany({
 		runtime.npcStateChangedConnection,
 		runtime.bossStateChangedConnection,
 		runtime.renderSteppedConnection,
@@ -616,10 +616,4 @@ end
 function entityInfoThunks.GetEntityInfoState(): EntityInfoState
 	return entityInfoSlice.getEntityInfoState()
 end
-
-entityInfoThunks.start = entityInfoThunks.Start
-entityInfoThunks.stop = entityInfoThunks.Stop
-entityInfoThunks.syncHover = entityInfoThunks.SyncHover
-entityInfoThunks.getEntityInfoState = entityInfoThunks.GetEntityInfoState
-
 return entityInfoThunks

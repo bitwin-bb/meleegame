@@ -62,7 +62,7 @@ local DEFAULT_HIT_RADIUS = 2.5
 local DEFAULT_DAMAGE = 18
 local MAX_DT = 1 / 20
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -88,7 +88,7 @@ local function safeUnit(vector: Vector3, fallbackRaw: Vector3?): Vector3
 	return vector.Unit
 end
 
-local function resolveParent(parentRaw: Instance?): Instance
+local function GetParent(parentRaw: Instance?): Instance
 	if parentRaw ~= nil then
 		return parentRaw
 	end
@@ -96,7 +96,7 @@ local function resolveParent(parentRaw: Instance?): Instance
 end
 
 local function createPart(context: FireContext, direction: Vector3): BasePart
-	local hitRadius = sanitizeNumber(context.hitRadius, DEFAULT_HIT_RADIUS, 0.1, 64)
+	local hitRadius = CoerceNumber(context.hitRadius, DEFAULT_HIT_RADIUS, 0.1, 64)
 	local part = Instance.new("Part")
 	part.Name = "Stinger"
 	part.Anchored = true
@@ -106,7 +106,7 @@ local function createPart(context: FireContext, direction: Vector3): BasePart
 	part.CastShadow = false
 	part.Size = Vector3.new(math.max(0.28, hitRadius * 0.28), math.max(0.28, hitRadius * 0.28), 2.4)
 	part.CFrame = CFrame.lookAt(context.origin, context.origin + direction, Vector3.yAxis)
-	part.Parent = resolveParent(context.parent)
+	part.Parent = GetParent(context.parent)
 	return part
 end
 
@@ -164,7 +164,7 @@ local function damagePlayer(
 	end
 end
 
-local function resolveTargetPoint(context: FireContext): Vector3?
+local function GetTargetPoint(context: FireContext): Vector3?
 	if typeof(context.targetPosition) == "Vector3" then
 		return context.targetPosition
 	end
@@ -182,14 +182,14 @@ local function resolveTargetPoint(context: FireContext): Vector3?
 	local velocity = if typeof(context.targetVelocity) == "Vector3"
 		then context.targetVelocity
 		else Physics.GetTargetVelocity(targetPlayer)
-	local predictionTime = sanitizeNumber(context.predictionTime, 0, 0, 3)
+	local predictionTime = CoerceNumber(context.predictionTime, 0, 0, 3)
 	return center + velocity * predictionTime
 end
 
-local function resolveDirection(context: FireContext): Vector3
+local function GetDirection(context: FireContext): Vector3
 	local direction = if typeof(context.direction) == "Vector3" then context.direction else Vector3.zero
 	if direction.Magnitude <= 1e-5 then
-		local targetPoint = resolveTargetPoint(context)
+		local targetPoint = GetTargetPoint(context)
 		if targetPoint ~= nil then
 			direction = targetPoint - context.origin
 		end
@@ -197,7 +197,7 @@ local function resolveDirection(context: FireContext): Vector3
 
 	direction = safeUnit(Physics.ProjectVectorToCombatPlane(direction, context.arenaCFrame), Vector3.zAxis)
 
-	local spreadDegrees = sanitizeNumber(context.spreadDegrees, 0, 0, 90)
+	local spreadDegrees = CoerceNumber(context.spreadDegrees, 0, 0, 90)
 	if spreadDegrees > 0 then
 		local random = if context.random ~= nil then context.random else Random.new()
 		local spread = random:NextNumber(-spreadDegrees, spreadDegrees)
@@ -209,11 +209,11 @@ end
 
 function Stinger.Fire(contextRaw: FireContext): StingerProjectile
 	local context = contextRaw
-	local direction = resolveDirection(context)
-	local speed = sanitizeNumber(context.speed, DEFAULT_SPEED, 0, 10 ^ 6)
-	local lifetime = sanitizeNumber(context.lifetime, DEFAULT_LIFETIME, 0.05, 60)
-	local hitRadius = sanitizeNumber(context.hitRadius, DEFAULT_HIT_RADIUS, 0.1, 256)
-	local damage = sanitizeNumber(context.damage, DEFAULT_DAMAGE, 0, 10 ^ 6)
+	local direction = GetDirection(context)
+	local speed = CoerceNumber(context.speed, DEFAULT_SPEED, 0, 10 ^ 6)
+	local lifetime = CoerceNumber(context.lifetime, DEFAULT_LIFETIME, 0.05, 60)
+	local hitRadius = CoerceNumber(context.hitRadius, DEFAULT_HIT_RADIUS, 0.1, 256)
+	local damage = CoerceNumber(context.damage, DEFAULT_DAMAGE, 0, 10 ^ 6)
 	local part = createPart(context, direction)
 	local maid = Maid.new() :: MaidClass
 
@@ -246,7 +246,7 @@ function Stinger.Step(self: StingerProjectile, dtRaw: any)
 		return
 	end
 
-	local dt = sanitizeNumber(dtRaw, 0, 0, MAX_DT)
+	local dt = CoerceNumber(dtRaw, 0, 0, MAX_DT)
 	if dt <= 0 then
 		return
 	end
@@ -282,9 +282,4 @@ function Stinger.Destroy(self: StingerProjectile)
 	self.part = nil
 	self.maid:Destroy()
 end
-
-Stinger.fire = Stinger.Fire
-Stinger.step = Stinger.Step
-Stinger.destroy = Stinger.Destroy
-
 return Stinger

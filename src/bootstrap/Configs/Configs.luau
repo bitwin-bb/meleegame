@@ -20,6 +20,4 @@ function Configs.GetDefaults(): BootstrapConfig
 	return table.clone(Configs.defaults)
 end
 
-Configs.getDefaults = Configs.GetDefaults
-
 return Configs

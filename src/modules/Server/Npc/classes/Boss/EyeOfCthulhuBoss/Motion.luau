@@ -50,39 +50,39 @@ local EyeOfCthulhuMotion = {}
 local DEFAULT_CHARGE_DIRECTION = Vector3.new(0, -0.15, 1)
 local ZERO_VECTOR = Vector3.zero
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
-	return BossServiceUtils.sanitizeNumber(valueRaw, fallback, minimum, maximum)
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+	return BossServiceUtils.CoerceNumber(valueRaw, fallback, minimum, maximum)
 end
 
-local function sanitizeDuration(valueRaw: any, fallback: number): number
-	return sanitizeNumber(valueRaw, fallback, 0.01, 60)
+local function CoerceDuration(valueRaw: any, fallback: number): number
+	return CoerceNumber(valueRaw, fallback, 0.01, 60)
 end
 
 local function safeUnit(vector: Vector3, fallbackRaw: Vector3?): Vector3
 	local fallback = if typeof(fallbackRaw) == "Vector3" then fallbackRaw else Vector3.zAxis
-	local fallbackUnit = Vec.unit(fallback, Vector3.zAxis)
+	local fallbackUnit = Vec.Unit(fallback, Vector3.zAxis)
 	if vector.Magnitude <= 1e-4 then
 		return fallbackUnit
 	end
-	return Vec.unit(vector, fallbackUnit)
+	return Vec.Unit(vector, fallbackUnit)
 end
 
 local function projectPosition(position: Vector3, planeXRaw: any): Vector3
-	return BossServiceUtils.projectPositionToPlaneX(position, planeXRaw)
+	return BossServiceUtils.ProjectPositionToPlaneX(position, planeXRaw)
 end
 
 local function projectVector(vector: Vector3, planeXRaw: any): Vector3
-	return BossServiceUtils.projectVectorToPlaneX(vector, planeXRaw)
+	return BossServiceUtils.ProjectVectorToPlaneX(vector, planeXRaw)
 end
 
-local function resolveTargetVelocity(targetSnapshot: MotionTargetSnapshot?): Vector3
+local function GetTargetVelocity(targetSnapshot: MotionTargetSnapshot?): Vector3
 	if targetSnapshot == nil then
 		return ZERO_VECTOR
 	end
 	return targetSnapshot.velocity
 end
 
-local function resolveFacingTowardTarget(
+local function GetFacingTowardTarget(
 	currentPosition: Vector3,
 	targetSnapshot: MotionTargetSnapshot?,
 	fallbackRaw: Vector3?,
@@ -95,13 +95,13 @@ local function resolveFacingTowardTarget(
 	return safeUnit(fallback, Vector3.zAxis)
 end
 
-local function resolvePlaneFallback(sideSignRaw: any): Vector3
+local function GetPlaneFallback(sideSignRaw: any): Vector3
 	local sideSign = if sideSignRaw == -1 then -1 else 1
 	return safeUnit(Vector3.new(0, -0.15, sideSign), DEFAULT_CHARGE_DIRECTION)
 end
 
 local function dampVelocity(velocity: Vector3, dampingRaw: any, dt: number): Vector3
-	local damping = sanitizeNumber(dampingRaw, 0, 0, 1000)
+	local damping = CoerceNumber(dampingRaw, 0, 0, 1000)
 	if damping <= 0 then
 		return velocity
 	end
@@ -118,8 +118,8 @@ local function solveAnchoredVelocity(
 	dampingRaw: any,
 	dt: number
 ): (Vector3, number)
-	local maxSpeed = sanitizeNumber(maxSpeedRaw, 0, 0, 10 ^ 5)
-	local acceleration = sanitizeNumber(accelerationRaw, 0, 0, 10 ^ 5)
+	local maxSpeed = CoerceNumber(maxSpeedRaw, 0, 0, 10 ^ 5)
+	local acceleration = CoerceNumber(accelerationRaw, 0, 0, 10 ^ 5)
 	local anchor = projectPosition(targetAnchor, planeXRaw)
 	local offset = projectVector(anchor - currentPosition, planeXRaw)
 	local distance = offset.Magnitude
@@ -131,7 +131,7 @@ local function solveAnchoredVelocity(
 		desiredVelocity = offset.Unit * desiredSpeed
 	end
 
-	local nextVelocity = BossServiceUtils.moveTowardsVector(currentVelocity, desiredVelocity, acceleration * dt)
+	local nextVelocity = BossServiceUtils.MoveTowardsVector(currentVelocity, desiredVelocity, acceleration * dt)
 	nextVelocity = dampVelocity(projectVector(nextVelocity, planeXRaw), dampingRaw, dt)
 	if nextVelocity.Magnitude > maxSpeed and maxSpeed > 0 then
 		nextVelocity = nextVelocity.Unit * maxSpeed
@@ -213,13 +213,13 @@ local function computeHoverAnchor(
 	lateralBobScaleRaw: any?
 ): Vector3
 	local sideSign = if sideSignRaw == -1 then -1 else 1
-	local height = sanitizeNumber(heightRaw, 24, 0, 512)
-	local sideOffset = sanitizeNumber(sideOffsetRaw, 14, 0, 256)
-	local leadMultiplier = sanitizeNumber(leadMultiplierRaw, 0.32, 0, 4)
-	local bobAmplitude = sanitizeNumber(bobAmplitudeRaw, 3, 0, 64)
-	local bobSpeed = sanitizeNumber(bobSpeedRaw, 4, 0, 50)
-	local time = sanitizeNumber(timeRaw, 0, 0, 10 ^ 6)
-	local lateralBobScale = sanitizeNumber(lateralBobScaleRaw, 0.22, 0, 2)
+	local height = CoerceNumber(heightRaw, 24, 0, 512)
+	local sideOffset = CoerceNumber(sideOffsetRaw, 14, 0, 256)
+	local leadMultiplier = CoerceNumber(leadMultiplierRaw, 0.32, 0, 4)
+	local bobAmplitude = CoerceNumber(bobAmplitudeRaw, 3, 0, 64)
+	local bobSpeed = CoerceNumber(bobSpeedRaw, 4, 0, 50)
+	local time = CoerceNumber(timeRaw, 0, 0, 10 ^ 6)
+	local lateralBobScale = CoerceNumber(lateralBobScaleRaw, 0.22, 0, 2)
 	local maxLead = math.max(6, sideOffset * 1.15)
 	local leadZ = math.clamp(targetVelocity.Z * leadMultiplier, -maxLead, maxLead)
 	local bob = Vector3.new(
@@ -284,7 +284,7 @@ local function solveHoverMotion(
 
 	local hoverAnchor = computeHoverAnchor(
 		targetPosition,
-		resolveTargetVelocity(targetSnapshot),
+		GetTargetVelocity(targetSnapshot),
 		context.planeX,
 		context.sideSign,
 		heightRaw,
@@ -305,7 +305,7 @@ local function solveHoverMotion(
 		dampingRaw,
 		dt
 	)
-	local facing = resolveFacingTowardTarget(context.position, targetSnapshot, context.facing, context.planeX)
+	local facing = GetFacingTowardTarget(context.position, targetSnapshot, context.facing, context.planeX)
 	local localPresentationOffset = Vector3.new(0, math.sin(context.stateTime * 2.8) * 0.12, 0)
 
 	return createResult(
@@ -329,7 +329,7 @@ local function solveLockedChargeMotion(
 	owner: string
 ): MotionSolveResult
 	local chargeLock = context.lockedCharge
-	local fallbackDirection = resolvePlaneFallback(context.sideSign)
+	local fallbackDirection = GetPlaneFallback(context.sideSign)
 	local lockedDirection = if chargeLock ~= nil then chargeLock.direction else fallbackDirection
 	local lockedSpeed = if chargeLock ~= nil then chargeLock.speed else 0
 	local lockedDuration = if chargeLock ~= nil then chargeLock.duration else 0
@@ -337,7 +337,7 @@ local function solveLockedChargeMotion(
 	local velocity = projectVector(lockedDirection * lockedSpeed, context.planeX)
 	local facing = safeUnit(
 		lockedDirection,
-		resolveFacingTowardTarget(context.position, targetSnapshot, fallbackDirection, context.planeX)
+		GetFacingTowardTarget(context.position, targetSnapshot, fallbackDirection, context.planeX)
 	)
 
 	return createResult(
@@ -363,8 +363,8 @@ function EyeOfCthulhuMotion.ComputeIntroSpawnPosition(
 	distanceRaw: any
 ): Vector3
 	local sideSign = if sideSignRaw == -1 then -1 else 1
-	local height = sanitizeNumber(heightRaw, 50, 0, 512)
-	local distance = sanitizeNumber(distanceRaw, 70, 8, 512)
+	local height = CoerceNumber(heightRaw, 50, 0, 512)
+	local distance = CoerceNumber(distanceRaw, 70, 8, 512)
 
 	return projectPosition(targetPosition + Vector3.new(0, height, distance * sideSign), planeXRaw)
 end
@@ -381,11 +381,11 @@ function EyeOfCthulhuMotion.CreateChargeLock(
 	fallbackDirectionRaw: any?
 ): ChargeLock
 	local fallbackDirection =
-		resolvePlaneFallback(if typeof(fallbackDirectionRaw) == "number" then fallbackDirectionRaw else 1)
-	local predictionTime = sanitizeNumber(predictionTimeRaw, 0.16, 0, 4)
-	local verticalBias = sanitizeNumber(verticalBiasRaw, 0, -128, 128)
-	local speed = sanitizeNumber(speedRaw, 0, 0, 10 ^ 5)
-	local duration = sanitizeDuration(durationRaw, 0.5)
+		GetPlaneFallback(if typeof(fallbackDirectionRaw) == "number" then fallbackDirectionRaw else 1)
+	local predictionTime = CoerceNumber(predictionTimeRaw, 0.16, 0, 4)
+	local verticalBias = CoerceNumber(verticalBiasRaw, 0, -128, 128)
+	local speed = CoerceNumber(speedRaw, 0, 0, 10 ^ 5)
+	local duration = CoerceDuration(durationRaw, 0.5)
 
 	local predictedPosition = nil :: Vector3?
 	if targetPosition ~= nil then
@@ -432,7 +432,7 @@ function EyeOfCthulhuMotion.SolveSpawnIntroMotion(
 		)
 	end
 
-	local introDuration = sanitizeDuration(config.introDuration, 2.4)
+	local introDuration = CoerceDuration(config.introDuration, 2.4)
 	local introProgress = math.clamp(context.stateTime / introDuration, 0, 1)
 	local descentAlpha = 1 - (1 - introProgress) ^ 3
 	local highAnchor = projectPosition(
@@ -441,7 +441,7 @@ function EyeOfCthulhuMotion.SolveSpawnIntroMotion(
 	)
 	local hoverAnchor = computeHoverAnchor(
 		targetPosition,
-		resolveTargetVelocity(targetSnapshot),
+		GetTargetVelocity(targetSnapshot),
 		context.planeX,
 		context.sideSign,
 		config.phase1HoverHeight,
@@ -463,7 +463,7 @@ function EyeOfCthulhuMotion.SolveSpawnIntroMotion(
 		config.phase1HoverDamping,
 		dt
 	)
-	local facing = resolveFacingTowardTarget(context.position, targetSnapshot, context.facing, context.planeX)
+	local facing = GetFacingTowardTarget(context.position, targetSnapshot, context.facing, context.planeX)
 	local localPresentationOffset = Vector3.new(0, (1 - descentAlpha) * 0.9, 0)
 
 	return createResult(
@@ -534,15 +534,15 @@ function EyeOfCthulhuMotion.SolveChargeWindupMotion(
 	dt: number
 ): MotionSolveResult
 	local chargeLock = context.lockedCharge
-	local lockedDirection = if chargeLock ~= nil then chargeLock.direction else resolvePlaneFallback(context.sideSign)
-	local velocity = BossServiceUtils.moveTowardsVector(
+	local lockedDirection = if chargeLock ~= nil then chargeLock.direction else GetPlaneFallback(context.sideSign)
+	local velocity = BossServiceUtils.MoveTowardsVector(
 		context.velocity,
 		ZERO_VECTOR,
-		sanitizeNumber(config.brakeAcceleration, 160, 0, 10 ^ 5) * dt
+		CoerceNumber(config.brakeAcceleration, 160, 0, 10 ^ 5) * dt
 	)
 	velocity = dampVelocity(velocity, config.brakeDamping, dt)
-	local facing = resolveFacingTowardTarget(context.position, targetSnapshot, lockedDirection, context.planeX)
-	local windupDuration = sanitizeDuration(config.duration, 0.35)
+	local facing = GetFacingTowardTarget(context.position, targetSnapshot, lockedDirection, context.planeX)
+	local windupDuration = CoerceDuration(config.duration, 0.35)
 	local anticipationAlpha = math.clamp(context.stateTime / windupDuration, 0, 1)
 	local localPresentationOffset = lockedDirection * (-0.65 * anticipationAlpha)
 
@@ -577,15 +577,15 @@ function EyeOfCthulhuMotion.SolveRecoveryMotion(
 	dt: number
 ): MotionSolveResult
 	local chargeLock = context.lockedCharge
-	local recoverySpeed = sanitizeNumber(config.speed, 0, 0, 10 ^ 5)
-	local recoveryAcceleration = sanitizeNumber(config.acceleration, 0, 0, 10 ^ 5)
-	local recoveryDamping = sanitizeNumber(config.damping, 0.9, 0, 50)
-	local lockedDirection = if chargeLock ~= nil then chargeLock.direction else resolvePlaneFallback(context.sideSign)
+	local recoverySpeed = CoerceNumber(config.speed, 0, 0, 10 ^ 5)
+	local recoveryAcceleration = CoerceNumber(config.acceleration, 0, 0, 10 ^ 5)
+	local recoveryDamping = CoerceNumber(config.damping, 0.9, 0, 50)
+	local lockedDirection = if chargeLock ~= nil then chargeLock.direction else GetPlaneFallback(context.sideSign)
 	local desiredVelocity = lockedDirection * recoverySpeed
-	local velocity = BossServiceUtils.moveTowardsVector(context.velocity, desiredVelocity, recoveryAcceleration * dt)
+	local velocity = BossServiceUtils.MoveTowardsVector(context.velocity, desiredVelocity, recoveryAcceleration * dt)
 	velocity = dampVelocity(velocity, recoveryDamping, dt)
-	local facing = resolveFacingTowardTarget(context.position, targetSnapshot, lockedDirection, context.planeX)
-	local recoveryDuration = sanitizeDuration(config.duration, 0.2)
+	local facing = GetFacingTowardTarget(context.position, targetSnapshot, lockedDirection, context.planeX)
+	local recoveryDuration = CoerceDuration(config.duration, 0.2)
 	local localPresentationOffset = lockedDirection * math.max(0, 0.28 - context.stateTime * 0.4)
 
 	return createResult(
@@ -609,15 +609,15 @@ function EyeOfCthulhuMotion.SolveTransformMotion(
 	config: any,
 	_dt: number
 ): MotionSolveResult
-	local transformDuration = sanitizeDuration(config.transformDuration, 2.25)
+	local transformDuration = CoerceDuration(config.transformDuration, 2.25)
 	local progress = math.clamp(context.stateTime / transformDuration, 0, 1)
-	local spinAngle = progress * math.pi * 2 * sanitizeNumber(config.transformSpinTurns, 8, 0, 64)
+	local spinAngle = progress * math.pi * 2 * CoerceNumber(config.transformSpinTurns, 8, 0, 64)
 	local facing = rotateFacingOnPlane(context.transformBaseFacing, context.sideSign, spinAngle)
 	local localPresentationOffset =
-		Vector3.new(0, math.sin(progress * math.pi) * sanitizeNumber(config.transformPauseLift, 8, 0, 128) * 0.35, 0)
+		Vector3.new(0, math.sin(progress * math.pi) * CoerceNumber(config.transformPauseLift, 8, 0, 128) * 0.35, 0)
 
 	if targetSnapshot ~= nil and targetSnapshot.position ~= nil and progress <= 0.08 then
-		facing = resolveFacingTowardTarget(context.position, targetSnapshot, facing, context.planeX)
+		facing = GetFacingTowardTarget(context.position, targetSnapshot, facing, context.planeX)
 	end
 
 	return createResult(
@@ -682,9 +682,9 @@ function EyeOfCthulhuMotion.SolveDespawnMotion(
 	config: any,
 	dt: number
 ): MotionSolveResult
-	local riseSpeed = sanitizeNumber(config.despawnRiseSpeed, 120, 0, 10 ^ 5)
-	local forwardSpeed = sanitizeNumber(config.despawnForwardSpeed, 42, 0, 10 ^ 5)
-	local acceleration = sanitizeNumber(config.despawnAcceleration, 240, 0, 10 ^ 5)
+	local riseSpeed = CoerceNumber(config.despawnRiseSpeed, 120, 0, 10 ^ 5)
+	local forwardSpeed = CoerceNumber(config.despawnForwardSpeed, 42, 0, 10 ^ 5)
+	local acceleration = CoerceNumber(config.despawnAcceleration, 240, 0, 10 ^ 5)
 	local awayDirection = Vector3.new(0, 0, if context.sideSign >= 0 then 1 else -1)
 	if targetSnapshot ~= nil and targetSnapshot.position ~= nil then
 		local planarAway = projectVector(context.position - targetSnapshot.position, context.planeX)
@@ -692,7 +692,7 @@ function EyeOfCthulhuMotion.SolveDespawnMotion(
 	end
 
 	local desiredVelocity = Vector3.new(0, riseSpeed, awayDirection.Z * forwardSpeed)
-	local velocity = BossServiceUtils.moveTowardsVector(context.velocity, desiredVelocity, acceleration * dt)
+	local velocity = BossServiceUtils.MoveTowardsVector(context.velocity, desiredVelocity, acceleration * dt)
 	local facing = safeUnit(if velocity.Magnitude > 1e-4 then velocity else desiredVelocity, awayDirection)
 
 	return createResult(
@@ -711,9 +711,9 @@ function EyeOfCthulhuMotion.SolveDespawnMotion(
 end
 
 function EyeOfCthulhuMotion.ComputeRapidChainSpeed(healthRatioRaw: any, baseSpeedRaw: any, topSpeedRaw: any): number
-	local healthRatio = math.clamp(sanitizeNumber(healthRatioRaw, 1, 0, 1), 0, 1)
-	local baseSpeed = sanitizeNumber(baseSpeedRaw, 110, 0, 10 ^ 5)
-	local topSpeed = sanitizeNumber(topSpeedRaw, 154, baseSpeed, 10 ^ 5)
+	local healthRatio = math.clamp(CoerceNumber(healthRatioRaw, 1, 0, 1), 0, 1)
+	local baseSpeed = CoerceNumber(baseSpeedRaw, 110, 0, 10 ^ 5)
+	local topSpeed = CoerceNumber(topSpeedRaw, 154, baseSpeed, 10 ^ 5)
 	local pressureAlpha = 1 - healthRatio
 	return baseSpeed + (topSpeed - baseSpeed) * pressureAlpha
 end
@@ -723,7 +723,7 @@ function EyeOfCthulhuMotion.ComputePupilOffset(
 	targetPosition: Vector3?,
 	maxOffsetStudsRaw: any
 ): Vector3
-	local maxOffsetStuds = sanitizeNumber(maxOffsetStudsRaw, 0.85, 0, 8)
+	local maxOffsetStuds = CoerceNumber(maxOffsetStudsRaw, 0.85, 0, 8)
 	if targetPosition == nil then
 		return ZERO_VECTOR
 	end
@@ -738,34 +738,16 @@ function EyeOfCthulhuMotion.ComputePupilOffset(
 	return Vector3.new(0, lookUnit.Y * maxOffsetStuds, lookUnit.Z * maxOffsetStuds)
 end
 
-function EyeOfCthulhuMotion.ResolveAggressiveDuration(durationRaw: any, aggressivenessRaw: any): number
-	local duration = sanitizeDuration(durationRaw, 0.5)
-	local aggressiveness = sanitizeNumber(aggressivenessRaw, 1, 0.1, 3)
+function EyeOfCthulhuMotion.GetAggressiveDuration(durationRaw: any, aggressivenessRaw: any): number
+	local duration = CoerceDuration(durationRaw, 0.5)
+	local aggressiveness = CoerceNumber(aggressivenessRaw, 1, 0.1, 3)
 	return duration / aggressiveness
 end
 
-function EyeOfCthulhuMotion.ResolveAggressiveSpeed(speedRaw: any, aggressivenessRaw: any): number
-	local speed = sanitizeNumber(speedRaw, 0, 0, 10 ^ 5)
-	local aggressiveness = sanitizeNumber(aggressivenessRaw, 1, 0.1, 3)
+function EyeOfCthulhuMotion.GetAggressiveSpeed(speedRaw: any, aggressivenessRaw: any): number
+	local speed = CoerceNumber(speedRaw, 0, 0, 10 ^ 5)
+	local aggressiveness = CoerceNumber(aggressivenessRaw, 1, 0.1, 3)
 	return speed * aggressiveness
 end
-
-EyeOfCthulhuMotion.computeIntroSpawnPosition = EyeOfCthulhuMotion.ComputeIntroSpawnPosition
-EyeOfCthulhuMotion.createChargeLock = EyeOfCthulhuMotion.CreateChargeLock
-EyeOfCthulhuMotion.solveSpawnIntroMotion = EyeOfCthulhuMotion.SolveSpawnIntroMotion
-EyeOfCthulhuMotion.solvePhase1HoverMotion = EyeOfCthulhuMotion.SolvePhase1HoverMotion
-EyeOfCthulhuMotion.solveServantBurstMotion = EyeOfCthulhuMotion.SolveServantBurstMotion
-EyeOfCthulhuMotion.solveChargeWindupMotion = EyeOfCthulhuMotion.SolveChargeWindupMotion
-EyeOfCthulhuMotion.solveCommittedChargeMotion = EyeOfCthulhuMotion.SolveCommittedChargeMotion
-EyeOfCthulhuMotion.solveRecoveryMotion = EyeOfCthulhuMotion.SolveRecoveryMotion
-EyeOfCthulhuMotion.solveTransformMotion = EyeOfCthulhuMotion.SolveTransformMotion
-EyeOfCthulhuMotion.solvePhase2HoverIdleMotion = EyeOfCthulhuMotion.SolvePhase2HoverIdleMotion
-EyeOfCthulhuMotion.solvePhase2HoverMotion = EyeOfCthulhuMotion.SolvePhase2HoverMotion
-EyeOfCthulhuMotion.solvePhase2ChargeMotion = EyeOfCthulhuMotion.SolvePhase2ChargeMotion
-EyeOfCthulhuMotion.solveDespawnMotion = EyeOfCthulhuMotion.SolveDespawnMotion
-EyeOfCthulhuMotion.computeRapidChainSpeed = EyeOfCthulhuMotion.ComputeRapidChainSpeed
-EyeOfCthulhuMotion.computePupilOffset = EyeOfCthulhuMotion.ComputePupilOffset
-EyeOfCthulhuMotion.resolveAggressiveDuration = EyeOfCthulhuMotion.ResolveAggressiveDuration
-EyeOfCthulhuMotion.resolveAggressiveSpeed = EyeOfCthulhuMotion.ResolveAggressiveSpeed
 
 return EyeOfCthulhuMotion

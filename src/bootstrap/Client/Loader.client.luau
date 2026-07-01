@@ -147,7 +147,7 @@ local PACKAGE_TRACKER_IGNORED_MODULE_PATHS = {
 	"game/Client/Audio/network/Replication",
 	"game/Client/Replication",
 	"game/Client/SnackbarNotifications",
-	"game/Server/Net/ServerNetPackets",
+	"game/Server/Net/NetPacketsServer",
 	"game/Client/Npc/ui/components/SlimeComponent",
 	"game/Client/Services/NpcServiceClient",
 	"game/Server/Binders/NpcBinder",
@@ -163,7 +163,7 @@ local PACKAGE_TRACKER_IGNORED_MODULE_PATHS = {
 
 local REQUIRED_ARCHIVABLE_MODULE_PATHS = {
 	"game/Client/Notification/FeatureSnackbarNotifications",
-	"game/Client/NetClient/ClientNetPackets",
+	"game/Client/NetClient/NetPacketsClient",
 	"game/Client/Npc/ui/components/EyeOfCthulhuComponent",
 	"game/Client/Npc/ui/components/QueenBeeComponent",
 }
@@ -866,7 +866,7 @@ local function requireModule(
 	return result
 end
 
-local function resolveWorkspaceFoldersModule(context: ReplicatedContext): ModuleScript?
+local function GetWorkspaceFoldersModule(context: ReplicatedContext): ModuleScript?
 	local coreFolder = context.sharedRoot:FindFirstChild("Core")
 	if coreFolder ~= nil then
 		local workspaceFoldersModule = coreFolder:FindFirstChild("WorkspaceFolders")
@@ -899,7 +899,7 @@ local function adoptPartCacheFolder(context: ReplicatedContext)
 		return
 	end
 
-	local workspaceFoldersModule = resolveWorkspaceFoldersModule(context)
+	local workspaceFoldersModule = GetWorkspaceFoldersModule(context)
 	if workspaceFoldersModule == nil then
 		recordWarning("part cache folder", "WorkspaceFolders module was not available")
 		return
@@ -911,7 +911,7 @@ local function adoptPartCacheFolder(context: ReplicatedContext)
 		return
 	end
 
-	local gameFolder = (workspaceFolders :: any).getOrCreateGameFolder()
+	local gameFolder = (workspaceFolders :: any).GetOrCreateGameFolder()
 	if typeof(gameFolder) ~= "Instance" or not gameFolder:IsA("Folder") then
 		recordWarning("part cache folder", "Game folder was not available")
 		return
@@ -924,16 +924,16 @@ local function adoptPartCacheFolder(context: ReplicatedContext)
 				child.Parent = existing
 			end
 			loosePartCacheFolder:Destroy()
-			if typeof((workspaceFolders :: any).manageFolder) == "function" then
-				(workspaceFolders :: any).manageFolder(existing, gameFolder)
+			if typeof((workspaceFolders :: any).ManageFolder) == "function" then
+				(workspaceFolders :: any).ManageFolder(existing, gameFolder)
 			end
 			return
 		end
 		existing:Destroy()
 	end
 
-	if typeof((workspaceFolders :: any).manageFolder) == "function" then
-		(workspaceFolders :: any).manageFolder(loosePartCacheFolder, gameFolder)
+	if typeof((workspaceFolders :: any).ManageFolder) == "function" then
+		(workspaceFolders :: any).ManageFolder(loosePartCacheFolder, gameFolder)
 	end
 	if #loosePartCacheFolder:GetChildren() > 0 then
 		loosePartCacheFolder.Parent = gameFolder
@@ -1000,11 +1000,11 @@ local function bootstrapFramework(context: ReplicatedContext): FrameworkContext
 	-- prewarm only so the existing client service lifecycle stays single owner
 	if
 		typeof(framework.NevermoreSupport) == "table"
-		and typeof((framework.NevermoreSupport :: any).isStarted) == "function"
+		and typeof((framework.NevermoreSupport :: any).IsStarted) == "function"
 	then
 		(bridge.folder :: any):SetAttribute(
 			"AquarialoaderServiceBagStarted",
-			(framework.NevermoreSupport :: any).isStarted()
+			(framework.NevermoreSupport :: any).IsStarted()
 		)
 	end
 
@@ -1031,7 +1031,7 @@ local function waitForNetwork(
 	setStageProgress("network", "registering network packet readers", 0.9, STAGE_WEIGHT_NETWORK)
 	local clientPacketsModule = waitForRequiredModule(
 		context.gameRoot,
-		{ "Client", "NetClient", "ClientNetPackets" },
+		{ "Client", "NetClient", "NetPacketsClient" },
 		REPLICATION_TIMEOUT_SECONDS
 	)
 	requireModule(clientPacketsModule, "client network packets", warmedModules, assetIds, assetSet, true)
@@ -1204,12 +1204,12 @@ local function warmItemRegistry(itemRegistryRaw: any, assetIds: { string }, asse
 	local definitionsById = {}
 
 	while os.clock() < deadline do
-		if typeof(itemRegistryRaw.clearCache) == "function" then
-			itemRegistryRaw.clearCache()
+		if typeof(itemRegistryRaw.ClearCache) == "function" then
+			itemRegistryRaw.ClearCache()
 		end
 
-		definitionsById = if typeof(itemRegistryRaw.getDefinitionsById) == "function"
-			then itemRegistryRaw.getDefinitionsById()
+		definitionsById = if typeof(itemRegistryRaw.GetDefinitionsById) == "function"
+			then itemRegistryRaw.GetDefinitionsById()
 			else {} :: any
 
 		local definitionCount = countDictionaryEntries(definitionsById)

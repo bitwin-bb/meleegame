@@ -41,7 +41,7 @@ export type LimbDestruction = typeof(setmetatable(
 	LimbDestruction
 ))
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -63,7 +63,7 @@ local function normalizeToken(valueRaw: any): string
 	return string.lower(normalized)
 end
 
-local function resolveEntityModel(configRaw: LimbDestructionConfig?): Model?
+local function GetEntityModel(configRaw: LimbDestructionConfig?): Model?
 	if configRaw == nil then
 		return nil
 	end
@@ -97,7 +97,7 @@ local function cloneLimbForGib(limb: BasePart): BasePart
 	return clone
 end
 
-local function resolveLimbFromString(entityModel: Model?, tokenRaw: string): BasePart?
+local function GetLimbFromString(entityModel: Model?, tokenRaw: string): BasePart?
 	if entityModel == nil then
 		return nil
 	end
@@ -116,7 +116,7 @@ local function resolveLimbFromString(entityModel: Model?, tokenRaw: string): Bas
 	return nil
 end
 
-local function resolveBloodColor(limb: BasePart, fallbackRaw: any): Color3
+local function GetBloodColor(limb: BasePart, fallbackRaw: any): Color3
 	if typeof(fallbackRaw) == "Color3" then
 		return fallbackRaw
 	end
@@ -132,8 +132,8 @@ end
 function LimbDestruction.New(configRaw: LimbDestructionConfig?): LimbDestruction
 	local config = if typeof(configRaw) == "table" then configRaw else nil
 	local self = setmetatable({
-		entityModel = resolveEntityModel(config),
-		destroyedTransparency = sanitizeNumber(config and config.destroyedTransparency, 1, 0, 1),
+		entityModel = GetEntityModel(config),
+		destroyedTransparency = CoerceNumber(config and config.destroyedTransparency, 1, 0, 1),
 		destroyedByPart = {} :: { [BasePart]: DestroyedLimbRecord },
 	}, LimbDestruction)
 
@@ -148,7 +148,7 @@ function LimbDestruction.SetEntityModel(self: LimbDestruction, modelRaw: any)
 	self.entityModel = nil
 end
 
-function LimbDestruction.ResolveLimb(self: LimbDestruction, limbRaw: any): BasePart?
+function LimbDestruction.GetLimb(self: LimbDestruction, limbRaw: any): BasePart?
 	if typeof(limbRaw) == "Instance" and limbRaw:IsA("BasePart") then
 		local model = self.entityModel
 		if model == nil then
@@ -161,14 +161,14 @@ function LimbDestruction.ResolveLimb(self: LimbDestruction, limbRaw: any): BaseP
 	end
 
 	if typeof(limbRaw) == "string" then
-		return resolveLimbFromString(self.entityModel, limbRaw)
+		return GetLimbFromString(self.entityModel, limbRaw)
 	end
 
 	return nil
 end
 
 function LimbDestruction.IsDestroyed(self: LimbDestruction, limbRaw: any): boolean
-	local limb = self:resolveLimb(limbRaw)
+	local limb = self:GetLimb(limbRaw)
 	if limb == nil then
 		return false
 	end
@@ -198,7 +198,7 @@ function LimbDestruction._disableLimbMotors(self: LimbDestruction, limb: BasePar
 end
 
 function LimbDestruction.DestroyLimb(self: LimbDestruction, limbRaw: any, optionsRaw: any): DestroyResult?
-	local limb = self:resolveLimb(limbRaw)
+	local limb = self:GetLimb(limbRaw)
 	if limb == nil then
 		return nil
 	end
@@ -207,7 +207,7 @@ function LimbDestruction.DestroyLimb(self: LimbDestruction, limbRaw: any, option
 	end
 
 	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
-	local destroyedTransparency = sanitizeNumber(options.destroyedTransparency, self.destroyedTransparency, 0, 1)
+	local destroyedTransparency = CoerceNumber(options.destroyedTransparency, self.destroyedTransparency, 0, 1)
 	local record: DestroyedLimbRecord = {
 		part = limb,
 		transparency = limb.Transparency,
@@ -226,7 +226,7 @@ function LimbDestruction.DestroyLimb(self: LimbDestruction, limbRaw: any, option
 	limb.Massless = true
 
 	local gibSource = cloneLimbForGib(limb)
-	local bloodColor = resolveBloodColor(limb, options.bloodColor)
+	local bloodColor = GetBloodColor(limb, options.bloodColor)
 	return {
 		limb = limb,
 		limbName = limb.Name,
@@ -238,7 +238,7 @@ function LimbDestruction.DestroyLimb(self: LimbDestruction, limbRaw: any, option
 end
 
 function LimbDestruction.RestoreLimb(self: LimbDestruction, limbRaw: any): boolean
-	local limb = self:resolveLimb(limbRaw)
+	local limb = self:GetLimb(limbRaw)
 	if limb == nil then
 		return false
 	end
@@ -266,23 +266,13 @@ end
 
 function LimbDestruction.RestoreAll(self: LimbDestruction)
 	for limb in self.destroyedByPart do
-		self:restoreLimb(limb)
+		self:RestoreLimb(limb)
 	end
 end
 
 function LimbDestruction.Destroy(self: LimbDestruction)
-	self:restoreAll()
+	self:RestoreAll()
 	table.clear(self.destroyedByPart)
 	self.entityModel = nil
 end
-
-LimbDestruction.new = LimbDestruction.New
-LimbDestruction.setEntityModel = LimbDestruction.SetEntityModel
-LimbDestruction.resolveLimb = LimbDestruction.ResolveLimb
-LimbDestruction.isDestroyed = LimbDestruction.IsDestroyed
-LimbDestruction.destroyLimb = LimbDestruction.DestroyLimb
-LimbDestruction.restoreLimb = LimbDestruction.RestoreLimb
-LimbDestruction.restoreAll = LimbDestruction.RestoreAll
-LimbDestruction.destroy = LimbDestruction.Destroy
-
 return LimbDestruction

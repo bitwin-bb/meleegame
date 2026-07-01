@@ -34,12 +34,27 @@ local function createJanitor(): MaidClass
 	return Maid.new() :: MaidClass
 end
 
+local function GetBoundInstance(targetRaw: any): Instance?
+	if typeof(targetRaw) == "Instance" then
+		return targetRaw
+	end
+
+	if typeof(targetRaw) == "table" then
+		local instance = (targetRaw :: any).instance
+		if typeof(instance) == "Instance" then
+			return instance
+		end
+	end
+
+	return nil
+end
+
 function ModelBinder.CollectBaseParts(instanceRaw: any): { BasePart }
-	if typeof(instanceRaw) ~= "Instance" then
+	local instance = GetBoundInstance(instanceRaw)
+	if instance == nil then
 		return {}
 	end
 
-	local instance = instanceRaw :: Instance
 	if instance:IsA("BasePart") then
 		return { instance }
 	end
@@ -54,11 +69,11 @@ function ModelBinder.CollectBaseParts(instanceRaw: any): { BasePart }
 end
 
 function ModelBinder.CollectLights(instanceRaw: any): { Instance }
-	if typeof(instanceRaw) ~= "Instance" then
+	local instance = GetBoundInstance(instanceRaw)
+	if instance == nil then
 		return {}
 	end
 
-	local instance = instanceRaw :: Instance
 	local lights: { Instance } = {}
 	for _, descendant in instance:GetDescendants() do
 		if descendant:IsA("PointLight") or descendant:IsA("SpotLight") or descendant:IsA("SurfaceLight") then
@@ -69,12 +84,12 @@ function ModelBinder.CollectLights(instanceRaw: any): { Instance }
 end
 
 function ModelBinder.BindTouchedParts(instanceRaw: any, janitor: any, callback: (part: BasePart, other: BasePart) -> ())
-	if typeof(instanceRaw) ~= "Instance" then
+	local instance = GetBoundInstance(instanceRaw)
+	if instance == nil then
 		return
 	end
 
 	local bound = {} :: { [BasePart]: boolean }
-	local instance = instanceRaw :: Instance
 
 	local function bindPart(part: BasePart)
 		if bound[part] == true then
@@ -98,12 +113,12 @@ function ModelBinder.BindTouchedParts(instanceRaw: any, janitor: any, callback: 
 	end))
 end
 
-function ModelBinder.ResolveModel(instanceRaw: any): Model?
-	if typeof(instanceRaw) ~= "Instance" then
+function ModelBinder.GetModel(instanceRaw: any): Model?
+	local instance = GetBoundInstance(instanceRaw)
+	if instance == nil then
 		return nil
 	end
 
-	local instance = instanceRaw :: Instance
 	if instance:IsA("Model") then
 		return instance
 	end
@@ -111,41 +126,41 @@ function ModelBinder.ResolveModel(instanceRaw: any): Model?
 	return instance:FindFirstAncestorOfClass("Model")
 end
 
-function ModelBinder.ResolveHumanoid(instanceRaw: any): Humanoid?
-	local model = ModelBinder.ResolveModel(instanceRaw)
+function ModelBinder.GetHumanoid(instanceRaw: any): Humanoid?
+	local model = ModelBinder.GetModel(instanceRaw)
 	if model == nil then
 		return nil
 	end
 	return model:FindFirstChildOfClass("Humanoid")
 end
 
-function ModelBinder.ResolvePlayer(instanceRaw: any): Player?
-	local model = ModelBinder.ResolveModel(instanceRaw)
+function ModelBinder.GetPlayer(instanceRaw: any): Player?
+	local model = ModelBinder.GetModel(instanceRaw)
 	if model == nil then
 		return nil
 	end
 	return Players:GetPlayerFromCharacter(model)
 end
 
-function ModelBinder.ResolveRootPart(instanceRaw: any): BasePart?
-	if typeof(instanceRaw) ~= "Instance" then
+function ModelBinder.GetRootPart(instanceRaw: any): BasePart?
+	local instance = GetBoundInstance(instanceRaw)
+	if instance == nil then
 		return nil
 	end
 
-	local instance = instanceRaw :: Instance
 	if instance:IsA("BasePart") then
 		return instance
 	end
 
-	return InstanceUtils.resolveInstanceRootPart(instance, false)
+	return InstanceUtils.GetInstanceRootPart(instance, false)
 end
 
-function ModelBinder.ResolveAdornee(instanceRaw: any): Instance?
-	if typeof(instanceRaw) ~= "Instance" then
+function ModelBinder.GetAdornee(instanceRaw: any): Instance?
+	local instance = GetBoundInstance(instanceRaw)
+	if instance == nil then
 		return nil
 	end
 
-	local instance = instanceRaw :: Instance
 	if instance:IsA("Model") then
 		return instance
 	end
@@ -155,20 +170,20 @@ function ModelBinder.ResolveAdornee(instanceRaw: any): Instance?
 		return model
 	end
 
-	return ModelBinder.ResolveRootPart(instance)
+	return ModelBinder.GetRootPart(instance)
 end
 
-function ModelBinder.ResolveWorldPosition(instanceRaw: any): Vector3?
-	if typeof(instanceRaw) ~= "Instance" then
+function ModelBinder.GetWorldPosition(instanceRaw: any): Vector3?
+	local instance = GetBoundInstance(instanceRaw)
+	if instance == nil then
 		return nil
 	end
 
-	local instance = instanceRaw :: Instance
 	if instance:IsA("Attachment") then
 		return instance.WorldPosition
 	end
 
-	local rootPart = ModelBinder.ResolveRootPart(instance)
+	local rootPart = ModelBinder.GetRootPart(instance)
 	if rootPart ~= nil then
 		return rootPart.Position
 	end
@@ -197,7 +212,11 @@ function ModelBinder.new(instanceRaw: any, contextRaw: any, classRaw: any?): any
 end
 
 function ModelBinder.GetModel(self: ModelBinder): Model?
-	local instance = self.instance
+	local instance = GetBoundInstance(self)
+	if instance == nil then
+		return nil
+	end
+
 	if instance:IsA("Model") then
 		return instance
 	end
@@ -205,7 +224,7 @@ function ModelBinder.GetModel(self: ModelBinder): Model?
 end
 
 function ModelBinder.GetHumanoid(self: ModelBinder): Humanoid?
-	local model = self:GetModel()
+	local model = ModelBinder.GetModel(self)
 	if model == nil then
 		return nil
 	end
@@ -213,17 +232,21 @@ function ModelBinder.GetHumanoid(self: ModelBinder): Humanoid?
 end
 
 function ModelBinder.GetRootPart(self: ModelBinder): BasePart?
-	local instance = self.instance
+	local instance = GetBoundInstance(self)
+	if instance == nil then
+		return nil
+	end
+
 	if instance:IsA("BasePart") then
 		return instance
 	end
 
-	local model = self:GetModel()
+	local model = ModelBinder.GetModel(self)
 	if model ~= nil then
-		return InstanceUtils.resolveModelRootPart(model, false)
+		return InstanceUtils.GetModelRootPart(model, false)
 	end
 
-	return InstanceUtils.resolveInstanceRootPart(instance, false)
+	return InstanceUtils.GetInstanceRootPart(instance, false)
 end
 
 function ModelBinder.HasTag(self: ModelBinder, tagRaw: any): boolean
@@ -273,24 +296,4 @@ function ModelBinder.Destroy(self: ModelBinder)
 
 	self.janitor:Destroy()
 end
-
-ModelBinder.getModel = ModelBinder.GetModel
-ModelBinder.getHumanoid = ModelBinder.GetHumanoid
-ModelBinder.getRootPart = ModelBinder.GetRootPart
-ModelBinder.collectBaseParts = ModelBinder.CollectBaseParts
-ModelBinder.collectLights = ModelBinder.CollectLights
-ModelBinder.bindTouchedParts = ModelBinder.BindTouchedParts
-ModelBinder.resolveModel = ModelBinder.ResolveModel
-ModelBinder.resolveHumanoid = ModelBinder.ResolveHumanoid
-ModelBinder.resolvePlayer = ModelBinder.ResolvePlayer
-ModelBinder.resolveRootPart = ModelBinder.ResolveRootPart
-ModelBinder.resolveAdornee = ModelBinder.ResolveAdornee
-ModelBinder.resolveWorldPosition = ModelBinder.ResolveWorldPosition
-ModelBinder.hasTag = ModelBinder.HasTag
-ModelBinder.getMatchedTags = ModelBinder.GetMatchedTags
-ModelBinder.connect = ModelBinder.Connect
-ModelBinder.observeAttribute = ModelBinder.ObserveAttribute
-ModelBinder.addCleanup = ModelBinder.AddCleanup
-ModelBinder.destroy = ModelBinder.Destroy
-
 return ModelBinder

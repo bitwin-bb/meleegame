@@ -13,7 +13,7 @@ local InventoryServiceUtils = require("InventoryServiceUtils")
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local LootServiceClient = require("LootServiceClient")
 local PacketPayload = require("PacketPayload")
-local InventoryServicePackets = require("NetSharedPackets").InventoryService
+local InventoryServicePackets = require("NetPacketsShared").InventoryService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = InventoryServicePackets[methodName]
@@ -22,7 +22,7 @@ local function sendPacket(methodName: string, ...: any)
 		return
 	end
 
-	packet.send(PacketPayload.pack(...))
+	packet.send(PacketPayload.Pack(...))
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -32,13 +32,14 @@ local function bindPacket(self: any, methodName: string)
 		return
 	end
 
+	local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
 	packet.listen(function(payload: any)
-		local handler = self[methodName]
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, table.unpack(arguments, 1, count))
 	end)
 end
@@ -84,7 +85,7 @@ local DISABLE_BACKPACK_UI_MAX_ATTEMPTS = 8
 local DISABLE_BACKPACK_UI_RETRY_DELAY = 0.2
 local WORLD_FOLDER_NAME = "WorldGeneration"
 
-local function resolveCharacterRootPart(playerRaw: any): BasePart?
+local function GetCharacterRootPart(playerRaw: any): BasePart?
 	if typeof(playerRaw) ~= "Instance" or not playerRaw:IsA("Player") then
 		return nil
 	end
@@ -108,11 +109,11 @@ local function resolveCharacterRootPart(playerRaw: any): BasePart?
 end
 
 local function shouldUseGamepadWorldSelection(): boolean
-	return PlatformServiceClient:isGamepad() and PlatformServiceClient:getMachineFamily() ~= "desktop"
+	return PlatformServiceClient:IsGamepad() and PlatformServiceClient:GetMachineFamily() ~= "desktop"
 end
 
-local function resolveWorldGridConfig(): (Vector3?, number?, number?)
-	local worldFolder = WorkspaceFolders.findFolderInGameOrWorkspace(WORLD_FOLDER_NAME)
+local function GetWorldGridConfig(): (Vector3?, number?, number?)
+	local worldFolder = WorkspaceFolders.FindFolderInGameOrWorkspace(WORLD_FOLDER_NAME)
 	if worldFolder ~= nil then
 		local originX = worldFolder:GetAttribute("WorldOriginX")
 		local originY = worldFolder:GetAttribute("WorldOriginY")
@@ -133,10 +134,10 @@ local function resolveWorldGridConfig(): (Vector3?, number?, number?)
 	end
 
 	local worldClient = WorldGenerationServiceClient :: any
-	local refreshWorldAttributesMethod = worldClient.refreshWorldAttributes
+	local refreshWorldAttributesMethod = worldClient.RefreshWorldAttributes
 	if typeof(refreshWorldAttributesMethod) == "function" then
 		pcall(function()
-			worldClient:refreshWorldAttributes()
+			worldClient:RefreshWorldAttributes()
 		end)
 	end
 
@@ -158,61 +159,61 @@ local function resolveWorldGridConfig(): (Vector3?, number?, number?)
 	return worldOrigin, tileSize, basePlaneX
 end
 
-local function resolveCursorScreenPosition(): Vector2?
+local function GetCursorScreenPosition(): Vector2?
 	local runtimeContext = nil
 	local ok, runtimeOrError = pcall(function()
-		return CoreRuntime.getClientRuntime()
+		return CoreRuntime.GetClientRuntime()
 	end)
 	if ok then
 		runtimeContext = runtimeOrError
 	end
 
-	if runtimeContext ~= nil and typeof((runtimeContext :: any).init) == "function" then
+	if runtimeContext ~= nil and typeof((runtimeContext :: any).Init) == "function" then
 		pcall(function()
-			(runtimeContext :: any):init()
+			(runtimeContext :: any):Init()
 		end)
 	end
 
 	local cursorModule = if runtimeContext ~= nil then (runtimeContext :: any).cursor else nil
-	if cursorModule ~= nil and typeof((cursorModule :: any).getScreenPosition) == "function" then
-		local didResolveCursor, cursorPosition = pcall(function()
-			return (cursorModule :: any):getScreenPosition()
+	if cursorModule ~= nil and typeof((cursorModule :: any).GetScreenPosition) == "function" then
+		local didGetCursor, cursorPosition = pcall(function()
+			return (cursorModule :: any):GetScreenPosition()
 		end)
-		if didResolveCursor and typeof(cursorPosition) == "Vector2" then
+		if didGetCursor and typeof(cursorPosition) == "Vector2" then
 			return cursorPosition
 		end
 	end
 
-	local didResolveMouse, mousePosition = pcall(function()
+	local didGetMouse, mousePosition = pcall(function()
 		return UserInputService:GetMouseLocation()
 	end)
-	if didResolveMouse and typeof(mousePosition) == "Vector2" then
+	if didGetMouse and typeof(mousePosition) == "Vector2" then
 		return mousePosition
 	end
 
 	return nil
 end
 
-local function resolveGamepadNav(): any?
+local function GetGamepadNav(): any?
 	local runtimeContext = nil
 	local ok, runtimeOrError = pcall(function()
-		return CoreRuntime.getClientRuntime()
+		return CoreRuntime.GetClientRuntime()
 	end)
 	if ok then
 		runtimeContext = runtimeOrError
 	end
 
-	if runtimeContext ~= nil and typeof((runtimeContext :: any).init) == "function" then
+	if runtimeContext ~= nil and typeof((runtimeContext :: any).Init) == "function" then
 		pcall(function()
-			(runtimeContext :: any):init()
+			(runtimeContext :: any):Init()
 		end)
 	end
 
-	if runtimeContext ~= nil and typeof((runtimeContext :: any).getGamepadNav) == "function" then
-		local didResolve, gamepadNavOrError = pcall(function()
-			return (runtimeContext :: any):getGamepadNav()
+	if runtimeContext ~= nil and typeof((runtimeContext :: any).GetGamepadNav) == "function" then
+		local didGet, gamepadNavOrError = pcall(function()
+			return (runtimeContext :: any):GetGamepadNav()
 		end)
-		if didResolve then
+		if didGet then
 			return gamepadNavOrError
 		end
 	end
@@ -224,30 +225,30 @@ local function resolveGamepadNav(): any?
 	return nil
 end
 
-local function resolveGamepadScreenVector(): Vector2?
-	local gamepadNav = resolveGamepadNav()
-	if gamepadNav == nil or typeof((gamepadNav :: any).getThumbstickState) ~= "function" then
+local function GetGamepadScreenVector(): Vector2?
+	local gamepadNav = GetGamepadNav()
+	if gamepadNav == nil or typeof((gamepadNav :: any).GetThumbstickState) ~= "function" then
 		return nil
 	end
 
 	local ok, snapshotOrError = pcall(function()
-		return (gamepadNav :: any):getThumbstickState()
+		return (gamepadNav :: any):GetThumbstickState()
 	end)
 	if not ok or typeof(snapshotOrError) ~= "table" then
 		return nil
 	end
 
-	local screenVector = GamepadPointer.resolveOwnedVector(snapshotOrError)
+	local screenVector = GamepadPointer.GetOwnedVector(snapshotOrError)
 	return if typeof(screenVector) == "Vector2" then screenVector else nil
 end
 
-local function resolveGamepadWorldPosition(tileSize: number, rootPart: BasePart?): Vector3?
-	local screenVector = resolveGamepadScreenVector()
+local function GetGamepadWorldPosition(tileSize: number, rootPart: BasePart?): Vector3?
+	local screenVector = GetGamepadScreenVector()
 	if screenVector == nil or rootPart == nil then
 		return nil
 	end
 
-	local worldOffset = GamepadPointer.resolveWorldOffsetForScreenVector(screenVector, tileSize, rootPart)
+	local worldOffset = GamepadPointer.GetWorldOffsetForScreenVector(screenVector, tileSize, rootPart)
 	if worldOffset == nil then
 		return nil
 	end
@@ -255,15 +256,15 @@ local function resolveGamepadWorldPosition(tileSize: number, rootPart: BasePart?
 	return rootPart.Position + worldOffset
 end
 
-local function resolveCursorTileFromMouse(): (number?, number?)
-	local worldOrigin, tileSize, basePlaneX = resolveWorldGridConfig()
+local function GetCursorTileFromMouse(): (number?, number?)
+	local worldOrigin, tileSize, basePlaneX = GetWorldGridConfig()
 	if worldOrigin == nil or tileSize == nil or basePlaneX == nil then
 		return nil, nil
 	end
 
 	if shouldUseGamepadWorldSelection() then
-		local rootPart = resolveCharacterRootPart(Players.LocalPlayer)
-		local worldPosition = resolveGamepadWorldPosition(tileSize, rootPart)
+		local rootPart = GetCharacterRootPart(Players.LocalPlayer)
+		local worldPosition = GetGamepadWorldPosition(tileSize, rootPart)
 		if worldPosition ~= nil then
 			return BuildServiceUtils.WorldPositionToTile(worldPosition, worldOrigin, tileSize)
 		end
@@ -276,7 +277,7 @@ local function resolveCursorTileFromMouse(): (number?, number?)
 		return nil, nil
 	end
 
-	local mouseLocation = resolveCursorScreenPosition()
+	local mouseLocation = GetCursorScreenPosition()
 	if mouseLocation == nil then
 		return nil, nil
 	end
@@ -290,7 +291,7 @@ local function resolveCursorTileFromMouse(): (number?, number?)
 end
 
 local function isTorchSelected(self: InventoryServiceClient): boolean
-	local selectedStack = self:getSelectedStack()
+	local selectedStack = self:GetSelectedStack()
 	return selectedStack ~= nil and selectedStack.itemId == "Torch"
 end
 
@@ -314,12 +315,12 @@ local function disableDefaultBackpackUi()
 	apply()
 end
 
-local function resolveThrowDirectionFromMouse(): Vector3?
+local function GetThrowDirectionFromMouse(): Vector3?
 	if shouldUseGamepadWorldSelection() then
-		local _, tileSize = resolveWorldGridConfig()
+		local _, tileSize = GetWorldGridConfig()
 		if tileSize ~= nil then
-			local rootPart = resolveCharacterRootPart(Players.LocalPlayer)
-			local worldPosition = resolveGamepadWorldPosition(tileSize, rootPart)
+			local rootPart = GetCharacterRootPart(Players.LocalPlayer)
+			local worldPosition = GetGamepadWorldPosition(tileSize, rootPart)
 			if rootPart ~= nil and worldPosition ~= nil then
 				local direction = worldPosition - rootPart.Position
 				if direction.Magnitude > 1e-4 then
@@ -347,12 +348,12 @@ local function resolveThrowDirectionFromMouse(): Vector3?
 	return direction.Unit
 end
 
-local function resolveDropAmountPreference(amountRaw: any): any
-	local ok, resolved = pcall(function()
-		return LootServiceClient:resolveDropAmount(amountRaw)
+local function GotRopAmountPreference(amountRaw: any): any
+	local ok, Got = pcall(function()
+		return LootServiceClient:GotRopAmount(amountRaw)
 	end)
 	if ok then
-		return resolved
+		return Got
 	end
 	return amountRaw
 end
@@ -361,7 +362,7 @@ function InventoryServiceClient.Init(self: InventoryServiceClient)
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
-	self.state = InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_LOADING)
+	self.state = InventoryServiceUtils.CreateDefaultState(InventoryServiceUtils.LOAD_STATE_LOADING)
 	self.hasReceivedServerState = false
 	self.stateChanged = Signal.new()
 
@@ -382,15 +383,15 @@ function InventoryServiceClient.Init(self: InventoryServiceClient)
 		if not isTorchSelected(self) then
 			return
 		end
-		self:requestPlaceSelectedDeployable()
+		self:RequestPlaceSelectedDeployable()
 	end))
 	if PlayerDataServiceClient.stateChanged ~= nil then
 		self.janitor:GiveChore(PlayerDataServiceClient.stateChanged:Connect(function(nextState: PlayerDataServiceState)
 			if
-				PlayerDataServiceUtils.isLoadedState(nextState.loadState)
-				and not InventoryServiceUtils.isLoadedState(self.state.loadState)
+				PlayerDataServiceUtils.IsLoadedState(nextState.loadState)
+				and not InventoryServiceUtils.IsLoadedState(self.state.loadState)
 			then
-				self:requestSync()
+				self:RequestSync()
 			end
 		end))
 	end
@@ -398,29 +399,29 @@ function InventoryServiceClient.Init(self: InventoryServiceClient)
 		self.stateChanged:Destroy()
 	end)
 
-	self:requestSync()
+	self:RequestSync()
 end
 
 function InventoryServiceClient.ApplyState(self: InventoryServiceClient, stateRaw: any)
-	self.state = InventoryServiceUtils.sanitizeState(stateRaw, self.state)
+	self.state = InventoryServiceUtils.CoerceState(stateRaw, self.state)
 	self.hasReceivedServerState = true
-	self.stateChanged:Fire(InventoryServiceUtils.cloneState(self.state))
+	self.stateChanged:Fire(InventoryServiceUtils.CloneState(self.state))
 end
 
-function InventoryServiceClient.RequestSync(self: InventoryServiceClient)
+function InventoryServiceClient.RequestSync(_self: InventoryServiceClient)
 	sendPacket(InventoryServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
 function InventoryServiceClient.GetState(self: InventoryServiceClient): InventoryState
-	return InventoryServiceUtils.cloneState(self.state)
+	return InventoryServiceUtils.CloneState(self.state)
 end
 
 function InventoryServiceClient.GetSlots(self: InventoryServiceClient): { InventorySlot }
-	return self:getState().slots
+	return self:GetState().slots
 end
 
 function InventoryServiceClient.GetSlot(self: InventoryServiceClient, slotIndexRaw: any): InventorySlot?
-	return InventoryServiceUtils.getSlot(self:getState(), slotIndexRaw)
+	return InventoryServiceUtils.GetSlot(self:GetState(), slotIndexRaw)
 end
 
 function InventoryServiceClient.GetSelectedSlot(self: InventoryServiceClient): number?
@@ -431,11 +432,11 @@ function InventoryServiceClient.GetSelectedStack(self: InventoryServiceClient): 
 	if self.state.selectedSlot == nil then
 		return nil
 	end
-	return InventoryServiceUtils.getStack(self.state, self.state.selectedSlot)
+	return InventoryServiceUtils.GetStack(self.state, self.state.selectedSlot)
 end
 
 function InventoryServiceClient.IsLoaded(self: InventoryServiceClient): boolean
-	return InventoryServiceUtils.isLoadedState(self.state.loadState)
+	return InventoryServiceUtils.IsLoadedState(self.state.loadState)
 end
 
 function InventoryServiceClient.SetSelectedSlot(
@@ -443,11 +444,11 @@ function InventoryServiceClient.SetSelectedSlot(
 	slotIndexRaw: any,
 	replicateToServerRaw: any
 ): boolean
-	local nextState = InventoryServiceUtils.cloneState(self.state)
-	local changed = InventoryServiceUtils.setSelectedSlot(nextState, slotIndexRaw)
+	local nextState = InventoryServiceUtils.CloneState(self.state)
+	local changed = InventoryServiceUtils.SetSelectedSlot(nextState, slotIndexRaw)
 	if changed then
 		self.state = nextState
-		self.stateChanged:Fire(InventoryServiceUtils.cloneState(self.state))
+		self.stateChanged:Fire(InventoryServiceUtils.CloneState(self.state))
 	end
 	if replicateToServerRaw ~= false then
 		sendPacket(InventoryServiceUtils.NETWORK_METHOD_REQUEST_SET_SELECTED_SLOT, slotIndexRaw)
@@ -456,15 +457,15 @@ function InventoryServiceClient.SetSelectedSlot(
 end
 
 function InventoryServiceClient.ClearSelectedSlot(self: InventoryServiceClient, replicateToServerRaw: any): boolean
-	return self:setSelectedSlot(nil, replicateToServerRaw)
+	return self:SetSelectedSlot(nil, replicateToServerRaw)
 end
 
-function InventoryServiceClient.MoveSlot(self: InventoryServiceClient, fromSlotRaw: any, toSlotRaw: any, amountRaw: any)
+function InventoryServiceClient.MoveSlot(_self: InventoryServiceClient, fromSlotRaw: any, toSlotRaw: any, amountRaw: any)
 	sendPacket(InventoryServiceUtils.NETWORK_METHOD_REQUEST_MOVE_SLOT, fromSlotRaw, toSlotRaw, amountRaw)
 end
 
 function InventoryServiceClient.SplitSlot(
-	self: InventoryServiceClient,
+	_self: InventoryServiceClient,
 	fromSlotRaw: any,
 	toSlotRaw: any,
 	amountRaw: any
@@ -473,27 +474,27 @@ function InventoryServiceClient.SplitSlot(
 end
 
 function InventoryServiceClient.DropFromSlot(_self: InventoryServiceClient, slotIndexRaw: any, amountRaw: any)
-	local amount = resolveDropAmountPreference(amountRaw)
-	local throwDirection = resolveThrowDirectionFromMouse()
+	local amount = GotRopAmountPreference(amountRaw)
+	local throwDirection = GetThrowDirectionFromMouse()
 	pcall(function()
-		LootServiceClient:requestDropFromSlot(slotIndexRaw, amount, throwDirection)
+		LootServiceClient:RequestDropFromSlot(slotIndexRaw, amount, throwDirection)
 	end)
 end
 
-function InventoryServiceClient.TrashSlot(self: InventoryServiceClient, slotIndexRaw: any, amountRaw: any)
+function InventoryServiceClient.TrashSlot(_self: InventoryServiceClient, slotIndexRaw: any, amountRaw: any)
 	sendPacket(InventoryServiceUtils.NETWORK_METHOD_REQUEST_TRASH_SLOT, slotIndexRaw, amountRaw)
 end
 
-function InventoryServiceClient.TrashSelectedSlot(self: InventoryServiceClient, amountRaw: any)
+function InventoryServiceClient.TrashSelectedSlot(_self: InventoryServiceClient, amountRaw: any)
 	sendPacket(InventoryServiceUtils.NETWORK_METHOD_REQUEST_TRASH_SELECTED_SLOT, amountRaw)
 end
 
-function InventoryServiceClient.UseSelectedSlot(self: InventoryServiceClient, amountRaw: any)
+function InventoryServiceClient.UseSelectedSlot(_self: InventoryServiceClient, amountRaw: any)
 	sendPacket(InventoryServiceUtils.NETWORK_METHOD_REQUEST_USE_SELECTED_SLOT, amountRaw)
 end
 
-function InventoryServiceClient.RequestPlaceSelectedDeployable(self: InventoryServiceClient)
-	local tileX, tileY = resolveCursorTileFromMouse()
+function InventoryServiceClient.RequestPlaceSelectedDeployable(_self: InventoryServiceClient)
+	local tileX, tileY = GetCursorTileFromMouse()
 	if tileX == nil or tileY == nil then
 		return
 	end
@@ -505,27 +506,6 @@ function InventoryServiceClient.Destroy(self: InventoryServiceClient)
 		self.janitor:Destroy()
 	end
 end
-
-InventoryServiceClient.init = InventoryServiceClient.Init
-InventoryServiceClient.applyState = InventoryServiceClient.ApplyState
-InventoryServiceClient.requestSync = InventoryServiceClient.RequestSync
-InventoryServiceClient.getState = InventoryServiceClient.GetState
-InventoryServiceClient.getSlots = InventoryServiceClient.GetSlots
-InventoryServiceClient.getSlot = InventoryServiceClient.GetSlot
-InventoryServiceClient.getSelectedSlot = InventoryServiceClient.GetSelectedSlot
-InventoryServiceClient.getSelectedStack = InventoryServiceClient.GetSelectedStack
-InventoryServiceClient.isLoaded = InventoryServiceClient.IsLoaded
-InventoryServiceClient.setSelectedSlot = InventoryServiceClient.SetSelectedSlot
-InventoryServiceClient.clearSelectedSlot = InventoryServiceClient.ClearSelectedSlot
-InventoryServiceClient.moveSlot = InventoryServiceClient.MoveSlot
-InventoryServiceClient.splitSlot = InventoryServiceClient.SplitSlot
-InventoryServiceClient.dropFromSlot = InventoryServiceClient.DropFromSlot
-InventoryServiceClient.trashSlot = InventoryServiceClient.TrashSlot
-InventoryServiceClient.trashSelectedSlot = InventoryServiceClient.TrashSelectedSlot
-InventoryServiceClient.useSelectedSlot = InventoryServiceClient.UseSelectedSlot
-InventoryServiceClient.requestPlaceSelectedDeployable = InventoryServiceClient.RequestPlaceSelectedDeployable
-InventoryServiceClient.destroy = InventoryServiceClient.Destroy
-
 type InventoryServiceClient = typeof(InventoryServiceClient) & {
 	localPlayer: Player,
 	janitor: JanitorClass,

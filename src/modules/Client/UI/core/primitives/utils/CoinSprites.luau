@@ -22,7 +22,7 @@ CoinSprites.spriteSheetKeyByItemId = {
 	PlatinumCoin = "platinumCoin",
 }
 
-function CoinSprites.resolveSpriteSheet(itemIdRaw: any): string?
+function CoinSprites.GetSpriteSheet(itemIdRaw: any): string?
 	local itemId = if typeof(itemIdRaw) == "string" then itemIdRaw else nil
 	if itemId == nil then
 		return nil

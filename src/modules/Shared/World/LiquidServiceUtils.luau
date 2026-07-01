@@ -356,21 +356,21 @@ local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function sanitizeInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+local function CoerceInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
 	return math.clamp(math.floor(valueRaw), minimum, maximum)
 end
 
-local function sanitizeNumber(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+local function CoerceNumber(valueRaw: any, minimum: number, maximum: number, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
 	return math.clamp(valueRaw, minimum, maximum)
 end
 
-local function sanitizeColor3(valueRaw: any, fallback: Color3): Color3
+local function CoerceColor3(valueRaw: any, fallback: Color3): Color3
 	if typeof(valueRaw) == "Color3" then
 		return valueRaw
 	end
@@ -392,8 +392,8 @@ local function cloneColor3Map(sourceRaw: any): Color3Map
 end
 
 local function lerpColor(a: Color3, b: Color3, alphaRaw: any): Color3
-	local alpha = sanitizeNumber(alphaRaw, 0, 1, 0)
-	return Lerp.color3(a, b, alpha)
+	local alpha = CoerceNumber(alphaRaw, 0, 1, 0)
+	return Lerp.Color3(a, b, alpha)
 end
 
 function LiquidServiceUtils.PackChunkKey(chunkX: number, chunkY: number): string
@@ -442,13 +442,13 @@ local LiquidCell = {}
 
 function LiquidCell.Pack(liquidTypeRaw: any, fillRaw: any, flowStateRaw: any, flagsRaw: any?): number
 	local liquidType =
-		sanitizeInteger(liquidTypeRaw, LiquidServiceUtils.LIQUID_TYPE.NONE, 7, LiquidServiceUtils.LIQUID_TYPE.NONE)
-	local fill = sanitizeInteger(fillRaw, 0, MAX_FILL, 0)
+		CoerceInteger(liquidTypeRaw, LiquidServiceUtils.LIQUID_TYPE.NONE, 7, LiquidServiceUtils.LIQUID_TYPE.NONE)
+	local fill = CoerceInteger(fillRaw, 0, MAX_FILL, 0)
 	if liquidType == LiquidServiceUtils.LIQUID_TYPE.NONE or fill <= 0 then
 		return 0
 	end
-	local flowState = sanitizeInteger(flowStateRaw, 0, FLOW_MASK, LiquidServiceUtils.FLOW_STATE.STILL)
-	local flags = sanitizeInteger(flagsRaw, 0, FLAGS_MASK, 0)
+	local flowState = CoerceInteger(flowStateRaw, 0, FLOW_MASK, LiquidServiceUtils.FLOW_STATE.STILL)
+	local flags = CoerceInteger(flagsRaw, 0, FLAGS_MASK, 0)
 	return bit32.bor(
 		fill,
 		bit32.lshift(liquidType, TYPE_SHIFT),
@@ -492,7 +492,7 @@ function LiquidCell.IsEmpty(cellRaw: any): boolean
 end
 
 function LiquidCell.IsFull(cellRaw: any, maxFillRaw: any?): boolean
-	local maxFill = sanitizeInteger(maxFillRaw, 1, MAX_FILL, MAX_FILL)
+	local maxFill = CoerceInteger(maxFillRaw, 1, MAX_FILL, MAX_FILL)
 	return LiquidCell.GetFill(cellRaw) >= maxFill
 end
 
@@ -569,14 +569,14 @@ local function createDefaultDefinitions(): { [number]: LiquidDefinition }
 	}
 end
 
-local function sanitizeDefinition(liquidType: number, sourceRaw: any, fallback: LiquidDefinition): LiquidDefinition
+local function CoerceDefinition(liquidType: number, sourceRaw: any, fallback: LiquidDefinition): LiquidDefinition
 	local source = if typeof(sourceRaw) == "table" then sourceRaw else {} :: any
 	return {
 		id = liquidType,
 		name = if typeof(source.name) == "string" and source.name ~= "" then source.name else fallback.name,
-		baseColor = sanitizeColor3(source.baseColor, fallback.baseColor),
-		surfaceColor = sanitizeColor3(source.surfaceColor, fallback.surfaceColor),
-		movementSpeedMultiplier = sanitizeNumber(
+		baseColor = CoerceColor3(source.baseColor, fallback.baseColor),
+		surfaceColor = CoerceColor3(source.surfaceColor, fallback.surfaceColor),
+		movementSpeedMultiplier = CoerceNumber(
 			source.movementSpeedMultiplier,
 			0.05,
 			1,
@@ -585,12 +585,12 @@ local function sanitizeDefinition(liquidType: number, sourceRaw: any, fallback: 
 		material = if typeof(source.material) == "EnumItem" and source.material.EnumType == Enum.Material
 			then source.material :: Enum.Material
 			else fallback.material,
-		interiorTransparency = sanitizeNumber(source.interiorTransparency, 0, 1, fallback.interiorTransparency),
-		surfaceTransparency = sanitizeNumber(source.surfaceTransparency, 0, 1, fallback.surfaceTransparency),
-		sideEqualizeRate = sanitizeNumber(source.sideEqualizeRate, 0.05, 1, fallback.sideEqualizeRate),
-		maxSideTransfer = sanitizeInteger(source.maxSideTransfer, 1, MAX_FILL, fallback.maxSideTransfer),
-		settleEpsilon = sanitizeInteger(source.settleEpsilon, 0, 16, fallback.settleEpsilon),
-		renderPriority = sanitizeInteger(source.renderPriority, 0, 16, fallback.renderPriority),
+		interiorTransparency = CoerceNumber(source.interiorTransparency, 0, 1, fallback.interiorTransparency),
+		surfaceTransparency = CoerceNumber(source.surfaceTransparency, 0, 1, fallback.surfaceTransparency),
+		sideEqualizeRate = CoerceNumber(source.sideEqualizeRate, 0.05, 1, fallback.sideEqualizeRate),
+		maxSideTransfer = CoerceInteger(source.maxSideTransfer, 1, MAX_FILL, fallback.maxSideTransfer),
+		settleEpsilon = CoerceInteger(source.settleEpsilon, 0, 16, fallback.settleEpsilon),
+		renderPriority = CoerceInteger(source.renderPriority, 0, 16, fallback.renderPriority),
 		blocksBreathing = if typeof(source.blocksBreathing) == "boolean"
 			then source.blocksBreathing
 			else fallback.blocksBreathing,
@@ -598,13 +598,13 @@ local function sanitizeDefinition(liquidType: number, sourceRaw: any, fallback: 
 			then source.supportsDrowning
 			else fallback.supportsDrowning,
 		isBurning = if typeof(source.isBurning) == "boolean" then source.isBurning else fallback.isBurning,
-		lavaTouchDamage = sanitizeNumber(source.lavaTouchDamage, 0, 500, fallback.lavaTouchDamage),
-		lavaTouchInterval = sanitizeNumber(source.lavaTouchInterval, 0.05, 5, fallback.lavaTouchInterval),
-		burnDamage = sanitizeNumber(source.burnDamage, 0, 500, fallback.burnDamage),
-		burnInterval = sanitizeNumber(source.burnInterval, 0.05, 5, fallback.burnInterval),
-		burnDuration = sanitizeNumber(source.burnDuration, 0, 120, fallback.burnDuration),
-		tintStrength = sanitizeNumber(source.tintStrength, 0, 1, fallback.tintStrength),
-		lavaAmbientTintStrength = sanitizeNumber(
+		lavaTouchDamage = CoerceNumber(source.lavaTouchDamage, 0, 500, fallback.lavaTouchDamage),
+		lavaTouchInterval = CoerceNumber(source.lavaTouchInterval, 0.05, 5, fallback.lavaTouchInterval),
+		burnDamage = CoerceNumber(source.burnDamage, 0, 500, fallback.burnDamage),
+		burnInterval = CoerceNumber(source.burnInterval, 0.05, 5, fallback.burnInterval),
+		burnDuration = CoerceNumber(source.burnDuration, 0, 120, fallback.burnDuration),
+		tintStrength = CoerceNumber(source.tintStrength, 0, 1, fallback.tintStrength),
+		lavaAmbientTintStrength = CoerceNumber(
 			source.lavaAmbientTintStrength,
 			0,
 			1,
@@ -684,14 +684,14 @@ function LiquidServiceUtils.CreateDefaultConfig(): LiquidServiceConfig
 	}
 end
 
-function LiquidServiceUtils.SanitizeConfig(configRaw: any, fallbackRaw: LiquidServiceConfig?): LiquidServiceConfig
+function LiquidServiceUtils.CoerceConfig(configRaw: any, fallbackRaw: LiquidServiceConfig?): LiquidServiceConfig
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else LiquidServiceUtils.CreateDefaultConfig()
 	local source = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local definitions: { [number]: LiquidDefinition } = {}
 	local definitionSource = if typeof(source.definitions) == "table" then source.definitions else {} :: any
 	for liquidType, fallbackDefinition in fallback.definitions do
 		local sourceDefinition = if typeof(definitionSource) == "table" then definitionSource[liquidType] else nil
-		definitions[liquidType] = sanitizeDefinition(liquidType, sourceDefinition, fallbackDefinition)
+		definitions[liquidType] = CoerceDefinition(liquidType, sourceDefinition, fallbackDefinition)
 	end
 
 	local simulationSource = if typeof(source.simulation) == "table" then source.simulation else {} :: any
@@ -701,82 +701,82 @@ function LiquidServiceUtils.SanitizeConfig(configRaw: any, fallbackRaw: LiquidSe
 	local debugSource = if typeof(source.debug) == "table" then source.debug else {} :: any
 
 	return {
-		maxFill = sanitizeInteger(source.maxFill, 32, MAX_FILL, fallback.maxFill),
+		maxFill = CoerceInteger(source.maxFill, 32, MAX_FILL, fallback.maxFill),
 		simulation = {
-			stepRate = sanitizeNumber(simulationSource.stepRate, 1, 60, fallback.simulation.stepRate),
-			hazardCheckRate = sanitizeNumber(
+			stepRate = CoerceNumber(simulationSource.stepRate, 1, 60, fallback.simulation.stepRate),
+			hazardCheckRate = CoerceNumber(
 				simulationSource.hazardCheckRate,
 				1,
 				60,
 				fallback.simulation.hazardCheckRate
 			),
-			streamSyncInterval = sanitizeNumber(
+			streamSyncInterval = CoerceNumber(
 				simulationSource.streamSyncInterval,
 				0.03,
 				2,
 				fallback.simulation.streamSyncInterval
 			),
-			activeSafetyMarginChunks = sanitizeInteger(
+			activeSafetyMarginChunks = CoerceInteger(
 				simulationSource.activeSafetyMarginChunks,
 				0,
 				4,
 				fallback.simulation.activeSafetyMarginChunks
 			),
-			disturbedChunkKeepAliveSeconds = sanitizeNumber(
+			disturbedChunkKeepAliveSeconds = CoerceNumber(
 				simulationSource.disturbedChunkKeepAliveSeconds,
 				0,
 				60,
 				fallback.simulation.disturbedChunkKeepAliveSeconds
 			),
-			maxChunkStepsPerTick = sanitizeInteger(
+			maxChunkStepsPerTick = CoerceInteger(
 				simulationSource.maxChunkStepsPerTick,
 				1,
 				128,
 				fallback.simulation.maxChunkStepsPerTick
 			),
-			maxCellsPerChunkStep = sanitizeInteger(
+			maxCellsPerChunkStep = CoerceInteger(
 				simulationSource.maxCellsPerChunkStep,
 				4,
 				2048,
 				fallback.simulation.maxCellsPerChunkStep
 			),
-			maxWakeRequestsPerTick = sanitizeInteger(
+			maxWakeRequestsPerTick = CoerceInteger(
 				simulationSource.maxWakeRequestsPerTick,
 				4,
 				4096,
 				fallback.simulation.maxWakeRequestsPerTick
 			),
-			maxDeltaCellsPerChunk = sanitizeInteger(
+			maxDeltaCellsPerChunk = CoerceInteger(
 				simulationSource.maxDeltaCellsPerChunk,
 				8,
 				4096,
 				fallback.simulation.maxDeltaCellsPerChunk
 			),
-			fullSnapshotThreshold = sanitizeInteger(
+			fullSnapshotThreshold = CoerceInteger(
 				simulationSource.fullSnapshotThreshold,
 				8,
 				4096,
 				fallback.simulation.fullSnapshotThreshold
 			),
-			generationSettlePasses = sanitizeInteger(
+			generationSettlePasses = CoerceInteger(
 				simulationSource.generationSettlePasses,
 				0,
 				128,
 				fallback.simulation.generationSettlePasses
 			),
-			leakScanDistanceTiles = sanitizeInteger(
+			leakScanDistanceTiles = CoerceInteger(
 				simulationSource.leakScanDistanceTiles,
 				4,
 				256,
 				fallback.simulation.leakScanDistanceTiles
 			),
-			consistencySweepInterval = sanitizeNumber(
+			consistencySweepInterval = CoerceNumber(
 				simulationSource.consistencySweepInterval,
 				0.1,
 				30,
 				fallback.simulation.consistencySweepInterval
 			),
-			consistencySweepChunkBudget = sanitizeInteger(
+			consistencySweepChunkBudget = CoerceInteger(
 				simulationSource.consistencySweepChunkBudget,
 				1,
 				256,
@@ -784,127 +784,127 @@ function LiquidServiceUtils.SanitizeConfig(configRaw: any, fallbackRaw: LiquidSe
 			),
 		},
 		generation = {
-			depressionScanRadius = sanitizeInteger(
+			depressionScanRadius = CoerceInteger(
 				generationSource.depressionScanRadius,
 				2,
 				24,
 				fallback.generation.depressionScanRadius
 			),
-			surfacePoolChance = sanitizeNumber(
+			surfacePoolChance = CoerceNumber(
 				generationSource.surfacePoolChance,
 				0,
 				1,
 				fallback.generation.surfacePoolChance
 			),
-			surfacePoolMinDepth = sanitizeInteger(
+			surfacePoolMinDepth = CoerceInteger(
 				generationSource.surfacePoolMinDepth,
 				1,
 				16,
 				fallback.generation.surfacePoolMinDepth
 			),
-			surfacePoolMaxDepth = sanitizeInteger(
+			surfacePoolMaxDepth = CoerceInteger(
 				generationSource.surfacePoolMaxDepth,
 				1,
 				24,
 				fallback.generation.surfacePoolMaxDepth
 			),
-			surfacePoolFillChance = sanitizeNumber(
+			surfacePoolFillChance = CoerceNumber(
 				generationSource.surfacePoolFillChance,
 				0,
 				1,
 				fallback.generation.surfacePoolFillChance
 			),
-			cavePocketChance = sanitizeNumber(
+			cavePocketChance = CoerceNumber(
 				generationSource.cavePocketChance,
 				0,
 				1,
 				fallback.generation.cavePocketChance
 			),
-			cavePocketMinDepth = sanitizeInteger(
+			cavePocketMinDepth = CoerceInteger(
 				generationSource.cavePocketMinDepth,
 				0,
 				512,
 				fallback.generation.cavePocketMinDepth
 			),
-			cavePocketMaxDepth = sanitizeInteger(
+			cavePocketMaxDepth = CoerceInteger(
 				generationSource.cavePocketMaxDepth,
 				0,
 				512,
 				fallback.generation.cavePocketMaxDepth
 			),
-			cavePocketMinRadius = sanitizeInteger(
+			cavePocketMinRadius = CoerceInteger(
 				generationSource.cavePocketMinRadius,
 				1,
 				16,
 				fallback.generation.cavePocketMinRadius
 			),
-			cavePocketMaxRadius = sanitizeInteger(
+			cavePocketMaxRadius = CoerceInteger(
 				generationSource.cavePocketMaxRadius,
 				1,
 				24,
 				fallback.generation.cavePocketMaxRadius
 			),
-			reservoirChance = sanitizeNumber(
+			reservoirChance = CoerceNumber(
 				generationSource.reservoirChance,
 				0,
 				1,
 				fallback.generation.reservoirChance
 			),
-			reservoirMinDepth = sanitizeInteger(
+			reservoirMinDepth = CoerceInteger(
 				generationSource.reservoirMinDepth,
 				0,
 				512,
 				fallback.generation.reservoirMinDepth
 			),
-			reservoirMaxDepth = sanitizeInteger(
+			reservoirMaxDepth = CoerceInteger(
 				generationSource.reservoirMaxDepth,
 				0,
 				512,
 				fallback.generation.reservoirMaxDepth
 			),
-			reservoirMinRadius = sanitizeInteger(
+			reservoirMinRadius = CoerceInteger(
 				generationSource.reservoirMinRadius,
 				1,
 				24,
 				fallback.generation.reservoirMinRadius
 			),
-			reservoirMaxRadius = sanitizeInteger(
+			reservoirMaxRadius = CoerceInteger(
 				generationSource.reservoirMaxRadius,
 				1,
 				32,
 				fallback.generation.reservoirMaxRadius
 			),
-			lavaStartDepth = sanitizeInteger(
+			lavaStartDepth = CoerceInteger(
 				generationSource.lavaStartDepth,
 				0,
 				1024,
 				fallback.generation.lavaStartDepth
 			),
-			lavaCommonDepth = sanitizeInteger(
+			lavaCommonDepth = CoerceInteger(
 				generationSource.lavaCommonDepth,
 				0,
 				1024,
 				fallback.generation.lavaCommonDepth
 			),
-			lavaPocketChance = sanitizeNumber(
+			lavaPocketChance = CoerceNumber(
 				generationSource.lavaPocketChance,
 				0,
 				1,
 				fallback.generation.lavaPocketChance
 			),
-			lavaReservoirChance = sanitizeNumber(
+			lavaReservoirChance = CoerceNumber(
 				generationSource.lavaReservoirChance,
 				0,
 				1,
 				fallback.generation.lavaReservoirChance
 			),
-			lavaPocketMinRadius = sanitizeInteger(
+			lavaPocketMinRadius = CoerceInteger(
 				generationSource.lavaPocketMinRadius,
 				1,
 				24,
 				fallback.generation.lavaPocketMinRadius
 			),
-			lavaPocketMaxRadius = sanitizeInteger(
+			lavaPocketMaxRadius = CoerceInteger(
 				generationSource.lavaPocketMaxRadius,
 				1,
 				32,
@@ -912,34 +912,34 @@ function LiquidServiceUtils.SanitizeConfig(configRaw: any, fallbackRaw: LiquidSe
 			),
 		},
 		render = {
-			interpolationTime = sanitizeNumber(
+			interpolationTime = CoerceNumber(
 				renderSource.interpolationTime,
 				0.03,
 				2,
 				fallback.render.interpolationTime
 			),
-			surfaceWaveAmplitudeStuds = sanitizeNumber(
+			surfaceWaveAmplitudeStuds = CoerceNumber(
 				renderSource.surfaceWaveAmplitudeStuds,
 				0,
 				1,
 				fallback.render.surfaceWaveAmplitudeStuds
 			),
-			surfaceWaveSpeed = sanitizeNumber(renderSource.surfaceWaveSpeed, 0, 16, fallback.render.surfaceWaveSpeed),
-			surfaceWaveScale = sanitizeNumber(renderSource.surfaceWaveScale, 0.01, 8, fallback.render.surfaceWaveScale),
-			rebuildRowsPerFrame = sanitizeInteger(
+			surfaceWaveSpeed = CoerceNumber(renderSource.surfaceWaveSpeed, 0, 16, fallback.render.surfaceWaveSpeed),
+			surfaceWaveScale = CoerceNumber(renderSource.surfaceWaveScale, 0.01, 8, fallback.render.surfaceWaveScale),
+			rebuildRowsPerFrame = CoerceInteger(
 				renderSource.rebuildRowsPerFrame,
 				1,
 				64,
 				fallback.render.rebuildRowsPerFrame
 			),
-			rebuildFlushInterval = sanitizeNumber(
+			rebuildFlushInterval = CoerceNumber(
 				renderSource.rebuildFlushInterval,
 				1 / 240,
 				1,
 				fallback.render.rebuildFlushInterval
 			),
-			minVisibleFill = sanitizeInteger(renderSource.minVisibleFill, 1, MAX_FILL, fallback.render.minVisibleFill),
-			fillBucketSize = sanitizeInteger(renderSource.fillBucketSize, 1, 64, fallback.render.fillBucketSize),
+			minVisibleFill = CoerceInteger(renderSource.minVisibleFill, 1, MAX_FILL, fallback.render.minVisibleFill),
+			fillBucketSize = CoerceInteger(renderSource.fillBucketSize, 1, 64, fallback.render.fillBucketSize),
 		},
 		definitions = definitions,
 		biomeTints = {
@@ -997,11 +997,11 @@ function LiquidServiceUtils.CreateState(stateRaw: any, fallbackRaw: LiquidServic
 	local source = if typeof(stateRaw) == "table" then stateRaw else {} :: any
 	return {
 		ready = if typeof(source.ready) == "boolean" then source.ready else fallback.ready,
-		tileSize = sanitizeNumber(source.tileSize, 0.05, 64, fallback.tileSize),
-		chunkSize = sanitizeInteger(source.chunkSize, 1, 256, fallback.chunkSize),
+		tileSize = CoerceNumber(source.tileSize, 0.05, 64, fallback.tileSize),
+		chunkSize = CoerceInteger(source.chunkSize, 1, 256, fallback.chunkSize),
 		worldOrigin = if typeof(source.worldOrigin) == "Vector3" then source.worldOrigin else fallback.worldOrigin,
-		maxFill = sanitizeInteger(source.maxFill, 1, MAX_FILL, fallback.maxFill),
-		interpolationTime = sanitizeNumber(source.interpolationTime, 0.03, 2, fallback.interpolationTime),
+		maxFill = CoerceInteger(source.maxFill, 1, MAX_FILL, fallback.maxFill),
+		interpolationTime = CoerceNumber(source.interpolationTime, 0.03, 2, fallback.interpolationTime),
 		updatedAt = os.clock(),
 	}
 end
@@ -1020,18 +1020,18 @@ end
 
 function LiquidServiceUtils.GetDefinition(configRaw: LiquidServiceConfig?, liquidTypeRaw: any): LiquidDefinition?
 	local config = if configRaw ~= nil then configRaw else LiquidServiceUtils.CreateDefaultConfig()
-	local liquidType = sanitizeInteger(liquidTypeRaw, LiquidServiceUtils.LIQUID_TYPE.NONE, 7, 0)
+	local liquidType = CoerceInteger(liquidTypeRaw, LiquidServiceUtils.LIQUID_TYPE.NONE, 7, 0)
 	return config.definitions[liquidType]
 end
 
 local LiquidColor = {}
 
-function LiquidColor.ResolveWaterTint(config: LiquidServiceConfig, biomeIdRaw: any, biomeTypeRaw: any): Color3
+function LiquidColor.GetWaterTint(config: LiquidServiceConfig, biomeIdRaw: any, biomeTypeRaw: any): Color3
 	local definitions = config.definitions
 	local waterDefinition = definitions[LiquidServiceUtils.LIQUID_TYPE.WATER]
 	local baseColor = if waterDefinition ~= nil then waterDefinition.baseColor else Color3.fromRGB(74, 174, 225)
-	local biomeId = sanitizeInteger(biomeIdRaw, -2048, 2048, 1)
-	local biomeType = sanitizeInteger(biomeTypeRaw, -2048, 2048, 1)
+	local biomeId = CoerceInteger(biomeIdRaw, -2048, 2048, 1)
+	local biomeType = CoerceInteger(biomeTypeRaw, -2048, 2048, 1)
 	local typeColor = config.biomeTints.byBiomeType[biomeType] :: Color3?
 	local biomeColor = config.biomeTints.byBiomeId[biomeId] :: Color3?
 	local blended = baseColor
@@ -1044,9 +1044,9 @@ function LiquidColor.ResolveWaterTint(config: LiquidServiceConfig, biomeIdRaw: a
 	return blended
 end
 
-function LiquidColor.ResolveLavaAmbientTint(config: LiquidServiceConfig, biomeIdRaw: any, biomeTypeRaw: any): Color3?
-	local biomeId = sanitizeInteger(biomeIdRaw, -2048, 2048, 1)
-	local biomeType = sanitizeInteger(biomeTypeRaw, -2048, 2048, 1)
+function LiquidColor.GetLavaAmbientTint(config: LiquidServiceConfig, biomeIdRaw: any, biomeTypeRaw: any): Color3?
+	local biomeId = CoerceInteger(biomeIdRaw, -2048, 2048, 1)
+	local biomeType = CoerceInteger(biomeTypeRaw, -2048, 2048, 1)
 	local typeColorRaw = (config.biomeTints.lavaAmbientByBiomeType :: any)[biomeType]
 	local biomeColorRaw = (config.biomeTints.lavaAmbientByBiomeId :: any)[biomeId]
 	local hasTypeColor = typeof(typeColorRaw) == "Color3"
@@ -1079,32 +1079,32 @@ function LiquidColor.SampleWaterColorAtWorldPosition(
 	local biomeId01, biomeType01 = sampleBiomeAtTile(tileX0, tileY0 + 1)
 	local biomeId11, biomeType11 = sampleBiomeAtTile(tileX0 + 1, tileY0 + 1)
 
-	local color00 = LiquidColor.ResolveWaterTint(config, biomeId00, biomeType00)
-	local color10 = LiquidColor.ResolveWaterTint(config, biomeId10, biomeType10)
-	local color01 = LiquidColor.ResolveWaterTint(config, biomeId01, biomeType01)
-	local color11 = LiquidColor.ResolveWaterTint(config, biomeId11, biomeType11)
+	local color00 = LiquidColor.GetWaterTint(config, biomeId00, biomeType00)
+	local color10 = LiquidColor.GetWaterTint(config, biomeId10, biomeType10)
+	local color01 = LiquidColor.GetWaterTint(config, biomeId01, biomeType01)
+	local color11 = LiquidColor.GetWaterTint(config, biomeId11, biomeType11)
 
 	local top = lerpColor(color00, color10, fracX)
 	local bottom = lerpColor(color01, color11, fracX)
 	return lerpColor(top, bottom, fracY)
 end
 
-function LiquidColor.ResolveLiquidColor(
+function LiquidColor.GetLiquidColor(
 	config: LiquidServiceConfig,
 	liquidTypeRaw: any,
 	biomeIdRaw: any,
 	biomeTypeRaw: any
 ): Color3
-	local liquidType = sanitizeInteger(liquidTypeRaw, 0, 7, 0)
+	local liquidType = CoerceInteger(liquidTypeRaw, 0, 7, 0)
 	local definition = config.definitions[liquidType]
 	if definition == nil then
 		return Color3.fromRGB(255, 255, 255)
 	end
 	if liquidType == LiquidServiceUtils.LIQUID_TYPE.WATER then
-		return LiquidColor.ResolveWaterTint(config, biomeIdRaw, biomeTypeRaw)
+		return LiquidColor.GetWaterTint(config, biomeIdRaw, biomeTypeRaw)
 	end
 	if liquidType == LiquidServiceUtils.LIQUID_TYPE.LAVA then
-		local ambientTint = LiquidColor.ResolveLavaAmbientTint(config, biomeIdRaw, biomeTypeRaw)
+		local ambientTint = LiquidColor.GetLavaAmbientTint(config, biomeIdRaw, biomeTypeRaw)
 		if ambientTint ~= nil then
 			return lerpColor(definition.baseColor, ambientTint, definition.lavaAmbientTintStrength)
 		end
@@ -1142,11 +1142,11 @@ function LiquidMesher.BuildBackgroundVisualCells(
 	layerDataRaw: any,
 	layerListIndexRaw: any
 ): { number }
-	local width = sanitizeInteger(widthRaw, 1, 512, 1)
-	local height = sanitizeInteger(heightRaw, 1, 512, 1)
-	local tileMinX = sanitizeInteger(tileMinXRaw, -10000000, 10000000, 0)
-	local tileMinY = sanitizeInteger(tileMinYRaw, -10000000, 10000000, 0)
-	local layerListIndex = sanitizeInteger(layerListIndexRaw, 1, 64, 1)
+	local width = CoerceInteger(widthRaw, 1, 512, 1)
+	local height = CoerceInteger(heightRaw, 1, 512, 1)
+	local tileMinX = CoerceInteger(tileMinXRaw, -10000000, 10000000, 0)
+	local tileMinY = CoerceInteger(tileMinYRaw, -10000000, 10000000, 0)
+	local layerListIndex = CoerceInteger(layerListIndexRaw, 1, 64, 1)
 	local total = width * height
 	local derivedCells = Sift.Array.create(total, 0)
 	local sourceCells = if typeof(sourceCellsRaw) == "table" then sourceCellsRaw :: { number } else nil
@@ -1158,11 +1158,11 @@ function LiquidMesher.BuildBackgroundVisualCells(
 	end
 
 	local layerSource = layerDataRaw :: { [string]: any }
-	local layerWidth = sanitizeInteger(layerSource.width, 1, 512, width)
-	local layerHeight = sanitizeInteger(layerSource.height, 1, 512, height)
+	local layerWidth = CoerceInteger(layerSource.width, 1, 512, width)
+	local layerHeight = CoerceInteger(layerSource.height, 1, 512, height)
 	local layerData: LiquidBackgroundLayerSource = {
-		tileMinX = sanitizeInteger(layerSource.tileMinX, -10000000, 10000000, tileMinX),
-		tileMinY = sanitizeInteger(layerSource.tileMinY, -10000000, 10000000, tileMinY),
+		tileMinX = CoerceInteger(layerSource.tileMinX, -10000000, 10000000, tileMinX),
+		tileMinY = CoerceInteger(layerSource.tileMinY, -10000000, 10000000, tileMinY),
 		width = layerWidth,
 		height = layerHeight,
 		tiles = if typeof(layerSource.tiles) == "table" then layerSource.tiles :: { number } else {} :: any,
@@ -1246,7 +1246,7 @@ function LiquidMesher.BuildRowDescriptors(
 	height: number,
 	rowYRaw: any
 ): { LiquidStripDescriptor }
-	local rowY = sanitizeInteger(rowYRaw, 0, math.max(0, height - 1), 0)
+	local rowY = CoerceInteger(rowYRaw, 0, math.max(0, height - 1), 0)
 	local descriptors: { LiquidStripDescriptor } = {}
 	local fillBucketSize = math.max(1, config.render.fillBucketSize)
 	local minVisibleFill = math.max(1, config.render.minVisibleFill)
@@ -1392,7 +1392,7 @@ function LiquidQuery.WorldToTile(provider: LiquidQueryProvider, worldPosition: V
 end
 
 function LiquidQuery.GetSurfaceWorldY(provider: LiquidQueryProvider, tileY: number, fillRaw: any): number
-	local fill = sanitizeInteger(fillRaw, 0, MAX_FILL, 0)
+	local fill = CoerceInteger(fillRaw, 0, MAX_FILL, 0)
 	return provider.worldOrigin.Y + tileY * provider.tileSize + (fill / MAX_FILL) * provider.tileSize
 end
 
@@ -1652,7 +1652,7 @@ local function mergeWakeTiles(
 end
 
 local function getLeakScanDistance(access: LiquidSolverAccess): number
-	return sanitizeInteger(access.maxLeakScanDistance, 4, 256, 96)
+	return CoerceInteger(access.maxLeakScanDistance, 4, 256, 96)
 end
 
 local function wakeTile(
@@ -2256,7 +2256,7 @@ function LiquidSolver.SettleGrid(
 	passesRaw: any?
 ): { number }
 	local settled = Sift.Dictionary.copy(cells)
-	local passes = sanitizeInteger(passesRaw, 0, 256, config.simulation.generationSettlePasses)
+	local passes = CoerceInteger(passesRaw, 0, 256, config.simulation.generationSettlePasses)
 
 	local function getCell(tileX: number, tileY: number): number
 		if tileX < 0 or tileX >= width or tileY < 0 or tileY >= height then
@@ -2320,45 +2320,4 @@ function LiquidSolver.SettleGrid(
 end
 
 LiquidServiceUtils.LiquidSolver = LiquidSolver
-
-LiquidServiceUtils.packChunkKey = LiquidServiceUtils.PackChunkKey
-LiquidServiceUtils.unpackChunkKey = LiquidServiceUtils.UnpackChunkKey
-LiquidServiceUtils.computeTileIndex = LiquidServiceUtils.ComputeTileIndex
-LiquidServiceUtils.toTileCoordinate = LiquidServiceUtils.ToTileCoordinate
-LiquidServiceUtils.toChunkCoordinate = LiquidServiceUtils.ToChunkCoordinate
-LiquidServiceUtils.tileToWorldCenter = LiquidServiceUtils.TileToWorldCenter
-LiquidCell.pack = LiquidCell.Pack
-LiquidCell.unpack = LiquidCell.Unpack
-LiquidCell.getType = LiquidCell.GetType
-LiquidCell.getFill = LiquidCell.GetFill
-LiquidCell.getFlowState = LiquidCell.GetFlowState
-LiquidCell.isEmpty = LiquidCell.IsEmpty
-LiquidCell.isFull = LiquidCell.IsFull
-LiquidCell.withFill = LiquidCell.WithFill
-LiquidCell.withFlowState = LiquidCell.WithFlowState
-LiquidCell.make = LiquidCell.Make
-LiquidServiceUtils.createDefaultConfig = LiquidServiceUtils.CreateDefaultConfig
-LiquidServiceUtils.sanitizeConfig = LiquidServiceUtils.SanitizeConfig
-LiquidServiceUtils.createDefaultState = LiquidServiceUtils.CreateDefaultState
-LiquidServiceUtils.createState = LiquidServiceUtils.CreateState
-LiquidServiceUtils.cloneState = LiquidServiceUtils.CloneState
-LiquidServiceUtils.getDefinition = LiquidServiceUtils.GetDefinition
-LiquidColor.resolveWaterTint = LiquidColor.ResolveWaterTint
-LiquidColor.resolveLavaAmbientTint = LiquidColor.ResolveLavaAmbientTint
-LiquidColor.sampleWaterColorAtWorldPosition = LiquidColor.SampleWaterColorAtWorldPosition
-LiquidColor.resolveLiquidColor = LiquidColor.ResolveLiquidColor
-LiquidMesher.buildBackgroundVisualCells = LiquidMesher.BuildBackgroundVisualCells
-LiquidMesher.buildRowDescriptors = LiquidMesher.BuildRowDescriptors
-LiquidMesher.getAffectedRowsForChanges = LiquidMesher.GetAffectedRowsForChanges
-LiquidQuery.worldToTile = LiquidQuery.WorldToTile
-LiquidQuery.getSurfaceWorldY = LiquidQuery.GetSurfaceWorldY
-LiquidQuery.sampleWorldPoint = LiquidQuery.SampleWorldPoint
-LiquidQuery.queryCharacter = LiquidQuery.QueryCharacter
-LiquidDamage.shouldBlockBreath = LiquidDamage.ShouldBlockBreath
-LiquidDamage.shouldApplyLavaContact = LiquidDamage.ShouldApplyLavaContact
-LiquidDamage.getLavaDefinition = LiquidDamage.GetLavaDefinition
-LiquidSolver.inspectCell = LiquidSolver.InspectCell
-LiquidSolver.stepCell = LiquidSolver.StepCell
-LiquidSolver.settleGrid = LiquidSolver.SettleGrid
-
 return LiquidServiceUtils

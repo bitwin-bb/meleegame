@@ -79,7 +79,7 @@ function WorldAnimatorServiceUtils.NormalizeEasing(valueRaw: any, fallback: Chun
 	return (fallback or DEFAULT_SETTINGS.easing) :: ChunkAnimationEasing
 end
 
-function WorldAnimatorServiceUtils.SanitizeSettings(
+function WorldAnimatorServiceUtils.CoerceSettings(
 	settingsRaw: any,
 	fallbackRaw: ChunkAnimatorSettings?
 ): ChunkAnimatorSettings
@@ -130,17 +130,17 @@ function WorldAnimatorServiceUtils.CreateSettingsFromConfigs(configsRaw: any?): 
 	local worldAnimatorSettings = if typeof(configSource) == "table"
 		then (configSource :: any).worldAnimatorSettings
 		else nil
-	return WorldAnimatorServiceUtils.SanitizeSettings(worldAnimatorSettings, nil)
+	return WorldAnimatorServiceUtils.CoerceSettings(worldAnimatorSettings, nil)
 end
 
 function WorldAnimatorServiceUtils.ApplyEasing(easing: ChunkAnimationEasing, alphaRaw: any): number
 	local alpha = clampNumber(alphaRaw, 0, 1, 0)
 
 	if easing == "sine" then
-		return Ease.outSine(alpha)
+		return Ease.OutSine(alpha)
 	end
 	if easing == "quadratic" then
-		return Ease.outQuad(alpha)
+		return Ease.OutQuad(alpha)
 	end
 	return alpha
 end
@@ -163,7 +163,7 @@ function WorldAnimatorServiceUtils.ComputeAnimationOffset(
 	return Vector3.zero
 end
 
-function WorldAnimatorServiceUtils.ResolveLocalPlayerRootPart(): BasePart?
+function WorldAnimatorServiceUtils.GetLocalPlayerRootPart(): BasePart?
 	local player = Players.LocalPlayer
 	local character = player.Character
 	if character == nil then
@@ -183,7 +183,7 @@ function WorldAnimatorServiceUtils.ResolveLocalPlayerRootPart(): BasePart?
 end
 
 function WorldAnimatorServiceUtils.GetLocalPlayerDistanceFromPosition(worldPosition: Vector3): number?
-	local rootPart = WorldAnimatorServiceUtils.ResolveLocalPlayerRootPart()
+	local rootPart = WorldAnimatorServiceUtils.GetLocalPlayerRootPart()
 	if rootPart == nil then
 		return nil
 	end
@@ -205,7 +205,7 @@ function WorldAnimatorServiceUtils.IsChunkModel(instance: Instance?): boolean
 end
 
 function WorldAnimatorServiceUtils.FindWorldGenerationFolder(): Folder?
-	return WorkspaceFolders.findFolderInGameOrWorkspace(WORLD_FOLDER_NAME)
+	return WorkspaceFolders.FindFolderInGameOrWorkspace(WORLD_FOLDER_NAME)
 end
 
 function WorldAnimatorServiceUtils.FindChunksFolder(worldFolder: Instance?): Folder?
@@ -218,19 +218,4 @@ function WorldAnimatorServiceUtils.FindChunksFolder(worldFolder: Instance?): Fol
 	end
 	return nil
 end
-
-WorldAnimatorServiceUtils.normalizeAnimationType = WorldAnimatorServiceUtils.NormalizeAnimationType
-WorldAnimatorServiceUtils.normalizeEasing = WorldAnimatorServiceUtils.NormalizeEasing
-WorldAnimatorServiceUtils.sanitizeSettings = WorldAnimatorServiceUtils.SanitizeSettings
-WorldAnimatorServiceUtils.createSettingsFromConfigs = WorldAnimatorServiceUtils.CreateSettingsFromConfigs
-WorldAnimatorServiceUtils.applyEasing = WorldAnimatorServiceUtils.ApplyEasing
-WorldAnimatorServiceUtils.doesAnimationUseFade = WorldAnimatorServiceUtils.DoesAnimationUseFade
-WorldAnimatorServiceUtils.computeAnimationOffset = WorldAnimatorServiceUtils.ComputeAnimationOffset
-WorldAnimatorServiceUtils.resolveLocalPlayerRootPart = WorldAnimatorServiceUtils.ResolveLocalPlayerRootPart
-WorldAnimatorServiceUtils.getLocalPlayerDistanceFromPosition =
-	WorldAnimatorServiceUtils.GetLocalPlayerDistanceFromPosition
-WorldAnimatorServiceUtils.isChunkModel = WorldAnimatorServiceUtils.IsChunkModel
-WorldAnimatorServiceUtils.findWorldGenerationFolder = WorldAnimatorServiceUtils.FindWorldGenerationFolder
-WorldAnimatorServiceUtils.findChunksFolder = WorldAnimatorServiceUtils.FindChunksFolder
-
 return WorldAnimatorServiceUtils

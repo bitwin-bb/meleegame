@@ -14,7 +14,7 @@ local CMDR_COMMAND_LOAD_POLL_INTERVAL_SECONDS = 0.1
 local EXTRA_ALLOWED_USER_IDS = {}
 local INFRASTRUCTURE_MODULE_KEYS = {
 	loader = true,
-	cmdrpackageresolver = true,
+	cmdrPackageGetter = true,
 }
 local MIN_CREATOR_GROUP_RANK = 254
 
@@ -112,7 +112,7 @@ local function isCmdrInfrastructureModule(moduleScript: ModuleScript): boolean
 	return INFRASTRUCTURE_MODULE_KEYS[normalizeCommandKey(moduleScript.Name)] == true
 end
 
-local function resolveCmdrRoots(): (Folder, Folder, Folder)
+local function GetCmdrRoots(): (Folder, Folder, Folder)
 	local gameRoot = script:FindFirstAncestor("game")
 	assert(gameRoot ~= nil, "Missing Nevermore game root for CmdrBootstrapServer.")
 
@@ -136,10 +136,10 @@ local function resolveCmdrRoots(): (Folder, Folder, Folder)
 
 	local cmdrTypes = sharedCmdrRoot:FindFirstChild("Types")
 	local sharedCommands = sharedCmdrRoot:FindFirstChild("Commands")
-	local serverCommands = serverCmdrRoot:FindFirstChild("ServerCommands")
+	local serverCommands = serverCmdrRoot:FindFirstChild("CommandsServer")
 	assert(cmdrTypes ~= nil and cmdrTypes:IsA("Folder"), "Cmdr Types folder was not found.")
 	assert(sharedCommands ~= nil and sharedCommands:IsA("Folder"), "Cmdr shared Commands folder was not found.")
-	assert(serverCommands ~= nil and serverCommands:IsA("Folder"), "Cmdr ServerCommands folder was not found.")
+	assert(serverCommands ~= nil and serverCommands:IsA("Folder"), "Cmdr CommandsServer folder was not found.")
 
 	return cmdrTypes, sharedCommands, serverCommands
 end
@@ -232,7 +232,7 @@ local function tryRequireCommandExecutor(moduleScript: ModuleScript): (boolean, 
 	return true, result, nil
 end
 
-local function resolveFirstValidModule(
+local function GetFirstValidModule(
 	moduleScripts: { ModuleScript },
 	validator: (ModuleScript) -> (boolean, any, string?)
 ): (ModuleScript?, any, { string })
@@ -252,7 +252,7 @@ local function resolveFirstValidModule(
 	return nil, nil, issues
 end
 
-local function resolveServerCommandCandidates(
+local function GetServerCommandCandidates(
 	serverModulesByKey: { [string]: { ModuleScript } },
 	candidateKeys: { string }
 ): { ModuleScript }
@@ -368,7 +368,7 @@ local function registerCmdrCommands(cmdrService: any, sharedFolder: Instance, se
 		warnDuplicateModules("shared", sharedModuleKey, sharedModules)
 
 		local sharedModule, commandData, sharedIssues =
-			resolveFirstValidModule(sharedModules, tryRequireCommandDefinition)
+			GetFirstValidModule(sharedModules, tryRequireCommandDefinition)
 		warnModuleIssues(sharedIssues)
 
 		local commandLabel = sharedModules[1].Name
@@ -392,10 +392,10 @@ local function registerCmdrCommands(cmdrService: any, sharedFolder: Instance, se
 			candidateServerKeys[#candidateServerKeys + 1] = commandNameKey
 		end
 
-		local serverModules = resolveServerCommandCandidates(serverModulesByKey, candidateServerKeys)
+		local serverModules = GetServerCommandCandidates(serverModulesByKey, candidateServerKeys)
 		warnDuplicateModules("server", commandLabel, serverModules)
 
-		local serverModule, execute, serverIssues = resolveFirstValidModule(serverModules, tryRequireCommandExecutor)
+		local serverModule, execute, serverIssues = GetFirstValidModule(serverModules, tryRequireCommandExecutor)
 		warnModuleIssues(serverIssues)
 
 		if serverModule == nil then
@@ -444,7 +444,7 @@ function CmdrBootstrapServer.Start(serviceBag: any)
 		clearCmdrPlayerAttributes(player)
 	end)
 
-	local cmdrTypes, sharedCommands, serverCommands = resolveCmdrRoots()
+	local cmdrTypes, sharedCommands, serverCommands = GetCmdrRoots()
 	local cmdrService = serviceBag:GetService(CmdrService)
 
 	cmdrService:PromiseCmdr():Then(function(cmdr)
@@ -454,7 +454,4 @@ function CmdrBootstrapServer.Start(serviceBag: any)
 		assert(registeredCount > 0, "[CmdrBootstrapServer] No valid Cmdr commands were registered.")
 	end)
 end
-
-CmdrBootstrapServer.start = CmdrBootstrapServer.Start
-
 return CmdrBootstrapServer

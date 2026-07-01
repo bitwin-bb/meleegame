@@ -215,7 +215,7 @@ local function normalizeToken(valueRaw: any): string
 	return string.lower(normalized)
 end
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -235,7 +235,7 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?,
 	return value
 end
 
-local function sanitizeBoolean(valueRaw: any, fallback: boolean): boolean
+local function CoerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
@@ -283,7 +283,7 @@ local function cloneMotionState(source: BossMotionState): BossMotionState
 	}
 end
 
-local function sanitizeBossId(bossIdRaw: any, fallback: BossId?): BossId?
+local function CoerceBossId(bossIdRaw: any, fallback: BossId?): BossId?
 	if bossIdRaw == "EyeOfCthulhu" then
 		return "EyeOfCthulhu"
 	end
@@ -298,7 +298,7 @@ local function sanitizeBossId(bossIdRaw: any, fallback: BossId?): BossId?
 	return fallback
 end
 
-local function sanitizeStateName(stateRaw: any, fallback: BossEncounterState): BossEncounterState
+local function CoerceStateName(stateRaw: any, fallback: BossEncounterState): BossEncounterState
 	if
 		stateRaw == "Dormant"
 		or stateRaw == "SpawnIntro"
@@ -376,12 +376,12 @@ function BossServiceUtils.NormalizeToken(valueRaw: any): string
 	return normalizeToken(valueRaw)
 end
 
-function BossServiceUtils.SanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
-	return sanitizeNumber(valueRaw, fallback, minimum, maximum)
+function BossServiceUtils.CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+	return CoerceNumber(valueRaw, fallback, minimum, maximum)
 end
 
-function BossServiceUtils.SanitizeBoolean(valueRaw: any, fallback: boolean): boolean
-	return sanitizeBoolean(valueRaw, fallback)
+function BossServiceUtils.CoerceBoolean(valueRaw: any, fallback: boolean): boolean
+	return CoerceBoolean(valueRaw, fallback)
 end
 
 function BossServiceUtils.CreateDefaultPresentation(): BossPresentationState
@@ -392,7 +392,7 @@ function BossServiceUtils.CreateDefaultMotionState(): BossMotionState
 	return cloneMotionState(DEFAULT_MOTION)
 end
 
-function BossServiceUtils.SanitizePresentation(
+function BossServiceUtils.CoercePresentation(
 	presentationRaw: any,
 	fallbackRaw: BossPresentationState?
 ): BossPresentationState
@@ -403,29 +403,29 @@ function BossServiceUtils.SanitizePresentation(
 		phaseModel = if typeof((source :: any).phaseModel) == "string" and (source :: any).phaseModel ~= ""
 			then (source :: any).phaseModel
 			else fallback.phaseModel,
-		isHurtWindowActive = sanitizeBoolean((source :: any).isHurtWindowActive, fallback.isHurtWindowActive),
-		isRoaring = sanitizeBoolean((source :: any).isRoaring, fallback.isRoaring),
-		isTransforming = sanitizeBoolean((source :: any).isTransforming, fallback.isTransforming),
-		isDying = sanitizeBoolean((source :: any).isDying, fallback.isDying),
-		isDespawning = sanitizeBoolean((source :: any).isDespawning, fallback.isDespawning),
+		isHurtWindowActive = CoerceBoolean((source :: any).isHurtWindowActive, fallback.isHurtWindowActive),
+		isRoaring = CoerceBoolean((source :: any).isRoaring, fallback.isRoaring),
+		isTransforming = CoerceBoolean((source :: any).isTransforming, fallback.isTransforming),
+		isDying = CoerceBoolean((source :: any).isDying, fallback.isDying),
+		isDespawning = CoerceBoolean((source :: any).isDespawning, fallback.isDespawning),
 		damagePulseToken = math.floor(
-			sanitizeNumber((source :: any).damagePulseToken, fallback.damagePulseToken, 0, 10 ^ 9)
+			CoerceNumber((source :: any).damagePulseToken, fallback.damagePulseToken, 0, 10 ^ 9)
 		),
-		dashPulseToken = math.floor(sanitizeNumber((source :: any).dashPulseToken, fallback.dashPulseToken, 0, 10 ^ 9)),
-		roarPulseToken = math.floor(sanitizeNumber((source :: any).roarPulseToken, fallback.roarPulseToken, 0, 10 ^ 9)),
+		dashPulseToken = math.floor(CoerceNumber((source :: any).dashPulseToken, fallback.dashPulseToken, 0, 10 ^ 9)),
+		roarPulseToken = math.floor(CoerceNumber((source :: any).roarPulseToken, fallback.roarPulseToken, 0, 10 ^ 9)),
 		transformPulseToken = math.floor(
-			sanitizeNumber((source :: any).transformPulseToken, fallback.transformPulseToken, 0, 10 ^ 9)
+			CoerceNumber((source :: any).transformPulseToken, fallback.transformPulseToken, 0, 10 ^ 9)
 		),
 		deathPulseToken = math.floor(
-			sanitizeNumber((source :: any).deathPulseToken, fallback.deathPulseToken, 0, 10 ^ 9)
+			CoerceNumber((source :: any).deathPulseToken, fallback.deathPulseToken, 0, 10 ^ 9)
 		),
 		servantPulseToken = math.floor(
-			sanitizeNumber((source :: any).servantPulseToken, fallback.servantPulseToken, 0, 10 ^ 9)
+			CoerceNumber((source :: any).servantPulseToken, fallback.servantPulseToken, 0, 10 ^ 9)
 		),
 	}
 end
 
-function BossServiceUtils.SanitizeMotionState(motionRaw: any, fallbackRaw: BossMotionState?): BossMotionState
+function BossServiceUtils.CoerceMotionState(motionRaw: any, fallbackRaw: BossMotionState?): BossMotionState
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else DEFAULT_MOTION
 	local source = if typeof(motionRaw) == "table" then motionRaw else {} :: any
 
@@ -443,7 +443,7 @@ function BossServiceUtils.SanitizeMotionState(motionRaw: any, fallbackRaw: BossM
 			then (source :: any).hoverAnchor
 			else fallback.hoverAnchor,
 		distanceToAnchor = if typeof((source :: any).distanceToAnchor) == "number"
-			then sanitizeNumber((source :: any).distanceToAnchor, 0, 0, 10 ^ 6)
+			then CoerceNumber((source :: any).distanceToAnchor, 0, 0, 10 ^ 6)
 			else fallback.distanceToAnchor,
 		lockedChargeDirection = if typeof((source :: any).lockedChargeDirection) == "Vector3"
 			then (source :: any).lockedChargeDirection
@@ -462,25 +462,25 @@ function BossServiceUtils.SanitizeMotionState(motionRaw: any, fallbackRaw: BossM
 			then (source :: any).currentPattern
 			else fallback.currentPattern,
 		patternTimer = if typeof((source :: any).patternTimer) == "number"
-			then sanitizeNumber((source :: any).patternTimer, 0, 0, 10 ^ 6)
+			then CoerceNumber((source :: any).patternTimer, 0, 0, 10 ^ 6)
 			else fallback.patternTimer,
 		ramCount = if typeof((source :: any).ramCount) == "number"
-			then math.floor(sanitizeNumber((source :: any).ramCount, 0, 0, 1000))
+			then math.floor(CoerceNumber((source :: any).ramCount, 0, 0, 1000))
 			else fallback.ramCount,
 		maxRamCount = if typeof((source :: any).maxRamCount) == "number"
-			then math.floor(sanitizeNumber((source :: any).maxRamCount, 0, 0, 1000))
+			then math.floor(CoerceNumber((source :: any).maxRamCount, 0, 0, 1000))
 			else fallback.maxRamCount,
 		nextPattern = if typeof((source :: any).nextPattern) == "string" and (source :: any).nextPattern ~= ""
 			then (source :: any).nextPattern
 			else fallback.nextPattern,
 		chargeTimeRemaining = if typeof((source :: any).chargeTimeRemaining) == "number"
-			then sanitizeNumber((source :: any).chargeTimeRemaining, 0, 0, 10 ^ 6)
+			then CoerceNumber((source :: any).chargeTimeRemaining, 0, 0, 10 ^ 6)
 			else fallback.chargeTimeRemaining,
 		comboChargeIndex = if typeof((source :: any).comboChargeIndex) == "number"
-			then math.floor(sanitizeNumber((source :: any).comboChargeIndex, 0, 0, 1000))
+			then math.floor(CoerceNumber((source :: any).comboChargeIndex, 0, 0, 1000))
 			else fallback.comboChargeIndex,
 		phaseCounter = if typeof((source :: any).phaseCounter) == "number"
-			then math.floor(sanitizeNumber((source :: any).phaseCounter, 0, 0, 1000))
+			then math.floor(CoerceNumber((source :: any).phaseCounter, 0, 0, 1000))
 			else fallback.phaseCounter,
 		motionOwner = if typeof((source :: any).motionOwner) == "string" and (source :: any).motionOwner ~= ""
 			then (source :: any).motionOwner
@@ -491,7 +491,7 @@ function BossServiceUtils.SanitizeMotionState(motionRaw: any, fallbackRaw: BossM
 	}
 end
 
-function BossServiceUtils.SanitizeSnapshot(snapshotRaw: any, fallbackRaw: BossSnapshot?): BossSnapshot?
+function BossServiceUtils.CoerceSnapshot(snapshotRaw: any, fallbackRaw: BossSnapshot?): BossSnapshot?
 	if typeof(snapshotRaw) ~= "table" then
 		return fallbackRaw
 	end
@@ -503,17 +503,17 @@ function BossServiceUtils.SanitizeSnapshot(snapshotRaw: any, fallbackRaw: BossSn
 		return fallback
 	end
 
-	local bossId = sanitizeBossId(source.bossId, if fallback ~= nil then fallback.bossId else nil)
+	local bossId = CoerceBossId(source.bossId, if fallback ~= nil then fallback.bossId else nil)
 	if bossId == nil then
 		return fallback
 	end
 
 	local fallbackMaxHp = if fallback ~= nil then fallback.maxHp else 1
-	local maxHp = math.max(1, sanitizeNumber(source.maxHp, fallbackMaxHp, 1, 10 ^ 9))
+	local maxHp = math.max(1, CoerceNumber(source.maxHp, fallbackMaxHp, 1, 10 ^ 9))
 	local fallbackHp = if fallback ~= nil then fallback.hp else maxHp
-	local hp = math.clamp(sanitizeNumber(source.hp, fallbackHp, 0, maxHp), 0, maxHp)
-	local state = sanitizeStateName(source.state, if fallback ~= nil then fallback.state else "Dormant")
-	local isAlive = sanitizeBoolean(source.isAlive, if fallback ~= nil then fallback.isAlive else state ~= "Death")
+	local hp = math.clamp(CoerceNumber(source.hp, fallbackHp, 0, maxHp), 0, maxHp)
+	local state = CoerceStateName(source.state, if fallback ~= nil then fallback.state else "Dormant")
+	local isAlive = CoerceBoolean(source.isAlive, if fallback ~= nil then fallback.isAlive else state ~= "Death")
 	if state == "Death" then
 		isAlive = false
 		hp = 0
@@ -531,7 +531,7 @@ function BossServiceUtils.SanitizeSnapshot(snapshotRaw: any, fallbackRaw: BossSn
 		state = state,
 		phase = math.max(
 			0,
-			math.floor(sanitizeNumber(source.phase, if fallback ~= nil then fallback.phase else 0, 0, 16))
+			math.floor(CoerceNumber(source.phase, if fallback ~= nil then fallback.phase else 0, 0, 16))
 		),
 		hp = hp,
 		maxHp = maxHp,
@@ -545,15 +545,15 @@ function BossServiceUtils.SanitizeSnapshot(snapshotRaw: any, fallbackRaw: BossSn
 		facing = if typeof(source.facing) == "Vector3"
 			then source.facing
 			else if fallback ~= nil then fallback.facing else Vector3.zAxis,
-		stateTime = sanitizeNumber(source.stateTime, if fallback ~= nil then fallback.stateTime else 0, 0, 10 ^ 9),
+		stateTime = CoerceNumber(source.stateTime, if fallback ~= nil then fallback.stateTime else 0, 0, 10 ^ 9),
 		chargeIndex = math.max(
 			0,
-			math.floor(sanitizeNumber(source.chargeIndex, if fallback ~= nil then fallback.chargeIndex else 0, 0, 1000))
+			math.floor(CoerceNumber(source.chargeIndex, if fallback ~= nil then fallback.chargeIndex else 0, 0, 1000))
 		),
 		targetUserId = if typeof(source.targetUserId) == "number"
 			then math.floor(source.targetUserId)
 			else if fallback ~= nil then fallback.targetUserId else nil,
-		updatedAt = sanitizeNumber(
+		updatedAt = CoerceNumber(
 			source.updatedAt,
 			if fallback ~= nil then fallback.updatedAt else os.clock(),
 			0,
@@ -562,11 +562,11 @@ function BossServiceUtils.SanitizeSnapshot(snapshotRaw: any, fallbackRaw: BossSn
 		lastReason = if typeof(source.lastReason) == "string"
 			then source.lastReason
 			else if fallback ~= nil then fallback.lastReason else "unknown",
-		presentation = BossServiceUtils.SanitizePresentation(
+		presentation = BossServiceUtils.CoercePresentation(
 			source.presentation,
 			if fallback ~= nil then fallback.presentation else DEFAULT_PRESENTATION
 		),
-		motion = BossServiceUtils.SanitizeMotionState(
+		motion = BossServiceUtils.CoerceMotionState(
 			source.motion,
 			if fallback ~= nil then fallback.motion else DEFAULT_MOTION
 		),
@@ -591,13 +591,13 @@ function BossServiceUtils.CloneState(state: BossServiceState): BossServiceState
 	}
 end
 
-local function pushSanitizedSnapshot(
+local function pushCoerceDSnapshot(
 	nextState: BossServiceState,
 	runtimeId: string,
 	snapshotRaw: any,
 	fallbackSnapshot: BossSnapshot?
 )
-	local snapshot = BossServiceUtils.SanitizeSnapshot(snapshotRaw, fallbackSnapshot)
+	local snapshot = BossServiceUtils.CoerceSnapshot(snapshotRaw, fallbackSnapshot)
 	if snapshot == nil then
 		return
 	end
@@ -606,7 +606,7 @@ local function pushSanitizedSnapshot(
 	nextState.orderedIds[#nextState.orderedIds + 1] = runtimeId
 end
 
-function BossServiceUtils.SanitizeState(stateRaw: any, fallbackRaw: BossServiceState?): BossServiceState
+function BossServiceUtils.CoerceState(stateRaw: any, fallbackRaw: BossServiceState?): BossServiceState
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else BossServiceUtils.CreateDefaultState()
 	local nextState = BossServiceUtils.CreateDefaultState()
 	if typeof(stateRaw) ~= "table" then
@@ -628,7 +628,7 @@ function BossServiceUtils.SanitizeState(stateRaw: any, fallbackRaw: BossServiceS
 
 				local snapshotRaw = (byIdRaw :: any)[runtimeId]
 				local fallbackSnapshot = fallback.byId[runtimeId]
-				pushSanitizedSnapshot(nextState, runtimeId, snapshotRaw, fallbackSnapshot)
+				pushCoerceDSnapshot(nextState, runtimeId, snapshotRaw, fallbackSnapshot)
 			end
 		end
 
@@ -637,11 +637,11 @@ function BossServiceUtils.SanitizeState(stateRaw: any, fallbackRaw: BossServiceS
 				continue
 			end
 			local fallbackSnapshot = fallback.byId[runtimeId]
-			pushSanitizedSnapshot(nextState, runtimeId, snapshotRaw, fallbackSnapshot)
+			pushCoerceDSnapshot(nextState, runtimeId, snapshotRaw, fallbackSnapshot)
 		end
 	elseif typeof((source :: any)[1]) == "table" then
 		for _, snapshotRaw in source do
-			local snapshot = BossServiceUtils.SanitizeSnapshot(snapshotRaw, nil)
+			local snapshot = BossServiceUtils.CoerceSnapshot(snapshotRaw, nil)
 			if snapshot ~= nil then
 				nextState.byId[snapshot.id] = snapshot
 				nextState.orderedIds[#nextState.orderedIds + 1] = snapshot.id
@@ -649,12 +649,12 @@ function BossServiceUtils.SanitizeState(stateRaw: any, fallbackRaw: BossServiceS
 		end
 	end
 
-	nextState.updatedAt = sanitizeNumber((source :: any).updatedAt, os.clock(), 0, 10 ^ 12)
+	nextState.updatedAt = CoerceNumber((source :: any).updatedAt, os.clock(), 0, 10 ^ 12)
 	return nextState
 end
 
 function BossServiceUtils.GetRegistryEntryById(bossIdRaw: any): BossRegistryEntry?
-	local bossId = sanitizeBossId(bossIdRaw, nil)
+	local bossId = CoerceBossId(bossIdRaw, nil)
 	if bossId == nil then
 		return nil
 	end
@@ -669,14 +669,14 @@ function BossServiceUtils.GetRegistryEntries(): { BossRegistryEntry }
 	return { EYE_OF_CTHULHU_REGISTRY_ENTRY, QUEEN_BEE_REGISTRY_ENTRY }
 end
 
-function BossServiceUtils.SanitizeSpawnRequest(requestRaw: any, fallbackRaw: BossSpawnRequest?): BossSpawnRequest?
+function BossServiceUtils.CoerceSpawnRequest(requestRaw: any, fallbackRaw: BossSpawnRequest?): BossSpawnRequest?
 	if typeof(requestRaw) ~= "table" then
 		return fallbackRaw
 	end
 
 	local fallback = fallbackRaw
 	local source = requestRaw :: { [string]: any }
-	local bossId = sanitizeBossId(source.bossId, if fallback ~= nil then fallback.bossId else nil)
+	local bossId = CoerceBossId(source.bossId, if fallback ~= nil then fallback.bossId else nil)
 	if bossId == nil then
 		return fallback
 	end
@@ -707,13 +707,13 @@ function BossServiceUtils.SanitizeSpawnRequest(requestRaw: any, fallbackRaw: Bos
 			then source.planeX
 			else if fallback ~= nil then fallback.planeX else nil,
 		simulationSpeed = if source.simulationSpeed ~= nil
-			then sanitizeNumber(source.simulationSpeed, 1, 0.05, 5)
+			then CoerceNumber(source.simulationSpeed, 1, 0.05, 5)
 			else if fallback ~= nil then fallback.simulationSpeed else nil,
 		aggressiveness = if source.aggressiveness ~= nil
-			then sanitizeNumber(source.aggressiveness, 1, 0.1, 3)
+			then CoerceNumber(source.aggressiveness, 1, 0.1, 3)
 			else if fallback ~= nil then fallback.aggressiveness else nil,
 		expertBehaviorEnabled = if source.expertBehaviorEnabled ~= nil
-			then sanitizeBoolean(source.expertBehaviorEnabled, true)
+			then CoerceBoolean(source.expertBehaviorEnabled, true)
 			else if fallback ~= nil then fallback.expertBehaviorEnabled else nil,
 	}
 end
@@ -730,7 +730,7 @@ function BossServiceUtils.ApplyRuntimeModelAttributes(
 	end
 
 	local runtimeId = trim(runtimeIdRaw)
-	local bossId = sanitizeBossId(bossIdRaw, nil)
+	local bossId = CoerceBossId(bossIdRaw, nil)
 	if runtimeId == "" or bossId == nil then
 		return false
 	end
@@ -756,7 +756,7 @@ function BossServiceUtils.ApplyRuntimeModelAttributes(
 	return true
 end
 
-function BossServiceUtils.ResolveRuntimeModelFromInstance(instanceRaw: any): Model?
+function BossServiceUtils.GetUntimeModelFromInstance(instanceRaw: any): Model?
 	if typeof(instanceRaw) ~= "Instance" then
 		return nil
 	end
@@ -775,8 +775,8 @@ function BossServiceUtils.ResolveRuntimeModelFromInstance(instanceRaw: any): Mod
 	return nil
 end
 
-function BossServiceUtils.ResolveRuntimeIdFromInstance(instanceRaw: any): string?
-	local model = BossServiceUtils.ResolveRuntimeModelFromInstance(instanceRaw)
+function BossServiceUtils.GetUntimeIdFromInstance(instanceRaw: any): string?
+	local model = BossServiceUtils.GetUntimeModelFromInstance(instanceRaw)
 	if model == nil then
 		return nil
 	end
@@ -788,13 +788,13 @@ function BossServiceUtils.ResolveRuntimeIdFromInstance(instanceRaw: any): string
 	return nil
 end
 
-function BossServiceUtils.ResolveBossIdFromInstance(instanceRaw: any): BossId?
-	local model = BossServiceUtils.ResolveRuntimeModelFromInstance(instanceRaw)
+function BossServiceUtils.GetBossIdFromInstance(instanceRaw: any): BossId?
+	local model = BossServiceUtils.GetUntimeModelFromInstance(instanceRaw)
 	if model == nil then
 		return nil
 	end
 
-	return sanitizeBossId(model:GetAttribute(BossServiceUtils.RUNTIME_BOSS_ID_ATTRIBUTE), nil)
+	return CoerceBossId(model:GetAttribute(BossServiceUtils.RUNTIME_BOSS_ID_ATTRIBUTE), nil)
 end
 
 function BossServiceUtils.FindFirstDescendantByNormalizedName(root: Instance?, tokensRaw: { string }): Instance?
@@ -816,7 +816,7 @@ function BossServiceUtils.FindFirstDescendantByNormalizedName(root: Instance?, t
 	return nil
 end
 
-function BossServiceUtils.ResolveRootPart(model: Model?): BasePart?
+function BossServiceUtils.GetRootPart(model: Model?): BasePart?
 	if model == nil then
 		return nil
 	end
@@ -841,7 +841,7 @@ function BossServiceUtils.ResolveRootPart(model: Model?): BasePart?
 	return nil
 end
 
-function BossServiceUtils.ResolveCharacterRootPart(playerRaw: any): BasePart?
+function BossServiceUtils.GetCharacterRootPart(playerRaw: any): BasePart?
 	if typeof(playerRaw) ~= "Instance" or not playerRaw:IsA("Player") then
 		return nil
 	end
@@ -856,11 +856,11 @@ function BossServiceUtils.ResolveCharacterRootPart(playerRaw: any): BasePart?
 		return nil
 	end
 
-	return BossServiceUtils.ResolveRootPart(character)
+	return BossServiceUtils.GetRootPart(character)
 end
 
-function BossServiceUtils.ResolveCharacterVelocity(playerRaw: any): Vector3
-	local rootPart = BossServiceUtils.ResolveCharacterRootPart(playerRaw)
+function BossServiceUtils.GetCharacterVelocity(playerRaw: any): Vector3
+	local rootPart = BossServiceUtils.GetCharacterRootPart(playerRaw)
 	if rootPart == nil then
 		return Vector3.zero
 	end
@@ -871,20 +871,20 @@ function BossServiceUtils.ProjectPositionToPlaneX(position: Vector3, planeXRaw: 
 	if typeof(planeXRaw) ~= "number" or planeXRaw ~= planeXRaw then
 		return position
 	end
-	local plane = Plane.fromPointNormal(Vector3.new(planeXRaw, 0, 0), Vector3.xAxis)
-	return Plane.projectPoint(plane, position)
+	local plane = Plane.FromPointNormal(Vector3.new(planeXRaw, 0, 0), Vector3.xAxis)
+	return Plane.ProjectPoint(plane, position)
 end
 
 function BossServiceUtils.ProjectVectorToPlaneX(vector: Vector3, planeXRaw: any): Vector3
 	if typeof(planeXRaw) ~= "number" or planeXRaw ~= planeXRaw then
 		return vector
 	end
-	return Proj.ontoPlane(vector, Vector3.xAxis)
+	return Proj.OntoPlane(vector, Vector3.xAxis)
 end
 
 function BossServiceUtils.MoveTowardsVector(current: Vector3, target: Vector3, maxDeltaRaw: any): Vector3
-	local maxDelta = sanitizeNumber(maxDeltaRaw, 0, 0, nil)
-	return Vec.moveTowards(current, target, maxDelta)
+	local maxDelta = CoerceNumber(maxDeltaRaw, 0, 0, nil)
+	return Vec.MoveTowards(current, target, maxDelta)
 end
 
 function BossServiceUtils.ComputeFacingVector(
@@ -894,8 +894,8 @@ function BossServiceUtils.ComputeFacingVector(
 ): Vector3
 	local desiredDirection = if typeof(desiredDirectionRaw) == "Vector3" then desiredDirectionRaw else Vector3.zero
 	local fallback = if typeof(fallbackRaw) == "Vector3" then fallbackRaw else Vector3.zAxis
-	local fallbackUnit = Vec.unit(fallback, Vector3.zAxis)
-	return Vec.unit(desiredDirection, fallbackUnit)
+	local fallbackUnit = Vec.Unit(fallback, Vector3.zAxis)
+	return Vec.Unit(desiredDirection, fallbackUnit)
 end
 
 function BossServiceUtils.LookCFrame(position: Vector3, facingRaw: any): CFrame
@@ -905,7 +905,7 @@ end
 
 function BossServiceUtils.SideViewLookCFrame(position: Vector3, facingRaw: any): CFrame
 	local facingRawVector = if typeof(facingRaw) == "Vector3" then facingRaw else Vector3.zAxis
-	local front = Vec.unit(Vector3.new(0, facingRawVector.Y, facingRawVector.Z), Vector3.zAxis)
+	local front = Vec.Unit(Vector3.new(0, facingRawVector.Y, facingRawVector.Z), Vector3.zAxis)
 	local right = Vector3.xAxis
 	local up = -front
 	local back = right:Cross(up).Unit
@@ -913,14 +913,14 @@ function BossServiceUtils.SideViewLookCFrame(position: Vector3, facingRaw: any):
 end
 
 function BossServiceUtils.IsNightClockTime(clockTimeRaw: any): boolean
-	local clockTime = sanitizeNumber(clockTimeRaw, 12, 0, 24)
+	local clockTime = CoerceNumber(clockTimeRaw, 12, 0, 24)
 	return clockTime >= BossServiceUtils.NIGHT_START_CLOCK_TIME or clockTime < BossServiceUtils.DAY_START_CLOCK_TIME
 end
 
 function BossServiceUtils.DidClockPass(previousClockTimeRaw: any, nextClockTimeRaw: any, thresholdRaw: any): boolean
-	local previousClockTime = sanitizeNumber(previousClockTimeRaw, 0, 0, 24)
-	local nextClockTime = sanitizeNumber(nextClockTimeRaw, previousClockTime, 0, 24)
-	local threshold = sanitizeNumber(thresholdRaw, 0, 0, 24)
+	local previousClockTime = CoerceNumber(previousClockTimeRaw, 0, 0, 24)
+	local nextClockTime = CoerceNumber(nextClockTimeRaw, previousClockTime, 0, 24)
+	local threshold = CoerceNumber(thresholdRaw, 0, 0, 24)
 
 	if previousClockTime <= nextClockTime then
 		return previousClockTime < threshold and nextClockTime >= threshold
@@ -932,7 +932,7 @@ function BossServiceUtils.DidClockPass(previousClockTimeRaw: any, nextClockTimeR
 	return nextClockTime >= threshold
 end
 
-function BossServiceUtils.ResolveTargetPlayerUserId(playerRaw: any): number?
+function BossServiceUtils.GetTargetPlayerUserId(playerRaw: any): number?
 	if typeof(playerRaw) ~= "Instance" or not playerRaw:IsA("Player") then
 		return nil
 	end
@@ -945,40 +945,4 @@ function BossServiceUtils.IsPlayerAlive(playerRaw: any): boolean
 	end
 	return CharacterUtils.getAlivePlayerHumanoid(playerRaw) ~= nil
 end
-
-BossServiceUtils.trim = BossServiceUtils.Trim
-BossServiceUtils.normalizeToken = BossServiceUtils.NormalizeToken
-BossServiceUtils.sanitizeNumber = BossServiceUtils.SanitizeNumber
-BossServiceUtils.sanitizeBoolean = BossServiceUtils.SanitizeBoolean
-BossServiceUtils.createDefaultPresentation = BossServiceUtils.CreateDefaultPresentation
-BossServiceUtils.createDefaultMotionState = BossServiceUtils.CreateDefaultMotionState
-BossServiceUtils.sanitizePresentation = BossServiceUtils.SanitizePresentation
-BossServiceUtils.sanitizeMotionState = BossServiceUtils.SanitizeMotionState
-BossServiceUtils.sanitizeSnapshot = BossServiceUtils.SanitizeSnapshot
-BossServiceUtils.createDefaultState = BossServiceUtils.CreateDefaultState
-BossServiceUtils.cloneState = BossServiceUtils.CloneState
-BossServiceUtils.sanitizeState = BossServiceUtils.SanitizeState
-BossServiceUtils.getRegistryEntryById = BossServiceUtils.GetRegistryEntryById
-BossServiceUtils.getRegistryEntryByToken = BossServiceUtils.GetRegistryEntryByToken
-BossServiceUtils.getRegistryEntries = BossServiceUtils.GetRegistryEntries
-BossServiceUtils.sanitizeSpawnRequest = BossServiceUtils.SanitizeSpawnRequest
-BossServiceUtils.applyRuntimeModelAttributes = BossServiceUtils.ApplyRuntimeModelAttributes
-BossServiceUtils.resolveRuntimeModelFromInstance = BossServiceUtils.ResolveRuntimeModelFromInstance
-BossServiceUtils.resolveRuntimeIdFromInstance = BossServiceUtils.ResolveRuntimeIdFromInstance
-BossServiceUtils.resolveBossIdFromInstance = BossServiceUtils.ResolveBossIdFromInstance
-BossServiceUtils.findFirstDescendantByNormalizedName = BossServiceUtils.FindFirstDescendantByNormalizedName
-BossServiceUtils.resolveRootPart = BossServiceUtils.ResolveRootPart
-BossServiceUtils.resolveCharacterRootPart = BossServiceUtils.ResolveCharacterRootPart
-BossServiceUtils.resolveCharacterVelocity = BossServiceUtils.ResolveCharacterVelocity
-BossServiceUtils.projectPositionToPlaneX = BossServiceUtils.ProjectPositionToPlaneX
-BossServiceUtils.projectVectorToPlaneX = BossServiceUtils.ProjectVectorToPlaneX
-BossServiceUtils.moveTowardsVector = BossServiceUtils.MoveTowardsVector
-BossServiceUtils.computeFacingVector = BossServiceUtils.ComputeFacingVector
-BossServiceUtils.lookCFrame = BossServiceUtils.LookCFrame
-BossServiceUtils.sideViewLookCFrame = BossServiceUtils.SideViewLookCFrame
-BossServiceUtils.isNightClockTime = BossServiceUtils.IsNightClockTime
-BossServiceUtils.didClockPass = BossServiceUtils.DidClockPass
-BossServiceUtils.resolveTargetPlayerUserId = BossServiceUtils.ResolveTargetPlayerUserId
-BossServiceUtils.isPlayerAlive = BossServiceUtils.IsPlayerAlive
-
 return BossServiceUtils

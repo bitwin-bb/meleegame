@@ -66,24 +66,15 @@ function trashThunks.TrashSelected(amountRaw: any): boolean
 	end
 
 	local success = pcall(function()
-		InventoryServiceClient:trashSelectedSlot(amountRaw)
+		InventoryServiceClient:TrashSelectedSlot(amountRaw)
 	end)
 	return success
 end
 
 function trashThunks.TrashSlot(slotIndexRaw: any, amountRaw: any): boolean
 	local success = pcall(function()
-		InventoryServiceClient:trashSlot(slotIndexRaw, amountRaw)
+		InventoryServiceClient:TrashSlot(slotIndexRaw, amountRaw)
 	end)
 	return success
 end
-
-trashThunks.start = trashThunks.Start
-trashThunks.stop = trashThunks.Stop
-trashThunks.setHovered = trashThunks.SetHovered
-trashThunks.open = trashThunks.Open
-trashThunks.close = trashThunks.Close
-trashThunks.trashSelected = trashThunks.TrashSelected
-trashThunks.trashSlot = trashThunks.TrashSlot
-
 return trashThunks

@@ -26,8 +26,6 @@ function StateGraphPrinter.Print(machine: any): string
 	table.sort(lines)
 	return table.concat(lines, "\n")
 end
-
-StateGraphPrinter.print = StateGraphPrinter.Print
 StateGraphPrinter.copy = Table.copy
 
 return StateGraphPrinter

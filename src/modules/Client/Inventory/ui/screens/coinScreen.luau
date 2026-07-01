@@ -49,8 +49,8 @@ local COIN_ICON_TOP_PADDING = 4
 local COIN_AMOUNT_HEIGHT = 16
 local COIN_AMOUNT_GAP = 1
 
-local function resolveCoinItemData(itemId: string): CoinItemData
-	local definition = ItemRegistry.resolveDefinition(itemId)
+local function GetCoinItemData(itemId: string): CoinItemData
+	local definition = ItemRegistry.GetDefinition(itemId)
 	if typeof(definition) ~= "table" then
 		return {}
 	end
@@ -63,29 +63,29 @@ local COIN_RENDER_ORDER: { CoinDefinition } = {
 		id = "copper",
 		fallbackName = "Copper Coin",
 		spriteSheetKey = "copperCoin",
-		itemData = resolveCoinItemData("CopperCoin"),
+		itemData = GetCoinItemData("CopperCoin"),
 	},
 	{
 		id = "silver",
 		fallbackName = "Silver Coin",
 		spriteSheetKey = "silverCoin",
-		itemData = resolveCoinItemData("SilverCoin"),
+		itemData = GetCoinItemData("SilverCoin"),
 	},
 	{
 		id = "gold",
 		fallbackName = "Gold Coin",
 		spriteSheetKey = "goldCoin",
-		itemData = resolveCoinItemData("GoldCoin"),
+		itemData = GetCoinItemData("GoldCoin"),
 	},
 	{
 		id = "platinum",
 		fallbackName = "Platinum Coin",
 		spriteSheetKey = "platinumCoin",
-		itemData = resolveCoinItemData("PlatinumCoin"),
+		itemData = GetCoinItemData("PlatinumCoin"),
 	},
 }
 
-local function resolveCoinAmount(state: CoinState, coinType: CoinType): number
+local function GetCoinAmount(state: CoinState, coinType: CoinType): number
 	local amounts = state.amounts
 	return if coinType == "platinum"
 		then amounts.platinum
@@ -94,7 +94,7 @@ local function resolveCoinAmount(state: CoinState, coinType: CoinType): number
 			else if coinType == "silver" then amounts.silver else amounts.copper
 end
 
-local function resolveItemField(valueRaw: any, fallback: string): string
+local function GetItemField(valueRaw: any, fallback: string): string
 	if typeof(valueRaw) ~= "string" then
 		return fallback
 	end
@@ -106,16 +106,16 @@ local function resolveItemField(valueRaw: any, fallback: string): string
 	return trimmed
 end
 
-local function resolveHoverText(coinDefinition: CoinDefinition, amount: number): string
+local function GetHoverText(coinDefinition: CoinDefinition, amount: number): string
 	local itemData = coinDefinition.itemData
-	local itemName = resolveItemField(itemData.name, coinDefinition.fallbackName)
-	local itemDescription = resolveItemField(itemData.description, "No description.")
-	local itemValue = resolveItemField(itemData.value, "Unknown value")
+	local itemName = GetItemField(itemData.name, coinDefinition.fallbackName)
+	local itemDescription = GetItemField(itemData.description, "No description.")
+	local itemValue = GetItemField(itemData.value, "Unknown value")
 
-	return ("%s\n\n%s\n\nValue: %s\n\nOwned: %s"):format(itemName, itemDescription, itemValue, formatNumber(amount))
+	return ("%s\n%s\nValue: %s\nOwned: %s"):format(itemName, itemDescription, itemValue, formatNumber(amount))
 end
 
-local function resolveEmergeOffset(offsetRaw: any): Vector2
+local function GetEmergeOffset(offsetRaw: any): Vector2
 	if typeof(offsetRaw) ~= "Vector2" then
 		return Vector2.zero
 	end
@@ -125,7 +125,7 @@ local function resolveEmergeOffset(offsetRaw: any): Vector2
 	return offsetRaw
 end
 
-local function resolveTransparency(valueRaw: any): number
+local function GetTransparency(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return 0
 	end
@@ -140,11 +140,11 @@ return function(props: CoinScreenProps): React.ReactNode
 	local coinState = (useStore(coinSlice.coinStateAtom) :: CoinState?) or coinSlice.coinStateAtom()
 
 	React.useEffect(function()
-		local stop = coinThunks.start()
+		local stop = coinThunks.Start()
 
 		return function()
 			stop()
-			infoThunks.hideHover(nil)
+			infoThunks.HideHover(nil)
 		end
 	end, {})
 
@@ -153,8 +153,8 @@ return function(props: CoinScreenProps): React.ReactNode
 	end
 
 	local zIndex = props.zIndex or 40
-	local emergeOffset = resolveEmergeOffset(props.emergeOffset)
-	local emergeTransparency = resolveTransparency(props.emergeTransparency)
+	local emergeOffset = GetEmergeOffset(props.emergeOffset)
+	local emergeTransparency = GetTransparency(props.emergeTransparency)
 	local slotWidth = if props.slotSize ~= nil
 		then math.max(1, math.floor(props.slotSize.X.Offset + 0.5))
 		else DEFAULT_COIN_SLOT_SIZE
@@ -180,7 +180,7 @@ return function(props: CoinScreenProps): React.ReactNode
 		end
 
 		renderedCoinCount += 1
-		local coinAmount = resolveCoinAmount(coinState, coinDefinition.id)
+		local coinAmount = GetCoinAmount(coinState, coinDefinition.id)
 		local coinLayoutOrder = renderedCoinCount
 		local hoverId = COIN_HOVER_ID_PREFIX .. coinDefinition.id
 
@@ -189,7 +189,7 @@ return function(props: CoinScreenProps): React.ReactNode
 			amount = coinAmount,
 			spriteSheetImage = spriteSheetImage,
 			hoverId = hoverId,
-			hoverText = resolveHoverText(coinDefinition, coinAmount),
+			hoverText = GetHoverText(coinDefinition, coinAmount),
 			layoutOrder = coinLayoutOrder,
 		}
 	end
@@ -222,13 +222,13 @@ return function(props: CoinScreenProps): React.ReactNode
 				if emergeTransparency >= 0.98 then
 					return
 				end
-				infoThunks.showHover({
+				infoThunks.ShowHover({
 					id = coin.hoverId,
 					text = coin.hoverText,
 				})
 			end,
 			onHoverEnd = function(coin)
-				infoThunks.hideHover(coin.hoverId)
+				infoThunks.HideHover(coin.hoverId)
 			end,
 		}),
 	})

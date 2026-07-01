@@ -27,14 +27,14 @@ local e: typeof(React.createElement) = React.createElement
 local BOSS_RUNTIME_FOLDER_NAME = "BossRuntime"
 local runtimeRootPartCache: { [string]: BasePart? } = {}
 
-local function resolveRuntimeRootPart(runtimeId: string): BasePart?
+local function GetUntimeRootPart(runtimeId: string): BasePart?
 	local cachedRootPart = runtimeRootPartCache[runtimeId]
 	if cachedRootPart ~= nil and cachedRootPart:IsDescendantOf(Workspace) then
 		return cachedRootPart
 	end
 	runtimeRootPartCache[runtimeId] = nil
 
-	local runtimeFolder = WorkspaceFolders.findFolderInGameOrWorkspace(BOSS_RUNTIME_FOLDER_NAME)
+	local runtimeFolder = WorkspaceFolders.FindFolderInGameOrWorkspace(BOSS_RUNTIME_FOLDER_NAME)
 	if runtimeFolder == nil then
 		return nil
 	end
@@ -47,7 +47,7 @@ local function resolveRuntimeRootPart(runtimeId: string): BasePart?
 			continue
 		end
 
-		local rootPart = BossServiceUtils.resolveRootPart(child)
+		local rootPart = BossServiceUtils.GetRootPart(child)
 		if rootPart ~= nil then
 			runtimeRootPartCache[runtimeId] = rootPart
 		end
@@ -112,7 +112,7 @@ return function(props: EyeOfCthulhuScreenProps): React.ReactNode
 
 	React.useEffect(function()
 		local maid = Maid.new()
-		local stop = markerThunks.start()
+		local stop = markerThunks.Start()
 		maid:GiveTask(stop)
 		maid:GiveTask(RunService.RenderStepped:Connect(function()
 			setRenderClock(os.clock())
@@ -131,7 +131,7 @@ return function(props: EyeOfCthulhuScreenProps): React.ReactNode
 		end
 
 		local displayOrder = zIndex + index
-		local rootPart = resolveRuntimeRootPart(runtimeId)
+		local rootPart = GetUntimeRootPart(runtimeId)
 		children[#children + 1] = if rootPart ~= nil
 			then renderSurfaceBoss(snapshot :: BossSnapshot, rootPart, displayOrder, renderClock)
 			else renderScreenBoss(snapshot :: BossSnapshot, displayOrder, renderClock)

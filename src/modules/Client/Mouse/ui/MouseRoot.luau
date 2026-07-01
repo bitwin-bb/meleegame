@@ -14,9 +14,9 @@ type MouseRootProps = {
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: MouseRootProps?): React.ReactNode
-	local resolvedProps = if props ~= nil then props else {} :: MouseRootProps
+	local GotProps = if props ~= nil then props else {} :: MouseRootProps
 
 	return e(React.Fragment, nil, {
-		e(MouseScreen, resolvedProps),
+		e(MouseScreen, GotProps),
 	})
 end

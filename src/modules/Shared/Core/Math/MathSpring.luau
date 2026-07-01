@@ -105,7 +105,7 @@ function Spring.StepAngleRadians(
 	dt: number,
 	mass: number?
 ): State<number>
-	local wrappedTarget = state.value + Angle.deltaRadians(state.value, target)
+	local wrappedTarget = state.value + Angle.DeltaRadians(state.value, target)
 	return Spring.step(state, wrappedTarget, frequency, damping, dt, mass)
 end
 
@@ -117,7 +117,7 @@ function Spring.StepAngleDegrees(
 	dt: number,
 	mass: number?
 ): State<number>
-	local wrappedTarget = state.value + Angle.deltaDegrees(state.value, target)
+	local wrappedTarget = state.value + Angle.DeltaDegrees(state.value, target)
 	return Spring.step(state, wrappedTarget, frequency, damping, dt, mass)
 end
 
@@ -130,8 +130,4 @@ function Spring.isSettled<T>(state: State<T>, target: T, valueEpsilon: number?, 
 	return magnitudeSq(valueDelta) <= valueTolerance * valueTolerance
 		and magnitudeSq(velocity) <= velocityTolerance * velocityTolerance
 end
-
-Spring.stepAngleRadians = Spring.StepAngleRadians
-Spring.stepAngleDegrees = Spring.StepAngleDegrees
-
 return Spring

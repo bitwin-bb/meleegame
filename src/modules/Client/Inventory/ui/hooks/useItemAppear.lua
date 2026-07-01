@@ -12,9 +12,11 @@ type TweenOptions = Ripple.TweenOptions
 
 export type ItemAppearOptions = {
 	enabled: boolean?,
+	trigger: any?,
 	fromScale: number?,
 	toScale: number?,
 	tween: TweenOptions?,
+	onComplete: (() -> ())?,
 }
 
 local DEFAULT_TWEEN: TweenOptions = {
@@ -26,7 +28,7 @@ local DEFAULT_TWEEN: TweenOptions = {
 local DEFAULT_FROM_SCALE = 0
 local DEFAULT_TO_SCALE = 1
 
-local function sanitizeScale(valueRaw: any, fallback: number): number
+local function CoerceScale(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw or valueRaw < 0 then
 		return fallback
 	end
@@ -36,9 +38,11 @@ end
 
 local function useItemAppear(options: ItemAppearOptions?): number
 	local enabled = if options and options.enabled ~= nil then options.enabled else false
-	local fromScale = sanitizeScale(if options then options.fromScale else nil, DEFAULT_FROM_SCALE)
-	local toScale = sanitizeScale(if options then options.toScale else nil, DEFAULT_TO_SCALE)
+	local fromScale = CoerceScale(if options then options.fromScale else nil, DEFAULT_FROM_SCALE)
+	local toScale = CoerceScale(if options then options.toScale else nil, DEFAULT_TO_SCALE)
 	local tween = if options and options.tween ~= nil then options.tween else DEFAULT_TWEEN
+	local onComplete = if options then options.onComplete else nil
+	local trigger = if options then options.trigger else nil
 	local scale, setScale = React.useState(if enabled then fromScale else 0)
 
 	React.useEffect(function()
@@ -56,6 +60,10 @@ local function useItemAppear(options: ItemAppearOptions?): number
 			setScale(if nextScale == nextScale then math.max(nextScale, 0) else toScale)
 
 			if motion:isComplete() and connection ~= nil then
+				if onComplete ~= nil then
+					onComplete()
+				end
+
 				connection:Disconnect()
 				connection = nil
 			end
@@ -68,7 +76,7 @@ local function useItemAppear(options: ItemAppearOptions?): number
 			end
 			motion:destroy()
 		end
-	end, { enabled, fromScale, toScale, tween })
+	end, { enabled, trigger, fromScale, toScale, tween, onComplete })
 
 	return scale
 end

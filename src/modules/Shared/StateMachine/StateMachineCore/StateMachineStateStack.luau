@@ -94,14 +94,4 @@ function StateStack.Destroy(self: StateStack)
 	self:Clear()
 	self.maid:DoCleaning()
 end
-
-StateStack.push = StateStack.Push
-StateStack.pop = StateStack.Pop
-StateStack.peek = StateStack.Peek
-StateStack.clear = StateStack.Clear
-StateStack.getSnapshot = StateStack.GetSnapshot
-StateStack.observe = StateStack.Observe
-StateStack.observeBrio = StateStack.ObserveBrio
-StateStack.destroy = StateStack.Destroy
-
 return StateStack

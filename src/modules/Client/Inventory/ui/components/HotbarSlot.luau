@@ -2,9 +2,11 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-
 local ItemSlot = require("ItemSlot")
 local React = require(ReplicatedStorage.Packages.React)
+local useItemAppear = require("useItemAppear")
+
+local HOTBAR_ITEM_ICON_SIZE = 32
 
 export type HotbarSlotProps = {
 	index: number,
@@ -18,6 +20,8 @@ export type HotbarSlotProps = {
 	showKeyHint: boolean,
 	itemIcon: string?,
 	itemAmount: number,
+	itemAppearEnabled: boolean?,
+	itemAppearTrigger: any?,
 	onMouseEnter: (() -> ())?,
 	onMouseLeave: (() -> ())?,
 	onSecondaryInput: (() -> ())?,
@@ -26,6 +30,27 @@ export type HotbarSlotProps = {
 }
 
 return function(props: HotbarSlotProps): React.ReactNode
+	local itemHasReachedGoal, setItemHasReachedGoal = React.useState(false)
+	local handleItemAppearComplete = React.useCallback(function()
+		setItemHasReachedGoal(true)
+	end, {})
+
+	React.useEffect(function()
+		setItemHasReachedGoal(false)
+	end, { props.itemAppearEnabled, props.itemAppearTrigger, props.itemIcon })
+
+	local shouldUseItemAppear = props.itemAppearEnabled == true
+	local itemAppearScale = useItemAppear({
+		enabled = shouldUseItemAppear,
+		trigger = props.itemAppearTrigger,
+		onComplete = handleItemAppearComplete,
+	})
+	local itemScale = if shouldUseItemAppear then itemAppearScale else 1
+	local stackAmountAppearScale = useItemAppear({
+		enabled = shouldUseItemAppear and itemHasReachedGoal and props.itemAmount > 1,
+		trigger = props.itemAppearTrigger,
+	})
+
 	return React.createElement(ItemSlot, {
 		buttonProps = {
 			Size = props.size,
@@ -61,30 +86,27 @@ return function(props: HotbarSlotProps): React.ReactNode
 		},
 		amount = if props.itemAmount > 1 then props.itemAmount else nil,
 		stackLabelProps = {
-			Size = UDim2.fromOffset(0, 0),
-			AutomaticSize = Enum.AutomaticSize.XY,
-			Position = UDim2.new(1, -6, 1, -5),
-			AnchorPoint = Vector2.new(1, 1),
-			BackgroundTransparency = 1,
-			Font = Enum.Font.PatrickHand,
-			TextSize = 13,
-			TextColor3 = Color3.fromRGB(248, 253, 255),
-			TextStrokeColor3 = Color3.fromRGB(0, 0, 0),
-			TextStrokeTransparency = 0.3,
-			TextXAlignment = Enum.TextXAlignment.Right,
-			TextYAlignment = Enum.TextYAlignment.Bottom,
-			ZIndex = props.zIndex + 3,
+			size = UDim2.fromOffset(0, 0),
+			automaticSize = Enum.AutomaticSize.XY,
+			position = UDim2.new(1, -6, 1, -5),
+			anchorPoint = Vector2.new(1, 1),
+			font = Enum.Font.PatrickHand,
+			textSize = if shouldUseItemAppear then 13 * stackAmountAppearScale else 13,
+			textColor3 = Color3.fromRGB(248, 253, 255),
+			textStrokeColor3 = Color3.fromRGB(0, 0, 0),
+			textStrokeTransparency = 0.3,
+			textXAlignment = Enum.TextXAlignment.Right,
+			textYAlignment = Enum.TextYAlignment.Bottom,
+			zIndex = props.zIndex + 3,
 		},
 		icon = props.itemIcon,
 		iconProps = {
-			Size = UDim2.fromOffset(32, 32),
-			Position = UDim2.fromScale(0.5, 0.5),
-			AnchorPoint = Vector2.new(0.5, 0.5),
-			BackgroundTransparency = 1,
-			BorderSizePixel = 0,
-			ImageColor3 = Color3.fromRGB(255, 255, 255),
-			ImageTransparency = 0,
-			ZIndex = props.zIndex + 2,
+			size = UDim2.fromOffset(HOTBAR_ITEM_ICON_SIZE * itemScale, HOTBAR_ITEM_ICON_SIZE * itemScale),
+			position = UDim2.fromScale(0.5, 0.5),
+			anchorPoint = Vector2.new(0.5, 0.5),
+			imageColor3 = Color3.fromRGB(255, 255, 255),
+			imageTransparency = 0,
+			zIndex = props.zIndex + 2,
 		},
 	})
 end

@@ -3,7 +3,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local PACKAGE_NAME = "AquariaBackup"
 
-local function resolveGameRoot(): Instance
+local function GetGameRoot(): Instance
 	local directGameRoot = script:FindFirstAncestor("game")
 	if directGameRoot ~= nil then
 		return directGameRoot
@@ -30,7 +30,7 @@ local function resolveGameRoot(): Instance
 end
 
 
-local gameRoot = resolveGameRoot()
+local gameRoot = GetGameRoot()
 local WeatherServiceUtils = require(gameRoot.Shared.World.WeatherServiceUtils)
 
 local WEATHER_OPTIONS = {
@@ -58,7 +58,7 @@ local function normalizeToken(valueRaw: any): string
 	return string.lower(normalized)
 end
 
-local function resolveWeatherValue(valueRaw: any): string?
+local function GetWeatherValue(valueRaw: any): string?
 	local token = normalizeToken(valueRaw)
 	if token == "clear" or token == "sunny" then
 		return WeatherServiceUtils.WEATHER_TYPE_CLEAR
@@ -79,7 +79,7 @@ return function(registry)
 		Transform = function(text: string)
 			local fuzzyFinder = cmdrUtil.MakeFuzzyFinder(WEATHER_OPTIONS)
 			local matches = fuzzyFinder(text)
-			local exactValue = resolveWeatherValue(text)
+			local exactValue = GetWeatherValue(text)
 
 			if exactValue == nil then
 				return matches

@@ -1,5 +1,6 @@
-
 local require = require(script.Parent.loader).load(script)
+
+local TweenService = game:GetService("TweenService")
 
 local Damp = require("Damp")
 local DeterministicRNG = require("DeterministicRNG")
@@ -48,6 +49,7 @@ type BranchNode = {
 	disturbanceScale: number,
 	yawScale: number,
 	recoverySpeed: number,
+	activeTween: Tween?,
 }
 
 type LeafNode = {
@@ -72,6 +74,7 @@ type LeafNode = {
 	yawScale: number,
 	translationScale: number,
 	recoverySpeed: number,
+	activeTween: Tween?,
 }
 
 type Config = {
@@ -85,6 +88,9 @@ type Config = {
 	recoverySpeed: number,
 	disturbanceSensitivity: number,
 	detailAmplitude: number?,
+	tweenSmoothingEnabled: boolean?,
+	tweenSmoothingDuration: number?,
+	tweenSmoothingMaxDuration: number?,
 }
 
 export type TreeFoliageGraph = typeof(setmetatable({} :: any, TreeFoliageGraph))
@@ -95,6 +101,10 @@ local NODE_TYPE_ATTRIBUTE = "WindTreeNodeType"
 local NODE_INDEX_ATTRIBUTE = "WindTreeNodeIndex"
 local PARENT_INDEX_ATTRIBUTE = "WindTreeParentIndex"
 local DEPTH_ATTRIBUTE = "WindTreeDepth"
+local DEFAULT_TWEEN_SMOOTHING_DURATION = 0.16
+local DEFAULT_TWEEN_SMOOTHING_MAX_DURATION = 0.24
+local TWEEN_EASING_STYLE = Enum.EasingStyle.Sine
+local TWEEN_EASING_DIRECTION = Enum.EasingDirection.Out
 
 local function clampNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
 	local value = if typeof(valueRaw) == "number" and valueRaw == valueRaw then valueRaw else fallback
@@ -107,32 +117,102 @@ local function clampNumber(valueRaw: any, fallback: number, minimum: number, max
 	return value
 end
 
-local function resolveDeterministicPhase(seed: number, salt: string): (number, number)
-	local nodeSeed = DeterministicRNG.seedFrom(("%s:%s"):format(tostring(seed), salt))
+local function GetDeterministicPhase(seed: number, salt: string): (number, number)
+	local nodeSeed = DeterministicRNG.SeedFrom(("%s:%s"):format(tostring(seed), salt))
 	local phaseOffset = (nodeSeed % 100000) / 100000 * math.pi * 2
 	local amplitudeScale = 0.92 + ((nodeSeed % 8191) / 8191) * 0.18
 	return phaseOffset, amplitudeScale
 end
 
-local function resolveBranchBaseFrame(part: BasePart): CFrame
+local function GetBranchBaseFrame(part: BasePart): CFrame
 	return part.CFrame * CFrame.new(0, 0, part.Size.Z * 0.5)
 end
 
-local function resolveBranchTipFrame(part: BasePart): CFrame
+local function GetBranchTipFrame(part: BasePart): CFrame
 	return part.CFrame * CFrame.new(0, 0, -part.Size.Z * 0.5)
 end
 
-local function resolveTrunkBasePosition(part: BasePart): Vector3
-	return resolveBranchBaseFrame(part).Position
+local function GetBranchTipFrameFromWorld(worldCFrame: CFrame, size: Vector3): CFrame
+	return worldCFrame * CFrame.new(0, 0, -size.Z * 0.5)
 end
 
-local function resolvePlanarAngles(
+local function getTweenSmoothingDuration(config: Config, presentationDt: number): number
+	if config.tweenSmoothingEnabled == false then
+		return 0
+	end
+
+	local maxDuration = clampNumber(config.tweenSmoothingMaxDuration, DEFAULT_TWEEN_SMOOTHING_MAX_DURATION, 0, 1)
+	if maxDuration <= 0 then
+		return 0
+	end
+
+	local cadenceDuration = if presentationDt > 0 then presentationDt else DEFAULT_TWEEN_SMOOTHING_DURATION
+	local requestedDuration = clampNumber(config.tweenSmoothingDuration, cadenceDuration, 0, 1)
+	if requestedDuration <= 0 then
+		return 0
+	end
+
+	return math.min(requestedDuration, cadenceDuration, maxDuration)
+end
+
+local function cancelNodeTween(node: any)
+	local tween = node.activeTween
+	if tween ~= nil then
+		tween:Cancel()
+		node.activeTween = nil
+	end
+end
+
+local function createTween(instance: Instance, tweenInfo: TweenInfo, goal: { [string]: any }): Tween?
+	local ok, tween = pcall(function()
+		return TweenService:Create(instance, tweenInfo, goal)
+	end)
+	return if ok then tween else nil
+end
+
+local function tweenNodeCFrame(node: any, config: Config, targetCFrame: CFrame, presentationDt: number)
+	local part = node.part
+	if part.Parent == nil then
+		return
+	end
+
+	local duration = getTweenSmoothingDuration(config, presentationDt)
+	cancelNodeTween(node)
+	if duration <= 0 then
+		part.CFrame = targetCFrame
+		return
+	end
+
+	local tween = createTween(
+		part,
+		TweenInfo.new(duration, TWEEN_EASING_STYLE, TWEEN_EASING_DIRECTION),
+		{ CFrame = targetCFrame }
+	)
+	if tween == nil then
+		part.CFrame = targetCFrame
+		return
+	end
+
+	node.activeTween = tween
+	tween.Completed:Connect(function()
+		if node.activeTween == tween then
+			node.activeTween = nil
+		end
+	end)
+	tween:Play()
+end
+
+local function GetTrunkBasePosition(part: BasePart): Vector3
+	return GetBranchBaseFrame(part).Position
+end
+
+local function GetPlanarAngles(
 	referenceFrame: CFrame,
 	bendWorld: Vector3,
 	maxAngleRadians: number,
 	yawAmount: number
 ): (number, number, number)
-	local planar = Vec.flattenY(bendWorld)
+	local planar = Vec.FlattenY(bendWorld)
 	local magnitude = planar.Magnitude
 	if magnitude <= 1e-5 or maxAngleRadians <= 0 then
 		return 0, 0, 0
@@ -169,10 +249,10 @@ local function applyImpulse(node: any, impulseWorld: Vector3, scale: number)
 		return
 	end
 	node.reactiveBend += scaledImpulse
-	if node.reactiveBend.Magnitude > 2 then
-		node.reactiveBend = node.reactiveBend.Unit * 2
+	if node.reactiveBend.Magnitude > 3.5 then
+		node.reactiveBend = node.reactiveBend.Unit * 3.5
 	end
-	node.springVelocity += scaledImpulse * 0.22
+	node.springVelocity += scaledImpulse * 0.34
 end
 
 function TreeFoliageGraph.New(modelRaw: any, configRaw: any): TreeFoliageGraph?
@@ -255,7 +335,7 @@ function TreeFoliageGraph.New(modelRaw: any, configRaw: any): TreeFoliageGraph?
 	end)
 
 	local trunkRestWorld = trunkPart.CFrame
-	local trunkRestTipWorld = resolveBranchTipFrame(trunkPart)
+	local trunkRestTipWorld = GetBranchTipFrame(trunkPart)
 	local trunkThickness = math.max(0.25, trunkPart.Size.X)
 	local branchNodesByIndex = {} :: { [number]: BranchNode }
 	local branchOrder = {} :: { BranchNode }
@@ -271,18 +351,17 @@ function TreeFoliageGraph.New(modelRaw: any, configRaw: any): TreeFoliageGraph?
 		local parentAttachmentWorld = trunkRestTipWorld
 		if candidate.parentIndex ~= trunkIndex and branchNodesByIndex[candidate.parentIndex] ~= nil then
 			local parentBranch = branchNodesByIndex[candidate.parentIndex]
-			parentAttachmentWorld = resolveBranchTipFrame(parentBranch.part)
+			parentAttachmentWorld = GetBranchTipFrame(parentBranch.part)
 		end
 
 		local part = candidate.part :: BasePart
 		part.Anchored = true
 		part.Massless = false
 
-		local branchBaseWorld = resolveBranchBaseFrame(part)
+		local branchBaseWorld = GetBranchBaseFrame(part)
 		local thinness = 1 - math.clamp(part.Size.X / trunkThickness, 0.1, 1)
 		local depthAlpha = if maxDepth <= 0 then 1 else math.clamp(candidate.depth / maxDepth, 0, 1)
-		local phaseOffset, amplitudeScale =
-			resolveDeterministicPhase(config.seed, ("branch:%d"):format(candidate.index))
+		local phaseOffset, amplitudeScale = GetDeterministicPhase(config.seed, ("branch:%d"):format(candidate.index))
 
 		local node = {
 			part = part,
@@ -307,6 +386,7 @@ function TreeFoliageGraph.New(modelRaw: any, configRaw: any): TreeFoliageGraph?
 			disturbanceScale = baseDisturbance * (0.45 + thinness * 0.8 + depthAlpha * 0.2),
 			yawScale = 0.05 + thinness * 0.08,
 			recoverySpeed = baseRecovery * (0.9 + thinness * 0.5),
+			activeTween = nil,
 		} :: BranchNode
 
 		branchNodesByIndex[node.index] = node
@@ -316,7 +396,7 @@ function TreeFoliageGraph.New(modelRaw: any, configRaw: any): TreeFoliageGraph?
 	for _, candidate in leafCandidates do
 		local parentAttachmentWorld = trunkRestTipWorld
 		if branchNodesByIndex[candidate.parentIndex] ~= nil then
-			parentAttachmentWorld = resolveBranchTipFrame(branchNodesByIndex[candidate.parentIndex].part)
+			parentAttachmentWorld = GetBranchTipFrame(branchNodesByIndex[candidate.parentIndex].part)
 		end
 
 		local part = candidate.part :: BasePart
@@ -325,7 +405,7 @@ function TreeFoliageGraph.New(modelRaw: any, configRaw: any): TreeFoliageGraph?
 
 		local parentBranch = branchNodesByIndex[candidate.parentIndex]
 		local inheritedScale = if parentBranch ~= nil then 0.9 + math.min(0.4, parentBranch.depth * 0.05) else 0.95
-		local phaseOffset, amplitudeScale = resolveDeterministicPhase(config.seed, ("leaf:%d"):format(candidate.index))
+		local phaseOffset, amplitudeScale = GetDeterministicPhase(config.seed, ("leaf:%d"):format(candidate.index))
 
 		leafNodes[#leafNodes + 1] = {
 			part = part,
@@ -349,6 +429,7 @@ function TreeFoliageGraph.New(modelRaw: any, configRaw: any): TreeFoliageGraph?
 			yawScale = 0.18,
 			translationScale = 0.06,
 			recoverySpeed = baseRecovery * 1.35,
+			activeTween = nil,
 		} :: LeafNode
 	end
 
@@ -357,7 +438,7 @@ function TreeFoliageGraph.New(modelRaw: any, configRaw: any): TreeFoliageGraph?
 	end)
 	local influenceRadius = 16
 	if ok and typeof(boundsSize) == "Vector3" then
-		influenceRadius = math.max(8, boundsSize.Magnitude * 0.45)
+		influenceRadius = math.max(12, boundsSize.Magnitude * 0.65)
 	end
 
 	local self = setmetatable({
@@ -370,12 +451,12 @@ function TreeFoliageGraph.New(modelRaw: any, configRaw: any): TreeFoliageGraph?
 		branchNodesByIndex = branchNodesByIndex,
 		branchOrder = branchOrder,
 		leafNodes = leafNodes,
-		rootPosition = resolveTrunkBasePosition(trunkPart),
+		rootPosition = GetTrunkBasePosition(trunkPart),
 		influenceRadius = influenceRadius,
 		destroyed = false,
 	}, TreeFoliageGraph)
 
-	self:reset()
+	self:Reset()
 	return self
 end
 
@@ -383,9 +464,20 @@ function TreeFoliageGraph.GetRootPosition(self: TreeFoliageGraph): Vector3
 	return self.rootPosition
 end
 
+function TreeFoliageGraph.CancelTweens(self: TreeFoliageGraph)
+	for _, branch in self.branchOrder do
+		cancelNodeTween(branch)
+	end
+
+	for _, leaf in self.leafNodes do
+		cancelNodeTween(leaf)
+	end
+end
+
 function TreeFoliageGraph.Reset(self: TreeFoliageGraph)
+	self:CancelTweens()
 	self.trunk.CFrame = self.trunkRestWorld
-	self.rootPosition = resolveTrunkBasePosition(self.trunk)
+	self.rootPosition = GetTrunkBasePosition(self.trunk)
 
 	for _, branch in self.branchOrder do
 		branch.currentBend = ZERO
@@ -410,10 +502,11 @@ function TreeFoliageGraph.AddDisturbance(self: TreeFoliageGraph, impulseWorld: V
 	end
 
 	local originWorld = if typeof(originWorldRaw) == "Vector3" then originWorldRaw else self.rootPosition
+	local influenceRadius = self.influenceRadius * 1.35
 
 	for _, branch in self.branchOrder do
 		local distance = (branch.currentWorld.Position - originWorld).Magnitude
-		local falloff = 1 - math.clamp(distance / self.influenceRadius, 0, 1)
+		local falloff = (1 - math.clamp(distance / influenceRadius, 0, 1)) ^ 0.65
 		if falloff > 0 then
 			applyImpulse(branch, impulseWorld, falloff * branch.disturbanceScale)
 		end
@@ -421,7 +514,7 @@ function TreeFoliageGraph.AddDisturbance(self: TreeFoliageGraph, impulseWorld: V
 
 	for _, leaf in self.leafNodes do
 		local distance = (leaf.currentWorld.Position - originWorld).Magnitude
-		local falloff = 1 - math.clamp(distance / self.influenceRadius, 0, 1)
+		local falloff = (1 - math.clamp(distance / influenceRadius, 0, 1)) ^ 0.65
 		if falloff > 0 then
 			applyImpulse(leaf, impulseWorld, falloff * leaf.disturbanceScale)
 		end
@@ -433,14 +526,16 @@ function TreeFoliageGraph.Step(
 	simulationTime: number,
 	dt: number,
 	windSample: WindSample,
-	lod: LODState
+	lod: LODState,
+	presentationDtRaw: number?
 )
 	if self.destroyed or dt <= 0 then
 		return
 	end
+	local presentationDt = if typeof(presentationDtRaw) == "number" then presentationDtRaw else dt
 
 	self.trunk.CFrame = self.trunkRestWorld
-	self.rootPosition = resolveTrunkBasePosition(self.trunk)
+	self.rootPosition = GetTrunkBasePosition(self.trunk)
 
 	local heightMultiplier = clampNumber(self.config.heightMultiplier, 0.72, 0.1, 8)
 	local swayAmplitude = clampNumber(self.config.swayAmplitude, 0.46, 0, 10)
@@ -467,7 +562,7 @@ function TreeFoliageGraph.Step(
 		target += windSample.direction * phaseWave * 0.045 * branch.detailScale * lod.detailScale
 		target += branch.reactiveBend * lod.disturbanceScale
 		target *= heightMultiplier * branch.amplitudeScale
-		target = Vec.flattenY(target)
+		target = Vec.FlattenY(target)
 		if target.Magnitude > 1.2 then
 			target = target.Unit * 1.2
 		end
@@ -475,14 +570,13 @@ function TreeFoliageGraph.Step(
 		integrateSpring(branch, target, dt)
 
 		local yawAmount = windSample.flutter * branch.yawScale * lod.detailScale * 0.25
-		local pitch, yaw, roll =
-			resolvePlanarAngles(jointRestWorld, branch.currentBend, branch.maxAngleRadians, yawAmount)
+		local pitch, yaw, roll = GetPlanarAngles(jointRestWorld, branch.currentBend, branch.maxAngleRadians, yawAmount)
 		local dynamicLocal = CFrame.Angles(pitch, yaw, roll)
 		local finalBaseWorld = parentAttachmentWorld * branch.restLocal * dynamicLocal
 		local finalWorld = finalBaseWorld * branch.jointToPart
 		branch.currentWorld = finalWorld
-		branch.part.CFrame = finalWorld
-		parentAttachmentByIndex[branch.index] = resolveBranchTipFrame(branch.part)
+		tweenNodeCFrame(branch, self.config, finalWorld, presentationDt)
+		parentAttachmentByIndex[branch.index] = GetBranchTipFrameFromWorld(finalWorld, branch.part.Size)
 	end
 
 	for _, leaf in self.leafNodes do
@@ -496,7 +590,7 @@ function TreeFoliageGraph.Step(
 		target += windSample.direction * flutterWave * 0.14 * lod.detailScale
 		target += leaf.reactiveBend * lod.disturbanceScale
 		target *= leaf.amplitudeScale
-		target = Vec.flattenY(target)
+		target = Vec.FlattenY(target)
 		if target.Magnitude > 1.45 then
 			target = target.Unit * 1.45
 		end
@@ -505,12 +599,12 @@ function TreeFoliageGraph.Step(
 
 		local restWorld = parentAttachmentWorld * leaf.restLocal
 		local yawAmount = (windSample.flutter + flutterWave * 0.5) * leaf.yawScale * lod.detailScale
-		local pitch, yaw, roll = resolvePlanarAngles(restWorld, leaf.currentBend, leaf.maxAngleRadians, yawAmount)
+		local pitch, yaw, roll = GetPlanarAngles(restWorld, leaf.currentBend, leaf.maxAngleRadians, yawAmount)
 		local localTranslation = restWorld:VectorToObjectSpace(leaf.currentBend) * leaf.translationScale * lod.windScale
 		local dynamicLocal = CFrame.new(localTranslation) * CFrame.Angles(pitch, yaw, roll)
 		local finalWorld = parentAttachmentWorld * leaf.restLocal * dynamicLocal
 		leaf.currentWorld = finalWorld
-		leaf.part.CFrame = finalWorld
+		tweenNodeCFrame(leaf, self.config, finalWorld, presentationDt)
 	end
 end
 
@@ -518,15 +612,7 @@ function TreeFoliageGraph.Destroy(self: TreeFoliageGraph)
 	if self.destroyed then
 		return
 	end
-	self:reset()
+	self:Reset()
 	self.destroyed = true
 end
-
-TreeFoliageGraph.new = TreeFoliageGraph.New
-TreeFoliageGraph.getRootPosition = TreeFoliageGraph.GetRootPosition
-TreeFoliageGraph.reset = TreeFoliageGraph.Reset
-TreeFoliageGraph.addDisturbance = TreeFoliageGraph.AddDisturbance
-TreeFoliageGraph.step = TreeFoliageGraph.Step
-TreeFoliageGraph.destroy = TreeFoliageGraph.Destroy
-
 return TreeFoliageGraph

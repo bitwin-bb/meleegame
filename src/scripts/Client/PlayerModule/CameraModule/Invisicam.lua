@@ -70,7 +70,7 @@ excludeParams.FilterType = Enum.RaycastFilterType.Exclude
 local includeParams = RaycastParams.new()
 includeParams.FilterType = Enum.RaycastFilterType.Include
 
--- Used to sanitize user-supplied functions
+-- Used to Coerce user-supplied functions
 local function AssertTypes(param, ...)
 	local allowedTypes = {}
 	local typeString = ""

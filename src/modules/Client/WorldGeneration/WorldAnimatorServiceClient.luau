@@ -8,7 +8,7 @@ local Sift = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local ClientBinderSupport = require("ClientBinderSupport")
+local BinderSupportClient = require("BinderSupportClient")
 local Configs = require(script:FindFirstAncestor("game").Shared:WaitForChild("QueenBeeConfigs"))
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local NevermoreSupport = require("NevermoreSupport")
@@ -92,7 +92,7 @@ local function clearCollectionTags(instance: Instance)
 	end
 end
 
-local function resolveChunkIdentityKey(chunkModel: Model): string?
+local function GetChunkIdentityKey(chunkModel: Model): string?
 	local chunkKeyRaw = chunkModel:GetAttribute("ChunkKey")
 	if typeof(chunkKeyRaw) == "string" and chunkKeyRaw ~= "" then
 		return chunkKeyRaw
@@ -113,7 +113,7 @@ local function resolveChunkIdentityKey(chunkModel: Model): string?
 end
 
 local function hasSiblingChunkWithSameIdentity(chunkModel: Model): boolean
-	local identityKey = resolveChunkIdentityKey(chunkModel)
+	local identityKey = GetChunkIdentityKey(chunkModel)
 	if identityKey == nil then
 		return false
 	end
@@ -127,12 +127,12 @@ local function hasSiblingChunkWithSameIdentity(chunkModel: Model): boolean
 		if sibling == chunkModel then
 			continue
 		end
-		if not WorldAnimatorServiceUtils.isChunkModel(sibling) then
+		if not WorldAnimatorServiceUtils.IsChunkModel(sibling) then
 			continue
 		end
 
 		local siblingModel = sibling :: Model
-		local siblingIdentityKey = resolveChunkIdentityKey(siblingModel)
+		local siblingIdentityKey = GetChunkIdentityKey(siblingModel)
 		if siblingIdentityKey ~= nil and siblingIdentityKey == identityKey then
 			return true
 		end
@@ -227,7 +227,7 @@ local function isChunkModelInCameraView(chunkModel: Model): boolean
 end
 
 function WorldAnimatorServiceClient.EnsureRuntimeFolder(_self: WorldAnimatorServiceClient): Folder
-	return WorkspaceFolders.getOrCreateFolderInGame(RUNTIME_FOLDER_NAME)
+	return WorkspaceFolders.GetOrCreateFolderInGame(RUNTIME_FOLDER_NAME)
 end
 
 function WorldAnimatorServiceClient.StopRenderLoop(self: WorldAnimatorServiceClient)
@@ -243,11 +243,11 @@ function WorldAnimatorServiceClient.EnsureRenderLoop(self: WorldAnimatorServiceC
 	end
 
 	self.renderConnection = RunService.RenderStepped:Connect(function()
-		self:processPendingChunks()
-		self:stepAnimations()
+		self:ProcessPendingChunks()
+		self:StepAnimations()
 
 		if #self.pendingChunks <= 0 and #self.activeAnimations <= 0 then
-			self:stopRenderLoop()
+			self:StopRenderLoop()
 		end
 	end)
 end
@@ -291,7 +291,7 @@ function WorldAnimatorServiceClient.StopAnimation(
 	end)
 
 	if revealOriginal then
-		self:restoreOriginalChunkVisibility(animation)
+		self:RestoreOriginalChunkVisibility(animation)
 	end
 
 	if animation.visualModel.Parent ~= nil then
@@ -308,21 +308,21 @@ function WorldAnimatorServiceClient.StepAnimations(self: WorldAnimatorServiceCli
 	for index = #self.activeAnimations, 1, -1 do
 		local animation = self.activeAnimations[index]
 		if animation.chunkModel.Parent == nil then
-			self:stopAnimation(animation, true)
+			self:StopAnimation(animation, true)
 			continue
 		end
 		if not isChunkModelInCameraView(animation.chunkModel) then
-			self:stopAnimation(animation, true)
+			self:StopAnimation(animation, true)
 			continue
 		end
 
 		local elapsed = now - animation.startedAt
 		local alpha = math.clamp(elapsed / animation.duration, 0, 1)
-		local easedAlpha = WorldAnimatorServiceUtils.applyEasing(animation.easing, alpha)
+		local easedAlpha = WorldAnimatorServiceUtils.ApplyEasing(animation.easing, alpha)
 		local nextPivot = animation.startPivot:Lerp(animation.targetPivot, easedAlpha)
 		animation.visualModel:PivotTo(nextPivot)
 
-		if WorldAnimatorServiceUtils.doesAnimationUseFade(animation.animationType) then
+		if WorldAnimatorServiceUtils.DoesAnimationUseFade(animation.animationType) then
 			local fadeAlpha = easedAlpha
 			if self.settings.transparencyRelativeToChunkPosition then
 				fadeAlpha = computePositionRelativeFadeAlpha(animation.startPivot, nextPivot, animation.targetPivot)
@@ -334,7 +334,7 @@ function WorldAnimatorServiceClient.StepAnimations(self: WorldAnimatorServiceCli
 		end
 
 		if alpha >= 1 then
-			self:stopAnimation(animation, true)
+			self:StopAnimation(animation, true)
 		end
 	end
 end
@@ -352,7 +352,7 @@ function WorldAnimatorServiceClient.EnqueueChunkForAnimation(self: WorldAnimator
 
 	self.pendingChunkLookup[chunkModel] = true
 	table.insert(self.pendingChunks, chunkModel)
-	self:ensureRenderLoop()
+	self:EnsureRenderLoop()
 end
 
 function WorldAnimatorServiceClient.RemovePendingChunk(self: WorldAnimatorServiceClient, chunkModel: Model)
@@ -393,7 +393,7 @@ function WorldAnimatorServiceClient.EvaluateChunkAnimation(
 		return "retry", nil
 	end
 
-	local distanceFromPlayer = WorldAnimatorServiceUtils.getLocalPlayerDistanceFromPosition(targetPivot.Position)
+	local distanceFromPlayer = WorldAnimatorServiceUtils.GetLocalPlayerDistanceFromPosition(targetPivot.Position)
 	if distanceFromPlayer == nil then
 		return "retry", nil
 	end
@@ -412,7 +412,7 @@ function WorldAnimatorServiceClient.StartChunkAnimation(
 		return "skip"
 	end
 
-	local eligibility, targetPivot = self:evaluateChunkAnimation(chunkModel)
+	local eligibility, targetPivot = self:EvaluateChunkAnimation(chunkModel)
 	if eligibility ~= "started" or targetPivot == nil then
 		return eligibility :: StartAnimationResult
 	end
@@ -460,10 +460,10 @@ function WorldAnimatorServiceClient.StartChunkAnimation(
 	end
 
 	local animationOffset =
-		WorldAnimatorServiceUtils.computeAnimationOffset(self.settings.animationType, self.settings.verticalOffset)
+		WorldAnimatorServiceUtils.ComputeAnimationOffset(self.settings.animationType, self.settings.verticalOffset)
 	local startPivot = targetPivot + animationOffset
 	visualClone:PivotTo(startPivot)
-	if WorldAnimatorServiceUtils.doesAnimationUseFade(self.settings.animationType) then
+	if WorldAnimatorServiceUtils.DoesAnimationUseFade(self.settings.animationType) then
 		for _, part in cloneParts do
 			part.Transparency = 1
 		end
@@ -489,7 +489,7 @@ function WorldAnimatorServiceClient.StartChunkAnimation(
 	}
 
 	animation.destroyConnection = chunkModel.Destroying:Connect(function()
-		self:stopAnimation(animation, true)
+		self:StopAnimation(animation, true)
 	end)
 
 	pcall(function()
@@ -498,7 +498,7 @@ function WorldAnimatorServiceClient.StartChunkAnimation(
 
 	self.animationsByChunk[chunkModel] = animation
 	table.insert(self.activeAnimations, animation)
-	self:ensureRenderLoop()
+	self:EnsureRenderLoop()
 	return "started"
 end
 
@@ -521,15 +521,15 @@ function WorldAnimatorServiceClient.ProcessPendingChunks(self: WorldAnimatorServ
 			continue
 		end
 
-		local result = self:startChunkAnimation(chunkModel)
+		local result = self:StartChunkAnimation(chunkModel)
 		if result == "retry" then
-			self:enqueueChunkForAnimation(chunkModel)
+			self:EnqueueChunkForAnimation(chunkModel)
 		end
 	end
 end
 
 function WorldAnimatorServiceClient.OnChunkAdded(self: WorldAnimatorServiceClient, chunkRaw: Instance)
-	if not WorldAnimatorServiceUtils.isChunkModel(chunkRaw) then
+	if not WorldAnimatorServiceUtils.IsChunkModel(chunkRaw) then
 		return
 	end
 
@@ -544,9 +544,9 @@ function WorldAnimatorServiceClient.OnChunkAdded(self: WorldAnimatorServiceClien
 		return
 	end
 
-	local result = self:startChunkAnimation(chunkModel)
+	local result = self:StartChunkAnimation(chunkModel)
 	if result == "retry" then
-		self:enqueueChunkForAnimation(chunkModel)
+		self:EnqueueChunkForAnimation(chunkModel)
 	end
 end
 
@@ -555,13 +555,13 @@ function WorldAnimatorServiceClient.OnChunkRemoved(self: WorldAnimatorServiceCli
 		return
 	end
 
-	self:removePendingChunk(chunkRaw)
+	self:RemovePendingChunk(chunkRaw)
 
 	local animation = self.animationsByChunk[chunkRaw]
 	if animation == nil then
 		return
 	end
-	self:stopAnimation(animation, true)
+	self:StopAnimation(animation, true)
 end
 
 function WorldAnimatorServiceClient.BindChunksFolder(self: WorldAnimatorServiceClient, chunksFolder: Folder)
@@ -577,9 +577,9 @@ function WorldAnimatorServiceClient.BindWorldFolder(self: WorldAnimatorServiceCl
 	self.worldFolder = worldFolder
 	self.chunksFolder = nil
 
-	local existingChunksFolder = WorldAnimatorServiceUtils.findChunksFolder(worldFolder)
+	local existingChunksFolder = WorldAnimatorServiceUtils.FindChunksFolder(worldFolder)
 	if existingChunksFolder ~= nil then
-		self:bindChunksFolder(existingChunksFolder)
+		self:BindChunksFolder(existingChunksFolder)
 	end
 
 	self.worldFolderJanitor:GiveChore(worldFolder.ChildAdded:Connect(function(child: Instance)
@@ -587,7 +587,7 @@ function WorldAnimatorServiceClient.BindWorldFolder(self: WorldAnimatorServiceCl
 			return
 		end
 		if child:IsA("Folder") then
-			self:bindChunksFolder(child)
+			self:BindChunksFolder(child)
 		end
 	end))
 
@@ -602,20 +602,20 @@ function WorldAnimatorServiceClient.BindWorldFolder(self: WorldAnimatorServiceCl
 end
 
 function WorldAnimatorServiceClient.TryBindExistingWorldFolder(self: WorldAnimatorServiceClient)
-	local worldFolder = WorldAnimatorServiceUtils.findWorldGenerationFolder()
+	local worldFolder = WorldAnimatorServiceUtils.FindWorldGenerationFolder()
 	if worldFolder ~= nil then
-		self:bindWorldFolder(worldFolder)
+		self:BindWorldFolder(worldFolder)
 	end
 end
 
 function WorldAnimatorServiceClient.Init(self: WorldAnimatorServiceClient)
-	self.settings = WorldAnimatorServiceUtils.createSettingsFromConfigs(Configs)
+	self.settings = WorldAnimatorServiceUtils.CreateSettingsFromConfigs(Configs)
 	self.janitor = Janitor.new()
 	self.worldFolderJanitor = Janitor.new()
 	self.chunksFolderJanitor = Janitor.new()
 	self.janitor:GiveChore(self.worldFolderJanitor)
 	self.janitor:GiveChore(self.chunksFolderJanitor)
-	self.runtimeFolder = self:ensureRuntimeFolder()
+	self.runtimeFolder = self:EnsureRuntimeFolder()
 	self.worldFolder = nil :: Folder?
 	self.chunksFolder = nil :: Folder?
 	self.activeAnimations = {}
@@ -623,14 +623,14 @@ function WorldAnimatorServiceClient.Init(self: WorldAnimatorServiceClient)
 	self.pendingChunks = {}
 	self.pendingChunkLookup = {}
 	self.renderConnection = nil :: RBXScriptConnection?
-	(self :: any).binders = NevermoreSupport.getService(ClientBinderSupport)
+	(self :: any).binders = NevermoreSupport.GetService(BinderSupportClient)
 
 	local function onWorldFolderAdded(child: Instance)
 		if child.Name ~= WorldAnimatorServiceUtils.WORLD_FOLDER_NAME then
 			return
 		end
 		if child:IsA("Folder") then
-			self:bindWorldFolder(child)
+			self:BindWorldFolder(child)
 		end
 	end
 
@@ -647,23 +647,23 @@ function WorldAnimatorServiceClient.Init(self: WorldAnimatorServiceClient)
 		self.chunksFolder = nil
 	end
 
-	local gameFolder = WorkspaceFolders.getOrCreateGameFolder()
+	local gameFolder = WorkspaceFolders.GetOrCreateGameFolder()
 	self.janitor:GiveChore(gameFolder.ChildAdded:Connect(onWorldFolderAdded))
 	self.janitor:GiveChore(gameFolder.ChildRemoved:Connect(onWorldFolderRemoved))
 
 	self.janitor:GiveChore(Workspace.ChildAdded:Connect(onWorldFolderAdded))
 	self.janitor:GiveChore(Workspace.ChildRemoved:Connect(onWorldFolderRemoved))
 
-	self:tryBindExistingWorldFolder()
+	self:TryBindExistingWorldFolder()
 end
 
 function WorldAnimatorServiceClient.Destroy(self: WorldAnimatorServiceClient)
 	for index = #self.activeAnimations, 1, -1 do
 		local animation = self.activeAnimations[index]
-		self:stopAnimation(animation, true)
+		self:StopAnimation(animation, true)
 	end
 
-	self:stopRenderLoop()
+	self:StopRenderLoop()
 	if self.janitor ~= nil then
 		self.janitor:Destroy()
 	end
@@ -671,26 +671,6 @@ function WorldAnimatorServiceClient.Destroy(self: WorldAnimatorServiceClient)
 	table.clear(self.pendingChunks)
 	table.clear(self.pendingChunkLookup)
 end
-
-WorldAnimatorServiceClient.ensureRuntimeFolder = WorldAnimatorServiceClient.EnsureRuntimeFolder
-WorldAnimatorServiceClient.stopRenderLoop = WorldAnimatorServiceClient.StopRenderLoop
-WorldAnimatorServiceClient.ensureRenderLoop = WorldAnimatorServiceClient.EnsureRenderLoop
-WorldAnimatorServiceClient.restoreOriginalChunkVisibility = WorldAnimatorServiceClient.RestoreOriginalChunkVisibility
-WorldAnimatorServiceClient.stopAnimation = WorldAnimatorServiceClient.StopAnimation
-WorldAnimatorServiceClient.stepAnimations = WorldAnimatorServiceClient.StepAnimations
-WorldAnimatorServiceClient.enqueueChunkForAnimation = WorldAnimatorServiceClient.EnqueueChunkForAnimation
-WorldAnimatorServiceClient.removePendingChunk = WorldAnimatorServiceClient.RemovePendingChunk
-WorldAnimatorServiceClient.evaluateChunkAnimation = WorldAnimatorServiceClient.EvaluateChunkAnimation
-WorldAnimatorServiceClient.startChunkAnimation = WorldAnimatorServiceClient.StartChunkAnimation
-WorldAnimatorServiceClient.processPendingChunks = WorldAnimatorServiceClient.ProcessPendingChunks
-WorldAnimatorServiceClient.onChunkAdded = WorldAnimatorServiceClient.OnChunkAdded
-WorldAnimatorServiceClient.onChunkRemoved = WorldAnimatorServiceClient.OnChunkRemoved
-WorldAnimatorServiceClient.bindChunksFolder = WorldAnimatorServiceClient.BindChunksFolder
-WorldAnimatorServiceClient.bindWorldFolder = WorldAnimatorServiceClient.BindWorldFolder
-WorldAnimatorServiceClient.tryBindExistingWorldFolder = WorldAnimatorServiceClient.TryBindExistingWorldFolder
-WorldAnimatorServiceClient.init = WorldAnimatorServiceClient.Init
-WorldAnimatorServiceClient.destroy = WorldAnimatorServiceClient.Destroy
-
 type WorldAnimatorServiceClient = typeof(WorldAnimatorServiceClient) & {
 	settings: ChunkAnimatorSettings,
 	janitor: JanitorClass,

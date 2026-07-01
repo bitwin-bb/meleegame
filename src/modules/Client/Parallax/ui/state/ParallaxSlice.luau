@@ -83,8 +83,4 @@ function ParallaxSlice.ClearSurfaceState()
 end
 
 ParallaxSlice.surfaceStateAtom = surfaceStateAtom
-ParallaxSlice.getSurfaceState = ParallaxSlice.GetSurfaceState
-ParallaxSlice.setSurfaceState = ParallaxSlice.SetSurfaceState
-ParallaxSlice.clearSurfaceState = ParallaxSlice.ClearSurfaceState
-
 return ParallaxSlice

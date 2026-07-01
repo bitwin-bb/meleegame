@@ -14,9 +14,9 @@ type PadRootProps = {
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: PadRootProps?): React.ReactNode
-	local resolvedProps = if props ~= nil then props else {} :: PadRootProps
+	local GotProps = if props ~= nil then props else {} :: PadRootProps
 
 	return e(React.Fragment, nil, {
-		e(PadScreen, resolvedProps),
+		e(PadScreen, GotProps),
 	})
 end

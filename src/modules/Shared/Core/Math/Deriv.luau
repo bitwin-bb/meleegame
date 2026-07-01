@@ -62,8 +62,4 @@ function Deriv.SampleCentral(sample: (number) -> number, x: number, step: number
 	local h = math.max(math.abs(step or 1e-3), 1e-8)
 	return (sample(x + h) - sample(x - h)) / (2 * h)
 end
-
-Deriv.sampleForward = Deriv.SampleForward
-Deriv.sampleCentral = Deriv.SampleCentral
-
 return Deriv

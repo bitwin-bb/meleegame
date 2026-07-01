@@ -149,7 +149,7 @@ local function normalizeAnimationMode(modeRaw: any): string
 	return "Sequence"
 end
 
-local function resolveClipAnimationId(clipRaw: { [string]: any }): string?
+local function GetClipAnimationId(clipRaw: { [string]: any }): string?
 	local animationId = normalizeAnimationId(clipRaw.id)
 	if animationId ~= nil then
 		return animationId
@@ -197,7 +197,7 @@ local function isAnimationClipTable(valueRaw: any): boolean
 		or value.animId ~= nil
 end
 
-local function resolveAnimationConfigClips(configRaw: any): any
+local function GetAnimationConfigClips(configRaw: any): any
 	if configRaw == nil then
 		return {}
 	end
@@ -233,7 +233,7 @@ local function normalizeNamedAnimationClip(
 		animation = clipRaw
 	end
 
-	local animationId = resolveClipAnimationId(clipTable)
+	local animationId = GetClipAnimationId(clipTable)
 	if animationId == nil and animation ~= nil then
 		animationId = normalizeAnimationId(animation.AnimationId)
 	end
@@ -278,7 +278,7 @@ local function mergeNamedAnimationStateClips(
 	end
 end
 
-local function resolveNamedAnimationStateClips(configRaw: any): { [string]: { [string]: any } }
+local function GetNamedAnimationStateClips(configRaw: any): { [string]: { [string]: any } }
 	local clipsByState: { [string]: { [string]: any } } = {}
 	local defaultLoopedByState = {
 		Idle = true,
@@ -397,7 +397,7 @@ function AnimationController.New(configRaw: any)
 		end
 	end)
 
-	self:setClips(resolveAnimationConfigClips(configRaw))
+	self:SetClips(GetAnimationConfigClips(configRaw))
 	return self
 end
 
@@ -407,7 +407,7 @@ function AnimationController:SetAnimator(animatorRaw: any)
 		return
 	end
 	self.animator = animator
-	self:clearTracks()
+	self:ClearTracks()
 end
 
 function AnimationController:SetMode(modeRaw: any)
@@ -420,7 +420,7 @@ end
 
 function AnimationController:SetMarkers(markersRaw: any)
 	self.markers = toArray(markersRaw, {})
-	self:clearTracks()
+	self:ClearTracks()
 end
 
 function AnimationController:GetMarkers(): { string }
@@ -451,7 +451,7 @@ function AnimationController:SetClips(clipsRaw: any)
 		local animation = if typeof(clipTable.animation) == "Instance" and clipTable.animation:IsA("Animation")
 			then clipTable.animation
 			else nil
-		local animationId = resolveClipAnimationId(clipTable)
+		local animationId = GetClipAnimationId(clipTable)
 		if animation == nil and typeof(clipRaw) == "Instance" and clipRaw:IsA("Animation") then
 			animation = clipRaw
 			animationId = normalizeAnimationId(clipRaw.AnimationId)
@@ -474,7 +474,7 @@ function AnimationController:SetClips(clipsRaw: any)
 	end
 	self.clips = clips
 	self.sequenceIndex = 0
-	self:clearTracks()
+	self:ClearTracks()
 end
 
 function AnimationController:ClearTracks()
@@ -563,12 +563,12 @@ function AnimationController:PickClipIndex(): number?
 end
 
 function AnimationController:PlayNext(playbackRaw: any): { [string]: any }?
-	local index = self:pickClipIndex()
+	local index = self:PickClipIndex()
 	if index == nil then
 		return nil
 	end
 
-	local track = self:loadTrack(index)
+	local track = self:LoadTrack(index)
 	if track == nil then
 		return nil
 	end
@@ -612,7 +612,7 @@ function AnimationController:StopAll(fadeTimeRaw: any)
 end
 
 function AnimationController:Destroy()
-	self:clearTracks()
+	self:ClearTracks()
 	self.janitor:Destroy()
 end
 
@@ -631,7 +631,7 @@ function Melee.New(configRaw: any)
 
 	local animationConfig = config.animations
 	local controller = AnimationController.New(animationConfig)
-	local namedAnimationStateClips = resolveNamedAnimationStateClips(animationConfig)
+	local namedAnimationStateClips = GetNamedAnimationStateClips(animationConfig)
 	local hasStanceNamedAnimations = namedAnimationStateClips.StanceTransition ~= nil
 		or namedAnimationStateClips.StanceIdle ~= nil
 
@@ -662,8 +662,8 @@ function Melee.New(configRaw: any)
 	local namedAnimationPlaybackEnabled = toBool(config.namedAnimationPlaybackEnabled, true)
 
 	local mergedMarkers =
-		mergeUniqueStringLists(controller:getMarkers(), startMarkers, endMarkers, projectileMarkers, extraMarkers)
-	controller:setMarkers(mergedMarkers)
+		mergeUniqueStringLists(controller:GetMarkers(), startMarkers, endMarkers, projectileMarkers, extraMarkers)
+	controller:SetMarkers(mergedMarkers)
 
 	local trackedKeyframes = {}
 	for _, name in toArray(config.trackedKeyframeNames, {}) do
@@ -742,7 +742,7 @@ function Melee.New(configRaw: any)
 	self.janitor:GiveChore(self.presentationJanitor)
 	self.janitor:GiveChore(self.namedTrackJanitor)
 	self.janitor:GiveChore(function()
-		self.controller:destroy()
+		self.controller:Destroy()
 	end)
 	self.janitor:GiveChore(function()
 		for _, signalObject in self.signals do
@@ -772,15 +772,15 @@ function Melee.New(configRaw: any)
 	end))
 
 	if config.animator ~= nil then
-		self:setAnimator(config.animator)
+		self:SetAnimator(config.animator)
 	elseif config.humanoid ~= nil then
-		self:setHumanoid(config.humanoid)
+		self:SetHumanoid(config.humanoid)
 	elseif config.character ~= nil then
-		self:setCharacter(config.character)
+		self:SetCharacter(config.character)
 	end
 
 	if config.tool ~= nil then
-		self:bindTool(config.tool, config.toolOptions)
+		self:BindTool(config.tool, config.toolOptions)
 	end
 
 	return self
@@ -1082,7 +1082,7 @@ function Melee:_onPresentationAnimatorChanged()
 	end
 end
 
-function Melee:_resolveCooldown(clipRaw: any): number
+function Melee:_GetCooldown(clipRaw: any): number
 	local clip = if typeof(clipRaw) == "table" then clipRaw else nil
 	if clip ~= nil and typeof((clip :: any).cooldown) == "number" then
 		return toNumber((clip :: any).cooldown, self.cooldown, 0, nil)
@@ -1099,7 +1099,7 @@ function Melee:_commitActiveCooldown(startedAtRaw: any?, clipRaw: any?)
 	local startedAt = toNumber(startedAtRaw, os.clock(), 0, nil)
 	local clip = if clipRaw ~= nil then clipRaw else active.clip
 	active.cooldownCommitted = true
-	self.cooldownUntil = math.max(self.cooldownUntil, startedAt + self:_resolveCooldown(clip))
+	self.cooldownUntil = math.max(self.cooldownUntil, startedAt + self:_GetCooldown(clip))
 end
 
 function Melee:_emitSwingStart(eventName: any, eventType: any, param: any, synthetic: boolean?)
@@ -1180,11 +1180,11 @@ function Melee:_startAttack()
 	local now = os.clock()
 	local shouldResetSequence = not self.inputHeld and (now - self.lastAttackFinishedAt) >= self.slashResetCooldown
 	if shouldResetSequence then
-		self.controller:resetSequence()
+		self.controller:ResetSequence()
 		self.swingCount = 0
 	end
 
-	local play = self.controller:playNext(nil)
+	local play = self.controller:PlayNext(nil)
 	local usedSyntheticAttack = false
 	if play == nil and self.syntheticAttackWhenNoTrack then
 		usedSyntheticAttack = true
@@ -1299,7 +1299,7 @@ function Melee:_finishAttack(reasonRaw: any)
 	end
 
 	if self.autoRepeat and self.inputHeld then
-		self:queueSwing("HoldRepeat")
+		self:QueueSwing("HoldRepeat")
 	elseif self.queued then
 		self:_processQueue("Pending")
 	end
@@ -1397,7 +1397,7 @@ function Melee:InputBegan(triggerRaw: any): boolean
 		self.signals.inputHeldChanged:Fire(self.inputHeld)
 	end
 	self:_cancelStanceTimer()
-	return self:queueSwing(triggerRaw or "InputBegan")
+	return self:QueueSwing(triggerRaw or "InputBegan")
 end
 
 function Melee:InputEnded(_: any): boolean
@@ -1413,7 +1413,7 @@ function Melee:InputEnded(_: any): boolean
 end
 
 function Melee:Tap(triggerRaw: any): boolean
-	return self:queueSwing(triggerRaw or "Tap")
+	return self:QueueSwing(triggerRaw or "Tap")
 end
 
 function Melee:SetEnabled(enabledRaw: any)
@@ -1424,7 +1424,7 @@ function Melee:SetEnabled(enabledRaw: any)
 	self.enabled = enabled
 	self.signals.enabledChanged:Fire(self.enabled)
 	if not enabled then
-		self:cancel("Disabled")
+		self:Cancel("Disabled")
 	elseif self.queued then
 		self:_processQueue("Enabled")
 	end
@@ -1439,28 +1439,28 @@ function Melee:SetSlashResetCooldown(secondsRaw: any)
 end
 
 function Melee:SetAnimator(animatorRaw: any)
-	self.controller:setAnimator(animatorRaw)
+	self.controller:SetAnimator(animatorRaw)
 	self:_onPresentationAnimatorChanged()
 end
 
 function Melee:SetHumanoid(humanoidRaw: any)
 	local humanoid = if typeof(humanoidRaw) == "Instance" and humanoidRaw:IsA("Humanoid") then humanoidRaw else nil
-	self.controller:setAnimator(createAnimatorFromHumanoid(humanoid))
+	self.controller:SetAnimator(createAnimatorFromHumanoid(humanoid))
 	self:_onPresentationAnimatorChanged()
 end
 
 function Melee:SetCharacter(characterRaw: any)
 	local character = if typeof(characterRaw) == "Instance" and characterRaw:IsA("Model") then characterRaw else nil
-	self.controller:setAnimator(createAnimatorFromCharacter(character))
+	self.controller:SetAnimator(createAnimatorFromCharacter(character))
 	self:_onPresentationAnimatorChanged()
 end
 
 function Melee:SetClips(clipsRaw: any)
-	self.controller:setClips(clipsRaw)
+	self.controller:SetClips(clipsRaw)
 end
 
 function Melee:SetMode(modeRaw: any)
-	self.controller:setMode(modeRaw)
+	self.controller:SetMode(modeRaw)
 end
 
 function Melee:BindTool(toolRaw: any, optionsRaw: any): boolean
@@ -1476,11 +1476,11 @@ function Melee:BindTool(toolRaw: any, optionsRaw: any): boolean
 	self.boundTool = tool
 
 	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
-	local resolveAnimatorOnEquip = toBool(options.resolveAnimatorOnEquip, true)
+	local GetAnimatorOnEquip = toBool(options.GetAnimatorOnEquip, true)
 	local cancelOnUnequip = toBool(options.cancelOnUnequip, true)
 
-	if resolveAnimatorOnEquip and tool.Parent and tool.Parent:IsA("Model") then
-		self:setCharacter(tool.Parent)
+	if GetAnimatorOnEquip and tool.Parent and tool.Parent:IsA("Model") then
+		self:SetCharacter(tool.Parent)
 	end
 	if tool.Parent ~= nil and tool.Parent:IsA("Model") then
 		self:_onToolEquipped()
@@ -1491,31 +1491,31 @@ function Melee:BindTool(toolRaw: any, optionsRaw: any): boolean
 	end
 
 	self.toolJanitor:GiveChore(tool.Equipped:Connect(function()
-		if resolveAnimatorOnEquip and tool.Parent and tool.Parent:IsA("Model") then
-			self:setCharacter(tool.Parent)
+		if GetAnimatorOnEquip and tool.Parent and tool.Parent:IsA("Model") then
+			self:SetCharacter(tool.Parent)
 		end
 		self:_onToolEquipped()
 	end))
 
 	self.toolJanitor:GiveChore(tool.Activated:Connect(function()
-		self:inputBegan("ToolActivated")
+		self:InputBegan("ToolActivated")
 	end))
 
 	self.toolJanitor:GiveChore(tool.Deactivated:Connect(function()
-		self:inputEnded("ToolDeactivated")
+		self:InputEnded("ToolDeactivated")
 	end))
 
 	self.toolJanitor:GiveChore(tool.Unequipped:Connect(function()
 		self:_onToolUnequipped()
-		self:inputEnded("ToolUnequipped")
+		self:InputEnded("ToolUnequipped")
 		if cancelOnUnequip then
-			self:cancel("ToolUnequipped")
+			self:Cancel("ToolUnequipped")
 		end
 	end))
 
 	self.toolJanitor:GiveChore(tool.Destroying:Connect(function()
 		if self.boundTool == tool then
-			self:unbindTool()
+			self:UnbindTool()
 		end
 	end))
 
@@ -1548,7 +1548,7 @@ function Melee:Cancel(reasonRaw: any)
 	end
 	self.retryToken += 1
 	self:_cancelStanceTimer()
-	self.controller:resetSequence()
+	self.controller:ResetSequence()
 	self.swingCount = 0
 	self.lastAttackFinishedAt = -math.huge
 
@@ -1571,42 +1571,9 @@ function Melee:Destroy()
 		return
 	end
 	self.destroyed = true
-	self:unbindTool()
+	self:UnbindTool()
 	self:_clearNamedTracks()
-	self:cancel("Destroyed")
+	self:Cancel("Destroyed")
 	self.janitor:Destroy()
 end
-
-AnimationController.new = AnimationController.New
-AnimationController.setAnimator = AnimationController.SetAnimator
-AnimationController.setMode = AnimationController.SetMode
-AnimationController.resetSequence = AnimationController.ResetSequence
-AnimationController.setMarkers = AnimationController.SetMarkers
-AnimationController.getMarkers = AnimationController.GetMarkers
-AnimationController.setClips = AnimationController.SetClips
-AnimationController.clearTracks = AnimationController.ClearTracks
-AnimationController.loadTrack = AnimationController.LoadTrack
-AnimationController.pickClipIndex = AnimationController.PickClipIndex
-AnimationController.playNext = AnimationController.PlayNext
-AnimationController.stopAll = AnimationController.StopAll
-AnimationController.destroy = AnimationController.Destroy
-Melee.new = Melee.New
-Melee.queueSwing = Melee.QueueSwing
-Melee.inputBegan = Melee.InputBegan
-Melee.inputEnded = Melee.InputEnded
-Melee.tap = Melee.Tap
-Melee.setEnabled = Melee.SetEnabled
-Melee.setCooldown = Melee.SetCooldown
-Melee.setSlashResetCooldown = Melee.SetSlashResetCooldown
-Melee.setAnimator = Melee.SetAnimator
-Melee.setHumanoid = Melee.SetHumanoid
-Melee.setCharacter = Melee.SetCharacter
-Melee.setClips = Melee.SetClips
-Melee.setMode = Melee.SetMode
-Melee.bindTool = Melee.BindTool
-Melee.unbindTool = Melee.UnbindTool
-Melee.on = Melee.On
-Melee.cancel = Melee.Cancel
-Melee.destroy = Melee.Destroy
-
 return Melee

@@ -289,8 +289,8 @@ function Input._scheduleLongPress(self: Input, inputObject: InputObject, action:
 	if action.longPressTime <= 0 then
 		return
 	end
-	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).schedule) == "function" then
-		local token = (self.tickScheduler :: any):schedule(
+	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).Schedule) == "function" then
+		local token = (self.tickScheduler :: any):Schedule(
 			function()
 				local inputPresses = self.activePresses[inputObject]
 				if inputPresses == nil then
@@ -310,11 +310,11 @@ function Input._scheduleLongPress(self: Input, inputObject: InputObject, action:
 			}
 		)
 		press.longPressCancel = function()
-			if typeof(token.cancel) == "function" then
-				token:cancel()
-			elseif typeof((self.tickScheduler :: any).cancel) == "function" then
+			if typeof(token.Cancel) == "function" then
+				token:Cancel()
+			elseif typeof((self.tickScheduler :: any).Cancel) == "function" then
 				local schedulerAny = self.tickScheduler :: any
-				schedulerAny:cancel(token)
+				schedulerAny:Cancel(token)
 			end
 		end
 		return
@@ -385,7 +385,7 @@ function Input._dispatchAction(
 
 	if self.eventBus ~= nil and typeof((self.eventBus :: any).publish) == "function" then
 		local eventBusAny = self.eventBus :: any
-		eventBusAny:publish(self.eventChannel, self.actionEvent, {
+		eventBusAny:Publish(self.eventChannel, self.actionEvent, {
 			actionName = action.name,
 			phase = phase,
 			layer = action.layer,
@@ -606,34 +606,12 @@ function Input.Clear(self: Input)
 end
 
 function Input.Destroy(self: Input)
-	self:clear()
+	self:Clear()
 	for index = #self.connections, 1, -1 do
 		safeDisconnect(self.connections[index])
 		self.connections[index] = nil
 	end
 	self.isInitialized = false
 end
-
-Input.BindAction = Input.BindAction
-Input.RebindAction = Input.RebindAction
-Input.UnbindAction = Input.UnbindAction
-Input.SetActionEnabled = Input.SetActionEnabled
-Input.SetLayerEnabled = Input.SetLayerEnabled
-Input.SetLayerPriority = Input.SetLayerPriority
-Input.GetLayerEnabled = Input.GetLayerEnabled
-Input.Init = Input.Init
-Input.Destroy = Input.Destroy
-
-Input.new = Input.New
-Input.init = Input.Init
-Input.bindAction = Input.BindAction
-Input.rebindAction = Input.RebindAction
-Input.setActionEnabled = Input.SetActionEnabled
-Input.unbindAction = Input.UnbindAction
-Input.setLayerEnabled = Input.SetLayerEnabled
-Input.setLayerPriority = Input.SetLayerPriority
-Input.getLayerEnabled = Input.GetLayerEnabled
-Input.clear = Input.Clear
-Input.destroy = Input.Destroy
 
 return Input

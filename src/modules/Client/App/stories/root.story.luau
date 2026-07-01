@@ -1,8 +1,8 @@
-local require = require(script.Parent.loader).load(script)
+local require = (require :: any)(
+		game:GetService("ServerScriptService"):FindFirstChild("LoaderUtils", true).Parent
+	).bootstrapStory(script) :: typeof(require(script.Parent.loader).load(script))
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HpServiceUtils = require("HpServiceUtils")
-local ManaServiceUtils = require("ManaServiceUtils")
 local React = require(ReplicatedStorage.Packages.React)
 local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
 local RootUI = require("RootUI")
@@ -11,7 +11,7 @@ local e: typeof(React.createElement) = React.createElement
 
 local STORY_ROOT_NAME = "RootStoryUI"
 
-local function resolveMountTarget(target: Instance): ScreenGui
+local function GetMountTarget(target: Instance): ScreenGui
 	if target:IsA("ScreenGui") then
 		return target
 	end
@@ -35,25 +35,11 @@ local function resolveMountTarget(target: Instance): ScreenGui
 end
 
 return function(target)
-	local mountTarget = resolveMountTarget(target)
+	local mountTarget = GetMountTarget(target)
 	local root = ReactRoblox.createRoot(mountTarget)
-	local mockHpState = HpServiceUtils.createState(78, 100, 20)
-	local mockManaState = ManaServiceUtils.createState(17, 20, 0, true, nil)
 
 	root:render(e(RootUI, {
 		currentScreen = nil,
-		hudProps = {
-			hpBarProps = {
-				useServiceState = false,
-				mockState = mockHpState,
-				mockReady = true,
-			},
-			manaBarProps = {
-				useServiceState = false,
-				mockState = mockManaState,
-				mockReady = true,
-			},
-		},
 	}))
 
 	return function()

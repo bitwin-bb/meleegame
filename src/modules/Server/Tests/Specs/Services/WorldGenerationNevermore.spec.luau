@@ -56,7 +56,7 @@ return function()
 	describe("WorldGeneration Nevermore integrations", function()
 		it("builds chunk visuals when prop templates are unavailable", function()
 			local client = setmetatable({
-				state = WorldGenerationServiceUtils.createDefaultState(),
+				state = WorldGenerationServiceUtils.CreateDefaultState(),
 				worldOrigin = Vector3.zero,
 				basePlaneX = 0,
 				treeVariantDefinitions = {},
@@ -113,7 +113,7 @@ return function()
 		end)
 
 		it("computes client visual chunk bounds from tile and depth extents", function()
-			local state = WorldGenerationServiceUtils.createDefaultState()
+			local state = WorldGenerationServiceUtils.CreateDefaultState()
 			local snapshot = {
 				tileMinX = 32,
 				tileMinY = -16,
@@ -142,7 +142,7 @@ return function()
 
 		it("keeps background terrain layers at the base tile light level", function()
 			local client = setmetatable({
-				state = WorldGenerationServiceUtils.createDefaultState(),
+				state = WorldGenerationServiceUtils.CreateDefaultState(),
 				worldOrigin = Vector3.zero,
 				basePlaneX = 0,
 				terrainVisualPartPool = {},
@@ -363,7 +363,7 @@ return function()
 			model.Name = "TerrainHoverRuntimeSpec"
 			model.Parent = Workspace
 
-			local state = WorldGenerationServiceUtils.createDefaultState()
+			local state = WorldGenerationServiceUtils.CreateDefaultState()
 
 			local snapshot = {
 				key = "0:0",
@@ -538,10 +538,10 @@ return function()
 				totalVisualPartCount = 1,
 				lastChunkBuildAt = {},
 				chunkAnimationSkipUntil = {},
-				resolveForegroundTerrainFolder = function()
+				GetForegroundTerrainFolder = function()
 					return foregroundFolder
 				end,
-				resolveBackgroundLayerFolder = function()
+				GetBackgroundLayerFolder = function()
 					return nil
 				end,
 				releaseTerrainVisualParts = function() end,
@@ -586,7 +586,7 @@ return function()
 
 			local world = nil
 			local ok, err = pcall(function()
-				world = (WorldGeneration.new :: any)({
+				world = (WorldGeneration.New :: any)({
 					parent = parent,
 					maxCachedChunkVisuals = 0,
 					maxConcurrentChunkLoads = 1,
@@ -595,11 +595,11 @@ return function()
 			end)
 
 			local stoneTemplate = if ok and world ~= nil
-				then (world :: any):getTerrainTileTemplate(WorldGeneration.TILE_ID.STONE)
+				then (world :: any):GetTerrainTileTemplate(WorldGeneration.TILE_ID.STONE)
 				else nil
 
 			if world ~= nil then
-				(world :: any):destroy()
+				(world :: any):Destroy()
 			end
 			parent:Destroy()
 			if existingAssets ~= nil then
@@ -619,7 +619,7 @@ return function()
 
 			local assetTemplates = createTileAssetTemplates()
 			local maid = Maid.new()
-			local world = (WorldGeneration.new :: any)({
+			local world = (WorldGeneration.New :: any)({
 				parent = parent,
 				maxCachedChunkVisuals = 0,
 				maxConcurrentChunkLoads = 1,
@@ -630,26 +630,26 @@ return function()
 			local unloadedEvents = {}
 			local statsSnapshots = {}
 
-			maid:GiveTask(world:observeChunkDemand():Subscribe(function(event)
+			maid:GiveTask(world:ObserveChunkDemand():Subscribe(function(event)
 				demandEvents[#demandEvents + 1] = event
 			end))
-			maid:GiveTask(world:observeChunkCollisionReady():Subscribe(function(event)
+			maid:GiveTask(world:ObserveChunkCollisionReady():Subscribe(function(event)
 				readyEvents[#readyEvents + 1] = event
 			end))
-			maid:GiveTask(world:observeChunkCollisionUnloaded():Subscribe(function(event)
+			maid:GiveTask(world:ObserveChunkCollisionUnloaded():Subscribe(function(event)
 				unloadedEvents[#unloadedEvents + 1] = event
 			end))
-			maid:GiveTask(world:observeStats():Subscribe(function(stats)
+			maid:GiveTask(world:ObserveStats():Subscribe(function(stats)
 				statsSnapshots[#statsSnapshots + 1] = stats
 			end))
 
-			world:init()
-			world:adjustChunkDemand("0:0", 1)
-			world:loadChunkByKey("0:0", {
+			world:Init()
+			world:AdjustChunkDemand("0:0", 1)
+			world:LoadChunkByKey("0:0", {
 				reason = "spec",
 			})
-			world:adjustChunkDemand("0:0", -1)
-			world:unloadChunkByKey("0:0")
+			world:AdjustChunkDemand("0:0", -1)
+			world:UnloadChunkByKey("0:0")
 			task.wait()
 
 			expect(#demandEvents).to.equal(2)
@@ -663,7 +663,7 @@ return function()
 			expect(#statsSnapshots >= 1).to.equal(true)
 			expect(statsSnapshots[#statsSnapshots].demandedChunks).to.equal(0)
 
-			world:destroy()
+			world:Destroy()
 			maid:Destroy()
 			assetTemplates:Destroy()
 			parent:Destroy()

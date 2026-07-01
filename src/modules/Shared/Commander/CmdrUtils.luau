@@ -12,7 +12,7 @@ CmdrUtils.DEFAULT_FLY_SPEED = 64
 CmdrUtils.MIN_FLY_SPEED = 8
 CmdrUtils.MAX_FLY_SPEED = 256
 
-function CmdrUtils.SanitizeFlySpeed(speedRaw: any, fallbackRaw: any): number
+function CmdrUtils.CoerceFlySpeed(speedRaw: any, fallbackRaw: any): number
 	local fallback = if typeof(fallbackRaw) == "number" and fallbackRaw == fallbackRaw
 		then fallbackRaw
 		else CmdrUtils.DEFAULT_FLY_SPEED
@@ -84,10 +84,5 @@ function CmdrUtils.KeepSingleValidCmdrGui(parentRaw: any): ScreenGui?
 
 	return keptGui
 end
-
-CmdrUtils.sanitizeFlySpeed = CmdrUtils.SanitizeFlySpeed
-CmdrUtils.isValidCmdrGui = CmdrUtils.IsValidCmdrGui
-CmdrUtils.getCmdrGuiInstances = CmdrUtils.GetCmdrGuiInstances
-CmdrUtils.keepSingleValidCmdrGui = CmdrUtils.KeepSingleValidCmdrGui
 
 return CmdrUtils

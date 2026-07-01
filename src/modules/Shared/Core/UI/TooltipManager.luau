@@ -5,7 +5,7 @@ local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local DynamicTextResolver = require("DynamicTextResolver")
+local DynamicTextGetter = require("DynamicTextGetter")
 local RichTextFormatter = require("RichTextFormatter")
 local StatStringBuilder = require("StatStringBuilder")
 local TextMeasurementCache = require("TextMeasurementCache")
@@ -17,7 +17,7 @@ export type TooltipManagerConfig = {
 	container: GuiObject,
 	springAnimator: any?,
 	tickScheduler: any?,
-	textResolver: any?,
+	textGetter: any?,
 	richTextFormatter: any?,
 	statStringBuilder: any?,
 	textMeasurementCache: any?,
@@ -122,12 +122,12 @@ function TooltipManager.New(configRaw: TooltipManagerConfig): any
 	local self = setmetatable({
 		container = configRaw.container,
 		springAnimator = configRaw.springAnimator,
-		resolver = if configRaw.textResolver ~= nil then configRaw.textResolver else DynamicTextResolver.new(),
+		textGetter = if configRaw.textGetter ~= nil then configRaw.textGetter else DynamicTextGetter.New(),
 		rich = if configRaw.richTextFormatter ~= nil then configRaw.richTextFormatter else RichTextFormatter,
-		stats = if configRaw.statStringBuilder ~= nil then configRaw.statStringBuilder else StatStringBuilder.new(),
+		stats = if configRaw.statStringBuilder ~= nil then configRaw.statStringBuilder else StatStringBuilder.New(),
 		measure = if configRaw.textMeasurementCache ~= nil
 			then configRaw.textMeasurementCache
-			else TextMeasurementCache.new(),
+			else TextMeasurementCache.New(),
 		createTooltipFrame = if typeof(configRaw.createTooltipFrame) == "function"
 			then configRaw.createTooltipFrame
 			else defaultCreateTooltipFrame,
@@ -180,12 +180,12 @@ function TooltipManager._animateShow(self: any, frame: Frame)
 	end
 	if self.springAnimator ~= nil and typeof((self.springAnimator :: any).animate) == "function" then
 		local springAnimatorAny = self.springAnimator :: any
-		springAnimatorAny:animate(frame, "BackgroundTransparency", 0.15, { frequency = 9, dampingRatio = 1 })
+		springAnimatorAny:Animate(frame, "BackgroundTransparency", 0.15, { frequency = 9, dampingRatio = 1 })
 		if label ~= nil and label:IsA("TextLabel") then
-			springAnimatorAny:animate(label, "TextTransparency", 0, { frequency = 9, dampingRatio = 1 })
+			springAnimatorAny:Animate(label, "TextTransparency", 0, { frequency = 9, dampingRatio = 1 })
 		end
 		if scale ~= nil and scale:IsA("UIScale") then
-			springAnimatorAny:animate(scale, "Scale", 1, { frequency = 8, dampingRatio = 1 })
+			springAnimatorAny:Animate(scale, "Scale", 1, { frequency = 8, dampingRatio = 1 })
 		end
 	else
 		frame.BackgroundTransparency = 0.15
@@ -203,12 +203,12 @@ function TooltipManager._animateHide(self: any, frame: Frame)
 	local scale = frame:FindFirstChild("Scale")
 	if self.springAnimator ~= nil and typeof((self.springAnimator :: any).animate) == "function" then
 		local springAnimatorAny = self.springAnimator :: any
-		springAnimatorAny:animate(frame, "BackgroundTransparency", 1, { frequency = 10, dampingRatio = 1 })
+		springAnimatorAny:Animate(frame, "BackgroundTransparency", 1, { frequency = 10, dampingRatio = 1 })
 		if label ~= nil and label:IsA("TextLabel") then
-			springAnimatorAny:animate(label, "TextTransparency", 1, { frequency = 10, dampingRatio = 1 })
+			springAnimatorAny:Animate(label, "TextTransparency", 1, { frequency = 10, dampingRatio = 1 })
 		end
 		if scale ~= nil and scale:IsA("UIScale") then
-			springAnimatorAny:animate(scale, "Scale", 0.96, { frequency = 10, dampingRatio = 1 })
+			springAnimatorAny:Animate(scale, "Scale", 0.96, { frequency = 10, dampingRatio = 1 })
 		end
 		task.delay(0.22, function()
 			self:_release(frame)
@@ -228,24 +228,24 @@ function TooltipManager._composeText(
 	local builder = self.rich.new()
 
 	if typeof(metadata.title) == "string" and metadata.title ~= "" then
-		local title = self.resolver:resolve(metadata.title, context)
+		local title = self.textGetter:Get(metadata.title, context)
 		local rarity = string.lower(if typeof(metadata.rarity) == "string" then metadata.rarity else "")
 		local preset = RARITY_PRESET[rarity]
 		if preset ~= nil then
-			builder:preset(preset, title)
+			builder:Preset(preset, title)
 		else
-			builder:bold(title)
+			builder:Bold(title)
 		end
-		builder:line()
+		builder:Line()
 	end
 
 	if typeof(metadata.description) == "string" and metadata.description ~= "" then
-		builder:append(self.resolver:resolve(metadata.description, context))
-		builder:line()
+		builder:Append(self.textGetter:Get(metadata.description, context))
+		builder:Line()
 	end
 
 	if metadata.stats ~= nil then
-		local statsText = self.stats:buildRichText(
+		local statsText = self.stats:BuildRichText(
 			metadata.stats,
 			if compareMetadataRaw ~= nil then compareMetadataRaw.stats else metadata.compareStats,
 			metadata.statDefinitions,
@@ -253,21 +253,21 @@ function TooltipManager._composeText(
 			{ showUnchanged = false }
 		)
 		if statsText ~= "" then
-			builder:raw(statsText)
-			builder:line()
+			builder:Raw(statsText)
+			builder:Line()
 		end
 	end
 
 	if typeof(metadata.extraLines) == "table" then
 		for _, line in metadata.extraLines do
 			if typeof(line) == "string" and line ~= "" then
-				builder:append(self.resolver:resolve(line, context))
-				builder:line()
+				builder:Append(self.textGetter:Get(line, context))
+				builder:Line()
 			end
 		end
 	end
 
-	return builder:toString()
+	return builder:ToString()
 end
 
 function TooltipManager._applyContent(self: any, frame: Frame, text: string, maxWidthRaw: any)
@@ -278,7 +278,7 @@ function TooltipManager._applyContent(self: any, frame: Frame, text: string, max
 	local maxWidth = clampInteger(maxWidthRaw, self.defaultMaxWidth, 80, 1200)
 	label.Text = text
 	local measureText = string.gsub(text, "<.->", "")
-	local measured = self.measure:measure(measureText, label.TextSize, label.Font, Vector2.new(maxWidth, 2000))
+	local measured = self.measure:Measure(measureText, label.TextSize, label.Font, Vector2.new(maxWidth, 2000))
 	local width = math.min(maxWidth, math.max(120, math.floor(measured.X + 24)))
 	local height = math.max(36, math.floor(measured.Y + 18))
 	frame.Size = UDim2.fromOffset(width, height)
@@ -317,7 +317,7 @@ function TooltipManager._updatePosition(self: any)
 end
 
 function TooltipManager.Show(self: any, metadataRaw: TooltipMetadata, compareMetadataRaw: TooltipMetadata?)
-	self:hide()
+	self:Hide()
 	local metadata = if typeof(metadataRaw) == "table" then metadataRaw else {} :: any
 	local compareMetadata = if typeof(compareMetadataRaw) == "table" then compareMetadataRaw else nil
 	local primary = self:_acquire()
@@ -341,9 +341,9 @@ function TooltipManager.Show(self: any, metadataRaw: TooltipMetadata, compareMet
 	if
 		self.positionToken == nil
 		and self.tickScheduler ~= nil
-		and typeof((self.tickScheduler :: any).scheduleEvery) == "function"
+		and typeof((self.tickScheduler :: any).ScheduleEvery) == "function"
 	then
-		self.positionToken = (self.tickScheduler :: any):scheduleEvery(
+		self.positionToken = (self.tickScheduler :: any):ScheduleEvery(
 			function()
 				self:_updatePosition()
 			end,
@@ -372,11 +372,11 @@ function TooltipManager.Hide(self: any)
 	end
 	self.isVisible = false
 	if self.positionToken ~= nil then
-		if typeof(self.positionToken.cancel) == "function" then
-			self.positionToken:cancel()
-		elseif self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).cancel) == "function" then
+		if typeof(self.positionToken.Cancel) == "function" then
+			self.positionToken:Cancel()
+		elseif self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).Cancel) == "function" then
 			local schedulerAny = self.tickScheduler :: any
-			schedulerAny:cancel(self.positionToken)
+			schedulerAny:Cancel(self.positionToken)
 		end
 		self.positionToken = nil
 	end
@@ -397,16 +397,16 @@ function TooltipManager.BindHover(self: any, targetRaw: any, metadataProviderRaw
 	local enterConnection = target.MouseEnter:Connect(function()
 		local metadata, compare = metadataProviderRaw(target)
 		if metadata ~= nil then
-			self:show(metadata, compare)
+			self:Show(metadata, compare)
 		end
 	end)
 	local leaveConnection = target.MouseLeave:Connect(function()
-		self:hide()
+		self:Hide()
 	end)
 	local destroyConnection = nil
 	if typeof((target :: any).Destroying) == "RBXScriptSignal" then
 		destroyConnection = (target :: any).Destroying:Connect(function()
-			self:hide()
+			self:Hide()
 			safeDisconnect(enterConnection)
 			safeDisconnect(leaveConnection)
 		end)
@@ -425,7 +425,7 @@ function TooltipManager.BindHover(self: any, targetRaw: any, metadataProviderRaw
 end
 
 function TooltipManager.Destroy(self: any)
-	self:hide()
+	self:Hide()
 	for index = #self.hoverConnections, 1, -1 do
 		local slot = self.hoverConnections[index]
 		safeDisconnect(slot.enter)
@@ -438,15 +438,5 @@ function TooltipManager.Destroy(self: any)
 		self.pool[index] = nil
 	end
 end
-
-TooltipManager.Show = TooltipManager.Show
-TooltipManager.Hide = TooltipManager.Hide
-TooltipManager.BindHover = TooltipManager.BindHover
-
-TooltipManager.new = TooltipManager.New
-TooltipManager.show = TooltipManager.Show
-TooltipManager.hide = TooltipManager.Hide
-TooltipManager.bindHover = TooltipManager.BindHover
-TooltipManager.destroy = TooltipManager.Destroy
 
 return TooltipManager

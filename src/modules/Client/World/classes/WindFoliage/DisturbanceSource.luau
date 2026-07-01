@@ -127,11 +127,4 @@ function DisturbanceSource.CreateTemplate(): DisturbanceSource
 	} :: DisturbanceSource
 	return source
 end
-
-DisturbanceSource.reset = DisturbanceSource.Reset
-DisturbanceSource.populate = DisturbanceSource.Populate
-DisturbanceSource.isExpired = DisturbanceSource.IsExpired
-DisturbanceSource.computeImpulse = DisturbanceSource.ComputeImpulse
-DisturbanceSource.createTemplate = DisturbanceSource.CreateTemplate
-
 return DisturbanceSource

@@ -17,14 +17,14 @@ local DEFAULT_GAIN_RATE = 22
 local DEFAULT_DEPLETION_RATE = 10
 local EPSILON = 0.0005
 
-local function sanitizeProgress(valueRaw: any): number
+local function CoerceProgress(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return 0
 	end
 	return math.clamp(valueRaw, 0, 1)
 end
 
-local function sanitizePositiveRate(valueRaw: any, fallback: number): number
+local function CoercePositiveRate(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw or valueRaw <= 0 then
 		return fallback
 	end
@@ -33,9 +33,9 @@ end
 
 local function useSmoothedProgress(options: SmoothedProgressOptions?): number
 	local visible = if options and options.visible ~= nil then options.visible else true
-	local gainRate = sanitizePositiveRate(if options then options.gainRate else nil, DEFAULT_GAIN_RATE)
-	local depletionRate = sanitizePositiveRate(if options then options.depletionRate else nil, DEFAULT_DEPLETION_RATE)
-	local target = if visible then sanitizeProgress(if options then options.progress else nil) else 0
+	local gainRate = CoercePositiveRate(if options then options.gainRate else nil, DEFAULT_GAIN_RATE)
+	local depletionRate = CoercePositiveRate(if options then options.depletionRate else nil, DEFAULT_DEPLETION_RATE)
+	local target = if visible then CoerceProgress(if options then options.progress else nil) else 0
 
 	local currentRef = React.useRef(target)
 	local targetRef = React.useRef(target)
@@ -50,7 +50,7 @@ local function useSmoothedProgress(options: SmoothedProgressOptions?): number
 			local current = currentRef.current
 			local nextTarget = targetRef.current
 			local rate = if nextTarget >= current then gainRate else depletionRate
-			local alpha = Damp.factor(rate, deltaTime)
+			local alpha = Damp.Factor(rate, deltaTime)
 			local nextValue = current + ((nextTarget - current) * alpha)
 
 			if math.abs(nextValue - nextTarget) <= EPSILON then

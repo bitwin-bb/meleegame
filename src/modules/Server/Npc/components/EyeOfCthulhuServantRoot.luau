@@ -18,14 +18,14 @@ export type EyeOfCthulhuServantRootConfig = {
 local DEFAULT_NAME = "ServantOfCthulhu"
 local DEFAULT_ROOT_SIZE = Vector3.new(2.6, 2.6, 2.6)
 
-local function sanitizeName(valueRaw: any): string
+local function CoerceName(valueRaw: any): string
 	if typeof(valueRaw) == "string" and valueRaw ~= "" then
 		return valueRaw
 	end
 	return DEFAULT_NAME
 end
 
-local function sanitizeSize(valueRaw: any): Vector3
+local function CoerceSize(valueRaw: any): Vector3
 	if typeof(valueRaw) == "Vector3" then
 		return Vector3.new(math.max(0.05, valueRaw.X), math.max(0.05, valueRaw.Y), math.max(0.05, valueRaw.Z))
 	end
@@ -37,7 +37,7 @@ function EyeOfCthulhuServantRoot.CreateModel(configRaw: EyeOfCthulhuServantRootC
 	local scope = Fusion.scoped(Fusion)
 	local rootPart = scope:New "Part" {
 		Name = "RootPart",
-		Size = sanitizeSize(config.size),
+		Size = CoerceSize(config.size),
 		Transparency = 1,
 		Anchored = true,
 		CanCollide = false,
@@ -46,7 +46,7 @@ function EyeOfCthulhuServantRoot.CreateModel(configRaw: EyeOfCthulhuServantRootC
 	}
 
 	local model = scope:New "Model" {
-		Name = sanitizeName(config.name),
+		Name = CoerceName(config.name),
 		[Children] = {
 			rootPart,
 		},
@@ -63,7 +63,4 @@ function EyeOfCthulhuServantRoot.CreateModel(configRaw: EyeOfCthulhuServantRootC
 
 	return model
 end
-
-EyeOfCthulhuServantRoot.createModel = EyeOfCthulhuServantRoot.CreateModel
-
 return EyeOfCthulhuServantRoot

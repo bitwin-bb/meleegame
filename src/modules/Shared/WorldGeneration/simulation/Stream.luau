@@ -82,7 +82,7 @@ function Stream.ComputeChunkInterest(
 				local chunkX = centerChunkX + offsetX
 				local chunkY = centerChunkY + offsetY
 				local chunkZ = centerChunkZ + offsetZ
-				local key = Shared.packChunkKey(chunkX, chunkY, chunkZ)
+				local key = Shared.PackChunkKey(chunkX, chunkY, chunkZ)
 				result[key] = squaredDistance3(chunkX, chunkY, chunkZ, centerChunkX, centerChunkY, centerChunkZ)
 			end
 		end
@@ -229,20 +229,4 @@ function Stream.MarkClientChunkUnloaded(clientState: ClientStreamState, chunkKey
 	clientState.pendingPriority[chunkKeyRaw] = nil
 	clientState.pendingSnapshots[chunkKeyRaw] = nil
 end
-
-Stream.createPlayerStreamState = Stream.CreatePlayerStreamState
-Stream.createServerStreamState = Stream.CreateServerStreamState
-Stream.getOrCreatePlayerStream = Stream.GetOrCreatePlayerStream
-Stream.removePlayerStream = Stream.RemovePlayerStream
-Stream.computeChunkInterest = Stream.ComputeChunkInterest
-Stream.enqueueChunk = Stream.EnqueueChunk
-Stream.popNextChunk = Stream.PopNextChunk
-Stream.reconcilePlayerInterest = Stream.ReconcilePlayerInterest
-Stream.isRevisionOutOfDate = Stream.IsRevisionOutOfDate
-Stream.markRevisionSent = Stream.MarkRevisionSent
-Stream.createClientStreamState = Stream.CreateClientStreamState
-Stream.pushClientSnapshot = Stream.PushClientSnapshot
-Stream.popClientSnapshot = Stream.PopClientSnapshot
-Stream.markClientChunkUnloaded = Stream.MarkClientChunkUnloaded
-
 return Stream

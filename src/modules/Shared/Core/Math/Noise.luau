@@ -24,20 +24,20 @@ local function lerp(a: number, b: number, t: number): number
 	return a + (b - a) * t
 end
 
-local function resolveScale(scale: number?): number
-	local resolved = math.abs(scale or 1)
-	if resolved == 0 then
+local function GetScale(scale: number?): number
+	local Got = math.abs(scale or 1)
+	if Got == 0 then
 		return 1
 	end
-	return resolved
+	return Got
 end
 
 local function unit1(seed: number, x: number): number
 	local x0 = math.floor(x)
 	local x1 = x0 + 1
 	local tx = fade(x - x0)
-	local v0 = hashToUnit(Rand.hashCoordinates(seed, x0, 0, 0))
-	local v1 = hashToUnit(Rand.hashCoordinates(seed, x1, 0, 0))
+	local v0 = hashToUnit(Rand.HashCoordinates(seed, x0, 0, 0))
+	local v1 = hashToUnit(Rand.HashCoordinates(seed, x1, 0, 0))
 	return lerp(v0, v1, tx)
 end
 
@@ -49,10 +49,10 @@ local function unit2(seed: number, x: number, y: number): number
 	local tx = fade(x - x0)
 	local ty = fade(y - y0)
 
-	local v00 = hashToUnit(Rand.hashCoordinates(seed, x0, y0, 0))
-	local v10 = hashToUnit(Rand.hashCoordinates(seed, x1, y0, 0))
-	local v01 = hashToUnit(Rand.hashCoordinates(seed, x0, y1, 0))
-	local v11 = hashToUnit(Rand.hashCoordinates(seed, x1, y1, 0))
+	local v00 = hashToUnit(Rand.HashCoordinates(seed, x0, y0, 0))
+	local v10 = hashToUnit(Rand.HashCoordinates(seed, x1, y0, 0))
+	local v01 = hashToUnit(Rand.HashCoordinates(seed, x0, y1, 0))
+	local v11 = hashToUnit(Rand.HashCoordinates(seed, x1, y1, 0))
 
 	local top = lerp(v00, v10, tx)
 	local bottom = lerp(v01, v11, tx)
@@ -70,14 +70,14 @@ local function unit3(seed: number, x: number, y: number, z: number): number
 	local ty = fade(y - y0)
 	local tz = fade(z - z0)
 
-	local c000 = hashToUnit(Rand.hashCoordinates(seed, x0, y0, z0))
-	local c100 = hashToUnit(Rand.hashCoordinates(seed, x1, y0, z0))
-	local c010 = hashToUnit(Rand.hashCoordinates(seed, x0, y1, z0))
-	local c110 = hashToUnit(Rand.hashCoordinates(seed, x1, y1, z0))
-	local c001 = hashToUnit(Rand.hashCoordinates(seed, x0, y0, z1))
-	local c101 = hashToUnit(Rand.hashCoordinates(seed, x1, y0, z1))
-	local c011 = hashToUnit(Rand.hashCoordinates(seed, x0, y1, z1))
-	local c111 = hashToUnit(Rand.hashCoordinates(seed, x1, y1, z1))
+	local c000 = hashToUnit(Rand.HashCoordinates(seed, x0, y0, z0))
+	local c100 = hashToUnit(Rand.HashCoordinates(seed, x1, y0, z0))
+	local c010 = hashToUnit(Rand.HashCoordinates(seed, x0, y1, z0))
+	local c110 = hashToUnit(Rand.HashCoordinates(seed, x1, y1, z0))
+	local c001 = hashToUnit(Rand.HashCoordinates(seed, x0, y0, z1))
+	local c101 = hashToUnit(Rand.HashCoordinates(seed, x1, y0, z1))
+	local c011 = hashToUnit(Rand.HashCoordinates(seed, x0, y1, z1))
+	local c111 = hashToUnit(Rand.HashCoordinates(seed, x1, y1, z1))
 
 	local x00 = lerp(c000, c100, tx)
 	local x10 = lerp(c010, c110, tx)
@@ -89,11 +89,11 @@ local function unit3(seed: number, x: number, y: number, z: number): number
 end
 
 function Noise.ToUnit(value: number): number
-	return Num.saturate(value * 0.5 + 0.5)
+	return Num.Saturate(value * 0.5 + 0.5)
 end
 
 function Noise.ToSigned(value: number): number
-	return Num.saturate(value) * 2 - 1
+	return Num.Saturate(value) * 2 - 1
 end
 
 function Noise.FbmOctaves(
@@ -124,39 +124,39 @@ function Noise.FbmOctaves(
 end
 
 function Noise.Sample1(x: number, scale: number?, seedRaw: SeedInput?): number
-	local seed = Rand.seed(seedRaw)
-	local scaledX = x / resolveScale(scale)
+	local seed = Rand.Seed(seedRaw)
+	local scaledX = x / GetScale(scale)
 	return Noise.ToSigned(unit1(seed, scaledX))
 end
 
 function Noise.Sample2(x: number, y: number, scale: number?, seedRaw: SeedInput?): number
-	local seed = Rand.seed(seedRaw)
-	local resolvedScale = resolveScale(scale)
-	return Noise.ToSigned(unit2(seed, x / resolvedScale, y / resolvedScale))
+	local seed = Rand.Seed(seedRaw)
+	local GotScale = GetScale(scale)
+	return Noise.ToSigned(unit2(seed, x / GotScale, y / GotScale))
 end
 
 function Noise.Sample3(x: number, y: number, z: number, scale: number?, seedRaw: SeedInput?): number
-	local seed = Rand.seed(seedRaw)
-	local resolvedScale = resolveScale(scale)
-	return Noise.ToSigned(unit3(seed, x / resolvedScale, y / resolvedScale, z / resolvedScale))
+	local seed = Rand.Seed(seedRaw)
+	local GotScale = GetScale(scale)
+	return Noise.ToSigned(unit3(seed, x / GotScale, y / GotScale, z / GotScale))
 end
 
 function Noise.SampleUnit1(x: number, scale: number?, seedRaw: SeedInput?): number
-	local seed = Rand.seed(seedRaw)
-	local scaledX = x / resolveScale(scale)
+	local seed = Rand.Seed(seedRaw)
+	local scaledX = x / GetScale(scale)
 	return unit1(seed, scaledX)
 end
 
 function Noise.SampleUnit2(x: number, y: number, scale: number?, seedRaw: SeedInput?): number
-	local seed = Rand.seed(seedRaw)
-	local resolvedScale = resolveScale(scale)
-	return unit2(seed, x / resolvedScale, y / resolvedScale)
+	local seed = Rand.Seed(seedRaw)
+	local GotScale = GetScale(scale)
+	return unit2(seed, x / GotScale, y / GotScale)
 end
 
 function Noise.SampleUnit3(x: number, y: number, z: number, scale: number?, seedRaw: SeedInput?): number
-	local seed = Rand.seed(seedRaw)
-	local resolvedScale = resolveScale(scale)
-	return unit3(seed, x / resolvedScale, y / resolvedScale, z / resolvedScale)
+	local seed = Rand.Seed(seedRaw)
+	local GotScale = GetScale(scale)
+	return unit3(seed, x / GotScale, y / GotScale, z / GotScale)
 end
 
 function Noise.Fbm1(
@@ -167,11 +167,11 @@ function Noise.Fbm1(
 	persistence: number?,
 	lacunarity: number?
 ): number
-	local seed = Rand.seed(seedRaw)
-	local resolvedScale = resolveScale(scale)
+	local seed = Rand.Seed(seedRaw)
+	local GotScale = GetScale(scale)
 	return Noise.FbmOctaves(octaves or 4, persistence or 0.5, lacunarity or 2, function(octave, frequency)
-		local octaveSeed = Rand.fork(seed, octave)
-		return Noise.ToSigned(unit1(octaveSeed, x / resolvedScale * frequency))
+		local octaveSeed = Rand.Fork(seed, octave)
+		return Noise.ToSigned(unit1(octaveSeed, x / GotScale * frequency))
 	end)
 end
 
@@ -184,11 +184,11 @@ function Noise.Fbm2(
 	persistence: number?,
 	lacunarity: number?
 ): number
-	local seed = Rand.seed(seedRaw)
-	local resolvedScale = resolveScale(scale)
+	local seed = Rand.Seed(seedRaw)
+	local GotScale = GetScale(scale)
 	return Noise.FbmOctaves(octaves or 4, persistence or 0.5, lacunarity or 2, function(octave, frequency)
-		local octaveSeed = Rand.fork(seed, octave)
-		return Noise.ToSigned(unit2(octaveSeed, x / resolvedScale * frequency, y / resolvedScale * frequency))
+		local octaveSeed = Rand.Fork(seed, octave)
+		return Noise.ToSigned(unit2(octaveSeed, x / GotScale * frequency, y / GotScale * frequency))
 	end)
 end
 
@@ -202,16 +202,16 @@ function Noise.Fbm3(
 	persistence: number?,
 	lacunarity: number?
 ): number
-	local seed = Rand.seed(seedRaw)
-	local resolvedScale = resolveScale(scale)
+	local seed = Rand.Seed(seedRaw)
+	local GotScale = GetScale(scale)
 	return Noise.FbmOctaves(octaves or 4, persistence or 0.5, lacunarity or 2, function(octave, frequency)
-		local octaveSeed = Rand.fork(seed, octave)
+		local octaveSeed = Rand.Fork(seed, octave)
 		return Noise.ToSigned(
 			unit3(
 				octaveSeed,
-				x / resolvedScale * frequency,
-				y / resolvedScale * frequency,
-				z / resolvedScale * frequency
+				x / GotScale * frequency,
+				y / GotScale * frequency,
+				z / GotScale * frequency
 			)
 		)
 	end)
@@ -252,21 +252,4 @@ function Noise.FbmUnit3(
 ): number
 	return Noise.ToUnit(Noise.Fbm3(x, y, z, scale, seedRaw, octaves, persistence, lacunarity))
 end
-
-Noise.toUnit = Noise.ToUnit
-Noise.toSigned = Noise.ToSigned
-Noise.fbmOctaves = Noise.FbmOctaves
-Noise.sample1 = Noise.Sample1
-Noise.sample2 = Noise.Sample2
-Noise.sample3 = Noise.Sample3
-Noise.sampleUnit1 = Noise.SampleUnit1
-Noise.sampleUnit2 = Noise.SampleUnit2
-Noise.sampleUnit3 = Noise.SampleUnit3
-Noise.fbm1 = Noise.Fbm1
-Noise.fbm2 = Noise.Fbm2
-Noise.fbm3 = Noise.Fbm3
-Noise.fbmUnit1 = Noise.FbmUnit1
-Noise.fbmUnit2 = Noise.FbmUnit2
-Noise.fbmUnit3 = Noise.FbmUnit3
-
 return Noise

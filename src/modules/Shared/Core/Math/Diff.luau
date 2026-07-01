@@ -62,11 +62,4 @@ function Diff.Gradient3(
 	local dz = (sample(x, y, z + h) - sample(x, y, z - h)) / (2 * h)
 	return Vector3.new(dx, dy, dz)
 end
-
-Diff.forward = Diff.Forward
-Diff.backward = Diff.Backward
-Diff.central = Diff.Central
-Diff.gradient2 = Diff.Gradient2
-Diff.gradient3 = Diff.Gradient3
-
 return Diff

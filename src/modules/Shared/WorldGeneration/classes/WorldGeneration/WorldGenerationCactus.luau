@@ -49,7 +49,7 @@ export type CactusConfig = {
 	DetailDensity: number?,
 }
 
-type ResolvedCactusConfig = {
+type CactusRuntimeConfig = {
 	Archetype: CactusArchetype,
 	Seed: number,
 	Iterations: number,
@@ -144,7 +144,7 @@ type Skeleton = {
 
 export type CactusGenerator = typeof(setmetatable(
 	{} :: {
-		Config: ResolvedCactusConfig,
+		Config: CactusRuntimeConfig,
 		Seed: number,
 		Model: Model?,
 		LastSegments: { Segment },
@@ -229,7 +229,7 @@ local ARCHETYPE_PROFILES: { [CactusArchetype]: ArchetypeProfile } = {
 	},
 }
 
-local DEFAULT_CONFIG: ResolvedCactusConfig = {
+local DEFAULT_CONFIG: CactusRuntimeConfig = {
 	Archetype = "Saguaro",
 	Seed = 24680,
 	Iterations = 7,
@@ -276,7 +276,7 @@ local function ClampInteger(valueRaw: any, minimum: number, maximum: number, fal
 	return math.floor(ClampNumber(valueRaw, minimum, maximum, fallback))
 end
 
-local function SanitizeNumberRange(valueRaw: any, fallback: NumberRange, minimum: number, maximum: number): NumberRange
+local function CoerceNumberRange(valueRaw: any, fallback: NumberRange, minimum: number, maximum: number): NumberRange
 	local minValue = fallback.Min
 	local maxValue = fallback.Max
 
@@ -300,21 +300,21 @@ local function SanitizeNumberRange(valueRaw: any, fallback: NumberRange, minimum
 	return NumberRange.new(minValue, maxValue)
 end
 
-local function SanitizeMaterial(valueRaw: any, fallback: Enum.Material): Enum.Material
+local function CoerceMaterial(valueRaw: any, fallback: Enum.Material): Enum.Material
 	if typeof(valueRaw) == "EnumItem" and valueRaw.EnumType == Enum.Material then
 		return valueRaw :: Enum.Material
 	end
 	return fallback
 end
 
-local function SanitizeColor(valueRaw: any, fallback: Color3): Color3
+local function CoerceColor(valueRaw: any, fallback: Color3): Color3
 	if typeof(valueRaw) == "Color3" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function SanitizeString(valueRaw: any, fallback: string): string
+local function CoerceString(valueRaw: any, fallback: string): string
 	if typeof(valueRaw) ~= "string" then
 		return fallback
 	end
@@ -325,7 +325,7 @@ local function SanitizeString(valueRaw: any, fallback: string): string
 	return trimmed
 end
 
-local function ResolveArchetype(valueRaw: any, fallback: CactusArchetype): CactusArchetype
+local function GetArchetype(valueRaw: any, fallback: CactusArchetype): CactusArchetype
 	if valueRaw == "Saguaro" then
 		return "Saguaro"
 	elseif valueRaw == "Barrel" then
@@ -343,7 +343,7 @@ local function RandomInRange(randomObject: Random, range: NumberRange): number
 	return randomObject:NextNumber(range.Min, range.Max)
 end
 
-local function ResolveVisibleMaterial(material: Enum.Material): Enum.Material
+local function GetVisibleMaterial(material: Enum.Material): Enum.Material
 	if material == Enum.Material.SmoothPlastic then
 		return Enum.Material.Plastic
 	end
@@ -399,12 +399,12 @@ local function CreateWeld(part0: BasePart, part1: BasePart)
 	})
 end
 
-local function ResolveConfig(configRaw: CactusConfig?): ResolvedCactusConfig
+local function GetConfig(configRaw: CactusConfig?): CactusRuntimeConfig
 	local source = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else {} :: any
-	local archetype: CactusArchetype = ResolveArchetype(source.Archetype, DEFAULT_CONFIG.Archetype)
+	local archetype: CactusArchetype = GetArchetype(source.Archetype, DEFAULT_CONFIG.Archetype)
 	local profile = ARCHETYPE_PROFILES[archetype]
-	local resolvedMinHeight = ClampNumber(source.MinHeight, 0, 160, profile.MinHeight)
-	local resolvedMaxHeight = ClampNumber(source.MaxHeight, resolvedMinHeight, 220, profile.MaxHeight)
+	local GotMinHeight = ClampNumber(source.MinHeight, 0, 160, profile.MinHeight)
+	local GotMaxHeight = ClampNumber(source.MaxHeight, GotMinHeight, 220, profile.MaxHeight)
 
 	return {
 		Archetype = archetype,
@@ -416,17 +416,17 @@ local function ResolveConfig(configRaw: CactusConfig?): ResolvedCactusConfig
 		MinBranchHeight = ClampNumber(source.MinBranchHeight, 0, 160, DEFAULT_CONFIG.MinBranchHeight),
 		MaxBranches = ClampInteger(source.MaxBranches, 0, 8, DEFAULT_CONFIG.MaxBranches),
 		Curvature = ClampNumber(source.Curvature, 0, 35, DEFAULT_CONFIG.Curvature),
-		SegmentMaterial = SanitizeMaterial(source.SegmentMaterial, DEFAULT_CONFIG.SegmentMaterial),
-		SegmentColor = SanitizeColor(source.SegmentColor, DEFAULT_CONFIG.SegmentColor),
+		SegmentMaterial = CoerceMaterial(source.SegmentMaterial, DEFAULT_CONFIG.SegmentMaterial),
+		SegmentColor = CoerceColor(source.SegmentColor, DEFAULT_CONFIG.SegmentColor),
 		UseWelds = if source.UseWelds == nil then DEFAULT_CONFIG.UseWelds else source.UseWelds == true,
 		Parent = if typeof(source.Parent) == "Instance" then source.Parent else DEFAULT_CONFIG.Parent,
-		ModelName = SanitizeString(source.ModelName, DEFAULT_CONFIG.ModelName),
+		ModelName = CoerceString(source.ModelName, DEFAULT_CONFIG.ModelName),
 		MaxSegments = ClampInteger(source.MaxSegments, 4, 512, DEFAULT_CONFIG.MaxSegments),
 		BranchChance = ClampNumber(source.BranchChance, 0, 1, DEFAULT_CONFIG.BranchChance),
 		BranchStartIteration = ClampInteger(source.BranchStartIteration, 1, 16, DEFAULT_CONFIG.BranchStartIteration),
-		LengthJitter = SanitizeNumberRange(source.LengthJitter, DEFAULT_CONFIG.LengthJitter, 0.5, 1.5),
-		AngleJitter = SanitizeNumberRange(source.AngleJitter, DEFAULT_CONFIG.AngleJitter, -25, 25),
-		CurvatureJitter = SanitizeNumberRange(source.CurvatureJitter, DEFAULT_CONFIG.CurvatureJitter, -18, 18),
+		LengthJitter = CoerceNumberRange(source.LengthJitter, DEFAULT_CONFIG.LengthJitter, 0.5, 1.5),
+		AngleJitter = CoerceNumberRange(source.AngleJitter, DEFAULT_CONFIG.AngleJitter, -25, 25),
+		CurvatureJitter = CoerceNumberRange(source.CurvatureJitter, DEFAULT_CONFIG.CurvatureJitter, -18, 18),
 		ThicknessFalloff = ClampNumber(source.ThicknessFalloff, 0, 1, DEFAULT_CONFIG.ThicknessFalloff),
 		ArmThicknessScale = ClampNumber(source.ArmThicknessScale, 0.2, 1, DEFAULT_CONFIG.ArmThicknessScale),
 		TrunkWobbleDegrees = ClampNumber(source.TrunkWobbleDegrees, 0, 16, DEFAULT_CONFIG.TrunkWobbleDegrees),
@@ -434,15 +434,15 @@ local function ResolveConfig(configRaw: CactusConfig?): ResolvedCactusConfig
 		SegmentCanCollide = if source.SegmentCanCollide == nil
 			then DEFAULT_CONFIG.SegmentCanCollide
 			else source.SegmentCanCollide == true,
-		MinHeight = resolvedMinHeight,
-		MaxHeight = resolvedMaxHeight,
+		MinHeight = GotMinHeight,
+		MaxHeight = GotMaxHeight,
 		NodeSpacing = ClampNumber(source.NodeSpacing, 0, 12, DEFAULT_CONFIG.NodeSpacing),
 		DetailDensity = ClampNumber(source.DetailDensity, 0.2, 2.5, DEFAULT_CONFIG.DetailDensity),
-	} :: ResolvedCactusConfig
+	} :: CactusRuntimeConfig
 end
 
 function CactusGenerator.New(configRaw: CactusConfig?): CactusGenerator
-	local config = ResolveConfig(configRaw)
+	local config = GetConfig(configRaw)
 	local self = setmetatable({
 		Config = config,
 		Seed = config.Seed,
@@ -869,7 +869,7 @@ function CactusGenerator.BuildSegmentPart(self: CactusGenerator, segment: Segmen
 			then Vector3.new(math.max(segmentLength * 0.82, thickness * 0.95), thickness * 1.22, thickness * 1.22)
 			else Vector3.new(segmentLength, thickness, thickness),
 		cframe = segmentCFrame,
-		material = ResolveVisibleMaterial(self.Config.SegmentMaterial),
+		material = GetVisibleMaterial(self.Config.SegmentMaterial),
 		color = self.Config.SegmentColor,
 		castShadow = false,
 		canCollide = self.Config.SegmentCanCollide,
@@ -904,7 +904,7 @@ function CactusGenerator.CreateDetailPart(
 		size = size,
 		cframe = cframe,
 		color = color,
-		material = ResolveVisibleMaterial(material),
+		material = GetVisibleMaterial(material),
 		anchored = not self.Config.UseWelds,
 		massless = self.Config.UseWelds,
 		castShadow = false,
@@ -1214,7 +1214,4 @@ function CactusGenerator.Generate(self: CactusGenerator, origin: Vector3): Model
 	local skeleton = self:GenerateSkeleton(origin)
 	return self:BuildGeometry(skeleton, origin)
 end
-
-CactusGenerator.new = CactusGenerator.New
-
 return CactusGenerator

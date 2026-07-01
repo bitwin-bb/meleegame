@@ -91,7 +91,7 @@ function Debug.ValidateChunkArrays(self: Debug, chunkRaw: any): boolean
 		return true
 	end
 	if typeof(chunkRaw) ~= "table" then
-		self:incrementCounter("chunk_validation_fail")
+		self:IncrementCounter("chunk_validation_fail")
 		return false
 	end
 
@@ -122,9 +122,9 @@ function Debug.ValidateChunkArrays(self: Debug, chunkRaw: any): boolean
 	end
 
 	if not valid then
-		self:incrementCounter("chunk_validation_fail")
+		self:IncrementCounter("chunk_validation_fail")
 	else
-		self:incrementCounter("chunk_validation_ok")
+		self:IncrementCounter("chunk_validation_ok")
 	end
 
 	return valid
@@ -138,7 +138,7 @@ function Debug.EnsureVisualFolder(self: Debug, parentRaw: any): Folder?
 		return self.visualFolder
 	end
 
-	local parent = if typeof(parentRaw) == "Instance" then parentRaw else WorkspaceFolders.getOrCreateGameFolder()
+	local parent = if typeof(parentRaw) == "Instance" then parentRaw else WorkspaceFolders.GetOrCreateGameFolder()
 	local existing = parent:FindFirstChild(DEFAULT_FOLDER_NAME)
 	if existing ~= nil and existing:IsA("Folder") then
 		self.visualFolder = existing
@@ -158,7 +158,7 @@ function Debug.DrawChunkBox(self: Debug, chunkKey: string, center: Vector3, size
 	if not self.enabled then
 		return
 	end
-	local folder = self:ensureVisualFolder(nil)
+	local folder = self:EnsureVisualFolder(nil)
 	if folder == nil then
 		return
 	end
@@ -203,19 +203,4 @@ function Debug.Destroy(self: Debug)
 	table.clear(self.counters)
 	table.clear(self.frameTimers)
 end
-
-Debug.new = Debug.New
-Debug.isEnabled = Debug.IsEnabled
-Debug.beginFrameScope = Debug.BeginFrameScope
-Debug.endFrameScope = Debug.EndFrameScope
-Debug.incrementCounter = Debug.IncrementCounter
-Debug.setCounter = Debug.SetCounter
-Debug.resetFrameCounters = Debug.ResetFrameCounters
-Debug.getCounters = Debug.GetCounters
-Debug.validateChunkArrays = Debug.ValidateChunkArrays
-Debug.ensureVisualFolder = Debug.EnsureVisualFolder
-Debug.drawChunkBox = Debug.DrawChunkBox
-Debug.clearChunkBox = Debug.ClearChunkBox
-Debug.destroy = Debug.Destroy
-
 return Debug

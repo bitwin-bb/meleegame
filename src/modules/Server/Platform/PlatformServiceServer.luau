@@ -9,8 +9,4 @@ end
 function PlatformServiceServer.Destroy(self: typeof(PlatformServiceServer))
 	self.isInitialized = false
 end
-
-PlatformServiceServer.init = PlatformServiceServer.Init
-PlatformServiceServer.destroy = PlatformServiceServer.Destroy
-
 return PlatformServiceServer

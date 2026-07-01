@@ -11,7 +11,6 @@ local React = require(ReplicatedStorage.Packages.React)
 local Responsive = require("useViewportScale")
 local UiSound = require("UiSound")
 local breathSlice = require("breathSlice")
-local breathThunks = require("breathThunks")
 local infoThunks = require("infoThunks")
 local useBubbleDeplete = require("useBubbleDeplete")
 local useHover = require("useHover")
@@ -47,7 +46,7 @@ type BubblesScreenProps = {
 local e: typeof(React.createElement) = React.createElement
 
 local DEFAULT_BUBBLE_VALUE = 1
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number, maximum: number?): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
@@ -62,9 +61,9 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number, 
 end
 
 local function buildBubbles(breathRaw: any, maxBreathRaw: any, bubbleValueRaw: any): { BubbleState }
-	local bubbleValue = sanitizeNumber(bubbleValueRaw, DEFAULT_BUBBLE_VALUE, 0.1, nil)
-	local maxBreath = sanitizeNumber(maxBreathRaw, bubbleValue, bubbleValue, nil)
-	local breath = sanitizeNumber(breathRaw, maxBreath, 0, maxBreath)
+	local bubbleValue = CoerceNumber(bubbleValueRaw, DEFAULT_BUBBLE_VALUE, 0.1, nil)
+	local maxBreath = CoerceNumber(maxBreathRaw, bubbleValue, bubbleValue, nil)
+	local breath = CoerceNumber(breathRaw, maxBreath, 0, maxBreath)
 
 	local bubbleCount = math.max(1, math.ceil(maxBreath / bubbleValue))
 	local bubbles: { BubbleState } = Sift.Array.create(bubbleCount)
@@ -103,7 +102,7 @@ return function(props: BubblesScreenProps)
 	local hoverText = string.format("Breath: %.1f/%.1f", breathState.breath, breathState.maxBreath)
 	local bubblesHover = useHover({
 		onHoverStart = function()
-			infoThunks.showHover({
+			infoThunks.ShowHover({
 				id = hoverId,
 				text = hoverText,
 			})
@@ -111,7 +110,7 @@ return function(props: BubblesScreenProps)
 			UiSound.playHover()
 		end,
 		onHoverEnd = function()
-			infoThunks.hideHover(hoverId)
+			infoThunks.HideHover(hoverId)
 		end,
 	})
 
@@ -120,7 +119,8 @@ return function(props: BubblesScreenProps)
 			return
 		end
 
-		local stop = breathThunks.start()
+		local breathThunks = require("breathThunks")
+		local stop = breathThunks.Start()
 
 		return function()
 			stop()
@@ -132,7 +132,7 @@ return function(props: BubblesScreenProps)
 			return
 		end
 
-		infoThunks.showHover({
+		infoThunks.ShowHover({
 			id = hoverId,
 			text = hoverText,
 		})
@@ -140,7 +140,7 @@ return function(props: BubblesScreenProps)
 
 	React.useEffect(function()
 		return function()
-			infoThunks.hideHover(hoverId)
+			infoThunks.HideHover(hoverId)
 		end
 	end, {})
 

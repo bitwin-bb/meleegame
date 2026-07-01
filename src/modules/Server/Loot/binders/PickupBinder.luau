@@ -23,7 +23,7 @@ local ITEM_ATTRIBUTE_NAMES = {
 	"PlacedItemId",
 }
 
-local function resolveStringAttribute(instance: Instance, attributeNames: { string }): string?
+local function GetStringAttribute(instance: Instance, attributeNames: { string }): string?
 	for _, attributeName in attributeNames do
 		local value = instance:GetAttribute(attributeName)
 		if typeof(value) == "string" and value ~= "" then
@@ -37,14 +37,14 @@ function PickupBinder.new(instance: Instance, context: any)
 	local self = ModelBinder.new(instance, context, PickupBinder)
 	self.cooldowns = {} :: { [Player]: number }
 	self:refresh()
-	ModelBinder.bindTouchedParts(instance, self.janitor, function(_part: BasePart, other: BasePart)
+	ModelBinder.BindTouchedParts(instance, self.janitor, function(_part: BasePart, other: BasePart)
 		self:onTouched(other)
 	end)
 	return self
 end
 
 function PickupBinder.refresh(self: any)
-	self.itemId = resolveStringAttribute(self.instance, ITEM_ATTRIBUTE_NAMES)
+	self.itemId = GetStringAttribute(self.instance, ITEM_ATTRIBUTE_NAMES)
 	self.amount = math.max(1, math.floor(tonumber(self.instance:GetAttribute("PickupAmount")) or 1))
 	self.destroyOnCollect = self.instance:GetAttribute("PickupDestroyOnCollect") ~= false
 	self.instance:SetAttribute("PickupTagged", true)
@@ -55,7 +55,7 @@ function PickupBinder.onTouched(self: any, other: BasePart)
 		return
 	end
 
-	local player = ModelBinder.resolvePlayer(other)
+	local player = ModelBinder.GetPlayer(other)
 	if player == nil then
 		return
 	end
@@ -66,7 +66,7 @@ function PickupBinder.onTouched(self: any, other: BasePart)
 	end
 	self.cooldowns[player] = now + 0.15
 
-	local addResult = getInventoryServiceServer():addItem(player, self.itemId, self.amount, {})
+	local addResult = getInventoryServiceServer():AddItem(player, self.itemId, self.amount, {})
 	if addResult.added <= 0 then
 		return
 	end

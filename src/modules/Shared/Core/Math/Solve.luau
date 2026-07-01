@@ -125,11 +125,4 @@ function Solve.RaySphere(origin: Vector3, direction: Vector3, center: Vector3, r
 		point = origin + direction * t,
 	}
 end
-
-Solve.linear = Solve.Linear
-Solve.quadratic = Solve.Quadratic
-Solve.smallestPositiveQuadratic = Solve.SmallestPositiveQuadratic
-Solve.rayPlane = Solve.RayPlane
-Solve.raySphere = Solve.RaySphere
-
 return Solve

@@ -14,7 +14,7 @@ type CameraWrapperClass = {
     Enable: (self: CameraWrapper) -> (),
     Disable: (self: CameraWrapper) -> (),
 
-    -- Gets the current camera
+    -- gets the current camera
 	getCamera: (self: CameraWrapper) -> Camera?,
 
     -- Re-established callbacks for existing connections

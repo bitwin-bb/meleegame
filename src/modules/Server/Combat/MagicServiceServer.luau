@@ -16,7 +16,7 @@ local Magic = require("Magic")
 local MagicServiceUtils = require("MagicServiceUtils")
 local ManaServiceServer = require("ManaServiceServer")
 local PacketPayload = require("PacketPayload")
-local MagicServicePackets = require("NetSharedPackets").MagicService
+local MagicServicePackets = require("NetPacketsShared").MagicService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = MagicServicePackets[methodName]
@@ -25,7 +25,7 @@ local function sendPacket(player: Player, methodName: string, ...: any)
 		return
 	end
 
-	packet.sendTo(PacketPayload.pack(...), player)
+	packet.sendTo(PacketPayload.Pack(...), player)
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -40,12 +40,13 @@ local function bindPacket(self: any, methodName: string)
 			return
 		end
 
-		local handler = self[methodName]
+		local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, player, table.unpack(arguments, 1, count))
 	end)
 end
@@ -66,7 +67,7 @@ local NevermoreSupport = require("NevermoreSupport")
 local NpcServiceServer = require("NpcServiceServer")
 local PlayerServiceServer = require("PlayerServiceServer")
 local PlayerServiceUtils = require("PlayerServiceUtils")
-local ServerBinderSupport = require("ServerBinderSupport")
+local BinderSupportServer = require("BinderSupportServer")
 
 type WeaponRuntimeConfig = MagicServiceUtils.WeaponRuntimeConfig
 type ModifierStats = MagicServiceUtils.ModifierStats
@@ -85,14 +86,14 @@ type MagicController = {
 	setCharacter: (self: MagicController, characterRaw: any) -> (),
 	setOwnerPlayer: (self: MagicController, playerRaw: any) -> (),
 	queueCast: (self: MagicController, triggerRaw: any) -> boolean,
-	resolveBoundWeaponConfig: (self: MagicController) -> any,
+	GetBoundWeaponConfig: (self: MagicController) -> any,
 	destroy: (self: MagicController) -> (),
 	cooldownUntil: number,
 	weaponConfig: any,
 }
 
 type InventoryServiceServerObject = {
-	getState: (self: InventoryServiceServerObject, player: Player) -> any,
+	GetState: (self: InventoryServiceServerObject, player: Player) -> any,
 }
 
 type ManaServiceState = {
@@ -102,13 +103,13 @@ type ManaServiceState = {
 }
 
 type ManaServiceServerObject = {
-	getState: (self: ManaServiceServerObject, player: Player) -> ManaServiceState,
-	canConsumeMana: (self: ManaServiceServerObject, player: Player?, amountRaw: any, contextRaw: any) -> boolean,
-	consumeMana: (self: ManaServiceServerObject, player: Player?, amountRaw: any, contextRaw: any) -> boolean,
+	GetState: (self: ManaServiceServerObject, player: Player) -> ManaServiceState,
+	CanConsumeMana: (self: ManaServiceServerObject, player: Player?, amountRaw: any, contextRaw: any) -> boolean,
+	ConsumeMana: (self: ManaServiceServerObject, player: Player?, amountRaw: any, contextRaw: any) -> boolean,
 }
 
 type NpcServiceServerObject = {
-	damageNpcFromHitPart: (
+	DamageNpcFromHitPart: (
 		self: NpcServiceServerObject,
 		hitPartRaw: any,
 		damageRaw: any,
@@ -117,7 +118,7 @@ type NpcServiceServerObject = {
 }
 
 type BossServiceServerObject = {
-	damageBossFromHitPart: (
+	DamageBossFromHitPart: (
 		self: BossServiceServerObject,
 		hitPartRaw: any,
 		damageRaw: any,
@@ -127,7 +128,7 @@ type BossServiceServerObject = {
 }
 
 type HpServiceServerObject = {
-	healPlayer: (self: HpServiceServerObject, player: Player, amountRaw: any) -> number?,
+	HealPlayer: (self: HpServiceServerObject, player: Player, amountRaw: any) -> number?,
 }
 
 type PlayerRuntime = {
@@ -237,7 +238,7 @@ local function shouldSilenceModuleRequireError(errorRaw: any): boolean
 	return false
 end
 
-local function resolveCastToken(contextRaw: any): number
+local function GetCastToken(contextRaw: any): number
 	if typeof(contextRaw) ~= "table" then
 		return -1
 	end
@@ -287,12 +288,12 @@ function MagicServiceServer.GetRuntime(self: MagicServiceServer, player: Player)
 	if runtime ~= nil then
 		return runtime
 	end
-	local nextRuntime = self:createRuntime()
+	local nextRuntime = self:CreateRuntime()
 	self.playerRuntimes[player] = nextRuntime
 	return nextRuntime
 end
 
-function MagicServiceServer.ResolveRuntimeByMagic(
+function MagicServiceServer.GetUntimeByMagic(
 	self: MagicServiceServer,
 	magicControllerRaw: any
 ): (Player?, PlayerRuntime?)
@@ -307,7 +308,7 @@ function MagicServiceServer.ResolveRuntimeByMagic(
 	return nil, nil
 end
 
-function MagicServiceServer.ResolveManaStateSnapshot(self: MagicServiceServer, player: Player): (number, number, number)
+function MagicServiceServer.GetManaStateSnapshot(self: MagicServiceServer, player: Player): (number, number, number)
 	local mana = MagicServiceUtils.DEFAULT_MAX_MANA
 	local maxMana = MagicServiceUtils.DEFAULT_MAX_MANA
 	local regenPerSecond = MagicServiceUtils.DEFAULT_MANA_REGEN
@@ -317,7 +318,7 @@ function MagicServiceServer.ResolveManaStateSnapshot(self: MagicServiceServer, p
 	end
 
 	local success, manaStateOrError = pcall(function()
-		return manaService:getState(player)
+		return manaService:GetState(player)
 	end)
 	if not success then
 		return mana, maxMana, regenPerSecond
@@ -345,14 +346,14 @@ function MagicServiceServer.PushState(self: MagicServiceServer, player: Player, 
 		return
 	end
 	runtime.lastStatePushAt = now
-	local mana, maxMana, regenPerSecond = self:resolveManaStateSnapshot(player)
+	local mana, maxMana, regenPerSecond = self:GetManaStateSnapshot(player)
 	sendPacket(player, MagicServiceUtils.CLIENT_METHOD_APPLY_STATE, {
 		mana = mana,
 		maxMana = maxMana,
 		regenPerSecond = regenPerSecond,
 		equippedWeaponId = runtime.equippedItemId,
 		equippedSlot = runtime.equippedSlot,
-		cooldowns = MagicServiceUtils.cooldownsToRemaining(runtime.weaponCooldowns, now),
+		cooldowns = MagicServiceUtils.CooldownsToRemaining(runtime.weaponCooldowns, now),
 		updatedAt = now,
 	})
 end
@@ -366,14 +367,14 @@ function MagicServiceServer.GetEquippedMagicToolFromInventory(
 	if inventoryService == nil then
 		return nil, nil, nil
 	end
-	local inventoryState = inventoryService:getState(player)
-	local itemId, selectedSlot = MagicServiceUtils.resolveSelectedItemIdFromInventoryState(inventoryState)
+	local inventoryState = inventoryService:GetState(player)
+	local itemId, selectedSlot = MagicServiceUtils.GetSelectedItemIdFromInventoryState(inventoryState)
 	if itemId == nil then
 		return nil, selectedSlot, nil
 	end
 	local backpack = player:FindFirstChildOfClass("Backpack")
-	local tool = MagicServiceUtils.resolveToolByItemId(runtime.character, backpack, itemId)
-	if tool == nil or not MagicServiceUtils.isMagicTool(tool) then
+	local tool = MagicServiceUtils.GetToolByItemId(runtime.character, backpack, itemId)
+	if tool == nil or not MagicServiceUtils.IsMagicTool(tool) then
 		return itemId, selectedSlot, nil
 	end
 	return itemId, selectedSlot, tool
@@ -384,7 +385,7 @@ function MagicServiceServer.RefreshEquippedWeaponFromInventory(
 	player: Player,
 	runtime: PlayerRuntime
 )
-	local itemId, selectedSlot, tool = self:getEquippedMagicToolFromInventory(player, runtime)
+	local itemId, selectedSlot, tool = self:GetEquippedMagicToolFromInventory(player, runtime)
 	runtime.equippedItemId = itemId
 	runtime.equippedSlot = selectedSlot
 	runtime.equippedTool = tool
@@ -395,8 +396,8 @@ function MagicServiceServer.RefreshEquippedWeaponFromInventory(
 	end
 
 	if tool ~= nil then
-		magicController:bindTool(tool)
-		local weaponConfig = magicController:resolveBoundWeaponConfig()
+		magicController:BindTool(tool)
+		local weaponConfig = magicController:GetBoundWeaponConfig()
 		if typeof(weaponConfig) == "table" then
 			local weaponId = trim((weaponConfig :: any).itemId)
 			if weaponId ~= "" then
@@ -404,10 +405,10 @@ function MagicServiceServer.RefreshEquippedWeaponFromInventory(
 			end
 		end
 	else
-		magicController:unbindTool()
+		magicController:UnbindTool()
 	end
 
-	self:pushState(player, runtime)
+	self:PushState(player, runtime)
 end
 
 function MagicServiceServer.GetDefinitionOverride(self: MagicServiceServer, itemIdRaw: any): any?
@@ -427,9 +428,9 @@ function MagicServiceServer.BuildRuntimeConfigWithOverrides(
 		return nil
 	end
 	local itemId = trim((weaponConfig :: any).itemId)
-	local override = self:getDefinitionOverride(itemId)
+	local override = self:GetDefinitionOverride(itemId)
 	if override == nil then
-		return MagicServiceUtils.buildWeaponRuntimeConfig(weaponConfig)
+		return MagicServiceUtils.BuildWeaponRuntimeConfig(weaponConfig)
 	end
 
 	local patched = shallowCopy(weaponConfig)
@@ -438,7 +439,7 @@ function MagicServiceServer.BuildRuntimeConfigWithOverrides(
 		else {} :: any
 	baseDefinition.magicWeapon = override
 	patched.definition = baseDefinition
-	return MagicServiceUtils.buildWeaponRuntimeConfig(patched)
+	return MagicServiceUtils.BuildWeaponRuntimeConfig(patched)
 end
 
 function MagicServiceServer.CollectCastModifiers(
@@ -482,7 +483,7 @@ function MagicServiceServer.CollectCastModifiers(
 		end
 	end
 
-	return MagicServiceUtils.mergeModifiers(modifiers)
+	return MagicServiceUtils.MergeModifiers(modifiers)
 end
 
 function MagicServiceServer.PrepareControllerStatsForCast(
@@ -495,14 +496,14 @@ function MagicServiceServer.PrepareControllerStatsForCast(
 	if magicController == nil then
 		return false
 	end
-	local weaponConfigRaw = magicController:resolveBoundWeaponConfig()
-	local config = self:buildRuntimeConfigWithOverrides(weaponConfigRaw)
+	local weaponConfigRaw = magicController:GetBoundWeaponConfig()
+	local config = self:BuildRuntimeConfigWithOverrides(weaponConfigRaw)
 	if config == nil then
 		return false
 	end
 
-	local modifiers = self:collectCastModifiers(player, runtime, config, castRequest)
-	local castStats = MagicServiceUtils.buildCastStats(config, modifiers)
+	local modifiers = self:CollectCastModifiers(player, runtime, config, castRequest)
+	local castStats = MagicServiceUtils.BuildCastStats(config, modifiers)
 
 	if typeof(magicController.weaponConfig) == "table" then
 		local mutable = magicController.weaponConfig :: { [string]: any }
@@ -534,15 +535,15 @@ function MagicServiceServer.OnMagicCastRequested(
 	magicController: MagicController,
 	contextRaw: any
 ): boolean
-	local player, runtime = self:resolveRuntimeByMagic(magicController)
+	local player, runtime = self:GetUntimeByMagic(magicController)
 	if player == nil or runtime == nil then
 		return false
 	end
 	local context = if typeof(contextRaw) == "table" then contextRaw else {} :: any
-	if not MagicServiceUtils.isHumanoidAlive(runtime.humanoid) then
+	if not MagicServiceUtils.IsHumanoidAlive(runtime.humanoid) then
 		return false
 	end
-	if MagicServiceUtils.isPlayerStunned(player, runtime.character, runtime.humanoid) then
+	if MagicServiceUtils.IsPlayerStunned(player, runtime.character, runtime.humanoid) then
 		return false
 	end
 
@@ -555,7 +556,7 @@ function MagicServiceServer.OnMagicCastRequested(
 		return false
 	end
 
-	local castToken = resolveCastToken(context)
+	local castToken = GetCastToken(context)
 	if castToken < 1 then
 		return false
 	end
@@ -577,7 +578,7 @@ function MagicServiceServer.CanConsumeMana(
 	if runtime == nil then
 		return false
 	end
-	local castToken = resolveCastToken(contextRaw)
+	local castToken = GetCastToken(contextRaw)
 	if castToken < 1 then
 		return false
 	end
@@ -593,7 +594,7 @@ function MagicServiceServer.CanConsumeMana(
 		context.itemId = castData.itemId
 	end
 	local success, canConsumeOrError = pcall(function()
-		return manaService:canConsumeMana(player, manaCost, context)
+		return manaService:CanConsumeMana(player, manaCost, context)
 	end)
 	if not success then
 		return false
@@ -614,7 +615,7 @@ function MagicServiceServer.ConsumeMana(
 	if runtime == nil then
 		return false
 	end
-	local castToken = resolveCastToken(contextRaw)
+	local castToken = GetCastToken(contextRaw)
 	if castToken < 1 then
 		return false
 	end
@@ -630,7 +631,7 @@ function MagicServiceServer.ConsumeMana(
 		context.itemId = castData.itemId
 	end
 	local success, consumeResultOrError = pcall(function()
-		return manaService:consumeMana(player, manaCost, context)
+		return manaService:ConsumeMana(player, manaCost, context)
 	end)
 	if not success then
 		return false
@@ -647,22 +648,22 @@ function MagicServiceServer.ConsumeMana(
 		end
 		runtime.committedCastByToken[castToken] = castData
 	end
-	self:pushState(player, runtime)
+	self:PushState(player, runtime)
 	return true
 end
 
 function MagicServiceServer.RequestSync(self: MagicServiceServer, player: Player)
 	if self.playerRuntimes[player] == nil then
-		self:trackPlayer(player)
+		self:TrackPlayer(player)
 		return
 	end
-	local runtime = self:getRuntime(player)
-	self:pushState(player, runtime)
+	local runtime = self:GetRuntime(player)
+	self:PushState(player, runtime)
 end
 
 function MagicServiceServer.RequestRefreshEquipped(self: MagicServiceServer, player: Player)
-	local runtime = self:getRuntime(player)
-	self:refreshEquippedWeaponFromInventory(player, runtime)
+	local runtime = self:GetRuntime(player)
+	self:RefreshEquippedWeaponFromInventory(player, runtime)
 end
 
 function MagicServiceServer.RequestSetInputHeld(
@@ -674,16 +675,16 @@ function MagicServiceServer.RequestSetInputHeld(
 	if typeof(inputHeldRaw) ~= "boolean" then
 		return
 	end
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	runtime.inputHeld = inputHeldRaw
-	runtime.lastAimRequest = MagicServiceUtils.sanitizeCastRequest(castRequestRaw)
+	runtime.lastAimRequest = MagicServiceUtils.CoerceCastRequest(castRequestRaw)
 	if runtime.lastAimRequest.aimDirection ~= nil and runtime.lastAimRequest.aimDirection.Magnitude > 1e-4 then
 		runtime.lastAimDirection = runtime.lastAimRequest.aimDirection.Unit
 	end
 end
 
 function MagicServiceServer.RequestCast(self: MagicServiceServer, player: Player, castRequestRaw: any)
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	local now = os.clock()
 	if now - runtime.requestWindowStartedAt > 1 then
 		runtime.requestWindowStartedAt = now
@@ -698,26 +699,26 @@ function MagicServiceServer.RequestCast(self: MagicServiceServer, player: Player
 	end
 	runtime.lastCastRequestAt = now
 
-	runtime.lastAimRequest = MagicServiceUtils.sanitizeCastRequest(castRequestRaw)
+	runtime.lastAimRequest = MagicServiceUtils.CoerceCastRequest(castRequestRaw)
 	if runtime.lastAimRequest.aimDirection ~= nil and runtime.lastAimRequest.aimDirection.Magnitude > 1e-4 then
 		runtime.lastAimDirection = runtime.lastAimRequest.aimDirection.Unit
 	end
 
-	if not MagicServiceUtils.isHumanoidAlive(runtime.humanoid) then
+	if not MagicServiceUtils.IsHumanoidAlive(runtime.humanoid) then
 		return
 	end
-	if MagicServiceUtils.isPlayerStunned(player, runtime.character, runtime.humanoid) then
+	if MagicServiceUtils.IsPlayerStunned(player, runtime.character, runtime.humanoid) then
 		return
 	end
 
-	self:refreshEquippedWeaponFromInventory(player, runtime)
+	self:RefreshEquippedWeaponFromInventory(player, runtime)
 	if runtime.magicController == nil or runtime.equippedTool == nil then
 		return
 	end
-	if not self:prepareControllerStatsForCast(player, runtime, runtime.lastAimRequest) then
+	if not self:PrepareControllerStatsForCast(player, runtime, runtime.lastAimRequest) then
 		return
 	end
-	runtime.magicController:queueCast(runtime.lastAimRequest.trigger)
+	runtime.magicController:QueueCast(runtime.lastAimRequest.trigger)
 end
 
 function MagicServiceServer.CreateProjectilePart(
@@ -762,7 +763,7 @@ function MagicServiceServer.AcquireProjectilePart(
 		end
 	end
 	local entry = {
-		part = self:createProjectilePart(weaponId, config),
+		part = self:CreateProjectilePart(weaponId, config),
 		active = true,
 		weaponId = weaponId,
 	}
@@ -777,7 +778,7 @@ function MagicServiceServer.ReleaseProjectile(self: MagicServiceServer, projecti
 	entry.part.CFrame = CFrame.new(0, -10000, 0)
 end
 
-function MagicServiceServer.ResolveCastOriginAndDirection(
+function MagicServiceServer.GetCastOriginAndDirection(
 	self: MagicServiceServer,
 	runtime: PlayerRuntime,
 	castRequest: CastRequest
@@ -788,7 +789,7 @@ function MagicServiceServer.ResolveCastOriginAndDirection(
 	end
 	local origin = rootPart.Position + Vector3.new(0, 1.35, 0)
 	local fallback = rootPart.CFrame.LookVector
-	local direction = MagicServiceUtils.resolveCastDirection(origin, castRequest, fallback)
+	local direction = MagicServiceUtils.GetCastDirection(origin, castRequest, fallback)
 	return origin, direction
 end
 
@@ -799,7 +800,7 @@ function MagicServiceServer.InvokeWeaponCallback(self: MagicServiceServer, callb
 	pcall(callbackRaw, context)
 end
 
-function MagicServiceServer.ResolveHumanoidRootPart(self: MagicServiceServer, humanoid: Humanoid?): BasePart?
+function MagicServiceServer.GetHumanoidRootPart(self: MagicServiceServer, humanoid: Humanoid?): BasePart?
 	if humanoid == nil then
 		return nil
 	end
@@ -858,7 +859,7 @@ function MagicServiceServer.IsValidHumanoidTarget(
 	projectile: any,
 	humanoid: Humanoid?
 ): boolean
-	if humanoid == nil or not MagicServiceUtils.isHumanoidAlive(humanoid) then
+	if humanoid == nil or not MagicServiceUtils.IsHumanoidAlive(humanoid) then
 		return false
 	end
 
@@ -879,7 +880,7 @@ function MagicServiceServer.IsValidHumanoidTarget(
 end
 
 function MagicServiceServer.ApplyKnockbackToHumanoid(self: MagicServiceServer, projectile: any, humanoid: Humanoid?)
-	local rootPart = self:resolveHumanoidRootPart(humanoid)
+	local rootPart = self:GetHumanoidRootPart(humanoid)
 	if rootPart == nil then
 		return
 	end
@@ -893,7 +894,7 @@ function MagicServiceServer.DamageHumanoidTarget(
 	damageRaw: number,
 	markHitRaw: any
 ): boolean
-	if not self:isValidHumanoidTarget(projectile, humanoid) then
+	if not self:IsValidHumanoidTarget(projectile, humanoid) then
 		return false
 	end
 	if humanoid == nil then
@@ -914,7 +915,7 @@ function MagicServiceServer.DamageHumanoidTarget(
 	if markHit then
 		projectile.hitHumanoids[humanoid] = true
 	end
-	self:applyKnockbackToHumanoid(projectile, humanoid)
+	self:ApplyKnockbackToHumanoid(projectile, humanoid)
 	return true
 end
 
@@ -982,7 +983,7 @@ function MagicServiceServer.ApplySplashEffect(
 	if hitHumanoid ~= nil then
 		seenHumanoids[hitHumanoid] = true
 	end
-	local parts = self:collectOverlapParts(projectile, hitPosition, radius)
+	local parts = self:CollectOverlapParts(projectile, hitPosition, radius)
 	for _, part in parts do
 		local model = part:FindFirstAncestorOfClass("Model")
 		local npcDamaged = false
@@ -994,13 +995,13 @@ function MagicServiceServer.ApplySplashEffect(
 		then
 			seenNpcModels[model] = true
 			local splashNpcDamage =
-				self.npcService:damageNpcFromHitPart(part, projectile.stats.damage * damageScale, projectile.caster)
+				self.npcService:DamageNpcFromHitPart(part, projectile.stats.damage * damageScale, projectile.caster)
 			if splashNpcDamage > 0 then
 				npcDamaged = true
 			end
 
 			if not npcDamaged and self.bossService ~= nil then
-				local splashBossDamage = self.bossService:damageBossFromHitPart(
+				local splashBossDamage = self.bossService:DamageBossFromHitPart(
 					part,
 					projectile.stats.damage * damageScale,
 					projectile.caster,
@@ -1012,15 +1013,15 @@ function MagicServiceServer.ApplySplashEffect(
 			end
 		end
 
-		local humanoid = MagicServiceUtils.resolveHumanoidFromHitPart(part)
+		local humanoid = MagicServiceUtils.GetHumanoidFromHitPart(part)
 		if not npcDamaged and humanoid ~= nil and not seenHumanoids[humanoid] then
 			seenHumanoids[humanoid] = true
-			local rootPart = self:resolveHumanoidRootPart(humanoid)
+			local rootPart = self:GetHumanoidRootPart(humanoid)
 			local targetPosition = if rootPart ~= nil then rootPart.Position else part.Position
 			local distanceAlpha = math.clamp((targetPosition - hitPosition).Magnitude / math.max(0.001, radius), 0, 1)
 			local falloff = math.max(0.2, 1 - distanceAlpha)
 			local splashDamage = projectile.stats.damage * damageScale * falloff
-			self:damageHumanoidTarget(projectile, humanoid, splashDamage, true)
+			self:DamageHumanoidTarget(projectile, humanoid, splashDamage, true)
 		end
 	end
 end
@@ -1036,16 +1037,16 @@ function MagicServiceServer.FindNearestChainTarget(
 	local nearest = nil :: Humanoid?
 	local nearestPosition = nil :: Vector3?
 	local nearestDistance = math.huge
-	local parts = self:collectOverlapParts(projectile, originPosition, radius)
+	local parts = self:CollectOverlapParts(projectile, originPosition, radius)
 	for _, part in parts do
-		local humanoid = MagicServiceUtils.resolveHumanoidFromHitPart(part)
+		local humanoid = MagicServiceUtils.GetHumanoidFromHitPart(part)
 		if humanoid == nil or visited[humanoid] then
 			continue
 		end
-		if not self:isValidHumanoidTarget(projectile, humanoid) then
+		if not self:IsValidHumanoidTarget(projectile, humanoid) then
 			continue
 		end
-		local rootPart = self:resolveHumanoidRootPart(humanoid)
+		local rootPart = self:GetHumanoidRootPart(humanoid)
 		local position = if rootPart ~= nil then rootPart.Position else part.Position
 		local distance = (position - originPosition).Magnitude
 		if distance < nearestDistance then
@@ -1080,16 +1081,16 @@ function MagicServiceServer.ApplyChainEffect(
 
 	for _ = 1, jumpCount do
 		local targetHumanoid, targetPosition =
-			self:findNearestChainTarget(projectile, currentPosition, effect.radius, visited)
+			self:FindNearestChainTarget(projectile, currentPosition, effect.radius, visited)
 		if targetHumanoid == nil or targetPosition == nil then
 			break
 		end
 		visited[targetHumanoid] = true
 
 		local chainDamage = projectile.stats.damage * damageScale
-		if self:damageHumanoidTarget(projectile, targetHumanoid, chainDamage, true) then
+		if self:DamageHumanoidTarget(projectile, targetHumanoid, chainDamage, true) then
 			for _, listedPlayer in Players:GetPlayers() do
-				if PlayerServiceServer:isGameplayActiveForPlayer(listedPlayer) then
+				if PlayerServiceServer:IsGameplayActiveForPlayer(listedPlayer) then
 					sendPacket(listedPlayer, MagicServiceUtils.CLIENT_METHOD_ON_IMPACT_VISUAL, {
 						castId = projectile.castId,
 						weaponId = projectile.weaponId,
@@ -1123,17 +1124,17 @@ function MagicServiceServer.ApplyEffectsFromHit(
 			local healAmount = math.max(0, projectile.stats.damage * effect.magnitude)
 			if healAmount > 0 and self.hpService ~= nil then
 				pcall(function()
-					self.hpService:healPlayer(projectile.caster, healAmount)
+					self.hpService:HealPlayer(projectile.caster, healAmount)
 				end)
 			end
 		elseif effect.effectType == "burn" or effect.effectType == "slow" then
 			if hitHumanoid ~= nil then
-				self:applyStackingStatusEffect(projectile, effect, hitHumanoid, hitPart)
+				self:ApplyStackingStatusEffect(projectile, effect, hitHumanoid, hitPart)
 			end
 		elseif effect.effectType == "splash" then
-			self:applySplashEffect(projectile, effect, hitPosition, hitHumanoid)
+			self:ApplySplashEffect(projectile, effect, hitPosition, hitHumanoid)
 		elseif effect.effectType == "chain" then
-			self:applyChainEffect(projectile, effect, hitPosition, hitHumanoid)
+			self:ApplyChainEffect(projectile, effect, hitPosition, hitHumanoid)
 		end
 	end
 end
@@ -1150,9 +1151,9 @@ function MagicServiceServer.ExpireProjectile(
 		return
 	end
 	self.activeProjectiles[projectileId] = nil
-	self:releaseProjectile(projectile)
+	self:ReleaseProjectile(projectile)
 	for _, listedPlayer in Players:GetPlayers() do
-		if PlayerServiceServer:isGameplayActiveForPlayer(listedPlayer) then
+		if PlayerServiceServer:IsGameplayActiveForPlayer(listedPlayer) then
 			sendPacket(listedPlayer, MagicServiceUtils.CLIENT_METHOD_ON_IMPACT_VISUAL, {
 				castId = projectile.castId,
 				weaponId = projectile.weaponId,
@@ -1164,7 +1165,7 @@ function MagicServiceServer.ExpireProjectile(
 			})
 		end
 	end
-	self:invokeWeaponCallback(projectile.config.callbacks.OnExpire, {
+	self:InvokeWeaponCallback(projectile.config.callbacks.OnExpire, {
 		service = self,
 		projectile = projectile,
 		position = position,
@@ -1182,7 +1183,7 @@ function MagicServiceServer.HandleProjectileHit(
 	local hitPart = hit.Instance
 	if typeof(hitPart) ~= "Instance" or not hitPart:IsA("BasePart") then
 		if projectile.config.projectile.collisionBehavior ~= "pierce" then
-			self:expireProjectile(projectileId, "WorldHit", hit.Position, hit.Normal)
+			self:ExpireProjectile(projectileId, "WorldHit", hit.Position, hit.Normal)
 		end
 		return
 	end
@@ -1196,7 +1197,7 @@ function MagicServiceServer.HandleProjectileHit(
 	local npcDamaged = false
 	local hitHumanoid = nil :: Humanoid?
 	if projectile.config.projectile.canHitNpcs and self.npcService ~= nil then
-		local npcDamage = self.npcService:damageNpcFromHitPart(hitPart, damage, projectile.caster)
+		local npcDamage = self.npcService:DamageNpcFromHitPart(hitPart, damage, projectile.caster)
 		if npcDamage > 0 then
 			didDamage = true
 			npcDamaged = true
@@ -1204,20 +1205,20 @@ function MagicServiceServer.HandleProjectileHit(
 	end
 
 	if projectile.config.projectile.canHitNpcs and not npcDamaged and self.bossService ~= nil then
-		local bossDamage = self.bossService:damageBossFromHitPart(hitPart, damage, projectile.caster, "MagicProjectile")
+		local bossDamage = self.bossService:DamageBossFromHitPart(hitPart, damage, projectile.caster, "MagicProjectile")
 		if bossDamage > 0 then
 			didDamage = true
 			npcDamaged = true
 		end
 	end
 
-	hitHumanoid = MagicServiceUtils.resolveHumanoidFromHitPart(hitPart)
-	if (not npcDamaged) and self:damageHumanoidTarget(projectile, hitHumanoid, damage, true) then
+	hitHumanoid = MagicServiceUtils.GetHumanoidFromHitPart(hitPart)
+	if (not npcDamaged) and self:DamageHumanoidTarget(projectile, hitHumanoid, damage, true) then
 		didDamage = true
 	end
 
 	if didDamage then
-		self:invokeWeaponCallback(projectile.config.callbacks.OnHit, {
+		self:InvokeWeaponCallback(projectile.config.callbacks.OnHit, {
 			service = self,
 			projectile = projectile,
 			hitPart = hitPart,
@@ -1226,12 +1227,12 @@ function MagicServiceServer.HandleProjectileHit(
 			normal = hit.Normal,
 			damage = damage,
 		})
-		self:applyEffectsFromHit(projectile, hitPart, hitHumanoid, hit.Position)
+		self:ApplyEffectsFromHit(projectile, hitPart, hitHumanoid, hit.Position)
 		if projectile.pierceRemaining > 0 then
 			projectile.pierceRemaining -= 1
 			return
 		end
-		self:expireProjectile(projectileId, "TargetHit", hit.Position, hit.Normal)
+		self:ExpireProjectile(projectileId, "TargetHit", hit.Position, hit.Normal)
 		return
 	end
 
@@ -1240,7 +1241,7 @@ function MagicServiceServer.HandleProjectileHit(
 	end
 
 	if projectile.config.projectile.destroyOnWorldHit then
-		self:expireProjectile(projectileId, "WorldHit", hit.Position, hit.Normal)
+		self:ExpireProjectile(projectileId, "WorldHit", hit.Position, hit.Normal)
 	end
 end
 
@@ -1252,19 +1253,19 @@ function MagicServiceServer.FindNearestHomingTarget(self: MagicServiceServer, pr
 	local nearest = nil :: Humanoid?
 	local nearestPosition = nil :: Vector3?
 	local nearestDistance = math.huge
-	local parts = self:collectOverlapParts(projectile, projectile.position, homingRange)
+	local parts = self:CollectOverlapParts(projectile, projectile.position, homingRange)
 	for _, part in parts do
-		local humanoid = MagicServiceUtils.resolveHumanoidFromHitPart(part)
+		local humanoid = MagicServiceUtils.GetHumanoidFromHitPart(part)
 		if humanoid == nil then
 			continue
 		end
 		if projectile.hitHumanoids[humanoid] then
 			continue
 		end
-		if not self:isValidHumanoidTarget(projectile, humanoid) then
+		if not self:IsValidHumanoidTarget(projectile, humanoid) then
 			continue
 		end
-		local rootPart = self:resolveHumanoidRootPart(humanoid)
+		local rootPart = self:GetHumanoidRootPart(humanoid)
 		local targetPosition = if rootPart ~= nil then rootPart.Position else part.Position
 		local distance = (targetPosition - projectile.position).Magnitude
 		if distance < nearestDistance then
@@ -1284,8 +1285,8 @@ function MagicServiceServer.StepProjectileHoming(self: MagicServiceServer, proje
 	local homingRange = projectile.config.projectile.homingRange
 	local targetHumanoid = projectile.homingTargetHumanoid
 	local targetPosition = nil :: Vector3?
-	if targetHumanoid ~= nil and self:isValidHumanoidTarget(projectile, targetHumanoid) then
-		local rootPart = self:resolveHumanoidRootPart(targetHumanoid)
+	if targetHumanoid ~= nil and self:IsValidHumanoidTarget(projectile, targetHumanoid) then
+		local rootPart = self:GetHumanoidRootPart(targetHumanoid)
 		if rootPart ~= nil then
 			local distance = (rootPart.Position - projectile.position).Magnitude
 			if distance <= homingRange then
@@ -1295,7 +1296,7 @@ function MagicServiceServer.StepProjectileHoming(self: MagicServiceServer, proje
 	end
 
 	if targetPosition == nil then
-		targetHumanoid, targetPosition = self:findNearestHomingTarget(projectile)
+		targetHumanoid, targetPosition = self:FindNearestHomingTarget(projectile)
 		projectile.homingTargetHumanoid = targetHumanoid
 	end
 	if targetPosition == nil then
@@ -1315,14 +1316,14 @@ function MagicServiceServer.StepProjectileHoming(self: MagicServiceServer, proje
 	projectile.velocity = projectile.direction * projectile.stats.projectileSpeed
 end
 
-function MagicServiceServer.ResolveProjectileCollision(
+function MagicServiceServer.GetProjectileCollision(
 	self: MagicServiceServer,
 	projectile: any,
 	fromPosition: Vector3,
 	toPosition: Vector3
 ): any?
 	if projectile.config.projectile.collisionBehavior == "overlap" then
-		local parts = self:collectOverlapParts(projectile, toPosition, projectile.config.projectile.radius)
+		local parts = self:CollectOverlapParts(projectile, toPosition, projectile.config.projectile.radius)
 		if #parts <= 0 then
 			return nil
 		end
@@ -1353,17 +1354,17 @@ end
 function MagicServiceServer.StepProjectiles(self: MagicServiceServer, dt: number)
 	for projectileId, projectile in self.activeProjectiles do
 		if projectile.lifetimeRemaining <= 0 then
-			self:expireProjectile(projectileId, "LifetimeEnded", projectile.position, nil)
+			self:ExpireProjectile(projectileId, "LifetimeEnded", projectile.position, nil)
 			continue
 		end
 
-		self:stepProjectileHoming(projectile, dt)
+		self:StepProjectileHoming(projectile, dt)
 		local fromPosition = projectile.position
 		local toPosition = fromPosition + projectile.velocity * dt
-		local hit = self:resolveProjectileCollision(projectile, fromPosition, toPosition)
+		local hit = self:GetProjectileCollision(projectile, fromPosition, toPosition)
 		if hit ~= nil then
 			projectile.position = hit.Position
-			self:handleProjectileHit(projectileId, projectile, hit)
+			self:HandleProjectileHit(projectileId, projectile, hit)
 			if self.activeProjectiles[projectileId] == nil then
 				continue
 			end
@@ -1375,7 +1376,7 @@ function MagicServiceServer.StepProjectiles(self: MagicServiceServer, dt: number
 		end
 
 		projectile.lifetimeRemaining -= dt
-		self:invokeWeaponCallback(projectile.config.callbacks.OnTick, {
+		self:InvokeWeaponCallback(projectile.config.callbacks.OnTick, {
 			service = self,
 			projectile = projectile,
 			dt = dt,
@@ -1386,7 +1387,7 @@ end
 
 function MagicServiceServer.StepEffects(self: MagicServiceServer, now: number)
 	for humanoid, effectsMap in self.activeEffectsByHumanoid do
-		if not MagicServiceUtils.isHumanoidAlive(humanoid) then
+		if not MagicServiceUtils.IsHumanoidAlive(humanoid) then
 			self.activeEffectsByHumanoid[humanoid] = nil
 			continue
 		end
@@ -1412,7 +1413,7 @@ function MagicServiceServer.StepEffects(self: MagicServiceServer, now: number)
 		end
 
 		if next(effectsMap) == nil then
-			PlayerServiceUtils.setMovementSpeedMultiplier(
+			PlayerServiceUtils.SetMovementSpeedMultiplier(
 				humanoid,
 				PlayerServiceUtils.MAGIC_WALK_SPEED_MULTIPLIER_ATTRIBUTE,
 				nil
@@ -1420,13 +1421,13 @@ function MagicServiceServer.StepEffects(self: MagicServiceServer, now: number)
 			self.activeEffectsByHumanoid[humanoid] = nil
 		else
 			if maxSlow > 0 then
-				PlayerServiceUtils.setMovementSpeedMultiplier(
+				PlayerServiceUtils.SetMovementSpeedMultiplier(
 					humanoid,
 					PlayerServiceUtils.MAGIC_WALK_SPEED_MULTIPLIER_ATTRIBUTE,
 					1 - maxSlow
 				)
 			else
-				PlayerServiceUtils.setMovementSpeedMultiplier(
+				PlayerServiceUtils.SetMovementSpeedMultiplier(
 					humanoid,
 					PlayerServiceUtils.MAGIC_WALK_SPEED_MULTIPLIER_ATTRIBUTE,
 					nil
@@ -1447,7 +1448,7 @@ function MagicServiceServer.SpawnProjectile(
 	castToken: number,
 	projectileIndex: number
 )
-	local poolEntry = self:acquireProjectilePart(config)
+	local poolEntry = self:AcquireProjectilePart(config)
 	local castId = ("%d:%d:%d"):format(player.UserId, castToken, projectileIndex)
 	local projectileId = self.nextProjectileId + 1
 	self.nextProjectileId = projectileId
@@ -1493,7 +1494,7 @@ function MagicServiceServer.SpawnProjectile(
 	poolEntry.part.Transparency = 1
 
 	for _, listedPlayer in Players:GetPlayers() do
-		if PlayerServiceServer:isGameplayActiveForPlayer(listedPlayer) then
+		if PlayerServiceServer:IsGameplayActiveForPlayer(listedPlayer) then
 			sendPacket(listedPlayer, MagicServiceUtils.CLIENT_METHOD_ON_CAST_VISUAL, {
 				castId = castId,
 				casterUserId = player.UserId,
@@ -1520,8 +1521,8 @@ function MagicServiceServer.ExecuteCast(
 	castRequest: CastRequest,
 	castToken: number
 )
-	local origin, direction = self:resolveCastOriginAndDirection(runtime, castRequest)
-	self:invokeWeaponCallback(config.callbacks.OnCast, {
+	local origin, direction = self:GetCastOriginAndDirection(runtime, castRequest)
+	self:InvokeWeaponCallback(config.callbacks.OnCast, {
 		service = self,
 		player = player,
 		config = config,
@@ -1537,8 +1538,8 @@ function MagicServiceServer.ExecuteCast(
 	end
 	for projectileIndex = 1, stats.projectileCount do
 		local spreadDirection =
-			MagicServiceUtils.applySpread(direction, stats.projectileSpread, projectileIndex, stats.projectileCount)
-		self:spawnProjectile(player, runtime, config, stats, spreadDirection, origin, castToken, projectileIndex)
+			MagicServiceUtils.ApplySpread(direction, stats.projectileSpread, projectileIndex, stats.projectileCount)
+		self:SpawnProjectile(player, runtime, config, stats, spreadDirection, origin, castToken, projectileIndex)
 	end
 end
 
@@ -1547,12 +1548,12 @@ function MagicServiceServer.OnMagicCastCommitted(
 	magicController: MagicController,
 	contextRaw: any
 )
-	local player, runtime = self:resolveRuntimeByMagic(magicController)
+	local player, runtime = self:GetUntimeByMagic(magicController)
 	if player == nil or runtime == nil then
 		return
 	end
 	local context = if typeof(contextRaw) == "table" then contextRaw else {} :: any
-	local castToken = resolveCastToken(context)
+	local castToken = GetCastToken(context)
 	if castToken < 1 then
 		return
 	end
@@ -1562,13 +1563,13 @@ function MagicServiceServer.OnMagicCastCommitted(
 	if castData == nil then
 		return
 	end
-	self:executeCast(player, runtime, castData.config, castData.stats, castData.castRequest, castToken)
+	self:ExecuteCast(player, runtime, castData.config, castData.stats, castData.castRequest, castToken)
 end
 
 function MagicServiceServer.StepHeldInput(self: MagicServiceServer)
 	for player, runtime in self.playerRuntimes do
 		if runtime.inputHeld and os.clock() - runtime.lastCastRequestAt >= 0.12 then
-			self:requestCast(player, runtime.lastAimRequest)
+			self:RequestCast(player, runtime.lastAimRequest)
 		end
 	end
 end
@@ -1579,9 +1580,9 @@ function MagicServiceServer.OnHeartbeat(self: MagicServiceServer, dt: number)
 	while self.fixedStepAccumulator >= PROJECTILE_FIXED_STEP and steps < 4 do
 		self.fixedStepAccumulator -= PROJECTILE_FIXED_STEP
 		steps += 1
-		self:stepHeldInput()
-		self:stepProjectiles(PROJECTILE_FIXED_STEP)
-		self:stepEffects(os.clock())
+		self:StepHeldInput()
+		self:StepProjectiles(PROJECTILE_FIXED_STEP)
+		self:StepEffects(os.clock())
 	end
 	if steps >= 4 then
 		self.fixedStepAccumulator = 0
@@ -1601,7 +1602,7 @@ function MagicServiceServer.BindCharacter(
 	runtime.rootPart = if rootPart ~= nil and rootPart:IsA("BasePart") then rootPart else nil
 
 	if runtime.magicController ~= nil then
-		runtime.magicController:setCharacter(character)
+		runtime.magicController:SetCharacter(character)
 	end
 
 	runtime.characterJanitor:GiveChore(character.ChildAdded:Connect(function(child: Instance)
@@ -1610,7 +1611,7 @@ function MagicServiceServer.BindCharacter(
 		elseif child.Name == "HumanoidRootPart" and child:IsA("BasePart") then
 			runtime.rootPart = child
 		elseif child:IsA("Tool") then
-			self:refreshEquippedWeaponFromInventory(player, runtime)
+			self:RefreshEquippedWeaponFromInventory(player, runtime)
 		end
 	end))
 	runtime.characterJanitor:GiveChore(character.ChildRemoved:Connect(function(child: Instance)
@@ -1619,11 +1620,11 @@ function MagicServiceServer.BindCharacter(
 		elseif child == runtime.rootPart then
 			runtime.rootPart = nil
 		elseif child:IsA("Tool") then
-			self:refreshEquippedWeaponFromInventory(player, runtime)
+			self:RefreshEquippedWeaponFromInventory(player, runtime)
 		end
 	end))
 
-	self:refreshEquippedWeaponFromInventory(player, runtime)
+	self:RefreshEquippedWeaponFromInventory(player, runtime)
 end
 
 function MagicServiceServer.BindBackpack(
@@ -1634,21 +1635,21 @@ function MagicServiceServer.BindBackpack(
 )
 	runtime.playerJanitor:GiveChore(backpack.ChildAdded:Connect(function(child: Instance)
 		if child:IsA("Tool") then
-			self:refreshEquippedWeaponFromInventory(player, runtime)
+			self:RefreshEquippedWeaponFromInventory(player, runtime)
 		end
 	end))
 	runtime.playerJanitor:GiveChore(backpack.ChildRemoved:Connect(function(child: Instance)
 		if child:IsA("Tool") then
-			self:refreshEquippedWeaponFromInventory(player, runtime)
+			self:RefreshEquippedWeaponFromInventory(player, runtime)
 		end
 	end))
 end
 
 function MagicServiceServer.CreateMagicController(self: MagicServiceServer, player: Player, runtime: PlayerRuntime)
 	if runtime.magicController ~= nil then
-		runtime.magicController:destroy()
+		runtime.magicController:Destroy()
 	end
-	local controller = Magic.new({
+	local controller = Magic.New({
 		ownerPlayer = player,
 		character = runtime.character,
 		service = self,
@@ -1661,7 +1662,7 @@ function MagicServiceServer.CreateMagicController(self: MagicServiceServer, play
 end
 
 function MagicServiceServer.TrackPlayer(self: MagicServiceServer, player: Player)
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	runtime.playerJanitor:Clean()
 	runtime.characterJanitor:Clean()
 	runtime.character = nil
@@ -1679,26 +1680,26 @@ function MagicServiceServer.TrackPlayer(self: MagicServiceServer, player: Player
 	}
 	runtime.lastAimDirection = Vector3.new(0, 0, -1)
 
-	self:createMagicController(player, runtime)
+	self:CreateMagicController(player, runtime)
 
 	runtime.playerJanitor:GiveChore(player.CharacterAdded:Connect(function(character: Model)
-		self:bindCharacter(player, runtime, character)
+		self:BindCharacter(player, runtime, character)
 	end))
 	runtime.playerJanitor:GiveChore(player.ChildAdded:Connect(function(child: Instance)
 		if child:IsA("Backpack") then
-			self:bindBackpack(player, runtime, child)
-			self:refreshEquippedWeaponFromInventory(player, runtime)
+			self:BindBackpack(player, runtime, child)
+			self:RefreshEquippedWeaponFromInventory(player, runtime)
 		end
 	end))
 
 	if player.Character ~= nil then
-		self:bindCharacter(player, runtime, player.Character)
+		self:BindCharacter(player, runtime, player.Character)
 	end
 	local backpack = player:FindFirstChildOfClass("Backpack")
 	if backpack ~= nil then
-		self:bindBackpack(player, runtime, backpack)
+		self:BindBackpack(player, runtime, backpack)
 	end
-	self:pushState(player, runtime)
+	self:PushState(player, runtime)
 end
 
 function MagicServiceServer.UntrackPlayer(self: MagicServiceServer, player: Player)
@@ -1707,7 +1708,7 @@ function MagicServiceServer.UntrackPlayer(self: MagicServiceServer, player: Play
 		return
 	end
 	if runtime.magicController ~= nil then
-		runtime.magicController:destroy()
+		runtime.magicController:Destroy()
 		runtime.magicController = nil
 	end
 	runtime.playerJanitor:Destroy()
@@ -1780,7 +1781,7 @@ function MagicServiceServer.RegisterWeaponModule(self: MagicServiceServer, modul
 		if itemId == "" or typeof(definitionRaw) ~= "table" then
 			return
 		end
-		if self:registerWeaponDefinition(itemId, definitionRaw) then
+		if self:RegisterWeaponDefinition(itemId, definitionRaw) then
 			didRegister = true
 		end
 	end
@@ -1808,7 +1809,7 @@ function MagicServiceServer.RegisterDefinitionsFromFolder(self: MagicServiceServ
 	end
 	local registered = 0
 	for _, child in (folderRaw :: Folder):GetChildren() do
-		if child:IsA("ModuleScript") and self:registerWeaponModule(child) then
+		if child:IsA("ModuleScript") and self:RegisterWeaponModule(child) then
 			registered += 1
 		end
 	end
@@ -1830,32 +1831,32 @@ function MagicServiceServer.Init(self: MagicServiceServer)
 	self.definitionOverrides = {}
 	self.nextProjectileId = 0
 	self.fixedStepAccumulator = 0
-	self.projectileFolder = MagicServiceUtils.ensureProjectileFolder()
-	self.binders = NevermoreSupport.getService(ServerBinderSupport)
+	self.projectileFolder = MagicServiceUtils.EnsureProjectileFolder()
+	self.binders = NevermoreSupport.GetService(BinderSupportServer)
 
 	local gameRoot = script:FindFirstAncestor("game")
 	local sharedRoot = if gameRoot ~= nil then gameRoot:FindFirstChild("Shared") else nil
 	local itemFeature = if sharedRoot ~= nil then sharedRoot:FindFirstChild("Item") else nil
 	local itemModules = if itemFeature ~= nil then itemFeature:FindFirstChild("modules") else nil
 	if itemModules ~= nil and itemModules:IsA("Folder") then
-		self:registerDefinitionsFromFolder(itemModules)
+		self:RegisterDefinitionsFromFolder(itemModules)
 	end
 
 	for _, player in Players:GetPlayers() do
-		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
-			self:trackPlayer(player)
+		if PlayerServiceServer:IsGameplayActiveForPlayer(player) then
+			self:TrackPlayer(player)
 		end
 	end
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
-			self:trackPlayer(player)
+		if PlayerServiceServer:IsGameplayActiveForPlayer(player) then
+			self:TrackPlayer(player)
 		end
 	end)
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
-		self:untrackPlayer(player)
+		self:UntrackPlayer(player)
 	end)
 	self.heartbeatConnection = RunService.Heartbeat:Connect(function(dt: number)
-		self:onHeartbeat(dt)
+		self:OnHeartbeat(dt)
 	end)
 end
 
@@ -1874,7 +1875,7 @@ function MagicServiceServer.Destroy(self: MagicServiceServer)
 	end
 
 	for player in self.playerRuntimes do
-		self:untrackPlayer(player)
+		self:UntrackPlayer(player)
 	end
 
 	for _, pool in self.projectilePools do
@@ -1887,65 +1888,6 @@ function MagicServiceServer.Destroy(self: MagicServiceServer)
 	self.projectilePools = {}
 	self.activeProjectiles = {}
 end
-
-MagicServiceServer.createRuntime = MagicServiceServer.CreateRuntime
-MagicServiceServer.getRuntime = MagicServiceServer.GetRuntime
-MagicServiceServer.resolveRuntimeByMagic = MagicServiceServer.ResolveRuntimeByMagic
-MagicServiceServer.resolveManaStateSnapshot = MagicServiceServer.ResolveManaStateSnapshot
-MagicServiceServer.pushState = MagicServiceServer.PushState
-MagicServiceServer.getEquippedMagicToolFromInventory = MagicServiceServer.GetEquippedMagicToolFromInventory
-MagicServiceServer.refreshEquippedWeaponFromInventory = MagicServiceServer.RefreshEquippedWeaponFromInventory
-MagicServiceServer.getDefinitionOverride = MagicServiceServer.GetDefinitionOverride
-MagicServiceServer.buildRuntimeConfigWithOverrides = MagicServiceServer.BuildRuntimeConfigWithOverrides
-MagicServiceServer.collectCastModifiers = MagicServiceServer.CollectCastModifiers
-MagicServiceServer.prepareControllerStatsForCast = MagicServiceServer.PrepareControllerStatsForCast
-MagicServiceServer.onMagicCastRequested = MagicServiceServer.OnMagicCastRequested
-MagicServiceServer.canConsumeMana = MagicServiceServer.CanConsumeMana
-MagicServiceServer.consumeMana = MagicServiceServer.ConsumeMana
-MagicServiceServer.requestSync = MagicServiceServer.RequestSync
-MagicServiceServer.requestRefreshEquipped = MagicServiceServer.RequestRefreshEquipped
-MagicServiceServer.requestSetInputHeld = MagicServiceServer.RequestSetInputHeld
-MagicServiceServer.requestCast = MagicServiceServer.RequestCast
-MagicServiceServer.createProjectilePart = MagicServiceServer.CreateProjectilePart
-MagicServiceServer.acquireProjectilePart = MagicServiceServer.AcquireProjectilePart
-MagicServiceServer.releaseProjectile = MagicServiceServer.ReleaseProjectile
-MagicServiceServer.resolveCastOriginAndDirection = MagicServiceServer.ResolveCastOriginAndDirection
-MagicServiceServer.invokeWeaponCallback = MagicServiceServer.InvokeWeaponCallback
-MagicServiceServer.resolveHumanoidRootPart = MagicServiceServer.ResolveHumanoidRootPart
-MagicServiceServer.collectOverlapParts = MagicServiceServer.CollectOverlapParts
-MagicServiceServer.isValidHumanoidTarget = MagicServiceServer.IsValidHumanoidTarget
-MagicServiceServer.applyKnockbackToHumanoid = MagicServiceServer.ApplyKnockbackToHumanoid
-MagicServiceServer.damageHumanoidTarget = MagicServiceServer.DamageHumanoidTarget
-MagicServiceServer.applyStackingStatusEffect = MagicServiceServer.ApplyStackingStatusEffect
-MagicServiceServer.applySplashEffect = MagicServiceServer.ApplySplashEffect
-MagicServiceServer.findNearestChainTarget = MagicServiceServer.FindNearestChainTarget
-MagicServiceServer.applyChainEffect = MagicServiceServer.ApplyChainEffect
-MagicServiceServer.applyEffectsFromHit = MagicServiceServer.ApplyEffectsFromHit
-MagicServiceServer.expireProjectile = MagicServiceServer.ExpireProjectile
-MagicServiceServer.handleProjectileHit = MagicServiceServer.HandleProjectileHit
-MagicServiceServer.findNearestHomingTarget = MagicServiceServer.FindNearestHomingTarget
-MagicServiceServer.stepProjectileHoming = MagicServiceServer.StepProjectileHoming
-MagicServiceServer.resolveProjectileCollision = MagicServiceServer.ResolveProjectileCollision
-MagicServiceServer.stepProjectiles = MagicServiceServer.StepProjectiles
-MagicServiceServer.stepEffects = MagicServiceServer.StepEffects
-MagicServiceServer.spawnProjectile = MagicServiceServer.SpawnProjectile
-MagicServiceServer.executeCast = MagicServiceServer.ExecuteCast
-MagicServiceServer.onMagicCastCommitted = MagicServiceServer.OnMagicCastCommitted
-MagicServiceServer.stepHeldInput = MagicServiceServer.StepHeldInput
-MagicServiceServer.onHeartbeat = MagicServiceServer.OnHeartbeat
-MagicServiceServer.bindCharacter = MagicServiceServer.BindCharacter
-MagicServiceServer.bindBackpack = MagicServiceServer.BindBackpack
-MagicServiceServer.createMagicController = MagicServiceServer.CreateMagicController
-MagicServiceServer.trackPlayer = MagicServiceServer.TrackPlayer
-MagicServiceServer.untrackPlayer = MagicServiceServer.UntrackPlayer
-MagicServiceServer.registerModifierProvider = MagicServiceServer.RegisterModifierProvider
-MagicServiceServer.unregisterModifierProvider = MagicServiceServer.UnregisterModifierProvider
-MagicServiceServer.registerWeaponDefinition = MagicServiceServer.RegisterWeaponDefinition
-MagicServiceServer.registerWeaponModule = MagicServiceServer.RegisterWeaponModule
-MagicServiceServer.registerDefinitionsFromFolder = MagicServiceServer.RegisterDefinitionsFromFolder
-MagicServiceServer.init = MagicServiceServer.Init
-MagicServiceServer.destroy = MagicServiceServer.Destroy
-
 type MagicServiceServer = typeof(MagicServiceServer) & {
 	inventoryService: InventoryServiceServerObject,
 	manaService: ManaServiceServerObject?,

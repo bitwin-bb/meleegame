@@ -42,17 +42,11 @@ function ReforgeRarity.Compare(leftRaw: any, rightRaw: any): number
 end
 
 function ReforgeRarity.Roll(randomOrSeedRaw: any?, weightsRaw: { RarityWeight }?): (Rarity, number?)
-	local value, nextSeed = DropChance.pickWeighted((weightsRaw :: any) or DEFAULT_WEIGHTS, randomOrSeedRaw)
+	local value, nextSeed = DropChance.PickWeighted((weightsRaw :: any) or DEFAULT_WEIGHTS, randomOrSeedRaw)
 	return (value or "Common") :: Rarity, nextSeed
 end
 
 function ReforgeRarity.GetDefaultWeights(): { RarityWeight }
 	return table.clone(DEFAULT_WEIGHTS)
 end
-
-ReforgeRarity.getRank = ReforgeRarity.GetRank
-ReforgeRarity.compare = ReforgeRarity.Compare
-ReforgeRarity.roll = ReforgeRarity.Roll
-ReforgeRarity.getDefaultWeights = ReforgeRarity.GetDefaultWeights
-
 return ReforgeRarity

@@ -32,9 +32,4 @@ end
 function MachineJanitor.Destroy(self: MachineJanitor)
 	self.janitor:Destroy()
 end
-
-MachineJanitor.add = MachineJanitor.Add
-MachineJanitor.clean = MachineJanitor.Clean
-MachineJanitor.destroy = MachineJanitor.Destroy
-
 return MachineJanitor

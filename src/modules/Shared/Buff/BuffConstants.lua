@@ -64,8 +64,6 @@ function BuffConstants.IsStackMode(valueRaw: any): boolean
 	return STACK_MODES[valueRaw] == true
 end
 
-BuffConstants.cloneKinds = BuffConstants.CloneKinds
-BuffConstants.isKind = BuffConstants.IsKind
-BuffConstants.isStackMode = BuffConstants.IsStackMode
+
 
 return BuffConstants

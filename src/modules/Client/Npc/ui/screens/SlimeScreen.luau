@@ -28,7 +28,7 @@ local e: typeof(React.createElement) = React.createElement
 local NPC_RUNTIME_FOLDER_NAME = "NpcRuntime"
 local runtimeRootPartCache: { [string]: BasePart? } = {}
 
-local function resolveModelRootPart(model: Model): BasePart?
+local function GetModelRootPart(model: Model): BasePart?
 	local rootPart = model:FindFirstChild("RootPart")
 	if rootPart ~= nil and rootPart:IsA("BasePart") then
 		return rootPart
@@ -44,14 +44,14 @@ local function resolveModelRootPart(model: Model): BasePart?
 	return nil
 end
 
-local function resolveRuntimeRootPart(runtimeId: string): BasePart?
+local function GetUntimeRootPart(runtimeId: string): BasePart?
 	local cachedRootPart = runtimeRootPartCache[runtimeId]
 	if cachedRootPart ~= nil and cachedRootPart:IsDescendantOf(Workspace) then
 		return cachedRootPart
 	end
 	runtimeRootPartCache[runtimeId] = nil
 
-	local runtimeFolder = WorkspaceFolders.findFolderInGameOrWorkspace(NPC_RUNTIME_FOLDER_NAME)
+	local runtimeFolder = WorkspaceFolders.FindFolderInGameOrWorkspace(NPC_RUNTIME_FOLDER_NAME)
 	if runtimeFolder == nil then
 		return nil
 	end
@@ -64,7 +64,7 @@ local function resolveRuntimeRootPart(runtimeId: string): BasePart?
 			continue
 		end
 
-		local rootPart = resolveModelRootPart(child)
+		local rootPart = GetModelRootPart(child)
 		if rootPart ~= nil then
 			runtimeRootPartCache[runtimeId] = rootPart
 		end
@@ -78,7 +78,7 @@ local function selectViewState(state: NpcViewState?): NpcViewState
 	if state ~= nil then
 		return state
 	end
-	return NpcSlice.getViewState()
+	return NpcSlice.GetViewState()
 end
 
 local function selectGoreSprites(state: { [string]: SlimeGoreSprite }?): { [string]: SlimeGoreSprite }
@@ -98,11 +98,11 @@ return function(props: SlimeScreenProps)
 
 	React.useEffect(function()
 		local maid = Maid.new()
-		local stopClientSync = NpcThunks.startClientSync()
+		local stopClientSync = NpcThunks.StartClientSync()
 		maid:GiveTask(stopClientSync)
 		maid:GiveTask(RunService.RenderStepped:Connect(function()
 			local now = os.clock()
-			NpcThunks.pruneSlimeGore(now)
+			NpcThunks.PruneSlimeGore(now)
 			setRenderClock(now)
 		end))
 
@@ -117,7 +117,7 @@ return function(props: SlimeScreenProps)
 		if snapshot ~= nil then
 			local displayOrder = zIndex + index
 			children[#children + 1] = e("SurfaceGui", {
-				Adornee = resolveRuntimeRootPart(runtimeId),
+				Adornee = GetUntimeRootPart(runtimeId),
 				AlwaysOnTop = true,
 				ClipsDescendants = false,
 				Face = Enum.NormalId.Right,

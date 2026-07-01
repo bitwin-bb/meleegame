@@ -15,7 +15,7 @@ local runtime = {
 }
 
 local function syncFromService()
-	NpcSlice.setFromServiceState(NpcServiceClient:getState())
+	NpcSlice.SetFromServiceState(NpcServiceClient:GetState())
 end
 
 function NpcThunks.StartClientSync(): () -> ()
@@ -27,7 +27,7 @@ function NpcThunks.StartClientSync(): () -> ()
 	runtime.started = true
 	syncFromService()
 	runtime.connection = NpcServiceClient.stateChanged:Connect(function(nextState)
-		NpcSlice.setFromServiceState(nextState)
+		NpcSlice.SetFromServiceState(nextState)
 	end)
 
 	return function()
@@ -40,20 +40,14 @@ function NpcThunks.StartClientSync(): () -> ()
 end
 
 function NpcThunks.GetViewState(): NpcViewState
-	return NpcSlice.getViewState()
+	return NpcSlice.GetViewState()
 end
 
 function NpcThunks.SpawnSlimeDeathGore(snapshotRaw: any): { SlimeGoreSprite }
-	return NpcSlice.spawnSlimeDeathGore(snapshotRaw)
+	return NpcSlice.SpawnSlimeDeathGore(snapshotRaw)
 end
 
 function NpcThunks.PruneSlimeGore(nowRaw: any): number
-	return NpcSlice.pruneSlimeGore(nowRaw)
+	return NpcSlice.PruneSlimeGore(nowRaw)
 end
-
-NpcThunks.startClientSync = NpcThunks.StartClientSync
-NpcThunks.getViewState = NpcThunks.GetViewState
-NpcThunks.spawnSlimeDeathGore = NpcThunks.SpawnSlimeDeathGore
-NpcThunks.pruneSlimeGore = NpcThunks.PruneSlimeGore
-
 return NpcThunks

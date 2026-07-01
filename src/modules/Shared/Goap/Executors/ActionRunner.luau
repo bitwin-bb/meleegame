@@ -102,12 +102,4 @@ function ActionRunner.Destroy(self: ActionRunner)
 end
 
 ActionRunner.copy = Table.copy
-ActionRunner.canRun = ActionRunner.CanRun
-ActionRunner.start = ActionRunner.Start
-ActionRunner.update = ActionRunner.Update
-ActionRunner.isFinished = ActionRunner.IsFinished
-ActionRunner.cancel = ActionRunner.Cancel
-ActionRunner.reset = ActionRunner.Reset
-ActionRunner.destroy = ActionRunner.Destroy
-
 return ActionRunner

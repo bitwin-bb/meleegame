@@ -3,7 +3,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local PACKAGE_NAME = "AquariaBackup"
 
-local function resolveGameRoot(): Instance
+local function GetGameRoot(): Instance
 	local directGameRoot = script:FindFirstAncestor("game")
 	if directGameRoot ~= nil then
 		return directGameRoot
@@ -30,7 +30,7 @@ local function resolveGameRoot(): Instance
 end
 
 
-local gameRoot = resolveGameRoot()
+local gameRoot = GetGameRoot()
 local EntityCatalog = require(gameRoot.Shared.Commander.EntityCatalog)
 
 type EntityEntry = {
@@ -44,8 +44,8 @@ return function(registry)
 
 	registry:RegisterType("entityToken", {
 		Transform = function(text: string)
-			local entries = EntityCatalog.getAutocompleteEntries()
-			local exactEntity = EntityCatalog.resolve(text)
+			local entries = EntityCatalog.GetAutocompleteEntries()
+			local exactEntity = EntityCatalog.Get(text)
 			local fuzzyFinder = cmdrUtil.MakeFuzzyFinder(entries)
 			local matches = fuzzyFinder(text)
 

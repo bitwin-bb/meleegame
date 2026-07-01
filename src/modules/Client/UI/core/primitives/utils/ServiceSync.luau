@@ -2,6 +2,13 @@ local require = require(script.Parent.loader).load(script)
 
 local Promise = require("Promise")
 
+local function fulfilledPromise(...): any
+	local args = table.pack(...)
+	return Promise.new(function(fulfill)
+		fulfill(table.unpack(args, 1, args.n))
+	end)
+end
+
 type StateGetter<T> = () -> T
 type StateApplier<T> = (nextStateRaw: any) -> T
 type StateChangedHandler = (nextStateRaw: any) -> ()
@@ -10,17 +17,17 @@ local ServiceSync = {}
 
 local function requestSyncPromise(serviceClientRaw: any): any
 	if typeof(serviceClientRaw) ~= "table" then
-		return Promise.resolved(false)
+		return fulfilledPromise(false)
 	end
-	if typeof((serviceClientRaw :: any).requestSync) ~= "function" then
-		return Promise.resolved(false)
+	if typeof((serviceClientRaw :: any).RequestSync) ~= "function" then
+		return fulfilledPromise(false)
 	end
 
-	return Promise.spawn(function(resolve, _reject)
+	return Promise.spawn(function(fulfill, _reject)
 		local success = pcall(function()
-			(serviceClientRaw :: any):requestSync()
+			(serviceClientRaw :: any):RequestSync()
 		end)
-		resolve(success)
+		fulfill(success)
 	end)
 end
 
@@ -34,7 +41,7 @@ function ServiceSync.syncFromService<T>(
 	end
 
 	local success, nextState = pcall(function()
-		return (serviceClientRaw :: any):getState()
+		return (serviceClientRaw :: any):GetState()
 	end)
 	if success then
 		return applyState(nextState)
@@ -63,12 +70,12 @@ function ServiceSync.ReadReady(serviceClientRaw: any, fallbackReadyRaw: any?): b
 	if typeof(serviceClientRaw) ~= "table" then
 		return fallbackReady
 	end
-	if typeof((serviceClientRaw :: any).isReady) ~= "function" then
+	if typeof((serviceClientRaw :: any).IsReady) ~= "function" then
 		return fallbackReady
 	end
 
 	local success, isReady = pcall(function()
-		return (serviceClientRaw :: any):isReady()
+		return (serviceClientRaw :: any):IsReady()
 	end)
 	if not success then
 		return fallbackReady
@@ -85,10 +92,4 @@ function ServiceSync.RequestSyncMany(serviceClientsRaw: { any })
 		requestSyncPromise(serviceClient)
 	end
 end
-
-ServiceSync.connectStateChanged = ServiceSync.ConnectStateChanged
-ServiceSync.readReady = ServiceSync.ReadReady
-ServiceSync.requestSync = ServiceSync.RequestSync
-ServiceSync.requestSyncMany = ServiceSync.RequestSyncMany
-
 return ServiceSync

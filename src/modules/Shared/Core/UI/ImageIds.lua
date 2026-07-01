@@ -1,23 +1,6 @@
 local require = require(script.Parent.loader).load(script)
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Sift = require(ReplicatedStorage.Packages.Sift)
-
-local function withAliases(baseIcons: { [string]: string }, aliasByKey: { [string]: { string } }): { [string]: string }
-	local output = Sift.Dictionary.copy(baseIcons)
-	for key, aliases in aliasByKey do
-		local icon = output[key]
-		if typeof(icon) ~= "string" or icon == "" then
-			continue
-		end
-		local aliasIcons: { [string]: string } = {}
-		for _, alias in aliases do
-			aliasIcons[alias] = icon
-		end
-		output = Sift.Dictionary.merge(output, aliasIcons)
-	end
-	return output
-end
+local Table = require("Table")
 
 local hints = {
 	keyboard = {
@@ -128,61 +111,8 @@ local platform = {
 	gamepadNav = "rbxassetid://139208197032599",
 }
 
-local copperAxeIcon = "rbxassetid://75765746802617"
-local copperPickaxeIcon = "rbxassetid://135500881364781"
-local copperOreIcon = "rbxassetid://86523519459129"
-local gelIcon = "rbxassetid://125223837467164"
-local torchItemIcon = "rbxassetid://117501832045596"
-
-local weaponIcons = {
-	sword = "rbxassetid://120461830147890",
-	pickaxe = copperPickaxeIcon,
-	axe = copperAxeIcon,
-	hammer = "rbxassetid://122769702567537",
-}
 local questionMarkIcon = "rbxassetid://105837137977667"
 local lifeFruitHeartIcon = "rbxassetid://111119749912611"
-
-local itemIcons = withAliases({
-	default = questionMarkIcon,
-	sword = weaponIcons.sword,
-	copperShortSword = weaponIcons.sword,
-	pickaxe = weaponIcons.pickaxe,
-	axe = weaponIcons.axe,
-	hammer = weaponIcons.hammer,
-	coin = "rbxassetid://138124828857039",
-	consumable = "rbxassetid://111119749912611",
-	copperBroadSword = "rbxassetid://113224739547545",
-	katana = "rbxassetid://126443058539668",
-	wood = "rbxassetid://90861819791983",
-	vine = "rbxassetid://113394798642381",
-	stone = "rbxassetid://101907341766242",
-	richMahogany = "rbxassetid://102173755012342",
-	jungleWood = "rbxassetid://102173755012342",
-	mud = "rbxassetid://140267522619940",
-	ebonWood = "rbxassetid://94067001703630",
-	ebonStone = "rbxassetid://84325236351785",
-	dirt = "rbxassetid://79897470188136",
-	acorn = "rbxassetid://89910393519002",
-	workbench = "rbxassetid://127346854237238",
-	torch = torchItemIcon,
-	torchIcon = torchItemIcon,
-	gel = gelIcon,
-	gelIcon = gelIcon,
-	copperOre = copperOreIcon,
-	copperOreIcon = copperOreIcon,
-	copperAxeIcon = copperAxeIcon,
-	copperPickaxeIcon = copperPickaxeIcon,
-}, {
-	default = { "weapon", "shortsword", "broadsword" },
-	copperShortSword = { "coppershortsword" },
-	copperBroadSword = { "copperbroadsword" },
-	copperOre = { "copperore" },
-	gel = { "Gel", "gelIcon" },
-	torch = { "Torch", "torchIcon" },
-	richMahogany = { "richmahogany" },
-	jungleWood = { "junglewood" },
-})
 
 local buffs = {
 	swiftness = "rbxassetid://122769702567537",
@@ -194,7 +124,7 @@ local debuffs = {
 	healingPotionSickness = "rbxassetid://136038259594710",
 }
 
-return {
+return Table.readonly({
 	hints = hints,
 	platform = platform,
 	normalHeart = "rbxassetid://105126599485879",
@@ -240,6 +170,4 @@ return {
 		goldCoin = "rbxassetid://126752862632183",
 		platinumCoin = "rbxassetid://88193310457943",
 	},
-	weaponIcons = weaponIcons,
-	itemIcons = itemIcons,
-}
+})

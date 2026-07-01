@@ -98,7 +98,7 @@ function AudioServiceUtils.NormalizeSoundAssetId(rawId: any): string?
 	return nil
 end
 
-function AudioServiceUtils.ResolveSoundAssetId(soundSourceRaw: any): string?
+function AudioServiceUtils.GetSoundAssetId(soundSourceRaw: any): string?
 	if typeof(soundSourceRaw) == "Instance" then
 		local instance = soundSourceRaw :: Instance
 		if instance:IsA("Sound") then
@@ -129,7 +129,7 @@ local function collectSoundAssetIdsFromSource(sourceRaw: any, out: { string }, s
 
 	if typeof(sourceRaw) == "table" then
 		local source = sourceRaw :: { [any]: any }
-		local directId = AudioServiceUtils.ResolveSoundAssetId(source)
+		local directId = AudioServiceUtils.GetSoundAssetId(source)
 		if directId ~= nil and seen[directId] ~= true then
 			seen[directId] = true
 			table.insert(out, directId)
@@ -141,7 +141,7 @@ local function collectSoundAssetIdsFromSource(sourceRaw: any, out: { string }, s
 		return
 	end
 
-	local soundAssetId = AudioServiceUtils.ResolveSoundAssetId(sourceRaw)
+	local soundAssetId = AudioServiceUtils.GetSoundAssetId(sourceRaw)
 	if soundAssetId == nil or seen[soundAssetId] == true then
 		return
 	end
@@ -169,7 +169,7 @@ function AudioServiceUtils.NormalizeCategoryOrNil(value: any): SoundCategory?
 	return nil
 end
 
-function AudioServiceUtils.SanitizeCategory(value: any, fallback: SoundCategory?): SoundCategory
+function AudioServiceUtils.CoerceCategory(value: any, fallback: SoundCategory?): SoundCategory
 	local normalized = AudioServiceUtils.NormalizeCategoryOrNil(value)
 	if normalized then
 		return normalized :: SoundCategory
@@ -177,7 +177,7 @@ function AudioServiceUtils.SanitizeCategory(value: any, fallback: SoundCategory?
 	return (fallback or DEFAULT_CATEGORY) :: SoundCategory
 end
 
-function AudioServiceUtils.SanitizeVolume(value: any, fallback: number?): number
+function AudioServiceUtils.CoerceVolume(value: any, fallback: number?): number
 	return clampNumber(value, 0, 2, fallback or 1)
 end
 
@@ -189,7 +189,7 @@ function AudioServiceUtils.CreateDefaultCategoryVolumes(): { [string]: number }
 	return AudioServiceUtils.CloneCategoryVolumes(DEFAULT_CATEGORY_VOLUMES)
 end
 
-function AudioServiceUtils.SanitizeCategoryVolumes(
+function AudioServiceUtils.CoerceCategoryVolumes(
 	rawVolumes: any,
 	fallbackVolumes: { [string]: number }?
 ): { [string]: number }
@@ -198,7 +198,7 @@ function AudioServiceUtils.SanitizeCategoryVolumes(
 	local result = {}
 
 	for _, category in CATEGORY_ORDER do
-		result[category] = AudioServiceUtils.SanitizeVolume((source :: any)[category], base[category])
+		result[category] = AudioServiceUtils.CoerceVolume((source :: any)[category], base[category])
 	end
 
 	return result
@@ -220,15 +220,15 @@ function AudioServiceUtils.CreateState(
 ): AudioServiceState
 	local fallback = if fallbackState then fallbackState else AudioServiceUtils.CreateDefaultState()
 	return {
-		masterVolume = AudioServiceUtils.SanitizeVolume(masterVolumeRaw, fallback.masterVolume),
+		masterVolume = AudioServiceUtils.CoerceVolume(masterVolumeRaw, fallback.masterVolume),
 		muted = if typeof(mutedRaw) == "boolean" then mutedRaw else fallback.muted,
-		categoryVolumes = AudioServiceUtils.SanitizeCategoryVolumes(categoryVolumesRaw, fallback.categoryVolumes),
+		categoryVolumes = AudioServiceUtils.CoerceCategoryVolumes(categoryVolumesRaw, fallback.categoryVolumes),
 	}
 end
 
 function AudioServiceUtils.WithMasterVolume(state: AudioServiceState, masterVolumeRaw: any): AudioServiceState
 	return {
-		masterVolume = AudioServiceUtils.SanitizeVolume(masterVolumeRaw, state.masterVolume),
+		masterVolume = AudioServiceUtils.CoerceVolume(masterVolumeRaw, state.masterVolume),
 		muted = state.muted,
 		categoryVolumes = AudioServiceUtils.CloneCategoryVolumes(state.categoryVolumes),
 	}
@@ -257,7 +257,7 @@ function AudioServiceUtils.WithCategoryVolume(
 	end
 
 	local nextCategoryVolumes = AudioServiceUtils.CloneCategoryVolumes(state.categoryVolumes)
-	nextCategoryVolumes[category] = AudioServiceUtils.SanitizeVolume(volumeRaw, nextCategoryVolumes[category])
+	nextCategoryVolumes[category] = AudioServiceUtils.CoerceVolume(volumeRaw, nextCategoryVolumes[category])
 
 	return {
 		masterVolume = state.masterVolume,
@@ -266,10 +266,10 @@ function AudioServiceUtils.WithCategoryVolume(
 	}
 end
 
-function AudioServiceUtils.SanitizePlaybackOptions(optionsRaw: any, fallbackCategory: SoundCategory?): PlaybackOptions
+function AudioServiceUtils.CoercePlaybackOptions(optionsRaw: any, fallbackCategory: SoundCategory?): PlaybackOptions
 	local source = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 	local category: SoundCategory =
-		AudioServiceUtils.SanitizeCategory((source :: any).category, fallbackCategory or DEFAULT_CATEGORY)
+		AudioServiceUtils.CoerceCategory((source :: any).category, fallbackCategory or DEFAULT_CATEGORY)
 
 	local channelRaw = (source :: any).channel
 	local channel = if typeof(channelRaw) == "string" and channelRaw ~= "" then channelRaw else nil
@@ -309,20 +309,20 @@ function AudioServiceUtils.SanitizePlaybackOptions(optionsRaw: any, fallbackCate
 	return options
 end
 
-function AudioServiceUtils.ResolvePlaybackRequest(
+function AudioServiceUtils.GetPlaybackRequest(
 	soundSourceRaw: any,
 	optionsRaw: any,
 	fallbackCategory: SoundCategory?
 ): (string?, PlaybackOptions)
-	local soundAssetId = AudioServiceUtils.ResolveSoundAssetId(soundSourceRaw)
-	local options = AudioServiceUtils.SanitizePlaybackOptions(optionsRaw, fallbackCategory)
+	local soundAssetId = AudioServiceUtils.GetSoundAssetId(soundSourceRaw)
+	local options = AudioServiceUtils.CoercePlaybackOptions(optionsRaw, fallbackCategory)
 	if typeof(soundSourceRaw) ~= "table" then
 		return soundAssetId, options
 	end
 
 	local source = soundSourceRaw :: { [string]: any }
 	local providedOptions = if typeof(optionsRaw) == "table" then optionsRaw :: { [string]: any } else nil
-	local sourceOptions = AudioServiceUtils.SanitizePlaybackOptions(soundSourceRaw, fallbackCategory)
+	local sourceOptions = AudioServiceUtils.CoercePlaybackOptions(soundSourceRaw, fallbackCategory)
 
 	if providedOptions == nil or providedOptions.category == nil then
 		if source.category ~= nil then
@@ -373,7 +373,7 @@ function AudioServiceUtils.SerializePlaybackOptions(
 	optionsRaw: any,
 	fallbackCategory: SoundCategory?
 ): { [string]: any }
-	local options = AudioServiceUtils.SanitizePlaybackOptions(optionsRaw, fallbackCategory)
+	local options = AudioServiceUtils.CoercePlaybackOptions(optionsRaw, fallbackCategory)
 	local serialized: { [string]: any } = {
 		category = options.category,
 	}
@@ -476,7 +476,7 @@ function AudioServiceUtils.CreateSoundInstance(
 		return nil
 	end
 
-	local options = AudioServiceUtils.SanitizePlaybackOptions(optionsRaw, DEFAULT_CATEGORY)
+	local options = AudioServiceUtils.CoercePlaybackOptions(optionsRaw, DEFAULT_CATEGORY)
 	local parent = if options.parent and options.parent.Parent ~= nil then options.parent else defaultParent
 
 	local sound = Instance.new("Sound")
@@ -553,29 +553,5 @@ function AudioServiceUtils.StopAndDestroySound(sound: Sound, fadeTimeRaw: any)
 		end
 	end)
 end
-
-AudioServiceUtils.normalizeSoundAssetId = AudioServiceUtils.NormalizeSoundAssetId
-AudioServiceUtils.resolveSoundAssetId = AudioServiceUtils.ResolveSoundAssetId
-AudioServiceUtils.collectSoundAssetIds = AudioServiceUtils.CollectSoundAssetIds
-AudioServiceUtils.normalizeCategoryOrNil = AudioServiceUtils.NormalizeCategoryOrNil
-AudioServiceUtils.sanitizeCategory = AudioServiceUtils.SanitizeCategory
-AudioServiceUtils.sanitizeVolume = AudioServiceUtils.SanitizeVolume
-AudioServiceUtils.cloneCategoryVolumes = AudioServiceUtils.CloneCategoryVolumes
-AudioServiceUtils.createDefaultCategoryVolumes = AudioServiceUtils.CreateDefaultCategoryVolumes
-AudioServiceUtils.sanitizeCategoryVolumes = AudioServiceUtils.SanitizeCategoryVolumes
-AudioServiceUtils.createDefaultState = AudioServiceUtils.CreateDefaultState
-AudioServiceUtils.createState = AudioServiceUtils.CreateState
-AudioServiceUtils.withMasterVolume = AudioServiceUtils.WithMasterVolume
-AudioServiceUtils.withMuted = AudioServiceUtils.WithMuted
-AudioServiceUtils.withCategoryVolume = AudioServiceUtils.WithCategoryVolume
-AudioServiceUtils.sanitizePlaybackOptions = AudioServiceUtils.SanitizePlaybackOptions
-AudioServiceUtils.resolvePlaybackRequest = AudioServiceUtils.ResolvePlaybackRequest
-AudioServiceUtils.serializePlaybackOptions = AudioServiceUtils.SerializePlaybackOptions
-AudioServiceUtils.ensureRuntimeFolder = AudioServiceUtils.EnsureRuntimeFolder
-AudioServiceUtils.ensureCategoryGroups = AudioServiceUtils.EnsureCategoryGroups
-AudioServiceUtils.applyStateToCategoryGroups = AudioServiceUtils.ApplyStateToCategoryGroups
-AudioServiceUtils.createSoundInstance = AudioServiceUtils.CreateSoundInstance
-AudioServiceUtils.fadeSoundVolume = AudioServiceUtils.FadeSoundVolume
-AudioServiceUtils.stopAndDestroySound = AudioServiceUtils.StopAndDestroySound
 
 return AudioServiceUtils

@@ -121,7 +121,7 @@ function Cloud.Reset(self: Cloud, config: CloudConfig, now: number)
 	self.id = config.id
 	self.asset = config.asset
 	self.scale = math.max(config.scale, 0.01)
-	self.depthFactor = CloudScroll.resolveDepthFactor(
+	self.depthFactor = CloudScroll.GetDepthFactor(
 		self.scale,
 		config.minScale,
 		config.maxScale,
@@ -165,7 +165,7 @@ function Cloud.Step(
 
 	local windOffsetZ = (now - self.spawnedAt) * self.windSpeed
 	self.currentOffsetZ =
-		CloudScroll.computeHorizonOffset(self.baseOffsetZ + windOffsetZ, cameraZ - self.spawnCameraZ, self.depthFactor)
+		CloudScroll.ComputeHorizonOffset(self.baseOffsetZ + windOffsetZ, cameraZ - self.spawnCameraZ, self.depthFactor)
 
 	local progress = math.clamp((now - self.phaseStartedAt) / self.fadeSeconds, 0, 1)
 	if self.phase == "FadingIn" then
@@ -187,7 +187,7 @@ function Cloud.Step(
 
 	if
 		self.phase ~= "FadingOut"
-		and CloudScroll.isHorizontallyOffscreen(
+		and CloudScroll.IsHorizontallyOffscreen(
 			self.currentOffsetZ,
 			widthStuds,
 			retireHalfWidthStuds,
@@ -227,14 +227,4 @@ function Cloud.Destroy(self: Cloud)
 	self.phaseObservable = nil
 	self.maid:DoCleaning()
 end
-
-Cloud.reset = Cloud.Reset
-Cloud.beginFadeOut = Cloud.BeginFadeOut
-Cloud.step = Cloud.Step
-Cloud.isActive = Cloud.IsActive
-Cloud.isRetiring = Cloud.IsRetiring
-Cloud.observePhase = Cloud.ObservePhase
-Cloud.getPhaseChangedSignal = Cloud.GetPhaseChangedSignal
-Cloud.destroy = Cloud.Destroy
-
 return Cloud

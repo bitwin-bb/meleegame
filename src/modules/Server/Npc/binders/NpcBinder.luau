@@ -9,7 +9,7 @@ local NpcBinder = {}
 NpcBinder.__index = NpcBinder
 setmetatable(NpcBinder, ModelBinder)
 
-local function resolveNpcType(self: any, model: Model): string
+local function GetNpcType(self: any, model: Model): string
 	local runtimeType = model:GetAttribute(NpcServiceUtils.RUNTIME_NPC_TYPE_ATTRIBUTE)
 	if typeof(runtimeType) == "string" and runtimeType ~= "" then
 		return runtimeType
@@ -42,9 +42,9 @@ function NpcBinder.updateMetadata(self: any)
 	end
 
 	model:SetAttribute("NpcBinderTagged", true)
-	model:SetAttribute("NpcBinderType", resolveNpcType(self, model))
+	model:SetAttribute("NpcBinderType", GetNpcType(self, model))
 
-	local runtimeId = NpcServiceUtils.resolveRuntimeIdFromInstance(model)
+	local runtimeId = NpcServiceUtils.GetUntimeIdFromInstance(model)
 	if runtimeId ~= nil then
 		model:SetAttribute("NpcBinderRuntimeId", runtimeId)
 	end

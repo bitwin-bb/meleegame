@@ -19,16 +19,16 @@ return function(props: ScaleProps): React.ReactNode
 	local shouldUseViewportScale = props.useViewportScale == true
 	local viewportScale = Responsive.useResponsiveMetrics().scale
 
-	local resolvedScale = if props.scale ~= nil then props.scale else 1
-	resolvedScale *= props.multiplier or 1
+	local GotScale = if props.scale ~= nil then props.scale else 1
+	GotScale *= props.multiplier or 1
 	if shouldUseViewportScale then
-		resolvedScale *= viewportScale
+		GotScale *= viewportScale
 	end
 	if props.minScale ~= nil or props.maxScale ~= nil then
-		resolvedScale = math.clamp(resolvedScale, props.minScale or -math.huge, props.maxScale or math.huge)
+		GotScale = math.clamp(GotScale, props.minScale or -math.huge, props.maxScale or math.huge)
 	end
 
 	return e("UIScale", {
-		Scale = resolvedScale,
+		Scale = GotScale,
 	})
 end

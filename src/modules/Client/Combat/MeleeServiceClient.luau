@@ -7,7 +7,7 @@ local Workspace = game:GetService("Workspace")
 local CameraShaker = require(ReplicatedStorage.Shared.Vendor.EZCameraShake)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
-local MeleeServicePackets = require("NetSharedPackets").MeleeService
+local MeleeServicePackets = require("NetPacketsShared").MeleeService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = MeleeServicePackets[methodName]
@@ -16,7 +16,7 @@ local function sendPacket(methodName: string, ...: any)
 		return
 	end
 
-	packet.send(PacketPayload.pack(...))
+	packet.send(PacketPayload.Pack(...))
 end
 
 local AnimationServiceUtils = require("AnimationServiceUtils")
@@ -30,6 +30,13 @@ local Melee = require("Melee")
 local MeleeServiceUtils = require("MeleeServiceUtils")
 local PlatformServiceClient = require("PlatformServiceClient")
 local Promise = require("Promise")
+
+local function fulfilledPromise(...): any
+	local args = table.pack(...)
+	return Promise.new(function(fulfill)
+		fulfill(table.unpack(args, 1, args.n))
+	end)
+end
 local RagdollServiceClient = require("AquariaRagdollServiceClient")
 local RaycastHitbox = require(ReplicatedStorage.Shared.Vendor.RaycastHitbox)
 
@@ -102,13 +109,13 @@ local MELEE_CAMERA_SHAKE_DAMAGE_FOR_MAX_INTENSITY = 60
 
 local function promiseAll(promises: { any }): any
 	if #promises <= 0 then
-		return Promise.resolved()
+		return fulfilledPromise()
 	end
 
 	local results = table.create(#promises)
 	local remaining = #promises
 
-	local aggregatePromise = Promise.new(function(resolve, reject)
+	local aggregatePromise = Promise.new(function(fulfill, reject)
 		local settled = false
 
 		local function rejectOnce(...)
@@ -119,7 +126,7 @@ local function promiseAll(promises: { any }): any
 			reject(...)
 		end
 
-		local function resolveOne(index: number, ...)
+		local function GetOne(index: number, ...)
 			if settled then
 				return
 			end
@@ -127,13 +134,13 @@ local function promiseAll(promises: { any }): any
 			remaining -= 1
 			if remaining <= 0 then
 				settled = true
-				resolve(results)
+				fulfill(results)
 			end
 		end
 
 		for index, nextPromise in promises do
 			nextPromise:Then(function(...)
-				resolveOne(index, ...)
+				GetOne(index, ...)
 			end, rejectOnce)
 		end
 	end)
@@ -151,7 +158,7 @@ end
 
 local function promiseFromSignal(signal: any, predicate: ((...any) -> boolean)?): any
 	local connection = nil :: RBXScriptConnection?
-	local promise = Promise.new(function(resolve, reject)
+	local promise = Promise.new(function(fulfill, reject)
 		local settled = false
 
 		local function cleanup()
@@ -174,7 +181,7 @@ local function promiseFromSignal(signal: any, predicate: ((...any) -> boolean)?)
 			if predicate ~= nil and not predicate(...) then
 				return
 			end
-			settle(resolve, ...)
+			settle(fulfill, ...)
 		end)
 
 		if connection == nil then
@@ -192,7 +199,7 @@ local function promiseFromSignal(signal: any, predicate: ((...any) -> boolean)?)
 	return promise
 end
 
-local function resolveHumanoidFromCharacter(character: Model?): Humanoid?
+local function GetHumanoidFromCharacter(character: Model?): Humanoid?
 	if character == nil then
 		return nil
 	end
@@ -221,7 +228,7 @@ local function trim(valueRaw: any): string
 	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function resolveRootPart(character: Model?): BasePart?
+local function GetRootPart(character: Model?): BasePart?
 	if character == nil then
 		return nil
 	end
@@ -258,7 +265,7 @@ local function isStartSwingEvent(valueRaw: any): boolean
 	return normalized == "startswing" or normalized == "swingstart"
 end
 
-local function resolveOrderedSwingGroups(swingSounds: { [string]: { string } }): { string }
+local function GetOrderedSwingGroups(swingSounds: { [string]: { string } }): { string }
 	local indexedGroups = {}
 	for groupName, pool in swingSounds do
 		if typeof(groupName) ~= "string" or typeof(pool) ~= "table" or #pool <= 0 then
@@ -289,7 +296,7 @@ local function resolveOrderedSwingGroups(swingSounds: { [string]: { string } }):
 	return orderedGroups
 end
 
-local function resolveToolHandlePart(toolRaw: any): BasePart?
+local function GetToolHandlePart(toolRaw: any): BasePart?
 	if typeof(toolRaw) ~= "Instance" or not toolRaw:IsA("Tool") then
 		return nil
 	end
@@ -308,7 +315,7 @@ local function resolveToolHandlePart(toolRaw: any): BasePart?
 	return tool:FindFirstChildWhichIsA("BasePart", true)
 end
 
-local function resolveCharacterHandPart(character: Model?): BasePart?
+local function GetCharacterHandPart(character: Model?): BasePart?
 	if character == nil then
 		return nil
 	end
@@ -323,7 +330,7 @@ local function resolveCharacterHandPart(character: Model?): BasePart?
 	return nil
 end
 
-local function resolveMeleeDebugHitboxEnabledFromConfigs(): boolean
+local function GetMeleeDebugHitboxEnabledFromConfigs(): boolean
 	if typeof(Configs) ~= "table" then
 		return false
 	end
@@ -417,7 +424,7 @@ local function isWeaponConfigEquivalent(lhsRaw: any, rhsRaw: any): boolean
 	if lhs.canHitNpcs ~= rhs.canHitNpcs then
 		return false
 	end
-	if not MeleeServiceUtils.areAnimationConfigsEquivalent(lhs.animations, rhs.animations) then
+	if not MeleeServiceUtils.AreAnimationConfigsEquivalent(lhs.animations, rhs.animations) then
 		return false
 	end
 
@@ -432,7 +439,7 @@ function MeleeServiceClient.Init(self: MeleeServiceClient)
 	self.janitor:GiveChore(self.characterJanitor)
 	self.janitor:GiveChore(self.toolJanitor)
 
-	self.inventoryState = InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
+	self.inventoryState = InventoryServiceUtils.CreateDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
 	self.character = nil :: Model?
 	self.humanoid = nil :: Humanoid?
 	self.inputHeld = false
@@ -447,7 +454,7 @@ function MeleeServiceClient.Init(self: MeleeServiceClient)
 	self.replicatedSlot = nil :: number?
 	self.cameraShaker = nil :: CameraShakerObject?
 	self.lastSwingCameraShakeAt = -math.huge
-	self.debugHitboxEnabled = resolveMeleeDebugHitboxEnabledFromConfigs()
+	self.debugHitboxEnabled = GetMeleeDebugHitboxEnabledFromConfigs()
 	self.debugHitbox = nil :: HitboxObject?
 	self.debugHitboxPointsPart = nil :: BasePart?
 	self.debugHitboxPoints = {} :: { Vector3 }
@@ -487,41 +494,41 @@ function MeleeServiceClient.Init(self: MeleeServiceClient)
 	end)
 
 	self.janitor:GiveChore(function()
-		self:destroyDebugHitbox()
+		self:DestroyDebugHitbox()
 	end)
 
 	self.janitor:GiveChore(self.localPlayer.CharacterAdded:Connect(function(character: Model)
-		self:onCharacterAdded(character)
+		self:OnCharacterAdded(character)
 	end))
 
-	self:bindInputRouter()
+	self:BindInputRouter()
 
 	if InventoryServiceClient.stateChanged ~= nil then
 		self.janitor:GiveChore(InventoryServiceClient.stateChanged:Connect(function(nextState: InventoryState)
-			self:onInventoryStateChanged(nextState)
+			self:OnInventoryStateChanged(nextState)
 		end))
 	end
 	if RagdollServiceClient.stateChanged ~= nil then
 		self.janitor:GiveChore(RagdollServiceClient.stateChanged:Connect(function()
-			if self:isAttackBlocked() then
-				self:setInputHeld(false, "RagdollChanged")
+			if self:IsAttackBlocked() then
+				self:SetInputHeld(false, "RagdollChanged")
 			end
 		end))
 	end
 
 	if self.localPlayer.Character ~= nil then
-		self:onCharacterAdded(self.localPlayer.Character)
+		self:OnCharacterAdded(self.localPlayer.Character)
 	end
 
-	self:onInventoryStateChanged(InventoryServiceClient.state)
+	self:OnInventoryStateChanged(InventoryServiceClient.state)
 
 	self.bootstrapPromise = promiseAll({
-			self:waitForCharacter(),
-			self:waitForInventoryLoaded(),
+			self:WaitForCharacter(),
+			self:WaitForInventoryLoaded(),
 		})
 		:Then(function()
-			self:refreshEquippedWeapon("Bootstrap")
-			self:replicateEquippedState(true)
+			self:RefreshEquippedWeapon("Bootstrap")
+			self:ReplicateEquippedState(true)
 		end)
 		:Catch(function(_err: any) end)
 
@@ -534,24 +541,24 @@ function MeleeServiceClient.Init(self: MeleeServiceClient)
 end
 
 function MeleeServiceClient.BindInputRouter(self: MeleeServiceClient): boolean
-	local runtimeContext = CoreRuntime.getClientRuntime()
-	if runtimeContext ~= nil and typeof((runtimeContext :: any).init) == "function" then
+	local runtimeContext = CoreRuntime.GetClientRuntime()
+	if runtimeContext ~= nil and typeof((runtimeContext :: any).Init) == "function" then
 		local runtimeAny = runtimeContext :: any
-		runtimeAny:init()
+		runtimeAny:Init()
 	end
 	self.runtimeContext = runtimeContext
 	self.hapticsModule = if runtimeContext ~= nil then (runtimeContext :: any).haptics else nil
-	if not PlatformServiceClient:isReady() then
-		PlatformServiceClient:init()
+	if not PlatformServiceClient:IsReady() then
+		PlatformServiceClient:Init()
 	end
 
-	local disconnect = PlatformServiceClient:bindAction(INPUT_ACTION_ATTACK, function(phase: string)
+	local disconnect = PlatformServiceClient:BindAction(INPUT_ACTION_ATTACK, function(phase: string)
 		if phase == "Began" then
-			if not self:isAttackBlocked() then
-				self:setInputHeld(true, "PrimaryInputBegan")
+			if not self:IsAttackBlocked() then
+				self:SetInputHeld(true, "PrimaryInputBegan")
 			end
 		elseif phase == "Ended" then
-			self:setInputHeld(false, "PrimaryInputEnded")
+			self:SetInputHeld(false, "PrimaryInputEnded")
 		end
 		return false
 	end)
@@ -567,27 +574,27 @@ end
 function MeleeServiceClient.WaitForCharacter(self: MeleeServiceClient)
 	local character = self.localPlayer.Character
 	if character ~= nil then
-		return Promise.resolved(character)
+		return fulfilledPromise(character)
 	end
 	return promiseFromSignal(self.localPlayer.CharacterAdded)
 end
 
 function MeleeServiceClient.WaitForInventoryLoaded(self: MeleeServiceClient)
 	local state = self.inventoryState
-	if InventoryServiceUtils.isLoadedState(state.loadState) then
-		return Promise.resolved(state)
+	if InventoryServiceUtils.IsLoadedState(state.loadState) then
+		return fulfilledPromise(state)
 	end
 	if InventoryServiceClient.stateChanged == nil then
-		return Promise.resolved(state)
+		return fulfilledPromise(state)
 	end
 
 	return promiseFromSignal(InventoryServiceClient.stateChanged, function(nextState: InventoryState): boolean
-		return InventoryServiceUtils.isLoadedState(nextState.loadState)
+		return InventoryServiceUtils.IsLoadedState(nextState.loadState)
 	end)
 end
 
 function MeleeServiceClient.DestroyActiveMelee(self: MeleeServiceClient)
-	self:stopDebugHitbox()
+	self:StopDebugHitbox()
 
 	local activeMelee = self.activeMelee
 	self.activeMelee = nil
@@ -596,7 +603,7 @@ function MeleeServiceClient.DestroyActiveMelee(self: MeleeServiceClient)
 	end
 
 	pcall(function()
-		activeMelee:destroy()
+		activeMelee:Destroy()
 	end)
 end
 
@@ -614,25 +621,25 @@ function MeleeServiceClient.ReplicateEquippedState(self: MeleeServiceClient, for
 end
 
 function MeleeServiceClient.RefreshHumanoidReference(self: MeleeServiceClient)
-	self.humanoid = resolveHumanoidFromCharacter(self.character)
+	self.humanoid = GetHumanoidFromCharacter(self.character)
 end
 
-function MeleeServiceClient.ResolveDebugHitboxAnchorPart(self: MeleeServiceClient): BasePart?
+function MeleeServiceClient.GetDebugHitboxAnchorPart(self: MeleeServiceClient): BasePart?
 	local character = self.character
 	local equippedTool = self.equippedTool
 	if equippedTool ~= nil and character ~= nil and equippedTool:IsDescendantOf(character) then
-		local toolPart = resolveToolHandlePart(equippedTool)
+		local toolPart = GetToolHandlePart(equippedTool)
 		if toolPart ~= nil then
 			return toolPart
 		end
 	end
 
-	local handPart = resolveCharacterHandPart(character)
+	local handPart = GetCharacterHandPart(character)
 	if handPart ~= nil then
 		return handPart
 	end
 
-	return resolveRootPart(character)
+	return GetRootPart(character)
 end
 
 function MeleeServiceClient.StopDebugHitbox(self: MeleeServiceClient)
@@ -662,25 +669,25 @@ end
 
 function MeleeServiceClient.ApplyDebugHitboxPoints(self: MeleeServiceClient)
 	if not self.debugHitboxEnabled then
-		self:clearDebugHitboxPoints()
+		self:ClearDebugHitboxPoints()
 		return
 	end
 
 	local debugHitbox = self.debugHitbox
 	local weaponConfig = self.equippedWeaponConfig
 	if debugHitbox == nil or weaponConfig == nil then
-		self:clearDebugHitboxPoints()
+		self:ClearDebugHitboxPoints()
 		return
 	end
 
-	local anchorPart = self:resolveDebugHitboxAnchorPart()
+	local anchorPart = self:GetDebugHitboxAnchorPart()
 	if anchorPart == nil then
-		self:clearDebugHitboxPoints()
+		self:ClearDebugHitboxPoints()
 		return
 	end
 
-	self:clearDebugHitboxPoints()
-	local points = MeleeServiceUtils.buildHitboxPoints(weaponConfig)
+	self:ClearDebugHitboxPoints()
+	local points = MeleeServiceUtils.BuildHitboxPoints(weaponConfig)
 	if #points <= 0 then
 		return
 	end
@@ -693,8 +700,8 @@ function MeleeServiceClient.ApplyDebugHitboxPoints(self: MeleeServiceClient)
 end
 
 function MeleeServiceClient.DestroyDebugHitbox(self: MeleeServiceClient)
-	self:stopDebugHitbox()
-	self:clearDebugHitboxPoints()
+	self:StopDebugHitbox()
+	self:ClearDebugHitboxPoints()
 
 	local debugHitbox = self.debugHitbox
 	self.debugHitbox = nil
@@ -706,7 +713,7 @@ function MeleeServiceClient.DestroyDebugHitbox(self: MeleeServiceClient)
 end
 
 function MeleeServiceClient.EnsureDebugHitbox(self: MeleeServiceClient)
-	self:destroyDebugHitbox()
+	self:DestroyDebugHitbox()
 	if not self.debugHitboxEnabled then
 		return
 	end
@@ -725,7 +732,7 @@ function MeleeServiceClient.EnsureDebugHitbox(self: MeleeServiceClient)
 	params.IgnoreWater = true
 	debugHitbox.RaycastParams = params
 
-	self:applyDebugHitboxPoints()
+	self:ApplyDebugHitboxPoints()
 end
 
 function MeleeServiceClient.IsAttackBlocked(self: MeleeServiceClient): boolean
@@ -738,7 +745,7 @@ function MeleeServiceClient.IsAttackBlocked(self: MeleeServiceClient): boolean
 		return true
 	end
 
-	if RagdollServiceClient.isRagdolled ~= nil and RagdollServiceClient:isRagdolled() then
+	if RagdollServiceClient.IsRagdolled ~= nil and RagdollServiceClient:IsRagdolled() then
 		return true
 	end
 
@@ -753,15 +760,15 @@ function MeleeServiceClient.PlayToolSoundAssetId(self: MeleeServiceClient, sound
 		return
 	end
 
-	local rootPart = resolveRootPart(self.character)
-	AudioServiceClient:playSfx(soundAssetIdRaw, {
+	local rootPart = GetRootPart(self.character)
+	AudioServiceClient:PlaySfx(soundAssetIdRaw, {
 		parent = rootPart,
 		replaceChannel = false,
 		autoDestroy = true,
 	})
 end
 
-function MeleeServiceClient.ResolveToolSound(self: MeleeServiceClient, soundNameRaw: any): string?
+function MeleeServiceClient.GetToolSound(self: MeleeServiceClient, soundNameRaw: any): string?
 	local soundName = trim(soundNameRaw)
 	if soundName == "" then
 		return nil
@@ -775,7 +782,7 @@ function MeleeServiceClient.ResolveToolSound(self: MeleeServiceClient, soundName
 	return equippedToolSounds[string.lower(soundName)]
 end
 
-function MeleeServiceClient.ResolveRandomSwingSound(self: MeleeServiceClient, swingGroupRaw: any): string?
+function MeleeServiceClient.GetAndomSwingSound(self: MeleeServiceClient, swingGroupRaw: any): string?
 	local swingGroup = normalizeSwingSoundGroup(swingGroupRaw)
 	if swingGroup == nil then
 		return nil
@@ -791,7 +798,7 @@ function MeleeServiceClient.ResolveRandomSwingSound(self: MeleeServiceClient, sw
 	return pool[randomIndex]
 end
 
-function MeleeServiceClient.ResolveSwingSoundGroupFromContext(self: MeleeServiceClient, contextRaw: any): string?
+function MeleeServiceClient.GetSwingSoundGroupFromContext(self: MeleeServiceClient, contextRaw: any): string?
 	local context = if typeof(contextRaw) == "table" then contextRaw else {} :: any
 	local equippedToolSwingSounds = self.equippedToolSwingSounds :: { [string]: { string } }
 
@@ -812,7 +819,7 @@ function MeleeServiceClient.ResolveSwingSoundGroupFromContext(self: MeleeService
 	local swingIndexRaw = context.swingIndex
 	if typeof(swingIndexRaw) == "number" and swingIndexRaw == swingIndexRaw then
 		local swingIndex = math.max(1, math.floor(swingIndexRaw))
-		local orderedGroups = resolveOrderedSwingGroups(equippedToolSwingSounds)
+		local orderedGroups = GetOrderedSwingGroups(equippedToolSwingSounds)
 		if #orderedGroups > 0 then
 			local cycledIndex = ((swingIndex - 1) % #orderedGroups) + 1
 			return orderedGroups[cycledIndex]
@@ -823,17 +830,17 @@ function MeleeServiceClient.ResolveSwingSoundGroupFromContext(self: MeleeService
 end
 
 function MeleeServiceClient.PlaySwingSoundFromContext(self: MeleeServiceClient, contextRaw: any): boolean
-	local swingGroup = self:resolveSwingSoundGroupFromContext(contextRaw)
+	local swingGroup = self:GetSwingSoundGroupFromContext(contextRaw)
 	if swingGroup == nil then
 		return false
 	end
 
-	local swingSound = self:resolveRandomSwingSound(swingGroup)
+	local swingSound = self:GetAndomSwingSound(swingGroup)
 	if swingSound == nil then
 		return false
 	end
 
-	self:playToolSoundAssetId(swingSound)
+	self:PlayToolSoundAssetId(swingSound)
 	return true
 end
 
@@ -850,35 +857,35 @@ function MeleeServiceClient.PlayToolSoundByEvent(
 	local fallbackNames = if typeof(fallbackNamesRaw) == "table" then fallbackNamesRaw else {} :: any
 
 	if normalizedEventName ~= "" then
-		local eventSound = self:resolveToolSound(eventName)
+		local eventSound = self:GetToolSound(eventName)
 		if eventSound ~= nil then
-			self:playToolSoundAssetId(eventSound)
+			self:PlayToolSoundAssetId(eventSound)
 			return true
 		end
-		local normalizedSound = self:resolveToolSound(normalizedEventName)
+		local normalizedSound = self:GetToolSound(normalizedEventName)
 		if normalizedSound ~= nil then
-			self:playToolSoundAssetId(normalizedSound)
+			self:PlayToolSoundAssetId(normalizedSound)
 			return true
 		end
 	end
 
 	if normalizedEventType ~= "" then
-		local typeSound = self:resolveToolSound(eventType)
+		local typeSound = self:GetToolSound(eventType)
 		if typeSound ~= nil then
-			self:playToolSoundAssetId(typeSound)
+			self:PlayToolSoundAssetId(typeSound)
 			return true
 		end
-		local normalizedTypeSound = self:resolveToolSound(normalizedEventType)
+		local normalizedTypeSound = self:GetToolSound(normalizedEventType)
 		if normalizedTypeSound ~= nil then
-			self:playToolSoundAssetId(normalizedTypeSound)
+			self:PlayToolSoundAssetId(normalizedTypeSound)
 			return true
 		end
 	end
 
 	for _, fallbackName in fallbackNames do
-		local fallbackSound = self:resolveToolSound(fallbackName)
+		local fallbackSound = self:GetToolSound(fallbackName)
 		if fallbackSound ~= nil then
-			self:playToolSoundAssetId(fallbackSound)
+			self:PlayToolSoundAssetId(fallbackSound)
 			return true
 		end
 	end
@@ -886,9 +893,9 @@ function MeleeServiceClient.PlayToolSoundByEvent(
 	local perTypeFallbacks = TOOL_SOUND_FALLBACKS_BY_EVENT_TYPE[eventType]
 	if perTypeFallbacks ~= nil then
 		for _, fallbackName in perTypeFallbacks do
-			local fallbackSound = self:resolveToolSound(fallbackName)
+			local fallbackSound = self:GetToolSound(fallbackName)
 			if fallbackSound ~= nil then
-				self:playToolSoundAssetId(fallbackSound)
+				self:PlayToolSoundAssetId(fallbackSound)
 				return true
 			end
 		end
@@ -897,9 +904,9 @@ function MeleeServiceClient.PlayToolSoundByEvent(
 	return false
 end
 
-function MeleeServiceClient.ResolveSelectedTool(self: MeleeServiceClient, itemIdRaw: any): Tool?
+function MeleeServiceClient.GetSelectedTool(self: MeleeServiceClient, itemIdRaw: any): Tool?
 	local backpack = self.localPlayer:FindFirstChildOfClass("Backpack")
-	return MeleeServiceUtils.resolveToolByItemId(self.character, backpack, itemIdRaw)
+	return MeleeServiceUtils.GetToolByItemId(self.character, backpack, itemIdRaw)
 end
 
 function MeleeServiceClient.BindEquippedTool(self: MeleeServiceClient, toolRaw: any)
@@ -910,17 +917,17 @@ function MeleeServiceClient.BindEquippedTool(self: MeleeServiceClient, toolRaw: 
 
 	self.toolJanitor:Clean()
 	self.equippedTool = tool
-	self.equippedToolSounds = if tool ~= nil then MeleeServiceUtils.resolveToolSounds(tool) else {} :: any
-	self.equippedToolSwingSounds = if tool ~= nil then MeleeServiceUtils.resolveToolSwingSounds(tool) else {} :: any
+	self.equippedToolSounds = if tool ~= nil then MeleeServiceUtils.GetToolSounds(tool) else {} :: any
+	self.equippedToolSwingSounds = if tool ~= nil then MeleeServiceUtils.GetToolSwingSounds(tool) else {} :: any
 
 	if tool == nil then
 		return
 	end
 
 	local function refreshToolBindings(refreshTrigger: string)
-		self.equippedToolSounds = MeleeServiceUtils.resolveToolSounds(tool)
-		self.equippedToolSwingSounds = MeleeServiceUtils.resolveToolSwingSounds(tool)
-		self:refreshEquippedWeapon(refreshTrigger)
+		self.equippedToolSounds = MeleeServiceUtils.GetToolSounds(tool)
+		self.equippedToolSwingSounds = MeleeServiceUtils.GetToolSwingSounds(tool)
+		self:RefreshEquippedWeapon(refreshTrigger)
 	end
 
 	self.toolJanitor:GiveChore(tool.AncestryChanged:Connect(function(_: Instance, parent: Instance?)
@@ -961,42 +968,42 @@ function MeleeServiceClient.BindEquippedTool(self: MeleeServiceClient, toolRaw: 
 end
 
 function MeleeServiceClient.IsEquippedAxe(self: MeleeServiceClient): boolean
-	return MeleeServiceUtils.resolveToolItemType(self.equippedTool) == "axe"
+	return MeleeServiceUtils.GetToolItemType(self.equippedTool) == "axe"
 end
 
 function MeleeServiceClient.IsEquippedPickaxe(self: MeleeServiceClient): boolean
-	return MeleeServiceUtils.resolveToolItemType(self.equippedTool) == "pickaxe"
+	return MeleeServiceUtils.GetToolItemType(self.equippedTool) == "pickaxe"
 end
 
 function MeleeServiceClient.OnMeleeAttackStarted(self: MeleeServiceClient, context: { [string]: any })
 	local debugHitbox = self.debugHitbox
 	if debugHitbox ~= nil then
-		self:applyDebugHitboxPoints()
+		self:ApplyDebugHitboxPoints()
 		pcall(function()
 			debugHitbox:HitStart()
 		end)
 	end
-	if self.hapticsModule ~= nil and typeof((self.hapticsModule :: any).impactLight) == "function" then
+	if self.hapticsModule ~= nil and typeof((self.hapticsModule :: any).ImpactLight) == "function" then
 		local hapticsAny = self.hapticsModule :: any
-		hapticsAny:impactLight()
+		hapticsAny:ImpactLight()
 	end
 
-	if self:isEquippedAxe() or self:isEquippedPickaxe() then
+	if self:IsEquippedAxe() or self:IsEquippedPickaxe() then
 		return
 	end
 
-	if self:playSwingSoundFromContext(context) then
+	if self:PlaySwingSoundFromContext(context) then
 		return
 	end
-	self:playToolSoundByEvent("AttackStarted", "AttackStarted", { "Swing", "SwingStart", "startSwing" })
+	self:PlayToolSoundByEvent("AttackStarted", "AttackStarted", { "Swing", "SwingStart", "startSwing" })
 end
 
 function MeleeServiceClient.OnMeleeSwingEnded(self: MeleeServiceClient, _context: { [string]: any })
-	self:stopDebugHitbox()
+	self:StopDebugHitbox()
 end
 
 function MeleeServiceClient.OnMeleeAttackFinished(self: MeleeServiceClient, _context: { [string]: any })
-	self:stopDebugHitbox()
+	self:StopDebugHitbox()
 end
 
 function MeleeServiceClient.OnMeleeAnimationEvent(self: MeleeServiceClient, contextRaw: any)
@@ -1004,21 +1011,21 @@ function MeleeServiceClient.OnMeleeAnimationEvent(self: MeleeServiceClient, cont
 	local eventName = context.eventName
 	local eventType = context.eventType
 
-	local equippedAxe = self:isEquippedAxe()
-	local equippedPickaxe = self:isEquippedPickaxe()
+	local equippedAxe = self:IsEquippedAxe()
+	local equippedPickaxe = self:IsEquippedPickaxe()
 	if isStartSwingEvent(eventName) and (equippedAxe or equippedPickaxe) then
-		if not self:playSwingSoundFromContext(context) then
-			self:playToolSoundByEvent(eventName, eventType, { "Swing", "SwingStart", "startSwing" })
+		if not self:PlaySwingSoundFromContext(context) then
+			self:PlayToolSoundByEvent(eventName, eventType, { "Swing", "SwingStart", "startSwing" })
 		end
 		if equippedAxe then
-			(BuildServiceClient :: any):playHoveredTreeChopFeedback()
+			(BuildServiceClient :: any):PlayHoveredTreeChopFeedback()
 		else
-			(BuildServiceClient :: any):playHoveredTileBreakFeedback()
+			(BuildServiceClient :: any):PlayHoveredTileBreakFeedback()
 		end
 		return
 	end
 
-	self:playToolSoundByEvent(eventName, eventType, nil)
+	self:PlayToolSoundByEvent(eventName, eventType, nil)
 end
 
 function MeleeServiceClient.OnCharacterAdded(self: MeleeServiceClient, character: Model)
@@ -1028,24 +1035,24 @@ function MeleeServiceClient.OnCharacterAdded(self: MeleeServiceClient, character
 	self.equippedTool = nil
 	self.equippedToolSounds = {}
 	self.equippedToolSwingSounds = {}
-	self:refreshHumanoidReference()
-	self:ensureDebugHitbox()
+	self:RefreshHumanoidReference()
+	self:EnsureDebugHitbox()
 	self.characterJanitor:GiveChore(function()
-		self:destroyDebugHitbox()
+		self:DestroyDebugHitbox()
 	end)
 
 	local function bindHumanoidSignals(humanoid: Humanoid)
 		self.characterJanitor:GiveChore(humanoid.Died:Connect(function()
-			self:setInputHeld(false, "HumanoidDied")
+			self:SetInputHeld(false, "HumanoidDied")
 		end))
 		self.characterJanitor:GiveChore(humanoid.StateChanged:Connect(function()
-			if self:isAttackBlocked() then
-				self:setInputHeld(false, "HumanoidStateChanged")
+			if self:IsAttackBlocked() then
+				self:SetInputHeld(false, "HumanoidStateChanged")
 			end
 		end))
 		self.characterJanitor:GiveChore(humanoid.HealthChanged:Connect(function()
-			if self:isAttackBlocked() then
-				self:setInputHeld(false, "HumanoidHealthChanged")
+			if self:IsAttackBlocked() then
+				self:SetInputHeld(false, "HumanoidHealthChanged")
 			end
 		end))
 	end
@@ -1057,36 +1064,36 @@ function MeleeServiceClient.OnCharacterAdded(self: MeleeServiceClient, character
 	local function bindBackpack(backpack: Backpack)
 		self.characterJanitor:GiveChore(backpack.ChildAdded:Connect(function(child: Instance)
 			if child:IsA("Tool") then
-				self:refreshEquippedWeapon("BackpackToolAdded")
+				self:RefreshEquippedWeapon("BackpackToolAdded")
 			end
 		end))
 		self.characterJanitor:GiveChore(backpack.ChildRemoved:Connect(function(child: Instance)
 			if child:IsA("Tool") then
-				self:refreshEquippedWeapon("BackpackToolRemoved")
+				self:RefreshEquippedWeapon("BackpackToolRemoved")
 			end
 		end))
 	end
 
 	self.characterJanitor:GiveChore(character.ChildAdded:Connect(function(child: Instance)
 		if child:IsA("BasePart") then
-			self:applyDebugHitboxPoints()
+			self:ApplyDebugHitboxPoints()
 		end
 
 		if child:IsA("Humanoid") then
-			self:refreshHumanoidReference()
+			self:RefreshHumanoidReference()
 			if child == (self.humanoid :: any) then
 				bindHumanoidSignals(child)
 			end
 			return
 		end
 		if child:IsA("Tool") then
-			self:refreshEquippedWeapon("CharacterToolAdded")
+			self:RefreshEquippedWeapon("CharacterToolAdded")
 		end
 	end))
 
 	self.characterJanitor:GiveChore(character.ChildRemoved:Connect(function(child: Instance)
 		if child:IsA("BasePart") then
-			self:applyDebugHitboxPoints()
+			self:ApplyDebugHitboxPoints()
 		end
 
 		if child == (self.humanoid :: any) then
@@ -1094,14 +1101,14 @@ function MeleeServiceClient.OnCharacterAdded(self: MeleeServiceClient, character
 			return
 		end
 		if child:IsA("Tool") then
-			self:refreshEquippedWeapon("CharacterToolRemoved")
+			self:RefreshEquippedWeapon("CharacterToolRemoved")
 		end
 	end))
 
 	self.characterJanitor:GiveChore(self.localPlayer.ChildAdded:Connect(function(child: Instance)
 		if child:IsA("Backpack") then
 			bindBackpack(child)
-			self:refreshEquippedWeapon("BackpackAdded")
+			self:RefreshEquippedWeapon("BackpackAdded")
 		end
 	end))
 
@@ -1112,18 +1119,18 @@ function MeleeServiceClient.OnCharacterAdded(self: MeleeServiceClient, character
 
 	local activeMelee = self.activeMelee
 	if activeMelee ~= nil then
-		activeMelee:setCharacter(character)
+		activeMelee:SetCharacter(character)
 		if self.inputHeld then
-			activeMelee:inputBegan("CharacterAdded")
+			activeMelee:InputBegan("CharacterAdded")
 		end
 	end
 
-	self:refreshEquippedWeapon("CharacterAdded")
-	self:replicateEquippedState(true)
+	self:RefreshEquippedWeapon("CharacterAdded")
+	self:ReplicateEquippedState(true)
 end
 
 function MeleeServiceClient.SetInputHeld(self: MeleeServiceClient, isHeld: boolean, trigger: string)
-	if isHeld and self:isAttackBlocked() then
+	if isHeld and self:IsAttackBlocked() then
 		isHeld = false
 	end
 	if self.inputHeld == isHeld then
@@ -1135,41 +1142,41 @@ function MeleeServiceClient.SetInputHeld(self: MeleeServiceClient, isHeld: boole
 	local activeMelee = self.activeMelee
 	if activeMelee ~= nil then
 		if isHeld then
-			activeMelee:inputBegan(trigger)
+			activeMelee:InputBegan(trigger)
 		else
-			self:stopDebugHitbox()
-			activeMelee:inputEnded(trigger)
+			self:StopDebugHitbox()
+			activeMelee:InputEnded(trigger)
 		end
 	elseif not isHeld then
-		self:stopDebugHitbox()
+		self:StopDebugHitbox()
 	end
 
 	sendPacket(MeleeServiceUtils.NETWORK_METHOD_SET_INPUT_HELD, isHeld)
 	if isHeld then
-		self:replicateEquippedState(false)
+		self:ReplicateEquippedState(false)
 	end
 end
 
 function MeleeServiceClient.OnInventoryStateChanged(self: MeleeServiceClient, stateRaw: any)
-	self.inventoryState = InventoryServiceUtils.sanitizeState(stateRaw, self.inventoryState)
-	self:refreshEquippedWeapon("InventoryStateChanged")
+	self.inventoryState = InventoryServiceUtils.CoerceState(stateRaw, self.inventoryState)
+	self:RefreshEquippedWeapon("InventoryStateChanged")
 end
 
 function MeleeServiceClient.RefreshEquippedWeapon(self: MeleeServiceClient, triggerRaw: any)
-	local itemId, slotIndex = MeleeServiceUtils.resolveSelectedItemIdFromInventoryState(self.inventoryState)
+	local itemId, slotIndex = MeleeServiceUtils.GetSelectedItemIdFromInventoryState(self.inventoryState)
 	local trigger = if typeof(triggerRaw) == "string" then triggerRaw else "Refresh"
 	local previousEquippedTool = self.equippedTool
-	local selectedTool = if itemId ~= nil then self:resolveSelectedTool(itemId) else nil
+	local selectedTool = if itemId ~= nil then self:GetSelectedTool(itemId) else nil
 
-	self:bindEquippedTool(selectedTool)
+	self:BindEquippedTool(selectedTool)
 
-	local weaponConfig = if itemId ~= nil then MeleeServiceUtils.resolveWeaponConfig(itemId) else nil
-	if selectedTool == nil or not MeleeServiceUtils.isMeleeTool(selectedTool) then
+	local weaponConfig = if itemId ~= nil then MeleeServiceUtils.GetWeaponConfig(itemId) else nil
+	if selectedTool == nil or not MeleeServiceUtils.IsMeleeTool(selectedTool) then
 		weaponConfig = nil
 	elseif weaponConfig ~= nil then
 		local nextWeaponConfig = shallowCopyWeaponConfig(weaponConfig)
 		nextWeaponConfig.animations =
-			MeleeServiceUtils.resolveToolAnimationOverrides(selectedTool, weaponConfig.animations)
+			MeleeServiceUtils.GetToolAnimationOverrides(selectedTool, weaponConfig.animations)
 		weaponConfig = nextWeaponConfig
 	end
 
@@ -1177,9 +1184,9 @@ function MeleeServiceClient.RefreshEquippedWeapon(self: MeleeServiceClient, trig
 		self.equippedItemId = nil
 		self.equippedSlot = nil
 		self.equippedWeaponConfig = nil
-		self:destroyActiveMelee()
-		self:applyDebugHitboxPoints()
-		self:replicateEquippedState(false)
+		self:DestroyActiveMelee()
+		self:ApplyDebugHitboxPoints()
+		self:ReplicateEquippedState(false)
 		return
 	end
 
@@ -1194,26 +1201,26 @@ function MeleeServiceClient.RefreshEquippedWeapon(self: MeleeServiceClient, trig
 	self.equippedWeaponConfig = weaponConfig
 
 	if shouldRebuild then
-		self:destroyActiveMelee()
+		self:DestroyActiveMelee()
 
-		local classConfig = MeleeServiceUtils.createMeleeClassConfig(weaponConfig, {
+		local classConfig = MeleeServiceUtils.CreateMeleeClassConfig(weaponConfig, {
 			character = self.character,
 			humanoid = self.humanoid,
-			animator = if self.humanoid ~= nil then AnimationServiceUtils.resolveAnimator(self.humanoid) else nil,
+			animator = if self.humanoid ~= nil then AnimationServiceUtils.GetAnimator(self.humanoid) else nil,
 			autoRepeatWhileHeld = weaponConfig.autoRepeatWhileHeld,
 			animations = weaponConfig.animations,
 			callbacks = {
 				onAttackStarted = function(_: any, context: { [string]: any })
-					self:onMeleeAttackStarted(context)
+					self:OnMeleeAttackStarted(context)
 				end,
 				onSwingEnded = function(_: any, context: { [string]: any })
-					self:onMeleeSwingEnded(context)
+					self:OnMeleeSwingEnded(context)
 				end,
 				onAttackFinished = function(_: any, context: { [string]: any })
-					self:onMeleeAttackFinished(context)
+					self:OnMeleeAttackFinished(context)
 				end,
 				onAnimationEvent = function(_: any, context: { [string]: any })
-					self:onMeleeAnimationEvent(context)
+					self:OnMeleeAnimationEvent(context)
 				end,
 			},
 		})
@@ -1221,25 +1228,25 @@ function MeleeServiceClient.RefreshEquippedWeapon(self: MeleeServiceClient, trig
 			return
 		end
 
-		local meleeController = Melee.new(classConfig) :: any
+		local meleeController = Melee.New(classConfig) :: any
 		if self.character ~= nil then
-			meleeController:setCharacter(self.character)
+			meleeController:SetCharacter(self.character)
 		end
 		self.activeMelee = meleeController :: MeleeController
 	end
 
-	self:applyDebugHitboxPoints()
+	self:ApplyDebugHitboxPoints()
 
-	if self.inputHeld and self.activeMelee ~= nil and not self:isAttackBlocked() then
-		self.activeMelee:inputBegan(trigger)
+	if self.inputHeld and self.activeMelee ~= nil and not self:IsAttackBlocked() then
+		self.activeMelee:InputBegan(trigger)
 	end
 
-	self:replicateEquippedState(false)
+	self:ReplicateEquippedState(false)
 end
 
 function MeleeServiceClient.Destroy(self: MeleeServiceClient)
-	self:setInputHeld(false, "Destroy")
-	self:destroyActiveMelee()
+	self:SetInputHeld(false, "Destroy")
+	self:DestroyActiveMelee()
 
 	if self.toolJanitor ~= nil then
 		self.toolJanitor:Destroy()
@@ -1253,43 +1260,8 @@ function MeleeServiceClient.Destroy(self: MeleeServiceClient)
 		self.janitor:Destroy()
 	end
 end
-
-MeleeServiceClient.init = MeleeServiceClient.Init
-MeleeServiceClient.bindInputRouter = MeleeServiceClient.BindInputRouter
-MeleeServiceClient.waitForCharacter = MeleeServiceClient.WaitForCharacter
-MeleeServiceClient.waitForInventoryLoaded = MeleeServiceClient.WaitForInventoryLoaded
-MeleeServiceClient.destroyActiveMelee = MeleeServiceClient.DestroyActiveMelee
-MeleeServiceClient.replicateEquippedState = MeleeServiceClient.ReplicateEquippedState
-MeleeServiceClient.refreshHumanoidReference = MeleeServiceClient.RefreshHumanoidReference
-MeleeServiceClient.resolveDebugHitboxAnchorPart = MeleeServiceClient.ResolveDebugHitboxAnchorPart
-MeleeServiceClient.stopDebugHitbox = MeleeServiceClient.StopDebugHitbox
-MeleeServiceClient.clearDebugHitboxPoints = MeleeServiceClient.ClearDebugHitboxPoints
-MeleeServiceClient.applyDebugHitboxPoints = MeleeServiceClient.ApplyDebugHitboxPoints
-MeleeServiceClient.destroyDebugHitbox = MeleeServiceClient.DestroyDebugHitbox
-MeleeServiceClient.ensureDebugHitbox = MeleeServiceClient.EnsureDebugHitbox
-MeleeServiceClient.isAttackBlocked = MeleeServiceClient.IsAttackBlocked
-MeleeServiceClient.playToolSoundAssetId = MeleeServiceClient.PlayToolSoundAssetId
-MeleeServiceClient.resolveToolSound = MeleeServiceClient.ResolveToolSound
-MeleeServiceClient.resolveRandomSwingSound = MeleeServiceClient.ResolveRandomSwingSound
-MeleeServiceClient.resolveSwingSoundGroupFromContext = MeleeServiceClient.ResolveSwingSoundGroupFromContext
-MeleeServiceClient.playSwingSoundFromContext = MeleeServiceClient.PlaySwingSoundFromContext
-MeleeServiceClient.playToolSoundByEvent = MeleeServiceClient.PlayToolSoundByEvent
-MeleeServiceClient.resolveSelectedTool = MeleeServiceClient.ResolveSelectedTool
-MeleeServiceClient.bindEquippedTool = MeleeServiceClient.BindEquippedTool
-MeleeServiceClient.isEquippedAxe = MeleeServiceClient.IsEquippedAxe
-MeleeServiceClient.isEquippedPickaxe = MeleeServiceClient.IsEquippedPickaxe
-MeleeServiceClient.onMeleeAttackStarted = MeleeServiceClient.OnMeleeAttackStarted
-MeleeServiceClient.onMeleeSwingEnded = MeleeServiceClient.OnMeleeSwingEnded
-MeleeServiceClient.onMeleeAttackFinished = MeleeServiceClient.OnMeleeAttackFinished
-MeleeServiceClient.onMeleeAnimationEvent = MeleeServiceClient.OnMeleeAnimationEvent
-MeleeServiceClient.onCharacterAdded = MeleeServiceClient.OnCharacterAdded
-MeleeServiceClient.setInputHeld = MeleeServiceClient.SetInputHeld
-MeleeServiceClient.onInventoryStateChanged = MeleeServiceClient.OnInventoryStateChanged
-MeleeServiceClient.refreshEquippedWeapon = MeleeServiceClient.RefreshEquippedWeapon
-MeleeServiceClient.destroy = MeleeServiceClient.Destroy
-
 type MeleeServiceClient = typeof(MeleeServiceClient) & {
-	resolveDebugHitboxAnchorPart: (self: MeleeServiceClient) -> BasePart?,
+	GetDebugHitboxAnchorPart: (self: MeleeServiceClient) -> BasePart?,
 	stopDebugHitbox: (self: MeleeServiceClient) -> (),
 	clearDebugHitboxPoints: (self: MeleeServiceClient) -> (),
 	applyDebugHitboxPoints: (self: MeleeServiceClient) -> (),

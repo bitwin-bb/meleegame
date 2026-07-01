@@ -9,7 +9,7 @@ local CmdrUtils = require("CmdrUtils")
 local HpServiceUtils = require("HpServiceUtils")
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
-local HpServicePackets = require("NetSharedPackets").HpService
+local HpServicePackets = require("NetPacketsShared").HpService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = HpServicePackets[methodName]
@@ -18,7 +18,7 @@ local function sendPacket(player: Player, methodName: string, ...: any)
 		return
 	end
 
-	packet.sendTo(PacketPayload.pack(...), player)
+	packet.sendTo(PacketPayload.Pack(...), player)
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -33,12 +33,13 @@ local function bindPacket(self: any, methodName: string)
 			return
 		end
 
-		local handler = self[methodName]
+		local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, player, table.unpack(arguments, 1, count))
 	end)
 end
@@ -71,7 +72,7 @@ type PlayerRuntime = {
 	loadToken: number,
 	pendingPersistedHealth: number?,
 	pendingPersistedMaxHealth: number?,
-	hasResolvedPersistedLoad: boolean,
+	hasGotPersistedLoad: boolean,
 	healthChangedBeforePersistedLoad: boolean,
 	isApplyingPersistedHealth: boolean,
 	suppressDamageFeedbackDepth: number,
@@ -79,19 +80,19 @@ type PlayerRuntime = {
 }
 
 type PlayerDataServiceServerObject = {
-	getLoadState: (self: PlayerDataServiceServerObject, player: Player) -> string,
-	requestSync: (self: PlayerDataServiceServerObject, player: Player) -> (),
-	waitForData: (self: PlayerDataServiceServerObject, player: Player, timeoutSecondsRaw: any) -> any,
-	waitForDataPromise: (self: PlayerDataServiceServerObject, player: Player, timeoutSecondsRaw: any) -> any,
-	isLoaded: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
-	getHpData: (self: PlayerDataServiceServerObject, player: Player, fallback: any) -> any,
-	setHpData: (
+	GetLoadState: (self: PlayerDataServiceServerObject, player: Player) -> string,
+	RequestSync: (self: PlayerDataServiceServerObject, player: Player) -> (),
+	WaitForData: (self: PlayerDataServiceServerObject, player: Player, timeoutSecondsRaw: any) -> any,
+	WaitForDataPromise: (self: PlayerDataServiceServerObject, player: Player, timeoutSecondsRaw: any) -> any,
+	IsLoaded: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
+	GetHpData: (self: PlayerDataServiceServerObject, player: Player, fallback: any) -> any,
+	SetHpData: (
 		self: PlayerDataServiceServerObject,
 		player: Player,
 		hpDataRaw: any,
 		replicateToClientRaw: any
 	) -> boolean,
-	savePlayerData: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
+	SavePlayerData: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
 }
 
 local HpServiceServer = {}
@@ -124,37 +125,37 @@ function HpServiceServer.Init(self: HpServiceServer)
 	self.playerRuntimes = {}
 	self.heartValue = HpServiceUtils.DEFAULT_HEART_VALUE
 	self.playerDataService = PlayerDataServiceServer :: PlayerDataServiceServerObject
-	self.dataPath = HpServiceUtils.getDefaultDataPath()
+	self.dataPath = HpServiceUtils.GetDefaultDataPath()
 	self.dataLoadTimeoutSeconds = DEFAULT_DATA_LOAD_TIMEOUT_SECONDS
 	self.dataLoadRetryDelaySeconds = DEFAULT_DATA_LOAD_RETRY_DELAY_SECONDS
 
 	for _, player in Players:GetPlayers() do
-		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
-			self:trackPlayer(player)
+		if PlayerServiceServer:IsGameplayActiveForPlayer(player) then
+			self:TrackPlayer(player)
 		end
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
-			self:trackPlayer(player)
+		if PlayerServiceServer:IsGameplayActiveForPlayer(player) then
+			self:TrackPlayer(player)
 		end
 	end)
 
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
-		self:untrackPlayer(player)
+		self:UntrackPlayer(player)
 	end)
 end
 
 function HpServiceServer.CreateRuntime(_self: HpServiceServer): PlayerRuntime
 	return {
-		state = HpServiceUtils.createDefaultState(),
+		state = HpServiceUtils.CreateDefaultState(),
 		playerJanitor = Janitor.new(),
 		characterJanitor = Janitor.new(),
 		humanoid = nil,
 		loadToken = 0,
 		pendingPersistedHealth = nil,
 		pendingPersistedMaxHealth = nil,
-		hasResolvedPersistedLoad = false,
+		hasGotPersistedLoad = false,
 		healthChangedBeforePersistedLoad = false,
 		isApplyingPersistedHealth = false,
 		suppressDamageFeedbackDepth = 0,
@@ -189,10 +190,10 @@ function HpServiceServer.RestoreGodmodeHealth(
 	runtime.isDeathLocked = false
 	local targetHealth = math.max(1, humanoid.MaxHealth)
 	if math.abs(humanoid.Health - targetHealth) > 1e-3 then
-		self:setHumanoidHealthWithoutDamageFeedback(runtime, humanoid, targetHealth)
+		self:SetHumanoidHealthWithoutDamageFeedback(runtime, humanoid, targetHealth)
 	end
 
-	self:refreshStateFromHumanoid(player, humanoid)
+	self:RefreshStateFromHumanoid(player, humanoid)
 	return humanoid.Health
 end
 
@@ -202,14 +203,14 @@ function HpServiceServer.GetRuntime(self: HpServiceServer, player: Player): Play
 		return runtime
 	end
 
-	local nextRuntime = self:createRuntime()
+	local nextRuntime = self:CreateRuntime()
 	self.playerRuntimes[player] = nextRuntime
 	return nextRuntime
 end
 
 function HpServiceServer.PushState(self: HpServiceServer, player: Player)
-	local runtime = self:getRuntime(player)
-	sendPacket(player, "applyState", HpServiceUtils.cloneState(runtime.state))
+	local runtime = self:GetRuntime(player)
+	sendPacket(player, "applyState", HpServiceUtils.CloneState(runtime.state))
 end
 
 function HpServiceServer.PersistRuntime(self: HpServiceServer, player: Player, runtime: PlayerRuntime): boolean
@@ -217,13 +218,13 @@ function HpServiceServer.PersistRuntime(self: HpServiceServer, player: Player, r
 	if playerDataService == nil then
 		return false
 	end
-	if not playerDataService:isLoaded(player) then
+	if not playerDataService:IsLoaded(player) then
 		return false
 	end
 
-	local serializedState = HpServiceUtils.serializeStateForData(runtime.state)
+	local serializedState = HpServiceUtils.SerializeStateForData(runtime.state)
 	local success, didSet = pcall(function()
-		return playerDataService:setHpData(player, serializedState, false)
+		return playerDataService:SetHpData(player, serializedState, false)
 	end)
 	if not success then
 		return false
@@ -263,9 +264,9 @@ function HpServiceServer.ApplyPendingPersistedState(
 	runtime.pendingPersistedMaxHealth = nil
 	humanoid.MaxHealth = nextMaxHealth
 	runtime.isApplyingPersistedHealth = true
-	self:setHumanoidHealthWithoutDamageFeedback(runtime, humanoid, nextHealth)
+	self:SetHumanoidHealthWithoutDamageFeedback(runtime, humanoid, nextHealth)
 	runtime.isApplyingPersistedHealth = false
-	self:refreshStateFromHumanoid(player, humanoid)
+	self:RefreshStateFromHumanoid(player, humanoid)
 
 	for _, delaySeconds in { 0.05, 0.2, 0.5, 1 } do
 		task.delay(delaySeconds, function()
@@ -285,9 +286,9 @@ function HpServiceServer.ApplyPendingPersistedState(
 				humanoid.MaxHealth = clampedMaxHealth
 			end
 			if math.abs(humanoid.Health - clampedTarget) > 1e-3 then
-				self:setHumanoidHealthWithoutDamageFeedback(runtime, humanoid, clampedTarget)
+				self:SetHumanoidHealthWithoutDamageFeedback(runtime, humanoid, clampedTarget)
 			end
-			self:refreshStateFromHumanoid(player, humanoid)
+			self:RefreshStateFromHumanoid(player, humanoid)
 		end)
 	end
 
@@ -295,16 +296,16 @@ function HpServiceServer.ApplyPendingPersistedState(
 end
 
 function HpServiceServer.RefreshStateFromHumanoid(self: HpServiceServer, player: Player, humanoid: Humanoid)
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	if runtime.humanoid == humanoid and runtime.isDeathLocked and humanoid.Health > 0 then
-		self:setHumanoidHealthWithoutDamageFeedback(runtime, humanoid, 0)
+		self:SetHumanoidHealthWithoutDamageFeedback(runtime, humanoid, 0)
 	end
 
-	runtime.state = HpServiceUtils.createStateFromHumanoid(humanoid, self.heartValue, runtime.state)
-	if runtime.hasResolvedPersistedLoad then
-		self:persistRuntime(player, runtime)
+	runtime.state = HpServiceUtils.CreateStateFromHumanoid(humanoid, self.heartValue, runtime.state)
+	if runtime.hasGotPersistedLoad then
+		self:PersistRuntime(player, runtime)
 	end
-	self:pushState(player)
+	self:PushState(player)
 end
 
 function HpServiceServer.RetryLoadPersistedHealthLater(self: HpServiceServer, player: Player, loadToken: number)
@@ -313,10 +314,10 @@ function HpServiceServer.RetryLoadPersistedHealthLater(self: HpServiceServer, pl
 		if runtime == nil or runtime.loadToken ~= loadToken then
 			return
 		end
-		if runtime.hasResolvedPersistedLoad then
+		if runtime.hasGotPersistedLoad then
 			return
 		end
-		self:loadPersistedHealth(player, loadToken)
+		self:LoadPersistedHealth(player, loadToken)
 	end)
 end
 
@@ -332,11 +333,11 @@ function HpServiceServer.LoadPersistedHealth(self: HpServiceServer, player: Play
 	end
 
 	pcall(function()
-		playerDataService:requestSync(player)
+		playerDataService:RequestSync(player)
 	end)
 
 	local waitSuccess, nextPlayerData = pcall(function()
-		local waitPromise = playerDataService:waitForDataPromise(player, self.dataLoadTimeoutSeconds)
+		local waitPromise = playerDataService:WaitForDataPromise(player, self.dataLoadTimeoutSeconds)
 		return select(2, waitPromise:Yield())
 	end)
 	runtime = self.playerRuntimes[player]
@@ -344,73 +345,73 @@ function HpServiceServer.LoadPersistedHealth(self: HpServiceServer, player: Play
 		return
 	end
 	if not waitSuccess then
-		self:retryLoadPersistedHealthLater(player, loadToken)
+		self:RetryLoadPersistedHealthLater(player, loadToken)
 		return
 	end
 	if nextPlayerData == nil then
 		local loadStateSuccess, playerDataLoadState = pcall(function()
-			return playerDataService:getLoadState(player)
+			return playerDataService:GetLoadState(player)
 		end)
 		if loadStateSuccess and playerDataLoadState == "Loaded" then
-			runtime.hasResolvedPersistedLoad = true
-			self:persistRuntime(player, runtime)
-			self:pushState(player)
+			runtime.hasGotPersistedLoad = true
+			self:PersistRuntime(player, runtime)
+			self:PushState(player)
 			return
 		end
 		if loadStateSuccess and playerDataLoadState == "Failed" then
 			return
 		end
-		self:retryLoadPersistedHealthLater(player, loadToken)
+		self:RetryLoadPersistedHealthLater(player, loadToken)
 		return
 	end
 
 	local readSuccess, persistedHpRaw = pcall(function()
-		return playerDataService:getHpData(player, nil)
+		return playerDataService:GetHpData(player, nil)
 	end)
 	if not readSuccess then
-		runtime.hasResolvedPersistedLoad = true
-		self:pushState(player)
+		runtime.hasGotPersistedLoad = true
+		self:PushState(player)
 		return
 	end
 
-	runtime.hasResolvedPersistedLoad = true
+	runtime.hasGotPersistedLoad = true
 	local persistedHealth, persistedMaxHealth =
-		HpServiceUtils.resolvePersistedHealthAndMaxHealth(persistedHpRaw, runtime.state.maxHealth)
+		HpServiceUtils.GetPersistedHealthAndMaxHealth(persistedHpRaw, runtime.state.maxHealth)
 	if runtime.healthChangedBeforePersistedLoad then
-		self:persistRuntime(player, runtime)
+		self:PersistRuntime(player, runtime)
 		runtime.pendingPersistedHealth = nil
 		runtime.pendingPersistedMaxHealth = nil
-		self:pushState(player)
+		self:PushState(player)
 		return
 	end
 	if persistedHealth == nil then
-		self:persistRuntime(player, runtime)
-		self:pushState(player)
+		self:PersistRuntime(player, runtime)
+		self:PushState(player)
 		return
 	end
 
 	runtime.pendingPersistedHealth = persistedHealth
 	runtime.pendingPersistedMaxHealth = persistedMaxHealth
-	runtime.state = HpServiceUtils.createState(persistedHealth, persistedMaxHealth, self.heartValue, runtime.state)
+	runtime.state = HpServiceUtils.CreateState(persistedHealth, persistedMaxHealth, self.heartValue, runtime.state)
 	local humanoid = runtime.humanoid
 	if humanoid ~= nil and humanoid.Parent ~= nil then
-		self:applyPendingPersistedState(player, runtime, humanoid)
+		self:ApplyPendingPersistedState(player, runtime, humanoid)
 	else
-		self:pushState(player)
+		self:PushState(player)
 	end
 end
 
 function HpServiceServer.BindHumanoid(self: HpServiceServer, player: Player, humanoid: Humanoid)
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	runtime.humanoid = humanoid
 	runtime.isDeathLocked = isHumanoidDead(humanoid)
 	applyHumanoidPresentationSettings(humanoid)
-	local didApplyPendingHealth = self:applyPendingPersistedState(player, runtime, humanoid)
+	local didApplyPendingHealth = self:ApplyPendingPersistedState(player, runtime, humanoid)
 	if not didApplyPendingHealth then
-		self:refreshStateFromHumanoid(player, humanoid)
+		self:RefreshStateFromHumanoid(player, humanoid)
 	end
 	if isGodmodeEnabled(player) then
-		self:restoreGodmodeHealth(player, runtime, humanoid)
+		self:RestoreGodmodeHealth(player, runtime, humanoid)
 	end
 
 	runtime.characterJanitor:GiveChore(humanoid.HealthChanged:Connect(function()
@@ -420,24 +421,24 @@ function HpServiceServer.BindHumanoid(self: HpServiceServer, player: Player, hum
 		if isGodmodeEnabled(player) then
 			local targetHealth = math.max(1, humanoid.MaxHealth)
 			if humanoid.Health + 1e-3 < targetHealth then
-				self:restoreGodmodeHealth(player, runtime, humanoid)
+				self:RestoreGodmodeHealth(player, runtime, humanoid)
 				return
 			end
 		end
 		if humanoid.Health <= 0 then
 			runtime.isDeathLocked = true
 		elseif runtime.isDeathLocked and humanoid.Health > 0 then
-			self:setHumanoidHealthWithoutDamageFeedback(runtime, humanoid, 0)
-			self:refreshStateFromHumanoid(player, humanoid)
+			self:SetHumanoidHealthWithoutDamageFeedback(runtime, humanoid, 0)
+			self:RefreshStateFromHumanoid(player, humanoid)
 			return
 		end
 
-		if not runtime.hasResolvedPersistedLoad and not runtime.isApplyingPersistedHealth then
+		if not runtime.hasGotPersistedLoad and not runtime.isApplyingPersistedHealth then
 			if math.abs(humanoid.Health - runtime.state.health) > 1e-3 then
 				runtime.healthChangedBeforePersistedLoad = true
 			end
 		end
-		self:refreshStateFromHumanoid(player, humanoid)
+		self:RefreshStateFromHumanoid(player, humanoid)
 	end))
 
 	runtime.characterJanitor:GiveChore(humanoid:GetPropertyChangedSignal("MaxHealth"):Connect(function()
@@ -445,10 +446,10 @@ function HpServiceServer.BindHumanoid(self: HpServiceServer, player: Player, hum
 			return
 		end
 		if isGodmodeEnabled(player) then
-			self:restoreGodmodeHealth(player, runtime, humanoid)
+			self:RestoreGodmodeHealth(player, runtime, humanoid)
 			return
 		end
-		self:refreshStateFromHumanoid(player, humanoid)
+		self:RefreshStateFromHumanoid(player, humanoid)
 	end))
 
 	runtime.characterJanitor:GiveChore(humanoid.Destroying:Connect(function()
@@ -462,19 +463,19 @@ function HpServiceServer.BindHumanoid(self: HpServiceServer, player: Player, hum
 			return
 		end
 		runtime.isDeathLocked = true
-		self:refreshStateFromHumanoid(player, humanoid)
+		self:RefreshStateFromHumanoid(player, humanoid)
 	end))
 end
 
 function HpServiceServer.BindCharacter(self: HpServiceServer, player: Player, character: Model)
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	runtime.characterJanitor:Clean()
 	runtime.humanoid = nil
 	runtime.isDeathLocked = false
 
 	local currentHumanoid = character:FindFirstChildOfClass("Humanoid")
 	if currentHumanoid then
-		self:bindHumanoid(player, currentHumanoid)
+		self:BindHumanoid(player, currentHumanoid)
 	end
 
 	runtime.characterJanitor:GiveChore(character.ChildAdded:Connect(function(child: Instance)
@@ -482,7 +483,7 @@ function HpServiceServer.BindCharacter(self: HpServiceServer, player: Player, ch
 			return
 		end
 		if child:IsA("Humanoid") then
-			self:bindHumanoid(player, child)
+			self:BindHumanoid(player, child)
 		end
 	end))
 
@@ -494,32 +495,32 @@ function HpServiceServer.BindCharacter(self: HpServiceServer, player: Player, ch
 end
 
 function HpServiceServer.TrackPlayer(self: HpServiceServer, player: Player)
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	runtime.loadToken += 1
-	runtime.state = HpServiceUtils.createDefaultState()
+	runtime.state = HpServiceUtils.CreateDefaultState()
 	runtime.playerJanitor:Clean()
 	runtime.characterJanitor:Clean()
 	runtime.humanoid = nil
 	runtime.pendingPersistedHealth = nil
 	runtime.pendingPersistedMaxHealth = nil
-	runtime.hasResolvedPersistedLoad = false
+	runtime.hasGotPersistedLoad = false
 	runtime.healthChangedBeforePersistedLoad = false
 	runtime.isApplyingPersistedHealth = false
 	runtime.suppressDamageFeedbackDepth = 0
 	runtime.isDeathLocked = false
 
 	runtime.playerJanitor:GiveChore(player.CharacterAdded:Connect(function(character: Model)
-		self:bindCharacter(player, character)
+		self:BindCharacter(player, character)
 	end))
 
 	if player.Character then
-		self:bindCharacter(player, player.Character)
+		self:BindCharacter(player, player.Character)
 	end
-	self:pushState(player)
+	self:PushState(player)
 
 	local loadToken = runtime.loadToken
 	task.spawn(function()
-		self:loadPersistedHealth(player, loadToken)
+		self:LoadPersistedHealth(player, loadToken)
 	end)
 end
 
@@ -528,10 +529,10 @@ function HpServiceServer.UntrackPlayer(self: HpServiceServer, player: Player)
 	if not runtime then
 		return
 	end
-	self:persistRuntime(player, runtime)
+	self:PersistRuntime(player, runtime)
 	if self.playerDataService ~= nil then
 		pcall(function()
-			self.playerDataService:savePlayerData(player)
+			self.playerDataService:SavePlayerData(player)
 		end)
 	end
 
@@ -542,7 +543,7 @@ function HpServiceServer.UntrackPlayer(self: HpServiceServer, player: Player)
 end
 
 function HpServiceServer.GetHumanoid(self: HpServiceServer, player: Player): Humanoid?
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	local cachedHumanoid = runtime.humanoid
 	if cachedHumanoid and cachedHumanoid.Parent ~= nil then
 		return cachedHumanoid
@@ -565,23 +566,23 @@ end
 function HpServiceServer.RequestSync(self: HpServiceServer, player: Player)
 	local runtime = self.playerRuntimes[player]
 	if runtime == nil then
-		self:trackPlayer(player)
+		self:TrackPlayer(player)
 		return
 	end
 
-	if not runtime.hasResolvedPersistedLoad then
+	if not runtime.hasGotPersistedLoad then
 		local loadToken = runtime.loadToken
 		task.spawn(function()
-			self:loadPersistedHealth(player, loadToken)
+			self:LoadPersistedHealth(player, loadToken)
 		end)
 	end
 
-	self:pushState(player)
+	self:PushState(player)
 end
 
 function HpServiceServer.GetState(self: HpServiceServer, player: Player): HpServiceState
-	local runtime = self:getRuntime(player)
-	return HpServiceUtils.cloneState(runtime.state)
+	local runtime = self:GetRuntime(player)
+	return HpServiceUtils.CloneState(runtime.state)
 end
 
 function HpServiceServer.SetPlayerMaxHealth(
@@ -590,7 +591,7 @@ function HpServiceServer.SetPlayerMaxHealth(
 	nextMaxHealthRaw: any,
 	fillToMaxRaw: any
 ): number?
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	local nextMaxHealth = math.max(
 		1,
 		if typeof(nextMaxHealthRaw) == "number" and nextMaxHealthRaw == nextMaxHealthRaw
@@ -603,39 +604,39 @@ function HpServiceServer.SetPlayerMaxHealth(
 
 	runtime.pendingPersistedMaxHealth = nextMaxHealth
 	runtime.pendingPersistedHealth = appliedHealth
-	if not runtime.hasResolvedPersistedLoad then
+	if not runtime.hasGotPersistedLoad then
 		runtime.healthChangedBeforePersistedLoad = true
 	end
 
-	runtime.state = HpServiceUtils.createState(stateHealth, nextMaxHealth, self.heartValue, runtime.state)
+	runtime.state = HpServiceUtils.CreateState(stateHealth, nextMaxHealth, self.heartValue, runtime.state)
 
-	local humanoid = self:getHumanoid(player)
+	local humanoid = self:GetHumanoid(player)
 	if humanoid ~= nil and humanoid.Parent ~= nil and not runtime.isDeathLocked then
-		self:applyPendingPersistedState(player, runtime, humanoid)
-		if not runtime.hasResolvedPersistedLoad then
-			self:pushState(player)
+		self:ApplyPendingPersistedState(player, runtime, humanoid)
+		if not runtime.hasGotPersistedLoad then
+			self:PushState(player)
 		end
 	else
-		if runtime.hasResolvedPersistedLoad then
-			self:persistRuntime(player, runtime)
+		if runtime.hasGotPersistedLoad then
+			self:PersistRuntime(player, runtime)
 		end
-		self:pushState(player)
+		self:PushState(player)
 	end
 
 	return nextMaxHealth
 end
 
 function HpServiceServer.SetPlayerHealth(self: HpServiceServer, player: Player, nextHealthRaw: any): number?
-	local runtime = self:getRuntime(player)
-	local humanoid = self:getHumanoid(player)
+	local runtime = self:GetRuntime(player)
+	local humanoid = self:GetHumanoid(player)
 	if not humanoid then
 		return nil
 	end
 	if runtime.isDeathLocked then
 		if humanoid.Health > 0 then
-			self:setHumanoidHealthWithoutDamageFeedback(runtime, humanoid, 0)
+			self:SetHumanoidHealthWithoutDamageFeedback(runtime, humanoid, 0)
 		end
-		self:refreshStateFromHumanoid(player, humanoid)
+		self:RefreshStateFromHumanoid(player, humanoid)
 		return humanoid.Health
 	end
 
@@ -645,48 +646,48 @@ function HpServiceServer.SetPlayerHealth(self: HpServiceServer, player: Player, 
 		math.max(1, humanoid.MaxHealth)
 	)
 	humanoid.Health = nextHealth
-	self:refreshStateFromHumanoid(player, humanoid)
+	self:RefreshStateFromHumanoid(player, humanoid)
 	return nextHealth
 end
 
 function HpServiceServer.DamagePlayer(self: HpServiceServer, player: Player, damageRaw: any): number?
-	local runtime = self:getRuntime(player)
-	local humanoid = self:getHumanoid(player)
+	local runtime = self:GetRuntime(player)
+	local humanoid = self:GetHumanoid(player)
 	if not humanoid then
 		return nil
 	end
 	if isGodmodeEnabled(player) then
-		return self:restoreGodmodeHealth(player, runtime, humanoid)
+		return self:RestoreGodmodeHealth(player, runtime, humanoid)
 	end
 	if runtime.isDeathLocked then
-		self:refreshStateFromHumanoid(player, humanoid)
+		self:RefreshStateFromHumanoid(player, humanoid)
 		return humanoid.Health
 	end
 
 	local amount = math.max(0, if typeof(damageRaw) == "number" then damageRaw else 0)
 	humanoid:TakeDamage(amount)
-	self:refreshStateFromHumanoid(player, humanoid)
+	self:RefreshStateFromHumanoid(player, humanoid)
 	return humanoid.Health
 end
 
 function HpServiceServer.HealPlayer(self: HpServiceServer, player: Player, amountRaw: any): number?
-	local runtime = self:getRuntime(player)
-	local humanoid = self:getHumanoid(player)
+	local runtime = self:GetRuntime(player)
+	local humanoid = self:GetHumanoid(player)
 	if not humanoid then
 		return nil
 	end
 	if runtime.isDeathLocked then
 		if humanoid.Health > 0 then
-			self:setHumanoidHealthWithoutDamageFeedback(runtime, humanoid, 0)
+			self:SetHumanoidHealthWithoutDamageFeedback(runtime, humanoid, 0)
 		end
-		self:refreshStateFromHumanoid(player, humanoid)
+		self:RefreshStateFromHumanoid(player, humanoid)
 		return humanoid.Health
 	end
 
 	local amount = math.max(0, if typeof(amountRaw) == "number" then amountRaw else 0)
 	local nextHealth = math.clamp(humanoid.Health + amount, 0, math.max(1, humanoid.MaxHealth))
 	humanoid.Health = nextHealth
-	self:refreshStateFromHumanoid(player, humanoid)
+	self:RefreshStateFromHumanoid(player, humanoid)
 	return nextHealth
 end
 
@@ -702,37 +703,12 @@ function HpServiceServer.Destroy(self: HpServiceServer)
 	end
 
 	for player, runtime in self.playerRuntimes do
-		self:persistRuntime(player, runtime)
+		self:PersistRuntime(player, runtime)
 		runtime.playerJanitor:Destroy()
 		runtime.characterJanitor:Destroy()
 		self.playerRuntimes[player] = nil
 	end
 end
-
-HpServiceServer.init = HpServiceServer.Init
-HpServiceServer.createRuntime = HpServiceServer.CreateRuntime
-HpServiceServer.setHumanoidHealthWithoutDamageFeedback = HpServiceServer.SetHumanoidHealthWithoutDamageFeedback
-HpServiceServer.restoreGodmodeHealth = HpServiceServer.RestoreGodmodeHealth
-HpServiceServer.getRuntime = HpServiceServer.GetRuntime
-HpServiceServer.pushState = HpServiceServer.PushState
-HpServiceServer.persistRuntime = HpServiceServer.PersistRuntime
-HpServiceServer.applyPendingPersistedState = HpServiceServer.ApplyPendingPersistedState
-HpServiceServer.refreshStateFromHumanoid = HpServiceServer.RefreshStateFromHumanoid
-HpServiceServer.retryLoadPersistedHealthLater = HpServiceServer.RetryLoadPersistedHealthLater
-HpServiceServer.loadPersistedHealth = HpServiceServer.LoadPersistedHealth
-HpServiceServer.bindHumanoid = HpServiceServer.BindHumanoid
-HpServiceServer.bindCharacter = HpServiceServer.BindCharacter
-HpServiceServer.trackPlayer = HpServiceServer.TrackPlayer
-HpServiceServer.untrackPlayer = HpServiceServer.UntrackPlayer
-HpServiceServer.getHumanoid = HpServiceServer.GetHumanoid
-HpServiceServer.requestSync = HpServiceServer.RequestSync
-HpServiceServer.getState = HpServiceServer.GetState
-HpServiceServer.setPlayerMaxHealth = HpServiceServer.SetPlayerMaxHealth
-HpServiceServer.setPlayerHealth = HpServiceServer.SetPlayerHealth
-HpServiceServer.damagePlayer = HpServiceServer.DamagePlayer
-HpServiceServer.healPlayer = HpServiceServer.HealPlayer
-HpServiceServer.destroy = HpServiceServer.Destroy
-
 export type HpServiceServer = typeof(HpServiceServer) & {
 	playerRuntimes: { [Player]: PlayerRuntime },
 	heartValue: number,

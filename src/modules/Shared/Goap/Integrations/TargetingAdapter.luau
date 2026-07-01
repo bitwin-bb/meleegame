@@ -28,7 +28,4 @@ function TargetingAdapter.FindTarget(agent: any): any?
 end
 
 TargetingAdapter.copy = Table.copy
-TargetingAdapter.get = TargetingAdapter.Get
-TargetingAdapter.findTarget = TargetingAdapter.FindTarget
-
 return TargetingAdapter

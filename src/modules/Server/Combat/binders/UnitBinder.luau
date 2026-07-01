@@ -10,7 +10,7 @@ local UnitBinder = {}
 UnitBinder.__index = UnitBinder
 setmetatable(UnitBinder, ModelBinder)
 
-local function resolveUnitKind(self: any): string
+local function GetUnitKind(self: any): string
 	if self:HasTag(TagBinder.Tags.Character) then
 		return "Character"
 	end
@@ -56,7 +56,7 @@ function UnitBinder.updateState(self: any)
 	self.humanoid = humanoid
 
 	model:SetAttribute("UnitTagged", true)
-	model:SetAttribute("UnitKind", resolveUnitKind(self))
+	model:SetAttribute("UnitKind", GetUnitKind(self))
 	model:SetAttribute("UnitAlive", humanoid ~= nil and humanoid.Health > 0)
 
 	if humanoid ~= nil then
@@ -64,13 +64,13 @@ function UnitBinder.updateState(self: any)
 		model:SetAttribute("UnitMaxHealth", humanoid.MaxHealth)
 	end
 
-	local bossRuntimeId = BossServiceUtils.resolveRuntimeIdFromInstance(model)
+	local bossRuntimeId = BossServiceUtils.GetUntimeIdFromInstance(model)
 	if bossRuntimeId ~= nil then
 		model:SetAttribute("UnitRuntimeId", bossRuntimeId)
 		return
 	end
 
-	local npcRuntimeId = NpcServiceUtils.resolveRuntimeIdFromInstance(model)
+	local npcRuntimeId = NpcServiceUtils.GetUntimeIdFromInstance(model)
 	if npcRuntimeId ~= nil then
 		model:SetAttribute("UnitRuntimeId", npcRuntimeId)
 	end

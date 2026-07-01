@@ -6,8 +6,8 @@ local Players = game:GetService("Players")
 local ItemRegistry = require("ItemRegistry")
 local MagicServiceUtils = require("MagicServiceUtils")
 local MeleeServiceUtils = require("MeleeServiceUtils")
-local ResolveItem = require("ResolveItem")
-local ResolveToolInstance = require("ResolveToolInstance")
+local GetItem = require("GetItem")
+local GetToolInstance = require("GetToolInstance")
 local TagBinder = require("TagBinder")
 
 local ToolBinder = {}
@@ -36,7 +36,7 @@ local function normalizeToken(valueRaw: any): string
 	return compact
 end
 
-local function resolveOwnerPlayer(tool: Tool?): (Player?, Model?)
+local function GetOwnerPlayer(tool: Tool?): (Player?, Model?)
 	if tool == nil then
 		return nil, nil
 	end
@@ -61,7 +61,7 @@ local function resolveOwnerPlayer(tool: Tool?): (Player?, Model?)
 	return nil, nil
 end
 
-local function resolveMeleeVariantTag(itemIdRaw: any, definitionRaw: any): string?
+local function GetMeleeVariantTag(itemIdRaw: any, definitionRaw: any): string?
 	local itemId = normalizeToken(itemIdRaw)
 	local displayName = if typeof(definitionRaw) == "table"
 		then normalizeToken((definitionRaw :: { [string]: any }).name)
@@ -87,7 +87,7 @@ local function isMagicDefinition(definitionRaw: any, itemTypeRaw: any, toolRaw: 
 		return true
 	end
 
-	if toolRaw ~= nil and MagicServiceUtils.isMagicTool(toolRaw) then
+	if toolRaw ~= nil and MagicServiceUtils.IsMagicTool(toolRaw) then
 		return true
 	end
 
@@ -103,21 +103,21 @@ local function isMagicDefinition(definitionRaw: any, itemTypeRaw: any, toolRaw: 
 		or definition.effects ~= nil
 end
 
-function ToolBinder.Resolve(toolOrInstanceRaw: any): ToolResolution
-	local tool = ResolveToolInstance.resolveTool(toolOrInstanceRaw)
-	local itemId = ResolveToolInstance.resolveToolItemId(tool)
-	local itemType = ResolveToolInstance.resolveToolItemType(tool)
-	local definition = if itemId ~= nil then ItemRegistry.resolveDefinition(itemId) else nil
+function ToolBinder.Get(toolOrInstanceRaw: any): ToolResolution
+	local tool = GetToolInstance.GetTool(toolOrInstanceRaw)
+	local itemId = GetToolInstance.GetToolItemId(tool)
+	local itemType = GetToolInstance.GetToolItemType(tool)
+	local definition = if itemId ~= nil then ItemRegistry.GetDefinition(itemId) else nil
 	local templates = if itemId ~= nil
-		then ResolveItem.resolve(itemId)
+		then GetItem.Get(itemId)
 		else { primaryTemplate = nil, toolTemplate = nil }
-	local ownerPlayer, ownerCharacter = resolveOwnerPlayer(tool)
+	local ownerPlayer, ownerCharacter = GetOwnerPlayer(tool)
 	local deployable = if typeof(definition) == "table"
 			and typeof((definition :: { [string]: any }).deployable) == "table"
 		then (definition :: { [string]: any }).deployable :: { [string]: any }
 		else nil
 	local isMelee = if itemId ~= nil
-		then MeleeServiceUtils.resolveWeaponConfig(itemId) ~= nil or MeleeServiceUtils.isMeleeTool(tool)
+		then MeleeServiceUtils.GetWeaponConfig(itemId) ~= nil or MeleeServiceUtils.IsMeleeTool(tool)
 		else false
 	local isMagic = isMagicDefinition(definition, itemType, tool)
 
@@ -133,28 +133,28 @@ function ToolBinder.Resolve(toolOrInstanceRaw: any): ToolResolution
 		deployable = deployable,
 		isMelee = isMelee,
 		isMagic = isMagic,
-		meleeVariantTag = resolveMeleeVariantTag(itemId, definition),
+		meleeVariantTag = GetMeleeVariantTag(itemId, definition),
 	}
 end
 
-function ToolBinder.ResolveTool(toolOrInstanceRaw: any): Tool?
-	return ToolBinder.Resolve(toolOrInstanceRaw).tool
+function ToolBinder.GetTool(toolOrInstanceRaw: any): Tool?
+	return ToolBinder.Get(toolOrInstanceRaw).tool
 end
 
-function ToolBinder.ResolveItemId(toolOrInstanceRaw: any): string?
-	return ToolBinder.Resolve(toolOrInstanceRaw).itemId
+function ToolBinder.GetItemId(toolOrInstanceRaw: any): string?
+	return ToolBinder.Get(toolOrInstanceRaw).itemId
 end
 
-function ToolBinder.ResolveDefinition(toolOrInstanceRaw: any): { [string]: any }?
-	return ToolBinder.Resolve(toolOrInstanceRaw).definition
+function ToolBinder.GetDefinition(toolOrInstanceRaw: any): { [string]: any }?
+	return ToolBinder.Get(toolOrInstanceRaw).definition
 end
 
-function ToolBinder.ResolveDeployable(toolOrInstanceRaw: any): { [string]: any }?
-	return ToolBinder.Resolve(toolOrInstanceRaw).deployable
+function ToolBinder.GetDeployable(toolOrInstanceRaw: any): { [string]: any }?
+	return ToolBinder.Get(toolOrInstanceRaw).deployable
 end
 
-function ToolBinder.ResolveStationTag(toolOrInstanceRaw: any): string?
-	local resolution = ToolBinder.Resolve(toolOrInstanceRaw)
+function ToolBinder.GetStationTag(toolOrInstanceRaw: any): string?
+	local resolution = ToolBinder.Get(toolOrInstanceRaw)
 	if resolution.deployable == nil then
 		return nil
 	end
@@ -163,19 +163,19 @@ function ToolBinder.ResolveStationTag(toolOrInstanceRaw: any): string?
 end
 
 function ToolBinder.IsMelee(toolOrInstanceRaw: any): boolean
-	return ToolBinder.Resolve(toolOrInstanceRaw).isMelee
+	return ToolBinder.Get(toolOrInstanceRaw).isMelee
 end
 
 function ToolBinder.IsMagic(toolOrInstanceRaw: any): boolean
-	return ToolBinder.Resolve(toolOrInstanceRaw).isMagic
+	return ToolBinder.Get(toolOrInstanceRaw).isMagic
 end
 
-function ToolBinder.ResolveMeleeVariantTag(toolOrInstanceRaw: any): string?
-	return ToolBinder.Resolve(toolOrInstanceRaw).meleeVariantTag
+function ToolBinder.GetMeleeVariantTag(toolOrInstanceRaw: any): string?
+	return ToolBinder.Get(toolOrInstanceRaw).meleeVariantTag
 end
 
 function ToolBinder.ApplyTags(toolOrInstanceRaw: any): number
-	local resolution = ToolBinder.Resolve(toolOrInstanceRaw)
+	local resolution = ToolBinder.Get(toolOrInstanceRaw)
 	if resolution.tool == nil then
 		return 0
 	end
@@ -197,16 +197,5 @@ function ToolBinder.ApplyTags(toolOrInstanceRaw: any): number
 
 	return TagBinder.applyTags(resolution.tool, tags)
 end
-
-ToolBinder.resolve = ToolBinder.Resolve
-ToolBinder.resolveTool = ToolBinder.ResolveTool
-ToolBinder.resolveItemId = ToolBinder.ResolveItemId
-ToolBinder.resolveDefinition = ToolBinder.ResolveDefinition
-ToolBinder.resolveDeployable = ToolBinder.ResolveDeployable
-ToolBinder.resolveStationTag = ToolBinder.ResolveStationTag
-ToolBinder.isMelee = ToolBinder.IsMelee
-ToolBinder.isMagic = ToolBinder.IsMagic
-ToolBinder.resolveMeleeVariantTag = ToolBinder.ResolveMeleeVariantTag
-ToolBinder.applyTags = ToolBinder.ApplyTags
 
 return ToolBinder

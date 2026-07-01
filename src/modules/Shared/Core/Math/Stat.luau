@@ -32,14 +32,14 @@ function Stat.Variance(values: { number }): number
 	if #values == 0 then
 		return 0
 	end
-	return varianceWithMean(values, Avg.mean(values), false)
+	return varianceWithMean(values, Avg.Mean(values), false)
 end
 
 function Stat.SampleVariance(values: { number }): number
 	if #values < 2 then
 		return 0
 	end
-	return varianceWithMean(values, Avg.mean(values), true)
+	return varianceWithMean(values, Avg.Mean(values), true)
 end
 
 function Stat.StdDev(values: { number }): number
@@ -51,7 +51,7 @@ function Stat.SampleStdDev(values: { number }): number
 end
 
 function Stat.WeightedVariance(values: { WeightedValue }): number
-	local meanValue = Avg.weighted(values)
+	local meanValue = Avg.Weighted(values)
 	local weightedTotal = 0
 	local totalWeight = 0
 
@@ -72,12 +72,4 @@ end
 function Stat.WeightedStdDev(values: { WeightedValue }): number
 	return math.sqrt(Stat.WeightedVariance(values))
 end
-
-Stat.variance = Stat.Variance
-Stat.sampleVariance = Stat.SampleVariance
-Stat.stdDev = Stat.StdDev
-Stat.sampleStdDev = Stat.SampleStdDev
-Stat.weightedVariance = Stat.WeightedVariance
-Stat.weightedStdDev = Stat.WeightedStdDev
-
 return Stat

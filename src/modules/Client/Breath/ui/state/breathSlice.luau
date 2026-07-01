@@ -7,7 +7,7 @@ local Charm = require(ReplicatedStorage.Packages.Charm)
 
 type BreathServiceState = BreathServiceUtils.BreathServiceState
 
-local breathStateAtom: Charm.Atom<BreathServiceState> = Charm.atom(BreathServiceUtils.createDefaultState())
+local breathStateAtom: Charm.Atom<BreathServiceState> = Charm.atom(BreathServiceUtils.CreateDefaultState())
 local breathReadyAtom: Charm.Atom<boolean> = Charm.atom(false)
 
 local breathAtom: Charm.Selector<number> = Charm.computed(function(): number
@@ -36,13 +36,13 @@ local function getBreathState(): BreathServiceState
 end
 
 local function setBreathState(stateRaw: any): BreathServiceState
-	local nextState = BreathServiceUtils.createState(stateRaw, breathStateAtom())
+	local nextState = BreathServiceUtils.CreateState(stateRaw, breathStateAtom())
 	breathStateAtom(nextState)
 	return nextState
 end
 
 local function resetBreathState(): BreathServiceState
-	local nextState = BreathServiceUtils.createDefaultState()
+	local nextState = BreathServiceUtils.CreateDefaultState()
 	breathStateAtom(nextState)
 	return nextState
 end

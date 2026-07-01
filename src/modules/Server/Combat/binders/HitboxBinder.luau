@@ -32,7 +32,7 @@ local function getNpcServiceServer()
 	return npcServiceServer
 end
 
-local function resolveNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
+local function GetNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
@@ -40,7 +40,7 @@ local function resolveNumberAttribute(instance: Instance, attributeName: string,
 	return value
 end
 
-local function resolveBooleanAttribute(instance: Instance, attributeName: string, fallback: boolean): boolean
+local function GetBooleanAttribute(instance: Instance, attributeName: string, fallback: boolean): boolean
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) == "boolean" then
 		return value
@@ -52,7 +52,7 @@ function HitboxBinder.new(instance: Instance, context: any)
 	local self = ModelBinder.new(instance, context, HitboxBinder)
 	self.lastHitAt = {} :: { [Instance]: number }
 	self:refresh()
-	ModelBinder.bindTouchedParts(instance, self.janitor, function(_part: BasePart, other: BasePart)
+	ModelBinder.BindTouchedParts(instance, self.janitor, function(_part: BasePart, other: BasePart)
 		self:onTouched(other)
 	end)
 	return self
@@ -61,13 +61,13 @@ end
 function HitboxBinder.refresh(self: any)
 	self.damage = math.max(
 		0,
-		resolveNumberAttribute(self.instance, "HitboxDamage", resolveNumberAttribute(self.instance, "Damage", 0))
+		GetNumberAttribute(self.instance, "HitboxDamage", GetNumberAttribute(self.instance, "Damage", 0))
 	)
-	self.interval = math.max(0.05, resolveNumberAttribute(self.instance, "HitboxInterval", 0.2))
-	self.affectsPlayers = resolveBooleanAttribute(self.instance, "HitboxAffectsPlayers", true)
-	self.affectsHumanoids = resolveBooleanAttribute(self.instance, "HitboxAffectsHumanoids", true)
-	self.affectsNpcs = resolveBooleanAttribute(self.instance, "HitboxAffectsNpcs", true)
-	self.affectsBosses = resolveBooleanAttribute(self.instance, "HitboxAffectsBosses", true)
+	self.interval = math.max(0.05, GetNumberAttribute(self.instance, "HitboxInterval", 0.2))
+	self.affectsPlayers = GetBooleanAttribute(self.instance, "HitboxAffectsPlayers", true)
+	self.affectsHumanoids = GetBooleanAttribute(self.instance, "HitboxAffectsHumanoids", true)
+	self.affectsNpcs = GetBooleanAttribute(self.instance, "HitboxAffectsNpcs", true)
+	self.affectsBosses = GetBooleanAttribute(self.instance, "HitboxAffectsBosses", true)
 	self.instance:SetAttribute("HitboxTagged", true)
 end
 
@@ -76,8 +76,8 @@ function HitboxBinder.onTouched(self: any, other: BasePart)
 		return
 	end
 
-	local player = ModelBinder.resolvePlayer(other)
-	local humanoid = ModelBinder.resolveHumanoid(other)
+	local player = ModelBinder.GetPlayer(other)
+	local humanoid = ModelBinder.GetHumanoid(other)
 	local cooldownKey = if player ~= nil
 		then player :: Instance
 		else if humanoid ~= nil then humanoid :: Instance else other
@@ -88,16 +88,16 @@ function HitboxBinder.onTouched(self: any, other: BasePart)
 	self.lastHitAt[cooldownKey] = now + self.interval
 
 	if player ~= nil and self.affectsPlayers then
-		getHpServiceServer():damagePlayer(player, self.damage)
+		getHpServiceServer():DamagePlayer(player, self.damage)
 		return
 	end
 
-	if self.affectsNpcs and getNpcServiceServer():damageNpcFromHitPart(other, self.damage, self.instance) > 0 then
+	if self.affectsNpcs and getNpcServiceServer():DamageNpcFromHitPart(other, self.damage, self.instance) > 0 then
 		return
 	end
 	if
 		self.affectsBosses
-		and getBossServiceServer():damageBossFromHitPart(other, self.damage, self.instance, "Hitbox") > 0
+		and getBossServiceServer():DamageBossFromHitPart(other, self.damage, self.instance, "Hitbox") > 0
 	then
 		return
 	end

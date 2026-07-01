@@ -28,7 +28,7 @@ export type SegmentIconProps = {
 
 local e: typeof(React.createElement) = React.createElement
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = if typeof(valueRaw) == "number" and valueRaw == valueRaw then valueRaw else fallback
 	if minimum ~= nil and value < minimum then
 		value = minimum
@@ -51,7 +51,7 @@ end
 
 return function(props: SegmentIconProps): React.ReactNode
 	local zIndex = props.zIndex or 1
-	local fillAlpha = sanitizeNumber(props.fillAlpha, 1, 0, 1)
+	local fillAlpha = CoerceNumber(props.fillAlpha, 1, 0, 1)
 	local emptyColor = props.emptyColor or props.tintColor or Color3.fromRGB(255, 255, 255)
 	local fullColor = props.fullColor or props.tintColor or Color3.fromRGB(255, 255, 255)
 	local rotation = props.rotation or 0
@@ -73,7 +73,7 @@ return function(props: SegmentIconProps): React.ReactNode
 		BorderSizePixel = 0,
 		Image = props.icon,
 		ImageColor3 = emptyColor,
-		ImageTransparency = sanitizeNumber(props.emptyTransparency, 0, 0, 1),
+		ImageTransparency = CoerceNumber(props.emptyTransparency, 0, 0, 1),
 		Rotation = rotation,
 		ScaleType = Enum.ScaleType.Fit,
 		ResampleMode = props.resampleMode,
@@ -87,7 +87,7 @@ return function(props: SegmentIconProps): React.ReactNode
 
 	if props.scale ~= nil then
 		children.Scale = e("UIScale", {
-			Scale = sanitizeNumber(props.scale, 1, 0.05, 10),
+			Scale = CoerceNumber(props.scale, 1, 0.05, 10),
 		})
 	end
 
@@ -97,7 +97,7 @@ return function(props: SegmentIconProps): React.ReactNode
 		BorderSizePixel = 0,
 		Image = props.icon,
 		ImageColor3 = fullColor,
-		ImageTransparency = sanitizeNumber(props.fullTransparency, 1 - fillAlpha, 0, 1),
+		ImageTransparency = CoerceNumber(props.fullTransparency, 1 - fillAlpha, 0, 1),
 		Rotation = rotation,
 		ScaleType = Enum.ScaleType.Fit,
 		ResampleMode = props.resampleMode,
@@ -120,7 +120,7 @@ return function(props: SegmentIconProps): React.ReactNode
 					BorderSizePixel = fullProps.BorderSizePixel,
 					Image = fullProps.Image,
 					ImageColor3 = fullProps.ImageColor3,
-					ImageTransparency = sanitizeNumber(props.fullTransparency, 0, 0, 1),
+					ImageTransparency = CoerceNumber(props.fullTransparency, 0, 0, 1),
 					Rotation = fullProps.Rotation,
 					ScaleType = fullProps.ScaleType,
 					ResampleMode = fullProps.ResampleMode,

@@ -107,7 +107,4 @@ function BreathBinder.QueryCharacterOverride(character: Model?): { [string]: any
 		},
 	}
 end
-
-BreathBinder.queryCharacterOverride = BreathBinder.QueryCharacterOverride
-
 return BreathBinder

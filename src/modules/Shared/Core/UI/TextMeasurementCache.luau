@@ -149,7 +149,7 @@ function TextMeasurementCache.MeasureBatch(
 			out[index] = Vector2.zero
 			continue
 		end
-		out[index] = self:measure(request.text, request.fontSize, request.font, request.bounds)
+		out[index] = self:Measure(request.text, request.fontSize, request.font, request.bounds)
 	end
 	for index = #out, count + 1, -1 do
 		out[index] = nil
@@ -181,12 +181,4 @@ function TextMeasurementCache.GetStats(self: TextMeasurementCache): { [string]: 
 		maxEntries = self.maxEntries,
 	}
 end
-
-TextMeasurementCache.new = TextMeasurementCache.New
-TextMeasurementCache.measure = TextMeasurementCache.Measure
-TextMeasurementCache.measureBatch = TextMeasurementCache.MeasureBatch
-TextMeasurementCache.setMaxEntries = TextMeasurementCache.SetMaxEntries
-TextMeasurementCache.clear = TextMeasurementCache.Clear
-TextMeasurementCache.getStats = TextMeasurementCache.GetStats
-
 return TextMeasurementCache

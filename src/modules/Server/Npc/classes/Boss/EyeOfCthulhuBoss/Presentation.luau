@@ -63,7 +63,7 @@ type PresentationRuntime = {
 
 local EyeOfCthulhuPresentation = {}
 local EYE_ROAR_SOUND_ID =
-	AudioServiceUtils.resolveSoundAssetId((((AudioRegistry :: any).Npcs :: any).Bosses :: any).EyeOfCthulhu.roar)
+	AudioServiceUtils.GetSoundAssetId((((AudioRegistry :: any).Npcs :: any).Bosses :: any).EyeOfCthulhu.roar)
 
 local SHELL_SPRING: SpringOptions = {
 	frequency = 5.2,
@@ -75,7 +75,7 @@ local IMPULSE_SPRING: SpringOptions = {
 	damping = 0.76,
 }
 
-local function resolvePartRefs(
+local function GetPartRefs(
 	model: Model?
 ): ({ [string]: BasePart? }, { BasePart }, { [BasePart]: CFrame }, BasePart?)
 	local refs = {
@@ -89,20 +89,20 @@ local function resolvePartRefs(
 		return refs, deformParts, baseLocalCFrames, nil
 	end
 
-	local rootPart = BossServiceUtils.resolveRootPart(model)
+	local rootPart = BossServiceUtils.GetRootPart(model)
 	if rootPart == nil then
 		return refs, deformParts, baseLocalCFrames, nil
 	end
 
-	local iris = BossServiceUtils.findFirstDescendantByNormalizedName(model, { "Iris", "Eye", "PupilSocket" })
+	local iris = BossServiceUtils.FindFirstDescendantByNormalizedName(model, { "Iris", "Eye", "PupilSocket" })
 	if iris ~= nil and iris:IsA("BasePart") then
 		refs.iris = iris
 	end
-	local pupil = BossServiceUtils.findFirstDescendantByNormalizedName(model, { "Pupil", "PupilCore", "EyePupil" })
+	local pupil = BossServiceUtils.FindFirstDescendantByNormalizedName(model, { "Pupil", "PupilCore", "EyePupil" })
 	if pupil ~= nil and pupil:IsA("BasePart") then
 		refs.pupil = pupil
 	end
-	local jaw = BossServiceUtils.findFirstDescendantByNormalizedName(model, { "Jaw", "Mouth", "Teeth" })
+	local jaw = BossServiceUtils.FindFirstDescendantByNormalizedName(model, { "Jaw", "Mouth", "Teeth" })
 	if jaw ~= nil and jaw:IsA("BasePart") then
 		refs.jaw = jaw
 	end
@@ -117,7 +117,7 @@ local function resolvePartRefs(
 	return refs, deformParts, baseLocalCFrames, rootPart
 end
 
-local function resolveTargetPosition(snapshot: BossSnapshot): Vector3?
+local function GetTargetPosition(snapshot: BossSnapshot): Vector3?
 	local targetUserId = snapshot.targetUserId
 	if targetUserId == nil then
 		return nil
@@ -128,7 +128,7 @@ local function resolveTargetPosition(snapshot: BossSnapshot): Vector3?
 		return nil
 	end
 
-	local rootPart = BossServiceUtils.resolveCharacterRootPart(player)
+	local rootPart = BossServiceUtils.GetCharacterRootPart(player)
 	if rootPart == nil then
 		return nil
 	end
@@ -149,7 +149,7 @@ local function playModelSound(runtime: PresentationRuntime, candidateNames: { st
 		return
 	end
 
-	local sound = BossServiceUtils.findFirstDescendantByNormalizedName(model, candidateNames)
+	local sound = BossServiceUtils.FindFirstDescendantByNormalizedName(model, candidateNames)
 	if sound ~= nil and sound:IsA("Sound") then
 		restartSound(sound :: Sound)
 	end
@@ -166,7 +166,7 @@ local function ensureRoarSound(runtime: PresentationRuntime): Sound?
 		return nil
 	end
 
-	local existingSound = BossServiceUtils.findFirstDescendantByNormalizedName(model, { "Roar" })
+	local existingSound = BossServiceUtils.FindFirstDescendantByNormalizedName(model, { "Roar" })
 	if existingSound ~= nil and existingSound:IsA("Sound") then
 		runtime.soundRefs.roar = existingSound :: Sound
 		return runtime.soundRefs.roar
@@ -177,8 +177,8 @@ local function ensureRoarSound(runtime: PresentationRuntime): Sound?
 		return nil
 	end
 
-	local categoryGroups = AudioServiceUtils.ensureCategoryGroups(SoundService)
-	local createdSound = AudioServiceUtils.createSoundInstance(EYE_ROAR_SOUND_ID, {
+	local categoryGroups = AudioServiceUtils.EnsureCategoryGroups(SoundService)
+	local createdSound = AudioServiceUtils.CreateSoundInstance(EYE_ROAR_SOUND_ID, {
 		category = "SFX",
 		volume = 1,
 		rollOffMaxDistance = 120,
@@ -267,7 +267,7 @@ function EyeOfCthulhuPresentation.CreateRuntime(
 	cameraShaker: CameraShakerObject?
 ): PresentationRuntime
 	local model = if typeof(modelRaw) == "Instance" and modelRaw:IsA("Model") then modelRaw else nil
-	local partRefs, deformParts, baseLocalCFrames, rootPart = resolvePartRefs(model)
+	local partRefs, deformParts, baseLocalCFrames, rootPart = GetPartRefs(model)
 	local soundRefs: { roar: Sound? } = {
 		roar = nil :: Sound?,
 	}
@@ -351,9 +351,9 @@ function EyeOfCthulhuPresentation.Step(runtime: PresentationRuntime, dtRaw: any)
 		return
 	end
 
-	local dt = BossServiceUtils.sanitizeNumber(dtRaw, 1 / 60, 0, 1)
+	local dt = BossServiceUtils.CoerceNumber(dtRaw, 1 / 60, 0, 1)
 	local snapshot = runtime.snapshot
-	local rootPart = BossServiceUtils.resolveRootPart(model)
+	local rootPart = BossServiceUtils.GetRootPart(model)
 	if rootPart ~= nil then
 		runtime.rootPart = rootPart
 	else
@@ -398,8 +398,8 @@ function EyeOfCthulhuPresentation.Step(runtime: PresentationRuntime, dtRaw: any)
 		end
 	end
 
-	local targetPosition = resolveTargetPosition(snapshot)
-	local pupilOffset = EyeOfCthulhuMotion.computePupilOffset(rootPart.Position, targetPosition, 0.85)
+	local targetPosition = GetTargetPosition(snapshot)
+	local pupilOffset = EyeOfCthulhuMotion.ComputePupilOffset(rootPart.Position, targetPosition, 0.85)
 
 	local iris = runtime.partRefs.iris
 	if iris ~= nil and iris.Parent ~= nil then
@@ -462,10 +462,4 @@ function EyeOfCthulhuPresentation.Destroy(runtime: PresentationRuntime)
 	runtime.deathMotion:destroy()
 	runtime.transformMotion:destroy()
 end
-
-EyeOfCthulhuPresentation.createRuntime = EyeOfCthulhuPresentation.CreateRuntime
-EyeOfCthulhuPresentation.applySnapshot = EyeOfCthulhuPresentation.ApplySnapshot
-EyeOfCthulhuPresentation.step = EyeOfCthulhuPresentation.Step
-EyeOfCthulhuPresentation.destroy = EyeOfCthulhuPresentation.Destroy
-
 return EyeOfCthulhuPresentation

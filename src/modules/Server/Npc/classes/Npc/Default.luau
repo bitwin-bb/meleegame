@@ -8,9 +8,6 @@ export type DefaultNpc = Npc.Npc
 export type DefaultNpcConfig = Npc.NpcConfig
 
 function Default.New(configRaw: DefaultNpcConfig?): DefaultNpc
-	return (Npc.new :: any)(configRaw)
+	return (Npc.New :: any)(configRaw)
 end
-
-Default.new = Default.New
-
 return Default

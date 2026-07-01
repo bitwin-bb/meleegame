@@ -95,7 +95,7 @@ local DEFAULT_BLOOD_DECAY_TWEEN_SECONDS = 1
 local DEFAULT_CLEANUP_BUFFER_SECONDS = 0.5
 local MAX_DESTROY_DRAIN_WAIT_SECONDS = 5
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -109,14 +109,14 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?,
 	return value
 end
 
-local function sanitizeColor(valueRaw: any, fallback: Color3): Color3
+local function CoerceColor(valueRaw: any, fallback: Color3): Color3
 	if typeof(valueRaw) == "Color3" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function sanitizeRange(valueRaw: any, fallback: NumberRange): NumberRange
+local function CoerceRange(valueRaw: any, fallback: NumberRange): NumberRange
 	if typeof(valueRaw) == "NumberRange" then
 		local minimum = math.min(valueRaw.Min, valueRaw.Max)
 		local maximum = math.max(valueRaw.Min, valueRaw.Max)
@@ -150,7 +150,7 @@ end
 local function ensureFolder(parent: Instance, name: string): Folder
 	local existing = parent:FindFirstChild(name)
 	if existing ~= nil and existing:IsA("Folder") then
-		return WorkspaceFolders.manageFolder(existing, parent) or existing
+		return WorkspaceFolders.ManageFolder(existing, parent) or existing
 	end
 	if existing ~= nil then
 		existing:Destroy()
@@ -159,10 +159,10 @@ local function ensureFolder(parent: Instance, name: string): Folder
 	local folder = Instance.new("Folder")
 	folder.Name = name
 	folder.Parent = parent
-	return WorkspaceFolders.manageFolder(folder, parent) or folder
+	return WorkspaceFolders.ManageFolder(folder, parent) or folder
 end
 
-local function resolveEntityModel(config: GoreConfig?): Model?
+local function GetEntityModel(config: GoreConfig?): Model?
 	if config == nil then
 		return nil
 	end
@@ -188,7 +188,7 @@ local function cloneDictionary(sourceRaw: any): { [string]: any }
 	return cloned
 end
 
-local function resolveRaycastFilter(config: GoreConfig?, entityModel: Model?, runtimeFolder: Folder): { Instance }
+local function GetAycastFilter(config: GoreConfig?, entityModel: Model?, runtimeFolder: Folder): { Instance }
 	local filter = { runtimeFolder } :: { Instance }
 	if entityModel ~= nil then
 		table.insert(filter, entityModel)
@@ -213,7 +213,7 @@ local function buildRaycastParams(filter: { Instance }): RaycastParams
 	return params
 end
 
-local function resolveCleanupDelaySeconds(bloodSettingsRaw: any, gibTravelTime: number, gibLifetime: number): number
+local function GetCleanupDelaySeconds(bloodSettingsRaw: any, gibTravelTime: number, gibLifetime: number): number
 	local bloodSettings = if typeof(bloodSettingsRaw) == "table" then bloodSettingsRaw else {} :: any
 	local tweens = if typeof(bloodSettings.Tweens) == "table" then bloodSettings.Tweens else nil
 	local decayDelaySeconds = getRangeMaximum(bloodSettings.DecayDelay, DEFAULT_BLOOD_DECAY_DELAY_SECONDS)
@@ -225,7 +225,7 @@ local function resolveCleanupDelaySeconds(bloodSettingsRaw: any, gibTravelTime: 
 	return math.max(bloodCleanupSeconds, gibCleanupSeconds)
 end
 
-function Gore._resolveBloodColor(self: Gore, limb: BasePart, optionsRaw: any, profileRaw: LimbProfile?): Color3
+function Gore._GetBloodColor(self: Gore, limb: BasePart, optionsRaw: any, profileRaw: LimbProfile?): Color3
 	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 	local profile = if typeof(profileRaw) == "table" then profileRaw else nil
 
@@ -244,7 +244,7 @@ function Gore._resolveBloodColor(self: Gore, limb: BasePart, optionsRaw: any, pr
 	return limb.Color
 end
 
-function Gore._resolveLimbProfile(self: Gore, limbNameRaw: any): LimbProfile?
+function Gore._GetLimbProfile(self: Gore, limbNameRaw: any): LimbProfile?
 	local token = normalizeToken(limbNameRaw)
 	if token == "" then
 		return nil
@@ -252,7 +252,7 @@ function Gore._resolveLimbProfile(self: Gore, limbNameRaw: any): LimbProfile?
 	return self.limbProfiles[token]
 end
 
-function Gore._resolveGibRestPosition(self: Gore, originCFrame: CFrame, sourcePart: BasePart): Vector3
+function Gore._GetGibRestPosition(self: Gore, originCFrame: CFrame, sourcePart: BasePart): Vector3
 	local origin = originCFrame.Position
 	local horizontalDirection = Vector3.new(self.random:NextNumber(-1, 1), 0, self.random:NextNumber(-1, 1))
 	if horizontalDirection.Magnitude <= 1e-4 then
@@ -297,17 +297,17 @@ end
 
 function Gore.New(configRaw: GoreConfig?): Gore
 	local config = if typeof(configRaw) == "table" then configRaw :: GoreConfig else nil
-	local entityModel = resolveEntityModel(config)
+	local entityModel = GetEntityModel(config)
 	local rootParent = if config ~= nil and typeof(config.parent) == "Instance"
 		then config.parent
-		else WorkspaceFolders.getOrCreateGameFolder()
+		else WorkspaceFolders.GetOrCreateGameFolder()
 	local rootFolder = ensureFolder(rootParent, "GoreRuntime")
 	local runtimeFolder = Instance.new("Folder")
 	runtimeFolder.Name = HttpService:GenerateGUID(false)
 	runtimeFolder.Parent = rootFolder
-	WorkspaceFolders.manageFolder(runtimeFolder, rootFolder)
+	WorkspaceFolders.ManageFolder(runtimeFolder, rootFolder)
 
-	local raycastFilter = resolveRaycastFilter(config, entityModel, runtimeFolder)
+	local raycastFilter = GetAycastFilter(config, entityModel, runtimeFolder)
 	local raycastParams = buildRaycastParams(raycastFilter)
 
 	local self = setmetatable({
@@ -317,15 +317,15 @@ function Gore.New(configRaw: GoreConfig?): Gore
 		runtimeFolder = runtimeFolder,
 		raycastParams = raycastParams,
 		limbProfiles = {} :: { [string]: LimbProfile },
-		bloodColor = sanitizeColor(config and config.bloodColor, DEFAULT_BLOOD_COLOR),
-		bloodBurstAmount = sanitizeNumber(config and config.bloodBurstAmount, DEFAULT_BLOOD_BURST_AMOUNT, 1, 200),
-		gibLifetime = sanitizeNumber(config and config.gibLifetime, DEFAULT_GIB_LIFETIME, 0.05, 120),
-		gibArcHeight = sanitizeNumber(config and config.gibArcHeight, DEFAULT_GIB_ARC_HEIGHT, 0, 200),
-		gibTravelTime = sanitizeNumber(config and config.gibTravelTime, DEFAULT_GIB_TRAVEL_TIME, 0.1, 12),
-		gibRestDistance = sanitizeRange(config and config.gibRestDistance, DEFAULT_GIB_REST_DISTANCE),
+		bloodColor = CoerceColor(config and config.bloodColor, DEFAULT_BLOOD_COLOR),
+		bloodBurstAmount = CoerceNumber(config and config.bloodBurstAmount, DEFAULT_BLOOD_BURST_AMOUNT, 1, 200),
+		gibLifetime = CoerceNumber(config and config.gibLifetime, DEFAULT_GIB_LIFETIME, 0.05, 120),
+		gibArcHeight = CoerceNumber(config and config.gibArcHeight, DEFAULT_GIB_ARC_HEIGHT, 0, 200),
+		gibTravelTime = CoerceNumber(config and config.gibTravelTime, DEFAULT_GIB_TRAVEL_TIME, 0.1, 12),
+		gibRestDistance = CoerceRange(config and config.gibRestDistance, DEFAULT_GIB_REST_DISTANCE),
 		cleanupDelaySeconds = 0,
 		bloodEngine = nil :: any,
-		limbDestruction = LimbDestruction.new({
+		limbDestruction = LimbDestruction.New({
 			model = entityModel,
 			destroyedTransparency = 1,
 		}),
@@ -342,10 +342,10 @@ function Gore.New(configRaw: GoreConfig?): Gore
 	end
 
 	if config ~= nil and typeof(config.limbDestruction) == "table" then
-		self.limbDestruction:destroy()
+		self.limbDestruction:Destroy()
 		local limbConfig = cloneDictionary(config.limbDestruction)
 		limbConfig.model = entityModel
-		self.limbDestruction = LimbDestruction.new(limbConfig)
+		self.limbDestruction = LimbDestruction.New(limbConfig)
 	end
 
 	local bloodSettings = {
@@ -363,7 +363,7 @@ function Gore.New(configRaw: GoreConfig?): Gore
 	if typeof(bloodSettings.Filter) ~= "table" then
 		bloodSettings.Filter = raycastFilter
 	end
-	self.cleanupDelaySeconds = resolveCleanupDelaySeconds(bloodSettings, self.gibTravelTime, self.gibLifetime)
+	self.cleanupDelaySeconds = GetCleanupDelaySeconds(bloodSettings, self.gibTravelTime, self.gibLifetime)
 
 	local ok, engineOrError = pcall(function()
 		return BloodEngine(bloodSettings)
@@ -374,12 +374,12 @@ function Gore.New(configRaw: GoreConfig?): Gore
 
 	self.janitor:GiveChore(function()
 		for gib in self.activeGibs do
-			gib:destroy()
+			gib:Destroy()
 		end
 		table.clear(self.activeGibs)
 	end)
 	self.janitor:GiveChore(function()
-		self.limbDestruction:destroy()
+		self.limbDestruction:Destroy()
 	end)
 	self.janitor:GiveChore(function()
 		if self.bloodEngine ~= nil and typeof(self.bloodEngine.Destroy) == "function" then
@@ -396,7 +396,7 @@ function Gore.New(configRaw: GoreConfig?): Gore
 end
 
 function Gore.SetBloodColor(self: Gore, bloodColorRaw: any)
-	local nextColor = sanitizeColor(bloodColorRaw, self.bloodColor)
+	local nextColor = CoerceColor(bloodColorRaw, self.bloodColor)
 	self.bloodColor = nextColor
 	if self.bloodEngine ~= nil and typeof(self.bloodEngine.UpdateSettings) == "function" then
 		self.bloodEngine:UpdateSettings({ DropletColor = nextColor })
@@ -417,7 +417,7 @@ function Gore.EmitBlood(self: Gore, originRaw: any, directionRaw: any?, amountRa
 		return false
 	end
 
-	local amount = sanitizeNumber(amountRaw, 1, 1, 200)
+	local amount = CoerceNumber(amountRaw, 1, 1, 200)
 	local direction = if typeof(directionRaw) == "Vector3" then directionRaw else nil
 	local settings = cloneDictionary(settingsRaw)
 	if typeof(settings.DropletColor) ~= "Color3" then
@@ -450,25 +450,25 @@ function Gore.SpawnGib(self: Gore, sourceRaw: any, optionsRaw: any?): Gib.Gib?
 	local originCFrame = if typeof(options.originCFrame) == "CFrame" then options.originCFrame else sourcePart.CFrame
 	local restPosition = options.restPosition
 	if typeof(restPosition) ~= "Vector3" then
-		restPosition = self:_resolveGibRestPosition(originCFrame, sourcePart)
+		restPosition = self:_GetGibRestPosition(originCFrame, sourcePart)
 	end
 
-	local gib = Gib.new({
+	local gib = Gib.New({
 		source = sourcePart,
 		parent = self.runtimeFolder,
 		originCFrame = originCFrame,
 		restPosition = restPosition,
 		raycastParams = self.raycastParams,
-		arcHeight = sanitizeNumber(options.arcHeight, self.gibArcHeight, 0, 200),
-		travelTime = sanitizeNumber(options.travelTime, self.gibTravelTime, 0.1, 12),
-		lifetime = sanitizeNumber(options.lifetime, self.gibLifetime, 0.05, 120),
-		restDistance = sanitizeRange(options.restDistance, self.gibRestDistance),
+		arcHeight = CoerceNumber(options.arcHeight, self.gibArcHeight, 0, 200),
+		travelTime = CoerceNumber(options.travelTime, self.gibTravelTime, 0.1, 12),
+		lifetime = CoerceNumber(options.lifetime, self.gibLifetime, 0.05, 120),
+		restDistance = CoerceRange(options.restDistance, self.gibRestDistance),
 		canCollide = true,
 		canTouch = false,
 		canQuery = false,
 		anchoredAtRest = true,
 	} :: any)
-	gib:play()
+	gib:Play()
 	self:_trackGib(gib)
 	return gib
 end
@@ -479,19 +479,19 @@ function Gore.DestroyLimb(self: Gore, limbRaw: any, optionsRaw: DestroyLimbOptio
 	end
 
 	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: DestroyLimbOptions
-	local destroyResult = self.limbDestruction:destroyLimb(limbRaw, options)
+	local destroyResult = self.limbDestruction:DestroyLimb(limbRaw, options)
 	if destroyResult == nil then
 		return nil
 	end
 
-	local limbProfile = self:_resolveLimbProfile(destroyResult.limbName)
-	local bloodColor = self:_resolveBloodColor(destroyResult.limb, options, limbProfile)
+	local limbProfile = self:_GetLimbProfile(destroyResult.limbName)
+	local bloodColor = self:_GetBloodColor(destroyResult.limb, options, limbProfile)
 	local bloodAmountDefault = if limbProfile ~= nil
-		then sanitizeNumber(limbProfile.bloodAmount, self.bloodBurstAmount, 1, 200)
+		then CoerceNumber(limbProfile.bloodAmount, self.bloodBurstAmount, 1, 200)
 		else self.bloodBurstAmount
-	local bloodAmount = sanitizeNumber(options.bloodAmount, bloodAmountDefault, 1, 200)
+	local bloodAmount = CoerceNumber(options.bloodAmount, bloodAmountDefault, 1, 200)
 
-	self:emitBlood(destroyResult.originPosition, nil, bloodAmount, { DropletColor = bloodColor })
+	self:EmitBlood(destroyResult.originPosition, nil, bloodAmount, { DropletColor = bloodColor })
 
 	local gib: Gib.Gib? = nil
 	if options.spawnGib ~= false then
@@ -504,12 +504,12 @@ function Gore.DestroyLimb(self: Gore, limbRaw: any, optionsRaw: DestroyLimbOptio
 		local restDistanceDefault = if limbProfile ~= nil and limbProfile.restDistance ~= nil
 			then limbProfile.restDistance
 			else self.gibRestDistance
-		gib = self:spawnGib(destroyResult.gibSource, {
+		gib = self:SpawnGib(destroyResult.gibSource, {
 			originCFrame = destroyResult.originCFrame,
 			restPosition = options.restPosition,
-			arcHeight = sanitizeNumber(options.arcHeight, arcHeightDefault, 0, 200),
-			travelTime = sanitizeNumber(options.travelTime, travelTimeDefault, 0.1, 12),
-			restDistance = sanitizeRange(options.restDistance, restDistanceDefault),
+			arcHeight = CoerceNumber(options.arcHeight, arcHeightDefault, 0, 200),
+			travelTime = CoerceNumber(options.travelTime, travelTimeDefault, 0.1, 12),
+			restDistance = CoerceRange(options.restDistance, restDistanceDefault),
 		})
 	else
 		destroyResult.gibSource:Destroy()
@@ -524,11 +524,11 @@ function Gore.DestroyLimb(self: Gore, limbRaw: any, optionsRaw: DestroyLimbOptio
 end
 
 function Gore.RestoreLimb(self: Gore, limbRaw: any): boolean
-	return self.limbDestruction:restoreLimb(limbRaw)
+	return self.limbDestruction:RestoreLimb(limbRaw)
 end
 
 function Gore.RestoreAllLimbs(self: Gore)
-	self.limbDestruction:restoreAll()
+	self.limbDestruction:RestoreAll()
 end
 
 function Gore._countActiveBloodDroplets(self: Gore): number
@@ -572,15 +572,4 @@ function Gore.Destroy(self: Gore)
 		janitor:Destroy()
 	end)
 end
-
-Gore.new = Gore.New
-Gore.setBloodColor = Gore.SetBloodColor
-Gore.getBloodColor = Gore.GetBloodColor
-Gore.emitBlood = Gore.EmitBlood
-Gore.spawnGib = Gore.SpawnGib
-Gore.destroyLimb = Gore.DestroyLimb
-Gore.restoreLimb = Gore.RestoreLimb
-Gore.restoreAllLimbs = Gore.RestoreAllLimbs
-Gore.destroy = Gore.Destroy
-
 return Gore

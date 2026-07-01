@@ -8,7 +8,7 @@ local HpServiceUtils = require("HpServiceUtils")
 type HpServiceState = HpServiceUtils.HpServiceState
 type HeartState = HpServiceUtils.HeartState
 
-local hpStateAtom: Charm.Atom<HpServiceState> = Charm.atom(HpServiceUtils.createDefaultState())
+local hpStateAtom: Charm.Atom<HpServiceState> = Charm.atom(HpServiceUtils.CreateDefaultState())
 local hpReadyAtom: Charm.Atom<boolean> = Charm.atom(false)
 
 local heartsAtom: Charm.Selector<{ HeartState }> = Charm.computed(function(): { HeartState }
@@ -52,13 +52,13 @@ local function getHpState(): HpServiceState
 end
 
 local function setHpState(stateRaw: any): HpServiceState
-	local nextState = HpServiceUtils.sanitizeState(stateRaw, hpStateAtom())
+	local nextState = HpServiceUtils.CoerceState(stateRaw, hpStateAtom())
 	hpStateAtom(nextState)
 	return nextState
 end
 
 local function resetHpState(): HpServiceState
-	local nextState = HpServiceUtils.createDefaultState()
+	local nextState = HpServiceUtils.CreateDefaultState()
 	hpStateAtom(nextState)
 	return nextState
 end

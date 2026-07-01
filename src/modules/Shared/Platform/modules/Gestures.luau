@@ -113,7 +113,7 @@ local function getSwipeDirection(delta: Vector2): string
 	return if delta.Y >= 0 then "Down" else "Up"
 end
 
-local function resolveInputTarget(input: InputObject): GuiObject?
+local function GetInputTarget(input: InputObject): GuiObject?
 	local ok, targetRaw = pcall(function()
 		return (input :: any).Target
 	end)
@@ -216,7 +216,7 @@ function Gestures._emit(self: Gestures, gesture: GestureType, payload: GesturePa
 	end
 	if self.eventBus ~= nil and typeof((self.eventBus :: any).publish) == "function" then
 		local eventBusAny = self.eventBus :: any
-		eventBusAny:publish(self.eventChannel, gesture, payload)
+		eventBusAny:Publish(self.eventChannel, gesture, payload)
 	end
 end
 
@@ -245,8 +245,8 @@ function Gestures._scheduleLongPress(self: Gestures, input: InputObject, state: 
 		})
 	end
 
-	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).schedule) == "function" then
-		local token = (self.tickScheduler :: any):schedule(
+	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).Schedule) == "function" then
+		local token = (self.tickScheduler :: any):Schedule(
 			function()
 				fireLongPress()
 			end,
@@ -257,11 +257,11 @@ function Gestures._scheduleLongPress(self: Gestures, input: InputObject, state: 
 			}
 		)
 		state.longPressCancel = function()
-			if typeof(token.cancel) == "function" then
-				token:cancel()
-			elseif typeof((self.tickScheduler :: any).cancel) == "function" then
+			if typeof(token.Cancel) == "function" then
+				token:Cancel()
+			elseif typeof((self.tickScheduler :: any).Cancel) == "function" then
 				local schedulerAny = self.tickScheduler :: any
-				schedulerAny:cancel(token)
+				schedulerAny:Cancel(token)
 			end
 		end
 		return
@@ -362,7 +362,7 @@ function Gestures._beginTouch(self: Gestures, input: InputObject)
 	state.lastPos = input.Position
 	state.startTime = os.clock()
 	state.lastTime = state.startTime
-	state.target = resolveInputTarget(input)
+	state.target = GetInputTarget(input)
 
 	self.touches[input] = state
 	self.activeTouchCount += 1
@@ -423,9 +423,9 @@ function Gestures._scheduleTapEmit(self: Gestures, payload: GesturePayload)
 		self.pendingTapToken()
 		self.pendingTapToken = nil
 	end
-	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).schedule) == "function" then
+	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).Schedule) == "function" then
 		local cancelled = false
-		local token = (self.tickScheduler :: any):schedule(
+		local token = (self.tickScheduler :: any):Schedule(
 			function()
 				if cancelled then
 					return
@@ -440,11 +440,11 @@ function Gestures._scheduleTapEmit(self: Gestures, payload: GesturePayload)
 		)
 		self.pendingTapToken = function()
 			cancelled = true
-			if typeof(token.cancel) == "function" then
-				token:cancel()
-			elseif typeof((self.tickScheduler :: any).cancel) == "function" then
+			if typeof(token.Cancel) == "function" then
+				token:Cancel()
+			elseif typeof((self.tickScheduler :: any).Cancel) == "function" then
 				local schedulerAny = self.tickScheduler :: any
-				schedulerAny:cancel(token)
+				schedulerAny:Cancel(token)
 			end
 		end
 		return
@@ -621,16 +621,5 @@ function Gestures.Destroy(self: Gestures)
 	self:_exitPinch()
 	self.isInitialized = false
 end
-
-Gestures.Bind = Gestures.Bind
-Gestures.SetEnabled = Gestures.SetEnabled
-Gestures.Init = Gestures.Init
-Gestures.Destroy = Gestures.Destroy
-
-Gestures.new = Gestures.New
-Gestures.init = Gestures.Init
-Gestures.bind = Gestures.Bind
-Gestures.setEnabled = Gestures.SetEnabled
-Gestures.destroy = Gestures.Destroy
 
 return Gestures

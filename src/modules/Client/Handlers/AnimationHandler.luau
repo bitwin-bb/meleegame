@@ -115,14 +115,4 @@ function AnimationHandler.Destroy(self: AnimationHandler)
 	table.clear(self.finished)
 	self.animator = nil
 end
-
-AnimationHandler.setAnimator = AnimationHandler.SetAnimator
-AnimationHandler.load = AnimationHandler.Load
-AnimationHandler.play = AnimationHandler.Play
-AnimationHandler.stop = AnimationHandler.Stop
-AnimationHandler.isPlaying = AnimationHandler.IsPlaying
-AnimationHandler.isFinished = AnimationHandler.IsFinished
-AnimationHandler.promiseFinished = AnimationHandler.PromiseFinished
-AnimationHandler.destroy = AnimationHandler.Destroy
-
 return AnimationHandler

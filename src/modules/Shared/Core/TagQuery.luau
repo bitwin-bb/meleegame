@@ -229,13 +229,13 @@ function TagQuery.ObserveTag(
 	end
 
 	if onAdded ~= nil then
-		local tagged = self:getTagged(tagRaw)
+		local tagged = self:GetTagged(tagRaw)
 		for index = 1, #tagged do
 			onAdded(tagged[index], tagRaw)
 		end
 	end
 
-	return self:subscribe(tagRaw, function(instance, isAdded, tag)
+	return self:Subscribe(tagRaw, function(instance, isAdded, tag)
 		if isAdded then
 			if onAdded ~= nil then
 				onAdded(instance, tag)
@@ -286,14 +286,4 @@ function TagQuery.Destroy(self: TagQuery)
 	table.clear(self.tagSets)
 	table.clear(self.tagVersions)
 end
-
-TagQuery.new = TagQuery.New
-TagQuery.getTagged = TagQuery.GetTagged
-TagQuery.hasTag = TagQuery.HasTag
-TagQuery.getVersion = TagQuery.GetVersion
-TagQuery.subscribe = TagQuery.Subscribe
-TagQuery.observeTag = TagQuery.ObserveTag
-TagQuery.invalidate = TagQuery.Invalidate
-TagQuery.destroy = TagQuery.Destroy
-
 return TagQuery

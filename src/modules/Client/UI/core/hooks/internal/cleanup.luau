@@ -45,9 +45,4 @@ function Cleanup.Call(cleanupRaw: any)
 
 	Cleanup.Disconnect(cleanupRaw)
 end
-
-Cleanup.disconnect = Cleanup.Disconnect
-Cleanup.cancelTask = Cleanup.CancelTask
-Cleanup.call = Cleanup.Call
-
 return Cleanup

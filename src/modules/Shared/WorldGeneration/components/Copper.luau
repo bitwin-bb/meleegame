@@ -24,7 +24,4 @@ function Copper.CreateOreTexture(config: OreTextureConfig): Texture
 		studsPerTileV = config.studsPerTileV,
 	})
 end
-
-Copper.createOreTexture = Copper.CreateOreTexture
-
 return Copper

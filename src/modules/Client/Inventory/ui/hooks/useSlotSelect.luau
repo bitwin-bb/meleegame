@@ -17,16 +17,16 @@ export type SlotSelectOptions = {
 local DEFAULT_NORMAL_SCALE = 1
 local DEFAULT_SELECTED_SCALE = 1.12
 local DEFAULT_DURATION = 0.16
-local PROGRESS_EPSILON = 0.001
+local SCALE_EPSILON = 0.001
 
-local function sanitizeScale(valueRaw: any, fallback: number): number
+local function CoerceScale(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw or valueRaw <= 0 then
 		return fallback
 	end
 	return valueRaw
 end
 
-local function sanitizeDuration(valueRaw: any): number
+local function CoerceDuration(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw or valueRaw <= 0 then
 		return DEFAULT_DURATION
 	end
@@ -35,32 +35,31 @@ end
 
 local function useSlotSelect(options: SlotSelectOptions?): number
 	local enabled = if options and options.enabled ~= nil then options.enabled else false
-	local normalScale = sanitizeScale(if options then options.normalScale else nil, DEFAULT_NORMAL_SCALE)
-	local selectedScale =
-		math.max(normalScale, sanitizeScale(if options then options.selectedScale else nil, DEFAULT_SELECTED_SCALE))
-	local duration = sanitizeDuration(if options then options.duration else nil)
-	local targetProgress = if enabled then 1 else 0
-	local targetRef = React.useRef(targetProgress)
-	local animationRef = React.useRef(nil :: { fromProgress: number, toProgress: number, startedAt: number }?)
-	local progress, setProgress = React.useState(targetProgress)
-	local progressRef = React.useRef(progress)
+	local normalScale = CoerceScale(if options then options.normalScale else nil, DEFAULT_NORMAL_SCALE)
+	local selectedScale = CoerceScale(if options then options.selectedScale else nil, DEFAULT_SELECTED_SCALE)
+	local duration = CoerceDuration(if options then options.duration else nil)
+	local targetScale = if enabled then selectedScale else normalScale
+	local targetRef = React.useRef(targetScale)
+	local animationRef = React.useRef(nil :: { fromScale: number, toScale: number, startedAt: number }?)
+	local scale, setScale = React.useState(targetScale)
+	local scaleRef = React.useRef(scale)
 
 	React.useEffect(function()
-		progressRef.current = progress
-	end, { progress })
+		scaleRef.current = scale
+	end, { scale })
 
 	React.useEffect(function()
-		if targetRef.current == targetProgress then
+		if math.abs(targetRef.current - targetScale) <= SCALE_EPSILON then
 			return
 		end
 
-		targetRef.current = targetProgress
+		targetRef.current = targetScale
 		animationRef.current = {
-			fromProgress = progressRef.current,
-			toProgress = targetProgress,
+			fromScale = scaleRef.current,
+			toScale = targetScale,
 			startedAt = os.clock(),
 		}
-	end, { targetProgress })
+	end, { targetScale })
 
 	React.useEffect(function()
 		local connection = RunService.RenderStepped:Connect(function(_deltaTime: number)
@@ -70,20 +69,20 @@ local function useSlotSelect(options: SlotSelectOptions?): number
 			end
 
 			local alpha = math.clamp((os.clock() - animation.startedAt) / duration, 0, 1)
-			local nextProgress = animation.toProgress
+			local nextScale = animation.toScale
 			if alpha < 1 then
-				local easedAlpha = Ease.outBack(alpha)
-				nextProgress = animation.fromProgress + (animation.toProgress - animation.fromProgress) * easedAlpha
+				local easedAlpha = Ease.OutBack(alpha)
+				nextScale = animation.fromScale + (animation.toScale - animation.fromScale) * easedAlpha
 			else
 				animationRef.current = nil
 			end
 
-			if math.abs(progressRef.current - nextProgress) <= PROGRESS_EPSILON then
+			if math.abs(scaleRef.current - nextScale) <= SCALE_EPSILON then
 				return
 			end
 
-			progressRef.current = nextProgress
-			setProgress(nextProgress)
+			scaleRef.current = nextScale
+			setScale(nextScale)
 		end)
 
 		return function()
@@ -91,7 +90,7 @@ local function useSlotSelect(options: SlotSelectOptions?): number
 		end
 	end, { duration })
 
-	return normalScale + (selectedScale - normalScale) * progress
+	return scale
 end
 
 return useSlotSelect

@@ -37,7 +37,7 @@ export type Cache = typeof(setmetatable(
 	Cache
 ))
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = if typeof(valueRaw) == "number" and valueRaw == valueRaw then valueRaw else fallback
 	if minimum ~= nil and value < minimum then
 		value = minimum
@@ -107,7 +107,7 @@ function Cache.GetSubject(self: Cache, keyRaw: any): SubjectSnapshot?
 	return self.subjects[keyRaw]
 end
 
-function Cache.ResolveDerivedVelocity(
+function Cache.GetDerivedVelocity(
 	self: Cache,
 	keyRaw: any,
 	positionRaw: any,
@@ -124,7 +124,7 @@ function Cache.ResolveDerivedVelocity(
 		return fallbackVelocity
 	end
 
-	local now = sanitizeNumber(nowRaw, os.clock(), 0, nil)
+	local now = CoerceNumber(nowRaw, os.clock(), 0, nil)
 	local dt = now - previous.updatedAt
 	if dt <= 1e-4 then
 		return fallbackVelocity
@@ -154,7 +154,7 @@ function Cache.RememberSubject(
 		kind = if typeof(kindRaw) == "string" and kindRaw ~= "" then kindRaw else "Unknown",
 		position = positionRaw,
 		velocity = if typeof(velocityRaw) == "Vector3" then velocityRaw else Vector3.zero,
-		updatedAt = sanitizeNumber(nowRaw, os.clock(), 0, nil),
+		updatedAt = CoerceNumber(nowRaw, os.clock(), 0, nil),
 	}
 	self.subjects[keyRaw] = snapshot
 	return snapshot
@@ -163,8 +163,8 @@ end
 function Cache.StoreFrame(self: Cache, snapshotRaw: any): FrameSnapshot
 	local snapshot = if typeof(snapshotRaw) == "table" then snapshotRaw else {} :: any
 	self.frame += 1
-	self.lastUpdatedAt = sanitizeNumber((snapshot :: any).updatedAt, os.clock(), 0, nil)
-	self.lastDeltaTime = sanitizeNumber((snapshot :: any).deltaTime, self.lastDeltaTime, 0, 1)
+	self.lastUpdatedAt = CoerceNumber((snapshot :: any).updatedAt, os.clock(), 0, nil)
+	self.lastDeltaTime = CoerceNumber((snapshot :: any).deltaTime, self.lastDeltaTime, 0, 1)
 
 	self.lastFrame = {
 		frame = self.frame,
@@ -187,7 +187,7 @@ function Cache.StoreFrame(self: Cache, snapshotRaw: any): FrameSnapshot
 		hasOverride = (snapshot :: any).hasOverride == true,
 	}
 
-	return self:getFrame()
+	return self:GetFrame()
 end
 
 function Cache.GetFrame(self: Cache): FrameSnapshot
@@ -210,14 +210,4 @@ function Cache.GetDebugState(self: Cache): { [string]: any }
 		fieldOfView = frame.fieldOfView,
 	}
 end
-
-Cache.new = Cache.New
-Cache.reset = Cache.Reset
-Cache.getSubject = Cache.GetSubject
-Cache.resolveDerivedVelocity = Cache.ResolveDerivedVelocity
-Cache.rememberSubject = Cache.RememberSubject
-Cache.storeFrame = Cache.StoreFrame
-Cache.getFrame = Cache.GetFrame
-Cache.getDebugState = Cache.GetDebugState
-
 return Cache

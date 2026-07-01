@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 
 local AnimationServiceUtils = require("AnimationServiceUtils")
 local PacketPayload = require("PacketPayload")
-local AnimationServicePackets = require("NetSharedPackets").AnimationService
+local AnimationServicePackets = require("NetPacketsShared").AnimationService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = AnimationServicePackets[methodName]
@@ -14,7 +14,7 @@ local function sendPacket(player: Player, methodName: string, ...: any)
 		return
 	end
 
-	packet.sendTo(PacketPayload.pack(...), player)
+	packet.sendTo(PacketPayload.Pack(...), player)
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -29,12 +29,13 @@ local function bindPacket(self: any, methodName: string)
 			return
 		end
 
-		local handler = self[methodName]
+		local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, player, table.unpack(arguments, 1, count))
 	end)
 end
@@ -56,16 +57,16 @@ type AnimationServiceState = AnimationServiceUtils.AnimationServiceState
 local AnimationServiceServer = {}
 
 function AnimationServiceServer.Init(self: AnimationServiceServer)
-	self.profileRegistry = AnimationServiceUtils.createDefaultProfileRegistry()
+	self.profileRegistry = AnimationServiceUtils.CreateDefaultProfileRegistry()
 	self.playerStates = {}
 	bindPackets(self)
 
 	for _, player in Players:GetPlayers() do
-		self.playerStates[player] = AnimationServiceUtils.createDefaultState()
+		self.playerStates[player] = AnimationServiceUtils.CreateDefaultState()
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		self.playerStates[player] = AnimationServiceUtils.createDefaultState()
+		self.playerStates[player] = AnimationServiceUtils.CreateDefaultState()
 	end)
 
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
@@ -79,30 +80,30 @@ function AnimationServiceServer.GetState(self: AnimationServiceServer, player: P
 		return existing
 	end
 
-	local defaultState = AnimationServiceUtils.createDefaultState()
+	local defaultState = AnimationServiceUtils.CreateDefaultState()
 	self.playerStates[player] = defaultState
 	return defaultState
 end
 
 function AnimationServiceServer.PushState(self: AnimationServiceServer, player: Player)
-	local state = self:getState(player)
+	local state = self:GetState(player)
 	sendPacket(player, "applyState", state.profileName, state.footstepsEnabled)
 end
 
 function AnimationServiceServer.RequestSync(self: AnimationServiceServer, player: Player)
-	self:pushState(player)
+	self:PushState(player)
 end
 
 function AnimationServiceServer.SetProfile(self: AnimationServiceServer, player: Player, profileNameRaw: any)
-	local currentState = self:getState(player)
-	local nextState = AnimationServiceUtils.createState(
+	local currentState = self:GetState(player)
+	local nextState = AnimationServiceUtils.CreateState(
 		profileNameRaw,
 		currentState.footstepsEnabled,
 		self.profileRegistry,
 		currentState
 	)
 	self.playerStates[player] = nextState
-	self:pushState(player)
+	self:PushState(player)
 end
 
 function AnimationServiceServer.SetFootstepsEnabled(
@@ -110,15 +111,15 @@ function AnimationServiceServer.SetFootstepsEnabled(
 	player: Player,
 	footstepsEnabledRaw: any
 )
-	local currentState = self:getState(player)
-	local nextState = AnimationServiceUtils.createState(
+	local currentState = self:GetState(player)
+	local nextState = AnimationServiceUtils.CreateState(
 		currentState.profileName,
 		footstepsEnabledRaw,
 		self.profileRegistry,
 		currentState
 	)
 	self.playerStates[player] = nextState
-	self:pushState(player)
+	self:PushState(player)
 end
 
 function AnimationServiceServer.GetProfileRegistry(self: AnimationServiceServer): { [string]: AnimationProfile }
@@ -136,16 +137,6 @@ function AnimationServiceServer.Destroy(self: AnimationServiceServer)
 		self.playerRemovingConnection = nil
 	end
 end
-
-AnimationServiceServer.init = AnimationServiceServer.Init
-AnimationServiceServer.getState = AnimationServiceServer.GetState
-AnimationServiceServer.pushState = AnimationServiceServer.PushState
-AnimationServiceServer.requestSync = AnimationServiceServer.RequestSync
-AnimationServiceServer.setProfile = AnimationServiceServer.SetProfile
-AnimationServiceServer.setFootstepsEnabled = AnimationServiceServer.SetFootstepsEnabled
-AnimationServiceServer.getProfileRegistry = AnimationServiceServer.GetProfileRegistry
-AnimationServiceServer.destroy = AnimationServiceServer.Destroy
-
 type AnimationServiceServer = typeof(AnimationServiceServer) & {
 	playerStates: { [Player]: AnimationServiceState },
 	profileRegistry: { [string]: AnimationProfile },

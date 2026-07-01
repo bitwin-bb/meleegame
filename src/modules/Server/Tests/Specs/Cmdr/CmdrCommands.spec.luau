@@ -11,7 +11,7 @@ local gameRoot = script:FindFirstAncestor("game")
 assert(gameRoot ~= nil, "Missing Nevermore game root for CmdrCommands.spec.")
 
 local sharedCommands = gameRoot.Shared.Commander.Commands
-local serverCommands = gameRoot.Server.Commander.ServerCommands
+local serverCommands = gameRoot.Server.Commander.CommandsServer
 
 local function trim(valueRaw: any): string
 	if typeof(valueRaw) ~= "string" then

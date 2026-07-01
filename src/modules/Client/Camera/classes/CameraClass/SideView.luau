@@ -13,7 +13,7 @@ local CatchUpPlayer = require("catchUpPlayer")
 local Configs = require("CoreConfigs")
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local Predict = require("Predict")
-local Resolve = require("Resolve")
+local CameraBackendGetter = require("CameraBackendGetter")
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
 local RoomBehavior = require("room")
 local Stack = require("CameraOverrideStack")
@@ -75,7 +75,7 @@ export type SideView = typeof(setmetatable(
 		roomBehavior: RoomBehavior.Room,
 		backendCache: Cache.Cache,
 		backendPredict: Predict.Predict,
-		backendResolver: Resolve.Resolve,
+		backendGetter: CameraBackendGetter.CameraBackendGetter,
 		backendStack: Stack.Stack,
 		backendState: State.State,
 		backendTarget: Target.Target,
@@ -84,7 +84,7 @@ export type SideView = typeof(setmetatable(
 		janitor: JanitorClass,
 		lastCameraType: Enum.CameraType?,
 		lastFieldOfView: number?,
-		lastResolution: Resolve.ResolutionResult?,
+		lastResolution: CameraBackendGetter.ResolutionResult?,
 	},
 	SideView
 ))
@@ -118,7 +118,7 @@ local function getMouseViewportNormalized(camera: Camera): Vector2
 	)
 end
 
-local function getBaseViewConfig(self: SideView): Resolve.ViewConfig
+local function getBaseViewConfig(self: SideView): CameraBackendGetter.ViewConfig
 	return {
 		distance = self.distance,
 		height = self.height,
@@ -133,14 +133,14 @@ function SideView.New(config: SideViewConfig?): SideView
 	local startFov = if camera then camera.FieldOfView else 40
 	sideViewInstanceCount += 1
 
-	local backendCache = Cache.new()
-	local backendPredict = Predict.new(if config then (config :: any).predict else nil)
-	local backendStack = Stack.new()
-	local backendState = State.new()
-	local backendTarget = Target.new({
-		resolveCharacterTarget = CameraServiceUtils.resolveCharacterTarget,
+	local backendCache = Cache.New()
+	local backendPredict = Predict.New(if config then (config :: any).predict else nil)
+	local backendStack = Stack.New()
+	local backendState = State.New()
+	local backendTarget = Target.New({
+		GetCharacterTarget = CameraServiceUtils.GetCharacterTarget,
 	})
-	local backendResolver = Resolve.new({
+	local backendGetter = CameraBackendGetter.new({
 		cache = backendCache,
 		predictor = backendPredict,
 		stack = backendStack,
@@ -185,11 +185,11 @@ function SideView.New(config: SideViewConfig?): SideView
 		fovSpring = if config and config.fovSpring
 			then config.fovSpring
 			else (DEFAULT_SIDE_VIEW_CONFIG.fovSpring or DEFAULT_FOV_SPRING),
-		catchUpPlayerBehavior = CatchUpPlayer.new(if config then (config :: any).catchUpPlayer else nil),
-		roomBehavior = RoomBehavior.new(if config then (config :: any).room else nil),
+		catchUpPlayerBehavior = CatchUpPlayer.New(if config then (config :: any).catchUpPlayer else nil),
+		roomBehavior = RoomBehavior.New(if config then (config :: any).room else nil),
 		backendCache = backendCache,
 		backendPredict = backendPredict,
-		backendResolver = backendResolver,
+		backendGetter = backendGetter,
 		backendStack = backendStack,
 		backendState = backendState,
 		backendTarget = backendTarget,
@@ -211,8 +211,8 @@ function SideView.New(config: SideViewConfig?): SideView
 	return self
 end
 
-function SideView.ResolveGoal(self: SideView, camera: Camera?, deltaTime: number?): Resolve.ResolutionResult
-	local resolution = self.backendResolver:resolve({
+function SideView.GetGoal(self: SideView, camera: Camera?, deltaTime: number?): CameraBackendGetter.ResolutionResult
+	local resolution = self.backendGetter:Get({
 		now = os.clock(),
 		deltaTime = deltaTime,
 		character = self.character,
@@ -233,8 +233,8 @@ function SideView.ResolveGoal(self: SideView, camera: Camera?, deltaTime: number
 	return resolution
 end
 
-function SideView.ResolveDynamicViewConfig(self: SideView): RoomBehavior.ViewConfig
-	local subject = self.backendTarget:resolve({
+function SideView.GetDynamicViewConfig(self: SideView): RoomBehavior.ViewConfig
+	local subject = self.backendTarget:Get({
 		character = self.character,
 	})
 	local baseViewConfig = getBaseViewConfig(self)
@@ -242,76 +242,76 @@ function SideView.ResolveDynamicViewConfig(self: SideView): RoomBehavior.ViewCon
 		return baseViewConfig
 	end
 
-	return self.roomBehavior:resolveViewConfig(baseViewConfig, subject.position)
+	return self.roomBehavior:GetViewConfig(baseViewConfig, subject.position)
 end
 
 function SideView.GetTargetCFrame(self: SideView, camera: Camera, _viewConfig: RoomBehavior.ViewConfig): CFrame
-	local resolution = self:resolveGoal(camera, 1 / 60)
+	local resolution = self:GetGoal(camera, 1 / 60)
 	return if resolution.cameraCFrame ~= nil then resolution.cameraCFrame else camera.CFrame
 end
 
 function SideView.SetTarget(self: SideView, target: any?)
 	self.target = target
-	self.backendTarget:setExplicitTarget(target)
-	self.catchUpPlayerBehavior:reset()
-	self.roomBehavior:reset()
+	self.backendTarget:SetExplicitTarget(target)
+	self.catchUpPlayerBehavior:Reset()
+	self.roomBehavior:Reset()
 end
 
 function SideView.SetCharacter(self: SideView, character: Model?)
 	self.character = character
-	self.backendTarget:setCharacter(character)
-	self.catchUpPlayerBehavior:reset()
-	self.roomBehavior:reset()
+	self.backendTarget:SetCharacter(character)
+	self.catchUpPlayerBehavior:Reset()
+	self.roomBehavior:Reset()
 end
 
 function SideView.PushOverride(self: SideView, overrideRaw: any): number
-	local id = self.backendStack:push(overrideRaw)
-	self.catchUpPlayerBehavior:reset()
-	self.roomBehavior:reset()
+	local id = self.backendStack:Push(overrideRaw)
+	self.catchUpPlayerBehavior:Reset()
+	self.roomBehavior:Reset()
 	return id
 end
 
 function SideView.UpdateOverride(self: SideView, idRaw: any, patchRaw: any): boolean
-	local didUpdate = self.backendStack:update(idRaw, patchRaw)
+	local didUpdate = self.backendStack:Update(idRaw, patchRaw)
 	if didUpdate then
-		self.catchUpPlayerBehavior:reset()
-		self.roomBehavior:reset()
+		self.catchUpPlayerBehavior:Reset()
+		self.roomBehavior:Reset()
 	end
 	return didUpdate
 end
 
 function SideView.RemoveOverride(self: SideView, idRaw: any): boolean
-	local didRemove = self.backendStack:remove(idRaw)
+	local didRemove = self.backendStack:Remove(idRaw)
 	if didRemove then
-		self.catchUpPlayerBehavior:reset()
-		self.roomBehavior:reset()
+		self.catchUpPlayerBehavior:Reset()
+		self.roomBehavior:Reset()
 	end
 	return didRemove
 end
 
 function SideView.ClearOverrides(self: SideView)
-	self.backendStack:clear()
-	self.catchUpPlayerBehavior:reset()
-	self.roomBehavior:reset()
+	self.backendStack:Clear()
+	self.catchUpPlayerBehavior:Reset()
+	self.roomBehavior:Reset()
 end
 
 function SideView.SetTemporaryTargetOverride(self: SideView, targetRaw: any?, durationSecondsRaw: any?)
-	self.backendTarget:setTemporaryOverride(targetRaw, durationSecondsRaw)
-	self.catchUpPlayerBehavior:reset()
-	self.roomBehavior:reset()
+	self.backendTarget:SetTemporaryOverride(targetRaw, durationSecondsRaw)
+	self.catchUpPlayerBehavior:Reset()
+	self.roomBehavior:Reset()
 end
 
 function SideView.ClearTemporaryTargetOverride(self: SideView)
-	self.backendTarget:clearTemporaryOverride()
-	self.catchUpPlayerBehavior:reset()
-	self.roomBehavior:reset()
+	self.backendTarget:ClearTemporaryOverride()
+	self.catchUpPlayerBehavior:Reset()
+	self.roomBehavior:Reset()
 end
 
 function SideView.GetBackendState(self: SideView): { [string]: any }
-	local stateSnapshot = self.backendState:getSnapshot()
-	local cacheSnapshot = self.backendCache:getDebugState()
-	local overrideEntries = self.backendStack:getEntries(os.clock())
-	local targetSnapshot = self.backendTarget:resolve({
+	local stateSnapshot = self.backendState:GetSnapshot()
+	local cacheSnapshot = self.backendCache:GetDebugState()
+	local overrideEntries = self.backendStack:GetEntries(os.clock())
+	local targetSnapshot = self.backendTarget:Get({
 		character = self.character,
 	})
 
@@ -330,7 +330,7 @@ function SideView.SnapToTarget(self: SideView)
 		return
 	end
 
-	local resolution = self:resolveGoal(camera, 0)
+	local resolution = self:GetGoal(camera, 0)
 	if resolution.cameraCFrame == nil then
 		return
 	end
@@ -340,8 +340,8 @@ function SideView.SnapToTarget(self: SideView)
 	camera.FieldOfView = resolution.fieldOfView
 	self.cameraMotion:immediate(resolution.cameraCFrame)
 	self.fovMotion:immediate(resolution.fieldOfView)
-	self.catchUpPlayerBehavior:reset()
-	self.roomBehavior:reset()
+	self.catchUpPlayerBehavior:Reset()
+	self.roomBehavior:Reset()
 end
 
 function SideView.Enable(self: SideView)
@@ -357,13 +357,13 @@ function SideView.Enable(self: SideView)
 		self.cameraMotion:immediate(camera.CFrame)
 		self.fovMotion:immediate(camera.FieldOfView)
 	end
-	self.catchUpPlayerBehavior:reset()
-	self.roomBehavior:reset()
-	self.backendState:setEnabled(true)
+	self.catchUpPlayerBehavior:Reset()
+	self.roomBehavior:Reset()
+	self.backendState:SetEnabled(true)
 
 	self.enabled = true
 	RunService:BindToRenderStep(self.renderStepName, SIDE_VIEW_RENDER_PRIORITY, function(deltaTime)
-		self:update(deltaTime)
+		self:Update(deltaTime)
 	end)
 	self.janitor:GiveChore(function()
 		RunService:UnbindFromRenderStep(self.renderStepName)
@@ -376,10 +376,10 @@ function SideView.Disable(self: SideView)
 	end
 
 	self.enabled = false
-	self.backendState:setEnabled(false)
+	self.backendState:SetEnabled(false)
 	self.janitor:Clean()
-	self.catchUpPlayerBehavior:reset()
-	self.roomBehavior:reset()
+	self.catchUpPlayerBehavior:Reset()
+	self.roomBehavior:Reset()
 
 	local camera = Workspace.CurrentCamera
 	if camera then
@@ -404,16 +404,16 @@ function SideView.Update(self: SideView, deltaTime: number?)
 
 	camera.CameraType = Enum.CameraType.Scriptable
 
-	local resolution = self:resolveGoal(camera, deltaTime)
+	local resolution = self:GetGoal(camera, deltaTime)
 	if resolution.cameraCFrame == nil then
 		return
 	end
 
 	local currentCFrame = self.cameraMotion:get()
-	local resolvedCameraSpring =
-		self.catchUpPlayerBehavior:resolveSpring(self.cameraSpring, currentCFrame, resolution.cameraCFrame, deltaTime)
+	local GotCameraSpring =
+		self.catchUpPlayerBehavior:GetSpring(self.cameraSpring, currentCFrame, resolution.cameraCFrame, deltaTime)
 
-	self.cameraMotion:spring(resolution.cameraCFrame, resolvedCameraSpring)
+	self.cameraMotion:spring(resolution.cameraCFrame, GotCameraSpring)
 	self.fovMotion:spring(resolution.fieldOfView, self.fovSpring)
 
 	local dt = deltaTime or (1 / 60)
@@ -465,69 +465,47 @@ function SideView.ApplyConfig(self: SideView, config: SideViewConfig)
 		self.fovSpring = config.fovSpring
 	end
 	if (config :: any).room ~= nil then
-		self.roomBehavior:applyConfig((config :: any).room)
+		self.roomBehavior:ApplyConfig((config :: any).room)
 	end
 
 	local catchUpPlayerConfig = (config :: any).catchUpPlayer
 	if catchUpPlayerConfig ~= nil then
-		self.catchUpPlayerBehavior:applyConfig(catchUpPlayerConfig)
+		self.catchUpPlayerBehavior:ApplyConfig(catchUpPlayerConfig)
 	end
 
 	local predictConfig = (config :: any).predict
 	if predictConfig ~= nil then
-		self.backendPredict:applyConfig(predictConfig)
+		self.backendPredict:ApplyConfig(predictConfig)
 	end
 
-	self.catchUpPlayerBehavior:reset()
-	self.roomBehavior:reset()
+	self.catchUpPlayerBehavior:Reset()
+	self.roomBehavior:Reset()
 end
 
 function SideView.Init(self: SideView, target: any?, config: SideViewConfig?, options: SideViewInitOptions?)
-	self:setTarget(target)
+	self:SetTarget(target)
 
 	if config then
-		self:applyConfig(config)
+		self:ApplyConfig(config)
 	end
 
 	local snapToTarget = if options and options.snapToTarget ~= nil then options.snapToTarget else false
 	if snapToTarget then
-		self:snapToTarget()
+		self:SnapToTarget()
 	end
 
-	self:enable()
+	self:Enable()
 	if not snapToTarget then
-		self:update(1 / 60)
+		self:Update(1 / 60)
 	end
 end
 
 function SideView.Destroy(self: SideView)
-	self:disable()
-	self:clearOverrides()
-	self:clearTemporaryTargetOverride()
+	self:Disable()
+	self:ClearOverrides()
+	self:ClearTemporaryTargetOverride()
 	self.cameraMotion:destroy()
 	self.fovMotion:destroy()
 	self.janitor:Destroy()
 end
-
-SideView.new = SideView.New
-SideView.resolveGoal = SideView.ResolveGoal
-SideView.resolveDynamicViewConfig = SideView.ResolveDynamicViewConfig
-SideView.getTargetCFrame = SideView.GetTargetCFrame
-SideView.setTarget = SideView.SetTarget
-SideView.setCharacter = SideView.SetCharacter
-SideView.pushOverride = SideView.PushOverride
-SideView.updateOverride = SideView.UpdateOverride
-SideView.removeOverride = SideView.RemoveOverride
-SideView.clearOverrides = SideView.ClearOverrides
-SideView.setTemporaryTargetOverride = SideView.SetTemporaryTargetOverride
-SideView.clearTemporaryTargetOverride = SideView.ClearTemporaryTargetOverride
-SideView.getBackendState = SideView.GetBackendState
-SideView.snapToTarget = SideView.SnapToTarget
-SideView.enable = SideView.Enable
-SideView.disable = SideView.Disable
-SideView.update = SideView.Update
-SideView.applyConfig = SideView.ApplyConfig
-SideView.init = SideView.Init
-SideView.destroy = SideView.Destroy
-
 return SideView

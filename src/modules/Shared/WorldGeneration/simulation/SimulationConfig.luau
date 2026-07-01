@@ -96,34 +96,34 @@ local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function sanitizeNumber(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+local function CoerceNumber(valueRaw: any, minimum: number, maximum: number, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
 	return math.clamp(valueRaw, minimum, maximum)
 end
 
-local function sanitizeInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+local function CoerceInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
 	return math.clamp(math.floor(valueRaw), minimum, maximum)
 end
 
-local function sanitizeBoolean(valueRaw: any, fallback: boolean): boolean
+local function CoerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function sanitizeBiomeThresholds(source: any, fallback: BiomeThresholdConfig): BiomeThresholdConfig
+local function CoerceBiomeThresholds(source: any, fallback: BiomeThresholdConfig): BiomeThresholdConfig
 	local raw = if typeof(source) == "table" then source else {} :: any
 	return {
-		desertHeat = sanitizeNumber((raw :: any).desertHeat, -1, 1, fallback.desertHeat),
-		snowCold = sanitizeNumber((raw :: any).snowCold, -1, 1, fallback.snowCold),
-		jungleHumidity = sanitizeNumber((raw :: any).jungleHumidity, -1, 1, fallback.jungleHumidity),
-		corruptionNoise = sanitizeNumber((raw :: any).corruptionNoise, -1, 1, fallback.corruptionNoise),
+		desertHeat = CoerceNumber((raw :: any).desertHeat, -1, 1, fallback.desertHeat),
+		snowCold = CoerceNumber((raw :: any).snowCold, -1, 1, fallback.snowCold),
+		jungleHumidity = CoerceNumber((raw :: any).jungleHumidity, -1, 1, fallback.jungleHumidity),
+		corruptionNoise = CoerceNumber((raw :: any).corruptionNoise, -1, 1, fallback.corruptionNoise),
 	}
 end
 
@@ -173,123 +173,123 @@ function Config.CreateDefault(): SimulationConfig
 	}
 end
 
-function Config.Sanitize(configRaw: any, fallbackRaw: SimulationConfig?): SimulationConfig
+function Config.Coerce(configRaw: any, fallbackRaw: SimulationConfig?): SimulationConfig
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else Config.CreateDefault()
 	local source = if typeof(configRaw) == "table" then configRaw else {} :: any
-	local chunkSize = sanitizeInteger((source :: any).chunkSize, 8, 128, fallback.chunkSize)
-	local chunkHeight = sanitizeInteger((source :: any).chunkHeight, 8, 256, fallback.chunkHeight)
-	local chunkDepth = sanitizeInteger((source :: any).chunkDepth, 8, 128, fallback.chunkDepth)
+	local chunkSize = CoerceInteger((source :: any).chunkSize, 8, 128, fallback.chunkSize)
+	local chunkHeight = CoerceInteger((source :: any).chunkHeight, 8, 256, fallback.chunkHeight)
+	local chunkDepth = CoerceInteger((source :: any).chunkDepth, 8, 128, fallback.chunkDepth)
 
 	local result: SimulationConfig = {
-		seed = sanitizeInteger((source :: any).seed, -2147483648, 2147483647, fallback.seed),
-		enableClientReplication = sanitizeBoolean(
+		seed = CoerceInteger((source :: any).seed, -2147483648, 2147483647, fallback.seed),
+		enableClientReplication = CoerceBoolean(
 			(source :: any).enableClientReplication,
 			fallback.enableClientReplication
 		),
-		tileSize = sanitizeNumber((source :: any).tileSize, 0.5, 8, fallback.tileSize),
+		tileSize = CoerceNumber((source :: any).tileSize, 0.5, 8, fallback.tileSize),
 		chunkSize = chunkSize,
 		chunkHeight = chunkHeight,
 		chunkDepth = chunkDepth,
 		clusterSize = 2,
-		nearSurfaceDepth = sanitizeInteger((source :: any).nearSurfaceDepth, 1, 64, fallback.nearSurfaceDepth),
-		biomeTransitionWidth = sanitizeInteger(
+		nearSurfaceDepth = CoerceInteger((source :: any).nearSurfaceDepth, 1, 64, fallback.nearSurfaceDepth),
+		biomeTransitionWidth = CoerceInteger(
 			(source :: any).biomeTransitionWidth,
 			2,
 			64,
 			fallback.biomeTransitionWidth
 		),
-		streamRadiusChunks = sanitizeInteger((source :: any).streamRadiusChunks, 1, 32, fallback.streamRadiusChunks),
-		streamVerticalRadiusChunks = sanitizeInteger(
+		streamRadiusChunks = CoerceInteger((source :: any).streamRadiusChunks, 1, 32, fallback.streamRadiusChunks),
+		streamVerticalRadiusChunks = CoerceInteger(
 			(source :: any).streamVerticalRadiusChunks,
 			1,
 			16,
 			fallback.streamVerticalRadiusChunks
 		),
-		renderRadiusChunks = sanitizeInteger((source :: any).renderRadiusChunks, 1, 32, fallback.renderRadiusChunks),
-		renderVerticalRadiusChunks = sanitizeInteger(
+		renderRadiusChunks = CoerceInteger((source :: any).renderRadiusChunks, 1, 32, fallback.renderRadiusChunks),
+		renderVerticalRadiusChunks = CoerceInteger(
 			(source :: any).renderVerticalRadiusChunks,
 			1,
 			16,
 			fallback.renderVerticalRadiusChunks
 		),
-		unloadPaddingChunks = sanitizeInteger((source :: any).unloadPaddingChunks, 0, 8, fallback.unloadPaddingChunks),
-		maxStreamSendsPerPlayerPerTick = sanitizeInteger(
+		unloadPaddingChunks = CoerceInteger((source :: any).unloadPaddingChunks, 0, 8, fallback.unloadPaddingChunks),
+		maxStreamSendsPerPlayerPerTick = CoerceInteger(
 			(source :: any).maxStreamSendsPerPlayerPerTick,
 			1,
 			64,
 			fallback.maxStreamSendsPerPlayerPerTick
 		),
-		maxRuntimeSecondsPerTick = sanitizeNumber(
+		maxRuntimeSecondsPerTick = CoerceNumber(
 			(source :: any).maxRuntimeSecondsPerTick,
 			0.0005,
 			0.02,
 			fallback.maxRuntimeSecondsPerTick
 		),
-		maxChunksPerRuntimeTick = sanitizeInteger(
+		maxChunksPerRuntimeTick = CoerceInteger(
 			(source :: any).maxChunksPerRuntimeTick,
 			1,
 			256,
 			fallback.maxChunksPerRuntimeTick
 		),
-		runtimeClusterSlice = sanitizeInteger(
+		runtimeClusterSlice = CoerceInteger(
 			(source :: any).runtimeClusterSlice,
 			8,
 			4096,
 			fallback.runtimeClusterSlice
 		),
-		runtimeEntitySlice = sanitizeInteger((source :: any).runtimeEntitySlice, 8, 4096, fallback.runtimeEntitySlice),
-		budgetCorruptionClustersPerTick = sanitizeInteger(
+		runtimeEntitySlice = CoerceInteger((source :: any).runtimeEntitySlice, 8, 4096, fallback.runtimeEntitySlice),
+		budgetCorruptionClustersPerTick = CoerceInteger(
 			(source :: any).budgetCorruptionClustersPerTick,
 			8,
 			200000,
 			fallback.budgetCorruptionClustersPerTick
 		),
-		budgetBiomeSpreadClustersPerTick = sanitizeInteger(
+		budgetBiomeSpreadClustersPerTick = CoerceInteger(
 			(source :: any).budgetBiomeSpreadClustersPerTick,
 			8,
 			200000,
 			fallback.budgetBiomeSpreadClustersPerTick
 		),
-		budgetAiEntitiesPerTick = sanitizeInteger(
+		budgetAiEntitiesPerTick = CoerceInteger(
 			(source :: any).budgetAiEntitiesPerTick,
 			8,
 			200000,
 			fallback.budgetAiEntitiesPerTick
 		),
-		budgetPhysicsEntitiesPerTick = sanitizeInteger(
+		budgetPhysicsEntitiesPerTick = CoerceInteger(
 			(source :: any).budgetPhysicsEntitiesPerTick,
 			8,
 			200000,
 			fallback.budgetPhysicsEntitiesPerTick
 		),
-		entityBatchSize = sanitizeInteger((source :: any).entityBatchSize, 8, 2048, fallback.entityBatchSize),
-		entityCapacityPerChunk = sanitizeInteger(
+		entityBatchSize = CoerceInteger((source :: any).entityBatchSize, 8, 2048, fallback.entityBatchSize),
+		entityCapacityPerChunk = CoerceInteger(
 			(source :: any).entityCapacityPerChunk,
 			16,
 			4096,
 			fallback.entityCapacityPerChunk
 		),
-		corruptionSpreadRate = sanitizeNumber(
+		corruptionSpreadRate = CoerceNumber(
 			(source :: any).corruptionSpreadRate,
 			0,
 			1,
 			fallback.corruptionSpreadRate
 		),
-		corruptionDecayRate = sanitizeNumber((source :: any).corruptionDecayRate, 0, 1, fallback.corruptionDecayRate),
-		corruptionActivationThreshold = sanitizeNumber(
+		corruptionDecayRate = CoerceNumber((source :: any).corruptionDecayRate, 0, 1, fallback.corruptionDecayRate),
+		corruptionActivationThreshold = CoerceNumber(
 			(source :: any).corruptionActivationThreshold,
 			0,
 			1,
 			fallback.corruptionActivationThreshold
 		),
-		lodNearDistance = sanitizeNumber((source :: any).lodNearDistance, 32, 2048, fallback.lodNearDistance),
-		lodFarDistance = sanitizeNumber((source :: any).lodFarDistance, 64, 4096, fallback.lodFarDistance),
-		cacheTablePoolSize = sanitizeInteger((source :: any).cacheTablePoolSize, 8, 8192, fallback.cacheTablePoolSize),
-		cacheArrayPoolSize = sanitizeInteger((source :: any).cacheArrayPoolSize, 8, 8192, fallback.cacheArrayPoolSize),
-		maxPartPoolSize = sanitizeInteger((source :: any).maxPartPoolSize, 128, 50000, fallback.maxPartPoolSize),
-		enableDebug = sanitizeBoolean((source :: any).enableDebug, fallback.enableDebug),
-		enableProfiling = sanitizeBoolean((source :: any).enableProfiling, fallback.enableProfiling),
-		biomeThresholds = sanitizeBiomeThresholds((source :: any).biomeThresholds, fallback.biomeThresholds),
+		lodNearDistance = CoerceNumber((source :: any).lodNearDistance, 32, 2048, fallback.lodNearDistance),
+		lodFarDistance = CoerceNumber((source :: any).lodFarDistance, 64, 4096, fallback.lodFarDistance),
+		cacheTablePoolSize = CoerceInteger((source :: any).cacheTablePoolSize, 8, 8192, fallback.cacheTablePoolSize),
+		cacheArrayPoolSize = CoerceInteger((source :: any).cacheArrayPoolSize, 8, 8192, fallback.cacheArrayPoolSize),
+		maxPartPoolSize = CoerceInteger((source :: any).maxPartPoolSize, 128, 50000, fallback.maxPartPoolSize),
+		enableDebug = CoerceBoolean((source :: any).enableDebug, fallback.enableDebug),
+		enableProfiling = CoerceBoolean((source :: any).enableProfiling, fallback.enableProfiling),
+		biomeThresholds = CoerceBiomeThresholds((source :: any).biomeThresholds, fallback.biomeThresholds),
 	}
 
 	if result.lodFarDistance < result.lodNearDistance then
@@ -304,8 +304,5 @@ function Config.Sanitize(configRaw: any, fallbackRaw: SimulationConfig?): Simula
 
 	return result
 end
-
-Config.createDefault = Config.CreateDefault
-Config.sanitize = Config.Sanitize
 
 return Config

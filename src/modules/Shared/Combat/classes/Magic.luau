@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ItemRegistry = require("ItemRegistry")
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
-local ResolveToolInstance = require("ResolveToolInstance")
+local GetToolInstance = require("GetToolInstance")
 local Signal = require("Signal")
 
 local Magic = {}
@@ -27,7 +27,7 @@ export type MagicWeaponConfig = {
 }
 
 export type MagicServiceAdapter = {
-	canConsumeMana: ((
+	CanConsumeMana: ((
 		self: MagicServiceAdapter,
 		player: Player?,
 		amount: number,
@@ -35,10 +35,10 @@ export type MagicServiceAdapter = {
 	) -> boolean?)?,
 	hasMana: ((self: MagicServiceAdapter, player: Player?, amount: number, context: { [string]: any }) -> boolean?)?,
 	getMana: ((self: MagicServiceAdapter, player: Player?, context: { [string]: any }) -> number?)?,
-	consumeMana: ((self: MagicServiceAdapter, player: Player?, amount: number, context: { [string]: any }) -> boolean?)?,
+	ConsumeMana: ((self: MagicServiceAdapter, player: Player?, amount: number, context: { [string]: any }) -> boolean?)?,
 	spendMana: ((self: MagicServiceAdapter, player: Player?, amount: number, context: { [string]: any }) -> boolean?)?,
-	onMagicCastRequested: ((self: MagicServiceAdapter, magic: any, context: { [string]: any }) -> boolean?)?,
-	onMagicCastCommitted: ((self: MagicServiceAdapter, magic: any, context: { [string]: any }) -> ())?,
+	OnMagicCastRequested: ((self: MagicServiceAdapter, magic: any, context: { [string]: any }) -> boolean?)?,
+	OnMagicCastCommitted: ((self: MagicServiceAdapter, magic: any, context: { [string]: any }) -> ())?,
 }
 
 export type MagicCallbacks = {
@@ -99,8 +99,8 @@ export type Magic = typeof(setmetatable(
 		expectedItemType: string,
 		expectedItemTypeToken: string,
 		weaponConfig: MagicWeaponConfig?,
-		resolvedItemId: string?,
-		resolvedItemType: string?,
+		equippedItemId: string?,
+		equippedItemType: string?,
 		queued: boolean,
 		casting: boolean,
 		cooldownUntil: number,
@@ -143,7 +143,7 @@ local function trim(valueRaw: any): string
 	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function sanitizeItemId(itemIdRaw: any): string?
+local function CoerceItemId(itemIdRaw: any): string?
 	local itemId = trim(itemIdRaw)
 	if itemId == "" then
 		return nil
@@ -151,7 +151,7 @@ local function sanitizeItemId(itemIdRaw: any): string?
 	return itemId
 end
 
-local function sanitizeString(valueRaw: any, fallback: string): string
+local function CoerceString(valueRaw: any, fallback: string): string
 	local value = trim(valueRaw)
 	if value == "" then
 		return fallback
@@ -159,14 +159,14 @@ local function sanitizeString(valueRaw: any, fallback: string): string
 	return value
 end
 
-local function sanitizeBoolean(valueRaw: any, fallback: boolean): boolean
+local function CoerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -245,22 +245,22 @@ local function areWeaponConfigsEquivalent(lhsRaw: any, rhsRaw: any): boolean
 		and lhs.allowQueueOnCooldown == rhs.allowQueueOnCooldown
 end
 
-local function resolveItemIdLookup(): { [string]: string }
+local function GetItemIdLookup(): { [string]: string }
 	if cachedItemIdLookup ~= nil then
 		return cachedItemIdLookup
 	end
 
-	cachedItemIdLookup = ItemRegistry.getItemIdLookup()
+	cachedItemIdLookup = ItemRegistry.GetItemIdLookup()
 	return cachedItemIdLookup :: { [string]: string }
 end
 
-local function resolveCanonicalItemId(itemIdRaw: any): string?
-	local itemId = sanitizeItemId(itemIdRaw)
+local function GetCanonicalItemId(itemIdRaw: any): string?
+	local itemId = CoerceItemId(itemIdRaw)
 	if itemId == nil then
 		return nil
 	end
 
-	local lookup = resolveItemIdLookup()
+	local lookup = GetItemIdLookup()
 	local canonical = lookup[itemId]
 	if canonical == nil then
 		canonical = lookup[string.lower(itemId)]
@@ -273,12 +273,12 @@ local function resolveCanonicalItemId(itemIdRaw: any): string?
 end
 
 local function getItemDefinition(itemIdRaw: any): { [string]: any }?
-	local rawItemId = sanitizeItemId(itemIdRaw)
+	local rawItemId = CoerceItemId(itemIdRaw)
 	if rawItemId == nil then
 		return nil
 	end
 
-	local itemId = resolveCanonicalItemId(rawItemId)
+	local itemId = GetCanonicalItemId(rawItemId)
 	if itemId == nil then
 		return nil
 	end
@@ -288,7 +288,7 @@ local function getItemDefinition(itemIdRaw: any): { [string]: any }?
 		return if cached == false then nil else cached
 	end
 
-	local definition = ItemRegistry.resolveDefinition(itemId)
+	local definition = ItemRegistry.GetDefinition(itemId)
 	if definition == nil then
 		cachedDefinitions[itemId] = false
 		cachedDefinitions[rawItemId] = false
@@ -300,12 +300,12 @@ local function getItemDefinition(itemIdRaw: any): { [string]: any }?
 	return definition
 end
 
-function Magic.ResolveToolItemId(toolRaw: any): string?
-	return ResolveToolInstance.resolveToolItemId(toolRaw)
+function Magic.GetToolItemId(toolRaw: any): string?
+	return GetToolInstance.GetToolItemId(toolRaw)
 end
 
-function Magic.ResolveToolItemType(toolRaw: any): string?
-	local normalized = normalizeTypeToken(ResolveToolInstance.resolveToolItemType(toolRaw))
+function Magic.GetToolItemType(toolRaw: any): string?
+	local normalized = normalizeTypeToken(GetToolInstance.GetToolItemType(toolRaw))
 	if normalized == "" then
 		return nil
 	end
@@ -314,7 +314,7 @@ function Magic.ResolveToolItemType(toolRaw: any): string?
 end
 
 function Magic.IsMagicTool(toolRaw: any, expectedTypeRaw: any): boolean
-	local itemType = Magic.ResolveToolItemType(toolRaw)
+	local itemType = Magic.GetToolItemType(toolRaw)
 	if itemType == nil then
 		return false
 	end
@@ -337,27 +337,27 @@ local function normalizeProjectile(definition: { [string]: any }, magicData: { [
 
 	local projectile = projectileRaw :: { [string]: any }
 	return {
-		enabled = sanitizeBoolean(projectile.enabled, true),
-		speed = sanitizeNumber(projectile.speed, 120, 1, 5000),
-		spread = sanitizeNumber(projectile.spread, 0, 0, 90),
-		count = math.max(1, math.floor(sanitizeNumber(projectile.count, 1, 1, 50))),
-		lifetime = sanitizeNumber(projectile.lifetime, 2, 0.05, 60),
-		pierce = math.max(0, math.floor(sanitizeNumber(projectile.pierce, 0, 0, 100))),
+		enabled = CoerceBoolean(projectile.enabled, true),
+		speed = CoerceNumber(projectile.speed, 120, 1, 5000),
+		spread = CoerceNumber(projectile.spread, 0, 0, 90),
+		count = math.max(1, math.floor(CoerceNumber(projectile.count, 1, 1, 50))),
+		lifetime = CoerceNumber(projectile.lifetime, 2, 0.05, 60),
+		pierce = math.max(0, math.floor(CoerceNumber(projectile.pierce, 0, 0, 100))),
 	}
 end
 
-local function resolveWeaponConfig(
+local function GetWeaponConfig(
 	itemIdRaw: any,
 	expectedTypeToken: string,
 	expectedTypeLabel: string,
 	validateDefinitionType: boolean
 ): MagicWeaponConfig?
-	local rawItemId = sanitizeItemId(itemIdRaw)
+	local rawItemId = CoerceItemId(itemIdRaw)
 	if rawItemId == nil then
 		return nil
 	end
 
-	local canonicalItemId = resolveCanonicalItemId(rawItemId)
+	local canonicalItemId = GetCanonicalItemId(rawItemId)
 	if canonicalItemId == nil then
 		cachedWeaponConfigs[rawItemId] = false
 		return nil
@@ -407,25 +407,25 @@ local function resolveWeaponConfig(
 	local weaponConfig: MagicWeaponConfig = {
 		itemId = canonicalItemId,
 		itemType = expectedTypeLabel,
-		displayName = sanitizeString(definition.name, canonicalItemId),
-		description = sanitizeString(definition.description, ""),
-		damage = sanitizeNumber(
+		displayName = CoerceString(definition.name, canonicalItemId),
+		description = CoerceString(definition.description, ""),
+		damage = CoerceNumber(
 			magicData.damage or stats.magicDamage or stats.dmg or definition.damage,
 			DEFAULT_DAMAGE,
 			0,
 			500000
 		),
-		manaCost = sanitizeNumber(
+		manaCost = CoerceNumber(
 			magicData.manaCost or magicData.mana or stats.manaCost or stats.mana,
 			DEFAULT_MANA_COST,
 			0,
 			100000
 		),
-		cooldown = sanitizeNumber(magicData.cooldown or definition.cooldown, cooldownFromAttackSpeed, 0, 120),
-		castTime = sanitizeNumber(magicData.castTime or definition.castTime, DEFAULT_CAST_TIME, 0, 60),
-		range = sanitizeNumber(magicData.range or definition.range, DEFAULT_RANGE, 0.1, 5000),
-		autoRepeatWhileHeld = sanitizeBoolean(magicData.autoRepeatWhileHeld, DEFAULT_AUTO_REPEAT),
-		allowQueueOnCooldown = sanitizeBoolean(magicData.allowQueueOnCooldown, DEFAULT_ALLOW_QUEUE_ON_COOLDOWN),
+		cooldown = CoerceNumber(magicData.cooldown or definition.cooldown, cooldownFromAttackSpeed, 0, 120),
+		castTime = CoerceNumber(magicData.castTime or definition.castTime, DEFAULT_CAST_TIME, 0, 60),
+		range = CoerceNumber(magicData.range or definition.range, DEFAULT_RANGE, 0.1, 5000),
+		autoRepeatWhileHeld = CoerceBoolean(magicData.autoRepeatWhileHeld, DEFAULT_AUTO_REPEAT),
+		allowQueueOnCooldown = CoerceBoolean(magicData.allowQueueOnCooldown, DEFAULT_ALLOW_QUEUE_ON_COOLDOWN),
 		projectile = normalizeProjectile(definition, magicData),
 		animations = if typeof(magicData.animations) == "table"
 			then magicData.animations
@@ -438,16 +438,16 @@ local function resolveWeaponConfig(
 	return cloneWeaponConfig(weaponConfig)
 end
 
-function Magic.ResolveWeaponConfig(itemIdRaw: any, expectedItemTypeRaw: any): MagicWeaponConfig?
+function Magic.GetWeaponConfig(itemIdRaw: any, expectedItemTypeRaw: any): MagicWeaponConfig?
 	local expectedTypeLabel = normalizeTypeLabel(expectedItemTypeRaw, DEFAULT_EXPECTED_ITEM_TYPE)
 	local expectedTypeToken = normalizeTypeToken(expectedTypeLabel)
 	if expectedTypeToken == "" then
 		return nil
 	end
-	return resolveWeaponConfig(itemIdRaw, expectedTypeToken, expectedTypeLabel, false)
+	return GetWeaponConfig(itemIdRaw, expectedTypeToken, expectedTypeLabel, false)
 end
 
-function Magic.ResolveWeaponConfigFromTool(toolRaw: any, expectedItemTypeRaw: any): MagicWeaponConfig?
+function Magic.GetWeaponConfigFromTool(toolRaw: any, expectedItemTypeRaw: any): MagicWeaponConfig?
 	if typeof(toolRaw) ~= "Instance" or not toolRaw:IsA("Tool") then
 		return nil
 	end
@@ -458,17 +458,17 @@ function Magic.ResolveWeaponConfigFromTool(toolRaw: any, expectedItemTypeRaw: an
 		return nil
 	end
 
-	local itemTypeToken = Magic.ResolveToolItemType(toolRaw)
+	local itemTypeToken = Magic.GetToolItemType(toolRaw)
 	if itemTypeToken == nil or itemTypeToken ~= expectedTypeToken then
 		return nil
 	end
 
-	local itemId = Magic.ResolveToolItemId(toolRaw)
+	local itemId = Magic.GetToolItemId(toolRaw)
 	if itemId == nil then
 		return nil
 	end
 
-	return resolveWeaponConfig(itemId, expectedTypeToken, expectedTypeLabel, true)
+	return GetWeaponConfig(itemId, expectedTypeToken, expectedTypeLabel, true)
 end
 
 local function getServiceMethod(service: MagicServiceAdapter, methodName: string): ((...any) -> any)?
@@ -518,9 +518,9 @@ function Magic.New(configRaw: MagicConfig?): Magic
 			else nil,
 		enabled = true,
 		inputHeld = false,
-		autoRepeatWhileHeld = sanitizeBoolean(config.autoRepeatWhileHeld, DEFAULT_AUTO_REPEAT),
-		allowQueueOnCooldown = sanitizeBoolean(config.allowQueueOnCooldown, DEFAULT_ALLOW_QUEUE_ON_COOLDOWN),
-		validateDefinitionItemType = sanitizeBoolean(
+		autoRepeatWhileHeld = CoerceBoolean(config.autoRepeatWhileHeld, DEFAULT_AUTO_REPEAT),
+		allowQueueOnCooldown = CoerceBoolean(config.allowQueueOnCooldown, DEFAULT_ALLOW_QUEUE_ON_COOLDOWN),
+		validateDefinitionItemType = CoerceBoolean(
 			config.validateDefinitionItemType,
 			DEFAULT_VALIDATE_DEFINITION_ITEM_TYPE
 		),
@@ -529,8 +529,8 @@ function Magic.New(configRaw: MagicConfig?): Magic
 			then normalizeTypeToken(DEFAULT_EXPECTED_ITEM_TYPE)
 			else expectedTypeToken,
 		weaponConfig = nil,
-		resolvedItemId = nil,
-		resolvedItemType = nil,
+		equippedItemId = nil,
+		equippedItemType = nil,
 		queued = false,
 		casting = false,
 		cooldownUntil = 0,
@@ -549,7 +549,7 @@ function Magic.New(configRaw: MagicConfig?): Magic
 	end)
 
 	if config.tool ~= nil then
-		self:bindTool(config.tool)
+		self:BindTool(config.tool)
 	end
 
 	return self
@@ -593,7 +593,7 @@ function Magic._serviceAllowsCast(self: Magic, context: { [string]: any }): bool
 		return true
 	end
 
-	local onRequested = getServiceMethod(self.service, "onMagicCastRequested")
+	local onRequested = getServiceMethod(self.service, "OnMagicCastRequested")
 	if onRequested == nil then
 		return true
 	end
@@ -610,7 +610,7 @@ function Magic._serviceCanConsumeMana(self: Magic, amount: number, context: { [s
 		return true
 	end
 
-	local canConsume = self:_callServiceBoolean("canConsumeMana", amount, context)
+	local canConsume = self:_callServiceBoolean("CanConsumeMana", amount, context)
 	if canConsume ~= nil then
 		return canConsume
 	end
@@ -640,7 +640,7 @@ function Magic._serviceConsumeMana(self: Magic, amount: number, context: { [stri
 		return true
 	end
 
-	local consumed = self:_callServiceBoolean("consumeMana", amount, context)
+	local consumed = self:_callServiceBoolean("ConsumeMana", amount, context)
 	if consumed ~= nil then
 		return consumed
 	end
@@ -658,7 +658,7 @@ function Magic._notifyServiceCommitted(self: Magic, context: { [string]: any })
 		return
 	end
 
-	local onCommitted = getServiceMethod(self.service, "onMagicCastCommitted")
+	local onCommitted = getServiceMethod(self.service, "OnMagicCastCommitted")
 	if onCommitted == nil then
 		return
 	end
@@ -671,8 +671,8 @@ function Magic._emitFailed(self: Magic, reason: string, contextExtra: { [string]
 	local context = mergeContext({
 		now = os.clock(),
 		reason = reason,
-		itemId = self.resolvedItemId,
-		itemType = self.resolvedItemType,
+		itemId = self.equippedItemId,
+		itemType = self.equippedItemType,
 		weaponConfig = self.weaponConfig,
 	}, contextExtra)
 	self.signals.castFailed:Fire(context)
@@ -684,8 +684,8 @@ function Magic._emitFinished(self: Magic, success: boolean, reason: string, cont
 		now = os.clock(),
 		success = success,
 		reason = reason,
-		itemId = self.resolvedItemId,
-		itemType = self.resolvedItemType,
+		itemId = self.equippedItemId,
+		itemType = self.equippedItemType,
 		weaponConfig = self.weaponConfig,
 	}, contextExtra)
 	self.signals.castFinished:Fire(context)
@@ -764,7 +764,7 @@ function Magic._commitCast(self: Magic, token: number, baseContext: { [string]: 
 	self:_emitFinished(true, "CastCommitted", context)
 
 	if self.autoRepeatWhileHeld and self.inputHeld then
-		self:queueCast("HoldRepeat")
+		self:QueueCast("HoldRepeat")
 	elseif self.queued then
 		self:_processQueue("Pending")
 	end
@@ -781,7 +781,7 @@ function Magic._startCast(self: Magic, triggerRaw: any)
 		return
 	end
 
-	local config = self:refreshWeaponConfig()
+	local config = self:RefreshWeaponConfig()
 	if config == nil then
 		self:_emitFailed(if self.lastError ~= nil then self.lastError else "WeaponConfigNotFound", {
 			trigger = triggerRaw,
@@ -792,7 +792,7 @@ function Magic._startCast(self: Magic, triggerRaw: any)
 
 	local context = {
 		now = os.clock(),
-		trigger = sanitizeString(triggerRaw, "Cast"),
+		trigger = CoerceString(triggerRaw, "Cast"),
 		itemId = config.itemId,
 		itemType = config.itemType,
 		weaponConfig = config,
@@ -841,9 +841,9 @@ function Magic.QueueCast(self: Magic, triggerRaw: any): boolean
 	self.queued = true
 	local context = {
 		now = os.clock(),
-		trigger = sanitizeString(triggerRaw, "Queue"),
-		itemId = self.resolvedItemId,
-		itemType = self.resolvedItemType,
+		trigger = CoerceString(triggerRaw, "Queue"),
+		itemId = self.equippedItemId,
+		itemType = self.equippedItemType,
 		weaponConfig = self.weaponConfig,
 		tool = self.boundTool,
 	}
@@ -855,11 +855,11 @@ function Magic.QueueCast(self: Magic, triggerRaw: any): boolean
 end
 
 function Magic.Cast(self: Magic, triggerRaw: any): boolean
-	return self:queueCast(triggerRaw or "Cast")
+	return self:QueueCast(triggerRaw or "Cast")
 end
 
 function Magic.Tap(self: Magic, triggerRaw: any): boolean
-	return self:queueCast(triggerRaw or "Tap")
+	return self:QueueCast(triggerRaw or "Tap")
 end
 
 function Magic.InputBegan(self: Magic, triggerRaw: any): boolean
@@ -869,7 +869,7 @@ function Magic.InputBegan(self: Magic, triggerRaw: any): boolean
 		self.signals.inputHeldChanged:Fire(self.inputHeld)
 		self:_invokeCallback("onInputHeldChanged", self.inputHeld)
 	end
-	return self:queueCast(triggerRaw or "InputBegan")
+	return self:QueueCast(triggerRaw or "InputBegan")
 end
 
 function Magic.InputEnded(self: Magic, _: any): boolean
@@ -883,7 +883,7 @@ function Magic.InputEnded(self: Magic, _: any): boolean
 end
 
 function Magic.SetEnabled(self: Magic, enabledRaw: any)
-	local enabled = sanitizeBoolean(enabledRaw, self.enabled)
+	local enabled = CoerceBoolean(enabledRaw, self.enabled)
 	if enabled == self.enabled then
 		return
 	end
@@ -892,7 +892,7 @@ function Magic.SetEnabled(self: Magic, enabledRaw: any)
 	self.signals.enabledChanged:Fire(self.enabled)
 	self:_invokeCallback("onEnabledChanged", self.enabled)
 	if not enabled then
-		self:cancel("Disabled")
+		self:Cancel("Disabled")
 	elseif self.queued then
 		self:_processQueue("Enabled")
 	end
@@ -919,69 +919,69 @@ function Magic.SetExpectedItemType(self: Magic, itemTypeRaw: any)
 
 	self.expectedItemType = label
 	self.expectedItemTypeToken = token
-	self:refreshWeaponConfig()
+	self:RefreshWeaponConfig()
 end
 
 function Magic.RefreshWeaponConfig(self: Magic): MagicWeaponConfig?
 	local tool = self.boundTool
 	if tool == nil then
 		self.weaponConfig = nil
-		self.resolvedItemId = nil
-		self.resolvedItemType = nil
+		self.equippedItemId = nil
+		self.equippedItemType = nil
 		self.lastError = "NoBoundTool"
 		return nil
 	end
 
-	local toolItemType = Magic.ResolveToolItemType(tool)
+	local toolItemType = Magic.GetToolItemType(tool)
 	if toolItemType == nil then
 		self.weaponConfig = nil
-		self.resolvedItemId = nil
-		self.resolvedItemType = nil
+		self.equippedItemId = nil
+		self.equippedItemType = nil
 		self.lastError = "MissingItemTypeAttribute"
 		return nil
 	end
 	if toolItemType ~= self.expectedItemTypeToken then
 		self.weaponConfig = nil
-		self.resolvedItemId = nil
-		self.resolvedItemType = toolItemType
+		self.equippedItemId = nil
+		self.equippedItemType = toolItemType
 		self.lastError = "InvalidItemType"
 		return nil
 	end
 
-	local itemId = Magic.ResolveToolItemId(tool)
+	local itemId = Magic.GetToolItemId(tool)
 	if itemId == nil then
 		self.weaponConfig = nil
-		self.resolvedItemId = nil
-		self.resolvedItemType = toolItemType
+		self.equippedItemId = nil
+		self.equippedItemType = toolItemType
 		self.lastError = "MissingItemIdAttribute"
 		return nil
 	end
 
 	local weaponConfig =
-		resolveWeaponConfig(itemId, self.expectedItemTypeToken, self.expectedItemType, self.validateDefinitionItemType)
+		GetWeaponConfig(itemId, self.expectedItemTypeToken, self.expectedItemType, self.validateDefinitionItemType)
 	if weaponConfig == nil then
 		self.weaponConfig = nil
-		self.resolvedItemId = itemId
-		self.resolvedItemType = toolItemType
+		self.equippedItemId = itemId
+		self.equippedItemType = toolItemType
 		self.lastError = "NoMagicWeaponDefinition"
 		return nil
 	end
 
-	local previousItemId = self.resolvedItemId
+	local previousItemId = self.equippedItemId
 	local previousWeaponConfig = self.weaponConfig
 
 	self.weaponConfig = weaponConfig
-	self.resolvedItemId = weaponConfig.itemId
-	self.resolvedItemType = toolItemType
+	self.equippedItemId = weaponConfig.itemId
+	self.equippedItemType = toolItemType
 	self.lastError = nil
 	self.autoRepeatWhileHeld = weaponConfig.autoRepeatWhileHeld
 	self.allowQueueOnCooldown = weaponConfig.allowQueueOnCooldown
 
-	if previousItemId ~= self.resolvedItemId or not areWeaponConfigsEquivalent(previousWeaponConfig, weaponConfig) then
+	if previousItemId ~= self.equippedItemId or not areWeaponConfigsEquivalent(previousWeaponConfig, weaponConfig) then
 		local context = {
 			now = os.clock(),
-			itemId = self.resolvedItemId,
-			itemType = self.resolvedItemType,
+			itemId = self.equippedItemId,
+			itemType = self.equippedItemType,
 			weaponConfig = self.weaponConfig,
 			tool = tool,
 		}
@@ -1001,42 +1001,42 @@ function Magic.BindTool(self: Magic, toolRaw: any): boolean
 	self.toolJanitor:Clean()
 	self.boundTool = tool
 	if tool.Parent ~= nil and tool.Parent:IsA("Model") then
-		self:setCharacter(tool.Parent)
+		self:SetCharacter(tool.Parent)
 	end
 
 	for _, attributeName in { "itemType", "ItemType", "itemtype", "type", "itemId", "ItemId", "ittemId", "id" } do
 		self.toolJanitor:GiveChore(tool:GetAttributeChangedSignal(attributeName):Connect(function()
-			self:refreshWeaponConfig()
+			self:RefreshWeaponConfig()
 		end))
 	end
 
 	self.toolJanitor:GiveChore(tool.Equipped:Connect(function()
 		if tool.Parent ~= nil and tool.Parent:IsA("Model") then
-			self:setCharacter(tool.Parent)
+			self:SetCharacter(tool.Parent)
 		end
-		self:refreshWeaponConfig()
+		self:RefreshWeaponConfig()
 	end))
 
 	self.toolJanitor:GiveChore(tool.Activated:Connect(function()
-		self:inputBegan("ToolActivated")
+		self:InputBegan("ToolActivated")
 	end))
 
 	self.toolJanitor:GiveChore(tool.Deactivated:Connect(function()
-		self:inputEnded("ToolDeactivated")
+		self:InputEnded("ToolDeactivated")
 	end))
 
 	self.toolJanitor:GiveChore(tool.Unequipped:Connect(function()
-		self:inputEnded("ToolUnequipped")
-		self:cancel("ToolUnequipped")
+		self:InputEnded("ToolUnequipped")
+		self:Cancel("ToolUnequipped")
 	end))
 
 	self.toolJanitor:GiveChore(tool.Destroying:Connect(function()
 		if self.boundTool == tool then
-			self:unbindTool()
+			self:UnbindTool()
 		end
 	end))
 
-	self:refreshWeaponConfig()
+	self:RefreshWeaponConfig()
 	return true
 end
 
@@ -1044,23 +1044,23 @@ function Magic.UnbindTool(self: Magic)
 	self.toolJanitor:Clean()
 	self.boundTool = nil
 	self.weaponConfig = nil
-	self.resolvedItemId = nil
-	self.resolvedItemType = nil
+	self.equippedItemId = nil
+	self.equippedItemType = nil
 	self.lastError = nil
 	self.queued = false
 	self.retryToken += 1
 end
 
-function Magic.ResolveBoundWeaponConfig(self: Magic): MagicWeaponConfig?
-	return self:refreshWeaponConfig()
+function Magic.GetBoundWeaponConfig(self: Magic): MagicWeaponConfig?
+	return self:RefreshWeaponConfig()
 end
 
 function Magic.GetBoundItemId(self: Magic): string?
-	return self.resolvedItemId
+	return self.equippedItemId
 end
 
 function Magic.GetBoundItemType(self: Magic): string?
-	return self.resolvedItemType
+	return self.equippedItemType
 end
 
 function Magic.GetLastError(self: Magic): string?
@@ -1095,7 +1095,7 @@ function Magic.Cancel(self: Magic, reasonRaw: any)
 	end
 
 	if wasCasting then
-		self:_emitFinished(false, sanitizeString(reasonRaw, "Cancelled"))
+		self:_emitFinished(false, CoerceString(reasonRaw, "Cancelled"))
 	end
 end
 
@@ -1104,36 +1104,9 @@ function Magic.Destroy(self: Magic)
 		return
 	end
 	self.destroyed = true
-	self:cancel("Destroyed")
-	self:unbindTool()
+	self:Cancel("Destroyed")
+	self:UnbindTool()
 	self.janitor:Destroy()
 end
-
-Magic.resolveToolItemId = Magic.ResolveToolItemId
-Magic.resolveToolItemType = Magic.ResolveToolItemType
-Magic.isMagicTool = Magic.IsMagicTool
-Magic.resolveWeaponConfig = Magic.ResolveWeaponConfig
-Magic.resolveWeaponConfigFromTool = Magic.ResolveWeaponConfigFromTool
-Magic.new = Magic.New
-Magic.queueCast = Magic.QueueCast
-Magic.cast = Magic.Cast
-Magic.tap = Magic.Tap
-Magic.inputBegan = Magic.InputBegan
-Magic.inputEnded = Magic.InputEnded
-Magic.setEnabled = Magic.SetEnabled
-Magic.setService = Magic.SetService
-Magic.setOwnerPlayer = Magic.SetOwnerPlayer
-Magic.setCharacter = Magic.SetCharacter
-Magic.setExpectedItemType = Magic.SetExpectedItemType
-Magic.refreshWeaponConfig = Magic.RefreshWeaponConfig
-Magic.bindTool = Magic.BindTool
-Magic.unbindTool = Magic.UnbindTool
-Magic.resolveBoundWeaponConfig = Magic.ResolveBoundWeaponConfig
-Magic.getBoundItemId = Magic.GetBoundItemId
-Magic.getBoundItemType = Magic.GetBoundItemType
-Magic.getLastError = Magic.GetLastError
-Magic.on = Magic.On
-Magic.cancel = Magic.Cancel
-Magic.destroy = Magic.Destroy
 
 return Magic

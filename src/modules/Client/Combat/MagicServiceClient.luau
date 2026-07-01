@@ -12,7 +12,7 @@ local InventoryServiceUtils = require("InventoryServiceUtils")
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local MagicServiceUtils = require("MagicServiceUtils")
 local PacketPayload = require("PacketPayload")
-local MagicServicePackets = require("NetSharedPackets").MagicService
+local MagicServicePackets = require("NetPacketsShared").MagicService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = MagicServicePackets[methodName]
@@ -21,7 +21,7 @@ local function sendPacket(methodName: string, ...: any)
 		return
 	end
 
-	packet.send(PacketPayload.pack(...))
+	packet.send(PacketPayload.Pack(...))
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -31,13 +31,14 @@ local function bindPacket(self: any, methodName: string)
 		return
 	end
 
+	local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
 	packet.listen(function(payload: any)
-		local handler = self[methodName]
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, table.unpack(arguments, 1, count))
 	end)
 end
@@ -103,16 +104,16 @@ local function trim(raw: any): string
 	return string.match(raw, "^%s*(.-)%s*$") or ""
 end
 
-local function resolveGamepadAimVector(gamepadNavRaw: any): Vector2?
-	if gamepadNavRaw == nil or typeof((gamepadNavRaw :: any).getThumbstickState) ~= "function" then
+local function GetGamepadAimVector(gamepadNavRaw: any): Vector2?
+	if gamepadNavRaw == nil or typeof((gamepadNavRaw :: any).GetThumbstickState) ~= "function" then
 		return nil
 	end
-	local snapshot = (gamepadNavRaw :: any):getThumbstickState()
+	local snapshot = (gamepadNavRaw :: any):GetThumbstickState()
 	if typeof(snapshot) ~= "table" then
 		return nil
 	end
 
-	local screenVector = GamepadPointer.resolveOwnedVector(snapshot)
+	local screenVector = GamepadPointer.GetOwnedVector(snapshot)
 	if typeof(screenVector) ~= "Vector2" or screenVector.Magnitude <= GAMEPAD_AIM_DEADZONE then
 		return nil
 	end
@@ -131,7 +132,7 @@ local function createDefaultReplicatedState(): ReplicatedState
 	}
 end
 
-local function resolveCharacterRootPart(characterRaw: any): BasePart?
+local function GetCharacterRootPart(characterRaw: any): BasePart?
 	if typeof(characterRaw) ~= "Instance" or not characterRaw:IsA("Model") then
 		return nil
 	end
@@ -143,7 +144,7 @@ local function resolveCharacterRootPart(characterRaw: any): BasePart?
 	return nil
 end
 
-local function resolveMouseHitPosition(localPlayer: Player): Vector3?
+local function GetMouseHitPosition(localPlayer: Player): Vector3?
 	local ok, hitOrError = pcall(function()
 		local mouse = localPlayer:GetMouse()
 		return mouse.Hit
@@ -190,7 +191,7 @@ function MagicServiceClient.AcquireVisualEntry(self: MagicServiceClient, weaponI
 	end
 
 	local entry: VisualPoolEntry = {
-		part = self:createVisualPart(poolKey),
+		part = self:CreateVisualPart(poolKey),
 		active = true,
 		weaponId = poolKey,
 	}
@@ -214,51 +215,51 @@ function MagicServiceClient.ReleaseVisual(self: MagicServiceClient, castIdRaw: a
 end
 
 function MagicServiceClient.GetInventoryState(_self: MagicServiceClient): InventoryState
-	if InventoryServiceClient.getState ~= nil then
-		return InventoryServiceClient:getState()
+	if InventoryServiceClient.GetState ~= nil then
+		return InventoryServiceClient:GetState()
 	end
-	return InventoryServiceUtils.sanitizeState(
+	return InventoryServiceUtils.CoerceState(
 		InventoryServiceClient.state,
-		InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
+		InventoryServiceUtils.CreateDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
 	)
 end
 
-function MagicServiceClient.ResolveEquippedMagicTool(self: MagicServiceClient): (string?, Tool?)
-	local inventoryState = self:getInventoryState()
-	local itemId = MagicServiceUtils.resolveSelectedItemIdFromInventoryState(inventoryState)
+function MagicServiceClient.GetEquippedMagicTool(self: MagicServiceClient): (string?, Tool?)
+	local inventoryState = self:GetInventoryState()
+	local itemId = MagicServiceUtils.GetSelectedItemIdFromInventoryState(inventoryState)
 	if itemId == nil then
 		return nil, nil
 	end
 	local backpack = self.localPlayer:FindFirstChildOfClass("Backpack")
-	local tool = MagicServiceUtils.resolveToolByItemId(self.character, backpack, itemId)
-	if tool == nil or not MagicServiceUtils.isMagicTool(tool) then
+	local tool = MagicServiceUtils.GetToolByItemId(self.character, backpack, itemId)
+	if tool == nil or not MagicServiceUtils.IsMagicTool(tool) then
 		return itemId, nil
 	end
 	return itemId, tool
 end
 
 function MagicServiceClient.RefreshEquipped(self: MagicServiceClient)
-	local itemId, tool = self:resolveEquippedMagicTool()
+	local itemId, tool = self:GetEquippedMagicTool()
 	self.equippedItemId = itemId
 	self.equippedTool = tool
 	if self.equippedTool == nil and self.inputHeld then
-		self:setInputHeld(false, "Unequipped")
+		self:SetInputHeld(false, "Unequipped")
 	end
 	sendPacket(MagicServiceUtils.NETWORK_METHOD_REQUEST_REFRESH_EQUIPPED)
 end
 
 function MagicServiceClient.BuildCastRequest(self: MagicServiceClient, triggerRaw: any): MagicServiceUtils.CastRequest
 	local trigger = trim(triggerRaw)
-	local rootPart = resolveCharacterRootPart(self.character)
+	local rootPart = GetCharacterRootPart(self.character)
 	local origin = if rootPart ~= nil then rootPart.Position + Vector3.new(0, 1.35, 0) else Vector3.zero
 	local fallbackDirection = if rootPart ~= nil then rootPart.CFrame.LookVector else Vector3.new(0, 0, -1)
 	local mousePosition = nil :: Vector3?
 	local aimDirection = nil :: Vector3?
 
-	if PlatformServiceClient:isGamepad() then
-		local gamepadAim = resolveGamepadAimVector(self.gamepadNav)
+	if PlatformServiceClient:IsGamepad() then
+		local gamepadAim = GetGamepadAimVector(self.gamepadNav)
 		if gamepadAim ~= nil then
-			local candidate = GamepadPointer.resolveWorldOffsetForScreenVector(
+			local candidate = GamepadPointer.GetWorldOffsetForScreenVector(
 				gamepadAim,
 				GamepadPointer.DEFAULT_TILE_SIZE_STUDS,
 				rootPart
@@ -270,7 +271,7 @@ function MagicServiceClient.BuildCastRequest(self: MagicServiceClient, triggerRa
 	end
 
 	if aimDirection == nil then
-		mousePosition = resolveMouseHitPosition(self.localPlayer)
+		mousePosition = GetMouseHitPosition(self.localPlayer)
 		if mousePosition ~= nil then
 			local offset = mousePosition - origin
 			if offset.Magnitude > 1e-4 then
@@ -296,16 +297,16 @@ function MagicServiceClient.CanSendCast(self: MagicServiceClient): boolean
 end
 
 function MagicServiceClient.SendCast(self: MagicServiceClient, triggerRaw: any)
-	if not self:canSendCast() then
+	if not self:CanSendCast() then
 		return
 	end
 	self.lastCastRequestAt = os.clock()
-	local castRequest = self:buildCastRequest(triggerRaw)
+	local castRequest = self:BuildCastRequest(triggerRaw)
 	self.lastCastRequest = castRequest
 	sendPacket(MagicServiceUtils.NETWORK_METHOD_REQUEST_CAST, castRequest)
-	if self.hapticsModule ~= nil and typeof((self.hapticsModule :: any).confirm) == "function" then
+	if self.hapticsModule ~= nil and typeof((self.hapticsModule :: any).Confirm) == "function" then
 		local hapticsAny = self.hapticsModule :: any
-		hapticsAny:confirm()
+		hapticsAny:Confirm()
 	end
 end
 
@@ -315,11 +316,11 @@ function MagicServiceClient.SetInputHeld(self: MagicServiceClient, isHeld: boole
 	end
 	self.inputHeld = isHeld
 
-	local castRequest = self:buildCastRequest(triggerRaw)
+	local castRequest = self:BuildCastRequest(triggerRaw)
 	self.lastCastRequest = castRequest
 	sendPacket(MagicServiceUtils.NETWORK_METHOD_REQUEST_SET_INPUT_HELD, isHeld, castRequest)
 	if isHeld then
-		self:sendCast(triggerRaw)
+		self:SendCast(triggerRaw)
 	end
 end
 
@@ -331,16 +332,16 @@ function MagicServiceClient.StepHeldCast(self: MagicServiceClient)
 		return
 	end
 	if self.lastCastRequest == nil then
-		self.lastCastRequest = self:buildCastRequest("Hold")
+		self.lastCastRequest = self:BuildCastRequest("Hold")
 	else
-		self.lastCastRequest = self:buildCastRequest(self.lastCastRequest.trigger)
+		self.lastCastRequest = self:BuildCastRequest(self.lastCastRequest.trigger)
 	end
 	sendPacket(MagicServiceUtils.NETWORK_METHOD_REQUEST_SET_INPUT_HELD, true, self.lastCastRequest)
-	self:sendCast("Hold")
+	self:SendCast("Hold")
 end
 
 function MagicServiceClient.ApplyState(self: MagicServiceClient, stateRaw: any)
-	self.state = MagicServiceUtils.sanitizeReplicatedState(stateRaw, self.state)
+	self.state = MagicServiceUtils.CoerceReplicatedState(stateRaw, self.state)
 	self.stateChanged:Fire(self.state)
 end
 
@@ -371,8 +372,8 @@ function MagicServiceClient.OnCastVisual(self: MagicServiceClient, payloadRaw: a
 		return
 	end
 
-	self:releaseVisual(castId)
-	local entry = self:acquireVisualEntry(weaponId)
+	self:ReleaseVisual(castId)
+	local entry = self:AcquireVisualEntry(weaponId)
 	local part = entry.part
 	local visualSizeRaw = payload.visualSize
 	local visualColorRaw = payload.visualColor
@@ -435,15 +436,15 @@ function MagicServiceClient.OnImpactVisual(self: MagicServiceClient, payloadRaw:
 		return
 	end
 	local payload = payloadRaw :: { [string]: any }
-	self:releaseVisual(payload.castId)
-	self:spawnImpactFlash(payload)
+	self:ReleaseVisual(payload.castId)
+	self:SpawnImpactFlash(payload)
 end
 
 function MagicServiceClient.StepVisuals(self: MagicServiceClient, dt: number)
 	for castId, visual in self.activeVisuals do
 		visual.lifetimeRemaining -= dt
 		if visual.lifetimeRemaining <= 0 then
-			self:releaseVisual(castId)
+			self:ReleaseVisual(castId)
 			continue
 		end
 		visual.position += visual.velocity * dt
@@ -452,27 +453,27 @@ function MagicServiceClient.StepVisuals(self: MagicServiceClient, dt: number)
 end
 
 function MagicServiceClient.BindInputRouter(self: MagicServiceClient): boolean
-	local runtimeContext = CoreRuntime.getClientRuntime()
-	if runtimeContext ~= nil and typeof((runtimeContext :: any).init) == "function" then
+	local runtimeContext = CoreRuntime.GetClientRuntime()
+	if runtimeContext ~= nil and typeof((runtimeContext :: any).Init) == "function" then
 		local runtimeAny = runtimeContext :: any
-		runtimeAny:init()
+		runtimeAny:Init()
 	end
 	self.runtimeContext = runtimeContext
 	self.hapticsModule = if runtimeContext ~= nil then (runtimeContext :: any).haptics else nil
-	self.gamepadNav = if runtimeContext ~= nil and typeof((runtimeContext :: any).getGamepadNav) == "function"
-		then (runtimeContext :: any):getGamepadNav()
+	self.gamepadNav = if runtimeContext ~= nil and typeof((runtimeContext :: any).GetGamepadNav) == "function"
+		then (runtimeContext :: any):GetGamepadNav()
 		else if runtimeContext ~= nil then (runtimeContext :: any).gamepadNav else nil
-	if not PlatformServiceClient:isReady() then
-		PlatformServiceClient:init()
+	if not PlatformServiceClient:IsReady() then
+		PlatformServiceClient:Init()
 	end
 
-	local disconnect = PlatformServiceClient:bindAction(INPUT_ACTION_CAST, function(phase: string)
+	local disconnect = PlatformServiceClient:BindAction(INPUT_ACTION_CAST, function(phase: string)
 		if phase == "Began" then
 			if self.equippedTool ~= nil then
-				self:setInputHeld(true, "PrimaryInputBegan")
+				self:SetInputHeld(true, "PrimaryInputBegan")
 			end
 		elseif phase == "Ended" then
-			self:setInputHeld(false, "PrimaryInputEnded")
+			self:SetInputHeld(false, "PrimaryInputEnded")
 		end
 		return false
 	end)
@@ -486,11 +487,11 @@ function MagicServiceClient.BindInputRouter(self: MagicServiceClient): boolean
 end
 
 function MagicServiceClient.OnInventoryStateChanged(self: MagicServiceClient, stateRaw: any)
-	self.inventoryState = InventoryServiceUtils.sanitizeState(
+	self.inventoryState = InventoryServiceUtils.CoerceState(
 		stateRaw,
-		InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
+		InventoryServiceUtils.CreateDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
 	)
-	self:refreshEquipped()
+	self:RefreshEquipped()
 end
 
 function MagicServiceClient.OnCharacterAdded(self: MagicServiceClient, character: Model)
@@ -499,30 +500,30 @@ function MagicServiceClient.OnCharacterAdded(self: MagicServiceClient, character
 	local function bindBackpack(backpack: Backpack)
 		self.characterJanitor:GiveChore(backpack.ChildAdded:Connect(function(child: Instance)
 			if child:IsA("Tool") then
-				self:refreshEquipped()
+				self:RefreshEquipped()
 			end
 		end))
 		self.characterJanitor:GiveChore(backpack.ChildRemoved:Connect(function(child: Instance)
 			if child:IsA("Tool") then
-				self:refreshEquipped()
+				self:RefreshEquipped()
 			end
 		end))
 	end
 	self.characterJanitor:GiveChore(character.ChildAdded:Connect(function(child: Instance)
 		if child:IsA("Tool") then
-			self:refreshEquipped()
+			self:RefreshEquipped()
 		end
 	end))
 	self.characterJanitor:GiveChore(character.ChildRemoved:Connect(function(child: Instance)
 		if child:IsA("Tool") then
-			self:refreshEquipped()
+			self:RefreshEquipped()
 		end
 	end))
 
 	self.characterJanitor:GiveChore(self.localPlayer.ChildAdded:Connect(function(child: Instance)
 		if child:IsA("Backpack") then
 			bindBackpack(child)
-			self:refreshEquipped()
+			self:RefreshEquipped()
 		end
 	end))
 
@@ -531,7 +532,7 @@ function MagicServiceClient.OnCharacterAdded(self: MagicServiceClient, character
 		bindBackpack(backpack)
 	end
 
-	self:refreshEquipped()
+	self:RefreshEquipped()
 end
 
 function MagicServiceClient.RequestSync(self: MagicServiceClient)
@@ -549,7 +550,7 @@ function MagicServiceClient.Init(self: MagicServiceClient)
 	self.inputHeld = false
 	self.lastCastRequestAt = -math.huge
 	self.lastCastRequest = nil :: MagicServiceUtils.CastRequest?
-	self.inventoryState = InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
+	self.inventoryState = InventoryServiceUtils.CreateDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
 	self.character = nil :: Model?
 	self.equippedItemId = nil :: string?
 	self.equippedTool = nil :: Tool?
@@ -561,7 +562,7 @@ function MagicServiceClient.Init(self: MagicServiceClient)
 	self.hapticsModule = nil
 	self.gamepadNav = nil
 
-	self.visualFolder = WorkspaceFolders.getOrCreateFolderInGame(CLIENT_VISUAL_FOLDER_NAME)
+	self.visualFolder = WorkspaceFolders.GetOrCreateFolderInGame(CLIENT_VISUAL_FOLDER_NAME)
 
 	self.janitor:GiveChore(function()
 		self.stateChanged:Destroy()
@@ -579,15 +580,15 @@ function MagicServiceClient.Init(self: MagicServiceClient)
 	end)
 
 	self.janitor:GiveChore(self.localPlayer.CharacterAdded:Connect(function(character: Model)
-		self:onCharacterAdded(character)
+		self:OnCharacterAdded(character)
 	end))
 
-	self:bindInputRouter()
+	self:BindInputRouter()
 
 	self.janitor:GiveChore(RunService.RenderStepped:Connect(function(dt: number)
 		if self.inputHeld and os.clock() - self.lastHeldTickAt >= MagicServiceUtils.CLIENT_CAST_REQUEST_INTERVAL then
 			self.lastHeldTickAt = os.clock()
-			self:stepHeldCast()
+			self:StepHeldCast()
 		end
 
 		local visualAccumulator = (self.visualAccumulator :: number) + dt
@@ -597,7 +598,7 @@ function MagicServiceClient.Init(self: MagicServiceClient)
 			visualAccumulator -= CLIENT_VISUAL_STEP
 			self.visualAccumulator = visualAccumulator
 			steps += 1
-			self:stepVisuals(CLIENT_VISUAL_STEP)
+			self:StepVisuals(CLIENT_VISUAL_STEP)
 		end
 		if steps >= 4 then
 			self.visualAccumulator = 0
@@ -606,24 +607,24 @@ function MagicServiceClient.Init(self: MagicServiceClient)
 
 	if InventoryServiceClient.stateChanged ~= nil then
 		self.janitor:GiveChore(InventoryServiceClient.stateChanged:Connect(function(nextState: InventoryState)
-			self:onInventoryStateChanged(nextState)
+			self:OnInventoryStateChanged(nextState)
 		end))
 	end
 
 	if self.localPlayer.Character ~= nil then
-		self:onCharacterAdded(self.localPlayer.Character)
+		self:OnCharacterAdded(self.localPlayer.Character)
 	end
-	self:onInventoryStateChanged(InventoryServiceClient.state)
-	self:requestSync()
-	self:refreshEquipped()
+	self:OnInventoryStateChanged(InventoryServiceClient.state)
+	self:RequestSync()
+	self:RefreshEquipped()
 end
 
 function MagicServiceClient.GetState(self: MagicServiceClient): ReplicatedState
-	return MagicServiceUtils.sanitizeReplicatedState(self.state, createDefaultReplicatedState())
+	return MagicServiceUtils.CoerceReplicatedState(self.state, createDefaultReplicatedState())
 end
 
 function MagicServiceClient.Destroy(self: MagicServiceClient)
-	self:setInputHeld(false, "Destroy")
+	self:SetInputHeld(false, "Destroy")
 	if self.characterJanitor ~= nil then
 		self.characterJanitor:Destroy()
 	end
@@ -631,31 +632,6 @@ function MagicServiceClient.Destroy(self: MagicServiceClient)
 		self.janitor:Destroy()
 	end
 end
-
-MagicServiceClient.createVisualPart = MagicServiceClient.CreateVisualPart
-MagicServiceClient.acquireVisualEntry = MagicServiceClient.AcquireVisualEntry
-MagicServiceClient.releaseVisual = MagicServiceClient.ReleaseVisual
-MagicServiceClient.getInventoryState = MagicServiceClient.GetInventoryState
-MagicServiceClient.resolveEquippedMagicTool = MagicServiceClient.ResolveEquippedMagicTool
-MagicServiceClient.refreshEquipped = MagicServiceClient.RefreshEquipped
-MagicServiceClient.buildCastRequest = MagicServiceClient.BuildCastRequest
-MagicServiceClient.canSendCast = MagicServiceClient.CanSendCast
-MagicServiceClient.sendCast = MagicServiceClient.SendCast
-MagicServiceClient.setInputHeld = MagicServiceClient.SetInputHeld
-MagicServiceClient.stepHeldCast = MagicServiceClient.StepHeldCast
-MagicServiceClient.applyState = MagicServiceClient.ApplyState
-MagicServiceClient.onCastVisual = MagicServiceClient.OnCastVisual
-MagicServiceClient.spawnImpactFlash = MagicServiceClient.SpawnImpactFlash
-MagicServiceClient.onImpactVisual = MagicServiceClient.OnImpactVisual
-MagicServiceClient.stepVisuals = MagicServiceClient.StepVisuals
-MagicServiceClient.bindInputRouter = MagicServiceClient.BindInputRouter
-MagicServiceClient.onInventoryStateChanged = MagicServiceClient.OnInventoryStateChanged
-MagicServiceClient.onCharacterAdded = MagicServiceClient.OnCharacterAdded
-MagicServiceClient.requestSync = MagicServiceClient.RequestSync
-MagicServiceClient.init = MagicServiceClient.Init
-MagicServiceClient.getState = MagicServiceClient.GetState
-MagicServiceClient.destroy = MagicServiceClient.Destroy
-
 type MagicServiceClient = typeof(MagicServiceClient) & {
 	runtimeContext: any?,
 	hapticsModule: any?,

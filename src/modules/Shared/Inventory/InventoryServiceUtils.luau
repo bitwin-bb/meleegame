@@ -57,6 +57,26 @@ local DEFAULT_MAX_STACK = 99
 local MIN_STACK = 1
 local MAX_STACK = 9999
 local DEFAULT_DATA_PATH = { "inventory" }
+local STARTER_SLOT_ITEMS = {
+	{
+		slotIndex = 1,
+		stackId = "starter_copper_broadsword",
+		itemId = "CopperBroadSword",
+		maxStack = 1,
+	},
+	{
+		slotIndex = 2,
+		stackId = "starter_copper_pickaxe",
+		itemId = "CopperPickaxe",
+		maxStack = 1,
+	},
+	{
+		slotIndex = 3,
+		stackId = "starter_copper_axe",
+		itemId = "CopperAxe",
+		maxStack = 1,
+	},
+}
 
 InventoryServiceUtils.LOAD_STATE_UNLOADED = LOAD_STATE_UNLOADED
 InventoryServiceUtils.LOAD_STATE_LOADING = LOAD_STATE_LOADING
@@ -84,7 +104,7 @@ local function trim(valueRaw: any): string
 	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function sanitizeString(valueRaw: any, fallback: string?): string?
+local function CoerceString(valueRaw: any, fallback: string?): string?
 	local value = trim(valueRaw)
 	if value == "" then
 		return fallback
@@ -92,7 +112,7 @@ local function sanitizeString(valueRaw: any, fallback: string?): string?
 	return value
 end
 
-local function sanitizeInteger(valueRaw: any, fallback: number, minimum: number, maximum: number?): number
+local function CoerceInteger(valueRaw: any, fallback: number, minimum: number, maximum: number?): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
@@ -151,7 +171,7 @@ local function deepEqual(a: any, b: any): boolean
 	return deepEqualInternal(a, b, {})
 end
 
-local function sanitizeMetadata(metadataRaw: any): InventoryItemMetadata?
+local function CoerceMetadata(metadataRaw: any): InventoryItemMetadata?
 	if typeof(metadataRaw) ~= "table" then
 		return nil
 	end
@@ -172,10 +192,10 @@ end
 
 local function normalizeCapacity(capacityRaw: any, fallback: number?): number
 	local base = if typeof(fallback) == "number" and fallback == fallback then fallback else DEFAULT_CAPACITY
-	return math.max(DEFAULT_CAPACITY, sanitizeInteger(capacityRaw, base, MIN_CAPACITY, MAX_CAPACITY))
+	return math.max(DEFAULT_CAPACITY, CoerceInteger(capacityRaw, base, MIN_CAPACITY, MAX_CAPACITY))
 end
 
-local function resolveCapacity(stateOrCapacityRaw: any): number
+local function GetCapacity(stateOrCapacityRaw: any): number
 	if typeof(stateOrCapacityRaw) == "number" then
 		return normalizeCapacity(stateOrCapacityRaw, DEFAULT_CAPACITY)
 	end
@@ -200,7 +220,7 @@ local function normalizeSlotIndex(slotIndexRaw: any, capacity: number, fallback:
 end
 
 local function normalizeItemId(itemIdRaw: any, fallback: string?): string?
-	return sanitizeString(itemIdRaw, fallback)
+	return CoerceString(itemIdRaw, fallback)
 end
 
 local function normalizeUpdatedAt(updatedAtRaw: any, fallback: number?): number
@@ -216,7 +236,7 @@ local function cloneStack(stack: InventoryItemStack): InventoryItemStack
 		itemId = stack.itemId,
 		amount = stack.amount,
 		maxStack = stack.maxStack,
-		metadata = sanitizeMetadata(stack.metadata),
+		metadata = CoerceMetadata(stack.metadata),
 	}
 end
 
@@ -237,16 +257,16 @@ local function normalizeStack(stackRaw: any, fallbackStackIdRaw: any): Inventory
 	if itemId == nil then
 		return nil
 	end
-	local amount = sanitizeInteger(stackTable.amount, 1, MIN_STACK, MAX_STACK)
-	local maxStack = sanitizeInteger(stackTable.maxStack, math.max(DEFAULT_MAX_STACK, amount), MIN_STACK, MAX_STACK)
-	local fallbackStackId = sanitizeString(fallbackStackIdRaw, ("stack_%s"):format(itemId))
+	local amount = CoerceInteger(stackTable.amount, 1, MIN_STACK, MAX_STACK)
+	local maxStack = CoerceInteger(stackTable.maxStack, math.max(DEFAULT_MAX_STACK, amount), MIN_STACK, MAX_STACK)
+	local fallbackStackId = CoerceString(fallbackStackIdRaw, ("stack_%s"):format(itemId))
 		or ("stack_%s"):format(itemId)
 	return {
-		stackId = sanitizeString(stackTable.stackId, fallbackStackId) or fallbackStackId,
+		stackId = CoerceString(stackTable.stackId, fallbackStackId) or fallbackStackId,
 		itemId = itemId,
 		amount = math.clamp(amount, MIN_STACK, maxStack),
 		maxStack = maxStack,
-		metadata = sanitizeMetadata(stackTable.metadata),
+		metadata = CoerceMetadata(stackTable.metadata),
 	}
 end
 
@@ -349,8 +369,8 @@ local function stableSerialize(value: any, seen: { [any]: boolean }): string
 end
 
 local function nextStackId(state: InventoryState, prefixRaw: any, itemIdRaw: any): string
-	local prefix = sanitizeString(prefixRaw, "stack") or "stack"
-	local itemId = sanitizeString(itemIdRaw, "item") or "item"
+	local prefix = CoerceString(prefixRaw, "stack") or "stack"
+	local itemId = CoerceString(itemIdRaw, "item") or "item"
 	local used = {}
 	for _, slot in state.slots do
 		if slot.stack ~= nil then
@@ -399,7 +419,7 @@ function InventoryServiceUtils.ClonePath(pathRaw: any): { string }
 	local source = if typeof(pathRaw) == "table" then pathRaw else DEFAULT_DATA_PATH
 	local path = {}
 	for _, segmentRaw in source do
-		local segment = sanitizeString(segmentRaw, nil)
+		local segment = CoerceString(segmentRaw, nil)
 		if segment ~= nil then
 			path[#path + 1] = segment
 		end
@@ -414,29 +434,29 @@ function InventoryServiceUtils.GetDefaultDataPath(): { string }
 	return InventoryServiceUtils.ClonePath(DEFAULT_DATA_PATH)
 end
 
-function InventoryServiceUtils.SanitizeLoadState(loadStateRaw: any, fallback: InventoryLoadState?): InventoryLoadState
+function InventoryServiceUtils.CoerceLoadState(loadStateRaw: any, fallback: InventoryLoadState?): InventoryLoadState
 	return normalizeLoadState(loadStateRaw, fallback)
 end
 
-function InventoryServiceUtils.SanitizeCapacity(capacityRaw: any, fallbackRaw: any?): number
+function InventoryServiceUtils.CoerceCapacity(capacityRaw: any, fallbackRaw: any?): number
 	return normalizeCapacity(capacityRaw, if typeof(fallbackRaw) == "number" then fallbackRaw else DEFAULT_CAPACITY)
 end
 
-function InventoryServiceUtils.SanitizeSlotIndex(slotIndexRaw: any, stateOrCapacityRaw: any, fallbackRaw: any?): number?
+function InventoryServiceUtils.CoerceSlotIndex(slotIndexRaw: any, stateOrCapacityRaw: any, fallbackRaw: any?): number?
 	return normalizeSlotIndex(
 		slotIndexRaw,
-		resolveCapacity(stateOrCapacityRaw),
+		GetCapacity(stateOrCapacityRaw),
 		if typeof(fallbackRaw) == "number" then math.floor(fallbackRaw) else nil
 	)
 end
 
-function InventoryServiceUtils.SanitizeAmount(
+function InventoryServiceUtils.CoerceAmount(
 	amountRaw: any,
 	fallbackRaw: any,
 	minimumRaw: any?,
 	maximumRaw: any?
 ): number
-	return sanitizeInteger(
+	return CoerceInteger(
 		amountRaw,
 		if typeof(fallbackRaw) == "number" then math.floor(fallbackRaw) else 0,
 		if typeof(minimumRaw) == "number" then math.floor(minimumRaw) else 0,
@@ -444,7 +464,7 @@ function InventoryServiceUtils.SanitizeAmount(
 	)
 end
 
-function InventoryServiceUtils.SanitizeStack(stackRaw: any, fallbackStackIdRaw: any): InventoryItemStack?
+function InventoryServiceUtils.CoerceStack(stackRaw: any, fallbackStackIdRaw: any): InventoryItemStack?
 	return normalizeStack(stackRaw, fallbackStackIdRaw)
 end
 
@@ -512,13 +532,13 @@ function InventoryServiceUtils.CreateStateFromData(
 	return state
 end
 
-function InventoryServiceUtils.SanitizeState(stateRaw: any, fallbackStateRaw: any): InventoryState
+function InventoryServiceUtils.CoerceState(stateRaw: any, fallbackStateRaw: any): InventoryState
 	return InventoryServiceUtils.CreateState(stateRaw, fallbackStateRaw)
 end
 
 function InventoryServiceUtils.CloneState(stateRaw: any): InventoryState
 	local state = if typeof(stateRaw) == "table"
-		then InventoryServiceUtils.SanitizeState(
+		then InventoryServiceUtils.CoerceState(
 			stateRaw,
 			InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)
 		)
@@ -540,7 +560,7 @@ end
 
 function InventoryServiceUtils.SerializeStateForData(stateRaw: any): { [string]: any }
 	local state = if typeof(stateRaw) == "table"
-		then InventoryServiceUtils.SanitizeState(
+		then InventoryServiceUtils.CoerceState(
 			stateRaw,
 			InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)
 		)
@@ -554,7 +574,7 @@ function InventoryServiceUtils.SerializeStateForData(stateRaw: any): { [string]:
 				itemId = slot.stack.itemId,
 				amount = slot.stack.amount,
 				maxStack = slot.stack.maxStack,
-				metadata = sanitizeMetadata(slot.stack.metadata),
+				metadata = CoerceMetadata(slot.stack.metadata),
 			}
 		end
 	end
@@ -567,7 +587,7 @@ end
 
 function InventoryServiceUtils.HashState(stateRaw: any): string
 	local state = if typeof(stateRaw) == "table"
-		then InventoryServiceUtils.SanitizeState(
+		then InventoryServiceUtils.CoerceState(
 			stateRaw,
 			InventoryServiceUtils.CreateDefaultState(LOAD_STATE_UNLOADED)
 		)
@@ -633,6 +653,29 @@ function InventoryServiceUtils.Clear(state: InventoryState): boolean
 	return changed
 end
 
+function InventoryServiceUtils.ApplyStarterSlots(state: InventoryState): boolean
+	local changed = false
+	for _, starter in STARTER_SLOT_ITEMS do
+		local slot = InventoryServiceUtils.GetSlot(state, starter.slotIndex)
+		if slot == nil or slot.stack ~= nil then
+			continue
+		end
+
+		slot.stack = {
+			stackId = starter.stackId,
+			itemId = starter.itemId,
+			amount = 1,
+			maxStack = starter.maxStack,
+			metadata = nil,
+		}
+		changed = true
+	end
+	if changed then
+		refreshStateDerived(state, true)
+	end
+	return changed
+end
+
 function InventoryServiceUtils.AddItem(
 	state: InventoryState,
 	itemIdRaw: any,
@@ -642,9 +685,9 @@ function InventoryServiceUtils.AddItem(
 	stackIdPrefixRaw: any
 ): AddItemResult
 	local itemId = normalizeItemId(itemIdRaw, nil)
-	local requested = sanitizeInteger(amountRaw, 0, 0, MAX_STACK * state.capacity)
-	local maxStack = sanitizeInteger(maxStackRaw, DEFAULT_MAX_STACK, MIN_STACK, MAX_STACK)
-	local metadata = sanitizeMetadata(metadataRaw)
+	local requested = CoerceInteger(amountRaw, 0, 0, MAX_STACK * state.capacity)
+	local maxStack = CoerceInteger(maxStackRaw, DEFAULT_MAX_STACK, MIN_STACK, MAX_STACK)
+	local metadata = CoerceMetadata(metadataRaw)
 	local result = emptyAddResult(requested)
 	if itemId == nil or requested <= 0 then
 		return result
@@ -667,7 +710,7 @@ function InventoryServiceUtils.AddItem(
 		remaining -= added
 		appendTouchedSlot(result.touchedSlots, slot.index)
 	end
-	local prefix = sanitizeString(stackIdPrefixRaw, "stack") or "stack"
+	local prefix = CoerceString(stackIdPrefixRaw, "stack") or "stack"
 	for _, slot in state.slots do
 		if remaining <= 0 then
 			break
@@ -681,7 +724,7 @@ function InventoryServiceUtils.AddItem(
 			itemId = itemId,
 			amount = added,
 			maxStack = maxStack,
-			metadata = sanitizeMetadata(metadata),
+			metadata = CoerceMetadata(metadata),
 		}
 		remaining -= added
 		appendTouchedSlot(result.touchedSlots, slot.index)
@@ -703,7 +746,7 @@ function InventoryServiceUtils.RemoveItem(
 	requireExactMetadataRaw: any
 ): RemoveItemResult
 	local itemId = normalizeItemId(itemIdRaw, nil)
-	local requested = sanitizeInteger(amountRaw, 0, 0, MAX_STACK * state.capacity)
+	local requested = CoerceInteger(amountRaw, 0, 0, MAX_STACK * state.capacity)
 	local result = emptyRemoveResult(requested)
 	local requireExactMetadata = requireExactMetadataRaw == true
 	if itemId == nil or requested <= 0 then
@@ -749,7 +792,7 @@ function InventoryServiceUtils.RemoveFromSlot(
 	if slot == nil or slot.stack == nil then
 		return emptySlotMutation(nil, nil)
 	end
-	local amount = if amountRaw == nil then slot.stack.amount else sanitizeInteger(amountRaw, 0, 0, slot.stack.amount)
+	local amount = if amountRaw == nil then slot.stack.amount else CoerceInteger(amountRaw, 0, 0, slot.stack.amount)
 	if amount <= 0 then
 		return emptySlotMutation(slot.index, nil)
 	end
@@ -790,7 +833,7 @@ function InventoryServiceUtils.MoveSlot(
 	local sourceStack = fromSlot.stack
 	local requestedAmount = if amountRaw == nil
 		then sourceStack.amount
-		else sanitizeInteger(amountRaw, 0, 0, sourceStack.amount)
+		else CoerceInteger(amountRaw, 0, 0, sourceStack.amount)
 	if requestedAmount <= 0 then
 		return emptySlotMutation(fromSlot.index, toSlot.index)
 	end
@@ -882,7 +925,7 @@ function InventoryServiceUtils.SplitSlot(
 	end
 	local sourceStack = fromSlot.stack
 	local maxSplit = math.max(0, sourceStack.amount - 1)
-	local splitAmount = sanitizeInteger(amountRaw, math.floor(sourceStack.amount * 0.5), 1, maxSplit)
+	local splitAmount = CoerceInteger(amountRaw, math.floor(sourceStack.amount * 0.5), 1, maxSplit)
 	if splitAmount <= 0 or splitAmount >= sourceStack.amount then
 		return emptySlotMutation(fromSlot.index, toSlot.index)
 	end
@@ -939,38 +982,4 @@ function InventoryServiceUtils.CountItem(
 	end
 	return total
 end
-
-InventoryServiceUtils.cloneDeep = InventoryServiceUtils.CloneDeep
-InventoryServiceUtils.deepEqual = InventoryServiceUtils.DeepEqual
-InventoryServiceUtils.clonePath = InventoryServiceUtils.ClonePath
-InventoryServiceUtils.getDefaultDataPath = InventoryServiceUtils.GetDefaultDataPath
-InventoryServiceUtils.sanitizeLoadState = InventoryServiceUtils.SanitizeLoadState
-InventoryServiceUtils.sanitizeCapacity = InventoryServiceUtils.SanitizeCapacity
-InventoryServiceUtils.sanitizeSlotIndex = InventoryServiceUtils.SanitizeSlotIndex
-InventoryServiceUtils.sanitizeAmount = InventoryServiceUtils.SanitizeAmount
-InventoryServiceUtils.sanitizeStack = InventoryServiceUtils.SanitizeStack
-InventoryServiceUtils.cloneStack = InventoryServiceUtils.CloneStack
-InventoryServiceUtils.isLoadedState = InventoryServiceUtils.IsLoadedState
-InventoryServiceUtils.createDefaultState = InventoryServiceUtils.CreateDefaultState
-InventoryServiceUtils.createState = InventoryServiceUtils.CreateState
-InventoryServiceUtils.createStateFromData = InventoryServiceUtils.CreateStateFromData
-InventoryServiceUtils.sanitizeState = InventoryServiceUtils.SanitizeState
-InventoryServiceUtils.cloneState = InventoryServiceUtils.CloneState
-InventoryServiceUtils.serializeStateForData = InventoryServiceUtils.SerializeStateForData
-InventoryServiceUtils.hashState = InventoryServiceUtils.HashState
-InventoryServiceUtils.setLoadState = InventoryServiceUtils.SetLoadState
-InventoryServiceUtils.setSelectedSlot = InventoryServiceUtils.SetSelectedSlot
-InventoryServiceUtils.getSlot = InventoryServiceUtils.GetSlot
-InventoryServiceUtils.getStack = InventoryServiceUtils.GetStack
-InventoryServiceUtils.clear = InventoryServiceUtils.Clear
-InventoryServiceUtils.addItem = InventoryServiceUtils.AddItem
-InventoryServiceUtils.removeItem = InventoryServiceUtils.RemoveItem
-InventoryServiceUtils.removeFromSlot = InventoryServiceUtils.RemoveFromSlot
-InventoryServiceUtils.trashSlot = InventoryServiceUtils.TrashSlot
-InventoryServiceUtils.moveSlot = InventoryServiceUtils.MoveSlot
-InventoryServiceUtils.splitSlot = InventoryServiceUtils.SplitSlot
-InventoryServiceUtils.consumeSelected = InventoryServiceUtils.ConsumeSelected
-InventoryServiceUtils.trashSelected = InventoryServiceUtils.TrashSelected
-InventoryServiceUtils.countItem = InventoryServiceUtils.CountItem
-
 return InventoryServiceUtils

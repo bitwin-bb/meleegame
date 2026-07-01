@@ -12,9 +12,9 @@ type BreathRootProps = {
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: BreathRootProps?): React.ReactNode
-	local resolvedProps = if props ~= nil then props else {} :: BreathRootProps
+	local GotProps = if props ~= nil then props else {} :: BreathRootProps
 
 	return e(React.Fragment, nil, {
-		e(BubblesScreen, resolvedProps),
+		e(BubblesScreen, GotProps),
 	})
 end

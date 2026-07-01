@@ -39,7 +39,7 @@ local function cloneStack(stackRaw: any): InventoryItemStack?
 		itemId = stack.itemId,
 		amount = amount,
 		maxStack = maxStack,
-		metadata = InventoryServiceUtils.cloneDeep(stack.metadata),
+		metadata = InventoryServiceUtils.CloneDeep(stack.metadata),
 	}
 end
 
@@ -66,7 +66,7 @@ local function createStateFromInventory(inventoryStateRaw: any, fallbackStateRaw
 	local selectedSlot = inventoryState.selectedSlot
 	local selectedStack: InventoryItemStack? = nil
 	if selectedSlot ~= nil then
-		local slot = InventoryServiceUtils.getSlot(inventoryState, selectedSlot)
+		local slot = InventoryServiceUtils.GetSlot(inventoryState, selectedSlot)
 		if slot ~= nil then
 			selectedStack = cloneStack(slot.stack)
 		end

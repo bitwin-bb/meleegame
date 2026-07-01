@@ -22,7 +22,7 @@ local function defaultEquality<T>(a: T, b: T): boolean
 	return a == b
 end
 
-local function sanitizeDelaySeconds(valueRaw: any): number
+local function CoerceDelaySeconds(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return 0
 	end
@@ -30,7 +30,7 @@ local function sanitizeDelaySeconds(valueRaw: any): number
 end
 
 local function useDebounce<T>(value: T, delaySecondsRaw: any, options: DebounceOptions<T>?): DebounceResult<T>
-	local delaySeconds = sanitizeDelaySeconds(delaySecondsRaw)
+	local delaySeconds = CoerceDelaySeconds(delaySecondsRaw)
 	local leading = if options ~= nil and options.leading ~= nil then options.leading == true else false
 	local equalityFn = if options ~= nil and options.equalityFn ~= nil then options.equalityFn else defaultEquality
 	local equalityRef = useLatest(equalityFn)

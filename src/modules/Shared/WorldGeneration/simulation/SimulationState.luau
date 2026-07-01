@@ -48,7 +48,7 @@ end
 State.hasFlag = hasFlag
 State.setFlag = setFlag
 
-function State.ResolveChunkStateId(chunkFlags: number): number
+function State.GetChunkStateId(chunkFlags: number): number
 	if hasFlag(chunkFlags, State.CHUNK_FLAGS.PAUSED) then
 		return State.CHUNK_STATE.PAUSED
 	end
@@ -115,7 +115,7 @@ function State.DistanceClassFromChunkDelta(
 	return State.CHUNK_STATE.DORMANT
 end
 
-function State.ResolveClusterBounds(
+function State.GetClusterBounds(
 	clusterX: number,
 	clusterY: number,
 	clusterZ: number,
@@ -157,18 +157,5 @@ function State.IsValidBiomeId(biomeId: number): boolean
 		or biomeId == Shared.BIOME_ID.JUNGLE
 		or biomeId == Shared.BIOME_ID.CORRUPTION
 end
-
-State.resolveChunkStateId = State.ResolveChunkStateId
-State.shouldSimulateChunk = State.ShouldSimulateChunk
-State.shouldSimulateEntity = State.ShouldSimulateEntity
-State.markChunkActive = State.MarkChunkActive
-State.markChunkCorrupted = State.MarkChunkCorrupted
-State.markChunkDirty = State.MarkChunkDirty
-State.markChunkPaused = State.MarkChunkPaused
-State.distanceClassFromChunkDelta = State.DistanceClassFromChunkDelta
-State.resolveClusterBounds = State.ResolveClusterBounds
-State.applyCorruptionFromWeight = State.ApplyCorruptionFromWeight
-State.createSystemFlags = State.CreateSystemFlags
-State.isValidBiomeId = State.IsValidBiomeId
 
 return State

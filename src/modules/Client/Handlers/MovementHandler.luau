@@ -80,13 +80,4 @@ function MovementHandler.Destroy(self: MovementHandler)
 	self.humanoid = nil
 	self.root = nil
 end
-
-MovementHandler.setCharacter = MovementHandler.SetCharacter
-MovementHandler.setVelocity = MovementHandler.SetVelocity
-MovementHandler.applyImpulse = MovementHandler.ApplyImpulse
-MovementHandler.applyForce = MovementHandler.ApplyForce
-MovementHandler.setFacing = MovementHandler.SetFacing
-MovementHandler.isGrounded = MovementHandler.IsGrounded
-MovementHandler.destroy = MovementHandler.Destroy
-
 return MovementHandler

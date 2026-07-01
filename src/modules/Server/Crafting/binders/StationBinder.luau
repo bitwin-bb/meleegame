@@ -21,7 +21,7 @@ function StationBinder.new(instance: Instance, context: any)
 	return self
 end
 
-function StationBinder.resolveStationId(self: any): string
+function StationBinder.GetStationId(self: any): string
 	for tag, stationId in STATION_ID_BY_TAG do
 		if self:HasTag(tag) then
 			return stationId
@@ -37,7 +37,7 @@ function StationBinder.resolveStationId(self: any): string
 end
 
 function StationBinder.updateMetadata(self: any)
-	local stationId = self:resolveStationId()
+	local stationId = self:GetStationId()
 	self.instance:SetAttribute("StationTagged", true)
 	self.instance:SetAttribute("StationId", stationId)
 	if self.instance:GetAttribute("UseActionText") == nil then

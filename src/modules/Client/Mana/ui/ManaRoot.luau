@@ -12,9 +12,9 @@ type ManaRootProps = {
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: ManaRootProps?): React.ReactNode
-	local resolvedProps = if props ~= nil then props else {} :: ManaRootProps
+	local GotProps = if props ~= nil then props else {} :: ManaRootProps
 
 	return e(React.Fragment, nil, {
-		e(ManaTopRightBar, resolvedProps),
+		e(ManaTopRightBar, GotProps),
 	})
 end

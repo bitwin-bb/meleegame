@@ -4,7 +4,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BuffRightSideBar = require("BuffRightSideBar")
 local BuffSlice = require("BuffSlice")
-local BuffThunks = require("BuffThunks")
 local React = require(ReplicatedStorage.Packages.React)
 local Table = require("Table")
 local useStore = require("useCoreStore")
@@ -46,7 +45,8 @@ return function(props: BuffRootProps): React.ReactNode
 			return
 		end
 
-		local stop = BuffThunks.start()
+		local BuffThunks = require("BuffThunks")
+		local stop = BuffThunks.Start()
 
 		return function()
 			stop()

@@ -7,7 +7,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local ManaServiceUtils = require("ManaServiceUtils")
 local PacketPayload = require("PacketPayload")
-local ManaServicePackets = require("NetSharedPackets").ManaService
+local ManaServicePackets = require("NetPacketsShared").ManaService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = ManaServicePackets[methodName]
@@ -16,7 +16,7 @@ local function sendPacket(player: Player, methodName: string, ...: any)
 		return
 	end
 
-	packet.sendTo(PacketPayload.pack(...), player)
+	packet.sendTo(PacketPayload.Pack(...), player)
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -31,12 +31,13 @@ local function bindPacket(self: any, methodName: string)
 			return
 		end
 
-		local handler = self[methodName]
+		local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, player, table.unpack(arguments, 1, count))
 	end)
 end
@@ -58,7 +59,7 @@ type ManaServiceState = ManaServiceUtils.ManaServiceState
 type PlayerRuntime = {
 	state: ManaServiceState,
 	loadToken: number,
-	hasResolvedPersistedLoad: boolean,
+	hasGotPersistedLoad: boolean,
 	stateChangedBeforePersistedLoad: boolean,
 	dirty: boolean,
 	lastPersistAt: number,
@@ -66,17 +67,17 @@ type PlayerRuntime = {
 }
 
 type PlayerDataServiceServerObject = {
-	waitForData: (self: PlayerDataServiceServerObject, player: Player, timeoutSecondsRaw: any) -> any,
-	isLoaded: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
-	getValue: (self: PlayerDataServiceServerObject, player: Player, pathRaw: any, fallback: any) -> any,
-	setValue: (
+	WaitForData: (self: PlayerDataServiceServerObject, player: Player, timeoutSecondsRaw: any) -> any,
+	IsLoaded: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
+	GetValue: (self: PlayerDataServiceServerObject, player: Player, pathRaw: any, fallback: any) -> any,
+	SetValue: (
 		self: PlayerDataServiceServerObject,
 		player: Player,
 		pathRaw: any,
 		value: any,
 		replicateToClientRaw: any
 	) -> boolean,
-	savePlayerData: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
+	SavePlayerData: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
 }
 
 local ManaServiceServer = {}
@@ -86,7 +87,7 @@ local PERSIST_INTERVAL_SECONDS = 2
 local DATA_LOAD_TIMEOUT_SECONDS = 20
 local REGEN_PUSH_EPSILON = 0.01
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -108,9 +109,9 @@ end
 
 function ManaServiceServer.CreateRuntime(self: ManaServiceServer): PlayerRuntime
 	return {
-		state = ManaServiceUtils.createDefaultState(),
+		state = ManaServiceUtils.CreateDefaultState(),
 		loadToken = 0,
-		hasResolvedPersistedLoad = false,
+		hasGotPersistedLoad = false,
 		stateChangedBeforePersistedLoad = false,
 		dirty = false,
 		lastPersistAt = 0,
@@ -124,7 +125,7 @@ function ManaServiceServer.GetRuntime(self: ManaServiceServer, player: Player): 
 		return runtime
 	end
 
-	local nextRuntime = self:createRuntime()
+	local nextRuntime = self:CreateRuntime()
 	self.playerRuntimes[player] = nextRuntime
 	return nextRuntime
 end
@@ -137,14 +138,14 @@ function ManaServiceServer.PushState(self: ManaServiceServer, player: Player, ru
 	end
 
 	runtime.lastStatePushAt = now
-	sendPacket(player, ManaServiceUtils.CLIENT_METHOD_APPLY_STATE, ManaServiceUtils.cloneState(runtime.state))
+	sendPacket(player, ManaServiceUtils.CLIENT_METHOD_APPLY_STATE, ManaServiceUtils.CloneState(runtime.state))
 end
 
 function ManaServiceServer.PersistRuntime(self: ManaServiceServer, player: Player, runtime: PlayerRuntime): boolean
 	if not runtime.dirty then
 		return false
 	end
-	if not runtime.hasResolvedPersistedLoad then
+	if not runtime.hasGotPersistedLoad then
 		return false
 	end
 
@@ -152,13 +153,13 @@ function ManaServiceServer.PersistRuntime(self: ManaServiceServer, player: Playe
 	if playerDataService == nil then
 		return false
 	end
-	if not playerDataService:isLoaded(player) then
+	if not playerDataService:IsLoaded(player) then
 		return false
 	end
 
-	local payload = ManaServiceUtils.serializeStateForData(runtime.state)
+	local payload = ManaServiceUtils.SerializeStateForData(runtime.state)
 	local success, didSet = pcall(function()
-		return playerDataService:setValue(player, self.dataPath, payload, false)
+		return playerDataService:SetValue(player, self.dataPath, payload, false)
 	end)
 	if not success then
 		return false
@@ -182,23 +183,23 @@ function ManaServiceServer.ApplyState(
 	markDirtyRaw: any,
 	forcePushRaw: any
 )
-	local nextState = ManaServiceUtils.createState(
+	local nextState = ManaServiceUtils.CreateState(
 		nextManaRaw,
 		nextMaxManaRaw,
 		nextRegenRaw,
-		runtime.hasResolvedPersistedLoad,
+		runtime.hasGotPersistedLoad,
 		runtime.state
 	)
 	runtime.state = nextState
 
 	if markDirtyRaw == true then
 		runtime.dirty = true
-		if not runtime.hasResolvedPersistedLoad then
+		if not runtime.hasGotPersistedLoad then
 			runtime.stateChangedBeforePersistedLoad = true
 		end
 	end
 
-	self:pushState(player, runtime, forcePushRaw)
+	self:PushState(player, runtime, forcePushRaw)
 end
 
 function ManaServiceServer.LoadPersistedState(self: ManaServiceServer, player: Player, loadToken: number)
@@ -210,7 +211,7 @@ function ManaServiceServer.LoadPersistedState(self: ManaServiceServer, player: P
 	local playerDataService = self.playerDataService
 	if playerDataService ~= nil then
 		pcall(function()
-			playerDataService:waitForData(player, self.dataLoadTimeoutSeconds)
+			playerDataService:WaitForData(player, self.dataLoadTimeoutSeconds)
 		end)
 	end
 
@@ -222,7 +223,7 @@ function ManaServiceServer.LoadPersistedState(self: ManaServiceServer, player: P
 	local persistedRaw = nil
 	if playerDataService ~= nil then
 		local readSuccess, readResult = pcall(function()
-			return playerDataService:getValue(player, self.dataPath, nil)
+			return playerDataService:GetValue(player, self.dataPath, nil)
 		end)
 		if readSuccess then
 			persistedRaw = readResult
@@ -234,26 +235,26 @@ function ManaServiceServer.LoadPersistedState(self: ManaServiceServer, player: P
 		return
 	end
 
-	runtime.hasResolvedPersistedLoad = true
+	runtime.hasGotPersistedLoad = true
 	if runtime.stateChangedBeforePersistedLoad then
-		runtime.state = ManaServiceUtils.createState(
+		runtime.state = ManaServiceUtils.CreateState(
 			runtime.state.mana,
 			runtime.state.maxMana,
 			runtime.state.regenPerSecond,
 			true,
 			runtime.state
 		)
-		self:pushState(player, runtime, true)
+		self:PushState(player, runtime, true)
 		if runtime.dirty then
-			self:persistRuntime(player, runtime)
+			self:PersistRuntime(player, runtime)
 		end
 		return
 	end
 
 	if persistedRaw ~= nil then
-		runtime.state = ManaServiceUtils.createStateFromData(persistedRaw, runtime.state, true)
+		runtime.state = ManaServiceUtils.CreateStateFromData(persistedRaw, runtime.state, true)
 	else
-		runtime.state = ManaServiceUtils.createState(
+		runtime.state = ManaServiceUtils.CreateState(
 			runtime.state.mana,
 			runtime.state.maxMana,
 			runtime.state.regenPerSecond,
@@ -263,9 +264,9 @@ function ManaServiceServer.LoadPersistedState(self: ManaServiceServer, player: P
 		runtime.dirty = true
 	end
 
-	self:pushState(player, runtime, true)
+	self:PushState(player, runtime, true)
 	if runtime.dirty then
-		self:persistRuntime(player, runtime)
+		self:PersistRuntime(player, runtime)
 	end
 end
 
@@ -275,32 +276,32 @@ function ManaServiceServer.StepRegen(self: ManaServiceServer, dt: number)
 		if state.regenPerSecond > 0 and state.mana < state.maxMana then
 			local nextMana = math.clamp(state.mana + state.regenPerSecond * dt, 0, state.maxMana)
 			if math.abs(nextMana - state.mana) >= REGEN_PUSH_EPSILON then
-				self:applyState(player, runtime, nextMana, state.maxMana, state.regenPerSecond, true, false)
+				self:ApplyState(player, runtime, nextMana, state.maxMana, state.regenPerSecond, true, false)
 			end
 		end
 
-		if runtime.dirty and runtime.hasResolvedPersistedLoad then
+		if runtime.dirty and runtime.hasGotPersistedLoad then
 			if os.clock() - runtime.lastPersistAt >= PERSIST_INTERVAL_SECONDS then
-				self:persistRuntime(player, runtime)
+				self:PersistRuntime(player, runtime)
 			end
 		end
 	end
 end
 
 function ManaServiceServer.TrackPlayer(self: ManaServiceServer, player: Player)
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	runtime.loadToken += 1
-	runtime.state = ManaServiceUtils.createDefaultState()
-	runtime.hasResolvedPersistedLoad = false
+	runtime.state = ManaServiceUtils.CreateDefaultState()
+	runtime.hasGotPersistedLoad = false
 	runtime.stateChangedBeforePersistedLoad = false
 	runtime.dirty = false
 	runtime.lastPersistAt = 0
 	runtime.lastStatePushAt = 0
-	self:pushState(player, runtime, true)
+	self:PushState(player, runtime, true)
 
 	local loadToken = runtime.loadToken
 	task.spawn(function()
-		self:loadPersistedState(player, loadToken)
+		self:LoadPersistedState(player, loadToken)
 	end)
 end
 
@@ -310,10 +311,10 @@ function ManaServiceServer.UntrackPlayer(self: ManaServiceServer, player: Player
 		return
 	end
 
-	self:persistRuntime(player, runtime)
+	self:PersistRuntime(player, runtime)
 	if self.playerDataService ~= nil then
 		pcall(function()
-			self.playerDataService:savePlayerData(player)
+			self.playerDataService:SavePlayerData(player)
 		end)
 	end
 
@@ -323,16 +324,16 @@ end
 
 function ManaServiceServer.RequestSync(self: ManaServiceServer, player: Player)
 	if self.playerRuntimes[player] == nil then
-		self:trackPlayer(player)
+		self:TrackPlayer(player)
 		return
 	end
-	local runtime = self:getRuntime(player)
-	self:pushState(player, runtime, true)
+	local runtime = self:GetRuntime(player)
+	self:PushState(player, runtime, true)
 end
 
 function ManaServiceServer.GetState(self: ManaServiceServer, player: Player): ManaServiceState
-	local runtime = self:getRuntime(player)
-	return ManaServiceUtils.cloneState(runtime.state)
+	local runtime = self:GetRuntime(player)
+	return ManaServiceUtils.CloneState(runtime.state)
 end
 
 function ManaServiceServer.IsReady(self: ManaServiceServer, player: Player): boolean
@@ -340,7 +341,7 @@ function ManaServiceServer.IsReady(self: ManaServiceServer, player: Player): boo
 	if runtime == nil then
 		return false
 	end
-	return runtime.hasResolvedPersistedLoad
+	return runtime.hasGotPersistedLoad
 end
 
 function ManaServiceServer.GetMana(self: ManaServiceServer, player: Player?): number?
@@ -390,7 +391,7 @@ function ManaServiceServer.CanConsumeMana(
 		return false
 	end
 
-	local amount = sanitizeNumber(amountRaw, 0, 0, 1_000_000)
+	local amount = CoerceNumber(amountRaw, 0, 0, 1_000_000)
 	if amount <= 0 then
 		return true
 	end
@@ -411,7 +412,7 @@ function ManaServiceServer.ConsumeMana(
 		return false
 	end
 
-	local amount = sanitizeNumber(amountRaw, 0, 0, 1_000_000)
+	local amount = CoerceNumber(amountRaw, 0, 0, 1_000_000)
 	if amount <= 0 then
 		return true
 	end
@@ -419,7 +420,7 @@ function ManaServiceServer.ConsumeMana(
 		return false
 	end
 
-	self:applyState(
+	self:ApplyState(
 		player,
 		runtime,
 		runtime.state.mana - amount,
@@ -428,8 +429,8 @@ function ManaServiceServer.ConsumeMana(
 		true,
 		false
 	)
-	if runtime.hasResolvedPersistedLoad and os.clock() - runtime.lastPersistAt >= PERSIST_INTERVAL_SECONDS then
-		self:persistRuntime(player, runtime)
+	if runtime.hasGotPersistedLoad and os.clock() - runtime.lastPersistAt >= PERSIST_INTERVAL_SECONDS then
+		self:PersistRuntime(player, runtime)
 	end
 	return true
 end
@@ -443,7 +444,7 @@ function ManaServiceServer.AddMana(self: ManaServiceServer, player: Player?, amo
 		return nil
 	end
 
-	local amount = sanitizeNumber(amountRaw, 0, 0, 1_000_000)
+	local amount = CoerceNumber(amountRaw, 0, 0, 1_000_000)
 	if amount <= 0 then
 		return runtime.state.mana
 	end
@@ -453,9 +454,9 @@ function ManaServiceServer.AddMana(self: ManaServiceServer, player: Player?, amo
 		return runtime.state.mana
 	end
 
-	self:applyState(player, runtime, nextMana, runtime.state.maxMana, runtime.state.regenPerSecond, true, false)
-	if runtime.hasResolvedPersistedLoad and os.clock() - runtime.lastPersistAt >= PERSIST_INTERVAL_SECONDS then
-		self:persistRuntime(player, runtime)
+	self:ApplyState(player, runtime, nextMana, runtime.state.maxMana, runtime.state.regenPerSecond, true, false)
+	if runtime.hasGotPersistedLoad and os.clock() - runtime.lastPersistAt >= PERSIST_INTERVAL_SECONDS then
+		self:PersistRuntime(player, runtime)
 	end
 	return runtime.state.mana
 end
@@ -469,14 +470,14 @@ function ManaServiceServer.SetMana(self: ManaServiceServer, player: Player?, man
 		return nil
 	end
 
-	local nextMana = sanitizeNumber(manaRaw, runtime.state.mana, 0, runtime.state.maxMana)
+	local nextMana = CoerceNumber(manaRaw, runtime.state.mana, 0, runtime.state.maxMana)
 	if math.abs(nextMana - runtime.state.mana) <= 1e-6 then
 		return runtime.state.mana
 	end
 
-	self:applyState(player, runtime, nextMana, runtime.state.maxMana, runtime.state.regenPerSecond, true, false)
-	if runtime.hasResolvedPersistedLoad and os.clock() - runtime.lastPersistAt >= PERSIST_INTERVAL_SECONDS then
-		self:persistRuntime(player, runtime)
+	self:ApplyState(player, runtime, nextMana, runtime.state.maxMana, runtime.state.regenPerSecond, true, false)
+	if runtime.hasGotPersistedLoad and os.clock() - runtime.lastPersistAt >= PERSIST_INTERVAL_SECONDS then
+		self:PersistRuntime(player, runtime)
 	end
 	return runtime.state.mana
 end
@@ -495,15 +496,15 @@ function ManaServiceServer.SetMaxMana(
 		return nil
 	end
 
-	local nextMaxMana = sanitizeNumber(maxManaRaw, runtime.state.maxMana, 1, 100000)
+	local nextMaxMana = CoerceNumber(maxManaRaw, runtime.state.maxMana, 1, 100000)
 	local nextMana = math.clamp(runtime.state.mana, 0, nextMaxMana)
 	if math.abs(nextMaxMana - runtime.state.maxMana) <= 1e-6 and math.abs(nextMana - runtime.state.mana) <= 1e-6 then
 		return runtime.state.maxMana
 	end
 
-	self:applyState(player, runtime, nextMana, nextMaxMana, runtime.state.regenPerSecond, true, false)
-	if runtime.hasResolvedPersistedLoad and os.clock() - runtime.lastPersistAt >= PERSIST_INTERVAL_SECONDS then
-		self:persistRuntime(player, runtime)
+	self:ApplyState(player, runtime, nextMana, nextMaxMana, runtime.state.regenPerSecond, true, false)
+	if runtime.hasGotPersistedLoad and os.clock() - runtime.lastPersistAt >= PERSIST_INTERVAL_SECONDS then
+		self:PersistRuntime(player, runtime)
 	end
 	return runtime.state.maxMana
 end
@@ -522,47 +523,47 @@ function ManaServiceServer.SetRegenPerSecond(
 		return nil
 	end
 
-	local nextRegen = sanitizeNumber(regenRaw, runtime.state.regenPerSecond, 0, 10000)
+	local nextRegen = CoerceNumber(regenRaw, runtime.state.regenPerSecond, 0, 10000)
 	if math.abs(nextRegen - runtime.state.regenPerSecond) <= 1e-6 then
 		return runtime.state.regenPerSecond
 	end
 
-	self:applyState(player, runtime, runtime.state.mana, runtime.state.maxMana, nextRegen, true, false)
-	if runtime.hasResolvedPersistedLoad and os.clock() - runtime.lastPersistAt >= PERSIST_INTERVAL_SECONDS then
-		self:persistRuntime(player, runtime)
+	self:ApplyState(player, runtime, runtime.state.mana, runtime.state.maxMana, nextRegen, true, false)
+	if runtime.hasGotPersistedLoad and os.clock() - runtime.lastPersistAt >= PERSIST_INTERVAL_SECONDS then
+		self:PersistRuntime(player, runtime)
 	end
 	return runtime.state.regenPerSecond
 end
 
 function ManaServiceServer.OnHeartbeat(self: ManaServiceServer, dt: number)
-	self:stepRegen(dt)
+	self:StepRegen(dt)
 end
 
 function ManaServiceServer.Init(self: ManaServiceServer)
 	bindPackets(self)
 	self.playerDataService = PlayerDataServiceServer :: PlayerDataServiceServerObject
 	self.playerRuntimes = {}
-	self.dataPath = ManaServiceUtils.getDefaultDataPath()
+	self.dataPath = ManaServiceUtils.GetDefaultDataPath()
 	self.dataLoadTimeoutSeconds = DATA_LOAD_TIMEOUT_SECONDS
 
 	for _, player in Players:GetPlayers() do
-		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
-			self:trackPlayer(player)
+		if PlayerServiceServer:IsGameplayActiveForPlayer(player) then
+			self:TrackPlayer(player)
 		end
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
-			self:trackPlayer(player)
+		if PlayerServiceServer:IsGameplayActiveForPlayer(player) then
+			self:TrackPlayer(player)
 		end
 	end)
 
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
-		self:untrackPlayer(player)
+		self:UntrackPlayer(player)
 	end)
 
 	self.heartbeatConnection = RunService.Heartbeat:Connect(function(dt: number)
-		self:onHeartbeat(dt)
+		self:OnHeartbeat(dt)
 	end)
 end
 
@@ -581,35 +582,9 @@ function ManaServiceServer.Destroy(self: ManaServiceServer)
 	end
 
 	for player in self.playerRuntimes do
-		self:untrackPlayer(player)
+		self:UntrackPlayer(player)
 	end
 end
-
-ManaServiceServer.createRuntime = ManaServiceServer.CreateRuntime
-ManaServiceServer.getRuntime = ManaServiceServer.GetRuntime
-ManaServiceServer.pushState = ManaServiceServer.PushState
-ManaServiceServer.persistRuntime = ManaServiceServer.PersistRuntime
-ManaServiceServer.applyState = ManaServiceServer.ApplyState
-ManaServiceServer.loadPersistedState = ManaServiceServer.LoadPersistedState
-ManaServiceServer.stepRegen = ManaServiceServer.StepRegen
-ManaServiceServer.trackPlayer = ManaServiceServer.TrackPlayer
-ManaServiceServer.untrackPlayer = ManaServiceServer.UntrackPlayer
-ManaServiceServer.requestSync = ManaServiceServer.RequestSync
-ManaServiceServer.getState = ManaServiceServer.GetState
-ManaServiceServer.isReady = ManaServiceServer.IsReady
-ManaServiceServer.getMana = ManaServiceServer.GetMana
-ManaServiceServer.getMaxMana = ManaServiceServer.GetMaxMana
-ManaServiceServer.getRegenPerSecond = ManaServiceServer.GetRegenPerSecond
-ManaServiceServer.canConsumeMana = ManaServiceServer.CanConsumeMana
-ManaServiceServer.consumeMana = ManaServiceServer.ConsumeMana
-ManaServiceServer.addMana = ManaServiceServer.AddMana
-ManaServiceServer.setMana = ManaServiceServer.SetMana
-ManaServiceServer.setMaxMana = ManaServiceServer.SetMaxMana
-ManaServiceServer.setRegenPerSecond = ManaServiceServer.SetRegenPerSecond
-ManaServiceServer.onHeartbeat = ManaServiceServer.OnHeartbeat
-ManaServiceServer.init = ManaServiceServer.Init
-ManaServiceServer.destroy = ManaServiceServer.Destroy
-
 export type ManaServiceServer = typeof(ManaServiceServer) & {
 	playerDataService: PlayerDataServiceServerObject,
 	playerRuntimes: { [Player]: PlayerRuntime },

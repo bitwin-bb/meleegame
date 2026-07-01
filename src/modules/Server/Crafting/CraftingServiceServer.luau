@@ -3,14 +3,12 @@ local require = require(script.Parent.loader).load(script)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local ServerScriptService = game:GetService("ServerScriptService")
-
 local Configs = require(script:FindFirstAncestor("game").Shared:WaitForChild("QueenBeeConfigs"))
 local CraftingServiceUtils = require("CraftingServiceUtils")
 local InventoryServiceServer = require("InventoryServiceServer")
 local InventoryServiceUtils = require("InventoryServiceUtils")
 local PacketPayload = require("PacketPayload")
-local CraftingServicePackets = require("NetSharedPackets").CraftingService
+local CraftingServicePackets = require("NetPacketsShared").CraftingService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = CraftingServicePackets[methodName]
@@ -19,7 +17,7 @@ local function sendPacket(player: Player, methodName: string, ...: any)
 		return
 	end
 
-	packet.sendTo(PacketPayload.pack(...), player)
+	packet.sendTo(PacketPayload.Pack(...), player)
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -34,12 +32,13 @@ local function bindPacket(self: any, methodName: string)
 			return
 		end
 
-		local handler = self[methodName]
+		local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, player, table.unpack(arguments, 1, count))
 	end)
 end
@@ -66,29 +65,29 @@ type InventoryProvider = CraftingServiceUtils.InventoryProvider
 type CraftTransactionResult = CraftingServiceUtils.CraftTransactionResult
 
 type PlayerDataServiceServerObject = {
-	waitForData: (self: PlayerDataServiceServerObject, player: Player, timeoutSecondsRaw: any) -> any,
-	getValue: (self: PlayerDataServiceServerObject, player: Player, pathRaw: any, fallback: any) -> any,
-	setValue: (
+	WaitForData: (self: PlayerDataServiceServerObject, player: Player, timeoutSecondsRaw: any) -> any,
+	GetValue: (self: PlayerDataServiceServerObject, player: Player, pathRaw: any, fallback: any) -> any,
+	SetValue: (
 		self: PlayerDataServiceServerObject,
 		player: Player,
 		pathRaw: any,
 		value: any,
 		replicateToClientRaw: any
 	) -> boolean,
-	savePlayerData: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
+	SavePlayerData: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
 }
 
 type InventoryServiceServerObject = {
-	getState: (self: InventoryServiceServerObject, player: Player) -> any,
+	GetState: (self: InventoryServiceServerObject, player: Player) -> any,
 }
 
 type WorldGenerationServiceServerObject = {
-	getBiomeTypeAtWorldPosition: (self: WorldGenerationServiceServerObject, worldPosition: Vector3) -> number?,
+	GetBiomeTypeAtWorldPosition: (self: WorldGenerationServiceServerObject, worldPosition: Vector3) -> number?,
 }
 
 type PlayerRuntime = {
 	loadToken: number,
-	hasResolvedPersistedLoad: boolean,
+	hasGotPersistedLoad: boolean,
 	knownRecipeIds: { [string]: boolean },
 	discoveredItemIds: { [string]: boolean },
 	progressionFlags: { [string]: boolean },
@@ -109,7 +108,7 @@ local function trim(textRaw: any): string
 	return string.match(textRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function sanitizeFlagId(flagRaw: any): string?
+local function CoerceFlagId(flagRaw: any): string?
 	local flagId = trim(flagRaw)
 	if flagId == "" then
 		return nil
@@ -127,10 +126,10 @@ local function mapToOrderedRecipeIds(registry: RecipeRegistry, recipeIdSet: { [s
 	return orderedRecipeIds
 end
 
-function CraftingServiceServer.CreateRuntime(self: CraftingServiceServer): PlayerRuntime
+function CraftingServiceServer.CreateRuntime(_self: CraftingServiceServer): PlayerRuntime
 	return {
 		loadToken = 0,
-		hasResolvedPersistedLoad = false,
+		hasGotPersistedLoad = false,
 		knownRecipeIds = {},
 		discoveredItemIds = {},
 		progressionFlags = {},
@@ -148,23 +147,23 @@ function CraftingServiceServer.GetRuntime(self: CraftingServiceServer, player: P
 	if runtime ~= nil then
 		return runtime
 	end
-	local nextRuntime = self:createRuntime()
+	local nextRuntime = self:CreateRuntime()
 	self.playerRuntimes[player] = nextRuntime
 	return nextRuntime
 end
 
-function CraftingServiceServer.IsRuntimeReady(self: CraftingServiceServer, runtime: PlayerRuntime): boolean
-	return runtime.hasResolvedPersistedLoad
+function CraftingServiceServer.IsRuntimeReady(_self: CraftingServiceServer, runtime: PlayerRuntime): boolean
+	return runtime.hasGotPersistedLoad
 end
 
 function CraftingServiceServer.CreateStateSnapshot(
-	self: CraftingServiceServer,
+	_self: CraftingServiceServer,
 	runtime: PlayerRuntime
 ): CraftingServiceStateSnapshot
 	return {
-		knownRecipeIds = CraftingServiceUtils.cloneStringSet(runtime.knownRecipeIds),
-		discoveredItemIds = CraftingServiceUtils.cloneStringSet(runtime.discoveredItemIds),
-		progressionFlags = CraftingServiceUtils.cloneStringSet(runtime.progressionFlags),
+		knownRecipeIds = CraftingServiceUtils.CloneStringSet(runtime.knownRecipeIds),
+		discoveredItemIds = CraftingServiceUtils.CloneStringSet(runtime.discoveredItemIds),
+		progressionFlags = CraftingServiceUtils.CloneStringSet(runtime.progressionFlags),
 		updatedAt = os.clock(),
 	}
 end
@@ -182,7 +181,7 @@ function CraftingServiceServer.PushState(
 	end
 
 	runtime.lastStatePushAt = now
-	sendPacket(player, CraftingServiceUtils.CLIENT_METHOD_APPLY_STATE, self:createStateSnapshot(runtime))
+	sendPacket(player, CraftingServiceUtils.CLIENT_METHOD_APPLY_STATE, self:CreateStateSnapshot(runtime))
 end
 
 function CraftingServiceServer.PushCraftResult(
@@ -201,7 +200,7 @@ function CraftingServiceServer.PushCraftResult(
 	})
 end
 
-function CraftingServiceServer.MarkRuntimeDirty(self: CraftingServiceServer, runtime: PlayerRuntime)
+function CraftingServiceServer.MarkRuntimeDirty(_self: CraftingServiceServer, runtime: PlayerRuntime)
 	runtime.dirty = true
 end
 
@@ -213,7 +212,7 @@ function CraftingServiceServer.PersistRuntime(
 	if not runtime.dirty then
 		return false
 	end
-	if not runtime.hasResolvedPersistedLoad then
+	if not runtime.hasGotPersistedLoad then
 		return false
 	end
 
@@ -228,9 +227,9 @@ function CraftingServiceServer.PersistRuntime(
 		progressionFlags = runtime.progressionFlags,
 		updatedAt = os.time(),
 	}
-	local serializedState = CraftingServiceUtils.serializePersistentState(payload)
+	local serializedState = CraftingServiceUtils.SerializePersistentState(payload)
 	local success, didSet = pcall(function()
-		return playerDataService:setValue(player, self.config.dataPath, serializedState, false)
+		return playerDataService:SetValue(player, self.config.dataPath, serializedState, false)
 	end)
 	if not success or didSet ~= true then
 		return false
@@ -256,7 +255,7 @@ function CraftingServiceServer.UnlockRecipesByIds(
 			continue
 		end
 		if
-			CraftingServiceUtils.RecipeValidator.areUnlockConditionsSatisfied(
+			CraftingServiceUtils.RecipeValidator.AreUnlockConditionsSatisfied(
 				recipe,
 				runtime.discoveredItemIds,
 				runtime.progressionFlags
@@ -268,13 +267,13 @@ function CraftingServiceServer.UnlockRecipesByIds(
 	end
 
 	if didUnlockAny then
-		self:markRuntimeDirty(runtime)
+		self:MarkRuntimeDirty(runtime)
 	end
 	return didUnlockAny
 end
 
 function CraftingServiceServer.UnlockAllEligibleRecipes(self: CraftingServiceServer, runtime: PlayerRuntime): boolean
-	return self:unlockRecipesByIds(runtime, self.registry.recipeIdsOrdered)
+	return self:UnlockRecipesByIds(runtime, self.registry.recipeIdsOrdered)
 end
 
 function CraftingServiceServer.RefreshDiscoveriesFromInventory(
@@ -287,13 +286,13 @@ function CraftingServiceServer.RefreshDiscoveriesFromInventory(
 	if inventoryState == nil then
 		return false
 	end
-	if not InventoryServiceUtils.isLoadedState((inventoryState :: any).loadState) then
+	if not InventoryServiceUtils.IsLoadedState((inventoryState :: any).loadState) then
 		return false
 	end
 
 	local didChange = false
 	local discoveredRecipeCandidates: { [string]: boolean } = {}
-	local inventoryCounts = CraftingServiceUtils.buildInventoryItemCountMap(inventoryState)
+	local inventoryCounts = CraftingServiceUtils.BuildInventoryItemCountMap(inventoryState)
 	for itemId, amount in inventoryCounts do
 		if amount <= 0 then
 			continue
@@ -312,19 +311,19 @@ function CraftingServiceServer.RefreshDiscoveriesFromInventory(
 	end
 
 	if didChange then
-		self:markRuntimeDirty(runtime)
+		self:MarkRuntimeDirty(runtime)
 	end
 
 	local shouldForceUnlockScan = forceUnlockScanRaw == true
 	if shouldForceUnlockScan then
-		if self:unlockAllEligibleRecipes(runtime) then
+		if self:UnlockAllEligibleRecipes(runtime) then
 			didChange = true
 		end
 		return didChange
 	end
 
 	local candidateRecipeIds = mapToOrderedRecipeIds(self.registry, discoveredRecipeCandidates)
-	if #candidateRecipeIds > 0 and self:unlockRecipesByIds(runtime, candidateRecipeIds) then
+	if #candidateRecipeIds > 0 and self:UnlockRecipesByIds(runtime, candidateRecipeIds) then
 		didChange = true
 	end
 
@@ -336,16 +335,16 @@ function CraftingServiceServer.ApplyPersistedStateToRuntime(
 	runtime: PlayerRuntime,
 	persistedStateRaw: any
 )
-	local sanitized = CraftingServiceUtils.sanitizePersistentState(persistedStateRaw, self.registry)
-	runtime.knownRecipeIds = sanitized.knownRecipeIds
-	runtime.discoveredItemIds = sanitized.discoveredItemIds
-	runtime.progressionFlags = sanitized.progressionFlags
+	local CoerceD = CraftingServiceUtils.CoercePersistentState(persistedStateRaw, self.registry)
+	runtime.knownRecipeIds = CoerceD.knownRecipeIds
+	runtime.discoveredItemIds = CoerceD.discoveredItemIds
+	runtime.progressionFlags = CoerceD.progressionFlags
 	for recipeId, enabled in self.registry.defaultKnownRecipeIds do
 		if enabled then
 			runtime.knownRecipeIds[recipeId] = true
 		end
 	end
-	runtime.hasResolvedPersistedLoad = true
+	runtime.hasGotPersistedLoad = true
 end
 
 function CraftingServiceServer.LoadPlayerState(self: CraftingServiceServer, player: Player, loadToken: number)
@@ -358,10 +357,10 @@ function CraftingServiceServer.LoadPlayerState(self: CraftingServiceServer, play
 	local playerDataService = self.playerDataService
 	if playerDataService ~= nil then
 		pcall(function()
-			playerDataService:waitForData(player, self.config.dataLoadTimeoutSeconds)
+			playerDataService:WaitForData(player, self.config.dataLoadTimeoutSeconds)
 		end)
 		local readSuccess, readResult = pcall(function()
-			return playerDataService:getValue(player, self.config.dataPath, nil)
+			return playerDataService:GetValue(player, self.config.dataPath, nil)
 		end)
 		if readSuccess then
 			persistedStateRaw = readResult
@@ -373,18 +372,18 @@ function CraftingServiceServer.LoadPlayerState(self: CraftingServiceServer, play
 		return
 	end
 
-	self:applyPersistedStateToRuntime(runtime, persistedStateRaw)
+	self:ApplyPersistedStateToRuntime(runtime, persistedStateRaw)
 
-	local inventoryState = self.inventoryService:getState(player)
-	self:refreshDiscoveriesFromInventory(runtime, inventoryState, true)
-	self:pushState(player, runtime, true)
-	self:persistRuntime(player, runtime)
+	local inventoryState = self.inventoryService:GetState(player)
+	self:RefreshDiscoveriesFromInventory(runtime, inventoryState, true)
+	self:PushState(player, runtime, true)
+	self:PersistRuntime(player, runtime)
 end
 
 function CraftingServiceServer.TrackPlayer(self: CraftingServiceServer, player: Player)
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	runtime.loadToken += 1
-	runtime.hasResolvedPersistedLoad = false
+	runtime.hasGotPersistedLoad = false
 	runtime.knownRecipeIds = {}
 	runtime.discoveredItemIds = {}
 	runtime.progressionFlags = {}
@@ -397,7 +396,7 @@ function CraftingServiceServer.TrackPlayer(self: CraftingServiceServer, player: 
 
 	local loadToken = runtime.loadToken
 	task.spawn(function()
-		self:loadPlayerState(player, loadToken)
+		self:LoadPlayerState(player, loadToken)
 	end)
 end
 
@@ -407,32 +406,32 @@ function CraftingServiceServer.UntrackPlayer(self: CraftingServiceServer, player
 		return
 	end
 
-	self:persistRuntime(player, runtime)
+	self:PersistRuntime(player, runtime)
 	pcall(function()
-		self.playerDataService:savePlayerData(player)
+		self.playerDataService:SavePlayerData(player)
 	end)
 	runtime.loadToken += 1
 	self.playerRuntimes[player] = nil
 end
 
-function CraftingServiceServer.ResolvePlayerBiomeTokens(
+function CraftingServiceServer.GetPlayerBiomeTokens(
 	self: CraftingServiceServer,
 	player: Player
 ): { [string]: boolean }
-	local rootPosition = CraftingServiceUtils.resolvePlayerRootPosition(player)
+	local rootPosition = CraftingServiceUtils.GetPlayerRootPosition(player)
 	if rootPosition == nil then
 		return {}
 	end
-	return CraftingServiceUtils.resolveBiomeTokensFromWorldService(self.worldGenerationService, rootPosition)
+	return CraftingServiceUtils.GetBiomeTokensFromWorldService(self.worldGenerationService, rootPosition)
 end
 
 function CraftingServiceServer.RequestSync(self: CraftingServiceServer, player: Player)
 	local runtime = self.playerRuntimes[player]
 	if runtime == nil then
-		self:trackPlayer(player)
+		self:TrackPlayer(player)
 		return
 	end
-	self:pushState(player, runtime, true)
+	self:PushState(player, runtime, true)
 end
 
 function CraftingServiceServer.RequestCraft(
@@ -442,8 +441,8 @@ function CraftingServiceServer.RequestCraft(
 	quantityRaw: any
 )
 	local runtime = self.playerRuntimes[player]
-	if runtime == nil or not self:isRuntimeReady(runtime) then
-		self:pushCraftResult(player, {
+	if runtime == nil or not self:IsRuntimeReady(runtime) then
+		self:PushCraftResult(player, {
 			success = false,
 			reason = "not_ready",
 			recipeId = "",
@@ -456,7 +455,7 @@ function CraftingServiceServer.RequestCraft(
 
 	local now = os.clock()
 	if now - runtime.lastCraftRequestAt < self.config.serverRequestRateLimitSeconds then
-		self:pushCraftResult(player, {
+		self:PushCraftResult(player, {
 			success = false,
 			reason = "rate_limited",
 			recipeId = "",
@@ -468,13 +467,13 @@ function CraftingServiceServer.RequestCraft(
 	end
 	runtime.lastCraftRequestAt = now
 
-	local recipeId, quantity = CraftingServiceUtils.RecipeValidator.sanitizeCraftRequest(
+	local recipeId, quantity = CraftingServiceUtils.RecipeValidator.CoerceCraftRequest(
 		recipeIdRaw,
 		quantityRaw,
 		self.config.maxCraftQuantityPerRequest
 	)
 	if recipeId == nil or quantity <= 0 then
-		self:pushCraftResult(player, {
+		self:PushCraftResult(player, {
 			success = false,
 			reason = "invalid_request",
 			recipeId = "",
@@ -487,7 +486,7 @@ function CraftingServiceServer.RequestCraft(
 
 	local recipe = self.registry.recipesById[recipeId]
 	if recipe == nil then
-		self:pushCraftResult(player, {
+		self:PushCraftResult(player, {
 			success = false,
 			reason = "invalid_recipe",
 			recipeId = recipeId,
@@ -498,7 +497,7 @@ function CraftingServiceServer.RequestCraft(
 		return
 	end
 	if runtime.knownRecipeIds[recipeId] ~= true then
-		self:pushCraftResult(player, {
+		self:PushCraftResult(player, {
 			success = false,
 			reason = "recipe_locked",
 			recipeId = recipeId,
@@ -510,7 +509,7 @@ function CraftingServiceServer.RequestCraft(
 	end
 
 	if runtime.transactionLocked then
-		self:pushCraftResult(player, {
+		self:PushCraftResult(player, {
 			success = false,
 			reason = "busy",
 			recipeId = recipeId,
@@ -521,14 +520,14 @@ function CraftingServiceServer.RequestCraft(
 		return
 	end
 
-	local stationsNearPlayer = CraftingServiceUtils.StationDetector.getStationsNearPlayer(
+	local stationsNearPlayer = CraftingServiceUtils.StationDetector.GetStationsNearPlayer(
 		player,
 		self.registry.stationTagById,
 		self.config.stationValidationRadius,
 		recipe.requiredStations
 	)
-	if not CraftingServiceUtils.RecipeValidator.areStationsSatisfied(recipe, stationsNearPlayer) then
-		self:pushCraftResult(player, {
+	if not CraftingServiceUtils.RecipeValidator.AreStationsSatisfied(recipe, stationsNearPlayer) then
+		self:PushCraftResult(player, {
 			success = false,
 			reason = "missing_station",
 			recipeId = recipeId,
@@ -539,9 +538,9 @@ function CraftingServiceServer.RequestCraft(
 		return
 	end
 
-	local biomeTokens = self:resolvePlayerBiomeTokens(player)
-	if not CraftingServiceUtils.RecipeValidator.isBiomeSatisfied(recipe, biomeTokens) then
-		self:pushCraftResult(player, {
+	local biomeTokens = self:GetPlayerBiomeTokens(player)
+	if not CraftingServiceUtils.RecipeValidator.IsBiomeSatisfied(recipe, biomeTokens) then
+		self:PushCraftResult(player, {
 			success = false,
 			reason = "wrong_biome",
 			recipeId = recipeId,
@@ -554,12 +553,12 @@ function CraftingServiceServer.RequestCraft(
 
 	runtime.transactionLocked = true
 	local transactionSuccess, transactionResultOrError = pcall(function()
-		return CraftingServiceUtils.CraftTransaction.execute(self.inventoryProvider, player, recipe, quantity)
+		return CraftingServiceUtils.CraftTransaction.Execute(self.inventoryProvider, player, recipe, quantity)
 	end)
 	runtime.transactionLocked = false
 
 	if not transactionSuccess then
-		self:pushCraftResult(player, {
+		self:PushCraftResult(player, {
 			success = false,
 			reason = "transaction_error",
 			recipeId = recipeId,
@@ -573,7 +572,7 @@ function CraftingServiceServer.RequestCraft(
 	local transactionResult = transactionResultOrError :: CraftTransactionResult
 
 	if not transactionResult.success then
-		self:pushCraftResult(player, transactionResult, transactionResult.reason)
+		self:PushCraftResult(player, transactionResult, transactionResult.reason)
 		return
 	end
 
@@ -581,7 +580,7 @@ function CraftingServiceServer.RequestCraft(
 	for _, grantedItem in transactionResult.granted do
 		if runtime.discoveredItemIds[grantedItem.itemId] ~= true then
 			runtime.discoveredItemIds[grantedItem.itemId] = true
-			self:markRuntimeDirty(runtime)
+			self:MarkRuntimeDirty(runtime)
 		end
 		local candidates = self.registry.recipeIdsByUnlockItem[grantedItem.itemId]
 		if candidates ~= nil then
@@ -593,12 +592,12 @@ function CraftingServiceServer.RequestCraft(
 
 	local didUnlock = false
 	local candidateRecipeIds = mapToOrderedRecipeIds(self.registry, candidateRecipeIdSet)
-	if #candidateRecipeIds > 0 and self:unlockRecipesByIds(runtime, candidateRecipeIds) then
+	if #candidateRecipeIds > 0 and self:UnlockRecipesByIds(runtime, candidateRecipeIds) then
 		didUnlock = true
 	end
 
-	self:pushState(player, runtime, didUnlock)
-	self:pushCraftResult(player, transactionResult, nil)
+	self:PushState(player, runtime, didUnlock)
+	self:PushCraftResult(player, transactionResult, nil)
 end
 
 function CraftingServiceServer.OnHeartbeat(self: CraftingServiceServer, dtRaw: any)
@@ -615,23 +614,23 @@ function CraftingServiceServer.OnHeartbeat(self: CraftingServiceServer, dtRaw: a
 
 	local now = os.clock()
 	for player, runtime in self.playerRuntimes do
-		if runtime.hasResolvedPersistedLoad and shouldWatchInventory then
-			local inventoryState = self.inventoryService:getState(player)
+		if runtime.hasGotPersistedLoad and shouldWatchInventory then
+			local inventoryState = self.inventoryService:GetState(player)
 			local updatedAt = if typeof(inventoryState) == "table"
 					and typeof((inventoryState :: any).updatedAt) == "number"
 				then (inventoryState :: any).updatedAt
 				else -math.huge
 			if updatedAt ~= runtime.lastObservedInventoryUpdatedAt then
 				runtime.lastObservedInventoryUpdatedAt = updatedAt
-				if self:refreshDiscoveriesFromInventory(runtime, inventoryState, false) then
-					self:pushState(player, runtime, true)
+				if self:RefreshDiscoveriesFromInventory(runtime, inventoryState, false) then
+					self:PushState(player, runtime, true)
 				end
 			end
 		end
 
-		if runtime.dirty and runtime.hasResolvedPersistedLoad then
+		if runtime.dirty and runtime.hasGotPersistedLoad then
 			if now - runtime.lastPersistAt >= self.config.persistIntervalSeconds then
-				self:persistRuntime(player, runtime)
+				self:PersistRuntime(player, runtime)
 			end
 		end
 	end
@@ -654,7 +653,7 @@ function CraftingServiceServer.SetInventoryProvider(self: CraftingServiceServer,
 		end
 	end
 	self.inventoryProvider =
-		CraftingServiceUtils.CraftTransaction.createInventoryProvider(self.inventoryService, self.playerDataService)
+		CraftingServiceUtils.CraftTransaction.CreateInventoryProvider(self.inventoryService, self.playerDataService)
 end
 
 function CraftingServiceServer.SetProgressionFlag(
@@ -664,11 +663,11 @@ function CraftingServiceServer.SetProgressionFlag(
 	enabledRaw: any
 ): boolean
 	local runtime = self.playerRuntimes[player]
-	if runtime == nil or not runtime.hasResolvedPersistedLoad then
+	if runtime == nil or not runtime.hasGotPersistedLoad then
 		return false
 	end
 
-	local flagId = sanitizeFlagId(flagIdRaw)
+	local flagId = CoerceFlagId(flagIdRaw)
 	if flagId == nil then
 		return false
 	end
@@ -686,46 +685,46 @@ function CraftingServiceServer.SetProgressionFlag(
 		runtime.progressionFlags[flagId] = nil
 	end
 
-	self:markRuntimeDirty(runtime)
+	self:MarkRuntimeDirty(runtime)
 	local candidateRecipeIds = self.registry.recipeIdsByUnlockFlag[flagId]
 	if candidateRecipeIds ~= nil then
-		self:unlockRecipesByIds(runtime, candidateRecipeIds)
+		self:UnlockRecipesByIds(runtime, candidateRecipeIds)
 	end
-	self:pushState(player, runtime, true)
+	self:PushState(player, runtime, true)
 	return true
 end
 
 function CraftingServiceServer.Init(self: CraftingServiceServer)
-	self.config = CraftingServiceUtils.resolveEffectiveConfig((Configs :: any).crafting)
-	self.registry = CraftingServiceUtils.getRegistry(self.config)
+	self.config = CraftingServiceUtils.GetEffectiveConfig((Configs :: any).crafting)
+	self.registry = CraftingServiceUtils.GetRegistry(self.config)
 	self.playerRuntimes = {}
 	self.inventoryWatchAccumulator = 0
 	self.inventoryService = InventoryServiceServer :: InventoryServiceServerObject
 	self.playerDataService = PlayerDataServiceServer :: PlayerDataServiceServerObject
 	self.worldGenerationService = WorldGenerationServiceServer :: WorldGenerationServiceServerObject
 	self.inventoryProvider =
-		CraftingServiceUtils.CraftTransaction.createInventoryProvider(self.inventoryService, self.playerDataService)
+		CraftingServiceUtils.CraftTransaction.CreateInventoryProvider(self.inventoryService, self.playerDataService)
 
 	bindPackets(self)
 
 	for _, player in Players:GetPlayers() do
-		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
-			self:trackPlayer(player)
+		if PlayerServiceServer:IsGameplayActiveForPlayer(player) then
+			self:TrackPlayer(player)
 		end
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
-			self:trackPlayer(player)
+		if PlayerServiceServer:IsGameplayActiveForPlayer(player) then
+			self:TrackPlayer(player)
 		end
 	end)
 
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
-		self:untrackPlayer(player)
+		self:UntrackPlayer(player)
 	end)
 
 	self.heartbeatConnection = RunService.Heartbeat:Connect(function(dt: number)
-		self:onHeartbeat(dt)
+		self:OnHeartbeat(dt)
 	end)
 end
 
@@ -744,35 +743,10 @@ function CraftingServiceServer.Destroy(self: CraftingServiceServer)
 	end
 
 	for player, runtime in self.playerRuntimes do
-		self:persistRuntime(player, runtime)
+		self:PersistRuntime(player, runtime)
 		self.playerRuntimes[player] = nil
 	end
 end
-
-CraftingServiceServer.createRuntime = CraftingServiceServer.CreateRuntime
-CraftingServiceServer.getRuntime = CraftingServiceServer.GetRuntime
-CraftingServiceServer.isRuntimeReady = CraftingServiceServer.IsRuntimeReady
-CraftingServiceServer.createStateSnapshot = CraftingServiceServer.CreateStateSnapshot
-CraftingServiceServer.pushState = CraftingServiceServer.PushState
-CraftingServiceServer.pushCraftResult = CraftingServiceServer.PushCraftResult
-CraftingServiceServer.markRuntimeDirty = CraftingServiceServer.MarkRuntimeDirty
-CraftingServiceServer.persistRuntime = CraftingServiceServer.PersistRuntime
-CraftingServiceServer.unlockRecipesByIds = CraftingServiceServer.UnlockRecipesByIds
-CraftingServiceServer.unlockAllEligibleRecipes = CraftingServiceServer.UnlockAllEligibleRecipes
-CraftingServiceServer.refreshDiscoveriesFromInventory = CraftingServiceServer.RefreshDiscoveriesFromInventory
-CraftingServiceServer.applyPersistedStateToRuntime = CraftingServiceServer.ApplyPersistedStateToRuntime
-CraftingServiceServer.loadPlayerState = CraftingServiceServer.LoadPlayerState
-CraftingServiceServer.trackPlayer = CraftingServiceServer.TrackPlayer
-CraftingServiceServer.untrackPlayer = CraftingServiceServer.UntrackPlayer
-CraftingServiceServer.resolvePlayerBiomeTokens = CraftingServiceServer.ResolvePlayerBiomeTokens
-CraftingServiceServer.requestSync = CraftingServiceServer.RequestSync
-CraftingServiceServer.requestCraft = CraftingServiceServer.RequestCraft
-CraftingServiceServer.onHeartbeat = CraftingServiceServer.OnHeartbeat
-CraftingServiceServer.setInventoryProvider = CraftingServiceServer.SetInventoryProvider
-CraftingServiceServer.setProgressionFlag = CraftingServiceServer.SetProgressionFlag
-CraftingServiceServer.init = CraftingServiceServer.Init
-CraftingServiceServer.destroy = CraftingServiceServer.Destroy
-
 type CraftingServiceServer = typeof(CraftingServiceServer) & {
 	config: CraftingServiceConfig,
 	registry: RecipeRegistry,

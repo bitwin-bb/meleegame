@@ -25,7 +25,4 @@ function StateMachineAdapter.ChangeState(agent: any, stateNameRaw: any): boolean
 end
 
 StateMachineAdapter.copy = Table.copy
-StateMachineAdapter.get = StateMachineAdapter.Get
-StateMachineAdapter.changeState = StateMachineAdapter.ChangeState
-
 return StateMachineAdapter

@@ -12,24 +12,24 @@ export type SpawnRoll = {
 	seed: number?,
 }
 
-local function sanitizeProbability(valueRaw: any, fallback: number): number
+local function CoerceProbability(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return math.clamp(fallback, 0, 1)
 	end
 	return math.clamp(valueRaw, 0, 1)
 end
 
-function SpawnChance.ResolveProbability(chanceRaw: any, multiplierRaw: any?): number
-	local chance = sanitizeProbability(chanceRaw, 0)
+function SpawnChance.GetProbability(chanceRaw: any, multiplierRaw: any?): number
+	local chance = CoerceProbability(chanceRaw, 0)
 	local multiplier = if typeof(multiplierRaw) == "number" and multiplierRaw == multiplierRaw then multiplierRaw else 1
 	return math.clamp(chance * math.max(0, multiplier), 0, 1)
 end
 
 function SpawnChance.Roll(chanceRaw: any, randomOrSeedRaw: any?, multiplierRaw: any?): SpawnRoll
-	local probability = SpawnChance.ResolveProbability(chanceRaw, multiplierRaw)
+	local probability = SpawnChance.GetProbability(chanceRaw, multiplierRaw)
 	if typeof(randomOrSeedRaw) == "number" then
-		local nextSeed, didSpawn = Rand.chance(randomOrSeedRaw, probability)
-		local _, roll = Rand.number(randomOrSeedRaw)
+		local nextSeed, didSpawn = Rand.Chance(randomOrSeedRaw, probability)
+		local _, roll = Rand.Number(randomOrSeedRaw)
 		return {
 			spawned = didSpawn,
 			roll = roll,
@@ -47,8 +47,5 @@ function SpawnChance.Roll(chanceRaw: any, randomOrSeedRaw: any?, multiplierRaw: 
 		seed = nil,
 	}
 end
-
-SpawnChance.resolveProbability = SpawnChance.ResolveProbability
-SpawnChance.roll = SpawnChance.Roll
 
 return SpawnChance

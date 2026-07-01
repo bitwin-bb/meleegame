@@ -108,7 +108,7 @@ local function normalizeGamepadCursorVector(vector: Vector2): Vector2
 	return vector.Unit * scaledMagnitude
 end
 
-local function resolveLastInputType(inputTypeRaw: any): Enum.UserInputType?
+local function GetLastInputType(inputTypeRaw: any): Enum.UserInputType?
 	if typeof(inputTypeRaw) == "EnumItem" and inputTypeRaw.EnumType == Enum.UserInputType then
 		return inputTypeRaw :: Enum.UserInputType
 	end
@@ -179,7 +179,7 @@ local function isHoverTarget(guiObject: GuiObject): boolean
 	return false
 end
 
-local function resolveHoveredGuiObject(guiPosition: Vector2): GuiObject?
+local function GetHoveredGuiObject(guiPosition: Vector2): GuiObject?
 	local playerGui = getPlayerGui()
 	if playerGui == nil then
 		return nil
@@ -272,7 +272,7 @@ function Cursor._emitChanged(self: Cursor, state: CursorState)
 	self.changedSignal:Fire(state)
 	if self.eventBus ~= nil and typeof((self.eventBus :: any).publish) == "function" then
 		local eventBusAny = self.eventBus :: any
-		eventBusAny:publish(self.eventChannel, self.changeEvent, state)
+		eventBusAny:Publish(self.eventChannel, self.changeEvent, state)
 	end
 end
 
@@ -336,7 +336,7 @@ end
 function Cursor._applyFromScreenPosition(self: Cursor, screenPosition: Vector2)
 	local clampedScreenPosition = clampScreenPosition(screenPosition)
 	local guiPosition = toGuiPosition(clampedScreenPosition)
-	local hoveredGui = resolveHoveredGuiObject(guiPosition)
+	local hoveredGui = GetHoveredGuiObject(guiPosition)
 	self:_syncSelectedObject(hoveredGui)
 	self:_setState({
 		screenPosition = clampedScreenPosition,
@@ -359,7 +359,7 @@ function Cursor._syncFromMouseLocation(self: Cursor)
 end
 
 function Cursor._activateHoveredGui(self: Cursor)
-	local hoveredGui = resolveHoveredGuiObject(self.state.guiPosition)
+	local hoveredGui = GetHoveredGuiObject(self.state.guiPosition)
 	if hoveredGui ~= nil then
 		self:_syncSelectedObject(hoveredGui)
 		if hoveredGui:IsA("GuiButton") then
@@ -447,11 +447,11 @@ end
 
 function Cursor._bindWithInputModule(self: Cursor): boolean
 	local input = self.input
-	if input == nil or typeof((input :: any).bindAction) ~= "function" then
+	if input == nil or typeof((input :: any).BindAction) ~= "function" then
 		return false
 	end
 
-	local moveBound = (input :: any):bindAction("Cursor.PointerMove", function(phase: string, context: any)
+	local moveBound = (input :: any):BindAction("Cursor.PointerMove", function(phase: string, context: any)
 		if not self.state.enabled then
 			return false
 		end
@@ -474,7 +474,7 @@ function Cursor._bindWithInputModule(self: Cursor): boolean
 		},
 	})
 
-	local downBound = (input :: any):bindAction("Cursor.PointerDown", function(phase: string)
+	local downBound = (input :: any):BindAction("Cursor.PointerDown", function(phase: string)
 		if not self.state.enabled then
 			return false
 		end
@@ -508,10 +508,10 @@ function Cursor._unbindInputModule(self: Cursor)
 		return
 	end
 	local input = self.input
-	if input ~= nil and typeof((input :: any).unbindAction) == "function" then
+	if input ~= nil and typeof((input :: any).UnbindAction) == "function" then
 		local inputAny = input :: any
-		inputAny:unbindAction("Cursor.PointerMove")
-		inputAny:unbindAction("Cursor.PointerDown")
+		inputAny:UnbindAction("Cursor.PointerMove")
+		inputAny:UnbindAction("Cursor.PointerDown")
 	end
 	self.boundWithInputModule = false
 end
@@ -556,8 +556,8 @@ function Cursor._bindFallbackConnections(self: Cursor)
 end
 
 function Cursor._startPolling(self: Cursor)
-	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).scheduleEvery) == "function" then
-		self.pollToken = (self.tickScheduler :: any):scheduleEvery(
+	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).ScheduleEvery) == "function" then
+		self.pollToken = (self.tickScheduler :: any):ScheduleEvery(
 			function()
 				if self.state.enabled then
 					if UserInputService.MouseEnabled and not self.lastInputWasGamepad then
@@ -588,11 +588,11 @@ end
 
 function Cursor._stopPolling(self: Cursor)
 	if self.pollToken ~= nil then
-		if typeof(self.pollToken.cancel) == "function" then
-			self.pollToken:cancel()
-		elseif self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).cancel) == "function" then
+		if typeof(self.pollToken.Cancel) == "function" then
+			self.pollToken:Cancel()
+		elseif self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).Cancel) == "function" then
 			local schedulerAny = self.tickScheduler :: any
-			schedulerAny:cancel(self.pollToken)
+			schedulerAny:Cancel(self.pollToken)
 		end
 		self.pollToken = nil
 	end
@@ -608,10 +608,10 @@ function Cursor.Init(self: Cursor)
 	self:_applyMouseIcon()
 	self:_syncFromMouseLocation()
 
-	if self.input ~= nil and typeof((self.input :: any).init) == "function" then
+	if self.input ~= nil and typeof((self.input :: any).Init) == "function" then
 		local inputAny = self.input :: any
 		pcall(function()
-			inputAny:init()
+			inputAny:Init()
 		end)
 	end
 
@@ -623,7 +623,7 @@ function Cursor.Init(self: Cursor)
 
 	self.lastInputTypeChangedConnection = UserInputService.LastInputTypeChanged:Connect(
 		function(inputType: Enum.UserInputType)
-			local lastInputType = resolveLastInputType(inputType)
+			local lastInputType = GetLastInputType(inputType)
 			self.lastInputWasGamepad = if lastInputType ~= nil
 				then isGamepadInput(lastInputType)
 				else self.lastInputWasGamepad
@@ -756,32 +756,5 @@ function Cursor.Destroy(self: Cursor)
 	self.changedSignal:Destroy()
 	self.isInitialized = false
 end
-
-Cursor.OnChanged = Cursor.OnChanged
-Cursor.GetState = Cursor.GetState
-Cursor.GetScreenPosition = Cursor.GetScreenPosition
-Cursor.GetGuiPosition = Cursor.GetGuiPosition
-Cursor.SetMouseDown = Cursor.SetMouseDown
-Cursor.SetEnabled = Cursor.SetEnabled
-Cursor.SetUseCustomIcon = Cursor.SetUseCustomIcon
-Cursor.Sync = Cursor.Sync
-Cursor.UpdateFromScreenPosition = Cursor.UpdateFromScreenPosition
-Cursor.Init = Cursor.Init
-Cursor.Destroy = Cursor.Destroy
-
-Cursor.new = Cursor.New
-Cursor.init = Cursor.Init
-Cursor.onChanged = Cursor.OnChanged
-Cursor.getState = Cursor.GetState
-Cursor.getScreenPosition = Cursor.GetScreenPosition
-Cursor.getGuiPosition = Cursor.GetGuiPosition
-Cursor.isHoveringGui = Cursor.IsHoveringGui
-Cursor.getHoveredGuiPath = Cursor.GetHoveredGuiPath
-Cursor.setMouseDown = Cursor.SetMouseDown
-Cursor.setEnabled = Cursor.SetEnabled
-Cursor.setUseCustomIcon = Cursor.SetUseCustomIcon
-Cursor.sync = Cursor.Sync
-Cursor.updateFromScreenPosition = Cursor.UpdateFromScreenPosition
-Cursor.destroy = Cursor.Destroy
 
 return Cursor

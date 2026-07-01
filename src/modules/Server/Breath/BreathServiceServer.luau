@@ -11,7 +11,7 @@ local HpServiceServer = require("HpServiceServer")
 local LiquidServiceServer = require("LiquidServiceServer")
 local LiquidServiceUtils = require("LiquidServiceUtils")
 local PacketPayload = require("PacketPayload")
-local BreathServicePackets = require("NetSharedPackets").BreathService
+local BreathServicePackets = require("NetPacketsShared").BreathService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = BreathServicePackets[methodName]
@@ -20,7 +20,7 @@ local function sendPacket(player: Player, methodName: string, ...: any)
 		return
 	end
 
-	packet.sendTo(PacketPayload.pack(...), player)
+	packet.sendTo(PacketPayload.Pack(...), player)
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -35,12 +35,13 @@ local function bindPacket(self: any, methodName: string)
 			return
 		end
 
-		local handler = self[methodName]
+		local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, player, table.unpack(arguments, 1, count))
 	end)
 end
@@ -56,7 +57,7 @@ end
 
 local NevermoreSupport = require("NevermoreSupport")
 local PlayerServiceServer = require("PlayerServiceServer")
-local ServerBinderSupport = require("ServerBinderSupport")
+local BinderSupportServer = require("BinderSupportServer")
 local Signal = require("Signal")
 
 type BreathServiceConfig = BreathServiceUtils.BreathServiceConfig
@@ -71,7 +72,7 @@ type SignalObject = {
 
 type LiquidServiceServerObject = {
 	config: LiquidServiceUtils.LiquidServiceConfig,
-	getPlayerLiquidQuery: (self: LiquidServiceServerObject, player: Player) -> LiquidQueryResult,
+	GetPlayerLiquidQuery: (self: LiquidServiceServerObject, player: Player) -> LiquidQueryResult,
 }
 
 type HpServiceServerObject = {
@@ -89,7 +90,7 @@ type PlayerRuntime = {
 
 local BreathServiceServer = {}
 
-local function resolveSourceConfig(): any
+local function GetSourceConfig(): any
 	if typeof(Configs) ~= "table" then
 		return nil
 	end
@@ -98,7 +99,7 @@ end
 
 function BreathServiceServer.CreateRuntime(self: BreathServiceServer): PlayerRuntime
 	return {
-		state = BreathServiceUtils.createDefaultState(),
+		state = BreathServiceUtils.CreateDefaultState(),
 		lastDrowningDamageAt = -math.huge,
 		lastSurfaceAt = os.clock(),
 		lastPushedAt = -math.huge,
@@ -112,7 +113,7 @@ function BreathServiceServer.GetRuntime(self: BreathServiceServer, player: Playe
 	if runtime ~= nil then
 		return runtime
 	end
-	runtime = self:createRuntime()
+	runtime = self:CreateRuntime()
 	runtime.state.maxBreath = self.config.maxBreathSeconds
 	runtime.state.breath = self.config.maxBreathSeconds
 	runtime.state.graceRemaining = self.config.graceDuration
@@ -121,21 +122,21 @@ function BreathServiceServer.GetRuntime(self: BreathServiceServer, player: Playe
 end
 
 function BreathServiceServer.PushState(self: BreathServiceServer, player: Player)
-	local runtime = self:getRuntime(player)
-	sendPacket(player, BreathServiceUtils.CLIENT_METHOD_APPLY_STATE, BreathServiceUtils.cloneState(runtime.state))
+	local runtime = self:GetRuntime(player)
+	sendPacket(player, BreathServiceUtils.CLIENT_METHOD_APPLY_STATE, BreathServiceUtils.CloneState(runtime.state))
 	runtime.lastPushedAt = os.clock()
 end
 
 function BreathServiceServer.TrackPlayer(self: BreathServiceServer, player: Player)
-	local runtime = self:createRuntime()
-	runtime.state = BreathServiceUtils.createState({
+	local runtime = self:CreateRuntime()
+	runtime.state = BreathServiceUtils.CreateState({
 		ready = true,
 		maxBreath = self.config.maxBreathSeconds,
 		breath = self.config.maxBreathSeconds,
 		graceRemaining = self.config.graceDuration,
 	}, runtime.state)
 	self.playerRuntimes[player] = runtime
-	self:pushState(player)
+	self:PushState(player)
 end
 
 function BreathServiceServer.UntrackPlayer(self: BreathServiceServer, player: Player)
@@ -144,20 +145,20 @@ end
 
 function BreathServiceServer.RequestSync(self: BreathServiceServer, player: Player)
 	if self.playerRuntimes[player] == nil then
-		self:trackPlayer(player)
+		self:TrackPlayer(player)
 		return
 	end
-	self:pushState(player)
+	self:PushState(player)
 end
 
 function BreathServiceServer.ProcessPlayer(self: BreathServiceServer, player: Player, dt: number)
-	local runtime = self:getRuntime(player)
-	local liquidQuery = self.liquidService:getPlayerLiquidQuery(player)
-	local overrideQuery = BreathBinder.queryCharacterOverride(player.Character)
+	local runtime = self:GetRuntime(player)
+	local liquidQuery = self.liquidService:GetPlayerLiquidQuery(player)
+	local overrideQuery = BreathBinder.QueryCharacterOverride(player.Character)
 	if overrideQuery ~= nil then
 		liquidQuery = overrideQuery
 	end
-	local breathBlocked = LiquidServiceUtils.LiquidDamage.shouldBlockBreath(self.liquidService.config, liquidQuery)
+	local breathBlocked = LiquidServiceUtils.LiquidDamage.ShouldBlockBreath(self.liquidService.config, liquidQuery)
 	local wasBreathBlocked = runtime.wasBreathBlocked
 	local now = os.clock()
 	local state = runtime.state
@@ -186,7 +187,7 @@ function BreathServiceServer.ProcessPlayer(self: BreathServiceServer, player: Pl
 				})
 			end
 			if now - runtime.lastDrowningDamageAt >= self.config.drowningTickRate then
-				self.hpService:damagePlayer(player, self.config.drowningDamage)
+				self.hpService:DamagePlayer(player, self.config.drowningDamage)
 				runtime.lastDrowningDamageAt = now
 			end
 		else
@@ -214,7 +215,7 @@ function BreathServiceServer.ProcessPlayer(self: BreathServiceServer, player: Pl
 	runtime.wasBreathBlocked = breathBlocked
 
 	if now - runtime.lastPushedAt >= self.config.statePushInterval then
-		self:pushState(player)
+		self:PushState(player)
 	end
 end
 
@@ -224,38 +225,38 @@ function BreathServiceServer.OnHeartbeat(self: BreathServiceServer, deltaTime: n
 	while self.accumulator >= step do
 		self.accumulator -= step
 		for player in self.playerRuntimes do
-			self:processPlayer(player, step)
+			self:ProcessPlayer(player, step)
 		end
 	end
 end
 
 function BreathServiceServer.Init(self: BreathServiceServer)
-	self.config = BreathServiceUtils.sanitizeConfig(resolveSourceConfig(), nil)
+	self.config = BreathServiceUtils.CoerceConfig(GetSourceConfig(), nil)
 	self.playerRuntimes = {} :: { [Player]: PlayerRuntime }
 	self.accumulator = 0
 	self.liquidService = LiquidServiceServer :: LiquidServiceServerObject
 	self.hpService = HpServiceServer :: HpServiceServerObject
 	self.breathDepleted = Signal.new();
-	(self :: any).binders = NevermoreSupport.getService(ServerBinderSupport)
+	(self :: any).binders = NevermoreSupport.GetService(BinderSupportServer)
 
 	bindPackets(self)
 
 	for _, player in Players:GetPlayers() do
-		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
-			self:trackPlayer(player)
+		if PlayerServiceServer:IsGameplayActiveForPlayer(player) then
+			self:TrackPlayer(player)
 		end
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
-			self:trackPlayer(player)
+		if PlayerServiceServer:IsGameplayActiveForPlayer(player) then
+			self:TrackPlayer(player)
 		end
 	end)
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
-		self:untrackPlayer(player)
+		self:UntrackPlayer(player)
 	end)
 	self.heartbeatConnection = RunService.Heartbeat:Connect(function(deltaTime: number)
-		self:onHeartbeat(deltaTime)
+		self:OnHeartbeat(deltaTime)
 	end)
 end
 
@@ -277,18 +278,6 @@ function BreathServiceServer.Destroy(self: BreathServiceServer)
 	end
 	table.clear(self.playerRuntimes)
 end
-
-BreathServiceServer.createRuntime = BreathServiceServer.CreateRuntime
-BreathServiceServer.getRuntime = BreathServiceServer.GetRuntime
-BreathServiceServer.pushState = BreathServiceServer.PushState
-BreathServiceServer.trackPlayer = BreathServiceServer.TrackPlayer
-BreathServiceServer.untrackPlayer = BreathServiceServer.UntrackPlayer
-BreathServiceServer.requestSync = BreathServiceServer.RequestSync
-BreathServiceServer.processPlayer = BreathServiceServer.ProcessPlayer
-BreathServiceServer.onHeartbeat = BreathServiceServer.OnHeartbeat
-BreathServiceServer.init = BreathServiceServer.Init
-BreathServiceServer.destroy = BreathServiceServer.Destroy
-
 type BreathServiceServer = typeof(BreathServiceServer) & {
 	config: BreathServiceConfig,
 	playerRuntimes: { [Player]: PlayerRuntime },

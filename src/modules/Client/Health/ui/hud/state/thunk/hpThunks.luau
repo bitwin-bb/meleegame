@@ -30,26 +30,26 @@ function hpThunks.Start(): () -> ()
 	end
 
 	runtime.started = true
-	local isReady = ServiceSync.readReady(HpServiceClient, false)
+	local isReady = ServiceSync.ReadReady(HpServiceClient, false)
 	hpSlice.setHpReady(isReady)
 	if isReady then
 		syncFromService()
 	end
 
-	runtime.stateChangedConnection = ServiceSync.connectStateChanged(
+	runtime.stateChangedConnection = ServiceSync.ConnectStateChanged(
 		HpServiceClient,
 		function(nextState: HpServiceState)
 			applyState(nextState)
 			hpSlice.setHpReady(true)
 		end
 	)
-	ServiceSync.requestSync(HpServiceClient)
+	ServiceSync.RequestSync(HpServiceClient)
 
 	return hpThunks.Stop
 end
 
 function hpThunks.Stop()
-	ConnectionUtils.disconnect(runtime.stateChangedConnection)
+	ConnectionUtils.Disconnect(runtime.stateChangedConnection)
 	runtime.stateChangedConnection = nil
 
 	runtime.started = false
@@ -67,11 +67,4 @@ end
 function hpThunks.GetBeatHeartIndex(): number?
 	return hpSlice.beatHeartIndexAtom()
 end
-
-hpThunks.start = hpThunks.Start
-hpThunks.stop = hpThunks.Stop
-hpThunks.syncFromService = hpThunks.SyncFromService
-hpThunks.applyState = hpThunks.ApplyState
-hpThunks.getBeatHeartIndex = hpThunks.GetBeatHeartIndex
-
 return hpThunks

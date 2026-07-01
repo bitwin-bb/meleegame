@@ -4,7 +4,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
-local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
 local BuildServiceUtils = require("BuildServiceUtils")
@@ -14,7 +13,7 @@ local ItemRegistry = require("ItemRegistry")
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local MiningPower = require("MiningPower")
 local PacketPayload = require("PacketPayload")
-local InventoryServicePackets = require("NetSharedPackets").InventoryService
+local InventoryServicePackets = require("NetPacketsShared").InventoryService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = InventoryServicePackets[methodName]
@@ -23,7 +22,7 @@ local function sendPacket(player: Player, methodName: string, ...: any)
 		return
 	end
 
-	packet.sendTo(PacketPayload.pack(...), player)
+	packet.sendTo(PacketPayload.Pack(...), player)
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -38,12 +37,13 @@ local function bindPacket(self: any, methodName: string)
 			return
 		end
 
-		local handler = self[methodName]
+		local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, player, table.unpack(arguments, 1, count))
 	end)
 end
@@ -67,8 +67,8 @@ end
 
 local PlayerDataServiceServer = require("PlayerDataServiceServer")
 local PlayerDataServiceUtils = require("PlayerDataServiceUtils")
-local ResolveItem = require("ResolveItem")
-local ResolveToolInstance = require("ResolveToolInstance")
+local GetItem = require("GetItem")
+local GetToolInstance = require("GetToolInstance")
 local TagBinder = require("TagBinder")
 local ToolBinder = require("ToolBinder")
 local TorchTilt = require("TorchTilt")
@@ -86,13 +86,13 @@ type JanitorClass = {
 }
 
 type PlayerDataServiceServerObject = {
-	getValue: (self: PlayerDataServiceServerObject, player: Player, pathRaw: any, fallback: any) -> any,
-	getLoadState: (self: PlayerDataServiceServerObject, player: Player) -> string,
-	getProfile: (self: PlayerDataServiceServerObject, player: Player) -> any,
-	isLoaded: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
-	requestSync: (self: PlayerDataServiceServerObject, player: Player) -> (),
-	waitForData: (self: PlayerDataServiceServerObject, player: Player, timeoutSecondsRaw: any) -> any,
-	setValue: (
+	GetValue: (self: PlayerDataServiceServerObject, player: Player, pathRaw: any, fallback: any) -> any,
+	GetLoadState: (self: PlayerDataServiceServerObject, player: Player) -> string,
+	GetProfile: (self: PlayerDataServiceServerObject, player: Player) -> any,
+	IsLoaded: (self: PlayerDataServiceServerObject, player: Player) -> boolean,
+	RequestSync: (self: PlayerDataServiceServerObject, player: Player) -> (),
+	WaitForData: (self: PlayerDataServiceServerObject, player: Player, timeoutSecondsRaw: any) -> any,
+	SetValue: (
 		self: PlayerDataServiceServerObject,
 		player: Player,
 		pathRaw: any,
@@ -121,10 +121,10 @@ type PlayerRuntime = {
 	characterJanitor: JanitorClass,
 	pendingToolImports: { [string]: PendingToolImport },
 	suppressedToolImports: { [string]: number? },
-	resolvedSource: string,
+	GotSource: string,
 	joinToken: number,
 	loadToken: number,
-	hasResolvedInitialLoad: boolean,
+	hasInitialLoad: boolean,
 	lastFailureReason: string?,
 	loadStartedAt: number,
 	saveDebounceToken: number,
@@ -185,7 +185,7 @@ local function trim(valueRaw: any): string
 	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function sanitizeItemId(itemIdRaw: any): string?
+local function CoerceItemId(itemIdRaw: any): string?
 	local itemId = trim(itemIdRaw)
 	if itemId == "" then
 		return nil
@@ -200,14 +200,14 @@ local function normalizeImportAmount(amountRaw: any): number
 	return math.max(1, math.floor(amountRaw))
 end
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
 	return math.max(minimum, valueRaw)
 end
 
-local function sanitizeFailureReason(reasonRaw: any): string?
+local function CoerceFailureReason(reasonRaw: any): string?
 	local reason = trim(reasonRaw)
 	if reason == "" then
 		return nil
@@ -226,35 +226,35 @@ local function stringifyLogValue(valueRaw: any): string
 	return valueType
 end
 
-local function resolveItemTypeForStack(stackRaw: any): string?
+local function GetItemTypeForStack(stackRaw: any): string?
 	if typeof(stackRaw) ~= "table" then
 		return nil
 	end
 	local stack = stackRaw :: { [string]: any }
 	local metadata = if typeof(stack.metadata) == "table" then stack.metadata else nil
 	local metadataItemType = if metadata ~= nil
-		then sanitizeItemId((metadata :: { [string]: any })[TOOL_IMPORT_METADATA_TYPE_KEY])
+		then CoerceItemId((metadata :: { [string]: any })[TOOL_IMPORT_METADATA_TYPE_KEY])
 		else nil
 	if metadataItemType ~= nil then
 		return metadataItemType
 	end
-	local definition = ItemRegistry.resolveDefinition(stack.itemId)
+	local definition = ItemRegistry.GetDefinition(stack.itemId)
 	if typeof(definition) == "table" then
 		local definitionTable = definition :: { [string]: any }
-		local itemType = sanitizeItemId(definitionTable.itemType) or sanitizeItemId(definitionTable.type)
+		local itemType = CoerceItemId(definitionTable.itemType) or CoerceItemId(definitionTable.type)
 		if itemType ~= nil then
 			return itemType
 		end
 	end
-	return sanitizeItemId(stack.itemId)
+	return CoerceItemId(stack.itemId)
 end
 
-local function resolveToolImportData(tool: Tool): (string?, string?)
-	local itemId = ResolveToolInstance.resolveToolItemId(tool)
+local function GetToolImportData(tool: Tool): (string?, string?)
+	local itemId = GetToolInstance.GetToolItemId(tool)
 	if itemId == nil then
 		return nil, nil
 	end
-	local itemType = sanitizeItemId(ResolveToolInstance.resolveToolItemType(tool)) or sanitizeItemId(tool.Name)
+	local itemType = CoerceItemId(GetToolInstance.GetToolItemType(tool)) or CoerceItemId(tool.Name)
 	if itemType == nil then
 		return nil, nil
 	end
@@ -341,7 +341,7 @@ local function ensureToolHasVisibleHandle(tool: Tool, _itemIdRaw: any): BasePart
 end
 
 local function configureManagedToolForInventoryStack(tool: Tool, itemIdRaw: any, stackRaw: any, selectedSlotRaw: any)
-	local itemId = sanitizeItemId(itemIdRaw)
+	local itemId = CoerceItemId(itemIdRaw)
 	if itemId == nil then
 		return
 	end
@@ -353,24 +353,24 @@ local function configureManagedToolForInventoryStack(tool: Tool, itemIdRaw: any,
 		SELECTED_SLOT_ATTRIBUTE_NAME,
 		if typeof(selectedSlotRaw) == "number" then math.floor(selectedSlotRaw) else nil
 	)
-	local itemType = resolveItemTypeForStack(stackRaw)
+	local itemType = GetItemTypeForStack(stackRaw)
 	tool:SetAttribute(TOOL_IMPORT_TYPE_ATTRIBUTE_NAME, itemType)
 	tool:SetAttribute("ItemType", itemType)
-	local definition = ItemRegistry.resolveDefinition(itemId)
-	local toolAttributes = MiningPower.toToolAttributeBundle(definition, itemType, nil)
+	local definition = ItemRegistry.GetDefinition(itemId)
+	local toolAttributes = MiningPower.ToToolAttributeBundle(definition, itemType, nil)
 	for attributeName, attributeValue in toolAttributes do
 		tool:SetAttribute(attributeName, attributeValue)
 	end
 	ensureToolHasVisibleHandle(tool, itemId)
-	ToolBinder.applyTags(tool)
+	ToolBinder.ApplyTags(tool)
 end
 
 local function cloneToolForInventoryStack(itemIdRaw: any, stackRaw: any, selectedSlotRaw: any): Tool?
-	local itemId = sanitizeItemId(itemIdRaw)
+	local itemId = CoerceItemId(itemIdRaw)
 	if itemId == nil then
 		return nil
 	end
-	local clone = ResolveItem.cloneToolTemplate(itemId)
+	local clone = GetItem.CloneToolTemplate(itemId)
 	if clone == nil then
 		error(MISSING_ASSET_ERROR, 0)
 	end
@@ -412,7 +412,7 @@ local function destroyMatchingToolsInContainer(container: Instance?, itemId: str
 		if not child:IsA("Tool") then
 			continue
 		end
-		local toolItemId = select(1, resolveToolImportData(child))
+		local toolItemId = select(1, GetToolImportData(child))
 		if toolItemId ~= itemId then
 			continue
 		end
@@ -434,7 +434,7 @@ local function queuePendingToolImport(runtime: PlayerRuntime, itemId: string, it
 end
 
 local function queueSuppressedToolImport(runtime: PlayerRuntime, itemIdRaw: any, amountRaw: any)
-	local itemId = sanitizeItemId(itemIdRaw)
+	local itemId = CoerceItemId(itemIdRaw)
 	if itemId == nil then
 		return
 	end
@@ -443,7 +443,7 @@ local function queueSuppressedToolImport(runtime: PlayerRuntime, itemIdRaw: any,
 end
 
 local function consumeSuppressedToolImport(runtime: PlayerRuntime, itemIdRaw: any, amountRaw: any): boolean
-	local itemId = sanitizeItemId(itemIdRaw)
+	local itemId = CoerceItemId(itemIdRaw)
 	if itemId == nil then
 		return false
 	end
@@ -457,7 +457,7 @@ local function consumeSuppressedToolImport(runtime: PlayerRuntime, itemIdRaw: an
 	return true
 end
 
-local function resolveHorizontalLookVector(rootPart: BasePart): Vector3
+local function GetHorizontalLookVector(rootPart: BasePart): Vector3
 	local flat = Vector3.new(rootPart.CFrame.LookVector.X, 0, rootPart.CFrame.LookVector.Z)
 	if flat.Magnitude <= 0.001 then
 		return Vector3.new(0, 0, -1)
@@ -465,12 +465,12 @@ local function resolveHorizontalLookVector(rootPart: BasePart): Vector3
 	return flat.Unit
 end
 
-local function resolveDeployableConfig(itemIdRaw: any): { [string]: any }?
-	local itemId = sanitizeItemId(itemIdRaw)
+local function GetDeployableConfig(itemIdRaw: any): { [string]: any }?
+	local itemId = CoerceItemId(itemIdRaw)
 	if itemId == nil then
 		return nil
 	end
-	local definition = ItemRegistry.resolveDefinition(itemId)
+	local definition = ItemRegistry.GetDefinition(itemId)
 	if typeof(definition) ~= "table" then
 		return nil
 	end
@@ -478,13 +478,13 @@ local function resolveDeployableConfig(itemIdRaw: any): { [string]: any }?
 	if typeof(deployable) ~= "table" then
 		return nil
 	end
-	if sanitizeItemId((deployable :: { [string]: any }).stationTag) == nil then
+	if CoerceItemId((deployable :: { [string]: any }).stationTag) == nil then
 		return nil
 	end
 	return deployable :: { [string]: any }
 end
 
-local function resolveDeployablePrimaryPart(instance: Instance): BasePart?
+local function GetDeployablePrimaryPart(instance: Instance): BasePart?
 	if instance:IsA("BasePart") then
 		return instance
 	end
@@ -501,14 +501,14 @@ local function resolveDeployablePrimaryPart(instance: Instance): BasePart?
 	return nil
 end
 
-local function resolveWorldGridConfig(): (any, Vector3?, number?, number?)
-	local getWorldMethod = (WorldGenerationServiceServer :: any).getWorld
+local function GetWorldGridConfig(): (any, Vector3?, number?, number?)
+	local getWorldMethod = (WorldGenerationServiceServer :: any).GetWorld
 	if typeof(getWorldMethod) ~= "function" then
 		return nil, nil, nil, nil
 	end
 
 	local ok, world = pcall(function()
-		return (WorldGenerationServiceServer :: any):getWorld()
+		return (WorldGenerationServiceServer :: any):GetWorld()
 	end)
 	if not ok or typeof(world) ~= "table" then
 		return nil, nil, nil, nil
@@ -531,19 +531,19 @@ local function getWorldTileId(worldRaw: any, tileX: number, tileY: number): numb
 		return BuildServiceUtils.AIR_TILE_ID
 	end
 
-	local getTileAtMethod = (worldRaw :: any).getTileAt
+	local getTileAtMethod = (worldRaw :: any).GetTileAt
 	if typeof(getTileAtMethod) ~= "function" then
 		return BuildServiceUtils.AIR_TILE_ID
 	end
 
 	local ok, tileIdOrError = pcall(function()
-		return (worldRaw :: any):getTileAt(tileX, tileY)
+		return (worldRaw :: any):GetTileAt(tileX, tileY)
 	end)
 	if not ok then
 		return BuildServiceUtils.AIR_TILE_ID
 	end
 
-	local tileId = BuildServiceUtils.sanitizeTileId(tileIdOrError)
+	local tileId = BuildServiceUtils.CoerceTileId(tileIdOrError)
 	if tileId == nil then
 		return BuildServiceUtils.AIR_TILE_ID
 	end
@@ -568,7 +568,7 @@ end
 
 local function canOccupyTorchTile(worldRaw: any, tileX: number, tileY: number, excludeInstance: Instance?): boolean
 	local tileId = getWorldTileId(worldRaw, tileX, tileY)
-	if not BuildServiceUtils.isReplaceableTile(tileId) then
+	if not BuildServiceUtils.IsReplaceableTile(tileId) then
 		return false
 	end
 	return findTorchDeployableAtTile(tileX, tileY, excludeInstance) == nil
@@ -576,11 +576,11 @@ end
 
 local function isTorchGroundSupported(worldRaw: any, tileX: number, tileY: number): boolean
 	local belowTileId = getWorldTileId(worldRaw, tileX, tileY - 1)
-	return not BuildServiceUtils.isReplaceableTile(belowTileId)
+	return not BuildServiceUtils.IsReplaceableTile(belowTileId)
 end
 
 local function isSolidTorchSupportTile(worldRaw: any, tileX: number, tileY: number): boolean
-	return BuildServiceUtils.isSolidTile(getWorldTileId(worldRaw, tileX, tileY))
+	return BuildServiceUtils.IsSolidTile(getWorldTileId(worldRaw, tileX, tileY))
 end
 
 local function isTorchPlacementInRange(
@@ -604,7 +604,7 @@ local function buildTorchTilePlacement(
 	lookVector: Vector3
 ): TorchTilt.TilePlacement?
 	local tileCenter = BuildServiceUtils.TileToWorldCenter(tileX, tileY, worldOrigin, tileSize, basePlaneX)
-	local supportCFrame, supportKind = TorchTilt.resolveTileAlignedCFrame(tileCenter, supportNormal, lookVector)
+	local supportCFrame, supportKind = TorchTilt.GetTileAlignedCFrame(tileCenter, supportNormal, lookVector)
 	if supportCFrame == nil or supportKind == nil then
 		return nil
 	end
@@ -618,7 +618,7 @@ local function buildTorchTilePlacement(
 	} :: any
 end
 
-local function resolveTorchPlacementAtTargetTile(
+local function GetTorchPlacementAtTargetTile(
 	worldRaw: any,
 	tileX: number,
 	tileY: number,
@@ -687,7 +687,7 @@ local function resolveTorchPlacementAtTargetTile(
 	return nil
 end
 
-local function resolveTorchPlacementFromRequestedTile(
+local function GetTorchPlacementFromRequestedTile(
 	worldRaw: any,
 	requestedTileX: number,
 	requestedTileY: number,
@@ -717,7 +717,7 @@ local function resolveTorchPlacementFromRequestedTile(
 	appendCandidate(requestedTileX, requestedTileY)
 
 	local requestedTileId = getWorldTileId(worldRaw, requestedTileX, requestedTileY)
-	if not BuildServiceUtils.isReplaceableTile(requestedTileId) then
+	if not BuildServiceUtils.IsReplaceableTile(requestedTileId) then
 		appendCandidate(requestedTileX, requestedTileY + 1)
 		if lookVector.Z >= 0 then
 			appendCandidate(requestedTileX + 1, requestedTileY)
@@ -729,7 +729,7 @@ local function resolveTorchPlacementFromRequestedTile(
 	end
 
 	for _, candidate in candidates do
-		local placement = resolveTorchPlacementAtTargetTile(
+		local placement = GetTorchPlacementAtTargetTile(
 			worldRaw,
 			candidate.tileX,
 			candidate.tileY,
@@ -779,7 +779,7 @@ local function chooseTorchPlacement(
 	return nil
 end
 
-local function resolveTorchDeployablePlacement(
+local function GetTorchDeployablePlacement(
 	player: Player,
 	deployableConfig: { [string]: any },
 	placedInstance: Instance,
@@ -795,15 +795,15 @@ local function resolveTorchDeployablePlacement(
 		return nil
 	end
 
-	local world, worldOrigin, tileSize, basePlaneX = resolveWorldGridConfig()
+	local world, worldOrigin, tileSize, basePlaneX = GetWorldGridConfig()
 	if world == nil or worldOrigin == nil or tileSize == nil or basePlaneX == nil then
 		return nil
 	end
 
-	local lookVector = resolveHorizontalLookVector(rootPart)
-	local placementDistance = sanitizeNumber(deployableConfig.placementDistance, 6, 2)
+	local lookVector = GetHorizontalLookVector(rootPart)
+	local placementDistance = CoerceNumber(deployableConfig.placementDistance, 6, 2)
 	local maxPlacementDistance =
-		sanitizeNumber(deployableConfig.maxPlacementDistance, placementDistance + 4, placementDistance)
+		CoerceNumber(deployableConfig.maxPlacementDistance, placementDistance + 4, placementDistance)
 	local supportDistance = math.min(placementDistance, maxPlacementDistance)
 	local boundingCFrame: CFrame
 	local boundingSize: Vector3
@@ -817,10 +817,10 @@ local function resolveTorchDeployablePlacement(
 	end
 	boundingRotation = boundingCFrame.Rotation
 
-	local requestedTileX = BuildServiceUtils.sanitizeTileCoordinate(requestedTileXRaw)
-	local requestedTileY = BuildServiceUtils.sanitizeTileCoordinate(requestedTileYRaw)
+	local requestedTileX = BuildServiceUtils.CoerceTileCoordinate(requestedTileXRaw)
+	local requestedTileY = BuildServiceUtils.CoerceTileCoordinate(requestedTileYRaw)
 	if requestedTileX ~= nil and requestedTileY ~= nil then
-		local requestedPlacement = resolveTorchPlacementFromRequestedTile(
+		local requestedPlacement = GetTorchPlacementFromRequestedTile(
 			world,
 			requestedTileX,
 			requestedTileY,
@@ -843,7 +843,7 @@ local function resolveTorchDeployablePlacement(
 
 	local function buildPlacementFromSupport(hitPosition: Vector3, hitNormal: Vector3): TorchTilt.TilePlacement?
 		local supportCFrame, supportKind =
-			TorchTilt.resolvePlacementCFrame(hitPosition, hitNormal, boundingSize, lookVector)
+			TorchTilt.GetPlacementCFrame(hitPosition, hitNormal, boundingSize, lookVector)
 		if supportCFrame == nil or supportKind == nil then
 			return nil
 		end
@@ -851,7 +851,7 @@ local function resolveTorchDeployablePlacement(
 		local finalCFrame = supportCFrame * boundingRotation
 		local tileX, tileY = BuildServiceUtils.WorldPositionToTile(finalCFrame.Position, worldOrigin, tileSize)
 		local hitNormalUnit = hitNormal.Unit
-		if not BuildServiceUtils.isReplaceableTile(getWorldTileId(world, tileX, tileY)) then
+		if not BuildServiceUtils.IsReplaceableTile(getWorldTileId(world, tileX, tileY)) then
 			if supportKind == "Ground" then
 				tileY += 1
 			else
@@ -873,8 +873,8 @@ local function resolveTorchDeployablePlacement(
 	local wallResult = Workspace:Raycast(wallOrigin, lookVector * supportDistance, params)
 	if
 		wallResult ~= nil
-		and TorchTilt.isSolidSurface(wallResult.Instance)
-		and TorchTilt.isWallNormal(wallResult.Normal)
+		and TorchTilt.IsSolidSurface(wallResult.Instance)
+		and TorchTilt.IsWallNormal(wallResult.Normal)
 	then
 		wallPlacement = buildPlacementFromSupport(wallResult.Position, wallResult.Normal)
 	end
@@ -884,8 +884,8 @@ local function resolveTorchDeployablePlacement(
 	local groundResult = Workspace:Raycast(desiredPosition + Vector3.new(0, 12, 0), Vector3.new(0, -32, 0), params)
 	if
 		groundResult ~= nil
-		and TorchTilt.isSolidSurface(groundResult.Instance)
-		and TorchTilt.isGroundNormal(groundResult.Normal)
+		and TorchTilt.IsSolidSurface(groundResult.Instance)
+		and TorchTilt.IsGroundNormal(groundResult.Normal)
 	then
 		groundPlacement = buildPlacementFromSupport(groundResult.Position, groundResult.Normal)
 	end
@@ -905,7 +905,7 @@ local function setModelAnchored(instance: Instance, anchored: boolean)
 	end
 end
 
-local function resolveDeployablePlacementCFrame(
+local function GetDeployablePlacementCFrame(
 	player: Player,
 	deployableConfig: { [string]: any },
 	placedInstance: Instance
@@ -918,11 +918,11 @@ local function resolveDeployablePlacementCFrame(
 	if rootPart == nil then
 		return nil
 	end
-	local lookVector = resolveHorizontalLookVector(rootPart)
-	local placementDistance = sanitizeNumber(deployableConfig.placementDistance, 6, 2)
+	local lookVector = GetHorizontalLookVector(rootPart)
+	local placementDistance = CoerceNumber(deployableConfig.placementDistance, 6, 2)
 	local maxPlacementDistance =
-		sanitizeNumber(deployableConfig.maxPlacementDistance, placementDistance + 4, placementDistance)
-	local placementProfile = sanitizeItemId((deployableConfig :: { [string]: any }).placementProfile)
+		CoerceNumber(deployableConfig.maxPlacementDistance, placementDistance + 4, placementDistance)
+	local placementProfile = CoerceItemId((deployableConfig :: { [string]: any }).placementProfile)
 	local boundingCFrame: CFrame
 	local boundingSize: Vector3
 	if placedInstance:IsA("Model") then
@@ -943,11 +943,11 @@ local function resolveDeployablePlacementCFrame(
 		local wallResult = Workspace:Raycast(wallOrigin, lookVector * supportDistance, params)
 		if
 			wallResult ~= nil
-			and TorchTilt.isSolidSurface(wallResult.Instance)
-			and TorchTilt.isWallNormal(wallResult.Normal)
+			and TorchTilt.IsSolidSurface(wallResult.Instance)
+			and TorchTilt.IsWallNormal(wallResult.Normal)
 		then
 			local supportCFrame =
-				TorchTilt.resolvePlacementCFrame(wallResult.Position, wallResult.Normal, boundingSize, lookVector)
+				TorchTilt.GetPlacementCFrame(wallResult.Position, wallResult.Normal, boundingSize, lookVector)
 			if supportCFrame ~= nil then
 				return supportCFrame * boundingCFrame.Rotation
 			end
@@ -958,12 +958,12 @@ local function resolveDeployablePlacementCFrame(
 		if groundResult == nil then
 			return nil
 		end
-		if not TorchTilt.isSolidSurface(groundResult.Instance) or not TorchTilt.isGroundNormal(groundResult.Normal) then
+		if not TorchTilt.IsSolidSurface(groundResult.Instance) or not TorchTilt.IsGroundNormal(groundResult.Normal) then
 			return nil
 		end
 
 		local supportCFrame =
-			TorchTilt.resolvePlacementCFrame(groundResult.Position, groundResult.Normal, boundingSize, lookVector)
+			TorchTilt.GetPlacementCFrame(groundResult.Position, groundResult.Normal, boundingSize, lookVector)
 		if supportCFrame == nil then
 			return nil
 		end
@@ -982,10 +982,10 @@ local function resolveDeployablePlacementCFrame(
 end
 
 local function applyRuntimeState(runtime: PlayerRuntime, nextStateRaw: any)
-	runtime.state = InventoryServiceUtils.sanitizeState(nextStateRaw, runtime.state)
+	runtime.state = InventoryServiceUtils.CoerceState(nextStateRaw, runtime.state)
 	runtime.loadState = runtime.state.loadState
 	runtime.selectedSlot = runtime.state.selectedSlot
-	runtime.isLoaded = InventoryServiceUtils.isLoadedState(runtime.state.loadState)
+	runtime.isLoaded = InventoryServiceUtils.IsLoadedState(runtime.state.loadState)
 	if runtime.state.loadState ~= InventoryServiceUtils.LOAD_STATE_LOADING then
 		runtime.isLoading = false
 	end
@@ -1023,7 +1023,7 @@ function InventoryServiceServer.LogEvent(
 		fields[#fields + 1] = ("selectedSlot=%s"):format(stringifyLogValue(runtime.selectedSlot))
 		fields[#fields + 1] = ("joinToken=%d"):format(runtime.joinToken)
 		fields[#fields + 1] = ("loadToken=%d"):format(runtime.loadToken)
-		fields[#fields + 1] = ("hasResolvedInitialLoad=%s"):format(tostring(runtime.hasResolvedInitialLoad))
+		fields[#fields + 1] = ("hasInitialLoad=%s"):format(tostring(runtime.hasInitialLoad))
 		fields[#fields + 1] = ("elapsed=%.3f"):format(getRuntimeLoadElapsedSeconds(runtime))
 		if runtime.lastFailureReason ~= nil then
 			fields[#fields + 1] = ("lastFailureReason=%s"):format(runtime.lastFailureReason)
@@ -1039,17 +1039,17 @@ end
 function InventoryServiceServer.GetInventoryDataPath(self: InventoryServiceServer): { string }
 	local persistence = self.persistence
 	if persistence ~= nil then
-		return persistence:getDataPath()
+		return persistence:GetDataPath()
 	end
-	return InventoryServiceUtils.getDefaultDataPath()
+	return InventoryServiceUtils.GetDefaultDataPath()
 end
 
 function InventoryServiceServer.GetInventoryDataPathString(self: InventoryServiceServer): string
 	local persistence = self.persistence
 	if persistence ~= nil then
-		return persistence:getDataPathString()
+		return persistence:GetDataPathString()
 	end
-	return table.concat(InventoryServiceUtils.getDefaultDataPath(), ".")
+	return table.concat(InventoryServiceUtils.GetDefaultDataPath(), ".")
 end
 
 function InventoryServiceServer.MarkRuntimeDirty(
@@ -1060,16 +1060,16 @@ function InventoryServiceServer.MarkRuntimeDirty(
 )
 	runtime.revision += 1
 	runtime.isDirty = true
-	self:logEvent("inventory_mutation_applied", player, runtime, {
+	self:LogEvent("inventory_mutation_applied", player, runtime, {
 		trigger = reasonRaw,
-		path = self:getInventoryDataPathString(),
+		path = self:GetInventoryDataPathString(),
 		occupiedSlots = runtime.state.occupiedSlotCount,
 		totalItems = runtime.state.totalItemCount,
 		updatedAt = runtime.state.updatedAt,
 	})
-	self:logEvent("runtime_marked_dirty", player, runtime, {
+	self:LogEvent("runtime_marked_dirty", player, runtime, {
 		trigger = reasonRaw,
-		path = self:getInventoryDataPathString(),
+		path = self:GetInventoryDataPathString(),
 	})
 end
 
@@ -1084,23 +1084,23 @@ function InventoryServiceServer.StagePersistedState(
 	end
 
 	local stageSuccess, didStage, stageReason = pcall(function()
-		return self.persistence:writeState(player, runtime.state)
+		return self.persistence:WriteState(player, runtime.state)
 	end)
 	if stageSuccess and didStage == true then
 		runtime.lastStagedRevision = runtime.revision
 		return true
 	end
 
-	self:logEvent("profile_writeback_failed", player, runtime, {
+	self:LogEvent("profile_writeback_failed", player, runtime, {
 		trigger = reasonRaw,
-		path = self:getInventoryDataPathString(),
+		path = self:GetInventoryDataPathString(),
 		reason = if stageSuccess then stageReason else tostring(didStage),
 	})
 	return false
 end
 
 function InventoryServiceServer.CreateRuntime(self: InventoryServiceServer, player: Player): PlayerRuntime
-	local state = InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_LOADING)
+	local state = InventoryServiceUtils.CreateDefaultState(InventoryServiceUtils.LOAD_STATE_LOADING)
 	local runtime: PlayerRuntime = {
 		userId = player.UserId,
 		player = player,
@@ -1118,10 +1118,10 @@ function InventoryServiceServer.CreateRuntime(self: InventoryServiceServer, play
 		characterJanitor = Janitor.new(),
 		pendingToolImports = {},
 		suppressedToolImports = {},
-		resolvedSource = "loading",
+		GotSource = "loading",
 		joinToken = 0,
 		loadToken = 0,
-		hasResolvedInitialLoad = false,
+		hasInitialLoad = false,
 		lastFailureReason = nil,
 		loadStartedAt = 0,
 		saveDebounceToken = 0,
@@ -1129,7 +1129,7 @@ function InventoryServiceServer.CreateRuntime(self: InventoryServiceServer, play
 		lastStagedRevision = 0,
 		revision = 0,
 	}
-	self:logEvent("runtime_created", player, runtime, nil)
+	self:LogEvent("runtime_created", player, runtime, nil)
 	return runtime
 end
 
@@ -1143,9 +1143,9 @@ function InventoryServiceServer.GetOrCreateRuntime(self: InventoryServiceServer,
 		runtime.player = player
 		return runtime
 	end
-	local runtime = self:createRuntime(player)
-	self.playerRuntimesByUserId[player.UserId] = runtime
-	return runtime
+	local nextRuntime = self:CreateRuntime(player)
+	self.playerRuntimesByUserId[player.UserId] = nextRuntime
+	return nextRuntime
 end
 
 function InventoryServiceServer.GetLoadedRuntime(self: InventoryServiceServer, player: Player): PlayerRuntime?
@@ -1164,13 +1164,13 @@ function InventoryServiceServer.ReplicateRuntimeState(
 	forceRaw: any?
 ): boolean
 	applyRuntimeState(runtime, runtime.state)
-	local stateHash = InventoryServiceUtils.hashState(runtime.state)
+	local stateHash = InventoryServiceUtils.HashState(runtime.state)
 	if forceRaw ~= true and runtime.lastReplicatedStateHash == stateHash then
 		return false
 	end
 	runtime.lastReplicatedStateHash = stateHash
-	sendPacket(player, "applyState", InventoryServiceUtils.cloneState(runtime.state))
-	self:logEvent("state_replicated", player, runtime, {
+	sendPacket(player, "applyState", InventoryServiceUtils.CloneState(runtime.state))
+	self:LogEvent("state_replicated", player, runtime, {
 		reason = reasonRaw,
 		hash = stateHash,
 		occupiedSlots = runtime.state.occupiedSlotCount,
@@ -1195,7 +1195,7 @@ function InventoryServiceServer.ScheduleSaveAttempt(
 		if player == nil then
 			return
 		end
-		self:performSave(player, runtime, token, reasonRaw)
+		self:PerformSave(player, runtime, token, reasonRaw)
 	end)
 end
 
@@ -1210,7 +1210,7 @@ function InventoryServiceServer.RunQueuedSaveRerun(
 		if currentRuntime == nil or currentRuntime ~= runtime or not runtime.isDirty then
 			return
 		end
-		self:performSave(player, runtime, runtime.saveDebounceToken, reasonRaw)
+		self:PerformSave(player, runtime, runtime.saveDebounceToken, reasonRaw)
 	end)
 end
 
@@ -1221,7 +1221,7 @@ function InventoryServiceServer.CanPersistRuntime(self: InventoryServiceServer, 
 	end
 
 	local loadStateSuccess, loadState = pcall(function()
-		return playerDataService:getLoadState(player)
+		return playerDataService:GetLoadState(player)
 	end)
 	if not loadStateSuccess then
 		return false, "player_data_load_state_error:" .. tostring(loadState)
@@ -1231,7 +1231,7 @@ function InventoryServiceServer.CanPersistRuntime(self: InventoryServiceServer, 
 	end
 
 	local profileSuccess, hasProfile = pcall(function()
-		return self.persistence:hasAuthoritativeProfile(player)
+		return self.persistence:HasAuthoritativeProfile(player)
 	end)
 	if not profileSuccess then
 		return false, "profile_check_error:" .. tostring(hasProfile)
@@ -1254,10 +1254,10 @@ function InventoryServiceServer.PerformSave(
 		return false
 	end
 	if not runtime.isLoaded then
-		self:logEvent("save_skipped_not_loaded", player, runtime, {
+		self:LogEvent("save_skipped_not_loaded", player, runtime, {
 			trigger = reasonRaw,
 			token = token,
-			path = self:getInventoryDataPathString(),
+			path = self:GetInventoryDataPathString(),
 		})
 		return false
 	end
@@ -1266,28 +1266,28 @@ function InventoryServiceServer.PerformSave(
 	end
 	if runtime.isSaving then
 		runtime.saveQueued = true
-		self:logEvent("save_queued_rerun", player, runtime, {
+		self:LogEvent("save_queued_rerun", player, runtime, {
 			trigger = reasonRaw,
 			token = token,
-			path = self:getInventoryDataPathString(),
+			path = self:GetInventoryDataPathString(),
 			reason = "save_in_progress",
 		})
 		return false
 	end
 
 	local snapshotRevision = runtime.revision
-	local snapshotState = InventoryServiceUtils.cloneState(runtime.state)
-	local dataPath = self:getInventoryDataPathString()
-	local canPersist, persistReason = self:canPersistRuntime(player)
+	local snapshotState = InventoryServiceUtils.CloneState(runtime.state)
+	local dataPath = self:GetInventoryDataPathString()
+	local canPersist, persistReason = self:CanPersistRuntime(player)
 	if not canPersist then
-		self:logEvent("save_failed", player, runtime, {
+		self:LogEvent("save_failed", player, runtime, {
 			reason = persistReason,
 			trigger = reasonRaw,
 			token = token,
 			snapshotRevision = snapshotRevision,
 			path = dataPath,
 		})
-		self:scheduleSaveAttempt(
+		self:ScheduleSaveAttempt(
 			runtime.userId,
 			runtime.saveDebounceToken,
 			"retry_" .. tostring(reasonRaw),
@@ -1298,7 +1298,7 @@ function InventoryServiceServer.PerformSave(
 
 	runtime.isSaving = true
 	runtime.saveQueued = false
-	self:logEvent("save_begin", player, runtime, {
+	self:LogEvent("save_begin", player, runtime, {
 		trigger = reasonRaw,
 		token = token,
 		snapshotRevision = snapshotRevision,
@@ -1308,9 +1308,9 @@ function InventoryServiceServer.PerformSave(
 	local saveUsesStagedProfileData = runtime.lastStagedRevision >= snapshotRevision
 	local okSave, didSave, saveReason = pcall(function()
 		if saveUsesStagedProfileData then
-			return self.persistence:saveProfile(player)
+			return self.persistence:SaveProfile(player)
 		end
-		return self.persistence:saveState(player, snapshotState)
+		return self.persistence:SaveState(player, snapshotState)
 	end)
 
 	runtime.isSaving = false
@@ -1321,7 +1321,7 @@ function InventoryServiceServer.PerformSave(
 		if not newerRevisionExists and not runtime.saveQueued then
 			runtime.isDirty = false
 		end
-		self:logEvent("save_success", player, runtime, {
+		self:LogEvent("save_success", player, runtime, {
 			trigger = reasonRaw,
 			token = token,
 			snapshotRevision = snapshotRevision,
@@ -1332,19 +1332,19 @@ function InventoryServiceServer.PerformSave(
 		})
 		if runtime.saveQueued or newerRevisionExists then
 			runtime.saveQueued = false
-			self:logEvent("save_queued_rerun", player, runtime, {
+			self:LogEvent("save_queued_rerun", player, runtime, {
 				trigger = reasonRaw,
 				token = token,
 				path = dataPath,
 				reason = "newer_revision_waiting",
 			})
-			self:runQueuedSaveRerun(player, runtime, "queued_rerun")
+			self:RunQueuedSaveRerun(player, runtime, "queued_rerun")
 		end
 		return true
 	end
 
 	local failureReason = if okSave then tostring(saveReason) else tostring(didSave)
-	self:logEvent("save_failed", player, runtime, {
+	self:LogEvent("save_failed", player, runtime, {
 		reason = failureReason,
 		trigger = reasonRaw,
 		token = token,
@@ -1354,16 +1354,16 @@ function InventoryServiceServer.PerformSave(
 	})
 	if runtime.saveQueued or runtime.revision > snapshotRevision then
 		runtime.saveQueued = false
-		self:logEvent("save_queued_rerun", player, runtime, {
+		self:LogEvent("save_queued_rerun", player, runtime, {
 			trigger = reasonRaw,
 			token = token,
 			path = dataPath,
 			reason = "newer_revision_after_failure",
 		})
-		self:runQueuedSaveRerun(player, runtime, "queued_rerun_after_failure")
+		self:RunQueuedSaveRerun(player, runtime, "queued_rerun_after_failure")
 		return false
 	end
-	self:scheduleSaveAttempt(
+	self:ScheduleSaveAttempt(
 		runtime.userId,
 		runtime.saveDebounceToken,
 		"retry_" .. tostring(reasonRaw),
@@ -1379,9 +1379,9 @@ function InventoryServiceServer.QueueSave(
 	reasonRaw: any
 )
 	if not runtime.isLoaded then
-		self:logEvent("save_skipped_not_loaded", player, runtime, {
+		self:LogEvent("save_skipped_not_loaded", player, runtime, {
 			trigger = reasonRaw,
-			path = self:getInventoryDataPathString(),
+			path = self:GetInventoryDataPathString(),
 		})
 		return
 	end
@@ -1389,20 +1389,20 @@ function InventoryServiceServer.QueueSave(
 	local token = runtime.saveDebounceToken
 	if runtime.isSaving then
 		runtime.saveQueued = true
-		self:logEvent("save_queued_rerun", player, runtime, {
+		self:LogEvent("save_queued_rerun", player, runtime, {
 			trigger = reasonRaw,
 			token = token,
-			path = self:getInventoryDataPathString(),
+			path = self:GetInventoryDataPathString(),
 			reason = "save_in_progress",
 		})
 		return
 	end
-	self:logEvent("save_scheduled", player, runtime, {
+	self:LogEvent("save_scheduled", player, runtime, {
 		trigger = reasonRaw,
 		token = token,
-		path = self:getInventoryDataPathString(),
+		path = self:GetInventoryDataPathString(),
 	})
-	self:scheduleSaveAttempt(runtime.userId, token, reasonRaw, SAVE_DEBOUNCE_SECONDS)
+	self:ScheduleSaveAttempt(runtime.userId, token, reasonRaw, SAVE_DEBOUNCE_SECONDS)
 end
 
 function InventoryServiceServer.CommitState(
@@ -1417,19 +1417,19 @@ function InventoryServiceServer.CommitState(
 	if typeof(beforeCommitRaw) == "function" then
 		local ok, err = pcall(beforeCommitRaw)
 		if not ok then
-			self:logEvent("before_commit_fail", player, runtime, { reason = tostring(err), trigger = reasonRaw })
+			self:LogEvent("before_commit_fail", player, runtime, { reason = tostring(err), trigger = reasonRaw })
 		end
 	end
-	self:markRuntimeDirty(player, runtime, reasonRaw)
-	self:stagePersistedState(player, runtime, reasonRaw)
-	self:queueSave(player, runtime, reasonRaw)
+	self:MarkRuntimeDirty(player, runtime, reasonRaw)
+	self:StagePersistedState(player, runtime, reasonRaw)
+	self:QueueSave(player, runtime, reasonRaw)
 	local syncOk, syncErr = pcall(function()
-		self:syncSelectedTool(player, runtime, reasonRaw)
+		self:SyncSelectedTool(player, runtime, reasonRaw)
 	end)
 	if not syncOk then
-		self:logEvent("tool_sync_fail", player, runtime, { trigger = reasonRaw, reason = tostring(syncErr) })
+		self:LogEvent("tool_sync_fail", player, runtime, { trigger = reasonRaw, reason = tostring(syncErr) })
 	end
-	self:replicateRuntimeState(player, runtime, reasonRaw, true)
+	self:ReplicateRuntimeState(player, runtime, reasonRaw, true)
 end
 
 function InventoryServiceServer.FindMatchingTool(_self: InventoryServiceServer, player: Player, stackRaw: any): Tool?
@@ -1437,11 +1437,11 @@ function InventoryServiceServer.FindMatchingTool(_self: InventoryServiceServer, 
 		return nil
 	end
 	local stack = stackRaw :: { [string]: any }
-	local itemId = sanitizeItemId(stack.itemId)
+	local itemId = CoerceItemId(stack.itemId)
 	if itemId == nil then
 		return nil
 	end
-	local desiredStackId = sanitizeItemId(stack.stackId)
+	local desiredStackId = CoerceItemId(stack.stackId)
 	local fallback = nil :: Tool?
 	for _, container in
 		{ player.Character :: Instance?, player:FindFirstChildOfClass("Backpack") :: Instance? } :: { Instance? }
@@ -1453,7 +1453,7 @@ function InventoryServiceServer.FindMatchingTool(_self: InventoryServiceServer, 
 			if not child:IsA("Tool") then
 				continue
 			end
-			local toolItemId = select(1, resolveToolImportData(child))
+			local toolItemId = select(1, GetToolImportData(child))
 			if toolItemId ~= itemId then
 				continue
 			end
@@ -1482,9 +1482,9 @@ function InventoryServiceServer.SyncSelectedTool(
 	local backpack = player:FindFirstChildOfClass("Backpack")
 	local selectedSlot = runtime.selectedSlot
 	local selectedStack = if selectedSlot ~= nil
-		then InventoryServiceUtils.getStack(runtime.state, selectedSlot)
+		then InventoryServiceUtils.GetStack(runtime.state, selectedSlot)
 		else nil
-	local selectedItemId = if selectedStack ~= nil then sanitizeItemId(selectedStack.itemId) else nil
+	local selectedItemId = if selectedStack ~= nil then CoerceItemId(selectedStack.itemId) else nil
 	if selectedItemId == nil then
 		destroyManagedToolsExcept(player, nil)
 		if humanoid ~= nil then
@@ -1492,10 +1492,10 @@ function InventoryServiceServer.SyncSelectedTool(
 				humanoid:UnequipTools()
 			end)
 		end
-		self:logEvent("tool_sync_applied", player, runtime, { trigger = reasonRaw, outcome = "cleared" })
+		self:LogEvent("tool_sync_applied", player, runtime, { trigger = reasonRaw, outcome = "cleared" })
 		return
 	end
-	local desiredTool = self:findMatchingTool(player, selectedStack)
+	local desiredTool = self:FindMatchingTool(player, selectedStack)
 	if desiredTool == nil and selectedStack ~= nil then
 		desiredTool = cloneToolForInventoryStack(selectedItemId, selectedStack, selectedSlot)
 		if desiredTool ~= nil then
@@ -1510,7 +1510,7 @@ function InventoryServiceServer.SyncSelectedTool(
 	end
 	if desiredTool == nil then
 		destroyManagedToolsExcept(player, nil)
-		self:logEvent(
+		self:LogEvent(
 			"tool_sync_applied",
 			player,
 			runtime,
@@ -1520,20 +1520,20 @@ function InventoryServiceServer.SyncSelectedTool(
 	end
 	configureManagedToolForInventoryStack(desiredTool, selectedItemId, selectedStack, selectedSlot)
 	destroyManagedToolsExcept(player, desiredTool)
-	local deployableConfig = resolveDeployableConfig(selectedItemId)
+	local deployableConfig = GetDeployableConfig(selectedItemId)
 	if deployableConfig ~= nil then
-		local placementProfile = sanitizeItemId((deployableConfig :: { [string]: any }).placementProfile)
+		local placementProfile = CoerceItemId((deployableConfig :: { [string]: any }).placementProfile)
 		if placementProfile ~= "Torch" then
 			runtime.toolSyncJanitor:GiveChore(desiredTool.Activated:Connect(function()
-				self:tryPlaceDeployableFromTool(player, runtime, desiredTool)
+				self:TryPlaceDeployableFromTool(player, runtime, desiredTool)
 			end))
 		end
 	end
 	runtime.toolSyncJanitor:GiveChore(desiredTool.Destroying:Connect(function()
 		task.defer(function()
-			local currentRuntime = self:getRuntime(player)
+			local currentRuntime = self:GetRuntime(player)
 			if currentRuntime ~= nil and currentRuntime == runtime then
-				self:syncSelectedTool(player, runtime, "tool_destroyed")
+				self:SyncSelectedTool(player, runtime, "tool_destroyed")
 			end
 		end)
 	end))
@@ -1542,7 +1542,7 @@ function InventoryServiceServer.SyncSelectedTool(
 			humanoid:EquipTool(desiredTool)
 		end)
 	end
-	self:logEvent("tool_sync_applied", player, runtime, {
+	self:LogEvent("tool_sync_applied", player, runtime, {
 		trigger = reasonRaw,
 		outcome = "equipped",
 		itemId = selectedItemId,
@@ -1557,7 +1557,7 @@ function InventoryServiceServer.SuppressAndPurgePlayerTools(
 	itemIdRaw: any,
 	amountRaw: any
 )
-	local itemId = sanitizeItemId(itemIdRaw)
+	local itemId = CoerceItemId(itemIdRaw)
 	if itemId == nil or typeof(amountRaw) ~= "number" or amountRaw ~= amountRaw then
 		return
 	end
@@ -1582,8 +1582,8 @@ function InventoryServiceServer.FlushPendingToolImports(_self: InventoryServiceS
 	end
 	local changed = false
 	for key, pending in runtime.pendingToolImports do
-		if InventoryServiceUtils.countItem(runtime.state, pending.itemId, nil, false) <= 0 then
-			local addResult = InventoryServiceUtils.addItem(runtime.state, pending.itemId, pending.amount, 1, {
+		if InventoryServiceUtils.CountItem(runtime.state, pending.itemId, nil, false) <= 0 then
+			local addResult = InventoryServiceUtils.AddItem(runtime.state, pending.itemId, pending.amount, 1, {
 				[TOOL_IMPORT_METADATA_TYPE_KEY] = pending.itemType,
 			}, TOOL_IMPORT_STACK_ID_PREFIX)
 			changed = changed or addResult.changed
@@ -1599,11 +1599,11 @@ function InventoryServiceServer.OnObservedTool(
 	runtime: PlayerRuntime,
 	tool: Tool
 )
-	ToolBinder.applyTags(tool)
+	ToolBinder.ApplyTags(tool)
 	if isManagedInventoryTool(tool) then
 		return
 	end
-	local itemId, itemType = resolveToolImportData(tool)
+	local itemId, itemType = GetToolImportData(tool)
 	if itemId == nil or itemType == nil then
 		return
 	end
@@ -1611,7 +1611,7 @@ function InventoryServiceServer.OnObservedTool(
 		tool:Destroy()
 		return
 	end
-	if runtime.isLoading or not runtime.hasResolvedInitialLoad then
+	if runtime.isLoading or not runtime.hasInitialLoad then
 		queuePendingToolImport(runtime, itemId, itemType, 1)
 		tool:Destroy()
 		return
@@ -1620,8 +1620,8 @@ function InventoryServiceServer.OnObservedTool(
 		tool:Destroy()
 		return
 	end
-	if InventoryServiceUtils.countItem(runtime.state, itemId, nil, false) <= 0 then
-		local addResult = self:addItem(player, itemId, 1, {
+	if InventoryServiceUtils.CountItem(runtime.state, itemId, nil, false) <= 0 then
+		local addResult = self:AddItem(player, itemId, 1, {
 			maxStack = 1,
 			metadata = { [TOOL_IMPORT_METADATA_TYPE_KEY] = itemType },
 			stackIdPrefix = TOOL_IMPORT_STACK_ID_PREFIX,
@@ -1631,7 +1631,7 @@ function InventoryServiceServer.OnObservedTool(
 		end
 		return
 	end
-	self:syncSelectedTool(player, runtime, "observed_tool")
+	self:SyncSelectedTool(player, runtime, "observed_tool")
 end
 
 function InventoryServiceServer.ObserveToolContainer(
@@ -1643,12 +1643,12 @@ function InventoryServiceServer.ObserveToolContainer(
 )
 	for _, child in container:GetChildren() do
 		if child:IsA("Tool") then
-			self:onObservedTool(player, runtime, child)
+			self:OnObservedTool(player, runtime, child)
 		end
 	end
 	janitor:GiveChore(container.ChildAdded:Connect(function(child: Instance)
 		if child:IsA("Tool") then
-			self:onObservedTool(player, runtime, child)
+			self:OnObservedTool(player, runtime, child)
 		end
 	end))
 end
@@ -1664,14 +1664,14 @@ function InventoryServiceServer.BindCharacter(
 	if humanoid ~= nil then
 		humanoid:UnequipTools()
 	end
-	self:observeToolContainer(player, runtime, runtime.characterJanitor, character)
+	self:ObserveToolContainer(player, runtime, runtime.characterJanitor, character)
 	runtime.characterJanitor:GiveChore(character.ChildAdded:Connect(function(child: Instance)
 		if child:IsA("Humanoid") then
 			child:UnequipTools()
-			self:syncSelectedTool(player, runtime, "humanoid_added")
+			self:SyncSelectedTool(player, runtime, "humanoid_added")
 		end
 	end))
-	self:syncSelectedTool(player, runtime, "character_bound")
+	self:SyncSelectedTool(player, runtime, "character_bound")
 end
 
 function InventoryServiceServer.BindBackpack(
@@ -1680,8 +1680,8 @@ function InventoryServiceServer.BindBackpack(
 	runtime: PlayerRuntime,
 	backpack: Backpack
 )
-	self:observeToolContainer(player, runtime, runtime.playerJanitor, backpack)
-	self:syncSelectedTool(player, runtime, "backpack_bound")
+	self:ObserveToolContainer(player, runtime, runtime.playerJanitor, backpack)
+	self:SyncSelectedTool(player, runtime, "backpack_bound")
 end
 
 function InventoryServiceServer.TryPlaceDeployableFromTool(
@@ -1692,11 +1692,11 @@ function InventoryServiceServer.TryPlaceDeployableFromTool(
 	requestedTileXRaw: any?,
 	requestedTileYRaw: any?
 ): boolean
-	local itemId = select(1, resolveToolImportData(tool))
+	local itemId = select(1, GetToolImportData(tool))
 	if itemId == nil then
 		return false
 	end
-	return self:tryPlaceSelectedDeployable(player, runtime, itemId, requestedTileXRaw, requestedTileYRaw)
+	return self:TryPlaceSelectedDeployable(player, runtime, itemId, requestedTileXRaw, requestedTileYRaw)
 end
 
 function InventoryServiceServer.TryPlaceSelectedDeployable(
@@ -1707,38 +1707,38 @@ function InventoryServiceServer.TryPlaceSelectedDeployable(
 	requestedTileXRaw: any?,
 	requestedTileYRaw: any?
 ): boolean
-	local itemId = sanitizeItemId(itemIdRaw)
+	local itemId = CoerceItemId(itemIdRaw)
 	if itemId == nil then
 		return false
 	end
-	local deployableConfig = resolveDeployableConfig(itemId)
+	local deployableConfig = GetDeployableConfig(itemId)
 	if deployableConfig == nil then
 		return false
 	end
 	local selectedSlot = runtime.selectedSlot
 	local selectedStack = if selectedSlot ~= nil
-		then InventoryServiceUtils.getStack(runtime.state, selectedSlot)
+		then InventoryServiceUtils.GetStack(runtime.state, selectedSlot)
 		else nil
-	if selectedSlot == nil or selectedStack == nil or sanitizeItemId(selectedStack.itemId) ~= itemId then
+	if selectedSlot == nil or selectedStack == nil or CoerceItemId(selectedStack.itemId) ~= itemId then
 		return false
 	end
-	local primaryTemplate = ResolveItem.resolvePrimaryTemplate(itemId)
+	local primaryTemplate = GetItem.GetPrimaryTemplate(itemId)
 	if primaryTemplate == nil or primaryTemplate:IsA("Tool") then
 		return false
 	end
 	local placedInstance = primaryTemplate:Clone()
-	local primaryPart = resolveDeployablePrimaryPart(placedInstance)
+	local primaryPart = GetDeployablePrimaryPart(placedInstance)
 	if primaryPart == nil then
 		placedInstance:Destroy()
 		return false
 	end
-	local placementProfile = sanitizeItemId((deployableConfig :: { [string]: any }).placementProfile)
+	local placementProfile = CoerceItemId((deployableConfig :: { [string]: any }).placementProfile)
 	local placementCFrame = nil :: CFrame?
 	local placedTileX = nil :: number?
 	local placedTileY = nil :: number?
 	local placedSupportKind = nil :: string?
 	if placementProfile == "Torch" then
-		local torchPlacement = resolveTorchDeployablePlacement(
+		local torchPlacement = GetTorchDeployablePlacement(
 			player,
 			deployableConfig,
 			placedInstance,
@@ -1752,13 +1752,13 @@ function InventoryServiceServer.TryPlaceSelectedDeployable(
 			placedSupportKind = torchPlacement.supportKind
 		end
 	else
-		placementCFrame = resolveDeployablePlacementCFrame(player, deployableConfig, placedInstance)
+		placementCFrame = GetDeployablePlacementCFrame(player, deployableConfig, placedInstance)
 	end
 	if placementCFrame == nil then
 		placedInstance:Destroy()
 		return false
 	end
-	local removeResult = self:removeFromSlot(player, selectedSlot, 1)
+	local removeResult = self:RemoveFromSlot(player, selectedSlot, 1)
 	if removeResult.removedAmount <= 0 then
 		placedInstance:Destroy()
 		return false
@@ -1769,7 +1769,7 @@ function InventoryServiceServer.TryPlaceSelectedDeployable(
 	else
 		(placedInstance :: BasePart).CFrame = placementCFrame
 	end
-	local stationTag = sanitizeItemId((deployableConfig :: { [string]: any }).stationTag)
+	local stationTag = CoerceItemId((deployableConfig :: { [string]: any }).stationTag)
 	if stationTag ~= nil then
 		TagBinder.applyTag(placedInstance, stationTag, CollectionService)
 	end
@@ -1795,8 +1795,8 @@ end
 function InventoryServiceServer.Init(self: InventoryServiceServer)
 	bindPackets(self)
 	self.playerDataService = PlayerDataServiceServer :: PlayerDataServiceServerObject
-	self.persistence = (InventoryProfile.new :: any)(self.playerDataService, {
-		dataPath = InventoryServiceUtils.getDefaultDataPath(),
+	self.persistence = (InventoryProfile.New :: any)(self.playerDataService, {
+		dataPath = InventoryServiceUtils.GetDefaultDataPath(),
 		primaryTimeoutSeconds = PRIMARY_PERSISTENCE_TIMEOUT_SECONDS,
 		fallbackTimeoutSeconds = FALLBACK_PERSISTENCE_TIMEOUT_SECONDS,
 	}) :: InventoryProfileObject
@@ -1805,13 +1805,13 @@ function InventoryServiceServer.Init(self: InventoryServiceServer)
 	self.dropFromSlotHandler = nil
 
 	for _, player in Players:GetPlayers() do
-		self:trackPlayer(player)
+		self:TrackPlayer(player)
 	end
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		self:trackPlayer(player)
+		self:TrackPlayer(player)
 	end)
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
-		self:untrackPlayer(player)
+		self:UntrackPlayer(player)
 	end)
 end
 
@@ -1819,14 +1819,14 @@ function InventoryServiceServer.ReadInventoryDataFromPlayerData(
 	self: InventoryServiceServer,
 	player: Player
 ): (any, string)
-	local defaultInventoryData = self.persistence:cloneDefaultInventoryData()
+	local defaultInventoryData = self.persistence:CloneDefaultInventoryData()
 	local playerDataService = self.playerDataService
 	if playerDataService == nil then
 		return defaultInventoryData, "player_data_service_missing"
 	end
 
 	local readSuccess, readResult = pcall(function()
-		return playerDataService:getValue(player, self:getInventoryDataPath(), defaultInventoryData)
+		return playerDataService:GetValue(player, self:GetInventoryDataPath(), defaultInventoryData)
 	end)
 	if not readSuccess then
 		return defaultInventoryData, "player_data_read_error:" .. tostring(readResult)
@@ -1843,32 +1843,35 @@ function InventoryServiceServer.FinalizeInitialLoad(
 	runtime: PlayerRuntime,
 	loadToken: number,
 	nextStateRaw: any,
-	resolvedSourceRaw: any,
+	GotSourceRaw: any,
 	failureReasonRaw: any?
 ): boolean
 	if runtime.loadToken ~= loadToken or self.playerRuntimesByUserId[player.UserId] ~= runtime then
 		return false
 	end
 
-	applyRuntimeState(runtime, nextStateRaw)
+	local nextState = InventoryServiceUtils.CoerceState(nextStateRaw, runtime.state)
+	local starterSlotsChanged = InventoryServiceUtils.ApplyStarterSlots(nextState)
+	applyRuntimeState(runtime, nextState)
 	runtime.isLoading = false
-	runtime.hasResolvedInitialLoad = true
-	runtime.lastFailureReason = sanitizeFailureReason(failureReasonRaw)
-	runtime.resolvedSource = if typeof(resolvedSourceRaw) == "string" then resolvedSourceRaw else runtime.resolvedSource
-	local importedPending = self:flushPendingToolImports(runtime)
-	if importedPending and runtime.isLoaded then
-		self:markRuntimeDirty(player, runtime, "pending_tool_imports")
-		self:stagePersistedState(player, runtime, "pending_tool_imports")
+	runtime.hasInitialLoad = true
+	runtime.lastFailureReason = CoerceFailureReason(failureReasonRaw)
+	runtime.GotSource = if typeof(GotSourceRaw) == "string" then GotSourceRaw else runtime.GotSource
+	local importedPending = self:FlushPendingToolImports(runtime)
+	if (starterSlotsChanged or importedPending) and runtime.isLoaded then
+		local dirtyReason = if starterSlotsChanged then "starter_slots" else "pending_tool_imports"
+		self:MarkRuntimeDirty(player, runtime, dirtyReason)
+		self:StagePersistedState(player, runtime, dirtyReason)
 	end
 	local syncOk, syncErr = pcall(function()
-		self:syncSelectedTool(player, runtime, "initial_load")
+		self:SyncSelectedTool(player, runtime, "initial_load")
 	end)
 	if not syncOk then
-		self:logEvent("tool_sync_fail", player, runtime, { trigger = "initial_load", reason = tostring(syncErr) })
+		self:LogEvent("tool_sync_fail", player, runtime, { trigger = "initial_load", reason = tostring(syncErr) })
 	end
-	self:replicateRuntimeState(player, runtime, "initial_load", true)
-	if importedPending and runtime.isLoaded then
-		self:queueSave(player, runtime, "pending_tool_imports")
+	self:ReplicateRuntimeState(player, runtime, "initial_load", true)
+	if (starterSlotsChanged or importedPending) and runtime.isLoaded then
+		self:QueueSave(player, runtime, if starterSlotsChanged then "starter_slots" else "pending_tool_imports")
 	end
 	return true
 end
@@ -1881,55 +1884,55 @@ function InventoryServiceServer.LoadPlayerInventory(
 )
 	local playerDataService = self.playerDataService
 	if playerDataService == nil then
-		local failedState = InventoryServiceUtils.createStateFromData(
-			self.persistence:cloneDefaultInventoryData(),
+		local failedState = InventoryServiceUtils.CreateStateFromData(
+			self.persistence:CloneDefaultInventoryData(),
 			runtime.state,
 			InventoryServiceUtils.LOAD_STATE_FAILED
 		)
 		if
-			self:finalizeInitialLoad(player, runtime, loadToken, failedState, "default", "player_data_service_missing")
+			self:FinalizeInitialLoad(player, runtime, loadToken, failedState, "default", "player_data_service_missing")
 		then
-			self:logEvent("load_resolved_default_failure", player, runtime, {
+			self:LogEvent("load_Got_default_failure", player, runtime, {
 				reason = "player_data_service_missing",
 			})
 		end
 		return
 	end
 
-	local function resolveLoadedState(resolveReasonRaw: any, playerDataLoadStateRaw: any)
-		local inventoryData, inventoryReason = self:readInventoryDataFromPlayerData(player)
-		local nextState = InventoryServiceUtils.createStateFromData(
+	local function GetLoadedState(GetEasonRaw: any, playerDataLoadStateRaw: any)
+		local inventoryData, inventoryReason = self:ReadInventoryDataFromPlayerData(player)
+		local nextState = InventoryServiceUtils.CreateStateFromData(
 			inventoryData,
 			runtime.state,
 			InventoryServiceUtils.LOAD_STATE_LOADED
 		)
-		if self:finalizeInitialLoad(player, runtime, loadToken, nextState, "player_data", nil) then
-			self:logEvent("load_resolved_from_player_data", player, runtime, {
+		if self:FinalizeInitialLoad(player, runtime, loadToken, nextState, "player_data", nil) then
+			self:LogEvent("load_Got_from_player_data", player, runtime, {
 				playerDataLoadState = playerDataLoadStateRaw,
-				reason = resolveReasonRaw,
+				reason = GetEasonRaw,
 				readReason = inventoryReason,
 			})
 		end
 	end
 
 	local loadStateSuccess, loadStateResult = pcall(function()
-		return playerDataService:getLoadState(player)
+		return playerDataService:GetLoadState(player)
 	end)
 	local playerDataLoadState = if loadStateSuccess
 		then loadStateResult
 		else "load_state_error:" .. tostring(loadStateResult)
 	if loadStateSuccess and loadStateResult == PlayerDataServiceUtils.LOAD_STATE_LOADED then
-		resolveLoadedState("player_data_already_loaded", loadStateResult)
+		GetLoadedState("player_data_already_loaded", loadStateResult)
 		return
 	end
 	if loadStateSuccess and loadStateResult == PlayerDataServiceUtils.LOAD_STATE_FAILED then
-		local failedState = InventoryServiceUtils.createStateFromData(
-			self.persistence:cloneDefaultInventoryData(),
+		local failedState = InventoryServiceUtils.CreateStateFromData(
+			self.persistence:CloneDefaultInventoryData(),
 			runtime.state,
 			InventoryServiceUtils.LOAD_STATE_FAILED
 		)
-		if self:finalizeInitialLoad(player, runtime, loadToken, failedState, "default", "player_data_failed") then
-			self:logEvent("load_resolved_default_failure", player, runtime, {
+		if self:FinalizeInitialLoad(player, runtime, loadToken, failedState, "default", "player_data_failed") then
+			self:LogEvent("load_Got_default_failure", player, runtime, {
 				reason = "player_data_failed",
 				playerDataLoadState = loadStateResult,
 			})
@@ -1938,26 +1941,26 @@ function InventoryServiceServer.LoadPlayerInventory(
 	end
 
 	pcall(function()
-		playerDataService:requestSync(player)
+		playerDataService:RequestSync(player)
 	end)
-	self:logEvent("load_waiting_for_player_data", player, runtime, {
+	self:LogEvent("load_waiting_for_player_data", player, runtime, {
 		playerDataLoadState = playerDataLoadState,
 		timeoutSeconds = PLAYER_DATA_SETTLE_TIMEOUT_SECONDS,
 	})
 	local waitSuccess, waitResult = pcall(function()
-		return playerDataService:waitForData(player, PLAYER_DATA_SETTLE_TIMEOUT_SECONDS)
+		return playerDataService:WaitForData(player, PLAYER_DATA_SETTLE_TIMEOUT_SECONDS)
 	end)
 	if runtime.loadToken ~= loadToken or self.playerRuntimesByUserId[player.UserId] ~= runtime then
 		return
 	end
 
 	loadStateSuccess, loadStateResult = pcall(function()
-		return playerDataService:getLoadState(player)
+		return playerDataService:GetLoadState(player)
 	end)
 	playerDataLoadState = if loadStateSuccess then loadStateResult else "load_state_error:" .. tostring(loadStateResult)
 	if loadStateSuccess and loadStateResult == PlayerDataServiceUtils.LOAD_STATE_LOADED then
-		resolveLoadedState(
-			if waitSuccess then "player_data_wait_resolved" else "player_data_wait_error_resolved",
+		GetLoadedState(
+			if waitSuccess then "player_data_wait_Got" else "player_data_wait_error_Got",
 			loadStateResult
 		)
 		return
@@ -1969,42 +1972,42 @@ function InventoryServiceServer.LoadPlayerInventory(
 	if loadStateSuccess and loadStateResult == PlayerDataServiceUtils.LOAD_STATE_FAILED then
 		failureReason = "player_data_failed"
 	end
-	local failedState = InventoryServiceUtils.createStateFromData(
-		self.persistence:cloneDefaultInventoryData(),
+	local failedState = InventoryServiceUtils.CreateStateFromData(
+		self.persistence:CloneDefaultInventoryData(),
 		runtime.state,
 		InventoryServiceUtils.LOAD_STATE_FAILED
 	)
-	if self:finalizeInitialLoad(player, runtime, loadToken, failedState, "default", failureReason) then
-		self:logEvent("load_resolved_default_failure", player, runtime, {
+	if self:FinalizeInitialLoad(player, runtime, loadToken, failedState, "default", failureReason) then
+		self:LogEvent("load_Got_default_failure", player, runtime, {
 			reason = failureReason,
 			playerDataLoadState = playerDataLoadState,
 		})
 		if not waitSuccess then
-			self:logEvent("load_wait_error", player, runtime, { reason = tostring(waitResult) })
+			self:LogEvent("load_wait_error", player, runtime, { reason = tostring(waitResult) })
 		end
 	end
 end
 
 function InventoryServiceServer.TrackPlayer(self: InventoryServiceServer, player: Player)
-	local runtime = self:getRuntime(player)
-	if runtime ~= nil then
-		runtime.player = player
-		self:logEvent("trackPlayer_start", player, runtime, { reusedRuntime = true })
-		self:replicateRuntimeState(player, runtime, "track_player_reused", true)
+	local existingRuntime = self:GetRuntime(player)
+	if existingRuntime ~= nil then
+		existingRuntime.player = player
+		self:LogEvent("trackPlayer_start", player, existingRuntime, { reusedRuntime = true })
+		self:ReplicateRuntimeState(player, existingRuntime, "track_player_reused", true)
 		return
 	end
 
-	local runtime = self:createRuntime(player)
+	local runtime = self:CreateRuntime(player)
 	self.playerRuntimesByUserId[player.UserId] = runtime
 	runtime.joinToken += 1
 	runtime.loadToken += 1
 	runtime.isLoading = true
-	runtime.hasResolvedInitialLoad = false
+	runtime.hasInitialLoad = false
 	runtime.isLoaded = false
 	runtime.isDirty = false
 	runtime.isSaving = false
 	runtime.saveQueued = false
-	runtime.resolvedSource = "loading"
+	runtime.GotSource = "loading"
 	runtime.lastFailureReason = nil
 	runtime.loadStartedAt = os.clock()
 	runtime.lastReplicatedStateHash = nil
@@ -2019,32 +2022,32 @@ function InventoryServiceServer.TrackPlayer(self: InventoryServiceServer, player
 	runtime.toolSyncJanitor:Clean()
 	applyRuntimeState(
 		runtime,
-		InventoryServiceUtils.createStateFromData(
-			self.persistence:cloneDefaultInventoryData(),
+		InventoryServiceUtils.CreateStateFromData(
+			self.persistence:CloneDefaultInventoryData(),
 			runtime.state,
 			InventoryServiceUtils.LOAD_STATE_LOADING
 		)
 	)
-	self:logEvent("trackPlayer_start", player, runtime, nil)
-	self:replicateRuntimeState(player, runtime, "track_player", true)
+	self:LogEvent("trackPlayer_start", player, runtime, nil)
+	self:ReplicateRuntimeState(player, runtime, "track_player", true)
 	runtime.playerJanitor:GiveChore(player.CharacterAdded:Connect(function(character: Model)
-		self:bindCharacter(player, runtime, character)
+		self:BindCharacter(player, runtime, character)
 	end))
 	runtime.playerJanitor:GiveChore(player.ChildAdded:Connect(function(child: Instance)
 		if child:IsA("Backpack") then
-			self:bindBackpack(player, runtime, child)
+			self:BindBackpack(player, runtime, child)
 		end
 	end))
 	if player.Character ~= nil then
-		self:bindCharacter(player, runtime, player.Character)
+		self:BindCharacter(player, runtime, player.Character)
 	end
 	local backpack = player:FindFirstChildOfClass("Backpack")
 	if backpack ~= nil then
-		self:bindBackpack(player, runtime, backpack)
+		self:BindBackpack(player, runtime, backpack)
 	end
 	local loadToken = runtime.loadToken
 	task.spawn(function()
-		self:loadPlayerInventory(player, runtime, loadToken)
+		self:LoadPlayerInventory(player, runtime, loadToken)
 	end)
 end
 
@@ -2055,9 +2058,9 @@ function InventoryServiceServer.UntrackPlayer(self: InventoryServiceServer, play
 	end
 	runtime.player = player
 	if runtime.isDirty then
-		self:stagePersistedState(player, runtime, "player_removing")
+		self:StagePersistedState(player, runtime, "player_removing")
 	end
-	self:performSave(player, runtime, runtime.saveDebounceToken, "player_removing")
+	self:PerformSave(player, runtime, runtime.saveDebounceToken, "player_removing")
 	runtime.playerJanitor:Destroy()
 	runtime.characterJanitor:Destroy()
 	runtime.toolSyncJanitor:Destroy()
@@ -2065,17 +2068,17 @@ function InventoryServiceServer.UntrackPlayer(self: InventoryServiceServer, play
 end
 
 function InventoryServiceServer.RequestSync(self: InventoryServiceServer, player: Player)
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	if runtime == nil then
-		self:trackPlayer(player)
+		self:TrackPlayer(player)
 		return
 	end
 	runtime.player = player
-	self:logEvent("requestSync_reused_runtime", player, runtime, { runtimeExists = true })
-	self:replicateRuntimeState(player, runtime, "request_sync", true)
+	self:LogEvent("requestSync_reused_runtime", player, runtime, { runtimeExists = true })
+	self:ReplicateRuntimeState(player, runtime, "request_sync", true)
 end
 function InventoryServiceServer.RequestSetSelectedSlot(self: InventoryServiceServer, player: Player, slotIndexRaw: any)
-	self:setSelectedSlot(player, slotIndexRaw)
+	self:SetSelectedSlot(player, slotIndexRaw)
 end
 function InventoryServiceServer.RequestMoveSlot(
 	self: InventoryServiceServer,
@@ -2084,7 +2087,7 @@ function InventoryServiceServer.RequestMoveSlot(
 	toSlotRaw: any,
 	amountRaw: any
 )
-	self:moveSlot(player, fromSlotRaw, toSlotRaw, amountRaw)
+	self:MoveSlot(player, fromSlotRaw, toSlotRaw, amountRaw)
 end
 function InventoryServiceServer.RequestSplitSlot(
 	self: InventoryServiceServer,
@@ -2093,7 +2096,7 @@ function InventoryServiceServer.RequestSplitSlot(
 	toSlotRaw: any,
 	amountRaw: any
 )
-	self:splitSlot(player, fromSlotRaw, toSlotRaw, amountRaw)
+	self:SplitSlot(player, fromSlotRaw, toSlotRaw, amountRaw)
 end
 function InventoryServiceServer.RequestDropFromSlot(
 	self: InventoryServiceServer,
@@ -2102,7 +2105,7 @@ function InventoryServiceServer.RequestDropFromSlot(
 	amountRaw: any,
 	throwDirectionRaw: any
 )
-	self:dropFromSlot(player, slotIndexRaw, amountRaw, throwDirectionRaw)
+	self:DropFromSlot(player, slotIndexRaw, amountRaw, throwDirectionRaw)
 end
 function InventoryServiceServer.RequestTrashSlot(
 	self: InventoryServiceServer,
@@ -2110,13 +2113,13 @@ function InventoryServiceServer.RequestTrashSlot(
 	slotIndexRaw: any,
 	amountRaw: any
 )
-	self:trashSlot(player, slotIndexRaw, amountRaw)
+	self:TrashSlot(player, slotIndexRaw, amountRaw)
 end
 function InventoryServiceServer.RequestTrashSelectedSlot(self: InventoryServiceServer, player: Player, amountRaw: any)
-	self:trashSelectedSlot(player, amountRaw)
+	self:TrashSelectedSlot(player, amountRaw)
 end
 function InventoryServiceServer.RequestUseSelectedSlot(self: InventoryServiceServer, player: Player, amountRaw: any)
-	self:useSelectedSlot(player, amountRaw)
+	self:UseSelectedSlot(player, amountRaw)
 end
 
 function InventoryServiceServer.RequestPlaceSelectedDeployable(
@@ -2125,24 +2128,24 @@ function InventoryServiceServer.RequestPlaceSelectedDeployable(
 	tileXRaw: any,
 	tileYRaw: any
 )
-	local runtime = self:getLoadedRuntime(player)
+	local runtime = self:GetLoadedRuntime(player)
 	if runtime == nil then
 		return
 	end
 	local selectedSlot = runtime.selectedSlot
 	local selectedStack = if selectedSlot ~= nil
-		then InventoryServiceUtils.getStack(runtime.state, selectedSlot)
+		then InventoryServiceUtils.GetStack(runtime.state, selectedSlot)
 		else nil
 	if selectedSlot == nil or selectedStack == nil then
 		return
 	end
 
-	local itemId = sanitizeItemId(selectedStack.itemId)
-	if itemId == nil or resolveDeployableConfig(itemId) == nil then
+	local itemId = CoerceItemId(selectedStack.itemId)
+	if itemId == nil or GetDeployableConfig(itemId) == nil then
 		return
 	end
 
-	self:tryPlaceSelectedDeployable(player, runtime, itemId, tileXRaw, tileYRaw)
+	self:TryPlaceSelectedDeployable(player, runtime, itemId, tileXRaw, tileYRaw)
 end
 
 function InventoryServiceServer.SetDropFromSlotHandler(self: InventoryServiceServer, handlerRaw: any)
@@ -2155,11 +2158,11 @@ function InventoryServiceServer.GetState(self: InventoryServiceServer, player: P
 	if runtime ~= nil then
 		return runtime.state
 	end
-	return InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
+	return InventoryServiceUtils.CreateDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
 end
 
 function InventoryServiceServer.GetStateCopy(self: InventoryServiceServer, player: Player): InventoryState
-	return InventoryServiceUtils.cloneState(self:getState(player))
+	return InventoryServiceUtils.CloneState(self:GetState(player))
 end
 
 function InventoryServiceServer.SetSelectedSlot(
@@ -2167,16 +2170,16 @@ function InventoryServiceServer.SetSelectedSlot(
 	player: Player,
 	slotIndexRaw: any
 ): boolean
-	local runtime = self:getLoadedRuntime(player)
+	local runtime = self:GetLoadedRuntime(player)
 	if runtime == nil then
 		return false
 	end
-	local nextState = InventoryServiceUtils.cloneState(runtime.state)
-	local changed = InventoryServiceUtils.setSelectedSlot(nextState, slotIndexRaw)
+	local nextState = InventoryServiceUtils.CloneState(runtime.state)
+	local changed = InventoryServiceUtils.SetSelectedSlot(nextState, slotIndexRaw)
 	if changed then
-		self:commitState(player, runtime, nextState, "set_selected_slot", nil)
+		self:CommitState(player, runtime, nextState, "set_selected_slot", nil)
 	else
-		self:syncSelectedTool(player, runtime, "set_selected_slot_unchanged")
+		self:SyncSelectedTool(player, runtime, "set_selected_slot_unchanged")
 	end
 	return changed
 end
@@ -2188,13 +2191,13 @@ function InventoryServiceServer.AddItem(
 	amountRaw: any,
 	optionsRaw: any
 ): AddItemResult
-	local runtime = self:getLoadedRuntime(player)
+	local runtime = self:GetLoadedRuntime(player)
 	if runtime == nil then
 		return createEmptyAddItemResult()
 	end
 	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
-	local nextState = InventoryServiceUtils.cloneState(runtime.state)
-	local result = InventoryServiceUtils.addItem(
+	local nextState = InventoryServiceUtils.CloneState(runtime.state)
+	local result = InventoryServiceUtils.AddItem(
 		nextState,
 		itemIdRaw,
 		amountRaw,
@@ -2203,7 +2206,7 @@ function InventoryServiceServer.AddItem(
 		options.stackIdPrefix
 	)
 	if result.changed then
-		self:commitState(player, runtime, nextState, "add_item", nil)
+		self:CommitState(player, runtime, nextState, "add_item", nil)
 	end
 	return result
 end
@@ -2215,13 +2218,13 @@ function InventoryServiceServer.RemoveItem(
 	amountRaw: any,
 	optionsRaw: any
 ): RemoveItemResult
-	local runtime = self:getLoadedRuntime(player)
+	local runtime = self:GetLoadedRuntime(player)
 	if runtime == nil then
 		return createEmptyRemoveItemResult()
 	end
 	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
-	local nextState = InventoryServiceUtils.cloneState(runtime.state)
-	local result = InventoryServiceUtils.removeItem(
+	local nextState = InventoryServiceUtils.CloneState(runtime.state)
+	local result = InventoryServiceUtils.RemoveItem(
 		nextState,
 		itemIdRaw,
 		amountRaw,
@@ -2229,8 +2232,8 @@ function InventoryServiceServer.RemoveItem(
 		options.requireExactMetadata
 	)
 	if result.changed then
-		self:commitState(player, runtime, nextState, "remove_item", function()
-			self:suppressAndPurgePlayerTools(runtime, player, itemIdRaw, result.removed)
+		self:CommitState(player, runtime, nextState, "remove_item", function()
+			self:SuppressAndPurgePlayerTools(runtime, player, itemIdRaw, result.removed)
 		end)
 	end
 	return result
@@ -2242,18 +2245,18 @@ function InventoryServiceServer.RemoveFromSlot(
 	slotIndexRaw: any,
 	amountRaw: any
 ): SlotMutationResult
-	local runtime = self:getLoadedRuntime(player)
+	local runtime = self:GetLoadedRuntime(player)
 	if runtime == nil then
 		return createEmptySlotMutationResult()
 	end
-	local existingStack = InventoryServiceUtils.getStack(runtime.state, slotIndexRaw)
+	local existingStack = InventoryServiceUtils.GetStack(runtime.state, slotIndexRaw)
 	local itemId = if existingStack ~= nil then existingStack.itemId else nil
-	local nextState = InventoryServiceUtils.cloneState(runtime.state)
-	local result = InventoryServiceUtils.removeFromSlot(nextState, slotIndexRaw, amountRaw)
+	local nextState = InventoryServiceUtils.CloneState(runtime.state)
+	local result = InventoryServiceUtils.RemoveFromSlot(nextState, slotIndexRaw, amountRaw)
 	if result.changed then
-		self:commitState(player, runtime, nextState, "remove_from_slot", function()
+		self:CommitState(player, runtime, nextState, "remove_from_slot", function()
 			if itemId ~= nil then
-				self:suppressAndPurgePlayerTools(runtime, player, itemId, result.removedAmount)
+				self:SuppressAndPurgePlayerTools(runtime, player, itemId, result.removedAmount)
 			end
 		end)
 	end
@@ -2267,14 +2270,14 @@ function InventoryServiceServer.MoveSlot(
 	toSlotRaw: any,
 	amountRaw: any
 ): SlotMutationResult
-	local runtime = self:getLoadedRuntime(player)
+	local runtime = self:GetLoadedRuntime(player)
 	if runtime == nil then
 		return createEmptySlotMutationResult()
 	end
-	local nextState = InventoryServiceUtils.cloneState(runtime.state)
-	local result = InventoryServiceUtils.moveSlot(nextState, fromSlotRaw, toSlotRaw, amountRaw)
+	local nextState = InventoryServiceUtils.CloneState(runtime.state)
+	local result = InventoryServiceUtils.MoveSlot(nextState, fromSlotRaw, toSlotRaw, amountRaw)
 	if result.changed then
-		self:commitState(player, runtime, nextState, "move_slot", nil)
+		self:CommitState(player, runtime, nextState, "move_slot", nil)
 	end
 	return result
 end
@@ -2286,14 +2289,14 @@ function InventoryServiceServer.SplitSlot(
 	toSlotRaw: any,
 	amountRaw: any
 ): SlotMutationResult
-	local runtime = self:getLoadedRuntime(player)
+	local runtime = self:GetLoadedRuntime(player)
 	if runtime == nil then
 		return createEmptySlotMutationResult()
 	end
-	local nextState = InventoryServiceUtils.cloneState(runtime.state)
-	local result = InventoryServiceUtils.splitSlot(nextState, fromSlotRaw, toSlotRaw, amountRaw)
+	local nextState = InventoryServiceUtils.CloneState(runtime.state)
+	local result = InventoryServiceUtils.SplitSlot(nextState, fromSlotRaw, toSlotRaw, amountRaw)
 	if result.changed then
-		self:commitState(player, runtime, nextState, "split_slot", nil)
+		self:CommitState(player, runtime, nextState, "split_slot", nil)
 	end
 	return result
 end
@@ -2303,20 +2306,20 @@ function InventoryServiceServer.UseSelectedSlot(
 	player: Player,
 	amountRaw: any
 ): SlotMutationResult
-	local runtime = self:getLoadedRuntime(player)
+	local runtime = self:GetLoadedRuntime(player)
 	if runtime == nil then
 		return createEmptySlotMutationResult()
 	end
 	local selectedStack = if runtime.selectedSlot ~= nil
-		then InventoryServiceUtils.getStack(runtime.state, runtime.selectedSlot)
+		then InventoryServiceUtils.GetStack(runtime.state, runtime.selectedSlot)
 		else nil
 	local itemId = if selectedStack ~= nil then selectedStack.itemId else nil
-	local nextState = InventoryServiceUtils.cloneState(runtime.state)
-	local result = InventoryServiceUtils.consumeSelected(nextState, amountRaw)
+	local nextState = InventoryServiceUtils.CloneState(runtime.state)
+	local result = InventoryServiceUtils.ConsumeSelected(nextState, amountRaw)
 	if result.changed then
-		self:commitState(player, runtime, nextState, "use_selected_slot", function()
+		self:CommitState(player, runtime, nextState, "use_selected_slot", function()
 			if itemId ~= nil then
-				self:suppressAndPurgePlayerTools(runtime, player, itemId, result.removedAmount)
+				self:SuppressAndPurgePlayerTools(runtime, player, itemId, result.removedAmount)
 			end
 		end)
 	end
@@ -2359,11 +2362,11 @@ function InventoryServiceServer.ReleaseSuppressedToolImport(
 	itemIdRaw: any,
 	amountRaw: any
 ): number
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	if runtime == nil then
 		return 0
 	end
-	local itemId = sanitizeItemId(itemIdRaw)
+	local itemId = CoerceItemId(itemIdRaw)
 	if itemId == nil then
 		return 0
 	end
@@ -2384,18 +2387,18 @@ function InventoryServiceServer.TrashSlot(
 	slotIndexRaw: any,
 	amountRaw: any
 ): SlotMutationResult
-	local runtime = self:getLoadedRuntime(player)
+	local runtime = self:GetLoadedRuntime(player)
 	if runtime == nil then
 		return createEmptySlotMutationResult()
 	end
-	local existingStack = InventoryServiceUtils.getStack(runtime.state, slotIndexRaw)
+	local existingStack = InventoryServiceUtils.GetStack(runtime.state, slotIndexRaw)
 	local itemId = if existingStack ~= nil then existingStack.itemId else nil
-	local nextState = InventoryServiceUtils.cloneState(runtime.state)
-	local result = InventoryServiceUtils.trashSlot(nextState, slotIndexRaw, amountRaw)
+	local nextState = InventoryServiceUtils.CloneState(runtime.state)
+	local result = InventoryServiceUtils.TrashSlot(nextState, slotIndexRaw, amountRaw)
 	if result.changed then
-		self:commitState(player, runtime, nextState, "trash_slot", function()
+		self:CommitState(player, runtime, nextState, "trash_slot", function()
 			if itemId ~= nil then
-				self:suppressAndPurgePlayerTools(runtime, player, itemId, result.removedAmount)
+				self:SuppressAndPurgePlayerTools(runtime, player, itemId, result.removedAmount)
 			end
 		end)
 	end
@@ -2407,20 +2410,20 @@ function InventoryServiceServer.TrashSelectedSlot(
 	player: Player,
 	amountRaw: any
 ): SlotMutationResult
-	local runtime = self:getLoadedRuntime(player)
+	local runtime = self:GetLoadedRuntime(player)
 	if runtime == nil then
 		return createEmptySlotMutationResult()
 	end
 	local selectedStack = if runtime.selectedSlot ~= nil
-		then InventoryServiceUtils.getStack(runtime.state, runtime.selectedSlot)
+		then InventoryServiceUtils.GetStack(runtime.state, runtime.selectedSlot)
 		else nil
 	local itemId = if selectedStack ~= nil then selectedStack.itemId else nil
-	local nextState = InventoryServiceUtils.cloneState(runtime.state)
-	local result = InventoryServiceUtils.trashSelected(nextState, amountRaw)
+	local nextState = InventoryServiceUtils.CloneState(runtime.state)
+	local result = InventoryServiceUtils.TrashSelected(nextState, amountRaw)
 	if result.changed then
-		self:commitState(player, runtime, nextState, "trash_selected_slot", function()
+		self:CommitState(player, runtime, nextState, "trash_selected_slot", function()
 			if itemId ~= nil then
-				self:suppressAndPurgePlayerTools(runtime, player, itemId, result.removedAmount)
+				self:SuppressAndPurgePlayerTools(runtime, player, itemId, result.removedAmount)
 			end
 		end)
 	end
@@ -2434,22 +2437,22 @@ function InventoryServiceServer.CountItem(
 	metadataRaw: any,
 	requireExactMetadataRaw: any
 ): number
-	local runtime = self:getLoadedRuntime(player)
+	local runtime = self:GetLoadedRuntime(player)
 	if runtime == nil then
 		return 0
 	end
-	return InventoryServiceUtils.countItem(runtime.state, itemIdRaw, metadataRaw, requireExactMetadataRaw)
+	return InventoryServiceUtils.CountItem(runtime.state, itemIdRaw, metadataRaw, requireExactMetadataRaw)
 end
 
 function InventoryServiceServer.ClearInventory(self: InventoryServiceServer, player: Player): boolean
-	local runtime = self:getLoadedRuntime(player)
+	local runtime = self:GetLoadedRuntime(player)
 	if runtime == nil then
 		return false
 	end
-	local nextState = InventoryServiceUtils.cloneState(runtime.state)
-	local changed = InventoryServiceUtils.clear(nextState)
+	local nextState = InventoryServiceUtils.CloneState(runtime.state)
+	local changed = InventoryServiceUtils.Clear(nextState)
 	if changed then
-		self:commitState(player, runtime, nextState, "clear_inventory", nil)
+		self:CommitState(player, runtime, nextState, "clear_inventory", nil)
 	end
 	return changed
 end
@@ -2467,9 +2470,9 @@ function InventoryServiceServer.Destroy(self: InventoryServiceServer)
 		local player = runtime.player
 		if player ~= nil then
 			if runtime.isDirty then
-				self:stagePersistedState(player, runtime, "destroy")
+				self:StagePersistedState(player, runtime, "destroy")
 			end
-			self:performSave(player, runtime, runtime.saveDebounceToken, "destroy")
+			self:PerformSave(player, runtime, runtime.saveDebounceToken, "destroy")
 		end
 		runtime.playerJanitor:Destroy()
 		runtime.characterJanitor:Destroy()
@@ -2477,66 +2480,6 @@ function InventoryServiceServer.Destroy(self: InventoryServiceServer)
 		self.playerRuntimesByUserId[userId] = nil
 	end
 end
-
-InventoryServiceServer.logEvent = InventoryServiceServer.LogEvent
-InventoryServiceServer.getInventoryDataPath = InventoryServiceServer.GetInventoryDataPath
-InventoryServiceServer.getInventoryDataPathString = InventoryServiceServer.GetInventoryDataPathString
-InventoryServiceServer.markRuntimeDirty = InventoryServiceServer.MarkRuntimeDirty
-InventoryServiceServer.stagePersistedState = InventoryServiceServer.StagePersistedState
-InventoryServiceServer.createRuntime = InventoryServiceServer.CreateRuntime
-InventoryServiceServer.getRuntime = InventoryServiceServer.GetRuntime
-InventoryServiceServer.getOrCreateRuntime = InventoryServiceServer.GetOrCreateRuntime
-InventoryServiceServer.getLoadedRuntime = InventoryServiceServer.GetLoadedRuntime
-InventoryServiceServer.replicateRuntimeState = InventoryServiceServer.ReplicateRuntimeState
-InventoryServiceServer.scheduleSaveAttempt = InventoryServiceServer.ScheduleSaveAttempt
-InventoryServiceServer.runQueuedSaveRerun = InventoryServiceServer.RunQueuedSaveRerun
-InventoryServiceServer.canPersistRuntime = InventoryServiceServer.CanPersistRuntime
-InventoryServiceServer.performSave = InventoryServiceServer.PerformSave
-InventoryServiceServer.queueSave = InventoryServiceServer.QueueSave
-InventoryServiceServer.commitState = InventoryServiceServer.CommitState
-InventoryServiceServer.findMatchingTool = InventoryServiceServer.FindMatchingTool
-InventoryServiceServer.syncSelectedTool = InventoryServiceServer.SyncSelectedTool
-InventoryServiceServer.suppressAndPurgePlayerTools = InventoryServiceServer.SuppressAndPurgePlayerTools
-InventoryServiceServer.flushPendingToolImports = InventoryServiceServer.FlushPendingToolImports
-InventoryServiceServer.onObservedTool = InventoryServiceServer.OnObservedTool
-InventoryServiceServer.observeToolContainer = InventoryServiceServer.ObserveToolContainer
-InventoryServiceServer.bindCharacter = InventoryServiceServer.BindCharacter
-InventoryServiceServer.bindBackpack = InventoryServiceServer.BindBackpack
-InventoryServiceServer.tryPlaceDeployableFromTool = InventoryServiceServer.TryPlaceDeployableFromTool
-InventoryServiceServer.tryPlaceSelectedDeployable = InventoryServiceServer.TryPlaceSelectedDeployable
-InventoryServiceServer.init = InventoryServiceServer.Init
-InventoryServiceServer.readInventoryDataFromPlayerData = InventoryServiceServer.ReadInventoryDataFromPlayerData
-InventoryServiceServer.finalizeInitialLoad = InventoryServiceServer.FinalizeInitialLoad
-InventoryServiceServer.loadPlayerInventory = InventoryServiceServer.LoadPlayerInventory
-InventoryServiceServer.trackPlayer = InventoryServiceServer.TrackPlayer
-InventoryServiceServer.untrackPlayer = InventoryServiceServer.UntrackPlayer
-InventoryServiceServer.requestSync = InventoryServiceServer.RequestSync
-InventoryServiceServer.requestSetSelectedSlot = InventoryServiceServer.RequestSetSelectedSlot
-InventoryServiceServer.requestMoveSlot = InventoryServiceServer.RequestMoveSlot
-InventoryServiceServer.requestSplitSlot = InventoryServiceServer.RequestSplitSlot
-InventoryServiceServer.requestDropFromSlot = InventoryServiceServer.RequestDropFromSlot
-InventoryServiceServer.requestTrashSlot = InventoryServiceServer.RequestTrashSlot
-InventoryServiceServer.requestTrashSelectedSlot = InventoryServiceServer.RequestTrashSelectedSlot
-InventoryServiceServer.requestUseSelectedSlot = InventoryServiceServer.RequestUseSelectedSlot
-InventoryServiceServer.requestPlaceSelectedDeployable = InventoryServiceServer.RequestPlaceSelectedDeployable
-InventoryServiceServer.setDropFromSlotHandler = InventoryServiceServer.SetDropFromSlotHandler
-InventoryServiceServer.getState = InventoryServiceServer.GetState
-InventoryServiceServer.getStateCopy = InventoryServiceServer.GetStateCopy
-InventoryServiceServer.setSelectedSlot = InventoryServiceServer.SetSelectedSlot
-InventoryServiceServer.addItem = InventoryServiceServer.AddItem
-InventoryServiceServer.removeItem = InventoryServiceServer.RemoveItem
-InventoryServiceServer.removeFromSlot = InventoryServiceServer.RemoveFromSlot
-InventoryServiceServer.moveSlot = InventoryServiceServer.MoveSlot
-InventoryServiceServer.splitSlot = InventoryServiceServer.SplitSlot
-InventoryServiceServer.useSelectedSlot = InventoryServiceServer.UseSelectedSlot
-InventoryServiceServer.dropFromSlot = InventoryServiceServer.DropFromSlot
-InventoryServiceServer.releaseSuppressedToolImport = InventoryServiceServer.ReleaseSuppressedToolImport
-InventoryServiceServer.trashSlot = InventoryServiceServer.TrashSlot
-InventoryServiceServer.trashSelectedSlot = InventoryServiceServer.TrashSelectedSlot
-InventoryServiceServer.countItem = InventoryServiceServer.CountItem
-InventoryServiceServer.clearInventory = InventoryServiceServer.ClearInventory
-InventoryServiceServer.destroy = InventoryServiceServer.Destroy
-
 type InventoryServiceServer = typeof(InventoryServiceServer) & {
 	playerDataService: PlayerDataServiceServerObject,
 	persistence: InventoryProfileObject,

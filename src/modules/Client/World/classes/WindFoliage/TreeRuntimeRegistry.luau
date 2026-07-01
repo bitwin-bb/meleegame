@@ -2,7 +2,6 @@ local require = require(script.Parent.loader).load(script)
 
 local FoliageInstance = require("FoliageInstance")
 local Octree = require("Octree")
-local RippleMotion = require("RippleMotion")
 
 local TreeRuntimeRegistry = {}
 TreeRuntimeRegistry.__index = TreeRuntimeRegistry
@@ -36,11 +35,11 @@ export type RuntimeEntry = {
 	lastDistanceSquared: number,
 	lastTierName: string,
 	estimatedTransformWrites: number,
-	primarySwayMotion: any,
-	secondarySwayMotion: any,
-	interactionBendMotion: any,
-	canopyFlutterMotion: any,
-	resolvedWindSample: { [string]: any },
+	primarySwayValue: Vector3,
+	secondarySwayValue: Vector3,
+	interactionBendValue: Vector3,
+	canopyFlutterValue: number,
+	windSample: { [string]: any },
 	orderIndex: number,
 	debugActive: boolean,
 }
@@ -81,7 +80,7 @@ local function configureOctree(spatialIndex: any, maxRegionSize: number, maxDept
 	return spatialIndex
 end
 
-local function resolveSeed(instance: Instance, config: { [string]: any }): number
+local function GetSeed(instance: Instance, config: { [string]: any }): number
 	local seed = instance:GetAttribute("Seed")
 	if typeof(seed) == "number" and seed == seed then
 		return math.floor(seed)
@@ -93,7 +92,7 @@ local function resolveSeed(instance: Instance, config: { [string]: any }): numbe
 	return 0
 end
 
-local function resolveBoundingRadius(instance: Instance, foliage: any): number
+local function GetBoundingRadius(instance: Instance, foliage: any): number
 	if foliage.treeGraph ~= nil then
 		local graph = foliage.treeGraph
 		if typeof(graph.influenceRadius) == "number" then
@@ -115,7 +114,7 @@ local function resolveBoundingRadius(instance: Instance, foliage: any): number
 	return math.max(1, clampNumber(foliage.objectHeight, 4, 1, 512) * 0.75)
 end
 
-local function resolveTrunkReference(instance: Instance, foliage: any): Instance?
+local function GetTrunkReference(instance: Instance, foliage: any): Instance?
 	if foliage.treeGraph ~= nil then
 		local graph = foliage.treeGraph
 		if typeof(graph.trunk) == "Instance" then
@@ -134,7 +133,7 @@ local function resolveTrunkReference(instance: Instance, foliage: any): Instance
 	return instance
 end
 
-local function resolveRuntimeShape(foliage: any): (number, number, number, number, string)
+local function GetUntimeShape(foliage: any): (number, number, number, number, string)
 	if foliage.treeGraph ~= nil then
 		local graph = foliage.treeGraph
 		local branchCount = if typeof(graph.branchOrder) == "table" then #graph.branchOrder else 0
@@ -182,22 +181,22 @@ function TreeRuntimeRegistry.Register(self: TreeRuntimeRegistry, instanceRaw: an
 	end
 
 	local config = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else {} :: any
-	local foliage = FoliageInstance.new(instance, config)
+	local foliage = FoliageInstance.New(instance, config)
 	if foliage == nil then
 		return nil
 	end
 
 	self.nextId += 1
-	local branchCount, leafCount, boneCount, animatableNodeCount, representation = resolveRuntimeShape(foliage)
+	local branchCount, leafCount, boneCount, animatableNodeCount, representation = GetUntimeShape(foliage)
 	local entry: RuntimeEntry = {
 		id = self.nextId,
 		instance = instance,
 		foliage = foliage,
 		config = config,
-		rootPosition = foliage:getRootPosition(),
-		boundingRadius = resolveBoundingRadius(instance, foliage),
-		trunkReference = resolveTrunkReference(instance, foliage),
-		seed = resolveSeed(instance, config),
+		rootPosition = foliage:GetRootPosition(),
+		boundingRadius = GetBoundingRadius(instance, foliage),
+		trunkReference = GetTrunkReference(instance, foliage),
+		seed = GetSeed(instance, config),
 		representation = representation,
 		branchCount = branchCount,
 		leafCount = leafCount,
@@ -209,11 +208,11 @@ function TreeRuntimeRegistry.Register(self: TreeRuntimeRegistry, instanceRaw: an
 		lastDistanceSquared = math.huge,
 		lastTierName = "Uninitialized",
 		estimatedTransformWrites = math.max(1, animatableNodeCount),
-		primarySwayMotion = RippleMotion.createMotion(ZERO),
-		secondarySwayMotion = RippleMotion.createMotion(ZERO),
-		interactionBendMotion = RippleMotion.createMotion(ZERO),
-		canopyFlutterMotion = RippleMotion.createMotion(0),
-		resolvedWindSample = {
+		primarySwayValue = ZERO,
+		secondarySwayValue = ZERO,
+		interactionBendValue = ZERO,
+		canopyFlutterValue = 0,
+		windSample = {
 			vector = ZERO,
 			direction = Vector3.xAxis,
 			strength = 0,
@@ -263,11 +262,7 @@ function TreeRuntimeRegistry.Unregister(self: TreeRuntimeRegistry, instanceRaw: 
 	end
 
 	setAttributeIfChanged(instance, RUNTIME_ATTRIBUTE_ID, nil)
-	entry.primarySwayMotion:destroy()
-	entry.secondarySwayMotion:destroy()
-	entry.interactionBendMotion:destroy()
-	entry.canopyFlutterMotion:destroy()
-	entry.foliage:destroy()
+	entry.foliage:Destroy()
 end
 
 function TreeRuntimeRegistry.Get(self: TreeRuntimeRegistry, instanceRaw: any): RuntimeEntry?
@@ -308,7 +303,7 @@ function TreeRuntimeRegistry.Destroy(self: TreeRuntimeRegistry)
 	for index = #self.entries, 1, -1 do
 		local entry = self.entries[index]
 		if entry ~= nil then
-			self:unregister(entry.instance)
+			self:Unregister(entry.instance)
 		end
 	end
 	table.clear(self.entriesByInstance)
@@ -316,13 +311,4 @@ function TreeRuntimeRegistry.Destroy(self: TreeRuntimeRegistry)
 	table.clear(self.spatialNodesById)
 	table.clear(self.queryBuffer)
 end
-
-TreeRuntimeRegistry.new = TreeRuntimeRegistry.New
-TreeRuntimeRegistry.register = TreeRuntimeRegistry.Register
-TreeRuntimeRegistry.unregister = TreeRuntimeRegistry.Unregister
-TreeRuntimeRegistry.get = TreeRuntimeRegistry.Get
-TreeRuntimeRegistry.count = TreeRuntimeRegistry.Count
-TreeRuntimeRegistry.queryRadius = TreeRuntimeRegistry.QueryRadius
-TreeRuntimeRegistry.destroy = TreeRuntimeRegistry.Destroy
-
 return TreeRuntimeRegistry

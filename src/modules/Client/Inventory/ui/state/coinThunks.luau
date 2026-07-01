@@ -18,7 +18,7 @@ local runtime = {
 	stateChangedConnection = nil :: RBXScriptConnection?,
 }
 
-local COINS_DATA_PATH = PlayerDataServiceUtils.getDefaultCoinsDataPath()
+local COINS_DATA_PATH = PlayerDataServiceUtils.GetDefaultCoinsDataPath()
 local LOCAL_PLAYER = Players.LocalPlayer
 
 local function stringifyLogValue(valueRaw: any): string
@@ -44,7 +44,7 @@ local function logCoinsApplied(nextPlayerDataState: PlayerDataServiceState, next
 				else 0
 		),
 		("loadState=%s"):format(stringifyLogValue(nextPlayerDataState.loadState)),
-		("hasResolvedInitialLoad=%s"):format(tostring(nextPlayerDataState.hasResolvedInitialLoad == true)),
+		("hasInitialLoad=%s"):format(tostring(nextPlayerDataState.hasInitialLoad == true)),
 		("isLoading=%s"):format(tostring(nextPlayerDataState.isLoading == true)),
 		("totalCopper=%s"):format(stringifyLogValue(nextCoinState.totalCopper)),
 	}
@@ -62,11 +62,11 @@ local function applyPlayerDataState(nextPlayerDataStateRaw: any): CoinState
 		return fallbackState
 	end
 
-	local fallbackCoinsData = if PlayerDataServiceUtils.hasResolvedState(nextPlayerDataState)
+	local fallbackCoinsData = if PlayerDataServiceUtils.HasGotState(nextPlayerDataState)
 		then coinSlice.createDefaultCoinAmounts()
 		else fallbackState.amounts
 	local coinsData =
-		PlayerDataServiceUtils.getValueAtPath(nextPlayerDataState.data, COINS_DATA_PATH, fallbackCoinsData)
+		PlayerDataServiceUtils.GetValueAtPath(nextPlayerDataState.data, COINS_DATA_PATH, fallbackCoinsData)
 	local nextCoinState = coinSlice.setCoinsData(coinsData, nextPlayerDataState.loadState)
 	logCoinsApplied(nextPlayerDataState, nextCoinState)
 	return nextCoinState
@@ -84,19 +84,19 @@ function coinThunks.Start(): () -> ()
 	runtime.started = true
 	syncFromService()
 
-	runtime.stateChangedConnection = ServiceSync.connectStateChanged(
+	runtime.stateChangedConnection = ServiceSync.ConnectStateChanged(
 		PlayerDataServiceClient,
 		function(nextState: PlayerDataServiceState)
 			applyPlayerDataState(nextState)
 		end
 	)
-	ServiceSync.requestSync(PlayerDataServiceClient)
+	ServiceSync.RequestSync(PlayerDataServiceClient)
 
 	return coinThunks.Stop
 end
 
 function coinThunks.Stop()
-	ConnectionUtils.disconnect(runtime.stateChangedConnection)
+	ConnectionUtils.Disconnect(runtime.stateChangedConnection)
 	runtime.stateChangedConnection = nil
 	runtime.started = false
 end
@@ -108,10 +108,4 @@ end
 function coinThunks.ApplyPlayerDataState(nextPlayerDataStateRaw: any): CoinState
 	return applyPlayerDataState(nextPlayerDataStateRaw)
 end
-
-coinThunks.start = coinThunks.Start
-coinThunks.stop = coinThunks.Stop
-coinThunks.syncFromService = coinThunks.SyncFromService
-coinThunks.applyPlayerDataState = coinThunks.ApplyPlayerDataState
-
 return coinThunks

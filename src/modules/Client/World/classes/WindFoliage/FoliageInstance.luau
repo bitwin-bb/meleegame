@@ -1,6 +1,7 @@
 local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local Sift = require(ReplicatedStorage.Packages.Sift)
 
@@ -38,6 +39,9 @@ export type Config = {
 	pivotAttachmentName: string?,
 	pivotOffset: Vector3?,
 	boneNames: { string }?,
+	tweenSmoothingEnabled: boolean?,
+	tweenSmoothingDuration: number?,
+	tweenSmoothingMaxDuration: number?,
 }
 
 export type WindSample = {
@@ -63,6 +67,7 @@ type BoneRecord = {
 	bone: Bone,
 	restTransform: CFrame,
 	weight: number,
+	activeTween: Tween?,
 }
 
 type JanitorClass = {
@@ -74,6 +79,10 @@ type JanitorClass = {
 local ZERO = Vector3.zero
 local DEFAULT_MOTION_STYLE: MotionStyle = "GrassTip"
 local DEFAULT_REPRESENTATION: Representation = "BasePart"
+local DEFAULT_TWEEN_SMOOTHING_DURATION = 0.16
+local DEFAULT_TWEEN_SMOOTHING_MAX_DURATION = 0.24
+local TWEEN_EASING_STYLE = Enum.EasingStyle.Sine
+local TWEEN_EASING_DIRECTION = Enum.EasingDirection.Out
 
 local function clampNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
 	local value = if typeof(valueRaw) == "number" and valueRaw == valueRaw then valueRaw else fallback
@@ -86,8 +95,40 @@ local function clampNumber(valueRaw: any, fallback: number, minimum: number, max
 	return value
 end
 
-local function sanitizeString(valueRaw: any, fallback: string): string
+local function CoerceString(valueRaw: any, fallback: string): string
 	return if typeof(valueRaw) == "string" and valueRaw ~= "" then valueRaw else fallback
+end
+
+local function getTweenSmoothingDuration(config: Config, presentationDt: number): number
+	if config.tweenSmoothingEnabled == false then
+		return 0
+	end
+
+	local maxDuration = clampNumber(config.tweenSmoothingMaxDuration, DEFAULT_TWEEN_SMOOTHING_MAX_DURATION, 0, 1)
+	if maxDuration <= 0 then
+		return 0
+	end
+
+	local cadenceDuration = if presentationDt > 0 then presentationDt else DEFAULT_TWEEN_SMOOTHING_DURATION
+	local requestedDuration = clampNumber(config.tweenSmoothingDuration, cadenceDuration, 0, 1)
+	if requestedDuration <= 0 then
+		return 0
+	end
+
+	return math.min(requestedDuration, cadenceDuration, maxDuration)
+end
+
+local function cancelTween(tween: Tween?)
+	if tween ~= nil then
+		tween:Cancel()
+	end
+end
+
+local function createTween(instance: Instance, tweenInfo: TweenInfo, goal: { [string]: any }): Tween?
+	local ok, tween = pcall(function()
+		return TweenService:Create(instance, tweenInfo, goal)
+	end)
+	return if ok then tween else nil
 end
 
 local function normalizeMotionStyle(valueRaw: any): MotionStyle
@@ -110,7 +151,7 @@ local function normalizeRepresentation(valueRaw: any): Representation
 	return DEFAULT_REPRESENTATION
 end
 
-local function resolveBasePartFromInstance(instance: Instance): BasePart?
+local function GetBasePartFromInstance(instance: Instance): BasePart?
 	if instance:IsA("BasePart") then
 		return instance
 	end
@@ -191,7 +232,7 @@ local function normalizePivotMode(valueRaw: any): string
 	return "Auto"
 end
 
-local function resolvePartPivotFrame(part: BasePart, config: Config): CFrame
+local function GetPartPivotFrame(part: BasePart, config: Config): CFrame
 	local pivotOffset = if typeof(config.pivotOffset) == "Vector3" then config.pivotOffset else ZERO
 	local pivotAttachment = findAttachmentByName(part, config.pivotAttachmentName)
 	local pivotMode = normalizePivotMode(config.pivotMode)
@@ -208,7 +249,7 @@ local function resolvePartPivotFrame(part: BasePart, config: Config): CFrame
 	return part.CFrame * CFrame.new(localOffset)
 end
 
-local function resolveModelPivotFrame(model: Model, config: Config): CFrame
+local function GetModelPivotFrame(model: Model, config: Config): CFrame
 	local pivotOffset = if typeof(config.pivotOffset) == "Vector3" then config.pivotOffset else ZERO
 	local pivotAttachment = findAttachmentByName(model, config.pivotAttachmentName)
 	local pivotMode = normalizePivotMode(config.pivotMode)
@@ -243,7 +284,7 @@ local function countDepth(instance: Instance): number
 	return depth
 end
 
-local function resolveBoneNames(config: Config): { string }
+local function GetBoneNames(config: Config): { string }
 	local raw = config.boneNames
 	if typeof(raw) ~= "table" then
 		return {}
@@ -258,7 +299,7 @@ local function resolveBoneNames(config: Config): { string }
 end
 
 local function collectBones(root: Instance, config: Config): { BoneRecord }
-	local requestedNames = resolveBoneNames(config)
+	local requestedNames = GetBoneNames(config)
 	local bones = {}
 
 	if #requestedNames > 0 then
@@ -298,13 +339,14 @@ local function collectBones(root: Instance, config: Config): { BoneRecord }
 			bone = bone,
 			restTransform = bone.Transform,
 			weight = weight,
+			activeTween = nil,
 		}
 	end
 
 	return records
 end
 
-local function resolveReferenceFrame(instance: Instance): CFrame
+local function GetEferenceFrame(instance: Instance): CFrame
 	if instance:IsA("Bone") then
 		local ok, worldCFrame = pcall(function()
 			return instance.WorldCFrame
@@ -316,7 +358,7 @@ local function resolveReferenceFrame(instance: Instance): CFrame
 	if instance:IsA("Model") then
 		return safeModelPivot(instance)
 	end
-	local part = resolveBasePartFromInstance(instance)
+	local part = GetBasePartFromInstance(instance)
 	if part ~= nil then
 		return part.CFrame
 	end
@@ -371,7 +413,7 @@ function FoliageInstance.New(instanceRaw: any, configRaw: Config?): FoliageInsta
 
 	local janitor = Janitor.new()
 	local motionStyle = normalizeMotionStyle(config.motionStyle or DEFAULT_MOTION_STYLE)
-	local referenceFrame = resolveReferenceFrame(instance)
+	local referenceFrame = GetEferenceFrame(instance)
 	local objectHeight = getInstanceHeight(instance)
 	local phaseOffset = (config.seed % 100000) / 100000 * math.pi * 2
 	local amplitudeScale = 0.92 + ((config.seed % 8191) / 8191) * 0.18
@@ -381,7 +423,7 @@ function FoliageInstance.New(instanceRaw: any, configRaw: Config?): FoliageInsta
 		instance = instance,
 		representation = representation,
 		motionStyle = motionStyle,
-		presetName = sanitizeString(config.presetName, "GrassLight"),
+		presetName = CoerceString(config.presetName, "GrassLight"),
 		bucketIndex = config.bucketIndex,
 		janitor = janitor,
 		config = config,
@@ -402,20 +444,24 @@ function FoliageInstance.New(instanceRaw: any, configRaw: Config?): FoliageInsta
 		restCFrame = nil :: CFrame?,
 		restPivotFrame = nil :: CFrame?,
 		pivotToObject = nil :: CFrame?,
+		activePartTween = nil :: Tween?,
+		activeModelTween = nil :: Tween?,
+		modelTweenValue = nil :: CFrameValue?,
+		modelTweenConnection = nil :: RBXScriptConnection?,
 		destroyed = false,
 	}, FoliageInstance)
 
 	if representation == "Model" then
 		local model = instance :: Model
-		local treeGraph = TreeFoliageGraph.new(model, config)
+		local treeGraph = TreeFoliageGraph.New(model, config)
 		if treeGraph ~= nil then
 			self.model = model
 			self.treeGraph = treeGraph
-			self.referenceFrame = CFrame.new(treeGraph:getRootPosition())
-			self.rootPosition = treeGraph:getRootPosition()
+			self.referenceFrame = CFrame.new(treeGraph:GetRootPosition())
+			self.rootPosition = treeGraph:GetRootPosition()
 		else
 			local restCFrame = safeModelPivot(model)
-			local restPivotFrame = resolveModelPivotFrame(model, config)
+			local restPivotFrame = GetModelPivotFrame(model, config)
 			self.model = model
 			self.restCFrame = restCFrame
 			self.restPivotFrame = restPivotFrame
@@ -426,7 +472,7 @@ function FoliageInstance.New(instanceRaw: any, configRaw: Config?): FoliageInsta
 	elseif representation == "BasePart" then
 		local part = instance :: BasePart
 		local restCFrame = part.CFrame
-		local restPivotFrame = resolvePartPivotFrame(part, config)
+		local restPivotFrame = GetPartPivotFrame(part, config)
 		self.part = part
 		self.restCFrame = restCFrame
 		self.restPivotFrame = restPivotFrame
@@ -439,12 +485,12 @@ function FoliageInstance.New(instanceRaw: any, configRaw: Config?): FoliageInsta
 			janitor:Destroy()
 			return nil
 		end
-		self.referenceFrame = resolveReferenceFrame(instance)
+		self.referenceFrame = GetEferenceFrame(instance)
 		self.rootPosition = self.referenceFrame.Position
 	end
 
 	janitor:GiveChore(instance.Destroying:Connect(function()
-		self:destroy()
+		self:Destroy()
 	end))
 
 	return self
@@ -452,9 +498,26 @@ end
 
 function FoliageInstance.GetRootPosition(self: FoliageInstance): Vector3
 	if self.treeGraph ~= nil then
-		return self.treeGraph:getRootPosition()
+		return self.treeGraph:GetRootPosition()
 	end
 	return self.rootPosition
+end
+
+function FoliageInstance.CancelTweens(self: FoliageInstance)
+	if self.treeGraph ~= nil and self.treeGraph.CancelTweens ~= nil then
+		self.treeGraph:CancelTweens()
+	end
+
+	cancelTween(self.activePartTween)
+	self.activePartTween = nil
+
+	cancelTween(self.activeModelTween)
+	self.activeModelTween = nil
+
+	for _, record in self.bones do
+		cancelTween(record.activeTween)
+		record.activeTween = nil
+	end
 end
 
 function FoliageInstance.ResetPose(self: FoliageInstance)
@@ -462,14 +525,15 @@ function FoliageInstance.ResetPose(self: FoliageInstance)
 		return
 	end
 
+	self:CancelTweens()
 	self.currentBend = ZERO
 	self.springVelocity = ZERO
 	self.reactiveBend = ZERO
 	self.lastDisturbanceImpulse = ZERO
 
 	if self.treeGraph ~= nil then
-		self.treeGraph:reset()
-		self.rootPosition = self.treeGraph:getRootPosition()
+		self.treeGraph:Reset()
+		self.rootPosition = self.treeGraph:GetRootPosition()
 		return
 	end
 
@@ -491,6 +555,9 @@ function FoliageInstance.ResetPose(self: FoliageInstance)
 		local restCFrame = self.restCFrame
 		local restPivotFrame = self.restPivotFrame
 		if model ~= nil and restCFrame ~= nil and model.Parent ~= nil then
+			if self.modelTweenValue ~= nil then
+				self.modelTweenValue.Value = restCFrame
+			end
 			model:PivotTo(restCFrame)
 		end
 		if restPivotFrame ~= nil then
@@ -507,6 +574,128 @@ function FoliageInstance.ResetPose(self: FoliageInstance)
 	self.rootPosition = self.referenceFrame.Position
 end
 
+function FoliageInstance.TweenPartCFrame(
+	self: FoliageInstance,
+	part: BasePart,
+	targetCFrame: CFrame,
+	presentationDt: number
+)
+	local duration = getTweenSmoothingDuration(self.config, presentationDt)
+	cancelTween(self.activePartTween)
+	self.activePartTween = nil
+
+	if duration <= 0 then
+		part.CFrame = targetCFrame
+		return
+	end
+
+	local tween = createTween(
+		part,
+		TweenInfo.new(duration, TWEEN_EASING_STYLE, TWEEN_EASING_DIRECTION),
+		{ CFrame = targetCFrame }
+	)
+	if tween == nil then
+		part.CFrame = targetCFrame
+		return
+	end
+
+	self.activePartTween = tween
+	tween.Completed:Connect(function()
+		if self.activePartTween == tween then
+			self.activePartTween = nil
+		end
+	end)
+	tween:Play()
+end
+
+function FoliageInstance.TweenModelPivot(
+	self: FoliageInstance,
+	model: Model,
+	targetCFrame: CFrame,
+	presentationDt: number
+)
+	local duration = getTweenSmoothingDuration(self.config, presentationDt)
+	cancelTween(self.activeModelTween)
+	self.activeModelTween = nil
+
+	if duration <= 0 then
+		model:PivotTo(targetCFrame)
+		return
+	end
+
+	local tweenValue = self.modelTweenValue
+	if tweenValue == nil then
+		tweenValue = Instance.new("CFrameValue")
+		tweenValue.Value = safeModelPivot(model)
+		self.modelTweenValue = tweenValue
+
+		local connection = tweenValue.Changed:Connect(function(value: CFrame)
+			if self.destroyed or model.Parent == nil then
+				return
+			end
+			model:PivotTo(value)
+		end)
+		self.modelTweenConnection = connection
+
+		local janitor = self.janitor :: JanitorClass
+		janitor:GiveChore(connection)
+		janitor:GiveChore(tweenValue)
+	end
+
+	tweenValue.Value = safeModelPivot(model)
+	local tween = createTween(
+		tweenValue,
+		TweenInfo.new(duration, TWEEN_EASING_STYLE, TWEEN_EASING_DIRECTION),
+		{ Value = targetCFrame }
+	)
+	if tween == nil then
+		model:PivotTo(targetCFrame)
+		return
+	end
+
+	self.activeModelTween = tween
+	tween.Completed:Connect(function()
+		if self.activeModelTween == tween then
+			self.activeModelTween = nil
+		end
+	end)
+	tween:Play()
+end
+
+function FoliageInstance.TweenBoneTransform(
+	self: FoliageInstance,
+	record: BoneRecord,
+	targetTransform: CFrame,
+	presentationDt: number
+)
+	local duration = getTweenSmoothingDuration(self.config, presentationDt)
+	cancelTween(record.activeTween)
+	record.activeTween = nil
+
+	if duration <= 0 then
+		record.bone.Transform = targetTransform
+		return
+	end
+
+	local tween = createTween(
+		record.bone,
+		TweenInfo.new(duration, TWEEN_EASING_STYLE, TWEEN_EASING_DIRECTION),
+		{ Transform = targetTransform }
+	)
+	if tween == nil then
+		record.bone.Transform = targetTransform
+		return
+	end
+
+	record.activeTween = tween
+	tween.Completed:Connect(function()
+		if record.activeTween == tween then
+			record.activeTween = nil
+		end
+	end)
+	tween:Play()
+end
+
 function FoliageInstance.AddDisturbance(self: FoliageInstance, impulseWorld: Vector3, originWorldRaw: any?)
 	if self.destroyed then
 		return
@@ -515,7 +704,7 @@ function FoliageInstance.AddDisturbance(self: FoliageInstance, impulseWorld: Vec
 		return
 	end
 	if self.treeGraph ~= nil then
-		self.treeGraph:addDisturbance(impulseWorld, originWorldRaw)
+		self.treeGraph:AddDisturbance(impulseWorld, originWorldRaw)
 		return
 	end
 
@@ -528,14 +717,14 @@ function FoliageInstance.AddDisturbance(self: FoliageInstance, impulseWorld: Vec
 	self.springVelocity += scaledImpulse * 0.28
 end
 
-function FoliageInstance.ResolveLocalAngles(
+function FoliageInstance.GetLocalAngles(
 	self: FoliageInstance,
 	bendWorld: Vector3,
 	flutter: number,
 	lod: LODState
 ): (number, number, number, Vector3)
 	local reference = self.referenceFrame
-	local planar = Vec.flattenY(bendWorld)
+	local planar = Vec.FlattenY(bendWorld)
 	local magnitude = planar.Magnitude
 	if magnitude <= 1e-5 then
 		return 0, 0, 0, ZERO
@@ -578,7 +767,8 @@ function FoliageInstance.ApplyTransform(
 	pitch: number,
 	yaw: number,
 	roll: number,
-	translationWorld: Vector3
+	translationWorld: Vector3,
+	presentationDt: number
 )
 	if self.destroyed then
 		return
@@ -594,7 +784,7 @@ function FoliageInstance.ApplyTransform(
 
 		local pivotFrame = restPivotFrame + translationWorld
 		local finalCFrame = pivotFrame * CFrame.Angles(pitch, yaw, roll) * pivotToObject
-		part.CFrame = finalCFrame
+		self:TweenPartCFrame(part, finalCFrame, presentationDt)
 		return
 	end
 
@@ -607,7 +797,7 @@ function FoliageInstance.ApplyTransform(
 		end
 
 		local pivotFrame = restPivotFrame + translationWorld
-		model:PivotTo(pivotFrame * CFrame.Angles(pitch, yaw, roll) * pivotToObject)
+		self:TweenModelPivot(model, pivotFrame * CFrame.Angles(pitch, yaw, roll) * pivotToObject, presentationDt)
 		return
 	end
 
@@ -618,9 +808,10 @@ function FoliageInstance.ApplyTransform(
 		end
 
 		local weight = record.weight
-		record.bone.Transform = record.restTransform
+		local targetTransform = record.restTransform
 			* CFrame.new(lateralOffset * weight * 0.18)
 			* CFrame.Angles(pitch * weight, yaw * weight, roll * weight)
+		self:TweenBoneTransform(record, targetTransform, presentationDt)
 	end
 end
 
@@ -629,14 +820,16 @@ function FoliageInstance.Step(
 	simulationTime: number,
 	dt: number,
 	windSample: WindSample,
-	lod: LODState
+	lod: LODState,
+	presentationDtRaw: number?
 )
 	if self.destroyed or dt <= 0 then
 		return
 	end
+	local presentationDt = if typeof(presentationDtRaw) == "number" then presentationDtRaw else dt
 	if self.treeGraph ~= nil then
-		self.treeGraph:step(simulationTime, dt, windSample, lod)
-		self.rootPosition = self.treeGraph:getRootPosition()
+		self.treeGraph:Step(simulationTime, dt, windSample, lod, presentationDt)
+		self.rootPosition = self.treeGraph:GetRootPosition()
 		self.lastUpdateTime = simulationTime
 		return
 	end
@@ -657,7 +850,7 @@ function FoliageInstance.Step(
 	target += windSample.detailVector * detailAmplitude * lod.detailScale
 	target += self.reactiveBend * lod.disturbanceScale
 	target *= heightMultiplier * self.amplitudeScale
-	target = Vec.flattenY(target)
+	target = Vec.FlattenY(target)
 
 	if target.Magnitude > 1.35 then
 		target = target.Unit * 1.35
@@ -674,8 +867,8 @@ function FoliageInstance.Step(
 		self.springVelocity = ZERO
 	end
 
-	local pitch, yaw, roll, translationWorld = self:resolveLocalAngles(self.currentBend, windSample.flutter, lod)
-	self:applyTransform(pitch, yaw, roll, translationWorld)
+	local pitch, yaw, roll, translationWorld = self:GetLocalAngles(self.currentBend, windSample.flutter, lod)
+	self:ApplyTransform(pitch, yaw, roll, translationWorld, presentationDt)
 	self.lastUpdateTime = simulationTime
 end
 
@@ -684,8 +877,9 @@ function FoliageInstance.Destroy(self: FoliageInstance)
 		return
 	end
 	self.destroyed = true
+	self:CancelTweens()
 	if self.treeGraph ~= nil then
-		self.treeGraph:destroy()
+		self.treeGraph:Destroy()
 		local janitor = self.janitor :: JanitorClass
 		janitor:Destroy()
 		return
@@ -697,6 +891,9 @@ function FoliageInstance.Destroy(self: FoliageInstance)
 		end
 	elseif self.representation == "Model" then
 		if self.model ~= nil and self.model.Parent ~= nil and self.restCFrame ~= nil then
+			if self.modelTweenValue ~= nil then
+				self.modelTweenValue.Value = self.restCFrame
+			end
 			self.model:PivotTo(self.restCFrame)
 		end
 	else
@@ -710,14 +907,4 @@ function FoliageInstance.Destroy(self: FoliageInstance)
 	local janitor = self.janitor :: JanitorClass
 	janitor:Destroy()
 end
-
-FoliageInstance.new = FoliageInstance.New
-FoliageInstance.getRootPosition = FoliageInstance.GetRootPosition
-FoliageInstance.resetPose = FoliageInstance.ResetPose
-FoliageInstance.addDisturbance = FoliageInstance.AddDisturbance
-FoliageInstance.resolveLocalAngles = FoliageInstance.ResolveLocalAngles
-FoliageInstance.applyTransform = FoliageInstance.ApplyTransform
-FoliageInstance.step = FoliageInstance.Step
-FoliageInstance.destroy = FoliageInstance.Destroy
-
 return FoliageInstance

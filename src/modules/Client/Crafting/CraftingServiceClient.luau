@@ -9,7 +9,7 @@ local CraftingServiceUtils = require("CraftingServiceUtils")
 local InventoryServiceClient = require("InventoryServiceClient")
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
-local CraftingServicePackets = require("NetSharedPackets").CraftingService
+local CraftingServicePackets = require("NetPacketsShared").CraftingService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = CraftingServicePackets[methodName]
@@ -18,7 +18,7 @@ local function sendPacket(methodName: string, ...: any)
 		return
 	end
 
-	packet.send(PacketPayload.pack(...))
+	packet.send(PacketPayload.Pack(...))
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -28,13 +28,14 @@ local function bindPacket(self: any, methodName: string)
 		return
 	end
 
+	local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
 	packet.listen(function(payload: any)
-		local handler = self[methodName]
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, table.unpack(arguments, 1, count))
 	end)
 end
@@ -122,7 +123,7 @@ local function buildRecipeListCacheKey(categoryRaw: any, searchRaw: any): string
 end
 
 function CraftingServiceClient.CreateInitialKnownRecipeIds(
-	self: CraftingServiceClient,
+	_self: CraftingServiceClient,
 	registry: RecipeRegistry
 ): { [string]: boolean }
 	local knownRecipeIds: { [string]: boolean } = {}
@@ -134,12 +135,12 @@ function CraftingServiceClient.CreateInitialKnownRecipeIds(
 	return knownRecipeIds
 end
 
-function CraftingServiceClient.ResolveLocalBiomeTokens(self: CraftingServiceClient): { [string]: boolean }
-	local rootPosition = CraftingServiceUtils.resolvePlayerRootPosition(self.localPlayer)
+function CraftingServiceClient.GetLocalBiomeTokens(self: CraftingServiceClient): { [string]: boolean }
+	local rootPosition = CraftingServiceUtils.GetPlayerRootPosition(self.localPlayer)
 	if rootPosition == nil then
 		return {}
 	end
-	return CraftingServiceUtils.resolveBiomeTokensFromWorldService(WorldGenerationServiceClient, rootPosition)
+	return CraftingServiceUtils.GetBiomeTokensFromWorldService(WorldGenerationServiceClient, rootPosition)
 end
 
 function CraftingServiceClient.InvalidateCachedLists(self: CraftingServiceClient)
@@ -147,11 +148,11 @@ function CraftingServiceClient.InvalidateCachedLists(self: CraftingServiceClient
 end
 
 function CraftingServiceClient.EmitStateChanged(self: CraftingServiceClient)
-	self.stateChanged:Fire(self:getState())
+	self.stateChanged:Fire(self:GetState())
 end
 
 function CraftingServiceClient.RefreshAvailableRecipeIds(self: CraftingServiceClient, forceRaw: any?): boolean
-	local nextAvailableRecipeIds = CraftingServiceUtils.buildAvailableRecipeIds(
+	local nextAvailableRecipeIds = CraftingServiceUtils.BuildAvailableRecipeIds(
 		self.registry,
 		self.serverState.knownRecipeIds,
 		self.activeStations,
@@ -160,16 +161,16 @@ function CraftingServiceClient.RefreshAvailableRecipeIds(self: CraftingServiceCl
 
 	local didChange = forceRaw == true
 	if not didChange then
-		didChange = not CraftingServiceUtils.stringArrayEquals(self.availableRecipeIds, nextAvailableRecipeIds)
+		didChange = not CraftingServiceUtils.StringArrayEquals(self.availableRecipeIds, nextAvailableRecipeIds)
 	end
 	if not didChange then
 		return false
 	end
 
 	self.availableRecipeIds = nextAvailableRecipeIds
-	self.availableCategories = CraftingServiceUtils.buildCategoryList(self.registry, nextAvailableRecipeIds)
+	self.availableCategories = CraftingServiceUtils.BuildCategoryList(self.registry, nextAvailableRecipeIds)
 	self.filterRevision += 1
-	self:invalidateCachedLists()
+	self:InvalidateCachedLists()
 	return true
 end
 
@@ -177,24 +178,24 @@ function CraftingServiceClient.SetActiveStations(
 	self: CraftingServiceClient,
 	nextStationsRaw: { [string]: boolean }
 ): boolean
-	local nextStations = CraftingServiceUtils.cloneStringSet(nextStationsRaw)
-	if CraftingServiceUtils.stringSetEquals(self.activeStations, nextStations) then
+	local nextStations = CraftingServiceUtils.CloneStringSet(nextStationsRaw)
+	if CraftingServiceUtils.StringSetEquals(self.activeStations, nextStations) then
 		return false
 	end
 	self.activeStations = nextStations
-	self:refreshAvailableRecipeIds(true)
-	self:emitStateChanged()
+	self:RefreshAvailableRecipeIds(true)
+	self:EmitStateChanged()
 	return true
 end
 
 function CraftingServiceClient.RefreshBiomeTokens(self: CraftingServiceClient): boolean
-	local nextBiomeTokens = self:resolveLocalBiomeTokens()
-	if CraftingServiceUtils.stringSetEquals(self.currentBiomeTokens, nextBiomeTokens) then
+	local nextBiomeTokens = self:GetLocalBiomeTokens()
+	if CraftingServiceUtils.StringSetEquals(self.currentBiomeTokens, nextBiomeTokens) then
 		return false
 	end
 	self.currentBiomeTokens = nextBiomeTokens
-	self:refreshAvailableRecipeIds(true)
-	self:emitStateChanged()
+	self:RefreshAvailableRecipeIds(true)
+	self:EmitStateChanged()
 	return true
 end
 
@@ -203,14 +204,14 @@ function CraftingServiceClient.ApplyInventoryState(
 	stateRaw: any,
 	coinsDataRaw: any?
 ): boolean
-	local nextCounts = CraftingServiceUtils.buildInventoryItemCountMap(stateRaw, coinsDataRaw)
+	local nextCounts = CraftingServiceUtils.BuildInventoryItemCountMap(stateRaw, coinsDataRaw)
 	if countMapEquals(self.inventoryItemCounts, nextCounts) then
 		return false
 	end
 	self.inventoryItemCounts = nextCounts
 	self.inventoryRevision += 1
-	self:invalidateCachedLists()
-	self:emitStateChanged()
+	self:InvalidateCachedLists()
+	self:EmitStateChanged()
 	return true
 end
 
@@ -219,27 +220,27 @@ function CraftingServiceClient.HandleStationsChanged(
 	nextStations: { [string]: boolean },
 	rootPosition: Vector3?
 )
-	self:setActiveStations(nextStations)
+	self:SetActiveStations(nextStations)
 	if rootPosition ~= nil then
-		self:refreshBiomeTokens()
+		self:RefreshBiomeTokens()
 	end
 end
 
 function CraftingServiceClient.ApplyState(self: CraftingServiceClient, stateRaw: any)
 	local fallback = self.serverState
-	local nextState = CraftingServiceUtils.sanitizeServiceStateSnapshot(stateRaw, fallback)
+	local nextState = CraftingServiceUtils.CoerceServiceStateSnapshot(stateRaw, fallback)
 	if
-		CraftingServiceUtils.stringSetEquals(self.serverState.knownRecipeIds, nextState.knownRecipeIds)
-		and CraftingServiceUtils.stringSetEquals(self.serverState.discoveredItemIds, nextState.discoveredItemIds)
-		and CraftingServiceUtils.stringSetEquals(self.serverState.progressionFlags, nextState.progressionFlags)
+		CraftingServiceUtils.StringSetEquals(self.serverState.knownRecipeIds, nextState.knownRecipeIds)
+		and CraftingServiceUtils.StringSetEquals(self.serverState.discoveredItemIds, nextState.discoveredItemIds)
+		and CraftingServiceUtils.StringSetEquals(self.serverState.progressionFlags, nextState.progressionFlags)
 	then
 		self.serverState = nextState
 		return
 	end
 
 	self.serverState = nextState
-	self:refreshAvailableRecipeIds(true)
-	self:emitStateChanged()
+	self:RefreshAvailableRecipeIds(true)
+	self:EmitStateChanged()
 end
 
 function CraftingServiceClient.OnCraftResult(self: CraftingServiceClient, resultRaw: any)
@@ -255,17 +256,17 @@ function CraftingServiceClient.OnCraftResult(self: CraftingServiceClient, result
 	}
 	self.lastCraftResult = result
 	if result.success ~= true or self.bulkCraftToken == nil then
-		SnackbarNotifications.showCraftResult(result, self)
+		SnackbarNotifications.ShowCraftResult(result, self)
 	end
-	self:emitStateChanged()
+	self:EmitStateChanged()
 end
 
-function CraftingServiceClient.RequestSync(self: CraftingServiceClient)
+function CraftingServiceClient.RequestSync(_self: CraftingServiceClient)
 	sendPacket(CraftingServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
 function CraftingServiceClient.RequestCraft(self: CraftingServiceClient, recipeIdRaw: any, quantityRaw: any): boolean
-	local recipeId, quantity = CraftingServiceUtils.RecipeValidator.sanitizeCraftRequest(
+	local recipeId, quantity = CraftingServiceUtils.RecipeValidator.CoerceCraftRequest(
 		recipeIdRaw,
 		quantityRaw,
 		self.config.maxCraftQuantityPerRequest
@@ -289,12 +290,12 @@ function CraftingServiceClient.StopBulkCraft(self: CraftingServiceClient): boole
 		return false
 	end
 	self.bulkCraftToken = nil
-	self:emitStateChanged()
+	self:EmitStateChanged()
 	return true
 end
 
 function CraftingServiceClient.StartBulkCraft(self: CraftingServiceClient, recipeIdRaw: any, quantityRaw: any): boolean
-	local recipeId, quantity = CraftingServiceUtils.RecipeValidator.sanitizeCraftRequest(
+	local recipeId, quantity = CraftingServiceUtils.RecipeValidator.CoerceCraftRequest(
 		recipeIdRaw,
 		quantityRaw,
 		self.config.maxCraftQuantityPerRequest
@@ -303,25 +304,25 @@ function CraftingServiceClient.StartBulkCraft(self: CraftingServiceClient, recip
 		return false
 	end
 
-	self:stopBulkCraft()
+	self:StopBulkCraft()
 	local token = {}
 	self.bulkCraftToken = token
-	self:emitStateChanged()
+	self:EmitStateChanged()
 
 	task.spawn(function()
 		while self.bulkCraftToken == token do
-			local preview = self:getRecipePreview(recipeId, quantity)
+			local preview = self:GetRecipePreview(recipeId, quantity)
 			if preview == nil or preview.canCraft ~= true then
 				break
 			end
 
-			self:requestCraft(recipeId, quantity)
+			self:RequestCraft(recipeId, quantity)
 			task.wait(self.config.bulkCraftIntervalSeconds)
 		end
 
 		if self.bulkCraftToken == token then
 			self.bulkCraftToken = nil
-			self:emitStateChanged()
+			self:EmitStateChanged()
 		end
 	end)
 
@@ -342,7 +343,7 @@ function CraftingServiceClient.GetRecipePreview(
 		return nil
 	end
 
-	return CraftingServiceUtils.buildRecipePreview(
+	return CraftingServiceUtils.BuildRecipePreview(
 		recipe,
 		self.inventoryItemCounts,
 		quantityRaw,
@@ -370,7 +371,7 @@ function CraftingServiceClient.GetRecipes(self: CraftingServiceClient, optionsRa
 		end
 	end
 
-	local filteredRecipeIds = CraftingServiceUtils.filterRecipeIds(
+	local filteredRecipeIds = CraftingServiceUtils.FilterRecipeIds(
 		self.registry,
 		self.availableRecipeIds,
 		if category ~= "" then category else nil,
@@ -383,7 +384,7 @@ function CraftingServiceClient.GetRecipes(self: CraftingServiceClient, optionsRa
 		if recipe == nil then
 			continue
 		end
-		local preview = self:getRecipePreview(recipeId, 1)
+		local preview = self:GetRecipePreview(recipeId, 1)
 		table.insert(entries, {
 			recipeId = recipe.id,
 			displayName = recipe.displayName,
@@ -413,7 +414,7 @@ function CraftingServiceClient.GetRecipesByCategory(
 ): { [string]: { any } }
 	local searchText = trim(searchTextRaw)
 	local byCategory: { [string]: { any } } = {}
-	local entries = self:getRecipes({
+	local entries = self:GetRecipes({
 		searchText = searchText,
 	})
 	for _, entry in entries do
@@ -429,7 +430,7 @@ function CraftingServiceClient.GetRecipesByCategory(
 end
 
 function CraftingServiceClient.GetCategoryTabs(self: CraftingServiceClient): { string }
-	return CraftingServiceUtils.cloneStringArray(self.availableCategories)
+	return CraftingServiceUtils.CloneStringArray(self.availableCategories)
 end
 
 function CraftingServiceClient.SetSearchQuery(self: CraftingServiceClient, queryRaw: any): boolean
@@ -438,7 +439,7 @@ function CraftingServiceClient.SetSearchQuery(self: CraftingServiceClient, query
 		return false
 	end
 	self.searchQuery = nextQuery
-	self:emitStateChanged()
+	self:EmitStateChanged()
 	return true
 end
 
@@ -451,20 +452,20 @@ function CraftingServiceClient.SetCategoryFilter(self: CraftingServiceClient, ca
 		return false
 	end
 	self.categoryFilter = nextCategory
-	self:emitStateChanged()
+	self:EmitStateChanged()
 	return true
 end
 
 function CraftingServiceClient.GetState(self: CraftingServiceClient): { [string]: any }
 	return {
-		knownRecipeIds = CraftingServiceUtils.cloneStringSet(self.serverState.knownRecipeIds),
-		discoveredItemIds = CraftingServiceUtils.cloneStringSet(self.serverState.discoveredItemIds),
-		progressionFlags = CraftingServiceUtils.cloneStringSet(self.serverState.progressionFlags),
-		activeStations = CraftingServiceUtils.cloneStringSet(self.activeStations),
-		currentBiomeTokens = CraftingServiceUtils.cloneStringSet(self.currentBiomeTokens),
+		knownRecipeIds = CraftingServiceUtils.CloneStringSet(self.serverState.knownRecipeIds),
+		discoveredItemIds = CraftingServiceUtils.CloneStringSet(self.serverState.discoveredItemIds),
+		progressionFlags = CraftingServiceUtils.CloneStringSet(self.serverState.progressionFlags),
+		activeStations = CraftingServiceUtils.CloneStringSet(self.activeStations),
+		currentBiomeTokens = CraftingServiceUtils.CloneStringSet(self.currentBiomeTokens),
 		inventoryItemCounts = cloneCountMap(self.inventoryItemCounts),
-		availableRecipeIds = CraftingServiceUtils.cloneStringArray(self.availableRecipeIds),
-		availableCategories = CraftingServiceUtils.cloneStringArray(self.availableCategories),
+		availableRecipeIds = CraftingServiceUtils.CloneStringArray(self.availableRecipeIds),
+		availableCategories = CraftingServiceUtils.CloneStringArray(self.availableCategories),
 		searchQuery = self.searchQuery,
 		categoryFilter = self.categoryFilter,
 		lastCraftResult = self.lastCraftResult,
@@ -475,13 +476,13 @@ end
 
 function CraftingServiceClient.Init(self: CraftingServiceClient)
 	self.localPlayer = Players.LocalPlayer
-	self.config = CraftingServiceUtils.resolveEffectiveConfig((Configs :: any).crafting)
-	self.registry = CraftingServiceUtils.getRegistry(self.config)
+	self.config = CraftingServiceUtils.GetEffectiveConfig((Configs :: any).crafting)
+	self.registry = CraftingServiceUtils.GetRegistry(self.config)
 	bindPackets(self)
 	self.janitor = Janitor.new()
 	self.stateChanged = Signal.new()
-	self.serverState = CraftingServiceUtils.createDefaultServiceStateSnapshot(self.registry)
-	self.serverState.knownRecipeIds = self:createInitialKnownRecipeIds(self.registry)
+	self.serverState = CraftingServiceUtils.CreateDefaultServiceStateSnapshot(self.registry)
+	self.serverState.knownRecipeIds = self:CreateInitialKnownRecipeIds(self.registry)
 	self.activeStations = {}
 	self.currentBiomeTokens = {}
 	self.inventoryItemCounts = {}
@@ -498,28 +499,28 @@ function CraftingServiceClient.Init(self: CraftingServiceClient)
 	self.biomeScanAccumulator = 1 / self.config.biomeScanRateHz
 	self.biomeScanIntervalSeconds = 1 / self.config.biomeScanRateHz
 
-	local stationDetector = CraftingServiceUtils.StationDetector.newClientDetector({
+	local stationDetector = CraftingServiceUtils.StationDetector.NewClientDetector({
 		localPlayer = self.localPlayer,
 		stationTagById = self.registry.stationTagById,
 		stationIds = nil,
 		radius = self.config.stationScanRadius,
 		scanIntervalSeconds = 1 / self.config.stationScanRateHz,
 		onStationsChanged = function(nextStations: { [string]: boolean }, rootPosition: Vector3?)
-			self:handleStationsChanged(nextStations, rootPosition)
+			self:HandleStationsChanged(nextStations, rootPosition)
 		end,
 	})
 	self.stationDetector = stationDetector
-	self.stationDetector:start()
+	self.stationDetector:Start()
 
-	local initialInventoryState = InventoryServiceClient:getState()
-	local initialCoinsData = PlayerDataServiceClient:getCoinsData(nil)
-	self:applyInventoryState(initialInventoryState, initialCoinsData)
-	self.currentBiomeTokens = self:resolveLocalBiomeTokens()
-	self:refreshAvailableRecipeIds(true)
+	local initialInventoryState = InventoryServiceClient:GetState()
+	local initialCoinsData = PlayerDataServiceClient:GetCoinsData(nil)
+	self:ApplyInventoryState(initialInventoryState, initialCoinsData)
+	self.currentBiomeTokens = self:GetLocalBiomeTokens()
+	self:RefreshAvailableRecipeIds(true)
 
 	if InventoryServiceClient.stateChanged ~= nil then
 		self.janitor:GiveChore(InventoryServiceClient.stateChanged:Connect(function(nextState: any)
-			self:applyInventoryState(nextState, PlayerDataServiceClient:getCoinsData(nil))
+			self:ApplyInventoryState(nextState, PlayerDataServiceClient:GetCoinsData(nil))
 		end))
 	end
 
@@ -532,7 +533,7 @@ function CraftingServiceClient.Init(self: CraftingServiceClient)
 					coinsData = (data :: any).coins
 				end
 			end
-			self:applyInventoryState(InventoryServiceClient:getState(), coinsData)
+			self:ApplyInventoryState(InventoryServiceClient:GetState(), coinsData)
 		end))
 	end
 
@@ -543,20 +544,20 @@ function CraftingServiceClient.Init(self: CraftingServiceClient)
 			return
 		end
 		self.biomeScanAccumulator = 0
-		self:refreshBiomeTokens()
+		self:RefreshBiomeTokens()
 	end))
 
 	self.janitor:GiveChore(function()
 		if self.stationDetector ~= nil then
-			self.stationDetector:destroy()
+			self.stationDetector:Destroy()
 		end
 	end)
 	self.janitor:GiveChore(function()
 		self.stateChanged:Destroy()
 	end)
 
-	self:requestSync()
-	self:emitStateChanged()
+	self:RequestSync()
+	self:EmitStateChanged()
 end
 
 function CraftingServiceClient.Destroy(self: CraftingServiceClient)
@@ -564,32 +565,6 @@ function CraftingServiceClient.Destroy(self: CraftingServiceClient)
 		self.janitor:Destroy()
 	end
 end
-
-CraftingServiceClient.createInitialKnownRecipeIds = CraftingServiceClient.CreateInitialKnownRecipeIds
-CraftingServiceClient.resolveLocalBiomeTokens = CraftingServiceClient.ResolveLocalBiomeTokens
-CraftingServiceClient.invalidateCachedLists = CraftingServiceClient.InvalidateCachedLists
-CraftingServiceClient.emitStateChanged = CraftingServiceClient.EmitStateChanged
-CraftingServiceClient.refreshAvailableRecipeIds = CraftingServiceClient.RefreshAvailableRecipeIds
-CraftingServiceClient.setActiveStations = CraftingServiceClient.SetActiveStations
-CraftingServiceClient.refreshBiomeTokens = CraftingServiceClient.RefreshBiomeTokens
-CraftingServiceClient.applyInventoryState = CraftingServiceClient.ApplyInventoryState
-CraftingServiceClient.handleStationsChanged = CraftingServiceClient.HandleStationsChanged
-CraftingServiceClient.applyState = CraftingServiceClient.ApplyState
-CraftingServiceClient.onCraftResult = CraftingServiceClient.OnCraftResult
-CraftingServiceClient.requestSync = CraftingServiceClient.RequestSync
-CraftingServiceClient.requestCraft = CraftingServiceClient.RequestCraft
-CraftingServiceClient.stopBulkCraft = CraftingServiceClient.StopBulkCraft
-CraftingServiceClient.startBulkCraft = CraftingServiceClient.StartBulkCraft
-CraftingServiceClient.getRecipePreview = CraftingServiceClient.GetRecipePreview
-CraftingServiceClient.getRecipes = CraftingServiceClient.GetRecipes
-CraftingServiceClient.getRecipesByCategory = CraftingServiceClient.GetRecipesByCategory
-CraftingServiceClient.getCategoryTabs = CraftingServiceClient.GetCategoryTabs
-CraftingServiceClient.setSearchQuery = CraftingServiceClient.SetSearchQuery
-CraftingServiceClient.setCategoryFilter = CraftingServiceClient.SetCategoryFilter
-CraftingServiceClient.getState = CraftingServiceClient.GetState
-CraftingServiceClient.init = CraftingServiceClient.Init
-CraftingServiceClient.destroy = CraftingServiceClient.Destroy
-
 type CraftingServiceClient = typeof(CraftingServiceClient) & {
 	localPlayer: Player,
 	config: CraftingServiceConfig,

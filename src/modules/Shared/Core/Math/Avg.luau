@@ -43,7 +43,7 @@ function Avg.Weighted(values: { WeightedValue }): number
 end
 
 function Avg.Moving(previousAverage: number, sample: number, alpha: number): number
-	local blend = Num.saturate(alpha)
+	local blend = Num.Saturate(alpha)
 	return previousAverage + (sample - previousAverage) * blend
 end
 
@@ -62,11 +62,4 @@ function Avg.Sliding(
 	local size = math.max(1, math.floor(windowSize))
 	return previousAverage + (incomingSample - outgoingSample) / size
 end
-
-Avg.mean = Avg.Mean
-Avg.weighted = Avg.Weighted
-Avg.moving = Avg.Moving
-Avg.running = Avg.Running
-Avg.sliding = Avg.Sliding
-
 return Avg

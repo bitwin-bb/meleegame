@@ -39,9 +39,9 @@ return function(props: CraftingSlotProps): React.ReactNode
 			and firstResultAmount == firstResultAmount
 		then math.max(1, math.floor(firstResultAmount))
 		else 1
-	local coinSpriteSheet = CoinSprites.resolveSpriteSheet(recipe.resultItemId)
-	local resolvedIcon = itemThunks.resolveItemIconByType(nil, recipe.resultItemId)
-	if typeof(resolvedIcon) ~= "string" or resolvedIcon == "" then
+	local coinSpriteSheet = CoinSprites.GetSpriteSheet(recipe.resultItemId)
+	local itemIcon = itemThunks.GetItemIconByType(nil, recipe.resultItemId)
+	if typeof(itemIcon) ~= "string" or itemIcon == "" then
 		error(MISSING_ASSET_ERROR, 0)
 	end
 	local maxDisplayAmount = if recipe.category == "Currency"
@@ -86,7 +86,7 @@ return function(props: CraftingSlotProps): React.ReactNode
 				Position = UDim2.fromScale(0.5, 0.5),
 				AnchorPoint = Vector2.new(0.5, 0.5),
 				BackgroundTransparency = 1,
-				Image = resolvedIcon,
+				Image = itemIcon,
 				ScaleType = Enum.ScaleType.Fit,
 				ImageTransparency = if canCraft then 0 else 0.25,
 				ZIndex = zIndex + 1,

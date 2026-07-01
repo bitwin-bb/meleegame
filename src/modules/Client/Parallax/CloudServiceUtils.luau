@@ -63,7 +63,7 @@ local function trim(valueRaw: any): string
 	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw and valueRaw ~= math.huge and valueRaw ~= -math.huge then
 		value = valueRaw
@@ -77,7 +77,7 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?,
 	return value
 end
 
-local function sanitizeImage(valueRaw: any): string
+local function CoerceImage(valueRaw: any): string
 	local image = trim(valueRaw)
 	while string.find(image, "rbxassetid://rbxassetid://", 1, true) ~= nil do
 		image = string.gsub(image, "rbxassetid://rbxassetid://", "rbxassetid://")
@@ -103,7 +103,7 @@ local function appendAssetDefinition(
 	seen: { [string]: boolean }
 )
 	if typeof(sourceRaw) == "string" then
-		local image = sanitizeImage(sourceRaw)
+		local image = CoerceImage(sourceRaw)
 		if image == "" or seen[image] then
 			return
 		end
@@ -122,7 +122,7 @@ local function appendAssetDefinition(
 	end
 
 	local source = sourceRaw :: { [any]: any }
-	local image = sanitizeImage(source.image or source.asset)
+	local image = CoerceImage(source.image or source.asset)
 	if image ~= "" then
 		if seen[image] then
 			return
@@ -131,7 +131,7 @@ local function appendAssetDefinition(
 		table.insert(output, {
 			id = trim(source.id) ~= "" and trim(source.id) or fallbackId,
 			image = image,
-			imageAspectRatio = sanitizeNumber(source.imageAspectRatio or source.aspectRatio, 2.75, 0.1, 32),
+			imageAspectRatio = CoerceNumber(source.imageAspectRatio or source.aspectRatio, 2.75, 0.1, 32),
 			tint = if typeof(source.tint) == "Color3" then source.tint else Color3.new(1, 1, 1),
 		})
 		return
@@ -221,13 +221,4 @@ end
 
 CloudServiceUtils.serviceStateAtom = serviceStateAtom
 CloudServiceUtils.surfaceStateAtom = surfaceStateAtom
-CloudServiceUtils.normalizeAssetDefinitions = CloudServiceUtils.NormalizeAssetDefinitions
-CloudServiceUtils.collectAssetIds = CloudServiceUtils.CollectAssetIds
-CloudServiceUtils.getSurfaceState = CloudServiceUtils.GetSurfaceState
-CloudServiceUtils.setSurfaceState = CloudServiceUtils.SetSurfaceState
-CloudServiceUtils.clearSurfaceState = CloudServiceUtils.ClearSurfaceState
-CloudServiceUtils.getServiceState = CloudServiceUtils.GetServiceState
-CloudServiceUtils.setServiceState = CloudServiceUtils.SetServiceState
-CloudServiceUtils.clearServiceState = CloudServiceUtils.ClearServiceState
-
 return CloudServiceUtils

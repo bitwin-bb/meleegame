@@ -9,6 +9,13 @@ local CancelToken = require("CancelToken")
 local EyeOfCthulhuRoot = require("EyeOfCthulhuRoot")
 local Maid = require("Maid")
 local Promise = require("Promise")
+
+local function fulfilledPromise(...): any
+	local args = table.pack(...)
+	return Promise.new(function(fulfill)
+		fulfill(table.unpack(args, 1, args.n))
+	end)
+end
 local QueenBeeRoot = require("QueenBeeRoot")
 local Rx = require("Rx")
 local RxSignal = require("RxSignal")
@@ -151,22 +158,22 @@ local DEFAULT_BOSS_FOLDER_NAME = "BossRuntime"
 local MISSING_ASSET_ERROR = "no asset found!"
 local MODEL_TEMPLATE_FACTORIES = {
 	EyeOfCthulhu = function(phaseModel: string): Model
-		return EyeOfCthulhuRoot.createModel({
+		return EyeOfCthulhuRoot.CreateModel({
 			phaseModel = phaseModel,
 		})
 	end,
 	QueenBee = function(phaseModel: string): Model
-		return QueenBeeRoot.createModel({
+		return QueenBeeRoot.CreateModel({
 			phaseModel = phaseModel,
 		})
 	end,
 }
 
 local function trim(valueRaw: any): string
-	return BossServiceUtils.trim(valueRaw)
+	return BossServiceUtils.Trim(valueRaw)
 end
 
-local function resolveBossAssetRoot(): Instance?
+local function GetBossAssetRoot(): Instance?
 	local assets = ReplicatedStorage:FindFirstChild("Assets")
 	if assets == nil then
 		return nil
@@ -185,7 +192,7 @@ local function resolveBossAssetRoot(): Instance?
 	return npcs
 end
 
-local function resolveFirstModel(instance: Instance?): Model?
+local function GetFirstModel(instance: Instance?): Model?
 	if instance == nil then
 		return nil
 	end
@@ -228,19 +235,19 @@ local function findChildCaseInsensitive(parent: Instance?, childNameRaw: any): I
 	return nil
 end
 
-local function resolvePhaseModelFromContainer(phaseContainer: Instance?, definition: BossRegistryEntry): Model?
+local function GetPhaseModelFromContainer(phaseContainer: Instance?, definition: BossRegistryEntry): Model?
 	if phaseContainer == nil then
 		return nil
 	end
 
 	local exactById = findChildCaseInsensitive(phaseContainer, definition.id)
 	local exactByDisplayName = findChildCaseInsensitive(phaseContainer, definition.displayName)
-	local resolvedExact = resolveFirstModel(exactById) or resolveFirstModel(exactByDisplayName)
-	if resolvedExact ~= nil then
-		return resolvedExact
+	local exactModel = GetFirstModel(exactById) or GetFirstModel(exactByDisplayName)
+	if exactModel ~= nil then
+		return exactModel
 	end
 
-	return resolveFirstModel(phaseContainer)
+	return GetFirstModel(phaseContainer)
 end
 
 local function splitPathTokens(pathRaw: any): { string }
@@ -261,8 +268,8 @@ local function splitPathTokens(pathRaw: any): { string }
 	return out
 end
 
-local function resolveBossModelTemplate(definition: BossRegistryEntry, phaseModelNameRaw: any?): Model?
-	local root = resolveBossAssetRoot()
+local function GetBossModelTemplate(definition: BossRegistryEntry, phaseModelNameRaw: any?): Model?
+	local root = GetBossAssetRoot()
 	local phaseModelName = trim(phaseModelNameRaw)
 	if root ~= nil then
 		local cursor: Instance? = root
@@ -275,20 +282,20 @@ local function resolveBossModelTemplate(definition: BossRegistryEntry, phaseMode
 
 		if cursor ~= nil and phaseModelName ~= "" then
 			local phaseContainer = findChildCaseInsensitive(cursor, phaseModelName)
-			local phaseModel = resolvePhaseModelFromContainer(phaseContainer, definition)
+			local phaseModel = GetPhaseModelFromContainer(phaseContainer, definition)
 			if phaseModel ~= nil then
 				return phaseModel
 			end
 		end
 
-		local resolved = resolveFirstModel(cursor)
-		if resolved ~= nil then
-			return resolved
+		local Got = GetFirstModel(cursor)
+		if Got ~= nil then
+			return Got
 		end
 
-		local normalizedBossName = BossServiceUtils.normalizeToken(definition.id)
+		local normalizedBossName = BossServiceUtils.NormalizeToken(definition.id)
 		for _, descendant in root:GetDescendants() do
-			if descendant:IsA("Model") and BossServiceUtils.normalizeToken(descendant.Name) == normalizedBossName then
+			if descendant:IsA("Model") and BossServiceUtils.NormalizeToken(descendant.Name) == normalizedBossName then
 				return descendant
 			end
 		end
@@ -340,7 +347,7 @@ local function getOrCreateRxSignal(self: Boss, key: string, factory: () -> RxSig
 	return created
 end
 
-local function resolveCancelToken(cancelTokenRaw: any): any?
+local function GetCancelToken(cancelTokenRaw: any): any?
 	if CancelToken.isCancelToken(cancelTokenRaw) then
 		return cancelTokenRaw
 	end
@@ -354,12 +361,12 @@ function Boss.New(
 	configRaw: { [string]: any }
 ): Boss
 	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
-	local modelTemplate = resolveBossModelTemplate(definition, "Phase1")
+	local modelTemplate = GetBossModelTemplate(definition, "Phase1")
 	local spawnPosition = if typeof(spawnRequest.spawnPosition) == "Vector3"
 		then spawnRequest.spawnPosition
 		else Vector3.zero
 	local maid = Maid.new() :: MaidClass
-	local maxHp = BossServiceUtils.sanitizeNumber(config.maxHp, 1, 1, 10 ^ 9)
+	local maxHp = BossServiceUtils.CoerceNumber(config.maxHp, 1, 1, 10 ^ 9)
 	local targetPlayer = if typeof(spawnRequest.targetPlayer) == "Instance"
 			and spawnRequest.targetPlayer:IsA("Player")
 		then spawnRequest.targetPlayer
@@ -430,27 +437,27 @@ function Boss.New(
 		phase = 0,
 		hp = maxHp,
 		maxHp = maxHp,
-		defense = BossServiceUtils.sanitizeNumber(config.defense, 0, 0, 10 ^ 6),
-		baseDefense = BossServiceUtils.sanitizeNumber(config.defense, 0, 0, 10 ^ 6),
-		contactDamage = BossServiceUtils.sanitizeNumber(config.contactDamage, 0, 0, 10 ^ 6),
-		baseContactDamage = BossServiceUtils.sanitizeNumber(config.contactDamage, 0, 0, 10 ^ 6),
+		defense = BossServiceUtils.CoerceNumber(config.defense, 0, 0, 10 ^ 6),
+		baseDefense = BossServiceUtils.CoerceNumber(config.defense, 0, 0, 10 ^ 6),
+		contactDamage = BossServiceUtils.CoerceNumber(config.contactDamage, 0, 0, 10 ^ 6),
+		baseContactDamage = BossServiceUtils.CoerceNumber(config.contactDamage, 0, 0, 10 ^ 6),
 		offenseEnabled = true,
 		contactDamageActive = false,
-		contactDamageRadius = BossServiceUtils.sanitizeNumber(config.contactDamageRadius, 8, 0, 512),
-		contactDamageCooldown = BossServiceUtils.sanitizeNumber(config.contactDamageCooldown, 0.35, 0, 30),
-		faceVelocityWhenMoving = BossServiceUtils.sanitizeBoolean(config.faceVelocityWhenMoving, true),
-		faceTargetWhenIdle = BossServiceUtils.sanitizeBoolean(config.faceTargetWhenIdle, true),
+		contactDamageRadius = BossServiceUtils.CoerceNumber(config.contactDamageRadius, 8, 0, 512),
+		contactDamageCooldown = BossServiceUtils.CoerceNumber(config.contactDamageCooldown, 0.35, 0, 30),
+		faceVelocityWhenMoving = BossServiceUtils.CoerceBoolean(config.faceVelocityWhenMoving, true),
+		faceTargetWhenIdle = BossServiceUtils.CoerceBoolean(config.faceTargetWhenIdle, true),
 		chargeIndex = 0,
-		position = BossServiceUtils.projectPositionToPlaneX(spawnPosition, spawnRequest.planeX),
+		position = BossServiceUtils.ProjectPositionToPlaneX(spawnPosition, spawnRequest.planeX),
 		velocity = Vector3.zero,
 		facing = Vector3.zAxis,
 		targetPlayer = targetPlayer,
-		targetUserId = BossServiceUtils.resolveTargetPlayerUserId(targetPlayer),
+		targetUserId = BossServiceUtils.GetTargetPlayerUserId(targetPlayer),
 		targetLostTime = 0,
 		lastSnapshotAt = nowClock(),
 		snapshotDirty = true,
-		presentation = BossServiceUtils.createDefaultPresentation(),
-		motion = BossServiceUtils.createDefaultMotionState(),
+		presentation = BossServiceUtils.CreateDefaultPresentation(),
+		motion = BossServiceUtils.CreateDefaultMotionState(),
 		config = config,
 		spawnRequest = spawnRequest,
 		damageCooldownByUserId = {},
@@ -472,8 +479,8 @@ function Boss.New(
 	return self
 end
 
-function Boss.ResolveModelTemplate(self: Boss, phaseModelNameRaw: any?): Model?
-	local modelTemplate = resolveBossModelTemplate(self.definition, phaseModelNameRaw)
+function Boss.GetModelTemplate(self: Boss, phaseModelNameRaw: any?): Model?
+	local modelTemplate = GetBossModelTemplate(self.definition, phaseModelNameRaw)
 	if modelTemplate ~= nil then
 		self.modelTemplate = modelTemplate
 		return modelTemplate
@@ -483,7 +490,7 @@ function Boss.ResolveModelTemplate(self: Boss, phaseModelNameRaw: any?): Model?
 end
 
 function Boss.GetOrCreateRuntimeFolder(_self: Boss): Folder
-	return WorkspaceFolders.getOrCreateFolderInGame(DEFAULT_BOSS_FOLDER_NAME)
+	return WorkspaceFolders.GetOrCreateFolderInGame(DEFAULT_BOSS_FOLDER_NAME)
 end
 
 function Boss.MarkSnapshotDirty(self: Boss)
@@ -499,7 +506,7 @@ function Boss.SetTarget(self: Boss, targetPlayerRaw: any?): boolean
 		then targetPlayerRaw
 		else nil
 
-	if targetPlayer ~= nil and not BossServiceUtils.isPlayerAlive(targetPlayer) then
+	if targetPlayer ~= nil and not BossServiceUtils.IsPlayerAlive(targetPlayer) then
 		targetPlayer = nil
 	end
 
@@ -509,36 +516,36 @@ function Boss.SetTarget(self: Boss, targetPlayerRaw: any?): boolean
 
 	local previousTarget = self.targetPlayer
 	self.targetPlayer = targetPlayer
-	self.targetUserId = BossServiceUtils.resolveTargetPlayerUserId(targetPlayer)
+	self.targetUserId = BossServiceUtils.GetTargetPlayerUserId(targetPlayer)
 	self.targetLostTime = 0
 	self.targetValue.Value = targetPlayer
-	self:markSnapshotDirty()
+	self:MarkSnapshotDirty()
 	self.signals.targetChanged:Fire(targetPlayer, previousTarget)
 	return targetPlayer ~= nil
 end
 
 function Boss.ClearTarget(self: Boss)
-	self:setTarget(nil)
+	self:SetTarget(nil)
 end
 
-function Boss.ResolveTargetRootPart(self: Boss): BasePart?
-	return BossServiceUtils.resolveCharacterRootPart(self.targetPlayer)
+function Boss.GetTargetRootPart(self: Boss): BasePart?
+	return BossServiceUtils.GetCharacterRootPart(self.targetPlayer)
 end
 
-function Boss.ResolveTargetPosition(self: Boss): Vector3?
-	local rootPart = self:resolveTargetRootPart()
+function Boss.GetTargetPosition(self: Boss): Vector3?
+	local rootPart = self:GetTargetRootPart()
 	if rootPart == nil then
 		return nil
 	end
-	return BossServiceUtils.projectPositionToPlaneX(rootPart.Position, self.planeX)
+	return BossServiceUtils.ProjectPositionToPlaneX(rootPart.Position, self.planeX)
 end
 
-function Boss.ResolveTargetVelocity(self: Boss): Vector3
+function Boss.GetTargetVelocity(self: Boss): Vector3
 	if self.targetPlayer == nil then
 		return Vector3.zero
 	end
-	return BossServiceUtils.projectVectorToPlaneX(
-		BossServiceUtils.resolveCharacterVelocity(self.targetPlayer),
+	return BossServiceUtils.ProjectVectorToPlaneX(
+		BossServiceUtils.GetCharacterVelocity(self.targetPlayer),
 		self.planeX
 	)
 end
@@ -568,17 +575,17 @@ function Boss.ChangeState(self: Boss, nextStateRaw: any, reasonRaw: any?)
 	self.lastReason = reason
 	self.motion.state = self.state
 	self.stateValue.Value = self.state
-	self:markSnapshotDirty()
+	self:MarkSnapshotDirty()
 	self.signals.stateChanged:Fire(self.state, previousState, reason)
 
-	local onStateChanged = (self :: any).onStateChanged
+	local onStateChanged = (self :: any).OnStateChanged
 	if typeof(onStateChanged) == "function" then
 		onStateChanged(self, self.state, previousState, reason)
 	end
 end
 
 function Boss.SetPhase(self: Boss, nextPhaseRaw: any, phaseModelRaw: any?)
-	local nextPhase = math.max(0, math.floor(BossServiceUtils.sanitizeNumber(nextPhaseRaw, self.phase, 0, 32)))
+	local nextPhase = math.max(0, math.floor(BossServiceUtils.CoerceNumber(nextPhaseRaw, self.phase, 0, 32)))
 	local phaseModel = if typeof(phaseModelRaw) == "string" and phaseModelRaw ~= ""
 		then phaseModelRaw
 		else if nextPhase <= 1 then "Phase1" else "Phase2"
@@ -593,10 +600,10 @@ function Boss.SetPhase(self: Boss, nextPhaseRaw: any, phaseModelRaw: any?)
 	self.phase = nextPhase
 	self.presentation.phaseModel = phaseModel
 	self.phaseValue.Value = self.phase
-	self:markSnapshotDirty()
+	self:MarkSnapshotDirty()
 
 	if modelChanged and self.isSpawned then
-		self:replaceModel(phaseModel)
+		self:ReplaceModel(phaseModel)
 	end
 end
 
@@ -606,7 +613,7 @@ function Boss.IncrementPresentationToken(self: Boss, tokenName: string)
 		return
 	end
 	(self.presentation :: any)[tokenName] = currentValue + 1
-	self:markSnapshotDirty()
+	self:MarkSnapshotDirty()
 end
 
 function Boss.SetPresentationFlag(self: Boss, flagName: string, enabledRaw: any)
@@ -617,16 +624,16 @@ function Boss.SetPresentationFlag(self: Boss, flagName: string, enabledRaw: any)
 	end
 
 	(self.presentation :: any)[flagName] = enabled
-	self:markSnapshotDirty()
+	self:MarkSnapshotDirty()
 end
 
 function Boss.SetMotionState(self: Boss, motionRaw: any)
-	self.motion = BossServiceUtils.sanitizeMotionState(motionRaw, self.motion)
-	self:markSnapshotDirty()
+	self.motion = BossServiceUtils.CoerceMotionState(motionRaw, self.motion)
+	self:MarkSnapshotDirty()
 end
 
 function Boss.ProjectToPlane(self: Boss, position: Vector3): Vector3
-	return BossServiceUtils.projectPositionToPlaneX(position, self.planeX)
+	return BossServiceUtils.ProjectPositionToPlaneX(position, self.planeX)
 end
 
 function Boss.SetPosition(self: Boss, positionRaw: any)
@@ -634,17 +641,17 @@ function Boss.SetPosition(self: Boss, positionRaw: any)
 		return
 	end
 
-	self.position = self:projectToPlane(positionRaw)
-	self:markSnapshotDirty()
+	self.position = self:ProjectToPlane(positionRaw)
+	self:MarkSnapshotDirty()
 end
 
 function Boss.SetVelocity(self: Boss, velocityRaw: any)
 	if typeof(velocityRaw) ~= "Vector3" then
 		self.velocity = Vector3.zero
 	else
-		self.velocity = BossServiceUtils.projectVectorToPlaneX(velocityRaw, self.planeX)
+		self.velocity = BossServiceUtils.ProjectVectorToPlaneX(velocityRaw, self.planeX)
 	end
-	self:markSnapshotDirty()
+	self:MarkSnapshotDirty()
 end
 
 function Boss.SetFacing(self: Boss, facingRaw: any)
@@ -652,16 +659,16 @@ function Boss.SetFacing(self: Boss, facingRaw: any)
 		return
 	end
 
-	local planarFacing = BossServiceUtils.projectVectorToPlaneX(facingRaw, self.planeX)
-	self.facing = BossServiceUtils.computeFacingVector(self.position, planarFacing, self.facing)
-	self:markSnapshotDirty()
+	local planarFacing = BossServiceUtils.ProjectVectorToPlaneX(facingRaw, self.planeX)
+	self.facing = BossServiceUtils.ComputeFacingVector(self.position, planarFacing, self.facing)
+	self:MarkSnapshotDirty()
 end
 
 function Boss.LookAt(self: Boss, targetPositionRaw: any)
 	if typeof(targetPositionRaw) ~= "Vector3" then
 		return
 	end
-	self:setFacing(targetPositionRaw - self.position)
+	self:SetFacing(targetPositionRaw - self.position)
 end
 
 function Boss.AccelerateTowardVelocity(self: Boss, desiredVelocityRaw: any, accelerationRaw: any, dtRaw: any)
@@ -669,19 +676,19 @@ function Boss.AccelerateTowardVelocity(self: Boss, desiredVelocityRaw: any, acce
 		return
 	end
 
-	local desiredVelocity = BossServiceUtils.projectVectorToPlaneX(desiredVelocityRaw, self.planeX)
-	local acceleration = BossServiceUtils.sanitizeNumber(accelerationRaw, 0, 0, 10 ^ 6)
-	local dt = BossServiceUtils.sanitizeNumber(dtRaw, 0, 0, 1)
-	self.velocity = BossServiceUtils.moveTowardsVector(self.velocity, desiredVelocity, acceleration * dt)
-	self:markSnapshotDirty()
+	local desiredVelocity = BossServiceUtils.ProjectVectorToPlaneX(desiredVelocityRaw, self.planeX)
+	local acceleration = BossServiceUtils.CoerceNumber(accelerationRaw, 0, 0, 10 ^ 6)
+	local dt = BossServiceUtils.CoerceNumber(dtRaw, 0, 0, 1)
+	self.velocity = BossServiceUtils.MoveTowardsVector(self.velocity, desiredVelocity, acceleration * dt)
+	self:MarkSnapshotDirty()
 end
 
 function Boss.DampVelocity(self: Boss, dampingPerSecondRaw: any, dtRaw: any)
-	local dampingPerSecond = BossServiceUtils.sanitizeNumber(dampingPerSecondRaw, 0, 0, 10 ^ 6)
-	local dt = BossServiceUtils.sanitizeNumber(dtRaw, 0, 0, 1)
+	local dampingPerSecond = BossServiceUtils.CoerceNumber(dampingPerSecondRaw, 0, 0, 10 ^ 6)
+	local dt = BossServiceUtils.CoerceNumber(dtRaw, 0, 0, 1)
 	local alpha = math.clamp(1 - dampingPerSecond * dt, 0, 1)
 	self.velocity *= alpha
-	self:markSnapshotDirty()
+	self:MarkSnapshotDirty()
 end
 
 function Boss.MoveTowardPoint(
@@ -696,23 +703,23 @@ function Boss.MoveTowardPoint(
 		return false
 	end
 
-	local targetPosition = self:projectToPlane(targetPositionRaw)
+	local targetPosition = self:ProjectToPlane(targetPositionRaw)
 	local offset = targetPosition - self.position
 	local desiredVelocity = if offset.Magnitude > 1e-4
-		then offset.Unit * BossServiceUtils.sanitizeNumber(maxSpeedRaw, 0, 0, 10 ^ 6)
+		then offset.Unit * BossServiceUtils.CoerceNumber(maxSpeedRaw, 0, 0, 10 ^ 6)
 		else Vector3.zero
 
-	self:accelerateTowardVelocity(desiredVelocity, accelerationRaw, dtRaw)
-	self:dampVelocity(dampingRaw, dtRaw)
+	self:AccelerateTowardVelocity(desiredVelocity, accelerationRaw, dtRaw)
+	self:DampVelocity(dampingRaw, dtRaw)
 	return true
 end
 
 function Boss.IntegrateMotion(self: Boss, dtRaw: any)
-	local dt = BossServiceUtils.sanitizeNumber(dtRaw, 0, 0, 1)
-	self.position = self:projectToPlane(self.position + self.velocity * dt)
+	local dt = BossServiceUtils.CoerceNumber(dtRaw, 0, 0, 1)
+	self.position = self:ProjectToPlane(self.position + self.velocity * dt)
 	self.motion.position = self.position
 	self.motion.velocity = self.velocity
-	self:markSnapshotDirty()
+	self:MarkSnapshotDirty()
 end
 
 function Boss.ApplyContactDamage(self: Boss, damageRaw: any?, radiusRaw: any?, cooldownRaw: any?)
@@ -720,26 +727,26 @@ function Boss.ApplyContactDamage(self: Boss, damageRaw: any?, radiusRaw: any?, c
 		return
 	end
 
-	local damage = BossServiceUtils.sanitizeNumber(damageRaw, self.contactDamage, 0, 10 ^ 6)
+	local damage = BossServiceUtils.CoerceNumber(damageRaw, self.contactDamage, 0, 10 ^ 6)
 	if damage <= 0 then
 		return
 	end
 
-	local radius = BossServiceUtils.sanitizeNumber(radiusRaw, self.contactDamageRadius, 0, 512)
-	local cooldown = BossServiceUtils.sanitizeNumber(cooldownRaw, self.contactDamageCooldown, 0, 30)
-	local currentTime = self.service:getNow()
+	local radius = BossServiceUtils.CoerceNumber(radiusRaw, self.contactDamageRadius, 0, 512)
+	local cooldown = BossServiceUtils.CoerceNumber(cooldownRaw, self.contactDamageCooldown, 0, 30)
+	local currentTime = self.service:GetNow()
 
 	for _, player in Players:GetPlayers() do
-		if not BossServiceUtils.isPlayerAlive(player) then
+		if not BossServiceUtils.IsPlayerAlive(player) then
 			continue
 		end
 
-		local rootPart = BossServiceUtils.resolveCharacterRootPart(player)
+		local rootPart = BossServiceUtils.GetCharacterRootPart(player)
 		if rootPart == nil then
 			continue
 		end
 
-		if (self.position - self:projectToPlane(rootPart.Position)).Magnitude > radius then
+		if (self.position - self:ProjectToPlane(rootPart.Position)).Magnitude > radius then
 			continue
 		end
 
@@ -748,7 +755,7 @@ function Boss.ApplyContactDamage(self: Boss, damageRaw: any?, radiusRaw: any?, c
 			continue
 		end
 
-		if self.service:damagePlayer(player, damage, self) ~= nil then
+		if self.service:DamagePlayer(player, damage, self) ~= nil then
 			self.damageCooldownByUserId[player.UserId] = currentTime
 		end
 	end
@@ -760,9 +767,9 @@ function Boss.UpdateModelPivot(self: Boss)
 		return
 	end
 
-	model:PivotTo(BossServiceUtils.sideViewLookCFrame(self.position, self.facing))
+	model:PivotTo(BossServiceUtils.SideViewLookCFrame(self.position, self.facing))
 	configureModel(model)
-	self.rootPart = BossServiceUtils.resolveRootPart(model)
+	self.rootPart = BossServiceUtils.GetRootPart(model)
 	if self.rootPart ~= nil and model.PrimaryPart == nil then
 		model.PrimaryPart = self.rootPart
 	end
@@ -774,23 +781,23 @@ function Boss.ReplaceModel(self: Boss, phaseModelRaw: any?): Model?
 	end
 
 	local previousModel = self.model
-	local modelTemplate = self:resolveModelTemplate(phaseModelRaw)
+	local modelTemplate = self:GetModelTemplate(phaseModelRaw)
 	if modelTemplate == nil then
 		error(MISSING_ASSET_ERROR, 0)
 	end
 
 	local nextModel = modelTemplate:Clone()
 	nextModel.Name = self.displayName
-	nextModel.Parent = self:getOrCreateRuntimeFolder()
+	nextModel.Parent = self:GetOrCreateRuntimeFolder()
 	configureModel(nextModel)
 
-	local nextRootPart = BossServiceUtils.resolveRootPart(nextModel)
+	local nextRootPart = BossServiceUtils.GetRootPart(nextModel)
 	if nextRootPart ~= nil and nextModel.PrimaryPart == nil then
 		nextModel.PrimaryPart = nextRootPart
 	end
 
-	nextModel:PivotTo(BossServiceUtils.sideViewLookCFrame(self.position, self.facing))
-	BossServiceUtils.applyRuntimeModelAttributes(
+	nextModel:PivotTo(BossServiceUtils.SideViewLookCFrame(self.position, self.facing))
+	BossServiceUtils.ApplyRuntimeModelAttributes(
 		nextModel,
 		self.id,
 		self.bossId,
@@ -805,7 +812,7 @@ function Boss.ReplaceModel(self: Boss, phaseModelRaw: any?): Model?
 	self.spawnedValue.Value = true
 	local maid = self.maid :: any
 	maid.runtimeModel = nextModel
-	self:markSnapshotDirty()
+	self:MarkSnapshotDirty()
 	self.signals.modelChanged:Fire(nextModel, previousModel)
 
 	return nextModel
@@ -821,7 +828,7 @@ function Boss.Spawn(self: Boss, spawnCFrameRaw: any?): Model
 
 	local modelTemplate = self.modelTemplate
 	if modelTemplate == nil then
-		modelTemplate = self:resolveModelTemplate(self.presentation.phaseModel)
+		modelTemplate = self:GetModelTemplate(self.presentation.phaseModel)
 	end
 	if modelTemplate == nil then
 		error(MISSING_ASSET_ERROR, 0)
@@ -829,29 +836,29 @@ function Boss.Spawn(self: Boss, spawnCFrameRaw: any?): Model
 
 	local model = modelTemplate:Clone()
 	model.Name = self.displayName
-	model.Parent = self:getOrCreateRuntimeFolder()
+	model.Parent = self:GetOrCreateRuntimeFolder()
 	configureModel(model)
 
 	self.model = model
-	self.rootPart = BossServiceUtils.resolveRootPart(model)
+	self.rootPart = BossServiceUtils.GetRootPart(model)
 	if self.rootPart ~= nil and model.PrimaryPart == nil then
 		model.PrimaryPart = self.rootPart
 	end
 
 	local spawnCFrame = if typeof(spawnCFrameRaw) == "CFrame"
 		then spawnCFrameRaw
-		else BossServiceUtils.lookCFrame(self.position, self.facing)
-	self.position = self:projectToPlane(spawnCFrame.Position)
-	self:setFacing(spawnCFrame.LookVector)
+		else BossServiceUtils.LookCFrame(self.position, self.facing)
+	self.position = self:ProjectToPlane(spawnCFrame.Position)
+	self:SetFacing(spawnCFrame.LookVector)
 	self.isSpawned = true
 	self.modelValue.Value = model
 	self.spawnedValue.Value = true
 	local maid = self.maid :: any
 	maid.runtimeModel = model
 
-	self:updateModelPivot()
-	BossServiceUtils.applyRuntimeModelAttributes(model, self.id, self.bossId, self.displayName, self.encounterChannel)
-	self:markSnapshotDirty()
+	self:UpdateModelPivot()
+	BossServiceUtils.ApplyRuntimeModelAttributes(model, self.id, self.bossId, self.displayName, self.encounterChannel)
+	self:MarkSnapshotDirty()
 	self.signals.spawned:Fire(model)
 	self.signals.modelChanged:Fire(model, nil)
 
@@ -866,7 +873,7 @@ function Boss.TakeDamage(self: Boss, damageRaw: any, sourceRaw: any?, _contextRa
 		return 0
 	end
 
-	local incomingDamage = BossServiceUtils.sanitizeNumber(damageRaw, 0, 0, 10 ^ 9)
+	local incomingDamage = BossServiceUtils.CoerceNumber(damageRaw, 0, 0, 10 ^ 9)
 	if incomingDamage <= 0 then
 		return 0
 	end
@@ -874,21 +881,21 @@ function Boss.TakeDamage(self: Boss, damageRaw: any, sourceRaw: any?, _contextRa
 	local appliedDamage = math.max(1, math.floor(incomingDamage - self.defense + 0.5))
 	self.hp = math.max(0, self.hp - appliedDamage)
 	self.healthValue.Value = self.hp
-	self:incrementPresentationToken("damagePulseToken")
+	self:IncrementPresentationToken("damagePulseToken")
 	self.signals.damaged:Fire(appliedDamage, sourceRaw, self.hp)
-	self:markSnapshotDirty()
+	self:MarkSnapshotDirty()
 
 	if typeof(sourceRaw) == "Instance" and sourceRaw:IsA("Player") then
-		self:setTarget(sourceRaw)
+		self:SetTarget(sourceRaw)
 	end
 
-	local onDamageTaken = (self :: any).onDamageTaken
+	local onDamageTaken = (self :: any).OnDamageTaken
 	if typeof(onDamageTaken) == "function" then
 		onDamageTaken(self, appliedDamage, sourceRaw, self.hp)
 	end
 
 	if self.hp <= 0 then
-		self:die("DamageDepleted", sourceRaw)
+		self:Die("DamageDepleted", sourceRaw)
 	end
 
 	return appliedDamage
@@ -905,12 +912,12 @@ function Boss.Die(self: Boss, reasonRaw: any?, killerRaw: any?)
 	self.aliveValue.Value = false
 	self.offenseEnabled = false
 	self.contactDamageActive = false
-	self:setPresentationFlag("isDying", true)
-	self:incrementPresentationToken("deathPulseToken")
-	self:changeState("Death", reasonRaw or "death")
+	self:SetPresentationFlag("isDying", true)
+	self:IncrementPresentationToken("deathPulseToken")
+	self:ChangeState("Death", reasonRaw or "death")
 	self.signals.died:Fire(killerRaw)
 
-	local onDeath = (self :: any).onDeath
+	local onDeath = (self :: any).OnDeath
 	if typeof(onDeath) == "function" then
 		onDeath(self, killerRaw)
 	end
@@ -919,8 +926,8 @@ end
 function Boss.Despawn(self: Boss, reasonRaw: any?)
 	self.offenseEnabled = false
 	self.contactDamageActive = false
-	self:setPresentationFlag("isDespawning", true)
-	self:changeState("Despawn", reasonRaw or "despawn")
+	self:SetPresentationFlag("isDespawning", true)
+	self:ChangeState("Despawn", reasonRaw or "despawn")
 end
 
 function Boss.RequestRemoval(self: Boss, reasonRaw: any?)
@@ -934,29 +941,29 @@ function Boss.RequestRemoval(self: Boss, reasonRaw: any?)
 end
 
 function Boss.GetClockTime(self: Boss): number
-	return self.service:getClockTime()
+	return self.service:GetClockTime()
 end
 
 function Boss.IsNightTime(self: Boss): boolean
-	return BossServiceUtils.isNightClockTime(self:getClockTime())
+	return BossServiceUtils.IsNightClockTime(self:GetClockTime())
 end
 
 function Boss.IsDayTime(self: Boss): boolean
-	return not self:isNightTime()
+	return not self:IsNightTime()
 end
 
 function Boss.GetSurfaceYAt(self: Boss, worldPosition: Vector3): number?
-	return self.service:getSurfaceYAtWorldPosition(worldPosition)
+	return self.service:GetSurfaceYAtWorldPosition(worldPosition)
 end
 
 function Boss.IsPlayerAboveSurface(self: Boss, player: Player): boolean
-	return self.service:isPlayerAboveSurface(player)
+	return self.service:IsPlayerAboveSurface(player)
 end
 
 function Boss.CreateSnapshot(self: Boss): BossSnapshot
-	local createSnapshot = (self.service :: any).createSnapshot
+	local createSnapshot = (self.service :: any).CreateSnapshot
 	if typeof(createSnapshot) ~= "function" then
-		error("[Boss] Service must expose createSnapshot() before snapshot observation can be used")
+		error("[Boss] Service must expose CreateSnapshot() before snapshot observation can be used")
 	end
 
 	return createSnapshot(self.service, self)
@@ -988,9 +995,9 @@ end
 
 function Boss.ObserveHealthRatio(self: Boss): ObservableObject
 	return getOrCreateObservable(self, "healthRatio", function()
-		return self:observeHealth():Pipe({
+		return self:ObserveHealth():Pipe({
 			Rx.map(function()
-				return self:getHealthRatio()
+				return self:GetHealthRatio()
 			end),
 			Rx.shareReplay(1),
 		}) :: ObservableObject
@@ -1124,9 +1131,9 @@ end
 function Boss.ObserveSnapshot(self: Boss): ObservableObject
 	return getOrCreateObservable(self, "snapshot", function()
 		return Rx.fromSignal(self.signals.snapshotDirty):Pipe({
-			Rx.startWith({ self:createSnapshot() }),
+			Rx.startWith({ self:CreateSnapshot() }),
 			Rx.map(function()
-				return self:createSnapshot()
+				return self:CreateSnapshot()
 			end),
 			Rx.shareReplay(1),
 		}) :: ObservableObject
@@ -1144,7 +1151,7 @@ end
 function Boss.GetStateSignal(self: Boss): RxSignalObject
 	return getOrCreateRxSignal(self, "stateSignal", function()
 		return RxSignal.new(function()
-			return self:observeState()
+			return self:ObserveState()
 		end) :: RxSignalObject
 	end)
 end
@@ -1152,7 +1159,7 @@ end
 function Boss.GetModelSignal(self: Boss): RxSignalObject
 	return getOrCreateRxSignal(self, "modelSignal", function()
 		return RxSignal.new(function()
-			return self:observeModel()
+			return self:ObserveModel()
 		end) :: RxSignalObject
 	end)
 end
@@ -1160,7 +1167,7 @@ end
 function Boss.GetRemovedSignal(self: Boss): RxSignalObject
 	return getOrCreateRxSignal(self, "removedSignal", function()
 		return RxSignal.new(function()
-			return self:observeRemoved()
+			return self:ObserveRemoved()
 		end) :: RxSignalObject
 	end)
 end
@@ -1168,7 +1175,7 @@ end
 function Boss.GetSnapshotSignal(self: Boss): RxSignalObject
 	return getOrCreateRxSignal(self, "snapshotSignal", function()
 		return RxSignal.new(function()
-			return self:observeSnapshot()
+			return self:ObserveSnapshot()
 		end) :: RxSignalObject
 	end)
 end
@@ -1178,95 +1185,95 @@ function Boss.PromiseState(self: Boss, desiredStateRaw: any, cancelTokenRaw: any
 		then desiredStateRaw
 		else self.state
 	if self.state == desiredState then
-		return Promise.resolved(self.state, self.state, self.lastReason) :: PromiseObject
+		return fulfilledPromise(self.state, self.state, self.lastReason) :: PromiseObject
 	end
 
 	return Rx.toPromise(
-		self:observeStateChanged():Pipe({
+		self:ObserveStateChanged():Pipe({
 			Rx.where(function(nextState)
 				return nextState == desiredState
 			end),
 			Rx.take(1),
 		}),
-		resolveCancelToken(cancelTokenRaw)
+		GetCancelToken(cancelTokenRaw)
 	) :: PromiseObject
 end
 
 function Boss.PromiseModel(self: Boss, cancelTokenRaw: any?): PromiseObject
 	if self.model ~= nil then
-		return Promise.resolved(self.model) :: PromiseObject
+		return fulfilledPromise(self.model) :: PromiseObject
 	end
 
 	return Rx.toPromise(
-		self:observeModel():Pipe({
+		self:ObserveModel():Pipe({
 			Rx.where(function(model)
 				return model ~= nil
 			end),
 			Rx.take(1),
 		}),
-		resolveCancelToken(cancelTokenRaw)
+		GetCancelToken(cancelTokenRaw)
 	) :: PromiseObject
 end
 
 function Boss.PromiseSpawned(self: Boss, cancelTokenRaw: any?): PromiseObject
 	if self.model ~= nil then
-		return Promise.resolved(self.model) :: PromiseObject
+		return fulfilledPromise(self.model) :: PromiseObject
 	end
 
 	return Rx.toPromise(
-		self:observeSpawnedEvent():Pipe({
+		self:ObserveSpawnedEvent():Pipe({
 			Rx.take(1),
 		}),
-		resolveCancelToken(cancelTokenRaw)
+		GetCancelToken(cancelTokenRaw)
 	) :: PromiseObject
 end
 
 function Boss.PromiseDied(self: Boss, cancelTokenRaw: any?): PromiseObject
 	if not self.isAlive or self.state == "Death" then
-		return Promise.resolved() :: PromiseObject
+		return fulfilledPromise() :: PromiseObject
 	end
 
 	return Rx.toPromise(
-		self:observeDied():Pipe({
+		self:ObserveDied():Pipe({
 			Rx.take(1),
 		}),
-		resolveCancelToken(cancelTokenRaw)
+		GetCancelToken(cancelTokenRaw)
 	) :: PromiseObject
 end
 
 function Boss.PromiseRemoved(self: Boss, cancelTokenRaw: any?): PromiseObject
 	if self.removeRequested then
-		return Promise.resolved(self.removeReason) :: PromiseObject
+		return fulfilledPromise(self.removeReason) :: PromiseObject
 	end
 
 	return Rx.toPromise(
-		self:observeRemoved():Pipe({
+		self:ObserveRemoved():Pipe({
 			Rx.take(1),
 		}),
-		resolveCancelToken(cancelTokenRaw)
+		GetCancelToken(cancelTokenRaw)
 	) :: PromiseObject
 end
 
 function Boss.PromiseDestroyed(self: Boss, cancelTokenRaw: any?): PromiseObject
 	if self.isDestroyed then
-		return Promise.resolved() :: PromiseObject
+		return fulfilledPromise() :: PromiseObject
 	end
 
 	return Rx.toPromise(
-		self:observeDestroying():Pipe({
+		self:ObserveDestroying():Pipe({
 			Rx.take(1),
 		}),
-		resolveCancelToken(cancelTokenRaw)
+		GetCancelToken(cancelTokenRaw)
 	) :: PromiseObject
 end
 
 function Boss.SpawnPromise(self: Boss, spawnCFrameRaw: any?): PromiseObject
-	return Promise.spawn(function(resolve, reject)
+	return Promise.spawn(function(fulfill, reject)
 		local ok, result = pcall(function()
-			return self:spawn(spawnCFrameRaw)
+			return self:Spawn(spawnCFrameRaw)
 		end)
 		if ok then
-			resolve(result)
+			fulfill(result)
 		else
 			reject(result)
 		end
@@ -1274,12 +1281,12 @@ function Boss.SpawnPromise(self: Boss, spawnCFrameRaw: any?): PromiseObject
 end
 
 function Boss.ReplaceModelPromise(self: Boss, phaseModelRaw: any?): PromiseObject
-	return Promise.spawn(function(resolve, reject)
+	return Promise.spawn(function(fulfill, reject)
 		local ok, result = pcall(function()
-			return self:replaceModel(phaseModelRaw)
+			return self:ReplaceModel(phaseModelRaw)
 		end)
 		if ok then
-			resolve(result)
+			fulfill(result)
 		else
 			reject(result)
 		end
@@ -1291,7 +1298,7 @@ function Boss.Step(self: Boss, dtRaw: any)
 		return
 	end
 
-	local dt = BossServiceUtils.sanitizeNumber(dtRaw, 0, 0, 1)
+	local dt = BossServiceUtils.CoerceNumber(dtRaw, 0, 0, 1)
 	if dt <= 0 then
 		return
 	end
@@ -1300,34 +1307,34 @@ function Boss.Step(self: Boss, dtRaw: any)
 
 	local targetPlayer = self.targetPlayer
 	if targetPlayer ~= nil then
-		if not BossServiceUtils.isPlayerAlive(targetPlayer) then
+		if not BossServiceUtils.IsPlayerAlive(targetPlayer) then
 			self.targetLostTime += dt
-			if self.targetLostTime >= BossServiceUtils.sanitizeNumber(self.config.targetLostGraceSeconds, 4, 0, 60) then
-				self:clearTarget()
+			if self.targetLostTime >= BossServiceUtils.CoerceNumber(self.config.targetLostGraceSeconds, 4, 0, 60) then
+				self:ClearTarget()
 			end
 		else
 			self.targetLostTime = 0
 		end
 	end
 
-	local onStep = (self :: any).onStep
+	local onStep = (self :: any).OnStep
 	if typeof(onStep) == "function" then
 		onStep(self, dt)
 	end
 
-	self:integrateMotion(dt)
+	self:IntegrateMotion(dt)
 
 	if self.faceVelocityWhenMoving and self.velocity.Magnitude > 1e-4 then
-		self:setFacing(self.velocity)
+		self:SetFacing(self.velocity)
 	elseif self.faceTargetWhenIdle and self.targetPlayer ~= nil then
-		local targetPosition = self:resolveTargetPosition()
+		local targetPosition = self:GetTargetPosition()
 		if targetPosition ~= nil then
-			self:lookAt(targetPosition)
+			self:LookAt(targetPosition)
 		end
 	end
 
-	self:updateModelPivot()
-	self:applyContactDamage(self.contactDamage, self.contactDamageRadius, self.contactDamageCooldown)
+	self:UpdateModelPivot()
+	self:ApplyContactDamage(self.contactDamage, self.contactDamageRadius, self.contactDamageCooldown)
 end
 
 function Boss.Destroy(self: Boss)
@@ -1348,79 +1355,4 @@ function Boss.Destroy(self: Boss)
 	self.rootPart = nil
 	self.maid:Destroy()
 end
-
-Boss.new = Boss.New
-Boss.resolveModelTemplate = Boss.ResolveModelTemplate
-Boss.getOrCreateRuntimeFolder = Boss.GetOrCreateRuntimeFolder
-Boss.markSnapshotDirty = Boss.MarkSnapshotDirty
-Boss.setTarget = Boss.SetTarget
-Boss.clearTarget = Boss.ClearTarget
-Boss.resolveTargetRootPart = Boss.ResolveTargetRootPart
-Boss.resolveTargetPosition = Boss.ResolveTargetPosition
-Boss.resolveTargetVelocity = Boss.ResolveTargetVelocity
-Boss.getHealthRatio = Boss.GetHealthRatio
-Boss.changeState = Boss.ChangeState
-Boss.setPhase = Boss.SetPhase
-Boss.incrementPresentationToken = Boss.IncrementPresentationToken
-Boss.setPresentationFlag = Boss.SetPresentationFlag
-Boss.setMotionState = Boss.SetMotionState
-Boss.projectToPlane = Boss.ProjectToPlane
-Boss.setPosition = Boss.SetPosition
-Boss.setVelocity = Boss.SetVelocity
-Boss.setFacing = Boss.SetFacing
-Boss.lookAt = Boss.LookAt
-Boss.accelerateTowardVelocity = Boss.AccelerateTowardVelocity
-Boss.dampVelocity = Boss.DampVelocity
-Boss.moveTowardPoint = Boss.MoveTowardPoint
-Boss.integrateMotion = Boss.IntegrateMotion
-Boss.applyContactDamage = Boss.ApplyContactDamage
-Boss.updateModelPivot = Boss.UpdateModelPivot
-Boss.replaceModel = Boss.ReplaceModel
-Boss.spawn = Boss.Spawn
-Boss.takeDamage = Boss.TakeDamage
-Boss.die = Boss.Die
-Boss.despawn = Boss.Despawn
-Boss.requestRemoval = Boss.RequestRemoval
-Boss.getClockTime = Boss.GetClockTime
-Boss.isNightTime = Boss.IsNightTime
-Boss.isDayTime = Boss.IsDayTime
-Boss.getSurfaceYAt = Boss.GetSurfaceYAt
-Boss.isPlayerAboveSurface = Boss.IsPlayerAboveSurface
-Boss.createSnapshot = Boss.CreateSnapshot
-Boss.observeState = Boss.ObserveState
-Boss.observePhase = Boss.ObservePhase
-Boss.observeHealth = Boss.ObserveHealth
-Boss.observeHealthRatio = Boss.ObserveHealthRatio
-Boss.observeTarget = Boss.ObserveTarget
-Boss.observeModel = Boss.ObserveModel
-Boss.observeModelBrio = Boss.ObserveModelBrio
-Boss.observeSpawned = Boss.ObserveSpawned
-Boss.observeAlive = Boss.ObserveAlive
-Boss.observeDestroyed = Boss.ObserveDestroyed
-Boss.observeRemovalRequested = Boss.ObserveRemovalRequested
-Boss.observeStateChanged = Boss.ObserveStateChanged
-Boss.observeTargetChanged = Boss.ObserveTargetChanged
-Boss.observeDamaged = Boss.ObserveDamaged
-Boss.observeRemoved = Boss.ObserveRemoved
-Boss.observeDied = Boss.ObserveDied
-Boss.observeSpawnedEvent = Boss.ObserveSpawnedEvent
-Boss.observeModelChanged = Boss.ObserveModelChanged
-Boss.observeSnapshotDirty = Boss.ObserveSnapshotDirty
-Boss.observeSnapshot = Boss.ObserveSnapshot
-Boss.observeDestroying = Boss.ObserveDestroying
-Boss.getStateSignal = Boss.GetStateSignal
-Boss.getModelSignal = Boss.GetModelSignal
-Boss.getRemovedSignal = Boss.GetRemovedSignal
-Boss.getSnapshotSignal = Boss.GetSnapshotSignal
-Boss.promiseState = Boss.PromiseState
-Boss.promiseModel = Boss.PromiseModel
-Boss.promiseSpawned = Boss.PromiseSpawned
-Boss.promiseDied = Boss.PromiseDied
-Boss.promiseRemoved = Boss.PromiseRemoved
-Boss.promiseDestroyed = Boss.PromiseDestroyed
-Boss.spawnPromise = Boss.SpawnPromise
-Boss.replaceModelPromise = Boss.ReplaceModelPromise
-Boss.step = Boss.Step
-Boss.destroy = Boss.Destroy
-
 return Boss

@@ -9,7 +9,7 @@ local PlaceableBinder = {}
 PlaceableBinder.__index = PlaceableBinder
 setmetatable(PlaceableBinder, ModelBinder)
 
-local function resolveItemId(instance: Instance): string?
+local function GetItemId(instance: Instance): string?
 	local placedItemId = instance:GetAttribute("PlacedItemId")
 	if typeof(placedItemId) == "string" and placedItemId ~= "" then
 		return placedItemId
@@ -30,7 +30,7 @@ function PlaceableBinder.new(instance: Instance, context: any)
 end
 
 function PlaceableBinder.updateMetadata(self: any)
-	local itemId = resolveItemId(self.instance)
+	local itemId = GetItemId(self.instance)
 	self.instance:SetAttribute("PlaceableTagged", true)
 
 	if itemId == nil then
@@ -38,7 +38,7 @@ function PlaceableBinder.updateMetadata(self: any)
 	end
 
 	self.instance:SetAttribute("PlaceableItemId", itemId)
-	local definition = ItemRegistry.resolveDefinition(itemId)
+	local definition = ItemRegistry.GetDefinition(itemId)
 	if typeof(definition) ~= "table" then
 		return
 	end

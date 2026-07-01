@@ -211,7 +211,7 @@ function PlatformUIScale.New(configRaw: UIScaleConfig?): typeof(setmetatable({} 
 			Desktop = clonePreset(DEFAULT_PRESETS.Desktop),
 			Console = clonePreset(DEFAULT_PRESETS.Console),
 		} :: { [DeviceClass]: DevicePreset },
-		baseScaler = BaseUIScaling.new({
+		baseScaler = BaseUIScaling.New({
 			ignoreGuiInset = true,
 		}),
 		rootScale = nil :: UIScale?,
@@ -230,15 +230,15 @@ end
 
 function PlatformUIScale._getPlatformState(self: typeof(setmetatable({} :: any, PlatformUIScale))): PlatformState
 	local platformService = self.platformService
-	if platformService ~= nil and typeof((platformService :: any).getState) == "function" then
+	if platformService ~= nil and typeof((platformService :: any).GetState) == "function" then
 		local ok, state = pcall(function()
-			return (platformService :: any):getState()
+			return (platformService :: any):GetState()
 		end)
 		if ok and typeof(state) == "table" then
-			return PlatformServiceUtils.clonePlatformState(state :: PlatformState)
+			return PlatformServiceUtils.ClonePlatformState(state :: PlatformState)
 		end
 	end
-	return PlatformServiceUtils.clonePlatformState(FALLBACK_PLATFORM_STATE)
+	return PlatformServiceUtils.ClonePlatformState(FALLBACK_PLATFORM_STATE)
 end
 
 function PlatformUIScale._getPreset(
@@ -258,7 +258,7 @@ function PlatformUIScale._applyPresetToBaseScaler(
 	self.appliedBasePresetDeviceClass = deviceClass
 	local preset = self:_getPreset(deviceClass)
 	local baseDeviceType = baseDeviceTypeFromClass(deviceClass)
-	self.baseScaler:setPreset(baseDeviceType, {
+	self.baseScaler:SetPreset(baseDeviceType, {
 		uiScale = preset.uiScale,
 		offsetScale = preset.offsetScale,
 		safePadding = preset.safePadding,
@@ -308,7 +308,7 @@ function PlatformUIScale._bindCameraViewport(self: typeof(setmetatable({} :: any
 		return
 	end
 	self.cameraViewportConnection = camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
-		self:apply()
+		self:Apply()
 	end)
 end
 
@@ -319,9 +319,9 @@ function PlatformUIScale._bindScreenGui(self: typeof(setmetatable({} :: any, Pla
 		return
 	end
 	self.screenGui.IgnoreGuiInset = true
-	self.baseScaler:setScreenGui(self.screenGui)
+	self.baseScaler:SetScreenGui(self.screenGui)
 	self.screenGuiConnection = self.screenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-		self:apply()
+		self:Apply()
 	end)
 end
 
@@ -361,7 +361,7 @@ function PlatformUIScale.Init(self: typeof(setmetatable({} :: any, PlatformUISca
 	self:_bindCameraViewport()
 	self.cameraChangedConnection = Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
 		self:_bindCameraViewport()
-		self:apply()
+		self:Apply()
 	end)
 	self.janitor:GiveChore(function()
 		safeDisconnect(self.cameraChangedConnection)
@@ -369,12 +369,12 @@ function PlatformUIScale.Init(self: typeof(setmetatable({} :: any, PlatformUISca
 	end)
 
 	local platformService = self.platformService
-	if platformService ~= nil and typeof((platformService :: any).onPlatformChanged) == "function" then
-		self.platformDisconnect = (platformService :: any):onPlatformChanged(function(nextState: any, prevState: any)
+	if platformService ~= nil and typeof((platformService :: any).OnPlatformChanged) == "function" then
+		self.platformDisconnect = (platformService :: any):OnPlatformChanged(function(nextState: any, prevState: any)
 			if not shouldApplyForPlatformChange(nextState, prevState) then
 				return
 			end
-			self:apply()
+			self:Apply()
 		end)
 		self.janitor:GiveChore(function()
 			if self.platformDisconnect ~= nil then
@@ -384,17 +384,17 @@ function PlatformUIScale.Init(self: typeof(setmetatable({} :: any, PlatformUISca
 		end)
 	end
 
-	self:apply()
+	self:Apply()
 end
 
 function PlatformUIScale.Apply(self: typeof(setmetatable({} :: any, PlatformUIScale)))
 	local platformState = self:_getPlatformState()
 	self:_applyPresetToBaseScaler(platformState.deviceClass)
 	if self.screenGui ~= nil then
-		self.baseScaler:setScreenGui(self.screenGui)
+		self.baseScaler:SetScreenGui(self.screenGui)
 	end
-	self.baseScaler:apply()
-	local baseSnapshot = self.baseScaler:getSnapshot()
+	self.baseScaler:Apply()
+	local baseSnapshot = self.baseScaler:GetSnapshot()
 	local preset = self:_getPreset(platformState.deviceClass)
 	local effectiveScale = baseSnapshot.scale * preset.uiScale
 	local rootScale = self:_ensureRootScale()
@@ -435,7 +435,7 @@ function PlatformUIScale.SetScreenGui(
 	self:_destroyScreenGuiRootScale()
 	self:_bindScreenGui()
 	if self.isInitialized then
-		self:apply()
+		self:Apply()
 	end
 	return true
 end
@@ -447,14 +447,14 @@ function PlatformUIScale.SetScaleTarget(self: typeof(setmetatable({} :: any, Pla
 	self.scaleTarget = targetRaw
 	self:_ensureRootScale()
 	if self.isInitialized then
-		self:apply()
+		self:Apply()
 	end
 	return true
 end
 
 function PlatformUIScale.GetSnapshot(self: typeof(setmetatable({} :: any, PlatformUIScale))): UIScaleSnapshot?
 	if self.lastSnapshot == nil then
-		self:apply()
+		self:Apply()
 	end
 	if self.lastSnapshot == nil then
 		return nil
@@ -479,30 +479,12 @@ function PlatformUIScale.Destroy(self: typeof(setmetatable({} :: any, PlatformUI
 	self.screenGuiConnection = nil
 	self.cameraViewportConnection = nil
 	self.rootScale = nil
-	self.baseScaler:destroy()
+	self.baseScaler:Destroy()
 	self.changed:DisconnectAll()
 	self.changed:Destroy()
 	self.lastSnapshot = nil
 	self.appliedBasePresetDeviceClass = nil
 	self.isInitialized = false
 end
-
-PlatformUIScale.New = PlatformUIScale.New
-PlatformUIScale.Init = PlatformUIScale.Init
-PlatformUIScale.Apply = PlatformUIScale.Apply
-PlatformUIScale.SetScreenGui = PlatformUIScale.SetScreenGui
-PlatformUIScale.SetScaleTarget = PlatformUIScale.SetScaleTarget
-PlatformUIScale.GetSnapshot = PlatformUIScale.GetSnapshot
-PlatformUIScale.OnChanged = PlatformUIScale.OnChanged
-PlatformUIScale.Destroy = PlatformUIScale.Destroy
-
-PlatformUIScale.new = PlatformUIScale.New
-PlatformUIScale.init = PlatformUIScale.Init
-PlatformUIScale.apply = PlatformUIScale.Apply
-PlatformUIScale.setScreenGui = PlatformUIScale.SetScreenGui
-PlatformUIScale.setScaleTarget = PlatformUIScale.SetScaleTarget
-PlatformUIScale.getSnapshot = PlatformUIScale.GetSnapshot
-PlatformUIScale.onChanged = PlatformUIScale.OnChanged
-PlatformUIScale.destroy = PlatformUIScale.Destroy
 
 return PlatformUIScale

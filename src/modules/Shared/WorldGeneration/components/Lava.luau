@@ -19,7 +19,4 @@ function Lava.CreatePart(configRaw: LavaPartConfig?): Part
 	config.castShadow = if config.castShadow == nil then false else config.castShadow
 	return Tile.CreatePart(config)
 end
-
-Lava.createPart = Lava.CreatePart
-
 return Lava

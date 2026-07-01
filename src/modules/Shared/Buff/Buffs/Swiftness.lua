@@ -5,7 +5,7 @@ local Table = require("Table")
 local BuffConstants = require("BuffConstants")
 local BuffShared = require("BuffShared")
 
-local Swiftness = BuffShared.new({
+local Swiftness = BuffShared.New({
 	definitionOnly = true,
 })
 local EFFECTS = Table.copy({

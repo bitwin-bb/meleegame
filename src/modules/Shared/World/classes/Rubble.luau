@@ -203,7 +203,7 @@ end
 local function ensureFolder(parent: Instance, name: string): Folder
 	local existing = parent:FindFirstChild(name)
 	if existing and existing:IsA("Folder") then
-		return WorkspaceFolders.manageFolder(existing, parent) or existing
+		return WorkspaceFolders.ManageFolder(existing, parent) or existing
 	end
 	if existing then
 		existing:Destroy()
@@ -211,10 +211,10 @@ local function ensureFolder(parent: Instance, name: string): Folder
 	local folder = Instance.new("Folder")
 	folder.Name = name
 	folder.Parent = parent
-	return WorkspaceFolders.manageFolder(folder, parent) or folder
+	return WorkspaceFolders.ManageFolder(folder, parent) or folder
 end
 
-local function resolveRange(raw: any, minFallback: number, maxFallback: number): (number, number)
+local function GetAnge(raw: any, minFallback: number, maxFallback: number): (number, number)
 	if typeof(raw) == "NumberRange" then
 		return math.min(raw.Min, raw.Max), math.max(raw.Min, raw.Max)
 	end
@@ -231,7 +231,7 @@ local function resolveRange(raw: any, minFallback: number, maxFallback: number):
 	return minFallback, maxFallback
 end
 
-local function resolveRootPart(model: Model?): BasePart?
+local function GetRootPart(model: Model?): BasePart?
 	if model == nil then
 		return nil
 	end
@@ -250,7 +250,7 @@ local function resolveRootPart(model: Model?): BasePart?
 	return nil
 end
 
-local function resolveReferencePosition(reference: any): Vector3?
+local function GetEferencePosition(reference: any): Vector3?
 	if typeof(reference) == "Vector3" then
 		return reference
 	end
@@ -268,10 +268,10 @@ local function resolveReferencePosition(reference: any): Vector3?
 	elseif r:IsA("Camera") then
 		return r.CFrame.Position
 	elseif r:IsA("Model") then
-		local root = resolveRootPart(r)
+		local root = GetRootPart(r)
 		return if root then root.Position else nil
 	elseif r:IsA("Player") then
-		local root = resolveRootPart((r :: Player).Character)
+		local root = GetRootPart((r :: Player).Character)
 		return if root then root.Position else nil
 	end
 	return nil
@@ -279,7 +279,7 @@ end
 
 local function firstPlayerPosition(): Vector3?
 	for _, player in Players:GetPlayers() do
-		local root = resolveRootPart(player.Character)
+		local root = GetRootPart(player.Character)
 		if root then
 			return root.Position
 		end
@@ -287,7 +287,7 @@ local function firstPlayerPosition(): Vector3?
 	return nil
 end
 
-local function resolvePhysical(
+local function GetPhysical(
 	customProps: any,
 	massOverride: any,
 	size: Vector3,
@@ -319,22 +319,22 @@ local function resolvePhysical(
 	)
 end
 
-local function sanitizeVector3(raw: any, fallback: Vector3): Vector3
+local function CoerceVector3(raw: any, fallback: Vector3): Vector3
 	return if typeof(raw) == "Vector3" then raw else fallback
 end
 
-local function sanitizeCFrame(raw: any, fallback: CFrame): CFrame
+local function CoerceCFrame(raw: any, fallback: CFrame): CFrame
 	return if typeof(raw) == "CFrame" then raw else fallback
 end
 
-local function sanitizeMaterial(raw: any, fallback: Enum.Material): Enum.Material
+local function CoerceMaterial(raw: any, fallback: Enum.Material): Enum.Material
 	if typeof(raw) == "EnumItem" and (raw :: EnumItem).EnumType == Enum.Material then
 		return raw :: any
 	end
 	return fallback
 end
 
-local function sanitizeColor(raw: any, fallback: Color3): Color3
+local function CoerceColor(raw: any, fallback: Color3): Color3
 	return if typeof(raw) == "Color3" then raw else fallback
 end
 
@@ -425,7 +425,7 @@ function Rubble.New(configRaw: Config?): Rubble
 	template.CanQuery = false
 	template.Parent = nil
 
-	local root = ensureFolder(WorkspaceFolders.getOrCreateGameFolder(), s(cfg.containerName, "RubbleRuntime"))
+	local root = ensureFolder(WorkspaceFolders.GetOrCreateGameFolder(), s(cfg.containerName, "RubbleRuntime"))
 	local active = ensureFolder(root, s(cfg.activeFolderName, "Active"))
 	local inactive = ensureFolder(root, s(cfg.inactiveFolderName, "Inactive"))
 	local activeGroup = s(cfg.activeCollisionGroup, "RubbleActive")
@@ -445,7 +445,7 @@ function Rubble.New(configRaw: Config?): Rubble
 		root = root,
 		active = active,
 		inactive = inactive,
-		parkingCFrame = sanitizeCFrame(cfg.parkingCFrame, CFrame.new(0, -10000, 0)),
+		parkingCFrame = CoerceCFrame(cfg.parkingCFrame, CFrame.new(0, -10000, 0)),
 		activeGroup = activeGroup,
 		inactiveGroup = inactiveGroup,
 		lodReference = cfg.lodReference,
@@ -521,7 +521,7 @@ function Rubble.New(configRaw: Config?): Rubble
 end
 
 function Rubble._attachRuntimeFolders(self: Rubble)
-	local gameFolder = WorkspaceFolders.getOrCreateGameFolder()
+	local gameFolder = WorkspaceFolders.GetOrCreateGameFolder()
 	if self.root.Parent ~= gameFolder then
 		self.root.Parent = gameFolder
 	end
@@ -531,9 +531,9 @@ function Rubble._attachRuntimeFolders(self: Rubble)
 	if self.inactive.Parent ~= self.root then
 		self.inactive.Parent = self.root
 	end
-	WorkspaceFolders.manageFolder(self.root, gameFolder)
-	WorkspaceFolders.manageFolder(self.active, self.root)
-	WorkspaceFolders.manageFolder(self.inactive, self.root)
+	WorkspaceFolders.ManageFolder(self.root, gameFolder)
+	WorkspaceFolders.ManageFolder(self.active, self.root)
+	WorkspaceFolders.ManageFolder(self.inactive, self.root)
 end
 
 function Rubble._heapPush(self: Rubble, node: ExpiryNode)
@@ -794,18 +794,18 @@ function Rubble._acquireSlot(self: Rubble): Slot?
 	end
 end
 
-function Rubble._resolveLodOrigin(self: Rubble, slot: Slot, sharedOrigin: Vector3?): Vector3?
+function Rubble._GetLodOrigin(self: Rubble, slot: Slot, sharedOrigin: Vector3?): Vector3?
 	if slot.lodReference ~= nil then
 		if typeof(slot.lodReference) == "function" then
 			local ok, out = pcall(slot.lodReference)
 			if ok then
-				local p = resolveReferencePosition(out)
+				local p = GetEferencePosition(out)
 				if p then
 					return p
 				end
 			end
 		else
-			local p = resolveReferencePosition(slot.lodReference)
+			local p = GetEferencePosition(slot.lodReference)
 			if p then
 				return p
 			end
@@ -857,7 +857,7 @@ function Rubble._updateSlot(
 		end
 	end
 	if checkLod and self.tuning.lodDistance > 0 then
-		local origin = self:_resolveLodOrigin(slot, sharedLodOrigin)
+		local origin = self:_GetLodOrigin(slot, sharedLodOrigin)
 		if origin then
 			local far = (part.Position - origin).Magnitude > self.tuning.lodDistance
 			if far ~= slot.lodFar then
@@ -915,10 +915,10 @@ function Rubble._onHeartbeat(self: Rubble, dt: number)
 			if typeof(self.lodReference) == "function" then
 				local ok, out = pcall(self.lodReference)
 				if ok then
-					sharedLodOrigin = resolveReferencePosition(out)
+					sharedLodOrigin = GetEferencePosition(out)
 				end
 			else
-				sharedLodOrigin = resolveReferencePosition(self.lodReference)
+				sharedLodOrigin = GetEferencePosition(self.lodReference)
 			end
 		end
 		if sharedLodOrigin == nil and RunService:IsClient() and Workspace.CurrentCamera then
@@ -963,14 +963,14 @@ function Rubble.Spawn(self: Rubble, paramsRaw: SpawnParams?): BasePart?
 		if typeof(sizeRaw) == "number" then
 			size = Vector3.new(sizeRaw, sizeRaw, sizeRaw)
 		else
-			size = sanitizeVector3(sizeRaw, self.templateSize)
+			size = CoerceVector3(sizeRaw, self.templateSize)
 		end
 	else
 		local scale =
 			n(g(params, "scale", "Scale"), self.tuning.defaultScale, self.tuning.minScale, self.tuning.maxScale)
 		local scaleRange = g(params, "scaleRange", "ScaleRange")
 		if scaleRange ~= nil then
-			local lo, hi = resolveRange(scaleRange, self.tuning.minScale, self.tuning.maxScale)
+			local lo, hi = GetAnge(scaleRange, self.tuning.minScale, self.tuning.maxScale)
 			scale = self.random:NextNumber(lo, hi)
 		end
 		size = self.templateSize * scale
@@ -981,25 +981,25 @@ function Rubble.Spawn(self: Rubble, paramsRaw: SpawnParams?): BasePart?
 		math.clamp(math.abs(size.Z), self.tuning.minSize, self.tuning.maxSize)
 	)
 
-	local cframe = sanitizeCFrame(
+	local cframe = CoerceCFrame(
 		g(params, "initialCFrame", "InitialCFrame"),
-		sanitizeCFrame(g(params, "cframe", "CFrame"), CFrame.new())
+		CoerceCFrame(g(params, "cframe", "CFrame"), CFrame.new())
 	)
-	local material = sanitizeMaterial(g(params, "material", "Material"), self.templateMaterial)
-	local color = sanitizeColor(g(params, "color", "Color"), self.templateColor)
+	local material = CoerceMaterial(g(params, "material", "Material"), self.templateMaterial)
+	local color = CoerceColor(g(params, "color", "Color"), self.templateColor)
 	local transparency = n(g(params, "transparency", "Transparency"), self.templateTransparency, 0, 1)
-	local customPhysicalProperties = resolvePhysical(
+	local customPhysicalProperties = GetPhysical(
 		g(params, "customPhysicalProperties", "CustomPhysicalProperties"),
 		g(params, "massOverride", "MassOverride"),
 		size,
 		self.templatePhysical
 	)
-	local impactForce = sanitizeVector3(g(params, "impactForce", "ImpactForce"), ZERO)
-	local impulse = sanitizeVector3(g(params, "impulse", "Impulse"), ZERO)
+	local impactForce = CoerceVector3(g(params, "impactForce", "ImpactForce"), ZERO)
+	local impulse = CoerceVector3(g(params, "impulse", "Impulse"), ZERO)
 		+ impactForce * self.tuning.forceToImpulseSeconds
 	impulse = clampMag(impulse, self.tuning.maxImpulse)
 	local angularImpulse =
-		clampMag(sanitizeVector3(g(params, "angularImpulse", "AngularImpulse"), ZERO), self.tuning.maxAngularImpulse)
+		clampMag(CoerceVector3(g(params, "angularImpulse", "AngularImpulse"), ZERO), self.tuning.maxAngularImpulse)
 	local anchored = b(g(params, "anchored", "Anchored"), false)
 	local enableGravity = b(g(params, "enableGravity", "EnableGravity"), true)
 	local visualOnly = b(g(params, "visualOnly", "VisualOnly"), self.visualOnly)
@@ -1196,7 +1196,4 @@ function Rubble.Destroy(self: Rubble)
 end
 
 Rubble.DefaultTuning = DEFAULT_TUNING
-
-Rubble.new = Rubble.New
-
 return Rubble

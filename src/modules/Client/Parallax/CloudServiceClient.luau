@@ -65,8 +65,8 @@ CloudServiceClient.ServiceName = "CloudServiceClient"
 
 local e: typeof(React.createElement) = React.createElement
 
-local catalog: Catalog = ParallaxServiceUtils.normalizeCatalog(ParallaxBackgrounds)
-local assets: { CloudAssetDefinition } = CloudServiceUtils.normalizeAssetDefinitions(Clouds)
+local catalog: Catalog = ParallaxServiceUtils.NormalizeCatalog(ParallaxBackgrounds)
+local assets: { CloudAssetDefinition } = CloudServiceUtils.NormalizeAssetDefinitions(Clouds)
 local random = Random.new()
 local maid: MaidClass? = nil
 local rootFolder: Folder? = nil
@@ -83,7 +83,7 @@ local function createFolder(parent: Instance, name: string): Folder
 	local existing = parent:FindFirstChild(name)
 	if existing ~= nil then
 		if existing:IsA("Folder") then
-			return WorkspaceFolders.manageFolder(existing, parent) or existing
+			return WorkspaceFolders.ManageFolder(existing, parent) or existing
 		end
 		existing:Destroy()
 	end
@@ -91,14 +91,14 @@ local function createFolder(parent: Instance, name: string): Folder
 	local folder = Instance.new("Folder")
 	folder.Name = name
 	folder.Parent = parent
-	return WorkspaceFolders.manageFolder(folder, parent) or folder
+	return WorkspaceFolders.ManageFolder(folder, parent) or folder
 end
 
 local function getCamera(): Camera?
 	return Workspace.CurrentCamera
 end
 
-local function resolveCharacterRootPosition(player: Player?): Vector3?
+local function GetCharacterRootPosition(player: Player?): Vector3?
 	if player == nil then
 		return nil
 	end
@@ -111,7 +111,7 @@ local function resolveCharacterRootPosition(player: Player?): Vector3?
 	return nil
 end
 
-local function resolveCameraSnapshot(camera: Camera?): CameraSnapshot
+local function GetCameraSnapshot(camera: Camera?): CameraSnapshot
 	if camera == nil then
 		return {
 			fieldOfView = CloudConstants.DEFAULT_CAMERA_FIELD_OF_VIEW,
@@ -132,13 +132,13 @@ local function computeVisibleExtentsAtDistance(
 	distance: number
 ): (number, number)
 	local aspectRatio = if viewportSize.Y > 0 then viewportSize.X / viewportSize.Y else 16 / 9
-	local resolvedDistance = math.max(distance, 1)
-	local visibleHeight = 2 * resolvedDistance * math.tan(math.rad(fieldOfViewDegrees) * 0.5)
+	local distanceValue = math.max(distance, 1)
+	local visibleHeight = 2 * distanceValue * math.tan(math.rad(fieldOfViewDegrees) * 0.5)
 	local visibleWidth = visibleHeight * aspectRatio
 	return visibleWidth, visibleHeight
 end
 
-local function resolveSurfacePixelsPerStud(widthStuds: number, heightStuds: number): number
+local function GetSurfacePixelsPerStud(widthStuds: number, heightStuds: number): number
 	local largestAxis = math.max(widthStuds, heightStuds, 1)
 	return math.max(
 		1,
@@ -154,20 +154,20 @@ local function toCanvasPixels(studs: number, pixelsPerStud: number): number
 	)
 end
 
-local function resolveWorldFolder(): Folder?
-	local worldFolder = WorkspaceFolders.findFolderInGameOrWorkspace(CloudConstants.WORLD_FOLDER_NAME)
+local function GetWorldFolder(): Folder?
+	local worldFolder = WorkspaceFolders.FindFolderInGameOrWorkspace(CloudConstants.WORLD_FOLDER_NAME)
 	if worldFolder ~= nil and worldFolder:IsA("Folder") then
 		return worldFolder
 	end
 	return nil
 end
 
-local function resolveRootParent(): Instance
-	local worldFolder = resolveWorldFolder()
+local function GetRootParent(): Instance
+	local worldFolder = GetWorldFolder()
 	if worldFolder ~= nil then
 		return worldFolder
 	end
-	return WorkspaceFolders.getOrCreateFolderInGame(CloudConstants.ROOT_PARENT_FALLBACK_NAME)
+	return WorkspaceFolders.GetOrCreateFolderInGame(CloudConstants.ROOT_PARENT_FALLBACK_NAME)
 end
 
 local function destroySurfaceRuntime()
@@ -180,11 +180,11 @@ local function destroySurfaceRuntime()
 		current.anchorPart:Destroy()
 	end
 	surfaceRuntime = nil
-	CloudServiceUtils.clearSurfaceState()
+	CloudServiceUtils.ClearSurfaceState()
 end
 
 local function ensureRootFolder()
-	local parent = resolveRootParent()
+	local parent = GetRootParent()
 	if rootFolder ~= nil and rootFolder.Parent == parent then
 		return
 	end
@@ -237,7 +237,7 @@ local function ensureSurfaceRuntime(): SurfaceRuntime?
 	return runtime
 end
 
-local function resolveWorldLayoutSnapshot(stateRaw: any?): WorldLayoutSnapshot
+local function GetWorldLayoutSnapshot(stateRaw: any?): WorldLayoutSnapshot
 	local fallbackState = ((WorldGenerationServiceClient :: any).state :: { [string]: any }?) or {} :: { [string]: any }
 	local state = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else fallbackState
 	local tileDepth = if typeof(state.tileDepth) == "number" then math.max(state.tileDepth, 0.5) else 4
@@ -252,7 +252,7 @@ local function resolveWorldLayoutSnapshot(stateRaw: any?): WorldLayoutSnapshot
 		chunkSize = chunkSize,
 		tileSize = tileSize,
 		renderDistanceChunks = renderDistanceChunks,
-		horizontalVisionStuds = ParallaxServiceUtils.computeHorizontalVisionStuds(
+		horizontalVisionStuds = ParallaxServiceUtils.ComputeHorizontalVisionStuds(
 			chunkSize,
 			tileSize,
 			renderDistanceChunks
@@ -260,9 +260,9 @@ local function resolveWorldLayoutSnapshot(stateRaw: any?): WorldLayoutSnapshot
 	}
 end
 
-local function resolveCurrentLayoutSnapshot(): LayoutSnapshot
-	local cameraSnapshot = resolveCameraSnapshot(getCamera())
-	local worldSnapshot = resolveWorldLayoutSnapshot(nil)
+local function GetCurrentLayoutSnapshot(): LayoutSnapshot
+	local cameraSnapshot = GetCameraSnapshot(getCamera())
+	local worldSnapshot = GetWorldLayoutSnapshot(nil)
 	return {
 		fieldOfView = cameraSnapshot.fieldOfView,
 		viewportSize = cameraSnapshot.viewportSize,
@@ -275,7 +275,7 @@ local function resolveCurrentLayoutSnapshot(): LayoutSnapshot
 end
 
 local function refreshWorldAttributes()
-	local worldFolder = resolveWorldFolder()
+	local worldFolder = GetWorldFolder()
 	if worldFolder == nil then
 		worldOrigin = Vector3.zero
 		basePlaneX = 0
@@ -303,8 +303,8 @@ local function refreshWorldAttributes()
 	basePlaneX = resolvedBasePlaneX
 end
 
-local function resolveGameplayPlaneReferenceDistance(cameraPositionX: number): number
-	referenceGameplayPlaneDistanceX = ParallaxServiceUtils.resolveStableGameplayPlaneDistance(
+local function GetGameplayPlaneReferenceDistance(cameraPositionX: number): number
+	referenceGameplayPlaneDistanceX = ParallaxServiceUtils.GetStableGameplayPlaneDistance(
 		referenceGameplayPlaneDistanceX,
 		cameraPositionX,
 		worldOrigin.X,
@@ -314,7 +314,7 @@ local function resolveGameplayPlaneReferenceDistance(cameraPositionX: number): n
 	return referenceGameplayPlaneDistanceX :: number
 end
 
-local function resolveCloudSizing(visibleHeight: number, cloud: Cloud.Cloud): CloudSizing
+local function GetCloudSizing(visibleHeight: number, cloud: Cloud.Cloud): CloudSizing
 	local scaleAlpha = math.clamp(
 		(cloud.scale - CloudConstants.CLOUD_MIN_SCALE)
 			/ (CloudConstants.CLOUD_MAX_SCALE - CloudConstants.CLOUD_MIN_SCALE),
@@ -332,7 +332,7 @@ local function resolveCloudSizing(visibleHeight: number, cloud: Cloud.Cloud): Cl
 	}
 end
 
-local function resolveTargetCloudCount(viewportSize: Vector2): number
+local function GetTargetCloudCount(viewportSize: Vector2): number
 	local target = math.floor(viewportSize.X / CloudConstants.CLOUD_TARGET_VIEWPORT_PIXELS + 0.5)
 	return math.clamp(target, CloudConstants.CLOUD_MIN_COUNT, CloudConstants.CLOUD_MAX_COUNT)
 end
@@ -349,7 +349,7 @@ local function releaseCloud(cloud: Cloud.Cloud)
 	table.insert(pooledClouds, cloud)
 end
 
-local function resolveRandomAsset(): CloudAssetDefinition?
+local function getRandomAsset(): CloudAssetDefinition?
 	if #assets <= 0 then
 		return nil
 	end
@@ -357,7 +357,7 @@ local function resolveRandomAsset(): CloudAssetDefinition?
 end
 
 local function spawnCloud(cameraZ: number, visibleWidth: number)
-	local asset = resolveRandomAsset()
+	local asset = getRandomAsset()
 	if asset == nil then
 		return
 	end
@@ -367,7 +367,7 @@ local function spawnCloud(cameraZ: number, visibleWidth: number)
 	local spawnMinOffsetZ = -visibleWidth * CloudConstants.CLOUD_SPAWN_LEFT_MIN_FACTOR
 	local spawnMaxOffsetZ = -visibleWidth * CloudConstants.CLOUD_SPAWN_LEFT_MAX_FACTOR
 	local scale = random:NextNumber(CloudConstants.CLOUD_MIN_SCALE, CloudConstants.CLOUD_MAX_SCALE)
-	cloud:reset({
+	cloud:Reset({
 		id = tostring(nextCloudId),
 		asset = asset,
 		scale = scale,
@@ -393,7 +393,7 @@ end
 local function removeInactiveClouds()
 	for index = #activeClouds, 1, -1 do
 		local cloud = activeClouds[index]
-		if not cloud:isActive() then
+		if not cloud:IsActive() then
 			table.remove(activeClouds, index)
 			releaseCloud(cloud)
 		end
@@ -403,7 +403,7 @@ end
 local function updateCloudPool(targetCount: number, cameraZ: number, visibleWidth: number)
 	local liveCount = 0
 	for _, cloud in activeClouds do
-		if not cloud:isRetiring() then
+		if not cloud:IsRetiring() then
 			liveCount += 1
 		end
 	end
@@ -415,7 +415,7 @@ local function updateCloudPool(targetCount: number, cameraZ: number, visibleWidt
 end
 
 local function publishServiceState()
-	CloudServiceUtils.setServiceState({
+	CloudServiceUtils.SetServiceState({
 		initialized = initialized,
 		activeCloudCount = #activeClouds,
 		pooledCloudCount = #pooledClouds,
@@ -428,7 +428,7 @@ local function preloadAssets()
 		return
 	end
 
-	local assetIds = CloudServiceUtils.collectAssetIds(assets)
+	local assetIds = CloudServiceUtils.CollectAssetIds(assets)
 	if #assetIds <= 0 then
 		return
 	end
@@ -447,15 +447,15 @@ local function render()
 	local currentSurfaceRuntime = ensureSurfaceRuntime()
 	local camera = getCamera()
 	if currentSurfaceRuntime == nil or camera == nil or #assets <= 0 then
-		CloudServiceUtils.clearSurfaceState()
+		CloudServiceUtils.ClearSurfaceState()
 		return
 	end
 
-	local layoutSnapshot = resolveCurrentLayoutSnapshot()
+	local layoutSnapshot = GetCurrentLayoutSnapshot()
 	local cameraPosition = camera.CFrame.Position
-	local subjectPosition = resolveCharacterRootPosition(Players.LocalPlayer)
+	local subjectPosition = GetCharacterRootPosition(Players.LocalPlayer)
 	local planeX = worldOrigin.X + basePlaneX - CloudConstants.CLOUD_PLANE_DEPTH_BLOCKS * layoutSnapshot.tileDepth
-	local gameplayReferenceDistance = resolveGameplayPlaneReferenceDistance(cameraPosition.X)
+	local gameplayReferenceDistance = GetGameplayPlaneReferenceDistance(cameraPosition.X)
 	local coverageDistance = gameplayReferenceDistance + math.abs((worldOrigin.X + basePlaneX) - planeX)
 	local visibleWidth, visibleHeight =
 		computeVisibleExtentsAtDistance(layoutSnapshot.fieldOfView, layoutSnapshot.viewportSize, coverageDistance)
@@ -464,18 +464,18 @@ local function render()
 	local surfaceHalfWidth = surfaceWidth * 0.5
 	local retireHalfWidth = visibleWidth * 0.5
 	local offscreenMargin = visibleWidth * CloudConstants.CLOUD_OFFSCREEN_MARGIN_FACTOR
-	local scrollPositionZ = ParallaxServiceUtils.resolveScrollPositionZ(cameraPosition.Z, subjectPosition)
+	local scrollPositionZ = ParallaxServiceUtils.GetScrollPositionZ(cameraPosition.Z, subjectPosition)
 
-	updateCloudPool(resolveTargetCloudCount(layoutSnapshot.viewportSize), scrollPositionZ, visibleWidth)
+	updateCloudPool(GetTargetCloudCount(layoutSnapshot.viewportSize), scrollPositionZ, visibleWidth)
 
 	local now = os.clock()
 	for _, cloud in activeClouds do
-		local sizing = resolveCloudSizing(visibleHeight, cloud)
-		cloud:step(now, scrollPositionZ, sizing.width, retireHalfWidth, offscreenMargin)
+		local sizing = GetCloudSizing(visibleHeight, cloud)
+		cloud:Step(now, scrollPositionZ, sizing.width, retireHalfWidth, offscreenMargin)
 	end
 	removeInactiveClouds()
 
-	local anchorCenterY = ParallaxServiceUtils.resolveWorldHorizonParallaxCenterY(
+	local anchorCenterY = ParallaxServiceUtils.GetWorldHorizonParallaxCenterY(
 		worldOrigin.Y,
 		cameraPosition.Y,
 		visibleHeight,
@@ -485,7 +485,7 @@ local function render()
 		subjectPosition
 	)
 	local anchorCenterZ = cameraPosition.Z
-	local pixelsPerStud = resolveSurfacePixelsPerStud(surfaceWidth, surfaceHeight)
+	local pixelsPerStud = GetSurfacePixelsPerStud(surfaceWidth, surfaceHeight)
 	local canvasWidth = toCanvasPixels(surfaceWidth, pixelsPerStud)
 	local canvasHeight = toCanvasPixels(surfaceHeight, pixelsPerStud)
 	currentSurfaceRuntime.anchorPart.Size = Vector3.new(catalog.settings.segmentThickness, surfaceHeight, surfaceWidth)
@@ -499,7 +499,7 @@ local function render()
 			continue
 		end
 
-		local sizing = resolveCloudSizing(visibleHeight, cloud)
+		local sizing = GetCloudSizing(visibleHeight, cloud)
 		local cloudCenterY = sizing.height * 0.5 + cloud.verticalAlpha * math.max(surfaceHeight - sizing.height, 0)
 		table.insert(cloudViews, {
 			id = cloud.id,
@@ -521,7 +521,7 @@ local function render()
 		return left.zIndex < right.zIndex
 	end)
 
-	CloudServiceUtils.setSurfaceState({
+	CloudServiceUtils.SetSurfaceState({
 		visible = true,
 		adornee = currentSurfaceRuntime.anchorPart,
 		face = surfaceFace,
@@ -558,15 +558,15 @@ function CloudServiceClient.Init(_self: any, _container: Instance?)
 			end
 			rootFolder = nil
 			for _, cloud in activeClouds do
-				cloud:destroy()
+				cloud:Destroy()
 			end
 			for _, cloud in pooledClouds do
-				cloud:destroy()
+				cloud:Destroy()
 			end
 			table.clear(activeClouds)
 			table.clear(pooledClouds)
 			initialized = false
-			CloudServiceUtils.clearServiceState()
+			CloudServiceUtils.ClearServiceState()
 		end)
 	end
 
@@ -585,12 +585,12 @@ end
 
 function CloudServiceClient.ForceRefresh(_self: any)
 	for _, cloud in activeClouds do
-		cloud:beginFadeOut(os.clock())
+		cloud:BeginFadeOut(os.clock())
 	end
 end
 
 function CloudServiceClient.GetState(_self: any): CloudServiceUtils.ServiceState
-	return CloudServiceUtils.getServiceState()
+	return CloudServiceUtils.GetServiceState()
 end
 
 function CloudServiceClient.Destroy(_self: any)
@@ -600,10 +600,4 @@ function CloudServiceClient.Destroy(_self: any)
 	maid:DoCleaning()
 	maid = nil
 end
-
-CloudServiceClient.init = CloudServiceClient.Init
-CloudServiceClient.forceRefresh = CloudServiceClient.ForceRefresh
-CloudServiceClient.getState = CloudServiceClient.GetState
-CloudServiceClient.destroy = CloudServiceClient.Destroy
-
 return CloudServiceClient

@@ -104,7 +104,7 @@ local function useClickOutside(options: ClickOutsideOptions?): ClickOutsideResul
 				return
 			end
 
-			local screenPosition = GuiUtils.ResolveScreenPositionFromInput(inputObject)
+			local screenPosition = GuiUtils.GetScreenPositionFromInput(inputObject)
 			if screenPosition == nil then
 				return
 			end

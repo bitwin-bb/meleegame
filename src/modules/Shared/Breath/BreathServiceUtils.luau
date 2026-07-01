@@ -41,14 +41,14 @@ local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function sanitizeNumber(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+local function CoerceNumber(valueRaw: any, minimum: number, maximum: number, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
 	return math.clamp(valueRaw, minimum, maximum)
 end
 
-local function sanitizeBoolean(valueRaw: any, fallback: boolean): boolean
+local function CoerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
@@ -68,18 +68,18 @@ function BreathServiceUtils.CreateDefaultConfig(): BreathServiceConfig
 	}
 end
 
-function BreathServiceUtils.SanitizeConfig(configRaw: any, fallbackRaw: BreathServiceConfig?): BreathServiceConfig
+function BreathServiceUtils.CoerceConfig(configRaw: any, fallbackRaw: BreathServiceConfig?): BreathServiceConfig
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else BreathServiceUtils.CreateDefaultConfig()
 	local source = if typeof(configRaw) == "table" then configRaw else {} :: any
 	return {
-		maxBreathSeconds = sanitizeNumber(source.maxBreathSeconds, 1, 120, fallback.maxBreathSeconds),
-		graceDuration = sanitizeNumber(source.graceDuration, 0, 10, fallback.graceDuration),
-		recoveryDelay = sanitizeNumber(source.recoveryDelay, 0, 10, fallback.recoveryDelay),
-		recoveryDuration = sanitizeNumber(source.recoveryDuration, 0.1, 30, fallback.recoveryDuration),
-		drowningTickRate = sanitizeNumber(source.drowningTickRate, 0.05, 5, fallback.drowningTickRate),
-		drowningDamage = sanitizeNumber(source.drowningDamage, 0, 100, fallback.drowningDamage),
-		updateRate = sanitizeNumber(source.updateRate, 1, 60, fallback.updateRate),
-		statePushInterval = sanitizeNumber(source.statePushInterval, 0.03, 2, fallback.statePushInterval),
+		maxBreathSeconds = CoerceNumber(source.maxBreathSeconds, 1, 120, fallback.maxBreathSeconds),
+		graceDuration = CoerceNumber(source.graceDuration, 0, 10, fallback.graceDuration),
+		recoveryDelay = CoerceNumber(source.recoveryDelay, 0, 10, fallback.recoveryDelay),
+		recoveryDuration = CoerceNumber(source.recoveryDuration, 0.1, 30, fallback.recoveryDuration),
+		drowningTickRate = CoerceNumber(source.drowningTickRate, 0.05, 5, fallback.drowningTickRate),
+		drowningDamage = CoerceNumber(source.drowningDamage, 0, 100, fallback.drowningDamage),
+		updateRate = CoerceNumber(source.updateRate, 1, 60, fallback.updateRate),
+		statePushInterval = CoerceNumber(source.statePushInterval, 0.03, 2, fallback.statePushInterval),
 	}
 end
 
@@ -101,16 +101,16 @@ end
 function BreathServiceUtils.CreateState(stateRaw: any, fallbackRaw: BreathServiceState?): BreathServiceState
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else BreathServiceUtils.CreateDefaultState()
 	local source = if typeof(stateRaw) == "table" then stateRaw else {} :: any
-	local maxBreath = sanitizeNumber(source.maxBreath, 1, 120, fallback.maxBreath)
+	local maxBreath = CoerceNumber(source.maxBreath, 1, 120, fallback.maxBreath)
 	return {
-		ready = sanitizeBoolean(source.ready, fallback.ready),
+		ready = CoerceBoolean(source.ready, fallback.ready),
 		maxBreath = maxBreath,
-		breath = sanitizeNumber(source.breath, 0, maxBreath, fallback.breath),
-		graceRemaining = sanitizeNumber(source.graceRemaining, 0, 30, fallback.graceRemaining),
-		isUnderwater = sanitizeBoolean(source.isUnderwater, fallback.isUnderwater),
-		isBreathingBlocked = sanitizeBoolean(source.isBreathingBlocked, fallback.isBreathingBlocked),
-		isDrowning = sanitizeBoolean(source.isDrowning, fallback.isDrowning),
-		submersionRatio = sanitizeNumber(source.submersionRatio, 0, 1, fallback.submersionRatio),
+		breath = CoerceNumber(source.breath, 0, maxBreath, fallback.breath),
+		graceRemaining = CoerceNumber(source.graceRemaining, 0, 30, fallback.graceRemaining),
+		isUnderwater = CoerceBoolean(source.isUnderwater, fallback.isUnderwater),
+		isBreathingBlocked = CoerceBoolean(source.isBreathingBlocked, fallback.isBreathingBlocked),
+		isDrowning = CoerceBoolean(source.isDrowning, fallback.isDrowning),
+		submersionRatio = CoerceNumber(source.submersionRatio, 0, 1, fallback.submersionRatio),
 		breathingLiquidType = if isFiniteNumber(source.breathingLiquidType)
 			then math.max(0, math.floor(source.breathingLiquidType))
 			else fallback.breathingLiquidType,
@@ -121,11 +121,4 @@ end
 function BreathServiceUtils.CloneState(state: BreathServiceState): BreathServiceState
 	return Sift.Dictionary.copy(state) :: BreathServiceState
 end
-
-BreathServiceUtils.createDefaultConfig = BreathServiceUtils.CreateDefaultConfig
-BreathServiceUtils.sanitizeConfig = BreathServiceUtils.SanitizeConfig
-BreathServiceUtils.createDefaultState = BreathServiceUtils.CreateDefaultState
-BreathServiceUtils.createState = BreathServiceUtils.CreateState
-BreathServiceUtils.cloneState = BreathServiceUtils.CloneState
-
 return BreathServiceUtils

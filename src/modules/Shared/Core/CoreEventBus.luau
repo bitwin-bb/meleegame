@@ -162,7 +162,7 @@ function EventBus._addListener(
 	self.listenerById[listenerId] = record
 
 	return function()
-		self:unsubscribe(listenerId)
+		self:Unsubscribe(listenerId)
 	end
 end
 
@@ -274,7 +274,7 @@ function EventBus.Publish(self: EventBus, channelRaw: any, eventNameRaw: any, pa
 			fired += 1
 			pcall(record.handler, payload, eventName, channel)
 			if record.once then
-				self:unsubscribe(record.id)
+				self:Unsubscribe(record.id)
 			end
 		end
 	end
@@ -303,18 +303,9 @@ function EventBus.Destroy(self: EventBus)
 		channels[#channels + 1] = channel
 	end
 	for _, channel in channels do
-		self:clearChannel(channel)
+		self:ClearChannel(channel)
 	end
 	table.clear(self.channels)
 	table.clear(self.listenerById)
 end
-
-EventBus.new = EventBus.New
-EventBus.subscribe = EventBus.Subscribe
-EventBus.once = EventBus.Once
-EventBus.unsubscribe = EventBus.Unsubscribe
-EventBus.publish = EventBus.Publish
-EventBus.clearChannel = EventBus.ClearChannel
-EventBus.destroy = EventBus.Destroy
-
 return EventBus

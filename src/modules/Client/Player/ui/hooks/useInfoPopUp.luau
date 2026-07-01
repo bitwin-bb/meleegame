@@ -33,7 +33,7 @@ local DEFAULT_FROM_Y_OFFSET_STUDS = 0
 local DEFAULT_TO_Y_OFFSET_STUDS = 2.7
 local DEFAULT_MIN_SCALE = 0.2
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
@@ -51,16 +51,16 @@ end
 local function useInfoPopUp(options: InfoPopUpOptions?): InfoPopUpState
 	local enabled = if options ~= nil and options.enabled ~= nil then options.enabled == true else true
 	local riseDuration =
-		sanitizeNumber(if options ~= nil then options.riseDuration else nil, DEFAULT_RISE_DURATION, 0.05, 20)
+		CoerceNumber(if options ~= nil then options.riseDuration else nil, DEFAULT_RISE_DURATION, 0.05, 20)
 	local holdDuration =
-		sanitizeNumber(if options ~= nil then options.holdDuration else nil, DEFAULT_HOLD_DURATION, 0, 30)
+		CoerceNumber(if options ~= nil then options.holdDuration else nil, DEFAULT_HOLD_DURATION, 0, 30)
 	local shrinkDuration =
-		sanitizeNumber(if options ~= nil then options.shrinkDuration else nil, DEFAULT_SHRINK_DURATION, 0.05, 20)
+		CoerceNumber(if options ~= nil then options.shrinkDuration else nil, DEFAULT_SHRINK_DURATION, 0.05, 20)
 	local fromYOffsetStuds =
-		sanitizeNumber(if options ~= nil then options.fromYOffsetStuds else nil, DEFAULT_FROM_Y_OFFSET_STUDS, -100, 100)
+		CoerceNumber(if options ~= nil then options.fromYOffsetStuds else nil, DEFAULT_FROM_Y_OFFSET_STUDS, -100, 100)
 	local toYOffsetStuds =
-		sanitizeNumber(if options ~= nil then options.toYOffsetStuds else nil, DEFAULT_TO_Y_OFFSET_STUDS, -100, 100)
-	local minScale = sanitizeNumber(if options ~= nil then options.minScale else nil, DEFAULT_MIN_SCALE, 0.01, 1)
+		CoerceNumber(if options ~= nil then options.toYOffsetStuds else nil, DEFAULT_TO_Y_OFFSET_STUDS, -100, 100)
+	local minScale = CoerceNumber(if options ~= nil then options.minScale else nil, DEFAULT_MIN_SCALE, 0.01, 1)
 	local eventToken = if options ~= nil then options.eventToken else nil
 	local totalDuration = riseDuration + holdDuration + shrinkDuration
 

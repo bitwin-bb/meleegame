@@ -27,7 +27,7 @@ local DEFAULT_COLLAPSED_SIZE = Vector2.new(44, 44)
 local DEFAULT_EXPANDED_SIZE = Vector2.new(52, 52)
 local DEFAULT_PHASE_DURATION = 0.7
 
-local function sanitizeVector2(valueRaw: any, fallback: Vector2): Vector2
+local function CoerceVector2(valueRaw: any, fallback: Vector2): Vector2
 	if typeof(valueRaw) ~= "Vector2" then
 		return fallback
 	end
@@ -37,7 +37,7 @@ local function sanitizeVector2(valueRaw: any, fallback: Vector2): Vector2
 	return valueRaw
 end
 
-local function sanitizeDuration(valueRaw: any, fallback: number): number
+local function CoerceDuration(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
@@ -54,15 +54,15 @@ end
 
 local function usePad(options: PadOptions?): PadState
 	local enabled = if options ~= nil and options.enabled ~= nil then options.enabled == true else true
-	local collapsedSize = sanitizeVector2(if options ~= nil then options.collapsedSize else nil, DEFAULT_COLLAPSED_SIZE)
+	local collapsedSize = CoerceVector2(if options ~= nil then options.collapsedSize else nil, DEFAULT_COLLAPSED_SIZE)
 	local requestedExpandedSize =
-		sanitizeVector2(if options ~= nil then options.expandedSize else nil, DEFAULT_EXPANDED_SIZE)
+		CoerceVector2(if options ~= nil then options.expandedSize else nil, DEFAULT_EXPANDED_SIZE)
 	local expandedSize = Vector2.new(
 		math.max(collapsedSize.X, requestedExpandedSize.X),
 		math.max(collapsedSize.Y, requestedExpandedSize.Y)
 	)
 	local phaseDuration =
-		sanitizeDuration(if options ~= nil then options.phaseDuration else nil, DEFAULT_PHASE_DURATION)
+		CoerceDuration(if options ~= nil then options.phaseDuration else nil, DEFAULT_PHASE_DURATION)
 
 	local phaseElapsedRef = React.useRef(0)
 	local expandingRef = React.useRef(true)

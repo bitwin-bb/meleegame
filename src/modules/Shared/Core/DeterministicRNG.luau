@@ -16,15 +16,15 @@ export type WeightedEntry<T> = {
 export type RNG = {
 	state: number,
 	initialSeed: number,
-	nextUInt32: (self: RNG) -> number,
-	nextNumber: (self: RNG) -> number,
-	nextInteger: (self: RNG, minValue: number, maxValue: number) -> number,
-	nextRange: (self: RNG, minValue: number, maxValue: number) -> number,
-	chance: (self: RNG, probability: number) -> boolean,
+	NextUInt32: (self: RNG) -> number,
+	NextNumber: (self: RNG) -> number,
+	NextInteger: (self: RNG, minValue: number, maxValue: number) -> number,
+	NextRange: (self: RNG, minValue: number, maxValue: number) -> number,
+	Chance: (self: RNG, probability: number) -> boolean,
 	pickWeighted: <T>(self: RNG, entries: { WeightedEntry<T> }) -> T?,
 	shuffleInPlace: <T>(self: RNG, array: { T }) -> { T },
-	fork: (self: RNG, saltRaw: any) -> RNG,
-	reset: (self: RNG) -> (),
+	Fork: (self: RNG, saltRaw: any) -> RNG,
+	Reset: (self: RNG) -> (),
 }
 
 export type NoiseWrapper = {
@@ -84,11 +84,11 @@ local function clampInteger(valueRaw: any, minValue: number, maxValue: number): 
 end
 
 local function normalizeSeed(seedRaw: any): number
-	return Rand.seed(seedRaw)
+	return Rand.Seed(seedRaw)
 end
 
 local function xorshift32(state: number): number
-	local nextSeed = Rand.step(state)
+	local nextSeed = Rand.Step(state)
 	return nextSeed
 end
 
@@ -100,7 +100,7 @@ local function floorToInteger(value: number): number
 end
 
 local function hashCoordinatesInternal(xRaw: number, yRaw: number, zRaw: number, seedRaw: number): number
-	return Rand.hashCoordinates(Rand.uint32(seedRaw), floorToInteger(xRaw), floorToInteger(yRaw), floorToInteger(zRaw))
+	return Rand.HashCoordinates(Rand.Uint32(seedRaw), floorToInteger(xRaw), floorToInteger(yRaw), floorToInteger(zRaw))
 end
 
 local function hashToUnitFloat(hashValue: number): number
@@ -180,7 +180,7 @@ function RNG.NextUInt32(self: RNG): number
 end
 
 function RNG.NextNumber(self: RNG): number
-	local nextSeed, value = Rand.number(self.state)
+	local nextSeed, value = Rand.Number(self.state)
 	self.state = nextSeed
 	return value
 end
@@ -198,7 +198,7 @@ function RNG.NextInteger(self: RNG, minValueRaw: any, maxValueRaw: any): number
 		return minValue
 	end
 
-	local nextSeed, value = Rand.integer(self.state, minValue, maxValue)
+	local nextSeed, value = Rand.Integer(self.state, minValue, maxValue)
 	self.state = nextSeed
 	return value
 end
@@ -212,14 +212,14 @@ function RNG.NextRange(self: RNG, minValueRaw: any, maxValueRaw: any): number
 		minValue = tmp
 	end
 
-	local nextSeed, value = Rand.number(self.state, minValue, maxValue)
+	local nextSeed, value = Rand.Number(self.state, minValue, maxValue)
 	self.state = nextSeed
 	return value
 end
 
 function RNG.Chance(self: RNG, probabilityRaw: any): boolean
 	local probability = if typeof(probabilityRaw) == "number" then probabilityRaw else 0
-	local nextSeed, value = Rand.chance(self.state, probability)
+	local nextSeed, value = Rand.Chance(self.state, probability)
 	self.state = nextSeed
 	return value
 end
@@ -232,7 +232,7 @@ end
 
 function RNG.shuffleInPlace<T>(self: RNG, array: { T }): { T }
 	for index = #array, 2, -1 do
-		local swapIndex = self:nextInteger(1, index)
+		local swapIndex = self:NextInteger(1, index)
 		array[index], array[swapIndex] = array[swapIndex], array[index]
 	end
 	return array
@@ -253,7 +253,7 @@ function DeterministicRNG.SeedFrom(seedRaw: any): number
 end
 
 function DeterministicRNG.HashString(value: string): number
-	return Rand.hashString(value)
+	return Rand.HashString(value)
 end
 
 function DeterministicRNG.HashCoordinates(x: number, y: number, z: number?, seedRaw: any): number
@@ -293,7 +293,7 @@ function DeterministicRNG.CreateNoise(seedRaw: any): NoiseWrapper
 		local persistence = if typeof(persistenceRaw) == "number" then persistenceRaw else 0.5
 		local lacunarity = if typeof(lacunarityRaw) == "number" then lacunarityRaw else 2
 
-		return Noise.fbmOctaves(octaves, persistence, lacunarity, function(_, frequency)
+		return Noise.FbmOctaves(octaves, persistence, lacunarity, function(_, frequency)
 			return sampleValueNoise2D(self.seed, x * frequency, y * frequency)
 		end)
 	end
@@ -311,16 +311,10 @@ function DeterministicRNG.CreateNoise(seedRaw: any): NoiseWrapper
 		local persistence = if typeof(persistenceRaw) == "number" then persistenceRaw else 0.5
 		local lacunarity = if typeof(lacunarityRaw) == "number" then lacunarityRaw else 2
 
-		return Noise.fbmOctaves(octaves, persistence, lacunarity, function(_, frequency)
+		return Noise.FbmOctaves(octaves, persistence, lacunarity, function(_, frequency)
 			return sampleValueNoise3D(self.seed, x * frequency, y * frequency, z * frequency)
 		end)
 	end
-
-	wrapper.sample2D = wrapper.Sample2D
-	wrapper.sample3D = wrapper.Sample3D
-	wrapper.fbm2D = wrapper.Fbm2D
-	wrapper.fbm3D = wrapper.Fbm3D
-
 	return wrapper
 end
 
@@ -328,19 +322,4 @@ function DeterministicRNG.weightedPick<T>(seedRaw: any, entries: { WeightedEntry
 	local rng = DeterministicRNG.New(seedRaw)
 	return rng:pickWeighted(entries)
 end
-
-DeterministicRNG.new = DeterministicRNG.New
-RNG.nextUInt32 = RNG.NextUInt32
-RNG.nextNumber = RNG.NextNumber
-RNG.nextInteger = RNG.NextInteger
-RNG.nextRange = RNG.NextRange
-RNG.chance = RNG.Chance
-RNG.fork = RNG.Fork
-RNG.reset = RNG.Reset
-DeterministicRNG.seedFrom = DeterministicRNG.SeedFrom
-DeterministicRNG.hashString = DeterministicRNG.HashString
-DeterministicRNG.hashCoordinates = DeterministicRNG.HashCoordinates
-DeterministicRNG.coordinateRandom01 = DeterministicRNG.CoordinateRandom01
-DeterministicRNG.createNoise = DeterministicRNG.CreateNoise
-
 return DeterministicRNG

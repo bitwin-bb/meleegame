@@ -17,13 +17,13 @@ local CelestialCycleClassServer = {}
 CelestialCycleClassServer.__index = CelestialCycleClassServer
 
 local function cloneState(state: CelestialCycleState): CelestialCycleState
-	return RotationMath.resolveCycleState(state.clockTime, state.worldDayIndex)
+	return RotationMath.GetCycleState(state.clockTime, state.worldDayIndex)
 end
 
 function CelestialCycleClassServer.new(): CelestialCycleClassServer
 	local self = setmetatable({}, CelestialCycleClassServer)
 	self.maid = Maid.new()
-	self.stateValue = ValueObject.new(RotationMath.resolveCycleState(0, 0), "table")
+	self.stateValue = ValueObject.new(RotationMath.GetCycleState(0, 0), "table")
 	self.stateChangedSignal = RxSignal.new(function()
 		return self:ObserveState()
 	end)
@@ -33,8 +33,8 @@ function CelestialCycleClassServer.new(): CelestialCycleClassServer
 end
 
 function CelestialCycleClassServer.PublishFromWeather(self: CelestialCycleClassServer)
-	local weatherState = WeatherServiceServer:getState()
-	self.stateValue.Value = RotationMath.resolveCycleState(weatherState.clockTime, weatherState.worldDayIndex)
+	local weatherState = WeatherServiceServer:GetState()
+	self.stateValue.Value = RotationMath.GetCycleState(weatherState.clockTime, weatherState.worldDayIndex)
 end
 
 function CelestialCycleClassServer.Init(self: CelestialCycleClassServer)
@@ -75,14 +75,6 @@ function CelestialCycleClassServer.Destroy(self: CelestialCycleClassServer)
 	end
 	self.initialized = false
 end
-
-CelestialCycleClassServer.publishFromWeather = CelestialCycleClassServer.PublishFromWeather
-CelestialCycleClassServer.init = CelestialCycleClassServer.Init
-CelestialCycleClassServer.observeState = CelestialCycleClassServer.ObserveState
-CelestialCycleClassServer.getStateChangedSignal = CelestialCycleClassServer.GetStateChangedSignal
-CelestialCycleClassServer.getState = CelestialCycleClassServer.GetState
-CelestialCycleClassServer.destroy = CelestialCycleClassServer.Destroy
-
 export type CelestialCycleClassServer = typeof(setmetatable(
 	{} :: {
 		maid: any,

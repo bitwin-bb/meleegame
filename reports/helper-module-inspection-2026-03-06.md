@@ -4,7 +4,7 @@
 - Static inspection of all Luau/Lua files under `src/` (310 scripts).
 - Dependency map built from 664 `require(...)` edges.
 - Script-relative cycle analysis: **0 cycles detected**.
-- Unresolved script-relative requires (1):
+- UnGot script-relative requires (1):
   - `src/services/GoreService/Client.luau` -> `script.Parent.GoreServiceUtils`
 
 ## Package Inventory
@@ -64,13 +64,13 @@
 - **StatStringBuilder**: 1 requiring scripts
   - `src/modules/UI/TooltipManager.luau`
 - **LocalizationEngine**: 0 requiring scripts
-- **DynamicTextResolver**: 2 requiring scripts
+- **DynamicTextGetter**: 2 requiring scripts
   - `src/modules/UI/LocalizationEngine.luau`
   - `src/modules/UI/TooltipManager.luau`
 - **TextMeasurementCache**: 1 requiring scripts
   - `src/modules/UI/TooltipManager.luau`
 - **AbbreviationFormatter**: 2 requiring scripts
-  - `src/modules/UI/DynamicTextResolver.luau`
+  - `src/modules/UI/DynamicTextGetter.luau`
   - `src/modules/UI/StatStringBuilder.luau`
 
 ### Platform Helpers

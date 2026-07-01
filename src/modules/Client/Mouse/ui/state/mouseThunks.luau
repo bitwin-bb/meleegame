@@ -94,7 +94,7 @@ local function isHoverTarget(guiObject: GuiObject): boolean
 	return false
 end
 
-local function resolveHoveredGuiObject(guiPosition: Vector2): GuiObject?
+local function GetHoveredGuiObject(guiPosition: Vector2): GuiObject?
 	local playerGui = getPlayerGui()
 	if playerGui == nil then
 		return nil
@@ -137,7 +137,7 @@ end
 
 local function applyPointerStateFromScreenPosition(screenPosition: Vector2)
 	local guiPosition = toGuiPosition(screenPosition)
-	local hoveredGui = resolveHoveredGuiObject(guiPosition)
+	local hoveredGui = GetHoveredGuiObject(guiPosition)
 	mouseSlice.updatePointer(
 		guiPosition,
 		hoveredGui ~= nil,
@@ -169,7 +169,7 @@ local function applyVisibilityFromInputMode()
 end
 
 local function bindSharedCursor(): boolean
-	local runtimeContext = CoreRuntime.getClientRuntime()
+	local runtimeContext = CoreRuntime.GetClientRuntime()
 	local cursor = if runtimeContext ~= nil then (runtimeContext :: any).cursor else nil
 	if cursor == nil or typeof((cursor :: any).onChanged) ~= "function" then
 		return false
@@ -177,44 +177,44 @@ local function bindSharedCursor(): boolean
 
 	runtime.cursor = cursor
 	runtime.usingSharedCursor = true
-	if typeof((cursor :: any).init) == "function" then
+	if typeof((cursor :: any).Init) == "function" then
 		local cursorAny = cursor :: any
-		cursorAny:init()
+		cursorAny:Init()
 	end
-	runtime.cursorDisconnect = (cursor :: any):onChanged(function(nextState: any)
+	runtime.cursorDisconnect = (cursor :: any):OnChanged(function(nextState: any)
 		applyPointerStateFromCursorState(nextState)
 	end)
-	if typeof((cursor :: any).setEnabled) == "function" then
+	if typeof((cursor :: any).SetEnabled) == "function" then
 		local cursorAny = cursor :: any
-		cursorAny:setEnabled(runtime.customCursorAllowed)
+		cursorAny:SetEnabled(runtime.customCursorAllowed)
 	end
-	if typeof((cursor :: any).sync) == "function" then
+	if typeof((cursor :: any).Sync) == "function" then
 		local cursorAny = cursor :: any
-		cursorAny:sync()
+		cursorAny:Sync()
 	end
-	if typeof((cursor :: any).getState) == "function" then
-		applyPointerStateFromCursorState((cursor :: any):getState())
+	if typeof((cursor :: any).GetState) == "function" then
+		applyPointerStateFromCursorState((cursor :: any):GetState())
 	end
 	return true
 end
 
 local function applyCursorPolicy()
-	runtime.customCursorAllowed = PlatformServiceClient:shouldUseCustomCursor()
-	local machineFamily = PlatformServiceClient:getMachineFamily()
+	runtime.customCursorAllowed = PlatformServiceClient:ShouldUseCustomCursor()
+	local machineFamily = PlatformServiceClient:GetMachineFamily()
 
 	if
 		runtime.usingSharedCursor
 		and runtime.cursor ~= nil
-		and typeof((runtime.cursor :: any).setEnabled) == "function"
+		and typeof((runtime.cursor :: any).SetEnabled) == "function"
 	then
 		local cursorAny = runtime.cursor :: any
-		cursorAny:setEnabled(runtime.customCursorAllowed)
+		cursorAny:SetEnabled(runtime.customCursorAllowed)
 		if runtime.customCursorAllowed then
-			if typeof((runtime.cursor :: any).sync) == "function" then
-				cursorAny:sync()
+			if typeof((runtime.cursor :: any).Sync) == "function" then
+				cursorAny:Sync()
 			end
-			if typeof((runtime.cursor :: any).getState) == "function" then
-				applyPointerStateFromCursorState(cursorAny:getState())
+			if typeof((runtime.cursor :: any).GetState) == "function" then
+				applyPointerStateFromCursorState(cursorAny:GetState())
 			end
 			return
 		end
@@ -246,8 +246,8 @@ function mouseThunks.Start(): () -> ()
 	end
 
 	runtime.started = true
-	if not PlatformServiceClient:isReady() then
-		PlatformServiceClient:init()
+	if not PlatformServiceClient:IsReady() then
+		PlatformServiceClient:Init()
 	end
 	runtime.defaultMouseIconEnabled = UserInputService.MouseIconEnabled
 
@@ -305,7 +305,7 @@ function mouseThunks.Start(): () -> ()
 		end)
 	end
 
-	runtime.platformDisconnect = PlatformServiceClient:onPlatformChanged(function()
+	runtime.platformDisconnect = PlatformServiceClient:OnPlatformChanged(function()
 		applyCursorPolicy()
 	end)
 	applyCursorPolicy()
@@ -314,20 +314,20 @@ function mouseThunks.Start(): () -> ()
 end
 
 function mouseThunks.Stop()
-	ConnectionUtils.call(runtime.platformDisconnect)
+	ConnectionUtils.Call(runtime.platformDisconnect)
 	runtime.platformDisconnect = nil
 
 	if runtime.cursor ~= nil and typeof((runtime.cursor :: any).setEnabled) == "function" then
 		local cursorAny = runtime.cursor :: any
-		cursorAny:setEnabled(false)
+		cursorAny:SetEnabled(false)
 	end
-	ConnectionUtils.call(runtime.cursorDisconnect)
+	ConnectionUtils.Call(runtime.cursorDisconnect)
 	runtime.cursorDisconnect = nil
 	runtime.cursor = nil
 	runtime.usingSharedCursor = false
 	runtime.customCursorAllowed = false
 
-	ConnectionUtils.disconnectMany({
+	ConnectionUtils.DisconnectMany({
 		runtime.inputChangedConnection,
 		runtime.inputBeganConnection,
 		runtime.inputEndedConnection,
@@ -352,12 +352,12 @@ end
 
 function mouseThunks.SyncPointer()
 	if runtime.usingSharedCursor and runtime.cursor ~= nil then
-		if typeof((runtime.cursor :: any).sync) == "function" then
+		if typeof((runtime.cursor :: any).Sync) == "function" then
 			local cursorAny = runtime.cursor :: any
-			cursorAny:sync()
+			cursorAny:Sync()
 		end
-		if typeof((runtime.cursor :: any).getState) == "function" then
-			applyPointerStateFromCursorState((runtime.cursor :: any):getState())
+		if typeof((runtime.cursor :: any).GetState) == "function" then
+			applyPointerStateFromCursorState((runtime.cursor :: any):GetState())
 		end
 		return
 	end
@@ -368,10 +368,10 @@ function mouseThunks.SetMouseDown(isMouseDown: boolean)
 	if
 		runtime.usingSharedCursor
 		and runtime.cursor ~= nil
-		and typeof((runtime.cursor :: any).setMouseDown) == "function"
+		and typeof((runtime.cursor :: any).SetMouseDown) == "function"
 	then
 		local cursorAny = runtime.cursor :: any
-		cursorAny:setMouseDown(isMouseDown)
+		cursorAny:SetMouseDown(isMouseDown)
 	end
 	mouseSlice.setMouseDown(isMouseDown)
 end
@@ -379,11 +379,4 @@ end
 function mouseThunks.GetMouseState(): MouseState
 	return mouseSlice.getMouseState()
 end
-
-mouseThunks.start = mouseThunks.Start
-mouseThunks.stop = mouseThunks.Stop
-mouseThunks.syncPointer = mouseThunks.SyncPointer
-mouseThunks.setMouseDown = mouseThunks.SetMouseDown
-mouseThunks.getMouseState = mouseThunks.GetMouseState
-
 return mouseThunks

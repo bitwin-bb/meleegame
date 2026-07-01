@@ -28,7 +28,4 @@ function PlanPrinter.ToString(plan: any): string
 end
 
 PlanPrinter.copy = Table.copy
-PlanPrinter.toLines = PlanPrinter.ToLines
-PlanPrinter.toString = PlanPrinter.ToString
-
 return PlanPrinter

@@ -82,7 +82,7 @@ local function clampNumber(valueRaw: any, minimum: number, maximum: number, fall
 	return math.clamp(valueRaw :: number, minimum, maximum)
 end
 
-local function sanitizeOctaveCount(valueRaw: any, fallback: number): number
+local function CoerceOctaveCount(valueRaw: any, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
@@ -100,7 +100,7 @@ local function sampleOctaveNoise(
 	offsetX: number,
 	offsetY: number
 ): number
-	return Noise.fbmOctaves(octaves, persistence, lacunarity, function(octave, frequency)
+	return Noise.FbmOctaves(octaves, persistence, lacunarity, function(octave, frequency)
 		local sampleFrequency = baseFrequency * frequency
 		return math.noise(
 			(x + offsetX + octave * 1.13) * sampleFrequency,
@@ -110,7 +110,7 @@ local function sampleOctaveNoise(
 	end)
 end
 
-local function resolveWallByBiome(self, biomeId: number, layer: DepthLayer): number
+local function GetWallByBiome(self, biomeId: number, layer: DepthLayer): number
 	if biomeId == self.biomeId.DESERT then
 		return self.wallId.SANDSTONE
 	end
@@ -147,7 +147,7 @@ function Cave.New(configRaw: any)
 		),
 		cavernDepth = math.floor(clampNumber((config :: any).cavernDepth, 64, 512, DEFAULT_CAVERN_DEPTH)),
 		caveFrequency = clampNumber((config :: any).caveFrequency, 0.0001, 1, DEFAULT_CAVE_FREQUENCY),
-		caveOctaves = sanitizeOctaveCount((config :: any).caveOctaves, DEFAULT_CAVE_OCTAVES),
+		caveOctaves = CoerceOctaveCount((config :: any).caveOctaves, DEFAULT_CAVE_OCTAVES),
 		caveLacunarity = clampNumber((config :: any).caveLacunarity, 1, 4, DEFAULT_CAVE_LACUNARITY),
 		cavePersistence = clampNumber((config :: any).cavePersistence, 0.1, 0.95, DEFAULT_CAVE_PERSISTENCE),
 		tunnelFrequency = clampNumber((config :: any).tunnelFrequency, 0.0001, 1, DEFAULT_TUNNEL_FREQUENCY),
@@ -175,7 +175,7 @@ function Cave.New(configRaw: any)
 	return self
 end
 
-function Cave.ResolveDepthLayer(self: Cave, surfaceY: number, tileY: number): (DepthLayer, number)
+function Cave.GetDepthLayer(self: Cave, surfaceY: number, tileY: number): (DepthLayer, number)
 	local depth = surfaceY - tileY
 	if depth < 0 then
 		return "Sky", depth
@@ -229,7 +229,7 @@ function Cave.ShouldCarve(
 		return false
 	end
 
-	local density = self:sampleDensity(tileX, tileY)
+	local density = self:SampleDensity(tileX, tileY)
 	local tunnel = math.abs(
 		math.noise(
 			(tileX + TUNNEL_OFFSET_X) * self.tunnelFrequency,
@@ -311,7 +311,7 @@ function Cave.ShouldCarve(
 	return false
 end
 
-function Cave.ResolveWall(
+function Cave.GetWall(
 	self: Cave,
 	tileId: number,
 	biomeId: number,
@@ -330,14 +330,14 @@ function Cave.ResolveWall(
 		if depthLayer == "Surface" and depthBelowSurface <= 3 then
 			return self.wallId.NONE
 		end
-		return resolveWallByBiome(self, biomeId, depthLayer)
+		return GetWallByBiome(self, biomeId, depthLayer)
 	end
 
 	if depthLayer == "Surface" then
 		return self.wallId.NONE
 	end
 
-	return resolveWallByBiome(self, biomeId, depthLayer)
+	return GetWallByBiome(self, biomeId, depthLayer)
 end
 
 export type Cave = typeof(setmetatable(
@@ -362,11 +362,5 @@ export type Cave = typeof(setmetatable(
 	},
 	Cave
 ))
-
-Cave.new = Cave.New
-Cave.resolveDepthLayer = Cave.ResolveDepthLayer
-Cave.sampleDensity = Cave.SampleDensity
-Cave.shouldCarve = Cave.ShouldCarve
-Cave.resolveWall = Cave.ResolveWall
 
 return Cave

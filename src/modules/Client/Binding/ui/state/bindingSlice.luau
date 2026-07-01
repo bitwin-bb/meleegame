@@ -41,21 +41,21 @@ local function trim(textRaw: any): string
 	return string.match(textRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function sanitizeBoolean(valueRaw: any, fallback: boolean): boolean
+local function CoerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function sanitizeInteger(valueRaw: any, fallback: number): number
+local function CoerceInteger(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
 	return math.floor(valueRaw)
 end
 
-local function sanitizeHintEntry(entryRaw: any, index: number): BindingHintEntry?
+local function CoerceHintEntry(entryRaw: any, index: number): BindingHintEntry?
 	if typeof(entryRaw) ~= "table" then
 		return nil
 	end
@@ -83,8 +83,8 @@ local function sanitizeHintEntry(entryRaw: any, index: number): BindingHintEntry
 		detail = if detail ~= "" then detail else nil,
 		promptText = if promptText ~= "" then promptText else nil,
 		promptIcon = if promptIcon ~= "" then promptIcon else nil,
-		enabled = sanitizeBoolean(entry.enabled, true),
-		priority = sanitizeInteger(entry.priority, index),
+		enabled = CoerceBoolean(entry.enabled, true),
+		priority = CoerceInteger(entry.priority, index),
 	}
 end
 
@@ -109,7 +109,7 @@ local function cloneHints(hintsRaw: any): { BindingHintEntry }
 	end
 
 	for index, hintRaw in hintsRaw do
-		local hint = sanitizeHintEntry(hintRaw, index)
+		local hint = CoerceHintEntry(hintRaw, index)
 		if hint == nil or seenIds[hint.id] == true then
 			continue
 		end
@@ -195,8 +195,8 @@ local function setBindingState(stateRaw: any): BindingHintState
 	local nextHints = if source.hints ~= nil then cloneHints(source.hints) else cloneHints(current.hints)
 
 	local nextState: BindingHintState = {
-		started = sanitizeBoolean(source.started, current.started),
-		visible = if source.visible == nil then (#nextHints > 0) else sanitizeBoolean(source.visible, current.visible),
+		started = CoerceBoolean(source.started, current.started),
+		visible = if source.visible == nil then (#nextHints > 0) else CoerceBoolean(source.visible, current.visible),
 		platform = if trim(source.platform) ~= "" then trim(source.platform) else current.platform,
 		deviceClass = if trim(source.deviceClass) ~= "" then trim(source.deviceClass) else current.deviceClass,
 		hints = nextHints,

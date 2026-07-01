@@ -30,10 +30,10 @@ export type Room = typeof(setmetatable(
 	Room
 ))
 
-local DEFAULT_CONFIG = RoomScaleFactor.sanitizeConfig(((Configs.cameraData :: any).room or ({} :: any)) :: RoomConfig)
+local DEFAULT_CONFIG = RoomScaleFactor.CoerceConfig(((Configs.cameraData :: any).room or ({} :: any)) :: RoomConfig)
 local AIR_TILE_ID = BuildServiceUtils.AIR_TILE_ID
 
-local function resolveWorldSpace(): (Vector3?, number?)
+local function GetWorldSpace(): (Vector3?, number?)
 	local worldGenerationClient = WorldGenerationServiceClient :: any
 	local worldGenerationState = worldGenerationClient.state
 	local tileSize = if typeof(worldGenerationState) == "table"
@@ -78,9 +78,9 @@ local function getTileAtFromWorldGeneration(tileX: number, tileY: number): numbe
 	end
 
 	local chunkSize = math.max(1, math.floor((state :: any).chunkSize or 32))
-	local chunkX = BuildServiceUtils.toChunkCoordinate(tileX, chunkSize)
-	local chunkY = BuildServiceUtils.toChunkCoordinate(tileY, chunkSize)
-	local chunkKey = BuildServiceUtils.packChunkKey(chunkX, chunkY)
+	local chunkX = BuildServiceUtils.ToChunkCoordinate(tileX, chunkSize)
+	local chunkY = BuildServiceUtils.ToChunkCoordinate(tileY, chunkSize)
+	local chunkKey = BuildServiceUtils.PackChunkKey(chunkX, chunkY)
 	local snapshot = chunkSnapshots[chunkKey]
 	if typeof(snapshot) ~= "table" then
 		return AIR_TILE_ID
@@ -109,18 +109,18 @@ local function getTileAtFromWorldGeneration(tileX: number, tileY: number): numbe
 		return AIR_TILE_ID
 	end
 
-	local index = BuildServiceUtils.computeTileIndex(localX, localY, width)
-	return BuildServiceUtils.sanitizeTileId(tiles[index]) or AIR_TILE_ID
+	local index = BuildServiceUtils.ComputeTileIndex(localX, localY, width)
+	return BuildServiceUtils.CoerceTileId(tiles[index]) or AIR_TILE_ID
 end
 
 local function getTileAt(tileX: number, tileY: number): number
 	local buildClient = BuildServiceClient :: any
 	if typeof(buildClient.state) == "table" then
 		local ok, tileIdOrError = pcall(function()
-			return buildClient:getTileAt(tileX, tileY, false)
+			return buildClient:GetTileAt(tileX, tileY, false)
 		end)
 		if ok then
-			return BuildServiceUtils.sanitizeTileId(tileIdOrError) or AIR_TILE_ID
+			return BuildServiceUtils.CoerceTileId(tileIdOrError) or AIR_TILE_ID
 		end
 	end
 
@@ -128,10 +128,10 @@ local function getTileAt(tileX: number, tileY: number): number
 end
 
 local function isSolidTile(tileX: number, tileY: number): boolean
-	return BuildServiceUtils.isSolidTile(getTileAt(tileX, tileY))
+	return BuildServiceUtils.IsSolidTile(getTileAt(tileX, tileY))
 end
 
-local function resolveOriginTile(tileX: number, tileY: number): (number, number)
+local function GetOriginTile(tileX: number, tileY: number): (number, number)
 	for _, offsetY in { 0, 1, -1, 2, -2 } do
 		local candidateTileY = tileY + offsetY
 		if not isSolidTile(tileX, candidateTileY) then
@@ -141,7 +141,7 @@ local function resolveOriginTile(tileX: number, tileY: number): (number, number)
 	return tileX, tileY
 end
 
-local function resolveBoundaryDistance(
+local function GetBoundaryDistance(
 	tileX: number,
 	tileY: number,
 	stepX: number,
@@ -158,11 +158,11 @@ end
 
 function Room.New(config: RoomConfig?): Room
 	return setmetatable({
-		config = RoomScaleFactor.sanitizeConfig(config, DEFAULT_CONFIG),
+		config = RoomScaleFactor.CoerceConfig(config, DEFAULT_CONFIG),
 		lastSampleAt = -math.huge,
 		lastTileX = nil,
 		lastTileY = nil,
-		cachedScaleResult = RoomScaleFactor.createDefaultResult(),
+		cachedScaleResult = RoomScaleFactor.CreateDefaultResult(),
 	}, Room)
 end
 
@@ -170,28 +170,28 @@ function Room.Reset(self: Room)
 	self.lastSampleAt = -math.huge
 	self.lastTileX = nil
 	self.lastTileY = nil
-	self.cachedScaleResult = RoomScaleFactor.createDefaultResult()
+	self.cachedScaleResult = RoomScaleFactor.CreateDefaultResult()
 end
 
 function Room.ApplyConfig(self: Room, config: RoomConfig?)
-	self.config = RoomScaleFactor.sanitizeConfig(config, self.config)
-	self:reset()
+	self.config = RoomScaleFactor.CoerceConfig(config, self.config)
+	self:Reset()
 end
 
 function Room.SampleScale(self: Room, worldPosition: Vector3): RoomScaleResult
 	if self.config.enabled ~= true then
-		self.cachedScaleResult = RoomScaleFactor.createDefaultResult()
+		self.cachedScaleResult = RoomScaleFactor.CreateDefaultResult()
 		return self.cachedScaleResult
 	end
 
-	local worldOrigin, tileSize = resolveWorldSpace()
+	local worldOrigin, tileSize = GetWorldSpace()
 	if worldOrigin == nil or tileSize == nil then
-		self.cachedScaleResult = RoomScaleFactor.createDefaultResult()
+		self.cachedScaleResult = RoomScaleFactor.CreateDefaultResult()
 		return self.cachedScaleResult
 	end
 
-	local tileX, tileY = BuildServiceUtils.worldPositionToTile(worldPosition, worldOrigin, tileSize)
-	tileX, tileY = resolveOriginTile(tileX, tileY)
+	local tileX, tileY = BuildServiceUtils.WorldPositionToTile(worldPosition, worldOrigin, tileSize)
+	tileX, tileY = GetOriginTile(tileX, tileY)
 
 	local now = os.clock()
 	local sampleInterval = self.config.sampleIntervalSeconds :: number
@@ -208,15 +208,15 @@ function Room.SampleScale(self: Room, worldPosition: Vector3): RoomScaleResult
 
 	local horizontalScanRadius = math.max(1, math.floor(self.config.horizontalScanRadiusTiles :: number))
 	local verticalScanRadius = math.max(1, math.floor(self.config.verticalScanRadiusTiles :: number))
-	local leftDistance = resolveBoundaryDistance(tileX, tileY, -1, 0, horizontalScanRadius)
-	local rightDistance = resolveBoundaryDistance(tileX, tileY, 1, 0, horizontalScanRadius)
-	local upDistance = resolveBoundaryDistance(tileX, tileY, 0, 1, verticalScanRadius)
-	local downDistance = resolveBoundaryDistance(tileX, tileY, 0, -1, verticalScanRadius)
+	local leftDistance = GetBoundaryDistance(tileX, tileY, -1, 0, horizontalScanRadius)
+	local rightDistance = GetBoundaryDistance(tileX, tileY, 1, 0, horizontalScanRadius)
+	local upDistance = GetBoundaryDistance(tileX, tileY, 0, 1, verticalScanRadius)
+	local downDistance = GetBoundaryDistance(tileX, tileY, 0, -1, verticalScanRadius)
 	local isEnclosed = leftDistance ~= nil and rightDistance ~= nil and upDistance ~= nil and downDistance ~= nil
 	local widthTiles = if isEnclosed then math.max(1, (leftDistance :: number) + (rightDistance :: number) - 1) else 0
 	local heightTiles = if isEnclosed then math.max(1, (upDistance :: number) + (downDistance :: number) - 1) else 0
 
-	self.cachedScaleResult = RoomScaleFactor.resolve(self.config, {
+	self.cachedScaleResult = RoomScaleFactor.Get(self.config, {
 		isEnclosed = isEnclosed,
 		widthTiles = widthTiles,
 		heightTiles = heightTiles,
@@ -228,12 +228,12 @@ function Room.SampleScale(self: Room, worldPosition: Vector3): RoomScaleResult
 	return self.cachedScaleResult
 end
 
-function Room.ResolveViewConfig(self: Room, baseViewConfig: ViewConfig, targetPosition: Vector3?): ViewConfig
+function Room.GetViewConfig(self: Room, baseViewConfig: ViewConfig, targetPosition: Vector3?): ViewConfig
 	if targetPosition == nil then
 		return baseViewConfig
 	end
 
-	local scaleResult = self:sampleScale(targetPosition)
+	local scaleResult = self:SampleScale(targetPosition)
 	if not scaleResult.active then
 		return baseViewConfig
 	end
@@ -245,11 +245,5 @@ function Room.ResolveViewConfig(self: Room, baseViewConfig: ViewConfig, targetPo
 		fieldOfView = baseViewConfig.fieldOfView * scaleResult.fieldOfViewScale,
 	}
 end
-
-Room.new = Room.New
-Room.reset = Room.Reset
-Room.applyConfig = Room.ApplyConfig
-Room.sampleScale = Room.SampleScale
-Room.resolveViewConfig = Room.ResolveViewConfig
 
 return Room

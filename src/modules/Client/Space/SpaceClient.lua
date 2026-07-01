@@ -28,7 +28,7 @@ local runtime = {
 
 local function getWorldState(): any?
 	local ok, state = pcall(function()
-		return WorldGenerationServiceClient:getState()
+		return WorldGenerationServiceClient:GetState()
 	end)
 	if not ok then
 		return nil
@@ -36,7 +36,7 @@ local function getWorldState(): any?
 	return state
 end
 
-local function resolveLocalRootPart(): BasePart?
+local function GetLocalRootPart(): BasePart?
 	local localPlayer = Players.LocalPlayer
 	if localPlayer == nil then
 		return nil
@@ -45,12 +45,12 @@ local function resolveLocalRootPart(): BasePart?
 end
 
 local function isLocalPlayerInSpace(): boolean
-	local rootPart = resolveLocalRootPart()
+	local rootPart = GetLocalRootPart()
 	if rootPart == nil then
 		return false
 	end
 
-	return SpaceShared.isInSpaceAtWorldPosition(
+	return SpaceShared.IsInSpaceAtWorldPosition(
 		rootPart.Position,
 		getWorldState(),
 		(WorldGenerationServiceClient :: any).worldOrigin
@@ -59,15 +59,15 @@ end
 
 local function applyCurrentWeatherSky()
 	pcall(function()
-		WeatherServiceClient:transitionToSky(WeatherServiceClient:resolveSkyKeyForLocalPlayer())
+		WeatherServiceClient:TransitionToSky(WeatherServiceClient:GetSkyKeyForLocalPlayer())
 	end)
 end
 
 local function applyCurrentSoundtrack()
 	pcall(function()
-		local soundtrackBiome = AudioServiceClient:resolveSoundtrackBiomeForLocalPlayer()
+		local soundtrackBiome = AudioServiceClient:GetSoundtrackBiomeForLocalPlayer()
 		if soundtrackBiome ~= nil then
-			AudioServiceClient:setSoundtrackBiome(soundtrackBiome)
+			AudioServiceClient:SetSoundtrackBiome(soundtrackBiome)
 		end
 	end)
 end
@@ -79,10 +79,10 @@ local function applySpaceState(inSpace: boolean)
 			biomeName = SpaceShared.SPACE_BIOME_NAME,
 		})
 		pcall(function()
-			WeatherServiceClient:transitionToSky(SpaceShared.SPACE_SKY_KEY)
+			WeatherServiceClient:TransitionToSky(SpaceShared.SPACE_SKY_KEY)
 		end)
 		pcall(function()
-			AudioServiceClient:setSoundtrackBiome(SpaceShared.SPACE_SOUNDTRACK_BIOME)
+			AudioServiceClient:SetSoundtrackBiome(SpaceShared.SPACE_SOUNDTRACK_BIOME)
 		end)
 		return
 	end
@@ -120,9 +120,9 @@ function SpaceClient.Init(self: any)
 		return runtime.initPromise
 	end
 
-	runtime.initPromise = Promise.defer(function(resolve)
-		self:start()
-		resolve(true)
+	runtime.initPromise = Promise.defer(function(fulfill)
+		self:Start()
+		fulfill(true)
 	end)
 
 	local maid = runtime.maid
@@ -145,10 +145,4 @@ end
 function SpaceClient.IsLocalPlayerInSpace(_self: any): boolean
 	return isLocalPlayerInSpace()
 end
-
-SpaceClient.start = SpaceClient.Start
-SpaceClient.init = SpaceClient.Init
-SpaceClient.destroy = SpaceClient.Destroy
-SpaceClient.isLocalPlayerInSpace = SpaceClient.IsLocalPlayerInSpace
-
 return SpaceClient

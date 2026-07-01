@@ -8,9 +8,9 @@ local expect = testEnvironment.expect :: any
 -- selene: allow(undefined_variable)
 
 local ParallaxBackgrounds = require("ParallaxBackgrounds")
-local ParallaxBiomeResolver = require("ParallaxBiomeResolver")
+local ParallaxBiomeGetter = require("ParallaxBiomeGetter")
 local ParallaxConstants = require("ParallaxConstants")
-local ParallaxHorizonResolver = require("ParallaxHorizonResolver")
+local ParallaxHorizonGetter = require("ParallaxHorizonGetter")
 local ParallaxMath = require("ParallaxMath")
 local ParallaxProfiles = require("ParallaxProfiles")
 local ParallaxServiceUtils = require("ParallaxServiceUtils")
@@ -19,16 +19,16 @@ local ParallaxState = require("ParallaxState")
 return function()
 	describe("ParallaxServiceUtils", function()
 		it("derives horizontal vision width from streamed chunk distance", function()
-			local defaultVisionStuds = ParallaxServiceUtils.computeHorizontalVisionStuds(32, 2, 4)
-			local extendedVisionStuds = ParallaxServiceUtils.computeHorizontalVisionStuds(32, 2, 8)
+			local defaultVisionStuds = ParallaxServiceUtils.ComputeHorizontalVisionStuds(32, 2, 4)
+			local extendedVisionStuds = ParallaxServiceUtils.ComputeHorizontalVisionStuds(32, 2, 8)
 
 			expect(defaultVisionStuds).to.equal(576)
 			expect(extendedVisionStuds).to.equal(1088)
 		end)
 
 		it("sizes long planes from the larger of camera coverage and world vision", function()
-			local visibleDriven = ParallaxServiceUtils.resolveDeterministicPlaneSizing(620, 400, 300, 2, 1, 0.75, 96)
-			local visionDriven = ParallaxServiceUtils.resolveDeterministicPlaneSizing(300, 400, 900, 2, 1, 0.75, 96)
+			local visibleDriven = ParallaxServiceUtils.GetDeterministicPlaneSizing(620, 400, 300, 2, 1, 0.75, 96)
+			local visionDriven = ParallaxServiceUtils.GetDeterministicPlaneSizing(300, 400, 900, 2, 1, 0.75, 96)
 
 			expect(math.abs(visibleDriven.textureRepeatWidth - 300) <= 0.001).to.equal(true)
 			expect(math.abs(visibleDriven.textureRepeatHeight - 150) <= 0.001).to.equal(true)
@@ -41,7 +41,7 @@ return function()
 
 		it("expands the repeat width when extra vertical coverage is needed", function()
 			local preservedAspect =
-				ParallaxServiceUtils.resolveDeterministicPlaneSizing(300, 400, 200, 2, 1, 0.75, 96, 240)
+				ParallaxServiceUtils.GetDeterministicPlaneSizing(300, 400, 200, 2, 1, 0.75, 96, 240)
 
 			expect(math.abs(preservedAspect.textureRepeatWidth - 480) <= 0.001).to.equal(true)
 			expect(math.abs(preservedAspect.textureRepeatHeight - 240) <= 0.001).to.equal(true)
@@ -49,33 +49,33 @@ return function()
 		end)
 
 		it("keeps zoom reference from shrinking when the camera moves closer", function()
-			local initial = ParallaxServiceUtils.resolveStableGameplayPlaneDistance(nil, 52, 0, 0)
-			local closer = ParallaxServiceUtils.resolveStableGameplayPlaneDistance(initial, 36, 0, 0)
-			local farther = ParallaxServiceUtils.resolveStableGameplayPlaneDistance(closer, 64, 0, 0)
+			local initial = ParallaxServiceUtils.GetStableGameplayPlaneDistance(nil, 52, 0, 0)
+			local closer = ParallaxServiceUtils.GetStableGameplayPlaneDistance(initial, 36, 0, 0)
+			local farther = ParallaxServiceUtils.GetStableGameplayPlaneDistance(closer, 64, 0, 0)
 
 			expect(initial).to.equal(52)
 			expect(closer).to.equal(52)
 			expect(farther).to.equal(64)
 		end)
 
-		it("resolves horizon-locked center Y from camera space", function()
-			local lowCamera = ParallaxServiceUtils.resolveHorizonLockedCenterY(20, 100, 0.78, 4)
-			local highCamera = ParallaxServiceUtils.resolveHorizonLockedCenterY(60, 100, 0.78, 4)
+		it("gets horizon-locked center Y from camera space", function()
+			local lowCamera = ParallaxServiceUtils.GetHorizonLockedCenterY(20, 100, 0.78, 4)
+			local highCamera = ParallaxServiceUtils.GetHorizonLockedCenterY(60, 100, 0.78, 4)
 
 			expect(math.abs(lowCamera - 52) <= 0.001).to.equal(true)
 			expect(math.abs(highCamera - 92) <= 0.001).to.equal(true)
 		end)
 
-		it("resolves world horizon center from world origin", function()
-			local horizon = ParallaxServiceUtils.resolveWorldHorizonCenterY(0, 100, 1, -18)
+		it("gets world horizon center from world origin", function()
+			local horizon = ParallaxServiceUtils.GetWorldHorizonCenterY(0, 100, 1, -18)
 
 			expect(math.abs(horizon - 82) <= 0.001).to.equal(true)
 		end)
 
 		it("offsets world horizon center by scaled subject height", function()
 			local cameraHorizon =
-				ParallaxServiceUtils.resolveWorldHorizonParallaxCenterY(10, 40, 100, 0.78, 4, 0.25, nil)
-			local subjectHorizon = ParallaxServiceUtils.resolveWorldHorizonParallaxCenterY(
+				ParallaxServiceUtils.GetWorldHorizonParallaxCenterY(10, 40, 100, 0.78, 4, 0.25, nil)
+			local subjectHorizon = ParallaxServiceUtils.GetWorldHorizonParallaxCenterY(
 				10,
 				40,
 				100,
@@ -89,8 +89,8 @@ return function()
 			expect(math.abs(subjectHorizon - 107) <= 0.001).to.equal(true)
 		end)
 
-		it("resolves one vertical horizon shift for grouped layers", function()
-			local shift = ParallaxServiceUtils.resolveSharedHorizonVerticalShift({
+		it("gets one vertical horizon shift for grouped layers", function()
+			local shift = ParallaxServiceUtils.GetSharedHorizonVerticalShift({
 				{
 					centerY = 82,
 					maximumCenterY = 70,
@@ -105,7 +105,7 @@ return function()
 		end)
 
 		it("prefers target travel for scroll when camera is still catching up", function()
-			local scrollZ = ParallaxServiceUtils.resolveScrollPositionZ(180, Vector3.new(0, 0, 24))
+			local scrollZ = ParallaxServiceUtils.GetScrollPositionZ(180, Vector3.new(0, 0, 24))
 
 			expect(scrollZ).to.equal(24)
 		end)
@@ -128,7 +128,7 @@ return function()
 			expect(math.abs(topPx - -173.083277893278) <= 0.001).to.equal(true)
 		end)
 
-		it("resolves Terraria UI scale from viewport height", function()
+		it("gets Terraria UI scale from viewport height", function()
 			local smallerScale = ParallaxMath.ComputeUiScale(540)
 			local defaultScale = ParallaxMath.ComputeUiScale(1080)
 			local tallerScale = ParallaxMath.ComputeUiScale(2160)
@@ -174,7 +174,7 @@ return function()
 		end)
 	end)
 
-	describe("ParallaxHorizonResolver", function()
+	describe("ParallaxHorizonGetter", function()
 		it("uses Terraria world surface for the horizon line and still reports local samples", function()
 			local sampleCount = 0
 			local fakeWorldGenerationService = {
@@ -199,51 +199,51 @@ return function()
 				},
 			}
 
-			local first = ParallaxHorizonResolver.ResolveHorizon(runtime, Vector3.new(0, 130, 40), nil, 0)
-			local second = ParallaxHorizonResolver.ResolveHorizon(runtime, Vector3.new(0, 130, 40), nil, 0.25)
+			local first = ParallaxHorizonGetter.GetHorizon(runtime, Vector3.new(0, 130, 40), nil, 0)
+			local second = ParallaxHorizonGetter.GetHorizon(runtime, Vector3.new(0, 130, 40), nil, 0.25)
 
 			expect(first.globalSurfaceY).to.equal(100)
 			expect(first.localSurfaceY).to.equal(160)
-			expect(first.resolvedHorizonY).to.equal(100)
+			expect(first.horizonY).to.equal(100)
 			expect(first.cameraDepthFromTop).to.equal(90)
 			expect(first.surfaceDepthFromTop).to.equal(120)
 			expect(second.localSurfaceY).to.equal(200)
-			expect(second.resolvedHorizonY).to.equal(100)
+			expect(second.horizonY).to.equal(100)
 			expect(second.surfaceDepthFromTop).to.equal(120)
 		end)
 	end)
 
-	describe("ParallaxBiomeResolver", function()
-		it("resolves biome style using asset-backed biome keys", function()
-			expect(ParallaxBiomeResolver.ResolveBgStyle({
+	describe("ParallaxBiomeGetter", function()
+		it("gets biome style using asset-backed biome keys", function()
+			expect(ParallaxBiomeGetter.GetBgStyle({
 				depthLayer = ParallaxServiceUtils.DEPTH_LAYER_SKY,
 				isNearWorldEdge = true,
 			}, nil)).to.equal(ParallaxProfiles.Styles.Overworld)
 
-			expect(ParallaxBiomeResolver.ResolveBgStyle({
+			expect(ParallaxBiomeGetter.GetBgStyle({
 				biomeName = "Desert",
 				isHallow = true,
 			}, nil)).to.equal(ParallaxProfiles.Styles.Desert)
 
-			expect(ParallaxBiomeResolver.ResolveBgStyle({
+			expect(ParallaxBiomeGetter.GetBgStyle({
 				biomeName = "Jungle",
 			}, nil)).to.equal(ParallaxProfiles.Styles.Jungle)
 		end)
 
 		it("prefers explicit biome identity over secondary tile hints", function()
-			expect(ParallaxBiomeResolver.ResolveBgStyle({
+			expect(ParallaxBiomeGetter.GetBgStyle({
 				biomeName = "Corruption",
 				isDesert = true,
 				sandTileCount = 128,
 			}, nil)).to.equal(ParallaxProfiles.Styles.Corruption)
 
-			expect(ParallaxBiomeResolver.ResolveBgStyle({
+			expect(ParallaxBiomeGetter.GetBgStyle({
 				biomeId = 2,
 				biomeType = 2,
 				sandTileCount = 128,
 			}, nil)).to.equal(ParallaxProfiles.Styles.Corruption)
 
-			expect(ParallaxBiomeResolver.ResolveBgStyle({
+			expect(ParallaxBiomeGetter.GetBgStyle({
 				biomeName = "Jungle",
 				isSand = true,
 				sandTileCount = 128,

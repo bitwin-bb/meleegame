@@ -109,17 +109,4 @@ end
 function Num.Fract(value: number): number
 	return value - math.floor(value)
 end
-
-Num.isFinite = Num.IsFinite
-Num.clamp = Num.Clamp
-Num.saturate = Num.Saturate
-Num.sign = Num.Sign
-Num.nearlyEqual = Num.NearlyEqual
-Num.round = Num.Round
-Num.snap = Num.Snap
-Num.inverseLerp = Num.InverseLerp
-Num.remap = Num.Remap
-Num.safeDiv = Num.SafeDiv
-Num.fract = Num.Fract
-
 return Num

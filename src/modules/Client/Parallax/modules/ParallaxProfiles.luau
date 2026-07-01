@@ -383,15 +383,12 @@ function Profile.GetStyleName(style: number): string
 	return StyleNames[style] or StyleNames[Styles.Overworld]
 end
 
-function Profile.ResolveStyleFromBiomeName(biomeNameRaw: any): number
+function Profile.GetStyleFromBiomeName(biomeNameRaw: any): number
 	return BiomeToStyle[normalizeToken(biomeNameRaw)] or Styles.Overworld
 end
 
 Profile.Styles = Styles
 Profile.StyleNames = StyleNames
 Profile.ByStyle = Table.deepReadonly(ByStyle)
-Profile.getProfilesForStyle = Profile.GetProfilesForStyle
-Profile.getStyleName = Profile.GetStyleName
-Profile.resolveStyleFromBiomeName = Profile.ResolveStyleFromBiomeName
 
 return Profile

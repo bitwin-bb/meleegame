@@ -34,7 +34,7 @@ local CLICK_MOUSE_IMAGE_ID = if typeof(ImageIds.mouseClick) == "string"
 	else HOVER_MOUSE_IMAGE_ID
 local DEFAULT_MOUSE_POSITION = Vector2.new(0, 0)
 
-local function resolveCursorState(source: MouseStateSource): MouseCursorState
+local function GetCursorState(source: MouseStateSource): MouseCursorState
 	if source.isMouseDown then
 		return "click"
 	end
@@ -44,7 +44,7 @@ local function resolveCursorState(source: MouseStateSource): MouseCursorState
 	return "default"
 end
 
-local function resolveCursorImageId(cursorState: MouseCursorState): string
+local function GetCursorImageId(cursorState: MouseCursorState): string
 	if cursorState == "click" then
 		return CLICK_MOUSE_IMAGE_ID
 	end
@@ -55,7 +55,7 @@ local function resolveCursorImageId(cursorState: MouseCursorState): string
 end
 
 local function createMouseState(source: MouseStateSource): MouseState
-	local cursorState = resolveCursorState(source)
+	local cursorState = GetCursorState(source)
 	return {
 		visible = source.visible,
 		position = source.position,
@@ -63,7 +63,7 @@ local function createMouseState(source: MouseStateSource): MouseState
 		hoveredGuiPath = if source.isHoveringGui then source.hoveredGuiPath else nil,
 		isMouseDown = source.isMouseDown,
 		cursorState = cursorState,
-		imageId = resolveCursorImageId(cursorState :: any),
+		imageId = GetCursorImageId(cursorState :: any),
 	} :: MouseState
 end
 
@@ -93,7 +93,7 @@ local mouseImageIdAtom: Charm.Selector<string> = Charm.computed(function(): stri
 	return mouseStateAtom().imageId
 end)
 
-local function sanitizePosition(value: any): Vector2
+local function CoercePosition(value: any): Vector2
 	if typeof(value) == "Vector2" then
 		return value
 	end
@@ -101,14 +101,14 @@ local function sanitizePosition(value: any): Vector2
 	return mouseStateAtom().position
 end
 
-local function sanitizeBool(value: any, fallback: boolean): boolean
+local function CoerceBool(value: any, fallback: boolean): boolean
 	if type(value) == "boolean" then
 		return value
 	end
 	return fallback
 end
 
-local function sanitizeHoveredGuiPath(value: any): string?
+local function CoerceHoveredGuiPath(value: any): string?
 	if typeof(value) == "string" and value ~= "" then
 		return value
 	end
@@ -123,11 +123,11 @@ local function setMouseState(stateRaw: any): MouseState
 	local current = mouseStateAtom()
 	local source = if typeof(stateRaw) == "table" then stateRaw else {} :: any
 	local nextState = createMouseState({
-		visible = sanitizeBool((source :: any).visible, current.visible),
-		position = sanitizePosition((source :: any).position),
-		isHoveringGui = sanitizeBool((source :: any).isHoveringGui, current.isHoveringGui),
-		hoveredGuiPath = sanitizeHoveredGuiPath((source :: any).hoveredGuiPath),
-		isMouseDown = sanitizeBool((source :: any).isMouseDown, current.isMouseDown),
+		visible = CoerceBool((source :: any).visible, current.visible),
+		position = CoercePosition((source :: any).position),
+		isHoveringGui = CoerceBool((source :: any).isHoveringGui, current.isHoveringGui),
+		hoveredGuiPath = CoerceHoveredGuiPath((source :: any).hoveredGuiPath),
+		isMouseDown = CoerceBool((source :: any).isMouseDown, current.isMouseDown),
 	})
 
 	mouseStateAtom(nextState)
@@ -138,9 +138,9 @@ local function updatePointer(positionRaw: any, isHoveringRaw: any, hoveredGuiPat
 	local current = mouseStateAtom()
 	local nextState = createMouseState({
 		visible = current.visible,
-		position = sanitizePosition(positionRaw),
-		isHoveringGui = sanitizeBool(isHoveringRaw, current.isHoveringGui),
-		hoveredGuiPath = sanitizeHoveredGuiPath(hoveredGuiPathRaw),
+		position = CoercePosition(positionRaw),
+		isHoveringGui = CoerceBool(isHoveringRaw, current.isHoveringGui),
+		hoveredGuiPath = CoerceHoveredGuiPath(hoveredGuiPathRaw),
 		isMouseDown = current.isMouseDown,
 	})
 	mouseStateAtom(nextState)
@@ -151,7 +151,7 @@ local function setMousePosition(positionRaw: any): MouseState
 	local current = mouseStateAtom()
 	local nextState = createMouseState({
 		visible = current.visible,
-		position = sanitizePosition(positionRaw),
+		position = CoercePosition(positionRaw),
 		isHoveringGui = current.isHoveringGui,
 		hoveredGuiPath = current.hoveredGuiPath,
 		isMouseDown = current.isMouseDown,
@@ -165,8 +165,8 @@ local function setHovering(isHoveringRaw: any, hoveredGuiPathRaw: any): MouseSta
 	local nextState = createMouseState({
 		visible = current.visible,
 		position = current.position,
-		isHoveringGui = sanitizeBool(isHoveringRaw, current.isHoveringGui),
-		hoveredGuiPath = sanitizeHoveredGuiPath(hoveredGuiPathRaw),
+		isHoveringGui = CoerceBool(isHoveringRaw, current.isHoveringGui),
+		hoveredGuiPath = CoerceHoveredGuiPath(hoveredGuiPathRaw),
 		isMouseDown = current.isMouseDown,
 	})
 	mouseStateAtom(nextState)
@@ -180,7 +180,7 @@ local function setMouseDown(isMouseDownRaw: any): MouseState
 		position = current.position,
 		isHoveringGui = current.isHoveringGui,
 		hoveredGuiPath = current.hoveredGuiPath,
-		isMouseDown = sanitizeBool(isMouseDownRaw, current.isMouseDown),
+		isMouseDown = CoerceBool(isMouseDownRaw, current.isMouseDown),
 	})
 	mouseStateAtom(nextState)
 	return nextState
@@ -189,7 +189,7 @@ end
 local function setMouseVisible(visibleRaw: any): MouseState
 	local current = mouseStateAtom()
 	local nextState = createMouseState({
-		visible = sanitizeBool(visibleRaw, current.visible),
+		visible = CoerceBool(visibleRaw, current.visible),
 		position = current.position,
 		isHoveringGui = current.isHoveringGui,
 		hoveredGuiPath = current.hoveredGuiPath,

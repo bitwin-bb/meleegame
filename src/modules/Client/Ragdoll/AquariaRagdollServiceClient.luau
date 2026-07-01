@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
-local RagdollServicePackets = require("NetSharedPackets").RagdollService
+local RagdollServicePackets = require("NetPacketsShared").RagdollService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = RagdollServicePackets[methodName]
@@ -14,7 +14,7 @@ local function sendPacket(methodName: string, ...: any)
 		return
 	end
 
-	packet.send(PacketPayload.pack(...))
+	packet.send(PacketPayload.Pack(...))
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -24,13 +24,14 @@ local function bindPacket(self: any, methodName: string)
 		return
 	end
 
+	local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
 	packet.listen(function(payload: any)
-		local handler = self[methodName]
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, table.unpack(arguments, 1, count))
 	end)
 end
@@ -67,7 +68,7 @@ type JanitorClass = {
 local RagdollServiceClient = {}
 local SELF_REQUEST_REASON = "SelfRequest"
 
-RagdollServiceClient.state = RagdollServiceUtils.createDefaultState()
+RagdollServiceClient.state = RagdollServiceUtils.CreateDefaultState()
 RagdollServiceClient.stateChanged = Signal.new()
 
 local function didStateChange(previousState: RagdollServiceState, nextState: RagdollServiceState): boolean
@@ -96,7 +97,7 @@ function RagdollServiceClient.Init(self: RagdollServiceClient)
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
-	self.state = self.state or RagdollServiceUtils.createDefaultState()
+	self.state = self.state or RagdollServiceUtils.CreateDefaultState()
 	self.stateChanged = self.stateChanged or Signal.new()
 
 	self.janitor:GiveChore(function()
@@ -108,11 +109,11 @@ end
 
 function RagdollServiceClient.ApplyState(self: RagdollServiceClient, stateRaw: any)
 	local previousState = self.state
-	local nextState = RagdollServiceUtils.sanitizeState(stateRaw, previousState)
+	local nextState = RagdollServiceUtils.CoerceState(stateRaw, previousState)
 	self.state = nextState
 
 	if didStateChange(previousState, nextState) then
-		self.stateChanged:Fire(RagdollServiceUtils.cloneState(nextState))
+		self.stateChanged:Fire(RagdollServiceUtils.CloneState(nextState))
 	end
 end
 
@@ -126,13 +127,13 @@ function RagdollServiceClient.RequestSelfRagdoll(
 	reasonRaw: any,
 	impulseRaw: any
 )
-	local duration = RagdollServiceUtils.sanitizeDuration(
+	local duration = RagdollServiceUtils.CoerceDuration(
 		durationRaw,
 		RagdollServiceUtils.DEFAULT_SELF_RAGDOLL_DURATION,
 		RagdollServiceUtils.MIN_DURATION,
 		RagdollServiceUtils.MAX_SELF_REQUEST_DURATION
 	)
-	local reason = RagdollServiceUtils.sanitizeReason(reasonRaw, SELF_REQUEST_REASON)
+	local reason = RagdollServiceUtils.CoerceReason(reasonRaw, SELF_REQUEST_REASON)
 	local impulse = if typeof(impulseRaw) == "Vector3" then impulseRaw else nil
 	sendPacket("requestSelfRagdoll", duration, reason, impulse)
 end
@@ -142,7 +143,7 @@ function RagdollServiceClient.RequestSelfRecover(self: RagdollServiceClient)
 end
 
 function RagdollServiceClient.GetState(self: RagdollServiceClient): RagdollServiceState
-	return RagdollServiceUtils.cloneState(self.state or RagdollServiceUtils.createDefaultState())
+	return RagdollServiceUtils.CloneState(self.state or RagdollServiceUtils.CreateDefaultState())
 end
 
 function RagdollServiceClient.IsRagdolled(self: RagdollServiceClient): boolean
@@ -155,16 +156,6 @@ function RagdollServiceClient.Destroy(self: RagdollServiceClient)
 		self.janitor:Destroy()
 	end
 end
-
-RagdollServiceClient.init = RagdollServiceClient.Init
-RagdollServiceClient.applyState = RagdollServiceClient.ApplyState
-RagdollServiceClient.requestSync = RagdollServiceClient.RequestSync
-RagdollServiceClient.requestSelfRagdoll = RagdollServiceClient.RequestSelfRagdoll
-RagdollServiceClient.requestSelfRecover = RagdollServiceClient.RequestSelfRecover
-RagdollServiceClient.getState = RagdollServiceClient.GetState
-RagdollServiceClient.isRagdolled = RagdollServiceClient.IsRagdolled
-RagdollServiceClient.destroy = RagdollServiceClient.Destroy
-
 export type RagdollServiceClient = typeof(RagdollServiceClient) & {
 	localPlayer: Player,
 	janitor: JanitorClass,

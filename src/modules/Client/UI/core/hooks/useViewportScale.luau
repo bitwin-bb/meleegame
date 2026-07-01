@@ -10,18 +10,19 @@ export type ResponsiveMetrics = UiScaleUtils.ResponsiveMetrics
 
 type ProviderProps = {
 	children: { React.ReactNode }?,
+	usePlatformState: boolean?,
 	viewport: Vector2?,
 }
 
 local ResponsiveContext = React.createContext(nil :: ResponsiveMetrics?)
 
-local function useViewportScale(viewportOverride: Vector2?): ResponsiveMetrics
+local function useViewportScale(viewportOverride: Vector2?, usePlatformStateRaw: boolean?): ResponsiveMetrics
 	local viewportState = useViewport({
-		usePlatformState = true,
+		usePlatformState = usePlatformStateRaw ~= false,
 	})
 
 	return React.useMemo(function(): ResponsiveMetrics
-		return UiScaleUtils.resolveMetrics(
+		return UiScaleUtils.GetMetrics(
 			viewportOverride or viewportState.viewport,
 			viewportState.safeInsetTopLeft,
 			viewportState.safeInsetBottomRight
@@ -39,11 +40,11 @@ local function useResponsiveMetrics(): ResponsiveMetrics
 	if contextMetrics ~= nil then
 		return contextMetrics
 	end
-	return useViewportScale(nil)
+	return useViewportScale(nil, nil)
 end
 
 local function Provider(props: ProviderProps): React.ReactNode
-	local metrics = useViewportScale(props.viewport)
+	local metrics = useViewportScale(props.viewport, props.usePlatformState)
 
 	return React.createElement(ResponsiveContext.Provider, {
 		value = metrics,

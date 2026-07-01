@@ -553,7 +553,7 @@ Create `src/modules/Shared/SharedEventBus/Core/EventName.luau`:
 
 local EventName = {}
 
-function EventName.Sanitize(eventNameRaw: any): string?
+function EventName.Coerce(eventNameRaw: any): string?
 	if typeof(eventNameRaw) ~= "string" then
 		return nil
 	end
@@ -566,12 +566,12 @@ function EventName.Sanitize(eventNameRaw: any): string?
 end
 
 function EventName.Assert(eventNameRaw: any): string
-	local eventName = EventName.Sanitize(eventNameRaw)
+	local eventName = EventName.Coerce(eventNameRaw)
 	assert(eventName ~= nil, "eventName must be a non-empty string")
 	return eventName
 end
 
-EventName.sanitize = EventName.Sanitize
+EventName.Coerce = EventName.Coerce
 EventName.assert = EventName.Assert
 
 return EventName
@@ -690,7 +690,7 @@ function EventBus.Fire(self: EventBus, eventNameRaw: any, ...: any)
 		return
 	end
 
-	local eventName = EventName.Sanitize(eventNameRaw)
+	local eventName = EventName.Coerce(eventNameRaw)
 	if eventName == nil then
 		return
 	end
@@ -712,7 +712,7 @@ function EventBus.Off(self: EventBus, eventNameRaw: any)
 		return
 	end
 
-	local eventName = EventName.Sanitize(eventNameRaw)
+	local eventName = EventName.Coerce(eventNameRaw)
 	if eventName == nil then
 		return
 	end
@@ -728,7 +728,7 @@ function EventBus.Off(self: EventBus, eventNameRaw: any)
 end
 
 function EventBus.Has(self: EventBus, eventNameRaw: any): boolean
-	local eventName = EventName.Sanitize(eventNameRaw)
+	local eventName = EventName.Coerce(eventNameRaw)
 	return eventName ~= nil and self._signals[eventName] ~= nil
 end
 

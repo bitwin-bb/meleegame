@@ -38,7 +38,7 @@ local PROMPT_TEXT_COLOR = Color3.fromRGB(244, 248, 255)
 local LABEL_TEXT_COLOR = Color3.fromRGB(246, 249, 255)
 local DETAIL_TEXT_COLOR = Color3.fromRGB(160, 198, 235)
 
-local function resolveMetrics(deviceClassRaw: any): Metrics
+local function GetMetrics(deviceClassRaw: any): Metrics
 	if deviceClassRaw == "Console" then
 		return {
 			promptHeight = 42,
@@ -95,7 +95,7 @@ local function resolveMetrics(deviceClassRaw: any): Metrics
 	}
 end
 
-local function resolvePromptIconWidth(hint: BindingHintEntry, metrics: Metrics): number
+local function GetPromptIconWidth(hint: BindingHintEntry, metrics: Metrics): number
 	local promptText = hint.promptText or ""
 	local widthFactor = 1
 
@@ -114,7 +114,7 @@ local function resolvePromptIconWidth(hint: BindingHintEntry, metrics: Metrics):
 	return math.max(metrics.promptMinWidth, math.floor(metrics.promptHeight * widthFactor + 0.5))
 end
 
-local function resolvePromptGap(hint: BindingHintEntry, metrics: Metrics): number
+local function GetPromptGap(hint: BindingHintEntry, metrics: Metrics): number
 	local promptText = hint.promptText or ""
 	if promptText == "Space" then
 		return math.max(2, metrics.promptGap - 2)
@@ -139,7 +139,7 @@ local function HintPrompt(props: {
 
 	if hasPromptIcon then
 		return e("ImageLabel", {
-			Size = UDim2.fromOffset(resolvePromptIconWidth(props.hint, props.metrics), props.metrics.promptHeight),
+			Size = UDim2.fromOffset(GetPromptIconWidth(props.hint, props.metrics), props.metrics.promptHeight),
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
 			Image = props.hint.promptIcon,
@@ -156,7 +156,7 @@ local function HintPrompt(props: {
 			size = UDim2.fromOffset(0, 0),
 			automaticSize = Enum.AutomaticSize.XY,
 			backgroundTransparency = 1,
-			font = Enum.Font.GothamBold,
+			font = Enum.Font.PatrickHand,
 			textSize = props.metrics.promptTextSize,
 			textColor3 = PROMPT_TEXT_COLOR,
 			textTransparency = HINT_CONTENT_TRANSPARENCY,
@@ -197,7 +197,7 @@ local function HintBody(props: {
 			size = UDim2.fromOffset(0, 0),
 			automaticSize = Enum.AutomaticSize.XY,
 			backgroundTransparency = 1,
-			font = Enum.Font.GothamBold,
+			font = Enum.Font.PatrickHand,
 			textSize = props.metrics.labelTextSize,
 			textColor3 = LABEL_TEXT_COLOR,
 			textTransparency = HINT_CONTENT_TRANSPARENCY,
@@ -223,7 +223,7 @@ local function HintBody(props: {
 			size = UDim2.fromOffset(0, 0),
 			automaticSize = Enum.AutomaticSize.XY,
 			backgroundTransparency = 1,
-			font = Enum.Font.Gotham,
+			font = Enum.Font.PatrickHand,
 			textSize = props.metrics.detailTextSize,
 			textColor3 = DETAIL_TEXT_COLOR,
 			textTransparency = HINT_CONTENT_TRANSPARENCY,
@@ -257,7 +257,7 @@ local function HintItem(props: {
 			FillDirection = Enum.FillDirection.Horizontal,
 			HorizontalAlignment = Enum.HorizontalAlignment.Left,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
-			Padding = UDim.new(0, resolvePromptGap(props.hint, props.metrics)),
+			Padding = UDim.new(0, GetPromptGap(props.hint, props.metrics)),
 			SortOrder = Enum.SortOrder.LayoutOrder,
 		}),
 		e(HintBody, {
@@ -295,7 +295,7 @@ return function(props: BindingHintBottomBarProps): React.ReactNode
 	end
 
 	local zIndex = props.zIndex or 180
-	local metrics = resolveMetrics(props.deviceClass)
+	local metrics = GetMetrics(props.deviceClass)
 	local children: { React.ReactNode } = {
 		e("UIListLayout", {
 			FillDirection = Enum.FillDirection.Horizontal,

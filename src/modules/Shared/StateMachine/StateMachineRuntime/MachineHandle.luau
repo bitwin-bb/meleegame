@@ -48,9 +48,9 @@ function MachineHandle.Start(self: MachineHandle, initialStateName: string): boo
 end
 
 function MachineHandle.PromiseStart(self: MachineHandle, initialStateName: string): any
-	return Promise.new(function(resolve, reject)
+	return Promise.new(function(fulfill, reject)
 		if self:Start(initialStateName) then
-			resolve(self)
+			fulfill(self)
 		else
 			reject(string.format("failed to start machine '%s'", self.id))
 		end
@@ -86,12 +86,6 @@ function MachineHandle.Destroy(self: MachineHandle)
 	self.Destroyed:Destroy()
 	self.janitor:Destroy()
 end
-
-MachineHandle.start = MachineHandle.Start
-MachineHandle.promiseStart = MachineHandle.PromiseStart
-MachineHandle.update = MachineHandle.Update
-MachineHandle.stop = MachineHandle.Stop
-MachineHandle.destroy = MachineHandle.Destroy
 MachineHandle.copy = Table.copy
 
 return MachineHandle

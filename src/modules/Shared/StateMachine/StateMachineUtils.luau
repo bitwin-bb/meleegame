@@ -6,7 +6,7 @@ local Table = Nevermore.Get("Table")
 
 local Utils = {}
 
-function Utils.ResolveBlackboard(machine: any): any?
+function Utils.GetBlackboard(machine: any): any?
 	if typeof(machine) ~= "table" or typeof(machine.GetBlackboard) ~= "function" then
 		return nil
 	end
@@ -14,7 +14,7 @@ function Utils.ResolveBlackboard(machine: any): any?
 end
 
 function Utils.Read(machine: any, key: string, fallback: any?): any?
-	local blackboard = Utils.ResolveBlackboard(machine)
+	local blackboard = Utils.GetBlackboard(machine)
 	if blackboard == nil or typeof(blackboard.Get) ~= "function" then
 		return fallback
 	end

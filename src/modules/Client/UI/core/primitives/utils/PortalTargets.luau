@@ -6,7 +6,7 @@ local PortalTargets = {}
 
 local UI_ROOT_NAME = "App"
 
-function PortalTargets.ResolveUiScreenGui(): ScreenGui?
+function PortalTargets.GetUiScreenGui(): ScreenGui?
 	local localPlayer = Players.LocalPlayer
 	if localPlayer == nil then
 		return nil
@@ -25,6 +25,5 @@ function PortalTargets.ResolveUiScreenGui(): ScreenGui?
 	return nil
 end
 
-PortalTargets.resolveUiScreenGui = PortalTargets.ResolveUiScreenGui
 
 return PortalTargets

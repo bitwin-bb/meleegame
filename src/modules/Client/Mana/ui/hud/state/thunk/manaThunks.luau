@@ -30,26 +30,26 @@ function manaThunks.Start(): () -> ()
 	end
 
 	runtime.started = true
-	local isReady = ServiceSync.readReady(ManaServiceClient, false)
+	local isReady = ServiceSync.ReadReady(ManaServiceClient, false)
 	manaSlice.setManaReady(isReady)
 	if isReady then
 		syncFromService()
 	end
 
-	runtime.stateChangedConnection = ServiceSync.connectStateChanged(
+	runtime.stateChangedConnection = ServiceSync.ConnectStateChanged(
 		ManaServiceClient,
 		function(nextState: ManaServiceState)
 			applyState(nextState)
 			manaSlice.setManaReady(true)
 		end
 	)
-	ServiceSync.requestSync(ManaServiceClient)
+	ServiceSync.RequestSync(ManaServiceClient)
 
 	return manaThunks.Stop
 end
 
 function manaThunks.Stop()
-	ConnectionUtils.disconnect(runtime.stateChangedConnection)
+	ConnectionUtils.Disconnect(runtime.stateChangedConnection)
 	runtime.stateChangedConnection = nil
 
 	runtime.started = false
@@ -63,10 +63,4 @@ end
 function manaThunks.ApplyState(nextStateRaw: any): ManaServiceState
 	return applyState(nextStateRaw)
 end
-
-manaThunks.start = manaThunks.Start
-manaThunks.stop = manaThunks.Stop
-manaThunks.syncFromService = manaThunks.SyncFromService
-manaThunks.applyState = manaThunks.ApplyState
-
 return manaThunks

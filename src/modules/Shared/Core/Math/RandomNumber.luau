@@ -10,7 +10,7 @@ function RandomNumber.Between(minValueRaw: any, maxValueRaw: any, randomOrSeedRa
 	local maxValue = if typeof(maxValueRaw) == "number" and maxValueRaw == maxValueRaw then maxValueRaw else 100
 
 	if typeof(randomOrSeedRaw) == "number" then
-		local nextSeed, value = Rand.integer(randomOrSeedRaw, minValue, maxValue)
+		local nextSeed, value = Rand.Integer(randomOrSeedRaw, minValue, maxValue)
 		return value, nextSeed
 	end
 
@@ -20,15 +20,11 @@ end
 
 function RandomNumber.Unit(randomOrSeedRaw: any?): (number, number?)
 	if typeof(randomOrSeedRaw) == "number" then
-		local nextSeed, value = Rand.number(randomOrSeedRaw)
+		local nextSeed, value = Rand.Number(randomOrSeedRaw)
 		return value, nextSeed
 	end
 
 	local randomObject = if typeof(randomOrSeedRaw) == "Random" then randomOrSeedRaw :: Random else Random.new()
 	return randomObject:NextNumber(), nil
 end
-
-RandomNumber.between = RandomNumber.Between
-RandomNumber.unit = RandomNumber.Unit
-
 return RandomNumber

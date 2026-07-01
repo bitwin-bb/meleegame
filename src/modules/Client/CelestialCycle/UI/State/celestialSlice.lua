@@ -55,8 +55,4 @@ function CelestialSlice.ClearSurfaceState()
 end
 
 CelestialSlice.surfaceStateAtom = surfaceStateAtom
-CelestialSlice.getSurfaceState = CelestialSlice.GetSurfaceState
-CelestialSlice.setSurfaceState = CelestialSlice.SetSurfaceState
-CelestialSlice.clearSurfaceState = CelestialSlice.ClearSurfaceState
-
 return Table.readonly(CelestialSlice)

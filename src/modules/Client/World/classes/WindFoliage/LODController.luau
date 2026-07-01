@@ -154,7 +154,7 @@ function LODController.IsVisible(self: LODController, worldPosition: Vector3, bo
 	return dot >= self.viewDotCull
 end
 
-function LODController.Resolve(
+function LODController.Get(
 	self: LODController,
 	distanceSquared: number,
 	worldPosition: Vector3,
@@ -168,7 +168,7 @@ function LODController.Resolve(
 		return self.tierNear
 	end
 
-	if not self:isVisible(worldPosition, boundingRadius) then
+	if not self:IsVisible(worldPosition, boundingRadius) then
 		return self.tierFrozen
 	end
 
@@ -190,10 +190,4 @@ function LODController.Degrade(self: LODController, tier: TierState): TierState
 	end
 	return self.tierFrozen
 end
-
-LODController.new = LODController.New
-LODController.isVisible = LODController.IsVisible
-LODController.resolve = LODController.Resolve
-LODController.degrade = LODController.Degrade
-
 return LODController

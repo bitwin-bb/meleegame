@@ -30,18 +30,18 @@ local TEXT_SIZE = Vector2.new(520, 60)
 local UNDERLINE_BASE_SIZE = Vector2.new(236, 14)
 
 return function(props: BiomeNameScreenProps?): React.ReactNode
-	local resolvedProps: BiomeNameScreenProps = if props ~= nil then props else {} :: any
+	local GotProps: BiomeNameScreenProps = if props ~= nil then props else {} :: any
 	local biomeState = (useStore(biomeSlice.biomeStateAtom) :: BiomeState?) or biomeSlice.biomeStateAtom()
 
 	React.useEffect(function()
-		local stop = biomeThunks.start()
+		local stop = biomeThunks.Start()
 
 		return function()
 			stop()
 		end
 	end, {})
 
-	local canRender = resolvedProps.visible ~= false
+	local canRender = GotProps.visible ~= false
 	local appearance = useBiomeNameAppearance({
 		enabled = canRender and biomeState.visible,
 		fromOffset = Vector2.new(0, -26),
@@ -67,7 +67,7 @@ return function(props: BiomeNameScreenProps?): React.ReactNode
 		return nil
 	end
 
-	local zIndex = resolvedProps.zIndex or 150
+	local zIndex = GotProps.zIndex or 150
 	local bannerXOffset = math.floor(appearance.offset.X + 0.5)
 	local bannerYOffset = math.floor(appearance.offset.Y + 0.5)
 	local underlineXOffset = math.floor(underline.offset.X + 0.5)
@@ -76,7 +76,7 @@ return function(props: BiomeNameScreenProps?): React.ReactNode
 	local underlineHeight = math.max(1, math.floor(UNDERLINE_BASE_SIZE.Y + 0.5))
 
 	return e(Layer, {
-		layoutOrder = resolvedProps.layoutOrder or 997,
+		layoutOrder = GotProps.layoutOrder or 997,
 		zIndex = zIndex,
 		active = false,
 		children = {

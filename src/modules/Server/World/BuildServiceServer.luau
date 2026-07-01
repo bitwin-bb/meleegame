@@ -15,7 +15,7 @@ local InventoryServiceUtils = require("InventoryServiceUtils")
 local LootServiceServer = require("LootServiceServer")
 local MiningPower = require("MiningPower")
 local PacketPayload = require("PacketPayload")
-local BuildServicePackets = require("NetSharedPackets").BuildService
+local BuildServicePackets = require("NetPacketsShared").BuildService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = BuildServicePackets[methodName]
@@ -24,7 +24,7 @@ local function sendPacket(player: Player, methodName: string, ...: any)
 		return
 	end
 
-	packet.sendTo(PacketPayload.pack(...), player)
+	packet.sendTo(PacketPayload.Pack(...), player)
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -39,12 +39,13 @@ local function bindPacket(self: any, methodName: string)
 			return
 		end
 
-		local handler = self[methodName]
+		local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, player, table.unpack(arguments, 1, count))
 	end)
 end
@@ -64,7 +65,7 @@ end
 
 local NevermoreSupport = require("NevermoreSupport")
 local PlayerServiceServer = require("PlayerServiceServer")
-local ServerBinderSupport = require("ServerBinderSupport")
+local BinderSupportServer = require("BinderSupportServer")
 local TagBinder = require("TagBinder")
 local WorldGenerationServiceServer = require("WorldGenerationServiceServer")
 
@@ -83,8 +84,8 @@ type InventoryItemStack = InventoryServiceUtils.InventoryItemStack
 type SlotMutationResult = InventoryServiceUtils.SlotMutationResult
 
 type WorldGenerationServiceServerObject = {
-	getWorld: (self: WorldGenerationServiceServerObject) -> any,
-	setTileAt: (
+	GetWorld: (self: WorldGenerationServiceServerObject) -> any,
+	SetTileAt: (
 		self: WorldGenerationServiceServerObject,
 		tileXRaw: any,
 		tileYRaw: any,
@@ -103,8 +104,8 @@ type LootServiceServerObject = {
 }
 
 type InventoryServiceServerObject = {
-	getState: (self: InventoryServiceServerObject, player: Player) -> InventoryState,
-	removeFromSlot: (
+	GetState: (self: InventoryServiceServerObject, player: Player) -> InventoryState,
+	RemoveFromSlot: (
 		self: InventoryServiceServerObject,
 		player: Player,
 		slotIndexRaw: any,
@@ -153,7 +154,7 @@ type MultiTileAnchorRuntime = {
 local BuildServiceServer = {}
 
 local function shouldReplicateToPlayer(player: Player): boolean
-	return PlayerServiceServer:isGameplayActiveForPlayer(player)
+	return PlayerServiceServer:IsGameplayActiveForPlayer(player)
 end
 
 local DEFAULT_DAMAGE_RETENTION_SECONDS = 30
@@ -169,7 +170,7 @@ local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function sanitizeInventorySlot(slotRaw: any): number?
+local function CoerceInventorySlot(slotRaw: any): number?
 	if typeof(slotRaw) ~= "number" or slotRaw ~= slotRaw then
 		return nil
 	end
@@ -203,14 +204,14 @@ local function footprintHasBlockingTorch(footprint: { TileCoordinate }): boolean
 	return false
 end
 
-local function resolveBuildConfigSource(): any
+local function GetBuildConfigSource(): any
 	if typeof(Configs) ~= "table" then
 		return nil
 	end
 	return (Configs :: any).buildService
 end
 
-local function resolvePlayerRootPart(player: Player): BasePart?
+local function GetPlayerRootPart(player: Player): BasePart?
 	local character = player.Character
 	if character == nil then
 		return nil
@@ -231,11 +232,11 @@ local function resolvePlayerRootPart(player: Player): BasePart?
 	return nil
 end
 
-local function resolveTileBreakDropItemId(tileId: number): string?
-	return BuildServiceUtils.resolveTileBreakDropItemId(tileId)
+local function GetTileBreakDropItemId(tileId: number): string?
+	return BuildServiceUtils.GetTileBreakDropItemId(tileId)
 end
 
-local function resolveSelectedInventoryToolProfile(
+local function GetSelectedInventoryToolProfile(
 	inventoryService: InventoryServiceServerObject?,
 	player: Player
 ): MiningPower.ToolProfile?
@@ -243,23 +244,23 @@ local function resolveSelectedInventoryToolProfile(
 		return nil
 	end
 
-	local inventoryState = inventoryService:getState(player)
-	if not InventoryServiceUtils.isLoadedState(inventoryState.loadState) then
+	local inventoryState = inventoryService:GetState(player)
+	if not InventoryServiceUtils.IsLoadedState(inventoryState.loadState) then
 		return nil
 	end
-	local selectedToolContext = MiningPower.resolveSelectedToolContextFromInventoryState(inventoryState)
+	local selectedToolContext = MiningPower.GetSelectedToolContextFromInventoryState(inventoryState)
 	if selectedToolContext == nil then
 		return nil
 	end
 	return selectedToolContext
 end
 
-local function resolvePlayerToolPower(
+local function GetPlayerToolPower(
 	inventoryService: InventoryServiceServerObject?,
 	player: Player,
 	fallback: number
 ): number
-	local selectedProfile = resolveSelectedInventoryToolProfile(inventoryService, player)
+	local selectedProfile = GetSelectedInventoryToolProfile(inventoryService, player)
 	if selectedProfile ~= nil then
 		return math.max(0, selectedProfile.toolPower)
 	end
@@ -267,12 +268,12 @@ local function resolvePlayerToolPower(
 	return fallback
 end
 
-local function resolvePlayerToolType(
+local function GetPlayerToolType(
 	inventoryService: InventoryServiceServerObject?,
 	player: Player,
 	fallback: string
 ): string
-	local selectedProfile = resolveSelectedInventoryToolProfile(inventoryService, player)
+	local selectedProfile = GetSelectedInventoryToolProfile(inventoryService, player)
 	if selectedProfile ~= nil and selectedProfile.toolType ~= nil then
 		return selectedProfile.toolType
 	end
@@ -280,7 +281,7 @@ local function resolvePlayerToolType(
 	return fallback
 end
 
-local function resolvePlaceableFromInventory(
+local function GetPlaceableFromInventory(
 	inventoryService: InventoryServiceServerObject?,
 	player: Player,
 	sourceSlotRaw: any?
@@ -289,14 +290,14 @@ local function resolvePlaceableFromInventory(
 		return nil, nil, nil, nil
 	end
 
-	local inventoryState = inventoryService:getState(player)
-	if not InventoryServiceUtils.isLoadedState(inventoryState.loadState) then
+	local inventoryState = inventoryService:GetState(player)
+	if not InventoryServiceUtils.IsLoadedState(inventoryState.loadState) then
 		return nil, nil, nil, nil
 	end
 
 	local sourceSlot = nil :: number?
 	if sourceSlotRaw ~= nil then
-		sourceSlot = sanitizeInventorySlot(sourceSlotRaw)
+		sourceSlot = CoerceInventorySlot(sourceSlotRaw)
 		if sourceSlot == nil then
 			return nil, nil, nil, "invalid_source_slot"
 		end
@@ -307,12 +308,12 @@ local function resolvePlaceableFromInventory(
 		return nil, nil, nil, nil
 	end
 
-	local stack = InventoryServiceUtils.getStack(inventoryState, sourceSlot)
+	local stack = InventoryServiceUtils.GetStack(inventoryState, sourceSlot)
 	if stack == nil or stack.amount <= 0 then
 		return sourceSlot, nil, nil, nil
 	end
 
-	return sourceSlot, stack, BuildServiceUtils.resolvePlaceableItemConfig(stack.itemId), nil
+	return sourceSlot, stack, BuildServiceUtils.GetPlaceableItemConfig(stack.itemId), nil
 end
 
 local function cloneTileDeltaList(source: { TileDelta }): { TileDelta }
@@ -340,7 +341,7 @@ function BuildServiceServer.CreateStateSnapshot(self: BuildServiceServer): Build
 	local basePlaneX = if world ~= nil and isFiniteNumber((world :: any).basePlaneX)
 		then (world :: any).basePlaneX
 		else 0
-	return BuildServiceUtils.createState({
+	return BuildServiceUtils.CreateState({
 		ready = world ~= nil,
 		tileSize = tileSize,
 		chunkSize = chunkSize,
@@ -353,8 +354,8 @@ function BuildServiceServer.CreateStateSnapshot(self: BuildServiceServer): Build
 end
 
 function BuildServiceServer.PushState(self: BuildServiceServer, player: Player)
-	self.state = self:createStateSnapshot()
-	sendPacket(player, BuildServiceUtils.CLIENT_METHOD_APPLY_STATE, BuildServiceUtils.cloneState(self.state))
+	self.state = self:CreateStateSnapshot()
+	sendPacket(player, BuildServiceUtils.CLIENT_METHOD_APPLY_STATE, BuildServiceUtils.CloneState(self.state))
 end
 
 function BuildServiceServer.CreateBreakIntent(self: BuildServiceServer): PlayerBreakIntent
@@ -383,7 +384,7 @@ function BuildServiceServer.GetBreakIntent(self: BuildServiceServer, player: Pla
 	if existing ~= nil then
 		return existing
 	end
-	local created = self:createBreakIntent()
+	local created = self:CreateBreakIntent()
 	self.playerBreakIntents[player] = created
 	return created
 end
@@ -400,7 +401,7 @@ function BuildServiceServer.GetTileBoundsY(self: BuildServiceServer): (number, n
 end
 
 function BuildServiceServer.IsTileWithinBounds(self: BuildServiceServer, tileY: number): boolean
-	local minTileY, maxTileY = self:getTileBoundsY()
+	local minTileY, maxTileY = self:GetTileBoundsY()
 	return tileY >= minTileY and tileY <= maxTileY
 end
 
@@ -408,24 +409,24 @@ function BuildServiceServer.GetTileAtInternal(self: BuildServiceServer, tileX: n
 	if self.world == nil then
 		return BuildServiceUtils.AIR_TILE_ID
 	end
-	local tileId = (self.world :: any):getTileAt(tileX, tileY)
+	local tileId = (self.world :: any):GetTileAt(tileX, tileY)
 	if isFiniteNumber(tileId) then
-		local sanitized = BuildServiceUtils.sanitizeTileId(tileId)
-		if sanitized ~= nil then
-			return sanitized
+		local CoerceD = BuildServiceUtils.CoerceTileId(tileId)
+		if CoerceD ~= nil then
+			return CoerceD
 		end
 	end
 	return BuildServiceUtils.AIR_TILE_ID
 end
 
 function BuildServiceServer.GetTileAt(self: BuildServiceServer, _player: Player, tileXRaw: any, tileYRaw: any): number
-	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
-	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
+	local tileX = BuildServiceUtils.CoerceTileCoordinate(tileXRaw)
+	local tileY = BuildServiceUtils.CoerceTileCoordinate(tileYRaw)
 	if tileX == nil or tileY == nil then
 		return BuildServiceUtils.AIR_TILE_ID
 	end
 
-	local tileId = self:getTileAtInternal(tileX, tileY)
+	local tileId = self:GetTileAtInternal(tileX, tileY)
 	sendPacket(_player, BuildServiceUtils.CLIENT_METHOD_ON_TILE_FETCHED, tileX, tileY, tileId)
 	return tileId
 end
@@ -434,7 +435,7 @@ function BuildServiceServer.GetTreesForChunk(self: BuildServiceServer, chunkX: n
 	if self.world == nil then
 		return nil
 	end
-	local getChunkDataMethod = (self.world :: any).getChunkData
+	local getChunkDataMethod = (self.world :: any).GetChunkData
 	if typeof(getChunkDataMethod) ~= "function" then
 		return nil
 	end
@@ -449,24 +450,24 @@ function BuildServiceServer.GetTreesForChunk(self: BuildServiceServer, chunkX: n
 	return trees
 end
 
-function BuildServiceServer.ResolveTreeHitAt(self: BuildServiceServer, tileX: number, tileY: number): TreeHitResult?
-	return BuildServiceUtils.resolveTreeAtTile(
+function BuildServiceServer.GetTreeHitAt(self: BuildServiceServer, tileX: number, tileY: number): TreeHitResult?
+	return BuildServiceUtils.GetTreeAtTile(
 		tileX,
 		tileY,
 		self.state.chunkSize,
 		function(chunkX: number, chunkY: number): { any }?
-			return self:getTreesForChunk(chunkX, chunkY)
+			return self:GetTreesForChunk(chunkX, chunkY)
 		end
 	)
 end
 
-function BuildServiceServer.ResolvePlayerTileX(self: BuildServiceServer, player: Player, fallbackTileX: number): number
-	local rootPart = resolvePlayerRootPart(player)
+function BuildServiceServer.GetPlayerTileX(self: BuildServiceServer, player: Player, fallbackTileX: number): number
+	local rootPart = GetPlayerRootPart(player)
 	if rootPart == nil then
 		return fallbackTileX
 	end
 	local tileX, _ =
-		BuildServiceUtils.worldPositionToTile(rootPart.Position, self.state.worldOrigin, self.state.tileSize)
+		BuildServiceUtils.WorldPositionToTile(rootPart.Position, self.state.worldOrigin, self.state.tileSize)
 	return tileX
 end
 
@@ -475,18 +476,18 @@ function BuildServiceServer.TouchChunkForTreeMutation(self: BuildServiceServer, 
 		return
 	end
 
-	local bumpRevisionMethod = (self.world :: any).bumpChunkRevisionByKey
+	local bumpRevisionMethod = (self.world :: any).BumpChunkRevisionByKey
 	if typeof(bumpRevisionMethod) == "function" then
 		bumpRevisionMethod(self.world, chunkKey)
 	end
 
-	local markDirtyMethod = (self.world :: any).markChunkDirtyByKey
+	local markDirtyMethod = (self.world :: any).MarkChunkDirtyByKey
 	if typeof(markDirtyMethod) == "function" then
 		markDirtyMethod(self.world, chunkKey)
 	end
 
 	local cachedChunkVisuals = (self.world :: any).cachedChunkVisuals
-	local releaseChunkVisualMethod = (self.world :: any).releaseChunkVisual
+	local releaseChunkVisualMethod = (self.world :: any).ReleaseChunkVisual
 	if typeof(cachedChunkVisuals) == "table" and typeof(releaseChunkVisualMethod) == "function" then
 		local cachedVisual = cachedChunkVisuals[chunkKey]
 		if cachedVisual ~= nil then
@@ -498,7 +499,7 @@ function BuildServiceServer.TouchChunkForTreeMutation(self: BuildServiceServer, 
 		end
 	end
 
-	local enqueueChunkMethod = (self.worldGenerationService :: any).enqueueChunkForWorldSimulation
+	local enqueueChunkMethod = (self.worldGenerationService :: any).EnqueueChunkForWorldSimulation
 	if typeof(enqueueChunkMethod) == "function" then
 		pcall(function()
 			enqueueChunkMethod(self.worldGenerationService, chunkKey, nil)
@@ -510,7 +511,7 @@ function BuildServiceServer.RemoveTreeFromWorld(self: BuildServiceServer, tree: 
 	if self.world == nil then
 		return false
 	end
-	local getChunkDataMethod = (self.world :: any).getChunkData
+	local getChunkDataMethod = (self.world :: any).GetChunkData
 	if typeof(getChunkDataMethod) ~= "function" then
 		return false
 	end
@@ -525,7 +526,7 @@ function BuildServiceServer.RemoveTreeFromWorld(self: BuildServiceServer, tree: 
 
 	local removed = false
 	for index = #trees, 1, -1 do
-		local snapshot = BuildServiceUtils.createTreeSnapshot(tree.chunkX, tree.chunkY, trees[index])
+		local snapshot = BuildServiceUtils.CreateTreeSnapshot(tree.chunkX, tree.chunkY, trees[index])
 		if snapshot == nil or snapshot.treeId ~= tree.treeId then
 			continue
 		end
@@ -534,7 +535,7 @@ function BuildServiceServer.RemoveTreeFromWorld(self: BuildServiceServer, tree: 
 	end
 
 	if removed then
-		self:touchChunkForTreeMutation(tree.chunkKey)
+		self:TouchChunkForTreeMutation(tree.chunkKey)
 	end
 	return removed
 end
@@ -550,7 +551,7 @@ function BuildServiceServer.SpawnTreeDropsAtImpact(
 		return
 	end
 
-	local drops = BuildServiceUtils.rollTreeDrops({
+	local drops = BuildServiceUtils.RollTreeDrops({
 		seed = tree.seed,
 		variantIndex = tree.variantIndex,
 		biomeType = tree.biomeType,
@@ -562,7 +563,7 @@ function BuildServiceServer.SpawnTreeDropsAtImpact(
 	end
 
 	local scatterStep = math.max(0.2, self.state.tileSize * 0.24)
-	local throwDirection = BuildServiceUtils.computeTreeFallVector2D(fallDirection)
+	local throwDirection = BuildServiceUtils.ComputeTreeFallVector2D(fallDirection)
 	for dropIndex, drop in drops do
 		local offsetAlongFall = (dropIndex - (#drops + 1) * 0.5) * scatterStep
 		local spawnPosition = impactPosition
@@ -570,7 +571,7 @@ function BuildServiceServer.SpawnTreeDropsAtImpact(
 			+ throwDirection * offsetAlongFall
 		pcall(function()
 			local lootServiceAny = self.lootService :: any
-			lootServiceAny:spawnLootRuntime(drop.itemId, drop.amount, spawnPosition, {
+			lootServiceAny:SpawnLootRuntime(drop.itemId, drop.amount, spawnPosition, {
 				sourceType = TREE_DROP_SOURCE_TYPE,
 				throwDirection = throwDirection,
 			})
@@ -584,11 +585,11 @@ function BuildServiceServer.IsWithinInteractionRange(
 	tileX: number,
 	tileY: number
 ): boolean
-	local rootPart = resolvePlayerRootPart(player)
+	local rootPart = GetPlayerRootPart(player)
 	if rootPart == nil then
 		return false
 	end
-	local targetPosition = BuildServiceUtils.tileToWorldCenter(
+	local targetPosition = BuildServiceUtils.TileToWorldCenter(
 		tileX,
 		tileY,
 		self.state.worldOrigin,
@@ -596,7 +597,7 @@ function BuildServiceServer.IsWithinInteractionRange(
 		self.state.basePlaneX
 	)
 	local maxDistanceStuds = self.config.maxInteractionDistanceTiles * self.state.tileSize
-	return BuildServiceUtils.worldDistance2D(rootPart.Position, targetPosition)
+	return BuildServiceUtils.WorldDistance2D(rootPart.Position, targetPosition)
 		<= maxDistanceStuds + self.state.tileSize
 end
 
@@ -606,18 +607,18 @@ function BuildServiceServer.IsBreakTargetWithinInteractionRange(
 	tileX: number,
 	tileY: number
 ): boolean
-	if self:isWithinInteractionRange(player, tileX, tileY) then
+	if self:IsWithinInteractionRange(player, tileX, tileY) then
 		return true
 	end
 
-	local treeHit = self:resolveTreeHitAt(tileX, tileY)
+	local treeHit = self:GetTreeHitAt(tileX, tileY)
 	if treeHit == nil then
 		return false
 	end
 
 	local rootTileX = treeHit.tree.rootTileX
 	local rootTileY = treeHit.tree.rootTileY + 1
-	return self:isWithinInteractionRange(player, rootTileX, rootTileY)
+	return self:IsWithinInteractionRange(player, rootTileX, rootTileY)
 end
 
 function BuildServiceServer.PushBreakProgress(
@@ -660,7 +661,7 @@ function BuildServiceServer.SendActionResult(
 	reason: string,
 	deltasRaw: { TileDelta }?
 )
-	local requestId = BuildServiceUtils.sanitizeRequestId(requestIdRaw)
+	local requestId = BuildServiceUtils.CoerceRequestId(requestIdRaw)
 	if requestId <= 0 then
 		return
 	end
@@ -676,8 +677,8 @@ function BuildServiceServer.SendActionResult(
 end
 
 function BuildServiceServer.TrackPlayer(self: BuildServiceServer, player: Player)
-	self.playerBreakIntents[player] = self:createBreakIntent()
-	self:pushState(player)
+	self.playerBreakIntents[player] = self:CreateBreakIntent()
+	self:PushState(player)
 end
 
 function BuildServiceServer.ClearBreakRuntimeForIntent(self: BuildServiceServer, intent: PlayerBreakIntent)
@@ -685,13 +686,13 @@ function BuildServiceServer.ClearBreakRuntimeForIntent(self: BuildServiceServer,
 	local tileX = intent.tileX
 	local tileY = intent.tileY
 	if tileX ~= nil and tileY ~= nil then
-		local tileKey = BuildServiceUtils.packTileKey(tileX, tileY)
+		local tileKey = BuildServiceUtils.PackTileKey(tileX, tileY)
 		self.tileDamage[tileKey] = nil
 	end
 
 	local treeId = intent.targetTreeId
 	if treeId ~= nil and treeId ~= "" then
-		local healthPoolKey = BuildServiceUtils.getTreeHealthPoolKey(treeId)
+		local healthPoolKey = BuildServiceUtils.GetTreeHealthPoolKey(treeId)
 		self.treeDamage[healthPoolKey] = nil
 	end
 end
@@ -709,16 +710,16 @@ end
 function BuildServiceServer.UntrackPlayer(self: BuildServiceServer, player: Player)
 	local intent = self.playerBreakIntents[player]
 	if intent ~= nil then
-		self:clearBreakRuntimeForIntent(intent)
+		self:ClearBreakRuntimeForIntent(intent)
 	end
 	self.playerBreakIntents[player] = nil
 end
 
 function BuildServiceServer.RequestSync(self: BuildServiceServer, player: Player)
 	if self.playerBreakIntents[player] == nil then
-		self:trackPlayer(player)
+		self:TrackPlayer(player)
 	end
-	local nextWorld = (self.worldGenerationService :: any):getWorld()
+	local nextWorld = (self.worldGenerationService :: any):GetWorld()
 	if nextWorld ~= self.world then
 		self.world = nextWorld
 		table.clear(self.pendingTileDeltas)
@@ -729,7 +730,7 @@ function BuildServiceServer.RequestSync(self: BuildServiceServer, player: Player
 		table.clear(self.multiTileAnchors)
 		table.clear(self.multiTileMembers)
 	end
-	self:pushState(player)
+	self:PushState(player)
 end
 
 function BuildServiceServer.QueueTileDelta(
@@ -739,7 +740,7 @@ function BuildServiceServer.QueueTileDelta(
 	tileId: number,
 	reason: string
 ): TileDelta
-	local key = BuildServiceUtils.packTileKey(tileX, tileY)
+	local key = BuildServiceUtils.PackTileKey(tileX, tileY)
 	local existingIndex = self.pendingTileDeltaLookup[key]
 	if existingIndex ~= nil then
 		local existing = self.pendingTileDeltas[existingIndex]
@@ -765,18 +766,18 @@ function BuildServiceServer.ClearMultiTileAnchor(self: BuildServiceServer, ancho
 		return
 	end
 	for _, member in anchor.members do
-		self.multiTileMembers[BuildServiceUtils.packTileKey(member.tileX, member.tileY)] = nil
+		self.multiTileMembers[BuildServiceUtils.PackTileKey(member.tileX, member.tileY)] = nil
 	end
 	self.multiTileAnchors[anchorKey] = nil
 end
 
 function BuildServiceServer.ClearMultiTileMembershipAt(self: BuildServiceServer, tileX: number, tileY: number)
-	local tileKey = BuildServiceUtils.packTileKey(tileX, tileY)
+	local tileKey = BuildServiceUtils.PackTileKey(tileX, tileY)
 	local anchorKey = self.multiTileMembers[tileKey]
 	if anchorKey == nil then
 		return
 	end
-	self:clearMultiTileAnchor(anchorKey)
+	self:ClearMultiTileAnchor(anchorKey)
 end
 
 function BuildServiceServer.RegisterMultiTilePlacement(
@@ -784,7 +785,7 @@ function BuildServiceServer.RegisterMultiTilePlacement(
 	tileId: number,
 	footprint: { TileCoordinate }
 )
-	local tileRule = BuildServiceUtils.getTileRule(tileId)
+	local tileRule = BuildServiceUtils.GetTileRule(tileId)
 	if tileRule.multiTileSizeX <= 1 and tileRule.multiTileSizeY <= 1 then
 		return
 	end
@@ -798,14 +799,14 @@ function BuildServiceServer.RegisterMultiTilePlacement(
 		originTileX = math.min(originTileX, tile.tileX)
 		originTileY = math.min(originTileY, tile.tileY)
 	end
-	local anchorKey = BuildServiceUtils.packTileKey(originTileX, originTileY)
+	local anchorKey = BuildServiceUtils.PackTileKey(originTileX, originTileY)
 	local members = Sift.Array.create(#footprint)
 	for index, tile in footprint do
 		members[index] = {
 			tileX = tile.tileX,
 			tileY = tile.tileY,
 		}
-		self.multiTileMembers[BuildServiceUtils.packTileKey(tile.tileX, tile.tileY)] = anchorKey
+		self.multiTileMembers[BuildServiceUtils.PackTileKey(tile.tileX, tile.tileY)] = anchorKey
 	end
 	self.multiTileAnchors[anchorKey] = {
 		tileId = tileId,
@@ -822,9 +823,9 @@ function BuildServiceServer.SetTileAtAuthoritative(
 	tileId: number,
 	reason: string
 ): (boolean, number, number)
-	self:clearMultiTileMembershipAt(tileX, tileY)
+	self:ClearMultiTileMembershipAt(tileX, tileY)
 	local worldGenerationServiceAny = self.worldGenerationService :: any
-	local changed, previousTileIdRaw, nextTileIdRaw = worldGenerationServiceAny:setTileAt(tileX, tileY, tileId)
+	local changed, previousTileIdRaw, nextTileIdRaw = worldGenerationServiceAny:SetTileAt(tileX, tileY, tileId)
 	local previousTileId = if isFiniteNumber(previousTileIdRaw)
 		then math.floor(previousTileIdRaw)
 		else BuildServiceUtils.AIR_TILE_ID
@@ -832,18 +833,18 @@ function BuildServiceServer.SetTileAtAuthoritative(
 	if not changed then
 		return false, previousTileId, nextTileId
 	end
-	local tileKey = BuildServiceUtils.packTileKey(tileX, tileY)
+	local tileKey = BuildServiceUtils.PackTileKey(tileX, tileY)
 	self.tileDamage[tileKey] = nil
-	self:queueTileDelta(tileX, tileY, nextTileId, reason)
+	self:QueueTileDelta(tileX, tileY, nextTileId, reason)
 	return true, previousTileId, nextTileId
 end
 
-function BuildServiceServer.ResolveBreakFootprint(
+function BuildServiceServer.GetBreakFootprint(
 	self: BuildServiceServer,
 	tileX: number,
 	tileY: number
 ): { TileCoordinate }
-	local tileKey = BuildServiceUtils.packTileKey(tileX, tileY)
+	local tileKey = BuildServiceUtils.PackTileKey(tileX, tileY)
 	local anchorKey = self.multiTileMembers[tileKey]
 	if anchorKey ~= nil then
 		local anchor = self.multiTileAnchors[anchorKey]
@@ -866,7 +867,7 @@ function BuildServiceServer.ResolveBreakFootprint(
 	}
 end
 
-function BuildServiceServer.ResolveUnsupportedCascadeAround(
+function BuildServiceServer.GetUnsupportedCascadeAround(
 	self: BuildServiceServer,
 	changedTiles: { TileCoordinate }
 ): { TileDelta }
@@ -876,10 +877,10 @@ function BuildServiceServer.ResolveUnsupportedCascadeAround(
 	local cascadeDeltas: { TileDelta } = {}
 
 	local function enqueue(tileX: number, tileY: number)
-		if not self:isTileWithinBounds(tileY) then
+		if not self:IsTileWithinBounds(tileY) then
 			return
 		end
-		local key = BuildServiceUtils.packTileKey(tileX, tileY)
+		local key = BuildServiceUtils.PackTileKey(tileX, tileY)
 		if queuedLookup[key] then
 			return
 		end
@@ -892,7 +893,7 @@ function BuildServiceServer.ResolveUnsupportedCascadeAround(
 
 	for _, changedTile in changedTiles do
 		enqueue(changedTile.tileX, changedTile.tileY)
-		local neighbors = BuildServiceUtils.getCardinalNeighbors(changedTile.tileX, changedTile.tileY)
+		local neighbors = BuildServiceUtils.GetCardinalNeighbors(changedTile.tileX, changedTile.tileY)
 		for _, neighbor in neighbors do
 			enqueue(neighbor.tileX, neighbor.tileY)
 		end
@@ -906,38 +907,38 @@ function BuildServiceServer.ResolveUnsupportedCascadeAround(
 		queueHead += 1
 		passes += 1
 
-		local key = BuildServiceUtils.packTileKey(current.tileX, current.tileY)
+		local key = BuildServiceUtils.PackTileKey(current.tileX, current.tileY)
 		if processedLookup[key] then
 			continue
 		end
 		processedLookup[key] = true
 
-		local tileId = self:getTileAtInternal(current.tileX, current.tileY)
+		local tileId = self:GetTileAtInternal(current.tileX, current.tileY)
 		if tileId == BuildServiceUtils.AIR_TILE_ID then
 			continue
 		end
-		local tileRule = BuildServiceUtils.getTileRule(tileId)
+		local tileRule = BuildServiceUtils.GetTileRule(tileId)
 		if not tileRule.requiresSupport and not tileRule.fallWhenUnsupported then
 			continue
 		end
 		if
-			BuildServiceUtils.hasSupportAt(
+			BuildServiceUtils.HasSupportAt(
 				current.tileX,
 				current.tileY,
 				tileRule.supportMode,
 				function(scanX: number, scanY: number): number
-					return self:getTileAtInternal(scanX, scanY)
+					return self:GetTileAtInternal(scanX, scanY)
 				end
 			)
 		then
 			continue
 		end
 
-		local supportComponent, hasSupport, truncated = BuildServiceUtils.floodFillSupportComponent(
+		local supportComponent, hasSupport, truncated = BuildServiceUtils.FloodFillSupportComponent(
 			current.tileX,
 			current.tileY,
 			function(scanX: number, scanY: number): number
-				return self:getTileAtInternal(scanX, scanY)
+				return self:GetTileAtInternal(scanX, scanY)
 			end,
 			self.config.breakSupportFloodLimit
 		)
@@ -946,7 +947,7 @@ function BuildServiceServer.ResolveUnsupportedCascadeAround(
 		end
 
 		for _, unsupportedTile in supportComponent do
-			local didChange, _, nextTileId = self:setTileAtAuthoritative(
+			local didChange, _, nextTileId = self:SetTileAtAuthoritative(
 				unsupportedTile.tileX,
 				unsupportedTile.tileY,
 				BuildServiceUtils.AIR_TILE_ID,
@@ -960,7 +961,7 @@ function BuildServiceServer.ResolveUnsupportedCascadeAround(
 					reason = "cascade",
 				}
 				local unsupportedNeighbors =
-					BuildServiceUtils.getCardinalNeighbors(unsupportedTile.tileX, unsupportedTile.tileY)
+					BuildServiceUtils.GetCardinalNeighbors(unsupportedTile.tileX, unsupportedTile.tileY)
 				for _, neighbor in unsupportedNeighbors do
 					enqueue(neighbor.tileX, neighbor.tileY)
 				end
@@ -1019,13 +1020,13 @@ function BuildServiceServer.CanPlaceAt(
 	tileYRaw: any,
 	tileIdRaw: any
 ): (boolean, string)
-	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
-	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
-	local requestedTileId = BuildServiceUtils.sanitizeTileId(tileIdRaw)
+	local tileX = BuildServiceUtils.CoerceTileCoordinate(tileXRaw)
+	local tileY = BuildServiceUtils.CoerceTileCoordinate(tileYRaw)
+	local requestedTileId = BuildServiceUtils.CoerceTileId(tileIdRaw)
 	if tileX == nil or tileY == nil or requestedTileId == nil then
 		return false, "invalid_tile_coordinate_or_id"
 	end
-	local _, _, selectedPlaceableConfig = resolvePlaceableFromInventory(self.inventoryService, player, nil)
+	local _, _, selectedPlaceableConfig = GetPlaceableFromInventory(self.inventoryService, player, nil)
 	if selectedPlaceableConfig == nil then
 		return false, "selected_item_not_placeable"
 	end
@@ -1033,20 +1034,20 @@ function BuildServiceServer.CanPlaceAt(
 	if requestedTileId ~= tileId then
 		return false, "selected_item_tile_mismatch"
 	end
-	if not self:isTileWithinBounds(tileY) then
+	if not self:IsTileWithinBounds(tileY) then
 		return false, "tile_out_of_bounds"
 	end
-	if not self:isWithinInteractionRange(player, tileX, tileY) then
+	if not self:IsWithinInteractionRange(player, tileX, tileY) then
 		return false, "out_of_range"
 	end
 
-	local minTileY, maxTileY = self:getTileBoundsY()
-	local placementResult = BuildServiceUtils.canPlaceAt(
+	local minTileY, maxTileY = self:GetTileBoundsY()
+	local placementResult = BuildServiceUtils.CanPlaceAt(
 		tileX,
 		tileY,
 		tileId,
 		function(scanX: number, scanY: number): number
-			return self:getTileAtInternal(scanX, scanY)
+			return self:GetTileAtInternal(scanX, scanY)
 		end,
 		minTileY,
 		maxTileY
@@ -1066,12 +1067,12 @@ function BuildServiceServer.RequestPlaceTile(
 	requestIdRaw: any?,
 	sourceSlotRaw: any?
 )
-	local requestId = BuildServiceUtils.sanitizeRequestId(requestIdRaw)
-	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
-	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
-	local requestedTileId = BuildServiceUtils.sanitizeTileId(tileIdRaw)
+	local requestId = BuildServiceUtils.CoerceRequestId(requestIdRaw)
+	local tileX = BuildServiceUtils.CoerceTileCoordinate(tileXRaw)
+	local tileY = BuildServiceUtils.CoerceTileCoordinate(tileYRaw)
+	local requestedTileId = BuildServiceUtils.CoerceTileId(tileIdRaw)
 	if tileX == nil or tileY == nil or requestedTileId == nil then
-		self:sendActionResult(
+		self:SendActionResult(
 			player,
 			requestId,
 			BuildServiceUtils.ACTION_TYPE_PLACE,
@@ -1082,13 +1083,13 @@ function BuildServiceServer.RequestPlaceTile(
 		return
 	end
 	local sourceSlot, sourceStack, sourcePlaceableConfig, sourceError =
-		resolvePlaceableFromInventory(self.inventoryService, player, sourceSlotRaw)
+		GetPlaceableFromInventory(self.inventoryService, player, sourceSlotRaw)
 	if sourceError ~= nil then
-		self:sendActionResult(player, requestId, BuildServiceUtils.ACTION_TYPE_PLACE, false, sourceError, nil)
+		self:SendActionResult(player, requestId, BuildServiceUtils.ACTION_TYPE_PLACE, false, sourceError, nil)
 		return
 	end
 	if sourceSlot == nil or sourceStack == nil or sourcePlaceableConfig == nil then
-		self:sendActionResult(
+		self:SendActionResult(
 			player,
 			requestId,
 			BuildServiceUtils.ACTION_TYPE_PLACE,
@@ -1100,7 +1101,7 @@ function BuildServiceServer.RequestPlaceTile(
 	end
 	local tileId = sourcePlaceableConfig.tileId
 	if requestedTileId ~= tileId then
-		self:sendActionResult(
+		self:SendActionResult(
 			player,
 			requestId,
 			BuildServiceUtils.ACTION_TYPE_PLACE,
@@ -1110,22 +1111,22 @@ function BuildServiceServer.RequestPlaceTile(
 		)
 		return
 	end
-	if not self:isTileWithinBounds(tileY) then
-		self:sendActionResult(player, requestId, BuildServiceUtils.ACTION_TYPE_PLACE, false, "tile_out_of_bounds", nil)
+	if not self:IsTileWithinBounds(tileY) then
+		self:SendActionResult(player, requestId, BuildServiceUtils.ACTION_TYPE_PLACE, false, "tile_out_of_bounds", nil)
 		return
 	end
-	if not self:isWithinInteractionRange(player, tileX, tileY) then
-		self:sendActionResult(player, requestId, BuildServiceUtils.ACTION_TYPE_PLACE, false, "out_of_range", nil)
+	if not self:IsWithinInteractionRange(player, tileX, tileY) then
+		self:SendActionResult(player, requestId, BuildServiceUtils.ACTION_TYPE_PLACE, false, "out_of_range", nil)
 		return
 	end
 
-	local minTileY, maxTileY = self:getTileBoundsY()
-	local placementResult = BuildServiceUtils.canPlaceAt(
+	local minTileY, maxTileY = self:GetTileBoundsY()
+	local placementResult = BuildServiceUtils.CanPlaceAt(
 		tileX,
 		tileY,
 		tileId,
 		function(scanX: number, scanY: number): number
-			return self:getTileAtInternal(scanX, scanY)
+			return self:GetTileAtInternal(scanX, scanY)
 		end,
 		minTileY,
 		maxTileY
@@ -1138,7 +1139,7 @@ function BuildServiceServer.RequestPlaceTile(
 		}
 	end
 	if not placementResult.canPlace then
-		self:sendActionResult(
+		self:SendActionResult(
 			player,
 			requestId,
 			BuildServiceUtils.ACTION_TYPE_PLACE,
@@ -1150,7 +1151,7 @@ function BuildServiceServer.RequestPlaceTile(
 	end
 	local requiredAmount = if sourcePlaceableConfig.consumesOnPlace then #placementResult.footprint else 0
 	if sourceStack.amount < requiredAmount then
-		self:sendActionResult(player, requestId, BuildServiceUtils.ACTION_TYPE_PLACE, false, "insufficient_items", nil)
+		self:SendActionResult(player, requestId, BuildServiceUtils.ACTION_TYPE_PLACE, false, "insufficient_items", nil)
 		return
 	end
 
@@ -1161,18 +1162,18 @@ function BuildServiceServer.RequestPlaceTile(
 			itemId = sourceStack.itemId,
 			amount = sourceStack.amount,
 			maxStack = sourceStack.maxStack,
-			metadata = InventoryServiceUtils.cloneDeep(sourceStack.metadata),
+			metadata = InventoryServiceUtils.CloneDeep(sourceStack.metadata),
 		}
-		local consumeResult = self.inventoryService:removeFromSlot(player, sourceSlot, requiredAmount)
+		local consumeResult = self.inventoryService:RemoveFromSlot(player, sourceSlot, requiredAmount)
 		if consumeResult.removedAmount < requiredAmount then
 			if consumeResult.removedAmount > 0 and stackSnapshot ~= nil then
-				self.inventoryService:addItem(player, stackSnapshot.itemId, consumeResult.removedAmount, {
+				self.inventoryService:AddItem(player, stackSnapshot.itemId, consumeResult.removedAmount, {
 					maxStack = stackSnapshot.maxStack,
 					metadata = stackSnapshot.metadata,
 					stackIdPrefix = "buildRollback",
 				})
 			end
-			self:sendActionResult(
+			self:SendActionResult(
 				player,
 				requestId,
 				BuildServiceUtils.ACTION_TYPE_PLACE,
@@ -1188,7 +1189,7 @@ function BuildServiceServer.RequestPlaceTile(
 	local changedDeltas: { TileDelta } = {}
 	for _, footprintTile in placementResult.footprint do
 		local didChange, _, nextTileId =
-			self:setTileAtAuthoritative(footprintTile.tileX, footprintTile.tileY, tileId, "place")
+			self:SetTileAtAuthoritative(footprintTile.tileX, footprintTile.tileY, tileId, "place")
 		if didChange then
 			changedTiles[#changedTiles + 1] = {
 				tileX = footprintTile.tileX,
@@ -1205,26 +1206,26 @@ function BuildServiceServer.RequestPlaceTile(
 
 	if #changedTiles <= 0 then
 		if requiredAmount > 0 and stackSnapshot ~= nil then
-			self.inventoryService:addItem(player, stackSnapshot.itemId, requiredAmount, {
+			self.inventoryService:AddItem(player, stackSnapshot.itemId, requiredAmount, {
 				maxStack = stackSnapshot.maxStack,
 				metadata = stackSnapshot.metadata,
 				stackIdPrefix = "buildRollback",
 			})
 		end
-		self:sendActionResult(player, requestId, BuildServiceUtils.ACTION_TYPE_PLACE, false, "no_change", nil)
+		self:SendActionResult(player, requestId, BuildServiceUtils.ACTION_TYPE_PLACE, false, "no_change", nil)
 		return
 	end
 
 	if requiredAmount > 0 and stackSnapshot ~= nil and #changedTiles < requiredAmount then
-		self.inventoryService:addItem(player, stackSnapshot.itemId, requiredAmount - #changedTiles, {
+		self.inventoryService:AddItem(player, stackSnapshot.itemId, requiredAmount - #changedTiles, {
 			maxStack = stackSnapshot.maxStack,
 			metadata = stackSnapshot.metadata,
 			stackIdPrefix = "buildRollback",
 		})
 	end
 
-	self:registerMultiTilePlacement(tileId, changedTiles)
-	self:sendActionResult(player, requestId, BuildServiceUtils.ACTION_TYPE_PLACE, true, "ok", changedDeltas)
+	self:RegisterMultiTilePlacement(tileId, changedTiles)
+	self:SendActionResult(player, requestId, BuildServiceUtils.ACTION_TYPE_PLACE, true, "ok", changedDeltas)
 end
 
 function BuildServiceServer.ProcessBreakCompletion(
@@ -1234,21 +1235,21 @@ function BuildServiceServer.ProcessBreakCompletion(
 	tileX: number,
 	tileY: number
 )
-	local breakFootprint = self:resolveBreakFootprint(tileX, tileY)
+	local breakFootprint = self:GetBreakFootprint(tileX, tileY)
 	if #breakFootprint <= 0 then
-		self:sendActionResult(player, intent.requestId, BuildServiceUtils.ACTION_TYPE_BREAK, false, "no_footprint", nil)
+		self:SendActionResult(player, intent.requestId, BuildServiceUtils.ACTION_TYPE_BREAK, false, "no_footprint", nil)
 		return
 	end
 
 	local changedTiles: { TileCoordinate } = {}
 	local breakDeltas: { TileDelta } = {}
 	for _, breakTile in breakFootprint do
-		local currentTileId = self:getTileAtInternal(breakTile.tileX, breakTile.tileY)
+		local currentTileId = self:GetTileAtInternal(breakTile.tileX, breakTile.tileY)
 		if currentTileId == BuildServiceUtils.AIR_TILE_ID then
 			continue
 		end
 		local didChange, _, nextTileId =
-			self:setTileAtAuthoritative(breakTile.tileX, breakTile.tileY, BuildServiceUtils.AIR_TILE_ID, "break")
+			self:SetTileAtAuthoritative(breakTile.tileX, breakTile.tileY, BuildServiceUtils.AIR_TILE_ID, "break")
 		if didChange then
 			changedTiles[#changedTiles + 1] = {
 				tileX = breakTile.tileX,
@@ -1261,9 +1262,9 @@ function BuildServiceServer.ProcessBreakCompletion(
 				reason = "break",
 			}
 
-			local droppedItemId = resolveTileBreakDropItemId(currentTileId)
+			local droppedItemId = GetTileBreakDropItemId(currentTileId)
 			if droppedItemId ~= nil and self.lootService ~= nil then
-				local spawnPosition = BuildServiceUtils.tileToWorldCenter(
+				local spawnPosition = BuildServiceUtils.TileToWorldCenter(
 					breakTile.tileX,
 					breakTile.tileY,
 					self.state.worldOrigin,
@@ -1271,7 +1272,7 @@ function BuildServiceServer.ProcessBreakCompletion(
 					self.state.basePlaneX
 				) + Vector3.new(0, self.state.tileSize * 0.55, 0)
 				pcall(function()
-					(self.lootService :: any):spawnLootRuntime(droppedItemId, 1, spawnPosition, {
+					(self.lootService :: any):SpawnLootRuntime(droppedItemId, 1, spawnPosition, {
 						sourceType = TILE_BREAK_DROP_SOURCE_TYPE,
 					})
 				end)
@@ -1280,15 +1281,15 @@ function BuildServiceServer.ProcessBreakCompletion(
 	end
 
 	if #changedTiles <= 0 then
-		self:sendActionResult(player, intent.requestId, BuildServiceUtils.ACTION_TYPE_BREAK, false, "no_change", nil)
+		self:SendActionResult(player, intent.requestId, BuildServiceUtils.ACTION_TYPE_BREAK, false, "no_change", nil)
 		return
 	end
 
-	local cascadeDeltas = self:resolveUnsupportedCascadeAround(changedTiles)
+	local cascadeDeltas = self:GetUnsupportedCascadeAround(changedTiles)
 	for _, delta in cascadeDeltas do
 		breakDeltas[#breakDeltas + 1] = delta
 	end
-	self:sendActionResult(player, intent.requestId, BuildServiceUtils.ACTION_TYPE_BREAK, true, "ok", breakDeltas)
+	self:SendActionResult(player, intent.requestId, BuildServiceUtils.ACTION_TYPE_BREAK, true, "ok", breakDeltas)
 end
 
 function BuildServiceServer.ProcessTreeBreakCompletion(
@@ -1301,7 +1302,7 @@ function BuildServiceServer.ProcessTreeBreakCompletion(
 	local tree = treeHit.tree
 	local treeId = tree.treeId
 	if self.treeStates[treeId] == BuildServiceUtils.TREE_STATE_FELLED then
-		self:sendActionResult(
+		self:SendActionResult(
 			player,
 			intent.requestId,
 			BuildServiceUtils.ACTION_TYPE_BREAK,
@@ -1314,18 +1315,18 @@ function BuildServiceServer.ProcessTreeBreakCompletion(
 
 	self.treeStates[treeId] = BuildServiceUtils.TREE_STATE_FELLED
 	self.treeDamage[treeId] = nil
-	local removed = self:removeTreeFromWorld(tree)
+	local removed = self:RemoveTreeFromWorld(tree)
 	if not removed then
 		self.treeStates[treeId] = nil
-		self:sendActionResult(player, intent.requestId, BuildServiceUtils.ACTION_TYPE_BREAK, false, "tree_missing", nil)
+		self:SendActionResult(player, intent.requestId, BuildServiceUtils.ACTION_TYPE_BREAK, false, "tree_missing", nil)
 		return
 	end
 
-	local playerTileX = self:resolvePlayerTileX(player, tree.rootTileX)
+	local playerTileX = self:GetPlayerTileX(player, tree.rootTileX)
 	local fallDirection =
-		BuildServiceUtils.computeTreeFallDirection(tree.rootTileX, playerTileX, intent.lastTreeHitDirection)
+		BuildServiceUtils.ComputeTreeFallDirection(tree.rootTileX, playerTileX, intent.lastTreeHitDirection)
 	local heightTiles = treeHit.footprint.heightTiles
-	local pivotCFrame = BuildServiceUtils.computeTreePivotCFrame(
+	local pivotCFrame = BuildServiceUtils.ComputeTreePivotCFrame(
 		tree.rootTileX,
 		tree.rootTileY,
 		self.state.worldOrigin,
@@ -1346,12 +1347,12 @@ function BuildServiceServer.ProcessTreeBreakCompletion(
 		end
 	end
 
-	self:sendActionResult(player, intent.requestId, BuildServiceUtils.ACTION_TYPE_BREAK, true, "tree_felled", {})
+	self:SendActionResult(player, intent.requestId, BuildServiceUtils.ACTION_TYPE_BREAK, true, "tree_felled", {})
 
 	task.delay(treeBreakProfile.fallDuration, function()
 		local impactPosition =
-			BuildServiceUtils.computeTreeImpactPosition(pivotCFrame, fallDirection, heightTiles, self.state.tileSize)
-		self:spawnTreeDropsAtImpact(tree, heightTiles, fallDirection, impactPosition)
+			BuildServiceUtils.ComputeTreeImpactPosition(pivotCFrame, fallDirection, heightTiles, self.state.tileSize)
+		self:SpawnTreeDropsAtImpact(tree, heightTiles, fallDirection, impactPosition)
 	end)
 end
 
@@ -1362,7 +1363,7 @@ function BuildServiceServer.StopBreaking(
 	reason: string
 )
 	if reason ~= "broken" then
-		self:clearBreakRuntimeForIntent(intent)
+		self:ClearBreakRuntimeForIntent(intent)
 	end
 
 	intent.isBreaking = false
@@ -1371,10 +1372,10 @@ function BuildServiceServer.StopBreaking(
 	intent.lastInputAt = 0
 	intent.lastProgressPushAt = 0
 	intent.pendingHitCount = 0
-	self:clearBreakTargetForIntent(intent)
-	self:pushBreakProgress(player, false, nil, nil, 0, 0, intent.toolPower)
+	self:ClearBreakTargetForIntent(intent)
+	self:PushBreakProgress(player, false, nil, nil, 0, 0, intent.toolPower)
 	if reason ~= "client_released" and reason ~= "broken" then
-		self:sendActionResult(player, intent.requestId, BuildServiceUtils.ACTION_TYPE_BREAK, false, reason, nil)
+		self:SendActionResult(player, intent.requestId, BuildServiceUtils.ACTION_TYPE_BREAK, false, reason, nil)
 	end
 end
 
@@ -1387,40 +1388,40 @@ function BuildServiceServer.RequestBreakTile(
 	requestIdRaw: any?,
 	registerHitRaw: any?
 )
-	local intent = self:getBreakIntent(player)
-	local isBreaking = BuildServiceUtils.sanitizeBoolean(isBreakingRaw, false)
-	local registerHit = BuildServiceUtils.sanitizeBoolean(registerHitRaw, false)
-	intent.requestId = BuildServiceUtils.sanitizeRequestId(requestIdRaw)
+	local intent = self:GetBreakIntent(player)
+	local isBreaking = BuildServiceUtils.CoerceBoolean(isBreakingRaw, false)
+	local registerHit = BuildServiceUtils.CoerceBoolean(registerHitRaw, false)
+	intent.requestId = BuildServiceUtils.CoerceRequestId(requestIdRaw)
 	intent.lastInputAt = os.clock()
-	intent.toolPower = resolvePlayerToolPower(self.inventoryService, player, self.config.defaultToolPower)
-	intent.toolType = resolvePlayerToolType(self.inventoryService, player, "")
+	intent.toolPower = GetPlayerToolPower(self.inventoryService, player, self.config.defaultToolPower)
+	intent.toolType = GetPlayerToolType(self.inventoryService, player, "")
 
 	if not isBreaking then
-		self:stopBreaking(player, intent, "client_released")
+		self:StopBreaking(player, intent, "client_released")
 		return
 	end
 
-	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
-	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
+	local tileX = BuildServiceUtils.CoerceTileCoordinate(tileXRaw)
+	local tileY = BuildServiceUtils.CoerceTileCoordinate(tileYRaw)
 	if tileX == nil or tileY == nil then
-		self:stopBreaking(player, intent, "invalid_tile_coordinate")
+		self:StopBreaking(player, intent, "invalid_tile_coordinate")
 		return
 	end
-	if not self:isTileWithinBounds(tileY) then
-		self:stopBreaking(player, intent, "tile_out_of_bounds")
+	if not self:IsTileWithinBounds(tileY) then
+		self:StopBreaking(player, intent, "tile_out_of_bounds")
 		return
 	end
-	if not self:isBreakTargetWithinInteractionRange(player, tileX, tileY) then
-		self:stopBreaking(player, intent, "out_of_range")
+	if not self:IsBreakTargetWithinInteractionRange(player, tileX, tileY) then
+		self:StopBreaking(player, intent, "out_of_range")
 		return
 	end
 
 	intent.isBreaking = true
 	if intent.tileX ~= tileX or intent.tileY ~= tileY then
-		self:clearBreakRuntimeForIntent(intent)
+		self:ClearBreakRuntimeForIntent(intent)
 		intent.lastProgressPushAt = 0
-		self:clearBreakTargetForIntent(intent)
-		self:pushBreakProgress(player, false, nil, nil, 0, 0, intent.toolPower)
+		self:ClearBreakTargetForIntent(intent)
+		self:PushBreakProgress(player, false, nil, nil, 0, 0, intent.toolPower)
 	end
 	intent.tileX = tileX
 	intent.tileY = tileY
@@ -1435,31 +1436,31 @@ function BuildServiceServer.ProcessBreakIntents(self: BuildServiceServer, deltaT
 		if not intent.isBreaking then
 			continue
 		end
-		intent.toolPower = resolvePlayerToolPower(self.inventoryService, player, self.config.defaultToolPower)
-		intent.toolType = resolvePlayerToolType(self.inventoryService, player, "")
+		intent.toolPower = GetPlayerToolPower(self.inventoryService, player, self.config.defaultToolPower)
+		intent.toolType = GetPlayerToolType(self.inventoryService, player, "")
 		if now - intent.lastInputAt > self.config.breakInputTimeout then
-			self:stopBreaking(player, intent, "input_timeout")
+			self:StopBreaking(player, intent, "input_timeout")
 			continue
 		end
 		local tileX = intent.tileX
 		local tileY = intent.tileY
 		if tileX == nil or tileY == nil then
-			self:stopBreaking(player, intent, "invalid_target")
+			self:StopBreaking(player, intent, "invalid_target")
 			continue
 		end
-		if not self:isTileWithinBounds(tileY) then
-			self:stopBreaking(player, intent, "tile_out_of_bounds")
+		if not self:IsTileWithinBounds(tileY) then
+			self:StopBreaking(player, intent, "tile_out_of_bounds")
 			continue
 		end
-		if not self:isBreakTargetWithinInteractionRange(player, tileX, tileY) then
-			self:stopBreaking(player, intent, "out_of_range")
+		if not self:IsBreakTargetWithinInteractionRange(player, tileX, tileY) then
+			self:StopBreaking(player, intent, "out_of_range")
 			continue
 		end
 
-		local tileId = self:getTileAtInternal(tileX, tileY)
+		local tileId = self:GetTileAtInternal(tileX, tileY)
 		if tileId ~= BuildServiceUtils.AIR_TILE_ID then
 			if intent.breakTargetKind ~= "tile" then
-				self:clearBreakRuntimeForIntent(intent)
+				self:ClearBreakRuntimeForIntent(intent)
 				intent.lastProgressPushAt = 0
 			end
 			intent.breakTargetKind = "tile"
@@ -1471,13 +1472,13 @@ function BuildServiceServer.ProcessBreakIntents(self: BuildServiceServer, deltaT
 			intent.lastTreeHitDirection = 0
 
 			local canBreak, reason, breakHits =
-				BuildServiceUtils.canBreakTile(tileId, intent.toolType, intent.toolPower)
+				BuildServiceUtils.CanBreakTile(tileId, intent.toolType, intent.toolPower)
 			if not canBreak then
-				self:stopBreaking(player, intent, reason)
+				self:StopBreaking(player, intent, reason)
 				continue
 			end
 
-			local tileKey = BuildServiceUtils.packTileKey(tileX, tileY)
+			local tileKey = BuildServiceUtils.PackTileKey(tileX, tileY)
 			local damageRuntime = self.tileDamage[tileKey]
 			if damageRuntime == nil then
 				damageRuntime = {
@@ -1496,7 +1497,7 @@ function BuildServiceServer.ProcessBreakIntents(self: BuildServiceServer, deltaT
 				local currentHits = math.min(totalHits, math.max(0, math.floor(damageRuntime.damage)))
 				local progress = math.clamp(currentHits / totalHits, 0, 1)
 				intent.lastProgressPushAt = now
-				self:pushBreakProgress(
+				self:PushBreakProgress(
 					player,
 					true,
 					tileX,
@@ -1511,25 +1512,25 @@ function BuildServiceServer.ProcessBreakIntents(self: BuildServiceServer, deltaT
 				)
 				if progress >= 1 then
 					self.tileDamage[tileKey] = nil
-					self:processBreakCompletion(player, intent, tileX, tileY)
-					self:stopBreaking(player, intent, "broken")
+					self:ProcessBreakCompletion(player, intent, tileX, tileY)
+					self:StopBreaking(player, intent, "broken")
 				end
 			end
 			continue
 		end
 
-		local treeHit = self:resolveTreeHitAt(tileX, tileY)
+		local treeHit = self:GetTreeHitAt(tileX, tileY)
 		if treeHit == nil then
-			self:stopBreaking(player, intent, "air")
+			self:StopBreaking(player, intent, "air")
 			continue
 		end
 		if self.treeStates[treeHit.tree.treeId] == BuildServiceUtils.TREE_STATE_FELLED then
-			self:stopBreaking(player, intent, "tree_already_felled")
+			self:StopBreaking(player, intent, "tree_already_felled")
 			continue
 		end
 
 		if intent.breakTargetKind ~= "tree" or intent.targetTreeId ~= treeHit.tree.treeId then
-			self:clearBreakRuntimeForIntent(intent)
+			self:ClearBreakRuntimeForIntent(intent)
 			intent.lastProgressPushAt = 0
 		end
 		intent.breakTargetKind = "tree"
@@ -1539,14 +1540,14 @@ function BuildServiceServer.ProcessBreakIntents(self: BuildServiceServer, deltaT
 		intent.targetTreeSeed = treeHit.tree.seed
 		intent.targetTreeHeight = treeHit.footprint.heightTiles
 
-		local playerTileX = self:resolvePlayerTileX(player, treeHit.tree.rootTileX)
-		intent.lastTreeHitDirection = BuildServiceUtils.computeTreeFallDirection(
+		local playerTileX = self:GetPlayerTileX(player, treeHit.tree.rootTileX)
+		intent.lastTreeHitDirection = BuildServiceUtils.ComputeTreeFallDirection(
 			treeHit.tree.rootTileX,
 			playerTileX,
 			tileX - treeHit.tree.rootTileX
 		)
 
-		local canBreakTree, treeReason, treeBreakHits, treeBreakProfile = BuildServiceUtils.canBreakTree({
+		local canBreakTree, treeReason, treeBreakHits, treeBreakProfile = BuildServiceUtils.CanBreakTree({
 			seed = treeHit.tree.seed,
 			variantIndex = treeHit.tree.variantIndex,
 			biomeType = treeHit.tree.biomeType,
@@ -1554,11 +1555,11 @@ function BuildServiceServer.ProcessBreakIntents(self: BuildServiceServer, deltaT
 			heightTiles = treeHit.footprint.heightTiles,
 		}, intent.toolType, intent.toolPower)
 		if not canBreakTree then
-			self:stopBreaking(player, intent, treeReason)
+			self:StopBreaking(player, intent, treeReason)
 			continue
 		end
 
-		local healthPoolKey = BuildServiceUtils.getTreeHealthPoolKey(treeHit.tree.treeId)
+		local healthPoolKey = BuildServiceUtils.GetTreeHealthPoolKey(treeHit.tree.treeId)
 		local treeDamageRuntime = self.treeDamage[healthPoolKey]
 		if treeDamageRuntime == nil then
 			treeDamageRuntime = {
@@ -1577,7 +1578,7 @@ function BuildServiceServer.ProcessBreakIntents(self: BuildServiceServer, deltaT
 			local currentHits = math.min(totalHits, math.max(0, math.floor(treeDamageRuntime.damage)))
 			local treeProgress = math.clamp(currentHits / totalHits, 0, 1)
 			intent.lastProgressPushAt = now
-			self:pushBreakProgress(
+			self:PushBreakProgress(
 				player,
 				true,
 				tileX,
@@ -1593,8 +1594,8 @@ function BuildServiceServer.ProcessBreakIntents(self: BuildServiceServer, deltaT
 
 			if treeProgress >= 1 then
 				self.treeDamage[healthPoolKey] = nil
-				self:processTreeBreakCompletion(player, intent, treeHit, treeBreakProfile)
-				self:stopBreaking(player, intent, "broken")
+				self:ProcessTreeBreakCompletion(player, intent, treeHit, treeBreakProfile)
+				self:StopBreaking(player, intent, "broken")
 			end
 		end
 	end
@@ -1622,7 +1623,7 @@ function BuildServiceServer.PruneTileDamage(self: BuildServiceServer, deltaTime:
 end
 
 function BuildServiceServer.OnHeartbeat(self: BuildServiceServer, deltaTime: number)
-	local nextWorld = (self.worldGenerationService :: any):getWorld()
+	local nextWorld = (self.worldGenerationService :: any):GetWorld()
 	if nextWorld ~= self.world then
 		self.world = nextWorld
 		table.clear(self.pendingTileDeltas)
@@ -1636,9 +1637,9 @@ function BuildServiceServer.OnHeartbeat(self: BuildServiceServer, deltaTime: num
 	if self.world == nil then
 		return
 	end
-	self:processBreakIntents(deltaTime)
-	self:pruneTileDamage(deltaTime)
-	self:flushTileDeltas()
+	self:ProcessBreakIntents(deltaTime)
+	self:PruneTileDamage(deltaTime)
+	self:FlushTileDeltas()
 end
 
 function BuildServiceServer.Init(self: BuildServiceServer)
@@ -1646,9 +1647,9 @@ function BuildServiceServer.Init(self: BuildServiceServer)
 	self.worldGenerationService = worldGenerationService
 	self.inventoryService = InventoryServiceServer :: InventoryServiceServerObject
 	self.lootService = LootServiceServer :: LootServiceServerObject
-	self.world = worldGenerationService:getWorld()
-	self.config = BuildServiceUtils.sanitizeConfig(resolveBuildConfigSource(), nil)
-	self.state = BuildServiceUtils.createDefaultState()
+	self.world = worldGenerationService:GetWorld()
+	self.config = BuildServiceUtils.CoerceConfig(GetBuildConfigSource(), nil)
+	self.state = BuildServiceUtils.CreateDefaultState()
 	self.pendingTileDeltas = {} :: { TileDelta }
 	self.pendingTileDeltaLookup = {} :: { [string]: number }
 	self.tileDamage = {} :: { [string]: TileDamageRuntime }
@@ -1658,26 +1659,26 @@ function BuildServiceServer.Init(self: BuildServiceServer)
 	self.multiTileAnchors = {} :: { [string]: MultiTileAnchorRuntime }
 	self.multiTileMembers = {} :: { [string]: string }
 	self.damagePruneAccumulator = 0
-	self.binders = NevermoreSupport.getService(ServerBinderSupport)
+	self.binders = NevermoreSupport.GetService(BinderSupportServer)
 
 	bindPackets(self)
 
 	for _, player in Players:GetPlayers() do
 		if shouldReplicateToPlayer(player) then
-			self:trackPlayer(player)
+			self:TrackPlayer(player)
 		end
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
 		if shouldReplicateToPlayer(player) then
-			self:trackPlayer(player)
+			self:TrackPlayer(player)
 		end
 	end)
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
-		self:untrackPlayer(player)
+		self:UntrackPlayer(player)
 	end)
 	self.heartbeatConnection = RunService.Heartbeat:Connect(function(deltaTime: number)
-		self:onHeartbeat(deltaTime)
+		self:OnHeartbeat(deltaTime)
 	end)
 end
 
@@ -1704,50 +1705,6 @@ function BuildServiceServer.Destroy(self: BuildServiceServer)
 	table.clear(self.multiTileAnchors)
 	table.clear(self.multiTileMembers)
 end
-
-BuildServiceServer.createStateSnapshot = BuildServiceServer.CreateStateSnapshot
-BuildServiceServer.pushState = BuildServiceServer.PushState
-BuildServiceServer.createBreakIntent = BuildServiceServer.CreateBreakIntent
-BuildServiceServer.getBreakIntent = BuildServiceServer.GetBreakIntent
-BuildServiceServer.getTileBoundsY = BuildServiceServer.GetTileBoundsY
-BuildServiceServer.isTileWithinBounds = BuildServiceServer.IsTileWithinBounds
-BuildServiceServer.getTileAtInternal = BuildServiceServer.GetTileAtInternal
-BuildServiceServer.getTileAt = BuildServiceServer.GetTileAt
-BuildServiceServer.getTreesForChunk = BuildServiceServer.GetTreesForChunk
-BuildServiceServer.resolveTreeHitAt = BuildServiceServer.ResolveTreeHitAt
-BuildServiceServer.resolvePlayerTileX = BuildServiceServer.ResolvePlayerTileX
-BuildServiceServer.touchChunkForTreeMutation = BuildServiceServer.TouchChunkForTreeMutation
-BuildServiceServer.removeTreeFromWorld = BuildServiceServer.RemoveTreeFromWorld
-BuildServiceServer.spawnTreeDropsAtImpact = BuildServiceServer.SpawnTreeDropsAtImpact
-BuildServiceServer.isWithinInteractionRange = BuildServiceServer.IsWithinInteractionRange
-BuildServiceServer.isBreakTargetWithinInteractionRange = BuildServiceServer.IsBreakTargetWithinInteractionRange
-BuildServiceServer.pushBreakProgress = BuildServiceServer.PushBreakProgress
-BuildServiceServer.sendActionResult = BuildServiceServer.SendActionResult
-BuildServiceServer.trackPlayer = BuildServiceServer.TrackPlayer
-BuildServiceServer.clearBreakRuntimeForIntent = BuildServiceServer.ClearBreakRuntimeForIntent
-BuildServiceServer.clearBreakTargetForIntent = BuildServiceServer.ClearBreakTargetForIntent
-BuildServiceServer.untrackPlayer = BuildServiceServer.UntrackPlayer
-BuildServiceServer.requestSync = BuildServiceServer.RequestSync
-BuildServiceServer.queueTileDelta = BuildServiceServer.QueueTileDelta
-BuildServiceServer.clearMultiTileAnchor = BuildServiceServer.ClearMultiTileAnchor
-BuildServiceServer.clearMultiTileMembershipAt = BuildServiceServer.ClearMultiTileMembershipAt
-BuildServiceServer.registerMultiTilePlacement = BuildServiceServer.RegisterMultiTilePlacement
-BuildServiceServer.setTileAtAuthoritative = BuildServiceServer.SetTileAtAuthoritative
-BuildServiceServer.resolveBreakFootprint = BuildServiceServer.ResolveBreakFootprint
-BuildServiceServer.resolveUnsupportedCascadeAround = BuildServiceServer.ResolveUnsupportedCascadeAround
-BuildServiceServer.flushTileDeltas = BuildServiceServer.FlushTileDeltas
-BuildServiceServer.canPlaceAt = BuildServiceServer.CanPlaceAt
-BuildServiceServer.requestPlaceTile = BuildServiceServer.RequestPlaceTile
-BuildServiceServer.processBreakCompletion = BuildServiceServer.ProcessBreakCompletion
-BuildServiceServer.processTreeBreakCompletion = BuildServiceServer.ProcessTreeBreakCompletion
-BuildServiceServer.stopBreaking = BuildServiceServer.StopBreaking
-BuildServiceServer.requestBreakTile = BuildServiceServer.RequestBreakTile
-BuildServiceServer.processBreakIntents = BuildServiceServer.ProcessBreakIntents
-BuildServiceServer.pruneTileDamage = BuildServiceServer.PruneTileDamage
-BuildServiceServer.onHeartbeat = BuildServiceServer.OnHeartbeat
-BuildServiceServer.init = BuildServiceServer.Init
-BuildServiceServer.destroy = BuildServiceServer.Destroy
-
 type BuildServiceServer = typeof(BuildServiceServer) & {
 	config: BuildServiceConfig,
 	state: BuildServiceState,

@@ -14,14 +14,14 @@ local useStore = require("useCoreStore")
 
 local e: typeof(React.createElement) = React.createElement
 
-local function resolveAspectRatio(canvasSize: Vector2): number
+local function GetAspectRatio(canvasSize: Vector2): number
 	if canvasSize.X <= 0 or canvasSize.Y <= 0 then
 		return 1
 	end
 	return math.clamp(canvasSize.X / canvasSize.Y, 0.01, 100)
 end
 
-local function resolvePortalTarget(): PlayerGui?
+local function GetPortalTarget(): PlayerGui?
 	local localPlayer = Players.LocalPlayer
 	if localPlayer == nil then
 		return nil
@@ -31,8 +31,8 @@ end
 
 return function(): React.ReactNode
 	local state = (useStore(CloudServiceUtils.surfaceStateAtom) :: CloudServiceUtils.CloudSurfaceState?)
-		or CloudServiceUtils.getSurfaceState()
-	local portalTarget = resolvePortalTarget()
+		or CloudServiceUtils.GetSurfaceState()
+	local portalTarget = GetPortalTarget()
 
 	if state.adornee == nil or portalTarget == nil then
 		return nil
@@ -62,7 +62,7 @@ return function(): React.ReactNode
 					ClipsDescendants = true,
 				}, {
 					e("UIAspectRatioConstraint", {
-						AspectRatio = resolveAspectRatio(state.canvasSize),
+						AspectRatio = GetAspectRatio(state.canvasSize),
 						DominantAxis = Enum.DominantAxis.Width,
 					}),
 					e(CloudComponent, {

@@ -26,7 +26,7 @@ local function trim(textRaw: any): string
 	return string.match(textRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function sanitizeQuantity(quantityRaw: any): number
+local function CoerceQuantity(quantityRaw: any): number
 	local quantity = 1
 	if typeof(quantityRaw) == "number" and quantityRaw == quantityRaw then
 		quantity = math.floor(quantityRaw)
@@ -57,7 +57,7 @@ local function applyFromService(): CraftingState
 
 	local serviceState: { [string]: any } = {}
 	local didReadState = pcall(function()
-		serviceState = CraftingServiceClient:getState()
+		serviceState = CraftingServiceClient:GetState()
 	end)
 	if not didReadState then
 		serviceState = {}
@@ -74,7 +74,7 @@ local function applyFromService(): CraftingState
 
 	local recipes: { any } = {}
 	local didReadRecipes = pcall(function()
-		recipes = CraftingServiceClient:getRecipes({
+		recipes = CraftingServiceClient:GetRecipes({
 			category = categoryFilter,
 			searchText = searchQuery,
 		})
@@ -123,16 +123,16 @@ function craftingThunks.Start(): () -> ()
 	runtime.started = true
 	applyFromService()
 
-	runtime.stateChangedConnection = ServiceSync.connectStateChanged(CraftingServiceClient, function()
+	runtime.stateChangedConnection = ServiceSync.ConnectStateChanged(CraftingServiceClient, function()
 		applyFromService()
 	end)
-	ServiceSync.requestSync(CraftingServiceClient)
+	ServiceSync.RequestSync(CraftingServiceClient)
 
 	return craftingThunks.Stop
 end
 
 function craftingThunks.Stop()
-	ConnectionUtils.disconnect(runtime.stateChangedConnection)
+	ConnectionUtils.Disconnect(runtime.stateChangedConnection)
 	runtime.stateChangedConnection = nil
 	runtime.started = false
 	craftingSlice.setCraftingState({
@@ -160,7 +160,7 @@ function craftingThunks.SetSearchQuery(searchQueryRaw: any): CraftingState
 	ensureStarted()
 	local nextState = craftingSlice.setSearchQuery(searchQueryRaw)
 	pcall(function()
-		CraftingServiceClient:setSearchQuery(nextState.searchQuery)
+		CraftingServiceClient:SetSearchQuery(nextState.searchQuery)
 	end)
 	return applyFromService()
 end
@@ -169,7 +169,7 @@ function craftingThunks.SetCategoryFilter(categoryRaw: any): CraftingState
 	ensureStarted()
 	local nextState = craftingSlice.setCategoryFilter(categoryRaw)
 	pcall(function()
-		CraftingServiceClient:setCategoryFilter(nextState.categoryFilter)
+		CraftingServiceClient:SetCategoryFilter(nextState.categoryFilter)
 	end)
 	return applyFromService()
 end
@@ -186,10 +186,10 @@ function craftingThunks.RequestCraft(recipeIdRaw: any, quantityRaw: any): boolea
 		return false
 	end
 
-	local quantity = sanitizeQuantity(quantityRaw)
+	local quantity = CoerceQuantity(quantityRaw)
 	local didSend = false
 	pcall(function()
-		didSend = CraftingServiceClient:requestCraft(recipeId, quantity) == true
+		didSend = CraftingServiceClient:RequestCraft(recipeId, quantity) == true
 	end)
 	task.defer(applyFromService)
 	return didSend
@@ -213,10 +213,10 @@ function craftingThunks.StartBulkCraftSelected(quantityRaw: any): boolean
 		return false
 	end
 
-	local quantity = sanitizeQuantity(quantityRaw)
+	local quantity = CoerceQuantity(quantityRaw)
 	local didStart = false
 	pcall(function()
-		didStart = CraftingServiceClient:startBulkCraft(selectedRecipeId, quantity) == true
+		didStart = CraftingServiceClient:StartBulkCraft(selectedRecipeId, quantity) == true
 	end)
 	task.defer(applyFromService)
 	return didStart
@@ -226,7 +226,7 @@ function craftingThunks.StopBulkCraft(): boolean
 	ensureStarted()
 	local didStop = false
 	pcall(function()
-		didStop = CraftingServiceClient:stopBulkCraft() == true
+		didStop = CraftingServiceClient:StopBulkCraft() == true
 	end)
 	task.defer(applyFromService)
 	return didStop
@@ -235,19 +235,4 @@ end
 function craftingThunks.GetCraftingState(): CraftingState
 	return craftingSlice.getCraftingState()
 end
-
-craftingThunks.start = craftingThunks.Start
-craftingThunks.stop = craftingThunks.Stop
-craftingThunks.refresh = craftingThunks.Refresh
-craftingThunks.toggleVisible = craftingThunks.ToggleVisible
-craftingThunks.setVisible = craftingThunks.SetVisible
-craftingThunks.setSearchQuery = craftingThunks.SetSearchQuery
-craftingThunks.setCategoryFilter = craftingThunks.SetCategoryFilter
-craftingThunks.selectRecipe = craftingThunks.SelectRecipe
-craftingThunks.requestCraft = craftingThunks.RequestCraft
-craftingThunks.craftSelected = craftingThunks.CraftSelected
-craftingThunks.startBulkCraftSelected = craftingThunks.StartBulkCraftSelected
-craftingThunks.stopBulkCraft = craftingThunks.StopBulkCraft
-craftingThunks.getCraftingState = craftingThunks.GetCraftingState
-
 return craftingThunks

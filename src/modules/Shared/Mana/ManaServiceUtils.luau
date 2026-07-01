@@ -28,7 +28,7 @@ ManaServiceUtils.DEFAULT_MAX_MANA = DEFAULT_MAX_MANA
 ManaServiceUtils.DEFAULT_REGEN_PER_SECOND = DEFAULT_REGEN_PER_SECOND
 ManaServiceUtils.DEFAULT_DATA_PATH = DEFAULT_DATA_PATH
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -48,7 +48,7 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?,
 	return value
 end
 
-local function sanitizeLoadedFlag(valueRaw: any, fallback: boolean): boolean
+local function CoerceLoadedFlag(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
@@ -64,14 +64,14 @@ function ManaServiceUtils.CreateState(
 ): ManaServiceState
 	local fallback = fallbackRaw
 	local fallbackMaxMana = if fallback ~= nil then fallback.maxMana else DEFAULT_MAX_MANA
-	local maxMana = sanitizeNumber(maxManaRaw, fallbackMaxMana, 1, 100000)
+	local maxMana = CoerceNumber(maxManaRaw, fallbackMaxMana, 1, 100000)
 	local fallbackMana = if fallback ~= nil then fallback.mana else maxMana
-	local mana = sanitizeNumber(manaRaw, fallbackMana, 0, maxMana)
+	local mana = CoerceNumber(manaRaw, fallbackMana, 0, maxMana)
 	local fallbackRegenPerSecond = if fallback ~= nil then fallback.regenPerSecond else DEFAULT_REGEN_PER_SECOND
-	local regenPerSecond = sanitizeNumber(regenPerSecondRaw, fallbackRegenPerSecond, 0, 10000)
+	local regenPerSecond = CoerceNumber(regenPerSecondRaw, fallbackRegenPerSecond, 0, 10000)
 	local previousMana = if fallback ~= nil then fallback.mana else mana
 	local delta = mana - previousMana
-	local isLoaded = sanitizeLoadedFlag(isLoadedRaw, if fallback ~= nil then fallback.isLoaded else false)
+	local isLoaded = CoerceLoadedFlag(isLoadedRaw, if fallback ~= nil then fallback.isLoaded else false)
 
 	return {
 		mana = mana,
@@ -90,7 +90,7 @@ function ManaServiceUtils.CreateDefaultState(): ManaServiceState
 	return ManaServiceUtils.CreateState(DEFAULT_MAX_MANA, DEFAULT_MAX_MANA, DEFAULT_REGEN_PER_SECOND, false, nil)
 end
 
-function ManaServiceUtils.SanitizeState(stateRaw: any, fallbackRaw: ManaServiceState?): ManaServiceState
+function ManaServiceUtils.CoerceState(stateRaw: any, fallbackRaw: ManaServiceState?): ManaServiceState
 	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {} :: any
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else ManaServiceUtils.CreateDefaultState()
 	local nextState =
@@ -126,7 +126,7 @@ end
 
 function ManaServiceUtils.SerializeStateForData(stateRaw: any): { [string]: any }
 	local state = if typeof(stateRaw) == "table"
-		then ManaServiceUtils.SanitizeState(stateRaw, ManaServiceUtils.CreateDefaultState())
+		then ManaServiceUtils.CoerceState(stateRaw, ManaServiceUtils.CreateDefaultState())
 		else ManaServiceUtils.CreateDefaultState()
 
 	return {
@@ -170,14 +170,4 @@ function ManaServiceUtils.CreateStateFromData(
 	local regenRaw = source.regenPerSecond or source.manaRegen or source.regen or source.recovery
 	return ManaServiceUtils.CreateState(manaRaw, maxManaRaw, regenRaw, isLoadedRaw, fallback)
 end
-
-ManaServiceUtils.createState = ManaServiceUtils.CreateState
-ManaServiceUtils.createDefaultState = ManaServiceUtils.CreateDefaultState
-ManaServiceUtils.sanitizeState = ManaServiceUtils.SanitizeState
-ManaServiceUtils.cloneState = ManaServiceUtils.CloneState
-ManaServiceUtils.clonePath = ManaServiceUtils.ClonePath
-ManaServiceUtils.getDefaultDataPath = ManaServiceUtils.GetDefaultDataPath
-ManaServiceUtils.serializeStateForData = ManaServiceUtils.SerializeStateForData
-ManaServiceUtils.createStateFromData = ManaServiceUtils.CreateStateFromData
-
 return ManaServiceUtils

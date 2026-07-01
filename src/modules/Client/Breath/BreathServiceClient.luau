@@ -9,7 +9,7 @@ local RunService = game:GetService("RunService")
 local BreathServiceUtils = require("BreathServiceUtils")
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
-local BreathServicePackets = require("NetSharedPackets").BreathService
+local BreathServicePackets = require("NetPacketsShared").BreathService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = BreathServicePackets[methodName]
@@ -18,7 +18,7 @@ local function sendPacket(methodName: string, ...: any)
 		return
 	end
 
-	packet.send(PacketPayload.pack(...))
+	packet.send(PacketPayload.Pack(...))
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -28,13 +28,14 @@ local function bindPacket(self: any, methodName: string)
 		return
 	end
 
+	local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
 	packet.listen(function(payload: any)
-		local handler = self[methodName]
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, table.unpack(arguments, 1, count))
 	end)
 end
@@ -86,7 +87,7 @@ function BreathServiceClient.EnsureEffects(self: BreathServiceClient)
 end
 
 function BreathServiceClient.ApplyFeedback(self: BreathServiceClient)
-	self:ensureEffects()
+	self:EnsureEffects()
 	local state = self.state
 	local correction = self.colorCorrection
 	local blur = self.blur
@@ -123,12 +124,12 @@ function BreathServiceClient.OnRenderStep(self: BreathServiceClient, deltaTime: 
 	if self.eventPulse > 0 then
 		self.eventPulse = math.max(0, self.eventPulse - deltaTime * 2.4)
 	end
-	self:applyFeedback()
+	self:ApplyFeedback()
 end
 
 function BreathServiceClient.ApplyState(self: BreathServiceClient, stateRaw: any)
-	self.state = BreathServiceUtils.createState(stateRaw, self.state)
-	self.stateChanged:Fire(BreathServiceUtils.cloneState(self.state))
+	self.state = BreathServiceUtils.CreateState(stateRaw, self.state)
+	self.stateChanged:Fire(BreathServiceUtils.CloneState(self.state))
 end
 
 function BreathServiceClient.OnEvent(self: BreathServiceClient, payloadRaw: any)
@@ -147,7 +148,7 @@ function BreathServiceClient.RequestSync(self: BreathServiceClient)
 end
 
 function BreathServiceClient.GetState(self: BreathServiceClient): BreathServiceState
-	return BreathServiceUtils.cloneState(self.state)
+	return BreathServiceUtils.CloneState(self.state)
 end
 
 function BreathServiceClient.IsReady(self: BreathServiceClient): boolean
@@ -158,7 +159,7 @@ function BreathServiceClient.Init(self: BreathServiceClient)
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
-	self.state = BreathServiceUtils.createDefaultState()
+	self.state = BreathServiceUtils.CreateDefaultState()
 	self.stateChanged = Signal.new()
 	self.eventReceived = Signal.new()
 	self.eventPulse = 0
@@ -170,7 +171,7 @@ function BreathServiceClient.Init(self: BreathServiceClient)
 		self.eventReceived:Destroy()
 	end)
 	self.janitor:GiveChore(RunService.RenderStepped:Connect(function(deltaTime: number)
-		self:onRenderStep(deltaTime)
+		self:OnRenderStep(deltaTime)
 	end))
 	self.janitor:GiveChore(function()
 		if self.colorCorrection ~= nil and self.colorCorrection.Parent ~= nil then
@@ -181,7 +182,7 @@ function BreathServiceClient.Init(self: BreathServiceClient)
 		end
 	end)
 
-	self:requestSync()
+	self:RequestSync()
 end
 
 function BreathServiceClient.Destroy(self: BreathServiceClient)
@@ -189,18 +190,6 @@ function BreathServiceClient.Destroy(self: BreathServiceClient)
 		self.janitor:Destroy()
 	end
 end
-
-BreathServiceClient.ensureEffects = BreathServiceClient.EnsureEffects
-BreathServiceClient.applyFeedback = BreathServiceClient.ApplyFeedback
-BreathServiceClient.onRenderStep = BreathServiceClient.OnRenderStep
-BreathServiceClient.applyState = BreathServiceClient.ApplyState
-BreathServiceClient.onEvent = BreathServiceClient.OnEvent
-BreathServiceClient.requestSync = BreathServiceClient.RequestSync
-BreathServiceClient.getState = BreathServiceClient.GetState
-BreathServiceClient.isReady = BreathServiceClient.IsReady
-BreathServiceClient.init = BreathServiceClient.Init
-BreathServiceClient.destroy = BreathServiceClient.Destroy
-
 type BreathServiceClient = typeof(BreathServiceClient) & {
 	localPlayer: Player,
 	janitor: JanitorClass,

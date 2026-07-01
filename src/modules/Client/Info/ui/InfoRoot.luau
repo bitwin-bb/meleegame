@@ -14,9 +14,9 @@ type InfoRootProps = {
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: InfoRootProps?): React.ReactNode
-	local resolvedProps = if props ~= nil then props else {} :: InfoRootProps
+	local GotProps = if props ~= nil then props else {} :: InfoRootProps
 
 	return e(React.Fragment, nil, {
-		e(InfoScreen, resolvedProps),
+		e(InfoScreen, GotProps),
 	})
 end

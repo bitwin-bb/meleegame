@@ -10,7 +10,7 @@ local LightBinder = {}
 LightBinder.__index = LightBinder
 setmetatable(LightBinder, ModelBinder)
 
-local function resolveNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
+local function GetNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
@@ -18,7 +18,7 @@ local function resolveNumberAttribute(instance: Instance, attributeName: string,
 	return value
 end
 
-local function resolveBooleanAttribute(instance: Instance, attributeName: string, fallback: boolean): boolean
+local function GetBooleanAttribute(instance: Instance, attributeName: string, fallback: boolean): boolean
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) == "boolean" then
 		return value
@@ -28,8 +28,8 @@ end
 
 function LightBinder.new(instance: Instance, context: any)
 	local self = ModelBinder.new(instance, context, LightBinder)
-	self.rootPart = ModelBinder.resolveRootPart(instance)
-	self.lights = ModelBinder.collectLights(instance)
+	self.rootPart = self:GetRootPart()
+	self.lights = ModelBinder.CollectLights(instance)
 	self.flickerSeed = Random.new():NextNumber(-1000, 1000)
 	self.createdLight = nil :: PointLight?
 
@@ -75,11 +75,11 @@ function LightBinder.new(instance: Instance, context: any)
 end
 
 function LightBinder.refresh(self: any)
-	self.enabled = resolveBooleanAttribute(self.instance, "LightEnabled", true)
-	self.baseBrightness = resolveNumberAttribute(self.instance, "LightBrightness", 2.1)
-	self.range = resolveNumberAttribute(self.instance, "LightRange", 15)
-	self.flickerAmount = math.clamp(resolveNumberAttribute(self.instance, "LightFlickerAmount", 0.12), 0, 0.75)
-	self.shadows = resolveBooleanAttribute(self.instance, "LightShadows", true)
+	self.enabled = GetBooleanAttribute(self.instance, "LightEnabled", true)
+	self.baseBrightness = GetNumberAttribute(self.instance, "LightBrightness", 2.1)
+	self.range = GetNumberAttribute(self.instance, "LightRange", 15)
+	self.flickerAmount = math.clamp(GetNumberAttribute(self.instance, "LightFlickerAmount", 0.12), 0, 0.75)
+	self.shadows = GetBooleanAttribute(self.instance, "LightShadows", true)
 	self.color = if typeof(self.instance:GetAttribute("LightColor")) == "Color3"
 		then self.instance:GetAttribute("LightColor") :: Color3
 		else Color3.fromRGB(255, 196, 125)

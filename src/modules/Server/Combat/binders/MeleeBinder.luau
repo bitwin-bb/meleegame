@@ -29,7 +29,7 @@ local TOOL_ATTRIBUTE_NAMES = {
 
 function MeleeBinder.new(instance: Instance, context: any)
 	local self = ModelBinder.new(instance, context, MeleeBinder)
-	self.tool = ToolBinder.resolveTool(instance)
+	self.tool = ToolBinder.GetTool(instance)
 	if self.tool == nil then
 		return self
 	end
@@ -52,13 +52,13 @@ function MeleeBinder.refresh(self: any)
 		return
 	end
 
-	local resolution = ToolBinder.resolve(self.tool)
+	local resolution = ToolBinder.Get(self.tool)
 	self.tool:SetAttribute("ToolBinderItemId", resolution.itemId)
 	self.tool:SetAttribute("ToolBinderItemType", resolution.itemType)
 	self.tool:SetAttribute("ToolBinderMelee", resolution.isMelee)
 
 	if resolution.ownerPlayer ~= nil then
-		getMeleeServiceServer():requestRefreshEquipped(resolution.ownerPlayer)
+		getMeleeServiceServer():RequestRefreshEquipped(resolution.ownerPlayer)
 	end
 end
 

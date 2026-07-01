@@ -19,21 +19,21 @@ export type QueenBeeRootConfig = {
 local DEFAULT_NAME = "QueenBee"
 local DEFAULT_SIZE = Vector3.new(6, 13.5, 18)
 
-local function sanitizeName(valueRaw: any): string
+local function CoerceName(valueRaw: any): string
 	if typeof(valueRaw) == "string" and valueRaw ~= "" then
 		return valueRaw
 	end
 	return DEFAULT_NAME
 end
 
-local function sanitizeSize(valueRaw: any): Vector3
+local function CoerceSize(valueRaw: any): Vector3
 	if typeof(valueRaw) == "Vector3" then
 		return Vector3.new(math.max(0.05, valueRaw.X), math.max(0.05, valueRaw.Y), math.max(0.05, valueRaw.Z))
 	end
 	return DEFAULT_SIZE
 end
 
-local function sanitizePhaseModel(valueRaw: any): string
+local function CoercePhaseModel(valueRaw: any): string
 	if typeof(valueRaw) == "string" and valueRaw ~= "" then
 		return valueRaw
 	end
@@ -46,7 +46,7 @@ function QueenBeeRoot.CreateModel(configRaw: QueenBeeRootConfig?): Model
 	local maid = Maid.new()
 	local rootPart = scope:New "Part" {
 		Name = "RootPart",
-		Size = sanitizeSize(config.size),
+		Size = CoerceSize(config.size),
 		CFrame = if typeof(config.cframe) == "CFrame" then config.cframe else CFrame.identity,
 		Transparency = 1,
 		Anchored = true,
@@ -55,10 +55,10 @@ function QueenBeeRoot.CreateModel(configRaw: QueenBeeRootConfig?): Model
 		CanTouch = false,
 	}
 	local model = scope:New "Model" {
-		Name = sanitizeName(config.name),
+		Name = CoerceName(config.name),
 		Parent = if typeof(config.parent) == "Instance" then config.parent else nil,
 
-		[Fusion.Attribute("BossPhaseModel")] = sanitizePhaseModel(config.phaseModel),
+		[Fusion.Attribute("BossPhaseModel")] = CoercePhaseModel(config.phaseModel),
 		[Fusion.Attribute("BossSpriteRoot")] = true,
 
 		[Children] = {
@@ -75,7 +75,4 @@ function QueenBeeRoot.CreateModel(configRaw: QueenBeeRootConfig?): Model
 
 	return model
 end
-
-QueenBeeRoot.createModel = QueenBeeRoot.CreateModel
-
 return QueenBeeRoot

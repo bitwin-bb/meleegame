@@ -21,7 +21,7 @@ local PACKAGE_TRACKER_IGNORED_MODULE_PATHS = {
 
 local REQUIRED_ARCHIVABLE_MODULE_PATHS = {
 	"game/Client/Notification/FeatureSnackbarNotifications",
-	"game/Client/NetClient/ClientNetPackets",
+	"game/Client/NetClient/NetPacketsClient",
 	"game/Client/Npc/ui/components/EyeOfCthulhuComponent",
 	"game/Client/Npc/ui/components/QueenBeeComponent",
 }
@@ -156,7 +156,7 @@ local function ensureProjectModulePackageLinks(packageRoot: Instance)
 	end
 end
 
-local function resolveLoaderModule(loader: Instance?): ModuleScript
+local function GetLoaderModule(loader: Instance?): ModuleScript
 	if loader == nil or not loader:IsA("ModuleScript") then
 		error("replicated loader is not a ModuleScript")
 	end
@@ -213,8 +213,7 @@ local packageRoot = ServerScriptService:WaitForChild(PACKAGE_NAME, PACKAGE_LOAD_
 assert(packageRoot ~= nil, `timed out waiting for {PACKAGE_NAME}`)
 packageRoot:WaitForChild("game", PACKAGE_LOAD_TIMEOUT_SECONDS)
 packageRoot:WaitForChild("node_modules", PACKAGE_LOAD_TIMEOUT_SECONDS)
-local loader =
-	resolveLoaderModule(assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils").Parent)
+local loader = GetLoaderModule(assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils").Parent)
 disableStudioWallyIndexPackageTrackerModules(packageRoot)
 disableDuplicatePackageTrackerModules(packageRoot)
 ensureProjectModulePackageLinks(packageRoot)
@@ -227,11 +226,11 @@ local ServiceBag = require("ServiceBag")
 
 local serviceBag = ServiceBag.new()
 
-NevermoreSupport.setServiceBag(serviceBag)
+NevermoreSupport.SetServiceBag(serviceBag)
 
 serviceBag:GetService(require("AquariaBackupService"))
 
 serviceBag:Init()
 serviceBag:Start()
 
-CmdrBootstrapServer.start(serviceBag)
+CmdrBootstrapServer.Start(serviceBag)

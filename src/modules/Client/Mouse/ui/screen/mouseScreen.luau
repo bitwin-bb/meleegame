@@ -30,7 +30,7 @@ return function(props: MouseScreenProps): React.ReactNode
 	local currentMouseState = (useStore(mouseSlice.mouseStateAtom) :: MouseState?) or mouseSlice.mouseStateAtom()
 
 	React.useEffect(function()
-		local stop = mouseThunks.start()
+		local stop = mouseThunks.Start()
 
 		return function()
 			stop()
@@ -69,7 +69,7 @@ return function(props: MouseScreenProps): React.ReactNode
 		},
 	})
 
-	local portalTarget = PortalTargets.resolveUiScreenGui()
+	local portalTarget = PortalTargets.GetUiScreenGui()
 	if portalTarget ~= nil then
 		return ReactRoblox.createPortal(rootElement, portalTarget)
 	end

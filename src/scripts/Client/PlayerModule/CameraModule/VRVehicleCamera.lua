@@ -38,7 +38,7 @@ local VRService = game:GetService("VRService")
 local localPlayer = Players.LocalPlayer
 local Spring = CameraUtils.Spring
 local mapClamp = CameraUtils.mapClamp
-local sanitizeAngle = CameraUtils.sanitizeAngle
+local CoerceAngle = CameraUtils.CoerceAngle
 
 local ZERO_VECTOR3 = Vector3.new(0, 0, 0)
 
@@ -116,8 +116,8 @@ function VRVehicleCamera:_StepRotation(dt, vdotz): CFrame
 	local rotationInput = self:getRotation(dt)
 	local dYaw = -rotationInput
 
-	yawSpring.pos = sanitizeAngle(yawSpring.pos + dYaw)
-	pitchSpring.pos = sanitizeAngle(math.clamp(pitchSpring.pos, -PITCH_LIMIT, PITCH_LIMIT))
+	yawSpring.pos = CoerceAngle(yawSpring.pos + dYaw)
+	pitchSpring.pos = CoerceAngle(math.clamp(pitchSpring.pos, -PITCH_LIMIT, PITCH_LIMIT))
 
 	if CameraInput.getRotationActivated() then
 		self.lastPanTick = os.clock()
@@ -148,7 +148,7 @@ function VRVehicleCamera:_StepRotation(dt, vdotz): CFrame
 			pitchSpring.vel = 0
 		end
 
-		if math.abs(sanitizeAngle(pitchBaseAngle - pitchSpring.pos)) <= pitchDeadzoneAngle then
+		if math.abs(CoerceAngle(pitchBaseAngle - pitchSpring.pos)) <= pitchDeadzoneAngle then
 			-- do nothing within the deadzone
 			pitchSpring.goal = pitchSpring.pos
 		else

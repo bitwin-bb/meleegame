@@ -1,7 +1,7 @@
 
 local require = require(script.Parent.loader).load(script)
 
-local DynamicTextResolver = require("DynamicTextResolver")
+local DynamicTextGetter = require("DynamicTextGetter")
 
 local LocalizationEngine = {}
 LocalizationEngine.__index = LocalizationEngine
@@ -13,7 +13,7 @@ export type LocalizationConfig = {
 	defaultLanguage: string?,
 	fallbackLanguage: string?,
 	warnOnMissing: boolean?,
-	resolver: any?,
+	textGetter: any?,
 }
 
 export type TranslateOptions = {
@@ -48,9 +48,9 @@ function LocalizationEngine.New(configRaw: LocalizationConfig?): LocalizationEng
 	local fallbackLanguage = if isValidLanguageCode(config.fallbackLanguage)
 		then config.fallbackLanguage
 		else defaultLanguage
-	local resolver = if config.resolver ~= nil
-		then config.resolver
-		else DynamicTextResolver.new({
+	local textGetter = if config.textGetter ~= nil
+		then config.textGetter
+		else DynamicTextGetter.New({
 			warnOnMissing = false,
 			keepUnknownPlaceholders = true,
 		})
@@ -62,7 +62,7 @@ function LocalizationEngine.New(configRaw: LocalizationConfig?): LocalizationEng
 		defaultLanguage = defaultLanguage,
 		fallbackLanguage = fallbackLanguage,
 		warnOnMissing = config.warnOnMissing == true,
-		resolver = resolver,
+		textGetter = textGetter,
 	}, LocalizationEngine)
 	return self
 end
@@ -105,7 +105,7 @@ function LocalizationEngine.RegisterLanguages(self: LocalizationEngine, tablesRa
 	end
 	for language, languageTable in tablesRaw do
 		if typeof(language) == "string" then
-			self:registerLanguage(language, languageTable)
+			self:RegisterLanguage(language, languageTable)
 		end
 	end
 end
@@ -145,7 +145,7 @@ function LocalizationEngine.GetAvailableLanguages(self: LocalizationEngine): { s
 	return out
 end
 
-function LocalizationEngine._resolvePlural(
+function LocalizationEngine._GetPlural(
 	self: LocalizationEngine,
 	language: string,
 	value: { [string]: string },
@@ -180,7 +180,7 @@ function LocalizationEngine._lookup(self: LocalizationEngine, language: string, 
 		return entry
 	end
 	if typeof(entry) == "table" then
-		return self:_resolvePlural(language, entry :: { [string]: string }, countRaw)
+		return self:_GetPlural(language, entry :: { [string]: string }, countRaw)
 	end
 	return nil
 end
@@ -213,7 +213,7 @@ function LocalizationEngine.Translate(
 		return keyRaw
 	end
 
-	return self.resolver:resolve(template, params)
+	return self.textGetter:Get(template, params)
 end
 
 function LocalizationEngine.ValidateLanguage(self: LocalizationEngine, languageRaw: any): { string }
@@ -257,16 +257,4 @@ function LocalizationEngine.HasKey(self: LocalizationEngine, keyRaw: any, langua
 	end
 	return languageTable[keyRaw] ~= nil
 end
-
-LocalizationEngine.new = LocalizationEngine.New
-LocalizationEngine.registerLanguage = LocalizationEngine.RegisterLanguage
-LocalizationEngine.registerLanguages = LocalizationEngine.RegisterLanguages
-LocalizationEngine.setPluralRule = LocalizationEngine.SetPluralRule
-LocalizationEngine.setLanguage = LocalizationEngine.SetLanguage
-LocalizationEngine.getLanguage = LocalizationEngine.GetLanguage
-LocalizationEngine.getAvailableLanguages = LocalizationEngine.GetAvailableLanguages
-LocalizationEngine.translate = LocalizationEngine.Translate
-LocalizationEngine.validateLanguage = LocalizationEngine.ValidateLanguage
-LocalizationEngine.hasKey = LocalizationEngine.HasKey
-
 return LocalizationEngine

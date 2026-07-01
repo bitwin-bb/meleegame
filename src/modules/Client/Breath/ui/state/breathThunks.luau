@@ -30,26 +30,26 @@ function breathThunks.Start(): () -> ()
 	end
 
 	runtime.started = true
-	local isReady = ServiceSync.readReady(BreathServiceClient, false)
+	local isReady = ServiceSync.ReadReady(BreathServiceClient, false)
 	breathSlice.setBreathReady(isReady)
 	if isReady then
 		syncFromService()
 	end
 
-	runtime.stateChangedConnection = ServiceSync.connectStateChanged(
+	runtime.stateChangedConnection = ServiceSync.ConnectStateChanged(
 		BreathServiceClient,
 		function(nextState: BreathServiceState)
 			applyState(nextState)
 			breathSlice.setBreathReady(true)
 		end
 	)
-	ServiceSync.requestSync(BreathServiceClient)
+	ServiceSync.RequestSync(BreathServiceClient)
 
 	return breathThunks.Stop
 end
 
 function breathThunks.Stop()
-	ConnectionUtils.disconnect(runtime.stateChangedConnection)
+	ConnectionUtils.Disconnect(runtime.stateChangedConnection)
 	runtime.stateChangedConnection = nil
 
 	runtime.started = false
@@ -63,10 +63,4 @@ end
 function breathThunks.ApplyState(nextStateRaw: any): BreathServiceState
 	return applyState(nextStateRaw)
 end
-
-breathThunks.start = breathThunks.Start
-breathThunks.stop = breathThunks.Stop
-breathThunks.syncFromService = breathThunks.SyncFromService
-breathThunks.applyState = breathThunks.ApplyState
-
 return breathThunks

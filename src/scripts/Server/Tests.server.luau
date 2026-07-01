@@ -8,7 +8,7 @@ if script:GetAttribute("RunTests") == true then
 	local PROJECT_loader_LINK_NAME = "loader"
 	local NEVERMORE_loader_LINK_NAME = "loader"
 
-	local function resolvePackageRoot(): Instance
+	local function GetPackageRoot(): Instance
 		local deadline = os.clock() + PACKAGE_LOAD_TIMEOUT_SECONDS
 
 		while os.clock() < deadline do
@@ -22,7 +22,7 @@ if script:GetAttribute("RunTests") == true then
 		error(`[runTests] Missing {PACKAGE_NAME}.`)
 	end
 
-	local packageRoot = resolvePackageRoot()
+	local packageRoot = GetPackageRoot()
 
 	local gameRoot = packageRoot:FindFirstChild("game")
 		or packageRoot:WaitForChild("game", PACKAGE_LOAD_TIMEOUT_SECONDS)

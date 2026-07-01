@@ -47,12 +47,6 @@ end
 function HumanoidAdapter.Destroy(self: HumanoidAdapter)
 	self.humanoid = nil
 end
-
-HumanoidAdapter.getHealth = HumanoidAdapter.GetHealth
-HumanoidAdapter.isAlive = HumanoidAdapter.IsAlive
-HumanoidAdapter.isGrounded = HumanoidAdapter.IsGrounded
-HumanoidAdapter.forceUnseat = HumanoidAdapter.ForceUnseat
-HumanoidAdapter.destroy = HumanoidAdapter.Destroy
 HumanoidAdapter.copy = Table.copy
 
 return HumanoidAdapter

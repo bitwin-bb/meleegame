@@ -315,8 +315,8 @@ function ReactiveState.FromAttributeCache(
 ): MutableState<any>
 	local initialValue = defaultValue
 	if typeof(instanceRaw) == "Instance" then
-		if attributeCacheRaw ~= nil and typeof(attributeCacheRaw.get) == "function" then
-			initialValue = attributeCacheRaw:get(instanceRaw, attributeRaw, defaultValue)
+		if attributeCacheRaw ~= nil and typeof(attributeCacheRaw.Get) == "function" then
+			initialValue = attributeCacheRaw:Get(instanceRaw, attributeRaw, defaultValue)
 		elseif typeof(attributeRaw) == "string" then
 			initialValue = instanceRaw:GetAttribute(attributeRaw)
 			if initialValue == nil then
@@ -328,8 +328,8 @@ function ReactiveState.FromAttributeCache(
 	local disconnect: Subscription? = nil
 	local connection: RBXScriptConnection? = nil
 
-	if attributeCacheRaw ~= nil and typeof(attributeCacheRaw.onChanged) == "function" then
-		disconnect = attributeCacheRaw:onChanged(instanceRaw, attributeRaw, function(_, _, nextValue)
+	if attributeCacheRaw ~= nil and typeof(attributeCacheRaw.OnChanged) == "function" then
+		disconnect = attributeCacheRaw:OnChanged(instanceRaw, attributeRaw, function(_, _, nextValue)
 			state:set(nextValue)
 		end)
 	elseif typeof(instanceRaw) == "Instance" and typeof(attributeRaw) == "string" then
@@ -352,13 +352,6 @@ function ReactiveState.FromAttributeCache(
 		connection = nil
 		baseDestroy(selfState)
 	end
-
-	state.destroy = state.Destroy
-
 	return state
 end
-
-BaseValue.subscribe = BaseValue.Subscribe
-BaseValue.destroy = BaseValue.Destroy
-
 return ReactiveState

@@ -18,12 +18,12 @@ export type RayIntersection = {
 	point: Vector3,
 }
 
-local function resolvePadding(padding: number | Vector3): Vector3
+local function GetPadding(padding: number | Vector3): Vector3
 	if typeof(padding) == "number" then
 		local amount = math.abs(padding)
 		return Vector3.new(amount, amount, amount)
 	end
-	return Vec.abs(padding)
+	return Vec.Abs(padding)
 end
 
 local function intersectAxis(
@@ -51,13 +51,13 @@ end
 
 function Bounds.New(minValue: Vector3, maxValue: Vector3): Bounds
 	return {
-		min = Vec.min(minValue, maxValue),
-		max = Vec.max(minValue, maxValue),
+		min = Vec.Min(minValue, maxValue),
+		max = Vec.Max(minValue, maxValue),
 	}
 end
 
 function Bounds.FromCenterSize(center: Vector3, size: Vector3): Bounds
-	local halfSize = Vec.abs(size) * 0.5
+	local halfSize = Vec.Abs(size) * 0.5
 	return {
 		min = center - halfSize,
 		max = center + halfSize,
@@ -76,8 +76,8 @@ function Bounds.FromPoints(points: { Vector3 }): Bounds
 	local maxValue = points[1]
 	for index = 2, #points do
 		local point = points[index]
-		minValue = Vec.min(minValue, point)
-		maxValue = Vec.max(maxValue, point)
+		minValue = Vec.Min(minValue, point)
+		maxValue = Vec.Max(maxValue, point)
 	end
 
 	return {
@@ -121,7 +121,7 @@ function Bounds.ClosestPoint(bounds: Bounds, point: Vector3): Vector3
 end
 
 function Bounds.DistanceSqToPoint(bounds: Bounds, point: Vector3): number
-	return Vec.distanceSq(point, Bounds.ClosestPoint(bounds, point))
+	return Vec.DistanceSq(point, Bounds.ClosestPoint(bounds, point))
 end
 
 function Bounds.DistanceToPoint(bounds: Bounds, point: Vector3): number
@@ -129,17 +129,17 @@ function Bounds.DistanceToPoint(bounds: Bounds, point: Vector3): number
 end
 
 function Bounds.Expand(bounds: Bounds, padding: number | Vector3): Bounds
-	local resolvedPadding = resolvePadding(padding)
+	local GotPadding = GetPadding(padding)
 	return {
-		min = bounds.min - resolvedPadding,
-		max = bounds.max + resolvedPadding,
+		min = bounds.min - GotPadding,
+		max = bounds.max + GotPadding,
 	}
 end
 
 function Bounds.Union(a: Bounds, b: Bounds): Bounds
 	return {
-		min = Vec.min(a.min, b.min),
-		max = Vec.max(a.max, b.max),
+		min = Vec.Min(a.min, b.min),
+		max = Vec.Max(a.max, b.max),
 	}
 end
 
@@ -181,19 +181,4 @@ function Bounds.IntersectRay(bounds: Bounds, origin: Vector3, direction: Vector3
 		point = origin + direction * hitT,
 	}
 end
-
-Bounds.new = Bounds.New
-Bounds.fromCenterSize = Bounds.FromCenterSize
-Bounds.fromPoints = Bounds.FromPoints
-Bounds.center = Bounds.Center
-Bounds.size = Bounds.Size
-Bounds.containsPoint = Bounds.ContainsPoint
-Bounds.closestPoint = Bounds.ClosestPoint
-Bounds.distanceSqToPoint = Bounds.DistanceSqToPoint
-Bounds.distanceToPoint = Bounds.DistanceToPoint
-Bounds.expand = Bounds.Expand
-Bounds.union = Bounds.Union
-Bounds.intersects = Bounds.Intersects
-Bounds.intersectRay = Bounds.IntersectRay
-
 return Bounds

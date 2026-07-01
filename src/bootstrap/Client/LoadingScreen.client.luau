@@ -80,7 +80,7 @@ local DEFAULT_SNAPSHOT: loaderSnapshot = {
 	failures = {},
 }
 
-local function sanitizeNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
 	end
@@ -95,14 +95,14 @@ local function sanitizeNumber(value: any, fallback: number, minimum: number?, ma
 	return nextValue
 end
 
-local function sanitizeString(value: any, fallback: string): string
+local function CoerceString(value: any, fallback: string): string
 	if typeof(value) == "string" and value ~= "" then
 		return value
 	end
 	return fallback
 end
 
-local function sanitizeStringArray(valueRaw: any): { string }
+local function CoerceStringArray(valueRaw: any): { string }
 	local values: { string } = {}
 	if typeof(valueRaw) ~= "table" then
 		return values
@@ -117,25 +117,25 @@ local function sanitizeStringArray(valueRaw: any): { string }
 	return values
 end
 
-local function sanitizeSnapshot(valueRaw: any): loaderSnapshot
+local function CoerceSnapshot(valueRaw: any): loaderSnapshot
 	local value: { [string]: any } = if typeof(valueRaw) == "table" then valueRaw :: { [string]: any } else {} :: any
 
 	return {
-		status = sanitizeString(value.status, DEFAULT_SNAPSHOT.status),
-		stage = sanitizeString(value.stage, DEFAULT_SNAPSHOT.stage),
-		message = sanitizeString(value.message, DEFAULT_SNAPSHOT.message),
-		progress = sanitizeNumber(value.progress, DEFAULT_SNAPSHOT.progress, 0, 1),
-		completed = sanitizeNumber(value.completed, DEFAULT_SNAPSHOT.completed, 0, nil),
-		total = sanitizeNumber(value.total, DEFAULT_SNAPSHOT.total, 1, nil),
-		startedAt = sanitizeNumber(value.startedAt, DEFAULT_SNAPSHOT.startedAt, 0, nil),
+		status = CoerceString(value.status, DEFAULT_SNAPSHOT.status),
+		stage = CoerceString(value.stage, DEFAULT_SNAPSHOT.stage),
+		message = CoerceString(value.message, DEFAULT_SNAPSHOT.message),
+		progress = CoerceNumber(value.progress, DEFAULT_SNAPSHOT.progress, 0, 1),
+		completed = CoerceNumber(value.completed, DEFAULT_SNAPSHOT.completed, 0, nil),
+		total = CoerceNumber(value.total, DEFAULT_SNAPSHOT.total, 1, nil),
+		startedAt = CoerceNumber(value.startedAt, DEFAULT_SNAPSHOT.startedAt, 0, nil),
 		finishedAt = if typeof(value.finishedAt) == "number" then value.finishedAt else nil,
-		moduleCount = sanitizeNumber(value.moduleCount, DEFAULT_SNAPSHOT.moduleCount, 0, nil),
-		assetCount = sanitizeNumber(value.assetCount, DEFAULT_SNAPSHOT.assetCount, 0, nil),
-		assetLoadedCount = sanitizeNumber(value.assetLoadedCount, DEFAULT_SNAPSHOT.assetLoadedCount, 0, nil),
-		assetFailedCount = sanitizeNumber(value.assetFailedCount, DEFAULT_SNAPSHOT.assetFailedCount, 0, nil),
-		failureCount = sanitizeNumber(value.failureCount, DEFAULT_SNAPSHOT.failureCount, 0, nil),
+		moduleCount = CoerceNumber(value.moduleCount, DEFAULT_SNAPSHOT.moduleCount, 0, nil),
+		assetCount = CoerceNumber(value.assetCount, DEFAULT_SNAPSHOT.assetCount, 0, nil),
+		assetLoadedCount = CoerceNumber(value.assetLoadedCount, DEFAULT_SNAPSHOT.assetLoadedCount, 0, nil),
+		assetFailedCount = CoerceNumber(value.assetFailedCount, DEFAULT_SNAPSHOT.assetFailedCount, 0, nil),
+		failureCount = CoerceNumber(value.failureCount, DEFAULT_SNAPSHOT.failureCount, 0, nil),
 		lastError = if typeof(value.lastError) == "string" and value.lastError ~= "" then value.lastError else nil,
-		failures = sanitizeStringArray(value.failures),
+		failures = CoerceStringArray(value.failures),
 	}
 end
 
@@ -155,7 +155,7 @@ local function readAttributeSnapshot(): loaderSnapshot
 	local bridge = findBridge()
 	local source = if bridge ~= nil then bridge else ReplicatedFirst
 
-	return sanitizeSnapshot({
+	return CoerceSnapshot({
 		status = source:GetAttribute("AquarialoaderStatus"),
 		stage = source:GetAttribute("AquarialoaderStage"),
 		message = source:GetAttribute("AquarialoaderMessage"),
@@ -188,7 +188,7 @@ local function readBridgeSnapshot(): loaderSnapshot
 		return getSnapshot:Invoke()
 	end)
 	if ok then
-		return sanitizeSnapshot(result)
+		return CoerceSnapshot(result)
 	end
 
 	return readAttributeSnapshot()
@@ -218,7 +218,7 @@ local function subscribeToSnapshots(onSnapshot: (loaderSnapshot) -> ()): () -> (
 
 		onSnapshot(readBridgeSnapshot())
 		connection = changed.Event:Connect(function(snapshotRaw: any)
-			onSnapshot(sanitizeSnapshot(snapshotRaw))
+			onSnapshot(CoerceSnapshot(snapshotRaw))
 		end)
 	end)
 

@@ -38,7 +38,4 @@ function PlayerBlackboard.Create(configRaw: any?): any
 
 	return blackboard
 end
-
-PlayerBlackboard.create = PlayerBlackboard.Create
-
 return PlayerBlackboard

@@ -97,13 +97,4 @@ function InputHandler.Destroy(self: InputHandler)
 	self.maid:DoCleaning()
 	table.clear(self.pressed)
 end
-
-InputHandler.setMoveVector = InputHandler.SetMoveVector
-InputHandler.getMoveVector = InputHandler.GetMoveVector
-InputHandler.isJumpPressed = InputHandler.IsJumpPressed
-InputHandler.isDashPressed = InputHandler.IsDashPressed
-InputHandler.isAttackPressed = InputHandler.IsAttackPressed
-InputHandler.isBlocking = InputHandler.IsBlocking
-InputHandler.destroy = InputHandler.Destroy
-
 return InputHandler

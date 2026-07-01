@@ -8,7 +8,7 @@ local AnimationServiceUtils = require("AnimationServiceUtils")
 local AudioServiceClient = require("AudioServiceClient")
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
-local AnimationServicePackets = require("NetSharedPackets").AnimationService
+local AnimationServicePackets = require("NetPacketsShared").AnimationService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = AnimationServicePackets[methodName]
@@ -17,7 +17,7 @@ local function sendPacket(methodName: string, ...: any)
 		return
 	end
 
-	packet.send(PacketPayload.pack(...))
+	packet.send(PacketPayload.Pack(...))
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -27,13 +27,14 @@ local function bindPacket(self: any, methodName: string)
 		return
 	end
 
+	local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
 	packet.listen(function(payload: any)
-		local handler = self[methodName]
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, table.unpack(arguments, 1, count))
 	end)
 end
@@ -107,7 +108,7 @@ local function isFallState(state: Enum.HumanoidStateType): boolean
 	return FALL_STATES[state] == true
 end
 
-local function resolveClipPlaybackSpeed(runtime: CharacterRuntime, clipName: string): number
+local function GetClipPlaybackSpeed(runtime: CharacterRuntime, clipName: string): number
 	local clipConfig = getClipConfig(runtime, clipName)
 	if not clipConfig then
 		return 1
@@ -127,7 +128,7 @@ local function resolveClipPlaybackSpeed(runtime: CharacterRuntime, clipName: str
 	return clipConfig.speed * speedScale
 end
 
-local function resolveTransitionFadeTime(runtime: CharacterRuntime, fromClipName: string?, toClipName: string?): number
+local function GetTransitionFadeTime(runtime: CharacterRuntime, fromClipName: string?, toClipName: string?): number
 	local fadeTime = DEFAULT_TRANSITION_FADE_TIME
 
 	if fromClipName ~= nil then
@@ -177,15 +178,15 @@ function AnimationServiceClient.Init(self: AnimationServiceClient)
 	self.runtimeJanitor = Janitor.new()
 	self.character = nil
 	self.runtime = nil
-	self.profileRegistry = AnimationServiceUtils.createDefaultProfileRegistry()
-	self.state = AnimationServiceUtils.createDefaultState()
+	self.profileRegistry = AnimationServiceUtils.CreateDefaultProfileRegistry()
+	self.state = AnimationServiceUtils.CreateDefaultState()
 	self.movementLocked = false
 
 	self.janitor:GiveChore(self.characterJanitor)
 	self.characterJanitor:GiveChore(self.runtimeJanitor)
 
 	self.janitor:GiveChore(self.localPlayer.CharacterAdded:Connect(function(character: Model)
-		self:onCharacterAdded(character)
+		self:OnCharacterAdded(character)
 	end))
 	self.janitor:GiveChore(
 		self.localPlayer
@@ -194,7 +195,7 @@ function AnimationServiceClient.Init(self: AnimationServiceClient)
 				local movementLockAttribute =
 					self.localPlayer:GetAttribute(PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE)
 				self.movementLocked = movementLockAttribute == true
-				self:refreshAnimation()
+				self:RefreshAnimation()
 			end)
 	)
 
@@ -202,7 +203,7 @@ function AnimationServiceClient.Init(self: AnimationServiceClient)
 	self.movementLocked = movementLockAttribute == true
 
 	if self.localPlayer.Character then
-		self:onCharacterAdded(self.localPlayer.Character)
+		self:OnCharacterAdded(self.localPlayer.Character)
 	end
 
 	sendPacket("requestSync")
@@ -217,11 +218,11 @@ function AnimationServiceClient.OnCharacterAdded(self: AnimationServiceClient, c
 
 	self.characterJanitor:GiveChore(character.ChildAdded:Connect(function()
 		if self.runtime == nil then
-			self:rebuildRuntime()
+			self:RebuildRuntime()
 		end
 	end))
 
-	self:rebuildRuntime()
+	self:RebuildRuntime()
 end
 
 function AnimationServiceClient.RebuildRuntime(self: AnimationServiceClient)
@@ -233,23 +234,23 @@ function AnimationServiceClient.RebuildRuntime(self: AnimationServiceClient)
 		return
 	end
 
-	local rig = AnimationServiceUtils.resolveCharacterRig(character)
+	local rig = AnimationServiceUtils.GetCharacterRig(character)
 	if not rig then
 		return
 	end
 
-	local profileName = AnimationServiceUtils.normalizeProfileName(
+	local profileName = AnimationServiceUtils.NormalizeProfileName(
 		self.state.profileName,
 		self.profileRegistry,
 		AnimationServiceUtils.DEFAULT_PROFILE_NAME
 	)
-	local profile = AnimationServiceUtils.getProfile(profileName, self.profileRegistry)
+	local profile = AnimationServiceUtils.GetProfile(profileName, self.profileRegistry)
 	if not profile then
 		return
 	end
 
-	AnimationServiceUtils.disableDefaultAnimateScript(character)
-	local animator = AnimationServiceUtils.resolveAnimator(rig.humanoid)
+	AnimationServiceUtils.DisableDefaultAnimateScript(character)
+	local animator = AnimationServiceUtils.GetAnimator(rig.humanoid)
 	local runtime: CharacterRuntime = {
 		rig = rig,
 		profile = profile,
@@ -259,14 +260,14 @@ function AnimationServiceClient.RebuildRuntime(self: AnimationServiceClient)
 		lastFootstepEventAt = 0,
 		lastJumpAt = 0,
 		lastJumpEventAt = 0,
-		footstepKeyframeSet = AnimationServiceUtils.arrayToSet(profile.footstepKeyframes),
-		jumpKeyframeSet = AnimationServiceUtils.arrayToSet(profile.jumpKeyframes),
+		footstepKeyframeSet = AnimationServiceUtils.ArrayToSet(profile.footstepKeyframes),
+		jumpKeyframeSet = AnimationServiceUtils.ArrayToSet(profile.jumpKeyframes),
 		movementSpeed = 0,
 		humanoidState = rig.humanoid:GetState(),
 	}
 
 	for clipName, clipConfig in profile.animations do
-		local track = AnimationServiceUtils.createAnimationTrack(animator, clipConfig)
+		local track = AnimationServiceUtils.CreateAnimationTrack(animator, clipConfig)
 		if track then
 			runtime.tracks[clipName] = track
 			self.runtimeJanitor:GiveChore(function()
@@ -283,7 +284,7 @@ function AnimationServiceClient.RebuildRuntime(self: AnimationServiceClient)
 		profile.footstepMarkers,
 		runtime.footstepKeyframeSet,
 		function()
-			self:onFootstepEvent()
+			self:OnFootstepEvent()
 		end
 	)
 
@@ -293,30 +294,30 @@ function AnimationServiceClient.RebuildRuntime(self: AnimationServiceClient)
 		profile.jumpMarkers,
 		runtime.jumpKeyframeSet,
 		function()
-			self:onJumpEvent()
+			self:OnJumpEvent()
 		end
 	)
 
 	self.runtimeJanitor:GiveChore(rig.humanoid.Running:Connect(function(speed: number)
-		self:updateMovementAnimation(speed)
+		self:UpdateMovementAnimation(speed)
 	end))
 
 	self.runtimeJanitor:GiveChore(rig.humanoid.StateChanged:Connect(function(_, newState: Enum.HumanoidStateType)
-		self:updateHumanoidState(newState)
+		self:UpdateHumanoidState(newState)
 	end))
 
 	self.runtimeJanitor:GiveChore(rig.humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
-		self:refreshAnimation()
+		self:RefreshAnimation()
 	end))
 
 	self.runtimeJanitor:GiveChore(rig.humanoid.Died:Connect(function()
-		self:switchToClip(nil)
+		self:SwitchToClip(nil)
 	end))
 
 	self.runtime = runtime
 	runtime.movementSpeed = rig.humanoid.MoveDirection.Magnitude * rig.humanoid.WalkSpeed
 	runtime.humanoidState = rig.humanoid:GetState()
-	self:refreshAnimation()
+	self:RefreshAnimation()
 end
 
 function AnimationServiceClient.SwitchToClip(self: AnimationServiceClient, clipName: string?)
@@ -324,7 +325,7 @@ function AnimationServiceClient.SwitchToClip(self: AnimationServiceClient, clipN
 	if not runtime then
 		return
 	end
-	local transitionFadeTime = resolveTransitionFadeTime(runtime, runtime.activeClipName, clipName)
+	local transitionFadeTime = GetTransitionFadeTime(runtime, runtime.activeClipName, clipName)
 
 	if clipName == nil then
 		for _, track in runtime.tracks do
@@ -339,7 +340,7 @@ function AnimationServiceClient.SwitchToClip(self: AnimationServiceClient, clipN
 	local requestedTrack = runtime.tracks[clipName]
 	if requestedTrack == nil then
 		if clipName ~= "Idle" and runtime.tracks.Idle then
-			self:switchToClip("Idle")
+			self:SwitchToClip("Idle")
 		end
 		return
 	end
@@ -347,7 +348,7 @@ function AnimationServiceClient.SwitchToClip(self: AnimationServiceClient, clipN
 	if runtime.activeClipName == clipName then
 		local activeTrack = runtime.tracks[clipName]
 		local activeClipConfig = getClipConfig(runtime, clipName)
-		local playbackSpeed = resolveClipPlaybackSpeed(runtime, clipName)
+		local playbackSpeed = GetClipPlaybackSpeed(runtime, clipName)
 		if activeTrack and activeClipConfig then
 			if activeTrack.IsPlaying then
 				activeTrack:AdjustWeight(activeClipConfig.weight, transitionFadeTime)
@@ -362,7 +363,7 @@ function AnimationServiceClient.SwitchToClip(self: AnimationServiceClient, clipN
 	local targetTrack = requestedTrack
 	local targetClipConfig = getClipConfig(runtime, clipName)
 	if targetTrack and targetClipConfig then
-		local playbackSpeed = resolveClipPlaybackSpeed(runtime, clipName)
+		local playbackSpeed = GetClipPlaybackSpeed(runtime, clipName)
 		if targetTrack.IsPlaying then
 			targetTrack:AdjustWeight(targetClipConfig.weight, transitionFadeTime)
 			targetTrack:AdjustSpeed(playbackSpeed)
@@ -387,7 +388,7 @@ function AnimationServiceClient.UpdateMovementAnimation(self: AnimationServiceCl
 	end
 
 	runtime.movementSpeed = math.max(speed, 0)
-	self:refreshAnimation()
+	self:RefreshAnimation()
 end
 
 function AnimationServiceClient.UpdateHumanoidState(self: AnimationServiceClient, humanoidState: Enum.HumanoidStateType)
@@ -397,7 +398,7 @@ function AnimationServiceClient.UpdateHumanoidState(self: AnimationServiceClient
 	end
 
 	runtime.humanoidState = humanoidState
-	self:refreshAnimation()
+	self:RefreshAnimation()
 end
 
 function AnimationServiceClient.RefreshAnimation(self: AnimationServiceClient)
@@ -408,44 +409,44 @@ function AnimationServiceClient.RefreshAnimation(self: AnimationServiceClient)
 
 	if self.movementLocked then
 		if runtime.tracks.Fall then
-			self:switchToClip("Fall")
+			self:SwitchToClip("Fall")
 		elseif runtime.tracks.Jump then
-			self:switchToClip("Jump")
+			self:SwitchToClip("Jump")
 		elseif runtime.tracks.Idle then
-			self:switchToClip("Idle")
+			self:SwitchToClip("Idle")
 		else
-			self:switchToClip(nil)
+			self:SwitchToClip(nil)
 		end
 		return
 	end
 
 	if isFallState(runtime.humanoidState) then
 		if runtime.tracks.Fall then
-			self:switchToClip("Fall")
+			self:SwitchToClip("Fall")
 			return
 		end
 		if runtime.tracks.Jump then
-			self:switchToClip("Jump")
+			self:SwitchToClip("Jump")
 			return
 		end
 	end
 
 	if runtime.tracks.Jump and isJumpState(runtime.humanoidState) then
-		self:switchToClip("Jump")
+		self:SwitchToClip("Jump")
 		return
 	end
 
 	if runtime.movementSpeed > runtime.profile.walkSpeedThreshold and runtime.tracks.Walk then
-		self:switchToClip("Walk")
+		self:SwitchToClip("Walk")
 		return
 	end
 
 	if runtime.tracks.Idle then
-		self:switchToClip("Idle")
+		self:SwitchToClip("Idle")
 		return
 	end
 
-	self:switchToClip(nil)
+	self:SwitchToClip(nil)
 end
 
 function AnimationServiceClient.OnFootstepEvent(self: AnimationServiceClient)
@@ -459,7 +460,7 @@ function AnimationServiceClient.OnFootstepEvent(self: AnimationServiceClient)
 		return
 	end
 	runtime.lastFootstepEventAt = now
-	self:playFootstep(runtime, now)
+	self:PlayFootstep(runtime, now)
 end
 
 function AnimationServiceClient.CanPlayFootstep(self: AnimationServiceClient, runtime: CharacterRuntime): boolean
@@ -492,7 +493,7 @@ function AnimationServiceClient.OnJumpEvent(self: AnimationServiceClient)
 		return
 	end
 	runtime.lastJumpEventAt = now
-	self:playJump(runtime, now)
+	self:PlayJump(runtime, now)
 end
 
 function AnimationServiceClient.CanPlayJump(self: AnimationServiceClient, runtime: CharacterRuntime): boolean
@@ -510,7 +511,7 @@ function AnimationServiceClient.PlayFootstep(
 	runtime: CharacterRuntime,
 	now: number
 ): boolean
-	if not self:canPlayFootstep(runtime) then
+	if not self:CanPlayFootstep(runtime) then
 		return false
 	end
 	if now - runtime.lastFootstepAt < runtime.profile.footstepCooldown then
@@ -521,7 +522,7 @@ function AnimationServiceClient.PlayFootstep(
 	end
 
 	local humanoid = runtime.rig.humanoid
-	local soundAssetId, soundOptions = AnimationServiceUtils.resolveFootstepSoundAssetIdAndOptions(
+	local soundAssetId, soundOptions = AnimationServiceUtils.GetFootstepSoundAssetIdAndOptions(
 		runtime.rig.rootPart,
 		humanoid.FloorMaterial,
 		runtime.profile
@@ -530,7 +531,7 @@ function AnimationServiceClient.PlayFootstep(
 		return false
 	end
 
-	local playedSound = AudioServiceClient:playSfx(soundAssetId, soundOptions)
+	local playedSound = AudioServiceClient:PlaySfx(soundAssetId, soundOptions)
 	if playedSound then
 		runtime.lastFootstepAt = now
 		return true
@@ -540,7 +541,7 @@ function AnimationServiceClient.PlayFootstep(
 end
 
 function AnimationServiceClient.PlayJump(self: AnimationServiceClient, runtime: CharacterRuntime, now: number): boolean
-	if not self:canPlayJump(runtime) then
+	if not self:CanPlayJump(runtime) then
 		return false
 	end
 	if now - runtime.lastJumpAt < runtime.profile.jumpCooldown then
@@ -551,12 +552,12 @@ function AnimationServiceClient.PlayJump(self: AnimationServiceClient, runtime: 
 	end
 
 	local soundAssetId, soundOptions =
-		AnimationServiceUtils.resolveJumpSoundAssetIdAndOptions(runtime.rig.rootPart, runtime.profile)
+		AnimationServiceUtils.GetJumpSoundAssetIdAndOptions(runtime.rig.rootPart, runtime.profile)
 	if soundAssetId == nil or soundOptions == nil then
 		return false
 	end
 
-	local playedSound = AudioServiceClient:playSfx(soundAssetId, soundOptions)
+	local playedSound = AudioServiceClient:PlaySfx(soundAssetId, soundOptions)
 	if playedSound then
 		runtime.lastJumpAt = now
 		return true
@@ -567,12 +568,12 @@ end
 
 function AnimationServiceClient.ApplyState(self: AnimationServiceClient, profileNameRaw: any, footstepsEnabledRaw: any)
 	local nextState =
-		AnimationServiceUtils.createState(profileNameRaw, footstepsEnabledRaw, self.profileRegistry, self.state)
+		AnimationServiceUtils.CreateState(profileNameRaw, footstepsEnabledRaw, self.profileRegistry, self.state)
 	local shouldRebuild = nextState.profileName ~= self.state.profileName
 	self.state = nextState
 
 	if shouldRebuild then
-		self:rebuildRuntime()
+		self:RebuildRuntime()
 	end
 end
 
@@ -599,26 +600,6 @@ function AnimationServiceClient.Destroy(self: AnimationServiceClient)
 		self.janitor:Destroy()
 	end
 end
-
-AnimationServiceClient.init = AnimationServiceClient.Init
-AnimationServiceClient.onCharacterAdded = AnimationServiceClient.OnCharacterAdded
-AnimationServiceClient.rebuildRuntime = AnimationServiceClient.RebuildRuntime
-AnimationServiceClient.switchToClip = AnimationServiceClient.SwitchToClip
-AnimationServiceClient.updateMovementAnimation = AnimationServiceClient.UpdateMovementAnimation
-AnimationServiceClient.updateHumanoidState = AnimationServiceClient.UpdateHumanoidState
-AnimationServiceClient.refreshAnimation = AnimationServiceClient.RefreshAnimation
-AnimationServiceClient.onFootstepEvent = AnimationServiceClient.OnFootstepEvent
-AnimationServiceClient.canPlayFootstep = AnimationServiceClient.CanPlayFootstep
-AnimationServiceClient.onJumpEvent = AnimationServiceClient.OnJumpEvent
-AnimationServiceClient.canPlayJump = AnimationServiceClient.CanPlayJump
-AnimationServiceClient.playFootstep = AnimationServiceClient.PlayFootstep
-AnimationServiceClient.playJump = AnimationServiceClient.PlayJump
-AnimationServiceClient.applyState = AnimationServiceClient.ApplyState
-AnimationServiceClient.setProfile = AnimationServiceClient.SetProfile
-AnimationServiceClient.setFootstepsEnabled = AnimationServiceClient.SetFootstepsEnabled
-AnimationServiceClient.requestSync = AnimationServiceClient.RequestSync
-AnimationServiceClient.destroy = AnimationServiceClient.Destroy
-
 type AnimationServiceClient = typeof(AnimationServiceClient) & {
 	localPlayer: Player,
 	janitor: JanitorClass,

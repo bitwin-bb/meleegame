@@ -796,24 +796,4 @@ end
 function Codec.CloneDeterministicArray(source: { any }): { any }
 	return cloneArray(source)
 end
-
-Codec.getDeterministicKeys = Codec.GetDeterministicKeys
-Codec.serializeDeterministic = Codec.SerializeDeterministic
-Codec.deserializeDeterministic = Codec.DeserializeDeterministic
-Codec.validate = Codec.Validate
-Codec.assertSchema = Codec.AssertSchema
-Codec.packBitmask = Codec.PackBitmask
-Codec.unpackBitmask = Codec.UnpackBitmask
-Codec.packNamedBitmask = Codec.PackNamedBitmask
-Codec.unpackNamedBitmask = Codec.UnpackNamedBitmask
-Codec.createDelta = Codec.CreateDelta
-Codec.applyDelta = Codec.ApplyDelta
-Codec.stableHash = Codec.StableHash
-Codec.stableHashString = Codec.StableHashString
-Codec.compressSaveSafe = Codec.CompressSaveSafe
-Codec.decompressSaveSafe = Codec.DecompressSaveSafe
-Codec.serializeCompressed = Codec.SerializeCompressed
-Codec.deserializeCompressed = Codec.DeserializeCompressed
-Codec.cloneDeterministicArray = Codec.CloneDeterministicArray
-
 return Codec

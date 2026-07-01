@@ -30,23 +30,23 @@ function markerThunks.Start(): () -> ()
 	end
 
 	runtime.started = true
-	local isReady = ServiceSync.readReady(BossServiceClient, false)
+	local isReady = ServiceSync.ReadReady(BossServiceClient, false)
 	markerSlice.setMarkerReady(isReady)
 	if isReady then
 		syncFromService()
 	end
 
-	runtime.stateChangedConnection = ServiceSync.connectStateChanged(BossServiceClient, function(nextState: MarkerState)
+	runtime.stateChangedConnection = ServiceSync.ConnectStateChanged(BossServiceClient, function(nextState: MarkerState)
 		applyState(nextState)
 		markerSlice.setMarkerReady(true)
 	end)
-	ServiceSync.requestSync(BossServiceClient)
+	ServiceSync.RequestSync(BossServiceClient)
 
 	return markerThunks.Stop
 end
 
 function markerThunks.Stop()
-	ConnectionUtils.disconnect(runtime.stateChangedConnection)
+	ConnectionUtils.Disconnect(runtime.stateChangedConnection)
 	runtime.stateChangedConnection = nil
 
 	runtime.started = false
@@ -60,10 +60,4 @@ end
 function markerThunks.ApplyState(nextStateRaw: any): MarkerState
 	return applyState(nextStateRaw)
 end
-
-markerThunks.start = markerThunks.Start
-markerThunks.stop = markerThunks.Stop
-markerThunks.syncFromService = markerThunks.SyncFromService
-markerThunks.applyState = markerThunks.ApplyState
-
 return markerThunks

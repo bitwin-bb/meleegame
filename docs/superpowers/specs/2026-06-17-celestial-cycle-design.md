@@ -31,7 +31,7 @@ The system uses approach 1: weather-driven celestial state.
 
 `WeatherServiceServer` remains the authoritative source for `clockTime`, `dayNightCycleEnabled`, `clockSpeed`, and replicated world-time snapshots. To make the 8-day moon cycle deterministic for late-joining clients, WeatherService state gains a backward-compatible `worldDayIndex` number that increments when server clock time wraps past midnight. `CelestialCycleClassServer` reads `WeatherServiceServer:getState()` and derives a server-realm celestial snapshot for gameplay systems. It stores that snapshot in a `ValueObject` and exposes `ObserveState()` plus `GetStateChangedSignal()`.
 
-`WeatherServiceClient` already smooths replicated world time into `Lighting.ClockTime`. `CelestialCycleClassClient` observes presentation time through Rx, derives visual state using shared math, and publishes a sanitized Charm state through `celestialThunks`.
+`WeatherServiceClient` already smooths replicated world time into `Lighting.ClockTime`. `CelestialCycleClassClient` observes presentation time through Rx, derives visual state using shared math, and publishes a CoerceD Charm state through `celestialThunks`.
 
 Rendering is entirely client-side. `CelestialBodyRoot` creates a Fusion-owned invisible anchor part that follows the camera in X/Z, keeps its Y placement relative to world height, and updates size/cframe as screen/camera conditions change. `CelestialBodyScreen` renders a `SurfaceGui` against that anchor. `CelestialBody` renders the sun or current moon phase image.
 
@@ -63,7 +63,7 @@ Rendering is entirely client-side. `CelestialBodyRoot` creates a Fusion-owned in
 
 `RotationMath.lua`
 
-- Sanitizes and normalizes clock values.
+- CoerceS and normalizes clock values.
 - Converts world clock time to day progress.
 - Maps `worldDayIndex` plus day progress to the 8-day lunar phase.
 - Uses `SunPositionUtils.getSunPositionData(clockTime, geoLatitude)` for sun/moon vectors and brightness.

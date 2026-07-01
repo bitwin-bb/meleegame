@@ -20,31 +20,31 @@ local Z_AXIS = Vector3.new(0, 0, 1)
 
 local function perpendicular(axis: Vector3): Vector3
 	local reference = if math.abs(axis.Y) < 0.999 then Y_AXIS else X_AXIS
-	return Vec.unit(reference:Cross(axis), X_AXIS)
+	return Vec.Unit(reference:Cross(axis), X_AXIS)
 end
 
 local function orthonormalize(xAxis: Vector3, yAxis: Vector3, zAxis: Vector3?): (Vector3, Vector3, Vector3)
-	local x = Vec.unit(xAxis, X_AXIS)
+	local x = Vec.Unit(xAxis, X_AXIS)
 
 	local ySource = yAxis - x * x:Dot(yAxis)
-	if Vec.isNearlyZero(ySource) then
+	if Vec.IsNearlyZero(ySource) then
 		ySource = perpendicular(x):Cross(x)
 	end
-	local y = Vec.unit(ySource, Y_AXIS)
+	local y = Vec.Unit(ySource, Y_AXIS)
 
 	local zSource = if zAxis ~= nil then zAxis else x:Cross(y)
 	zSource = zSource - x * x:Dot(zSource) - y * y:Dot(zSource)
-	if Vec.isNearlyZero(zSource) then
+	if Vec.IsNearlyZero(zSource) then
 		zSource = x:Cross(y)
 	end
-	local z = Vec.unit(zSource, Z_AXIS)
+	local z = Vec.Unit(zSource, Z_AXIS)
 
 	if x:Cross(y):Dot(z) < 0 then
 		z = -z
 	end
 
-	y = Vec.unit(z:Cross(x), Y_AXIS)
-	x = Vec.unit(y:Cross(z), X_AXIS)
+	y = Vec.Unit(z:Cross(x), Y_AXIS)
+	x = Vec.Unit(y:Cross(z), X_AXIS)
 	return x, y, z
 end
 
@@ -59,14 +59,14 @@ function Basis.New(origin: Vector3, xAxis: Vector3, yAxis: Vector3, zAxis: Vecto
 end
 
 function Basis.FromLook(origin: Vector3, forward: Vector3, up: Vector3?): Basis
-	local z = Vec.unit(forward, Z_AXIS)
+	local z = Vec.Unit(forward, Z_AXIS)
 	local upHint = up or Y_AXIS
-	if math.abs(z:Dot(Vec.unit(upHint, Y_AXIS))) > 0.999 then
+	if math.abs(z:Dot(Vec.Unit(upHint, Y_AXIS))) > 0.999 then
 		upHint = X_AXIS
 	end
 
-	local x = Vec.unit(upHint:Cross(z), X_AXIS)
-	local y = Vec.unit(z:Cross(x), Y_AXIS)
+	local x = Vec.Unit(upHint:Cross(z), X_AXIS)
+	local y = Vec.Unit(z:Cross(x), Y_AXIS)
 	return {
 		origin = origin,
 		xAxis = x,
@@ -103,14 +103,4 @@ end
 function Basis.ToCFrame(basis: Basis): CFrame
 	return CFrame.fromMatrix(basis.origin, basis.xAxis, basis.yAxis, -basis.zAxis)
 end
-
-Basis.new = Basis.New
-Basis.fromLook = Basis.FromLook
-Basis.fromCFrame = Basis.FromCFrame
-Basis.toWorldVector = Basis.ToWorldVector
-Basis.toLocalVector = Basis.ToLocalVector
-Basis.toWorldPoint = Basis.ToWorldPoint
-Basis.toLocalPoint = Basis.ToLocalPoint
-Basis.toCFrame = Basis.ToCFrame
-
 return Basis

@@ -249,12 +249,4 @@ function WorldGenerationColor.GetLiquidBiomeTints(): LiquidBiomeTints
 		lavaAmbientByBiomeType = cloneColor3Map(LIQUID_BIOME_TINTS.lavaAmbientByBiomeType),
 	}
 end
-
-WorldGenerationColor.getTileVisual = WorldGenerationColor.GetTileVisual
-WorldGenerationColor.getTileVisuals = WorldGenerationColor.GetTileVisuals
-WorldGenerationColor.getTreePalette = WorldGenerationColor.GetTreePalette
-WorldGenerationColor.getTreePalettes = WorldGenerationColor.GetTreePalettes
-WorldGenerationColor.getLiquidDefinitions = WorldGenerationColor.GetLiquidDefinitions
-WorldGenerationColor.getLiquidBiomeTints = WorldGenerationColor.GetLiquidBiomeTints
-
 return WorldGenerationColor

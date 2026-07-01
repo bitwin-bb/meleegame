@@ -2,24 +2,32 @@
 local require = require(script.Parent.loader).load(script)
 
 local AudioRegistry = require("Audio")
-local AudioServiceClient = require("AudioServiceClient")
 local AudioServiceUtils = require("AudioServiceUtils")
 
 local UI_AUDIO = (AudioRegistry :: any).UI or ({} :: any)
 
 local UiSound = {} :: any
+local audioServiceClient = nil :: any?
 
-UiSound.hover = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Hover)
-UiSound.press = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Press or UI_AUDIO.Click)
-UiSound.click = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Click or UI_AUDIO.Press)
-UiSound.trash = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Trash or UI_AUDIO.Drop)
-UiSound.trashCanOpen = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.TrashCanOpen)
-UiSound.trashCanClose = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.TrashCanClose)
-UiSound.itemPutDown = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.ItemPutDown)
-UiSound.craft = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Craft)
-UiSound.drag = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.Drag)
+local function getAudioServiceClient(): any
+	if audioServiceClient == nil then
+		audioServiceClient = require("AudioServiceClient")
+	end
+	return audioServiceClient
+end
+
+UiSound.hover = AudioServiceUtils.NormalizeSoundAssetId(UI_AUDIO.Hover)
+UiSound.press = AudioServiceUtils.NormalizeSoundAssetId(UI_AUDIO.Press or UI_AUDIO.Click)
+UiSound.click = AudioServiceUtils.NormalizeSoundAssetId(UI_AUDIO.Click or UI_AUDIO.Press)
+UiSound.trash = AudioServiceUtils.NormalizeSoundAssetId(UI_AUDIO.Trash or UI_AUDIO.Drop)
+UiSound.trashCanOpen = AudioServiceUtils.NormalizeSoundAssetId(UI_AUDIO.TrashCanOpen)
+UiSound.trashCanClose = AudioServiceUtils.NormalizeSoundAssetId(UI_AUDIO.TrashCanClose)
+UiSound.itemPutDown = AudioServiceUtils.NormalizeSoundAssetId(UI_AUDIO.ItemPutDown)
+UiSound.craft = AudioServiceUtils.NormalizeSoundAssetId(UI_AUDIO.Craft)
+UiSound.drag = AudioServiceUtils.NormalizeSoundAssetId(UI_AUDIO.Drag)
 
 function UiSound.play(soundAssetId: string?)
+	local AudioServiceClient = getAudioServiceClient()
 	if AudioServiceClient.categoryGroups == nil then
 		return
 	end
@@ -28,7 +36,7 @@ function UiSound.play(soundAssetId: string?)
 		return
 	end
 
-	AudioServiceClient:playUi(soundAssetId, {
+	AudioServiceClient:PlayUi(soundAssetId, {
 		replaceChannel = false,
 	})
 end

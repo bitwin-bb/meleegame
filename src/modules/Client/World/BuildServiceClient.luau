@@ -12,7 +12,7 @@ local AudioRegistry = require("Audio")
 local AudioServiceClient = require("AudioServiceClient")
 local AudioServiceUtils = require("AudioServiceUtils")
 local BuildServiceUtils = require("BuildServiceUtils")
-local ClientBinderSupport = require("ClientBinderSupport")
+local BinderSupportClient = require("BinderSupportClient")
 local CoreRuntime = require("CoreRuntime")
 local GamepadPointer = require("GamepadPointer")
 local GamepadTargetServiceClient = require("GamepadTargetServiceClient")
@@ -20,7 +20,7 @@ local InventoryServiceClient = require("InventoryServiceClient")
 local InventoryServiceUtils = require("InventoryServiceUtils")
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
-local BuildServicePackets = require("NetSharedPackets").BuildService
+local BuildServicePackets = require("NetPacketsShared").BuildService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = BuildServicePackets[methodName]
@@ -29,7 +29,7 @@ local function sendPacket(methodName: string, ...: any)
 		return
 	end
 
-	packet.send(PacketPayload.pack(...))
+	packet.send(PacketPayload.Pack(...))
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -39,13 +39,14 @@ local function bindPacket(self: any, methodName: string)
 		return
 	end
 
+	local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
 	packet.listen(function(payload: any)
-		local handler = self[methodName]
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, table.unpack(arguments, 1, count))
 	end)
 end
@@ -79,6 +80,24 @@ local TagBinder = require("TagBinder")
 local WorkspaceFolders = require("WorkspaceFolders")
 local WorldGenerationServiceClient = require("WorldGenerationServiceClient")
 local itemSlice = require("itemSlice")
+
+local cachedWindFoliageServiceClient = nil
+
+local function GetWindFoliageServiceClient(): any?
+	if cachedWindFoliageServiceClient ~= nil then
+		return cachedWindFoliageServiceClient
+	end
+
+	local ok, moduleOrError = pcall(function()
+		return require("WindFoliageServiceClient")
+	end)
+	if not ok then
+		return nil
+	end
+
+	cachedWindFoliageServiceClient = moduleOrError
+	return cachedWindFoliageServiceClient
+end
 
 type BuildServiceState = BuildServiceUtils.BuildServiceState
 type PlaceableItemConfig = BuildServiceUtils.PlaceableItemConfig
@@ -181,6 +200,8 @@ local BuildServiceClient = {}
 
 local CLIENT_VISUALS_FOLDER_NAME = "BuildServiceClientVisuals"
 local BUILD_PREVIEW_RUNTIME_ATTRIBUTE = "BuildPreviewRuntime"
+local WIND_FOLIAGE_ENABLED_ATTRIBUTE = "WindFoliageEnabled"
+local TREE_NODE_TYPE_ATTRIBUTE = "WindTreeNodeType"
 local TILE_QUERY_FETCH_COOLDOWN = 0.25
 local PREDICTION_TTL_SECONDS = 2
 local TERRAIN_HOVER_SCAN_DEPTH_TILES = 8
@@ -322,7 +343,7 @@ local function isPrimaryInput(inputObject: InputObject): boolean
 	return PRIMARY_INPUT_USER_TYPES[inputObject.UserInputType] == true
 end
 
-local function sanitizeInventorySlot(slotRaw: any): number?
+local function CoerceInventorySlot(slotRaw: any): number?
 	if typeof(slotRaw) ~= "number" or slotRaw ~= slotRaw then
 		return nil
 	end
@@ -334,19 +355,19 @@ local function sanitizeInventorySlot(slotRaw: any): number?
 	return slot
 end
 
-local function sanitizeInventoryState(stateRaw: any): InventoryState
+local function CoerceInventoryState(stateRaw: any): InventoryState
 	local state = if typeof(stateRaw) == "table"
-		then InventoryServiceUtils.sanitizeState(
+		then InventoryServiceUtils.CoerceState(
 			stateRaw,
-			InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
+			InventoryServiceUtils.CreateDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
 		)
-		else InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
+		else InventoryServiceUtils.CreateDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
 	return state
 end
 
-local function resolveMouseLocation(cursorModuleRaw: any): Vector2?
-	if cursorModuleRaw ~= nil and typeof((cursorModuleRaw :: any).getScreenPosition) == "function" then
-		local candidate = (cursorModuleRaw :: any):getScreenPosition()
+local function GetMouseLocation(cursorModuleRaw: any): Vector2?
+	if cursorModuleRaw ~= nil and typeof((cursorModuleRaw :: any).GetScreenPosition) == "function" then
+		local candidate = (cursorModuleRaw :: any):GetScreenPosition()
 		if typeof(candidate) == "Vector2" then
 			return candidate
 		end
@@ -363,10 +384,10 @@ local function resolveMouseLocation(cursorModuleRaw: any): Vector2?
 end
 
 local function shouldUseGamepadWorldSelection(): boolean
-	return PlatformServiceClient:isGamepad() and PlatformServiceClient:getMachineFamily() ~= "desktop"
+	return PlatformServiceClient:IsGamepad() and PlatformServiceClient:GetMachineFamily() ~= "desktop"
 end
 
-local function resolveCharacterRootPart(playerRaw: any): BasePart?
+local function GetCharacterRootPart(playerRaw: any): BasePart?
 	if typeof(playerRaw) ~= "Instance" or not playerRaw:IsA("Player") then
 		return nil
 	end
@@ -388,26 +409,26 @@ local function resolveCharacterRootPart(playerRaw: any): BasePart?
 	return character:FindFirstChildWhichIsA("BasePart")
 end
 
-local function resolveGamepadNav(runtimeContextRaw: any): any?
+local function GetGamepadNav(runtimeContextRaw: any): any?
 	local runtimeContext = runtimeContextRaw
 	if runtimeContext == nil then
 		local ok, runtimeOrError = pcall(function()
-			return CoreRuntime.getClientRuntime()
+			return CoreRuntime.GetClientRuntime()
 		end)
 		if ok then
 			runtimeContext = runtimeOrError
 		end
 	end
 
-	if runtimeContext ~= nil and typeof((runtimeContext :: any).init) == "function" then
+	if runtimeContext ~= nil and typeof((runtimeContext :: any).Init) == "function" then
 		pcall(function()
-			(runtimeContext :: any):init()
+			(runtimeContext :: any):Init()
 		end)
 	end
 
-	if runtimeContext ~= nil and typeof((runtimeContext :: any).getGamepadNav) == "function" then
+	if runtimeContext ~= nil and typeof((runtimeContext :: any).GetGamepadNav) == "function" then
 		local ok, gamepadNavOrError = pcall(function()
-			return (runtimeContext :: any):getGamepadNav()
+			return (runtimeContext :: any):GetGamepadNav()
 		end)
 		if ok then
 			return gamepadNavOrError
@@ -421,24 +442,24 @@ local function resolveGamepadNav(runtimeContextRaw: any): any?
 	return nil
 end
 
-local function resolveGamepadScreenVector(runtimeContextRaw: any): Vector2?
-	local gamepadNav = resolveGamepadNav(runtimeContextRaw)
-	if gamepadNav == nil or typeof((gamepadNav :: any).getThumbstickState) ~= "function" then
+local function GetGamepadScreenVector(runtimeContextRaw: any): Vector2?
+	local gamepadNav = GetGamepadNav(runtimeContextRaw)
+	if gamepadNav == nil or typeof((gamepadNav :: any).GetThumbstickState) ~= "function" then
 		return nil
 	end
 
 	local ok, snapshotOrError = pcall(function()
-		return (gamepadNav :: any):getThumbstickState()
+		return (gamepadNav :: any):GetThumbstickState()
 	end)
 	if not ok or typeof(snapshotOrError) ~= "table" then
 		return nil
 	end
 
-	local screenVector = GamepadPointer.resolveOwnedVector(snapshotOrError)
+	local screenVector = GamepadPointer.GetOwnedVector(snapshotOrError)
 	return if typeof(screenVector) == "Vector2" then screenVector else nil
 end
 
-local function resolveIntegerAttribute(instance: Instance?, attributeName: string): number?
+local function GetIntegerAttribute(instance: Instance?, attributeName: string): number?
 	if instance == nil then
 		return nil
 	end
@@ -486,7 +507,7 @@ local function computeFootprintBounds(
 	return minTileX, maxTileX, minTileY, maxTileY
 end
 
-local function resolveTreeRootTileNearWorldPosition(worldPosition: Vector3, radiusStudsRaw: any): (number?, number?)
+local function GetTreeRootTileNearWorldPosition(worldPosition: Vector3, radiusStudsRaw: any): (number?, number?)
 	local chunksFolder = (WorldGenerationServiceClient :: any).chunksFolder
 	if typeof(chunksFolder) ~= "Instance" then
 		return nil, nil
@@ -517,8 +538,8 @@ local function resolveTreeRootTileNearWorldPosition(worldPosition: Vector3, radi
 		end
 
 		local hitModel = part:FindFirstAncestorOfClass("Model")
-		local rootTileX = resolveIntegerAttribute(hitModel, BUILD_TREE_ROOT_TILE_X_ATTRIBUTE)
-		local rootTileY = resolveIntegerAttribute(hitModel, BUILD_TREE_ROOT_TILE_Y_ATTRIBUTE)
+		local rootTileX = GetIntegerAttribute(hitModel, BUILD_TREE_ROOT_TILE_X_ATTRIBUTE)
+		local rootTileY = GetIntegerAttribute(hitModel, BUILD_TREE_ROOT_TILE_Y_ATTRIBUTE)
 		if rootTileX == nil or rootTileY == nil then
 			continue
 		end
@@ -534,18 +555,18 @@ local function resolveTreeRootTileNearWorldPosition(worldPosition: Vector3, radi
 	return bestTileX, bestTileY
 end
 
-local function resolvePlaceableSourceFromInventorySlot(state: InventoryState, slotRaw: any): ActivePlaceSource?
-	local slot = sanitizeInventorySlot(slotRaw)
+local function GetPlaceableSourceFromInventorySlot(state: InventoryState, slotRaw: any): ActivePlaceSource?
+	local slot = CoerceInventorySlot(slotRaw)
 	if slot == nil then
 		return nil
 	end
 
-	local stack = InventoryServiceUtils.getStack(state, slot)
+	local stack = InventoryServiceUtils.GetStack(state, slot)
 	if stack == nil or stack.amount <= 0 then
 		return nil
 	end
 
-	local config = BuildServiceUtils.resolvePlaceableItemConfig(stack.itemId)
+	local config = BuildServiceUtils.GetPlaceableItemConfig(stack.itemId)
 	if config == nil then
 		return nil
 	end
@@ -556,17 +577,17 @@ local function resolvePlaceableSourceFromInventorySlot(state: InventoryState, sl
 	}
 end
 
-local function resolveSelectedPlaceableSourceFromInventoryState(stateRaw: any): ActivePlaceSource?
-	local state = sanitizeInventoryState(stateRaw)
-	if not InventoryServiceUtils.isLoadedState(state.loadState) then
+local function GetSelectedPlaceableSourceFromInventoryState(stateRaw: any): ActivePlaceSource?
+	local state = CoerceInventoryState(stateRaw)
+	if not InventoryServiceUtils.IsLoadedState(state.loadState) then
 		return nil
 	end
 
-	return resolvePlaceableSourceFromInventorySlot(state, state.selectedSlot)
+	return GetPlaceableSourceFromInventorySlot(state, state.selectedSlot)
 end
 
-local function resolveSelectedPlaceableConfigFromInventoryState(stateRaw: any): PlaceableItemConfig?
-	local placeSource = resolveSelectedPlaceableSourceFromInventoryState(stateRaw)
+local function GetSelectedPlaceableConfigFromInventoryState(stateRaw: any): PlaceableItemConfig?
+	local placeSource = GetSelectedPlaceableSourceFromInventoryState(stateRaw)
 	if placeSource == nil then
 		return nil
 	end
@@ -574,9 +595,9 @@ local function resolveSelectedPlaceableConfigFromInventoryState(stateRaw: any): 
 	return placeSource.config
 end
 
-local function resolveActivePlaceSourceFromInventoryState(stateRaw: any): ActivePlaceSource?
-	local state = sanitizeInventoryState(stateRaw)
-	if not InventoryServiceUtils.isLoadedState(state.loadState) then
+local function GetActivePlaceSourceFromInventoryState(stateRaw: any): ActivePlaceSource?
+	local state = CoerceInventoryState(stateRaw)
+	if not InventoryServiceUtils.IsLoadedState(state.loadState) then
 		return nil
 	end
 
@@ -585,13 +606,13 @@ local function resolveActivePlaceSourceFromInventoryState(stateRaw: any): Active
 		if dragState.hoveredSlot ~= nil then
 			return nil
 		end
-		return resolvePlaceableSourceFromInventorySlot(state, dragState.sourceSlot)
+		return GetPlaceableSourceFromInventorySlot(state, dragState.sourceSlot)
 	end
 
-	return resolveSelectedPlaceableSourceFromInventoryState(state)
+	return GetSelectedPlaceableSourceFromInventoryState(state)
 end
 
-local function resolveBreakDebrisVisual(tileId: number): (Color3, Enum.Material)
+local function GetBreakDebrisVisual(tileId: number): (Color3, Enum.Material)
 	local visual = BREAK_DEBRIS_VISUALS[tileId]
 	if visual == nil then
 		visual = DEFAULT_BREAK_DEBRIS_VISUAL
@@ -601,13 +622,13 @@ end
 
 local function suppressChunkAnimationForBreakDelta(delta: TileDelta)
 	local worldGenerationClient = WorldGenerationServiceClient :: any
-	local suppressMethod = worldGenerationClient.suppressChunkAnimationForTile
+	local suppressMethod = worldGenerationClient.SuppressChunkAnimationForTile
 	if typeof(suppressMethod) ~= "function" then
 		return
 	end
 
 	pcall(function()
-		worldGenerationClient:suppressChunkAnimationForTile(
+		worldGenerationClient:SuppressChunkAnimationForTile(
 			delta.tileX,
 			delta.tileY,
 			BREAK_CHUNK_ANIMATION_SKIP_SECONDS
@@ -628,7 +649,7 @@ local function collectModelParts(model: Model): ({ BasePart }, { number })
 	return parts, baseTransparency
 end
 
-local function resolveSoundPlayableDuration(sound: Sound?): number?
+local function GetSoundPlayableDuration(sound: Sound?): number?
 	if sound == nil then
 		return nil
 	end
@@ -648,7 +669,7 @@ function BuildServiceClient.GetTreesForChunk(self: BuildServiceClient, chunkX: n
 	if typeof(chunkSnapshots) ~= "table" then
 		return nil
 	end
-	local chunkKey = BuildServiceUtils.packChunkKey(chunkX, chunkY)
+	local chunkKey = BuildServiceUtils.PackChunkKey(chunkX, chunkY)
 	local snapshot = chunkSnapshots[chunkKey]
 	if typeof(snapshot) ~= "table" then
 		return nil
@@ -660,27 +681,27 @@ function BuildServiceClient.GetTreesForChunk(self: BuildServiceClient, chunkX: n
 	return trees
 end
 
-function BuildServiceClient.ResolveTreeHitAtTile(self: BuildServiceClient, tileX: number, tileY: number): TreeHitResult?
-	return BuildServiceUtils.resolveTreeAtTile(
+function BuildServiceClient.GetTreeHitAtTile(self: BuildServiceClient, tileX: number, tileY: number): TreeHitResult?
+	return BuildServiceUtils.GetTreeAtTile(
 		tileX,
 		tileY,
 		self.state.chunkSize,
 		function(chunkX: number, chunkY: number): { any }?
-			return self:getTreesForChunk(chunkX, chunkY)
+			return self:GetTreesForChunk(chunkX, chunkY)
 		end
 	)
 end
 
 function BuildServiceClient.IsBreakableTarget(self: BuildServiceClient, tileX: number, tileY: number): boolean
-	local tileId = self:getTileAt(tileX, tileY, false)
+	local tileId = self:GetTileAt(tileX, tileY, false)
 	if tileId ~= BuildServiceUtils.AIR_TILE_ID then
 		return true
 	end
-	local treeHit = self:resolveTreeHitAtTile(tileX, tileY)
+	local treeHit = self:GetTreeHitAtTile(tileX, tileY)
 	return treeHit ~= nil
 end
 
-function BuildServiceClient.ResolveTreeModelForFellEvent(self: BuildServiceClient, payload: TreeFelledPayload): Model?
+function BuildServiceClient.GetTreeModelForFellEvent(self: BuildServiceClient, payload: TreeFelledPayload): Model?
 	local chunkVisuals = (WorldGenerationServiceClient :: any).chunkVisuals
 	if typeof(chunkVisuals) ~= "table" then
 		return nil
@@ -720,7 +741,7 @@ function BuildServiceClient.ResolveTreeModelForFellEvent(self: BuildServiceClien
 			if not ok then
 				continue
 			end
-			local distance = BuildServiceUtils.worldDistance2D(modelPivot.Position, payload.pivotCFrame.Position)
+			local distance = BuildServiceUtils.WorldDistance2D(modelPivot.Position, payload.pivotCFrame.Position)
 			local allowedDistance = if hasSeedMatch then distanceBudget * 2 else distanceBudget
 			if distance > allowedDistance then
 				continue
@@ -738,24 +759,24 @@ function BuildServiceClient.ResolveTreeModelForFellEvent(self: BuildServiceClien
 end
 
 function BuildServiceClient.RefreshTreeFallSoundTemplates(self: BuildServiceClient)
-	self.treeFallSoundAssetIds = AudioServiceUtils.collectSoundAssetIds(TREE_FALL_AUDIO)
+	self.treeFallSoundAssetIds = AudioServiceUtils.CollectSoundAssetIds(TREE_FALL_AUDIO)
 end
 
 function BuildServiceClient.RefreshTreeChopSoundTemplates(self: BuildServiceClient)
-	self.treeChopSoundAssetIds = AudioServiceUtils.collectSoundAssetIds(TREE_CHOP_AUDIO)
+	self.treeChopSoundAssetIds = AudioServiceUtils.CollectSoundAssetIds(TREE_CHOP_AUDIO)
 end
 
 function BuildServiceClient.RefreshTileHitSoundTemplates(self: BuildServiceClient)
-	self.tileHitSoundAssetIds = AudioServiceUtils.collectSoundAssetIds(TILE_HIT_AUDIO)
+	self.tileHitSoundAssetIds = AudioServiceUtils.CollectSoundAssetIds(TILE_HIT_AUDIO)
 end
 
 function BuildServiceClient.RefreshTileBreakSoundTemplates(self: BuildServiceClient)
-	self.tileBreakSoundAssetIds = AudioServiceUtils.collectSoundAssetIds(TILE_BREAK_AUDIO)
+	self.tileBreakSoundAssetIds = AudioServiceUtils.CollectSoundAssetIds(TILE_BREAK_AUDIO)
 end
 
 function BuildServiceClient.PickTreeChopSoundAssetId(self: BuildServiceClient): string?
 	if #self.treeChopSoundAssetIds <= 0 then
-		self:refreshTreeChopSoundTemplates()
+		self:RefreshTreeChopSoundTemplates()
 	end
 	local count = #self.treeChopSoundAssetIds
 	if count <= 0 then
@@ -765,7 +786,7 @@ function BuildServiceClient.PickTreeChopSoundAssetId(self: BuildServiceClient): 
 end
 
 function BuildServiceClient.PlayTreeChopSound(self: BuildServiceClient): boolean
-	local soundAssetId = self:pickTreeChopSoundAssetId()
+	local soundAssetId = self:PickTreeChopSoundAssetId()
 	if soundAssetId == nil then
 		return false
 	end
@@ -773,7 +794,7 @@ function BuildServiceClient.PlayTreeChopSound(self: BuildServiceClient): boolean
 		return false
 	end
 
-	return AudioServiceClient:playSfx(soundAssetId, {
+	return AudioServiceClient:PlaySfx(soundAssetId, {
 		parent = self.visualFolder,
 		replaceChannel = false,
 		autoDestroy = true,
@@ -782,7 +803,7 @@ end
 
 function BuildServiceClient.PickTileHitSoundAssetId(self: BuildServiceClient): string?
 	if #self.tileHitSoundAssetIds <= 0 then
-		self:refreshTileHitSoundTemplates()
+		self:RefreshTileHitSoundTemplates()
 	end
 	local count = #self.tileHitSoundAssetIds
 	if count <= 0 then
@@ -792,7 +813,7 @@ function BuildServiceClient.PickTileHitSoundAssetId(self: BuildServiceClient): s
 end
 
 function BuildServiceClient.PlayTileHitSound(self: BuildServiceClient): boolean
-	local soundAssetId = self:pickTileHitSoundAssetId()
+	local soundAssetId = self:PickTileHitSoundAssetId()
 	if soundAssetId == nil then
 		return false
 	end
@@ -800,7 +821,7 @@ function BuildServiceClient.PlayTileHitSound(self: BuildServiceClient): boolean
 		return false
 	end
 
-	return AudioServiceClient:playSfx(soundAssetId, {
+	return AudioServiceClient:PlaySfx(soundAssetId, {
 		parent = self.visualFolder,
 		replaceChannel = false,
 		autoDestroy = true,
@@ -809,7 +830,7 @@ end
 
 function BuildServiceClient.PickTileBreakSoundAssetId(self: BuildServiceClient): string?
 	if #self.tileBreakSoundAssetIds <= 0 then
-		self:refreshTileBreakSoundTemplates()
+		self:RefreshTileBreakSoundTemplates()
 	end
 	local count = #self.tileBreakSoundAssetIds
 	if count <= 0 then
@@ -819,7 +840,7 @@ function BuildServiceClient.PickTileBreakSoundAssetId(self: BuildServiceClient):
 end
 
 function BuildServiceClient.PlayTileBreakSound(self: BuildServiceClient): boolean
-	local soundAssetId = self:pickTileBreakSoundAssetId()
+	local soundAssetId = self:PickTileBreakSoundAssetId()
 	if soundAssetId == nil then
 		return false
 	end
@@ -827,7 +848,7 @@ function BuildServiceClient.PlayTileBreakSound(self: BuildServiceClient): boolea
 		return false
 	end
 
-	return AudioServiceClient:playSfx(soundAssetId, {
+	return AudioServiceClient:PlaySfx(soundAssetId, {
 		parent = self.visualFolder,
 		replaceChannel = false,
 		autoDestroy = true,
@@ -836,7 +857,7 @@ end
 
 function BuildServiceClient.PickTreeFallSoundAssetId(self: BuildServiceClient): string?
 	if #self.treeFallSoundAssetIds <= 0 then
-		self:refreshTreeFallSoundTemplates()
+		self:RefreshTreeFallSoundTemplates()
 	end
 	local count = #self.treeFallSoundAssetIds
 	if count <= 0 then
@@ -854,17 +875,17 @@ function BuildServiceClient.ApplyTreeFallSoundSyncDuration(
 end
 
 function BuildServiceClient.PlayTreeFallSound(self: BuildServiceClient, animation: TreeFallAnimation)
-	local soundAssetId = self:pickTreeFallSoundAssetId()
+	local soundAssetId = self:PickTreeFallSoundAssetId()
 	if soundAssetId == nil then
 		return
 	end
 
-	self:applyTreeFallSoundSyncDuration(animation, nil)
+	self:ApplyTreeFallSoundSyncDuration(animation, nil)
 	if AudioServiceClient.categoryGroups == nil then
 		return
 	end
 
-	local playedSound = AudioServiceClient:playSfx(soundAssetId, {
+	local playedSound = AudioServiceClient:PlaySfx(soundAssetId, {
 		parent = self.visualFolder,
 		replaceChannel = false,
 		autoDestroy = true,
@@ -875,8 +896,8 @@ function BuildServiceClient.PlayTreeFallSound(self: BuildServiceClient, animatio
 	animation.sound = playedSound
 	animation.soundFadeStarted = false
 
-	self:applyTreeFallSoundSyncDuration(animation, resolveSoundPlayableDuration(playedSound))
-	if resolveSoundPlayableDuration(playedSound) ~= nil then
+	self:ApplyTreeFallSoundSyncDuration(animation, GetSoundPlayableDuration(playedSound))
+	if GetSoundPlayableDuration(playedSound) ~= nil then
 		return
 	end
 
@@ -889,7 +910,7 @@ function BuildServiceClient.PlayTreeFallSound(self: BuildServiceClient, animatio
 		if self.treeFallAnimations[animation.treeId] ~= animation then
 			return
 		end
-		self:applyTreeFallSoundSyncDuration(animation, resolveSoundPlayableDuration(playedSound))
+		self:ApplyTreeFallSoundSyncDuration(animation, GetSoundPlayableDuration(playedSound))
 	end)
 	animation.soundLoadedConnection = loadedConnection
 end
@@ -913,7 +934,7 @@ function BuildServiceClient.FadeTreeFallSoundIfPlaying(
 	local fadeSeconds = if isFiniteNumber(fadeSecondsRaw)
 		then math.max(0, fadeSecondsRaw :: number)
 		else TREE_FALL_SOUND_FADE_OUT_SECONDS
-	AudioServiceUtils.stopAndDestroySound(sound, fadeSeconds)
+	AudioServiceUtils.StopAndDestroySound(sound, fadeSeconds)
 end
 
 function BuildServiceClient.StopTreeFallAnimation(self: BuildServiceClient, treeId: string, destroyModel: boolean)
@@ -932,7 +953,7 @@ function BuildServiceClient.StopTreeFallAnimation(self: BuildServiceClient, tree
 		animation.soundLoadedConnection:Disconnect()
 		animation.soundLoadedConnection = nil
 	end
-	self:fadeTreeFallSoundIfPlaying(animation, 0)
+	self:FadeTreeFallSoundIfPlaying(animation, 0)
 	animation.angleMotion:destroy()
 	animation.opacityMotion:destroy()
 	if destroyModel and animation.model.Parent ~= nil then
@@ -946,20 +967,20 @@ function BuildServiceClient.BeginTreeFallFade(self: BuildServiceClient, animatio
 	end
 	animation.stage = "fade"
 	animation.fadeStartedAt = now
-	self:fadeTreeFallSoundIfPlaying(animation, TREE_FALL_SOUND_FADE_OUT_SECONDS)
+	self:FadeTreeFallSoundIfPlaying(animation, TREE_FALL_SOUND_FADE_OUT_SECONDS)
 	animation.opacityMotion:spring(0, TREE_FADE_SPRING)
 end
 
 function BuildServiceClient.IsGroundNearWorldPoint(self: BuildServiceClient, point: Vector3): boolean
 	local tileSize = math.max(0.05, self.state.tileSize)
-	local tileX, tileY = BuildServiceUtils.worldPositionToTile(point, self.state.worldOrigin, tileSize)
+	local tileX, tileY = BuildServiceUtils.WorldPositionToTile(point, self.state.worldOrigin, tileSize)
 	local surfacePadding = tileSize * TREE_GROUND_HIT_SURFACE_PADDING_TILES
 
 	for depth = 0, TREE_GROUND_HIT_SCAN_DEPTH_TILES do
 		local scanTileY = tileY - depth
-		local tileId = self:getTileAt(tileX, scanTileY, false)
-		if BuildServiceUtils.isSolidTile(tileId) then
-			local tileCenter = BuildServiceUtils.tileToWorldCenter(
+		local tileId = self:GetTileAt(tileX, scanTileY, false)
+		if BuildServiceUtils.IsSolidTile(tileId) then
+			local tileCenter = BuildServiceUtils.TileToWorldCenter(
 				tileX,
 				scanTileY,
 				self.state.worldOrigin,
@@ -1003,7 +1024,7 @@ function BuildServiceClient.HasTreeGroundImpact(
 		+ math.abs(boundsCFrame.YVector.Y) * halfHeight
 		+ math.abs(boundsCFrame.ZVector.Y) * halfDepth
 	local bottomY = boundsCFrame.Position.Y - yExtent
-	local direction = BuildServiceUtils.normalizeFallDirection(animation.fallDirection)
+	local direction = BuildServiceUtils.NormalizeFallDirection(animation.fallDirection)
 	local sampleCount = TREE_GROUND_HIT_SAMPLE_COUNT
 
 	for sampleIndex = 0, sampleCount - 1 do
@@ -1011,7 +1032,7 @@ function BuildServiceClient.HasTreeGroundImpact(
 		local localZ = direction * halfDepth * (0.2 + 0.8 * alpha)
 		local sampleWorld = (boundsCFrame * CFrame.new(0, 0, localZ)).Position
 		local probePoint = Vector3.new(sampleWorld.X, bottomY, sampleWorld.Z)
-		if self:isGroundNearWorldPoint(probePoint) then
+		if self:IsGroundNearWorldPoint(probePoint) then
 			return true
 		end
 	end
@@ -1019,13 +1040,49 @@ function BuildServiceClient.HasTreeGroundImpact(
 	return false
 end
 
+function BuildServiceClient.SetFallenTreeCollision(_self: BuildServiceClient, treeModel: Model)
+	for _, descendant in treeModel:GetDescendants() do
+		if not descendant:IsA("BasePart") then
+			continue
+		end
+
+		local nodeType = descendant:GetAttribute(TREE_NODE_TYPE_ATTRIBUTE)
+		local shouldCollide = nodeType == "Trunk" or nodeType == "Branch" or nodeType == "Leaf"
+		descendant.CanCollide = shouldCollide
+		descendant.CanTouch = shouldCollide
+		descendant.CanQuery = shouldCollide
+	end
+end
+
+function BuildServiceClient.DisableFallingTreeWindFoliage(_self: BuildServiceClient, treeModel: Model)
+	treeModel:SetAttribute(WIND_FOLIAGE_ENABLED_ATTRIBUTE, false)
+	for _, descendant in treeModel:GetDescendants() do
+		descendant:SetAttribute(WIND_FOLIAGE_ENABLED_ATTRIBUTE, false)
+	end
+
+	local windFoliageServiceClient = GetWindFoliageServiceClient()
+	if windFoliageServiceClient == nil then
+		return
+	end
+
+	pcall(function()
+		windFoliageServiceClient:UnregisterFoliage(treeModel)
+	end)
+	for _, descendant in treeModel:GetDescendants() do
+		pcall(function()
+			windFoliageServiceClient:UnregisterFoliage(descendant)
+		end)
+	end
+end
+
 function BuildServiceClient.StartTreeFallAnimation(self: BuildServiceClient, payload: TreeFelledPayload)
-	local treeModel = self:resolveTreeModelForFellEvent(payload)
+	local treeModel = self:GetTreeModelForFellEvent(payload)
 	if treeModel == nil then
 		return
 	end
 
-	self:stopTreeFallAnimation(payload.treeId, true)
+	self:StopTreeFallAnimation(payload.treeId, true)
+	self:DisableFallingTreeWindFoliage(treeModel)
 	treeModel:SetAttribute("BuildTreeId", payload.treeId)
 	treeModel.Parent = self.visualFolder
 
@@ -1047,8 +1104,9 @@ function BuildServiceClient.StartTreeFallAnimation(self: BuildServiceClient, pay
 		part.CanTouch = false
 		part.CanQuery = false
 	end
+	self:SetFallenTreeCollision(treeModel)
 
-	local direction = BuildServiceUtils.normalizeFallDirection(payload.fallDirection)
+	local direction = BuildServiceUtils.NormalizeFallDirection(payload.fallDirection)
 	local configuredFallDuration = self.random:NextNumber(TREE_FALL_DURATION_MIN, TREE_FALL_DURATION_MAX)
 	local impactAngle = TREE_FALL_BASE_ANGLE * direction
 	local overshootAngle = impactAngle + TREE_FALL_OVERSHOOT_ANGLE * direction
@@ -1087,7 +1145,7 @@ function BuildServiceClient.StartTreeFallAnimation(self: BuildServiceClient, pay
 	}
 	self.treeFallAnimations[payload.treeId] = animation
 	self.treeFallAnimationOrder[#self.treeFallAnimationOrder + 1] = payload.treeId
-	self:playTreeFallSound(animation)
+	self:PlayTreeFallSound(animation)
 end
 
 function BuildServiceClient.StepTreeFallAnimations(self: BuildServiceClient, deltaTime: number)
@@ -1104,7 +1162,7 @@ function BuildServiceClient.StepTreeFallAnimations(self: BuildServiceClient, del
 			continue
 		end
 		if animation.model.Parent == nil then
-			self:stopTreeFallAnimation(treeId, false)
+			self:StopTreeFallAnimation(treeId, false)
 			continue
 		end
 
@@ -1126,7 +1184,7 @@ function BuildServiceClient.StepTreeFallAnimations(self: BuildServiceClient, del
 			animation.stage = "settle"
 			animation.angleMotion:spring(animation.impactAngle, TREE_SETTLE_SPRING)
 		end
-		if not animation.groundImpactDetected and self:hasTreeGroundImpact(animation, elapsed, nextAngle) then
+		if not animation.groundImpactDetected and self:HasTreeGroundImpact(animation, elapsed, nextAngle) then
 			animation.groundImpactDetected = true
 		end
 		local impactFailsafeAt = math.max(
@@ -1142,7 +1200,7 @@ function BuildServiceClient.StepTreeFallAnimations(self: BuildServiceClient, del
 				and elapsed >= animation.fallDuration
 				and elapsed >= animation.minimumFadeElapsed
 			if canFadeOnImpact or elapsed >= impactFailsafeAt then
-				self:beginTreeFallFade(animation, now)
+				self:BeginTreeFallFade(animation, now)
 			end
 		end
 		local opacity = if animation.stage == "fade"
@@ -1157,25 +1215,25 @@ function BuildServiceClient.StepTreeFallAnimations(self: BuildServiceClient, del
 
 		local fadeStartedAt = animation.fadeStartedAt
 		if animation.stage == "fade" and fadeStartedAt ~= nil and now - fadeStartedAt >= animation.fadeDuration then
-			self:stopTreeFallAnimation(treeId, true)
+			self:StopTreeFallAnimation(treeId, true)
 		end
 	end
 end
 
 function BuildServiceClient.OnTreeFelled(self: BuildServiceClient, payloadRaw: any)
-	local payload = BuildServiceUtils.sanitizeTreeFelledPayload(payloadRaw)
+	local payload = BuildServiceUtils.CoerceTreeFelledPayload(payloadRaw)
 	if payload == nil then
 		return
 	end
-	self:startTreeFallAnimation(payload)
+	self:StartTreeFallAnimation(payload)
 end
 
 function BuildServiceClient.CreateVisualFolder(self: BuildServiceClient): Folder
-	return WorkspaceFolders.getOrCreateFolderInGame(CLIENT_VISUALS_FOLDER_NAME)
+	return WorkspaceFolders.GetOrCreateFolderInGame(CLIENT_VISUALS_FOLDER_NAME)
 end
 
 function BuildServiceClient.CreatePreviewVisual(self: BuildServiceClient)
-	self.visualFolder = self:createVisualFolder()
+	self.visualFolder = self:CreateVisualFolder()
 	for _, child in self.visualFolder:GetChildren() do
 		if
 			child.Name == "BuildPreview"
@@ -1210,18 +1268,18 @@ function BuildServiceClient.CreatePreviewVisual(self: BuildServiceClient)
 	TagBinder.applyTag(previewPart, TagBinder.Tags.Preview, CollectionService)
 end
 
-function BuildServiceClient.ResolveGamepadWorldPosition(self: BuildServiceClient): (Vector3?, Vector2?)
-	local screenVector = resolveGamepadScreenVector(self.runtimeContext)
+function BuildServiceClient.GetGamepadWorldPosition(self: BuildServiceClient): (Vector3?, Vector2?)
+	local screenVector = GetGamepadScreenVector(self.runtimeContext)
 	if screenVector == nil then
 		return nil, nil
 	end
 
-	local rootPart = resolveCharacterRootPart(self.localPlayer)
+	local rootPart = GetCharacterRootPart(self.localPlayer)
 	if rootPart == nil then
 		return nil, screenVector
 	end
 
-	local worldOffset = GamepadPointer.resolveWorldOffsetForScreenVector(screenVector, self.state.tileSize, rootPart)
+	local worldOffset = GamepadPointer.GetWorldOffsetForScreenVector(screenVector, self.state.tileSize, rootPart)
 	if worldOffset == nil then
 		return nil, screenVector
 	end
@@ -1229,14 +1287,14 @@ function BuildServiceClient.ResolveGamepadWorldPosition(self: BuildServiceClient
 	return rootPart.Position + worldOffset, screenVector
 end
 
-function BuildServiceClient.ResolvePreviewGeometry(
+function BuildServiceClient.GetPreviewGeometry(
 	self: BuildServiceClient,
 	tileXRaw: any,
 	tileYRaw: any,
 	footprintRaw: any?
 ): PreviewGeometry?
-	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
-	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
+	local tileX = BuildServiceUtils.CoerceTileCoordinate(tileXRaw)
+	local tileY = BuildServiceUtils.CoerceTileCoordinate(tileYRaw)
 	if tileX == nil or tileY == nil then
 		return nil
 	end
@@ -1258,18 +1316,18 @@ function BuildServiceClient.ResolvePreviewGeometry(
 	}
 end
 
-function BuildServiceClient.ResolveCursorTile(self: BuildServiceClient): (number?, number?)
+function BuildServiceClient.GetCursorTile(self: BuildServiceClient): (number?, number?)
 	if shouldUseGamepadWorldSelection() then
-		local worldPosition, screenVector = self:resolveGamepadWorldPosition()
+		local worldPosition, screenVector = self:GetGamepadWorldPosition()
 		self.cursorScreenVector = screenVector
 		if worldPosition ~= nil then
 			local rootTileX, rootTileY =
-				resolveTreeRootTileNearWorldPosition(worldPosition, math.max(1, self.state.tileSize * 0.8))
+				GetTreeRootTileNearWorldPosition(worldPosition, math.max(1, self.state.tileSize * 0.8))
 			if rootTileX ~= nil and rootTileY ~= nil then
 				return rootTileX, rootTileY
 			end
 
-			return BuildServiceUtils.worldPositionToTile(worldPosition, self.state.worldOrigin, self.state.tileSize)
+			return BuildServiceUtils.WorldPositionToTile(worldPosition, self.state.worldOrigin, self.state.tileSize)
 		end
 
 		return nil, nil
@@ -1281,7 +1339,7 @@ function BuildServiceClient.ResolveCursorTile(self: BuildServiceClient): (number
 	if currentCamera == nil then
 		return nil, nil
 	end
-	local mouseLocation = resolveMouseLocation(self.cursorModule)
+	local mouseLocation = GetMouseLocation(self.cursorModule)
 	if mouseLocation == nil then
 		return nil, nil
 	end
@@ -1301,13 +1359,13 @@ function BuildServiceClient.ResolveCursorTile(self: BuildServiceClient): (number
 		)
 		if raycastResult ~= nil then
 			local hitModel = raycastResult.Instance:FindFirstAncestorOfClass("Model")
-			local rootTileX = resolveIntegerAttribute(hitModel, BUILD_TREE_ROOT_TILE_X_ATTRIBUTE)
-			local rootTileY = resolveIntegerAttribute(hitModel, BUILD_TREE_ROOT_TILE_Y_ATTRIBUTE)
+			local rootTileX = GetIntegerAttribute(hitModel, BUILD_TREE_ROOT_TILE_X_ATTRIBUTE)
+			local rootTileY = GetIntegerAttribute(hitModel, BUILD_TREE_ROOT_TILE_Y_ATTRIBUTE)
 			if rootTileX ~= nil and rootTileY ~= nil then
 				return rootTileX, rootTileY
 			end
 
-			return BuildServiceUtils.worldPositionToTile(
+			return BuildServiceUtils.WorldPositionToTile(
 				raycastResult.Position,
 				self.state.worldOrigin,
 				self.state.tileSize
@@ -1316,16 +1374,16 @@ function BuildServiceClient.ResolveCursorTile(self: BuildServiceClient): (number
 	end
 
 	local hitOnPlane =
-		BuildServiceUtils.raycastToBuildPlane(viewportRay.Origin, viewportRay.Direction, self.state.basePlaneX)
+		BuildServiceUtils.RaycastToBuildPlane(viewportRay.Origin, viewportRay.Direction, self.state.basePlaneX)
 	if hitOnPlane == nil then
 		return nil, nil
 	end
 	local planeTileX, planeTileY =
-		BuildServiceUtils.worldPositionToTile(hitOnPlane, self.state.worldOrigin, self.state.tileSize)
+		BuildServiceUtils.WorldPositionToTile(hitOnPlane, self.state.worldOrigin, self.state.tileSize)
 	return planeTileX, planeTileY
 end
 
-function BuildServiceClient.ResolveTerrainHoverTile(
+function BuildServiceClient.GetTerrainHoverTile(
 	self: BuildServiceClient,
 	tileX: number?,
 	tileY: number?
@@ -1336,11 +1394,11 @@ function BuildServiceClient.ResolveTerrainHoverTile(
 
 	for depth = 0, TERRAIN_HOVER_SCAN_DEPTH_TILES do
 		local scanTileY = tileY - depth
-		local tileId = self:getTileAt(tileX, scanTileY, false)
+		local tileId = self:GetTileAt(tileX, scanTileY, false)
 		if tileId == BuildServiceUtils.AIR_TILE_ID then
 			continue
 		end
-		if not BuildServiceUtils.isSolidTile(tileId) then
+		if not BuildServiceUtils.IsSolidTile(tileId) then
 			continue
 		end
 		return tileX, scanTileY
@@ -1355,10 +1413,10 @@ function BuildServiceClient.GetTileFromWorldGenerationSnapshot(
 	tileY: number
 ): number?
 	local worldState = nil
-	local getStateMethod = (WorldGenerationServiceClient :: any).getState
+	local getStateMethod = (WorldGenerationServiceClient :: any).GetState
 	if typeof(getStateMethod) == "function" then
 		local ok, resultOrError = pcall(function()
-			return (WorldGenerationServiceClient :: any):getState()
+			return (WorldGenerationServiceClient :: any):GetState()
 		end)
 		if ok and typeof(resultOrError) == "table" then
 			worldState = resultOrError
@@ -1374,13 +1432,13 @@ function BuildServiceClient.GetTileFromWorldGenerationSnapshot(
 	local chunkSize = if isFiniteNumber((worldState :: any).chunkSize)
 		then math.floor((worldState :: any).chunkSize)
 		else 32
-	local chunkX = BuildServiceUtils.toChunkCoordinate(tileX, chunkSize)
-	local chunkY = BuildServiceUtils.toChunkCoordinate(tileY, chunkSize)
+	local chunkX = BuildServiceUtils.ToChunkCoordinate(tileX, chunkSize)
+	local chunkY = BuildServiceUtils.ToChunkCoordinate(tileY, chunkSize)
 	local chunkSnapshots = (WorldGenerationServiceClient :: any).chunkSnapshots
 	if typeof(chunkSnapshots) ~= "table" then
 		return nil
 	end
-	local chunkKey = BuildServiceUtils.packChunkKey(chunkX, chunkY)
+	local chunkKey = BuildServiceUtils.PackChunkKey(chunkX, chunkY)
 	local snapshot = chunkSnapshots[chunkKey]
 	if typeof(snapshot) ~= "table" then
 		return nil
@@ -1407,12 +1465,12 @@ function BuildServiceClient.GetTileFromWorldGenerationSnapshot(
 	if typeof(tilesRaw) ~= "table" then
 		return nil
 	end
-	local index = BuildServiceUtils.computeTileIndex(localX, localY, width)
+	local index = BuildServiceUtils.ComputeTileIndex(localX, localY, width)
 	local tileIdRaw = tilesRaw[index]
 	if not isFiniteNumber(tileIdRaw) then
 		return nil
 	end
-	local tileId = BuildServiceUtils.sanitizeTileId(tileIdRaw)
+	local tileId = BuildServiceUtils.CoerceTileId(tileIdRaw)
 	return tileId
 end
 
@@ -1422,12 +1480,12 @@ function BuildServiceClient.GetTileAt(
 	tileYRaw: any,
 	allowServerFetchRaw: any?
 ): number
-	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
-	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
+	local tileX = BuildServiceUtils.CoerceTileCoordinate(tileXRaw)
+	local tileY = BuildServiceUtils.CoerceTileCoordinate(tileYRaw)
 	if tileX == nil or tileY == nil then
 		return BuildServiceUtils.AIR_TILE_ID
 	end
-	local tileKey = BuildServiceUtils.packTileKey(tileX, tileY)
+	local tileKey = BuildServiceUtils.PackTileKey(tileX, tileY)
 
 	local predictedTileId = self.predictedTileOverrides[tileKey]
 	if predictedTileId ~= nil then
@@ -1437,12 +1495,12 @@ function BuildServiceClient.GetTileAt(
 	if cachedDeltaTileId ~= nil then
 		return cachedDeltaTileId
 	end
-	local worldTileId = self:getTileFromWorldGenerationSnapshot(tileX, tileY)
+	local worldTileId = self:GetTileFromWorldGenerationSnapshot(tileX, tileY)
 	if worldTileId ~= nil then
 		return worldTileId
 	end
 
-	local allowServerFetch = BuildServiceUtils.sanitizeBoolean(allowServerFetchRaw, false)
+	local allowServerFetch = BuildServiceUtils.CoerceBoolean(allowServerFetchRaw, false)
 	if not allowServerFetch then
 		return BuildServiceUtils.AIR_TILE_ID
 	end
@@ -1462,14 +1520,14 @@ function BuildServiceClient.GetTileAt(
 end
 
 function BuildServiceClient.OnTileFetched(self: BuildServiceClient, tileXRaw: any, tileYRaw: any, tileIdRaw: any)
-	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
-	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
-	local tileId = BuildServiceUtils.sanitizeTileId(tileIdRaw)
+	local tileX = BuildServiceUtils.CoerceTileCoordinate(tileXRaw)
+	local tileY = BuildServiceUtils.CoerceTileCoordinate(tileYRaw)
+	local tileId = BuildServiceUtils.CoerceTileId(tileIdRaw)
 	if tileX == nil or tileY == nil or tileId == nil then
 		return
 	end
 
-	self.authoritativeDeltaCache[BuildServiceUtils.packTileKey(tileX, tileY)] = tileId
+	self.authoritativeDeltaCache[BuildServiceUtils.PackTileKey(tileX, tileY)] = tileId
 end
 
 function BuildServiceClient.CanPlaceAt(
@@ -1478,18 +1536,18 @@ function BuildServiceClient.CanPlaceAt(
 	tileYRaw: any,
 	tileIdRaw: any
 ): (boolean, string, { TileCoordinate })
-	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
-	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
-	local tileId = BuildServiceUtils.sanitizeTileId(tileIdRaw)
+	local tileX = BuildServiceUtils.CoerceTileCoordinate(tileXRaw)
+	local tileY = BuildServiceUtils.CoerceTileCoordinate(tileYRaw)
+	local tileId = BuildServiceUtils.CoerceTileId(tileIdRaw)
 	if tileX == nil or tileY == nil or tileId == nil then
 		return false, "invalid_tile_coordinate_or_id", {}
 	end
-	local placementResult = BuildServiceUtils.canPlaceAt(
+	local placementResult = BuildServiceUtils.CanPlaceAt(
 		tileX,
 		tileY,
 		tileId,
 		function(scanX: number, scanY: number): number
-			return self:getTileAt(scanX, scanY, false)
+			return self:GetTileAt(scanX, scanY, false)
 		end,
 		nil,
 		nil
@@ -1530,7 +1588,7 @@ function BuildServiceClient.CreatePlacePrediction(
 	tileY: number,
 	tileId: number
 )
-	local canPlace, _, footprint = self:canPlaceAt(tileX, tileY, tileId)
+	local canPlace, _, footprint = self:CanPlaceAt(tileX, tileY, tileId)
 	if not canPlace then
 		return
 	end
@@ -1543,8 +1601,8 @@ function BuildServiceClient.CreatePlacePrediction(
 		createdAt = os.clock(),
 	}
 	for _, footprintTile in footprint do
-		local tileKey = BuildServiceUtils.packTileKey(footprintTile.tileX, footprintTile.tileY)
-		local previousTileId = self:getTileAt(footprintTile.tileX, footprintTile.tileY, false)
+		local tileKey = BuildServiceUtils.PackTileKey(footprintTile.tileX, footprintTile.tileY)
+		local previousTileId = self:GetTileAt(footprintTile.tileX, footprintTile.tileY, false)
 		pending.predictedPreviousByTile[tileKey] = previousTileId
 		pending.predictedTargetByTile[tileKey] = tileId
 		self.predictedTileOverrides[tileKey] = tileId
@@ -1559,17 +1617,17 @@ function BuildServiceClient.RequestPlaceTile(
 	tileIdRaw: any,
 	sourceSlotRaw: any?
 ): number
-	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
-	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
-	local tileId = BuildServiceUtils.sanitizeTileId(tileIdRaw)
-	local sourceSlot = sanitizeInventorySlot(sourceSlotRaw)
+	local tileX = BuildServiceUtils.CoerceTileCoordinate(tileXRaw)
+	local tileY = BuildServiceUtils.CoerceTileCoordinate(tileYRaw)
+	local tileId = BuildServiceUtils.CoerceTileId(tileIdRaw)
+	local sourceSlot = CoerceInventorySlot(sourceSlotRaw)
 	local requestId = self.nextRequestId
 	self.nextRequestId += 1
 
 	if tileX == nil or tileY == nil or tileId == nil then
 		return requestId
 	end
-	self:createPlacePrediction(requestId, tileX, tileY, tileId)
+	self:CreatePlacePrediction(requestId, tileX, tileY, tileId)
 	sendPacket(BuildServiceUtils.NETWORK_METHOD_REQUEST_PLACE_TILE, tileX, tileY, tileId, requestId, sourceSlot)
 	return requestId
 end
@@ -1581,10 +1639,10 @@ function BuildServiceClient.RequestBreakTile(
 	isBreakingRaw: any,
 	registerHitRaw: any?
 ): number
-	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
-	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
-	local isBreaking = BuildServiceUtils.sanitizeBoolean(isBreakingRaw, false)
-	local registerHit = BuildServiceUtils.sanitizeBoolean(registerHitRaw, false)
+	local tileX = BuildServiceUtils.CoerceTileCoordinate(tileXRaw)
+	local tileY = BuildServiceUtils.CoerceTileCoordinate(tileYRaw)
+	local isBreaking = BuildServiceUtils.CoerceBoolean(isBreakingRaw, false)
+	local registerHit = BuildServiceUtils.CoerceBoolean(registerHitRaw, false)
 	local requestId = self.nextRequestId
 	self.nextRequestId += 1
 	sendPacket(BuildServiceUtils.NETWORK_METHOD_REQUEST_BREAK_TILE, tileX, tileY, isBreaking, requestId, registerHit)
@@ -1605,13 +1663,13 @@ function BuildServiceClient.OnTileDeltas(self: BuildServiceClient, payloadRaw: a
 	local debrisTilesSpawned = 0
 	local playedTileBreakSound = false
 	for _, deltaRaw in deltasRaw do
-		local delta = BuildServiceUtils.cloneTileDelta(deltaRaw)
+		local delta = BuildServiceUtils.CloneTileDelta(deltaRaw)
 		if delta == nil then
 			continue
 		end
-		local previousTileId = self:getTileAt(delta.tileX, delta.tileY, false)
+		local previousTileId = self:GetTileAt(delta.tileX, delta.tileY, false)
 		appliedDeltas[#appliedDeltas + 1] = delta
-		local tileKey = BuildServiceUtils.packTileKey(delta.tileX, delta.tileY)
+		local tileKey = BuildServiceUtils.PackTileKey(delta.tileX, delta.tileY)
 		self.authoritativeDeltaCache[tileKey] = delta.tileId
 		local predictedTileId = self.predictedTileOverrides[tileKey]
 		if predictedTileId ~= nil and predictedTileId == delta.tileId then
@@ -1635,11 +1693,11 @@ function BuildServiceClient.OnTileDeltas(self: BuildServiceClient, payloadRaw: a
 				or (self.currentBreakProgress ~= nil and self.currentBreakProgress.tileX == delta.tileX and self.currentBreakProgress.tileY == delta.tileY)
 				or (self.cursorTileX == delta.tileX and self.cursorTileY == delta.tileY)
 			if isLocalBreakTarget and not playedTileBreakSound then
-				playedTileBreakSound = self:playTileBreakSound()
+				playedTileBreakSound = self:PlayTileBreakSound()
 			end
 			if debrisTilesSpawned < MAX_BREAK_DEBRIS_TILES_PER_BATCH then
 				debrisTilesSpawned += 1
-				self:spawnBreakDebris(delta.tileX, delta.tileY, previousTileId)
+				self:SpawnBreakDebris(delta.tileX, delta.tileY, previousTileId)
 			end
 		end
 	end
@@ -1668,8 +1726,8 @@ local function spawnDebrisBurst(
 	if self.rubble == nil then
 		return
 	end
-	local color, material = resolveBreakDebrisVisual(tileId)
-	local tileCenter = BuildServiceUtils.tileToWorldCenter(
+	local color, material = GetBreakDebrisVisual(tileId)
+	local tileCenter = BuildServiceUtils.TileToWorldCenter(
 		tileX,
 		tileY,
 		self.state.worldOrigin,
@@ -1732,14 +1790,14 @@ function BuildServiceClient.PlayHoveredTileBreakFeedback(self: BuildServiceClien
 		return false
 	end
 
-	local tileId = self:getTileAt(targetTileX, targetTileY, false)
+	local tileId = self:GetTileAt(targetTileX, targetTileY, false)
 	if tileId == BuildServiceUtils.AIR_TILE_ID then
 		return false
 	end
 
-	self:playTileHitSound()
-	self:spawnHitDebris(targetTileX, targetTileY, tileId)
-	self:requestBreakTile(targetTileX, targetTileY, true, true)
+	self:PlayTileHitSound()
+	self:SpawnHitDebris(targetTileX, targetTileY, tileId)
+	self:RequestBreakTile(targetTileX, targetTileY, true, true)
 	return true
 end
 
@@ -1757,14 +1815,14 @@ function BuildServiceClient.PlayHoveredTreeChopFeedback(self: BuildServiceClient
 		return false
 	end
 
-	local treeHit = self:resolveTreeHitAtTile(targetTileX, targetTileY)
+	local treeHit = self:GetTreeHitAtTile(targetTileX, targetTileY)
 	if treeHit == nil then
 		return false
 	end
 
-	self:playTreeChopSound()
-	self:spawnHitDebris(targetTileX, targetTileY, BuildServiceUtils.TILE_ID.WOOD)
-	self:requestBreakTile(targetTileX, targetTileY, true, true)
+	self:PlayTreeChopSound()
+	self:SpawnHitDebris(targetTileX, targetTileY, BuildServiceUtils.TILE_ID.WOOD)
+	self:RequestBreakTile(targetTileX, targetTileY, true, true)
 	return true
 end
 
@@ -1773,27 +1831,27 @@ function BuildServiceClient.OnActionResult(self: BuildServiceClient, payloadRaw:
 		return
 	end
 	local payload = payloadRaw :: { [string]: any }
-	local requestId = BuildServiceUtils.sanitizeRequestId(payload.requestId)
+	local requestId = BuildServiceUtils.CoerceRequestId(payload.requestId)
 	local accepted = payload.accepted == true
 	local reason = if typeof(payload.reason) == "string" then payload.reason else "unknown"
 
 	local pending = self.pendingActions[requestId]
 	if pending ~= nil then
 		if not accepted then
-			self:rollbackPendingAction(requestId)
+			self:RollbackPendingAction(requestId)
 		else
-			self:cleanupPendingAction(requestId)
+			self:CleanupPendingAction(requestId)
 		end
 	end
 
 	if not accepted then
-		SnackbarNotifications.showBuildActionRejected(payload.actionType, reason)
+		SnackbarNotifications.ShowBuildActionRejected(payload.actionType, reason)
 		self.actionRejected:Fire(payload.actionType, reason, requestId)
 		return
 	end
 
 	if typeof(payload.deltas) == "table" then
-		self:onTileDeltas({
+		self:OnTileDeltas({
 			deltas = payload.deltas,
 		})
 	end
@@ -1805,8 +1863,8 @@ function BuildServiceClient.OnBreakProgress(self: BuildServiceClient, payloadRaw
 		return
 	end
 	local payload = payloadRaw :: { [string]: any }
-	local tileX = BuildServiceUtils.sanitizeTileCoordinate(payload.tileX)
-	local tileY = BuildServiceUtils.sanitizeTileCoordinate(payload.tileY)
+	local tileX = BuildServiceUtils.CoerceTileCoordinate(payload.tileX)
+	local tileY = BuildServiceUtils.CoerceTileCoordinate(payload.tileY)
 	local progressRaw = payload.progress
 	local breakDurationRaw = payload.breakDuration
 	local progressModeRaw = payload.progressMode
@@ -1848,19 +1906,19 @@ function BuildServiceClient.UpdatePreviewVisual(
 	_canPlace: boolean?,
 	footprintRaw: any?
 )
-	local setHoveredTerrainTile = (WorldGenerationServiceClient :: any).setHoveredTerrainTile
+	local setHoveredTerrainTile = (WorldGenerationServiceClient :: any).SetHoveredTerrainTile
 	if typeof(setHoveredTerrainTile) == "function" then
-		(WorldGenerationServiceClient :: any):setHoveredTerrainTile(tileX, tileY)
+		(WorldGenerationServiceClient :: any):SetHoveredTerrainTile(tileX, tileY)
 	end
 
 	if not shouldUseGamepadWorldSelection() then
-		GamepadTargetServiceClient.setTarget(nil, nil)
+		GamepadTargetServiceClient.SetTarget(nil, nil)
 		return
 	end
 
-	local previewGeometry = self:resolvePreviewGeometry(tileX, tileY, footprintRaw)
+	local previewGeometry = self:GetPreviewGeometry(tileX, tileY, footprintRaw)
 	local targetWorldPosition = if previewGeometry ~= nil then previewGeometry.centerPosition else nil
-	GamepadTargetServiceClient.setTarget(targetWorldPosition, self.cursorScreenVector)
+	GamepadTargetServiceClient.SetTarget(targetWorldPosition, self.cursorScreenVector)
 end
 
 function BuildServiceClient.PrunePendingPredictions(self: BuildServiceClient)
@@ -1869,12 +1927,12 @@ function BuildServiceClient.PrunePendingPredictions(self: BuildServiceClient)
 		if now - pending.createdAt <= PREDICTION_TTL_SECONDS then
 			continue
 		end
-		self:cleanupPendingAction(requestId)
+		self:CleanupPendingAction(requestId)
 	end
 end
 
 function BuildServiceClient.UpdateCursorTile(self: BuildServiceClient)
-	local cursorTileX, cursorTileY = self:resolveCursorTile()
+	local cursorTileX, cursorTileY = self:GetCursorTile()
 	self.cursorTileX = cursorTileX
 	self.cursorTileY = cursorTileY
 end
@@ -1883,11 +1941,11 @@ function BuildServiceClient.ApplyHoverBreakInput(self: BuildServiceClient)
 	local cursorTileX = self.cursorTileX
 	local cursorTileY = self.cursorTileY
 	if cursorTileX == nil or cursorTileY == nil then
-		self:setBreakInput(false, nil, nil)
+		self:SetBreakInput(false, nil, nil)
 		return
 	end
-	local shouldBreak = self:isBreakableTarget(cursorTileX, cursorTileY)
-	self:setBreakInput(shouldBreak, cursorTileX, cursorTileY)
+	local shouldBreak = self:IsBreakableTarget(cursorTileX, cursorTileY)
+	self:SetBreakInput(shouldBreak, cursorTileX, cursorTileY)
 end
 
 function BuildServiceClient.FlushHeldBreakInput(self: BuildServiceClient, now: number)
@@ -1903,7 +1961,7 @@ function BuildServiceClient.FlushHeldBreakInput(self: BuildServiceClient, now: n
 		return
 	end
 
-	local tileKey = BuildServiceUtils.packTileKey(state.tileX, state.tileY)
+	local tileKey = BuildServiceUtils.PackTileKey(state.tileX, state.tileY)
 	if state.lastSentTileKey == tileKey and now - state.lastSentAt < self.state.clientBreakInputRate then
 		return
 	end
@@ -1917,9 +1975,9 @@ function BuildServiceClient.FlushHeldPlaceInput(self: BuildServiceClient, now: n
 	if not state.isHeld then
 		return
 	end
-	local activePlaceSource = self:resolveActivePlaceSource()
+	local activePlaceSource = self:GetActivePlaceSource()
 	if activePlaceSource == nil then
-		self:setPlaceInput(false, nil, nil)
+		self:SetPlaceInput(false, nil, nil)
 		return
 	end
 	if state.tileX == nil or state.tileY == nil then
@@ -1930,20 +1988,20 @@ function BuildServiceClient.FlushHeldPlaceInput(self: BuildServiceClient, now: n
 	end
 
 	local tileId = activePlaceSource.config.tileId
-	local canPlace = self:canPlaceAt(state.tileX, state.tileY, tileId)
+	local canPlace = self:CanPlaceAt(state.tileX, state.tileY, tileId)
 	if not canPlace then
 		return
 	end
 	state.lastSentAt = now
-	self:requestPlaceTile(state.tileX, state.tileY, tileId, activePlaceSource.sourceSlot)
+	self:RequestPlaceTile(state.tileX, state.tileY, tileId, activePlaceSource.sourceSlot)
 end
 
 function BuildServiceClient.OnRenderStep(self: BuildServiceClient, _deltaTime: number)
-	self:stepTreeFallAnimations(_deltaTime)
-	self:updateCursorTile()
+	self:StepTreeFallAnimations(_deltaTime)
+	self:UpdateCursorTile()
 
 	if HOVER_BREAK_TEST_MODE then
-		self:applyHoverBreakInput()
+		self:ApplyHoverBreakInput()
 	elseif self.breakInput.isHeld then
 		local hoverTileX = self.cursorTileX
 		local hoverTileY = self.cursorTileY
@@ -1954,7 +2012,7 @@ function BuildServiceClient.OnRenderStep(self: BuildServiceClient, _deltaTime: n
 			if hoverTileX == nil or hoverTileY == nil then
 				return nil, nil
 			end
-			if not self:isBreakableTarget(hoverTileX, hoverTileY) then
+			if not self:IsBreakableTarget(hoverTileX, hoverTileY) then
 				return nil, nil
 			end
 			return hoverTileX, hoverTileY
@@ -1963,7 +2021,7 @@ function BuildServiceClient.OnRenderStep(self: BuildServiceClient, _deltaTime: n
 		if targetTileX == nil or targetTileY == nil then
 			local nextTileX, nextTileY = getHoveredBreakableTile()
 			if nextTileX ~= nil and nextTileY ~= nil then
-				self:setBreakInput(true, nextTileX, nextTileY)
+				self:SetBreakInput(true, nextTileX, nextTileY)
 			end
 		else
 			local currentBreakProgress = self.currentBreakProgress
@@ -1971,21 +2029,21 @@ function BuildServiceClient.OnRenderStep(self: BuildServiceClient, _deltaTime: n
 				and currentBreakProgress.tileX == targetTileX
 				and currentBreakProgress.tileY == targetTileY
 				and currentBreakProgress.progress >= 0.99
-			local targetFinished = (not self:isBreakableTarget(targetTileX, targetTileY)) or finishedByProgress
+			local targetFinished = (not self:IsBreakableTarget(targetTileX, targetTileY)) or finishedByProgress
 
 			if hoverTileX ~= targetTileX or hoverTileY ~= targetTileY then
 				if targetFinished then
 					local nextTileX, nextTileY = getHoveredBreakableTile()
 					if nextTileX ~= nil and nextTileY ~= nil then
-						self:setBreakInput(true, nextTileX, nextTileY)
+						self:SetBreakInput(true, nextTileX, nextTileY)
 					else
-						self:setBreakInput(true, nil, nil)
+						self:SetBreakInput(true, nil, nil)
 					end
 				else
-					self:setBreakInput(false, nil, nil)
+					self:SetBreakInput(false, nil, nil)
 				end
 			elseif targetFinished then
-				self:setBreakInput(true, nil, nil)
+				self:SetBreakInput(true, nil, nil)
 			end
 		end
 	end
@@ -1995,32 +2053,32 @@ function BuildServiceClient.OnRenderStep(self: BuildServiceClient, _deltaTime: n
 	end
 
 	local now = os.clock()
-	self:flushHeldBreakInput(now)
-	self:flushHeldPlaceInput(now)
-	self:prunePendingPredictions()
+	self:FlushHeldBreakInput(now)
+	self:FlushHeldPlaceInput(now)
+	self:PrunePendingPredictions()
 
 	local previewTileX = self.cursorTileX
 	local previewTileY = self.cursorTileY
 	local previewCanPlace = nil :: boolean?
 	local previewFootprint = {} :: { TileCoordinate }
-	local activePlaceSource = self:resolveActivePlaceSource()
+	local activePlaceSource = self:GetActivePlaceSource()
 	if activePlaceSource ~= nil then
-		previewTileX, previewTileY = self:resolveTerrainHoverTile(previewTileX, previewTileY)
+		previewTileX, previewTileY = self:GetTerrainHoverTile(previewTileX, previewTileY)
 		if previewTileX ~= nil and previewTileY ~= nil then
-			local canPlace, _, resolvedFootprint =
-				self:canPlaceAt(previewTileX, previewTileY, activePlaceSource.config.tileId)
+			local canPlace, _, GotFootprint =
+				self:CanPlaceAt(previewTileX, previewTileY, activePlaceSource.config.tileId)
 			previewCanPlace = canPlace
-			previewFootprint = resolvedFootprint
+			previewFootprint = GotFootprint
 		end
 	elseif previewTileX ~= nil and previewTileY ~= nil then
-		local previewTileId = self:getTileAt(previewTileX, previewTileY, false)
+		local previewTileId = self:GetTileAt(previewTileX, previewTileY, false)
 		if previewTileId == BuildServiceUtils.AIR_TILE_ID then
 			previewTileX = nil
 			previewTileY = nil
 		end
 	end
 
-	self:updatePreviewVisual(previewTileX, previewTileY, previewCanPlace, previewFootprint)
+	self:UpdatePreviewVisual(previewTileX, previewTileY, previewCanPlace, previewFootprint)
 end
 
 function BuildServiceClient.OnInputBegan(self: BuildServiceClient, inputObject: InputObject, gameProcessed: boolean)
@@ -2031,21 +2089,21 @@ function BuildServiceClient.OnInputBegan(self: BuildServiceClient, inputObject: 
 		return
 	end
 	if isPrimaryInput(inputObject) then
-		self:handlePrimaryInput(true)
+		self:HandlePrimaryInput(true)
 	end
 end
 
 function BuildServiceClient.OnInputEnded(self: BuildServiceClient, inputObject: InputObject)
 	if isPrimaryInput(inputObject) then
-		self:handlePrimaryInput(false)
+		self:HandlePrimaryInput(false)
 	end
 end
 
 function BuildServiceClient.BindInputRouter(self: BuildServiceClient): boolean
-	local runtimeContext = CoreRuntime.getClientRuntime()
-	if runtimeContext ~= nil and typeof((runtimeContext :: any).init) == "function" then
+	local runtimeContext = CoreRuntime.GetClientRuntime()
+	if runtimeContext ~= nil and typeof((runtimeContext :: any).Init) == "function" then
 		local runtimeAny = runtimeContext :: any
-		runtimeAny:init()
+		runtimeAny:Init()
 	end
 	self.runtimeContext = runtimeContext
 	if runtimeContext == nil then
@@ -2053,23 +2111,23 @@ function BuildServiceClient.BindInputRouter(self: BuildServiceClient): boolean
 	end
 	self.cursorModule = (runtimeContext :: any).cursor
 	self.hapticsModule = (runtimeContext :: any).haptics
-	if not PlatformServiceClient:isReady() then
-		PlatformServiceClient:init()
+	if not PlatformServiceClient:IsReady() then
+		PlatformServiceClient:Init()
 	end
-	if self.cursorModule ~= nil and typeof((self.cursorModule :: any).init) == "function" then
+	if self.cursorModule ~= nil and typeof((self.cursorModule :: any).Init) == "function" then
 		local cursorAny = self.cursorModule :: any
-		cursorAny:init()
+		cursorAny:Init()
 	end
 
-	local disconnect = PlatformServiceClient:bindAction(INPUT_ACTION_PRIMARY, function(phase: string)
+	local disconnect = PlatformServiceClient:BindAction(INPUT_ACTION_PRIMARY, function(phase: string)
 		if phase ~= "Began" and phase ~= "Ended" then
 			return false
 		end
-		local startedAction = self:handlePrimaryInput(phase == "Began")
+		local startedAction = self:HandlePrimaryInput(phase == "Began")
 		if phase == "Began" and startedAction == BuildServiceUtils.ACTION_TYPE_BREAK then
-			if self.hapticsModule ~= nil and typeof((self.hapticsModule :: any).impactLight) == "function" then
+			if self.hapticsModule ~= nil and typeof((self.hapticsModule :: any).ImpactLight) == "function" then
 				local hapticsAny = self.hapticsModule :: any
-				hapticsAny:impactLight()
+				hapticsAny:ImpactLight()
 			end
 		end
 		return false
@@ -2091,18 +2149,18 @@ function BuildServiceClient.ApplySelectedPlaceableConfig(self: BuildServiceClien
 		return
 	end
 
-	if self:resolveActivePlaceSource() == nil then
-		self:setPlaceInput(false, nil, nil)
+	if self:GetActivePlaceSource() == nil then
+		self:SetPlaceInput(false, nil, nil)
 	end
 end
 
 function BuildServiceClient.OnInventoryStateChanged(self: BuildServiceClient, stateRaw: any)
-	self.inventoryState = InventoryServiceUtils.sanitizeState(stateRaw, self.inventoryState)
-	self:applySelectedPlaceableConfig(resolveSelectedPlaceableConfigFromInventoryState(self.inventoryState))
+	self.inventoryState = InventoryServiceUtils.CoerceState(stateRaw, self.inventoryState)
+	self:ApplySelectedPlaceableConfig(GetSelectedPlaceableConfigFromInventoryState(self.inventoryState))
 end
 
 function BuildServiceClient.SetSelectedTileId(self: BuildServiceClient, tileIdRaw: any)
-	local tileId = BuildServiceUtils.sanitizeTileId(tileIdRaw)
+	local tileId = BuildServiceUtils.CoerceTileId(tileIdRaw)
 	if tileId == nil or tileId == BuildServiceUtils.AIR_TILE_ID then
 		return
 	end
@@ -2110,9 +2168,9 @@ function BuildServiceClient.SetSelectedTileId(self: BuildServiceClient, tileIdRa
 end
 
 function BuildServiceClient.SetBreakInput(self: BuildServiceClient, isHeldRaw: any, tileXRaw: any?, tileYRaw: any?)
-	local isHeld = BuildServiceUtils.sanitizeBoolean(isHeldRaw, false)
-	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
-	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
+	local isHeld = BuildServiceUtils.CoerceBoolean(isHeldRaw, false)
+	local tileX = BuildServiceUtils.CoerceTileCoordinate(tileXRaw)
+	local tileY = BuildServiceUtils.CoerceTileCoordinate(tileYRaw)
 	self.breakInput.isHeld = isHeld
 	self.breakInput.tileX = tileX
 	self.breakInput.tileY = tileY
@@ -2122,10 +2180,10 @@ function BuildServiceClient.SetBreakInput(self: BuildServiceClient, isHeldRaw: a
 end
 
 function BuildServiceClient.SetPlaceInput(self: BuildServiceClient, isHeldRaw: any, tileXRaw: any?, tileYRaw: any?)
-	local isHeld = BuildServiceUtils.sanitizeBoolean(isHeldRaw, false)
-	local tileX = BuildServiceUtils.sanitizeTileCoordinate(tileXRaw)
-	local tileY = BuildServiceUtils.sanitizeTileCoordinate(tileYRaw)
-	if self:resolveActivePlaceSource() == nil then
+	local isHeld = BuildServiceUtils.CoerceBoolean(isHeldRaw, false)
+	local tileX = BuildServiceUtils.CoerceTileCoordinate(tileXRaw)
+	local tileY = BuildServiceUtils.CoerceTileCoordinate(tileYRaw)
+	if self:GetActivePlaceSource() == nil then
 		isHeld = false
 	end
 	self.placeInput.isHeld = isHeld
@@ -2134,8 +2192,8 @@ function BuildServiceClient.SetPlaceInput(self: BuildServiceClient, isHeldRaw: a
 end
 
 function BuildServiceClient.ApplyState(self: BuildServiceClient, stateRaw: any)
-	self.state = BuildServiceUtils.createState(stateRaw, self.state)
-	self.stateChanged:Fire(BuildServiceUtils.cloneState(self.state))
+	self.state = BuildServiceUtils.CreateState(stateRaw, self.state)
+	self.stateChanged:Fire(BuildServiceUtils.CloneState(self.state))
 end
 
 function BuildServiceClient.RequestSync(self: BuildServiceClient)
@@ -2146,7 +2204,7 @@ function BuildServiceClient.Init(self: BuildServiceClient)
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
-	self.state = BuildServiceUtils.createDefaultState()
+	self.state = BuildServiceUtils.CreateDefaultState()
 	self.stateChanged = Signal.new()
 	self.actionAccepted = Signal.new()
 	self.actionRejected = Signal.new()
@@ -2156,7 +2214,7 @@ function BuildServiceClient.Init(self: BuildServiceClient)
 	self.runtimeContext = nil
 	self.cursorModule = nil
 	self.hapticsModule = nil
-	self.inventoryState = InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
+	self.inventoryState = InventoryServiceUtils.CreateDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
 	self.selectedPlaceableConfig = nil :: PlaceableItemConfig?
 
 	self.nextRequestId = 1
@@ -2165,13 +2223,13 @@ function BuildServiceClient.Init(self: BuildServiceClient)
 	self.enableServerTileFetchFallback = false
 	self.random = Random.new()
 	self.treeChopSoundAssetIds = {} :: { string }
-	self:refreshTreeChopSoundTemplates()
+	self:RefreshTreeChopSoundTemplates()
 	self.treeFallSoundAssetIds = {} :: { string }
-	self:refreshTreeFallSoundTemplates()
+	self:RefreshTreeFallSoundTemplates()
 	self.tileHitSoundAssetIds = {} :: { string }
-	self:refreshTileHitSoundTemplates()
+	self:RefreshTileHitSoundTemplates()
 	self.tileBreakSoundAssetIds = {} :: { string }
-	self:refreshTileBreakSoundTemplates()
+	self:RefreshTileBreakSoundTemplates()
 	self.predictedTileOverrides = {} :: { [string]: number }
 	self.authoritativeDeltaCache = {} :: { [string]: number }
 	self.pendingActions = {} :: { [number]: PendingAction }
@@ -2191,7 +2249,7 @@ function BuildServiceClient.Init(self: BuildServiceClient)
 	self.cursorTileX = nil :: number?
 	self.cursorTileY = nil :: number?
 	self.cursorScreenVector = nil :: Vector2?
-	GamepadTargetServiceClient.clearTarget()
+	GamepadTargetServiceClient.ClearTarget()
 	self.breakInput = {
 		isHeld = false,
 		tileX = nil,
@@ -2209,7 +2267,7 @@ function BuildServiceClient.Init(self: BuildServiceClient)
 	self.treeFallAnimations = {} :: { [string]: TreeFallAnimation }
 	self.treeFallAnimationOrder = {} :: { string }
 
-	self.rubble = Rubble.new({
+	self.rubble = Rubble.New({
 		containerName = "BuildServiceRubble",
 		visualOnly = true,
 		tuning = {
@@ -2228,11 +2286,11 @@ function BuildServiceClient.Init(self: BuildServiceClient)
 		},
 	}) :: RubbleObject
 
-	self.binders = NevermoreSupport.getService(ClientBinderSupport)
-	self:createPreviewVisual()
-	local clearHoveredTerrainTile = (WorldGenerationServiceClient :: any).clearHoveredTerrainTile
+	self.binders = NevermoreSupport.GetService(BinderSupportClient)
+	self:CreatePreviewVisual()
+	local clearHoveredTerrainTile = (WorldGenerationServiceClient :: any).ClearHoveredTerrainTile
 	if typeof(clearHoveredTerrainTile) == "function" then
-		(WorldGenerationServiceClient :: any):clearHoveredTerrainTile()
+		(WorldGenerationServiceClient :: any):ClearHoveredTerrainTile()
 	end
 
 	self.janitor:GiveChore(function()
@@ -2255,43 +2313,43 @@ function BuildServiceClient.Init(self: BuildServiceClient)
 		end
 	end)
 	self.janitor:GiveChore(RunService.RenderStepped:Connect(function(deltaTime: number)
-		self:onRenderStep(deltaTime)
+		self:OnRenderStep(deltaTime)
 	end))
 	if InventoryServiceClient.stateChanged ~= nil then
 		self.janitor:GiveChore(InventoryServiceClient.stateChanged:Connect(function(nextState: InventoryState)
-			self:onInventoryStateChanged(nextState)
+			self:OnInventoryStateChanged(nextState)
 		end))
 	end
 
-	if self.enableDefaultInputBinding and self:bindInputRouter() then
+	if self.enableDefaultInputBinding and self:BindInputRouter() then
 		self.enableDefaultInputBinding = false
 	end
 
 	if self.enableDefaultInputBinding then
 		self.janitor:GiveChore(
 			UserInputService.InputBegan:Connect(function(inputObject: InputObject, gameProcessed: boolean)
-				self:onInputBegan(inputObject, gameProcessed)
+				self:OnInputBegan(inputObject, gameProcessed)
 			end)
 		)
 		self.janitor:GiveChore(UserInputService.InputEnded:Connect(function(inputObject: InputObject)
-			self:onInputEnded(inputObject)
+			self:OnInputEnded(inputObject)
 		end))
 	end
 
-	self:onInventoryStateChanged(InventoryServiceClient.state)
-	self:requestSync()
+	self:OnInventoryStateChanged(InventoryServiceClient.state)
+	self:RequestSync()
 end
 
 function BuildServiceClient.Destroy(self: BuildServiceClient)
-	self:setBreakInput(false, nil, nil)
-	self:setPlaceInput(false, nil, nil)
-	GamepadTargetServiceClient.clearTarget()
-	local clearHoveredTerrainTile = (WorldGenerationServiceClient :: any).clearHoveredTerrainTile
+	self:SetBreakInput(false, nil, nil)
+	self:SetPlaceInput(false, nil, nil)
+	GamepadTargetServiceClient.ClearTarget()
+	local clearHoveredTerrainTile = (WorldGenerationServiceClient :: any).ClearHoveredTerrainTile
 	if typeof(clearHoveredTerrainTile) == "function" then
-		(WorldGenerationServiceClient :: any):clearHoveredTerrainTile()
+		(WorldGenerationServiceClient :: any):ClearHoveredTerrainTile()
 	end
 	for treeId in pairs(self.treeFallAnimations :: { [string]: TreeFallAnimation }) do
-		self:stopTreeFallAnimation(treeId, true)
+		self:StopTreeFallAnimation(treeId, true)
 	end
 	table.clear(self.treeFallAnimationOrder)
 	if self.janitor ~= nil then
@@ -2304,8 +2362,8 @@ function BuildServiceClient.Destroy(self: BuildServiceClient)
 	table.clear(self.treeFallAnimations)
 end
 
-function BuildServiceClient.ResolveActivePlaceSource(self: BuildServiceClient): ActivePlaceSource?
-	return resolveActivePlaceSourceFromInventoryState(self.inventoryState)
+function BuildServiceClient.GetActivePlaceSource(self: BuildServiceClient): ActivePlaceSource?
+	return GetActivePlaceSourceFromInventoryState(self.inventoryState)
 end
 
 function BuildServiceClient.BeginBreakInputFromCursor(self: BuildServiceClient): boolean
@@ -2314,111 +2372,40 @@ function BuildServiceClient.BeginBreakInputFromCursor(self: BuildServiceClient):
 	if hoverTileX == nil or hoverTileY == nil then
 		return false
 	end
-	if not self:isBreakableTarget(hoverTileX, hoverTileY) then
+	if not self:IsBreakableTarget(hoverTileX, hoverTileY) then
 		return false
 	end
 
-	self:setBreakInput(true, hoverTileX, hoverTileY)
+	self:SetBreakInput(true, hoverTileX, hoverTileY)
 	return true
 end
 
 function BuildServiceClient.HandlePrimaryInput(self: BuildServiceClient, isHeldRaw: any): string?
-	local isHeld = BuildServiceUtils.sanitizeBoolean(isHeldRaw, false)
+	local isHeld = BuildServiceUtils.CoerceBoolean(isHeldRaw, false)
 	if not isHeld then
-		self:setPlaceInput(false, nil, nil)
+		self:SetPlaceInput(false, nil, nil)
 		if not HOVER_BREAK_TEST_MODE then
-			self:setBreakInput(false, nil, nil)
+			self:SetBreakInput(false, nil, nil)
 		end
 		return nil
 	end
 
-	local activePlaceSource = self:resolveActivePlaceSource()
+	local activePlaceSource = self:GetActivePlaceSource()
 	if activePlaceSource ~= nil then
-		self:setBreakInput(false, nil, nil)
-		self:setPlaceInput(true, self.cursorTileX, self.cursorTileY)
+		self:SetBreakInput(false, nil, nil)
+		self:SetPlaceInput(true, self.cursorTileX, self.cursorTileY)
 		return BuildServiceUtils.ACTION_TYPE_PLACE
 	end
 
-	self:setPlaceInput(false, nil, nil)
+	self:SetPlaceInput(false, nil, nil)
 	if HOVER_BREAK_TEST_MODE then
 		return nil
 	end
-	if self:beginBreakInputFromCursor() then
+	if self:BeginBreakInputFromCursor() then
 		return BuildServiceUtils.ACTION_TYPE_BREAK
 	end
 	return nil
 end
-
-BuildServiceClient.getTreesForChunk = BuildServiceClient.GetTreesForChunk
-BuildServiceClient.resolveTreeHitAtTile = BuildServiceClient.ResolveTreeHitAtTile
-BuildServiceClient.isBreakableTarget = BuildServiceClient.IsBreakableTarget
-BuildServiceClient.resolveTreeModelForFellEvent = BuildServiceClient.ResolveTreeModelForFellEvent
-BuildServiceClient.refreshTreeFallSoundTemplates = BuildServiceClient.RefreshTreeFallSoundTemplates
-BuildServiceClient.refreshTreeChopSoundTemplates = BuildServiceClient.RefreshTreeChopSoundTemplates
-BuildServiceClient.refreshTileHitSoundTemplates = BuildServiceClient.RefreshTileHitSoundTemplates
-BuildServiceClient.refreshTileBreakSoundTemplates = BuildServiceClient.RefreshTileBreakSoundTemplates
-BuildServiceClient.pickTreeChopSoundAssetId = BuildServiceClient.PickTreeChopSoundAssetId
-BuildServiceClient.playTreeChopSound = BuildServiceClient.PlayTreeChopSound
-BuildServiceClient.pickTileHitSoundAssetId = BuildServiceClient.PickTileHitSoundAssetId
-BuildServiceClient.playTileHitSound = BuildServiceClient.PlayTileHitSound
-BuildServiceClient.pickTileBreakSoundAssetId = BuildServiceClient.PickTileBreakSoundAssetId
-BuildServiceClient.playTileBreakSound = BuildServiceClient.PlayTileBreakSound
-BuildServiceClient.pickTreeFallSoundAssetId = BuildServiceClient.PickTreeFallSoundAssetId
-BuildServiceClient.applyTreeFallSoundSyncDuration = BuildServiceClient.ApplyTreeFallSoundSyncDuration
-BuildServiceClient.playTreeFallSound = BuildServiceClient.PlayTreeFallSound
-BuildServiceClient.fadeTreeFallSoundIfPlaying = BuildServiceClient.FadeTreeFallSoundIfPlaying
-BuildServiceClient.stopTreeFallAnimation = BuildServiceClient.StopTreeFallAnimation
-BuildServiceClient.beginTreeFallFade = BuildServiceClient.BeginTreeFallFade
-BuildServiceClient.isGroundNearWorldPoint = BuildServiceClient.IsGroundNearWorldPoint
-BuildServiceClient.hasTreeGroundImpact = BuildServiceClient.HasTreeGroundImpact
-BuildServiceClient.startTreeFallAnimation = BuildServiceClient.StartTreeFallAnimation
-BuildServiceClient.stepTreeFallAnimations = BuildServiceClient.StepTreeFallAnimations
-BuildServiceClient.onTreeFelled = BuildServiceClient.OnTreeFelled
-BuildServiceClient.createVisualFolder = BuildServiceClient.CreateVisualFolder
-BuildServiceClient.createPreviewVisual = BuildServiceClient.CreatePreviewVisual
-BuildServiceClient.resolveGamepadWorldPosition = BuildServiceClient.ResolveGamepadWorldPosition
-BuildServiceClient.resolvePreviewGeometry = BuildServiceClient.ResolvePreviewGeometry
-BuildServiceClient.resolveCursorTile = BuildServiceClient.ResolveCursorTile
-BuildServiceClient.resolveTerrainHoverTile = BuildServiceClient.ResolveTerrainHoverTile
-BuildServiceClient.getTileFromWorldGenerationSnapshot = BuildServiceClient.GetTileFromWorldGenerationSnapshot
-BuildServiceClient.getTileAt = BuildServiceClient.GetTileAt
-BuildServiceClient.onTileFetched = BuildServiceClient.OnTileFetched
-BuildServiceClient.canPlaceAt = BuildServiceClient.CanPlaceAt
-BuildServiceClient.cleanupPendingAction = BuildServiceClient.CleanupPendingAction
-BuildServiceClient.rollbackPendingAction = BuildServiceClient.RollbackPendingAction
-BuildServiceClient.createPlacePrediction = BuildServiceClient.CreatePlacePrediction
-BuildServiceClient.requestPlaceTile = BuildServiceClient.RequestPlaceTile
-BuildServiceClient.requestBreakTile = BuildServiceClient.RequestBreakTile
-BuildServiceClient.onTileDeltas = BuildServiceClient.OnTileDeltas
-BuildServiceClient.spawnHitDebris = BuildServiceClient.SpawnHitDebris
-BuildServiceClient.spawnBreakDebris = BuildServiceClient.SpawnBreakDebris
-BuildServiceClient.playHoveredTileBreakFeedback = BuildServiceClient.PlayHoveredTileBreakFeedback
-BuildServiceClient.playHoveredTreeChopFeedback = BuildServiceClient.PlayHoveredTreeChopFeedback
-BuildServiceClient.onActionResult = BuildServiceClient.OnActionResult
-BuildServiceClient.onBreakProgress = BuildServiceClient.OnBreakProgress
-BuildServiceClient.updatePreviewVisual = BuildServiceClient.UpdatePreviewVisual
-BuildServiceClient.prunePendingPredictions = BuildServiceClient.PrunePendingPredictions
-BuildServiceClient.updateCursorTile = BuildServiceClient.UpdateCursorTile
-BuildServiceClient.applyHoverBreakInput = BuildServiceClient.ApplyHoverBreakInput
-BuildServiceClient.flushHeldBreakInput = BuildServiceClient.FlushHeldBreakInput
-BuildServiceClient.flushHeldPlaceInput = BuildServiceClient.FlushHeldPlaceInput
-BuildServiceClient.onRenderStep = BuildServiceClient.OnRenderStep
-BuildServiceClient.onInputBegan = BuildServiceClient.OnInputBegan
-BuildServiceClient.onInputEnded = BuildServiceClient.OnInputEnded
-BuildServiceClient.bindInputRouter = BuildServiceClient.BindInputRouter
-BuildServiceClient.applySelectedPlaceableConfig = BuildServiceClient.ApplySelectedPlaceableConfig
-BuildServiceClient.onInventoryStateChanged = BuildServiceClient.OnInventoryStateChanged
-BuildServiceClient.setSelectedTileId = BuildServiceClient.SetSelectedTileId
-BuildServiceClient.setBreakInput = BuildServiceClient.SetBreakInput
-BuildServiceClient.setPlaceInput = BuildServiceClient.SetPlaceInput
-BuildServiceClient.applyState = BuildServiceClient.ApplyState
-BuildServiceClient.requestSync = BuildServiceClient.RequestSync
-BuildServiceClient.init = BuildServiceClient.Init
-BuildServiceClient.destroy = BuildServiceClient.Destroy
-BuildServiceClient.resolveActivePlaceSource = BuildServiceClient.ResolveActivePlaceSource
-BuildServiceClient.beginBreakInputFromCursor = BuildServiceClient.BeginBreakInputFromCursor
-BuildServiceClient.handlePrimaryInput = BuildServiceClient.HandlePrimaryInput
-
 type BuildServiceClient = typeof(BuildServiceClient) & {
 	runtimeContext: any?,
 	cursorModule: any?,

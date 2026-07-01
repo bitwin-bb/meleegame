@@ -220,7 +220,7 @@ local NPC_ASSET_FOLDER: Instance? = npcAssetFolder
 
 local RANDOM = Random.new()
 
-local function sanitizeNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
 	local numeric = fallback
 	if typeof(value) == "number" and value == value then
 		numeric = value
@@ -237,7 +237,7 @@ local function sanitizeNumber(value: any, fallback: number, minimum: number?, ma
 	return numeric
 end
 
-local function sanitizeString(value: any, fallback: string): string
+local function CoerceString(value: any, fallback: string): string
 	if typeof(value) ~= "string" then
 		return fallback
 	end
@@ -247,14 +247,14 @@ local function sanitizeString(value: any, fallback: string): string
 	return value
 end
 
-local function sanitizeBoolean(value: any, fallback: boolean): boolean
+local function CoerceBoolean(value: any, fallback: boolean): boolean
 	if typeof(value) == "boolean" then
 		return value
 	end
 	return fallback
 end
 
-local function sanitizeTags(rawTags: any): { [string]: boolean }
+local function CoerceTags(rawTags: any): { [string]: boolean }
 	local out: { [string]: boolean } = {}
 	if typeof(rawTags) ~= "table" then
 		return out
@@ -296,7 +296,7 @@ local function splitModelPathTokens(modelPath: string): { string }
 	return out
 end
 
-local function resolveModelFromAssetFolder(modelName: string): Model?
+local function GetModelFromAssetFolder(modelName: string): Model?
 	if NPC_ASSET_FOLDER == nil then
 		return nil
 	end
@@ -332,27 +332,27 @@ local function resolveModelFromAssetFolder(modelName: string): Model?
 	return nil
 end
 
-local function resolveModelTemplate(rawModel: any, rawModelName: any, archetype: string): Model?
+local function GetModelTemplate(rawModel: any, rawModelName: any, archetype: string): Model?
 	if typeof(rawModel) == "Instance" and rawModel:IsA("Model") then
 		return rawModel
 	end
 
 	if typeof(rawModel) == "string" and rawModel ~= "" then
-		local byRawModelName = resolveModelFromAssetFolder(rawModel)
+		local byRawModelName = GetModelFromAssetFolder(rawModel)
 		if byRawModelName then
 			return byRawModelName
 		end
 	end
 
 	if typeof(rawModelName) == "string" and rawModelName ~= "" then
-		local byModelName = resolveModelFromAssetFolder(rawModelName)
+		local byModelName = GetModelFromAssetFolder(rawModelName)
 		if byModelName then
 			return byModelName
 		end
 	end
 
 	if archetype ~= "" then
-		local byArchetype = resolveModelFromAssetFolder(archetype)
+		local byArchetype = GetModelFromAssetFolder(archetype)
 		if byArchetype then
 			return byArchetype
 		end
@@ -361,14 +361,14 @@ local function resolveModelTemplate(rawModel: any, rawModelName: any, archetype:
 	return nil
 end
 
-local function resolveHumanoidFromModel(model: Model?): Humanoid?
+local function GetHumanoidFromModel(model: Model?): Humanoid?
 	if model == nil then
 		return nil
 	end
 	return model:FindFirstChildOfClass("Humanoid")
 end
 
-local function resolveRootPart(model: Model?): BasePart?
+local function GetRootPart(model: Model?): BasePart?
 	if model == nil then
 		return nil
 	end
@@ -395,7 +395,7 @@ local function isNpcInstance(value: any): boolean
 	return typeof(value) == "table" and (value :: any)._isNpcInstance == true
 end
 
-local function resolveModelFromTarget(target: any): Model?
+local function GetModelFromTarget(target: any): Model?
 	if target == nil then
 		return nil
 	end
@@ -435,7 +435,7 @@ local function resolveModelFromTarget(target: any): Model?
 	return nil
 end
 
-local function resolveHumanoidFromTarget(target: any): Humanoid?
+local function GetHumanoidFromTarget(target: any): Humanoid?
 	if target == nil then
 		return nil
 	end
@@ -448,11 +448,11 @@ local function resolveHumanoidFromTarget(target: any): Humanoid?
 		return target
 	end
 
-	local model = resolveModelFromTarget(target)
-	return resolveHumanoidFromModel(model)
+	local model = GetModelFromTarget(target)
+	return GetHumanoidFromModel(model)
 end
 
-local function resolvePositionFromTarget(target: any): Vector3?
+local function GetPositionFromTarget(target: any): Vector3?
 	if target == nil then
 		return nil
 	end
@@ -462,7 +462,7 @@ local function resolvePositionFromTarget(target: any): Vector3?
 	end
 
 	if isNpcInstance(target) then
-		return (target :: Npc):getPosition()
+		return (target :: Npc):GetPosition()
 	end
 
 	if typeof(target) == "Instance" then
@@ -472,7 +472,7 @@ local function resolvePositionFromTarget(target: any): Vector3?
 
 		if target:IsA("Player") then
 			local character = target.Character
-			local rootPart = resolveRootPart(character)
+			local rootPart = GetRootPart(character)
 			if rootPart then
 				return rootPart.Position
 			end
@@ -480,8 +480,8 @@ local function resolvePositionFromTarget(target: any): Vector3?
 		end
 	end
 
-	local model = resolveModelFromTarget(target)
-	local rootPart = resolveRootPart(model)
+	local model = GetModelFromTarget(target)
+	local rootPart = GetRootPart(model)
 	if rootPart then
 		return rootPart.Position
 	end
@@ -489,12 +489,12 @@ local function resolvePositionFromTarget(target: any): Vector3?
 	return nil
 end
 
-local function resolveNpcFromTarget(target: any): Npc?
+local function GetNpcFromTarget(target: any): Npc?
 	if isNpcInstance(target) then
 		return target :: Npc
 	end
 
-	local model = resolveModelFromTarget(target)
+	local model = GetModelFromTarget(target)
 	if model == nil then
 		return nil
 	end
@@ -526,54 +526,54 @@ local function normalizeConfig(
 			legacyTemplate = rawConfig.model
 		end
 	else
-		legacyHp = sanitizeNumber(configOrHp, DEFAULT_MAX_HP, 1, nil)
-		legacyDamage = sanitizeNumber(damage, DEFAULT_DAMAGE, 0, nil)
-		legacyDefense = sanitizeNumber(defense, DEFAULT_DEFENSE, 0, nil)
+		legacyHp = CoerceNumber(configOrHp, DEFAULT_MAX_HP, 1, nil)
+		legacyDamage = CoerceNumber(damage, DEFAULT_DAMAGE, 0, nil)
+		legacyDefense = CoerceNumber(defense, DEFAULT_DEFENSE, 0, nil)
 	end
 
 	local rawStats = if typeof(rawConfig.stats) == "table" then rawConfig.stats else {} :: any
-	local maxHp = sanitizeNumber(rawStats.maxHp or rawConfig.maxHp or rawConfig.hp, legacyHp, 1, nil)
-	local hp = sanitizeNumber(rawStats.hp or rawConfig.hp, maxHp, 0, maxHp)
-	local baseDamage = sanitizeNumber(rawStats.damage or rawConfig.damage or rawConfig.dmg, legacyDamage, 0, nil)
-	local baseDefense = sanitizeNumber(rawStats.defense or rawConfig.defense or rawConfig.def, legacyDefense, 0, nil)
+	local maxHp = CoerceNumber(rawStats.maxHp or rawConfig.maxHp or rawConfig.hp, legacyHp, 1, nil)
+	local hp = CoerceNumber(rawStats.hp or rawConfig.hp, maxHp, 0, maxHp)
+	local baseDamage = CoerceNumber(rawStats.damage or rawConfig.damage or rawConfig.dmg, legacyDamage, 0, nil)
+	local baseDefense = CoerceNumber(rawStats.defense or rawConfig.defense or rawConfig.def, legacyDefense, 0, nil)
 
-	local archetype = sanitizeString(rawConfig.archetype, DEFAULT_ARCHETYPE)
-	local displayName = sanitizeString(rawConfig.displayName, archetype)
-	local faction = sanitizeString(rawConfig.faction, DEFAULT_FACTION)
+	local archetype = CoerceString(rawConfig.archetype, DEFAULT_ARCHETYPE)
+	local displayName = CoerceString(rawConfig.displayName, archetype)
+	local faction = CoerceString(rawConfig.faction, DEFAULT_FACTION)
 	local ownerPlayer = asPlayer(rawConfig.ownerPlayer)
 
 	local modelFactory = asFunction(rawConfig.modelFactory) :: (() -> Model?)?
 	local modelTemplate = if modelFactory == nil
-		then resolveModelTemplate(legacyTemplate, rawConfig.modelName, archetype)
+		then GetModelTemplate(legacyTemplate, rawConfig.modelName, archetype)
 		else nil
 
 	local rawMovement = if typeof(rawConfig.movement) == "table" then rawConfig.movement else {} :: any
-	local detectionRange = sanitizeNumber(rawMovement.detectionRange, DEFAULT_DETECTION_RANGE, 0, nil)
-	local loseTargetRange = sanitizeNumber(rawMovement.loseTargetRange, DEFAULT_LOSE_TARGET_RANGE, detectionRange, nil)
+	local detectionRange = CoerceNumber(rawMovement.detectionRange, DEFAULT_DETECTION_RANGE, 0, nil)
+	local loseTargetRange = CoerceNumber(rawMovement.loseTargetRange, DEFAULT_LOSE_TARGET_RANGE, detectionRange, nil)
 
 	local movement: RuntimeMovementConfig = {
-		walkSpeed = sanitizeNumber(rawMovement.walkSpeed, DEFAULT_WALK_SPEED, 0, nil),
-		jumpPower = sanitizeNumber(rawMovement.jumpPower, DEFAULT_JUMP_POWER, 0, nil),
-		canMove = sanitizeBoolean(rawMovement.canMove, true),
-		canWander = sanitizeBoolean(rawMovement.canWander, true),
-		wanderRadius = sanitizeNumber(rawMovement.wanderRadius, DEFAULT_WANDER_RADIUS, 0, nil),
-		wanderInterval = sanitizeNumber(rawMovement.wanderInterval, DEFAULT_WANDER_INTERVAL, 0.1, nil),
-		thinkInterval = sanitizeNumber(rawMovement.thinkInterval, DEFAULT_THINK_INTERVAL, 0.03, nil),
+		walkSpeed = CoerceNumber(rawMovement.walkSpeed, DEFAULT_WALK_SPEED, 0, nil),
+		jumpPower = CoerceNumber(rawMovement.jumpPower, DEFAULT_JUMP_POWER, 0, nil),
+		canMove = CoerceBoolean(rawMovement.canMove, true),
+		canWander = CoerceBoolean(rawMovement.canWander, true),
+		wanderRadius = CoerceNumber(rawMovement.wanderRadius, DEFAULT_WANDER_RADIUS, 0, nil),
+		wanderInterval = CoerceNumber(rawMovement.wanderInterval, DEFAULT_WANDER_INTERVAL, 0.1, nil),
+		thinkInterval = CoerceNumber(rawMovement.thinkInterval, DEFAULT_THINK_INTERVAL, 0.03, nil),
 		detectionRange = detectionRange,
 		loseTargetRange = loseTargetRange,
-		moveRepathDistance = sanitizeNumber(rawMovement.moveRepathDistance, DEFAULT_MOVE_REPATH_DISTANCE, 0, nil),
-		autoRotate = sanitizeBoolean(rawMovement.autoRotate, true),
+		moveRepathDistance = CoerceNumber(rawMovement.moveRepathDistance, DEFAULT_MOVE_REPATH_DISTANCE, 0, nil),
+		autoRotate = CoerceBoolean(rawMovement.autoRotate, true),
 	}
 
 	local rawCombat = if typeof(rawConfig.combat) == "table" then rawConfig.combat else {} :: any
 	local combat: RuntimeCombatConfig = {
-		attackRange = sanitizeNumber(rawCombat.attackRange, DEFAULT_ATTACK_RANGE, 0, nil),
-		attackCooldown = sanitizeNumber(rawCombat.attackCooldown, DEFAULT_ATTACK_COOLDOWN, 0, nil),
-		minDamage = sanitizeNumber(rawCombat.minDamage, DEFAULT_MIN_DAMAGE, 0, nil),
-		damageVariance = sanitizeNumber(rawCombat.damageVariance, DEFAULT_DAMAGE_VARIANCE, 0, 1),
-		targetPlayers = sanitizeBoolean(rawCombat.targetPlayers, true),
-		targetNpcs = sanitizeBoolean(rawCombat.targetNpcs, true),
-		allowFriendlyFire = sanitizeBoolean(rawCombat.allowFriendlyFire, false),
+		attackRange = CoerceNumber(rawCombat.attackRange, DEFAULT_ATTACK_RANGE, 0, nil),
+		attackCooldown = CoerceNumber(rawCombat.attackCooldown, DEFAULT_ATTACK_COOLDOWN, 0, nil),
+		minDamage = CoerceNumber(rawCombat.minDamage, DEFAULT_MIN_DAMAGE, 0, nil),
+		damageVariance = CoerceNumber(rawCombat.damageVariance, DEFAULT_DAMAGE_VARIANCE, 0, 1),
+		targetPlayers = CoerceBoolean(rawCombat.targetPlayers, true),
+		targetNpcs = CoerceBoolean(rawCombat.targetNpcs, true),
+		allowFriendlyFire = CoerceBoolean(rawCombat.allowFriendlyFire, false),
 	}
 
 	local rawLifecycle = if typeof(rawConfig.lifecycle) == "table" then rawConfig.lifecycle else {} :: any
@@ -582,8 +582,8 @@ local function normalizeConfig(
 	local lifecycle: RuntimeLifecycleConfig = {
 		spawnParent = spawnParent,
 		spawnCFrame = spawnCFrame,
-		autoStart = sanitizeBoolean(rawLifecycle.autoStart, false),
-		autoDestroyModelOnDeath = sanitizeBoolean(rawLifecycle.autoDestroyModelOnDeath, true),
+		autoStart = CoerceBoolean(rawLifecycle.autoStart, false),
+		autoDestroyModelOnDeath = CoerceBoolean(rawLifecycle.autoDestroyModelOnDeath, true),
 	}
 
 	local rawBehavior = if typeof(rawConfig.behavior) == "table" then rawConfig.behavior else {} :: any
@@ -614,7 +614,7 @@ local function normalizeConfig(
 		combat = combat,
 		behavior = behavior,
 		lifecycle = lifecycle,
-		tags = sanitizeTags(rawConfig.tags),
+		tags = CoerceTags(rawConfig.tags),
 	}
 end
 
@@ -681,7 +681,7 @@ function Npc.New(configOrHp: NpcConfig | number, damage: number?, defense: numbe
 	}, Npc)
 
 	if self.lifecycle.autoStart then
-		self:start(self.lifecycle.spawnCFrame)
+		self:Start(self.lifecycle.spawnCFrame)
 	end
 
 	return self
@@ -728,8 +728,8 @@ function Npc._rebuildRigRefs(self: Npc)
 		return
 	end
 
-	self.humanoid = resolveHumanoidFromModel(model)
-	self.rootPart = resolveRootPart(model)
+	self.humanoid = GetHumanoidFromModel(model)
+	self.rootPart = GetRootPart(model)
 
 	if model.PrimaryPart == nil and self.rootPart ~= nil then
 		model.PrimaryPart = self.rootPart
@@ -829,7 +829,7 @@ function Npc.Respawn(self: Npc, spawnCFrame: CFrame?): Model?
 	self.isAlive = false
 	self.hp = self.maxHp
 
-	return self:start(spawnCFrame)
+	return self:Start(spawnCFrame)
 end
 
 function Npc.Stop(self: Npc, removeModel: boolean?)
@@ -839,7 +839,7 @@ function Npc.Stop(self: Npc, removeModel: boolean?)
 
 	unregisterNpc(self)
 	self:_disconnectRuntime()
-	self:clearTarget()
+	self:ClearTarget()
 	self.isAlive = false
 
 	if self.state ~= "Dead" then
@@ -860,7 +860,7 @@ function Npc.Destroy(self: Npc)
 		return
 	end
 
-	self:stop(true)
+	self:Stop(true)
 	self._isDestroyed = true
 
 	for _, signalObject in pairs(self.signals :: any) do
@@ -882,8 +882,8 @@ function Npc.GetPosition(self: Npc): Vector3?
 end
 
 function Npc.GetDistanceTo(self: Npc, target: any): number?
-	local ownPosition = self:getPosition()
-	local targetPosition = resolvePositionFromTarget(target)
+	local ownPosition = self:GetPosition()
+	local targetPosition = GetPositionFromTarget(target)
 	if ownPosition == nil or targetPosition == nil then
 		return nil
 	end
@@ -895,8 +895,8 @@ function Npc.IsTargetValid(self: Npc, target: any): boolean
 		return false
 	end
 
-	local targetPosition = resolvePositionFromTarget(target)
-	local ownPosition = self:getPosition()
+	local targetPosition = GetPositionFromTarget(target)
+	local ownPosition = self:GetPosition()
 	if targetPosition == nil or ownPosition == nil then
 		return false
 	end
@@ -905,7 +905,7 @@ function Npc.IsTargetValid(self: Npc, target: any): boolean
 		return true
 	end
 
-	local targetNpc = resolveNpcFromTarget(target)
+	local targetNpc = GetNpcFromTarget(target)
 	if targetNpc ~= nil then
 		if targetNpc == self then
 			return false
@@ -922,7 +922,7 @@ function Npc.IsTargetValid(self: Npc, target: any): boolean
 	if targetNpc ~= nil then
 		targetIsAlive = targetNpc.isAlive
 	else
-		local targetHumanoid = resolveHumanoidFromTarget(target)
+		local targetHumanoid = GetHumanoidFromTarget(target)
 		if targetHumanoid ~= nil and targetHumanoid.Health > 0 then
 			targetIsAlive = true
 		end
@@ -965,12 +965,12 @@ function Npc.AcquireTarget(self: Npc): any?
 	local customAcquire = self.behavior.acquireTarget
 	if customAcquire then
 		local customTarget = customAcquire(self)
-		if customTarget ~= nil and self:isTargetValid(customTarget) then
+		if customTarget ~= nil and self:IsTargetValid(customTarget) then
 			return customTarget
 		end
 	end
 
-	local ownPosition = self:getPosition()
+	local ownPosition = self:GetPosition()
 	if ownPosition == nil then
 		return nil
 	end
@@ -980,7 +980,7 @@ function Npc.AcquireTarget(self: Npc): any?
 	local nearestTarget: any = nil
 
 	local function considerTarget(candidateTarget: any)
-		local candidatePosition = resolvePositionFromTarget(candidateTarget)
+		local candidatePosition = GetPositionFromTarget(candidateTarget)
 		if candidatePosition == nil then
 			return
 		end
@@ -991,7 +991,7 @@ function Npc.AcquireTarget(self: Npc): any?
 			return
 		end
 
-		if not self:isTargetValid(candidateTarget) then
+		if not self:IsTargetValid(candidateTarget) then
 			return
 		end
 
@@ -1020,11 +1020,11 @@ end
 
 function Npc.SetTarget(self: Npc, target: any?): boolean
 	if target == nil then
-		self:clearTarget()
+		self:ClearTarget()
 		return false
 	end
 
-	if not self:isTargetValid(target) then
+	if not self:IsTargetValid(target) then
 		return false
 	end
 
@@ -1084,7 +1084,7 @@ function Npc.MoveTo(self: Npc, targetPosition: Vector3): boolean
 end
 
 function Npc.MoveInDirection(self: Npc, direction: Vector3, distance: number?): boolean
-	local ownPosition = self:getPosition()
+	local ownPosition = self:GetPosition()
 	if ownPosition == nil then
 		return false
 	end
@@ -1092,9 +1092,9 @@ function Npc.MoveInDirection(self: Npc, direction: Vector3, distance: number?): 
 		return false
 	end
 
-	local moveDistance = sanitizeNumber(distance, 1, 0, nil)
+	local moveDistance = CoerceNumber(distance, 1, 0, nil)
 	local moveTarget = ownPosition + direction.Unit * moveDistance
-	return self:moveTo(moveTarget)
+	return self:MoveTo(moveTarget)
 end
 
 function Npc.StopMoving(self: Npc)
@@ -1120,7 +1120,7 @@ function Npc.Jump(self: Npc): boolean
 end
 
 function Npc.RollDamage(self: Npc, rawDamage: number?): number
-	local damage = sanitizeNumber(rawDamage, self.damage, 0, nil)
+	local damage = CoerceNumber(rawDamage, self.damage, 0, nil)
 	if damage <= 0 then
 		return 0
 	end
@@ -1140,7 +1140,7 @@ function Npc.TakeDamage(self: Npc, rawDamage: number, source: any?): number
 		return 0
 	end
 
-	local incomingDamage = sanitizeNumber(rawDamage, 0, 0, nil)
+	local incomingDamage = CoerceNumber(rawDamage, 0, 0, nil)
 	if incomingDamage <= 0 then
 		return 0
 	end
@@ -1160,7 +1160,7 @@ function Npc.TakeDamage(self: Npc, rawDamage: number, source: any?): number
 	end
 
 	if self.hp <= 0 then
-		self:die(source)
+		self:Die(source)
 	end
 
 	return mitigatedDamage
@@ -1171,7 +1171,7 @@ function Npc.Heal(self: Npc, rawAmount: number): number
 		return 0
 	end
 
-	local healAmount = sanitizeNumber(rawAmount, 0, 0, nil)
+	local healAmount = CoerceNumber(rawAmount, 0, 0, nil)
 	if healAmount <= 0 then
 		return 0
 	end
@@ -1186,20 +1186,20 @@ function Npc.GiveDamage(self: Npc, target: any, rawDamage: number?): number
 		return 0
 	end
 
-	local finalDamage = self:rollDamage(rawDamage)
+	local finalDamage = self:RollDamage(rawDamage)
 	if finalDamage <= 0 then
 		return 0
 	end
 
-	local targetNpc = resolveNpcFromTarget(target)
+	local targetNpc = GetNpcFromTarget(target)
 	if targetNpc ~= nil then
 		if targetNpc == self then
 			return 0
 		end
-		return targetNpc:takeDamage(finalDamage, self)
+		return targetNpc:TakeDamage(finalDamage, self)
 	end
 
-	local targetHumanoid = resolveHumanoidFromTarget(target)
+	local targetHumanoid = GetHumanoidFromTarget(target)
 	if targetHumanoid == nil or targetHumanoid.Health <= 0 then
 		return 0
 	end
@@ -1212,12 +1212,12 @@ function Npc.CanAttackTarget(self: Npc, target: any): boolean
 	if self._isDestroyed or not self.isAlive then
 		return false
 	end
-	if not self:isTargetValid(target) then
+	if not self:IsTargetValid(target) then
 		return false
 	end
 
-	local ownPosition = self:getPosition()
-	local targetPosition = resolvePositionFromTarget(target)
+	local ownPosition = self:GetPosition()
+	local targetPosition = GetPositionFromTarget(target)
 	if ownPosition == nil or targetPosition == nil then
 		return false
 	end
@@ -1241,11 +1241,11 @@ function Npc.Attack(self: Npc, target: any?): (boolean, number)
 		return false, 0
 	end
 
-	if not self:canAttackTarget(targetObject) then
+	if not self:CanAttackTarget(targetObject) then
 		return false, 0
 	end
 
-	local damageDealt = self:giveDamage(targetObject)
+	local damageDealt = self:GiveDamage(targetObject)
 	if damageDealt <= 0 then
 		return false, 0
 	end
@@ -1282,7 +1282,7 @@ function Npc._tryWander(self: Npc)
 	local radius = RANDOM:NextNumber(0, self.movement.wanderRadius)
 	local offset = Vector3.new(math.cos(angle) * radius, 0, math.sin(angle) * radius)
 	local destination = self.spawnCFrame.Position + offset
-	self:moveTo(destination)
+	self:MoveTo(destination)
 end
 
 function Npc._tickBehavior(self: Npc, dt: number)
@@ -1292,34 +1292,34 @@ function Npc._tickBehavior(self: Npc, dt: number)
 	end
 
 	local currentTarget = self.currentTarget
-	if currentTarget ~= nil and not self:isTargetValid(currentTarget) then
-		self:clearTarget()
+	if currentTarget ~= nil and not self:IsTargetValid(currentTarget) then
+		self:ClearTarget()
 		currentTarget = nil
 	end
 
 	if currentTarget == nil then
-		local acquired = self:acquireTarget()
+		local acquired = self:AcquireTarget()
 		if acquired ~= nil then
-			self:setTarget(acquired)
+			self:SetTarget(acquired)
 			currentTarget = self.currentTarget
 		end
 	end
 
 	if currentTarget ~= nil then
-		if self:canAttackTarget(currentTarget) then
-			local attacked = self:attack(currentTarget)
+		if self:CanAttackTarget(currentTarget) then
+			local attacked = self:Attack(currentTarget)
 			if not attacked then
-				local targetPosition = resolvePositionFromTarget(currentTarget)
+				local targetPosition = GetPositionFromTarget(currentTarget)
 				if targetPosition then
-					self:moveTo(targetPosition)
+					self:MoveTo(targetPosition)
 				end
 			end
 		else
-			local targetPosition = resolvePositionFromTarget(currentTarget)
+			local targetPosition = GetPositionFromTarget(currentTarget)
 			if targetPosition then
-				self:moveTo(targetPosition)
+				self:MoveTo(targetPosition)
 			else
-				self:clearTarget()
+				self:ClearTarget()
 			end
 		end
 		return
@@ -1353,7 +1353,7 @@ function Npc.Die(self: Npc, killer: any?)
 
 	self.isAlive = false
 	self.hp = 0
-	self:clearTarget()
+	self:ClearTarget()
 	self:_disconnectRuntime()
 	unregisterNpc(self)
 	self:_setState("Dead")
@@ -1373,32 +1373,4 @@ function Npc.Die(self: Npc, killer: any?)
 		self.isSpawned = false
 	end
 end
-
-Npc.new = Npc.New
-Npc.isNpc = Npc.IsNpc
-Npc.getById = Npc.GetById
-Npc.getByModel = Npc.GetByModel
-Npc.getAllActive = Npc.GetAllActive
-Npc.start = Npc.Start
-Npc.respawn = Npc.Respawn
-Npc.stop = Npc.Stop
-Npc.destroy = Npc.Destroy
-Npc.getPosition = Npc.GetPosition
-Npc.getDistanceTo = Npc.GetDistanceTo
-Npc.isTargetValid = Npc.IsTargetValid
-Npc.acquireTarget = Npc.AcquireTarget
-Npc.setTarget = Npc.SetTarget
-Npc.clearTarget = Npc.ClearTarget
-Npc.moveTo = Npc.MoveTo
-Npc.moveInDirection = Npc.MoveInDirection
-Npc.stopMoving = Npc.StopMoving
-Npc.jump = Npc.Jump
-Npc.rollDamage = Npc.RollDamage
-Npc.takeDamage = Npc.TakeDamage
-Npc.heal = Npc.Heal
-Npc.giveDamage = Npc.GiveDamage
-Npc.canAttackTarget = Npc.CanAttackTarget
-Npc.attack = Npc.Attack
-Npc.die = Npc.Die
-
 return Npc

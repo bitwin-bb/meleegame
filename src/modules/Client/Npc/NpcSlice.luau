@@ -131,7 +131,7 @@ function NpcSlice.SetFromServiceState(stateRaw: any): NpcViewState
 				if typeof(runtimeId) ~= "string" then
 					continue
 				end
-				local snapshot = NpcServiceUtils.sanitizeSnapshot(sourceById[runtimeId], nil)
+				local snapshot = NpcServiceUtils.CoerceSnapshot(sourceById[runtimeId], nil)
 				if snapshot ~= nil and snapshot.npcType == "Slime" then
 					snapshot.spriteReceivedAt = os.clock()
 					byId[snapshot.id] = snapshot
@@ -141,7 +141,7 @@ function NpcSlice.SetFromServiceState(stateRaw: any): NpcViewState
 		end
 		if typeof(sourceById) == "table" then
 			for _, snapshotRaw in sourceById do
-				local snapshot = NpcServiceUtils.sanitizeSnapshot(snapshotRaw, nil)
+				local snapshot = NpcServiceUtils.CoerceSnapshot(snapshotRaw, nil)
 				if snapshot ~= nil and snapshot.npcType == "Slime" and byId[snapshot.id] == nil then
 					snapshot.spriteReceivedAt = os.clock()
 					byId[snapshot.id] = snapshot
@@ -161,7 +161,7 @@ function NpcSlice.SetFromServiceState(stateRaw: any): NpcViewState
 end
 
 function NpcSlice.UpsertSnapshot(snapshotRaw: any): NpcSnapshot?
-	local snapshot = NpcServiceUtils.sanitizeSnapshot(snapshotRaw, nil)
+	local snapshot = NpcServiceUtils.CoerceSnapshot(snapshotRaw, nil)
 	if snapshot == nil or snapshot.npcType ~= "Slime" then
 		return nil
 	end
@@ -216,7 +216,7 @@ function NpcSlice.RemoveSnapshot(runtimeIdRaw: any): boolean
 end
 
 function NpcSlice.SpawnSlimeDeathGore(snapshotRaw: any): { SlimeGoreSprite }
-	local snapshot = NpcServiceUtils.sanitizeSnapshot(snapshotRaw, nil)
+	local snapshot = NpcServiceUtils.CoerceSnapshot(snapshotRaw, nil)
 	if snapshot == nil or snapshot.position == nil then
 		return {}
 	end
@@ -269,11 +269,4 @@ end
 
 NpcSlice.npcViewStateAtom = npcViewStateAtom
 NpcSlice.slimeGoreSpritesAtom = slimeGoreSpritesAtom
-NpcSlice.getViewState = NpcSlice.GetViewState
-NpcSlice.setFromServiceState = NpcSlice.SetFromServiceState
-NpcSlice.upsertSnapshot = NpcSlice.UpsertSnapshot
-NpcSlice.removeSnapshot = NpcSlice.RemoveSnapshot
-NpcSlice.spawnSlimeDeathGore = NpcSlice.SpawnSlimeDeathGore
-NpcSlice.pruneSlimeGore = NpcSlice.PruneSlimeGore
-
 return NpcSlice

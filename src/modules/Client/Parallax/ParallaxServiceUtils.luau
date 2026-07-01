@@ -38,7 +38,7 @@ local function normalizeToken(valueRaw: any): string
 	return value
 end
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw and valueRaw ~= math.huge and valueRaw ~= -math.huge then
 		value = valueRaw
@@ -52,11 +52,11 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?,
 	return value
 end
 
-local function sanitizeInteger(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
-	return math.floor(sanitizeNumber(valueRaw, fallback, minimum, maximum))
+local function CoerceInteger(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+	return math.floor(CoerceNumber(valueRaw, fallback, minimum, maximum))
 end
 
-local function sanitizeColor3(valueRaw: any, fallback: Color3): Color3
+local function CoerceColor3(valueRaw: any, fallback: Color3): Color3
 	if typeof(valueRaw) == "Color3" then
 		return valueRaw
 	end
@@ -71,28 +71,28 @@ local function readSourceValue(source: { [string]: any }, camelName: string, pas
 	return source[pascalName]
 end
 
-local function resolveImageAspectRatio(source: { [string]: any }, fallback: number): number
-	local directAspectRatio = sanitizeNumber(source.imageAspectRatio, fallback, 0.05, 64)
+local function GetImageAspectRatio(source: { [string]: any }, fallback: number): number
+	local directAspectRatio = CoerceNumber(source.imageAspectRatio, fallback, 0.05, 64)
 	if typeof(source.imageAspectRatio) == "number" then
 		return directAspectRatio
 	end
 
-	local imageWidth = sanitizeNumber(source.imageWidth, -1, 1, 65536)
-	local imageHeight = sanitizeNumber(source.imageHeight, -1, 1, 65536)
+	local imageWidth = CoerceNumber(source.imageWidth, -1, 1, 65536)
+	local imageHeight = CoerceNumber(source.imageHeight, -1, 1, 65536)
 	if imageWidth > 0 and imageHeight > 0 then
-		return sanitizeNumber(imageWidth / imageHeight, fallback, 0.05, 64)
+		return CoerceNumber(imageWidth / imageHeight, fallback, 0.05, 64)
 	end
 
-	local tileWidth = sanitizeNumber(source.textureStudsPerTileU, -1, 1, 4096)
-	local tileHeight = sanitizeNumber(source.textureStudsPerTileV, -1, 1, 4096)
+	local tileWidth = CoerceNumber(source.textureStudsPerTileU, -1, 1, 4096)
+	local tileHeight = CoerceNumber(source.textureStudsPerTileV, -1, 1, 4096)
 	if tileWidth > 0 and tileHeight > 0 then
-		return sanitizeNumber(tileWidth / tileHeight, fallback, 0.05, 64)
+		return CoerceNumber(tileWidth / tileHeight, fallback, 0.05, 64)
 	end
 
 	return directAspectRatio
 end
 
-local function resolveImplicitSourceImageAspectRatio(biomeName: string, layerIndex: number): number?
+local function GetImplicitSourceImageAspectRatio(biomeName: string, layerIndex: number): number?
 	local normalizedBiomeName = normalizeToken(biomeName)
 	if normalizedBiomeName == "forest" then
 		normalizedBiomeName = "overworld"
@@ -111,13 +111,13 @@ local function resolveImplicitSourceImageAspectRatio(biomeName: string, layerInd
 	return imageDimensions.width / imageDimensions.height
 end
 
-local function resolveImplicitLayerDefaults(
+local function GetImplicitLayerDefaults(
 	biomeName: string,
 	layerIndex: number,
 	_totalLayers: number
 ): { [string]: any }
 	local stackIndex = math.max(layerIndex - 1, 0)
-	local imageAspectRatio = resolveImplicitSourceImageAspectRatio(biomeName, layerIndex)
+	local imageAspectRatio = GetImplicitSourceImageAspectRatio(biomeName, layerIndex)
 		or ParallaxConstants.IMPLICIT_LAYER_FALLBACK_IMAGE_ASPECT_RATIO
 
 	return {
@@ -153,7 +153,7 @@ local function resolveImplicitLayerDefaults(
 	}
 end
 
-local function sanitizeVerticalAlign(valueRaw: any, fallback: VerticalAlign): VerticalAlign
+local function CoerceVerticalAlign(valueRaw: any, fallback: VerticalAlign): VerticalAlign
 	local token = normalizeToken(valueRaw)
 	if token == "top" then
 		return "Top"
@@ -198,7 +198,7 @@ local function createImplicitLayerSource(
 	totalLayers: number,
 	image: string
 ): { [string]: any }
-	local defaults = resolveImplicitLayerDefaults(biomeName, layerIndex, totalLayers)
+	local defaults = GetImplicitLayerDefaults(biomeName, layerIndex, totalLayers)
 	return {
 		id = `{biomeName}_{variantName}_Layer_{layerIndex}`,
 		image = image,
@@ -225,7 +225,7 @@ local function createImplicitLayerSource(
 	}
 end
 
-local function sanitizeLayerDefinition(
+local function CoerceLayerDefinition(
 	layerRaw: any,
 	fallbackId: string,
 	layerIndex: number,
@@ -255,9 +255,9 @@ local function sanitizeLayerDefinition(
 		return nil
 	end
 
-	local defaults = resolveImplicitLayerDefaults(biomeName, layerIndex, totalLayers)
-	local minY = sanitizeNumber(readSourceValue(source, "minY", "MinY"), defaults.minY, -4, 4)
-	local maxY = sanitizeNumber(readSourceValue(source, "maxY", "MaxY"), defaults.maxY, -4, 4)
+	local defaults = GetImplicitLayerDefaults(biomeName, layerIndex, totalLayers)
+	local minY = CoerceNumber(readSourceValue(source, "minY", "MinY"), defaults.minY, -4, 4)
+	local maxY = CoerceNumber(readSourceValue(source, "maxY", "MaxY"), defaults.maxY, -4, 4)
 	if minY > maxY then
 		minY, maxY = maxY, minY
 	end
@@ -265,34 +265,34 @@ local function sanitizeLayerDefinition(
 	return {
 		id = trim(source.id) ~= "" and trim(source.id) or fallbackId,
 		image = image,
-		imageAspectRatio = resolveImageAspectRatio(source, defaults.imageAspectRatio),
-		depth = sanitizeNumber(source.depth, defaults.depth, 0, 0.98),
-		planeDepthBlocks = sanitizeNumber(source.planeDepthBlocks, defaults.planeDepthBlocks, 1, 256),
-		heightScale = sanitizeNumber(source.heightScale, defaults.heightScale, 0.05, 4),
-		segmentWidthScale = sanitizeNumber(source.segmentWidthScale, defaults.segmentWidthScale, 0.25, 8),
-		minSegments = sanitizeInteger(source.minSegments, defaults.minSegments, 1, 32),
-		overscanSegments = sanitizeInteger(source.overscanSegments, defaults.overscanSegments, 0, 16),
-		tint = sanitizeColor3(source.tint, defaults.tint),
+		imageAspectRatio = GetImageAspectRatio(source, defaults.imageAspectRatio),
+		depth = CoerceNumber(source.depth, defaults.depth, 0, 0.98),
+		planeDepthBlocks = CoerceNumber(source.planeDepthBlocks, defaults.planeDepthBlocks, 1, 256),
+		heightScale = CoerceNumber(source.heightScale, defaults.heightScale, 0.05, 4),
+		segmentWidthScale = CoerceNumber(source.segmentWidthScale, defaults.segmentWidthScale, 0.25, 8),
+		minSegments = CoerceInteger(source.minSegments, defaults.minSegments, 1, 32),
+		overscanSegments = CoerceInteger(source.overscanSegments, defaults.overscanSegments, 0, 16),
+		tint = CoerceColor3(source.tint, defaults.tint),
 		transparency = 0,
-		scrollSpeed = sanitizeNumber(source.scrollSpeed, defaults.scrollSpeed, -256, 256),
-		textureStudsPerTileU = sanitizeNumber(source.textureStudsPerTileU, defaults.textureStudsPerTileU, 1, 4096),
-		textureStudsPerTileV = sanitizeNumber(source.textureStudsPerTileV, defaults.textureStudsPerTileV, 1, 4096),
-		verticalAlign = sanitizeVerticalAlign(source.verticalAlign, defaults.verticalAlign),
-		verticalOffsetStuds = sanitizeNumber(source.verticalOffsetStuds, defaults.verticalOffsetStuds, -4096, 4096),
-		verticalDepth = sanitizeNumber(source.verticalDepth, defaults.verticalDepth, 0, 1),
-		verticalParallax = sanitizeNumber(
+		scrollSpeed = CoerceNumber(source.scrollSpeed, defaults.scrollSpeed, -256, 256),
+		textureStudsPerTileU = CoerceNumber(source.textureStudsPerTileU, defaults.textureStudsPerTileU, 1, 4096),
+		textureStudsPerTileV = CoerceNumber(source.textureStudsPerTileV, defaults.textureStudsPerTileV, 1, 4096),
+		verticalAlign = CoerceVerticalAlign(source.verticalAlign, defaults.verticalAlign),
+		verticalOffsetStuds = CoerceNumber(source.verticalOffsetStuds, defaults.verticalOffsetStuds, -4096, 4096),
+		verticalDepth = CoerceNumber(source.verticalDepth, defaults.verticalDepth, 0, 1),
+		verticalParallax = CoerceNumber(
 			readSourceValue(source, "verticalParallax", "VerticalParallax"),
 			defaults.verticalParallax,
 			0,
 			1
 		),
-		baseYOffset = sanitizeNumber(
+		baseYOffset = CoerceNumber(
 			readSourceValue(source, "baseYOffset", "BaseYOffset"),
 			defaults.baseYOffset,
 			-4,
 			4
 		),
-		bottomOverscan = sanitizeNumber(
+		bottomOverscan = CoerceNumber(
 			readSourceValue(source, "bottomOverscan", "BottomOverscan"),
 			defaults.bottomOverscan,
 			0,
@@ -303,7 +303,7 @@ local function sanitizeLayerDefinition(
 	}
 end
 
-local function sanitizeVariantDefinition(
+local function CoerceVariantDefinition(
 	biomeName: string,
 	variantNameRaw: any,
 	variantRaw: any
@@ -323,7 +323,7 @@ local function sanitizeVariantDefinition(
 
 	local layers: { LayerDefinition } = {}
 	for ordinal, numericIndex in indices do
-		local layer = sanitizeLayerDefinition(
+		local layer = CoerceLayerDefinition(
 			(layersRaw :: { [any]: any })[numericIndex],
 			`{biomeName}_{variantName}_Layer_{numericIndex}`,
 			ordinal,
@@ -365,7 +365,7 @@ local function appendBuiltInAliases(aliases: { string }, biomeName: string)
 	end
 end
 
-local function sanitizeBiomeDefinition(nameRaw: any, biomeRaw: any): BiomeDefinition?
+local function CoerceBiomeDefinition(nameRaw: any, biomeRaw: any): BiomeDefinition?
 	local name = trim(nameRaw)
 	if name == "" or typeof(biomeRaw) ~= "table" then
 		return nil
@@ -390,7 +390,7 @@ local function sanitizeBiomeDefinition(nameRaw: any, biomeRaw: any): BiomeDefini
 		if implicitVariantName == "" then
 			implicitVariantName = "default"
 		end
-		local variant = sanitizeVariantDefinition(name, implicitVariantName, {
+		local variant = CoerceVariantDefinition(name, implicitVariantName, {
 			layers = source.layers,
 		})
 		if variant ~= nil then
@@ -400,7 +400,7 @@ local function sanitizeBiomeDefinition(nameRaw: any, biomeRaw: any): BiomeDefini
 	elseif typeof(source.variants) == "table" then
 		for _, variantName in collectSortedStringKeys(source.variants) do
 			local variant =
-				sanitizeVariantDefinition(name, variantName, (source.variants :: { [string]: any })[variantName])
+				CoerceVariantDefinition(name, variantName, (source.variants :: { [string]: any })[variantName])
 			if variant ~= nil then
 				variants[variant.name] = variant
 				table.insert(orderedVariantNames, variant.name)
@@ -411,7 +411,7 @@ local function sanitizeBiomeDefinition(nameRaw: any, biomeRaw: any): BiomeDefini
 			if ParallaxConstants.BIOME_RESERVED_KEYS[variantName] then
 				continue
 			end
-			local variant = sanitizeVariantDefinition(name, variantName, source[variantName])
+			local variant = CoerceVariantDefinition(name, variantName, source[variantName])
 			if variant ~= nil then
 				variants[variant.name] = variant
 				table.insert(orderedVariantNames, variant.name)
@@ -451,7 +451,7 @@ function ParallaxServiceUtils.NormalizeCatalog(rawCatalog: any): Catalog
 			continue
 		end
 
-		local biome = sanitizeBiomeDefinition(biomeName, rawBiomes[biomeName])
+		local biome = CoerceBiomeDefinition(biomeName, rawBiomes[biomeName])
 		if biome == nil then
 			continue
 		end
@@ -465,7 +465,7 @@ function ParallaxServiceUtils.NormalizeCatalog(rawCatalog: any): Catalog
 	end
 
 	if next(biomes) == nil then
-		local fallbackBiome = sanitizeBiomeDefinition("overworld", {
+		local fallbackBiome = CoerceBiomeDefinition("overworld", {
 			defaultVariant = "default",
 			default = {
 				[1] = "rbxassetid://79294783523700",
@@ -492,10 +492,10 @@ function ParallaxServiceUtils.NormalizeCatalog(rawCatalog: any): Catalog
 
 	local settings: CatalogSettings = {
 		defaultBiome = if biomes[defaultBiome] ~= nil then defaultBiome else orderedBiomeNames[1],
-		transitionSeconds = sanitizeNumber(settingsRaw.transitionSeconds, 1.35, 0, 10),
-		biomeSampleIntervalSeconds = sanitizeNumber(settingsRaw.biomeSampleIntervalSeconds, 0.2, 0.02, 5),
+		transitionSeconds = CoerceNumber(settingsRaw.transitionSeconds, 1.35, 0, 10),
+		biomeSampleIntervalSeconds = CoerceNumber(settingsRaw.biomeSampleIntervalSeconds, 0.2, 0.02, 5),
 		folderName = trim(settingsRaw.folderName) ~= "" and trim(settingsRaw.folderName) or "ParallaxDepth",
-		segmentThickness = sanitizeNumber(settingsRaw.segmentThickness, 0.2, 0.01, 16),
+		segmentThickness = CoerceNumber(settingsRaw.segmentThickness, 0.2, 0.01, 16),
 	}
 
 	return {
@@ -506,7 +506,7 @@ function ParallaxServiceUtils.NormalizeCatalog(rawCatalog: any): Catalog
 	}
 end
 
-function ParallaxServiceUtils.ResolveBiomeName(catalog: Catalog, biomeNameRaw: any): string
+function ParallaxServiceUtils.GetBiomeName(catalog: Catalog, biomeNameRaw: any): string
 	local requestedName = trim(biomeNameRaw)
 	if requestedName ~= "" and catalog.biomes[requestedName] ~= nil then
 		return requestedName
@@ -520,11 +520,11 @@ function ParallaxServiceUtils.ResolveBiomeName(catalog: Catalog, biomeNameRaw: a
 	return catalog.settings.defaultBiome
 end
 
-function ParallaxServiceUtils.ResolveBiomeDefinition(catalog: Catalog, biomeNameRaw: any): BiomeDefinition
-	return catalog.biomes[ParallaxServiceUtils.ResolveBiomeName(catalog, biomeNameRaw)]
+function ParallaxServiceUtils.GetBiomeDefinition(catalog: Catalog, biomeNameRaw: any): BiomeDefinition
+	return catalog.biomes[ParallaxServiceUtils.GetBiomeName(catalog, biomeNameRaw)]
 end
 
-function ParallaxServiceUtils.ResolveVariantName(biomeDefinition: BiomeDefinition, variantNameRaw: any): string
+function ParallaxServiceUtils.GetVariantName(biomeDefinition: BiomeDefinition, variantNameRaw: any): string
 	local requestedName = trim(variantNameRaw)
 	if requestedName ~= "" and biomeDefinition.variants[requestedName] ~= nil then
 		return requestedName
@@ -532,13 +532,13 @@ function ParallaxServiceUtils.ResolveVariantName(biomeDefinition: BiomeDefinitio
 	return biomeDefinition.defaultVariantName
 end
 
-function ParallaxServiceUtils.ResolveVariantDefinition(
+function ParallaxServiceUtils.GetVariantDefinition(
 	catalog: Catalog,
 	biomeNameRaw: any,
 	variantNameRaw: any
 ): BiomeVariantDefinition
-	local biomeDefinition = ParallaxServiceUtils.ResolveBiomeDefinition(catalog, biomeNameRaw)
-	local variantName = ParallaxServiceUtils.ResolveVariantName(biomeDefinition, variantNameRaw)
+	local biomeDefinition = ParallaxServiceUtils.GetBiomeDefinition(catalog, biomeNameRaw)
+	local variantName = ParallaxServiceUtils.GetVariantName(biomeDefinition, variantNameRaw)
 	return biomeDefinition.variants[variantName]
 end
 
@@ -548,7 +548,7 @@ function ParallaxServiceUtils.CollectAssetIds(catalog: Catalog, biomeNamesRaw: {
 	local biomeNames: { any } = if biomeNamesRaw ~= nil then biomeNamesRaw else catalog.orderedBiomeNames :: any
 
 	for _, biomeNameRaw in biomeNames do
-		local biome = ParallaxServiceUtils.ResolveBiomeDefinition(catalog, biomeNameRaw)
+		local biome = ParallaxServiceUtils.GetBiomeDefinition(catalog, biomeNameRaw)
 		for _, variantName in biome.orderedVariantNames do
 			local variant = biome.variants[variantName]
 			for _, layer in variant.layers do
@@ -586,16 +586,16 @@ function ParallaxServiceUtils.ComputeHorizontalVisionStuds(
 	tileSizeRaw: any,
 	renderDistanceChunksRaw: any
 ): number
-	local chunkSize = sanitizeInteger(chunkSizeRaw, 32, 1, 512)
-	local tileSize = sanitizeNumber(tileSizeRaw, 4, 0.25, 128)
-	local renderDistanceChunks = sanitizeInteger(renderDistanceChunksRaw, 4, 1, 128)
+	local chunkSize = CoerceInteger(chunkSizeRaw, 32, 1, 512)
+	local tileSize = CoerceNumber(tileSizeRaw, 4, 0.25, 128)
+	local renderDistanceChunks = CoerceInteger(renderDistanceChunksRaw, 4, 1, 128)
 	return math.max(
 		ParallaxConstants.DEFAULT_HORIZONTAL_VISION_STUDS,
 		(renderDistanceChunks * 2 + 1) * chunkSize * tileSize
 	)
 end
 
-function ParallaxServiceUtils.ResolveDeterministicPlaneSizing(
+function ParallaxServiceUtils.GetDeterministicPlaneSizing(
 	visibleWidthRaw: any,
 	sizeReferenceWidthRaw: any,
 	horizontalVisionStudsRaw: any,
@@ -605,23 +605,23 @@ function ParallaxServiceUtils.ResolveDeterministicPlaneSizing(
 	textureStudsPerTileURaw: any,
 	requiredPlaneHeightRaw: any?
 ): PlaneSizing
-	local visibleWidth = sanitizeNumber(visibleWidthRaw, 0, 0, 1000000)
-	local sizeReferenceWidth = sanitizeNumber(sizeReferenceWidthRaw, visibleWidth, 0, 1000000)
+	local visibleWidth = CoerceNumber(visibleWidthRaw, 0, 0, 1000000)
+	local sizeReferenceWidth = CoerceNumber(sizeReferenceWidthRaw, visibleWidth, 0, 1000000)
 	local horizontalVisionStuds =
-		sanitizeNumber(horizontalVisionStudsRaw, ParallaxConstants.DEFAULT_HORIZONTAL_VISION_STUDS, 0, 1000000)
+		CoerceNumber(horizontalVisionStudsRaw, ParallaxConstants.DEFAULT_HORIZONTAL_VISION_STUDS, 0, 1000000)
 	local imageAspectRatio =
-		sanitizeNumber(imageAspectRatioRaw, ParallaxConstants.IMPLICIT_LAYER_FALLBACK_IMAGE_ASPECT_RATIO, 0.05, 64)
-	local heightScale = sanitizeNumber(heightScaleRaw, 1, 0.05, 4)
+		CoerceNumber(imageAspectRatioRaw, ParallaxConstants.IMPLICIT_LAYER_FALLBACK_IMAGE_ASPECT_RATIO, 0.05, 64)
+	local heightScale = CoerceNumber(heightScaleRaw, 1, 0.05, 4)
 	local segmentWidthScale =
-		sanitizeNumber(segmentWidthScaleRaw, ParallaxConstants.IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_BASE, 0.25, 8)
+		CoerceNumber(segmentWidthScaleRaw, ParallaxConstants.IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_BASE, 0.25, 8)
 	local textureStudsPerTileU =
-		sanitizeNumber(textureStudsPerTileURaw, ParallaxConstants.IMPLICIT_LAYER_BASE_TEXTURE_TILE_STUDS, 1, 4096)
+		CoerceNumber(textureStudsPerTileURaw, ParallaxConstants.IMPLICIT_LAYER_BASE_TEXTURE_TILE_STUDS, 1, 4096)
 
 	local minimumTextureRepeatWidth =
 		math.max(textureStudsPerTileU * 0.25, ParallaxConstants.MINIMUM_TEXTURE_REPEAT_WIDTH_STUDS)
 	local baseTextureRepeatWidth = math.max(sizeReferenceWidth * segmentWidthScale, minimumTextureRepeatWidth)
 	local baseTextureRepeatHeight = math.max(1, (baseTextureRepeatWidth / imageAspectRatio) * heightScale)
-	local textureRepeatHeight = math.max(baseTextureRepeatHeight, sanitizeNumber(requiredPlaneHeightRaw, 0, 0, 1000000))
+	local textureRepeatHeight = math.max(baseTextureRepeatHeight, CoerceNumber(requiredPlaneHeightRaw, 0, 0, 1000000))
 	local textureRepeatWidth = math.max(baseTextureRepeatWidth, (textureRepeatHeight / heightScale) * imageAspectRatio)
 	local horizontalBleed = math.max(
 		visibleWidth * ParallaxConstants.HORIZONTAL_PLANE_BLEED_FACTOR,
@@ -637,47 +637,47 @@ function ParallaxServiceUtils.ResolveDeterministicPlaneSizing(
 	}
 end
 
-function ParallaxServiceUtils.ResolveStableGameplayPlaneDistance(
+function ParallaxServiceUtils.GetStableGameplayPlaneDistance(
 	referenceDistanceRaw: any?,
 	cameraPositionXRaw: any,
 	worldOriginXRaw: any,
 	basePlaneXRaw: any
 ): number
-	local cameraPositionX = sanitizeNumber(cameraPositionXRaw, 0, nil, nil)
-	local worldOriginX = sanitizeNumber(worldOriginXRaw, 0, nil, nil)
-	local basePlaneX = sanitizeNumber(basePlaneXRaw, 0, nil, nil)
+	local cameraPositionX = CoerceNumber(cameraPositionXRaw, 0, nil, nil)
+	local worldOriginX = CoerceNumber(worldOriginXRaw, 0, nil, nil)
+	local basePlaneX = CoerceNumber(basePlaneXRaw, 0, nil, nil)
 	local gameplayPlaneDistance = math.max(math.abs(cameraPositionX - (worldOriginX + basePlaneX)), 1)
-	local referenceDistance = sanitizeNumber(referenceDistanceRaw, gameplayPlaneDistance, 1, nil)
+	local referenceDistance = CoerceNumber(referenceDistanceRaw, gameplayPlaneDistance, 1, nil)
 	return math.max(referenceDistance, gameplayPlaneDistance)
 end
 
-function ParallaxServiceUtils.ResolveHorizonLockedCenterY(
+function ParallaxServiceUtils.GetHorizonLockedCenterY(
 	cameraPositionYRaw: any,
 	visibleHeightRaw: any,
 	verticalOffsetAlphaRaw: any,
 	verticalOffsetStudsRaw: any?
 ): number
-	local cameraPositionY = sanitizeNumber(cameraPositionYRaw, 0, nil, nil)
-	local visibleHeight = sanitizeNumber(visibleHeightRaw, 1, 1, nil)
-	local verticalOffsetAlpha = sanitizeNumber(verticalOffsetAlphaRaw, 0.5, -4, 4)
-	local verticalOffsetStuds = sanitizeNumber(verticalOffsetStudsRaw, 0, nil, nil)
+	local cameraPositionY = CoerceNumber(cameraPositionYRaw, 0, nil, nil)
+	local visibleHeight = CoerceNumber(visibleHeightRaw, 1, 1, nil)
+	local verticalOffsetAlpha = CoerceNumber(verticalOffsetAlphaRaw, 0.5, -4, 4)
+	local verticalOffsetStuds = CoerceNumber(verticalOffsetStudsRaw, 0, nil, nil)
 	return cameraPositionY - visibleHeight * 0.5 + visibleHeight * verticalOffsetAlpha + verticalOffsetStuds
 end
 
-function ParallaxServiceUtils.ResolveWorldHorizonCenterY(
+function ParallaxServiceUtils.GetWorldHorizonCenterY(
 	worldOriginYRaw: any,
 	visibleHeightRaw: any,
 	verticalOffsetAlphaRaw: any,
 	verticalOffsetStudsRaw: any?
 ): number
-	local worldOriginY = sanitizeNumber(worldOriginYRaw, 0, nil, nil)
-	local visibleHeight = sanitizeNumber(visibleHeightRaw, 1, 1, nil)
-	local verticalOffsetAlpha = sanitizeNumber(verticalOffsetAlphaRaw, 0.5, -4, 4)
-	local verticalOffsetStuds = sanitizeNumber(verticalOffsetStudsRaw, 0, nil, nil)
+	local worldOriginY = CoerceNumber(worldOriginYRaw, 0, nil, nil)
+	local visibleHeight = CoerceNumber(visibleHeightRaw, 1, 1, nil)
+	local verticalOffsetAlpha = CoerceNumber(verticalOffsetAlphaRaw, 0.5, -4, 4)
+	local verticalOffsetStuds = CoerceNumber(verticalOffsetStudsRaw, 0, nil, nil)
 	return worldOriginY + visibleHeight * verticalOffsetAlpha + verticalOffsetStuds
 end
 
-function ParallaxServiceUtils.ResolveWorldHorizonParallaxCenterY(
+function ParallaxServiceUtils.GetWorldHorizonParallaxCenterY(
 	worldOriginYRaw: any,
 	cameraPositionYRaw: any,
 	visibleHeightRaw: any,
@@ -686,8 +686,8 @@ function ParallaxServiceUtils.ResolveWorldHorizonParallaxCenterY(
 	verticalParallaxRaw: any?,
 	subjectPositionRaw: any?
 ): number
-	local worldOriginY = sanitizeNumber(worldOriginYRaw, 0, nil, nil)
-	local baseCenterY = ParallaxServiceUtils.ResolveWorldHorizonCenterY(
+	local worldOriginY = CoerceNumber(worldOriginYRaw, 0, nil, nil)
+	local baseCenterY = ParallaxServiceUtils.GetWorldHorizonCenterY(
 		worldOriginY,
 		visibleHeightRaw,
 		verticalOffsetAlphaRaw,
@@ -695,12 +695,12 @@ function ParallaxServiceUtils.ResolveWorldHorizonParallaxCenterY(
 	)
 	local subjectY = if typeof(subjectPositionRaw) == "Vector3"
 		then (subjectPositionRaw :: Vector3).Y
-		else sanitizeNumber(cameraPositionYRaw, worldOriginY, nil, nil)
-	local verticalParallax = sanitizeNumber(verticalParallaxRaw, 0, 0, 1)
+		else CoerceNumber(cameraPositionYRaw, worldOriginY, nil, nil)
+	local verticalParallax = CoerceNumber(verticalParallaxRaw, 0, 0, 1)
 	return baseCenterY + (subjectY - worldOriginY) * verticalParallax
 end
 
-function ParallaxServiceUtils.ResolveSharedHorizonVerticalShift(layerLimitsRaw: any): number
+function ParallaxServiceUtils.GetSharedHorizonVerticalShift(layerLimitsRaw: any): number
 	if typeof(layerLimitsRaw) ~= "table" then
 		return 0
 	end
@@ -712,61 +712,48 @@ function ParallaxServiceUtils.ResolveSharedHorizonVerticalShift(layerLimitsRaw: 
 		end
 
 		local layerLimit = layerLimitRaw :: { [string]: any }
-		local centerY = sanitizeNumber(layerLimit.centerY, 0, nil, nil)
-		local maximumCenterY = sanitizeNumber(layerLimit.maximumCenterY, centerY, nil, nil)
+		local centerY = CoerceNumber(layerLimit.centerY, 0, nil, nil)
+		local maximumCenterY = CoerceNumber(layerLimit.maximumCenterY, centerY, nil, nil)
 		shift = math.min(shift, maximumCenterY - centerY)
 	end
 	return shift
 end
 
-function ParallaxServiceUtils.ResolveScrollPositionZ(cameraPositionZRaw: any, subjectPositionRaw: any?): number
+function ParallaxServiceUtils.GetScrollPositionZ(cameraPositionZRaw: any, subjectPositionRaw: any?): number
 	if typeof(subjectPositionRaw) == "Vector3" then
 		return (subjectPositionRaw :: Vector3).Z
 	end
 
-	return sanitizeNumber(cameraPositionZRaw, 0, nil, nil)
+	return CoerceNumber(cameraPositionZRaw, 0, nil, nil)
 end
 
-function ParallaxServiceUtils.ResolveBiomeNameFromWorldSample(
+function ParallaxServiceUtils.GetBiomeNameFromWorldSample(
 	catalog: Catalog,
 	biomeIdRaw: any,
 	biomeTypeRaw: any,
 	_depthLayerRaw: any
 ): string
-	local biomeType = sanitizeInteger(biomeTypeRaw, WorldSimulationShared.BIOME_ID.FOREST, 0, 1024)
-	local biomeId = sanitizeInteger(biomeIdRaw, WorldSimulationShared.BIOME_ID.FOREST, 0, 1024)
+	local biomeType = CoerceInteger(biomeTypeRaw, WorldSimulationShared.BIOME_ID.FOREST, 0, 1024)
+	local biomeId = CoerceInteger(biomeIdRaw, WorldSimulationShared.BIOME_ID.FOREST, 0, 1024)
 
 	if biomeId == WorldSimulationShared.BIOME_ID.CORRUPTION or biomeType == 2 then
-		return ParallaxServiceUtils.ResolveBiomeName(catalog, "Corruption")
+		return ParallaxServiceUtils.GetBiomeName(catalog, "Corruption")
 	end
 	if biomeId == WorldSimulationShared.BIOME_ID.DESERT then
-		return ParallaxServiceUtils.ResolveBiomeName(catalog, "Desert")
+		return ParallaxServiceUtils.GetBiomeName(catalog, "Desert")
 	end
 	if biomeId == WorldSimulationShared.BIOME_ID.SNOW then
-		return ParallaxServiceUtils.ResolveBiomeName(catalog, "Snow")
+		return ParallaxServiceUtils.GetBiomeName(catalog, "Snow")
 	end
 	if biomeId == WorldSimulationShared.BIOME_ID.JUNGLE then
-		return ParallaxServiceUtils.ResolveBiomeName(catalog, "Jungle")
+		return ParallaxServiceUtils.GetBiomeName(catalog, "Jungle")
 	end
-	return ParallaxServiceUtils.ResolveBiomeName(catalog, "Overworld")
+	return ParallaxServiceUtils.GetBiomeName(catalog, "Overworld")
 end
 
-ParallaxServiceUtils.normalizeCatalog = ParallaxServiceUtils.NormalizeCatalog
-ParallaxServiceUtils.resolveBiomeName = ParallaxServiceUtils.ResolveBiomeName
-ParallaxServiceUtils.resolveBiomeDefinition = ParallaxServiceUtils.ResolveBiomeDefinition
-ParallaxServiceUtils.resolveVariantName = ParallaxServiceUtils.ResolveVariantName
-ParallaxServiceUtils.resolveVariantDefinition = ParallaxServiceUtils.ResolveVariantDefinition
-ParallaxServiceUtils.collectAssetIds = ParallaxServiceUtils.CollectAssetIds
-ParallaxServiceUtils.createDefaultState = ParallaxServiceUtils.CreateDefaultState
-ParallaxServiceUtils.cloneState = ParallaxServiceUtils.CloneState
-ParallaxServiceUtils.computeHorizontalVisionStuds = ParallaxServiceUtils.ComputeHorizontalVisionStuds
-ParallaxServiceUtils.resolveDeterministicPlaneSizing = ParallaxServiceUtils.ResolveDeterministicPlaneSizing
-ParallaxServiceUtils.resolveStableGameplayPlaneDistance = ParallaxServiceUtils.ResolveStableGameplayPlaneDistance
-ParallaxServiceUtils.resolveHorizonLockedCenterY = ParallaxServiceUtils.ResolveHorizonLockedCenterY
-ParallaxServiceUtils.resolveWorldHorizonCenterY = ParallaxServiceUtils.ResolveWorldHorizonCenterY
-ParallaxServiceUtils.resolveWorldHorizonParallaxCenterY = ParallaxServiceUtils.ResolveWorldHorizonParallaxCenterY
-ParallaxServiceUtils.resolveSharedHorizonVerticalShift = ParallaxServiceUtils.ResolveSharedHorizonVerticalShift
-ParallaxServiceUtils.resolveScrollPositionZ = ParallaxServiceUtils.ResolveScrollPositionZ
-ParallaxServiceUtils.resolveBiomeNameFromWorldSample = ParallaxServiceUtils.ResolveBiomeNameFromWorldSample
+
+
+
+
 
 return ParallaxServiceUtils

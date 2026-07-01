@@ -75,7 +75,7 @@ function findModuleInDir(baseDir, name) {
   return null;
 }
 
-function resolveScriptRequire(fromFile, expr) {
+function getScriptRequire(fromFile, expr) {
   const compact = expr.replace(/\s+/g, '');
   if (!compact.startsWith('script')) {
     return null;
@@ -109,7 +109,7 @@ function resolveScriptRequire(fromFile, expr) {
       }
       currentDir = path.dirname(found.path);
     } else {
-      // unresolved folder node, continue traversal inside folder
+      // missing folder node, continue traversal inside folder
       currentDir = found.path;
       if (i === parts.length - 1) {
         const initA = path.join(currentDir, 'init.luau');
@@ -133,26 +133,26 @@ function resolveScriptRequire(fromFile, expr) {
 }
 
 const edges = [];
-const unresolvedScriptRequires = [];
+const missingScriptRequires = [];
 for (const file of files) {
   const content = fs.readFileSync(file, 'utf8');
   const reqs = extractRequires(content);
   for (const req of reqs) {
-    const resolved = resolveScriptRequire(file, req);
-    const from = rel(file);
-    edges.push({ from, expr: req, resolved });
-    if (req.replace(/\s+/g, '').startsWith('script') && !resolved) {
-      unresolvedScriptRequires.push({ from, expr: req });
-    }
+    const scriptTarget = getScriptRequire(file, req);
+	const from = rel(file);
+	edges.push({ from, expr: req, scriptTarget });
+	if (req.replace(/\s+/g, '').startsWith('script') && !scriptTarget) {
+	  missingScriptRequires.push({ from, expr: req });
+	}
   }
 }
 
 const allRelFiles = files.map(rel);
 const adj = new Map(allRelFiles.map((f) => [f, []]));
 for (const edge of edges) {
-  if (!edge.resolved) continue;
+  if (!edge.scriptTarget) continue;
   if (!adj.has(edge.from)) adj.set(edge.from, []);
-  adj.get(edge.from).push(edge.resolved);
+  adj.get(edge.from).push(edge.scriptTarget);
 }
 
 let index = 0;
@@ -201,7 +201,7 @@ const cycles = sccs
 const helperNames = [
   'Codec','BinaryStreaming','TickScheduler','TickSchedular','AttributeCache','DamagePipeline','ObjectPool','WorldMutationQueue',
   'UIController','UISpringAnimator','VirtualizedList','ReactiveState','TooltipManager','NotificationBus','HUDLayoutEngine',
-  'RichTextFormatter','StatStringBuilder','LocalizationEngine','DynamicTextResolver','TextMeasurementCache','AbbreviationFormatter',
+  'RichTextFormatter','StatStringBuilder','LocalizationEngine','DynamicTextGetter','TextMeasurementCache','AbbreviationFormatter',
   'Platform','Input','HUDScaler','Gestures','GamepadNav','PerfTier','Haptics','Cursor'
 ];
 
@@ -234,12 +234,12 @@ const output = {
     scripts: files.length,
     byTopPackage: countByTopPackage(),
     requireEdges: edges.length,
-    resolvedScriptEdges: edges.filter((e) => !!e.resolved).length,
-    unresolvedScriptRequires: unresolvedScriptRequires.length,
+    scriptEdges: edges.filter((e) => !!e.scriptTarget).length,
+    missingScriptRequires: missingScriptRequires.length,
     cycles: cycles.length,
   },
   cycles,
-  unresolvedScriptRequires,
+  missingScriptRequires,
   helperUsage,
   edges,
 };

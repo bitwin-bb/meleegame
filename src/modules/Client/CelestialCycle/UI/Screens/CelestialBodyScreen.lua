@@ -14,7 +14,7 @@ local e: typeof(React.createElement) = React.createElement
 
 local CelestialBodyScreen = {}
 
-local function resolvePortalTarget(): PlayerGui?
+local function GetPortalTarget(): PlayerGui?
 	local localPlayer = Players.LocalPlayer
 	if localPlayer == nil then
 		return nil
@@ -22,7 +22,7 @@ local function resolvePortalTarget(): PlayerGui?
 	return localPlayer:FindFirstChildOfClass("PlayerGui")
 end
 
-local function resolveAspectRatio(canvasSize: Vector2): number
+local function GetAspectRatio(canvasSize: Vector2): number
 	if canvasSize.X <= 0 or canvasSize.Y <= 0 then
 		return 1
 	end
@@ -30,8 +30,8 @@ local function resolveAspectRatio(canvasSize: Vector2): number
 end
 
 function CelestialBodyScreen.Render(): React.ReactNode
-	local state = Hooks.useCycle()
-	local portalTarget = resolvePortalTarget()
+	local state = Hooks.UseCycle()
+	local portalTarget = GetPortalTarget()
 	if state.adornee == nil or portalTarget == nil or state.cycle == nil then
 		return nil
 	end
@@ -58,7 +58,7 @@ function CelestialBodyScreen.Render(): React.ReactNode
 				Size = UDim2.fromScale(1, 1),
 			}, {
 				Aspect = e("UIAspectRatioConstraint", {
-					AspectRatio = resolveAspectRatio(state.canvasSize),
+					AspectRatio = GetAspectRatio(state.canvasSize),
 					DominantAxis = Enum.DominantAxis.Width,
 				}),
 				Sun = e(CelestialBody, {

@@ -15,7 +15,7 @@ local HpServiceServer = require("HpServiceServer")
 local InstanceUtils = require("InstanceUtils")
 local LootServiceServer = require("LootServiceServer")
 local PacketPayload = require("PacketPayload")
-local NpcServicePackets = require("NetSharedPackets").NpcService
+local NpcServicePackets = require("NetPacketsShared").NpcService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = NpcServicePackets[methodName]
@@ -24,7 +24,7 @@ local function sendPacket(player: Player, methodName: string, ...: any)
 		return
 	end
 
-	packet.sendTo(PacketPayload.pack(...), player)
+	packet.sendTo(PacketPayload.Pack(...), player)
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -39,12 +39,13 @@ local function bindPacket(self: any, methodName: string)
 			return
 		end
 
-		local handler = self[methodName]
+		local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, player, table.unpack(arguments, 1, count))
 	end)
 end
@@ -61,7 +62,7 @@ end
 local NevermoreSupport = require("NevermoreSupport")
 local NpcServiceUtils = require("NpcServiceUtils")
 local PlayerServiceServer = require("PlayerServiceServer")
-local ServerBinderSupport = require("ServerBinderSupport")
+local BinderSupportServer = require("BinderSupportServer")
 local SlimeNpc = require("SlimeNpc")
 local WorkspaceFolders = require("WorkspaceFolders")
 local WorldGenerationServiceServer = require("WorldGenerationServiceServer")
@@ -158,7 +159,7 @@ local function fireForPlayers(players: { Player }, methodName: string, ...: any)
 	end
 end
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -174,17 +175,17 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?,
 	return value
 end
 
-function NpcServiceServer.SanitizeNumber(
+function NpcServiceServer.CoerceNumber(
 	_self: NpcServiceServer,
 	valueRaw: any,
 	fallback: number,
 	minimum: number?,
 	maximum: number?
 ): number
-	return sanitizeNumber(valueRaw, fallback, minimum, maximum)
+	return CoerceNumber(valueRaw, fallback, minimum, maximum)
 end
 
-local function sanitizeSizeVector(sizeRaw: any, fallback: Vector3): Vector3
+local function CoerceSizeVector(sizeRaw: any, fallback: Vector3): Vector3
 	if typeof(sizeRaw) ~= "Vector3" then
 		return fallback
 	end
@@ -197,7 +198,7 @@ end
 
 local function computeBoxAabb(cframeRaw: any, sizeRaw: any): (Vector3, Vector3)
 	local cframe = if typeof(cframeRaw) == "CFrame" then cframeRaw else CFrame.new()
-	local size = sanitizeSizeVector(sizeRaw, Vector3.new(0.05, 0.05, 0.05))
+	local size = CoerceSizeVector(sizeRaw, Vector3.new(0.05, 0.05, 0.05))
 	local halfSize = size * 0.5
 	local right = cframe.RightVector
 	local up = cframe.UpVector
@@ -212,7 +213,7 @@ local function computeBoxAabb(cframeRaw: any, sizeRaw: any): (Vector3, Vector3)
 end
 
 local function aabbIntersects(aMin: Vector3, aMax: Vector3, bMin: Vector3, bMax: Vector3): boolean
-	return Bounds.intersects(Bounds.new(aMin, aMax), Bounds.new(bMin, bMax))
+	return Bounds.Intersects(Bounds.New(aMin, aMax), Bounds.New(bMin, bMax))
 end
 
 local function setModelCollisionGroup(model: Model, collisionGroup: string)
@@ -228,7 +229,7 @@ local function applyRuntimeModelAttributes(runtime: NpcRuntime, model: Model?)
 		return
 	end
 
-	NpcServiceUtils.applyRuntimeModelAttributes(model, runtime.id, runtime.npcType, runtime.displayName)
+	NpcServiceUtils.ApplyRuntimeModelAttributes(model, runtime.id, runtime.npcType, runtime.displayName)
 end
 
 local function isValidSurfaceSpawnPart(part: BasePart): boolean
@@ -239,7 +240,7 @@ local function isValidSurfaceSpawnPart(part: BasePart): boolean
 		return false
 	end
 
-	local worldFolder = WorkspaceFolders.findFolderInGameOrWorkspace(WORLD_GENERATION_FOLDER_NAME)
+	local worldFolder = WorkspaceFolders.FindFolderInGameOrWorkspace(WORLD_GENERATION_FOLDER_NAME)
 	if worldFolder == nil then
 		return true
 	end
@@ -247,14 +248,14 @@ local function isValidSurfaceSpawnPart(part: BasePart): boolean
 end
 
 function NpcServiceServer.EnsureNpcFolder(self: NpcServiceServer): Folder
-	return WorkspaceFolders.getOrCreateFolderInGame(DEFAULT_NPC_FOLDER_NAME)
+	return WorkspaceFolders.GetOrCreateFolderInGame(DEFAULT_NPC_FOLDER_NAME)
 end
 
 function NpcServiceServer.InitNpcModules(self: NpcServiceServer)
 	self.npcModulesByType = {}
 	for npcType, npcModule in NPC_MODULES do
 		self.npcModulesByType[tostring(npcType)] = npcModule
-		local init = (npcModule :: any).init
+		local init = (npcModule :: any).Init
 		if typeof(init) == "function" then
 			init(npcModule, self)
 		end
@@ -294,12 +295,12 @@ function NpcServiceServer.ApplyPlayerCollisionGroup(self: NpcServiceServer, play
 	if character == nil then
 		return
 	end
-	self:ensureCollisionGroups()
+	self:EnsureCollisionGroups()
 	setModelCollisionGroup(character, PLAYER_COLLISION_GROUP)
 end
 
 function NpcServiceServer.BindPlayerCollisionGroup(self: NpcServiceServer, player: Player)
-	self:applyPlayerCollisionGroup(player)
+	self:ApplyPlayerCollisionGroup(player)
 
 	local previousConnection = self.playerCharacterAddedConnections[player]
 	if previousConnection ~= nil then
@@ -307,7 +308,7 @@ function NpcServiceServer.BindPlayerCollisionGroup(self: NpcServiceServer, playe
 	end
 
 	self.playerCharacterAddedConnections[player] = player.CharacterAdded:Connect(function(character: Model)
-		self:ensureCollisionGroups()
+		self:EnsureCollisionGroups()
 		setModelCollisionGroup(character, PLAYER_COLLISION_GROUP)
 	end)
 end
@@ -325,18 +326,18 @@ function NpcServiceServer.ApplyRuntimeNpcCollisionGroup(self: NpcServiceServer, 
 	if model == nil then
 		return
 	end
-	self:ensureCollisionGroups()
+	self:EnsureCollisionGroups()
 	setModelCollisionGroup(model, ENEMY_COLLISION_GROUP)
 end
 
-function NpcServiceServer.ResolveWorld(self: NpcServiceServer): any?
-	local getWorldMethod = (WorldGenerationServiceServer :: any).getWorld
+function NpcServiceServer.GetWorld(self: NpcServiceServer): any?
+	local getWorldMethod = (WorldGenerationServiceServer :: any).GetWorld
 	if typeof(getWorldMethod) ~= "function" then
 		return nil
 	end
 
 	local ok, worldOrError = pcall(function()
-		return (WorldGenerationServiceServer :: any):getWorld()
+		return (WorldGenerationServiceServer :: any):GetWorld()
 	end)
 	if not ok then
 		return nil
@@ -349,18 +350,18 @@ function NpcServiceServer.ResolveWorld(self: NpcServiceServer): any?
 end
 
 function NpcServiceServer.IsCorruptionBiomePosition(self: NpcServiceServer, worldPosition: Vector3): boolean
-	local world = self:resolveWorld()
+	local world = self:GetWorld()
 	if world == nil then
 		return false
 	end
 
-	local getBiomeTypeAtWorldPositionMethod = (world :: any).getBiomeTypeAtWorldPosition
+	local getBiomeTypeAtWorldPositionMethod = (world :: any).GetBiomeTypeAtWorldPosition
 	if typeof(getBiomeTypeAtWorldPositionMethod) ~= "function" then
 		return false
 	end
 
 	local ok, biomeTypeOrError = pcall(function()
-		return (world :: any):getBiomeTypeAtWorldPosition(worldPosition)
+		return (world :: any):GetBiomeTypeAtWorldPosition(worldPosition)
 	end)
 	if not ok or typeof(biomeTypeOrError) ~= "number" then
 		return false
@@ -370,8 +371,8 @@ function NpcServiceServer.IsCorruptionBiomePosition(self: NpcServiceServer, worl
 end
 
 function NpcServiceServer.CreateSnapshot(self: NpcServiceServer, runtime: NpcRuntime): NpcSnapshot
-	self:syncRuntimeVitals(runtime)
-	local position = runtime.slime:getPosition()
+	self:SyncRuntimeVitals(runtime)
+	local position = runtime.slime:GetPosition()
 	local snapshot: NpcSnapshot = {
 		id = runtime.id,
 		npcType = runtime.npcType,
@@ -387,8 +388,8 @@ function NpcServiceServer.CreateSnapshot(self: NpcServiceServer, runtime: NpcRun
 		lastReason = runtime.lastReason,
 	}
 
-	local npcModule = self:getRuntimeModule(runtime)
-	local getSpriteState = if npcModule ~= nil then (npcModule :: any).getSpriteState else nil
+	local npcModule = self:GetRuntimeModule(runtime)
+	local getSpriteState = if npcModule ~= nil then (npcModule :: any).GetSpriteState else nil
 	if typeof(getSpriteState) == "function" then
 		local ok, spriteStateRaw = pcall(function()
 			return getSpriteState(npcModule, self, runtime)
@@ -435,8 +436,8 @@ function NpcServiceServer.CreateSnapshot(self: NpcServiceServer, runtime: NpcRun
 end
 
 function NpcServiceServer.SyncRuntimeVitals(self: NpcServiceServer, runtime: NpcRuntime)
-	local npcModule = self:getRuntimeModule(runtime)
-	local syncVitals = if npcModule ~= nil then (npcModule :: any).syncVitals else nil
+	local npcModule = self:GetRuntimeModule(runtime)
+	local syncVitals = if npcModule ~= nil then (npcModule :: any).SyncVitals else nil
 	if typeof(syncVitals) == "function" then
 		syncVitals(npcModule, runtime)
 		return
@@ -452,7 +453,7 @@ function NpcServiceServer.GetRuntime(self: NpcServiceServer, runtimeId: string):
 	return self.runtimes[runtimeId]
 end
 
-function NpcServiceServer.ResolveRuntimeFromModel(self: NpcServiceServer, modelRaw: any): NpcRuntime?
+function NpcServiceServer.GetUntimeFromModel(self: NpcServiceServer, modelRaw: any): NpcRuntime?
 	if typeof(modelRaw) ~= "Instance" or not modelRaw:IsA("Model") then
 		return nil
 	end
@@ -471,16 +472,16 @@ function NpcServiceServer.ResolveRuntimeFromModel(self: NpcServiceServer, modelR
 	return nil
 end
 
-function NpcServiceServer.ResolveRuntimeFromPart(self: NpcServiceServer, partRaw: any): NpcRuntime?
+function NpcServiceServer.GetUntimeFromPart(self: NpcServiceServer, partRaw: any): NpcRuntime?
 	if typeof(partRaw) ~= "Instance" or not partRaw:IsA("BasePart") then
 		return nil
 	end
 
 	local enemyHitbox = self.enemyHitbox
 	if enemyHitbox ~= nil then
-		local runtimeId = enemyHitbox:resolveEnemyIdFromPart(partRaw)
+		local runtimeId = enemyHitbox:GetEnemyIdFromPart(partRaw)
 		if runtimeId ~= nil then
-			local runtime = self:getRuntime(runtimeId)
+			local runtime = self:GetRuntime(runtimeId)
 			if runtime ~= nil then
 				return runtime
 			end
@@ -488,10 +489,10 @@ function NpcServiceServer.ResolveRuntimeFromPart(self: NpcServiceServer, partRaw
 	end
 
 	local parentModel = partRaw:FindFirstAncestorOfClass("Model")
-	return self:resolveRuntimeFromModel(parentModel)
+	return self:GetUntimeFromModel(parentModel)
 end
 
-function NpcServiceServer.ResolveRuntimeHurtbox(self: NpcServiceServer, runtime: NpcRuntime): (Vector3, Vector3)
+function NpcServiceServer.GetUntimeHurtbox(self: NpcServiceServer, runtime: NpcRuntime): (Vector3, Vector3)
 	local model = runtime.slime.model
 	local center: Vector3? = nil
 	local size = DEFAULT_RUNTIME_HURTBOX_SIZE
@@ -501,17 +502,17 @@ function NpcServiceServer.ResolveRuntimeHurtbox(self: NpcServiceServer, runtime:
 		end)
 		if ok and typeof(boundsCFrameOrError) == "CFrame" and typeof(boundsSize) == "Vector3" then
 			center = boundsCFrameOrError.Position
-			size = sanitizeSizeVector(boundsSize, DEFAULT_RUNTIME_HURTBOX_SIZE)
+			size = CoerceSizeVector(boundsSize, DEFAULT_RUNTIME_HURTBOX_SIZE)
 		end
 	end
 
 	if center == nil then
-		local rootPart = InstanceUtils.resolveModelRootPart(model)
+		local rootPart = InstanceUtils.GetModelRootPart(model)
 		if rootPart ~= nil then
 			center = rootPart.Position
-			size = sanitizeSizeVector(rootPart.Size, DEFAULT_RUNTIME_HURTBOX_SIZE)
+			size = CoerceSizeVector(rootPart.Size, DEFAULT_RUNTIME_HURTBOX_SIZE)
 		else
-			local slimePosition = runtime.slime:getPosition()
+			local slimePosition = runtime.slime:GetPosition()
 			if typeof(slimePosition) == "Vector3" then
 				center = slimePosition
 			else
@@ -546,12 +547,12 @@ function NpcServiceServer.DamageNpcsInBox(
 		return 0
 	end
 
-	local damage = sanitizeNumber(damageRaw, 0, 0, 100000)
+	local damage = CoerceNumber(damageRaw, 0, 0, 100000)
 	if damage <= 0 then
 		return 0
 	end
 
-	local querySize = sanitizeSizeVector(querySizeRaw, Vector3.new(0.05, 0.05, 0.05))
+	local querySize = CoerceSizeVector(querySizeRaw, Vector3.new(0.05, 0.05, 0.05))
 	local queryMin, queryMax = computeBoxAabb(queryCFrameRaw, querySize)
 	local totalAppliedDamage = 0
 	for _, runtime in self.runtimes do
@@ -559,13 +560,13 @@ function NpcServiceServer.DamageNpcsInBox(
 			continue
 		end
 
-		local hurtboxCenter, hurtboxSize = self:resolveRuntimeHurtbox(runtime)
+		local hurtboxCenter, hurtboxSize = self:GetUntimeHurtbox(runtime)
 		local hurtboxMin, hurtboxMax = computeBoxAabb(CFrame.new(hurtboxCenter), hurtboxSize)
 		if not aabbIntersects(queryMin, queryMax, hurtboxMin, hurtboxMax) then
 			continue
 		end
 
-		totalAppliedDamage += self:applyRuntimeDamage(runtime, damage, source, damageContextRaw)
+		totalAppliedDamage += self:ApplyRuntimeDamage(runtime, damage, source, damageContextRaw)
 	end
 
 	return totalAppliedDamage
@@ -590,15 +591,15 @@ function NpcServiceServer.ApplyRuntimeDamage(
 		return 0
 	end
 
-	local damage = sanitizeNumber(rawDamage, 0, 0, 100000)
+	local damage = CoerceNumber(rawDamage, 0, 0, 100000)
 	if damage <= 0 then
 		return 0
 	end
 
-	local appliedDamage = slime:takeDamage(damage, source)
+	local appliedDamage = slime:TakeDamage(damage, source)
 	if appliedDamage > 0 then
-		self:syncRuntimeVitals(runtime)
-		self:updateRuntime(runtime, "externalDamage", false)
+		self:SyncRuntimeVitals(runtime)
+		self:UpdateRuntime(runtime, "externalDamage", false)
 	end
 	return appliedDamage
 end
@@ -614,12 +615,12 @@ function NpcServiceServer.DamageNpcFromHitPart(
 		return 0
 	end
 
-	local runtime = self:resolveRuntimeFromPart(hitPartRaw)
+	local runtime = self:GetUntimeFromPart(hitPartRaw)
 	if runtime == nil then
 		return 0
 	end
 
-	return self:applyRuntimeDamage(runtime, damageRaw, source, damageContextRaw)
+	return self:ApplyRuntimeDamage(runtime, damageRaw, source, damageContextRaw)
 end
 
 function NpcServiceServer.OnEnemyHitPlayer(self: NpcServiceServer, runtimeIdRaw: any, playerRaw: any, damageRaw: any)
@@ -630,7 +631,7 @@ function NpcServiceServer.OnEnemyHitPlayer(self: NpcServiceServer, runtimeIdRaw:
 		return
 	end
 
-	local runtime = self:getRuntime(runtimeIdRaw)
+	local runtime = self:GetRuntime(runtimeIdRaw)
 	if runtime == nil then
 		return
 	end
@@ -639,24 +640,24 @@ function NpcServiceServer.OnEnemyHitPlayer(self: NpcServiceServer, runtimeIdRaw:
 	end
 
 	local hpService = HpServiceServer :: HpServiceServerObject
-	local defaultDamage = sanitizeNumber(runtime.slime.damage, 0, 0, 100000)
-	local damage = sanitizeNumber(damageRaw, defaultDamage, 0, 100000)
+	local defaultDamage = CoerceNumber(runtime.slime.damage, 0, 0, 100000)
+	local damage = CoerceNumber(damageRaw, defaultDamage, 0, 100000)
 	if damage <= 0 then
 		return
 	end
 
-	local healthAfterDamage = hpService:damagePlayer(playerRaw, damage)
+	local healthAfterDamage = hpService:DamagePlayer(playerRaw, damage)
 	if healthAfterDamage == nil then
 		return
 	end
 
 	runtime.lastEnemyHitAt = os.clock()
-	self:updateRuntime(runtime, "enemyHitPlayer", false)
+	self:UpdateRuntime(runtime, "enemyHitPlayer", false)
 end
 
 function NpcServiceServer.RegisterRuntimeEnemyHitbox(self: NpcServiceServer, runtime: NpcRuntime)
-	local npcModule = self:getRuntimeModule(runtime)
-	local registerEnemyHitbox = if npcModule ~= nil then (npcModule :: any).registerEnemyHitbox else nil
+	local npcModule = self:GetRuntimeModule(runtime)
+	local registerEnemyHitbox = if npcModule ~= nil then (npcModule :: any).RegisterEnemyHitbox else nil
 	if typeof(registerEnemyHitbox) == "function" then
 		registerEnemyHitbox(npcModule, self, runtime)
 	end
@@ -665,7 +666,7 @@ end
 function NpcServiceServer.UnregisterRuntimeEnemyHitbox(self: NpcServiceServer, runtime: NpcRuntime)
 	local enemyHitboxId = runtime.enemyHitboxId
 	if enemyHitboxId ~= nil and self.enemyHitbox ~= nil then
-		self.enemyHitbox:unregisterEnemy(enemyHitboxId)
+		self.enemyHitbox:UnregisterEnemy(enemyHitboxId)
 	end
 	runtime.enemyHitboxId = nil
 end
@@ -682,7 +683,7 @@ end
 
 function NpcServiceServer.GetNextFallbackSpawnCFrame(self: NpcServiceServer): CFrame
 	if #self.spawnCFrames <= 0 then
-		self.spawnCFrames = NpcServiceUtils.collectSpawnCFrames(math.max(1, self.slimeSpawnSettings.maxAlive))
+		self.spawnCFrames = NpcServiceUtils.CollectSpawnCFrames(math.max(1, self.slimeSpawnSettings.maxAlive))
 		self.nextSpawnIndex = 1
 	end
 
@@ -697,7 +698,7 @@ function NpcServiceServer.GetNextFallbackSpawnCFrame(self: NpcServiceServer): CF
 	return nextCFrame
 end
 
-function NpcServiceServer.ResolveSurfaceSpawnCFrame(
+function NpcServiceServer.GetSurfaceSpawnCFrame(
 	self: NpcServiceServer,
 	candidatePosition: Vector3,
 	characterToIgnore: Model?
@@ -804,11 +805,11 @@ function NpcServiceServer.GetNextPlayerRelativeSpawnCFrame(self: NpcServiceServe
 			local yOffset = self.random:NextNumber(0, DEFAULT_PLAYER_RELATIVE_Y_OFFSET)
 			local spawnPosition = rootPart.Position + Vector3.new(0, yOffset, spawnSign * zOffset)
 
-			local snappedSpawnCFrame = self:resolveSurfaceSpawnCFrame(spawnPosition, character)
+			local snappedSpawnCFrame = self:GetSurfaceSpawnCFrame(spawnPosition, character)
 			if
 				snappedSpawnCFrame ~= nil
-				and not self:isCorruptionBiomePosition(snappedSpawnCFrame.Position)
-				and self:isSpawnGapClear(snappedSpawnCFrame, character)
+				and not self:IsCorruptionBiomePosition(snappedSpawnCFrame.Position)
+				and self:IsSpawnGapClear(snappedSpawnCFrame, character)
 			then
 				return snappedSpawnCFrame
 			end
@@ -827,7 +828,7 @@ function NpcServiceServer.GetNearestPlayerDistance(self: NpcServiceServer, posit
 			continue
 		end
 
-		local rootPart = InstanceUtils.resolveModelRootPart(character)
+		local rootPart = InstanceUtils.GetModelRootPart(character)
 		if rootPart == nil then
 			continue
 		end
@@ -847,7 +848,7 @@ function NpcServiceServer.DespawnFarRuntimes(self: NpcServiceServer, reasonRaw: 
 		return 0
 	end
 
-	local despawnDistance = sanitizeNumber(settings.despawnDistance, 0, 0, 100000)
+	local despawnDistance = CoerceNumber(settings.despawnDistance, 0, 0, 100000)
 	if despawnDistance <= 0 then
 		return 0
 	end
@@ -859,13 +860,13 @@ function NpcServiceServer.DespawnFarRuntimes(self: NpcServiceServer, reasonRaw: 
 			continue
 		end
 
-		local position = runtime.slime:getPosition()
+		local position = runtime.slime:GetPosition()
 		if position == nil then
 			table.insert(removalIds, runtimeId)
 			continue
 		end
 
-		local nearestDistance = self:getNearestPlayerDistance(position)
+		local nearestDistance = self:GetNearestPlayerDistance(position)
 		if nearestDistance == nil or nearestDistance > distanceThreshold then
 			table.insert(removalIds, runtimeId)
 		end
@@ -873,22 +874,22 @@ function NpcServiceServer.DespawnFarRuntimes(self: NpcServiceServer, reasonRaw: 
 
 	local reason = if typeof(reasonRaw) == "string" and reasonRaw ~= "" then reasonRaw else "tooFarFromPlayers"
 	for _, runtimeId in removalIds do
-		self:removeRuntime(runtimeId, reason)
+		self:RemoveRuntime(runtimeId, reason)
 	end
 
 	return #removalIds
 end
 
 function NpcServiceServer.GetNextSpawnCFrame(self: NpcServiceServer): CFrame?
-	return self:getNextPlayerRelativeSpawnCFrame()
+	return self:GetNextPlayerRelativeSpawnCFrame()
 end
 
 function NpcServiceServer.CreateDefaultSpawnConfigAt(self: NpcServiceServer, spawnCFrame: CFrame): SlimeSpawnConfig?
-	if self:isCorruptionBiomePosition(spawnCFrame.Position) then
+	if self:IsCorruptionBiomePosition(spawnCFrame.Position) then
 		return nil
 	end
 
-	local configs = NpcServiceUtils.createDefaultSlimeSpawnConfigs({ spawnCFrame })
+	local configs = NpcServiceUtils.CreateDefaultSlimeSpawnConfigs({ spawnCFrame })
 	if #configs <= 0 then
 		return nil
 	end
@@ -897,36 +898,36 @@ end
 
 function NpcServiceServer.GetDebugSpawnCFrameForPlayer(self: NpcServiceServer, playerRaw: any, indexRaw: any): CFrame?
 	if typeof(playerRaw) ~= "Instance" or not playerRaw:IsA("Player") then
-		return self:getNextSpawnCFrame()
+		return self:GetNextSpawnCFrame()
 	end
 
 	local character = playerRaw.Character
 	if character == nil then
-		return self:getNextSpawnCFrame()
+		return self:GetNextSpawnCFrame()
 	end
 
-	local rootPart = InstanceUtils.resolveModelRootPart(character)
+	local rootPart = InstanceUtils.GetModelRootPart(character)
 	if rootPart == nil then
-		return self:getNextSpawnCFrame()
+		return self:GetNextSpawnCFrame()
 	end
 
-	local index = math.max(1, math.floor(sanitizeNumber(indexRaw, 1, 1, 10 ^ 6)))
+	local index = math.max(1, math.floor(CoerceNumber(indexRaw, 1, 1, 10 ^ 6)))
 	local laneIndex = math.floor((index - 1) / 2)
 	local directionSign = if index % 2 == 1 then 1 else -1
 	local zOffset = DEFAULT_PLAYER_RELATIVE_MIN_Z_OFFSET + laneIndex * 8
 	local yOffset = DEFAULT_PLAYER_RELATIVE_Y_OFFSET + math.min(laneIndex, 4)
 	local candidatePosition = rootPart.Position + Vector3.new(0, yOffset, directionSign * zOffset)
-	local snappedSpawnCFrame = self:resolveSurfaceSpawnCFrame(candidatePosition, character)
+	local snappedSpawnCFrame = self:GetSurfaceSpawnCFrame(candidatePosition, character)
 
 	if
 		snappedSpawnCFrame ~= nil
-		and not self:isCorruptionBiomePosition(snappedSpawnCFrame.Position)
-		and self:isSpawnGapClear(snappedSpawnCFrame, character)
+		and not self:IsCorruptionBiomePosition(snappedSpawnCFrame.Position)
+		and self:IsSpawnGapClear(snappedSpawnCFrame, character)
 	then
 		return snappedSpawnCFrame
 	end
 
-	return self:getNextSpawnCFrame()
+	return self:GetNextSpawnCFrame()
 end
 
 function NpcServiceServer.SpawnDebugNpcById(
@@ -939,12 +940,12 @@ function NpcServiceServer.SpawnDebugNpcById(
 		return nil, "unsupported_npc"
 	end
 
-	local spawnCFrame = self:getDebugSpawnCFrameForPlayer(playerRaw, indexRaw)
+	local spawnCFrame = self:GetDebugSpawnCFrameForPlayer(playerRaw, indexRaw)
 	if spawnCFrame == nil then
 		return nil, "missing_spawn_cframe"
 	end
 
-	local spawnConfig = self:createDefaultSpawnConfigAt(spawnCFrame)
+	local spawnConfig = self:CreateDefaultSpawnConfigAt(spawnCFrame)
 	if spawnConfig == nil then
 		return nil, "invalid_spawn_configuration"
 	end
@@ -953,7 +954,7 @@ function NpcServiceServer.SpawnDebugNpcById(
 	spawnConfig.displayName = "Green Slime"
 	spawnConfig.modelName = "GreenSlime"
 
-	local runtime = self:spawnSlime(spawnConfig)
+	local runtime = self:SpawnSlime(spawnConfig)
 	if runtime == nil then
 		return nil, "spawn_failed"
 	end
@@ -967,9 +968,9 @@ function NpcServiceServer.TryAutoSpawnSlime(self: NpcServiceServer, reasonRaw: a
 		return nil
 	end
 
-	self:despawnFarRuntimes("spawnPrecheck")
+	self:DespawnFarRuntimes("spawnPrecheck")
 
-	local activeCount = self:getActiveSlimeCount()
+	local activeCount = self:GetActiveSlimeCount()
 	if activeCount >= settings.maxAlive then
 		return nil
 	end
@@ -983,19 +984,19 @@ function NpcServiceServer.TryAutoSpawnSlime(self: NpcServiceServer, reasonRaw: a
 		return nil
 	end
 
-	local spawnCFrame = self:getNextSpawnCFrame()
+	local spawnCFrame = self:GetNextSpawnCFrame()
 	if spawnCFrame == nil then
 		return nil
 	end
-	local spawnConfig = self:createDefaultSpawnConfigAt(spawnCFrame)
+	local spawnConfig = self:CreateDefaultSpawnConfigAt(spawnCFrame)
 	if spawnConfig == nil then
 		return nil
 	end
 
-	local runtime = self:spawnSlime(spawnConfig)
+	local runtime = self:SpawnSlime(spawnConfig)
 	if runtime ~= nil then
 		local reason = if typeof(reasonRaw) == "string" and reasonRaw ~= "" then reasonRaw else "autoSpawn"
-		self:transitionRuntimeState(runtime, "Spawning", reason, true)
+		self:TransitionRuntimeState(runtime, "Spawning", reason, true)
 	end
 	return runtime
 end
@@ -1003,7 +1004,7 @@ end
 function NpcServiceServer.CreateStatePayload(self: NpcServiceServer): { NpcSnapshot }
 	local snapshots = {}
 	for _, runtime in self.runtimes do
-		table.insert(snapshots, self:createSnapshot(runtime))
+		table.insert(snapshots, self:CreateSnapshot(runtime))
 	end
 	return snapshots
 end
@@ -1011,7 +1012,7 @@ end
 function NpcServiceServer.Broadcast(self: NpcServiceServer, methodName: string, ...: any)
 	local recipients = {}
 	for _, player in Players:GetPlayers() do
-		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
+		if PlayerServiceServer:IsGameplayActiveForPlayer(player) then
 			recipients[#recipients + 1] = player
 		end
 	end
@@ -1019,11 +1020,11 @@ function NpcServiceServer.Broadcast(self: NpcServiceServer, methodName: string, 
 end
 
 function NpcServiceServer.PushState(self: NpcServiceServer, player: Player)
-	sendPacket(player, NpcServiceUtils.CLIENT_METHOD_APPLY_STATE, self:createStatePayload())
+	sendPacket(player, NpcServiceUtils.CLIENT_METHOD_APPLY_STATE, self:CreateStatePayload())
 end
 
 function NpcServiceServer.RequestSync(self: NpcServiceServer, player: Player)
-	self:pushState(player)
+	self:PushState(player)
 end
 
 function NpcServiceServer.TransitionRuntimeState(
@@ -1041,7 +1042,7 @@ function NpcServiceServer.TransitionRuntimeState(
 		return true
 	end
 
-	if forceTransition ~= true and not NpcServiceUtils.canTransition(runtime.stateGraph, currentState, nextState) then
+	if forceTransition ~= true and not NpcServiceUtils.CanTransition(runtime.stateGraph, currentState, nextState) then
 		return false
 	end
 
@@ -1049,9 +1050,9 @@ function NpcServiceServer.TransitionRuntimeState(
 	runtime.lastReason = reason
 	runtime.updatedAt = os.clock()
 
-	local payload = self:createSnapshot(runtime) :: any
+	local payload = self:CreateSnapshot(runtime) :: any
 	payload.previousState = currentState
-	self:broadcast(NpcServiceUtils.CLIENT_METHOD_NPC_STATE_CHANGED, payload)
+	self:Broadcast(NpcServiceUtils.CLIENT_METHOD_NPC_STATE_CHANGED, payload)
 	return true
 end
 
@@ -1060,14 +1061,14 @@ function NpcServiceServer.RemoveRuntime(self: NpcServiceServer, runtimeIdRaw: an
 		return
 	end
 
-	local runtime = self:getRuntime(runtimeIdRaw)
+	local runtime = self:GetRuntime(runtimeIdRaw)
 	if runtime == nil then
 		return
 	end
 
 	runtime.isRemoving = true
 	self.runtimes[runtimeIdRaw] = nil
-	self:unregisterRuntimeEnemyHitbox(runtime)
+	self:UnregisterRuntimeEnemyHitbox(runtime)
 
 	local model = runtime.slime.model
 	if model and self.runtimesByModel[model] == runtime then
@@ -1075,21 +1076,21 @@ function NpcServiceServer.RemoveRuntime(self: NpcServiceServer, runtimeIdRaw: an
 	end
 
 	local reason = if typeof(reasonRaw) == "string" and reasonRaw ~= "" then reasonRaw else "removed"
-	self:transitionRuntimeState(runtime, "Dead", reason, true)
+	self:TransitionRuntimeState(runtime, "Dead", reason, true)
 
 	if not (runtime.slime :: any)._isDestroyed then
-		runtime.slime:destroy()
+		runtime.slime:Destroy()
 	end
 
 	runtime.janitor:Destroy()
-	self:broadcast(NpcServiceUtils.CLIENT_METHOD_NPC_REMOVED, runtimeIdRaw)
+	self:Broadcast(NpcServiceUtils.CLIENT_METHOD_NPC_REMOVED, runtimeIdRaw)
 end
 
-function NpcServiceServer.ResolveRuntimeState(self: NpcServiceServer, runtime: NpcRuntime): NpcRuntimeState
-	local npcModule = self:getRuntimeModule(runtime)
-	local resolveRuntimeState = if npcModule ~= nil then (npcModule :: any).resolveRuntimeState else nil
-	if typeof(resolveRuntimeState) == "function" then
-		return resolveRuntimeState(npcModule, self, runtime)
+function NpcServiceServer.GetUntimeState(self: NpcServiceServer, runtime: NpcRuntime): NpcRuntimeState
+	local npcModule = self:GetRuntimeModule(runtime)
+	local GetUntimeState = if npcModule ~= nil then (npcModule :: any).GetUntimeState else nil
+	if typeof(GetUntimeState) == "function" then
+		return GetUntimeState(npcModule, self, runtime)
 	end
 
 	local npc = runtime.npc
@@ -1104,9 +1105,9 @@ function NpcServiceServer.ResolveRuntimeState(self: NpcServiceServer, runtime: N
 	end
 
 	local currentTarget = npc.currentTarget
-	local hasTarget = currentTarget ~= nil and npc:isTargetValid(currentTarget)
+	local hasTarget = currentTarget ~= nil and npc:IsTargetValid(currentTarget)
 	if hasTarget then
-		if npc:canAttackTarget(currentTarget) then
+		if npc:CanAttackTarget(currentTarget) then
 			return "Attacking"
 		end
 		return "Aggro"
@@ -1119,21 +1120,21 @@ function NpcServiceServer.ResolveRuntimeState(self: NpcServiceServer, runtime: N
 end
 
 function NpcServiceServer.RefreshRuntimeBiome(self: NpcServiceServer, runtime: NpcRuntime)
-	local world = self:resolveWorld()
+	local world = self:GetWorld()
 	if world == nil then
 		runtime.biomeName = "Unknown"
 		runtime.biomeReady = false
 		return
 	end
 
-	local position = runtime.slime:getPosition()
+	local position = runtime.slime:GetPosition()
 	if position == nil then
 		runtime.biomeName = "Unknown"
 		runtime.biomeReady = false
 		return
 	end
 
-	local biomeName, biomeReady = NpcServiceUtils.resolveBiomeNameFromWorld(world, position)
+	local biomeName, biomeReady = NpcServiceUtils.GetBiomeNameFromWorld(world, position)
 	runtime.biomeName = biomeName
 	runtime.biomeReady = biomeReady
 end
@@ -1153,18 +1154,18 @@ function NpcServiceServer.UpdateRuntime(
 	local previousMaxHp = runtime.maxHp
 	local previousAlive = runtime.isAlive
 
-	self:syncRuntimeVitals(runtime)
+	self:SyncRuntimeVitals(runtime)
 	if self.enemyHitbox ~= nil then
-		self.enemyHitbox:setEnemyAlive(runtime.id, runtime.isAlive)
+		self.enemyHitbox:SetEnemyAlive(runtime.id, runtime.isAlive)
 	end
 
 	if refreshBiome then
-		self:refreshRuntimeBiome(runtime)
+		self:RefreshRuntimeBiome(runtime)
 	end
 
-	local desiredState = self:resolveRuntimeState(runtime)
-	local transitioned = self:transitionRuntimeState(runtime, desiredState, reason, false)
-	local snapshot = if transitioned then self:createSnapshot(runtime) else nil
+	local desiredState = self:GetUntimeState(runtime)
+	local transitioned = self:TransitionRuntimeState(runtime, desiredState, reason, false)
+	local snapshot = if transitioned then self:CreateSnapshot(runtime) else nil
 	local spriteStateKey = if snapshot ~= nil then getSnapshotSpriteStateKey(snapshot) else runtime.lastSpriteStateKey
 	if transitioned and runtime.state ~= previousState then
 		runtime.lastSpriteStateKey = spriteStateKey
@@ -1180,7 +1181,7 @@ function NpcServiceServer.UpdateRuntime(
 	if shouldBroadcastSameState then
 		local payload = snapshot :: any
 		payload.previousState = previousState
-		self:broadcast(NpcServiceUtils.CLIENT_METHOD_NPC_STATE_CHANGED, payload)
+		self:Broadcast(NpcServiceUtils.CLIENT_METHOD_NPC_STATE_CHANGED, payload)
 		runtime.lastSpriteStateKey = spriteStateKey
 	end
 end
@@ -1197,34 +1198,34 @@ function NpcServiceServer.TrackRuntime(self: NpcServiceServer, runtime: NpcRunti
 	runtime.janitor:GiveChore(runtime.slime.signals.spawned:Connect(function(modelInstance: Model)
 		self.runtimesByModel[modelInstance] = runtime
 		applyRuntimeModelAttributes(runtime, modelInstance)
-		self:applyRuntimeNpcCollisionGroup(runtime)
+		self:ApplyRuntimeNpcCollisionGroup(runtime)
 		if self.enemyHitbox ~= nil then
-			self.enemyHitbox:setEnemyModel(runtime.id, modelInstance)
-			self.enemyHitbox:setEnemyAlive(runtime.id, runtime.slime.isAlive)
+			self.enemyHitbox:SetEnemyModel(runtime.id, modelInstance)
+			self.enemyHitbox:SetEnemyAlive(runtime.id, runtime.slime.isAlive)
 		end
-		self:syncRuntimeVitals(runtime)
-		self:updateRuntime(runtime, "spawned", true)
+		self:SyncRuntimeVitals(runtime)
+		self:UpdateRuntime(runtime, "spawned", true)
 	end))
 
 	runtime.janitor:GiveChore(runtime.slime.signals.stateChanged:Connect(function()
-		self:updateRuntime(runtime, "npcStateChanged", false)
+		self:UpdateRuntime(runtime, "npcStateChanged", false)
 	end))
 
 	runtime.janitor:GiveChore(runtime.slime.signals.targetChanged:Connect(function()
-		self:updateRuntime(runtime, "targetChanged", false)
+		self:UpdateRuntime(runtime, "targetChanged", false)
 	end))
 
 	runtime.janitor:GiveChore(runtime.npc.signals.attacked:Connect(function()
 		runtime.lastEnemyHitAt = os.clock()
-		self:updateRuntime(runtime, "npcAttacked", false)
+		self:UpdateRuntime(runtime, "npcAttacked", false)
 	end))
 
 	runtime.janitor:GiveChore(
 		runtime.slime.signals.damaged:Connect(function(damageAmount: number, _source: any?, hpRaw: number?)
 			local _ = damageAmount
 			local _hp = hpRaw
-			self:syncRuntimeVitals(runtime)
-			self:updateRuntime(runtime, "damaged", false)
+			self:SyncRuntimeVitals(runtime)
+			self:UpdateRuntime(runtime, "damaged", false)
 		end)
 	)
 
@@ -1232,23 +1233,23 @@ function NpcServiceServer.TrackRuntime(self: NpcServiceServer, runtime: NpcRunti
 		runtime.isAlive = false
 		runtime.hp = 0
 		if self.enemyHitbox ~= nil then
-			self.enemyHitbox:setEnemyAlive(runtime.id, false)
+			self.enemyHitbox:SetEnemyAlive(runtime.id, false)
 		end
-		local npcModule = self:getRuntimeModule(runtime)
-		local spawnLoot = if npcModule ~= nil then (npcModule :: any).spawnLoot else nil
+		local npcModule = self:GetRuntimeModule(runtime)
+		local spawnLoot = if npcModule ~= nil then (npcModule :: any).SpawnLoot else nil
 		if typeof(spawnLoot) == "function" then
 			spawnLoot(npcModule, self, runtime)
 		end
-		self:transitionRuntimeState(runtime, "Dead", "died", true)
+		self:TransitionRuntimeState(runtime, "Dead", "died", true)
 		task.delay(2, function()
-			local activeRuntime = self:getRuntime(runtime.id)
+			local activeRuntime = self:GetRuntime(runtime.id)
 			if activeRuntime == nil then
 				return
 			end
 			if activeRuntime.slime.isAlive then
 				return
 			end
-			self:removeRuntime(runtime.id, "deathCleanup")
+			self:RemoveRuntime(runtime.id, "deathCleanup")
 		end)
 	end))
 
@@ -1258,20 +1259,20 @@ function NpcServiceServer.TrackRuntime(self: NpcServiceServer, runtime: NpcRunti
 			if runtime.isRemoving then
 				return
 			end
-			self:removeRuntime(runtime.id, "modelDestroyed")
+			self:RemoveRuntime(runtime.id, "modelDestroyed")
 		end))
 	end
 
-	self:applyRuntimeNpcCollisionGroup(runtime)
-	self:registerRuntimeEnemyHitbox(runtime)
+	self:ApplyRuntimeNpcCollisionGroup(runtime)
+	self:RegisterRuntimeEnemyHitbox(runtime)
 end
 
 function NpcServiceServer.SpawnSlime(self: NpcServiceServer, spawnConfig: SlimeSpawnConfig): NpcRuntime?
 	local npcModule = self.npcModulesByType.Slime
-	if npcModule == nil or typeof((npcModule :: any).spawn) ~= "function" then
+	if npcModule == nil or typeof((npcModule :: any).Spawn) ~= "function" then
 		return nil
 	end
-	local runtime = (npcModule :: any):spawn(self, spawnConfig)
+	local runtime = (npcModule :: any):Spawn(self, spawnConfig)
 	return runtime :: NpcRuntime?
 end
 
@@ -1283,13 +1284,13 @@ function NpcServiceServer.SpawnInitialSlimes(self: NpcServiceServer)
 
 	local maxInitial = math.min(settings.initialSpawnCount, settings.maxAlive)
 	for _ = 1, maxInitial do
-		local spawnCFrame = self:getNextSpawnCFrame()
+		local spawnCFrame = self:GetNextSpawnCFrame()
 		if spawnCFrame == nil then
 			continue
 		end
-		local spawnConfig = self:createDefaultSpawnConfigAt(spawnCFrame)
+		local spawnConfig = self:CreateDefaultSpawnConfigAt(spawnCFrame)
 		if spawnConfig ~= nil then
-			self:spawnSlime(spawnConfig)
+			self:SpawnSlime(spawnConfig)
 		end
 	end
 end
@@ -1299,14 +1300,14 @@ function NpcServiceServer.OnHeartbeat(self: NpcServiceServer, dt: number)
 	self.despawnRefreshAccumulator += dt
 	if self.despawnRefreshAccumulator >= DEFAULT_DESPAWN_CHECK_INTERVAL then
 		self.despawnRefreshAccumulator = 0
-		self:despawnFarRuntimes("heartbeatDistance")
+		self:DespawnFarRuntimes("heartbeatDistance")
 	end
 
 	if settings.enabled then
 		self.spawnAccumulator += dt
 		while self.spawnAccumulator >= settings.spawnRate do
 			self.spawnAccumulator -= settings.spawnRate
-			self:tryAutoSpawnSlime("spawnRateTick")
+			self:TryAutoSpawnSlime("spawnRateTick")
 		end
 	end
 
@@ -1324,61 +1325,61 @@ function NpcServiceServer.OnHeartbeat(self: NpcServiceServer, dt: number)
 	end
 	if shouldRefreshBiome then
 		self.biomeRefreshAccumulator = 0
-		self:resolveWorld()
+		self:GetWorld()
 	end
 
 	for _, runtime in self.runtimes do
-		self:updateRuntime(runtime, "heartbeat", shouldRefreshBiome)
+		self:UpdateRuntime(runtime, "heartbeat", shouldRefreshBiome)
 	end
 end
 
 function NpcServiceServer.Init(self: NpcServiceServer)
 	bindPackets(self)
 	self.npcModulesByType = {}
-	self:initNpcModules()
+	self:InitNpcModules()
 	self.runtimes = {}
 	self.runtimesByModel = {}
 	self.world = nil
 	self.lootService = LootServiceServer :: LootServiceServerObject
 	self.collisionGroupsReady = false
 	self.playerCharacterAddedConnections = {}
-	self:ensureCollisionGroups()
-	self.enemyHitbox = EnemyHitbox.new({
+	self:EnsureCollisionGroups()
+	self.enemyHitbox = EnemyHitbox.New({
 		cellSize = 8,
 		playerCellSize = 8,
 	})
-	self.npcFolder = self:ensureNpcFolder()
+	self.npcFolder = self:EnsureNpcFolder()
 	local rawNpcSettings = if typeof(Configs) == "table" then (Configs :: any).npcSettings else nil
 	local rawSlimeSettings = if typeof(rawNpcSettings) == "table" then (rawNpcSettings :: any).slime else nil
-	self.slimeSpawnSettings = NpcServiceUtils.sanitizeSlimeSpawnSettings(rawSlimeSettings, nil)
-	self.spawnCFrames = NpcServiceUtils.collectSpawnCFrames(math.max(1, self.slimeSpawnSettings.maxAlive))
+	self.slimeSpawnSettings = NpcServiceUtils.CoerceSlimeSpawnSettings(rawSlimeSettings, nil)
+	self.spawnCFrames = NpcServiceUtils.CollectSpawnCFrames(math.max(1, self.slimeSpawnSettings.maxAlive))
 	self.nextSpawnIndex = 1
 	self.spawnAccumulator = 0
 	self.despawnRefreshAccumulator = 0
 	self.random = Random.new()
 	self.stateRefreshAccumulator = 0
 	self.biomeRefreshAccumulator = 0
-	self.binders = NevermoreSupport.getService(ServerBinderSupport)
+	self.binders = NevermoreSupport.GetService(BinderSupportServer)
 
 	for _, player in Players:GetPlayers() do
-		self:bindPlayerCollisionGroup(player)
+		self:BindPlayerCollisionGroup(player)
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		self:bindPlayerCollisionGroup(player)
-		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
-			self:pushState(player)
+		self:BindPlayerCollisionGroup(player)
+		if PlayerServiceServer:IsGameplayActiveForPlayer(player) then
+			self:PushState(player)
 		end
 	end)
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
-		self:unbindPlayerCollisionGroup(player)
+		self:UnbindPlayerCollisionGroup(player)
 	end)
 
 	self.heartbeatConnection = RunService.Heartbeat:Connect(function(dt: number)
-		self:onHeartbeat(dt)
+		self:OnHeartbeat(dt)
 	end)
 
-	self:spawnInitialSlimes()
+	self:SpawnInitialSlimes()
 end
 
 function NpcServiceServer.Destroy(self: NpcServiceServer)
@@ -1408,67 +1409,16 @@ function NpcServiceServer.Destroy(self: NpcServiceServer)
 		table.insert(runtimeIds, runtimeId)
 	end
 	for _, runtimeId in runtimeIds do
-		self:removeRuntime(runtimeId, "serviceDestroyed")
+		self:RemoveRuntime(runtimeId, "serviceDestroyed")
 	end
 
 	if self.enemyHitbox ~= nil then
-		self.enemyHitbox:destroy()
+		self.enemyHitbox:Destroy()
 		self.enemyHitbox = nil
 	end
 
 	self.lootService = nil
 end
-
-NpcServiceServer.ensureNpcFolder = NpcServiceServer.EnsureNpcFolder
-NpcServiceServer.ensureCollisionGroups = NpcServiceServer.EnsureCollisionGroups
-NpcServiceServer.applyPlayerCollisionGroup = NpcServiceServer.ApplyPlayerCollisionGroup
-NpcServiceServer.bindPlayerCollisionGroup = NpcServiceServer.BindPlayerCollisionGroup
-NpcServiceServer.unbindPlayerCollisionGroup = NpcServiceServer.UnbindPlayerCollisionGroup
-NpcServiceServer.applyRuntimeNpcCollisionGroup = NpcServiceServer.ApplyRuntimeNpcCollisionGroup
-NpcServiceServer.resolveWorld = NpcServiceServer.ResolveWorld
-NpcServiceServer.isCorruptionBiomePosition = NpcServiceServer.IsCorruptionBiomePosition
-NpcServiceServer.createSnapshot = NpcServiceServer.CreateSnapshot
-NpcServiceServer.syncRuntimeVitals = NpcServiceServer.SyncRuntimeVitals
-NpcServiceServer.getRuntime = NpcServiceServer.GetRuntime
-NpcServiceServer.resolveRuntimeFromModel = NpcServiceServer.ResolveRuntimeFromModel
-NpcServiceServer.resolveRuntimeFromPart = NpcServiceServer.ResolveRuntimeFromPart
-NpcServiceServer.resolveRuntimeHurtbox = NpcServiceServer.ResolveRuntimeHurtbox
-NpcServiceServer.damageNpcsInBox = NpcServiceServer.DamageNpcsInBox
-NpcServiceServer.applyRuntimeDamage = NpcServiceServer.ApplyRuntimeDamage
-NpcServiceServer.damageNpcFromHitPart = NpcServiceServer.DamageNpcFromHitPart
-NpcServiceServer.onEnemyHitPlayer = NpcServiceServer.OnEnemyHitPlayer
-NpcServiceServer.registerRuntimeEnemyHitbox = NpcServiceServer.RegisterRuntimeEnemyHitbox
-NpcServiceServer.unregisterRuntimeEnemyHitbox = NpcServiceServer.UnregisterRuntimeEnemyHitbox
-NpcServiceServer.getActiveSlimeCount = NpcServiceServer.GetActiveSlimeCount
-NpcServiceServer.getNextFallbackSpawnCFrame = NpcServiceServer.GetNextFallbackSpawnCFrame
-NpcServiceServer.resolveSurfaceSpawnCFrame = NpcServiceServer.ResolveSurfaceSpawnCFrame
-NpcServiceServer.isSpawnGapClear = NpcServiceServer.IsSpawnGapClear
-NpcServiceServer.getNextPlayerRelativeSpawnCFrame = NpcServiceServer.GetNextPlayerRelativeSpawnCFrame
-NpcServiceServer.getNearestPlayerDistance = NpcServiceServer.GetNearestPlayerDistance
-NpcServiceServer.despawnFarRuntimes = NpcServiceServer.DespawnFarRuntimes
-NpcServiceServer.getNextSpawnCFrame = NpcServiceServer.GetNextSpawnCFrame
-NpcServiceServer.createDefaultSpawnConfigAt = NpcServiceServer.CreateDefaultSpawnConfigAt
-NpcServiceServer.getDebugSpawnCFrameForPlayer = NpcServiceServer.GetDebugSpawnCFrameForPlayer
-NpcServiceServer.spawnDebugNpcById = NpcServiceServer.SpawnDebugNpcById
-NpcServiceServer.tryAutoSpawnSlime = NpcServiceServer.TryAutoSpawnSlime
-NpcServiceServer.createStatePayload = NpcServiceServer.CreateStatePayload
-NpcServiceServer.broadcast = NpcServiceServer.Broadcast
-NpcServiceServer.pushState = NpcServiceServer.PushState
-NpcServiceServer.requestSync = NpcServiceServer.RequestSync
-NpcServiceServer.transitionRuntimeState = NpcServiceServer.TransitionRuntimeState
-NpcServiceServer.removeRuntime = NpcServiceServer.RemoveRuntime
-NpcServiceServer.resolveRuntimeState = NpcServiceServer.ResolveRuntimeState
-NpcServiceServer.refreshRuntimeBiome = NpcServiceServer.RefreshRuntimeBiome
-NpcServiceServer.updateRuntime = NpcServiceServer.UpdateRuntime
-NpcServiceServer.trackRuntime = NpcServiceServer.TrackRuntime
-NpcServiceServer.spawnSlime = NpcServiceServer.SpawnSlime
-NpcServiceServer.spawnInitialSlimes = NpcServiceServer.SpawnInitialSlimes
-NpcServiceServer.onHeartbeat = NpcServiceServer.OnHeartbeat
-NpcServiceServer.init = NpcServiceServer.Init
-NpcServiceServer.destroy = NpcServiceServer.Destroy
-NpcServiceServer.initNpcModules = NpcServiceServer.InitNpcModules
-NpcServiceServer.getRuntimeModule = NpcServiceServer.GetRuntimeModule
-NpcServiceServer.sanitizeNumber = NpcServiceServer.SanitizeNumber
 
 type NpcServiceServer = typeof(NpcServiceServer) & {
 	npcModulesByType: { [string]: any },

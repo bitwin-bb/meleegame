@@ -7,7 +7,7 @@ local BreakableBinder = {}
 BreakableBinder.__index = BreakableBinder
 setmetatable(BreakableBinder, ModelBinder)
 
-local function resolveNumber(valueRaw: any, fallback: number): number
+local function GetNumber(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
@@ -34,8 +34,8 @@ function BreakableBinder.new(instance: Instance, context: any)
 end
 
 function BreakableBinder.refresh(self: any)
-	local maxHealth = resolveNumber(self.instance:GetAttribute("BreakableMaxHealth"), 1)
-	local health = resolveNumber(self.instance:GetAttribute("BreakableHealth"), maxHealth)
+	local maxHealth = GetNumber(self.instance:GetAttribute("BreakableMaxHealth"), 1)
+	local health = GetNumber(self.instance:GetAttribute("BreakableHealth"), maxHealth)
 	self.instance:SetAttribute("BreakableTagged", true)
 	self.instance:SetAttribute("BreakableMaxHealth", maxHealth)
 	self.instance:SetAttribute("BreakableHealth", health)

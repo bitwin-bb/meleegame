@@ -52,7 +52,7 @@ local runtime = {
 	lastCombatIntentAt = -math.huge,
 }
 
-local function sanitizeCount(valueRaw: any): number
+local function CoerceCount(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return 0
 	end
@@ -82,7 +82,7 @@ local function buildInventoryCounts(stateRaw: any): { [string]: number }
 		if typeof(itemIdRaw) ~= "string" or itemIdRaw == "" then
 			continue
 		end
-		local amount = sanitizeCount(amountRaw)
+		local amount = CoerceCount(amountRaw)
 		if amount <= 0 then
 			continue
 		end
@@ -109,7 +109,7 @@ local function buildNpcHpMap(stateRaw: any): { [string]: number }
 		if typeof(snapshotRaw) ~= "table" then
 			continue
 		end
-		local hp = sanitizeCount((snapshotRaw :: any).hp)
+		local hp = CoerceCount((snapshotRaw :: any).hp)
 		output[runtimeIdRaw] = hp
 	end
 
@@ -133,7 +133,7 @@ local function buildBossHpMap(stateRaw: any): { [string]: number }
 		if typeof(snapshotRaw) ~= "table" then
 			continue
 		end
-		local hp = sanitizeCount((snapshotRaw :: any).hp)
+		local hp = CoerceCount((snapshotRaw :: any).hp)
 		output[runtimeIdRaw] = hp
 	end
 
@@ -154,9 +154,9 @@ local function isCombatIntentInput(inputObject: InputObject): boolean
 end
 
 local function onInventoryStateChanged(nextStateRaw: any)
-	local fallback = InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
-	local nextState = InventoryServiceUtils.sanitizeState(nextStateRaw, fallback)
-	if not InventoryServiceUtils.isLoadedState(nextState.loadState) then
+	local fallback = InventoryServiceUtils.CreateDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
+	local nextState = InventoryServiceUtils.CoerceState(nextStateRaw, fallback)
+	if not InventoryServiceUtils.IsLoadedState(nextState.loadState) then
 		runtime.previousInventoryCounts = {}
 		runtime.hasPrimedInventory = false
 		return
@@ -181,8 +181,8 @@ local function onInventoryStateChanged(nextStateRaw: any)
 end
 
 local function onHpStateChanged(nextStateRaw: any)
-	local fallback = HpServiceUtils.createDefaultState()
-	local nextState = HpServiceUtils.sanitizeState(nextStateRaw, fallback)
+	local fallback = HpServiceUtils.CreateDefaultState()
+	local nextState = HpServiceUtils.CoerceState(nextStateRaw, fallback)
 
 	if not runtime.hasPrimedHp then
 		runtime.hasPrimedHp = true
@@ -275,20 +275,20 @@ local function onBossStateChanged(nextStateRaw: any)
 end
 
 local function syncFromServices()
-	if InventoryServiceClient.getState ~= nil then
+	if InventoryServiceClient.GetState ~= nil then
 		local inventoryOk, inventoryStateOrError = pcall(function()
-			return InventoryServiceClient:getState()
+			return InventoryServiceClient:GetState()
 		end)
 		if inventoryOk then
 			onInventoryStateChanged(inventoryStateOrError)
 		end
 	end
 
-	if HpServiceClient.getState ~= nil then
+	if HpServiceClient.GetState ~= nil then
 		local shouldReadHp = true
-		if HpServiceClient.isReady ~= nil then
+		if HpServiceClient.IsReady ~= nil then
 			local readyOk, isReady = pcall(function()
-				return HpServiceClient:isReady()
+				return HpServiceClient:IsReady()
 			end)
 			if not readyOk or not isReady then
 				shouldReadHp = false
@@ -297,7 +297,7 @@ local function syncFromServices()
 
 		if shouldReadHp then
 			local hpOk, hpStateOrError = pcall(function()
-				return HpServiceClient:getState()
+				return HpServiceClient:GetState()
 			end)
 			if hpOk then
 				onHpStateChanged(hpStateOrError)
@@ -305,18 +305,18 @@ local function syncFromServices()
 		end
 	end
 
-	if NpcServiceClient.getState ~= nil then
+	if NpcServiceClient.GetState ~= nil then
 		local npcOk, npcStateOrError = pcall(function()
-			return NpcServiceClient:getState()
+			return NpcServiceClient:GetState()
 		end)
 		if npcOk then
 			onNpcStateChanged(npcStateOrError)
 		end
 	end
 
-	if BossServiceClient.getState ~= nil then
+	if BossServiceClient.GetState ~= nil then
 		local bossOk, bossStateOrError = pcall(function()
-			return BossServiceClient:getState()
+			return BossServiceClient:GetState()
 		end)
 		if bossOk then
 			onBossStateChanged(bossStateOrError)
@@ -342,28 +342,28 @@ function infoPlayerThunks.Start(): () -> ()
 	runtime.hasPrimedBoss = false
 	runtime.lastCombatIntentAt = -math.huge
 
-	runtime.inventoryStateChangedConnection = ServiceSync.connectStateChanged(
+	runtime.inventoryStateChangedConnection = ServiceSync.ConnectStateChanged(
 		InventoryServiceClient,
 		function(nextState: InventoryState)
 			onInventoryStateChanged(nextState)
 		end
 	)
 
-	runtime.hpStateChangedConnection = ServiceSync.connectStateChanged(
+	runtime.hpStateChangedConnection = ServiceSync.ConnectStateChanged(
 		HpServiceClient,
 		function(nextState: HpServiceState)
 			onHpStateChanged(nextState)
 		end
 	)
 
-	runtime.npcStateChangedConnection = ServiceSync.connectStateChanged(
+	runtime.npcStateChangedConnection = ServiceSync.ConnectStateChanged(
 		NpcServiceClient,
 		function(nextState: NpcServiceClientState)
 			onNpcStateChanged(nextState)
 		end
 	)
 
-	runtime.bossStateChangedConnection = ServiceSync.connectStateChanged(
+	runtime.bossStateChangedConnection = ServiceSync.ConnectStateChanged(
 		BossServiceClient,
 		function(nextState: BossServiceClientState)
 			onBossStateChanged(nextState)
@@ -386,7 +386,7 @@ function infoPlayerThunks.Start(): () -> ()
 
 	syncFromServices()
 
-	ServiceSync.requestSyncMany({
+	ServiceSync.RequestSyncMany({
 		InventoryServiceClient,
 		HpServiceClient,
 		NpcServiceClient,
@@ -397,7 +397,7 @@ function infoPlayerThunks.Start(): () -> ()
 end
 
 function infoPlayerThunks.Stop()
-	ConnectionUtils.disconnectMany({
+	ConnectionUtils.DisconnectMany({
 		runtime.inventoryStateChangedConnection,
 		runtime.hpStateChangedConnection,
 		runtime.npcStateChangedConnection,
@@ -428,9 +428,4 @@ end
 function infoPlayerThunks.GetInfoPlayerState(): InfoPlayerState
 	return infoPlayerSlice.getInfoPlayerState()
 end
-
-infoPlayerThunks.start = infoPlayerThunks.Start
-infoPlayerThunks.stop = infoPlayerThunks.Stop
-infoPlayerThunks.getInfoPlayerState = infoPlayerThunks.GetInfoPlayerState
-
 return infoPlayerThunks

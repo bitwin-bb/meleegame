@@ -7,7 +7,7 @@ local RunService = game:GetService("RunService")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
-local RagdollServicePackets = require("NetSharedPackets").RagdollService
+local RagdollServicePackets = require("NetPacketsShared").RagdollService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = RagdollServicePackets[methodName]
@@ -16,7 +16,7 @@ local function sendPacket(player: Player, methodName: string, ...: any)
 		return
 	end
 
-	packet.sendTo(PacketPayload.pack(...), player)
+	packet.sendTo(PacketPayload.Pack(...), player)
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -31,12 +31,13 @@ local function bindPacket(self: any, methodName: string)
 			return
 		end
 
-		local handler = self[methodName]
+		local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, player, table.unpack(arguments, 1, count))
 	end)
 end
@@ -54,7 +55,7 @@ end
 
 local NevermoreSupport = require("NevermoreSupport")
 local RagdollServiceUtils = require("RagdollServiceUtils")
-local ServerBinderSupport = require("ServerBinderSupport")
+local BinderSupportServer = require("BinderSupportServer")
 
 type CharacterRig = RagdollServiceUtils.CharacterRig
 type RagdollContext = RagdollServiceUtils.RagdollContext
@@ -87,22 +88,22 @@ local SERVER_RECOVER_REASON = "ServerRecovery"
 function RagdollServiceServer.Init(self: RagdollServiceServer)
 	bindPackets(self)
 	self.playerRuntimes = {}
-	(self :: any).binders = NevermoreSupport.getService(ServerBinderSupport)
+	(self :: any).binders = NevermoreSupport.GetService(BinderSupportServer)
 
 	for _, player in Players:GetPlayers() do
-		self:trackPlayer(player)
+		self:TrackPlayer(player)
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		self:trackPlayer(player)
+		self:TrackPlayer(player)
 	end)
 
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
-		self:untrackPlayer(player)
+		self:UntrackPlayer(player)
 	end)
 
 	self.heartbeatConnection = RunService.Heartbeat:Connect(function()
-		self:stepRagdollPlaneConstraint()
+		self:StepRagdollPlaneConstraint()
 	end)
 end
 
@@ -114,7 +115,7 @@ function RagdollServiceServer.CreateRuntime(self: RagdollServiceServer): PlayerR
 		humanoid = nil,
 		ragdollContext = nil,
 		ragdollPlaneX = nil,
-		state = RagdollServiceUtils.createDefaultState(),
+		state = RagdollServiceUtils.CreateDefaultState(),
 		stateToken = 0,
 	}
 end
@@ -125,14 +126,14 @@ function RagdollServiceServer.GetRuntime(self: RagdollServiceServer, player: Pla
 		return runtime
 	end
 
-	local nextRuntime = self:createRuntime()
+	local nextRuntime = self:CreateRuntime()
 	self.playerRuntimes[player] = nextRuntime
 	return nextRuntime
 end
 
 function RagdollServiceServer.PushState(self: RagdollServiceServer, player: Player)
-	local runtime = self:getRuntime(player)
-	sendPacket(player, "applyState", RagdollServiceUtils.cloneState(runtime.state))
+	local runtime = self:GetRuntime(player)
+	sendPacket(player, "applyState", RagdollServiceUtils.CloneState(runtime.state))
 end
 
 function RagdollServiceServer.CommitState(
@@ -146,14 +147,14 @@ function RagdollServiceServer.CommitState(
 ): number
 	runtime.stateToken += 1
 	local token = runtime.stateToken
-	local now = RagdollServiceUtils.now()
+	local now = RagdollServiceUtils.Now()
 	local sequence = runtime.state.sequence + 1
 	local scheduledRecoveryAt = if isRagdolled
 			and canRecover
 			and durationSeconds ~= nil
 		then now + durationSeconds
 		else nil
-	runtime.state = RagdollServiceUtils.createState(
+	runtime.state = RagdollServiceUtils.CreateState(
 		isRagdolled,
 		reasonRaw,
 		now,
@@ -162,7 +163,7 @@ function RagdollServiceServer.CommitState(
 		sequence,
 		runtime.state
 	)
-	self:pushState(player)
+	self:PushState(player)
 	return token
 end
 
@@ -188,7 +189,7 @@ function RagdollServiceServer.ScheduleRecovery(
 			return
 		end
 
-		self:recoverPlayer(player, TIMER_RECOVER_REASON)
+		self:RecoverPlayer(player, TIMER_RECOVER_REASON)
 	end)
 end
 
@@ -203,7 +204,7 @@ function RagdollServiceServer.ClearActiveRagdoll(
 		return
 	end
 
-	RagdollServiceUtils.endRagdoll(context, {
+	RagdollServiceUtils.EndRagdoll(context, {
 		restoreHumanoid = if restoreHumanoid == nil then true else restoreHumanoid,
 	})
 	runtime.ragdollContext = nil
@@ -225,11 +226,11 @@ function RagdollServiceServer.StepRagdollPlaneConstraint(self: RagdollServiceSer
 		if runtime.ragdollPlaneX == nil then
 			runtime.ragdollPlaneX = rootPart.Position.X
 		end
-		RagdollServiceUtils.enforceRagdoll2DPlane(context, runtime.ragdollPlaneX)
+		RagdollServiceUtils.EnforceRagdoll2DPlane(context, runtime.ragdollPlaneX)
 	end
 end
 
-function RagdollServiceServer.ResolvePlayerRig(
+function RagdollServiceServer.GetPlayerRig(
 	self: RagdollServiceServer,
 	player: Player,
 	runtime: PlayerRuntime
@@ -240,7 +241,7 @@ function RagdollServiceServer.ResolvePlayerRig(
 		runtime.character = character
 	end
 
-	local rig = RagdollServiceUtils.resolveCharacterRig(character)
+	local rig = RagdollServiceUtils.GetCharacterRig(character)
 	if rig ~= nil then
 		runtime.character = rig.character
 		runtime.humanoid = rig.humanoid
@@ -256,14 +257,14 @@ function RagdollServiceServer.RagdollPlayer(
 	canRecoverRaw: any,
 	impulseRaw: any
 ): boolean
-	local runtime = self:getRuntime(player)
-	local rig = self:resolvePlayerRig(player, runtime)
+	local runtime = self:GetRuntime(player)
+	local rig = self:GetPlayerRig(player, runtime)
 	if rig == nil then
 		return false
 	end
 
 	if runtime.ragdollContext == nil then
-		local context = RagdollServiceUtils.beginRagdoll(rig, {
+		local context = RagdollServiceUtils.BeginRagdoll(rig, {
 			reason = reasonRaw,
 			impulse = if typeof(impulseRaw) == "Vector3" then impulseRaw else nil,
 		})
@@ -271,7 +272,7 @@ function RagdollServiceServer.RagdollPlayer(
 			return false
 		end
 		runtime.ragdollContext = context
-		RagdollServiceUtils.setCharacterNetworkOwner(rig.character, nil)
+		RagdollServiceUtils.SetCharacterNetworkOwner(rig.character, nil)
 	elseif typeof(impulseRaw) == "Vector3" and impulseRaw.Magnitude > 0 then
 		local mass = math.max(1, rig.rootPart.AssemblyMass)
 		rig.rootPart:ApplyImpulse(impulseRaw * mass)
@@ -281,12 +282,12 @@ function RagdollServiceServer.RagdollPlayer(
 		runtime.ragdollPlaneX = rig.rootPart.Position.X
 	end
 	if runtime.ragdollContext ~= nil then
-		RagdollServiceUtils.enforceRagdoll2DPlane(runtime.ragdollContext, runtime.ragdollPlaneX)
+		RagdollServiceUtils.EnforceRagdoll2DPlane(runtime.ragdollContext, runtime.ragdollPlaneX)
 	end
 
 	local canRecover = canRecoverRaw ~= false
 	local duration = if canRecover
-		then RagdollServiceUtils.sanitizeDuration(
+		then RagdollServiceUtils.CoerceDuration(
 			durationRaw,
 			nil,
 			RagdollServiceUtils.MIN_DURATION,
@@ -294,26 +295,26 @@ function RagdollServiceServer.RagdollPlayer(
 		)
 		else nil
 
-	local stateToken = self:commitState(player, runtime, true, reasonRaw, duration, canRecover)
+	local stateToken = self:CommitState(player, runtime, true, reasonRaw, duration, canRecover)
 	if duration ~= nil then
-		self:scheduleRecovery(player, runtime, stateToken, duration)
+		self:ScheduleRecovery(player, runtime, stateToken, duration)
 	end
 
 	return true
 end
 
 function RagdollServiceServer.RecoverPlayer(self: RagdollServiceServer, player: Player, reasonRaw: any): boolean
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	if runtime.ragdollContext == nil and not runtime.state.isRagdolled then
 		return false
 	end
 
-	self:clearActiveRagdoll(runtime, true)
-	self:commitState(player, runtime, false, reasonRaw, nil, true)
+	self:ClearActiveRagdoll(runtime, true)
+	self:CommitState(player, runtime, false, reasonRaw, nil, true)
 
-	local rig = self:resolvePlayerRig(player, runtime)
+	local rig = self:GetPlayerRig(player, runtime)
 	if rig ~= nil then
-		RagdollServiceUtils.setCharacterNetworkOwner(rig.character, player)
+		RagdollServiceUtils.SetCharacterNetworkOwner(rig.character, player)
 	end
 
 	return true
@@ -329,24 +330,24 @@ function RagdollServiceServer.SetPlayerRagdoll(
 	impulseRaw: any
 ): boolean
 	if enabledRaw == true then
-		return self:ragdollPlayer(player, reasonRaw, durationRaw, canRecoverRaw, impulseRaw)
+		return self:RagdollPlayer(player, reasonRaw, durationRaw, canRecoverRaw, impulseRaw)
 	end
 
-	return self:recoverPlayer(player, reasonRaw)
+	return self:RecoverPlayer(player, reasonRaw)
 end
 
 function RagdollServiceServer.GetState(self: RagdollServiceServer, player: Player): RagdollServiceState
-	local runtime = self:getRuntime(player)
-	return RagdollServiceUtils.cloneState(runtime.state)
+	local runtime = self:GetRuntime(player)
+	return RagdollServiceUtils.CloneState(runtime.state)
 end
 
 function RagdollServiceServer.IsPlayerRagdolled(self: RagdollServiceServer, player: Player): boolean
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	return runtime.state.isRagdolled
 end
 
 function RagdollServiceServer.BindHumanoid(self: RagdollServiceServer, player: Player, humanoid: Humanoid)
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	runtime.humanoid = humanoid
 	humanoid.BreakJointsOnDeath = false
 
@@ -354,7 +355,7 @@ function RagdollServiceServer.BindHumanoid(self: RagdollServiceServer, player: P
 		if runtime.humanoid ~= humanoid then
 			return
 		end
-		self:ragdollPlayer(player, RagdollServiceUtils.DEATH_REASON, nil, false, nil)
+		self:RagdollPlayer(player, RagdollServiceUtils.DEATH_REASON, nil, false, nil)
 	end))
 
 	runtime.characterJanitor:GiveChore(humanoid.Destroying:Connect(function()
@@ -365,17 +366,17 @@ function RagdollServiceServer.BindHumanoid(self: RagdollServiceServer, player: P
 end
 
 function RagdollServiceServer.BindCharacter(self: RagdollServiceServer, player: Player, character: Model)
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	runtime.characterJanitor:Clean()
-	self:clearActiveRagdoll(runtime, false)
+	self:ClearActiveRagdoll(runtime, false)
 	runtime.character = character
 	runtime.humanoid = nil
 	runtime.ragdollPlaneX = nil
-	self:commitState(player, runtime, false, RagdollServiceUtils.CHARACTER_RESET_REASON, nil, true)
+	self:CommitState(player, runtime, false, RagdollServiceUtils.CHARACTER_RESET_REASON, nil, true)
 
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	if humanoid then
-		self:bindHumanoid(player, humanoid)
+		self:BindHumanoid(player, humanoid)
 	end
 
 	runtime.characterJanitor:GiveChore(character.ChildAdded:Connect(function(child: Instance)
@@ -383,7 +384,7 @@ function RagdollServiceServer.BindCharacter(self: RagdollServiceServer, player: 
 			return
 		end
 		if child:IsA("Humanoid") then
-			self:bindHumanoid(player, child)
+			self:BindHumanoid(player, child)
 		end
 	end))
 
@@ -395,24 +396,24 @@ function RagdollServiceServer.BindCharacter(self: RagdollServiceServer, player: 
 end
 
 function RagdollServiceServer.TrackPlayer(self: RagdollServiceServer, player: Player)
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	runtime.playerJanitor:Clean()
 	runtime.characterJanitor:Clean()
-	self:clearActiveRagdoll(runtime, false)
+	self:ClearActiveRagdoll(runtime, false)
 	runtime.character = nil
 	runtime.humanoid = nil
 	runtime.ragdollPlaneX = nil
-	runtime.state = RagdollServiceUtils.createDefaultState()
+	runtime.state = RagdollServiceUtils.CreateDefaultState()
 	runtime.stateToken = 0
 
 	runtime.playerJanitor:GiveChore(player.CharacterAdded:Connect(function(character: Model)
-		self:bindCharacter(player, character)
+		self:BindCharacter(player, character)
 	end))
 
 	if player.Character then
-		self:bindCharacter(player, player.Character)
+		self:BindCharacter(player, player.Character)
 	else
-		self:pushState(player)
+		self:PushState(player)
 	end
 end
 
@@ -422,7 +423,7 @@ function RagdollServiceServer.UntrackPlayer(self: RagdollServiceServer, player: 
 		return
 	end
 
-	self:clearActiveRagdoll(runtime, false)
+	self:ClearActiveRagdoll(runtime, false)
 	runtime.playerJanitor:Destroy()
 	runtime.characterJanitor:Destroy()
 	self.playerRuntimes[player] = nil
@@ -430,10 +431,10 @@ end
 
 function RagdollServiceServer.RequestSync(self: RagdollServiceServer, player: Player)
 	if self.playerRuntimes[player] == nil then
-		self:trackPlayer(player)
+		self:TrackPlayer(player)
 		return
 	end
-	self:pushState(player)
+	self:PushState(player)
 end
 
 function RagdollServiceServer.RequestSelfRagdoll(
@@ -443,15 +444,15 @@ function RagdollServiceServer.RequestSelfRagdoll(
 	reasonRaw: any,
 	impulseRaw: any
 )
-	local duration = RagdollServiceUtils.sanitizeDuration(
+	local duration = RagdollServiceUtils.CoerceDuration(
 		durationRaw,
 		RagdollServiceUtils.DEFAULT_SELF_RAGDOLL_DURATION,
 		RagdollServiceUtils.MIN_DURATION,
 		RagdollServiceUtils.MAX_SELF_REQUEST_DURATION
 	)
-	self:ragdollPlayer(
+	self:RagdollPlayer(
 		player,
-		RagdollServiceUtils.sanitizeReason(reasonRaw, SELF_REQUEST_REASON),
+		RagdollServiceUtils.CoerceReason(reasonRaw, SELF_REQUEST_REASON),
 		duration,
 		true,
 		impulseRaw
@@ -459,7 +460,7 @@ function RagdollServiceServer.RequestSelfRagdoll(
 end
 
 function RagdollServiceServer.RequestSelfRecover(self: RagdollServiceServer, player: Player)
-	local runtime = self:getRuntime(player)
+	local runtime = self:GetRuntime(player)
 	if not runtime.state.isRagdolled then
 		return
 	end
@@ -467,11 +468,11 @@ function RagdollServiceServer.RequestSelfRecover(self: RagdollServiceServer, pla
 		return
 	end
 
-	self:recoverPlayer(player, SELF_RECOVER_REASON)
+	self:RecoverPlayer(player, SELF_RECOVER_REASON)
 end
 
 function RagdollServiceServer.ForceRecoverPlayer(self: RagdollServiceServer, player: Player): boolean
-	return self:recoverPlayer(player, SERVER_RECOVER_REASON)
+	return self:RecoverPlayer(player, SERVER_RECOVER_REASON)
 end
 
 function RagdollServiceServer.Destroy(self: RagdollServiceServer)
@@ -491,37 +492,12 @@ function RagdollServiceServer.Destroy(self: RagdollServiceServer)
 	end
 
 	for player, runtime in self.playerRuntimes do
-		self:clearActiveRagdoll(runtime, false)
+		self:ClearActiveRagdoll(runtime, false)
 		runtime.playerJanitor:Destroy()
 		runtime.characterJanitor:Destroy()
 		self.playerRuntimes[player] = nil
 	end
 end
-
-RagdollServiceServer.init = RagdollServiceServer.Init
-RagdollServiceServer.createRuntime = RagdollServiceServer.CreateRuntime
-RagdollServiceServer.getRuntime = RagdollServiceServer.GetRuntime
-RagdollServiceServer.pushState = RagdollServiceServer.PushState
-RagdollServiceServer.commitState = RagdollServiceServer.CommitState
-RagdollServiceServer.scheduleRecovery = RagdollServiceServer.ScheduleRecovery
-RagdollServiceServer.clearActiveRagdoll = RagdollServiceServer.ClearActiveRagdoll
-RagdollServiceServer.stepRagdollPlaneConstraint = RagdollServiceServer.StepRagdollPlaneConstraint
-RagdollServiceServer.resolvePlayerRig = RagdollServiceServer.ResolvePlayerRig
-RagdollServiceServer.ragdollPlayer = RagdollServiceServer.RagdollPlayer
-RagdollServiceServer.recoverPlayer = RagdollServiceServer.RecoverPlayer
-RagdollServiceServer.setPlayerRagdoll = RagdollServiceServer.SetPlayerRagdoll
-RagdollServiceServer.getState = RagdollServiceServer.GetState
-RagdollServiceServer.isPlayerRagdolled = RagdollServiceServer.IsPlayerRagdolled
-RagdollServiceServer.bindHumanoid = RagdollServiceServer.BindHumanoid
-RagdollServiceServer.bindCharacter = RagdollServiceServer.BindCharacter
-RagdollServiceServer.trackPlayer = RagdollServiceServer.TrackPlayer
-RagdollServiceServer.untrackPlayer = RagdollServiceServer.UntrackPlayer
-RagdollServiceServer.requestSync = RagdollServiceServer.RequestSync
-RagdollServiceServer.requestSelfRagdoll = RagdollServiceServer.RequestSelfRagdoll
-RagdollServiceServer.requestSelfRecover = RagdollServiceServer.RequestSelfRecover
-RagdollServiceServer.forceRecoverPlayer = RagdollServiceServer.ForceRecoverPlayer
-RagdollServiceServer.destroy = RagdollServiceServer.Destroy
-
 export type RagdollServiceServer = typeof(RagdollServiceServer) & {
 	playerRuntimes: { [Player]: PlayerRuntime },
 	playerAddedConnection: RBXScriptConnection?,

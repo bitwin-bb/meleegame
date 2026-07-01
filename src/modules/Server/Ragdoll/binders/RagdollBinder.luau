@@ -52,9 +52,9 @@ function RagdollBinder.setRagdolled(self: any, enabled: boolean, reason: string,
 
 	if enabled then
 		if self.context == nil then
-			local rig = RagdollServiceUtils.resolveCharacterRig(self.model)
+			local rig = RagdollServiceUtils.GetCharacterRig(self.model)
 			if rig ~= nil then
-				self.context = RagdollServiceUtils.beginRagdoll(rig, {
+				self.context = RagdollServiceUtils.BeginRagdoll(rig, {
 					reason = reason,
 					impulse = impulse,
 				})
@@ -64,7 +64,7 @@ function RagdollBinder.setRagdolled(self: any, enabled: boolean, reason: string,
 		if self.context ~= nil then
 			local planeX = self.instance:GetAttribute("RagdollPlaneX")
 			if typeof(planeX) == "number" then
-				RagdollServiceUtils.enforceRagdoll2DPlane(self.context, planeX)
+				RagdollServiceUtils.EnforceRagdoll2DPlane(self.context, planeX)
 			end
 		end
 
@@ -82,7 +82,7 @@ function RagdollBinder.setRagdolled(self: any, enabled: boolean, reason: string,
 	else
 		self.recoveryToken += 1
 		if self.context ~= nil then
-			RagdollServiceUtils.endRagdoll(self.context, {
+			RagdollServiceUtils.EndRagdoll(self.context, {
 				restoreHumanoid = true,
 			})
 			self.context = nil

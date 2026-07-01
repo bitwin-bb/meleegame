@@ -44,8 +44,4 @@ function Sensor.Destroy(self: Sensor)
 	self.destroyed = true
 	self.maid:DoCleaning()
 end
-
-Sensor.updateSensor = Sensor.Update
-Sensor.destroy = Sensor.Destroy
-
 return Sensor

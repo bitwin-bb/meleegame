@@ -23,7 +23,7 @@ local DEFAULT_STATE: InventoryHudState = {
 }
 
 local inventoryStateAtom =
-	Charm.atom(InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED))
+	Charm.atom(InventoryServiceUtils.CreateDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED))
 local inventoryHudStateAtom = Charm.atom(DEFAULT_STATE)
 
 local slotsAtom = Charm.computed(function(): { InventorySlot }
@@ -58,7 +58,7 @@ local isLeftSideBarVisibleAtom = Charm.computed(function(): boolean
 	return inventoryHudStateAtom().isLeftSideBarVisible
 end)
 
-local function sanitizeBoolean(valueRaw: any, fallback: boolean): boolean
+local function CoerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
@@ -70,13 +70,13 @@ local function getInventoryState(): InventoryState
 end
 
 local function setInventoryState(stateRaw: any): InventoryState
-	local nextState = InventoryServiceUtils.sanitizeState(stateRaw, inventoryStateAtom())
+	local nextState = InventoryServiceUtils.CoerceState(stateRaw, inventoryStateAtom())
 	inventoryStateAtom(nextState)
 	return nextState
 end
 
 local function resetInventoryState(): InventoryState
-	local nextState = InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
+	local nextState = InventoryServiceUtils.CreateDefaultState(InventoryServiceUtils.LOAD_STATE_UNLOADED)
 	inventoryStateAtom(nextState)
 	return nextState
 end
@@ -89,13 +89,13 @@ local function setInventoryHudState(stateRaw: any): InventoryHudState
 	local current = inventoryHudStateAtom()
 	local source: { [string]: any } = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {} :: any
 
-	local nextIsHotbarExpanded = sanitizeBoolean(source.isHotbarExpanded, current.isHotbarExpanded)
-	local nextIsInventoryPanelOpen = sanitizeBoolean(source.isInventoryPanelOpen, nextIsHotbarExpanded)
+	local nextIsHotbarExpanded = CoerceBoolean(source.isHotbarExpanded, current.isHotbarExpanded)
+	local nextIsInventoryPanelOpen = CoerceBoolean(source.isInventoryPanelOpen, nextIsHotbarExpanded)
 
 	local nextState: InventoryHudState = {
 		isInventoryPanelOpen = nextIsInventoryPanelOpen,
 		isHotbarExpanded = nextIsHotbarExpanded,
-		isLeftSideBarVisible = sanitizeBoolean(source.isLeftSideBarVisible, current.isLeftSideBarVisible),
+		isLeftSideBarVisible = CoerceBoolean(source.isLeftSideBarVisible, current.isLeftSideBarVisible),
 		updatedAt = os.clock(),
 	}
 

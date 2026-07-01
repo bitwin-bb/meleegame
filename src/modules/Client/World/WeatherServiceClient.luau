@@ -15,7 +15,7 @@ local AudioServiceUtils = require("AudioServiceUtils")
 local CameraShaker = require(ReplicatedStorage.Shared.Vendor.EZCameraShake)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
-local WeatherServicePackets = require("NetSharedPackets").WeatherService
+local WeatherServicePackets = require("NetPacketsShared").WeatherService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = WeatherServicePackets[methodName]
@@ -24,7 +24,7 @@ local function sendPacket(methodName: string, ...: any)
 		return
 	end
 
-	packet.send(PacketPayload.pack(...))
+	packet.send(PacketPayload.Pack(...))
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -34,13 +34,14 @@ local function bindPacket(self: any, methodName: string)
 		return
 	end
 
+	local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
 	packet.listen(function(payload: any)
-		local handler = self[methodName]
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, table.unpack(arguments, 1, count))
 	end)
 end
@@ -142,8 +143,8 @@ local LIGHTNING_CAMERA_SHAKE_FADE_OUT = 0.45
 local LIGHTNING_CAMERA_SHAKE_POSITION_INFLUENCE = Vector3.new(0.18, 0.3, 0.14)
 local LIGHTNING_CAMERA_SHAKE_ROTATION_INFLUENCE = Vector3.new(1.4, 2.6, 1.1)
 local WEATHER_AUDIO = ((AudioRegistry :: any).Misc or ({} :: any)).Weather or ({} :: any)
-local WEATHER_RAIN_SOUND_ASSET_ID = AudioServiceUtils.normalizeSoundAssetId(WEATHER_AUDIO.Rain)
-local WEATHER_THUNDER_SOUND_ASSET_IDS = AudioServiceUtils.collectSoundAssetIds(WEATHER_AUDIO.Thunder)
+local WEATHER_RAIN_SOUND_ASSET_ID = AudioServiceUtils.NormalizeSoundAssetId(WEATHER_AUDIO.Rain)
+local WEATHER_THUNDER_SOUND_ASSET_IDS = AudioServiceUtils.CollectSoundAssetIds(WEATHER_AUDIO.Thunder)
 
 local cachedAudioServiceClient = nil
 local cachedWindFoliageServiceClient = nil
@@ -228,7 +229,7 @@ local LIGHTING_PROPERTY_NAMES = {
 	"GeographicLatitude",
 }
 
-local function resolveCharacterRootPart(character: Model?): BasePart?
+local function GetCharacterRootPart(character: Model?): BasePart?
 	if character == nil then
 		return nil
 	end
@@ -249,7 +250,7 @@ local function isContainerInstance(instance: Instance?): boolean
 	return instance ~= nil and (instance:IsA("Folder") or instance:IsA("Model"))
 end
 
-local function resolveWeatherSkyRoot(): Instance?
+local function GetWeatherSkyRoot(): Instance?
 	local assets = ReplicatedStorage:FindFirstChild("Assets")
 	if not isContainerInstance(assets) then
 		return nil
@@ -267,7 +268,7 @@ local function resolveWeatherSkyRoot(): Instance?
 	return nil
 end
 
-local function resolveSkyFolderByKey(skyRoot: Instance?, skyKey: SkyKey): Instance?
+local function GetSkyFolderByKey(skyRoot: Instance?, skyKey: SkyKey): Instance?
 	if skyRoot == nil then
 		return nil
 	end
@@ -397,7 +398,7 @@ local function buildTweenGoal(source: Instance, target: Instance, propertyNames:
 	return goal
 end
 
-local function resolveCloudFallback(skyKey: SkyKey): (number, number, Color3)
+local function GetCloudFallback(skyKey: SkyKey): (number, number, Color3)
 	if skyKey == WeatherServiceUtils.SKY_KEY_CORRUPTION then
 		return 0.64, 0.56, CORRUPTION_CLOUD_COLOR
 	end
@@ -488,7 +489,7 @@ function WeatherServiceClient.UpdateRainAudio(self: WeatherServiceClient)
 
 	local rainPresence = math.clamp(math.max(self.currentRainIntensity, self.targetRainIntensity), 0, 1)
 	if WEATHER_RAIN_SOUND_ASSET_ID == nil or rainPresence <= 0.01 then
-		audioServiceClient:stopChannel(WEATHER_RAIN_CHANNEL_NAME, 0.3)
+		audioServiceClient:StopChannel(WEATHER_RAIN_CHANNEL_NAME, 0.3)
 		return
 	end
 
@@ -499,7 +500,7 @@ function WeatherServiceClient.UpdateRainAudio(self: WeatherServiceClient)
 		return
 	end
 
-	audioServiceClient:playSfx(WEATHER_RAIN_SOUND_ASSET_ID, {
+	audioServiceClient:PlaySfx(WEATHER_RAIN_SOUND_ASSET_ID, {
 		channel = WEATHER_RAIN_CHANNEL_NAME,
 		looped = true,
 		autoDestroy = false,
@@ -519,7 +520,7 @@ function WeatherServiceClient.UpdateWeatherWind(self: WeatherServiceClient)
 	if stormAlpha <= RAIN_RUNTIME_DISABLE_THRESHOLD then
 		stormAlpha = 0
 	end
-	local isThunderstorm = WeatherServiceUtils.isThunderWeather(self.state.weatherType)
+	local isThunderstorm = WeatherServiceUtils.IsThunderWeather(self.state.weatherType)
 	if
 		self.lastWeatherWindStormAlpha ~= nil
 		and stormAlpha > 0
@@ -529,7 +530,7 @@ function WeatherServiceClient.UpdateWeatherWind(self: WeatherServiceClient)
 		return
 	end
 
-	windFoliageServiceClient:setWeatherWind(stormAlpha, isThunderstorm)
+	windFoliageServiceClient:SetWeatherWind(stormAlpha, isThunderstorm)
 	self.lastWeatherWindStormAlpha = stormAlpha
 	self.lastWeatherWindIsThunderstorm = isThunderstorm
 end
@@ -559,7 +560,7 @@ function WeatherServiceClient.PlayManagedTween(
 		return
 	end
 
-	local durationSeconds = WeatherServiceUtils.sanitizeNumber(durationSecondsRaw, 0, 0, 20)
+	local durationSeconds = WeatherServiceUtils.CoerceNumber(durationSecondsRaw, 0, 0, 20)
 	if durationSeconds <= 0 then
 		for propertyName, value in goal do
 			pcall(function()
@@ -767,7 +768,7 @@ function WeatherServiceClient.ApplyTemplateTween(
 	transitionSeconds: number
 )
 	local goal = buildTweenGoal(templateInstance, runtimeInstance, propertyNames)
-	self:playManagedTween(tweenKey, runtimeInstance, transitionSeconds, goal)
+	self:PlayManagedTween(tweenKey, runtimeInstance, transitionSeconds, goal)
 end
 
 function WeatherServiceClient.ApplySkyTemplate(
@@ -776,8 +777,8 @@ function WeatherServiceClient.ApplySkyTemplate(
 	transitionSeconds: number
 )
 	if template.sky ~= nil then
-		CrossfadeClient:playSkyCrossfade(self.runtimeSky, self.runtimeAtmosphere, transitionSeconds)
-		local runtimeSky = self:ensureRuntimeSky()
+		CrossfadeClient:PlaySkyCrossfade(self.runtimeSky, self.runtimeAtmosphere, transitionSeconds)
+		local runtimeSky = self:EnsureRuntimeSky()
 		for _, propertyName in SKY_PROPERTY_NAMES do
 			copyPropertyIfPossible(template.sky, runtimeSky, propertyName)
 		end
@@ -787,8 +788,8 @@ function WeatherServiceClient.ApplySkyTemplate(
 	end
 
 	if template.atmosphere ~= nil then
-		local runtimeAtmosphere = self:ensureRuntimeAtmosphere()
-		self:applyTemplateTween(
+		local runtimeAtmosphere = self:EnsureRuntimeAtmosphere()
+		self:ApplyTemplateTween(
 			"atmosphere",
 			runtimeAtmosphere,
 			template.atmosphere,
@@ -796,7 +797,7 @@ function WeatherServiceClient.ApplySkyTemplate(
 			transitionSeconds
 		)
 	elseif self.runtimeAtmosphere ~= nil then
-		self:playManagedTween("atmosphere", self.runtimeAtmosphere, transitionSeconds, {
+		self:PlayManagedTween("atmosphere", self.runtimeAtmosphere, transitionSeconds, {
 			Density = 0,
 			Haze = 0,
 			Glare = 0,
@@ -804,8 +805,8 @@ function WeatherServiceClient.ApplySkyTemplate(
 	end
 
 	if template.colorCorrection ~= nil then
-		local runtimeColorCorrection = self:ensureRuntimeColorCorrection()
-		self:applyTemplateTween(
+		local runtimeColorCorrection = self:EnsureRuntimeColorCorrection()
+		self:ApplyTemplateTween(
 			"colorCorrection",
 			runtimeColorCorrection,
 			template.colorCorrection,
@@ -813,7 +814,7 @@ function WeatherServiceClient.ApplySkyTemplate(
 			transitionSeconds
 		)
 	elseif self.runtimeColorCorrection ~= nil then
-		self:playManagedTween("colorCorrection", self.runtimeColorCorrection, transitionSeconds, {
+		self:PlayManagedTween("colorCorrection", self.runtimeColorCorrection, transitionSeconds, {
 			Brightness = 0,
 			Contrast = 0,
 			Saturation = 0,
@@ -821,27 +822,27 @@ function WeatherServiceClient.ApplySkyTemplate(
 	end
 
 	if template.bloom ~= nil then
-		local runtimeBloom = self:ensureRuntimeBloom()
-		self:applyTemplateTween("bloom", runtimeBloom, template.bloom, BLOOM_PROPERTY_NAMES, transitionSeconds)
+		local runtimeBloom = self:EnsureRuntimeBloom()
+		self:ApplyTemplateTween("bloom", runtimeBloom, template.bloom, BLOOM_PROPERTY_NAMES, transitionSeconds)
 	elseif self.runtimeBloom ~= nil then
-		self:playManagedTween("bloom", self.runtimeBloom, transitionSeconds, {
+		self:PlayManagedTween("bloom", self.runtimeBloom, transitionSeconds, {
 			Intensity = 0,
 			Size = 0,
 		})
 	end
 
 	if template.sunRays ~= nil then
-		local runtimeSunRays = self:ensureRuntimeSunRays()
-		self:applyTemplateTween("sunRays", runtimeSunRays, template.sunRays, SUN_RAYS_PROPERTY_NAMES, transitionSeconds)
+		local runtimeSunRays = self:EnsureRuntimeSunRays()
+		self:ApplyTemplateTween("sunRays", runtimeSunRays, template.sunRays, SUN_RAYS_PROPERTY_NAMES, transitionSeconds)
 	elseif self.runtimeSunRays ~= nil then
-		self:playManagedTween("sunRays", self.runtimeSunRays, transitionSeconds, {
+		self:PlayManagedTween("sunRays", self.runtimeSunRays, transitionSeconds, {
 			Intensity = 0,
 		})
 	end
 
 	if template.depthOfField ~= nil then
-		local runtimeDepthOfField = self:ensureRuntimeDepthOfField()
-		self:applyTemplateTween(
+		local runtimeDepthOfField = self:EnsureRuntimeDepthOfField()
+		self:ApplyTemplateTween(
 			"depthOfField",
 			runtimeDepthOfField,
 			template.depthOfField,
@@ -849,7 +850,7 @@ function WeatherServiceClient.ApplySkyTemplate(
 			transitionSeconds
 		)
 	elseif self.runtimeDepthOfField ~= nil then
-		self:playManagedTween("depthOfField", self.runtimeDepthOfField, transitionSeconds, {
+		self:PlayManagedTween("depthOfField", self.runtimeDepthOfField, transitionSeconds, {
 			FarIntensity = 0,
 			NearIntensity = 0,
 		})
@@ -857,7 +858,7 @@ function WeatherServiceClient.ApplySkyTemplate(
 
 	if template.lighting ~= nil then
 		local lightingGoal = buildTweenGoal(template.lighting, Lighting, LIGHTING_PROPERTY_NAMES)
-		self:playManagedTween("lighting", Lighting, transitionSeconds, lightingGoal)
+		self:PlayManagedTween("lighting", Lighting, transitionSeconds, lightingGoal)
 	end
 end
 
@@ -892,11 +893,11 @@ function WeatherServiceClient.ApplyCloudTargetFromTemplate(
 	local nextDensity: number
 	local nextColor: Color3
 	if templateClouds ~= nil then
-		nextCover = WeatherServiceUtils.sanitizeNumber(templateClouds.Cover, self.cloudTargetCover, 0, 1)
-		nextDensity = WeatherServiceUtils.sanitizeNumber(templateClouds.Density, self.cloudTargetDensity, 0, 1)
+		nextCover = WeatherServiceUtils.CoerceNumber(templateClouds.Cover, self.cloudTargetCover, 0, 1)
+		nextDensity = WeatherServiceUtils.CoerceNumber(templateClouds.Density, self.cloudTargetDensity, 0, 1)
 		nextColor = templateClouds.Color
 	else
-		nextCover, nextDensity, nextColor = resolveCloudFallback(skyKey)
+		nextCover, nextDensity, nextColor = GetCloudFallback(skyKey)
 	end
 
 	if skyKey == WeatherServiceUtils.SKY_KEY_CORRUPTION then
@@ -907,15 +908,15 @@ function WeatherServiceClient.ApplyCloudTargetFromTemplate(
 	self.cloudTargetDensity = nextDensity
 	self.cloudTargetColor = nextColor
 	self.cloudTransitionSeconds =
-		WeatherServiceUtils.sanitizeNumber(transitionSecondsRaw, self.state.cloudTransitionSeconds, 0.01, 20)
+		WeatherServiceUtils.CoerceNumber(transitionSecondsRaw, self.state.cloudTransitionSeconds, 0.01, 20)
 end
 
-function WeatherServiceClient.ResolveSkyKeyForLocalPlayer(self: WeatherServiceClient): SkyKey
+function WeatherServiceClient.GetSkyKeyForLocalPlayer(self: WeatherServiceClient): SkyKey
 	if typeof((WorldGenerationServiceClient :: any).state) ~= "table" then
 		return WeatherServiceUtils.SKY_KEY_OVERWORLD
 	end
 
-	local worldState = WorldGenerationServiceClient:getState()
+	local worldState = WorldGenerationServiceClient:GetState()
 	if worldState.ready ~= true then
 		return WeatherServiceUtils.SKY_KEY_OVERWORLD
 	end
@@ -925,13 +926,13 @@ function WeatherServiceClient.ResolveSkyKeyForLocalPlayer(self: WeatherServiceCl
 		return WeatherServiceUtils.SKY_KEY_OVERWORLD
 	end
 
-	local rootPart = resolveCharacterRootPart(character)
+	local rootPart = GetCharacterRootPart(character)
 	if rootPart == nil then
 		return WeatherServiceUtils.SKY_KEY_OVERWORLD
 	end
 	local worldPosition = rootPart.Position
 	if
-		SpaceShared.isInSpaceAtWorldPosition(
+		SpaceShared.IsInSpaceAtWorldPosition(
 			worldPosition,
 			worldState,
 			(WorldGenerationServiceClient :: any).worldOrigin
@@ -942,34 +943,34 @@ function WeatherServiceClient.ResolveSkyKeyForLocalPlayer(self: WeatherServiceCl
 
 	local depthLayer = nil
 	local okDepthLayer, depthLayerOrError = pcall(function()
-		return (WorldGenerationServiceClient :: any):getDepthLayerAtWorldPosition(worldPosition)
+		return (WorldGenerationServiceClient :: any):GetDepthLayerAtWorldPosition(worldPosition)
 	end)
 	if okDepthLayer then
 		depthLayer = depthLayerOrError
 	end
 
 	local okBiomeType, biomeTypeOrError = pcall(function()
-		return WorldGenerationServiceClient:getBiomeTypeAtWorldPosition(worldPosition)
+		return WorldGenerationServiceClient:GetBiomeTypeAtWorldPosition(worldPosition)
 	end)
 	local biomeType = if okBiomeType then biomeTypeOrError else nil
 	local okBiomeId, biomeIdOrError = pcall(function()
-		return WorldGenerationServiceClient:getBiomeIdAtWorldPosition(worldPosition)
+		return WorldGenerationServiceClient:GetBiomeIdAtWorldPosition(worldPosition)
 	end)
 	local biomeId = if okBiomeId then biomeIdOrError else nil
 
-	return WeatherServiceUtils.resolveSkyKeyFromWorldSample(biomeId, biomeType, depthLayer)
+	return WeatherServiceUtils.GetSkyKeyFromWorldSample(biomeId, biomeType, depthLayer)
 end
 
 function WeatherServiceClient.TransitionToSky(self: WeatherServiceClient, skyKeyRaw: any, transitionSecondsRaw: any?)
-	local skyKey = WeatherServiceUtils.sanitizeSkyKey(skyKeyRaw, WeatherServiceUtils.SKY_KEY_OVERWORLD)
+	local skyKey = WeatherServiceUtils.CoerceSkyKey(skyKeyRaw, WeatherServiceUtils.SKY_KEY_OVERWORLD)
 	local transitionSeconds =
-		WeatherServiceUtils.sanitizeNumber(transitionSecondsRaw, self.state.skyTransitionSeconds, 0, 20)
+		WeatherServiceUtils.CoerceNumber(transitionSecondsRaw, self.state.skyTransitionSeconds, 0, 20)
 
-	local skyRoot = resolveWeatherSkyRoot()
-	local skyFolder = resolveSkyFolderByKey(skyRoot, skyKey)
+	local skyRoot = GetWeatherSkyRoot()
+	local skyFolder = GetSkyFolderByKey(skyRoot, skyKey)
 	if skyFolder == nil then
-		self:warnMissingSkyAsset(skyKey)
-		local fallbackCover, fallbackDensity, fallbackColor = resolveCloudFallback(skyKey)
+		self:WarnMissingSkyAsset(skyKey)
+		local fallbackCover, fallbackDensity, fallbackColor = GetCloudFallback(skyKey)
 		self.cloudTargetCover = fallbackCover
 		self.cloudTargetDensity = fallbackDensity
 		self.cloudTargetColor = fallbackColor
@@ -980,17 +981,17 @@ function WeatherServiceClient.TransitionToSky(self: WeatherServiceClient, skyKey
 
 	local template = collectSkyTemplate(skyFolder)
 	if template == nil then
-		self:warnMissingSkyAsset(skyKey)
+		self:WarnMissingSkyAsset(skyKey)
 		self.activeSkyKey = skyKey
 		return
 	end
 
-	self:applySkyTemplate(template, transitionSeconds)
-	self:applyCloudTargetFromTemplate(template.clouds, skyKey, transitionSeconds)
+	self:ApplySkyTemplate(template, transitionSeconds)
+	self:ApplyCloudTargetFromTemplate(template.clouds, skyKey, transitionSeconds)
 	self.activeSkyKey = skyKey
 end
 
-function WeatherServiceClient.CreateRainEmitter(self: WeatherServiceClient, attachment: Attachment): ParticleEmitter
+function WeatherServiceClient.CreateRainEmitter(_self: WeatherServiceClient, attachment: Attachment): ParticleEmitter
 	local emitter = Instance.new("ParticleEmitter")
 	emitter.Name = HttpService:GenerateGUID(false)
 	emitter.Enabled = true
@@ -1022,7 +1023,7 @@ function WeatherServiceClient.EnsureRainRuntime(self: WeatherServiceClient): Rai
 		return self.rainRuntime
 	end
 
-	local gameFolder = WorkspaceFolders.getOrCreateGameFolder()
+	local gameFolder = WorkspaceFolders.GetOrCreateGameFolder()
 	local existing = gameFolder:FindFirstChild(RUNTIME_RAIN_ANCHOR_NAME)
 	if existing == nil then
 		existing = Workspace:FindFirstChild(RUNTIME_RAIN_ANCHOR_NAME)
@@ -1049,7 +1050,7 @@ function WeatherServiceClient.EnsureRainRuntime(self: WeatherServiceClient): Rai
 		local attachment = Instance.new("Attachment")
 		attachment.Position = offset
 		attachment.Parent = anchorPart
-		table.insert(emitters, self:createRainEmitter(attachment))
+		table.insert(emitters, self:CreateRainEmitter(attachment))
 	end
 
 	local runtime: RainRuntime = {
@@ -1074,9 +1075,9 @@ function WeatherServiceClient.DestroyRainRuntime(self: WeatherServiceClient)
 	self.rainRuntime = nil
 end
 
-function WeatherServiceClient.ResolveRainFollowPosition(self: WeatherServiceClient): Vector3
+function WeatherServiceClient.GetRainFollowPosition(self: WeatherServiceClient): Vector3
 	local character = self.localPlayer.Character
-	local rootPart = resolveCharacterRootPart(character)
+	local rootPart = GetCharacterRootPart(character)
 	if rootPart ~= nil then
 		return rootPart.Position
 	end
@@ -1093,12 +1094,12 @@ function WeatherServiceClient.UpdateRainRuntime(self: WeatherServiceClient)
 		self.currentRainIntensity <= RAIN_RUNTIME_DISABLE_THRESHOLD
 		and self.targetRainIntensity <= RAIN_RUNTIME_DISABLE_THRESHOLD
 	then
-		self:destroyRainRuntime()
+		self:DestroyRainRuntime()
 		return
 	end
 
-	local runtime = self:ensureRainRuntime()
-	local followPosition = self:resolveRainFollowPosition()
+	local runtime = self:EnsureRainRuntime()
+	local followPosition = self:GetRainFollowPosition()
 	local anchorPosition = followPosition + Vector3.new(0, RAIN_FOLLOW_HEIGHT, 0)
 	if
 		runtime.lastAnchorPosition == nil
@@ -1124,33 +1125,33 @@ function WeatherServiceClient.UpdateRainIntensity(self: WeatherServiceClient, dt
 	if math.abs(self.targetRainIntensity - self.currentRainIntensity) <= 0.0001 then
 		self.currentRainIntensity = self.targetRainIntensity
 	end
-	self:updateRainRuntime()
+	self:UpdateRainRuntime()
 end
 
-function WeatherServiceClient.ResolveTargetClockTime(self: WeatherServiceClient): number
+function WeatherServiceClient.GetTargetClockTime(self: WeatherServiceClient): number
 	local targetClockTime = self.state.clockTime
 	if self.state.dayNightCycleEnabled and self.state.clockSpeed ~= 0 then
 		local nowServerTime = Workspace:GetServerTimeNow()
 		local elapsed = math.max(0, nowServerTime - self.state.snapshotServerTime)
-		targetClockTime = WeatherServiceUtils.advanceClockTime(targetClockTime, elapsed, self.state.clockSpeed)
+		targetClockTime = WeatherServiceUtils.AdvanceClockTime(targetClockTime, elapsed, self.state.clockSpeed)
 	end
 	return targetClockTime
 end
 
 function WeatherServiceClient.UpdateClockTime(self: WeatherServiceClient, dt: number)
-	local targetClockTime = self:resolveTargetClockTime()
+	local targetClockTime = self:GetTargetClockTime()
 	local currentClockTime = Lighting.ClockTime
-	local delta = WeatherServiceUtils.shortestClockDeltaHours(currentClockTime, targetClockTime)
+	local delta = WeatherServiceUtils.ShortestClockDeltaHours(currentClockTime, targetClockTime)
 	local maxStep = math.max(0.001, dt * CLOCK_MAX_FOLLOW_SPEED_HOURS_PER_SECOND)
 	if math.abs(delta) <= maxStep then
 		Lighting.ClockTime = targetClockTime
 		return
 	end
-	Lighting.ClockTime = WeatherServiceUtils.advanceClockTime(currentClockTime, 1, math.sign(delta) * maxStep)
+	Lighting.ClockTime = WeatherServiceUtils.AdvanceClockTime(currentClockTime, 1, math.sign(delta) * maxStep)
 end
 
 function WeatherServiceClient.UpdateClouds(self: WeatherServiceClient, dt: number)
-	local clouds = self:ensureTerrainClouds()
+	local clouds = self:EnsureTerrainClouds()
 	local transitionSeconds = math.max(0.01, self.cloudTransitionSeconds)
 	local alpha = math.clamp(dt / transitionSeconds, 0, 1)
 
@@ -1170,7 +1171,7 @@ function WeatherServiceClient.UpdateClouds(self: WeatherServiceClient, dt: numbe
 end
 
 function WeatherServiceClient.TriggerLightningFlash(self: WeatherServiceClient)
-	local flashEffect = self:ensureLightningFlashEffect()
+	local flashEffect = self:EnsureLightningFlashEffect()
 	flashEffect.Enabled = true
 	local intensity = math.clamp(self.currentRainIntensity, 0, 1)
 	flashEffect.Brightness = LIGHTNING_FLASH_BASE_BRIGHTNESS
@@ -1179,11 +1180,16 @@ function WeatherServiceClient.TriggerLightningFlash(self: WeatherServiceClient)
 		+ self.random:NextNumber(0, LIGHTNING_FLASH_RANDOM_CONTRAST) * intensity
 	flashEffect.TintColor = LIGHTNING_FLASH_TINT
 
-	self:playManagedTween("lightningFlash", flashEffect, LIGHTNING_FLASH_FADE_SECONDS, {
+	self:PlayManagedTween("lightningFlash", flashEffect, LIGHTNING_FLASH_FADE_SECONDS, {
 		Brightness = 0,
 		Contrast = 0,
 		Saturation = 0,
 	})
+
+	local windFoliageServiceClient = getWindFoliageServiceClient()
+	if windFoliageServiceClient ~= nil and windFoliageServiceClient.simulation ~= nil then
+		windFoliageServiceClient:ApplyLightningImpulse(intensity)
+	end
 
 	local cameraShaker = self.cameraShaker
 	if cameraShaker ~= nil then
@@ -1201,10 +1207,10 @@ function WeatherServiceClient.TriggerLightningFlash(self: WeatherServiceClient)
 		end)
 	end
 
-	local thunderSoundAssetId = self:pickRandomThunderSoundAssetId()
+	local thunderSoundAssetId = self:PickRandomThunderSoundAssetId()
 	local audioServiceClient = getAudioServiceClient()
 	if thunderSoundAssetId ~= nil and audioServiceClient ~= nil and audioServiceClient.categoryGroups ~= nil then
-		audioServiceClient:playSfx(thunderSoundAssetId, {
+		audioServiceClient:PlaySfx(thunderSoundAssetId, {
 			volume = 0.65 + intensity * 0.35,
 			playbackSpeed = self.random:NextNumber(0.94, 1.05),
 			rollOffMaxDistance = 1000,
@@ -1216,7 +1222,7 @@ function WeatherServiceClient.TriggerLightningFlash(self: WeatherServiceClient)
 end
 
 function WeatherServiceClient.UpdateThunderFlash(self: WeatherServiceClient, dt: number)
-	if not WeatherServiceUtils.isThunderWeather(self.state.weatherType) or self.currentRainIntensity < 0.35 then
+	if not WeatherServiceUtils.IsThunderWeather(self.state.weatherType) or self.currentRainIntensity < 0.35 then
 		self.thunderFlashTimer = self.random:NextNumber(7.5, 14)
 		return
 	end
@@ -1226,7 +1232,7 @@ function WeatherServiceClient.UpdateThunderFlash(self: WeatherServiceClient, dt:
 		return
 	end
 
-	self:triggerLightningFlash()
+	self:TriggerLightningFlash()
 	local intensityFactor = math.clamp(self.currentRainIntensity, 0.2, 1)
 	local minGap = 6.6 - intensityFactor * 1.2
 	local maxGap = 13.8 - intensityFactor * 2.1
@@ -1241,40 +1247,40 @@ function WeatherServiceClient.UpdateBiomeSky(self: WeatherServiceClient, dt: num
 	end
 	self.biomeSampleAccumulator = 0
 
-	local nextSkyKey = self:resolveSkyKeyForLocalPlayer()
+	local nextSkyKey = self:GetSkyKeyForLocalPlayer()
 	if nextSkyKey == self.activeSkyKey then
 		return
 	end
 
-	self:transitionToSky(nextSkyKey, self.state.skyTransitionSeconds)
+	self:TransitionToSky(nextSkyKey, self.state.skyTransitionSeconds)
 end
 
 function WeatherServiceClient.OnHeartbeat(self: WeatherServiceClient, dtRaw: any)
-	local dt = WeatherServiceUtils.sanitizeNumber(dtRaw, 0, 0, 1)
+	local dt = WeatherServiceUtils.CoerceNumber(dtRaw, 0, 0, 1)
 	if dt <= 0 then
 		return
 	end
 
-	self:updateClockTime(dt)
-	self:updateBiomeSky(dt)
-	self:updateRainIntensity(dt)
+	self:UpdateClockTime(dt)
+	self:UpdateBiomeSky(dt)
+	self:UpdateRainIntensity(dt)
 	self.rainAudioUpdateAccumulator += dt
 	if self.rainAudioUpdateAccumulator >= RAIN_AUDIO_UPDATE_INTERVAL then
 		self.rainAudioUpdateAccumulator = 0
-		self:updateRainAudio()
+		self:UpdateRainAudio()
 	end
 	self.weatherWindUpdateAccumulator += dt
 	if self.weatherWindUpdateAccumulator >= WEATHER_WIND_UPDATE_INTERVAL then
 		self.weatherWindUpdateAccumulator = 0
-		self:updateWeatherWind()
+		self:UpdateWeatherWind()
 	end
-	self:updateClouds(dt)
-	self:updateThunderFlash(dt)
+	self:UpdateClouds(dt)
+	self:UpdateThunderFlash(dt)
 end
 
 function WeatherServiceClient.ApplyState(self: WeatherServiceClient, stateRaw: any)
 	local wasReady = self.hasReceivedServerState
-	self.state = WeatherServiceUtils.sanitizeState(stateRaw, self.state)
+	self.state = WeatherServiceUtils.CoerceState(stateRaw, self.state)
 	self.hasReceivedServerState = true
 	self.targetRainIntensity = self.state.rainIntensity
 	self.rainAudioUpdateAccumulator = RAIN_AUDIO_UPDATE_INTERVAL
@@ -1285,7 +1291,7 @@ function WeatherServiceClient.ApplyState(self: WeatherServiceClient, stateRaw: a
 	end
 end
 
-function WeatherServiceClient.RequestSync(self: WeatherServiceClient)
+function WeatherServiceClient.RequestSync(_self: WeatherServiceClient)
 	sendPacket(WeatherServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
@@ -1299,16 +1305,16 @@ function WeatherServiceClient.CleanupVisualRuntime(self: WeatherServiceClient)
 	end
 
 	if self.rainRuntime ~= nil then
-		self:destroyRainRuntime()
+		self:DestroyRainRuntime()
 	end
-	CrossfadeClient:cleanup()
+	CrossfadeClient:Cleanup()
 	local audioServiceClient = getAudioServiceClient()
 	if audioServiceClient ~= nil and audioServiceClient.categoryGroups ~= nil then
-		audioServiceClient:stopChannel(WEATHER_RAIN_CHANNEL_NAME, 0)
+		audioServiceClient:StopChannel(WEATHER_RAIN_CHANNEL_NAME, 0)
 	end
 	local windFoliageServiceClient = getWindFoliageServiceClient()
 	if windFoliageServiceClient ~= nil and windFoliageServiceClient.simulation ~= nil then
-		windFoliageServiceClient:setWeatherWind(0, false)
+		windFoliageServiceClient:SetWeatherWind(0, false)
 	end
 	self.lastWeatherWindStormAlpha = nil
 	self.lastWeatherWindIsThunderstorm = nil
@@ -1336,7 +1342,7 @@ function WeatherServiceClient.Init(self: WeatherServiceClient)
 	self.janitor = Janitor.new()
 	self.random = Random.new()
 
-	self.state = WeatherServiceUtils.createStateFromConfig(nil)
+	self.state = WeatherServiceUtils.CreateStateFromConfig(nil)
 	self.hasReceivedServerState = false
 	self.activeSkyKey = nil :: SkyKey?
 	self.missingSkyWarnedByKey = {} :: { [string]: boolean }
@@ -1361,15 +1367,15 @@ function WeatherServiceClient.Init(self: WeatherServiceClient)
 	self.weatherWindUpdateAccumulator = WEATHER_WIND_UPDATE_INTERVAL
 	self.lastWeatherWindStormAlpha = nil :: number?
 	self.lastWeatherWindIsThunderstorm = nil :: boolean?
-	local fallbackCover, fallbackDensity, fallbackColor = resolveCloudFallback(WeatherServiceUtils.SKY_KEY_OVERWORLD)
+	local fallbackCover, fallbackDensity, fallbackColor = GetCloudFallback(WeatherServiceUtils.SKY_KEY_OVERWORLD)
 	self.cloudTargetCover = fallbackCover
 	self.cloudTargetDensity = fallbackDensity
 	self.cloudTargetColor = fallbackColor
 	self.cloudTransitionSeconds = self.state.cloudTransitionSeconds
-	self:initializeCameraShaker()
+	self:InitializeCameraShaker()
 
 	self.janitor:GiveChore(function()
-		self:cleanupVisualRuntime()
+		self:CleanupVisualRuntime()
 	end)
 	self.janitor:GiveChore(function()
 		local activeCameraShaker = self.cameraShaker
@@ -1384,11 +1390,11 @@ function WeatherServiceClient.Init(self: WeatherServiceClient)
 		self.biomeSampleAccumulator = self.state.biomeSampleIntervalSeconds
 	end))
 	self.janitor:GiveChore(RunService.Heartbeat:Connect(function(dt: number)
-		self:onHeartbeat(dt)
+		self:OnHeartbeat(dt)
 	end))
 
-	self:transitionToSky(WeatherServiceUtils.SKY_KEY_OVERWORLD, 0)
-	self:requestSync()
+	self:TransitionToSky(WeatherServiceUtils.SKY_KEY_OVERWORLD, 0)
+	self:RequestSync()
 end
 
 function WeatherServiceClient.Destroy(self: WeatherServiceClient)
@@ -1396,45 +1402,6 @@ function WeatherServiceClient.Destroy(self: WeatherServiceClient)
 		self.janitor:Destroy()
 	end
 end
-
-WeatherServiceClient.warnMissingSkyAsset = WeatherServiceClient.WarnMissingSkyAsset
-WeatherServiceClient.playManagedTween = WeatherServiceClient.PlayManagedTween
-WeatherServiceClient.initializeCameraShaker = WeatherServiceClient.InitializeCameraShaker
-WeatherServiceClient.pickRandomThunderSoundAssetId = WeatherServiceClient.PickRandomThunderSoundAssetId
-WeatherServiceClient.updateRainAudio = WeatherServiceClient.UpdateRainAudio
-WeatherServiceClient.updateWeatherWind = WeatherServiceClient.UpdateWeatherWind
-WeatherServiceClient.ensureRuntimeSky = WeatherServiceClient.EnsureRuntimeSky
-WeatherServiceClient.ensureRuntimeAtmosphere = WeatherServiceClient.EnsureRuntimeAtmosphere
-WeatherServiceClient.ensureRuntimeColorCorrection = WeatherServiceClient.EnsureRuntimeColorCorrection
-WeatherServiceClient.ensureRuntimeBloom = WeatherServiceClient.EnsureRuntimeBloom
-WeatherServiceClient.ensureRuntimeSunRays = WeatherServiceClient.EnsureRuntimeSunRays
-WeatherServiceClient.ensureRuntimeDepthOfField = WeatherServiceClient.EnsureRuntimeDepthOfField
-WeatherServiceClient.ensureLightningFlashEffect = WeatherServiceClient.EnsureLightningFlashEffect
-WeatherServiceClient.applyTemplateTween = WeatherServiceClient.ApplyTemplateTween
-WeatherServiceClient.applySkyTemplate = WeatherServiceClient.ApplySkyTemplate
-WeatherServiceClient.ensureTerrainClouds = WeatherServiceClient.EnsureTerrainClouds
-WeatherServiceClient.applyCloudTargetFromTemplate = WeatherServiceClient.ApplyCloudTargetFromTemplate
-WeatherServiceClient.resolveSkyKeyForLocalPlayer = WeatherServiceClient.ResolveSkyKeyForLocalPlayer
-WeatherServiceClient.transitionToSky = WeatherServiceClient.TransitionToSky
-WeatherServiceClient.createRainEmitter = WeatherServiceClient.CreateRainEmitter
-WeatherServiceClient.ensureRainRuntime = WeatherServiceClient.EnsureRainRuntime
-WeatherServiceClient.destroyRainRuntime = WeatherServiceClient.DestroyRainRuntime
-WeatherServiceClient.resolveRainFollowPosition = WeatherServiceClient.ResolveRainFollowPosition
-WeatherServiceClient.updateRainRuntime = WeatherServiceClient.UpdateRainRuntime
-WeatherServiceClient.updateRainIntensity = WeatherServiceClient.UpdateRainIntensity
-WeatherServiceClient.resolveTargetClockTime = WeatherServiceClient.ResolveTargetClockTime
-WeatherServiceClient.updateClockTime = WeatherServiceClient.UpdateClockTime
-WeatherServiceClient.updateClouds = WeatherServiceClient.UpdateClouds
-WeatherServiceClient.triggerLightningFlash = WeatherServiceClient.TriggerLightningFlash
-WeatherServiceClient.updateThunderFlash = WeatherServiceClient.UpdateThunderFlash
-WeatherServiceClient.updateBiomeSky = WeatherServiceClient.UpdateBiomeSky
-WeatherServiceClient.onHeartbeat = WeatherServiceClient.OnHeartbeat
-WeatherServiceClient.applyState = WeatherServiceClient.ApplyState
-WeatherServiceClient.requestSync = WeatherServiceClient.RequestSync
-WeatherServiceClient.cleanupVisualRuntime = WeatherServiceClient.CleanupVisualRuntime
-WeatherServiceClient.init = WeatherServiceClient.Init
-WeatherServiceClient.destroy = WeatherServiceClient.Destroy
-
 type WeatherServiceClient = typeof(WeatherServiceClient) & {
 	localPlayer: Player,
 	janitor: JanitorClass,

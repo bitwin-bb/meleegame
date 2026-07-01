@@ -16,33 +16,26 @@ local function getRuntime(): CelestialCycleClassClient.CelestialCycleClassClient
 end
 
 function CelestialCycleClient.Init(_self: any, container: Instance?)
-	getRuntime():init(container)
+	getRuntime():Init(container)
 end
 
 function CelestialCycleClient.ObserveState(_self: any): any
-	return getRuntime():observeState()
+	return getRuntime():ObserveState()
 end
 
 function CelestialCycleClient.GetStateChangedSignal(_self: any): any
-	return getRuntime():getStateChangedSignal()
+	return getRuntime():GetStateChangedSignal()
 end
 
 function CelestialCycleClient.GetState(_self: any): any
-	return getRuntime():getState()
+	return getRuntime():GetState()
 end
 
 function CelestialCycleClient.Destroy(_self: any)
 	if runtime == nil then
 		return
 	end
-	runtime:destroy()
+	runtime:Destroy()
 	runtime = nil
 end
-
-CelestialCycleClient.init = CelestialCycleClient.Init
-CelestialCycleClient.observeState = CelestialCycleClient.ObserveState
-CelestialCycleClient.getStateChangedSignal = CelestialCycleClient.GetStateChangedSignal
-CelestialCycleClient.getState = CelestialCycleClient.GetState
-CelestialCycleClient.destroy = CelestialCycleClient.Destroy
-
 return Table.readonly(CelestialCycleClient)

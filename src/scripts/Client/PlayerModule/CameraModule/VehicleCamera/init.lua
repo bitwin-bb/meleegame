@@ -25,7 +25,7 @@ local localPlayer = Players.LocalPlayer
 local map = CameraUtils.map
 local Spring = CameraUtils.Spring
 local mapClamp = CameraUtils.mapClamp
-local sanitizeAngle = CameraUtils.sanitizeAngle
+local CoerceAngle = CameraUtils.CoerceAngle
 
 -- pitch-axis rotational velocity of a part with a given CFrame and total RotVelocity
 local function pitchVelocity(rotVel, cf)
@@ -90,8 +90,8 @@ function VehicleCamera:_StepRotation(dt, vdotz): CFrame
 	local dYaw = -rotationInput.X
 	local dPitch = -rotationInput.Y
 	
-	yawSpring.pos = sanitizeAngle(yawSpring.pos + dYaw)
-	pitchSpring.pos = sanitizeAngle(math.clamp(pitchSpring.pos + dPitch, -PITCH_LIMIT, PITCH_LIMIT))
+	yawSpring.pos = CoerceAngle(yawSpring.pos + dYaw)
+	pitchSpring.pos = CoerceAngle(math.clamp(pitchSpring.pos + dPitch, -PITCH_LIMIT, PITCH_LIMIT))
 
 	if CameraInput.getRotationActivated() then
 		self.lastPanTick = os.clock()
@@ -122,7 +122,7 @@ function VehicleCamera:_StepRotation(dt, vdotz): CFrame
 			pitchSpring.vel = 0
 		end
 
-		if math.abs(sanitizeAngle(pitchBaseAngle - pitchSpring.pos)) <= pitchDeadzoneAngle then
+		if math.abs(CoerceAngle(pitchBaseAngle - pitchSpring.pos)) <= pitchDeadzoneAngle then
 			-- do nothing within the deadzone
 			pitchSpring.goal = pitchSpring.pos
 		else

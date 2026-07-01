@@ -65,12 +65,4 @@ function CombatInputHandler.Destroy(self: CombatInputHandler)
 	self.input = nil
 	self.queuedAttack = nil
 end
-
-CombatInputHandler.queueAttack = CombatInputHandler.QueueAttack
-CombatInputHandler.getQueuedAttack = CombatInputHandler.GetQueuedAttack
-CombatInputHandler.consumeAttack = CombatInputHandler.ConsumeAttack
-CombatInputHandler.setBlocking = CombatInputHandler.SetBlocking
-CombatInputHandler.isBlocking = CombatInputHandler.IsBlocking
-CombatInputHandler.destroy = CombatInputHandler.Destroy
-
 return CombatInputHandler

@@ -39,16 +39,10 @@ function Damp.halfLifeValue<T>(current: T, target: T, halfLife: number, dt: numb
 end
 
 function Damp.AngleRadians(current: number, target: number, lambda: number, dt: number): number
-	return current + Angle.deltaRadians(current, target) * Damp.Factor(lambda, dt)
+	return current + Angle.DeltaRadians(current, target) * Damp.Factor(lambda, dt)
 end
 
 function Damp.AngleDegrees(current: number, target: number, lambda: number, dt: number): number
-	return current + Angle.deltaDegrees(current, target) * Damp.Factor(lambda, dt)
+	return current + Angle.DeltaDegrees(current, target) * Damp.Factor(lambda, dt)
 end
-
-Damp.factor = Damp.Factor
-Damp.halfLifeFactor = Damp.HalfLifeFactor
-Damp.angleRadians = Damp.AngleRadians
-Damp.angleDegrees = Damp.AngleDegrees
-
 return Damp

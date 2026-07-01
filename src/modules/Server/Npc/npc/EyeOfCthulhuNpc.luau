@@ -13,10 +13,6 @@ function EyeOfCthulhu.Init(_self: typeof(EyeOfCthulhu), _service: any)
 end
 
 function EyeOfCthulhu.New(...: any): any
-	return EyeOfCthulhuController.new(...)
+	return EyeOfCthulhuController.New(...)
 end
-
-EyeOfCthulhu.init = EyeOfCthulhu.Init
-EyeOfCthulhu.new = EyeOfCthulhu.New
-
 return EyeOfCthulhu

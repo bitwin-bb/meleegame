@@ -7,6 +7,13 @@ local BuffConstants = require("BuffConstants")
 local BuffHandlerClient = require("BuffHandlerClient")
 local Maid = require("Maid")
 local Promise = require("Promise")
+
+local function fulfilledPromise(...): any
+	local args = table.pack(...)
+	return Promise.new(function(fulfill)
+		fulfill(table.unpack(args, 1, args.n))
+	end)
+end
 local Rx = require("Rx")
 local Signal = require("Signal")
 local buffUtils = require("buffUtils")
@@ -65,7 +72,7 @@ local function getSnapshotRecords(recordsRaw: any): { any }
 end
 
 local function buildClientRecord(recordRaw: any): BuffRecord
-	local record = buffUtils.applyOverrides(recordRaw, nil)
+	local record = buffUtils.ApplyOverrides(recordRaw, nil)
 	local remainingSeconds = if typeof(recordRaw) == "table" then recordRaw.remainingSeconds else nil
 
 	if typeof(remainingSeconds) == "number" then
@@ -140,11 +147,13 @@ function BuffServiceClient.Init(self: BuffServiceClient, serviceBag: any)
 	end))
 
 	if self._localPlayer ~= nil then
-		self:applySnapshot(self:readReplicatedSnapshot())
+		self:ApplySnapshot(self:ReadReplicatedSnapshot())
 		self._maid:GiveTask(
-			self._localPlayer:GetAttributeChangedSignal(BuffConstants.PLAYER_ACTIVE_RECORDS_ATTRIBUTE):Connect(function()
-				self:applySnapshot(self:readReplicatedSnapshot())
-			end)
+			self._localPlayer
+				:GetAttributeChangedSignal(BuffConstants.PLAYER_ACTIVE_RECORDS_ATTRIBUTE)
+				:Connect(function()
+					self:ApplySnapshot(self:ReadReplicatedSnapshot())
+				end)
 		)
 	end
 end
@@ -182,7 +191,7 @@ function BuffServiceClient.ApplySnapshot(self: BuffServiceClient, recordsRaw: an
 end
 
 function BuffServiceClient.ApplyState(self: BuffServiceClient, recordsRaw: any): number
-	return self:applySnapshot(recordsRaw)
+	return self:ApplySnapshot(recordsRaw)
 end
 
 function BuffServiceClient.ApplyBuff(self: BuffServiceClient, nameRaw: any, overridesRaw: any?): BuffRecord?
@@ -194,19 +203,19 @@ function BuffServiceClient.ApplyDebuff(self: BuffServiceClient, nameRaw: any, ov
 end
 
 function BuffServiceClient.PromiseApplyBuff(self: BuffServiceClient, nameRaw: any, overridesRaw: any?)
-	local record = self:applyBuff(nameRaw, overridesRaw)
+	local record = self:ApplyBuff(nameRaw, overridesRaw)
 	if record == nil then
 		return createRejectedPromise("buff could not be applied")
 	end
-	return Promise.resolved(record)
+	return fulfilledPromise(record)
 end
 
 function BuffServiceClient.PromiseApplyDebuff(self: BuffServiceClient, nameRaw: any, overridesRaw: any?)
-	local record = self:applyDebuff(nameRaw, overridesRaw)
+	local record = self:ApplyDebuff(nameRaw, overridesRaw)
 	if record == nil then
 		return createRejectedPromise("debuff could not be applied")
 	end
-	return Promise.resolved(record)
+	return fulfilledPromise(record)
 end
 
 function BuffServiceClient.AddBuff(
@@ -251,10 +260,10 @@ function BuffServiceClient.Remove(self: BuffServiceClient, idOrNameRaw: any, rea
 end
 
 function BuffServiceClient.PromiseRemove(self: BuffServiceClient, idOrNameRaw: any, reasonRaw: any?, kindRaw: any?)
-	if not self:remove(idOrNameRaw, reasonRaw, kindRaw) then
+	if not self:Remove(idOrNameRaw, reasonRaw, kindRaw) then
 		return createRejectedPromise("buff could not be removed")
 	end
-	return Promise.resolved(true)
+	return fulfilledPromise(true)
 end
 
 function BuffServiceClient.Clear(self: BuffServiceClient, kindRaw: any?): number
@@ -284,27 +293,6 @@ function BuffServiceClient.Destroy(self: BuffServiceClient)
 
 	self._serviceBag = nil
 end
-
-BuffServiceClient.getHandler = BuffServiceClient.GetHandler
-BuffServiceClient.readReplicatedSnapshot = BuffServiceClient.ReadReplicatedSnapshot
-BuffServiceClient.applySnapshot = BuffServiceClient.ApplySnapshot
-BuffServiceClient.applyState = BuffServiceClient.ApplyState
-BuffServiceClient.applyBuff = BuffServiceClient.ApplyBuff
-BuffServiceClient.applyDebuff = BuffServiceClient.ApplyDebuff
-BuffServiceClient.promiseApplyBuff = BuffServiceClient.PromiseApplyBuff
-BuffServiceClient.promiseApplyDebuff = BuffServiceClient.PromiseApplyDebuff
-BuffServiceClient.addBuff = BuffServiceClient.AddBuff
-BuffServiceClient.addDebuff = BuffServiceClient.AddDebuff
-BuffServiceClient.applyRecord = BuffServiceClient.ApplyRecord
-BuffServiceClient.remove = BuffServiceClient.Remove
-BuffServiceClient.promiseRemove = BuffServiceClient.PromiseRemove
-BuffServiceClient.clear = BuffServiceClient.Clear
-BuffServiceClient.getActive = BuffServiceClient.GetActive
-BuffServiceClient.getDefinitions = BuffServiceClient.GetDefinitions
-BuffServiceClient.getRemainingSeconds = BuffServiceClient.GetRemainingSeconds
-BuffServiceClient.observeActive = BuffServiceClient.ObserveActive
-BuffServiceClient.destroy = BuffServiceClient.Destroy
-
 type BuffServiceClient = typeof(BuffServiceClient) & {
 	_serviceBag: any,
 	_maid: MaidClass,

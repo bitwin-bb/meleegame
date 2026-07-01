@@ -80,7 +80,7 @@ local DEFAULT_ATTACK_SIZE = Vector3.new(5.5, 3.5, 5.5)
 local DEFAULT_ATTACK_COOLDOWN = 0.85
 local DEFAULT_DAMAGE = 6
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -95,7 +95,7 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?,
 	return value
 end
 
-local function sanitizeVector3(valueRaw: any, fallback: Vector3, minimumComponent: number): Vector3
+local function CoerceVector3(valueRaw: any, fallback: Vector3, minimumComponent: number): Vector3
 	if typeof(valueRaw) ~= "Vector3" then
 		return fallback
 	end
@@ -107,7 +107,7 @@ local function sanitizeVector3(valueRaw: any, fallback: Vector3, minimumComponen
 	)
 end
 
-local function resolveRootPart(model: Model?): BasePart?
+local function GetRootPart(model: Model?): BasePart?
 	if model == nil then
 		return nil
 	end
@@ -130,7 +130,7 @@ local function resolveRootPart(model: Model?): BasePart?
 	return nil
 end
 
-local function resolveCharacterRoot(player: Player): (Humanoid?, BasePart?)
+local function GetCharacterRoot(player: Player): (Humanoid?, BasePart?)
 	local character = player.Character
 	if character == nil then
 		return nil, nil
@@ -170,12 +170,12 @@ function EnemyHitbox.New(configRaw: EnemyHitboxConfig?): EnemyHitbox
 	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 
 	local self = setmetatable({
-		enemySpatial = SpatialHash.new(sanitizeNumber(config.cellSize, DEFAULT_CELL_SIZE, 0.5, 256)),
-		playerSpatial = SpatialHash.new(sanitizeNumber(config.playerCellSize, DEFAULT_PLAYER_CELL_SIZE, 0.5, 256)),
+		enemySpatial = SpatialHash.new(CoerceNumber(config.cellSize, DEFAULT_CELL_SIZE, 0.5, 256)),
+		playerSpatial = SpatialHash.new(CoerceNumber(config.playerCellSize, DEFAULT_PLAYER_CELL_SIZE, 0.5, 256)),
 		enemiesById = {},
 		enemyIdByModel = {},
 		playersById = {},
-		playerHitboxSizePadding = sanitizeVector3(config.playerHitboxSizePadding, DEFAULT_PLAYER_HITBOX_PADDING, 0),
+		playerHitboxSizePadding = CoerceVector3(config.playerHitboxSizePadding, DEFAULT_PLAYER_HITBOX_PADDING, 0),
 		heartbeatConnection = nil,
 		destroyed = false,
 	}, EnemyHitbox)
@@ -201,8 +201,8 @@ function EnemyHitbox.Destroy(self: EnemyHitbox)
 	table.clear(self.enemyIdByModel)
 	table.clear(self.enemiesById)
 	table.clear(self.playersById)
-	self.enemySpatial:clear()
-	self.playerSpatial:clear()
+	self.enemySpatial:Clear()
+	self.playerSpatial:Clear()
 end
 
 function EnemyHitbox.RegisterEnemy(self: EnemyHitbox, configRaw: any): boolean
@@ -215,7 +215,7 @@ function EnemyHitbox.RegisterEnemy(self: EnemyHitbox, configRaw: any): boolean
 		return false
 	end
 
-	self:unregisterEnemy(config.id)
+	self:UnregisterEnemy(config.id)
 
 	local record: EnemyRecord = {
 		id = config.id,
@@ -256,7 +256,7 @@ function EnemyHitbox.UnregisterEnemy(self: EnemyHitbox, enemyIdRaw: any)
 	end
 
 	table.clear(record.nextDamageAtByPlayer)
-	self.enemySpatial:remove(record.id)
+	self.enemySpatial:Remove(record.id)
 	self.enemiesById[record.id] = nil
 end
 
@@ -288,11 +288,11 @@ function EnemyHitbox.SetEnemyAlive(self: EnemyHitbox, enemyIdRaw: any, aliveRaw:
 
 	record.alive = aliveRaw == true
 	if not record.alive then
-		self.enemySpatial:remove(record.id)
+		self.enemySpatial:Remove(record.id)
 	end
 end
 
-function EnemyHitbox.ResolveEnemyIdFromModel(self: EnemyHitbox, modelRaw: any): string?
+function EnemyHitbox.GetEnemyIdFromModel(self: EnemyHitbox, modelRaw: any): string?
 	if typeof(modelRaw) ~= "Instance" or not modelRaw:IsA("Model") then
 		return nil
 	end
@@ -311,13 +311,13 @@ function EnemyHitbox.ResolveEnemyIdFromModel(self: EnemyHitbox, modelRaw: any): 
 	return nil
 end
 
-function EnemyHitbox.ResolveEnemyIdFromPart(self: EnemyHitbox, partRaw: any): string?
+function EnemyHitbox.GetEnemyIdFromPart(self: EnemyHitbox, partRaw: any): string?
 	if typeof(partRaw) ~= "Instance" or not partRaw:IsA("BasePart") then
 		return nil
 	end
 
 	local part = partRaw :: BasePart
-	local enemyIdFromModel = self:resolveEnemyIdFromModel(part:FindFirstAncestorOfClass("Model"))
+	local enemyIdFromModel = self:GetEnemyIdFromModel(part:FindFirstAncestorOfClass("Model"))
 	return enemyIdFromModel
 end
 
@@ -325,7 +325,7 @@ function EnemyHitbox._refreshPlayers(self: EnemyHitbox)
 	local alivePlayerIds: { [string]: true } = {}
 
 	for _, player in Players:GetPlayers() do
-		local humanoid, rootPart = resolveCharacterRoot(player)
+		local humanoid, rootPart = GetCharacterRoot(player)
 		if humanoid == nil or rootPart == nil then
 			continue
 		end
@@ -334,7 +334,7 @@ function EnemyHitbox._refreshPlayers(self: EnemyHitbox)
 		alivePlayerIds[playerId] = true
 
 		local hitboxSize = rootPart.Size + self.playerHitboxSizePadding
-		local aabbMin, aabbMax = SpatialHash.aabbFromCenterSize(rootPart.Position, hitboxSize)
+		local aabbMin, aabbMax = SpatialHash.AabbFromCenterSize(rootPart.Position, hitboxSize)
 		local record: PlayerRecord = {
 			id = playerId,
 			player = player,
@@ -345,13 +345,13 @@ function EnemyHitbox._refreshPlayers(self: EnemyHitbox)
 		}
 
 		self.playersById[playerId] = record
-		self.playerSpatial:upsert(playerId, aabbMin, aabbMax, record)
+		self.playerSpatial:Upsert(playerId, aabbMin, aabbMax, record)
 	end
 
 	for playerId, record in self.playersById do
 		if alivePlayerIds[playerId] ~= true then
 			self.playersById[playerId] = nil
-			self.playerSpatial:remove(playerId)
+			self.playerSpatial:Remove(playerId)
 			for _, enemyRecord in self.enemiesById do
 				enemyRecord.nextDamageAtByPlayer[record.player] = nil
 			end
@@ -381,13 +381,13 @@ function EnemyHitbox._refreshEnemy(self: EnemyHitbox, record: EnemyRecord)
 		self.enemyIdByModel[nextModel] = record.id
 	end
 
-	local rootPart = resolveRootPart(nextModel)
+	local rootPart = GetRootPart(nextModel)
 	record.rootPart = rootPart
 
 	local aliveFromCallback = runCallback(config.getAlive, true, owner)
 	record.alive = aliveFromCallback and nextModel ~= nil and rootPart ~= nil
 	if not record.alive then
-		self.enemySpatial:remove(record.id)
+		self.enemySpatial:Remove(record.id)
 		return
 	end
 
@@ -403,12 +403,12 @@ function EnemyHitbox._refreshEnemy(self: EnemyHitbox, record: EnemyRecord)
 	end
 
 	local rootSize = if rootPart ~= nil then rootPart.Size else DEFAULT_HURTBOX_SIZE
-	local hurtboxSize = sanitizeVector3(
+	local hurtboxSize = CoerceVector3(
 		runCallback(config.getHurtboxSize, nil, owner, nextModel, rootPart),
 		Vector3.new(math.max(2, rootSize.X), math.max(2, rootSize.Y), math.max(2, rootSize.Z)),
 		0.5
 	)
-	local attackSize = sanitizeVector3(
+	local attackSize = CoerceVector3(
 		runCallback(config.getAttackSize, nil, owner, nextModel, rootPart),
 		Vector3.new(
 			math.max(hurtboxSize.X, rootSize.X + 1.5),
@@ -418,8 +418,8 @@ function EnemyHitbox._refreshEnemy(self: EnemyHitbox, record: EnemyRecord)
 		0.5
 	)
 
-	local aabbMin, aabbMax = SpatialHash.aabbFromCenterSize(center, hurtboxSize)
-	local attackAabbMin, attackAabbMax = SpatialHash.aabbFromCenterSize(center, attackSize)
+	local aabbMin, aabbMax = SpatialHash.AabbFromCenterSize(center, hurtboxSize)
+	local attackAabbMin, attackAabbMax = SpatialHash.AabbFromCenterSize(center, attackSize)
 	record.center = center
 	record.hurtboxSize = hurtboxSize
 	record.attackSize = attackSize
@@ -427,15 +427,15 @@ function EnemyHitbox._refreshEnemy(self: EnemyHitbox, record: EnemyRecord)
 	record.aabbMax = aabbMax
 	record.attackAabbMin = attackAabbMin
 	record.attackAabbMax = attackAabbMax
-	record.damage = sanitizeNumber(runCallback(config.getDamage, DEFAULT_DAMAGE, owner), DEFAULT_DAMAGE, 0, 100000)
-	record.attackCooldown = sanitizeNumber(
+	record.damage = CoerceNumber(runCallback(config.getDamage, DEFAULT_DAMAGE, owner), DEFAULT_DAMAGE, 0, 100000)
+	record.attackCooldown = CoerceNumber(
 		runCallback(config.getAttackCooldown, DEFAULT_ATTACK_COOLDOWN, owner),
 		DEFAULT_ATTACK_COOLDOWN,
 		0.05,
 		30
 	)
 
-	self.enemySpatial:upsert(record.id, aabbMin, aabbMax, record)
+	self.enemySpatial:Upsert(record.id, aabbMin, aabbMax, record)
 end
 
 function EnemyHitbox._processEnemyAttacks(self: EnemyHitbox, now: number)
@@ -453,7 +453,7 @@ function EnemyHitbox._processEnemyAttacks(self: EnemyHitbox, now: number)
 			continue
 		end
 
-		local candidates = self.playerSpatial:queryAabb(record.attackAabbMin, record.attackAabbMax)
+		local candidates = self.playerSpatial:QueryAabb(record.attackAabbMin, record.attackAabbMax)
 		if #candidates <= 0 then
 			continue
 		end
@@ -476,7 +476,7 @@ function EnemyHitbox._processEnemyAttacks(self: EnemyHitbox, now: number)
 			end
 
 			if
-				not SpatialHash.aabbIntersects(
+				not SpatialHash.AabbIntersects(
 					record.attackAabbMin,
 					record.attackAabbMax,
 					playerRecord.aabbMin,
@@ -503,14 +503,5 @@ function EnemyHitbox._step(self: EnemyHitbox)
 	end
 	self:_processEnemyAttacks(os.clock())
 end
-
-EnemyHitbox.new = EnemyHitbox.New
-EnemyHitbox.destroy = EnemyHitbox.Destroy
-EnemyHitbox.registerEnemy = EnemyHitbox.RegisterEnemy
-EnemyHitbox.unregisterEnemy = EnemyHitbox.UnregisterEnemy
-EnemyHitbox.setEnemyModel = EnemyHitbox.SetEnemyModel
-EnemyHitbox.setEnemyAlive = EnemyHitbox.SetEnemyAlive
-EnemyHitbox.resolveEnemyIdFromModel = EnemyHitbox.ResolveEnemyIdFromModel
-EnemyHitbox.resolveEnemyIdFromPart = EnemyHitbox.ResolveEnemyIdFromPart
 
 return EnemyHitbox

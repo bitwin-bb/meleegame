@@ -35,7 +35,7 @@ type PopupEntryProps = {
 
 local e: typeof(React.createElement) = React.createElement
 
-local function resolveCharacterRootPart(localPlayer: Player): BasePart?
+local function GetCharacterRootPart(localPlayer: Player): BasePart?
 	local character = localPlayer.Character
 	if character == nil then
 		return nil
@@ -53,12 +53,12 @@ local function resolveCharacterRootPart(localPlayer: Player): BasePart?
 	return character:FindFirstChildWhichIsA("BasePart")
 end
 
-local function resolveModelRootPart(model: Model?): BasePart?
+local function GetModelRootPart(model: Model?): BasePart?
 	if model == nil then
 		return nil
 	end
 
-	local bossRootPart = BossServiceUtils.resolveRootPart(model)
+	local bossRootPart = BossServiceUtils.GetRootPart(model)
 	if bossRootPart ~= nil then
 		return bossRootPart
 	end
@@ -75,8 +75,8 @@ local function resolveModelRootPart(model: Model?): BasePart?
 	return model:FindFirstChildWhichIsA("BasePart", true)
 end
 
-local function resolveRuntimeModelByAttribute(attributeName: string, runtimeId: string): Model?
-	local gameFolder = PlayerServiceUtils.getOrCreateWorkspaceGameFolder()
+local function GetUntimeModelByAttribute(attributeName: string, runtimeId: string): Model?
+	local gameFolder = PlayerServiceUtils.GetOrCreateWorkspaceGameFolder()
 	local searchRoots = { gameFolder, Workspace }
 	for _, root in searchRoots do
 		for _, descendant in root:GetDescendants() do
@@ -88,9 +88,9 @@ local function resolveRuntimeModelByAttribute(attributeName: string, runtimeId: 
 	return nil
 end
 
-local function resolvePopupTargetRootPart(localPlayer: Player, popup: InfoPlayerPopup): BasePart?
+local function GetPopupTargetRootPart(localPlayer: Player, popup: InfoPlayerPopup): BasePart?
 	if popup.kind ~= "damage_dealt" then
-		return resolveCharacterRootPart(localPlayer)
+		return GetCharacterRootPart(localPlayer)
 	end
 
 	local runtimeId = popup.targetRuntimeId
@@ -109,10 +109,10 @@ local function resolvePopupTargetRootPart(localPlayer: Player, popup: InfoPlayer
 		return nil
 	end
 
-	return resolveModelRootPart(resolveRuntimeModelByAttribute(runtimeAttribute, runtimeId))
+	return GetModelRootPart(GetUntimeModelByAttribute(runtimeAttribute, runtimeId))
 end
 
-local function resolveThemeByPopupKind(kind: infoPlayerSlice.InfoPlayerPopupKind): { [string]: any }
+local function GetThemeByPopupKind(kind: infoPlayerSlice.InfoPlayerPopupKind): { [string]: any }
 	if kind == "damage_taken" then
 		return {
 			backgroundColor = Color3.fromRGB(36, 13, 17),
@@ -149,7 +149,7 @@ end
 
 local function PopupEntry(props: PopupEntryProps): React.ReactNode
 	local popup = props.popup
-	local targetRootPart = resolvePopupTargetRootPart(props.localPlayer, popup)
+	local targetRootPart = GetPopupTargetRootPart(props.localPlayer, popup)
 	local stackOffset = (props.index - 1) * 1.55
 	local popupZIndex = props.zIndex + props.index
 	local textValue = ""
@@ -173,7 +173,7 @@ local function PopupEntry(props: PopupEntryProps): React.ReactNode
 		minScale = 0.18,
 	})
 
-	local theme = resolveThemeByPopupKind(popup.kind)
+	local theme = GetThemeByPopupKind(popup.kind)
 	theme.titleTransparency = popUpAnimation.transparency
 	local renderedTextSize = math.max(6, math.floor(textSize * popUpAnimation.scale + 0.5))
 
@@ -195,7 +195,7 @@ local function PopupEntry(props: PopupEntryProps): React.ReactNode
 		createdAnchor.Transparency = 1
 		createdAnchor.Size = Vector3.new(0.1, 0.1, 0.1)
 		createdAnchor.CFrame = CFrame.new(anchorPosition)
-		createdAnchor.Parent = PlayerServiceUtils.getOrCreateWorkspaceGameFolder()
+		createdAnchor.Parent = PlayerServiceUtils.GetOrCreateWorkspaceGameFolder()
 		setAnchorPart(createdAnchor)
 
 		return function()
@@ -261,20 +261,20 @@ local function createPopupElement(
 end
 
 return function(props: InfoPlayerScreenProps?): React.ReactNode
-	local resolvedProps: InfoPlayerScreenProps = if props ~= nil then props else {} :: any
+	local GotProps: InfoPlayerScreenProps = if props ~= nil then props else {} :: any
 	local localPlayer = Players.LocalPlayer
 	local infoPlayerState = (useStore(infoPlayerSlice.infoPlayerStateAtom) :: InfoPlayerState?)
 		or infoPlayerSlice.infoPlayerStateAtom()
 
 	React.useEffect(function()
-		local stop = infoPlayerThunks.start()
+		local stop = infoPlayerThunks.Start()
 
 		return function()
 			stop()
 		end
 	end, {})
 
-	if resolvedProps.visible == false then
+	if GotProps.visible == false then
 		return nil
 	end
 	if infoPlayerState.enabled ~= true then
@@ -284,7 +284,7 @@ return function(props: InfoPlayerScreenProps?): React.ReactNode
 		return nil
 	end
 
-	local zIndex = resolvedProps.zIndex or 180
+	local zIndex = GotProps.zIndex or 180
 	local children: { React.ReactNode } = {}
 	for index, popup in infoPlayerState.popups do
 		children[#children + 1] = createPopupElement(localPlayer, popup, index, zIndex)

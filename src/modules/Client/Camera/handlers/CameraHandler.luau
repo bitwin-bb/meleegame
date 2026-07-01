@@ -53,10 +53,4 @@ function CameraHandler.Destroy(self: CameraHandler)
 	self.camera = nil
 	self.target = nil
 end
-
-CameraHandler.setTarget = CameraHandler.SetTarget
-CameraHandler.getCamera = CameraHandler.GetCamera
-CameraHandler.setCameraType = CameraHandler.SetCameraType
-CameraHandler.destroy = CameraHandler.Destroy
-
 return CameraHandler

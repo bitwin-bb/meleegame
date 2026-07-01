@@ -18,7 +18,7 @@ local MIN_GROUND_UP_DOT = 0.75
 local MAX_WALL_UP_DOT = 0.25
 local MIN_SURFACE_OFFSET = 0.05
 
-local function sanitizeVector3(valueRaw: any): Vector3?
+local function CoerceVector3(valueRaw: any): Vector3?
 	if typeof(valueRaw) ~= "Vector3" then
 		return nil
 	end
@@ -28,7 +28,7 @@ local function sanitizeVector3(valueRaw: any): Vector3?
 	return valueRaw
 end
 
-local function sanitizeNumber(valueRaw: any): number?
+local function CoerceNumber(valueRaw: any): number?
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return nil
 	end
@@ -36,7 +36,7 @@ local function sanitizeNumber(valueRaw: any): number?
 end
 
 local function normalizeOrFallback(vectorRaw: any, fallback: Vector3): Vector3
-	local vector = sanitizeVector3(vectorRaw)
+	local vector = CoerceVector3(vectorRaw)
 	if vector == nil then
 		return fallback
 	end
@@ -83,7 +83,7 @@ function TorchTilt.IsSolidSurface(instanceRaw: any): boolean
 end
 
 function TorchTilt.IsGroundNormal(normalRaw: any): boolean
-	local normal = sanitizeVector3(normalRaw)
+	local normal = CoerceVector3(normalRaw)
 	if normal == nil then
 		return false
 	end
@@ -91,7 +91,7 @@ function TorchTilt.IsGroundNormal(normalRaw: any): boolean
 end
 
 function TorchTilt.IsWallNormal(normalRaw: any): boolean
-	local normal = sanitizeVector3(normalRaw)
+	local normal = CoerceVector3(normalRaw)
 	if normal == nil then
 		return false
 	end
@@ -99,7 +99,7 @@ function TorchTilt.IsWallNormal(normalRaw: any): boolean
 	return math.abs(unitNormal:Dot(WORLD_UP)) <= MAX_WALL_UP_DOT and math.abs(unitNormal.Z) > math.abs(unitNormal.X)
 end
 
-function TorchTilt.ResolveSupportKind(normalRaw: any): SupportKind?
+function TorchTilt.GetSupportKind(normalRaw: any): SupportKind?
 	if TorchTilt.IsGroundNormal(normalRaw) then
 		return "Ground"
 	end
@@ -109,19 +109,19 @@ function TorchTilt.ResolveSupportKind(normalRaw: any): SupportKind?
 	return nil
 end
 
-function TorchTilt.ResolveTileAlignedCFrame(
+function TorchTilt.GetTileAlignedCFrame(
 	tileCenterRaw: any,
 	supportNormalRaw: any,
 	lookVectorRaw: any
 ): (CFrame?, SupportKind?)
-	local tileCenter = sanitizeVector3(tileCenterRaw)
-	local supportNormal = sanitizeVector3(supportNormalRaw)
+	local tileCenter = CoerceVector3(tileCenterRaw)
+	local supportNormal = CoerceVector3(supportNormalRaw)
 	if tileCenter == nil or supportNormal == nil then
 		return nil, nil
 	end
 
 	local surfaceNormal = supportNormal.Unit
-	local supportKind = TorchTilt.ResolveSupportKind(surfaceNormal)
+	local supportKind = TorchTilt.GetSupportKind(surfaceNormal)
 	if supportKind == nil then
 		return nil, nil
 	end
@@ -145,7 +145,7 @@ function TorchTilt.ResolveTileAlignedCFrame(
 	return buildFrame(tileCenter, torchUp, forwardCandidate), supportKind :: SupportKind
 end
 
-function TorchTilt.ResolveTilePlacement(
+function TorchTilt.GetTilePlacement(
 	hitPositionRaw: any,
 	hitNormalRaw: any,
 	worldOriginRaw: any,
@@ -153,11 +153,11 @@ function TorchTilt.ResolveTilePlacement(
 	basePlaneXRaw: any,
 	lookVectorRaw: any
 ): TilePlacement?
-	local hitPosition = sanitizeVector3(hitPositionRaw)
-	local hitNormal = sanitizeVector3(hitNormalRaw)
-	local worldOrigin = sanitizeVector3(worldOriginRaw)
-	local tileSize = sanitizeNumber(tileSizeRaw)
-	local basePlaneX = sanitizeNumber(basePlaneXRaw)
+	local hitPosition = CoerceVector3(hitPositionRaw)
+	local hitNormal = CoerceVector3(hitNormalRaw)
+	local worldOrigin = CoerceVector3(worldOriginRaw)
+	local tileSize = CoerceNumber(tileSizeRaw)
+	local basePlaneX = CoerceNumber(basePlaneXRaw)
 	if hitPosition == nil or hitNormal == nil or worldOrigin == nil or tileSize == nil or basePlaneX == nil then
 		return nil
 	end
@@ -166,7 +166,7 @@ function TorchTilt.ResolveTilePlacement(
 	end
 
 	local surfaceNormal = hitNormal.Unit
-	local supportKind = TorchTilt.ResolveSupportKind(surfaceNormal)
+	local supportKind = TorchTilt.GetSupportKind(surfaceNormal)
 	if supportKind == nil then
 		return nil
 	end
@@ -181,7 +181,7 @@ function TorchTilt.ResolveTilePlacement(
 		tileX += if surfaceNormal.Z >= 0 then 1 else -1
 	end
 	local tileCenter = BuildServiceUtils.TileToWorldCenter(tileX, tileY, worldOrigin, tileSize, basePlaneX)
-	local alignedCFrame = TorchTilt.ResolveTileAlignedCFrame(tileCenter, surfaceNormal, lookVectorRaw)
+	local alignedCFrame = TorchTilt.GetTileAlignedCFrame(tileCenter, surfaceNormal, lookVectorRaw)
 	if alignedCFrame == nil then
 		return nil
 	end
@@ -196,20 +196,20 @@ function TorchTilt.ResolveTilePlacement(
 	) :: TilePlacement
 end
 
-function TorchTilt.ResolvePlacementCFrame(
+function TorchTilt.GetPlacementCFrame(
 	hitPositionRaw: any,
 	hitNormalRaw: any,
 	boundingSizeRaw: any,
 	lookVectorRaw: any
 ): (CFrame?, SupportKind?)
-	local hitPosition = sanitizeVector3(hitPositionRaw)
-	local hitNormal = sanitizeVector3(hitNormalRaw)
+	local hitPosition = CoerceVector3(hitPositionRaw)
+	local hitNormal = CoerceVector3(hitNormalRaw)
 	local boundingSize = if typeof(boundingSizeRaw) == "Vector3" then boundingSizeRaw else nil
 	if hitPosition == nil or hitNormal == nil or boundingSize == nil then
 		return nil, nil
 	end
 
-	local supportKind = TorchTilt.ResolveSupportKind(hitNormal)
+	local supportKind = TorchTilt.GetSupportKind(hitNormal)
 	if supportKind == nil then
 		return nil, nil
 	end
@@ -221,15 +221,7 @@ function TorchTilt.ResolvePlacementCFrame(
 		position += hitNormal.Unit * math.max(MIN_SURFACE_OFFSET, boundingSize.Z * 0.5)
 	end
 
-	return TorchTilt.ResolveTileAlignedCFrame(position, hitNormal, lookVectorRaw)
+	return TorchTilt.GetTileAlignedCFrame(position, hitNormal, lookVectorRaw)
 end
-
-TorchTilt.isSolidSurface = TorchTilt.IsSolidSurface
-TorchTilt.isGroundNormal = TorchTilt.IsGroundNormal
-TorchTilt.isWallNormal = TorchTilt.IsWallNormal
-TorchTilt.resolveSupportKind = TorchTilt.ResolveSupportKind
-TorchTilt.resolveTileAlignedCFrame = TorchTilt.ResolveTileAlignedCFrame
-TorchTilt.resolveTilePlacement = TorchTilt.ResolveTilePlacement
-TorchTilt.resolvePlacementCFrame = TorchTilt.ResolvePlacementCFrame
 
 return TorchTilt

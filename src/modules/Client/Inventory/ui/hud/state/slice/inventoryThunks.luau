@@ -34,19 +34,19 @@ function inventoryThunks.Start(): () -> ()
 	runtime.started = true
 	syncFromService()
 
-	runtime.stateChangedConnection = ServiceSync.connectStateChanged(
+	runtime.stateChangedConnection = ServiceSync.ConnectStateChanged(
 		InventoryServiceClient,
 		function(nextState: InventoryState)
 			applyState(nextState)
 		end
 	)
-	ServiceSync.requestSync(InventoryServiceClient)
+	ServiceSync.RequestSync(InventoryServiceClient)
 
 	return inventoryThunks.Stop
 end
 
 function inventoryThunks.Stop()
-	ConnectionUtils.disconnect(runtime.stateChangedConnection)
+	ConnectionUtils.Disconnect(runtime.stateChangedConnection)
 	runtime.stateChangedConnection = nil
 	runtime.started = false
 end
@@ -61,7 +61,7 @@ end
 
 function inventoryThunks.SelectSlot(slotIndexRaw: any): boolean
 	local success, didSet = pcall(function()
-		return InventoryServiceClient:setSelectedSlot(slotIndexRaw, true)
+		return InventoryServiceClient:SetSelectedSlot(slotIndexRaw, true)
 	end)
 	if success then
 		return didSet == true
@@ -71,7 +71,7 @@ end
 
 function inventoryThunks.ClearSelectedSlot(): boolean
 	local success, didSet = pcall(function()
-		return InventoryServiceClient:clearSelectedSlot(true)
+		return InventoryServiceClient:ClearSelectedSlot(true)
 	end)
 	if success then
 		return didSet == true
@@ -81,40 +81,40 @@ end
 
 function inventoryThunks.MoveSlot(fromSlotRaw: any, toSlotRaw: any, amountRaw: any): boolean
 	local currentState = inventorySlice.getInventoryState()
-	local optimisticState = InventoryServiceUtils.cloneState(currentState)
-	local optimisticResult = InventoryServiceUtils.moveSlot(optimisticState, fromSlotRaw, toSlotRaw, amountRaw)
+	local optimisticState = InventoryServiceUtils.CloneState(currentState)
+	local optimisticResult = InventoryServiceUtils.MoveSlot(optimisticState, fromSlotRaw, toSlotRaw, amountRaw)
 	if optimisticResult.changed then
 		inventorySlice.setInventoryState(optimisticState)
 	end
 
 	pcall(function()
-		InventoryServiceClient:moveSlot(fromSlotRaw, toSlotRaw, amountRaw)
+		InventoryServiceClient:MoveSlot(fromSlotRaw, toSlotRaw, amountRaw)
 	end)
 	return optimisticResult.changed
 end
 
 function inventoryThunks.SplitSlot(fromSlotRaw: any, toSlotRaw: any, amountRaw: any): boolean
 	pcall(function()
-		InventoryServiceClient:splitSlot(fromSlotRaw, toSlotRaw, amountRaw)
+		InventoryServiceClient:SplitSlot(fromSlotRaw, toSlotRaw, amountRaw)
 	end)
 	return true
 end
 
 function inventoryThunks.DropFromSlot(slotIndexRaw: any, amountRaw: any): boolean
 	local currentState = inventorySlice.getInventoryState()
-	local safeState = InventoryServiceUtils.sanitizeState(currentState, currentState)
-	if not InventoryServiceUtils.isLoadedState(safeState.loadState) then
+	local safeState = InventoryServiceUtils.CoerceState(currentState, currentState)
+	if not InventoryServiceUtils.IsLoadedState(safeState.loadState) then
 		return false
 	end
 
-	local slot = InventoryServiceUtils.getSlot(safeState, slotIndexRaw)
+	local slot = InventoryServiceUtils.GetSlot(safeState, slotIndexRaw)
 	if slot == nil or slot.stack == nil then
 		return false
 	end
 
 	task.defer(function()
 		pcall(function()
-			InventoryServiceClient:dropFromSlot(slotIndexRaw, amountRaw)
+			InventoryServiceClient:DropFromSlot(slotIndexRaw, amountRaw)
 		end)
 	end)
 	return true
@@ -122,21 +122,21 @@ end
 
 function inventoryThunks.TrashSlot(slotIndexRaw: any, amountRaw: any): boolean
 	local currentState = inventorySlice.getInventoryState()
-	local optimisticState = InventoryServiceUtils.cloneState(currentState)
-	local optimisticResult = InventoryServiceUtils.trashSlot(optimisticState, slotIndexRaw, amountRaw)
+	local optimisticState = InventoryServiceUtils.CloneState(currentState)
+	local optimisticResult = InventoryServiceUtils.TrashSlot(optimisticState, slotIndexRaw, amountRaw)
 	if optimisticResult.changed then
 		inventorySlice.setInventoryState(optimisticState)
 	end
 
 	local success = pcall(function()
-		InventoryServiceClient:trashSlot(slotIndexRaw, amountRaw)
+		InventoryServiceClient:TrashSlot(slotIndexRaw, amountRaw)
 	end)
 	return success
 end
 
 function inventoryThunks.UseSelectedSlot(amountRaw: any)
 	pcall(function()
-		InventoryServiceClient:useSelectedSlot(amountRaw)
+		InventoryServiceClient:UseSelectedSlot(amountRaw)
 	end)
 end
 
@@ -173,33 +173,10 @@ function inventoryThunks.SetLeftSideBarVisible(isVisibleRaw: any): InventoryHudS
 end
 
 function inventoryThunks.ToggleCrafting()
-	return craftingThunks.toggleVisible()
+	return craftingThunks.ToggleVisible()
 end
 
 function inventoryThunks.SetCraftingVisible(isVisibleRaw: any)
-	return craftingThunks.setVisible(isVisibleRaw)
+	return craftingThunks.SetVisible(isVisibleRaw)
 end
-
-inventoryThunks.start = inventoryThunks.Start
-inventoryThunks.stop = inventoryThunks.Stop
-inventoryThunks.syncFromService = inventoryThunks.SyncFromService
-inventoryThunks.applyState = inventoryThunks.ApplyState
-inventoryThunks.selectSlot = inventoryThunks.SelectSlot
-inventoryThunks.clearSelectedSlot = inventoryThunks.ClearSelectedSlot
-inventoryThunks.moveSlot = inventoryThunks.MoveSlot
-inventoryThunks.splitSlot = inventoryThunks.SplitSlot
-inventoryThunks.dropFromSlot = inventoryThunks.DropFromSlot
-inventoryThunks.trashSlot = inventoryThunks.TrashSlot
-inventoryThunks.useSelectedSlot = inventoryThunks.UseSelectedSlot
-inventoryThunks.openInventory = inventoryThunks.OpenInventory
-inventoryThunks.closeInventory = inventoryThunks.CloseInventory
-inventoryThunks.toggleInventory = inventoryThunks.ToggleInventory
-inventoryThunks.setHotbarExpanded = inventoryThunks.SetHotbarExpanded
-inventoryThunks.toggleHotbarExpanded = inventoryThunks.ToggleHotbarExpanded
-inventoryThunks.showLeftSideBar = inventoryThunks.ShowLeftSideBar
-inventoryThunks.hideLeftSideBar = inventoryThunks.HideLeftSideBar
-inventoryThunks.setLeftSideBarVisible = inventoryThunks.SetLeftSideBarVisible
-inventoryThunks.toggleCrafting = inventoryThunks.ToggleCrafting
-inventoryThunks.setCraftingVisible = inventoryThunks.SetCraftingVisible
-
 return inventoryThunks

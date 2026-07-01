@@ -19,7 +19,4 @@ function Water.CreatePart(configRaw: WaterPartConfig?): Part
 	config.castShadow = if config.castShadow == nil then false else config.castShadow
 	return Tile.CreatePart(config)
 end
-
-Water.createPart = Water.CreatePart
-
 return Water

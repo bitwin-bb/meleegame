@@ -16,7 +16,7 @@ export type BubbleDepleteOptions = {
 local DEFAULT_SPEED = 4
 local DEFAULT_EPSILON = 0.001
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
@@ -30,7 +30,7 @@ local function cloneFillAlphas(fillAlphasRaw: any): { number }
 
 	local fillAlphas = Sift.Array.create(#fillAlphasRaw)
 	for index, fillAlphaRaw in ipairs(fillAlphasRaw) do
-		fillAlphas[index] = sanitizeNumber(fillAlphaRaw, 1, 0, 1)
+		fillAlphas[index] = CoerceNumber(fillAlphaRaw, 1, 0, 1)
 	end
 
 	if #fillAlphas == 0 then
@@ -64,7 +64,7 @@ local function synchronizeFillAlphas(currentFillAlphas: { number }, targetFillAl
 	local synchronizedFillAlphas = Sift.Array.create(#targetFillAlphas)
 
 	for index, targetFillAlpha in ipairs(targetFillAlphas) do
-		local synchronizedFillAlpha = sanitizeNumber(currentFillAlphas[index], targetFillAlpha, 0, 1)
+		local synchronizedFillAlpha = CoerceNumber(currentFillAlphas[index], targetFillAlpha, 0, 1)
 		synchronizedFillAlphas[index] = synchronizedFillAlpha
 
 		if synchronizedFillAlpha ~= currentFillAlphas[index] then
@@ -113,8 +113,8 @@ end
 local function useBubbleDeplete(options: BubbleDepleteOptions?): { number }
 	local targetFillAlphas = cloneFillAlphas(if options then options.fillAlphas else nil)
 	local targetKey = getFillAlphaKey(targetFillAlphas)
-	local speed = sanitizeNumber(if options then options.speed else nil, DEFAULT_SPEED, 0.05, 60)
-	local epsilon = sanitizeNumber(if options then options.epsilon else nil, DEFAULT_EPSILON, 0.0001, 0.1)
+	local speed = CoerceNumber(if options then options.speed else nil, DEFAULT_SPEED, 0.05, 60)
+	local epsilon = CoerceNumber(if options then options.epsilon else nil, DEFAULT_EPSILON, 0.0001, 0.1)
 	local animatedFillAlphas, setAnimatedFillAlphas = React.useState(function(): { number }
 		return Sift.Array.copy(targetFillAlphas)
 	end)

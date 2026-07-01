@@ -31,18 +31,18 @@ local DEFAULT_MAIN_TEXT = "You were slain..."
 local COUNTDOWN_APPEAR_DELAY_SECONDS = 2
 
 return function(props: DeathScreenProps?): React.ReactNode
-	local resolvedProps: DeathScreenProps = if props ~= nil then props else {} :: any
+	local GotProps: DeathScreenProps = if props ~= nil then props else {} :: any
 	local deathState = (useStore(deathSlice.deathStateAtom) :: DeathState?) or deathSlice.deathStateAtom()
 
 	React.useEffect(function()
-		local stop = deathThunks.start()
+		local stop = deathThunks.Start()
 
 		return function()
 			stop()
 		end
 	end, {})
 
-	local canRender = resolvedProps.visible ~= false
+	local canRender = GotProps.visible ~= false
 	local deathAppearance = useDeathScreen({
 		enabled = canRender and deathState.visible,
 		minScale = 0.72,
@@ -72,7 +72,7 @@ return function(props: DeathScreenProps?): React.ReactNode
 		return nil
 	end
 
-	local zIndex = resolvedProps.zIndex or 230
+	local zIndex = GotProps.zIndex or 230
 	local deathText = if deathState.message ~= "" then deathState.message else DEFAULT_MAIN_TEXT
 	local countDownText = if countDownAppearance.canRespawn
 		then "Respawn ready..."
@@ -81,7 +81,7 @@ return function(props: DeathScreenProps?): React.ReactNode
 	local countdownYOffset = math.floor(countDownAppearance.offset.Y + 0.5)
 
 	return e(Layer, {
-		layoutOrder = resolvedProps.layoutOrder or 990,
+		layoutOrder = GotProps.layoutOrder or 990,
 		zIndex = zIndex,
 		active = false,
 		children = {

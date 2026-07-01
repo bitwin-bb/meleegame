@@ -69,7 +69,7 @@ function GuiUtils.IsPointInsideGui(guiObjectRaw: any, screenPositionRaw: any): b
 		and screenPositionRaw.Y <= position.Y + size.Y
 end
 
-function GuiUtils.ResolveScreenPositionFromInput(inputObjectRaw: any): Vector2?
+function GuiUtils.GetScreenPositionFromInput(inputObjectRaw: any): Vector2?
 	if typeof(inputObjectRaw) ~= "InputObject" then
 		return nil
 	end
@@ -83,11 +83,5 @@ function GuiUtils.ResolveScreenPositionFromInput(inputObjectRaw: any): Vector2?
 	end
 	return nil
 end
-
-GuiUtils.getPlayerGui = GuiUtils.GetPlayerGui
-GuiUtils.getGuiObjectsAtPosition = GuiUtils.GetGuiObjectsAtPosition
-GuiUtils.isDescendantOf = GuiUtils.IsDescendantOf
-GuiUtils.isPointInsideGui = GuiUtils.IsPointInsideGui
-GuiUtils.resolveScreenPositionFromInput = GuiUtils.ResolveScreenPositionFromInput
 
 return GuiUtils

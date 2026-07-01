@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
-local PlayerDataServicePackets = require("NetSharedPackets").PlayerDataService
+local PlayerDataServicePackets = require("NetPacketsShared").PlayerDataService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = PlayerDataServicePackets[methodName]
@@ -14,7 +14,7 @@ local function sendPacket(methodName: string, ...: any)
 		return
 	end
 
-	packet.send(PacketPayload.pack(...))
+	packet.send(PacketPayload.Pack(...))
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -24,13 +24,14 @@ local function bindPacket(self: any, methodName: string)
 		return
 	end
 
+	local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
 	packet.listen(function(payload: any)
-		local handler = self[methodName]
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, table.unpack(arguments, 1, count))
 	end)
 end
@@ -70,7 +71,7 @@ function PlayerDataServiceClient.Init(self: PlayerDataServiceClient)
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
-	self.state = PlayerDataServiceUtils.createDefaultState()
+	self.state = PlayerDataServiceUtils.CreateDefaultState()
 	self.stateChanged = Signal.new()
 
 	self.janitor:GiveChore(function()
@@ -86,8 +87,8 @@ function PlayerDataServiceClient.ApplyState(
 	loadStateRaw: any,
 	metadataRaw: any?
 )
-	self.state = PlayerDataServiceUtils.createState(dataRaw, loadStateRaw, self.state, metadataRaw)
-	self.stateChanged:Fire(PlayerDataServiceUtils.cloneState(self.state))
+	self.state = PlayerDataServiceUtils.CreateState(dataRaw, loadStateRaw, self.state, metadataRaw)
+	self.stateChanged:Fire(PlayerDataServiceUtils.CloneState(self.state))
 end
 
 function PlayerDataServiceClient.RequestSync(self: PlayerDataServiceClient)
@@ -95,11 +96,11 @@ function PlayerDataServiceClient.RequestSync(self: PlayerDataServiceClient)
 end
 
 function PlayerDataServiceClient.GetState(self: PlayerDataServiceClient): PlayerDataServiceState
-	return PlayerDataServiceUtils.cloneState(self.state)
+	return PlayerDataServiceUtils.CloneState(self.state)
 end
 
 function PlayerDataServiceClient.GetData(self: PlayerDataServiceClient): PlayerData
-	return PlayerDataServiceUtils.cloneDeep(self.state.data)
+	return PlayerDataServiceUtils.CloneDeep(self.state.data)
 end
 
 function PlayerDataServiceClient.GetLoadState(self: PlayerDataServiceClient): LoadState
@@ -107,23 +108,23 @@ function PlayerDataServiceClient.GetLoadState(self: PlayerDataServiceClient): Lo
 end
 
 function PlayerDataServiceClient.IsLoaded(self: PlayerDataServiceClient): boolean
-	return PlayerDataServiceUtils.isLoadedState(self.state.loadState)
+	return PlayerDataServiceUtils.IsLoadedState(self.state.loadState)
 end
 
-function PlayerDataServiceClient.IsResolved(self: PlayerDataServiceClient): boolean
-	return PlayerDataServiceUtils.hasResolvedState(self.state)
+function PlayerDataServiceClient.IsGot(self: PlayerDataServiceClient): boolean
+	return PlayerDataServiceUtils.HasGotState(self.state)
 end
 
 function PlayerDataServiceClient.GetValue(self: PlayerDataServiceClient, pathRaw: any, fallback: any): any
-	return PlayerDataServiceUtils.getValueAtPath(self.state.data, pathRaw, fallback)
+	return PlayerDataServiceUtils.GetValueAtPath(self.state.data, pathRaw, fallback)
 end
 
 function PlayerDataServiceClient.GetHpData(self: PlayerDataServiceClient, fallback: any): any
-	return self:getValue(PlayerDataServiceUtils.getDefaultHpDataPath(), fallback)
+	return self:GetValue(PlayerDataServiceUtils.GetDefaultHpDataPath(), fallback)
 end
 
 function PlayerDataServiceClient.GetCoinsData(self: PlayerDataServiceClient, fallback: any): any
-	return self:getValue(PlayerDataServiceUtils.getDefaultCoinsDataPath(), fallback)
+	return self:GetValue(PlayerDataServiceUtils.GetDefaultCoinsDataPath(), fallback)
 end
 
 function PlayerDataServiceClient.Destroy(self: PlayerDataServiceClient)
@@ -131,26 +132,12 @@ function PlayerDataServiceClient.Destroy(self: PlayerDataServiceClient)
 		self.janitor:Destroy()
 	end
 end
-
-PlayerDataServiceClient.init = PlayerDataServiceClient.Init
-PlayerDataServiceClient.applyState = PlayerDataServiceClient.ApplyState
-PlayerDataServiceClient.requestSync = PlayerDataServiceClient.RequestSync
-PlayerDataServiceClient.getState = PlayerDataServiceClient.GetState
-PlayerDataServiceClient.getData = PlayerDataServiceClient.GetData
-PlayerDataServiceClient.getLoadState = PlayerDataServiceClient.GetLoadState
-PlayerDataServiceClient.isLoaded = PlayerDataServiceClient.IsLoaded
-PlayerDataServiceClient.isResolved = PlayerDataServiceClient.IsResolved
-PlayerDataServiceClient.getValue = PlayerDataServiceClient.GetValue
-PlayerDataServiceClient.getHpData = PlayerDataServiceClient.GetHpData
-PlayerDataServiceClient.getCoinsData = PlayerDataServiceClient.GetCoinsData
-PlayerDataServiceClient.destroy = PlayerDataServiceClient.Destroy
-
 type PlayerDataServiceClient = typeof(PlayerDataServiceClient) & {
 	localPlayer: Player,
 	janitor: JanitorClass,
 	state: PlayerDataServiceState,
 	stateChanged: SignalObject,
-	isResolved: (self: PlayerDataServiceClient) -> boolean,
+	isGot: (self: PlayerDataServiceClient) -> boolean,
 }
 
 return PlayerDataServiceClient :: PlayerDataServiceClient

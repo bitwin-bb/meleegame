@@ -1,7 +1,7 @@
 # aquaria-backup
 Roblox game project using a Nevermore-style Rojo layout.
 
-## Getting Started
+## GetTing Started
 Install npm packages and Wally packages first:
 
 ```bash

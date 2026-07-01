@@ -100,7 +100,7 @@ local function trim(valueRaw: any): string
 	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function sanitizeString(valueRaw: any, fallback: string?): string?
+local function CoerceString(valueRaw: any, fallback: string?): string?
 	local value = trim(valueRaw)
 	if value == "" then
 		return fallback
@@ -108,14 +108,14 @@ local function sanitizeString(valueRaw: any, fallback: string?): string?
 	return value
 end
 
-local function sanitizeBoolean(valueRaw: any, fallback: boolean): boolean
+local function CoerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -136,11 +136,11 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?,
 end
 
 local function normalizeClockTime(clockTimeRaw: any, fallback: number): number
-	local value = sanitizeNumber(clockTimeRaw, fallback, -100000, 100000)
-	return Range.wrap(value, 0, 24)
+	local value = CoerceNumber(clockTimeRaw, fallback, -100000, 100000)
+	return Range.Wrap(value, 0, 24)
 end
 
-local function sanitizeWeatherType(weatherTypeRaw: any, fallback: WeatherType?): WeatherType
+local function CoerceWeatherType(weatherTypeRaw: any, fallback: WeatherType?): WeatherType
 	if weatherTypeRaw == "Clear" then
 		return "Clear"
 	end
@@ -153,7 +153,7 @@ local function sanitizeWeatherType(weatherTypeRaw: any, fallback: WeatherType?):
 	return fallback or "Clear"
 end
 
-local function sanitizeSkyKey(skyKeyRaw: any, fallback: SkyKey?): SkyKey
+local function CoerceSkyKey(skyKeyRaw: any, fallback: SkyKey?): SkyKey
 	if skyKeyRaw == "Overworld" then
 		return "Overworld"
 	end
@@ -169,7 +169,7 @@ local function sanitizeSkyKey(skyKeyRaw: any, fallback: SkyKey?): SkyKey
 	if skyKeyRaw == "Space" then
 		return "Space"
 	end
-	local text = sanitizeString(skyKeyRaw, nil)
+	local text = CoerceString(skyKeyRaw, nil)
 	if text ~= nil then
 		local lowered = string.lower(text)
 		if lowered == "overworld" then
@@ -213,65 +213,65 @@ function WeatherServiceUtils.CreateDefaultConfig(): WeatherServiceConfig
 	}
 end
 
-function WeatherServiceUtils.ResolveConfig(configRaw: any, fallbackRaw: WeatherServiceConfig?): WeatherServiceConfig
+function WeatherServiceUtils.GetConfig(configRaw: any, fallbackRaw: WeatherServiceConfig?): WeatherServiceConfig
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else WeatherServiceUtils.CreateDefaultConfig()
 	local source = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else {} :: any
 
 	local weatherDurationMinSeconds =
-		sanitizeNumber(source.weatherDurationMinSeconds, fallback.weatherDurationMinSeconds, 8, 3600)
-	local weatherDurationMaxSeconds = sanitizeNumber(
+		CoerceNumber(source.weatherDurationMinSeconds, fallback.weatherDurationMinSeconds, 8, 3600)
+	local weatherDurationMaxSeconds = CoerceNumber(
 		source.weatherDurationMaxSeconds,
 		fallback.weatherDurationMaxSeconds,
 		weatherDurationMinSeconds,
 		7200
 	)
 
-	local clearWeatherWeight = sanitizeNumber(source.clearWeatherWeight, fallback.clearWeatherWeight, 0, 1000)
+	local clearWeatherWeight = CoerceNumber(source.clearWeatherWeight, fallback.clearWeatherWeight, 0, 1000)
 	local rainstormWeatherWeight =
-		sanitizeNumber(source.rainstormWeatherWeight, fallback.rainstormWeatherWeight, 0, 1000)
+		CoerceNumber(source.rainstormWeatherWeight, fallback.rainstormWeatherWeight, 0, 1000)
 	local thunderstormWeatherWeight =
-		sanitizeNumber(source.thunderstormWeatherWeight, fallback.thunderstormWeatherWeight, 0, 1000)
+		CoerceNumber(source.thunderstormWeatherWeight, fallback.thunderstormWeatherWeight, 0, 1000)
 
 	return {
-		enabled = sanitizeBoolean(source.enabled, fallback.enabled),
-		dayNightCycleEnabled = sanitizeBoolean(source.dayNightCycleEnabled, fallback.dayNightCycleEnabled),
-		dayDurationSeconds = sanitizeNumber(source.dayDurationSeconds, fallback.dayDurationSeconds, 30, 36000),
+		enabled = CoerceBoolean(source.enabled, fallback.enabled),
+		dayNightCycleEnabled = CoerceBoolean(source.dayNightCycleEnabled, fallback.dayNightCycleEnabled),
+		dayDurationSeconds = CoerceNumber(source.dayDurationSeconds, fallback.dayDurationSeconds, 30, 36000),
 		initialClockTime = normalizeClockTime(source.initialClockTime, fallback.initialClockTime),
-		weatherCycleEnabled = sanitizeBoolean(source.weatherCycleEnabled, fallback.weatherCycleEnabled),
-		initialWeatherType = sanitizeWeatherType(source.initialWeatherType, fallback.initialWeatherType),
+		weatherCycleEnabled = CoerceBoolean(source.weatherCycleEnabled, fallback.weatherCycleEnabled),
+		initialWeatherType = CoerceWeatherType(source.initialWeatherType, fallback.initialWeatherType),
 		weatherDurationMinSeconds = weatherDurationMinSeconds,
 		weatherDurationMaxSeconds = weatherDurationMaxSeconds,
-		weatherTransitionSeconds = sanitizeNumber(
+		weatherTransitionSeconds = CoerceNumber(
 			source.weatherTransitionSeconds,
 			fallback.weatherTransitionSeconds,
 			0,
 			60
 		),
-		statePushIntervalSeconds = sanitizeNumber(
+		statePushIntervalSeconds = CoerceNumber(
 			source.statePushIntervalSeconds,
 			fallback.statePushIntervalSeconds,
 			0.05,
 			5
 		),
-		defaultSkyTransitionSeconds = sanitizeNumber(
+		defaultSkyTransitionSeconds = CoerceNumber(
 			source.defaultSkyTransitionSeconds,
 			fallback.defaultSkyTransitionSeconds,
 			0,
 			20
 		),
-		defaultCloudTransitionSeconds = sanitizeNumber(
+		defaultCloudTransitionSeconds = CoerceNumber(
 			source.defaultCloudTransitionSeconds,
 			fallback.defaultCloudTransitionSeconds,
 			0,
 			20
 		),
-		defaultRainTransitionSeconds = sanitizeNumber(
+		defaultRainTransitionSeconds = CoerceNumber(
 			source.defaultRainTransitionSeconds,
 			fallback.defaultRainTransitionSeconds,
 			0.01,
 			20
 		),
-		biomeSampleIntervalSeconds = sanitizeNumber(
+		biomeSampleIntervalSeconds = CoerceNumber(
 			source.biomeSampleIntervalSeconds,
 			fallback.biomeSampleIntervalSeconds,
 			0.05,
@@ -284,12 +284,12 @@ function WeatherServiceUtils.ResolveConfig(configRaw: any, fallbackRaw: WeatherS
 end
 
 function WeatherServiceUtils.GetRainIntensityForWeather(weatherTypeRaw: any): number
-	local weatherType = sanitizeWeatherType(weatherTypeRaw, "Clear")
+	local weatherType = CoerceWeatherType(weatherTypeRaw, "Clear")
 	return RAIN_INTENSITY_BY_WEATHER[weatherType] or 0
 end
 
 function WeatherServiceUtils.IsThunderWeather(weatherTypeRaw: any): boolean
-	return sanitizeWeatherType(weatherTypeRaw, "Clear") == "Thunderstorm"
+	return CoerceWeatherType(weatherTypeRaw, "Clear") == "Thunderstorm"
 end
 
 function WeatherServiceUtils.ChooseWeightedWeatherType(
@@ -298,7 +298,7 @@ function WeatherServiceUtils.ChooseWeightedWeatherType(
 	currentWeatherTypeRaw: any?
 ): WeatherType
 	local randomObject = if typeof(randomObjectRaw) == "Random" then randomObjectRaw :: Random else Random.new()
-	local config = WeatherServiceUtils.ResolveConfig(configRaw, nil)
+	local config = WeatherServiceUtils.GetConfig(configRaw, nil)
 
 	local clearWeight = config.clearWeatherWeight
 	local rainstormWeight = config.rainstormWeatherWeight
@@ -320,7 +320,7 @@ function WeatherServiceUtils.ChooseWeightedWeatherType(
 		return "Thunderstorm"
 	end
 
-	local currentWeatherType = sanitizeWeatherType(currentWeatherTypeRaw, nil)
+	local currentWeatherType = CoerceWeatherType(currentWeatherTypeRaw, nil)
 	local rolled = rollType()
 	if currentWeatherType == nil or rolled ~= currentWeatherType then
 		return rolled
@@ -346,7 +346,7 @@ function WeatherServiceUtils.ChooseWeightedWeatherType(
 end
 
 function WeatherServiceUtils.CreateStateFromConfig(configRaw: any): WeatherServiceState
-	local config = WeatherServiceUtils.ResolveConfig(configRaw, nil)
+	local config = WeatherServiceUtils.GetConfig(configRaw, nil)
 	local clockSpeed = if config.dayNightCycleEnabled then 24 / config.dayDurationSeconds else 0
 	return {
 		ready = config.enabled,
@@ -354,7 +354,7 @@ function WeatherServiceUtils.CreateStateFromConfig(configRaw: any): WeatherServi
 		clockTime = normalizeClockTime(config.initialClockTime, DEFAULT_CONFIG.initialClockTime),
 		clockSpeed = clockSpeed,
 		worldDayIndex = 0,
-		weatherType = sanitizeWeatherType(config.initialWeatherType, DEFAULT_CONFIG.initialWeatherType),
+		weatherType = CoerceWeatherType(config.initialWeatherType, DEFAULT_CONFIG.initialWeatherType),
 		weatherTransitionSeconds = config.weatherTransitionSeconds,
 		rainIntensity = WeatherServiceUtils.GetRainIntensityForWeather(config.initialWeatherType),
 		skyTransitionSeconds = config.defaultSkyTransitionSeconds,
@@ -366,49 +366,49 @@ function WeatherServiceUtils.CreateStateFromConfig(configRaw: any): WeatherServi
 	}
 end
 
-function WeatherServiceUtils.SanitizeState(stateRaw: any, fallbackRaw: WeatherServiceState?): WeatherServiceState
+function WeatherServiceUtils.CoerceState(stateRaw: any, fallbackRaw: WeatherServiceState?): WeatherServiceState
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else WeatherServiceUtils.CreateStateFromConfig(nil)
 	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {} :: any
 
-	local dayNightCycleEnabled = sanitizeBoolean(source.dayNightCycleEnabled, fallback.dayNightCycleEnabled)
-	local clockSpeed = sanitizeNumber(source.clockSpeed, fallback.clockSpeed, -100, 100)
+	local dayNightCycleEnabled = CoerceBoolean(source.dayNightCycleEnabled, fallback.dayNightCycleEnabled)
+	local clockSpeed = CoerceNumber(source.clockSpeed, fallback.clockSpeed, -100, 100)
 	if not dayNightCycleEnabled then
 		clockSpeed = 0
 	end
 
-	local weatherType = sanitizeWeatherType(source.weatherType, fallback.weatherType)
+	local weatherType = CoerceWeatherType(source.weatherType, fallback.weatherType)
 	local rainIntensity =
-		sanitizeNumber(source.rainIntensity, WeatherServiceUtils.GetRainIntensityForWeather(weatherType), 0, 1)
+		CoerceNumber(source.rainIntensity, WeatherServiceUtils.GetRainIntensityForWeather(weatherType), 0, 1)
 	local fallbackWorldDayIndex = if typeof(fallback.worldDayIndex) == "number" then fallback.worldDayIndex else 0
 
 	return {
-		ready = sanitizeBoolean(source.ready, fallback.ready),
+		ready = CoerceBoolean(source.ready, fallback.ready),
 		dayNightCycleEnabled = dayNightCycleEnabled,
 		clockTime = normalizeClockTime(source.clockTime, fallback.clockTime),
 		clockSpeed = clockSpeed,
 		worldDayIndex = math.max(
 			0,
-			math.floor(sanitizeNumber(source.worldDayIndex, fallbackWorldDayIndex, 0, 10 ^ 9))
+			math.floor(CoerceNumber(source.worldDayIndex, fallbackWorldDayIndex, 0, 10 ^ 9))
 		),
 		weatherType = weatherType,
-		weatherTransitionSeconds = sanitizeNumber(
+		weatherTransitionSeconds = CoerceNumber(
 			source.weatherTransitionSeconds,
 			fallback.weatherTransitionSeconds,
 			0,
 			60
 		),
 		rainIntensity = rainIntensity,
-		skyTransitionSeconds = sanitizeNumber(source.skyTransitionSeconds, fallback.skyTransitionSeconds, 0, 20),
-		cloudTransitionSeconds = sanitizeNumber(source.cloudTransitionSeconds, fallback.cloudTransitionSeconds, 0, 20),
-		rainTransitionSeconds = sanitizeNumber(source.rainTransitionSeconds, fallback.rainTransitionSeconds, 0.01, 20),
-		biomeSampleIntervalSeconds = sanitizeNumber(
+		skyTransitionSeconds = CoerceNumber(source.skyTransitionSeconds, fallback.skyTransitionSeconds, 0, 20),
+		cloudTransitionSeconds = CoerceNumber(source.cloudTransitionSeconds, fallback.cloudTransitionSeconds, 0, 20),
+		rainTransitionSeconds = CoerceNumber(source.rainTransitionSeconds, fallback.rainTransitionSeconds, 0.01, 20),
+		biomeSampleIntervalSeconds = CoerceNumber(
 			source.biomeSampleIntervalSeconds,
 			fallback.biomeSampleIntervalSeconds,
 			0.05,
 			5
 		),
-		snapshotServerTime = sanitizeNumber(source.snapshotServerTime, fallback.snapshotServerTime, 0, 10 ^ 12),
-		updatedAt = sanitizeNumber(source.updatedAt, fallback.updatedAt, 0, 10 ^ 12),
+		snapshotServerTime = CoerceNumber(source.snapshotServerTime, fallback.snapshotServerTime, 0, 10 ^ 12),
+		updatedAt = CoerceNumber(source.updatedAt, fallback.updatedAt, 0, 10 ^ 12),
 	}
 end
 
@@ -434,8 +434,8 @@ end
 
 function WeatherServiceUtils.AdvanceClockTime(clockTimeRaw: any, dtRaw: any, clockSpeedRaw: any): number
 	local clockTime = normalizeClockTime(clockTimeRaw, 12)
-	local dt = sanitizeNumber(dtRaw, 0, 0, 60)
-	local clockSpeed = sanitizeNumber(clockSpeedRaw, 0, -100, 100)
+	local dt = CoerceNumber(dtRaw, 0, 0, 60)
+	local clockSpeed = CoerceNumber(clockSpeedRaw, 0, -100, 100)
 	if dt <= 0 or clockSpeed == 0 then
 		return clockTime
 	end
@@ -448,8 +448,8 @@ function WeatherServiceUtils.AdvanceClockTimeWithDayDelta(
 	clockSpeedRaw: any
 ): ClockAdvanceResult
 	local clockTime = normalizeClockTime(clockTimeRaw, 12)
-	local dt = sanitizeNumber(dtRaw, 0, 0, 10 ^ 6)
-	local clockSpeed = sanitizeNumber(clockSpeedRaw, 0, -100, 100)
+	local dt = CoerceNumber(dtRaw, 0, 0, 10 ^ 6)
+	local clockSpeed = CoerceNumber(clockSpeedRaw, 0, -100, 100)
 	if dt <= 0 or clockSpeed == 0 then
 		return {
 			clockTime = clockTime,
@@ -468,10 +468,10 @@ end
 function WeatherServiceUtils.ShortestClockDeltaHours(fromClockRaw: any, toClockRaw: any): number
 	local fromClock = normalizeClockTime(fromClockRaw, 0)
 	local toClock = normalizeClockTime(toClockRaw, 0)
-	return Range.wrap(toClock - fromClock + 12, 0, 24) - 12
+	return Range.Wrap(toClock - fromClock + 12, 0, 24) - 12
 end
 
-function WeatherServiceUtils.ResolveSkyKeyFromWorldSample(
+function WeatherServiceUtils.GetSkyKeyFromWorldSample(
 	biomeIdRaw: any,
 	biomeTypeRaw: any,
 	_depthLayerRaw: any
@@ -495,47 +495,28 @@ function WeatherServiceUtils.ResolveSkyKeyFromWorldSample(
 	return WeatherServiceUtils.SKY_KEY_OVERWORLD
 end
 
-function WeatherServiceUtils.ResolveSkyKeyFromBiomeType(biomeTypeRaw: any): SkyKey
-	return WeatherServiceUtils.ResolveSkyKeyFromWorldSample(nil, biomeTypeRaw, nil)
+function WeatherServiceUtils.GetSkyKeyFromBiomeType(biomeTypeRaw: any): SkyKey
+	return WeatherServiceUtils.GetSkyKeyFromWorldSample(nil, biomeTypeRaw, nil)
 end
 
-function WeatherServiceUtils.ResolveSkyKeyFromBiome(biomeTypeRaw: any, biomeIdRaw: any): SkyKey
-	return WeatherServiceUtils.ResolveSkyKeyFromWorldSample(biomeIdRaw, biomeTypeRaw, nil)
+function WeatherServiceUtils.GetSkyKeyFromBiome(biomeTypeRaw: any, biomeIdRaw: any): SkyKey
+	return WeatherServiceUtils.GetSkyKeyFromWorldSample(biomeIdRaw, biomeTypeRaw, nil)
 end
 
-function WeatherServiceUtils.SanitizeWeatherType(weatherTypeRaw: any, fallback: WeatherType?): WeatherType
-	return sanitizeWeatherType(weatherTypeRaw, fallback)
+function WeatherServiceUtils.CoerceWeatherType(weatherTypeRaw: any, fallback: WeatherType?): WeatherType
+	return CoerceWeatherType(weatherTypeRaw, fallback)
 end
 
-function WeatherServiceUtils.SanitizeSkyKey(skyKeyRaw: any, fallback: SkyKey?): SkyKey
-	return sanitizeSkyKey(skyKeyRaw, fallback)
+function WeatherServiceUtils.CoerceSkyKey(skyKeyRaw: any, fallback: SkyKey?): SkyKey
+	return CoerceSkyKey(skyKeyRaw, fallback)
 end
 
-function WeatherServiceUtils.SanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
-	return sanitizeNumber(valueRaw, fallback, minimum, maximum)
+function WeatherServiceUtils.CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+	return CoerceNumber(valueRaw, fallback, minimum, maximum)
 end
 
-function WeatherServiceUtils.SanitizeBoolean(valueRaw: any, fallback: boolean): boolean
-	return sanitizeBoolean(valueRaw, fallback)
+function WeatherServiceUtils.CoerceBoolean(valueRaw: any, fallback: boolean): boolean
+	return CoerceBoolean(valueRaw, fallback)
 end
-
-WeatherServiceUtils.createDefaultConfig = WeatherServiceUtils.CreateDefaultConfig
-WeatherServiceUtils.resolveConfig = WeatherServiceUtils.ResolveConfig
-WeatherServiceUtils.getRainIntensityForWeather = WeatherServiceUtils.GetRainIntensityForWeather
-WeatherServiceUtils.isThunderWeather = WeatherServiceUtils.IsThunderWeather
-WeatherServiceUtils.chooseWeightedWeatherType = WeatherServiceUtils.ChooseWeightedWeatherType
-WeatherServiceUtils.createStateFromConfig = WeatherServiceUtils.CreateStateFromConfig
-WeatherServiceUtils.sanitizeState = WeatherServiceUtils.SanitizeState
-WeatherServiceUtils.cloneState = WeatherServiceUtils.CloneState
-WeatherServiceUtils.advanceClockTime = WeatherServiceUtils.AdvanceClockTime
-WeatherServiceUtils.advanceClockTimeWithDayDelta = WeatherServiceUtils.AdvanceClockTimeWithDayDelta
-WeatherServiceUtils.shortestClockDeltaHours = WeatherServiceUtils.ShortestClockDeltaHours
-WeatherServiceUtils.resolveSkyKeyFromWorldSample = WeatherServiceUtils.ResolveSkyKeyFromWorldSample
-WeatherServiceUtils.resolveSkyKeyFromBiomeType = WeatherServiceUtils.ResolveSkyKeyFromBiomeType
-WeatherServiceUtils.resolveSkyKeyFromBiome = WeatherServiceUtils.ResolveSkyKeyFromBiome
-WeatherServiceUtils.sanitizeWeatherType = WeatherServiceUtils.SanitizeWeatherType
-WeatherServiceUtils.sanitizeSkyKey = WeatherServiceUtils.SanitizeSkyKey
-WeatherServiceUtils.sanitizeNumber = WeatherServiceUtils.SanitizeNumber
-WeatherServiceUtils.sanitizeBoolean = WeatherServiceUtils.SanitizeBoolean
 
 return WeatherServiceUtils

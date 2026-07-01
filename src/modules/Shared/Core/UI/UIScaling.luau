@@ -316,8 +316,8 @@ local function vector2Or(valueRaw: any, fallback: Vector2): Vector2
 end
 
 local function detectDeviceType(platform: any?): string
-	if platform ~= nil and typeof((platform :: any).getPrimaryInputType) == "function" then
-		local primaryInput = (platform :: any):getPrimaryInputType()
+	if platform ~= nil and typeof((platform :: any).GetPrimaryInputType) == "function" then
+		local primaryInput = (platform :: any):GetPrimaryInputType()
 		if primaryInput == "Touch" then
 			return "Mobile"
 		end
@@ -594,7 +594,7 @@ function UIScaling._bindCameraViewportConnection(self: UIScaling)
 		return
 	end
 	self.cameraViewportConnection = camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
-		self:apply()
+		self:Apply()
 	end)
 end
 
@@ -605,7 +605,7 @@ function UIScaling._bindScreenGuiConnection(self: UIScaling)
 		return
 	end
 	self.screenGuiConnection = self.screenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
-		self:apply()
+		self:Apply()
 	end)
 end
 
@@ -740,7 +740,7 @@ function UIScaling._applyAspectConstraint(self: UIScaling, gui: GuiObject, aspec
 	ratioConstraint.DominantAxis = aspectConstraint.dominantAxis
 end
 
-function UIScaling._resolveSizeBounds(
+function UIScaling._GetSizeBounds(
 	self: UIScaling,
 	record: ElementRecord,
 	globalAspectRule: AspectRule?,
@@ -822,7 +822,7 @@ function UIScaling._applyElement(self: UIScaling, record: ElementRecord, snapsho
 	local absoluteWidth = sizeScaleX * parentSize.X + sizeOffsetX
 	local absoluteHeight = sizeScaleY * parentSize.Y + sizeOffsetY
 
-	local minSize, maxSize = self:_resolveSizeBounds(record, globalAspectRule, elementAspectRule)
+	local minSize, maxSize = self:_GetSizeBounds(record, globalAspectRule, elementAspectRule)
 	if minSize ~= nil then
 		absoluteWidth = math.max(absoluteWidth, minSize.X)
 		absoluteHeight = math.max(absoluteHeight, minSize.Y)
@@ -943,16 +943,16 @@ function UIScaling.Init(self: UIScaling)
 
 	self.cameraChangedConnection = Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
 		self:_bindCameraViewportConnection()
-		self:apply()
+		self:Apply()
 	end)
 
-	if self.platform ~= nil and typeof((self.platform :: any).onChanged) == "function" then
-		self.platformDisconnect = (self.platform :: any):onChanged(function()
-			self:apply()
+	if self.platform ~= nil and typeof((self.platform :: any).OnChanged) == "function" then
+		self.platformDisconnect = (self.platform :: any):OnChanged(function()
+			self:Apply()
 		end)
 	end
 
-	self:apply()
+	self:Apply()
 end
 
 function UIScaling.Apply(self: UIScaling)
@@ -990,7 +990,7 @@ function UIScaling.Apply(self: UIScaling)
 
 	if self.eventBus ~= nil and typeof((self.eventBus :: any).publish) == "function" then
 		local eventBusAny = self.eventBus :: any
-		eventBusAny:publish(self.eventChannel, self.appliedEvent, snapshot)
+		eventBusAny:Publish(self.eventChannel, self.appliedEvent, snapshot)
 	end
 end
 
@@ -1072,7 +1072,7 @@ function UIScaling.RegisterElement(self: UIScaling, configRaw: ElementConfig): s
 	self:_adoptScreenGuiFrom(gui)
 
 	if self.isInitialized then
-		self:apply()
+		self:Apply()
 	end
 	return id
 end
@@ -1139,7 +1139,7 @@ function UIScaling.RegisterLayout(self: UIScaling, configRaw: LayoutConfig): str
 	self:_adoptScreenGuiFrom(layoutInstance.Parent)
 
 	if self.isInitialized then
-		self:apply()
+		self:Apply()
 	end
 	return id
 end
@@ -1179,7 +1179,7 @@ function UIScaling.SetPreset(self: UIScaling, deviceTypeRaw: any, presetRaw: any
 			else nil,
 	}
 	if self.isInitialized then
-		self:apply()
+		self:Apply()
 	end
 	return true
 end
@@ -1190,7 +1190,7 @@ function UIScaling.SetScreenGui(self: UIScaling, screenGuiRaw: any): boolean
 	end
 	self:_setScreenGui(screenGuiRaw)
 	if self.isInitialized then
-		self:apply()
+		self:Apply()
 	end
 	return true
 end
@@ -1199,7 +1199,7 @@ function UIScaling.SetIgnoreGuiInset(self: UIScaling, ignoreRaw: any)
 	self.ignoreGuiInset = ignoreRaw == true
 	self:_applyScreenGuiSettings()
 	if self.isInitialized then
-		self:apply()
+		self:Apply()
 	end
 end
 
@@ -1229,31 +1229,6 @@ function UIScaling.Destroy(self: UIScaling)
 	self.isInitialized = false
 end
 
-UIScaling.RegisterElement = UIScaling.RegisterElement
-UIScaling.UnregisterElement = UIScaling.UnregisterElement
 UIScaling.Register = UIScaling.RegisterElement
 UIScaling.Unregister = UIScaling.UnregisterElement
-UIScaling.RegisterLayout = UIScaling.RegisterLayout
-UIScaling.UnregisterLayout = UIScaling.UnregisterLayout
-UIScaling.SetPreset = UIScaling.SetPreset
-UIScaling.SetScreenGui = UIScaling.SetScreenGui
-UIScaling.SetIgnoreGuiInset = UIScaling.SetIgnoreGuiInset
-UIScaling.GetSnapshot = UIScaling.GetSnapshot
-UIScaling.Apply = UIScaling.Apply
-UIScaling.Init = UIScaling.Init
-UIScaling.Destroy = UIScaling.Destroy
-
-UIScaling.new = UIScaling.New
-UIScaling.init = UIScaling.Init
-UIScaling.apply = UIScaling.Apply
-UIScaling.registerElement = UIScaling.RegisterElement
-UIScaling.unregisterElement = UIScaling.UnregisterElement
-UIScaling.registerLayout = UIScaling.RegisterLayout
-UIScaling.unregisterLayout = UIScaling.UnregisterLayout
-UIScaling.setPreset = UIScaling.SetPreset
-UIScaling.setScreenGui = UIScaling.SetScreenGui
-UIScaling.setIgnoreGuiInset = UIScaling.SetIgnoreGuiInset
-UIScaling.getSnapshot = UIScaling.GetSnapshot
-UIScaling.destroy = UIScaling.Destroy
-
 return UIScaling

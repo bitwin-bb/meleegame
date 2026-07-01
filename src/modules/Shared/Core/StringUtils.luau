@@ -9,7 +9,7 @@ function StringUtils.Trim(valueRaw: any): string
 	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
 end
 
-function StringUtils.Sanitize(valueRaw: any, fallback: string?): string?
+function StringUtils.Coerce(valueRaw: any, fallback: string?): string?
 	local value = StringUtils.Trim(valueRaw)
 	if value == "" then
 		return fallback
@@ -25,9 +25,4 @@ function StringUtils.CompactToken(valueRaw: any): string
 	local normalized = string.gsub(value, "[%s_%-%.]+", "")
 	return string.lower(normalized)
 end
-
-StringUtils.trim = StringUtils.Trim
-StringUtils.sanitize = StringUtils.Sanitize
-StringUtils.compactToken = StringUtils.CompactToken
-
 return StringUtils

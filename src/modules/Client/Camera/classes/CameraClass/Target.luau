@@ -8,7 +8,7 @@ local BossServiceClient = require("BossServiceClient")
 local Target = {}
 Target.__index = Target
 
-export type ResolvedTarget = {
+export type GotTarget = {
 	kind: string,
 	position: Vector3,
 	velocity: Vector3,
@@ -27,7 +27,7 @@ export type Target = typeof(setmetatable(
 		localPlayer: Player?,
 		character: Model?,
 		explicitTarget: any?,
-		resolveCharacterTarget: ((character: Model?) -> BasePart?)?,
+		GetCharacterTarget: ((character: Model?) -> BasePart?)?,
 		temporaryOverride: any?,
 		temporaryOverrideExpiresAt: number?,
 	},
@@ -59,14 +59,14 @@ local function getInstanceCacheKey(instance: Instance): string
 	return tostring(instance)
 end
 
-local function sanitizeVelocity(valueRaw: any): Vector3
+local function CoerceVelocity(valueRaw: any): Vector3
 	if typeof(valueRaw) == "Vector3" then
 		return valueRaw
 	end
 	return Vector3.zero
 end
 
-local function resolveModelRootPart(model: Model?): BasePart?
+local function GetModelRootPart(model: Model?): BasePart?
 	if model == nil then
 		return nil
 	end
@@ -83,11 +83,11 @@ local function resolveModelRootPart(model: Model?): BasePart?
 	return model:FindFirstChildWhichIsA("BasePart", true)
 end
 
-local function resolvePlayerCharacterRoot(player: Player?): BasePart?
+local function GetPlayerCharacterRoot(player: Player?): BasePart?
 	if player == nil then
 		return nil
 	end
-	return resolveModelRootPart(player.Character)
+	return GetModelRootPart(player.Character)
 end
 
 local function cloneMetadata(metadataRaw: any): { [string]: any }?
@@ -98,7 +98,7 @@ local function cloneMetadata(metadataRaw: any): { [string]: any }?
 	return table.clone(metadataRaw)
 end
 
-local function createResolvedTarget(
+local function createGotTarget(
 	kindRaw: any,
 	position: Vector3,
 	velocityRaw: any,
@@ -110,7 +110,7 @@ local function createResolvedTarget(
 	subjectRaw: any,
 	sourceRaw: any,
 	metadataRaw: any
-): ResolvedTarget
+): GotTarget
 	local basePart = if typeof(basePartRaw) == "Instance" and basePartRaw:IsA("BasePart") then basePartRaw else nil
 	local model = if typeof(modelRaw) == "Instance" and modelRaw:IsA("Model") then modelRaw else nil
 	local instance = if typeof(instanceRaw) == "Instance" then instanceRaw else nil
@@ -118,7 +118,7 @@ local function createResolvedTarget(
 	return {
 		kind = if trim(kindRaw) ~= "" then trim(kindRaw) else "Target",
 		position = position,
-		velocity = sanitizeVelocity(velocityRaw),
+		velocity = CoerceVelocity(velocityRaw),
 		lookPosition = if typeof(lookPositionRaw) == "Vector3" then lookPositionRaw else nil,
 		cacheKey = if trim(cacheKeyRaw) ~= "" then trim(cacheKeyRaw) else nil,
 		instance = instance,
@@ -138,7 +138,7 @@ local function getBossState(): any
 	return bossClient.state
 end
 
-local function resolveBossSnapshotByRuntimeId(runtimeIdRaw: any): any?
+local function GetBossSnapshotByRuntimeId(runtimeIdRaw: any): any?
 	local runtimeId = trim(runtimeIdRaw)
 	if runtimeId == "" then
 		return nil
@@ -151,7 +151,7 @@ local function resolveBossSnapshotByRuntimeId(runtimeIdRaw: any): any?
 	return (state :: any).byId[runtimeId]
 end
 
-local function resolveBossSnapshotByFilters(filtersRaw: any): any?
+local function GetBossSnapshotByFilters(filtersRaw: any): any?
 	local filters = if typeof(filtersRaw) == "table" then filtersRaw else {} :: any
 	local state = getBossState()
 	if
@@ -188,16 +188,16 @@ local function resolveBossSnapshotByFilters(filtersRaw: any): any?
 	return nil
 end
 
-local function resolveBossSnapshot(sourceRaw: any): any?
+local function GetBossSnapshot(sourceRaw: any): any?
 	local source = if typeof(sourceRaw) == "table" then sourceRaw else {} :: any
 	local runtimeId = trim((source :: any).runtimeId)
 	if runtimeId ~= "" then
-		return resolveBossSnapshotByRuntimeId(runtimeId)
+		return GetBossSnapshotByRuntimeId(runtimeId)
 	end
-	return resolveBossSnapshotByFilters(source)
+	return GetBossSnapshotByFilters(source)
 end
 
-local function createBossTarget(sourceRaw: any, snapshotRaw: any): ResolvedTarget?
+local function createBossTarget(sourceRaw: any, snapshotRaw: any): GotTarget?
 	local snapshot = if typeof(snapshotRaw) == "table" then snapshotRaw else nil
 	if snapshot == nil then
 		return nil
@@ -213,12 +213,12 @@ local function createBossTarget(sourceRaw: any, snapshotRaw: any): ResolvedTarge
 
 	local velocity = if typeof((motion :: any).velocity) == "Vector3"
 		then (motion :: any).velocity
-		else sanitizeVelocity((snapshot :: any).velocity)
+		else CoerceVelocity((snapshot :: any).velocity)
 	local lookPosition = if typeof((snapshot :: any).facing) == "Vector3"
 		then position + (snapshot :: any).facing
 		else nil
 
-	return createResolvedTarget(
+	return createGotTarget(
 		(sourceRaw :: any).kind or "Boss",
 		position,
 		velocity,
@@ -250,8 +250,8 @@ function Target.New(optionsRaw: any?): Target
 			then (options :: any).character
 			else nil,
 		explicitTarget = (options :: any).target,
-		resolveCharacterTarget = if typeof((options :: any).resolveCharacterTarget) == "function"
-			then (options :: any).resolveCharacterTarget
+		GetCharacterTarget = if typeof((options :: any).GetCharacterTarget) == "function"
+			then (options :: any).GetCharacterTarget
 			else nil,
 		temporaryOverride = nil,
 		temporaryOverrideExpiresAt = nil,
@@ -300,13 +300,13 @@ function Target.HasTemporaryOverride(self: Target): boolean
 		return false
 	end
 	if self.temporaryOverrideExpiresAt ~= nil and os.clock() >= self.temporaryOverrideExpiresAt then
-		self:clearTemporaryOverride()
+		self:ClearTemporaryOverride()
 		return false
 	end
 	return true
 end
 
-function Target.ResolveAny(self: Target, sourceRaw: any, kindFallback: string?): ResolvedTarget?
+function Target.GetAny(self: Target, sourceRaw: any, kindFallback: string?): GotTarget?
 	if sourceRaw == nil then
 		return nil
 	end
@@ -316,7 +316,7 @@ function Target.ResolveAny(self: Target, sourceRaw: any, kindFallback: string?):
 			if sourceRaw.Parent == nil then
 				return nil
 			end
-			return createResolvedTarget(
+			return createGotTarget(
 				kindFallback or "BasePart",
 				sourceRaw.Position,
 				sourceRaw.AssemblyLinearVelocity,
@@ -337,7 +337,7 @@ function Target.ResolveAny(self: Target, sourceRaw: any, kindFallback: string?):
 				return nil
 			end
 			local parentPart = if attachmentParent:IsA("BasePart") then attachmentParent else nil
-			return createResolvedTarget(
+			return createGotTarget(
 				kindFallback or "Attachment",
 				sourceRaw.WorldPosition,
 				if parentPart ~= nil then parentPart.AssemblyLinearVelocity else Vector3.zero,
@@ -356,12 +356,12 @@ function Target.ResolveAny(self: Target, sourceRaw: any, kindFallback: string?):
 			if sourceRaw.Parent == nil then
 				return nil
 			end
-			local rootPart = resolveModelRootPart(sourceRaw)
+			local rootPart = GetModelRootPart(sourceRaw)
 			if rootPart == nil then
 				return nil
 			end
 
-			return createResolvedTarget(
+			return createGotTarget(
 				kindFallback or "Model",
 				rootPart.Position,
 				rootPart.AssemblyLinearVelocity,
@@ -377,12 +377,12 @@ function Target.ResolveAny(self: Target, sourceRaw: any, kindFallback: string?):
 		end
 
 		if sourceRaw:IsA("Player") then
-			local rootPart = resolvePlayerCharacterRoot(sourceRaw)
+			local rootPart = GetPlayerCharacterRoot(sourceRaw)
 			if rootPart == nil then
 				return nil
 			end
 
-			return createResolvedTarget(
+			return createGotTarget(
 				kindFallback or "Player",
 				rootPart.Position,
 				rootPart.AssemblyLinearVelocity,
@@ -412,42 +412,42 @@ function Target.ResolveAny(self: Target, sourceRaw: any, kindFallback: string?):
 		or source.rootPart
 		or source.model
 	if nestedTarget ~= nil and nestedTarget ~= sourceRaw then
-		local nestedResolved = self:resolveAny(nestedTarget, source.kind or kindFallback)
-		if nestedResolved ~= nil then
+		local nestedGot = self:GetAny(nestedTarget, source.kind or kindFallback)
+		if nestedGot ~= nil then
 			if typeof(source.lookPosition) == "Vector3" then
-				nestedResolved.lookPosition = source.lookPosition
+				nestedGot.lookPosition = source.lookPosition
 			end
 			if typeof(source.velocity) == "Vector3" then
-				nestedResolved.velocity = source.velocity
+				nestedGot.velocity = source.velocity
 			end
 			if trim(source.cacheKey) ~= "" then
-				nestedResolved.cacheKey = trim(source.cacheKey)
+				nestedGot.cacheKey = trim(source.cacheKey)
 			end
-			nestedResolved.source = sourceRaw
+			nestedGot.source = sourceRaw
 			if source.metadata ~= nil then
-				nestedResolved.metadata = cloneMetadata(source.metadata)
+				nestedGot.metadata = cloneMetadata(source.metadata)
 			end
-			return nestedResolved
+			return nestedGot
 		end
 	end
 
 	if source.player ~= nil then
-		local playerResolved = self:resolveAny(source.player, source.kind or kindFallback or "Player")
-		if playerResolved ~= nil then
-			playerResolved.source = sourceRaw
-			return playerResolved
+		local playerGot = self:GetAny(source.player, source.kind or kindFallback or "Player")
+		if playerGot ~= nil then
+			playerGot.source = sourceRaw
+			return playerGot
 		end
 	end
 
 	if source.character ~= nil then
-		local characterResolved = self:resolveAny(source.character, source.kind or kindFallback or "Character")
-		if characterResolved ~= nil then
-			characterResolved.source = sourceRaw
-			return characterResolved
+		local characterGot = self:GetAny(source.character, source.kind or kindFallback or "Character")
+		if characterGot ~= nil then
+			characterGot.source = sourceRaw
+			return characterGot
 		end
 	end
 
-	local bossSnapshot = resolveBossSnapshot(sourceRaw)
+	local bossSnapshot = GetBossSnapshot(sourceRaw)
 	if bossSnapshot ~= nil then
 		local bossTarget = createBossTarget(sourceRaw, bossSnapshot)
 		if bossTarget ~= nil then
@@ -456,7 +456,7 @@ function Target.ResolveAny(self: Target, sourceRaw: any, kindFallback: string?):
 	end
 
 	if typeof(source.position) == "Vector3" then
-		return createResolvedTarget(
+		return createGotTarget(
 			source.kind or kindFallback or "Point",
 			source.position,
 			source.velocity,
@@ -474,7 +474,7 @@ function Target.ResolveAny(self: Target, sourceRaw: any, kindFallback: string?):
 	return nil
 end
 
-function Target.ResolveCharacterTarget(self: Target, characterRaw: any?): ResolvedTarget?
+function Target.GetCharacterTarget(self: Target, characterRaw: any?): GotTarget?
 	local character = if typeof(characterRaw) == "Instance" and characterRaw:IsA("Model")
 		then characterRaw
 		else self.character
@@ -482,44 +482,44 @@ function Target.ResolveCharacterTarget(self: Target, characterRaw: any?): Resolv
 		return nil
 	end
 
-	if self.resolveCharacterTarget ~= nil then
-		local ok, basePart = pcall(self.resolveCharacterTarget, character)
+	if self.GetCharacterTarget ~= nil then
+		local ok, basePart = pcall(self.GetCharacterTarget, character)
 		if ok and typeof(basePart) == "Instance" and basePart:IsA("BasePart") then
-			return self:resolveAny(basePart, "Character")
+			return self:GetAny(basePart, "Character")
 		end
 	end
 
-	return self:resolveAny(character, "Character")
+	return self:GetAny(character, "Character")
 end
 
-function Target.Resolve(self: Target, optionsRaw: any?): ResolvedTarget?
+function Target.Get(self: Target, optionsRaw: any?): GotTarget?
 	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 	if self.temporaryOverrideExpiresAt ~= nil and os.clock() >= self.temporaryOverrideExpiresAt then
-		self:clearTemporaryOverride()
+		self:ClearTemporaryOverride()
 	end
 
 	local override = if typeof((options :: any).override) == "table" then (options :: any).override else nil
 	if override ~= nil then
-		local resolvedOverride = self:resolveAny(override, (override :: any).kind or "Override")
-		if resolvedOverride ~= nil then
-			return resolvedOverride
+		local overrideTarget = self:GetAny(override, (override :: any).kind or "Override")
+		if overrideTarget ~= nil then
+			return overrideTarget
 		end
 	end
 
-	if self:hasTemporaryOverride() then
-		local temporaryTarget = self:resolveAny(self.temporaryOverride, "TemporaryOverride")
+	if self:HasTemporaryOverride() then
+		local temporaryTarget = self:GetAny(self.temporaryOverride, "TemporaryOverride")
 		if temporaryTarget ~= nil then
 			temporaryTarget.kind = "TemporaryOverride"
 			return temporaryTarget
 		end
 	end
 
-	local explicitTarget = self:resolveAny(self.explicitTarget, "ExplicitTarget")
+	local explicitTarget = self:GetAny(self.explicitTarget, "ExplicitTarget")
 	if explicitTarget ~= nil then
 		return explicitTarget
 	end
 
-	local characterTarget = self:ResolveCharacterTarget((options :: any).character)
+	local characterTarget = self:GetCharacterTarget((options :: any).character)
 	if characterTarget ~= nil then
 		return characterTarget
 	end
@@ -529,20 +529,10 @@ function Target.Resolve(self: Target, optionsRaw: any?): ResolvedTarget?
 		then (options :: any).localPlayer
 		else self.localPlayer
 	if localPlayer ~= nil then
-		return self:resolveAny(localPlayer, "Player")
+		return self:GetAny(localPlayer, "Player")
 	end
 
 	return nil
 end
-
-Target.new = Target.New
-Target.setCharacter = Target.SetCharacter
-Target.setExplicitTarget = Target.SetExplicitTarget
-Target.setTemporaryOverride = Target.SetTemporaryOverride
-Target.clearTemporaryOverride = Target.ClearTemporaryOverride
-Target.hasTemporaryOverride = Target.HasTemporaryOverride
-Target.resolveAny = Target.ResolveAny
-Target.resolveCharacterTarget = Target.ResolveCharacterTarget
-Target.resolve = Target.Resolve
 
 return Target

@@ -44,7 +44,7 @@ local Servant = {}
 local DEFAULT_SERVANT_FOLDER_NAME = "BossServants"
 
 function Servant.GetFolder(): Folder
-	return WorkspaceFolders.getOrCreateFolderInGame(DEFAULT_SERVANT_FOLDER_NAME)
+	return WorkspaceFolders.GetOrCreateFolderInGame(DEFAULT_SERVANT_FOLDER_NAME)
 end
 
 function Servant.CountActive(servants: { [number]: ServantRuntime }): number
@@ -61,9 +61,9 @@ end
 
 function Servant.Spawn(servants: { [number]: ServantRuntime }, config: SpawnConfig): (boolean, number)
 	local servantId = config.servantId
-	local model = EyeOfCthulhuServantRoot.createModel({
+	local model = EyeOfCthulhuServantRoot.CreateModel({
 		name = "ServantOfCthulhu",
-		cframe = BossServiceUtils.sideViewLookCFrame(config.spawnPosition, config.facing),
+		cframe = BossServiceUtils.SideViewLookCFrame(config.spawnPosition, config.facing),
 		parent = config.parent,
 	})
 	local rootPart = model.PrimaryPart
@@ -112,11 +112,11 @@ function Servant.StepAll(servants: { [number]: ServantRuntime }, config: StepCon
 		local facing = servant.velocity
 		if config.targetPosition ~= nil then
 			local desiredDirection =
-				BossServiceUtils.projectVectorToPlaneX(config.targetPosition - servant.position, config.planeX)
+				BossServiceUtils.ProjectVectorToPlaneX(config.targetPosition - servant.position, config.planeX)
 			if desiredDirection.Magnitude > 1e-4 then
 				facing = desiredDirection
 				local desiredVelocity = desiredDirection.Unit * config.speed
-				servant.velocity = BossServiceUtils.moveTowardsVector(
+				servant.velocity = BossServiceUtils.MoveTowardsVector(
 					servant.velocity,
 					desiredVelocity,
 					config.turnAcceleration * config.dt
@@ -125,19 +125,19 @@ function Servant.StepAll(servants: { [number]: ServantRuntime }, config: StepCon
 		end
 
 		servant.position =
-			BossServiceUtils.projectPositionToPlaneX(servant.position + servant.velocity * config.dt, config.planeX)
-		servant.part.CFrame = BossServiceUtils.sideViewLookCFrame(servant.position, facing)
+			BossServiceUtils.ProjectPositionToPlaneX(servant.position + servant.velocity * config.dt, config.planeX)
+		servant.part.CFrame = BossServiceUtils.SideViewLookCFrame(servant.position, facing)
 
 		for _, player in Players:GetPlayers() do
-			if not BossServiceUtils.isPlayerAlive(player) then
+			if not BossServiceUtils.IsPlayerAlive(player) then
 				continue
 			end
-			local rootPart = BossServiceUtils.resolveCharacterRootPart(player)
+			local rootPart = BossServiceUtils.GetCharacterRootPart(player)
 			if rootPart == nil then
 				continue
 			end
 			if
-				(BossServiceUtils.projectPositionToPlaneX(rootPart.Position, config.planeX) - servant.position).Magnitude
+				(BossServiceUtils.ProjectPositionToPlaneX(rootPart.Position, config.planeX) - servant.position).Magnitude
 				> config.radius
 			then
 				continue
@@ -152,11 +152,4 @@ function Servant.StepAll(servants: { [number]: ServantRuntime }, config: StepCon
 		end
 	end
 end
-
-Servant.getFolder = Servant.GetFolder
-Servant.countActive = Servant.CountActive
-Servant.spawn = Servant.Spawn
-Servant.clearAll = Servant.ClearAll
-Servant.stepAll = Servant.StepAll
-
 return Servant

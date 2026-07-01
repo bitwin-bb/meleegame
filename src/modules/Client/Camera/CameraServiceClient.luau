@@ -9,7 +9,7 @@ local Camera = require("CameraClass")
 local CameraServiceUtils = require("CameraServiceUtils")
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
-local CameraServicePackets = require("NetSharedPackets").CameraService
+local CameraServicePackets = require("NetPacketsShared").CameraService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = CameraServicePackets[methodName]
@@ -18,7 +18,7 @@ local function sendPacket(methodName: string, ...: any)
 		return
 	end
 
-	packet.send(PacketPayload.pack(...))
+	packet.send(PacketPayload.Pack(...))
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -28,13 +28,14 @@ local function bindPacket(self: any, methodName: string)
 		return
 	end
 
+	local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
 	packet.listen(function(payload: any)
-		local handler = self[methodName]
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, table.unpack(arguments, 1, count))
 	end)
 end
@@ -69,11 +70,11 @@ function CameraServiceClient.Init(self: CameraServiceClient)
 	self.characterJanitor = Janitor.new()
 	self.janitor:GiveChore(self.characterJanitor)
 
-	local defaultState = CameraServiceUtils.createDefaultState()
+	local defaultState = CameraServiceUtils.CreateDefaultState()
 	self.currentMode = defaultState.mode
 	self.sideViewConfig = defaultState.sideViewConfig
 	self.snapSideViewOnNextTarget = true
-	self.cameraController = Camera.new({
+	self.cameraController = Camera.New({
 		SideView = {
 			config = self.sideViewConfig,
 			autoEnable = false,
@@ -81,11 +82,11 @@ function CameraServiceClient.Init(self: CameraServiceClient)
 	})
 
 	self.janitor:GiveChore(self.localPlayer.CharacterAdded:Connect(function(character)
-		self:onCharacterAdded(character)
+		self:OnCharacterAdded(character)
 	end))
 
 	if self.localPlayer.Character then
-		self:onCharacterAdded(self.localPlayer.Character)
+		self:OnCharacterAdded(self.localPlayer.Character)
 	end
 
 	sendPacket("requestSync")
@@ -95,7 +96,7 @@ function CameraServiceClient.OnCharacterAdded(self: CameraServiceClient, charact
 	self.character = character
 	self.snapSideViewOnNextTarget = true
 	self.characterJanitor:Clean()
-	self.cameraController:setSideViewCharacter(character)
+	self.cameraController:SetSideViewCharacter(character)
 
 	local childAddedConnection: RBXScriptConnection?
 	childAddedConnection = character.ChildAdded:Connect(function()
@@ -103,9 +104,9 @@ function CameraServiceClient.OnCharacterAdded(self: CameraServiceClient, charact
 			return
 		end
 
-		local target = CameraServiceUtils.resolveCharacterTarget(character)
+		local target = CameraServiceUtils.GetCharacterTarget(character)
 		if target then
-			self:applySideView()
+			self:ApplySideView()
 
 			if childAddedConnection then
 				childAddedConnection:Disconnect()
@@ -121,16 +122,16 @@ function CameraServiceClient.OnCharacterAdded(self: CameraServiceClient, charact
 	end)
 
 	if self.currentMode == "SideView" then
-		self:applySideView()
+		self:ApplySideView()
 	end
 end
 
 function CameraServiceClient.ApplySideView(self: CameraServiceClient)
-	self.cameraController:setSideViewCharacter(self.character)
+	self.cameraController:SetSideViewCharacter(self.character)
 
-	local target = CameraServiceUtils.resolveCharacterTarget(self.character)
+	local target = CameraServiceUtils.GetCharacterTarget(self.character)
 	local snapToTarget = self.snapSideViewOnNextTarget == true and target ~= nil
-	self.cameraController:useSideView(target, self.sideViewConfig, snapToTarget)
+	self.cameraController:UseSideView(target, self.sideViewConfig, snapToTarget)
 
 	if snapToTarget then
 		self.snapSideViewOnNextTarget = false
@@ -140,22 +141,22 @@ end
 function CameraServiceClient.ApplyMode(self: CameraServiceClient, mode: any, sideViewConfig: any)
 	local nextState: CameraState
 	if sideViewConfig then
-		nextState = CameraServiceUtils.createCameraState(mode, sideViewConfig)
+		nextState = CameraServiceUtils.CreateCameraState(mode, sideViewConfig)
 	else
-		local mergedSideViewConfig = CameraServiceUtils.mergeSideViewConfig(self.sideViewConfig, nil)
-		nextState = CameraServiceUtils.createCameraState(mode, mergedSideViewConfig)
+		local mergedSideViewConfig = CameraServiceUtils.MergeSideViewConfig(self.sideViewConfig, nil)
+		nextState = CameraServiceUtils.CreateCameraState(mode, mergedSideViewConfig)
 	end
 
 	self.currentMode = nextState.mode
 	self.sideViewConfig = nextState.sideViewConfig
 
 	if nextState.mode == "SideView" then
-		self.cameraController:configureSideView(nextState.sideViewConfig)
-		self:applySideView()
+		self.cameraController:ConfigureSideView(nextState.sideViewConfig)
+		self:ApplySideView()
 		return
 	end
 
-	self.cameraController:disableSideView()
+	self.cameraController:DisableSideView()
 
 	local currentCamera = Workspace.CurrentCamera
 	if currentCamera then
@@ -164,20 +165,20 @@ function CameraServiceClient.ApplyMode(self: CameraServiceClient, mode: any, sid
 end
 
 function CameraServiceClient.SetMode(self: CameraServiceClient, mode: CameraMode, sideViewConfig: SideViewConfig?)
-	local configForRequest = CameraServiceUtils.mergeSideViewConfig(self.sideViewConfig, sideViewConfig)
+	local configForRequest = CameraServiceUtils.MergeSideViewConfig(self.sideViewConfig, sideViewConfig)
 	sendPacket("setMode", mode, configForRequest)
 end
 
 function CameraServiceClient.UseSideView(self: CameraServiceClient, sideViewConfig: SideViewConfig?)
-	self:setMode("SideView", sideViewConfig)
+	self:SetMode("SideView", sideViewConfig)
 end
 
 function CameraServiceClient.UseFirstPerson(self: CameraServiceClient)
-	self:setMode("FirstPerson")
+	self:SetMode("FirstPerson")
 end
 
 function CameraServiceClient.UseIsometric(self: CameraServiceClient)
-	self:setMode("Isometric")
+	self:SetMode("Isometric")
 end
 
 function CameraServiceClient.RequestSync(self: CameraServiceClient)
@@ -186,7 +187,7 @@ end
 
 function CameraServiceClient.Destroy(self: CameraServiceClient)
 	if self.cameraController then
-		self.cameraController:destroy()
+		self.cameraController:Destroy()
 	end
 
 	if self.characterJanitor then
@@ -197,18 +198,6 @@ function CameraServiceClient.Destroy(self: CameraServiceClient)
 		self.janitor:Destroy()
 	end
 end
-
-CameraServiceClient.init = CameraServiceClient.Init
-CameraServiceClient.onCharacterAdded = CameraServiceClient.OnCharacterAdded
-CameraServiceClient.applySideView = CameraServiceClient.ApplySideView
-CameraServiceClient.applyMode = CameraServiceClient.ApplyMode
-CameraServiceClient.setMode = CameraServiceClient.SetMode
-CameraServiceClient.useSideView = CameraServiceClient.UseSideView
-CameraServiceClient.useFirstPerson = CameraServiceClient.UseFirstPerson
-CameraServiceClient.useIsometric = CameraServiceClient.UseIsometric
-CameraServiceClient.requestSync = CameraServiceClient.RequestSync
-CameraServiceClient.destroy = CameraServiceClient.Destroy
-
 type CameraServiceClient = typeof(CameraServiceClient) & {
 	localPlayer: Player,
 	cameraController: Camera.Camera,

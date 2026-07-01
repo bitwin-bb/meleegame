@@ -4,26 +4,26 @@ local VehicleCameraConfig = require(script.Parent.VehicleCameraConfig)
 
 local map = CameraUtils.map
 local mapClamp = CameraUtils.mapClamp
-local sanitizeAngle = CameraUtils.sanitizeAngle
+local CoerceAngle = CameraUtils.CoerceAngle
 
--- extract sanitized yaw from a CFrame rotation
+-- extract CoerceD yaw from a CFrame rotation
 local function getYaw(cf)
 	local _, yaw = cf:toEulerAnglesYXZ()
-	return sanitizeAngle(yaw)
+	return CoerceAngle(yaw)
 end
 
--- extract sanitized pitch from a CFrame rotation
+-- extract CoerceD pitch from a CFrame rotation
 local function getPitch(cf)
 	local pitch = cf:toEulerAnglesYXZ()
-	return sanitizeAngle(pitch)
+	return CoerceAngle(pitch)
 end
 
 -- step a damped angular spring axis
 local function stepSpringAxis(dt, f, g, p, v)
-	local offset = sanitizeAngle(p - g)
+	local offset = CoerceAngle(p - g)
 	local decay = math.exp(-f*dt)
 
-	local p1 = sanitizeAngle((offset*(1 + f*dt) + v*dt)*decay + g)
+	local p1 = CoerceAngle((offset*(1 + f*dt) + v*dt)*decay + g)
 	local v1 = (v*(1 - f*dt) - offset*(f*f*dt))*decay
 
 	return p1, v1

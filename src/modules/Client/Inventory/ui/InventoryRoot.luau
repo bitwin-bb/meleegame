@@ -14,15 +14,15 @@ type InventoryRootProps = {
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: InventoryRootProps?): React.ReactNode
-	local resolvedProps = if props ~= nil then props else {} :: InventoryRootProps
+	local GotProps = if props ~= nil then props else {} :: InventoryRootProps
 	local children: { React.ReactNode } = {}
 
-	if resolvedProps.trashScreenProps ~= nil then
-		children[#children + 1] = e(TrashScreen, resolvedProps.trashScreenProps)
+	if GotProps.trashScreenProps ~= nil then
+		children[#children + 1] = e(TrashScreen, GotProps.trashScreenProps)
 	end
 
-	if resolvedProps.coinScreenProps ~= nil then
-		children[#children + 1] = e(CoinScreen, resolvedProps.coinScreenProps)
+	if GotProps.coinScreenProps ~= nil then
+		children[#children + 1] = e(CoinScreen, GotProps.coinScreenProps)
 	end
 
 	if #children <= 0 then

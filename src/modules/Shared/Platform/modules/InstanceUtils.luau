@@ -5,7 +5,7 @@ local StringUtils = require("StringUtils")
 
 local InstanceUtils = {}
 
-function InstanceUtils.ResolveChildPath(root: Instance?, pathSegments: { string }): Instance?
+function InstanceUtils.GetChildPath(root: Instance?, pathSegments: { string }): Instance?
 	local cursor = root
 	for _, segment in pathSegments do
 		if cursor == nil then
@@ -16,15 +16,15 @@ function InstanceUtils.ResolveChildPath(root: Instance?, pathSegments: { string 
 	return cursor
 end
 
-function InstanceUtils.ResolveBasePartByPath(root: Instance?, pathSegments: { string }): BasePart?
-	local resolved = InstanceUtils.ResolveChildPath(root, pathSegments)
-	if resolved ~= nil and resolved:IsA("BasePart") then
-		return resolved
+function InstanceUtils.GetBasePartByPath(root: Instance?, pathSegments: { string }): BasePart?
+	local Got = InstanceUtils.GetChildPath(root, pathSegments)
+	if Got ~= nil and Got:IsA("BasePart") then
+		return Got
 	end
 	return nil
 end
 
-function InstanceUtils.ResolveFirstBasePart(instanceRaw: Instance?): BasePart?
+function InstanceUtils.GetFirstBasePart(instanceRaw: Instance?): BasePart?
 	if instanceRaw == nil then
 		return nil
 	end
@@ -45,7 +45,7 @@ function InstanceUtils.ResolveFirstBasePart(instanceRaw: Instance?): BasePart?
 	return nil
 end
 
-function InstanceUtils.ResolveModelRootPart(model: Model?, assignPrimaryPartRaw: boolean?): BasePart?
+function InstanceUtils.GetModelRootPart(model: Model?, assignPrimaryPartRaw: boolean?): BasePart?
 	if model == nil then
 		return nil
 	end
@@ -75,7 +75,7 @@ function InstanceUtils.ResolveModelRootPart(model: Model?, assignPrimaryPartRaw:
 	return nil
 end
 
-function InstanceUtils.ResolveInstanceRootPart(instanceRaw: Instance?, assignPrimaryPartRaw: boolean?): BasePart?
+function InstanceUtils.GetInstanceRootPart(instanceRaw: Instance?, assignPrimaryPartRaw: boolean?): BasePart?
 	if instanceRaw == nil then
 		return nil
 	end
@@ -83,9 +83,9 @@ function InstanceUtils.ResolveInstanceRootPart(instanceRaw: Instance?, assignPri
 		return instanceRaw
 	end
 	if instanceRaw:IsA("Model") then
-		return InstanceUtils.ResolveModelRootPart(instanceRaw, assignPrimaryPartRaw)
+		return InstanceUtils.GetModelRootPart(instanceRaw, assignPrimaryPartRaw)
 	end
-	return InstanceUtils.ResolveFirstBasePart(instanceRaw)
+	return InstanceUtils.GetFirstBasePart(instanceRaw)
 end
 
 function InstanceUtils.FindDescendantBasePartByToken(root: Instance?, tokenRaw: any): BasePart?
@@ -93,25 +93,18 @@ function InstanceUtils.FindDescendantBasePartByToken(root: Instance?, tokenRaw: 
 		return nil
 	end
 
-	local targetToken = StringUtils.compactToken(tokenRaw)
+	local targetToken = StringUtils.CompactToken(tokenRaw)
 	if targetToken == "" then
 		return nil
 	end
 
 	for _, descendant in root:GetDescendants() do
-		if descendant:IsA("BasePart") and StringUtils.compactToken(descendant.Name) == targetToken then
+		if descendant:IsA("BasePart") and StringUtils.CompactToken(descendant.Name) == targetToken then
 			return descendant
 		end
 	end
 
 	return nil
 end
-
-InstanceUtils.resolveChildPath = InstanceUtils.ResolveChildPath
-InstanceUtils.resolveBasePartByPath = InstanceUtils.ResolveBasePartByPath
-InstanceUtils.resolveFirstBasePart = InstanceUtils.ResolveFirstBasePart
-InstanceUtils.resolveModelRootPart = InstanceUtils.ResolveModelRootPart
-InstanceUtils.resolveInstanceRootPart = InstanceUtils.ResolveInstanceRootPart
-InstanceUtils.findDescendantBasePartByToken = InstanceUtils.FindDescendantBasePartByToken
 
 return InstanceUtils

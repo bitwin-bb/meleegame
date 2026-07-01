@@ -14,9 +14,9 @@ type CraftingRootProps = {
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: CraftingRootProps?): React.ReactNode
-	local resolvedProps = if props ~= nil then props else {} :: CraftingRootProps
+	local GotProps = if props ~= nil then props else {} :: CraftingRootProps
 
 	return e(React.Fragment, nil, {
-		e(CraftingSlotsScreen, resolvedProps),
+		e(CraftingSlotsScreen, GotProps),
 	})
 end

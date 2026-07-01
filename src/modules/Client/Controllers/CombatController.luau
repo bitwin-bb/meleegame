@@ -45,9 +45,4 @@ function CombatController.Destroy(self: CombatController)
 	self.maid:DoCleaning()
 	self.machine = nil
 end
-
-CombatController.start = CombatController.Start
-CombatController.update = CombatController.Update
-CombatController.destroy = CombatController.Destroy
-
 return CombatController

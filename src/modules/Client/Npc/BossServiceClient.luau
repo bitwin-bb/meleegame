@@ -13,7 +13,7 @@ local BossServiceUtils = require("BossServiceUtils")
 local CameraShaker = require(ReplicatedStorage.Shared.Vendor.EZCameraShake)
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
-local BossServicePackets = require("NetSharedPackets").BossService
+local BossServicePackets = require("NetPacketsShared").BossService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = BossServicePackets[methodName]
@@ -22,7 +22,7 @@ local function sendPacket(methodName: string, ...: any)
 		return
 	end
 
-	packet.send(PacketPayload.pack(...))
+	packet.send(PacketPayload.Pack(...))
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -32,13 +32,14 @@ local function bindPacket(self: any, methodName: string)
 		return
 	end
 
+	local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
 	packet.listen(function(payload: any)
-		local handler = self[methodName]
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, table.unpack(arguments, 1, count))
 	end)
 end
@@ -91,13 +92,13 @@ type CameraShakerObject = {
 }
 
 type PresentationModule = {
-	createRuntime: (modelRaw: any, snapshot: BossSnapshot, cameraShaker: CameraShakerObject?) -> any,
-	applySnapshot: (runtime: any, snapshot: BossSnapshot) -> (),
-	step: (runtime: any, dt: number) -> (),
-	destroy: (runtime: any) -> (),
+	CreateRuntime: (modelRaw: any, snapshot: BossSnapshot, cameraShaker: CameraShakerObject?) -> any,
+	ApplySnapshot: (runtime: any, snapshot: BossSnapshot) -> (),
+	Step: (runtime: any, dt: number) -> (),
+	Destroy: (runtime: any) -> (),
 }
 
-type PresentationResolver = () -> PresentationModule?
+type PresentationGetter = () -> PresentationModule?
 
 type BossVisualRuntime = {
 	snapshot: BossSnapshot,
@@ -123,7 +124,7 @@ local function warnPresentationModuleFailure(presentationId: string, message: st
 	warn(`[BossServiceClient] {message}`)
 end
 
-local function resolveNestedModule(root: Instance?, path: { string }): ModuleScript?
+local function GetNestedModule(root: Instance?, path: { string }): ModuleScript?
 	if root == nil then
 		return nil
 	end
@@ -143,13 +144,13 @@ local function resolveNestedModule(root: Instance?, path: { string }): ModuleScr
 	return nil
 end
 
-local function resolveEyeOfCthulhuPresentationModule(): PresentationModule?
+local function GetEyeOfCthulhuPresentationModule(): PresentationModule?
 	local cached = presentationModulesById.EyeOfCthulhu
 	if cached ~= nil then
 		return cached
 	end
 
-	local moduleScript = resolveNestedModule(SharedRoot, { "EyeOfCthulhuBoss", "Presentation" })
+	local moduleScript = GetNestedModule(SharedRoot, { "EyeOfCthulhuBoss", "Presentation" })
 	if moduleScript == nil then
 		return nil
 	end
@@ -170,8 +171,8 @@ local function resolveEyeOfCthulhuPresentationModule(): PresentationModule?
 	return presentationModulesById.EyeOfCthulhu
 end
 
-local PRESENTATION_MODULES: { [string]: PresentationResolver } = {
-	EyeOfCthulhu = resolveEyeOfCthulhuPresentationModule,
+local PRESENTATION_MODULES: { [string]: PresentationGetter } = {
+	EyeOfCthulhu = GetEyeOfCthulhuPresentationModule,
 }
 
 local function appendUniqueOrderedId(orderedIds: { string }, runtimeId: string): { string }
@@ -182,7 +183,7 @@ local function appendUniqueOrderedId(orderedIds: { string }, runtimeId: string):
 end
 
 local function trim(valueRaw: any): string
-	return BossServiceUtils.trim(valueRaw)
+	return BossServiceUtils.Trim(valueRaw)
 end
 
 local function pushAnnouncement(textRaw: any)
@@ -213,29 +214,29 @@ local function pushAnnouncement(textRaw: any)
 	end)
 end
 
-function BossServiceClient.ResolvePresentationModule(
-	self: BossServiceClient,
+function BossServiceClient.GetPresentationModule(
+	_self: BossServiceClient,
 	snapshot: BossSnapshot
 ): PresentationModule?
-	local definition = BossServiceUtils.getRegistryEntryById(snapshot.bossId)
+	local definition = BossServiceUtils.GetRegistryEntryById(snapshot.bossId)
 	if definition == nil then
 		return nil
 	end
 
-	local presentationResolver = PRESENTATION_MODULES[definition.presentationId]
-	if typeof(presentationResolver) == "function" then
-		return presentationResolver()
+	local presentationGetter = PRESENTATION_MODULES[definition.presentationId]
+	if typeof(presentationGetter) == "function" then
+		return presentationGetter()
 	end
 	return nil
 end
 
-function BossServiceClient.ResolveRuntimeModel(self: BossServiceClient, runtimeIdRaw: any): Model?
+function BossServiceClient.GetUntimeModel(_self: BossServiceClient, runtimeIdRaw: any): Model?
 	local runtimeId = trim(runtimeIdRaw)
 	if runtimeId == "" then
 		return nil
 	end
 
-	local runtimeFolder = WorkspaceFolders.findFolderInGameOrWorkspace(BOSS_RUNTIME_FOLDER_NAME)
+	local runtimeFolder = WorkspaceFolders.FindFolderInGameOrWorkspace(BOSS_RUNTIME_FOLDER_NAME)
 	if runtimeFolder == nil then
 		return nil
 	end
@@ -262,7 +263,7 @@ function BossServiceClient.DestroyVisual(self: BossServiceClient, runtimeIdRaw: 
 
 	self.visualsById[runtimeId] = nil
 	if visual.presentationRuntime ~= nil and visual.presentationModule ~= nil then
-		visual.presentationModule.destroy(visual.presentationRuntime)
+		visual.presentationModule.Destroy(visual.presentationRuntime)
 	end
 end
 
@@ -273,14 +274,14 @@ function BossServiceClient.EnsureVisual(self: BossServiceClient, snapshot: BossS
 		visual = {
 			snapshot = snapshot,
 			model = nil,
-			presentationModule = self:resolvePresentationModule(snapshot),
+			presentationModule = self:GetPresentationModule(snapshot),
 			presentationRuntime = nil,
 		}
 		self.visualsById[runtimeId] = visual
 	else
 		visual.snapshot = snapshot
 		if visual.presentationModule == nil then
-			visual.presentationModule = self:resolvePresentationModule(snapshot)
+			visual.presentationModule = self:GetPresentationModule(snapshot)
 		end
 	end
 
@@ -288,32 +289,32 @@ function BossServiceClient.EnsureVisual(self: BossServiceClient, snapshot: BossS
 		return visual
 	end
 
-	local model = self:resolveRuntimeModel(runtimeId)
+	local model = self:GetUntimeModel(runtimeId)
 	if model ~= visual.model then
 		if visual.presentationRuntime ~= nil then
-			visual.presentationModule.destroy(visual.presentationRuntime)
+			visual.presentationModule.Destroy(visual.presentationRuntime)
 			visual.presentationRuntime = nil
 		end
 		visual.model = model
 	end
 
 	if visual.presentationRuntime == nil and visual.model ~= nil then
-		visual.presentationRuntime = visual.presentationModule.createRuntime(visual.model, snapshot, self.cameraShaker)
+		visual.presentationRuntime = visual.presentationModule.CreateRuntime(visual.model, snapshot, self.cameraShaker)
 	end
 
 	if visual.presentationRuntime ~= nil then
-		visual.presentationModule.applySnapshot(visual.presentationRuntime, snapshot)
+		visual.presentationModule.ApplySnapshot(visual.presentationRuntime, snapshot)
 	end
 
 	return visual
 end
 
 function BossServiceClient.PushStateChanged(self: BossServiceClient)
-	self.stateChanged:Fire(self:getState())
+	self.stateChanged:Fire(self:GetState())
 end
 
 function BossServiceClient.ApplyState(self: BossServiceClient, stateRaw: any)
-	local nextState = BossServiceUtils.sanitizeState(stateRaw, self.state)
+	local nextState = BossServiceUtils.CoerceState(stateRaw, self.state)
 	local previousIds = Sift.Array.copy(self.state.orderedIds)
 	self.state = nextState
 	self.isReadyFlag = true
@@ -322,18 +323,18 @@ function BossServiceClient.ApplyState(self: BossServiceClient, stateRaw: any)
 
 	for _, runtimeId in previousIds do
 		if nextLookup[runtimeId] ~= true then
-			self:destroyVisual(runtimeId)
+			self:DestroyVisual(runtimeId)
 		end
 	end
 
 	for _, runtimeId in nextState.orderedIds do
 		local snapshot = nextState.byId[runtimeId]
 		if snapshot ~= nil then
-			self:ensureVisual(snapshot)
+			self:EnsureVisual(snapshot)
 		end
 	end
 
-	self:pushStateChanged()
+	self:PushStateChanged()
 end
 
 function BossServiceClient.UpsertSnapshot(self: BossServiceClient, snapshotRaw: any)
@@ -343,7 +344,7 @@ function BossServiceClient.UpsertSnapshot(self: BossServiceClient, snapshotRaw: 
 		existingSnapshot = self.state.byId[runtimeId]
 	end
 
-	local snapshot = BossServiceUtils.sanitizeSnapshot(snapshotRaw, existingSnapshot)
+	local snapshot = BossServiceUtils.CoerceSnapshot(snapshotRaw, existingSnapshot)
 	if snapshot == nil then
 		return
 	end
@@ -354,16 +355,16 @@ function BossServiceClient.UpsertSnapshot(self: BossServiceClient, snapshotRaw: 
 		updatedAt = os.clock(),
 	}
 	self.isReadyFlag = true
-	self:ensureVisual(snapshot)
-	self:pushStateChanged()
+	self:EnsureVisual(snapshot)
+	self:PushStateChanged()
 end
 
 function BossServiceClient.OnBossAdded(self: BossServiceClient, snapshotRaw: any)
-	self:upsertSnapshot(snapshotRaw)
+	self:UpsertSnapshot(snapshotRaw)
 end
 
 function BossServiceClient.OnBossUpdated(self: BossServiceClient, snapshotRaw: any)
-	self:upsertSnapshot(snapshotRaw)
+	self:UpsertSnapshot(snapshotRaw)
 end
 
 function BossServiceClient.OnBossRemoved(self: BossServiceClient, runtimeIdRaw: any)
@@ -379,8 +380,8 @@ function BossServiceClient.OnBossRemoved(self: BossServiceClient, runtimeIdRaw: 
 		end),
 		updatedAt = os.clock(),
 	}
-	self:destroyVisual(runtimeId)
-	self:pushStateChanged()
+	self:DestroyVisual(runtimeId)
+	self:PushStateChanged()
 end
 
 function BossServiceClient.OnAnnouncement(self: BossServiceClient, payloadRaw: any)
@@ -394,16 +395,16 @@ function BossServiceClient.OnAnnouncement(self: BossServiceClient, payloadRaw: a
 	self.announcementReceived:Fire(payload)
 end
 
-function BossServiceClient.RequestSync(self: BossServiceClient)
+function BossServiceClient.RequestSync(_self: BossServiceClient)
 	sendPacket(BossServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
-function BossServiceClient.RequestManualSummon(self: BossServiceClient, bossTokenRaw: any, optionsRaw: any?)
+function BossServiceClient.RequestManualSummon(_self: BossServiceClient, bossTokenRaw: any, optionsRaw: any?)
 	sendPacket(BossServiceUtils.NETWORK_METHOD_REQUEST_MANUAL_SUMMON, bossTokenRaw, optionsRaw)
 end
 
 function BossServiceClient.GetState(self: BossServiceClient): BossServiceState
-	return BossServiceUtils.cloneState(self.state)
+	return BossServiceUtils.CloneState(self.state)
 end
 
 function BossServiceClient.IsReady(self: BossServiceClient): boolean
@@ -411,21 +412,21 @@ function BossServiceClient.IsReady(self: BossServiceClient): boolean
 end
 
 function BossServiceClient.StepVisuals(self: BossServiceClient, dtRaw: any)
-	local dt = BossServiceUtils.sanitizeNumber(dtRaw, 1 / 60, 0, 1)
-	for runtimeId, visual in self.visualsById do
+	local dt = BossServiceUtils.CoerceNumber(dtRaw, 1 / 60, 0, 1)
+	for runtimeId in self.visualsById do
 		local snapshot = self.state.byId[runtimeId]
 		if snapshot == nil then
-			self:destroyVisual(runtimeId)
+			self:DestroyVisual(runtimeId)
 			continue
 		end
 
-		local ensuredVisual = self:ensureVisual(snapshot)
+		local ensuredVisual = self:EnsureVisual(snapshot)
 		if
 			ensuredVisual ~= nil
 			and ensuredVisual.presentationRuntime ~= nil
 			and ensuredVisual.presentationModule ~= nil
 		then
-			ensuredVisual.presentationModule.step(ensuredVisual.presentationRuntime, dt)
+			ensuredVisual.presentationModule.Step(ensuredVisual.presentationRuntime, dt)
 		end
 	end
 end
@@ -436,7 +437,7 @@ function BossServiceClient.Init(self: BossServiceClient)
 	self.janitor = Janitor.new()
 	self.stateChanged = Signal.new()
 	self.announcementReceived = Signal.new()
-	self.state = BossServiceUtils.createDefaultState()
+	self.state = BossServiceUtils.CreateDefaultState()
 	self.visualsById = {}
 	self.isReadyFlag = false
 
@@ -459,11 +460,11 @@ function BossServiceClient.Init(self: BossServiceClient)
 	end
 
 	self.janitor:GiveChore(RunService.RenderStepped:Connect(function(dt: number)
-		self:stepVisuals(dt)
+		self:StepVisuals(dt)
 	end))
 	self.janitor:GiveChore(function()
 		for runtimeId in pairs(self.visualsById) do
-			self:destroyVisual(runtimeId)
+			self:DestroyVisual(runtimeId)
 		end
 	end)
 	self.janitor:GiveChore(function()
@@ -481,7 +482,7 @@ function BossServiceClient.Init(self: BossServiceClient)
 		self.announcementReceived:Destroy()
 	end)
 
-	self:requestSync()
+	self:RequestSync()
 end
 
 function BossServiceClient.Destroy(self: BossServiceClient)
@@ -489,25 +490,6 @@ function BossServiceClient.Destroy(self: BossServiceClient)
 		self.janitor:Destroy()
 	end
 end
-
-BossServiceClient.resolvePresentationModule = BossServiceClient.ResolvePresentationModule
-BossServiceClient.resolveRuntimeModel = BossServiceClient.ResolveRuntimeModel
-BossServiceClient.destroyVisual = BossServiceClient.DestroyVisual
-BossServiceClient.ensureVisual = BossServiceClient.EnsureVisual
-BossServiceClient.pushStateChanged = BossServiceClient.PushStateChanged
-BossServiceClient.applyState = BossServiceClient.ApplyState
-BossServiceClient.upsertSnapshot = BossServiceClient.UpsertSnapshot
-BossServiceClient.onBossAdded = BossServiceClient.OnBossAdded
-BossServiceClient.onBossUpdated = BossServiceClient.OnBossUpdated
-BossServiceClient.onBossRemoved = BossServiceClient.OnBossRemoved
-BossServiceClient.onAnnouncement = BossServiceClient.OnAnnouncement
-BossServiceClient.requestSync = BossServiceClient.RequestSync
-BossServiceClient.requestManualSummon = BossServiceClient.RequestManualSummon
-BossServiceClient.getState = BossServiceClient.GetState
-BossServiceClient.isReady = BossServiceClient.IsReady
-BossServiceClient.stepVisuals = BossServiceClient.StepVisuals
-BossServiceClient.init = BossServiceClient.Init
-BossServiceClient.destroy = BossServiceClient.Destroy
 
 type BossServiceClient = typeof(BossServiceClient) & {
 	localPlayer: Player,

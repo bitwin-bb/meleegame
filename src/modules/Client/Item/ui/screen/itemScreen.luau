@@ -20,12 +20,12 @@ type ItemScreenProps = {
 
 local e: typeof(React.createElement) = React.createElement
 
-local function resolveDragState(): ItemDragState
+local function GotRagState(): ItemDragState
 	return itemSlice.getDragState()
 end
 
 return function(props: ItemScreenProps): React.ReactNode
-	local dragState = (useStore(itemSlice.dragStateAtom) :: ItemDragState?) or resolveDragState()
+	local dragState = (useStore(itemSlice.dragStateAtom) :: ItemDragState?) or GotRagState()
 
 	if props.visible == false then
 		return nil
@@ -83,7 +83,7 @@ return function(props: ItemScreenProps): React.ReactNode
 		children = children,
 	})
 
-	local portalTarget = PortalTargets.resolveUiScreenGui()
+	local portalTarget = PortalTargets.GetUiScreenGui()
 	if portalTarget ~= nil then
 		return ReactRoblox.createPortal(rootElement, portalTarget)
 	end

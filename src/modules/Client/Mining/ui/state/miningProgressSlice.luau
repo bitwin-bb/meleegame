@@ -24,21 +24,21 @@ local DEFAULT_STATE: MiningProgressState = {
 
 local miningProgressStateAtom: Charm.Atom<MiningProgressState> = Charm.atom(DEFAULT_STATE)
 
-local function sanitizeProgress(valueRaw: any, fallback: number): number
+local function CoerceProgress(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return math.clamp(fallback, 0, 1)
 	end
 	return math.clamp(valueRaw, 0, 1)
 end
 
-local function sanitizeTileCoordinate(valueRaw: any): number?
+local function CoerceTileCoordinate(valueRaw: any): number?
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return nil
 	end
 	return math.floor(valueRaw)
 end
 
-local function sanitizeWorldPosition(valueRaw: any): Vector3?
+local function CoerceWorldPosition(valueRaw: any): Vector3?
 	if typeof(valueRaw) == "Vector3" then
 		return valueRaw
 	end
@@ -55,10 +55,10 @@ local function setMiningProgressState(stateRaw: any): MiningProgressState
 	local isVisible = (source :: any).visible == true
 	local nextState: MiningProgressState = {
 		visible = isVisible,
-		progress = sanitizeProgress((source :: any).progress, current.progress),
-		tileX = sanitizeTileCoordinate((source :: any).tileX),
-		tileY = sanitizeTileCoordinate((source :: any).tileY),
-		worldPosition = sanitizeWorldPosition((source :: any).worldPosition),
+		progress = CoerceProgress((source :: any).progress, current.progress),
+		tileX = CoerceTileCoordinate((source :: any).tileX),
+		tileY = CoerceTileCoordinate((source :: any).tileY),
+		worldPosition = CoerceWorldPosition((source :: any).worldPosition),
 		updatedAt = os.clock(),
 	}
 
@@ -77,10 +77,10 @@ local function showMiningProgress(payloadRaw: any): MiningProgressState
 	local payload = if typeof(payloadRaw) == "table" then payloadRaw else {} :: any
 	local nextState: MiningProgressState = {
 		visible = true,
-		progress = sanitizeProgress((payload :: any).progress, 0),
-		tileX = sanitizeTileCoordinate((payload :: any).tileX),
-		tileY = sanitizeTileCoordinate((payload :: any).tileY),
-		worldPosition = sanitizeWorldPosition((payload :: any).worldPosition),
+		progress = CoerceProgress((payload :: any).progress, 0),
+		tileX = CoerceTileCoordinate((payload :: any).tileX),
+		tileY = CoerceTileCoordinate((payload :: any).tileY),
+		worldPosition = CoerceWorldPosition((payload :: any).worldPosition),
 		updatedAt = os.clock(),
 	}
 

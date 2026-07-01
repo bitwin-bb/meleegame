@@ -16,48 +16,38 @@ local function getRuntime(): Parallax.Parallax
 end
 
 function ParallaxServiceClient.Init(_self: any, container: Instance?)
-	getRuntime():init(container)
+	getRuntime():Init(container)
 end
 
 function ParallaxServiceClient.SetBiome(_self: any, biomeNameRaw: any)
-	getRuntime():setBiome(biomeNameRaw)
+	getRuntime():SetBiome(biomeNameRaw)
 end
 
 function ParallaxServiceClient.ForceRefresh(_self: any)
-	getRuntime():forceRefresh()
+	getRuntime():ForceRefresh()
 end
 
 function ParallaxServiceClient.ObserveState(_self: any): any
-	return getRuntime():observeState()
+	return getRuntime():ObserveState()
 end
 
 function ParallaxServiceClient.GetStateChangedSignal(_self: any): any
-	return getRuntime():getStateChangedSignal()
+	return getRuntime():GetStateChangedSignal()
 end
 
 function ParallaxServiceClient.GetState(_self: any): ParallaxServiceUtils.ServiceState
-	return getRuntime():getState()
+	return getRuntime():GetState()
 end
 
 function ParallaxServiceClient.GetCurrentBiome(_self: any): string
-	return getRuntime():getCurrentBiome()
+	return getRuntime():GetCurrentBiome()
 end
 
 function ParallaxServiceClient.Destroy(_self: any)
 	if runtime == nil then
 		return
 	end
-	runtime:destroy()
+	runtime:Destroy()
 	runtime = nil
 end
-
-ParallaxServiceClient.init = ParallaxServiceClient.Init
-ParallaxServiceClient.setBiome = ParallaxServiceClient.SetBiome
-ParallaxServiceClient.forceRefresh = ParallaxServiceClient.ForceRefresh
-ParallaxServiceClient.observeState = ParallaxServiceClient.ObserveState
-ParallaxServiceClient.getStateChangedSignal = ParallaxServiceClient.GetStateChangedSignal
-ParallaxServiceClient.getState = ParallaxServiceClient.GetState
-ParallaxServiceClient.getCurrentBiome = ParallaxServiceClient.GetCurrentBiome
-ParallaxServiceClient.destroy = ParallaxServiceClient.Destroy
-
 return ParallaxServiceClient

@@ -32,7 +32,7 @@ local e: typeof(React.createElement) = React.createElement
 local TRASH_HOVER_ID = "inventory_trash"
 local DEFAULT_SIZE = UDim2.fromOffset(58, 58)
 
-local function resolveEmergeOffset(offsetRaw: any): Vector2
+local function GetEmergeOffset(offsetRaw: any): Vector2
 	if typeof(offsetRaw) ~= "Vector2" then
 		return Vector2.zero
 	end
@@ -42,7 +42,7 @@ local function resolveEmergeOffset(offsetRaw: any): Vector2
 	return offsetRaw
 end
 
-local function resolveTransparency(valueRaw: any): number
+local function GetTransparency(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return 0
 	end
@@ -57,17 +57,17 @@ local function playUiTrashSound(soundAssetId: string?)
 	UiSound.play(soundAssetId)
 end
 
-local function resolveHoverText(state: TrashState, dragState: ItemDragState): string
+local function GetHoverText(state: TrashState, dragState: ItemDragState): string
 	if dragState.active and dragState.stack ~= nil then
 		local slotIndex = if typeof(dragState.sourceSlot) == "number" then dragState.sourceSlot else 0
-		return ("Trash\n\nDrop to destroy:\n%s"):format(itemThunks.resolveHoverTextForStack(dragState.stack, slotIndex))
+		return ("Trash\nDrop to destroy:\n%s"):format(itemThunks.GetHoverTextForStack(dragState.stack, slotIndex))
 	end
 
 	if not state.canTrash or state.selectedStack == nil or state.selectedSlot == nil then
-		return "Trash\n\nSelect an inventory slot to trash items."
+		return "Trash\nSelect an inventory slot to trash items."
 	end
 
-	return ("Trash\n\n%s"):format(itemThunks.resolveHoverTextForStack(state.selectedStack, state.selectedSlot))
+	return ("Trash\n%s"):format(itemThunks.GetHoverTextForStack(state.selectedStack, state.selectedSlot))
 end
 
 return function(props: TrashScreenProps): React.ReactNode
@@ -75,11 +75,11 @@ return function(props: TrashScreenProps): React.ReactNode
 	local dragState = (useStore(itemSlice.dragStateAtom) :: ItemDragState?) or itemSlice.getDragState()
 
 	React.useEffect(function()
-		local stop = trashThunks.start()
+		local stop = trashThunks.Start()
 
 		return function()
 			stop()
-			infoThunks.hideHover(TRASH_HOVER_ID)
+			infoThunks.HideHover(TRASH_HOVER_ID)
 		end
 	end, {})
 
@@ -87,9 +87,9 @@ return function(props: TrashScreenProps): React.ReactNode
 		if not state.isHovered then
 			return
 		end
-		infoThunks.showHover({
+		infoThunks.ShowHover({
 			id = TRASH_HOVER_ID,
-			text = resolveHoverText(state, dragState),
+			text = GetHoverText(state, dragState),
 		})
 	end, { state.updatedAt, state.isHovered, dragState.updatedAt, dragState.active } :: { any })
 
@@ -98,8 +98,8 @@ return function(props: TrashScreenProps): React.ReactNode
 	end
 
 	local zIndex = props.zIndex or 60
-	local emergeOffset = resolveEmergeOffset(props.emergeOffset)
-	local emergeTransparency = resolveTransparency(props.emergeTransparency)
+	local emergeOffset = GetEmergeOffset(props.emergeOffset)
+	local emergeTransparency = GetTransparency(props.emergeTransparency)
 	local canTrashDragged = dragState.active and dragState.stack ~= nil and dragState.sourceSlot ~= nil
 	local canInteract = canTrashDragged or state.canTrash
 	local isBrightHover = state.isHovered and canTrashDragged
@@ -119,16 +119,16 @@ return function(props: TrashScreenProps): React.ReactNode
 		active = emergeTransparency < 0.98,
 		selectable = emergeTransparency < 0.98,
 		onMouseEnter = function()
-			trashThunks.open()
-			infoThunks.showHover({
+			trashThunks.Open()
+			infoThunks.ShowHover({
 				id = TRASH_HOVER_ID,
-				text = resolveHoverText(state, dragState),
+				text = GetHoverText(state, dragState),
 			})
 			playUiTrashSound((UiSound :: any).trashCanOpen)
 		end,
 		onMouseLeave = function()
-			trashThunks.close()
-			infoThunks.hideHover(TRASH_HOVER_ID)
+			trashThunks.Close()
+			infoThunks.HideHover(TRASH_HOVER_ID)
 			playUiTrashSound((UiSound :: any).trashCanClose)
 		end,
 		onInputBegan = function(_: GuiObject, inputObject: InputObject)
@@ -140,7 +140,7 @@ return function(props: TrashScreenProps): React.ReactNode
 				return
 			end
 
-			local didRequest = itemThunks.trashDrag(nil)
+			local didRequest = itemThunks.TrashDrag(nil)
 			if didRequest then
 				playUiTrashSound((UiSound :: any).itemPutDown)
 				playUiTrashSound(UiSound.trash)
@@ -154,7 +154,7 @@ return function(props: TrashScreenProps): React.ReactNode
 				return
 			end
 
-			local didRequest = trashThunks.trashSelected(nil)
+			local didRequest = trashThunks.TrashSelected(nil)
 			if didRequest then
 				playUiTrashSound(UiSound.trash)
 			end

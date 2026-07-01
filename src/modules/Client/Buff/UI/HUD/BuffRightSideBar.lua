@@ -33,7 +33,6 @@ return function(props: BuffRightSideBarProps): React.ReactNode
 	local frameProps = if props.native ~= nil then Table.copy(props.native) else {}
 
 	frameProps.Name = frameProps.Name or "Buffs"
-	frameProps.Size = frameProps.Size
 		or props.size
 		or UDim2.fromOffset(meterTokens.frameWidth, DEFAULT_CONTAINER_HEIGHT)
 	frameProps.Position = frameProps.Position or props.position or UDim2.fromScale(1, 0)

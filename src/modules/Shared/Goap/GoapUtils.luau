@@ -81,13 +81,4 @@ function Utils.FormatValue(value: any): string
 	end
 	return tostring(value)
 end
-
-Utils.copyDictionary = Utils.CopyDictionary
-Utils.readBlackboard = Utils.ReadBlackboard
-Utils.writeWorldState = Utils.WriteWorldState
-Utils.readWorldState = Utils.ReadWorldState
-Utils.callFirst = Utils.CallFirst
-Utils.getName = Utils.GetName
-Utils.formatValue = Utils.FormatValue
-
 return Utils

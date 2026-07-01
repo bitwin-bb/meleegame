@@ -30,11 +30,11 @@ export type EyeOfCthulhuController = any
 local LEGACY_PATH_MARKED = false
 
 local function getServantFolder(): Folder
-	return Servant.getFolder()
+	return Servant.GetFolder()
 end
 
 local function countActiveServants(self: EyeOfCthulhuController): number
-	return Servant.countActive(self._servants)
+	return Servant.CountActive(self._servants)
 end
 
 local function getControllerRandom(self: EyeOfCthulhuController): Random?
@@ -140,7 +140,7 @@ local function shouldTriggerPhase2RapidChain(self: EyeOfCthulhuController): bool
 	end
 
 	local threshold = self._eyeConfig.rapidChainHealthThreshold
-	local healthRatio = self:getHealthRatio()
+	local healthRatio = self:GetHealthRatio()
 	if healthRatio > threshold then
 		self._phase2IdleCyclesSinceRapidChain = 0
 		return false
@@ -173,7 +173,7 @@ local function chooseSideSign(spawnRequest: BossSpawnRequest): number
 		return 1
 	end
 
-	local velocity = BossServiceUtils.resolveCharacterVelocity(targetPlayer)
+	local velocity = BossServiceUtils.GetCharacterVelocity(targetPlayer)
 	if velocity.Z < -1e-3 then
 		return -1
 	end
@@ -183,19 +183,19 @@ local function chooseSideSign(spawnRequest: BossSpawnRequest): number
 	return if math.random() < 0.5 then -1 else 1
 end
 
-local function resolveInitialSpawnRequest(spawnRequest: BossSpawnRequest, config: EyeConfig): BossSpawnRequest
-	local resolved = Sift.Dictionary.copy(spawnRequest)
-	if resolved.targetPlayer ~= nil then
-		local rootPart = BossServiceUtils.resolveCharacterRootPart(resolved.targetPlayer)
+local function GetInitialSpawnRequest(spawnRequest: BossSpawnRequest, config: EyeConfig): BossSpawnRequest
+	local Got = Sift.Dictionary.copy(spawnRequest)
+	if Got.targetPlayer ~= nil then
+		local rootPart = BossServiceUtils.GetCharacterRootPart(Got.targetPlayer)
 		if rootPart ~= nil then
-			if resolved.planeX == nil then
-				resolved.planeX = rootPart.Position.X
+			if Got.planeX == nil then
+				Got.planeX = rootPart.Position.X
 			end
-			if resolved.spawnPosition == nil then
-				local sideSign = chooseSideSign(resolved)
-				resolved.spawnPosition = EyeOfCthulhuMotion.computeIntroSpawnPosition(
+			if Got.spawnPosition == nil then
+				local sideSign = chooseSideSign(Got)
+				Got.spawnPosition = EyeOfCthulhuMotion.ComputeIntroSpawnPosition(
 					rootPart.Position,
-					resolved.planeX,
+					Got.planeX,
 					sideSign,
 					config.introHeight,
 					config.introDistance
@@ -203,11 +203,11 @@ local function resolveInitialSpawnRequest(spawnRequest: BossSpawnRequest, config
 			end
 		end
 	end
-	return resolved
+	return Got
 end
 
 local function getTargetPosition(self: EyeOfCthulhuController): Vector3?
-	local targetPosition = self:resolveTargetPosition()
+	local targetPosition = self:GetTargetPosition()
 	if targetPosition ~= nil then
 		return targetPosition
 	end
@@ -215,7 +215,7 @@ local function getTargetPosition(self: EyeOfCthulhuController): Vector3?
 end
 
 local function getTargetVelocity(self: EyeOfCthulhuController): Vector3
-	return self:resolveTargetVelocity()
+	return self:GetTargetVelocity()
 end
 
 local function getPhaseAggressiveness(self: EyeOfCthulhuController): number
@@ -223,25 +223,25 @@ local function getPhaseAggressiveness(self: EyeOfCthulhuController): number
 end
 
 local function scaleDuration(self: EyeOfCthulhuController, baseDuration: number): number
-	return EyeOfCthulhuMotion.resolveAggressiveDuration(baseDuration, getPhaseAggressiveness(self))
+	return EyeOfCthulhuMotion.GetAggressiveDuration(baseDuration, getPhaseAggressiveness(self))
 end
 
 local function scaleSpeed(self: EyeOfCthulhuController, baseSpeed: number): number
-	return EyeOfCthulhuMotion.resolveAggressiveSpeed(baseSpeed, getPhaseAggressiveness(self))
+	return EyeOfCthulhuMotion.GetAggressiveSpeed(baseSpeed, getPhaseAggressiveness(self))
 end
 
 local function setPhase1Stats(self: EyeOfCthulhuController)
 	self.defense = self._eyeConfig.defensePhase1
 	self.contactDamage = self._eyeConfig.contactDamagePhase1
 	self.contactDamageRadius = self._eyeConfig.contactDamageRadiusPhase1
-	self:setPhase(1, "Phase1")
+	self:SetPhase(1, "Phase1")
 end
 
 local function setPhase2Stats(self: EyeOfCthulhuController)
 	self.defense = self._eyeConfig.defensePhase2
 	self.contactDamage = self._eyeConfig.contactDamagePhase2
 	self.contactDamageRadius = self._eyeConfig.contactDamageRadiusPhase2
-	self:setPhase(2, "Phase2")
+	self:SetPhase(2, "Phase2")
 end
 
 local function createTargetSnapshot(self: EyeOfCthulhuController): MotionTargetSnapshot
@@ -287,9 +287,9 @@ local function applyCurrentMotionDebugAttributes(self: EyeOfCthulhuController)
 end
 
 local function applyMotionResult(self: EyeOfCthulhuController, result: MotionSolveResult)
-	self:setVelocity(result.velocity)
-	self:setFacing(result.facing)
-	self:setMotionState(result.debug)
+	self:SetVelocity(result.velocity)
+	self:SetFacing(result.facing)
+	self:SetMotionState(result.debug)
 	applyCurrentMotionDebugAttributes(self)
 end
 
@@ -304,7 +304,7 @@ local function lockCharge(
 	chargeDuration: number
 )
 	local targetSnapshot = createTargetSnapshot(self)
-	self._lockedCharge = EyeOfCthulhuMotion.createChargeLock(
+	self._lockedCharge = EyeOfCthulhuMotion.CreateChargeLock(
 		self.position,
 		targetSnapshot.position,
 		targetSnapshot.velocity,
@@ -317,13 +317,13 @@ local function lockCharge(
 	)
 end
 
-local function resolveServantSpawnPosition(self: EyeOfCthulhuController): Vector3
+local function GetServantSpawnPosition(self: EyeOfCthulhuController): Vector3
 	local model = self.model
 	if model ~= nil then
 		local spawnPart =
-			BossServiceUtils.findFirstDescendantByNormalizedName(model, { "Pupil", "Iris", "Eye", "RootPart" })
+			BossServiceUtils.FindFirstDescendantByNormalizedName(model, { "Pupil", "Iris", "Eye", "RootPart" })
 		if spawnPart ~= nil and spawnPart:IsA("BasePart") then
-			return BossServiceUtils.projectPositionToPlaneX((spawnPart :: BasePart).Position, self.planeX)
+			return BossServiceUtils.ProjectPositionToPlaneX((spawnPart :: BasePart).Position, self.planeX)
 		end
 	end
 	return self.position
@@ -338,8 +338,8 @@ local function spawnServant(self: EyeOfCthulhuController): boolean
 	end
 
 	local servantId = self._nextServantId
-	local spawnPosition = resolveServantSpawnPosition(self)
-	local didSpawn, nextServantId = Servant.spawn(self._servants, {
+	local spawnPosition = GetServantSpawnPosition(self)
+	local didSpawn, nextServantId = Servant.Spawn(self._servants, {
 		servantId = servantId,
 		parent = getServantFolder(),
 		spawnPosition = spawnPosition,
@@ -351,19 +351,19 @@ local function spawnServant(self: EyeOfCthulhuController): boolean
 		return false
 	end
 
-	self:incrementPresentationToken("servantPulseToken")
+	self:IncrementPresentationToken("servantPulseToken")
 	return true
 end
 
 local function clearServants(self: EyeOfCthulhuController)
-	Servant.clearAll(self._servants)
+	Servant.ClearAll(self._servants)
 end
 
 local function stepServants(self: EyeOfCthulhuController, dt: number)
 	local servantDamage = self._eyeConfig.servantDamage
-	Servant.stepAll(self._servants, {
+	Servant.StepAll(self._servants, {
 		dt = dt,
-		now = self.service:getNow(),
+		now = self.service:GetNow(),
 		targetPosition = getTargetPosition(self),
 		planeX = self.planeX,
 		speed = scaleSpeed(self, self._eyeConfig.servantSpeed),
@@ -372,7 +372,7 @@ local function stepServants(self: EyeOfCthulhuController, dt: number)
 		radius = self._eyeConfig.servantRadius,
 		cooldown = self._eyeConfig.servantCooldown,
 		damagePlayer = function(player: Player): any
-			return self.service:damagePlayer(player, servantDamage, self)
+			return self.service:DamagePlayer(player, servantDamage, self)
 		end,
 	})
 end
@@ -390,13 +390,13 @@ function EyeOfCthulhuController.New(
 	definition: BossRegistryEntry,
 	spawnRequestRaw: BossSpawnRequest
 ): EyeOfCthulhuController
-	local config = EyeOfCthulhuConfig.resolve({
+	local config = EyeOfCthulhuConfig.Get({
 		simulationSpeed = spawnRequestRaw.simulationSpeed,
 		aggressiveness = spawnRequestRaw.aggressiveness,
 		expertBehaviorEnabled = spawnRequestRaw.expertBehaviorEnabled,
 	})
-	local spawnRequest = resolveInitialSpawnRequest(spawnRequestRaw, config)
-	local base = BossBase.new(service, definition, spawnRequest, {
+	local spawnRequest = GetInitialSpawnRequest(spawnRequestRaw, config)
+	local base = BossBase.New(service, definition, spawnRequest, {
 		maxHp = config.maxHp,
 		defense = config.defensePhase1,
 		contactDamage = config.contactDamagePhase1,
@@ -447,8 +447,8 @@ function EyeOfCthulhuController.AfterSpawn(self: EyeOfCthulhuController)
 	self._servantFolder = getServantFolder()
 	assert(getmetatable(self) == EyeOfCthulhuController, "[BossService] Eye controller metatable mismatch")
 	markLegacyEyePathDisabled()
-	self:changeState("SpawnIntro", self.spawnSource)
-	self:incrementPresentationToken("roarPulseToken")
+	self:ChangeState("SpawnIntro", self.spawnSource)
+	self:IncrementPresentationToken("roarPulseToken")
 end
 
 function EyeOfCthulhuController.OnStateChanged(
@@ -458,9 +458,9 @@ function EyeOfCthulhuController.OnStateChanged(
 	_reason: string
 )
 	self.contactDamageActive = false
-	self:setPresentationFlag("isHurtWindowActive", false)
-	self:setPresentationFlag("isTransforming", nextState == "Transform")
-	self:setPresentationFlag("isRoaring", false)
+	self:SetPresentationFlag("isHurtWindowActive", false)
+	self:SetPresentationFlag("isTransforming", nextState == "Transform")
+	self:SetPresentationFlag("isRoaring", false)
 
 	if nextState == "SpawnIntro" then
 		clearLockedCharge(self)
@@ -493,21 +493,21 @@ function EyeOfCthulhuController.OnStateChanged(
 
 	if nextState == "Phase1Charge" then
 		self.contactDamageActive = true
-		self:setPresentationFlag("isHurtWindowActive", true)
-		self:incrementPresentationToken("dashPulseToken")
+		self:SetPresentationFlag("isHurtWindowActive", true)
+		self:IncrementPresentationToken("dashPulseToken")
 		return
 	end
 
 	if nextState == "Transform" then
 		clearLockedCharge(self)
-		self:setVelocity(Vector3.zero)
+		self:SetVelocity(Vector3.zero)
 		local targetPosition = getTargetPosition(self)
 		if targetPosition ~= nil then
-			self:lookAt(targetPosition)
+			self:LookAt(targetPosition)
 		end
 		self._transformBaseFacing = self.facing
-		self:setPresentationFlag("isTransforming", true)
-		self:incrementPresentationToken("transformPulseToken")
+		self:SetPresentationFlag("isTransforming", true)
+		self:IncrementPresentationToken("transformPulseToken")
 		if self._eyeConfig.expertBehaviorEnabled and self._eyeConfig.servantBonusBurstOnTransform then
 			for _ = 1, self._eyeConfig.servantExpertBonusCount do
 				spawnServant(self)
@@ -521,7 +521,7 @@ function EyeOfCthulhuController.OnStateChanged(
 		setPhase2Stats(self)
 		beginPhase2HoverIdleCycle(self)
 		if previousState == "Transform" then
-			self:incrementPresentationToken("roarPulseToken")
+			self:IncrementPresentationToken("roarPulseToken")
 		end
 		return
 	end
@@ -538,10 +538,10 @@ function EyeOfCthulhuController.OnStateChanged(
 
 	if nextState == "Phase2Charge" then
 		self.contactDamageActive = true
-		self:setPresentationFlag("isHurtWindowActive", true)
-		self:setPresentationFlag("isRoaring", true)
-		self:incrementPresentationToken("dashPulseToken")
-		self:incrementPresentationToken("roarPulseToken")
+		self:SetPresentationFlag("isHurtWindowActive", true)
+		self:SetPresentationFlag("isRoaring", true)
+		self:IncrementPresentationToken("dashPulseToken")
+		self:IncrementPresentationToken("roarPulseToken")
 		return
 	end
 
@@ -558,7 +558,7 @@ function EyeOfCthulhuController.OnStateChanged(
 	if nextState == "Death" then
 		clearLockedCharge(self)
 		clearServants(self)
-		self:setVelocity(Vector3.zero)
+		self:SetVelocity(Vector3.zero)
 		return
 	end
 
@@ -576,7 +576,7 @@ function EyeOfCthulhuController.OnDamageTaken(
 	_hp: number
 )
 	if typeof(sourceRaw) == "Instance" and sourceRaw:IsA("Player") then
-		self:setTarget(sourceRaw)
+		self:SetTarget(sourceRaw)
 	end
 end
 
@@ -587,11 +587,11 @@ end
 function EyeOfCthulhuController.StepSpawnIntro(self: EyeOfCthulhuController, dt: number)
 	local targetSnapshot = createTargetSnapshot(self)
 	if targetSnapshot.position == nil then
-		self:despawn("MissingTarget")
+		self:Despawn("MissingTarget")
 		return
 	end
 
-	local result = EyeOfCthulhuMotion.solveSpawnIntroMotion(createMotionContext(self), targetSnapshot, {
+	local result = EyeOfCthulhuMotion.SolveSpawnIntroMotion(createMotionContext(self), targetSnapshot, {
 		introDuration = scaleDuration(self, self._eyeConfig.introDuration),
 		introHeight = self._eyeConfig.introHeight,
 		introDistance = self._eyeConfig.introDistance,
@@ -607,18 +607,18 @@ function EyeOfCthulhuController.StepSpawnIntro(self: EyeOfCthulhuController, dt:
 	applyMotionResult(self, result)
 
 	if result.finished then
-		self:changeState("Phase1Hover", "SpawnIntroComplete")
+		self:ChangeState("Phase1Hover", "SpawnIntroComplete")
 	end
 end
 
 function EyeOfCthulhuController.StepPhase1Hover(self: EyeOfCthulhuController, dt: number)
 	local targetSnapshot = createTargetSnapshot(self)
 	if targetSnapshot.position == nil then
-		self:despawn("MissingTarget")
+		self:Despawn("MissingTarget")
 		return
 	end
 
-	local result = EyeOfCthulhuMotion.solvePhase1HoverMotion(createMotionContext(self), targetSnapshot, {
+	local result = EyeOfCthulhuMotion.SolvePhase1HoverMotion(createMotionContext(self), targetSnapshot, {
 		phase1HoverHeight = self._eyeConfig.phase1HoverHeight,
 		phase1SideOffset = self._eyeConfig.phase1SideOffset,
 		phase1LeadMultiplier = self._eyeConfig.phase1LeadMultiplier,
@@ -635,22 +635,22 @@ function EyeOfCthulhuController.StepPhase1Hover(self: EyeOfCthulhuController, dt
 	end
 
 	if shouldRunPhase1ServantBurst(self) then
-		self:changeState("Phase1ServantBurst", "Phase1ChargeSetReady")
+		self:ChangeState("Phase1ServantBurst", "Phase1ChargeSetReady")
 		return
 	end
 
 	self._phase1BurstPending = false
-	self:changeState("Phase1ChargeWindup", "Phase1ChargeSetReady")
+	self:ChangeState("Phase1ChargeWindup", "Phase1ChargeSetReady")
 end
 
 function EyeOfCthulhuController.StepPhase1ServantBurst(self: EyeOfCthulhuController, dt: number)
 	local targetSnapshot = createTargetSnapshot(self)
 	if targetSnapshot.position == nil then
-		self:despawn("MissingTarget")
+		self:Despawn("MissingTarget")
 		return
 	end
 
-	local result = EyeOfCthulhuMotion.solveServantBurstMotion(createMotionContext(self), targetSnapshot, {
+	local result = EyeOfCthulhuMotion.SolveServantBurstMotion(createMotionContext(self), targetSnapshot, {
 		phase1HoverHeight = self._eyeConfig.phase1HoverHeight,
 		phase1SideOffset = self._eyeConfig.phase1SideOffset,
 		phase1LeadMultiplier = self._eyeConfig.phase1LeadMultiplier,
@@ -685,13 +685,13 @@ function EyeOfCthulhuController.StepPhase1ServantBurst(self: EyeOfCthulhuControl
 	end
 
 	if self._servantsSpawned >= self._servantsToSpawn and self._servantBurstElapsed >= self._servantBurstFinishAt then
-		self:changeState("Phase1ChargeWindup", "ServantBurstComplete")
+		self:ChangeState("Phase1ChargeWindup", "ServantBurstComplete")
 	end
 end
 
 function EyeOfCthulhuController.StepPhase1ChargeWindup(self: EyeOfCthulhuController, dt: number)
 	local targetSnapshot = createTargetSnapshot(self)
-	local result = EyeOfCthulhuMotion.solveChargeWindupMotion(createMotionContext(self), targetSnapshot, {
+	local result = EyeOfCthulhuMotion.SolveChargeWindupMotion(createMotionContext(self), targetSnapshot, {
 		duration = scaleDuration(self, self._eyeConfig.phase1ChargeWindupDuration),
 		brakeAcceleration = scaleSpeed(self, self._eyeConfig.phase1HoverAcceleration * 1.45),
 		brakeDamping = self._eyeConfig.phase1HoverDamping + 1.15,
@@ -701,12 +701,12 @@ function EyeOfCthulhuController.StepPhase1ChargeWindup(self: EyeOfCthulhuControl
 	applyMotionResult(self, result)
 
 	if result.finished then
-		self:changeState("Phase1Charge", "WindupComplete")
+		self:ChangeState("Phase1Charge", "WindupComplete")
 	end
 end
 
 function EyeOfCthulhuController.StepPhase1Charge(self: EyeOfCthulhuController, dt: number)
-	local result = EyeOfCthulhuMotion.solveCommittedChargeMotion(
+	local result = EyeOfCthulhuMotion.SolveCommittedChargeMotion(
 		createMotionContext(self),
 		createTargetSnapshot(self),
 		self._eyeConfig,
@@ -718,17 +718,17 @@ function EyeOfCthulhuController.StepPhase1Charge(self: EyeOfCthulhuController, d
 
 	if result.finished then
 		self.contactDamageActive = false
-		self:setPresentationFlag("isHurtWindowActive", false)
+		self:SetPresentationFlag("isHurtWindowActive", false)
 		self._chargeCountInSet += 1
 		self.chargeIndex = self._chargeCountInSet
 		self._sideSign *= -1
-		self:changeState("Phase1Recovery", "ChargeComplete")
+		self:ChangeState("Phase1Recovery", "ChargeComplete")
 	end
 end
 
 function EyeOfCthulhuController.StepPhase1Recovery(self: EyeOfCthulhuController, dt: number)
 	local targetSnapshot = createTargetSnapshot(self)
-	local result = EyeOfCthulhuMotion.solveRecoveryMotion(createMotionContext(self), targetSnapshot, {
+	local result = EyeOfCthulhuMotion.SolveRecoveryMotion(createMotionContext(self), targetSnapshot, {
 		duration = scaleDuration(self, self._eyeConfig.phase1ChargeRecoveryDuration),
 		speed = scaleSpeed(self, self._eyeConfig.phase1ChargeRecoverySpeed),
 		acceleration = scaleSpeed(self, self._eyeConfig.phase1ChargeRecoveryAcceleration),
@@ -743,15 +743,15 @@ function EyeOfCthulhuController.StepPhase1Recovery(self: EyeOfCthulhuController,
 	end
 
 	if self._chargeCountInSet >= self._eyeConfig.phase1ChargeCount then
-		self:changeState("Phase1Hover", "ChargeCycleComplete")
+		self:ChangeState("Phase1Hover", "ChargeCycleComplete")
 		return
 	end
 
-	self:changeState("Phase1ChargeWindup", "RecoveryComplete")
+	self:ChangeState("Phase1ChargeWindup", "RecoveryComplete")
 end
 
 function EyeOfCthulhuController.StepTransform(self: EyeOfCthulhuController, dt: number)
-	local result = EyeOfCthulhuMotion.solveTransformMotion(createMotionContext(self), createTargetSnapshot(self), {
+	local result = EyeOfCthulhuMotion.SolveTransformMotion(createMotionContext(self), createTargetSnapshot(self), {
 		transformDuration = scaleDuration(self, self._eyeConfig.transformDuration),
 		transformSpinTurns = self._eyeConfig.transformSpinTurns,
 		transformPauseLift = self._eyeConfig.transformPauseLift,
@@ -759,18 +759,18 @@ function EyeOfCthulhuController.StepTransform(self: EyeOfCthulhuController, dt: 
 	applyMotionResult(self, result)
 
 	if result.finished then
-		self:changeState("Phase2HoverIdle", "TransformComplete")
+		self:ChangeState("Phase2HoverIdle", "TransformComplete")
 	end
 end
 
 function EyeOfCthulhuController.StepPhase2HoverIdle(self: EyeOfCthulhuController, dt: number)
 	local targetSnapshot = createTargetSnapshot(self)
 	if targetSnapshot.position == nil then
-		self:despawn("MissingTarget")
+		self:Despawn("MissingTarget")
 		return
 	end
 
-	local result = EyeOfCthulhuMotion.solvePhase2HoverIdleMotion(createMotionContext(self), targetSnapshot, {
+	local result = EyeOfCthulhuMotion.SolvePhase2HoverIdleMotion(createMotionContext(self), targetSnapshot, {
 		phase2HoverHeight = self._eyeConfig.phase2HoverHeight,
 		phase2SideOffset = self._eyeConfig.phase2SideOffset,
 		phase2LeadMultiplier = self._eyeConfig.phase2LeadMultiplier,
@@ -789,21 +789,21 @@ function EyeOfCthulhuController.StepPhase2HoverIdle(self: EyeOfCthulhuController
 	end
 
 	if shouldTriggerPhase2RapidChain(self) then
-		self:changeState("Phase2RapidChain", "Phase2HoverIdleRapidChain")
+		self:ChangeState("Phase2RapidChain", "Phase2HoverIdleRapidChain")
 		return
 	end
 
-	self:changeState("Phase2ChargeWindup", "Phase2HoverIdleComplete")
+	self:ChangeState("Phase2ChargeWindup", "Phase2HoverIdleComplete")
 end
 
 function EyeOfCthulhuController.StepPhase2ChargeWindup(self: EyeOfCthulhuController, dt: number)
 	if self._phase2ChargeCountInSet >= self._eyeConfig.phase2ChargeCount then
-		self:changeState("Phase2HoverIdle", "Phase2ChargeSetGuard")
+		self:ChangeState("Phase2HoverIdle", "Phase2ChargeSetGuard")
 		return
 	end
 
 	local targetSnapshot = createTargetSnapshot(self)
-	local result = EyeOfCthulhuMotion.solveChargeWindupMotion(createMotionContext(self), targetSnapshot, {
+	local result = EyeOfCthulhuMotion.SolveChargeWindupMotion(createMotionContext(self), targetSnapshot, {
 		duration = scaleDuration(self, self._eyeConfig.phase2ChargeWindupDuration),
 		brakeAcceleration = scaleSpeed(self, self._eyeConfig.phase2HoverAcceleration * 1.85),
 		brakeDamping = self._eyeConfig.phase2HoverDamping + 1.4,
@@ -813,12 +813,12 @@ function EyeOfCthulhuController.StepPhase2ChargeWindup(self: EyeOfCthulhuControl
 	applyMotionResult(self, result)
 
 	if result.finished then
-		self:changeState("Phase2Charge", "WindupComplete")
+		self:ChangeState("Phase2Charge", "WindupComplete")
 	end
 end
 
 function EyeOfCthulhuController.StepPhase2Charge(self: EyeOfCthulhuController, dt: number)
-	local result = EyeOfCthulhuMotion.solvePhase2ChargeMotion(
+	local result = EyeOfCthulhuMotion.SolvePhase2ChargeMotion(
 		createMotionContext(self),
 		createTargetSnapshot(self),
 		self._eyeConfig,
@@ -828,17 +828,17 @@ function EyeOfCthulhuController.StepPhase2Charge(self: EyeOfCthulhuController, d
 
 	if result.finished then
 		self.contactDamageActive = false
-		self:setPresentationFlag("isHurtWindowActive", false)
+		self:SetPresentationFlag("isHurtWindowActive", false)
 		self._phase2ChargeCountInSet += 1
 		self.chargeIndex = self._phase2ChargeCountInSet
 		self._sideSign *= -1
-		self:changeState("Phase2Recovery", "ChargeComplete")
+		self:ChangeState("Phase2Recovery", "ChargeComplete")
 	end
 end
 
 function EyeOfCthulhuController.StepPhase2Recovery(self: EyeOfCthulhuController, dt: number)
 	local targetSnapshot = createTargetSnapshot(self)
-	local result = EyeOfCthulhuMotion.solveRecoveryMotion(createMotionContext(self), targetSnapshot, {
+	local result = EyeOfCthulhuMotion.SolveRecoveryMotion(createMotionContext(self), targetSnapshot, {
 		duration = scaleDuration(self, self._eyeConfig.phase2ChargeRecoveryDuration),
 		speed = scaleSpeed(self, self._eyeConfig.phase2ChargeRecoverySpeed),
 		acceleration = scaleSpeed(self, self._eyeConfig.phase2ChargeRecoveryAcceleration),
@@ -853,25 +853,25 @@ function EyeOfCthulhuController.StepPhase2Recovery(self: EyeOfCthulhuController,
 	end
 
 	if self._phase2ChargeCountInSet >= self._eyeConfig.phase2ChargeCount then
-		self:changeState("Phase2HoverIdle", "Phase2ChargeSetComplete")
+		self:ChangeState("Phase2HoverIdle", "Phase2ChargeSetComplete")
 		return
 	end
 
-	self:changeState("Phase2ChargeWindup", "Phase2RecoveryContinue")
+	self:ChangeState("Phase2ChargeWindup", "Phase2RecoveryContinue")
 end
 
 function EyeOfCthulhuController.StepRapidChain(self: EyeOfCthulhuController, dt: number)
 	local targetSnapshot = createTargetSnapshot(self)
 	if targetSnapshot.position == nil then
-		self:despawn("MissingTarget")
+		self:Despawn("MissingTarget")
 		return
 	end
 
 	local rapidChargeDuration = math.max(0.08, scaleDuration(self, self._eyeConfig.phase2ChargeDuration * 0.72))
 	local rapidWindupDuration = scaleDuration(self, self._eyeConfig.rapidChainWindupDuration)
 	local rapidRecoveryDuration = scaleDuration(self, self._eyeConfig.rapidChainRecoveryDuration)
-	local rapidSpeed = EyeOfCthulhuMotion.computeRapidChainSpeed(
-		self:getHealthRatio(),
+	local rapidSpeed = EyeOfCthulhuMotion.ComputeRapidChainSpeed(
+		self:GetHealthRatio(),
 		scaleSpeed(self, self._eyeConfig.rapidChainBaseSpeed),
 		scaleSpeed(self, self._eyeConfig.rapidChainTopSpeed)
 	)
@@ -887,7 +887,7 @@ function EyeOfCthulhuController.StepRapidChain(self: EyeOfCthulhuController, dt:
 			context.lockedCharge = self._lockedCharge
 		end
 
-		local result = EyeOfCthulhuMotion.solveChargeWindupMotion(context, targetSnapshot, {
+		local result = EyeOfCthulhuMotion.SolveChargeWindupMotion(context, targetSnapshot, {
 			duration = rapidWindupDuration,
 			brakeAcceleration = scaleSpeed(self, self._eyeConfig.phase2HoverAcceleration * 1.65),
 			brakeDamping = self._eyeConfig.phase2HoverDamping + 1.4,
@@ -898,21 +898,21 @@ function EyeOfCthulhuController.StepRapidChain(self: EyeOfCthulhuController, dt:
 			self._rapidChainMode = "Charge"
 			self._rapidChainTimer = 0
 			self.contactDamageActive = true
-			self:setPresentationFlag("isHurtWindowActive", true)
-			self:setPresentationFlag("isRoaring", true)
-			self:incrementPresentationToken("dashPulseToken")
-			self:incrementPresentationToken("roarPulseToken")
+			self:SetPresentationFlag("isHurtWindowActive", true)
+			self:SetPresentationFlag("isRoaring", true)
+			self:IncrementPresentationToken("dashPulseToken")
+			self:IncrementPresentationToken("roarPulseToken")
 		end
 		return
 	end
 
 	if self._rapidChainMode == "Charge" then
-		local result = EyeOfCthulhuMotion.solvePhase2ChargeMotion(context, targetSnapshot, self._eyeConfig, dt)
+		local result = EyeOfCthulhuMotion.SolvePhase2ChargeMotion(context, targetSnapshot, self._eyeConfig, dt)
 		applyMotionResult(self, result)
 
 		if result.finished then
 			self.contactDamageActive = false
-			self:setPresentationFlag("isHurtWindowActive", false)
+			self:SetPresentationFlag("isHurtWindowActive", false)
 			self._rapidChainMode = "Recovery"
 			self._rapidChainTimer = 0
 			self._rapidChainRemaining -= 1
@@ -921,7 +921,7 @@ function EyeOfCthulhuController.StepRapidChain(self: EyeOfCthulhuController, dt:
 		return
 	end
 
-	local result = EyeOfCthulhuMotion.solveRecoveryMotion(context, targetSnapshot, {
+	local result = EyeOfCthulhuMotion.SolveRecoveryMotion(context, targetSnapshot, {
 		duration = rapidRecoveryDuration,
 		speed = scaleSpeed(self, self._eyeConfig.phase2ChargeRecoverySpeed * 0.72),
 		acceleration = scaleSpeed(self, self._eyeConfig.phase2ChargeRecoveryAcceleration),
@@ -941,14 +941,14 @@ function EyeOfCthulhuController.StepRapidChain(self: EyeOfCthulhuController, dt:
 	end
 
 	self.contactDamageActive = false
-	self:setPresentationFlag("isHurtWindowActive", false)
-	self:setPresentationFlag("isRoaring", false)
+	self:SetPresentationFlag("isHurtWindowActive", false)
+	self:SetPresentationFlag("isRoaring", false)
 	clearLockedCharge(self)
-	self:changeState("Phase2HoverIdle", "RapidChainComplete")
+	self:ChangeState("Phase2HoverIdle", "RapidChainComplete")
 end
 
 function EyeOfCthulhuController.StepDespawn(self: EyeOfCthulhuController, dt: number)
-	local result = EyeOfCthulhuMotion.solveDespawnMotion(
+	local result = EyeOfCthulhuMotion.SolveDespawnMotion(
 		createMotionContext(self),
 		createTargetSnapshot(self),
 		self._eyeConfig,
@@ -957,13 +957,13 @@ function EyeOfCthulhuController.StepDespawn(self: EyeOfCthulhuController, dt: nu
 	applyMotionResult(self, result)
 
 	if result.finished then
-		self:requestRemoval("DespawnComplete")
+		self:RequestRemoval("DespawnComplete")
 	end
 end
 
 function EyeOfCthulhuController.StepDeath(self: EyeOfCthulhuController, dt: number)
-	self:dampVelocity(4.5, dt)
-	self:setMotionState({
+	self:DampVelocity(4.5, dt)
+	self:SetMotionState({
 		state = self.state,
 		position = self.position,
 		velocity = self.velocity,
@@ -975,9 +975,9 @@ function EyeOfCthulhuController.StepDeath(self: EyeOfCthulhuController, dt: numb
 		localPresentationOffset = nil,
 	})
 	applyCurrentMotionDebugAttributes(self)
-	self:setPresentationFlag("isDying", true)
+	self:SetPresentationFlag("isDying", true)
 	if self.stateTime >= self._eyeConfig.deathDuration then
-		self:requestRemoval("DeathComplete")
+		self:RequestRemoval("DeathComplete")
 	end
 end
 
@@ -985,16 +985,16 @@ function EyeOfCthulhuController.OnStep(self: EyeOfCthulhuController, dt: number)
 	stepServants(self, dt)
 
 	if self.targetPlayer == nil then
-		self:setTarget(self.service:resolveEncounterTarget(self))
+		self:SetTarget(self.service:GetEncounterTarget(self))
 	end
 
 	local allowDebugPersistence = self.spawnSource == "DebugCommand"
-	if not allowDebugPersistence and self.state ~= "Death" and self.state ~= "Despawn" and self:isDayTime() then
-		self:despawn("Daybreak")
+	if not allowDebugPersistence and self.state ~= "Death" and self.state ~= "Despawn" and self:IsDayTime() then
+		self:Despawn("Daybreak")
 	end
 
 	if self.targetPlayer == nil and self.state ~= "Death" and self.state ~= "Despawn" then
-		self:despawn("NoTarget")
+		self:Despawn("NoTarget")
 	end
 
 	if
@@ -1002,108 +1002,84 @@ function EyeOfCthulhuController.OnStep(self: EyeOfCthulhuController, dt: number)
 		and self.state ~= "Transform"
 		and self.state ~= "Death"
 		and self.state ~= "Despawn"
-		and self:getHealthRatio() <= self._eyeConfig.transformHealthThreshold
+		and self:GetHealthRatio() <= self._eyeConfig.transformHealthThreshold
 	then
-		self:changeState("Transform", "HealthThreshold")
+		self:ChangeState("Transform", "HealthThreshold")
 	end
 
 	if self.state == "SpawnIntro" then
-		self:stepSpawnIntro(dt)
+		self:StepSpawnIntro(dt)
 		return
 	end
 
 	if self.state == "Phase1Hover" then
-		self:stepPhase1Hover(dt)
+		self:StepPhase1Hover(dt)
 		return
 	end
 
 	if self.state == "Phase1ServantBurst" then
-		self:stepPhase1ServantBurst(dt)
+		self:StepPhase1ServantBurst(dt)
 		return
 	end
 
 	if self.state == "Phase1ChargeWindup" then
-		self:stepPhase1ChargeWindup(dt)
+		self:StepPhase1ChargeWindup(dt)
 		return
 	end
 
 	if self.state == "Phase1Charge" then
-		self:stepPhase1Charge(dt)
+		self:StepPhase1Charge(dt)
 		return
 	end
 
 	if self.state == "Phase1Recovery" then
-		self:stepPhase1Recovery(dt)
+		self:StepPhase1Recovery(dt)
 		return
 	end
 
 	if self.state == "Transform" then
-		self:stepTransform(dt)
+		self:StepTransform(dt)
 		return
 	end
 
 	if self.state == "Phase2HoverIdle" or self.state == "Phase2Hover" then
-		self:stepPhase2HoverIdle(dt)
+		self:StepPhase2HoverIdle(dt)
 		return
 	end
 
 	if self.state == "Phase2ChargeWindup" then
-		self:stepPhase2ChargeWindup(dt)
+		self:StepPhase2ChargeWindup(dt)
 		return
 	end
 
 	if self.state == "Phase2Charge" then
-		self:stepPhase2Charge(dt)
+		self:StepPhase2Charge(dt)
 		return
 	end
 
 	if self.state == "Phase2Recovery" then
-		self:stepPhase2Recovery(dt)
+		self:StepPhase2Recovery(dt)
 		return
 	end
 
 	if self.state == "Phase2RapidChain" then
-		self:stepRapidChain(dt)
+		self:StepRapidChain(dt)
 		return
 	end
 
 	if self.state == "Despawn" then
-		self:stepDespawn(dt)
+		self:StepDespawn(dt)
 		return
 	end
 
 	if self.state == "Death" then
-		self:stepDeath(dt)
+		self:StepDeath(dt)
 		return
 	end
 end
 
 function EyeOfCthulhuController.Destroy(self: EyeOfCthulhuController)
 	clearServants(self)
-	BossBase.destroy(self)
+	BossBase.Destroy(self)
 end
-
-EyeOfCthulhuController.new = EyeOfCthulhuController.New
-EyeOfCthulhuController.getSimulationSpeed = EyeOfCthulhuController.GetSimulationSpeed
-EyeOfCthulhuController.afterSpawn = EyeOfCthulhuController.AfterSpawn
-EyeOfCthulhuController.onStateChanged = EyeOfCthulhuController.OnStateChanged
-EyeOfCthulhuController.onDamageTaken = EyeOfCthulhuController.OnDamageTaken
-EyeOfCthulhuController.onDeath = EyeOfCthulhuController.OnDeath
-EyeOfCthulhuController.stepSpawnIntro = EyeOfCthulhuController.StepSpawnIntro
-EyeOfCthulhuController.stepPhase1Hover = EyeOfCthulhuController.StepPhase1Hover
-EyeOfCthulhuController.stepPhase1ServantBurst = EyeOfCthulhuController.StepPhase1ServantBurst
-EyeOfCthulhuController.stepPhase1ChargeWindup = EyeOfCthulhuController.StepPhase1ChargeWindup
-EyeOfCthulhuController.stepPhase1Charge = EyeOfCthulhuController.StepPhase1Charge
-EyeOfCthulhuController.stepPhase1Recovery = EyeOfCthulhuController.StepPhase1Recovery
-EyeOfCthulhuController.stepTransform = EyeOfCthulhuController.StepTransform
-EyeOfCthulhuController.stepPhase2HoverIdle = EyeOfCthulhuController.StepPhase2HoverIdle
-EyeOfCthulhuController.stepPhase2ChargeWindup = EyeOfCthulhuController.StepPhase2ChargeWindup
-EyeOfCthulhuController.stepPhase2Charge = EyeOfCthulhuController.StepPhase2Charge
-EyeOfCthulhuController.stepPhase2Recovery = EyeOfCthulhuController.StepPhase2Recovery
-EyeOfCthulhuController.stepRapidChain = EyeOfCthulhuController.StepRapidChain
-EyeOfCthulhuController.stepDespawn = EyeOfCthulhuController.StepDespawn
-EyeOfCthulhuController.stepDeath = EyeOfCthulhuController.StepDeath
-EyeOfCthulhuController.onStep = EyeOfCthulhuController.OnStep
-EyeOfCthulhuController.destroy = EyeOfCthulhuController.Destroy
-
 return EyeOfCthulhuController

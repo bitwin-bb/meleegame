@@ -218,7 +218,7 @@ local IGNORED_MOTOR_NAMES: { [string]: boolean } = {
 	LeftGrip = true,
 }
 
-local function sanitizeNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
 	end
@@ -233,7 +233,7 @@ local function sanitizeNumber(value: any, fallback: number, minimum: number?, ma
 	return nextValue
 end
 
-local function sanitizeOptionalTimestamp(value: any): number?
+local function CoerceOptionalTimestamp(value: any): number?
 	if typeof(value) ~= "number" or value ~= value then
 		return nil
 	end
@@ -250,10 +250,10 @@ local function getNow(): number
 	return os.clock()
 end
 
-local function resolveJointConfig(motorName: string): JointConstraintConfig
+local function GetJointConfig(motorName: string): JointConstraintConfig
 	local aliasName = JOINT_ALIASES[motorName]
-	local resolvedName = if aliasName ~= nil then aliasName else motorName
-	local config = JOINT_CONFIGS[resolvedName]
+	local GotName = if aliasName ~= nil then aliasName else motorName
+	local config = JOINT_CONFIGS[GotName]
 	if config then
 		return config
 	end
@@ -377,8 +377,8 @@ local function restoreHumanoidState(humanoid: Humanoid, snapshot: HumanoidSnapsh
 	end
 end
 
-local function sanitizePlaneX(valueRaw: any, fallback: number): number
-	return sanitizeNumber(valueRaw, fallback, -MAX_ABS_PLANE_X, MAX_ABS_PLANE_X)
+local function CoercePlaneX(valueRaw: any, fallback: number): number
+	return CoerceNumber(valueRaw, fallback, -MAX_ABS_PLANE_X, MAX_ABS_PLANE_X)
 end
 
 local function createConstraintsForMotor(motor: Motor6D, runtimeFolder: Folder, createdInstances: { Instance })
@@ -398,7 +398,7 @@ local function createConstraintsForMotor(motor: Motor6D, runtimeFolder: Folder, 
 	attachment1.CFrame = motor.C1
 	attachment1.Parent = part1
 
-	local config = resolveJointConfig(motor.Name)
+	local config = GetJointConfig(motor.Name)
 
 	local ballSocket = Instance.new("BallSocketConstraint")
 	ballSocket.Name = HttpService:GenerateGUID(false)
@@ -429,7 +429,7 @@ function RagdollServiceUtils.Now(): number
 	return getNow()
 end
 
-function RagdollServiceUtils.SanitizeReason(reasonRaw: any, fallback: string?): string
+function RagdollServiceUtils.CoerceReason(reasonRaw: any, fallback: string?): string
 	if typeof(reasonRaw) ~= "string" then
 		return fallback or DEFAULT_REASON
 	end
@@ -445,7 +445,7 @@ function RagdollServiceUtils.SanitizeReason(reasonRaw: any, fallback: string?): 
 	return reasonRaw
 end
 
-function RagdollServiceUtils.SanitizeDuration(
+function RagdollServiceUtils.CoerceDuration(
 	durationRaw: any,
 	fallback: number?,
 	minimum: number?,
@@ -478,17 +478,17 @@ function RagdollServiceUtils.CreateState(
 ): RagdollServiceState
 	local isRagdolled = isRagdolledRaw == true
 	local fallbackStartedAt = if fallback then fallback.startedAt else getNow()
-	local startedAt = sanitizeNumber(startedAtRaw, fallbackStartedAt, 0, nil)
+	local startedAt = CoerceNumber(startedAtRaw, fallbackStartedAt, 0, nil)
 	local fallbackSequence = if fallback then fallback.sequence else DEFAULT_STATE_SEQUENCE
-	local sequence = sanitizeNumber(sequenceRaw, fallbackSequence, DEFAULT_STATE_SEQUENCE, nil)
+	local sequence = CoerceNumber(sequenceRaw, fallbackSequence, DEFAULT_STATE_SEQUENCE, nil)
 
 	local reasonFallback = if fallback then fallback.reason else DEFAULT_REASON
-	local reason = RagdollServiceUtils.SanitizeReason(reasonRaw, reasonFallback)
+	local reason = RagdollServiceUtils.CoerceReason(reasonRaw, reasonFallback)
 	local canRecover = if isRagdolled then canRecoverRaw ~= false else true
 
 	local scheduledRecoveryAt: number? = nil
 	if isRagdolled and canRecover then
-		local parsedRecoveryAt = sanitizeOptionalTimestamp(scheduledRecoveryAtRaw)
+		local parsedRecoveryAt = CoerceOptionalTimestamp(scheduledRecoveryAtRaw)
 		if parsedRecoveryAt ~= nil and parsedRecoveryAt > startedAt then
 			scheduledRecoveryAt = parsedRecoveryAt
 		end
@@ -508,7 +508,7 @@ function RagdollServiceUtils.CreateDefaultState(): RagdollServiceState
 	return RagdollServiceUtils.CreateState(false, DEFAULT_REASON, getNow(), nil, true, DEFAULT_STATE_SEQUENCE, nil)
 end
 
-function RagdollServiceUtils.SanitizeState(stateRaw: any, fallback: RagdollServiceState?): RagdollServiceState
+function RagdollServiceUtils.CoerceState(stateRaw: any, fallback: RagdollServiceState?): RagdollServiceState
 	local source = if typeof(stateRaw) == "table" then stateRaw else {} :: any
 	local fallbackState = if fallback then fallback else RagdollServiceUtils.CreateDefaultState()
 
@@ -534,7 +534,7 @@ function RagdollServiceUtils.CloneState(state: RagdollServiceState): RagdollServ
 	}
 end
 
-function RagdollServiceUtils.ResolveCharacterRig(character: Model?): CharacterRig?
+function RagdollServiceUtils.GetCharacterRig(character: Model?): CharacterRig?
 	if character == nil then
 		return nil
 	end
@@ -615,7 +615,7 @@ function RagdollServiceUtils.BeginRagdoll(rig: CharacterRig, options: BeginRagdo
 
 	return {
 		rig = rig,
-		reason = RagdollServiceUtils.SanitizeReason(if options ~= nil then options.reason else nil, MANUAL_REASON),
+		reason = RagdollServiceUtils.CoerceReason(if options ~= nil then options.reason else nil, MANUAL_REASON),
 		createdAt = getNow(),
 		motorSnapshots = motorSnapshots,
 		partSnapshots = partSnapshots,
@@ -655,7 +655,7 @@ function RagdollServiceUtils.EnforceRagdoll2DPlane(context: RagdollContext, plan
 		return
 	end
 
-	local planeX = sanitizePlaneX(planeXRaw, rootPart.Position.X)
+	local planeX = CoercePlaneX(planeXRaw, rootPart.Position.X)
 
 	for _, snapshot in context.partSnapshots do
 		local part = snapshot.part
@@ -696,18 +696,4 @@ RagdollServiceUtils.DEFAULT_SELF_RAGDOLL_DURATION = DEFAULT_SELF_RAGDOLL_DURATIO
 RagdollServiceUtils.MAX_SELF_REQUEST_DURATION = MAX_SELF_REQUEST_DURATION
 RagdollServiceUtils.MIN_DURATION = MIN_DURATION
 RagdollServiceUtils.MAX_DURATION = MAX_DURATION
-
-RagdollServiceUtils.now = RagdollServiceUtils.Now
-RagdollServiceUtils.sanitizeReason = RagdollServiceUtils.SanitizeReason
-RagdollServiceUtils.sanitizeDuration = RagdollServiceUtils.SanitizeDuration
-RagdollServiceUtils.createState = RagdollServiceUtils.CreateState
-RagdollServiceUtils.createDefaultState = RagdollServiceUtils.CreateDefaultState
-RagdollServiceUtils.sanitizeState = RagdollServiceUtils.SanitizeState
-RagdollServiceUtils.cloneState = RagdollServiceUtils.CloneState
-RagdollServiceUtils.resolveCharacterRig = RagdollServiceUtils.ResolveCharacterRig
-RagdollServiceUtils.beginRagdoll = RagdollServiceUtils.BeginRagdoll
-RagdollServiceUtils.endRagdoll = RagdollServiceUtils.EndRagdoll
-RagdollServiceUtils.enforceRagdoll2DPlane = RagdollServiceUtils.EnforceRagdoll2DPlane
-RagdollServiceUtils.setCharacterNetworkOwner = RagdollServiceUtils.SetCharacterNetworkOwner
-
 return RagdollServiceUtils

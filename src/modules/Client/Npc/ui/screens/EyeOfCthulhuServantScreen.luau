@@ -17,7 +17,7 @@ export type EyeOfCthulhuServantScreenProps = {
 local e: typeof(React.createElement) = React.createElement
 local SERVANT_FOLDER_NAME = "BossServants"
 
-local function resolveModelRootPart(model: Model): BasePart?
+local function GetModelRootPart(model: Model): BasePart?
 	local rootPart = model:FindFirstChild("RootPart")
 	if rootPart ~= nil and rootPart:IsA("BasePart") then
 		return rootPart
@@ -49,14 +49,14 @@ return function(props: EyeOfCthulhuServantScreenProps): React.ReactNode
 	end, {})
 
 	local children: { React.ReactNode } = {}
-	local servantFolder = WorkspaceFolders.findFolderInGameOrWorkspace(SERVANT_FOLDER_NAME)
+	local servantFolder = WorkspaceFolders.FindFolderInGameOrWorkspace(SERVANT_FOLDER_NAME)
 	if servantFolder ~= nil then
 		for index, child in servantFolder:GetChildren() do
 			if not child:IsA("Model") or child:GetAttribute("BossServantSpriteRoot") ~= true then
 				continue
 			end
 
-			local rootPart = resolveModelRootPart(child)
+			local rootPart = GetModelRootPart(child)
 			if rootPart == nil then
 				continue
 			end

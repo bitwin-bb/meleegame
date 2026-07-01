@@ -12,7 +12,7 @@ local PACKAGE_TRACKER_IGNORED_MODULE_PATHS = {
 	"game/Client/Audio/network/Replication",
 	"game/Client/Replication",
 	"game/Client/SnackbarNotifications",
-	"game/Server/Net/ServerNetPackets",
+	"game/Server/Net/NetPacketsServer",
 	"game/Client/Npc/ui/components/SlimeComponent",
 	"game/Server/Npc/npc/EyeOfCthulhuNpc",
 	"game/Server/Npc/npc/QueenBeeNpc",
@@ -23,7 +23,7 @@ local PACKAGE_TRACKER_IGNORED_MODULE_PATHS = {
 
 local REQUIRED_ARCHIVABLE_MODULE_PATHS = {
 	"game/Client/Notification/FeatureSnackbarNotifications",
-	"game/Client/NetClient/ClientNetPackets",
+	"game/Client/NetClient/NetPacketsClient",
 	"game/Client/Npc/ui/components/EyeOfCthulhuComponent",
 	"game/Client/Npc/ui/components/QueenBeeComponent",
 }
@@ -350,9 +350,9 @@ local function warmItemRegistry()
 	local stablePasses = 0
 
 	while os.clock() < deadline do
-		ItemRegistry.clearCache()
+		ItemRegistry.ClearCache()
 
-		local definitionCount = countDictionaryEntries(ItemRegistry.getDefinitionsById())
+		local definitionCount = countDictionaryEntries(ItemRegistry.GetDefinitionsById())
 		if definitionCount > 0 then
 			if definitionCount == lastDefinitionCount then
 				stablePasses += 1
@@ -375,7 +375,7 @@ end
 
 local serviceBag = ServiceBag.new()
 
-NevermoreSupport.setServiceBag(serviceBag)
+NevermoreSupport.SetServiceBag(serviceBag)
 warmItemRegistry()
 
 serviceBag:GetService(require("AquariaBackupServiceClient"))

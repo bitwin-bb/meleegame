@@ -41,9 +41,4 @@ end
 function CameraController.Destroy(self: CameraController)
 	self.maid:DoCleaning()
 end
-
-CameraController.start = CameraController.Start
-CameraController.getHandler = CameraController.GetHandler
-CameraController.destroy = CameraController.Destroy
-
 return CameraController

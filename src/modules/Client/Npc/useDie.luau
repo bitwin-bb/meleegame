@@ -27,7 +27,7 @@ return function(snapshotsById: { [string]: NpcSnapshot })
 			end
 
 			if previousAliveById[runtimeId] == true and snapshot.isAlive == false then
-				NpcThunks.spawnSlimeDeathGore(snapshot)
+				NpcThunks.SpawnSlimeDeathGore(snapshot)
 			end
 		end
 

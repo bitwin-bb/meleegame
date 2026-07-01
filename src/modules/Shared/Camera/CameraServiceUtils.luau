@@ -142,7 +142,7 @@ function CameraServiceUtils.NormalizeCameraMode(mode: any): CameraMode
 	return DEFAULT_CAMERA_MODE
 end
 
-function CameraServiceUtils.SanitizeSpringOptions(
+function CameraServiceUtils.CoerceSpringOptions(
 	options: any,
 	fallback: SideViewSpringOptions?
 ): SideViewSpringOptions?
@@ -168,7 +168,7 @@ function CameraServiceUtils.SanitizeSpringOptions(
 	return spring
 end
 
-function CameraServiceUtils.SanitizePredictConfig(
+function CameraServiceUtils.CoercePredictConfig(
 	configRaw: any,
 	fallbackRaw: SideViewPredictConfig?
 ): SideViewPredictConfig?
@@ -211,7 +211,7 @@ function CameraServiceUtils.SanitizePredictConfig(
 	}
 end
 
-local function sanitizeSideViewConfigWithFallback(config: any, fallbackConfig: any): SideViewConfig
+local function CoerceSideViewConfigWithFallback(config: any, fallbackConfig: any): SideViewConfig
 	local source = if typeof(config) == "table" then config else {} :: any
 	local defaultConfig = if typeof(fallbackConfig) == "table" then fallbackConfig else {} :: any
 	local defaultDistance = clampNumber((defaultConfig :: any).distance, 4, 200, 38)
@@ -230,9 +230,9 @@ local function sanitizeSideViewConfigWithFallback(config: any, fallbackConfig: a
 	end
 	local defaultMouseInfluenceX = clampNumber((defaultConfig :: any).mouseInfluenceX, 0, 25, 1.4)
 	local defaultMouseInfluenceY = clampNumber((defaultConfig :: any).mouseInfluenceY, 0, 25, 1.4)
-	local defaultCameraSpring = CameraServiceUtils.SanitizeSpringOptions((defaultConfig :: any).cameraSpring, nil)
-	local defaultFovSpring = CameraServiceUtils.SanitizeSpringOptions((defaultConfig :: any).fovSpring, nil)
-	local defaultPredict = CameraServiceUtils.SanitizePredictConfig((defaultConfig :: any).predict, nil)
+	local defaultCameraSpring = CameraServiceUtils.CoerceSpringOptions((defaultConfig :: any).cameraSpring, nil)
+	local defaultFovSpring = CameraServiceUtils.CoerceSpringOptions((defaultConfig :: any).fovSpring, nil)
+	local defaultPredict = CameraServiceUtils.CoercePredictConfig((defaultConfig :: any).predict, nil)
 
 	local sideSign = math.sign(clampNumber((source :: any).sideSign, -1, 1, defaultSideSign))
 	if sideSign == 0 then
@@ -259,20 +259,20 @@ local function sanitizeSideViewConfigWithFallback(config: any, fallbackConfig: a
 		movementBackSign = movementBackSign,
 		mouseInfluenceX = clampNumber((source :: any).mouseInfluenceX, 0, 25, defaultMouseInfluenceX),
 		mouseInfluenceY = clampNumber((source :: any).mouseInfluenceY, 0, 25, defaultMouseInfluenceY),
-		cameraSpring = CameraServiceUtils.SanitizeSpringOptions((source :: any).cameraSpring, defaultCameraSpring),
-		fovSpring = CameraServiceUtils.SanitizeSpringOptions((source :: any).fovSpring, defaultFovSpring),
-		predict = CameraServiceUtils.SanitizePredictConfig((source :: any).predict, defaultPredict),
+		cameraSpring = CameraServiceUtils.CoerceSpringOptions((source :: any).cameraSpring, defaultCameraSpring),
+		fovSpring = CameraServiceUtils.CoerceSpringOptions((source :: any).fovSpring, defaultFovSpring),
+		predict = CameraServiceUtils.CoercePredictConfig((source :: any).predict, defaultPredict),
 	}
 end
 
 local DEFAULT_SIDE_VIEW_CONFIG: SideViewConfig =
-	sanitizeSideViewConfigWithFallback(RAW_DEFAULT_SIDE_VIEW_CONFIG, RAW_DEFAULT_SIDE_VIEW_CONFIG)
+	CoerceSideViewConfigWithFallback(RAW_DEFAULT_SIDE_VIEW_CONFIG, RAW_DEFAULT_SIDE_VIEW_CONFIG)
 
 CameraServiceUtils.DEFAULT_CAMERA_MODE = DEFAULT_CAMERA_MODE
 CameraServiceUtils.DEFAULT_SIDE_VIEW_CONFIG = DEFAULT_SIDE_VIEW_CONFIG
 
-function CameraServiceUtils.SanitizeSideViewConfig(config: any): SideViewConfig
-	return sanitizeSideViewConfigWithFallback(config, DEFAULT_SIDE_VIEW_CONFIG)
+function CameraServiceUtils.CoerceSideViewConfig(config: any): SideViewConfig
+	return CoerceSideViewConfigWithFallback(config, DEFAULT_SIDE_VIEW_CONFIG)
 end
 
 function CameraServiceUtils.MergeSideViewConfig(base: SideViewConfig?, incoming: SideViewConfig?): SideViewConfig
@@ -298,28 +298,28 @@ function CameraServiceUtils.MergeSideViewConfig(base: SideViewConfig?, incoming:
 	local incomingPredict = if incoming then incoming.predict else nil
 	local mergedAny = merged :: any
 
-	mergedAny.cameraSpring = CameraServiceUtils.SanitizeSpringOptions(incomingCameraSpring, baseCameraSpring)
-	mergedAny.fovSpring = CameraServiceUtils.SanitizeSpringOptions(incomingFovSpring, baseFovSpring)
-	mergedAny.predict = CameraServiceUtils.SanitizePredictConfig(incomingPredict, basePredict)
+	mergedAny.cameraSpring = CameraServiceUtils.CoerceSpringOptions(incomingCameraSpring, baseCameraSpring)
+	mergedAny.fovSpring = CameraServiceUtils.CoerceSpringOptions(incomingFovSpring, baseFovSpring)
+	mergedAny.predict = CameraServiceUtils.CoercePredictConfig(incomingPredict, basePredict)
 
-	return CameraServiceUtils.SanitizeSideViewConfig(merged)
+	return CameraServiceUtils.CoerceSideViewConfig(merged)
 end
 
 function CameraServiceUtils.CreateDefaultState(): CameraState
 	return {
 		mode = DEFAULT_CAMERA_MODE,
-		sideViewConfig = CameraServiceUtils.SanitizeSideViewConfig(DEFAULT_SIDE_VIEW_CONFIG),
+		sideViewConfig = CameraServiceUtils.CoerceSideViewConfig(DEFAULT_SIDE_VIEW_CONFIG),
 	}
 end
 
 function CameraServiceUtils.CreateCameraState(mode: any, sideViewConfig: any): CameraState
 	return {
 		mode = CameraServiceUtils.NormalizeCameraMode(mode),
-		sideViewConfig = CameraServiceUtils.SanitizeSideViewConfig(sideViewConfig),
+		sideViewConfig = CameraServiceUtils.CoerceSideViewConfig(sideViewConfig),
 	}
 end
 
-function CameraServiceUtils.ResolveCharacterTarget(character: Model?): BasePart?
+function CameraServiceUtils.GetCharacterTarget(character: Model?): BasePart?
 	if typeof(character) ~= "Instance" or not character:IsA("Model") then
 		return nil
 	end
@@ -335,15 +335,5 @@ function CameraServiceUtils.ResolveCharacterTarget(character: Model?): BasePart?
 
 	return character:FindFirstChildWhichIsA("BasePart")
 end
-
-CameraServiceUtils.isCameraMode = CameraServiceUtils.IsCameraMode
-CameraServiceUtils.normalizeCameraMode = CameraServiceUtils.NormalizeCameraMode
-CameraServiceUtils.sanitizeSpringOptions = CameraServiceUtils.SanitizeSpringOptions
-CameraServiceUtils.sanitizePredictConfig = CameraServiceUtils.SanitizePredictConfig
-CameraServiceUtils.sanitizeSideViewConfig = CameraServiceUtils.SanitizeSideViewConfig
-CameraServiceUtils.mergeSideViewConfig = CameraServiceUtils.MergeSideViewConfig
-CameraServiceUtils.createDefaultState = CameraServiceUtils.CreateDefaultState
-CameraServiceUtils.createCameraState = CameraServiceUtils.CreateCameraState
-CameraServiceUtils.resolveCharacterTarget = CameraServiceUtils.ResolveCharacterTarget
 
 return CameraServiceUtils

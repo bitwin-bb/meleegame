@@ -120,11 +120,4 @@ function BuffThunks.ApplyState(stateRaw: any): BuffState
 	BuffSlice.setBuffReady(true)
 	return nextState
 end
-
-BuffThunks.start = BuffThunks.Start
-BuffThunks.stop = BuffThunks.Stop
-BuffThunks.syncFromService = BuffThunks.SyncFromService
-BuffThunks.applySnapshot = BuffThunks.ApplySnapshot
-BuffThunks.applyState = BuffThunks.ApplyState
-
 return BuffThunks

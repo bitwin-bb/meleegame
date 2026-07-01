@@ -13,18 +13,15 @@ export type CutsceneSubjectOptions = {
 	expiresAt: number?,
 }
 
-function CutsceneSubject.Resolve(optionsRaw: CutsceneSubjectOptions?): Target.ResolvedTarget?
-	local resolver = Target.new({
+function CutsceneSubject.Get(optionsRaw: CutsceneSubjectOptions?): Target.GotTarget?
+	local targetGetter = Target.New({
 		target = optionsRaw,
 	})
-	return resolver:resolveAny(optionsRaw, "Cutscene")
+	return targetGetter:GetAny(optionsRaw, "Cutscene")
 end
 
 function CutsceneSubject.New(optionsRaw: CutsceneSubjectOptions?): CutsceneSubjectOptions
 	return optionsRaw or ({} :: any)
 end
-
-CutsceneSubject.resolve = CutsceneSubject.Resolve
-CutsceneSubject.new = CutsceneSubject.New
 
 return CutsceneSubject

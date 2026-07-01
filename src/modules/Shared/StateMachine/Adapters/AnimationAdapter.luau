@@ -138,14 +138,6 @@ function AnimationAdapter.Destroy(self: AnimationAdapter)
 	self.animator = nil
 	self.handler = nil
 end
-
-AnimationAdapter.load = AnimationAdapter.Load
-AnimationAdapter.play = AnimationAdapter.Play
-AnimationAdapter.stop = AnimationAdapter.Stop
-AnimationAdapter.isPlaying = AnimationAdapter.IsPlaying
-AnimationAdapter.isFinished = AnimationAdapter.IsFinished
-AnimationAdapter.promiseFinished = AnimationAdapter.PromiseFinished
-AnimationAdapter.destroy = AnimationAdapter.Destroy
 AnimationAdapter.copy = Table.copy
 
 return AnimationAdapter

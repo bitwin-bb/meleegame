@@ -56,8 +56,4 @@ function Integ.Simpson(sample: (number) -> number, a: number, b: number, segment
 
 	return total * width / 3
 end
-
-Integ.trapezoid = Integ.Trapezoid
-Integ.simpson = Integ.Simpson
-
 return Integ

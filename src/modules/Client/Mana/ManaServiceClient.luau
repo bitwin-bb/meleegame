@@ -6,7 +6,7 @@ local Players = game:GetService("Players")
 local Janitor = require(ReplicatedStorage.Packages.Janitor)
 local ManaServiceUtils = require("ManaServiceUtils")
 local PacketPayload = require("PacketPayload")
-local ManaServicePackets = require("NetSharedPackets").ManaService
+local ManaServicePackets = require("NetPacketsShared").ManaService
 
 local function sendPacket(methodName: string, ...: any)
 	local packet = ManaServicePackets[methodName]
@@ -15,7 +15,7 @@ local function sendPacket(methodName: string, ...: any)
 		return
 	end
 
-	packet.send(PacketPayload.pack(...))
+	packet.send(PacketPayload.Pack(...))
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -25,13 +25,14 @@ local function bindPacket(self: any, methodName: string)
 		return
 	end
 
+	local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
 	packet.listen(function(payload: any)
-		local handler = self[methodName]
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, table.unpack(arguments, 1, count))
 	end)
 end
@@ -68,22 +69,22 @@ type JanitorClass = {
 local ManaServiceClient = {}
 
 local function applyPersistedManaSnapshotFromPlayerData(self: ManaServiceClient): boolean
-	if PlayerDataServiceClient.isLoaded == nil or not PlayerDataServiceClient:isLoaded() then
+	if PlayerDataServiceClient.IsLoaded == nil or not PlayerDataServiceClient:IsLoaded() then
 		return false
 	end
 
-	local persistedManaRaw = PlayerDataServiceClient:getValue(ManaServiceUtils.getDefaultDataPath(), nil)
+	local persistedManaRaw = PlayerDataServiceClient:GetValue(ManaServiceUtils.GetDefaultDataPath(), nil)
 	if persistedManaRaw == nil then
 		return false
 	end
 
-	local nextState = ManaServiceUtils.createStateFromData(persistedManaRaw, self.state, true)
+	local nextState = ManaServiceUtils.CreateStateFromData(persistedManaRaw, self.state, true)
 	nextState.delta = 0
 	nextState.lastSpend = 0
 	nextState.lastGain = 0
 	self.state = nextState
 	self.isStateReady = true
-	self.stateChanged:Fire(ManaServiceUtils.cloneState(nextState))
+	self.stateChanged:Fire(ManaServiceUtils.CloneState(nextState))
 	return true
 end
 
@@ -91,7 +92,7 @@ function ManaServiceClient.Init(self: ManaServiceClient)
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
-	self.state = ManaServiceUtils.createDefaultState()
+	self.state = ManaServiceUtils.CreateDefaultState()
 	self.isStateReady = false
 	self.stateChanged = Signal.new()
 	self.hasReceivedServerState = false
@@ -100,11 +101,11 @@ function ManaServiceClient.Init(self: ManaServiceClient)
 
 	if PlayerDataServiceClient.stateChanged ~= nil then
 		self.janitor:GiveChore(PlayerDataServiceClient.stateChanged:Connect(function(nextState: PlayerDataServiceState)
-			if PlayerDataServiceUtils.isLoadedState(nextState.loadState) then
+			if PlayerDataServiceUtils.IsLoadedState(nextState.loadState) then
 				if not self.hasReceivedServerState then
 					applyPersistedManaSnapshotFromPlayerData(self)
 				end
-				self:requestSync()
+				self:RequestSync()
 			end
 		end))
 	end
@@ -113,14 +114,14 @@ function ManaServiceClient.Init(self: ManaServiceClient)
 		self.stateChanged:Destroy()
 	end)
 
-	self:requestSync()
+	self:RequestSync()
 end
 
 function ManaServiceClient.ApplyState(self: ManaServiceClient, stateRaw: any)
-	self.state = ManaServiceUtils.sanitizeState(stateRaw, self.state)
+	self.state = ManaServiceUtils.CoerceState(stateRaw, self.state)
 	self.hasReceivedServerState = true
 	self.isStateReady = self.state.isLoaded == true or self.hasReceivedServerState
-	self.stateChanged:Fire(ManaServiceUtils.cloneState(self.state))
+	self.stateChanged:Fire(ManaServiceUtils.CloneState(self.state))
 end
 
 function ManaServiceClient.RequestSync(self: ManaServiceClient)
@@ -128,7 +129,7 @@ function ManaServiceClient.RequestSync(self: ManaServiceClient)
 end
 
 function ManaServiceClient.GetState(self: ManaServiceClient): ManaServiceState
-	return ManaServiceUtils.cloneState(self.state)
+	return ManaServiceUtils.CloneState(self.state)
 end
 
 function ManaServiceClient.IsReady(self: ManaServiceClient): boolean
@@ -140,14 +141,6 @@ function ManaServiceClient.Destroy(self: ManaServiceClient)
 		self.janitor:Destroy()
 	end
 end
-
-ManaServiceClient.init = ManaServiceClient.Init
-ManaServiceClient.applyState = ManaServiceClient.ApplyState
-ManaServiceClient.requestSync = ManaServiceClient.RequestSync
-ManaServiceClient.getState = ManaServiceClient.GetState
-ManaServiceClient.isReady = ManaServiceClient.IsReady
-ManaServiceClient.destroy = ManaServiceClient.Destroy
-
 export type ManaServiceClient = typeof(ManaServiceClient) & {
 	localPlayer: Player,
 	janitor: JanitorClass,

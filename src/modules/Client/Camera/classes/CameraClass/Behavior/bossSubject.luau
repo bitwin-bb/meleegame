@@ -12,18 +12,15 @@ export type BossSubjectOptions = {
 	target: any?,
 }
 
-function BossSubject.Resolve(optionsRaw: BossSubjectOptions?): Target.ResolvedTarget?
-	local resolver = Target.new({
+function BossSubject.Get(optionsRaw: BossSubjectOptions?): Target.GotTarget?
+	local targetGetter = Target.New({
 		target = optionsRaw,
 	})
-	return resolver:resolveAny(optionsRaw, "Boss")
+	return targetGetter:GetAny(optionsRaw, "Boss")
 end
 
 function BossSubject.New(optionsRaw: BossSubjectOptions?): BossSubjectOptions
 	return optionsRaw or ({} :: any)
 end
-
-BossSubject.resolve = BossSubject.Resolve
-BossSubject.new = BossSubject.New
 
 return BossSubject

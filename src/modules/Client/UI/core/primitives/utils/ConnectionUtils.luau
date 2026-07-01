@@ -19,9 +19,4 @@ function ConnectionUtils.Call(disconnectRaw: any)
 		(disconnectRaw :: () -> ())()
 	end
 end
-
-ConnectionUtils.disconnect = ConnectionUtils.Disconnect
-ConnectionUtils.disconnectMany = ConnectionUtils.DisconnectMany
-ConnectionUtils.call = ConnectionUtils.Call
-
 return ConnectionUtils

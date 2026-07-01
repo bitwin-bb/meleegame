@@ -14,7 +14,7 @@ BuffShared.__index = BuffShared
 
 export type BuffRecord = buffUtils.BuffRecord
 
-local function resolveConstructorOptions(serviceBagOrOptionsRaw: any, optionsRaw: any?): (any?, { [string]: any })
+local function GetConstructorOptions(serviceBagOrOptionsRaw: any, optionsRaw: any?): (any?, { [string]: any })
 	if typeof(optionsRaw) == "table" then
 		return serviceBagOrOptionsRaw, optionsRaw :: { [string]: any }
 	end
@@ -27,7 +27,7 @@ local function resolveConstructorOptions(serviceBagOrOptionsRaw: any, optionsRaw
 end
 
 function BuffShared.new(serviceBagOrOptionsRaw: any?, optionsRaw: any?): BuffShared
-	local serviceBag, options = resolveConstructorOptions(serviceBagOrOptionsRaw, optionsRaw)
+	local serviceBag, options = GetConstructorOptions(serviceBagOrOptionsRaw, optionsRaw)
 	local self = setmetatable(BaseObject.new(), BuffShared)
 
 	self._serviceBag = serviceBag
@@ -62,7 +62,7 @@ function BuffShared._pushRecordsChanged(self: BuffShared, context: string)
 end
 
 function BuffShared._findId(self: BuffShared, idOrNameRaw: any, kindRaw: any?): string?
-	local idOrName = buffUtils.trim(idOrNameRaw)
+	local idOrName = buffUtils.Trim(idOrNameRaw)
 	if idOrName == "" then
 		return nil
 	end
@@ -71,7 +71,7 @@ function BuffShared._findId(self: BuffShared, idOrNameRaw: any, kindRaw: any?): 
 		return idOrName
 	end
 
-	local kind = if kindRaw ~= nil then buffUtils.sanitizeKind(kindRaw) else nil
+	local kind = if kindRaw ~= nil then buffUtils.CoerceKind(kindRaw) else nil
 	local lowerName = string.lower(idOrName)
 	for _, recordId in self._orderedIds do
 		local record = self._recordsById[recordId]
@@ -106,7 +106,7 @@ end
 function BuffShared._storeRecord(self: BuffShared, recordRaw: BuffRecord): BuffRecord
 	local existing = self._recordsById[recordRaw.id]
 	local isNew = existing == nil
-	local record = if existing ~= nil then buffUtils.mergeRecord(existing, recordRaw) else buffUtils.cloneRecord(recordRaw)
+	local record = if existing ~= nil then buffUtils.MergeRecord(existing, recordRaw) else buffUtils.CloneRecord(recordRaw)
 	if self._definitionOnly then
 		record.appliedAt = 0
 		record.expiresAt = nil
@@ -119,7 +119,7 @@ function BuffShared._storeRecord(self: BuffShared, recordRaw: BuffRecord): BuffR
 
 	self:_scheduleExpiry(record)
 
-	local clone = buffUtils.cloneRecord(record)
+	local clone = buffUtils.CloneRecord(record)
 	if isNew then
 		self.RecordAdded:Fire(clone)
 		self:_pushRecordsChanged(BuffConstants.ACTIVE_CHANGED_CONTEXT_ADDED)
@@ -132,11 +132,11 @@ function BuffShared._storeRecord(self: BuffShared, recordRaw: BuffRecord): BuffR
 end
 
 function BuffShared.AddRecord(self: BuffShared, recordRaw: any, kindFallbackRaw: any?, overridesRaw: any?): BuffRecord
-	local record = buffUtils.applyOverrides(recordRaw, overridesRaw)
+	local record = buffUtils.ApplyOverrides(recordRaw, overridesRaw)
 	local source = if typeof(recordRaw) == "table" then recordRaw :: { [string]: any } else {}
 	if kindFallbackRaw ~= nil and source.kind == nil and source.type == nil and source.category == nil then
-		record.kind = buffUtils.sanitizeKind(kindFallbackRaw)
-		record.id = buffUtils.createId(record.kind, record.name)
+		record.kind = buffUtils.CoerceKind(kindFallbackRaw)
+		record.id = buffUtils.CreateId(record.kind, record.name)
 	end
 
 	return self:_storeRecord(record)
@@ -155,7 +155,7 @@ function BuffShared.AddBuff(
 	affectsRaw: any?,
 	optionsRaw: any?
 ): BuffRecord
-	local record = buffUtils.createRecord(
+	local record = buffUtils.CreateRecord(
 		BuffConstants.KIND_BUFF,
 		nameRaw,
 		durationRaw,
@@ -176,7 +176,7 @@ function BuffShared.AddDebuff(
 	affectsRaw: any?,
 	optionsRaw: any?
 ): BuffRecord
-	local record = buffUtils.createRecord(
+	local record = buffUtils.CreateRecord(
 		BuffConstants.KIND_DEBUFF,
 		nameRaw,
 		durationRaw,
@@ -210,12 +210,12 @@ function BuffShared.Remove(self: BuffShared, idOrNameRaw: any, reasonRaw: any?, 
 		end
 	end
 
-	local reason = buffUtils.trim(reasonRaw)
+	local reason = buffUtils.Trim(reasonRaw)
 	if reason == "" then
 		reason = BuffConstants.REMOVE_REASON_REMOVED
 	end
 
-	self.RecordRemoved:Fire(buffUtils.cloneRecord(record), reason)
+	self.RecordRemoved:Fire(buffUtils.CloneRecord(record), reason)
 	self:_pushRecordsChanged(BuffConstants.ACTIVE_CHANGED_CONTEXT_REMOVED)
 	return true
 end
@@ -223,7 +223,7 @@ end
 function BuffShared.Clear(self: BuffShared, kindRaw: any?): number
 	local ids = Table.copy(self._orderedIds)
 	local removed = 0
-	local kind = if kindRaw ~= nil then buffUtils.sanitizeKind(kindRaw) else nil
+	local kind = if kindRaw ~= nil then buffUtils.CoerceKind(kindRaw) else nil
 
 	for _, recordId in ids do
 		local record = self._recordsById[recordId]
@@ -248,17 +248,17 @@ function BuffShared.GetRecord(self: BuffShared, idOrNameRaw: any, kindRaw: any?)
 		return nil
 	end
 
-	return buffUtils.cloneRecord(record)
+	return buffUtils.CloneRecord(record)
 end
 
 function BuffShared.GetRecords(self: BuffShared, kindRaw: any?): { BuffRecord }
-	local kind = if kindRaw ~= nil then buffUtils.sanitizeKind(kindRaw) else nil
+	local kind = if kindRaw ~= nil then buffUtils.CoerceKind(kindRaw) else nil
 	local records = {}
 
 	for _, recordId in self._orderedIds do
 		local record = self._recordsById[recordId]
 		if record ~= nil and (kind == nil or record.kind == kind) then
-			table.insert(records, buffUtils.cloneRecord(record))
+			table.insert(records, buffUtils.CloneRecord(record))
 		end
 	end
 
@@ -275,7 +275,7 @@ function BuffShared.GetRemainingSeconds(self: BuffShared, idOrNameRaw: any, kind
 		return nil
 	end
 
-	return buffUtils.getRemainingSeconds(self._recordsById[recordId])
+	return buffUtils.GetRemainingSeconds(self._recordsById[recordId])
 end
 
 function BuffShared.ObserveRecords(self: BuffShared)
@@ -286,19 +286,17 @@ function BuffShared.Destroy(self: BuffShared)
 	BaseObject.Destroy(self)
 end
 
-BuffShared.addRecord = BuffShared.AddRecord
-BuffShared.applyRecord = BuffShared.ApplyRecord
-BuffShared.addBuff = BuffShared.AddBuff
-BuffShared.addDebuff = BuffShared.AddDebuff
-BuffShared.remove = BuffShared.Remove
-BuffShared.clear = BuffShared.Clear
-BuffShared.getRecord = BuffShared.GetRecord
-BuffShared.getRecords = BuffShared.GetRecords
-BuffShared.getActive = BuffShared.GetRecords
-BuffShared.hasRecord = BuffShared.HasRecord
-BuffShared.getRemainingSeconds = BuffShared.GetRemainingSeconds
-BuffShared.observeRecords = BuffShared.ObserveRecords
-BuffShared.destroy = BuffShared.Destroy
+
+
+
+
+
+
+
+
+
+
+
 
 type SignalObject = {
 	Connect: (self: SignalObject, callback: (...any) -> ()) -> any,

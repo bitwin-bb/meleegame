@@ -16,7 +16,7 @@ local PlayerMachine = {}
 
 function PlayerMachine.new(configRaw: any?): any
 	local config: any = if typeof(configRaw) == "table" then Table.copy(configRaw :: any) else {}
-	local machine = StateMachine.new({
+	local machine = StateMachine.New({
 		Blackboard = PlayerBlackboard.Create(config),
 		Context = config.Context or config.context,
 	})

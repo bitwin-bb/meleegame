@@ -90,14 +90,6 @@ function MachineRegistry.Destroy(self: MachineRegistry)
 	self:_syncCount()
 	self.maid:DoCleaning()
 end
-
-MachineRegistry.register = MachineRegistry.Register
-MachineRegistry.get = MachineRegistry.Get
-MachineRegistry.remove = MachineRegistry.Remove
-MachineRegistry.getSnapshot = MachineRegistry.GetSnapshot
-MachineRegistry.observeCount = MachineRegistry.ObserveCount
-MachineRegistry.update = MachineRegistry.Update
-MachineRegistry.destroy = MachineRegistry.Destroy
 MachineRegistry.copy = Table.copy
 
 return MachineRegistry

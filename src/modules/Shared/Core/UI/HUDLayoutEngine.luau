@@ -124,7 +124,7 @@ function HUDLayoutEngine.New(configRaw: EngineConfig?): HUDLayoutEngine
 		gamepadSpacingMultiplier = clampNumber(config.gamepadSpacingMultiplier, 1.2, 1, 3),
 		gamepadMode = false,
 	}, HUDLayoutEngine)
-	self:updateSafeZone()
+	self:UpdateSafeZone()
 	return self
 end
 
@@ -278,7 +278,7 @@ function HUDLayoutEngine._flowDirection(self: HUDLayoutEngine, dock: string): Ve
 	return Vector2.new(0, 1)
 end
 
-function HUDLayoutEngine._resolveConstraint(
+function HUDLayoutEngine._GetConstraint(
 	self: HUDLayoutEngine,
 	definition: any,
 	position: Vector2,
@@ -325,7 +325,7 @@ function HUDLayoutEngine._resolveConstraint(
 end
 
 function HUDLayoutEngine.Reflow(self: HUDLayoutEngine)
-	self:updateSafeZone()
+	self:UpdateSafeZone()
 	self:_buildBuckets()
 	table.clear(self.placedRects)
 
@@ -349,7 +349,7 @@ function HUDLayoutEngine.Reflow(self: HUDLayoutEngine)
 
 			local size = estimateSize(frame, self.viewport)
 			local position = cursor + definition.offset * scale
-			position = self:_resolveConstraint(definition, position, anchor, size, spacing)
+			position = self:_GetConstraint(definition, position, anchor, size, spacing)
 			frame.AnchorPoint = anchor
 			frame.Position = UDim2.fromOffset(math.floor(position.X + 0.5), math.floor(position.Y + 0.5))
 
@@ -372,17 +372,4 @@ function HUDLayoutEngine.Destroy(self: HUDLayoutEngine)
 	table.clear(self.placedRects)
 	clearArray(self.ordered)
 end
-
-HUDLayoutEngine.new = HUDLayoutEngine.New
-HUDLayoutEngine.updateSafeZone = HUDLayoutEngine.UpdateSafeZone
-HUDLayoutEngine.setViewport = HUDLayoutEngine.SetViewport
-HUDLayoutEngine.setGamepadMode = HUDLayoutEngine.SetGamepadMode
-HUDLayoutEngine.register = HUDLayoutEngine.Register
-HUDLayoutEngine.unregister = HUDLayoutEngine.Unregister
-HUDLayoutEngine.setVisible = HUDLayoutEngine.SetVisible
-HUDLayoutEngine.setOrder = HUDLayoutEngine.SetOrder
-HUDLayoutEngine.reflow = HUDLayoutEngine.Reflow
-HUDLayoutEngine.getDefinition = HUDLayoutEngine.GetDefinition
-HUDLayoutEngine.destroy = HUDLayoutEngine.Destroy
-
 return HUDLayoutEngine

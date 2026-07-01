@@ -55,7 +55,7 @@ local DEFAULT_FPS = 12
 local DEFAULT_BACKGROUND_TRANSPARENCY = 1
 local DEFAULT_FRAME_SIZE = Vector2.new(32, 32)
 
-local function sanitizeNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
 	end
@@ -70,7 +70,7 @@ local function sanitizeNumber(value: any, fallback: number, minimum: number?, ma
 	return result
 end
 
-local function sanitizeVector2PositivePixels(value: any, fallback: Vector2): Vector2
+local function CoerceVector2PositivePixels(value: any, fallback: Vector2): Vector2
 	if typeof(value) ~= "Vector2" then
 		return fallback
 	end
@@ -81,7 +81,7 @@ local function sanitizeVector2PositivePixels(value: any, fallback: Vector2): Vec
 	return Vector2.new(math.max(1, math.floor(value.X + 0.5)), math.max(1, math.floor(value.Y + 0.5)))
 end
 
-local function sanitizeVector2NonNegativePixels(value: any, fallback: Vector2): Vector2
+local function CoerceVector2NonNegativePixels(value: any, fallback: Vector2): Vector2
 	if typeof(value) ~= "Vector2" then
 		return fallback
 	end
@@ -93,11 +93,11 @@ local function sanitizeVector2NonNegativePixels(value: any, fallback: Vector2): 
 end
 
 local function clampFrameIndex(frameIndexRaw: any, frameCount: number): number
-	local frameIndex = math.floor(sanitizeNumber(frameIndexRaw, 0, 0, frameCount - 1))
+	local frameIndex = math.floor(CoerceNumber(frameIndexRaw, 0, 0, frameCount - 1))
 	return math.clamp(frameIndex, 0, frameCount - 1)
 end
 
-local function resolveExplicitFrameSlices(frameRectsRaw: any): { FrameSlice }
+local function GetExplicitFrameSlices(frameRectsRaw: any): { FrameSlice }
 	if typeof(frameRectsRaw) ~= "table" then
 		return {}
 	end
@@ -126,7 +126,7 @@ local function resolveExplicitFrameSlices(frameRectsRaw: any): { FrameSlice }
 	return slices
 end
 
-local function resolveComputedFrameSlice(
+local function GetComputedFrameSlice(
 	frameIndex: number,
 	columns: number,
 	frameSize: Vector2,
@@ -144,24 +144,24 @@ local function resolveComputedFrameSlice(
 	}
 end
 
-local function resolveGridRowCount(frameCount: number, columns: number): number
+local function GetGridRowCount(frameCount: number, columns: number): number
 	return math.max(1, math.ceil(frameCount / columns))
 end
 
-local function resolveGridFrameSlice(frameIndex: number, columns: number, frameSize: Vector2): FrameSlice
-	return resolveComputedFrameSlice(frameIndex, columns, frameSize, Vector2.zero, Vector2.zero)
+local function GetGridFrameSlice(frameIndex: number, columns: number, frameSize: Vector2): FrameSlice
+	return GetComputedFrameSlice(frameIndex, columns, frameSize, Vector2.zero, Vector2.zero)
 end
 
 local function Gif(props: GifProps)
-	local fallbackFrameSize = sanitizeVector2PositivePixels(props.frameSize, DEFAULT_FRAME_SIZE)
-	local frameOrigin = sanitizeVector2NonNegativePixels(props.frameOrigin, Vector2.zero)
-	local framePadding = sanitizeVector2NonNegativePixels(props.framePadding, Vector2.zero)
-	local columns = math.max(1, math.floor(sanitizeNumber(props.columns, 1, 1, nil)))
-	local explicitSlices = resolveExplicitFrameSlices(props.frameRects)
+	local fallbackFrameSize = CoerceVector2PositivePixels(props.frameSize, DEFAULT_FRAME_SIZE)
+	local frameOrigin = CoerceVector2NonNegativePixels(props.frameOrigin, Vector2.zero)
+	local framePadding = CoerceVector2NonNegativePixels(props.framePadding, Vector2.zero)
+	local columns = math.max(1, math.floor(CoerceNumber(props.columns, 1, 1, nil)))
+	local explicitSlices = GetExplicitFrameSlices(props.frameRects)
 	local frameCount = if #explicitSlices > 0
 		then #explicitSlices
-		else math.max(1, math.floor(sanitizeNumber(props.frameCount, 1, 1, nil)))
-	local fps = sanitizeNumber(props.fps, DEFAULT_FPS, 0.01, 240)
+		else math.max(1, math.floor(CoerceNumber(props.frameCount, 1, 1, nil)))
+	local fps = CoerceNumber(props.fps, DEFAULT_FPS, 0.01, 240)
 	local frameDuration = 1 / fps
 	local looped = props.looped ~= false
 	local playing = props.playing ~= false
@@ -293,7 +293,7 @@ local function Gif(props: GifProps)
 			local flipbook = Flipbook.new({
 				image = props.image,
 				frameCount = frameCount,
-				rows = resolveGridRowCount(frameCount, columns),
+				rows = GetGridRowCount(frameCount, columns),
 				columns = columns,
 				imageRectSize = fallbackFrameSize,
 				frameRate = fps,
@@ -339,7 +339,7 @@ local function Gif(props: GifProps)
 	)
 
 	if useNevermoreFlipbook then
-		local activeSlice = resolveGridFrameSlice(startFrameIndex, columns, fallbackFrameSize)
+		local activeSlice = GetGridFrameSlice(startFrameIndex, columns, fallbackFrameSize)
 		local rootProps = {
 			ref = imageRef,
 			Size = props.size or UDim2.fromOffset(fallbackFrameSize.X, fallbackFrameSize.Y),
@@ -349,7 +349,7 @@ local function Gif(props: GifProps)
 			Visible = props.visible ~= false,
 			ZIndex = props.zIndex or 1,
 			BackgroundColor3 = props.backgroundColor3,
-			BackgroundTransparency = sanitizeNumber(
+			BackgroundTransparency = CoerceNumber(
 				props.backgroundTransparency,
 				DEFAULT_BACKGROUND_TRANSPARENCY,
 				0,
@@ -359,7 +359,7 @@ local function Gif(props: GifProps)
 			ClipsDescendants = if props.clipsDescendants ~= nil then props.clipsDescendants else false,
 			Image = props.image,
 			ImageColor3 = props.imageColor3,
-			ImageTransparency = sanitizeNumber(props.imageTransparency, 0, 0, 1),
+			ImageTransparency = CoerceNumber(props.imageTransparency, 0, 0, 1),
 			ImageRectOffset = activeSlice.offset,
 			ImageRectSize = activeSlice.size,
 			ScaleType = props.scaleType,
@@ -385,7 +385,7 @@ local function Gif(props: GifProps)
 	end
 
 	if useViewportMode then
-		local rows = resolveGridRowCount(frameCount, columns)
+		local rows = GetGridRowCount(frameCount, columns)
 		local column = frameIndex % columns
 		local row = math.floor(frameIndex / columns)
 
@@ -397,7 +397,7 @@ local function Gif(props: GifProps)
 			Visible = props.visible ~= false,
 			ZIndex = props.zIndex or 1,
 			BackgroundColor3 = props.backgroundColor3,
-			BackgroundTransparency = sanitizeNumber(
+			BackgroundTransparency = CoerceNumber(
 				props.backgroundTransparency,
 				DEFAULT_BACKGROUND_TRANSPARENCY,
 				0,
@@ -422,7 +422,7 @@ local function Gif(props: GifProps)
 				BorderSizePixel = 0,
 				Image = props.image,
 				ImageColor3 = props.imageColor3,
-				ImageTransparency = sanitizeNumber(props.imageTransparency, 0, 0, 1),
+				ImageTransparency = CoerceNumber(props.imageTransparency, 0, 0, 1),
 				ScaleType = if props.scaleType ~= nil then props.scaleType else Enum.ScaleType.Stretch,
 				SliceCenter = props.sliceCenter,
 				SliceScale = props.sliceScale,
@@ -442,7 +442,7 @@ local function Gif(props: GifProps)
 
 	local activeSlice = if hasExplicitRects
 		then explicitSlices[frameIndex + 1]
-		else resolveComputedFrameSlice(frameIndex, columns, fallbackFrameSize, frameOrigin, framePadding)
+		else GetComputedFrameSlice(frameIndex, columns, fallbackFrameSize, frameOrigin, framePadding)
 	local activeFrameSize = if activeSlice ~= nil then activeSlice.size else fallbackFrameSize
 
 	local rootProps = {
@@ -453,12 +453,12 @@ local function Gif(props: GifProps)
 		Visible = props.visible ~= false,
 		ZIndex = props.zIndex or 1,
 		BackgroundColor3 = props.backgroundColor3,
-		BackgroundTransparency = sanitizeNumber(props.backgroundTransparency, DEFAULT_BACKGROUND_TRANSPARENCY, 0, 1),
+		BackgroundTransparency = CoerceNumber(props.backgroundTransparency, DEFAULT_BACKGROUND_TRANSPARENCY, 0, 1),
 		BorderSizePixel = if props.borderSizePixel ~= nil then props.borderSizePixel else 0,
 		ClipsDescendants = if props.clipsDescendants ~= nil then props.clipsDescendants else false,
 		Image = props.image,
 		ImageColor3 = props.imageColor3,
-		ImageTransparency = sanitizeNumber(props.imageTransparency, 0, 0, 1),
+		ImageTransparency = CoerceNumber(props.imageTransparency, 0, 0, 1),
 		ImageRectOffset = if activeSlice ~= nil then activeSlice.offset else Vector2.zero,
 		ImageRectSize = if activeSlice ~= nil then activeSlice.size else fallbackFrameSize,
 		ScaleType = props.scaleType,

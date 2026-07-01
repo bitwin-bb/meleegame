@@ -34,7 +34,4 @@ function GoapDebugger.PrintAgent(agent: any)
 end
 
 GoapDebugger.copy = Table.copy
-GoapDebugger.describeAgent = GoapDebugger.DescribeAgent
-GoapDebugger.printAgent = GoapDebugger.PrintAgent
-
 return GoapDebugger

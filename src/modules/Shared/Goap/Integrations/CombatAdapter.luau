@@ -21,7 +21,4 @@ function CombatAdapter.AttackTarget(agent: any): boolean
 end
 
 CombatAdapter.copy = Table.copy
-CombatAdapter.get = CombatAdapter.Get
-CombatAdapter.attackTarget = CombatAdapter.AttackTarget
-
 return CombatAdapter

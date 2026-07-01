@@ -21,7 +21,7 @@ local DEFAULT_STATE: HoverInfoState = {
 
 local infoStateAtom: Charm.Atom<HoverInfoState> = Charm.atom(DEFAULT_STATE)
 
-local function sanitizeHoverId(value: any): string
+local function CoerceHoverId(value: any): string
 	if typeof(value) == "string" and value ~= "" then
 		return value
 	end
@@ -29,7 +29,7 @@ local function sanitizeHoverId(value: any): string
 	return "default"
 end
 
-local function sanitizeText(value: any): string
+local function CoerceText(value: any): string
 	if typeof(value) == "string" then
 		return value
 	end
@@ -37,7 +37,7 @@ local function sanitizeText(value: any): string
 	return ""
 end
 
-local function sanitizeMousePosition(value: any): Vector2
+local function CoerceMousePosition(value: any): Vector2
 	if typeof(value) == "Vector2" then
 		return value
 	end
@@ -53,9 +53,9 @@ local function setInfoState(stateRaw: any): HoverInfoState
 	local source = if typeof(stateRaw) == "table" then stateRaw else DEFAULT_STATE
 	local nextState: HoverInfoState = {
 		visible = source.visible == true,
-		hoverId = if source.visible == true then sanitizeHoverId(source.hoverId) else nil,
-		text = sanitizeText(source.text),
-		mousePosition = sanitizeMousePosition(source.mousePosition),
+		hoverId = if source.visible == true then CoerceHoverId(source.hoverId) else nil,
+		text = CoerceText(source.text),
+		mousePosition = CoerceMousePosition(source.mousePosition),
 	}
 
 	infoStateAtom(nextState)
@@ -65,9 +65,9 @@ end
 local function showHover(hoverIdRaw: any, textRaw: any, mousePositionRaw: any): HoverInfoState
 	local nextState: HoverInfoState = {
 		visible = true,
-		hoverId = sanitizeHoverId(hoverIdRaw),
-		text = sanitizeText(textRaw),
-		mousePosition = sanitizeMousePosition(mousePositionRaw),
+		hoverId = CoerceHoverId(hoverIdRaw),
+		text = CoerceText(textRaw),
+		mousePosition = CoerceMousePosition(mousePositionRaw),
 	}
 
 	infoStateAtom(nextState)
@@ -93,7 +93,7 @@ end
 
 local function updateMousePosition(mousePositionRaw: any): HoverInfoState
 	local current = infoStateAtom()
-	local nextMousePosition = sanitizeMousePosition(mousePositionRaw)
+	local nextMousePosition = CoerceMousePosition(mousePositionRaw)
 	if current.mousePosition == nextMousePosition then
 		return current
 	end

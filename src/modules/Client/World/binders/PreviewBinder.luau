@@ -63,33 +63,33 @@ function PreviewBinder.step(self: any)
 	local tileY = (nextBuildServiceClient :: any).cursorTileY
 	local previewColor = Color3.fromRGB(255, 209, 92)
 	local footprint = {} :: { any }
-	local activePlaceSource = nextBuildServiceClient:resolveActivePlaceSource()
+	local activePlaceSource = nextBuildServiceClient:GetActivePlaceSource()
 
 	if activePlaceSource ~= nil then
-		tileX, tileY = nextBuildServiceClient:resolveTerrainHoverTile(tileX, tileY)
+		tileX, tileY = nextBuildServiceClient:GetTerrainHoverTile(tileX, tileY)
 		if tileX == nil or tileY == nil then
 			self:hide()
 			return
 		end
 
-		local canPlace, _, resolvedFootprint =
-			nextBuildServiceClient:canPlaceAt(tileX, tileY, activePlaceSource.config.tileId)
+		local canPlace, _, GotFootprint =
+			nextBuildServiceClient:CanPlaceAt(tileX, tileY, activePlaceSource.config.tileId)
 		previewColor = if canPlace then Color3.fromRGB(122, 230, 160) else Color3.fromRGB(255, 120, 120)
-		footprint = resolvedFootprint
+		footprint = GotFootprint
 	else
 		if tileX == nil or tileY == nil then
 			self:hide()
 			return
 		end
 
-		local hoveredTileId = nextBuildServiceClient:getTileAt(tileX, tileY, false)
+		local hoveredTileId = nextBuildServiceClient:GetTileAt(tileX, tileY, false)
 		if hoveredTileId == BuildServiceUtils.AIR_TILE_ID then
 			self:hide()
 			return
 		end
 	end
 
-	local previewGeometry = nextBuildServiceClient:resolvePreviewGeometry(tileX, tileY, footprint)
+	local previewGeometry = nextBuildServiceClient:GetPreviewGeometry(tileX, tileY, footprint)
 	if previewGeometry == nil then
 		self:hide()
 		return

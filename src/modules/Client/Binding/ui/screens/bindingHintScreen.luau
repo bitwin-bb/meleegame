@@ -19,25 +19,25 @@ type BindingHintScreenProps = {
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: BindingHintScreenProps?): React.ReactNode
-	local resolvedProps: BindingHintScreenProps = if props ~= nil then props else {} :: any
+	local GotProps: BindingHintScreenProps = if props ~= nil then props else {} :: any
 	local bindingState = (useStore(bindingSlice.bindingStateAtom) :: BindingHintState?)
 		or bindingSlice.getBindingState()
 
 	React.useEffect(function()
-		local stop = bindingThunks.start()
+		local stop = bindingThunks.Start()
 
 		return function()
 			stop()
 		end
 	end, {})
 
-	if resolvedProps.visible == false or bindingState.visible ~= true or #bindingState.hints <= 0 then
+	if GotProps.visible == false or bindingState.visible ~= true or #bindingState.hints <= 0 then
 		return nil
 	end
 
-	local zIndex = resolvedProps.zIndex or 180
+	local zIndex = GotProps.zIndex or 180
 	return e(BindingHintBottomBar, {
-		layoutOrder = resolvedProps.layoutOrder or 1,
+		layoutOrder = GotProps.layoutOrder or 1,
 		zIndex = zIndex + 1,
 		visible = true,
 		hints = bindingState.hints,

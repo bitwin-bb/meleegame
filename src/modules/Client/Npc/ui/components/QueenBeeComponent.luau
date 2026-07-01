@@ -38,14 +38,14 @@ type AnimationPlayback = {
 	restFrame: number,
 }
 
-local function sanitizeFrame(frameRaw: any): number
+local function CoerceFrame(frameRaw: any): number
 	if typeof(frameRaw) ~= "number" or frameRaw ~= frameRaw then
 		return 1
 	end
 	return math.clamp(math.floor(frameRaw), 1, FRAME_COUNT)
 end
 
-local function sanitizeFrameRate(frameRateRaw: any): number
+local function CoerceFrameRate(frameRateRaw: any): number
 	if typeof(frameRateRaw) ~= "number" or frameRateRaw ~= frameRateRaw then
 		return 1
 	end
@@ -56,7 +56,7 @@ local function getAnimation(animationName: string): any
 	return QueenBeeSpriteSheet.animations[animationName]
 end
 
-local function resolveAnimationName(snapshot: BossSnapshot): string
+local function GetAnimationName(snapshot: BossSnapshot): string
 	if
 		string.match(snapshot.state, "^Phase%d+RamCharge$") ~= nil
 		or string.match(snapshot.state, "^Phase%d+Charge$") ~= nil
@@ -66,14 +66,14 @@ local function resolveAnimationName(snapshot: BossSnapshot): string
 	return "Idle"
 end
 
-local function resolvePlayback(snapshot: BossSnapshot): AnimationPlayback
-	local animationName = resolveAnimationName(snapshot)
+local function GetPlayback(snapshot: BossSnapshot): AnimationPlayback
+	local animationName = GetAnimationName(snapshot)
 	local animation = getAnimation(animationName)
 	local frames = animation.frames
-	local restFrame = sanitizeFrame(frames[1])
+	local restFrame = CoerceFrame(frames[1])
 	return {
 		animationName = animationName,
-		frameRate = sanitizeFrameRate(animation.frameRate),
+		frameRate = CoerceFrameRate(animation.frameRate),
 		frames = frames,
 		restFrame = restFrame,
 	}
@@ -81,7 +81,7 @@ end
 
 local function getFrameOffset(frameIndex: number): Vector2
 	local frameSize = QueenBeeSpriteSheet.frameSize
-	local zeroBased = math.max(0, sanitizeFrame(frameIndex) - 1)
+	local zeroBased = math.max(0, CoerceFrame(frameIndex) - 1)
 	local column = zeroBased % QueenBeeSpriteSheet.columns
 	local row = math.floor(zeroBased / QueenBeeSpriteSheet.columns)
 	return Vector2.new(column * frameSize.X, row * frameSize.Y)
@@ -101,7 +101,7 @@ local function createAnimationFlipbook(playback: AnimationPlayback): any
 	local flipbookAny = flipbook :: any
 
 	for index, absoluteFrame in playback.frames do
-		local frame = sanitizeFrame(absoluteFrame)
+		local frame = CoerceFrame(absoluteFrame)
 		flipbookAny:SetSpriteAtIndex(
 			index,
 			Sprite.new({
@@ -116,30 +116,30 @@ local function createAnimationFlipbook(playback: AnimationPlayback): any
 	return flipbook
 end
 
-local function sanitizeClock(clockRaw: any): number
+local function CoerceClock(clockRaw: any): number
 	if typeof(clockRaw) ~= "number" or clockRaw ~= clockRaw then
 		return 0
 	end
 	return math.max(0, clockRaw)
 end
 
-local function resolvePlaybackIndex(playback: AnimationPlayback, renderClock: number): number
+local function GetPlaybackIndex(playback: AnimationPlayback, renderClock: number): number
 	local frameCount = #playback.frames
 	if frameCount <= 0 then
 		return 1
 	end
 
-	return math.floor(sanitizeClock(renderClock) * playback.frameRate) % frameCount + 1
+	return math.floor(CoerceClock(renderClock) * playback.frameRate) % frameCount + 1
 end
 
-local function resolveSheetPosition(frameOffset: Vector2): UDim2
+local function GetSheetPosition(frameOffset: Vector2): UDim2
 	local frameSize = QueenBeeSpriteSheet.frameSize
 	local xScale = if frameSize.X > 0 then -(frameOffset.X / frameSize.X) else 0
 	local yScale = if frameSize.Y > 0 then -(frameOffset.Y / frameSize.Y) else 0
 	return UDim2.fromScale(xScale, yScale)
 end
 
-local function resolveSpriteSheetImage(snapshot: BossSnapshot): string
+local function GetSpriteSheetImage(snapshot: BossSnapshot): string
 	local flippedImage = QueenBeeSpriteSheet.flipped
 	if typeof(flippedImage) ~= "string" or flippedImage == "" then
 		return QueenBeeSpriteSheet.image
@@ -147,15 +147,15 @@ local function resolveSpriteSheetImage(snapshot: BossSnapshot): string
 	return if snapshot.facing.Z < -1e-3 then flippedImage else QueenBeeSpriteSheet.image
 end
 
-local function resolveActiveFrameOffset(flipbook: any, playback: AnimationPlayback, renderClock: number): Vector2
-	local sprite = flipbook:GetSprite(resolvePlaybackIndex(playback, renderClock))
+local function GetActiveFrameOffset(flipbook: any, playback: AnimationPlayback, renderClock: number): Vector2
+	local sprite = flipbook:GetSprite(GetPlaybackIndex(playback, renderClock))
 	if sprite ~= nil and typeof(sprite.Position) == "Vector2" then
 		return sprite.Position
 	end
 	return getFrameOffset(playback.restFrame)
 end
 
-local function resolveModelRootPart(model: Model): BasePart?
+local function GetModelRootPart(model: Model): BasePart?
 	local rootPart = model:FindFirstChild("RootPart")
 	if rootPart ~= nil and rootPart:IsA("BasePart") then
 		return rootPart
@@ -171,14 +171,14 @@ local function resolveModelRootPart(model: Model): BasePart?
 	return nil
 end
 
-local function resolveRuntimeRootPart(runtimeId: string): BasePart?
+local function GetUntimeRootPart(runtimeId: string): BasePart?
 	local cachedRootPart = (runtimeRootPartCache :: { [string]: BasePart? })[runtimeId]
 	if cachedRootPart ~= nil and cachedRootPart:IsDescendantOf(Workspace) then
 		return cachedRootPart
 	end
 	runtimeRootPartCache[runtimeId] = nil
 
-	local runtimeFolder = WorkspaceFolders.findFolderInGameOrWorkspace(BOSS_RUNTIME_FOLDER_NAME)
+	local runtimeFolder = WorkspaceFolders.FindFolderInGameOrWorkspace(BOSS_RUNTIME_FOLDER_NAME)
 	if runtimeFolder == nil then
 		return nil
 	end
@@ -191,7 +191,7 @@ local function resolveRuntimeRootPart(runtimeId: string): BasePart?
 			continue
 		end
 
-		local rootPart = resolveModelRootPart(child)
+		local rootPart = GetModelRootPart(child)
 		if rootPart ~= nil then
 			runtimeRootPartCache[runtimeId] = rootPart
 		end
@@ -201,8 +201,8 @@ local function resolveRuntimeRootPart(runtimeId: string): BasePart?
 	return nil
 end
 
-local function resolvePresentationPosition(snapshot: BossSnapshot, _renderClock: number): Vector3?
-	local rootPart = resolveRuntimeRootPart(snapshot.id)
+local function GetPresentationPosition(snapshot: BossSnapshot, _renderClock: number): Vector3?
+	local rootPart = GetUntimeRootPart(snapshot.id)
 	local basePosition = if rootPart ~= nil then rootPart.Position else snapshot.position
 	if basePosition == nil then
 		basePosition = snapshot.motion.position
@@ -214,15 +214,15 @@ local function resolvePresentationPosition(snapshot: BossSnapshot, _renderClock:
 	return basePosition + (snapshot.motion.localPresentationOffset or Vector3.zero)
 end
 
-local function resolveRootSize(snapshot: BossSnapshot): Vector3
-	local rootPart = resolveRuntimeRootPart(snapshot.id)
+local function GetRootSize(snapshot: BossSnapshot): Vector3
+	local rootPart = GetUntimeRootPart(snapshot.id)
 	if rootPart ~= nil then
 		return rootPart.Size
 	end
 	return DEFAULT_ROOT_SIZE
 end
 
-local function resolveScreenPosition(position: Vector3, rootSize: Vector3): (UDim2?, number)
+local function GetScreenPosition(position: Vector3, rootSize: Vector3): (UDim2?, number)
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
 		return nil, 0
@@ -239,7 +239,7 @@ local function resolveScreenPosition(position: Vector3, rootSize: Vector3): (UDi
 	return UDim2.fromOffset(viewportPoint.X, viewportPoint.Y), math.clamp(projectedRootHeight, 96, 420)
 end
 
-local function resolveSpriteSize(baseSize: number): UDim2
+local function GetSpriteSize(baseSize: number): UDim2
 	local frameSize = QueenBeeSpriteSheet.frameSize
 	local height = math.max(1, baseSize)
 	local width = height
@@ -251,14 +251,14 @@ end
 
 return function(props: QueenBeeProps): React.ReactNode
 	local snapshot = props.snapshot
-	local playback = resolvePlayback(snapshot)
+	local playback = GetPlayback(snapshot)
 	local isSurfaceGui = props.surfaceGui == true
 	local zIndex = props.zIndex or 1
-	local position = resolvePresentationPosition(snapshot, props.renderClock)
+	local position = GetPresentationPosition(snapshot, props.renderClock)
 	local screenPosition = nil :: UDim2?
 	local baseSize = 0
 	if position ~= nil then
-		screenPosition, baseSize = resolveScreenPosition(position, resolveRootSize(snapshot))
+		screenPosition, baseSize = GetScreenPosition(position, GetRootSize(snapshot))
 	end
 	local visible = isSurfaceGui or screenPosition ~= nil
 
@@ -274,8 +274,8 @@ return function(props: QueenBeeProps): React.ReactNode
 			playback.frameRate
 		)
 	)
-	local frameOffset = resolveActiveFrameOffset(flipbook, playback, props.renderClock)
-	local spriteSheetImage = resolveSpriteSheetImage(snapshot)
+	local frameOffset = GetActiveFrameOffset(flipbook, playback, props.renderClock)
+	local spriteSheetImage = GetSpriteSheetImage(snapshot)
 
 	local children: { [string]: React.ReactNode } = {
 		SpriteSheet = e("ImageLabel", {
@@ -285,7 +285,7 @@ return function(props: QueenBeeProps): React.ReactNode
 			Image = spriteSheetImage,
 			ImageRectOffset = Vector2.zero,
 			ImageRectSize = Vector2.zero,
-			Position = resolveSheetPosition(frameOffset),
+			Position = GetSheetPosition(frameOffset),
 			ResampleMode = Enum.ResamplerMode.Pixelated,
 			ScaleType = Enum.ScaleType.Stretch,
 			Size = UDim2.fromScale(QueenBeeSpriteSheet.columns, QueenBeeSpriteSheet.rows),
@@ -307,7 +307,7 @@ return function(props: QueenBeeProps): React.ReactNode
 		Position = if isSurfaceGui
 			then UDim2.fromScale(0.5, 0.5)
 			else screenPosition or UDim2.fromOffset(-10000, -10000),
-		Size = if isSurfaceGui then UDim2.fromScale(0.92, 0.86) else resolveSpriteSize(baseSize),
+		Size = if isSurfaceGui then UDim2.fromScale(0.92, 0.86) else GetSpriteSize(baseSize),
 		Visible = visible,
 		ZIndex = zIndex,
 	}, children)

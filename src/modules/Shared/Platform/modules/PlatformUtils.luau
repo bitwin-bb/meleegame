@@ -171,7 +171,7 @@ function Platform._emitChange(self: Platform, nextState: PlatformSnapshot, prevS
 	self.changedSignal:Fire(nextState, prevState)
 	if self.eventBus ~= nil and typeof((self.eventBus :: any).publish) == "function" then
 		local eventBusAny = self.eventBus :: any
-		eventBusAny:publish(self.eventChannel, self.changeEvent, {
+		eventBusAny:Publish(self.eventChannel, self.changeEvent, {
 			nextState = nextState,
 			prevState = prevState,
 		})
@@ -226,27 +226,27 @@ function Platform.GetSnapshot(self: Platform): PlatformSnapshot
 end
 
 function Platform.IsMobile(self: Platform): boolean
-	return self:getSnapshot().isMobile
+	return self:GetSnapshot().isMobile
 end
 
 function Platform.IsConsole(self: Platform): boolean
-	return self:getSnapshot().isConsole
+	return self:GetSnapshot().isConsole
 end
 
 function Platform.IsDesktop(self: Platform): boolean
-	return self:getSnapshot().isDesktop
+	return self:GetSnapshot().isDesktop
 end
 
 function Platform.GetPrimaryInputType(self: Platform): string
-	return self:getSnapshot().primaryInputType
+	return self:GetSnapshot().primaryInputType
 end
 
 function Platform.SupportsHover(self: Platform): boolean
-	return self:getSnapshot().supportsHover
+	return self:GetSnapshot().supportsHover
 end
 
 function Platform.SupportsRightClick(self: Platform): boolean
-	return self:getSnapshot().supportsRightClick
+	return self:GetSnapshot().supportsRightClick
 end
 
 function Platform.Destroy(self: Platform)
@@ -258,28 +258,5 @@ function Platform.Destroy(self: Platform)
 	self.changedSignal:Destroy()
 	self.isInitialized = false
 end
-
-Platform.IsMobile = Platform.IsMobile
-Platform.IsConsole = Platform.IsConsole
-Platform.IsDesktop = Platform.IsDesktop
-Platform.GetPrimaryInputType = Platform.GetPrimaryInputType
-Platform.SupportsHover = Platform.SupportsHover
-Platform.SupportsRightClick = Platform.SupportsRightClick
-Platform.GetSnapshot = Platform.GetSnapshot
-Platform.OnChanged = Platform.OnChanged
-Platform.Init = Platform.Init
-Platform.Destroy = Platform.Destroy
-
-Platform.new = Platform.New
-Platform.init = Platform.Init
-Platform.onChanged = Platform.OnChanged
-Platform.getSnapshot = Platform.GetSnapshot
-Platform.isMobile = Platform.IsMobile
-Platform.isConsole = Platform.IsConsole
-Platform.isDesktop = Platform.IsDesktop
-Platform.getPrimaryInputType = Platform.GetPrimaryInputType
-Platform.supportsHover = Platform.SupportsHover
-Platform.supportsRightClick = Platform.SupportsRightClick
-Platform.destroy = Platform.Destroy
 
 return Platform

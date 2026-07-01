@@ -16,18 +16,18 @@ local lastShownAtByKey = {} :: { [string]: number }
 
 local DEFAULT_DEDUPE_WINDOW_SECONDS = 0.6
 local SYSTEM_AUDIO = (AudioRegistry :: any).System or ({} :: any)
-local NOTIFICATION_SOUND_ASSET_ID = AudioServiceUtils.normalizeSoundAssetId(SYSTEM_AUDIO.Notification)
+local NOTIFICATION_SOUND_ASSET_ID = AudioServiceUtils.NormalizeSoundAssetId(SYSTEM_AUDIO.Notification)
 
 local function getTranslator()
-	return NevermoreSupport.getService(AquariaBackupTranslator)
+	return NevermoreSupport.GetService(AquariaBackupTranslator)
 end
 
 local function getScreenGuiService()
-	return NevermoreSupport.getService(ScreenGuiService)
+	return NevermoreSupport.GetService(ScreenGuiService)
 end
 
 local function getSnackbarService()
-	return NevermoreSupport.getService(SnackbarServiceClient)
+	return NevermoreSupport.GetService(SnackbarServiceClient)
 end
 
 local function playNotificationSound()
@@ -35,7 +35,7 @@ local function playNotificationSound()
 		return
 	end
 
-	AudioServiceClient:playUi(NOTIFICATION_SOUND_ASSET_ID, {
+	AudioServiceClient:PlayUi(NOTIFICATION_SOUND_ASSET_ID, {
 		replaceChannel = false,
 	})
 end
@@ -123,7 +123,7 @@ local function shouldSuppress(dedupeKey: string, windowRaw: any): boolean
 	return false
 end
 
-local function resolveRecipeDisplayName(craftingServiceRaw: any, recipeIdRaw: any): string
+local function GetEcipeDisplayName(craftingServiceRaw: any, recipeIdRaw: any): string
 	local recipeId = trim(recipeIdRaw)
 	if recipeId == "" then
 		return "item"
@@ -225,7 +225,7 @@ function SnackbarNotifications.ShowCraftResult(resultRaw: any, craftingServiceRa
 			quantity = math.max(1, math.floor(result.quantity))
 		end
 
-		local recipeName = resolveRecipeDisplayName(craftingServiceRaw, result.recipeId)
+		local recipeName = GetEcipeDisplayName(craftingServiceRaw, result.recipeId)
 		local text = translate("notifications.crafting.success", {
 			quantity = tostring(quantity),
 			itemName = recipeName,
@@ -251,12 +251,4 @@ function SnackbarNotifications.ShowCraftResult(resultRaw: any, craftingServiceRa
 		dedupeWindowSeconds = 0.8,
 	})
 end
-
-SnackbarNotifications.attachToScreenGui = SnackbarNotifications.AttachToScreenGui
-SnackbarNotifications.showText = SnackbarNotifications.ShowText
-SnackbarNotifications.hideCurrent = SnackbarNotifications.HideCurrent
-SnackbarNotifications.clearQueue = SnackbarNotifications.ClearQueue
-SnackbarNotifications.showBuildActionRejected = SnackbarNotifications.ShowBuildActionRejected
-SnackbarNotifications.showCraftResult = SnackbarNotifications.ShowCraftResult
-
 return SnackbarNotifications

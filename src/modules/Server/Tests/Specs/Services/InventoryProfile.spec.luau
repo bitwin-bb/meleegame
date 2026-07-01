@@ -18,9 +18,9 @@ end
 return function()
 	describe("InventoryProfile", function()
 		it("seeds new profiles with copper starter tools in the first three hotbar slots", function()
-			local adapter = InventoryProfile.new(nil :: any)
+			local adapter = InventoryProfile.New(nil :: any)
 
-			local defaultInventory = adapter:cloneDefaultInventoryData()
+			local defaultInventory = adapter:CloneDefaultInventoryData()
 
 			expect(defaultInventory.selectedSlot).to.equal(nil)
 			expect(defaultInventory.slots[1].index).to.equal(1)
@@ -58,12 +58,12 @@ return function()
 				end,
 			}
 
-			local adapter = InventoryProfile.new(playerDataService :: any)
-			local state = InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_LOADED)
-			InventoryServiceUtils.addItem(state, "Stone", 3, 99, nil, "spec")
-			InventoryServiceUtils.setSelectedSlot(state, 1)
+			local adapter = InventoryProfile.New(playerDataService :: any)
+			local state = InventoryServiceUtils.CreateDefaultState(InventoryServiceUtils.LOAD_STATE_LOADED)
+			InventoryServiceUtils.AddItem(state, "Stone", 3, 99, nil, "spec")
+			InventoryServiceUtils.SetSelectedSlot(state, 1)
 
-			local didWrite, writeReason = adapter:writeState(createPlayer(), state)
+			local didWrite, writeReason = adapter:WriteState(createPlayer(), state)
 
 			expect(didWrite).to.equal(true)
 			expect(writeReason).to.equal("written:inventory")
@@ -94,11 +94,11 @@ return function()
 				end,
 			}
 
-			local adapter = InventoryProfile.new(playerDataService :: any)
-			local state = InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_LOADED)
-			InventoryServiceUtils.addItem(state, "CopperOre", 2, 99, nil, "spec")
+			local adapter = InventoryProfile.New(playerDataService :: any)
+			local state = InventoryServiceUtils.CreateDefaultState(InventoryServiceUtils.LOAD_STATE_LOADED)
+			InventoryServiceUtils.AddItem(state, "CopperOre", 2, 99, nil, "spec")
 
-			local didSave, saveReason = adapter:saveState(createPlayer(), state)
+			local didSave, saveReason = adapter:SaveState(createPlayer(), state)
 
 			expect(didSave).to.equal(true)
 			expect(saveReason).to.equal("saved:inventory")
@@ -121,10 +121,10 @@ return function()
 				end,
 			}
 
-			local adapter = InventoryProfile.new(playerDataService :: any)
-			local state = InventoryServiceUtils.createDefaultState(InventoryServiceUtils.LOAD_STATE_LOADING)
+			local adapter = InventoryProfile.New(playerDataService :: any)
+			local state = InventoryServiceUtils.CreateDefaultState(InventoryServiceUtils.LOAD_STATE_LOADING)
 
-			local didSave, saveReason = adapter:saveState(createPlayer(), state)
+			local didSave, saveReason = adapter:SaveState(createPlayer(), state)
 
 			expect(didSave).to.equal(false)
 			expect(saveReason).to.equal("state_not_loaded")

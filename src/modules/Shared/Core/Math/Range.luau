@@ -39,11 +39,11 @@ end
 
 function Range.Normalize(value: number, minValue: number, maxValue: number): number
 	local low, high = sortBounds(minValue, maxValue)
-	return Num.inverseLerp(low, high, value)
+	return Num.InverseLerp(low, high, value)
 end
 
 function Range.NormalizeClamped(value: number, minValue: number, maxValue: number): number
-	return Num.saturate(Range.Normalize(value, minValue, maxValue))
+	return Num.Saturate(Range.Normalize(value, minValue, maxValue))
 end
 
 function Range.Wrap(value: number, minValue: number, maxValue: number): number
@@ -90,15 +90,4 @@ function Range.Intersection(aMin: number, aMax: number, bMin: number, bMax: numb
 		max = high,
 	}
 end
-
-Range.new = Range.New
-Range.span = Range.Span
-Range.center = Range.Center
-Range.normalize = Range.Normalize
-Range.normalizeClamped = Range.NormalizeClamped
-Range.wrap = Range.Wrap
-Range.contains = Range.Contains
-Range.overlaps = Range.Overlaps
-Range.intersection = Range.Intersection
-
 return Range

@@ -53,7 +53,7 @@ local function clampInteger(valueRaw: any, fallback: number, minValue: number, m
 	return value
 end
 
-local function sanitizeDrop(dropRaw: any): DropDefinition?
+local function CoerceDrop(dropRaw: any): DropDefinition?
 	if typeof(dropRaw) ~= "table" then
 		return nil
 	end
@@ -87,7 +87,7 @@ function TileMetadataRegistry.New(initialTilesRaw: any?): TileMetadataRegistry
 	if typeof(initialTilesRaw) == "table" then
 		for tileId, metadata in initialTilesRaw do
 			if typeof(tileId) == "string" then
-				self:register(tileId, metadata)
+				self:Register(tileId, metadata)
 			end
 		end
 	end
@@ -122,16 +122,16 @@ function TileMetadataRegistry.EncodeFlags(self: TileMetadataRegistry, flagsRaw: 
 	for flagName, enabled in flagsRaw do
 		if typeof(flagName) == "string" and enabled then
 			if self.flagLayout[flagName] == nil then
-				self:defineFlag(flagName)
+				self:DefineFlag(flagName)
 			end
 			namedFlags[flagName] = true
 		end
 	end
-	return Codec.packNamedBitmask(self.flagLayout, namedFlags)
+	return Codec.PackNamedBitmask(self.flagLayout, namedFlags)
 end
 
 function TileMetadataRegistry.DecodeFlags(self: TileMetadataRegistry, bitmaskRaw: any): { [string]: boolean }
-	return Codec.unpackNamedBitmask(self.flagLayout, bitmaskRaw)
+	return Codec.UnpackNamedBitmask(self.flagLayout, bitmaskRaw)
 end
 
 function TileMetadataRegistry.Register(self: TileMetadataRegistry, tileIdRaw: any, metadataRaw: any): boolean
@@ -145,7 +145,7 @@ function TileMetadataRegistry.Register(self: TileMetadataRegistry, tileIdRaw: an
 	local drops = {}
 	if typeof(metadataRaw.drops) == "table" then
 		for _, rawDrop in metadataRaw.drops do
-			local drop = sanitizeDrop(rawDrop)
+			local drop = CoerceDrop(rawDrop)
 			if drop ~= nil then
 				drops[#drops + 1] = drop
 			end
@@ -156,7 +156,7 @@ function TileMetadataRegistry.Register(self: TileMetadataRegistry, tileIdRaw: an
 	if typeof(metadataRaw.flags) == "number" then
 		flags = clampInteger(metadataRaw.flags, 0, 0, 2147483647)
 	elseif typeof(metadataRaw.flags) == "table" then
-		flags = self:encodeFlags(metadataRaw.flags)
+		flags = self:EncodeFlags(metadataRaw.flags)
 	end
 
 	local entry = {
@@ -187,7 +187,7 @@ function TileMetadataRegistry.RegisterBatch(self: TileMetadataRegistry, entriesR
 	end
 	for tileId, metadata in entriesRaw do
 		if typeof(tileId) == "string" then
-			self:register(tileId, metadata)
+			self:Register(tileId, metadata)
 		end
 	end
 end
@@ -200,7 +200,7 @@ function TileMetadataRegistry.Get(self: TileMetadataRegistry, tileIdRaw: any): T
 end
 
 function TileMetadataRegistry.Require(self: TileMetadataRegistry, tileIdRaw: any): TileMetadata
-	local metadata = self:get(tileIdRaw)
+	local metadata = self:Get(tileIdRaw)
 	if metadata == nil then
 		error(string.format("TileMetadataRegistry missing tile '%s'", tostring(tileIdRaw)))
 	end
@@ -229,7 +229,7 @@ end
 
 function TileMetadataRegistry.GetDrops(self: TileMetadataRegistry, tileIdRaw: any, rngRaw: any?): { [string]: number }
 	local out = {}
-	local metadata = self:get(tileIdRaw)
+	local metadata = self:Get(tileIdRaw)
 	if metadata == nil then
 		return out
 	end
@@ -241,8 +241,10 @@ function TileMetadataRegistry.GetDrops(self: TileMetadataRegistry, tileIdRaw: an
 	for _, drop in metadata.drops do
 		local chance = clampNumber(drop.chance, 1, 0, 1)
 		local roll = 0
-		if rng ~= nil and typeof((rng :: any).nextNumber) == "function" then
-			roll = (rng :: any):nextNumber()
+		if rng ~= nil and typeof((rng :: any).NextNumber) == "function" then
+			roll = (rng :: any):NextNumber()
+		elseif rng ~= nil and typeof((rng :: any).NextRange) == "function" then
+			roll = (rng :: any):NextRange(0, 1)
 		else
 			roll = if chance >= 1 then 0 else 1
 		end
@@ -251,8 +253,8 @@ function TileMetadataRegistry.GetDrops(self: TileMetadataRegistry, tileIdRaw: an
 			local maxAmount = clampInteger(drop.maxAmount, minAmount, minAmount, 999999)
 			local amount = minAmount
 			if maxAmount > minAmount then
-				if rng ~= nil and typeof((rng :: any).nextInteger) == "function" then
-					amount = (rng :: any):nextInteger(minAmount, maxAmount)
+				if rng ~= nil and typeof((rng :: any).NextInteger) == "function" then
+					amount = (rng :: any):NextInteger(minAmount, maxAmount)
 				else
 					amount = minAmount
 				end
@@ -283,18 +285,4 @@ function TileMetadataRegistry.Snapshot(self: TileMetadataRegistry): { [string]: 
 	end
 	return out
 end
-
-TileMetadataRegistry.new = TileMetadataRegistry.New
-TileMetadataRegistry.defineFlag = TileMetadataRegistry.DefineFlag
-TileMetadataRegistry.encodeFlags = TileMetadataRegistry.EncodeFlags
-TileMetadataRegistry.decodeFlags = TileMetadataRegistry.DecodeFlags
-TileMetadataRegistry.register = TileMetadataRegistry.Register
-TileMetadataRegistry.registerBatch = TileMetadataRegistry.RegisterBatch
-TileMetadataRegistry.get = TileMetadataRegistry.Get
-TileMetadataRegistry.require = TileMetadataRegistry.Require
-TileMetadataRegistry.hasFlag = TileMetadataRegistry.HasFlag
-TileMetadataRegistry.listIds = TileMetadataRegistry.ListIds
-TileMetadataRegistry.getDrops = TileMetadataRegistry.GetDrops
-TileMetadataRegistry.snapshot = TileMetadataRegistry.Snapshot
-
 return TileMetadataRegistry

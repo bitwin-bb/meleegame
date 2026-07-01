@@ -82,8 +82,8 @@ local function round(value: number): number
 end
 
 local function detectDeviceType(platform: any?): string
-	if platform ~= nil and typeof(platform.getPrimaryInputType) == "function" then
-		local primaryInputType = platform:getPrimaryInputType()
+	if platform ~= nil and typeof(platform.GetPrimaryInputType) == "function" then
+		local primaryInputType = platform:GetPrimaryInputType()
 		if primaryInputType == "Touch" then
 			return "Mobile"
 		end
@@ -234,14 +234,14 @@ function HUDScaler._syncLayoutEngine(self: HUDScaler, viewport: Vector2, deviceT
 		return
 	end
 	local layoutEngineAny = layoutEngine :: any
-	if typeof((layoutEngine :: any).setViewport) == "function" then
-		layoutEngineAny:setViewport(viewport)
+	if typeof((layoutEngine :: any).SetViewport) == "function" then
+		layoutEngineAny:SetViewport(viewport)
 	end
-	if typeof((layoutEngine :: any).setGamepadMode) == "function" then
-		layoutEngineAny:setGamepadMode(deviceType == "Console")
+	if typeof((layoutEngine :: any).SetGamepadMode) == "function" then
+		layoutEngineAny:SetGamepadMode(deviceType == "Console")
 	end
-	if typeof((layoutEngine :: any).reflow) == "function" then
-		layoutEngineAny:reflow()
+	if typeof((layoutEngine :: any).Reflow) == "function" then
+		layoutEngineAny:Reflow()
 	end
 end
 
@@ -264,7 +264,7 @@ function HUDScaler.Apply(self: HUDScaler)
 
 	if self.eventBus ~= nil and typeof((self.eventBus :: any).publish) == "function" then
 		local eventBusAny = self.eventBus :: any
-		eventBusAny:publish(self.eventChannel, self.scaleEvent, {
+		eventBusAny:Publish(self.eventChannel, self.scaleEvent, {
 			scale = scale,
 			deviceType = deviceType,
 			viewport = viewport,
@@ -281,20 +281,20 @@ function HUDScaler.Init(self: HUDScaler)
 	local camera = Workspace.CurrentCamera
 	if camera ~= nil then
 		self.connections[#self.connections + 1] = camera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
-			self:apply()
+			self:Apply()
 		end)
 	end
 	self.connections[#self.connections + 1] = Workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
-		self:apply()
+		self:Apply()
 	end)
 
-	if self.platform ~= nil and typeof((self.platform :: any).onChanged) == "function" then
-		self.platformDisconnect = (self.platform :: any):onChanged(function()
-			self:apply()
+	if self.platform ~= nil and typeof((self.platform :: any).OnChanged) == "function" then
+		self.platformDisconnect = (self.platform :: any):OnChanged(function()
+			self:Apply()
 		end)
 	end
 
-	self:apply()
+	self:Apply()
 end
 
 function HUDScaler.Register(self: HUDScaler, configRaw: ElementConfig): string?
@@ -381,24 +381,5 @@ function HUDScaler.Destroy(self: HUDScaler)
 	table.clear(self.orderedIds)
 	self.isInitialized = false
 end
-
-HUDScaler.Register = HUDScaler.Register
-HUDScaler.Unregister = HUDScaler.Unregister
-HUDScaler.SetPreset = HUDScaler.SetPreset
-HUDScaler.GetScale = HUDScaler.GetScale
-HUDScaler.GetDeviceType = HUDScaler.GetDeviceType
-HUDScaler.Apply = HUDScaler.Apply
-HUDScaler.Init = HUDScaler.Init
-HUDScaler.Destroy = HUDScaler.Destroy
-
-HUDScaler.new = HUDScaler.New
-HUDScaler.apply = HUDScaler.Apply
-HUDScaler.init = HUDScaler.Init
-HUDScaler.register = HUDScaler.Register
-HUDScaler.unregister = HUDScaler.Unregister
-HUDScaler.setPreset = HUDScaler.SetPreset
-HUDScaler.getScale = HUDScaler.GetScale
-HUDScaler.getDeviceType = HUDScaler.GetDeviceType
-HUDScaler.destroy = HUDScaler.Destroy
 
 return HUDScaler

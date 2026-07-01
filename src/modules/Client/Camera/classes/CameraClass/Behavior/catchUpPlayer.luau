@@ -58,7 +58,7 @@ local function clampNumber(value: any, min: number, max: number, fallback: numbe
 	return math.clamp(value, min, max)
 end
 
-local function resolveConfiguredNumber(
+local function GetConfiguredNumber(
 	source: any,
 	primaryKey: string,
 	legacyKey: string?,
@@ -75,7 +75,7 @@ local function resolveConfiguredNumber(
 	return clampNumber(value, min, max, fallback)
 end
 
-local function sanitizeConfig(config: any, fallbackConfig: CatchUpPlayerConfig?): CatchUpPlayerConfig
+local function CoerceConfig(config: any, fallbackConfig: CatchUpPlayerConfig?): CatchUpPlayerConfig
 	local source = if typeof(config) == "table" then config else {} :: any
 	local fallback = if typeof(fallbackConfig) == "table" then fallbackConfig else {} :: any
 
@@ -90,21 +90,21 @@ local function sanitizeConfig(config: any, fallbackConfig: CatchUpPlayerConfig?)
 		10,
 		clampNumber((fallback :: any).accelerationSeconds, 0.05, 10, 0.9)
 	)
-	local minFrequencyDivisor = resolveConfiguredNumber(
+	local minFrequencyDivisor = GetConfiguredNumber(
 		source,
 		"minFrequencyDivisor",
 		"minFrequencyMultiplier",
 		1,
 		50,
-		resolveConfiguredNumber(fallback, "minFrequencyDivisor", "minFrequencyMultiplier", 1, 50, 2.2)
+		GetConfiguredNumber(fallback, "minFrequencyDivisor", "minFrequencyMultiplier", 1, 50, 2.2)
 	)
-	local maxFrequencyDivisor = resolveConfiguredNumber(
+	local maxFrequencyDivisor = GetConfiguredNumber(
 		source,
 		"maxFrequencyDivisor",
 		"maxFrequencyMultiplier",
 		minFrequencyDivisor,
 		50,
-		resolveConfiguredNumber(fallback, "maxFrequencyDivisor", "maxFrequencyMultiplier", minFrequencyDivisor, 50, 6)
+		GetConfiguredNumber(fallback, "maxFrequencyDivisor", "maxFrequencyMultiplier", minFrequencyDivisor, 50, 6)
 	)
 
 	return {
@@ -126,7 +126,7 @@ local function cloneSpringOptions(baseSpring: SpringOptions): SpringOptions
 	return clone
 end
 
-local function resolveBaseFrequency(baseSpring: SpringOptions): number?
+local function GetBaseFrequency(baseSpring: SpringOptions): number?
 	local frequency = baseSpring.frequency
 	if typeof(frequency) ~= "number" then
 		return nil
@@ -139,15 +139,15 @@ local function resolveBaseFrequency(baseSpring: SpringOptions): number?
 end
 
 function CatchUpPlayer.New(config: CatchUpPlayerConfig?): CatchUpPlayer
-	local resolvedConfig = sanitizeConfig(config, DEFAULT_CONFIG)
+	local GotConfig = CoerceConfig(config, DEFAULT_CONFIG)
 
 	return setmetatable({
-		enabled = resolvedConfig.enabled == true,
-		startDistance = resolvedConfig.startDistance :: number,
-		maxDistance = resolvedConfig.maxDistance :: number,
-		accelerationSeconds = resolvedConfig.accelerationSeconds :: number,
-		minFrequencyDivisor = resolvedConfig.minFrequencyDivisor :: number,
-		maxFrequencyDivisor = resolvedConfig.maxFrequencyDivisor :: number,
+		enabled = GotConfig.enabled == true,
+		startDistance = GotConfig.startDistance :: number,
+		maxDistance = GotConfig.maxDistance :: number,
+		accelerationSeconds = GotConfig.accelerationSeconds :: number,
+		minFrequencyDivisor = GotConfig.minFrequencyDivisor :: number,
+		maxFrequencyDivisor = GotConfig.maxFrequencyDivisor :: number,
 		activeDuration = 0,
 		peakGapDistance = 0,
 	}, CatchUpPlayer)
@@ -167,18 +167,18 @@ function CatchUpPlayer.ApplyConfig(self: CatchUpPlayer, config: CatchUpPlayerCon
 		minFrequencyDivisor = self.minFrequencyDivisor,
 		maxFrequencyDivisor = self.maxFrequencyDivisor,
 	}
-	local resolvedConfig = sanitizeConfig(config, currentConfig)
+	local GotConfig = CoerceConfig(config, currentConfig)
 
-	self.enabled = resolvedConfig.enabled == true
-	self.startDistance = resolvedConfig.startDistance :: number
-	self.maxDistance = resolvedConfig.maxDistance :: number
-	self.accelerationSeconds = resolvedConfig.accelerationSeconds :: number
-	self.minFrequencyDivisor = resolvedConfig.minFrequencyDivisor :: number
-	self.maxFrequencyDivisor = resolvedConfig.maxFrequencyDivisor :: number
-	self:reset()
+	self.enabled = GotConfig.enabled == true
+	self.startDistance = GotConfig.startDistance :: number
+	self.maxDistance = GotConfig.maxDistance :: number
+	self.accelerationSeconds = GotConfig.accelerationSeconds :: number
+	self.minFrequencyDivisor = GotConfig.minFrequencyDivisor :: number
+	self.maxFrequencyDivisor = GotConfig.maxFrequencyDivisor :: number
+	self:Reset()
 end
 
-function CatchUpPlayer.ResolveSpring(
+function CatchUpPlayer.GetSpring(
 	self: CatchUpPlayer,
 	baseSpring: SpringOptions,
 	currentCFrame: CFrame,
@@ -186,19 +186,19 @@ function CatchUpPlayer.ResolveSpring(
 	deltaTime: number?
 ): SpringOptions
 	if not self.enabled then
-		self:reset()
+		self:Reset()
 		return baseSpring
 	end
 
-	local baseFrequency = resolveBaseFrequency(baseSpring)
+	local baseFrequency = GetBaseFrequency(baseSpring)
 	if not baseFrequency then
-		self:reset()
+		self:Reset()
 		return baseSpring
 	end
 
 	local gapDistance = (currentCFrame.Position - targetCFrame.Position).Magnitude
 	if gapDistance <= self.startDistance then
-		self:reset()
+		self:Reset()
 		return baseSpring
 	end
 
@@ -227,10 +227,5 @@ function CatchUpPlayer.ResolveSpring(
 
 	return catchUpSpring
 end
-
-CatchUpPlayer.new = CatchUpPlayer.New
-CatchUpPlayer.reset = CatchUpPlayer.Reset
-CatchUpPlayer.applyConfig = CatchUpPlayer.ApplyConfig
-CatchUpPlayer.resolveSpring = CatchUpPlayer.ResolveSpring
 
 return CatchUpPlayer

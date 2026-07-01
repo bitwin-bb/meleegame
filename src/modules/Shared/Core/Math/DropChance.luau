@@ -11,14 +11,14 @@ export type DropEntry<T> = {
 	chance: number?,
 }
 
-local function sanitizeChance(valueRaw: any, fallback: number): number
+local function CoerceChance(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return math.clamp(fallback, 0, 1)
 	end
 	return math.clamp(valueRaw, 0, 1)
 end
 
-local function sanitizeWeight(valueRaw: any): number
+local function CoerceWeight(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return 0
 	end
@@ -26,9 +26,9 @@ local function sanitizeWeight(valueRaw: any): number
 end
 
 function DropChance.Roll(chanceRaw: any, randomOrSeedRaw: any?): (boolean, number, number?)
-	local chance = sanitizeChance(chanceRaw, 0)
+	local chance = CoerceChance(chanceRaw, 0)
 	if typeof(randomOrSeedRaw) == "number" then
-		local nextSeed, roll = Rand.number(randomOrSeedRaw)
+		local nextSeed, roll = Rand.Number(randomOrSeedRaw)
 		return roll <= chance, roll, nextSeed
 	end
 
@@ -44,7 +44,7 @@ function DropChance.PickWeighted<T>(entries: { DropEntry<T> }, randomOrSeedRaw: 
 
 	local weightedEntries = {}
 	for _, entry in entries do
-		local weight = sanitizeWeight(entry.weight or entry.chance)
+		local weight = CoerceWeight(entry.weight or entry.chance)
 		if weight > 0 then
 			weightedEntries[#weightedEntries + 1] = {
 				value = entry.value,
@@ -79,8 +79,4 @@ function DropChance.PickWeighted<T>(entries: { DropEntry<T> }, randomOrSeedRaw: 
 
 	return weightedEntries[#weightedEntries].value, nil
 end
-
-DropChance.roll = DropChance.Roll
-DropChance.pickWeighted = DropChance.PickWeighted
-
 return DropChance

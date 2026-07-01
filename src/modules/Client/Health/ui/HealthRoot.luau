@@ -12,9 +12,9 @@ type HealthRootProps = {
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: HealthRootProps?): React.ReactNode
-	local resolvedProps = if props ~= nil then props else {} :: HealthRootProps
+	local GotProps = if props ~= nil then props else {} :: HealthRootProps
 
 	return e(React.Fragment, nil, {
-		e(HpTopRightBar, resolvedProps),
+		e(HpTopRightBar, GotProps),
 	})
 end

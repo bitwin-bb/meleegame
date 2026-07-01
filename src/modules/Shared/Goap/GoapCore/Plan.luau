@@ -20,7 +20,7 @@ export type Plan = typeof(setmetatable(
 	Plan
 ))
 
-local function resolveCost(actions: { any }, costRaw: any): number
+local function GetCost(actions: { any }, costRaw: any): number
 	if typeof(costRaw) == "number" and costRaw == costRaw then
 		return math.max(0, costRaw)
 	end
@@ -38,7 +38,7 @@ function Plan.new(actionsRaw: any?, costRaw: any?): Plan
 	return setmetatable({
 		actions = actions,
 		currentIndex = 1,
-		cost = resolveCost(actions, costRaw),
+		cost = GetCost(actions, costRaw),
 		maid = Maid.new(),
 		destroyed = false,
 	}, Plan)
@@ -93,14 +93,4 @@ function Plan.Destroy(self: Plan)
 	self.maid:DoCleaning()
 	table.clear(self.actions)
 end
-
-Plan.getActions = Plan.GetActions
-Plan.getCurrentAction = Plan.GetCurrentAction
-Plan.getCurrentIndex = Plan.GetCurrentIndex
-Plan.advance = Plan.Advance
-Plan.isComplete = Plan.IsComplete
-Plan.reset = Plan.Reset
-Plan.getCost = Plan.GetCost
-Plan.destroy = Plan.Destroy
-
 return Plan

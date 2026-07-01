@@ -282,15 +282,4 @@ function Tile.CreateBindableEvent(configRaw: BindableEventConfig?): BindableEven
 	assignAttributes(props, config.attributes)
 	return (scope:New("BindableEvent"))(props) :: BindableEvent
 end
-
-Tile.createPart = Tile.CreatePart
-Tile.createWedgePart = Tile.CreateWedgePart
-Tile.createTexture = Tile.CreateTexture
-Tile.createHighlight = Tile.CreateHighlight
-Tile.createModel = Tile.CreateModel
-Tile.createFolder = Tile.CreateFolder
-Tile.createAttachment = Tile.CreateAttachment
-Tile.createWeldConstraint = Tile.CreateWeldConstraint
-Tile.createBindableEvent = Tile.CreateBindableEvent
-
 return Tile

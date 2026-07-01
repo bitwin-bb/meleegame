@@ -44,22 +44,22 @@ local maid: MaidClass? = nil
 local initialized = false
 
 local function hideBreak()
-	tileThunks.clearBreak()
+	tileThunks.ClearBreak()
 end
 
-local function resolveProgress(payload: BreakProgressPayload): number
+local function GetProgress(payload: BreakProgressPayload): number
 	if payload.progressTotal ~= nil and payload.progressTotal > 0 and payload.progressUnits ~= nil then
 		return math.clamp(payload.progressUnits / payload.progressTotal, 0, 1)
 	end
 	return math.clamp(payload.progress, 0, 1)
 end
 
-local function resolveFrameIndex(progress: number): number
+local function GetFrameIndex(progress: number): number
 	local totalFrames = math.max(1, Sheet.columns * Sheet.rows)
 	return math.clamp(math.ceil(math.clamp(progress, 0, 1) * totalFrames), 1, totalFrames)
 end
 
-local function resolveSurfaceFace(part: BasePart): Enum.NormalId
+local function GetSurfaceFace(part: BasePart): Enum.NormalId
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
 		return Enum.NormalId.Right
@@ -67,7 +67,7 @@ local function resolveSurfaceFace(part: BasePart): Enum.NormalId
 	return if camera.CFrame.Position.X >= part.Position.X then Enum.NormalId.Right else Enum.NormalId.Left
 end
 
-local function resolveHoveredBreakTarget(tileX: number, tileY: number): TerrainBreakTarget?
+local function GetHoveredBreakTarget(tileX: number, tileY: number): TerrainBreakTarget?
 	local runtime = (WorldGenerationServiceClient :: any).hoveredTerrainRuntime
 	if typeof(runtime) ~= "table" then
 		return nil
@@ -104,13 +104,13 @@ local function resolveHoveredBreakTarget(tileX: number, tileY: number): TerrainB
 	}
 end
 
-local function resolveTerrainBreakTarget(tileX: number, tileY: number): TerrainBreakTarget?
-	local hoveredTarget = resolveHoveredBreakTarget(tileX, tileY)
+local function GetTerrainBreakTarget(tileX: number, tileY: number): TerrainBreakTarget?
+	local hoveredTarget = GetHoveredBreakTarget(tileX, tileY)
 	if hoveredTarget ~= nil then
 		return hoveredTarget
 	end
 
-	local _, rectRuntime = (WorldGenerationServiceClient :: any):resolveTerrainRectRuntime(tileX, tileY)
+	local _, rectRuntime = (WorldGenerationServiceClient :: any):GetTerrainRectRuntime(tileX, tileY)
 	if typeof(rectRuntime) ~= "table" then
 		return nil
 	end
@@ -144,7 +144,7 @@ local function resolveTerrainBreakTarget(tileX: number, tileY: number): TerrainB
 	}
 end
 
-local function resolveImagePosition(target: TerrainBreakTarget, face: Enum.NormalId): UDim2
+local function GetImagePosition(target: TerrainBreakTarget, face: Enum.NormalId): UDim2
 	local localTileX = if face == Enum.NormalId.Right then target.width - target.localTileX - 1 else target.localTileX
 	return UDim2.fromOffset(
 		(localTileX + 0.5) * Sheet.frameSize.X,
@@ -164,32 +164,32 @@ local function applyBreakProgress(payloadRaw: any)
 		return
 	end
 
-	local tileX = BuildServiceUtils.sanitizeTileCoordinate(payload.tileX)
-	local tileY = BuildServiceUtils.sanitizeTileCoordinate(payload.tileY)
+	local tileX = BuildServiceUtils.CoerceTileCoordinate(payload.tileX)
+	local tileY = BuildServiceUtils.CoerceTileCoordinate(payload.tileY)
 	if tileX == nil or tileY == nil then
 		hideBreak()
 		return
 	end
 
-	local target = resolveTerrainBreakTarget(tileX, tileY)
+	local target = GetTerrainBreakTarget(tileX, tileY)
 	if target == nil then
 		hideBreak()
 		return
 	end
 
-	local progress = resolveProgress(payload)
-	local face = resolveSurfaceFace(target.part)
-	tileThunks.publishBreak({
+	local progress = GetProgress(payload)
+	local face = GetSurfaceFace(target.part)
+	tileThunks.PublishBreak({
 		visible = progress > 0,
 		adornee = target.part,
 		image = Sheet.image,
-		frameIndex = resolveFrameIndex(progress),
+		frameIndex = GetFrameIndex(progress),
 		columns = Sheet.columns,
 		rows = Sheet.rows,
 		frameSize = Sheet.frameSize,
 		canvasSize = Vector2.new(target.width * Sheet.frameSize.X, target.height * Sheet.frameSize.Y),
 		face = face,
-		imagePosition = resolveImagePosition(target, face),
+		imagePosition = GetImagePosition(target, face),
 		imageSize = UDim2.fromOffset(Sheet.frameSize.X, Sheet.frameSize.Y),
 		transparency = 0,
 		tileX = tileX,
@@ -249,7 +249,5 @@ function TileBreakServiceClient.Destroy(_self: any)
 	maid = nil
 end
 
-TileBreakServiceClient.init = TileBreakServiceClient.Init
-TileBreakServiceClient.destroy = TileBreakServiceClient.Destroy
 
 return TileBreakServiceClient

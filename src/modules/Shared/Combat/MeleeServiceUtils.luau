@@ -10,7 +10,7 @@ local AudioRegistry = require("Audio")
 local AudioServiceUtils =
 	require(script:FindFirstAncestor("game").Shared.Audio:WaitForChild("AudioServiceUtils"))
 local ItemRegistry = require("ItemRegistry")
-local ResolveToolInstance = require("ResolveToolInstance")
+local GetToolInstance = require("GetToolInstance")
 
 export type MeleeWeaponConfig = {
 	itemId: string,
@@ -160,7 +160,7 @@ local function trim(valueRaw: any): string
 	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function sanitizeString(valueRaw: any, fallback: string): string
+local function CoerceString(valueRaw: any, fallback: string): string
 	local value = trim(valueRaw)
 	if value == "" then
 		return fallback
@@ -168,7 +168,7 @@ local function sanitizeString(valueRaw: any, fallback: string): string
 	return value
 end
 
-local function sanitizeItemId(itemIdRaw: any): string?
+local function CoerceItemId(itemIdRaw: any): string?
 	local itemId = trim(itemIdRaw)
 	if itemId == "" then
 		return nil
@@ -176,7 +176,7 @@ local function sanitizeItemId(itemIdRaw: any): string?
 	return itemId
 end
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -199,23 +199,23 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?,
 	return value
 end
 
-local function resolveCanonicalItemId(itemIdRaw: any): string?
-	local itemId = sanitizeItemId(itemIdRaw)
+local function GetCanonicalItemId(itemIdRaw: any): string?
+	local itemId = CoerceItemId(itemIdRaw)
 	if itemId == nil then
 		return nil
 	end
 
-	return ItemRegistry.resolveCanonicalItemId(itemId)
+	return ItemRegistry.GetCanonicalItemId(itemId)
 end
 
-local function sanitizeBoolean(valueRaw: any, fallback: boolean): boolean
+local function CoerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function sanitizeAttackSpeedToCooldown(valueRaw: any, fallback: number): number
+local function CoerceAttackSpeedToCooldown(valueRaw: any, fallback: number): number
 	local attackSpeed = string.lower(trim(valueRaw))
 	if attackSpeed == "" then
 		return fallback
@@ -227,11 +227,11 @@ local function sanitizeAttackSpeedToCooldown(valueRaw: any, fallback: number): n
 	return fallback
 end
 
-local function resolveConfiguredSwingSpeed(meleeRaw: any, definitionRaw: any, statsRaw: any): number
+local function GetConfiguredSwingSpeed(meleeRaw: any, definitionRaw: any, statsRaw: any): number
 	local melee = if typeof(meleeRaw) == "table" then meleeRaw :: { [string]: any } else {} :: any
 	local definition = if typeof(definitionRaw) == "table" then definitionRaw :: { [string]: any } else {} :: any
 	local stats = if typeof(statsRaw) == "table" then statsRaw :: { [string]: any } else {} :: any
-	return sanitizeNumber(
+	return CoerceNumber(
 		(melee :: any).swingSpeed
 			or (melee :: any).animationSpeed
 			or (melee :: any).swingAnimationSpeed
@@ -355,7 +355,7 @@ local function findNamedChild(container: Instance?, childName: string): Instance
 	return nil
 end
 
-local function resolveOptionalNumber(valueRaw: any): number?
+local function GetOptionalNumber(valueRaw: any): number?
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		return valueRaw
 	end
@@ -368,12 +368,12 @@ local function resolveOptionalNumber(valueRaw: any): number?
 	return nil
 end
 
-function MeleeServiceUtils.ResolveToolItemId(toolRaw: any): string?
-	return ResolveToolInstance.resolveToolItemId(toolRaw)
+function MeleeServiceUtils.GetToolItemId(toolRaw: any): string?
+	return GetToolInstance.GetToolItemId(toolRaw)
 end
 
-function MeleeServiceUtils.ResolveToolItemType(toolRaw: any): string?
-	local itemType = ResolveToolInstance.resolveToolItemType(toolRaw)
+function MeleeServiceUtils.GetToolItemType(toolRaw: any): string?
+	local itemType = GetToolInstance.GetToolItemType(toolRaw)
 	if itemType == nil then
 		return nil
 	end
@@ -386,7 +386,7 @@ function MeleeServiceUtils.ResolveToolItemType(toolRaw: any): string?
 end
 
 function MeleeServiceUtils.IsSwordTool(toolRaw: any): boolean
-	return MeleeServiceUtils.ResolveToolItemType(toolRaw) == "sword"
+	return MeleeServiceUtils.GetToolItemType(toolRaw) == "sword"
 end
 
 function MeleeServiceUtils.IsMeleeTool(toolRaw: any): boolean
@@ -394,15 +394,15 @@ function MeleeServiceUtils.IsMeleeTool(toolRaw: any): boolean
 		return false
 	end
 
-	local toolItemId = MeleeServiceUtils.ResolveToolItemId(toolRaw)
+	local toolItemId = MeleeServiceUtils.GetToolItemId(toolRaw)
 	if toolItemId ~= nil then
-		local weaponConfig = MeleeServiceUtils.ResolveWeaponConfig(toolItemId)
+		local weaponConfig = MeleeServiceUtils.GetWeaponConfig(toolItemId)
 		if weaponConfig ~= nil then
 			return true
 		end
 	end
 
-	local itemType = MeleeServiceUtils.ResolveToolItemType(toolRaw)
+	local itemType = MeleeServiceUtils.GetToolItemType(toolRaw)
 	if itemType ~= nil and MELEE_ITEM_TYPE_HINTS[itemType] then
 		return true
 	end
@@ -410,8 +410,8 @@ function MeleeServiceUtils.IsMeleeTool(toolRaw: any): boolean
 	return false
 end
 
-function MeleeServiceUtils.ResolveToolByItemId(characterRaw: any, backpackRaw: any, itemIdRaw: any): Tool?
-	local itemId = resolveCanonicalItemId(itemIdRaw)
+function MeleeServiceUtils.GetToolByItemId(characterRaw: any, backpackRaw: any, itemIdRaw: any): Tool?
+	local itemId = GetCanonicalItemId(itemIdRaw)
 	if itemId == nil then
 		return nil
 	end
@@ -425,7 +425,7 @@ function MeleeServiceUtils.ResolveToolByItemId(characterRaw: any, backpackRaw: a
 			if not child:IsA("Tool") then
 				continue
 			end
-			local childItemId = MeleeServiceUtils.ResolveToolItemId(child)
+			local childItemId = MeleeServiceUtils.GetToolItemId(child)
 			if childItemId == itemId then
 				return child
 			end
@@ -440,7 +440,7 @@ function MeleeServiceUtils.ResolveToolByItemId(characterRaw: any, backpackRaw: a
 	return findInContainer(backpackRaw)
 end
 
-function MeleeServiceUtils.ResolveToolAnimationOverrides(toolRaw: any, fallbackAnimationsRaw: any): { [string]: any }?
+function MeleeServiceUtils.GetToolAnimationOverrides(toolRaw: any, fallbackAnimationsRaw: any): { [string]: any }?
 	if typeof(toolRaw) ~= "Instance" or not toolRaw:IsA("Tool") then
 		if typeof(fallbackAnimationsRaw) == "table" then
 			return shallowCopyTable(fallbackAnimationsRaw)
@@ -463,7 +463,7 @@ function MeleeServiceUtils.ResolveToolAnimationOverrides(toolRaw: any, fallbackA
 			continue
 		end
 
-		local order = sanitizeNumber(descendant:GetAttribute("Order"), #indexedAnimations + 1, -100000, 100000)
+		local order = CoerceNumber(descendant:GetAttribute("Order"), #indexedAnimations + 1, -100000, 100000)
 		table.insert(indexedAnimations, {
 			order = order,
 			animation = descendant,
@@ -500,7 +500,7 @@ function MeleeServiceUtils.ResolveToolAnimationOverrides(toolRaw: any, fallbackA
 		or tool:GetAttribute("weaponStanceDelay")
 		or animationConfig.stanceDelay
 	if stanceDelayRaw ~= nil then
-		animationConfig.stanceDelay = sanitizeNumber(stanceDelayRaw, 1.35, 0.05, 30)
+		animationConfig.stanceDelay = CoerceNumber(stanceDelayRaw, 1.35, 0.05, 30)
 	end
 
 	local stanceEnabledRaw = animationsContainer:GetAttribute("stanceEnabled")
@@ -581,20 +581,20 @@ function MeleeServiceUtils.ResolveToolAnimationOverrides(toolRaw: any, fallbackA
 	end
 
 	for index, animation in chosenSwingAnimations do
-		local speed = resolveOptionalNumber(animation:GetAttribute("speed"))
-		local weight = resolveOptionalNumber(animation:GetAttribute("weight"))
-		local fadeTime = resolveOptionalNumber(animation:GetAttribute("fadeTime"))
-		local duration = resolveOptionalNumber(animation:GetAttribute("duration"))
+		local speed = GetOptionalNumber(animation:GetAttribute("speed"))
+		local weight = GetOptionalNumber(animation:GetAttribute("weight"))
+		local fadeTime = GetOptionalNumber(animation:GetAttribute("fadeTime"))
+		local duration = GetOptionalNumber(animation:GetAttribute("duration"))
 		local priority = animation:GetAttribute("priority")
 		table.insert(clips, {
 			name = animation.Name ~= "" and animation.Name or ("Swing_%d"):format(index),
 			animation = animation,
 			priority = if typeof(priority) == "EnumItem" then priority else Enum.AnimationPriority.Action,
-			speed = if speed ~= nil then sanitizeNumber(speed, 1, 0.01, 4) else nil,
-			weight = if weight ~= nil then sanitizeNumber(weight, 1, 0.01, 10) else nil,
-			fadeTime = if fadeTime ~= nil then sanitizeNumber(fadeTime, 0.06, 0, 2) else nil,
+			speed = if speed ~= nil then CoerceNumber(speed, 1, 0.01, 4) else nil,
+			weight = if weight ~= nil then CoerceNumber(weight, 1, 0.01, 10) else nil,
+			fadeTime = if fadeTime ~= nil then CoerceNumber(fadeTime, 0.06, 0, 2) else nil,
 			cooldown = nil,
-			duration = if duration ~= nil then sanitizeNumber(duration, duration, 0.01, 10) else nil,
+			duration = if duration ~= nil then CoerceNumber(duration, duration, 0.01, 10) else nil,
 		})
 	end
 
@@ -610,13 +610,13 @@ local function addNamedToolSound(sounds: { [string]: string }, soundName: string
 	sounds[string.lower(soundName)] = soundAssetId
 end
 
-local function resolveRegistryToolAudio(tool: Tool): { [string]: any }?
-	local itemId = MeleeServiceUtils.ResolveToolItemId(tool)
+local function GetEgistryToolAudio(tool: Tool): { [string]: any }?
+	local itemId = MeleeServiceUtils.GetToolItemId(tool)
 	if itemId == nil then
 		return nil
 	end
 
-	local itemType = MeleeServiceUtils.ResolveToolItemType(tool)
+	local itemType = MeleeServiceUtils.GetToolItemType(tool)
 	if itemType ~= nil then
 		local preferredAudio = ITEM_AUDIO_BY_TYPE[itemType]
 		if typeof(preferredAudio) == "table" then
@@ -639,12 +639,12 @@ end
 
 local function buildRegistryToolSounds(tool: Tool): { [string]: string }
 	local sounds: { [string]: string } = {}
-	local registryAudio = resolveRegistryToolAudio(tool)
+	local registryAudio = GetEgistryToolAudio(tool)
 	if typeof(registryAudio) ~= "table" then
 		return sounds
 	end
 
-	local equipSoundAssetId = AudioServiceUtils.normalizeSoundAssetId((registryAudio :: any).Equip)
+	local equipSoundAssetId = AudioServiceUtils.NormalizeSoundAssetId((registryAudio :: any).Equip)
 	if equipSoundAssetId ~= nil then
 		addNamedToolSound(sounds, "Equip", equipSoundAssetId)
 	end
@@ -663,7 +663,7 @@ end
 
 local function buildRegistryToolSwingSounds(tool: Tool): { [string]: { string } }
 	local swingSounds: { [string]: { string } } = {}
-	local registryAudio = resolveRegistryToolAudio(tool)
+	local registryAudio = GetEgistryToolAudio(tool)
 	if typeof(registryAudio) ~= "table" then
 		return swingSounds
 	end
@@ -677,7 +677,7 @@ local function buildRegistryToolSwingSounds(tool: Tool): { [string]: { string } 
 			continue
 		end
 
-		local soundAssetId = AudioServiceUtils.normalizeSoundAssetId(soundIdRaw)
+		local soundAssetId = AudioServiceUtils.NormalizeSoundAssetId(soundIdRaw)
 		if soundAssetId ~= nil then
 			pushSwingSound(swingSounds, "swing" .. tostring(math.max(1, math.floor(index))), soundAssetId)
 		end
@@ -686,7 +686,7 @@ local function buildRegistryToolSwingSounds(tool: Tool): { [string]: { string } 
 	return swingSounds
 end
 
-function MeleeServiceUtils.ResolveToolSounds(toolRaw: any): { [string]: string }
+function MeleeServiceUtils.GetToolSounds(toolRaw: any): { [string]: string }
 	local sounds: { [string]: string } = {}
 	if typeof(toolRaw) ~= "Instance" or not toolRaw:IsA("Tool") then
 		return sounds
@@ -709,7 +709,7 @@ function MeleeServiceUtils.ResolveToolSounds(toolRaw: any): { [string]: string }
 
 		local soundName = trim(descendant.Name)
 		if soundName ~= "" then
-			local soundAssetId = AudioServiceUtils.resolveSoundAssetId(descendant)
+			local soundAssetId = AudioServiceUtils.GetSoundAssetId(descendant)
 			if soundAssetId ~= nil then
 				sounds[soundName] = soundAssetId
 				sounds[string.lower(soundName)] = soundAssetId
@@ -728,7 +728,7 @@ local function normalizeSoundLookupKey(nameRaw: any): string
 	return string.gsub(normalized, "[%s_%-]+", "")
 end
 
-local function resolveSwingSoundGroupFromName(nameRaw: any): string?
+local function GetSwingSoundGroupFromName(nameRaw: any): string?
 	local normalized = normalizeSoundLookupKey(nameRaw)
 	if normalized == "" then
 		return nil
@@ -740,7 +740,7 @@ local function resolveSwingSoundGroupFromName(nameRaw: any): string?
 	return "swing" .. swingIndexText
 end
 
-function MeleeServiceUtils.ResolveToolSwingSounds(toolRaw: any): { [string]: { string } }
+function MeleeServiceUtils.GetToolSwingSounds(toolRaw: any): { [string]: { string } }
 	local swingSounds: { [string]: { string } } = {}
 	if typeof(toolRaw) ~= "Instance" or not toolRaw:IsA("Tool") then
 		return swingSounds
@@ -764,7 +764,7 @@ function MeleeServiceUtils.ResolveToolSwingSounds(toolRaw: any): { [string]: { s
 		local groupName = nil :: string?
 		local cursor = descendant.Parent
 		while cursor ~= nil and cursor ~= soundsContainer do
-			groupName = resolveSwingSoundGroupFromName(cursor.Name)
+			groupName = GetSwingSoundGroupFromName(cursor.Name)
 			if groupName ~= nil then
 				break
 			end
@@ -772,11 +772,11 @@ function MeleeServiceUtils.ResolveToolSwingSounds(toolRaw: any): { [string]: { s
 		end
 
 		if groupName == nil then
-			groupName = resolveSwingSoundGroupFromName(descendant.Name)
+			groupName = GetSwingSoundGroupFromName(descendant.Name)
 		end
 
 		if groupName ~= nil then
-			local soundAssetId = AudioServiceUtils.resolveSoundAssetId(descendant)
+			local soundAssetId = AudioServiceUtils.GetSoundAssetId(descendant)
 			if soundAssetId ~= nil then
 				pushSwingSound(swingSounds, groupName, soundAssetId)
 			end
@@ -814,7 +814,7 @@ local function collectStringArray(valueRaw: any): { string }
 end
 
 local function normalizeAnimationClip(clipRaw: any, fallbackNameRaw: any): { [string]: any }?
-	local fallbackName = sanitizeString(fallbackNameRaw, "Swing")
+	local fallbackName = CoerceString(fallbackNameRaw, "Swing")
 
 	if typeof(clipRaw) == "table" then
 		local clip = clipRaw :: { [string]: any }
@@ -836,7 +836,7 @@ local function normalizeAnimationClip(clipRaw: any, fallbackNameRaw: any): { [st
 		end
 
 		return {
-			name = sanitizeString(clip.name, fallbackName),
+			name = CoerceString(clip.name, fallbackName),
 			animation = animation,
 			id = animationId,
 			looped = if typeof(clip.looped) == "boolean" then clip.looped else nil,
@@ -913,7 +913,7 @@ local function normalizeAnimationClips(clipsRaw: any): { [number]: { [string]: a
 		end
 	end
 
-	local function resolveSortIndex(entry: { key: any, value: any }): number
+	local function GetSortIndex(entry: { key: any, value: any }): number
 		if typeof(entry.key) ~= "string" then
 			return 1_000_000
 		end
@@ -929,8 +929,8 @@ local function normalizeAnimationClips(clipsRaw: any): { [number]: { [string]: a
 	end
 
 	table.sort(remainingEntries, function(a, b)
-		local aSortIndex = resolveSortIndex(a)
-		local bSortIndex = resolveSortIndex(b)
+		local aSortIndex = GetSortIndex(a)
+		local bSortIndex = GetSortIndex(b)
 		if aSortIndex ~= bSortIndex then
 			return aSortIndex < bSortIndex
 		end
@@ -1051,12 +1051,12 @@ local function normalizeItemDefinition(itemId: string, moduleResultRaw: any): an
 end
 
 local function getItemDefinition(itemIdRaw: any): any?
-	local itemId = sanitizeItemId(itemIdRaw)
+	local itemId = CoerceItemId(itemIdRaw)
 	if itemId == nil then
 		return nil
 	end
 
-	local canonicalItemId = resolveCanonicalItemId(itemId)
+	local canonicalItemId = GetCanonicalItemId(itemId)
 	if canonicalItemId == nil then
 		return nil
 	end
@@ -1071,7 +1071,7 @@ local function getItemDefinition(itemIdRaw: any): any?
 		return canonicalCached
 	end
 
-	local definitionRaw = ItemRegistry.resolveDefinition(canonicalItemId)
+	local definitionRaw = ItemRegistry.GetDefinition(canonicalItemId)
 	if definitionRaw == nil then
 		return nil
 	end
@@ -1083,7 +1083,7 @@ local function getItemDefinition(itemIdRaw: any): any?
 
 	cachedDefinitions[itemId] = definition
 	cachedDefinitions[canonicalItemId] = definition
-	local definitionId = sanitizeItemId((definition :: any).id)
+	local definitionId = CoerceItemId((definition :: any).id)
 	if definitionId ~= nil then
 		cachedDefinitions[definitionId] = definition
 		cachedDefinitions[string.lower(definitionId)] = definition
@@ -1128,11 +1128,11 @@ local function isMeleeDefinition(itemId: string, definitionRaw: any): boolean
 		return false
 	end
 
-	local displayName = sanitizeString(definition.name, itemId)
+	local displayName = CoerceString(definition.name, itemId)
 	return looksLikeMeleeWeaponName(itemId, displayName)
 end
 
-local function sanitizeAnimations(animationsRaw: any, meleeRaw: any, definitionRaw: any): { [string]: any }?
+local function CoerceAnimations(animationsRaw: any, meleeRaw: any, definitionRaw: any): { [string]: any }?
 	local animationTable = if typeof(animationsRaw) == "table" then animationsRaw :: { [string]: any } else nil
 	local melee = if typeof(meleeRaw) == "table" then meleeRaw :: { [string]: any } else {} :: any
 	local definition = if typeof(definitionRaw) == "table" then definitionRaw :: { [string]: any } else {} :: any
@@ -1183,16 +1183,16 @@ local function sanitizeAnimations(animationsRaw: any, meleeRaw: any, definitionR
 		return nil
 	end
 
-	local swingSpeed = resolveConfiguredSwingSpeed(melee, definition, nil)
+	local swingSpeed = GetConfiguredSwingSpeed(melee, definition, nil)
 	if swingSpeed ~= 1 then
 		for _, clip in clips do
 			local baseSpeed = if typeof(clip.speed) == "number" then clip.speed else 1
-			clip.speed = sanitizeNumber(baseSpeed * swingSpeed, baseSpeed * swingSpeed, 0.01, 8)
+			clip.speed = CoerceNumber(baseSpeed * swingSpeed, baseSpeed * swingSpeed, 0.01, 8)
 			if typeof(clip.duration) == "number" then
-				clip.duration = sanitizeNumber(clip.duration / swingSpeed, clip.duration / swingSpeed, 0.01, 10)
+				clip.duration = CoerceNumber(clip.duration / swingSpeed, clip.duration / swingSpeed, 0.01, 10)
 			end
 			if typeof(clip.cooldown) == "number" then
-				clip.cooldown = sanitizeNumber(clip.cooldown / swingSpeed, clip.cooldown / swingSpeed, 0.01, 10)
+				clip.cooldown = CoerceNumber(clip.cooldown / swingSpeed, clip.cooldown / swingSpeed, 0.01, 10)
 			end
 		end
 	end
@@ -1237,7 +1237,7 @@ local function sanitizeAnimations(animationsRaw: any, meleeRaw: any, definitionR
 		normalizedAnimations.namedAnimations = namedAnimations
 	end
 	if stanceDelayRaw ~= nil then
-		normalizedAnimations.stanceDelay = sanitizeNumber(stanceDelayRaw, 1.35, 0.05, 30)
+		normalizedAnimations.stanceDelay = CoerceNumber(stanceDelayRaw, 1.35, 0.05, 30)
 	end
 	if typeof(stanceEnabledRaw) == "boolean" then
 		normalizedAnimations.stanceEnabled = stanceEnabledRaw
@@ -1267,13 +1267,13 @@ local function cloneWeaponConfig(config: MeleeWeaponConfig): MeleeWeaponConfig
 	}
 end
 
-function MeleeServiceUtils.ResolveWeaponConfig(itemIdRaw: any): MeleeWeaponConfig?
-	local rawItemId = sanitizeItemId(itemIdRaw)
+function MeleeServiceUtils.GetWeaponConfig(itemIdRaw: any): MeleeWeaponConfig?
+	local rawItemId = CoerceItemId(itemIdRaw)
 	if rawItemId == nil then
 		return nil
 	end
 
-	local itemId = resolveCanonicalItemId(rawItemId)
+	local itemId = GetCanonicalItemId(rawItemId)
 	if itemId == nil then
 		cachedWeaponConfigs[rawItemId] = false
 		return nil
@@ -1308,30 +1308,30 @@ function MeleeServiceUtils.ResolveWeaponConfig(itemIdRaw: any): MeleeWeaponConfi
 	local melee = if typeof(definition.melee) == "table" then definition.melee else {} :: any
 
 	local damage =
-		sanitizeNumber((melee :: any).damage or (stats :: any).dmg or definition.damage, DEFAULT_DAMAGE, 1, 50000)
-	local swingSpeed = resolveConfiguredSwingSpeed(melee, definition, stats)
-	local cooldownFromSpeed = sanitizeAttackSpeedToCooldown((stats :: any).attackSpeed, DEFAULT_COOLDOWN)
+		CoerceNumber((melee :: any).damage or (stats :: any).dmg or definition.damage, DEFAULT_DAMAGE, 1, 50000)
+	local swingSpeed = GetConfiguredSwingSpeed(melee, definition, stats)
+	local cooldownFromSpeed = CoerceAttackSpeedToCooldown((stats :: any).attackSpeed, DEFAULT_COOLDOWN)
 	local slashCooldownBase =
-		sanitizeNumber((melee :: any).slashCooldown or (melee :: any).cooldown, cooldownFromSpeed, 0.05, 10)
-	local slashCooldown = sanitizeNumber(slashCooldownBase / swingSpeed, slashCooldownBase / swingSpeed, 0.05, 10)
-	local slashResetCooldownBase = sanitizeNumber(
+		CoerceNumber((melee :: any).slashCooldown or (melee :: any).cooldown, cooldownFromSpeed, 0.05, 10)
+	local slashCooldown = CoerceNumber(slashCooldownBase / swingSpeed, slashCooldownBase / swingSpeed, 0.05, 10)
+	local slashResetCooldownBase = CoerceNumber(
 		(melee :: any).slashResetCooldown or (melee :: any).comboResetCooldown or (melee :: any).resetCooldown,
 		math.max(DEFAULT_SLASH_RESET_COOLDOWN, slashCooldownBase * 2),
 		slashCooldownBase,
 		30
 	)
 	local slashResetCooldown =
-		sanitizeNumber(slashResetCooldownBase / swingSpeed, slashResetCooldownBase / swingSpeed, slashCooldown, 30)
-	local swingDurationBase = sanitizeNumber((melee :: any).swingDuration, DEFAULT_SWING_DURATION, 0.05, 5)
-	local swingDuration = sanitizeNumber(swingDurationBase / swingSpeed, swingDurationBase / swingSpeed, 0.05, 5)
+		CoerceNumber(slashResetCooldownBase / swingSpeed, slashResetCooldownBase / swingSpeed, slashCooldown, 30)
+	local swingDurationBase = CoerceNumber((melee :: any).swingDuration, DEFAULT_SWING_DURATION, 0.05, 5)
+	local swingDuration = CoerceNumber(swingDurationBase / swingSpeed, swingDurationBase / swingSpeed, 0.05, 5)
 	local hitboxDurationBase =
-		sanitizeNumber((melee :: any).hitboxDuration, math.min(slashCooldownBase, DEFAULT_HITBOX_DURATION), 0.02, 5)
-	local hitboxDuration = sanitizeNumber(hitboxDurationBase / swingSpeed, hitboxDurationBase / swingSpeed, 0.02, 5)
-	local range = sanitizeNumber((melee :: any).range, DEFAULT_RANGE, 1, 30)
-	local width = sanitizeNumber((melee :: any).width, DEFAULT_WIDTH, 0.1, 20)
-	local height = sanitizeNumber((melee :: any).height, DEFAULT_HEIGHT, 0.1, 20)
-	local pointCount = math.max(2, math.floor(sanitizeNumber((melee :: any).pointCount, DEFAULT_POINT_COUNT, 2, 30)))
-	local displayName = sanitizeString(definition.name, itemId)
+		CoerceNumber((melee :: any).hitboxDuration, math.min(slashCooldownBase, DEFAULT_HITBOX_DURATION), 0.02, 5)
+	local hitboxDuration = CoerceNumber(hitboxDurationBase / swingSpeed, hitboxDurationBase / swingSpeed, 0.02, 5)
+	local range = CoerceNumber((melee :: any).range, DEFAULT_RANGE, 1, 30)
+	local width = CoerceNumber((melee :: any).width, DEFAULT_WIDTH, 0.1, 20)
+	local height = CoerceNumber((melee :: any).height, DEFAULT_HEIGHT, 0.1, 20)
+	local pointCount = math.max(2, math.floor(CoerceNumber((melee :: any).pointCount, DEFAULT_POINT_COUNT, 2, 30)))
+	local displayName = CoerceString(definition.name, itemId)
 
 	local weaponConfig: MeleeWeaponConfig = {
 		itemId = itemId,
@@ -1346,10 +1346,10 @@ function MeleeServiceUtils.ResolveWeaponConfig(itemIdRaw: any): MeleeWeaponConfi
 		width = width,
 		height = height,
 		pointCount = pointCount,
-		autoRepeatWhileHeld = sanitizeBoolean((melee :: any).autoRepeatWhileHeld, DEFAULT_AUTO_REPEAT),
-		canHitPlayers = sanitizeBoolean((melee :: any).canHitPlayers, DEFAULT_CAN_HIT_PLAYERS),
-		canHitNpcs = sanitizeBoolean((melee :: any).canHitNpcs, DEFAULT_CAN_HIT_NPCS),
-		animations = sanitizeAnimations((melee :: any).animations, melee, definition),
+		autoRepeatWhileHeld = CoerceBoolean((melee :: any).autoRepeatWhileHeld, DEFAULT_AUTO_REPEAT),
+		canHitPlayers = CoerceBoolean((melee :: any).canHitPlayers, DEFAULT_CAN_HIT_PLAYERS),
+		canHitNpcs = CoerceBoolean((melee :: any).canHitNpcs, DEFAULT_CAN_HIT_NPCS),
+		animations = CoerceAnimations((melee :: any).animations, melee, definition),
 	}
 
 	cachedWeaponConfigs[itemId] = weaponConfig
@@ -1363,10 +1363,10 @@ function MeleeServiceUtils.BuildHitboxPoints(weaponConfigRaw: any): { Vector3 }
 	end
 
 	local weaponConfig = weaponConfigRaw :: MeleeWeaponConfig
-	local range = sanitizeNumber(weaponConfig.range, DEFAULT_RANGE, 1, 30)
-	local width = sanitizeNumber(weaponConfig.width, DEFAULT_WIDTH, 0.1, 20)
-	local height = sanitizeNumber(weaponConfig.height, DEFAULT_HEIGHT, 0.1, 20)
-	local pointCount = math.max(2, math.floor(sanitizeNumber(weaponConfig.pointCount, DEFAULT_POINT_COUNT, 2, 40)))
+	local range = CoerceNumber(weaponConfig.range, DEFAULT_RANGE, 1, 30)
+	local width = CoerceNumber(weaponConfig.width, DEFAULT_WIDTH, 0.1, 20)
+	local height = CoerceNumber(weaponConfig.height, DEFAULT_HEIGHT, 0.1, 20)
+	local pointCount = math.max(2, math.floor(CoerceNumber(weaponConfig.pointCount, DEFAULT_POINT_COUNT, 2, 40)))
 
 	local points: { Vector3 } = {}
 	local halfWidth = width * 0.5
@@ -1404,17 +1404,17 @@ function MeleeServiceUtils.CreateMeleeClassConfig(weaponConfigRaw: any, override
 		autoRepeatWhileHeld = if typeof((overrides :: any).autoRepeatWhileHeld) == "boolean"
 			then (overrides :: any).autoRepeatWhileHeld
 			else weaponConfig.autoRepeatWhileHeld,
-		namedAnimationPlaybackEnabled = sanitizeBoolean((overrides :: any).namedAnimationPlaybackEnabled, true),
+		namedAnimationPlaybackEnabled = CoerceBoolean((overrides :: any).namedAnimationPlaybackEnabled, true),
 		stanceEnabled = if typeof((overrides :: any).stanceEnabled) == "boolean"
 			then (overrides :: any).stanceEnabled
 			else nil,
 		stanceDelay = if (overrides :: any).stanceDelay ~= nil
-			then sanitizeNumber((overrides :: any).stanceDelay, 1.35, 0.05, 30)
+			then CoerceNumber((overrides :: any).stanceDelay, 1.35, 0.05, 30)
 			else nil,
 		cooldown = weaponConfig.slashCooldown,
 		slashResetCooldown = weaponConfig.slashResetCooldown,
 		fallbackSwingDuration = weaponConfig.swingDuration,
-		fallbackSwingPadding = sanitizeNumber(
+		fallbackSwingPadding = CoerceNumber(
 			(overrides :: any).fallbackSwingPadding,
 			DEFAULT_FALLBACK_SWING_PADDING,
 			0,
@@ -1431,7 +1431,7 @@ function MeleeServiceUtils.CreateMeleeClassConfig(weaponConfigRaw: any, override
 	}
 end
 
-local function resolveClipComparableToken(clipRaw: any): string
+local function GetClipComparableToken(clipRaw: any): string
 	if typeof(clipRaw) == "Instance" and clipRaw:IsA("Animation") then
 		local animationId = normalizeAnimationId(clipRaw.AnimationId)
 		if animationId ~= nil then
@@ -1471,7 +1471,7 @@ local function resolveClipComparableToken(clipRaw: any): string
 	return ""
 end
 
-local function resolveNamedAnimationComparableTokens(namedRaw: any): { [string]: string }
+local function GetNamedAnimationComparableTokens(namedRaw: any): { [string]: string }
 	local comparable: { [string]: string } = {}
 	if typeof(namedRaw) ~= "table" then
 		return comparable
@@ -1487,7 +1487,7 @@ local function resolveNamedAnimationComparableTokens(namedRaw: any): { [string]:
 			end
 		end
 
-		local token = resolveClipComparableToken(value)
+		local token = GetClipComparableToken(value)
 		if token ~= "" then
 			comparable[normalizedKey :: string] = token
 		end
@@ -1522,15 +1522,15 @@ function MeleeServiceUtils.AreAnimationConfigsEquivalent(lhsRaw: any, rhsRaw: an
 	end
 
 	for clipIndex = 1, #lhsClips do
-		local lhsToken = resolveClipComparableToken(lhsClips[clipIndex])
-		local rhsToken = resolveClipComparableToken(rhsClips[clipIndex])
+		local lhsToken = GetClipComparableToken(lhsClips[clipIndex])
+		local rhsToken = GetClipComparableToken(rhsClips[clipIndex])
 		if lhsToken ~= rhsToken then
 			return false
 		end
 	end
 
-	local lhsNamedComparable = resolveNamedAnimationComparableTokens(lhs.namedAnimations)
-	local rhsNamedComparable = resolveNamedAnimationComparableTokens(rhs.namedAnimations)
+	local lhsNamedComparable = GetNamedAnimationComparableTokens(lhs.namedAnimations)
+	local rhsNamedComparable = GetNamedAnimationComparableTokens(rhs.namedAnimations)
 	local lhsNamedCount = 0
 	local rhsNamedCount = 0
 	for _ in lhsNamedComparable do
@@ -1548,8 +1548,8 @@ function MeleeServiceUtils.AreAnimationConfigsEquivalent(lhsRaw: any, rhsRaw: an
 		end
 	end
 
-	local lhsStanceDelay = sanitizeNumber(lhs.stanceDelay, -1, -1, 30)
-	local rhsStanceDelay = sanitizeNumber(rhs.stanceDelay, -1, -1, 30)
+	local lhsStanceDelay = CoerceNumber(lhs.stanceDelay, -1, -1, 30)
+	local rhsStanceDelay = CoerceNumber(rhs.stanceDelay, -1, -1, 30)
 	if lhsStanceDelay ~= rhsStanceDelay then
 		return false
 	end
@@ -1563,7 +1563,7 @@ function MeleeServiceUtils.AreAnimationConfigsEquivalent(lhsRaw: any, rhsRaw: an
 	return true
 end
 
-function MeleeServiceUtils.ResolveSelectedItemIdFromInventoryState(stateRaw: any): (string?, number?)
+function MeleeServiceUtils.GetSelectedItemIdFromInventoryState(stateRaw: any): (string?, number?)
 	if typeof(stateRaw) ~= "table" then
 		return nil, nil
 	end
@@ -1590,22 +1590,9 @@ function MeleeServiceUtils.ResolveSelectedItemIdFromInventoryState(stateRaw: any
 		return nil, selectedSlot
 	end
 
-	local itemId = sanitizeItemId((stack :: any).itemId)
+	local itemId = CoerceItemId((stack :: any).itemId)
 	return itemId, selectedSlot
 end
 
-MeleeServiceUtils.resolveToolItemId = MeleeServiceUtils.ResolveToolItemId
-MeleeServiceUtils.resolveToolItemType = MeleeServiceUtils.ResolveToolItemType
-MeleeServiceUtils.isSwordTool = MeleeServiceUtils.IsSwordTool
-MeleeServiceUtils.isMeleeTool = MeleeServiceUtils.IsMeleeTool
-MeleeServiceUtils.resolveToolByItemId = MeleeServiceUtils.ResolveToolByItemId
-MeleeServiceUtils.resolveToolAnimationOverrides = MeleeServiceUtils.ResolveToolAnimationOverrides
-MeleeServiceUtils.resolveToolSounds = MeleeServiceUtils.ResolveToolSounds
-MeleeServiceUtils.resolveToolSwingSounds = MeleeServiceUtils.ResolveToolSwingSounds
-MeleeServiceUtils.resolveWeaponConfig = MeleeServiceUtils.ResolveWeaponConfig
-MeleeServiceUtils.buildHitboxPoints = MeleeServiceUtils.BuildHitboxPoints
-MeleeServiceUtils.createMeleeClassConfig = MeleeServiceUtils.CreateMeleeClassConfig
-MeleeServiceUtils.areAnimationConfigsEquivalent = MeleeServiceUtils.AreAnimationConfigsEquivalent
-MeleeServiceUtils.resolveSelectedItemIdFromInventoryState = MeleeServiceUtils.ResolveSelectedItemIdFromInventoryState
 
 return MeleeServiceUtils

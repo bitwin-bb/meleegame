@@ -14,14 +14,14 @@ type ParallaxRootProps = {
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: ParallaxRootProps?): React.ReactNode
-	local resolvedProps = if props ~= nil then props else {} :: ParallaxRootProps
+	local GotProps = if props ~= nil then props else {} :: ParallaxRootProps
 	local children: { React.ReactNode } = {}
 
-	if resolvedProps.parallaxVisible ~= false then
+	if GotProps.parallaxVisible ~= false then
 		children[#children + 1] = e(ParallaxScreen)
 	end
 
-	if resolvedProps.cloudsVisible ~= false then
+	if GotProps.cloudsVisible ~= false then
 		children[#children + 1] = e(CloudScreen)
 	end
 

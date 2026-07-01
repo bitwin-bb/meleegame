@@ -16,9 +16,6 @@ function Eye.New(configRaw: EyeConfig?): Eye
 	if config.archetype == nil then
 		config.archetype = "DemonEye"
 	end
-	return Default.new(config)
+	return Default.New(config)
 end
-
-Eye.new = Eye.New
-
 return Eye

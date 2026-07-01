@@ -32,7 +32,7 @@ CrossfadeShared.DEFAULT_SKYBOX_IMAGE_MAP = table.freeze({
 	SkyboxBk = "rbxasset://textures/sky/sky512_bk.tex",
 })
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and not Math.isNaN(valueRaw) and Math.isFinite(valueRaw) then
 		value = valueRaw
@@ -46,15 +46,13 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number?,
 	return value
 end
 
-function CrossfadeShared.ResolveTransitionSeconds(transitionSecondsRaw: any): number
-	return sanitizeNumber(transitionSecondsRaw, DEFAULT_TRANSITION_SECONDS, 0, CrossfadeShared.MAX_TRANSITION_SECONDS)
+function CrossfadeShared.GetTransitionSeconds(transitionSecondsRaw: any): number
+	return CoerceNumber(transitionSecondsRaw, DEFAULT_TRANSITION_SECONDS, 0, CrossfadeShared.MAX_TRANSITION_SECONDS)
 end
 
-function CrossfadeShared.ResolveCleanupDelaySeconds(transitionSecondsRaw: any): number
-	return CrossfadeShared.ResolveTransitionSeconds(transitionSecondsRaw) + CrossfadeShared.CLEANUP_BUFFER_SECONDS
+function CrossfadeShared.GetCleanupDelaySeconds(transitionSecondsRaw: any): number
+	return CrossfadeShared.GetTransitionSeconds(transitionSecondsRaw) + CrossfadeShared.CLEANUP_BUFFER_SECONDS
 end
 
-CrossfadeShared.resolveTransitionSeconds = CrossfadeShared.ResolveTransitionSeconds
-CrossfadeShared.resolveCleanupDelaySeconds = CrossfadeShared.ResolveCleanupDelaySeconds
 
 return CrossfadeShared

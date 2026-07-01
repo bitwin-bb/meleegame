@@ -111,7 +111,7 @@ local PLAYER_LAND_AUDIO = PLAYER_AUDIO.Land or ({} :: any)
 
 local function createAudioBackedLandingConfig(audioEntries: any, config: LandingSoundConfig): LandingSoundConfig
 	return {
-		soundAssetIds = AudioServiceUtils.collectSoundAssetIds(audioEntries),
+		soundAssetIds = AudioServiceUtils.CollectSoundAssetIds(audioEntries),
 		volume = config.volume,
 		playbackSpeedMin = config.playbackSpeedMin,
 		playbackSpeedMax = config.playbackSpeedMax,
@@ -198,17 +198,17 @@ local LANDING_SOUND_ALIASES: { [string]: string } = {
 local RANDOM = Random.new()
 
 local function normalizeSignedRadians(angleRadians: number): number
-	return Angle.wrapRadians(angleRadians)
+	return Angle.WrapRadians(angleRadians)
 end
 
-local function sanitizeDeadzone(valueRaw: any, fallback: number): number
+local function CoerceDeadzone(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		return math.clamp(valueRaw, 0, 0.99)
 	end
 	return fallback
 end
 
-local function sanitizeAxis(valueRaw: any): number
+local function CoerceAxis(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return 0
 	end
@@ -225,7 +225,7 @@ local function applyThumbstickDeadzone(vector: Vector2, deadzone: number): Vecto
 	return (vector / magnitude) * scaledMagnitude
 end
 
-local function resolveThumbstickVector(inputObjectRaw: any): Vector2?
+local function GetThumbstickVector(inputObjectRaw: any): Vector2?
 	if typeof(inputObjectRaw) == "Vector2" then
 		return inputObjectRaw
 	end
@@ -289,11 +289,11 @@ PlayerServiceUtils.LIQUID_WALK_SPEED_MULTIPLIER_ATTRIBUTE = LIQUID_WALK_SPEED_MU
 PlayerServiceUtils.MIN_RESPAWN_MAX_HEALTH = MIN_RESPAWN_MAX_HEALTH
 
 function PlayerServiceUtils.GetOrCreateWorkspaceGameFolder(): Folder
-	return WorkspaceFolders.getOrCreateGameFolder()
+	return WorkspaceFolders.GetOrCreateGameFolder()
 end
 
 function PlayerServiceUtils.GetOrCreateWorkspacePlayersFolder(): Folder
-	return WorkspaceFolders.getOrCreateFolderInGame(PLAYERS_FOLDER_NAME)
+	return WorkspaceFolders.GetOrCreateFolderInGame(PLAYERS_FOLDER_NAME)
 end
 
 function PlayerServiceUtils.ComputeRespawnHealthFromDeath(maxHealthRaw: any, scaleRaw: any): number
@@ -308,7 +308,7 @@ function PlayerServiceUtils.ComputeRespawnMaxHealthFromDeath(maxHealthRaw: any, 
 	return PlayerServiceUtils.ComputeRespawnHealthFromDeath(maxHealthRaw, scaleRaw)
 end
 
-function PlayerServiceUtils.SanitizeInvincibilityFramesConfig(configRaw: any): InvincibilityFramesConfig
+function PlayerServiceUtils.CoerceInvincibilityFramesConfig(configRaw: any): InvincibilityFramesConfig
 	local source = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local duration = if typeof((source :: any).duration) == "number"
 			and (source :: any).duration == (source :: any).duration
@@ -335,7 +335,7 @@ function PlayerServiceUtils.SanitizeInvincibilityFramesConfig(configRaw: any): I
 	}
 end
 
-function PlayerServiceUtils.SanitizeFacingSign(value: any, fallback: FacingSign?): FacingSign
+function PlayerServiceUtils.CoerceFacingSign(value: any, fallback: FacingSign?): FacingSign
 	if value == -1 then
 		return -1
 	end
@@ -346,7 +346,7 @@ function PlayerServiceUtils.SanitizeFacingSign(value: any, fallback: FacingSign?
 	return fallback or DEFAULT_FACING_SIGN
 end
 
-function PlayerServiceUtils.ResolveCharacterRig(character: Model?): CharacterRig?
+function PlayerServiceUtils.GetCharacterRig(character: Model?): CharacterRig?
 	if not character then
 		return nil
 	end
@@ -369,7 +369,7 @@ function PlayerServiceUtils.ResolveCharacterRig(character: Model?): CharacterRig
 	}
 end
 
-function PlayerServiceUtils.ResolveCharacterRootPart(character: Model?): BasePart?
+function PlayerServiceUtils.GetCharacterRootPart(character: Model?): BasePart?
 	if not character then
 		return nil
 	end
@@ -422,7 +422,7 @@ function PlayerServiceUtils.EmitBloodEffect(_character: Model, _originPart: Base
 	return false
 end
 
-function PlayerServiceUtils.ResolveHeadPart(character: Model): BasePart?
+function PlayerServiceUtils.GetHeadPart(character: Model): BasePart?
 	local headCandidate = character:FindFirstChild("Head")
 	if headCandidate and headCandidate:IsA("BasePart") then
 		return headCandidate
@@ -431,14 +431,14 @@ function PlayerServiceUtils.ResolveHeadPart(character: Model): BasePart?
 	return nil
 end
 
-function PlayerServiceUtils.ResolveNeckJoint(character: Model): Motor6D?
+function PlayerServiceUtils.GetNeckJoint(character: Model): Motor6D?
 	for _, descendant in character:GetDescendants() do
 		if descendant:IsA("Motor6D") and descendant.Name == "Neck" then
 			return descendant
 		end
 	end
 
-	local headPart = PlayerServiceUtils.ResolveHeadPart(character)
+	local headPart = PlayerServiceUtils.GetHeadPart(character)
 	if not headPart then
 		return nil
 	end
@@ -452,7 +452,7 @@ function PlayerServiceUtils.ResolveNeckJoint(character: Model): Motor6D?
 	return nil
 end
 
-function PlayerServiceUtils.ResolveFootParts(character: Model): (BasePart?, BasePart?)
+function PlayerServiceUtils.GetFootParts(character: Model): (BasePart?, BasePart?)
 	local leftFootCandidate = character:FindFirstChild("LeftFoot") or character:FindFirstChild("Left Leg")
 	local rightFootCandidate = character:FindFirstChild("RightFoot") or character:FindFirstChild("Right Leg")
 	local leftFoot = if leftFootCandidate and leftFootCandidate:IsA("BasePart") then leftFootCandidate else nil
@@ -487,7 +487,7 @@ function PlayerServiceUtils.IsSurfaceTerrainPart(part: BasePart?): boolean
 		return false
 	end
 
-	local worldFolder = WorkspaceFolders.findFolderInGameOrWorkspace(WORLD_GENERATION_FOLDER_NAME)
+	local worldFolder = WorkspaceFolders.FindFolderInGameOrWorkspace(WORLD_GENERATION_FOLDER_NAME)
 	if worldFolder == nil then
 		return false
 	end
@@ -553,7 +553,7 @@ function PlayerServiceUtils.SampleGroundFromFeet(
 	return raycastGroundFromPart(rootPart, raycastParams, raycastDistance, DEFAULT_GROUND_RAYCAST_ORIGIN_LIFT + 0.2)
 end
 
-function PlayerServiceUtils.ResolveLandingSurface(material: Enum.Material): string
+function PlayerServiceUtils.GetLandingSurface(material: Enum.Material): string
 	local materialName = material.Name
 	local alias = LANDING_SOUND_ALIASES[materialName]
 	if alias then
@@ -563,7 +563,7 @@ function PlayerServiceUtils.ResolveLandingSurface(material: Enum.Material): stri
 end
 
 function PlayerServiceUtils.GetLandingSoundConfig(material: Enum.Material): LandingSoundConfig?
-	local surfaceName = PlayerServiceUtils.ResolveLandingSurface(material)
+	local surfaceName = PlayerServiceUtils.GetLandingSurface(material)
 	local perSurface = LANDING_SOUNDS_BY_SURFACE[surfaceName]
 	if perSurface and #perSurface.soundAssetIds > 0 then
 		return perSurface
@@ -576,7 +576,7 @@ function PlayerServiceUtils.GetLandingSoundConfig(material: Enum.Material): Land
 	return nil
 end
 
-function PlayerServiceUtils.ResolveLandingVolumeScale(impactSpeed: number): number
+function PlayerServiceUtils.GetLandingVolumeScale(impactSpeed: number): number
 	local normalizedImpact = math.clamp((impactSpeed - DEFAULT_LANDING_MIN_IMPACT_SPEED) / 32, 0, 1)
 	return 0.78 + normalizedImpact * 0.48
 end
@@ -597,7 +597,7 @@ function PlayerServiceUtils.CreateLandingPlaybackOptions(
 	local playbackMin = config.playbackSpeedMin
 	local playbackMax = config.playbackSpeedMax
 	local playbackSpeed = if playbackMax > playbackMin then RANDOM:NextNumber(playbackMin, playbackMax) else playbackMin
-	local volumeScale = PlayerServiceUtils.ResolveLandingVolumeScale(impactSpeed)
+	local volumeScale = PlayerServiceUtils.GetLandingVolumeScale(impactSpeed)
 
 	return {
 		parent = rootPart,
@@ -610,7 +610,7 @@ function PlayerServiceUtils.CreateLandingPlaybackOptions(
 	}
 end
 
-function PlayerServiceUtils.ResolveLandingSoundAssetIdAndOptions(
+function PlayerServiceUtils.GetLandingSoundAssetIdAndOptions(
 	rootPart: BasePart,
 	material: Enum.Material,
 	impactSpeed: number
@@ -760,7 +760,7 @@ function PlayerServiceUtils.GetFacingFlipFromScreenX(
 	currentFacingRaw: any,
 	hysteresisPixels: number?
 ): FacingSign?
-	local currentFacing = PlayerServiceUtils.SanitizeFacingSign(currentFacingRaw, DEFAULT_FACING_SIGN)
+	local currentFacing = PlayerServiceUtils.CoerceFacingSign(currentFacingRaw, DEFAULT_FACING_SIGN)
 	local threshold = if hysteresisPixels
 		then math.max(0, hysteresisPixels)
 		else DEFAULT_MOUSE_FACING_FLIP_HYSTERESIS_PIXELS
@@ -795,7 +795,7 @@ function PlayerServiceUtils.GetScreenLookAngleRadians(
 end
 
 function PlayerServiceUtils.GetRelativeLookAngleRadians(screenLookAngleRadians: number, facingSignRaw: any): number
-	local facingSign = PlayerServiceUtils.SanitizeFacingSign(facingSignRaw, DEFAULT_FACING_SIGN)
+	local facingSign = PlayerServiceUtils.CoerceFacingSign(facingSignRaw, DEFAULT_FACING_SIGN)
 	local forwardAngle = if facingSign == 1 then 0 else HALF_TURN_RADIANS
 	local relativeLookAngleRadians = normalizeSignedRadians(screenLookAngleRadians - forwardAngle)
 	if facingSign == -1 then
@@ -810,7 +810,7 @@ end
 
 function PlayerServiceUtils.ClampLookAngleRadians(relativeLookAngleRadians: number, maxYawDegrees: number?): number
 	local maxYawRadians =
-		Trig.degToRad(math.max(0, if maxYawDegrees then maxYawDegrees else DEFAULT_HEAD_LOOK_MAX_YAW_DEGREES))
+		Trig.DegToRad(math.max(0, if maxYawDegrees then maxYawDegrees else DEFAULT_HEAD_LOOK_MAX_YAW_DEGREES))
 	return math.clamp(relativeLookAngleRadians, -maxYawRadians, maxYawRadians)
 end
 
@@ -839,8 +839,8 @@ function PlayerServiceUtils.GetMouseWorldPointOnPlaneX(
 	planeX: number
 ): Vector3?
 	local mouseRay = camera:ViewportPointToRay(mouseX, mouseY)
-	local plane = Plane.fromPointNormal(Vector3.new(planeX, 0, 0), Vector3.xAxis)
-	local hit = Plane.raycast(plane, mouseRay.Origin, mouseRay.Direction)
+	local plane = Plane.FromPointNormal(Vector3.new(planeX, 0, 0), Vector3.xAxis)
+	local hit = Plane.Raycast(plane, mouseRay.Origin, mouseRay.Direction)
 	return if hit ~= nil then hit.point else nil
 end
 
@@ -850,8 +850,8 @@ function PlayerServiceUtils.GetNormalizedWorldAxisFromZ(targetZ: number, originZ
 end
 
 function PlayerServiceUtils.ApplyAxisDeadzone(axisRaw: any, deadzoneRaw: any): number
-	local axis = sanitizeAxis(axisRaw)
-	local deadzone = sanitizeDeadzone(deadzoneRaw, DEFAULT_MOVE_AXIS_DEADZONE)
+	local axis = CoerceAxis(axisRaw)
+	local deadzone = CoerceDeadzone(deadzoneRaw, DEFAULT_MOVE_AXIS_DEADZONE)
 	if math.abs(axis) <= deadzone then
 		return 0
 	end
@@ -863,13 +863,13 @@ function PlayerServiceUtils.GetGamepadMoveAxis(
 	stickDeadzoneRaw: any,
 	axisDeadzoneRaw: any?
 ): number
-	local stickDeadzone = sanitizeDeadzone(stickDeadzoneRaw, DEFAULT_HORIZONTAL_DEADZONE)
-	local axisDeadzone = sanitizeDeadzone(axisDeadzoneRaw, DEFAULT_MOVE_AXIS_DEADZONE)
-	local thumbstickVector = resolveThumbstickVector(gamepadStateRaw)
+	local stickDeadzone = CoerceDeadzone(stickDeadzoneRaw, DEFAULT_HORIZONTAL_DEADZONE)
+	local axisDeadzone = CoerceDeadzone(axisDeadzoneRaw, DEFAULT_MOVE_AXIS_DEADZONE)
+	local thumbstickVector = GetThumbstickVector(gamepadStateRaw)
 
 	if thumbstickVector == nil and typeof(gamepadStateRaw) == "table" then
 		for _, inputObjectRaw in gamepadStateRaw do
-			thumbstickVector = resolveThumbstickVector(inputObjectRaw)
+			thumbstickVector = GetThumbstickVector(inputObjectRaw)
 			if thumbstickVector ~= nil then
 				break
 			end
@@ -905,7 +905,7 @@ function PlayerServiceUtils.GetGamepadHorizontalAxis(
 
 	if typeof(gamepadState) == "table" then
 		for _, inputObjectRaw in gamepadState do
-			if resolveThumbstickVector(inputObjectRaw) ~= nil then
+			if GetThumbstickVector(inputObjectRaw) ~= nil then
 				return PlayerServiceUtils.GetGamepadMoveAxis(inputObjectRaw, stickDeadzoneRaw, axisDeadzoneRaw)
 			end
 		end
@@ -951,7 +951,7 @@ function PlayerServiceUtils.GetCombinedHorizontalInputAxis(
 		local isKeyDown = keyboardProviderRaw :: (Enum.KeyCode) -> boolean
 		return PlayerServiceUtils.GetHorizontalInputAxis(isKeyDown)
 	end
-	return sanitizeAxis(keyboardProviderRaw)
+	return CoerceAxis(keyboardProviderRaw)
 end
 
 function PlayerServiceUtils.GetFacingFromLookVector(lookVector: Vector3, fallback: FacingSign?): FacingSign
@@ -979,7 +979,7 @@ function PlayerServiceUtils.EnsureRootPartUpright(
 ): boolean
 	local tolerance = math.max(0, if toleranceDegrees then toleranceDegrees else DEFAULT_ROOT_UPRIGHT_TOLERANCE_DEGREES)
 	local upDot = math.clamp(rootPart.CFrame.UpVector:Dot(Vector3.yAxis), -1, 1)
-	local tiltDegrees = Trig.radToDeg(Trig.safeAcos(upDot))
+	local tiltDegrees = Trig.RadToDeg(Trig.SafeAcos(upDot))
 	if tiltDegrees <= tolerance then
 		return false
 	end
@@ -1054,62 +1054,4 @@ function PlayerServiceUtils.ResetNeckLook(neckJoint: Motor6D?, baseC0: CFrame?)
 
 	neckJoint.C0 = baseC0
 end
-
-PlayerServiceUtils.getOrCreateWorkspaceGameFolder = PlayerServiceUtils.GetOrCreateWorkspaceGameFolder
-PlayerServiceUtils.getOrCreateWorkspacePlayersFolder = PlayerServiceUtils.GetOrCreateWorkspacePlayersFolder
-PlayerServiceUtils.computeRespawnHealthFromDeath = PlayerServiceUtils.ComputeRespawnHealthFromDeath
-PlayerServiceUtils.computeRespawnMaxHealthFromDeath = PlayerServiceUtils.ComputeRespawnMaxHealthFromDeath
-PlayerServiceUtils.sanitizeInvincibilityFramesConfig = PlayerServiceUtils.SanitizeInvincibilityFramesConfig
-PlayerServiceUtils.sanitizeFacingSign = PlayerServiceUtils.SanitizeFacingSign
-PlayerServiceUtils.resolveCharacterRig = PlayerServiceUtils.ResolveCharacterRig
-PlayerServiceUtils.resolveCharacterRootPart = PlayerServiceUtils.ResolveCharacterRootPart
-PlayerServiceUtils.getOrCreateEffectsJunkFolder = PlayerServiceUtils.GetOrCreateEffectsJunkFolder
-PlayerServiceUtils.emitBloodEffect = PlayerServiceUtils.EmitBloodEffect
-PlayerServiceUtils.resolveHeadPart = PlayerServiceUtils.ResolveHeadPart
-PlayerServiceUtils.resolveNeckJoint = PlayerServiceUtils.ResolveNeckJoint
-PlayerServiceUtils.resolveFootParts = PlayerServiceUtils.ResolveFootParts
-PlayerServiceUtils.createGroundRaycastParams = PlayerServiceUtils.CreateGroundRaycastParams
-PlayerServiceUtils.createWorldUnlockRaycastParams = PlayerServiceUtils.CreateWorldUnlockRaycastParams
-PlayerServiceUtils.isSurfaceTerrainPart = PlayerServiceUtils.IsSurfaceTerrainPart
-PlayerServiceUtils.sampleGroundFromFeet = PlayerServiceUtils.SampleGroundFromFeet
-PlayerServiceUtils.resolveLandingSurface = PlayerServiceUtils.ResolveLandingSurface
-PlayerServiceUtils.getLandingSoundConfig = PlayerServiceUtils.GetLandingSoundConfig
-PlayerServiceUtils.resolveLandingVolumeScale = PlayerServiceUtils.ResolveLandingVolumeScale
-PlayerServiceUtils.pickRandomLandingSoundAssetId = PlayerServiceUtils.PickRandomLandingSoundAssetId
-PlayerServiceUtils.createLandingPlaybackOptions = PlayerServiceUtils.CreateLandingPlaybackOptions
-PlayerServiceUtils.resolveLandingSoundAssetIdAndOptions = PlayerServiceUtils.ResolveLandingSoundAssetIdAndOptions
-PlayerServiceUtils.applyCharacterSettings = PlayerServiceUtils.ApplyCharacterSettings
-PlayerServiceUtils.getBaseWalkSpeed = PlayerServiceUtils.GetBaseWalkSpeed
-PlayerServiceUtils.getCombinedWalkSpeedMultiplier = PlayerServiceUtils.GetCombinedWalkSpeedMultiplier
-PlayerServiceUtils.applyCombinedWalkSpeedModifiers = PlayerServiceUtils.ApplyCombinedWalkSpeedModifiers
-PlayerServiceUtils.setMovementSpeedMultiplier = PlayerServiceUtils.SetMovementSpeedMultiplier
-PlayerServiceUtils.isHumanoidAlive = PlayerServiceUtils.IsHumanoidAlive
-PlayerServiceUtils.getFacingFromMoveDirection = PlayerServiceUtils.GetFacingFromMoveDirection
-PlayerServiceUtils.isMoveDirectionActive = PlayerServiceUtils.IsMoveDirectionActive
-PlayerServiceUtils.getFacingFromHorizontalKeyState = PlayerServiceUtils.GetFacingFromHorizontalKeyState
-PlayerServiceUtils.getFacingFromScreenX = PlayerServiceUtils.GetFacingFromScreenX
-PlayerServiceUtils.getFacingFlipFromScreenX = PlayerServiceUtils.GetFacingFlipFromScreenX
-PlayerServiceUtils.getScreenLookAngleRadians = PlayerServiceUtils.GetScreenLookAngleRadians
-PlayerServiceUtils.getRelativeLookAngleRadians = PlayerServiceUtils.GetRelativeLookAngleRadians
-PlayerServiceUtils.shouldFlipFacingFromRelativeLookAngle = PlayerServiceUtils.ShouldFlipFacingFromRelativeLookAngle
-PlayerServiceUtils.clampLookAngleRadians = PlayerServiceUtils.ClampLookAngleRadians
-PlayerServiceUtils.getNormalizedScreenAxisFromX = PlayerServiceUtils.GetNormalizedScreenAxisFromX
-PlayerServiceUtils.getMouseWorldPointOnPlaneX = PlayerServiceUtils.GetMouseWorldPointOnPlaneX
-PlayerServiceUtils.getNormalizedWorldAxisFromZ = PlayerServiceUtils.GetNormalizedWorldAxisFromZ
-PlayerServiceUtils.applyAxisDeadzone = PlayerServiceUtils.ApplyAxisDeadzone
-PlayerServiceUtils.getGamepadMoveAxis = PlayerServiceUtils.GetGamepadMoveAxis
-PlayerServiceUtils.getGamepadHorizontalAxis = PlayerServiceUtils.GetGamepadHorizontalAxis
-PlayerServiceUtils.getGamepadThumbstick1Axis = PlayerServiceUtils.GetGamepadThumbstick1Axis
-PlayerServiceUtils.getHorizontalInputAxis = PlayerServiceUtils.GetHorizontalInputAxis
-PlayerServiceUtils.getCombinedHorizontalInputAxis = PlayerServiceUtils.GetCombinedHorizontalInputAxis
-PlayerServiceUtils.getFacingFromLookVector = PlayerServiceUtils.GetFacingFromLookVector
-PlayerServiceUtils.snapRootPartFacing = PlayerServiceUtils.SnapRootPartFacing
-PlayerServiceUtils.ensureRootPartUpright = PlayerServiceUtils.EnsureRootPartUpright
-PlayerServiceUtils.getSidewaysMoveVector = PlayerServiceUtils.GetSidewaysMoveVector
-PlayerServiceUtils.applyAccelerationCurve = PlayerServiceUtils.ApplyAccelerationCurve
-PlayerServiceUtils.applySidewaysConstraint = PlayerServiceUtils.ApplySidewaysConstraint
-PlayerServiceUtils.applyNeckLookAngle = PlayerServiceUtils.ApplyNeckLookAngle
-PlayerServiceUtils.applyNeckLook = PlayerServiceUtils.ApplyNeckLook
-PlayerServiceUtils.resetNeckLook = PlayerServiceUtils.ResetNeckLook
-
 return PlayerServiceUtils

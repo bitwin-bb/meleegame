@@ -18,20 +18,20 @@ type NpcRootProps = {
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: NpcRootProps?): React.ReactNode
-	local resolvedProps = if props ~= nil then props else {} :: NpcRootProps
+	local GotProps = if props ~= nil then props else {} :: NpcRootProps
 
 	return e(React.Fragment, nil, {
 		e(EyeOfCthulhuScreen, {
-			zIndex = resolvedProps.eyeOfCthulhuZIndex or 166,
+			zIndex = GotProps.eyeOfCthulhuZIndex or 166,
 		}),
 		e(EyeOfCthulhuServantScreen, {
-			zIndex = resolvedProps.eyeOfCthulhuServantZIndex or 167,
+			zIndex = GotProps.eyeOfCthulhuServantZIndex or 167,
 		}),
 		e(SlimeScreen, {
-			zIndex = resolvedProps.slimeZIndex or 168,
+			zIndex = GotProps.slimeZIndex or 168,
 		}),
 		e(QueenBeeScreen, {
-			zIndex = resolvedProps.queenBeeZIndex or 169,
+			zIndex = GotProps.queenBeeZIndex or 169,
 		}),
 	})
 end

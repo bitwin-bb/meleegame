@@ -17,8 +17,6 @@ function StateMachineDebugger.Snapshot(machine: any): { [string]: any }
 		running = if typeof(machine.IsRunning) == "function" then machine:IsRunning() else false,
 	}
 end
-
-StateMachineDebugger.snapshot = StateMachineDebugger.Snapshot
 StateMachineDebugger.copy = Table.copy
 
 return StateMachineDebugger

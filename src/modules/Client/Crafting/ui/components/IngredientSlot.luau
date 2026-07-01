@@ -22,7 +22,7 @@ export type IngredientSlotProps = {
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: IngredientSlotProps): React.ReactNode
-	local coinSpriteSheet = CoinSprites.resolveSpriteSheet(props.itemId)
+	local coinSpriteSheet = CoinSprites.GetSpriteSheet(props.itemId)
 
 	return e("ImageLabel", {
 		Size = props.size,

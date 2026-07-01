@@ -24,11 +24,11 @@ function Trig.SinCos(angleRadians: number): (number, number)
 end
 
 function Trig.SafeAsin(value: number): number
-	return math.asin(Num.clamp(value, -1, 1))
+	return math.asin(Num.Clamp(value, -1, 1))
 end
 
 function Trig.SafeAcos(value: number): number
-	return math.acos(Num.clamp(value, -1, 1))
+	return math.acos(Num.Clamp(value, -1, 1))
 end
 
 function Trig.SafeAtan2(y: number, x: number): number
@@ -37,12 +37,4 @@ function Trig.SafeAtan2(y: number, x: number): number
 	end
 	return math.atan2(y, x)
 end
-
-Trig.degToRad = Trig.DegToRad
-Trig.radToDeg = Trig.RadToDeg
-Trig.sinCos = Trig.SinCos
-Trig.safeAsin = Trig.SafeAsin
-Trig.safeAcos = Trig.SafeAcos
-Trig.safeAtan2 = Trig.SafeAtan2
-
 return Trig

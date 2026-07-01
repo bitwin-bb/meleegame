@@ -57,7 +57,4 @@ function HealthScorer.Destroy(self: HealthScorer)
 end
 
 HealthScorer.copy = Table.copy
-HealthScorer.getScore = HealthScorer.GetScore
-HealthScorer.destroy = HealthScorer.Destroy
-
 return HealthScorer

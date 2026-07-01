@@ -32,7 +32,7 @@ local DEFAULT_IMAGE_ID = if typeof((ImageIds :: any).platform) == "table"
 
 local THUMBSTICK_ACTIVE_EPSILON = GamepadNav.THUMBSTICK_ACTIVE_EPSILON
 
-local function sanitizeDeadzone(valueRaw: any, fallback: number): number
+local function CoerceDeadzone(valueRaw: any, fallback: number): number
 	local value = if typeof(valueRaw) == "number" and valueRaw == valueRaw then valueRaw else fallback
 	return math.clamp(value, 0, 1)
 end
@@ -108,8 +108,8 @@ local function updateThumbsticks(snapshotRaw: any): PadState
 		lastInputAt = if typeof((snapshot :: any).lastUpdatedAt) == "number"
 			then (snapshot :: any).lastUpdatedAt
 			else current.lastInputAt,
-		stickDeadzone = sanitizeDeadzone((snapshot :: any).stickDeadzone, current.stickDeadzone),
-		navigationDeadzone = sanitizeDeadzone((snapshot :: any).navigationDeadzone, current.navigationDeadzone),
+		stickDeadzone = CoerceDeadzone((snapshot :: any).stickDeadzone, current.stickDeadzone),
+		navigationDeadzone = CoerceDeadzone((snapshot :: any).navigationDeadzone, current.navigationDeadzone),
 	}
 	padStateAtom(nextState)
 	return nextState

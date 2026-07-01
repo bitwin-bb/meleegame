@@ -51,10 +51,4 @@ function StateHistory.Destroy(self: StateHistory)
 	self:Clear()
 	self.Recorded:Destroy()
 end
-
-StateHistory.record = StateHistory.Record
-StateHistory.getSnapshot = StateHistory.GetSnapshot
-StateHistory.clear = StateHistory.Clear
-StateHistory.destroy = StateHistory.Destroy
-
 return StateHistory

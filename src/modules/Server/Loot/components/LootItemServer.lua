@@ -1,10 +1,11 @@
 local require = require(script.Parent.loader).load(script)
 
+local PhysicsService = game:GetService("PhysicsService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local Fusion = require(ReplicatedStorage.Packages.Fusion)
 local ImageIds = require("ImageIds")
+local ItemIcons = require("ItemIcons")
 local ItemRegistry = require("ItemRegistry")
 local Maid = require("Maid")
 local StringUtils = require("StringUtils")
@@ -45,6 +46,8 @@ local ROOT_PART_NAME = "Root"
 local SURFACE_GUI_NAME = "LootIcon"
 local ICON_NAME = "Icon"
 local AMOUNT_NAME = "Amount"
+local LOOT_COLLISION_GROUP = "LootItems"
+local PLAYER_COLLISION_GROUP = "PlayersCharacters"
 local ROTATION_LOCK_ATTACHMENT_NAME = "RotationLockAttachment"
 local ROTATION_LOCK_NAME = "RotationLock"
 local ROTATION_LOCK_MAX_ANGULAR_VELOCITY = 1000000
@@ -69,31 +72,57 @@ local COIN_SPRITE_SHEET_KEY_BY_TOKEN = {
 	platinumcoin = "platinumCoin",
 	coinplatinum = "platinumCoin",
 }
+local collisionGroupsReady = false
 
-local function sanitizeName(valueRaw: any): string
-	local value = StringUtils.sanitize(valueRaw, nil)
+local function safeRegisterCollisionGroup(groupName: string)
+	pcall(function()
+		PhysicsService:RegisterCollisionGroup(groupName)
+	end)
+end
+
+local function safeSetCollisionGroupCollidable(groupA: string, groupB: string, collidable: boolean)
+	pcall(function()
+		PhysicsService:CollisionGroupSetCollidable(groupA, groupB, collidable)
+	end)
+end
+
+local function ensureLootCollisionGroups()
+	if collisionGroupsReady then
+		return
+	end
+
+	safeRegisterCollisionGroup(LOOT_COLLISION_GROUP)
+	safeRegisterCollisionGroup(PLAYER_COLLISION_GROUP)
+	safeSetCollisionGroupCollidable(LOOT_COLLISION_GROUP, LOOT_COLLISION_GROUP, false)
+	safeSetCollisionGroupCollidable(LOOT_COLLISION_GROUP, PLAYER_COLLISION_GROUP, false)
+	safeSetCollisionGroupCollidable(PLAYER_COLLISION_GROUP, LOOT_COLLISION_GROUP, false)
+	collisionGroupsReady = true
+end
+
+local function CoerceName(valueRaw: any): string
+	local value = StringUtils.Coerce(valueRaw, nil)
 	if value ~= nil then
 		return value
 	end
 	return DEFAULT_NAME
 end
 
-local function sanitizeItemId(valueRaw: any): string
-	local value = StringUtils.sanitize(valueRaw, nil)
+local function CoerceItemId(valueRaw: any): string
+	local value = StringUtils.Coerce(valueRaw, nil)
 	if value ~= nil then
 		return value
 	end
 	return DEFAULT_ITEM_ID
 end
 
-local function sanitizeAmount(valueRaw: any): number
+local function CoerceAmount(valueRaw: any): number
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		return math.max(1, math.floor(valueRaw))
 	end
 	return 1
 end
 
-local function sanitizeSize(valueRaw: any): Vector3
+local function CoerceSize(valueRaw: any): Vector3
 	if typeof(valueRaw) == "Vector3" then
 		return Vector3.new(math.max(0.05, valueRaw.X), math.max(0.05, valueRaw.Y), math.max(0.05, valueRaw.Z))
 	end
@@ -101,29 +130,29 @@ local function sanitizeSize(valueRaw: any): Vector3
 end
 
 local function normalizeKey(valueRaw: any): string?
-	local token = StringUtils.compactToken(valueRaw)
+	local token = StringUtils.CompactToken(valueRaw)
 	if token == "" then
 		return nil
 	end
 	return token
 end
 
-local function resolveIconValue(valueRaw: any): string?
+local function GetIconValue(valueRaw: any): string?
 	if typeof(valueRaw) == "string" and valueRaw ~= "" then
 		return valueRaw
 	end
 	return nil
 end
 
-local function resolveItemIcons(): IconMap?
-	local itemIcons = (ImageIds :: any).itemIcons
+local function GetItemIcons(): IconMap?
+	local itemIcons = ItemIcons
 	if typeof(itemIcons) == "table" then
 		return itemIcons :: IconMap
 	end
 	return nil
 end
 
-local function resolveSpriteSheets(): IconMap?
+local function GetSpriteSheets(): IconMap?
 	local spriteSheets = (ImageIds :: any).spriteSheets
 	if typeof(spriteSheets) == "table" then
 		return spriteSheets :: IconMap
@@ -131,16 +160,16 @@ local function resolveSpriteSheets(): IconMap?
 	return nil
 end
 
-local function resolveItemTypeFromDefinition(definitionRaw: any): string?
+local function GetItemTypeFromDefinition(definitionRaw: any): string?
 	if typeof(definitionRaw) ~= "table" then
 		return nil
 	end
 
 	local definition = definitionRaw :: ItemDefinition
-	return StringUtils.sanitize(definition.itemType or definition.type, nil)
+	return StringUtils.Coerce(definition.itemType or definition.type, nil)
 end
 
-local function resolveItemTypeFromItemId(itemIdRaw: any): string?
+local function GetItemTypeFromItemId(itemIdRaw: any): string?
 	local itemId = normalizeKey(itemIdRaw)
 	if itemId == nil then
 		return nil
@@ -168,15 +197,15 @@ local function resolveItemTypeFromItemId(itemIdRaw: any): string?
 	return nil
 end
 
-local function resolveIconByNormalizedKey(itemIcons: IconMap, normalizedKey: string): string?
-	local directIcon = resolveIconValue(itemIcons[normalizedKey])
+local function GetIconByNormalizedKey(itemIcons: IconMap, normalizedKey: string): string?
+	local directIcon = GetIconValue(itemIcons[normalizedKey])
 	if directIcon ~= nil then
 		return directIcon
 	end
 
 	for key, value in itemIcons do
 		if normalizeKey(key) == normalizedKey then
-			local icon = resolveIconValue(value)
+			local icon = GetIconValue(value)
 			if icon ~= nil then
 				return icon
 			end
@@ -186,52 +215,52 @@ local function resolveIconByNormalizedKey(itemIcons: IconMap, normalizedKey: str
 	return nil
 end
 
-local function resolveIconByItemId(itemIcons: IconMap, itemIdRaw: any): string?
+local function GetIconByItemId(itemIcons: IconMap, itemIdRaw: any): string?
 	local normalizedItemId = normalizeKey(itemIdRaw)
 	if normalizedItemId == nil then
 		return nil
 	end
-	return resolveIconByNormalizedKey(itemIcons, normalizedItemId)
+	return GetIconByNormalizedKey(itemIcons, normalizedItemId)
 end
 
-local function resolveIconByItemType(itemIcons: IconMap, itemTypeRaw: any): string?
+local function GetIconByItemType(itemIcons: IconMap, itemTypeRaw: any): string?
 	local normalizedType = normalizeKey(itemTypeRaw)
 	if normalizedType == nil then
 		return nil
 	end
-	return resolveIconValue(itemIcons[normalizedType])
+	return GetIconValue(itemIcons[normalizedType])
 end
 
-local function resolveFallbackIcon(itemIcons: IconMap?): string
+local function GetFallbackIcon(itemIcons: IconMap?): string
 	if itemIcons ~= nil then
-		local fallbackIcon = resolveIconValue(itemIcons.default)
+		local fallbackIcon = GetIconValue(itemIcons.default)
 		if fallbackIcon ~= nil then
 			return fallbackIcon
 		end
 	end
 
-	local questionMarkIcon = resolveIconValue((ImageIds :: any).questionMark)
+	local questionMarkIcon = GetIconValue((ImageIds :: any).questionMark)
 	if questionMarkIcon ~= nil then
 		return questionMarkIcon
 	end
 	return ""
 end
 
-local function resolveCoinSpriteSheet(itemIdRaw: any): CoinSpriteSheet?
-	local itemId = sanitizeItemId(itemIdRaw)
-	local canonicalItemId = ItemRegistry.resolveCanonicalItemId(itemId) or itemId
+local function GetCoinSpriteSheet(itemIdRaw: any): CoinSpriteSheet?
+	local itemId = CoerceItemId(itemIdRaw)
+	local canonicalItemId = ItemRegistry.GetCanonicalItemId(itemId) or itemId
 	local spriteSheetKey = COIN_SPRITE_SHEET_KEY_BY_TOKEN[normalizeKey(canonicalItemId) or ""]
 		or COIN_SPRITE_SHEET_KEY_BY_TOKEN[normalizeKey(itemId) or ""]
 	if spriteSheetKey == nil then
 		return nil
 	end
 
-	local spriteSheets = resolveSpriteSheets()
+	local spriteSheets = GetSpriteSheets()
 	if spriteSheets == nil then
 		return nil
 	end
 
-	local spriteSheetImage = resolveIconValue(spriteSheets[spriteSheetKey])
+	local spriteSheetImage = GetIconValue(spriteSheets[spriteSheetKey])
 	if spriteSheetImage == nil then
 		return nil
 	end
@@ -245,63 +274,44 @@ local function resolveCoinSpriteSheet(itemIdRaw: any): CoinSpriteSheet?
 	}
 end
 
-local function resolveSpriteFrameOffset(frameIndex: number, spriteSheet: CoinSpriteSheet): Vector2
-	local column = frameIndex % spriteSheet.columns
-	local row = math.floor(frameIndex / spriteSheet.columns)
-	return Vector2.new(column * spriteSheet.frameSize.X, row * spriteSheet.frameSize.Y)
-end
+function LootItemServer.GetIcon(itemIdRaw: any): string
+	local itemId = CoerceItemId(itemIdRaw)
+	local canonicalItemId = ItemRegistry.GetCanonicalItemId(itemId) or itemId
+	local definition = ItemRegistry.GetDefinition(canonicalItemId)
+	local itemType = GetItemTypeFromDefinition(definition)
+		or GetItemTypeFromItemId(canonicalItemId)
+		or GetItemTypeFromItemId(itemId)
 
-function LootItemServer.ResolveIcon(itemIdRaw: any): string
-	local itemId = sanitizeItemId(itemIdRaw)
-	local canonicalItemId = ItemRegistry.resolveCanonicalItemId(itemId) or itemId
-	local definition = ItemRegistry.resolveDefinition(canonicalItemId)
-	local itemType = resolveItemTypeFromDefinition(definition)
-		or resolveItemTypeFromItemId(canonicalItemId)
-		or resolveItemTypeFromItemId(itemId)
-
-	local itemIcons = resolveItemIcons()
+	local itemIcons = GetItemIcons()
 	if itemIcons == nil then
-		return resolveFallbackIcon(nil)
+		return GetFallbackIcon(nil)
 	end
 
-	local resolvedIcon = resolveIconByItemId(itemIcons, canonicalItemId)
-	if resolvedIcon ~= nil then
-		return resolvedIcon
+	local itemIcon = GetIconByItemId(itemIcons, canonicalItemId)
+	if itemIcon ~= nil then
+		return itemIcon
 	end
 
 	if canonicalItemId ~= itemId then
-		resolvedIcon = resolveIconByItemId(itemIcons, itemId)
-		if resolvedIcon ~= nil then
-			return resolvedIcon
+		itemIcon = GetIconByItemId(itemIcons, itemId)
+		if itemIcon ~= nil then
+			return itemIcon
 		end
 	end
 
-	resolvedIcon = resolveIconByItemType(itemIcons, itemType)
-	if resolvedIcon ~= nil then
-		return resolvedIcon
+	itemIcon = GetIconByItemType(itemIcons, itemType)
+	if itemIcon ~= nil then
+		return itemIcon
 	end
 
-	return resolveFallbackIcon(itemIcons)
+	return GetFallbackIcon(itemIcons)
 end
 
-local function createAnimatedCoinIconImage(scope: any, maid: MaidClass, itemId: string): ImageLabel?
-	local spriteSheet = resolveCoinSpriteSheet(itemId)
+local function createAnimatedCoinIconImage(scope: any, itemId: string): ImageLabel?
+	local spriteSheet = GetCoinSpriteSheet(itemId)
 	if spriteSheet == nil then
 		return nil
 	end
-
-	local frameIndex = scope:Value(0)
-	local frameOffset = scope:Computed(function(use)
-		return resolveSpriteFrameOffset(use(frameIndex), spriteSheet)
-	end)
-	local elapsed = 0
-	maid:GiveTask(RunService.Heartbeat:Connect(function(deltaTime: number)
-		elapsed += math.max(0, deltaTime)
-		local nextFrameIndex = math.floor(elapsed * spriteSheet.fps) % spriteSheet.frameCount
-		if Fusion.peek(frameIndex) ~= nextFrameIndex then
-			frameIndex:set(nextFrameIndex)
-		end
-	end))
 
 	return scope:New "ImageLabel" {
 		Name = ICON_NAME,
@@ -313,16 +323,17 @@ local function createAnimatedCoinIconImage(scope: any, maid: MaidClass, itemId: 
 		Image = spriteSheet.image,
 		ImageColor3 = Color3.fromRGB(255, 255, 255),
 		ImageTransparency = 0,
-		ImageRectOffset = frameOffset,
+		ImageRectOffset = Vector2.zero,
 		ImageRectSize = spriteSheet.frameSize,
 		ScaleType = Enum.ScaleType.Fit,
 		ResampleMode = Enum.ResamplerMode.Pixelated,
 		[Fusion.Attribute("LootIconAnimated")] = true,
+		[Fusion.Attribute("LootIconItemId")] = itemId,
 	} :: ImageLabel
 end
 
-local function createIconImage(scope: any, maid: MaidClass, itemId: string): ImageLabel
-	local coinIcon = createAnimatedCoinIconImage(scope, maid, itemId)
+local function createIconImage(scope: any, itemId: string): ImageLabel
+	local coinIcon = createAnimatedCoinIconImage(scope, itemId)
 	if coinIcon ~= nil then
 		return coinIcon
 	end
@@ -334,7 +345,7 @@ local function createIconImage(scope: any, maid: MaidClass, itemId: string): Ima
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Image = LootItemServer.ResolveIcon(itemId),
+		Image = LootItemServer.GetIcon(itemId),
 		ImageColor3 = Color3.fromRGB(255, 255, 255),
 		ImageTransparency = 0,
 		ScaleType = Enum.ScaleType.Fit,
@@ -362,9 +373,9 @@ local function createAmountLabel(scope: any, amount: number): TextLabel
 	} :: TextLabel
 end
 
-local function createIconChildren(scope: any, maid: MaidClass, itemId: string, amount: number): { Instance }
+local function createIconChildren(scope: any, itemId: string, amount: number): { Instance }
 	local iconChildren: { Instance } = {
-		createIconImage(scope, maid, itemId),
+		createIconImage(scope, itemId),
 	}
 	if amount > 1 then
 		table.insert(iconChildren, createAmountLabel(scope, amount))
@@ -411,15 +422,18 @@ local function createRootPart(
 	rotationLock: AlignOrientation,
 	surfaceGui: SurfaceGui
 ): BasePart
+	ensureLootCollisionGroups()
+
 	return scope:New "Part" {
 		Name = ROOT_PART_NAME,
-		Size = sanitizeSize(config.size),
+		Size = CoerceSize(config.size),
 		CFrame = CFrame.identity,
 		Transparency = 1,
 		Anchored = false,
 		CanCollide = true,
 		CanQuery = true,
 		CanTouch = true,
+		CollisionGroup = LOOT_COLLISION_GROUP,
 		AssemblyAngularVelocity = Vector3.zero,
 		TopSurface = Enum.SurfaceType.Smooth,
 		BottomSurface = Enum.SurfaceType.Smooth,
@@ -445,16 +459,16 @@ end
 
 function LootItemServer.CreateModel(configRaw: LootItemServerConfig?): Model
 	local config = (if typeof(configRaw) == "table" then configRaw else {} :: any) :: LootItemServerConfig
-	local itemId = sanitizeItemId(config.itemId)
-	local amount = sanitizeAmount(config.amount)
+	local itemId = CoerceItemId(config.itemId)
+	local amount = CoerceAmount(config.amount)
 	local scope = Fusion.scoped(Fusion)
 	local maid = Maid.new() :: MaidClass
 	local rotationAttachment, rotationLock = createRotationLock(scope)
-	local surfaceGui = createSurfaceGui(scope, createIconChildren(scope, maid, itemId, amount))
+	local surfaceGui = createSurfaceGui(scope, createIconChildren(scope, itemId, amount))
 	local rootPart = createRootPart(scope, config, rotationAttachment, rotationLock, surfaceGui)
 
 	local model = scope:New "Model" {
-		Name = sanitizeName(config.name),
+		Name = CoerceName(config.name),
 		Parent = if typeof(config.parent) == "Instance" then config.parent else nil,
 		[Fusion.Attribute("LootIconItemId")] = itemId,
 		[Fusion.Attribute("LootIconSurfaceFace")] = SIDE_VIEW_FACE.Name,
@@ -474,7 +488,5 @@ function LootItemServer.CreateModel(configRaw: LootItemServerConfig?): Model
 	return model
 end
 
-LootItemServer.resolveIcon = LootItemServer.ResolveIcon
-LootItemServer.createModel = LootItemServer.CreateModel
 
 return LootItemServer

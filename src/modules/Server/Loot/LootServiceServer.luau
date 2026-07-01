@@ -5,8 +5,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local ServerScriptService = game:GetService("ServerScriptService")
-local Workspace = game:GetService("Workspace")
 
 local AudioRegistry = require("Audio")
 local AudioServiceServer = require("AudioServiceServer")
@@ -20,7 +18,7 @@ local LootServiceCache = require("LootCache")
 local LootServiceData = require("Data")
 local LootServiceUtils = require("LootServiceUtils")
 local PacketPayload = require("PacketPayload")
-local LootServicePackets = require("NetSharedPackets").LootService
+local LootServicePackets = require("NetPacketsShared").LootService
 
 local function bindPacket(self: any, methodName: string)
 	local packet = LootServicePackets[methodName]
@@ -34,12 +32,13 @@ local function bindPacket(self: any, methodName: string)
 			return
 		end
 
-		local handler = self[methodName]
+		local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, player, table.unpack(arguments, 1, count))
 	end)
 end
@@ -57,10 +56,10 @@ end
 
 local NevermoreSupport = require("NevermoreSupport")
 local PlayerDataServiceServer = require("PlayerDataServiceServer")
-local ResolveItem = require("ResolveItem")
-local ResolveToolInstance = require("ResolveToolInstance")
+local GetItem = require("GetItem")
+local GetToolInstance = require("GetToolInstance")
 local Ripple = require(ReplicatedStorage.Packages.Ripple)
-local ServerBinderSupport = require("ServerBinderSupport")
+local BinderSupportServer = require("BinderSupportServer")
 local StringUtils = require("StringUtils")
 local Vec = require("Vec")
 local WorkspaceFolders = require("WorkspaceFolders")
@@ -81,7 +80,7 @@ type AddItemResult = InventoryServiceUtils.AddItemResult
 type SlotMutationResult = InventoryServiceUtils.SlotMutationResult
 
 type InventoryServiceServerObject = {
-	getState: (self: InventoryServiceServerObject, player: Player) -> InventoryState,
+	GetState: (self: InventoryServiceServerObject, player: Player) -> InventoryState,
 	addItem: (
 		self: InventoryServiceServerObject,
 		player: Player,
@@ -89,23 +88,23 @@ type InventoryServiceServerObject = {
 		amountRaw: any,
 		optionsRaw: any
 	) -> AddItemResult,
-	removeFromSlot: (
+	RemoveFromSlot: (
 		self: InventoryServiceServerObject,
 		player: Player,
 		slotIndexRaw: any,
 		amountRaw: any
 	) -> SlotMutationResult,
-	releaseSuppressedToolImport: (
+	ReleaseSuppressedToolImport: (
 		self: InventoryServiceServerObject,
 		player: Player,
 		itemIdRaw: any,
 		amountRaw: any
 	) -> number,
-	setDropFromSlotHandler: (self: InventoryServiceServerObject, handlerRaw: any) -> (),
+	SetDropFromSlotHandler: (self: InventoryServiceServerObject, handlerRaw: any) -> (),
 }
 
 type PlayerDataServiceServerObject = {
-	incrementValue: (
+	IncrementValue: (
 		self: PlayerDataServiceServerObject,
 		player: Player,
 		pathRaw: any,
@@ -116,13 +115,13 @@ type PlayerDataServiceServerObject = {
 }
 
 type AudioServiceServerObject = {
-	playSfxForPlayer: (
+	PlaySfxForPlayer: (
 		self: AudioServiceServerObject,
 		player: Player,
 		soundAssetIdRaw: any,
 		optionsRaw: any
 	) -> (),
-	playSfxForAll: (self: AudioServiceServerObject, soundAssetIdRaw: any, optionsRaw: any) -> (),
+	PlaySfxForAll: (self: AudioServiceServerObject, soundAssetIdRaw: any, optionsRaw: any) -> (),
 }
 
 type LootServiceCacheObject = LootServiceCache.Cache
@@ -193,7 +192,7 @@ local LOOT_COIN_DROP_AUDIO = LOOT_AUDIO.CoinDrop or ({} :: any)
 local LOOT_COIN_PICKUP_AUDIO = LOOT_AUDIO.CoinPickup or ({} :: any)
 local LOOT_PICKUP_VOLUME = 1.5
 
-local function sanitizeOwnerUserId(userIdRaw: any): number?
+local function CoerceOwnerUserId(userIdRaw: any): number?
 	if typeof(userIdRaw) ~= "number" or userIdRaw ~= userIdRaw then
 		return nil
 	end
@@ -204,7 +203,7 @@ local function sanitizeOwnerUserId(userIdRaw: any): number?
 	return userId
 end
 
-local function resolvePlayerRootPart(player: Player): BasePart?
+local function GetPlayerRootPart(player: Player): BasePart?
 	local character = player.Character
 	if character == nil then
 		return nil
@@ -243,13 +242,13 @@ local function toUnitVectorOrFallback(directionRaw: any, fallbackRaw: Vector3): 
 	if fallback.Magnitude <= EPSILON then
 		fallback = Vector3.new(0, 0, -1)
 	end
-	local fallbackUnit = Vec.unit(fallback, Vector3.new(0, 0, -1))
+	local fallbackUnit = Vec.Unit(fallback, Vector3.new(0, 0, -1))
 
-	local direction = LootServiceUtils.sanitizeVector3(directionRaw, fallback)
+	local direction = LootServiceUtils.CoerceVector3(directionRaw, fallback)
 	if direction.Magnitude <= EPSILON then
 		return fallbackUnit
 	end
-	return Vec.unit(direction, fallbackUnit)
+	return Vec.Unit(direction, fallbackUnit)
 end
 
 local function shallowCopy(sourceRaw: any): { [string]: any }
@@ -278,37 +277,37 @@ function LootServiceServer.CacheToolTemplateIfPossible(self: LootServiceServer, 
 		return
 	end
 	if template:IsA("Tool") then
-		self.cache:rememberToolTemplate(itemId, template)
+		self.cache:RememberToolTemplate(itemId, template)
 	end
 end
 
 function LootServiceServer.IsToolMatchingItemId(self: LootServiceServer, tool: Tool, itemIdRaw: any): boolean
-	local itemId = LootServiceUtils.sanitizeString(itemIdRaw, nil)
+	local itemId = LootServiceUtils.CoerceString(itemIdRaw, nil)
 	if itemId == nil then
 		return false
 	end
 
 	local targetTokens: { [string]: boolean } = {}
-	for _, candidate in LootServiceUtils.resolveItemNameCandidates(self.data, itemId) do
-		local token = StringUtils.compactToken(candidate)
+	for _, candidate in LootServiceUtils.GetItemNameCandidates(self.data, itemId) do
+		local token = StringUtils.CompactToken(candidate)
 		if token ~= "" then
 			targetTokens[token] = true
 		end
 	end
 	if next(targetTokens) == nil then
-		targetTokens[StringUtils.compactToken(itemId)] = true
+		targetTokens[StringUtils.CompactToken(itemId)] = true
 	end
 
-	local resolvedToolItemId = ResolveToolInstance.resolveToolItemId(tool)
+	local GotToolItemId = GetToolInstance.GetToolItemId(tool)
 	local idCandidates: { any } = {
-		resolvedToolItemId,
+		GotToolItemId,
 		tool:GetAttribute("itemId"),
 		tool:GetAttribute("ItemId"),
 		tool:GetAttribute("ittemId"),
 		tool.Name,
 	}
 	for _, candidate in idCandidates do
-		local candidateToken = StringUtils.compactToken(candidate)
+		local candidateToken = StringUtils.CompactToken(candidate)
 		if candidateToken ~= "" and targetTokens[candidateToken] == true then
 			return true
 		end
@@ -322,12 +321,12 @@ function LootServiceServer.CaptureDropToolClones(
 	itemIdRaw: any,
 	amountRaw: any
 ): { Tool }
-	local itemId = LootServiceUtils.sanitizeString(itemIdRaw, nil)
+	local itemId = LootServiceUtils.CoerceString(itemIdRaw, nil)
 	if itemId == nil then
 		return {}
 	end
 
-	local amount = LootServiceUtils.resolveDropAmount(amountRaw, 1)
+	local amount = LootServiceUtils.GotRopAmount(amountRaw, 1)
 	local remaining = math.max(0, math.floor(amount))
 	if remaining <= 0 then
 		return {}
@@ -345,7 +344,7 @@ function LootServiceServer.CaptureDropToolClones(
 			if not child:IsA("Tool") then
 				continue
 			end
-			if not self:isToolMatchingItemId(child, itemId) then
+			if not self:IsToolMatchingItemId(child, itemId) then
 				continue
 			end
 			local clone = child:Clone()
@@ -371,7 +370,7 @@ function LootServiceServer.RestoreCachedDropTools(
 	runtime: LootRuntime,
 	amountRaw: any
 )
-	local amount = LootServiceUtils.resolveDropAmount(amountRaw, 1)
+	local amount = LootServiceUtils.GotRopAmount(amountRaw, 1)
 	local remaining = math.max(0, math.floor(amount))
 	if remaining <= 0 then
 		return
@@ -386,15 +385,15 @@ function LootServiceServer.RestoreCachedDropTools(
 	end
 
 	while remaining > 0 do
-		local tool = self.cache:popDroppedTool(runtime.id, runtime.itemId)
+		local tool = self.cache:PopDroppedTool(runtime.id, runtime.itemId)
 		if tool == nil then
-			tool = self.cache:cloneToolTemplate(runtime.itemId)
+			tool = self.cache:CloneToolTemplate(runtime.itemId)
 			if tool ~= nil then
 				tool:SetAttribute("itemId", runtime.itemId)
 				tool:SetAttribute("ItemId", runtime.itemId)
 				local metadata = runtime.metadata
 				if typeof(metadata) == "table" then
-					local itemType = LootServiceUtils.sanitizeString((metadata :: { [string]: any }).itemType, nil)
+					local itemType = LootServiceUtils.CoerceString((metadata :: { [string]: any }).itemType, nil)
 					if itemType ~= nil then
 						tool:SetAttribute("itemType", itemType)
 						tool:SetAttribute("ItemType", itemType)
@@ -406,26 +405,26 @@ function LootServiceServer.RestoreCachedDropTools(
 			break
 		end
 
-		self.inventoryService:releaseSuppressedToolImport(player, runtime.itemId, 1)
+		self.inventoryService:ReleaseSuppressedToolImport(player, runtime.itemId, 1)
 		tool.Parent = targetContainer
 		remaining -= 1
 	end
 end
 
-function LootServiceServer.ResolveCoinTypeFromItemId(self: LootServiceServer, itemIdRaw: any): string?
-	local itemId = LootServiceUtils.sanitizeString(itemIdRaw, nil)
+function LootServiceServer.GetCoinTypeFromItemId(self: LootServiceServer, itemIdRaw: any): string?
+	local itemId = LootServiceUtils.CoerceString(itemIdRaw, nil)
 	if itemId == nil then
 		return nil
 	end
 
-	local itemToken = StringUtils.compactToken(itemId)
+	local itemToken = StringUtils.CompactToken(itemId)
 	local mapped = COIN_TYPE_BY_ITEM_TOKEN[itemToken]
 	if mapped ~= nil then
 		return mapped
 	end
 
-	for _, candidate in LootServiceUtils.resolveItemNameCandidates(self.data, itemId) do
-		local token = StringUtils.compactToken(candidate)
+	for _, candidate in LootServiceUtils.GetItemNameCandidates(self.data, itemId) do
+		local token = StringUtils.CompactToken(candidate)
 		local byToken = COIN_TYPE_BY_ITEM_TOKEN[token]
 		if byToken ~= nil then
 			return byToken
@@ -439,7 +438,7 @@ function LootServiceServer.ShouldRouteRuntimeToCoinWallet(self: LootServiceServe
 	if runtime.sourceType == "PlayerDrop" then
 		return false
 	end
-	return self:resolveCoinTypeFromItemId(runtime.itemId) ~= nil
+	return self:GetCoinTypeFromItemId(runtime.itemId) ~= nil
 end
 
 function LootServiceServer.TryCollectRuntimeToCoinWallet(
@@ -447,31 +446,31 @@ function LootServiceServer.TryCollectRuntimeToCoinWallet(
 	runtime: LootRuntime,
 	player: Player
 ): boolean
-	local coinType = self:resolveCoinTypeFromItemId(runtime.itemId)
+	local coinType = self:GetCoinTypeFromItemId(runtime.itemId)
 	if coinType == nil then
 		return false
 	end
 
 	local amount = math.max(1, math.floor(runtime.amount))
-	local nextValue = self.playerDataService:incrementValue(player, { "coins", coinType }, amount, 0, true)
+	local nextValue = self.playerDataService:IncrementValue(player, { "coins", coinType }, amount, 0, true)
 	if nextValue == nil then
 		return false
 	end
 
-	self:playPickupSound(runtime, player)
-	self:transitionState(runtime, LootServiceUtils.STATE_COLLECTED, "CollectedCoinWallet")
-	self:disposeRuntime(runtime, "CollectedCoinWallet")
+	self:PlayPickupSound(runtime, player)
+	self:TransitionState(runtime, LootServiceUtils.STATE_COLLECTED, "CollectedCoinWallet")
+	self:DisposeRuntime(runtime, "CollectedCoinWallet")
 	return true
 end
 
-function LootServiceServer.EnsureLootFolder(self: LootServiceServer): Folder
-	return WorkspaceFolders.getOrCreateFolderInGame(LOOT_FOLDER_NAME)
+function LootServiceServer.EnsureLootFolder(_self: LootServiceServer): Folder
+	return WorkspaceFolders.GetOrCreateFolderInGame(LOOT_FOLDER_NAME)
 end
 
 function LootServiceServer.RefreshPickupSoundTemplates(self: LootServiceServer)
-	self.itemPickupSoundAssetIds = AudioServiceUtils.collectSoundAssetIds(LOOT_ITEM_PICKUP_AUDIO)
-	self.coinDropSoundAssetIds = AudioServiceUtils.collectSoundAssetIds(LOOT_COIN_DROP_AUDIO)
-	self.coinPickupSoundAssetIds = AudioServiceUtils.collectSoundAssetIds(LOOT_COIN_PICKUP_AUDIO)
+	self.itemPickupSoundAssetIds = AudioServiceUtils.CollectSoundAssetIds(LOOT_ITEM_PICKUP_AUDIO)
+	self.coinDropSoundAssetIds = AudioServiceUtils.CollectSoundAssetIds(LOOT_COIN_DROP_AUDIO)
+	self.coinPickupSoundAssetIds = AudioServiceUtils.CollectSoundAssetIds(LOOT_COIN_PICKUP_AUDIO)
 end
 
 function LootServiceServer.PlayCoinDropSound(self: LootServiceServer, runtime: LootRuntime)
@@ -481,7 +480,7 @@ function LootServiceServer.PlayCoinDropSound(self: LootServiceServer, runtime: L
 	end
 
 	if #self.coinDropSoundAssetIds <= 0 then
-		self:refreshPickupSoundTemplates()
+		self:RefreshPickupSoundTemplates()
 	end
 
 	local soundAssetId = pickRandomSoundAssetId(self.random, self.coinDropSoundAssetIds)
@@ -492,7 +491,7 @@ function LootServiceServer.PlayCoinDropSound(self: LootServiceServer, runtime: L
 		return
 	end
 
-	soundService:playSfxForAll(soundAssetId, {
+	soundService:PlaySfxForAll(soundAssetId, {
 		category = "SFX",
 		parent = runtime.rootPart,
 		autoDestroy = true,
@@ -506,11 +505,11 @@ function LootServiceServer.PlayPickupSound(self: LootServiceServer, runtime: Loo
 	end
 
 	if #self.itemPickupSoundAssetIds <= 0 and #self.coinPickupSoundAssetIds <= 0 then
-		self:refreshPickupSoundTemplates()
+		self:RefreshPickupSoundTemplates()
 	end
 
 	local soundAssetId: string?
-	if self:resolveCoinTypeFromItemId(runtime.itemId) ~= nil then
+	if self:GetCoinTypeFromItemId(runtime.itemId) ~= nil then
 		soundAssetId = pickRandomSoundAssetId(self.random, self.coinPickupSoundAssetIds)
 	else
 		soundAssetId = pickRandomSoundAssetId(self.random, self.itemPickupSoundAssetIds)
@@ -519,12 +518,12 @@ function LootServiceServer.PlayPickupSound(self: LootServiceServer, runtime: Loo
 		return
 	end
 
-	local parent: Instance? = resolvePlayerRootPart(player)
+	local parent: Instance? = GetPlayerRootPart(player)
 	if parent == nil then
 		parent = player.Character
 	end
 
-	soundService:playSfxForPlayer(player, soundAssetId, {
+	soundService:PlaySfxForPlayer(player, soundAssetId, {
 		category = "SFX",
 		volume = LOOT_PICKUP_VOLUME,
 		parent = parent,
@@ -532,8 +531,8 @@ function LootServiceServer.PlayPickupSound(self: LootServiceServer, runtime: Loo
 	})
 end
 
-function LootServiceServer.ResolveItemTemplate(self: LootServiceServer, itemIdRaw: any): Instance?
-	local itemId = LootServiceUtils.sanitizeString(itemIdRaw, nil)
+function LootServiceServer.GetItemTemplate(self: LootServiceServer, itemIdRaw: any): Instance?
+	local itemId = LootServiceUtils.CoerceString(itemIdRaw, nil)
 	if itemId == nil then
 		return nil
 	end
@@ -545,19 +544,19 @@ function LootServiceServer.ResolveItemTemplate(self: LootServiceServer, itemIdRa
 		end
 		local cachedInstance = cached :: Instance
 		if cachedInstance.Parent ~= nil then
-			self:cacheToolTemplateIfPossible(itemId, cachedInstance)
-			self:cacheToolTemplateIfPossible(itemId, ResolveItem.resolveToolTemplate(itemId))
+			self:CacheToolTemplateIfPossible(itemId, cachedInstance)
+			self:CacheToolTemplateIfPossible(itemId, GetItem.GetToolTemplate(itemId))
 			return cachedInstance
 		end
 		self.itemTemplateByItemId[itemId] = nil
 	end
 
-	local resolvedTemplate = ResolveItem.resolvePrimaryTemplate(itemId)
-	if resolvedTemplate ~= nil then
-		self.itemTemplateByItemId[itemId] = resolvedTemplate
-		self:cacheToolTemplateIfPossible(itemId, resolvedTemplate)
-		self:cacheToolTemplateIfPossible(itemId, ResolveItem.resolveToolTemplate(itemId))
-		return resolvedTemplate
+	local GotTemplate = GetItem.GetPrimaryTemplate(itemId)
+	if GotTemplate ~= nil then
+		self.itemTemplateByItemId[itemId] = GotTemplate
+		self:CacheToolTemplateIfPossible(itemId, GotTemplate)
+		self:CacheToolTemplateIfPossible(itemId, GetItem.GetToolTemplate(itemId))
+		return GotTemplate
 	end
 
 	error(MISSING_ASSET_ERROR, 0)
@@ -592,7 +591,7 @@ function LootServiceServer.CloneLootInstanceFromTemplate(
 	end
 
 	local clone = template:Clone()
-	local rootPart = InstanceUtils.resolveInstanceRootPart(clone, true)
+	local rootPart = InstanceUtils.GetInstanceRootPart(clone, true)
 	if rootPart == nil then
 		clone:Destroy()
 		return nil, nil
@@ -601,7 +600,7 @@ function LootServiceServer.CloneLootInstanceFromTemplate(
 	return clone, rootPart
 end
 
-function LootServiceServer.ResolveRuntimePlaneX(self: LootServiceServer, runtime: LootRuntime): number?
+function LootServiceServer.GetUntimePlaneX(self: LootServiceServer, runtime: LootRuntime): number?
 	if self.settings.lockTo2DPlane ~= true then
 		return nil
 	end
@@ -613,7 +612,7 @@ function LootServiceServer.ClampPositionToRuntimePlane(
 	runtime: LootRuntime,
 	positionRaw: Vector3
 ): Vector3
-	local planeX = self:resolveRuntimePlaneX(runtime)
+	local planeX = self:GetUntimePlaneX(runtime)
 	if planeX == nil then
 		return positionRaw
 	end
@@ -621,7 +620,7 @@ function LootServiceServer.ClampPositionToRuntimePlane(
 end
 
 function LootServiceServer.ApplyRuntimePlaneConstraint(self: LootServiceServer, runtime: LootRuntime)
-	local planeX = self:resolveRuntimePlaneX(runtime)
+	local planeX = self:GetUntimePlaneX(runtime)
 	if planeX == nil or runtime.disposed then
 		return
 	end
@@ -643,8 +642,8 @@ function LootServiceServer.ApplyRuntimePlaneConstraint(self: LootServiceServer, 
 end
 
 function LootServiceServer.SetRuntimePosition(self: LootServiceServer, runtime: LootRuntime, positionRaw: any)
-	local position = LootServiceUtils.sanitizeVector3(positionRaw, runtime.lastKnownPosition)
-	position = self:clampPositionToRuntimePlane(runtime, position)
+	local position = LootServiceUtils.CoerceVector3(positionRaw, runtime.lastKnownPosition)
+	position = self:ClampPositionToRuntimePlane(runtime, position)
 	if runtime.disposed then
 		return
 	end
@@ -662,11 +661,11 @@ function LootServiceServer.RefreshRuntimePosition(self: LootServiceServer, runti
 		return
 	end
 	local position = runtime.rootPart.Position
-	runtime.lastKnownPosition = self:clampPositionToRuntimePlane(runtime, position)
+	runtime.lastKnownPosition = self:ClampPositionToRuntimePlane(runtime, position)
 end
 
-function LootServiceServer.ApplyRuntimeAttributes(self: LootServiceServer, runtime: LootRuntime, reasonRaw: any?)
-	local reason = LootServiceUtils.sanitizeString(reasonRaw, nil)
+function LootServiceServer.ApplyRuntimeAttributes(_self: LootServiceServer, runtime: LootRuntime, reasonRaw: any?)
+	local reason = LootServiceUtils.CoerceString(reasonRaw, nil)
 	runtime.instance:SetAttribute("LootId", runtime.id)
 	runtime.instance:SetAttribute("ItemId", runtime.itemId)
 	runtime.instance:SetAttribute("Amount", runtime.amount)
@@ -726,7 +725,7 @@ function LootServiceServer.SetRuntimePhysics(
 	end
 end
 
-function LootServiceServer.DestroyMagnetRuntime(self: LootServiceServer, runtime: LootRuntime)
+function LootServiceServer.DestroyMagnetRuntime(_self: LootServiceServer, runtime: LootRuntime)
 	local magnet = runtime.magnet
 	if magnet == nil then
 		return
@@ -745,12 +744,12 @@ function LootServiceServer.TransitionState(
 	reasonRaw: any?
 ): boolean
 	local currentState = runtime.state
-	local nextState = LootServiceUtils.sanitizeState(nextStateRaw, currentState)
+	local nextState = LootServiceUtils.CoerceState(nextStateRaw, currentState)
 	if currentState == nextState then
 		return true
 	end
 
-	if not LootServiceUtils.isAllowedStateTransition(currentState, nextState) then
+	if not LootServiceUtils.IsAllowedStateTransition(currentState, nextState) then
 		return false
 	end
 
@@ -759,20 +758,20 @@ function LootServiceServer.TransitionState(
 	runtime.stableSince = nil
 
 	if nextState ~= LootServiceUtils.STATE_MAGNETIZED then
-		self:destroyMagnetRuntime(runtime)
+		self:DestroyMagnetRuntime(runtime)
 	end
 
 	if nextState == LootServiceUtils.STATE_DROPPED or nextState == LootServiceUtils.STATE_SETTLING then
-		self:setRuntimePhysics(runtime, false, true, true, true, true)
+		self:SetRuntimePhysics(runtime, false, true, true, true, true)
 	elseif nextState == LootServiceUtils.STATE_IDLE then
-		self:setRuntimePhysics(runtime, true, true, true, true, false)
+		self:SetRuntimePhysics(runtime, true, true, true, true, false)
 		runtime.rootPart.AssemblyLinearVelocity = Vector3.zero
 		runtime.rootPart.AssemblyAngularVelocity = Vector3.zero
 	elseif nextState == LootServiceUtils.STATE_MAGNETIZED or nextState == LootServiceUtils.STATE_COLLECTED then
-		self:setRuntimePhysics(runtime, true, false, false, false, false)
+		self:SetRuntimePhysics(runtime, true, false, false, false, false)
 	end
 
-	self:applyRuntimeAttributes(runtime, reasonRaw)
+	self:ApplyRuntimeAttributes(runtime, reasonRaw)
 	return true
 end
 
@@ -783,20 +782,20 @@ function LootServiceServer.DisposeRuntime(self: LootServiceServer, runtime: Loot
 
 	runtime.disposed = true
 	self.lootById[runtime.id] = nil
-	self.cache:discardDroppedTools(runtime.id)
-	self:destroyMagnetRuntime(runtime)
+	self.cache:DiscardDroppedTools(runtime.id)
+	self:DestroyMagnetRuntime(runtime)
 	if runtime.destroyConnection ~= nil then
 		runtime.destroyConnection:Disconnect()
 		runtime.destroyConnection = nil
 	end
-	self:applyRuntimeAttributes(runtime, reasonRaw)
+	self:ApplyRuntimeAttributes(runtime, reasonRaw)
 	if runtime.instance.Parent ~= nil then
 		runtime.instance:Destroy()
 	end
 end
 
 function LootServiceServer.RemoveRuntimeById(self: LootServiceServer, lootIdRaw: any, reasonRaw: any?)
-	local lootId = LootServiceUtils.sanitizeString(lootIdRaw, nil)
+	local lootId = LootServiceUtils.CoerceString(lootIdRaw, nil)
 	if lootId == nil then
 		return
 	end
@@ -805,12 +804,12 @@ function LootServiceServer.RemoveRuntimeById(self: LootServiceServer, lootIdRaw:
 		return
 	end
 
-	self:transitionState(runtime, LootServiceUtils.STATE_COLLECTED, reasonRaw)
-	self:disposeRuntime(runtime, reasonRaw)
+	self:TransitionState(runtime, LootServiceUtils.STATE_COLLECTED, reasonRaw)
+	self:DisposeRuntime(runtime, reasonRaw)
 end
 
 function LootServiceServer.ApplyDropImpulse(self: LootServiceServer, runtime: LootRuntime, throwDirectionRaw: any)
-	local isPlaneLocked = self:resolveRuntimePlaneX(runtime) ~= nil
+	local isPlaneLocked = self:GetUntimePlaneX(runtime) ~= nil
 	local randomHorizontal =
 		Vector3.new(if isPlaneLocked then 0 else self.random:NextNumber(-1, 1), 0, self.random:NextNumber(-1, 1))
 	if randomHorizontal.Magnitude <= EPSILON then
@@ -834,7 +833,7 @@ function LootServiceServer.ApplyDropImpulse(self: LootServiceServer, runtime: Lo
 		linearVelocity = Vector3.new(0, linearVelocity.Y, linearVelocity.Z)
 	end
 
-	local itemToken = StringUtils.compactToken(runtime.itemId)
+	local itemToken = StringUtils.CompactToken(runtime.itemId)
 	local linearScale = 1
 	local maxLinearSpeed: number? = nil
 
@@ -861,7 +860,7 @@ function LootServiceServer.ApplyDropImpulse(self: LootServiceServer, runtime: Lo
 	runtime.rootPart.AssemblyAngularVelocity = Vector3.zero
 end
 
-function LootServiceServer.ToPublicSnapshot(self: LootServiceServer, runtime: LootRuntime): { [string]: any }
+function LootServiceServer.ToPublicSnapshot(_self: LootServiceServer, runtime: LootRuntime): { [string]: any }
 	return {
 		id = runtime.id,
 		itemId = runtime.itemId,
@@ -881,47 +880,47 @@ function LootServiceServer.SpawnLootRuntime(
 	positionRaw: any,
 	optionsRaw: any
 ): LootRuntime?
-	local itemId = LootServiceUtils.sanitizeString(itemIdRaw, nil)
+	local itemId = LootServiceUtils.CoerceString(itemIdRaw, nil)
 	if itemId == nil then
 		return nil
 	end
 
-	local itemConfig = LootServiceUtils.resolveItemConfig(self.data, itemId)
+	local itemConfig = LootServiceUtils.GetItemConfig(self.data, itemId)
 	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
-	local amount = LootServiceUtils.sanitizeInteger(amountRaw, 1, 1, 999999)
-	local maxStack = LootServiceUtils.sanitizeInteger((options :: any).maxStack, itemConfig.maxStack, 1, 999999)
-	local rarity = LootServiceUtils.sanitizeRarity((options :: any).rarity, itemConfig.rarity)
-	local sourceType = LootServiceUtils.sanitizeString((options :: any).sourceType, "Generic") or "Generic"
+	local amount = LootServiceUtils.CoerceInteger(amountRaw, 1, 1, 999999)
+	local maxStack = LootServiceUtils.CoerceInteger((options :: any).maxStack, itemConfig.maxStack, 1, 999999)
+	local rarity = LootServiceUtils.CoerceRarity((options :: any).rarity, itemConfig.rarity)
+	local sourceType = LootServiceUtils.CoerceString((options :: any).sourceType, "Generic") or "Generic"
 	local metadata = if typeof((options :: any).metadata) == "table"
-		then LootServiceUtils.cloneDeep((options :: any).metadata)
+		then LootServiceUtils.CloneDeep((options :: any).metadata)
 		else nil
-	local ownerUserId = sanitizeOwnerUserId((options :: any).ownerUserId)
+	local ownerUserId = CoerceOwnerUserId((options :: any).ownerUserId)
 	local ownerLockSeconds =
-		LootServiceUtils.sanitizeNumber((options :: any).ownerLockSeconds, self.settings.ownerLockSeconds, 0, 120)
+		LootServiceUtils.CoerceNumber((options :: any).ownerLockSeconds, self.settings.ownerLockSeconds, 0, 120)
 	local now = os.clock()
 	local expiresAt = now
-		+ LootServiceUtils.sanitizeNumber((options :: any).despawnSeconds, self.settings.despawnSeconds, 0.1, 3600)
-	local requestedLootId = LootServiceUtils.sanitizeString((options :: any).lootId, nil)
-	local lootId = requestedLootId or LootServiceUtils.createLootId(self.random, itemId)
+		+ LootServiceUtils.CoerceNumber((options :: any).despawnSeconds, self.settings.despawnSeconds, 0.1, 3600)
+	local requestedLootId = LootServiceUtils.CoerceString((options :: any).lootId, nil)
+	local lootId = requestedLootId or LootServiceUtils.CreateLootId(self.random, itemId)
 
-	local instance = LootItemServer.createModel({
+	local instance = LootItemServer.CreateModel({
 		itemId = itemId,
 		amount = amount,
 		name = ("Loot_%s"):format(itemId),
 	}) :: Instance
-	local rootPart = InstanceUtils.resolveInstanceRootPart(instance, true)
+	local rootPart = InstanceUtils.GetInstanceRootPart(instance, true)
 	if instance == nil or rootPart == nil then
 		error(MISSING_ASSET_ERROR, 0)
 	end
 
 	if self.lootById[lootId] ~= nil then
-		self:removeRuntimeById(lootId, "Replaced")
+		self:RemoveRuntimeById(lootId, "Replaced")
 	end
 
 	instance.Name = ("Loot_%s"):format(itemId)
 	instance.Parent = self.lootFolder
 
-	local spawnPosition = LootServiceUtils.sanitizeVector3(positionRaw, Vector3.zero)
+	local spawnPosition = LootServiceUtils.CoerceVector3(positionRaw, Vector3.zero)
 	local lockedPlaneX = if self.settings.lockTo2DPlane then spawnPosition.X else nil
 	if lockedPlaneX ~= nil then
 		spawnPosition = Vector3.new(lockedPlaneX, spawnPosition.Y, spawnPosition.Z)
@@ -953,12 +952,12 @@ function LootServiceServer.SpawnLootRuntime(
 	}
 
 	self.lootById[lootId] = runtime
-	self:setRuntimePosition(runtime, spawnPosition)
-	self:setRuntimePhysics(runtime, false, true, true, true, true)
-	self:applyDropImpulse(runtime, (options :: any).throwDirection)
-	self:applyRuntimeAttributes(runtime, "Spawned")
-	if self:resolveCoinTypeFromItemId(itemId) ~= nil then
-		self:playCoinDropSound(runtime)
+	self:SetRuntimePosition(runtime, spawnPosition)
+	self:SetRuntimePhysics(runtime, false, true, true, true, true)
+	self:ApplyDropImpulse(runtime, (options :: any).throwDirection)
+	self:ApplyRuntimeAttributes(runtime, "Spawned")
+	if self:GetCoinTypeFromItemId(itemId) ~= nil then
+		self:PlayCoinDropSound(runtime)
 	end
 
 	runtime.destroyConnection = runtime.instance.Destroying:Connect(function()
@@ -968,7 +967,7 @@ function LootServiceServer.SpawnLootRuntime(
 		end
 		liveRuntime.disposed = true
 		self.lootById[lootId] = nil
-		self:destroyMagnetRuntime(liveRuntime)
+		self:DestroyMagnetRuntime(liveRuntime)
 	end)
 
 	return runtime
@@ -979,7 +978,7 @@ function LootServiceServer.GetDropOriginForPlayer(
 	player: Player,
 	throwDirectionRaw: any
 ): Vector3
-	local rootPart = resolvePlayerRootPart(player)
+	local rootPart = GetPlayerRootPart(player)
 	if rootPart == nil then
 		return Vector3.zero
 	end
@@ -1002,25 +1001,25 @@ function LootServiceServer.SpawnDropsFromTable(
 ): { [string]: any }
 	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
 	local onlyCoinLoot = (options :: any).onlyCoinLoot == true
-	local origin = LootServiceUtils.sanitizeVector3(originRaw, Vector3.zero)
+	local origin = LootServiceUtils.CoerceVector3(originRaw, Vector3.zero)
 	local context = if typeof((options :: any).context) == "table"
 		then shallowCopy((options :: any).context)
 		else {} :: any
 	local mutableContext = context :: any
-	local sourceType = LootServiceUtils.sanitizeString((options :: any).sourceType, nil)
+	local sourceType = LootServiceUtils.CoerceString((options :: any).sourceType, nil)
 	if sourceType ~= nil then
 		mutableContext.sourceType = sourceType
 	end
 
 	local drops: { LootRollResult } =
-		LootServiceUtils.rollDropTable(self.data, dropTableIdRaw, self.random, context :: LootRollContext)
-	local ownerUserId = sanitizeOwnerUserId((options :: any).ownerUserId)
+		LootServiceUtils.RollDropTable(self.data, dropTableIdRaw, self.random, context :: LootRollContext)
+	local ownerUserId = CoerceOwnerUserId((options :: any).ownerUserId)
 	local ownerLockSeconds =
-		LootServiceUtils.sanitizeNumber((options :: any).ownerLockSeconds, self.settings.ownerLockSeconds, 0, 120)
+		LootServiceUtils.CoerceNumber((options :: any).ownerLockSeconds, self.settings.ownerLockSeconds, 0, 120)
 
 	local output = {}
 	for _, drop in drops do
-		if onlyCoinLoot and self:resolveCoinTypeFromItemId(drop.itemId) == nil then
+		if onlyCoinLoot and self:GetCoinTypeFromItemId(drop.itemId) == nil then
 			continue
 		end
 
@@ -1035,7 +1034,7 @@ function LootServiceServer.SpawnDropsFromTable(
 		local spawnPosition = origin + horizontalOffset + Vector3.new(0, self.settings.spawnHeightOffset, 0)
 		local throwDirection = if horizontalOffset.Magnitude > EPSILON then horizontalOffset.Unit else nil
 
-		local runtime = self:spawnLootRuntime(drop.itemId, drop.amount, spawnPosition, {
+		local runtime = self:SpawnLootRuntime(drop.itemId, drop.amount, spawnPosition, {
 			maxStack = drop.maxStack,
 			metadata = drop.metadata,
 			rarity = drop.rarity,
@@ -1045,7 +1044,7 @@ function LootServiceServer.SpawnDropsFromTable(
 			throwDirection = throwDirection,
 		})
 		if runtime ~= nil then
-			table.insert(output, self:toPublicSnapshot(runtime))
+			table.insert(output, self:ToPublicSnapshot(runtime))
 		end
 	end
 
@@ -1058,28 +1057,28 @@ function LootServiceServer.SpawnDropsFromSource(
 	originRaw: any,
 	optionsRaw: any
 ): { [string]: any }
-	local dropTableId = LootServiceUtils.resolveDropTableId(self.data, sourceRaw, "Slime")
+	local dropTableId = LootServiceUtils.GotRopTableId(self.data, sourceRaw, "Slime")
 	if dropTableId == nil then
 		return {}
 	end
 
 	local options = if typeof(optionsRaw) == "table" then shallowCopy(optionsRaw) else {} :: any
 	local mutableOptions = options :: any
-	local sourceType = LootServiceUtils.sanitizeString(mutableOptions.sourceType, nil)
+	local sourceType = LootServiceUtils.CoerceString(mutableOptions.sourceType, nil)
 	if sourceType == nil then
 		if typeof(sourceRaw) == "string" then
 			sourceType = sourceRaw
 		elseif typeof(sourceRaw) == "table" then
 			local source = sourceRaw :: { [string]: any }
-			sourceType = LootServiceUtils.sanitizeString(source.sourceType, nil)
-				or LootServiceUtils.sanitizeString(source.npcType, nil)
-				or LootServiceUtils.sanitizeString(source.displayName, nil)
+			sourceType = LootServiceUtils.CoerceString(source.sourceType, nil)
+				or LootServiceUtils.CoerceString(source.npcType, nil)
+				or LootServiceUtils.CoerceString(source.displayName, nil)
 		end
 	end
 	mutableOptions.sourceType = sourceType or dropTableId
 	mutableOptions.onlyCoinLoot = true
 
-	return self:spawnDropsFromTable(dropTableId, originRaw, options)
+	return self:SpawnDropsFromTable(dropTableId, originRaw, options)
 end
 
 function LootServiceServer.CanPlayerPickupRuntime(
@@ -1111,7 +1110,7 @@ function LootServiceServer.CollectPlayerContexts(
 	local contexts = {}
 	local contextsByPlayer = {}
 	for _, player in Players:GetPlayers() do
-		local rootPart = resolvePlayerRootPart(player)
+		local rootPart = GetPlayerRootPart(player)
 		if rootPart == nil then
 			continue
 		end
@@ -1136,7 +1135,7 @@ function LootServiceServer.FindNearestEligiblePlayerContext(
 	local nearest: PlayerContext? = nil
 	local nearestDistance = math.huge
 	for _, context in playerContexts do
-		local canPickup = self:canPlayerPickupRuntime(runtime, context, now)
+		local canPickup = self:CanPlayerPickupRuntime(runtime, context, now)
 		if not canPickup then
 			continue
 		end
@@ -1175,8 +1174,8 @@ function LootServiceServer.BeginMagnetization(
 	}
 	runtime.magnet = magnet
 
-	if not self:transitionState(runtime, LootServiceUtils.STATE_MAGNETIZED, "PickupEligible") then
-		self:destroyMagnetRuntime(runtime)
+	if not self:TransitionState(runtime, LootServiceUtils.STATE_MAGNETIZED, "PickupEligible") then
+		self:DestroyMagnetRuntime(runtime)
 		return false
 	end
 	return true
@@ -1187,8 +1186,8 @@ function LootServiceServer.CanInventoryAcceptRuntime(
 	player: Player,
 	runtime: LootRuntime
 ): boolean
-	local inventoryState = self.inventoryService:getState(player)
-	if not InventoryServiceUtils.isLoadedState(inventoryState.loadState) then
+	local inventoryState = self.inventoryService:GetState(player)
+	if not InventoryServiceUtils.IsLoadedState(inventoryState.loadState) then
 		return false
 	end
 
@@ -1201,7 +1200,7 @@ function LootServiceServer.CanInventoryAcceptRuntime(
 		if stack.itemId ~= runtime.itemId then
 			continue
 		end
-		if not LootServiceUtils.deepEqual(stack.metadata, runtime.metadata) then
+		if not LootServiceUtils.DeepEqual(stack.metadata, runtime.metadata) then
 			continue
 		end
 
@@ -1234,56 +1233,56 @@ function LootServiceServer.TryCollectRuntime(
 		return false
 	end
 
-	if self:shouldRouteRuntimeToCoinWallet(runtime) then
-		local didCollectToWallet = self:tryCollectRuntimeToCoinWallet(runtime, player)
+	if self:ShouldRouteRuntimeToCoinWallet(runtime) then
+		local didCollectToWallet = self:TryCollectRuntimeToCoinWallet(runtime, player)
 		if didCollectToWallet then
 			return true
 		end
 		runtime.forceIdleUntil = now + self.settings.magnetCooldownAfterFailedCollect
-		return self:transitionState(runtime, LootServiceUtils.STATE_IDLE, "CoinWalletUnavailable")
+		return self:TransitionState(runtime, LootServiceUtils.STATE_IDLE, "CoinWalletUnavailable")
 	end
 
-	if not self:canInventoryAcceptRuntime(player, runtime) then
+	if not self:CanInventoryAcceptRuntime(player, runtime) then
 		runtime.forceIdleUntil = now + self.settings.magnetCooldownAfterFailedCollect
-		return self:transitionState(runtime, LootServiceUtils.STATE_IDLE, "InventoryFull")
+		return self:TransitionState(runtime, LootServiceUtils.STATE_IDLE, "InventoryFull")
 	end
 
-	local addResult = self.inventoryService:addItem(player, runtime.itemId, runtime.amount, {
+	local addResult = self.inventoryService:AddItem(player, runtime.itemId, runtime.amount, {
 		maxStack = runtime.maxStack,
-		metadata = LootServiceUtils.cloneDeep(runtime.metadata),
+		metadata = LootServiceUtils.CloneDeep(runtime.metadata),
 		stackIdPrefix = "loot",
 	})
 	local addedAmount = math.clamp(addResult.added, 0, runtime.amount)
 	if addedAmount > 0 then
-		self:restoreCachedDropTools(player, runtime, addedAmount)
-		self:playPickupSound(runtime, player)
+		self:RestoreCachedDropTools(player, runtime, addedAmount)
+		self:PlayPickupSound(runtime, player)
 	end
 	if addedAmount ~= runtime.amount then
 		if addedAmount > 0 then
 			runtime.amount -= addedAmount
 		end
 		if runtime.amount <= 0 then
-			self:transitionState(runtime, LootServiceUtils.STATE_COLLECTED, "Collected")
-			self:disposeRuntime(runtime, "Collected")
+			self:TransitionState(runtime, LootServiceUtils.STATE_COLLECTED, "Collected")
+			self:DisposeRuntime(runtime, "Collected")
 			return true
 		end
 		runtime.forceIdleUntil = now + self.settings.magnetCooldownAfterFailedCollect
-		return self:transitionState(runtime, LootServiceUtils.STATE_IDLE, "PartialCollect")
+		return self:TransitionState(runtime, LootServiceUtils.STATE_IDLE, "PartialCollect")
 	end
 
-	self:transitionState(runtime, LootServiceUtils.STATE_COLLECTED, "Collected")
-	self:disposeRuntime(runtime, "Collected")
+	self:TransitionState(runtime, LootServiceUtils.STATE_COLLECTED, "Collected")
+	self:DisposeRuntime(runtime, "Collected")
 	return true
 end
 
 function LootServiceServer.UpdateDroppedRuntime(self: LootServiceServer, runtime: LootRuntime, now: number)
 	if now - runtime.stateEnteredAt >= self.settings.droppedStateDuration then
-		self:transitionState(runtime, LootServiceUtils.STATE_SETTLING, "DroppedImpulseComplete")
+		self:TransitionState(runtime, LootServiceUtils.STATE_SETTLING, "DroppedImpulseComplete")
 	end
 end
 
 function LootServiceServer.UpdateSettlingRuntime(self: LootServiceServer, runtime: LootRuntime, now: number)
-	self:refreshRuntimePosition(runtime)
+	self:RefreshRuntimePosition(runtime)
 	if now - runtime.stateEnteredAt < self.settings.settleMinDuration then
 		return
 	end
@@ -1305,8 +1304,8 @@ function LootServiceServer.UpdateSettlingRuntime(self: LootServiceServer, runtim
 		and (now - runtime.stableSince) >= self.settings.settleStableDuration
 	local exceededMaxDuration = (now - runtime.stateEnteredAt) >= self.settings.settleMaxDuration
 	if isStableLongEnough or exceededMaxDuration then
-		self:transitionState(runtime, LootServiceUtils.STATE_IDLE, "Settled")
-		self:refreshRuntimePosition(runtime)
+		self:TransitionState(runtime, LootServiceUtils.STATE_IDLE, "Settled")
+		self:RefreshRuntimePosition(runtime)
 	end
 end
 
@@ -1316,14 +1315,14 @@ function LootServiceServer.UpdateIdleRuntime(
 	playerContexts: { PlayerContext },
 	now: number
 )
-	self:refreshRuntimePosition(runtime)
+	self:RefreshRuntimePosition(runtime)
 	if now < runtime.forceIdleUntil then
 		return
 	end
 
-	local nearest = self:findNearestEligiblePlayerContext(runtime, playerContexts, now)
+	local nearest = self:FindNearestEligiblePlayerContext(runtime, playerContexts, now)
 	if nearest ~= nil then
-		self:beginMagnetization(runtime, nearest, now)
+		self:BeginMagnetization(runtime, nearest, now)
 	end
 end
 
@@ -1336,21 +1335,21 @@ function LootServiceServer.UpdateMagnetizedRuntime(
 )
 	local magnet = runtime.magnet
 	if magnet == nil then
-		self:transitionState(runtime, LootServiceUtils.STATE_IDLE, "MissingMagnetRuntime")
+		self:TransitionState(runtime, LootServiceUtils.STATE_IDLE, "MissingMagnetRuntime")
 		return
 	end
 
 	local targetContext = contextsByPlayer[magnet.player]
 	if targetContext == nil then
 		runtime.forceIdleUntil = now + self.settings.magnetCooldownAfterFailedCollect
-		self:transitionState(runtime, LootServiceUtils.STATE_IDLE, "TargetMissing")
+		self:TransitionState(runtime, LootServiceUtils.STATE_IDLE, "TargetMissing")
 		return
 	end
 
-	local canPickup = self:canPlayerPickupRuntime(runtime, targetContext, now)
+	local canPickup = self:CanPlayerPickupRuntime(runtime, targetContext, now)
 	if not canPickup then
 		runtime.forceIdleUntil = now + self.settings.magnetCooldownAfterFailedCollect
-		self:transitionState(runtime, LootServiceUtils.STATE_IDLE, "TargetInvalid")
+		self:TransitionState(runtime, LootServiceUtils.STATE_IDLE, "TargetInvalid")
 		return
 	end
 
@@ -1385,14 +1384,14 @@ function LootServiceServer.UpdateMagnetizedRuntime(
 	local springPosition = Vector3.new(magnet.xMotion:step(dt), magnet.yMotion:step(dt), magnet.zMotion:step(dt))
 
 	local speedPosition =
-		Vec.moveTowards(currentPosition, targetPosition, magnet.speed * closeSpeedBoost * distanceStrength * dt)
+		Vec.MoveTowards(currentPosition, targetPosition, magnet.speed * closeSpeedBoost * distanceStrength * dt)
 
 	local nextPosition = springPosition:Lerp(speedPosition, self.settings.magnetSpeedBlend)
-	self:setRuntimePosition(runtime, nextPosition)
+	self:SetRuntimePosition(runtime, nextPosition)
 
 	local nextDistance = (targetPosition - nextPosition).Magnitude
 	if nextDistance <= self.settings.collectDistance then
-		self:tryCollectRuntime(runtime, targetContext.player, now)
+		self:TryCollectRuntime(runtime, targetContext.player, now)
 	end
 end
 
@@ -1408,33 +1407,33 @@ function LootServiceServer.UpdateRuntime(
 		return
 	end
 	if runtime.expiresAt <= now then
-		self:transitionState(runtime, LootServiceUtils.STATE_COLLECTED, "Expired")
-		self:disposeRuntime(runtime, "Expired")
+		self:TransitionState(runtime, LootServiceUtils.STATE_COLLECTED, "Expired")
+		self:DisposeRuntime(runtime, "Expired")
 		return
 	end
-	self:applyRuntimePlaneConstraint(runtime)
+	self:ApplyRuntimePlaneConstraint(runtime)
 
 	if runtime.state == LootServiceUtils.STATE_DROPPED then
-		self:updateDroppedRuntime(runtime, now)
+		self:UpdateDroppedRuntime(runtime, now)
 		return
 	end
 	if runtime.state == LootServiceUtils.STATE_SETTLING then
-		self:updateSettlingRuntime(runtime, now)
+		self:UpdateSettlingRuntime(runtime, now)
 		return
 	end
 	if runtime.state == LootServiceUtils.STATE_IDLE then
-		self:updateIdleRuntime(runtime, playerContexts, now)
+		self:UpdateIdleRuntime(runtime, playerContexts, now)
 		return
 	end
 	if runtime.state == LootServiceUtils.STATE_MAGNETIZED then
-		self:updateMagnetizedRuntime(runtime, dt, contextsByPlayer, now)
+		self:UpdateMagnetizedRuntime(runtime, dt, contextsByPlayer, now)
 		return
 	end
 end
 
 function LootServiceServer.StepSimulation(self: LootServiceServer, dt: number)
 	local now = os.clock()
-	local playerContexts, contextsByPlayer = self:collectPlayerContexts()
+	local playerContexts, contextsByPlayer = self:CollectPlayerContexts()
 	local runtimeIds = {}
 	for runtimeId in self.lootById do
 		table.insert(runtimeIds, runtimeId)
@@ -1443,13 +1442,13 @@ function LootServiceServer.StepSimulation(self: LootServiceServer, dt: number)
 	for _, runtimeId in runtimeIds do
 		local runtime = self.lootById[runtimeId]
 		if runtime ~= nil then
-			self:updateRuntime(runtime, dt, playerContexts, contextsByPlayer, now)
+			self:UpdateRuntime(runtime, dt, playerContexts, contextsByPlayer, now)
 		end
 	end
 end
 
 function LootServiceServer.OnHeartbeat(self: LootServiceServer, dtRaw: any)
-	local dt = LootServiceUtils.sanitizeNumber(dtRaw, 0, 0, 1)
+	local dt = LootServiceUtils.CoerceNumber(dtRaw, 0, 0, 1)
 	if dt <= 0 then
 		return
 	end
@@ -1461,7 +1460,7 @@ function LootServiceServer.OnHeartbeat(self: LootServiceServer, dtRaw: any)
 	while self.simulationAccumulator >= step and steps < maxSteps do
 		self.simulationAccumulator -= step
 		steps += 1
-		self:stepSimulation(step)
+		self:StepSimulation(step)
 	end
 	if steps >= maxSteps and self.simulationAccumulator >= step then
 		self.simulationAccumulator = 0
@@ -1475,21 +1474,21 @@ function LootServiceServer.DropFromInventorySlot(
 	amountRaw: any,
 	throwDirectionRaw: any
 ): boolean
-	if not self:canAcceptDropRequest(player) then
+	if not self:CanAcceptDropRequest(player) then
 		return false
 	end
 
-	local inventoryState = self.inventoryService:getState(player)
-	if not InventoryServiceUtils.isLoadedState(inventoryState.loadState) then
+	local inventoryState = self.inventoryService:GetState(player)
+	if not InventoryServiceUtils.IsLoadedState(inventoryState.loadState) then
 		return false
 	end
 
-	local stack = InventoryServiceUtils.getStack(inventoryState, slotIndexRaw)
+	local stack = InventoryServiceUtils.GetStack(inventoryState, slotIndexRaw)
 	if stack == nil then
 		return false
 	end
 
-	local dropAmount = LootServiceUtils.resolveDropAmount(amountRaw, stack.amount)
+	local dropAmount = LootServiceUtils.GotRopAmount(amountRaw, stack.amount)
 	dropAmount = math.clamp(dropAmount, 1, stack.amount)
 
 	local stackSnapshot: InventoryItemStack = {
@@ -1497,11 +1496,11 @@ function LootServiceServer.DropFromInventorySlot(
 		itemId = stack.itemId,
 		amount = stack.amount,
 		maxStack = stack.maxStack,
-		metadata = LootServiceUtils.cloneDeep(stack.metadata),
+		metadata = LootServiceUtils.CloneDeep(stack.metadata),
 	}
-	local cachedToolClones = self:captureDropToolClones(player, stackSnapshot.itemId, dropAmount)
+	local cachedToolClones = self:CaptureDropToolClones(player, stackSnapshot.itemId, dropAmount)
 
-	local removeResult = self.inventoryService:removeFromSlot(player, slotIndexRaw, dropAmount)
+	local removeResult = self.inventoryService:RemoveFromSlot(player, slotIndexRaw, dropAmount)
 	if removeResult.removedAmount <= 0 then
 		for _, toolClone in cachedToolClones do
 			toolClone:Destroy()
@@ -1509,8 +1508,8 @@ function LootServiceServer.DropFromInventorySlot(
 		return false
 	end
 
-	local dropOrigin = self:getDropOriginForPlayer(player, throwDirectionRaw)
-	local runtime = self:spawnLootRuntime(stackSnapshot.itemId, removeResult.removedAmount, dropOrigin, {
+	local dropOrigin = self:GetDropOriginForPlayer(player, throwDirectionRaw)
+	local runtime = self:SpawnLootRuntime(stackSnapshot.itemId, removeResult.removedAmount, dropOrigin, {
 		maxStack = stackSnapshot.maxStack,
 		metadata = stackSnapshot.metadata,
 		sourceType = "PlayerDrop",
@@ -1519,11 +1518,11 @@ function LootServiceServer.DropFromInventorySlot(
 		throwDirection = throwDirectionRaw,
 	})
 	if runtime ~= nil then
-		self.cache:cacheDroppedTools(runtime.id, stackSnapshot.itemId, player.UserId, cachedToolClones)
+		self.cache:CacheDroppedTools(runtime.id, stackSnapshot.itemId, player.UserId, cachedToolClones)
 		return true
 	end
 
-	self.inventoryService:addItem(player, stackSnapshot.itemId, removeResult.removedAmount, {
+	self.inventoryService:AddItem(player, stackSnapshot.itemId, removeResult.removedAmount, {
 		maxStack = stackSnapshot.maxStack,
 		metadata = stackSnapshot.metadata,
 		stackIdPrefix = "rollback",
@@ -1533,7 +1532,7 @@ function LootServiceServer.DropFromInventorySlot(
 		targetContainer = player.Character
 	end
 	for _, toolClone in cachedToolClones do
-		self.inventoryService:releaseSuppressedToolImport(player, stackSnapshot.itemId, 1)
+		self.inventoryService:ReleaseSuppressedToolImport(player, stackSnapshot.itemId, 1)
 		if targetContainer ~= nil then
 			toolClone.Parent = targetContainer
 		else
@@ -1553,7 +1552,7 @@ function LootServiceServer.CanAcceptDropRequest(self: LootServiceServer, player:
 	return true
 end
 
-function LootServiceServer.RequestSync(self: LootServiceServer, _player: Player) end
+function LootServiceServer.RequestSync(_self: LootServiceServer, _player: Player) end
 
 function LootServiceServer.RequestDropFromSlot(
 	self: LootServiceServer,
@@ -1562,7 +1561,7 @@ function LootServiceServer.RequestDropFromSlot(
 	amountRaw: any,
 	throwDirectionRaw: any
 )
-	self:dropFromInventorySlot(player, slotIndexRaw, amountRaw, throwDirectionRaw)
+	self:DropFromInventorySlot(player, slotIndexRaw, amountRaw, throwDirectionRaw)
 end
 
 function LootServiceServer.RequestDropSelectedSlot(
@@ -1571,15 +1570,15 @@ function LootServiceServer.RequestDropSelectedSlot(
 	amountRaw: any,
 	throwDirectionRaw: any
 )
-	local inventoryState = self.inventoryService:getState(player)
-	if not InventoryServiceUtils.isLoadedState(inventoryState.loadState) then
+	local inventoryState = self.inventoryService:GetState(player)
+	if not InventoryServiceUtils.IsLoadedState(inventoryState.loadState) then
 		return
 	end
 	local selectedSlot = inventoryState.selectedSlot
 	if selectedSlot == nil then
 		return
 	end
-	self:dropFromInventorySlot(player, selectedSlot, amountRaw, throwDirectionRaw)
+	self:DropFromInventorySlot(player, selectedSlot, amountRaw, throwDirectionRaw)
 end
 
 function LootServiceServer.Init(self: LootServiceServer)
@@ -1588,23 +1587,23 @@ function LootServiceServer.Init(self: LootServiceServer)
 	self.playerDataService = PlayerDataServiceServer :: PlayerDataServiceServerObject
 	self.soundService = AudioServiceServer :: AudioServiceServerObject
 	self.data = LootServiceData
-	self.settings = LootServiceUtils.resolveSettings(self.data)
+	self.settings = LootServiceUtils.GetSettings(self.data)
 	self.random = Random.new()
-	self.cache = LootServiceCache.new()
+	self.cache = LootServiceCache.New()
 	self.lootById = {}
 	self.itemTemplateByItemId = {}
 	self.itemPickupSoundAssetIds = {} :: { string }
 	self.coinDropSoundAssetIds = {} :: { string }
 	self.coinPickupSoundAssetIds = {} :: { string }
-	self:refreshPickupSoundTemplates()
+	self:RefreshPickupSoundTemplates()
 	self.lastDropRequestAtByPlayer = {}
 	self.simulationAccumulator = 0
-	self.lootFolder = self:ensureLootFolder()
-	self.binders = NevermoreSupport.getService(ServerBinderSupport)
+	self.lootFolder = self:EnsureLootFolder()
+	self.binders = NevermoreSupport.GetService(BinderSupportServer)
 
-	self.inventoryService:setDropFromSlotHandler(
+	self.inventoryService:SetDropFromSlotHandler(
 		function(player: Player, slotIndexRaw: any, amountRaw: any, throwDirectionRaw: any)
-			return self:dropFromInventorySlot(player, slotIndexRaw, amountRaw, throwDirectionRaw)
+			return self:DropFromInventorySlot(player, slotIndexRaw, amountRaw, throwDirectionRaw)
 		end
 	)
 
@@ -1612,7 +1611,7 @@ function LootServiceServer.Init(self: LootServiceServer)
 		self.lastDropRequestAtByPlayer[player] = nil
 	end)
 	self.heartbeatConnection = RunService.Heartbeat:Connect(function(dt: number)
-		self:onHeartbeat(dt)
+		self:OnHeartbeat(dt)
 	end)
 end
 
@@ -1626,74 +1625,22 @@ function LootServiceServer.Destroy(self: LootServiceServer)
 		self.heartbeatConnection = nil
 	end
 
-	self.inventoryService:setDropFromSlotHandler(nil)
+	self.inventoryService:SetDropFromSlotHandler(nil)
 
 	local runtimeIds = {}
 	for runtimeId in self.lootById do
 		table.insert(runtimeIds, runtimeId)
 	end
 	for _, runtimeId in runtimeIds do
-		self:removeRuntimeById(runtimeId, "Cleanup")
+		self:RemoveRuntimeById(runtimeId, "Cleanup")
 	end
 	local cache = self.cache :: LootServiceCacheObject?
 	if cache ~= nil then
-		cache:destroy()
+		cache:Destroy()
 	end
 
 	self.soundService = nil
 end
-
-LootServiceServer.cacheToolTemplateIfPossible = LootServiceServer.CacheToolTemplateIfPossible
-LootServiceServer.isToolMatchingItemId = LootServiceServer.IsToolMatchingItemId
-LootServiceServer.captureDropToolClones = LootServiceServer.CaptureDropToolClones
-LootServiceServer.restoreCachedDropTools = LootServiceServer.RestoreCachedDropTools
-LootServiceServer.resolveCoinTypeFromItemId = LootServiceServer.ResolveCoinTypeFromItemId
-LootServiceServer.shouldRouteRuntimeToCoinWallet = LootServiceServer.ShouldRouteRuntimeToCoinWallet
-LootServiceServer.tryCollectRuntimeToCoinWallet = LootServiceServer.TryCollectRuntimeToCoinWallet
-LootServiceServer.ensureLootFolder = LootServiceServer.EnsureLootFolder
-LootServiceServer.refreshPickupSoundTemplates = LootServiceServer.RefreshPickupSoundTemplates
-LootServiceServer.playCoinDropSound = LootServiceServer.PlayCoinDropSound
-LootServiceServer.playPickupSound = LootServiceServer.PlayPickupSound
-LootServiceServer.resolveItemTemplate = LootServiceServer.ResolveItemTemplate
-LootServiceServer.cloneLootInstanceFromTemplate = LootServiceServer.CloneLootInstanceFromTemplate
-LootServiceServer.resolveRuntimePlaneX = LootServiceServer.ResolveRuntimePlaneX
-LootServiceServer.clampPositionToRuntimePlane = LootServiceServer.ClampPositionToRuntimePlane
-LootServiceServer.applyRuntimePlaneConstraint = LootServiceServer.ApplyRuntimePlaneConstraint
-LootServiceServer.setRuntimePosition = LootServiceServer.SetRuntimePosition
-LootServiceServer.refreshRuntimePosition = LootServiceServer.RefreshRuntimePosition
-LootServiceServer.applyRuntimeAttributes = LootServiceServer.ApplyRuntimeAttributes
-LootServiceServer.setRuntimePhysics = LootServiceServer.SetRuntimePhysics
-LootServiceServer.destroyMagnetRuntime = LootServiceServer.DestroyMagnetRuntime
-LootServiceServer.transitionState = LootServiceServer.TransitionState
-LootServiceServer.disposeRuntime = LootServiceServer.DisposeRuntime
-LootServiceServer.removeRuntimeById = LootServiceServer.RemoveRuntimeById
-LootServiceServer.applyDropImpulse = LootServiceServer.ApplyDropImpulse
-LootServiceServer.toPublicSnapshot = LootServiceServer.ToPublicSnapshot
-LootServiceServer.spawnLootRuntime = LootServiceServer.SpawnLootRuntime
-LootServiceServer.getDropOriginForPlayer = LootServiceServer.GetDropOriginForPlayer
-LootServiceServer.spawnDropsFromTable = LootServiceServer.SpawnDropsFromTable
-LootServiceServer.spawnDropsFromSource = LootServiceServer.SpawnDropsFromSource
-LootServiceServer.canPlayerPickupRuntime = LootServiceServer.CanPlayerPickupRuntime
-LootServiceServer.collectPlayerContexts = LootServiceServer.CollectPlayerContexts
-LootServiceServer.findNearestEligiblePlayerContext = LootServiceServer.FindNearestEligiblePlayerContext
-LootServiceServer.beginMagnetization = LootServiceServer.BeginMagnetization
-LootServiceServer.canInventoryAcceptRuntime = LootServiceServer.CanInventoryAcceptRuntime
-LootServiceServer.tryCollectRuntime = LootServiceServer.TryCollectRuntime
-LootServiceServer.updateDroppedRuntime = LootServiceServer.UpdateDroppedRuntime
-LootServiceServer.updateSettlingRuntime = LootServiceServer.UpdateSettlingRuntime
-LootServiceServer.updateIdleRuntime = LootServiceServer.UpdateIdleRuntime
-LootServiceServer.updateMagnetizedRuntime = LootServiceServer.UpdateMagnetizedRuntime
-LootServiceServer.updateRuntime = LootServiceServer.UpdateRuntime
-LootServiceServer.stepSimulation = LootServiceServer.StepSimulation
-LootServiceServer.onHeartbeat = LootServiceServer.OnHeartbeat
-LootServiceServer.dropFromInventorySlot = LootServiceServer.DropFromInventorySlot
-LootServiceServer.canAcceptDropRequest = LootServiceServer.CanAcceptDropRequest
-LootServiceServer.requestSync = LootServiceServer.RequestSync
-LootServiceServer.requestDropFromSlot = LootServiceServer.RequestDropFromSlot
-LootServiceServer.requestDropSelectedSlot = LootServiceServer.RequestDropSelectedSlot
-LootServiceServer.init = LootServiceServer.Init
-LootServiceServer.destroy = LootServiceServer.Destroy
-
 type LootServiceServer = typeof(LootServiceServer) & {
 	inventoryService: InventoryServiceServerObject,
 	playerDataService: PlayerDataServiceServerObject,

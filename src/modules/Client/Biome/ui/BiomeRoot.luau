@@ -14,9 +14,9 @@ type BiomeRootProps = {
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: BiomeRootProps?): React.ReactNode
-	local resolvedProps = if props ~= nil then props else {} :: BiomeRootProps
+	local GotProps = if props ~= nil then props else {} :: BiomeRootProps
 
 	return e(React.Fragment, nil, {
-		e(BiomeNameScreen, resolvedProps),
+		e(BiomeNameScreen, GotProps),
 	})
 end

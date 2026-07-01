@@ -18,7 +18,6 @@ export type CancellationToken = {
 	cancelled: boolean,
 	group: string,
 	Cancel: (self: CancellationToken) -> (),
-	cancel: (self: CancellationToken) -> (),
 }
 
 export type TaskRecord = {
@@ -127,11 +126,8 @@ function TickScheduler._createToken(self: TickScheduler, id: number, group: stri
 			return
 		end
 		selfToken.cancelled = true
-		self:cancel(selfToken)
+		self:Cancel(selfToken)
 	end
-
-	token.cancel = token.Cancel
-
 	return token
 end
 
@@ -192,7 +188,7 @@ function TickScheduler.ScheduleEvery(
 	local options = if typeof(optionsRaw) == "table" then Sift.Dictionary.copy(optionsRaw) else {} :: any
 	options.interval = intervalRaw
 	options.repeatCount = -1
-	return self:schedule(callbackRaw, intervalRaw, options)
+	return self:Schedule(callbackRaw, intervalRaw, options)
 end
 
 function TickScheduler.ScheduleFixed(
@@ -208,7 +204,7 @@ function TickScheduler.ScheduleFixed(
 	if options.repeatCount == nil then
 		options.repeatCount = -1
 	end
-	return self:schedule(callbackRaw, options.interval, options)
+	return self:Schedule(callbackRaw, options.interval, options)
 end
 
 function TickScheduler.Cancel(self: TickScheduler, tokenOrIdRaw: any): boolean
@@ -411,19 +407,4 @@ function TickScheduler.Clear(self: TickScheduler)
 	table.clear(self.tasks)
 	table.clear(self.pausedGroups)
 end
-
-TickScheduler.new = TickScheduler.New
-TickScheduler.schedule = TickScheduler.Schedule
-TickScheduler.scheduleEvery = TickScheduler.ScheduleEvery
-TickScheduler.scheduleFixed = TickScheduler.ScheduleFixed
-TickScheduler.cancel = TickScheduler.Cancel
-TickScheduler.pauseGroup = TickScheduler.PauseGroup
-TickScheduler.resumeGroup = TickScheduler.ResumeGroup
-TickScheduler.isGroupPaused = TickScheduler.IsGroupPaused
-TickScheduler.cancelGroup = TickScheduler.CancelGroup
-TickScheduler.update = TickScheduler.Update
-TickScheduler.flush = TickScheduler.Flush
-TickScheduler.getStats = TickScheduler.GetStats
-TickScheduler.clear = TickScheduler.Clear
-
 return TickScheduler

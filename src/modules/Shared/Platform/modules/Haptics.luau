@@ -75,7 +75,7 @@ local function normalizeEventName(valueRaw: any, fallback: string): string
 	return fallback
 end
 
-local function resolveInputType(inputTypeRaw: any): Enum.UserInputType
+local function GetInputType(inputTypeRaw: any): Enum.UserInputType
 	if
 		typeof(inputTypeRaw) == "EnumItem"
 		and string.sub((inputTypeRaw :: Enum.UserInputType).Name, 1, 7) == "Gamepad"
@@ -149,7 +149,7 @@ function Haptics.Pulse(self: Haptics, patternRaw: any, configRaw: PulseConfig?):
 		return false
 	end
 
-	local inputType = resolveInputType(config.inputType)
+	local inputType = GetInputType(config.inputType)
 	local intensityScale = clampNumber(config.intensityScale, 1, 0, 4)
 	local durationScale = clampNumber(config.durationScale, 1, 0, 4)
 	local large = clampNumber(config.large, if typeof(pattern.large) == "number" then pattern.large else 0.2, 0, 1)
@@ -177,8 +177,8 @@ function Haptics.Pulse(self: Haptics, patternRaw: any, configRaw: PulseConfig?):
 		self.activeStopByInput[inputType.Name] = nil
 	end
 
-	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).schedule) == "function" then
-		local token = (self.tickScheduler :: any):schedule(
+	if self.tickScheduler ~= nil and typeof((self.tickScheduler :: any).Schedule) == "function" then
+		local token = (self.tickScheduler :: any):Schedule(
 			function()
 				stopPulse()
 			end,
@@ -190,11 +190,11 @@ function Haptics.Pulse(self: Haptics, patternRaw: any, configRaw: PulseConfig?):
 		)
 		self.activeStopByInput[inputType.Name] = function()
 			cancelled = true
-			if typeof(token.cancel) == "function" then
-				token:cancel()
-			elseif typeof((self.tickScheduler :: any).cancel) == "function" then
+			if typeof(token.Cancel) == "function" then
+				token:Cancel()
+			elseif typeof((self.tickScheduler :: any).Cancel) == "function" then
 				local schedulerAny = self.tickScheduler :: any
-				schedulerAny:cancel(token)
+				schedulerAny:Cancel(token)
 			end
 			self:_stop(inputType)
 		end
@@ -210,7 +210,7 @@ function Haptics.Pulse(self: Haptics, patternRaw: any, configRaw: PulseConfig?):
 
 	if self.eventBus ~= nil and typeof((self.eventBus :: any).publish) == "function" then
 		local eventBusAny = self.eventBus :: any
-		eventBusAny:publish(self.eventChannel, "pulse", {
+		eventBusAny:Publish(self.eventChannel, "pulse", {
 			inputType = inputType,
 			large = large,
 			small = small,
@@ -222,27 +222,27 @@ function Haptics.Pulse(self: Haptics, patternRaw: any, configRaw: PulseConfig?):
 end
 
 function Haptics.Selection(self: Haptics): boolean
-	return self:pulse("selection")
+	return self:Pulse("selection")
 end
 
 function Haptics.Confirm(self: Haptics): boolean
-	return self:pulse("confirm")
+	return self:Pulse("confirm")
 end
 
 function Haptics.Warning(self: Haptics): boolean
-	return self:pulse("warning")
+	return self:Pulse("warning")
 end
 
 function Haptics.Error(self: Haptics): boolean
-	return self:pulse("error")
+	return self:Pulse("error")
 end
 
 function Haptics.ImpactLight(self: Haptics): boolean
-	return self:pulse("impactLight")
+	return self:Pulse("impactLight")
 end
 
 function Haptics.ImpactHeavy(self: Haptics): boolean
-	return self:pulse("impactHeavy")
+	return self:Pulse("impactHeavy")
 end
 
 function Haptics.SetEnabled(self: Haptics, enabledRaw: any)
@@ -266,28 +266,5 @@ function Haptics.Destroy(self: Haptics)
 	end
 	self.isInitialized = false
 end
-
-Haptics.Pulse = Haptics.Pulse
-Haptics.Selection = Haptics.Selection
-Haptics.Confirm = Haptics.Confirm
-Haptics.Warning = Haptics.Warning
-Haptics.Error = Haptics.Error
-Haptics.ImpactLight = Haptics.ImpactLight
-Haptics.ImpactHeavy = Haptics.ImpactHeavy
-Haptics.SetEnabled = Haptics.SetEnabled
-Haptics.Init = Haptics.Init
-Haptics.Destroy = Haptics.Destroy
-
-Haptics.new = Haptics.New
-Haptics.pulse = Haptics.Pulse
-Haptics.selection = Haptics.Selection
-Haptics.confirm = Haptics.Confirm
-Haptics.warning = Haptics.Warning
-Haptics.error = Haptics.Error
-Haptics.impactLight = Haptics.ImpactLight
-Haptics.impactHeavy = Haptics.ImpactHeavy
-Haptics.setEnabled = Haptics.SetEnabled
-Haptics.init = Haptics.Init
-Haptics.destroy = Haptics.Destroy
 
 return Haptics

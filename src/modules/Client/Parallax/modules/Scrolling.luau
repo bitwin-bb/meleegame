@@ -39,10 +39,4 @@ function Scrolling.ComputeOffsetPixels(offsetStudsRaw: number, repeatStudsRaw: n
 	local tilePixels = math.max(tilePixelsRaw, 1)
 	return (Scrolling.WrapOffsetStuds(offsetStudsRaw, repeatStuds) / repeatStuds) * tilePixels
 end
-
-Scrolling.wrapOffsetStuds = Scrolling.WrapOffsetStuds
-Scrolling.computeHorizontalOffsetStuds = Scrolling.ComputeHorizontalOffsetStuds
-Scrolling.computeVerticalOffsetStuds = Scrolling.ComputeVerticalOffsetStuds
-Scrolling.computeOffsetPixels = Scrolling.ComputeOffsetPixels
-
 return Scrolling

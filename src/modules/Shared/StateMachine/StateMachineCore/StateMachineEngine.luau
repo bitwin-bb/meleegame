@@ -4,6 +4,13 @@ local Nevermore = require("StateMachineNevermore")
 local Brio = Nevermore.Get("Brio")
 local Maid = Nevermore.Get("Maid")
 local Promise = Nevermore.Get("Promise")
+
+local function fulfilledPromise(...): any
+	local args = table.pack(...)
+	return Promise.new(function(fulfill)
+		fulfill(table.unpack(args, 1, args.n))
+	end)
+end
 local RxSignal = Nevermore.Get("RxSignal")
 local Signal = Nevermore.Get("Signal")
 local Table = Nevermore.Get("Table")
@@ -75,7 +82,7 @@ local function clampPriority(valueRaw: any, fallback: number): number
 	return math.clamp(value, -1000000, 1000000)
 end
 
-local function sanitizeStateName(stateNameRaw: any): string?
+local function CoerceStateName(stateNameRaw: any): string?
 	if typeof(stateNameRaw) ~= "string" or stateNameRaw == "" then
 		return nil
 	end
@@ -90,7 +97,7 @@ local function isLegacyStateList(valueRaw: any): boolean
 	return typeof(first) == "table" and typeof((first :: any).id) == "string"
 end
 
-local function resolvePathParent(stateId: string): string?
+local function GetPathParent(stateId: string): string?
 	local lastDot = string.find(stateId, "%.[^%.]*$")
 	if lastDot == nil or lastDot <= 1 then
 		return nil
@@ -193,7 +200,7 @@ local function callStateDestroy(stateObject: any)
 end
 
 local function createMachine(context: any?, blackboard: any?): StateMachine
-	local resolvedBlackboard = if blackboard ~= nil then blackboard else Blackboard.new()
+	local blackboardObject = if blackboard ~= nil then blackboard else Blackboard.new()
 	local machine = setmetatable({
 		states = {} :: { [string]: StateDefinition },
 		stateObjects = {} :: { [string]: any },
@@ -202,7 +209,7 @@ local function createMachine(context: any?, blackboard: any?): StateMachine
 		activePath = {} :: { string },
 		stateElapsed = {} :: { [string]: number },
 		context = context,
-		blackboard = resolvedBlackboard,
+		blackboard = blackboardObject,
 		stateStack = StateStack.new(),
 		stateTree = StateTree.new(),
 		registeredTransitions = {} :: { TransitionObject },
@@ -236,8 +243,8 @@ local function createMachine(context: any?, blackboard: any?): StateMachine
 	machine.maid:GiveTask(machine.activeStateValue)
 	machine.maid:GiveTask(machine.stateStack)
 	machine.maid:GiveTask(machine.stateTree)
-	if blackboard == nil or typeof(resolvedBlackboard.Destroy) == "function" then
-		machine.maid:GiveTask(resolvedBlackboard)
+	if blackboard == nil or typeof(blackboardObject.Destroy) == "function" then
+		machine.maid:GiveTask(blackboardObject)
 	end
 
 	return machine
@@ -257,7 +264,7 @@ function StateMachine.New(statesRaw: any?, initialStateIdRaw: any?, context: any
 		for _, state in states do
 			self:_registerStateDefinition(state :: StateDefinition)
 		end
-		local initialStateId = sanitizeStateName(initialStateIdRaw)
+		local initialStateId = CoerceStateName(initialStateIdRaw)
 		if initialStateId == nil or self.states[initialStateId] == nil then
 			initialStateId = states[1].id
 		end
@@ -272,9 +279,9 @@ function StateMachine._ensureStateDefinition(self: StateMachine, stateId: string
 		return
 	end
 
-	local parent = if typeof(parentRaw) == "string" and parentRaw ~= "" then parentRaw else resolvePathParent(stateId)
+	local parent = if typeof(parentRaw) == "string" and parentRaw ~= "" then parentRaw else GetPathParent(stateId)
 	if parent ~= nil then
-		self:_ensureStateDefinition(parent, resolvePathParent(parent))
+		self:_ensureStateDefinition(parent, GetPathParent(parent))
 	end
 
 	self.states[stateId] = {
@@ -292,7 +299,7 @@ function StateMachine._registerStateDefinition(self: StateMachine, state: StateD
 		error(string.format("StateMachine duplicate state id '%s'", state.id))
 	end
 	if state.parent ~= nil then
-		self:_ensureStateDefinition(state.parent, resolvePathParent(state.parent))
+		self:_ensureStateDefinition(state.parent, GetPathParent(state.parent))
 	end
 
 	self.states[state.id] = state
@@ -376,12 +383,12 @@ function StateMachine.ObserveStateBrio(self: StateMachine): any
 end
 
 function StateMachine.PromiseState(self: StateMachine, stateNameRaw: any, timeoutRaw: any?): any
-	local stateName = sanitizeStateName(stateNameRaw)
+	local stateName = CoerceStateName(stateNameRaw)
 	if stateName == nil then
 		return Promise.rejected("bad state name")
 	end
 	if self.activeStateId == stateName then
-		return Promise.resolved(stateName)
+		return fulfilledPromise(stateName)
 	end
 
 	local promise = Promise.new()
@@ -389,7 +396,7 @@ function StateMachine.PromiseState(self: StateMachine, stateNameRaw: any, timeou
 	maid:GiveTask(promise)
 	maid:GiveTask(self.StateChanged:Connect(function(currentStateId)
 		if currentStateId == stateName then
-			promise:Resolve(currentStateId)
+			promise:Get(currentStateId)
 		end
 	end))
 
@@ -499,7 +506,7 @@ function StateMachine._collectRegisteredCandidates(self: StateMachine): { Transi
 		local from = if typeof(transition.From) == "string" and transition.From ~= ""
 			then transition.From
 			else WILDCARD_STATE
-		local to = sanitizeStateName(transition.To)
+		local to = CoerceStateName(transition.To)
 		if to == nil then
 			continue
 		end
@@ -619,7 +626,7 @@ function StateMachine.Start(self: StateMachine, initialStateNameRaw: any): boole
 	if self.destroyed then
 		return false
 	end
-	local initialStateName = sanitizeStateName(initialStateNameRaw)
+	local initialStateName = CoerceStateName(initialStateNameRaw)
 	if initialStateName == nil or self.states[initialStateName] == nil then
 		return false
 	end
@@ -678,7 +685,7 @@ function StateMachine.ChangeState(self: StateMachine, stateNameRaw: any): boolea
 	if self.disabled or not self.running then
 		return false
 	end
-	local stateName = sanitizeStateName(stateNameRaw)
+	local stateName = CoerceStateName(stateNameRaw)
 	if stateName == nil then
 		self.TransitionRejected:Fire(self.activeStateId, nil, nil, "BadStateName")
 		return false
@@ -710,7 +717,7 @@ function StateMachine.RegisterState(self: StateMachine, stateNameRaw: any, state
 	if self.destroyed then
 		return false
 	end
-	local stateName = sanitizeStateName(stateNameRaw)
+	local stateName = CoerceStateName(stateNameRaw)
 	if stateName == nil then
 		return false
 	end
@@ -733,7 +740,7 @@ function StateMachine.RegisterTransition(self: StateMachine, transitionRaw: any)
 		return false
 	end
 
-	local to = sanitizeStateName((transitionRaw :: TransitionObject).To)
+	local to = CoerceStateName((transitionRaw :: TransitionObject).To)
 	if to == nil then
 		return false
 	end
@@ -753,7 +760,7 @@ function StateMachine.TransitionTo(
 	if self.disabled or not self.running then
 		return false
 	end
-	local stateId = sanitizeStateName(stateIdRaw)
+	local stateId = CoerceStateName(stateIdRaw)
 	if stateId == nil or self.states[stateId] == nil then
 		return false
 	end
@@ -866,38 +873,4 @@ function StateMachine.Destroy(self: StateMachine)
 	self.Destroyed:Fire()
 	self.maid:DoCleaning()
 end
-
-StateMachine.new = StateMachine.New
-StateMachine.getContext = StateMachine.GetContext
-StateMachine.setContext = StateMachine.SetContext
-StateMachine.getActiveState = StateMachine.GetActiveState
-StateMachine.getCurrentState = StateMachine.GetCurrentState
-StateMachine.getPreviousState = StateMachine.GetPreviousState
-StateMachine.getActivePath = StateMachine.GetActivePath
-StateMachine.getStateElapsed = StateMachine.GetStateElapsed
-StateMachine.getElapsed = StateMachine.GetElapsed
-StateMachine.getBlackboard = StateMachine.GetBlackboard
-StateMachine.isRunning = StateMachine.IsRunning
-StateMachine.getStateChangedSignal = StateMachine.GetStateChangedSignal
-StateMachine.getTransitionedSignal = StateMachine.GetTransitionedSignal
-StateMachine.getTransitionRejectedSignal = StateMachine.GetTransitionRejectedSignal
-StateMachine.getActiveStateSignal = StateMachine.GetActiveStateSignal
-StateMachine.observeState = StateMachine.ObserveState
-StateMachine.observeStateBrio = StateMachine.ObserveStateBrio
-StateMachine.promiseState = StateMachine.PromiseState
-StateMachine.setEnabled = StateMachine.SetEnabled
-StateMachine.start = StateMachine.Start
-StateMachine.stop = StateMachine.Stop
-StateMachine.changeState = StateMachine.ChangeState
-StateMachine.pushState = StateMachine.PushState
-StateMachine.popState = StateMachine.PopState
-StateMachine.registerState = StateMachine.RegisterState
-StateMachine.registerTransition = StateMachine.RegisterTransition
-StateMachine.transitionTo = StateMachine.TransitionTo
-StateMachine.dispatch = StateMachine.Dispatch
-StateMachine.update = StateMachine.Update
-StateMachine.isInState = StateMachine.IsInState
-StateMachine.getTransitionCount = StateMachine.GetTransitionCount
-StateMachine.destroy = StateMachine.Destroy
-
 return StateMachine

@@ -96,7 +96,4 @@ function PlanValidator.Destroy(self: PlanValidator)
 end
 
 PlanValidator.copy = Table.copy
-PlanValidator.validate = PlanValidator.Validate
-PlanValidator.destroy = PlanValidator.Destroy
-
 return PlanValidator

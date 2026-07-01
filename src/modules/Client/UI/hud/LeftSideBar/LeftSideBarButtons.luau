@@ -8,9 +8,7 @@ local NavButton = require("NavButton")
 local React = require(ReplicatedStorage.Packages.React)
 local UiSound = require("UiSound")
 local craftingSlice = require("craftingSlice")
-local craftingThunks = require("craftingThunks")
 local hudInventorySlice = require("inventorySlice")
-local hudInventoryThunks = require("inventoryThunks")
 local useStore = require("useCoreStore")
 
 type CraftingState = craftingSlice.CraftingState
@@ -23,6 +21,7 @@ type AttachedButtonProps = {
 	size: UDim2?,
 	position: UDim2?,
 	anchorPoint: Vector2?,
+	useServiceState: boolean?,
 }
 
 type ExpandInventoryButtonProps = AttachedButtonProps & {
@@ -39,6 +38,22 @@ type ExpandInventoryButtonProps = AttachedButtonProps & {
 }
 
 local e: typeof(React.createElement) = React.createElement
+local craftingThunks = nil :: any?
+local hudInventoryThunks = nil :: any?
+
+local function getCraftingThunks(): any
+	if craftingThunks == nil then
+		craftingThunks = require("craftingThunks")
+	end
+	return craftingThunks
+end
+
+local function getInventoryThunks(): any
+	if hudInventoryThunks == nil then
+		hudInventoryThunks = require("inventoryThunks")
+	end
+	return hudInventoryThunks
+end
 
 local function ExpandInventoryButton(props: ExpandInventoryButtonProps): React.ReactNode
 	local inventoryHudState = (useStore(hudInventorySlice.inventoryHudStateAtom) :: InventoryHudState?)
@@ -67,7 +82,9 @@ local function ExpandInventoryButton(props: ExpandInventoryButtonProps): React.R
 		onPressedChanged = props.onPressedChanged,
 		onHoverChanged = props.onHoverChanged,
 		onActivated = function()
-			hudInventoryThunks.toggleInventory()
+			if props.useServiceState ~= false then
+				getInventoryThunks().ToggleInventory()
+			end
 			if props.onActivated ~= nil then
 				props.onActivated()
 			end
@@ -80,12 +97,16 @@ local function CraftingHudButton(props: AttachedButtonProps): React.ReactNode
 		or craftingSlice.getCraftingState()
 
 	React.useEffect(function()
-		local stop = craftingThunks.start()
+		if props.useServiceState == false then
+			return
+		end
+
+		local stop = getCraftingThunks().Start()
 
 		return function()
 			stop()
 		end
-	end, {})
+	end, { props.useServiceState })
 
 	return e(CraftingButton, {
 		layoutOrder = props.layoutOrder,
@@ -102,7 +123,9 @@ local function CraftingHudButton(props: AttachedButtonProps): React.ReactNode
 		end,
 		onActivated = function()
 			UiSound.playPress()
-			hudInventoryThunks.toggleCrafting()
+			if props.useServiceState ~= false then
+				getInventoryThunks().ToggleCrafting()
+			end
 		end,
 	})
 end

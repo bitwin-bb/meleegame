@@ -8,14 +8,10 @@ type ParallaxSurfaceState = ParallaxSlice.ParallaxSurfaceState
 local ParallaxThunks = {}
 
 function ParallaxThunks.PublishSurfaceState(state: ParallaxSurfaceState)
-	ParallaxSlice.setSurfaceState(state)
+	ParallaxSlice.SetSurfaceState(state)
 end
 
 function ParallaxThunks.ClearSurfaceState()
-	ParallaxSlice.clearSurfaceState()
+	ParallaxSlice.ClearSurfaceState()
 end
-
-ParallaxThunks.publishSurfaceState = ParallaxThunks.PublishSurfaceState
-ParallaxThunks.clearSurfaceState = ParallaxThunks.ClearSurfaceState
-
 return ParallaxThunks

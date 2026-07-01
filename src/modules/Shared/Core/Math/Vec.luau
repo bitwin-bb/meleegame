@@ -101,23 +101,4 @@ function Vec.Orthogonal(vector: Vector3): Vector3
 	local reference = if math.abs(unitVector.Y) < 0.999 then Y_AXIS else X_AXIS
 	return Vec.Unit(reference:Cross(unitVector), X_AXIS)
 end
-
-Vec.magnitudeSq = Vec.MagnitudeSq
-Vec.distanceSq = Vec.DistanceSq
-Vec.distance = Vec.Distance
-Vec.unit = Vec.Unit
-Vec.withMagnitude = Vec.WithMagnitude
-Vec.clampMagnitude = Vec.ClampMagnitude
-Vec.moveTowards = Vec.MoveTowards
-Vec.midpoint = Vec.Midpoint
-Vec.min = Vec.Min
-Vec.max = Vec.Max
-Vec.abs = Vec.Abs
-Vec.flattenX = Vec.FlattenX
-Vec.flattenY = Vec.FlattenY
-Vec.flattenZ = Vec.FlattenZ
-Vec.isNearlyZero = Vec.IsNearlyZero
-Vec.nearlyEqual = Vec.NearlyEqual
-Vec.orthogonal = Vec.Orthogonal
-
 return Vec

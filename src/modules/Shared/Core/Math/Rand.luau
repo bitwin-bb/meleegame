@@ -97,15 +97,15 @@ function Rand.Number(seed: number, minValue: number?, maxValue: number?): (numbe
 		return nextSeed, unit
 	end
 
-	local minResolved = if minValue ~= nil then minValue else 0
-	local maxResolved = if maxValue ~= nil then maxValue else 1
-	if maxResolved < minResolved then
-		local temporary = maxResolved
-		maxResolved = minResolved
-		minResolved = temporary
+	local minGot = if minValue ~= nil then minValue else 0
+	local maxGot = if maxValue ~= nil then maxValue else 1
+	if maxGot < minGot then
+		local temporary = maxGot
+		maxGot = minGot
+		minGot = temporary
 	end
 
-	return nextSeed, minResolved + (maxResolved - minResolved) * unit
+	return nextSeed, minGot + (maxGot - minGot) * unit
 end
 
 function Rand.Integer(seed: number, minValue: number, maxValue: number): (number, number)
@@ -128,7 +128,7 @@ end
 
 function Rand.Chance(seed: number, probability: number): (number, boolean)
 	local nextSeed, value = Rand.Number(seed)
-	return nextSeed, value <= Num.saturate(probability)
+	return nextSeed, value <= Num.Saturate(probability)
 end
 
 function Rand.pick<T>(seed: number, values: { T }): (number, T?)
@@ -186,15 +186,4 @@ function Rand.Fork(seed: number, salt: SeedInput?): number
 	local mixed = bit32.bxor(normalizeUint32(seed), Rand.Seed(salt))
 	return xorshift32(normalizeUint32(mixed))
 end
-
-Rand.uint32 = Rand.Uint32
-Rand.hashString = Rand.HashString
-Rand.hashCoordinates = Rand.HashCoordinates
-Rand.seed = Rand.Seed
-Rand.step = Rand.Step
-Rand.number = Rand.Number
-Rand.integer = Rand.Integer
-Rand.chance = Rand.Chance
-Rand.fork = Rand.Fork
-
 return Rand

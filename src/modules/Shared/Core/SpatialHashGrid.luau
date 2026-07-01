@@ -379,11 +379,4 @@ function SpatialHashGrid.Clear(self: SpatialHashGrid<any>)
 	table.clear(self.chunks)
 	self.entryCount = 0
 end
-
-SpatialHashGrid.remove = SpatialHashGrid.Remove
-SpatialHashGrid.get = SpatialHashGrid.Get
-SpatialHashGrid.count = SpatialHashGrid.Count
-SpatialHashGrid.worldToChunk = SpatialHashGrid.WorldToChunk
-SpatialHashGrid.clear = SpatialHashGrid.Clear
-
 return SpatialHashGrid

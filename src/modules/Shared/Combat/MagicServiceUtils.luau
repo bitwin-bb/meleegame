@@ -1,7 +1,7 @@
 
 local require = require(script.Parent.loader).load(script)
 
-local ResolveToolInstance = require("ResolveToolInstance")
+local GetToolInstance = require("GetToolInstance")
 local Trig = require("Trig")
 local Vec = require("Vec")
 local WorkspaceFolders = require("WorkspaceFolders")
@@ -266,15 +266,15 @@ local function attackSpeedCooldown(raw: any): number?
 end
 
 function MagicServiceUtils.IsMagicTool(toolRaw: any): boolean
-	local normalized = token(ResolveToolInstance.resolveToolItemType(toolRaw))
+	local normalized = token(GetToolInstance.GetToolItemType(toolRaw))
 	return normalized == "magicweapon" or normalized == "magic" or normalized == "staff" or normalized == "spell"
 end
 
-function MagicServiceUtils.ResolveToolItemId(toolRaw: any): string?
-	return ResolveToolInstance.resolveToolItemId(toolRaw)
+function MagicServiceUtils.GetToolItemId(toolRaw: any): string?
+	return GetToolInstance.GetToolItemId(toolRaw)
 end
 
-function MagicServiceUtils.ResolveToolByItemId(characterRaw: any, backpackRaw: any, itemIdRaw: any): Tool?
+function MagicServiceUtils.GetToolByItemId(characterRaw: any, backpackRaw: any, itemIdRaw: any): Tool?
 	local itemId = trim(itemIdRaw)
 	if itemId == "" then
 		return nil
@@ -287,7 +287,7 @@ function MagicServiceUtils.ResolveToolByItemId(characterRaw: any, backpackRaw: a
 			if not child:IsA("Tool") then
 				continue
 			end
-			if MagicServiceUtils.ResolveToolItemId(child) == itemId then
+			if MagicServiceUtils.GetToolItemId(child) == itemId then
 				return child
 			end
 		end
@@ -296,7 +296,7 @@ function MagicServiceUtils.ResolveToolByItemId(characterRaw: any, backpackRaw: a
 	return findIn(characterRaw) or findIn(backpackRaw)
 end
 
-function MagicServiceUtils.ResolveSelectedItemIdFromInventoryState(stateRaw: any): (string?, number?)
+function MagicServiceUtils.GetSelectedItemIdFromInventoryState(stateRaw: any): (string?, number?)
 	if typeof(stateRaw) ~= "table" then
 		return nil, nil
 	end
@@ -324,7 +324,7 @@ function MagicServiceUtils.ResolveSelectedItemIdFromInventoryState(stateRaw: any
 	return itemId, math.floor(selectedSlot)
 end
 
-function MagicServiceUtils.SanitizeManaState(manaRaw: any): (number, number, number)
+function MagicServiceUtils.CoerceManaState(manaRaw: any): (number, number, number)
 	if typeof(manaRaw) ~= "table" then
 		return MagicServiceUtils.DEFAULT_MAX_MANA,
 			MagicServiceUtils.DEFAULT_MAX_MANA,
@@ -342,7 +342,7 @@ function MagicServiceUtils.SanitizeManaState(manaRaw: any): (number, number, num
 	return mana, maxMana, regen
 end
 
-function MagicServiceUtils.SanitizeReplicatedState(raw: any, fallbackRaw: any): ReplicatedState
+function MagicServiceUtils.CoerceReplicatedState(raw: any, fallbackRaw: any): ReplicatedState
 	local fallback = if typeof(fallbackRaw) == "table"
 		then fallbackRaw :: ReplicatedState
 		else {
@@ -391,7 +391,7 @@ function MagicServiceUtils.SanitizeReplicatedState(raw: any, fallbackRaw: any): 
 	}
 end
 
-function MagicServiceUtils.SanitizeCastRequest(raw: any): CastRequest
+function MagicServiceUtils.CoerceCastRequest(raw: any): CastRequest
 	local source = if typeof(raw) == "table" then raw :: { [string]: any } else {} :: any
 	return {
 		trigger = trim(source.trigger) ~= "" and trim(source.trigger) or "Cast",
@@ -400,24 +400,24 @@ function MagicServiceUtils.SanitizeCastRequest(raw: any): CastRequest
 	}
 end
 
-function MagicServiceUtils.ResolveCastDirection(origin: Vector3, castRequestRaw: any, fallbackRaw: any): Vector3
-	local request = MagicServiceUtils.SanitizeCastRequest(castRequestRaw)
+function MagicServiceUtils.GetCastDirection(origin: Vector3, castRequestRaw: any, fallbackRaw: any): Vector3
+	local request = MagicServiceUtils.CoerceCastRequest(castRequestRaw)
 	local fallback = if typeof(fallbackRaw) == "Vector3" then fallbackRaw else Vector3.new(0, 0, -1)
-	local fallbackUnit = Vec.unit(fallback, Vector3.new(0, 0, -1))
+	local fallbackUnit = Vec.Unit(fallback, Vector3.new(0, 0, -1))
 	if request.aimDirection ~= nil and request.aimDirection.Magnitude > 1e-4 then
-		return Vec.unit(request.aimDirection, fallbackUnit)
+		return Vec.Unit(request.aimDirection, fallbackUnit)
 	end
 	if request.aimPosition ~= nil then
 		local offset = request.aimPosition - origin
 		if offset.Magnitude > 1e-4 then
-			return Vec.unit(offset, fallbackUnit)
+			return Vec.Unit(offset, fallbackUnit)
 		end
 	end
 	return fallbackUnit
 end
 
 function MagicServiceUtils.ApplySpread(directionRaw: Vector3, spreadRaw: any, indexRaw: any, countRaw: any): Vector3
-	local direction = Vec.unit(directionRaw, Vector3.new(0, 0, -1))
+	local direction = Vec.Unit(directionRaw, Vector3.new(0, 0, -1))
 	local spread = num(spreadRaw, 0, 0, 120)
 	local count = int(countRaw, 1, 1, 64)
 	if spread <= 1e-3 or count <= 1 then
@@ -425,12 +425,12 @@ function MagicServiceUtils.ApplySpread(directionRaw: Vector3, spreadRaw: any, in
 	end
 	local index = int(indexRaw, 1, 1, count)
 	local alpha = ((index - 1) / (count - 1)) - 0.5
-	local yaw = Trig.degToRad(alpha * spread)
+	local yaw = Trig.DegToRad(alpha * spread)
 	local look = CFrame.lookAt(Vector3.zero, direction) * CFrame.Angles(0, yaw, 0)
 	return look.LookVector
 end
 
-function MagicServiceUtils.ResolveHumanoidFromHitPart(hitPartRaw: any): Humanoid?
+function MagicServiceUtils.GetHumanoidFromHitPart(hitPartRaw: any): Humanoid?
 	if typeof(hitPartRaw) ~= "Instance" or not hitPartRaw:IsA("BasePart") then
 		return nil
 	end
@@ -638,7 +638,7 @@ function MagicServiceUtils.CreateDefaultModifier(): ModifierStats
 	}
 end
 
-function MagicServiceUtils.SanitizeModifier(raw: any): ModifierStats
+function MagicServiceUtils.CoerceModifier(raw: any): ModifierStats
 	local source = if typeof(raw) == "table" then raw :: { [string]: any } else {} :: any
 	local modifier = MagicServiceUtils.CreateDefaultModifier()
 	modifier.damageMultiplier = num(source.damageMultiplier, 1, 0, 100)
@@ -666,7 +666,7 @@ end
 function MagicServiceUtils.MergeModifiers(list: { any }): ModifierStats
 	local merged = MagicServiceUtils.CreateDefaultModifier()
 	for _, raw in list do
-		local modifier = MagicServiceUtils.SanitizeModifier(raw)
+		local modifier = MagicServiceUtils.CoerceModifier(raw)
 		merged.damageMultiplier *= modifier.damageMultiplier
 		merged.damageBonus += modifier.damageBonus
 		merged.manaMultiplier *= modifier.manaMultiplier
@@ -691,7 +691,7 @@ function MagicServiceUtils.MergeModifiers(list: { any }): ModifierStats
 end
 
 function MagicServiceUtils.BuildCastStats(config: WeaponRuntimeConfig, modifierRaw: any): CastStats
-	local modifier = MagicServiceUtils.SanitizeModifier(modifierRaw)
+	local modifier = MagicServiceUtils.CoerceModifier(modifierRaw)
 	local homingEnabled = config.projectile.homingEnabled
 	if modifier.forceHoming ~= nil then
 		homingEnabled = modifier.forceHoming
@@ -715,7 +715,7 @@ function MagicServiceUtils.BuildCastStats(config: WeaponRuntimeConfig, modifierR
 end
 
 function MagicServiceUtils.EnsureProjectileFolder(): Folder
-	return WorkspaceFolders.getOrCreateFolderInGame(MagicServiceUtils.MAGIC_PROJECTILE_FOLDER_NAME)
+	return WorkspaceFolders.GetOrCreateFolderInGame(MagicServiceUtils.MAGIC_PROJECTILE_FOLDER_NAME)
 end
 
 function MagicServiceUtils.CooldownsToRemaining(cooldownsRaw: any, now: number): { [string]: number }
@@ -734,25 +734,4 @@ function MagicServiceUtils.CooldownsToRemaining(cooldownsRaw: any, now: number):
 	end
 	return remaining
 end
-
-MagicServiceUtils.isMagicTool = MagicServiceUtils.IsMagicTool
-MagicServiceUtils.resolveToolItemId = MagicServiceUtils.ResolveToolItemId
-MagicServiceUtils.resolveToolByItemId = MagicServiceUtils.ResolveToolByItemId
-MagicServiceUtils.resolveSelectedItemIdFromInventoryState = MagicServiceUtils.ResolveSelectedItemIdFromInventoryState
-MagicServiceUtils.sanitizeManaState = MagicServiceUtils.SanitizeManaState
-MagicServiceUtils.sanitizeReplicatedState = MagicServiceUtils.SanitizeReplicatedState
-MagicServiceUtils.sanitizeCastRequest = MagicServiceUtils.SanitizeCastRequest
-MagicServiceUtils.resolveCastDirection = MagicServiceUtils.ResolveCastDirection
-MagicServiceUtils.applySpread = MagicServiceUtils.ApplySpread
-MagicServiceUtils.resolveHumanoidFromHitPart = MagicServiceUtils.ResolveHumanoidFromHitPart
-MagicServiceUtils.isHumanoidAlive = MagicServiceUtils.IsHumanoidAlive
-MagicServiceUtils.isPlayerStunned = MagicServiceUtils.IsPlayerStunned
-MagicServiceUtils.buildWeaponRuntimeConfig = MagicServiceUtils.BuildWeaponRuntimeConfig
-MagicServiceUtils.createDefaultModifier = MagicServiceUtils.CreateDefaultModifier
-MagicServiceUtils.sanitizeModifier = MagicServiceUtils.SanitizeModifier
-MagicServiceUtils.mergeModifiers = MagicServiceUtils.MergeModifiers
-MagicServiceUtils.buildCastStats = MagicServiceUtils.BuildCastStats
-MagicServiceUtils.ensureProjectileFolder = MagicServiceUtils.EnsureProjectileFolder
-MagicServiceUtils.cooldownsToRemaining = MagicServiceUtils.CooldownsToRemaining
-
 return MagicServiceUtils

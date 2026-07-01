@@ -14,9 +14,9 @@ type EntityRootProps = {
 local e: typeof(React.createElement) = React.createElement
 
 return function(props: EntityRootProps?): React.ReactNode
-	local resolvedProps = if props ~= nil then props else {} :: EntityRootProps
+	local GotProps = if props ~= nil then props else {} :: EntityRootProps
 
 	return e(React.Fragment, nil, {
-		e(EntityInfoScreen, resolvedProps),
+		e(EntityInfoScreen, GotProps),
 	})
 end

@@ -10,7 +10,7 @@ local CoreConfigs = require(script:FindFirstAncestor("game").Shared:WaitForChild
 local CoreRuntime = require("CoreRuntime")
 local Matter = require(ReplicatedStorage.Packages.Matter)
 local PacketPayload = require("PacketPayload")
-local WorldSimulationServicePackets = require("NetSharedPackets").WorldSimulationService
+local WorldSimulationServicePackets = require("NetPacketsShared").WorldSimulationService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
 	local packet = WorldSimulationServicePackets[methodName]
@@ -19,7 +19,7 @@ local function sendPacket(player: Player, methodName: string, ...: any)
 		return
 	end
 
-	packet.sendTo(PacketPayload.pack(...), player)
+	packet.sendTo(PacketPayload.Pack(...), player)
 end
 
 local function bindPacket(self: any, methodName: string)
@@ -34,12 +34,13 @@ local function bindPacket(self: any, methodName: string)
 			return
 		end
 
-		local handler = self[methodName]
+		local handlerName = string.upper(string.sub(methodName, 1, 1)) .. string.sub(methodName, 2)
+		local handler = self[handlerName]
 		if typeof(handler) ~= "function" then
 			return
 		end
 
-		local count, arguments = PacketPayload.unpack(payload)
+		local count, arguments = PacketPayload.Unpack(payload)
 		handler(self, player, table.unpack(arguments, 1, count))
 	end)
 end
@@ -90,7 +91,7 @@ local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function resolvePlayerRootPart(player: Player): BasePart?
+local function GetPlayerRootPart(player: Player): BasePart?
 	local character = player.Character
 	if character == nil then
 		return nil
@@ -110,7 +111,7 @@ local function resolvePlayerRootPart(player: Player): BasePart?
 	return nil
 end
 
-local function resolveSourceConfig(): any
+local function GetSourceConfig(): any
 	if typeof(CoreConfigs) ~= "table" then
 		return nil
 	end
@@ -141,13 +142,13 @@ local function parseWorldGenerationChunkKey(chunkKeyRaw: any): (number?, number?
 end
 
 local function getPlayerCenterChunkForWorldGeneration(config: SimulationConfig, player: Player): (number, number)
-	local rootPart = resolvePlayerRootPart(player)
+	local rootPart = GetPlayerRootPart(player)
 	if rootPart == nil then
 		return 0, 0
 	end
-	local tileX = Shared.toTileCoordinate(rootPart.Position.Z, config.tileSize)
-	local tileY = Shared.toTileCoordinate(rootPart.Position.Y, config.tileSize)
-	return Shared.toChunkCoordinate(tileX, config.chunkSize), Shared.toChunkCoordinate(tileY, config.chunkHeight)
+	local tileX = Shared.ToTileCoordinate(rootPart.Position.Z, config.tileSize)
+	local tileY = Shared.ToTileCoordinate(rootPart.Position.Y, config.tileSize)
+	return Shared.ToChunkCoordinate(tileX, config.chunkSize), Shared.ToChunkCoordinate(tileY, config.chunkHeight)
 end
 
 function WorldSimulationServiceServer.CreateStateSnapshot(
@@ -175,7 +176,7 @@ function WorldSimulationServiceServer.CreateStateSnapshot(
 end
 
 function WorldSimulationServiceServer.PushState(self: WorldSimulationServiceServer, player: Player)
-	sendPacket(player, Net.CLIENT_METHOD_APPLY_STATE, self:createStateSnapshot(player))
+	sendPacket(player, Net.CLIENT_METHOD_APPLY_STATE, self:CreateStateSnapshot(player))
 end
 
 function WorldSimulationServiceServer.SetAuthoritativeSeed(self: WorldSimulationServiceServer, seedRaw: any)
@@ -194,18 +195,18 @@ function WorldSimulationServiceServer.SetAuthoritativeSeed(self: WorldSimulation
 end
 
 function WorldSimulationServiceServer.ToSimulationChunkKey(
-	self: WorldSimulationServiceServer,
+	_self: WorldSimulationServiceServer,
 	rawChunkKey: any
 ): (string?, number?, number?, number?)
-	local chunkX, chunkY, chunkZ = Shared.unpackChunkKey(rawChunkKey)
+	local chunkX, chunkY, chunkZ = Shared.UnpackChunkKey(rawChunkKey)
 	if chunkX ~= nil and chunkY ~= nil and chunkZ ~= nil then
-		return Shared.packChunkKey(chunkX, chunkY, chunkZ), chunkX, chunkY, chunkZ
+		return Shared.PackChunkKey(chunkX, chunkY, chunkZ), chunkX, chunkY, chunkZ
 	end
 	local generationChunkX, generationChunkY = parseWorldGenerationChunkKey(rawChunkKey)
 	if generationChunkX == nil or generationChunkY == nil then
 		return nil, nil, nil, nil
 	end
-	return Shared.packChunkKey(generationChunkX, generationChunkY, SIMULATION_CHUNK_Z),
+	return Shared.PackChunkKey(generationChunkX, generationChunkY, SIMULATION_CHUNK_Z),
 		generationChunkX,
 		generationChunkY,
 		SIMULATION_CHUNK_Z
@@ -232,13 +233,13 @@ function WorldSimulationServiceServer.PushGeneratedPlayerInterest(
 			if rawPriority == false or rawPriority == nil then
 				continue
 			end
-			local simulationKey, chunkX, chunkY, chunkZ = self:toSimulationChunkKey(rawChunkKey)
+			local simulationKey, chunkX, chunkY, chunkZ = self:ToSimulationChunkKey(rawChunkKey)
 			if simulationKey == nil or chunkX == nil or chunkY == nil or chunkZ == nil then
 				continue
 			end
 			local priority = if isFiniteNumber(rawPriority)
 				then math.max(0, math.floor(rawPriority))
-				else Net.chunkPriorityFromCenter(
+				else Net.ChunkPriorityFromCenter(
 					chunkX,
 					chunkY,
 					chunkZ,
@@ -277,7 +278,7 @@ function WorldSimulationServiceServer.RegisterGeneratedChunkSnapshot(
 		return false
 	end
 
-	local chunk = Data.ingestWorldGenerationChunkSnapshot(self.world, chunkSnapshotRaw, SIMULATION_CHUNK_Z)
+	local chunk = Data.IngestWorldGenerationChunkSnapshot(self.world, chunkSnapshotRaw, SIMULATION_CHUNK_Z)
 	if chunk == nil then
 		return false
 	end
@@ -290,12 +291,12 @@ function WorldSimulationServiceServer.RegisterGeneratedChunkSnapshot(
 		end
 		local priority = playerInterest[chunkKey]
 		if priority ~= nil then
-			Stream.enqueueChunk(stream, chunkKey, priority)
+			Stream.EnqueueChunk(stream, chunkKey, priority)
 		end
 	end
 
 	if self.debug ~= nil then
-		self.debug:incrementCounter("wg_chunks_registered")
+		self.debug:IncrementCounter("wg_chunks_registered")
 	end
 	return true
 end
@@ -306,36 +307,36 @@ function WorldSimulationServiceServer.TrackPlayer(self: WorldSimulationServiceSe
 		settings = defaultPlayerSettings(self.config)
 		self.playerSettings[player] = settings
 	else
-		settings.streamRadius = Net.sanitizeStreamRadius(settings.streamRadius, self.config.streamRadiusChunks)
+		settings.streamRadius = Net.CoerceStreamRadius(settings.streamRadius, self.config.streamRadiusChunks)
 		settings.streamVerticalRadius =
-			Net.sanitizeStreamRadius(settings.streamVerticalRadius, self.config.streamVerticalRadiusChunks)
+			Net.CoerceStreamRadius(settings.streamVerticalRadius, self.config.streamVerticalRadiusChunks)
 	end
 	self.generatedInterestByPlayer[player] = {}
-	local stream = Stream.getOrCreatePlayerStream(self.streamState, player)
+	local stream = Stream.GetOrCreatePlayerStream(self.streamState, player)
 	for chunkKey in stream.interestLookup do
-		Data.setChunkDemandByKey(self.world, chunkKey, -1)
+		Data.SetChunkDemandByKey(self.world, chunkKey, -1)
 	end
 	table.clear(stream.interestLookup)
 	table.clear(stream.sentRevisions)
 	table.clear(stream.queuedLookup)
 	table.clear(stream.queueKeys)
-	self:pushState(player)
+	self:PushState(player)
 end
 
 function WorldSimulationServiceServer.UntrackPlayer(self: WorldSimulationServiceServer, player: Player)
 	local stream = self.streamState.players[player]
 	if stream ~= nil then
 		for chunkKey in stream.interestLookup do
-			Data.setChunkDemandByKey(self.world, chunkKey, -1)
+			Data.SetChunkDemandByKey(self.world, chunkKey, -1)
 		end
 	end
-	Stream.removePlayerStream(self.streamState, player)
+	Stream.RemovePlayerStream(self.streamState, player)
 	self.playerSettings[player] = nil
 	self.generatedInterestByPlayer[player] = nil
 end
 
 function WorldSimulationServiceServer.RequestSync(self: WorldSimulationServiceServer, player: Player)
-	self:trackPlayer(player)
+	self:TrackPlayer(player)
 end
 
 function WorldSimulationServiceServer.SetStreamRadius(
@@ -344,7 +345,7 @@ function WorldSimulationServiceServer.SetStreamRadius(
 	streamRadiusRaw: any,
 	verticalRadiusRaw: any
 )
-	local fallbackConfig = if self.config ~= nil then self.config else Config.createDefault()
+	local fallbackConfig = if self.config ~= nil then self.config else Config.CreateDefault()
 	if self.playerSettings == nil then
 		self.playerSettings = {} :: { [Player]: PlayerSettings }
 	end
@@ -354,19 +355,19 @@ function WorldSimulationServiceServer.SetStreamRadius(
 		settings = defaultPlayerSettings(fallbackConfig)
 		self.playerSettings[player] = settings
 	end
-	settings.streamRadius = Net.sanitizeStreamRadius(streamRadiusRaw, settings.streamRadius)
-	settings.streamVerticalRadius = Net.sanitizeStreamRadius(verticalRadiusRaw, settings.streamVerticalRadius)
+	settings.streamRadius = Net.CoerceStreamRadius(streamRadiusRaw, settings.streamRadius)
+	settings.streamVerticalRadius = Net.CoerceStreamRadius(verticalRadiusRaw, settings.streamVerticalRadius)
 	if self.config == nil then
 		return
 	end
-	self:pushState(player)
+	self:PushState(player)
 end
 
 function WorldSimulationServiceServer.SubmitInput(self: WorldSimulationServiceServer, _player: Player, inputRaw: any)
-	local ok, _reason = Net.validateClientInput(inputRaw)
+	local ok, _reason = Net.ValidateClientInput(inputRaw)
 	if not ok then
 		if self.debug ~= nil then
-			self.debug:incrementCounter("invalid_input")
+			self.debug:IncrementCounter("invalid_input")
 		end
 		return
 	end
@@ -389,9 +390,9 @@ function WorldSimulationServiceServer.SubmitInput(self: WorldSimulationServiceSe
 			entities.flags[slot] = State.setFlag(entities.flags[slot], State.ENTITY_FLAGS.PREDICTED, true)
 			entities.velX[slot] = entities.velX[slot] * 0.4 + moveX * 8
 			entities.velZ[slot] = entities.velZ[slot] * 0.4 + moveZ * 8
-			Data.bumpChunkRevision(chunk)
+			Data.BumpChunkRevision(chunk)
 			if self.debug ~= nil then
-				self.debug:incrementCounter("input_applied")
+				self.debug:IncrementCounter("input_applied")
 			end
 			return
 		end
@@ -399,27 +400,27 @@ function WorldSimulationServiceServer.SubmitInput(self: WorldSimulationServiceSe
 end
 
 function WorldSimulationServiceServer.SyncPlayerStream(self: WorldSimulationServiceServer, player: Player)
-	local stream = Stream.getOrCreatePlayerStream(self.streamState, player)
+	local stream = Stream.GetOrCreatePlayerStream(self.streamState, player)
 	local nextInterest = self.generatedInterestByPlayer[player] or ({} :: any)
 
-	Stream.reconcilePlayerInterest(stream, nextInterest, function(chunkKey: string, priority: number)
-		Data.setChunkDemandByKey(self.world, chunkKey, 1)
-		Stream.enqueueChunk(stream, chunkKey, priority)
+	Stream.ReconcilePlayerInterest(stream, nextInterest, function(chunkKey: string, priority: number)
+		Data.SetChunkDemandByKey(self.world, chunkKey, 1)
+		Stream.EnqueueChunk(stream, chunkKey, priority)
 	end, function(chunkKey: string)
-		Data.setChunkDemandByKey(self.world, chunkKey, -1)
+		Data.SetChunkDemandByKey(self.world, chunkKey, -1)
 		sendPacket(player, Net.CLIENT_METHOD_CHUNK_UNLOADED, chunkKey)
 	end)
 
 	for chunkKey, priority in nextInterest do
 		local chunk = self.world.chunksByKey[chunkKey]
-		if chunk == nil or Stream.isRevisionOutOfDate(stream, chunkKey, chunk.revision) then
-			Stream.enqueueChunk(stream, chunkKey, priority)
+		if chunk == nil or Stream.IsRevisionOutOfDate(stream, chunkKey, chunk.revision) then
+			Stream.EnqueueChunk(stream, chunkKey, priority)
 		end
 	end
 
 	local sendBudget = self.config.maxStreamSendsPerPlayerPerTick
 	for _ = 1, sendBudget do
-		local nextChunkKey = Stream.popNextChunk(stream)
+		local nextChunkKey = Stream.PopNextChunk(stream)
 		if nextChunkKey == nil then
 			break
 		end
@@ -428,35 +429,35 @@ function WorldSimulationServiceServer.SyncPlayerStream(self: WorldSimulationServ
 		if chunk == nil then
 			local retryPriority = stream.interestLookup[nextChunkKey]
 			if retryPriority ~= nil then
-				Stream.enqueueChunk(stream, nextChunkKey, retryPriority)
+				Stream.EnqueueChunk(stream, nextChunkKey, retryPriority)
 			end
 			continue
 		end
-		local delta = Net.buildChunkDelta(chunk, stream.sentRevisions[nextChunkKey])
+		local delta = Net.BuildChunkDelta(chunk, stream.sentRevisions[nextChunkKey])
 		if delta ~= nil then
 			sendPacket(player, Net.CLIENT_METHOD_CHUNK_DELTA, delta)
-			Stream.markRevisionSent(stream, nextChunkKey, chunk.revision)
+			Stream.MarkRevisionSent(stream, nextChunkKey, chunk.revision)
 		end
 	end
 end
 
 function WorldSimulationServiceServer.OnHeartbeat(self: WorldSimulationServiceServer, dt: number)
-	self.runtime:tick(dt)
+	self.runtime:Tick(dt)
 	for player in self.playerSettings do
-		self:syncPlayerStream(player)
+		self:SyncPlayerStream(player)
 	end
 
 	if self.debug ~= nil then
 		self.debugCounterAccumulator += dt
 		if self.debugCounterAccumulator >= DEBUG_COUNTER_PUSH_INTERVAL then
 			self.debugCounterAccumulator = 0
-			local counters = self.debug:getCounters()
+			local counters = self.debug:GetCounters()
 			if next(counters) ~= nil then
 				for player in self.playerSettings do
 					sendPacket(player, Net.CLIENT_METHOD_DEBUG_COUNTERS, counters)
 				end
 			end
-			self.debug:resetFrameCounters()
+			self.debug:ResetFrameCounters()
 		end
 	end
 end
@@ -474,27 +475,27 @@ function WorldSimulationServiceServer.Init(self: WorldSimulationServiceServer)
 		return
 	end
 
-	self.runtimeContext = CoreRuntime.getServerRuntime()
-	if self.runtimeContext ~= nil and typeof((self.runtimeContext :: any).init) == "function" then
+	self.runtimeContext = CoreRuntime.GetServerRuntime()
+	if self.runtimeContext ~= nil and typeof((self.runtimeContext :: any).Init) == "function" then
 		local runtimeContextAny = self.runtimeContext :: any
-		runtimeContextAny:init()
+		runtimeContextAny:Init()
 	end
-	local sourceConfig = resolveSourceConfig()
-	self.config = Config.sanitize(sourceConfig, nil)
+	local sourceConfig = GetSourceConfig()
+	self.config = Config.Coerce(sourceConfig, nil)
 	if self.pendingAuthoritativeSeed ~= nil then
 		self.config.seed = self.pendingAuthoritativeSeed
 	end
-	self.cache = Cache.new({
+	self.cache = Cache.New({
 		tablePoolSize = self.config.cacheTablePoolSize,
 		arrayPoolSize = self.config.cacheArrayPoolSize,
 		vectorPoolSize = math.max(16, math.floor(self.config.cacheArrayPoolSize * 0.5)),
 	})
-	self.debug = Debug.new({
+	self.debug = Debug.New({
 		enabled = self.config.enableDebug,
 		profilingEnabled = self.config.enableProfiling,
 	})
-	self.world = Data.createWorldData(self.config)
-	self.runtime = Runtime.new(self.world, self.debug)
+	self.world = Data.CreateWorldData(self.config)
+	self.runtime = Runtime.New(self.world, self.debug)
 	local diagnostics = if self.runtime ~= nil then (self.runtime :: any).diagnostics else nil
 	if diagnostics ~= nil and typeof((diagnostics :: any).attachDebugger) == "function" then
 		local matterDebugger = Matter.Debugger.new(Plasma)
@@ -502,9 +503,9 @@ function WorldSimulationServiceServer.Init(self: WorldSimulationServiceServer)
 		(matterDebugger :: any).authorize = function(player: Player): boolean
 			return player:GetAttribute(CmdrUtils.MATTER_DEBUG_MENU_ENABLED_ATTRIBUTE) == true
 		end
-		(diagnostics :: any):attachDebugger(matterDebugger)
+		(diagnostics :: any):AttachDebugger(matterDebugger)
 	end
-	self.streamState = Stream.createServerStreamState()
+	self.streamState = Stream.CreateServerStreamState()
 	if typeof(self.playerSettings) ~= "table" then
 		self.playerSettings = {} :: { [Player]: PlayerSettings }
 	end
@@ -516,38 +517,38 @@ function WorldSimulationServiceServer.Init(self: WorldSimulationServiceServer)
 	end
 
 	for _, player in Players:GetPlayers() do
-		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
-			self:trackPlayer(player)
+		if PlayerServiceServer:IsGameplayActiveForPlayer(player) then
+			self:TrackPlayer(player)
 		end
 	end
 
 	if self.pendingGeneratedInterestRawByPlayer ~= nil then
 		for player, interestRaw in self.pendingGeneratedInterestRawByPlayer do
-			self:pushGeneratedPlayerInterest(player, interestRaw)
+			self:PushGeneratedPlayerInterest(player, interestRaw)
 		end
 		table.clear(self.pendingGeneratedInterestRawByPlayer)
 	end
 	if self.pendingChunkSnapshots ~= nil then
 		for _, chunkSnapshot in self.pendingChunkSnapshots do
-			self:registerGeneratedChunkSnapshot(chunkSnapshot)
+			self:RegisterGeneratedChunkSnapshot(chunkSnapshot)
 		end
 		table.clear(self.pendingChunkSnapshots)
 	end
 
 	self.playerAddedConnection = Players.PlayerAdded:Connect(function(player: Player)
-		if PlayerServiceServer:isGameplayActiveForPlayer(player) then
-			self:trackPlayer(player)
+		if PlayerServiceServer:IsGameplayActiveForPlayer(player) then
+			self:TrackPlayer(player)
 		end
 	end)
 	self.playerRemovingConnection = Players.PlayerRemoving:Connect(function(player: Player)
-		self:untrackPlayer(player)
+		self:UntrackPlayer(player)
 	end)
 
 	local tickScheduler = if self.runtimeContext ~= nil then (self.runtimeContext :: any).tickScheduler else nil
-	if tickScheduler ~= nil and typeof((tickScheduler :: any).scheduleEvery) == "function" then
-		self.heartbeatToken = (tickScheduler :: any):scheduleEvery(
+	if tickScheduler ~= nil and typeof((tickScheduler :: any).ScheduleEvery) == "function" then
+		self.heartbeatToken = (tickScheduler :: any):ScheduleEvery(
 			function(dt: number)
-				self:onHeartbeat(dt)
+				self:OnHeartbeat(dt)
 			end,
 			1 / 60,
 			{
@@ -558,22 +559,22 @@ function WorldSimulationServiceServer.Init(self: WorldSimulationServiceServer)
 		)
 	else
 		self.heartbeatConnection = RunService.Heartbeat:Connect(function(dt: number)
-			self:onHeartbeat(dt)
+			self:OnHeartbeat(dt)
 		end)
 	end
 end
 
 function WorldSimulationServiceServer.Destroy(self: WorldSimulationServiceServer)
 	if self.heartbeatToken ~= nil then
-		if typeof((self.heartbeatToken :: any).cancel) == "function" then
+		if typeof((self.heartbeatToken :: any).Cancel) == "function" then
 			local heartbeatTokenAny = self.heartbeatToken :: any
-			heartbeatTokenAny:cancel()
+			heartbeatTokenAny:Cancel()
 		else
 			local runtimeContext = self.runtimeContext
 			local scheduler = if runtimeContext ~= nil then (runtimeContext :: any).tickScheduler else nil
-			if scheduler ~= nil and typeof((scheduler :: any).cancel) == "function" then
+			if scheduler ~= nil and typeof((scheduler :: any).Cancel) == "function" then
 				local schedulerAny = scheduler :: any
-				schedulerAny:cancel(self.heartbeatToken)
+				schedulerAny:Cancel(self.heartbeatToken)
 			end
 		end
 		self.heartbeatToken = nil
@@ -596,7 +597,7 @@ function WorldSimulationServiceServer.Destroy(self: WorldSimulationServiceServer
 		trackedPlayers[#trackedPlayers + 1] = player
 	end
 	for _, player in trackedPlayers do
-		self:untrackPlayer(player)
+		self:UntrackPlayer(player)
 	end
 
 	if self.runtime ~= nil and typeof((self.runtime :: any).Destroy) == "function" then
@@ -605,11 +606,11 @@ function WorldSimulationServiceServer.Destroy(self: WorldSimulationServiceServer
 	end
 	self.matterDebugger = nil
 	if self.debug ~= nil then
-		self.debug:destroy()
+		self.debug:Destroy()
 		self.debug = nil
 	end
 	if self.cache ~= nil then
-		self.cache:destroy()
+		self.cache:Destroy()
 		self.cache = nil
 	end
 	self.generatedInterestByPlayer = {}
@@ -620,27 +621,6 @@ function WorldSimulationServiceServer.Destroy(self: WorldSimulationServiceServer
 		table.clear(self.pendingChunkSnapshots)
 	end
 end
-
-WorldSimulationServiceServer.createStateSnapshot = WorldSimulationServiceServer.CreateStateSnapshot
-WorldSimulationServiceServer.pushState = WorldSimulationServiceServer.PushState
-WorldSimulationServiceServer.setAuthoritativeSeed = WorldSimulationServiceServer.SetAuthoritativeSeed
-WorldSimulationServiceServer.toSimulationChunkKey = WorldSimulationServiceServer.ToSimulationChunkKey
-WorldSimulationServiceServer.pushGeneratedPlayerInterest = WorldSimulationServiceServer.PushGeneratedPlayerInterest
-WorldSimulationServiceServer.clearGeneratedPlayerInterest = WorldSimulationServiceServer.ClearGeneratedPlayerInterest
-WorldSimulationServiceServer.registerGeneratedChunkSnapshot =
-	WorldSimulationServiceServer.RegisterGeneratedChunkSnapshot
-WorldSimulationServiceServer.trackPlayer = WorldSimulationServiceServer.TrackPlayer
-WorldSimulationServiceServer.untrackPlayer = WorldSimulationServiceServer.UntrackPlayer
-WorldSimulationServiceServer.requestSync = WorldSimulationServiceServer.RequestSync
-WorldSimulationServiceServer.setStreamRadius = WorldSimulationServiceServer.SetStreamRadius
-WorldSimulationServiceServer.submitInput = WorldSimulationServiceServer.SubmitInput
-WorldSimulationServiceServer.syncPlayerStream = WorldSimulationServiceServer.SyncPlayerStream
-WorldSimulationServiceServer.onHeartbeat = WorldSimulationServiceServer.OnHeartbeat
-WorldSimulationServiceServer.getWorldData = WorldSimulationServiceServer.GetWorldData
-WorldSimulationServiceServer.getConfig = WorldSimulationServiceServer.GetConfig
-WorldSimulationServiceServer.init = WorldSimulationServiceServer.Init
-WorldSimulationServiceServer.destroy = WorldSimulationServiceServer.Destroy
-
 type WorldSimulationServiceServer = typeof(WorldSimulationServiceServer) & {
 	runtimeContext: any?,
 	heartbeatToken: any?,

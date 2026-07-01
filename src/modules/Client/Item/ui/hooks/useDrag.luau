@@ -2,21 +2,17 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
 local AudioRegistry = require("Audio")
-local AudioServiceClient = require("AudioServiceClient")
 local AudioServiceUtils = require("AudioServiceUtils")
-local BuildServiceUtils = require("BuildServiceUtils")
 local Charm = require(ReplicatedStorage.Packages.Charm)
 local Configs = require(script:FindFirstAncestor("game").Shared:WaitForChild("QueenBeeConfigs"))
 local Damp = require("Damp")
 local InventoryServiceUtils = require("InventoryServiceUtils")
 local React = require(ReplicatedStorage.Packages.React)
 local itemSlice = require("itemSlice")
-local itemThunks = require("itemThunks")
 
 type ItemDragState = itemSlice.ItemDragState
 type InventoryItemStack = InventoryServiceUtils.InventoryItemStack
@@ -69,10 +65,34 @@ local DEFAULT_SPLIT_HOLD_CONFIG: SplitHoldConfig = {
 	accelerationRampSeconds = 1.1,
 }
 local UI_AUDIO = (AudioRegistry :: any).UI or ({} :: any)
-local UI_ITEM_PICKUP_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.ItemPickup)
-local UI_ITEM_PUT_DOWN_SOUND = AudioServiceUtils.normalizeSoundAssetId(UI_AUDIO.ItemPutDown)
+local UI_ITEM_PICKUP_SOUND = AudioServiceUtils.NormalizeSoundAssetId(UI_AUDIO.ItemPickup)
+local UI_ITEM_PUT_DOWN_SOUND = AudioServiceUtils.NormalizeSoundAssetId(UI_AUDIO.ItemPutDown)
+local audioServiceClient = nil :: any?
+local buildServiceUtils = nil :: any?
+local itemThunks = nil :: any?
 
-local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number, maximum: number?): number
+local function getAudioServiceClient(): any
+	if audioServiceClient == nil then
+		audioServiceClient = require("AudioServiceClient")
+	end
+	return audioServiceClient
+end
+
+local function getBuildServiceUtils(): any
+	if buildServiceUtils == nil then
+		buildServiceUtils = require("BuildServiceUtils")
+	end
+	return buildServiceUtils
+end
+
+local function getItemThunks(): any
+	if itemThunks == nil then
+		itemThunks = require("itemThunks")
+	end
+	return itemThunks
+end
+
+local function CoerceNumber(valueRaw: any, fallback: number, minimum: number, maximum: number?): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
@@ -87,7 +107,7 @@ local function sanitizeNumber(valueRaw: any, fallback: number, minimum: number, 
 	return value
 end
 
-local function resolveSplitHoldConfig(configRaw: any): SplitHoldConfig
+local function GetSplitHoldConfig(configRaw: any): SplitHoldConfig
 	local inventoryConfig = if typeof(configRaw) == "table" then (configRaw :: any).inventory else nil
 	local splitConfig = if typeof(inventoryConfig) == "table" then (inventoryConfig :: any).rightHoldSplit else nil
 	if typeof(splitConfig) ~= "table" then
@@ -96,25 +116,25 @@ local function resolveSplitHoldConfig(configRaw: any): SplitHoldConfig
 
 	return {
 		enabled = (splitConfig :: any).enabled ~= false,
-		holdDelaySeconds = sanitizeNumber(
+		holdDelaySeconds = CoerceNumber(
 			(splitConfig :: any).holdDelaySeconds,
 			DEFAULT_SPLIT_HOLD_CONFIG.holdDelaySeconds,
 			0.05,
 			1
 		),
-		initialIntervalSeconds = sanitizeNumber(
+		initialIntervalSeconds = CoerceNumber(
 			(splitConfig :: any).initialIntervalSeconds,
 			DEFAULT_SPLIT_HOLD_CONFIG.initialIntervalSeconds,
 			0.02,
 			0.5
 		),
-		minimumIntervalSeconds = sanitizeNumber(
+		minimumIntervalSeconds = CoerceNumber(
 			(splitConfig :: any).minimumIntervalSeconds,
 			DEFAULT_SPLIT_HOLD_CONFIG.minimumIntervalSeconds,
 			0.01,
 			0.2
 		),
-		accelerationRampSeconds = sanitizeNumber(
+		accelerationRampSeconds = CoerceNumber(
 			(splitConfig :: any).accelerationRampSeconds,
 			DEFAULT_SPLIT_HOLD_CONFIG.accelerationRampSeconds,
 			0.1,
@@ -123,28 +143,30 @@ local function resolveSplitHoldConfig(configRaw: any): SplitHoldConfig
 	}
 end
 
-local SPLIT_HOLD_CONFIG = resolveSplitHoldConfig(Configs)
+local SPLIT_HOLD_CONFIG = GetSplitHoldConfig(Configs)
 
 local function playUiItemPickupSound()
+	local AudioServiceClient = getAudioServiceClient()
 	if AudioServiceClient.categoryGroups == nil then
 		return
 	end
 	if UI_ITEM_PICKUP_SOUND == nil then
 		return
 	end
-	AudioServiceClient:playUi(UI_ITEM_PICKUP_SOUND, {
+	AudioServiceClient:PlayUi(UI_ITEM_PICKUP_SOUND, {
 		replaceChannel = false,
 	})
 end
 
 local function playUiItemReleaseSound()
+	local AudioServiceClient = getAudioServiceClient()
 	if AudioServiceClient.categoryGroups == nil then
 		return
 	end
 	if UI_ITEM_PUT_DOWN_SOUND == nil then
 		return
 	end
-	AudioServiceClient:playUi(UI_ITEM_PUT_DOWN_SOUND, {
+	AudioServiceClient:PlayUi(UI_ITEM_PUT_DOWN_SOUND, {
 		replaceChannel = false,
 	})
 end
@@ -165,20 +187,20 @@ local function isDragInput(inputObject: InputObject): boolean
 		or inputObject.UserInputType == Enum.UserInputType.Touch
 end
 
-local function resolvePointerPosition(inputObject: InputObject): Vector2
+local function GetPointerPosition(inputObject: InputObject): Vector2
 	local position = inputObject.Position
 	local screenPosition = Vector2.new(position.X, position.Y)
 	local guiPosition = toGuiPosition(screenPosition)
 	return applyMouseCenterOffset(guiPosition, inputObject.UserInputType)
 end
 
-local function resolveCurrentMousePosition(): Vector2
+local function GetCurrentMousePosition(): Vector2
 	local mousePosition = UserInputService:GetMouseLocation()
 	local guiPosition = toGuiPosition(Vector2.new(mousePosition.X, mousePosition.Y))
 	return guiPosition + MOUSE_CURSOR_CENTER_OFFSET
 end
 
-local function sanitizeSlot(slotRaw: any): number?
+local function CoerceSlot(slotRaw: any): number?
 	if typeof(slotRaw) ~= "number" or slotRaw ~= slotRaw then
 		return nil
 	end
@@ -191,7 +213,7 @@ local function sanitizeSlot(slotRaw: any): number?
 end
 
 local function shouldSuppressActivationNow(suppression: ActivationSuppression, slotRaw: any): boolean
-	local slot = sanitizeSlot(slotRaw)
+	local slot = CoerceSlot(slotRaw)
 	if slot == nil then
 		return false
 	end
@@ -209,15 +231,18 @@ local function setActivationSuppression(suppressionRef: any, sourceSlot: number?
 	}
 end
 
-local function finalizeDragWithSuppression(suppressionRef: any, targetSlotRaw: any): boolean
+local function finalizeDragWithSuppression(
+	suppressionRef: any,
+	targetSlotRaw: any
+): boolean
 	local state = itemSlice.getDragState()
 	if not state.active then
 		return false
 	end
 
 	local sourceSlot = state.sourceSlot
-	local targetSlot = sanitizeSlot(targetSlotRaw)
-	local didMove = itemThunks.endDrag(targetSlot)
+	local targetSlot = CoerceSlot(targetSlotRaw)
+	local didMove = getItemThunks().EndDrag(targetSlot)
 	playUiItemReleaseSound()
 	setActivationSuppression(suppressionRef, sourceSlot, targetSlot)
 	return didMove
@@ -234,14 +259,14 @@ local function syncPointerRefs(
 	hasSmoothedPointerRef.current = true
 end
 
-local function resolvePointerFromInput(inputObjectRaw: any): Vector2
+local function GetPointerFromInput(inputObjectRaw: any): Vector2
 	if typeof(inputObjectRaw) == "InputObject" then
-		return resolvePointerPosition(inputObjectRaw :: InputObject)
+		return GetPointerPosition(inputObjectRaw :: InputObject)
 	end
 	if typeof(inputObjectRaw) == "Vector2" then
 		return inputObjectRaw
 	end
-	return resolveCurrentMousePosition()
+	return GetCurrentMousePosition()
 end
 
 local function cloneStack(stackRaw: any): InventoryItemStack?
@@ -271,7 +296,7 @@ local function cloneStack(stackRaw: any): InventoryItemStack?
 		itemId = stack.itemId,
 		amount = amount,
 		maxStack = maxStack,
-		metadata = InventoryServiceUtils.cloneDeep(stack.metadata),
+		metadata = InventoryServiceUtils.CloneDeep(stack.metadata),
 	}
 end
 
@@ -284,10 +309,10 @@ local function isPlaceableDragOutsideInventory(state: ItemDragState): boolean
 		return false
 	end
 
-	return BuildServiceUtils.resolvePlaceableItemConfig(state.stack.itemId) ~= nil
+	return getBuildServiceUtils().GetPlaceableItemConfig(state.stack.itemId) ~= nil
 end
 
-local function resolveSplitIncrementInterval(elapsedSeconds: number): number
+local function GetSplitIncrementInterval(elapsedSeconds: number): number
 	local rampSeconds = math.max(SPLIT_HOLD_CONFIG.accelerationRampSeconds, 1e-4)
 	local alpha = math.clamp(elapsedSeconds / rampSeconds, 0, 1)
 	local easedAlpha = alpha * alpha
@@ -322,12 +347,12 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 			return false
 		end
 
-		local nextDragState = itemThunks.beginSplitDrag(slotIndex, stack, pointerPosition, 1)
+		local nextDragState = getItemThunks().BeginSplitDrag(slotIndex, stack, pointerPosition, 1)
 		if not nextDragState.active then
 			return false
 		end
 
-		itemThunks.setHoveredSlot(slotIndex)
+		getItemThunks().SetHoveredSlot(slotIndex)
 		setActivationSuppression(suppressionRef, slotIndex, slotIndex)
 		playUiItemPickupSound()
 
@@ -363,7 +388,7 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 
 	React.useEffect(function()
 		if dragState.active then
-			itemThunks.setHoveredSlot(hoveredSlotIndex)
+			getItemThunks().SetHoveredSlot(hoveredSlotIndex)
 		end
 	end, { hoveredSlotIndex, dragState.active })
 
@@ -372,7 +397,7 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 			local pendingSplitHold = pendingSplitHoldRef.current
 			if inputObject.UserInputType == Enum.UserInputType.Touch then
 				if itemSlice.getDragState().active or pendingSplitHold ~= nil then
-					local pointerPosition = resolvePointerPosition(inputObject)
+					local pointerPosition = GetPointerPosition(inputObject)
 					targetPointerRef.current = pointerPosition
 				end
 			end
@@ -388,7 +413,7 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 
 			local targetPointer = targetPointerRef.current
 			if UserInputService.MouseEnabled then
-				targetPointer = resolveCurrentMousePosition()
+				targetPointer = GetCurrentMousePosition()
 				targetPointerRef.current = targetPointer
 			end
 
@@ -396,14 +421,14 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 				smoothedPointerRef.current = targetPointer
 				hasSmoothedPointerRef.current = true
 			else
-				local alpha = Damp.factor(POINTER_SMOOTHING_SPEED, deltaTime)
+				local alpha = Damp.Factor(POINTER_SMOOTHING_SPEED, deltaTime)
 				smoothedPointerRef.current = smoothedPointerRef.current:Lerp(targetPointer, alpha)
 			end
 
 			local now = os.clock()
 			currentDragState = itemSlice.getDragState()
 			if currentDragState.active then
-				itemThunks.updatePointer(smoothedPointerRef.current)
+				getItemThunks().UpdatePointer(smoothedPointerRef.current)
 			end
 
 			pendingSplitHold = pendingSplitHoldRef.current
@@ -424,14 +449,14 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 				local nextIncrementAt = pendingSplitHold.nextIncrementAt
 				while nextAmount < pendingSplitHold.stack.amount and now >= nextIncrementAt do
 					nextAmount += 1
-					nextIncrementAt += resolveSplitIncrementInterval(nextIncrementAt - pendingSplitHold.startedAt)
+					nextIncrementAt += GetSplitIncrementInterval(nextIncrementAt - pendingSplitHold.startedAt)
 				end
 
 				pendingSplitHold.nextIncrementAt = nextIncrementAt
 				pendingSplitHoldRef.current = pendingSplitHold
 
 				if nextAmount ~= stack.amount then
-					itemThunks.setDragStackAmount(nextAmount)
+					getItemThunks().SetDragStackAmount(nextAmount)
 				end
 			end
 		end)
@@ -449,7 +474,7 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 				end
 				if currentDragState.hoveredSlot == nil then
 					local sourceSlot = currentDragState.sourceSlot
-					local didDrop = itemThunks.dropDrag(nil)
+					local didDrop = getItemThunks().DropDrag(nil)
 					if didDrop then
 						playUiItemReleaseSound()
 						setActivationSuppression(suppressionRef, sourceSlot, nil)
@@ -497,69 +522,74 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 			beganConnection:Disconnect()
 			endedConnection:Disconnect()
 			clearPendingSplitHold()
-			itemThunks.cancelDrag()
+			if itemThunks ~= nil then
+				itemThunks.CancelDrag()
+			end
 		end
 	end, {})
 
-	local handleSlotInput = React.useCallback(function(slotIndexRaw: any, stackRaw: any, inputObjectRaw: any?)
-		local slotIndex = sanitizeSlot(slotIndexRaw)
-		if slotIndex == nil then
-			return
-		end
-
-		lastSlotInputTimeRef.current = os.clock()
-		local pointerPosition = resolvePointerFromInput(inputObjectRaw)
-		local state = itemSlice.getDragState()
-		local inputType = if typeof(inputObjectRaw) == "InputObject"
-			then (inputObjectRaw :: InputObject).UserInputType
-			else nil
-
-		if inputType == Enum.UserInputType.MouseButton2 then
-			if state.active then
+	local handleSlotInput = React.useCallback(
+		function(slotIndexRaw: any, stackRaw: any, inputObjectRaw: any?)
+			local slotIndex = CoerceSlot(slotIndexRaw)
+			if slotIndex == nil then
 				return
 			end
-			syncPointerRefs(targetPointerRef, smoothedPointerRef, hasSmoothedPointerRef, pointerPosition)
+
+			lastSlotInputTimeRef.current = os.clock()
+			local pointerPosition = GetPointerFromInput(inputObjectRaw)
+			local state = itemSlice.getDragState()
+			local inputType = if typeof(inputObjectRaw) == "InputObject"
+				then (inputObjectRaw :: InputObject).UserInputType
+				else nil
+
+			if inputType == Enum.UserInputType.MouseButton2 then
+				if state.active then
+					return
+				end
+				syncPointerRefs(targetPointerRef, smoothedPointerRef, hasSmoothedPointerRef, pointerPosition)
+				if typeof(stackRaw) ~= "table" then
+					return
+				end
+				beginPendingSplitHold(slotIndex, stackRaw, pointerPosition)
+				return
+			end
+
+			if state.active then
+				if pendingSplitHoldRef.current ~= nil then
+					return
+				end
+				syncPointerRefs(targetPointerRef, smoothedPointerRef, hasSmoothedPointerRef, pointerPosition)
+				getItemThunks().UpdatePointer(pointerPosition)
+				finalizeDragWithSuppression(suppressionRef, slotIndex)
+				return
+			end
+
 			if typeof(stackRaw) ~= "table" then
 				return
 			end
-			beginPendingSplitHold(slotIndex, stackRaw, pointerPosition)
-			return
-		end
-
-		if state.active then
-			if pendingSplitHoldRef.current ~= nil then
+			if
+				inputType ~= nil
+				and inputType ~= Enum.UserInputType.MouseButton1
+				and inputType ~= Enum.UserInputType.Touch
+			then
 				return
 			end
+
 			syncPointerRefs(targetPointerRef, smoothedPointerRef, hasSmoothedPointerRef, pointerPosition)
-			itemThunks.updatePointer(pointerPosition)
-			finalizeDragWithSuppression(suppressionRef, slotIndex)
-			return
-		end
-
-		if typeof(stackRaw) ~= "table" then
-			return
-		end
-		if
-			inputType ~= nil
-			and inputType ~= Enum.UserInputType.MouseButton1
-			and inputType ~= Enum.UserInputType.Touch
-		then
-			return
-		end
-
-		syncPointerRefs(targetPointerRef, smoothedPointerRef, hasSmoothedPointerRef, pointerPosition)
-		clearPendingSplitHold()
-		local nextDragState = itemThunks.beginDrag(slotIndex, stackRaw, pointerPosition)
-		if nextDragState.active then
-			playUiItemPickupSound()
-		end
-		itemThunks.setHoveredSlot(slotIndex)
-		setActivationSuppression(suppressionRef, slotIndex, slotIndex)
-	end, {})
+			clearPendingSplitHold()
+			local nextDragState = getItemThunks().BeginDrag(slotIndex, stackRaw, pointerPosition)
+			if nextDragState.active then
+				playUiItemPickupSound()
+			end
+			getItemThunks().SetHoveredSlot(slotIndex)
+			setActivationSuppression(suppressionRef, slotIndex, slotIndex)
+		end,
+		{}
+	)
 
 	local handleSlotSecondaryInput = React.useCallback(
 		function(slotIndexRaw: any, stackRaw: any, pointerPositionRaw: any?)
-			local slotIndex = sanitizeSlot(slotIndexRaw)
+			local slotIndex = CoerceSlot(slotIndexRaw)
 			if slotIndex == nil then
 				return
 			end
@@ -571,7 +601,7 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 			end
 
 			lastSlotInputTimeRef.current = os.clock()
-			local pointerPosition = resolvePointerFromInput(pointerPositionRaw)
+			local pointerPosition = GetPointerFromInput(pointerPositionRaw)
 			syncPointerRefs(targetPointerRef, smoothedPointerRef, hasSmoothedPointerRef, pointerPosition)
 			beginPendingSplitHold(slotIndex, stackRaw, pointerPosition)
 		end,
@@ -580,7 +610,7 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 
 	local cancelDrag = React.useCallback(function()
 		clearPendingSplitHold()
-		itemThunks.cancelDrag()
+		getItemThunks().CancelDrag()
 	end, {})
 
 	local shouldSuppressActivation = React.useCallback(function(slotIndexRaw: any): boolean

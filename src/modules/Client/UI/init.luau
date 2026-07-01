@@ -60,12 +60,12 @@ local uiRoot = ensureUiRoot()
 local root = ReactRoblox.createRoot(uiRoot)
 
 return function()
-	PlatformServiceClient:setScreenGui(uiRoot)
-	SnackbarNotifications.attachToScreenGui(uiRoot)
+	PlatformServiceClient:SetScreenGui(uiRoot)
+	SnackbarNotifications.AttachToScreenGui(uiRoot)
 	root:render(e(RootUI, {
 		currentScreen = nil,
 		onCanvasMounted = function(canvas: Frame)
-			PlatformServiceClient:setScaleTarget(canvas)
+			PlatformServiceClient:SetScaleTarget(canvas)
 		end,
 	}))
 

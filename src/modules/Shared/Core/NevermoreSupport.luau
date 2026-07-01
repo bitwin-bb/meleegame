@@ -93,12 +93,4 @@ function NevermoreSupport.Destroy()
 	NevermoreSupport.SetServiceBag(nil)
 	serviceBag:Destroy()
 end
-
-NevermoreSupport.start = NevermoreSupport.Start
-NevermoreSupport.getServiceBag = NevermoreSupport.GetServiceBag
-NevermoreSupport.getService = NevermoreSupport.GetService
-NevermoreSupport.isStarted = NevermoreSupport.IsStarted
-NevermoreSupport.destroy = NevermoreSupport.Destroy
-NevermoreSupport.setServiceBag = NevermoreSupport.SetServiceBag
-
 return NevermoreSupport
