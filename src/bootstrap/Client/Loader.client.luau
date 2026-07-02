@@ -35,7 +35,7 @@ local ASSET_PROGRESS_INTERVAL = 5
 local BLOOD_ENGINE_PACKAGE_NAME = "BloodEngine"
 local PROJECT_loader_LINK_NAME = "loader"
 local NEVERMORE_loader_LINK_NAME = "loader"
-local SHARED_FOLDER_NAME = "Shared"
+local SOURCE_FOLDER_NAME = "Source"
 local VENDOR_FOLDER_NAME = "Vendor"
 
 local STAGE_WEIGHT_REPLICATION = 10
@@ -134,38 +134,38 @@ local SKIPPED_MODULE_PATHS = {
 	["Client/App/RootUI"] = true,
 	["App/RootUI"] = true,
 	["Npc/BossServiceServer"] = true,
-	["Npc/components/QueenBeeRoot"] = true,
-	["Npc/modules/QueenBeeSpriteSheet"] = true,
-	["Npc/ui/NpcRoot"] = true,
+	["Npc/Components/QueenBeeRoot"] = true,
+	["Npc/Modules/QueenBeeSpriteSheet"] = true,
+	["Npc/UI/NpcRoot"] = true,
 	["Npc/NpcServiceServer"] = true,
-	["Npc/npc/QueenBee"] = true,
-	["Npc/ui/components/QueenBee"] = true,
-	["Npc/ui/screens/QueenBeeScreen"] = true,
+	["Npc/Npc/QueenBee"] = true,
+	["Npc/UI/Components/QueenBee"] = true,
+	["Npc/UI/Screens/QueenBeeScreen"] = true,
 }
 
 local PACKAGE_TRACKER_IGNORED_MODULE_PATHS = {
-	"game/Client/Audio/network/Replication",
-	"game/Client/Replication",
-	"game/Client/SnackbarNotifications",
-	"game/Server/Net/NetPacketsServer",
-	"game/Client/Npc/ui/components/SlimeComponent",
-	"game/Client/Services/NpcServiceClient",
-	"game/Server/Binders/NpcBinder",
-	"game/Server/Services/NpcServiceServer",
-	"game/Shared/Classes/Npc",
-	"game/Server/Npc/npc/EyeOfCthulhuNpc",
-	"game/Server/Npc/npc/QueenBeeNpc",
-	"game/Shared/Replication",
-	"game/Shared/Replication/Packets",
-	"game/Shared/Services/NpcServiceUtils",
-	"game/Shared/StateMachine/Machines/Enemies/SlimeStateMachine",
+	"game/Client/Source/Audio/network/Replication",
+	"game/Client/Source/Replication",
+	"game/Client/Source/SnackbarNotifications",
+	"game/Server/Source/Net/NetPacketsServer",
+	"game/Client/Source/Npc/UI/Components/SlimeComponent",
+	"game/Client/Source/Services/NpcServiceClient",
+	"game/Server/Source/Binders/NpcBinder",
+	"game/Server/Source/Services/NpcServiceServer",
+	"game/Shared/Source/Classes/Npc",
+	"game/Server/Source/Npc/Npc/EyeOfCthulhuNpc",
+	"game/Server/Source/Npc/Npc/QueenBeeNpc",
+	"game/Shared/Source/Replication",
+	"game/Shared/Source/Replication/Packets",
+	"game/Shared/Source/Services/NpcServiceUtils",
+	"game/Shared/Source/StateMachine/Machines/Enemies/SlimeStateMachine",
 }
 
 local REQUIRED_ARCHIVABLE_MODULE_PATHS = {
-	"game/Client/Notification/FeatureSnackbarNotifications",
-	"game/Client/NetClient/NetPacketsClient",
-	"game/Client/Npc/ui/components/EyeOfCthulhuComponent",
-	"game/Client/Npc/ui/components/QueenBeeComponent",
+	"game/Client/Source/Notification/FeatureSnackbarNotifications",
+	"game/Client/Source/NetClient/NetPacketsClient",
+	"game/Client/Source/Npc/UI/Components/EyeOfCthulhuComponent",
+	"game/Client/Source/Npc/UI/Components/QueenBeeComponent",
 }
 
 local PACKAGE_TRACKER_IGNORE_TIMEOUT_SECONDS = 5
@@ -957,11 +957,12 @@ local function waitForReplicatedContext(): ReplicatedContext
 
 	local packageRoot = waitForRequiredChild(ReplicatedStorage, PACKAGE_NAME, REPLICATION_TIMEOUT_SECONDS)
 	local gameRoot = waitForRequiredChild(packageRoot, "game", REPLICATION_TIMEOUT_SECONDS)
-	local clientRoot = waitForRequiredChild(gameRoot, "Client", REPLICATION_TIMEOUT_SECONDS)
-	local sharedRoot = waitForRequiredChild(gameRoot, "Shared", REPLICATION_TIMEOUT_SECONDS)
-	local sourceSharedRoot = waitForRequiredChild(ReplicatedStorage, SHARED_FOLDER_NAME, REPLICATION_TIMEOUT_SECONDS)
+	local clientRealmRoot = waitForRequiredChild(gameRoot, "Client", REPLICATION_TIMEOUT_SECONDS)
+	local sharedRealmRoot = waitForRequiredChild(gameRoot, "Shared", REPLICATION_TIMEOUT_SECONDS)
+	local clientRoot = waitForRequiredChild(clientRealmRoot, SOURCE_FOLDER_NAME, REPLICATION_TIMEOUT_SECONDS)
+	local sharedRoot = waitForRequiredChild(sharedRealmRoot, SOURCE_FOLDER_NAME, REPLICATION_TIMEOUT_SECONDS)
 	local packagesRoot = waitForRequiredChild(ReplicatedStorage, "Packages", REPLICATION_TIMEOUT_SECONDS)
-	local vendorRoot = waitForRequiredChild(sourceSharedRoot, VENDOR_FOLDER_NAME, REPLICATION_TIMEOUT_SECONDS)
+	local vendorRoot = waitForRequiredChild(sharedRealmRoot, VENDOR_FOLDER_NAME, REPLICATION_TIMEOUT_SECONDS)
 	local loader = findloaderModule(packageRoot)
 	local loaderUtils = waitForRequiredDescendant(packageRoot, "LoaderUtils", REPLICATION_TIMEOUT_SECONDS)
 	ensureProjectloaderLinks(packageRoot, loader)
@@ -1031,7 +1032,7 @@ local function waitForNetwork(
 	setStageProgress("network", "registering network packet readers", 0.9, STAGE_WEIGHT_NETWORK)
 	local clientPacketsModule = waitForRequiredModule(
 		context.gameRoot,
-		{ "Client", "NetClient", "NetPacketsClient" },
+		{ "Client", SOURCE_FOLDER_NAME, "NetClient", "NetPacketsClient" },
 		REPLICATION_TIMEOUT_SECONDS
 	)
 	requireModule(clientPacketsModule, "client network packets", warmedModules, assetIds, assetSet, true)
@@ -1039,7 +1040,7 @@ local function waitForNetwork(
 	completeStage("network", "network remotes are ready", STAGE_WEIGHT_NETWORK)
 end
 
-local function waitForBloodEngineAssets(vendorRoot: Instance)
+local function waitForBloodEnginePackageAssets(vendorRoot: Instance)
 	local bloodEngineRoot = waitForRequiredChild(vendorRoot, BLOOD_ENGINE_PACKAGE_NAME, REPLICATION_TIMEOUT_SECONDS)
 
 	for _, path in
@@ -1061,7 +1062,7 @@ local function prewarmRuntimePackages(
 	assetSet: { [string]: boolean }
 )
 	setStageProgress("packages", "loading runtime packages", 0, STAGE_WEIGHT_PACKAGES)
-	waitForBloodEngineAssets(context.vendorRoot)
+	waitForBloodEnginePackageAssets(context.vendorRoot)
 	local runtimePackageCount = #RUNTIME_WALLY_PACKAGES + #RUNTIME_VENDOR_PACKAGES
 
 	for index, packageName in RUNTIME_WALLY_PACKAGES do
@@ -1110,32 +1111,32 @@ local function prewarmCriticalModules(
 		{
 			key = "CoreConfigs",
 			label = "core configs",
-			path = { "Shared", "Core", "CoreConfigs" },
+			path = { "Shared", SOURCE_FOLDER_NAME, "Core", "CoreConfigs" },
 		},
 		{
 			key = "Runtime",
 			label = "core runtime",
-			path = { "Shared", "Core", "CoreRuntime" },
+			path = { "Shared", SOURCE_FOLDER_NAME, "Core", "CoreRuntime" },
 		},
 		{
 			key = "ItemRegistry",
 			label = "item registry",
-			path = { "Shared", "Item", "modules", "ItemRegistry" },
+			path = { "Shared", SOURCE_FOLDER_NAME, "Item", "Modules", "ItemRegistry" },
 		},
 		{
 			key = "ImageIds",
 			label = "ui image ids",
-			path = { "Shared", "Core", "UI", "ImageIds" },
+			path = { "Shared", SOURCE_FOLDER_NAME, "Core", "UI", "ImageIds" },
 		},
 		{
 			key = "RootUI",
 			label = "react root ui",
-			path = { "Client", "App", "RootUI" },
+			path = { "Client", SOURCE_FOLDER_NAME, "App", "RootUI" },
 		},
 		{
 			key = "AquariaBackupServiceClient",
 			label = "client service bootstrap",
-			path = { "Client", "AquariaBackupServiceClient" },
+			path = { "Client", SOURCE_FOLDER_NAME, "AquariaBackupServiceClient" },
 		},
 	}
 

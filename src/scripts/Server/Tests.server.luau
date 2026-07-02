@@ -31,6 +31,9 @@ if script:GetAttribute("RunTests") == true then
 	local serverRoot = gameRoot:FindFirstChild("Server")
 		or gameRoot:WaitForChild("Server", PACKAGE_LOAD_TIMEOUT_SECONDS)
 	assert(serverRoot ~= nil, `[runTests] Missing game.Server folder in {packageRoot:GetFullName()}.`)
+	local serverSourceRoot = serverRoot:FindFirstChild("Source")
+		or serverRoot:WaitForChild("Source", PACKAGE_LOAD_TIMEOUT_SECONDS)
+	assert(serverSourceRoot ~= nil, `[runTests] Missing game.Server.Source folder in {packageRoot:GetFullName()}.`)
 
 	local loader = assert(packageRoot:FindFirstChild("LoaderUtils", true), "Missing LoaderUtils").Parent
 	assert(loader ~= nil and loader:IsA("ModuleScript"), "[runTests] Missing loader module.")
@@ -103,7 +106,7 @@ if script:GetAttribute("RunTests") == true then
 	ensureProjectloaderLinks(gameRoot)
 
 	local TestEZ = require("TestEZ")
-	local serverTests = serverRoot:WaitForChild("Tests", PACKAGE_LOAD_TIMEOUT_SECONDS)
+	local serverTests = serverSourceRoot:WaitForChild("Tests", PACKAGE_LOAD_TIMEOUT_SECONDS)
 
 	local testBootstrap = TestEZ.TestBootstrap :: any
 	testBootstrap.run(testBootstrap, {

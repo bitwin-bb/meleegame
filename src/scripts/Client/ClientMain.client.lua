@@ -5,27 +5,26 @@ local REPLICATION_TIMEOUT_SECONDS = 60
 local BLOOD_ENGINE_PACKAGE_NAME = "BloodEngine"
 local PROJECT_loader_LINK_NAME = "loader"
 local NEVERMORE_loader_LINK_NAME = "loader"
-local SHARED_FOLDER_NAME = "Shared"
 local VENDOR_FOLDER_NAME = "Vendor"
 
 local PACKAGE_TRACKER_IGNORED_MODULE_PATHS = {
-	"game/Client/Audio/network/Replication",
-	"game/Client/Replication",
-	"game/Client/SnackbarNotifications",
-	"game/Server/Net/NetPacketsServer",
-	"game/Client/Npc/ui/components/SlimeComponent",
-	"game/Server/Npc/npc/EyeOfCthulhuNpc",
-	"game/Server/Npc/npc/QueenBeeNpc",
-	"game/Shared/Replication",
-	"game/Shared/Replication/Packets",
-	"game/Shared/StateMachine/Machines/Enemies/SlimeStateMachine",
+	"game/Client/Source/Audio/network/Replication",
+	"game/Client/Source/Replication",
+	"game/Client/Source/SnackbarNotifications",
+	"game/Server/Source/Net/NetPacketsServer",
+	"game/Client/Source/Npc/UI/Components/SlimeComponent",
+	"game/Server/Source/Npc/Npc/EyeOfCthulhuNpc",
+	"game/Server/Source/Npc/Npc/QueenBeeNpc",
+	"game/Shared/Source/Replication",
+	"game/Shared/Source/Replication/Packets",
+	"game/Shared/Source/StateMachine/Machines/Enemies/SlimeStateMachine",
 }
 
 local REQUIRED_ARCHIVABLE_MODULE_PATHS = {
-	"game/Client/Notification/FeatureSnackbarNotifications",
-	"game/Client/NetClient/NetPacketsClient",
-	"game/Client/Npc/ui/components/EyeOfCthulhuComponent",
-	"game/Client/Npc/ui/components/QueenBeeComponent",
+	"game/Client/Source/Notification/FeatureSnackbarNotifications",
+	"game/Client/Source/NetClient/NetPacketsClient",
+	"game/Client/Source/Npc/UI/Components/EyeOfCthulhuComponent",
+	"game/Client/Source/Npc/UI/Components/QueenBeeComponent",
 }
 
 local PACKAGE_TRACKER_IGNORE_TIMEOUT_SECONDS = 5
@@ -295,7 +294,7 @@ local function ensureProjectloaderLinks(packageRoot: Instance, loader: ModuleScr
 	end
 end
 
-local function waitForBloodEngineAssets(vendorRoot: Instance)
+local function waitForBloodEnginePackageAssets(vendorRoot: Instance)
 	local bloodEngineRoot = waitForInstancePath(vendorRoot, { BLOOD_ENGINE_PACKAGE_NAME }, REPLICATION_TIMEOUT_SECONDS)
 
 	for _, path in
@@ -311,10 +310,9 @@ local function waitForBloodEngineAssets(vendorRoot: Instance)
 end
 
 local packageRoot = waitForRequiredChild(ReplicatedStorage, "AquariaBackup", REPLICATION_TIMEOUT_SECONDS)
-waitForRequiredChild(packageRoot, "game", REPLICATION_TIMEOUT_SECONDS)
+local gameRoot = waitForRequiredChild(packageRoot, "game", REPLICATION_TIMEOUT_SECONDS)
 local packagesRoot = waitForRequiredChild(ReplicatedStorage, "Packages", REPLICATION_TIMEOUT_SECONDS)
-local vendorRoot =
-	waitForInstancePath(ReplicatedStorage, { SHARED_FOLDER_NAME, VENDOR_FOLDER_NAME }, REPLICATION_TIMEOUT_SECONDS)
+local vendorRoot = waitForInstancePath(gameRoot, { "Shared", VENDOR_FOLDER_NAME }, REPLICATION_TIMEOUT_SECONDS)
 
 local loader = findloaderModule(packageRoot)
 ensureExternalPackageLinks(packageRoot, packagesRoot)
@@ -323,7 +321,7 @@ disableDuplicatePackageTrackerModules(packageRoot)
 ensureProjectModulePackageLinks(packageRoot)
 local require = require(loader).bootstrapGame(packageRoot)
 ensureProjectloaderLinks(packageRoot, loader)
-waitForBloodEngineAssets(vendorRoot)
+waitForBloodEnginePackageAssets(vendorRoot)
 
 local ItemRegistry = require("ItemRegistry")
 local NevermoreSupport = require("NevermoreSupport")

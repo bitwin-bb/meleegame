@@ -1,0 +1,238 @@
+local require = require(script.Parent.loader).load(script)
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+
+local Sift = require(ReplicatedStorage.Packages.Sift)
+
+local ConnectionUtils = require("ConnectionUtils")
+local CraftingServiceClient = require("CraftingServiceClient")
+local ServiceSync = require("ServiceSync")
+local craftingSlice = require("CraftingSlice")
+
+type CraftingState = craftingSlice.CraftingState
+
+local craftingThunks = {}
+
+local runtime = {
+	started = false,
+	stateChangedConnection = nil :: RBXScriptConnection?,
+}
+
+local function trim(textRaw: any): string
+	if typeof(textRaw) ~= "string" then
+		return ""
+	end
+	return string.match(textRaw, "^%s*(.-)%s*$") or ""
+end
+
+local function CoerceQuantity(quantityRaw: any): number
+	local quantity = 1
+	if typeof(quantityRaw) == "number" and quantityRaw == quantityRaw then
+		quantity = math.floor(quantityRaw)
+	elseif typeof(quantityRaw) == "string" then
+		local parsed = tonumber(trim(quantityRaw))
+		if parsed ~= nil and parsed == parsed then
+			quantity = math.floor(parsed)
+		end
+	end
+	return math.clamp(quantity, 1, 99)
+end
+
+local function toStringArrayFromSet(setRaw: any): { string }
+	local output: { string } = {}
+	if typeof(setRaw) ~= "table" then
+		return output
+	end
+	for key, value in setRaw do
+		if typeof(key) == "string" and value == true then
+			output[#output + 1] = key
+		end
+	end
+	return Sift.Array.sort(output)
+end
+
+local function applyFromService(): CraftingState
+	local currentState = craftingSlice.getCraftingState()
+
+	local serviceState: { [string]: any } = {}
+	local didReadState = pcall(function()
+		serviceState = CraftingServiceClient:GetState()
+	end)
+	if not didReadState then
+		serviceState = {}
+	end
+
+	local searchQuery = currentState.searchQuery
+	local categoryFilter = currentState.categoryFilter
+	if typeof(serviceState.searchQuery) == "string" then
+		searchQuery = serviceState.searchQuery
+	end
+	if typeof(serviceState.categoryFilter) == "string" then
+		categoryFilter = serviceState.categoryFilter
+	end
+
+	local recipes: { any } = {}
+	local didReadRecipes = pcall(function()
+		recipes = CraftingServiceClient:GetRecipes({
+			category = categoryFilter,
+			searchText = searchQuery,
+		})
+	end)
+	if not didReadRecipes then
+		recipes = {}
+	end
+
+	local availableCategories = if typeof(serviceState.availableCategories) == "table"
+		then serviceState.availableCategories
+		else {} :: any
+	local activeStations = toStringArrayFromSet(serviceState.activeStations)
+	local selectedRecipeId = currentState.selectedRecipeId
+	if typeof(selectedRecipeId) ~= "string" or selectedRecipeId == "" then
+		selectedRecipeId = nil
+	end
+	if selectedRecipeId == nil and #recipes > 0 then
+		selectedRecipeId = recipes[1].recipeId
+	end
+
+	return craftingSlice.applyServiceSnapshot({
+		started = true,
+		searchQuery = searchQuery,
+		categoryFilter = categoryFilter,
+		selectedRecipeId = selectedRecipeId,
+		availableCategories = availableCategories,
+		recipes = recipes,
+		activeStations = activeStations,
+		isBulkCrafting = serviceState.isBulkCrafting == true,
+		lastCraftResult = if typeof(serviceState.lastCraftResult) == "table" then serviceState.lastCraftResult else nil,
+	})
+end
+
+local function ensureStarted()
+	if runtime.started then
+		return
+	end
+	craftingThunks.Start()
+end
+
+function craftingThunks.Start(): () -> ()
+	if runtime.started then
+		return craftingThunks.Stop
+	end
+
+	runtime.started = true
+	applyFromService()
+
+	runtime.stateChangedConnection = ServiceSync.ConnectStateChanged(CraftingServiceClient, function()
+		applyFromService()
+	end)
+	ServiceSync.RequestSync(CraftingServiceClient)
+
+	return craftingThunks.Stop
+end
+
+function craftingThunks.Stop()
+	ConnectionUtils.Disconnect(runtime.stateChangedConnection)
+	runtime.stateChangedConnection = nil
+	runtime.started = false
+	craftingSlice.setCraftingState({
+		started = false,
+		isBulkCrafting = false,
+	})
+end
+
+function craftingThunks.Refresh(): CraftingState
+	ensureStarted()
+	return applyFromService()
+end
+
+function craftingThunks.ToggleVisible(): CraftingState
+	ensureStarted()
+	return craftingSlice.toggleVisible()
+end
+
+function craftingThunks.SetVisible(visibleRaw: any): CraftingState
+	ensureStarted()
+	return craftingSlice.setVisible(visibleRaw)
+end
+
+function craftingThunks.SetSearchQuery(searchQueryRaw: any): CraftingState
+	ensureStarted()
+	local nextState = craftingSlice.setSearchQuery(searchQueryRaw)
+	pcall(function()
+		CraftingServiceClient:SetSearchQuery(nextState.searchQuery)
+	end)
+	return applyFromService()
+end
+
+function craftingThunks.SetCategoryFilter(categoryRaw: any): CraftingState
+	ensureStarted()
+	local nextState = craftingSlice.setCategoryFilter(categoryRaw)
+	pcall(function()
+		CraftingServiceClient:SetCategoryFilter(nextState.categoryFilter)
+	end)
+	return applyFromService()
+end
+
+function craftingThunks.SelectRecipe(recipeIdRaw: any): CraftingState
+	ensureStarted()
+	return craftingSlice.setSelectedRecipeId(recipeIdRaw)
+end
+
+function craftingThunks.RequestCraft(recipeIdRaw: any, quantityRaw: any): boolean
+	ensureStarted()
+	local recipeId = trim(recipeIdRaw)
+	if recipeId == "" then
+		return false
+	end
+
+	local quantity = CoerceQuantity(quantityRaw)
+	local didSend = false
+	pcall(function()
+		didSend = CraftingServiceClient:RequestCraft(recipeId, quantity) == true
+	end)
+	task.defer(applyFromService)
+	return didSend
+end
+
+function craftingThunks.CraftSelected(quantityRaw: any): boolean
+	ensureStarted()
+	local currentState = craftingSlice.getCraftingState()
+	local selectedRecipeId = currentState.selectedRecipeId
+	if selectedRecipeId == nil or selectedRecipeId == "" then
+		return false
+	end
+	return craftingThunks.RequestCraft(selectedRecipeId, quantityRaw)
+end
+
+function craftingThunks.StartBulkCraftSelected(quantityRaw: any): boolean
+	ensureStarted()
+	local currentState = craftingSlice.getCraftingState()
+	local selectedRecipeId = currentState.selectedRecipeId
+	if selectedRecipeId == nil or selectedRecipeId == "" then
+		return false
+	end
+
+	local quantity = CoerceQuantity(quantityRaw)
+	local didStart = false
+	pcall(function()
+		didStart = CraftingServiceClient:StartBulkCraft(selectedRecipeId, quantity) == true
+	end)
+	task.defer(applyFromService)
+	return didStart
+end
+
+function craftingThunks.StopBulkCraft(): boolean
+	ensureStarted()
+	local didStop = false
+	pcall(function()
+		didStop = CraftingServiceClient:StopBulkCraft() == true
+	end)
+	task.defer(applyFromService)
+	return didStop
+end
+
+function craftingThunks.GetCraftingState(): CraftingState
+	return craftingSlice.getCraftingState()
+end
+return craftingThunks

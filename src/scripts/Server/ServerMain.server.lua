@@ -8,22 +8,22 @@ local PROJECT_loader_LINK_NAME = "loader"
 local NEVERMORE_loader_LINK_NAME = "loader"
 
 local PACKAGE_TRACKER_IGNORED_MODULE_PATHS = {
-	"game/Client/Audio/network/Replication",
-	"game/Client/Replication",
-	"game/Client/SnackbarNotifications",
-	"game/Client/Npc/ui/components/SlimeComponent",
-	"game/Server/Npc/npc/EyeOfCthulhuNpc",
-	"game/Server/Npc/npc/QueenBeeNpc",
-	"game/Shared/Replication",
-	"game/Shared/Replication/Packets",
-	"game/Shared/StateMachine/Machines/Enemies/SlimeStateMachine",
+	"game/Client/Source/Audio/network/Replication",
+	"game/Client/Source/Replication",
+	"game/Client/Source/SnackbarNotifications",
+	"game/Client/Source/Npc/UI/Components/SlimeComponent",
+	"game/Server/Source/Npc/Npc/EyeOfCthulhuNpc",
+	"game/Server/Source/Npc/Npc/QueenBeeNpc",
+	"game/Shared/Source/Replication",
+	"game/Shared/Source/Replication/Packets",
+	"game/Shared/Source/StateMachine/Machines/Enemies/SlimeStateMachine",
 }
 
 local REQUIRED_ARCHIVABLE_MODULE_PATHS = {
-	"game/Client/Notification/FeatureSnackbarNotifications",
-	"game/Client/NetClient/NetPacketsClient",
-	"game/Client/Npc/ui/components/EyeOfCthulhuComponent",
-	"game/Client/Npc/ui/components/QueenBeeComponent",
+	"game/Client/Source/Notification/FeatureSnackbarNotifications",
+	"game/Client/Source/NetClient/NetPacketsClient",
+	"game/Client/Source/Npc/UI/Components/EyeOfCthulhuComponent",
+	"game/Client/Source/Npc/UI/Components/QueenBeeComponent",
 }
 
 local PACKAGE_TRACKER_IGNORE_TIMEOUT_SECONDS = 5

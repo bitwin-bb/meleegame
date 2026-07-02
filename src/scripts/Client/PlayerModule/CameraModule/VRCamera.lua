@@ -23,7 +23,7 @@ local Util = require(script.Parent:WaitForChild("CameraUtils"))
 
 --[[ The Module ]]
 --
-local VRBaseCamera = require(script.Parent:WaitForChild("VRBaseCamera"))
+local VRBaseCamera = require(script.Parent:WaitForChild("VrBaseCamera"))
 local VRCamera = setmetatable({}, VRBaseCamera)
 VRCamera.__index = VRCamera
 

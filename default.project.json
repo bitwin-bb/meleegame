@@ -7,16 +7,7 @@
     "**/.modules.yaml",
     "**/.ignored",
     "**/.ignored_*",
-    "src/source/Shared",
-    "src/source/Shared/Vendor",
-    "src/source/Shared/Vendor/blood-engine",
-    "src/source/Shared/Vendor/fastcast",
-    "src/source/Shared/Vendor/partcache",
-    "src/source/Shared/Vendor/raycasthitbox",
-    "src/source/Shared/Vendor/rbxcamerashaker",
-    "src/source/Shared/Vendor/table",
-    "src/source/Shared/Vendor/testez",
-    "src/source/Shared/Vendor/**/*.toml"
+    "src/modules/Shared/Vendor/**/*.toml"
   ],
   "tree": {
     "$className": "DataModel",
@@ -27,38 +18,7 @@
       }
     },
     "ReplicatedStorage": {
-      "$path": "src/source",
       "$ignoreUnknownInstances": true,
-      "Shared": {
-        "$path": "src/source/Shared",
-        "Vendor": {
-          "$className": "Folder",
-          "BloodEngine": {
-            "$path": "src/source/Shared/Vendor/blood-engine/src",
-            "Assets": {
-              "$path": "src/source/Shared/Vendor/blood-engine/assets"
-            }
-          },
-          "EZCameraShake": {
-            "$path": "src/source/Shared/Vendor/rbxcamerashaker"
-          },
-          "FastCast": {
-            "$path": "src/source/Shared/Vendor/fastcast/src"
-          },
-          "PartCache": {
-            "$path": "src/source/Shared/Vendor/partcache/src"
-          },
-          "RaycastHitbox": {
-            "$path": "src/source/Shared/Vendor/raycasthitbox"
-          },
-          "Table": {
-            "$path": "src/source/Shared/Vendor/table/src"
-          },
-          "TestEZ": {
-            "$path": "src/source/Shared/Vendor/testez/src"
-          }
-        }
-      },
       "Packages": {
         "$path": "Packages"
       }
@@ -75,28 +35,63 @@
         "game": {
           "$className": "Folder",
           "Client": {
-            "$path": "src/modules/Client"
+            "$className": "Folder",
+            "Source": {
+              "$path": "src/modules/Client/Source"
+            }
           },
           "Server": {
-            "$path": "src/modules/Server"
+            "$className": "Folder",
+            "Source": {
+              "$path": "src/modules/Server/Source"
+            }
           },
           "Shared": {
-            "$path": "src/modules/Shared",
             "$className": "Folder",
-            "NpcDefinitions": {
-              "$path": "src/modules/Server/Npc/npc/Definitions.luau"
-            },
-            "EyeOfCthulhuBoss": {
-              "$className": "Folder",
-              "Motion": {
-                "$path": "src/modules/Server/Npc/classes/Boss/EyeOfCthulhuBoss/Motion.luau"
+            "Source": {
+              "$path": "src/modules/Shared/Source",
+              "NpcDefinitions": {
+                "$path": "src/modules/Server/Source/Npc/Npc/Definitions.luau"
               },
-              "Presentation": {
-                "$path": "src/modules/Server/Npc/classes/Boss/EyeOfCthulhuBoss/Presentation.luau"
+              "EyeOfCthulhuBoss": {
+                "$className": "Folder",
+                "Motion": {
+                  "$path": "src/modules/Server/Source/Npc/Classes/Boss/EyeOfCthulhuBoss/Motion.luau"
+                },
+                "Presentation": {
+                  "$path": "src/modules/Server/Source/Npc/Classes/Boss/EyeOfCthulhuBoss/Presentation.luau"
+                }
+              },
+              "QueenBeeConfigs": {
+                "$path": "src/modules/Server/Source/Npc/Classes/Boss/QueenBeeBoss/QueenBeeConfigs.luau"
               }
             },
-            "QueenBeeConfigs": {
-              "$path": "src/modules/Server/Npc/classes/Boss/QueenBeeBoss/QueenBeeConfigs.luau"
+            "Vendor": {
+              "$className": "Folder",
+              "BloodEngine": {
+                "$path": "src/modules/Shared/Vendor/blood-engine/src",
+                "Assets": {
+                  "$path": "src/modules/Shared/Vendor/blood-engine/assets"
+                }
+              },
+              "EZCameraShake": {
+                "$path": "src/modules/Shared/Vendor/rbxcamerashaker"
+              },
+              "FastCast": {
+                "$path": "src/modules/Shared/Vendor/fastcast/src"
+              },
+              "PartCache": {
+                "$path": "src/modules/Shared/Vendor/partcache/src"
+              },
+              "RaycastHitbox": {
+                "$path": "src/modules/Shared/Vendor/raycasthitbox"
+              },
+              "Table": {
+                "$path": "src/modules/Shared/Vendor/table/src"
+              },
+              "TestEZ": {
+                "$path": "src/modules/Shared/Vendor/testez/src"
+              }
             }
           }
         },

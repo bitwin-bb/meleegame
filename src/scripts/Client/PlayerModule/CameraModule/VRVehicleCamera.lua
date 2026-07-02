@@ -27,7 +27,7 @@ local UserGameSettings = UserSettings():GetService("UserGameSettings")
 
 local CameraInput = require(script.Parent:WaitForChild("CameraInput"))
 local CameraUtils = require(script.Parent:WaitForChild("CameraUtils"))
-local VRBaseCamera = require(script.Parent:WaitForChild("VRBaseCamera"))
+local VRBaseCamera = require(script.Parent:WaitForChild("VrBaseCamera"))
 local VehicleCamera = require(script.Parent:WaitForChild("VehicleCamera"))
 local VehicleCameraConfig = require(script.Parent.VehicleCamera:FindFirstChild("VehicleCameraConfig")) :: any
 local VehicleCameraCore = require(script.Parent.VehicleCamera:FindFirstChild("VehicleCameraCore")) :: any

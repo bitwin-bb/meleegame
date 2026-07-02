@@ -135,7 +135,7 @@ dependencies = []
 [[package]]
 name = "leifs/aquaria-backup"
 version = "0.1.0"
-dependencies = [["ByteNet", "ffrostflame/bytenet@0.4.6"], ["Charm", "joelbrd/charm@1.0.10"], ["Fusion", "elttob/fusion@0.3.0"], ["Janitor", "kartzrbx/janitor@1.1.0"], ["Matter", "evaera/matter@0.7.0"], ["Plasma", "evaera/plasma@0.4.2"], ["React", "jsdotlua/react@17.2.1"], ["ReactCharm", "littensy/react-charm@0.3.0"], ["ReactRoblox", "jsdotlua/react-roblox@17.2.1"], ["ReactRodux", "solarhorizon/react-rodux@0.2.2"], ["Ripple", "littensy/ripple@0.9.3"], ["Sift", "csqrl/sift@0.0.11"], ["Signal", "sleitnick/signal@2.0.3"], ["ProfileStore", "ddashdev/profilestore@1.0.4"]]
+dependencies = [["ByteNet", "ffrostflame/bytenet@0.4.6"], ["Charm", "joelbrd/charm@1.0.10"], ["Fusion", "elttob/fusion@0.3.0"], ["Janitor", "kartzrbx/janitor@1.1.0"], ["Jecs", "ukendio/jecs@0.11.0"], ["Matter", "evaera/matter@0.7.0"], ["Plasma", "evaera/plasma@0.4.2"], ["React", "jsdotlua/react@17.2.1"], ["ReactCharm", "littensy/react-charm@0.3.0"], ["ReactRoblox", "jsdotlua/react-roblox@17.2.1"], ["ReactRodux", "solarhorizon/react-rodux@0.2.2"], ["Ripple", "littensy/ripple@0.9.3"], ["Sift", "csqrl/sift@0.0.11"], ["Signal", "sleitnick/signal@2.0.3"], ["ProfileStore", "ddashdev/profilestore@1.0.4"]]
 
 [[package]]
 name = "littensy/charm"
@@ -171,3 +171,8 @@ dependencies = []
 name = "solarhorizon/react-rodux"
 version = "0.2.2"
 dependencies = [["LuauPolyfill", "jsdotlua/luau-polyfill@1.2.7"], ["React", "jsdotlua/react@17.2.1"], ["Rodux", "roblox/rodux@4.0.0-rc.0"]]
+
+[[package]]
+name = "ukendio/jecs"
+version = "0.11.0"
+dependencies = []

@@ -65,8 +65,8 @@ local LegacyCamera = require(script:WaitForChild("LegacyCamera"))
 local OrbitalCamera = require(script:WaitForChild("OrbitalCamera"))
 local VehicleCamera = require(script:WaitForChild("VehicleCamera"))
 -- New VR System Modules
-local VRCamera = require(script:WaitForChild("VRCamera"))
-local VRVehicleCamera = require(script:WaitForChild("VRVehicleCamera"))
+local VRCamera = require(script:WaitForChild("VrCamera"))
+local VRVehicleCamera = require(script:WaitForChild("VrVehicleCamera"))
 
 -- Load Roblox Occlusion Modules
 local Invisicam = require(script:WaitForChild("Invisicam"))
