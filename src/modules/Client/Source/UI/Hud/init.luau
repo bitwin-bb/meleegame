@@ -4,7 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BottomBar = require(script:WaitForChild("BottomBar"))
 local LeftSideBar = require(script:WaitForChild("LeftSideBar"))
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local RightSideBar = require(script:WaitForChild("RightSideBar"))
 local TopBar = require(script:WaitForChild("TopBar"))
 

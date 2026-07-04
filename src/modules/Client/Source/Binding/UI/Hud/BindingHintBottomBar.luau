@@ -2,7 +2,7 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local TextLabel =
 	require(script:FindFirstAncestor("game").Client.Source.UI.Core.Primitives:WaitForChild("UITextLabel"))
 local bindingSlice = require("BindingSlice")

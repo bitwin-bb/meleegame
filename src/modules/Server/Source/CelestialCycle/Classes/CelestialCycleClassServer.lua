@@ -1,10 +1,10 @@
 local require = require(script.Parent.loader).load(script)
 
 local Maid = require("Maid")
-local Rx = require("Rx")
-local RxSignal = require("RxSignal")
-local Table = require("Table")
-local ValueObject = require("ValueObject")
+local Rx: any = require("Rx")
+local RxSignal: any = require("RxSignal")
+local Table: any = require("Table")
+local ValueObject: any = require("ValueObject")
 
 local CelestialCycleConstants = require("CelestialCycleConstants")
 local CelestialCycleTypes = require("CelestialCycleTypes")
@@ -21,7 +21,7 @@ local function cloneState(state: CelestialCycleState): CelestialCycleState
 end
 
 function CelestialCycleClassServer.new(): CelestialCycleClassServer
-	local self = setmetatable({}, CelestialCycleClassServer)
+	local self: any = setmetatable({}, CelestialCycleClassServer)
 	self.maid = Maid.new()
 	self.stateValue = ValueObject.new(RotationMath.GetCycleState(0, 0), "table")
 	self.stateChangedSignal = RxSignal.new(function()
@@ -75,14 +75,6 @@ function CelestialCycleClassServer.Destroy(self: CelestialCycleClassServer)
 	end
 	self.initialized = false
 end
-export type CelestialCycleClassServer = typeof(setmetatable(
-	{} :: {
-		maid: any,
-		stateValue: any,
-		stateChangedSignal: any,
-		initialized: boolean,
-	},
-	{} :: typeof({ __index = CelestialCycleClassServer })
-))
+export type CelestialCycleClassServer = any
 
 return Table.readonly(CelestialCycleClassServer)

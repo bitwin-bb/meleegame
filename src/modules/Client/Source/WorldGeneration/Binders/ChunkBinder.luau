@@ -47,7 +47,7 @@ function ChunkBinder.new(instance: Instance, context: any)
 
 	if shouldNotifyWorldAnimator(self.model) then
 		pcall(function()
-			getWorldAnimatorServiceClient():onChunkAdded(self.model)
+			getWorldAnimatorServiceClient():OnChunkAdded(self.model)
 		end)
 	end
 
@@ -65,7 +65,7 @@ end
 function ChunkBinder.Cleanup(self: any)
 	if shouldNotifyWorldAnimator(self.model) then
 		pcall(function()
-			getWorldAnimatorServiceClient():onChunkRemoved(self.model)
+			getWorldAnimatorServiceClient():OnChunkRemoved(self.model)
 		end)
 	end
 end

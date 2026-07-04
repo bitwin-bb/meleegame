@@ -6,7 +6,7 @@ local RunService = game:GetService("RunService")
 local Maid = require("Maid")
 
 local EyeOfCthulhuServant = require("EyeOfCthulhuServant")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local ServantSpriteSheet = require("ServantSpriteSheet")
 local WorkspaceFolders = require("WorkspaceFolders")
 

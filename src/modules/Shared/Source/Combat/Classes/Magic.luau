@@ -2,7 +2,7 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ItemRegistry = require("ItemRegistry")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local GetToolInstance = require("GetToolInstance")
 local Signal = require("Signal")
 
@@ -64,11 +64,7 @@ export type MagicConfig = {
 	allowQueueOnCooldown: boolean?,
 }
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
 type MagicSignals = {
 	castRequested: SignalObject,
@@ -1067,7 +1063,7 @@ function Magic.GetLastError(self: Magic): string?
 	return self.lastError
 end
 
-function Magic.On(self: Magic, signalNameRaw: any, callback: (...any) -> ()): RBXScriptConnection?
+function Magic.On(self: Magic, signalNameRaw: any, callback: (...any) -> ()): any
 	if typeof(signalNameRaw) ~= "string" or typeof(callback) ~= "function" then
 		return nil
 	end

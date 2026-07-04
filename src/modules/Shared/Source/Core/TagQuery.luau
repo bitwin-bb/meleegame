@@ -1,7 +1,7 @@
 local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 
 local Signal = require("Signal")
 
@@ -20,16 +20,7 @@ export type TagListener = (instance: any, isAdded: boolean, tag: string) -> ()
 
 export type TagQuery = typeof(setmetatable({} :: any, TagQuery))
 
-type SignalConnection = {
-	Disconnect: (self: SignalConnection) -> (),
-}
-
-type TagSignal = {
-	Connect: (self: TagSignal, callback: TagListener) -> SignalConnection,
-	Fire: (self: TagSignal, instance: any, isAdded: boolean, tag: string) -> (),
-	DisconnectAll: (self: TagSignal) -> (),
-	Destroy: (self: TagSignal) -> (),
-}
+type TagSignal = Signal.Signal<any, boolean, string>
 
 local function clearArray(array: { any })
 	for index = #array, 1, -1 do
@@ -70,7 +61,7 @@ function TagQuery._getSignal(self: TagQuery, tag: string): TagSignal
 	if signal ~= nil then
 		return signal
 	end
-	signal = Signal.new() :: TagSignal
+	signal = Signal.new()
 	self.signalsByTag[tag] = signal
 	return signal
 end

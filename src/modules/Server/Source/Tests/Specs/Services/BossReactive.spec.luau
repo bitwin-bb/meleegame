@@ -69,7 +69,7 @@ local function createTestService()
 		allowClientManualSummon = false,
 		defaultConfigByBossId = {
 			EyeOfCthulhu = EyeOfCthulhuConfig.GetDefaults(),
-			QueenBee = QueenBeeConfig.getDefaults(),
+			QueenBee = QueenBeeConfig.GetDefaults(),
 		},
 		previousClockTime = 12,
 	}, {
@@ -294,8 +294,8 @@ return function()
 			queenBee:SetPosition(Vector3.new(0, 42, 48))
 
 			local startPosition = queenBee.position
-			local defaults = QueenBeeConfig.getDefaults()
-			expect(queenBee:GetMaxSimulationStep()).to.equal(QueenBeeConfig.getDefaults().MaxDt)
+			local defaults = QueenBeeConfig.GetDefaults()
+			expect(queenBee:GetMaxSimulationStep()).to.equal(QueenBeeConfig.GetDefaults().MaxDt)
 			expect(defaults.HoverIdleDurationByPhase[1] > 0).to.equal(true)
 			expect(queenBee._stateMachine ~= nil).to.equal(true)
 			expect(queenBee._stateMachine:GetActiveState()).to.equal("HoverIdle")

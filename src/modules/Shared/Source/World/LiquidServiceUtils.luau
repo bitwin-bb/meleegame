@@ -4,7 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local LiquidServiceUtils = {}
 local Lerp = require("Lerp")
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local WorldGenerationColor = require("WorldGenerationColor")
 
 LiquidServiceUtils.NETWORK_METHOD_REQUEST_SYNC = "requestSync"

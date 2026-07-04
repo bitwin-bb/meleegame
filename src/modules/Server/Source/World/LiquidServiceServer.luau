@@ -2,7 +2,7 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Players = game:GetService("Players")
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
@@ -76,11 +76,7 @@ type LiquidSolverStepResult = LiquidServiceUtils.LiquidSolverStepResult
 type CancellationToken = TickSchedulerModule.CancellationToken
 type DebugObject = WorldSimulationDebug.Debug
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
 type ChunkLifecycleConnection = {
 	Disconnect: (self: ChunkLifecycleConnection) -> (),
@@ -119,7 +115,7 @@ type PlayerServiceServerObject = {
 }
 
 type HpServiceServerObject = {
-	damagePlayer: (self: HpServiceServerObject, player: Player, damageRaw: any) -> number?,
+	DamagePlayer: (self: HpServiceServerObject, player: Player, damageRaw: any) -> number?,
 }
 
 type ChunkRuntime = {
@@ -2640,7 +2636,7 @@ function LiquidServiceServer.Init(self: LiquidServiceServer)
 			(self.world :: any):RegisterChunkLifecycleObserver(self)
 		) :: ChunkLifecycleConnection?
 	end
-	self.hpService = HpServiceServer :: HpServiceServerObject
+	self.hpService = HpServiceServer :: any
 	self.debug = WorldSimulationDebug.New({
 		enabled = self.config.debug.enabled,
 		profilingEnabled = self.config.debug.enabled,

@@ -122,14 +122,14 @@ function GoreBinder.onHealthChanged(self: any, nextHealth: number)
 		return
 	end
 
-	getGoreServiceServer():emitEntityDamage(self.entityId, self:GetRootPart(), previousHealth - nextHealth)
+	getGoreServiceServer():EmitEntityDamage(self.entityId, self:GetRootPart(), previousHealth - nextHealth)
 end
 
 function GoreBinder.onDied(self: any)
 	if self.entityId == nil then
 		return
 	end
-	getGoreServiceServer():emitEntityDeath(self.entityId, self:GetRootPart())
+	getGoreServiceServer():EmitEntityDeath(self.entityId, self:GetRootPart())
 end
 
 function GoreBinder.Cleanup(self: any)

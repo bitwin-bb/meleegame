@@ -3,7 +3,7 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BindingHintBottomBar = require(script.Parent.Parent:WaitForChild("Hud"):WaitForChild("BindingHintBottomBar"))
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local bindingSlice = require("BindingSlice")
 local bindingThunks = require("BindingThunks")
 local useStore = require("useCoreStore")

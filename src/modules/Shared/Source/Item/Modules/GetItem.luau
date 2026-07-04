@@ -3,7 +3,7 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Fusion = require(ReplicatedStorage.Packages.Fusion)
+local Fusion: any = require(ReplicatedStorage.Packages.Fusion)
 local Blocks = require("Blocks")
 local InstanceUtils = require("InstanceUtils")
 local ItemRegistry = require("ItemRegistry")

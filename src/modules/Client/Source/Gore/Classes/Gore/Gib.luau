@@ -8,7 +8,7 @@ local Workspace = game:GetService("Workspace")
 
 local Curve = require("Curve")
 local Ease = require("Ease")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local Vec = require("Vec")
 
 local Gib = {}
@@ -33,11 +33,7 @@ export type GibConfig = {
 	canQuery: boolean?,
 }
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 export type Gib = typeof(setmetatable(
 	{} :: {
@@ -296,7 +292,7 @@ function Gib.Land(self: Gib)
 		if snapshot.isDestroyed then
 			return
 		end
-		snapshot:destroy()
+		snapshot:Destroy()
 	end)
 end
 

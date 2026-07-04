@@ -63,16 +63,8 @@ type TouchState = {
 
 export type Gestures = typeof(setmetatable({} :: any, Gestures))
 
-type SignalConnection = {
-	Disconnect: (self: SignalConnection) -> (),
-}
 
-type GestureSignal = {
-	Connect: (self: GestureSignal, callback: GestureCallback) -> SignalConnection,
-	Fire: (self: GestureSignal, payload: GesturePayload) -> (),
-	DisconnectAll: (self: GestureSignal) -> (),
-	Destroy: (self: GestureSignal) -> (),
-}
+type GestureSignal = Signal.Signal<...any>
 
 local function clampNumber(valueRaw: any, fallback: number, minValue: number, maxValue: number): number
 	local value = if typeof(valueRaw) == "number" then valueRaw else fallback

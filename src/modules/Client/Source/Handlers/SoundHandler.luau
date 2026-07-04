@@ -8,13 +8,7 @@ local SoundPromiseUtils = Nevermore.Get("SoundPromiseUtils")
 local SoundHandler = {}
 SoundHandler.__index = SoundHandler
 
-export type SoundHandler = typeof(setmetatable(
-	{} :: {
-		maid: any,
-		sounds: { [string]: Sound },
-	},
-	SoundHandler
-))
+export type SoundHandler = any
 
 function SoundHandler.new(): SoundHandler
 	return setmetatable({

@@ -95,7 +95,7 @@ function Signal.Connect(self: Signal, callback: (...any) -> ()): Connection
 		once = false,
 	}
 
-	table.insert(self._listeners, listener)
+	table.insert(self._listeners, listener :: Listener)
 
 	return connection
 end
@@ -118,7 +118,7 @@ function Signal.Once(self: Signal, callback: (...any) -> ()): Connection
 		once = true,
 	}
 
-	table.insert(self._listeners, listener)
+	table.insert(self._listeners, listener :: Listener)
 
 	return connection
 end
@@ -167,7 +167,7 @@ function Signal.Fire(self: Signal, ...: any)
 					self:_removePendingOnceConnection(listener.connection)
 				end
 			elseif listener.connection.Connected then
-				local ok, result = pcall(listener.callback, table.unpack(args, 1, args.n))
+				local ok, result = (pcall :: any)(listener.callback, table.unpack(args, 1, args.n))
 				if dispatchItem.once then
 					listener.connection:Disconnect()
 					self:_removePendingOnceConnection(listener.connection)

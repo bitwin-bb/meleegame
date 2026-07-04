@@ -7,7 +7,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local BreathServiceUtils = require("BreathServiceUtils")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local BreathServicePackets = require("NetPacketsShared").BreathService
 
@@ -55,16 +55,9 @@ local Signal = require("Signal")
 
 type BreathServiceState = BreathServiceUtils.BreathServiceState
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 local BreathServiceClient = {}
 

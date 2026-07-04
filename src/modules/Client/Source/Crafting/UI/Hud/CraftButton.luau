@@ -4,7 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 
 local CraftingButton = require("CraftingButton")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local UiSound = require("UISound")
 local craftingSlice = require("CraftingSlice")
 local craftingThunks = require("CraftingThunks")

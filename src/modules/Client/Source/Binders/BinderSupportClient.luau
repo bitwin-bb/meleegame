@@ -1,8 +1,8 @@
 local require = require(script.Parent.loader).load(script)
 
+local AudioBinder = require("AudioBinder")
 local Binder = require("Binder")
 local BinderProvider = require("BinderProvider")
-local AudioBinder = require("AudioBinder")
 local ChunkBinder = require("ChunkBinder")
 local DisturberBinder = require("DisturberBinder")
 local FoliageBinder = require("FoliageBinder")

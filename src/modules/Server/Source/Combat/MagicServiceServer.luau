@@ -10,7 +10,7 @@ local Workspace = game:GetService("Workspace")
 local BossServiceServer = require("BossServiceServer")
 local HpServiceServer = require("HpServiceServer")
 local InventoryServiceServer = require("InventoryServiceServer")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local Magic = require("Magic")
 local MagicServiceUtils = require("MagicServiceUtils")
 local ManaServiceServer = require("ManaServiceServer")
@@ -73,20 +73,16 @@ type ModifierStats = MagicServiceUtils.ModifierStats
 type CastStats = MagicServiceUtils.CastStats
 type CastRequest = MagicServiceUtils.CastRequest
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 type MagicController = {
-	bindTool: (self: MagicController, toolRaw: any) -> boolean,
-	unbindTool: (self: MagicController) -> (),
-	setCharacter: (self: MagicController, characterRaw: any) -> (),
-	setOwnerPlayer: (self: MagicController, playerRaw: any) -> (),
-	queueCast: (self: MagicController, triggerRaw: any) -> boolean,
+	BindTool: (self: MagicController, toolRaw: any) -> boolean,
+	UnbindTool: (self: MagicController) -> (),
+	SetCharacter: (self: MagicController, characterRaw: any) -> (),
+	SetOwnerPlayer: (self: MagicController, playerRaw: any) -> (),
+	QueueCast: (self: MagicController, triggerRaw: any) -> boolean,
 	GetBoundWeaponConfig: (self: MagicController) -> any,
-	destroy: (self: MagicController) -> (),
+	Destroy: (self: MagicController) -> (),
 	cooldownUntil: number,
 	weaponConfig: any,
 }
@@ -1762,7 +1758,7 @@ function MagicServiceServer.RegisterWeaponModule(self: MagicServiceServer, modul
 		return false
 	end
 	local moduleScript = moduleScriptRaw :: ModuleScript
-	local ok, moduleResultOrError = pcall(require, moduleScript)
+	local ok, moduleResultOrError = pcall(require, moduleScript :: any)
 	if not ok then
 		if shouldSilenceModuleRequireError(moduleResultOrError) then
 			return false
@@ -1817,11 +1813,11 @@ end
 
 function MagicServiceServer.Init(self: MagicServiceServer)
 	bindPackets(self)
-	self.inventoryService = InventoryServiceServer :: InventoryServiceServerObject
-	self.manaService = ManaServiceServer :: ManaServiceServerObject
+	self.inventoryService = InventoryServiceServer :: any
+	self.manaService = ManaServiceServer :: any
 	self.npcService = NpcServiceServer :: NpcServiceServerObject
 	self.bossService = BossServiceServer :: BossServiceServerObject
-	self.hpService = HpServiceServer :: HpServiceServerObject
+	self.hpService = HpServiceServer :: any
 	self.playerRuntimes = {}
 	self.projectilePools = {}
 	self.activeProjectiles = {}

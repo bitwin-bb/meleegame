@@ -1,6 +1,6 @@
 local require = require(script.Parent.loader).load(script)
 
-local Promise = require("Promise")
+local Promise: any = require("Promise")
 
 local function fulfilledPromise(...): any
 	local args = table.pack(...)

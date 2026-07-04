@@ -76,18 +76,19 @@ function BuffThunks.Start(): () -> ()
 
 	runtime.started = true
 	runtime.maid = Maid.new()
+	local maid: any = runtime.maid
 	syncFromService()
 
 	local activeChanged = (BuffServiceClient :: any).ActiveChanged
 	if typeof(activeChanged) == "table" and typeof(activeChanged.Connect) == "function" then
-		runtime.maid:GiveTask(activeChanged:Connect(function(nextRecords: { any })
+		maid:GiveTask(activeChanged:Connect(function(nextRecords: { any })
 			applyRecords(nextRecords, "Service")
 		end))
 	end
 
 	local localPlayer = Players.LocalPlayer
 	if localPlayer ~= nil then
-		runtime.maid:GiveTask(
+		maid:GiveTask(
 			localPlayer:GetAttributeChangedSignal(BuffConstants.PLAYER_ACTIVE_RECORDS_ATTRIBUTE):Connect(function()
 				applyRecords(readPlayerSnapshot(), "Attribute")
 			end)

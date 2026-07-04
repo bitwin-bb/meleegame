@@ -39,16 +39,8 @@ export type CursorConfig = {
 
 export type Cursor = typeof(setmetatable({} :: any, Cursor))
 
-type SignalConnection = {
-	Disconnect: (self: SignalConnection) -> (),
-}
 
-type CursorChangedSignal = {
-	Connect: (self: CursorChangedSignal, callback: (state: CursorState) -> ()) -> SignalConnection,
-	Fire: (self: CursorChangedSignal, state: CursorState) -> (),
-	DisconnectAll: (self: CursorChangedSignal) -> (),
-	Destroy: (self: CursorChangedSignal) -> (),
-}
+type CursorChangedSignal = Signal.Signal<...any>
 
 local function normalizeEventName(valueRaw: any, fallback: string): string
 	if typeof(valueRaw) == "string" and valueRaw ~= "" then

@@ -9,28 +9,37 @@ local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
-local Fusion = require(ReplicatedStorage.Packages.Fusion)
+local Fusion: any = require(ReplicatedStorage.Packages.Fusion)
 local Matter = require("Matter")
 local TestEZ = require("TestEZ")
 
-local Binder = require("Binder")
 local AudioServiceUtils = require("AudioServiceUtils")
+local Binder = require("Binder")
 local Blocks = require("Blocks")
-local Brio = require("Brio")
+local Brio: any = require("Brio")
 local BuildServiceUtils = require("BuildServiceUtils")
+local GetImageId = require("GetImageId")
+local GetItem = require("GetItem")
 local Maid = require("Maid")
 local Octree = require("Octree")
-local GetItem = require("GetItem")
-local Rx = require("Rx")
-local RxSignal = require("RxSignal")
+local Rx: any = require("Rx")
+local RxSignal: any = require("RxSignal")
 local TileItem = require("TileItem")
 local VFXServiceUtils = require("VfxServiceUtils")
-local GetImageId = require("GetImageId")
 
 local PACKAGE_NAME = "AquariaBackup"
 
 local function GetPackageRoot(): Instance
 	return assert(ServerScriptService:FindFirstChild(PACKAGE_NAME), `missing {PACKAGE_NAME} package root`)
+end
+
+local function GetClientModule(modulePath: { string }): ModuleScript
+	local cursor = GetPackageRoot():FindFirstChild("game")
+	for _, childName in modulePath do
+		cursor = assert(cursor ~= nil and cursor:FindFirstChild(childName), `missing client module path {childName}`)
+	end
+	assert(cursor ~= nil and cursor:IsA("ModuleScript"), "client module path did not resolve to a module")
+	return cursor :: ModuleScript
 end
 
 return function()
@@ -89,9 +98,9 @@ return function()
 			expect(typeof(AudioServiceUtils.CreateDefaultState)).to.equal("function")
 			expect(typeof(AudioServiceUtils.SerializePlaybackOptions)).to.equal("function")
 			expect(typeof(AudioServiceUtils.CreateSoundInstance)).to.equal("function")
-			expect(AudioServiceUtils.collectSoundAssetIds).to.equal(nil)
-			expect(AudioServiceUtils.createDefaultState).to.equal(nil)
-			expect(AudioServiceUtils.serializePlaybackOptions).to.equal(nil)
+			expect((AudioServiceUtils :: any).collectSoundAssetIds).to.equal(nil)
+			expect((AudioServiceUtils :: any).createDefaultState).to.equal(nil)
+			expect((AudioServiceUtils :: any).serializePlaybackOptions).to.equal(nil)
 		end)
 
 		it("allows Maid to clean Rx subscriptions deterministically", function()
@@ -175,6 +184,176 @@ return function()
 			expect(values[1]).to.equal("hello")
 			expect(cleaned).to.equal(1)
 			bindable:Destroy()
+		end)
+
+		it("computes a side-view viewport camera without using perspective-heavy framing", function()
+			local PlayerMain = require(GetClientModule({
+				"Client",
+				"Source",
+				"Player",
+				"Components",
+				"PlayerMain",
+			}))
+			local boundsCFrame = CFrame.new(0, 5, -12)
+			local boundsSize = Vector3.new(3, 8, 4)
+			local viewportSize = Vector2.new(1280, 720)
+
+			local distance = PlayerMain.GetViewportCameraDistance(boundsSize, viewportSize, 1, 1.18)
+			local cameraCFrame = PlayerMain.GetViewportCameraCFrame(boundsCFrame, distance)
+
+			expect(distance > 250).to.equal(true)
+			expect(cameraCFrame.Position.X > boundsCFrame.Position.X).to.equal(true)
+			expect(math.abs(cameraCFrame.LookVector.X + 1) < 0.001).to.equal(true)
+			expect(math.abs(cameraCFrame.UpVector.Y - 1) < 0.001).to.equal(true)
+		end)
+
+		it("computes a world-space surface anchor for the side-view player viewport", function()
+			local PlayerMain = require(GetClientModule({
+				"Client",
+				"Source",
+				"Player",
+				"Components",
+				"PlayerMain",
+			}))
+			local boundsCFrame = CFrame.new(2, 7, -12)
+			local boundsSize = Vector3.new(3, 8, 4)
+
+			local anchorSize = PlayerMain.GetSurfaceAnchorSize(boundsSize, 1.18)
+			local anchorCFrame = PlayerMain.GetSurfaceAnchorCFrame(boundsCFrame)
+
+			expect(anchorSize.X < 0.1).to.equal(true)
+			expect(anchorSize.Y > boundsSize.Y).to.equal(true)
+			expect(anchorSize.Z > boundsSize.Z).to.equal(true)
+			expect(anchorCFrame.Position).to.equal(boundsCFrame.Position)
+			expect(anchorCFrame.RightVector.X > 0.999).to.equal(true)
+			expect(anchorCFrame.UpVector.Y > 0.999).to.equal(true)
+			expect(PlayerMain.GetSurfacePixelsPerStud()).to.equal(16)
+		end)
+
+		it("mirrors the player viewport frame instead of flipping the cloned character", function()
+			local PlayerMain = require(GetClientModule({
+				"Client",
+				"Source",
+				"Player",
+				"Components",
+				"PlayerMain",
+			}))
+
+			local viewportPosition = PlayerMain.GetViewportFramePosition()
+			local viewportSize = PlayerMain.GetViewportFrameSize()
+
+			expect(viewportPosition.X.Scale).to.equal(1)
+			expect(viewportPosition.Y.Scale).to.equal(0)
+			expect(viewportSize.X.Scale).to.equal(-1)
+			expect(viewportSize.Y.Scale).to.equal(1)
+		end)
+
+		it("normalizes mirrored player viewport frame measurements for camera math", function()
+			local PlayerMain = require(GetClientModule({
+				"Client",
+				"Source",
+				"Player",
+				"Components",
+				"PlayerMain",
+			}))
+
+			local measuredSize = PlayerMain.GetViewportFrameMeasuredSize(Vector2.new(-1280, 720))
+
+			expect(measuredSize).to.equal(Vector2.new(1280, 720))
+		end)
+
+		it("keeps player viewport framing stable while animated bounds shift", function()
+			local PlayerMain = require(GetClientModule({
+				"Client",
+				"Source",
+				"Player",
+				"Components",
+				"PlayerMain",
+			}))
+			local initialBoundsCFrame = CFrame.new(0, 5, -12)
+			local shiftedBoundsCFrame = CFrame.new(0, 5.4, -11.8)
+			local rootCFrame = CFrame.new(0, 3, -12)
+
+			local center, offset = PlayerMain.GetStableViewportCenter(initialBoundsCFrame, rootCFrame, nil)
+			local shiftedCenter = PlayerMain.GetStableViewportCenter(shiftedBoundsCFrame, rootCFrame, offset)
+			local stableBoundsSize =
+				PlayerMain.GetStableViewportBoundsSize(Vector3.new(2, 7, 3), Vector3.new(1.8, 6.6, 3.5))
+			local stableHalfExtents = PlayerMain.GetStableViewportHalfExtents(
+				Vector3.new(1, 3.5, 1.5),
+				center,
+				shiftedBoundsCFrame,
+				Vector3.new(2, 7, 3)
+			)
+
+			expect(center).to.equal(initialBoundsCFrame.Position)
+			expect(shiftedCenter).to.equal(initialBoundsCFrame.Position)
+			expect(stableBoundsSize.X).to.equal(2)
+			expect(stableBoundsSize.Y).to.equal(7)
+			expect(stableBoundsSize.Z).to.equal(3.5)
+			expect(stableHalfExtents.X).to.equal(1)
+			expect(stableHalfExtents.Y > 3.8).to.equal(true)
+			expect(stableHalfExtents.Z > 1.6).to.equal(true)
+		end)
+
+		it("computes clamped player viewport smoothing alpha", function()
+			local PlayerMain = require(GetClientModule({
+				"Client",
+				"Source",
+				"Player",
+				"Components",
+				"PlayerMain",
+			}))
+
+			local smallFrameAlpha = PlayerMain.GetViewportSmoothingAlpha(30, 1 / 240)
+			local normalFrameAlpha = PlayerMain.GetViewportSmoothingAlpha(30, 1 / 60)
+			local hitchAlpha = PlayerMain.GetViewportSmoothingAlpha(30, 1)
+			local clampedHitchAlpha = PlayerMain.GetViewportSmoothingAlpha(30, 1 / 15)
+
+			expect(smallFrameAlpha > 0).to.equal(true)
+			expect(normalFrameAlpha > smallFrameAlpha).to.equal(true)
+			expect(normalFrameAlpha < 1).to.equal(true)
+			expect(hitchAlpha).to.equal(clampedHitchAlpha)
+			expect(PlayerMain.GetViewportSmoothingAlpha(0, 1 / 60)).to.equal(0)
+		end)
+
+		it("uses exact player viewport part cframes so facing flips are immediate", function()
+			local PlayerMain = require(GetClientModule({
+				"Client",
+				"Source",
+				"Player",
+				"Components",
+				"PlayerMain",
+			}))
+			local sourceCFrame = CFrame.new(4, 5, 6) * CFrame.Angles(0, math.pi, 0)
+
+			expect(PlayerMain.GetViewportPartCFrame(sourceCFrame)).to.equal(sourceCFrame)
+		end)
+
+		it("only rebuilds the player viewport clone for structural character child changes", function()
+			local PlayerMain = require(GetClientModule({
+				"Client",
+				"Source",
+				"Player",
+				"Components",
+				"PlayerMain",
+			}))
+			local sound = Instance.new("Sound")
+			local attachment = Instance.new("Attachment")
+			local tool = Instance.new("Tool")
+			local accessory = Instance.new("Accessory")
+			local part = Instance.new("Part")
+
+			expect(PlayerMain.ShouldRebuildForCharacterChild(sound)).to.equal(false)
+			expect(PlayerMain.ShouldRebuildForCharacterChild(attachment)).to.equal(false)
+			expect(PlayerMain.ShouldRebuildForCharacterChild(tool)).to.equal(true)
+			expect(PlayerMain.ShouldRebuildForCharacterChild(accessory)).to.equal(true)
+			expect(PlayerMain.ShouldRebuildForCharacterChild(part)).to.equal(true)
+
+			sound:Destroy()
+			attachment:Destroy()
+			tool:Destroy()
+			accessory:Destroy()
+			part:Destroy()
 		end)
 
 		it("creates side-view loot icon models from inventory icons", function()

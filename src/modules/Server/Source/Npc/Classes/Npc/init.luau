@@ -83,11 +83,7 @@ export type NpcConfig = {
 	def: number?,
 }
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
 type NpcSignals = {
 	spawned: SignalObject,

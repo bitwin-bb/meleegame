@@ -8,7 +8,7 @@ local Sprite = require("Sprite")
 
 local BossServiceUtils = require("BossServiceUtils")
 local QueenBeeSpriteSheet = require("QueenBeeSpriteSheet")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local WorkspaceFolders = require("WorkspaceFolders")
 
 type BossSnapshot = BossServiceUtils.BossSnapshot

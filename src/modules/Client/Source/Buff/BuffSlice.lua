@@ -3,7 +3,7 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BuffConstants = require("BuffConstants")
-local Charm = require(ReplicatedStorage.Packages.Charm)
+local Charm: any = require(ReplicatedStorage.Packages.Charm)
 local buffUtils = require("BuffUtils")
 
 export type BuffRecord = buffUtils.BuffRecord
@@ -96,7 +96,7 @@ local function CoerceRecords(recordsRaw: any): { BuffRecord }
 end
 
 local function CoerceState(stateRaw: any, fallbackState: BuffState?): BuffState
-	local sourceTable = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {}
+	local sourceTable: any = if typeof(stateRaw) == "table" then stateRaw else {}
 	local updatedAt = sourceTable.updatedAt
 	local source = sourceTable.source
 

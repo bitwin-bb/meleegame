@@ -8,7 +8,7 @@ local RunService = game:GetService("RunService")
 local CmdrUtils = require("CmdrUtils")
 local CoreConfigs = require("CoreConfigs")
 local CoreRuntime = require("CoreRuntime")
-local Matter = require(ReplicatedStorage.Packages.Matter)
+local Matter: any = require(ReplicatedStorage.Packages.Matter)
 local PacketPayload = require("PacketPayload")
 local WorldSimulationServicePackets = require("NetPacketsShared").WorldSimulationService
 
@@ -56,7 +56,7 @@ local function bindPackets(self: any)
 	bindPacket(self, "submitInput")
 end
 
-local Plasma = require(ReplicatedStorage.Packages.Plasma)
+local Plasma: any = require(ReplicatedStorage.Packages.Plasma)
 local PlayerServiceServer = require("PlayerServiceServer")
 
 local Cache = require("SimulationCache")

@@ -1,8 +1,8 @@
 local require = require(script.Parent.loader).load(script)
 
 local Maid = require("Maid")
-local Rx = require("Rx")
-local RxSignal = require("RxSignal")
+local Rx: any = require("Rx")
+local RxSignal: any = require("RxSignal")
 local Signal = require("Signal")
 
 local CloudScroll = require("CloudScroll")
@@ -10,30 +10,10 @@ local CloudServiceUtils = require("CloudServiceUtils")
 
 type CloudAssetDefinition = CloudServiceUtils.CloudAssetDefinition
 
-type MaidClass = {
-	GiveTask: (self: MaidClass, task: any) -> any,
-	DoCleaning: (self: MaidClass) -> (),
-	Destroy: (self: MaidClass) -> (),
-}
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> any,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
-type ObservableObject = {
-	Subscribe: (
-		self: ObservableObject,
-		fireCallback: ((...any) -> ())?,
-		failCallback: ((...any) -> ())?,
-		completeCallback: ((...any) -> ())?
-	) -> any,
-	Pipe: (self: ObservableObject, transformers: { any }) -> ObservableObject,
-}
-type RxSignalObject = {
-	Connect: (self: RxSignalObject, callback: (...any) -> ()) -> any,
-	Once: (self: RxSignalObject, callback: (...any) -> ()) -> any,
-	Wait: (self: RxSignalObject) -> ...any,
-}
+type MaidClass = any
+type SignalObject = Signal.Signal<...any>
+type ObservableObject = any
+type RxSignalObject = any
 
 export type CloudPhase = "Inactive" | "FadingIn" | "Visible" | "FadingOut"
 

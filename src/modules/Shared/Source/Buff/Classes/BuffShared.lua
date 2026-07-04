@@ -2,8 +2,8 @@ local require = require(script.Parent.loader).load(script)
 
 local BaseObject = require("BaseObject")
 local Signal = require("Signal")
-local Table = require("Table")
-local ValueObject = require("ValueObject")
+local Table: any = require("Table")
+local ValueObject: any = require("ValueObject")
 
 local BuffConstants = require("BuffConstants")
 local buffUtils = require("BuffUtils")
@@ -28,7 +28,7 @@ end
 
 function BuffShared.new(serviceBagOrOptionsRaw: any?, optionsRaw: any?): BuffShared
 	local serviceBag, options = GetConstructorOptions(serviceBagOrOptionsRaw, optionsRaw)
-	local self = setmetatable(BaseObject.new(), BuffShared)
+	local self: any = setmetatable(BaseObject.new() :: any, BuffShared)
 
 	self._serviceBag = serviceBag
 	self._definitionOnly = options.definitionOnly == true
@@ -133,7 +133,7 @@ end
 
 function BuffShared.AddRecord(self: BuffShared, recordRaw: any, kindFallbackRaw: any?, overridesRaw: any?): BuffRecord
 	local record = buffUtils.ApplyOverrides(recordRaw, overridesRaw)
-	local source = if typeof(recordRaw) == "table" then recordRaw :: { [string]: any } else {}
+	local source: any = if typeof(recordRaw) == "table" then recordRaw else {}
 	if kindFallbackRaw ~= nil and source.kind == nil and source.type == nil and source.category == nil then
 		record.kind = buffUtils.CoerceKind(kindFallbackRaw)
 		record.id = buffUtils.CreateId(record.kind, record.name)
@@ -298,33 +298,6 @@ end
 
 
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> any,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
-
-type ValueObjectClass = {
-	SetValue: (self: ValueObjectClass, value: any, ...any) -> (() -> ()),
-	GetValue: (self: ValueObjectClass) -> any,
-	Observe: (self: ValueObjectClass) -> any,
-	Destroy: (self: ValueObjectClass) -> (),
-}
-
-type BuffShared = typeof(setmetatable(
-	{} :: {
-		_serviceBag: any?,
-		_definitionOnly: boolean,
-		_recordsById: { [string]: BuffRecord },
-		_orderedIds: { string },
-		_expireTokensById: { [string]: any },
-		RecordAdded: SignalObject,
-		RecordChanged: SignalObject,
-		RecordRemoved: SignalObject,
-		RecordsChanged: SignalObject,
-		Records: ValueObjectClass,
-	},
-	BuffShared
-))
+type BuffShared = any
 
 return BuffShared :: any

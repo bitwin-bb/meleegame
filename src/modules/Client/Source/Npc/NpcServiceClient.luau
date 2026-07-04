@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Players = game:GetService("Players")
 
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local NpcServicePackets = require("NetPacketsShared").NpcService
 
@@ -50,22 +50,14 @@ local function bindPackets(self: any)
 end
 
 local NpcServiceUtils = require("NpcServiceUtils")
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local Signal = require("Signal")
 
 type NpcSnapshot = NpcServiceUtils.NpcSnapshot
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (state: any) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, state: any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
 type NpcServiceClientState = {
 	byId: { [string]: NpcSnapshot },

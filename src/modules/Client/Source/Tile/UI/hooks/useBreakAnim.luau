@@ -5,7 +5,7 @@ local Flipbook = require("Flipbook")
 local FlipbookPlayer = require("FlipbookPlayer")
 local Maid = require("Maid")
 
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 
 export type BreakAnimOptions = {
 	image: string,

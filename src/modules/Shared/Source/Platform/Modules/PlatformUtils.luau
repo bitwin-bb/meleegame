@@ -31,16 +31,8 @@ export type PlatformListener = (nextState: PlatformSnapshot, prevState: Platform
 
 export type Platform = typeof(setmetatable({} :: any, Platform))
 
-type SignalConnection = {
-	Disconnect: (self: SignalConnection) -> (),
-}
 
-type ChangedSignal = {
-	Connect: (self: ChangedSignal, callback: PlatformListener) -> SignalConnection,
-	Fire: (self: ChangedSignal, nextState: PlatformSnapshot, prevState: PlatformSnapshot?) -> (),
-	DisconnectAll: (self: ChangedSignal) -> (),
-	Destroy: (self: ChangedSignal) -> (),
-}
+type ChangedSignal = Signal.Signal<...any>
 
 local function normalizeEventName(valueRaw: any, fallback: string): string
 	if typeof(valueRaw) == "string" and valueRaw ~= "" then

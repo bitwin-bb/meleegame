@@ -4,8 +4,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 
 local PortalTargets = require("PortalTargets")
-local React = require(ReplicatedStorage.Packages.React)
-local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
+local React: any = require(ReplicatedStorage.Packages.React)
+local ReactRoblox: any = require(ReplicatedStorage.Packages.ReactRoblox)
 
 local BreakComponent = require("BreakSurface")
 local tileSlice = require("TileSlice")

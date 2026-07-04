@@ -3,7 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Players = game:GetService("Players")
 
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local PlayerDataServicePackets = require("NetPacketsShared").PlayerDataService
 
@@ -53,17 +53,9 @@ type PlayerData = PlayerDataServiceUtils.PlayerData
 type LoadState = PlayerDataServiceUtils.LoadState
 type PlayerDataServiceState = PlayerDataServiceUtils.PlayerDataServiceState
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (state: PlayerDataServiceState) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, state: PlayerDataServiceState) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 local PlayerDataServiceClient = {}
 

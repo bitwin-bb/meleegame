@@ -1,7 +1,7 @@
 local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 
 local Codec = require("Codec")
 local Signal = require("Signal")
@@ -34,16 +34,7 @@ export type ReplicationChange = {
 	attributes: { [string]: any },
 }
 
-type SignalConnection = {
-	Disconnect: (self: SignalConnection) -> (),
-}
-
-type AttributeChangedSignal = {
-	Connect: (self: AttributeChangedSignal, callback: ChangeListener) -> SignalConnection,
-	Fire: (self: AttributeChangedSignal, instance: Instance, attribute: string, newValue: any, oldValue: any) -> (),
-	DisconnectAll: (self: AttributeChangedSignal) -> (),
-	Destroy: (self: AttributeChangedSignal) -> (),
-}
+type AttributeChangedSignal = Signal.Signal<Instance, string, any, any>
 
 export type InstanceRecord = {
 	cache: { [string]: any },
@@ -63,17 +54,6 @@ local DEFAULT_GROUP = "*"
 
 local function clampInteger(valueRaw: any, fallback: number, minValue: number, maxValue: number): number
 	local value = if typeof(valueRaw) == "number" then math.floor(valueRaw) else fallback
-	if value < minValue then
-		return minValue
-	end
-	if value > maxValue then
-		return maxValue
-	end
-	return value
-end
-
-local function clampNumber(valueRaw: any, fallback: number, minValue: number, maxValue: number): number
-	local value = if typeof(valueRaw) == "number" then valueRaw else fallback
 	if value < minValue then
 		return minValue
 	end
@@ -241,7 +221,7 @@ function AttributeCache._applyGot(
 	local currentValue = instance:GetAttribute(attribute)
 	if currentValue ~= Got then
 		record.suppress[attribute] = true
-		local ok, err = pcall(function()
+		local ok = pcall(function()
 			instance:SetAttribute(attribute, Got)
 		end)
 		if not ok then

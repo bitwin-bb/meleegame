@@ -519,7 +519,7 @@ function Target.Get(self: Target, optionsRaw: any?): GotTarget?
 		return explicitTarget
 	end
 
-	local characterTarget = self:GetCharacterTarget((options :: any).character)
+	local characterTarget = Target.GetCharacterTarget(self, (options :: any).character)
 	if characterTarget ~= nil then
 		return characterTarget
 	end

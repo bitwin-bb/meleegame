@@ -2,7 +2,7 @@ local require = require(script.Parent.loader).load(script)
 
 local Range = require("Range")
 local SunPositionUtils = require("SunPositionUtils")
-local Table = require("Table")
+local Table: any = require("Table")
 
 local CelestialCycleConstants = require("CelestialCycleConstants")
 local CelestialCycleTypes = require("CelestialCycleTypes")
@@ -81,7 +81,7 @@ function RotationMath.GetCycleState(clockTimeRaw: any, worldDayIndexRaw: any): C
 	local clockTime = RotationMath.NormalizeClockTime(clockTimeRaw)
 	local worldDayIndex = if typeof(worldDayIndexRaw) == "number" then math.max(0, math.floor(worldDayIndexRaw)) else 0
 	local sunDirection, moonDirection =
-		SunPositionUtils.getSunPosition(clockTime, CelestialCycleConstants.GEO_LATITUDE)
+		(SunPositionUtils.getSunPosition :: any)(clockTime, CelestialCycleConstants.GEO_LATITUDE)
 	local moonPhase = RotationMath.GetMoonPhase(worldDayIndex)
 
 	return {

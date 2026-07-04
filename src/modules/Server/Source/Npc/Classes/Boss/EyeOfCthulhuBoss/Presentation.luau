@@ -11,7 +11,7 @@ local AudioServiceUtils =
 	require(script:FindFirstAncestor("game").Shared.Source.Audio:WaitForChild("AudioServiceUtils"))
 local BossServiceUtils = require("BossServiceUtils")
 local EyeOfCthulhuMotion = require(script.Parent:WaitForChild("Motion"))
-local Ripple = require(ReplicatedStorage.Packages.Ripple)
+local Ripple: any = require(ReplicatedStorage.Packages.Ripple)
 
 type BossSnapshot = BossServiceUtils.BossSnapshot
 type Motion<T> = Ripple.Motion<T>

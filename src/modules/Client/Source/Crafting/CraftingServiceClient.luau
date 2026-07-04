@@ -7,7 +7,7 @@ local RunService = game:GetService("RunService")
 local Configs = require("CoreConfigs")
 local CraftingServiceUtils = require("CraftingServiceUtils")
 local InventoryServiceClient = require("InventoryServiceClient")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local CraftingServicePackets = require("NetPacketsShared").CraftingService
 
@@ -63,17 +63,9 @@ type CraftingServiceStateSnapshot = CraftingServiceUtils.CraftingServiceStateSna
 type RecipePreview = CraftingServiceUtils.RecipePreview
 type ClientStationDetector = CraftingServiceUtils.ClientStationDetector
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (state: { [string]: any }) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, payload: { [string]: any }) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 type CachedRecipeList = {
 	filterRevision: number,

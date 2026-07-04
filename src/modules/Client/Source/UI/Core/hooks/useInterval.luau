@@ -3,7 +3,7 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Cleanup = require("Cleanup")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local useStableCallback = require("useStableCallback")
 
 export type IntervalOptions = {

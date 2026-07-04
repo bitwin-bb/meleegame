@@ -30,7 +30,7 @@ local function GetGameRoot(): Instance
 end
 
 
-local gameRoot = GetGameRoot()
+local gameRoot: any = GetGameRoot()
 local ItemRegistry = require(gameRoot.Shared.Source.Item.Modules.ItemRegistry)
 
 type ItemAutocompleteEntry = {

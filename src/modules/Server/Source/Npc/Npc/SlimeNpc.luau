@@ -3,7 +3,7 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local InstanceUtils = require("InstanceUtils")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local NpcServiceUtils = require("NpcServiceUtils")
 local SlimeAi = require("Slime")
 local SlimeRoot = require("SlimeRoot")

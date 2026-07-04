@@ -3,9 +3,9 @@ local require = require(script.Parent.loader).load(script)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local React = require(ReplicatedStorage.Packages.React)
-local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
-local Table = require("Table")
+local React: any = require(ReplicatedStorage.Packages.React)
+local ReactRoblox: any = require(ReplicatedStorage.Packages.ReactRoblox)
+local Table: any = require("Table")
 
 local CelestialBody = require("CelestialBody")
 local Hooks = require("useCycle")

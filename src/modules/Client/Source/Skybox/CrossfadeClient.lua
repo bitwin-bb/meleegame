@@ -6,15 +6,11 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local CrossfadeShared = require("CrossfadeShared")
-local Fusion = require(ReplicatedStorage.Packages.Fusion)
+local Fusion: any = require(ReplicatedStorage.Packages.Fusion)
 local Maid = require("Maid")
-local Promise = require("Promise")
+local Promise: any = require("Promise")
 
-type MaidClass = {
-	GiveTask: (self: MaidClass, task: any) -> any,
-	GivePromise: (self: MaidClass, promise: any) -> any,
-	Destroy: (self: MaidClass) -> (),
-}
+type MaidClass = any
 
 local CrossfadeClient = {}
 

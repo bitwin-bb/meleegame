@@ -5,8 +5,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local Matter = require(ReplicatedStorage.Packages.Matter)
-local Plasma = require(ReplicatedStorage.Packages.Plasma)
+local Matter: any = require(ReplicatedStorage.Packages.Matter)
+local Plasma: any = require(ReplicatedStorage.Packages.Plasma)
 
 local CmdrUtils = require("CmdrUtils")
 

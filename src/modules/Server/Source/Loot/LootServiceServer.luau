@@ -58,7 +58,7 @@ local NevermoreSupport = require("NevermoreSupport")
 local PlayerDataServiceServer = require("PlayerDataServiceServer")
 local GetItem = require("GetItem")
 local GetToolInstance = require("GetToolInstance")
-local Ripple = require(ReplicatedStorage.Packages.Ripple)
+local Ripple: any = require(ReplicatedStorage.Packages.Ripple)
 local BinderSupportServer = require("BinderSupportServer")
 local StringUtils = require("StringUtils")
 local Vec = require("Vec")
@@ -81,7 +81,7 @@ type SlotMutationResult = InventoryServiceUtils.SlotMutationResult
 
 type InventoryServiceServerObject = {
 	GetState: (self: InventoryServiceServerObject, player: Player) -> InventoryState,
-	addItem: (
+	AddItem: (
 		self: InventoryServiceServerObject,
 		player: Player,
 		itemIdRaw: any,
@@ -1583,7 +1583,7 @@ end
 
 function LootServiceServer.Init(self: LootServiceServer)
 	bindPackets(self)
-	self.inventoryService = InventoryServiceServer :: InventoryServiceServerObject
+	self.inventoryService = InventoryServiceServer :: any
 	self.playerDataService = PlayerDataServiceServer :: PlayerDataServiceServerObject
 	self.soundService = AudioServiceServer :: AudioServiceServerObject
 	self.data = LootServiceData

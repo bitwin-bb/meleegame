@@ -8,9 +8,9 @@ local RunService = game:GetService("RunService")
 
 local AudioRegistry = require("Audio")
 local AudioServiceUtils = require("AudioServiceUtils")
-local BossServiceClient = require("BossServiceClient")
 local BinderSupportClient = require("BinderSupportClient")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local BossServiceClient = require("BossServiceClient")
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local AudioServicePackets = require("NetPacketsClient").AudioService
 
@@ -62,7 +62,6 @@ end
 
 local NevermoreSupport = require("NevermoreSupport")
 local SpaceShared = require("SpaceShared")
-local Table = require("Table")
 local WeatherServiceClient = require("WeatherServiceClient")
 local WeatherServiceUtils = require("WeatherServiceUtils")
 local WorldGenerationServiceClient = require("WorldGenerationServiceClient")
@@ -70,11 +69,7 @@ local WorldGenerationServiceClient = require("WorldGenerationServiceClient")
 type SoundCategory = AudioServiceUtils.SoundCategory
 type AudioServiceState = AudioServiceUtils.AudioServiceState
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 local AudioServiceClient = {}
 
@@ -306,10 +301,7 @@ function AudioServiceClient.GetBiomeIdAtWorldPosition(_self: AudioServiceClient,
 	return BIOME_ID_FOREST
 end
 
-function AudioServiceClient.GetSurfaceBiomeIdAtWorldPosition(
-	self: AudioServiceClient,
-	worldPosition: Vector3
-): number
+function AudioServiceClient.GetSurfaceBiomeIdAtWorldPosition(self: AudioServiceClient, worldPosition: Vector3): number
 	if typeof((WorldGenerationServiceClient :: any).state) ~= "table" then
 		return BIOME_ID_FOREST
 	end
@@ -500,7 +492,7 @@ function AudioServiceClient.GetNextTrackForSoundtrackBiome(self: AudioServiceCli
 
 	local shuffleBag = self.soundtrackShuffleBagByBiome[soundtrackBiome]
 	if shuffleBag == nil or #shuffleBag <= 0 then
-		shuffleBag = Table.copy(assetIds)
+		shuffleBag = table.clone(assetIds)
 		shuffleStringsInPlace(self.random, shuffleBag)
 		self.soundtrackShuffleBagByBiome[soundtrackBiome] = shuffleBag
 	end
@@ -743,15 +735,17 @@ function AudioServiceClient.PlaySound(
 	optionsRaw: any,
 	fallbackCategory: SoundCategory?
 ): Sound?
-	local soundAssetId, options =
-		AudioServiceUtils.GetPlaybackRequest(soundAssetIdRaw, optionsRaw, fallbackCategory)
+	local soundAssetId, options = AudioServiceUtils.GetPlaybackRequest(soundAssetIdRaw, optionsRaw, fallbackCategory)
 	if soundAssetId == nil then
 		error(MISSING_ASSET_ERROR, 0)
 	end
 
-	if self.runtimeFolder == nil then
-		self.runtimeFolder = AudioServiceUtils.EnsureRuntimeFolder(RobloxSoundService)
+	local runtimeFolder = self.runtimeFolder
+	if runtimeFolder == nil then
+		runtimeFolder = AudioServiceUtils.EnsureRuntimeFolder(RobloxSoundService)
+		self.runtimeFolder = runtimeFolder
 	end
+	local soundParent = runtimeFolder :: Folder
 	if self.categoryGroups == nil then
 		self.categoryGroups = AudioServiceUtils.EnsureCategoryGroups(RobloxSoundService)
 		local state = self.state or AudioServiceUtils.CreateDefaultState()
@@ -770,7 +764,7 @@ function AudioServiceClient.PlaySound(
 		self:StopChannel(options.channel, options.fadeOutTime)
 	end
 
-	local sound = AudioServiceUtils.CreateSoundInstance(soundAssetId, options, self.runtimeFolder, categoryGroup)
+	local sound = AudioServiceUtils.CreateSoundInstance(soundAssetId, options, soundParent, categoryGroup)
 	if not sound then
 		return nil
 	end
@@ -873,7 +867,6 @@ function AudioServiceClient.Destroy(self: AudioServiceClient)
 	end
 end
 
-
 type AudioServiceClient = typeof(AudioServiceClient) & {
 	RefreshSoundtrackAssetIds: (self: AudioServiceClient) -> (),
 	GetBiomeTypeAtWorldPosition: (self: AudioServiceClient, worldPosition: Vector3) -> number,
@@ -892,9 +885,10 @@ type AudioServiceClient = typeof(AudioServiceClient) & {
 	localPlayer: Player,
 	janitor: any,
 	characterSoundJanitor: JanitorClass,
+	binders: any,
 	state: AudioServiceState,
-	runtimeFolder: Folder,
-	categoryGroups: { [string]: SoundGroup? },
+	runtimeFolder: Folder?,
+	categoryGroups: { [string]: SoundGroup },
 	channelSounds: { [string]: Sound? },
 	random: Random,
 	soundtrackAssetIdsByBiome: { [string]: { string } },

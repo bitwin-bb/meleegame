@@ -7,7 +7,7 @@ local Workspace = game:GetService("Workspace")
 local DataTemplate = require("DataTemplate")
 local GoreServiceServer = require("GoreServiceServer")
 local HumanoidTeleportUtils = require("HumanoidTeleportUtils")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local PlayerServicePackets = require("NetPacketsShared").PlayerService
 
@@ -71,11 +71,7 @@ type PlayerState = {
 	spawnWorldPosition: Vector3?,
 }
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 type PlayerRuntime = {
 	playerJanitor: JanitorClass,

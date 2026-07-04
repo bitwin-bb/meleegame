@@ -5,9 +5,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
-local Camera = require("CameraClass")
-local CameraServiceUtils = require("CameraServiceUtils")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Camera: any = require("CameraClass")
+local CameraServiceUtils: any = require("CameraServiceUtils")
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local CameraServicePackets = require("NetPacketsShared").CameraService
 
@@ -52,14 +52,10 @@ local function bindPackets(self: any)
 end
 
 type CameraMode = CameraServiceUtils.CameraMode
-type SideViewConfig = CameraServiceUtils.SideViewConfig
-type CameraState = CameraServiceUtils.CameraState
+type SideViewConfig = any
+type CameraState = any
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 local CameraServiceClient = {}
 

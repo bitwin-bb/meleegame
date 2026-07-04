@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local DropsInfo = require("DropsInfo")
 local EntityHealthBar = require("EntityHealthBar")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local entityInfoSlice = require("EntityInfoSlice")
 local entityInfoThunks = require("EntityInfoThunks")
 local useLast = require("useLast")

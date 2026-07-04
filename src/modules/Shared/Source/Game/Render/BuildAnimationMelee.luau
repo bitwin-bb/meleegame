@@ -2,7 +2,7 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 
 export type Options = {
 	swingPriority: Enum.AnimationPriority?,
@@ -35,9 +35,9 @@ local function BuildAnimationMelee(sourceRaw: any, optionsRaw: any): { [string]:
 		end
 	end
 
-	swings = Sift.Array.sort(swings, function(lhs, rhs)
-		return lhs.name < rhs.name
-	end)
+swings = Sift.Array.sort(swings, function(lhs: any, rhs: any)
+	return lhs.name < rhs.name
+end)
 
 	local namedAnimations: { [string]: any } = {}
 	if typeof(source.Equip) == "string" and source.Equip ~= "" then

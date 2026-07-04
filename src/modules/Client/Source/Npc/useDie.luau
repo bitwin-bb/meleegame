@@ -4,7 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local NpcServiceUtils = require("NpcServiceUtils")
 local NpcThunks = require("NpcThunks")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 
 type NpcSnapshot = NpcServiceUtils.NpcSnapshot
 

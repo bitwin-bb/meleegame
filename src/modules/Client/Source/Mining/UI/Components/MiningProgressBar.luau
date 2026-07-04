@@ -4,7 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 
 local ProgressBar = require("ProgressBar")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 
 export type MiningProgressBarProps = {
 	progress: number,

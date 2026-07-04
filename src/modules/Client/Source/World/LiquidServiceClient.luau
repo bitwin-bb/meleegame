@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 
 local AudioRegistry = require("Audio")
@@ -14,7 +14,7 @@ local AudioServiceUtils = require("AudioServiceUtils")
 local BinderSupportClient = require("BinderSupportClient")
 local Configs = require("CoreConfigs")
 local CoreRuntime = require("CoreRuntime")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local Lerp = require("Lerp")
 local LiquidServiceUtils = require("LiquidServiceUtils")
 local PacketPayload = require("PacketPayload")
@@ -80,16 +80,9 @@ type LiquidStripDescriptor = LiquidServiceUtils.LiquidStripDescriptor
 type CancellationToken = TickSchedulerModule.CancellationToken
 type DebugObject = WorldSimulationDebug.Debug
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 type ClientChunkSnapshot = LiquidChunkSnapshot
 
@@ -1279,30 +1272,6 @@ function LiquidServiceClient.Destroy(self: LiquidServiceClient)
 		self.burnAttachment:Destroy()
 	end
 end
-type LiquidServiceClient = typeof(LiquidServiceClient) & {
-	runtimeContext: any?,
-	localPlayer: Player,
-	config: LiquidServiceConfig,
-	state: LiquidServiceState,
-	debug: DebugObject?,
-	janitor: JanitorClass,
-	stateChanged: SignalObject,
-	effectEvent: SignalObject,
-	chunkSnapshots: { [string]: ClientChunkSnapshot },
-	chunkVisuals: { [string]: ChunkVisual },
-	surfaceParts: { [BasePart]: SurfaceRuntime },
-	rebuildQueue: any,
-	rebuildToken: CancellationToken?,
-	queuedRowLookup: { [string]: boolean },
-	queuedRowCountsByChunk: { [string]: number },
-	queuedChunkCount: number,
-	worldDependencySignatureByChunk: { [string]: string },
-	liquidVisualRelevanceByChunk: { [string]: boolean },
-	waterSplashSoundAssetIds: { string },
-	dependencySyncAccumulator: number,
-	visualFolder: Folder,
-	burnAttachment: Attachment?,
-	burnEmitter: ParticleEmitter?,
-}
+type LiquidServiceClient = any
 
 return LiquidServiceClient :: LiquidServiceClient

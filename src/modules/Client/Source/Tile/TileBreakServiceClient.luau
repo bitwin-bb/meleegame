@@ -4,7 +4,7 @@ local Workspace = game:GetService("Workspace")
 
 local ContentProviderUtils = require("ContentProviderUtils")
 local Maid = require("Maid")
-local Rx = require("Rx")
+local Rx: any = require("Rx")
 
 local BuildServiceClient = require("BuildServiceClient")
 local BuildServiceUtils = require("BuildServiceUtils")
@@ -12,12 +12,7 @@ local Sheet = require("Sheet")
 local WorldGenerationServiceClient = require("WorldGenerationServiceClient")
 local tileThunks = require("TileThunks")
 
-type MaidClass = {
-	GiveTask: (self: MaidClass, task: any) -> any,
-	GivePromise: (self: MaidClass, promise: any) -> any,
-	DoCleaning: (self: MaidClass) -> (),
-	Destroy: (self: MaidClass) -> (),
-}
+type MaidClass = any
 
 type BreakProgressPayload = {
 	isActive: boolean,

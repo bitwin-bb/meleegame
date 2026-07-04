@@ -2,7 +2,7 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Players = game:GetService("Players")
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 
 local CoreRuntime = require("CoreRuntime")
@@ -54,7 +54,7 @@ local function bindPackets(self: any)
 end
 
 local Maid = require("Maid")
-local Rx = require("Rx")
+local Rx: any = require("Rx")
 local Signal = require("Signal")
 
 local Cache = require("SimulationCache")
@@ -65,25 +65,11 @@ local Render = require("WorldSimulationRender")
 local Shared = require("Shared")
 local Stream = require("Stream")
 
-type MaidClass = {
-	GiveTask: <T>(self: MaidClass, task: T) -> T,
-	Destroy: (self: MaidClass) -> (),
-}
+type MaidClass = any
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
-type ObservableObject = {
-	Subscribe: (
-		self: ObservableObject,
-		fireCallback: ((...any) -> ())?,
-		failCallback: ((...any) -> ())?,
-		completeCallback: ((...any) -> ())?
-	) -> any,
-}
+type ObservableObject = any
 
 local WorldSimulationServiceClient = {}
 

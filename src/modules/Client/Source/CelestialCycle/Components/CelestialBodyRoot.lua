@@ -3,9 +3,9 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local Fusion = require(ReplicatedStorage.Packages.Fusion)
+local Fusion: any = require(ReplicatedStorage.Packages.Fusion)
 local Maid = require("Maid")
-local Table = require("Table")
+local Table: any = require("Table")
 
 local CelestialCycleConstants = require("CelestialCycleConstants")
 

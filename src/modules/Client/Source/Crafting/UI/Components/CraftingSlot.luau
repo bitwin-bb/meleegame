@@ -6,7 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CoinSprites = require("CoinSprites")
 local Gif = require("Gif")
 local ImageIds = require("ImageIds")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local craftingSlice = require("CraftingSlice")
 local itemThunks = require("ItemThunks")
 

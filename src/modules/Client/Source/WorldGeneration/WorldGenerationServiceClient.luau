@@ -4,13 +4,13 @@ local CollectionService = game:GetService("CollectionService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local BuildServiceUtils = require("BuildServiceUtils")
 local Configs = require("CoreConfigs")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local WorldGenerationServicePackets = require("NetPacketsShared").WorldGenerationService
 
@@ -60,7 +60,7 @@ local OreRegistry = require("Ores")
 local PlantRegistry = require("Plants")
 local ProceduralCactus = require("WorldGenerationCactus")
 local ProceduralTree = require("WorldGenerationTree")
-local Queue = require("Queue")
+local Queue: any = require("Queue")
 local Signal = require("Signal")
 local TagBinder = require("TagBinder")
 local TileComponent = require("Tile")
@@ -72,24 +72,11 @@ local WorldGenerationServiceUtils = require("WorldGenerationServiceUtils")
 type WorldGenerationServiceState = WorldGenerationServiceUtils.WorldGenerationServiceState
 type ProceduralTreeConfig = ProceduralTree.ProceduralTreeConfig
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
-type QueueClass<T> = {
-	GetCount: (self: QueueClass<T>) -> number,
-	IsEmpty: (self: QueueClass<T>) -> boolean,
-	PushRight: (self: QueueClass<T>, value: T) -> (),
-	PopLeft: (self: QueueClass<T>) -> T,
-}
+type QueueClass<T> = any
 
 type ChunkLayerSnapshot = {
 	layerIndex: number,

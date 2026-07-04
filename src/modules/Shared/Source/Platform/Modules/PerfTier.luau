@@ -1,7 +1,7 @@
 local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Stats = game:GetService("Stats")
 local UserInputService = game:GetService("UserInputService")
@@ -38,16 +38,8 @@ export type PerfTierConfig = {
 
 export type PerfTier = typeof(setmetatable({} :: any, PerfTier))
 
-type SignalConnection = {
-	Disconnect: (self: SignalConnection) -> (),
-}
 
-type TierChangedSignal = {
-	Connect: (self: TierChangedSignal, callback: (tier: TierName, settings: TierSettings) -> ()) -> SignalConnection,
-	Fire: (self: TierChangedSignal, tier: TierName, settings: TierSettings) -> (),
-	DisconnectAll: (self: TierChangedSignal) -> (),
-	Destroy: (self: TierChangedSignal) -> (),
-}
+type TierChangedSignal = Signal.Signal<...any>
 
 local DEFAULT_TIERS: { [TierName]: TierSettings } = {
 	Low = {

@@ -451,6 +451,7 @@ function TreeFoliageGraph.New(modelRaw: any, configRaw: any): TreeFoliageGraph?
 		branchNodesByIndex = branchNodesByIndex,
 		branchOrder = branchOrder,
 		leafNodes = leafNodes,
+		parentAttachmentByIndex = {} :: { [number]: CFrame },
 		rootPosition = GetTrunkBasePosition(trunkPart),
 		influenceRadius = influenceRadius,
 		destroyed = false,
@@ -542,9 +543,9 @@ function TreeFoliageGraph.Step(
 	local gustSensitivity = clampNumber(self.config.gustSensitivity, 0.86, 0, 10)
 	local detailAmplitude = clampNumber(self.config.detailAmplitude, 0.12, 0, 10)
 
-	local parentAttachmentByIndex = {
-		[self.trunkIndex] = self.trunkRestTipWorld,
-	} :: { [number]: CFrame }
+	local parentAttachmentByIndex = self.parentAttachmentByIndex
+	table.clear(parentAttachmentByIndex)
+	parentAttachmentByIndex[self.trunkIndex] = self.trunkRestTipWorld
 
 	for _, branch in self.branchOrder do
 		decayReactive(branch, dt)
@@ -613,6 +614,7 @@ function TreeFoliageGraph.Destroy(self: TreeFoliageGraph)
 		return
 	end
 	self:Reset()
+	table.clear(self.parentAttachmentByIndex)
 	self.destroyed = true
 end
 return TreeFoliageGraph

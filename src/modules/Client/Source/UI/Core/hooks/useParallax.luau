@@ -5,8 +5,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
 local GuiUtils = require("Gui")
-local React = require(ReplicatedStorage.Packages.React)
-local Ripple = require(ReplicatedStorage.Packages.Ripple)
+local React: any = require(ReplicatedStorage.Packages.React)
+local Ripple: any = require(ReplicatedStorage.Packages.Ripple)
 local useSpring = require("useSpring")
 local useViewport = require("useViewport")
 

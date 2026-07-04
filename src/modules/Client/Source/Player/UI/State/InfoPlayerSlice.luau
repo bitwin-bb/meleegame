@@ -2,8 +2,8 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Charm = require(ReplicatedStorage.Packages.Charm)
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Charm: any = require(ReplicatedStorage.Packages.Charm)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 
 export type InfoPlayerPopupKind = "pickup" | "damage_dealt" | "damage_taken"
 

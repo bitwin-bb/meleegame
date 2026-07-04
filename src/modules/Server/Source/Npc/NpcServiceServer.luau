@@ -77,7 +77,7 @@ type NpcSnapshot = NpcServiceUtils.NpcSnapshot
 type SlimeSpawnConfig = NpcServiceUtils.SlimeSpawnConfig
 type SlimeSpawnSettings = NpcServiceUtils.SlimeSpawnSettings
 type HpServiceServerObject = {
-	damagePlayer: (self: HpServiceServerObject, player: Player, damageRaw: any) -> number?,
+	DamagePlayer: (self: HpServiceServerObject, player: Player, damageRaw: any) -> number?,
 }
 type LootServiceServerObject = {
 	spawnDropsFromSource: (
@@ -88,11 +88,7 @@ type LootServiceServerObject = {
 	) -> { any },
 }
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 type NpcRuntime = {
 	id: string,
@@ -639,7 +635,7 @@ function NpcServiceServer.OnEnemyHitPlayer(self: NpcServiceServer, runtimeIdRaw:
 		return
 	end
 
-	local hpService = HpServiceServer :: HpServiceServerObject
+	local hpService = HpServiceServer :: any
 	local defaultDamage = CoerceNumber(runtime.slime.damage, 0, 0, 100000)
 	local damage = CoerceNumber(damageRaw, defaultDamage, 0, 100000)
 	if damage <= 0 then
@@ -1340,7 +1336,7 @@ function NpcServiceServer.Init(self: NpcServiceServer)
 	self.runtimes = {}
 	self.runtimesByModel = {}
 	self.world = nil
-	self.lootService = LootServiceServer :: LootServiceServerObject
+	self.lootService = LootServiceServer :: any
 	self.collisionGroupsReady = false
 	self.playerCharacterAddedConnections = {}
 	self:EnsureCollisionGroups()

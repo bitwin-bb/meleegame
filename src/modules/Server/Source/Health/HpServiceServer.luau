@@ -7,7 +7,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 
 local CmdrUtils = require("CmdrUtils")
 local HpServiceUtils = require("HpServiceUtils")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local HpServicePackets = require("NetPacketsShared").HpService
 
@@ -58,11 +58,7 @@ local PlayerServiceServer = require("PlayerServiceServer")
 
 type HpServiceState = HpServiceUtils.HpServiceState
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 type PlayerRuntime = {
 	state: HpServiceState,

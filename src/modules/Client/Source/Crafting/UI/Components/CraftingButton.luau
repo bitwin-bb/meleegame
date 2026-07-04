@@ -4,7 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 
 local ImageIds = require("ImageIds")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local usePressState = require("usePressState")
 local useSlotSelect = require("useSlotSelect")
 

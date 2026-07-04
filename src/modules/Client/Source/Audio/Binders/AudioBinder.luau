@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local ModelBinder = require("ModelBinder")

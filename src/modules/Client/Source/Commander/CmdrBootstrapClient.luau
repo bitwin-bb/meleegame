@@ -9,10 +9,7 @@ local CmdrUtils = require("CmdrUtils")
 local Maid = require("Maid")
 local MatterDebugMenuClient = require("MatterDebugMenuClient")
 
-type MaidClass = {
-	GiveTask: (self: MaidClass, task: any) -> any,
-	DoCleaning: (self: MaidClass) -> (),
-}
+type MaidClass = any
 
 local CmdrBootstrapClient = {}
 
@@ -94,7 +91,7 @@ local function scheduleCmdrRetry()
 			return
 		end
 
-		local applyCmdrAccess = CmdrBootstrapClient.applyCmdrAccess
+		local applyCmdrAccess = CmdrBootstrapClient.ApplyCmdrAccess
 		if applyCmdrAccess ~= nil then
 			applyCmdrAccess()
 		end

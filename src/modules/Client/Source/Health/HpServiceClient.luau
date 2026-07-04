@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 
 local HpServiceUtils = require("HpServiceUtils")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local HpServicePackets = require("NetPacketsShared").HpService
 
@@ -56,17 +56,9 @@ type HpServiceState = HpServiceUtils.HpServiceState
 type HeartState = HpServiceUtils.HeartState
 type PlayerDataServiceState = PlayerDataServiceUtils.PlayerDataServiceState
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (state: HpServiceState) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, state: HpServiceState) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 local HpServiceClient = {}
 

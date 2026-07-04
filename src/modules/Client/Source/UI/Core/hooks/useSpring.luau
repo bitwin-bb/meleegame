@@ -3,8 +3,8 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local React = require(ReplicatedStorage.Packages.React)
-local Ripple = require(ReplicatedStorage.Packages.Ripple)
+local React: any = require(ReplicatedStorage.Packages.React)
+local Ripple: any = require(ReplicatedStorage.Packages.Ripple)
 
 export type SpringOptions = {
 	enabled: boolean?,

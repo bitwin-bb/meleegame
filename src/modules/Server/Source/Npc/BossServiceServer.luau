@@ -2,7 +2,7 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Players = game:GetService("Players")
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
@@ -13,9 +13,9 @@ local EyeOfCthulhuController = require("EyeOfCthulhuBoss")
 local bossClasses = script.Parent:WaitForChild("Classes"):WaitForChild("Boss")
 local EyeOfCthulhuConfig = require(bossClasses:WaitForChild("EyeOfCthulhuBoss"):WaitForChild("EyeOfCthulhuConfig"))
 local Maid = require("Maid")
-local ObservableMap = require("ObservableMap")
-local ObservableSet = require("ObservableSet")
-local Promise = require("Promise")
+local ObservableMap: any = require("ObservableMap")
+local ObservableSet: any = require("ObservableSet")
+local Promise: any = require("Promise")
 
 local function fulfilledPromise(...): any
 	local args = table.pack(...)
@@ -26,10 +26,10 @@ end
 local PromiseMaidUtils = require("PromiseMaidUtils")
 local QueenBeeController = require("QueenBeeBoss")
 local QueenBeeConfig = require(bossClasses:WaitForChild("QueenBeeBoss"):WaitForChild("QueenBeeConfigs"))
-local Rx = require("Rx")
-local RxSignal = require("RxSignal")
+local Rx: any = require("Rx")
+local RxSignal: any = require("RxSignal")
 local Signal = require("Signal")
-local ValueObject = require("ValueObject")
+local ValueObject: any = require("ValueObject")
 local HpServiceServer = require("HpServiceServer")
 local PacketPayload = require("PacketPayload")
 local BossServicePackets = require("NetPacketsShared").BossService
@@ -90,68 +90,24 @@ type BossRegistryEntry = BossServiceUtils.BossRegistryEntry
 type BossSpawnRequest = BossServiceUtils.BossSpawnRequest
 
 type BossObject = any
-type MaidClass = {
-	Add: <T>(self: MaidClass, task: T) -> T,
-	GiveTask: (self: MaidClass, task: any) -> number,
-	DoCleaning: (self: MaidClass) -> (),
-	Destroy: (self: MaidClass) -> (),
-}
+type MaidClass = any
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> any,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
-type ObservableObject = {
-	Subscribe: (
-		self: ObservableObject,
-		onFire: (...any) -> (),
-		onFail: ((...any) -> ())?,
-		onComplete: ((...any) -> ())?
-	) -> any,
-	Pipe: (self: ObservableObject, transformers: { any }) -> ObservableObject,
-}
+type ObservableObject = any
 
-type RxSignalObject = {
-	Connect: (self: RxSignalObject, callback: (...any) -> ()) -> any,
-	Once: (self: RxSignalObject, callback: (...any) -> ()) -> any,
-	Wait: (self: RxSignalObject) -> ...any,
-}
+type RxSignalObject = any
 
-type PromiseObject = {
-	Then: (self: PromiseObject, onFulfilled: ((...any) -> ...any)?, onRejected: ((...any) -> ...any)?) -> PromiseObject,
-	Catch: (self: PromiseObject, onRejected: ((...any) -> ...any)?) -> PromiseObject,
-	Finally: (self: PromiseObject, callback: ((...any) -> ...any)?) -> PromiseObject,
-	Yield: (self: PromiseObject) -> (boolean, ...any),
-	Destroy: (self: PromiseObject) -> (),
-}
+type PromiseObject = any
 
-type ObservableMapClass = {
-	Set: (self: ObservableMapClass, key: string, value: BossObject?) -> () -> (),
-	Remove: (self: ObservableMapClass, key: string) -> (),
-	Get: (self: ObservableMapClass, key: string) -> BossObject?,
-	ObservePairsBrio: (self: ObservableMapClass) -> ObservableObject,
-	ObserveAtKey: (self: ObservableMapClass, key: string) -> ObservableObject,
-	Destroy: (self: ObservableMapClass) -> (),
-}
+type ObservableMapClass = any
 
-type ObservableSetClass = {
-	Add: (self: ObservableSetClass, item: Player) -> () -> (),
-	Remove: (self: ObservableSetClass, item: Player) -> boolean,
-	GetList: (self: ObservableSetClass) -> { Player },
-	ObserveItemsBrio: (self: ObservableSetClass) -> ObservableObject,
-	Destroy: (self: ObservableSetClass) -> (),
-}
+type ObservableSetClass = any
 
-type ValueObjectClass<T> = {
-	Value: T,
-	Observe: (self: ValueObjectClass<T>) -> ObservableObject,
-	Destroy: (self: ValueObjectClass<T>) -> (),
-}
+type ValueObjectClass<T> = any
 
 type HpServiceServerObject = {
-	damagePlayer: (self: HpServiceServerObject, player: Player, damageRaw: any) -> number?,
+	DamagePlayer: (self: HpServiceServerObject, player: Player, damageRaw: any) -> number?,
 }
 
 type WeatherServiceServerObject = {
@@ -1441,8 +1397,8 @@ end
 function BossServiceServer.Init(self: BossServiceServer)
 	self.maid = Maid.new() :: MaidClass
 	bindPackets(self)
-	self.hpService = HpServiceServer :: HpServiceServerObject
-	self.weatherService = WeatherServiceServer :: WeatherServiceServerObject
+	self.hpService = HpServiceServer :: any
+	self.weatherService = WeatherServiceServer :: any
 	self.worldGenerationService = WorldGenerationServiceServer :: WorldGenerationServiceServerObject
 	self.controllersById = {}
 	self.controllersByChannel = {}

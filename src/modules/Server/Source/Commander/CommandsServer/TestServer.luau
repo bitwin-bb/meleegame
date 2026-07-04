@@ -4,7 +4,7 @@ local HttpService = game:GetService("HttpService")
 
 local BuffConstants = require("BuffConstants")
 local BuffService = require("BuffService")
-local Table = require("Table")
+local Table: any = require("Table")
 local buffUtils = require("BuffUtils")
 
 local fallbackTokensByPlayer: { [Player]: { [string]: any } } = {}
@@ -121,7 +121,7 @@ local function loadFallbackDefinitions(kind: string): { any }
 	local definitions = {}
 	for _, moduleScript in moduleScripts do
 		local ok, definitionOrError = pcall(function()
-			return require(moduleScript)
+			return require(moduleScript :: any)
 		end)
 		if not ok then
 			warn(`failed to load command test definition {moduleScript.Name}: {tostring(definitionOrError)}`)

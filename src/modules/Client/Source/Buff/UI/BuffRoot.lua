@@ -4,8 +4,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BuffRightSideBar = require("BuffRightSideBar")
 local BuffSlice = require("BuffSlice")
-local React = require(ReplicatedStorage.Packages.React)
-local Table = require("Table")
+local React: any = require(ReplicatedStorage.Packages.React)
+local Table: any = require("Table")
 local useStore = require("useCoreStore")
 
 export type BuffRootProps = {

@@ -10,7 +10,7 @@ local BuildServiceUtils = require("BuildServiceUtils")
 local InventoryProfile = require("Profile")
 local InventoryServiceUtils = require("InventoryServiceUtils")
 local ItemRegistry = require("ItemRegistry")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local MiningPower = require("MiningPower")
 local PacketPayload = require("PacketPayload")
 local InventoryServicePackets = require("NetPacketsShared").InventoryService
@@ -79,11 +79,7 @@ type AddItemResult = InventoryServiceUtils.AddItemResult
 type RemoveItemResult = InventoryServiceUtils.RemoveItemResult
 type SlotMutationResult = InventoryServiceUtils.SlotMutationResult
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 type PlayerDataServiceServerObject = {
 	GetValue: (self: PlayerDataServiceServerObject, player: Player, pathRaw: any, fallback: any) -> any,

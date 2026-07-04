@@ -7,15 +7,11 @@ local Workspace = game:GetService("Workspace")
 
 local BloodEngine = require("BloodEngine")
 local Gib = require(script:WaitForChild("Gib"))
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local LimbDestruction = require(script:WaitForChild("LimbDestruction"))
 local WorkspaceFolders = require("WorkspaceFolders")
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 export type LimbProfile = {
 	bloodColor: Color3?,

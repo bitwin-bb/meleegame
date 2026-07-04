@@ -3,8 +3,8 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ItemSlot = require("ItemSlot")
-local React = require(ReplicatedStorage.Packages.React)
-local useItemAppear = require("useItemAppear")
+local React: any = require(ReplicatedStorage.Packages.React)
+local useItemAppear: any = require("useItemAppear")
 
 local HOTBAR_ITEM_ICON_SIZE = 32
 

@@ -4,13 +4,13 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CollectionService = game:GetService("CollectionService")
 local HttpService = game:GetService("HttpService")
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local BinderSupportClient = require("BinderSupportClient")
 local Configs = require("CoreConfigs")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local NevermoreSupport = require("NevermoreSupport")
 local WorkspaceFolders = require("WorkspaceFolders")
 local WorldAnimatorServiceUtils = require("WorldAnimatorServiceUtils")
@@ -19,11 +19,7 @@ type ChunkAnimatorSettings = WorldAnimatorServiceUtils.ChunkAnimatorSettings
 type ChunkAnimationType = WorldAnimatorServiceUtils.ChunkAnimationType
 type ChunkAnimationEasing = WorldAnimatorServiceUtils.ChunkAnimationEasing
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 type ChunkAnimationState = {
 	chunkModel: Model,

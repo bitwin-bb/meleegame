@@ -1,0 +1,29 @@
+[INFO] Loading definitions file: @roblox - C:\Users\bitwi\AppData\Roaming\Code\User\globalStorage\johnnymorganz.luau-lsp\globalTypes.PluginSecurity.d.luau
+[INFO] sourcemap is disabled - automatic updating on sourcemap changes disabled
+[INFO] Loading Luau configuration from c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\.luaurc
+src/modules/Client/Source/World/Classes/WindFoliage/FoliageUpdateManager.luau:1.25-1.37: TypeError: Value of type 'Instance?' could be nil
+src/modules/Client/Source/World/Classes/WindFoliage/FoliageUpdateManager.luau:1.25-1.44: TypeError: Key 'loader' not found in external type 'Instance'
+src/modules/Client/Source/World/Classes/WindFoliage/FoliageUpdateManager.luau:1.17-1.45: TypeError: Unknown require: unsupported path
+src/modules/Client/Source/World/Classes/WindFoliage/FoliageUpdateManager.luau:5.22-5.47: TypeError: Key 'Packages' not found in external type 'ReplicatedStorage'
+src/modules/Client/Source/World/Classes/WindFoliage/TreeFoliageGraph.luau:1.25-1.37: TypeError: Value of type 'Instance?' could be nil
+src/modules/Client/Source/World/Classes/WindFoliage/TreeFoliageGraph.luau:1.25-1.44: TypeError: Key 'loader' not found in external type 'Instance'
+src/modules/Client/Source/World/Classes/WindFoliage/TreeFoliageGraph.luau:1.17-1.45: TypeError: Unknown require: unsupported path
+src/modules/Client/Source/World/Classes/WindFoliage/init.luau:1.25-1.37: TypeError: Value of type 'Instance?' could be nil
+src/modules/Client/Source/World/Classes/WindFoliage/init.luau:1.25-1.44: TypeError: Key 'loader' not found in external type 'Instance'
+src/modules/Client/Source/World/Classes/WindFoliage/init.luau:1.17-1.45: TypeError: Unknown require: unsupported path
+src/modules/Client/Source/World/Classes/WindFoliage/init.luau:11.25-11.50: TypeError: Key 'Packages' not found in external type 'ReplicatedStorage'
+src/modules/Client/Source/World/Classes/WindFoliage/init.luau:26.19-26.38: TypeError: Unknown type 'WindField.WindSample'
+src/modules/Client/Source/World/Classes/WindFoliage/init.luau:27.26-27.66: TypeError: Unknown type 'DisturbanceSourceModule.DisturbanceSource'
+src/modules/Client/Source/World/Classes/WindFoliage/init.luau:28.22-28.52: TypeError: Unknown type 'FoliageInstance.FoliageInstance'
+src/modules/Client/Source/World/Classes/WindFoliage/init.luau:36.22-36.54: TypeError: Unknown type 'TickSchedulerModule.TickScheduler'
+src/modules/Client/Source/World/Classes/WindFoliage/init.luau:37.26-37.62: TypeError: Unknown type 'TickSchedulerModule.CancellationToken'
+src/modules/Client/Source/World/Classes/WindFoliage/init.luau:38.17-38.40: TypeError: Unknown type 'FoliageInstance.LODState'
+src/modules/Client/Source/World/Classes/WindFoliage/init.luau:720.5-720.17: TypeError: Types Camera and nil cannot be compared with ~= because they do not have the same metatable
+src/modules/Client/Source/World/Classes/WindFoliage/init.luau:725.5-725.22: TypeError: Types Player and nil cannot be compared with ~= because they do not have the same metatable
+src/modules/Shared/Source/Core/CoreConfigs.luau:1.25-1.37: TypeError: Value of type 'Instance?' could be nil
+src/modules/Shared/Source/Core/CoreConfigs.luau:1.25-1.44: TypeError: Key 'loader' not found in external type 'Instance'
+src/modules/Shared/Source/Core/CoreConfigs.luau:1.17-1.45: TypeError: Unknown require: unsupported path
+src/modules/Shared/Source/WorldGeneration/Classes/WorldGeneration/WorldGenerationTree.luau:1.25-1.37: TypeError: Value of type 'Instance?' could be nil
+src/modules/Shared/Source/WorldGeneration/Classes/WorldGeneration/WorldGenerationTree.luau:1.25-1.44: TypeError: Key 'loader' not found in external type 'Instance'
+src/modules/Shared/Source/WorldGeneration/Classes/WorldGeneration/WorldGenerationTree.luau:1.17-1.45: TypeError: Unknown require: unsupported path
+src/modules/Shared/Source/WorldGeneration/Classes/WorldGeneration/WorldGenerationTree.luau:5.22-5.47: TypeError: Key 'Packages' not found in external type 'ReplicatedStorage'

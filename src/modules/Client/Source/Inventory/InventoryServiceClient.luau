@@ -10,7 +10,7 @@ local BuildServiceUtils = require("BuildServiceUtils")
 local CoreRuntime = require("CoreRuntime")
 local GamepadPointer = require("GamepadPointer")
 local InventoryServiceUtils = require("InventoryServiceUtils")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local LootServiceClient = require("LootServiceClient")
 local PacketPayload = require("PacketPayload")
 local InventoryServicePackets = require("NetPacketsShared").InventoryService
@@ -67,17 +67,9 @@ type InventorySlot = InventoryServiceUtils.InventorySlot
 type InventoryItemStack = InventoryServiceUtils.InventoryItemStack
 type PlayerDataServiceState = PlayerDataServiceUtils.PlayerDataServiceState
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (state: InventoryState) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, state: InventoryState) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 local InventoryServiceClient = {}
 

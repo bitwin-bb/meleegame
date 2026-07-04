@@ -13,23 +13,7 @@ export type FormatterConfig = {
 	colorPresets: { [string]: Color3 | string }?,
 }
 
-export type Builder = {
-	parts: { string },
-	_append: (self: Builder, text: string) -> Builder,
-	raw: (self: Builder, textRaw: any) -> Builder,
-	append: (self: Builder, textRaw: any) -> Builder,
-	line: (self: Builder, textRaw: any?) -> Builder,
-	bold: (self: Builder, textRaw: any) -> Builder,
-	italic: (self: Builder, textRaw: any) -> Builder,
-	underline: (self: Builder, textRaw: any) -> Builder,
-	font: (self: Builder, fontNameRaw: any, textRaw: any) -> Builder,
-	size: (self: Builder, sizeRaw: any, textRaw: any) -> Builder,
-	color: (self: Builder, colorRaw: any, textRaw: any) -> Builder,
-	preset: (self: Builder, presetRaw: any, textRaw: any) -> Builder,
-	gradient: (self: Builder, fromRaw: any, toRaw: any, textRaw: any) -> Builder,
-	toString: (self: Builder, cacheKeyRaw: any?) -> string,
-	clear: (self: Builder) -> Builder,
-}
+export type Builder = any
 
 local globalCache = {
 	values = {} :: { [string]: string },

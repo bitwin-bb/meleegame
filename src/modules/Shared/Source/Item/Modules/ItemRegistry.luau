@@ -149,7 +149,7 @@ local function buildRegistry(): RegistryData
 				continue
 			end
 
-			local ok, moduleResult = pcall(require, child)
+			local ok, moduleResult = pcall(require, child :: any)
 			if not ok then
 				hadRequireFailure = true
 				continue

@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local CameraShaker = require("EZCameraShake")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local MeleeServicePackets = require("NetPacketsShared").MeleeService
 
@@ -29,7 +29,7 @@ local InventoryServiceUtils = require("InventoryServiceUtils")
 local Melee = require("Melee")
 local MeleeServiceUtils = require("MeleeServiceUtils")
 local PlatformServiceClient = require("PlatformServiceClient")
-local Promise = require("Promise")
+local Promise: any = require("Promise")
 
 local function fulfilledPromise(...): any
 	local args = table.pack(...)
@@ -38,23 +38,19 @@ local function fulfilledPromise(...): any
 	end)
 end
 local RagdollServiceClient = require("AquariaRagdollServiceClient")
-local RaycastHitbox = require("RaycastHitbox")
+local RaycastHitbox: any = require("RaycastHitbox")
 
 type MeleeWeaponConfig = MeleeServiceUtils.MeleeWeaponConfig
 type InventoryState = InventoryServiceUtils.InventoryState
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 type MeleeController = {
-	inputBegan: (self: MeleeController, triggerRaw: any) -> boolean,
-	inputEnded: (self: MeleeController, triggerRaw: any) -> boolean,
-	setCharacter: (self: MeleeController, characterRaw: any) -> (),
-	on: (self: MeleeController, signalNameRaw: any, callback: (...any) -> ()) -> RBXScriptConnection?,
-	destroy: (self: MeleeController) -> (),
+	InputBegan: (self: MeleeController, triggerRaw: any) -> boolean,
+	InputEnded: (self: MeleeController, triggerRaw: any) -> boolean,
+	SetCharacter: (self: MeleeController, characterRaw: any) -> (),
+	On: (self: MeleeController, signalNameRaw: any, callback: (...any) -> ()) -> any,
+	Destroy: (self: MeleeController) -> (),
 }
 
 type CameraShakerObject = {

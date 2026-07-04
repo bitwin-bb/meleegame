@@ -50,11 +50,7 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-type MaidClass = {
-	GiveTask: (self: MaidClass, chore: any) -> any,
-	DoCleaning: (self: MaidClass) -> (),
-	Destroy: (self: MaidClass) -> (),
-}
+type MaidClass = any
 
 local LootServiceClient = {}
 
@@ -179,7 +175,7 @@ function LootServiceClient.StartLootIconAnimation(self: LootServiceClient, iconR
 	icon.ClipsDescendants = true
 	icon.ResampleMode = Enum.ResamplerMode.Pixelated
 
-	local iconMaid = Maid.new() :: MaidClass
+	local iconMaid = Maid.new()
 	self.animatedLootIconMaids[icon] = iconMaid
 	iconMaid:GiveTask(function()
 		self.animatedLootIconMaids[icon] = nil
@@ -210,13 +206,18 @@ function LootServiceClient.StartLootIconAnimation(self: LootServiceClient, iconR
 end
 
 function LootServiceClient.StartLootIconAnimations(self: LootServiceClient)
+	local maid = self.maid
+	if maid == nil then
+		return
+	end
+
 	local lootFolder = WorkspaceFolders.FindFolderInGameOrWorkspace(LOOT_FOLDER_NAME)
 	local scanRoot = lootFolder or Workspace
 	scanAnimatedLootIcons(scanRoot, function(icon: ImageLabel)
 		self:StartLootIconAnimation(icon)
 	end)
 
-	self.maid:GiveTask(Workspace.DescendantAdded:Connect(function(descendant: Instance)
+	maid:GiveTask(Workspace.DescendantAdded:Connect(function(descendant: Instance)
 		if descendant:IsA("ImageLabel") then
 			task.defer(function()
 				if descendant.Parent ~= nil then
@@ -229,11 +230,14 @@ end
 
 function LootServiceClient.Init(self: LootServiceClient)
 	bindPackets(self)
-	self.maid = Maid.new() :: MaidClass
+	local maid = Maid.new()
+	self.maid = maid
 	self.animatedLootIconMaids = {}
-	self.maid:GiveTask(function()
+	maid:GiveTask(function()
 		for _, iconMaid in self.animatedLootIconMaids do
-			iconMaid:DoCleaning()
+			if iconMaid ~= nil then
+				(iconMaid :: any):DoCleaning()
+			end
 		end
 		self.animatedLootIconMaids = {}
 	end)
@@ -247,16 +251,9 @@ function LootServiceClient.Destroy(self: LootServiceClient)
 	end
 end
 
-
-
-
-
-
-
-
 type LootServiceClient = typeof(LootServiceClient) & {
-	maid: MaidClass,
-	animatedLootIconMaids: { [ImageLabel]: MaidClass },
+	maid: MaidClass?,
+	animatedLootIconMaids: { [ImageLabel]: MaidClass? },
 }
 
 return LootServiceClient :: LootServiceClient

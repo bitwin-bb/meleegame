@@ -5,18 +5,14 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Maid = require("Maid")
-local Rx = require("Rx")
+local Rx: any = require("Rx")
 
 local Physics = require("Physics")
 
 local Stinger = {}
 Stinger.__index = Stinger
 
-type MaidClass = {
-	GiveTask: (self: MaidClass, task: any) -> any,
-	DoCleaning: (self: MaidClass) -> (),
-	Destroy: (self: MaidClass) -> (),
-}
+type MaidClass = any
 
 export type FireContext = {
 	origin: Vector3,

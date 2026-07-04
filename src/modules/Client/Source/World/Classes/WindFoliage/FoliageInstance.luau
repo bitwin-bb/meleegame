@@ -3,10 +3,10 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 
 local Damp = require("Damp")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local TreeFoliageGraph = require("TreeFoliageGraph")
 local Vec = require("Vec")
 
@@ -70,11 +70,7 @@ type BoneRecord = {
 	activeTween: Tween?,
 }
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 local ZERO = Vector3.zero
 local DEFAULT_MOTION_STYLE: MotionStyle = "GrassTip"

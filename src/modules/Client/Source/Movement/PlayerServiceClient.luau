@@ -15,7 +15,7 @@ local AudioServiceUtils = require("AudioServiceUtils")
 local CmdrUtils = require("CmdrUtils")
 local CoreRuntime = require("CoreRuntime")
 local GamepadPointer = require("GamepadPointer")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local PlayerServicePackets = require("NetPacketsShared").PlayerService
 
@@ -63,7 +63,7 @@ end
 local PlatformServiceClient = require("PlatformServiceClient")
 local PlatformServiceUtils = require("PlatformServiceUtils")
 local PlayerServiceUtils = require("PlayerServiceUtils")
-local Ripple = require(ReplicatedStorage.Packages.Ripple)
+local Ripple: any = require(ReplicatedStorage.Packages.Ripple)
 local WorldGenerationServiceClient = require("WorldGenerationServiceClient")
 
 type FacingSign = PlayerServiceUtils.FacingSign
@@ -71,11 +71,7 @@ type CharacterRig = PlayerServiceUtils.CharacterRig
 type MoveSpringOptions = PlayerServiceUtils.MoveSpringOptions
 type NumberMotion = Ripple.Motion<number>
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 local PlayerServiceClient = {}
 local MOVE_RENDERSTEP_NAME = "PlayerService_UpdateMovement"
@@ -626,7 +622,7 @@ function PlayerServiceClient.GetPlayerModuleControls(self: PlayerServiceClient):
 		return nil
 	end
 
-	local ok, playerModuleValue = pcall(require, playerModule)
+	local ok, playerModuleValue = pcall(require, playerModule :: any)
 	if
 		not ok
 		or typeof(playerModuleValue) ~= "table"
@@ -1696,6 +1692,8 @@ type PlayerServiceClient = typeof(PlayerServiceClient) & {
 	gamepadMoveVector: Vector2,
 	gamepadAimVector: Vector2,
 	jumpActionValue: number,
+	flyEnabled: boolean,
+	flySpeed: number,
 	worldUnlockPending: boolean,
 	worldUnlockCheckAccumulator: number,
 	worldUnlockCheckInterval: number,

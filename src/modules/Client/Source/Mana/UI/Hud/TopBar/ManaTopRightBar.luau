@@ -3,11 +3,11 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 
 local ManaMeter = require("ManaMeter")
 local ManaServiceUtils = require("ManaServiceUtils")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local Responsive = require("useViewportScale")
 local UiSound = require("UISound")
 local infoThunks = require("InfoThunks")

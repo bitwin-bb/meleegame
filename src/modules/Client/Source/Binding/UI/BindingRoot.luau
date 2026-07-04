@@ -2,7 +2,7 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local BindingHintScreen = require(script.Parent:WaitForChild("Screens"):WaitForChild("BindingHintScreen"))
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 
 type BindingRootProps = {
 	layoutOrder: number?,

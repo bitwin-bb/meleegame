@@ -3,7 +3,7 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BubblesScreen = require("BubblesScreen")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 
 type BreathRootProps = {
 	[string]: any,

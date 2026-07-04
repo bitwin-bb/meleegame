@@ -4,8 +4,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RunService = game:GetService("RunService")
 
-local React = require(ReplicatedStorage.Packages.React)
-local Ripple = require(ReplicatedStorage.Packages.Ripple)
+local React: any = require(ReplicatedStorage.Packages.React)
+local Ripple: any = require(ReplicatedStorage.Packages.Ripple)
 
 type NumberMotion = Ripple.Motion<number>
 type TweenOptions = Ripple.TweenOptions
@@ -45,10 +45,10 @@ local function useItemAppear(options: ItemAppearOptions?): number
 	local trigger = if options then options.trigger else nil
 	local scale, setScale = React.useState(if enabled then fromScale else 0)
 
-	React.useEffect(function()
+	;(React.useEffect :: any)(function()
 		if not enabled then
 			setScale(0)
-			return nil
+			return function() end
 		end
 
 		local motion: NumberMotion = Ripple.createMotion(fromScale)

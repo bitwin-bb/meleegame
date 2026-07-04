@@ -4,7 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
@@ -111,7 +111,7 @@ type InventoryServiceServerObject = {
 		slotIndexRaw: any,
 		amountRaw: any
 	) -> SlotMutationResult,
-	addItem: (
+	AddItem: (
 		self: InventoryServiceServerObject,
 		player: Player,
 		itemIdRaw: any,
@@ -1645,8 +1645,8 @@ end
 function BuildServiceServer.Init(self: BuildServiceServer)
 	local worldGenerationService = WorldGenerationServiceServer :: WorldGenerationServiceServerObject
 	self.worldGenerationService = worldGenerationService
-	self.inventoryService = InventoryServiceServer :: InventoryServiceServerObject
-	self.lootService = LootServiceServer :: LootServiceServerObject
+	self.inventoryService = InventoryServiceServer :: any
+	self.lootService = LootServiceServer :: any
 	self.world = worldGenerationService:GetWorld()
 	self.config = BuildServiceUtils.CoerceConfig(GetBuildConfigSource(), nil)
 	self.state = BuildServiceUtils.CreateDefaultState()

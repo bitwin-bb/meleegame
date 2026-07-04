@@ -6,9 +6,9 @@ local it = testEnvironment.it :: any
 local expect = testEnvironment.expect :: any
 
 
-local EventBusClient = require("EventBusClient")
-local EventBusServer = require("EventBusServer")
-local EventBusShared = require("EventBusShared")
+local EventBusClient: any = require("EventBusClient")
+local EventBusServer: any = require("EventBusServer")
+local EventBusShared: any = require("EventBusShared")
 
 local function waitUntil(predicate: () -> boolean, label: string)
 	local timeoutAt = os.clock() + 1
@@ -25,7 +25,7 @@ local function withErrorOnUnknownEvent(utils: any, enabled: boolean, callback: (
 	local previousErrorOnUnknownEvent = utils.ERROR_ON_UNKNOWN_EVENT
 	utils.ERROR_ON_UNKNOWN_EVENT = enabled
 
-	local ok, result = pcall(callback)
+	local ok, result = (pcall :: any)(callback)
 	utils.ERROR_ON_UNKNOWN_EVENT = previousErrorOnUnknownEvent
 
 	if not ok then

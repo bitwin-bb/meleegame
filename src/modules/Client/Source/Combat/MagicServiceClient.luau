@@ -9,7 +9,7 @@ local CoreRuntime = require("CoreRuntime")
 local GamepadPointer = require("GamepadPointer")
 local InventoryServiceClient = require("InventoryServiceClient")
 local InventoryServiceUtils = require("InventoryServiceUtils")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local MagicServiceUtils = require("MagicServiceUtils")
 local PacketPayload = require("PacketPayload")
 local MagicServicePackets = require("NetPacketsShared").MagicService
@@ -62,17 +62,9 @@ local WorkspaceFolders = require("WorkspaceFolders")
 type InventoryState = InventoryServiceUtils.InventoryState
 type ReplicatedState = MagicServiceUtils.ReplicatedState
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 type VisualPoolEntry = {
 	part: BasePart,

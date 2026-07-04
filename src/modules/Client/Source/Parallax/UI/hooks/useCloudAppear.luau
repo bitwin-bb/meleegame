@@ -5,12 +5,9 @@ local RunService = game:GetService("RunService")
 
 local Maid = require("Maid")
 
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 
-type MaidClass = {
-	GiveTask: (self: MaidClass, task: any) -> any,
-	DoCleaning: (self: MaidClass) -> (),
-}
+type MaidClass = any
 
 export type CloudAppearOptions = {
 	id: string,

@@ -1,6 +1,6 @@
 local require = require(script.Parent.loader).load(script)
 
-local Table = require("Table")
+local Table: any = require("Table")
 
 local BuffConstants = require("BuffConstants")
 
@@ -229,19 +229,21 @@ function buffUtils.MergeRecord(existing: BuffRecord, incoming: BuffRecord): Buff
 	local merged = buffUtils.CloneRecord(incoming)
 	merged.stacks = math.min(existing.stacks + incoming.stacks, incoming.maxStacks)
 
-	if incoming.stackMode == BuffConstants.STACK_MODE_EXTEND and existing.expiresAt ~= nil and incoming.duration > 0 then
+	local existingExpiresAt = existing.expiresAt
+	if incoming.stackMode == BuffConstants.STACK_MODE_EXTEND and existingExpiresAt ~= nil and incoming.duration > 0 then
 		merged.appliedAt = existing.appliedAt
-		merged.expiresAt = existing.expiresAt + incoming.duration
-		merged.duration = math.max(0, merged.expiresAt - merged.appliedAt)
+		merged.expiresAt = existingExpiresAt + incoming.duration
+		local mergedExpiresAt = merged.expiresAt
+		merged.duration = if mergedExpiresAt ~= nil then math.max(0, mergedExpiresAt - merged.appliedAt) else 0
 	end
 
 	return merged
 end
 
 function buffUtils.ApplyOverrides(recordRaw: any, overridesRaw: any?): BuffRecord
-	local base = if typeof(recordRaw) == "table" then recordRaw :: { [string]: any } else {}
-	local overrides = getTable(overridesRaw)
-	local merged = Table.merge(base, overrides)
+	local base: any = if typeof(recordRaw) == "table" then recordRaw else {}
+	local overrides: any = getTable(overridesRaw)
+	local merged: any = Table.merge(base, overrides)
 
 	if overrides.effects ~= nil and typeof(base.effects) == "table" and typeof(overrides.effects) == "table" then
 		merged.effects = Table.merge(base.effects, overrides.effects)

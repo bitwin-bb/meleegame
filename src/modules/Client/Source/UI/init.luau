@@ -7,8 +7,8 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 local PlatformServiceClient = require("PlatformServiceClient")
-local React = require(ReplicatedStorage.Packages.React)
-local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
+local React: any = require(ReplicatedStorage.Packages.React)
+local ReactRoblox: any = require(ReplicatedStorage.Packages.ReactRoblox)
 local RootUI = require("RootUI")
 local SnackbarNotifications = require("FeatureSnackbarNotifications")
 

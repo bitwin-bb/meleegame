@@ -3,8 +3,8 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ImageIds = require("ImageIds")
-local React = require(ReplicatedStorage.Packages.React)
-local Table = require("Table")
+local React: any = require(ReplicatedStorage.Packages.React)
+local Table: any = require("Table")
 local UiSound = require("UISound")
 local infoThunks = require("InfoThunks")
 local useCooldownEffect = require("useCooldownEffect")
@@ -85,7 +85,7 @@ local function GetEcordIcon(recordRaw: any, propIconRaw: any): string
 		return propIcon
 	end
 
-	local record = if typeof(recordRaw) == "table" then recordRaw :: { [string]: any } else {}
+	local record: any = if typeof(recordRaw) == "table" then recordRaw else {}
 	local recordIcon = GetImageId(record.icon or record.iconId)
 	if recordIcon ~= "" then
 		return recordIcon

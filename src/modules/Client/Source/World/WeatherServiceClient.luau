@@ -13,7 +13,7 @@ local Workspace = game:GetService("Workspace")
 local AudioRegistry = require("Audio")
 local AudioServiceUtils = require("AudioServiceUtils")
 local CameraShaker = require("EZCameraShake")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local WeatherServicePackets = require("NetPacketsShared").WeatherService
 
@@ -65,11 +65,7 @@ local WorldGenerationServiceClient = require("WorldGenerationServiceClient")
 type WeatherServiceState = WeatherServiceUtils.WeatherServiceState
 type SkyKey = string
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 type CameraShakerObject = {
 	Start: (self: CameraShakerObject) -> (),

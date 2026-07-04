@@ -50,7 +50,7 @@ end
 local Configs = require("CoreConfigs")
 local DataTemplate = require("DataTemplate")
 local PlayerDataServiceUtils = require("PlayerDataServiceUtils")
-local Promise = require("Promise")
+local Promise: any = require("Promise")
 
 local function fulfilledPromise(...): any
 	local args = table.pack(...)
@@ -77,7 +77,7 @@ local function GetServerPackage(packageName: string): ModuleScript
 	return package
 end
 
-local ProfileStore = require(GetServerPackage("ProfileStore"))
+local ProfileStore = require(GetServerPackage("ProfileStore") :: any)
 
 type PlayerData = PlayerDataServiceUtils.PlayerData
 type LoadState = string
@@ -87,12 +87,7 @@ type ProfileSignalConnection = {
 	Disconnect: (self: ProfileSignalConnection) -> (),
 }
 
-type StateChangedSignal = {
-	Connect: (self: StateChangedSignal, callback: () -> ()) -> any,
-	Fire: (self: StateChangedSignal) -> (),
-	DisconnectAll: (self: StateChangedSignal) -> (),
-	Destroy: (self: StateChangedSignal) -> (),
-}
+type StateChangedSignal = Signal.Signal<...any>
 
 type PlayerRuntime = {
 	loadToken: number,
@@ -755,7 +750,7 @@ function PlayerDataServiceServer.WaitForDataPromise(
 	end
 
 	return Promise.new(function(fulfill, _reject)
-		local connection = nil :: RBXScriptConnection?
+		local connection = nil :: any?
 		local settled = false
 
 		local function cleanup()

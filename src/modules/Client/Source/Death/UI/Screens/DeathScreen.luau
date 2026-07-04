@@ -4,7 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 
 local Layer = require("Layer")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local Scale = require("Scale")
 local deathSlice = require("DeathSlice")
 local deathThunks = require("DeathThunks")

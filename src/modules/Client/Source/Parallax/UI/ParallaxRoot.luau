@@ -4,7 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CloudScreen = require("CloudScreen")
 local ParallaxScreen = require("ParallaxScreen")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 
 type ParallaxRootProps = {
 	cloudsVisible: boolean?,

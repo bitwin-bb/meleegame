@@ -6,7 +6,7 @@ local Players = game:GetService("Players")
 
 local AnimationServiceUtils = require("AnimationServiceUtils")
 local AudioServiceClient = require("AudioServiceClient")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local AnimationServicePackets = require("NetPacketsShared").AnimationService
 
@@ -58,11 +58,7 @@ type AnimationProfile = AnimationServiceUtils.AnimationProfile
 type AnimationServiceState = AnimationServiceUtils.AnimationServiceState
 type CharacterRig = AnimationServiceUtils.CharacterRig
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 type CharacterRuntime = {
 	rig: CharacterRig,

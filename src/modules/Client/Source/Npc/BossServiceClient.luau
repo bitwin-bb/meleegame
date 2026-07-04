@@ -12,7 +12,7 @@ local SharedRoot = if SharedRealmRoot ~= nil then SharedRealmRoot:FindFirstChild
 
 local BossServiceUtils = require("BossServiceUtils")
 local CameraShaker = require("EZCameraShake")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local BossServicePackets = require("NetPacketsShared").BossService
 
@@ -60,23 +60,16 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local Signal = require("Signal")
 local WorkspaceFolders = require("WorkspaceFolders")
 
 type BossSnapshot = BossServiceUtils.BossSnapshot
 type BossServiceState = BossServiceUtils.BossServiceState
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 type CameraShakerObject = {
 	Start: (self: CameraShakerObject) -> (),
@@ -157,7 +150,7 @@ local function GetEyeOfCthulhuPresentationModule(): PresentationModule?
 	end
 
 	local ok, moduleOrError = pcall(function()
-		return require(moduleScript)
+		return require(moduleScript :: any)
 	end)
 	if not ok then
 		warnPresentationModuleFailure("EyeOfCthulhu", `failed to load EyeOfCthulhu presentation module: {moduleOrError}`)

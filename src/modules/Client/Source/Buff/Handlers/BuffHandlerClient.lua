@@ -14,16 +14,9 @@ BuffHandlerClient.__index = BuffHandlerClient
 
 export type BuffRecord = buffUtils.BuffRecord
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> any,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
-type MaidClass = {
-	GiveTask: (self: MaidClass, chore: any) -> number,
-	Destroy: (self: MaidClass) -> (),
-}
+type MaidClass = any
 
 local function getDefinitionFolders(): { { folder: Instance?, kind: string } }
 	local buffRoot = script.Parent.Parent
@@ -143,7 +136,7 @@ function BuffHandlerClient.LoadDefinitionModule(
 	kindFallback: string
 )
 	local ok, definitionOrError = pcall(function()
-		return require(moduleScript)
+		return require(moduleScript :: any)
 	end)
 
 	if not ok then
@@ -290,16 +283,6 @@ function BuffHandlerClient.Destroy(self: BuffHandlerClient)
 	end
 end
 BuffHandlerClient.New = BuffHandlerClient.new
-type BuffHandlerClient = typeof(BuffHandlerClient) & {
-	localPlayer: Player,
-	maid: MaidClass?,
-	definitions: any,
-	active: any,
-	definitionChanged: SignalObject,
-	activeChanged: SignalObject,
-	buffAdded: SignalObject,
-	buffChanged: SignalObject,
-	buffRemoved: SignalObject,
-}
+type BuffHandlerClient = any
 
 return BuffHandlerClient :: BuffHandlerClient

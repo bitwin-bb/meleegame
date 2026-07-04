@@ -7,7 +7,7 @@ local UserInputService = game:GetService("UserInputService")
 local Cleanup = require("Cleanup")
 local PlatformServiceClient = require("PlatformServiceClient")
 local PlatformServiceUtils = require("PlatformServiceUtils")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local useStableCallback = require("useStableCallback")
 
 type PromptBinding = PlatformServiceUtils.PromptBinding

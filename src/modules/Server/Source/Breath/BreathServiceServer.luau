@@ -64,11 +64,7 @@ type BreathServiceConfig = BreathServiceUtils.BreathServiceConfig
 type BreathServiceState = BreathServiceUtils.BreathServiceState
 type LiquidQueryResult = LiquidServiceUtils.LiquidQueryResult
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
 type LiquidServiceServerObject = {
 	config: LiquidServiceUtils.LiquidServiceConfig,
@@ -76,7 +72,7 @@ type LiquidServiceServerObject = {
 }
 
 type HpServiceServerObject = {
-	damagePlayer: (self: HpServiceServerObject, player: Player, damageRaw: any) -> number?,
+	DamagePlayer: (self: HpServiceServerObject, player: Player, damageRaw: any) -> number?,
 }
 
 type PlayerRuntime = {
@@ -235,7 +231,7 @@ function BreathServiceServer.Init(self: BreathServiceServer)
 	self.playerRuntimes = {} :: { [Player]: PlayerRuntime }
 	self.accumulator = 0
 	self.liquidService = LiquidServiceServer :: LiquidServiceServerObject
-	self.hpService = HpServiceServer :: HpServiceServerObject
+	self.hpService = HpServiceServer :: any
 	self.breathDepleted = Signal.new();
 	(self :: any).binders = NevermoreSupport.GetService(BinderSupportServer)
 

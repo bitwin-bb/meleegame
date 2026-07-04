@@ -8,7 +8,7 @@ local Workspace = game:GetService("Workspace")
 
 local AttributeCache = require("AttributeCache")
 local DeterministicRNG = require("DeterministicRng")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local ObjectPool = require("ObjectPool")
 local TagBinder = require("TagBinder")
 local TagQuery = require("TagQuery")
@@ -27,11 +27,7 @@ type WindSample = WindField.WindSample
 type DisturbanceSource = DisturbanceSourceModule.DisturbanceSource
 type FoliageObject = FoliageInstance.FoliageInstance
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 type TickScheduler = TickSchedulerModule.TickScheduler
 type CancellationToken = TickSchedulerModule.CancellationToken
@@ -278,17 +274,17 @@ local DEFAULT_CONFIG: Config = {
 		midUpdateInterval = 0.1,
 		farUpdateInterval = 0.26,
 		frozenUpdateInterval = 0.75,
-		maxActiveTrees = 128,
-		maxInteractiveTrees = 48,
-		maxEntryInspectionsPerStep = 512,
-		maxTransformWritesPerStep = 24000,
-		tweenSmoothingEnabled = true,
-		tweenSmoothingDuration = 0.16,
-		tweenSmoothingMaxDuration = 0.24,
+		maxActiveTrees = 64,
+		maxInteractiveTrees = 24,
+		maxEntryInspectionsPerStep = 256,
+		maxTransformWritesPerStep = 6000,
+		tweenSmoothingEnabled = false,
+		tweenSmoothingDuration = 0,
+		tweenSmoothingMaxDuration = 0,
 		enableSecondaryFlutter = true,
 		enableCanopyOnlyFar = false,
-		branchCapPerTree = 99999,
-		leafClusterCapPerTree = 99999,
+		branchCapPerTree = 96,
+		leafClusterCapPerTree = 80,
 		primaryDriverResponseRate = 9,
 		secondaryDriverResponseRate = 12,
 		interactionDriverDecayRate = 4.8,
@@ -1110,7 +1106,7 @@ function WindFoliage.StepActiveFoliage(_self: any, _dt: number)
 end
 
 function WindFoliage.RefreshTrackedDisturbers(self: any, refreshDt: number)
-	local records = {}
+	local records = self.bufferPool:AcquireArray()
 	for _, record in self.trackedDisturbers do
 		records[#records + 1] = record
 	end
@@ -1119,6 +1115,7 @@ function WindFoliage.RefreshTrackedDisturbers(self: any, refreshDt: number)
 			self:UpdateTrackedSource(record, refreshDt)
 		end
 	end
+	self.bufferPool:ReleaseArray(records)
 end
 
 function WindFoliage.OnFixedStep(self: any, dt: number)

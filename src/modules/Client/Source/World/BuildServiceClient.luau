@@ -18,7 +18,7 @@ local GamepadPointer = require("GamepadPointer")
 local GamepadTargetServiceClient = require("GamepadTargetServiceClient")
 local InventoryServiceClient = require("InventoryServiceClient")
 local InventoryServiceUtils = require("InventoryServiceUtils")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local BuildServicePackets = require("NetPacketsShared").BuildService
 
@@ -72,7 +72,7 @@ end
 
 local NevermoreSupport = require("NevermoreSupport")
 local PlatformServiceClient = require("PlatformServiceClient")
-local Ripple = require(ReplicatedStorage.Packages.Ripple)
+local Ripple: any = require(ReplicatedStorage.Packages.Ripple)
 local Rubble = require("Rubble")
 local Signal = require("Signal")
 local SnackbarNotifications = require("FeatureSnackbarNotifications")
@@ -131,17 +131,9 @@ type RubbleObject = {
 
 type NumberMotion = Ripple.Motion<number>
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 type PendingAction = {
 	requestId: number,
@@ -2406,55 +2398,6 @@ function BuildServiceClient.HandlePrimaryInput(self: BuildServiceClient, isHeldR
 	end
 	return nil
 end
-type BuildServiceClient = typeof(BuildServiceClient) & {
-	runtimeContext: any?,
-	cursorModule: any?,
-	hapticsModule: any?,
-	localPlayer: Player,
-	janitor: JanitorClass,
-	state: BuildServiceState,
-	stateChanged: SignalObject,
-	actionAccepted: SignalObject,
-	actionRejected: SignalObject,
-	breakProgressChanged: SignalObject,
-	tileDeltasApplied: SignalObject,
-	hitFeedback: SignalObject,
-	inventoryState: InventoryState,
-	nextRequestId: number,
-	selectedTileId: number,
-	selectedPlaceableConfig: PlaceableItemConfig?,
-	enableServerTileFetchFallback: boolean,
-	enableDefaultInputBinding: boolean,
-	predictedTileOverrides: { [string]: number },
-	authoritativeDeltaCache: { [string]: number },
-	pendingActions: { [number]: PendingAction },
-	tileFetchCooldownByTileKey: { [string]: number },
-	currentBreakProgress: {
-		isActive: boolean,
-		tileX: number,
-		tileY: number,
-		progress: number,
-		breakDuration: number,
-		progressMode: string?,
-		progressUnits: number?,
-		progressTotal: number?,
-		targetKind: string?,
-		updatedAt: number,
-	}?,
-	cursorTileX: number?,
-	cursorTileY: number?,
-	cursorScreenVector: Vector2?,
-	random: Random,
-	treeChopSoundAssetIds: { string },
-	treeFallSoundAssetIds: { string },
-	tileHitSoundAssetIds: { string },
-	tileBreakSoundAssetIds: { string },
-	breakInput: HeldInputState,
-	placeInput: HeldInputState,
-	treeFallAnimations: { [string]: TreeFallAnimation },
-	treeFallAnimationOrder: { string },
-	rubble: RubbleObject?,
-	visualFolder: Folder,
-}
+type BuildServiceClient = any
 
 return BuildServiceClient :: BuildServiceClient

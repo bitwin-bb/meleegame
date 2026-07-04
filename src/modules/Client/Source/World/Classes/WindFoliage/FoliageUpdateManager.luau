@@ -2,7 +2,7 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 
 local FoliageUpdateManager = {}
 FoliageUpdateManager.__index = FoliageUpdateManager
@@ -104,9 +104,9 @@ function FoliageUpdateManager.New(
 ): FoliageUpdateManager
 	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local runtime = if typeof(config.runtime) == "table" then config.runtime else {} :: any
-	local maxActiveTrees = math.max(1, math.floor(clampNumber(runtime.maxActiveTrees, 128, 1, 4096)))
+	local maxActiveTrees = math.max(1, math.floor(clampNumber(runtime.maxActiveTrees, 64, 1, 4096)))
 	local maxInteractiveTrees = math.max(1, math.floor(clampNumber(runtime.maxInteractiveTrees, 24, 1, 1024)))
-	local defaultMaxEntryInspectionsPerStep = math.max(maxActiveTrees * 4, maxInteractiveTrees * 8, 512)
+	local defaultMaxEntryInspectionsPerStep = math.max(maxActiveTrees * 4, maxInteractiveTrees * 8, 256)
 
 	local self = setmetatable({
 		config = config,
@@ -125,10 +125,10 @@ function FoliageUpdateManager.New(
 		),
 		maxTransformWritesPerStep = math.max(
 			1,
-			math.floor(clampNumber(runtime.maxTransformWritesPerStep, 24000, 1, 1000000))
+			math.floor(clampNumber(runtime.maxTransformWritesPerStep, 6000, 1, 1000000))
 		),
-		branchCapPerTree = math.max(1, math.floor(clampNumber(runtime.branchCapPerTree, 99999, 1, 999999))),
-		leafClusterCapPerTree = math.max(1, math.floor(clampNumber(runtime.leafClusterCapPerTree, 99999, 1, 999999))),
+		branchCapPerTree = math.max(1, math.floor(clampNumber(runtime.branchCapPerTree, 96, 1, 999999))),
+		leafClusterCapPerTree = math.max(1, math.floor(clampNumber(runtime.leafClusterCapPerTree, 80, 1, 999999))),
 		debugEnabled = if typeof(runtime.debug) == "table" then runtime.debug.enabled == true else false,
 		stats = {
 			registeredTrees = 0,

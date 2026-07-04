@@ -3,7 +3,7 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 
 local CategoryTabs = require("CategoryTabs")
 local CraftingButton = require("CraftingButton")
@@ -11,7 +11,7 @@ local CraftingPanel = require("CraftingPanel")
 local ImageIds = require("ImageIds")
 local IngredientSlot = require("IngredientSlot")
 local Layer = require("Layer")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local RecipeDetails = require("RecipeDetails")
 local RecipeGrid = require("RecipeGrid")
 local RecipeSlot = require("RecipeSlot")

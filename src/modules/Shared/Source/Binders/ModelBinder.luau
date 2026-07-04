@@ -6,11 +6,7 @@ local InstanceUtils = require("InstanceUtils")
 local Maid = require("Maid")
 local TagBinder = require("TagBinder")
 
-type MaidClass = {
-	GiveTask: (self: MaidClass, task: any) -> any,
-	DoCleaning: (self: MaidClass) -> (),
-	Destroy: (self: MaidClass) -> (),
-}
+type MaidClass = any
 
 export type BinderContext = {
 	tags: { string }?,

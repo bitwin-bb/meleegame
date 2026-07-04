@@ -8,10 +8,10 @@ local Workspace = game:GetService("Workspace")
 local CharacterUtils = require("CharacterUtils")
 local ContentProviderUtils = require("ContentProviderUtils")
 local Maid = require("Maid")
-local Rx = require("Rx")
+local Rx: any = require("Rx")
 
-local React = require(ReplicatedStorage.Packages.React)
-local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
+local React: any = require(ReplicatedStorage.Packages.React)
+local ReactRoblox: any = require(ReplicatedStorage.Packages.ReactRoblox)
 
 local Cloud = require("Cloud")
 local CloudConstants = require("CloudConstants")
@@ -28,12 +28,7 @@ type CloudSurfaceState = CloudServiceUtils.CloudSurfaceState
 type CloudView = CloudServiceUtils.CloudView
 type Catalog = ParallaxServiceUtils.Catalog
 
-type MaidClass = {
-	GiveTask: (self: MaidClass, task: any) -> any,
-	GivePromise: (self: MaidClass, promise: any) -> any,
-	DoCleaning: (self: MaidClass) -> (),
-	Destroy: (self: MaidClass) -> (),
-}
+type MaidClass = any
 
 type CameraSnapshot = {
 	fieldOfView: number,
@@ -488,24 +483,49 @@ local function render()
 	end
 	removeInactiveClouds()
 
-	local anchorCenterY = ParallaxServiceUtils.GetWorldHorizonParallaxCenterY(
+	local minZ = cameraPosition.Z - surfaceHalfWidth
+	local maxZ = cameraPosition.Z + surfaceHalfWidth
+	for _, cloud in activeClouds do
+		local asset = cloud.asset
+		if asset == nil or cloud.alpha <= 0.001 then
+			continue
+		end
+
+		local sizing = GetCloudSizing(visibleHeight, cloud)
+		minZ = math.min(minZ, cameraPosition.Z + cloud.currentOffsetZ - sizing.width * 0.5)
+		maxZ = math.max(maxZ, cameraPosition.Z + cloud.currentOffsetZ + sizing.width * 0.5)
+	end
+
+	local rawAnchorWidthStuds = math.max(maxZ - minZ, surfaceWidth, 1)
+	local rawAnchorCenterZ = (minZ + maxZ) * 0.5
+	minZ = rawAnchorCenterZ - rawAnchorWidthStuds * 0.5
+	maxZ = rawAnchorCenterZ + rawAnchorWidthStuds * 0.5
+
+	local horizontalOverscan = math.max(
+		rawAnchorWidthStuds * CloudConstants.SURFACE_ANCHOR_HORIZONTAL_OVERSCAN_FACTOR,
+		CloudConstants.MIN_SURFACE_ANCHOR_OVERSCAN_STUDS
+	)
+	minZ -= horizontalOverscan
+	maxZ += horizontalOverscan
+
+	local anchorWidthStuds = math.max(maxZ - minZ, 1)
+	local anchorCenterY = ParallaxServiceUtils.GetWorldHorizonCenterY(
 		worldOrigin.Y,
-		cameraPosition.Y,
 		visibleHeight,
 		CloudConstants.CLOUD_HORIZON_CENTER_OFFSET_FACTOR,
-		0,
-		CloudConstants.CLOUD_VERTICAL_PARALLAX,
-		subjectPosition
+		0
 	)
-	local anchorCenterZ = cameraPosition.Z
-	local pixelsPerStud = GetSurfacePixelsPerStud(surfaceWidth, surfaceHeight)
-	local canvasWidth = toCanvasPixels(surfaceWidth, pixelsPerStud)
+	local anchorCenterZ = (minZ + maxZ) * 0.5
+	local pixelsPerStud = GetSurfacePixelsPerStud(anchorWidthStuds, surfaceHeight)
+	local canvasWidth = toCanvasPixels(anchorWidthStuds, pixelsPerStud)
 	local canvasHeight = toCanvasPixels(surfaceHeight, pixelsPerStud)
-	currentSurfaceRuntime.anchorPart.Size = Vector3.new(catalog.settings.segmentThickness, surfaceHeight, surfaceWidth)
+	currentSurfaceRuntime.anchorPart.Size =
+		Vector3.new(catalog.settings.segmentThickness, surfaceHeight, anchorWidthStuds)
 	currentSurfaceRuntime.anchorPart.CFrame = CFrame.new(planeX, anchorCenterY, anchorCenterZ)
 	local surfaceFace = if cameraPosition.X >= planeX then Enum.NormalId.Right else Enum.NormalId.Left
 
 	local cloudViews: { CloudView } = {}
+	local anchorMinZ = anchorCenterZ - anchorWidthStuds * 0.5
 	for _, cloud in activeClouds do
 		local asset = cloud.asset
 		if asset == nil or cloud.alpha <= 0.001 then
@@ -520,7 +540,7 @@ local function render()
 			imageColor = asset.tint,
 			imageTransparency = 1 - math.clamp(cloud.alpha, 0, 1),
 			position = UDim2.fromOffset(
-				(surfaceHalfWidth + cloud.currentOffsetZ) * pixelsPerStud,
+				(cameraPosition.Z + cloud.currentOffsetZ - anchorMinZ) * pixelsPerStud,
 				cloudCenterY * pixelsPerStud
 			),
 			size = UDim2.fromOffset(sizing.width * pixelsPerStud, sizing.height * pixelsPerStud),

@@ -16,7 +16,7 @@ local InputModeServiceClient = require("InputModeServiceClient")
 local InputModeTypeSelector = require("InputModeTypeSelector")
 local InputModeTypes = require("InputModeTypes")
 local InputObjectUtils = require("InputObjectUtils")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local JumpButtonUtils = require("JumpButtonUtils")
 local MaidTaskUtils = require("MaidTaskUtils")
 local MouseShiftLockService = require("MouseShiftLockService")
@@ -24,15 +24,12 @@ local NevermoreSupport = require("NevermoreSupport")
 local PlatformServiceUtils = require("PlatformServiceUtils")
 local PlatformUIScale = require("UIScale")
 local PlayerInputModeTypes = require("PlayerInputModeTypes")
-local Rx = require("Rx")
-local RxSignal = require("RxSignal")
+local Rx: any = require("Rx")
+local RxSignal: any = require("RxSignal")
 local Signal = require("Signal")
 local XboxControls = require("Xbox")
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 type PlatformKind = PlatformServiceUtils.PlatformKind
 type PlatformStateBase = any
@@ -40,42 +37,14 @@ type ActionDefinition = any
 type ActionBinding = any
 type PromptBinding = any
 
-type SignalConnection = {
-	Disconnect: (self: SignalConnection) -> (),
-}
 
-type ObservableObject = {
-	Subscribe: (
-		self: ObservableObject,
-		fireCallback: ((...any) -> ())?,
-		failCallback: ((...any) -> ())?,
-		completeCallback: ((...any) -> ())?
-	) -> any,
-	Pipe: (self: ObservableObject, transformers: { any }) -> ObservableObject,
-}
+type ObservableObject = any
 
-type RxSignalObject = {
-	Connect: (self: RxSignalObject, callback: (...any) -> ()) -> any,
-	Once: (self: RxSignalObject, callback: (...any) -> ()) -> any,
-	Wait: (self: RxSignalObject) -> ...any,
-}
+type RxSignalObject = any
 
-type StateChangedSignal = {
-	Connect: (self: StateChangedSignal, callback: (state: PlatformClientState) -> ()) -> SignalConnection,
-	Fire: (self: StateChangedSignal, state: PlatformClientState) -> (),
-	DisconnectAll: (self: StateChangedSignal) -> (),
-	Destroy: (self: StateChangedSignal) -> (),
-}
+type StateChangedSignal = Signal.Signal<...any>
 
-type PlatformChangedSignal = {
-	Connect: (
-		self: PlatformChangedSignal,
-		callback: (nextState: PlatformClientState, prevState: PlatformClientState?) -> ()
-	) -> SignalConnection,
-	Fire: (self: PlatformChangedSignal, nextState: PlatformClientState, prevState: PlatformClientState?) -> (),
-	DisconnectAll: (self: PlatformChangedSignal) -> (),
-	Destroy: (self: PlatformChangedSignal) -> (),
-}
+type PlatformChangedSignal = Signal.Signal<...any>
 
 export type ActionPhase = string
 
@@ -92,22 +61,9 @@ export type ActionContext = {
 	isPressed: boolean,
 }
 
-type ActionDefinitionChangedSignal = {
-	Connect: (self: ActionDefinitionChangedSignal, callback: (actionName: string) -> ()) -> SignalConnection,
-	Fire: (self: ActionDefinitionChangedSignal, actionName: string) -> (),
-	DisconnectAll: (self: ActionDefinitionChangedSignal) -> (),
-	Destroy: (self: ActionDefinitionChangedSignal) -> (),
-}
+type ActionDefinitionChangedSignal = Signal.Signal<...any>
 
-type ActionTriggeredSignal = {
-	Connect: (
-		self: ActionTriggeredSignal,
-		callback: (actionName: string, phase: ActionPhase, context: ActionContext) -> ()
-	) -> SignalConnection,
-	Fire: (self: ActionTriggeredSignal, actionName: string, phase: ActionPhase, context: ActionContext) -> (),
-	DisconnectAll: (self: ActionTriggeredSignal) -> (),
-	Destroy: (self: ActionTriggeredSignal) -> (),
-}
+type ActionTriggeredSignal = Signal.Signal<...any>
 
 export type ActionListener = (phase: ActionPhase, context: ActionContext) -> boolean?
 

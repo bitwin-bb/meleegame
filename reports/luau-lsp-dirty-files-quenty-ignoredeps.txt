@@ -1,0 +1,2 @@
+WARNING: --platform is set to 'roblox' but no definitions files are provided. 'luau-lsp analyze' does not download definitions files; use `--platform=standard` to silence
+[INFO] Loading Luau configuration from c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\.luaurc

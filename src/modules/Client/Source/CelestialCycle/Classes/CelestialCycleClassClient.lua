@@ -6,10 +6,10 @@ local Workspace = game:GetService("Workspace")
 
 local ContentProviderUtils = require("ContentProviderUtils")
 local Maid = require("Maid")
-local Rx = require("Rx")
-local RxSignal = require("RxSignal")
-local Table = require("Table")
-local ValueObject = require("ValueObject")
+local Rx: any = require("Rx")
+local RxSignal: any = require("RxSignal")
+local Table: any = require("Table")
+local ValueObject: any = require("ValueObject")
 local WorkspaceFolders = require("WorkspaceFolders")
 
 local CelestialBodyRoot = require("CelestialBodyRoot")
@@ -41,7 +41,7 @@ local function cloneState(state: CelestialCycleState): CelestialCycleState
 end
 
 function CelestialCycleClassClient.new(): CelestialCycleClassClient
-	local self = setmetatable({}, CelestialCycleClassClient)
+	local self: any = setmetatable({}, CelestialCycleClassClient)
 	self.maid = Maid.new()
 	self.stateValue =
 		ValueObject.new(RotationMath.GetCycleState(Lighting.ClockTime, GetWorldDayIndex()), "table")
@@ -122,16 +122,6 @@ function CelestialCycleClassClient.Destroy(self: CelestialCycleClassClient)
 	end
 	self.initialized = false
 end
-export type CelestialCycleClassClient = typeof(setmetatable(
-	{} :: {
-		maid: any,
-		rootFolder: Folder?,
-		anchorRoot: CelestialBodyRoot.CelestialBodyRoot?,
-		stateValue: any,
-		stateChangedSignal: any,
-		initialized: boolean,
-	},
-	{} :: typeof({ __index = CelestialCycleClassClient })
-))
+export type CelestialCycleClassClient = any
 
 return Table.readonly(CelestialCycleClassClient)

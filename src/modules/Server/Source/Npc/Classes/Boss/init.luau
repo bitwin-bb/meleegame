@@ -8,7 +8,7 @@ local BossServiceUtils = require("BossServiceUtils")
 local CancelToken = require("CancelToken")
 local EyeOfCthulhuRoot = require("EyeOfCthulhuRoot")
 local Maid = require("Maid")
-local Promise = require("Promise")
+local Promise: any = require("Promise")
 
 local function fulfilledPromise(...): any
 	local args = table.pack(...)
@@ -17,10 +17,10 @@ local function fulfilledPromise(...): any
 	end)
 end
 local QueenBeeRoot = require("QueenBeeRoot")
-local Rx = require("Rx")
-local RxSignal = require("RxSignal")
+local Rx: any = require("Rx")
+local RxSignal: any = require("RxSignal")
 local Signal = require("Signal")
-local ValueObject = require("ValueObject")
+local ValueObject: any = require("ValueObject")
 local WorkspaceFolders = require("WorkspaceFolders")
 
 type BossId = BossServiceUtils.BossId
@@ -31,49 +31,17 @@ type BossPresentationState = BossServiceUtils.BossPresentationState
 type BossSnapshot = BossServiceUtils.BossSnapshot
 type BossSpawnRequest = BossServiceUtils.BossSpawnRequest
 
-type MaidClass = {
-	Add: <T>(self: MaidClass, task: T) -> T,
-	GiveTask: (self: MaidClass, task: any) -> number,
-	DoCleaning: (self: MaidClass) -> (),
-	Destroy: (self: MaidClass) -> (),
-}
+type MaidClass = any
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
-type ObservableObject = {
-	Subscribe: (
-		self: ObservableObject,
-		onFire: (...any) -> (),
-		onFail: ((...any) -> ())?,
-		onComplete: ((...any) -> ())?
-	) -> any,
-	Pipe: (self: ObservableObject, transformers: { any }) -> ObservableObject,
-}
+type ObservableObject = any
 
-type PromiseObject = {
-	Then: (self: PromiseObject, onFulfilled: ((...any) -> ...any)?, onRejected: ((...any) -> ...any)?) -> PromiseObject,
-	Catch: (self: PromiseObject, onRejected: ((...any) -> ...any)?) -> PromiseObject,
-	Finally: (self: PromiseObject, callback: ((...any) -> ...any)?) -> PromiseObject,
-	Yield: (self: PromiseObject) -> (boolean, ...any),
-	Destroy: (self: PromiseObject) -> (),
-}
+type PromiseObject = any
 
-type RxSignalObject = {
-	Connect: (self: RxSignalObject, callback: (...any) -> ()) -> any,
-	Once: (self: RxSignalObject, callback: (...any) -> ()) -> any,
-	Wait: (self: RxSignalObject) -> ...any,
-}
+type RxSignalObject = any
 
-type ValueObjectClass<T> = {
-	Value: T,
-	Observe: (self: ValueObjectClass<T>) -> ObservableObject,
-	ObserveBrio: (self: ValueObjectClass<T>, condition: ((T) -> boolean)?) -> ObservableObject,
-	Destroy: (self: ValueObjectClass<T>) -> (),
-}
+type ValueObjectClass<T> = any
 
 type BossSignals = {
 	stateChanged: SignalObject,

@@ -1,6 +1,6 @@
 local require = require(script.Parent.loader).load(script)
 
-local Table = require("Table")
+local Table: any = require("Table")
 
 local Profile = require("ParallaxProfiles")
 local WorldSimulationShared = require("Shared")
@@ -180,7 +180,7 @@ local function isPositiveNumber(valueRaw: any): boolean
 	return typeof(valueRaw) == "number" and valueRaw > 0
 end
 
-function Biome.GetBgStyle(sampleRaw: table, catalog: any?): number
+function Biome.GetBgStyle(sampleRaw: any, catalog: any?): number
 	local sample = if typeof(sampleRaw) == "table" then sampleRaw :: { [string]: any } else {} :: { [string]: any }
 	local explicitStyle = GetExplicitStyle(sample, catalog)
 	if explicitStyle ~= nil then

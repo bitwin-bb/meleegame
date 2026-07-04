@@ -30,7 +30,7 @@ local function GetGameRoot(): Instance
 end
 
 
-local gameRoot = GetGameRoot()
+local gameRoot: any = GetGameRoot()
 local EntityCatalog = require(gameRoot.Shared.Source.Commander.EntityCatalog)
 
 type EntityEntry = {

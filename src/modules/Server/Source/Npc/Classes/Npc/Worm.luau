@@ -6,34 +6,18 @@ local Workspace = game:GetService("Workspace")
 
 local CFrameUtils = require("CFrameUtils")
 local Maid = require("Maid")
-local Rx = require("Rx")
+local Rx: any = require("Rx")
 local Signal = require("Signal")
 
 local Angle = require("Angle")
 local Plane = require("Plane")
 local Vec = require("Vec")
 
-type MaidClass = {
-	GiveTask: (self: MaidClass, task: any) -> number,
-	DoCleaning: (self: MaidClass) -> (),
-	Destroy: (self: MaidClass) -> (),
-}
+type MaidClass = any
 
-export type ObservableObject = {
-	Subscribe: (
-		self: ObservableObject,
-		onNext: ((...any) -> ())?,
-		onError: ((...any) -> ())?,
-		onComplete: (() -> ())?
-	) -> any,
-	Pipe: (self: ObservableObject, transformers: { any }) -> ObservableObject,
-}
+export type ObservableObject = any
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> any,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
 export type LockedAxis = "X" | "Y" | "Z"
 export type SegmentKind = "Head" | "Body" | "Tail"

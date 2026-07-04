@@ -8,12 +8,12 @@ local Workspace = game:GetService("Workspace")
 local CharacterUtils = require("CharacterUtils")
 local ContentProviderUtils = require("ContentProviderUtils")
 local Maid = require("Maid")
-local Rx = require("Rx")
-local RxSignal = require("RxSignal")
-local ValueObject = require("ValueObject")
+local Rx: any = require("Rx")
+local RxSignal: any = require("RxSignal")
+local ValueObject: any = require("ValueObject")
 
-local React = require(ReplicatedStorage.Packages.React)
-local ReactRoblox = require(ReplicatedStorage.Packages.ReactRoblox)
+local React: any = require(ReplicatedStorage.Packages.React)
+local ReactRoblox: any = require(ReplicatedStorage.Packages.ReactRoblox)
 
 local Biome = require("ParallaxBiomeGetter")
 local Horizon = require("ParallaxHorizonGetter")
@@ -40,35 +40,13 @@ type ParallaxSurfaceState = ParallaxSlice.ParallaxSurfaceState
 type HorizonSample = Horizon.HorizonSample
 type LayerProfile = Profile.LayerProfile
 
-type MaidClass = {
-	GiveTask: (self: MaidClass, task: any) -> any,
-	GivePromise: (self: MaidClass, promise: any) -> any,
-	DoCleaning: (self: MaidClass) -> (),
-	Destroy: (self: MaidClass) -> (),
-	[string]: any,
-}
+type MaidClass = any
 
-type ObservableObject = {
-	Subscribe: (
-		self: ObservableObject,
-		fireCallback: ((...any) -> ())?,
-		failCallback: ((...any) -> ())?,
-		completeCallback: ((...any) -> ())?
-	) -> any,
-	Pipe: (self: ObservableObject, transformers: { any }) -> ObservableObject,
-}
+type ObservableObject = any
 
-type RxSignalObject = {
-	Connect: (self: RxSignalObject, callback: (...any) -> ()) -> any,
-	Once: (self: RxSignalObject, callback: (...any) -> ()) -> any,
-	Wait: (self: RxSignalObject) -> ...any,
-}
+type RxSignalObject = any
 
-type ValueObjectClass<T> = {
-	Value: T,
-	Observe: (self: ValueObjectClass<T>) -> ObservableObject,
-	Destroy: (self: ValueObjectClass<T>) -> (),
-}
+type ValueObjectClass<T> = any
 
 type CameraSnapshot = {
 	fieldOfView: number,

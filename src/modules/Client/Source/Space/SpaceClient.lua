@@ -5,18 +5,14 @@ local Players = game:GetService("Players")
 local AudioServiceClient = require("AudioServiceClient")
 local CharacterUtils = require("CharacterUtils")
 local Maid = require("Maid")
-local Promise = require("Promise")
-local Rx = require("Rx")
+local Promise: any = require("Promise")
+local Rx: any = require("Rx")
 local SpaceShared = require("SpaceShared")
 local WeatherServiceClient = require("WeatherServiceClient")
 local WorldGenerationServiceClient = require("WorldGenerationServiceClient")
 local biomeSlice = require("BiomeSlice")
 
-type MaidClass = {
-	GiveTask: (self: MaidClass, task: any) -> any,
-	GivePromise: (self: MaidClass, promise: any) -> any,
-	Destroy: (self: MaidClass) -> (),
-}
+type MaidClass = any
 
 local SpaceClient = {}
 

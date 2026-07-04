@@ -1,0 +1,106 @@
+[INFO] Loading Luau configuration from c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\.luaurc
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\findWhere.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/findWhere]:30.14-30.17: TypeError: Expected this to be 'number', but got 'number?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\update.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/update]:14.1-14.3: TypeError: Not all codepaths in this function return 'T'.
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\update.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/update]:60.19-60.25: TypeError: Value of type '((T, number) -> T)?' could be nil
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\update.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/update]:62.24-62.31: TypeError: Expected this to be
+	'(number) -> T'
+but got
+	'((number) -> T)?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\reduce.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/reduce]:36.12-36.19: TypeError: Expected this to be 'U?', but got 'T'
+caused by:
+  None of the union options are compatible. For example:
+Expected this to be 'U', but got 'T'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\reduce.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/reduce]:41.20-41.25: TypeError: Expected this to be 'U', but got 'U?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\reduce.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/reduce]:44.2-44.14: TypeError: Expected this to be 'U', but got 'U?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\zipAll.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/zipAll]:30.3-30.15: TypeError: Expected this to be 'T', but got '{{any}}'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\zipAll.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/zipAll]:48.2-48.14: TypeError: Expected this to be 'T', but got '{{any}}'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\pop.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/pop]:26.22-26.26: TypeError: Expected this to be 'number', but got 'number?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\shift.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/shift]:26.10-26.14: TypeError: Expected this to be 'number', but got 'number?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\freezeDeep.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/freezeDeep]:30.25-30.29: TypeError: Expected this to be '{never}', but got 'T'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\freezeDeep.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/freezeDeep]:36.2-36.14: TypeError: Expected this to be exactly '{T}', but got '{{never}}'
+caused by:
+  Property '[indexer value]' is not compatible.
+Expected this to be exactly 'T', but got '{never}'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\filter.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/filter]:35.6-35.14: TypeError: Value of type '((T, number, {T}) -> boolean?)?' could be nil
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\findLast.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/findLast]:25.14-25.17: TypeError: Expected this to be 'number', but got 'number?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\find.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/find]:30.27-30.31: TypeError: Expected this to be 'T', but got 'any?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\flatten.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/flatten]:31.34-31.38: TypeError: Expected this to be 'number', but got 'number?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Set\differenceSymmetric.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Set/differenceSymmetric]:35.17-35.42: TypeError: Expected this to be 'boolean', but got 'boolean?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\reduceRight.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/reduceRight]:37.12-37.23: TypeError: Expected this to be 'U?', but got 'T'
+caused by:
+  None of the union options are compatible. For example:
+Expected this to be 'U', but got 'T'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\reduceRight.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/reduceRight]:42.20-42.25: TypeError: Expected this to be 'U', but got 'U?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\reduceRight.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/reduceRight]:45.2-45.14: TypeError: Expected this to be 'U', but got 'U?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\slice.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/slice]:29.3-29.6: TypeError: Expected this to be 'number', but got 'number?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\slice.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/slice]:33.3-33.4: TypeError: Expected this to be 'number', but got 'number?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\slice.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/slice]:36.10-36.13: TypeError: Expected this to be 'number', but got 'number?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\slice.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/slice]:36.16-36.17: TypeError: Expected this to be 'number', but got 'number?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\splice.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/splice]:30.3-30.6: TypeError: Expected this to be 'number', but got 'number?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\splice.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/splice]:34.3-34.4: TypeError: Expected this to be 'number', but got 'number?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\splice.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/splice]:37.17-37.20: TypeError: Expected this to be 'number', but got 'number?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\splice.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/splice]:42.24-42.28: TypeError: Expected this to be 'T', but got 'T?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\splice.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/splice]:45.14-45.15: TypeError: Expected this to be 'number', but got 'number?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Set\fromArray.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Set/fromArray]:24.10-24.14: TypeError: Expected this to be 'number', but got 'T'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Set\fromArray.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Set/fromArray]:27.2-27.14: TypeError: Expected this to be exactly '{ [T]: boolean }', but got '{boolean}'
+caused by:
+  Property '[indexer key]' is not compatible.
+Expected this to be exactly 'T', but got 'number'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\set.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/set]:36.2-36.14: TypeError: Expected this to be exactly '{T}', but got '{T?}'
+caused by:
+  Property '[indexer value]' is not compatible.
+Expected this to be exactly 'T', but got 'T?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\equalsDeep.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/equalsDeep]:55.22-55.30: TypeError: Expected this to be exactly '{T}' from 'c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\equalsDeep.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/equalsDeep]', but got '{T}' from 'c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\equalsDeep.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/equalsDeep]'
+caused by:
+  Property '[indexer value]' is not compatible.
+Expected this to be exactly '{T}', but got 'T'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\concatDeep.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/concatDeep]:49.2-49.14: TypeError: Expected this to be exactly '{T}', but got '{{any}}'
+caused by:
+  Property '[indexer value]' is not compatible.
+Expected this to be exactly 'T', but got '{any}'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\zip.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/zip]:27.3-27.15: TypeError: Expected this to be 'T', but got '{{any}}'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\zip.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/zip]:44.2-44.14: TypeError: Expected this to be 'T', but got '{{any}}'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\findWhereLast.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/findWhereLast]:34.14-34.17: TypeError: Expected this to be 'number', but got 'number?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Array\count.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Array/count]:34.6-34.14: TypeError: Value of type '((T, number, {T}) -> any)?' could be nil
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Dictionary\map.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Dictionary/map]:37.2-37.14: TypeError: Expected this to be exactly '{ [X]: Y }', but got '{| [K | X]: Y? |}'
+caused by:
+  Property '[indexer key]' is not compatible.
+Expected this to be exactly 'X', but got 'K | X'
+caused by:
+  Not all union options are compatible.
+Expected this to be exactly 'X', but got 'K'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Dictionary\flatten.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Dictionary/flatten]:37.34-37.38: TypeError: Expected this to be 'number', but got 'number?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Dictionary\copyDeep.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Dictionary/copyDeep]:21.26-21.35: TypeError: Expected this to be '{- ['a]: 'b -}', but got 'T'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Dictionary\copyDeep.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Dictionary/copyDeep]:23.26-23.35: TypeError: Expected this to be '{- ['a]: 'b -}', but got 'T'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Dictionary\copyDeep.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Dictionary/copyDeep]:29.2-29.11: TypeError: Expected this to be 'T', but got '{- ['a]: 'b -}'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Dictionary\mergeDeep.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Dictionary/mergeDeep]:53.2-53.14: TypeError: Expected this to be 'T', but got '{| [any]: any |}'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Dictionary\entries.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Dictionary/entries]:21.31-21.35: TypeError: Expected this to be 'K', but got 'V'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Dictionary\count.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Dictionary/count]:34.6-34.14: TypeError: Value of type '((V, K, { [K]: V }) -> any)?' could be nil
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Dictionary\merge.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Dictionary/merge]:42.2-42.14: TypeError: Expected this to be 'T', but got '{| [any]: any |}'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Dictionary\some.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Dictionary/some]:29.23-29.25: TypeError: Expected this to be 'V', but got 'K'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Dictionary\filter.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Dictionary/filter]:33.6-33.14: TypeError: Value of type '((V, K, { [K]: V }) -> any)?' could be nil
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Dictionary\fromEntries.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Dictionary/fromEntries]:24.2-24.14: TypeError: Expected this to be exactly '{ [K]: V }', but got '{| [K | V]: K | V |}'
+caused by:
+  Property '[indexer key]' is not compatible.
+Expected this to be exactly 'K', but got 'K | V'
+caused by:
+  Not all union options are compatible.
+Expected this to be exactly 'K', but got 'V'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Set\count.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Set/count]:34.6-34.14: TypeError: Value of type '((T, { [T]: boolean }) -> boolean?)?' could be nil
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\csqrl_sift@0.0.11\sift\src\Set\filter.lua [game/ReplicatedStorage/Packages/_Index/csqrl_sift@0.0.11/sift/Set/filter]:33.6-33.14: TypeError: Value of type '((T, { [T]: boolean }) -> any)?' could be nil
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\kartzrbx_janitor@1.1.0\janitor\init.luau [game/ReplicatedStorage/Packages/_Index/kartzrbx_janitor@1.1.0/janitor]:57.5-57.19: TypeError: Key 'Destroy' is missing from '() -> (a...)' in the type '(() -> (a...)) | never'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\sleitnick_signal@2.0.3\signal\init.luau [game/ReplicatedStorage/Packages/_Index/sleitnick_signal@2.0.3/signal]:160.2-160.12: TypeError: Expected this to be 'Signal<T...>', but got 'self'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\sleitnick_signal@2.0.3\signal\init.luau [game/ReplicatedStorage/Packages/_Index/sleitnick_signal@2.0.3/signal]:183.2-183.21: TypeError: Cannot add property '_proxyHandler' to table 'Signal<...any>'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\sleitnick_signal@2.0.3\signal\init.luau [game/ReplicatedStorage/Packages/_Index/sleitnick_signal@2.0.3/signal]:223.27-223.36: TypeError: Expected this to be 'boolean', but got 'connection'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\sleitnick_signal@2.0.3\signal\init.luau [game/ReplicatedStorage/Packages/_Index/sleitnick_signal@2.0.3/signal]:225.27-225.36: TypeError: Expected this to be 'boolean', but got 'connection'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\sleitnick_signal@2.0.3\signal\init.luau [game/ReplicatedStorage/Packages/_Index/sleitnick_signal@2.0.3/signal]:298.26-298.30: TypeError: Expected this to be 't1 where t1 = {- Connected: boolean, _next: t1 -}', but got 'boolean'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\sleitnick_signal@2.0.3\signal\init.luau [game/ReplicatedStorage/Packages/_Index/sleitnick_signal@2.0.3/signal]:332.24-332.68: TypeError: Expected this to be 'nil', but got 'thread'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\sleitnick_signal@2.0.3\signal\init.luau [game/ReplicatedStorage/Packages/_Index/sleitnick_signal@2.0.3/signal]:334.15-334.30: TypeError: Expected this to be '((a, ...any) -> (b...)) | thread', but got 'nil'; none of the union options are compatible
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\sleitnick_signal@2.0.3\signal\init.luau [game/ReplicatedStorage/Packages/_Index/sleitnick_signal@2.0.3/signal]:380.35-380.48: TypeError: Expected this to be
+	'{| [thread]: boolean |}'
+but got
+	'{| [thread]: boolean |}?'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\sleitnick_signal@2.0.3\signal\init.luau [game/ReplicatedStorage/Packages/_Index/sleitnick_signal@2.0.3/signal]:384.2-384.15: TypeError: Value of type '{| [thread]: boolean |}?' could be nil
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\sleitnick_signal@2.0.3\signal\init.luau [game/ReplicatedStorage/Packages/_Index/sleitnick_signal@2.0.3/signal]:387.3-387.16: TypeError: Value of type '{| [thread]: boolean |}?' could be nil
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\sleitnick_signal@2.0.3\signal\init.luau [game/ReplicatedStorage/Packages/_Index/sleitnick_signal@2.0.3/signal]:387.28-387.30: TypeError: Expected this to be 'boolean', but got 'nil'
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\Packages\_Index\sleitnick_signal@2.0.3\signal\init.luau [game/ReplicatedStorage/Packages/_Index/sleitnick_signal@2.0.3/signal]:386.2-386.10: TypeError: Cannot call a value of type {| [thread]: boolean |}

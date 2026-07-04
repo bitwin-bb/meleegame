@@ -3,7 +3,7 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local HttpService = game:GetService("HttpService")
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local MaidTaskUtils = require("MaidTaskUtils")
 
 local RunService = game:GetService("RunService")

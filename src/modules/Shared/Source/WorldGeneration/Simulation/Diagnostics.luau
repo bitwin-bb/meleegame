@@ -2,7 +2,7 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Matter = require(ReplicatedStorage.Packages.Matter)
+local Matter: any = require(ReplicatedStorage.Packages.Matter)
 local TileComponent = require("Tile")
 
 local Diagnostics = {}

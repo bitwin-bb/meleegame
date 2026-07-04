@@ -11,10 +11,10 @@ local Cache = require("Cache")
 local CameraServiceUtils = require("CameraServiceUtils")
 local CatchUpPlayer = require("CatchUpPlayer")
 local Configs = require("CoreConfigs")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local Predict = require("Predict")
 local CameraBackendGetter = require("CameraBackendGetter")
-local Ripple = require(ReplicatedStorage.Packages.Ripple)
+local Ripple: any = require(ReplicatedStorage.Packages.Ripple)
 local RoomBehavior = require("Room")
 local Stack = require("CameraOverrideStack")
 local State = require("CameraOverrideState")
@@ -25,11 +25,7 @@ SideView.__index = SideView
 
 type Motion<T> = Ripple.Motion<T>
 type SpringOptions = Ripple.SpringOptions
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 export type SideViewConfig = {
 	distance: number?,

@@ -2,10 +2,10 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 
 local BossServiceUtils = require("BossServiceUtils")
-local Charm = require(ReplicatedStorage.Packages.Charm)
+local Charm: any = require(ReplicatedStorage.Packages.Charm)
 
 export type MarkerState = BossServiceUtils.BossServiceState
 type BossSnapshot = BossServiceUtils.BossSnapshot

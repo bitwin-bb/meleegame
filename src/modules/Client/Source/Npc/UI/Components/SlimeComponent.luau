@@ -10,7 +10,7 @@ local Sprite = require("Sprite")
 
 local NpcServiceUtils = require("NpcServiceUtils")
 local NpcSlice = require("NpcSlice")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local SlimeSpriteSheet = require("SlimeSpriteSheet")
 local SlimeTints = require("SlimeTints")
 local WorkspaceFolders = require("WorkspaceFolders")

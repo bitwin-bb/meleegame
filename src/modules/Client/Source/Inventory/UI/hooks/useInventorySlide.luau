@@ -4,8 +4,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RunService = game:GetService("RunService")
 
-local React = require(ReplicatedStorage.Packages.React)
-local Ripple = require(ReplicatedStorage.Packages.Ripple)
+local React: any = require(ReplicatedStorage.Packages.React)
+local Ripple: any = require(ReplicatedStorage.Packages.Ripple)
 
 type NumberMotion = Ripple.Motion<number>
 type SpringOptions = Ripple.SpringOptions

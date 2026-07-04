@@ -4,16 +4,16 @@ local CollectionService = game:GetService("CollectionService")
 local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local Workspace = game:GetService("Workspace")
 
-local Brio = require("Brio")
+local Brio: any = require("Brio")
 local Maid = require("Maid")
 local Octree = require("Octree")
-local Queue = require("Queue")
-local Rx = require("Rx")
-local RxBrioUtils = require("RxBrioUtils")
-local RxSignal = require("RxSignal")
+local Queue: any = require("Queue")
+local Rx: any = require("Rx")
+local RxBrioUtils: any = require("RxBrioUtils")
+local RxSignal: any = require("RxSignal")
 local Signal = require("Signal")
 
 local Biome = require(script:WaitForChild("Biome"))
@@ -39,48 +39,16 @@ type StructureGenerationResult = Structures.StructureGenerationResult
 type CacheClass = Cache.Cache
 type ColumnProfile = Biome.ColumnProfile
 type ProceduralTreeConfig = ProceduralTree.ProceduralTreeConfig
-type MaidClass = {
-	Add: <T>(self: MaidClass, task: T) -> T,
-	GiveTask: (self: MaidClass, task: any) -> number,
-	Destroy: (self: MaidClass) -> (),
-	DoCleaning: (self: MaidClass) -> (),
-}
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
-type ObservableObject = {
-	Subscribe: (
-		self: ObservableObject,
-		fireCallback: ((...any) -> ())?,
-		failCallback: ((...any) -> ())?,
-		completeCallback: ((...any) -> ())?
-	) -> any,
-	Pipe: (self: ObservableObject, transformers: { any }) -> ObservableObject,
-}
-type RxSignalObject = {
-	Connect: (self: RxSignalObject, callback: (...any) -> ()) -> any,
-	Once: (self: RxSignalObject, callback: (...any) -> ()) -> any,
-	Wait: (self: RxSignalObject) -> ...any,
-}
-type BrioObject = {
-	IsDead: (self: BrioObject) -> boolean,
-	GetValue: (self: BrioObject) -> ...any,
-	GetDiedSignal: (self: BrioObject) -> SignalObject,
-	ToMaid: (self: BrioObject) -> MaidClass,
-	Kill: (self: BrioObject) -> (),
-}
+type MaidClass = any
+type SignalObject = Signal.Signal<...any>
+type ObservableObject = any
+type RxSignalObject = any
+type BrioObject = any
 type OctreeNodeObject = {
 	SetPosition: (self: OctreeNodeObject, position: Vector3) -> (),
 	Destroy: (self: OctreeNodeObject) -> (),
 }
-type QueueClass<T> = {
-	GetCount: (self: QueueClass<T>) -> number,
-	IsEmpty: (self: QueueClass<T>) -> boolean,
-	PushRight: (self: QueueClass<T>, value: T) -> (),
-	PopLeft: (self: QueueClass<T>) -> T,
-}
+type QueueClass<T> = any
 
 type TreeVariantConfig = {
 	config: ProceduralTreeConfig,

@@ -91,8 +91,8 @@ function HazardBinder.onTouched(self: any, other: BasePart)
 		return
 	end
 
-	local player = ModelBinder.GetPlayer(other)
-	local humanoid = ModelBinder.GetHumanoid(other)
+	local player = (ModelBinder :: any).GetPlayer(other)
+	local humanoid = (ModelBinder :: any).GetHumanoid(other)
 	local cooldownKey = if player ~= nil
 		then player :: Instance
 		else if humanoid ~= nil then humanoid :: Instance else other

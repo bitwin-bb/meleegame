@@ -1,19 +1,15 @@
 local require = require(script.Parent.loader).load(script)
 
 
-local Rx = require("Rx") :: any
-local RxSignal = require("RxSignal") :: any
+local Rx: any = require("Rx") :: any
+local RxSignal: any = require("RxSignal") :: any
 
 local EventName = require("EventName")
 local Signal = require("Signal")
 
-type Signal = Signal.Signal
+type Signal = Signal.Signal<...any>
 
-type RxSignalObject = {
-	Connect: (self: RxSignalObject, callback: (...any) -> ()) -> any,
-	Once: (self: RxSignalObject, callback: (...any) -> ()) -> any,
-	Wait: (self: RxSignalObject) -> ...any,
-}
+type RxSignalObject = any
 
 local EventBus = {}
 EventBus.__index = EventBus

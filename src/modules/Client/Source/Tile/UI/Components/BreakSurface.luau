@@ -4,7 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Flipbook = require("Flipbook")
 local FlipbookPlayer = require("FlipbookPlayer")
 local Maid = require("Maid")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 
 local tileSlice = require("TileSlice")
 local useBreakAnim = require("useBreakAnim")

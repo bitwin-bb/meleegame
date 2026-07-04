@@ -3,7 +3,7 @@ local require = require(script.Parent.loader).load(script)
 local PhysicsService = game:GetService("PhysicsService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Fusion = require(ReplicatedStorage.Packages.Fusion)
+local Fusion: any = require(ReplicatedStorage.Packages.Fusion)
 local ImageIds = require("ImageIds")
 local ItemIcons = require("ItemIcons")
 local ItemRegistry = require("ItemRegistry")
@@ -25,10 +25,7 @@ export type LootItemServerConfig = {
 
 type IconMap = { [any]: any }
 type ItemDefinition = { [string]: any }
-type MaidClass = {
-	GiveTask: (self: MaidClass, task: any) -> number,
-	DoCleaning: (self: MaidClass) -> (),
-}
+type MaidClass = any
 type CoinSpriteSheet = {
 	image: string,
 	frameSize: Vector2,

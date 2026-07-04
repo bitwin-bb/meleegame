@@ -1,15 +1,11 @@
 local require = require(script.Parent.loader).load(script)
 
 local Maid = require("Maid")
-local Rx = require("Rx")
+local Rx: any = require("Rx")
 
 local Shiny = require("Shiny")
 
-type MaidClass = {
-	GiveTask: (self: MaidClass, task: any) -> number,
-	Destroy: (self: MaidClass) -> (),
-	[any]: any,
-}
+type MaidClass = any
 
 local TileBinder = {}
 TileBinder.__index = TileBinder

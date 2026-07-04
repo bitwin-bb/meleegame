@@ -6,7 +6,7 @@ local RunService = game:GetService("RunService")
 local Flipbook = require("Flipbook")
 local FlipbookPlayer = require("FlipbookPlayer")
 local Maid = require("Maid")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 
 type FrameSlice = {
 	offset: Vector2,
@@ -308,7 +308,7 @@ local function Gif(props: GifProps)
 				if looped then
 					player:Play()
 				else
-					player:PromisePlayRepeat(1):Then(function()
+					(player:PromisePlayRepeat(1) :: any):Then(function()
 						if alive and props.onCompleted ~= nil then
 							props.onCompleted()
 						end

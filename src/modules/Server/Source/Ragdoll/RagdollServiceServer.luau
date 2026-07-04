@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local RagdollServicePackets = require("NetPacketsShared").RagdollService
 
@@ -61,11 +61,7 @@ type CharacterRig = RagdollServiceUtils.CharacterRig
 type RagdollContext = RagdollServiceUtils.RagdollContext
 type RagdollServiceState = RagdollServiceUtils.RagdollServiceState
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 type PlayerRuntime = {
 	playerJanitor: JanitorClass,

@@ -7,7 +7,7 @@ local Workspace = game:GetService("Workspace")
 
 local Cleanup = require("Cleanup")
 local PlatformServiceUtils = require("PlatformServiceUtils")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 
 type PlatformState = PlatformServiceUtils.PlatformState
 

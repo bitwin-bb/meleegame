@@ -4,16 +4,8 @@ local Signal = require("Signal")
 
 local GamepadTargetServiceClient = {}
 
-type SignalConnection = {
-	Disconnect: (self: SignalConnection) -> (),
-}
 
-type TargetChangedSignal = {
-	Connect: (self: TargetChangedSignal, callback: (worldPosition: Vector3?) -> ()) -> SignalConnection,
-	Fire: (self: TargetChangedSignal, worldPosition: Vector3?) -> (),
-	DisconnectAll: (self: TargetChangedSignal) -> (),
-	Destroy: (self: TargetChangedSignal) -> (),
-}
+type TargetChangedSignal = Signal.Signal<...any>
 
 local POSITION_EPSILON = 1e-4
 local SCREEN_VECTOR_EPSILON = 1e-4

@@ -30,7 +30,7 @@ local function GetGameRoot(): Instance
 end
 
 
-local gameRoot = GetGameRoot()
+local gameRoot: any = GetGameRoot()
 local WeatherServiceUtils = require(gameRoot.Shared.Source.World.WeatherServiceUtils)
 
 local WEATHER_OPTIONS = {

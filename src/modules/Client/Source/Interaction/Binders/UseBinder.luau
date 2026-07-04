@@ -166,11 +166,11 @@ function UseBinder.onTriggered(self: any)
 
 	local route = self.instance:GetAttribute("UseRoute")
 	if route == "UseSelectedSlot" or route == "SelectedSlot" then
-		getInventoryServiceClient():useSelectedSlot(1)
+		getInventoryServiceClient():UseSelectedSlot(1)
 		return
 	end
 	if route == "PlaceSelectedDeployable" then
-		getInventoryServiceClient():requestPlaceSelectedDeployable()
+		getInventoryServiceClient():RequestPlaceSelectedDeployable()
 	end
 end
 

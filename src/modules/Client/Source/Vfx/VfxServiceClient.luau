@@ -4,7 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RunService = game:GetService("RunService")
 
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local VFXServicePackets = require("NetPacketsShared").VFXService
 
@@ -42,11 +42,7 @@ local VFXServiceUtils = require("VfxServiceUtils")
 
 type VFXPlaybackOptions = VFXServiceUtils.VFXPlaybackOptions
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 local VFXServiceClient = {}
 

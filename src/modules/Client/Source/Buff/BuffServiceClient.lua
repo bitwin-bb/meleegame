@@ -6,7 +6,7 @@ local Players = game:GetService("Players")
 local BuffConstants = require("BuffConstants")
 local BuffHandlerClient = require("BuffHandlerClient")
 local Maid = require("Maid")
-local Promise = require("Promise")
+local Promise: any = require("Promise")
 
 local function fulfilledPromise(...): any
 	local args = table.pack(...)
@@ -14,7 +14,7 @@ local function fulfilledPromise(...): any
 		fulfill(table.unpack(args, 1, args.n))
 	end)
 end
-local Rx = require("Rx")
+local Rx: any = require("Rx")
 local Signal = require("Signal")
 local buffUtils = require("BuffUtils")
 
@@ -23,17 +23,9 @@ BuffServiceClient.ServiceName = BuffConstants.CLIENT_SERVICE_NAME
 
 export type BuffRecord = buffUtils.BuffRecord
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> any,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
-type MaidClass = {
-	GiveTask: (self: MaidClass, task: any) -> number,
-	Destroy: (self: MaidClass) -> (),
-	[any]: any,
-}
+type MaidClass = any
 
 local function createRejectedPromise(message: string)
 	return Promise.rejected(message)

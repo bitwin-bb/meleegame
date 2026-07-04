@@ -1,6 +1,6 @@
 local require = require(script.Parent.loader).load(script)
 
-local Table = require("Table")
+local Table: any = require("Table")
 
 local OVERWORLD_DAY_ASSET_ID = "rbxassetid://122358683605709"
 local ALTERNATE_DAY_ASSET_ID = "rbxassetid://120374478041198"

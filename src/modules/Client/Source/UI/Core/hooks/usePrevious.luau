@@ -1,7 +1,7 @@
 local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 
 local function usePrevious<T>(value: T): T?
 	local ref = React.useRef(nil :: T?)

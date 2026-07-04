@@ -3,9 +3,9 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BuffScreen = require("BuffScreen")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local Responsive = require("useViewportScale")
-local Table = require("Table")
+local Table: any = require("Table")
 
 export type BuffRightSideBarProps = {
 	records: { any }?,

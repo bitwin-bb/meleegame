@@ -8,7 +8,7 @@ local BuffShared = require("BuffShared")
 local CharacterUtils = require("CharacterUtils")
 local Maid = require("Maid")
 local Octree = require("Octree")
-local Promise = require("Promise")
+local Promise: any = require("Promise")
 
 local function fulfilledPromise(...): any
 	local args = table.pack(...)
@@ -16,9 +16,9 @@ local function fulfilledPromise(...): any
 		fulfill(table.unpack(args, 1, args.n))
 	end)
 end
-local Rx = require("Rx")
+local Rx: any = require("Rx")
 local Signal = require("Signal")
-local Table = require("Table")
+local Table: any = require("Table")
 local buffUtils = require("BuffUtils")
 
 local BuffService = {}
@@ -26,18 +26,9 @@ BuffService.ServiceName = BuffConstants.SERVER_SERVICE_NAME
 
 export type BuffRecord = buffUtils.BuffRecord
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> any,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
-type MaidClass = {
-	GiveTask: (self: MaidClass, task: any) -> number,
-	DoCleaning: (self: MaidClass) -> (),
-	Destroy: (self: MaidClass) -> (),
-	[any]: any,
-}
+type MaidClass = any
 
 type BuffAreaSource = {
 	id: string,
@@ -190,7 +181,7 @@ end
 
 function BuffService.LoadDefinitionModule(self: BuffService, moduleScript: ModuleScript, kindFallback: string)
 	local ok, definitionOrError = pcall(function()
-		return require(moduleScript)
+		return require(moduleScript :: any)
 	end)
 
 	if not ok then

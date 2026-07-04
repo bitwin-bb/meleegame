@@ -4,7 +4,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local Maid = require("Maid")
-local Rx = require("Rx")
+local Rx: any = require("Rx")
 local Signal = require("Signal")
 
 local Bee = require(script:WaitForChild("Bee"))
@@ -28,17 +28,9 @@ local QueenBeeBossController = {}
 QueenBeeBossController.__index = QueenBeeBossController
 setmetatable(QueenBeeBossController, { __index = BossBase })
 
-type MaidClass = {
-	GiveTask: (self: MaidClass, task: any) -> any,
-	DoCleaning: (self: MaidClass) -> (),
-	Destroy: (self: MaidClass) -> (),
-}
+type MaidClass = any
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> any,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
 type Services = {
 	damagePlayer: ((player: Player, damage: number, owner: any?) -> any)?,

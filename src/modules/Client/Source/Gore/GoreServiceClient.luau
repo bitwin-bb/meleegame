@@ -3,12 +3,12 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Players = game:GetService("Players")
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local Workspace = game:GetService("Workspace")
 
 local Gore = require("Gore")
 local GoreServiceUtils = require("GoreServiceUtils")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local GoreServicePackets = require("NetPacketsShared").GoreService
 
@@ -55,11 +55,7 @@ local function bindPackets(self: any)
 	bindPacket(self, "spawnGibs")
 end
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> any,
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 local GoreServiceClient = {}
 local NPC_RUNTIME_ID_ATTRIBUTE = "NpcRuntimeId"

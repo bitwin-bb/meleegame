@@ -2,9 +2,9 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Charm = require(ReplicatedStorage.Packages.Charm)
+local Charm: any = require(ReplicatedStorage.Packages.Charm)
 local Cleanup = require("Cleanup")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local useLatest = require("useLatest")
 
 export type StoreOptions<TSelected> = {

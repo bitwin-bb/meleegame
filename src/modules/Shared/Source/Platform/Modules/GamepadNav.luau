@@ -2,7 +2,7 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GuiService = game:GetService("GuiService")
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local UserInputService = game:GetService("UserInputService")
 
 local MaidTaskUtils = require("MaidTaskUtils")
@@ -75,25 +75,12 @@ type LayoutRecord = {
 
 export type GamepadNav = typeof(setmetatable({} :: any, GamepadNav))
 
-type SignalConnection = {
-	Disconnect: (self: SignalConnection) -> (),
-}
 
-type FocusChangedSignal = {
-	Connect: (self: FocusChangedSignal, callback: FocusCallback) -> SignalConnection,
-	Fire: (self: FocusChangedSignal, nextFocused: GuiObject?, prevFocused: GuiObject?) -> (),
-	DisconnectAll: (self: FocusChangedSignal) -> (),
-	Destroy: (self: FocusChangedSignal) -> (),
-}
+type FocusChangedSignal = Signal.Signal<...any>
 
 type ThumbstickChangedCallback = (snapshot: ThumbstickSnapshot) -> ()
 
-type ThumbstickChangedSignal = {
-	Connect: (self: ThumbstickChangedSignal, callback: ThumbstickChangedCallback) -> SignalConnection,
-	Fire: (self: ThumbstickChangedSignal, snapshot: ThumbstickSnapshot) -> (),
-	DisconnectAll: (self: ThumbstickChangedSignal) -> (),
-	Destroy: (self: ThumbstickChangedSignal) -> (),
-}
+type ThumbstickChangedSignal = Signal.Signal<...any>
 
 local function clampInteger(valueRaw: any, fallback: number, minValue: number, maxValue: number): number
 	local value = if typeof(valueRaw) == "number" then math.floor(valueRaw) else fallback

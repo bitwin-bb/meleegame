@@ -6,7 +6,7 @@ local BreathRoot = require("BreathRoot")
 local BuffRoot = require("BuffRoot")
 local ManaRoot = require("ManaRoot")
 local NavButton = require("NavButton")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local Responsive = require("useViewportScale")
 
 local e: typeof(React.createElement) = React.createElement

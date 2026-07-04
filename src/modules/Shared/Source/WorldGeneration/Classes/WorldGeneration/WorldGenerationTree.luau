@@ -2,7 +2,7 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local Workspace = game:GetService("Workspace")
 local Height = require("Height")
 local TagBinder = require("TagBinder")
@@ -470,6 +470,9 @@ local function applyWindFoliageMetadata(treeModel: Model, rootPart: BasePart, co
 	treeModel:SetAttribute("WindFoliageGustSensitivity", gustSensitivity)
 	treeModel:SetAttribute("WindFoliageDisturbanceSensitivity", disturbanceSensitivity)
 	treeModel:SetAttribute("WindFoliageTranslationWeight", 0)
+	treeModel:SetAttribute("WindFoliageTweenSmoothingEnabled", false)
+	treeModel:SetAttribute("WindFoliageTweenSmoothingDuration", 0)
+	treeModel:SetAttribute("WindFoliageTweenSmoothingMaxDuration", 0)
 end
 
 local function GetInitialLength(config: ProceduralTreeRuntimeConfig, seed: number): number

@@ -10,16 +10,7 @@ local Table = Nevermore.Get("Table")
 local AnimationHandler = {}
 AnimationHandler.__index = AnimationHandler
 
-export type AnimationHandler = typeof(setmetatable(
-	{} :: {
-		maid: any,
-		animator: (Animator | Humanoid)?,
-		animations: { [string]: string },
-		tracks: { [string]: AnimationTrack },
-		finished: { [string]: boolean },
-	},
-	AnimationHandler
-))
+export type AnimationHandler = any
 
 function AnimationHandler.new(animatorRaw: any?, animationsRaw: { [string]: string }?): AnimationHandler
 	return setmetatable({

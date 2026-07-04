@@ -3,7 +3,7 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
@@ -11,7 +11,7 @@ local BossServiceUtils = require("BossServiceUtils")
 local ImageIds = require("ImageIds")
 local Layer = require("Layer")
 local Marker = require("Marker")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local markerSlice = require("MarkerSlice")
 local markerThunks = require("MarkerThunks")
 local useStore = require("useCoreStore")

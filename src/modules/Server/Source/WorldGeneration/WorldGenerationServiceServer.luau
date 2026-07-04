@@ -4,8 +4,8 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local Maid = require("Maid")
-local Rx = require("Rx")
-local RxSignal = require("RxSignal")
+local Rx: any = require("Rx")
+local RxSignal: any = require("RxSignal")
 local Signal = require("Signal")
 
 local Configs = require("CoreConfigs")
@@ -65,29 +65,10 @@ local WorldSimulationServiceServer = require("WorldSimulationServiceServer")
 type WorldGenerationClass = WorldGeneration.WorldGeneration
 type WorldGenerationConfig = WorldGenerationServiceUtils.WorldGenerationConfig
 type WorldGenerationServiceState = WorldGenerationServiceUtils.WorldGenerationServiceState
-type MaidClass = {
-	Add: <T>(self: MaidClass, task: T) -> T,
-	GiveTask: (self: MaidClass, task: any) -> number,
-	DoCleaning: (self: MaidClass) -> (),
-	Destroy: (self: MaidClass) -> (),
-}
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
-type ObservableObject = {
-	Subscribe: (
-		self: ObservableObject,
-		fireCallback: ((...any) -> ())?,
-		failCallback: ((...any) -> ())?,
-		completeCallback: ((...any) -> ())?
-	) -> any,
-	Pipe: (self: ObservableObject, transformers: { any }) -> ObservableObject,
-}
-type RxSignalObject = {
-	Connect: (self: RxSignalObject, callback: (...any) -> ()) -> any,
-}
+type MaidClass = any
+type SignalObject = Signal.Signal<...any>
+type ObservableObject = any
+type RxSignalObject = any
 
 type PlayerRenderSettings = {
 	renderDistanceChunks: number,

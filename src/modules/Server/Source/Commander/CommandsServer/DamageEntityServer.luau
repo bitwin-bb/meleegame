@@ -30,20 +30,7 @@ type NpcRuntime = {
 	},
 }
 
-type BossObject = {
-	id: string,
-	bossId: string,
-	displayName: string,
-	hp: number,
-	maxHp: number,
-	isAlive: boolean,
-	isDestroyed: boolean?,
-	planeX: number?,
-	position: Vector3?,
-	rootPart: BasePart?,
-	model: Model?,
-	takeDamage: (self: BossObject, damageRaw: any, sourceRaw: any?, contextRaw: any?) -> number,
-}
+type BossObject = any
 
 local KILL_DAMAGE = 10 ^ 9
 

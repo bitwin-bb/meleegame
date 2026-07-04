@@ -2,8 +2,8 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Charm = require(ReplicatedStorage.Packages.Charm)
-local Table = require("Table")
+local Charm: any = require(ReplicatedStorage.Packages.Charm)
+local Table: any = require("Table")
 
 local CelestialCycleTypes = require("CelestialCycleTypes")
 

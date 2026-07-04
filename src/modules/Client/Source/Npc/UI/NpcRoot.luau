@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local EyeOfCthulhuScreen = require("EyeOfCthulhuScreen")
 local EyeOfCthulhuServantScreen = require("EyeOfCthulhuServantScreen")
 local QueenBeeScreen = require("QueenBeeScreen")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local SlimeScreen = require("SlimeScreen")
 
 type NpcRootProps = {

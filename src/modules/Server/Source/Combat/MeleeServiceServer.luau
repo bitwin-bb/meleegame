@@ -9,7 +9,7 @@ local Workspace = game:GetService("Workspace")
 local BossServiceServer = require("BossServiceServer")
 local InventoryServiceServer = require("InventoryServiceServer")
 local InventoryServiceUtils = require("InventoryServiceUtils")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local Melee = require("Melee")
 local MeleeServiceUtils = require("MeleeServiceUtils")
 local PacketPayload = require("PacketPayload")
@@ -52,35 +52,26 @@ local NevermoreSupport = require("NevermoreSupport")
 local NpcServiceServer = require("NpcServiceServer")
 local PlayerServiceServer = require("PlayerServiceServer")
 local RagdollServiceServer = require("RagdollServiceServer")
-local RaycastHitbox = require("RaycastHitbox")
+local RaycastHitbox: any = require("RaycastHitbox")
 local BinderSupportServer = require("BinderSupportServer")
 
 type MeleeWeaponConfig = MeleeServiceUtils.MeleeWeaponConfig
 type InventoryState = InventoryServiceUtils.InventoryState
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Clean: (self: JanitorClass) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
 type MeleeController = {
-	inputBegan: (self: MeleeController, triggerRaw: any) -> boolean,
-	inputEnded: (self: MeleeController, triggerRaw: any) -> boolean,
-	setCharacter: (self: MeleeController, characterRaw: any) -> (),
-	destroy: (self: MeleeController) -> (),
+	InputBegan: (self: MeleeController, triggerRaw: any) -> boolean,
+	InputEnded: (self: MeleeController, triggerRaw: any) -> boolean,
+	SetCharacter: (self: MeleeController, characterRaw: any) -> (),
+	Destroy: (self: MeleeController) -> (),
 }
 
 type HitboxConnection = {
 	Disconnect: (self: HitboxConnection) -> (),
 }
 
-type HitboxSignal = {
-	Connect: (
-		self: HitboxSignal,
-		callback: (part: BasePart, humanoid: Humanoid?, raycastResult: RaycastResult?, group: string?) -> ()
-	) -> HitboxConnection,
-}
+type HitboxSignal = any
 
 type HitboxObject = {
 	RaycastParams: RaycastParams?,
@@ -413,7 +404,7 @@ end
 
 function MeleeServiceServer.Init(self: MeleeServiceServer)
 	bindPackets(self)
-	self.inventoryService = InventoryServiceServer :: InventoryServiceServerObject
+	self.inventoryService = InventoryServiceServer :: any
 	self.ragdollService = RagdollServiceServer :: RagdollServiceServerObject
 	self.playerRuntimes = {}
 	(self :: any).binders = NevermoreSupport.GetService(BinderSupportServer)

@@ -202,7 +202,7 @@ local function getSortedModuleNames(modulesByKey: { [string]: { ModuleScript } }
 end
 
 local function tryRequireCommandDefinition(moduleScript: ModuleScript): (boolean, any, string?)
-	local ok, result = pcall(require, moduleScript)
+	local ok, result = pcall(require, moduleScript :: any)
 	if not ok then
 		return false,
 			nil,
@@ -226,7 +226,7 @@ local function tryRequireCommandDefinition(moduleScript: ModuleScript): (boolean
 end
 
 local function tryRequireCommandExecutor(moduleScript: ModuleScript): (boolean, any, string?)
-	local ok, result = pcall(require, moduleScript)
+	local ok, result = pcall(require, moduleScript :: any)
 	if not ok then
 		return false,
 			nil,

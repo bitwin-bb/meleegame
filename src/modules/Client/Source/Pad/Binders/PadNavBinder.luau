@@ -2,28 +2,16 @@ local require = require(script.Parent.loader).load(script)
 
 local Maid = require("Maid")
 local Observable = require("Observable")
-local Rx = require("Rx")
+local Rx: any = require("Rx")
 
 local CoreRuntime = require("CoreRuntime")
 local GamepadNav = require("GamepadNav")
 local PlatformServiceClient = require("PlatformServiceClient")
 local padSlice = require("PadSlice")
 
-type ObservableObject = {
-	Subscribe: (
-		self: ObservableObject,
-		fireCallback: ((...any) -> ())?,
-		failCallback: ((...any) -> ())?,
-		completeCallback: ((...any) -> ())?
-	) -> any,
-	Pipe: (self: ObservableObject, transformers: { any }) -> ObservableObject,
-}
+type ObservableObject = any
 
-type MaidClass = {
-	GiveTask: (self: MaidClass, task: any) -> any,
-	DoCleaning: (self: MaidClass) -> (),
-	Destroy: (self: MaidClass) -> (),
-}
+type MaidClass = any
 
 type ThumbstickState = {
 	key: "Left" | "Right",

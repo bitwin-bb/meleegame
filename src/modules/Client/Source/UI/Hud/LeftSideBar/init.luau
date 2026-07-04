@@ -4,7 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local HotbarLeftSideBar = require("HotbarLeftSideBar")
 local NavButton = require("NavButton")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local Responsive = require("useViewportScale")
 local inventorySlice = require("InventorySlice")
 local useStore = require("useCoreStore")

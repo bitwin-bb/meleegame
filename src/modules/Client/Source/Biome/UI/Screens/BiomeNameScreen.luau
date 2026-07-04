@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ImageIds = require("ImageIds")
 local Layer = require("Layer")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local Scale = require("Scale")
 local biomeSlice = require("BiomeSlice")
 local biomeThunks = require("BiomeThunks")

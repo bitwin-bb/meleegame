@@ -1,6 +1,6 @@
 local require = require(script.Parent.loader).load(script)
 
-local Table = require("Table")
+local Table: any = require("Table")
 
 return table.freeze(Table.copy({
 	image = "rbxassetid://112548159625239",

@@ -1,0 +1,22 @@
+[INFO] Loading Luau configuration from c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\.luaurc
+src/modules/Client/Source/World/Classes/WindFoliage/FoliageUpdateManager.luau:5.22-5.52: TypeError: Unknown require: unsupported path
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\src\modules\Client\Source\World\Classes\WindFoliage\FoliageInstance.luau [game/ServerScriptService/AquariaBackup/game/Client/Source/World/Classes/WindFoliage/FoliageInstance]:6.22-6.52: TypeError: Unknown require: unsupported path
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\src\modules\Client\Source\World\Classes\WindFoliage\FoliageInstance.luau [game/ServerScriptService/AquariaBackup/game/Client/Source/World/Classes/WindFoliage/FoliageInstance]:9.25-9.58: TypeError: Unknown require: unsupported path
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\src\modules\Client\Source\World\Classes\WindFoliage\FoliageUpdateManager.luau [game/ServerScriptService/AquariaBackup/game/Client/Source/World/Classes/WindFoliage/FoliageUpdateManager]:5.22-5.52: TypeError: Unknown require: unsupported path
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\src\modules\Shared\Source\Core\TagQuery.luau [game/ServerScriptService/AquariaBackup/game/Shared/Source/Core/TagQuery]:4.22-4.52: TypeError: Unknown require: unsupported path
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\src\modules\Shared\Source\Core\TagQuery.luau [game/ServerScriptService/AquariaBackup/game/Shared/Source/Core/TagQuery]:73.11-73.35: TypeError: Cannot cast 'Signal<a...>' into 'TagSignal' because the types are unrelated
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\src\modules\Shared\Source\Core\TickScheduler.luau [game/ServerScriptService/AquariaBackup/game/Shared/Source/Core/TickScheduler]:5.22-5.52: TypeError: Unknown require: unsupported path
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\src\modules\Shared\Source\Core\Codec.luau [game/ServerScriptService/AquariaBackup/game/Shared/Source/Core/Codec]:5.22-5.52: TypeError: Unknown require: unsupported path
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\src\modules\Shared\Source\Core\AttributeCache.luau [game/ServerScriptService/AquariaBackup/game/Shared/Source/Core/AttributeCache]:4.22-4.52: TypeError: Unknown require: unsupported path
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\src\modules\Shared\Source\Core\AttributeCache.luau [game/ServerScriptService/AquariaBackup/game/Shared/Source/Core/AttributeCache]:127.11-127.48: TypeError: Cannot cast 'Signal<a...>' into 'AttributeChangedSignal' because the types are unrelated
+src/modules/Client/Source/World/Classes/WindFoliage/init.luau:11.25-11.58: TypeError: Unknown require: unsupported path
+src/modules/Client/Source/World/Classes/WindFoliage/init.luau:18.28-18.60: TypeError: Unknown require: unsupported path
+src/modules/Client/Source/World/Classes/WindFoliage/init.luau:19.41-19.80: TypeError: Unknown require: unsupported path
+src/modules/Client/Source/World/Classes/WindFoliage/init.luau:20.33-20.70: TypeError: Unknown require: unsupported path
+src/modules/Client/Source/World/Classes/WindFoliage/init.luau:21.38-21.80: TypeError: Unknown require: unsupported path
+src/modules/Client/Source/World/Classes/WindFoliage/init.luau:22.31-22.66: TypeError: Unknown require: unsupported path
+src/modules/Client/Source/World/Classes/WindFoliage/init.luau:23.37-23.78: TypeError: Unknown require: unsupported path
+src/modules/Client/Source/World/Classes/WindFoliage/init.luau:24.27-24.58: TypeError: Unknown require: unsupported path
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\src\modules\Shared\Source\WorldGeneration\Modules\WorldGenerationColor.luau [game/ServerScriptService/AquariaBackup/game/Shared/Source/WorldGeneration/Modules/WorldGenerationColor]:5.22-5.52: TypeError: Unknown require: unsupported path
+c:\Users\bitwi\Downloads\RobloxProjects\aquaria-backup\src\modules\Shared\Source\WorldGeneration\Components\Tile.luau [game/ServerScriptService/AquariaBackup/game/Shared/Source/WorldGeneration/Components/Tile]:5.24-5.56: TypeError: Unknown require: unsupported path
+src/modules/Shared/Source/WorldGeneration/Classes/WorldGeneration/WorldGenerationTree.luau:5.22-5.52: TypeError: Unknown require: unsupported path

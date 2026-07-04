@@ -61,8 +61,8 @@ local runtime = {
 	hoveredRuntimeId = nil :: string?,
 	hoveredModel = nil :: Model?,
 	highlight = nil :: Highlight?,
-	npcStateChangedConnection = nil :: RBXScriptConnection?,
-	bossStateChangedConnection = nil :: RBXScriptConnection?,
+	npcStateChangedConnection = nil :: any?,
+	bossStateChangedConnection = nil :: any?,
 	renderSteppedConnection = nil :: RBXScriptConnection?,
 }
 

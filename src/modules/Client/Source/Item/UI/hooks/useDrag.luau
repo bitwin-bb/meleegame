@@ -7,11 +7,11 @@ local UserInputService = game:GetService("UserInputService")
 
 local AudioRegistry = require("Audio")
 local AudioServiceUtils = require("AudioServiceUtils")
-local Charm = require(ReplicatedStorage.Packages.Charm)
+local Charm: any = require(ReplicatedStorage.Packages.Charm)
 local Configs = require("CoreConfigs")
 local Damp = require("Damp")
 local InventoryServiceUtils = require("InventoryServiceUtils")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local itemSlice = require("ItemSlice")
 
 type ItemDragState = itemSlice.ItemDragState

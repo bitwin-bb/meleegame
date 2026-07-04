@@ -4,7 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local BaseUIScaling = require("UIScaling")
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local MaidTaskUtils = require("MaidTaskUtils")
 local PlatformServiceUtils = require("PlatformServiceUtils")
 local Signal = require("Signal")
@@ -14,21 +14,10 @@ type PlatformKind = PlatformServiceUtils.PlatformKind
 type DeviceClass = PlatformServiceUtils.DeviceClass
 type BaseUISnapshot = BaseUIScaling.UISnapshot
 
-type JanitorClass = {
-	GiveChore: (self: JanitorClass, chore: any, ...any) -> (),
-	Destroy: (self: JanitorClass) -> (),
-}
+type JanitorClass = any
 
-type SignalConnection = {
-	Disconnect: (self: SignalConnection) -> (),
-}
 
-type ChangedSignal = {
-	Connect: (self: ChangedSignal, callback: (snapshot: UIScaleSnapshot) -> ()) -> SignalConnection,
-	Fire: (self: ChangedSignal, snapshot: UIScaleSnapshot) -> (),
-	DisconnectAll: (self: ChangedSignal) -> (),
-	Destroy: (self: ChangedSignal) -> (),
-}
+type ChangedSignal = Signal.Signal<...any>
 
 export type DevicePreset = {
 	uiScale: number,

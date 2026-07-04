@@ -2,7 +2,7 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Charm = require(ReplicatedStorage.Packages.Charm)
+local Charm: any = require(ReplicatedStorage.Packages.Charm)
 
 export type BreakState = {
 	visible: boolean,

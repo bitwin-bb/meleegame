@@ -1,14 +1,10 @@
 local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Janitor = require(ReplicatedStorage.Packages.Janitor)
+local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local Signal = require("Signal")
 
-type SignalObject = {
-	Connect: (self: SignalObject, callback: (...any) -> ()) -> RBXScriptConnection,
-	Fire: (self: SignalObject, ...any) -> (),
-	Destroy: (self: SignalObject) -> (),
-}
+type SignalObject = Signal.Signal<...any>
 
 local DEFAULT_START_EVENTS = { "startSwing", "StartSwing", "swingStart", "SwingStart" }
 local DEFAULT_END_EVENTS = { "endSwing", "EndSwing", "swingEnd", "SwingEnd" }
@@ -1528,7 +1524,7 @@ function Melee:UnbindTool()
 	self.boundTool = nil
 end
 
-function Melee:On(signalNameRaw: any, callback: (...any) -> ()): RBXScriptConnection?
+function Melee:On(signalNameRaw: any, callback: (...any) -> ()): any
 	if typeof(signalNameRaw) ~= "string" or typeof(callback) ~= "function" then
 		return nil
 	end

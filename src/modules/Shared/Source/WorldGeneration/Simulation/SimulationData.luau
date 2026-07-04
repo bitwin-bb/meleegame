@@ -2,8 +2,8 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Jecs = require(ReplicatedStorage.Packages.Jecs)
-local Sift = require(ReplicatedStorage.Packages.Sift)
+local Jecs: any = require(ReplicatedStorage.Packages.Jecs)
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 
 local Config = require("SimulationConfig")
 local Net = require("Net")

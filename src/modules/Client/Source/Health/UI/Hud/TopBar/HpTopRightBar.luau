@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local HeartMeter = require("HeartMeter")
 local HpServiceUtils = require("HpServiceUtils")
-local React = require(ReplicatedStorage.Packages.React)
+local React: any = require(ReplicatedStorage.Packages.React)
 local Responsive = require("useViewportScale")
 local UiSound = require("UISound")
 local hpSlice = require("HpSlice")
