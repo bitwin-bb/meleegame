@@ -20,7 +20,7 @@ local Configs = {
 	},
 
 	cameraData = {
-		distance = 75,
+		distance = 70,
 		height = 0,
 		lookHeight = 8,
 		sideSign = 1,

@@ -20,6 +20,7 @@ local Horizon = require("ParallaxHorizonGetter")
 local Math = require("ParallaxMath")
 local ParallaxBackgrounds = require("ParallaxBackgrounds")
 local ParallaxConstants = require("ParallaxConstants")
+local ParallaxRuntimeConstants = require("ParallaxRuntimeConstants")
 local ParallaxRoot = require("ParallaxRoot")
 local ParallaxServiceUtils = require("ParallaxServiceUtils")
 local ParallaxSlice = require("ParallaxSlice")
@@ -121,27 +122,6 @@ local WORLD_FOLDER_NAME = "WorldGeneration"
 local ROOT_PARENT_FALLBACK_NAME = "ParallaxService"
 local ROOT_FOLDER_NAME = "ParallaxDepth"
 local ANCHOR_PART_NAME = "ParallaxAnchor"
-local SURFACE_BRIGHTNESS = 0.5
-local SURFACE_PIXELS_PER_STUD = 8
-local MAX_SURFACE_CANVAS_PIXELS = 20000
-local MIN_SURFACE_CANVAS_PIXELS = 1
-local SURFACE_EXTRA_TILE_COUNT = 1
-local SURFACE_TILE_SCALE = 1
-local SURFACE_LAYER_MIN_VIEW_HEIGHT_FACTOR = 0.98
-local SURFACE_LAYER_MAX_VIEW_HEIGHT_FACTOR = 1.06
-local MIN_PLANE_VERTICAL_COVERAGE_BLEED_STUDS = 4
-local SURFACE_ANCHOR_VERTICAL_OVERSCAN_FACTOR = 0.14
-local SURFACE_ANCHOR_HORIZONTAL_OVERSCAN_FACTOR = 0.18
-local MIN_SURFACE_ANCHOR_OVERSCAN_STUDS = 8
-local DEFAULT_CAMERA_FIELD_OF_VIEW = 70
-local DEFAULT_CAMERA_VIEWPORT = Vector2.new(1920, 1080)
-local DEFAULT_MAX_TILES_Y = 1800
-local DEFAULT_SURFACE_BACKGROUND_FADE_DISTANCE = 256
-local PARALLAX_SURFACE_BOTTOM_OVERSCAN = 0.12
-local PARALLAX_DEBUG_PRINT_INTERVAL = 0.5
-local PARALLAX_WORLD_TOP_DEPTH_FACTOR = 0.15
-local MIN_PARALLAX_WORLD_TOP_DEPTH_FACTOR = 0.1
-local MIN_PARALLAX_WORLD_TOP_DEPTH_TILES = 24
 
 local e: typeof(React.createElement) = React.createElement
 
@@ -193,8 +173,8 @@ end
 local function GetCameraSnapshot(camera: Camera?): CameraSnapshot
 	if camera == nil then
 		return {
-			fieldOfView = DEFAULT_CAMERA_FIELD_OF_VIEW,
-			viewportSize = DEFAULT_CAMERA_VIEWPORT,
+			fieldOfView = ParallaxRuntimeConstants.DEFAULT_CAMERA_FIELD_OF_VIEW,
+			viewportSize = ParallaxRuntimeConstants.DEFAULT_CAMERA_VIEWPORT,
 		}
 	end
 
@@ -253,14 +233,20 @@ end
 
 local function GetSurfacePixelsPerStud(widthStuds: number, heightStuds: number): number
 	local largestAxis = math.max(widthStuds, heightStuds, 1)
-	return math.max(1, math.min(SURFACE_PIXELS_PER_STUD, MAX_SURFACE_CANVAS_PIXELS / largestAxis))
+	return math.max(
+		1,
+		math.min(
+			ParallaxRuntimeConstants.SURFACE_PIXELS_PER_STUD,
+			ParallaxRuntimeConstants.MAX_SURFACE_CANVAS_PIXELS / largestAxis
+		)
+	)
 end
 
 local function toCanvasPixels(studs: number, pixelsPerStud: number): number
 	return math.clamp(
 		math.ceil(math.max(studs, 0) * pixelsPerStud),
-		MIN_SURFACE_CANVAS_PIXELS,
-		MAX_SURFACE_CANVAS_PIXELS
+		ParallaxRuntimeConstants.MIN_SURFACE_CANVAS_PIXELS,
+		ParallaxRuntimeConstants.MAX_SURFACE_CANVAS_PIXELS
 	)
 end
 
@@ -295,14 +281,14 @@ function Parallax.new(): Parallax
 	self.worldBottomY = 0
 	self.worldSurfaceY = 0
 	self.seaLevelY = 0
-	self.maxTilesY = DEFAULT_MAX_TILES_Y
+	self.maxTilesY = ParallaxRuntimeConstants.DEFAULT_MAX_TILES_Y
 	self.basePlaneX = 0
 	self.smoothedParallaxHorizonY = nil
 	self.parallaxState = State.new()
 	self.parallaxEnabled = true
 	self.enableParallaxBottomGuard = false
 	self.debugParallax = false
-	self.surfaceBackgroundFadeDistance = DEFAULT_SURFACE_BACKGROUND_FADE_DISTANCE
+	self.surfaceBackgroundFadeDistance = ParallaxRuntimeConstants.DEFAULT_SURFACE_BACKGROUND_FADE_DISTANCE
 	self.currentParallaxSample = nil
 	self.manualBgStyle = nil
 	self.lastParallaxHorizon = nil
@@ -588,11 +574,11 @@ function Parallax._refreshWorldAttributes(self: Parallax)
 	local worldFolder = self:_GetWorldFolder()
 	if worldFolder == nil then
 		self.worldOrigin = Vector3.zero
-		self.worldTopY = DEFAULT_MAX_TILES_Y * 4 * 0.15
-		self.worldBottomY = -DEFAULT_MAX_TILES_Y * 4 * 0.85
+		self.worldTopY = ParallaxRuntimeConstants.DEFAULT_MAX_TILES_Y * 4 * 0.15
+		self.worldBottomY = -ParallaxRuntimeConstants.DEFAULT_MAX_TILES_Y * 4 * 0.85
 		self.worldSurfaceY = 0
 		self.seaLevelY = 0
-		self.maxTilesY = DEFAULT_MAX_TILES_Y
+		self.maxTilesY = ParallaxRuntimeConstants.DEFAULT_MAX_TILES_Y
 		self.basePlaneX = 0
 		self.referenceGameplayPlaneDistanceX = nil
 		self.scrollAnchorZ = nil
@@ -622,11 +608,13 @@ function Parallax._refreshWorldAttributes(self: Parallax)
 	local nextBasePlaneX = if typeof(basePlaneX) == "number" then basePlaneX else 0
 	local nextSeaLevelY = if typeof(seaLevelY) == "number" then seaLevelY else nextWorldOrigin.Y
 	local nextWorldSurfaceY = if typeof(worldSurfaceY) == "number" then worldSurfaceY else nextSeaLevelY
-	local nextMaxTilesY = if typeof(maxTilesY) == "number" then math.max(maxTilesY, 1) else DEFAULT_MAX_TILES_Y
-	local fallbackWorldTopDepth = nextMaxTilesY * tileSize * PARALLAX_WORLD_TOP_DEPTH_FACTOR
+	local nextMaxTilesY = if typeof(maxTilesY) == "number"
+		then math.max(maxTilesY, 1)
+		else ParallaxRuntimeConstants.DEFAULT_MAX_TILES_Y
+	local fallbackWorldTopDepth = nextMaxTilesY * tileSize * ParallaxRuntimeConstants.PARALLAX_WORLD_TOP_DEPTH_FACTOR
 	local minimumWorldTopDepth = math.max(
-		tileSize * MIN_PARALLAX_WORLD_TOP_DEPTH_TILES,
-		fallbackWorldTopDepth * MIN_PARALLAX_WORLD_TOP_DEPTH_FACTOR
+		tileSize * ParallaxRuntimeConstants.MIN_PARALLAX_WORLD_TOP_DEPTH_TILES,
+		fallbackWorldTopDepth * ParallaxRuntimeConstants.MIN_PARALLAX_WORLD_TOP_DEPTH_FACTOR
 	)
 	local nextWorldTopY = if typeof(worldTopY) == "number"
 			and worldTopY >= nextWorldSurfaceY + minimumWorldTopDepth
@@ -944,7 +932,7 @@ function Parallax._debugParallax(self: Parallax, message: string, payload: { [st
 	end
 
 	local now = os.clock()
-	if now - self.lastParallaxDebugPrintAt < PARALLAX_DEBUG_PRINT_INTERVAL then
+	if now - self.lastParallaxDebugPrintAt < ParallaxRuntimeConstants.PARALLAX_DEBUG_PRINT_INTERVAL then
 		return
 	end
 	self.lastParallaxDebugPrintAt = now
@@ -1013,13 +1001,14 @@ function Parallax._GetLayerMetric(
 		subjectPosition
 	)
 
-	local minimumViewHeight = visibleHeight * SURFACE_LAYER_MIN_VIEW_HEIGHT_FACTOR
-	local maximumViewHeight = visibleHeight * SURFACE_LAYER_MAX_VIEW_HEIGHT_FACTOR
+	local minimumViewHeight = visibleHeight * ParallaxRuntimeConstants.SURFACE_LAYER_MIN_VIEW_HEIGHT_FACTOR
+	local maximumViewHeight = visibleHeight * ParallaxRuntimeConstants.SURFACE_LAYER_MAX_VIEW_HEIGHT_FACTOR
 	textureRepeatHeight = math.clamp(textureRepeatHeight, minimumViewHeight, maximumViewHeight)
 	local textureRepeatWidth = computeTextureRepeatWidthFromHeight(definition, textureRepeatHeight)
 	local planeWidth = math.max(planeSizing.planeWidth, textureRepeatWidth)
 	local planeHeight = textureRepeatHeight
-	local bottomBleed = math.max(visibleHeight * definition.bottomOverscan, MIN_PLANE_VERTICAL_COVERAGE_BLEED_STUDS)
+	local bottomBleed =
+		math.max(visibleHeight * definition.bottomOverscan, ParallaxRuntimeConstants.MIN_PLANE_VERTICAL_COVERAGE_BLEED_STUDS)
 	local highestHiddenBottomCenterY = visibleBottomY - bottomBleed + planeHeight * 0.5
 	local transparency = blendToLayerTransparency(definition.transparency, biomeRuntime.alpha)
 	if transparency >= 0.999 then
@@ -1166,7 +1155,10 @@ function Parallax._collectParallaxLayerMetrics(
 			)
 			local visibleBottomY = cameraPosition.Y - visibleHeight * 0.5
 			local bottomBleed =
-				math.max(visibleHeight * PARALLAX_SURFACE_BOTTOM_OVERSCAN, MIN_PLANE_VERTICAL_COVERAGE_BLEED_STUDS)
+				math.max(
+					visibleHeight * ParallaxRuntimeConstants.PARALLAX_SURFACE_BOTTOM_OVERSCAN,
+					ParallaxRuntimeConstants.MIN_PLANE_VERTICAL_COVERAGE_BLEED_STUDS
+				)
 			local highestHiddenBottomCenterY = visibleBottomY - bottomBleed + textureRepeatHeight * 0.5
 			local transparency = blendToParallaxLayerTransparency(profile.transparency or 0, styleAlpha, surfaceAlpha)
 			if transparency >= 0.999 then
@@ -1271,10 +1263,14 @@ function Parallax._publishSurfaceState(self: Parallax, metrics: { LayerMetric },
 	end
 	local rawAnchorHeightStuds = math.max(maxY - minY, 1)
 	local rawAnchorWidthStuds = math.max(maxZ - minZ, 1)
-	local verticalOverscan =
-		math.max(rawAnchorHeightStuds * SURFACE_ANCHOR_VERTICAL_OVERSCAN_FACTOR, MIN_SURFACE_ANCHOR_OVERSCAN_STUDS)
-	local horizontalOverscan =
-		math.max(rawAnchorWidthStuds * SURFACE_ANCHOR_HORIZONTAL_OVERSCAN_FACTOR, MIN_SURFACE_ANCHOR_OVERSCAN_STUDS)
+	local verticalOverscan = math.max(
+		rawAnchorHeightStuds * ParallaxRuntimeConstants.SURFACE_ANCHOR_VERTICAL_OVERSCAN_FACTOR,
+		ParallaxRuntimeConstants.MIN_SURFACE_ANCHOR_OVERSCAN_STUDS
+	)
+	local horizontalOverscan = math.max(
+		rawAnchorWidthStuds * ParallaxRuntimeConstants.SURFACE_ANCHOR_HORIZONTAL_OVERSCAN_FACTOR,
+		ParallaxRuntimeConstants.MIN_SURFACE_ANCHOR_OVERSCAN_STUDS
+	)
 	minY -= verticalOverscan
 	maxY += verticalOverscan
 	minZ -= horizontalOverscan
@@ -1304,13 +1300,14 @@ function Parallax._publishSurfaceState(self: Parallax, metrics: { LayerMetric },
 		local frameHeight = math.max(metric.height * pixelsPerStud, 1)
 		local frameCenterX = (metric.centerZ - anchorMinZ) * pixelsPerStud
 		local frameCenterY = (anchorMaxY - metric.centerY) * pixelsPerStud
-		local tileWidth = math.max(metric.textureRepeatWidth * pixelsPerStud * SURFACE_TILE_SCALE, 1)
-		local tileHeight = math.max(metric.textureRepeatHeight * pixelsPerStud * SURFACE_TILE_SCALE, 1)
+		local tileWidth = math.max(metric.textureRepeatWidth * pixelsPerStud * ParallaxRuntimeConstants.SURFACE_TILE_SCALE, 1)
+		local tileHeight =
+			math.max(metric.textureRepeatHeight * pixelsPerStud * ParallaxRuntimeConstants.SURFACE_TILE_SCALE, 1)
 		local imageOffsetX = Scrolling.ComputeOffsetPixels(metric.textureOffsetU, metric.textureRepeatWidth, tileWidth)
 		local imageOffsetY =
 			Scrolling.ComputeOffsetPixels(metric.textureOffsetV, metric.textureRepeatHeight, tileHeight)
-		local extraWidth = tileWidth * SURFACE_EXTRA_TILE_COUNT
-		local extraHeight = tileHeight * SURFACE_EXTRA_TILE_COUNT
+		local extraWidth = tileWidth * ParallaxRuntimeConstants.SURFACE_EXTRA_TILE_COUNT
+		local extraHeight = tileHeight * ParallaxRuntimeConstants.SURFACE_EXTRA_TILE_COUNT
 
 		layers[index] = {
 			id = metric.id,
@@ -1330,7 +1327,7 @@ function Parallax._publishSurfaceState(self: Parallax, metrics: { LayerMetric },
 		visible = true,
 		adornee = surfaceRuntime.anchorPart,
 		face = surfaceFace,
-		brightness = SURFACE_BRIGHTNESS,
+		brightness = ParallaxRuntimeConstants.SURFACE_BRIGHTNESS,
 		canvasSize = Vector2.new(canvasWidth, canvasHeight),
 		layers = layers,
 	} :: ParallaxSurfaceState)

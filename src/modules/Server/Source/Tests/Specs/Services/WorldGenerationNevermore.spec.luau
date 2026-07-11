@@ -210,6 +210,69 @@ return function()
 			expect(layerTwoColor).to.equal((stoneVisual :: any).color)
 		end)
 
+		it("uses transparent anchors for autotiled foreground terrain", function()
+			local client = setmetatable({
+				state = WorldGenerationServiceUtils.CreateDefaultState(),
+				worldOrigin = Vector3.zero,
+				basePlaneX = 0,
+				terrainVisualPartPool = {},
+				treeVariantDefinitions = {},
+				propTemplatesByPropId = {},
+			}, {
+				__index = WorldGenerationServiceClient,
+			})
+
+			local part = (WorldGenerationServiceClient :: any).CreateForegroundRectPart(
+				client,
+				0,
+				0,
+				1,
+				1,
+				WorldGeneration.TILE_ID.DIRT
+			)
+
+			expect(part.Transparency).to.equal(1)
+			expect(part.Material).to.equal(Enum.Material.SmoothPlastic)
+			expect(part.MaterialVariant).to.equal("")
+			expect(part.CastShadow).to.equal(false)
+			for _, child in part:GetChildren() do
+				expect(child:IsA("Texture")).to.equal(false)
+			end
+
+			local worldGenerationServiceClient = WorldGenerationServiceClient :: any
+			worldGenerationServiceClient.ReleaseTerrainVisualPart(client, part)
+			worldGenerationServiceClient.ClearTerrainVisualPartPool(client)
+		end)
+
+		it("keeps non-surface autotile definitions on material-backed foreground terrain", function()
+			local client = setmetatable({
+				state = WorldGenerationServiceUtils.CreateDefaultState(),
+				worldOrigin = Vector3.zero,
+				basePlaneX = 0,
+				terrainVisualPartPool = {},
+				treeVariantDefinitions = {},
+				propTemplatesByPropId = {},
+			}, {
+				__index = WorldGenerationServiceClient,
+			})
+
+			local part = (WorldGenerationServiceClient :: any).CreateForegroundRectPart(
+				client,
+				0,
+				0,
+				1,
+				1,
+				WorldGeneration.TILE_ID.STONE
+			)
+
+			expect(part.Transparency).to.equal(0)
+			expect(part.Material == Enum.Material.SmoothPlastic).to.equal(false)
+
+			local worldGenerationServiceClient = WorldGenerationServiceClient :: any
+			worldGenerationServiceClient.ReleaseTerrainVisualPart(client, part)
+			worldGenerationServiceClient.ClearTerrainVisualPartPool(client)
+		end)
+
 		it("preserves background depth layers that share terrain tile coordinates", function()
 			local tileId = WorldGeneration.TILE_ID
 			local generator = setmetatable({

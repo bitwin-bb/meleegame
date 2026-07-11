@@ -25,6 +25,18 @@ return {
 				consumesOnPlace = true,
 			},
 		},
+		DirtAutotileTest = {
+			name = "Dirt Autotile Test",
+			description = "Command-only dirt block used to test autotile atlas rendering.",
+			functionality = "Can be placed",
+			itemType = "Tile",
+			useCase = "Autotile test tile",
+			commandOnly = true,
+			build = {
+				tileId = "Dirt",
+				consumesOnPlace = true,
+			},
+		},
 		Stone = {
 			name = "Stone",
 			description = "A hard block that is often used for building and crafting",

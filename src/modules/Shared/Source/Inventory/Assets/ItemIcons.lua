@@ -28,6 +28,7 @@ return {
 	ebonWood = "rbxassetid://73741678731159",
 	ebonStone = "rbxassetid://109356270928746",
 	dirt = "rbxassetid://122583029721059",
+	dirtAutotileTest = "rbxassetid://122583029721059",
 	acorn = "rbxassetid://72929752407833",
 	workbench = "rbxassetid://73610794599951",
 	torch = "rbxassetid://124994373526595",

@@ -8,6 +8,7 @@ local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
+local AutotileRegistry = require("AutotileRegistry")
 local BuildServiceUtils = require("BuildServiceUtils")
 local Configs = require("CoreConfigs")
 local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
@@ -418,6 +419,22 @@ local function shouldUseSmoothTextureSurfaces(tileId: number): boolean
 end
 
 local assignCreatedTileMaterial = TileMaterial.ApplyTileMaterial
+
+local function shouldUseAutotileSurface(tileId: number): boolean
+	local definition = AutotileRegistry.GetDefinition(tileId)
+	return typeof(definition) == "table" and rawget(definition, "UseSurfaceGui") == true
+end
+
+local function styleAutotileAnchorPart(part: BasePart)
+	part.Name = HttpService:GenerateGUID(false)
+	part.Color = Color3.new(1, 1, 1)
+	part.Material = Enum.Material.SmoothPlastic
+	part.MaterialVariant = ""
+	part.Transparency = 1
+	part.LocalTransparencyModifier = 0
+	part.CastShadow = false
+	applyTileSmoothSurfaces(part)
+end
 
 local function createTreeVariantDefinitions(): { TreeVariantDefinition }
 	return {
@@ -865,8 +882,7 @@ local function computeChunkSnapshotVisualBounds(
 	local snapshot = if typeof(snapshotRaw) == "table" then snapshotRaw :: { [string]: any } else {} :: any
 	local state = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {} :: any
 	local tileSize = CoerceNumber(state.tileSize, 1, 64, WorldGenerationServiceUtils.CreateDefaultState().tileSize)
-	local tileDepth =
-		CoerceNumber(state.tileDepth, 0.5, 64, WorldGenerationServiceUtils.CreateDefaultState().tileDepth)
+	local tileDepth = CoerceNumber(state.tileDepth, 0.5, 64, WorldGenerationServiceUtils.CreateDefaultState().tileDepth)
 	local tileMinX = CoerceInteger(snapshot.tileMinX, -10000000, 10000000, 0)
 	local tileMinY = CoerceInteger(snapshot.tileMinY, -10000000, 10000000, 0)
 	local width = CoerceInteger(snapshot.width, 1, 512, CoerceInteger(state.chunkSize, 1, 512, 32))
@@ -1193,6 +1209,11 @@ local function buildGreedyRectangles(
 end
 
 local function styleForegroundPart(part: BasePart, tileId: number): boolean
+	if shouldUseAutotileSurface(tileId) then
+		styleAutotileAnchorPart(part)
+		return true
+	end
+
 	local visualTileId = if ORE_ASSET_KEYS_BY_TILE_ID[tileId] ~= nil then STONE_TILE_ID else tileId
 	local style = TILE_VISUALS[visualTileId] or TILE_VISUALS[STONE_TILE_ID]
 	part.Name = HttpService:GenerateGUID(false)
@@ -1779,9 +1800,11 @@ function WorldGenerationServiceClient.CreateForegroundRectPart(
 	local part = self:AcquireTerrainVisualPart()
 	part.Size = Vector3.new(tileDepth, tileSize * height, tileSize * width)
 	local hasTileMaterial = styleForegroundPart(part, tileId)
-	applyOreTextures(part, tileId, tileSize, tileDepth)
-	if not hasTileMaterial then
-		applyGrassTextures(part, tileId, tileSize, tileDepth)
+	if not shouldUseAutotileSurface(tileId) then
+		applyOreTextures(part, tileId, tileSize, tileDepth)
+		if not hasTileMaterial then
+			applyGrassTextures(part, tileId, tileSize, tileDepth)
+		end
 	end
 
 	local centerTileX = tileMinX + width * 0.5
@@ -3378,12 +3401,12 @@ function WorldGenerationServiceClient.ApplyState(self: WorldGenerationServiceCli
 	self.stateChanged:Fire(WorldGenerationServiceUtils.CloneState(self.state))
 end
 
-function WorldGenerationServiceClient.RequestSync(self: WorldGenerationServiceClient)
+function WorldGenerationServiceClient.RequestSync(_self: WorldGenerationServiceClient)
 	sendPacket(WorldGenerationServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
 function WorldGenerationServiceClient.SetRenderDistance(
-	self: WorldGenerationServiceClient,
+	_self: WorldGenerationServiceClient,
 	renderDistanceRaw: any,
 	verticalRenderDistanceRaw: any?
 )

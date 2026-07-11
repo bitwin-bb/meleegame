@@ -38,7 +38,7 @@ end
 local DEFAULT_CATEGORY: SoundCategory = "SFX"
 local DEFAULT_MASTER_VOLUME = 1
 local DEFAULT_CATEGORY_VOLUMES: { [string]: number } = {
-	Music = 0.75,
+	Music = 1,
 	SFX = 1,
 	UI = 1,
 	Voice = 1,

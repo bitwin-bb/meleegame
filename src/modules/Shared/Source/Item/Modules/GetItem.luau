@@ -1,15 +1,14 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Fusion: any = require(ReplicatedStorage.Packages.Fusion)
 local Blocks = require("Blocks")
+local Fusion: any = require(ReplicatedStorage.Packages.Fusion)
+local GetToolInstance = require("GetToolInstance")
 local InstanceUtils = require("InstanceUtils")
 local ItemRegistry = require("ItemRegistry")
 local LootServiceData = require("Data")
 local LootServiceUtils = require("LootServiceUtils")
-local GetToolInstance = require("GetToolInstance")
 local StringUtils = require("StringUtils")
 
 local GetItem = {}
@@ -48,6 +47,7 @@ local ITEM_VARIANT_BRANCH_NAMES = {
 local TILE_BLOCK_KEY_BY_ITEM_ID = {
 	Wood = "Wood",
 	Dirt = "Dirt",
+	DirtAutotileTest = "Dirt",
 	Stone = "Stone",
 	Snow = "Snow",
 	Ice = "Ice",

@@ -13,19 +13,29 @@ local Fusion: any = require(ReplicatedStorage.Packages.Fusion)
 local Matter = require("Matter")
 local TestEZ = require("TestEZ")
 
+local AtlasResolver = require("AtlasResolver")
 local AudioServiceUtils = require("AudioServiceUtils")
+local AutotileRegistry = require("AutotileRegistry")
 local Binder = require("Binder")
 local Blocks = require("Blocks")
 local Brio: any = require("Brio")
 local BuildServiceUtils = require("BuildServiceUtils")
+local DirectionBits = require("DirectionBits")
+local EightWayBlobRule = require("EightWayBlobRule")
+local FourWay16Rule = require("FourWay16Rule")
 local GetImageId = require("GetImageId")
 local GetItem = require("GetItem")
+local ItemIcons = require("ItemIcons")
+local ItemRegistry = require("ItemRegistry")
 local Maid = require("Maid")
+local MaskResolver = require("MaskResolver")
 local Octree = require("Octree")
+local RectUtil = require("RectUtil")
 local Rx: any = require("Rx")
 local RxSignal: any = require("RxSignal")
 local TileItem = require("TileItem")
 local VFXServiceUtils = require("VfxServiceUtils")
+local VariantPicker = require("VariantPicker")
 
 local PACKAGE_NAME = "AquariaBackup"
 
@@ -388,6 +398,173 @@ return function()
 			model:Destroy()
 		end)
 
+		it("creates autotile sprites as Fusion surface gui block faces", function()
+			local TileSprite = require(GetClientModule({
+				"Client",
+				"Source",
+				"Autotile",
+				"Render",
+				"TileSprite",
+			}))
+			local parent = Instance.new("Folder")
+			parent.Name = "AutotileSpriteSpec"
+
+			local sprite = TileSprite.new(parent, 2, 3, {
+				cframe = CFrame.new(4, 8, 12),
+				size = Vector3.new(4, 4, 4),
+				pixelsPerStud = 4,
+			})
+			sprite:Update({
+				Image = "rbxassetid://115586684643692",
+				ImageRectOffset = Vector2.new(36, 18),
+				ImageRectSize = Vector2.new(16, 16),
+			})
+
+			local root = parent:FindFirstChild("AutotileRoot")
+			expect(root ~= nil).to.equal(true)
+			expect((root :: Instance):IsA("BasePart")).to.equal(true)
+			expect((root :: BasePart).Anchored).to.equal(true)
+			expect((root :: BasePart).CanCollide).to.equal(false)
+			expect((root :: BasePart).CanQuery).to.equal(false)
+			expect((root :: BasePart).CanTouch).to.equal(false)
+			expect((root :: BasePart).Transparency).to.equal(1)
+			expect((root :: BasePart).Material).to.equal(Enum.Material.SmoothPlastic)
+			expect((root :: BasePart).MaterialVariant).to.equal("")
+			expect((root :: BasePart).Size).to.equal(Vector3.new(4, 4, 4))
+			expect((root :: BasePart).CFrame).to.equal(CFrame.new(4, 8, 12))
+
+			local surfaceGui = (root :: Instance):FindFirstChild("AutotileSurface")
+			expect(surfaceGui ~= nil).to.equal(true)
+			expect((surfaceGui :: Instance):IsA("SurfaceGui")).to.equal(true)
+			expect((surfaceGui :: SurfaceGui).Face).to.equal(Enum.NormalId.Right)
+			expect((surfaceGui :: SurfaceGui).SizingMode).to.equal(Enum.SurfaceGuiSizingMode.PixelsPerStud)
+			expect((surfaceGui :: SurfaceGui).PixelsPerStud).to.equal(4)
+			expect((surfaceGui :: SurfaceGui).Enabled).to.equal(true)
+
+			local image = (surfaceGui :: Instance):FindFirstChild("AutotileImage")
+			expect(image ~= nil).to.equal(true)
+			expect((image :: Instance):IsA("ImageLabel")).to.equal(true)
+			expect((image :: ImageLabel).Image).to.equal("rbxassetid://115586684643692")
+			expect((image :: ImageLabel).ImageRectOffset).to.equal(Vector2.new(36, 18))
+			expect((image :: ImageLabel).ImageRectSize).to.equal(Vector2.new(16, 16))
+
+			sprite:Destroy()
+			expect(parent:FindFirstChild("AutotileRoot")).to.equal(nil)
+			parent:Destroy()
+		end)
+
+		it("skips non-surface autotile definitions without reading absent flags", function()
+			local TileChunkRenderer = require(GetClientModule({
+				"Client",
+				"Source",
+				"Autotile",
+				"Render",
+				"TileChunkRenderer",
+			}))
+			local chunk = Instance.new("Folder")
+			chunk:SetAttribute("ChunkX", 0)
+			chunk:SetAttribute("ChunkY", 0)
+			chunk:SetAttribute("ChunkSize", 1)
+			chunk:SetAttribute("Width", 1)
+			chunk:SetAttribute("Height", 1)
+
+			local renderService = {}
+			function renderService.GetChunkSize(_self: any): number
+				return 1
+			end
+			function renderService.GetTileData(_self: any, _tileX: number, _tileY: number): any
+				return {
+					TileId = BuildServiceUtils.TILE_ID.GRASS,
+					ConnectGroup = "Soil",
+				}
+			end
+
+			local renderer = TileChunkRenderer.new(chunk, {
+				renderService = renderService,
+			})
+			renderer:RenderInitial()
+
+			local layer = chunk:FindFirstChild("AutotileLayer")
+			expect(layer ~= nil).to.equal(true)
+			expect((layer :: Instance):FindFirstChild("AutotileRoot", true)).to.equal(nil)
+
+			renderer:Destroy()
+			chunk:Destroy()
+		end)
+
+		it("deduplicates overlapping autotile neighbor refreshes per delta payload", function()
+			local AutotileRenderServiceClient = require(GetClientModule({
+				"Client",
+				"Source",
+				"Autotile",
+				"AutotileRenderServiceClient",
+			}))
+			local updates = {}
+			local seen = {}
+			local fakeSelf = {
+				_chunkBinder = {
+					UpdateTile = function(_chunkBinder: any, tileX: number, tileY: number)
+						local tileKey = BuildServiceUtils.PackTileKey(tileX, tileY)
+						expect(seen[tileKey] == nil).to.equal(true)
+						seen[tileKey] = true
+						updates[#updates + 1] = tileKey
+					end,
+				},
+			}
+
+			AutotileRenderServiceClient.OnTileDeltas(fakeSelf, {
+				{ tileX = 0, tileY = 0 },
+				{ tileX = 0, tileY = 0 },
+				{ tileX = 1, tileY = 0 },
+				{ tileX = nil, tileY = 0 },
+			})
+
+			expect(#updates).to.equal(12)
+			expect(seen[BuildServiceUtils.PackTileKey(-1, -1)]).to.equal(true)
+			expect(seen[BuildServiceUtils.PackTileKey(2, 1)]).to.equal(true)
+		end)
+
+		it("uses indexed autotile chunks before scanning bound chunks", function()
+			local TileChunkBinderClient = require(GetClientModule({
+				"Client",
+				"Source",
+				"Autotile",
+				"Binders",
+				"TileChunkBinderClient",
+			}))
+			local scanned = false
+			local updated = false
+			local fakeChunkClient = {
+				ContainsTile = function(_chunkClient: any, tileX: number, tileY: number): boolean
+					return tileX == 3 and tileY == 4
+				end,
+				UpdateTile = function(_chunkClient: any, tileX: number, tileY: number)
+					updated = tileX == 3 and tileY == 4
+				end,
+			}
+			local fakeSelf = {
+				_renderService = {
+					GetChunkSize = function(_renderService: any): number
+						return 32
+					end,
+				},
+				_chunkClientsByKey = {
+					[BuildServiceUtils.PackChunkKey(0, 0)] = fakeChunkClient,
+				},
+				_binder = {
+					GetAll = function(_binder: any): { any }
+						scanned = true
+						return {}
+					end,
+				},
+			}
+
+			TileChunkBinderClient.UpdateTile(fakeSelf, 3, 4)
+
+			expect(updated).to.equal(true)
+			expect(scanned).to.equal(false)
+		end)
+
 		it("creates dropped coin icons from their spritesheets for client viewport playback", function()
 			local LootItemServer = require("LootItemServer")
 			local model = LootItemServer.CreateModel({
@@ -471,6 +648,129 @@ return function()
 			for tileId, expectedItemId in expectedDrops do
 				expect(BuildServiceUtils.GetTileBreakDropItemId(tileId)).to.equal(expectedItemId)
 			end
+		end)
+
+		it("registers the command-only dirt autotile test item", function()
+			local itemId = ItemRegistry.GetCanonicalItemId("Dirt Autotile Test")
+			expect(itemId).to.equal("DirtAutotileTest")
+
+			local definition = ItemRegistry.GetDefinition(itemId)
+			expect(definition ~= nil).to.equal(true)
+			expect((definition :: any).name).to.equal("Dirt Autotile Test")
+			expect((definition :: any).commandOnly).to.equal(true)
+			expect(ItemIcons.dirtAutotileTest).to.equal(ItemIcons.dirt)
+
+			local placeableConfig = BuildServiceUtils.GetPlaceableItemConfig(itemId)
+			expect(placeableConfig ~= nil).to.equal(true)
+			expect((placeableConfig :: BuildServiceUtils.PlaceableItemConfig).tileId).to.equal(
+				BuildServiceUtils.TILE_ID.DIRT
+			)
+		end)
+
+		it("resolves autotile masks, atlas cells, and deterministic variants", function()
+			local tiles = {
+				["0:0"] = { TileId = BuildServiceUtils.TILE_ID.DIRT, ConnectGroup = "soil" },
+				["0:1"] = { TileId = BuildServiceUtils.TILE_ID.DIRT, ConnectGroup = "soil" },
+				["1:0"] = { TileId = BuildServiceUtils.TILE_ID.MUD, ConnectGroup = "soil" },
+				["1:1"] = { TileId = BuildServiceUtils.TILE_ID.DIRT, ConnectGroup = "soil" },
+				["-1:0"] = { TileId = BuildServiceUtils.TILE_ID.STONE, ConnectGroup = "stone" },
+				["0:-1"] = { TileId = BuildServiceUtils.TILE_ID.STONE, ConnectGroup = "stone" },
+				["-1:-1"] = { TileId = BuildServiceUtils.TILE_ID.DIRT, ConnectGroup = "soil" },
+			}
+
+			local function getTile(x: number, y: number)
+				return tiles[`{x}:{y}`]
+			end
+
+			local eightWayMask = MaskResolver.Resolve(getTile, Vector2.new(0, 0), EightWayBlobRule)
+			expect(bit32.band(eightWayMask, DirectionBits.N)).to.equal(DirectionBits.N)
+			expect(bit32.band(eightWayMask, DirectionBits.E)).to.equal(DirectionBits.E)
+			expect(bit32.band(eightWayMask, DirectionBits.NE)).to.equal(DirectionBits.NE)
+			expect(bit32.band(eightWayMask, DirectionBits.NW)).to.equal(0)
+
+			local fourWayMask = MaskResolver.Resolve(getTile, Vector2.new(0, 0), FourWay16Rule)
+			expect(fourWayMask).to.equal(DirectionBits.N + DirectionBits.E)
+
+			local rect = RectUtil.FromCell(Vector2.new(2, 3), 16, 1, 2)
+			expect(rect.ImageRectOffset).to.equal(Vector2.new(37, 55))
+			expect(rect.ImageRectSize).to.equal(Vector2.new(16, 16))
+
+			local atlas = {
+				Image = "rbxassetid://123",
+				TileSize = 16,
+				Padding = 1,
+				Spacing = 2,
+				Entries = {
+					[3] = { Cell = Vector2.new(3, 0) },
+					[255] = {
+						Variants = {
+							{ Cell = Vector2.new(0, 4), Weight = 70 },
+							{ Cell = Vector2.new(1, 4), Weight = 30 },
+						},
+					},
+				},
+				Aliases = {
+					[DirectionBits.N + DirectionBits.E + DirectionBits.NE] = 3,
+				},
+				Fallback = { Cell = Vector2.new(9, 9) },
+			}
+
+			local resolvedAlias = AtlasResolver.Resolve(atlas, eightWayMask, Vector2.new(0, 0), 17)
+			expect(resolvedAlias.Image).to.equal("rbxassetid://123")
+			expect(resolvedAlias.ImageRectOffset).to.equal(Vector2.new(55, 1))
+			expect(resolvedAlias.ImageRectSize).to.equal(Vector2.new(16, 16))
+			expect(resolvedAlias.Mask).to.equal(3)
+
+			local firstVariant = VariantPicker.Pick(atlas.Entries[255].Variants, Vector2.new(12, -4), 255, 42)
+			local secondVariant = VariantPicker.Pick(atlas.Entries[255].Variants, Vector2.new(12, -4), 255, 42)
+			expect(firstVariant).to.equal(secondVariant)
+
+			local grassDefinition = AutotileRegistry.GetDefinition(BuildServiceUtils.TILE_ID.GRASS)
+			local dirtDefinition = AutotileRegistry.GetDefinition(BuildServiceUtils.TILE_ID.DIRT)
+			expect(dirtDefinition ~= nil).to.equal(true)
+			expect((dirtDefinition :: any).Image).to.equal("rbxassetid://115586684643692")
+			expect((dirtDefinition :: any).TileSize).to.equal(16)
+			expect((dirtDefinition :: any).Spacing).to.equal(2)
+			expect((dirtDefinition :: any).UseSurfaceGui).to.equal(true)
+
+			local filledDirtTiles = {}
+			for x = -1, 1 do
+				for y = -1, 1 do
+					filledDirtTiles[`{x}:{y}`] = { TileId = BuildServiceUtils.TILE_ID.DIRT, ConnectGroup = "soil" }
+				end
+			end
+
+			local function getFilledDirtTile(x: number, y: number)
+				return filledDirtTiles[`{x}:{y}`]
+			end
+
+			local filledDirtMask = MaskResolver.Resolve(getFilledDirtTile, Vector2.zero, EightWayBlobRule)
+			expect(filledDirtMask).to.equal(DirectionBits.AllMask)
+			expect((dirtDefinition :: any).Entries[DirectionBits.AllMask].Variants[1].Cell).to.equal(Vector2.new(1, 1))
+
+			local topEdgeMask = DirectionBits.E
+				+ DirectionBits.S
+				+ DirectionBits.W
+				+ DirectionBits.SE
+				+ DirectionBits.SW
+			expect((dirtDefinition :: any).Entries[topEdgeMask].Variants[1].Cell).to.equal(Vector2.new(1, 0))
+
+			local cardinalOnlyFullMask = DirectionBits.N + DirectionBits.E + DirectionBits.S + DirectionBits.W
+			expect((dirtDefinition :: any).Entries[cardinalOnlyFullMask].Variants[1].Cell).to.equal(Vector2.new(14, 1))
+
+			local filledDirtResolved = AtlasResolver.Resolve(dirtDefinition, DirectionBits.AllMask, Vector2.zero, 0)
+			expect(filledDirtResolved.Cell.Y).to.equal(1)
+			expect(filledDirtResolved.Cell.X >= 1 and filledDirtResolved.Cell.X <= 3).to.equal(true)
+			expect(filledDirtResolved.ImageRectOffset.Y).to.equal(18)
+			expect(filledDirtResolved.ImageRectSize).to.equal(Vector2.new(16, 16))
+
+			expect(grassDefinition ~= nil).to.equal(true)
+			expect(AutotileRegistry.HasDefinition(BuildServiceUtils.TILE_ID.STONE)).to.equal(true)
+			expect(AutotileRegistry.GetAtlas(BuildServiceUtils.TILE_ID.GRASS)).to.equal(grassDefinition)
+
+			local grassResolved =
+				AtlasResolver.Resolve(grassDefinition, DirectionBits.E + DirectionBits.S, Vector2.zero, nil)
+			expect(grassResolved ~= nil).to.equal(true)
 		end)
 
 		it("supports Octree spatial queries and Binder instance lifetimes", function()

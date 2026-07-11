@@ -8,6 +8,7 @@ local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local ServerScriptService = game:GetService("ServerScriptService")
 
+local AutotileService = require("AutotileService")
 local BuildServiceUtils = require("BuildServiceUtils")
 local Configs = require("CoreConfigs")
 local InventoryServiceServer = require("InventoryServiceServer")
@@ -63,9 +64,9 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
+local BinderSupportServer = require("BinderSupportServer")
 local NevermoreSupport = require("NevermoreSupport")
 local PlayerServiceServer = require("PlayerServiceServer")
-local BinderSupportServer = require("BinderSupportServer")
 local TagBinder = require("TagBinder")
 local WorldGenerationServiceServer = require("WorldGenerationServiceServer")
 
@@ -740,6 +741,8 @@ function BuildServiceServer.QueueTileDelta(
 	tileId: number,
 	reason: string
 ): TileDelta
+	AutotileService:MarkDirtyAround(tileX, tileY)
+
 	local key = BuildServiceUtils.PackTileKey(tileX, tileY)
 	local existingIndex = self.pendingTileDeltaLookup[key]
 	if existingIndex ~= nil then

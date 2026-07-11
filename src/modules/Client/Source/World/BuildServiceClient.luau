@@ -8,9 +8,9 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
-local AudioRegistry = require("Audio")
 local AudioServiceClient = require("AudioServiceClient")
 local AudioServiceUtils = require("AudioServiceUtils")
+local BuildServiceClientConstants = require("BuildServiceClientConstants")
 local BuildServiceUtils = require("BuildServiceUtils")
 local BinderSupportClient = require("BinderSupportClient")
 local CoreRuntime = require("CoreRuntime")
@@ -191,148 +191,13 @@ type TreeFallAnimation = {
 local BuildServiceClient = {}
 
 local CLIENT_VISUALS_FOLDER_NAME = "BuildServiceClientVisuals"
-local BUILD_PREVIEW_RUNTIME_ATTRIBUTE = "BuildPreviewRuntime"
-local WIND_FOLIAGE_ENABLED_ATTRIBUTE = "WindFoliageEnabled"
-local TREE_NODE_TYPE_ATTRIBUTE = "WindTreeNodeType"
-local TILE_QUERY_FETCH_COOLDOWN = 0.25
-local PREDICTION_TTL_SECONDS = 2
-local TERRAIN_HOVER_SCAN_DEPTH_TILES = 8
-local HOVER_BREAK_TEST_MODE = false
-local MAX_BREAK_DEBRIS_TILES_PER_BATCH = 16
-local BREAK_DEBRIS_REASONS = {
-	["break"] = true,
-	cascade = true,
-}
-local BREAK_DEBRIS_VISUALS = {
-	[BuildServiceUtils.TILE_ID.GRASS] = {
-		color = Color3.fromRGB(95, 159, 53),
-		material = Enum.Material.Grass,
-	},
-	[BuildServiceUtils.TILE_ID.JUNGLE_GRASS] = {
-		color = Color3.fromRGB(113, 186, 72),
-		material = Enum.Material.Grass,
-	},
-	[BuildServiceUtils.TILE_ID.DIRT] = {
-		color = Color3.fromRGB(108, 78, 52),
-		material = Enum.Material.Ground,
-	},
-	[BuildServiceUtils.TILE_ID.STONE] = {
-		color = Color3.fromRGB(108, 113, 122),
-		material = Enum.Material.Slate,
-	},
-	[BuildServiceUtils.TILE_ID.SAND] = {
-		color = Color3.fromRGB(225, 206, 136),
-		material = Enum.Material.Sand,
-	},
-	[BuildServiceUtils.TILE_ID.SANDSTONE] = {
-		color = Color3.fromRGB(183, 154, 109),
-		material = Enum.Material.Sandstone,
-	},
-	[BuildServiceUtils.TILE_ID.SNOW] = {
-		color = Color3.fromRGB(232, 240, 255),
-		material = Enum.Material.Snow,
-	},
-	[BuildServiceUtils.TILE_ID.ICE] = {
-		color = Color3.fromRGB(178, 214, 255),
-		material = Enum.Material.Glacier,
-	},
-	[BuildServiceUtils.TILE_ID.MUD] = {
-		color = Color3.fromRGB(112, 90, 61),
-		material = Enum.Material.Ground,
-	},
-	[BuildServiceUtils.TILE_ID.CLAY] = {
-		color = Color3.fromRGB(135, 98, 73),
-		material = Enum.Material.Ground,
-	},
-	[BuildServiceUtils.TILE_ID.COPPER_ORE] = {
-		color = Color3.fromRGB(189, 118, 63),
-		material = Enum.Material.Metal,
-	},
-	[BuildServiceUtils.TILE_ID.IRON_ORE] = {
-		color = Color3.fromRGB(141, 134, 116),
-		material = Enum.Material.Metal,
-	},
-	[BuildServiceUtils.TILE_ID.SILVER_ORE] = {
-		color = Color3.fromRGB(177, 177, 185),
-		material = Enum.Material.Metal,
-	},
-	[BuildServiceUtils.TILE_ID.GOLD_ORE] = {
-		color = Color3.fromRGB(214, 186, 62),
-		material = Enum.Material.Metal,
-	},
-	[BuildServiceUtils.TILE_ID.CORRUPT_GRASS] = {
-		color = Color3.fromRGB(131, 84, 193),
-		material = Enum.Material.Grass,
-	},
-	[BuildServiceUtils.TILE_ID.CORRUPT_SOIL] = {
-		color = Color3.fromRGB(116, 84, 88),
-		material = Enum.Material.Ground,
-	},
-	[BuildServiceUtils.TILE_ID.CORRUPT_STONE] = {
-		color = Color3.fromRGB(126, 104, 160),
-		material = Enum.Material.Rock,
-	},
-	[BuildServiceUtils.TILE_ID.WOOD] = {
-		color = Color3.fromRGB(121, 91, 56),
-		material = Enum.Material.Wood,
-	},
-}
-local DEFAULT_BREAK_DEBRIS_VISUAL = BREAK_DEBRIS_VISUALS[BuildServiceUtils.TILE_ID.STONE]
-local BREAK_CHUNK_ANIMATION_SKIP_SECONDS = 1.5
-local PRIMARY_INPUT_USER_TYPES = {
-	[Enum.UserInputType.MouseButton1] = true,
-	[Enum.UserInputType.Touch] = true,
-}
-local TREE_MODEL_MATCH_MAX_DISTANCE_TILES = 6
-local TREE_FALL_DURATION_MIN = 4
-local TREE_FALL_DURATION_MAX = 5
-local TREE_FALL_ACCELERATION_EXPONENT = 2.2
-local TREE_FALL_BASE_ANGLE = math.rad(88)
-local TREE_FALL_OVERSHOOT_ANGLE = math.rad(8)
-local TREE_FALL_BOUNCE_ANGLE = math.rad(6)
-local TREE_BOUNCE_DURATION = 0.16
-local TREE_SETTLE_DURATION = 0.24
-local TREE_FADE_DURATION = 0.85
-local TREE_GROUND_HIT_MIN_ANGLE = math.rad(28)
-local TREE_GROUND_HIT_MIN_PROGRESS = 0.2
-local TREE_GROUND_HIT_SAMPLE_COUNT = 5
-local TREE_GROUND_HIT_SCAN_DEPTH_TILES = 3
-local TREE_GROUND_HIT_SURFACE_PADDING_TILES = 0.2
-local TREE_GROUND_HIT_FAILSAFE_SECONDS = 1.2
-local TREE_FALL_SOUND_FADE_OUT_SECONDS = 0.7
-local TREE_FALL_SPRING = {
-	frequency = 2.7,
-	damping = 0.72,
-}
-local TREE_BOUNCE_SPRING = {
-	frequency = 4.8,
-	damping = 0.58,
-}
-local TREE_SETTLE_SPRING = {
-	frequency = 6.5,
-	damping = 0.92,
-}
-local TREE_FADE_SPRING = {
-	frequency = 7,
-	damping = 1,
-}
-local INPUT_ACTION_PRIMARY = "BuildService.Primary"
-local CURSOR_VISUAL_RAYCAST_DISTANCE_STUDS = 4096
-local BUILD_TREE_ROOT_TILE_X_ATTRIBUTE = "BuildTreeRootTileX"
-local BUILD_TREE_ROOT_TILE_Y_ATTRIBUTE = "BuildTreeRootTileY"
-local TREE_AUDIO = (((AudioRegistry :: any).Misc or ({} :: any)).Tree or ({} :: any))
-local TREE_CHOP_AUDIO = TREE_AUDIO.Chop or ({} :: any)
-local TREE_FALL_AUDIO = TREE_AUDIO.Fall or ({} :: any)
-local TILE_AUDIO = (((AudioRegistry :: any).Misc or ({} :: any)).Tile or ({} :: any))
-local TILE_HIT_AUDIO = TILE_AUDIO.Hit or ({} :: any)
-local TILE_BREAK_AUDIO = TILE_AUDIO.Break or ({} :: any)
 
 local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
 local function isPrimaryInput(inputObject: InputObject): boolean
-	return PRIMARY_INPUT_USER_TYPES[inputObject.UserInputType] == true
+	return BuildServiceClientConstants.PRIMARY_INPUT_USER_TYPES[inputObject.UserInputType] == true
 end
 
 local function CoerceInventorySlot(slotRaw: any): number?
@@ -530,8 +395,8 @@ local function GetTreeRootTileNearWorldPosition(worldPosition: Vector3, radiusSt
 		end
 
 		local hitModel = part:FindFirstAncestorOfClass("Model")
-		local rootTileX = GetIntegerAttribute(hitModel, BUILD_TREE_ROOT_TILE_X_ATTRIBUTE)
-		local rootTileY = GetIntegerAttribute(hitModel, BUILD_TREE_ROOT_TILE_Y_ATTRIBUTE)
+		local rootTileX = GetIntegerAttribute(hitModel, BuildServiceClientConstants.BUILD_TREE_ROOT_TILE_X_ATTRIBUTE)
+		local rootTileY = GetIntegerAttribute(hitModel, BuildServiceClientConstants.BUILD_TREE_ROOT_TILE_Y_ATTRIBUTE)
 		if rootTileX == nil or rootTileY == nil then
 			continue
 		end
@@ -605,9 +470,9 @@ local function GetActivePlaceSourceFromInventoryState(stateRaw: any): ActivePlac
 end
 
 local function GetBreakDebrisVisual(tileId: number): (Color3, Enum.Material)
-	local visual = BREAK_DEBRIS_VISUALS[tileId]
+	local visual = BuildServiceClientConstants.BREAK_DEBRIS_VISUALS[tileId]
 	if visual == nil then
-		visual = DEFAULT_BREAK_DEBRIS_VISUAL
+		visual = BuildServiceClientConstants.DEFAULT_BREAK_DEBRIS_VISUAL
 	end
 	return visual.color, visual.material
 end
@@ -623,7 +488,7 @@ local function suppressChunkAnimationForBreakDelta(delta: TileDelta)
 		worldGenerationClient:SuppressChunkAnimationForTile(
 			delta.tileX,
 			delta.tileY,
-			BREAK_CHUNK_ANIMATION_SKIP_SECONDS
+			BuildServiceClientConstants.BREAK_CHUNK_ANIMATION_SKIP_SECONDS
 		)
 	end)
 end
@@ -701,7 +566,7 @@ function BuildServiceClient.GetTreeModelForFellEvent(self: BuildServiceClient, p
 
 	local bestModel: Model? = nil
 	local bestScore = math.huge
-	local distanceBudget = self.state.tileSize * TREE_MODEL_MATCH_MAX_DISTANCE_TILES
+	local distanceBudget = self.state.tileSize * BuildServiceClientConstants.TREE_MODEL_MATCH_MAX_DISTANCE_TILES
 	for _, visual in chunkVisuals do
 		if typeof(visual) ~= "table" then
 			continue
@@ -751,19 +616,19 @@ function BuildServiceClient.GetTreeModelForFellEvent(self: BuildServiceClient, p
 end
 
 function BuildServiceClient.RefreshTreeFallSoundTemplates(self: BuildServiceClient)
-	self.treeFallSoundAssetIds = AudioServiceUtils.CollectSoundAssetIds(TREE_FALL_AUDIO)
+	self.treeFallSoundAssetIds = AudioServiceUtils.CollectSoundAssetIds(BuildServiceClientConstants.TREE_FALL_AUDIO)
 end
 
 function BuildServiceClient.RefreshTreeChopSoundTemplates(self: BuildServiceClient)
-	self.treeChopSoundAssetIds = AudioServiceUtils.CollectSoundAssetIds(TREE_CHOP_AUDIO)
+	self.treeChopSoundAssetIds = AudioServiceUtils.CollectSoundAssetIds(BuildServiceClientConstants.TREE_CHOP_AUDIO)
 end
 
 function BuildServiceClient.RefreshTileHitSoundTemplates(self: BuildServiceClient)
-	self.tileHitSoundAssetIds = AudioServiceUtils.CollectSoundAssetIds(TILE_HIT_AUDIO)
+	self.tileHitSoundAssetIds = AudioServiceUtils.CollectSoundAssetIds(BuildServiceClientConstants.TILE_HIT_AUDIO)
 end
 
 function BuildServiceClient.RefreshTileBreakSoundTemplates(self: BuildServiceClient)
-	self.tileBreakSoundAssetIds = AudioServiceUtils.CollectSoundAssetIds(TILE_BREAK_AUDIO)
+	self.tileBreakSoundAssetIds = AudioServiceUtils.CollectSoundAssetIds(BuildServiceClientConstants.TILE_BREAK_AUDIO)
 end
 
 function BuildServiceClient.PickTreeChopSoundAssetId(self: BuildServiceClient): string?
@@ -925,7 +790,7 @@ function BuildServiceClient.FadeTreeFallSoundIfPlaying(
 
 	local fadeSeconds = if isFiniteNumber(fadeSecondsRaw)
 		then math.max(0, fadeSecondsRaw :: number)
-		else TREE_FALL_SOUND_FADE_OUT_SECONDS
+		else BuildServiceClientConstants.TREE_FALL_SOUND_FADE_OUT_SECONDS
 	AudioServiceUtils.StopAndDestroySound(sound, fadeSeconds)
 end
 
@@ -959,16 +824,16 @@ function BuildServiceClient.BeginTreeFallFade(self: BuildServiceClient, animatio
 	end
 	animation.stage = "fade"
 	animation.fadeStartedAt = now
-	self:FadeTreeFallSoundIfPlaying(animation, TREE_FALL_SOUND_FADE_OUT_SECONDS)
-	animation.opacityMotion:spring(0, TREE_FADE_SPRING)
+	self:FadeTreeFallSoundIfPlaying(animation, BuildServiceClientConstants.TREE_FALL_SOUND_FADE_OUT_SECONDS)
+	animation.opacityMotion:spring(0, BuildServiceClientConstants.TREE_FADE_SPRING)
 end
 
 function BuildServiceClient.IsGroundNearWorldPoint(self: BuildServiceClient, point: Vector3): boolean
 	local tileSize = math.max(0.05, self.state.tileSize)
 	local tileX, tileY = BuildServiceUtils.WorldPositionToTile(point, self.state.worldOrigin, tileSize)
-	local surfacePadding = tileSize * TREE_GROUND_HIT_SURFACE_PADDING_TILES
+	local surfacePadding = tileSize * BuildServiceClientConstants.TREE_GROUND_HIT_SURFACE_PADDING_TILES
 
-	for depth = 0, TREE_GROUND_HIT_SCAN_DEPTH_TILES do
+	for depth = 0, BuildServiceClientConstants.TREE_GROUND_HIT_SCAN_DEPTH_TILES do
 		local scanTileY = tileY - depth
 		local tileId = self:GetTileAt(tileX, scanTileY, false)
 		if BuildServiceUtils.IsSolidTile(tileId) then
@@ -995,10 +860,10 @@ function BuildServiceClient.HasTreeGroundImpact(
 	elapsed: number,
 	currentAngle: number
 ): boolean
-	if elapsed < animation.fallDuration * TREE_GROUND_HIT_MIN_PROGRESS then
+	if elapsed < animation.fallDuration * BuildServiceClientConstants.TREE_GROUND_HIT_MIN_PROGRESS then
 		return false
 	end
-	if math.abs(currentAngle) < TREE_GROUND_HIT_MIN_ANGLE then
+	if math.abs(currentAngle) < BuildServiceClientConstants.TREE_GROUND_HIT_MIN_ANGLE then
 		return false
 	end
 
@@ -1017,7 +882,7 @@ function BuildServiceClient.HasTreeGroundImpact(
 		+ math.abs(boundsCFrame.ZVector.Y) * halfDepth
 	local bottomY = boundsCFrame.Position.Y - yExtent
 	local direction = BuildServiceUtils.NormalizeFallDirection(animation.fallDirection)
-	local sampleCount = TREE_GROUND_HIT_SAMPLE_COUNT
+	local sampleCount = BuildServiceClientConstants.TREE_GROUND_HIT_SAMPLE_COUNT
 
 	for sampleIndex = 0, sampleCount - 1 do
 		local alpha = if sampleCount <= 1 then 0 else sampleIndex / (sampleCount - 1)
@@ -1038,7 +903,7 @@ function BuildServiceClient.SetFallenTreeCollision(_self: BuildServiceClient, tr
 			continue
 		end
 
-		local nodeType = descendant:GetAttribute(TREE_NODE_TYPE_ATTRIBUTE)
+		local nodeType = descendant:GetAttribute(BuildServiceClientConstants.TREE_NODE_TYPE_ATTRIBUTE)
 		local shouldCollide = nodeType == "Trunk" or nodeType == "Branch" or nodeType == "Leaf"
 		descendant.CanCollide = shouldCollide
 		descendant.CanTouch = shouldCollide
@@ -1047,9 +912,9 @@ function BuildServiceClient.SetFallenTreeCollision(_self: BuildServiceClient, tr
 end
 
 function BuildServiceClient.DisableFallingTreeWindFoliage(_self: BuildServiceClient, treeModel: Model)
-	treeModel:SetAttribute(WIND_FOLIAGE_ENABLED_ATTRIBUTE, false)
+	treeModel:SetAttribute(BuildServiceClientConstants.WIND_FOLIAGE_ENABLED_ATTRIBUTE, false)
 	for _, descendant in treeModel:GetDescendants() do
-		descendant:SetAttribute(WIND_FOLIAGE_ENABLED_ATTRIBUTE, false)
+		descendant:SetAttribute(BuildServiceClientConstants.WIND_FOLIAGE_ENABLED_ATTRIBUTE, false)
 	end
 
 	local windFoliageServiceClient = GetWindFoliageServiceClient()
@@ -1099,10 +964,13 @@ function BuildServiceClient.StartTreeFallAnimation(self: BuildServiceClient, pay
 	self:SetFallenTreeCollision(treeModel)
 
 	local direction = BuildServiceUtils.NormalizeFallDirection(payload.fallDirection)
-	local configuredFallDuration = self.random:NextNumber(TREE_FALL_DURATION_MIN, TREE_FALL_DURATION_MAX)
-	local impactAngle = TREE_FALL_BASE_ANGLE * direction
-	local overshootAngle = impactAngle + TREE_FALL_OVERSHOOT_ANGLE * direction
-	local bounceAngle = impactAngle - TREE_FALL_BOUNCE_ANGLE * direction
+	local configuredFallDuration = self.random:NextNumber(
+		BuildServiceClientConstants.TREE_FALL_DURATION_MIN,
+		BuildServiceClientConstants.TREE_FALL_DURATION_MAX
+	)
+	local impactAngle = BuildServiceClientConstants.TREE_FALL_BASE_ANGLE * direction
+	local overshootAngle = impactAngle + BuildServiceClientConstants.TREE_FALL_OVERSHOOT_ANGLE * direction
+	local bounceAngle = impactAngle - BuildServiceClientConstants.TREE_FALL_BOUNCE_ANGLE * direction
 
 	local angleMotion = Ripple.createMotion(0)
 	local opacityMotion = Ripple.createMotion(1)
@@ -1120,9 +988,9 @@ function BuildServiceClient.StartTreeFallAnimation(self: BuildServiceClient, pay
 		opacityMotion = opacityMotion,
 		startedAt = os.clock(),
 		fallDuration = configuredFallDuration,
-		bounceDuration = TREE_BOUNCE_DURATION,
-		settleDuration = TREE_SETTLE_DURATION,
-		fadeDuration = TREE_FADE_DURATION,
+		bounceDuration = BuildServiceClientConstants.TREE_BOUNCE_DURATION,
+		settleDuration = BuildServiceClientConstants.TREE_SETTLE_DURATION,
+		fadeDuration = BuildServiceClientConstants.TREE_FADE_DURATION,
 		impactAngle = impactAngle,
 		overshootAngle = overshootAngle,
 		bounceAngle = bounceAngle,
@@ -1162,7 +1030,7 @@ function BuildServiceClient.StepTreeFallAnimations(self: BuildServiceClient, del
 		local nextAngle = 0
 		if animation.stage == "fall" then
 			local alpha = math.clamp(elapsed / math.max(0.01, animation.fallDuration), 0, 1)
-			local accelerated = alpha ^ TREE_FALL_ACCELERATION_EXPONENT
+			local accelerated = alpha ^ BuildServiceClientConstants.TREE_FALL_ACCELERATION_EXPONENT
 			nextAngle = animation.impactAngle * accelerated
 			animation.angleMotion:immediate(nextAngle)
 		else
@@ -1171,10 +1039,10 @@ function BuildServiceClient.StepTreeFallAnimations(self: BuildServiceClient, del
 
 		if animation.stage == "fall" and elapsed >= animation.fallDuration then
 			animation.stage = "bounce"
-			animation.angleMotion:spring(animation.bounceAngle, TREE_BOUNCE_SPRING)
+			animation.angleMotion:spring(animation.bounceAngle, BuildServiceClientConstants.TREE_BOUNCE_SPRING)
 		elseif animation.stage == "bounce" and elapsed >= animation.fallDuration + animation.bounceDuration then
 			animation.stage = "settle"
-			animation.angleMotion:spring(animation.impactAngle, TREE_SETTLE_SPRING)
+			animation.angleMotion:spring(animation.impactAngle, BuildServiceClientConstants.TREE_SETTLE_SPRING)
 		end
 		if not animation.groundImpactDetected and self:HasTreeGroundImpact(animation, elapsed, nextAngle) then
 			animation.groundImpactDetected = true
@@ -1184,7 +1052,7 @@ function BuildServiceClient.StepTreeFallAnimations(self: BuildServiceClient, del
 			animation.fallDuration
 				+ animation.bounceDuration
 				+ animation.settleDuration
-				+ TREE_GROUND_HIT_FAILSAFE_SECONDS
+				+ BuildServiceClientConstants.TREE_GROUND_HIT_FAILSAFE_SECONDS
 		)
 		if animation.stage ~= "fade" then
 			local canFadeOnImpact = animation.groundImpactDetected
@@ -1231,7 +1099,7 @@ function BuildServiceClient.CreatePreviewVisual(self: BuildServiceClient)
 			child.Name == "BuildPreview"
 			or child.Name == "BuildPreviewBinder"
 			or child.Name == "BuildHoverHighlight"
-			or child:GetAttribute(BUILD_PREVIEW_RUNTIME_ATTRIBUTE) == true
+			or child:GetAttribute(BuildServiceClientConstants.BUILD_PREVIEW_RUNTIME_ATTRIBUTE) == true
 		then
 			child:Destroy()
 		end
@@ -1255,7 +1123,7 @@ function BuildServiceClient.CreatePreviewVisual(self: BuildServiceClient)
 	previewPart.CastShadow = false
 	previewPart.Transparency = 1
 	previewPart.Size = Vector3.new(0.1, 0.1, 0.1)
-	previewPart:SetAttribute(BUILD_PREVIEW_RUNTIME_ATTRIBUTE, true)
+	previewPart:SetAttribute(BuildServiceClientConstants.BUILD_PREVIEW_RUNTIME_ATTRIBUTE, true)
 	previewPart.Parent = self.visualFolder
 	TagBinder.applyTag(previewPart, TagBinder.Tags.Preview, CollectionService)
 end
@@ -1346,13 +1214,13 @@ function BuildServiceClient.GetCursorTile(self: BuildServiceClient): (number?, n
 
 		local raycastResult = Workspace:Raycast(
 			viewportRay.Origin,
-			viewportRay.Direction * CURSOR_VISUAL_RAYCAST_DISTANCE_STUDS,
+			viewportRay.Direction * BuildServiceClientConstants.CURSOR_VISUAL_RAYCAST_DISTANCE_STUDS,
 			raycastParams
 		)
 		if raycastResult ~= nil then
 			local hitModel = raycastResult.Instance:FindFirstAncestorOfClass("Model")
-			local rootTileX = GetIntegerAttribute(hitModel, BUILD_TREE_ROOT_TILE_X_ATTRIBUTE)
-			local rootTileY = GetIntegerAttribute(hitModel, BUILD_TREE_ROOT_TILE_Y_ATTRIBUTE)
+			local rootTileX = GetIntegerAttribute(hitModel, BuildServiceClientConstants.BUILD_TREE_ROOT_TILE_X_ATTRIBUTE)
+			local rootTileY = GetIntegerAttribute(hitModel, BuildServiceClientConstants.BUILD_TREE_ROOT_TILE_Y_ATTRIBUTE)
 			if rootTileX ~= nil and rootTileY ~= nil then
 				return rootTileX, rootTileY
 			end
@@ -1384,7 +1252,7 @@ function BuildServiceClient.GetTerrainHoverTile(
 		return nil, nil
 	end
 
-	for depth = 0, TERRAIN_HOVER_SCAN_DEPTH_TILES do
+	for depth = 0, BuildServiceClientConstants.TERRAIN_HOVER_SCAN_DEPTH_TILES do
 		local scanTileY = tileY - depth
 		local tileId = self:GetTileAt(tileX, scanTileY, false)
 		if tileId == BuildServiceUtils.AIR_TILE_ID then
@@ -1505,7 +1373,7 @@ function BuildServiceClient.GetTileAt(
 	if now < nextAllowedAt then
 		return BuildServiceUtils.AIR_TILE_ID
 	end
-	self.tileFetchCooldownByTileKey[tileKey] = now + TILE_QUERY_FETCH_COOLDOWN
+	self.tileFetchCooldownByTileKey[tileKey] = now + BuildServiceClientConstants.TILE_QUERY_FETCH_COOLDOWN
 
 	sendPacket(BuildServiceUtils.NETWORK_METHOD_GET_TILE_AT, tileX, tileY)
 	return BuildServiceUtils.AIR_TILE_ID
@@ -1668,7 +1536,7 @@ function BuildServiceClient.OnTileDeltas(self: BuildServiceClient, payloadRaw: a
 			self.predictedTileOverrides[tileKey] = nil
 		end
 
-		local isBreakDelta = delta.reason ~= nil and BREAK_DEBRIS_REASONS[delta.reason] == true
+		local isBreakDelta = delta.reason ~= nil and BuildServiceClientConstants.BREAK_DEBRIS_REASONS[delta.reason] == true
 		if isBreakDelta then
 			suppressChunkAnimationForBreakDelta(delta)
 		end
@@ -1682,12 +1550,16 @@ function BuildServiceClient.OnTileDeltas(self: BuildServiceClient, payloadRaw: a
 				and self.breakInput.tileX == delta.tileX
 				and self.breakInput.tileY == delta.tileY
 			)
-				or (self.currentBreakProgress ~= nil and self.currentBreakProgress.tileX == delta.tileX and self.currentBreakProgress.tileY == delta.tileY)
+				or (
+					self.currentBreakProgress ~= nil
+					and self.currentBreakProgress.tileX == delta.tileX
+					and self.currentBreakProgress.tileY == delta.tileY
+				)
 				or (self.cursorTileX == delta.tileX and self.cursorTileY == delta.tileY)
 			if isLocalBreakTarget and not playedTileBreakSound then
 				playedTileBreakSound = self:PlayTileBreakSound()
 			end
-			if debrisTilesSpawned < MAX_BREAK_DEBRIS_TILES_PER_BATCH then
+			if debrisTilesSpawned < BuildServiceClientConstants.MAX_BREAK_DEBRIS_TILES_PER_BATCH then
 				debrisTilesSpawned += 1
 				self:SpawnBreakDebris(delta.tileX, delta.tileY, previousTileId)
 			end
@@ -1916,7 +1788,7 @@ end
 function BuildServiceClient.PrunePendingPredictions(self: BuildServiceClient)
 	local now = os.clock()
 	for requestId, pending in self.pendingActions do
-		if now - pending.createdAt <= PREDICTION_TTL_SECONDS then
+		if now - pending.createdAt <= BuildServiceClientConstants.PREDICTION_TTL_SECONDS then
 			continue
 		end
 		self:CleanupPendingAction(requestId)
@@ -1992,7 +1864,7 @@ function BuildServiceClient.OnRenderStep(self: BuildServiceClient, _deltaTime: n
 	self:StepTreeFallAnimations(_deltaTime)
 	self:UpdateCursorTile()
 
-	if HOVER_BREAK_TEST_MODE then
+	if BuildServiceClientConstants.HOVER_BREAK_TEST_MODE then
 		self:ApplyHoverBreakInput()
 	elseif self.breakInput.isHeld then
 		local hoverTileX = self.cursorTileX
@@ -2111,19 +1983,22 @@ function BuildServiceClient.BindInputRouter(self: BuildServiceClient): boolean
 		cursorAny:Init()
 	end
 
-	local disconnect = PlatformServiceClient:BindAction(INPUT_ACTION_PRIMARY, function(phase: string)
-		if phase ~= "Began" and phase ~= "Ended" then
+	local disconnect = PlatformServiceClient:BindAction(
+		BuildServiceClientConstants.INPUT_ACTION_PRIMARY,
+		function(phase: string)
+			if phase ~= "Began" and phase ~= "Ended" then
+				return false
+			end
+			local startedAction = self:HandlePrimaryInput(phase == "Began")
+			if phase == "Began" and startedAction == BuildServiceUtils.ACTION_TYPE_BREAK then
+				if self.hapticsModule ~= nil and typeof((self.hapticsModule :: any).ImpactLight) == "function" then
+					local hapticsAny = self.hapticsModule :: any
+					hapticsAny:ImpactLight()
+				end
+			end
 			return false
 		end
-		local startedAction = self:HandlePrimaryInput(phase == "Began")
-		if phase == "Began" and startedAction == BuildServiceUtils.ACTION_TYPE_BREAK then
-			if self.hapticsModule ~= nil and typeof((self.hapticsModule :: any).ImpactLight) == "function" then
-				local hapticsAny = self.hapticsModule :: any
-				hapticsAny:ImpactLight()
-			end
-		end
-		return false
-	end)
+	)
 
 	if disconnect == nil then
 		return false
@@ -2376,7 +2251,7 @@ function BuildServiceClient.HandlePrimaryInput(self: BuildServiceClient, isHeldR
 	local isHeld = BuildServiceUtils.CoerceBoolean(isHeldRaw, false)
 	if not isHeld then
 		self:SetPlaceInput(false, nil, nil)
-		if not HOVER_BREAK_TEST_MODE then
+		if not BuildServiceClientConstants.HOVER_BREAK_TEST_MODE then
 			self:SetBreakInput(false, nil, nil)
 		end
 		return nil
@@ -2390,7 +2265,7 @@ function BuildServiceClient.HandlePrimaryInput(self: BuildServiceClient, isHeldR
 	end
 
 	self:SetPlaceInput(false, nil, nil)
-	if HOVER_BREAK_TEST_MODE then
+	if BuildServiceClientConstants.HOVER_BREAK_TEST_MODE then
 		return nil
 	end
 	if self:BeginBreakInputFromCursor() then
