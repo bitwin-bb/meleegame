@@ -2,12 +2,7 @@ local require = require(script.Parent.loader).load(script)
 
 local Maid = require("Maid")
 
-local AtlasResolver = require("AtlasResolver")
-local AutotileRegistry = require("AutotileRegistry")
-local EightWayBlobRule = require("EightWayBlobRule")
-local FourWay16Rule = require("FourWay16Rule")
-local Full256Rule = require("Full256Rule")
-local MaskResolver = require("MaskResolver")
+local TileChunkRender = require("TileChunkRender")
 local TileLayerRenderer = require("TileLayerRenderer")
 
 local TileChunkRenderer = {}
@@ -34,21 +29,6 @@ local function parseChunkKey(chunkKeyRaw: any): (number?, number?)
 	end
 
 	return tonumber(chunkXRaw), tonumber(chunkYRaw)
-end
-
-local function getRuleForDefinition(definition: any): any
-	local mode = if typeof(definition) == "table" then (definition :: any).Mode else nil
-	if mode == "FourWay16" then
-		return FourWay16Rule
-	end
-	if mode == "Full256" then
-		return Full256Rule
-	end
-	return EightWayBlobRule
-end
-
-local function shouldRenderSurfaceGuiDefinition(definition: any): boolean
-	return typeof(definition) == "table" and rawget(definition, "UseSurfaceGui") == true
 end
 
 function TileChunkRenderer.new(chunkInstance: Instance, contextRaw: any?): any
@@ -135,29 +115,13 @@ function TileChunkRenderer.UpdateTile(self: any, tileX: number, tileY: number)
 
 	local localX = tileX - self._tileMinX
 	local localY = tileY - self._tileMinY
-	local tileData = self:GetTileData(tileX, tileY)
-	if typeof(tileData) ~= "table" then
+	local resolved = TileChunkRender.Resolve(self._context.renderService, tileX, tileY)
+	if resolved == nil then
 		self._layerRenderer:ClearTile(localX, localY)
 		return
 	end
 
-	local tileId = (tileData :: any).TileId or (tileData :: any).tileId
-	local definition = AutotileRegistry.GetDefinition(tileId)
-	if not shouldRenderSurfaceGuiDefinition(definition) then
-		self._layerRenderer:ClearTile(localX, localY)
-		return
-	end
-
-	local mask = MaskResolver.Resolve(function(scanX: number, scanY: number)
-		return self:GetTileData(scanX, scanY)
-	end, Vector2.new(tileX, tileY), getRuleForDefinition(definition))
-	local atlasResult = AtlasResolver.Resolve(definition, mask, Vector2.new(tileX, tileY), rawget(definition, "VariantSeed"))
-	self._layerRenderer:SetTile(
-		localX,
-		localY,
-		atlasResult,
-		self:GetTileSurfaceLayout(tileX, tileY, definition, atlasResult)
-	)
+	self._layerRenderer:SetTile(localX, localY, resolved.atlasResult, resolved.layout)
 end
 
 function TileChunkRenderer.Destroy(self: any)

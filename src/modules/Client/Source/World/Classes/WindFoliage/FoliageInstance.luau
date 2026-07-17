@@ -42,6 +42,7 @@ export type Config = {
 	tweenSmoothingEnabled: boolean?,
 	tweenSmoothingDuration: number?,
 	tweenSmoothingMaxDuration: number?,
+	worldPosition: Vector3?,
 }
 
 export type WindSample = {
@@ -423,6 +424,7 @@ function FoliageInstance.New(instanceRaw: any, configRaw: Config?): FoliageInsta
 		bucketIndex = config.bucketIndex,
 		janitor = janitor,
 		config = config,
+		worldPosition = if typeof(config.worldPosition) == "Vector3" then config.worldPosition else nil,
 		referenceFrame = referenceFrame,
 		objectHeight = objectHeight,
 		rootPosition = referenceFrame.Position,
@@ -493,6 +495,9 @@ function FoliageInstance.New(instanceRaw: any, configRaw: Config?): FoliageInsta
 end
 
 function FoliageInstance.GetRootPosition(self: FoliageInstance): Vector3
+	if self.worldPosition ~= nil then
+		return self.worldPosition
+	end
 	if self.treeGraph ~= nil then
 		return self.treeGraph:GetRootPosition()
 	end
@@ -700,7 +705,11 @@ function FoliageInstance.AddDisturbance(self: FoliageInstance, impulseWorld: Vec
 		return
 	end
 	if self.treeGraph ~= nil then
-		self.treeGraph:AddDisturbance(impulseWorld, originWorldRaw)
+		local localOrigin = originWorldRaw
+		if self.worldPosition ~= nil and typeof(originWorldRaw) == "Vector3" then
+			localOrigin = originWorldRaw - self.worldPosition + self.treeGraph:GetRootPosition()
+		end
+		self.treeGraph:AddDisturbance(impulseWorld, localOrigin)
 		return
 	end
 

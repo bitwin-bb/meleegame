@@ -67,7 +67,13 @@ function AtlasResolver.Resolve(definitionRaw: any, maskRaw: any, coordRaw: any?,
 		return nil
 	end
 
-	local rect = RectUtil.FromCell(cell, definition.TileSize, rawget(definition, "Padding"), rawget(definition, "Spacing"))
+	local rect = RectUtil.FromCell(
+		cell,
+		definition.TileSize,
+		rawget(definition, "Padding"),
+		rawget(definition, "Spacing"),
+		rawget(definition, "ImageRectScale")
+	)
 	return {
 		Image = if typeof((selectedEntry :: any).Image) == "string"
 			then (selectedEntry :: any).Image

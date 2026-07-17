@@ -332,7 +332,7 @@ end
 
 function BuildServiceServer.CreateStateSnapshot(self: BuildServiceServer): BuildServiceState
 	local world = self.world
-	local tileSize = if world ~= nil and isFiniteNumber((world :: any).tileSize) then (world :: any).tileSize else 4
+	local tileSize = if world ~= nil and isFiniteNumber((world :: any).tileSize) then (world :: any).tileSize else 2
 	local chunkSize = if world ~= nil and isFiniteNumber((world :: any).chunkSize)
 		then math.floor((world :: any).chunkSize)
 		else 32

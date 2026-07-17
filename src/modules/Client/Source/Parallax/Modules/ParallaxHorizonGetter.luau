@@ -16,7 +16,7 @@ export type HorizonSample = {
 }
 
 local DEFAULT_MAX_TILES_Y = 1800
-local DEFAULT_TILE_SIZE = 4
+local DEFAULT_TILE_SIZE = 2
 local DEFAULT_CHUNK_SIZE = 32
 local SURFACE_SAMPLE_COUNT = 17
 local WORLD_TOP_DEPTH_FACTOR = 0.15

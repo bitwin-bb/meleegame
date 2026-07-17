@@ -6,11 +6,13 @@ local AutotileRegistry = require("AutotileRegistry")
 local BuildServiceClient = require("BuildServiceClient")
 local BuildServiceUtils = require("BuildServiceUtils")
 local TileChunkBinderClient = require("TileChunkBinderClient")
+local TileRenderServiceClient = require("TileRenderServiceClient")
+local WorldGenerationServiceClient = require("WorldGenerationServiceClient")
 
 local AutotileRenderServiceClient = {}
 AutotileRenderServiceClient.ServiceName = "AutotileRenderServiceClient"
 
-local DEFAULT_TILE_SIZE = 4
+local DEFAULT_TILE_SIZE = 2
 local DEFAULT_CHUNK_SIZE = 32
 local DEFAULT_BASE_PLANE_X = 0
 local DEFAULT_ATLAS_TILE_SIZE = 16
@@ -25,13 +27,6 @@ local function getBuildState(): any?
 end
 
 local function coerceAtlasPixelSize(definitionRaw: any, atlasResultRaw: any): number
-	if typeof(atlasResultRaw) == "table" then
-		local imageRectSize = (atlasResultRaw :: any).ImageRectSize
-		if typeof(imageRectSize) == "Vector2" and imageRectSize.X > 0 and imageRectSize.Y > 0 then
-			return math.max(imageRectSize.X, imageRectSize.Y)
-		end
-	end
-
 	if typeof(definitionRaw) == "table" then
 		local tileSize = (definitionRaw :: any).TileSize
 		if typeof(tileSize) == "Vector2" then
@@ -39,6 +34,13 @@ local function coerceAtlasPixelSize(definitionRaw: any, atlasResultRaw: any): nu
 		end
 		if isFiniteNumber(tileSize) then
 			return math.max(DEFAULT_ATLAS_TILE_SIZE, tileSize :: number)
+		end
+	end
+
+	if typeof(atlasResultRaw) == "table" then
+		local imageRectSize = (atlasResultRaw :: any).ImageRectSize
+		if typeof(imageRectSize) == "Vector2" and imageRectSize.X > 0 and imageRectSize.Y > 0 then
+			return math.max(imageRectSize.X, imageRectSize.Y)
 		end
 	end
 
@@ -67,18 +69,25 @@ function AutotileRenderServiceClient.Init(self: any)
 	self._chunkBinder = TileChunkBinderClient.new(self)
 	self._maid:GiveTask(self._chunkBinder)
 	self._chunkBinder:Start()
-
-	if BuildServiceClient.tileDeltasApplied ~= nil then
-		self._maid:GiveTask(BuildServiceClient.tileDeltasApplied:Connect(function(deltas: { any })
-			self:OnTileDeltas(deltas)
-		end))
-	end
-
-	if BuildServiceClient.stateChanged ~= nil then
-		self._maid:GiveTask(BuildServiceClient.stateChanged:Connect(function()
+	self._renderScheduler = TileRenderServiceClient.new({
+		tileDeltasApplied = BuildServiceClient.tileDeltasApplied,
+		stateChanged = BuildServiceClient.stateChanged,
+		updateTile = function(tileX: number, tileY: number)
+			if self._chunkBinder ~= nil then
+				self._chunkBinder:UpdateTile(tileX, tileY)
+			end
+		end,
+		refreshAll = function()
 			self:RefreshAll()
-		end))
-	end
+		end,
+	})
+	self._maid:GiveTask(self._renderScheduler)
+	self._maid:GiveTask(WorldGenerationServiceClient.chunkSnapshotsChanged:Connect(function(chunkKey: string)
+		if self._renderScheduler ~= nil then
+			self._renderScheduler:QueueChunkBoundary(chunkKey, self:GetChunkSize())
+		end
+	end))
+	self._renderScheduler:RequestRefresh()
 end
 
 function AutotileRenderServiceClient.GetChunkSize(_self: any): number
@@ -122,10 +131,12 @@ function AutotileRenderServiceClient.GetTileSurfaceLayout(
 ): any
 	local tileSize = self:GetTileSize()
 	local atlasPixelSize = coerceAtlasPixelSize(definitionRaw, atlasResultRaw)
+	local worldOrigin = self:GetWorldOrigin()
+	local surfacePlaneX = worldOrigin.X + self:GetBasePlaneX()
 
 	return {
 		cframe = CFrame.new(
-			BuildServiceUtils.TileToWorldCenter(tileX, tileY, self:GetWorldOrigin(), tileSize, self:GetBasePlaneX())
+			BuildServiceUtils.TileToWorldCenter(tileX, tileY, worldOrigin, tileSize, surfacePlaneX)
 		),
 		size = Vector3.new(tileSize, tileSize, tileSize),
 		pixelsPerStud = atlasPixelSize / tileSize,
@@ -191,6 +202,7 @@ function AutotileRenderServiceClient.Destroy(self: any)
 		self._maid = nil
 	end
 	self._chunkBinder = nil
+	self._renderScheduler = nil
 end
 
 return AutotileRenderServiceClient

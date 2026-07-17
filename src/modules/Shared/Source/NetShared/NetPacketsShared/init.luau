@@ -7,6 +7,7 @@ local Packets = {
 	BuildService = require(script:WaitForChild("BuildService")),
 	CameraService = require(script:WaitForChild("CameraService")),
 	CraftingService = require(script:WaitForChild("CraftingService")),
+	CropService = require(script:WaitForChild("CropServicePackets")),
 	GoreService = require(script:WaitForChild("GoreService")),
 	HpService = require(script:WaitForChild("HpService")),
 	InventoryService = require(script:WaitForChild("InventoryService")),

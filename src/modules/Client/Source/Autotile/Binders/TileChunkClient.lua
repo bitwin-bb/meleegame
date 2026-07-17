@@ -8,8 +8,14 @@ local TileChunkClient = {}
 TileChunkClient.__index = TileChunkClient
 setmetatable(TileChunkClient, ModelBinder)
 
+local AUTOTILE_PRESENTATION_CHUNK_ATTRIBUTE = "AutotilePresentationChunk"
+
 function TileChunkClient.new(instance: Instance, context: any): any
 	local self = ModelBinder.new(instance, context, TileChunkClient)
+	if instance:GetAttribute(AUTOTILE_PRESENTATION_CHUNK_ATTRIBUTE) ~= true then
+		return self
+	end
+
 	self.renderer = TileChunkRenderer.new(instance, context)
 	self:AddCleanup(self.renderer)
 	self.renderer:RenderInitial()

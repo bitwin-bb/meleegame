@@ -4,7 +4,7 @@ local Workspace = game:GetService("Workspace")
 
 local GamepadPointer = {}
 
-GamepadPointer.DEFAULT_TILE_SIZE_STUDS = 4
+GamepadPointer.DEFAULT_TILE_SIZE_STUDS = 2
 GamepadPointer.WORLD_REACH_TILES = 5
 
 export type PointerOwner = "Left" | "Right"

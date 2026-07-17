@@ -21,6 +21,18 @@ return {
 		name = "Acorn",
 		description = "Your first ever crop! This can be planted to grow into a tree that produces more acorns!",
 	},
+	["GrassSeeds"] = {
+		name = "Grass Seeds",
+		description = "Seeds that instantly establish grass on exposed dirt.",
+	},
+	["DaybloomSeeds"] = {
+		name = "Daybloom Seeds",
+		description = "Seeds for an herb that blooms in daylight.",
+	},
+	["Daybloom"] = {
+		name = "Daybloom",
+		description = "A mature daylight herb used in alchemy.",
+	},
 	["Part"] = {
 		name = "Part",
 		description = "Loose crafting scrap salvaged from fallen enemies and equipment.",

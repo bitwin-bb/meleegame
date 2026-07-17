@@ -413,12 +413,12 @@ local TREE_PALETTE_SNOW_2 = WorldGenerationColor.TREE_PALETTES.Snow2
 
 local DEFAULT_SEED = 93847583
 local DEFAULT_CHUNK_SIZE = 32
-local _DEFAULT_TILE_SIZE = 4
+local _DEFAULT_TILE_SIZE = 2
 local _DEFAULT_TILE_DEPTH = 4
 local DEFAULT_BASE_PLANE_X = 0
 local DEFAULT_WALL_PLANE_OFFSET = 4
 local DEFAULT_HORIZON_DEPTH_BLOCKS = 10
-local DEFAULT_BACKGROUND_LAYER_COUNT = 6
+local DEFAULT_BACKGROUND_LAYER_COUNT = 1
 local DEFAULT_BACKGROUND_LAYER_THICKNESS_BLOCKS = 1
 local DEFAULT_MIN_TILE_Y = -360
 local DEFAULT_MAX_TILE_Y = 180
@@ -433,7 +433,7 @@ local DEFAULT_MESHING_RECTS_PER_YIELD = 64
 local DEFAULT_MAX_CACHED_CHUNK_DATA = 1200
 local DEFAULT_MAX_CACHED_CHUNK_VISUALS = 0
 local DEFAULT_POOL_SIZE = 9000
-local FIXED_TILE_SIZE_STUDS = 4
+local FIXED_TILE_SIZE_STUDS = 2
 local FIXED_TILE_DEPTH_STUDS = 4
 local DEFAULT_PRELOAD_FOCUS_SURFACE_OFFSET_TILES = 4
 local DEFAULT_WORLD_FOLDER_NAME = "WorldGeneration"
@@ -1983,8 +1983,8 @@ function WorldGeneration.New(configRaw: WorldGenerationConfig?): WorldGeneration
 		),
 		backgroundLayerCount = CoerceInteger(
 			(config :: any).backgroundLayerCount,
-			3,
-			6,
+			1,
+			1,
 			DEFAULT_BACKGROUND_LAYER_COUNT
 		),
 		backgroundLayerThicknessBlocks = clampNumber(

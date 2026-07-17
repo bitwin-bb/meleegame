@@ -29,10 +29,10 @@ local CAMERA_NAME = "PlayerViewportCamera"
 local DEFAULT_VIEWPORT_SIZE = Vector2.new(1280, 720)
 local VIEWPORT_FRAME_POSITION = UDim2.fromScale(1, 0)
 local VIEWPORT_FRAME_SIZE = UDim2.fromScale(-1, 1)
-local DEFAULT_SURFACE_ANCHOR_SIZE = Vector3.new(0.05, 8, 6)
+local DEFAULT_SURFACE_ANCHOR_SIZE = Vector3.new(2, 8, 6)
 local SURFACE_FACE = Enum.NormalId.Right
 local SURFACE_PIXELS_PER_STUD = 8
-local SURFACE_ANCHOR_THICKNESS = 0.05
+local SURFACE_ANCHOR_DEPTH = 2
 local ORTHOGRAPHIC_FIELD_OF_VIEW = 1
 local CAMERA_PADDING_SCALE = 1.18
 local CAMERA_HALF_EXTENTS_PADDING = Vector3.new(0.25, 0.75, 1)
@@ -236,7 +236,7 @@ end
 function PlayerMain.GetSurfaceAnchorSize(boundsSize: Vector3, paddingScale: number?): Vector3
 	local padding = math.max(1, paddingScale or CAMERA_PADDING_SCALE)
 	return Vector3.new(
-		SURFACE_ANCHOR_THICKNESS,
+		SURFACE_ANCHOR_DEPTH,
 		math.max(1, boundsSize.Y * padding),
 		math.max(1, boundsSize.Z * padding)
 	)
@@ -429,7 +429,7 @@ function PlayerMain.ObserveLocalCharacter(self: any)
 	end))
 end
 
-function PlayerMain.Mount(self: any, playerGui: PlayerGui)
+function PlayerMain.Mount(self: any, _playerGui: PlayerGui)
 	self.mountMaid:DoCleaning()
 
 	local mountScope = Fusion.deriveScope(self.scope)
@@ -454,22 +454,8 @@ function PlayerMain.Mount(self: any, playerGui: PlayerGui)
 		Name = WORLD_MODEL_NAME,
 	}
 
-	self.surfaceAnchor = mountScope:New "Part" {
-		Name = SURFACE_ANCHOR_NAME,
-		Anchored = true,
-		CanCollide = false,
-		CanQuery = false,
-		CanTouch = false,
-		CastShadow = false,
-		CFrame = self.surfaceAnchorCFrameValue,
-		Size = self.surfaceAnchorSizeValue,
-		Transparency = 1,
-		Parent = Workspace,
-	}
-
 	self.surfaceGui = mountScope:New "SurfaceGui" {
 		Name = SURFACE_GUI_NAME,
-		Adornee = self.surfaceAnchor,
 		AlwaysOnTop = false,
 		Brightness = 1,
 		Enabled = self.surfaceEnabledValue,
@@ -480,7 +466,6 @@ function PlayerMain.Mount(self: any, playerGui: PlayerGui)
 		ResetOnSpawn = false,
 		SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-		Parent = playerGui,
 
 		[Fusion.Children] = {
 			mountScope:New "ViewportFrame" {
@@ -505,6 +490,23 @@ function PlayerMain.Mount(self: any, playerGui: PlayerGui)
 					self.camera,
 				},
 			},
+		},
+	}
+
+	self.surfaceAnchor = mountScope:New "Part" {
+		Name = SURFACE_ANCHOR_NAME,
+		Anchored = true,
+		CanCollide = false,
+		CanQuery = false,
+		CanTouch = false,
+		CastShadow = false,
+		CFrame = self.surfaceAnchorCFrameValue,
+		Size = self.surfaceAnchorSizeValue,
+		Transparency = 1,
+		Parent = Workspace,
+
+		[Fusion.Children] = {
+			self.surfaceGui,
 		},
 	}
 end
@@ -700,7 +702,7 @@ function PlayerMain.RefreshCamera(self: any, deltaTimeRaw: number?)
 	local smoothedCenter =
 		smoothVector3(rawget(self, "smoothedViewportCenter"), stableCenter, frameAlpha, VIEWPORT_CENTER_SNAP_DISTANCE)
 	setFusionValue(self.surfaceAnchorSizeValue, PlayerMain.GetSurfaceAnchorSize(stableBoundsSize, CAMERA_PADDING_SCALE))
-	setFusionValue(self.surfaceAnchorCFrameValue, CFrame.new(smoothedCenter))
+	setFusionValue(self.surfaceAnchorCFrameValue, PlayerMain.GetSurfaceAnchorCFrame(CFrame.new(smoothedCenter)))
 	setFusionValue(self.surfaceEnabledValue, true)
 
 	local distance = PlayerMain.GetViewportCameraDistance(

@@ -983,7 +983,7 @@ end
 function LiquidServiceUtils.CreateDefaultState(): LiquidServiceState
 	return {
 		ready = false,
-		tileSize = 4,
+		tileSize = 2,
 		chunkSize = 32,
 		worldOrigin = Vector3.zero,
 		maxFill = MAX_FILL,

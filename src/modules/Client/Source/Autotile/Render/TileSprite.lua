@@ -16,8 +16,8 @@ export type TileSurfaceLayout = {
 
 local Children = Fusion.Children
 
-local DEFAULT_ROOT_SIZE = Vector3.new(4, 4, 4)
-local DEFAULT_PIXELS_PER_STUD = 4
+local DEFAULT_ROOT_SIZE = Vector3.new(2, 2, 2)
+local DEFAULT_PIXELS_PER_STUD = 8
 local SURFACE_FACE = Enum.NormalId.Right
 
 local function isFiniteNumber(value: any): boolean

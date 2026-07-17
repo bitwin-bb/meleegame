@@ -1,6 +1,7 @@
 local require = require(script.Parent.loader).load(script)
 
 local Maid = require("Maid")
+local Rx = require("Rx")
 local Signal = require("Signal")
 
 local BuildServiceUtils = require("BuildServiceUtils")
@@ -29,10 +30,27 @@ function AutotileService.Init(self: any)
 	self._dirtyTiles = {}
 	self._dirtyTileLookup = {}
 	self.dirtyTilesChanged = Signal.new()
+	self._dirtyTilesStateChanged = Signal.new()
 	self._maid:GiveTask(self.dirtyTilesChanged)
-	self._maid:GiveTask(TileWorldService.tileChanged:Connect(function(tileX: number, tileY: number, nextTileData: any?)
+	self._maid:GiveTask(self._dirtyTilesStateChanged)
+	self._dirtyTilesObservable = Rx.fromSignal(self._dirtyTilesStateChanged):Pipe({
+		Rx.throttleDefer(),
+		Rx.map(function()
+			return self:GetDirtyTiles()
+		end),
+		Rx.startWith({ self:GetDirtyTiles() }),
+		Rx.shareReplay(1),
+	})
+	self._maid:GiveTask(TileWorldService:ObserveTileChanged():Subscribe(function(tileX: number, tileY: number, nextTileData: any?)
 		self:OnTileChanged(tileX, tileY, nextTileData)
 	end))
+end
+
+function AutotileService.ObserveDirtyTiles(self: any): any
+	if self._maid == nil then
+		self:Init()
+	end
+	return self._dirtyTilesObservable
 end
 
 function AutotileService.MarkDirty(self: any, tileXRaw: any, tileYRaw: any): boolean
@@ -57,6 +75,7 @@ function AutotileService.MarkDirty(self: any, tileXRaw: any, tileYRaw: any): boo
 	}
 	self._dirtyTileLookup[key] = true
 	self._dirtyTiles[#self._dirtyTiles + 1] = coord
+	self._dirtyTilesStateChanged:Fire()
 	return true
 end
 
@@ -106,6 +125,9 @@ function AutotileService.ConsumeDirtyTiles(self: any): { any }
 	if self._dirtyTileLookup ~= nil then
 		table.clear(self._dirtyTileLookup)
 	end
+	if self._dirtyTilesStateChanged ~= nil then
+		self._dirtyTilesStateChanged:Fire()
+	end
 	return output
 end
 
@@ -120,6 +142,8 @@ function AutotileService.Destroy(self: any)
 	if self._dirtyTileLookup ~= nil then
 		table.clear(self._dirtyTileLookup)
 	end
+	self._dirtyTilesObservable = nil
+	self._dirtyTilesStateChanged = nil
 end
 
 return AutotileService

@@ -1,8 +1,8 @@
+local require = require(script.Parent.loader).load(script)
+
 --[=[
 	@class AquariaBackupService
 ]=]
-
-local require = require(script.Parent.loader).load(script)
 
 local Configs = require("CoreConfigs")
 local CoreRuntime = require("CoreRuntime")
@@ -19,6 +19,7 @@ local BuildServiceServer = require("BuildServiceServer")
 local CameraServiceServer = require("CameraServiceServer")
 local CelestialCycleServer = require("CelestialCycleServer")
 local CraftingServiceServer = require("CraftingServiceServer")
+local CropService = require("CropService")
 local GoreServiceServer = require("GoreServiceServer")
 local HpServiceServer = require("HpServiceServer")
 local InventoryServiceServer = require("InventoryServiceServer")
@@ -108,6 +109,8 @@ function AquariaBackupService.Init(self: AquariaBackupService, serviceBag: any):
 	VFXServiceServer:Init()
 	BreathServiceServer:Init()
 	RagdollServiceServer:Init()
+
+	self._serviceBag:GetService(CropService)
 end
 
 function AquariaBackupService.Start(self: AquariaBackupService): ()

@@ -5,15 +5,16 @@ local describe = testEnvironment.describe :: any
 local it = testEnvironment.it :: any
 local expect = testEnvironment.expect :: any
 
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local WorldGeneration = require("WorldGeneration")
-local WorldGenerationColor = require("WorldGenerationColor")
 local WorldGenerationServiceClient = require("WorldGenerationServiceClient")
 local WorldGenerationServiceUtils = require("WorldGenerationServiceUtils")
 
 local Maid = require("Maid")
+local TagBinder = require("TagBinder")
 
 local REQUIRED_TILE_TEMPLATE_NAMES = {
 	"Stone",
@@ -54,6 +55,15 @@ end
 
 return function()
 	describe("WorldGeneration Nevermore integrations", function()
+		it("defaults terrain generation to one background layer and 2-stud tiles", function()
+			local config = WorldGenerationServiceUtils.CreateDefaultConfig()
+			local state = WorldGenerationServiceUtils.CreateDefaultState()
+
+			expect(config.backgroundLayerCount).to.equal(1)
+			expect(config.tileSize).to.equal(2)
+			expect(state.tileSize).to.equal(2)
+		end)
+
 		it("builds chunk visuals when prop templates are unavailable", function()
 			local client = setmetatable({
 				state = WorldGenerationServiceUtils.CreateDefaultState(),
@@ -98,6 +108,9 @@ return function()
 			}
 
 			local model = nil
+			local uncommittedJob = (WorldGenerationServiceClient :: any).CreateChunkVisualBuildJob(client, snapshot)
+			expect(CollectionService:HasTag(uncommittedJob.model, TagBinder.Tags.Chunk)).to.equal(false)
+			uncommittedJob.model:Destroy()
 			local ok, err = pcall(function()
 				model = (WorldGenerationServiceClient :: any).BuildChunkVisualModel(client, snapshot)
 			end)
@@ -140,7 +153,7 @@ return function()
 			expect(boundsSize.X).to.equal(16)
 		end)
 
-		it("keeps background terrain layers at the base tile light level", function()
+		it("does not build background terrain layers", function()
 			local client = setmetatable({
 				state = WorldGenerationServiceUtils.CreateDefaultState(),
 				worldOrigin = Vector3.zero,
@@ -191,23 +204,20 @@ return function()
 				revision = 1,
 			}
 
-			local model, _, _, terrainParts, backgroundPartsByLayer = (WorldGenerationServiceClient :: any).BuildChunkVisualModel(
+			local worldGenerationServiceClient = WorldGenerationServiceClient :: any
+			local model, _partCount, _terrainHoverFolder, terrainParts, backgroundPartsByLayer =
+				worldGenerationServiceClient.BuildChunkVisualModel(
 				client,
 				snapshot
-			)
-			local stoneVisual = WorldGenerationColor.GetTileVisual(3)
-			local layerOneColor = backgroundPartsByLayer[1][1].Color
-			local layerTwoColor = backgroundPartsByLayer[2][1].Color;
-			(WorldGenerationServiceClient :: any).ReleaseTerrainVisualParts(client, terrainParts)
+				)
+			worldGenerationServiceClient.ReleaseTerrainVisualParts(client, terrainParts)
 			for _, backgroundParts in backgroundPartsByLayer do
-				(WorldGenerationServiceClient :: any).ReleaseTerrainVisualParts(client, backgroundParts)
+				worldGenerationServiceClient.ReleaseTerrainVisualParts(client, backgroundParts)
 			end
-			(WorldGenerationServiceClient :: any).ClearTerrainVisualPartPool(client)
+			worldGenerationServiceClient.ClearTerrainVisualPartPool(client)
 			model:Destroy()
 
-			expect(stoneVisual ~= nil).to.equal(true)
-			expect(layerOneColor).to.equal((stoneVisual :: any).color)
-			expect(layerTwoColor).to.equal((stoneVisual :: any).color)
+			expect(#backgroundPartsByLayer).to.equal(0)
 		end)
 
 		it("uses transparent anchors for autotiled foreground terrain", function()
@@ -244,7 +254,50 @@ return function()
 			worldGenerationServiceClient.ClearTerrainVisualPartPool(client)
 		end)
 
-		it("keeps non-surface autotile definitions on material-backed foreground terrain", function()
+		it("owns tree and cactus viewport surfaces under two-stud world anchors", function()
+			local parent = Instance.new("Folder")
+			parent.Name = "ViewportPropOwnershipSpec"
+			parent.Parent = Workspace
+			local client = setmetatable({}, {
+				__index = WorldGenerationServiceClient,
+			})
+			local baseCFrame = CFrame.new(7, 11, -3)
+			local runtime = (WorldGenerationServiceClient :: any).CreateViewportPropRuntime(
+				client,
+				parent,
+				"CactusViewport",
+				baseCFrame,
+				2,
+				"Prop"
+			)
+
+			expect(runtime.anchor.Size.X).to.equal(2)
+			expect(runtime.surfaceGui.Parent).to.equal(runtime.anchor)
+			expect(runtime.surfaceGui.Adornee).to.equal(nil)
+
+			local content = Instance.new("Model")
+			local part = Instance.new("Part")
+			part.Anchored = true
+			part.Size = Vector3.new(2, 4, 6)
+			part.CFrame = CFrame.new(0, 2, 0)
+			part.Parent = content
+			local finalized = (WorldGenerationServiceClient :: any).FinalizeViewportPropRuntime(client, runtime, content)
+
+			expect(finalized).to.equal(true)
+			expect(runtime.anchor.Size.X).to.equal(2)
+			expect(runtime.anchor.CFrame.Position.X).to.equal(baseCFrame.Position.X)
+			expect(runtime.anchor.CFrame.Position.X + runtime.anchor.Size.X * 0.5).to.equal(
+				baseCFrame.Position.X + 1
+			)
+			expect(runtime.surfaceGui.Parent).to.equal(runtime.anchor)
+
+			local surfaceGui = runtime.surfaceGui
+			runtime.container:Destroy()
+			expect(surfaceGui.Parent).to.equal(nil)
+			parent:Destroy()
+		end)
+
+		it("keeps non-surface autotile definitions on transparent foreground terrain", function()
 			local client = setmetatable({
 				state = WorldGenerationServiceUtils.CreateDefaultState(),
 				worldOrigin = Vector3.zero,
@@ -265,8 +318,12 @@ return function()
 				WorldGeneration.TILE_ID.STONE
 			)
 
-			expect(part.Transparency).to.equal(0)
-			expect(part.Material == Enum.Material.SmoothPlastic).to.equal(false)
+			expect(part.Transparency).to.equal(1)
+			expect(part.Material).to.equal(Enum.Material.SmoothPlastic)
+			expect(part.MaterialVariant).to.equal("")
+			for _, child in part:GetChildren() do
+				expect(child:IsA("Texture")).to.equal(false)
+			end
 
 			local worldGenerationServiceClient = WorldGenerationServiceClient :: any
 			worldGenerationServiceClient.ReleaseTerrainVisualPart(client, part)
@@ -531,6 +588,10 @@ return function()
 			existingPropsFolder.Name = "Props"
 			existingPropsFolder.Parent = existingModel
 
+			local existingAutotileLayer = Instance.new("Folder")
+			existingAutotileLayer.Name = "AutotileLayer"
+			existingAutotileLayer.Parent = existingModel
+
 			local existingCactus = Instance.new("Model")
 			existingCactus.Name = "Cactus_0_0_1"
 			existingCactus.Parent = existingPropsFolder
@@ -627,6 +688,7 @@ return function()
 
 			expect(didCommit).to.equal(true)
 			expect(existingPropsFolder.Parent).to.equal(existingModel)
+			expect(existingAutotileLayer.Parent).to.equal(existingModel)
 			expect(existingCactus.Parent).to.equal(existingPropsFolder)
 			expect(existingCactusSegment.Parent).to.equal(existingCactus)
 			expect(rebuiltModel.Parent).to.equal(nil)

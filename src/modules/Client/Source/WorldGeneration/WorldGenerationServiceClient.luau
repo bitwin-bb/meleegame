@@ -4,11 +4,12 @@ local CollectionService = game:GetService("CollectionService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Fusion: any = require(ReplicatedStorage.Packages.Fusion)
 local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
-local AutotileRegistry = require("AutotileRegistry")
+local BoundingBoxUtils = require("BoundingBoxUtils")
 local BuildServiceUtils = require("BuildServiceUtils")
 local Configs = require("CoreConfigs")
 local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
@@ -57,15 +58,16 @@ local function bindPackets(self: any)
 	bindPacket(self, "setRenderDistance")
 end
 
-local OreRegistry = require("Ores")
-local PlantRegistry = require("Plants")
+-- local OreRegistry = require("Ores")
+-- local PlantRegistry = require("Plants")
+local Maid = require("Maid")
 local ProceduralCactus = require("WorldGenerationCactus")
 local ProceduralTree = require("WorldGenerationTree")
 local Queue: any = require("Queue")
 local Signal = require("Signal")
 local TagBinder = require("TagBinder")
 local TileComponent = require("Tile")
-local TileMaterial = require("TileMaterial")
+-- local TileMaterial = require("TileMaterial")
 local WorkspaceFolders = require("WorkspaceFolders")
 local WorldGenerationColor = require("WorldGenerationColor")
 local WorldGenerationServiceUtils = require("WorldGenerationServiceUtils")
@@ -78,6 +80,8 @@ type JanitorClass = any
 type SignalObject = Signal.Signal<...any>
 
 type QueueClass<T> = any
+
+type MaidClass = any
 
 type ChunkLayerSnapshot = {
 	layerIndex: number,
@@ -128,13 +132,6 @@ type ChunkSnapshot = {
 	trees: { TreeSpawnSnapshot },
 	props: { PropSpawnSnapshot },
 	revision: number,
-}
-
-type TileVisual = {
-	name: string,
-	color: Color3,
-	material: Enum.Material,
-	transparency: number,
 }
 
 type GreedyRect = {
@@ -214,21 +211,27 @@ type TreeVariantDefinition = {
 	estimatedPartCount: number,
 }
 
-type GrassTextureFaceDefinition = {
-	color: string?,
-	normal: string?,
-}
-
-type GrassTextureDefinition = {
-	top: (string | GrassTextureFaceDefinition)?,
-	side: (string | GrassTextureFaceDefinition)?,
+type ViewportPropRuntime = {
+	container: Model,
+	anchor: Part,
+	surfaceGui: SurfaceGui,
+	viewportFrame: ViewportFrame,
+	viewportCamera: Camera,
+	worldModel: WorldModel,
+	baseCFrame: CFrame,
+	tileSize: number,
+	maid: MaidClass,
+	scope: any,
+	destroyed: boolean,
 }
 
 local WorldGenerationServiceClient = {}
 local ENABLE_CLIENT_VISUALS = true
+local viewportPropRuntimes = {} :: { [Model]: ViewportPropRuntime }
 
 local WORLD_FOLDER_NAME = "WorldGeneration"
 local CHUNKS_FOLDER_NAME = "Chunks"
+local AUTOTILE_LAYER_NAME = "AutotileLayer"
 local TERRAIN_FOLDER_NAME = "Terrain"
 local FOREGROUND_TERRAIN_LAYER_FOLDER_NAME = "0"
 local LEGACY_BACKGROUND_DEPTH_FOLDER_NAME = "BackgroundDepth"
@@ -247,8 +250,28 @@ local DEFAULT_MAX_POOLED_VISUAL_PARTS = 6000
 local DEFAULT_CHUNK_ANIMATION_SKIP_SECONDS = 1.5
 local MAX_CHUNK_ANIMATION_SKIP_SECONDS = 8
 local FOREGROUND_TILE_AIR_ID = 0
-local TREE_PLANE_DEPTH_ALPHA = 0.5
+local AUTOTILE_PRESENTATION_CHUNK_ATTRIBUTE = "AutotilePresentationChunk"
 local TREE_SURFACE_OFFSET_Y_TILES = 1
+local VIEWPORT_PROP_ANCHOR_NAME = "ViewportAnchor"
+local VIEWPORT_PROP_SURFACE_GUI_NAME = "ViewportSurface"
+local VIEWPORT_PROP_FRAME_NAME = "ViewportFrame"
+local VIEWPORT_PROP_CAMERA_NAME = "ViewportCamera"
+local VIEWPORT_PROP_WORLD_MODEL_NAME = "ViewportWorld"
+local VIEWPORT_PROP_CONTENT_NAME = "ViewportContent"
+local VIEWPORT_PROP_KIND_ATTRIBUTE = "ViewportPropKind"
+local VIEWPORT_PROP_BASE_CFRAME_ATTRIBUTE = "ViewportBaseCFrame"
+local VIEWPORT_PROP_CHUNK_KEY_ATTRIBUTE = "ViewportChunkKey"
+local VIEWPORT_PROP_ANCHOR_ATTRIBUTE = "WorldGenerationViewportAnchor"
+local VIEWPORT_PROP_VISUAL_ATTRIBUTE = "WorldGenerationViewportVisual"
+local VIEWPORT_PROP_TILE_SIZE_ATTRIBUTE = "ViewportTileSize"
+local VIEWPORT_PROP_PIXELS_PER_STUD = 8
+local VIEWPORT_PROP_FIELD_OF_VIEW = 1
+local VIEWPORT_PROP_ANCHOR_DEPTH = 2
+local VIEWPORT_PROP_MIN_PADDING_TILES = 0.15
+local VIEWPORT_PROP_PADDING_SCALE = 0.08
+local VIEWPORT_PROP_SURFACE_FACE = Enum.NormalId.Right
+local VIEWPORT_PROP_WIND_ATTRIBUTE = "WindFoliageViewport"
+local VIEWPORT_PROP_WIND_POSITION_ATTRIBUTE = "WindFoliageWorldPosition"
 local SKIP_WORLD_ANIMATOR_ATTRIBUTE = "SkipWorldAnimator"
 local WORLD_ANIMATOR_CHUNK_ATTRIBUTE = "WorldAnimatorChunk"
 local ANIMATING_WORLD_ANIMATOR_ATTRIBUTE = "WorldAnimatorAnimating"
@@ -276,39 +299,39 @@ local TERRAIN_HOVER_OUTLINE_PROXY_NAME = "TerrainHoverOutlineProxy"
 local TERRAIN_HOVER_OUTLINE_COLOR = Color3.fromRGB(255, 221, 64)
 local TERRAIN_HOVER_OUTLINE_THICKNESS = 0.04
 local TERRAIN_HOVER_DEPTH_PADDING = 0.04
-local GRASS_TILE_ID = 1
-local STONE_TILE_ID = 3
-local CORRUPT_GRASS_TILE_ID = 14
-local JUNGLE_GRASS_TILE_ID = 17
-local ORE_TEXTURE_NAME = "OreTexture"
-local GRASS_TEXTURE_NAME = "GrassTexture"
+-- local GRASS_TILE_ID = 1
+-- local STONE_TILE_ID = 3
+-- local CORRUPT_GRASS_TILE_ID = 14
+-- local JUNGLE_GRASS_TILE_ID = 17
+-- local ORE_TEXTURE_NAME = "OreTexture"
+-- local GRASS_TEXTURE_NAME = "GrassTexture"
 local TILE_BINDER_TAG_NAME = "Tile"
 local MISSING_ASSET_ERROR = "no asset found!"
-local ORE_TEXTURE_FACES = {
-	Enum.NormalId.Front,
-	Enum.NormalId.Back,
-	Enum.NormalId.Left,
-	Enum.NormalId.Right,
-	Enum.NormalId.Top,
-	Enum.NormalId.Bottom,
-}
+-- local ORE_TEXTURE_FACES = {
+-- 	Enum.NormalId.Front,
+-- 	Enum.NormalId.Back,
+-- 	Enum.NormalId.Left,
+-- 	Enum.NormalId.Right,
+-- 	Enum.NormalId.Top,
+-- 	Enum.NormalId.Bottom,
+-- }
 local ORE_ASSET_KEYS_BY_TILE_ID = {
 	[10] = { "CopperOre", "Copper" },
 	[11] = { "IronOre", "Iron" },
 	[12] = { "SilverOre", "Silver" },
 	[13] = { "GoldOre", "Gold" },
 }
-local GRASS_TEXTURE_KEYS_BY_TILE_ID = {
-	[GRASS_TILE_ID] = "overworld",
-	[CORRUPT_GRASS_TILE_ID] = "corruption",
-	[JUNGLE_GRASS_TILE_ID] = "jungle",
-}
-local GRASS_SIDE_TEXTURE_FACES = {
-	Enum.NormalId.Front,
-	Enum.NormalId.Back,
-	Enum.NormalId.Left,
-	Enum.NormalId.Right,
-}
+-- local GRASS_TEXTURE_KEYS_BY_TILE_ID = {
+-- 	[GRASS_TILE_ID] = "overworld",
+-- 	[CORRUPT_GRASS_TILE_ID] = "corruption",
+-- 	[JUNGLE_GRASS_TILE_ID] = "jungle",
+-- }
+-- local GRASS_SIDE_TEXTURE_FACES = {
+-- 	Enum.NormalId.Front,
+-- 	Enum.NormalId.Back,
+-- 	Enum.NormalId.Left,
+-- 	Enum.NormalId.Right,
+-- }
 local CAMERA_VIEW_MIN_HALF_SIZE = 0.001
 local TERRAIN_TILE_ATTRIBUTE_NAMES = {
 	"TileId",
@@ -320,8 +343,8 @@ local TERRAIN_TILE_ATTRIBUTE_NAMES = {
 	"TileIsOre",
 }
 
-local TILE_VISUALS: { [number]: TileVisual } = WorldGenerationColor.TILE_VISUALS
-local GRASS_TEXTURES: { [string]: GrassTextureDefinition } = PlantRegistry :: any
+-- local TILE_VISUALS: { [number]: TileVisual } = WorldGenerationColor.TILE_VISUALS
+-- local GRASS_TEXTURES: { [string]: GrassTextureDefinition } = PlantRegistry :: any
 local TREE_PALETTE_CORRUPTION_1 = WorldGenerationColor.TREE_PALETTES.Corruption1
 	or {
 		BranchColor = Color3.fromRGB(56, 39, 89),
@@ -354,11 +377,21 @@ local TREE_PALETTE_SNOW_2 = WorldGenerationColor.TREE_PALETTES.Snow2
 	}
 
 local function applyTileStudSurfaces(part: BasePart)
-	TileMaterial.ApplyStudSurfaces(part)
+	part.TopSurface = Enum.SurfaceType.Studs
+	part.BottomSurface = Enum.SurfaceType.Studs
+	part.LeftSurface = Enum.SurfaceType.Studs
+	part.RightSurface = Enum.SurfaceType.Studs
+	part.FrontSurface = Enum.SurfaceType.Studs
+	part.BackSurface = Enum.SurfaceType.Studs
 end
 
 local function applyTileSmoothSurfaces(part: BasePart)
-	TileMaterial.ApplySmoothSurfaces(part)
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	part.LeftSurface = Enum.SurfaceType.Smooth
+	part.RightSurface = Enum.SurfaceType.Smooth
+	part.FrontSurface = Enum.SurfaceType.Smooth
+	part.BackSurface = Enum.SurfaceType.Smooth
 end
 
 local function clearTerrainVisualPartState(part: Part)
@@ -409,31 +442,10 @@ local function createChunkVisualModel(snapshot: ChunkSnapshot): Model
 	model:SetAttribute("DominantBiomeId", snapshot.dominantBiomeId)
 	model:SetAttribute("DominantBiomeType", snapshot.dominantBiomeType)
 	model:SetAttribute("IsCorruptionChunk", snapshot.dominantBiomeType == BIOME_TYPE_CORRUPTION)
+	model:SetAttribute(AUTOTILE_PRESENTATION_CHUNK_ATTRIBUTE, true)
 	model:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, true)
 	model:SetAttribute(WORLD_ANIMATOR_CHUNK_ATTRIBUTE, false)
 	return model
-end
-
-local function shouldUseSmoothTextureSurfaces(tileId: number): boolean
-	return GRASS_TEXTURE_KEYS_BY_TILE_ID[tileId] ~= nil
-end
-
-local assignCreatedTileMaterial = TileMaterial.ApplyTileMaterial
-
-local function shouldUseAutotileSurface(tileId: number): boolean
-	local definition = AutotileRegistry.GetDefinition(tileId)
-	return typeof(definition) == "table" and rawget(definition, "UseSurfaceGui") == true
-end
-
-local function styleAutotileAnchorPart(part: BasePart)
-	part.Name = HttpService:GenerateGUID(false)
-	part.Color = Color3.new(1, 1, 1)
-	part.Material = Enum.Material.SmoothPlastic
-	part.MaterialVariant = ""
-	part.Transparency = 1
-	part.LocalTransparencyModifier = 0
-	part.CastShadow = false
-	applyTileSmoothSurfaces(part)
 end
 
 local function createTreeVariantDefinitions(): { TreeVariantDefinition }
@@ -719,40 +731,6 @@ local function countBaseParts(instance: Instance): number
 	return total
 end
 
-local function computeBasePartBottomY(part: BasePart): number
-	local halfSize = part.Size * 0.5
-	local cframe = part.CFrame
-	local worldHalfY = math.abs(cframe.RightVector.Y) * halfSize.X
-		+ math.abs(cframe.UpVector.Y) * halfSize.Y
-		+ math.abs(cframe.LookVector.Y) * halfSize.Z
-	return cframe.Position.Y - worldHalfY
-end
-
-local function alignInstanceBottomToY(instance: Instance, targetBottomY: number)
-	local bottomY: number?
-	if instance:IsA("Model") then
-		local boundsCFrame, boundsSize = instance:GetBoundingBox()
-		bottomY = boundsCFrame.Position.Y - boundsSize.Y * 0.5
-	elseif instance:IsA("BasePart") then
-		bottomY = computeBasePartBottomY(instance)
-	end
-
-	if bottomY == nil then
-		return
-	end
-
-	local offsetY = targetBottomY - bottomY
-	if math.abs(offsetY) <= 0.0001 then
-		return
-	end
-
-	if instance:IsA("Model") then
-		instance:PivotTo(instance:GetPivot() + Vector3.new(0, offsetY, 0))
-	elseif instance:IsA("BasePart") then
-		instance.CFrame = instance.CFrame + Vector3.new(0, offsetY, 0)
-	end
-end
-
 local function computeTreeSignature(snapshot: ChunkSnapshot): string
 	local trees = snapshot.trees
 	if #trees <= 0 then
@@ -829,6 +807,377 @@ local function CoerceNumber(valueRaw: any, minimum: number, maximum: number, fal
 		return fallback
 	end
 	return math.clamp(valueRaw :: number, minimum, maximum)
+end
+
+local FusionChildren = Fusion.Children
+
+local function getViewportContent(container: Model): Model?
+	local runtime = viewportPropRuntimes[container]
+	if runtime ~= nil and not runtime.destroyed then
+		local content = runtime.worldModel:FindFirstChild(VIEWPORT_PROP_CONTENT_NAME)
+		if content ~= nil and content:IsA("Model") then
+			return content
+		end
+	end
+
+	local anchor = container:FindFirstChild(VIEWPORT_PROP_ANCHOR_NAME)
+	if anchor == nil or not anchor:IsA("BasePart") then
+		return nil
+	end
+	local surfaceGui = anchor:FindFirstChild(VIEWPORT_PROP_SURFACE_GUI_NAME)
+	if surfaceGui == nil or not surfaceGui:IsA("SurfaceGui") then
+		return nil
+	end
+	local viewportFrame = surfaceGui:FindFirstChild(VIEWPORT_PROP_FRAME_NAME)
+	if viewportFrame == nil or not viewportFrame:IsA("ViewportFrame") then
+		return nil
+	end
+	local worldModel = viewportFrame:FindFirstChild(VIEWPORT_PROP_WORLD_MODEL_NAME)
+	if worldModel == nil or not worldModel:IsA("WorldModel") then
+		return nil
+	end
+	local content = worldModel:FindFirstChild(VIEWPORT_PROP_CONTENT_NAME)
+	if content ~= nil and content:IsA("Model") then
+		return content
+	end
+	return nil
+end
+
+local function destroyViewportPropRuntime(runtime: ViewportPropRuntime)
+	if runtime.destroyed then
+		return
+	end
+	runtime.destroyed = true
+	viewportPropRuntimes[runtime.container] = nil
+	runtime.maid:DoCleaning()
+end
+
+local function getViewportContentBounds(content: Model): (CFrame, Vector3)
+	local boundsSize, boundsPosition = BoundingBoxUtils.getChildrenBoundingBox(content, CFrame.new())
+	assert(typeof(boundsSize) == "Vector3" and typeof(boundsPosition) == "Vector3", "viewport content has no parts")
+	return CFrame.new(boundsPosition), boundsSize
+end
+
+local function normalizeViewportContentModel(content: Model)
+	local boundsCFrame, boundsSize = getViewportContentBounds(content)
+	local offset =
+		Vector3.new(-boundsCFrame.Position.X, -(boundsCFrame.Position.Y - boundsSize.Y * 0.5), -boundsCFrame.Position.Z)
+	if offset.Magnitude <= 0.0001 then
+		return
+	end
+	content:PivotTo(content:GetPivot() + offset)
+end
+
+local function coercePropContentModel(instance: Instance, name: string): Model?
+	if instance:IsA("Model") then
+		return instance
+	end
+	if not instance:IsA("BasePart") then
+		return nil
+	end
+	local model = TileComponent.CreateModel({
+		name = name,
+	})
+	instance.Parent = model
+	return model
+end
+
+function WorldGenerationServiceClient.GetViewportCameraCFrame(
+	_self: WorldGenerationServiceClient,
+	boundsCFrameRaw: any,
+	boundsSizeRaw: any,
+	anchorWidthRaw: any,
+	anchorHeightRaw: any
+): CFrame
+	local boundsCFrame = if typeof(boundsCFrameRaw) == "CFrame" then boundsCFrameRaw else CFrame.new()
+	local boundsSize = if typeof(boundsSizeRaw) == "Vector3" then boundsSizeRaw else Vector3.one
+	local anchorWidth = CoerceNumber(anchorWidthRaw, 0.05, 4096, 2)
+	local anchorHeight = CoerceNumber(anchorHeightRaw, 0.05, 4096, 2)
+	local aspectRatio = math.max(0.01, anchorWidth / anchorHeight)
+	local verticalFovRadians = math.rad(VIEWPORT_PROP_FIELD_OF_VIEW)
+	local horizontalFovRadians = 2 * math.atan(math.tan(verticalFovRadians * 0.5) * aspectRatio)
+	local verticalDistance = boundsSize.Y * 0.5 / math.tan(verticalFovRadians * 0.5)
+	local horizontalDistance = boundsSize.Z * 0.5 / math.tan(math.max(0.0001, horizontalFovRadians * 0.5))
+	local distance = math.max(verticalDistance, horizontalDistance) + boundsSize.X + anchorWidth
+	local target = boundsCFrame.Position
+	return CFrame.lookAt(target + Vector3.xAxis * distance, target, Vector3.yAxis)
+end
+
+function WorldGenerationServiceClient.CreateViewportPropRuntime(
+	_self: WorldGenerationServiceClient,
+	parent: Instance,
+	nameRaw: any,
+	baseCFrameRaw: any,
+	tileSizeRaw: any,
+	kindRaw: any
+): ViewportPropRuntime
+	local containerName = if typeof(nameRaw) == "string" and nameRaw ~= "" then nameRaw else "ViewportProp"
+	local baseCFrame = if typeof(baseCFrameRaw) == "CFrame" then baseCFrameRaw else CFrame.new()
+	local tileSize = CoerceNumber(tileSizeRaw, 0.05, 4096, 2)
+	local kind = if typeof(kindRaw) == "string" and kindRaw ~= "" then kindRaw else "Prop"
+	local scope = Fusion.scoped(Fusion)
+	local maid = Maid.new()
+	local viewportCamera = scope:New "Camera" {
+		Name = VIEWPORT_PROP_CAMERA_NAME,
+		CameraType = Enum.CameraType.Scriptable,
+		FieldOfView = VIEWPORT_PROP_FIELD_OF_VIEW,
+		CFrame = CFrame.new(),
+		Focus = CFrame.new(),
+	}
+	local worldModel = scope:New "WorldModel" {
+		Name = VIEWPORT_PROP_WORLD_MODEL_NAME,
+	}
+	local viewportFrame = scope:New "ViewportFrame" {
+		Name = VIEWPORT_PROP_FRAME_NAME,
+		Active = false,
+		Ambient = Color3.fromRGB(180, 188, 210),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		CurrentCamera = viewportCamera,
+		LightColor = Color3.fromRGB(255, 248, 232),
+		LightDirection = Vector3.new(-0.35, -0.7, -0.55),
+		Position = UDim2.fromScale(0, 0),
+		Size = UDim2.fromScale(1, 1),
+		[FusionChildren] = {
+			worldModel,
+			viewportCamera,
+		},
+	}
+	local surfaceGui = scope:New "SurfaceGui" {
+		Name = VIEWPORT_PROP_SURFACE_GUI_NAME,
+		AlwaysOnTop = false,
+		Brightness = 1,
+		Enabled = true,
+		Face = VIEWPORT_PROP_SURFACE_FACE,
+		LightInfluence = 0,
+		MaxDistance = 100000,
+		PixelsPerStud = VIEWPORT_PROP_PIXELS_PER_STUD,
+		ResetOnSpawn = false,
+		SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud,
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		[FusionChildren] = {
+			viewportFrame,
+		},
+	}
+	local anchor = scope:New "Part" {
+		Name = VIEWPORT_PROP_ANCHOR_NAME,
+		Anchored = true,
+		CanCollide = false,
+		CanQuery = false,
+		CanTouch = false,
+		CastShadow = false,
+		Locked = true,
+		Massless = true,
+		Material = Enum.Material.SmoothPlastic,
+		Size = Vector3.new(VIEWPORT_PROP_ANCHOR_DEPTH, tileSize, tileSize),
+		Transparency = 1,
+		[FusionChildren] = {
+			surfaceGui,
+		},
+	}
+	local container = scope:New "Model" {
+		Name = containerName,
+		Parent = parent,
+		[FusionChildren] = {
+			anchor,
+		},
+	}
+	container.PrimaryPart = anchor
+	container:SetAttribute(VIEWPORT_PROP_VISUAL_ATTRIBUTE, true)
+	container:SetAttribute(VIEWPORT_PROP_KIND_ATTRIBUTE, kind)
+	container:SetAttribute(VIEWPORT_PROP_BASE_CFRAME_ATTRIBUTE, baseCFrame)
+	container:SetAttribute(VIEWPORT_PROP_TILE_SIZE_ATTRIBUTE, tileSize)
+	anchor:SetAttribute(VIEWPORT_PROP_ANCHOR_ATTRIBUTE, true)
+	anchor:SetAttribute(VIEWPORT_PROP_KIND_ATTRIBUTE, kind)
+	anchor:SetAttribute(VIEWPORT_PROP_TILE_SIZE_ATTRIBUTE, tileSize)
+
+	local runtime: ViewportPropRuntime = {
+		container = container,
+		anchor = anchor,
+		surfaceGui = surfaceGui,
+		viewportFrame = viewportFrame,
+		viewportCamera = viewportCamera,
+		worldModel = worldModel,
+		baseCFrame = baseCFrame,
+		tileSize = tileSize,
+		maid = maid,
+		scope = scope,
+		destroyed = false,
+	}
+	viewportPropRuntimes[container] = runtime
+	maid:GiveTask(function()
+		Fusion.doCleanup(scope)
+	end)
+	maid:GiveTask(container.Destroying:Connect(function()
+		destroyViewportPropRuntime(runtime)
+	end))
+	return runtime
+end
+
+function WorldGenerationServiceClient.FinalizeViewportPropRuntime(
+	self: WorldGenerationServiceClient,
+	runtime: ViewportPropRuntime,
+	content: Model
+): boolean
+	if runtime.destroyed or runtime.container.Parent == nil then
+		return false
+	end
+	content.Name = VIEWPORT_PROP_CONTENT_NAME
+	content.Archivable = true
+	content.Parent = runtime.worldModel
+	local foliageTag = TagBinder.Tags.Foliage
+	if typeof(foliageTag) == "string" and CollectionService:HasTag(content, foliageTag) then
+		CollectionService:RemoveTag(content, foliageTag)
+	end
+	local windEnabled = runtime.container:GetAttribute(VIEWPORT_PROP_KIND_ATTRIBUTE) == "Tree"
+	content:SetAttribute("WindFoliageEnabled", windEnabled)
+	content:SetAttribute(VIEWPORT_PROP_WIND_ATTRIBUTE, if windEnabled then true else nil)
+	content:SetAttribute(
+		VIEWPORT_PROP_WIND_POSITION_ATTRIBUTE,
+		if windEnabled then runtime.baseCFrame.Position else nil
+	)
+	for _, descendant in content:GetDescendants() do
+		if not descendant:IsA("BasePart") then
+			continue
+		end
+		descendant.Anchored = true
+		descendant.CanCollide = false
+		descendant.CanQuery = false
+		descendant.CanTouch = false
+		descendant.CastShadow = false
+		descendant.Massless = true
+		descendant.AssemblyAngularVelocity = Vector3.zero
+		descendant.AssemblyLinearVelocity = Vector3.zero
+	end
+
+	local normalized, normalizeError = pcall(function()
+		normalizeViewportContentModel(content)
+	end)
+	if not normalized then
+		warn(`failed to normalize viewport prop {runtime.container.Name}: {normalizeError}`)
+		return false
+	end
+	local bounded, boundsCFrame, boundsSize = pcall(function()
+		return getViewportContentBounds(content)
+	end)
+	if not bounded or typeof(boundsCFrame) ~= "CFrame" or typeof(boundsSize) ~= "Vector3" then
+		return false
+	end
+
+	local minimumPadding = runtime.tileSize * VIEWPORT_PROP_MIN_PADDING_TILES
+	local horizontalPadding = math.max(minimumPadding, boundsSize.Z * VIEWPORT_PROP_PADDING_SCALE)
+	local verticalPadding = math.max(minimumPadding, boundsSize.Y * VIEWPORT_PROP_PADDING_SCALE)
+	local anchorDepth = VIEWPORT_PROP_ANCHOR_DEPTH
+	local anchorWidth = math.max(runtime.tileSize, boundsSize.Z + horizontalPadding * 2)
+	local anchorHeight = math.max(runtime.tileSize, boundsSize.Y + verticalPadding * 2)
+	local cameraBoundsSize =
+		Vector3.new(boundsSize.X, boundsSize.Y + verticalPadding * 2, boundsSize.Z + horizontalPadding * 2)
+	runtime.anchor.Size = Vector3.new(anchorDepth, anchorHeight, anchorWidth)
+	runtime.anchor.CFrame = runtime.baseCFrame * CFrame.new(boundsCFrame.Position)
+	runtime.viewportCamera.CFrame =
+		self:GetViewportCameraCFrame(boundsCFrame, cameraBoundsSize, anchorWidth, anchorHeight)
+	runtime.viewportCamera.Focus = CFrame.new(boundsCFrame.Position)
+	if windEnabled and typeof(foliageTag) == "string" then
+		TagBinder.applyTag(content, foliageTag, CollectionService)
+	end
+	return true
+end
+
+function WorldGenerationServiceClient.ReconcileReleasedTreeViewportIds(
+	self: WorldGenerationServiceClient,
+	snapshot: ChunkSnapshot
+)
+	local releasedTreeViewportIds = self.releasedTreeViewportIds
+	if typeof(releasedTreeViewportIds) ~= "table" then
+		return
+	end
+	local treeIds = {}
+	for _, tree in snapshot.trees do
+		treeIds[BuildServiceUtils.ComputeTreeId(tree.tileX, tree.tileY, tree.seed)] = true
+	end
+	for treeId, chunkKey in releasedTreeViewportIds do
+		if chunkKey == snapshot.key and treeIds[treeId] ~= true then
+			releasedTreeViewportIds[treeId] = nil
+		end
+	end
+end
+
+function WorldGenerationServiceClient.ReleaseTreeViewportForFall(
+	self: WorldGenerationServiceClient,
+	payloadRaw: any
+): Model?
+	if typeof(payloadRaw) ~= "table" then
+		return nil
+	end
+	local treeId = payloadRaw.treeId
+	if typeof(treeId) ~= "string" or treeId == "" then
+		return nil
+	end
+	local chunkVisuals = self.chunkVisuals
+	if typeof(chunkVisuals) ~= "table" then
+		return nil
+	end
+
+	for _, visual in chunkVisuals do
+		if typeof(visual) ~= "table" then
+			continue
+		end
+		local chunkModel = visual.model
+		if typeof(chunkModel) ~= "Instance" or not chunkModel:IsA("Model") then
+			continue
+		end
+		local treesFolder = chunkModel:FindFirstChild("Trees")
+		if treesFolder == nil then
+			continue
+		end
+		for _, treeContainer in treesFolder:GetChildren() do
+			if not treeContainer:IsA("Model") or treeContainer:GetAttribute("BuildTreeId") ~= treeId then
+				continue
+			end
+			local content = getViewportContent(treeContainer)
+			local baseCFrameRaw = treeContainer:GetAttribute(VIEWPORT_PROP_BASE_CFRAME_ATTRIBUTE)
+			local baseCFrame = if typeof(baseCFrameRaw) == "CFrame" then baseCFrameRaw else CFrame.new()
+			local cloneOk, cloneOrError = pcall(function()
+				return if content ~= nil then content:Clone() else nil
+			end)
+			if not cloneOk or typeof(cloneOrError) ~= "Instance" or not cloneOrError:IsA("Model") then
+				treeContainer:Destroy()
+				return nil
+			end
+			local fallenTree = cloneOrError :: Model
+			local pivotOk, sourcePivot = pcall(function()
+				return (content :: Model):GetPivot()
+			end)
+			if not pivotOk or typeof(sourcePivot) ~= "CFrame" then
+				fallenTree:Destroy()
+				treeContainer:Destroy()
+				return nil
+			end
+			local placeOk = pcall(function()
+				fallenTree:PivotTo(baseCFrame * sourcePivot)
+			end)
+			if not placeOk then
+				fallenTree:Destroy()
+				treeContainer:Destroy()
+				return nil
+			end
+			fallenTree.Name = `Falling_{treeContainer.Name}`
+			fallenTree:SetAttribute("BuildTreeId", treeId)
+			fallenTree:SetAttribute("BuildTreeRootTileX", treeContainer:GetAttribute("BuildTreeRootTileX"))
+			fallenTree:SetAttribute("BuildTreeRootTileY", treeContainer:GetAttribute("BuildTreeRootTileY"))
+			fallenTree:SetAttribute("TreeSeed", treeContainer:GetAttribute("TreeSeed"))
+			local releasedTreeViewportIds = self.releasedTreeViewportIds
+			if typeof(releasedTreeViewportIds) ~= "table" then
+				releasedTreeViewportIds = {}
+				self.releasedTreeViewportIds = releasedTreeViewportIds
+			end
+			local chunkKey = treeContainer:GetAttribute(VIEWPORT_PROP_CHUNK_KEY_ATTRIBUTE)
+			releasedTreeViewportIds[treeId] = if typeof(chunkKey) == "string" then chunkKey else ""
+			treeContainer:Destroy()
+			return fallenTree
+		end
+	end
+	return nil
 end
 
 local function packChunkKey(chunkX: number, chunkY: number): string
@@ -1208,31 +1557,18 @@ local function buildGreedyRectangles(
 	return rectangles
 end
 
-local function styleForegroundPart(part: BasePart, tileId: number): boolean
-	if shouldUseAutotileSurface(tileId) then
-		styleAutotileAnchorPart(part)
-		return true
-	end
-
-	local visualTileId = if ORE_ASSET_KEYS_BY_TILE_ID[tileId] ~= nil then STONE_TILE_ID else tileId
-	local style = TILE_VISUALS[visualTileId] or TILE_VISUALS[STONE_TILE_ID]
+local function styleForegroundPart(part: BasePart, _tileId: number): boolean
 	part.Name = HttpService:GenerateGUID(false)
-	part.Color = style.color
-	part.Material = style.material
-	part.Transparency = style.transparency
+	part.Color = Color3.new(1, 1, 1)
+	part.Material = Enum.Material.SmoothPlastic
+	part.MaterialVariant = ""
+	part.Transparency = 1
 	part.CastShadow = false
-	applyTileStudSurfaces(part)
-	if shouldUseSmoothTextureSurfaces(tileId) then
-		assignCreatedTileMaterial(part, visualTileId)
-		applyTileSmoothSurfaces(part)
-		return false
-	end
-	if assignCreatedTileMaterial(part, visualTileId) then
-		return true
-	end
-	return false
+	applyTileSmoothSurfaces(part)
+	return true
 end
 
+--[[
 local function GetGrassTextureDefinition(tileId: number): GrassTextureDefinition?
 	local biomeKey = GRASS_TEXTURE_KEYS_BY_TILE_ID[tileId]
 	if biomeKey == nil then
@@ -1311,6 +1647,7 @@ local function applyOreTextures(part: BasePart, tileId: number, tileSize: number
 		texture.Parent = part
 	end
 end
+]]
 
 local function isOreTileId(tileId: number): boolean
 	return ORE_ASSET_KEYS_BY_TILE_ID[tileId] ~= nil
@@ -1367,6 +1704,7 @@ local function applyTileBinderMetadata(
 	end
 end
 
+--[[
 local function GetGrassTextureScale(face: Enum.NormalId, tileSize: number, tileDepth: number): (number, number)
 	if face == Enum.NormalId.Left or face == Enum.NormalId.Right then
 		return tileSize, tileSize
@@ -1502,7 +1840,9 @@ local function applyGrassTextures(
 		createGrassTexture(part, face, textureDefinition.side, safeTileSize, safeTileDepth, tint)
 	end
 end
+]]
 
+--[[
 local function styleBackgroundPart(part: BasePart, tileId: number): boolean
 	local style = TILE_VISUALS[tileId] or TILE_VISUALS[3]
 	part.Name = HttpService:GenerateGUID(false)
@@ -1521,6 +1861,7 @@ local function styleBackgroundPart(part: BasePart, tileId: number): boolean
 	end
 	return false
 end
+]]
 
 local function CoerceTileCoordinate(valueRaw: any): number?
 	if not isFiniteNumber(valueRaw) then
@@ -1645,7 +1986,7 @@ end
 
 local function pruneEmptyChildFolders(instance: Instance)
 	for _, child in instance:GetChildren() do
-		if child:IsA("Folder") then
+		if child:IsA("Folder") and child.Name ~= AUTOTILE_LAYER_NAME then
 			destroyFolderIfEmpty(child)
 		end
 	end
@@ -1658,6 +1999,7 @@ local function getOrCreateChunkLayerModel(
 ): Model
 	local existing = parent:FindFirstChild(snapshot.key)
 	if existing ~= nil and existing:IsA("Model") then
+		existing:SetAttribute(AUTOTILE_PRESENTATION_CHUNK_ATTRIBUTE, false)
 		existing:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, true)
 		existing:SetAttribute(WORLD_ANIMATOR_CHUNK_ATTRIBUTE, false)
 		return existing
@@ -1673,6 +2015,7 @@ local function getOrCreateChunkLayerModel(
 			ChunkX = snapshot.chunkX,
 			ChunkY = snapshot.chunkY,
 			ChunkKey = snapshot.key,
+			[AUTOTILE_PRESENTATION_CHUNK_ATTRIBUTE] = false,
 			[SKIP_WORLD_ANIMATOR_ATTRIBUTE] = true,
 			[WORLD_ANIMATOR_CHUNK_ATTRIBUTE] = false,
 		},
@@ -1686,6 +2029,7 @@ local function prepareChunkLayerModel(model: Model, snapshot: ChunkSnapshot, ski
 	model:SetAttribute("ChunkX", snapshot.chunkX)
 	model:SetAttribute("ChunkY", snapshot.chunkY)
 	model:SetAttribute("ChunkKey", snapshot.key)
+	model:SetAttribute(AUTOTILE_PRESENTATION_CHUNK_ATTRIBUTE, true)
 	model:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, skipWorldAnimation)
 	model:SetAttribute(WORLD_ANIMATOR_CHUNK_ATTRIBUTE, not skipWorldAnimation)
 	TagBinder.applyTag(model, TagBinder.Tags.Chunk, CollectionService)
@@ -1799,13 +2143,13 @@ function WorldGenerationServiceClient.CreateForegroundRectPart(
 	local tileSize = self.state.tileSize
 	local part = self:AcquireTerrainVisualPart()
 	part.Size = Vector3.new(tileDepth, tileSize * height, tileSize * width)
-	local hasTileMaterial = styleForegroundPart(part, tileId)
+	styleForegroundPart(part, tileId)
+	--[[
 	if not shouldUseAutotileSurface(tileId) then
 		applyOreTextures(part, tileId, tileSize, tileDepth)
-		if not hasTileMaterial then
-			applyGrassTextures(part, tileId, tileSize, tileDepth)
-		end
+		applyGrassTextures(part, tileId, tileSize, tileDepth)
 	end
+	]]
 
 	local centerTileX = tileMinX + width * 0.5
 	local centerTileY = tileMinY + height * 0.5
@@ -2318,6 +2662,9 @@ function WorldGenerationServiceClient.CommitChunkVisualBuildResult(
 		shouldSkipChunkAnimation = true
 
 		local preservedChildNames = {} :: { [string]: boolean }
+		if existing.model:FindFirstChild(AUTOTILE_LAYER_NAME) ~= nil then
+			preservedChildNames[AUTOTILE_LAYER_NAME] = true
+		end
 		local existingTreesFolder = existing.model:FindFirstChild("Trees")
 		if existing.treeSignature == nextTreeSignature or (nextTreeSignature ~= "" and existingTreesFolder ~= nil) then
 			preservedChildNames.Trees = true
@@ -2775,7 +3122,6 @@ function WorldGenerationServiceClient.CreateChunkVisualBuildJob(
 	snapshot: ChunkSnapshot
 ): ChunkVisualBuildJob
 	local model = createChunkVisualModel(snapshot)
-	TagBinder.applyTag(model, TagBinder.Tags.Chunk, CollectionService)
 
 	local terrainGreedyRects = buildGreedyRectangles(
 		snapshot.tiles,
@@ -2816,9 +3162,6 @@ function WorldGenerationServiceClient.StepChunkVisualBuildJob(
 	deadline: number
 ): boolean
 	local snapshot = job.snapshot
-	local tileDepth = self.state.tileDepth
-	local tileSize = self.state.tileSize
-
 	while job.stage == "terrain" do
 		if job.partCount >= MAX_VISUAL_PARTS_PER_CHUNK then
 			job.stage = "done"
@@ -2826,7 +3169,8 @@ function WorldGenerationServiceClient.StepChunkVisualBuildJob(
 		end
 		local rect = job.terrainGreedyRects[job.terrainRectIndex]
 		if rect == nil then
-			job.stage = "background"
+			-- job.stage = "background"
+			job.stage = "trees"
 			break
 		end
 
@@ -2859,6 +3203,7 @@ function WorldGenerationServiceClient.StepChunkVisualBuildJob(
 		end
 	end
 
+	--[[
 	while job.stage == "background" do
 		if job.partCount >= MAX_VISUAL_PARTS_PER_CHUNK then
 			job.stage = "done"
@@ -2919,6 +3264,7 @@ function WorldGenerationServiceClient.StepChunkVisualBuildJob(
 			end
 		end
 	end
+	]]
 
 	while job.stage == "trees" do
 		if job.partCount >= MAX_VISUAL_PARTS_PER_CHUNK then
@@ -2932,8 +3278,13 @@ function WorldGenerationServiceClient.StepChunkVisualBuildJob(
 			break
 		end
 
-		local furthestBackgroundOffset = -math.max(1, #snapshot.backgroundLayers) * tileDepth
-		local treePlaneOffset = furthestBackgroundOffset * TREE_PLANE_DEPTH_ALPHA
+		local treeId = BuildServiceUtils.ComputeTreeId(treeSpawnData.tileX, treeSpawnData.tileY, treeSpawnData.seed)
+		local releasedTreeViewportIds = self.releasedTreeViewportIds
+		if releasedTreeViewportIds ~= nil and releasedTreeViewportIds[treeId] ~= nil then
+			job.treeIndex += 1
+			continue
+		end
+
 		local treeVariantDefinitions = self.treeVariantDefinitions
 		local variantDefinition = GetTreeVariantDefinition(treeVariantDefinitions, treeSpawnData.variantIndex)
 		if job.partCount + variantDefinition.estimatedPartCount > MAX_VISUAL_PARTS_PER_CHUNK then
@@ -2943,32 +3294,38 @@ function WorldGenerationServiceClient.StepChunkVisualBuildJob(
 
 		local centerTileX = treeSpawnData.tileX + 0.5
 		local centerTileY = treeSpawnData.tileY + TREE_SURFACE_OFFSET_Y_TILES
-		local position = self:ComputeTileCenterPosition(centerTileX, centerTileY, treePlaneOffset)
+		local position = self:ComputeTileCenterPosition(centerTileX, centerTileY, 0)
 
 		local treeConfig = Sift.Dictionary.copy(variantDefinition.config) :: { [string]: any }
 		treeConfig.Seed = treeSpawnData.seed
 		treeConfig.ModelName = `Tree_{snapshot.chunkX}_{snapshot.chunkY}_{job.treeCount + 1}`
 
-		local proceduralTree = ProceduralTree.New(treeConfig)
 		job.treesFolder = job.treesFolder or getOrCreateChildFolder(job.model, "Trees")
-		local generatedTreeModel = proceduralTree:Generate(job.treesFolder, CFrame.new(position))
-		generatedTreeModel:SetAttribute(
-			"BuildTreeId",
-			BuildServiceUtils.ComputeTreeId(treeSpawnData.tileX, treeSpawnData.tileY, treeSpawnData.seed)
+		local viewportRuntime = self:CreateViewportPropRuntime(
+			job.treesFolder,
+			treeConfig.ModelName,
+			CFrame.new(position),
+			self.state.tileSize,
+			"Tree"
 		)
-		generatedTreeModel:SetAttribute("BuildTreeRootTileX", treeSpawnData.tileX)
-		generatedTreeModel:SetAttribute("BuildTreeRootTileY", treeSpawnData.tileY)
-		generatedTreeModel:SetAttribute("VariantIndex", treeSpawnData.variantIndex)
-		generatedTreeModel:SetAttribute("TreeSeed", treeSpawnData.seed)
-		for _, descendant in generatedTreeModel:GetDescendants() do
-			if descendant:IsA("BasePart") then
-				descendant.CastShadow = false
-			end
+		local proceduralTree = ProceduralTree.New(treeConfig)
+		local generatedTreeModel = proceduralTree:Generate(viewportRuntime.worldModel, CFrame.new())
+		if not self:FinalizeViewportPropRuntime(viewportRuntime, generatedTreeModel) then
+			viewportRuntime.container:Destroy()
+			job.treeIndex += 1
+			continue
 		end
+		local treeContainer = viewportRuntime.container
+		treeContainer:SetAttribute("BuildTreeId", treeId)
+		treeContainer:SetAttribute("BuildTreeRootTileX", treeSpawnData.tileX)
+		treeContainer:SetAttribute("BuildTreeRootTileY", treeSpawnData.tileY)
+		treeContainer:SetAttribute("VariantIndex", treeSpawnData.variantIndex)
+		treeContainer:SetAttribute("TreeSeed", treeSpawnData.seed)
+		treeContainer:SetAttribute(VIEWPORT_PROP_CHUNK_KEY_ATTRIBUTE, snapshot.key)
 
-		local generatedPartCount = countBaseParts(generatedTreeModel)
+		local generatedPartCount = countBaseParts(treeContainer)
 		if job.partCount + generatedPartCount > MAX_VISUAL_PARTS_PER_CHUNK then
-			generatedTreeModel:Destroy()
+			treeContainer:Destroy()
 			destroyFolderIfEmpty(job.treesFolder)
 			if job.treesFolder ~= nil and job.treesFolder.Parent == nil then
 				job.treesFolder = nil
@@ -2997,8 +3354,6 @@ function WorldGenerationServiceClient.StepChunkVisualBuildJob(
 			break
 		end
 
-		local furthestBackgroundOffset = -math.max(1, #snapshot.backgroundLayers) * tileDepth
-		local treePlaneOffset = furthestBackgroundOffset * TREE_PLANE_DEPTH_ALPHA
 		local centerTileX = propSpawnData.tileX + 0.5
 		local centerTileY = propSpawnData.tileY + TREE_SURFACE_OFFSET_Y_TILES
 		if
@@ -3008,25 +3363,34 @@ function WorldGenerationServiceClient.StepChunkVisualBuildJob(
 		then
 			centerTileY = propSpawnData.tileY + 0.5
 		end
-		local position = self:ComputeTileCenterPosition(centerTileX, centerTileY, treePlaneOffset)
-		local propInstance: Instance?
-		local useGeneratedBoundsPlacement = false
+		local position = self:ComputeTileCenterPosition(centerTileX, centerTileY, 0)
+		job.propsFolder = job.propsFolder or getOrCreateChildFolder(job.model, "Props")
+		local viewportRuntime = self:CreateViewportPropRuntime(
+			job.propsFolder,
+			`Prop_{snapshot.chunkX}_{snapshot.chunkY}_{job.propCount + 1}`,
+			CFrame.new(position),
+			self.state.tileSize,
+			"Prop"
+		)
+		local propContent: Model?
 		if
 			propSpawnData.propId == PROP_ID_CORRUPTION_SPIKE
 			or propSpawnData.propId == PROP_ID_DESERT_ROCK
 			or propSpawnData.propId == PROP_ID_SNOW_PILE
 		then
-			propInstance =
+			local propInstance =
 				clonePropTemplateById(self.propTemplatesByPropId, propSpawnData.propId, propSpawnData.variantIndex)
+			if propInstance ~= nil then
+				propContent = coercePropContentModel(propInstance, `PropContent_{job.propCount + 1}`)
+			end
 		elseif propSpawnData.propId == PROP_ID_DESERT_CACTUS then
 			local cactusColor = if propSpawnData.biomeId == BIOME_ID_DESERT
 				then Color3.fromRGB(90, 147, 78)
 				else Color3.fromRGB(82, 136, 74)
 			local cactusComplexity = math.clamp(propSpawnData.variantIndex, 1, 4)
-			job.propsFolder = job.propsFolder or getOrCreateChildFolder(job.model, "Props")
 			local cactusGenerator = ProceduralCactus.New({
 				Seed = propSpawnData.seed,
-				Parent = job.propsFolder,
+				Parent = viewportRuntime.worldModel,
 				ModelName = `Cactus_{snapshot.chunkX}_{snapshot.chunkY}_{job.propCount + 1}`,
 				Iterations = 6 + cactusComplexity,
 				StepLength = 3.05 + cactusComplexity * 0.25,
@@ -3045,49 +3409,31 @@ function WorldGenerationServiceClient.StepChunkVisualBuildJob(
 				UseWelds = true,
 				SegmentCanCollide = false,
 			} :: any)
-			propInstance = cactusGenerator:Generate(position)
-			useGeneratedBoundsPlacement = true
+			propContent = cactusGenerator:Generate(Vector3.zero)
 		else
+			viewportRuntime.container:Destroy()
 			job.propIndex += 1
 			continue
 		end
 
-		if propInstance == nil then
+		if propContent == nil then
+			viewportRuntime.container:Destroy()
 			error(MISSING_ASSET_ERROR, 0)
 		end
-
-		local generatedPartCount = 0
-		if propInstance:IsA("Model") then
-			if not useGeneratedBoundsPlacement then
-				local existingPivot = propInstance:GetPivot()
-				local preservedRotation = existingPivot - existingPivot.Position
-				propInstance:PivotTo(CFrame.new(position) * preservedRotation)
-			end
-			alignInstanceBottomToY(propInstance, position.Y)
-
-			generatedPartCount = countBaseParts(propInstance)
-			for _, descendant in propInstance:GetDescendants() do
-				if descendant:IsA("BasePart") then
-					descendant.Anchored = true
-					descendant.CanCollide = false
-					descendant.CanQuery = false
-					descendant.CanTouch = false
-					descendant.CastShadow = false
-				end
-			end
-		elseif propInstance:IsA("BasePart") then
-			propInstance.CFrame = CFrame.new(position)
-			alignInstanceBottomToY(propInstance, position.Y)
-			propInstance.Anchored = true
-			propInstance.CanCollide = false
-			propInstance.CanQuery = false
-			propInstance.CanTouch = false
-			propInstance.CastShadow = false
-			generatedPartCount = 1
+		if not self:FinalizeViewportPropRuntime(viewportRuntime, propContent) then
+			viewportRuntime.container:Destroy()
+			job.propIndex += 1
+			continue
 		end
+		local propContainer = viewportRuntime.container
+		propContainer:SetAttribute("PropId", propSpawnData.propId)
+		propContainer:SetAttribute("VariantIndex", propSpawnData.variantIndex)
+		propContainer:SetAttribute("PropSeed", propSpawnData.seed)
+		propContainer:SetAttribute(VIEWPORT_PROP_CHUNK_KEY_ATTRIBUTE, snapshot.key)
+		local generatedPartCount = countBaseParts(propContainer)
 
 		if job.partCount + generatedPartCount > MAX_VISUAL_PARTS_PER_CHUNK then
-			propInstance:Destroy()
+			propContainer:Destroy()
 			destroyFolderIfEmpty(job.propsFolder)
 			if job.propsFolder ~= nil and job.propsFolder.Parent == nil then
 				job.propsFolder = nil
@@ -3098,8 +3444,6 @@ function WorldGenerationServiceClient.StepChunkVisualBuildJob(
 
 		job.partCount += generatedPartCount
 		job.propCount += 1
-		job.propsFolder = job.propsFolder or getOrCreateChildFolder(job.model, "Props")
-		propInstance.Parent = job.propsFolder
 		job.propIndex += 1
 		if os.clock() >= deadline then
 			return false
@@ -3583,6 +3927,7 @@ function WorldGenerationServiceClient.Init(self: WorldGenerationServiceClient)
 	self.propTemplatesByPropId = GetPropTemplatesByPropId()
 	self.chunkSnapshots = {} :: { [string]: ChunkSnapshot }
 	self.chunkVisuals = {} :: { [string]: ChunkVisualRuntime }
+	self.releasedTreeViewportIds = {} :: { [string]: string }
 	self.visibleChunkKeys = {} :: { [string]: boolean }
 	self.dirtyChunkLookup = {} :: { [string]: boolean }
 	self.rebuildQueue = Queue.new()
@@ -3630,6 +3975,7 @@ function WorldGenerationServiceClient.Destroy(self: WorldGenerationServiceClient
 		self:DestroyChunkVisual(chunkKey)
 	end
 	table.clear(self.chunkSnapshots)
+	table.clear(self.releasedTreeViewportIds)
 	table.clear(self.visibleChunkKeys)
 	table.clear(self.dirtyChunkLookup)
 	table.clear(self.rebuildLookup)
@@ -3658,6 +4004,7 @@ type WorldGenerationServiceClient = typeof(WorldGenerationServiceClient) & {
 	propTemplatesByPropId: { [number]: { Instance } },
 	chunkSnapshots: { [string]: ChunkSnapshot },
 	chunkVisuals: { [string]: ChunkVisualRuntime },
+	releasedTreeViewportIds: { [string]: string },
 	visibleChunkKeys: { [string]: boolean },
 	dirtyChunkLookup: { [string]: boolean },
 	rebuildQueue: QueueClass<string>,

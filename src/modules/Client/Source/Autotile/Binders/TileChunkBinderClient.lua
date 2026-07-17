@@ -70,7 +70,7 @@ function TileChunkBinderClient.new(renderService: any): any
 	self._binder = Binder.new(TagBinder.Tags.Chunk, function(instance: Instance)
 		local chunkClient = TileChunkClient.new(instance, context)
 		local chunkKey = getChunkKeyForInstance(instance)
-		if chunkKey ~= nil then
+		if chunkKey ~= nil and chunkClient.renderer ~= nil then
 			self._chunkClientsByKey[chunkKey] = chunkClient
 			chunkClient:AddCleanup(function()
 				if self._chunkClientsByKey ~= nil and self._chunkClientsByKey[chunkKey] == chunkClient then

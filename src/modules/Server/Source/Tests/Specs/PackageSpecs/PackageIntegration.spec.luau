@@ -231,13 +231,14 @@ return function()
 			local anchorSize = PlayerMain.GetSurfaceAnchorSize(boundsSize, 1.18)
 			local anchorCFrame = PlayerMain.GetSurfaceAnchorCFrame(boundsCFrame)
 
-			expect(anchorSize.X < 0.1).to.equal(true)
+			expect(anchorSize.X).to.equal(2)
 			expect(anchorSize.Y > boundsSize.Y).to.equal(true)
 			expect(anchorSize.Z > boundsSize.Z).to.equal(true)
 			expect(anchorCFrame.Position).to.equal(boundsCFrame.Position)
+			expect(anchorCFrame.Position.X + anchorSize.X * 0.5).to.equal(boundsCFrame.Position.X + 1)
 			expect(anchorCFrame.RightVector.X > 0.999).to.equal(true)
 			expect(anchorCFrame.UpVector.Y > 0.999).to.equal(true)
-			expect(PlayerMain.GetSurfacePixelsPerStud()).to.equal(16)
+			expect(PlayerMain.GetSurfacePixelsPerStud()).to.equal(8)
 		end)
 
 		it("mirrors the player viewport frame instead of flipping the cloned character", function()
@@ -411,8 +412,8 @@ return function()
 
 			local sprite = TileSprite.new(parent, 2, 3, {
 				cframe = CFrame.new(4, 8, 12),
-				size = Vector3.new(4, 4, 4),
-				pixelsPerStud = 4,
+				size = Vector3.new(2, 2, 2),
+				pixelsPerStud = 8,
 			})
 			sprite:Update({
 				Image = "rbxassetid://115586684643692",
@@ -430,15 +431,17 @@ return function()
 			expect((root :: BasePart).Transparency).to.equal(1)
 			expect((root :: BasePart).Material).to.equal(Enum.Material.SmoothPlastic)
 			expect((root :: BasePart).MaterialVariant).to.equal("")
-			expect((root :: BasePart).Size).to.equal(Vector3.new(4, 4, 4))
+			expect((root :: BasePart).Size).to.equal(Vector3.new(2, 2, 2))
 			expect((root :: BasePart).CFrame).to.equal(CFrame.new(4, 8, 12))
 
 			local surfaceGui = (root :: Instance):FindFirstChild("AutotileSurface")
 			expect(surfaceGui ~= nil).to.equal(true)
 			expect((surfaceGui :: Instance):IsA("SurfaceGui")).to.equal(true)
 			expect((surfaceGui :: SurfaceGui).Face).to.equal(Enum.NormalId.Right)
+			expect((surfaceGui :: SurfaceGui).AlwaysOnTop).to.equal(false)
+			expect((surfaceGui :: SurfaceGui).LightInfluence).to.equal(0)
 			expect((surfaceGui :: SurfaceGui).SizingMode).to.equal(Enum.SurfaceGuiSizingMode.PixelsPerStud)
-			expect((surfaceGui :: SurfaceGui).PixelsPerStud).to.equal(4)
+			expect((surfaceGui :: SurfaceGui).PixelsPerStud).to.equal(8)
 			expect((surfaceGui :: SurfaceGui).Enabled).to.equal(true)
 
 			local image = (surfaceGui :: Instance):FindFirstChild("AutotileImage")
@@ -447,6 +450,9 @@ return function()
 			expect((image :: ImageLabel).Image).to.equal("rbxassetid://115586684643692")
 			expect((image :: ImageLabel).ImageRectOffset).to.equal(Vector2.new(36, 18))
 			expect((image :: ImageLabel).ImageRectSize).to.equal(Vector2.new(16, 16))
+			expect((image :: ImageLabel).BackgroundTransparency).to.equal(1)
+			expect((image :: ImageLabel).ResampleMode).to.equal(Enum.ResamplerMode.Pixelated)
+			expect((image :: ImageLabel).ScaleType).to.equal(Enum.ScaleType.Stretch)
 
 			sprite:Destroy()
 			expect(parent:FindFirstChild("AutotileRoot")).to.equal(nil)
@@ -474,8 +480,8 @@ return function()
 			end
 			function renderService.GetTileData(_self: any, _tileX: number, _tileY: number): any
 				return {
-					TileId = BuildServiceUtils.TILE_ID.GRASS,
-					ConnectGroup = "Soil",
+					TileId = BuildServiceUtils.TILE_ID.STONE,
+					ConnectGroup = "Stone",
 				}
 			end
 
@@ -490,6 +496,77 @@ return function()
 
 			renderer:Destroy()
 			chunk:Destroy()
+		end)
+
+		it("renders only presentation chunks and clears broken autotiles without duplicates", function()
+			local TileChunkClient = require(GetClientModule({
+				"Client",
+				"Source",
+				"Autotile",
+				"Binders",
+				"TileChunkClient",
+			}))
+			local tileId = BuildServiceUtils.TILE_ID.DIRT
+			local renderService = {}
+			function renderService.GetChunkSize(_self: any): number
+				return 1
+			end
+			function renderService.GetTileData(_self: any, tileX: number, tileY: number): any?
+				if tileX ~= 0 or tileY ~= 0 or tileId == BuildServiceUtils.AIR_TILE_ID then
+					return nil
+				end
+				return {
+					TileId = tileId,
+					ConnectGroup = "Soil",
+				}
+			end
+			function renderService.GetTileSurfaceLayout(_self: any): any
+				return {
+					cframe = CFrame.new(0, 1, 1),
+					size = Vector3.new(2, 2, 2),
+					pixelsPerStud = 8,
+				}
+			end
+
+			local function createChunk(isPresentation: boolean): Model
+				local chunk = Instance.new("Model")
+				chunk:SetAttribute("ChunkKey", "0:0")
+				chunk:SetAttribute("ChunkSize", 1)
+				chunk:SetAttribute("Width", 1)
+				chunk:SetAttribute("Height", 1)
+				chunk:SetAttribute("AutotilePresentationChunk", isPresentation)
+				return chunk
+			end
+
+			local collisionChunk = createChunk(false)
+			local presentationChunk = createChunk(true)
+			local context = {
+				renderService = renderService,
+				tags = table.freeze({ "Chunk" }),
+			}
+			local collisionClient = TileChunkClient.new(collisionChunk, context)
+			local presentationClient = TileChunkClient.new(presentationChunk, context)
+
+			expect(collisionClient.renderer).to.equal(nil)
+			expect(collisionChunk:FindFirstChild("AutotileLayer")).to.equal(nil)
+			expect(presentationClient.renderer ~= nil).to.equal(true)
+			local layer = presentationChunk:FindFirstChild("AutotileLayer")
+			expect(layer ~= nil).to.equal(true)
+			expect(#(layer :: Instance):GetChildren()).to.equal(1)
+
+			tileId = BuildServiceUtils.AIR_TILE_ID
+			presentationClient:UpdateTile(0, 0)
+			expect(#(layer :: Instance):GetChildren()).to.equal(0)
+
+			tileId = BuildServiceUtils.TILE_ID.DIRT
+			presentationClient:UpdateTile(0, 0)
+			presentationClient:UpdateTile(0, 0)
+			expect(#(layer :: Instance):GetChildren()).to.equal(1)
+
+			collisionClient:Destroy()
+			presentationClient:Destroy()
+			collisionChunk:Destroy()
+			presentationChunk:Destroy()
 		end)
 
 		it("deduplicates overlapping autotile neighbor refreshes per delta payload", function()
@@ -522,6 +599,32 @@ return function()
 			expect(#updates).to.equal(12)
 			expect(seen[BuildServiceUtils.PackTileKey(-1, -1)]).to.equal(true)
 			expect(seen[BuildServiceUtils.PackTileKey(2, 1)]).to.equal(true)
+		end)
+
+		it("queues both sides of a streamed chunk boundary exactly once", function()
+			local TileRenderServiceClient = require(GetClientModule({
+				"Client",
+				"Source",
+				"Autotile",
+				"TileRenderServiceClient",
+			}))
+			local updates = {}
+			local scheduler = TileRenderServiceClient.new({
+				maxTileUpdatesPerHeartbeat = 1000,
+				updateTile = function(tileX: number, tileY: number)
+					updates[BuildServiceUtils.PackTileKey(tileX, tileY)] = true
+				end,
+			})
+
+			expect(scheduler:QueueChunkBoundary("0:0", 4)).to.equal(32)
+			expect(scheduler:QueueChunkBoundary("0:0", 4)).to.equal(0)
+			scheduler._flushRequested = true
+			expect(scheduler:Flush()).to.equal(32)
+			expect(updates[BuildServiceUtils.PackTileKey(-1, -1)]).to.equal(true)
+			expect(updates[BuildServiceUtils.PackTileKey(4, 4)]).to.equal(true)
+			expect(updates[BuildServiceUtils.PackTileKey(1, 1)]).to.equal(nil)
+
+			scheduler:Destroy()
 		end)
 
 		it("uses indexed autotile chunks before scanning bound chunks", function()
@@ -690,10 +793,23 @@ return function()
 
 			local fourWayMask = MaskResolver.Resolve(getTile, Vector2.new(0, 0), FourWay16Rule)
 			expect(fourWayMask).to.equal(DirectionBits.N + DirectionBits.E)
+			expect(DirectionBits.MirrorHorizontal(DirectionBits.N + DirectionBits.E + DirectionBits.SE)).to.equal(
+				DirectionBits.N + DirectionBits.W + DirectionBits.SW
+			)
+			expect(DirectionBits.MirrorHorizontal(DirectionBits.AllMask)).to.equal(DirectionBits.AllMask)
+			expect(DirectionBits.MirrorHorizontal(DirectionBits.MirrorHorizontal(eightWayMask))).to.equal(eightWayMask)
 
 			local rect = RectUtil.FromCell(Vector2.new(2, 3), 16, 1, 2)
 			expect(rect.ImageRectOffset).to.equal(Vector2.new(37, 55))
 			expect(rect.ImageRectSize).to.equal(Vector2.new(16, 16))
+			local imageRectScale = Vector2.new(148 / 288, 1017 / 1980)
+			local scaledRect = RectUtil.FromCell(Vector2.new(2, 3), 16, 1, 2, imageRectScale)
+			expect(scaledRect.ImageRectOffset).to.equal(
+				Vector2.new(37 * imageRectScale.X, 55 * imageRectScale.Y)
+			)
+			expect(scaledRect.ImageRectSize).to.equal(
+				Vector2.new(16 * imageRectScale.X, 16 * imageRectScale.Y)
+			)
 
 			local atlas = {
 				Image = "rbxassetid://123",
@@ -725,13 +841,20 @@ return function()
 			local secondVariant = VariantPicker.Pick(atlas.Entries[255].Variants, Vector2.new(12, -4), 255, 42)
 			expect(firstVariant).to.equal(secondVariant)
 
-			local grassDefinition = AutotileRegistry.GetDefinition(BuildServiceUtils.TILE_ID.GRASS)
 			local dirtDefinition = AutotileRegistry.GetDefinition(BuildServiceUtils.TILE_ID.DIRT)
+			local grassDefinition = AutotileRegistry.GetDefinition(BuildServiceUtils.TILE_ID.GRASS)
 			expect(dirtDefinition ~= nil).to.equal(true)
 			expect((dirtDefinition :: any).Image).to.equal("rbxassetid://115586684643692")
 			expect((dirtDefinition :: any).TileSize).to.equal(16)
 			expect((dirtDefinition :: any).Spacing).to.equal(2)
 			expect((dirtDefinition :: any).UseSurfaceGui).to.equal(true)
+			expect(grassDefinition ~= nil).to.equal(true)
+			expect((grassDefinition :: any).Image).to.equal("rbxassetid://104962191554416")
+			expect((grassDefinition :: any).TileSize).to.equal(16)
+			expect((grassDefinition :: any).Spacing).to.equal(2)
+			expect((grassDefinition :: any).ImageRectScale).to.equal(imageRectScale)
+			expect((grassDefinition :: any).UseSurfaceGui).to.equal(true)
+			expect((grassDefinition :: any).ConnectGroup).to.equal((dirtDefinition :: any).ConnectGroup)
 
 			local filledDirtTiles = {}
 			for x = -1, 1 do
@@ -746,6 +869,53 @@ return function()
 
 			local filledDirtMask = MaskResolver.Resolve(getFilledDirtTile, Vector2.zero, EightWayBlobRule)
 			expect(filledDirtMask).to.equal(DirectionBits.AllMask)
+
+			local expectedDirtCells = {
+				[0] = Vector2.new(9, 3),
+				[DirectionBits.N] = Vector2.new(6, 3),
+				[DirectionBits.E] = Vector2.new(9, 0),
+				[DirectionBits.N + DirectionBits.E] = Vector2.new(0, 4),
+				[DirectionBits.S] = Vector2.new(6, 0),
+				[DirectionBits.N + DirectionBits.S] = Vector2.new(5, 0),
+				[DirectionBits.E + DirectionBits.S] = Vector2.new(0, 3),
+				[DirectionBits.N + DirectionBits.E + DirectionBits.S] = Vector2.new(0, 0),
+				[DirectionBits.W] = Vector2.new(12, 0),
+				[DirectionBits.N + DirectionBits.W] = Vector2.new(1, 4),
+				[DirectionBits.E + DirectionBits.W] = Vector2.new(6, 4),
+				[DirectionBits.N + DirectionBits.E + DirectionBits.W] = Vector2.new(13, 1),
+				[DirectionBits.S + DirectionBits.W] = Vector2.new(1, 3),
+				[DirectionBits.N + DirectionBits.S + DirectionBits.W] = Vector2.new(4, 0),
+				[DirectionBits.E + DirectionBits.S + DirectionBits.W] = Vector2.new(1, 0),
+				[DirectionBits.CardinalMask] = Vector2.new(1, 1),
+			}
+
+			for mask, expectedCell in expectedDirtCells do
+				local entry = (dirtDefinition :: any).Entries[mask]
+				expect(#entry.Variants).to.equal(1)
+				expect(entry.Variants[1].Cell).to.equal(expectedCell)
+			end
+			for mask = 0, DirectionBits.AllMask do
+				local cardinalMask = bit32.band(mask, DirectionBits.CardinalMask)
+				local entry = (dirtDefinition :: any).Entries[mask]
+				expect(entry.Variants[1].Cell).to.equal(expectedDirtCells[cardinalMask])
+				local grassEntry = (grassDefinition :: any).Entries[mask]
+				local expectedGrassCell = if cardinalMask == DirectionBits.N + DirectionBits.E + DirectionBits.W
+					then Vector2.new(1, 2)
+					else expectedDirtCells[cardinalMask]
+				expect(grassEntry.Variants[1].Cell).to.equal(expectedGrassCell)
+			end
+			local grassBottomEdgeMask = DirectionBits.N + DirectionBits.E + DirectionBits.W
+			local grassBottomEdgeResolved = AtlasResolver.Resolve(grassDefinition, grassBottomEdgeMask, Vector2.zero, 0)
+			expect(grassBottomEdgeResolved.Cell).to.equal(Vector2.new(1, 2))
+			expect(grassBottomEdgeResolved.ImageRectOffset).to.equal(
+				Vector2.new(18 * imageRectScale.X, 36 * imageRectScale.Y)
+			)
+			expect(grassBottomEdgeResolved.ImageRectSize).to.equal(
+				Vector2.new(16 * imageRectScale.X, 16 * imageRectScale.Y)
+			)
+			expect((dirtDefinition :: any).Entries[DirectionBits.CardinalMask].Variants[1].Cell).to.equal(
+				Vector2.new(1, 1)
+			)
 			expect((dirtDefinition :: any).Entries[DirectionBits.AllMask].Variants[1].Cell).to.equal(Vector2.new(1, 1))
 
 			local topEdgeMask = DirectionBits.E
@@ -753,24 +923,88 @@ return function()
 				+ DirectionBits.W
 				+ DirectionBits.SE
 				+ DirectionBits.SW
-			expect((dirtDefinition :: any).Entries[topEdgeMask].Variants[1].Cell).to.equal(Vector2.new(1, 0))
+			local topEdgeResolved = AtlasResolver.Resolve(dirtDefinition, topEdgeMask, Vector2.zero, 0)
+			expect(topEdgeResolved.Mask).to.equal(topEdgeMask)
+			expect(topEdgeResolved.Cell).to.equal(Vector2.new(1, 0))
 
 			local cardinalOnlyFullMask = DirectionBits.N + DirectionBits.E + DirectionBits.S + DirectionBits.W
-			expect((dirtDefinition :: any).Entries[cardinalOnlyFullMask].Variants[1].Cell).to.equal(Vector2.new(14, 1))
+			expect((dirtDefinition :: any).Entries[cardinalOnlyFullMask].Variants[1].Cell).to.equal(Vector2.new(1, 1))
+
+			local topDiagonalGapMask = cardinalOnlyFullMask + DirectionBits.SE
+			local rightDiagonalGapMask = cardinalOnlyFullMask + DirectionBits.NW + DirectionBits.SW
+			local leftDiagonalGapMask = cardinalOnlyFullMask + DirectionBits.NE + DirectionBits.SE
+			expect((dirtDefinition :: any).Entries[topDiagonalGapMask].Variants[1].Cell).to.equal(Vector2.new(1, 1))
+			expect((dirtDefinition :: any).Entries[rightDiagonalGapMask].Variants[1].Cell).to.equal(Vector2.new(1, 1))
+			expect((dirtDefinition :: any).Entries[leftDiagonalGapMask].Variants[1].Cell).to.equal(Vector2.new(1, 1))
 
 			local filledDirtResolved = AtlasResolver.Resolve(dirtDefinition, DirectionBits.AllMask, Vector2.zero, 0)
-			expect(filledDirtResolved.Cell.Y).to.equal(1)
-			expect(filledDirtResolved.Cell.X >= 1 and filledDirtResolved.Cell.X <= 3).to.equal(true)
+			expect(filledDirtResolved.Mask).to.equal(DirectionBits.AllMask)
+			expect(filledDirtResolved.Cell).to.equal(Vector2.new(1, 1))
 			expect(filledDirtResolved.ImageRectOffset.Y).to.equal(18)
 			expect(filledDirtResolved.ImageRectSize).to.equal(Vector2.new(16, 16))
 
-			expect(grassDefinition ~= nil).to.equal(true)
+			for mask = 0, DirectionBits.AllMask do
+				local resolved = AtlasResolver.Resolve(dirtDefinition, mask, Vector2.zero, 0)
+				expect(resolved ~= nil).to.equal(true)
+				expect(resolved.Mask).to.equal(mask)
+			end
+
+			local grassAboveDirtTiles = {
+				["0:0"] = {
+					TileId = BuildServiceUtils.TILE_ID.GRASS,
+					ConnectGroup = (grassDefinition :: any).ConnectGroup,
+				},
+				["0:-1"] = {
+					TileId = BuildServiceUtils.TILE_ID.DIRT,
+					ConnectGroup = (dirtDefinition :: any).ConnectGroup,
+				},
+			}
+			local function getGrassAboveDirtTile(x: number, y: number)
+				return grassAboveDirtTiles[`{x}:{y}`]
+			end
+
+			local grassToDirtMask = MaskResolver.Resolve(getGrassAboveDirtTile, Vector2.zero, EightWayBlobRule)
+			expect(grassToDirtMask).to.equal(DirectionBits.S)
+			local grassToDirtResolved = AtlasResolver.Resolve(grassDefinition, grassToDirtMask, Vector2.zero, 0)
+			expect(grassToDirtResolved.Cell).to.equal(Vector2.new(6, 0))
+			expect(grassToDirtResolved.ImageRectOffset).to.equal(Vector2.new(108 * imageRectScale.X, 0))
+
+			local AutotileRenderServiceClient = require(GetClientModule({
+				"Client",
+				"Source",
+				"Autotile",
+				"AutotileRenderServiceClient",
+			}))
+			local layoutService = {}
+			function layoutService.GetTileSize(_self: any): number
+				return 2
+			end
+			function layoutService.GetWorldOrigin(_self: any): Vector3
+				return Vector3.new(10, 20, 30)
+			end
+			function layoutService.GetBasePlaneX(_self: any): number
+				return 3
+			end
+			local grassLayout = AutotileRenderServiceClient.GetTileSurfaceLayout(
+				layoutService,
+				0,
+				0,
+				grassDefinition,
+				grassToDirtResolved
+			)
+			expect(grassLayout.pixelsPerStud).to.equal(8)
+			expect(grassLayout.size).to.equal(Vector3.new(2, 2, 2))
+			expect(grassLayout.cframe.Position).to.equal(Vector3.new(13, 21, 31))
+			expect(grassLayout.cframe.Position.X + grassLayout.size.X * 0.5).to.equal(14)
+
+			grassAboveDirtTiles["0:0"].TileId = BuildServiceUtils.TILE_ID.DIRT
+			grassAboveDirtTiles["0:-1"].TileId = BuildServiceUtils.TILE_ID.GRASS
+			local dirtToGrassMask = MaskResolver.Resolve(getGrassAboveDirtTile, Vector2.zero, EightWayBlobRule)
+			expect(dirtToGrassMask).to.equal(DirectionBits.S)
+
+			expect(AutotileRegistry.HasDefinition(BuildServiceUtils.TILE_ID.GRASS)).to.equal(true)
 			expect(AutotileRegistry.HasDefinition(BuildServiceUtils.TILE_ID.STONE)).to.equal(true)
 			expect(AutotileRegistry.GetAtlas(BuildServiceUtils.TILE_ID.GRASS)).to.equal(grassDefinition)
-
-			local grassResolved =
-				AtlasResolver.Resolve(grassDefinition, DirectionBits.E + DirectionBits.S, Vector2.zero, nil)
-			expect(grassResolved ~= nil).to.equal(true)
 		end)
 
 		it("supports Octree spatial queries and Binder instance lifetimes", function()

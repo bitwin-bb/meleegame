@@ -21,11 +21,24 @@ local function coerceSize(tileSizeRaw: any): Vector2
 	return Vector2.new(tileSize, tileSize)
 end
 
+local function coerceScale(scaleRaw: any): Vector2
+	if typeof(scaleRaw) == "Vector2" then
+		if Math.isFinite(scaleRaw.X) and Math.isFinite(scaleRaw.Y) and scaleRaw.X > 0 and scaleRaw.Y > 0 then
+			return scaleRaw
+		end
+	elseif typeof(scaleRaw) == "number" and Math.isFinite(scaleRaw) and scaleRaw > 0 then
+		return Vector2.new(scaleRaw, scaleRaw)
+	end
+
+	return Vector2.new(1, 1)
+end
+
 function RectUtil.FromCell(
 	cellRaw: any,
 	tileSizeRaw: any,
 	paddingRaw: any?,
-	spacingRaw: any?
+	spacingRaw: any?,
+	imageRectScaleRaw: any?
 ): {
 	ImageRectOffset: Vector2,
 	ImageRectSize: Vector2,
@@ -34,13 +47,21 @@ function RectUtil.FromCell(
 	local tileSize = coerceSize(tileSizeRaw)
 	local padding = coerceNumber(paddingRaw, 0)
 	local spacing = coerceNumber(spacingRaw, 0)
+	local imageRectScale = coerceScale(imageRectScaleRaw)
+	local logicalOffset = Vector2.new(
+		padding + math.floor(cell.X) * (tileSize.X + spacing),
+		padding + math.floor(cell.Y) * (tileSize.Y + spacing)
+	)
 
 	return {
 		ImageRectOffset = Vector2.new(
-			padding + math.floor(cell.X) * (tileSize.X + spacing),
-			padding + math.floor(cell.Y) * (tileSize.Y + spacing)
+			logicalOffset.X * imageRectScale.X,
+			logicalOffset.Y * imageRectScale.Y
 		),
-		ImageRectSize = tileSize,
+		ImageRectSize = Vector2.new(
+			tileSize.X * imageRectScale.X,
+			tileSize.Y * imageRectScale.Y
+		),
 	}
 end
 

@@ -1,6 +1,7 @@
 local require = require(script.Parent.loader).load(script)
 
 local Maid = require("Maid")
+local Rx = require("Rx")
 local Signal = require("Signal")
 
 local BuildServiceUtils = require("BuildServiceUtils")
@@ -60,6 +61,16 @@ function TileWorldService.Init(self: any)
 	self._tiles = {}
 	self.tileChanged = Signal.new()
 	self._maid:GiveTask(self.tileChanged)
+	self._tileChangedObservable = Rx.fromSignal(self.tileChanged):Pipe({
+		Rx.share(),
+	})
+end
+
+function TileWorldService.ObserveTileChanged(self: any): any
+	if self._maid == nil then
+		self:Init()
+	end
+	return self._tileChangedObservable
 end
 
 function TileWorldService.GetTile(self: any, tileXRaw: any, tileYRaw: any): any?
@@ -135,6 +146,7 @@ function TileWorldService.Destroy(self: any)
 	if self._tiles ~= nil then
 		table.clear(self._tiles)
 	end
+	self._tileChangedObservable = nil
 end
 
 return TileWorldService

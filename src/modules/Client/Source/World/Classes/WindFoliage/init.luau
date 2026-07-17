@@ -76,6 +76,8 @@ local RUNTIME_ATTRIBUTE_WRITES = "WindRuntimeWrites"
 
 local ATTRIBUTES: { [string]: string } = {
 	foliageEnabled = "WindFoliageEnabled",
+	viewport = "WindFoliageViewport",
+	worldPosition = "WindFoliageWorldPosition",
 	preset = "WindFoliagePreset",
 	representation = "WindFoliageRepresentation",
 	motionStyle = "WindFoliageMotionStyle",
@@ -590,6 +592,11 @@ function WindFoliage.GetFoliageConfig(self: any, instance: Instance, id: number)
 		preset.boneNames = splitCommaSeparatedNames(boneNames)
 	end
 
+	local worldPosition = self.attributeCache:Get(instance, ATTRIBUTES.worldPosition, nil)
+	if typeof(worldPosition) == "Vector3" then
+		preset.worldPosition = worldPosition
+	end
+
 	preset.id = id
 	preset.seed = seed
 	preset.bucketIndex = bucketIndex
@@ -602,7 +609,9 @@ function WindFoliage.ShouldRegisterFoliage(self: any, instance: Instance): boole
 	if not canBeFoliageRoot(instance) then
 		return false
 	end
-	if not isInWorkspace(instance) then
+	local isViewportFoliage = instance:GetAttribute(ATTRIBUTES.viewport) == true
+		and instance:FindFirstAncestorWhichIsA("WorldModel") ~= nil
+	if not isViewportFoliage and not isInWorkspace(instance) then
 		return false
 	end
 	if isInWorldAnimatorRuntime(instance) then

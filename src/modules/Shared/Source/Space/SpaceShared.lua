@@ -11,7 +11,7 @@ SpaceShared.SPACE_SOUNDTRACK_BIOME = "Space"
 SpaceShared.SPACE_HEIGHT_TILES = 200
 SpaceShared.SPACE_SAMPLE_INTERVAL_SECONDS = 0.2
 
-local DEFAULT_TILE_SIZE = 4
+local DEFAULT_TILE_SIZE = 2
 local DEFAULT_WORLD_ORIGIN = Vector3.zero
 
 local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number

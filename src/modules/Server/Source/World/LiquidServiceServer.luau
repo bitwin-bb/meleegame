@@ -1074,7 +1074,7 @@ function LiquidServiceServer.CreateStateSnapshot(self: LiquidServiceServer): Liq
 	local world = self.world
 	return LiquidServiceUtils.CreateState({
 		ready = world ~= nil,
-		tileSize = if world ~= nil and isFiniteNumber((world :: any).tileSize) then (world :: any).tileSize else 4,
+		tileSize = if world ~= nil and isFiniteNumber((world :: any).tileSize) then (world :: any).tileSize else 2,
 		chunkSize = if world ~= nil and isFiniteNumber((world :: any).chunkSize)
 			then math.floor((world :: any).chunkSize)
 			else 32,
