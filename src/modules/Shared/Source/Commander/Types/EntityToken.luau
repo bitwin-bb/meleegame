@@ -1,37 +1,6 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerScriptService = game:GetService("ServerScriptService")
+local require = require(script.Parent.loader).load(script)
 
-local PACKAGE_NAME = "AquariaBackup"
-
-local function GetGameRoot(): Instance
-	local directGameRoot = script:FindFirstAncestor("game")
-	if directGameRoot ~= nil then
-		return directGameRoot
-	end
-
-	local serverPackage = ServerScriptService:FindFirstChild(PACKAGE_NAME)
-	if serverPackage ~= nil then
-		local serverGameRoot = serverPackage:FindFirstChild("game")
-		if serverGameRoot ~= nil then
-			return serverGameRoot
-		end
-	end
-
-	local replicatedPackage = ReplicatedStorage:FindFirstChild(PACKAGE_NAME)
-		or ReplicatedStorage:WaitForChild(PACKAGE_NAME, 5)
-	if replicatedPackage ~= nil then
-		local replicatedGameRoot = replicatedPackage:FindFirstChild("game")
-		if replicatedGameRoot ~= nil then
-			return replicatedGameRoot
-		end
-	end
-
-	error("Missing Nevermore game root for EntityToken.")
-end
-
-
-local gameRoot: any = GetGameRoot()
-local EntityCatalog = require(gameRoot.Shared.Source.Commander.EntityCatalog)
+local EntityCatalog = require("EntityCatalog")
 
 type EntityEntry = {
 	Id: string,

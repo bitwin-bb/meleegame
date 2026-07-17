@@ -21,7 +21,7 @@ local function trim(valueRaw: any): string
 	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function CoerceString(valueRaw: any): string?
+local function coerceString(valueRaw: any): string?
 	local value = trim(valueRaw)
 	if value == "" then
 		return nil
@@ -30,7 +30,7 @@ local function CoerceString(valueRaw: any): string?
 end
 
 local function normalizeNameToken(valueRaw: any): string
-	local value = CoerceString(valueRaw)
+	local value = coerceString(valueRaw)
 	if value == nil then
 		return ""
 	end
@@ -131,10 +131,10 @@ local function collectToolAttributeSources(tool: Tool): { Instance }
 	return sources
 end
 
-local function GetAttributeText(instances: { Instance }, attributeNames: { string }): string?
+local function getAttributeText(instances: { Instance }, attributeNames: { string }): string?
 	for _, instance in instances do
 		for _, attributeName in attributeNames do
-			local attributeValue = CoerceString(instance:GetAttribute(attributeName))
+			local attributeValue = coerceString(instance:GetAttribute(attributeName))
 			if attributeValue ~= nil then
 				return attributeValue
 			end
@@ -143,8 +143,8 @@ local function GetAttributeText(instances: { Instance }, attributeNames: { strin
 	return nil
 end
 
-local function GetCanonicalOrFallbackItemId(valueRaw: any): string?
-	local value = CoerceString(valueRaw)
+local function getCanonicalOrFallbackItemId(valueRaw: any): string?
+	local value = coerceString(valueRaw)
 	if value == nil then
 		return nil
 	end
@@ -185,7 +185,7 @@ function GetToolInstance.GetTool(instanceRaw: any): Tool?
 	return nil
 end
 
-local function GetVisualFromContainer(container: Instance, excludedToolRoots: { Instance }): Instance?
+local function getVisualFromContainer(container: Instance, excludedToolRoots: { Instance }): Instance?
 	if
 		container:IsA("Tool")
 		or isPreferredBranch(container, PREFERRED_TOOL_BRANCH_NAMES)
@@ -239,13 +239,13 @@ function GetToolInstance.GetVisualTemplate(instanceRaw: any): Instance?
 
 	local excludedToolRoots = collectExcludedToolRoots(instance)
 	for _, child in collectMatchingChildren(instance, PREFERRED_MODEL_BRANCH_NAMES) do
-		local visual = GetVisualFromContainer(child, {})
+		local visual = getVisualFromContainer(child, {})
 		if visual ~= nil then
 			return visual
 		end
 	end
 
-	local directVisual = GetVisualFromContainer(instance, excludedToolRoots)
+	local directVisual = getVisualFromContainer(instance, excludedToolRoots)
 	if directVisual ~= nil then
 		return directVisual
 	end
@@ -254,7 +254,7 @@ function GetToolInstance.GetVisualTemplate(instanceRaw: any): Instance?
 		if isInsideExcludedRoot(child, excludedToolRoots) then
 			continue
 		end
-		local visual = GetVisualFromContainer(child, excludedToolRoots)
+		local visual = getVisualFromContainer(child, excludedToolRoots)
 		if visual ~= nil then
 			return visual
 		end
@@ -270,14 +270,14 @@ function GetToolInstance.GetToolItemId(toolRaw: any): string?
 	end
 
 	local attributeSources = collectToolAttributeSources(tool)
-	local directItemId = GetAttributeText(attributeSources, ITEM_ID_ATTRIBUTE_NAMES)
+	local directItemId = getAttributeText(attributeSources, ITEM_ID_ATTRIBUTE_NAMES)
 	if directItemId ~= nil then
-		return GetCanonicalOrFallbackItemId(directItemId)
+		return getCanonicalOrFallbackItemId(directItemId)
 	end
 
-	local fromName = CoerceString(tool.Name)
+	local fromName = coerceString(tool.Name)
 	if fromName ~= nil then
-		return GetCanonicalOrFallbackItemId(fromName)
+		return getCanonicalOrFallbackItemId(fromName)
 	end
 
 	return nil
@@ -290,7 +290,7 @@ function GetToolInstance.GetToolItemType(toolRaw: any): string?
 	end
 
 	local attributeSources = collectToolAttributeSources(tool)
-	local directItemType = GetAttributeText(attributeSources, ITEM_TYPE_ATTRIBUTE_NAMES)
+	local directItemType = getAttributeText(attributeSources, ITEM_TYPE_ATTRIBUTE_NAMES)
 	if directItemType ~= nil then
 		return directItemType
 	end
@@ -306,7 +306,7 @@ function GetToolInstance.GetToolItemType(toolRaw: any): string?
 	end
 
 	local definitionTable = definition :: { [string]: any }
-	return CoerceString(definitionTable.itemType) or CoerceString(definitionTable.type)
+	return coerceString(definitionTable.itemType) or coerceString(definitionTable.type)
 end
 
 

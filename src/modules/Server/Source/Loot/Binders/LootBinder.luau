@@ -8,7 +8,7 @@ local LootBinder = {}
 LootBinder.__index = LootBinder
 setmetatable(LootBinder, ModelBinder)
 
-local function GetStringAttribute(instance: Instance, attributeName: string): string?
+local function getStringAttribute(instance: Instance, attributeName: string): string?
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) == "string" and value ~= "" then
 		return value
@@ -18,13 +18,13 @@ end
 
 function LootBinder.new(instance: Instance, context: any)
 	local self = ModelBinder.new(instance, context, LootBinder)
-	self:updateMetadata()
+	self:UpdateMetadata()
 	return self
 end
 
-function LootBinder.updateMetadata(self: any)
-	local itemId = GetStringAttribute(self.instance, "LootItemId")
-		or GetStringAttribute(self.instance, "ItemId")
+function LootBinder.UpdateMetadata(self: any)
+	local itemId = getStringAttribute(self.instance, "LootItemId")
+		or getStringAttribute(self.instance, "ItemId")
 	local amount = self.instance:GetAttribute("LootAmount")
 	self.instance:SetAttribute("LootTagged", true)
 	if itemId == nil then

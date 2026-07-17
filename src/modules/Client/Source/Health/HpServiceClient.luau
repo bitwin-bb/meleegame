@@ -7,6 +7,7 @@ local StarterGui = game:GetService("StarterGui")
 local HpServiceUtils = require("HpServiceUtils")
 local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
+local ServiceBag = require("ServiceBag")
 local HpServicePackets = require("NetPacketsShared").HpService
 
 local function sendPacket(methodName: string, ...: any)
@@ -61,6 +62,7 @@ type SignalObject = Signal.Signal<...any>
 type JanitorClass = any
 
 local HpServiceClient = {}
+HpServiceClient.ServiceName = "HpServiceClient"
 
 local DISABLE_HEALTH_UI_MAX_ATTEMPTS = 8
 local DISABLE_HEALTH_UI_RETRY_DELAY = 0.2
@@ -111,7 +113,10 @@ local function applyPersistedHpSnapshotFromPlayerData(self: HpServiceClient): bo
 	return true
 end
 
-function HpServiceClient.Init(self: HpServiceClient)
+function HpServiceClient.Init(self: HpServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
@@ -151,7 +156,7 @@ function HpServiceClient.ApplyState(self: HpServiceClient, stateRaw: any)
 	self.stateChanged:Fire(HpServiceUtils.CloneState(self.state))
 end
 
-function HpServiceClient.RequestSync(self: HpServiceClient)
+function HpServiceClient.RequestSync(_self: HpServiceClient)
 	sendPacket("requestSync")
 end
 
@@ -172,8 +177,10 @@ function HpServiceClient.Destroy(self: HpServiceClient)
 	if self.janitor then
 		self.janitor:Destroy()
 	end
+	self._serviceBag = nil
 end
 export type HpServiceClient = typeof(HpServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
 	localPlayer: Player,
 	janitor: JanitorClass,
 	state: HpServiceState,

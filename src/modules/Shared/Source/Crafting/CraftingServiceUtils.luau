@@ -213,7 +213,7 @@ local function trim(textRaw: any): string
 	return string.match(textRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function CoerceString(valueRaw: any, fallback: string?): string?
+local function coerceString(valueRaw: any, fallback: string?): string?
 	local value = trim(valueRaw)
 	if value == "" then
 		return fallback
@@ -221,14 +221,14 @@ local function CoerceString(valueRaw: any, fallback: string?): string?
 	return value
 end
 
-local function CoerceBoolean(valueRaw: any, fallback: boolean): boolean
+local function coerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function CoerceInteger(valueRaw: any, fallback: number, minimum: number, maximum: number): number
+local function coerceInteger(valueRaw: any, fallback: number, minimum: number, maximum: number): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = math.floor(valueRaw)
@@ -241,7 +241,7 @@ local function CoerceInteger(valueRaw: any, fallback: number, minimum: number, m
 	return math.clamp(value, minimum, maximum)
 end
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -277,7 +277,7 @@ local function cloneStringArray(arrayRaw: any): { string }
 		return output
 	end
 	for _, valueRaw in arrayRaw do
-		local value = CoerceString(valueRaw, nil)
+		local value = coerceString(valueRaw, nil)
 		if value ~= nil then
 			table.insert(output, value)
 		end
@@ -289,7 +289,7 @@ local function clonePath(pathRaw: any, fallback: { string }): { string }
 	local source = if typeof(pathRaw) == "table" then pathRaw else fallback
 	local output = {}
 	for _, segmentRaw in source do
-		local segment = CoerceString(segmentRaw, nil)
+		local segment = coerceString(segmentRaw, nil)
 		if segment ~= nil then
 			table.insert(output, segment)
 		end
@@ -372,7 +372,7 @@ local function appendUniqueString(target: { string }, value: string)
 end
 
 local function appendMergedItemAmount(target: { ItemAmount }, itemId: string, amountRaw: any, itemIdsRaw: { string }?)
-	local amount = CoerceInteger(amountRaw, 0, 0, 1_000_000)
+	local amount = coerceInteger(amountRaw, 0, 0, 1_000_000)
 	if amount <= 0 then
 		return
 	end
@@ -391,7 +391,7 @@ local function appendMergedItemAmount(target: { ItemAmount }, itemId: string, am
 	})
 end
 
-local function GetEquirementItemIds(requirementRaw: ItemAmount): { string }
+local function getRequirementItemIds(requirementRaw: ItemAmount): { string }
 	local itemIds = if requirementRaw.itemIds ~= nil then cloneStringArray(requirementRaw.itemIds) else {} :: any
 	if #itemIds <= 0 then
 		itemIds = { requirementRaw.itemId }
@@ -416,7 +416,7 @@ local function countInventoryItemsForRequirement(
 	requirementRaw: ItemAmount
 ): number
 	local total = 0
-	for _, candidateItemId in GetEquirementItemIds(requirementRaw) do
+	for _, candidateItemId in getRequirementItemIds(requirementRaw) do
 		total += math.max(0, math.floor(inventoryItemCountsRaw[candidateItemId] or 0))
 	end
 	return total
@@ -432,7 +432,7 @@ local function createDefaultCoinAmounts(): { [string]: number }
 end
 
 local function totalCopperToCoinAmounts(totalCopperRaw: any): { [string]: number }
-	local remaining = CoerceInteger(totalCopperRaw, 0, 0, 1_000_000_000)
+	local remaining = coerceInteger(totalCopperRaw, 0, 0, 1_000_000_000)
 	local amounts = createDefaultCoinAmounts()
 	for _, coinKey in COIN_KEYS_ORDER_DESCENDING do
 		local coinValue = COIN_KEY_TO_COPPER_VALUE[coinKey]
@@ -443,7 +443,7 @@ local function totalCopperToCoinAmounts(totalCopperRaw: any): { [string]: number
 	return amounts
 end
 
-local function GetCoinAmountsFromData(coinsDataRaw: any): ({ [string]: number }, boolean)
+local function getCoinAmountsFromData(coinsDataRaw: any): ({ [string]: number }, boolean)
 	if typeof(coinsDataRaw) ~= "table" then
 		return createDefaultCoinAmounts(), false
 	end
@@ -452,7 +452,7 @@ local function GetCoinAmountsFromData(coinsDataRaw: any): ({ [string]: number },
 	local amounts = createDefaultCoinAmounts()
 	local hasExplicitAmounts = false
 	for coinKey in COIN_KEY_TO_COPPER_VALUE do
-		local amount = CoerceInteger(source[coinKey], 0, 0, 1_000_000_000)
+		local amount = coerceInteger(source[coinKey], 0, 0, 1_000_000_000)
 		amounts[coinKey] = amount
 		if amount > 0 then
 			hasExplicitAmounts = true
@@ -471,7 +471,7 @@ local function GetCoinAmountsFromData(coinsDataRaw: any): ({ [string]: number },
 	return amounts, false
 end
 
-local function GetStationDefinitionsFromTree(treeRaw: any): { [string]: StationDefinition }
+local function getStationDefinitionsFromTree(treeRaw: any): { [string]: StationDefinition }
 	local output: { [string]: StationDefinition } = {}
 	local tree = if typeof(treeRaw) == "table" then treeRaw else {} :: any
 	local stationsRaw = if typeof((tree :: any).stations) == "table" then (tree :: any).stations else {} :: any
@@ -482,13 +482,13 @@ local function GetStationDefinitionsFromTree(treeRaw: any): { [string]: StationD
 		end
 
 		local stationSource = stationRaw :: { [string]: any }
-		local stationId = CoerceString(stationSource.id, if typeof(key) == "string" then key else nil)
+		local stationId = coerceString(stationSource.id, if typeof(key) == "string" then key else nil)
 		if stationId == nil then
 			continue
 		end
 
-		local displayName = CoerceString(stationSource.displayName, stationId) or stationId
-		local tag = CoerceString(stationSource.tag, nil) or (DEFAULT_STATION_TAG_PREFIX .. stationId)
+		local displayName = coerceString(stationSource.displayName, stationId) or stationId
+		local tag = coerceString(stationSource.tag, nil) or (DEFAULT_STATION_TAG_PREFIX .. stationId)
 		output[stationId] = {
 			id = stationId,
 			displayName = displayName,
@@ -525,10 +525,10 @@ end
 
 function CraftingServiceUtils.GetConfig(configRaw: any): CraftingServiceConfig
 	local source = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else {} :: any
-	local stationTagPrefix = CoerceString(source.stationTagPrefix, DEFAULT_STATION_TAG_PREFIX)
+	local stationTagPrefix = coerceString(source.stationTagPrefix, DEFAULT_STATION_TAG_PREFIX)
 		or DEFAULT_STATION_TAG_PREFIX
 
-	local stationDefinitions = GetStationDefinitionsFromTree(CraftingTree)
+	local stationDefinitions = getStationDefinitionsFromTree(CraftingTree)
 	local stationTagById: { [string]: string } = {}
 	for stationId, stationDefinition in stationDefinitions do
 		stationTagById[stationId] = stationDefinition.tag
@@ -539,8 +539,8 @@ function CraftingServiceUtils.GetConfig(configRaw: any): CraftingServiceConfig
 		else {} :: any
 
 	for stationIdRaw, tagRaw in stationTagOverrides do
-		local stationId = CoerceString(stationIdRaw, nil)
-		local tag = CoerceString(tagRaw, nil)
+		local stationId = coerceString(stationIdRaw, nil)
+		local tag = coerceString(tagRaw, nil)
 		if stationId ~= nil and tag ~= nil then
 			stationTagById[stationId] = tag
 		end
@@ -553,58 +553,48 @@ function CraftingServiceUtils.GetConfig(configRaw: any): CraftingServiceConfig
 	end
 
 	return {
-		stationScanRadius = CoerceNumber(source.stationScanRadius, DEFAULT_STATION_SCAN_RADIUS, 2, 500),
-		stationValidationRadius = CoerceNumber(
+		stationScanRadius = coerceNumber(source.stationScanRadius, DEFAULT_STATION_SCAN_RADIUS, 2, 500),
+		stationValidationRadius = coerceNumber(
 			source.stationValidationRadius,
 			DEFAULT_STATION_VALIDATION_RADIUS,
 			2,
 			500
 		),
-		stationScanRateHz = CoerceNumber(source.stationScanRateHz, DEFAULT_STATION_SCAN_RATE_HZ, 1, 30),
-		biomeScanRateHz = CoerceNumber(source.biomeScanRateHz, DEFAULT_BIOME_SCAN_RATE_HZ, 1, 30),
-		clientRequestThrottleSeconds = CoerceNumber(
+		stationScanRateHz = coerceNumber(source.stationScanRateHz, DEFAULT_STATION_SCAN_RATE_HZ, 1, 30),
+		biomeScanRateHz = coerceNumber(source.biomeScanRateHz, DEFAULT_BIOME_SCAN_RATE_HZ, 1, 30),
+		clientRequestThrottleSeconds = coerceNumber(
 			source.clientRequestThrottleSeconds,
 			DEFAULT_CLIENT_REQUEST_THROTTLE_SECONDS,
 			0.02,
 			2
 		),
-		serverRequestRateLimitSeconds = CoerceNumber(
+		serverRequestRateLimitSeconds = coerceNumber(
 			source.serverRequestRateLimitSeconds,
 			DEFAULT_SERVER_REQUEST_RATE_LIMIT_SECONDS,
 			0.02,
 			2
 		),
-		bulkCraftIntervalSeconds = CoerceNumber(
+		bulkCraftIntervalSeconds = coerceNumber(
 			source.bulkCraftIntervalSeconds,
 			DEFAULT_BULK_CRAFT_INTERVAL_SECONDS,
 			0.03,
 			5
 		),
-		inventoryWatchIntervalSeconds = CoerceNumber(
+		inventoryWatchIntervalSeconds = coerceNumber(
 			source.inventoryWatchIntervalSeconds,
 			DEFAULT_INVENTORY_WATCH_INTERVAL_SECONDS,
 			0.05,
 			5
 		),
-		statePushIntervalSeconds = CoerceNumber(
+		statePushIntervalSeconds = coerceNumber(
 			source.statePushIntervalSeconds,
 			DEFAULT_STATE_PUSH_INTERVAL_SECONDS,
 			0.05,
 			5
 		),
-		persistIntervalSeconds = CoerceNumber(
-			source.persistIntervalSeconds,
-			DEFAULT_PERSIST_INTERVAL_SECONDS,
-			0.2,
-			30
-		),
-		dataLoadTimeoutSeconds = CoerceNumber(
-			source.dataLoadTimeoutSeconds,
-			DEFAULT_DATA_LOAD_TIMEOUT_SECONDS,
-			2,
-			120
-		),
-		maxCraftQuantityPerRequest = CoerceInteger(
+		persistIntervalSeconds = coerceNumber(source.persistIntervalSeconds, DEFAULT_PERSIST_INTERVAL_SECONDS, 0.2, 30),
+		dataLoadTimeoutSeconds = coerceNumber(source.dataLoadTimeoutSeconds, DEFAULT_DATA_LOAD_TIMEOUT_SECONDS, 2, 120),
+		maxCraftQuantityPerRequest = coerceInteger(
 			source.maxCraftQuantityPerRequest,
 			DEFAULT_MAX_CRAFT_QUANTITY_PER_REQUEST,
 			1,
@@ -624,7 +614,7 @@ function CraftingServiceUtils.GetEffectiveConfig(configRaw: any?): CraftingServi
 end
 
 function CraftingServiceUtils.NormalizeBiomeToken(tokenRaw: any): string?
-	local token = CoerceString(tokenRaw, nil)
+	local token = coerceString(tokenRaw, nil)
 	if token == nil then
 		return nil
 	end
@@ -663,7 +653,7 @@ function CraftingServiceUtils.GetBiomeTokens(biomeTypeRaw: any, biomeIdRaw: any)
 	return tokens
 end
 
-local function GetWorldServiceBiomeType(worldServiceRaw: any, worldPosition: Vector3): number?
+local function getWorldServiceBiomeType(worldServiceRaw: any, worldPosition: Vector3): number?
 	if typeof(worldServiceRaw) ~= "table" then
 		return nil
 	end
@@ -700,7 +690,7 @@ local function GetWorldServiceBiomeType(worldServiceRaw: any, worldPosition: Vec
 	return nil
 end
 
-local function GetWorldServiceBiomeId(worldServiceRaw: any, worldPosition: Vector3): number?
+local function getWorldServiceBiomeId(worldServiceRaw: any, worldPosition: Vector3): number?
 	if typeof(worldServiceRaw) ~= "table" then
 		return nil
 	end
@@ -745,8 +735,8 @@ function CraftingServiceUtils.GetBiomeTokensFromWorldService(
 		return {}
 	end
 
-	local biomeType = GetWorldServiceBiomeType(worldServiceRaw, worldPositionRaw)
-	local biomeId = GetWorldServiceBiomeId(worldServiceRaw, worldPositionRaw)
+	local biomeType = getWorldServiceBiomeType(worldServiceRaw, worldPositionRaw)
+	local biomeId = getWorldServiceBiomeId(worldServiceRaw, worldPositionRaw)
 	return CraftingServiceUtils.GetBiomeTokens(biomeType, biomeId)
 end
 
@@ -777,7 +767,7 @@ end
 
 function CraftingServiceUtils.ScaleItemAmounts(itemAmountsRaw: { ItemAmount }, multiplierRaw: any): { ItemAmount }
 	local output: { ItemAmount } = {}
-	local multiplier = CoerceInteger(multiplierRaw, 1, 1, 9999)
+	local multiplier = coerceInteger(multiplierRaw, 1, 1, 9999)
 	for _, itemAmount in itemAmountsRaw do
 		appendMergedItemAmount(output, itemAmount.itemId, itemAmount.amount * multiplier, itemAmount.itemIds)
 	end
@@ -814,8 +804,8 @@ function CraftingServiceUtils.BuildInventoryItemCountMap(
 			if typeof(stackRaw) ~= "table" then
 				continue
 			end
-			local itemId = CoerceString((stackRaw :: any).itemId, nil)
-			local amount = CoerceInteger((stackRaw :: any).amount, 0, 0, 1_000_000)
+			local itemId = coerceString((stackRaw :: any).itemId, nil)
+			local amount = coerceInteger((stackRaw :: any).amount, 0, 0, 1_000_000)
 			if itemId == nil or amount <= 0 then
 				continue
 			end
@@ -825,9 +815,9 @@ function CraftingServiceUtils.BuildInventoryItemCountMap(
 
 	local coinsRaw = coinsDataRaw
 	if typeof(coinsRaw) == "table" then
-		local GotCoinAmounts = GetCoinAmountsFromData(coinsRaw)
+		local GotCoinAmounts = getCoinAmountsFromData(coinsRaw)
 		for coinItemId, coinKey in COIN_ITEM_ID_TO_KEY do
-			local amount = CoerceInteger(GotCoinAmounts[coinKey], 0, 0, COIN_ITEM_MAX_AMOUNT)
+			local amount = coerceInteger(GotCoinAmounts[coinKey], 0, 0, COIN_ITEM_MAX_AMOUNT)
 			if amount > 0 then
 				output[coinItemId] = (output[coinItemId] or 0) + amount
 			end
@@ -837,17 +827,17 @@ function CraftingServiceUtils.BuildInventoryItemCountMap(
 	return output
 end
 
-local function GetCoinCapacityForResult(
+local function getCoinCapacityForResult(
 	itemIdRaw: any,
 	inventoryItemCountsRaw: { [string]: number },
 	amountPerCraftRaw: any
 ): number?
-	local itemId = CoerceString(itemIdRaw, nil)
+	local itemId = coerceString(itemIdRaw, nil)
 	if itemId == nil or COIN_ITEM_ID_TO_KEY[itemId] == nil then
 		return nil
 	end
 
-	local amountPerCraft = CoerceInteger(amountPerCraftRaw, 0, 0, 1_000_000)
+	local amountPerCraft = coerceInteger(amountPerCraftRaw, 0, 0, 1_000_000)
 	if amountPerCraft <= 0 then
 		return 0
 	end
@@ -860,14 +850,14 @@ end
 local RecipeIndexer = {}
 CraftingServiceUtils.RecipeIndexer = RecipeIndexer
 
-local function CoerceStringList(valueRaw: any): { string }
+local function coerceStringList(valueRaw: any): { string }
 	local output = {}
 	local seen: { [string]: boolean } = {}
 	if typeof(valueRaw) ~= "table" then
 		return output
 	end
 	for _, entryRaw in valueRaw do
-		local value = CoerceString(entryRaw, nil)
+		local value = coerceString(entryRaw, nil)
 		if value ~= nil and not seen[value] then
 			seen[value] = true
 			table.insert(output, value)
@@ -876,7 +866,7 @@ local function CoerceStringList(valueRaw: any): { string }
 	return output
 end
 
-local function CoerceItemAmountList(valueRaw: any): { ItemAmount }
+local function coerceItemAmountList(valueRaw: any): { ItemAmount }
 	local output: { ItemAmount } = {}
 	if typeof(valueRaw) ~= "table" then
 		return output
@@ -887,9 +877,9 @@ local function CoerceItemAmountList(valueRaw: any): { ItemAmount }
 			continue
 		end
 		local entry = entryRaw :: { [string]: any }
-		local itemIds = CoerceStringList(entry.itemIds)
-		local itemId = CoerceString(entry.itemId, if #itemIds > 0 then itemIds[1] else nil)
-		local amount = CoerceInteger(entry.amount, 0, 0, 1_000_000)
+		local itemIds = coerceStringList(entry.itemIds)
+		local itemId = coerceString(entry.itemId, if #itemIds > 0 then itemIds[1] else nil)
+		local amount = coerceInteger(entry.amount, 0, 0, 1_000_000)
 		if itemId == nil or amount <= 0 then
 			continue
 		end
@@ -899,19 +889,19 @@ local function CoerceItemAmountList(valueRaw: any): { ItemAmount }
 	return output
 end
 
-local function CoerceUnlockConditions(valueRaw: any): UnlockConditions?
+local function coerceUnlockConditions(valueRaw: any): UnlockConditions?
 	if typeof(valueRaw) ~= "table" then
 		return nil
 	end
 
 	local source = valueRaw :: { [string]: any }
-	local requiredItems = CoerceStringList(source.requiredItems)
+	local requiredItems = coerceStringList(source.requiredItems)
 	if #requiredItems <= 0 and typeof(source.requiredItems) == "table" then
 		for _, entryRaw in source.requiredItems do
 			if typeof(entryRaw) ~= "table" then
 				continue
 			end
-			local itemId = CoerceString((entryRaw :: any).itemId, nil)
+			local itemId = coerceString((entryRaw :: any).itemId, nil)
 			if itemId ~= nil then
 				appendUniqueString(requiredItems, itemId)
 			end
@@ -919,7 +909,7 @@ local function CoerceUnlockConditions(valueRaw: any): UnlockConditions?
 	end
 
 	local requiredFlags =
-		CoerceStringList(if source.requiredFlags ~= nil then source.requiredFlags else source.progressionFlags)
+		coerceStringList(if source.requiredFlags ~= nil then source.requiredFlags else source.progressionFlags)
 
 	if #requiredItems <= 0 and #requiredFlags <= 0 then
 		return nil
@@ -931,34 +921,34 @@ local function CoerceUnlockConditions(valueRaw: any): UnlockConditions?
 	}
 end
 
-local function CoerceRecipeDefinition(recipeRaw: any, fallbackId: string): RecipeDefinition?
+local function coerceRecipeDefinition(recipeRaw: any, fallbackId: string): RecipeDefinition?
 	if typeof(recipeRaw) ~= "table" then
 		return nil
 	end
 
 	local source = recipeRaw :: { [string]: any }
-	local id = CoerceString(source.id, fallbackId)
+	local id = coerceString(source.id, fallbackId)
 	if id == nil then
 		return nil
 	end
 
-	local ingredients = CoerceItemAmountList(source.ingredients)
-	local results = CoerceItemAmountList(source.results)
+	local ingredients = coerceItemAmountList(source.ingredients)
+	local results = coerceItemAmountList(source.results)
 	if #ingredients <= 0 or #results <= 0 then
 		return nil
 	end
 
 	return {
 		id = id,
-		displayName = CoerceString(source.displayName, id) or id,
-		category = CoerceString(source.category, "Misc") or "Misc",
+		displayName = coerceString(source.displayName, id) or id,
+		category = coerceString(source.category, "Misc") or "Misc",
 		ingredients = ingredients,
 		results = results,
-		requiredStations = CoerceStringList(source.requiredStations),
-		requiredBiome = CoerceString(source.requiredBiome, nil),
-		unlockConditions = CoerceUnlockConditions(source.unlockConditions),
-		sortOrder = CoerceInteger(source.sortOrder, 1000, -1_000_000, 1_000_000),
-		isHidden = CoerceBoolean(source.isHidden, false),
+		requiredStations = coerceStringList(source.requiredStations),
+		requiredBiome = coerceString(source.requiredBiome, nil),
+		unlockConditions = coerceUnlockConditions(source.unlockConditions),
+		sortOrder = coerceInteger(source.sortOrder, 1000, -1_000_000, 1_000_000),
+		isHidden = coerceBoolean(source.isHidden, false),
 		orderIndex = 0,
 	}
 end
@@ -983,7 +973,7 @@ local function sortRecipeIdsByRegistryOrder(recipeIds: { string }, recipesById: 
 	end)
 end
 
-local function CoerceRecipeGroup(
+local function coerceRecipeGroup(
 	groupRaw: any,
 	fallbackId: string,
 	recipesById: { [string]: RecipeDefinition }
@@ -992,12 +982,12 @@ local function CoerceRecipeGroup(
 		return nil
 	end
 	local source = groupRaw :: { [string]: any }
-	local id = CoerceString(source.id, fallbackId)
+	local id = coerceString(source.id, fallbackId)
 	if id == nil then
 		return nil
 	end
 
-	local recipeIds = CoerceStringList(source.recipeIds)
+	local recipeIds = coerceStringList(source.recipeIds)
 	local filteredRecipeIds = {}
 	for _, recipeId in recipeIds do
 		if recipesById[recipeId] ~= nil then
@@ -1012,8 +1002,8 @@ local function CoerceRecipeGroup(
 
 	return {
 		id = id,
-		displayName = CoerceString(source.displayName, id) or id,
-		sortOrder = CoerceInteger(source.sortOrder, 1000, -1_000_000, 1_000_000),
+		displayName = coerceString(source.displayName, id) or id,
+		sortOrder = coerceInteger(source.sortOrder, 1000, -1_000_000, 1_000_000),
 		recipeIds = filteredRecipeIds,
 	}
 end
@@ -1021,7 +1011,7 @@ end
 function RecipeIndexer.BuildRegistry(treeRaw: any, configRaw: any): RecipeRegistry
 	local tree = if typeof(treeRaw) == "table" then treeRaw :: { [string]: any } else {} :: any
 	local config = CraftingServiceUtils.GetConfig(configRaw)
-	local stationDefinitionsFromTree = GetStationDefinitionsFromTree(tree)
+	local stationDefinitionsFromTree = getStationDefinitionsFromTree(tree)
 	local stationDefinitions: { [string]: StationDefinition } = {}
 	local stationTagById: { [string]: string } = {}
 
@@ -1051,7 +1041,7 @@ function RecipeIndexer.BuildRegistry(treeRaw: any, configRaw: any): RecipeRegist
 	local recipesById: { [string]: RecipeDefinition } = {}
 	for index, recipeRaw in rawRecipes do
 		local fallbackId = ("recipe_%d"):format(index)
-		local recipe = CoerceRecipeDefinition(recipeRaw, fallbackId)
+		local recipe = coerceRecipeDefinition(recipeRaw, fallbackId)
 		if recipe == nil then
 			continue
 		end
@@ -1171,7 +1161,7 @@ function RecipeIndexer.BuildRegistry(treeRaw: any, configRaw: any): RecipeRegist
 
 	for groupKey, groupRaw in groupsRaw do
 		local fallbackId = if typeof(groupKey) == "string" then groupKey else "group"
-		local group = CoerceRecipeGroup(groupRaw, fallbackId, recipesById)
+		local group = coerceRecipeGroup(groupRaw, fallbackId, recipesById)
 		if group == nil then
 			continue
 		end
@@ -1215,7 +1205,7 @@ function RecipeIndexer.BuildRegistry(treeRaw: any, configRaw: any): RecipeRegist
 	local unlockRelevantItemIds = serializeStringSet(unlockRelevantItemIdSet)
 
 	local registry: RecipeRegistry = {
-		version = CoerceInteger(tree.version, 1, 1, 1_000_000),
+		version = coerceInteger(tree.version, 1, 1, 1_000_000),
 		recipes = mutableRecipes,
 		recipeIdsOrdered = recipeIdsOrdered,
 		recipesById = recipesById,
@@ -1272,22 +1262,18 @@ end
 local RecipeValidator = {}
 CraftingServiceUtils.RecipeValidator = RecipeValidator
 
-function RecipeValidator.CoerceCraftRequest(
-	recipeIdRaw: any,
-	quantityRaw: any,
-	maxQuantityRaw: any
-): (string?, number)
-	local recipeId = CoerceString(recipeIdRaw, nil)
+function RecipeValidator.CoerceCraftRequest(recipeIdRaw: any, quantityRaw: any, maxQuantityRaw: any): (string?, number)
+	local recipeId = coerceString(recipeIdRaw, nil)
 	if recipeId == nil then
 		return nil, 0
 	end
-	local maxQuantity = CoerceInteger(maxQuantityRaw, DEFAULT_MAX_CRAFT_QUANTITY_PER_REQUEST, 1, 999)
-	local quantity = CoerceInteger(quantityRaw, 1, 1, maxQuantity)
+	local maxQuantity = coerceInteger(maxQuantityRaw, DEFAULT_MAX_CRAFT_QUANTITY_PER_REQUEST, 1, 999)
+	local quantity = coerceInteger(quantityRaw, 1, 1, maxQuantity)
 	return recipeId, quantity
 end
 
 function RecipeValidator.IsRecipeKnown(knownRecipeIdsRaw: any, recipeIdRaw: any): boolean
-	local recipeId = CoerceString(recipeIdRaw, nil)
+	local recipeId = coerceString(recipeIdRaw, nil)
 	if recipeId == nil then
 		return false
 	end
@@ -1536,7 +1522,7 @@ function CraftingServiceUtils.ComputeMaxCraftableQuantity(
 	end
 
 	for _, result in recipeRaw.results do
-		local craftableForCapacity = GetCoinCapacityForResult(result.itemId, inventoryItemCountsRaw, result.amount)
+		local craftableForCapacity = getCoinCapacityForResult(result.itemId, inventoryItemCountsRaw, result.amount)
 		if craftableForCapacity ~= nil and craftableForCapacity < maxCraftable then
 			maxCraftable = craftableForCapacity
 		end
@@ -1556,7 +1542,7 @@ function CraftingServiceUtils.BuildRecipePreview(
 	biomeTokensRaw: { [string]: boolean },
 	knownRecipeIdsRaw: { [string]: boolean }?
 ): RecipePreview
-	local quantity = CoerceInteger(quantityRaw, 1, 1, 999)
+	local quantity = coerceInteger(quantityRaw, 1, 1, 999)
 	local ingredients = {}
 	local results = {}
 	local hasAllIngredients = true
@@ -1612,8 +1598,8 @@ function CraftingServiceUtils.FilterRecipeIds(
 	categoryRaw: any,
 	searchTextRaw: any
 ): { string }
-	local category = CoerceString(categoryRaw, nil)
-	local searchText = CoerceString(searchTextRaw, nil)
+	local category = coerceString(categoryRaw, nil)
+	local searchText = coerceString(searchTextRaw, nil)
 	local searchToken = if searchText ~= nil then string.lower(searchText) else nil
 	local output = {}
 
@@ -1720,7 +1706,7 @@ function StationDetector.GetInstancePosition(instanceRaw: any): Vector3?
 	return nil
 end
 
-local function GetStationIdScanList(
+local function getStationIdScanList(
 	stationTagById: { [string]: string },
 	requiredStationIdsRaw: { string }?
 ): { string }
@@ -1755,10 +1741,10 @@ function StationDetector.GetStationsNearPosition(
 		return {}
 	end
 
-	local radius = CoerceNumber(radiusRaw, DEFAULT_STATION_VALIDATION_RADIUS, 1, 1000)
+	local radius = coerceNumber(radiusRaw, DEFAULT_STATION_VALIDATION_RADIUS, 1, 1000)
 	local radiusSquared = radius * radius
 	local activeStations: { [string]: boolean } = {}
-	local stationIds = GetStationIdScanList(stationTagByIdRaw, requiredStationIdsRaw)
+	local stationIds = getStationIdScanList(stationTagByIdRaw, requiredStationIdsRaw)
 
 	for _, stationId in stationIds do
 		local stationTag = stationTagByIdRaw[stationId]
@@ -1819,21 +1805,21 @@ function StationDetector.NewClientDetector(optionsRaw: any): ClientStationDetect
 	local stationTagById: { [string]: string } = {}
 	if typeof(options.stationTagById) == "table" then
 		for stationIdRaw, tagRaw in options.stationTagById do
-			local stationId = CoerceString(stationIdRaw, nil)
-			local tag = CoerceString(tagRaw, nil)
+			local stationId = coerceString(stationIdRaw, nil)
+			local tag = coerceString(tagRaw, nil)
 			if stationId ~= nil and tag ~= nil then
 				stationTagById[stationId] = tag
 			end
 		end
 	end
 
-	local stationIds = GetStationIdScanList(stationTagById, cloneStringArray(options.stationIds))
+	local stationIds = getStationIdScanList(stationTagById, cloneStringArray(options.stationIds))
 	local runtime: ClientStationDetectorRuntime = {
 		localPlayer = localPlayer,
 		stationTagById = stationTagById,
 		stationIds = stationIds,
-		radius = CoerceNumber(options.radius, DEFAULT_STATION_SCAN_RADIUS, 1, 1000),
-		scanIntervalSeconds = CoerceNumber(options.scanIntervalSeconds, 1 / DEFAULT_STATION_SCAN_RATE_HZ, 1 / 60, 3),
+		radius = coerceNumber(options.radius, DEFAULT_STATION_SCAN_RADIUS, 1, 1000),
+		scanIntervalSeconds = coerceNumber(options.scanIntervalSeconds, 1 / DEFAULT_STATION_SCAN_RATE_HZ, 1 / 60, 3),
 		accumulator = 0,
 		activeStations = {},
 		onStationsChanged = if typeof(options.onStationsChanged) == "function" then options.onStationsChanged else nil,
@@ -1934,8 +1920,8 @@ function CraftTransaction.CreateInventoryProvider(
 	local playerDataService = playerDataServiceRaw
 	local provider = {} :: any
 
-	local function GetCoinKey(itemIdRaw: any): string?
-		local itemId = CoerceString(itemIdRaw, nil)
+	local function getCoinKey(itemIdRaw: any): string?
+		local itemId = coerceString(itemIdRaw, nil)
 		if itemId == nil then
 			return nil
 		end
@@ -1943,7 +1929,7 @@ function CraftTransaction.CreateInventoryProvider(
 	end
 
 	local function getCoinBalance(player: Player, itemIdRaw: any): number
-		local coinKey = GetCoinKey(itemIdRaw)
+		local coinKey = getCoinKey(itemIdRaw)
 		if coinKey == nil then
 			return 0
 		end
@@ -1960,8 +1946,8 @@ function CraftTransaction.CreateInventoryProvider(
 		if not ok or typeof(coinsData) ~= "table" then
 			return 0
 		end
-		local GotCoinAmounts = GetCoinAmountsFromData(coinsData)
-		return CoerceInteger(GotCoinAmounts[coinKey], 0, 0, COIN_ITEM_MAX_AMOUNT)
+		local GotCoinAmounts = getCoinAmountsFromData(coinsData)
+		return coerceInteger(GotCoinAmounts[coinKey], 0, 0, COIN_ITEM_MAX_AMOUNT)
 	end
 
 	local function getCoinWallet(player: Player): { [string]: number }?
@@ -1978,17 +1964,17 @@ function CraftTransaction.CreateInventoryProvider(
 		if not ok then
 			return nil
 		end
-		local GotCoinAmounts = GetCoinAmountsFromData(coinsData)
+		local GotCoinAmounts = getCoinAmountsFromData(coinsData)
 		return {
-			copper = CoerceInteger(GotCoinAmounts.copper, 0, 0, COIN_ITEM_MAX_AMOUNT),
-			silver = CoerceInteger(GotCoinAmounts.silver, 0, 0, COIN_ITEM_MAX_AMOUNT),
-			gold = CoerceInteger(GotCoinAmounts.gold, 0, 0, COIN_ITEM_MAX_AMOUNT),
-			platinum = CoerceInteger(GotCoinAmounts.platinum, 0, 0, COIN_ITEM_MAX_AMOUNT),
+			copper = coerceInteger(GotCoinAmounts.copper, 0, 0, COIN_ITEM_MAX_AMOUNT),
+			silver = coerceInteger(GotCoinAmounts.silver, 0, 0, COIN_ITEM_MAX_AMOUNT),
+			gold = coerceInteger(GotCoinAmounts.gold, 0, 0, COIN_ITEM_MAX_AMOUNT),
+			platinum = coerceInteger(GotCoinAmounts.platinum, 0, 0, COIN_ITEM_MAX_AMOUNT),
 		}
 	end
 
 	local function incrementCoinBalance(player: Player, itemIdRaw: any, amountRaw: any): number?
-		local coinKey = GetCoinKey(itemIdRaw)
+		local coinKey = getCoinKey(itemIdRaw)
 		if coinKey == nil then
 			return nil
 		end
@@ -2004,7 +1990,7 @@ function CraftTransaction.CreateInventoryProvider(
 			return nil
 		end
 		local amount = if typeof(amountRaw) == "number" and amountRaw == amountRaw then math.floor(amountRaw) else 0
-		local nextValue = CoerceInteger(currentWallet[coinKey], 0, 0, COIN_ITEM_MAX_AMOUNT) + amount
+		local nextValue = coerceInteger(currentWallet[coinKey], 0, 0, COIN_ITEM_MAX_AMOUNT) + amount
 		if nextValue < 0 or nextValue > COIN_ITEM_MAX_AMOUNT then
 			return nextValue
 		end
@@ -2042,7 +2028,7 @@ function CraftTransaction.CreateInventoryProvider(
 
 	function provider:CountItem(player: Player, itemId: string): number
 		local coinBalance = getCoinBalance(player, itemId)
-		if coinBalance > 0 or GetCoinKey(itemId) ~= nil then
+		if coinBalance > 0 or getCoinKey(itemId) ~= nil then
 			return coinBalance
 		end
 		if typeof(inventoryService) ~= "table" then
@@ -2063,7 +2049,7 @@ function CraftTransaction.CreateInventoryProvider(
 
 	local function countRequirementItems(player: Player, requirement: ItemAmount): number
 		local total = 0
-		for _, candidateItemId in GetEquirementItemIds(requirement) do
+		for _, candidateItemId in getRequirementItemIds(requirement) do
 			total += provider:CountItem(player, candidateItemId)
 		end
 		return total
@@ -2089,7 +2075,7 @@ function CraftTransaction.CreateInventoryProvider(
 		end
 
 		for _, requirement in requirements do
-			local coinKey = GetCoinKey(requirement.itemId)
+			local coinKey = getCoinKey(requirement.itemId)
 			if coinKey ~= nil then
 				if self:CountItem(player, requirement.itemId) < requirement.amount then
 					return false, consumed, "insufficient_ingredients"
@@ -2108,7 +2094,7 @@ function CraftTransaction.CreateInventoryProvider(
 			if countRequirementItems(player, requirement) < remaining then
 				return false, consumed, "insufficient_ingredients"
 			end
-			for _, candidateItemId in GetEquirementItemIds(requirement) do
+			for _, candidateItemId in getRequirementItemIds(requirement) do
 				if remaining <= 0 then
 					break
 				end
@@ -2151,7 +2137,7 @@ function CraftTransaction.CreateInventoryProvider(
 		end
 
 		for _, grantItem in grantItems do
-			if GetCoinKey(grantItem.itemId) ~= nil then
+			if getCoinKey(grantItem.itemId) ~= nil then
 				local currentAmount = getCoinBalance(player, grantItem.itemId)
 				if currentAmount + grantItem.amount > COIN_ITEM_MAX_AMOUNT then
 					return false, granted, "inventory_full"
@@ -2199,7 +2185,7 @@ function CraftTransaction.CreateInventoryProvider(
 
 		local restoredEverything = true
 		for _, restoreItem in restoreItems do
-			if GetCoinKey(restoreItem.itemId) ~= nil then
+			if getCoinKey(restoreItem.itemId) ~= nil then
 				local currentAmount = getCoinBalance(player, restoreItem.itemId)
 				if currentAmount + restoreItem.amount > COIN_ITEM_MAX_AMOUNT then
 					restoredEverything = false
@@ -2240,7 +2226,7 @@ function CraftTransaction.CreateInventoryProvider(
 
 		local revokedEverything = true
 		for _, revokeItem in revokeItems do
-			if GetCoinKey(revokeItem.itemId) ~= nil then
+			if getCoinKey(revokeItem.itemId) ~= nil then
 				if self:CountItem(player, revokeItem.itemId) < revokeItem.amount then
 					revokedEverything = false
 				else
@@ -2276,7 +2262,7 @@ function CraftTransaction.Execute(
 	recipeRaw: RecipeDefinition,
 	quantityRaw: any
 ): CraftTransactionResult
-	local quantity = CoerceInteger(quantityRaw, 1, 1, 999)
+	local quantity = coerceInteger(quantityRaw, 1, 1, 999)
 	local scaledIngredients = CraftingServiceUtils.ScaleItemAmounts(recipeRaw.ingredients, quantity)
 	local scaledResults = CraftingServiceUtils.ScaleItemAmounts(recipeRaw.results, quantity)
 

@@ -139,7 +139,7 @@ local function trim(valueRaw: any): string
 	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function CoerceItemId(itemIdRaw: any): string?
+local function coerceItemId(itemIdRaw: any): string?
 	local itemId = trim(itemIdRaw)
 	if itemId == "" then
 		return nil
@@ -147,7 +147,7 @@ local function CoerceItemId(itemIdRaw: any): string?
 	return itemId
 end
 
-local function CoerceString(valueRaw: any, fallback: string): string
+local function coerceString(valueRaw: any, fallback: string): string
 	local value = trim(valueRaw)
 	if value == "" then
 		return fallback
@@ -155,14 +155,14 @@ local function CoerceString(valueRaw: any, fallback: string): string
 	return value
 end
 
-local function CoerceBoolean(valueRaw: any, fallback: boolean): boolean
+local function coerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -241,7 +241,7 @@ local function areWeaponConfigsEquivalent(lhsRaw: any, rhsRaw: any): boolean
 		and lhs.allowQueueOnCooldown == rhs.allowQueueOnCooldown
 end
 
-local function GetItemIdLookup(): { [string]: string }
+local function getItemIdLookup(): { [string]: string }
 	if cachedItemIdLookup ~= nil then
 		return cachedItemIdLookup
 	end
@@ -250,13 +250,13 @@ local function GetItemIdLookup(): { [string]: string }
 	return cachedItemIdLookup :: { [string]: string }
 end
 
-local function GetCanonicalItemId(itemIdRaw: any): string?
-	local itemId = CoerceItemId(itemIdRaw)
+local function getCanonicalItemId(itemIdRaw: any): string?
+	local itemId = coerceItemId(itemIdRaw)
 	if itemId == nil then
 		return nil
 	end
 
-	local lookup = GetItemIdLookup()
+	local lookup = getItemIdLookup()
 	local canonical = lookup[itemId]
 	if canonical == nil then
 		canonical = lookup[string.lower(itemId)]
@@ -269,12 +269,12 @@ local function GetCanonicalItemId(itemIdRaw: any): string?
 end
 
 local function getItemDefinition(itemIdRaw: any): { [string]: any }?
-	local rawItemId = CoerceItemId(itemIdRaw)
+	local rawItemId = coerceItemId(itemIdRaw)
 	if rawItemId == nil then
 		return nil
 	end
 
-	local itemId = GetCanonicalItemId(rawItemId)
+	local itemId = getCanonicalItemId(rawItemId)
 	if itemId == nil then
 		return nil
 	end
@@ -333,27 +333,27 @@ local function normalizeProjectile(definition: { [string]: any }, magicData: { [
 
 	local projectile = projectileRaw :: { [string]: any }
 	return {
-		enabled = CoerceBoolean(projectile.enabled, true),
-		speed = CoerceNumber(projectile.speed, 120, 1, 5000),
-		spread = CoerceNumber(projectile.spread, 0, 0, 90),
-		count = math.max(1, math.floor(CoerceNumber(projectile.count, 1, 1, 50))),
-		lifetime = CoerceNumber(projectile.lifetime, 2, 0.05, 60),
-		pierce = math.max(0, math.floor(CoerceNumber(projectile.pierce, 0, 0, 100))),
+		enabled = coerceBoolean(projectile.enabled, true),
+		speed = coerceNumber(projectile.speed, 120, 1, 5000),
+		spread = coerceNumber(projectile.spread, 0, 0, 90),
+		count = math.max(1, math.floor(coerceNumber(projectile.count, 1, 1, 50))),
+		lifetime = coerceNumber(projectile.lifetime, 2, 0.05, 60),
+		pierce = math.max(0, math.floor(coerceNumber(projectile.pierce, 0, 0, 100))),
 	}
 end
 
-local function GetWeaponConfig(
+local function getWeaponConfig(
 	itemIdRaw: any,
 	expectedTypeToken: string,
 	expectedTypeLabel: string,
 	validateDefinitionType: boolean
 ): MagicWeaponConfig?
-	local rawItemId = CoerceItemId(itemIdRaw)
+	local rawItemId = coerceItemId(itemIdRaw)
 	if rawItemId == nil then
 		return nil
 	end
 
-	local canonicalItemId = GetCanonicalItemId(rawItemId)
+	local canonicalItemId = getCanonicalItemId(rawItemId)
 	if canonicalItemId == nil then
 		cachedWeaponConfigs[rawItemId] = false
 		return nil
@@ -403,25 +403,25 @@ local function GetWeaponConfig(
 	local weaponConfig: MagicWeaponConfig = {
 		itemId = canonicalItemId,
 		itemType = expectedTypeLabel,
-		displayName = CoerceString(definition.name, canonicalItemId),
-		description = CoerceString(definition.description, ""),
-		damage = CoerceNumber(
+		displayName = coerceString(definition.name, canonicalItemId),
+		description = coerceString(definition.description, ""),
+		damage = coerceNumber(
 			magicData.damage or stats.magicDamage or stats.dmg or definition.damage,
 			DEFAULT_DAMAGE,
 			0,
 			500000
 		),
-		manaCost = CoerceNumber(
+		manaCost = coerceNumber(
 			magicData.manaCost or magicData.mana or stats.manaCost or stats.mana,
 			DEFAULT_MANA_COST,
 			0,
 			100000
 		),
-		cooldown = CoerceNumber(magicData.cooldown or definition.cooldown, cooldownFromAttackSpeed, 0, 120),
-		castTime = CoerceNumber(magicData.castTime or definition.castTime, DEFAULT_CAST_TIME, 0, 60),
-		range = CoerceNumber(magicData.range or definition.range, DEFAULT_RANGE, 0.1, 5000),
-		autoRepeatWhileHeld = CoerceBoolean(magicData.autoRepeatWhileHeld, DEFAULT_AUTO_REPEAT),
-		allowQueueOnCooldown = CoerceBoolean(magicData.allowQueueOnCooldown, DEFAULT_ALLOW_QUEUE_ON_COOLDOWN),
+		cooldown = coerceNumber(magicData.cooldown or definition.cooldown, cooldownFromAttackSpeed, 0, 120),
+		castTime = coerceNumber(magicData.castTime or definition.castTime, DEFAULT_CAST_TIME, 0, 60),
+		range = coerceNumber(magicData.range or definition.range, DEFAULT_RANGE, 0.1, 5000),
+		autoRepeatWhileHeld = coerceBoolean(magicData.autoRepeatWhileHeld, DEFAULT_AUTO_REPEAT),
+		allowQueueOnCooldown = coerceBoolean(magicData.allowQueueOnCooldown, DEFAULT_ALLOW_QUEUE_ON_COOLDOWN),
 		projectile = normalizeProjectile(definition, magicData),
 		animations = if typeof(magicData.animations) == "table"
 			then magicData.animations
@@ -440,7 +440,7 @@ function Magic.GetWeaponConfig(itemIdRaw: any, expectedItemTypeRaw: any): MagicW
 	if expectedTypeToken == "" then
 		return nil
 	end
-	return GetWeaponConfig(itemIdRaw, expectedTypeToken, expectedTypeLabel, false)
+	return getWeaponConfig(itemIdRaw, expectedTypeToken, expectedTypeLabel, false)
 end
 
 function Magic.GetWeaponConfigFromTool(toolRaw: any, expectedItemTypeRaw: any): MagicWeaponConfig?
@@ -464,7 +464,7 @@ function Magic.GetWeaponConfigFromTool(toolRaw: any, expectedItemTypeRaw: any): 
 		return nil
 	end
 
-	return GetWeaponConfig(itemId, expectedTypeToken, expectedTypeLabel, true)
+	return getWeaponConfig(itemId, expectedTypeToken, expectedTypeLabel, true)
 end
 
 local function getServiceMethod(service: MagicServiceAdapter, methodName: string): ((...any) -> any)?
@@ -514,9 +514,9 @@ function Magic.New(configRaw: MagicConfig?): Magic
 			else nil,
 		enabled = true,
 		inputHeld = false,
-		autoRepeatWhileHeld = CoerceBoolean(config.autoRepeatWhileHeld, DEFAULT_AUTO_REPEAT),
-		allowQueueOnCooldown = CoerceBoolean(config.allowQueueOnCooldown, DEFAULT_ALLOW_QUEUE_ON_COOLDOWN),
-		validateDefinitionItemType = CoerceBoolean(
+		autoRepeatWhileHeld = coerceBoolean(config.autoRepeatWhileHeld, DEFAULT_AUTO_REPEAT),
+		allowQueueOnCooldown = coerceBoolean(config.allowQueueOnCooldown, DEFAULT_ALLOW_QUEUE_ON_COOLDOWN),
+		validateDefinitionItemType = coerceBoolean(
 			config.validateDefinitionItemType,
 			DEFAULT_VALIDATE_DEFINITION_ITEM_TYPE
 		),
@@ -788,7 +788,7 @@ function Magic._startCast(self: Magic, triggerRaw: any)
 
 	local context = {
 		now = os.clock(),
-		trigger = CoerceString(triggerRaw, "Cast"),
+		trigger = coerceString(triggerRaw, "Cast"),
 		itemId = config.itemId,
 		itemType = config.itemType,
 		weaponConfig = config,
@@ -837,7 +837,7 @@ function Magic.QueueCast(self: Magic, triggerRaw: any): boolean
 	self.queued = true
 	local context = {
 		now = os.clock(),
-		trigger = CoerceString(triggerRaw, "Queue"),
+		trigger = coerceString(triggerRaw, "Queue"),
 		itemId = self.equippedItemId,
 		itemType = self.equippedItemType,
 		weaponConfig = self.weaponConfig,
@@ -879,7 +879,7 @@ function Magic.InputEnded(self: Magic, _: any): boolean
 end
 
 function Magic.SetEnabled(self: Magic, enabledRaw: any)
-	local enabled = CoerceBoolean(enabledRaw, self.enabled)
+	local enabled = coerceBoolean(enabledRaw, self.enabled)
 	if enabled == self.enabled then
 		return
 	end
@@ -954,7 +954,7 @@ function Magic.RefreshWeaponConfig(self: Magic): MagicWeaponConfig?
 	end
 
 	local weaponConfig =
-		GetWeaponConfig(itemId, self.expectedItemTypeToken, self.expectedItemType, self.validateDefinitionItemType)
+		getWeaponConfig(itemId, self.expectedItemTypeToken, self.expectedItemType, self.validateDefinitionItemType)
 	if weaponConfig == nil then
 		self.weaponConfig = nil
 		self.equippedItemId = itemId
@@ -1091,7 +1091,7 @@ function Magic.Cancel(self: Magic, reasonRaw: any)
 	end
 
 	if wasCasting then
-		self:_emitFinished(false, CoerceString(reasonRaw, "Cancelled"))
+		self:_emitFinished(false, coerceString(reasonRaw, "Cancelled"))
 	end
 end
 

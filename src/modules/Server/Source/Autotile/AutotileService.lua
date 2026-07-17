@@ -18,7 +18,7 @@ local function cloneCoord(coord: any): any
 	}
 end
 
-function AutotileService.Init(self: any)
+function AutotileService.Init(self: any, _serviceBag: any?)
 	if self._maid ~= nil then
 		return
 	end

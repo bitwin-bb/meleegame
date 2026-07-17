@@ -28,7 +28,7 @@ local function trim(valueRaw: any): string
 	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -64,15 +64,15 @@ function GoreServiceUtils.CoerceBoolean(valueRaw: any, fallback: boolean): boole
 end
 
 function GoreServiceUtils.CoerceBloodAmount(valueRaw: any, fallback: number): number
-	return math.floor(CoerceNumber(valueRaw, fallback, 1, GoreServiceUtils.MAX_BLOOD_AMOUNT) + 0.5)
+	return math.floor(coerceNumber(valueRaw, fallback, 1, GoreServiceUtils.MAX_BLOOD_AMOUNT) + 0.5)
 end
 
 function GoreServiceUtils.CoerceGibCount(valueRaw: any, fallback: number): number
-	return math.floor(CoerceNumber(valueRaw, fallback, 0, GoreServiceUtils.MAX_GIB_COUNT) + 0.5)
+	return math.floor(coerceNumber(valueRaw, fallback, 0, GoreServiceUtils.MAX_GIB_COUNT) + 0.5)
 end
 
 function GoreServiceUtils.CoerceEffectDuration(valueRaw: any, fallback: number): number
-	return CoerceNumber(valueRaw, fallback, 0.05, GoreServiceUtils.MAX_EFFECT_DURATION_SECONDS)
+	return coerceNumber(valueRaw, fallback, 0.05, GoreServiceUtils.MAX_EFFECT_DURATION_SECONDS)
 end
 
 function GoreServiceUtils.CoerceColor(valueRaw: any, fallback: Color3): Color3

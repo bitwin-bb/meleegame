@@ -6,16 +6,7 @@ local AudioBinder = {}
 AudioBinder.__index = AudioBinder
 setmetatable(AudioBinder, ModelBinder)
 
-local audioServiceClient = nil
-
-local function getAudioServiceClient()
-	if audioServiceClient == nil then
-		audioServiceClient = require("AudioServiceClient")
-	end
-	return audioServiceClient
-end
-
-local function GetStringAttribute(instance: Instance, attributeNames: { string }): string?
+local function getStringAttribute(instance: Instance, attributeNames: { string }): string?
 	for _, attributeName in attributeNames do
 		local value = instance:GetAttribute(attributeName)
 		if typeof(value) == "string" and value ~= "" then
@@ -25,7 +16,7 @@ local function GetStringAttribute(instance: Instance, attributeNames: { string }
 	return nil
 end
 
-local function GetNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
+local function getNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
@@ -33,36 +24,38 @@ local function GetNumberAttribute(instance: Instance, attributeName: string, fal
 	return value
 end
 
-function AudioBinder.new(instance: Instance, context: any)
+function AudioBinder.new(instance: Instance, context: ModelBinder.BinderContext)
 	local self = ModelBinder.new(instance, context, AudioBinder)
+	self.audioServiceClient =
+		assert(self:GetDependencies().AudioServiceClient, "AudioServiceClient dependency is unavailable")
 	self.rootPart = self:GetRootPart()
 	self.playingSound = nil :: Sound?
 	self.existingSound = instance:FindFirstChildWhichIsA("Sound", true)
 	self.channel = `AudioBinder_{(instance :: any):GetDebugId(0)}`
 
-	self:refresh()
+	self:Refresh()
 	self:ObserveAttribute("AudioEnabled", function()
-		self:refresh()
+		self:Refresh()
 	end)
 	self:ObserveAttribute("AudioSoundId", function()
-		self:refresh()
+		self:Refresh()
 	end)
 	self:ObserveAttribute("AmbientSoundId", function()
-		self:refresh()
+		self:Refresh()
 	end)
 	self:ObserveAttribute("AudioVolume", function()
-		self:refresh()
+		self:Refresh()
 	end)
 
 	return self
 end
 
-function AudioBinder.refresh(self: any)
+function AudioBinder.Refresh(self: any)
 	local enabled = self.instance:GetAttribute("AudioEnabled") ~= false
-	local soundId = GetStringAttribute(self.instance, { "AudioSoundId", "AmbientSoundId", "SoundId" })
-	local volume = GetNumberAttribute(self.instance, "AudioVolume", 0.65)
-	local maxDistance = GetNumberAttribute(self.instance, "AudioMaxDistance", 55)
-	local emitterSize = GetNumberAttribute(self.instance, "AudioEmitterSize", 8)
+	local soundId = getStringAttribute(self.instance, { "AudioSoundId", "AmbientSoundId", "SoundId" })
+	local volume = getNumberAttribute(self.instance, "AudioVolume", 0.65)
+	local maxDistance = getNumberAttribute(self.instance, "AudioMaxDistance", 55)
+	local emitterSize = getNumberAttribute(self.instance, "AudioEmitterSize", 8)
 	local looped = self.instance:GetAttribute("AudioLooped") ~= false
 
 	self.instance:SetAttribute("AudioTagged", true)
@@ -97,7 +90,7 @@ function AudioBinder.refresh(self: any)
 		return
 	end
 
-	self.playingSound = getAudioServiceClient():PlaySound(soundId, {
+	self.playingSound = self.audioServiceClient:PlaySound(soundId, {
 		parent = parent,
 		channel = self.channel,
 		looped = looped,

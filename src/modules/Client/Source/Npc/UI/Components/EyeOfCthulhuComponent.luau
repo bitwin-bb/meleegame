@@ -36,14 +36,14 @@ type PhasePlayback = {
 	restFrame: number,
 }
 
-local function CoerceFrame(frameRaw: any): number
+local function coerceFrame(frameRaw: any): number
 	if typeof(frameRaw) ~= "number" or frameRaw ~= frameRaw then
 		return 1
 	end
 	return math.clamp(math.floor(frameRaw), 1, FRAME_COUNT)
 end
 
-local function CoerceFrameRate(frameRateRaw: any): number
+local function coerceFrameRate(frameRateRaw: any): number
 	if typeof(frameRateRaw) ~= "number" or frameRateRaw ~= frameRateRaw then
 		return 1
 	end
@@ -54,34 +54,34 @@ local function getAnimation(animationName: string): any
 	return EyeOfCthulhuSpriteSheet.animations[animationName]
 end
 
-local function GetAnimationFrame(animationName: string, frameOffset: number?): number
+local function getAnimationFrame(animationName: string, frameOffset: number?): number
 	local animation = getAnimation(animationName)
 	local frames = animation.frames
 	local frameCount = #frames
 	local offset = if typeof(frameOffset) == "number" then frameOffset else 0
 	local index = offset % frameCount + 1
-	return CoerceFrame(frames[index])
+	return coerceFrame(frames[index])
 end
 
-local function GetPhaseName(snapshot: BossSnapshot): string
+local function getPhaseName(snapshot: BossSnapshot): string
 	if snapshot.phase >= 2 or string.lower(snapshot.presentation.phaseModel) == "phase2" then
 		return "Phase2"
 	end
 	return "Phase1"
 end
 
-local function GetPlayback(snapshot: BossSnapshot): PhasePlayback
-	local phaseName = GetPhaseName(snapshot)
+local function getPlayback(snapshot: BossSnapshot): PhasePlayback
+	local phaseName = getPhaseName(snapshot)
 	local animation = getAnimation(phaseName)
 	return {
 		phaseName = phaseName,
-		frameRate = CoerceFrameRate(animation.frameRate),
+		frameRate = coerceFrameRate(animation.frameRate),
 		frames = animation.frames,
-		restFrame = GetAnimationFrame(phaseName, nil),
+		restFrame = getAnimationFrame(phaseName, nil),
 	}
 end
 
-local function GetModelRootPart(model: Model): BasePart?
+local function getModelRootPart(model: Model): BasePart?
 	local rootPart = model:FindFirstChild("RootPart")
 	if rootPart ~= nil and rootPart:IsA("BasePart") then
 		return rootPart
@@ -97,7 +97,7 @@ local function GetModelRootPart(model: Model): BasePart?
 	return nil
 end
 
-local function GetUntimeRootPart(runtimeId: string): BasePart?
+local function getRuntimeRootPart(runtimeId: string): BasePart?
 	local cachedRootPart = runtimeRootPartCache[runtimeId]
 	if cachedRootPart ~= nil and cachedRootPart:IsDescendantOf(Workspace) then
 		return cachedRootPart
@@ -117,7 +117,7 @@ local function GetUntimeRootPart(runtimeId: string): BasePart?
 			continue
 		end
 
-		local rootPart = GetModelRootPart(child)
+		local rootPart = getModelRootPart(child)
 		if rootPart ~= nil then
 			runtimeRootPartCache[runtimeId] = rootPart
 		end
@@ -127,8 +127,8 @@ local function GetUntimeRootPart(runtimeId: string): BasePart?
 	return nil
 end
 
-local function GetPresentationPosition(snapshot: BossSnapshot): Vector3?
-	local rootPart = GetUntimeRootPart(snapshot.id)
+local function getPresentationPosition(snapshot: BossSnapshot): Vector3?
+	local rootPart = getRuntimeRootPart(snapshot.id)
 	local basePosition = if rootPart ~= nil then rootPart.Position else snapshot.position
 	if basePosition == nil then
 		basePosition = snapshot.motion.position
@@ -149,15 +149,15 @@ local function GetPresentationPosition(snapshot: BossSnapshot): Vector3?
 	return basePosition + suggestedOffset + Vector3.new(0, hoverLift, 0)
 end
 
-local function GetRootSize(snapshot: BossSnapshot): Vector3
-	local rootPart = GetUntimeRootPart(snapshot.id)
+local function getRootSize(snapshot: BossSnapshot): Vector3
+	local rootPart = getRuntimeRootPart(snapshot.id)
 	if rootPart ~= nil then
 		return rootPart.Size
 	end
 	return DEFAULT_ROOT_SIZE
 end
 
-local function GetScreenPosition(position: Vector3, rootSize: Vector3): (UDim2?, number)
+local function getScreenPosition(position: Vector3, rootSize: Vector3): (UDim2?, number)
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
 		return nil, 0
@@ -175,7 +175,7 @@ local function GetScreenPosition(position: Vector3, rootSize: Vector3): (UDim2?,
 	return UDim2.fromOffset(viewportPoint.X, viewportPoint.Y), size
 end
 
-local function GetSpriteSize(baseSize: number): UDim2
+local function getSpriteSize(baseSize: number): UDim2
 	local frameSize = EyeOfCthulhuSpriteSheet.frameSize
 	local height = math.max(1, baseSize)
 	local width = height
@@ -198,7 +198,7 @@ local function createPhaseFlipbook(playback: PhasePlayback): any
 	})
 
 	for index, absoluteFrame in playback.frames do
-		local frame = CoerceFrame(absoluteFrame)
+		local frame = coerceFrame(absoluteFrame)
 		local zeroBasedFrame = frame - 1
 		(flipbook :: any):SetSpriteAtIndex(
 			index,
@@ -215,21 +215,21 @@ local function createPhaseFlipbook(playback: PhasePlayback): any
 end
 
 local function getFrameOffset(frameIndex: number): Vector2
-	local zeroBased = math.max(0, CoerceFrame(frameIndex) - 1)
+	local zeroBased = math.max(0, coerceFrame(frameIndex) - 1)
 	return Vector2.new(0, zeroBased * EyeOfCthulhuSpriteSheet.frameSize.Y)
 end
 
 return function(props: EyeOfCthulhuProps): React.ReactNode
 	local snapshot = props.snapshot
-	local playback = GetPlayback(snapshot)
+	local playback = getPlayback(snapshot)
 	local imageRef = React.useRef(nil :: ImageLabel?)
 	local playerRef = React.useRef(nil :: any)
-	local position = GetPresentationPosition(snapshot)
+	local position = getPresentationPosition(snapshot)
 	local isSurfaceGui = props.surfaceGui == true
 	local screenPosition = nil :: UDim2?
 	local baseSize = 0
 	if position ~= nil then
-		screenPosition, baseSize = GetScreenPosition(position, GetRootSize(snapshot))
+		screenPosition, baseSize = getScreenPosition(position, getRootSize(snapshot))
 	end
 	local visible = isSurfaceGui or screenPosition ~= nil
 
@@ -292,7 +292,7 @@ return function(props: EyeOfCthulhuProps): React.ReactNode
 			else screenPosition or UDim2.fromOffset(-10000, -10000),
 		ResampleMode = Enum.ResamplerMode.Pixelated,
 		ScaleType = Enum.ScaleType.Stretch,
-		Size = if isSurfaceGui then UDim2.fromScale(1, 1) else GetSpriteSize(baseSize),
+		Size = if isSurfaceGui then UDim2.fromScale(1, 1) else getSpriteSize(baseSize),
 		Visible = visible,
 		ZIndex = props.zIndex or 1,
 	}, children)

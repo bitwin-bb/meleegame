@@ -18,24 +18,24 @@ function CharacterBinder.new(instance: Instance, context: any)
 
 	self.ownerPlayer = Players:GetPlayerFromCharacter(self.model)
 	self.humanoid = self:GetHumanoid()
-	self:updateState()
+	self:UpdateState()
 
 	if self.humanoid ~= nil then
 		self:Connect(self.humanoid.HealthChanged, function()
-			self:updateState()
+			self:UpdateState()
 		end)
 		self:Connect(self.humanoid:GetPropertyChangedSignal("MaxHealth"), function()
-			self:updateState()
+			self:UpdateState()
 		end)
 		self:Connect(self.humanoid.Died, function()
-			self:updateState()
+			self:UpdateState()
 		end)
 	end
 
 	return self
 end
 
-function CharacterBinder.updateState(self: any)
+function CharacterBinder.UpdateState(self: any)
 	local model = self.model
 	if model == nil then
 		return

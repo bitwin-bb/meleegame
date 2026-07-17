@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local ModelBinder = require("ModelBinder")
@@ -6,15 +5,6 @@ local ModelBinder = require("ModelBinder")
 local DisturberBinder = {}
 DisturberBinder.__index = DisturberBinder
 setmetatable(DisturberBinder, ModelBinder)
-
-local windFoliageServiceClient = nil
-
-local function getWindFoliageServiceClient()
-	if windFoliageServiceClient == nil then
-		windFoliageServiceClient = require("WindFoliageServiceClient")
-	end
-	return windFoliageServiceClient
-end
 
 local DISTURBER_ATTRIBUTE_NAMES = {
 	"WindFoliageDisturbanceRadius",
@@ -65,38 +55,39 @@ local function collectOverrideConfig(instance: Instance): { [string]: any }?
 	return config
 end
 
-function DisturberBinder.new(instance: Instance, context: any)
+function DisturberBinder.new(instance: Instance, context: ModelBinder.BinderContext)
 	local self = ModelBinder.new(instance, context, DisturberBinder)
+	self.windFoliageServiceClient =
+		assert(self:GetDependencies().WindFoliageServiceClient, "WindFoliageServiceClient dependency is unavailable")
 	self.isTracked = false
 
-	self:refresh()
+	self:Refresh()
 	for _, attributeName in DISTURBER_ATTRIBUTE_NAMES do
 		self:ObserveAttribute(attributeName, function()
-			self:refresh()
+			self:Refresh()
 		end)
 	end
 
 	return self
 end
 
-function DisturberBinder.refresh(self: any)
+function DisturberBinder.Refresh(self: any)
 	local enabled = self.instance:GetAttribute("WindFoliageDisturbanceEnabled") ~= false
 	self.instance:SetAttribute("DisturberTagged", true)
 
 	if enabled and not self.isTracked then
 		local ok = pcall(function()
-			getWindFoliageServiceClient():TrackDisturber(self.instance, collectOverrideConfig(self.instance))
+			self.windFoliageServiceClient:TrackDisturber(self.instance, collectOverrideConfig(self.instance))
 		end)
 		self.isTracked = ok
 	elseif enabled and self.isTracked then
 		pcall(function()
-			local nextWindFoliageServiceClient = getWindFoliageServiceClient()
-			nextWindFoliageServiceClient:UntrackDisturber(self.instance)
-			nextWindFoliageServiceClient:TrackDisturber(self.instance, collectOverrideConfig(self.instance))
+			self.windFoliageServiceClient:UntrackDisturber(self.instance)
+			self.windFoliageServiceClient:TrackDisturber(self.instance, collectOverrideConfig(self.instance))
 		end)
 	elseif not enabled and self.isTracked then
 		pcall(function()
-			getWindFoliageServiceClient():UntrackDisturber(self.instance)
+			self.windFoliageServiceClient:UntrackDisturber(self.instance)
 		end)
 		self.isTracked = false
 	end
@@ -105,7 +96,7 @@ end
 function DisturberBinder.Cleanup(self: any)
 	if self.isTracked then
 		pcall(function()
-			getWindFoliageServiceClient():UntrackDisturber(self.instance)
+			self.windFoliageServiceClient:UntrackDisturber(self.instance)
 		end)
 	end
 end

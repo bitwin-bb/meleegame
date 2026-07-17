@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local HttpService = game:GetService("HttpService")
@@ -6,25 +5,24 @@ local RunService = game:GetService("RunService")
 
 local BuildServiceUtils = require("BuildServiceUtils")
 local ModelBinder = require("ModelBinder")
+local String = require("String")
 
 local PreviewBinder = {}
 PreviewBinder.__index = PreviewBinder
 setmetatable(PreviewBinder, ModelBinder)
 
-local buildServiceClient = nil
-
-local function getBuildServiceClient()
-	if buildServiceClient == nil then
-		buildServiceClient = require("BuildServiceClient")
-	end
-	return buildServiceClient
+local function createRuntimeInstanceName(): string
+	local guid = String.removePostfix(String.removePrefix(HttpService:GenerateGUID(true), "{"), "}")
+	return string.format("%03d", (tonumber(string.sub(guid, 1, 8), 16) or 0) % 1000)
 end
 
-function PreviewBinder.new(instance: Instance, context: any)
+function PreviewBinder.new(instance: Instance, context: ModelBinder.BinderContext)
 	local self = ModelBinder.new(instance, context, PreviewBinder)
+	self.buildServiceClient =
+		assert(self:GetDependencies().BuildServiceClient, "BuildServiceClient dependency is unavailable")
 	self.part = if instance:IsA("BasePart") then instance else nil
 	if self.part ~= nil then
-		self.part.Name = HttpService:GenerateGUID(false)
+		self.part.Name = createRuntimeInstanceName()
 		self.part.Anchored = true
 		self.part.CanCollide = false
 		self.part.CanTouch = false
@@ -36,62 +34,61 @@ function PreviewBinder.new(instance: Instance, context: any)
 
 	self.instance:SetAttribute("PreviewTagged", true)
 	self:Connect(RunService.RenderStepped, function()
-		self:step()
+		self:Step()
 	end)
 	return self
 end
 
-function PreviewBinder.hide(self: any)
+function PreviewBinder.Hide(self: any)
 	if self.part ~= nil then
 		self.part.Transparency = 1
 	end
 end
 
-function PreviewBinder.step(self: any)
+function PreviewBinder.Step(self: any)
 	if self.part == nil then
 		return
 	end
 
-	local nextBuildServiceClient = getBuildServiceClient()
-	local state = (nextBuildServiceClient :: any).state
+	local buildServiceClient = self.buildServiceClient
+	local state = (buildServiceClient :: any).state
 	if typeof(state) ~= "table" then
-		self:hide()
+		self:Hide()
 		return
 	end
 
-	local tileX = (nextBuildServiceClient :: any).cursorTileX
-	local tileY = (nextBuildServiceClient :: any).cursorTileY
+	local tileX = (buildServiceClient :: any).cursorTileX
+	local tileY = (buildServiceClient :: any).cursorTileY
 	local previewColor = Color3.fromRGB(255, 209, 92)
 	local footprint = {} :: { any }
-	local activePlaceSource = nextBuildServiceClient:GetActivePlaceSource()
+	local activePlaceSource = buildServiceClient:GetActivePlaceSource()
 
 	if activePlaceSource ~= nil then
-		tileX, tileY = nextBuildServiceClient:GetTerrainHoverTile(tileX, tileY)
+		tileX, tileY = buildServiceClient:GetTerrainHoverTile(tileX, tileY)
 		if tileX == nil or tileY == nil then
-			self:hide()
+			self:Hide()
 			return
 		end
 
-		local canPlace, _, GotFootprint =
-			nextBuildServiceClient:CanPlaceAt(tileX, tileY, activePlaceSource.config.tileId)
+		local canPlace, _, gotFootprint = buildServiceClient:CanPlaceAt(tileX, tileY, activePlaceSource.config.tileId)
 		previewColor = if canPlace then Color3.fromRGB(122, 230, 160) else Color3.fromRGB(255, 120, 120)
-		footprint = GotFootprint
+		footprint = gotFootprint
 	else
 		if tileX == nil or tileY == nil then
-			self:hide()
+			self:Hide()
 			return
 		end
 
-		local hoveredTileId = nextBuildServiceClient:GetTileAt(tileX, tileY, false)
+		local hoveredTileId = buildServiceClient:GetTileAt(tileX, tileY, false)
 		if hoveredTileId == BuildServiceUtils.AIR_TILE_ID then
-			self:hide()
+			self:Hide()
 			return
 		end
 	end
 
-	local previewGeometry = nextBuildServiceClient:GetPreviewGeometry(tileX, tileY, footprint)
+	local previewGeometry = buildServiceClient:GetPreviewGeometry(tileX, tileY, footprint)
 	if previewGeometry == nil then
-		self:hide()
+		self:Hide()
 		return
 	end
 

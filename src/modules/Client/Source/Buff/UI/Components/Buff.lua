@@ -63,7 +63,7 @@ local function normalizeKey(valueRaw: any): string
 	return string.gsub(value, "[^%w]", "")
 end
 
-local function GetImageId(valueRaw: any): string
+local function getImageId(valueRaw: any): string
 	if typeof(valueRaw) == "string" and valueRaw ~= "" then
 		return valueRaw
 	end
@@ -71,22 +71,22 @@ local function GetImageId(valueRaw: any): string
 	return ""
 end
 
-local function GetIconFromGroup(iconGroupRaw: any, iconKeyRaw: any): string
+local function getIconFromGroup(iconGroupRaw: any, iconKeyRaw: any): string
 	if typeof(iconGroupRaw) ~= "table" then
 		return ""
 	end
 
-	return GetImageId((iconGroupRaw :: { [string]: any })[iconKeyRaw])
+	return getImageId((iconGroupRaw :: { [string]: any })[iconKeyRaw])
 end
 
-local function GetEcordIcon(recordRaw: any, propIconRaw: any): string
-	local propIcon = GetImageId(propIconRaw)
+local function getRecordIcon(recordRaw: any, propIconRaw: any): string
+	local propIcon = getImageId(propIconRaw)
 	if propIcon ~= "" then
 		return propIcon
 	end
 
 	local record: any = if typeof(recordRaw) == "table" then recordRaw else {}
-	local recordIcon = GetImageId(record.icon or record.iconId)
+	local recordIcon = getImageId(record.icon or record.iconId)
 	if recordIcon ~= "" then
 		return recordIcon
 	end
@@ -99,37 +99,37 @@ local function GetEcordIcon(recordRaw: any, propIconRaw: any): string
 
 	local imageFromGroup = ""
 	if record.kind == "Debuff" then
-		imageFromGroup = GetIconFromGroup((ImageIds :: any).debuffs, alias)
+		imageFromGroup = getIconFromGroup((ImageIds :: any).debuffs, alias)
 	elseif record.kind == "Buff" then
-		imageFromGroup = GetIconFromGroup((ImageIds :: any).buffs, alias)
+		imageFromGroup = getIconFromGroup((ImageIds :: any).buffs, alias)
 	else
-		imageFromGroup = GetIconFromGroup((ImageIds :: any).debuffs, alias)
+		imageFromGroup = getIconFromGroup((ImageIds :: any).debuffs, alias)
 		if imageFromGroup == "" then
-			imageFromGroup = GetIconFromGroup((ImageIds :: any).buffs, alias)
+			imageFromGroup = getIconFromGroup((ImageIds :: any).buffs, alias)
 		end
 	end
 	if imageFromGroup ~= "" then
 		return imageFromGroup
 	end
 
-	return GetImageId((ImageIds :: any)[alias])
+	return getImageId((ImageIds :: any)[alias])
 end
 
-local function GetSlotImage(slotImageRaw: any): string
-	local slotImage = GetImageId(slotImageRaw)
+local function getSlotImage(slotImageRaw: any): string
+	local slotImage = getImageId(slotImageRaw)
 	if slotImage ~= "" then
 		return slotImage
 	end
 
-	slotImage = GetImageId((ImageIds :: any).buffSlot)
+	slotImage = getImageId((ImageIds :: any).buffSlot)
 	if slotImage ~= "" then
 		return slotImage
 	end
 
-	return GetImageId((ImageIds :: any).skillSlot or (ImageIds :: any).inventorySlot)
+	return getImageId((ImageIds :: any).skillSlot or (ImageIds :: any).inventorySlot)
 end
 
-local function GetStacks(recordRaw: any): string?
+local function getStacks(recordRaw: any): string?
 	if typeof(recordRaw) ~= "table" then
 		return nil
 	end
@@ -180,7 +180,7 @@ local function BuffSlot(props: BuffSlotProps): React.ReactNode
 	}
 	local iconChildren: { [any]: React.ReactNode } = {}
 
-	if GetImageId(props.IconImage) ~= "" then
+	if getImageId(props.IconImage) ~= "" then
 		iconChildren.BuffIcon = e("ImageLabel", {
 			Size = UDim2.fromScale(1, 1),
 			Position = UDim2.fromScale(0.5, 0.5),
@@ -232,8 +232,8 @@ return function(props: BuffProps): React.ReactNode
 	local slotHeight = math.ceil(slotSize * (SLOT_IMAGE_SIZE.Y / SLOT_IMAGE_SIZE.X))
 	local frameProps = if props.native ~= nil then Table.copy(props.native) else {}
 	local children: { React.ReactNode } = {}
-	local stackText = GetStacks(record)
-	local recordIcon = GetEcordIcon(record, props.icon)
+	local stackText = getStacks(record)
+	local recordIcon = getRecordIcon(record, props.icon)
 	local debugInnerBounds = props.DebugInnerBounds == true or props.debugInnerBounds == true
 	local hoverId = `buff_{normalizeKey(if typeof(record) == "table" then (record :: { [string]: any }).id else "")}`
 	local hoverText = composeHoverText(record)
@@ -264,7 +264,7 @@ return function(props: BuffProps): React.ReactNode
 		Size = UDim2.fromOffset(slotSize, slotHeight),
 		Position = UDim2.fromScale(0.5, 0),
 		AnchorPoint = Vector2.new(0.5, 0),
-		SlotImage = GetSlotImage(props.slotImage),
+		SlotImage = getSlotImage(props.slotImage),
 		IconImage = recordIcon,
 		ZIndex = zIndex + 1,
 		DebugInnerBounds = debugInnerBounds,

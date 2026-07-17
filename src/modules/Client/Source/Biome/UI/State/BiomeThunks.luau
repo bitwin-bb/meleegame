@@ -27,7 +27,7 @@ local BIOME_ID_TO_NAME: { [number]: string } = {
 	[5] = "The Corruption",
 }
 
-local function GetTundraBiomeKey(depthLayer: number?): string
+local function getTundraBiomeKey(depthLayer: number?): string
 	if depthLayer == DEPTH_LAYER_CAVERN or depthLayer == DEPTH_LAYER_DEEP then
 		return "tundra:caverns"
 	end
@@ -47,7 +47,7 @@ local runtime = {
 	characterAddedConnection = nil :: RBXScriptConnection?,
 }
 
-local function GetCharacterRootPart(characterRaw: any): BasePart?
+local function getCharacterRootPart(characterRaw: any): BasePart?
 	if typeof(characterRaw) ~= "Instance" or not characterRaw:IsA("Model") then
 		return nil
 	end
@@ -75,7 +75,7 @@ local function GetCharacterRootPart(characterRaw: any): BasePart?
 	return nil
 end
 
-local function GetLocalPlayerRootPart(): BasePart?
+local function getLocalPlayerRootPart(): BasePart?
 	local localPlayer = runtime.localPlayer
 	if localPlayer == nil then
 		return nil
@@ -86,7 +86,7 @@ local function GetLocalPlayerRootPart(): BasePart?
 		return nil
 	end
 
-	return GetCharacterRootPart(character)
+	return getCharacterRootPart(character)
 end
 
 local function isWorldReady(): boolean
@@ -104,7 +104,7 @@ local function isWorldReady(): boolean
 	return (worldState :: any).ready == true
 end
 
-local function GetBiomeAtPosition(worldPosition: Vector3): (string?, string?)
+local function getBiomeAtPosition(worldPosition: Vector3): (string?, string?)
 	if not isWorldReady() then
 		return nil, nil
 	end
@@ -151,7 +151,7 @@ local function GetBiomeAtPosition(worldPosition: Vector3): (string?, string?)
 		then surfaceBiomeId == BIOME_ID_SNOW
 		else biomeId == BIOME_ID_SNOW or surfaceBiomeId == BIOME_ID_SNOW
 	if isSnowBiome then
-		return GetTundraBiomeKey(depthLayer), "Tundra"
+		return getTundraBiomeKey(depthLayer), "Tundra"
 	end
 
 	if depthLayer == DEPTH_LAYER_CAVERN or depthLayer == DEPTH_LAYER_DEEP then
@@ -210,12 +210,12 @@ local function step(deltaTimeRaw: any)
 	end
 	runtime.sampleAccumulator = 0
 
-	local rootPart = GetLocalPlayerRootPart()
+	local rootPart = getLocalPlayerRootPart()
 	if rootPart == nil then
 		return
 	end
 
-	local biomeKey, biomeName = GetBiomeAtPosition(rootPart.Position)
+	local biomeKey, biomeName = getBiomeAtPosition(rootPart.Position)
 	if biomeKey == nil or biomeName == nil then
 		return
 	end

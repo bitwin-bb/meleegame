@@ -62,7 +62,7 @@ local DEFAULT_BODY_COLOR = Color3.fromRGB(164, 179, 205)
 local DEFAULT_PADDING = UDim.new(0, 10)
 local DEFAULT_CORNER_RADIUS = UDim.new(0, 8)
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = if typeof(valueRaw) == "number" and valueRaw == valueRaw then valueRaw else fallback
 	if minimum ~= nil and value < minimum then
 		value = minimum
@@ -73,7 +73,7 @@ local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, m
 	return value
 end
 
-local function CoerceColor(valueRaw: any, fallback: Color3): Color3
+local function coerceColor(valueRaw: any, fallback: Color3): Color3
 	return if typeof(valueRaw) == "Color3" then valueRaw else fallback
 end
 
@@ -100,12 +100,12 @@ end
 return function(props: FloatingCardProps): React.ReactNode
 	local theme = props.theme or ({} :: any)
 	local zIndex = props.zIndex or 1
-	local backgroundColor = CoerceColor(props.backgroundColor or theme.backgroundColor, DEFAULT_BACKGROUND_COLOR)
-	local strokeColor = CoerceColor(props.strokeColor or theme.strokeColor, DEFAULT_STROKE_COLOR)
-	local titleColor = CoerceColor(theme.titleColor, DEFAULT_TEXT_COLOR)
-	local subtitleColor = CoerceColor(theme.subtitleColor, DEFAULT_SUBTLE_TEXT_COLOR)
-	local bodyColor = CoerceColor(theme.bodyColor, DEFAULT_BODY_COLOR)
-	local iconColor = CoerceColor(theme.iconColor, DEFAULT_TEXT_COLOR)
+	local backgroundColor = coerceColor(props.backgroundColor or theme.backgroundColor, DEFAULT_BACKGROUND_COLOR)
+	local strokeColor = coerceColor(props.strokeColor or theme.strokeColor, DEFAULT_STROKE_COLOR)
+	local titleColor = coerceColor(theme.titleColor, DEFAULT_TEXT_COLOR)
+	local subtitleColor = coerceColor(theme.subtitleColor, DEFAULT_SUBTLE_TEXT_COLOR)
+	local bodyColor = coerceColor(theme.bodyColor, DEFAULT_BODY_COLOR)
+	local iconColor = coerceColor(theme.iconColor, DEFAULT_TEXT_COLOR)
 	local padding = props.padding or DEFAULT_PADDING
 
 	local frameProps: { [any]: any } = {
@@ -118,7 +118,7 @@ return function(props: FloatingCardProps): React.ReactNode
 		Active = props.active,
 		ClipsDescendants = props.clipsDescendants,
 		BackgroundColor3 = backgroundColor,
-		BackgroundTransparency = CoerceNumber(
+		BackgroundTransparency = coerceNumber(
 			props.backgroundTransparency or theme.backgroundTransparency,
 			0.15,
 			0,
@@ -136,8 +136,8 @@ return function(props: FloatingCardProps): React.ReactNode
 		UIStroke = e("UIStroke", {
 			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 			Color = strokeColor,
-			Thickness = CoerceNumber(props.strokeThickness or theme.strokeThickness, 1, 0, 8),
-			Transparency = CoerceNumber(props.strokeTransparency or theme.strokeTransparency, 0.22, 0, 1),
+			Thickness = coerceNumber(props.strokeThickness or theme.strokeThickness, 1, 0, 8),
+			Transparency = coerceNumber(props.strokeTransparency or theme.strokeTransparency, 0.22, 0, 1),
 		}),
 		UIPadding = e("UIPadding", {
 			PaddingTop = props.paddingTop or padding,
@@ -149,7 +149,7 @@ return function(props: FloatingCardProps): React.ReactNode
 
 	if props.scale ~= nil then
 		children.UIScale = e("UIScale", {
-			Scale = CoerceNumber(props.scale, 1, 0.05, 10),
+			Scale = coerceNumber(props.scale, 1, 0.05, 10),
 		})
 	end
 

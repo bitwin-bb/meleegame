@@ -58,7 +58,7 @@ local isLeftSideBarVisibleAtom = Charm.computed(function(): boolean
 	return inventoryHudStateAtom().isLeftSideBarVisible
 end)
 
-local function CoerceBoolean(valueRaw: any, fallback: boolean): boolean
+local function coerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
@@ -89,13 +89,13 @@ local function setInventoryHudState(stateRaw: any): InventoryHudState
 	local current = inventoryHudStateAtom()
 	local source: { [string]: any } = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {} :: any
 
-	local nextIsHotbarExpanded = CoerceBoolean(source.isHotbarExpanded, current.isHotbarExpanded)
-	local nextIsInventoryPanelOpen = CoerceBoolean(source.isInventoryPanelOpen, nextIsHotbarExpanded)
+	local nextIsHotbarExpanded = coerceBoolean(source.isHotbarExpanded, current.isHotbarExpanded)
+	local nextIsInventoryPanelOpen = coerceBoolean(source.isInventoryPanelOpen, nextIsHotbarExpanded)
 
 	local nextState: InventoryHudState = {
 		isInventoryPanelOpen = nextIsInventoryPanelOpen,
 		isHotbarExpanded = nextIsHotbarExpanded,
-		isLeftSideBarVisible = CoerceBoolean(source.isLeftSideBarVisible, current.isLeftSideBarVisible),
+		isLeftSideBarVisible = coerceBoolean(source.isLeftSideBarVisible, current.isLeftSideBarVisible),
 		updatedAt = os.clock(),
 	}
 

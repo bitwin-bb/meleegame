@@ -64,7 +64,7 @@ local singletonClient: RuntimeContext? = nil
 local singletonServer: RuntimeContext? = nil
 
 local function buildClientModules(self: RuntimeContext, config: RuntimeConfig)
-	local platformFolder = script:FindFirstAncestor("game").Shared.Source.Platform.Modules
+	local platformFolder = script:FindFirstAncestor("game").Client.Source.Platform
 	local Platform = require(platformFolder.PlatformUtils)
 	local Input = require(platformFolder.Input)
 	local Gestures = require(platformFolder.Gestures)

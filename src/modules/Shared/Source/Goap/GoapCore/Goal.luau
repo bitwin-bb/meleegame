@@ -24,7 +24,7 @@ export type Goal = typeof(setmetatable(
 	Goal
 ))
 
-local function CoercePriority(priorityRaw: any, fallback: number): number
+local function coercePriority(priorityRaw: any, fallback: number): number
 	if typeof(priorityRaw) ~= "number" or priorityRaw ~= priorityRaw then
 		return fallback
 	end
@@ -35,7 +35,7 @@ function Goal.new(configRaw: any?): Goal
 	local config = if typeof(configRaw) == "table" then Table.copy(configRaw) else {}
 	local self = setmetatable({
 		Name = if typeof(config.Name) == "string" and config.Name ~= "" then config.Name else "Goal",
-		Priority = CoercePriority(config.Priority, 1),
+		Priority = coercePriority(config.Priority, 1),
 		DesiredState = WorldState.new(config.DesiredState),
 		maid = Maid.new(),
 		canRun = if typeof(config.CanRun) == "function" then config.CanRun else nil,
@@ -59,7 +59,7 @@ end
 
 function Goal.GetPriority(self: Goal, agent: any): number
 	if self.getPriority ~= nil then
-		return CoercePriority(self.getPriority(self, agent), self.Priority)
+		return coercePriority(self.getPriority(self, agent), self.Priority)
 	end
 	return self.Priority
 end

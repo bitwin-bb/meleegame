@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local Height = require("Height")
@@ -6,6 +5,7 @@ local ItemRegistry = require("ItemRegistry")
 local MiningPower = require("MiningPower")
 local Noise = require("Noise")
 local Plane = require("Plane")
+local Table = require("Table")
 local Vec = require("Vec")
 
 local BuildServiceUtils = {}
@@ -632,7 +632,7 @@ local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function CoerceString(valueRaw: any, fallback: string): string
+local function coerceString(valueRaw: any, fallback: string): string
 	if typeof(valueRaw) ~= "string" then
 		return fallback
 	end
@@ -643,14 +643,14 @@ local function CoerceString(valueRaw: any, fallback: string): string
 end
 
 local function normalizeToken(valueRaw: any): string
-	local value = string.lower(CoerceString(valueRaw, ""))
+	local value = string.lower(coerceString(valueRaw, ""))
 	if value == "" then
 		return ""
 	end
 	return string.gsub(value, "[%s_%-%.]+", "")
 end
 
-local function GetSeededUnit(seedRaw: any, sampleX: number, sampleY: number, sampleZ: number): number
+local function getSeededUnit(seedRaw: any, sampleX: number, sampleY: number, sampleZ: number): number
 	local seed = if isFiniteNumber(seedRaw) then seedRaw :: number else 0
 	return Noise.ToUnit(
 		math.noise(
@@ -661,14 +661,14 @@ local function GetSeededUnit(seedRaw: any, sampleX: number, sampleY: number, sam
 	)
 end
 
-local function CoerceInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+local function coerceInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
 	return math.clamp(math.floor(valueRaw), minimum, maximum)
 end
 
-local function CoerceNumber(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+local function coerceNumber(valueRaw: any, minimum: number, maximum: number, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
@@ -697,7 +697,7 @@ local function cloneTileRule(rule: TileRule): TileRule
 end
 
 local function getRuleOrDefault(tileIdRaw: any): TileRule
-	local tileId = CoerceInteger(tileIdRaw, BuildServiceUtils.MIN_TILE_ID, BuildServiceUtils.MAX_TILE_ID, TILE_ID.AIR)
+	local tileId = coerceInteger(tileIdRaw, BuildServiceUtils.MIN_TILE_ID, BuildServiceUtils.MAX_TILE_ID, TILE_ID.AIR)
 	local rule = TILE_RULE_BY_ID[tileId]
 	if rule == nil then
 		return DEFAULT_TILE_RULE
@@ -723,29 +723,29 @@ function BuildServiceUtils.CoerceConfig(configRaw: any, fallbackRaw: BuildServic
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else BuildServiceUtils.CreateDefaultConfig()
 	local source = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else {} :: any
 	return {
-		maxInteractionDistanceTiles = CoerceNumber(
+		maxInteractionDistanceTiles = coerceNumber(
 			source.maxInteractionDistanceTiles,
 			1,
 			64,
 			fallback.maxInteractionDistanceTiles
 		),
-		breakInputTimeout = CoerceNumber(source.breakInputTimeout, 0.08, 2, fallback.breakInputTimeout),
-		breakProgressPushInterval = CoerceNumber(
+		breakInputTimeout = coerceNumber(source.breakInputTimeout, 0.08, 2, fallback.breakInputTimeout),
+		breakProgressPushInterval = coerceNumber(
 			source.breakProgressPushInterval,
 			0.03,
 			0.5,
 			fallback.breakProgressPushInterval
 		),
-		breakSupportFloodLimit = CoerceInteger(
+		breakSupportFloodLimit = coerceInteger(
 			source.breakSupportFloodLimit,
 			16,
 			4096,
 			fallback.breakSupportFloodLimit
 		),
-		deltaBatchMax = CoerceInteger(source.deltaBatchMax, 8, 2048, fallback.deltaBatchMax),
-		defaultToolPower = CoerceNumber(source.defaultToolPower, 0, 1000, fallback.defaultToolPower),
-		clientBreakInputRate = CoerceNumber(source.clientBreakInputRate, 1 / 120, 1, fallback.clientBreakInputRate),
-		clientPlaceInputRate = CoerceNumber(source.clientPlaceInputRate, 1 / 120, 1, fallback.clientPlaceInputRate),
+		deltaBatchMax = coerceInteger(source.deltaBatchMax, 8, 2048, fallback.deltaBatchMax),
+		defaultToolPower = coerceNumber(source.defaultToolPower, 0, 1000, fallback.defaultToolPower),
+		clientBreakInputRate = coerceNumber(source.clientBreakInputRate, 1 / 120, 1, fallback.clientBreakInputRate),
+		clientPlaceInputRate = coerceNumber(source.clientPlaceInputRate, 1 / 120, 1, fallback.clientPlaceInputRate),
 		enableDefaultInputBinding = if typeof(source.enableDefaultInputBinding) == "boolean"
 			then source.enableDefaultInputBinding
 			else fallback.enableDefaultInputBinding,
@@ -780,18 +780,18 @@ function BuildServiceUtils.CreateState(stateRaw: any, fallbackRaw: BuildServiceS
 	local source = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else {} :: any
 	return {
 		ready = if typeof(source.ready) == "boolean" then source.ready else fallback.ready,
-		tileSize = CoerceNumber(source.tileSize, 0.5, 64, fallback.tileSize),
-		chunkSize = CoerceInteger(source.chunkSize, 4, 256, fallback.chunkSize),
+		tileSize = coerceNumber(source.tileSize, 0.5, 64, fallback.tileSize),
+		chunkSize = coerceInteger(source.chunkSize, 4, 256, fallback.chunkSize),
 		worldOrigin = if typeof(source.worldOrigin) == "Vector3" then source.worldOrigin else fallback.worldOrigin,
-		basePlaneX = CoerceNumber(source.basePlaneX, -32768, 32768, fallback.basePlaneX),
-		maxInteractionDistanceTiles = CoerceNumber(
+		basePlaneX = coerceNumber(source.basePlaneX, -32768, 32768, fallback.basePlaneX),
+		maxInteractionDistanceTiles = coerceNumber(
 			source.maxInteractionDistanceTiles,
 			1,
 			64,
 			fallback.maxInteractionDistanceTiles
 		),
-		clientBreakInputRate = CoerceNumber(source.clientBreakInputRate, 1 / 120, 1, fallback.clientBreakInputRate),
-		clientPlaceInputRate = CoerceNumber(source.clientPlaceInputRate, 1 / 120, 1, fallback.clientPlaceInputRate),
+		clientBreakInputRate = coerceNumber(source.clientBreakInputRate, 1 / 120, 1, fallback.clientBreakInputRate),
+		clientPlaceInputRate = coerceNumber(source.clientPlaceInputRate, 1 / 120, 1, fallback.clientPlaceInputRate),
 		tileRules = BuildServiceUtils.CloneTileRules(),
 		updatedAt = os.clock(),
 	}
@@ -813,7 +813,7 @@ function BuildServiceUtils.CloneState(state: BuildServiceState): BuildServiceSta
 end
 
 function BuildServiceUtils.CoerceRequestId(valueRaw: any): number
-	return CoerceInteger(valueRaw, 0, 2147483647, 0)
+	return coerceInteger(valueRaw, 0, 2147483647, 0)
 end
 
 function BuildServiceUtils.CoerceTileCoordinate(valueRaw: any): number?
@@ -896,12 +896,12 @@ end
 function BuildServiceUtils.ComputeTreeId(rootTileXRaw: any, rootTileYRaw: any, seedRaw: any): string
 	local rootTileX = BuildServiceUtils.CoerceTileCoordinate(rootTileXRaw) or 0
 	local rootTileY = BuildServiceUtils.CoerceTileCoordinate(rootTileYRaw) or 0
-	local seed = CoerceInteger(seedRaw, -2147483648, 2147483647, 0)
+	local seed = coerceInteger(seedRaw, -2147483648, 2147483647, 0)
 	return `tree:{rootTileX}:{rootTileY}:{seed}`
 end
 
 function BuildServiceUtils.GetTreeHealthPoolKey(treeIdRaw: any): string
-	return CoerceString(treeIdRaw, "")
+	return coerceString(treeIdRaw, "")
 end
 
 function BuildServiceUtils.CreateTreeSnapshot(chunkXRaw: any, chunkYRaw: any, treeRaw: any): TreeSnapshot?
@@ -921,8 +921,8 @@ function BuildServiceUtils.CreateTreeSnapshot(chunkXRaw: any, chunkYRaw: any, tr
 		return nil
 	end
 
-	local variantIndex = CoerceInteger(source.variantIndex, 1, 128, CoerceInteger(source.templateIndex, 1, 128, 1))
-	local seed = CoerceInteger(
+	local variantIndex = coerceInteger(source.variantIndex, 1, 128, coerceInteger(source.templateIndex, 1, 128, 1))
+	local seed = coerceInteger(
 		source.seed,
 		-2147483648,
 		2147483647,
@@ -945,18 +945,50 @@ function BuildServiceUtils.CreateTreeSnapshot(chunkXRaw: any, chunkYRaw: any, tr
 	}
 end
 
+function BuildServiceUtils.GetTreeRootAtTile(
+	tileXRaw: any,
+	tileYRaw: any,
+	chunkSizeRaw: any,
+	getTreesForChunk: (chunkX: number, chunkY: number) -> { any }?
+): TreeSnapshot?
+	local tileX = BuildServiceUtils.CoerceTileCoordinate(tileXRaw)
+	local tileY = BuildServiceUtils.CoerceTileCoordinate(tileYRaw)
+	if tileX == nil or tileY == nil or typeof(getTreesForChunk) ~= "function" then
+		return nil
+	end
+
+	local chunkSize = coerceInteger(chunkSizeRaw, 4, 256, 32)
+	local chunkX = BuildServiceUtils.ToChunkCoordinate(tileX, chunkSize)
+	local chunkY = BuildServiceUtils.ToChunkCoordinate(tileY, chunkSize)
+	local trees = getTreesForChunk(chunkX, chunkY)
+	if typeof(trees) ~= "table" then
+		return nil
+	end
+
+	return Table.reduce(trees :: any, function(found: TreeSnapshot?, treeRaw: any): TreeSnapshot?
+		if found ~= nil then
+			return found
+		end
+		local tree = BuildServiceUtils.CreateTreeSnapshot(chunkX, chunkY, treeRaw)
+		if tree ~= nil and tree.rootTileX == tileX and tree.rootTileY == tileY then
+			return tree
+		end
+		return nil
+	end, nil :: TreeSnapshot?)
+end
+
 function BuildServiceUtils.GetTreeTrunkHeight(treeRaw: any): number
 	local source = if typeof(treeRaw) == "table" then treeRaw :: { [string]: any } else {} :: any
-	local seed = CoerceInteger(source.seed, -2147483648, 2147483647, 0)
+	local seed = coerceInteger(source.seed, -2147483648, 2147483647, 0)
 	return Height.GetHeightTiles(seed, DEFAULT_TREE_TRUNK_HEIGHT_MIN, DEFAULT_TREE_TRUNK_HEIGHT_MAX)
 end
 
 function BuildServiceUtils.GetTreeCanopyRadius(treeRaw: any): number
 	local source = if typeof(treeRaw) == "table" then treeRaw :: { [string]: any } else {} :: any
-	local seed = CoerceInteger(source.seed, -2147483648, 2147483647, 0)
-	local variantIndex = CoerceInteger(source.variantIndex, 1, 128, 1)
-	local biomeType = CoerceInteger(source.biomeType, TREE_BIOME_TYPE_NORMAL, 32, TREE_BIOME_TYPE_NORMAL)
-	local alpha = GetSeededUnit(seed, variantIndex, biomeType, 2)
+	local seed = coerceInteger(source.seed, -2147483648, 2147483647, 0)
+	local variantIndex = coerceInteger(source.variantIndex, 1, 128, 1)
+	local biomeType = coerceInteger(source.biomeType, TREE_BIOME_TYPE_NORMAL, 32, TREE_BIOME_TYPE_NORMAL)
+	local alpha = getSeededUnit(seed, variantIndex, biomeType, 2)
 	local rawRadius = DEFAULT_TREE_CANOPY_RADIUS_MIN
 		+ math.floor(alpha * (DEFAULT_TREE_CANOPY_RADIUS_MAX - DEFAULT_TREE_CANOPY_RADIUS_MIN) + 0.5)
 	return math.clamp(rawRadius, DEFAULT_TREE_CANOPY_RADIUS_MIN, DEFAULT_TREE_CANOPY_RADIUS_MAX)
@@ -1095,7 +1127,7 @@ function BuildServiceUtils.GetTreeAtTile(
 		return nil
 	end
 
-	local chunkSize = CoerceInteger(chunkSizeRaw, 4, 256, 32)
+	local chunkSize = coerceInteger(chunkSizeRaw, 4, 256, 32)
 	local centerChunkX = BuildServiceUtils.ToChunkCoordinate(tileX, chunkSize)
 	local centerChunkY = BuildServiceUtils.ToChunkCoordinate(tileY, chunkSize)
 	local bestScore = math.huge
@@ -1157,8 +1189,7 @@ function BuildServiceUtils.GetTreeDropTableId(treeRaw: any): string
 end
 
 function BuildServiceUtils.GetTreeFallDuration(heightTilesRaw: any): number
-	local heightTiles =
-		CoerceInteger(heightTilesRaw, DEFAULT_TREE_TRUNK_HEIGHT_MIN, 128, DEFAULT_TREE_TRUNK_HEIGHT_MIN)
+	local heightTiles = coerceInteger(heightTilesRaw, DEFAULT_TREE_TRUNK_HEIGHT_MIN, 128, DEFAULT_TREE_TRUNK_HEIGHT_MIN)
 	local alpha = math.clamp(
 		(heightTiles - DEFAULT_TREE_TRUNK_HEIGHT_MIN) / (DEFAULT_TREE_TRUNK_HEIGHT_MAX - DEFAULT_TREE_TRUNK_HEIGHT_MIN),
 		0,
@@ -1170,12 +1201,12 @@ end
 function BuildServiceUtils.GetTreeBreakProfile(treeRaw: any, toolPowerRaw: any): TreeBreakProfile
 	local source = if typeof(treeRaw) == "table" then treeRaw :: { [string]: any } else {} :: any
 	local heightTiles = if isFiniteNumber(source.heightTiles)
-		then CoerceInteger(source.heightTiles, 1, 128, DEFAULT_TREE_TRUNK_HEIGHT_MIN)
+		then coerceInteger(source.heightTiles, 1, 128, DEFAULT_TREE_TRUNK_HEIGHT_MIN)
 		else BuildServiceUtils.GetTreeTrunkHeight(source) + 1
 	local dropTableId = BuildServiceUtils.GetTreeDropTableId(source)
 	local treeRequirement = MiningPower.GetTreeRequirement(dropTableId)
 	local maxHealth = DEFAULT_TREE_BASE_HEALTH + heightTiles * DEFAULT_TREE_HEALTH_PER_HEIGHT
-	local toolPower = CoerceNumber(toolPowerRaw, 0, 100000, 0)
+	local toolPower = coerceNumber(toolPowerRaw, 0, 100000, 0)
 	local effectivePower = math.max(DEFAULT_TREE_BREAK_POWER_FLOOR, toolPower)
 	local breakDuration = math.max(0.35, maxHealth / (effectivePower * 6))
 	local breakHits = math.max(1, math.ceil(breakDuration * DEFAULT_TREE_BREAK_HIT_RATE))
@@ -1196,9 +1227,9 @@ function BuildServiceUtils.CanBreakTree(
 	toolPowerRaw: any
 ): (boolean, string, number, TreeBreakProfile)
 	local profile = BuildServiceUtils.GetTreeBreakProfile(treeRaw, toolPowerRaw)
-	local toolType = string.lower(CoerceString(toolTypeRaw, ""))
-	local toolPower = CoerceNumber(toolPowerRaw, 0, 100000, 0)
-	local requiredToolType = string.lower(CoerceString(profile.requiredToolType, DEFAULT_TREE_REQUIRED_TOOL_TYPE))
+	local toolType = string.lower(coerceString(toolTypeRaw, ""))
+	local toolPower = coerceNumber(toolPowerRaw, 0, 100000, 0)
+	local requiredToolType = string.lower(coerceString(profile.requiredToolType, DEFAULT_TREE_REQUIRED_TOOL_TYPE))
 	if TREE_REQUIRE_AXE_FOR_BREAKING and requiredToolType == "axe" and string.find(toolType, "axe", 1, true) == nil then
 		return false, "tree_requires_axe", math.huge, profile
 	end
@@ -1256,8 +1287,8 @@ function BuildServiceUtils.ComputeTreeFallVector2D(fallDirectionRaw: any): Vecto
 end
 
 function BuildServiceUtils.ComputeTreePivotOffset(heightTilesRaw: any, tileSizeRaw: any): Vector3
-	local heightTiles = CoerceInteger(heightTilesRaw, 1, 128, DEFAULT_TREE_TRUNK_HEIGHT_MIN)
-	local tileSize = CoerceNumber(tileSizeRaw, 0.05, 64, 2)
+	local heightTiles = coerceInteger(heightTilesRaw, 1, 128, DEFAULT_TREE_TRUNK_HEIGHT_MIN)
+	local tileSize = coerceNumber(tileSizeRaw, 0.05, 64, 2)
 	return Vector3.new(0, math.max(tileSize * 0.5, heightTiles * tileSize * 0.45), 0)
 end
 
@@ -1271,8 +1302,8 @@ function BuildServiceUtils.ComputeTreePivotCFrame(
 	local rootTileX = BuildServiceUtils.CoerceTileCoordinate(rootTileXRaw) or 0
 	local rootTileY = BuildServiceUtils.CoerceTileCoordinate(rootTileYRaw) or 0
 	local worldOrigin = if typeof(worldOriginRaw) == "Vector3" then worldOriginRaw else Vector3.zero
-	local tileSize = CoerceNumber(tileSizeRaw, 0.05, 64, 2)
-	local basePlaneX = CoerceNumber(basePlaneXRaw, -32768, 32768, 0)
+	local tileSize = coerceNumber(tileSizeRaw, 0.05, 64, 2)
+	local basePlaneX = coerceNumber(basePlaneXRaw, -32768, 32768, 0)
 	local pivotPosition =
 		BuildServiceUtils.TileToWorldCenter(rootTileX, rootTileY + 1, worldOrigin, tileSize, basePlaneX)
 	return CFrame.new(pivotPosition)
@@ -1286,8 +1317,8 @@ function BuildServiceUtils.ComputeTreeImpactPosition(
 ): Vector3
 	local pivotCFrame = if typeof(pivotCFrameRaw) == "CFrame" then pivotCFrameRaw else CFrame.new()
 	local direction = BuildServiceUtils.NormalizeFallDirection(fallDirectionRaw)
-	local heightTiles = CoerceInteger(heightTilesRaw, 1, 128, DEFAULT_TREE_TRUNK_HEIGHT_MIN)
-	local tileSize = CoerceNumber(tileSizeRaw, 0.05, 64, 2)
+	local heightTiles = coerceInteger(heightTilesRaw, 1, 128, DEFAULT_TREE_TRUNK_HEIGHT_MIN)
+	local tileSize = coerceNumber(tileSizeRaw, 0.05, 64, 2)
 	local horizontalDistance = math.max(tileSize * 1.1, heightTiles * tileSize * 0.65)
 	local impactOffset = BuildServiceUtils.ComputeTreeFallVector2D(direction) * horizontalDistance
 	return pivotCFrame.Position + impactOffset + Vector3.new(0, -tileSize * 0.12, 0)
@@ -1302,9 +1333,9 @@ function BuildServiceUtils.RollTreeDrops(treeRaw: any): { TreeDropEntry }
 	end
 
 	local heightTiles = if isFiniteNumber(source.heightTiles)
-		then CoerceInteger(source.heightTiles, 1, 128, DEFAULT_TREE_TRUNK_HEIGHT_MIN)
+		then coerceInteger(source.heightTiles, 1, 128, DEFAULT_TREE_TRUNK_HEIGHT_MIN)
 		else BuildServiceUtils.GetTreeTrunkHeight(source) + 1
-	local seed = CoerceInteger(source.seed, -2147483648, 2147483647, 0)
+	local seed = coerceInteger(source.seed, -2147483648, 2147483647, 0)
 	local random = Random.new(seed + heightTiles * 157 + #dropTable * 41)
 	local drops: { TreeDropEntry } = {}
 
@@ -1344,13 +1375,13 @@ function BuildServiceUtils.CoerceTreeFelledPayload(payloadRaw: any): TreeFelledP
 	if typeof(source.pivotCFrame) ~= "CFrame" then
 		return nil
 	end
-	local treeId = CoerceString(source.treeId, "")
+	local treeId = coerceString(source.treeId, "")
 	if treeId == "" then
 		return nil
 	end
 
-	local height = CoerceInteger(source.height, 1, 128, DEFAULT_TREE_TRUNK_HEIGHT_MIN)
-	local fallDuration = CoerceNumber(
+	local height = coerceInteger(source.height, 1, 128, DEFAULT_TREE_TRUNK_HEIGHT_MIN)
+	local fallDuration = coerceNumber(
 		source.fallDuration,
 		DEFAULT_TREE_FALL_DURATION_MIN,
 		DEFAULT_TREE_FALL_DURATION_MAX,
@@ -1361,7 +1392,7 @@ function BuildServiceUtils.CoerceTreeFelledPayload(payloadRaw: any): TreeFelledP
 		pivotCFrame = source.pivotCFrame,
 		fallDirection = BuildServiceUtils.NormalizeFallDirection(source.fallDirection),
 		height = height,
-		seed = CoerceInteger(source.seed, -2147483648, 2147483647, 0),
+		seed = coerceInteger(source.seed, -2147483648, 2147483647, 0),
 		fallDuration = fallDuration,
 	}
 end
@@ -1415,8 +1446,8 @@ function BuildServiceUtils.GetPlaceableItemConfig(itemIdRaw: any): PlaceableItem
 
 	if tileId == nil then
 		local itemType = normalizeToken(definitionTable.itemType or definitionTable.type)
-		local functionality = string.lower(CoerceString(definitionTable.functionality, ""))
-		local useCase = string.lower(CoerceString(definitionTable.useCase, ""))
+		local functionality = string.lower(coerceString(definitionTable.functionality, ""))
+		local useCase = string.lower(coerceString(definitionTable.useCase, ""))
 		local looksPlaceable = itemType == "tile"
 			or string.find(functionality, "placed", 1, true) ~= nil
 			or string.find(useCase, "place", 1, true) ~= nil
@@ -1431,7 +1462,7 @@ function BuildServiceUtils.GetPlaceableItemConfig(itemIdRaw: any): PlaceableItem
 	end
 
 	local animationProfile =
-		CoerceString(placement.animationProfile or placement.animationName or definitionTable.animationProfile, "")
+		coerceString(placement.animationProfile or placement.animationName or definitionTable.animationProfile, "")
 	return {
 		itemId = canonicalItemId,
 		tileId = tileId,
@@ -1496,7 +1527,7 @@ function BuildServiceUtils.TraceGridLine2D(
 		return {}
 	end
 
-	local maxSteps = CoerceInteger(maxStepsRaw, 1, 8192, 1024)
+	local maxSteps = coerceInteger(maxStepsRaw, 1, 8192, 1024)
 	local output: { TileCoordinate } = {}
 
 	local x = startTileX
@@ -1552,7 +1583,7 @@ function BuildServiceUtils.TraceTilesFromWorldRay2D(
 	tileSize: number,
 	basePlaneX: number
 ): { TileCoordinate }
-	local maxDistance = CoerceNumber(maxDistanceRaw, 0.5, 10000, 256)
+	local maxDistance = coerceNumber(maxDistanceRaw, 0.5, 10000, 256)
 	local unitDirection = Vec.Unit(direction, Vector3.xAxis)
 	local startPoint = BuildServiceUtils.RaycastToBuildPlane(origin, unitDirection, basePlaneX)
 	if startPoint == nil then
@@ -1720,7 +1751,7 @@ function BuildServiceUtils.GetBreakDuration(tileIdRaw: any, toolPowerRaw: any): 
 		return 0
 	end
 
-	local toolPower = CoerceNumber(toolPowerRaw, 0, 100000, 0)
+	local toolPower = coerceNumber(toolPowerRaw, 0, 100000, 0)
 	if rule.requiredToolPower > 0 and toolPower < rule.requiredToolPower then
 		if rule.unbreakableWithoutTool then
 			return math.huge
@@ -1791,8 +1822,8 @@ function BuildServiceUtils.CanBreakTile(
 	end
 
 	local profile = BuildServiceUtils.GetTileBreakProfile(tileId, toolPowerRaw)
-	local toolType = string.lower(CoerceString(toolTypeRaw, ""))
-	local requiredToolType = string.lower(CoerceString(profile.requiredToolType, DEFAULT_TILE_REQUIRED_TOOL_TYPE))
+	local toolType = string.lower(coerceString(toolTypeRaw, ""))
+	local requiredToolType = string.lower(coerceString(profile.requiredToolType, DEFAULT_TILE_REQUIRED_TOOL_TYPE))
 	if
 		TILE_REQUIRE_PICKAXE_FOR_BREAKING
 		and requiredToolType == "pickaxe"
@@ -1824,7 +1855,7 @@ function BuildServiceUtils.FloodFillSupportComponent(
 		return {}, true, false
 	end
 
-	local maxNodes = CoerceInteger(maxNodesRaw, 8, 20000, DEFAULT_BREAK_SUPPORT_FLOOD_LIMIT)
+	local maxNodes = coerceInteger(maxNodesRaw, 8, 20000, DEFAULT_BREAK_SUPPORT_FLOOD_LIMIT)
 	local queue: { TileCoordinate } = {
 		{
 			tileX = startTileX,

@@ -9,6 +9,8 @@ local RunService = game:GetService("RunService")
 local BreathServiceUtils = require("BreathServiceUtils")
 local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
+local ServiceBag = require("ServiceBag")
+local String = require("String")
 local BreathServicePackets = require("NetPacketsShared").BreathService
 
 local function sendPacket(methodName: string, ...: any)
@@ -60,18 +62,24 @@ type SignalObject = Signal.Signal<...any>
 type JanitorClass = any
 
 local BreathServiceClient = {}
+BreathServiceClient.ServiceName = "BreathServiceClient"
+
+local function createRuntimeInstanceName(): string
+	local guid = String.removePostfix(String.removePrefix(HttpService:GenerateGUID(true), "{"), "}")
+	return string.format("%03d", (tonumber(string.sub(guid, 1, 8), 16) or 0) % 1000)
+end
 
 function BreathServiceClient.EnsureEffects(self: BreathServiceClient)
 	if self.colorCorrection == nil or self.colorCorrection.Parent == nil then
 		local effect = Instance.new("ColorCorrectionEffect")
-		effect.Name = HttpService:GenerateGUID(false)
+		effect.Name = createRuntimeInstanceName()
 		effect.Enabled = false
 		effect.Parent = Lighting
 		self.colorCorrection = effect
 	end
 	if self.blur == nil or self.blur.Parent == nil then
 		local effect = Instance.new("BlurEffect")
-		effect.Name = HttpService:GenerateGUID(false)
+		effect.Name = createRuntimeInstanceName()
 		effect.Enabled = false
 		effect.Size = 0
 		effect.Parent = Lighting
@@ -136,7 +144,7 @@ function BreathServiceClient.OnEvent(self: BreathServiceClient, payloadRaw: any)
 	self.eventReceived:Fire(payload)
 end
 
-function BreathServiceClient.RequestSync(self: BreathServiceClient)
+function BreathServiceClient.RequestSync(_self: BreathServiceClient)
 	sendPacket(BreathServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
@@ -148,7 +156,10 @@ function BreathServiceClient.IsReady(self: BreathServiceClient): boolean
 	return self.state.ready == true
 end
 
-function BreathServiceClient.Init(self: BreathServiceClient)
+function BreathServiceClient.Init(self: BreathServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
@@ -182,8 +193,10 @@ function BreathServiceClient.Destroy(self: BreathServiceClient)
 	if self.janitor ~= nil then
 		self.janitor:Destroy()
 	end
+	self._serviceBag = nil
 end
 type BreathServiceClient = typeof(BreathServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
 	localPlayer: Player,
 	janitor: JanitorClass,
 	state: BreathServiceState,

@@ -23,15 +23,15 @@ local function fulfilledPromise(...): any
 		fulfill(table.unpack(args, 1, args.n))
 	end)
 end
+local HpServiceServer = require("HpServiceServer")
+local PacketPayload = require("PacketPayload")
 local PromiseMaidUtils = require("PromiseMaidUtils")
+local QueenBeeConfig = require("QueenBeeConfigs")
 local QueenBeeController = require("QueenBeeBoss")
-local QueenBeeConfig = require(bossClasses:WaitForChild("QueenBeeBoss"):WaitForChild("QueenBeeConfigs"))
 local Rx: any = require("Rx")
 local RxSignal: any = require("RxSignal")
 local Signal = require("Signal")
 local ValueObject: any = require("ValueObject")
-local HpServiceServer = require("HpServiceServer")
-local PacketPayload = require("PacketPayload")
 local BossServicePackets = require("NetPacketsShared").BossService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
@@ -77,9 +77,8 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local NevermoreSupport = require("NevermoreSupport")
-local PlayerServiceServer = require("PlayerServiceServer")
 local BinderSupportServer = require("BinderSupportServer")
+local PlayerServiceServer = require("PlayerServiceServer")
 local WeatherServiceServer = require("WeatherServiceServer")
 local WorldGenerationServiceServer = require("WorldGenerationServiceServer")
 
@@ -127,6 +126,7 @@ type PendingNaturalSpawn = {
 }
 
 local BossServiceServer = {}
+BossServiceServer.ServiceName = "BossServiceServer"
 
 local CONTROLLER_CONSTRUCTORS = {
 	EyeOfCthulhu = function(
@@ -149,7 +149,7 @@ local DEFAULT_STATE_PUSH_INTERVAL = BossServiceUtils.DEFAULT_STATE_PUSH_INTERVAL
 local DEFAULT_NATURAL_SPAWN_CHECK_INTERVAL = BossServiceUtils.DEFAULT_NATURAL_SPAWN_CHECK_INTERVAL
 local DEFAULT_BOX_QUERY_MAX_PARTS = 96
 
-local function GetBossSettingsSource(): { [string]: any }
+local function getBossSettingsSource(): { [string]: any }
 	if typeof(Configs) ~= "table" then
 		return {}
 	end
@@ -162,8 +162,8 @@ local function GetBossSettingsSource(): { [string]: any }
 	return bossSettings :: { [string]: any }
 end
 
-local function GetEyeConfigSource(): { [string]: any }?
-	local bossSettings = GetBossSettingsSource()
+local function getEyeConfigSource(): { [string]: any }?
+	local bossSettings = getBossSettingsSource()
 	local eyeConfig = (bossSettings :: any).eyeOfCthulhu
 	if typeof(eyeConfig) == "table" then
 		return eyeConfig
@@ -171,8 +171,8 @@ local function GetEyeConfigSource(): { [string]: any }?
 	return nil
 end
 
-local function GetQueenBeeConfigSource(): { [string]: any }?
-	local bossSettings = GetBossSettingsSource()
+local function getQueenBeeConfigSource(): { [string]: any }?
+	local bossSettings = getBossSettingsSource()
 	local queenBeeConfig = (bossSettings :: any).queenBee
 	if typeof(queenBeeConfig) == "table" then
 		return queenBeeConfig
@@ -184,11 +184,11 @@ local function trim(valueRaw: any): string
 	return BossServiceUtils.Trim(valueRaw)
 end
 
-local function GetModelBindingMaidKey(runtimeId: string): string
+local function getModelBindingMaidKey(runtimeId: string): string
 	return ("modelBinding_%s"):format(runtimeId)
 end
 
-local function GetBossId(boss: BossObject): string
+local function getBossId(boss: BossObject): string
 	if typeof(boss) == "table" and typeof(boss.id) == "string" then
 		return boss.id
 	end
@@ -225,18 +225,7 @@ local function getOrCreateObservable(
 	return created
 end
 
-local function getOrCreateRxSignal(self: BossServiceServer, key: string, factory: () -> RxSignalObject): RxSignalObject
-	local cached = self.rxSignalCache[key]
-	if cached ~= nil then
-		return cached
-	end
-
-	local created = factory()
-	self.rxSignalCache[key] = created
-	return created
-end
-
-local function GetCancelToken(cancelTokenRaw: any): any?
+local function getCancelToken(cancelTokenRaw: any): any?
 	if CancelToken.isCancelToken(cancelTokenRaw) then
 		return cancelTokenRaw
 	end
@@ -384,7 +373,7 @@ function BossServiceServer.InitReactiveState(self: BossServiceServer)
 	end))
 end
 
-function BossServiceServer.GetNow(self: BossServiceServer): number
+function BossServiceServer.GetNow(_self: BossServiceServer): number
 	return os.clock()
 end
 
@@ -522,7 +511,7 @@ function BossServiceServer.RemoveOrderedId(self: BossServiceServer, runtimeId: s
 end
 
 function BossServiceServer.CreateSnapshot(self: BossServiceServer, boss: BossObject): BossSnapshot
-	local existingSnapshot = self.state.byId[GetBossId(boss)]
+	local existingSnapshot = self.state.byId[getBossId(boss)]
 	local snapshot = BossServiceUtils.CoerceSnapshot({
 		id = boss.id,
 		bossId = boss.bossId,
@@ -567,7 +556,7 @@ function BossServiceServer.CreateStateSnapshot(self: BossServiceServer): BossSer
 	return BossServiceUtils.CloneState(self.state)
 end
 
-function BossServiceServer.Broadcast(self: BossServiceServer, methodName: string, ...: any)
+function BossServiceServer.Broadcast(_self: BossServiceServer, methodName: string, ...: any)
 	for _, player in Players:GetPlayers() do
 		if PlayerServiceServer:IsGameplayActiveForPlayer(player) then
 			sendPacket(player, methodName, ...)
@@ -592,7 +581,7 @@ function BossServiceServer.RequestSync(self: BossServiceServer, player: Player)
 end
 
 function BossServiceServer.GetSpawnRequest(
-	self: BossServiceServer,
+	_self: BossServiceServer,
 	requestRaw: any
 ): (BossSpawnRequest?, BossRegistryEntry?, string?)
 	local request = BossServiceUtils.CoerceSpawnRequest(requestRaw, nil)
@@ -622,7 +611,7 @@ function BossServiceServer.IsEncounterChannelBusy(self: BossServiceServer, encou
 end
 
 function BossServiceServer.GetControllerConstructor(
-	self: BossServiceServer,
+	_self: BossServiceServer,
 	definition: BossRegistryEntry
 ): ((
 	BossServiceServer,
@@ -637,7 +626,7 @@ function BossServiceServer.GetControllerConstructor(
 end
 
 function BossServiceServer.RefreshControllerModelBinding(self: BossServiceServer, boss: BossObject)
-	local runtimeId = GetBossId(boss)
+	local runtimeId = getBossId(boss)
 	if runtimeId == "" then
 		return
 	end
@@ -648,7 +637,7 @@ function BossServiceServer.RefreshControllerModelBinding(self: BossServiceServer
 		return
 	end
 
-	local modelBindingMaidKey = GetModelBindingMaidKey(runtimeId)
+	local modelBindingMaidKey = getModelBindingMaidKey(runtimeId)
 	local modelBindingMaid = (self.maid :: any)[modelBindingMaidKey]
 	if modelBindingMaid == nil then
 		modelBindingMaid = Maid.new() :: MaidClass
@@ -680,7 +669,7 @@ function BossServiceServer.TrackController(self: BossServiceServer, boss: BossOb
 end
 
 function BossServiceServer.UntrackController(self: BossServiceServer, boss: BossObject)
-	local runtimeId = GetBossId(boss)
+	local runtimeId = getBossId(boss)
 	if runtimeId == "" then
 		return
 	end
@@ -694,7 +683,7 @@ function BossServiceServer.UntrackController(self: BossServiceServer, boss: Boss
 	end
 
 	local maid = self.maid :: any
-	maid[GetModelBindingMaidKey(runtimeId)] = nil
+	maid[getModelBindingMaidKey(runtimeId)] = nil
 	self.boundModelsById[runtimeId] = nil
 end
 
@@ -778,7 +767,7 @@ function BossServiceServer.SpawnBoss(self: BossServiceServer, requestRaw: any): 
 		return nil, "controller_construction_failed"
 	end
 
-	local spawnOk, spawnError = pcall(function()
+	local spawnOk = pcall(function()
 		boss:Spawn()
 	end)
 	if not spawnOk then
@@ -791,7 +780,7 @@ function BossServiceServer.SpawnBoss(self: BossServiceServer, requestRaw: any): 
 
 	local afterSpawn = (boss :: any).AfterSpawn
 	if typeof(afterSpawn) == "function" then
-		local afterSpawnOk, afterSpawnError = pcall(function()
+		local afterSpawnOk = pcall(function()
 			afterSpawn(boss)
 		end)
 		if not afterSpawnOk then
@@ -807,7 +796,7 @@ function BossServiceServer.SpawnBoss(self: BossServiceServer, requestRaw: any): 
 	return boss, nil
 end
 
-function BossServiceServer.GetEncounterTarget(self: BossServiceServer, boss: BossObject): Player?
+function BossServiceServer.GetEncounterTarget(_self: BossServiceServer, boss: BossObject): Player?
 	local currentTarget = boss.targetPlayer
 	if currentTarget ~= nil and BossServiceUtils.IsPlayerAlive(currentTarget) then
 		return currentTarget
@@ -836,7 +825,7 @@ function BossServiceServer.GetEncounterTarget(self: BossServiceServer, boss: Bos
 end
 
 function BossServiceServer.GetControllerFromInstance(self: BossServiceServer, instanceRaw: any): BossObject?
-	local runtimeId = BossServiceUtils.GetUntimeIdFromInstance(instanceRaw)
+	local runtimeId = BossServiceUtils.GetRuntimeIdFromInstance(instanceRaw)
 	if runtimeId == nil then
 		return nil
 	end
@@ -893,7 +882,7 @@ function BossServiceServer.DamageBossesInBox(
 			continue
 		end
 
-		local runtimeId = BossServiceUtils.GetUntimeIdFromInstance(part)
+		local runtimeId = BossServiceUtils.GetRuntimeIdFromInstance(part)
 		if runtimeId == nil or seenIds[runtimeId] == true then
 			continue
 		end
@@ -1224,7 +1213,7 @@ function BossServiceServer.WaitForControllerPromise(
 			end),
 			Rx.take(1),
 		}),
-		GetCancelToken(cancelTokenRaw)
+		getCancelToken(cancelTokenRaw)
 	) :: PromiseObject
 end
 
@@ -1253,7 +1242,7 @@ function BossServiceServer.WaitForControllerRemovalPromise(
 			end),
 			Rx.take(1),
 		}),
-		GetCancelToken(cancelTokenRaw)
+		getCancelToken(cancelTokenRaw)
 	) :: PromiseObject
 end
 
@@ -1262,7 +1251,7 @@ function BossServiceServer.SpawnBossPromise(
 	requestRaw: any,
 	cancelTokenRaw: any?
 ): PromiseObject
-	local cancelToken = GetCancelToken(cancelTokenRaw)
+	local cancelToken = getCancelToken(cancelTokenRaw)
 	local promise = Promise.spawn(function(fulfill, reject)
 		if cancelToken ~= nil and cancelToken:IsCancelled() then
 			reject("cancelled")
@@ -1299,7 +1288,7 @@ function BossServiceServer.SummonBossForPlayerPromise(
 	optionsRaw: any?,
 	cancelTokenRaw: any?
 ): PromiseObject
-	local cancelToken = GetCancelToken(cancelTokenRaw)
+	local cancelToken = getCancelToken(cancelTokenRaw)
 	local promise = Promise.spawn(function(fulfill, reject)
 		if cancelToken ~= nil and cancelToken:IsCancelled() then
 			reject("cancelled")
@@ -1394,7 +1383,7 @@ function BossServiceServer.UntrackPlayer(self: BossServiceServer, player: Player
 	end
 end
 
-function BossServiceServer.Init(self: BossServiceServer)
+function BossServiceServer.Init(self: BossServiceServer, serviceBag: any)
 	self.maid = Maid.new() :: MaidClass
 	bindPackets(self)
 	self.hpService = HpServiceServer :: any
@@ -1412,11 +1401,11 @@ function BossServiceServer.Init(self: BossServiceServer)
 	self.pendingNaturalSpawn = nil
 	self.allowClientManualSummon = false
 	self.defaultConfigByBossId = {
-		EyeOfCthulhu = EyeOfCthulhuConfig.Get(GetEyeConfigSource()),
-		QueenBee = QueenBeeConfig.Get(GetQueenBeeConfigSource()),
+		EyeOfCthulhu = EyeOfCthulhuConfig.Get(getEyeConfigSource()),
+		QueenBee = QueenBeeConfig.Get(getQueenBeeConfigSource()),
 	}
 	self.previousClockTime = self:GetClockTime();
-	(self :: any).binders = NevermoreSupport.GetService(BinderSupportServer)
+	(self :: any).binders = serviceBag:GetService(BinderSupportServer)
 	self:InitReactiveState()
 
 	self.maid:GiveTask(Rx.fromSignal(Players.PlayerAdded)

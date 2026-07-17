@@ -106,7 +106,7 @@ local function isPressInput(inputObject: InputObject?): boolean
 		or inputObject.KeyCode == Enum.KeyCode.ButtonA
 end
 
-local function GetInputSource(inputObject: InputObject?): string
+local function getInputSource(inputObject: InputObject?): string
 	if inputObject == nil then
 		return "unknown"
 	end
@@ -130,14 +130,14 @@ local function GetInputSource(inputObject: InputObject?): string
 	return "unknown"
 end
 
-local function CoerceScale(valueRaw: any, fallback: number): number
+local function coerceScale(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw or valueRaw <= 0 then
 		return fallback
 	end
 	return valueRaw
 end
 
-local function GetScaleTarget(props: NavButtonProps, state: NavButtonState?): number
+local function getScaleTarget(props: NavButtonProps, state: NavButtonState?): number
 	if props.disabled == true then
 		return DEFAULT_NORMAL_SCALE
 	end
@@ -163,7 +163,7 @@ function NavButton:init()
 	self.state = {
 		isHovered = false,
 		isPressed = false,
-		renderScale = CoerceScale(GetScaleTarget(self.props, nil), DEFAULT_NORMAL_SCALE),
+		renderScale = coerceScale(getScaleTarget(self.props, nil), DEFAULT_NORMAL_SCALE),
 	} :: NavButtonState
 	self.scaleTarget = self.state.renderScale
 	self.scaleAnimation = nil :: ScaleAnimation?
@@ -227,7 +227,7 @@ function NavButton:StopScaleLoop()
 end
 
 function NavButton:AnimateScaleTo(nextTarget: number)
-	local currentScale = CoerceScale(self.state.renderScale, DEFAULT_NORMAL_SCALE)
+	local currentScale = coerceScale(self.state.renderScale, DEFAULT_NORMAL_SCALE)
 	if math.abs(currentScale - nextTarget) <= SCALE_EPSILON then
 		self.scaleAnimation = nil
 		self:StopScaleLoop()
@@ -249,7 +249,7 @@ function NavButton:AnimateScaleTo(nextTarget: number)
 end
 
 function NavButton:SyncScaleTarget()
-	local nextTarget = GetScaleTarget(self.props, self.state)
+	local nextTarget = getScaleTarget(self.props, self.state)
 	if self.scaleTarget ~= nil and math.abs(self.scaleTarget - nextTarget) <= SCALE_EPSILON then
 		return
 	end
@@ -275,7 +275,7 @@ function NavButton:StepScaleAnimation()
 		self:StopScaleLoop()
 	end
 
-	if math.abs(CoerceScale(self.state.renderScale, DEFAULT_NORMAL_SCALE) - nextScale) <= SCALE_EPSILON then
+	if math.abs(coerceScale(self.state.renderScale, DEFAULT_NORMAL_SCALE) - nextScale) <= SCALE_EPSILON then
 		return
 	end
 
@@ -298,7 +298,7 @@ function NavButton:EmitActivated(inputObject: InputObject?)
 		route = GotRoute,
 		label = props.label,
 		selected = isSelected,
-		source = GetInputSource(inputObject),
+		source = getInputSource(inputObject),
 		timestamp = os.clock(),
 	}
 

@@ -31,7 +31,7 @@ local DEFAULT_SPRING: SpringOptions = {
 local DEFAULT_FROM_OFFSET = Vector2.new(-240, 0)
 local DEFAULT_TO_OFFSET = Vector2.zero
 
-local function CoerceVector2(valueRaw: any, fallback: Vector2): Vector2
+local function coerceVector2(valueRaw: any, fallback: Vector2): Vector2
 	if typeof(valueRaw) ~= "Vector2" then
 		return fallback
 	end
@@ -41,14 +41,14 @@ local function CoerceVector2(valueRaw: any, fallback: Vector2): Vector2
 	return valueRaw
 end
 
-local function CoerceTransparency(valueRaw: number): number
+local function coerceTransparency(valueRaw: number): number
 	return math.clamp(valueRaw, 0, 1)
 end
 
 local function useCoinEmerge(options: CoinEmergeOptions?): CoinEmergeState
 	local enabled = if options and options.enabled ~= nil then options.enabled else false
-	local fromOffset = CoerceVector2(if options then options.fromOffset else nil, DEFAULT_FROM_OFFSET)
-	local toOffset = CoerceVector2(if options then options.toOffset else nil, DEFAULT_TO_OFFSET)
+	local fromOffset = coerceVector2(if options then options.fromOffset else nil, DEFAULT_FROM_OFFSET)
+	local toOffset = coerceVector2(if options then options.toOffset else nil, DEFAULT_TO_OFFSET)
 	local spring = if options and options.spring ~= nil then options.spring else DEFAULT_SPRING
 	local targetRef = React.useRef(if enabled then 1 else 0)
 	local progress, setProgress = React.useState(targetRef.current)
@@ -74,7 +74,7 @@ local function useCoinEmerge(options: CoinEmergeOptions?): CoinEmergeState
 	local offset = fromOffset:Lerp(toOffset, progress)
 	local totalDistance = (toOffset - fromOffset).Magnitude
 	local remainingDistance = (toOffset - offset).Magnitude
-	local transparency = if totalDistance <= 0.0001 then 0 else CoerceTransparency(remainingDistance / totalDistance)
+	local transparency = if totalDistance <= 0.0001 then 0 else coerceTransparency(remainingDistance / totalDistance)
 
 	return {
 		progress = progress,

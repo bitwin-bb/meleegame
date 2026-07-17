@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local ManaServiceUtils = require("ManaServiceUtils")
 local PacketPayload = require("PacketPayload")
+local ServiceBag = require("ServiceBag")
 local ManaServicePackets = require("NetPacketsShared").ManaService
 
 local function sendPacket(methodName: string, ...: any)
@@ -59,6 +60,7 @@ type SignalObject = Signal.Signal<...any>
 type JanitorClass = any
 
 local ManaServiceClient = {}
+ManaServiceClient.ServiceName = "ManaServiceClient"
 
 local function applyPersistedManaSnapshotFromPlayerData(self: ManaServiceClient): boolean
 	if PlayerDataServiceClient.IsLoaded == nil or not PlayerDataServiceClient:IsLoaded() then
@@ -80,7 +82,10 @@ local function applyPersistedManaSnapshotFromPlayerData(self: ManaServiceClient)
 	return true
 end
 
-function ManaServiceClient.Init(self: ManaServiceClient)
+function ManaServiceClient.Init(self: ManaServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
@@ -116,7 +121,7 @@ function ManaServiceClient.ApplyState(self: ManaServiceClient, stateRaw: any)
 	self.stateChanged:Fire(ManaServiceUtils.CloneState(self.state))
 end
 
-function ManaServiceClient.RequestSync(self: ManaServiceClient)
+function ManaServiceClient.RequestSync(_self: ManaServiceClient)
 	sendPacket(ManaServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
@@ -132,8 +137,10 @@ function ManaServiceClient.Destroy(self: ManaServiceClient)
 	if self.janitor ~= nil then
 		self.janitor:Destroy()
 	end
+	self._serviceBag = nil
 end
 export type ManaServiceClient = typeof(ManaServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
 	localPlayer: Player,
 	janitor: JanitorClass,
 	state: ManaServiceState,

@@ -115,7 +115,7 @@ local function normalizeToken(value: string): string
 	return string.lower(normalized)
 end
 
-local function GetSlimeLabel(config: { [string]: any }): string
+local function getSlimeLabel(config: { [string]: any }): string
 	local candidates = {
 		config.slimeType,
 		config.variant,
@@ -139,7 +139,7 @@ local function isGreenVariant(slimeLabel: string): boolean
 	return normalized == "green" or normalized == "greenslime" or string.find(normalized, "greenslime", 1, true) ~= nil
 end
 
-local function GetFacingSign(valueRaw: any, fallback: number): number
+local function getFacingSign(valueRaw: any, fallback: number): number
 	local sign = if typeof(valueRaw) == "number" then math.sign(valueRaw) else 0
 	if sign == 0 then
 		sign = math.sign(fallback)
@@ -150,7 +150,7 @@ local function GetFacingSign(valueRaw: any, fallback: number): number
 	return sign
 end
 
-local function GetRootPart(model: Model?): BasePart?
+local function getRootPart(model: Model?): BasePart?
 	if model == nil then
 		return nil
 	end
@@ -173,7 +173,7 @@ local function GetRootPart(model: Model?): BasePart?
 	return nil
 end
 
-local function GetPlayerFromTarget(target: any): Player?
+local function getPlayerFromTarget(target: any): Player?
 	if target == nil then
 		return nil
 	end
@@ -205,7 +205,7 @@ local function GetPlayerFromTarget(target: any): Player?
 	return nil
 end
 
-local function GetPositionFromTarget(target: any): Vector3?
+local function getPositionFromTarget(target: any): Vector3?
 	if target == nil then
 		return nil
 	end
@@ -234,7 +234,7 @@ local function GetPositionFromTarget(target: any): Vector3?
 
 	if target:IsA("Player") then
 		local character = target.Character
-		local rootPart = GetRootPart(character)
+		local rootPart = getRootPart(character)
 		if rootPart then
 			return rootPart.Position
 		end
@@ -242,7 +242,7 @@ local function GetPositionFromTarget(target: any): Vector3?
 	end
 
 	if target:IsA("Model") then
-		local rootPart = GetRootPart(target)
+		local rootPart = getRootPart(target)
 		if rootPart then
 			return rootPart.Position
 		end
@@ -252,7 +252,7 @@ local function GetPositionFromTarget(target: any): Vector3?
 	if target:IsA("Humanoid") then
 		local character = target.Parent
 		if character and character:IsA("Model") then
-			local rootPart = GetRootPart(character)
+			local rootPart = getRootPart(character)
 			if rootPart then
 				return rootPart.Position
 			end
@@ -334,7 +334,7 @@ function Slime._enforce2DPlane(self: Slime)
 		if shouldRealign then
 			local fixedPosition = Vector3.new(planeX, rootPosition.Y, rootPosition.Z)
 			local lookVector = rootPart.CFrame.LookVector
-			self._facingSign = GetFacingSign(lookVector.Z, self._facingSign)
+			self._facingSign = getFacingSign(lookVector.Z, self._facingSign)
 			rootPart.CFrame = CFrame.new(fixedPosition)
 		end
 
@@ -358,7 +358,7 @@ function Slime._enforce2DPlane(self: Slime)
 
 	local fixedPosition = Vector3.new(planeX, pivotPosition.Y, pivotPosition.Z)
 	local lookVector = pivot.LookVector
-	self._facingSign = GetFacingSign(lookVector.Z, self._facingSign)
+	self._facingSign = getFacingSign(lookVector.Z, self._facingSign)
 
 	model:PivotTo(CFrame.new(fixedPosition))
 end
@@ -370,7 +370,7 @@ function Slime.SetAggroOnPlayer(self: Slime, enabled: boolean)
 	end
 
 	local currentTarget = self.currentTarget
-	if currentTarget ~= nil and GetPlayerFromTarget(currentTarget) ~= nil then
+	if currentTarget ~= nil and getPlayerFromTarget(currentTarget) ~= nil then
 		self:ClearTarget()
 	end
 end
@@ -385,7 +385,7 @@ function Slime._GetHopDestination(self: Slime): Vector3?
 	local hopDestination: Vector3? = nil
 	local currentTarget = self.currentTarget
 	if currentTarget ~= nil and self:IsTargetValid(currentTarget) then
-		local targetPosition = GetPositionFromTarget(currentTarget)
+		local targetPosition = getPositionFromTarget(currentTarget)
 		if targetPosition ~= nil then
 			targetPosition = self:_projectTo2DPlane(targetPosition)
 			local deltaZ = targetPosition.Z - currentPosition.Z
@@ -563,7 +563,7 @@ function Slime._GetEmbeddedRestState(self: Slime)
 		self:_refreshHopCollisionQueryParams()
 	end
 
-	local lookSign = GetFacingSign(self._facingSign, 1)
+	local lookSign = getFacingSign(self._facingSign, 1)
 	local lookDirection = Vector3.new(0, 0, lookSign)
 	local currentPosition = self:_projectTo2DPlane(rootPart.Position)
 	if not self:_hasBlockingOverlap(currentPosition, lookDirection) then
@@ -599,7 +599,7 @@ function Slime._applyHopTransform(self: Slime, positionRaw: any, velocityRaw: an
 		end
 	end
 	if lookSign == 0 then
-		lookSign = GetFacingSign(self._facingSign, 1)
+		lookSign = getFacingSign(self._facingSign, 1)
 	end
 	self._facingSign = lookSign
 
@@ -796,7 +796,7 @@ function Slime._slimeOnThink(self: Slime, dt: number)
 
 	if not self:_isAggroEnabled() then
 		local currentTarget = self.currentTarget
-		if currentTarget ~= nil and GetPlayerFromTarget(currentTarget) ~= nil then
+		if currentTarget ~= nil and getPlayerFromTarget(currentTarget) ~= nil then
 			self:ClearTarget()
 		end
 	end
@@ -865,7 +865,7 @@ function Slime.New(configRaw: SlimeConfig?): Slime
 	lifecycle.autoStart = false
 	config.lifecycle = lifecycle
 
-	local slimeLabel = GetSlimeLabel(config :: { [string]: any })
+	local slimeLabel = getSlimeLabel(config :: { [string]: any })
 	local isGreen = isGreenVariant(slimeLabel)
 
 	local aggroRaw = config.aggroOnPlayer
@@ -877,7 +877,7 @@ function Slime.New(configRaw: SlimeConfig?): Slime
 		acquireTarget = baseBehavior.acquireTarget,
 		onAttack = baseBehavior.onAttack,
 		shouldTarget = function(self: Slime, target: any): boolean
-			local targetPlayer = GetPlayerFromTarget(target)
+			local targetPlayer = getPlayerFromTarget(target)
 			if targetPlayer ~= nil and not self:_isAggroEnabled() then
 				return false
 			end
@@ -964,7 +964,7 @@ function Slime.New(configRaw: SlimeConfig?): Slime
 
 	if self.passiveUntilHit and not self.hasBeenHit then
 		local currentTarget = self.currentTarget
-		if currentTarget ~= nil and GetPlayerFromTarget(currentTarget) ~= nil then
+		if currentTarget ~= nil and getPlayerFromTarget(currentTarget) ~= nil then
 			self:ClearTarget()
 		end
 	end

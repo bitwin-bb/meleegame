@@ -211,7 +211,7 @@ function CameraServiceUtils.CoercePredictConfig(
 	}
 end
 
-local function CoerceSideViewConfigWithFallback(config: any, fallbackConfig: any): SideViewConfig
+local function coerceSideViewConfigWithFallback(config: any, fallbackConfig: any): SideViewConfig
 	local source = if typeof(config) == "table" then config else {} :: any
 	local defaultConfig = if typeof(fallbackConfig) == "table" then fallbackConfig else {} :: any
 	local defaultDistance = clampNumber((defaultConfig :: any).distance, 4, 200, 38)
@@ -266,13 +266,13 @@ local function CoerceSideViewConfigWithFallback(config: any, fallbackConfig: any
 end
 
 local DEFAULT_SIDE_VIEW_CONFIG: SideViewConfig =
-	CoerceSideViewConfigWithFallback(RAW_DEFAULT_SIDE_VIEW_CONFIG, RAW_DEFAULT_SIDE_VIEW_CONFIG)
+	coerceSideViewConfigWithFallback(RAW_DEFAULT_SIDE_VIEW_CONFIG, RAW_DEFAULT_SIDE_VIEW_CONFIG)
 
 CameraServiceUtils.DEFAULT_CAMERA_MODE = DEFAULT_CAMERA_MODE
 CameraServiceUtils.DEFAULT_SIDE_VIEW_CONFIG = DEFAULT_SIDE_VIEW_CONFIG
 
 function CameraServiceUtils.CoerceSideViewConfig(config: any): SideViewConfig
-	return CoerceSideViewConfigWithFallback(config, DEFAULT_SIDE_VIEW_CONFIG)
+	return coerceSideViewConfigWithFallback(config, DEFAULT_SIDE_VIEW_CONFIG)
 end
 
 function CameraServiceUtils.MergeSideViewConfig(base: SideViewConfig?, incoming: SideViewConfig?): SideViewConfig

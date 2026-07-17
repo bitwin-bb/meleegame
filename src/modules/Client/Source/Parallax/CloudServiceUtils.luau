@@ -63,7 +63,7 @@ local function trim(valueRaw: any): string
 	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw and valueRaw ~= math.huge and valueRaw ~= -math.huge then
 		value = valueRaw
@@ -77,7 +77,7 @@ local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, m
 	return value
 end
 
-local function CoerceImage(valueRaw: any): string
+local function coerceImage(valueRaw: any): string
 	local image = trim(valueRaw)
 	while string.find(image, "rbxassetid://rbxassetid://", 1, true) ~= nil do
 		image = string.gsub(image, "rbxassetid://rbxassetid://", "rbxassetid://")
@@ -96,6 +96,17 @@ local function collectSortedNumericKeys(source: { [any]: any }): { number }
 	return keys
 end
 
+local function collectSortedStringKeys(source: { [any]: any }): { string }
+	local keys = {}
+	for key in source do
+		if typeof(key) == "string" then
+			table.insert(keys, key)
+		end
+	end
+	table.sort(keys)
+	return keys
+end
+
 local function appendAssetDefinition(
 	output: { CloudAssetDefinition },
 	sourceRaw: any,
@@ -103,7 +114,7 @@ local function appendAssetDefinition(
 	seen: { [string]: boolean }
 )
 	if typeof(sourceRaw) == "string" then
-		local image = CoerceImage(sourceRaw)
+		local image = coerceImage(sourceRaw)
 		if image == "" or seen[image] then
 			return
 		end
@@ -122,7 +133,7 @@ local function appendAssetDefinition(
 	end
 
 	local source = sourceRaw :: { [any]: any }
-	local image = CoerceImage(source.image or source.asset)
+	local image = coerceImage(source.image or source.asset)
 	if image ~= "" then
 		if seen[image] then
 			return
@@ -131,7 +142,7 @@ local function appendAssetDefinition(
 		table.insert(output, {
 			id = trim(source.id) ~= "" and trim(source.id) or fallbackId,
 			image = image,
-			imageAspectRatio = CoerceNumber(source.imageAspectRatio or source.aspectRatio, 2.75, 0.1, 32),
+			imageAspectRatio = coerceNumber(source.imageAspectRatio or source.aspectRatio, 2.75, 0.1, 32),
 			tint = if typeof(source.tint) == "Color3" then source.tint else Color3.new(1, 1, 1),
 		})
 		return
@@ -139,6 +150,9 @@ local function appendAssetDefinition(
 
 	for _, key in collectSortedNumericKeys(source) do
 		appendAssetDefinition(output, source[key], `{fallbackId}_{key}`, seen)
+	end
+	for _, key in collectSortedStringKeys(source) do
+		appendAssetDefinition(output, source[key], key, seen)
 	end
 end
 

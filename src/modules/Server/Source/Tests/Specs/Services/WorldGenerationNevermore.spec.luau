@@ -61,7 +61,75 @@ return function()
 
 			expect(config.backgroundLayerCount).to.equal(1)
 			expect(config.tileSize).to.equal(2)
+			expect(config.tileDepth).to.equal(2)
 			expect(state.tileSize).to.equal(2)
+			expect(state.tileDepth).to.equal(2)
+			expect(WorldGenerationServiceUtils.CoerceConfig({ tileDepth = 12 }).tileDepth).to.equal(2)
+			expect(WorldGenerationServiceUtils.CreateState({ tileDepth = 12 }).tileDepth).to.equal(2)
+		end)
+
+		it("caps every exposed ledge face and its buried inner corner", function()
+			local tileId = WorldGeneration.TILE_ID
+			local biomeId = WorldGeneration.BIOME_ID
+			local biomeType = WorldGeneration.BIOME_TYPE
+			local width = 4
+			local height = 5
+			local function createLedge(substrateTileId: number, surfaceBiomeId: number)
+				local tiles = table.create(width * height, tileId.AIR)
+				local biomeIds = table.create(width * height, surfaceBiomeId)
+				local biomeTypes = table.create(width * height, biomeType.NORMAL)
+				local function setTile(localX: number, localY: number)
+					tiles[computeTileIndex(localX, localY, width)] = substrateTileId
+				end
+
+				for localY = 0, 1 do
+					for localX = 0, width - 1 do
+						setTile(localX, localY)
+					end
+				end
+				for localY = 2, 3 do
+					setTile(0, localY)
+					setTile(1, localY)
+				end
+
+				return tiles, biomeIds, biomeTypes
+			end
+			local function expectLedgeCaps(substrateTileId: number, grassTileId: number, surfaceBiomeId: number)
+				local tiles, biomeIds, biomeTypes = createLedge(substrateTileId, surfaceBiomeId)
+				local generator = setmetatable({
+					tileId = tileId,
+					biomeId = biomeId,
+					biomeType = biomeType,
+				}, {
+					__index = WorldGeneration,
+				})
+				local changedCount = (WorldGeneration :: any).ApplyExposedSurfaceCaps(
+					generator,
+					tiles,
+					biomeIds,
+					biomeTypes,
+					0,
+					0,
+					width,
+					height,
+					function()
+						return substrateTileId
+					end
+				)
+
+				expect(changedCount).to.equal(6)
+				expect(tiles[computeTileIndex(0, 3, width)]).to.equal(grassTileId)
+				expect(tiles[computeTileIndex(1, 3, width)]).to.equal(grassTileId)
+				expect(tiles[computeTileIndex(1, 2, width)]).to.equal(grassTileId)
+				expect(tiles[computeTileIndex(2, 1, width)]).to.equal(grassTileId)
+				expect(tiles[computeTileIndex(3, 1, width)]).to.equal(grassTileId)
+				expect(tiles[computeTileIndex(0, 2, width)]).to.equal(substrateTileId)
+				expect(tiles[computeTileIndex(0, 1, width)]).to.equal(substrateTileId)
+				expect(tiles[computeTileIndex(1, 1, width)]).to.equal(grassTileId)
+			end
+
+			expectLedgeCaps(tileId.DIRT, tileId.GRASS, biomeId.FOREST)
+			expectLedgeCaps(tileId.MUD, tileId.JUNGLE_GRASS, biomeId.JUNGLE)
 		end)
 
 		it("builds chunk visuals when prop templates are unavailable", function()
@@ -150,7 +218,7 @@ return function()
 			expect(boundsCFrame.Position.Y).to.equal(0)
 			expect(boundsSize.Z).to.equal(128)
 			expect(boundsSize.Y).to.equal(128)
-			expect(boundsSize.X).to.equal(16)
+			expect(boundsSize.X).to.equal(8)
 		end)
 
 		it("does not build background terrain layers", function()
@@ -206,10 +274,7 @@ return function()
 
 			local worldGenerationServiceClient = WorldGenerationServiceClient :: any
 			local model, _partCount, _terrainHoverFolder, terrainParts, backgroundPartsByLayer =
-				worldGenerationServiceClient.BuildChunkVisualModel(
-				client,
-				snapshot
-				)
+				worldGenerationServiceClient.BuildChunkVisualModel(client, snapshot)
 			worldGenerationServiceClient.ReleaseTerrainVisualParts(client, terrainParts)
 			for _, backgroundParts in backgroundPartsByLayer do
 				worldGenerationServiceClient.ReleaseTerrainVisualParts(client, backgroundParts)
@@ -268,12 +333,14 @@ return function()
 				"CactusViewport",
 				baseCFrame,
 				2,
-				"Prop"
+				"Cactus"
 			)
 
 			expect(runtime.anchor.Size.X).to.equal(2)
 			expect(runtime.surfaceGui.Parent).to.equal(runtime.anchor)
-			expect(runtime.surfaceGui.Adornee).to.equal(nil)
+			expect(runtime.surfaceGui.Adornee).to.equal(runtime.anchor)
+			expect(runtime.surfaceGui.ZOffset).to.equal(0)
+			expect(runtime.surfaceGui.AlwaysOnTop).to.equal(true)
 
 			local content = Instance.new("Model")
 			local part = Instance.new("Part")
@@ -281,14 +348,23 @@ return function()
 			part.Size = Vector3.new(2, 4, 6)
 			part.CFrame = CFrame.new(0, 2, 0)
 			part.Parent = content
-			local finalized = (WorldGenerationServiceClient :: any).FinalizeViewportPropRuntime(client, runtime, content)
+			content.PrimaryPart = part
+			local asymmetricCanopy = Instance.new("Part")
+			asymmetricCanopy.Anchored = true
+			asymmetricCanopy.Size = Vector3.new(2, 2, 4)
+			asymmetricCanopy.CFrame = CFrame.new(0, 5, 4)
+			asymmetricCanopy.Parent = content
+			local finalized = (WorldGenerationServiceClient :: any).FinalizeViewportPropRuntime(
+				client,
+				runtime,
+				content
+			)
 
 			expect(finalized).to.equal(true)
 			expect(runtime.anchor.Size.X).to.equal(2)
 			expect(runtime.anchor.CFrame.Position.X).to.equal(baseCFrame.Position.X)
-			expect(runtime.anchor.CFrame.Position.X + runtime.anchor.Size.X * 0.5).to.equal(
-				baseCFrame.Position.X + 1
-			)
+			expect(runtime.anchor.CFrame.Position.X + runtime.anchor.Size.X * 0.5).to.equal(baseCFrame.Position.X + 1)
+			expect(part.CFrame.Position.Z).to.equal(0)
 			expect(runtime.surfaceGui.Parent).to.equal(runtime.anchor)
 
 			local surfaceGui = runtime.surfaceGui
@@ -570,6 +646,7 @@ return function()
 			expect(hoverProxyPart.CanQuery).to.equal(false)
 			expect(hoverProxyPart.Size.Y).to.equal(state.tileSize)
 			expect(hoverProxyPart.Size.Z).to.equal(state.tileSize)
+			expect(hoverProxyPart.Size.X).to.equal(2)
 			expect(hoverProxyPart.CFrame).to.equal(part.CFrame * CFrame.new(0, state.tileSize, state.tileSize * 0.5))
 			expect(#runtime.replacementParts).to.equal(0)
 			expect(part.Transparency).to.equal(0.35)

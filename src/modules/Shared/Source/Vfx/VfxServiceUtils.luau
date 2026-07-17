@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local HttpService = game:GetService("HttpService")
@@ -6,8 +5,14 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Sift: any = require(ReplicatedStorage.Packages.Sift)
 
 local WorkspaceFolders = require("WorkspaceFolders")
+local String = require("String")
 
 local VFXServiceUtils = {}
+
+local function createRuntimeInstanceName(): string
+	local guid = String.removePostfix(String.removePrefix(HttpService:GenerateGUID(true), "{"), "}")
+	return string.format("%03d", (tonumber(string.sub(guid, 1, 8), 16) or 0) % 1000)
+end
 
 export type VFXTemplateKind = "Part" | "Attachment"
 
@@ -53,7 +58,7 @@ local function token(valueRaw: any): string
 	return string.gsub(value, "[%s_%-%.]+", "")
 end
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -67,7 +72,7 @@ local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, m
 	return value
 end
 
-local function CoerceIntegerOrNil(valueRaw: any, minimum: number, maximum: number): number?
+local function coerceIntegerOrNil(valueRaw: any, minimum: number, maximum: number): number?
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return nil
 	end
@@ -99,7 +104,7 @@ local function splitPathSegments(pathRaw: string): { string }
 	return segments
 end
 
-local function GetEffectsRoot(): Instance?
+local function getEffectsRoot(): Instance?
 	local assets = ReplicatedStorage:FindFirstChild("Assets")
 	if assets == nil then
 		return nil
@@ -112,7 +117,7 @@ local function GetEffectsRoot(): Instance?
 	return nil
 end
 
-local function GetDescendantByPath(root: Instance?, pathRaw: string): Instance?
+local function getDescendantByPath(root: Instance?, pathRaw: string): Instance?
 	local segments = splitPathSegments(pathRaw)
 	if root == nil or #segments <= 0 then
 		return nil
@@ -216,12 +221,12 @@ function VFXServiceUtils.GetEffectTemplate(effectSourceRaw: any): Instance?
 		return nil
 	end
 
-	local effectsRoot = GetEffectsRoot()
+	local effectsRoot = getEffectsRoot()
 	if effectsRoot == nil then
 		error(MISSING_ASSET_ERROR, 0)
 	end
 
-	local byPath = GetDescendantByPath(effectsRoot, effectName)
+	local byPath = getDescendantByPath(effectsRoot, effectName)
 	if VFXServiceUtils.GetTemplateKind(byPath) ~= nil then
 		return byPath
 	end
@@ -275,7 +280,7 @@ function VFXServiceUtils.CoercePlaybackOptions(optionsRaw: any): VFXPlaybackOpti
 		followInstance = target
 	end
 
-	local enabledDuration = CoerceNumber(
+	local enabledDuration = coerceNumber(
 		if (source :: any).enabledDuration ~= nil
 			then (source :: any).enabledDuration
 			else if (source :: any).duration ~= nil then (source :: any).duration else (source :: any).emitWindow,
@@ -284,7 +289,7 @@ function VFXServiceUtils.CoercePlaybackOptions(optionsRaw: any): VFXPlaybackOpti
 		VFXServiceUtils.MAX_DURATION
 	)
 	local followDuration =
-		CoerceNumber((source :: any).followDuration, enabledDuration, 0, VFXServiceUtils.MAX_DURATION)
+		coerceNumber((source :: any).followDuration, enabledDuration, 0, VFXServiceUtils.MAX_DURATION)
 
 	local cleanupDelayRaw = (source :: any).cleanupDelay
 	if cleanupDelayRaw == nil then
@@ -313,7 +318,7 @@ function VFXServiceUtils.CoercePlaybackOptions(optionsRaw: any): VFXPlaybackOpti
 		position = position,
 		cframe = cframe,
 		offset = offset,
-		emitCount = CoerceIntegerOrNil((source :: any).emitCount, 1, VFXServiceUtils.MAX_EMIT_COUNT),
+		emitCount = coerceIntegerOrNil((source :: any).emitCount, 1, VFXServiceUtils.MAX_EMIT_COUNT),
 		enabledDuration = enabledDuration,
 		followDuration = if followInstance ~= nil then followDuration else 0,
 		cleanupDelay = cleanupDelay,
@@ -426,7 +431,7 @@ end
 
 function VFXServiceUtils.CreateRuntimeCarrier(_effectNameRaw: any): Part
 	local carrier = Instance.new("Part")
-	carrier.Name = HttpService:GenerateGUID(false)
+	carrier.Name = createRuntimeInstanceName()
 	carrier.Size = Vector3.new(0.2, 0.2, 0.2)
 	carrier.Transparency = 1
 	carrier.Material = Enum.Material.SmoothPlastic
@@ -513,7 +518,7 @@ function VFXServiceUtils.EmitRuntimeParticles(runtimeRootRaw: any, emitCountRaw:
 		return
 	end
 
-	local emitCount = CoerceIntegerOrNil(emitCountRaw, 1, VFXServiceUtils.MAX_EMIT_COUNT)
+	local emitCount = coerceIntegerOrNil(emitCountRaw, 1, VFXServiceUtils.MAX_EMIT_COUNT)
 	if emitCount == nil then
 		return
 	end

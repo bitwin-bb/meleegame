@@ -1,13 +1,18 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local HttpService = game:GetService("HttpService")
 
+local String = require("String")
 local TileComponent = require("Tile")
 local WorkspaceFolders = require("WorkspaceFolders")
 
 local Debug = {}
 Debug.__index = Debug
+
+local function createRuntimeInstanceName(): string
+	local guid = String.removePostfix(String.removePrefix(HttpService:GenerateGUID(true), "{"), "}")
+	return string.format("%03d", (tonumber(string.sub(guid, 1, 8), 16) or 0) % 1000)
+end
 
 export type Debug = typeof(setmetatable({} :: any, Debug))
 
@@ -166,7 +171,7 @@ function Debug.DrawChunkBox(self: Debug, chunkKey: string, center: Vector3, size
 	local part = self.chunkVisuals[chunkKey]
 	if part == nil or part.Parent == nil then
 		part = TileComponent.CreatePart({
-			name = HttpService:GenerateGUID(false),
+			name = createRuntimeInstanceName(),
 			anchored = true,
 			canCollide = false,
 			canQuery = false,

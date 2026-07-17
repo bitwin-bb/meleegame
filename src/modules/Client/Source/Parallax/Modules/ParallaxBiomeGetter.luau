@@ -29,7 +29,7 @@ local TOKEN_STYLES = Table.deepReadonly({
 	surface = Styles.Overworld,
 })
 
-local function GetStyleFromToken(token: string): number?
+local function getStyleFromToken(token: string): number?
 	return TOKEN_STYLES[token]
 end
 
@@ -60,13 +60,13 @@ local function normalizeToken(valueRaw: any): string
 	return value
 end
 
-local function GetStyleFromValue(valueRaw: any, catalog: any?): number?
+local function getStyleFromValue(valueRaw: any, catalog: any?): number?
 	local token = normalizeToken(valueRaw)
 	if token == "" then
 		return nil
 	end
 
-	local style = GetStyleFromToken(token)
+	local style = getStyleFromToken(token)
 	if style ~= nil then
 		return style
 	end
@@ -74,25 +74,25 @@ local function GetStyleFromValue(valueRaw: any, catalog: any?): number?
 	if typeof(catalog) == "table" and typeof(catalog.aliases) == "table" then
 		local aliasTarget = catalog.aliases[token]
 		if typeof(aliasTarget) == "string" then
-			return GetStyleFromToken(normalizeToken(aliasTarget))
+			return getStyleFromToken(normalizeToken(aliasTarget))
 		end
 	end
 
 	return nil
 end
 
-local function GetCorruptionTypeStyle(sample: { [string]: any }, catalog: any?): number?
+local function getCorruptionTypeStyle(sample: { [string]: any }, catalog: any?): number?
 	if sample.biomeType == BIOME_TYPE_CORRUPTION then
 		return Styles.Corruption
 	end
 
-	local biomeTypeNameStyle = GetStyleFromValue(sample.biomeTypeName, catalog)
+	local biomeTypeNameStyle = getStyleFromValue(sample.biomeTypeName, catalog)
 	if biomeTypeNameStyle == Styles.Corruption then
 		return Styles.Corruption
 	end
 
 	if typeof(sample.biomeType) == "string" then
-		local biomeTypeStyle = GetStyleFromValue(sample.biomeType, catalog)
+		local biomeTypeStyle = getStyleFromValue(sample.biomeType, catalog)
 		if biomeTypeStyle == Styles.Corruption then
 			return Styles.Corruption
 		end
@@ -101,23 +101,23 @@ local function GetCorruptionTypeStyle(sample: { [string]: any }, catalog: any?):
 	return nil
 end
 
-local function GetExplicitStyle(sample: { [string]: any }, catalog: any?): number?
-	local corruptionTypeStyle = GetCorruptionTypeStyle(sample, catalog)
+local function getExplicitStyle(sample: { [string]: any }, catalog: any?): number?
+	local corruptionTypeStyle = getCorruptionTypeStyle(sample, catalog)
 	if corruptionTypeStyle ~= nil then
 		return corruptionTypeStyle
 	end
 
-	local biomeNameStyle = GetStyleFromValue(sample.biomeName, catalog)
+	local biomeNameStyle = getStyleFromValue(sample.biomeName, catalog)
 	if biomeNameStyle ~= nil then
 		return biomeNameStyle
 	end
 
-	local biomeIdStyle = GetStyleFromValue(sample.biomeId, catalog)
+	local biomeIdStyle = getStyleFromValue(sample.biomeId, catalog)
 	if biomeIdStyle ~= nil then
 		return biomeIdStyle
 	end
 
-	local surfaceBiomeIdStyle = GetStyleFromValue(sample.surfaceBiomeId, catalog)
+	local surfaceBiomeIdStyle = getStyleFromValue(sample.surfaceBiomeId, catalog)
 	if surfaceBiomeIdStyle ~= nil then
 		return surfaceBiomeIdStyle
 	end
@@ -182,7 +182,7 @@ end
 
 function Biome.GetBgStyle(sampleRaw: any, catalog: any?): number
 	local sample = if typeof(sampleRaw) == "table" then sampleRaw :: { [string]: any } else {} :: { [string]: any }
-	local explicitStyle = GetExplicitStyle(sample, catalog)
+	local explicitStyle = getExplicitStyle(sample, catalog)
 	if explicitStyle ~= nil then
 		return explicitStyle
 	end

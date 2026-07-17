@@ -77,7 +77,7 @@ local function worldToChunk(value: number, chunkSize: number): number
 	return math.floor(value / chunkSize)
 end
 
-local function CoerceMutation(raw: any): TileMutation?
+local function coerceMutation(raw: any): TileMutation?
 	if typeof(raw) ~= "table" then
 		return nil
 	end
@@ -151,7 +151,7 @@ function WorldMutationQueue._getOrCreateBucket(self: WorldMutationQueue, chunkX:
 end
 
 function WorldMutationQueue.Enqueue(self: WorldMutationQueue, mutationRaw: any): boolean
-	local mutation = CoerceMutation(mutationRaw)
+	local mutation = coerceMutation(mutationRaw)
 	if mutation == nil then
 		return false
 	end
@@ -346,7 +346,7 @@ function WorldMutationQueue.Update(
 	return flushed
 end
 
-function WorldMutationQueue.EncodeBatch(self: WorldMutationQueue, batch: FlushBatch, compressRaw: any?): string
+function WorldMutationQueue.EncodeBatch(_self: WorldMutationQueue, batch: FlushBatch, compressRaw: any?): string
 	local shouldCompress = compressRaw ~= false
 	local payload = {
 		sequence = batch.sequence,
@@ -360,7 +360,7 @@ function WorldMutationQueue.EncodeBatch(self: WorldMutationQueue, batch: FlushBa
 	return Codec.SerializeDeterministic(payload)
 end
 
-function WorldMutationQueue.DecodeBatch(self: WorldMutationQueue, payloadRaw: any, compressedRaw: any?): FlushBatch?
+function WorldMutationQueue.DecodeBatch(_self: WorldMutationQueue, payloadRaw: any, compressedRaw: any?): FlushBatch?
 	if typeof(payloadRaw) ~= "string" then
 		return nil
 	end

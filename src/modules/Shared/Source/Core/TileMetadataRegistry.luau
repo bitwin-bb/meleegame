@@ -53,7 +53,7 @@ local function clampInteger(valueRaw: any, fallback: number, minValue: number, m
 	return value
 end
 
-local function CoerceDrop(dropRaw: any): DropDefinition?
+local function coerceDrop(dropRaw: any): DropDefinition?
 	if typeof(dropRaw) ~= "table" then
 		return nil
 	end
@@ -145,7 +145,7 @@ function TileMetadataRegistry.Register(self: TileMetadataRegistry, tileIdRaw: an
 	local drops = {}
 	if typeof(metadataRaw.drops) == "table" then
 		for _, rawDrop in metadataRaw.drops do
-			local drop = CoerceDrop(rawDrop)
+			local drop = coerceDrop(rawDrop)
 			if drop ~= nil then
 				drops[#drops + 1] = drop
 			end

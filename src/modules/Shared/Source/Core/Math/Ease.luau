@@ -9,41 +9,41 @@ local Ease = {}
 
 local HALF_PI = math.pi * 0.5
 
-local function GetAlpha(alpha: number): number
+local function getAlpha(alpha: number): number
 	return Num.Saturate(alpha)
 end
 
 function Ease.Linear(alpha: number): number
-	return GetAlpha(alpha)
+	return getAlpha(alpha)
 end
 
 function Ease.InSine(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	return 1 - math.cos(x * HALF_PI)
 end
 
 function Ease.OutSine(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	return math.sin(x * HALF_PI)
 end
 
 function Ease.InOutSine(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	return -(math.cos(math.pi * x) - 1) * 0.5
 end
 
 function Ease.InQuad(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	return x * x
 end
 
 function Ease.OutQuad(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	return 1 - (1 - x) * (1 - x)
 end
 
 function Ease.InOutQuad(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	if x < 0.5 then
 		return 2 * x * x
 	end
@@ -51,17 +51,17 @@ function Ease.InOutQuad(alpha: number): number
 end
 
 function Ease.InCubic(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	return x * x * x
 end
 
 function Ease.OutCubic(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	return 1 - (1 - x) ^ 3
 end
 
 function Ease.InOutCubic(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	if x < 0.5 then
 		return 4 * x * x * x
 	end
@@ -69,17 +69,17 @@ function Ease.InOutCubic(alpha: number): number
 end
 
 function Ease.InQuart(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	return x ^ 4
 end
 
 function Ease.OutQuart(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	return 1 - (1 - x) ^ 4
 end
 
 function Ease.InOutQuart(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	if x < 0.5 then
 		return 8 * x ^ 4
 	end
@@ -87,17 +87,17 @@ function Ease.InOutQuart(alpha: number): number
 end
 
 function Ease.InQuint(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	return x ^ 5
 end
 
 function Ease.OutQuint(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	return 1 - (1 - x) ^ 5
 end
 
 function Ease.InOutQuint(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	if x < 0.5 then
 		return 16 * x ^ 5
 	end
@@ -105,7 +105,7 @@ function Ease.InOutQuint(alpha: number): number
 end
 
 function Ease.InExpo(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	if x == 0 then
 		return 0
 	end
@@ -113,7 +113,7 @@ function Ease.InExpo(alpha: number): number
 end
 
 function Ease.OutExpo(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	if x == 1 then
 		return 1
 	end
@@ -121,7 +121,7 @@ function Ease.OutExpo(alpha: number): number
 end
 
 function Ease.InOutExpo(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	if x == 0 or x == 1 then
 		return x
 	end
@@ -132,17 +132,17 @@ function Ease.InOutExpo(alpha: number): number
 end
 
 function Ease.InCirc(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	return 1 - math.sqrt(1 - x * x)
 end
 
 function Ease.OutCirc(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	return math.sqrt(1 - (x - 1) * (x - 1))
 end
 
 function Ease.InOutCirc(alpha: number): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	if x < 0.5 then
 		return (1 - math.sqrt(1 - (2 * x) ^ 2)) * 0.5
 	end
@@ -150,14 +150,14 @@ function Ease.InOutCirc(alpha: number): number
 end
 
 function Ease.InBack(alpha: number, overshoot: number?): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	local s = overshoot or 1.70158
 	local c = s + 1
 	return c * x * x * x - s * x * x
 end
 
 function Ease.OutBack(alpha: number, overshoot: number?): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	local s = overshoot or 1.70158
 	local c = s + 1
 	local y = x - 1
@@ -165,7 +165,7 @@ function Ease.OutBack(alpha: number, overshoot: number?): number
 end
 
 function Ease.InOutBack(alpha: number, overshoot: number?): number
-	local x = GetAlpha(alpha)
+	local x = getAlpha(alpha)
 	local s = (overshoot or 1.70158) * 1.525
 	if x < 0.5 then
 		local y = 2 * x

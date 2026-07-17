@@ -37,7 +37,7 @@ local function smoothstep(alphaRaw: number): number
 	return alpha * alpha * (3 - 2 * alpha)
 end
 
-local function CoerceScale(valueRaw: any, fallback: number): number
+local function coerceScale(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
@@ -46,8 +46,8 @@ end
 
 local function useDeathScreen(options: DeathScreenOptions?): DeathScreenAppearance
 	local enabled = if options and options.enabled ~= nil then options.enabled else false
-	local minScale = CoerceScale(if options then options.minScale else nil, DEFAULT_MIN_SCALE)
-	local maxScale = math.max(minScale, CoerceScale(if options then options.maxScale else nil, DEFAULT_MAX_SCALE))
+	local minScale = coerceScale(if options then options.minScale else nil, DEFAULT_MIN_SCALE)
+	local maxScale = math.max(minScale, coerceScale(if options then options.maxScale else nil, DEFAULT_MAX_SCALE))
 	local spring = if options and options.spring ~= nil then options.spring else DEFAULT_SPRING
 
 	local targetRef = React.useRef(if enabled then 1 else 0)

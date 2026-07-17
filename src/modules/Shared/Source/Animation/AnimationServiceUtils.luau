@@ -2,16 +2,20 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-
 local HttpService = game:GetService("HttpService")
 local Sift: any = require(ReplicatedStorage.Packages.Sift)
 
 local Animations = require("Animations")
 local Audio = require("Audio")
-local AudioServiceUtils =
-	require(script:FindFirstAncestor("game").Shared.Source.Audio:WaitForChild("AudioServiceUtils"))
+local AudioServiceUtils = require("AudioServiceUtils")
+local String = require("String")
 
 local AnimationServiceUtils = {}
+
+local function createRuntimeInstanceName(): string
+	local guid = String.removePostfix(String.removePrefix(HttpService:GenerateGUID(true), "{"), "}")
+	return string.format("%03d", (tonumber(string.sub(guid, 1, 8), 16) or 0) % 1000)
+end
 
 export type AnimationClipName = string
 
@@ -449,7 +453,7 @@ local function hasFootstepSounds(config: FootstepSoundConfig?): boolean
 	return #config.soundAssetIds > 0
 end
 
-local function GetAwSoundAssetIds(source: any): any
+local function getRawSoundAssetIds(source: any): any
 	if source == nil then
 		return nil
 	end
@@ -462,7 +466,7 @@ local function GetAwSoundAssetIds(source: any): any
 	return nil
 end
 
-local function CoerceSoundAssetIds(rawSoundAssetIds: any, fallback: FootstepSoundConfig?): { string }
+local function coerceSoundAssetIds(rawSoundAssetIds: any, fallback: FootstepSoundConfig?): { string }
 	local soundAssetIds: { string } = {}
 
 	if rawSoundAssetIds then
@@ -582,7 +586,7 @@ function AnimationServiceUtils.CoerceFootstepSoundConfig(
 		return nil
 	end
 
-	local soundAssetIds = CoerceSoundAssetIds(GetAwSoundAssetIds(source), defaultValue)
+	local soundAssetIds = coerceSoundAssetIds(getRawSoundAssetIds(source), defaultValue)
 
 	local playbackMin = clampNumber(
 		if source then (source :: any).playbackSpeedMin else nil,
@@ -633,24 +637,24 @@ function AnimationServiceUtils.CoerceProfile(profile: any, fallback: AnimationPr
 	local animationsSource = if typeof((source :: any).animations) == "table"
 		then (source :: any).animations
 		else {} :: any
-	local CoerceDAnimations: { [AnimationClipName]: AnimationClipConfig } = {}
+	local coercedAnimations: { [AnimationClipName]: AnimationClipConfig } = {}
 
 	for clipName, defaultClip in defaultProfile.animations do
-		local CoerceD =
+		local coerced =
 			AnimationServiceUtils.CoerceAnimationClipConfig((animationsSource :: any)[clipName], defaultClip)
-		if CoerceD then
-			CoerceDAnimations[clipName] = CoerceD
+		if coerced then
+			coercedAnimations[clipName] = coerced
 		end
 	end
 
 	for clipName, rawClip in animationsSource do
-		if CoerceDAnimations[clipName] then
+		if coercedAnimations[clipName] then
 			continue
 		end
 
-		local CoerceD = AnimationServiceUtils.CoerceAnimationClipConfig(rawClip, nil)
-		if CoerceD then
-			CoerceDAnimations[clipName] = CoerceD
+		local coerced = AnimationServiceUtils.CoerceAnimationClipConfig(rawClip, nil)
+		if coerced then
+			coercedAnimations[clipName] = coerced
 		end
 	end
 
@@ -666,9 +670,9 @@ function AnimationServiceUtils.CoerceProfile(profile: any, fallback: AnimationPr
 				continue
 			end
 			local base = footstepSounds[materialName]
-			local CoerceD = AnimationServiceUtils.CoerceFootstepSoundConfig(rawSoundConfig, base)
-			if CoerceD then
-				footstepSounds[materialName] = CoerceD
+			local coerced = AnimationServiceUtils.CoerceFootstepSoundConfig(rawSoundConfig, base)
+			if coerced then
+				footstepSounds[materialName] = coerced
 			end
 		end
 	end
@@ -690,7 +694,7 @@ function AnimationServiceUtils.CoerceProfile(profile: any, fallback: AnimationPr
 		),
 		footstepCooldown = clampNumber((source :: any).footstepCooldown, 0, 1, defaultProfile.footstepCooldown),
 		jumpCooldown = clampNumber((source :: any).jumpCooldown, 0, 1, defaultProfile.jumpCooldown),
-		animations = CoerceDAnimations,
+		animations = coercedAnimations,
 		footstepMarkers = markers,
 		footstepKeyframes = keyframes,
 		jumpMarkers = jumpMarkers,
@@ -809,7 +813,7 @@ function AnimationServiceUtils.CreateAnimationTrack(animator: Animator, clip: An
 	end
 
 	local animation = Instance.new("Animation")
-	animation.Name = HttpService:GenerateGUID(false)
+	animation.Name = createRuntimeInstanceName()
 	animation.AnimationId = animationId
 
 	local success, trackOrError = pcall(function()
@@ -944,8 +948,7 @@ function AnimationServiceUtils.GetJumpSoundAssetIdAndOptions(
 	return soundAssetId, options
 end
 
-AnimationServiceUtils.GetFootstepSoundTemplateAndOptions =
-	AnimationServiceUtils.GetFootstepSoundAssetIdAndOptions
+AnimationServiceUtils.GetFootstepSoundTemplateAndOptions = AnimationServiceUtils.GetFootstepSoundAssetIdAndOptions
 AnimationServiceUtils.GetJumpSoundTemplateAndOptions = AnimationServiceUtils.GetJumpSoundAssetIdAndOptions
 
 return AnimationServiceUtils

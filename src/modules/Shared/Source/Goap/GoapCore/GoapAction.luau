@@ -29,7 +29,7 @@ export type Action = typeof(setmetatable(
 	Action
 ))
 
-local function CoerceCost(costRaw: any, fallback: number): number
+local function coerceCost(costRaw: any, fallback: number): number
 	if typeof(costRaw) ~= "number" or costRaw ~= costRaw then
 		return fallback
 	end
@@ -40,7 +40,7 @@ function Action.new(configRaw: any?): Action
 	local config = if typeof(configRaw) == "table" then Table.copy(configRaw) else {}
 	local self = setmetatable({
 		Name = if typeof(config.Name) == "string" and config.Name ~= "" then config.Name else "Action",
-		Cost = CoerceCost(config.Cost, 1),
+		Cost = coerceCost(config.Cost, 1),
 		Preconditions = WorldState.new(config.Preconditions),
 		Effects = WorldState.new(config.Effects),
 		maid = Maid.new(),
@@ -102,7 +102,7 @@ end
 
 function Action.GetCost(self: Action, agent: any): number
 	if self.getCost ~= nil then
-		return CoerceCost(self.getCost(self, agent), self.Cost)
+		return coerceCost(self.getCost(self, agent), self.Cost)
 	end
 	return self.Cost
 end

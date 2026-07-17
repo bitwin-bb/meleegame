@@ -5,10 +5,10 @@ if script:GetAttribute("RunTests") == true then
 
 	local PACKAGE_NAME = "AquariaBackup"
 	local PACKAGE_LOAD_TIMEOUT_SECONDS = 10
-	local PROJECT_loader_LINK_NAME = "loader"
-	local NEVERMORE_loader_LINK_NAME = "loader"
+	local PROJECT_LOADER_LINK_NAME = "loader"
+	local NEVERMORE_LOADER_LINK_NAME = "loader"
 
-	local function GetPackageRoot(): Instance
+	local function getPackageRoot(): Instance
 		local deadline = os.clock() + PACKAGE_LOAD_TIMEOUT_SECONDS
 
 		while os.clock() < deadline do
@@ -22,7 +22,7 @@ if script:GetAttribute("RunTests") == true then
 		error(`[runTests] Missing {PACKAGE_NAME}.`)
 	end
 
-	local packageRoot = GetPackageRoot()
+	local packageRoot = getPackageRoot()
 
 	local gameRoot = packageRoot:FindFirstChild("game")
 		or packageRoot:WaitForChild("game", PACKAGE_LOAD_TIMEOUT_SECONDS)
@@ -65,15 +65,15 @@ if script:GetAttribute("RunTests") == true then
 
 	local loaderLinkUtils = require(loader.LoaderLink.LoaderLinkUtils)
 	local function shouldAddProjectloaderLink(container: Instance): boolean
-		if container:FindFirstChild(PROJECT_loader_LINK_NAME) ~= nil then
+		if container:FindFirstChild(PROJECT_LOADER_LINK_NAME) ~= nil then
 			return false
 		end
 
 		for _, child in container:GetChildren() do
 			if
 				child:IsA("ModuleScript")
-				and child.Name ~= PROJECT_loader_LINK_NAME
-				and child.Name ~= NEVERMORE_loader_LINK_NAME
+				and child.Name ~= PROJECT_LOADER_LINK_NAME
+				and child.Name ~= NEVERMORE_LOADER_LINK_NAME
 			then
 				return true
 			end
@@ -87,7 +87,7 @@ if script:GetAttribute("RunTests") == true then
 			return
 		end
 
-		local link = loaderLinkUtils.create(loader, PROJECT_loader_LINK_NAME)
+		local link = loaderLinkUtils.create(loader, PROJECT_LOADER_LINK_NAME)
 		link.Parent = container
 	end
 

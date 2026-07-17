@@ -85,4 +85,37 @@ function CmdrUtils.KeepSingleValidCmdrGui(parentRaw: any): ScreenGui?
 	return keptGui
 end
 
+function CmdrUtils.RegisterTypesIn(registry: any, typesFolder: Instance): number
+	assert(typeof(registry) == "table", "Cmdr registry must be a table")
+	assert(typeof(typesFolder) == "Instance", "Cmdr types folder must be an Instance")
+
+	local moduleScripts = {}
+	local function collectModuleScripts(container: Instance)
+		for _, child in container:GetChildren() do
+			if child:IsA("ModuleScript") and child.Name ~= "loader" then
+				moduleScripts[#moduleScripts + 1] = child
+			elseif child:IsA("Folder") then
+				collectModuleScripts(child)
+			end
+		end
+	end
+	collectModuleScripts(typesFolder)
+
+	table.sort(moduleScripts, function(left: ModuleScript, right: ModuleScript)
+		return left:GetFullName() < right:GetFullName()
+	end)
+
+	for _, moduleScript in moduleScripts do
+		local ok, registrar = pcall(require, moduleScript :: any)
+		assert(ok, `Failed to require Cmdr type module {moduleScript:GetFullName()}: {registrar}`)
+		assert(
+			typeof(registrar) == "function",
+			`Cmdr type module {moduleScript:GetFullName()} must return a registration function`
+		)
+		registrar(registry)
+	end
+
+	return #moduleScripts
+end
+
 return CmdrUtils

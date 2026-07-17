@@ -1,4 +1,8 @@
 
 local require = require(script.Parent.loader).load(script)
 
-return require("BusClient")
+return {
+	Client = require("EventBusClientRuntime"),
+	Utils = require("EventBusUtilsClient"),
+	Core = require("EventBusCoreClient"),
+}

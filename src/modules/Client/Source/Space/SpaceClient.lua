@@ -2,6 +2,7 @@ local require = require(script.Parent.loader).load(script)
 
 local Players = game:GetService("Players")
 
+local ServiceBag = require("ServiceBag")
 local AudioServiceClient = require("AudioServiceClient")
 local CharacterUtils = require("CharacterUtils")
 local Maid = require("Maid")
@@ -15,6 +16,7 @@ local biomeSlice = require("BiomeSlice")
 type MaidClass = any
 
 local SpaceClient = {}
+SpaceClient.ServiceName = "SpaceClient"
 
 local runtime = {
 	maid = nil :: MaidClass?,
@@ -32,7 +34,7 @@ local function getWorldState(): any?
 	return state
 end
 
-local function GetLocalRootPart(): BasePart?
+local function getLocalRootPart(): BasePart?
 	local localPlayer = Players.LocalPlayer
 	if localPlayer == nil then
 		return nil
@@ -41,7 +43,7 @@ local function GetLocalRootPart(): BasePart?
 end
 
 local function isLocalPlayerInSpace(): boolean
-	local rootPart = GetLocalRootPart()
+	local rootPart = getLocalRootPart()
 	if rootPart == nil then
 		return false
 	end
@@ -111,7 +113,10 @@ function SpaceClient.Start(_self: any)
 	end))
 end
 
-function SpaceClient.Init(self: any)
+function SpaceClient.Init(self: any, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	if runtime.initPromise ~= nil then
 		return runtime.initPromise
 	end
@@ -129,7 +134,8 @@ function SpaceClient.Init(self: any)
 	return runtime.initPromise
 end
 
-function SpaceClient.Destroy(_self: any)
+function SpaceClient.Destroy(self: any)
+	self._serviceBag = nil
 	if runtime.maid ~= nil then
 		runtime.maid:Destroy()
 		runtime.maid = nil

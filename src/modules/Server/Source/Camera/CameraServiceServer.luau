@@ -53,8 +53,9 @@ end
 type CameraState = CameraServiceUtils.CameraState
 
 local CameraServiceServer = {}
+CameraServiceServer.ServiceName = "CameraServiceServer"
 
-function CameraServiceServer.Init(self: CameraServiceServer)
+function CameraServiceServer.Init(self: CameraServiceServer, _serviceBag: any?)
 	self.playerStates = {}
 	bindPackets(self)
 

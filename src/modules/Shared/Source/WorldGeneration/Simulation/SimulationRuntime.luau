@@ -52,7 +52,7 @@ local function convertTileToCorruption(tileId: number): number
 	return Shared.TILE_ID.CORRUPT_SOIL
 end
 
-local function GetSlicePerChunk(totalBudget: number, chunkCount: number, maxSlice: number): number
+local function getSlicePerChunk(totalBudget: number, chunkCount: number, maxSlice: number): number
 	if chunkCount <= 0 or totalBudget <= 0 then
 		return 0
 	end
@@ -554,12 +554,12 @@ function Runtime.Tick(self: Runtime, dt: number)
 	local clusterSlice = math.max(1, self.config.runtimeClusterSlice)
 	local entitySlice = math.max(1, self.config.runtimeEntitySlice)
 	local corruptionSlicePerChunk =
-		GetSlicePerChunk(self.config.budgetCorruptionClustersPerTick, selectedCount, clusterSlice)
+		getSlicePerChunk(self.config.budgetCorruptionClustersPerTick, selectedCount, clusterSlice)
 	local biomeSlicePerChunk =
-		GetSlicePerChunk(self.config.budgetBiomeSpreadClustersPerTick, selectedCount, clusterSlice)
-	local aiSlicePerChunk = GetSlicePerChunk(self.config.budgetAiEntitiesPerTick, selectedCount, entitySlice)
+		getSlicePerChunk(self.config.budgetBiomeSpreadClustersPerTick, selectedCount, clusterSlice)
+	local aiSlicePerChunk = getSlicePerChunk(self.config.budgetAiEntitiesPerTick, selectedCount, entitySlice)
 	local physicsSlicePerChunk =
-		GetSlicePerChunk(self.config.budgetPhysicsEntitiesPerTick, selectedCount, entitySlice)
+		getSlicePerChunk(self.config.budgetPhysicsEntitiesPerTick, selectedCount, entitySlice)
 
 	local processedChunks = 0
 	local processedCorruption = 0

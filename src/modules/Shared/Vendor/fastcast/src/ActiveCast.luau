@@ -4,11 +4,11 @@
 local RunService = game:GetService("RunService")
 
 --// Modules
-local TypeDefs = require(script.Parent.TypeDefinitions)
-local TypeMarshaller = require(script.Parent.TypeMarshaller)
 local Config = require(script.Parent.Config)
 local Events = require(script.Parent.Events)
-local table = require(script.Parent.Parent.Table)
+local TypeDefs = require(script.Parent.TypeDefinitions)
+local TypeMarshaller = require(script.Parent.TypeMarshaller)
+local table = require(script.Parent.Parent.VendorTable)
 
 --// Types
 type ClassData = {

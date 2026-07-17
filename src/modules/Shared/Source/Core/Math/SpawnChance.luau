@@ -12,7 +12,7 @@ export type SpawnRoll = {
 	seed: number?,
 }
 
-local function CoerceProbability(valueRaw: any, fallback: number): number
+local function coerceProbability(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return math.clamp(fallback, 0, 1)
 	end
@@ -20,7 +20,7 @@ local function CoerceProbability(valueRaw: any, fallback: number): number
 end
 
 function SpawnChance.GetProbability(chanceRaw: any, multiplierRaw: any?): number
-	local chance = CoerceProbability(chanceRaw, 0)
+	local chance = coerceProbability(chanceRaw, 0)
 	local multiplier = if typeof(multiplierRaw) == "number" and multiplierRaw == multiplierRaw then multiplierRaw else 1
 	return math.clamp(chance * math.max(0, multiplier), 0, 1)
 end

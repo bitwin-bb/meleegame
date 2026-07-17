@@ -38,7 +38,7 @@ local DEFAULT_SECONDARY_SCALE = 1.04
 local DEFAULT_SECONDARY_DELAY = 0.11
 local DEFAULT_RECOVER_DELAY = 0.24
 
-local function CoerceNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
 	end
@@ -56,14 +56,14 @@ end
 local function useBeatMotion(options: BeatMotionOptions?): BeatMotionResult
 	local enabled = if options and options.enabled ~= nil then options.enabled else true
 	local auto = if options and options.auto ~= nil then options.auto else true
-	local bpm = CoerceNumber(if options then options.bpm else nil, DEFAULT_BPM, 1, 400)
-	local baseScale = CoerceNumber(if options then options.baseScale else nil, DEFAULT_BASE_SCALE, 0.01, 10)
-	local primaryScale = CoerceNumber(if options then options.primaryScale else nil, DEFAULT_PRIMARY_SCALE, 0.01, 10)
+	local bpm = coerceNumber(if options then options.bpm else nil, DEFAULT_BPM, 1, 400)
+	local baseScale = coerceNumber(if options then options.baseScale else nil, DEFAULT_BASE_SCALE, 0.01, 10)
+	local primaryScale = coerceNumber(if options then options.primaryScale else nil, DEFAULT_PRIMARY_SCALE, 0.01, 10)
 	local secondaryScale =
-		CoerceNumber(if options then options.secondaryScale else nil, DEFAULT_SECONDARY_SCALE, 0.01, 10)
+		coerceNumber(if options then options.secondaryScale else nil, DEFAULT_SECONDARY_SCALE, 0.01, 10)
 	local secondaryDelay =
-		CoerceNumber(if options then options.secondaryDelay else nil, DEFAULT_SECONDARY_DELAY, 0, 5)
-	local recoverDelay = CoerceNumber(if options then options.recoverDelay else nil, DEFAULT_RECOVER_DELAY, 0, 5)
+		coerceNumber(if options then options.secondaryDelay else nil, DEFAULT_SECONDARY_DELAY, 0, 5)
+	local recoverDelay = coerceNumber(if options then options.recoverDelay else nil, DEFAULT_RECOVER_DELAY, 0, 5)
 	local spring = if options and options.spring then options.spring else DEFAULT_SPRING
 
 	local scale, setScale = React.useBinding(baseScale)

@@ -3,6 +3,7 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Fusion: any = require(ReplicatedStorage.Packages.Fusion)
+local WorldGenerationConstants = require("WorldGenerationConstants")
 
 local Children = Fusion.Children
 
@@ -18,25 +19,26 @@ export type SlimeRootConfig = {
 
 local DEFAULT_NAME = "GreenSlime"
 local DEFAULT_HP = 14
-local DEFAULT_ROOT_SIZE = Vector3.new(4, 3, 4)
+local PLANE_DEPTH = WorldGenerationConstants.DEFAULT_TILE_DEPTH
+local DEFAULT_ROOT_SIZE = Vector3.new(PLANE_DEPTH, 3, 4)
 
-local function CoerceName(valueRaw: any): string
+local function coerceName(valueRaw: any): string
 	if typeof(valueRaw) == "string" and valueRaw ~= "" then
 		return valueRaw
 	end
 	return DEFAULT_NAME
 end
 
-local function CoerceHp(valueRaw: any): number
+local function coerceHp(valueRaw: any): number
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		return math.max(0, valueRaw)
 	end
 	return DEFAULT_HP
 end
 
-local function CoerceSize(valueRaw: any): Vector3
+local function coerceSize(valueRaw: any): Vector3
 	if typeof(valueRaw) == "Vector3" then
-		return Vector3.new(math.max(0.05, valueRaw.X), math.max(0.05, valueRaw.Y), math.max(0.05, valueRaw.Z))
+		return Vector3.new(PLANE_DEPTH, math.max(0.05, valueRaw.Y), math.max(0.05, valueRaw.Z))
 	end
 	return DEFAULT_ROOT_SIZE
 end
@@ -46,7 +48,7 @@ function SlimeRoot.CreateModel(configRaw: SlimeRootConfig?): Model
 	local scope = Fusion.scoped(Fusion)
 	local rootPart = scope:New "Part" {
 		Name = "RootPart",
-		Size = CoerceSize(config.size),
+		Size = coerceSize(config.size),
 		Transparency = 1,
 		Anchored = false,
 		CanCollide = true,
@@ -57,11 +59,11 @@ function SlimeRoot.CreateModel(configRaw: SlimeRootConfig?): Model
 
 	local hp = scope:New "NumberValue" {
 		Name = "Hp",
-		Value = CoerceHp(config.hp),
+		Value = coerceHp(config.hp),
 	}
 
 	local model = scope:New "Model" {
-		Name = CoerceName(config.name),
+		Name = coerceName(config.name),
 		[Children] = {
 			hp,
 			rootPart,

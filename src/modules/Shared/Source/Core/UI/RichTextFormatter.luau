@@ -68,7 +68,7 @@ local function colorToHex(color: Color3): string
 	return string.format("#%02X%02X%02X", r, g, b)
 end
 
-local function GetColor(colorRaw: any): string?
+local function getColor(colorRaw: any): string?
 	local kind = typeof(colorRaw)
 	if kind == "Color3" then
 		return colorToHex(colorRaw)
@@ -190,7 +190,7 @@ function Builder.Size(self: Builder, sizeRaw: any, textRaw: any): Builder
 end
 
 function Builder.Color(self: Builder, colorRaw: any, textRaw: any): Builder
-	local colorHex = GetColor(colorRaw)
+	local colorHex = getColor(colorRaw)
 	if colorHex == nil then
 		return self:Append(textRaw)
 	end

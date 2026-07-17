@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local ModelBinder = require("ModelBinder")
@@ -7,15 +6,6 @@ local ToolBinder = require("ToolBinder")
 local MagicBinder = {}
 MagicBinder.__index = MagicBinder
 setmetatable(MagicBinder, ModelBinder)
-
-local magicServiceServer = nil
-
-local function getMagicServiceServer()
-	if magicServiceServer == nil then
-		magicServiceServer = require("MagicServiceServer")
-	end
-	return magicServiceServer
-end
 
 local TOOL_ATTRIBUTE_NAMES = {
 	"itemId",
@@ -27,27 +17,29 @@ local TOOL_ATTRIBUTE_NAMES = {
 	"Type",
 }
 
-function MagicBinder.new(instance: Instance, context: any)
+function MagicBinder.new(instance: Instance, context: ModelBinder.BinderContext)
 	local self = ModelBinder.new(instance, context, MagicBinder)
+	self.magicServiceServer =
+		assert(self:GetDependencies().MagicServiceServer, "MagicServiceServer dependency is unavailable")
 	self.tool = ToolBinder.GetTool(instance)
 	if self.tool == nil then
 		return self
 	end
 
-	self:refresh()
+	self:Refresh()
 	self:Connect(self.tool.AncestryChanged, function()
-		self:refresh()
+		self:Refresh()
 	end)
 	for _, attributeName in TOOL_ATTRIBUTE_NAMES do
 		self:Connect(self.tool:GetAttributeChangedSignal(attributeName), function()
-			self:refresh()
+			self:Refresh()
 		end)
 	end
 
 	return self
 end
 
-function MagicBinder.refresh(self: any)
+function MagicBinder.Refresh(self: any)
 	if self.tool == nil then
 		return
 	end
@@ -58,7 +50,7 @@ function MagicBinder.refresh(self: any)
 	self.tool:SetAttribute("ToolBinderMagic", resolution.isMagic)
 
 	if resolution.ownerPlayer ~= nil then
-		getMagicServiceServer():RequestRefreshEquipped(resolution.ownerPlayer)
+		self.magicServiceServer:RequestRefreshEquipped(resolution.ownerPlayer)
 	end
 end
 

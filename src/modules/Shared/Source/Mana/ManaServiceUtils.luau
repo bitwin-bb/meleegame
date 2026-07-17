@@ -28,7 +28,7 @@ ManaServiceUtils.DEFAULT_MAX_MANA = DEFAULT_MAX_MANA
 ManaServiceUtils.DEFAULT_REGEN_PER_SECOND = DEFAULT_REGEN_PER_SECOND
 ManaServiceUtils.DEFAULT_DATA_PATH = DEFAULT_DATA_PATH
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -48,7 +48,7 @@ local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, m
 	return value
 end
 
-local function CoerceLoadedFlag(valueRaw: any, fallback: boolean): boolean
+local function coerceLoadedFlag(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
@@ -64,14 +64,14 @@ function ManaServiceUtils.CreateState(
 ): ManaServiceState
 	local fallback = fallbackRaw
 	local fallbackMaxMana = if fallback ~= nil then fallback.maxMana else DEFAULT_MAX_MANA
-	local maxMana = CoerceNumber(maxManaRaw, fallbackMaxMana, 1, 100000)
+	local maxMana = coerceNumber(maxManaRaw, fallbackMaxMana, 1, 100000)
 	local fallbackMana = if fallback ~= nil then fallback.mana else maxMana
-	local mana = CoerceNumber(manaRaw, fallbackMana, 0, maxMana)
+	local mana = coerceNumber(manaRaw, fallbackMana, 0, maxMana)
 	local fallbackRegenPerSecond = if fallback ~= nil then fallback.regenPerSecond else DEFAULT_REGEN_PER_SECOND
-	local regenPerSecond = CoerceNumber(regenPerSecondRaw, fallbackRegenPerSecond, 0, 10000)
+	local regenPerSecond = coerceNumber(regenPerSecondRaw, fallbackRegenPerSecond, 0, 10000)
 	local previousMana = if fallback ~= nil then fallback.mana else mana
 	local delta = mana - previousMana
-	local isLoaded = CoerceLoadedFlag(isLoadedRaw, if fallback ~= nil then fallback.isLoaded else false)
+	local isLoaded = coerceLoadedFlag(isLoadedRaw, if fallback ~= nil then fallback.isLoaded else false)
 
 	return {
 		mana = mana,

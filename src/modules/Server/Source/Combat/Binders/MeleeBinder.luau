@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local ModelBinder = require("ModelBinder")
@@ -7,15 +6,6 @@ local ToolBinder = require("ToolBinder")
 local MeleeBinder = {}
 MeleeBinder.__index = MeleeBinder
 setmetatable(MeleeBinder, ModelBinder)
-
-local meleeServiceServer = nil
-
-local function getMeleeServiceServer()
-	if meleeServiceServer == nil then
-		meleeServiceServer = require("MeleeServiceServer")
-	end
-	return meleeServiceServer
-end
 
 local TOOL_ATTRIBUTE_NAMES = {
 	"itemId",
@@ -27,27 +17,29 @@ local TOOL_ATTRIBUTE_NAMES = {
 	"Type",
 }
 
-function MeleeBinder.new(instance: Instance, context: any)
+function MeleeBinder.new(instance: Instance, context: ModelBinder.BinderContext)
 	local self = ModelBinder.new(instance, context, MeleeBinder)
+	self.meleeServiceServer =
+		assert(self:GetDependencies().MeleeServiceServer, "MeleeServiceServer dependency is unavailable")
 	self.tool = ToolBinder.GetTool(instance)
 	if self.tool == nil then
 		return self
 	end
 
-	self:refresh()
+	self:Refresh()
 	self:Connect(self.tool.AncestryChanged, function()
-		self:refresh()
+		self:Refresh()
 	end)
 	for _, attributeName in TOOL_ATTRIBUTE_NAMES do
 		self:Connect(self.tool:GetAttributeChangedSignal(attributeName), function()
-			self:refresh()
+			self:Refresh()
 		end)
 	end
 
 	return self
 end
 
-function MeleeBinder.refresh(self: any)
+function MeleeBinder.Refresh(self: any)
 	if self.tool == nil then
 		return
 	end
@@ -58,7 +50,7 @@ function MeleeBinder.refresh(self: any)
 	self.tool:SetAttribute("ToolBinderMelee", resolution.isMelee)
 
 	if resolution.ownerPlayer ~= nil then
-		getMeleeServiceServer():RequestRefreshEquipped(resolution.ownerPlayer)
+		self.meleeServiceServer:RequestRefreshEquipped(resolution.ownerPlayer)
 	end
 end
 

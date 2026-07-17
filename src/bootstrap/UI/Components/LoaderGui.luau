@@ -6,7 +6,7 @@ local PACKAGES_NAME = "Packages"
 local REACT_NAME = "React"
 local PACKAGE_WAIT_TIMEOUT_SECONDS = 60
 
-local loader_FONT = Enum.Font.Code
+local FONT = Enum.Font.Code
 local BACKGROUND_COLOR = Color3.fromRGB(0, 0, 0)
 local TEXT_COLOR = Color3.fromRGB(255, 255, 255)
 local TRACK_COLOR = Color3.fromRGB(20, 20, 20)
@@ -29,7 +29,7 @@ end
 local React = (require :: any)(waitForPackageModule(REACT_NAME))
 local e: typeof(React.createElement) = React.createElement
 
-export type loaderSnapshot = {
+export type LoaderSnapshot = {
 	status: string,
 	stage: string,
 	message: string,
@@ -47,11 +47,11 @@ export type loaderSnapshot = {
 	failures: { string },
 }
 
-export type loaderGuiProps = {
-	snapshot: loaderSnapshot?,
+export type LoaderGuiProps = {
+	snapshot: LoaderSnapshot?,
 }
 
-local DEFAULT_SNAPSHOT: loaderSnapshot = {
+local DEFAULT_SNAPSHOT: LoaderSnapshot = {
 	status = "idle",
 	stage = "boot",
 	message = "starting loader",
@@ -84,7 +84,7 @@ local LOADING_TEXT_BY_STAGE: { [string]: string } = {
 	failed = "loader failed",
 }
 
-local function CoerceNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
 	end
@@ -99,14 +99,14 @@ local function CoerceNumber(value: any, fallback: number, minimum: number?, maxi
 	return nextValue
 end
 
-local function CoerceString(value: any, fallback: string): string
+local function coerceString(value: any, fallback: string): string
 	if typeof(value) == "string" and value ~= "" then
 		return value
 	end
 	return fallback
 end
 
-local function CoerceStringArray(valueRaw: any): { string }
+local function coerceStringArray(valueRaw: any): { string }
 	local values: { string } = {}
 	if typeof(valueRaw) ~= "table" then
 		return values
@@ -121,29 +121,29 @@ local function CoerceStringArray(valueRaw: any): { string }
 	return values
 end
 
-local function CoerceSnapshot(valueRaw: any): loaderSnapshot
-	local value: { [string]: any } = if typeof(valueRaw) == "table" then valueRaw :: { [string]: any } else ({} :: any)
+local function coerceSnapshot(valueRaw: any): LoaderSnapshot
+	local value: { [string]: any } = if typeof(valueRaw) == "table" then valueRaw :: { [string]: any } else {} :: any
 
 	return {
-		status = CoerceString(value.status, DEFAULT_SNAPSHOT.status),
-		stage = CoerceString(value.stage, DEFAULT_SNAPSHOT.stage),
-		message = CoerceString(value.message, DEFAULT_SNAPSHOT.message),
-		progress = CoerceNumber(value.progress, DEFAULT_SNAPSHOT.progress, 0, 1),
-		completed = CoerceNumber(value.completed, DEFAULT_SNAPSHOT.completed, 0, nil),
-		total = CoerceNumber(value.total, DEFAULT_SNAPSHOT.total, 1, nil),
-		startedAt = CoerceNumber(value.startedAt, DEFAULT_SNAPSHOT.startedAt, 0, nil),
+		status = coerceString(value.status, DEFAULT_SNAPSHOT.status),
+		stage = coerceString(value.stage, DEFAULT_SNAPSHOT.stage),
+		message = coerceString(value.message, DEFAULT_SNAPSHOT.message),
+		progress = coerceNumber(value.progress, DEFAULT_SNAPSHOT.progress, 0, 1),
+		completed = coerceNumber(value.completed, DEFAULT_SNAPSHOT.completed, 0, nil),
+		total = coerceNumber(value.total, DEFAULT_SNAPSHOT.total, 1, nil),
+		startedAt = coerceNumber(value.startedAt, DEFAULT_SNAPSHOT.startedAt, 0, nil),
 		finishedAt = if typeof(value.finishedAt) == "number" then value.finishedAt else nil,
-		moduleCount = CoerceNumber(value.moduleCount, DEFAULT_SNAPSHOT.moduleCount, 0, nil),
-		assetCount = CoerceNumber(value.assetCount, DEFAULT_SNAPSHOT.assetCount, 0, nil),
-		assetLoadedCount = CoerceNumber(value.assetLoadedCount, DEFAULT_SNAPSHOT.assetLoadedCount, 0, nil),
-		assetFailedCount = CoerceNumber(value.assetFailedCount, DEFAULT_SNAPSHOT.assetFailedCount, 0, nil),
-		failureCount = CoerceNumber(value.failureCount, DEFAULT_SNAPSHOT.failureCount, 0, nil),
+		moduleCount = coerceNumber(value.moduleCount, DEFAULT_SNAPSHOT.moduleCount, 0, nil),
+		assetCount = coerceNumber(value.assetCount, DEFAULT_SNAPSHOT.assetCount, 0, nil),
+		assetLoadedCount = coerceNumber(value.assetLoadedCount, DEFAULT_SNAPSHOT.assetLoadedCount, 0, nil),
+		assetFailedCount = coerceNumber(value.assetFailedCount, DEFAULT_SNAPSHOT.assetFailedCount, 0, nil),
+		failureCount = coerceNumber(value.failureCount, DEFAULT_SNAPSHOT.failureCount, 0, nil),
 		lastError = if typeof(value.lastError) == "string" and value.lastError ~= "" then value.lastError else nil,
-		failures = CoerceStringArray(value.failures),
+		failures = coerceStringArray(value.failures),
 	}
 end
 
-local function GetLoadingText(snapshot: loaderSnapshot): string
+local function getLoadingText(snapshot: LoaderSnapshot): string
 	if snapshot.status == "failed" then
 		return "loader failed"
 	end
@@ -153,15 +153,15 @@ local function GetLoadingText(snapshot: loaderSnapshot): string
 		return stageText
 	end
 
-	return CoerceString(snapshot.message, "loading world")
+	return coerceString(snapshot.message, "loading world")
 end
 
 local function formatPercent(progress: number): string
 	return `{math.floor(math.clamp(progress, 0, 1) * 100 + 0.5)}%`
 end
 
-local function loaderGui(props: loaderGuiProps): any
-	local snapshot = CoerceSnapshot(props.snapshot)
+local function LoaderGui(props: LoaderGuiProps): any
+	local snapshot = coerceSnapshot(props.snapshot)
 	local progress = math.clamp(snapshot.progress, 0, 1)
 
 	return e(React.Fragment, nil, {
@@ -189,8 +189,8 @@ local function loaderGui(props: loaderGuiProps): any
 					Position = UDim2.fromOffset(0, 0),
 					BackgroundTransparency = 1,
 					BorderSizePixel = 0,
-					Font = loader_FONT,
-					Text = GetLoadingText(snapshot),
+					Font = FONT,
+					Text = getLoadingText(snapshot),
 					TextColor3 = TEXT_COLOR,
 					TextSize = 16,
 					TextTransparency = 0,
@@ -220,7 +220,7 @@ local function loaderGui(props: loaderGuiProps): any
 					Position = UDim2.fromOffset(0, 48),
 					BackgroundTransparency = 1,
 					BorderSizePixel = 0,
-					Font = loader_FONT,
+					Font = FONT,
 					Text = formatPercent(progress),
 					TextColor3 = TEXT_COLOR,
 					TextSize = 16,
@@ -233,4 +233,4 @@ local function loaderGui(props: loaderGuiProps): any
 	})
 end
 
-return loaderGui
+return LoaderGui

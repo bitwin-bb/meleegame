@@ -56,6 +56,18 @@ local function getTile(accessorRaw: any, x: number, y: number): any?
 	return nil
 end
 
+local function getTileId(tileRaw: any): number?
+	if typeof(tileRaw) ~= "table" then
+		return nil
+	end
+
+	local tileId = (tileRaw :: any).TileId or (tileRaw :: any).tileId or (tileRaw :: any).id
+	if typeof(tileId) ~= "number" then
+		return nil
+	end
+	return math.floor(tileId)
+end
+
 local function connects(ruleRaw: any, tile: any, neighbor: any): boolean
 	local rule = if typeof(ruleRaw) == "table" then ruleRaw else EightWayBlobRule
 	local connectsMethod = (rule :: any).Connects or (rule :: any).connects or (rule :: any).CanConnect
@@ -99,6 +111,42 @@ function MaskResolver.Resolve(accessorRaw: any, coordRaw: any, ruleRaw: any?): n
 	return bit32.band(mask, DirectionBits.AllMask)
 end
 
+function MaskResolver.ResolveTileMasks(
+	accessorRaw: any,
+	coordRaw: any,
+	tileIdRaw: any,
+	mergeTileIdsRaw: any?,
+	connectTileIdsRaw: any?
+): (number, number)
+	local x, y = getCoordinate(coordRaw)
+	local tileId = if typeof(tileIdRaw) == "number"
+		then math.floor(tileIdRaw)
+		else getTileId(getTile(accessorRaw, x, y))
+	if tileId == nil then
+		return 0, 0
+	end
+
+	local mergeTileIds = if typeof(mergeTileIdsRaw) == "table" then mergeTileIdsRaw else {}
+	local connectTileIds = if typeof(connectTileIdsRaw) == "table" then connectTileIdsRaw else {}
+	local sameMask = 0
+	local mergeMask = 0
+	for _, direction in DirectionBits.Offsets do
+		local neighborTileId = getTileId(getTile(accessorRaw, x + direction.x, y + direction.y))
+		if neighborTileId == nil then
+			continue
+		end
+
+		if neighborTileId ~= tileId and rawget(mergeTileIds, neighborTileId) == true then
+			mergeMask = bit32.bor(mergeMask, direction.bit)
+		elseif neighborTileId == tileId or rawget(connectTileIds, neighborTileId) == true then
+			sameMask = bit32.bor(sameMask, direction.bit)
+		end
+	end
+
+	return bit32.band(sameMask, DirectionBits.AllMask), bit32.band(mergeMask, DirectionBits.AllMask)
+end
+
 MaskResolver.GetMask = MaskResolver.Resolve
+MaskResolver.GetTileMasks = MaskResolver.ResolveTileMasks
 
 return Table.readonly(MaskResolver)

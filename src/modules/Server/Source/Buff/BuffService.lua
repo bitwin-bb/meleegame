@@ -38,14 +38,14 @@ type BuffAreaSource = {
 	node: any,
 }
 
-local function CoercePlayer(playerRaw: any): Player?
+local function coercePlayer(playerRaw: any): Player?
 	if typeof(playerRaw) == "Instance" and playerRaw:IsA("Player") then
 		return playerRaw
 	end
 	return nil
 end
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -58,7 +58,7 @@ local function CoerceNumber(valueRaw: any, fallback: number, minimum: number, ma
 	return math.clamp(value, minimum, maximum)
 end
 
-local function CoercePosition(valueRaw: any): Vector3?
+local function coercePosition(valueRaw: any): Vector3?
 	if typeof(valueRaw) == "Vector3" then
 		return valueRaw
 	end
@@ -206,7 +206,7 @@ function BuffService.RegisterDefinition(self: BuffService, definitionRaw: any, k
 end
 
 function BuffService.EnsurePlayerRuntime(self: BuffService, playerRaw: any): any?
-	local player = CoercePlayer(playerRaw)
+	local player = coercePlayer(playerRaw)
 	if player == nil then
 		return nil
 	end
@@ -242,7 +242,7 @@ function BuffService.EnsurePlayerRuntime(self: BuffService, playerRaw: any): any
 end
 
 function BuffService.ReplicatePlayerRecords(self: BuffService, playerRaw: any, recordsRaw: any?)
-	local player = CoercePlayer(playerRaw)
+	local player = coercePlayer(playerRaw)
 	if player == nil then
 		return
 	end
@@ -258,7 +258,7 @@ function BuffService.ReplicatePlayerRecords(self: BuffService, playerRaw: any, r
 end
 
 function BuffService.RemovePlayer(self: BuffService, playerRaw: any)
-	local player = CoercePlayer(playerRaw)
+	local player = coercePlayer(playerRaw)
 	if player == nil then
 		return
 	end
@@ -449,12 +449,12 @@ function BuffService.RegisterAreaSource(self: BuffService, areaRaw: any): BuffAr
 	end
 
 	local area = areaRaw :: { [string]: any }
-	local position = CoercePosition(area.position or area.instance or area.part or area.model)
+	local position = coercePosition(area.position or area.instance or area.part or area.model)
 	if position == nil then
 		return nil
 	end
 
-	local radius = CoerceNumber(
+	local radius = coerceNumber(
 		area.radius,
 		BuffConstants.DEFAULT_AREA_RADIUS,
 		BuffConstants.MIN_AREA_RADIUS,
@@ -512,19 +512,19 @@ function BuffService.RemoveAreaSource(self: BuffService, idRaw: any): boolean
 end
 
 function BuffService.GetAreaSourcesNear(self: BuffService, positionRaw: any, radiusRaw: any?): { BuffAreaSource }
-	local position = CoercePosition(positionRaw)
+	local position = coercePosition(positionRaw)
 	if position == nil then
 		return {}
 	end
 
 	local radius =
-		CoerceNumber(radiusRaw, self._maxAreaRadius, BuffConstants.MIN_AREA_RADIUS, BuffConstants.MAX_AREA_RADIUS)
+		coerceNumber(radiusRaw, self._maxAreaRadius, BuffConstants.MIN_AREA_RADIUS, BuffConstants.MAX_AREA_RADIUS)
 	local sources = self._areaOctree:RadiusSearch(position, radius)
 	return Table.copy(sources)
 end
 
 function BuffService.ScanPlayerAreaSources(self: BuffService, playerRaw: any): number
-	local player = CoercePlayer(playerRaw)
+	local player = coercePlayer(playerRaw)
 	if player == nil then
 		return 0
 	end

@@ -1,14 +1,16 @@
 local require = require(script.Parent.loader).load(script)
 
+local GroupService = game:GetService("GroupService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local CmdrService = require("CmdrService")
 local CmdrUtils = require("CmdrUtils")
+local Maid = require("Maid")
 
 local CmdrBootstrapServer = {}
+CmdrBootstrapServer.ServiceName = "CmdrBootstrapServer"
 
-local started = false
 local CMDR_COMMAND_LOAD_TIMEOUT_SECONDS = 10
 local CMDR_COMMAND_LOAD_POLL_INTERVAL_SECONDS = 0.1
 local EXTRA_ALLOWED_USER_IDS = {}
@@ -28,10 +30,25 @@ local function isCreatorAuthorized(player: Player): boolean
 	end
 
 	if game.CreatorType == Enum.CreatorType.Group then
-		local ok, rank = pcall(function(): number
-			return player:GetRankInGroup(game.CreatorId)
+		local ok, membership = pcall(function(): any
+			return GroupService:GetRolesInGroupAsync(player.UserId, game.CreatorId)
 		end)
-		return ok and rank >= MIN_CREATOR_GROUP_RANK
+		if not ok or typeof(membership) ~= "table" then
+			return false
+		end
+
+		local roles = (membership :: any).Roles
+		if typeof(roles) ~= "table" then
+			return false
+		end
+
+		for _, role in roles do
+			if typeof(role) == "table" and typeof((role :: any).Rank) == "number" then
+				if (role :: any).Rank >= MIN_CREATOR_GROUP_RANK then
+					return true
+				end
+			end
+		end
 	end
 
 	return false
@@ -112,7 +129,7 @@ local function isCmdrInfrastructureModule(moduleScript: ModuleScript): boolean
 	return INFRASTRUCTURE_MODULE_KEYS[normalizeCommandKey(moduleScript.Name)] == true
 end
 
-local function GetCmdrRoots(): (Folder, Folder, Folder)
+local function getCmdrRoots(): (Folder, Folder, Folder)
 	local gameRoot = script:FindFirstAncestor("game")
 	assert(gameRoot ~= nil, "Missing Nevermore game root for CmdrBootstrapServer.")
 
@@ -122,7 +139,10 @@ local function GetCmdrRoots(): (Folder, Folder, Folder)
 		"Shared folder was not found in the Nevermore game root."
 	)
 	local sharedRoot = sharedRealmRoot:FindFirstChild("Source")
-	assert(sharedRoot ~= nil and sharedRoot:IsA("Folder"), "Shared Source folder was not found in the Nevermore game root.")
+	assert(
+		sharedRoot ~= nil and sharedRoot:IsA("Folder"),
+		"Shared Source folder was not found in the Nevermore game root."
+	)
 
 	local sharedCmdrRoot = sharedRoot:FindFirstChild("Commander")
 	assert(
@@ -136,7 +156,10 @@ local function GetCmdrRoots(): (Folder, Folder, Folder)
 		"Server folder was not found in the Nevermore game root."
 	)
 	local serverRoot = serverRealmRoot:FindFirstChild("Source")
-	assert(serverRoot ~= nil and serverRoot:IsA("Folder"), "Server Source folder was not found in the Nevermore game root.")
+	assert(
+		serverRoot ~= nil and serverRoot:IsA("Folder"),
+		"Server Source folder was not found in the Nevermore game root."
+	)
 
 	local serverCmdrRoot = serverRoot:FindFirstChild("Commander")
 	assert(
@@ -242,7 +265,7 @@ local function tryRequireCommandExecutor(moduleScript: ModuleScript): (boolean, 
 	return true, result, nil
 end
 
-local function GetFirstValidModule(
+local function getFirstValidModule(
 	moduleScripts: { ModuleScript },
 	validator: (ModuleScript) -> (boolean, any, string?)
 ): (ModuleScript?, any, { string })
@@ -262,7 +285,7 @@ local function GetFirstValidModule(
 	return nil, nil, issues
 end
 
-local function GetServerCommandCandidates(
+local function getServerCommandCandidates(
 	serverModulesByKey: { [string]: { ModuleScript } },
 	candidateKeys: { string }
 ): { ModuleScript }
@@ -377,8 +400,7 @@ local function registerCmdrCommands(cmdrService: any, sharedFolder: Instance, se
 		local sharedModules = sharedModulesByKey[sharedModuleKey]
 		warnDuplicateModules("shared", sharedModuleKey, sharedModules)
 
-		local sharedModule, commandData, sharedIssues =
-			GetFirstValidModule(sharedModules, tryRequireCommandDefinition)
+		local sharedModule, commandData, sharedIssues = getFirstValidModule(sharedModules, tryRequireCommandDefinition)
 		warnModuleIssues(sharedIssues)
 
 		local commandLabel = sharedModules[1].Name
@@ -402,10 +424,10 @@ local function registerCmdrCommands(cmdrService: any, sharedFolder: Instance, se
 			candidateServerKeys[#candidateServerKeys + 1] = commandNameKey
 		end
 
-		local serverModules = GetServerCommandCandidates(serverModulesByKey, candidateServerKeys)
+		local serverModules = getServerCommandCandidates(serverModulesByKey, candidateServerKeys)
 		warnDuplicateModules("server", commandLabel, serverModules)
 
-		local serverModule, execute, serverIssues = GetFirstValidModule(serverModules, tryRequireCommandExecutor)
+		local serverModule, execute, serverIssues = getFirstValidModule(serverModules, tryRequireCommandExecutor)
 		warnModuleIssues(serverIssues)
 
 		if serverModule == nil then
@@ -436,32 +458,64 @@ local function registerCmdrCommands(cmdrService: any, sharedFolder: Instance, se
 	return registeredCount
 end
 
-function CmdrBootstrapServer.Start(serviceBag: any)
-	if started then
+local function startCmdr(self: any)
+	if self._started or self._maid == nil then
 		return
 	end
-	started = true
+	self._started = true
 
 	for _, player in Players:GetPlayers() do
 		applyCmdrPlayerAttributes(player)
 	end
 
-	Players.PlayerAdded:Connect(function(player: Player)
+	self._maid:GiveTask(Players.PlayerAdded:Connect(function(player: Player)
 		applyCmdrPlayerAttributes(player)
-	end)
+	end))
 
-	Players.PlayerRemoving:Connect(function(player: Player)
+	self._maid:GiveTask(Players.PlayerRemoving:Connect(function(player: Player)
 		clearCmdrPlayerAttributes(player)
-	end)
+	end))
 
-	local cmdrTypes, sharedCommands, serverCommands = GetCmdrRoots()
-	local cmdrService = serviceBag:GetService(CmdrService)
+	local cmdrTypes, sharedCommands, serverCommands = getCmdrRoots()
+	local cmdrService = self._cmdrService
 
-	cmdrService:PromiseCmdr():Then(function(cmdr)
-		cmdr:RegisterTypesIn(cmdrTypes:Clone())
+	self._maid:GivePromise(cmdrService:PromiseCmdr():Then(function(cmdr)
+		local registeredTypeCount = CmdrUtils.RegisterTypesIn(cmdr.Registry, cmdrTypes)
+		assert(registeredTypeCount > 0, "[CmdrBootstrapServer] No valid Cmdr types were registered.")
 
 		local registeredCount = registerCmdrCommands(cmdrService, sharedCommands, serverCommands)
 		assert(registeredCount > 0, "[CmdrBootstrapServer] No valid Cmdr commands were registered.")
+	end))
+end
+
+function CmdrBootstrapServer.Init(self: any, serviceBag: any)
+	assert(self._serviceBag == nil, "Already initialized")
+	self._serviceBag = assert(serviceBag, "No serviceBag")
+	self._maid = Maid.new()
+	self._cmdrService = serviceBag:GetService(CmdrService)
+end
+
+function CmdrBootstrapServer.Start(self: any)
+	assert(self._serviceBag ~= nil, "Not initialized")
+
+	-- The old entrypoint started Cmdr after ServiceBag:Start() returned. Deferring
+	-- preserves that ordering while keeping the lifecycle ServiceBag-owned.
+	task.defer(function()
+		startCmdr(self)
 	end)
 end
+
+function CmdrBootstrapServer.Destroy(self: any)
+	if self._maid ~= nil then
+		self._maid:DoCleaning()
+		self._maid = nil
+	end
+	for _, player in Players:GetPlayers() do
+		clearCmdrPlayerAttributes(player)
+	end
+	self._cmdrService = nil
+	self._serviceBag = nil
+	self._started = nil
+end
+
 return CmdrBootstrapServer

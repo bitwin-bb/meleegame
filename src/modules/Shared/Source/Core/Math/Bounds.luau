@@ -18,7 +18,7 @@ export type RayIntersection = {
 	point: Vector3,
 }
 
-local function GetPadding(padding: number | Vector3): Vector3
+local function getPadding(padding: number | Vector3): Vector3
 	if typeof(padding) == "number" then
 		local amount = math.abs(padding)
 		return Vector3.new(amount, amount, amount)
@@ -129,7 +129,7 @@ function Bounds.DistanceToPoint(bounds: Bounds, point: Vector3): number
 end
 
 function Bounds.Expand(bounds: Bounds, padding: number | Vector3): Bounds
-	local GotPadding = GetPadding(padding)
+	local GotPadding = getPadding(padding)
 	return {
 		min = bounds.min - GotPadding,
 		max = bounds.max + GotPadding,

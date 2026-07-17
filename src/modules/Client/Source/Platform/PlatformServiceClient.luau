@@ -1,7 +1,6 @@
 local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-
 local CollectionService = game:GetService("CollectionService")
 local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
@@ -11,7 +10,7 @@ local Workspace = game:GetService("Workspace")
 
 local CoreGuiEnabler = require("CoreGuiEnabler")
 local CoreRuntime = require("CoreRuntime")
-local ImageIds = require(script:FindFirstAncestor("game").Shared.Source.Core.UI:WaitForChild("ImageIds"))
+local ImageIds = require("ImageIds")
 local InputModeServiceClient = require("InputModeServiceClient")
 local InputModeTypeSelector = require("InputModeTypeSelector")
 local InputModeTypes = require("InputModeTypes")
@@ -20,12 +19,12 @@ local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local JumpButtonUtils = require("JumpButtonUtils")
 local MaidTaskUtils = require("MaidTaskUtils")
 local MouseShiftLockService = require("MouseShiftLockService")
-local NevermoreSupport = require("NevermoreSupport")
 local PlatformServiceUtils = require("PlatformServiceUtils")
 local PlatformUIScale = require("UIScale")
 local PlayerInputModeTypes = require("PlayerInputModeTypes")
 local Rx: any = require("Rx")
 local RxSignal: any = require("RxSignal")
+local ServiceBag = require("ServiceBag")
 local Signal = require("Signal")
 local XboxControls = require("Xbox")
 
@@ -36,7 +35,6 @@ type PlatformStateBase = any
 type ActionDefinition = any
 type ActionBinding = any
 type PromptBinding = any
-
 
 type ObservableObject = any
 
@@ -91,10 +89,12 @@ type ActionRuntime = {
 }
 
 local PlatformServiceClient = {}
+PlatformServiceClient.ServiceName = "PlatformServiceClient"
 
 PlatformServiceClient.ACTIONS = PlatformServiceUtils.ACTIONS
 
 export type PlatformServiceClient = typeof(PlatformServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
 	runtimeContext: any?,
 	janitor: any,
 	stateChanged: any,
@@ -192,7 +192,7 @@ local function cloneDefinition(definition: ActionDefinition): ActionDefinition
 	}
 end
 
-local function CoercePlatformKind(platformKindRaw: any): PlatformKind
+local function coercePlatformKind(platformKindRaw: any): PlatformKind
 	if platformKindRaw == "Gamepad" then
 		return "Gamepad"
 	end
@@ -202,7 +202,7 @@ local function CoercePlatformKind(platformKindRaw: any): PlatformKind
 	return "KeyboardMouse"
 end
 
-local function CoerceBinding(bindingRaw: any): ActionBinding?
+local function coerceBinding(bindingRaw: any): ActionBinding?
 	if typeof(bindingRaw) ~= "table" then
 		return nil
 	end
@@ -222,7 +222,7 @@ local function CoerceBinding(bindingRaw: any): ActionBinding?
 	return binding
 end
 
-local function CoerceOptionalString(valueRaw: any): string?
+local function coerceOptionalString(valueRaw: any): string?
 	if typeof(valueRaw) ~= "string" then
 		return nil
 	end
@@ -233,8 +233,8 @@ local function CoerceOptionalString(valueRaw: any): string?
 	return value
 end
 
-local function GetKeyCodeByName(keyCodeNameRaw: any): Enum.KeyCode?
-	local keyCodeName = CoerceOptionalString(keyCodeNameRaw)
+local function getKeyCodeByName(keyCodeNameRaw: any): Enum.KeyCode?
+	local keyCodeName = coerceOptionalString(keyCodeNameRaw)
 	if keyCodeName == nil then
 		return nil
 	end
@@ -247,7 +247,7 @@ local function GetKeyCodeByName(keyCodeNameRaw: any): Enum.KeyCode?
 	return nil
 end
 
-local function GetImageForKeyCode(keyCode: Enum.KeyCode?): string?
+local function getImageForKeyCode(keyCode: Enum.KeyCode?): string?
 	if keyCode == nil then
 		return nil
 	end
@@ -277,9 +277,9 @@ local function cloneGotPrompt(promptRaw: PromptBinding?): PromptBinding?
 	}
 end
 
-local function GetControlPrompt(promptRaw: any): any
-	local keyCode = GetKeyCodeByName(if typeof(promptRaw) == "table" then promptRaw.keyCode else nil)
-	local text = CoerceOptionalString(if typeof(promptRaw) == "table" then promptRaw.text else nil)
+local function getControlPrompt(promptRaw: any): any
+	local keyCode = getKeyCodeByName(if typeof(promptRaw) == "table" then promptRaw.keyCode else nil)
+	local text = coerceOptionalString(if typeof(promptRaw) == "table" then promptRaw.text else nil)
 	if text == nil and keyCode ~= nil then
 		local okText, officialText = pcall(function()
 			return UserInputService:GetStringForKeyCode(keyCode)
@@ -290,14 +290,14 @@ local function GetControlPrompt(promptRaw: any): any
 	end
 	return {
 		text = text,
-		icon = GetImageForKeyCode(keyCode),
+		icon = getImageForKeyCode(keyCode),
 		keyCode = keyCode,
-		detail = CoerceOptionalString(if typeof(promptRaw) == "table" then promptRaw.detail else nil),
+		detail = coerceOptionalString(if typeof(promptRaw) == "table" then promptRaw.detail else nil),
 		hold = if typeof(promptRaw) == "table" and promptRaw.hold == true then true else false,
 	}
 end
 
-local function GetPromptForActionOnPlatform(
+local function getPromptForActionOnPlatform(
 	self: PlatformServiceClient,
 	actionNameRaw: any,
 	platformKindRaw: any
@@ -315,7 +315,7 @@ local function GetPromptForActionOnPlatform(
 
 	local prompt = PlatformServiceUtils.GetPromptForAction(
 		definition,
-		CoercePlatformKind(platformKindRaw),
+		coercePlatformKind(platformKindRaw),
 		self:GetState().deviceClass,
 		self:GetState().gamepadFamily
 	)
@@ -358,30 +358,30 @@ local function GetPromptForActionOnPlatform(
 	return output
 end
 
-local function GetControlEntry(self: PlatformServiceClient, entryRaw: any, platformKindRaw: any): any
+local function getControlEntry(self: PlatformServiceClient, entryRaw: any, platformKindRaw: any): any
 	local prompts = {}
 	if typeof(entryRaw) == "table" and typeof(entryRaw.prompts) == "table" then
 		for index = 1, #entryRaw.prompts do
-			prompts[#prompts + 1] = GetControlPrompt(entryRaw.prompts[index])
+			prompts[#prompts + 1] = getControlPrompt(entryRaw.prompts[index])
 		end
 	end
 
-	local actionName = CoerceOptionalString(if typeof(entryRaw) == "table" then entryRaw.actionName else nil)
+	local actionName = coerceOptionalString(if typeof(entryRaw) == "table" then entryRaw.actionName else nil)
 	local GotPrompt = if actionName ~= nil
-		then cloneGotPrompt(GetPromptForActionOnPlatform(self, actionName, platformKindRaw))
+		then cloneGotPrompt(getPromptForActionOnPlatform(self, actionName, platformKindRaw))
 		else nil
 
 	return {
-		id = CoerceOptionalString(if typeof(entryRaw) == "table" then entryRaw.id else nil),
-		label = CoerceOptionalString(if typeof(entryRaw) == "table" then entryRaw.label else nil),
-		detail = CoerceOptionalString(if typeof(entryRaw) == "table" then entryRaw.detail else nil),
+		id = coerceOptionalString(if typeof(entryRaw) == "table" then entryRaw.id else nil),
+		label = coerceOptionalString(if typeof(entryRaw) == "table" then entryRaw.label else nil),
+		detail = coerceOptionalString(if typeof(entryRaw) == "table" then entryRaw.detail else nil),
 		actionName = actionName,
 		prompts = prompts,
 		GotPrompt = GotPrompt,
 	}
 end
 
-local function GetControlSections(self: PlatformServiceClient, layoutRaw: any, platformKindRaw: any): { any }
+local function getControlSections(self: PlatformServiceClient, layoutRaw: any, platformKindRaw: any): { any }
 	local output = {}
 	if typeof(layoutRaw) ~= "table" or typeof(layoutRaw.sections) ~= "table" then
 		return output
@@ -391,25 +391,25 @@ local function GetControlSections(self: PlatformServiceClient, layoutRaw: any, p
 		local controls = {}
 		if typeof(sectionRaw) == "table" and typeof(sectionRaw.controls) == "table" then
 			for controlIndex = 1, #sectionRaw.controls do
-				controls[#controls + 1] = GetControlEntry(self, sectionRaw.controls[controlIndex], platformKindRaw)
+				controls[#controls + 1] = getControlEntry(self, sectionRaw.controls[controlIndex], platformKindRaw)
 			end
 		end
 		output[#output + 1] = {
-			id = CoerceOptionalString(if typeof(sectionRaw) == "table" then sectionRaw.id else nil),
-			title = CoerceOptionalString(if typeof(sectionRaw) == "table" then sectionRaw.title else nil),
+			id = coerceOptionalString(if typeof(sectionRaw) == "table" then sectionRaw.id else nil),
+			title = coerceOptionalString(if typeof(sectionRaw) == "table" then sectionRaw.title else nil),
 			controls = controls,
 		}
 	end
 	return output
 end
 
-local function CoerceBindingsTable(bindingsRaw: any): { ActionBinding }
+local function coerceBindingsTable(bindingsRaw: any): { ActionBinding }
 	local output: { ActionBinding } = {}
 	if typeof(bindingsRaw) ~= "table" then
 		return output
 	end
 	for index = 1, #bindingsRaw do
-		local binding = CoerceBinding(bindingsRaw[index])
+		local binding = coerceBinding(bindingsRaw[index])
 		if binding ~= nil then
 			output[#output + 1] = binding
 		end
@@ -417,20 +417,20 @@ local function CoerceBindingsTable(bindingsRaw: any): { ActionBinding }
 	return output
 end
 
-local function CoerceBindingsByPlatform(bindingsRaw: any): { [string]: { ActionBinding } }
+local function coerceBindingsByPlatform(bindingsRaw: any): { [string]: { ActionBinding } }
 	local output = {}
 	if typeof(bindingsRaw) ~= "table" then
 		return output
 	end
 	for platform, bindings in bindingsRaw do
 		if typeof(platform) == "string" then
-			output[platform] = CoerceBindingsTable(bindings)
+			output[platform] = coerceBindingsTable(bindings)
 		end
 	end
 	return output
 end
 
-local function CoerceActionDefinition(actionName: string, definitionRaw: any): ActionDefinition?
+local function coerceActionDefinition(actionName: string, definitionRaw: any): ActionDefinition?
 	if typeof(definitionRaw) ~= "table" then
 		return nil
 	end
@@ -449,8 +449,8 @@ local function CoerceActionDefinition(actionName: string, definitionRaw: any): A
 		blockWhenGuiSelected = if definitionRaw.blockWhenGuiSelected == nil
 			then true
 			else definitionRaw.blockWhenGuiSelected == true,
-		bindingsByPlatform = CoerceBindingsByPlatform(definitionRaw.bindingsByPlatform),
-		promptBindingsByPlatform = CoerceBindingsByPlatform(definitionRaw.promptBindingsByPlatform),
+		bindingsByPlatform = coerceBindingsByPlatform(definitionRaw.bindingsByPlatform),
+		promptBindingsByPlatform = coerceBindingsByPlatform(definitionRaw.promptBindingsByPlatform),
 		touchPrompt = if typeof(definitionRaw.touchPrompt) == "string" then definitionRaw.touchPrompt else nil,
 	}
 end
@@ -493,7 +493,7 @@ local function cloneState(state: PlatformClientState): PlatformClientState
 	}
 end
 
-local function GetPlatformName(): string?
+local function getPlatformName(): string?
 	local okPlatform, platformValue = pcall(function()
 		local inputServiceAny = UserInputService :: any
 		if typeof(inputServiceAny.GetPlatform) == "function" then
@@ -542,7 +542,7 @@ local function getInputModeLastEnabledTime(inputModeServiceRaw: any, inputModeTy
 	return 0
 end
 
-local function GetLatestInputModeName(inputModeServiceRaw: any, inputModeTypeList: { any }): string?
+local function getLatestInputModeName(inputModeServiceRaw: any, inputModeTypeList: { any }): string?
 	if typeof(inputModeServiceRaw) ~= "table" then
 		return nil
 	end
@@ -558,7 +558,7 @@ local function GetLatestInputModeName(inputModeServiceRaw: any, inputModeTypeLis
 	return bestModeName
 end
 
-local function GetPlatformKindFromInputModeName(modeNameRaw: any): PlatformKind?
+local function getPlatformKindFromInputModeName(modeNameRaw: any): PlatformKind?
 	if typeof(modeNameRaw) ~= "string" or modeNameRaw == "" then
 		return nil
 	end
@@ -574,8 +574,8 @@ local function GetPlatformKindFromInputModeName(modeNameRaw: any): PlatformKind?
 	return nil
 end
 
-local function GetPrimaryInputTypeFromInputModeName(modeNameRaw: any): string?
-	local platformKind = GetPlatformKindFromInputModeName(modeNameRaw)
+local function getPrimaryInputTypeFromInputModeName(modeNameRaw: any): string?
+	local platformKind = getPlatformKindFromInputModeName(modeNameRaw)
 	if platformKind == "Gamepad" then
 		return "Gamepad"
 	end
@@ -588,7 +588,7 @@ local function GetPrimaryInputTypeFromInputModeName(modeNameRaw: any): string?
 	return nil
 end
 
-local function GetPlayerInputMode(platformKind: PlatformKind): string
+local function getPlayerInputMode(platformKind: PlatformKind): string
 	if platformKind == "Gamepad" then
 		return PlayerInputModeTypes.GAMEPAD
 	end
@@ -598,7 +598,7 @@ local function GetPlayerInputMode(platformKind: PlatformKind): string
 	return PlayerInputModeTypes.KEYBOARD
 end
 
-local function GetGamepadFamilyFromPlatformName(platformNameRaw: any): string?
+local function getGamepadFamilyFromPlatformName(platformNameRaw: any): string?
 	if typeof(platformNameRaw) ~= "string" or platformNameRaw == "" then
 		return nil
 	end
@@ -612,7 +612,7 @@ local function GetGamepadFamilyFromPlatformName(platformNameRaw: any): string?
 	return nil
 end
 
-local function GetGamepadFamilyFromButtonImage(): string?
+local function getGamepadFamilyFromButtonImage(): string?
 	local okButtonImage, buttonAImage = pcall(function()
 		return UserInputService:GetImageForKeyCode(Enum.KeyCode.ButtonA)
 	end)
@@ -631,12 +631,8 @@ local function GetGamepadFamilyFromButtonImage(): string?
 	return nil
 end
 
-local function GetMachineFamily(
-	platformState: PlatformStateBase,
-	platformNameRaw: any,
-	gamepadFamilyRaw: any
-): string
-	local familyFromPlatformName = GetGamepadFamilyFromPlatformName(platformNameRaw)
+local function getMachineFamily(platformState: PlatformStateBase, platformNameRaw: any, gamepadFamilyRaw: any): string
+	local familyFromPlatformName = getGamepadFamilyFromPlatformName(platformNameRaw)
 	if familyFromPlatformName ~= nil then
 		return familyFromPlatformName
 	end
@@ -844,11 +840,11 @@ local function isScreenPositionOverInteractiveGui(screenPositionRaw: any): boole
 	return false
 end
 
-local function GetAbsoluteUDim(axis: UDim, axisLength: number): number
+local function getAbsoluteUDim(axis: UDim, axisLength: number): number
 	return axis.Scale * axisLength + axis.Offset
 end
 
-local function GetTouchJumpButtonBounds(viewport: Vector2): (Vector2?, number?)
+local function getTouchJumpButtonBounds(viewport: Vector2): (Vector2?, number?)
 	local okJumpButton, jumpButtonPosition, jumpButtonSize = pcall(function()
 		return JumpButtonUtils.getJumpButtonPositionAndSize(viewport)
 	end)
@@ -856,8 +852,8 @@ local function GetTouchJumpButtonBounds(viewport: Vector2): (Vector2?, number?)
 		return nil
 	end
 	return Vector2.new(
-		GetAbsoluteUDim(jumpButtonPosition.X, viewport.X),
-		GetAbsoluteUDim(jumpButtonPosition.Y, viewport.Y)
+		getAbsoluteUDim(jumpButtonPosition.X, viewport.X),
+		getAbsoluteUDim(jumpButtonPosition.Y, viewport.Y)
 	),
 		jumpButtonSize
 end
@@ -870,7 +866,7 @@ local function isTouchReservedRegion(position: Vector2, viewport: Vector2): bool
 		return true
 	end
 
-	local jumpButtonPosition, jumpButtonSize = GetTouchJumpButtonBounds(viewport)
+	local jumpButtonPosition, jumpButtonSize = getTouchJumpButtonBounds(viewport)
 	if jumpButtonPosition == nil or jumpButtonSize == nil then
 		return false
 	end
@@ -882,9 +878,7 @@ local function isTouchReservedRegion(position: Vector2, viewport: Vector2): bool
 		and position.Y <= jumpButtonPosition.Y + jumpButtonSize + padding
 end
 
-function PlatformServiceClient._GetCapabilities(
-	self: PlatformServiceClient
-): PlatformServiceUtils.CapabilitySnapshot
+function PlatformServiceClient._GetCapabilities(self: PlatformServiceClient): PlatformServiceUtils.CapabilitySnapshot
 	local runtimePlatform = if self.runtimeContext ~= nil then (self.runtimeContext :: any).platform else nil
 	if runtimePlatform ~= nil and typeof((runtimePlatform :: any).GetSnapshot) == "function" then
 		local ok, snapshot = pcall(function()
@@ -928,14 +922,8 @@ function PlatformServiceClient._setupNevermorePlatformSupport(self: PlatformServ
 		return
 	end
 
-	if not NevermoreSupport.IsStarted() then
-		return
-	end
-
-	local okServiceBag, serviceBag = pcall(function()
-		return NevermoreSupport.GetServiceBag()
-	end)
-	if not okServiceBag or typeof(serviceBag) ~= "table" then
+	local serviceBag = self._serviceBag
+	if typeof(serviceBag) ~= "table" then
 		return
 	end
 
@@ -1026,13 +1014,13 @@ function PlatformServiceClient._GetState(self: PlatformServiceClient): PlatformC
 
 	local viewport = self:_GetViewport()
 	local capabilities = self:_GetCapabilities()
-	local platformName = GetPlatformName()
-	local activeInputModeName = GetLatestInputModeName(self.nevermoreInputModeService, {
+	local platformName = getPlatformName()
+	local activeInputModeName = getLatestInputModeName(self.nevermoreInputModeService, {
 		InputModeTypes.KeyboardAndMouse,
 		InputModeTypes.Touch,
 		InputModeTypes.Gamepads,
 	})
-	local rawGamepadInputName = GetLatestInputModeName(self.nevermoreInputModeService, {
+	local rawGamepadInputName = getLatestInputModeName(self.nevermoreInputModeService, {
 		InputModeTypes.Thumbsticks,
 		InputModeTypes.DPad,
 		InputModeTypes.Gamepads,
@@ -1045,12 +1033,12 @@ function PlatformServiceClient._GetState(self: PlatformServiceClient): PlatformC
 		viewport,
 		GuiService:IsTenFootInterface()
 	)
-	local GotPlatform = GetPlatformKindFromInputModeName(activeInputModeName)
+	local GotPlatform = getPlatformKindFromInputModeName(activeInputModeName)
 	if GotPlatform == nil then
 		GotPlatform = platformStateBase.platform
 	end
 	local activeGamepadInputName = if GotPlatform == "Gamepad" then rawGamepadInputName else nil
-	local GotPrimaryInputType = GetPrimaryInputTypeFromInputModeName(activeInputModeName)
+	local GotPrimaryInputType = getPrimaryInputTypeFromInputModeName(activeInputModeName)
 	local platformState: PlatformStateBase = {
 		platform = GotPlatform,
 		deviceClass = PlatformServiceUtils.GetDeviceClass(
@@ -1076,8 +1064,8 @@ function PlatformServiceClient._GetState(self: PlatformServiceClient): PlatformC
 			or platformState.deviceClass == "Console"
 		then self:_GetGamepadFamily()
 		else nil
-	local machineFamily = GetMachineFamily(platformState, platformName, gamepadFamily)
-	local playerInputMode = GetPlayerInputMode(platformState.platform)
+	local machineFamily = getMachineFamily(platformState, platformName, gamepadFamily)
+	local playerInputMode = getPlayerInputMode(platformState.platform)
 	local activeInputName = activeInputModeName
 	if activeInputName == nil or activeInputName == "" then
 		if platformState.preferredInputName ~= "" then
@@ -1118,12 +1106,12 @@ function PlatformServiceClient._GetState(self: PlatformServiceClient): PlatformC
 end
 
 function PlatformServiceClient._GetGamepadFamily(_self: PlatformServiceClient): string
-	local familyFromPlatform = GetGamepadFamilyFromPlatformName(GetPlatformName())
+	local familyFromPlatform = getGamepadFamilyFromPlatformName(getPlatformName())
 	if familyFromPlatform ~= nil then
 		return familyFromPlatform
 	end
 
-	local familyFromButtonImage = GetGamepadFamilyFromButtonImage()
+	local familyFromButtonImage = getGamepadFamilyFromButtonImage()
 	if familyFromButtonImage ~= nil then
 		return familyFromButtonImage
 	end
@@ -1202,9 +1190,9 @@ function PlatformServiceClient._ensureActionRuntime(
 	local existing = self.actions[actionName]
 	if existing ~= nil then
 		if overrideDefinitionRaw ~= nil then
-			local CoerceD = CoerceActionDefinition(actionName, overrideDefinitionRaw)
-			if CoerceD ~= nil then
-				existing.definition = CoerceD
+			local coerced = coerceActionDefinition(actionName, overrideDefinitionRaw)
+			if coerced ~= nil then
+				existing.definition = coerced
 				existing.isEnabled = true
 			end
 		end
@@ -1212,7 +1200,7 @@ function PlatformServiceClient._ensureActionRuntime(
 	end
 
 	local definition = if overrideDefinitionRaw ~= nil
-		then CoerceActionDefinition(actionName, overrideDefinitionRaw)
+		then coerceActionDefinition(actionName, overrideDefinitionRaw)
 		else PlatformServiceUtils.GetDefaultActionDefinition(actionName)
 	if definition == nil then
 		return nil
@@ -1418,8 +1406,12 @@ function PlatformServiceClient._bindContextAction(self: PlatformServiceClient, a
 	actionRuntime.isBound = true
 end
 
-function PlatformServiceClient.Init(self: PlatformServiceClient)
+function PlatformServiceClient.Init(self: PlatformServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	if self.janitor ~= nil then
+		self:_setupNevermorePlatformSupport()
 		return
 	end
 
@@ -1873,12 +1865,12 @@ function PlatformServiceClient.RebindAction(
 	if runtime == nil then
 		return false
 	end
-	local platformKind = CoercePlatformKind(platformKindRaw)
+	local platformKind = coercePlatformKind(platformKindRaw)
 	runtime.definition.bindingsByPlatform = runtime.definition.bindingsByPlatform or ({} :: any)
-	runtime.definition.bindingsByPlatform[platformKind] = CoerceBindingsTable(bindingsRaw)
+	runtime.definition.bindingsByPlatform[platformKind] = coerceBindingsTable(bindingsRaw)
 	if promptBindingsRaw ~= nil then
 		runtime.definition.promptBindingsByPlatform = runtime.definition.promptBindingsByPlatform or ({} :: any)
-		runtime.definition.promptBindingsByPlatform[platformKind] = CoerceBindingsTable(promptBindingsRaw)
+		runtime.definition.promptBindingsByPlatform[platformKind] = coerceBindingsTable(promptBindingsRaw)
 	end
 	self:_unbindContextAction(runtime)
 	if hasActionSubscribers(runtime) then
@@ -2019,7 +2011,7 @@ function PlatformServiceClient.GetControls(self: PlatformServiceClient, platform
 		platform = requestedPlatform,
 		deviceClass = state.deviceClass,
 		gamepadFamily = if requestedPlatform == "Gamepad" then state.gamepadFamily else nil,
-		sections = if layout ~= nil then GetControlSections(self, layout, requestedPlatform) else {} :: any,
+		sections = if layout ~= nil then getControlSections(self, layout, requestedPlatform) else {} :: any,
 	}
 end
 
@@ -2051,6 +2043,7 @@ function PlatformServiceClient.Destroy(self: PlatformServiceClient)
 		self.janitor = nil
 	end
 	self.runtimeContext = nil
+	self._serviceBag = nil
 	self.state = nil
 	self.lastInputType = nil
 	self.gamepadFamily = nil

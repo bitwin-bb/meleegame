@@ -66,7 +66,7 @@ local runtime = {
 	renderSteppedConnection = nil :: RBXScriptConnection?,
 }
 
-local function GetModelAdornee(model: Model): BasePart?
+local function getModelAdornee(model: Model): BasePart?
 	local humanoidRootPart = model:FindFirstChild("HumanoidRootPart")
 	if humanoidRootPart ~= nil and humanoidRootPart:IsA("BasePart") then
 		return humanoidRootPart
@@ -90,7 +90,7 @@ local function toGuiPosition(screenPosition: Vector2): Vector2
 	return Vector2.new(math.max(0, screenPosition.X - topLeftInset.X), math.max(0, screenPosition.Y - topLeftInset.Y))
 end
 
-local function GetMouseGuiPosition(fallback: Vector2): Vector2
+local function getMouseGuiPosition(fallback: Vector2): Vector2
 	local success, mousePosition = pcall(function()
 		return UserInputService:GetMouseLocation()
 	end)
@@ -105,7 +105,7 @@ local function shouldUseGamepadWorldHover(): boolean
 	return PlatformServiceClient:IsGamepad() and PlatformServiceClient:GetMachineFamily() ~= "desktop"
 end
 
-local function GetCharacterRootPart(playerRaw: any): BasePart?
+local function getCharacterRootPart(playerRaw: any): BasePart?
 	if typeof(playerRaw) ~= "Instance" or not playerRaw:IsA("Player") then
 		return nil
 	end
@@ -127,7 +127,7 @@ local function GetCharacterRootPart(playerRaw: any): BasePart?
 	return character:FindFirstChildWhichIsA("BasePart")
 end
 
-local function GetGamepadNav(): any?
+local function getGamepadNav(): any?
 	local runtimeContext = nil
 	local ok, runtimeOrError = pcall(function()
 		return CoreRuntime.GetClientRuntime()
@@ -158,8 +158,8 @@ local function GetGamepadNav(): any?
 	return nil
 end
 
-local function GetGamepadWorldPosition(): Vector3?
-	local gamepadNav = GetGamepadNav()
+local function getGamepadWorldPosition(): Vector3?
+	local gamepadNav = getGamepadNav()
 	if gamepadNav == nil or typeof((gamepadNav :: any).GetThumbstickState) ~= "function" then
 		return nil
 	end
@@ -176,7 +176,7 @@ local function GetGamepadWorldPosition(): Vector3?
 		return nil
 	end
 
-	local rootPart = GetCharacterRootPart(runtime.localPlayer)
+	local rootPart = getCharacterRootPart(runtime.localPlayer)
 	if rootPart == nil then
 		return nil
 	end
@@ -326,21 +326,21 @@ local function clearHover()
 	entityInfoSlice.hideEntityInfo(ENTITY_HOVER_ID)
 end
 
-local function GetHoveredEntity(targetRaw: any): (Model?, string?, HoverEntityKind?)
-	local bossModel = BossServiceUtils.GetUntimeModelFromInstance(targetRaw)
+local function getHoveredEntity(targetRaw: any): (Model?, string?, HoverEntityKind?)
+	local bossModel = BossServiceUtils.GetRuntimeModelFromInstance(targetRaw)
 	if bossModel ~= nil then
-		local bossRuntimeId = BossServiceUtils.GetUntimeIdFromInstance(bossModel)
+		local bossRuntimeId = BossServiceUtils.GetRuntimeIdFromInstance(bossModel)
 		if bossRuntimeId ~= nil and bossRuntimeId ~= "" then
 			return bossModel, bossRuntimeId, HOVER_KIND_BOSS
 		end
 	end
 
-	local model = NpcServiceUtils.GetUntimeModelFromInstance(targetRaw)
+	local model = NpcServiceUtils.GetRuntimeModelFromInstance(targetRaw)
 	if model == nil then
 		return nil, nil, nil
 	end
 
-	local runtimeId = NpcServiceUtils.GetUntimeIdFromInstance(model)
+	local runtimeId = NpcServiceUtils.GetRuntimeIdFromInstance(model)
 	if runtimeId == nil or runtimeId == "" then
 		return nil, nil, nil
 	end
@@ -348,7 +348,7 @@ local function GetHoveredEntity(targetRaw: any): (Model?, string?, HoverEntityKi
 	return model, runtimeId, HOVER_KIND_NPC
 end
 
-local function GetHoverGuiPositionFromWorldPosition(worldPosition: Vector3, fallback: Vector2): Vector2
+local function getHoverGuiPositionFromWorldPosition(worldPosition: Vector3, fallback: Vector2): Vector2
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
 		return fallback
@@ -362,7 +362,7 @@ local function GetHoverGuiPositionFromWorldPosition(worldPosition: Vector3, fall
 	return toGuiPosition(Vector2.new(viewportPosition.X, viewportPosition.Y))
 end
 
-local function GetHoveredEntityFromWorldPosition(worldPosition: Vector3): (Model?, string?, HoverEntityKind?)
+local function getHoveredEntityFromWorldPosition(worldPosition: Vector3): (Model?, string?, HoverEntityKind?)
 	local overlapParams = OverlapParams.new()
 	overlapParams.FilterType = Enum.RaycastFilterType.Exclude
 	overlapParams.MaxParts = 32
@@ -384,13 +384,13 @@ local function GetHoveredEntityFromWorldPosition(worldPosition: Vector3): (Model
 			continue
 		end
 
-		local hoveredModel, runtimeId, entityKind = GetHoveredEntity(part)
+		local hoveredModel, runtimeId, entityKind = getHoveredEntity(part)
 		if hoveredModel == nil or runtimeId == nil or entityKind == nil then
 			continue
 		end
 
 		local samplePosition = part.Position
-		local adornee = GetModelAdornee(hoveredModel)
+		local adornee = getModelAdornee(hoveredModel)
 		if adornee ~= nil then
 			samplePosition = adornee.Position
 		end
@@ -414,7 +414,7 @@ local function showHover(runtimeId: string, entityKind: HoverEntityKind, model: 
 		return
 	end
 
-	local adornee = GetModelAdornee(model)
+	local adornee = getModelAdornee(model)
 	if adornee == nil then
 		clearHover()
 		return
@@ -450,7 +450,7 @@ local function refreshHoveredSnapshot()
 		return
 	end
 
-	local adornee = GetModelAdornee(hoveredModel)
+	local adornee = getModelAdornee(hoveredModel)
 	if adornee == nil then
 		clearHover()
 		return
@@ -472,16 +472,16 @@ end
 local function stepHoverState()
 	local currentState = entityInfoSlice.getEntityInfoState()
 	if shouldUseGamepadWorldHover() then
-		local worldPosition = GetGamepadWorldPosition()
+		local worldPosition = getGamepadWorldPosition()
 		if worldPosition == nil then
 			clearHover()
 			return
 		end
 
-		local hoverPosition = GetHoverGuiPositionFromWorldPosition(worldPosition, currentState.mousePosition)
+		local hoverPosition = getHoverGuiPositionFromWorldPosition(worldPosition, currentState.mousePosition)
 		entityInfoSlice.updateMousePosition(hoverPosition)
 
-		local hoveredModel, runtimeId, entityKind = GetHoveredEntityFromWorldPosition(worldPosition)
+		local hoveredModel, runtimeId, entityKind = getHoveredEntityFromWorldPosition(worldPosition)
 		if hoveredModel == nil or runtimeId == nil or entityKind == nil then
 			clearHover()
 			return
@@ -502,7 +502,7 @@ local function stepHoverState()
 		return
 	end
 
-	local mousePosition = GetMouseGuiPosition(currentState.mousePosition)
+	local mousePosition = getMouseGuiPosition(currentState.mousePosition)
 	entityInfoSlice.updateMousePosition(mousePosition)
 
 	local mouse = runtime.mouse
@@ -517,7 +517,7 @@ local function stepHoverState()
 		return
 	end
 
-	local hoveredModel, runtimeId, entityKind = GetHoveredEntity(targetPart)
+	local hoveredModel, runtimeId, entityKind = getHoveredEntity(targetPart)
 	if hoveredModel == nil or runtimeId == nil or entityKind == nil then
 		clearHover()
 		return

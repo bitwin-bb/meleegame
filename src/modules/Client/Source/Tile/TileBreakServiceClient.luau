@@ -2,6 +2,7 @@ local require = require(script.Parent.loader).load(script)
 
 local Workspace = game:GetService("Workspace")
 
+local ServiceBag = require("ServiceBag")
 local ContentProviderUtils = require("ContentProviderUtils")
 local Maid = require("Maid")
 local Rx: any = require("Rx")
@@ -42,19 +43,19 @@ local function hideBreak()
 	tileThunks.ClearBreak()
 end
 
-local function GetProgress(payload: BreakProgressPayload): number
+local function getProgress(payload: BreakProgressPayload): number
 	if payload.progressTotal ~= nil and payload.progressTotal > 0 and payload.progressUnits ~= nil then
 		return math.clamp(payload.progressUnits / payload.progressTotal, 0, 1)
 	end
 	return math.clamp(payload.progress, 0, 1)
 end
 
-local function GetFrameIndex(progress: number): number
+local function getFrameIndex(progress: number): number
 	local totalFrames = math.max(1, Sheet.columns * Sheet.rows)
 	return math.clamp(math.ceil(math.clamp(progress, 0, 1) * totalFrames), 1, totalFrames)
 end
 
-local function GetSurfaceFace(part: BasePart): Enum.NormalId
+local function getSurfaceFace(part: BasePart): Enum.NormalId
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
 		return Enum.NormalId.Right
@@ -62,7 +63,7 @@ local function GetSurfaceFace(part: BasePart): Enum.NormalId
 	return if camera.CFrame.Position.X >= part.Position.X then Enum.NormalId.Right else Enum.NormalId.Left
 end
 
-local function GetHoveredBreakTarget(tileX: number, tileY: number): TerrainBreakTarget?
+local function getHoveredBreakTarget(tileX: number, tileY: number): TerrainBreakTarget?
 	local runtime = (WorldGenerationServiceClient :: any).hoveredTerrainRuntime
 	if typeof(runtime) ~= "table" then
 		return nil
@@ -99,8 +100,8 @@ local function GetHoveredBreakTarget(tileX: number, tileY: number): TerrainBreak
 	}
 end
 
-local function GetTerrainBreakTarget(tileX: number, tileY: number): TerrainBreakTarget?
-	local hoveredTarget = GetHoveredBreakTarget(tileX, tileY)
+local function getTerrainBreakTarget(tileX: number, tileY: number): TerrainBreakTarget?
+	local hoveredTarget = getHoveredBreakTarget(tileX, tileY)
 	if hoveredTarget ~= nil then
 		return hoveredTarget
 	end
@@ -139,7 +140,7 @@ local function GetTerrainBreakTarget(tileX: number, tileY: number): TerrainBreak
 	}
 end
 
-local function GetImagePosition(target: TerrainBreakTarget, face: Enum.NormalId): UDim2
+local function getImagePosition(target: TerrainBreakTarget, face: Enum.NormalId): UDim2
 	local localTileX = if face == Enum.NormalId.Right then target.width - target.localTileX - 1 else target.localTileX
 	return UDim2.fromOffset(
 		(localTileX + 0.5) * Sheet.frameSize.X,
@@ -166,25 +167,25 @@ local function applyBreakProgress(payloadRaw: any)
 		return
 	end
 
-	local target = GetTerrainBreakTarget(tileX, tileY)
+	local target = getTerrainBreakTarget(tileX, tileY)
 	if target == nil then
 		hideBreak()
 		return
 	end
 
-	local progress = GetProgress(payload)
-	local face = GetSurfaceFace(target.part)
+	local progress = getProgress(payload)
+	local face = getSurfaceFace(target.part)
 	tileThunks.PublishBreak({
 		visible = progress > 0,
 		adornee = target.part,
 		image = Sheet.image,
-		frameIndex = GetFrameIndex(progress),
+		frameIndex = getFrameIndex(progress),
 		columns = Sheet.columns,
 		rows = Sheet.rows,
 		frameSize = Sheet.frameSize,
 		canvasSize = Vector2.new(target.width * Sheet.frameSize.X, target.height * Sheet.frameSize.Y),
 		face = face,
-		imagePosition = GetImagePosition(target, face),
+		imagePosition = getImagePosition(target, face),
 		imageSize = UDim2.fromOffset(Sheet.frameSize.X, Sheet.frameSize.Y),
 		transparency = 0,
 		tileX = tileX,
@@ -217,7 +218,10 @@ local function bindBreakProgress()
 		end))
 end
 
-function TileBreakServiceClient.Init(_self: any)
+function TileBreakServiceClient.Init(self: any, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	if maid == nil then
 		local activeMaid = Maid.new()
 		maid = activeMaid
@@ -236,7 +240,8 @@ function TileBreakServiceClient.Init(_self: any)
 	initialized = true
 end
 
-function TileBreakServiceClient.Destroy(_self: any)
+function TileBreakServiceClient.Destroy(self: any)
+	self._serviceBag = nil
 	if maid == nil then
 		return
 	end

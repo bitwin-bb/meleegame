@@ -46,19 +46,19 @@ local DEFAULT_CONFIG: PredictionConfig = {
 	derivedVelocityWeight = 0.35,
 }
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
 	return math.clamp(valueRaw, minimum, maximum)
 end
 
-local function CoerceConfig(configRaw: any, fallbackRaw: PredictionConfig?): PredictionConfig
+local function coerceConfig(configRaw: any, fallbackRaw: PredictionConfig?): PredictionConfig
 	local source = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local fallback = if typeof(fallbackRaw) == "table" then fallbackRaw else DEFAULT_CONFIG
 
-	local leadTime = CoerceNumber((source :: any).leadTime, fallback.leadTime or 0.08, 0, 1)
-	local maxLeadTime = CoerceNumber((source :: any).maxLeadTime, fallback.maxLeadTime or leadTime, leadTime, 1)
+	local leadTime = coerceNumber((source :: any).leadTime, fallback.leadTime or 0.08, 0, 1)
+	local maxLeadTime = coerceNumber((source :: any).maxLeadTime, fallback.maxLeadTime or leadTime, leadTime, 1)
 
 	return {
 		enabled = if typeof((source :: any).enabled) == "boolean"
@@ -66,9 +66,9 @@ local function CoerceConfig(configRaw: any, fallbackRaw: PredictionConfig?): Pre
 			else fallback.enabled ~= false,
 		leadTime = leadTime,
 		maxLeadTime = maxLeadTime,
-		minimumSpeed = CoerceNumber((source :: any).minimumSpeed, fallback.minimumSpeed or 2, 0, 1024),
-		maximumDistance = CoerceNumber((source :: any).maximumDistance, fallback.maximumDistance or 18, 0, 4096),
-		derivedVelocityWeight = CoerceNumber(
+		minimumSpeed = coerceNumber((source :: any).minimumSpeed, fallback.minimumSpeed or 2, 0, 1024),
+		maximumDistance = coerceNumber((source :: any).maximumDistance, fallback.maximumDistance or 18, 0, 4096),
+		derivedVelocityWeight = coerceNumber(
 			(source :: any).derivedVelocityWeight,
 			fallback.derivedVelocityWeight or 0.35,
 			0,
@@ -97,7 +97,7 @@ local function buildResult(
 end
 
 function Predict.New(configRaw: PredictionConfig?): Predict
-	local config = CoerceConfig(configRaw, DEFAULT_CONFIG)
+	local config = coerceConfig(configRaw, DEFAULT_CONFIG)
 	return setmetatable({
 		enabled = config.enabled ~= false,
 		leadTime = config.leadTime or 0.08,
@@ -109,7 +109,7 @@ function Predict.New(configRaw: PredictionConfig?): Predict
 end
 
 function Predict.ApplyConfig(self: Predict, configRaw: PredictionConfig?)
-	local config = CoerceConfig(configRaw, {
+	local config = coerceConfig(configRaw, {
 		enabled = self.enabled,
 		leadTime = self.leadTime,
 		maxLeadTime = self.maxLeadTime,
@@ -129,7 +129,7 @@ end
 function Predict.Get(self: Predict, targetRaw: any, cacheRaw: any?, optionsRaw: any?): PredictionResult
 	local target = if typeof(targetRaw) == "table" then targetRaw else nil
 	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
-	local configOverride = CoerceConfig((options :: any).config, {
+	local configOverride = coerceConfig((options :: any).config, {
 		enabled = self.enabled,
 		leadTime = self.leadTime,
 		maxLeadTime = self.maxLeadTime,
@@ -166,7 +166,7 @@ function Predict.Get(self: Predict, targetRaw: any, cacheRaw: any?, optionsRaw: 
 	end
 
 	local speed = velocity.Magnitude
-	local leadTime = CoerceNumber(
+	local leadTime = coerceNumber(
 		(options :: any).leadTime,
 		configOverride.leadTime or 0.08,
 		0,

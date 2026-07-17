@@ -45,7 +45,7 @@ local BOSS_ICON_BY_ID: { [BossId]: string } = {
 	EyeOfCthulhu = ImageIds.eocIcon,
 }
 
-local function GetBossIcon(bossId: BossId): string
+local function getBossIcon(bossId: BossId): string
 	local icon = BOSS_ICON_BY_ID[bossId]
 	if typeof(icon) == "string" and icon ~= "" then
 		return icon
@@ -53,7 +53,7 @@ local function GetBossIcon(bossId: BossId): string
 	error(MISSING_ASSET_ERROR, 0)
 end
 
-local function GetBossPosition(snapshot: BossSnapshot): Vector3?
+local function getBossPosition(snapshot: BossSnapshot): Vector3?
 	if snapshot.position ~= nil then
 		return snapshot.position
 	end
@@ -71,7 +71,7 @@ local function isBossSafelyOnScreen(viewportPoint: Vector3, viewportSize: Vector
 		and viewportPoint.Y <= viewportSize.Y - EDGE_PADDING
 end
 
-local function GetDirection(viewportPoint: Vector3, viewportSize: Vector2): Vector2
+local function getDirection(viewportPoint: Vector3, viewportSize: Vector2): Vector2
 	local center = viewportSize * 0.5
 	local direction = Vector2.new(viewportPoint.X, viewportPoint.Y) - center
 	if viewportPoint.Z <= 0 then
@@ -136,7 +136,7 @@ local function buildRenderedMarkers(camera: Camera?, markerState: MarkerState): 
 			continue
 		end
 
-		local bossPosition = GetBossPosition(snapshot)
+		local bossPosition = getBossPosition(snapshot)
 		if bossPosition == nil then
 			continue
 		end
@@ -146,13 +146,13 @@ local function buildRenderedMarkers(camera: Camera?, markerState: MarkerState): 
 			continue
 		end
 
-		local direction = GetDirection(viewportPoint, viewportSize)
+		local direction = getDirection(viewportPoint, viewportSize)
 		local markerPosition = clampToViewportEdge(direction, viewportSize)
 		local rotation = math.deg(math.atan2(direction.Y, direction.X)) + ROTATION_OFFSET_DEGREES
 
 		renderedMarkers = Sift.Array.append(renderedMarkers, {
 			runtimeId = runtimeId,
-			icon = GetBossIcon(snapshot.bossId),
+			icon = getBossIcon(snapshot.bossId),
 			position = markerPosition,
 			rotation = rotation,
 		})

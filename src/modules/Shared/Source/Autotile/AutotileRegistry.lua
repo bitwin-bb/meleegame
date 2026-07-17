@@ -9,6 +9,27 @@ local AutotileRegistry = {}
 local definitionsByTileId = {}
 local definitionsById = {}
 
+local DEFINITION_MODULE_NAMES = Table.readonly({
+	"Grass",
+	"Dirt",
+	"Stone",
+	"Sand",
+	"Sandstone",
+	"Snow",
+	"Ice",
+	"Mud",
+	"Clay",
+	"CopperOre",
+	"IronOre",
+	"SilverOre",
+	"GoldOre",
+	"CorruptGrass",
+	"CorruptSoil",
+	"CorruptStone",
+	"JungleGrass",
+	"Wood",
+})
+
 local function normalizeId(idRaw: any): string?
 	if typeof(idRaw) ~= "string" or idRaw == "" then
 		return nil
@@ -43,11 +64,9 @@ local function loadDefinition(moduleName: string)
 	AutotileRegistry.RegisterDefinition(require(module))
 end
 
-loadDefinition("Dirt")
-loadDefinition("Grass")
-loadDefinition("Mud")
-loadDefinition("Snow")
-loadDefinition("Stone")
+for _, moduleName in DEFINITION_MODULE_NAMES do
+	loadDefinition(moduleName)
+end
 
 function AutotileRegistry.GetDefinition(tileIdRaw: any): any?
 	if typeof(tileIdRaw) == "number" then

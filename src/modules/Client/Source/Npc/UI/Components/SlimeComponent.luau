@@ -57,14 +57,14 @@ local function getAnimation(animationName: string): any
 	return SlimeSpriteSheet.animations[animationName]
 end
 
-local function CoerceFrame(frameRaw: any): number
+local function coerceFrame(frameRaw: any): number
 	if typeof(frameRaw) ~= "number" or frameRaw ~= frameRaw then
 		return 1
 	end
 	return math.clamp(math.floor(frameRaw), 1, FRAME_COUNT)
 end
 
-local function CoerceFrameRate(frameRateRaw: any, fallback: number): number
+local function coerceFrameRate(frameRateRaw: any, fallback: number): number
 	if typeof(frameRateRaw) ~= "number" or frameRateRaw ~= frameRateRaw then
 		return fallback
 	end
@@ -92,10 +92,10 @@ local function getAnimationFrame(animationName: string, frameOffset: number?): n
 	local frameCount = #frames
 	local offset = if typeof(frameOffset) == "number" then frameOffset else 0
 	local index = offset % frameCount + 1
-	return CoerceFrame(frames[index])
+	return coerceFrame(frames[index])
 end
 
-local function GetAcceleratingAnimationFrame(
+local function getAcceleratingAnimationFrame(
 	animationName: string,
 	elapsed: number,
 	duration: number,
@@ -110,12 +110,12 @@ local function GetAcceleratingAnimationFrame(
 	local frameProgress = minFrameRate * safeElapsed
 		+ (maxFrameRate - minFrameRate) * (safeElapsed ^ 3) / (3 * safeDuration * safeDuration)
 	local index = math.floor(frameProgress) % frameCount + 1
-	return CoerceFrame(frames[index])
+	return coerceFrame(frames[index])
 end
 
 local function getFrameOffset(frameIndex: number, flipX: boolean?): Vector2
 	local frameSize = SlimeSpriteSheet.frameSize
-	local zeroBased = math.max(0, CoerceFrame(frameIndex) - 1)
+	local zeroBased = math.max(0, coerceFrame(frameIndex) - 1)
 	local column = zeroBased % SlimeSpriteSheet.columns
 	local row = math.floor(zeroBased / SlimeSpriteSheet.columns)
 	local x = column * frameSize.X
@@ -125,7 +125,7 @@ local function getFrameOffset(frameIndex: number, flipX: boolean?): Vector2
 	return Vector2.new(x, row * frameSize.Y)
 end
 
-local function GetImageRectSize(flipX: boolean?): Vector2
+local function getImageRectSize(flipX: boolean?): Vector2
 	local frameSize = SlimeSpriteSheet.frameSize
 	if flipX == true then
 		return Vector2.new(-frameSize.X, frameSize.Y)
@@ -163,7 +163,7 @@ local function createFlipbook(frameRate: number, restFrame: number, flipX: boole
 	return flipbook
 end
 
-local function GetModelRootPart(model: Model): BasePart?
+local function getModelRootPart(model: Model): BasePart?
 	local rootPart = model:FindFirstChild("RootPart")
 	if rootPart ~= nil and rootPart:IsA("BasePart") then
 		return rootPart
@@ -179,7 +179,7 @@ local function GetModelRootPart(model: Model): BasePart?
 	return nil
 end
 
-local function GetUntimeRootPart(runtimeId: string): BasePart?
+local function getRuntimeRootPart(runtimeId: string): BasePart?
 	local cachedRootPart = runtimeRootPartCache[runtimeId]
 	if cachedRootPart ~= nil and cachedRootPart:IsDescendantOf(Workspace) then
 		return cachedRootPart
@@ -199,7 +199,7 @@ local function GetUntimeRootPart(runtimeId: string): BasePart?
 			continue
 		end
 
-		local rootPart = GetModelRootPart(child)
+		local rootPart = getModelRootPart(child)
 		if rootPart ~= nil then
 			runtimeRootPartCache[runtimeId] = rootPart
 		end
@@ -209,8 +209,8 @@ local function GetUntimeRootPart(runtimeId: string): BasePart?
 	return nil
 end
 
-local function GetSnapshotSpritePlacement(snapshot: NpcSnapshot): (Vector3?, Vector3?)
-	local rootPart = GetUntimeRootPart(snapshot.id)
+local function getSnapshotSpritePlacement(snapshot: NpcSnapshot): (Vector3?, Vector3?)
+	local rootPart = getRuntimeRootPart(snapshot.id)
 	if rootPart ~= nil then
 		return rootPart.Position, rootPart.Size
 	end
@@ -221,13 +221,13 @@ local function GetSnapshotSpritePlacement(snapshot: NpcSnapshot): (Vector3?, Vec
 	return snapshot.position, FALLBACK_ROOT_SIZE
 end
 
-local function GetSnapshotPlayback(snapshot: NpcSnapshot, renderClock: number): SpritePlayback
+local function getSnapshotPlayback(snapshot: NpcSnapshot, renderClock: number): SpritePlayback
 	if not snapshot.isAlive or snapshot.state == "Dead" then
 		local animation = getAnimation("Dead")
 		return {
 			playing = false,
-			restFrame = CoerceFrame(snapshot.spriteFrame or getAnimationFrame("Dead", nil)),
-			frameRate = CoerceFrameRate(snapshot.spriteFrameRate, animation.frameRate),
+			restFrame = coerceFrame(snapshot.spriteFrame or getAnimationFrame("Dead", nil)),
+			frameRate = coerceFrameRate(snapshot.spriteFrameRate, animation.frameRate),
 		}
 	end
 
@@ -235,11 +235,11 @@ local function GetSnapshotPlayback(snapshot: NpcSnapshot, renderClock: number): 
 		then snapshot.spritePhase
 		else "Idle"
 	local animation = getAnimation(phase)
-	local frameRate = CoerceFrameRate(snapshot.spriteFrameRate, animation.frameRate)
+	local frameRate = coerceFrameRate(snapshot.spriteFrameRate, animation.frameRate)
 	if typeof(snapshot.spriteFrame) == "number" then
 		return {
 			playing = false,
-			restFrame = CoerceFrame(snapshot.spriteFrame),
+			restFrame = coerceFrame(snapshot.spriteFrame),
 			frameRate = frameRate,
 		}
 	end
@@ -255,8 +255,7 @@ local function GetSnapshotPlayback(snapshot: NpcSnapshot, renderClock: number): 
 			local phaseElapsed = getSnapshotPhaseElapsed(snapshot, renderClock)
 			local phaseAlpha = math.clamp(phaseElapsed / phaseDuration, 0, 1)
 			frameRate = minFrameRate + (maxFrameRate - minFrameRate) * phaseAlpha * phaseAlpha
-			restFrame =
-				GetAcceleratingAnimationFrame("Idle", phaseElapsed, phaseDuration, minFrameRate, maxFrameRate)
+			restFrame = getAcceleratingAnimationFrame("Idle", phaseElapsed, phaseDuration, minFrameRate, maxFrameRate)
 		end
 
 		return {
@@ -281,20 +280,20 @@ local function GetSnapshotPlayback(snapshot: NpcSnapshot, renderClock: number): 
 	}
 end
 
-local function GetGorePlayback(frameOffset: number?): SpritePlayback
+local function getGorePlayback(frameOffset: number?): SpritePlayback
 	local animation = getAnimation("Gore")
 	return {
 		playing = true,
 		restFrame = getAnimationFrame("Gore", frameOffset),
-		frameRate = CoerceFrameRate(animation.frameRate, 12),
+		frameRate = coerceFrameRate(animation.frameRate, 12),
 	}
 end
 
-local function GetContentWidth(): number
+local function getContentWidth(): number
 	return math.max(1, CONTENT_BOUNDS_MAX.X - CONTENT_BOUNDS_MIN.X)
 end
 
-local function GetContentAnchorPoint(): Vector2
+local function getContentAnchorPoint(): Vector2
 	local frameSize = SlimeSpriteSheet.frameSize
 	return Vector2.new(
 		((CONTENT_BOUNDS_MIN.X + CONTENT_BOUNDS_MAX.X) * 0.5) / frameSize.X,
@@ -302,7 +301,7 @@ local function GetContentAnchorPoint(): Vector2
 	)
 end
 
-local function GetProjectedRootWidth(position: Vector3, rootSize: Vector3): number
+local function getProjectedRootWidth(position: Vector3, rootSize: Vector3): number
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
 		return 0
@@ -321,7 +320,7 @@ local function GetProjectedRootWidth(position: Vector3, rootSize: Vector3): numb
 	return math.abs(rightViewportPoint.X - leftViewportPoint.X)
 end
 
-local function GetScreenPosition(position: Vector3, rootSize: Vector3?): (UDim2?, number)
+local function getScreenPosition(position: Vector3, rootSize: Vector3?): (UDim2?, number)
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
 		return nil, 0
@@ -333,8 +332,8 @@ local function GetScreenPosition(position: Vector3, rootSize: Vector3?): (UDim2?
 	end
 
 	if rootSize ~= nil then
-		local projectedRootWidth = GetProjectedRootWidth(position, rootSize)
-		local frameHeight = projectedRootWidth * (SlimeSpriteSheet.frameSize.Y / GetContentWidth())
+		local projectedRootWidth = getProjectedRootWidth(position, rootSize)
+		local frameHeight = projectedRootWidth * (SlimeSpriteSheet.frameSize.Y / getContentWidth())
 		return UDim2.fromOffset(viewportPoint.X, viewportPoint.Y), math.clamp(frameHeight, 24, 176)
 	end
 
@@ -343,7 +342,7 @@ local function GetScreenPosition(position: Vector3, rootSize: Vector3?): (UDim2?
 	return UDim2.fromOffset(viewportPoint.X, viewportPoint.Y), size
 end
 
-local function GetSpriteSize(baseSize: number, scale: number): UDim2
+local function getSpriteSize(baseSize: number, scale: number): UDim2
 	local frameSize = SlimeSpriteSheet.frameSize
 	local height = math.max(1, baseSize * scale)
 	local width = height
@@ -357,12 +356,12 @@ local function SpriteImage(props: SpriteImageProps)
 	local imageRef = React.useRef(nil :: ImageLabel?)
 	local playerRef = React.useRef(nil :: any)
 	local flipbookRef = React.useRef(nil :: any)
-	local screenPosition, baseSize = GetScreenPosition(props.position, props.rootSize)
+	local screenPosition, baseSize = getScreenPosition(props.position, props.rootSize)
 	local isSurfaceGui = props.surfaceGui == true
 	local visible = isSurfaceGui or screenPosition ~= nil
 	local playback = props.playback
-	local restFrame = CoerceFrame(playback.restFrame)
-	local frameRate = CoerceFrameRate(playback.frameRate, 1)
+	local restFrame = coerceFrame(playback.restFrame)
+	local frameRate = coerceFrameRate(playback.frameRate, 1)
 	local flipX = if typeof(props.facingSign) == "number" then props.facingSign < 0 else false
 
 	React.useEffect(
@@ -444,19 +443,19 @@ local function SpriteImage(props: SpriteImageProps)
 
 	return e("ImageLabel", {
 		ref = imageRef,
-		AnchorPoint = if isSurfaceGui then Vector2.new(0.5, 0.5) else props.anchorPoint or GetContentAnchorPoint(),
+		AnchorPoint = if isSurfaceGui then Vector2.new(0.5, 0.5) else props.anchorPoint or getContentAnchorPoint(),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		Image = SlimeSpriteSheet.image,
 		ImageColor3 = props.imageColor,
 		ImageRectOffset = getFrameOffset(restFrame, flipX),
-		ImageRectSize = GetImageRectSize(flipX),
+		ImageRectSize = getImageRectSize(flipX),
 		Position = if isSurfaceGui
 			then UDim2.fromScale(0.5, 0.5)
 			else screenPosition or UDim2.fromOffset(-10000, -10000),
 		ResampleMode = Enum.ResamplerMode.Pixelated,
 		ScaleType = Enum.ScaleType.Stretch,
-		Size = if isSurfaceGui then UDim2.fromScale(1, 1) else GetSpriteSize(baseSize, props.scale),
+		Size = if isSurfaceGui then UDim2.fromScale(1, 1) else getSpriteSize(baseSize, props.scale),
 		Visible = visible,
 		ZIndex = props.zIndex,
 	}, children)
@@ -473,7 +472,7 @@ return function(props: SlimeProps)
 		return e(SpriteImage, {
 			position = position,
 			rootSize = nil,
-			playback = GetGorePlayback(gore.frameOffset),
+			playback = getGorePlayback(gore.frameOffset),
 			imageColor = gore.imageColor,
 			scale = gore.scale,
 			facingSign = 1,
@@ -487,7 +486,7 @@ return function(props: SlimeProps)
 	if snapshot == nil or not snapshot.isAlive then
 		return nil
 	end
-	local position, rootSize = GetSnapshotSpritePlacement(snapshot)
+	local position, rootSize = getSnapshotSpritePlacement(snapshot)
 	if position == nil then
 		return nil
 	end
@@ -495,7 +494,7 @@ return function(props: SlimeProps)
 	return e(SpriteImage, {
 		position = position,
 		rootSize = rootSize,
-		playback = GetSnapshotPlayback(snapshot, renderClock),
+		playback = getSnapshotPlayback(snapshot, renderClock),
 		imageColor = SlimeTints.Green,
 		scale = 1,
 		facingSign = snapshot.spriteFacingSign,

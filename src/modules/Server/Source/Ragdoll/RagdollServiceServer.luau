@@ -53,9 +53,8 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local NevermoreSupport = require("NevermoreSupport")
-local RagdollServiceUtils = require("RagdollServiceUtils")
 local BinderSupportServer = require("BinderSupportServer")
+local RagdollServiceUtils = require("RagdollServiceUtils")
 
 type CharacterRig = RagdollServiceUtils.CharacterRig
 type RagdollContext = RagdollServiceUtils.RagdollContext
@@ -75,16 +74,17 @@ type PlayerRuntime = {
 }
 
 local RagdollServiceServer = {}
+RagdollServiceServer.ServiceName = "RagdollServiceServer"
 
 local SELF_REQUEST_REASON = "SelfRequest"
 local SELF_RECOVER_REASON = "SelfRecover"
 local TIMER_RECOVER_REASON = "TimerRecovery"
 local SERVER_RECOVER_REASON = "ServerRecovery"
 
-function RagdollServiceServer.Init(self: RagdollServiceServer)
+function RagdollServiceServer.Init(self: RagdollServiceServer, serviceBag: any)
 	bindPackets(self)
 	self.playerRuntimes = {}
-	(self :: any).binders = NevermoreSupport.GetService(BinderSupportServer)
+	(self :: any).binders = serviceBag:GetService(BinderSupportServer)
 
 	for _, player in Players:GetPlayers() do
 		self:TrackPlayer(player)
@@ -103,7 +103,7 @@ function RagdollServiceServer.Init(self: RagdollServiceServer)
 	end)
 end
 
-function RagdollServiceServer.CreateRuntime(self: RagdollServiceServer): PlayerRuntime
+function RagdollServiceServer.CreateRuntime(_self: RagdollServiceServer): PlayerRuntime
 	return {
 		playerJanitor = Janitor.new(),
 		characterJanitor = Janitor.new(),
@@ -190,7 +190,7 @@ function RagdollServiceServer.ScheduleRecovery(
 end
 
 function RagdollServiceServer.ClearActiveRagdoll(
-	self: RagdollServiceServer,
+	_self: RagdollServiceServer,
 	runtime: PlayerRuntime,
 	restoreHumanoid: boolean?
 )
@@ -227,7 +227,7 @@ function RagdollServiceServer.StepRagdollPlaneConstraint(self: RagdollServiceSer
 end
 
 function RagdollServiceServer.GetPlayerRig(
-	self: RagdollServiceServer,
+	_self: RagdollServiceServer,
 	player: Player,
 	runtime: PlayerRuntime
 ): CharacterRig?

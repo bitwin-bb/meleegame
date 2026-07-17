@@ -285,7 +285,7 @@ function BuffServiceClient.Destroy(self: BuffServiceClient)
 
 	self._serviceBag = nil
 end
-type BuffServiceClient = typeof(BuffServiceClient) & {
+export type BuffServiceClient = typeof(BuffServiceClient) & {
 	_serviceBag: any,
 	_maid: MaidClass,
 	_handler: any,

@@ -201,7 +201,7 @@ local function cloneDefaults(): EyeOfCthulhuConfig
 	return clone :: EyeOfCthulhuConfig
 end
 
-local function CoerceInteger(valueRaw: any, fallback: number, minimum: number, maximum: number): number
+local function coerceInteger(valueRaw: any, fallback: number, minimum: number, maximum: number): number
 	return math.floor(BossServiceUtils.CoerceNumber(valueRaw, fallback, minimum, maximum))
 end
 
@@ -213,7 +213,7 @@ function EyeOfCthulhuConfig.Get(configRaw: any): EyeOfCthulhuConfig
 	local config = cloneDefaults()
 	local source = if typeof(configRaw) == "table" then configRaw else {} :: any
 
-	config.maxHp = CoerceInteger((source :: any).maxHp, config.maxHp, 1, 10 ^ 9)
+	config.maxHp = coerceInteger((source :: any).maxHp, config.maxHp, 1, 10 ^ 9)
 	config.defensePhase1 =
 		BossServiceUtils.CoerceNumber((source :: any).defensePhase1, config.defensePhase1, 0, 10 ^ 6)
 	config.defensePhase2 =
@@ -317,12 +317,12 @@ function EyeOfCthulhuConfig.Get(configRaw: any): EyeOfCthulhuConfig
 		0,
 		50
 	)
-	config.phase1ChargeCount = CoerceInteger((source :: any).phase1ChargeCount, config.phase1ChargeCount, 1, 10)
+	config.phase1ChargeCount = coerceInteger((source :: any).phase1ChargeCount, config.phase1ChargeCount, 1, 10)
 	config.phase1PredictionTime =
 		BossServiceUtils.CoerceNumber((source :: any).phase1PredictionTime, config.phase1PredictionTime, 0, 4)
 	config.servantBurstCountMin =
-		CoerceInteger((source :: any).servantBurstCountMin, config.servantBurstCountMin, 0, 32)
-	config.servantBurstCountMax = CoerceInteger(
+		coerceInteger((source :: any).servantBurstCountMin, config.servantBurstCountMin, 0, 32)
+	config.servantBurstCountMax = coerceInteger(
 		(source :: any).servantBurstCountMax,
 		config.servantBurstCountMax,
 		config.servantBurstCountMin,
@@ -347,9 +347,9 @@ function EyeOfCthulhuConfig.Get(configRaw: any): EyeOfCthulhuConfig
 		config.servantBonusBurstOnTransform
 	)
 	config.servantExpertBonusCount =
-		CoerceInteger((source :: any).servantExpertBonusCount, config.servantExpertBonusCount, 0, 32)
-	config.servantLimit = CoerceInteger((source :: any).servantLimit, config.servantLimit, 0, 64)
-	config.maxActiveServants = CoerceInteger(
+		coerceInteger((source :: any).servantExpertBonusCount, config.servantExpertBonusCount, 0, 32)
+	config.servantLimit = coerceInteger((source :: any).servantLimit, config.servantLimit, 0, 64)
+	config.maxActiveServants = coerceInteger(
 		(source :: any).maxActiveServants,
 		if (source :: any).servantLimit ~= nil then config.servantLimit else config.maxActiveServants,
 		0,
@@ -409,7 +409,7 @@ function EyeOfCthulhuConfig.Get(configRaw: any): EyeOfCthulhuConfig
 		BossServiceUtils.CoerceNumber((source :: any).phase2BobAmplitude, config.phase1BobAmplitude, 0, 64)
 	config.phase2BobSpeed =
 		BossServiceUtils.CoerceNumber((source :: any).phase2BobSpeed, config.phase1BobSpeed, 0, 50)
-	config.phase2ChargeCount = CoerceInteger((source :: any).phase2ChargeCount, config.phase1ChargeCount, 1, 10)
+	config.phase2ChargeCount = coerceInteger((source :: any).phase2ChargeCount, config.phase1ChargeCount, 1, 10)
 	config.phase2ChargeWindupDuration = BossServiceUtils.CoerceNumber(
 		(source :: any).phase2ChargeWindupDuration,
 		config.phase1ChargeWindupDuration,
@@ -454,7 +454,7 @@ function EyeOfCthulhuConfig.Get(configRaw: any): EyeOfCthulhuConfig
 		0.01,
 		0.95
 	)
-	config.rapidChainCount = CoerceInteger((source :: any).rapidChainCount, config.rapidChainCount, 1, 16)
+	config.rapidChainCount = coerceInteger((source :: any).rapidChainCount, config.rapidChainCount, 1, 16)
 	config.rapidChainWindupDuration = BossServiceUtils.CoerceNumber(
 		(source :: any).rapidChainWindupDuration,
 		config.rapidChainWindupDuration,

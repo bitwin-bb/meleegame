@@ -137,7 +137,7 @@ local function readSelectedStack(inventoryState: InventoryState): InventoryServi
 	return InventoryServiceUtils.GetStack(inventoryState, selectedSlot)
 end
 
-local function GetDisplayNameFromStack(stackRaw: any, fallbackRaw: any?): string
+local function getDisplayNameFromStack(stackRaw: any, fallbackRaw: any?): string
 	local fallback = trim(fallbackRaw)
 	if typeof(stackRaw) == "table" then
 		local ok, displayNameOrError = pcall(function()
@@ -153,7 +153,7 @@ local function GetDisplayNameFromStack(stackRaw: any, fallbackRaw: any?): string
 	return "Action"
 end
 
-local function GetDeployableItemId(stackRaw: any): string?
+local function getDeployableItemId(stackRaw: any): string?
 	if typeof(stackRaw) ~= "table" then
 		return nil
 	end
@@ -176,7 +176,7 @@ local function GetDeployableItemId(stackRaw: any): string?
 	return itemId
 end
 
-local function GetPromptData(actionName: string): PromptData
+local function getPromptData(actionName: string): PromptData
 	local ok, promptOrError = pcall(function()
 		return PlatformServiceClient:GetPromptForAction(actionName)
 	end)
@@ -229,7 +229,7 @@ local function findExistingHintIndexForPrompt(hints: { BindingHintEntry }, promp
 end
 
 local function pushHint(hints: { BindingHintEntry }, descriptor: HintDescriptor): boolean
-	local promptData = GetPromptData(descriptor.actionName)
+	local promptData = getPromptData(descriptor.actionName)
 	if promptData.text == nil and promptData.icon == nil then
 		return false
 	end
@@ -308,7 +308,7 @@ local function formatTreeBreakFailureReason(reasonRaw: any): string?
 	return "cannot chop"
 end
 
-local function GetMiningToolContext(inventoryState: InventoryState): { [string]: any }?
+local function getMiningToolContext(inventoryState: InventoryState): { [string]: any }?
 	local ok, toolContextOrError = pcall(function()
 		return MiningPower.GetSelectedToolContextFromInventoryState(inventoryState)
 	end)
@@ -332,7 +332,7 @@ local function tryBuildPlaceHint(hints: { BindingHintEntry }, selectedStack: any
 		return false
 	end
 
-	local itemName = GetDisplayNameFromStack(selectedStack, config.itemId)
+	local itemName = getDisplayNameFromStack(selectedStack, config.itemId)
 	local cursorTileX = BuildServiceClient.cursorTileX
 	local cursorTileY = BuildServiceClient.cursorTileY
 	local canPlace = false
@@ -360,7 +360,7 @@ local function tryBuildPlaceHint(hints: { BindingHintEntry }, selectedStack: any
 end
 
 local function tryBuildDeployableHint(hints: { BindingHintEntry }, selectedStack: any): boolean
-	local deployableItemId = GetDeployableItemId(selectedStack)
+	local deployableItemId = getDeployableItemId(selectedStack)
 	if deployableItemId == nil then
 		return false
 	end
@@ -371,7 +371,7 @@ local function tryBuildDeployableHint(hints: { BindingHintEntry }, selectedStack
 	return pushHint(hints, {
 		id = "inventory_place_deployable",
 		actionName = PlatformServiceClient.ACTIONS.PLACE_DEPLOYABLE,
-		label = ("Place %s"):format(GetDisplayNameFromStack(selectedStack, deployableItemId)),
+		label = ("Place %s"):format(getDisplayNameFromStack(selectedStack, deployableItemId)),
 		detail = if canPlace then nil else "No Target",
 		enabled = canPlace,
 		priority = 110,
@@ -396,7 +396,7 @@ local function tryBuildBreakHint(hints: { BindingHintEntry }, inventoryState: In
 		return false
 	end
 
-	local toolContext = GetMiningToolContext(inventoryState)
+	local toolContext = getMiningToolContext(inventoryState)
 	local toolType = if toolContext ~= nil then toolContext.toolType else nil
 	local toolPower = if toolContext ~= nil then toolContext.toolPower else 0
 
@@ -503,7 +503,7 @@ local function appendMeleeHint(hints: { BindingHintEntry }, contextualBuildKind:
 	})
 end
 
-local function GetMagicWeaponConfig(): MagicServiceUtils.WeaponRuntimeConfig?
+local function getMagicWeaponConfig(): MagicServiceUtils.WeaponRuntimeConfig?
 	local equippedTool = MagicServiceClient.equippedTool
 	if typeof(equippedTool) ~= "Instance" then
 		return nil
@@ -519,7 +519,7 @@ local function GetMagicWeaponConfig(): MagicServiceUtils.WeaponRuntimeConfig?
 end
 
 local function appendMagicHint(hints: { BindingHintEntry })
-	local config = GetMagicWeaponConfig()
+	local config = getMagicWeaponConfig()
 	if config == nil then
 		return
 	end

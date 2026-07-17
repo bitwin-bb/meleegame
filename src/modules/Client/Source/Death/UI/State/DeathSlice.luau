@@ -38,21 +38,21 @@ local DEFAULT_STATE: DeathState = {
 
 local deathStateAtom: Charm.Atom<DeathState> = Charm.atom(DEFAULT_STATE)
 
-local function CoerceFiniteNumber(valueRaw: any, fallback: number): number
+local function coerceFiniteNumber(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
 	return valueRaw
 end
 
-local function CoerceOptionalTimestamp(valueRaw: any): number?
+local function coerceOptionalTimestamp(valueRaw: any): number?
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return nil
 	end
 	return valueRaw
 end
 
-local function CoerceMessage(valueRaw: any, fallback: string): string
+local function coerceMessage(valueRaw: any, fallback: string): string
 	if typeof(valueRaw) ~= "string" then
 		return fallback
 	end
@@ -63,8 +63,8 @@ local function CoerceMessage(valueRaw: any, fallback: string): string
 	return message
 end
 
-local function CoerceRespawnDelay(valueRaw: any, fallback: number): number
-	local delay = CoerceFiniteNumber(valueRaw, fallback)
+local function coerceRespawnDelay(valueRaw: any, fallback: number): number
+	local delay = coerceFiniteNumber(valueRaw, fallback)
 	return math.clamp(delay, MIN_RESPAWN_DELAY, MAX_RESPAWN_DELAY)
 end
 
@@ -76,13 +76,13 @@ local function setDeathState(stateRaw: any): DeathState
 	local current = deathStateAtom()
 	local source = if typeof(stateRaw) == "table" then stateRaw else {} :: any
 	local visible = (source :: any).visible == true
-	local message = CoerceMessage((source :: any).message, current.message)
-	local sequenceRaw = CoerceFiniteNumber((source :: any).sequence, current.sequence)
+	local message = coerceMessage((source :: any).message, current.message)
+	local sequenceRaw = coerceFiniteNumber((source :: any).sequence, current.sequence)
 	local sequence = math.max(0, math.floor(sequenceRaw))
 	local now = os.clock()
-	local diedAt = CoerceOptionalTimestamp((source :: any).diedAt)
-	local respawnDelay = CoerceRespawnDelay((source :: any).respawnDelay, current.respawnDelay)
-	local respawnAt = CoerceOptionalTimestamp((source :: any).respawnAt)
+	local diedAt = coerceOptionalTimestamp((source :: any).diedAt)
+	local respawnDelay = coerceRespawnDelay((source :: any).respawnDelay, current.respawnDelay)
+	local respawnAt = coerceOptionalTimestamp((source :: any).respawnAt)
 
 	if visible then
 		local deathTime: number = diedAt or now
@@ -113,15 +113,15 @@ local function showDeath(payloadRaw: any): DeathState
 	local payload = if typeof(payloadRaw) == "table" then payloadRaw else {} :: any
 	local now = os.clock()
 
-	local message = CoerceMessage((payload :: any).message, DEFAULT_MESSAGE)
-	local diedAt = CoerceOptionalTimestamp((payload :: any).diedAt)
+	local message = coerceMessage((payload :: any).message, DEFAULT_MESSAGE)
+	local diedAt = coerceOptionalTimestamp((payload :: any).diedAt)
 	if diedAt == nil then
 		diedAt = now
 	end
 	local deathTime = diedAt :: number
 
-	local respawnDelay = CoerceRespawnDelay((payload :: any).respawnDelay, current.respawnDelay)
-	local respawnAt = CoerceOptionalTimestamp((payload :: any).respawnAt)
+	local respawnDelay = coerceRespawnDelay((payload :: any).respawnDelay, current.respawnDelay)
+	local respawnAt = coerceOptionalTimestamp((payload :: any).respawnAt)
 	if respawnAt == nil then
 		respawnAt = deathTime + respawnDelay
 	end

@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Players = game:GetService("Players")
 
+local ServiceBag = require("ServiceBag")
 local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local NpcServicePackets = require("NetPacketsShared").NpcService
@@ -77,6 +78,7 @@ local NpcServiceClient = {
 	state = createDefaultState(),
 	stateChanged = Signal.new(),
 }
+NpcServiceClient.ServiceName = "NpcServiceClient"
 
 local function cloneSnapshot(snapshot: NpcSnapshot): NpcSnapshot
 	return {
@@ -221,7 +223,10 @@ function NpcServiceClient.GetState(self: NpcServiceClient): NpcServiceClientStat
 	return cloneState(self.state)
 end
 
-function NpcServiceClient.Init(self: NpcServiceClient)
+function NpcServiceClient.Init(self: NpcServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
@@ -239,8 +244,10 @@ function NpcServiceClient.Destroy(self: NpcServiceClient)
 	if self.janitor then
 		self.janitor:Destroy()
 	end
+	self._serviceBag = nil
 end
 type NpcServiceClient = typeof(NpcServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
 	localPlayer: Player,
 	janitor: JanitorClass,
 	stateChanged: SignalObject,

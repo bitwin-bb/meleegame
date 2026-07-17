@@ -35,7 +35,7 @@ local function dependencyArray(...: any): { any }
 	return { ... }
 end
 
-local function CoerceDurationSeconds(valueRaw: any): number
+local function coerceDurationSeconds(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return DEFAULT_DURATION_SECONDS
 	end
@@ -55,7 +55,7 @@ local function matchesInputType(inputObject: InputObject, inputTypesRaw: { Enum.
 end
 
 local function useLongPress(options: LongPressOptions?): LongPressResult
-	local durationSeconds = CoerceDurationSeconds(if options ~= nil then options.duration else nil)
+	local durationSeconds = coerceDurationSeconds(if options ~= nil then options.duration else nil)
 	local enabled = if options ~= nil and options.enabled ~= nil then options.enabled == true else true
 	local inputTypes = if options ~= nil then options.inputTypes else nil
 	local cancelOnPointerLeave = if options ~= nil and options.cancelOnPointerLeave ~= nil

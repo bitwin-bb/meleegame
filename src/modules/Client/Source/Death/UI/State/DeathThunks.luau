@@ -22,7 +22,7 @@ local runtime = {
 	humanoidDiedConnection = nil :: RBXScriptConnection?,
 }
 
-local function GetEspawnDelay(): number
+local function getRespawnDelay(): number
 	return PlayerSpawnCooldown.GetCurrentRespawnDelay()
 end
 
@@ -51,7 +51,7 @@ local function onHumanoidDied(humanoid: Humanoid)
 	runtime.deathShownForHumanoid = humanoid
 	deathSlice.showDeath({
 		message = "You were slain...",
-		respawnDelay = GetEspawnDelay(),
+		respawnDelay = getRespawnDelay(),
 	})
 end
 

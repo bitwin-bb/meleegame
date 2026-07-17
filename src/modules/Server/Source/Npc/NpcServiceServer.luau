@@ -1,10 +1,8 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local PhysicsService = game:GetService("PhysicsService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
 local Bounds = require("Bounds")
@@ -14,6 +12,7 @@ local EyeOfCthulhuNpc = require("EyeOfCthulhuBoss")
 local HpServiceServer = require("HpServiceServer")
 local InstanceUtils = require("InstanceUtils")
 local LootServiceServer = require("LootServiceServer")
+local Maid = require("Maid")
 local PacketPayload = require("PacketPayload")
 local NpcServicePackets = require("NetPacketsShared").NpcService
 
@@ -59,10 +58,9 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local NevermoreSupport = require("NevermoreSupport")
+local BinderSupportServer = require("BinderSupportServer")
 local NpcServiceUtils = require("NpcServiceUtils")
 local PlayerServiceServer = require("PlayerServiceServer")
-local BinderSupportServer = require("BinderSupportServer")
 local SlimeNpc = require("SlimeNpc")
 local WorkspaceFolders = require("WorkspaceFolders")
 local WorldGenerationServiceServer = require("WorldGenerationServiceServer")
@@ -111,9 +109,11 @@ type NpcRuntime = {
 	enemyHitboxId: string?,
 	lastEnemyHitAt: number,
 	lastSpriteStateKey: string?,
+	collisionGroupBound: boolean?,
 }
 
 local NpcServiceServer = {}
+NpcServiceServer.ServiceName = "NpcServiceServer"
 
 local DEFAULT_NPC_FOLDER_NAME = "NpcRuntime"
 local DEFAULT_STATE_REFRESH_INTERVAL = 0.1
@@ -155,7 +155,7 @@ local function fireForPlayers(players: { Player }, methodName: string, ...: any)
 	end
 end
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -178,10 +178,10 @@ function NpcServiceServer.CoerceNumber(
 	minimum: number?,
 	maximum: number?
 ): number
-	return CoerceNumber(valueRaw, fallback, minimum, maximum)
+	return coerceNumber(valueRaw, fallback, minimum, maximum)
 end
 
-local function CoerceSizeVector(sizeRaw: any, fallback: Vector3): Vector3
+local function coerceSizeVector(sizeRaw: any, fallback: Vector3): Vector3
 	if typeof(sizeRaw) ~= "Vector3" then
 		return fallback
 	end
@@ -194,7 +194,7 @@ end
 
 local function computeBoxAabb(cframeRaw: any, sizeRaw: any): (Vector3, Vector3)
 	local cframe = if typeof(cframeRaw) == "CFrame" then cframeRaw else CFrame.new()
-	local size = CoerceSizeVector(sizeRaw, Vector3.new(0.05, 0.05, 0.05))
+	local size = coerceSizeVector(sizeRaw, Vector3.new(0.05, 0.05, 0.05))
 	local halfSize = size * 0.5
 	local right = cframe.RightVector
 	local up = cframe.UpVector
@@ -243,7 +243,7 @@ local function isValidSurfaceSpawnPart(part: BasePart): boolean
 	return part:IsDescendantOf(worldFolder)
 end
 
-function NpcServiceServer.EnsureNpcFolder(self: NpcServiceServer): Folder
+function NpcServiceServer.EnsureNpcFolder(_self: NpcServiceServer): Folder
 	return WorkspaceFolders.GetOrCreateFolderInGame(DEFAULT_NPC_FOLDER_NAME)
 end
 
@@ -282,6 +282,9 @@ function NpcServiceServer.EnsureCollisionGroups(self: NpcServiceServer)
 	pcall(function()
 		PhysicsService:CollisionGroupSetCollidable(ENEMY_COLLISION_GROUP, ENEMY_COLLISION_GROUP, false)
 	end)
+	pcall(function()
+		PhysicsService:CollisionGroupSetCollidable(PLAYER_COLLISION_GROUP, PLAYER_COLLISION_GROUP, false)
+	end)
 
 	self.collisionGroupsReady = true
 end
@@ -296,24 +299,38 @@ function NpcServiceServer.ApplyPlayerCollisionGroup(self: NpcServiceServer, play
 end
 
 function NpcServiceServer.BindPlayerCollisionGroup(self: NpcServiceServer, player: Player)
-	self:ApplyPlayerCollisionGroup(player)
-
-	local previousConnection = self.playerCharacterAddedConnections[player]
-	if previousConnection ~= nil then
-		previousConnection:Disconnect()
+	local previousMaid = self.playerCollisionMaids[player]
+	if previousMaid ~= nil then
+		previousMaid:DoCleaning()
 	end
 
-	self.playerCharacterAddedConnections[player] = player.CharacterAdded:Connect(function(character: Model)
+	local playerMaid = Maid.new()
+	self.playerCollisionMaids[player] = playerMaid
+
+	local function bindCharacter(character: Model)
+		local characterMaid = Maid.new()
+		playerMaid.Character = characterMaid
+
 		self:EnsureCollisionGroups()
 		setModelCollisionGroup(character, PLAYER_COLLISION_GROUP)
-	end)
+		characterMaid:GiveTask(character.DescendantAdded:Connect(function(descendant: Instance)
+			if descendant:IsA("BasePart") then
+				descendant.CollisionGroup = PLAYER_COLLISION_GROUP
+			end
+		end))
+	end
+
+	if player.Character ~= nil then
+		bindCharacter(player.Character)
+	end
+	playerMaid:GiveTask(player.CharacterAdded:Connect(bindCharacter))
 end
 
 function NpcServiceServer.UnbindPlayerCollisionGroup(self: NpcServiceServer, player: Player)
-	local connection = self.playerCharacterAddedConnections[player]
-	if connection ~= nil then
-		connection:Disconnect()
-		self.playerCharacterAddedConnections[player] = nil
+	local playerMaid = self.playerCollisionMaids[player]
+	if playerMaid ~= nil then
+		playerMaid:DoCleaning()
+		self.playerCollisionMaids[player] = nil
 	end
 end
 
@@ -324,6 +341,16 @@ function NpcServiceServer.ApplyRuntimeNpcCollisionGroup(self: NpcServiceServer, 
 	end
 	self:EnsureCollisionGroups()
 	setModelCollisionGroup(model, ENEMY_COLLISION_GROUP)
+	if runtime.collisionGroupBound then
+		return
+	end
+
+	runtime.collisionGroupBound = true
+	runtime.janitor:GiveChore(model.DescendantAdded:Connect(function(descendant: Instance)
+		if descendant:IsA("BasePart") then
+			descendant.CollisionGroup = ENEMY_COLLISION_GROUP
+		end
+	end))
 end
 
 function NpcServiceServer.GetWorld(self: NpcServiceServer): any?
@@ -449,7 +476,7 @@ function NpcServiceServer.GetRuntime(self: NpcServiceServer, runtimeId: string):
 	return self.runtimes[runtimeId]
 end
 
-function NpcServiceServer.GetUntimeFromModel(self: NpcServiceServer, modelRaw: any): NpcRuntime?
+function NpcServiceServer.GetRuntimeFromModel(self: NpcServiceServer, modelRaw: any): NpcRuntime?
 	if typeof(modelRaw) ~= "Instance" or not modelRaw:IsA("Model") then
 		return nil
 	end
@@ -468,7 +495,7 @@ function NpcServiceServer.GetUntimeFromModel(self: NpcServiceServer, modelRaw: a
 	return nil
 end
 
-function NpcServiceServer.GetUntimeFromPart(self: NpcServiceServer, partRaw: any): NpcRuntime?
+function NpcServiceServer.GetRuntimeFromPart(self: NpcServiceServer, partRaw: any): NpcRuntime?
 	if typeof(partRaw) ~= "Instance" or not partRaw:IsA("BasePart") then
 		return nil
 	end
@@ -485,10 +512,10 @@ function NpcServiceServer.GetUntimeFromPart(self: NpcServiceServer, partRaw: any
 	end
 
 	local parentModel = partRaw:FindFirstAncestorOfClass("Model")
-	return self:GetUntimeFromModel(parentModel)
+	return self:GetRuntimeFromModel(parentModel)
 end
 
-function NpcServiceServer.GetUntimeHurtbox(self: NpcServiceServer, runtime: NpcRuntime): (Vector3, Vector3)
+function NpcServiceServer.GetRuntimeHurtbox(_self: NpcServiceServer, runtime: NpcRuntime): (Vector3, Vector3)
 	local model = runtime.slime.model
 	local center: Vector3? = nil
 	local size = DEFAULT_RUNTIME_HURTBOX_SIZE
@@ -498,7 +525,7 @@ function NpcServiceServer.GetUntimeHurtbox(self: NpcServiceServer, runtime: NpcR
 		end)
 		if ok and typeof(boundsCFrameOrError) == "CFrame" and typeof(boundsSize) == "Vector3" then
 			center = boundsCFrameOrError.Position
-			size = CoerceSizeVector(boundsSize, DEFAULT_RUNTIME_HURTBOX_SIZE)
+			size = coerceSizeVector(boundsSize, DEFAULT_RUNTIME_HURTBOX_SIZE)
 		end
 	end
 
@@ -506,7 +533,7 @@ function NpcServiceServer.GetUntimeHurtbox(self: NpcServiceServer, runtime: NpcR
 		local rootPart = InstanceUtils.GetModelRootPart(model)
 		if rootPart ~= nil then
 			center = rootPart.Position
-			size = CoerceSizeVector(rootPart.Size, DEFAULT_RUNTIME_HURTBOX_SIZE)
+			size = coerceSizeVector(rootPart.Size, DEFAULT_RUNTIME_HURTBOX_SIZE)
 		else
 			local slimePosition = runtime.slime:GetPosition()
 			if typeof(slimePosition) == "Vector3" then
@@ -543,12 +570,12 @@ function NpcServiceServer.DamageNpcsInBox(
 		return 0
 	end
 
-	local damage = CoerceNumber(damageRaw, 0, 0, 100000)
+	local damage = coerceNumber(damageRaw, 0, 0, 100000)
 	if damage <= 0 then
 		return 0
 	end
 
-	local querySize = CoerceSizeVector(querySizeRaw, Vector3.new(0.05, 0.05, 0.05))
+	local querySize = coerceSizeVector(querySizeRaw, Vector3.new(0.05, 0.05, 0.05))
 	local queryMin, queryMax = computeBoxAabb(queryCFrameRaw, querySize)
 	local totalAppliedDamage = 0
 	for _, runtime in self.runtimes do
@@ -556,7 +583,7 @@ function NpcServiceServer.DamageNpcsInBox(
 			continue
 		end
 
-		local hurtboxCenter, hurtboxSize = self:GetUntimeHurtbox(runtime)
+		local hurtboxCenter, hurtboxSize = self:GetRuntimeHurtbox(runtime)
 		local hurtboxMin, hurtboxMax = computeBoxAabb(CFrame.new(hurtboxCenter), hurtboxSize)
 		if not aabbIntersects(queryMin, queryMax, hurtboxMin, hurtboxMax) then
 			continue
@@ -573,7 +600,7 @@ function NpcServiceServer.ApplyRuntimeDamage(
 	runtime: NpcRuntime?,
 	rawDamage: any,
 	source: any?,
-	damageContextRaw: any?
+	_damageContextRaw: any?
 ): number
 	if runtime == nil then
 		return 0
@@ -587,7 +614,7 @@ function NpcServiceServer.ApplyRuntimeDamage(
 		return 0
 	end
 
-	local damage = CoerceNumber(rawDamage, 0, 0, 100000)
+	local damage = coerceNumber(rawDamage, 0, 0, 100000)
 	if damage <= 0 then
 		return 0
 	end
@@ -611,7 +638,7 @@ function NpcServiceServer.DamageNpcFromHitPart(
 		return 0
 	end
 
-	local runtime = self:GetUntimeFromPart(hitPartRaw)
+	local runtime = self:GetRuntimeFromPart(hitPartRaw)
 	if runtime == nil then
 		return 0
 	end
@@ -636,8 +663,8 @@ function NpcServiceServer.OnEnemyHitPlayer(self: NpcServiceServer, runtimeIdRaw:
 	end
 
 	local hpService = HpServiceServer :: any
-	local defaultDamage = CoerceNumber(runtime.slime.damage, 0, 0, 100000)
-	local damage = CoerceNumber(damageRaw, defaultDamage, 0, 100000)
+	local defaultDamage = coerceNumber(runtime.slime.damage, 0, 0, 100000)
+	local damage = coerceNumber(damageRaw, defaultDamage, 0, 100000)
 	if damage <= 0 then
 		return
 	end
@@ -815,7 +842,7 @@ function NpcServiceServer.GetNextPlayerRelativeSpawnCFrame(self: NpcServiceServe
 	return nil
 end
 
-function NpcServiceServer.GetNearestPlayerDistance(self: NpcServiceServer, position: Vector3): number?
+function NpcServiceServer.GetNearestPlayerDistance(_self: NpcServiceServer, position: Vector3): number?
 	local nearestDistance: number? = nil
 
 	for _, player in Players:GetPlayers() do
@@ -844,7 +871,7 @@ function NpcServiceServer.DespawnFarRuntimes(self: NpcServiceServer, reasonRaw: 
 		return 0
 	end
 
-	local despawnDistance = CoerceNumber(settings.despawnDistance, 0, 0, 100000)
+	local despawnDistance = coerceNumber(settings.despawnDistance, 0, 0, 100000)
 	if despawnDistance <= 0 then
 		return 0
 	end
@@ -907,7 +934,7 @@ function NpcServiceServer.GetDebugSpawnCFrameForPlayer(self: NpcServiceServer, p
 		return self:GetNextSpawnCFrame()
 	end
 
-	local index = math.max(1, math.floor(CoerceNumber(indexRaw, 1, 1, 10 ^ 6)))
+	local index = math.max(1, math.floor(coerceNumber(indexRaw, 1, 1, 10 ^ 6)))
 	local laneIndex = math.floor((index - 1) / 2)
 	local directionSign = if index % 2 == 1 then 1 else -1
 	local zOffset = DEFAULT_PLAYER_RELATIVE_MIN_Z_OFFSET + laneIndex * 8
@@ -1005,7 +1032,7 @@ function NpcServiceServer.CreateStatePayload(self: NpcServiceServer): { NpcSnaps
 	return snapshots
 end
 
-function NpcServiceServer.Broadcast(self: NpcServiceServer, methodName: string, ...: any)
+function NpcServiceServer.Broadcast(_self: NpcServiceServer, methodName: string, ...: any)
 	local recipients = {}
 	for _, player in Players:GetPlayers() do
 		if PlayerServiceServer:IsGameplayActiveForPlayer(player) then
@@ -1082,11 +1109,11 @@ function NpcServiceServer.RemoveRuntime(self: NpcServiceServer, runtimeIdRaw: an
 	self:Broadcast(NpcServiceUtils.CLIENT_METHOD_NPC_REMOVED, runtimeIdRaw)
 end
 
-function NpcServiceServer.GetUntimeState(self: NpcServiceServer, runtime: NpcRuntime): NpcRuntimeState
+function NpcServiceServer.GetRuntimeState(self: NpcServiceServer, runtime: NpcRuntime): NpcRuntimeState
 	local npcModule = self:GetRuntimeModule(runtime)
-	local GetUntimeState = if npcModule ~= nil then (npcModule :: any).GetUntimeState else nil
-	if typeof(GetUntimeState) == "function" then
-		return GetUntimeState(npcModule, self, runtime)
+	local getRuntimeState = if npcModule ~= nil then (npcModule :: any).GetRuntimeState else nil
+	if typeof(getRuntimeState) == "function" then
+		return getRuntimeState(npcModule, self, runtime)
 	end
 
 	local npc = runtime.npc
@@ -1159,7 +1186,7 @@ function NpcServiceServer.UpdateRuntime(
 		self:RefreshRuntimeBiome(runtime)
 	end
 
-	local desiredState = self:GetUntimeState(runtime)
+	local desiredState = self:GetRuntimeState(runtime)
 	local transitioned = self:TransitionRuntimeState(runtime, desiredState, reason, false)
 	local snapshot = if transitioned then self:CreateSnapshot(runtime) else nil
 	local spriteStateKey = if snapshot ~= nil then getSnapshotSpriteStateKey(snapshot) else runtime.lastSpriteStateKey
@@ -1329,7 +1356,7 @@ function NpcServiceServer.OnHeartbeat(self: NpcServiceServer, dt: number)
 	end
 end
 
-function NpcServiceServer.Init(self: NpcServiceServer)
+function NpcServiceServer.Init(self: NpcServiceServer, serviceBag: any)
 	bindPackets(self)
 	self.npcModulesByType = {}
 	self:InitNpcModules()
@@ -1338,7 +1365,7 @@ function NpcServiceServer.Init(self: NpcServiceServer)
 	self.world = nil
 	self.lootService = LootServiceServer :: any
 	self.collisionGroupsReady = false
-	self.playerCharacterAddedConnections = {}
+	self.playerCollisionMaids = {}
 	self:EnsureCollisionGroups()
 	self.enemyHitbox = EnemyHitbox.New({
 		cellSize = 8,
@@ -1355,7 +1382,7 @@ function NpcServiceServer.Init(self: NpcServiceServer)
 	self.random = Random.new()
 	self.stateRefreshAccumulator = 0
 	self.biomeRefreshAccumulator = 0
-	self.binders = NevermoreSupport.GetService(BinderSupportServer)
+	self.binders = serviceBag:GetService(BinderSupportServer)
 
 	for _, player in Players:GetPlayers() do
 		self:BindPlayerCollisionGroup(player)
@@ -1388,11 +1415,11 @@ function NpcServiceServer.Destroy(self: NpcServiceServer)
 		self.playerRemovingConnection = nil
 	end
 
-	for player, connection in self.playerCharacterAddedConnections do
-		if connection ~= nil then
-			connection:Disconnect()
+	for player, playerMaid in self.playerCollisionMaids do
+		if playerMaid ~= nil then
+			playerMaid:DoCleaning()
 		end
-		self.playerCharacterAddedConnections[player] = nil
+		self.playerCollisionMaids[player] = nil
 	end
 
 	if self.heartbeatConnection then
@@ -1423,7 +1450,7 @@ type NpcServiceServer = typeof(NpcServiceServer) & {
 	enemyHitbox: EnemyHitboxManager?,
 	lootService: LootServiceServerObject?,
 	collisionGroupsReady: boolean,
-	playerCharacterAddedConnections: { [Player]: RBXScriptConnection? },
+	playerCollisionMaids: { [Player]: any },
 	world: any?,
 	npcFolder: Folder,
 	slimeSpawnSettings: SlimeSpawnSettings,

@@ -104,7 +104,7 @@ local function trim(valueRaw: any): string
 	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function CoerceString(valueRaw: any, fallback: string?): string?
+local function coerceString(valueRaw: any, fallback: string?): string?
 	local value = trim(valueRaw)
 	if value == "" then
 		return fallback
@@ -112,7 +112,7 @@ local function CoerceString(valueRaw: any, fallback: string?): string?
 	return value
 end
 
-local function CoerceInteger(valueRaw: any, fallback: number, minimum: number, maximum: number?): number
+local function coerceInteger(valueRaw: any, fallback: number, minimum: number, maximum: number?): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
@@ -171,7 +171,7 @@ local function deepEqual(a: any, b: any): boolean
 	return deepEqualInternal(a, b, {})
 end
 
-local function CoerceMetadata(metadataRaw: any): InventoryItemMetadata?
+local function coerceMetadata(metadataRaw: any): InventoryItemMetadata?
 	if typeof(metadataRaw) ~= "table" then
 		return nil
 	end
@@ -192,10 +192,10 @@ end
 
 local function normalizeCapacity(capacityRaw: any, fallback: number?): number
 	local base = if typeof(fallback) == "number" and fallback == fallback then fallback else DEFAULT_CAPACITY
-	return math.max(DEFAULT_CAPACITY, CoerceInteger(capacityRaw, base, MIN_CAPACITY, MAX_CAPACITY))
+	return math.max(DEFAULT_CAPACITY, coerceInteger(capacityRaw, base, MIN_CAPACITY, MAX_CAPACITY))
 end
 
-local function GetCapacity(stateOrCapacityRaw: any): number
+local function getCapacity(stateOrCapacityRaw: any): number
 	if typeof(stateOrCapacityRaw) == "number" then
 		return normalizeCapacity(stateOrCapacityRaw, DEFAULT_CAPACITY)
 	end
@@ -220,7 +220,7 @@ local function normalizeSlotIndex(slotIndexRaw: any, capacity: number, fallback:
 end
 
 local function normalizeItemId(itemIdRaw: any, fallback: string?): string?
-	return CoerceString(itemIdRaw, fallback)
+	return coerceString(itemIdRaw, fallback)
 end
 
 local function normalizeUpdatedAt(updatedAtRaw: any, fallback: number?): number
@@ -236,7 +236,7 @@ local function cloneStack(stack: InventoryItemStack): InventoryItemStack
 		itemId = stack.itemId,
 		amount = stack.amount,
 		maxStack = stack.maxStack,
-		metadata = CoerceMetadata(stack.metadata),
+		metadata = coerceMetadata(stack.metadata),
 	}
 end
 
@@ -257,16 +257,16 @@ local function normalizeStack(stackRaw: any, fallbackStackIdRaw: any): Inventory
 	if itemId == nil then
 		return nil
 	end
-	local amount = CoerceInteger(stackTable.amount, 1, MIN_STACK, MAX_STACK)
-	local maxStack = CoerceInteger(stackTable.maxStack, math.max(DEFAULT_MAX_STACK, amount), MIN_STACK, MAX_STACK)
-	local fallbackStackId = CoerceString(fallbackStackIdRaw, ("stack_%s"):format(itemId))
+	local amount = coerceInteger(stackTable.amount, 1, MIN_STACK, MAX_STACK)
+	local maxStack = coerceInteger(stackTable.maxStack, math.max(DEFAULT_MAX_STACK, amount), MIN_STACK, MAX_STACK)
+	local fallbackStackId = coerceString(fallbackStackIdRaw, ("stack_%s"):format(itemId))
 		or ("stack_%s"):format(itemId)
 	return {
-		stackId = CoerceString(stackTable.stackId, fallbackStackId) or fallbackStackId,
+		stackId = coerceString(stackTable.stackId, fallbackStackId) or fallbackStackId,
 		itemId = itemId,
 		amount = math.clamp(amount, MIN_STACK, maxStack),
 		maxStack = maxStack,
-		metadata = CoerceMetadata(stackTable.metadata),
+		metadata = coerceMetadata(stackTable.metadata),
 	}
 end
 
@@ -369,8 +369,8 @@ local function stableSerialize(value: any, seen: { [any]: boolean }): string
 end
 
 local function nextStackId(state: InventoryState, prefixRaw: any, itemIdRaw: any): string
-	local prefix = CoerceString(prefixRaw, "stack") or "stack"
-	local itemId = CoerceString(itemIdRaw, "item") or "item"
+	local prefix = coerceString(prefixRaw, "stack") or "stack"
+	local itemId = coerceString(itemIdRaw, "item") or "item"
 	local used = {}
 	for _, slot in state.slots do
 		if slot.stack ~= nil then
@@ -419,7 +419,7 @@ function InventoryServiceUtils.ClonePath(pathRaw: any): { string }
 	local source = if typeof(pathRaw) == "table" then pathRaw else DEFAULT_DATA_PATH
 	local path = {}
 	for _, segmentRaw in source do
-		local segment = CoerceString(segmentRaw, nil)
+		local segment = coerceString(segmentRaw, nil)
 		if segment ~= nil then
 			path[#path + 1] = segment
 		end
@@ -445,7 +445,7 @@ end
 function InventoryServiceUtils.CoerceSlotIndex(slotIndexRaw: any, stateOrCapacityRaw: any, fallbackRaw: any?): number?
 	return normalizeSlotIndex(
 		slotIndexRaw,
-		GetCapacity(stateOrCapacityRaw),
+		getCapacity(stateOrCapacityRaw),
 		if typeof(fallbackRaw) == "number" then math.floor(fallbackRaw) else nil
 	)
 end
@@ -456,7 +456,7 @@ function InventoryServiceUtils.CoerceAmount(
 	minimumRaw: any?,
 	maximumRaw: any?
 ): number
-	return CoerceInteger(
+	return coerceInteger(
 		amountRaw,
 		if typeof(fallbackRaw) == "number" then math.floor(fallbackRaw) else 0,
 		if typeof(minimumRaw) == "number" then math.floor(minimumRaw) else 0,
@@ -574,7 +574,7 @@ function InventoryServiceUtils.SerializeStateForData(stateRaw: any): { [string]:
 				itemId = slot.stack.itemId,
 				amount = slot.stack.amount,
 				maxStack = slot.stack.maxStack,
-				metadata = CoerceMetadata(slot.stack.metadata),
+				metadata = coerceMetadata(slot.stack.metadata),
 			}
 		end
 	end
@@ -685,9 +685,9 @@ function InventoryServiceUtils.AddItem(
 	stackIdPrefixRaw: any
 ): AddItemResult
 	local itemId = normalizeItemId(itemIdRaw, nil)
-	local requested = CoerceInteger(amountRaw, 0, 0, MAX_STACK * state.capacity)
-	local maxStack = CoerceInteger(maxStackRaw, DEFAULT_MAX_STACK, MIN_STACK, MAX_STACK)
-	local metadata = CoerceMetadata(metadataRaw)
+	local requested = coerceInteger(amountRaw, 0, 0, MAX_STACK * state.capacity)
+	local maxStack = coerceInteger(maxStackRaw, DEFAULT_MAX_STACK, MIN_STACK, MAX_STACK)
+	local metadata = coerceMetadata(metadataRaw)
 	local result = emptyAddResult(requested)
 	if itemId == nil or requested <= 0 then
 		return result
@@ -710,7 +710,7 @@ function InventoryServiceUtils.AddItem(
 		remaining -= added
 		appendTouchedSlot(result.touchedSlots, slot.index)
 	end
-	local prefix = CoerceString(stackIdPrefixRaw, "stack") or "stack"
+	local prefix = coerceString(stackIdPrefixRaw, "stack") or "stack"
 	for _, slot in state.slots do
 		if remaining <= 0 then
 			break
@@ -724,7 +724,7 @@ function InventoryServiceUtils.AddItem(
 			itemId = itemId,
 			amount = added,
 			maxStack = maxStack,
-			metadata = CoerceMetadata(metadata),
+			metadata = coerceMetadata(metadata),
 		}
 		remaining -= added
 		appendTouchedSlot(result.touchedSlots, slot.index)
@@ -746,7 +746,7 @@ function InventoryServiceUtils.RemoveItem(
 	requireExactMetadataRaw: any
 ): RemoveItemResult
 	local itemId = normalizeItemId(itemIdRaw, nil)
-	local requested = CoerceInteger(amountRaw, 0, 0, MAX_STACK * state.capacity)
+	local requested = coerceInteger(amountRaw, 0, 0, MAX_STACK * state.capacity)
 	local result = emptyRemoveResult(requested)
 	local requireExactMetadata = requireExactMetadataRaw == true
 	if itemId == nil or requested <= 0 then
@@ -792,7 +792,7 @@ function InventoryServiceUtils.RemoveFromSlot(
 	if slot == nil or slot.stack == nil then
 		return emptySlotMutation(nil, nil)
 	end
-	local amount = if amountRaw == nil then slot.stack.amount else CoerceInteger(amountRaw, 0, 0, slot.stack.amount)
+	local amount = if amountRaw == nil then slot.stack.amount else coerceInteger(amountRaw, 0, 0, slot.stack.amount)
 	if amount <= 0 then
 		return emptySlotMutation(slot.index, nil)
 	end
@@ -833,7 +833,7 @@ function InventoryServiceUtils.MoveSlot(
 	local sourceStack = fromSlot.stack
 	local requestedAmount = if amountRaw == nil
 		then sourceStack.amount
-		else CoerceInteger(amountRaw, 0, 0, sourceStack.amount)
+		else coerceInteger(amountRaw, 0, 0, sourceStack.amount)
 	if requestedAmount <= 0 then
 		return emptySlotMutation(fromSlot.index, toSlot.index)
 	end
@@ -925,7 +925,7 @@ function InventoryServiceUtils.SplitSlot(
 	end
 	local sourceStack = fromSlot.stack
 	local maxSplit = math.max(0, sourceStack.amount - 1)
-	local splitAmount = CoerceInteger(amountRaw, math.floor(sourceStack.amount * 0.5), 1, maxSplit)
+	local splitAmount = coerceInteger(amountRaw, math.floor(sourceStack.amount * 0.5), 1, maxSplit)
 	if splitAmount <= 0 or splitAmount >= sourceStack.amount then
 		return emptySlotMutation(fromSlot.index, toSlot.index)
 	end

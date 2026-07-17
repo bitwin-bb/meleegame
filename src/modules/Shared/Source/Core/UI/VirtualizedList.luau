@@ -2,8 +2,8 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local MaidTaskUtils = require("MaidTaskUtils")
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 
 local VirtualizedList = {}
 VirtualizedList.__index = VirtualizedList
@@ -145,7 +145,7 @@ function VirtualizedList._rebuildLayout(self: VirtualizedList)
 		prefix[index] = nil
 	end
 	self.totalHeight = prefix[count + 1] + self.paddingBottom
-	self.scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, math.max(0, math.floor(self.totalHeight + 0.5)))
+	self.scrollingFrame.CanvasSize = UDim2.fromOffset(0, math.max(0, math.floor(self.totalHeight + 0.5)))
 end
 
 function VirtualizedList._findIndexAtOffset(self: VirtualizedList, offsetY: number): number

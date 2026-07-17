@@ -4,9 +4,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Sift: any = require(ReplicatedStorage.Packages.Sift)
 
-local Animations = require(script.Parent:WaitForChild("Animations"))
-local BuildAnimationMelee =
-	require(script:FindFirstAncestor("game").Shared.Source.Game.Render:WaitForChild("BuildAnimationMelee"))
+local Animations = require("Animations")
+local BuildAnimationMelee = require("BuildAnimationMelee")
 
 local pickaxeAnimationIds = (((Animations :: any).Items or ({} :: any)).Pickaxes or ({} :: any)) :: { [string]: any }
 

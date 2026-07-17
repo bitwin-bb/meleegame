@@ -8,15 +8,17 @@ local expect = testEnvironment.expect :: any
 local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
+local Workspace = game:GetService("Workspace")
 
 local Fusion: any = require(ReplicatedStorage.Packages.Fusion)
-local Matter = require("Matter")
+local Matter = require(ReplicatedStorage.Packages.Matter)
 local TestEZ = require("TestEZ")
 
 local AtlasResolver = require("AtlasResolver")
 local AudioServiceUtils = require("AudioServiceUtils")
 local AutotileRegistry = require("AutotileRegistry")
 local Binder = require("Binder")
+local BlendRule = require("BlendRule")
 local Blocks = require("Blocks")
 local Brio: any = require("Brio")
 local BuildServiceUtils = require("BuildServiceUtils")
@@ -39,12 +41,12 @@ local VariantPicker = require("VariantPicker")
 
 local PACKAGE_NAME = "AquariaBackup"
 
-local function GetPackageRoot(): Instance
+local function getPackageRoot(): Instance
 	return assert(ServerScriptService:FindFirstChild(PACKAGE_NAME), `missing {PACKAGE_NAME} package root`)
 end
 
-local function GetClientModule(modulePath: { string }): ModuleScript
-	local cursor = GetPackageRoot():FindFirstChild("game")
+local function getClientModule(modulePath: { string }): ModuleScript
+	local cursor = getPackageRoot():FindFirstChild("game")
 	for _, childName in modulePath do
 		cursor = assert(cursor ~= nil and cursor:FindFirstChild(childName), `missing client module path {childName}`)
 	end
@@ -55,7 +57,7 @@ end
 return function()
 	describe("Package integrations", function()
 		it("maps shared boss modules into the replicated package tree", function()
-			local packageRoot = GetPackageRoot()
+			local packageRoot = getPackageRoot()
 			local gameRoot = assert(packageRoot:FindFirstChild("game"), "missing package game root")
 			local sharedRealm = assert(gameRoot:FindFirstChild("Shared"), "missing shared root")
 			local sharedRoot = assert(sharedRealm:FindFirstChild("Source"), "missing shared source root")
@@ -69,7 +71,7 @@ return function()
 		end)
 
 		it("maps shared boss configs into the replicated package tree", function()
-			local packageRoot = GetPackageRoot()
+			local packageRoot = getPackageRoot()
 			local gameRoot = assert(packageRoot:FindFirstChild("game"), "missing package game root")
 			local sharedRealm = assert(gameRoot:FindFirstChild("Shared"), "missing shared root")
 			local sharedRoot = assert(sharedRealm:FindFirstChild("Source"), "missing shared source root")
@@ -80,7 +82,7 @@ return function()
 		end)
 
 		it("maps shared npc definitions into the replicated package tree", function()
-			local packageRoot = GetPackageRoot()
+			local packageRoot = getPackageRoot()
 			local gameRoot = assert(packageRoot:FindFirstChild("game"), "missing package game root")
 			local sharedRealm = assert(gameRoot:FindFirstChild("Shared"), "missing shared root")
 			local sharedRoot = assert(sharedRealm:FindFirstChild("Source"), "missing shared source root")
@@ -91,7 +93,7 @@ return function()
 		end)
 
 		it("exposes TestEZ through Nevermore from the shared vendor tree", function()
-			local packageRoot = GetPackageRoot()
+			local packageRoot = getPackageRoot()
 			local gameRoot = assert(packageRoot:FindFirstChild("game"), "missing package game root")
 			local sharedRoot = assert(gameRoot:FindFirstChild("Shared"), "missing shared root")
 			local vendorRoot = assert(sharedRoot:FindFirstChild("Vendor"), "missing shared vendor root")
@@ -197,7 +199,7 @@ return function()
 		end)
 
 		it("computes a side-view viewport camera without using perspective-heavy framing", function()
-			local PlayerMain = require(GetClientModule({
+			local PlayerMain = require(getClientModule({
 				"Client",
 				"Source",
 				"Player",
@@ -218,7 +220,7 @@ return function()
 		end)
 
 		it("computes a world-space surface anchor for the side-view player viewport", function()
-			local PlayerMain = require(GetClientModule({
+			local PlayerMain = require(getClientModule({
 				"Client",
 				"Source",
 				"Player",
@@ -229,20 +231,32 @@ return function()
 			local boundsSize = Vector3.new(3, 8, 4)
 
 			local anchorSize = PlayerMain.GetSurfaceAnchorSize(boundsSize, 1.18)
-			local anchorCFrame = PlayerMain.GetSurfaceAnchorCFrame(boundsCFrame)
+			local anchorCFrame = PlayerMain.GetSurfaceAnchorCFrame(boundsCFrame, 0)
 
 			expect(anchorSize.X).to.equal(2)
 			expect(anchorSize.Y > boundsSize.Y).to.equal(true)
 			expect(anchorSize.Z > boundsSize.Z).to.equal(true)
-			expect(anchorCFrame.Position).to.equal(boundsCFrame.Position)
-			expect(anchorCFrame.Position.X + anchorSize.X * 0.5).to.equal(boundsCFrame.Position.X + 1)
+			expect(anchorCFrame.Position).to.equal(Vector3.new(0, boundsCFrame.Position.Y, boundsCFrame.Position.Z))
+			expect(anchorCFrame.Position.X + anchorSize.X * 0.5).to.equal(1)
 			expect(anchorCFrame.RightVector.X > 0.999).to.equal(true)
 			expect(anchorCFrame.UpVector.Y > 0.999).to.equal(true)
 			expect(PlayerMain.GetSurfacePixelsPerStud()).to.equal(8)
+
+			local playerMain = PlayerMain.new(nil)
+			local playerGui = Instance.new("Folder")
+			playerGui.Name = "PlayerGui"
+			playerMain:Mount(playerGui :: any)
+			expect(playerMain.surfaceGui.ZOffset).to.equal(0)
+			expect(playerMain.surfaceGui.AlwaysOnTop).to.equal(true)
+			expect(playerMain.surfaceGui.Parent).to.equal(playerMain.surfaceAnchor)
+			expect(playerMain.surfaceGui.Adornee).to.equal(playerMain.surfaceAnchor)
+			expect(playerMain.surfaceAnchor.Parent).to.equal(Workspace)
+			playerMain:Destroy()
+			playerGui:Destroy()
 		end)
 
-		it("mirrors the player viewport frame instead of flipping the cloned character", function()
-			local PlayerMain = require(GetClientModule({
+		it("uses a positive player viewport frame so Roblox can render it", function()
+			local PlayerMain = require(getClientModule({
 				"Client",
 				"Source",
 				"Player",
@@ -253,14 +267,14 @@ return function()
 			local viewportPosition = PlayerMain.GetViewportFramePosition()
 			local viewportSize = PlayerMain.GetViewportFrameSize()
 
-			expect(viewportPosition.X.Scale).to.equal(1)
+			expect(viewportPosition.X.Scale).to.equal(0)
 			expect(viewportPosition.Y.Scale).to.equal(0)
-			expect(viewportSize.X.Scale).to.equal(-1)
+			expect(viewportSize.X.Scale).to.equal(1)
 			expect(viewportSize.Y.Scale).to.equal(1)
 		end)
 
 		it("normalizes mirrored player viewport frame measurements for camera math", function()
-			local PlayerMain = require(GetClientModule({
+			local PlayerMain = require(getClientModule({
 				"Client",
 				"Source",
 				"Player",
@@ -274,7 +288,7 @@ return function()
 		end)
 
 		it("keeps player viewport framing stable while animated bounds shift", function()
-			local PlayerMain = require(GetClientModule({
+			local PlayerMain = require(getClientModule({
 				"Client",
 				"Source",
 				"Player",
@@ -307,7 +321,7 @@ return function()
 		end)
 
 		it("computes clamped player viewport smoothing alpha", function()
-			local PlayerMain = require(GetClientModule({
+			local PlayerMain = require(getClientModule({
 				"Client",
 				"Source",
 				"Player",
@@ -328,7 +342,7 @@ return function()
 		end)
 
 		it("uses exact player viewport part cframes so facing flips are immediate", function()
-			local PlayerMain = require(GetClientModule({
+			local PlayerMain = require(getClientModule({
 				"Client",
 				"Source",
 				"Player",
@@ -340,8 +354,30 @@ return function()
 			expect(PlayerMain.GetViewportPartCFrame(sourceCFrame)).to.equal(sourceCFrame)
 		end)
 
+		it("keeps the celestial SurfaceGui anchor on the two-stud render plane", function()
+			local CelestialBodyRoot = require(getClientModule({
+				"Client",
+				"Source",
+				"CelestialCycle",
+				"Components",
+				"CelestialBodyRoot",
+			}))
+			local parent = Instance.new("Folder")
+			local camera = Instance.new("Camera")
+			camera.CFrame = CFrame.new(30, 40, 50)
+			local root = CelestialBodyRoot.new(parent)
+
+			expect(root:GetAdornee().Size.X).to.equal(2)
+			root:Update(camera)
+			expect(root:GetAdornee().Size.X).to.equal(2)
+
+			root:Destroy()
+			camera:Destroy()
+			parent:Destroy()
+		end)
+
 		it("only rebuilds the player viewport clone for structural character child changes", function()
-			local PlayerMain = require(GetClientModule({
+			local PlayerMain = require(getClientModule({
 				"Client",
 				"Source",
 				"Player",
@@ -373,6 +409,7 @@ return function()
 				itemId = "CopperOre",
 				amount = 3,
 				name = "Loot_CopperOre",
+				size = Vector3.new(99, 3, 4),
 				cframe = CFrame.new(2, 3, 4),
 			})
 			local root = model:FindFirstChild("Root")
@@ -382,6 +419,7 @@ return function()
 			expect(root ~= nil).to.equal(true)
 			expect((root :: Instance):IsA("BasePart")).to.equal(true)
 			expect(model.PrimaryPart).to.equal(root)
+			expect((root :: BasePart).Size).to.equal(Vector3.new(2, 3, 4))
 			expect((root :: BasePart).CollisionGroup).to.equal("LootItems")
 			expect((root :: BasePart).CanCollide).to.equal(true)
 			expect((root :: BasePart).AssemblyAngularVelocity).to.equal(Vector3.zero)
@@ -399,8 +437,29 @@ return function()
 			model:Destroy()
 		end)
 
+		it("pins every SurfaceGui-backed npc root to the two-stud render plane", function()
+			local rootModules = {
+				require("SlimeRoot"),
+				require("QueenBeeRoot"),
+				require("EyeOfCthulhuRoot"),
+				require("EyeOfCthulhuServantRoot"),
+			}
+
+			for index, rootModule in rootModules do
+				local model = rootModule.CreateModel({
+					name = `PlaneNpc{index}`,
+					size = Vector3.new(99, 5 + index, 7 + index),
+				})
+				local rootPart = model:FindFirstChild("RootPart")
+
+				expect(rootPart ~= nil).to.equal(true)
+				expect((rootPart :: BasePart).Size).to.equal(Vector3.new(2, 5 + index, 7 + index))
+				model:Destroy()
+			end
+		end)
+
 		it("creates autotile sprites as Fusion surface gui block faces", function()
-			local TileSprite = require(GetClientModule({
+			local TileSprite = require(getClientModule({
 				"Client",
 				"Source",
 				"Autotile",
@@ -460,7 +519,7 @@ return function()
 		end)
 
 		it("skips non-surface autotile definitions without reading absent flags", function()
-			local TileChunkRenderer = require(GetClientModule({
+			local TileChunkRenderer = require(getClientModule({
 				"Client",
 				"Source",
 				"Autotile",
@@ -499,7 +558,7 @@ return function()
 		end)
 
 		it("renders only presentation chunks and clears broken autotiles without duplicates", function()
-			local TileChunkClient = require(GetClientModule({
+			local TileChunkClient = require(getClientModule({
 				"Client",
 				"Source",
 				"Autotile",
@@ -570,7 +629,7 @@ return function()
 		end)
 
 		it("deduplicates overlapping autotile neighbor refreshes per delta payload", function()
-			local AutotileRenderServiceClient = require(GetClientModule({
+			local AutotileRenderServiceClient = require(getClientModule({
 				"Client",
 				"Source",
 				"Autotile",
@@ -602,7 +661,7 @@ return function()
 		end)
 
 		it("queues both sides of a streamed chunk boundary exactly once", function()
-			local TileRenderServiceClient = require(GetClientModule({
+			local TileRenderServiceClient = require(getClientModule({
 				"Client",
 				"Source",
 				"Autotile",
@@ -628,7 +687,7 @@ return function()
 		end)
 
 		it("uses indexed autotile chunks before scanning bound chunks", function()
-			local TileChunkBinderClient = require(GetClientModule({
+			local TileChunkBinderClient = require(getClientModule({
 				"Client",
 				"Source",
 				"Autotile",
@@ -804,12 +863,8 @@ return function()
 			expect(rect.ImageRectSize).to.equal(Vector2.new(16, 16))
 			local imageRectScale = Vector2.new(148 / 288, 1017 / 1980)
 			local scaledRect = RectUtil.FromCell(Vector2.new(2, 3), 16, 1, 2, imageRectScale)
-			expect(scaledRect.ImageRectOffset).to.equal(
-				Vector2.new(37 * imageRectScale.X, 55 * imageRectScale.Y)
-			)
-			expect(scaledRect.ImageRectSize).to.equal(
-				Vector2.new(16 * imageRectScale.X, 16 * imageRectScale.Y)
-			)
+			expect(scaledRect.ImageRectOffset).to.equal(Vector2.new(37 * imageRectScale.X, 55 * imageRectScale.Y))
+			expect(scaledRect.ImageRectSize).to.equal(Vector2.new(16 * imageRectScale.X, 16 * imageRectScale.Y))
 
 			local atlas = {
 				Image = "rbxassetid://123",
@@ -843,7 +898,16 @@ return function()
 
 			local dirtDefinition = AutotileRegistry.GetDefinition(BuildServiceUtils.TILE_ID.DIRT)
 			local grassDefinition = AutotileRegistry.GetDefinition(BuildServiceUtils.TILE_ID.GRASS)
+			local copperOreDefinition = AutotileRegistry.GetDefinition(BuildServiceUtils.TILE_ID.COPPER_ORE)
+			local iceDefinition = AutotileRegistry.GetDefinition(BuildServiceUtils.TILE_ID.ICE)
+			local jungleGrassDefinition = AutotileRegistry.GetDefinition(BuildServiceUtils.TILE_ID.JUNGLE_GRASS)
+			local mudDefinition = AutotileRegistry.GetDefinition(BuildServiceUtils.TILE_ID.MUD)
+			local sandDefinition = AutotileRegistry.GetDefinition(BuildServiceUtils.TILE_ID.SAND)
+			local sandstoneDefinition = AutotileRegistry.GetDefinition(BuildServiceUtils.TILE_ID.SANDSTONE)
+			local snowDefinition = AutotileRegistry.GetDefinition(BuildServiceUtils.TILE_ID.SNOW)
+			local stoneDefinition = AutotileRegistry.GetDefinition(BuildServiceUtils.TILE_ID.STONE)
 			expect(dirtDefinition ~= nil).to.equal(true)
+			expect(copperOreDefinition ~= nil).to.equal(true)
 			expect((dirtDefinition :: any).Image).to.equal("rbxassetid://115586684643692")
 			expect((dirtDefinition :: any).TileSize).to.equal(16)
 			expect((dirtDefinition :: any).Spacing).to.equal(2)
@@ -855,6 +919,13 @@ return function()
 			expect((grassDefinition :: any).ImageRectScale).to.equal(imageRectScale)
 			expect((grassDefinition :: any).UseSurfaceGui).to.equal(true)
 			expect((grassDefinition :: any).ConnectGroup).to.equal((dirtDefinition :: any).ConnectGroup)
+			expect(iceDefinition ~= nil).to.equal(true)
+			expect(jungleGrassDefinition ~= nil).to.equal(true)
+			expect(mudDefinition ~= nil).to.equal(true)
+			expect(sandDefinition ~= nil).to.equal(true)
+			expect(sandstoneDefinition ~= nil).to.equal(true)
+			expect(snowDefinition ~= nil).to.equal(true)
+			expect(stoneDefinition ~= nil).to.equal(true)
 
 			local filledDirtTiles = {}
 			for x = -1, 1 do
@@ -870,7 +941,7 @@ return function()
 			local filledDirtMask = MaskResolver.Resolve(getFilledDirtTile, Vector2.zero, EightWayBlobRule)
 			expect(filledDirtMask).to.equal(DirectionBits.AllMask)
 
-			local expectedDirtCells = {
+			local expectedDirtBaseCells = {
 				[0] = Vector2.new(9, 3),
 				[DirectionBits.N] = Vector2.new(6, 3),
 				[DirectionBits.E] = Vector2.new(9, 0),
@@ -882,71 +953,199 @@ return function()
 				[DirectionBits.W] = Vector2.new(12, 0),
 				[DirectionBits.N + DirectionBits.W] = Vector2.new(1, 4),
 				[DirectionBits.E + DirectionBits.W] = Vector2.new(6, 4),
-				[DirectionBits.N + DirectionBits.E + DirectionBits.W] = Vector2.new(13, 1),
+				[DirectionBits.N + DirectionBits.E + DirectionBits.W] = Vector2.new(1, 2),
 				[DirectionBits.S + DirectionBits.W] = Vector2.new(1, 3),
 				[DirectionBits.N + DirectionBits.S + DirectionBits.W] = Vector2.new(4, 0),
 				[DirectionBits.E + DirectionBits.S + DirectionBits.W] = Vector2.new(1, 0),
-				[DirectionBits.CardinalMask] = Vector2.new(1, 1),
+				[DirectionBits.CardinalMask] = Vector2.new(6, 2),
 			}
 
-			for mask, expectedCell in expectedDirtCells do
+			for mask, expectedCell in expectedDirtBaseCells do
 				local entry = (dirtDefinition :: any).Entries[mask]
-				expect(#entry.Variants).to.equal(1)
+				expect(#entry.Variants).to.equal(3)
 				expect(entry.Variants[1].Cell).to.equal(expectedCell)
 			end
-			for mask = 0, DirectionBits.AllMask do
-				local cardinalMask = bit32.band(mask, DirectionBits.CardinalMask)
-				local entry = (dirtDefinition :: any).Entries[mask]
-				expect(entry.Variants[1].Cell).to.equal(expectedDirtCells[cardinalMask])
-				local grassEntry = (grassDefinition :: any).Entries[mask]
-				local expectedGrassCell = if cardinalMask == DirectionBits.N + DirectionBits.E + DirectionBits.W
-					then Vector2.new(1, 2)
-					else expectedDirtCells[cardinalMask]
-				expect(grassEntry.Variants[1].Cell).to.equal(expectedGrassCell)
+			local terrariaVariantsSeen = {}
+			for x = 0, 15 do
+				for y = 0, 15 do
+					local variantIndex = VariantPicker.GetTerrariaVariantIndex(Vector2.new(x, y), 0)
+					expect(variantIndex >= 1 and variantIndex <= 3).to.equal(true)
+					terrariaVariantsSeen[variantIndex] = true
+					expect(VariantPicker.GetTerrariaVariantIndex(Vector2.new(x, y), 0)).to.equal(variantIndex)
+				end
 			end
+			expect(terrariaVariantsSeen[1]).to.equal(true)
+			expect(terrariaVariantsSeen[2]).to.equal(true)
+			expect(terrariaVariantsSeen[3]).to.equal(true)
+
+			for mask = 0, DirectionBits.AllMask do
+				local entry = (dirtDefinition :: any).Entries[mask]
+				expect(#entry.Variants).to.equal(3)
+				local grassEntry = (grassDefinition :: any).Entries[mask]
+				expect(#grassEntry.Variants).to.equal(3)
+			end
+
 			local grassBottomEdgeMask = DirectionBits.N + DirectionBits.E + DirectionBits.W
 			local grassBottomEdgeResolved = AtlasResolver.Resolve(grassDefinition, grassBottomEdgeMask, Vector2.zero, 0)
-			expect(grassBottomEdgeResolved.Cell).to.equal(Vector2.new(1, 2))
+			local originVariantIndex = VariantPicker.GetTerrariaVariantIndex(Vector2.zero, 0)
+			local expectedGrassBottomCell = (grassDefinition :: any).Entries[grassBottomEdgeMask].Variants[originVariantIndex].Cell
+			expect(grassBottomEdgeResolved.Cell).to.equal(expectedGrassBottomCell)
 			expect(grassBottomEdgeResolved.ImageRectOffset).to.equal(
-				Vector2.new(18 * imageRectScale.X, 36 * imageRectScale.Y)
+				Vector2.new(
+					expectedGrassBottomCell.X * 18 * imageRectScale.X,
+					expectedGrassBottomCell.Y * 18 * imageRectScale.Y
+				)
 			)
 			expect(grassBottomEdgeResolved.ImageRectSize).to.equal(
 				Vector2.new(16 * imageRectScale.X, 16 * imageRectScale.Y)
 			)
 			expect((dirtDefinition :: any).Entries[DirectionBits.CardinalMask].Variants[1].Cell).to.equal(
-				Vector2.new(1, 1)
+				Vector2.new(6, 2)
 			)
 			expect((dirtDefinition :: any).Entries[DirectionBits.AllMask].Variants[1].Cell).to.equal(Vector2.new(1, 1))
 
-			local topEdgeMask = DirectionBits.E
-				+ DirectionBits.S
-				+ DirectionBits.W
-				+ DirectionBits.SE
-				+ DirectionBits.SW
-			local topEdgeResolved = AtlasResolver.Resolve(dirtDefinition, topEdgeMask, Vector2.zero, 0)
-			expect(topEdgeResolved.Mask).to.equal(topEdgeMask)
-			expect(topEdgeResolved.Cell).to.equal(Vector2.new(1, 0))
-
-			local cardinalOnlyFullMask = DirectionBits.N + DirectionBits.E + DirectionBits.S + DirectionBits.W
-			expect((dirtDefinition :: any).Entries[cardinalOnlyFullMask].Variants[1].Cell).to.equal(Vector2.new(1, 1))
-
-			local topDiagonalGapMask = cardinalOnlyFullMask + DirectionBits.SE
-			local rightDiagonalGapMask = cardinalOnlyFullMask + DirectionBits.NW + DirectionBits.SW
-			local leftDiagonalGapMask = cardinalOnlyFullMask + DirectionBits.NE + DirectionBits.SE
-			expect((dirtDefinition :: any).Entries[topDiagonalGapMask].Variants[1].Cell).to.equal(Vector2.new(1, 1))
-			expect((dirtDefinition :: any).Entries[rightDiagonalGapMask].Variants[1].Cell).to.equal(Vector2.new(1, 1))
-			expect((dirtDefinition :: any).Entries[leftDiagonalGapMask].Variants[1].Cell).to.equal(Vector2.new(1, 1))
-
 			local filledDirtResolved = AtlasResolver.Resolve(dirtDefinition, DirectionBits.AllMask, Vector2.zero, 0)
 			expect(filledDirtResolved.Mask).to.equal(DirectionBits.AllMask)
-			expect(filledDirtResolved.Cell).to.equal(Vector2.new(1, 1))
-			expect(filledDirtResolved.ImageRectOffset.Y).to.equal(18)
+			local expectedFilledDirtCell = (dirtDefinition :: any).Entries[DirectionBits.AllMask].Variants[originVariantIndex].Cell
+			expect(filledDirtResolved.Cell).to.equal(expectedFilledDirtCell)
+			expect(filledDirtResolved.ImageRectOffset.Y).to.equal(expectedFilledDirtCell.Y * 18)
 			expect(filledDirtResolved.ImageRectSize).to.equal(Vector2.new(16, 16))
 
 			for mask = 0, DirectionBits.AllMask do
 				local resolved = AtlasResolver.Resolve(dirtDefinition, mask, Vector2.zero, 0)
 				expect(resolved ~= nil).to.equal(true)
 				expect(resolved.Mask).to.equal(mask)
+			end
+
+			local directionBitValues = {
+				DirectionBits.N,
+				DirectionBits.E,
+				DirectionBits.S,
+				DirectionBits.W,
+				DirectionBits.NE,
+				DirectionBits.SE,
+				DirectionBits.SW,
+				DirectionBits.NW,
+			}
+			local function collectReachableFrameCells(strictness: number): ({ [string]: boolean }, number)
+				local cells = {}
+				for encodedNeighbors = 0, 3 ^ #directionBitValues - 1 do
+					local encoded = encodedNeighbors
+					local sameMask = 0
+					local mergeMask = 0
+					for _, directionBit in directionBitValues do
+						local state = encoded % 3
+						encoded = math.floor(encoded / 3)
+						if state == 1 then
+							sameMask = bit32.bor(sameMask, directionBit)
+						elseif state == 2 then
+							mergeMask = bit32.bor(mergeMask, directionBit)
+						end
+					end
+
+					for _, variant in BlendRule.ResolveVariants(sameMask, mergeMask, strictness) do
+						local cell = variant.Cell
+						cells[`{cell.X}:{cell.Y}`] = true
+					end
+				end
+
+				local count = 0
+				for _ in cells do
+					count += 1
+				end
+				return cells, count
+			end
+
+			local _, baseFrameCount = collectReachableFrameCells(BlendRule.Strictness.Base)
+			local _, blendFrameCount = collectReachableFrameCells(BlendRule.Strictness.Blend)
+			local grassFrameCells, grassFrameCount = collectReachableFrameCells(BlendRule.Strictness.Grass)
+			expect(baseFrameCount).to.equal(60)
+			expect(blendFrameCount).to.equal(183)
+			-- ordered grass rules expose 228 normal neighbor frames
+			-- the remaining colored cells are shadowed or reserved
+			expect(grassFrameCount).to.equal(228)
+			for cellKey in grassFrameCells do
+				local row = tonumber(string.match(cellKey, ":(.+)$"))
+				expect(row ~= nil and (row :: number) < 22).to.equal(true)
+			end
+
+			local leftGrassCornerVariants = BlendRule.ResolveVariants(
+				DirectionBits.N + DirectionBits.E + DirectionBits.W + DirectionBits.NW,
+				0,
+				BlendRule.Strictness.Grass
+			)
+			local rightGrassCornerVariants = BlendRule.ResolveVariants(
+				DirectionBits.N + DirectionBits.E + DirectionBits.W + DirectionBits.NE,
+				0,
+				BlendRule.Strictness.Grass
+			)
+			expect(leftGrassCornerVariants[1].Cell).to.equal(Vector2.new(0, 19))
+			expect(rightGrassCornerVariants[1].Cell).to.equal(Vector2.new(3, 19))
+
+			local function resolveDownwardGrassStep(
+				grassTileId: number,
+				substrateTileId: number,
+				definition: any,
+				direction: number
+			): any
+				local upperX = -direction
+				local stepTiles = {
+					[`{upperX}:0`] = { TileId = grassTileId },
+					[`{upperX - direction}:0`] = { TileId = grassTileId },
+					["0:-1"] = { TileId = grassTileId },
+					[`{direction}:-1`] = { TileId = grassTileId },
+				}
+				for x = -2, 2 do
+					stepTiles[`{x}:-2`] = { TileId = substrateTileId }
+				end
+				-- World generation writes real grass metadata into this buried inner corner.
+				stepTiles[`{upperX}:-1`] = { TileId = grassTileId }
+
+				local function resolveTile(coord: Vector2): any
+					local sameMask, mergeMask = MaskResolver.ResolveTileMasks(function(x: number, y: number)
+						return stepTiles[`{x}:{y}`]
+					end, coord, grassTileId, definition.MergeTileIds, definition.ConnectTileIds)
+					local atlasSameMask = DirectionBits.MirrorHorizontal(sameMask)
+					local atlasMergeMask = DirectionBits.MirrorHorizontal(mergeMask)
+					return {
+						variants = BlendRule.ResolveVariants(atlasSameMask, atlasMergeMask, BlendRule.Strictness.Grass),
+						sameMask = atlasSameMask,
+						mergeMask = atlasMergeMask,
+					}
+				end
+
+				return {
+					lower = resolveTile(Vector2.new(0, -1)),
+					upper = resolveTile(Vector2.new(upperX, 0)),
+				}
+			end
+
+			for _, stepDefinition in { grassDefinition, jungleGrassDefinition } do
+				local substrateTileId = if stepDefinition == grassDefinition
+					then BuildServiceUtils.TILE_ID.DIRT
+					else BuildServiceUtils.TILE_ID.MUD
+				local downRight = resolveDownwardGrassStep(stepDefinition.TileId, substrateTileId, stepDefinition, 1)
+				local downLeft = resolveDownwardGrassStep(stepDefinition.TileId, substrateTileId, stepDefinition, -1)
+				expect(downRight.lower.sameMask).to.equal(DirectionBits.E + DirectionBits.W + DirectionBits.NE)
+				expect(downRight.lower.mergeMask).to.equal(DirectionBits.S + DirectionBits.SE + DirectionBits.SW)
+				expect(downRight.upper.sameMask).to.equal(DirectionBits.E + DirectionBits.S + DirectionBits.SW)
+				expect(downRight.upper.mergeMask).to.equal(0)
+				expect(downLeft.lower.sameMask).to.equal(DirectionBits.E + DirectionBits.W + DirectionBits.NW)
+				expect(downLeft.lower.mergeMask).to.equal(DirectionBits.S + DirectionBits.SE + DirectionBits.SW)
+				expect(downLeft.upper.sameMask).to.equal(DirectionBits.S + DirectionBits.W + DirectionBits.SE)
+				expect(downLeft.upper.mergeMask).to.equal(0)
+				expect(downRight.lower.variants[1].Cell).to.equal(Vector2.new(1, 0))
+				expect(downRight.lower.variants[2].Cell).to.equal(Vector2.new(2, 0))
+				expect(downRight.lower.variants[3].Cell).to.equal(Vector2.new(3, 0))
+				expect(downRight.upper.variants[1].Cell).to.equal(Vector2.new(5, 15))
+				expect(downRight.upper.variants[2].Cell).to.equal(Vector2.new(6, 15))
+				expect(downRight.upper.variants[3].Cell).to.equal(Vector2.new(7, 15))
+				expect(downLeft.lower.variants[1].Cell).to.equal(Vector2.new(1, 0))
+				expect(downLeft.lower.variants[2].Cell).to.equal(Vector2.new(2, 0))
+				expect(downLeft.lower.variants[3].Cell).to.equal(Vector2.new(3, 0))
+				expect(downLeft.upper.variants[1].Cell).to.equal(Vector2.new(8, 15))
+				expect(downLeft.upper.variants[2].Cell).to.equal(Vector2.new(9, 15))
+				expect(downLeft.upper.variants[3].Cell).to.equal(Vector2.new(10, 15))
 			end
 
 			local grassAboveDirtTiles = {
@@ -963,13 +1162,31 @@ return function()
 				return grassAboveDirtTiles[`{x}:{y}`]
 			end
 
-			local grassToDirtMask = MaskResolver.Resolve(getGrassAboveDirtTile, Vector2.zero, EightWayBlobRule)
+			local grassSameMask, grassToDirtMask = MaskResolver.ResolveTileMasks(
+				getGrassAboveDirtTile,
+				Vector2.zero,
+				BuildServiceUtils.TILE_ID.GRASS,
+				(grassDefinition :: any).MergeTileIds,
+				(grassDefinition :: any).ConnectTileIds
+			)
+			expect(grassSameMask).to.equal(0)
 			expect(grassToDirtMask).to.equal(DirectionBits.S)
-			local grassToDirtResolved = AtlasResolver.Resolve(grassDefinition, grassToDirtMask, Vector2.zero, 0)
-			expect(grassToDirtResolved.Cell).to.equal(Vector2.new(6, 0))
-			expect(grassToDirtResolved.ImageRectOffset).to.equal(Vector2.new(108 * imageRectScale.X, 0))
+			local grassToDirtResolved =
+				AtlasResolver.ResolveMerged(grassDefinition, grassSameMask, grassToDirtMask, Vector2.zero, 0)
+			local grassToDirtVariants =
+				BlendRule.ResolveVariants(grassSameMask, grassToDirtMask, BlendRule.Strictness.Grass)
+			expect(grassToDirtVariants[1].Cell).to.equal(Vector2.new(6, 5))
+			expect(grassToDirtVariants[2].Cell).to.equal(Vector2.new(7, 5))
+			expect(grassToDirtVariants[3].Cell).to.equal(Vector2.new(8, 5))
+			expect(grassToDirtResolved.Cell).to.equal(grassToDirtVariants[originVariantIndex].Cell)
+			expect(grassToDirtResolved.ImageRectOffset).to.equal(
+				Vector2.new(
+					grassToDirtResolved.Cell.X * 18 * imageRectScale.X,
+					grassToDirtResolved.Cell.Y * 18 * imageRectScale.Y
+				)
+			)
 
-			local AutotileRenderServiceClient = require(GetClientModule({
+			local AutotileRenderServiceClient = require(getClientModule({
 				"Client",
 				"Source",
 				"Autotile",
@@ -999,12 +1216,146 @@ return function()
 
 			grassAboveDirtTiles["0:0"].TileId = BuildServiceUtils.TILE_ID.DIRT
 			grassAboveDirtTiles["0:-1"].TileId = BuildServiceUtils.TILE_ID.GRASS
-			local dirtToGrassMask = MaskResolver.Resolve(getGrassAboveDirtTile, Vector2.zero, EightWayBlobRule)
-			expect(dirtToGrassMask).to.equal(DirectionBits.S)
+			local dirtSameMask, dirtToGrassMask = MaskResolver.ResolveTileMasks(
+				getGrassAboveDirtTile,
+				Vector2.zero,
+				BuildServiceUtils.TILE_ID.DIRT,
+				(dirtDefinition :: any).MergeTileIds,
+				(dirtDefinition :: any).ConnectTileIds
+			)
+			expect(dirtSameMask).to.equal(DirectionBits.S)
+			expect(dirtToGrassMask).to.equal(0)
+			local dirtToGrassResolved =
+				AtlasResolver.ResolveMerged(dirtDefinition, dirtSameMask, dirtToGrassMask, Vector2.zero, 0)
+			local dirtToGrassVariants =
+				BlendRule.ResolveVariants(dirtSameMask, dirtToGrassMask, BlendRule.Strictness.Blend)
+			expect(dirtToGrassVariants[1].Cell).to.equal(Vector2.new(6, 0))
+			expect(dirtToGrassResolved.Cell).to.equal(dirtToGrassVariants[originVariantIndex].Cell)
+
+			local function resolveSouthPair(
+				centerTileId: number,
+				southTileId: number,
+				definition: any
+			): (number, number)
+				local pairTiles = {
+					["0:0"] = { TileId = centerTileId },
+					["0:-1"] = { TileId = southTileId },
+				}
+				return MaskResolver.ResolveTileMasks(function(x: number, y: number)
+					return pairTiles[`{x}:{y}`]
+				end, Vector2.zero, centerTileId, definition.MergeTileIds, definition.ConnectTileIds)
+			end
+
+			local stoneSameMask, stoneToDirtMask =
+				resolveSouthPair(BuildServiceUtils.TILE_ID.STONE, BuildServiceUtils.TILE_ID.DIRT, stoneDefinition)
+			expect(stoneSameMask).to.equal(0)
+			expect(stoneToDirtMask).to.equal(DirectionBits.S)
+			local dirtToStoneSameMask, dirtToStoneMergeMask =
+				resolveSouthPair(BuildServiceUtils.TILE_ID.DIRT, BuildServiceUtils.TILE_ID.STONE, dirtDefinition)
+			expect(dirtToStoneSameMask).to.equal(DirectionBits.S)
+			expect(dirtToStoneMergeMask).to.equal(0)
+
+			local dirtToMudSameMask, dirtToMudMergeMask =
+				resolveSouthPair(BuildServiceUtils.TILE_ID.DIRT, BuildServiceUtils.TILE_ID.MUD, dirtDefinition)
+			expect(dirtToMudSameMask).to.equal(DirectionBits.S)
+			expect(dirtToMudMergeMask).to.equal(0)
+			local mudToDirtSameMask, mudToDirtMergeMask =
+				resolveSouthPair(BuildServiceUtils.TILE_ID.MUD, BuildServiceUtils.TILE_ID.DIRT, mudDefinition)
+			expect(mudToDirtSameMask).to.equal(0)
+			expect(mudToDirtMergeMask).to.equal(DirectionBits.S)
+			local mudToDirtVariants = BlendRule.ResolveVariants(
+				DirectionBits.MirrorHorizontal(mudToDirtSameMask),
+				DirectionBits.MirrorHorizontal(mudToDirtMergeMask),
+				BlendRule.Strictness.Blend
+			)
+			expect(mudToDirtVariants[1].Cell).to.equal(Vector2.new(6, 5))
+			expect(mudToDirtVariants[2].Cell).to.equal(Vector2.new(6, 6))
+			expect(mudToDirtVariants[3].Cell).to.equal(Vector2.new(6, 7))
+
+			local sandTopTiles = {
+				["0:0"] = { TileId = BuildServiceUtils.TILE_ID.SAND },
+				["0:-1"] = { TileId = BuildServiceUtils.TILE_ID.SAND },
+				["-1:0"] = { TileId = BuildServiceUtils.TILE_ID.GRASS },
+				["1:0"] = { TileId = BuildServiceUtils.TILE_ID.GRASS },
+			}
+			local sandTopSameMask, sandTopMergeMask = MaskResolver.ResolveTileMasks(
+				function(x: number, y: number)
+					return sandTopTiles[`{x}:{y}`]
+				end,
+				Vector2.zero,
+				BuildServiceUtils.TILE_ID.SAND,
+				sandDefinition.MergeTileIds,
+				sandDefinition.ConnectTileIds
+			)
+			expect(sandTopSameMask).to.equal(DirectionBits.S)
+			expect(sandTopMergeMask).to.equal(0)
+			local sandTopVariants = BlendRule.ResolveVariants(
+				DirectionBits.MirrorHorizontal(sandTopSameMask),
+				DirectionBits.MirrorHorizontal(sandTopMergeMask),
+				BlendRule.Strictness.Blend
+			)
+			expect(sandTopVariants[1].Cell).to.equal(Vector2.new(6, 0))
+			expect(sandTopVariants[2].Cell).to.equal(Vector2.new(7, 0))
+			expect(sandTopVariants[3].Cell).to.equal(Vector2.new(8, 0))
+
+			for _, pair in
+				{
+					{ transition = jungleGrassDefinition, target = BuildServiceUtils.TILE_ID.MUD },
+					{ transition = iceDefinition, target = BuildServiceUtils.TILE_ID.SNOW },
+					{ transition = sandstoneDefinition, target = BuildServiceUtils.TILE_ID.SAND },
+					{ transition = mudDefinition, target = BuildServiceUtils.TILE_ID.STONE },
+				}
+			do
+				local transitionSameMask, transitionMergeMask =
+					resolveSouthPair(pair.transition.TileId, pair.target, pair.transition)
+				expect(transitionSameMask).to.equal(0)
+				expect(transitionMergeMask).to.equal(DirectionBits.S)
+			end
+
+			for _, pair in
+				{
+					{ reciprocal = mudDefinition, target = BuildServiceUtils.TILE_ID.JUNGLE_GRASS },
+					{ reciprocal = snowDefinition, target = BuildServiceUtils.TILE_ID.ICE },
+					{ reciprocal = sandDefinition, target = BuildServiceUtils.TILE_ID.SANDSTONE },
+					{ reciprocal = stoneDefinition, target = BuildServiceUtils.TILE_ID.MUD },
+				}
+			do
+				local reciprocalSameMask, reciprocalMergeMask =
+					resolveSouthPair(pair.reciprocal.TileId, pair.target, pair.reciprocal)
+				expect(reciprocalSameMask).to.equal(DirectionBits.S)
+				expect(reciprocalMergeMask).to.equal(0)
+			end
 
 			expect(AutotileRegistry.HasDefinition(BuildServiceUtils.TILE_ID.GRASS)).to.equal(true)
 			expect(AutotileRegistry.HasDefinition(BuildServiceUtils.TILE_ID.STONE)).to.equal(true)
 			expect(AutotileRegistry.GetAtlas(BuildServiceUtils.TILE_ID.GRASS)).to.equal(grassDefinition)
+			expect((dirtDefinition :: any).RuleStrictness).to.equal(BlendRule.Strictness.Blend)
+			expect((grassDefinition :: any).RuleStrictness).to.equal(BlendRule.Strictness.Grass)
+			expect(rawget((dirtDefinition :: any).MergeTileIds, BuildServiceUtils.TILE_ID.GRASS) == nil).to.equal(true)
+			expect((dirtDefinition :: any).ConnectTileIds[BuildServiceUtils.TILE_ID.GRASS]).to.equal(true)
+			expect((grassDefinition :: any).MergeTileIds[BuildServiceUtils.TILE_ID.DIRT]).to.equal(true)
+
+			for _, definition in AutotileRegistry.GetDefinitions() do
+				for mergeTileId in definition.MergeTileIds do
+					local targetDefinition = AutotileRegistry.GetDefinition(mergeTileId)
+					expect(targetDefinition ~= nil).to.equal(true)
+					expect(targetDefinition.ConnectTileIds[definition.TileId]).to.equal(true)
+				end
+			end
+
+			expect(rawget(sandDefinition.MergeTileIds, BuildServiceUtils.TILE_ID.GRASS) == nil).to.equal(true)
+			expect(rawget(sandDefinition.ConnectTileIds, BuildServiceUtils.TILE_ID.GRASS) == nil).to.equal(true)
+			expect(rawget(grassDefinition.MergeTileIds, BuildServiceUtils.TILE_ID.SAND) == nil).to.equal(true)
+			expect(rawget(grassDefinition.ConnectTileIds, BuildServiceUtils.TILE_ID.SAND) == nil).to.equal(true)
+
+			for tileId = BuildServiceUtils.TILE_ID.GRASS, BuildServiceUtils.TILE_ID.WOOD do
+				local definition = AutotileRegistry.GetDefinition(tileId)
+				expect(definition ~= nil).to.equal(true)
+				expect((definition :: any).UseSurfaceGui).to.equal(true)
+				expect((definition :: any).FrameRule).to.equal(BlendRule.Name)
+				expect((definition :: any).TileSize).to.equal(16)
+				expect((definition :: any).Spacing).to.equal(2)
+			end
 		end)
 
 		it("supports Octree spatial queries and Binder instance lifetimes", function()

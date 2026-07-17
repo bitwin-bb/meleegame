@@ -52,7 +52,7 @@ local function tileDataEquals(leftRaw: any, rightRaw: any): boolean
 	return leftTileId == rightTileId and leftConnectGroup == rightConnectGroup
 end
 
-function TileWorldService.Init(self: any)
+function TileWorldService.Init(self: any, _serviceBag: any?)
 	if self._maid ~= nil then
 		return
 	end

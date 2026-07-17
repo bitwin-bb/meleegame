@@ -20,7 +20,7 @@ export type IntervalResult = {
 
 local MINIMUM_INTERVAL_SECONDS = 1 / 240
 
-local function CoerceIntervalSeconds(valueRaw: any): number?
+local function coerceIntervalSeconds(valueRaw: any): number?
 	if valueRaw == nil then
 		return nil
 	end
@@ -33,7 +33,7 @@ end
 local function useInterval(callbackRaw: any, intervalSecondsRaw: any, options: IntervalOptions?): IntervalResult
 	local enabled = if options ~= nil and options.enabled ~= nil then options.enabled == true else true
 	local autoStart = if options ~= nil and options.autoStart ~= nil then options.autoStart == true else true
-	local intervalSeconds = CoerceIntervalSeconds(intervalSecondsRaw)
+	local intervalSeconds = coerceIntervalSeconds(intervalSecondsRaw)
 	local callback = useStableCallback(callbackRaw)
 	local generationRef = React.useRef(0)
 	local threadRef = React.useRef(nil :: thread?)
@@ -53,7 +53,7 @@ local function useInterval(callbackRaw: any, intervalSecondsRaw: any, options: I
 			return
 		end
 
-		local nextIntervalSeconds = CoerceIntervalSeconds(nextIntervalSecondsRaw)
+		local nextIntervalSeconds = coerceIntervalSeconds(nextIntervalSecondsRaw)
 		if nextIntervalSeconds == nil then
 			return
 		end

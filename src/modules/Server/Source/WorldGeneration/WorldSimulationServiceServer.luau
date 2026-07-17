@@ -82,6 +82,7 @@ type PlayerSettings = {
 }
 
 local WorldSimulationServiceServer = {}
+WorldSimulationServiceServer.ServiceName = "WorldSimulationServiceServer"
 
 local DEBUG_COUNTER_PUSH_INTERVAL = 0.5
 local SIMULATION_CHUNK_Z = 0
@@ -91,7 +92,7 @@ local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function GetPlayerRootPart(player: Player): BasePart?
+local function getPlayerRootPart(player: Player): BasePart?
 	local character = player.Character
 	if character == nil then
 		return nil
@@ -111,7 +112,7 @@ local function GetPlayerRootPart(player: Player): BasePart?
 	return nil
 end
 
-local function GetSourceConfig(): any
+local function getSourceConfig(): any
 	if typeof(CoreConfigs) ~= "table" then
 		return nil
 	end
@@ -142,7 +143,7 @@ local function parseWorldGenerationChunkKey(chunkKeyRaw: any): (number?, number?
 end
 
 local function getPlayerCenterChunkForWorldGeneration(config: SimulationConfig, player: Player): (number, number)
-	local rootPart = GetPlayerRootPart(player)
+	local rootPart = getPlayerRootPart(player)
 	if rootPart == nil then
 		return 0, 0
 	end
@@ -488,7 +489,7 @@ function WorldSimulationServiceServer.GetConfig(self: WorldSimulationServiceServ
 	return self.config
 end
 
-function WorldSimulationServiceServer.Init(self: WorldSimulationServiceServer)
+function WorldSimulationServiceServer.Init(self: WorldSimulationServiceServer, _serviceBag: any?)
 	if self.heartbeatConnection ~= nil or self.heartbeatToken ~= nil then
 		return
 	end
@@ -498,7 +499,7 @@ function WorldSimulationServiceServer.Init(self: WorldSimulationServiceServer)
 		local runtimeContextAny = self.runtimeContext :: any
 		runtimeContextAny:Init()
 	end
-	local sourceConfig = GetSourceConfig()
+	local sourceConfig = getSourceConfig()
 	self.config = Config.Coerce(sourceConfig, nil)
 	if self.pendingAuthoritativeSeed ~= nil then
 		self.config.seed = self.pendingAuthoritativeSeed

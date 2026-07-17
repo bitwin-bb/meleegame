@@ -46,7 +46,7 @@ local DEFAULT_APPEAR_DELAY = 2
 local MIN_APPEAR_DELAY = 0
 local MAX_APPEAR_DELAY = 10
 
-local function CoerceVector2(valueRaw: any, fallback: Vector2): Vector2
+local function coerceVector2(valueRaw: any, fallback: Vector2): Vector2
 	if typeof(valueRaw) ~= "Vector2" then
 		return fallback
 	end
@@ -56,28 +56,28 @@ local function CoerceVector2(valueRaw: any, fallback: Vector2): Vector2
 	return valueRaw
 end
 
-local function CoerceScale(valueRaw: any, fallback: number): number
+local function coerceScale(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
 	return math.max(0.01, valueRaw)
 end
 
-local function CoerceRespawnAt(valueRaw: any): number?
+local function coerceRespawnAt(valueRaw: any): number?
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return nil
 	end
 	return valueRaw
 end
 
-local function CoerceDiedAt(valueRaw: any): number?
+local function coerceDiedAt(valueRaw: any): number?
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return nil
 	end
 	return valueRaw
 end
 
-local function CoerceAppearDelay(valueRaw: any): number
+local function coerceAppearDelay(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return DEFAULT_APPEAR_DELAY
 	end
@@ -93,7 +93,7 @@ local function dependencyArray(...: any): { any }
 	return { ... }
 end
 
-local function GetInitialCountdownSeconds(respawnAt: number?, diedAt: number?): number
+local function getInitialCountdownSeconds(respawnAt: number?, diedAt: number?): number
 	if respawnAt == nil then
 		return 0
 	end
@@ -127,15 +127,15 @@ end
 
 local function useCountDown(options: CountDownOptions?): CountDownState
 	local enabled = if options and options.enabled ~= nil then options.enabled else false
-	local respawnAt = CoerceRespawnAt(if options then options.respawnAt else nil)
-	local diedAt = CoerceDiedAt(if options then options.diedAt else nil)
-	local appearDelay = CoerceAppearDelay(if options then options.appearDelay else nil)
-	local fromOffset = CoerceVector2(if options then options.fromOffset else nil, DEFAULT_FROM_OFFSET)
-	local toOffset = CoerceVector2(if options then options.toOffset else nil, DEFAULT_TO_OFFSET)
-	local minScale = CoerceScale(if options then options.minScale else nil, DEFAULT_MIN_SCALE)
-	local maxScale = math.max(minScale, CoerceScale(if options then options.maxScale else nil, DEFAULT_MAX_SCALE))
+	local respawnAt = coerceRespawnAt(if options then options.respawnAt else nil)
+	local diedAt = coerceDiedAt(if options then options.diedAt else nil)
+	local appearDelay = coerceAppearDelay(if options then options.appearDelay else nil)
+	local fromOffset = coerceVector2(if options then options.fromOffset else nil, DEFAULT_FROM_OFFSET)
+	local toOffset = coerceVector2(if options then options.toOffset else nil, DEFAULT_TO_OFFSET)
+	local minScale = coerceScale(if options then options.minScale else nil, DEFAULT_MIN_SCALE)
+	local maxScale = math.max(minScale, coerceScale(if options then options.maxScale else nil, DEFAULT_MAX_SCALE))
 	local spring = if options and options.spring ~= nil then options.spring else DEFAULT_SPRING
-	local initialCountdownSeconds = GetInitialCountdownSeconds(respawnAt, diedAt)
+	local initialCountdownSeconds = getInitialCountdownSeconds(respawnAt, diedAt)
 
 	local initiallyRevealed = shouldRevealCountdown(enabled, respawnAt, diedAt, appearDelay)
 	local revealRef = React.useRef(initiallyRevealed)

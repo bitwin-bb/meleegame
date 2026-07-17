@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local BossServiceUtils = require("BossServiceUtils")
@@ -10,7 +9,7 @@ local UnitBinder = {}
 UnitBinder.__index = UnitBinder
 setmetatable(UnitBinder, ModelBinder)
 
-local function GetUnitKind(self: any): string
+local function getUnitKind(self: any): string
 	if self:HasTag(TagBinder.Tags.Character) then
 		return "Character"
 	end
@@ -29,24 +28,24 @@ function UnitBinder.new(instance: Instance, context: any)
 	self.humanoid = self:GetHumanoid()
 
 	if self.model ~= nil then
-		self:updateState()
+		self:UpdateState()
 	end
 	if self.humanoid ~= nil then
 		self:Connect(self.humanoid.HealthChanged, function()
-			self:updateState()
+			self:UpdateState()
 		end)
 		self:Connect(self.humanoid:GetPropertyChangedSignal("MaxHealth"), function()
-			self:updateState()
+			self:UpdateState()
 		end)
 		self:Connect(self.humanoid.Died, function()
-			self:updateState()
+			self:UpdateState()
 		end)
 	end
 
 	return self
 end
 
-function UnitBinder.updateState(self: any)
+function UnitBinder.UpdateState(self: any)
 	local model = self.model
 	if model == nil then
 		return
@@ -56,7 +55,7 @@ function UnitBinder.updateState(self: any)
 	self.humanoid = humanoid
 
 	model:SetAttribute("UnitTagged", true)
-	model:SetAttribute("UnitKind", GetUnitKind(self))
+	model:SetAttribute("UnitKind", getUnitKind(self))
 	model:SetAttribute("UnitAlive", humanoid ~= nil and humanoid.Health > 0)
 
 	if humanoid ~= nil then
@@ -64,13 +63,13 @@ function UnitBinder.updateState(self: any)
 		model:SetAttribute("UnitMaxHealth", humanoid.MaxHealth)
 	end
 
-	local bossRuntimeId = BossServiceUtils.GetUntimeIdFromInstance(model)
+	local bossRuntimeId = BossServiceUtils.GetRuntimeIdFromInstance(model)
 	if bossRuntimeId ~= nil then
 		model:SetAttribute("UnitRuntimeId", bossRuntimeId)
 		return
 	end
 
-	local npcRuntimeId = NpcServiceUtils.GetUntimeIdFromInstance(model)
+	local npcRuntimeId = NpcServiceUtils.GetRuntimeIdFromInstance(model)
 	if npcRuntimeId ~= nil then
 		model:SetAttribute("UnitRuntimeId", npcRuntimeId)
 	end

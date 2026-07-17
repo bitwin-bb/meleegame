@@ -52,7 +52,7 @@ local runtime = {
 	lastCombatIntentAt = -math.huge,
 }
 
-local function CoerceCount(valueRaw: any): number
+local function coerceCount(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return 0
 	end
@@ -82,7 +82,7 @@ local function buildInventoryCounts(stateRaw: any): { [string]: number }
 		if typeof(itemIdRaw) ~= "string" or itemIdRaw == "" then
 			continue
 		end
-		local amount = CoerceCount(amountRaw)
+		local amount = coerceCount(amountRaw)
 		if amount <= 0 then
 			continue
 		end
@@ -109,7 +109,7 @@ local function buildNpcHpMap(stateRaw: any): { [string]: number }
 		if typeof(snapshotRaw) ~= "table" then
 			continue
 		end
-		local hp = CoerceCount((snapshotRaw :: any).hp)
+		local hp = coerceCount((snapshotRaw :: any).hp)
 		output[runtimeIdRaw] = hp
 	end
 
@@ -133,7 +133,7 @@ local function buildBossHpMap(stateRaw: any): { [string]: number }
 		if typeof(snapshotRaw) ~= "table" then
 			continue
 		end
-		local hp = CoerceCount((snapshotRaw :: any).hp)
+		local hp = coerceCount((snapshotRaw :: any).hp)
 		output[runtimeIdRaw] = hp
 	end
 

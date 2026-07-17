@@ -40,6 +40,12 @@ function VariantPicker.GetSeed(coordRaw: any, maskRaw: any, seedRaw: any?): numb
 	return Rand.HashCoordinates(seed, x, y, mask)
 end
 
+function VariantPicker.GetTerrariaVariantIndex(coordRaw: any, seedRaw: any?): number
+	local x, y = getCoordinate(coordRaw)
+	local seed = Rand.Seed(seedRaw)
+	return (Rand.HashCoordinates(seed, x + 104729, y + 130363, 486187739) % 3) + 1
+end
+
 function VariantPicker.Pick<T>(variantsRaw: { T }, coordRaw: any, maskRaw: any, seedRaw: any?): T?
 	if typeof(variantsRaw) ~= "table" or #variantsRaw <= 0 then
 		return nil

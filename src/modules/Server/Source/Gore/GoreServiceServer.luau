@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local Players = game:GetService("Players")
@@ -49,10 +48,10 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local NevermoreSupport = require("NevermoreSupport")
 local BinderSupportServer = require("BinderSupportServer")
 
 local GoreServiceServer = {}
+GoreServiceServer.ServiceName = "GoreServiceServer"
 local SHARED_LARGE_BLOOD_POOL_SIZE = NumberRange.new(0.95, 1.7)
 local SHARED_LARGE_BLOOD_POOL_SIZE_Y = NumberRange.new(0.16, 0.28)
 local SHARED_LARGE_BLOOD_POOL_STARTING_SIZE = Vector3.new(0.2, 0.42, 0.2)
@@ -70,7 +69,7 @@ type EntityRuntime = {
 	controllerConfig: { [string]: any },
 }
 
-local function CoerceEntityId(entityIdRaw: any): string?
+local function coerceEntityId(entityIdRaw: any): string?
 	return GoreServiceUtils.CoerceEntityId(entityIdRaw)
 end
 
@@ -127,7 +126,7 @@ local function buildRuntimeFromConfig(entityId: string, model: Model, configRaw:
 	}
 end
 
-function GoreServiceServer.FireClient(self: GoreServiceServer, player: Player, methodName: string, ...: any)
+function GoreServiceServer.FireClient(_self: GoreServiceServer, player: Player, methodName: string, ...: any)
 	sendPacket(player, methodName, ...)
 end
 
@@ -163,7 +162,7 @@ function GoreServiceServer.GetEntityRuntime(self: GoreServiceServer, entityIdRaw
 	if self.entitiesById == nil then
 		return nil
 	end
-	local entityId = CoerceEntityId(entityIdRaw)
+	local entityId = coerceEntityId(entityIdRaw)
 	if entityId == nil then
 		return nil
 	end
@@ -176,7 +175,7 @@ function GoreServiceServer.RegisterEntity(
 	modelRaw: any,
 	configRaw: any?
 ): boolean
-	local entityId = CoerceEntityId(entityIdRaw)
+	local entityId = coerceEntityId(entityIdRaw)
 	if entityId == nil then
 		return false
 	end
@@ -201,7 +200,7 @@ function GoreServiceServer.RegisterEntity(
 end
 
 function GoreServiceServer.UnregisterEntity(self: GoreServiceServer, entityIdRaw: any): boolean
-	local entityId = CoerceEntityId(entityIdRaw)
+	local entityId = coerceEntityId(entityIdRaw)
 	if entityId == nil then
 		return false
 	end
@@ -408,10 +407,10 @@ function GoreServiceServer.OnNpcDied(self: GoreServiceServer, runtimeIdRaw: any,
 	return self:EmitEntityDeath(entityId, originRaw)
 end
 
-function GoreServiceServer.Init(self: GoreServiceServer)
+function GoreServiceServer.Init(self: GoreServiceServer, serviceBag: any)
 	bindPackets(self)
 	self.entitiesById = {} :: { [string]: EntityRuntime }
-	(self :: any).binders = NevermoreSupport.GetService(BinderSupportServer)
+	(self :: any).binders = serviceBag:GetService(BinderSupportServer)
 end
 
 function GoreServiceServer.Destroy(self: GoreServiceServer)

@@ -1,7 +1,6 @@
 local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
@@ -28,7 +27,7 @@ local e: typeof(React.createElement) = React.createElement
 local NPC_RUNTIME_FOLDER_NAME = "NpcRuntime"
 local runtimeRootPartCache: { [string]: BasePart? } = {}
 
-local function GetModelRootPart(model: Model): BasePart?
+local function getModelRootPart(model: Model): BasePart?
 	local rootPart = model:FindFirstChild("RootPart")
 	if rootPart ~= nil and rootPart:IsA("BasePart") then
 		return rootPart
@@ -44,7 +43,7 @@ local function GetModelRootPart(model: Model): BasePart?
 	return nil
 end
 
-local function GetUntimeRootPart(runtimeId: string): BasePart?
+local function getRuntimeRootPart(runtimeId: string): BasePart?
 	local cachedRootPart = runtimeRootPartCache[runtimeId]
 	if cachedRootPart ~= nil and cachedRootPart:IsDescendantOf(Workspace) then
 		return cachedRootPart
@@ -64,7 +63,7 @@ local function GetUntimeRootPart(runtimeId: string): BasePart?
 			continue
 		end
 
-		local rootPart = GetModelRootPart(child)
+		local rootPart = getModelRootPart(child)
 		if rootPart ~= nil then
 			runtimeRootPartCache[runtimeId] = rootPart
 		end
@@ -117,7 +116,7 @@ return function(props: SlimeScreenProps)
 		if snapshot ~= nil then
 			local displayOrder = zIndex + index
 			children[#children + 1] = e("SurfaceGui", {
-				Adornee = GetUntimeRootPart(runtimeId),
+				Adornee = getRuntimeRootPart(runtimeId),
 				AlwaysOnTop = true,
 				ClipsDescendants = false,
 				Face = Enum.NormalId.Right,

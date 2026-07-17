@@ -130,15 +130,15 @@ local function playUiPressSound()
 	UiSound.playPress()
 end
 
-local function CoerceRenderState(stateRaw: any): InventoryState
+local function coerceRenderState(stateRaw: any): InventoryState
 	return InventoryServiceUtils.CoerceState(stateRaw, DEFAULT_RENDER_INVENTORY_STATE)
 end
 
-local function GetSlot(stateRaw: any, slotIndexRaw: any): InventorySlot
+local function getSlot(stateRaw: any, slotIndexRaw: any): InventorySlot
 	local slotIndex = if typeof(slotIndexRaw) == "number" and slotIndexRaw == slotIndexRaw
 		then math.max(1, math.floor(slotIndexRaw))
 		else 1
-	local state = CoerceRenderState(stateRaw)
+	local state = coerceRenderState(stateRaw)
 	local slot = InventoryServiceUtils.GetSlot(state, slotIndex)
 	if slot == nil or typeof(slot) ~= "table" then
 		return {
@@ -159,7 +159,7 @@ local function GetSlot(stateRaw: any, slotIndexRaw: any): InventorySlot
 	}
 end
 
-local function GetStackAmount(stackRaw: any): number
+local function getStackAmount(stackRaw: any): number
 	if typeof(stackRaw) ~= "table" then
 		return 0
 	end
@@ -170,7 +170,7 @@ local function GetStackAmount(stackRaw: any): number
 	return math.max(0, math.floor(amountRaw))
 end
 
-local function GetStackIcon(stackRaw: any): string?
+local function getStackIcon(stackRaw: any): string?
 	if typeof(stackRaw) ~= "table" then
 		return nil
 	end
@@ -186,7 +186,7 @@ local function GetStackIcon(stackRaw: any): string?
 	return nil
 end
 
-local function GetStackId(stackRaw: any): string?
+local function getStackId(stackRaw: any): string?
 	if typeof(stackRaw) ~= "table" then
 		return nil
 	end
@@ -198,7 +198,7 @@ local function GetStackId(stackRaw: any): string?
 	return stackId
 end
 
-local function SetCursorPlacedItemRecord(
+local function setCursorPlacedItemRecord(
 	records: { [number]: CursorPlacedItemRecord },
 	state: InventoryState,
 	slotIndexRaw: any
@@ -212,7 +212,7 @@ local function SetCursorPlacedItemRecord(
 		return
 	end
 
-	local stackId = GetStackId(GetSlot(state, slotIndex).stack)
+	local stackId = getStackId(getSlot(state, slotIndex).stack)
 	if stackId == nil then
 		records[slotIndex] = nil
 		return
@@ -223,27 +223,27 @@ local function SetCursorPlacedItemRecord(
 	}
 end
 
-local function MarkCursorPlacedItemRecords(
+local function markCursorPlacedItemRecords(
 	records: { [number]: CursorPlacedItemRecord },
 	stateRaw: any,
 	sourceSlotRaw: any,
 	targetSlotRaw: any
 )
-	local state = CoerceRenderState(stateRaw)
-	SetCursorPlacedItemRecord(records, state, sourceSlotRaw)
-	SetCursorPlacedItemRecord(records, state, targetSlotRaw)
+	local state = coerceRenderState(stateRaw)
+	setCursorPlacedItemRecord(records, state, sourceSlotRaw)
+	setCursorPlacedItemRecord(records, state, targetSlotRaw)
 end
 
-local function PruneCursorPlacedItemRecords(records: { [number]: CursorPlacedItemRecord }, stateRaw: any)
-	local state = CoerceRenderState(stateRaw)
+local function pruneCursorPlacedItemRecords(records: { [number]: CursorPlacedItemRecord }, stateRaw: any)
+	local state = coerceRenderState(stateRaw)
 	for slotIndex, record in records do
-		if GetStackId(GetSlot(state, slotIndex).stack) ~= record.stackId then
+		if getStackId(getSlot(state, slotIndex).stack) ~= record.stackId then
 			records[slotIndex] = nil
 		end
 	end
 end
 
-local function IsCursorPlacedItem(
+local function isCursorPlacedItemRecord(
 	records: { [number]: CursorPlacedItemRecord },
 	slotIndex: number,
 	stackRaw: any
@@ -253,10 +253,10 @@ local function IsCursorPlacedItem(
 		return false
 	end
 
-	return GetStackId(stackRaw) == record.stackId
+	return getStackId(stackRaw) == record.stackId
 end
 
-local function GetSlotHoverText(slot: InventorySlot): string
+local function getSlotHoverText(slot: InventorySlot): string
 	local stack = slot.stack
 	if typeof(stack) ~= "table" then
 		return ("Slot %d\nEmpty"):format(slot.index)
@@ -281,7 +281,7 @@ local function cloneStackWithAmount(stack: InventoryItemStack, amount: number): 
 	}
 end
 
-local function GetDisplayedStackForSlot(slot: InventorySlot, dragState: ItemDragState): InventoryItemStack?
+local function getDisplayedStackForSlot(slot: InventorySlot, dragState: ItemDragState): InventoryItemStack?
 	local stack = slot.stack
 	if stack == nil then
 		return nil
@@ -321,7 +321,7 @@ local function selectSlot(slotIndex: number, currentlySelectedSlot: number?, use
 	end
 end
 
-local function GetColumnRevealProgress(progress: number, columnIndex: number, totalColumns: number): number
+local function getColumnRevealProgress(progress: number, columnIndex: number, totalColumns: number): number
 	local clampedProgress = math.clamp(progress, 0, 1)
 	local start = (columnIndex - 1) / totalColumns
 	local finish = columnIndex / totalColumns
@@ -337,7 +337,7 @@ local function lerpVector2(from: Vector2, to: Vector2, alpha: number): Vector2
 	return Vector2.new(lerpNumber(from.X, to.X, alpha), lerpNumber(from.Y, to.Y, alpha))
 end
 
-local function GetLoadingInventoryText(dotCountRaw: number): string
+local function getLoadingInventoryText(dotCountRaw: number): string
 	local dotCount = math.clamp(math.floor(dotCountRaw), 1, 3)
 	return "Loading inventory" .. string.rep(".", dotCount)
 end
@@ -349,8 +349,8 @@ local function isGamepadInputType(inputTypeRaw: any): boolean
 	return string.sub((inputTypeRaw :: Enum.UserInputType).Name, 1, 7) == "Gamepad"
 end
 
-local function GetHotbarSelectionSlot(stateRaw: any): number
-	local state = CoerceRenderState(stateRaw)
+local function getHotbarSelectionSlot(stateRaw: any): number
+	local state = coerceRenderState(stateRaw)
 	local selectedSlot = state.selectedSlot
 	if typeof(selectedSlot) == "number" and selectedSlot == selectedSlot then
 		selectedSlot = math.floor(selectedSlot)
@@ -377,7 +377,7 @@ local function cycleHotbarSelection(stepRaw: any, useServiceState: boolean)
 		return false
 	end
 	local currentState = inventorySlice.getInventoryState()
-	local nextSelectedSlot = ((GetHotbarSelectionSlot(currentState) - 1 + step) % HOTBAR_SLOT_COUNT) + 1
+	local nextSelectedSlot = ((getHotbarSelectionSlot(currentState) - 1 + step) % HOTBAR_SLOT_COUNT) + 1
 	return getInventoryThunks().SelectSlot(nextSelectedSlot)
 end
 
@@ -386,7 +386,7 @@ local function handleSelectedSlotDropOrTrash(isInventoryExpandedRaw: any, useSer
 		return false
 	end
 
-	local currentState = CoerceRenderState(inventorySlice.getInventoryState())
+	local currentState = coerceRenderState(inventorySlice.getInventoryState())
 	if not InventoryServiceUtils.IsLoadedState(currentState.loadState) then
 		return false
 	end
@@ -400,7 +400,7 @@ local function handleSelectedSlotDropOrTrash(isInventoryExpandedRaw: any, useSer
 		return false
 	end
 
-	local slot = GetSlot(currentState, selectedSlot)
+	local slot = getSlot(currentState, selectedSlot)
 	if slot.stack == nil then
 		return false
 	end
@@ -418,7 +418,7 @@ return function(props: InventoryHotbarProps)
 	local useServiceState = props.useServiceState ~= false
 	local inventoryState = (useStore(inventorySlice.inventoryStateAtom) :: InventoryState?)
 		or inventorySlice.inventoryStateAtom()
-	local renderState = CoerceRenderState(inventoryState)
+	local renderState = coerceRenderState(inventoryState)
 	local isInventoryLoaded = InventoryServiceUtils.IsLoadedState(renderState.loadState)
 	local isInventoryStateInitialized = typeof(renderState.slots) == "table"
 		and #renderState.slots >= math.max(1, renderState.capacity)
@@ -446,7 +446,7 @@ return function(props: InventoryHotbarProps)
 	end, { isInventoryLoaded })
 
 	React.useEffect(function()
-		PruneCursorPlacedItemRecords(cursorPlacedItemRecordsRef.current, renderState)
+		pruneCursorPlacedItemRecords(cursorPlacedItemRecordsRef.current, renderState)
 	end, { renderState.updatedAt })
 
 	local handleSlotInput = React.useCallback(function(slotIndexRaw: any, stackRaw: any, inputObjectRaw: any?)
@@ -457,7 +457,7 @@ return function(props: InventoryHotbarProps)
 		drag.handleSlotInput(slotIndexRaw, stackRaw, inputObjectRaw)
 
 		if wasCursorPlacement and not itemSlice.getDragState().active then
-			MarkCursorPlacedItemRecords(
+			markCursorPlacedItemRecords(
 				cursorPlacedItemRecordsRef.current,
 				inventorySlice.getInventoryState(),
 				sourceSlot,
@@ -603,14 +603,14 @@ return function(props: InventoryHotbarProps)
 				return
 			end
 
-			local hoveredSlot = GetSlot(renderState, hoveredSlotIndex)
+			local hoveredSlot = getSlot(renderState, hoveredSlotIndex)
 			hoveredSlot = {
 				index = hoveredSlot.index,
-				stack = GetDisplayedStackForSlot(hoveredSlot, drag.dragState),
+				stack = getDisplayedStackForSlot(hoveredSlot, drag.dragState),
 			}
 			infoThunks.ShowHover({
 				id = SLOT_HOVER_ID_PREFIX .. tostring(hoveredSlotIndex),
-				text = GetSlotHoverText(hoveredSlot),
+				text = getSlotHoverText(hoveredSlot),
 			})
 		end,
 		{
@@ -749,8 +749,8 @@ return function(props: InventoryHotbarProps)
 	local hotbarChildren: { React.ReactNode } = {}
 
 	for hotbarIndex = 1, HOTBAR_SLOT_COUNT do
-		local slot = GetSlot(renderState, hotbarIndex)
-		local displayStack = GetDisplayedStackForSlot(slot, drag.dragState)
+		local slot = getSlot(renderState, hotbarIndex)
+		local displayStack = getDisplayedStackForSlot(slot, drag.dragState)
 		local isSlotAvailable = isInventoryStateInitialized and hotbarIndex <= maxInteractiveSlots
 		local hasItem = isSlotAvailable and typeof(displayStack) == "table"
 		local isSelected = selectedSlot == hotbarIndex
@@ -768,10 +768,10 @@ return function(props: InventoryHotbarProps)
 			else if hasVisibleItem then FILLED_SLOT_TINT else EMPTY_SLOT_TINT
 		local slotImage = if isSelected or isHovered then ImageIds.inventorySlotHovered else ImageIds.inventorySlot
 		local slotZIndex = if isExpanded then zIndex + 3 else zIndex + 2
-		local itemAmount = if hasVisibleItem then GetStackAmount(displayStack) else 0
-		local itemIcon = if hasVisibleItem then GetStackIcon(displayStack) else nil
+		local itemAmount = if hasVisibleItem then getStackAmount(displayStack) else 0
+		local itemIcon = if hasVisibleItem then getStackIcon(displayStack) else nil
 		local isCursorPlacedItem = hasVisibleItem
-			and IsCursorPlacedItem(cursorPlacedItemRecordsRef.current, hotbarIndex, displayStack)
+			and isCursorPlacedItemRecord(cursorPlacedItemRecordsRef.current, hotbarIndex, displayStack)
 
 		hotbarChildren[#hotbarChildren + 1] = e(HotbarSlot, {
 			index = hotbarIndex,
@@ -875,8 +875,8 @@ return function(props: InventoryHotbarProps)
 
 	for slotIndex = 1, INVENTORY_MAX_SLOTS do
 		local inventorySlotIndex = GRID_SLOT_START_INDEX + slotIndex - 1
-		local slot = GetSlot(renderState, inventorySlotIndex)
-		local displayStack = GetDisplayedStackForSlot(slot, drag.dragState)
+		local slot = getSlot(renderState, inventorySlotIndex)
+		local displayStack = getDisplayedStackForSlot(slot, drag.dragState)
 		local isSlotAvailable = isInventoryStateInitialized and inventorySlotIndex <= maxInteractiveSlots
 		local hasItem = isSlotAvailable and typeof(displayStack) == "table"
 		local isSelected = isSlotAvailable and selectedSlot == inventorySlotIndex
@@ -890,7 +890,7 @@ return function(props: InventoryHotbarProps)
 		local isHovered = hoveredSlotSource == "Grid" and hoveredSlotIndex == inventorySlotIndex
 		local rowIndex = math.floor((slotIndex - 1) / INVENTORY_COLUMNS)
 		local columnIndex = ((slotIndex - 1) % INVENTORY_COLUMNS) + 1
-		local columnRevealProgress = GetColumnRevealProgress(expansionProgress, columnIndex, INVENTORY_COLUMNS)
+		local columnRevealProgress = getColumnRevealProgress(expansionProgress, columnIndex, INVENTORY_COLUMNS)
 		local columnRevealTransparency = 1 - columnRevealProgress
 		local finalSlotOffset = Vector2.new((columnIndex - 1) * gridStepX, rowIndex * gridStepY)
 		local startSlotOffset = Vector2.new(hotbarOriginOffsetX, finalSlotOffset.Y)
@@ -907,15 +907,15 @@ return function(props: InventoryHotbarProps)
 			math.clamp(slotBaseTransparency + columnRevealTransparency * (1 - slotBaseTransparency), 0, 1)
 		local isGridSlotInteractable = isSlotAvailable and columnRevealProgress >= (1 - EXPANSION_VISIBILITY_EPSILON)
 		local isCursorPlacedItem = hasVisibleItem
-			and IsCursorPlacedItem(cursorPlacedItemRecordsRef.current, inventorySlotIndex, displayStack)
+			and isCursorPlacedItemRecord(cursorPlacedItemRecordsRef.current, inventorySlotIndex, displayStack)
 		local isGridItemWaitingForAppear = isInventoryLoaded
 			and hasVisibleItem
 			and not isSplitPreviewSource
 			and not isGridSlotInteractable
 			and not isCursorPlacedItem
 		local shouldShowGridItem = hasVisibleItem and not isGridItemWaitingForAppear
-		local itemAmount = if shouldShowGridItem then GetStackAmount(displayStack) else 0
-		local itemIcon = if shouldShowGridItem then GetStackIcon(displayStack) else nil
+		local itemAmount = if shouldShowGridItem then getStackAmount(displayStack) else 0
+		local itemIcon = if shouldShowGridItem then getStackIcon(displayStack) else nil
 		local itemTransparency = if isGridItemWaitingForAppear then 1 else columnRevealTransparency
 		local stackTextTransparency = if isGridItemWaitingForAppear then 1 else columnRevealTransparency
 		local stackStrokeTransparency = if isGridItemWaitingForAppear
@@ -1076,7 +1076,7 @@ return function(props: InventoryHotbarProps)
 			BackgroundTransparency = 1,
 			Text = if renderState.loadState == InventoryServiceUtils.LOAD_STATE_FAILED
 				then "Inventory unavailable"
-				else GetLoadingInventoryText(loadingDotCount),
+				else getLoadingInventoryText(loadingDotCount),
 			Font = Enum.Font.PatrickHand,
 			TextSize = 12,
 			TextColor3 = Color3.fromRGB(240, 242, 255),

@@ -17,7 +17,7 @@ export type EyeOfCthulhuServantScreenProps = {
 local e: typeof(React.createElement) = React.createElement
 local SERVANT_FOLDER_NAME = "BossServants"
 
-local function GetModelRootPart(model: Model): BasePart?
+local function getModelRootPart(model: Model): BasePart?
 	local rootPart = model:FindFirstChild("RootPart")
 	if rootPart ~= nil and rootPart:IsA("BasePart") then
 		return rootPart
@@ -56,7 +56,7 @@ return function(props: EyeOfCthulhuServantScreenProps): React.ReactNode
 				continue
 			end
 
-			local rootPart = GetModelRootPart(child)
+			local rootPart = getModelRootPart(child)
 			if rootPart == nil then
 				continue
 			end

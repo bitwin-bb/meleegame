@@ -3,13 +3,19 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local HttpService = game:GetService("HttpService")
-local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local MaidTaskUtils = require("MaidTaskUtils")
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
+local String = require("String")
 
 local RunService = game:GetService("RunService")
 
 local NotificationBus = {}
 NotificationBus.__index = NotificationBus
+
+local function createRuntimeInstanceName(): string
+	local guid = String.removePostfix(String.removePrefix(HttpService:GenerateGUID(true), "{"), "}")
+	return string.format("%03d", (tonumber(string.sub(guid, 1, 8), 16) or 0) % 1000)
+end
 
 export type NotificationConfig = {
 	container: GuiObject,
@@ -71,14 +77,14 @@ end
 
 local function defaultCreateItem(): GuiObject
 	local frame = Instance.new("Frame")
-	frame.Name = HttpService:GenerateGUID(false)
+	frame.Name = createRuntimeInstanceName()
 	frame.Size = UDim2.new(1, 0, 0, 28)
 	frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 	frame.BackgroundTransparency = 0.2
 	frame.BorderSizePixel = 0
 
 	local label = Instance.new("TextLabel")
-	label.Name = HttpService:GenerateGUID(false)
+	label.Name = createRuntimeInstanceName()
 	label.BackgroundTransparency = 1
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.Size = UDim2.new(1, -12, 1, 0)
@@ -228,7 +234,7 @@ function NotificationBus._releaseItem(self: NotificationBus, item: GuiObject)
 	end
 end
 
-function NotificationBus._setItemText(self: NotificationBus, item: GuiObject, text: string)
+function NotificationBus._setItemText(_self: NotificationBus, item: GuiObject, text: string)
 	local label = item:FindFirstChild("Label")
 	if label ~= nil and label:IsA("TextLabel") then
 		label.Text = text

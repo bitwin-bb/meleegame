@@ -59,7 +59,7 @@ local function copyPropertyIfPossible(source: Instance, target: Instance, proper
 	end)
 end
 
-local function GetSkySource(skyRaw: any): Sky?
+local function getSkySource(skyRaw: any): Sky?
 	if typeof(skyRaw) == "Instance" and skyRaw:IsA("Sky") then
 		return skyRaw
 	end
@@ -73,7 +73,7 @@ local function GetSkySource(skyRaw: any): Sky?
 end
 
 local function createSkySnapshot(scope: any, skyRaw: any): Sky
-	local source = GetSkySource(skyRaw)
+	local source = getSkySource(skyRaw)
 	local sky = (scope:New("Sky"))({
 		Name = "SkyboxCrossfadeSky",
 	})
@@ -106,13 +106,13 @@ local function getSkyImage(sky: Sky, normal: Enum.NormalId): string
 	return value
 end
 
-local function GetSkyboxOrientation(sky: Sky): CFrame
+local function getSkyboxOrientation(sky: Sky): CFrame
 	local orientation = sky.SkyboxOrientation
 	return CFrame.Angles(0, math.rad(orientation.Y), 0)
 		* CFrame.Angles(math.rad(orientation.X), 0, math.rad(orientation.Z))
 end
 
-local function GetFaceOffset(normal: Enum.NormalId): CFrame
+local function getFaceOffset(normal: Enum.NormalId): CFrame
 	local direction = Vector3.FromNormalId(normal)
 	local offset = direction * CrossfadeShared.SKYBOX_DEPTH / 2
 	local relativeOffset = CFrame.new(direction * (CrossfadeShared.SKYBOX_WIDTH / 2) + offset)
@@ -181,7 +181,7 @@ local function createSkyboxFace(
 		},
 	})
 
-	return cframeValue, GetFaceOffset(normal)
+	return cframeValue, getFaceOffset(normal)
 end
 
 local function cleanupFade()
@@ -224,7 +224,7 @@ function CrossfadeClient.PlaySkyCrossfade(
 		Name = CrossfadeShared.CROSSFADE_GUI_NAME,
 		Parent = folderParent,
 	})
-	local orientation = GetSkyboxOrientation(sky)
+	local orientation = getSkyboxOrientation(sky)
 	local faceCFrames = {}
 	local faceOffsets = {}
 	local transparencyTarget = scope:Value(0)

@@ -54,7 +54,7 @@ local DEFAULT_STATE: InfoPlayerState = {
 
 local infoPlayerStateAtom: Charm.Atom<InfoPlayerState> = Charm.atom(DEFAULT_STATE)
 
-local function CoercePopupKind(valueRaw: any): InfoPlayerPopupKind
+local function coercePopupKind(valueRaw: any): InfoPlayerPopupKind
 	if valueRaw == "pickup" then
 		return "pickup"
 	end
@@ -67,7 +67,7 @@ local function CoercePopupKind(valueRaw: any): InfoPlayerPopupKind
 	return "pickup"
 end
 
-local function CoerceString(valueRaw: any, fallback: string): string
+local function coerceString(valueRaw: any, fallback: string): string
 	if typeof(valueRaw) ~= "string" then
 		return fallback
 	end
@@ -78,14 +78,14 @@ local function CoerceString(valueRaw: any, fallback: string): string
 	return value
 end
 
-local function CoerceAmount(valueRaw: any): number
+local function coerceAmount(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return 0
 	end
 	return math.max(0, math.floor(valueRaw + 0.5))
 end
 
-local function CoerceOptionalString(valueRaw: any): string?
+local function coerceOptionalString(valueRaw: any): string?
 	if typeof(valueRaw) ~= "string" then
 		return nil
 	end
@@ -96,7 +96,7 @@ local function CoerceOptionalString(valueRaw: any): string?
 	return value
 end
 
-local function CoerceOptionalVector3(valueRaw: any): Vector3?
+local function coerceOptionalVector3(valueRaw: any): Vector3?
 	if typeof(valueRaw) ~= "Vector3" then
 		return nil
 	end
@@ -167,20 +167,20 @@ local function setInfoPlayerState(stateRaw: any): InfoPlayerState
 				continue
 			end
 			local popupSource = popupRaw :: { [string]: any }
-			local id = CoerceString(popupSource.id, ("event_%d"):format(nextSequence + #nextPopups + 1))
-			local popupAmount = CoerceAmount(popupSource.amount)
+			local id = coerceString(popupSource.id, ("event_%d"):format(nextSequence + #nextPopups + 1))
+			local popupAmount = coerceAmount(popupSource.amount)
 			nextPopups = Sift.Array.append(nextPopups, {
 				id = id,
-				eventToken = CoerceString(popupSource.eventToken, id),
-				kind = CoercePopupKind(popupSource.kind),
-				title = CoerceString(popupSource.title, "Update"),
-				subtitle = CoerceString(popupSource.subtitle, ""),
-				description = CoerceString(popupSource.description, ""),
+				eventToken = coerceString(popupSource.eventToken, id),
+				kind = coercePopupKind(popupSource.kind),
+				title = coerceString(popupSource.title, "Update"),
+				subtitle = coerceString(popupSource.subtitle, ""),
+				description = coerceString(popupSource.description, ""),
 				amount = popupAmount,
-				amountPrefix = CoerceString(popupSource.amountPrefix, "+"),
-				targetKind = CoerceOptionalString(popupSource.targetKind),
-				targetRuntimeId = CoerceOptionalString(popupSource.targetRuntimeId),
-				targetPosition = CoerceOptionalVector3(popupSource.targetPosition),
+				amountPrefix = coerceString(popupSource.amountPrefix, "+"),
+				targetKind = coerceOptionalString(popupSource.targetKind),
+				targetRuntimeId = coerceOptionalString(popupSource.targetRuntimeId),
+				targetPosition = coerceOptionalVector3(popupSource.targetPosition),
 				createdAt = if typeof(popupSource.createdAt) == "number"
 						and popupSource.createdAt == popupSource.createdAt
 					then popupSource.createdAt
@@ -208,26 +208,26 @@ local function pushPopup(payloadRaw: any): InfoPlayerPopup?
 		return nil
 	end
 
-	local amount = CoerceAmount(payload.amount)
+	local amount = coerceAmount(payload.amount)
 	if amount <= 0 then
 		return nil
 	end
 
 	local nextSequence = current.sequence + 1
-	local eventId = CoerceString(payload.id, ("event_%d"):format(nextSequence))
-	local popupKind = CoercePopupKind(payload.kind)
+	local eventId = coerceString(payload.id, ("event_%d"):format(nextSequence))
+	local popupKind = coercePopupKind(payload.kind)
 	local popup: InfoPlayerPopup = {
 		id = eventId,
 		eventToken = ("%s::%d"):format(eventId, nextSequence),
 		kind = popupKind,
-		title = CoerceString(payload.title, "Update"),
-		subtitle = CoerceString(payload.subtitle, ""),
-		description = CoerceString(payload.description, ""),
+		title = coerceString(payload.title, "Update"),
+		subtitle = coerceString(payload.subtitle, ""),
+		description = coerceString(payload.description, ""),
 		amount = amount,
-		amountPrefix = CoerceString(payload.amountPrefix, "+"),
-		targetKind = CoerceOptionalString(payload.targetKind),
-		targetRuntimeId = CoerceOptionalString(payload.targetRuntimeId),
-		targetPosition = CoerceOptionalVector3(payload.targetPosition),
+		amountPrefix = coerceString(payload.amountPrefix, "+"),
+		targetKind = coerceOptionalString(payload.targetKind),
+		targetRuntimeId = coerceOptionalString(payload.targetRuntimeId),
+		targetPosition = coerceOptionalVector3(payload.targetPosition),
 		createdAt = os.clock(),
 	} :: any
 
@@ -250,8 +250,8 @@ local function pushPopup(payloadRaw: any): InfoPlayerPopup?
 end
 
 local function pushPickup(itemIdRaw: any, amountRaw: any): InfoPlayerPopup?
-	local itemId = CoerceString(itemIdRaw, "")
-	local amount = CoerceAmount(amountRaw)
+	local itemId = coerceString(itemIdRaw, "")
+	local amount = coerceAmount(amountRaw)
 	if itemId == "" or amount <= 0 then
 		return nil
 	end
@@ -268,7 +268,7 @@ local function pushPickup(itemIdRaw: any, amountRaw: any): InfoPlayerPopup?
 end
 
 local function pushDamageDealt(amountRaw: any, targetRaw: any?): InfoPlayerPopup?
-	local amount = CoerceAmount(amountRaw)
+	local amount = coerceAmount(amountRaw)
 	if amount <= 0 then
 		return nil
 	end
@@ -289,7 +289,7 @@ local function pushDamageDealt(amountRaw: any, targetRaw: any?): InfoPlayerPopup
 end
 
 local function pushDamageTaken(amountRaw: any): InfoPlayerPopup?
-	local amount = CoerceAmount(amountRaw)
+	local amount = coerceAmount(amountRaw)
 	if amount <= 0 then
 		return nil
 	end
@@ -305,7 +305,7 @@ local function pushDamageTaken(amountRaw: any): InfoPlayerPopup?
 end
 
 local function removePopup(popupIdRaw: any): InfoPlayerState
-	local popupId = CoerceString(popupIdRaw, "")
+	local popupId = coerceString(popupIdRaw, "")
 	if popupId == "" then
 		return infoPlayerStateAtom()
 	end

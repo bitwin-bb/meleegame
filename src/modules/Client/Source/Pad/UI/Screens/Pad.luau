@@ -2,7 +2,6 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -44,7 +43,7 @@ local function dependencyArray(...: any): { any }
 	return { ... }
 end
 
-local function GetCharacterRootPart(localPlayer: Player): BasePart?
+local function getCharacterRootPart(localPlayer: Player): BasePart?
 	local character = localPlayer.Character
 	if character == nil then
 		return nil
@@ -62,7 +61,7 @@ local function GetCharacterRootPart(localPlayer: Player): BasePart?
 	return character:FindFirstChildWhichIsA("BasePart")
 end
 
-local function GetWorldTileSizeStuds(): number
+local function getWorldTileSizeStuds(): number
 	local worldFolder = WorkspaceFolders.FindFolderInGameOrWorkspace(WORLD_FOLDER_NAME)
 	if worldFolder ~= nil then
 		local tileSize = worldFolder:GetAttribute("TileSize")
@@ -74,12 +73,12 @@ local function GetWorldTileSizeStuds(): number
 	return GamepadPointer.DEFAULT_TILE_SIZE_STUDS
 end
 
-local function GetPresentationDeadzoneMagnitude(state: PadState): number
-	return GamepadNav.GetEmappedDeadzoneMagnitude(state.stickDeadzone, state.navigationDeadzone)
+local function getPresentationDeadzoneMagnitude(state: PadState): number
+	return GamepadNav.GetRemappedDeadzoneMagnitude(state.stickDeadzone, state.navigationDeadzone)
 end
 
-local function GetPresentationVector(state: PadState, position: Vector2): Vector2
-	local deadzoneMagnitude = GetPresentationDeadzoneMagnitude(state)
+local function getPresentationVector(state: PadState, position: Vector2): Vector2
+	local deadzoneMagnitude = getPresentationDeadzoneMagnitude(state)
 	local magnitude = position.Magnitude
 	if magnitude <= deadzoneMagnitude or magnitude <= THUMBSTICK_ACTIVE_EPSILON then
 		return Vector2.zero
@@ -89,7 +88,7 @@ local function GetPresentationVector(state: PadState, position: Vector2): Vector
 	return position.Unit * math.clamp(scaledMagnitude, 0, 1)
 end
 
-local function GetBackendReachPixelOffset(rootPart: BasePart, vector: Vector2, tileSizeStuds: number): Vector2?
+local function getBackendReachPixelOffset(rootPart: BasePart, vector: Vector2, tileSizeStuds: number): Vector2?
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
 		return nil
@@ -109,13 +108,13 @@ local function GetBackendReachPixelOffset(rootPart: BasePart, vector: Vector2, t
 end
 
 local function getPresentationPixelOffset(state: PadState, position: Vector2, rootPart: BasePart): Vector2
-	local presentationVector = GetPresentationVector(state, position)
+	local presentationVector = getPresentationVector(state, position)
 	if presentationVector.Magnitude <= THUMBSTICK_ACTIVE_EPSILON then
 		return Vector2.zero
 	end
 
-	local tileSizeStuds = GetWorldTileSizeStuds()
-	local backendPixelOffset = GetBackendReachPixelOffset(rootPart, presentationVector, tileSizeStuds)
+	local tileSizeStuds = getWorldTileSizeStuds()
+	local backendPixelOffset = getBackendReachPixelOffset(rootPart, presentationVector, tileSizeStuds)
 	if backendPixelOffset ~= nil then
 		return backendPixelOffset
 	end
@@ -124,7 +123,7 @@ local function getPresentationPixelOffset(state: PadState, position: Vector2, ro
 end
 
 local function isStickPresentationActive(state: PadState, stick: padSlice.PadStickState): boolean
-	return stick.active and stick.magnitude > GetPresentationDeadzoneMagnitude(state)
+	return stick.active and stick.magnitude > getPresentationDeadzoneMagnitude(state)
 end
 
 local function getPresentationPosition(state: PadState, position: Vector2, rootPart: BasePart): UDim2
@@ -156,7 +155,7 @@ return function(props: PadScreenProps?): React.ReactNode
 	local GotProps: PadScreenProps = if props ~= nil then props else {} :: any
 	local localPlayer = Players.LocalPlayer
 	local state = (useStore(padSlice.padStateAtom) :: PadState?) or padSlice.getPadState()
-	local rootPart, setRootPart = React.useState(GetCharacterRootPart(localPlayer) :: BasePart?)
+	local rootPart, setRootPart = React.useState(getCharacterRootPart(localPlayer) :: BasePart?)
 	local activeIndicator, setActiveIndicator = React.useState(nil :: ActiveIndicatorState?)
 	local idlePad = usePad({
 		enabled = activeIndicator ~= nil,
@@ -176,7 +175,7 @@ return function(props: PadScreenProps?): React.ReactNode
 		end
 
 		local function refreshRootPart()
-			setRootPart(GetCharacterRootPart(localPlayer))
+			setRootPart(getCharacterRootPart(localPlayer))
 		end
 
 		local function bindCharacter(character: Model?)

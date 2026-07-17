@@ -8,6 +8,7 @@ local Maid = require("Maid")
 local Table: any = require("Table")
 
 local CelestialCycleConstants = require("CelestialCycleConstants")
+local WorldGenerationConstants = require("WorldGenerationConstants")
 
 local CelestialBodyRoot = {}
 CelestialBodyRoot.__index = CelestialBodyRoot
@@ -21,7 +22,7 @@ local function computeVisibleExtentsAtDistance(camera: Camera, distance: number)
 		math.max(visibleHeight, CelestialCycleConstants.ANCHOR_HEIGHT_STUDS)
 end
 
-local function GetCanvasSize(widthStuds: number, heightStuds: number): Vector2
+local function getCanvasSize(widthStuds: number, heightStuds: number): Vector2
 	local pixelsPerStud = CelestialCycleConstants.SURFACE_PIXELS_PER_STUD
 	local minCanvas = CelestialCycleConstants.SURFACE_MIN_CANVAS
 	local maxCanvas = CelestialCycleConstants.SURFACE_MAX_CANVAS
@@ -36,7 +37,7 @@ function CelestialBodyRoot.new(parent: Instance): CelestialBodyRoot
 	self.maid = Maid.new()
 	self.scope = Fusion.scoped(Fusion)
 	self.canvasSize =
-		GetCanvasSize(CelestialCycleConstants.ANCHOR_WIDTH_STUDS, CelestialCycleConstants.ANCHOR_HEIGHT_STUDS)
+		getCanvasSize(CelestialCycleConstants.ANCHOR_WIDTH_STUDS, CelestialCycleConstants.ANCHOR_HEIGHT_STUDS)
 	self.anchorPart = self.scope:New "Part" {
 		Name = "CelestialBodyRoot",
 		Anchored = true,
@@ -45,7 +46,11 @@ function CelestialBodyRoot.new(parent: Instance): CelestialBodyRoot
 		CanTouch = false,
 		CastShadow = false,
 		Locked = true,
-		Size = Vector3.new(1, CelestialCycleConstants.ANCHOR_HEIGHT_STUDS, CelestialCycleConstants.ANCHOR_WIDTH_STUDS),
+		Size = Vector3.new(
+			WorldGenerationConstants.DEFAULT_TILE_DEPTH,
+			CelestialCycleConstants.ANCHOR_HEIGHT_STUDS,
+			CelestialCycleConstants.ANCHOR_WIDTH_STUDS
+		),
 		Transparency = 1,
 		Parent = parent,
 	}
@@ -68,9 +73,9 @@ function CelestialBodyRoot.Update(self: CelestialBodyRoot, camera: Camera?)
 		computeVisibleExtentsAtDistance(GotCamera, CelestialCycleConstants.ANCHOR_DISTANCE_STUDS)
 	local anchorCenter = cameraPosition + forward * CelestialCycleConstants.ANCHOR_DISTANCE_STUDS
 
-	self.anchorPart.Size = Vector3.new(1, heightStuds, widthStuds)
+	self.anchorPart.Size = Vector3.new(WorldGenerationConstants.DEFAULT_TILE_DEPTH, heightStuds, widthStuds)
 	self.anchorPart.CFrame = CFrame.fromMatrix(anchorCenter, -forward, cameraCFrame.UpVector)
-	self.canvasSize = GetCanvasSize(widthStuds, heightStuds)
+	self.canvasSize = getCanvasSize(widthStuds, heightStuds)
 end
 
 function CelestialBodyRoot.GetAdornee(self: CelestialBodyRoot): BasePart

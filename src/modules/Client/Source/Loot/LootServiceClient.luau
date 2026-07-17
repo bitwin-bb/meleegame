@@ -7,6 +7,7 @@ local CoinSprites = require("CoinSprites")
 local LootServiceUtils = require("LootServiceUtils")
 local Maid = require("Maid")
 local PacketPayload = require("PacketPayload")
+local ServiceBag = require("ServiceBag")
 local WorkspaceFolders = require("WorkspaceFolders")
 local LootServicePackets = require("NetPacketsShared").LootService
 
@@ -53,13 +54,14 @@ end
 type MaidClass = any
 
 local LootServiceClient = {}
+LootServiceClient.ServiceName = "LootServiceClient"
 
 local LOOT_FOLDER_NAME = "LootRuntime"
 local LOOT_ICON_ANIMATED_ATTRIBUTE = "LootIconAnimated"
 local LOOT_ICON_ITEM_ID_ATTRIBUTE = "LootIconItemId"
 local LOOT_ICON_SPRITE_SHEET_NAME = "SpriteSheet"
 
-local function GetLootIconItemId(icon: ImageLabel): string?
+local function getLootIconItemId(icon: ImageLabel): string?
 	local itemId = icon:GetAttribute(LOOT_ICON_ITEM_ID_ATTRIBUTE)
 	if typeof(itemId) == "string" and itemId ~= "" then
 		return itemId
@@ -125,14 +127,14 @@ local function createSpriteSheetIcon(icon: ImageLabel, spriteSheet: string): Ima
 	return spriteSheetIcon
 end
 
-function LootServiceClient.ApplyState(self: LootServiceClient, _payloadRaw: any) end
+function LootServiceClient.ApplyState(_self: LootServiceClient, _payloadRaw: any) end
 
-function LootServiceClient.RequestSync(self: LootServiceClient)
+function LootServiceClient.RequestSync(_self: LootServiceClient)
 	sendPacket(LootServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
 function LootServiceClient.RequestDropFromSlot(
-	self: LootServiceClient,
+	_self: LootServiceClient,
 	slotIndexRaw: any,
 	amountRaw: any,
 	throwDirectionRaw: any
@@ -140,12 +142,12 @@ function LootServiceClient.RequestDropFromSlot(
 	sendPacket(LootServiceUtils.NETWORK_METHOD_REQUEST_DROP_SLOT, slotIndexRaw, amountRaw, throwDirectionRaw)
 end
 
-function LootServiceClient.RequestDropSelectedSlot(self: LootServiceClient, amountRaw: any, throwDirectionRaw: any)
+function LootServiceClient.RequestDropSelectedSlot(_self: LootServiceClient, amountRaw: any, throwDirectionRaw: any)
 	sendPacket(LootServiceUtils.NETWORK_METHOD_REQUEST_DROP_SELECTED, amountRaw, throwDirectionRaw)
 end
 
-function LootServiceClient.GotRopAmount(self: LootServiceClient, amountRaw: any, fallbackAmountRaw: any?): number
-	return LootServiceUtils.GotRopAmount(amountRaw, fallbackAmountRaw)
+function LootServiceClient.GetDropAmount(_self: LootServiceClient, amountRaw: any, fallbackAmountRaw: any?): number
+	return LootServiceUtils.GetDropAmount(amountRaw, fallbackAmountRaw)
 end
 
 function LootServiceClient.StartLootIconAnimation(self: LootServiceClient, iconRaw: Instance)
@@ -160,7 +162,7 @@ function LootServiceClient.StartLootIconAnimation(self: LootServiceClient, iconR
 		return
 	end
 
-	local itemId = GetLootIconItemId(icon)
+	local itemId = getLootIconItemId(icon)
 	if itemId == nil then
 		return
 	end
@@ -228,7 +230,10 @@ function LootServiceClient.StartLootIconAnimations(self: LootServiceClient)
 	end))
 end
 
-function LootServiceClient.Init(self: LootServiceClient)
+function LootServiceClient.Init(self: LootServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	bindPackets(self)
 	local maid = Maid.new()
 	self.maid = maid
@@ -249,9 +254,11 @@ function LootServiceClient.Destroy(self: LootServiceClient)
 	if self.maid ~= nil then
 		self.maid:DoCleaning()
 	end
+	self._serviceBag = nil
 end
 
 type LootServiceClient = typeof(LootServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
 	maid: MaidClass?,
 	animatedLootIconMaids: { [ImageLabel]: MaidClass? },
 }

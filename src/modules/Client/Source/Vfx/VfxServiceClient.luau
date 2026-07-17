@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local RunService = game:GetService("RunService")
 
+local ServiceBag = require("ServiceBag")
 local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
 local VFXServicePackets = require("NetPacketsShared").VFXService
@@ -45,6 +46,7 @@ type VFXPlaybackOptions = VFXServiceUtils.VFXPlaybackOptions
 type JanitorClass = any
 
 local VFXServiceClient = {}
+VFXServiceClient.ServiceName = "VfxServiceClient"
 
 function VFXServiceClient.TrackRuntime(self: VFXServiceClient, runtimeRoot: BasePart, channelName: string?)
 	self.activeRuntimes[runtimeRoot] = true
@@ -199,7 +201,10 @@ function VFXServiceClient.StopAll(self: VFXServiceClient)
 	end
 end
 
-function VFXServiceClient.Init(self: VFXServiceClient)
+function VFXServiceClient.Init(self: VFXServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	bindPackets(self)
 	self.janitor = Janitor.new()
 	self.runtimeFolder = VFXServiceUtils.EnsureRuntimeFolder()
@@ -215,8 +220,10 @@ function VFXServiceClient.Destroy(self: VFXServiceClient)
 	if self.janitor ~= nil then
 		self.janitor:Destroy()
 	end
+	self._serviceBag = nil
 end
 type VFXServiceClient = typeof(VFXServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
 	TrackRuntime: (self: VFXServiceClient, runtimeRoot: BasePart, channelName: string?) -> (),
 	Play: (self: VFXServiceClient, effectSourceRaw: any, optionsRaw: any) -> BasePart?,
 	PlayEffect: (self: VFXServiceClient, effectSourceRaw: any, optionsRaw: any) -> BasePart?,

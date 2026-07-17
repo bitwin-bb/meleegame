@@ -3,7 +3,14 @@ local require = require(script.Parent.loader).load(script)
 local HttpService = game:GetService("HttpService")
 local TweenService = game:GetService("TweenService")
 
+local String = require("String")
+
 local AudioServiceUtils = {}
+
+local function createRuntimeInstanceName(): string
+	local guid = String.removePostfix(String.removePrefix(HttpService:GenerateGUID(true), "{"), "}")
+	return string.format("%03d", (tonumber(string.sub(guid, 1, 8), 16) or 0) % 1000)
+end
 
 export type SoundCategory = "Music" | "SFX" | "UI" | "Voice"
 
@@ -481,7 +488,7 @@ function AudioServiceUtils.CreateSoundInstance(
 
 	local sound = Instance.new("Sound")
 	sound.SoundId = soundId
-	sound.Name = HttpService:GenerateGUID(false)
+	sound.Name = createRuntimeInstanceName()
 	if options.looped ~= nil then
 		sound.Looped = options.looped
 	end

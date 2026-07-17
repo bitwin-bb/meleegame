@@ -185,7 +185,7 @@ local function runLengthDecode(payload: buffer, payloadSize: number): (buffer, n
 	for readCursor = 0, payloadSize - 1, 2 do
 		local runLength = buffer.readu8(payload, readCursor)
 		local byteValue = buffer.readu8(payload, readCursor + 1)
-		for offset = 1, runLength do
+		for _offset = 1, runLength do
 			buffer.writeu8(out, writeCursor, byteValue)
 			writeCursor += 1
 		end

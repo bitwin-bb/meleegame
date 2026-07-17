@@ -28,7 +28,7 @@ CelestialCycleClassClient.__index = CelestialCycleClassClient
 
 local ROOT_FOLDER_NAME = "CelestialCycle"
 
-local function GetWorldDayIndex(): number
+local function getWorldDayIndex(): number
 	local weatherState = (WeatherServiceClient :: any).state
 	if typeof(weatherState) == "table" and typeof(weatherState.worldDayIndex) == "number" then
 		return weatherState.worldDayIndex
@@ -43,8 +43,7 @@ end
 function CelestialCycleClassClient.new(): CelestialCycleClassClient
 	local self: any = setmetatable({}, CelestialCycleClassClient)
 	self.maid = Maid.new()
-	self.stateValue =
-		ValueObject.new(RotationMath.GetCycleState(Lighting.ClockTime, GetWorldDayIndex()), "table")
+	self.stateValue = ValueObject.new(RotationMath.GetCycleState(Lighting.ClockTime, getWorldDayIndex()), "table")
 	self.stateChangedSignal = RxSignal.new(function()
 		return self:ObserveState()
 	end)
@@ -64,7 +63,7 @@ function CelestialCycleClassClient.PreloadAssets(self: CelestialCycleClassClient
 end
 
 function CelestialCycleClassClient.Publish(self: CelestialCycleClassClient)
-	local cycleState = RotationMath.GetCycleState(Lighting.ClockTime, GetWorldDayIndex())
+	local cycleState = RotationMath.GetCycleState(Lighting.ClockTime, getWorldDayIndex())
 	self.stateValue.Value = cycleState
 	if self.anchorRoot == nil then
 		return

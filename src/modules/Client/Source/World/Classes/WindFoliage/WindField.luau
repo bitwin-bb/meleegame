@@ -51,7 +51,7 @@ local function clampNumber(valueRaw: any, fallback: number, minimum: number, max
 	return value
 end
 
-local function CoerceDirection(directionRaw: any): Vector3
+local function coerceDirection(directionRaw: any): Vector3
 	local direction = if typeof(directionRaw) == "Vector3" then directionRaw else DEFAULT_DIRECTION
 	return Vec.Unit(Vec.FlattenY(direction), Vec.Unit(DEFAULT_DIRECTION, Vector3.xAxis))
 end
@@ -65,7 +65,7 @@ function WindField.New(configRaw: Config?): WindField
 	local seed = DeterministicRNG.SeedFrom(config.seed or "WindFoliage")
 
 	local self = setmetatable({
-		baseDirection = CoerceDirection(config.baseDirection),
+		baseDirection = coerceDirection(config.baseDirection),
 		strengthMultiplier = clampNumber(config.strengthMultiplier, 1, 0, 10),
 		baseStrength = clampNumber(config.baseStrength, 0.62, 0, 10),
 		gustStrength = clampNumber(config.gustStrength, 0.9, 0, 10),

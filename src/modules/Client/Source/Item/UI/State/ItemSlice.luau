@@ -37,7 +37,7 @@ export type ItemDragDebugState = {
 
 local MAX_DEBUG_LINES = 12
 
-local function CoerceSlot(slotRaw: any): number?
+local function coerceSlot(slotRaw: any): number?
 	if typeof(slotRaw) ~= "number" or slotRaw ~= slotRaw then
 		return nil
 	end
@@ -49,7 +49,7 @@ local function CoerceSlot(slotRaw: any): number?
 	return slot
 end
 
-local function CoerceVector2(valueRaw: any): Vector2
+local function coerceVector2(valueRaw: any): Vector2
 	if typeof(valueRaw) == "Vector3" then
 		local value3 = valueRaw :: Vector3
 		if value3.X ~= value3.X or value3.Y ~= value3.Y then
@@ -66,7 +66,7 @@ local function CoerceVector2(valueRaw: any): Vector2
 	return valueRaw
 end
 
-local function CoerceText(valueRaw: any): string?
+local function coerceText(valueRaw: any): string?
 	if typeof(valueRaw) ~= "string" then
 		return nil
 	end
@@ -77,14 +77,14 @@ local function CoerceText(valueRaw: any): string?
 	return value
 end
 
-local function CoerceDragMode(valueRaw: any): ItemDragMode
+local function coerceDragMode(valueRaw: any): ItemDragMode
 	if valueRaw == "SplitHold" then
 		return "SplitHold"
 	end
 	return "Move"
 end
 
-local function CoercePositiveInteger(valueRaw: any, fallback: number, minimum: number, maximum: number?): number
+local function coercePositiveInteger(valueRaw: any, fallback: number, minimum: number, maximum: number?): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
@@ -159,17 +159,17 @@ local function beginDrag(
 	iconRaw: any,
 	optionsRaw: any?
 ): ItemDragState
-	local sourceSlot = CoerceSlot(sourceSlotRaw)
+	local sourceSlot = coerceSlot(sourceSlotRaw)
 	local stack = cloneStack(stackRaw)
 	if sourceSlot == nil or stack == nil then
 		return dragStateAtom()
 	end
 
 	local options = if typeof(optionsRaw) == "table" then optionsRaw :: ItemDragBeginOptions else nil
-	local mode = CoerceDragMode(if options ~= nil then options.mode else nil)
+	local mode = coerceDragMode(if options ~= nil then options.mode else nil)
 	local sourceStackAmount = nil :: number?
 	if mode == "SplitHold" then
-		sourceStackAmount = CoercePositiveInteger(
+		sourceStackAmount = coercePositiveInteger(
 			if options ~= nil then options.sourceStackAmount else nil,
 			stack.amount,
 			1,
@@ -178,7 +178,7 @@ local function beginDrag(
 	end
 	local maxDragAmount = if sourceStackAmount ~= nil then sourceStackAmount else stack.amount
 	local dragAmount =
-		CoercePositiveInteger(if options ~= nil then options.dragAmount else nil, stack.amount, 1, maxDragAmount)
+		coercePositiveInteger(if options ~= nil then options.dragAmount else nil, stack.amount, 1, maxDragAmount)
 	stack.amount = dragAmount
 
 	local nextState: ItemDragState = {
@@ -186,9 +186,9 @@ local function beginDrag(
 		sourceSlot = sourceSlot,
 		hoveredSlot = sourceSlot,
 		stack = stack,
-		itemType = CoerceText(itemTypeRaw),
-		icon = CoerceText(iconRaw),
-		pointerPosition = CoerceVector2(pointerPositionRaw),
+		itemType = coerceText(itemTypeRaw),
+		icon = coerceText(iconRaw),
+		pointerPosition = coerceVector2(pointerPositionRaw),
 		mode = mode,
 		sourceStackAmount = sourceStackAmount,
 		updatedAt = os.clock(),
@@ -203,7 +203,7 @@ local function setPointerPosition(pointerPositionRaw: any): ItemDragState
 		return state
 	end
 
-	local pointerPosition = CoerceVector2(pointerPositionRaw)
+	local pointerPosition = coerceVector2(pointerPositionRaw)
 	if pointerPosition == state.pointerPosition then
 		return state
 	end
@@ -235,7 +235,7 @@ local function setStackAmount(amountRaw: any): ItemDragState
 	if state.sourceStackAmount ~= nil then
 		maxAmount = math.max(1, state.sourceStackAmount)
 	end
-	local nextAmount = CoercePositiveInteger(amountRaw, stack.amount, 1, maxAmount)
+	local nextAmount = coercePositiveInteger(amountRaw, stack.amount, 1, maxAmount)
 	if nextAmount == stack.amount then
 		return state
 	end
@@ -268,7 +268,7 @@ local function setHoveredSlot(slotRaw: any): ItemDragState
 		return state
 	end
 
-	local hoveredSlot = CoerceSlot(slotRaw)
+	local hoveredSlot = coerceSlot(slotRaw)
 	if hoveredSlot == state.hoveredSlot then
 		return state
 	end

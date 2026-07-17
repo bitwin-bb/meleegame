@@ -36,7 +36,7 @@ local function getPlatformServiceClient(): any
 	return platformServiceClient
 end
 
-local function GetCurrentViewportSize(): Vector2
+local function getCurrentViewportSize(): Vector2
 	local camera = Workspace.CurrentCamera
 	if camera ~= nil then
 		local viewportSize = camera.ViewportSize
@@ -45,7 +45,7 @@ local function GetCurrentViewportSize(): Vector2
 	return FALLBACK_VIEWPORT
 end
 
-local function GetViewportState(usePlatformState: boolean): ViewportState
+local function getViewportState(usePlatformState: boolean): ViewportState
 	local camera = Workspace.CurrentCamera
 	local guiInsetTopLeft, guiInsetBottomRight = GuiService:GetGuiInset()
 	local platformState = nil :: PlatformState?
@@ -86,7 +86,7 @@ local function GetViewportState(usePlatformState: boolean): ViewportState
 
 	local viewport = if platformState ~= nil and typeof(platformState.viewport) == "Vector2"
 		then platformState.viewport
-		else GetCurrentViewportSize()
+		else getCurrentViewportSize()
 
 	return {
 		viewport = viewport,
@@ -105,14 +105,14 @@ local function useViewport(options: ViewportOptions?): ViewportState
 		then options.usePlatformState == true
 		else true
 	local viewportState, setViewportState = React.useState(function(): ViewportState
-		return GetViewportState(usePlatformState)
+		return getViewportState(usePlatformState)
 	end)
 
 	React.useEffect(function()
 		local viewportConnection = nil
 
 		local function refresh()
-			setViewportState(GetViewportState(usePlatformState))
+			setViewportState(getViewportState(usePlatformState))
 		end
 
 		local function bindViewportConnection()

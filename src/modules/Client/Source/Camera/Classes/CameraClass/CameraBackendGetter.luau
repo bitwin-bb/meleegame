@@ -44,7 +44,7 @@ export type CameraBackendGetter = typeof(setmetatable(
 	CameraBackendGetter
 ))
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = if typeof(valueRaw) == "number" and valueRaw == valueRaw then valueRaw else fallback
 	if minimum ~= nil and value < minimum then
 		value = minimum
@@ -55,8 +55,8 @@ local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, m
 	return value
 end
 
-local function CoerceSign(valueRaw: any, fallback: number): number
-	local sign = math.sign(CoerceNumber(valueRaw, fallback, -1, 1))
+local function coerceSign(valueRaw: any, fallback: number): number
+	local sign = math.sign(coerceNumber(valueRaw, fallback, -1, 1))
 	if sign == 0 then
 		return if fallback < 0 then -1 else 1
 	end
@@ -83,7 +83,7 @@ local function cloneSettings(settings: Settings): Settings
 	}
 end
 
-local function GetViewConfig(baseViewConfig: ViewConfig, overrideRaw: any): ViewConfig
+local function getViewConfig(baseViewConfig: ViewConfig, overrideRaw: any): ViewConfig
 	local override = if typeof(overrideRaw) == "table" then overrideRaw else {} :: any
 	local overrideViewConfig = if typeof((override :: any).viewConfig) == "table"
 		then (override :: any).viewConfig
@@ -101,19 +101,19 @@ local function GetViewConfig(baseViewConfig: ViewConfig, overrideRaw: any): View
 		nextViewConfig.lookHeight = (source :: any).lookHeight
 	end
 	if typeof((override :: any).fieldOfView) == "number" then
-		nextViewConfig.fieldOfView = CoerceNumber((override :: any).fieldOfView, nextViewConfig.fieldOfView, 1, 120)
+		nextViewConfig.fieldOfView = coerceNumber((override :: any).fieldOfView, nextViewConfig.fieldOfView, 1, 120)
 	elseif typeof((source :: any).fieldOfView) == "number" then
-		nextViewConfig.fieldOfView = CoerceNumber((source :: any).fieldOfView, nextViewConfig.fieldOfView, 1, 120)
+		nextViewConfig.fieldOfView = coerceNumber((source :: any).fieldOfView, nextViewConfig.fieldOfView, 1, 120)
 	end
 
 	return nextViewConfig
 end
 
-local function GetSettings(baseSettings: Settings, overrideRaw: any): Settings
+local function getSettings(baseSettings: Settings, overrideRaw: any): Settings
 	local override = if typeof(overrideRaw) == "table" then overrideRaw else {} :: any
 	local settings = cloneSettings(baseSettings)
 
-	settings.sideSign = CoerceSign((override :: any).sideSign, settings.sideSign)
+	settings.sideSign = coerceSign((override :: any).sideSign, settings.sideSign)
 
 	if typeof((override :: any).movementBackAmount) == "number" then
 		settings.movementBackAmount = math.max((override :: any).movementBackAmount, 0)
@@ -122,7 +122,7 @@ local function GetSettings(baseSettings: Settings, overrideRaw: any): Settings
 		settings.movementSpeedForMaxBack = math.max((override :: any).movementSpeedForMaxBack, 0.01)
 	end
 	if typeof((override :: any).movementBackSign) == "number" then
-		settings.movementBackSign = CoerceSign((override :: any).movementBackSign, settings.movementBackSign)
+		settings.movementBackSign = coerceSign((override :: any).movementBackSign, settings.movementBackSign)
 	end
 	if typeof((override :: any).mouseInfluenceX) == "number" then
 		settings.mouseInfluenceX = math.max((override :: any).mouseInfluenceX, 0)
@@ -155,25 +155,25 @@ end
 
 function CameraBackendGetter.Get(self: CameraBackendGetter, contextRaw: any): ResolutionResult
 	local context = if typeof(contextRaw) == "table" then contextRaw else {} :: any
-	local now = CoerceNumber((context :: any).now, os.clock(), 0, nil)
-	local deltaTime = CoerceNumber((context :: any).deltaTime, 1 / 60, 0, 1)
+	local now = coerceNumber((context :: any).now, os.clock(), 0, nil)
+	local deltaTime = coerceNumber((context :: any).deltaTime, 1 / 60, 0, 1)
 
-	local baseViewConfig = GetViewConfig({
-		distance = CoerceNumber((context :: any).distance, 38, 0, 4096),
-		height = CoerceNumber((context :: any).height, 8, -4096, 4096),
-		lookHeight = CoerceNumber((context :: any).lookHeight, 3, -4096, 4096),
-		fieldOfView = CoerceNumber((context :: any).fieldOfView, 60, 1, 120),
+	local baseViewConfig = getViewConfig({
+		distance = coerceNumber((context :: any).distance, 38, 0, 4096),
+		height = coerceNumber((context :: any).height, 8, -4096, 4096),
+		lookHeight = coerceNumber((context :: any).lookHeight, 3, -4096, 4096),
+		fieldOfView = coerceNumber((context :: any).fieldOfView, 60, 1, 120),
 	}, nil)
-	local baseSettings = GetSettings({
-		sideSign = CoerceSign((context :: any).sideSign, 1),
-		movementBackAmount = math.max(CoerceNumber((context :: any).movementBackAmount, 0, 0, 4096), 0),
+	local baseSettings = getSettings({
+		sideSign = coerceSign((context :: any).sideSign, 1),
+		movementBackAmount = math.max(coerceNumber((context :: any).movementBackAmount, 0, 0, 4096), 0),
 		movementSpeedForMaxBack = math.max(
-			CoerceNumber((context :: any).movementSpeedForMaxBack, 1, 0.01, 4096),
+			coerceNumber((context :: any).movementSpeedForMaxBack, 1, 0.01, 4096),
 			0.01
 		),
-		movementBackSign = CoerceSign((context :: any).movementBackSign, 1),
-		mouseInfluenceX = math.max(CoerceNumber((context :: any).mouseInfluenceX, 0, 0, 256), 0),
-		mouseInfluenceY = math.max(CoerceNumber((context :: any).mouseInfluenceY, 0, 0, 256), 0),
+		movementBackSign = coerceSign((context :: any).movementBackSign, 1),
+		mouseInfluenceX = math.max(coerceNumber((context :: any).mouseInfluenceX, 0, 0, 256), 0),
+		mouseInfluenceY = math.max(coerceNumber((context :: any).mouseInfluenceY, 0, 0, 256), 0),
 	}, nil)
 
 	local override = nil
@@ -231,9 +231,9 @@ function CameraBackendGetter.Get(self: CameraBackendGetter, contextRaw: any): Re
 			GotViewConfig = (roomBehavior :: any):GetViewConfig(GotViewConfig, targetPosition)
 		end
 	end
-	GotViewConfig = GetViewConfig(GotViewConfig, override)
+	GotViewConfig = getViewConfig(GotViewConfig, override)
 
-	local GotSettings = GetSettings(baseSettings, override)
+	local GotSettings = getSettings(baseSettings, override)
 	local lookPosition = if override ~= nil and typeof((override :: any).lookPosition) == "Vector3"
 		then (override :: any).lookPosition
 		else if subject ~= nil and typeof((subject :: any).lookPosition) == "Vector3"

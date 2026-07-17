@@ -7,8 +7,8 @@ local Fusion: any = require(ReplicatedStorage.Packages.Fusion)
 local ImageIds = require("ImageIds")
 local ItemIcons = require("ItemIcons")
 local ItemRegistry = require("ItemRegistry")
-local Maid = require("Maid")
 local StringUtils = require("StringUtils")
+local WorldGenerationConstants = require("WorldGenerationConstants")
 
 local Children = Fusion.Children
 
@@ -25,7 +25,6 @@ export type LootItemServerConfig = {
 
 type IconMap = { [any]: any }
 type ItemDefinition = { [string]: any }
-type MaidClass = any
 type CoinSpriteSheet = {
 	image: string,
 	frameSize: Vector2,
@@ -36,7 +35,8 @@ type CoinSpriteSheet = {
 
 local DEFAULT_NAME = "LootItem"
 local DEFAULT_ITEM_ID = "Item"
-local DEFAULT_ROOT_SIZE = Vector3.new(0.2, 2.2, 2.2)
+local PLANE_DEPTH = WorldGenerationConstants.DEFAULT_TILE_DEPTH
+local DEFAULT_ROOT_SIZE = Vector3.new(PLANE_DEPTH, 2.2, 2.2)
 local CANVAS_SIZE = Vector2.new(128, 128)
 local SIDE_VIEW_FACE = Enum.NormalId.Right
 local ROOT_PART_NAME = "Root"
@@ -96,7 +96,7 @@ local function ensureLootCollisionGroups()
 	collisionGroupsReady = true
 end
 
-local function CoerceName(valueRaw: any): string
+local function coerceName(valueRaw: any): string
 	local value = StringUtils.Coerce(valueRaw, nil)
 	if value ~= nil then
 		return value
@@ -104,7 +104,7 @@ local function CoerceName(valueRaw: any): string
 	return DEFAULT_NAME
 end
 
-local function CoerceItemId(valueRaw: any): string
+local function coerceItemId(valueRaw: any): string
 	local value = StringUtils.Coerce(valueRaw, nil)
 	if value ~= nil then
 		return value
@@ -112,16 +112,16 @@ local function CoerceItemId(valueRaw: any): string
 	return DEFAULT_ITEM_ID
 end
 
-local function CoerceAmount(valueRaw: any): number
+local function coerceAmount(valueRaw: any): number
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		return math.max(1, math.floor(valueRaw))
 	end
 	return 1
 end
 
-local function CoerceSize(valueRaw: any): Vector3
+local function coerceSize(valueRaw: any): Vector3
 	if typeof(valueRaw) == "Vector3" then
-		return Vector3.new(math.max(0.05, valueRaw.X), math.max(0.05, valueRaw.Y), math.max(0.05, valueRaw.Z))
+		return Vector3.new(PLANE_DEPTH, math.max(0.05, valueRaw.Y), math.max(0.05, valueRaw.Z))
 	end
 	return DEFAULT_ROOT_SIZE
 end
@@ -134,14 +134,14 @@ local function normalizeKey(valueRaw: any): string?
 	return token
 end
 
-local function GetIconValue(valueRaw: any): string?
+local function getIconValue(valueRaw: any): string?
 	if typeof(valueRaw) == "string" and valueRaw ~= "" then
 		return valueRaw
 	end
 	return nil
 end
 
-local function GetItemIcons(): IconMap?
+local function getItemIcons(): IconMap?
 	local itemIcons = ItemIcons
 	if typeof(itemIcons) == "table" then
 		return itemIcons :: IconMap
@@ -149,7 +149,7 @@ local function GetItemIcons(): IconMap?
 	return nil
 end
 
-local function GetSpriteSheets(): IconMap?
+local function getSpriteSheets(): IconMap?
 	local spriteSheets = (ImageIds :: any).spriteSheets
 	if typeof(spriteSheets) == "table" then
 		return spriteSheets :: IconMap
@@ -157,7 +157,7 @@ local function GetSpriteSheets(): IconMap?
 	return nil
 end
 
-local function GetItemTypeFromDefinition(definitionRaw: any): string?
+local function getItemTypeFromDefinition(definitionRaw: any): string?
 	if typeof(definitionRaw) ~= "table" then
 		return nil
 	end
@@ -166,7 +166,7 @@ local function GetItemTypeFromDefinition(definitionRaw: any): string?
 	return StringUtils.Coerce(definition.itemType or definition.type, nil)
 end
 
-local function GetItemTypeFromItemId(itemIdRaw: any): string?
+local function getItemTypeFromItemId(itemIdRaw: any): string?
 	local itemId = normalizeKey(itemIdRaw)
 	if itemId == nil then
 		return nil
@@ -194,15 +194,15 @@ local function GetItemTypeFromItemId(itemIdRaw: any): string?
 	return nil
 end
 
-local function GetIconByNormalizedKey(itemIcons: IconMap, normalizedKey: string): string?
-	local directIcon = GetIconValue(itemIcons[normalizedKey])
+local function getIconByNormalizedKey(itemIcons: IconMap, normalizedKey: string): string?
+	local directIcon = getIconValue(itemIcons[normalizedKey])
 	if directIcon ~= nil then
 		return directIcon
 	end
 
 	for key, value in itemIcons do
 		if normalizeKey(key) == normalizedKey then
-			local icon = GetIconValue(value)
+			local icon = getIconValue(value)
 			if icon ~= nil then
 				return icon
 			end
@@ -212,39 +212,39 @@ local function GetIconByNormalizedKey(itemIcons: IconMap, normalizedKey: string)
 	return nil
 end
 
-local function GetIconByItemId(itemIcons: IconMap, itemIdRaw: any): string?
+local function getIconByItemId(itemIcons: IconMap, itemIdRaw: any): string?
 	local normalizedItemId = normalizeKey(itemIdRaw)
 	if normalizedItemId == nil then
 		return nil
 	end
-	return GetIconByNormalizedKey(itemIcons, normalizedItemId)
+	return getIconByNormalizedKey(itemIcons, normalizedItemId)
 end
 
-local function GetIconByItemType(itemIcons: IconMap, itemTypeRaw: any): string?
+local function getIconByItemType(itemIcons: IconMap, itemTypeRaw: any): string?
 	local normalizedType = normalizeKey(itemTypeRaw)
 	if normalizedType == nil then
 		return nil
 	end
-	return GetIconValue(itemIcons[normalizedType])
+	return getIconValue(itemIcons[normalizedType])
 end
 
-local function GetFallbackIcon(itemIcons: IconMap?): string
+local function getFallbackIcon(itemIcons: IconMap?): string
 	if itemIcons ~= nil then
-		local fallbackIcon = GetIconValue(itemIcons.default)
+		local fallbackIcon = getIconValue(itemIcons.default)
 		if fallbackIcon ~= nil then
 			return fallbackIcon
 		end
 	end
 
-	local questionMarkIcon = GetIconValue((ImageIds :: any).questionMark)
+	local questionMarkIcon = getIconValue((ImageIds :: any).questionMark)
 	if questionMarkIcon ~= nil then
 		return questionMarkIcon
 	end
 	return ""
 end
 
-local function GetCoinSpriteSheet(itemIdRaw: any): CoinSpriteSheet?
-	local itemId = CoerceItemId(itemIdRaw)
+local function getCoinSpriteSheet(itemIdRaw: any): CoinSpriteSheet?
+	local itemId = coerceItemId(itemIdRaw)
 	local canonicalItemId = ItemRegistry.GetCanonicalItemId(itemId) or itemId
 	local spriteSheetKey = COIN_SPRITE_SHEET_KEY_BY_TOKEN[normalizeKey(canonicalItemId) or ""]
 		or COIN_SPRITE_SHEET_KEY_BY_TOKEN[normalizeKey(itemId) or ""]
@@ -252,12 +252,12 @@ local function GetCoinSpriteSheet(itemIdRaw: any): CoinSpriteSheet?
 		return nil
 	end
 
-	local spriteSheets = GetSpriteSheets()
+	local spriteSheets = getSpriteSheets()
 	if spriteSheets == nil then
 		return nil
 	end
 
-	local spriteSheetImage = GetIconValue(spriteSheets[spriteSheetKey])
+	local spriteSheetImage = getIconValue(spriteSheets[spriteSheetKey])
 	if spriteSheetImage == nil then
 		return nil
 	end
@@ -272,40 +272,40 @@ local function GetCoinSpriteSheet(itemIdRaw: any): CoinSpriteSheet?
 end
 
 function LootItemServer.GetIcon(itemIdRaw: any): string
-	local itemId = CoerceItemId(itemIdRaw)
+	local itemId = coerceItemId(itemIdRaw)
 	local canonicalItemId = ItemRegistry.GetCanonicalItemId(itemId) or itemId
 	local definition = ItemRegistry.GetDefinition(canonicalItemId)
-	local itemType = GetItemTypeFromDefinition(definition)
-		or GetItemTypeFromItemId(canonicalItemId)
-		or GetItemTypeFromItemId(itemId)
+	local itemType = getItemTypeFromDefinition(definition)
+		or getItemTypeFromItemId(canonicalItemId)
+		or getItemTypeFromItemId(itemId)
 
-	local itemIcons = GetItemIcons()
+	local itemIcons = getItemIcons()
 	if itemIcons == nil then
-		return GetFallbackIcon(nil)
+		return getFallbackIcon(nil)
 	end
 
-	local itemIcon = GetIconByItemId(itemIcons, canonicalItemId)
+	local itemIcon = getIconByItemId(itemIcons, canonicalItemId)
 	if itemIcon ~= nil then
 		return itemIcon
 	end
 
 	if canonicalItemId ~= itemId then
-		itemIcon = GetIconByItemId(itemIcons, itemId)
+		itemIcon = getIconByItemId(itemIcons, itemId)
 		if itemIcon ~= nil then
 			return itemIcon
 		end
 	end
 
-	itemIcon = GetIconByItemType(itemIcons, itemType)
+	itemIcon = getIconByItemType(itemIcons, itemType)
 	if itemIcon ~= nil then
 		return itemIcon
 	end
 
-	return GetFallbackIcon(itemIcons)
+	return getFallbackIcon(itemIcons)
 end
 
 local function createAnimatedCoinIconImage(scope: any, itemId: string): ImageLabel?
-	local spriteSheet = GetCoinSpriteSheet(itemId)
+	local spriteSheet = getCoinSpriteSheet(itemId)
 	if spriteSheet == nil then
 		return nil
 	end
@@ -423,7 +423,7 @@ local function createRootPart(
 
 	return scope:New "Part" {
 		Name = ROOT_PART_NAME,
-		Size = CoerceSize(config.size),
+		Size = coerceSize(config.size),
 		CFrame = CFrame.identity,
 		Transparency = 1,
 		Anchored = false,
@@ -443,29 +443,17 @@ local function createRootPart(
 	} :: BasePart
 end
 
-local function bindScopeCleanup(model: Model, scope: any, maid: MaidClass): MaidClass
-	maid:GiveTask(function()
-		Fusion.doCleanup(scope)
-	end)
-	maid:GiveTask(model.Destroying:Connect(function()
-		maid:DoCleaning()
-	end))
-
-	return maid
-end
-
 function LootItemServer.CreateModel(configRaw: LootItemServerConfig?): Model
 	local config = (if typeof(configRaw) == "table" then configRaw else {} :: any) :: LootItemServerConfig
-	local itemId = CoerceItemId(config.itemId)
-	local amount = CoerceAmount(config.amount)
+	local itemId = coerceItemId(config.itemId)
+	local amount = coerceAmount(config.amount)
 	local scope = Fusion.scoped(Fusion)
-	local maid = Maid.new() :: MaidClass
 	local rotationAttachment, rotationLock = createRotationLock(scope)
 	local surfaceGui = createSurfaceGui(scope, createIconChildren(scope, itemId, amount))
 	local rootPart = createRootPart(scope, config, rotationAttachment, rotationLock, surfaceGui)
 
 	local model = scope:New "Model" {
-		Name = CoerceName(config.name),
+		Name = coerceName(config.name),
 		Parent = if typeof(config.parent) == "Instance" then config.parent else nil,
 		[Fusion.Attribute("LootIconItemId")] = itemId,
 		[Fusion.Attribute("LootIconSurfaceFace")] = SIDE_VIEW_FACE.Name,
@@ -480,10 +468,7 @@ function LootItemServer.CreateModel(configRaw: LootItemServerConfig?): Model
 		model:PivotTo(CFrame.new((config.cframe :: CFrame).Position))
 	end
 
-	bindScopeCleanup(model, scope, maid)
-
 	return model
 end
-
 
 return LootItemServer

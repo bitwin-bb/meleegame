@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local Players = game:GetService("Players")
@@ -100,6 +99,7 @@ type PlayerRuntime = {
 }
 
 local CraftingServiceServer = {}
+CraftingServiceServer.ServiceName = "CraftingServiceServer"
 
 local function trim(textRaw: any): string
 	if typeof(textRaw) ~= "string" then
@@ -108,7 +108,7 @@ local function trim(textRaw: any): string
 	return string.match(textRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function CoerceFlagId(flagRaw: any): string?
+local function coerceFlagId(flagRaw: any): string?
 	local flagId = trim(flagRaw)
 	if flagId == "" then
 		return nil
@@ -185,7 +185,7 @@ function CraftingServiceServer.PushState(
 end
 
 function CraftingServiceServer.PushCraftResult(
-	self: CraftingServiceServer,
+	_self: CraftingServiceServer,
 	player: Player,
 	transactionResult: CraftTransactionResult,
 	reasonRaw: any?
@@ -335,10 +335,10 @@ function CraftingServiceServer.ApplyPersistedStateToRuntime(
 	runtime: PlayerRuntime,
 	persistedStateRaw: any
 )
-	local CoerceD = CraftingServiceUtils.CoercePersistentState(persistedStateRaw, self.registry)
-	runtime.knownRecipeIds = CoerceD.knownRecipeIds
-	runtime.discoveredItemIds = CoerceD.discoveredItemIds
-	runtime.progressionFlags = CoerceD.progressionFlags
+	local coerced = CraftingServiceUtils.CoercePersistentState(persistedStateRaw, self.registry)
+	runtime.knownRecipeIds = coerced.knownRecipeIds
+	runtime.discoveredItemIds = coerced.discoveredItemIds
+	runtime.progressionFlags = coerced.progressionFlags
 	for recipeId, enabled in self.registry.defaultKnownRecipeIds do
 		if enabled then
 			runtime.knownRecipeIds[recipeId] = true
@@ -414,10 +414,7 @@ function CraftingServiceServer.UntrackPlayer(self: CraftingServiceServer, player
 	self.playerRuntimes[player] = nil
 end
 
-function CraftingServiceServer.GetPlayerBiomeTokens(
-	self: CraftingServiceServer,
-	player: Player
-): { [string]: boolean }
+function CraftingServiceServer.GetPlayerBiomeTokens(self: CraftingServiceServer, player: Player): { [string]: boolean }
 	local rootPosition = CraftingServiceUtils.GetPlayerRootPosition(player)
 	if rootPosition == nil then
 		return {}
@@ -667,7 +664,7 @@ function CraftingServiceServer.SetProgressionFlag(
 		return false
 	end
 
-	local flagId = CoerceFlagId(flagIdRaw)
+	local flagId = coerceFlagId(flagIdRaw)
 	if flagId == nil then
 		return false
 	end
@@ -694,7 +691,7 @@ function CraftingServiceServer.SetProgressionFlag(
 	return true
 end
 
-function CraftingServiceServer.Init(self: CraftingServiceServer)
+function CraftingServiceServer.Init(self: CraftingServiceServer, _serviceBag: any?)
 	self.config = CraftingServiceUtils.GetEffectiveConfig((Configs :: any).crafting)
 	self.registry = CraftingServiceUtils.GetRegistry(self.config)
 	self.playerRuntimes = {}

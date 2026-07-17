@@ -182,7 +182,7 @@ local function trim(valueRaw: any): string
 	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function CoerceItemId(itemIdRaw: any): string?
+local function coerceItemId(itemIdRaw: any): string?
 	local itemId = trim(itemIdRaw)
 	if itemId == "" then
 		return nil
@@ -301,7 +301,7 @@ function MiningPower.GetToolProfile(definitionRaw: any, fallbackTypeRaw: any?, f
 end
 
 function MiningPower.GetItemToolProfile(itemIdRaw: any): ToolProfile?
-	local itemId = CoerceItemId(itemIdRaw)
+	local itemId = coerceItemId(itemIdRaw)
 	if itemId == nil then
 		return nil
 	end

@@ -3,7 +3,6 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Players = game:GetService("Players")
-local ServerScriptService = game:GetService("ServerScriptService")
 
 local CmdrUtils = require("CmdrUtils")
 local HpServiceUtils = require("HpServiceUtils")
@@ -92,6 +91,7 @@ type PlayerDataServiceServerObject = {
 }
 
 local HpServiceServer = {}
+HpServiceServer.ServiceName = "HpServiceServer"
 local DEFAULT_DATA_LOAD_TIMEOUT_SECONDS = 20
 local DEFAULT_DATA_LOAD_RETRY_DELAY_SECONDS = 1
 local SUPPRESS_DAMAGE_FEEDBACK_ATTRIBUTE = "HpService_SuppressDamageFeedback"
@@ -116,7 +116,7 @@ local function applyHumanoidPresentationSettings(humanoid: Humanoid)
 	humanoid.HealthDisplayDistance = 0
 end
 
-function HpServiceServer.Init(self: HpServiceServer)
+function HpServiceServer.Init(self: HpServiceServer, _serviceBag: any?)
 	bindPackets(self)
 	self.playerRuntimes = {}
 	self.heartValue = HpServiceUtils.DEFAULT_HEART_VALUE

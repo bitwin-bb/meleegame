@@ -55,7 +55,6 @@ local function bindPackets(self: any)
 	bindPacket(self, "setWorldReadyForMovement")
 end
 
-local NevermoreSupport = require("NevermoreSupport")
 local PlayerServiceUtils = require("PlayerServiceUtils")
 local PlayerSpawnCooldown = require("PlayerSpawnCooldown")
 local BinderSupportServer = require("BinderSupportServer")
@@ -118,6 +117,7 @@ type RagdollServiceServerObject = {
 }
 
 local PlayerServiceServer = {}
+PlayerServiceServer.ServiceName = "PlayerServiceServer"
 local DAMAGE_HIGHLIGHT_NAME = "InvincibilityFramesHighlight"
 local HP_SUPPRESS_DAMAGE_FEEDBACK_ATTRIBUTE = "HpService_SuppressDamageFeedback"
 local WORLD_SURFACE_SNAP_MAX_WAIT_SECONDS = 20
@@ -133,7 +133,7 @@ local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function GetInvincibilityFramesConfigFromTemplate(): InvincibilityFramesConfig
+local function getInvincibilityFramesConfigFromTemplate(): InvincibilityFramesConfig
 	local template = if typeof(DataTemplate) == "table" then DataTemplate else {} :: any
 	local playerData = if typeof((template :: any).playerData) == "table"
 		then (template :: any).playerData
@@ -141,7 +141,7 @@ local function GetInvincibilityFramesConfigFromTemplate(): InvincibilityFramesCo
 	return PlayerServiceUtils.CoerceInvincibilityFramesConfig((playerData :: any).invincibilityFrames)
 end
 
-local function GetAllowMovementFreezeFromTemplate(): boolean
+local function getAllowMovementFreezeFromTemplate(): boolean
 	local template = if typeof(DataTemplate) == "table" then DataTemplate else {} :: any
 	local playerData = if typeof((template :: any).playerData) == "table"
 		then (template :: any).playerData
@@ -168,7 +168,7 @@ local function ensureRemoteEvent(parent: Instance, name: string): RemoteEvent
 	return remote
 end
 
-local function GetWorldNumber(world: any, key: string, fallback: number, minimum: number?): number
+local function getWorldNumber(world: any, key: string, fallback: number, minimum: number?): number
 	local value = (world :: any)[key]
 	if not isFiniteNumber(value) then
 		return fallback
@@ -180,7 +180,7 @@ local function GetWorldNumber(world: any, key: string, fallback: number, minimum
 	return Got
 end
 
-local function GetWorldTileId(world: any, tileX: number, tileY: number): number?
+local function getWorldTileId(world: any, tileX: number, tileY: number): number?
 	local getTileAt = (world :: any).GetTileAt
 	if typeof(getTileAt) ~= "function" then
 		return nil
@@ -195,7 +195,7 @@ local function GetWorldTileId(world: any, tileX: number, tileY: number): number?
 	return tileIdOrError
 end
 
-local function GetGeneratedSurfaceRootPosition(
+local function getGeneratedSurfaceRootPosition(
 	world: WorldGenerationObject?,
 	rootPart: BasePart,
 	humanoid: Humanoid
@@ -207,10 +207,10 @@ local function GetGeneratedSurfaceRootPosition(
 	local worldOrigin = if typeof((world :: any).worldOrigin) == "Vector3"
 		then (world :: any).worldOrigin
 		else Vector3.zero
-	local tileSize = GetWorldNumber(world, "tileSize", 4, 0.001)
-	local basePlaneX = GetWorldNumber(world, "basePlaneX", 0, nil)
-	local minTileY = math.floor(GetWorldNumber(world, "minTileY", -360, nil))
-	local maxTileY = math.floor(GetWorldNumber(world, "maxTileY", 180, nil))
+	local tileSize = getWorldNumber(world, "tileSize", 4, 0.001)
+	local basePlaneX = getWorldNumber(world, "basePlaneX", 0, nil)
+	local minTileY = math.floor(getWorldNumber(world, "minTileY", -360, nil))
+	local maxTileY = math.floor(getWorldNumber(world, "maxTileY", 180, nil))
 	if maxTileY < minTileY then
 		return nil, nil
 	end
@@ -222,12 +222,12 @@ local function GetGeneratedSurfaceRootPosition(
 	local tileX = math.floor((rootPart.Position.Z - worldOrigin.Z) / tileSize)
 
 	for tileY = maxTileY, minTileY, -1 do
-		local tileId = GetWorldTileId(world, tileX, tileY)
+		local tileId = getWorldTileId(world, tileX, tileY)
 		if tileId == nil or tileId == airTileId then
 			continue
 		end
 
-		local aboveTileId = if tileY >= maxTileY then airTileId else GetWorldTileId(world, tileX, tileY + 1)
+		local aboveTileId = if tileY >= maxTileY then airTileId else getWorldTileId(world, tileX, tileY + 1)
 		if aboveTileId ~= nil and aboveTileId ~= airTileId then
 			continue
 		end
@@ -284,14 +284,19 @@ function PlayerServiceServer.FireDamageFeedback(self: PlayerServiceServer, playe
 	sendPacket(player, "onDamaged", damageAmount)
 end
 
-function PlayerServiceServer.Init(self: PlayerServiceServer, worldGenerationWorld: WorldGenerationObject?)
+function PlayerServiceServer.Init(
+	self: PlayerServiceServer,
+	serviceBag: any,
+	worldGenerationWorld: WorldGenerationObject?
+)
+	self._serviceBag = assert(serviceBag, "No serviceBag")
 	self.playerState = {}
 	self.playerRuntimes = {}
 	self.activeGameplayPlayers = {}
 	self.loadingScreenReadyPlayers = {}
 	self.worldGenerationWorld = worldGenerationWorld
-	self.invincibilityFramesConfig = GetInvincibilityFramesConfigFromTemplate()
-	self.allowMovementFreeze = GetAllowMovementFreezeFromTemplate()
+	self.invincibilityFramesConfig = getInvincibilityFramesConfigFromTemplate()
+	self.allowMovementFreeze = getAllowMovementFreezeFromTemplate()
 	Players.CharacterAutoLoads = false
 	PlayerServiceUtils.GetOrCreateWorkspaceGameFolder()
 	PlayerServiceUtils.GetOrCreateWorkspacePlayersFolder()
@@ -305,7 +310,7 @@ function PlayerServiceServer.Init(self: PlayerServiceServer, worldGenerationWorl
 	self.loadingScreenReadyConnection = loadingScreenReadyRemote.OnServerEvent:Connect(function(player, statusRaw)
 		self:OnLoadingScreenReady(player, statusRaw)
 	end);
-	(self :: any).binders = NevermoreSupport.GetService(BinderSupportServer)
+	(self :: any).binders = serviceBag:GetService(BinderSupportServer)
 
 	for _, player in Players:GetPlayers() do
 		self:TrackPlayer(player)
@@ -491,7 +496,7 @@ function PlayerServiceServer.ApplyGameplaySpawnToCharacter(
 		local humanoid = character:FindFirstChildOfClass("Humanoid")
 		if humanoid ~= nil then
 			targetRootPosition =
-				select(1, GetGeneratedSurfaceRootPosition(self.worldGenerationWorld, rootPart, humanoid))
+				select(1, getGeneratedSurfaceRootPosition(self.worldGenerationWorld, rootPart, humanoid))
 		end
 	end
 	if typeof(targetRootPosition) ~= "Vector3" then
@@ -533,7 +538,7 @@ function PlayerServiceServer.TrySnapCharacterToWorldSurface(
 		return false
 	end
 	local _surfaceRootPosition, expectedSurfaceY =
-		GetGeneratedSurfaceRootPosition(self.worldGenerationWorld, rootPart, humanoid)
+		getGeneratedSurfaceRootPosition(self.worldGenerationWorld, rootPart, humanoid)
 
 	local raycastParams = RaycastParams.new()
 	raycastParams.FilterType = Enum.RaycastFilterType.Exclude
@@ -1125,8 +1130,10 @@ function PlayerServiceServer.Destroy(self: PlayerServiceServer)
 		self.playerRuntimes[player] = nil
 		player:SetAttribute(PlayerServiceUtils.DEFAULT_MOVEMENT_LOCK_ATTRIBUTE, nil)
 	end
+	self._serviceBag = nil
 end
 type PlayerServiceServer = typeof(PlayerServiceServer) & {
+	_serviceBag: any?,
 	isGameplayActiveForPlayer: (self: PlayerServiceServer, player: Player) -> boolean,
 	onLoadingScreenReady: (self: PlayerServiceServer, player: Player, statusRaw: any) -> boolean,
 	EnterGameplay: (self: PlayerServiceServer, player: Player) -> boolean,

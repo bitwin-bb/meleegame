@@ -92,7 +92,7 @@ local function getItemThunks(): any
 	return itemThunks
 end
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number, maximum: number?): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
@@ -107,7 +107,7 @@ local function CoerceNumber(valueRaw: any, fallback: number, minimum: number, ma
 	return value
 end
 
-local function GetSplitHoldConfig(configRaw: any): SplitHoldConfig
+local function getSplitHoldConfig(configRaw: any): SplitHoldConfig
 	local inventoryConfig = if typeof(configRaw) == "table" then (configRaw :: any).inventory else nil
 	local splitConfig = if typeof(inventoryConfig) == "table" then (inventoryConfig :: any).rightHoldSplit else nil
 	if typeof(splitConfig) ~= "table" then
@@ -116,25 +116,25 @@ local function GetSplitHoldConfig(configRaw: any): SplitHoldConfig
 
 	return {
 		enabled = (splitConfig :: any).enabled ~= false,
-		holdDelaySeconds = CoerceNumber(
+		holdDelaySeconds = coerceNumber(
 			(splitConfig :: any).holdDelaySeconds,
 			DEFAULT_SPLIT_HOLD_CONFIG.holdDelaySeconds,
 			0.05,
 			1
 		),
-		initialIntervalSeconds = CoerceNumber(
+		initialIntervalSeconds = coerceNumber(
 			(splitConfig :: any).initialIntervalSeconds,
 			DEFAULT_SPLIT_HOLD_CONFIG.initialIntervalSeconds,
 			0.02,
 			0.5
 		),
-		minimumIntervalSeconds = CoerceNumber(
+		minimumIntervalSeconds = coerceNumber(
 			(splitConfig :: any).minimumIntervalSeconds,
 			DEFAULT_SPLIT_HOLD_CONFIG.minimumIntervalSeconds,
 			0.01,
 			0.2
 		),
-		accelerationRampSeconds = CoerceNumber(
+		accelerationRampSeconds = coerceNumber(
 			(splitConfig :: any).accelerationRampSeconds,
 			DEFAULT_SPLIT_HOLD_CONFIG.accelerationRampSeconds,
 			0.1,
@@ -143,7 +143,7 @@ local function GetSplitHoldConfig(configRaw: any): SplitHoldConfig
 	}
 end
 
-local SPLIT_HOLD_CONFIG = GetSplitHoldConfig(Configs)
+local SPLIT_HOLD_CONFIG = getSplitHoldConfig(Configs)
 
 local function playUiItemPickupSound()
 	local AudioServiceClient = getAudioServiceClient()
@@ -187,20 +187,20 @@ local function isDragInput(inputObject: InputObject): boolean
 		or inputObject.UserInputType == Enum.UserInputType.Touch
 end
 
-local function GetPointerPosition(inputObject: InputObject): Vector2
+local function getPointerPosition(inputObject: InputObject): Vector2
 	local position = inputObject.Position
 	local screenPosition = Vector2.new(position.X, position.Y)
 	local guiPosition = toGuiPosition(screenPosition)
 	return applyMouseCenterOffset(guiPosition, inputObject.UserInputType)
 end
 
-local function GetCurrentMousePosition(): Vector2
+local function getCurrentMousePosition(): Vector2
 	local mousePosition = UserInputService:GetMouseLocation()
 	local guiPosition = toGuiPosition(Vector2.new(mousePosition.X, mousePosition.Y))
 	return guiPosition + MOUSE_CURSOR_CENTER_OFFSET
 end
 
-local function CoerceSlot(slotRaw: any): number?
+local function coerceSlot(slotRaw: any): number?
 	if typeof(slotRaw) ~= "number" or slotRaw ~= slotRaw then
 		return nil
 	end
@@ -213,7 +213,7 @@ local function CoerceSlot(slotRaw: any): number?
 end
 
 local function shouldSuppressActivationNow(suppression: ActivationSuppression, slotRaw: any): boolean
-	local slot = CoerceSlot(slotRaw)
+	local slot = coerceSlot(slotRaw)
 	if slot == nil then
 		return false
 	end
@@ -241,7 +241,7 @@ local function finalizeDragWithSuppression(
 	end
 
 	local sourceSlot = state.sourceSlot
-	local targetSlot = CoerceSlot(targetSlotRaw)
+	local targetSlot = coerceSlot(targetSlotRaw)
 	local didMove = getItemThunks().EndDrag(targetSlot)
 	playUiItemReleaseSound()
 	setActivationSuppression(suppressionRef, sourceSlot, targetSlot)
@@ -259,14 +259,14 @@ local function syncPointerRefs(
 	hasSmoothedPointerRef.current = true
 end
 
-local function GetPointerFromInput(inputObjectRaw: any): Vector2
+local function getPointerFromInput(inputObjectRaw: any): Vector2
 	if typeof(inputObjectRaw) == "InputObject" then
-		return GetPointerPosition(inputObjectRaw :: InputObject)
+		return getPointerPosition(inputObjectRaw :: InputObject)
 	end
 	if typeof(inputObjectRaw) == "Vector2" then
 		return inputObjectRaw
 	end
-	return GetCurrentMousePosition()
+	return getCurrentMousePosition()
 end
 
 local function cloneStack(stackRaw: any): InventoryItemStack?
@@ -312,7 +312,7 @@ local function isPlaceableDragOutsideInventory(state: ItemDragState): boolean
 	return getBuildServiceUtils().GetPlaceableItemConfig(state.stack.itemId) ~= nil
 end
 
-local function GetSplitIncrementInterval(elapsedSeconds: number): number
+local function getSplitIncrementInterval(elapsedSeconds: number): number
 	local rampSeconds = math.max(SPLIT_HOLD_CONFIG.accelerationRampSeconds, 1e-4)
 	local alpha = math.clamp(elapsedSeconds / rampSeconds, 0, 1)
 	local easedAlpha = alpha * alpha
@@ -397,7 +397,7 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 			local pendingSplitHold = pendingSplitHoldRef.current
 			if inputObject.UserInputType == Enum.UserInputType.Touch then
 				if itemSlice.getDragState().active or pendingSplitHold ~= nil then
-					local pointerPosition = GetPointerPosition(inputObject)
+					local pointerPosition = getPointerPosition(inputObject)
 					targetPointerRef.current = pointerPosition
 				end
 			end
@@ -413,7 +413,7 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 
 			local targetPointer = targetPointerRef.current
 			if UserInputService.MouseEnabled then
-				targetPointer = GetCurrentMousePosition()
+				targetPointer = getCurrentMousePosition()
 				targetPointerRef.current = targetPointer
 			end
 
@@ -449,7 +449,7 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 				local nextIncrementAt = pendingSplitHold.nextIncrementAt
 				while nextAmount < pendingSplitHold.stack.amount and now >= nextIncrementAt do
 					nextAmount += 1
-					nextIncrementAt += GetSplitIncrementInterval(nextIncrementAt - pendingSplitHold.startedAt)
+					nextIncrementAt += getSplitIncrementInterval(nextIncrementAt - pendingSplitHold.startedAt)
 				end
 
 				pendingSplitHold.nextIncrementAt = nextIncrementAt
@@ -530,13 +530,13 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 
 	local handleSlotInput = React.useCallback(
 		function(slotIndexRaw: any, stackRaw: any, inputObjectRaw: any?)
-			local slotIndex = CoerceSlot(slotIndexRaw)
+			local slotIndex = coerceSlot(slotIndexRaw)
 			if slotIndex == nil then
 				return
 			end
 
 			lastSlotInputTimeRef.current = os.clock()
-			local pointerPosition = GetPointerFromInput(inputObjectRaw)
+			local pointerPosition = getPointerFromInput(inputObjectRaw)
 			local state = itemSlice.getDragState()
 			local inputType = if typeof(inputObjectRaw) == "InputObject"
 				then (inputObjectRaw :: InputObject).UserInputType
@@ -589,7 +589,7 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 
 	local handleSlotSecondaryInput = React.useCallback(
 		function(slotIndexRaw: any, stackRaw: any, pointerPositionRaw: any?)
-			local slotIndex = CoerceSlot(slotIndexRaw)
+			local slotIndex = coerceSlot(slotIndexRaw)
 			if slotIndex == nil then
 				return
 			end
@@ -601,7 +601,7 @@ local function useDrag(options: UseDragOptions?): UseDragResult
 			end
 
 			lastSlotInputTimeRef.current = os.clock()
-			local pointerPosition = GetPointerFromInput(pointerPositionRaw)
+			local pointerPosition = getPointerFromInput(pointerPositionRaw)
 			syncPointerRefs(targetPointerRef, smoothedPointerRef, hasSmoothedPointerRef, pointerPosition)
 			beginPendingSplitHold(slotIndex, stackRaw, pointerPosition)
 		end,

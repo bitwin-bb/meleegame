@@ -189,7 +189,7 @@ local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function CoerceInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+local function coerceInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
@@ -197,7 +197,7 @@ local function CoerceInteger(valueRaw: any, minimum: number, maximum: number, fa
 end
 
 local function mapWorldGenerationTileIdToSimulation(tileIdRaw: any): number
-	local tileId = CoerceInteger(tileIdRaw, 0, 65535, WG_TILE_ID.AIR)
+	local tileId = coerceInteger(tileIdRaw, 0, 65535, WG_TILE_ID.AIR)
 	if tileId == WG_TILE_ID.AIR then
 		return Shared.TILE_ID.AIR
 	end
@@ -238,8 +238,8 @@ local function mapWorldGenerationTileIdToSimulation(tileIdRaw: any): number
 	return Shared.TILE_ID.STONE
 end
 
-local function CoerceWorldGenerationBiomeId(biomeIdRaw: any, biomeTypeRaw: any, fallback: number): number
-	local biomeId = CoerceInteger(biomeIdRaw, Shared.BIOME_ID.FOREST, Shared.BIOME_ID.CORRUPTION, fallback)
+local function coerceWorldGenerationBiomeId(biomeIdRaw: any, biomeTypeRaw: any, fallback: number): number
+	local biomeId = coerceInteger(biomeIdRaw, Shared.BIOME_ID.FOREST, Shared.BIOME_ID.CORRUPTION, fallback)
 	if
 		biomeId == Shared.BIOME_ID.FOREST
 		or biomeId == Shared.BIOME_ID.DESERT
@@ -247,18 +247,18 @@ local function CoerceWorldGenerationBiomeId(biomeIdRaw: any, biomeTypeRaw: any, 
 		or biomeId == Shared.BIOME_ID.JUNGLE
 		or biomeId == Shared.BIOME_ID.CORRUPTION
 	then
-		if CoerceInteger(biomeTypeRaw, 1, 2, 1) == LEGACY_BIOME_TYPE_CORRUPTION then
+		if coerceInteger(biomeTypeRaw, 1, 2, 1) == LEGACY_BIOME_TYPE_CORRUPTION then
 			return Shared.BIOME_ID.CORRUPTION
 		end
 		return biomeId
 	end
-	if CoerceInteger(biomeTypeRaw, 1, 2, 1) == LEGACY_BIOME_TYPE_CORRUPTION then
+	if coerceInteger(biomeTypeRaw, 1, 2, 1) == LEGACY_BIOME_TYPE_CORRUPTION then
 		return Shared.BIOME_ID.CORRUPTION
 	end
 	return fallback
 end
 
-local function GetChunkFlagsFromContent(chunk: ChunkData, currentFlags: number): number
+local function getChunkFlagsFromContent(chunk: ChunkData, currentFlags: number): number
 	local isCorrupted = false
 	for clusterIndex = 1, #chunk.clusterChosenBiomeIds do
 		if chunk.clusterChosenBiomeIds[clusterIndex] == Shared.BIOME_ID.CORRUPTION then
@@ -488,11 +488,11 @@ function Data.IngestWorldGenerationChunkSnapshot(world: WorldData, chunkSnapshot
 
 	local config = world.config
 	local clusterSize = math.max(1, config.clusterSize)
-	local chunkX = CoerceInteger(decoded.chunkX, -1000000, 1000000, 0)
-	local chunkY = CoerceInteger(decoded.chunkY, -1000000, 1000000, 0)
-	local chunkZ = CoerceInteger(chunkZRaw, -1000000, 1000000, CoerceInteger(decoded.chunkZ, -1000000, 1000000, 0))
+	local chunkX = coerceInteger(decoded.chunkX, -1000000, 1000000, 0)
+	local chunkY = coerceInteger(decoded.chunkY, -1000000, 1000000, 0)
+	local chunkZ = coerceInteger(chunkZRaw, -1000000, 1000000, coerceInteger(decoded.chunkZ, -1000000, 1000000, 0))
 	local key = Shared.PackChunkKey(chunkX, chunkY, chunkZ)
-	local sourceRevision = CoerceInteger(decoded.revision, 0, 1000000000, 0)
+	local sourceRevision = coerceInteger(decoded.revision, 0, 1000000000, 0)
 	local chunk = world.chunksByKey[key]
 	local hadExistingChunk = chunk ~= nil
 
@@ -500,9 +500,9 @@ function Data.IngestWorldGenerationChunkSnapshot(world: WorldData, chunkSnapshot
 		return chunk
 	end
 
-	local clusterCountX = CoerceInteger(decoded.clusterCountX, 1, 512, 1)
-	local clusterCountY = CoerceInteger(decoded.clusterCountY, 1, 512, 1)
-	local clusterCountZ = CoerceInteger(decoded.clusterCountZ, 1, 512, 1)
+	local clusterCountX = coerceInteger(decoded.clusterCountX, 1, 512, 1)
+	local clusterCountY = coerceInteger(decoded.clusterCountY, 1, 512, 1)
+	local clusterCountZ = coerceInteger(decoded.clusterCountZ, 1, 512, 1)
 	local tileCountX = math.max(clusterSize, clusterCountX * clusterSize)
 	local tileCountY = math.max(clusterSize, clusterCountY * clusterSize)
 	local tileCountZ = math.max(clusterSize, clusterCountZ * clusterSize)
@@ -590,10 +590,10 @@ function Data.IngestWorldGenerationChunkSnapshot(world: WorldData, chunkSnapshot
 	local sourceBiomeTypes = if typeof(chunkSnapshot.biomeTypes) == "table"
 		then chunkSnapshot.biomeTypes :: { any }
 		else {} :: any
-	local sourceTileMinY = CoerceInteger(chunkSnapshot.tileMinY, -1000000, 1000000, chunkY * tileCountY)
-	local sourceWidth = CoerceInteger(chunkSnapshot.width, 1, tileCountX, tileCountX)
-	local sourceHeight = CoerceInteger(chunkSnapshot.height, 1, tileCountY, tileCountY)
-	local dominantBiomeId = CoerceWorldGenerationBiomeId(
+	local sourceTileMinY = coerceInteger(chunkSnapshot.tileMinY, -1000000, 1000000, chunkY * tileCountY)
+	local sourceWidth = coerceInteger(chunkSnapshot.width, 1, tileCountX, tileCountX)
+	local sourceHeight = coerceInteger(chunkSnapshot.height, 1, tileCountY, tileCountY)
+	local dominantBiomeId = coerceWorldGenerationBiomeId(
 		chunkSnapshot.dominantBiomeId,
 		chunkSnapshot.dominantBiomeType,
 		Shared.BIOME_ID.FOREST
@@ -639,7 +639,7 @@ function Data.IngestWorldGenerationChunkSnapshot(world: WorldData, chunkSnapshot
 							continue
 						end
 						local sourceIndex = localTileY * sourceWidth + localTileX + 1
-						local sourceBiome = CoerceWorldGenerationBiomeId(
+						local sourceBiome = coerceWorldGenerationBiomeId(
 							sourceBiomeIds[sourceIndex],
 							sourceBiomeTypes[sourceIndex],
 							dominantBiomeId
@@ -677,7 +677,7 @@ function Data.IngestWorldGenerationChunkSnapshot(world: WorldData, chunkSnapshot
 				chunk.clusterPrimaryBiomeIds[clusterIndex] = chosenBiome
 				chunk.clusterSecondaryBiomeIds[clusterIndex] = chosenBiome
 				chunk.clusterChosenBiomeIds[clusterIndex] = chosenBiome
-				chunk.clusterBlendWeights[clusterIndex] = CoerceInteger(
+				chunk.clusterBlendWeights[clusterIndex] = coerceInteger(
 					(
 						if typeof(decoded.clusterBlendWeights) == "table"
 							then (decoded.clusterBlendWeights :: { any })[clusterIndex]
@@ -698,7 +698,7 @@ function Data.IngestWorldGenerationChunkSnapshot(world: WorldData, chunkSnapshot
 	chunk.sourceRevision = sourceRevision
 	local existingRevision = chunk.revision
 	chunk.revision = math.max(sourceRevision, existingRevision + 1)
-	chunk.flags = GetChunkFlagsFromContent(chunk, chunk.flags)
+	chunk.flags = getChunkFlagsFromContent(chunk, chunk.flags)
 	if (world.chunkDemand[key] or 0) > 0 then
 		if not world.activeChunkLookup[key] then
 			world.activeChunkLookup[key] = true
@@ -710,7 +710,7 @@ function Data.IngestWorldGenerationChunkSnapshot(world: WorldData, chunkSnapshot
 	end
 
 	local entities = chunk.entities
-	local entityCount = CoerceInteger(decoded.entityCount, 0, entities.capacity, 0)
+	local entityCount = coerceInteger(decoded.entityCount, 0, entities.capacity, 0)
 	entities.count = entityCount
 	copyEntitySlice(entities.ids, decoded.entityIds, entityCount)
 	copyEntitySlice(entities.kinds, decoded.entityKinds, entityCount)

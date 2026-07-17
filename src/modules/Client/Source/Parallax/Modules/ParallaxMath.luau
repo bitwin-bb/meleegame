@@ -15,7 +15,7 @@ local TERRARIA_MAX_UI_SCALE = 1.45
 local FALLBACK_TEXTURE_WIDTH_PX = 1024
 local FALLBACK_TEXTURE_HEIGHT_PX = 600
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and NevermoreMath.isFinite(valueRaw) then
 		value = valueRaw
@@ -43,14 +43,14 @@ local function computeIeeeRemainder(value: number, divisor: number): number
 end
 
 function Math.ComputeDepthWorldToTerrariaPixels(depthWorld: number, tileSize: number?): number
-	local depthWorldValue = CoerceNumber(depthWorld, 0, nil)
-	local GotTileSize = CoerceNumber(tileSize, 4, 0.25)
+	local depthWorldValue = coerceNumber(depthWorld, 0, nil)
+	local GotTileSize = coerceNumber(tileSize, 4, 0.25)
 	return depthWorldValue * TERRARIA_TILE_SIZE_PX / GotTileSize
 end
 
 function Math.ComputeScreenTopDepthPx(cameraDepthFromTop: number, screenHeight: number, tileSize: number?): number
-	local GotCameraDepthFromTop = CoerceNumber(cameraDepthFromTop, 0, nil)
-	local GotScreenHeight = CoerceNumber(screenHeight, FALLBACK_TEXTURE_HEIGHT_PX, 1)
+	local GotCameraDepthFromTop = coerceNumber(cameraDepthFromTop, 0, nil)
+	local GotScreenHeight = coerceNumber(screenHeight, FALLBACK_TEXTURE_HEIGHT_PX, 1)
 	return Math.ComputeDepthWorldToTerrariaPixels(GotCameraDepthFromTop, tileSize) - GotScreenHeight * 0.5
 end
 
@@ -60,10 +60,10 @@ function Math.ComputeScreenAdjustment(
 	surfaceDepthPx: number,
 	maxTilesY: number
 ): number
-	local GotScreenTopDepthPx = CoerceNumber(screenTopDepthPx, 0, nil)
-	local GotScreenHeight = CoerceNumber(screenHeight, FALLBACK_TEXTURE_HEIGHT_PX, 1)
-	local GotSurfaceDepthPx = CoerceNumber(surfaceDepthPx, 1, 1)
-	local GotMaxTilesY = CoerceNumber(maxTilesY, 1800, 1)
+	local GotScreenTopDepthPx = coerceNumber(screenTopDepthPx, 0, nil)
+	local GotScreenHeight = coerceNumber(screenHeight, FALLBACK_TEXTURE_HEIGHT_PX, 1)
+	local GotSurfaceDepthPx = coerceNumber(surfaceDepthPx, 1, 1)
+	local GotMaxTilesY = coerceNumber(maxTilesY, 1800, 1)
 	local denominator = math.max(GotScreenTopDepthPx + GotScreenHeight, 1)
 	local topFade = GotMaxTilesY * TERRARIA_TOP_FADE_WORLD_FRACTION * TERRARIA_TILE_SIZE_PX - GotScreenTopDepthPx
 	if topFade < 0 then
@@ -93,13 +93,13 @@ function Math.ComputeBgTopPx(
 	scAdj: number,
 	offsetY: number?
 ): number
-	local GotScreenTopDepthPx = CoerceNumber(screenTopDepthPx, 0, nil)
-	local GotScreenHeight = CoerceNumber(screenHeight, FALLBACK_TEXTURE_HEIGHT_PX, 1)
-	local GotSurfaceDepthPx = CoerceNumber(surfaceDepthPx, 1, 1)
-	local GotVerticalStrength = CoerceNumber(verticalStrength, 0, nil)
-	local GotBaseScreenY = CoerceNumber(baseScreenY, 0, nil)
-	local GotScAdj = CoerceNumber(scAdj, 0, nil)
-	local offsetYValue = CoerceNumber(offsetY, 0, nil)
+	local GotScreenTopDepthPx = coerceNumber(screenTopDepthPx, 0, nil)
+	local GotScreenHeight = coerceNumber(screenHeight, FALLBACK_TEXTURE_HEIGHT_PX, 1)
+	local GotSurfaceDepthPx = coerceNumber(surfaceDepthPx, 1, 1)
+	local GotVerticalStrength = coerceNumber(verticalStrength, 0, nil)
+	local GotBaseScreenY = coerceNumber(baseScreenY, 0, nil)
+	local GotScAdj = coerceNumber(scAdj, 0, nil)
+	local offsetYValue = coerceNumber(offsetY, 0, nil)
 	local screenOffHalf = (GotScreenHeight - TERRARIA_SURFACE_SCREEN_BASELINE_PX) * 0.5
 	local backgroundTopMagicNumber = (-GotScreenTopDepthPx + screenOffHalf) / math.max(GotSurfaceDepthPx, 1)
 
@@ -112,10 +112,10 @@ function Math.ComputeUiScale(
 	minScale: number?,
 	maxScale: number?
 ): number
-	local GotViewportHeightPx = CoerceNumber(viewportHeightPx, TERRARIA_REFERENCE_VIEWPORT_HEIGHT_PX, 1)
-	local GotReferenceHeightPx = CoerceNumber(referenceHeightPx, TERRARIA_REFERENCE_VIEWPORT_HEIGHT_PX, 1)
-	local GotMinScale = CoerceNumber(minScale, TERRARIA_MIN_UI_SCALE, 0.01)
-	local GotMaxScale = CoerceNumber(maxScale, TERRARIA_MAX_UI_SCALE, GotMinScale)
+	local GotViewportHeightPx = coerceNumber(viewportHeightPx, TERRARIA_REFERENCE_VIEWPORT_HEIGHT_PX, 1)
+	local GotReferenceHeightPx = coerceNumber(referenceHeightPx, TERRARIA_REFERENCE_VIEWPORT_HEIGHT_PX, 1)
+	local GotMinScale = coerceNumber(minScale, TERRARIA_MIN_UI_SCALE, 0.01)
+	local GotMaxScale = coerceNumber(maxScale, TERRARIA_MAX_UI_SCALE, GotMinScale)
 
 	return math.clamp(GotViewportHeightPx / GotReferenceHeightPx, GotMinScale, GotMaxScale)
 end
@@ -128,12 +128,12 @@ function Math.ScreenTopPxToWorldCenterY(
 	layerHeightWorld: number,
 	uiScale: number?
 ): number
-	local GotBgTopPx = CoerceNumber(bgTopPx, 0, nil)
-	local GotScreenHeight = CoerceNumber(screenHeight, FALLBACK_TEXTURE_HEIGHT_PX, 1)
-	local GotCameraY = CoerceNumber(cameraY, 0, nil)
-	local GotVisibleHeight = CoerceNumber(visibleHeight, 1, 1)
-	local GotLayerHeightWorld = CoerceNumber(layerHeightWorld, 1, 1)
-	local _GotUiScale = CoerceNumber(uiScale, 1, 0.01)
+	local GotBgTopPx = coerceNumber(bgTopPx, 0, nil)
+	local GotScreenHeight = coerceNumber(screenHeight, FALLBACK_TEXTURE_HEIGHT_PX, 1)
+	local GotCameraY = coerceNumber(cameraY, 0, nil)
+	local GotVisibleHeight = coerceNumber(visibleHeight, 1, 1)
+	local GotLayerHeightWorld = coerceNumber(layerHeightWorld, 1, 1)
+	local _GotUiScale = coerceNumber(uiScale, 1, 0.01)
 	local studsPerScreenPixel = GotVisibleHeight / GotScreenHeight
 	local visibleTopY = GotCameraY + GotVisibleHeight * 0.5
 	local topWorldY = visibleTopY - GotBgTopPx * studsPerScreenPixel
@@ -150,17 +150,34 @@ function Math.ComputeTextureSizeWorld(
 	uiScale: number?,
 	layerSizeScale: number?
 ): (number, number)
-	local imageWidthValue = CoerceNumber(imageWidth, FALLBACK_TEXTURE_WIDTH_PX, 1)
-	local imageHeightValue = CoerceNumber(imageHeight, FALLBACK_TEXTURE_HEIGHT_PX, 1)
-	local GotBgScale = CoerceNumber(bgScale, 1, 0.01)
-	local GotVisibleHeight = CoerceNumber(visibleHeight, 1, 1)
-	local GotViewportHeightPx = CoerceNumber(viewportHeightPx, FALLBACK_TEXTURE_HEIGHT_PX, 1)
-	local GotUiScale = CoerceNumber(uiScale, 1, 0.01)
-	local GotLayerSizeScale = CoerceNumber(layerSizeScale, 1, 0.01)
+	local imageWidthValue = coerceNumber(imageWidth, FALLBACK_TEXTURE_WIDTH_PX, 1)
+	local imageHeightValue = coerceNumber(imageHeight, FALLBACK_TEXTURE_HEIGHT_PX, 1)
+	local GotBgScale = coerceNumber(bgScale, 1, 0.01)
+	local GotVisibleHeight = coerceNumber(visibleHeight, 1, 1)
+	local GotViewportHeightPx = coerceNumber(viewportHeightPx, FALLBACK_TEXTURE_HEIGHT_PX, 1)
+	local GotUiScale = coerceNumber(uiScale, 1, 0.01)
+	local GotLayerSizeScale = coerceNumber(layerSizeScale, 1, 0.01)
 	local studsPerScreenPixel = GotVisibleHeight / GotViewportHeightPx
 
 	return imageWidthValue * GotBgScale * GotUiScale * GotLayerSizeScale * studsPerScreenPixel,
 		imageHeightValue * GotBgScale * GotUiScale * GotLayerSizeScale * studsPerScreenPixel
+end
+
+function Math.ComputeProjectionScale(sourceVisibleHeight: number, targetVisibleHeight: number): number
+	local sourceHeight = coerceNumber(sourceVisibleHeight, 1, 1)
+	local targetHeight = coerceNumber(targetVisibleHeight, sourceHeight, 1)
+	return targetHeight / sourceHeight
+end
+
+function Math.RescaleWrappedOffset(
+	offsetWorld: number,
+	sourceRepeatWidthWorld: number,
+	targetRepeatWidthWorld: number
+): number
+	local sourceOffset = coerceNumber(offsetWorld, 0, nil)
+	local sourceRepeatWidth = coerceNumber(sourceRepeatWidthWorld, 1, 1)
+	local targetRepeatWidth = coerceNumber(targetRepeatWidthWorld, sourceRepeatWidth, 1)
+	return (sourceOffset / sourceRepeatWidth) * targetRepeatWidth
 end
 
 function Math.ComputeHorizontalTextureOffsetWorld(
@@ -170,11 +187,11 @@ function Math.ComputeHorizontalTextureOffsetWorld(
 	scrollSpeed: number?,
 	now: number?
 ): number
-	local GotCameraWorldAxis = CoerceNumber(cameraWorldAxis, 0, nil)
-	local GotParallaxX = CoerceNumber(parallaxX, 0, nil)
-	local GotTextureRepeatWidthWorld = CoerceNumber(textureRepeatWidthWorld, 1, 1)
-	local GotScrollSpeed = CoerceNumber(scrollSpeed, 0, nil)
-	local GotNow = CoerceNumber(now, 0, nil)
+	local GotCameraWorldAxis = coerceNumber(cameraWorldAxis, 0, nil)
+	local GotParallaxX = coerceNumber(parallaxX, 0, nil)
+	local GotTextureRepeatWidthWorld = coerceNumber(textureRepeatWidthWorld, 1, 1)
+	local GotScrollSpeed = coerceNumber(scrollSpeed, 0, nil)
+	local GotNow = coerceNumber(now, 0, nil)
 	local value = -GotCameraWorldAxis * GotParallaxX - GotScrollSpeed * GotNow
 	local centeredRemainder = computeIeeeRemainder(value, GotTextureRepeatWidthWorld) + GotTextureRepeatWidthWorld * 0.5
 

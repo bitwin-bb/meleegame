@@ -5,7 +5,7 @@ local Workspace = game:GetService("Workspace")
 
 local CactusComponent = require("CactusComponent")
 
-local function ApplyStudSurfaces(part: BasePart)
+local function applyStudSurfaces(part: BasePart)
 	part.TopSurface = Enum.SurfaceType.Studs
 	part.BottomSurface = Enum.SurfaceType.Studs
 	part.LeftSurface = Enum.SurfaceType.Studs
@@ -261,22 +261,22 @@ local DEFAULT_CONFIG: CactusRuntimeConfig = {
 	DetailDensity = 1,
 }
 
-local function IsFiniteNumber(value: any): boolean
+local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function ClampNumber(valueRaw: any, minimum: number, maximum: number, fallback: number): number
-	if not IsFiniteNumber(valueRaw) then
+local function clampNumber(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
 	return math.clamp(valueRaw :: number, minimum, maximum)
 end
 
-local function ClampInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
-	return math.floor(ClampNumber(valueRaw, minimum, maximum, fallback))
+local function clampInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+	return math.floor(clampNumber(valueRaw, minimum, maximum, fallback))
 end
 
-local function CoerceNumberRange(valueRaw: any, fallback: NumberRange, minimum: number, maximum: number): NumberRange
+local function coerceNumberRange(valueRaw: any, fallback: NumberRange, minimum: number, maximum: number): NumberRange
 	local minValue = fallback.Min
 	local maxValue = fallback.Max
 
@@ -288,8 +288,8 @@ local function CoerceNumberRange(valueRaw: any, fallback: NumberRange, minimum: 
 		maxValue = valueRaw.Y
 	elseif typeof(valueRaw) == "table" then
 		local source = valueRaw :: { [string]: any }
-		minValue = ClampNumber(source.Min or source.min, minimum, maximum, minValue)
-		maxValue = ClampNumber(source.Max or source.max, minimum, maximum, maxValue)
+		minValue = clampNumber(source.Min or source.min, minimum, maximum, minValue)
+		maxValue = clampNumber(source.Max or source.max, minimum, maximum, maxValue)
 	end
 
 	minValue = math.clamp(minValue, minimum, maximum)
@@ -300,21 +300,21 @@ local function CoerceNumberRange(valueRaw: any, fallback: NumberRange, minimum: 
 	return NumberRange.new(minValue, maxValue)
 end
 
-local function CoerceMaterial(valueRaw: any, fallback: Enum.Material): Enum.Material
+local function coerceMaterial(valueRaw: any, fallback: Enum.Material): Enum.Material
 	if typeof(valueRaw) == "EnumItem" and valueRaw.EnumType == Enum.Material then
 		return valueRaw :: Enum.Material
 	end
 	return fallback
 end
 
-local function CoerceColor(valueRaw: any, fallback: Color3): Color3
+local function coerceColor(valueRaw: any, fallback: Color3): Color3
 	if typeof(valueRaw) == "Color3" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function CoerceString(valueRaw: any, fallback: string): string
+local function coerceString(valueRaw: any, fallback: string): string
 	if typeof(valueRaw) ~= "string" then
 		return fallback
 	end
@@ -325,7 +325,7 @@ local function CoerceString(valueRaw: any, fallback: string): string
 	return trimmed
 end
 
-local function GetArchetype(valueRaw: any, fallback: CactusArchetype): CactusArchetype
+local function getArchetype(valueRaw: any, fallback: CactusArchetype): CactusArchetype
 	if valueRaw == "Saguaro" then
 		return "Saguaro"
 	elseif valueRaw == "Barrel" then
@@ -336,21 +336,21 @@ local function GetArchetype(valueRaw: any, fallback: CactusArchetype): CactusArc
 	return fallback
 end
 
-local function RandomInRange(randomObject: Random, range: NumberRange): number
+local function randomInRange(randomObject: Random, range: NumberRange): number
 	if range.Max <= range.Min then
 		return range.Min
 	end
 	return randomObject:NextNumber(range.Min, range.Max)
 end
 
-local function GetVisibleMaterial(material: Enum.Material): Enum.Material
+local function getVisibleMaterial(material: Enum.Material): Enum.Material
 	if material == Enum.Material.SmoothPlastic then
 		return Enum.Material.Plastic
 	end
 	return material
 end
 
-local function RotateWithinPlane(directionRaw: Vector3, angleRadians: number): Vector3
+local function rotateWithinPlane(directionRaw: Vector3, angleRadians: number): Vector3
 	local direction = if directionRaw.Magnitude > 0.0001 then directionRaw.Unit else Vector3.yAxis
 	local y = direction.Y
 	local z = direction.Z
@@ -363,7 +363,7 @@ local function RotateWithinPlane(directionRaw: Vector3, angleRadians: number): V
 	return rotated.Unit
 end
 
-local function BlendDirection(currentRaw: Vector3, targetRaw: Vector3, alphaRaw: number): Vector3
+local function blendDirection(currentRaw: Vector3, targetRaw: Vector3, alphaRaw: number): Vector3
 	local current = if currentRaw.Magnitude > 0.0001 then currentRaw.Unit else Vector3.yAxis
 	local target = if targetRaw.Magnitude > 0.0001 then targetRaw.Unit else Vector3.yAxis
 	local alpha = math.clamp(alphaRaw, 0, 1)
@@ -374,7 +374,7 @@ local function BlendDirection(currentRaw: Vector3, targetRaw: Vector3, alphaRaw:
 	return blended.Unit
 end
 
-local function MakeCFrameFromSegment(startPosition: Vector3, endPosition: Vector3): (CFrame, number)
+local function makeCFrameFromSegment(startPosition: Vector3, endPosition: Vector3): (CFrame, number)
 	local direction = endPosition - startPosition
 	local length = direction.Magnitude
 	if length <= 1e-4 then
@@ -390,7 +390,7 @@ local function MakeCFrameFromSegment(startPosition: Vector3, endPosition: Vector
 	return CFrame.fromMatrix(midpoint, axisX, axisY, axisZ), length
 end
 
-local function CreateWeld(part0: BasePart, part1: BasePart)
+local function createWeld(part0: BasePart, part1: BasePart)
 	CactusComponent.CreateWeld({
 		name = "CactusWeld",
 		part0 = part0,
@@ -399,50 +399,50 @@ local function CreateWeld(part0: BasePart, part1: BasePart)
 	})
 end
 
-local function GetConfig(configRaw: CactusConfig?): CactusRuntimeConfig
+local function getConfig(configRaw: CactusConfig?): CactusRuntimeConfig
 	local source = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else {} :: any
-	local archetype: CactusArchetype = GetArchetype(source.Archetype, DEFAULT_CONFIG.Archetype)
+	local archetype: CactusArchetype = getArchetype(source.Archetype, DEFAULT_CONFIG.Archetype)
 	local profile = ARCHETYPE_PROFILES[archetype]
-	local GotMinHeight = ClampNumber(source.MinHeight, 0, 160, profile.MinHeight)
-	local GotMaxHeight = ClampNumber(source.MaxHeight, GotMinHeight, 220, profile.MaxHeight)
+	local GotMinHeight = clampNumber(source.MinHeight, 0, 160, profile.MinHeight)
+	local GotMaxHeight = clampNumber(source.MaxHeight, GotMinHeight, 220, profile.MaxHeight)
 
 	return {
 		Archetype = archetype,
-		Seed = ClampInteger(source.Seed, -2147483648, 2147483647, DEFAULT_CONFIG.Seed),
-		Iterations = ClampInteger(source.Iterations, 2, 16, DEFAULT_CONFIG.Iterations),
-		StepLength = ClampNumber(source.StepLength, 0.4, 18, DEFAULT_CONFIG.StepLength),
-		BaseThickness = ClampNumber(source.BaseThickness, 0.3, 12, DEFAULT_CONFIG.BaseThickness),
-		AngleDegrees = ClampNumber(source.AngleDegrees, 0, 65, DEFAULT_CONFIG.AngleDegrees),
-		MinBranchHeight = ClampNumber(source.MinBranchHeight, 0, 160, DEFAULT_CONFIG.MinBranchHeight),
-		MaxBranches = ClampInteger(source.MaxBranches, 0, 8, DEFAULT_CONFIG.MaxBranches),
-		Curvature = ClampNumber(source.Curvature, 0, 35, DEFAULT_CONFIG.Curvature),
-		SegmentMaterial = CoerceMaterial(source.SegmentMaterial, DEFAULT_CONFIG.SegmentMaterial),
-		SegmentColor = CoerceColor(source.SegmentColor, DEFAULT_CONFIG.SegmentColor),
+		Seed = clampInteger(source.Seed, -2147483648, 2147483647, DEFAULT_CONFIG.Seed),
+		Iterations = clampInteger(source.Iterations, 2, 16, DEFAULT_CONFIG.Iterations),
+		StepLength = clampNumber(source.StepLength, 0.4, 18, DEFAULT_CONFIG.StepLength),
+		BaseThickness = clampNumber(source.BaseThickness, 0.3, 12, DEFAULT_CONFIG.BaseThickness),
+		AngleDegrees = clampNumber(source.AngleDegrees, 0, 65, DEFAULT_CONFIG.AngleDegrees),
+		MinBranchHeight = clampNumber(source.MinBranchHeight, 0, 160, DEFAULT_CONFIG.MinBranchHeight),
+		MaxBranches = clampInteger(source.MaxBranches, 0, 8, DEFAULT_CONFIG.MaxBranches),
+		Curvature = clampNumber(source.Curvature, 0, 35, DEFAULT_CONFIG.Curvature),
+		SegmentMaterial = coerceMaterial(source.SegmentMaterial, DEFAULT_CONFIG.SegmentMaterial),
+		SegmentColor = coerceColor(source.SegmentColor, DEFAULT_CONFIG.SegmentColor),
 		UseWelds = if source.UseWelds == nil then DEFAULT_CONFIG.UseWelds else source.UseWelds == true,
 		Parent = if typeof(source.Parent) == "Instance" then source.Parent else DEFAULT_CONFIG.Parent,
-		ModelName = CoerceString(source.ModelName, DEFAULT_CONFIG.ModelName),
-		MaxSegments = ClampInteger(source.MaxSegments, 4, 512, DEFAULT_CONFIG.MaxSegments),
-		BranchChance = ClampNumber(source.BranchChance, 0, 1, DEFAULT_CONFIG.BranchChance),
-		BranchStartIteration = ClampInteger(source.BranchStartIteration, 1, 16, DEFAULT_CONFIG.BranchStartIteration),
-		LengthJitter = CoerceNumberRange(source.LengthJitter, DEFAULT_CONFIG.LengthJitter, 0.5, 1.5),
-		AngleJitter = CoerceNumberRange(source.AngleJitter, DEFAULT_CONFIG.AngleJitter, -25, 25),
-		CurvatureJitter = CoerceNumberRange(source.CurvatureJitter, DEFAULT_CONFIG.CurvatureJitter, -18, 18),
-		ThicknessFalloff = ClampNumber(source.ThicknessFalloff, 0, 1, DEFAULT_CONFIG.ThicknessFalloff),
-		ArmThicknessScale = ClampNumber(source.ArmThicknessScale, 0.2, 1, DEFAULT_CONFIG.ArmThicknessScale),
-		TrunkWobbleDegrees = ClampNumber(source.TrunkWobbleDegrees, 0, 16, DEFAULT_CONFIG.TrunkWobbleDegrees),
-		MinimumThickness = ClampNumber(source.MinimumThickness, 0.08, 6, DEFAULT_CONFIG.MinimumThickness),
+		ModelName = coerceString(source.ModelName, DEFAULT_CONFIG.ModelName),
+		MaxSegments = clampInteger(source.MaxSegments, 4, 512, DEFAULT_CONFIG.MaxSegments),
+		BranchChance = clampNumber(source.BranchChance, 0, 1, DEFAULT_CONFIG.BranchChance),
+		BranchStartIteration = clampInteger(source.BranchStartIteration, 1, 16, DEFAULT_CONFIG.BranchStartIteration),
+		LengthJitter = coerceNumberRange(source.LengthJitter, DEFAULT_CONFIG.LengthJitter, 0.5, 1.5),
+		AngleJitter = coerceNumberRange(source.AngleJitter, DEFAULT_CONFIG.AngleJitter, -25, 25),
+		CurvatureJitter = coerceNumberRange(source.CurvatureJitter, DEFAULT_CONFIG.CurvatureJitter, -18, 18),
+		ThicknessFalloff = clampNumber(source.ThicknessFalloff, 0, 1, DEFAULT_CONFIG.ThicknessFalloff),
+		ArmThicknessScale = clampNumber(source.ArmThicknessScale, 0.2, 1, DEFAULT_CONFIG.ArmThicknessScale),
+		TrunkWobbleDegrees = clampNumber(source.TrunkWobbleDegrees, 0, 16, DEFAULT_CONFIG.TrunkWobbleDegrees),
+		MinimumThickness = clampNumber(source.MinimumThickness, 0.08, 6, DEFAULT_CONFIG.MinimumThickness),
 		SegmentCanCollide = if source.SegmentCanCollide == nil
 			then DEFAULT_CONFIG.SegmentCanCollide
 			else source.SegmentCanCollide == true,
 		MinHeight = GotMinHeight,
 		MaxHeight = GotMaxHeight,
-		NodeSpacing = ClampNumber(source.NodeSpacing, 0, 12, DEFAULT_CONFIG.NodeSpacing),
-		DetailDensity = ClampNumber(source.DetailDensity, 0.2, 2.5, DEFAULT_CONFIG.DetailDensity),
+		NodeSpacing = clampNumber(source.NodeSpacing, 0, 12, DEFAULT_CONFIG.NodeSpacing),
+		DetailDensity = clampNumber(source.DetailDensity, 0.2, 2.5, DEFAULT_CONFIG.DetailDensity),
 	} :: CactusRuntimeConfig
 end
 
 function CactusGenerator.New(configRaw: CactusConfig?): CactusGenerator
-	local config = GetConfig(configRaw)
+	local config = getConfig(configRaw)
 	local self = setmetatable({
 		Config = config,
 		Seed = config.Seed,
@@ -465,7 +465,7 @@ function CactusGenerator.Destroy(self: CactusGenerator)
 end
 
 function CactusGenerator.SetSeed(self: CactusGenerator, seedRaw: any)
-	self.Seed = ClampInteger(seedRaw, -2147483648, 2147483647, self.Seed)
+	self.Seed = clampInteger(seedRaw, -2147483648, 2147483647, self.Seed)
 	self.Config.Seed = self.Seed
 end
 
@@ -646,7 +646,7 @@ function CactusGenerator.GrowArm(
 	local nodeSpacing = math.max(0.35, self.Config.StepLength * profile.ArmNodeSpacingScale)
 	local armSteps = math.max(1, math.min(8, math.floor(desiredArmHeight / math.max(nodeSpacing, 0.001) + 0.5)))
 
-	local direction = BlendDirection(
+	local direction = blendDirection(
 		parentNode.Direction,
 		Vector3.new(0, profile.ArmUpwardBias, sideSign * profile.ArmOutwardBias),
 		0.62
@@ -665,18 +665,18 @@ function CactusGenerator.GrowArm(
 		local progress0 = (armStep - 1) / math.max(1, armSteps)
 		local progress1 = armStep / math.max(1, armSteps)
 		local curvatureDegrees = self.Config.Curvature * (0.9 + profile.ArmCurvature)
-		curvatureDegrees += RandomInRange(randomObject, self.Config.CurvatureJitter) * 0.5
+		curvatureDegrees += randomInRange(randomObject, self.Config.CurvatureJitter) * 0.5
 		local outwardAngle = math.rad(sideSign * (self.Config.AngleDegrees * (1 - progress0) * 0.18))
-		local wobbleAngle = math.rad(RandomInRange(randomObject, self.Config.AngleJitter) * 0.32)
+		local wobbleAngle = math.rad(randomInRange(randomObject, self.Config.AngleJitter) * 0.32)
 
-		direction = RotateWithinPlane(direction, outwardAngle + wobbleAngle)
-		direction = BlendDirection(
+		direction = rotateWithinPlane(direction, outwardAngle + wobbleAngle)
+		direction = blendDirection(
 			direction,
 			Vector3.new(0, 1, sideSign * 0.08),
 			math.clamp(profile.ArmCurvature + progress1 * 0.44 + curvatureDegrees * 0.0025, 0, 0.92)
 		)
 
-		local stepLength = nodeSpacing * RandomInRange(randomObject, self.Config.LengthJitter)
+		local stepLength = nodeSpacing * randomInRange(randomObject, self.Config.LengthJitter)
 		if kind == "Pad" then
 			stepLength *= 0.72
 		end
@@ -757,22 +757,22 @@ function CactusGenerator.GrowTrunk(
 		local progress1 = stepIndex / math.max(1, stepCount)
 		local driftSign = if progress1 > 0.5 then previousSideSign else -previousSideSign
 		local leanAngle = math.rad(profile.TrunkLeanDegrees * 0.08 * driftSign)
-		local wobbleAngle = math.rad(RandomInRange(randomObject, self.Config.AngleJitter) * 0.18)
+		local wobbleAngle = math.rad(randomInRange(randomObject, self.Config.AngleJitter) * 0.18)
 		local trunkBendAngle = math.rad(
-			RandomInRange(
+			randomInRange(
 				randomObject,
 				NumberRange.new(-self.Config.TrunkWobbleDegrees, self.Config.TrunkWobbleDegrees)
 			)
 		)
 
-		direction = RotateWithinPlane(direction, leanAngle + wobbleAngle + trunkBendAngle)
-		direction = BlendDirection(
+		direction = rotateWithinPlane(direction, leanAngle + wobbleAngle + trunkBendAngle)
+		direction = blendDirection(
 			direction,
 			Vector3.yAxis,
 			math.clamp(profile.UpwardBias + profile.BendStrength * (1 - progress0), 0, 0.98)
 		)
 
-		local stepLength = nodeSpacing * RandomInRange(randomObject, self.Config.LengthJitter)
+		local stepLength = nodeSpacing * randomInRange(randomObject, self.Config.LengthJitter)
 		local startPosition = currentNode.Position
 		local endPosition = startPosition + direction * stepLength
 		local thicknessStart = currentNode.Thickness
@@ -856,7 +856,7 @@ function CactusGenerator.GenerateSkeleton(self: CactusGenerator, origin: Vector3
 end
 
 function CactusGenerator.BuildSegmentPart(self: CactusGenerator, segment: Segment): Part
-	local segmentCFrame, segmentLength = MakeCFrameFromSegment(segment.Start, segment.End)
+	local segmentCFrame, segmentLength = makeCFrameFromSegment(segment.Start, segment.End)
 	local thickness = math.max(self.Config.MinimumThickness, segment.Thickness)
 	local part = CactusComponent.CreateSegmentPart({
 		name = if segment.Kind == "Trunk"
@@ -869,7 +869,7 @@ function CactusGenerator.BuildSegmentPart(self: CactusGenerator, segment: Segmen
 			then Vector3.new(math.max(segmentLength * 0.82, thickness * 0.95), thickness * 1.22, thickness * 1.22)
 			else Vector3.new(segmentLength, thickness, thickness),
 		cframe = segmentCFrame,
-		material = GetVisibleMaterial(self.Config.SegmentMaterial),
+		material = getVisibleMaterial(self.Config.SegmentMaterial),
 		color = self.Config.SegmentColor,
 		castShadow = false,
 		canCollide = self.Config.SegmentCanCollide,
@@ -886,7 +886,7 @@ function CactusGenerator.BuildSegmentPart(self: CactusGenerator, segment: Segmen
 			RibCount = self:GetArchetypeProfile().RibCount,
 		},
 	})
-	ApplyStudSurfaces(part)
+	applyStudSurfaces(part)
 	return part
 end
 
@@ -904,7 +904,7 @@ function CactusGenerator.CreateDetailPart(
 		size = size,
 		cframe = cframe,
 		color = color,
-		material = GetVisibleMaterial(material),
+		material = getVisibleMaterial(material),
 		anchored = not self.Config.UseWelds,
 		massless = self.Config.UseWelds,
 		castShadow = false,
@@ -912,7 +912,7 @@ function CactusGenerator.CreateDetailPart(
 		canTouch = canCollide,
 		canQuery = canCollide,
 	})
-	ApplyStudSurfaces(part)
+	applyStudSurfaces(part)
 	return part
 end
 
@@ -970,10 +970,10 @@ function CactusGenerator.ApplyDetails(
 			areole.Shape = Enum.PartType.Ball
 			areole.Parent = detailFolder
 			if self.Config.UseWelds then
-				CreateWeld(segmentPart, areole)
+				createWeld(segmentPart, areole)
 			end
 
-			local spineDirection = BlendDirection(normal, Vector3.yAxis, 0.25 + randomObject:NextNumber() * 0.25)
+			local spineDirection = blendDirection(normal, Vector3.yAxis, 0.25 + randomObject:NextNumber() * 0.25)
 			local spineLength = math.max(0.16, segment.Thickness * 0.24)
 			local spine = self:CreateDetailPart(
 				"Spine",
@@ -989,7 +989,7 @@ function CactusGenerator.ApplyDetails(
 			spine.Shape = Enum.PartType.Cylinder
 			spine.Parent = detailFolder
 			if self.Config.UseWelds then
-				CreateWeld(segmentPart, spine)
+				createWeld(segmentPart, spine)
 			end
 
 			detailCount += 2
@@ -1010,7 +1010,7 @@ function CactusGenerator.ApplyDetails(
 			continue
 		end
 
-		local cframe, length = MakeCFrameFromSegment(segment.Start, segment.End)
+		local cframe, length = makeCFrameFromSegment(segment.Start, segment.End)
 		local ribOffset = math.max(0.06, segment.Thickness * 0.18)
 		for _, side in ipairs({ -1, 1 }) do
 			if detailCount >= detailBudget then
@@ -1031,7 +1031,7 @@ function CactusGenerator.ApplyDetails(
 			rib.Shape = Enum.PartType.Cylinder
 			rib.Parent = detailFolder
 			if self.Config.UseWelds then
-				CreateWeld(segmentPart, rib)
+				createWeld(segmentPart, rib)
 			end
 			detailCount += 1
 		end
@@ -1067,7 +1067,7 @@ function CactusGenerator.ApplyDetails(
 			)
 			scar.Parent = detailFolder
 			if self.Config.UseWelds then
-				CreateWeld(segmentPart, scar)
+				createWeld(segmentPart, scar)
 			end
 			detailCount += 1
 		end
@@ -1093,7 +1093,7 @@ function CactusGenerator.ApplyDetails(
 				flower.Shape = Enum.PartType.Ball
 				flower.Parent = detailFolder
 				if self.Config.UseWelds then
-					CreateWeld(topPart, flower)
+					createWeld(topPart, flower)
 				end
 			end
 		end
@@ -1144,7 +1144,7 @@ function CactusGenerator.BuildGeometry(self: CactusGenerator, skeleton: Skeleton
 
 		if self.Config.UseWelds and primaryPart ~= nil and segment.Index ~= 1 then
 			local parentPart = partsByIndex[segment.ParentIndex] or primaryPart
-			CreateWeld(parentPart, segmentPart)
+			createWeld(parentPart, segmentPart)
 		end
 	end
 

@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local Workspace = game:GetService("Workspace")
@@ -376,7 +375,7 @@ function NpcServiceUtils.ApplyRuntimeModelAttributes(
 	return true
 end
 
-function NpcServiceUtils.GetUntimeModelFromInstance(instanceRaw: any): Model?
+function NpcServiceUtils.GetRuntimeModelFromInstance(instanceRaw: any): Model?
 	if typeof(instanceRaw) ~= "Instance" then
 		return nil
 	end
@@ -395,8 +394,8 @@ function NpcServiceUtils.GetUntimeModelFromInstance(instanceRaw: any): Model?
 	return nil
 end
 
-function NpcServiceUtils.GetUntimeIdFromInstance(instanceRaw: any): string?
-	local runtimeModel = NpcServiceUtils.GetUntimeModelFromInstance(instanceRaw)
+function NpcServiceUtils.GetRuntimeIdFromInstance(instanceRaw: any): string?
+	local runtimeModel = NpcServiceUtils.GetRuntimeModelFromInstance(instanceRaw)
 	if runtimeModel == nil then
 		return nil
 	end

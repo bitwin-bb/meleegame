@@ -196,6 +196,17 @@ return function()
 			expect(math.abs(offset - 60) <= 0.001).to.equal(true)
 			expect(math.abs(negativeOffset - 4) <= 0.001).to.equal(true)
 		end)
+
+		it("preserves projected size and texture phase across camera zoom", function()
+			local projectionScale = ParallaxMath.ComputeProjectionScale(240, 120)
+			local projectedWidth = 400 * projectionScale
+			local projectedOffset = ParallaxMath.RescaleWrappedOffset(100, 400, projectedWidth)
+
+			expect(math.abs(projectionScale - 0.5) <= 0.001).to.equal(true)
+			expect(math.abs(projectedWidth - 200) <= 0.001).to.equal(true)
+			expect(math.abs(projectedOffset - 50) <= 0.001).to.equal(true)
+			expect(math.abs(projectedOffset / projectedWidth - 0.25) <= 0.001).to.equal(true)
+		end)
 	end)
 
 	describe("ParallaxScrolling", function()
@@ -359,11 +370,23 @@ return function()
 			expect(farLayer.parallaxX < nearLayer.parallaxX).to.equal(true)
 			expect(farLayer.baseScreenY < nearLayer.baseScreenY).to.equal(true)
 			expect(math.abs(farLayer.bgScale - 2) <= 0.001).to.equal(true)
-			expect(math.abs(farLayer.parallaxX - 0.15) <= 0.001).to.equal(true)
+			expect(math.abs(farLayer.parallaxX - 0.12) <= 0.001).to.equal(true)
 			expect(farLayer.verticalStrength).to.equal(1300)
 			expect(farLayer.baseScreenY).to.equal(1090)
 			expect(farLayer.transparency).to.equal(0)
 			expect(farLayer.tint).to.equal(Color3.new(1, 1, 1))
+		end)
+
+		it("keeps every background layer slower than the layer in front of it", function()
+			for _, profiles in ParallaxProfiles.ByStyle do
+				for layerIndex = 2, #profiles do
+					local closerLayer = profiles[layerIndex - 1]
+					local fartherLayer = profiles[layerIndex]
+
+					expect(closerLayer.planeDepthBlocks < fartherLayer.planeDepthBlocks).to.equal(true)
+					expect(closerLayer.parallaxX > fartherLayer.parallaxX).to.equal(true)
+				end
+			end
 		end)
 	end)
 

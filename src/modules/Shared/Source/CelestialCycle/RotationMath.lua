@@ -56,7 +56,7 @@ local function directionToAlpha(direction: Vector3): number
 	return clamp01((direction.Y + 0.08) / 0.22)
 end
 
-local function GetBodyState(
+local function getBodyState(
 	name: "Sun" | "Moon",
 	image: string,
 	phase: MoonPhaseName?,
@@ -91,8 +91,8 @@ function RotationMath.GetCycleState(clockTimeRaw: any, worldDayIndexRaw: any): C
 		dayProgress = RotationMath.GetDayProgress(clockTime),
 		dayPart = RotationMath.GetDayPart(clockTime),
 		moonPhase = moonPhase,
-		sun = GetBodyState("Sun", SunAsset.GetImage(), nil, sunDirection, 10),
-		moon = GetBodyState("Moon", MoonAssets.GetImageForPhase(moonPhase), moonPhase, moonDirection, 9),
+		sun = getBodyState("Sun", SunAsset.GetImage(), nil, sunDirection, 10),
+		moon = getBodyState("Moon", MoonAssets.GetImageForPhase(moonPhase), moonPhase, moonDirection, 9),
 	}
 end
 

@@ -46,7 +46,7 @@ type BubblesScreenProps = {
 local e: typeof(React.createElement) = React.createElement
 
 local DEFAULT_BUBBLE_VALUE = 1
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number, maximum: number?): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
@@ -61,9 +61,9 @@ local function CoerceNumber(valueRaw: any, fallback: number, minimum: number, ma
 end
 
 local function buildBubbles(breathRaw: any, maxBreathRaw: any, bubbleValueRaw: any): { BubbleState }
-	local bubbleValue = CoerceNumber(bubbleValueRaw, DEFAULT_BUBBLE_VALUE, 0.1, nil)
-	local maxBreath = CoerceNumber(maxBreathRaw, bubbleValue, bubbleValue, nil)
-	local breath = CoerceNumber(breathRaw, maxBreath, 0, maxBreath)
+	local bubbleValue = coerceNumber(bubbleValueRaw, DEFAULT_BUBBLE_VALUE, 0.1, nil)
+	local maxBreath = coerceNumber(maxBreathRaw, bubbleValue, bubbleValue, nil)
+	local breath = coerceNumber(breathRaw, maxBreath, 0, maxBreath)
 
 	local bubbleCount = math.max(1, math.ceil(maxBreath / bubbleValue))
 	local bubbles: { BubbleState } = Sift.Array.create(bubbleCount)

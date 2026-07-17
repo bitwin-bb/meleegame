@@ -7,6 +7,7 @@ local RunService = game:GetService("RunService")
 
 local CoreRuntime = require("CoreRuntime")
 local PacketPayload = require("PacketPayload")
+local ServiceBag = require("ServiceBag")
 local WorldSimulationServicePackets = require("NetPacketsShared").WorldSimulationService
 
 local function sendPacket(methodName: string, ...: any)
@@ -72,6 +73,7 @@ type SignalObject = Signal.Signal<...any>
 type ObservableObject = any
 
 local WorldSimulationServiceClient = {}
+WorldSimulationServiceClient.ServiceName = "WorldSimulationServiceClient"
 
 local SNAPSHOT_APPLY_BUDGET_PER_HEARTBEAT = 3
 local SNAPSHOT_CATCHUP_ENQUEUE_BUDGET_PER_HEARTBEAT = 24
@@ -133,7 +135,7 @@ local function computeTheoreticalMaxActiveChunkModels(radius: number, verticalRa
 	return perLayer * (vertical * 2 + 1)
 end
 
-local function GetRootPart(player: Player): BasePart?
+local function getRootPart(player: Player): BasePart?
 	local character = player.Character
 	if character == nil then
 		return nil
@@ -154,7 +156,7 @@ local function GetRootPart(player: Player): BasePart?
 end
 
 function WorldSimulationServiceClient.GetCenterChunk(self: WorldSimulationServiceClient): (number, number, number)
-	local rootPart = GetRootPart(self.localPlayer)
+	local rootPart = getRootPart(self.localPlayer)
 	if rootPart == nil then
 		return 0, 0, 0
 	end
@@ -393,19 +395,19 @@ function WorldSimulationServiceClient.OnDebugCounters(self: WorldSimulationServi
 	end
 end
 
-function WorldSimulationServiceClient.RequestSync(self: WorldSimulationServiceClient)
+function WorldSimulationServiceClient.RequestSync(_self: WorldSimulationServiceClient)
 	sendPacket(Net.NETWORK_METHOD_REQUEST_SYNC)
 end
 
 function WorldSimulationServiceClient.SetStreamRadius(
-	self: WorldSimulationServiceClient,
+	_self: WorldSimulationServiceClient,
 	streamRadiusRaw: any,
 	verticalRadiusRaw: any
 )
 	sendPacket(Net.NETWORK_METHOD_SET_STREAM_RADIUS, streamRadiusRaw, verticalRadiusRaw)
 end
 
-function WorldSimulationServiceClient.SubmitInput(self: WorldSimulationServiceClient, inputPayload: { [string]: any })
+function WorldSimulationServiceClient.SubmitInput(_self: WorldSimulationServiceClient, inputPayload: { [string]: any })
 	sendPacket(Net.NETWORK_METHOD_SUBMIT_INPUT, inputPayload)
 end
 
@@ -496,7 +498,10 @@ function WorldSimulationServiceClient.OnHeartbeat(self: WorldSimulationServiceCl
 	end
 end
 
-function WorldSimulationServiceClient.Init(self: WorldSimulationServiceClient)
+function WorldSimulationServiceClient.Init(self: WorldSimulationServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	if self.maid ~= nil then
 		return
 	end
@@ -599,8 +604,10 @@ function WorldSimulationServiceClient.Destroy(self: WorldSimulationServiceClient
 	end
 	self.stateObservable = nil
 	self.debugCountersObservable = nil
+	self._serviceBag = nil
 end
 type WorldSimulationServiceClient = typeof(WorldSimulationServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
 	runtimeContext: any?,
 	localPlayer: Player,
 	config: Config.SimulationConfig,

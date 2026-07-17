@@ -32,7 +32,7 @@ CrossfadeShared.DEFAULT_SKYBOX_IMAGE_MAP = table.freeze({
 	SkyboxBk = "rbxasset://textures/sky/sky512_bk.tex",
 })
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and not Math.isNaN(valueRaw) and Math.isFinite(valueRaw) then
 		value = valueRaw
@@ -47,7 +47,7 @@ local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, m
 end
 
 function CrossfadeShared.GetTransitionSeconds(transitionSecondsRaw: any): number
-	return CoerceNumber(transitionSecondsRaw, DEFAULT_TRANSITION_SECONDS, 0, CrossfadeShared.MAX_TRANSITION_SECONDS)
+	return coerceNumber(transitionSecondsRaw, DEFAULT_TRANSITION_SECONDS, 0, CrossfadeShared.MAX_TRANSITION_SECONDS)
 end
 
 function CrossfadeShared.GetCleanupDelaySeconds(transitionSecondsRaw: any): number

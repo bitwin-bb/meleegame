@@ -143,7 +143,7 @@ function SpatialHashGrid._detach(self: SpatialHashGrid<any>, record: EntryRecord
 	end
 end
 
-function SpatialHashGrid.insert<T>(
+function SpatialHashGrid.Insert<T>(
 	self: SpatialHashGrid<T>,
 	idRaw: any,
 	xRaw: any,
@@ -199,7 +199,7 @@ function SpatialHashGrid.Remove(self: SpatialHashGrid<any>, idRaw: any): boolean
 	return true
 end
 
-function SpatialHashGrid.update<T>(
+function SpatialHashGrid.Update<T>(
 	self: SpatialHashGrid<T>,
 	idRaw: any,
 	xRaw: any,
@@ -260,7 +260,7 @@ function SpatialHashGrid.Count(self: SpatialHashGrid<any>): number
 	return self.entryCount
 end
 
-function SpatialHashGrid.queryCell<T>(
+function SpatialHashGrid.QueryCell<T>(
 	self: SpatialHashGrid<T>,
 	cellXRaw: any,
 	cellYRaw: any,
@@ -285,7 +285,7 @@ function SpatialHashGrid.queryCell<T>(
 	return out
 end
 
-function SpatialHashGrid.queryChunk<T>(
+function SpatialHashGrid.QueryChunk<T>(
 	self: SpatialHashGrid<T>,
 	chunkXRaw: any,
 	chunkYRaw: any,
@@ -313,7 +313,7 @@ function SpatialHashGrid.queryChunk<T>(
 	return out
 end
 
-function SpatialHashGrid.queryRadius<T>(
+function SpatialHashGrid.QueryRadius<T>(
 	self: SpatialHashGrid<T>,
 	xRaw: any,
 	yRaw: any,

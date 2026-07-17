@@ -33,7 +33,7 @@ local DEFAULT_HEART_VALUE = 20
 local DEFAULT_MAX_HEALTH = 100
 local DEFAULT_DATA_PATH = { "hp" }
 
-local function CoerceNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
 	end
@@ -66,9 +66,9 @@ local function createHeartState(index: number, healthInHeart: number, maxHealthI
 end
 
 function HpServiceUtils.BuildHearts(healthRaw: any, maxHealthRaw: any, heartValueRaw: any): { HeartState }
-	local heartValue = CoerceNumber(heartValueRaw, DEFAULT_HEART_VALUE, 1, nil)
-	local maxHealth = CoerceNumber(maxHealthRaw, DEFAULT_MAX_HEALTH, 1, nil)
-	local health = CoerceNumber(healthRaw, maxHealth, 0, maxHealth)
+	local heartValue = coerceNumber(heartValueRaw, DEFAULT_HEART_VALUE, 1, nil)
+	local maxHealth = coerceNumber(maxHealthRaw, DEFAULT_MAX_HEALTH, 1, nil)
+	local health = coerceNumber(healthRaw, maxHealth, 0, maxHealth)
 
 	local heartCount = math.max(1, math.ceil(maxHealth / heartValue))
 	local hearts: { HeartState } = Sift.Array.create(heartCount)
@@ -90,11 +90,11 @@ function HpServiceUtils.CreateState(
 	fallback: HpServiceState?
 ): HpServiceState
 	local fallbackMaxHealth = if fallback then fallback.maxHealth else DEFAULT_MAX_HEALTH
-	local maxHealth = CoerceNumber(maxHealthRaw, fallbackMaxHealth, 1, nil)
+	local maxHealth = coerceNumber(maxHealthRaw, fallbackMaxHealth, 1, nil)
 	local fallbackHealth = if fallback then fallback.health else maxHealth
-	local health = CoerceNumber(healthRaw, fallbackHealth, 0, maxHealth)
+	local health = coerceNumber(healthRaw, fallbackHealth, 0, maxHealth)
 	local fallbackHeartValue = if fallback then fallback.heartValue else DEFAULT_HEART_VALUE
-	local heartValue = CoerceNumber(heartValueRaw, fallbackHeartValue, 1, nil)
+	local heartValue = coerceNumber(heartValueRaw, fallbackHeartValue, 1, nil)
 	local previousHealth = if fallback then fallback.health else health
 	local delta = health - previousHealth
 

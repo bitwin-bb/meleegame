@@ -1,9 +1,7 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local ServerScriptService = game:GetService("ServerScriptService")
 
 local ManaServiceUtils = require("ManaServiceUtils")
 local PacketPayload = require("PacketPayload")
@@ -81,13 +79,14 @@ type PlayerDataServiceServerObject = {
 }
 
 local ManaServiceServer = {}
+ManaServiceServer.ServiceName = "ManaServiceServer"
 
 local STATE_PUSH_INTERVAL = 0.1
 local PERSIST_INTERVAL_SECONDS = 2
 local DATA_LOAD_TIMEOUT_SECONDS = 20
 local REGEN_PUSH_EPSILON = 0.01
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -107,7 +106,7 @@ local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, m
 	return value
 end
 
-function ManaServiceServer.CreateRuntime(self: ManaServiceServer): PlayerRuntime
+function ManaServiceServer.CreateRuntime(_self: ManaServiceServer): PlayerRuntime
 	return {
 		state = ManaServiceUtils.CreateDefaultState(),
 		loadToken = 0,
@@ -130,7 +129,7 @@ function ManaServiceServer.GetRuntime(self: ManaServiceServer, player: Player): 
 	return nextRuntime
 end
 
-function ManaServiceServer.PushState(self: ManaServiceServer, player: Player, runtime: PlayerRuntime, forceRaw: any)
+function ManaServiceServer.PushState(_self: ManaServiceServer, player: Player, runtime: PlayerRuntime, forceRaw: any)
 	local force = forceRaw == true
 	local now = os.clock()
 	if not force and now - runtime.lastStatePushAt < STATE_PUSH_INTERVAL then
@@ -391,7 +390,7 @@ function ManaServiceServer.CanConsumeMana(
 		return false
 	end
 
-	local amount = CoerceNumber(amountRaw, 0, 0, 1_000_000)
+	local amount = coerceNumber(amountRaw, 0, 0, 1_000_000)
 	if amount <= 0 then
 		return true
 	end
@@ -412,7 +411,7 @@ function ManaServiceServer.ConsumeMana(
 		return false
 	end
 
-	local amount = CoerceNumber(amountRaw, 0, 0, 1_000_000)
+	local amount = coerceNumber(amountRaw, 0, 0, 1_000_000)
 	if amount <= 0 then
 		return true
 	end
@@ -444,7 +443,7 @@ function ManaServiceServer.AddMana(self: ManaServiceServer, player: Player?, amo
 		return nil
 	end
 
-	local amount = CoerceNumber(amountRaw, 0, 0, 1_000_000)
+	local amount = coerceNumber(amountRaw, 0, 0, 1_000_000)
 	if amount <= 0 then
 		return runtime.state.mana
 	end
@@ -470,7 +469,7 @@ function ManaServiceServer.SetMana(self: ManaServiceServer, player: Player?, man
 		return nil
 	end
 
-	local nextMana = CoerceNumber(manaRaw, runtime.state.mana, 0, runtime.state.maxMana)
+	local nextMana = coerceNumber(manaRaw, runtime.state.mana, 0, runtime.state.maxMana)
 	if math.abs(nextMana - runtime.state.mana) <= 1e-6 then
 		return runtime.state.mana
 	end
@@ -496,7 +495,7 @@ function ManaServiceServer.SetMaxMana(
 		return nil
 	end
 
-	local nextMaxMana = CoerceNumber(maxManaRaw, runtime.state.maxMana, 1, 100000)
+	local nextMaxMana = coerceNumber(maxManaRaw, runtime.state.maxMana, 1, 100000)
 	local nextMana = math.clamp(runtime.state.mana, 0, nextMaxMana)
 	if math.abs(nextMaxMana - runtime.state.maxMana) <= 1e-6 and math.abs(nextMana - runtime.state.mana) <= 1e-6 then
 		return runtime.state.maxMana
@@ -523,7 +522,7 @@ function ManaServiceServer.SetRegenPerSecond(
 		return nil
 	end
 
-	local nextRegen = CoerceNumber(regenRaw, runtime.state.regenPerSecond, 0, 10000)
+	local nextRegen = coerceNumber(regenRaw, runtime.state.regenPerSecond, 0, 10000)
 	if math.abs(nextRegen - runtime.state.regenPerSecond) <= 1e-6 then
 		return runtime.state.regenPerSecond
 	end
@@ -539,7 +538,7 @@ function ManaServiceServer.OnHeartbeat(self: ManaServiceServer, dt: number)
 	self:StepRegen(dt)
 end
 
-function ManaServiceServer.Init(self: ManaServiceServer)
+function ManaServiceServer.Init(self: ManaServiceServer, _serviceBag: any?)
 	bindPackets(self)
 	self.playerDataService = PlayerDataServiceServer :: PlayerDataServiceServerObject
 	self.playerRuntimes = {}

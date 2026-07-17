@@ -203,14 +203,14 @@ local function destroySignals(signals: WormSignals)
 	end
 end
 
-local function CoerceBoolean(valueRaw: any, fallback: boolean): boolean
+local function coerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = if typeof(valueRaw) == "number" and valueRaw == valueRaw then valueRaw else fallback
 	if minimum ~= nil and value < minimum then
 		value = minimum
@@ -221,11 +221,11 @@ local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, m
 	return value
 end
 
-local function CoerceInteger(valueRaw: any, fallback: number, minimum: number, maximum: number): number
-	return math.floor(CoerceNumber(valueRaw, fallback, minimum, maximum))
+local function coerceInteger(valueRaw: any, fallback: number, minimum: number, maximum: number): number
+	return math.floor(coerceNumber(valueRaw, fallback, minimum, maximum))
 end
 
-local function GetLockedAxis(valueRaw: any): LockedAxis
+local function getLockedAxis(valueRaw: any): LockedAxis
 	if typeof(valueRaw) == "string" then
 		local upper = string.upper(valueRaw)
 		if upper == "X" then
@@ -239,7 +239,7 @@ local function GetLockedAxis(valueRaw: any): LockedAxis
 	return "X" :: LockedAxis
 end
 
-local function GetAxisDepth(config: WormConfig, axis: LockedAxis): number?
+local function getAxisDepth(config: WormConfig, axis: LockedAxis): number?
 	local lockedDepth = config.lockedDepth or config.depth or config.planeDepth
 	if typeof(lockedDepth) == "number" and lockedDepth == lockedDepth then
 		return lockedDepth
@@ -279,7 +279,7 @@ local function withAxisValue(position: Vector3, axis: LockedAxis, value: number)
 	return Vector3.new(position.X, position.Y, value)
 end
 
-local function GetRootPart(model: Model?): BasePart?
+local function getRootPart(model: Model?): BasePart?
 	if model == nil then
 		return nil
 	end
@@ -302,7 +302,7 @@ local function GetRootPart(model: Model?): BasePart?
 	return nil
 end
 
-local function GetTemplateFromContainer(container: Model?, segmentName: string): Model?
+local function getTemplateFromContainer(container: Model?, segmentName: string): Model?
 	if container == nil then
 		return nil
 	end
@@ -355,7 +355,7 @@ local function applyServerOwnership(model: Model)
 	end
 end
 
-local function GetPositionFromTarget(target: WormTarget?): Vector3?
+local function getPositionFromTarget(target: WormTarget?): Vector3?
 	if target == nil then
 		return nil
 	end
@@ -396,7 +396,7 @@ local function GetPositionFromTarget(target: WormTarget?): Vector3?
 	end
 
 	if target:IsA("Model") then
-		local rootPart = GetRootPart(target)
+		local rootPart = getRootPart(target)
 		if rootPart then
 			return rootPart.Position
 		end
@@ -406,7 +406,7 @@ local function GetPositionFromTarget(target: WormTarget?): Vector3?
 	if target:IsA("Humanoid") then
 		local character = target.Parent
 		if character and character:IsA("Model") then
-			local rootPart = GetRootPart(character)
+			local rootPart = getRootPart(character)
 			if rootPart then
 				return rootPart.Position
 			end
@@ -415,7 +415,7 @@ local function GetPositionFromTarget(target: WormTarget?): Vector3?
 
 	if target:IsA("Player") then
 		local character = (target :: Player).Character
-		local rootPart = GetRootPart(character)
+		local rootPart = getRootPart(character)
 		if rootPart then
 			return rootPart.Position
 		end
@@ -520,7 +520,7 @@ export type Worm = typeof(setmetatable(
 	Worm
 ))
 
-local function GetLookUpVector(self: Worm, directionRaw: Vector3): Vector3
+local function getLookUpVector(self: Worm, directionRaw: Vector3): Vector3
 	local direction = Vec.Unit(directionRaw, self._heading)
 	local lookUpVector = Vec.Unit(self._lookUpVector, Vector3.yAxis)
 	if math.abs(lookUpVector:Dot(direction)) < 0.98 then
@@ -618,7 +618,7 @@ function Worm.GetSnapshot(self: Worm): WormSnapshot
 		segmentCount = #segments,
 		segmentSpacing = self._segmentSpacing,
 		target = self._target,
-		targetPosition = GetPositionFromTarget(self._target),
+		targetPosition = getPositionFromTarget(self._target),
 		targetProvider = self._targetProvider,
 		targetObservable = self._targetObservable,
 		headCFrame = motion.headCFrame,
@@ -667,7 +667,7 @@ function Worm._createSegmentCFrame(self: Worm, positionRaw: Vector3, directionRa
 	local position = self:_projectPosition(positionRaw)
 	local direction = Vec.Unit(self:_projectDirection(directionRaw), self._heading)
 	local lookTarget = position + direction
-	return CFrameUtils.lookAt(position, lookTarget, GetLookUpVector(self, direction))
+	return CFrameUtils.lookAt(position, lookTarget, getLookUpVector(self, direction))
 end
 
 function Worm._pivotSegment(self: Worm, segment: WormSegment, cframeRaw: CFrame)
@@ -735,7 +735,7 @@ function Worm._GetHeadDirection(self: Worm, headPosition: Vector3, dt: number): 
 		end
 	end
 
-	local targetPosition = GetPositionFromTarget(self._target)
+	local targetPosition = getPositionFromTarget(self._target)
 	if targetPosition == nil then
 		return Vec.Unit(self:_projectDirection(self._heading), self._initialDirection)
 	end
@@ -892,7 +892,7 @@ function Worm._GetSegmentTemplates(config: WormConfig): (Model?, Model?, Model?)
 		headTemplate = templates.Head or templates.head
 	end
 	if headTemplate == nil then
-		headTemplate = GetTemplateFromContainer(container, "Head")
+		headTemplate = getTemplateFromContainer(container, "Head")
 	end
 
 	local bodyTemplate = config.bodyTemplate
@@ -900,7 +900,7 @@ function Worm._GetSegmentTemplates(config: WormConfig): (Model?, Model?, Model?)
 		bodyTemplate = templates.Body or templates.body
 	end
 	if bodyTemplate == nil then
-		bodyTemplate = GetTemplateFromContainer(container, "Body")
+		bodyTemplate = getTemplateFromContainer(container, "Body")
 	end
 
 	local tailTemplate = config.tailTemplate
@@ -908,7 +908,7 @@ function Worm._GetSegmentTemplates(config: WormConfig): (Model?, Model?, Model?)
 		tailTemplate = templates.Tail or templates.tail
 	end
 	if tailTemplate == nil then
-		tailTemplate = GetTemplateFromContainer(container, "Tail")
+		tailTemplate = getTemplateFromContainer(container, "Tail")
 	end
 
 	return headTemplate, bodyTemplate, tailTemplate
@@ -953,7 +953,7 @@ function Worm._createSegment(
 		else if kind == "Tail" then "WormTail" else "WormBody" .. tostring(index - 1)
 	model.Parent = self._segmentParent or self._spawnParent
 
-	local rootPart = GetRootPart(model)
+	local rootPart = getRootPart(model)
 	if model.PrimaryPart == nil and rootPart ~= nil then
 		model.PrimaryPart = rootPart
 	end
@@ -999,7 +999,7 @@ function Worm._useExistingSegments(self: Worm, segmentModels: { Model }): boolea
 
 		local kind: SegmentKind = if index == 1 then "Head" else if index == #segmentModels then "Tail" else "Body"
 		local previous = self._segments[index - 1]
-		local rootPart = GetRootPart(model)
+		local rootPart = getRootPart(model)
 		if model.PrimaryPart == nil and rootPart ~= nil then
 			model.PrimaryPart = rootPart
 		end
@@ -1093,8 +1093,8 @@ end
 
 function Worm.New(configRaw: WormConfig?): Worm
 	local config = if typeof(configRaw) == "table" then configRaw :: WormConfig else {} :: WormConfig
-	local lockedAxis: LockedAxis = GetLockedAxis(config.lockedAxis or config.lockAxis)
-	local lockedDepth = GetAxisDepth(config, lockedAxis)
+	local lockedAxis: LockedAxis = getLockedAxis(config.lockedAxis or config.lockAxis)
+	local lockedDepth = getAxisDepth(config, lockedAxis)
 	local planeNormal = if typeof(config.planeNormal) == "Vector3" and config.planeNormal.Magnitude > 0
 		then config.planeNormal.Unit
 		else AXIS_NORMALS[lockedAxis]
@@ -1106,15 +1106,15 @@ function Worm.New(configRaw: WormConfig?): Worm
 	local behaviorConfig: WormBehaviorConfig = if typeof(config.behavior) == "table"
 		then config.behavior :: WormBehaviorConfig
 		else {} :: WormBehaviorConfig
-	local speed = CoerceNumber(config.movementSpeed or config.speed, DEFAULT_SPEED, 0, nil)
+	local speed = coerceNumber(config.movementSpeed or config.speed, DEFAULT_SPEED, 0, nil)
 	local turnSpeed = if typeof(config.turnSpeedDegrees) == "number"
 		then math.rad(config.turnSpeedDegrees)
-		else CoerceNumber(config.turnSpeed, DEFAULT_TURN_SPEED, 0, nil)
-	local acceleration = CoerceNumber(config.acceleration, DEFAULT_ACCELERATION, 0, nil)
+		else coerceNumber(config.turnSpeed, DEFAULT_TURN_SPEED, 0, nil)
+	local acceleration = coerceNumber(config.acceleration, DEFAULT_ACCELERATION, 0, nil)
 	local bodySegmentCount = config.bodySegmentCount
 	local segmentCount = if typeof(bodySegmentCount) == "number"
 		then math.max(2, math.floor(bodySegmentCount) + 2)
-		else CoerceInteger(config.segmentCount, DEFAULT_SEGMENT_COUNT, 2, 512)
+		else coerceInteger(config.segmentCount, DEFAULT_SEGMENT_COUNT, 2, 512)
 	local headTemplate, bodyTemplate, tailTemplate = Worm._GetSegmentTemplates(config)
 	local fallbackDirection = Vec.Orthogonal(planeNormal)
 	local initialDirection = if typeof(config.initialDirection) == "Vector3"
@@ -1125,38 +1125,38 @@ function Worm.New(configRaw: WormConfig?): Worm
 			then behaviorConfig.idleDirection.Unit
 			else fallbackDirection
 	initialDirection = Vec.Unit(initialDirection - planeNormal * initialDirection:Dot(planeNormal), fallbackDirection)
-	local collisionEnabled = CoerceBoolean(collisionConfig.enabled, false)
+	local collisionEnabled = coerceBoolean(collisionConfig.enabled, false)
 	local segmentModels: { Model }? = if typeof(config.segmentModels) == "table" then config.segmentModels else nil
-	local segmentSpacing: number = CoerceNumber(config.segmentSpacing, DEFAULT_SEGMENT_SPACING, 0.05, nil)
+	local segmentSpacing: number = coerceNumber(config.segmentSpacing, DEFAULT_SEGMENT_SPACING, 0.05, nil)
 	local spawnParent: Instance = if typeof(config.spawnParent) == "Instance" then config.spawnParent else Workspace
 	local segmentParent: Instance? = if typeof(config.segmentParent) == "Instance" then config.segmentParent else nil
 	local spawnCFrame: CFrame? = if typeof(config.spawnCFrame) == "CFrame" then config.spawnCFrame else nil
-	local destroySegmentsOnDestroy: boolean = CoerceBoolean(config.destroySegmentsOnDestroy, true)
-	local anchorSegments: boolean = CoerceBoolean(config.anchorSegments, true)
-	local canCollide: boolean = CoerceBoolean(config.canCollide, false)
-	local canTouch: boolean = CoerceBoolean(config.canTouch, true)
-	local canQuery: boolean = CoerceBoolean(config.canQuery, true)
-	local serverOwned: boolean = CoerceBoolean(config.serverOwned, true)
-	local createSegmentLinks: boolean = CoerceBoolean(config.createSegmentLinks, true)
+	local destroySegmentsOnDestroy: boolean = coerceBoolean(config.destroySegmentsOnDestroy, true)
+	local anchorSegments: boolean = coerceBoolean(config.anchorSegments, true)
+	local canCollide: boolean = coerceBoolean(config.canCollide, false)
+	local canTouch: boolean = coerceBoolean(config.canTouch, true)
+	local canQuery: boolean = coerceBoolean(config.canQuery, true)
+	local serverOwned: boolean = coerceBoolean(config.serverOwned, true)
+	local createSegmentLinks: boolean = coerceBoolean(config.createSegmentLinks, true)
 	local lookUpVector: Vector3 = if typeof(config.lookUpVector) == "Vector3"
 			and config.lookUpVector.Magnitude > 0
 		then config.lookUpVector.Unit
 		else Vector3.yAxis
 	local targetRefreshInterval: number =
-		CoerceNumber(behaviorConfig.targetRefreshInterval, DEFAULT_TARGET_REFRESH_INTERVAL, 0, nil)
+		coerceNumber(behaviorConfig.targetRefreshInterval, DEFAULT_TARGET_REFRESH_INTERVAL, 0, nil)
 	local collisionRaycastParams: RaycastParams? = collisionConfig.raycastParams or collisionConfig.params
 	local collisionFilterDescendants: { Instance } = if typeof(collisionConfig.filterDescendantsInstances)
 			== "table"
 		then collisionConfig.filterDescendantsInstances
 		else {} :: any
-	local collisionExcludeSegments: boolean = CoerceBoolean(collisionConfig.excludeSegments, true)
+	local collisionExcludeSegments: boolean = coerceBoolean(collisionConfig.excludeSegments, true)
 	local collisionLookAheadDistance: number =
-		CoerceNumber(collisionConfig.lookAheadDistance, DEFAULT_LOOK_AHEAD_DISTANCE, 0.1, nil)
-	local collisionAvoidStrength: number = CoerceNumber(collisionConfig.avoidStrength, DEFAULT_AVOID_STRENGTH, 0, nil)
-	local collisionBlockMovement: boolean = CoerceBoolean(collisionConfig.blockMovement, false)
-	local collisionSurfaceOffset: number = CoerceNumber(collisionConfig.surfaceOffset, DEFAULT_SURFACE_OFFSET, 0, nil)
-	local canBurrow: boolean = CoerceBoolean(behaviorConfig.canBurrow, not collisionEnabled)
-	local maxDt: number = CoerceNumber(behaviorConfig.maxDt, DEFAULT_MAX_DT, 1 / 240, 1)
+		coerceNumber(collisionConfig.lookAheadDistance, DEFAULT_LOOK_AHEAD_DISTANCE, 0.1, nil)
+	local collisionAvoidStrength: number = coerceNumber(collisionConfig.avoidStrength, DEFAULT_AVOID_STRENGTH, 0, nil)
+	local collisionBlockMovement: boolean = coerceBoolean(collisionConfig.blockMovement, false)
+	local collisionSurfaceOffset: number = coerceNumber(collisionConfig.surfaceOffset, DEFAULT_SURFACE_OFFSET, 0, nil)
+	local canBurrow: boolean = coerceBoolean(behaviorConfig.canBurrow, not collisionEnabled)
+	local maxDt: number = coerceNumber(behaviorConfig.maxDt, DEFAULT_MAX_DT, 1 / 240, 1)
 	local signals: WormSignals = createSignals()
 
 	local self = setmetatable({
@@ -1540,7 +1540,7 @@ function Worm.ObserveTargetPosition(self: Worm): ObservableObject
 			motion = self:ObserveMotion(),
 		}):Pipe({
 			Rx.map(function()
-				return GetPositionFromTarget(self._target)
+				return getPositionFromTarget(self._target)
 			end),
 			Rx.distinct(),
 			Rx.shareReplay(1),

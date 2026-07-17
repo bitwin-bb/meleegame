@@ -35,7 +35,7 @@ local function clampNumber(valueRaw: any, fallback: number, minimum: number, max
 	return value
 end
 
-local function GetDirectionOrFallback(vector: Vector3, fallback: Vector3): Vector3
+local function getDirectionOrFallback(vector: Vector3, fallback: Vector3): Vector3
 	local planar = Vector3.new(vector.X, 0, vector.Z)
 	if planar.Magnitude <= 1e-5 then
 		local fallbackPlanar = Vector3.new(fallback.X, 0, fallback.Z)
@@ -181,7 +181,7 @@ function FoliageUpdateManager.UpdateEntryDrivers(self: FoliageUpdateManager, ent
 	local Got = entry.windSample
 	local combinedVector = entry.primarySwayValue + entry.interactionBendValue
 	Got.vector = combinedVector
-	Got.direction = GetDirectionOrFallback(combinedVector, baseSample.direction)
+	Got.direction = getDirectionOrFallback(combinedVector, baseSample.direction)
 	Got.strength = (combinedVector + entry.secondarySwayValue).Magnitude
 	Got.gustAlpha = baseSample.gustAlpha
 	Got.detailAlpha = if self.enableSecondaryFlutter then baseSample.detailAlpha else 0

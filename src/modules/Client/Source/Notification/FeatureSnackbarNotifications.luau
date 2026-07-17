@@ -1,33 +1,41 @@
 local require = require(script.Parent.loader).load(script)
 
-
 local AquariaBackupTranslator = require("AquariaBackupTranslator")
 local AudioRegistry = require("Audio")
-local ScreenGuiService = require("ScreenGuiService")
-local SnackbarServiceClient = require("SnackbarServiceClient")
 local AudioServiceClient = require("AudioServiceClient")
 local AudioServiceUtils = require("AudioServiceUtils")
-local NevermoreSupport = require("NevermoreSupport")
+local ScreenGuiService = require("ScreenGuiService")
+local ServiceBag = require("ServiceBag")
+local SnackbarServiceClient = require("SnackbarServiceClient")
 
 local SnackbarNotifications = {}
 
 local screenGuiCleanup = nil :: (() -> ())?
 local lastShownAtByKey = {} :: { [string]: number }
+local translator = nil :: any
+local screenGuiService = nil :: any
+local snackbarService = nil :: any
 
 local DEFAULT_DEDUPE_WINDOW_SECONDS = 0.6
 local SYSTEM_AUDIO = (AudioRegistry :: any).System or ({} :: any)
 local NOTIFICATION_SOUND_ASSET_ID = AudioServiceUtils.NormalizeSoundAssetId(SYSTEM_AUDIO.Notification)
 
 local function getTranslator()
-	return NevermoreSupport.GetService(AquariaBackupTranslator)
+	return assert(translator, "Not initialized")
 end
 
 local function getScreenGuiService()
-	return NevermoreSupport.GetService(ScreenGuiService)
+	return assert(screenGuiService, "Not initialized")
 end
 
 local function getSnackbarService()
-	return NevermoreSupport.GetService(SnackbarServiceClient)
+	return assert(snackbarService, "Not initialized")
+end
+
+function SnackbarNotifications.Init(serviceBag: ServiceBag.ServiceBag)
+	translator = serviceBag:GetService(AquariaBackupTranslator)
+	screenGuiService = serviceBag:GetService(ScreenGuiService)
+	snackbarService = serviceBag:GetService(SnackbarServiceClient)
 end
 
 local function playNotificationSound()
@@ -123,7 +131,7 @@ local function shouldSuppress(dedupeKey: string, windowRaw: any): boolean
 	return false
 end
 
-local function GetEcipeDisplayName(craftingServiceRaw: any, recipeIdRaw: any): string
+local function getRecipeDisplayName(craftingServiceRaw: any, recipeIdRaw: any): string
 	local recipeId = trim(recipeIdRaw)
 	if recipeId == "" then
 		return "item"
@@ -225,7 +233,7 @@ function SnackbarNotifications.ShowCraftResult(resultRaw: any, craftingServiceRa
 			quantity = math.max(1, math.floor(result.quantity))
 		end
 
-		local recipeName = GetEcipeDisplayName(craftingServiceRaw, result.recipeId)
+		local recipeName = getRecipeDisplayName(craftingServiceRaw, result.recipeId)
 		local text = translate("notifications.crafting.success", {
 			quantity = tostring(quantity),
 			itemName = recipeName,
@@ -251,4 +259,16 @@ function SnackbarNotifications.ShowCraftResult(resultRaw: any, craftingServiceRa
 		dedupeWindowSeconds = 0.8,
 	})
 end
+
+function SnackbarNotifications.Destroy()
+	if screenGuiCleanup ~= nil then
+		screenGuiCleanup()
+		screenGuiCleanup = nil
+	end
+	table.clear(lastShownAtByKey)
+	translator = nil
+	screenGuiService = nil
+	snackbarService = nil
+end
+
 return SnackbarNotifications

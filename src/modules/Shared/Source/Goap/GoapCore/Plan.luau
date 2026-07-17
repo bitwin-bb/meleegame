@@ -20,7 +20,7 @@ export type Plan = typeof(setmetatable(
 	Plan
 ))
 
-local function GetCost(actions: { any }, costRaw: any): number
+local function getCost(actions: { any }, costRaw: any): number
 	if typeof(costRaw) == "number" and costRaw == costRaw then
 		return math.max(0, costRaw)
 	end
@@ -38,7 +38,7 @@ function Plan.new(actionsRaw: any?, costRaw: any?): Plan
 	return setmetatable({
 		actions = actions,
 		currentIndex = 1,
-		cost = GetCost(actions, costRaw),
+		cost = getCost(actions, costRaw),
 		maid = Maid.new(),
 		destroyed = false,
 	}, Plan)

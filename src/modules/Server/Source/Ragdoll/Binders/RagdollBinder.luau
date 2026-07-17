@@ -21,32 +21,32 @@ function RagdollBinder.new(instance: Instance, context: any)
 	self.recoveryToken = 0
 	self.ragdollOnDeath = self.instance:GetAttribute("RagdollOnDeath") ~= false
 	self.humanoid = self:GetHumanoid()
-	self:applyRequestedState()
+	self:ApplyRequestedState()
 
 	if self.humanoid ~= nil then
 		self:Connect(self.humanoid.Died, function()
 			if self.ragdollOnDeath then
-				self:setRagdolled(true, "Death", nil)
+				self:SetRagdolled(true, "Death", nil)
 			end
 		end)
 	end
 
 	self:ObserveAttribute("RagdollEnabled", function()
-		self:applyRequestedState()
+		self:ApplyRequestedState()
 	end)
 
 	return self
 end
 
-function RagdollBinder.isPlayerCharacter(self: any): boolean
+function RagdollBinder.IsPlayerCharacter(self: any): boolean
 	return self.model ~= nil and Players:GetPlayerFromCharacter(self.model) ~= nil
 end
 
-function RagdollBinder.setRagdolled(self: any, enabled: boolean, reason: string, impulse: Vector3?)
+function RagdollBinder.SetRagdolled(self: any, enabled: boolean, reason: string, impulse: Vector3?)
 	if self.model == nil then
 		return
 	end
-	if self:isPlayerCharacter() then
+	if self:IsPlayerCharacter() then
 		return
 	end
 
@@ -76,7 +76,7 @@ function RagdollBinder.setRagdolled(self: any, enabled: boolean, reason: string,
 				if self.destroyed or self.recoveryToken ~= token then
 					return
 				end
-				self:setRagdolled(false, "Recovery", nil)
+				self:SetRagdolled(false, "Recovery", nil)
 			end)
 		end
 	else
@@ -92,17 +92,17 @@ function RagdollBinder.setRagdolled(self: any, enabled: boolean, reason: string,
 	self.instance:SetAttribute("RagdollActive", self.context ~= nil)
 end
 
-function RagdollBinder.applyRequestedState(self: any)
+function RagdollBinder.ApplyRequestedState(self: any)
 	local requested = self.instance:GetAttribute("RagdollEnabled") == true
 	if requested then
-		self:setRagdolled(true, tostring(self.instance:GetAttribute("RagdollReason") or "Binder"), nil)
+		self:SetRagdolled(true, tostring(self.instance:GetAttribute("RagdollReason") or "Binder"), nil)
 	elseif not self.ragdollOnDeath then
-		self:setRagdolled(false, "Disabled", nil)
+		self:SetRagdolled(false, "Disabled", nil)
 	end
 end
 
 function RagdollBinder.Cleanup(self: any)
-	self:setRagdolled(false, "Cleanup", nil)
+	self:SetRagdolled(false, "Cleanup", nil)
 end
 
 return RagdollBinder

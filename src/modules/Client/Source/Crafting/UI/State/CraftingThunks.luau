@@ -26,7 +26,7 @@ local function trim(textRaw: any): string
 	return string.match(textRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function CoerceQuantity(quantityRaw: any): number
+local function coerceQuantity(quantityRaw: any): number
 	local quantity = 1
 	if typeof(quantityRaw) == "number" and quantityRaw == quantityRaw then
 		quantity = math.floor(quantityRaw)
@@ -186,7 +186,7 @@ function craftingThunks.RequestCraft(recipeIdRaw: any, quantityRaw: any): boolea
 		return false
 	end
 
-	local quantity = CoerceQuantity(quantityRaw)
+	local quantity = coerceQuantity(quantityRaw)
 	local didSend = false
 	pcall(function()
 		didSend = CraftingServiceClient:RequestCraft(recipeId, quantity) == true
@@ -213,7 +213,7 @@ function craftingThunks.StartBulkCraftSelected(quantityRaw: any): boolean
 		return false
 	end
 
-	local quantity = CoerceQuantity(quantityRaw)
+	local quantity = coerceQuantity(quantityRaw)
 	local didStart = false
 	pcall(function()
 		didStart = CraftingServiceClient:StartBulkCraft(selectedRecipeId, quantity) == true

@@ -8,7 +8,7 @@ local AttributeUtils = Nevermore.Get("AttributeUtils")
 
 local CooldownReadyGuard = {}
 
-local function GetCooldown(valueRaw: any): number
+local function getCooldown(valueRaw: any): number
 	if typeof(valueRaw) == "number" then
 		return valueRaw
 	end
@@ -31,7 +31,7 @@ function CooldownReadyGuard.Evaluate(machine: any, cooldownKeyRaw: any?, lastTim
 	local lastTimeKey = if typeof(lastTimeKeyRaw) == "string" and lastTimeKeyRaw ~= ""
 		then lastTimeKeyRaw
 		else "LastActionTime"
-	local cooldown = GetCooldown(Utils.Read(machine, cooldownKey, 0))
+	local cooldown = getCooldown(Utils.Read(machine, cooldownKey, 0))
 	local lastTime = Utils.Read(machine, lastTimeKey, -math.huge)
 
 	if cooldown <= 0 then

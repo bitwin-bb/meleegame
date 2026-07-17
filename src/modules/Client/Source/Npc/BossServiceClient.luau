@@ -14,6 +14,7 @@ local BossServiceUtils = require("BossServiceUtils")
 local CameraShaker = require("EZCameraShake")
 local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
+local ServiceBag = require("ServiceBag")
 local BossServicePackets = require("NetPacketsShared").BossService
 
 local function sendPacket(methodName: string, ...: any)
@@ -102,6 +103,7 @@ type BossVisualRuntime = {
 }
 
 local BossServiceClient = {}
+BossServiceClient.ServiceName = "BossServiceClient"
 
 local BOSS_RUNTIME_FOLDER_NAME = "BossRuntime"
 local CAMERA_SHAKE_RENDER_PRIORITY = Enum.RenderPriority.Camera.Value + 1
@@ -118,7 +120,7 @@ local function warnPresentationModuleFailure(presentationId: string, message: st
 	warn(`[BossServiceClient] {message}`)
 end
 
-local function GetNestedModule(root: Instance?, path: { string }): ModuleScript?
+local function getNestedModule(root: Instance?, path: { string }): ModuleScript?
 	if root == nil then
 		return nil
 	end
@@ -138,13 +140,13 @@ local function GetNestedModule(root: Instance?, path: { string }): ModuleScript?
 	return nil
 end
 
-local function GetEyeOfCthulhuPresentationModule(): PresentationModule?
+local function getEyeOfCthulhuPresentationModule(): PresentationModule?
 	local cached = presentationModulesById.EyeOfCthulhu
 	if cached ~= nil then
 		return cached
 	end
 
-	local moduleScript = GetNestedModule(SharedRoot, { "EyeOfCthulhuBoss", "Presentation" })
+	local moduleScript = getNestedModule(SharedRoot, { "EyeOfCthulhuBoss", "Presentation" })
 	if moduleScript == nil then
 		return nil
 	end
@@ -153,7 +155,10 @@ local function GetEyeOfCthulhuPresentationModule(): PresentationModule?
 		return require(moduleScript :: any)
 	end)
 	if not ok then
-		warnPresentationModuleFailure("EyeOfCthulhu", `failed to load EyeOfCthulhu presentation module: {moduleOrError}`)
+		warnPresentationModuleFailure(
+			"EyeOfCthulhu",
+			`failed to load EyeOfCthulhu presentation module: {moduleOrError}`
+		)
 		return nil
 	end
 	if typeof(moduleOrError) ~= "table" then
@@ -166,7 +171,7 @@ local function GetEyeOfCthulhuPresentationModule(): PresentationModule?
 end
 
 local PRESENTATION_MODULES: { [string]: PresentationGetter } = {
-	EyeOfCthulhu = GetEyeOfCthulhuPresentationModule,
+	EyeOfCthulhu = getEyeOfCthulhuPresentationModule,
 }
 
 local function appendUniqueOrderedId(orderedIds: { string }, runtimeId: string): { string }
@@ -208,10 +213,7 @@ local function pushAnnouncement(textRaw: any)
 	end)
 end
 
-function BossServiceClient.GetPresentationModule(
-	_self: BossServiceClient,
-	snapshot: BossSnapshot
-): PresentationModule?
+function BossServiceClient.GetPresentationModule(_self: BossServiceClient, snapshot: BossSnapshot): PresentationModule?
 	local definition = BossServiceUtils.GetRegistryEntryById(snapshot.bossId)
 	if definition == nil then
 		return nil
@@ -224,7 +226,7 @@ function BossServiceClient.GetPresentationModule(
 	return nil
 end
 
-function BossServiceClient.GetUntimeModel(_self: BossServiceClient, runtimeIdRaw: any): Model?
+function BossServiceClient.GetRuntimeModel(_self: BossServiceClient, runtimeIdRaw: any): Model?
 	local runtimeId = trim(runtimeIdRaw)
 	if runtimeId == "" then
 		return nil
@@ -283,7 +285,7 @@ function BossServiceClient.EnsureVisual(self: BossServiceClient, snapshot: BossS
 		return visual
 	end
 
-	local model = self:GetUntimeModel(runtimeId)
+	local model = self:GetRuntimeModel(runtimeId)
 	if model ~= visual.model then
 		if visual.presentationRuntime ~= nil then
 			visual.presentationModule.Destroy(visual.presentationRuntime)
@@ -425,7 +427,10 @@ function BossServiceClient.StepVisuals(self: BossServiceClient, dtRaw: any)
 	end
 end
 
-function BossServiceClient.Init(self: BossServiceClient)
+function BossServiceClient.Init(self: BossServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
@@ -483,9 +488,11 @@ function BossServiceClient.Destroy(self: BossServiceClient)
 	if self.janitor ~= nil then
 		self.janitor:Destroy()
 	end
+	self._serviceBag = nil
 end
 
 type BossServiceClient = typeof(BossServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
 	localPlayer: Player,
 	janitor: JanitorClass,
 	stateChanged: SignalObject,

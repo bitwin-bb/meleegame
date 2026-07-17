@@ -40,19 +40,6 @@ return function(props: BuffRootProps): React.ReactNode
 		then cloneRecords(serviceRecords or BuffSlice.getActiveRecords())
 		else cloneRecords(props.records)
 
-	React.useEffect(function()
-		if not useServiceState then
-			return
-		end
-
-		local BuffThunks = require("BuffThunks")
-		local stop = BuffThunks.Start()
-
-		return function()
-			stop()
-		end
-	end, { useServiceState })
-
 	return e(BuffRightSideBar, {
 		records = records,
 		layoutOrder = props.layoutOrder,

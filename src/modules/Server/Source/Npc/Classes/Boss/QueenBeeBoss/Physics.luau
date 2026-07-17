@@ -12,7 +12,7 @@ local PLANE_AXES = table.freeze(Table.copy({
 
 local EPSILON = 1e-5
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -38,7 +38,7 @@ local function safeUnit(vector: Vector3, fallbackRaw: Vector3?): Vector3
 	return vector.Unit
 end
 
-local function GetRootPart(model: Model?): BasePart?
+local function getRootPart(model: Model?): BasePart?
 	if model == nil then
 		return nil
 	end
@@ -66,7 +66,7 @@ local function GetRootPart(model: Model?): BasePart?
 	return nil
 end
 
-local function GetCharacter(valueRaw: any): Model?
+local function getCharacter(valueRaw: any): Model?
 	if typeof(valueRaw) ~= "Instance" then
 		return nil
 	end
@@ -128,12 +128,12 @@ function Physics.GetTargetCenter(character: any): Vector3?
 		return character.Position
 	end
 
-	local model = GetCharacter(character)
+	local model = getCharacter(character)
 	if model == nil then
 		return nil
 	end
 
-	local rootPart = GetRootPart(model)
+	local rootPart = getRootPart(model)
 	if rootPart ~= nil then
 		return rootPart.Position
 	end
@@ -152,8 +152,8 @@ function Physics.GetTargetVelocity(character: any): Vector3
 		return character.AssemblyLinearVelocity
 	end
 
-	local model = GetCharacter(character)
-	local rootPart = GetRootPart(model)
+	local model = getCharacter(character)
+	local rootPart = getRootPart(model)
 	if rootPart == nil then
 		return Vector3.zero
 	end
@@ -161,7 +161,7 @@ function Physics.GetTargetVelocity(character: any): Vector3
 end
 
 function Physics.ApproachVelocity(current: Vector3, desired: Vector3, maxDeltaRaw: any): Vector3
-	local maxDelta = CoerceNumber(maxDeltaRaw, 0, 0, nil)
+	local maxDelta = coerceNumber(maxDeltaRaw, 0, 0, nil)
 	local delta = desired - current
 	local distance = delta.Magnitude
 	if distance <= maxDelta or distance <= EPSILON then
@@ -180,11 +180,11 @@ function Physics.ComputeHoverVelocity(
 	arriveRadiusRaw: any,
 	dtRaw: any
 ): Vector3
-	local dt = CoerceNumber(dtRaw, 0, 0, 1)
-	local speed = CoerceNumber(speedRaw, 0, 0, 10 ^ 6)
-	local acceleration = CoerceNumber(accelerationRaw, 0, 0, 10 ^ 6)
-	local damping = CoerceNumber(dampingRaw, 0, 0, 1000)
-	local arriveRadius = CoerceNumber(arriveRadiusRaw, 0, 0, 10 ^ 6)
+	local dt = coerceNumber(dtRaw, 0, 0, 1)
+	local speed = coerceNumber(speedRaw, 0, 0, 10 ^ 6)
+	local acceleration = coerceNumber(accelerationRaw, 0, 0, 10 ^ 6)
+	local damping = coerceNumber(dampingRaw, 0, 0, 1000)
+	local arriveRadius = coerceNumber(arriveRadiusRaw, 0, 0, 10 ^ 6)
 	local offset = targetPosition - currentPosition
 	local distance = offset.Magnitude
 
@@ -206,7 +206,7 @@ function Physics.ComputeHoverVelocity(
 end
 
 function Physics.ComputeChargeVelocity(direction: Vector3, speedRaw: any): Vector3
-	local speed = CoerceNumber(speedRaw, 0, 0, 10 ^ 6)
+	local speed = coerceNumber(speedRaw, 0, 0, 10 ^ 6)
 	return safeUnit(direction, PLANE_AXES.side) * speed
 end
 
@@ -217,7 +217,7 @@ function Physics.HasPassedTarget(
 	direction: Vector3,
 	passDistanceRaw: any
 ): boolean
-	local passDistance = CoerceNumber(passDistanceRaw, 0, 0, 10 ^ 6)
+	local passDistance = coerceNumber(passDistanceRaw, 0, 0, 10 ^ 6)
 	local chargeDirection = safeUnit(direction, currentPosition - startPosition)
 	local targetAheadFromStart = (targetPosition - startPosition):Dot(chargeDirection)
 	if targetAheadFromStart < 0 then
@@ -249,8 +249,8 @@ function Physics.ComputeOffsetInCombatPlane(
 	arenaCFrame: CFrame?
 ): Vector3
 	local sideSign = if sideSignRaw == -1 then -1 else 1
-	local sideDistance = CoerceNumber(sideDistanceRaw, 0, 0, 10 ^ 6)
-	local aboveOffset = CoerceNumber(aboveOffsetRaw, 0, -10 ^ 6, 10 ^ 6)
+	local sideDistance = coerceNumber(sideDistanceRaw, 0, 0, 10 ^ 6)
+	local aboveOffset = coerceNumber(aboveOffsetRaw, 0, -10 ^ 6, 10 ^ 6)
 	local sideVector = Physics.GetCombatSideVector(arenaCFrame)
 	local upVector = Physics.GetCombatUpVector(arenaCFrame)
 	return Physics.ProjectToCombatPlane(
@@ -260,7 +260,7 @@ function Physics.ComputeOffsetInCombatPlane(
 end
 
 function Physics.RotateVectorInCombatPlane(vector: Vector3, degreesRaw: any, arenaCFrame: CFrame?): Vector3
-	local radians = math.rad(CoerceNumber(degreesRaw, 0, -360, 360))
+	local radians = math.rad(coerceNumber(degreesRaw, 0, -360, 360))
 	if math.abs(radians) <= EPSILON then
 		return Physics.ProjectVectorToCombatPlane(vector, arenaCFrame)
 	end

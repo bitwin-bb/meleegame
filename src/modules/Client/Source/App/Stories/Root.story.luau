@@ -11,7 +11,7 @@ local e: typeof(React.createElement) = React.createElement
 
 local STORY_ROOT_NAME = "RootStoryUI"
 
-local function GetMountTarget(target: Instance): ScreenGui
+local function getMountTarget(target: Instance): ScreenGui
 	if target:IsA("ScreenGui") then
 		return target
 	end
@@ -35,7 +35,7 @@ local function GetMountTarget(target: Instance): ScreenGui
 end
 
 return function(target)
-	local mountTarget = GetMountTarget(target)
+	local mountTarget = getMountTarget(target)
 	local root = ReactRoblox.createRoot(mountTarget)
 
 	root:render(e(RootUI, {

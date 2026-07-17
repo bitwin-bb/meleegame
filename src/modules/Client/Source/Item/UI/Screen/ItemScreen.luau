@@ -2,7 +2,6 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-
 local Layer = require("Layer")
 local PortalTargets = require("PortalTargets")
 local React: any = require(ReplicatedStorage.Packages.React)
@@ -20,12 +19,12 @@ type ItemScreenProps = {
 
 local e: typeof(React.createElement) = React.createElement
 
-local function GotRagState(): ItemDragState
+local function getDragState(): ItemDragState
 	return itemSlice.getDragState()
 end
 
 return function(props: ItemScreenProps): React.ReactNode
-	local dragState = (useStore(itemSlice.dragStateAtom) :: ItemDragState?) or GotRagState()
+	local dragState = (useStore(itemSlice.dragStateAtom) :: ItemDragState?) or getDragState()
 
 	if props.visible == false then
 		return nil

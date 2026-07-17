@@ -59,14 +59,14 @@ local function getInstanceCacheKey(instance: Instance): string
 	return tostring(instance)
 end
 
-local function CoerceVelocity(valueRaw: any): Vector3
+local function coerceVelocity(valueRaw: any): Vector3
 	if typeof(valueRaw) == "Vector3" then
 		return valueRaw
 	end
 	return Vector3.zero
 end
 
-local function GetModelRootPart(model: Model?): BasePart?
+local function getModelRootPart(model: Model?): BasePart?
 	if model == nil then
 		return nil
 	end
@@ -83,11 +83,11 @@ local function GetModelRootPart(model: Model?): BasePart?
 	return model:FindFirstChildWhichIsA("BasePart", true)
 end
 
-local function GetPlayerCharacterRoot(player: Player?): BasePart?
+local function getPlayerCharacterRoot(player: Player?): BasePart?
 	if player == nil then
 		return nil
 	end
-	return GetModelRootPart(player.Character)
+	return getModelRootPart(player.Character)
 end
 
 local function cloneMetadata(metadataRaw: any): { [string]: any }?
@@ -118,7 +118,7 @@ local function createGotTarget(
 	return {
 		kind = if trim(kindRaw) ~= "" then trim(kindRaw) else "Target",
 		position = position,
-		velocity = CoerceVelocity(velocityRaw),
+		velocity = coerceVelocity(velocityRaw),
 		lookPosition = if typeof(lookPositionRaw) == "Vector3" then lookPositionRaw else nil,
 		cacheKey = if trim(cacheKeyRaw) ~= "" then trim(cacheKeyRaw) else nil,
 		instance = instance,
@@ -138,7 +138,7 @@ local function getBossState(): any
 	return bossClient.state
 end
 
-local function GetBossSnapshotByRuntimeId(runtimeIdRaw: any): any?
+local function getBossSnapshotByRuntimeId(runtimeIdRaw: any): any?
 	local runtimeId = trim(runtimeIdRaw)
 	if runtimeId == "" then
 		return nil
@@ -151,7 +151,7 @@ local function GetBossSnapshotByRuntimeId(runtimeIdRaw: any): any?
 	return (state :: any).byId[runtimeId]
 end
 
-local function GetBossSnapshotByFilters(filtersRaw: any): any?
+local function getBossSnapshotByFilters(filtersRaw: any): any?
 	local filters = if typeof(filtersRaw) == "table" then filtersRaw else {} :: any
 	local state = getBossState()
 	if
@@ -188,13 +188,13 @@ local function GetBossSnapshotByFilters(filtersRaw: any): any?
 	return nil
 end
 
-local function GetBossSnapshot(sourceRaw: any): any?
+local function getBossSnapshot(sourceRaw: any): any?
 	local source = if typeof(sourceRaw) == "table" then sourceRaw else {} :: any
 	local runtimeId = trim((source :: any).runtimeId)
 	if runtimeId ~= "" then
-		return GetBossSnapshotByRuntimeId(runtimeId)
+		return getBossSnapshotByRuntimeId(runtimeId)
 	end
-	return GetBossSnapshotByFilters(source)
+	return getBossSnapshotByFilters(source)
 end
 
 local function createBossTarget(sourceRaw: any, snapshotRaw: any): GotTarget?
@@ -213,7 +213,7 @@ local function createBossTarget(sourceRaw: any, snapshotRaw: any): GotTarget?
 
 	local velocity = if typeof((motion :: any).velocity) == "Vector3"
 		then (motion :: any).velocity
-		else CoerceVelocity((snapshot :: any).velocity)
+		else coerceVelocity((snapshot :: any).velocity)
 	local lookPosition = if typeof((snapshot :: any).facing) == "Vector3"
 		then position + (snapshot :: any).facing
 		else nil
@@ -356,7 +356,7 @@ function Target.GetAny(self: Target, sourceRaw: any, kindFallback: string?): Got
 			if sourceRaw.Parent == nil then
 				return nil
 			end
-			local rootPart = GetModelRootPart(sourceRaw)
+			local rootPart = getModelRootPart(sourceRaw)
 			if rootPart == nil then
 				return nil
 			end
@@ -377,7 +377,7 @@ function Target.GetAny(self: Target, sourceRaw: any, kindFallback: string?): Got
 		end
 
 		if sourceRaw:IsA("Player") then
-			local rootPart = GetPlayerCharacterRoot(sourceRaw)
+			local rootPart = getPlayerCharacterRoot(sourceRaw)
 			if rootPart == nil then
 				return nil
 			end
@@ -447,7 +447,7 @@ function Target.GetAny(self: Target, sourceRaw: any, kindFallback: string?): Got
 		end
 	end
 
-	local bossSnapshot = GetBossSnapshot(sourceRaw)
+	local bossSnapshot = getBossSnapshot(sourceRaw)
 	if bossSnapshot ~= nil then
 		local bossTarget = createBossTarget(sourceRaw, bossSnapshot)
 		if bossTarget ~= nil then

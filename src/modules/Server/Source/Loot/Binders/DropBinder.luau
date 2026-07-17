@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local ModelBinder = require("ModelBinder")
@@ -7,16 +6,7 @@ local DropBinder = {}
 DropBinder.__index = DropBinder
 setmetatable(DropBinder, ModelBinder)
 
-local lootServiceServer = nil
-
-local function getLootServiceServer()
-	if lootServiceServer == nil then
-		lootServiceServer = require("LootServiceServer")
-	end
-	return lootServiceServer
-end
-
-local function GetStringAttribute(instance: Instance, attributeName: string): string?
+local function getStringAttribute(instance: Instance, attributeName: string): string?
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) == "string" and value ~= "" then
 		return value
@@ -24,13 +14,15 @@ local function GetStringAttribute(instance: Instance, attributeName: string): st
 	return nil
 end
 
-function DropBinder.new(instance: Instance, context: any)
+function DropBinder.new(instance: Instance, context: ModelBinder.BinderContext)
 	local self = ModelBinder.new(instance, context, DropBinder)
+	self.lootServiceServer =
+		assert(self:GetDependencies().LootServiceServer, "LootServiceServer dependency is unavailable")
 	self.didDrop = false
-	self:refresh()
+	self:Refresh()
 	self:Connect(self.instance.Destroying, function()
 		if self.dropOnDestroy then
-			self:dropOnce("Destroying")
+			self:DropOnce("Destroying")
 		end
 	end)
 
@@ -38,7 +30,7 @@ function DropBinder.new(instance: Instance, context: any)
 	if humanoid ~= nil then
 		self:Connect(humanoid.Died, function()
 			if self.dropOnDeath then
-				self:dropOnce("Death")
+				self:DropOnce("Death")
 			end
 		end)
 	end
@@ -46,17 +38,17 @@ function DropBinder.new(instance: Instance, context: any)
 	return self
 end
 
-function DropBinder.refresh(self: any)
-	self.dropItemId = GetStringAttribute(self.instance, "DropItemId")
-	self.dropTableId = GetStringAttribute(self.instance, "DropTableId")
-	self.dropSourceType = GetStringAttribute(self.instance, "DropSourceType")
+function DropBinder.Refresh(self: any)
+	self.dropItemId = getStringAttribute(self.instance, "DropItemId")
+	self.dropTableId = getStringAttribute(self.instance, "DropTableId")
+	self.dropSourceType = getStringAttribute(self.instance, "DropSourceType")
 	self.dropAmount = math.max(1, math.floor(tonumber(self.instance:GetAttribute("DropAmount")) or 1))
 	self.dropOnDestroy = self.instance:GetAttribute("DropOnDestroy") == true
 	self.dropOnDeath = self.instance:GetAttribute("DropOnDeath") == true
 	self.instance:SetAttribute("DropTagged", true)
 end
 
-function DropBinder.dropOnce(self: any, reason: string)
+function DropBinder.DropOnce(self: any, reason: string)
 	if self.didDrop then
 		return
 	end
@@ -68,14 +60,14 @@ function DropBinder.dropOnce(self: any, reason: string)
 	end
 
 	local sourceType = if self.dropSourceType ~= nil then self.dropSourceType else reason
-	local lootServiceServer = getLootServiceServer()
+	local service = self.lootServiceServer
 	if self.dropItemId ~= nil then
-		lootServiceServer:SpawnLootRuntime(self.dropItemId, self.dropAmount, origin, {
+		service:SpawnLootRuntime(self.dropItemId, self.dropAmount, origin, {
 			sourceType = sourceType,
 		})
 	end
 	if self.dropTableId ~= nil then
-		lootServiceServer:SpawnDropsFromTable(self.dropTableId, origin, {
+		service:SpawnDropsFromTable(self.dropTableId, origin, {
 			sourceType = sourceType,
 		})
 	end

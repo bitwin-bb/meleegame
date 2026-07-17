@@ -39,7 +39,7 @@ local cachedOverworldSandstoneMaterial: MaterialVariant? = nil
 local cachedSnowSnowMaterial: MaterialVariant? = nil
 local cachedSnowIceMaterial: MaterialVariant? = nil
 
-local function GetMaterialFolder(folderName: string): Folder?
+local function getMaterialFolder(folderName: string): Folder?
 	local materialFolder = MaterialService:FindFirstChild(folderName)
 	if materialFolder ~= nil and materialFolder:IsA("Folder") then
 		return materialFolder
@@ -48,7 +48,7 @@ local function GetMaterialFolder(folderName: string): Folder?
 	return nil
 end
 
-local function GetGroupedMaterial(
+local function getGroupedMaterial(
 	folderName: string,
 	materialName: string,
 	cachedMaterial: MaterialVariant?
@@ -57,7 +57,7 @@ local function GetGroupedMaterial(
 		return cachedMaterial
 	end
 
-	local materialFolder = GetMaterialFolder(folderName)
+	local materialFolder = getMaterialFolder(folderName)
 	local material = if materialFolder ~= nil then materialFolder:FindFirstChild(materialName) else nil
 	if material == nil then
 		material = MaterialService:FindFirstChild(materialName, true)
@@ -69,8 +69,8 @@ local function GetGroupedMaterial(
 	return nil
 end
 
-local function GetOverworldDirtMaterial(): MaterialVariant?
-	cachedOverworldDirtMaterial = GetGroupedMaterial(
+local function getOverworldDirtMaterial(): MaterialVariant?
+	cachedOverworldDirtMaterial = getGroupedMaterial(
 		OVERWORLD_MATERIAL_FOLDER_NAME,
 		OVERWORLD_DIRT_MATERIAL_NAME,
 		cachedOverworldDirtMaterial
@@ -78,8 +78,8 @@ local function GetOverworldDirtMaterial(): MaterialVariant?
 	return cachedOverworldDirtMaterial
 end
 
-local function GetOverworldStoneMaterial(): MaterialVariant?
-	cachedOverworldStoneMaterial = GetGroupedMaterial(
+local function getOverworldStoneMaterial(): MaterialVariant?
+	cachedOverworldStoneMaterial = getGroupedMaterial(
 		OVERWORLD_MATERIAL_FOLDER_NAME,
 		OVERWORLD_STONE_MATERIAL_NAME,
 		cachedOverworldStoneMaterial
@@ -87,8 +87,8 @@ local function GetOverworldStoneMaterial(): MaterialVariant?
 	return cachedOverworldStoneMaterial
 end
 
-local function GetOverworldWoodMaterial(): MaterialVariant?
-	cachedOverworldWoodMaterial = GetGroupedMaterial(
+local function getOverworldWoodMaterial(): MaterialVariant?
+	cachedOverworldWoodMaterial = getGroupedMaterial(
 		OVERWORLD_MATERIAL_FOLDER_NAME,
 		OVERWORLD_WOOD_MATERIAL_NAME,
 		cachedOverworldWoodMaterial
@@ -96,8 +96,8 @@ local function GetOverworldWoodMaterial(): MaterialVariant?
 	return cachedOverworldWoodMaterial
 end
 
-local function GetOverworldLeafMaterial(): MaterialVariant?
-	cachedOverworldLeafMaterial = GetGroupedMaterial(
+local function getOverworldLeafMaterial(): MaterialVariant?
+	cachedOverworldLeafMaterial = getGroupedMaterial(
 		OVERWORLD_MATERIAL_FOLDER_NAME,
 		OVERWORLD_LEAF_MATERIAL_NAME,
 		cachedOverworldLeafMaterial
@@ -105,14 +105,14 @@ local function GetOverworldLeafMaterial(): MaterialVariant?
 	return cachedOverworldLeafMaterial
 end
 
-local function GetOverworldMudMaterial(): MaterialVariant?
+local function getOverworldMudMaterial(): MaterialVariant?
 	cachedOverworldMudMaterial =
-		GetGroupedMaterial(OVERWORLD_MATERIAL_FOLDER_NAME, OVERWORLD_MUD_MATERIAL_NAME, cachedOverworldMudMaterial)
+		getGroupedMaterial(OVERWORLD_MATERIAL_FOLDER_NAME, OVERWORLD_MUD_MATERIAL_NAME, cachedOverworldMudMaterial)
 	return cachedOverworldMudMaterial
 end
 
-local function GetOverworldSandMaterial(): MaterialVariant?
-	cachedOverworldSandMaterial = GetGroupedMaterial(
+local function getOverworldSandMaterial(): MaterialVariant?
+	cachedOverworldSandMaterial = getGroupedMaterial(
 		OVERWORLD_MATERIAL_FOLDER_NAME,
 		OVERWORLD_SAND_MATERIAL_NAME,
 		cachedOverworldSandMaterial
@@ -120,8 +120,8 @@ local function GetOverworldSandMaterial(): MaterialVariant?
 	return cachedOverworldSandMaterial
 end
 
-local function GetOverworldSandstoneMaterial(): MaterialVariant?
-	cachedOverworldSandstoneMaterial = GetGroupedMaterial(
+local function getOverworldSandstoneMaterial(): MaterialVariant?
+	cachedOverworldSandstoneMaterial = getGroupedMaterial(
 		OVERWORLD_MATERIAL_FOLDER_NAME,
 		OVERWORLD_SANDSTONE_MATERIAL_NAME,
 		cachedOverworldSandstoneMaterial
@@ -129,15 +129,15 @@ local function GetOverworldSandstoneMaterial(): MaterialVariant?
 	return cachedOverworldSandstoneMaterial
 end
 
-local function GetSnowSnowMaterial(): MaterialVariant?
+local function getSnowSnowMaterial(): MaterialVariant?
 	cachedSnowSnowMaterial =
-		GetGroupedMaterial(SNOW_MATERIAL_FOLDER_NAME, SNOW_SNOW_MATERIAL_NAME, cachedSnowSnowMaterial)
+		getGroupedMaterial(SNOW_MATERIAL_FOLDER_NAME, SNOW_SNOW_MATERIAL_NAME, cachedSnowSnowMaterial)
 	return cachedSnowSnowMaterial
 end
 
-local function GetSnowIceMaterial(): MaterialVariant?
+local function getSnowIceMaterial(): MaterialVariant?
 	cachedSnowIceMaterial =
-		GetGroupedMaterial(SNOW_MATERIAL_FOLDER_NAME, SNOW_ICE_MATERIAL_NAME, cachedSnowIceMaterial)
+		getGroupedMaterial(SNOW_MATERIAL_FOLDER_NAME, SNOW_ICE_MATERIAL_NAME, cachedSnowIceMaterial)
 	return cachedSnowIceMaterial
 end
 
@@ -152,7 +152,7 @@ local function isOverworldMudBackedTile(tileId: number): boolean
 	return tileId == TILE_ID_MUD or tileId == TILE_ID_JUNGLE_GRASS
 end
 
-local function GetMaterialBaseMaterial(material: MaterialVariant?, fallbackMaterial: Enum.Material): Enum.Material
+local function getMaterialBaseMaterial(material: MaterialVariant?, fallbackMaterial: Enum.Material): Enum.Material
 	if material == nil then
 		return fallbackMaterial
 	end
@@ -168,7 +168,7 @@ local function GetMaterialBaseMaterial(material: MaterialVariant?, fallbackMater
 end
 
 local function applyMaterialVariant(part: BasePart, material: MaterialVariant?, fallbackMaterial: Enum.Material)
-	part.Material = GetMaterialBaseMaterial(material, fallbackMaterial)
+	part.Material = getMaterialBaseMaterial(material, fallbackMaterial)
 	if material ~= nil then
 		part.MaterialVariant = material.Name
 	end
@@ -176,12 +176,12 @@ local function applyMaterialVariant(part: BasePart, material: MaterialVariant?, 
 end
 
 function TileMaterial.ApplyWoodMaterial(part: BasePart)
-	local woodMaterial = GetOverworldWoodMaterial()
+	local woodMaterial = getOverworldWoodMaterial()
 	applyMaterialVariant(part, woodMaterial, Enum.Material.Wood)
 end
 
 function TileMaterial.ApplyLeafMaterial(part: BasePart)
-	local leafMaterial = GetOverworldLeafMaterial()
+	local leafMaterial = getOverworldLeafMaterial()
 	applyMaterialVariant(part, leafMaterial, Enum.Material.LeafyGrass)
 end
 
@@ -206,7 +206,7 @@ end
 function TileMaterial.ApplyTileMaterial(part: BasePart, tileId: number): boolean
 	part.MaterialVariant = ""
 	if isOverworldDirtBackedTile(tileId) then
-		local dirtMaterial = GetOverworldDirtMaterial()
+		local dirtMaterial = getOverworldDirtMaterial()
 		applyMaterialVariant(part, dirtMaterial, Enum.Material.Ground)
 
 		return tileId == TILE_ID_DIRT
@@ -219,42 +219,42 @@ function TileMaterial.ApplyTileMaterial(part: BasePart, tileId: number): boolean
 	end
 
 	if tileId == TILE_ID_STONE or tileId == TILE_ID_CORRUPT_STONE then
-		local stoneMaterial = GetOverworldStoneMaterial()
+		local stoneMaterial = getOverworldStoneMaterial()
 		applyMaterialVariant(part, stoneMaterial, Enum.Material.Slate)
 
 		return true
 	end
 
 	if tileId == TILE_ID_SAND then
-		local sandMaterial = GetOverworldSandMaterial()
+		local sandMaterial = getOverworldSandMaterial()
 		applyMaterialVariant(part, sandMaterial, Enum.Material.Sand)
 
 		return true
 	end
 
 	if tileId == TILE_ID_SANDSTONE then
-		local sandstoneMaterial = GetOverworldSandstoneMaterial()
+		local sandstoneMaterial = getOverworldSandstoneMaterial()
 		applyMaterialVariant(part, sandstoneMaterial, Enum.Material.Plastic)
 
 		return true
 	end
 
 	if tileId == TILE_ID_SNOW then
-		local snowMaterial = GetSnowSnowMaterial()
+		local snowMaterial = getSnowSnowMaterial()
 		applyMaterialVariant(part, snowMaterial, Enum.Material.Snow)
 
 		return true
 	end
 
 	if tileId == TILE_ID_ICE then
-		local iceMaterial = GetSnowIceMaterial()
+		local iceMaterial = getSnowIceMaterial()
 		applyMaterialVariant(part, iceMaterial, Enum.Material.Ice)
 
 		return true
 	end
 
 	if isOverworldMudBackedTile(tileId) then
-		local mudMaterial = GetOverworldMudMaterial()
+		local mudMaterial = getOverworldMudMaterial()
 		applyMaterialVariant(part, mudMaterial, Enum.Material.Mud)
 
 		return true

@@ -69,7 +69,7 @@ function Slime.RegisterEnemyHitbox(_self: any, service: Service, runtime: Runtim
 			return ownerRuntime.slime.model
 		end,
 		getCenter = function(ownerRuntime: Runtime): Vector3?
-			local center = service:GetUntimeHurtbox(ownerRuntime)
+			local center = service:GetRuntimeHurtbox(ownerRuntime)
 			return center
 		end,
 		getAlive = function(ownerRuntime: Runtime): boolean
@@ -82,7 +82,7 @@ function Slime.RegisterEnemyHitbox(_self: any, service: Service, runtime: Runtim
 			return service:CoerceNumber(ownerRuntime.slime.combat.attackCooldown, 0.85, 0.05, 30)
 		end,
 		getHurtboxSize = function(ownerRuntime: Runtime, _model: Model?, _rootPart: BasePart?): Vector3
-			local _, hurtboxSize = service:GetUntimeHurtbox(ownerRuntime)
+			local _, hurtboxSize = service:GetRuntimeHurtbox(ownerRuntime)
 			return hurtboxSize
 		end,
 		getAttackSize = function(ownerRuntime: Runtime, model: Model?, rootPart: BasePart?): Vector3
@@ -127,7 +127,7 @@ function Slime.RegisterEnemyHitbox(_self: any, service: Service, runtime: Runtim
 	end
 end
 
-function Slime.GetUntimeState(_self: typeof(Slime), _service: Service, runtime: Runtime): NpcRuntimeState
+function Slime.GetRuntimeState(_self: typeof(Slime), _service: Service, runtime: Runtime): NpcRuntimeState
 	local npc = runtime.npc
 	if not runtime.isAlive then
 		return "Dead"

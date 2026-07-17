@@ -2,8 +2,7 @@ local require = require(script.Parent.loader).load(script)
 
 local Players = game:GetService("Players")
 
-local AudioServiceUtils =
-	require(script:FindFirstAncestor("game").Shared.Source.Audio:WaitForChild("AudioServiceUtils"))
+local AudioServiceUtils = require("AudioServiceUtils")
 local PacketPayload = require("PacketPayload")
 local AudioServicePackets = require("NetPacketsServer").AudioService
 
@@ -55,6 +54,7 @@ end
 type AudioServiceState = AudioServiceUtils.AudioServiceState
 
 local AudioServiceServer = {}
+AudioServiceServer.ServiceName = "AudioServiceServer"
 
 local MISSING_ASSET_ERROR = "no asset found!"
 
@@ -64,7 +64,7 @@ local function fireForPlayers(players: { Player }, methodName: string, ...: any)
 	end
 end
 
-function AudioServiceServer.Init(self: AudioServiceServer)
+function AudioServiceServer.Init(self: AudioServiceServer, _serviceBag: any?)
 	self.playerStates = {}
 	bindPackets(self)
 

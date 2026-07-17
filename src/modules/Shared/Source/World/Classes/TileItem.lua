@@ -71,7 +71,7 @@ local TILE_ID_ALIAS = {
 	CorruptStone = "EbonStone",
 }
 
-local function GetDefinition(tileIdRaw: any): TileDefinition?
+local function getDefinition(tileIdRaw: any): TileDefinition?
 	if typeof(tileIdRaw) ~= "string" then
 		return nil
 	end
@@ -89,7 +89,7 @@ function TileItem.new(scope: any)
 end
 
 function TileItem:NewTile(tileIdRaw: any): Tool
-	local definition = GetDefinition(tileIdRaw)
+	local definition = getDefinition(tileIdRaw)
 	assert(definition ~= nil, "unknown tile item")
 
 	local scope = self._scope
@@ -142,7 +142,7 @@ function TileItem:NewTile(tileIdRaw: any): Tool
 		},
 	}
 end
-TileItem.GetDefinition = GetDefinition
+TileItem.GetDefinition = getDefinition
 
 export type TileItem = typeof(setmetatable({} :: { _scope: any }, TileItem))
 

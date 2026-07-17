@@ -238,7 +238,7 @@ local function clampNumber(valueRaw: any, fallback: number, minValue: number, ma
 	return value
 end
 
-local function CoerceViewport(viewportRaw: any): Vector2
+local function coerceViewport(viewportRaw: any): Vector2
 	if typeof(viewportRaw) == "Vector2" then
 		return Vector2.new(math.max(1, viewportRaw.X), math.max(1, viewportRaw.Y))
 	end
@@ -335,7 +335,7 @@ function PlatformServiceUtils.GetDeviceClass(
 	local platformKind = if platformKindRaw == "Touch" or platformKindRaw == "Gamepad"
 		then platformKindRaw
 		else "KeyboardMouse"
-	local viewport = CoerceViewport(viewportRaw)
+	local viewport = coerceViewport(viewportRaw)
 	local capabilities = if typeof(capabilitiesRaw) == "table"
 		then capabilitiesRaw
 		else {
@@ -379,7 +379,7 @@ function PlatformServiceUtils.CreatePlatformState(
 			gamepadEnabled = false,
 			basePrimaryInputType = nil,
 		}
-	local viewport = CoerceViewport(viewportRaw)
+	local viewport = coerceViewport(viewportRaw)
 	local platform = PlatformServiceUtils.GetPlatformKind(preferredInputRaw, lastInputTypeRaw, capabilities)
 	local deviceClass = PlatformServiceUtils.GetDeviceClass(platform, viewport, capabilities, isTenFootInterfaceRaw)
 	return {
@@ -468,7 +468,7 @@ local function bindingKeyCodeForPrompt(binding: ActionBinding): any
 	return nil
 end
 
-local function GetPromptText(binding: ActionBinding, touchPromptRaw: any): string
+local function getPromptText(binding: ActionBinding, touchPromptRaw: any): string
 	if typeof(binding.label) == "string" and binding.label ~= "" then
 		return binding.label
 	end
@@ -493,7 +493,7 @@ local function GetPromptText(binding: ActionBinding, touchPromptRaw: any): strin
 	return "Action"
 end
 
-local function GetPromptIcon(binding: ActionBinding, platformKind: PlatformKind, gamepadFamilyRaw: any): string?
+local function getPromptIcon(binding: ActionBinding, platformKind: PlatformKind, gamepadFamilyRaw: any): string?
 	if typeof(binding.icon) == "string" and binding.icon ~= "" then
 		return binding.icon
 	end
@@ -1116,8 +1116,8 @@ function PlatformServiceUtils.GetPromptForAction(
 		displayName = definition.displayName,
 		platform = platformKind,
 		deviceClass = deviceClass,
-		text = GetPromptText(binding, definition.touchPrompt),
-		icon = GetPromptIcon(binding, platformKind, gamepadFamilyRaw),
+		text = getPromptText(binding, definition.touchPrompt),
+		icon = getPromptIcon(binding, platformKind, gamepadFamilyRaw),
 		keyCode = binding.keyCode,
 		inputType = binding.inputType,
 		playerAction = binding.playerAction,

@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
+local ServiceBag = require("ServiceBag")
 local Configs = require("CoreConfigs")
 local CraftingServiceUtils = require("CraftingServiceUtils")
 local InventoryServiceClient = require("InventoryServiceClient")
@@ -74,6 +75,7 @@ type CachedRecipeList = {
 }
 
 local CraftingServiceClient = {}
+CraftingServiceClient.ServiceName = "CraftingServiceClient"
 
 local function trim(textRaw: any): string
 	if typeof(textRaw) ~= "string" then
@@ -466,7 +468,10 @@ function CraftingServiceClient.GetState(self: CraftingServiceClient): { [string]
 	}
 end
 
-function CraftingServiceClient.Init(self: CraftingServiceClient)
+function CraftingServiceClient.Init(self: CraftingServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	self.localPlayer = Players.LocalPlayer
 	self.config = CraftingServiceUtils.GetEffectiveConfig((Configs :: any).crafting)
 	self.registry = CraftingServiceUtils.GetRegistry(self.config)
@@ -556,8 +561,10 @@ function CraftingServiceClient.Destroy(self: CraftingServiceClient)
 	if self.janitor ~= nil then
 		self.janitor:Destroy()
 	end
+	self._serviceBag = nil
 end
 type CraftingServiceClient = typeof(CraftingServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
 	localPlayer: Player,
 	config: CraftingServiceConfig,
 	registry: RecipeRegistry,

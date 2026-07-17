@@ -167,14 +167,14 @@ local function clampNumber(valueRaw: any, minimum: number, maximum: number, fall
 	return math.clamp(valueRaw :: number, minimum, maximum)
 end
 
-local function CoerceOctaveCount(valueRaw: any, fallback: number): number
+local function coerceOctaveCount(valueRaw: any, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
 	return math.clamp(math.floor(valueRaw :: number), 1, 8)
 end
 
-local function CoerceInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+local function coerceInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
@@ -219,12 +219,12 @@ local function computeSeed(seed: number, x: number, y: number, salt: number): nu
 	return mixed
 end
 
-local function GetDesertStructureSettings(configRaw: any): DesertStructureSettings
+local function getDesertStructureSettings(configRaw: any): DesertStructureSettings
 	local settingsRaw = if typeof(configRaw) == "table" then (configRaw :: any).Structures else nil
 	local settings = if typeof(settingsRaw) == "table" then settingsRaw else {} :: any
 
 	return {
-		PyramidCellWidth = CoerceInteger(
+		PyramidCellWidth = coerceInteger(
 			settings.PyramidCellWidth,
 			96,
 			1024,
@@ -236,61 +236,61 @@ local function GetDesertStructureSettings(configRaw: any): DesertStructureSettin
 			1,
 			DEFAULT_DESERT_STRUCTURE_SETTINGS.PyramidSpawnChance
 		),
-		PyramidHalfWidthMin = CoerceInteger(
+		PyramidHalfWidthMin = coerceInteger(
 			settings.PyramidHalfWidthMin,
 			8,
 			80,
 			DEFAULT_DESERT_STRUCTURE_SETTINGS.PyramidHalfWidthMin
 		),
-		PyramidHalfWidthMax = CoerceInteger(
+		PyramidHalfWidthMax = coerceInteger(
 			settings.PyramidHalfWidthMax,
 			8,
 			96,
 			DEFAULT_DESERT_STRUCTURE_SETTINGS.PyramidHalfWidthMax
 		),
-		PyramidHeightMin = CoerceInteger(
+		PyramidHeightMin = coerceInteger(
 			settings.PyramidHeightMin,
 			6,
 			64,
 			DEFAULT_DESERT_STRUCTURE_SETTINGS.PyramidHeightMin
 		),
-		PyramidHeightMax = CoerceInteger(
+		PyramidHeightMax = coerceInteger(
 			settings.PyramidHeightMax,
 			6,
 			96,
 			DEFAULT_DESERT_STRUCTURE_SETTINGS.PyramidHeightMax
 		),
-		InteriorPadding = CoerceInteger(
+		InteriorPadding = coerceInteger(
 			settings.InteriorPadding,
 			2,
 			12,
 			DEFAULT_DESERT_STRUCTURE_SETTINGS.InteriorPadding
 		),
-		EdgeBufferTiles = CoerceInteger(
+		EdgeBufferTiles = coerceInteger(
 			settings.EdgeBufferTiles,
 			4,
 			64,
 			DEFAULT_DESERT_STRUCTURE_SETTINGS.EdgeBufferTiles
 		),
-		SurfaceVarianceTolerance = CoerceInteger(
+		SurfaceVarianceTolerance = coerceInteger(
 			settings.SurfaceVarianceTolerance,
 			2,
 			32,
 			DEFAULT_DESERT_STRUCTURE_SETTINGS.SurfaceVarianceTolerance
 		),
-		BuriedDepthMin = CoerceInteger(
+		BuriedDepthMin = coerceInteger(
 			settings.BuriedDepthMin,
 			0,
 			12,
 			DEFAULT_DESERT_STRUCTURE_SETTINGS.BuriedDepthMin
 		),
-		BuriedDepthMax = CoerceInteger(
+		BuriedDepthMax = coerceInteger(
 			settings.BuriedDepthMax,
 			0,
 			16,
 			DEFAULT_DESERT_STRUCTURE_SETTINGS.BuriedDepthMax
 		),
-		EntranceHeight = CoerceInteger(
+		EntranceHeight = coerceInteger(
 			settings.EntranceHeight,
 			2,
 			8,
@@ -356,7 +356,7 @@ function Structures.New(configRaw: any)
 	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
 	local tileId = (config :: any).tileId :: TileIdMap
 
-	local desertStructureSettings = GetDesertStructureSettings((config :: any).desertConfig)
+	local desertStructureSettings = getDesertStructureSettings((config :: any).desertConfig)
 	if desertStructureSettings.PyramidHalfWidthMax < desertStructureSettings.PyramidHalfWidthMin then
 		desertStructureSettings.PyramidHalfWidthMax = desertStructureSettings.PyramidHalfWidthMin
 	end
@@ -373,7 +373,7 @@ function Structures.New(configRaw: any)
 		biomeId = (config :: any).biomeId :: BiomeIdMap,
 		biomeType = (config :: any).biomeType :: BiomeTypeMap,
 		oreFrequency = clampNumber((config :: any).oreFrequency, 0.0001, 1, DEFAULT_ORE_FREQUENCY),
-		oreOctaves = CoerceOctaveCount((config :: any).oreOctaves, DEFAULT_ORE_OCTAVES),
+		oreOctaves = coerceOctaveCount((config :: any).oreOctaves, DEFAULT_ORE_OCTAVES),
 		oreLacunarity = clampNumber((config :: any).oreLacunarity, 1, 4, DEFAULT_ORE_LACUNARITY),
 		orePersistence = clampNumber((config :: any).orePersistence, 0.1, 0.95, DEFAULT_ORE_PERSISTENCE),
 		oreBlobFrequency = clampNumber((config :: any).oreBlobFrequency, 0.0001, 1, DEFAULT_ORE_BLOB_FREQUENCY),

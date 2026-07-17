@@ -279,7 +279,7 @@ return function()
 			)
 			local rootPart = BossServiceUtils.GetRootPart((boss :: any).model)
 			expect(rootPart ~= nil).to.equal(true)
-			expect((rootPart :: BasePart).Size).to.equal(Vector3.new(6, 13.5, 18))
+			expect((rootPart :: BasePart).Size).to.equal(Vector3.new(2, 13.5, 18))
 			expect(math.abs((rootPart :: BasePart).CFrame.UpVector.Y - 1) < 0.001).to.equal(true)
 			expect((boss :: any).state).to.equal("Phase1HoverIdle")
 

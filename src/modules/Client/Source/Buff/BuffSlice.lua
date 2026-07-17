@@ -51,7 +51,7 @@ local function cloneState(state: BuffState): BuffState
 	}
 end
 
-local function CoerceRecord(recordRaw: any): BuffRecord?
+local function coerceRecord(recordRaw: any): BuffRecord?
 	if typeof(recordRaw) ~= "table" then
 		return nil
 	end
@@ -78,7 +78,7 @@ local function CoerceRecord(recordRaw: any): BuffRecord?
 	return record
 end
 
-local function CoerceRecords(recordsRaw: any): { BuffRecord }
+local function coerceRecords(recordsRaw: any): { BuffRecord }
 	local source = getTableSource(recordsRaw)
 	if source == nil then
 		return {}
@@ -86,7 +86,7 @@ local function CoerceRecords(recordsRaw: any): { BuffRecord }
 
 	local records = {}
 	for _, recordRaw in source do
-		local record = CoerceRecord(recordRaw)
+		local record = coerceRecord(recordRaw)
 		if record ~= nil then
 			records[#records + 1] = record
 		end
@@ -95,7 +95,7 @@ local function CoerceRecords(recordsRaw: any): { BuffRecord }
 	return records
 end
 
-local function CoerceState(stateRaw: any, fallbackState: BuffState?): BuffState
+local function coerceState(stateRaw: any, fallbackState: BuffState?): BuffState
 	local sourceTable: any = if typeof(stateRaw) == "table" then stateRaw else {}
 	local updatedAt = sourceTable.updatedAt
 	local source = sourceTable.source
@@ -108,7 +108,7 @@ local function CoerceState(stateRaw: any, fallbackState: BuffState?): BuffState
 	end
 
 	return {
-		records = CoerceRecords(stateRaw),
+		records = coerceRecords(stateRaw),
 		updatedAt = updatedAt,
 		source = source,
 	}
@@ -170,14 +170,14 @@ local function getActiveRecords(): { BuffRecord }
 end
 
 local function setBuffState(stateRaw: any): BuffState
-	local nextState = CoerceState(stateRaw, buffStateAtom())
+	local nextState = coerceState(stateRaw, buffStateAtom())
 	buffStateAtom(nextState)
 	return cloneState(nextState)
 end
 
 local function setBuffRecords(recordsRaw: any, sourceRaw: any?): BuffState
 	local nextState: BuffState = {
-		records = CoerceRecords(recordsRaw),
+		records = coerceRecords(recordsRaw),
 		updatedAt = os.clock(),
 		source = if typeof(sourceRaw) == "string" and sourceRaw ~= "" then sourceRaw else nil,
 	}
@@ -211,8 +211,8 @@ return {
 	debuffsAtom = debuffsAtom,
 	recordCountAtom = recordCountAtom,
 	createDefaultState = createDefaultState,
-	CoerceRecords = CoerceRecords,
-	CoerceState = CoerceState,
+	CoerceRecords = coerceRecords,
+	CoerceState = coerceState,
 	getBuffState = getBuffState,
 	getRecords = getRecords,
 	getActiveRecords = getActiveRecords,

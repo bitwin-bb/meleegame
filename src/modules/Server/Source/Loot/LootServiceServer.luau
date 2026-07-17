@@ -2,14 +2,12 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local AudioRegistry = require("Audio")
 local AudioServiceServer = require("AudioServiceServer")
-local AudioServiceUtils =
-	require(script:FindFirstAncestor("game").Shared.Source.Audio:WaitForChild("AudioServiceUtils"))
+local AudioServiceUtils = require("AudioServiceUtils")
 local InstanceUtils = require("InstanceUtils")
 local InventoryServiceServer = require("InventoryServiceServer")
 local InventoryServiceUtils = require("InventoryServiceUtils")
@@ -54,12 +52,11 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local NevermoreSupport = require("NevermoreSupport")
-local PlayerDataServiceServer = require("PlayerDataServiceServer")
+local BinderSupportServer = require("BinderSupportServer")
 local GetItem = require("GetItem")
 local GetToolInstance = require("GetToolInstance")
+local PlayerDataServiceServer = require("PlayerDataServiceServer")
 local Ripple: any = require(ReplicatedStorage.Packages.Ripple)
-local BinderSupportServer = require("BinderSupportServer")
 local StringUtils = require("StringUtils")
 local Vec = require("Vec")
 local WorkspaceFolders = require("WorkspaceFolders")
@@ -170,6 +167,7 @@ type LootRuntime = {
 }
 
 local LootServiceServer = {}
+LootServiceServer.ServiceName = "LootServiceServer"
 
 local EPSILON = 1e-4
 local LOOT_FOLDER_NAME = "LootRuntime"
@@ -192,7 +190,7 @@ local LOOT_COIN_DROP_AUDIO = LOOT_AUDIO.CoinDrop or ({} :: any)
 local LOOT_COIN_PICKUP_AUDIO = LOOT_AUDIO.CoinPickup or ({} :: any)
 local LOOT_PICKUP_VOLUME = 1.5
 
-local function CoerceOwnerUserId(userIdRaw: any): number?
+local function coerceOwnerUserId(userIdRaw: any): number?
 	if typeof(userIdRaw) ~= "number" or userIdRaw ~= userIdRaw then
 		return nil
 	end
@@ -203,7 +201,7 @@ local function CoerceOwnerUserId(userIdRaw: any): number?
 	return userId
 end
 
-local function GetPlayerRootPart(player: Player): BasePart?
+local function getPlayerRootPart(player: Player): BasePart?
 	local character = player.Character
 	if character == nil then
 		return nil
@@ -326,7 +324,7 @@ function LootServiceServer.CaptureDropToolClones(
 		return {}
 	end
 
-	local amount = LootServiceUtils.GotRopAmount(amountRaw, 1)
+	local amount = LootServiceUtils.GetDropAmount(amountRaw, 1)
 	local remaining = math.max(0, math.floor(amount))
 	if remaining <= 0 then
 		return {}
@@ -370,7 +368,7 @@ function LootServiceServer.RestoreCachedDropTools(
 	runtime: LootRuntime,
 	amountRaw: any
 )
-	local amount = LootServiceUtils.GotRopAmount(amountRaw, 1)
+	local amount = LootServiceUtils.GetDropAmount(amountRaw, 1)
 	local remaining = math.max(0, math.floor(amount))
 	if remaining <= 0 then
 		return
@@ -518,7 +516,7 @@ function LootServiceServer.PlayPickupSound(self: LootServiceServer, runtime: Loo
 		return
 	end
 
-	local parent: Instance? = GetPlayerRootPart(player)
+	local parent: Instance? = getPlayerRootPart(player)
 	if parent == nil then
 		parent = player.Character
 	end
@@ -600,7 +598,7 @@ function LootServiceServer.CloneLootInstanceFromTemplate(
 	return clone, rootPart
 end
 
-function LootServiceServer.GetUntimePlaneX(self: LootServiceServer, runtime: LootRuntime): number?
+function LootServiceServer.GetRuntimePlaneX(self: LootServiceServer, runtime: LootRuntime): number?
 	if self.settings.lockTo2DPlane ~= true then
 		return nil
 	end
@@ -612,7 +610,7 @@ function LootServiceServer.ClampPositionToRuntimePlane(
 	runtime: LootRuntime,
 	positionRaw: Vector3
 ): Vector3
-	local planeX = self:GetUntimePlaneX(runtime)
+	local planeX = self:GetRuntimePlaneX(runtime)
 	if planeX == nil then
 		return positionRaw
 	end
@@ -620,7 +618,7 @@ function LootServiceServer.ClampPositionToRuntimePlane(
 end
 
 function LootServiceServer.ApplyRuntimePlaneConstraint(self: LootServiceServer, runtime: LootRuntime)
-	local planeX = self:GetUntimePlaneX(runtime)
+	local planeX = self:GetRuntimePlaneX(runtime)
 	if planeX == nil or runtime.disposed then
 		return
 	end
@@ -649,7 +647,7 @@ function LootServiceServer.SetRuntimePosition(self: LootServiceServer, runtime: 
 	end
 
 	(runtime.instance :: any):PivotTo(CFrame.new(position) * runtime.nativeRotation)
-	runtime.rootPart.AssemblyAngularVelocity = Vector3.zero;
+	runtime.rootPart.AssemblyAngularVelocity = Vector3.zero
 	runtime.lastKnownPosition = position
 end
 
@@ -809,7 +807,7 @@ function LootServiceServer.RemoveRuntimeById(self: LootServiceServer, lootIdRaw:
 end
 
 function LootServiceServer.ApplyDropImpulse(self: LootServiceServer, runtime: LootRuntime, throwDirectionRaw: any)
-	local isPlaneLocked = self:GetUntimePlaneX(runtime) ~= nil
+	local isPlaneLocked = self:GetRuntimePlaneX(runtime) ~= nil
 	local randomHorizontal =
 		Vector3.new(if isPlaneLocked then 0 else self.random:NextNumber(-1, 1), 0, self.random:NextNumber(-1, 1))
 	if randomHorizontal.Magnitude <= EPSILON then
@@ -894,7 +892,7 @@ function LootServiceServer.SpawnLootRuntime(
 	local metadata = if typeof((options :: any).metadata) == "table"
 		then LootServiceUtils.CloneDeep((options :: any).metadata)
 		else nil
-	local ownerUserId = CoerceOwnerUserId((options :: any).ownerUserId)
+	local ownerUserId = coerceOwnerUserId((options :: any).ownerUserId)
 	local ownerLockSeconds =
 		LootServiceUtils.CoerceNumber((options :: any).ownerLockSeconds, self.settings.ownerLockSeconds, 0, 120)
 	local now = os.clock()
@@ -978,7 +976,7 @@ function LootServiceServer.GetDropOriginForPlayer(
 	player: Player,
 	throwDirectionRaw: any
 ): Vector3
-	local rootPart = GetPlayerRootPart(player)
+	local rootPart = getPlayerRootPart(player)
 	if rootPart == nil then
 		return Vector3.zero
 	end
@@ -1013,7 +1011,7 @@ function LootServiceServer.SpawnDropsFromTable(
 
 	local drops: { LootRollResult } =
 		LootServiceUtils.RollDropTable(self.data, dropTableIdRaw, self.random, context :: LootRollContext)
-	local ownerUserId = CoerceOwnerUserId((options :: any).ownerUserId)
+	local ownerUserId = coerceOwnerUserId((options :: any).ownerUserId)
 	local ownerLockSeconds =
 		LootServiceUtils.CoerceNumber((options :: any).ownerLockSeconds, self.settings.ownerLockSeconds, 0, 120)
 
@@ -1057,7 +1055,7 @@ function LootServiceServer.SpawnDropsFromSource(
 	originRaw: any,
 	optionsRaw: any
 ): { [string]: any }
-	local dropTableId = LootServiceUtils.GotRopTableId(self.data, sourceRaw, "Slime")
+	local dropTableId = LootServiceUtils.GetDropTableId(self.data, sourceRaw, "Slime")
 	if dropTableId == nil then
 		return {}
 	end
@@ -1110,7 +1108,7 @@ function LootServiceServer.CollectPlayerContexts(
 	local contexts = {}
 	local contextsByPlayer = {}
 	for _, player in Players:GetPlayers() do
-		local rootPart = GetPlayerRootPart(player)
+		local rootPart = getPlayerRootPart(player)
 		if rootPart == nil then
 			continue
 		end
@@ -1488,7 +1486,7 @@ function LootServiceServer.DropFromInventorySlot(
 		return false
 	end
 
-	local dropAmount = LootServiceUtils.GotRopAmount(amountRaw, stack.amount)
+	local dropAmount = LootServiceUtils.GetDropAmount(amountRaw, stack.amount)
 	dropAmount = math.clamp(dropAmount, 1, stack.amount)
 
 	local stackSnapshot: InventoryItemStack = {
@@ -1581,7 +1579,7 @@ function LootServiceServer.RequestDropSelectedSlot(
 	self:DropFromInventorySlot(player, selectedSlot, amountRaw, throwDirectionRaw)
 end
 
-function LootServiceServer.Init(self: LootServiceServer)
+function LootServiceServer.Init(self: LootServiceServer, serviceBag: any)
 	bindPackets(self)
 	self.inventoryService = InventoryServiceServer :: any
 	self.playerDataService = PlayerDataServiceServer :: PlayerDataServiceServerObject
@@ -1599,7 +1597,7 @@ function LootServiceServer.Init(self: LootServiceServer)
 	self.lastDropRequestAtByPlayer = {}
 	self.simulationAccumulator = 0
 	self.lootFolder = self:EnsureLootFolder()
-	self.binders = NevermoreSupport.GetService(BinderSupportServer)
+	self.binders = serviceBag:GetService(BinderSupportServer)
 
 	self.inventoryService:SetDropFromSlotHandler(
 		function(player: Player, slotIndexRaw: any, amountRaw: any, throwDirectionRaw: any)

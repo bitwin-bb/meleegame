@@ -2,7 +2,6 @@ local require = require(script.Parent.loader).load(script)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local ServerScriptService = game:GetService("ServerScriptService")
 
 local BreathBinder = require("BreathBinder")
 local BreathServiceUtils = require("BreathServiceUtils")
@@ -55,9 +54,8 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local NevermoreSupport = require("NevermoreSupport")
-local PlayerServiceServer = require("PlayerServiceServer")
 local BinderSupportServer = require("BinderSupportServer")
+local PlayerServiceServer = require("PlayerServiceServer")
 local Signal = require("Signal")
 
 type BreathServiceConfig = BreathServiceUtils.BreathServiceConfig
@@ -85,15 +83,16 @@ type PlayerRuntime = {
 }
 
 local BreathServiceServer = {}
+BreathServiceServer.ServiceName = "BreathServiceServer"
 
-local function GetSourceConfig(): any
+local function getSourceConfig(): any
 	if typeof(Configs) ~= "table" then
 		return nil
 	end
 	return (Configs :: any).breath
 end
 
-function BreathServiceServer.CreateRuntime(self: BreathServiceServer): PlayerRuntime
+function BreathServiceServer.CreateRuntime(_self: BreathServiceServer): PlayerRuntime
 	return {
 		state = BreathServiceUtils.CreateDefaultState(),
 		lastDrowningDamageAt = -math.huge,
@@ -226,14 +225,14 @@ function BreathServiceServer.OnHeartbeat(self: BreathServiceServer, deltaTime: n
 	end
 end
 
-function BreathServiceServer.Init(self: BreathServiceServer)
-	self.config = BreathServiceUtils.CoerceConfig(GetSourceConfig(), nil)
+function BreathServiceServer.Init(self: BreathServiceServer, serviceBag: any)
+	self.config = BreathServiceUtils.CoerceConfig(getSourceConfig(), nil)
 	self.playerRuntimes = {} :: { [Player]: PlayerRuntime }
 	self.accumulator = 0
 	self.liquidService = LiquidServiceServer :: LiquidServiceServerObject
 	self.hpService = HpServiceServer :: any
 	self.breathDepleted = Signal.new();
-	(self :: any).binders = NevermoreSupport.GetService(BinderSupportServer)
+	(self :: any).binders = serviceBag:GetService(BinderSupportServer)
 
 	bindPackets(self)
 

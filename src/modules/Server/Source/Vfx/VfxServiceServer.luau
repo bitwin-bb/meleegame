@@ -19,8 +19,9 @@ end
 local VFXServiceUtils = require("VfxServiceUtils")
 
 local VFXServiceServer = {}
+VFXServiceServer.ServiceName = "VfxServiceServer"
 
-local function CoercePlayers(playersRaw: any): { Player }
+local function coercePlayers(playersRaw: any): { Player }
 	local players = {}
 	if typeof(playersRaw) ~= "table" then
 		return players
@@ -40,7 +41,7 @@ local function fireForPlayers(players: { Player }, methodName: string, ...: any)
 	end
 end
 
-function VFXServiceServer.Init(_self: VFXServiceServer) end
+function VFXServiceServer.Init(_self: VFXServiceServer, _serviceBag: any?) end
 
 function VFXServiceServer.PlayForPlayer(
 	_self: VFXServiceServer,
@@ -68,7 +69,7 @@ function VFXServiceServer.PlayForPlayers(
 	effectSourceRaw: any,
 	optionsRaw: any
 ): number
-	local players = CoercePlayers(playersRaw)
+	local players = coercePlayers(playersRaw)
 	if #players <= 0 then
 		return 0
 	end
@@ -114,7 +115,7 @@ function VFXServiceServer.StopChannelForPlayer(_self: VFXServiceServer, player: 
 end
 
 function VFXServiceServer.StopChannelForPlayers(_self: VFXServiceServer, playersRaw: any, channelNameRaw: any): number
-	local players = CoercePlayers(playersRaw)
+	local players = coercePlayers(playersRaw)
 	if #players <= 0 then
 		return 0
 	end
@@ -153,7 +154,7 @@ function VFXServiceServer.StopAllForPlayer(_self: VFXServiceServer, player: Play
 end
 
 function VFXServiceServer.StopAllForPlayers(_self: VFXServiceServer, playersRaw: any): number
-	local players = CoercePlayers(playersRaw)
+	local players = coercePlayers(playersRaw)
 	if #players <= 0 then
 		return 0
 	end

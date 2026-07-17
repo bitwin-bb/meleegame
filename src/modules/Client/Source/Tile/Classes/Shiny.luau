@@ -8,7 +8,7 @@ local Maid = require("Maid")
 local Rx: any = require("Rx")
 
 local BuildServiceUtils = require("BuildServiceUtils")
-local ShinySheet = require(script.Parent.Parent.Modules:WaitForChild("ShinySheet") :: any) :: any
+local ShinySheet = require("ShinySheet")
 local tileThunks = require("TileThunks")
 
 type MaidClass = any
@@ -48,14 +48,14 @@ local function createMaid(): MaidClass
 	return Maid.new() :: MaidClass
 end
 
-local function CoercePositiveNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
+local function coercePositiveNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
 	return math.clamp(valueRaw, minimum, maximum)
 end
 
-local function GetTileId(instance: Instance): number?
+local function getTileId(instance: Instance): number?
 	local tileId = instance:GetAttribute("TileId")
 	if typeof(tileId) == "number" and tileId == tileId then
 		return math.floor(tileId)
@@ -63,7 +63,7 @@ local function GetTileId(instance: Instance): number?
 	return nil
 end
 
-local function GetSurfaceFace(part: BasePart): Enum.NormalId
+local function getSurfaceFace(part: BasePart): Enum.NormalId
 	local camera = Workspace.CurrentCamera
 	if camera == nil then
 		return Enum.NormalId.Right
@@ -71,7 +71,7 @@ local function GetSurfaceFace(part: BasePart): Enum.NormalId
 	return if camera.CFrame.Position.X >= part.Position.X then Enum.NormalId.Right else Enum.NormalId.Left
 end
 
-local function GetTileSpan(instance: Instance, attributeName: string): number
+local function getTileSpan(instance: Instance, attributeName: string): number
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) ~= "number" or value ~= value then
 		return 1
@@ -79,9 +79,9 @@ local function GetTileSpan(instance: Instance, attributeName: string): number
 	return math.max(1, math.floor(value))
 end
 
-local function GetTileFacePixels(part: BasePart): number
-	local tileWidth = GetTileSpan(part, "TileWidth")
-	local tileHeight = GetTileSpan(part, "TileHeight")
+local function getTileFacePixels(part: BasePart): number
+	local tileWidth = getTileSpan(part, "TileWidth")
+	local tileHeight = getTileSpan(part, "TileHeight")
 	local tileStudsY = part.Size.Y / tileHeight
 	local tileStudsZ = part.Size.Z / tileWidth
 	return math.max(tileStudsY, tileStudsZ, 0.01) * SURFACE_PIXELS_PER_STUD
@@ -94,25 +94,25 @@ local function isOreName(valueRaw: any): boolean
 	return string.find(string.lower(valueRaw), "ore", 1, true) ~= nil
 end
 
-local function GetColumns(): number
-	local columns = math.max(1, math.floor(CoercePositiveNumber(ShinySheet.columns, 5, 1, 128)))
+local function getColumns(): number
+	local columns = math.max(1, math.floor(coercePositiveNumber(ShinySheet.columns, 5, 1, 128)))
 	return columns
 end
 
-local function GetOws(): number
-	return math.max(1, math.floor(CoercePositiveNumber(ShinySheet.rows, 1, 1, 128)))
+local function getRows(): number
+	return math.max(1, math.floor(coercePositiveNumber(ShinySheet.rows, 1, 1, 128)))
 end
 
-local function GetFrameRate(): number
-	return CoercePositiveNumber(ShinySheet.frameRate, DEFAULT_FRAME_RATE, 1, 120)
+local function getFrameRate(): number
+	return coercePositiveNumber(ShinySheet.frameRate, DEFAULT_FRAME_RATE, 1, 120)
 end
 
-local function GetFrameSize(): Vector2
+local function getFrameSize(): Vector2
 	return if typeof(ShinySheet.frameSize) == "Vector2" then ShinySheet.frameSize else Vector2.new(32, 32)
 end
 
-local function GetPlayTimeSeconds(): number
-	return (GetColumns() * GetOws()) / GetFrameRate()
+local function getPlayTimeSeconds(): number
+	return (getColumns() * getRows()) / getFrameRate()
 end
 
 function Shiny.IsOreTile(instanceRaw: any): boolean
@@ -125,7 +125,7 @@ function Shiny.IsOreTile(instanceRaw: any): boolean
 		return true
 	end
 
-	local tileId = GetTileId(instance)
+	local tileId = getTileId(instance)
 	if tileId ~= nil and ORE_TILE_IDS[tileId] == true then
 		return true
 	end
@@ -183,7 +183,7 @@ function Shiny.TrySpawnSpeck(self: Shiny)
 		return
 	end
 
-	local facePixels = GetTileFacePixels(self.part)
+	local facePixels = getTileFacePixels(self.part)
 	local sizePixels = math.floor(facePixels * self.random:NextNumber(SPECK_MIN_SCALE, SPECK_MAX_SCALE) + 0.5)
 	local speckMaid = createMaid()
 	local taskKey = {}
@@ -200,11 +200,11 @@ function Shiny.TrySpawnSpeck(self: Shiny)
 		id = speckId,
 		adornee = self.part,
 		image = ShinySheet.image,
-		columns = GetColumns(),
-		rows = GetOws(),
-		frameSize = GetFrameSize(),
-		frameRate = GetFrameRate(),
-		face = GetSurfaceFace(self.part),
+		columns = getColumns(),
+		rows = getRows(),
+		frameSize = getFrameSize(),
+		frameRate = getFrameRate(),
+		face = getSurfaceFace(self.part),
 		position = UDim2.fromScale(
 			self.random:NextNumber(SPECK_EDGE_PADDING_SCALE, 1 - SPECK_EDGE_PADDING_SCALE),
 			self.random:NextNumber(SPECK_EDGE_PADDING_SCALE, 1 - SPECK_EDGE_PADDING_SCALE)
@@ -212,7 +212,7 @@ function Shiny.TrySpawnSpeck(self: Shiny)
 		size = UDim2.fromOffset(sizePixels, sizePixels),
 	})
 
-	speckMaid:GiveTask(Rx.delayed(GetPlayTimeSeconds()):Subscribe(function()
+	speckMaid:GiveTask(Rx.delayed(getPlayTimeSeconds()):Subscribe(function()
 		if not self.destroyed then
 			self.maid[taskKey] = nil
 		end

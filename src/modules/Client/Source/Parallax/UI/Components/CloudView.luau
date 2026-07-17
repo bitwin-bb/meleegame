@@ -33,7 +33,7 @@ local function CloudImage(props: { cloud: CloudView }): React.ReactNode
 		ImageColor3 = cloud.imageColor,
 		ImageTransparency = imageTransparency,
 		ResampleMode = Enum.ResamplerMode.Pixelated,
-		ScaleType = Enum.ScaleType.Fit,
+		ScaleType = Enum.ScaleType.Stretch,
 		ZIndex = cloud.zIndex,
 	})
 end

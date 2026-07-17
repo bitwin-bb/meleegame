@@ -4,18 +4,25 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 
 local BuffConstants = require("BuffConstants")
-local BuffServiceClient = require("BuffServiceClient")
+local BuffServiceClientType = require("BuffServiceClient")
 local BuffSlice = require("BuffSlice")
 local Maid = require("Maid")
+local ServiceBag = require("ServiceBag")
 
 type BuffState = BuffSlice.BuffState
 
 local BuffThunks = {}
+BuffThunks.ServiceName = "BuffThunks"
 
 local runtime = {
 	started = false,
 	maid = nil :: any?,
+	service = nil :: BuffServiceClientType.BuffServiceClient?,
 }
+
+local function getBuffServiceClient(): BuffServiceClientType.BuffServiceClient
+	return assert(runtime.service, "Not initialized")
+end
 
 local function decodeReplicatedRecords(valueRaw: any): { any }
 	if typeof(valueRaw) ~= "string" or valueRaw == "" then
@@ -42,15 +49,16 @@ local function readPlayerSnapshot(): { any }
 end
 
 local function readServiceSnapshot(): { any }
+	local buffServiceClient = getBuffServiceClient()
 	local ok, records = pcall(function()
-		return BuffServiceClient:GetActive()
+		return buffServiceClient:GetActive()
 	end)
 	if ok and typeof(records) == "table" then
 		return records :: { any }
 	end
 
 	local snapshotOk, snapshot = pcall(function()
-		return BuffServiceClient:ReadReplicatedSnapshot()
+		return buffServiceClient:ReadReplicatedSnapshot()
 	end)
 	if snapshotOk and typeof(snapshot) == "table" and #snapshot > 0 then
 		return snapshot :: { any }
@@ -69,7 +77,11 @@ local function syncFromService(): BuffState
 	return applyRecords(readServiceSnapshot(), "Service")
 end
 
-function BuffThunks.Start(): () -> ()
+function BuffThunks.Init(_self: any, serviceBag: ServiceBag.ServiceBag)
+	runtime.service = serviceBag:GetService(BuffServiceClientType)
+end
+
+function BuffThunks.Start(): (() -> ())?
 	if runtime.started then
 		return BuffThunks.Stop
 	end
@@ -79,7 +91,7 @@ function BuffThunks.Start(): () -> ()
 	local maid: any = runtime.maid
 	syncFromService()
 
-	local activeChanged = (BuffServiceClient :: any).ActiveChanged
+	local activeChanged = (getBuffServiceClient() :: any).ActiveChanged
 	if typeof(activeChanged) == "table" and typeof(activeChanged.Connect) == "function" then
 		maid:GiveTask(activeChanged:Connect(function(nextRecords: { any })
 			applyRecords(nextRecords, "Service")
@@ -106,6 +118,11 @@ function BuffThunks.Stop()
 	runtime.maid = nil
 	runtime.started = false
 	BuffSlice.setBuffReady(false)
+end
+
+function BuffThunks.Destroy()
+	BuffThunks.Stop()
+	runtime.service = nil
 end
 
 function BuffThunks.SyncFromService(): BuffState

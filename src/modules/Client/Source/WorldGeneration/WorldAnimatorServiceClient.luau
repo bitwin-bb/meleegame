@@ -8,10 +8,11 @@ local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
+local ServiceBag = require("ServiceBag")
 local BinderSupportClient = require("BinderSupportClient")
 local Configs = require("CoreConfigs")
 local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
-local NevermoreSupport = require("NevermoreSupport")
+local String = require("String")
 local WorkspaceFolders = require("WorkspaceFolders")
 local WorldAnimatorServiceUtils = require("WorldAnimatorServiceUtils")
 
@@ -41,6 +42,12 @@ type ChunkAnimationState = {
 type StartAnimationResult = "started" | "retry" | "skip"
 
 local WorldAnimatorServiceClient = {}
+WorldAnimatorServiceClient.ServiceName = "WorldAnimatorServiceClient"
+
+local function createRuntimeInstanceName(): string
+	local guid = String.removePostfix(String.removePrefix(HttpService:GenerateGUID(true), "{"), "}")
+	return string.format("%03d", (tonumber(string.sub(guid, 1, 8), 16) or 0) % 1000)
+end
 
 local RUNTIME_FOLDER_NAME = "WorldAnimatorRuntime"
 local SKIP_WORLD_ANIMATOR_ATTRIBUTE = "SkipWorldAnimator"
@@ -88,7 +95,7 @@ local function clearCollectionTags(instance: Instance)
 	end
 end
 
-local function GetChunkIdentityKey(chunkModel: Model): string?
+local function getChunkIdentityKey(chunkModel: Model): string?
 	local chunkKeyRaw = chunkModel:GetAttribute("ChunkKey")
 	if typeof(chunkKeyRaw) == "string" and chunkKeyRaw ~= "" then
 		return chunkKeyRaw
@@ -109,7 +116,7 @@ local function GetChunkIdentityKey(chunkModel: Model): string?
 end
 
 local function hasSiblingChunkWithSameIdentity(chunkModel: Model): boolean
-	local identityKey = GetChunkIdentityKey(chunkModel)
+	local identityKey = getChunkIdentityKey(chunkModel)
 	if identityKey == nil then
 		return false
 	end
@@ -128,7 +135,7 @@ local function hasSiblingChunkWithSameIdentity(chunkModel: Model): boolean
 		end
 
 		local siblingModel = sibling :: Model
-		local siblingIdentityKey = GetChunkIdentityKey(siblingModel)
+		local siblingIdentityKey = getChunkIdentityKey(siblingModel)
 		if siblingIdentityKey ~= nil and siblingIdentityKey == identityKey then
 			return true
 		end
@@ -422,7 +429,7 @@ function WorldAnimatorServiceClient.StartChunkAnimation(
 	end
 
 	local visualClone = chunkModel:Clone()
-	visualClone.Name = HttpService:GenerateGUID(false)
+	visualClone.Name = createRuntimeInstanceName()
 	-- Visual clones must not keep gameplay tags, or binders/tag observers will recurse on them.
 	visualClone:SetAttribute(SKIP_WORLD_ANIMATOR_ATTRIBUTE, true)
 	clearCollectionTags(visualClone)
@@ -604,7 +611,13 @@ function WorldAnimatorServiceClient.TryBindExistingWorldFolder(self: WorldAnimat
 	end
 end
 
-function WorldAnimatorServiceClient.Init(self: WorldAnimatorServiceClient)
+function WorldAnimatorServiceClient.Init(
+	self: WorldAnimatorServiceClient,
+	serviceBag: ServiceBag.ServiceBag?
+)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	self.settings = WorldAnimatorServiceUtils.CreateSettingsFromConfigs(Configs)
 	self.janitor = Janitor.new()
 	self.worldFolderJanitor = Janitor.new()
@@ -619,7 +632,7 @@ function WorldAnimatorServiceClient.Init(self: WorldAnimatorServiceClient)
 	self.pendingChunks = {}
 	self.pendingChunkLookup = {}
 	self.renderConnection = nil :: RBXScriptConnection?
-	(self :: any).binders = NevermoreSupport.GetService(BinderSupportClient)
+	(self :: any).binders = if serviceBag ~= nil then serviceBag:GetService(BinderSupportClient) else nil
 
 	local function onWorldFolderAdded(child: Instance)
 		if child.Name ~= WorldAnimatorServiceUtils.WORLD_FOLDER_NAME then
@@ -666,8 +679,10 @@ function WorldAnimatorServiceClient.Destroy(self: WorldAnimatorServiceClient)
 
 	table.clear(self.pendingChunks)
 	table.clear(self.pendingChunkLookup)
+	self._serviceBag = nil
 end
 type WorldAnimatorServiceClient = typeof(WorldAnimatorServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
 	settings: ChunkAnimatorSettings,
 	janitor: JanitorClass,
 	worldFolderJanitor: JanitorClass,

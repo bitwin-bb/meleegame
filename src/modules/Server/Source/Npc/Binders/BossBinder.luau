@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local BossServiceUtils = require("BossServiceUtils")
@@ -9,7 +8,7 @@ local BossBinder = {}
 BossBinder.__index = BossBinder
 setmetatable(BossBinder, ModelBinder)
 
-local function GetBossId(self: any, model: Model): string
+local function getBossId(self: any, model: Model): string
 	local runtimeBossId = BossServiceUtils.GetBossIdFromInstance(model)
 	if runtimeBossId ~= nil then
 		return runtimeBossId
@@ -24,21 +23,21 @@ function BossBinder.new(instance: Instance, context: any)
 	local self = ModelBinder.new(instance, context, BossBinder)
 	self.model = self:GetModel()
 	if self.model ~= nil then
-		self:updateMetadata()
+		self:UpdateMetadata()
 	end
 	return self
 end
 
-function BossBinder.updateMetadata(self: any)
+function BossBinder.UpdateMetadata(self: any)
 	local model = self.model
 	if model == nil then
 		return
 	end
 
 	model:SetAttribute("BossBinderTagged", true)
-	model:SetAttribute("BossBinderBossId", GetBossId(self, model))
+	model:SetAttribute("BossBinderBossId", getBossId(self, model))
 
-	local runtimeId = BossServiceUtils.GetUntimeIdFromInstance(model)
+	local runtimeId = BossServiceUtils.GetRuntimeIdFromInstance(model)
 	if runtimeId ~= nil then
 		model:SetAttribute("BossBinderRuntimeId", runtimeId)
 	end

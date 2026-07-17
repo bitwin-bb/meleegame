@@ -49,22 +49,7 @@
           "Shared": {
             "$className": "Folder",
             "Source": {
-              "$path": "src/modules/Shared/Source",
-              "NpcDefinitions": {
-                "$path": "src/modules/Server/Source/Npc/Npc/Definitions.luau"
-              },
-              "EyeOfCthulhuBoss": {
-                "$className": "Folder",
-                "Motion": {
-                  "$path": "src/modules/Server/Source/Npc/Classes/Boss/EyeOfCthulhuBoss/Motion.luau"
-                },
-                "Presentation": {
-                  "$path": "src/modules/Server/Source/Npc/Classes/Boss/EyeOfCthulhuBoss/Presentation.luau"
-                }
-              },
-              "QueenBeeConfigs": {
-                "$path": "src/modules/Server/Source/Npc/Classes/Boss/QueenBeeBoss/QueenBeeConfigs.luau"
-              }
+              "$path": "src/modules/Shared/Source"
             },
             "Vendor": {
               "$className": "Folder",
@@ -86,7 +71,7 @@
               "RaycastHitbox": {
                 "$path": "src/modules/Shared/Vendor/raycasthitbox"
               },
-              "Table": {
+              "VendorTable": {
                 "$path": "src/modules/Shared/Vendor/table/src"
               },
               "TestEZ": {

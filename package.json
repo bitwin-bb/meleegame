@@ -4,12 +4,12 @@
   "packageManager": "pnpm@10.27.0",
   "scripts": {
     "build:sourcemap": "rojo sourcemap default.project.json --output sourcemap.json --absolute",
-    "format": "stylua --config-path=stylua.toml src",
-    "lint:luau": "luau-lsp analyze --no-strict-dm-types --sourcemap=sourcemap.json --base-luaurc=.luaurc --flag:LuauSolverV2=false --ignore=**/node_modules/** --ignore=**/Packages/** --ignore=**/ServerPackages/** --ignore=**/src/modules/Shared/Vendor/** --ignore=**/src/scripts/Client/PlayerModule/** --ignore=**/*.story.lua --ignore=**/*.client.lua --ignore=**/*.client.luau --ignore=**/*.server.lua --ignore=**/*.server.luau src",
+    "format": "stylua --config-path=stylua.toml --glob \"**/*.lua\" --glob \"**/*.luau\" --glob \"!src/modules/Shared/Vendor/**\" --glob \"!src/scripts/Client/PlayerModule/**\" -- src",
+    "lint:luau": "luau-lsp analyze --sourcemap=sourcemap.json --base-luaurc=.luaurc --defs=globalTypes.d.lua --flag:LuauSolverV2=false --ignore=**/node_modules/** --ignore=**/Packages/** --ignore=**/ServerPackages/** --ignore=**/src/modules/Shared/Vendor/** --ignore=**/src/scripts/Client/PlayerModule/** --ignore=**/*.story.lua --ignore=**/*.story.luau --ignore=**/*.client.lua --ignore=**/*.client.luau --ignore=**/*.server.lua --ignore=**/*.server.luau src",
     "lint:moonwave": "moonwave-extractor extract src",
-    "lint:selene": "selene --no-summary --config=selene.toml src",
-    "lint:stylua": "stylua --config-path=stylua.toml --check src",
-    "prelint:luau": "npm run build:sourcemap",
+    "lint:selene": "selene --no-summary --num-threads=1 --config=selene.toml src",
+    "lint:stylua": "stylua --config-path=stylua.toml --check --output-format=summary --glob \"**/*.lua\" --glob \"**/*.luau\" --glob \"!src/modules/Shared/Vendor/**\" --glob \"!src/scripts/Client/PlayerModule/**\" -- src",
+    "prelint:luau": "npm run build:sourcemap && npx @quenty/nevermore-cli tools download-roblox-types",
     "prelint:selene": "selene generate-roblox-std",
     "serve": "rojo serve default.project.json",
     "check:pascal-methods": "node tools/checkPascalMethods.js"

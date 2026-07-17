@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local AbbreviationFormatter = require("AbbreviationFormatter")
@@ -65,7 +64,7 @@ local function toNumber(valueRaw: any, fallback: number): number
 	return valueRaw
 end
 
-local function GetDefinition(defRaw: any, statId: string): StatDefinition
+local function getDefinition(defRaw: any, statId: string): StatDefinition
 	if typeof(defRaw) ~= "table" then
 		return {
 			id = statId,
@@ -139,7 +138,7 @@ function StatStringBuilder._read(self: StatStringBuilder, source: any, statId: s
 end
 
 function StatStringBuilder._formatValue(
-	self: StatStringBuilder,
+	_self: StatStringBuilder,
 	statId: string,
 	valueRaw: any,
 	formatRaw: any,
@@ -151,7 +150,7 @@ function StatStringBuilder._formatValue(
 end
 
 function StatStringBuilder._normalizeDefinitions(
-	self: StatStringBuilder,
+	_self: StatStringBuilder,
 	definitionsRaw: any,
 	currentSource: any
 ): { StatDefinition }
@@ -159,21 +158,21 @@ function StatStringBuilder._normalizeDefinitions(
 	if typeof(definitionsRaw) == "table" and #definitionsRaw > 0 then
 		for _, defRaw in definitionsRaw do
 			if typeof(defRaw) == "table" and typeof(defRaw.id) == "string" then
-				definitions[#definitions + 1] = GetDefinition(defRaw, defRaw.id)
+				definitions[#definitions + 1] = getDefinition(defRaw, defRaw.id)
 			end
 		end
 	else
 		if typeof(currentSource) == "table" then
 			for key in currentSource do
 				if typeof(key) == "string" then
-					definitions[#definitions + 1] = GetDefinition(nil, key)
+					definitions[#definitions + 1] = getDefinition(nil, key)
 				end
 			end
 		elseif typeof(currentSource) == "Instance" then
 			local attributes = currentSource:GetAttributes()
 			for key in attributes do
 				if typeof(key) == "string" then
-					definitions[#definitions + 1] = GetDefinition(nil, key)
+					definitions[#definitions + 1] = getDefinition(nil, key)
 				end
 			end
 		end
@@ -284,7 +283,7 @@ function StatStringBuilder.BuildTokens(
 	return tokens :: any
 end
 
-function StatStringBuilder.TokensToRichText(self: StatStringBuilder, tokensRaw: any): string
+function StatStringBuilder.TokensToRichText(_self: StatStringBuilder, tokensRaw: any): string
 	if typeof(tokensRaw) ~= "table" then
 		return ""
 	end

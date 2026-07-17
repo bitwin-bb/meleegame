@@ -7,7 +7,7 @@ local LayerBinder = {}
 LayerBinder.__index = LayerBinder
 setmetatable(LayerBinder, ModelBinder)
 
-local function GetNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
+local function getNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
@@ -15,7 +15,7 @@ local function GetNumberAttribute(instance: Instance, attributeName: string, fal
 	return value
 end
 
-local function GetLayerIndex(instance: Instance): number
+local function getLayerIndex(instance: Instance): number
 	local attributeValue = instance:GetAttribute("LayerIndex")
 	if typeof(attributeValue) == "number" then
 		return math.max(1, math.floor(attributeValue))
@@ -33,22 +33,22 @@ function LayerBinder.new(instance: Instance, context: any)
 	local self = ModelBinder.new(instance, context, LayerBinder)
 	self.parts = ModelBinder.CollectBaseParts(instance)
 
-	self:refresh()
+	self:Refresh()
 	self:ObserveAttribute("LayerTransparency", function()
-		self:refresh()
+		self:Refresh()
 	end)
 	self:ObserveAttribute("LayerVisible", function()
-		self:refresh()
+		self:Refresh()
 	end)
 
 	return self
 end
 
-function LayerBinder.refresh(self: any)
+function LayerBinder.Refresh(self: any)
 	local visible = self.instance:GetAttribute("LayerVisible") ~= false
-	local transparency = math.clamp(GetNumberAttribute(self.instance, "LayerTransparency", 0), 0, 1)
+	local transparency = math.clamp(getNumberAttribute(self.instance, "LayerTransparency", 0), 0, 1)
 	local localTransparencyModifier = if visible then transparency else 1
-	local layerIndex = GetLayerIndex(self.instance)
+	local layerIndex = getLayerIndex(self.instance)
 
 	self.instance:SetAttribute("LayerTagged", true)
 	self.instance:SetAttribute("LayerIndex", layerIndex)

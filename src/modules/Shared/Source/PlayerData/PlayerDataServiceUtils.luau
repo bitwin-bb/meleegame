@@ -40,28 +40,28 @@ local function trim(text: string): string
 	return string.match(text, "^%s*(.-)%s*$") or ""
 end
 
-local function CoerceBoolean(valueRaw: any, fallback: boolean): boolean
+local function coerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function CoerceWholeNumber(valueRaw: any, fallback: number): number
+local function coerceWholeNumber(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
 	return math.max(0, math.floor(valueRaw))
 end
 
-local function CoerceNonNegativeNumber(valueRaw: any, fallback: number): number
+local function coerceNonNegativeNumber(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
 	return math.max(0, valueRaw)
 end
 
-local function CoerceOptionalString(valueRaw: any): string?
+local function coerceOptionalString(valueRaw: any): string?
 	if typeof(valueRaw) ~= "string" then
 		return nil
 	end
@@ -230,7 +230,7 @@ function PlayerDataServiceUtils.HasGotState(stateRaw: any): boolean
 	end
 
 	local state = stateRaw :: { [string]: any }
-	if CoerceBoolean(state.hasInitialLoad, false) then
+	if coerceBoolean(state.hasInitialLoad, false) then
 		return true
 	end
 	return PlayerDataServiceUtils.IsTerminalLoadState(state.loadState)
@@ -260,13 +260,13 @@ function PlayerDataServiceUtils.CreateState(
 	local metadata = if typeof(metadataRaw) == "table" then metadataRaw :: { [string]: any } else {} :: any
 	local loadState = PlayerDataServiceUtils.CoerceLoadState(loadStateRaw, fallback.loadState)
 	local hasInitialLoad = if metadata.hasInitialLoad ~= nil
-		then CoerceBoolean(metadata.hasInitialLoad, PlayerDataServiceUtils.IsTerminalLoadState(loadState))
+		then coerceBoolean(metadata.hasInitialLoad, PlayerDataServiceUtils.IsTerminalLoadState(loadState))
 		else PlayerDataServiceUtils.IsTerminalLoadState(loadState)
 	local isLoading = if metadata.isLoading ~= nil
-		then CoerceBoolean(metadata.isLoading, loadState == LOAD_STATE_LOADING)
+		then coerceBoolean(metadata.isLoading, loadState == LOAD_STATE_LOADING)
 		else loadState == LOAD_STATE_LOADING
 	local lastFailureReason = if loadState == LOAD_STATE_FAILED
-		then CoerceOptionalString(metadata.lastFailureReason) or fallback.lastFailureReason
+		then coerceOptionalString(metadata.lastFailureReason) or fallback.lastFailureReason
 		else nil
 	return {
 		data = cloneDeepInternal(sourceData, {}),
@@ -274,10 +274,10 @@ function PlayerDataServiceUtils.CreateState(
 		updatedAt = os.clock(),
 		isLoading = isLoading,
 		hasInitialLoad = hasInitialLoad,
-		loadToken = CoerceWholeNumber(metadata.loadToken, fallback.loadToken),
+		loadToken = coerceWholeNumber(metadata.loadToken, fallback.loadToken),
 		lastFailureReason = lastFailureReason,
 		loadElapsedSeconds = if metadata.loadElapsedSeconds ~= nil
-			then CoerceNonNegativeNumber(metadata.loadElapsedSeconds, fallback.loadElapsedSeconds)
+			then coerceNonNegativeNumber(metadata.loadElapsedSeconds, fallback.loadElapsedSeconds)
 			else fallback.loadElapsedSeconds,
 	}
 end

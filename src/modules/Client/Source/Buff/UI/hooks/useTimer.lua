@@ -18,7 +18,7 @@ local DAY_SECONDS = 86400
 local HOUR_SECONDS = 3600
 local MINUTE_SECONDS = 60
 
-local function CoerceNumber(valueRaw: any): number?
+local function coerceNumber(valueRaw: any): number?
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return nil
 	end
@@ -44,18 +44,18 @@ local function abbreviateTime(secondsRaw: number?): string
 	return `{seconds}s`
 end
 
-local function GetEmainingSeconds(recordRaw: any, now: number): number?
+local function getRemainingSeconds(recordRaw: any, now: number): number?
 	if typeof(recordRaw) ~= "table" then
 		return nil
 	end
 
 	local record = recordRaw :: { [string]: any }
-	local remainingSeconds = CoerceNumber(record.remainingSeconds)
+	local remainingSeconds = coerceNumber(record.remainingSeconds)
 	if remainingSeconds ~= nil then
 		return remainingSeconds
 	end
 
-	local expiresAt = CoerceNumber(record.expiresAt)
+	local expiresAt = coerceNumber(record.expiresAt)
 	if expiresAt ~= nil then
 		return math.max(0, expiresAt - now)
 	end
@@ -63,12 +63,12 @@ local function GetEmainingSeconds(recordRaw: any, now: number): number?
 	return nil
 end
 
-local function GetProgress(recordRaw: any, remainingSeconds: number?): number
+local function getProgress(recordRaw: any, remainingSeconds: number?): number
 	if typeof(recordRaw) ~= "table" or remainingSeconds == nil then
 		return 0
 	end
 
-	local duration = CoerceNumber((recordRaw :: { [string]: any }).duration)
+	local duration = coerceNumber((recordRaw :: { [string]: any }).duration)
 	if duration == nil or duration <= 0 then
 		return 0
 	end
@@ -89,12 +89,12 @@ local function useTimer(recordRaw: any): TimerResult
 		}
 	)
 
-	local remainingSeconds = GetEmainingSeconds(recordRaw, now)
+	local remainingSeconds = getRemainingSeconds(recordRaw, now)
 	local isInfinite = remainingSeconds == nil
 	local result = {
 		text = abbreviateTime(remainingSeconds),
 		remainingSeconds = remainingSeconds,
-		progress = GetProgress(recordRaw, remainingSeconds),
+		progress = getProgress(recordRaw, remainingSeconds),
 		isInfinite = isInfinite,
 	}
 

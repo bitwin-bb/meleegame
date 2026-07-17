@@ -9,7 +9,7 @@ export type Options = {
 	returnNilIfEmpty: boolean?,
 }
 
-local function BuildAnimationMelee(sourceRaw: any, optionsRaw: any): { [string]: any }?
+local function buildAnimationMelee(sourceRaw: any, optionsRaw: any): { [string]: any }?
 	if typeof(sourceRaw) ~= "table" then
 		return nil
 	end
@@ -64,4 +64,4 @@ end)
 	}
 end
 
-return BuildAnimationMelee
+return buildAnimationMelee

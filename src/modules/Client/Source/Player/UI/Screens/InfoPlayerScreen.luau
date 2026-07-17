@@ -2,7 +2,6 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
@@ -12,10 +11,16 @@ local DropsInfo = require("DropsInfo")
 local NpcServiceUtils = require("NpcServiceUtils")
 local PlayerServiceUtils = require("PlayerServiceUtils")
 local React: any = require(ReplicatedStorage.Packages.React)
+local String = require("String")
 local infoPlayerSlice = require("InfoPlayerSlice")
 local infoPlayerThunks = require("InfoPlayerThunks")
 local useInfoPopUp = require("useInfoPopUp")
 local useStore = require("useCoreStore")
+
+local function createRuntimeInstanceName(): string
+	local guid = String.removePostfix(String.removePrefix(HttpService:GenerateGUID(true), "{"), "}")
+	return string.format("%03d", (tonumber(string.sub(guid, 1, 8), 16) or 0) % 1000)
+end
 
 type InfoPlayerState = infoPlayerSlice.InfoPlayerState
 type InfoPlayerPopup = infoPlayerSlice.InfoPlayerPopup
@@ -35,7 +40,7 @@ type PopupEntryProps = {
 
 local e: typeof(React.createElement) = React.createElement
 
-local function GetCharacterRootPart(localPlayer: Player): BasePart?
+local function getCharacterRootPart(localPlayer: Player): BasePart?
 	local character = localPlayer.Character
 	if character == nil then
 		return nil
@@ -53,7 +58,7 @@ local function GetCharacterRootPart(localPlayer: Player): BasePart?
 	return character:FindFirstChildWhichIsA("BasePart")
 end
 
-local function GetModelRootPart(model: Model?): BasePart?
+local function getModelRootPart(model: Model?): BasePart?
 	if model == nil then
 		return nil
 	end
@@ -75,7 +80,7 @@ local function GetModelRootPart(model: Model?): BasePart?
 	return model:FindFirstChildWhichIsA("BasePart", true)
 end
 
-local function GetUntimeModelByAttribute(attributeName: string, runtimeId: string): Model?
+local function getRuntimeModelByAttribute(attributeName: string, runtimeId: string): Model?
 	local gameFolder = PlayerServiceUtils.GetOrCreateWorkspaceGameFolder()
 	local searchRoots = { gameFolder, Workspace }
 	for _, root in searchRoots do
@@ -88,9 +93,9 @@ local function GetUntimeModelByAttribute(attributeName: string, runtimeId: strin
 	return nil
 end
 
-local function GetPopupTargetRootPart(localPlayer: Player, popup: InfoPlayerPopup): BasePart?
+local function getPopupTargetRootPart(localPlayer: Player, popup: InfoPlayerPopup): BasePart?
 	if popup.kind ~= "damage_dealt" then
-		return GetCharacterRootPart(localPlayer)
+		return getCharacterRootPart(localPlayer)
 	end
 
 	local runtimeId = popup.targetRuntimeId
@@ -109,10 +114,10 @@ local function GetPopupTargetRootPart(localPlayer: Player, popup: InfoPlayerPopu
 		return nil
 	end
 
-	return GetModelRootPart(GetUntimeModelByAttribute(runtimeAttribute, runtimeId))
+	return getModelRootPart(getRuntimeModelByAttribute(runtimeAttribute, runtimeId))
 end
 
-local function GetThemeByPopupKind(kind: infoPlayerSlice.InfoPlayerPopupKind): { [string]: any }
+local function getThemeByPopupKind(kind: infoPlayerSlice.InfoPlayerPopupKind): { [string]: any }
 	if kind == "damage_taken" then
 		return {
 			backgroundColor = Color3.fromRGB(36, 13, 17),
@@ -149,7 +154,7 @@ end
 
 local function PopupEntry(props: PopupEntryProps): React.ReactNode
 	local popup = props.popup
-	local targetRootPart = GetPopupTargetRootPart(props.localPlayer, popup)
+	local targetRootPart = getPopupTargetRootPart(props.localPlayer, popup)
 	local stackOffset = (props.index - 1) * 1.55
 	local popupZIndex = props.zIndex + props.index
 	local textValue = ""
@@ -173,7 +178,7 @@ local function PopupEntry(props: PopupEntryProps): React.ReactNode
 		minScale = 0.18,
 	})
 
-	local theme = GetThemeByPopupKind(popup.kind)
+	local theme = getThemeByPopupKind(popup.kind)
 	theme.titleTransparency = popUpAnimation.transparency
 	local renderedTextSize = math.max(6, math.floor(textSize * popUpAnimation.scale + 0.5))
 
@@ -186,7 +191,7 @@ local function PopupEntry(props: PopupEntryProps): React.ReactNode
 		end
 
 		local createdAnchor = Instance.new("Part")
-		createdAnchor.Name = HttpService:GenerateGUID(false)
+		createdAnchor.Name = createRuntimeInstanceName()
 		createdAnchor.Anchored = true
 		createdAnchor.CanCollide = false
 		createdAnchor.CanTouch = false

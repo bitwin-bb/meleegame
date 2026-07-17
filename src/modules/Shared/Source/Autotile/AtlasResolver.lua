@@ -2,6 +2,7 @@ local require = require(script.Parent.loader).load(script)
 
 local Table = require("Table")
 
+local BlendRule = require("BlendRule")
 local DirectionBits = require("DirectionBits")
 local MaskAliases = require("MaskAliases")
 local RectUtil = require("RectUtil")
@@ -48,16 +49,17 @@ local function resolveEntryVariant(entry: any, coordRaw: any, mask: number, seed
 	return entry
 end
 
-function AtlasResolver.Resolve(definitionRaw: any, maskRaw: any, coordRaw: any?, seedRaw: any?): any?
-	if typeof(definitionRaw) ~= "table" then
-		return nil
-	end
-	local definition = definitionRaw :: any
-	local requestedMask = if typeof(maskRaw) == "number"
-		then bit32.band(math.floor(maskRaw), DirectionBits.AllMask)
-		else 0
-	local entry, resolvedMask = getEntry(definition, requestedMask)
-	local selectedEntry = resolveEntryVariant(entry, coordRaw, resolvedMask, seedRaw or rawget(definition, "VariantSeed"))
+local function normalizeMask(maskRaw: any): number
+	return if typeof(maskRaw) == "number" then bit32.band(math.floor(maskRaw), DirectionBits.AllMask) else 0
+end
+
+local function createResult(
+	definition: any,
+	selectedEntry: any,
+	resolvedMask: number,
+	requestedMask: number,
+	mergeMask: number
+): any?
 	if typeof(selectedEntry) ~= "table" then
 		return nil
 	end
@@ -81,10 +83,41 @@ function AtlasResolver.Resolve(definitionRaw: any, maskRaw: any, coordRaw: any?,
 		ImageRectOffset = rect.ImageRectOffset,
 		ImageRectSize = rect.ImageRectSize,
 		Mask = resolvedMask,
+		MergeMask = mergeMask,
 		RequestedMask = requestedMask,
 		Cell = cell,
 		Entry = selectedEntry,
 	}
+end
+
+function AtlasResolver.ResolveMerged(
+	definitionRaw: any,
+	maskRaw: any,
+	mergeMaskRaw: any,
+	coordRaw: any?,
+	seedRaw: any?
+): any?
+	if typeof(definitionRaw) ~= "table" then
+		return nil
+	end
+
+	local definition = definitionRaw :: any
+	local requestedMask = normalizeMask(maskRaw)
+	local mergeMask = normalizeMask(mergeMaskRaw)
+	if BlendRule.IsDefinition(definition) then
+		local selectedEntry =
+			BlendRule.Resolve(requestedMask, mergeMask, rawget(definition, "RuleStrictness"), coordRaw, seedRaw)
+		return createResult(definition, selectedEntry, requestedMask, requestedMask, mergeMask)
+	end
+
+	local entry, resolvedMask = getEntry(definition, requestedMask)
+	local selectedEntry =
+		resolveEntryVariant(entry, coordRaw, resolvedMask, seedRaw or rawget(definition, "VariantSeed"))
+	return createResult(definition, selectedEntry, resolvedMask, requestedMask, mergeMask)
+end
+
+function AtlasResolver.Resolve(definitionRaw: any, maskRaw: any, coordRaw: any?, seedRaw: any?): any?
+	return AtlasResolver.ResolveMerged(definitionRaw, maskRaw, 0, coordRaw, seedRaw)
 end
 
 AtlasResolver.Get = AtlasResolver.Resolve

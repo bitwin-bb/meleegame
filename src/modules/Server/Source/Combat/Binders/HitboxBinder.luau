@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local ModelBinder = require("ModelBinder")
@@ -7,32 +6,7 @@ local HitboxBinder = {}
 HitboxBinder.__index = HitboxBinder
 setmetatable(HitboxBinder, ModelBinder)
 
-local bossServiceServer = nil
-local hpServiceServer = nil
-local npcServiceServer = nil
-
-local function getBossServiceServer()
-	if bossServiceServer == nil then
-		bossServiceServer = require("BossServiceServer")
-	end
-	return bossServiceServer
-end
-
-local function getHpServiceServer()
-	if hpServiceServer == nil then
-		hpServiceServer = require("HpServiceServer")
-	end
-	return hpServiceServer
-end
-
-local function getNpcServiceServer()
-	if npcServiceServer == nil then
-		npcServiceServer = require("NpcServiceServer")
-	end
-	return npcServiceServer
-end
-
-local function GetNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
+local function getNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
@@ -40,7 +14,7 @@ local function GetNumberAttribute(instance: Instance, attributeName: string, fal
 	return value
 end
 
-local function GetBooleanAttribute(instance: Instance, attributeName: string, fallback: boolean): boolean
+local function getBooleanAttribute(instance: Instance, attributeName: string, fallback: boolean): boolean
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) == "boolean" then
 		return value
@@ -48,30 +22,32 @@ local function GetBooleanAttribute(instance: Instance, attributeName: string, fa
 	return fallback
 end
 
-function HitboxBinder.new(instance: Instance, context: any)
+function HitboxBinder.new(instance: Instance, context: ModelBinder.BinderContext)
 	local self = ModelBinder.new(instance, context, HitboxBinder)
+	local dependencies = self:GetDependencies()
+	self.bossServiceServer = assert(dependencies.BossServiceServer, "BossServiceServer dependency is unavailable")
+	self.hpServiceServer = assert(dependencies.HpServiceServer, "HpServiceServer dependency is unavailable")
+	self.npcServiceServer = assert(dependencies.NpcServiceServer, "NpcServiceServer dependency is unavailable")
 	self.lastHitAt = {} :: { [Instance]: number }
-	self:refresh()
+	self:Refresh()
 	ModelBinder.BindTouchedParts(instance, self.janitor, function(_part: BasePart, other: BasePart)
-		self:onTouched(other)
+		self:OnTouched(other)
 	end)
 	return self
 end
 
-function HitboxBinder.refresh(self: any)
-	self.damage = math.max(
-		0,
-		GetNumberAttribute(self.instance, "HitboxDamage", GetNumberAttribute(self.instance, "Damage", 0))
-	)
-	self.interval = math.max(0.05, GetNumberAttribute(self.instance, "HitboxInterval", 0.2))
-	self.affectsPlayers = GetBooleanAttribute(self.instance, "HitboxAffectsPlayers", true)
-	self.affectsHumanoids = GetBooleanAttribute(self.instance, "HitboxAffectsHumanoids", true)
-	self.affectsNpcs = GetBooleanAttribute(self.instance, "HitboxAffectsNpcs", true)
-	self.affectsBosses = GetBooleanAttribute(self.instance, "HitboxAffectsBosses", true)
+function HitboxBinder.Refresh(self: any)
+	self.damage =
+		math.max(0, getNumberAttribute(self.instance, "HitboxDamage", getNumberAttribute(self.instance, "Damage", 0)))
+	self.interval = math.max(0.05, getNumberAttribute(self.instance, "HitboxInterval", 0.2))
+	self.affectsPlayers = getBooleanAttribute(self.instance, "HitboxAffectsPlayers", true)
+	self.affectsHumanoids = getBooleanAttribute(self.instance, "HitboxAffectsHumanoids", true)
+	self.affectsNpcs = getBooleanAttribute(self.instance, "HitboxAffectsNpcs", true)
+	self.affectsBosses = getBooleanAttribute(self.instance, "HitboxAffectsBosses", true)
 	self.instance:SetAttribute("HitboxTagged", true)
 end
 
-function HitboxBinder.onTouched(self: any, other: BasePart)
+function HitboxBinder.OnTouched(self: any, other: BasePart)
 	if self.damage <= 0 then
 		return
 	end
@@ -88,16 +64,16 @@ function HitboxBinder.onTouched(self: any, other: BasePart)
 	self.lastHitAt[cooldownKey] = now + self.interval
 
 	if player ~= nil and self.affectsPlayers then
-		getHpServiceServer():DamagePlayer(player, self.damage)
+		self.hpServiceServer:DamagePlayer(player, self.damage)
 		return
 	end
 
-	if self.affectsNpcs and getNpcServiceServer():DamageNpcFromHitPart(other, self.damage, self.instance) > 0 then
+	if self.affectsNpcs and self.npcServiceServer:DamageNpcFromHitPart(other, self.damage, self.instance) > 0 then
 		return
 	end
 	if
 		self.affectsBosses
-		and getBossServiceServer():DamageBossFromHitPart(other, self.damage, self.instance, "Hitbox") > 0
+		and self.bossServiceServer:DamageBossFromHitPart(other, self.damage, self.instance, "Hitbox") > 0
 	then
 		return
 	end

@@ -1,5 +1,7 @@
 local require = require(script.Parent.loader).load(script)
 
+local Table = require("Table")
+
 local WorldGenerationColor = require("WorldGenerationColor")
 
 local liquidDefinitions = WorldGenerationColor.LIQUID_DEFINITIONS
@@ -233,8 +235,8 @@ local Configs = {
 		enableClientReplication = false,
 	},
 
-	worldAnimatorSettings = {
-		enabled = true,
+	worldAnimatorSettings = Table.readonly({
+		enabled = false,
 		duration = 1,
 		animationType = "riseFade",
 		easing = "sine",
@@ -244,7 +246,7 @@ local Configs = {
 		maxConcurrentAnimations = 3,
 		animateExistingChunks = true,
 		maxAnimatedPartsPerChunk = 300,
-	},
+	}),
 
 	windFoliage = {
 		enabled = true,

@@ -18,7 +18,7 @@ export type TimeoutResult = {
 	restart: (nextDelaySeconds: number?) -> (),
 }
 
-local function CoerceDelaySeconds(valueRaw: any): number?
+local function coerceDelaySeconds(valueRaw: any): number?
 	if valueRaw == nil then
 		return nil
 	end
@@ -31,7 +31,7 @@ end
 local function useTimeout(callbackRaw: any, delaySecondsRaw: any, options: TimeoutOptions?): TimeoutResult
 	local enabled = if options ~= nil and options.enabled ~= nil then options.enabled == true else true
 	local autoStart = if options ~= nil and options.autoStart ~= nil then options.autoStart == true else true
-	local delaySeconds = CoerceDelaySeconds(delaySecondsRaw)
+	local delaySeconds = coerceDelaySeconds(delaySecondsRaw)
 	local callback = useStableCallback(callbackRaw)
 	local generationRef = React.useRef(0)
 	local threadRef = React.useRef(nil :: thread?)
@@ -51,7 +51,7 @@ local function useTimeout(callbackRaw: any, delaySecondsRaw: any, options: Timeo
 			return
 		end
 
-		local nextDelaySeconds = CoerceDelaySeconds(nextDelaySecondsRaw)
+		local nextDelaySeconds = coerceDelaySeconds(nextDelaySecondsRaw)
 		if nextDelaySeconds == nil then
 			return
 		end

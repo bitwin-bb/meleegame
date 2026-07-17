@@ -14,7 +14,7 @@ export type ToggleResult = {
 	reset: () -> boolean,
 }
 
-local function GetToggleValue(current: boolean, nextValueRaw: ToggleSetter): boolean
+local function getToggleValue(current: boolean, nextValueRaw: ToggleSetter): boolean
 	if typeof(nextValueRaw) == "function" then
 		return ((nextValueRaw :: any)(current) == true)
 	end
@@ -27,7 +27,7 @@ local function useToggle(initialValueRaw: any): ToggleResult
 	local value, setValue = React.useState(initialValue)
 
 	local set = React.useCallback(function(nextValueRaw: ToggleSetter): boolean
-		local nextValue = GetToggleValue(valueRef.current, nextValueRaw)
+		local nextValue = getToggleValue(valueRef.current, nextValueRaw)
 		valueRef.current = nextValue
 		setValue(nextValue)
 		return nextValue

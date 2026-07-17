@@ -17,7 +17,7 @@ local STATION_ID_BY_TAG = {
 
 function StationBinder.new(instance: Instance, context: any)
 	local self = ModelBinder.new(instance, context, StationBinder)
-	self:updateMetadata()
+	self:UpdateMetadata()
 	return self
 end
 
@@ -36,7 +36,7 @@ function StationBinder.GetStationId(self: any): string
 	return "Station"
 end
 
-function StationBinder.updateMetadata(self: any)
+function StationBinder.UpdateMetadata(self: any)
 	local stationId = self:GetStationId()
 	self.instance:SetAttribute("StationTagged", true)
 	self.instance:SetAttribute("StationId", stationId)

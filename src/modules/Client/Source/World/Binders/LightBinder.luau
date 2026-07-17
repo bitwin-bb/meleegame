@@ -1,16 +1,21 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local HttpService = game:GetService("HttpService")
 local RunService = game:GetService("RunService")
 
 local ModelBinder = require("ModelBinder")
+local String = require("String")
 
 local LightBinder = {}
 LightBinder.__index = LightBinder
 setmetatable(LightBinder, ModelBinder)
 
-local function GetNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
+local function createRuntimeInstanceName(): string
+	local guid = String.removePostfix(String.removePrefix(HttpService:GenerateGUID(true), "{"), "}")
+	return string.format("%03d", (tonumber(string.sub(guid, 1, 8), 16) or 0) % 1000)
+end
+
+local function getNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
@@ -18,7 +23,7 @@ local function GetNumberAttribute(instance: Instance, attributeName: string, fal
 	return value
 end
 
-local function GetBooleanAttribute(instance: Instance, attributeName: string, fallback: boolean): boolean
+local function getBooleanAttribute(instance: Instance, attributeName: string, fallback: boolean): boolean
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) == "boolean" then
 		return value
@@ -35,12 +40,12 @@ function LightBinder.new(instance: Instance, context: any)
 
 	if #self.lights <= 0 and self.rootPart ~= nil then
 		local attachment = Instance.new("Attachment")
-		attachment.Name = HttpService:GenerateGUID(false)
+		attachment.Name = createRuntimeInstanceName()
 		attachment.Parent = self.rootPart
 		self:AddCleanup(attachment)
 
 		local light = Instance.new("PointLight")
-		light.Name = HttpService:GenerateGUID(false)
+		light.Name = createRuntimeInstanceName()
 		light.Parent = attachment
 		self:AddCleanup(light)
 
@@ -48,38 +53,38 @@ function LightBinder.new(instance: Instance, context: any)
 		self.lights = { light }
 	end
 
-	self:refresh()
+	self:Refresh()
 	self:ObserveAttribute("LightEnabled", function()
-		self:refresh()
+		self:Refresh()
 	end)
 	self:ObserveAttribute("LightBrightness", function()
-		self:refresh()
+		self:Refresh()
 	end)
 	self:ObserveAttribute("LightRange", function()
-		self:refresh()
+		self:Refresh()
 	end)
 	self:ObserveAttribute("LightColor", function()
-		self:refresh()
+		self:Refresh()
 	end)
 	self:ObserveAttribute("LightShadows", function()
-		self:refresh()
+		self:Refresh()
 	end)
 	self:ObserveAttribute("LightFlickerAmount", function()
-		self:refresh()
+		self:Refresh()
 	end)
 	self:Connect(RunService.RenderStepped, function()
-		self:step()
+		self:Step()
 	end)
 
 	return self
 end
 
-function LightBinder.refresh(self: any)
-	self.enabled = GetBooleanAttribute(self.instance, "LightEnabled", true)
-	self.baseBrightness = GetNumberAttribute(self.instance, "LightBrightness", 2.1)
-	self.range = GetNumberAttribute(self.instance, "LightRange", 15)
-	self.flickerAmount = math.clamp(GetNumberAttribute(self.instance, "LightFlickerAmount", 0.12), 0, 0.75)
-	self.shadows = GetBooleanAttribute(self.instance, "LightShadows", true)
+function LightBinder.Refresh(self: any)
+	self.enabled = getBooleanAttribute(self.instance, "LightEnabled", true)
+	self.baseBrightness = getNumberAttribute(self.instance, "LightBrightness", 2.1)
+	self.range = getNumberAttribute(self.instance, "LightRange", 15)
+	self.flickerAmount = math.clamp(getNumberAttribute(self.instance, "LightFlickerAmount", 0.12), 0, 0.75)
+	self.shadows = getBooleanAttribute(self.instance, "LightShadows", true)
 	self.color = if typeof(self.instance:GetAttribute("LightColor")) == "Color3"
 		then self.instance:GetAttribute("LightColor") :: Color3
 		else Color3.fromRGB(255, 196, 125)
@@ -97,7 +102,7 @@ function LightBinder.refresh(self: any)
 	end
 end
 
-function LightBinder.step(self: any)
+function LightBinder.Step(self: any)
 	if not self.enabled or #self.lights <= 0 then
 		return
 	end

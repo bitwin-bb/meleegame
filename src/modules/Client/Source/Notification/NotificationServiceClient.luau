@@ -1,9 +1,10 @@
-
 local require = require(script.Parent.loader).load(script)
 
+local ServiceBag = require("ServiceBag")
 local SnackbarNotifications = require("FeatureSnackbarNotifications")
 
 local NotificationServiceClient = {}
+NotificationServiceClient.ServiceName = "NotificationServiceClient"
 
 export type NotificationOptions = {
 	clearQueue: boolean?,
@@ -12,8 +13,9 @@ export type NotificationOptions = {
 	duration: number?,
 }
 
-function NotificationServiceClient.Init(_self: any)
-	return nil
+function NotificationServiceClient.Init(self: any, serviceBag: ServiceBag.ServiceBag)
+	self._serviceBag = serviceBag
+	SnackbarNotifications.Init(serviceBag)
 end
 
 function NotificationServiceClient.NotifyText(_self: any, textRaw: any, optionsRaw: NotificationOptions?): any
@@ -35,4 +37,10 @@ end
 function NotificationServiceClient.ShowCraftResult(_self: any, resultRaw: any, craftingServiceRaw: any)
 	return SnackbarNotifications.ShowCraftResult(resultRaw, craftingServiceRaw)
 end
+
+function NotificationServiceClient.Destroy(self: any)
+	SnackbarNotifications.Destroy()
+	self._serviceBag = nil
+end
+
 return NotificationServiceClient

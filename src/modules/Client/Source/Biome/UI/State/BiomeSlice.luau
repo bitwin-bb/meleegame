@@ -27,14 +27,14 @@ local DEFAULT_STATE: BiomeState = {
 
 local biomeStateAtom: Charm.Atom<BiomeState> = Charm.atom(DEFAULT_STATE)
 
-local function CoerceBiomeKey(valueRaw: any): string?
+local function coerceBiomeKey(valueRaw: any): string?
 	if typeof(valueRaw) == "string" and valueRaw ~= "" then
 		return valueRaw
 	end
 	return nil
 end
 
-local function CoerceBiomeName(valueRaw: any, fallback: string): string
+local function coerceBiomeName(valueRaw: any, fallback: string): string
 	if typeof(valueRaw) == "string" and valueRaw ~= "" then
 		return valueRaw
 	end
@@ -49,8 +49,8 @@ local function setBiomeState(stateRaw: any): BiomeState
 	local current = biomeStateAtom()
 	local source = if typeof(stateRaw) == "table" then stateRaw else {} :: any
 	local visible = (source :: any).visible == true
-	local biomeKey = CoerceBiomeKey((source :: any).biomeKey)
-	local biomeName = CoerceBiomeName((source :: any).biomeName, current.biomeName)
+	local biomeKey = coerceBiomeKey((source :: any).biomeKey)
+	local biomeName = coerceBiomeName((source :: any).biomeName, current.biomeName)
 	local enteredAtRaw = (source :: any).enteredAt
 	local enteredAt = if typeof(enteredAtRaw) == "number" and enteredAtRaw == enteredAtRaw
 		then enteredAtRaw
@@ -83,8 +83,8 @@ end
 local function showBiomeName(payloadRaw: any): BiomeState
 	local current = biomeStateAtom()
 	local payload = if typeof(payloadRaw) == "table" then payloadRaw else {} :: any
-	local biomeKey = CoerceBiomeKey((payload :: any).biomeKey)
-	local biomeName = CoerceBiomeName((payload :: any).biomeName, current.biomeName)
+	local biomeKey = coerceBiomeKey((payload :: any).biomeKey)
+	local biomeName = coerceBiomeName((payload :: any).biomeName, current.biomeName)
 
 	local nextState: BiomeState = {
 		visible = biomeKey ~= nil and biomeName ~= "",

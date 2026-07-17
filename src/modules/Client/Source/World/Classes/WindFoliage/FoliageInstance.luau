@@ -92,7 +92,7 @@ local function clampNumber(valueRaw: any, fallback: number, minimum: number, max
 	return value
 end
 
-local function CoerceString(valueRaw: any, fallback: string): string
+local function coerceString(valueRaw: any, fallback: string): string
 	return if typeof(valueRaw) == "string" and valueRaw ~= "" then valueRaw else fallback
 end
 
@@ -148,7 +148,7 @@ local function normalizeRepresentation(valueRaw: any): Representation
 	return DEFAULT_REPRESENTATION
 end
 
-local function GetBasePartFromInstance(instance: Instance): BasePart?
+local function getBasePartFromInstance(instance: Instance): BasePart?
 	if instance:IsA("BasePart") then
 		return instance
 	end
@@ -229,7 +229,7 @@ local function normalizePivotMode(valueRaw: any): string
 	return "Auto"
 end
 
-local function GetPartPivotFrame(part: BasePart, config: Config): CFrame
+local function getPartPivotFrame(part: BasePart, config: Config): CFrame
 	local pivotOffset = if typeof(config.pivotOffset) == "Vector3" then config.pivotOffset else ZERO
 	local pivotAttachment = findAttachmentByName(part, config.pivotAttachmentName)
 	local pivotMode = normalizePivotMode(config.pivotMode)
@@ -246,7 +246,7 @@ local function GetPartPivotFrame(part: BasePart, config: Config): CFrame
 	return part.CFrame * CFrame.new(localOffset)
 end
 
-local function GetModelPivotFrame(model: Model, config: Config): CFrame
+local function getModelPivotFrame(model: Model, config: Config): CFrame
 	local pivotOffset = if typeof(config.pivotOffset) == "Vector3" then config.pivotOffset else ZERO
 	local pivotAttachment = findAttachmentByName(model, config.pivotAttachmentName)
 	local pivotMode = normalizePivotMode(config.pivotMode)
@@ -281,7 +281,7 @@ local function countDepth(instance: Instance): number
 	return depth
 end
 
-local function GetBoneNames(config: Config): { string }
+local function getBoneNames(config: Config): { string }
 	local raw = config.boneNames
 	if typeof(raw) ~= "table" then
 		return {}
@@ -296,7 +296,7 @@ local function GetBoneNames(config: Config): { string }
 end
 
 local function collectBones(root: Instance, config: Config): { BoneRecord }
-	local requestedNames = GetBoneNames(config)
+	local requestedNames = getBoneNames(config)
 	local bones = {}
 
 	if #requestedNames > 0 then
@@ -343,7 +343,7 @@ local function collectBones(root: Instance, config: Config): { BoneRecord }
 	return records
 end
 
-local function GetEferenceFrame(instance: Instance): CFrame
+local function getReferenceFrame(instance: Instance): CFrame
 	if instance:IsA("Bone") then
 		local ok, worldCFrame = pcall(function()
 			return instance.WorldCFrame
@@ -355,7 +355,7 @@ local function GetEferenceFrame(instance: Instance): CFrame
 	if instance:IsA("Model") then
 		return safeModelPivot(instance)
 	end
-	local part = GetBasePartFromInstance(instance)
+	local part = getBasePartFromInstance(instance)
 	if part ~= nil then
 		return part.CFrame
 	end
@@ -410,7 +410,7 @@ function FoliageInstance.New(instanceRaw: any, configRaw: Config?): FoliageInsta
 
 	local janitor = Janitor.new()
 	local motionStyle = normalizeMotionStyle(config.motionStyle or DEFAULT_MOTION_STYLE)
-	local referenceFrame = GetEferenceFrame(instance)
+	local referenceFrame = getReferenceFrame(instance)
 	local objectHeight = getInstanceHeight(instance)
 	local phaseOffset = (config.seed % 100000) / 100000 * math.pi * 2
 	local amplitudeScale = 0.92 + ((config.seed % 8191) / 8191) * 0.18
@@ -420,7 +420,7 @@ function FoliageInstance.New(instanceRaw: any, configRaw: Config?): FoliageInsta
 		instance = instance,
 		representation = representation,
 		motionStyle = motionStyle,
-		presetName = CoerceString(config.presetName, "GrassLight"),
+		presetName = coerceString(config.presetName, "GrassLight"),
 		bucketIndex = config.bucketIndex,
 		janitor = janitor,
 		config = config,
@@ -459,7 +459,7 @@ function FoliageInstance.New(instanceRaw: any, configRaw: Config?): FoliageInsta
 			self.rootPosition = treeGraph:GetRootPosition()
 		else
 			local restCFrame = safeModelPivot(model)
-			local restPivotFrame = GetModelPivotFrame(model, config)
+			local restPivotFrame = getModelPivotFrame(model, config)
 			self.model = model
 			self.restCFrame = restCFrame
 			self.restPivotFrame = restPivotFrame
@@ -470,7 +470,7 @@ function FoliageInstance.New(instanceRaw: any, configRaw: Config?): FoliageInsta
 	elseif representation == "BasePart" then
 		local part = instance :: BasePart
 		local restCFrame = part.CFrame
-		local restPivotFrame = GetPartPivotFrame(part, config)
+		local restPivotFrame = getPartPivotFrame(part, config)
 		self.part = part
 		self.restCFrame = restCFrame
 		self.restPivotFrame = restPivotFrame
@@ -483,7 +483,7 @@ function FoliageInstance.New(instanceRaw: any, configRaw: Config?): FoliageInsta
 			janitor:Destroy()
 			return nil
 		end
-		self.referenceFrame = GetEferenceFrame(instance)
+		self.referenceFrame = getReferenceFrame(instance)
 		self.rootPosition = self.referenceFrame.Position
 	end
 

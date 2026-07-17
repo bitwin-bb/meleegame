@@ -9,6 +9,7 @@ local Camera: any = require("CameraClass")
 local CameraServiceUtils: any = require("CameraServiceUtils")
 local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
+local ServiceBag = require("ServiceBag")
 local CameraServicePackets = require("NetPacketsShared").CameraService
 
 local function sendPacket(methodName: string, ...: any)
@@ -58,8 +59,12 @@ type CameraState = any
 type JanitorClass = any
 
 local CameraServiceClient = {}
+CameraServiceClient.ServiceName = "CameraServiceClient"
 
-function CameraServiceClient.Init(self: CameraServiceClient)
+function CameraServiceClient.Init(self: CameraServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
@@ -177,7 +182,7 @@ function CameraServiceClient.UseIsometric(self: CameraServiceClient)
 	self:SetMode("Isometric")
 end
 
-function CameraServiceClient.RequestSync(self: CameraServiceClient)
+function CameraServiceClient.RequestSync(_self: CameraServiceClient)
 	sendPacket("requestSync")
 end
 
@@ -193,8 +198,10 @@ function CameraServiceClient.Destroy(self: CameraServiceClient)
 	if self.janitor then
 		self.janitor:Destroy()
 	end
+	self._serviceBag = nil
 end
 type CameraServiceClient = typeof(CameraServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
 	localPlayer: Player,
 	cameraController: Camera.Camera,
 	janitor: JanitorClass,

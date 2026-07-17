@@ -145,7 +145,7 @@ local function normalizeAnimationMode(modeRaw: any): string
 	return "Sequence"
 end
 
-local function GetClipAnimationId(clipRaw: { [string]: any }): string?
+local function getClipAnimationId(clipRaw: { [string]: any }): string?
 	local animationId = normalizeAnimationId(clipRaw.id)
 	if animationId ~= nil then
 		return animationId
@@ -193,7 +193,7 @@ local function isAnimationClipTable(valueRaw: any): boolean
 		or value.animId ~= nil
 end
 
-local function GetAnimationConfigClips(configRaw: any): any
+local function getAnimationConfigClips(configRaw: any): any
 	if configRaw == nil then
 		return {}
 	end
@@ -229,7 +229,7 @@ local function normalizeNamedAnimationClip(
 		animation = clipRaw
 	end
 
-	local animationId = GetClipAnimationId(clipTable)
+	local animationId = getClipAnimationId(clipTable)
 	if animationId == nil and animation ~= nil then
 		animationId = normalizeAnimationId(animation.AnimationId)
 	end
@@ -274,7 +274,7 @@ local function mergeNamedAnimationStateClips(
 	end
 end
 
-local function GetNamedAnimationStateClips(configRaw: any): { [string]: { [string]: any } }
+local function getNamedAnimationStateClips(configRaw: any): { [string]: { [string]: any } }
 	local clipsByState: { [string]: { [string]: any } } = {}
 	local defaultLoopedByState = {
 		Idle = true,
@@ -393,7 +393,7 @@ function AnimationController.New(configRaw: any)
 		end
 	end)
 
-	self:SetClips(GetAnimationConfigClips(configRaw))
+	self:SetClips(getAnimationConfigClips(configRaw))
 	return self
 end
 
@@ -447,7 +447,7 @@ function AnimationController:SetClips(clipsRaw: any)
 		local animation = if typeof(clipTable.animation) == "Instance" and clipTable.animation:IsA("Animation")
 			then clipTable.animation
 			else nil
-		local animationId = GetClipAnimationId(clipTable)
+		local animationId = getClipAnimationId(clipTable)
 		if animation == nil and typeof(clipRaw) == "Instance" and clipRaw:IsA("Animation") then
 			animation = clipRaw
 			animationId = normalizeAnimationId(clipRaw.AnimationId)
@@ -584,7 +584,7 @@ function AnimationController:PlayNext(playbackRaw: any): { [string]: any }?
 	local weight = toNumber(playback.weight, clip.weight or 1, 0, nil)
 	local speed = toNumber(playback.speed, clip.speed or 1, 0.01, nil)
 
-	local ok, err = pcall(function()
+	local ok = pcall(function()
 		track:Play(fadeTime, weight, speed)
 	end)
 	if not ok then
@@ -627,7 +627,7 @@ function Melee.New(configRaw: any)
 
 	local animationConfig = config.animations
 	local controller = AnimationController.New(animationConfig)
-	local namedAnimationStateClips = GetNamedAnimationStateClips(animationConfig)
+	local namedAnimationStateClips = getNamedAnimationStateClips(animationConfig)
 	local hasStanceNamedAnimations = namedAnimationStateClips.StanceTransition ~= nil
 		or namedAnimationStateClips.StanceIdle ~= nil
 
@@ -954,7 +954,7 @@ function Melee:_playNamedState(stateKeyRaw: any, optionsRaw: any): boolean
 	local fadeTime = toNumber(options.fadeTime, clip.fadeTime or 0.08, 0, nil)
 	local weight = toNumber(options.weight, clip.weight or 1, 0, nil)
 	local speed = toNumber(options.speed, clip.speed or 1, 0.01, nil)
-	local ok, err = pcall(function()
+	local ok = pcall(function()
 		track:Play(fadeTime, weight, speed)
 	end)
 	if not ok then
@@ -1472,10 +1472,10 @@ function Melee:BindTool(toolRaw: any, optionsRaw: any): boolean
 	self.boundTool = tool
 
 	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
-	local GetAnimatorOnEquip = toBool(options.GetAnimatorOnEquip, true)
+	local getAnimatorOnEquip = toBool(options.GetAnimatorOnEquip, true)
 	local cancelOnUnequip = toBool(options.cancelOnUnequip, true)
 
-	if GetAnimatorOnEquip and tool.Parent and tool.Parent:IsA("Model") then
+	if getAnimatorOnEquip and tool.Parent and tool.Parent:IsA("Model") then
 		self:SetCharacter(tool.Parent)
 	end
 	if tool.Parent ~= nil and tool.Parent:IsA("Model") then
@@ -1487,7 +1487,7 @@ function Melee:BindTool(toolRaw: any, optionsRaw: any): boolean
 	end
 
 	self.toolJanitor:GiveChore(tool.Equipped:Connect(function()
-		if GetAnimatorOnEquip and tool.Parent and tool.Parent:IsA("Model") then
+		if getAnimatorOnEquip and tool.Parent and tool.Parent:IsA("Model") then
 			self:SetCharacter(tool.Parent)
 		end
 		self:_onToolEquipped()

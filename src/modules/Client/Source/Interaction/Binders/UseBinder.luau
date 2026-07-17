@@ -16,7 +16,7 @@ local function getInventoryServiceClient()
 	return inventoryServiceClient
 end
 
-local function GetStringAttribute(instance: Instance, attributeName: string, fallback: string): string
+local function getStringAttribute(instance: Instance, attributeName: string, fallback: string): string
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) == "string" and value ~= "" then
 		return value
@@ -24,7 +24,7 @@ local function GetStringAttribute(instance: Instance, attributeName: string, fal
 	return fallback
 end
 
-local function GetNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
+local function getNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
@@ -36,39 +36,39 @@ function UseBinder.new(instance: Instance, context: any)
 	local self = ModelBinder.new(instance, context, UseBinder)
 	self.adornee = self:GetAdornee()
 	self.rootPart = self:GetRootPart()
-	self.highlight = self:createHighlight()
-	self.prompt = self:createPrompt()
+	self.highlight = self:CreateHighlight()
+	self.prompt = self:CreatePrompt()
 
-	self:refresh()
+	self:Refresh()
 	if self.prompt ~= nil then
 		self:Connect(self.prompt.PromptShown, function()
-			self:setFocused(true)
+			self:SetFocused(true)
 		end)
 		self:Connect(self.prompt.PromptHidden, function()
-			self:setFocused(false)
+			self:SetFocused(false)
 		end)
 		self:Connect(self.prompt.Triggered, function()
-			self:onTriggered()
+			self:OnTriggered()
 		end)
 	end
 
 	self:ObserveAttribute("UseActionText", function()
-		self:refresh()
+		self:Refresh()
 	end)
 	self:ObserveAttribute("UseObjectText", function()
-		self:refresh()
+		self:Refresh()
 	end)
 	self:ObserveAttribute("UseMaxDistance", function()
-		self:refresh()
+		self:Refresh()
 	end)
 	self:ObserveAttribute("UseEnabled", function()
-		self:refresh()
+		self:Refresh()
 	end)
 
 	return self
 end
 
-function UseBinder.createHighlight(self: any): Highlight?
+function UseBinder.CreateHighlight(self: any): Highlight?
 	if self.adornee == nil then
 		return nil
 	end
@@ -97,7 +97,7 @@ function UseBinder.createHighlight(self: any): Highlight?
 	return highlight
 end
 
-function UseBinder.createPrompt(self: any): ProximityPrompt?
+function UseBinder.CreatePrompt(self: any): ProximityPrompt?
 	if self.rootPart == nil then
 		return nil
 	end
@@ -121,11 +121,11 @@ function UseBinder.createPrompt(self: any): ProximityPrompt?
 	return prompt
 end
 
-function UseBinder.refresh(self: any)
+function UseBinder.Refresh(self: any)
 	local enabled = self.instance:GetAttribute("UseEnabled") ~= false
-	local actionText = GetStringAttribute(self.instance, "UseActionText", "Use")
-	local objectText = GetStringAttribute(self.instance, "UseObjectText", self.instance.Name)
-	local maxDistance = GetNumberAttribute(self.instance, "UseMaxDistance", 12)
+	local actionText = getStringAttribute(self.instance, "UseActionText", "Use")
+	local objectText = getStringAttribute(self.instance, "UseObjectText", self.instance.Name)
+	local maxDistance = getNumberAttribute(self.instance, "UseMaxDistance", 12)
 
 	self.instance:SetAttribute("UseTagged", true)
 	self.instance:SetAttribute("UseFocused", false)
@@ -141,14 +141,14 @@ function UseBinder.refresh(self: any)
 	end
 end
 
-function UseBinder.setFocused(self: any, focused: boolean)
+function UseBinder.SetFocused(self: any, focused: boolean)
 	if self.highlight ~= nil then
 		self.highlight.Enabled = focused
 	end
 	self.instance:SetAttribute("UseFocused", focused)
 end
 
-function UseBinder.onTriggered(self: any)
+function UseBinder.OnTriggered(self: any)
 	local remoteName = self.instance:GetAttribute("UseRemoteName")
 	if typeof(remoteName) == "string" and remoteName ~= "" then
 		local remote = self.instance:FindFirstChild(remoteName, true)
@@ -175,7 +175,7 @@ function UseBinder.onTriggered(self: any)
 end
 
 function UseBinder.Cleanup(self: any)
-	self:setFocused(false)
+	self:SetFocused(false)
 end
 
 return UseBinder

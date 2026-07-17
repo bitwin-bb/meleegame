@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local RobloxSoundService = game:GetService("SoundService")
 local RunService = game:GetService("RunService")
 
+local ServiceBag = require("ServiceBag")
 local AudioRegistry = require("Audio")
 local AudioServiceUtils = require("AudioServiceUtils")
 local BinderSupportClient = require("BinderSupportClient")
@@ -60,7 +61,6 @@ local function bindPackets(self: any)
 	bindPacket(self, "stopChannel")
 end
 
-local NevermoreSupport = require("NevermoreSupport")
 local SpaceShared = require("SpaceShared")
 local WeatherServiceClient = require("WeatherServiceClient")
 local WeatherServiceUtils = require("WeatherServiceUtils")
@@ -72,6 +72,7 @@ type AudioServiceState = AudioServiceUtils.AudioServiceState
 type JanitorClass = any
 
 local AudioServiceClient = {}
+AudioServiceClient.ServiceName = "AudioServiceClient"
 
 local DEFAULT_CHARACTER_SOUND_NAMES: { [string]: boolean } = {
 	Climbing = true,
@@ -175,7 +176,7 @@ local function isNightTime(clockTime: number): boolean
 	return clockTime >= NIGHT_CLOCK_START or clockTime <= NIGHT_CLOCK_END
 end
 
-local function GetCharacterRootPart(character: Model?): BasePart?
+local function getCharacterRootPart(character: Model?): BasePart?
 	if character == nil then
 		return nil
 	end
@@ -414,7 +415,7 @@ function AudioServiceClient.GetSoundtrackBiomeForLocalPlayer(self: AudioServiceC
 		return nil
 	end
 
-	local rootPart = GetCharacterRootPart(character)
+	local rootPart = getCharacterRootPart(character)
 	if rootPart == nil then
 		return nil
 	end
@@ -613,7 +614,10 @@ function AudioServiceClient.UpdateBiomeSoundtrack(self: AudioServiceClient, delt
 	self:SetSoundtrackBiome(soundtrackBiome)
 end
 
-function AudioServiceClient.Init(self: AudioServiceClient)
+function AudioServiceClient.Init(self: AudioServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	if self.janitor ~= nil then
 		return
 	end
@@ -636,7 +640,7 @@ function AudioServiceClient.Init(self: AudioServiceClient)
 	self.soundtrackSampleAccumulator = SOUNDTRACK_BIOME_SAMPLE_INTERVAL
 	self.bossStateChangedConnection = nil
 
-	self.binders = NevermoreSupport.GetService(BinderSupportClient)
+	self.binders = if serviceBag ~= nil then serviceBag:GetService(BinderSupportClient) else nil
 	AudioServiceUtils.ApplyStateToCategoryGroups(self.state, self.categoryGroups)
 	disableDefaultCharacterSoundSystem(self.localPlayer, self.localPlayer.Character)
 	self:RefreshSoundtrackAssetIds()
@@ -865,9 +869,11 @@ function AudioServiceClient.Destroy(self: AudioServiceClient)
 		self.janitor:Destroy()
 		self.janitor = nil
 	end
+	self._serviceBag = nil
 end
 
 type AudioServiceClient = typeof(AudioServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
 	RefreshSoundtrackAssetIds: (self: AudioServiceClient) -> (),
 	GetBiomeTypeAtWorldPosition: (self: AudioServiceClient, worldPosition: Vector3) -> number,
 	GetBiomeIdAtWorldPosition: (self: AudioServiceClient, worldPosition: Vector3) -> number,

@@ -2,8 +2,15 @@ local require = require(script.Parent.loader).load(script)
 
 local HttpService = game:GetService("HttpService")
 
+local String = require("String")
+
 local LimbDestruction = {}
 LimbDestruction.__index = LimbDestruction
+
+local function createRuntimeInstanceName(): string
+	local guid = String.removePostfix(String.removePrefix(HttpService:GenerateGUID(true), "{"), "}")
+	return string.format("%03d", (tonumber(string.sub(guid, 1, 8), 16) or 0) % 1000)
+end
 
 export type LimbDestructionConfig = {
 	entity: Model?,
@@ -41,7 +48,7 @@ export type LimbDestruction = typeof(setmetatable(
 	LimbDestruction
 ))
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -63,7 +70,7 @@ local function normalizeToken(valueRaw: any): string
 	return string.lower(normalized)
 end
 
-local function GetEntityModel(configRaw: LimbDestructionConfig?): Model?
+local function getEntityModel(configRaw: LimbDestructionConfig?): Model?
 	if configRaw == nil then
 		return nil
 	end
@@ -83,7 +90,7 @@ end
 
 local function cloneLimbForGib(limb: BasePart): BasePart
 	local clone = limb:Clone()
-	clone.Name = HttpService:GenerateGUID(false)
+	clone.Name = createRuntimeInstanceName()
 	clone.Anchored = true
 	clone.AssemblyLinearVelocity = Vector3.zero
 	clone.AssemblyAngularVelocity = Vector3.zero
@@ -97,7 +104,7 @@ local function cloneLimbForGib(limb: BasePart): BasePart
 	return clone
 end
 
-local function GetLimbFromString(entityModel: Model?, tokenRaw: string): BasePart?
+local function getLimbFromString(entityModel: Model?, tokenRaw: string): BasePart?
 	if entityModel == nil then
 		return nil
 	end
@@ -116,7 +123,7 @@ local function GetLimbFromString(entityModel: Model?, tokenRaw: string): BasePar
 	return nil
 end
 
-local function GetBloodColor(limb: BasePart, fallbackRaw: any): Color3
+local function getBloodColor(limb: BasePart, fallbackRaw: any): Color3
 	if typeof(fallbackRaw) == "Color3" then
 		return fallbackRaw
 	end
@@ -132,8 +139,8 @@ end
 function LimbDestruction.New(configRaw: LimbDestructionConfig?): LimbDestruction
 	local config = if typeof(configRaw) == "table" then configRaw else nil
 	local self = setmetatable({
-		entityModel = GetEntityModel(config),
-		destroyedTransparency = CoerceNumber(config and config.destroyedTransparency, 1, 0, 1),
+		entityModel = getEntityModel(config),
+		destroyedTransparency = coerceNumber(config and config.destroyedTransparency, 1, 0, 1),
 		destroyedByPart = {} :: { [BasePart]: DestroyedLimbRecord },
 	}, LimbDestruction)
 
@@ -161,7 +168,7 @@ function LimbDestruction.GetLimb(self: LimbDestruction, limbRaw: any): BasePart?
 	end
 
 	if typeof(limbRaw) == "string" then
-		return GetLimbFromString(self.entityModel, limbRaw)
+		return getLimbFromString(self.entityModel, limbRaw)
 	end
 
 	return nil
@@ -207,7 +214,7 @@ function LimbDestruction.DestroyLimb(self: LimbDestruction, limbRaw: any, option
 	end
 
 	local options = if typeof(optionsRaw) == "table" then optionsRaw else {} :: any
-	local destroyedTransparency = CoerceNumber(options.destroyedTransparency, self.destroyedTransparency, 0, 1)
+	local destroyedTransparency = coerceNumber(options.destroyedTransparency, self.destroyedTransparency, 0, 1)
 	local record: DestroyedLimbRecord = {
 		part = limb,
 		transparency = limb.Transparency,
@@ -226,7 +233,7 @@ function LimbDestruction.DestroyLimb(self: LimbDestruction, limbRaw: any, option
 	limb.Massless = true
 
 	local gibSource = cloneLimbForGib(limb)
-	local bloodColor = GetBloodColor(limb, options.bloodColor)
+	local bloodColor = getBloodColor(limb, options.bloodColor)
 	return {
 		limb = limb,
 		limbName = limb.Name,

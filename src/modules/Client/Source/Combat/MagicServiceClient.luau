@@ -12,6 +12,8 @@ local InventoryServiceUtils = require("InventoryServiceUtils")
 local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local MagicServiceUtils = require("MagicServiceUtils")
 local PacketPayload = require("PacketPayload")
+local ServiceBag = require("ServiceBag")
+local String = require("String")
 local MagicServicePackets = require("NetPacketsShared").MagicService
 
 local function sendPacket(methodName: string, ...: any)
@@ -83,6 +85,12 @@ type ActiveVisual = {
 }
 
 local MagicServiceClient = {}
+MagicServiceClient.ServiceName = "MagicServiceClient"
+
+local function createRuntimeInstanceName(): string
+	local guid = String.removePostfix(String.removePrefix(HttpService:GenerateGUID(true), "{"), "}")
+	return string.format("%03d", (tonumber(string.sub(guid, 1, 8), 16) or 0) % 1000)
+end
 
 local CLIENT_VISUAL_FOLDER_NAME = "MagicClientVisuals"
 local CLIENT_VISUAL_STEP = 1 / 120
@@ -96,7 +104,7 @@ local function trim(raw: any): string
 	return string.match(raw, "^%s*(.-)%s*$") or ""
 end
 
-local function GetGamepadAimVector(gamepadNavRaw: any): Vector2?
+local function getGamepadAimVector(gamepadNavRaw: any): Vector2?
 	if gamepadNavRaw == nil or typeof((gamepadNavRaw :: any).GetThumbstickState) ~= "function" then
 		return nil
 	end
@@ -124,7 +132,7 @@ local function createDefaultReplicatedState(): ReplicatedState
 	}
 end
 
-local function GetCharacterRootPart(characterRaw: any): BasePart?
+local function getCharacterRootPart(characterRaw: any): BasePart?
 	if typeof(characterRaw) ~= "Instance" or not characterRaw:IsA("Model") then
 		return nil
 	end
@@ -136,7 +144,7 @@ local function GetCharacterRootPart(characterRaw: any): BasePart?
 	return nil
 end
 
-local function GetMouseHitPosition(localPlayer: Player): Vector3?
+local function getMouseHitPosition(localPlayer: Player): Vector3?
 	local ok, hitOrError = pcall(function()
 		local mouse = localPlayer:GetMouse()
 		return mouse.Hit
@@ -152,7 +160,7 @@ end
 
 function MagicServiceClient.CreateVisualPart(self: MagicServiceClient, _weaponIdRaw: any): BasePart
 	local part = Instance.new("Part")
-	part.Name = HttpService:GenerateGUID(false)
+	part.Name = createRuntimeInstanceName()
 	part.Shape = Enum.PartType.Ball
 	part.Size = Vector3.new(0.45, 0.45, 0.45)
 	part.Material = Enum.Material.Neon
@@ -242,14 +250,14 @@ end
 
 function MagicServiceClient.BuildCastRequest(self: MagicServiceClient, triggerRaw: any): MagicServiceUtils.CastRequest
 	local trigger = trim(triggerRaw)
-	local rootPart = GetCharacterRootPart(self.character)
+	local rootPart = getCharacterRootPart(self.character)
 	local origin = if rootPart ~= nil then rootPart.Position + Vector3.new(0, 1.35, 0) else Vector3.zero
 	local fallbackDirection = if rootPart ~= nil then rootPart.CFrame.LookVector else Vector3.new(0, 0, -1)
 	local mousePosition = nil :: Vector3?
 	local aimDirection = nil :: Vector3?
 
 	if PlatformServiceClient:IsGamepad() then
-		local gamepadAim = GetGamepadAimVector(self.gamepadNav)
+		local gamepadAim = getGamepadAimVector(self.gamepadNav)
 		if gamepadAim ~= nil then
 			local candidate = GamepadPointer.GetWorldOffsetForScreenVector(
 				gamepadAim,
@@ -263,7 +271,7 @@ function MagicServiceClient.BuildCastRequest(self: MagicServiceClient, triggerRa
 	end
 
 	if aimDirection == nil then
-		mousePosition = GetMouseHitPosition(self.localPlayer)
+		mousePosition = getMouseHitPosition(self.localPlayer)
 		if mousePosition ~= nil then
 			local offset = mousePosition - origin
 			if offset.Magnitude > 1e-4 then
@@ -400,7 +408,7 @@ function MagicServiceClient.SpawnImpactFlash(self: MagicServiceClient, payloadRa
 	end
 
 	local flash = Instance.new("Part")
-	flash.Name = HttpService:GenerateGUID(false)
+	flash.Name = createRuntimeInstanceName()
 	flash.Anchored = true
 	flash.CanCollide = false
 	flash.CanTouch = false
@@ -527,11 +535,14 @@ function MagicServiceClient.OnCharacterAdded(self: MagicServiceClient, character
 	self:RefreshEquipped()
 end
 
-function MagicServiceClient.RequestSync(self: MagicServiceClient)
+function MagicServiceClient.RequestSync(_self: MagicServiceClient)
 	sendPacket(MagicServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
-function MagicServiceClient.Init(self: MagicServiceClient)
+function MagicServiceClient.Init(self: MagicServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
@@ -623,8 +634,10 @@ function MagicServiceClient.Destroy(self: MagicServiceClient)
 	if self.janitor ~= nil then
 		self.janitor:Destroy()
 	end
+	self._serviceBag = nil
 end
 type MagicServiceClient = typeof(MagicServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
 	runtimeContext: any?,
 	hapticsModule: any?,
 	gamepadNav: any?,

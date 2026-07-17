@@ -31,7 +31,7 @@ local function toGuiPosition(screenPosition: Vector2): Vector2
 	return screenPosition
 end
 
-local function GetMousePosition(fallback: Vector2?): Vector2
+local function getMousePosition(fallback: Vector2?): Vector2
 	if fallback ~= nil then
 		return toGuiPosition(fallback)
 	end
@@ -160,7 +160,7 @@ end
 
 function infoThunks.ShowHover(payload: ShowHoverPayload): HoverInfoState
 	infoThunks.Start()
-	return infoState.showHover(payload.id, payload.text, GetMousePosition(payload.mousePosition))
+	return infoState.showHover(payload.id, payload.text, getMousePosition(payload.mousePosition))
 end
 
 function infoThunks.HideHover(hoverId: string?): HoverInfoState
@@ -172,7 +172,7 @@ function infoThunks.UpdateMousePosition(mousePosition: Vector2): HoverInfoState
 end
 
 function infoThunks.SyncMousePosition(): HoverInfoState
-	return infoState.updateMousePosition(GetMousePosition(nil))
+	return infoState.updateMousePosition(getMousePosition(nil))
 end
 
 function infoThunks.GetInfoState(): HoverInfoState

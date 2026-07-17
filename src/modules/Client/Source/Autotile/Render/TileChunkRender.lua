@@ -5,6 +5,7 @@ local Table = require("Table")
 local AtlasResolver = require("AtlasResolver")
 local AutotileRegistry = require("AutotileRegistry")
 local AutotileTypes = require("AutotileTypes")
+local BlendRule = require("BlendRule")
 local DirectionBits = require("DirectionBits")
 local EightWayBlobRule = require("EightWayBlobRule")
 local FourWay16Rule = require("FourWay16Rule")
@@ -74,12 +75,37 @@ function TileChunkRender.Resolve(renderService: any, tileXRaw: any, tileYRaw: an
 		return nil
 	end
 
-	local mask = MaskResolver.Resolve(function(scanX: number, scanY: number)
+	local function getNeighborTile(scanX: number, scanY: number): any?
 		return getTileData(renderService, scanX, scanY)
-	end, Vector2.new(tileX, tileY), TileChunkRender.GetRuleForDefinition(definition))
-	local atlasMask = DirectionBits.MirrorHorizontal(mask)
-	local atlasResult =
-		AtlasResolver.Resolve(definition, atlasMask, Vector2.new(tileX, tileY), rawget(definition, "VariantSeed"))
+	end
+
+	local sameMask
+	local mergeMask = 0
+	if BlendRule.IsDefinition(definition) then
+		sameMask, mergeMask = MaskResolver.ResolveTileMasks(
+			getNeighborTile,
+			Vector2.new(tileX, tileY),
+			tileId,
+			rawget(definition, "MergeTileIds"),
+			rawget(definition, "ConnectTileIds")
+		)
+	else
+		sameMask = MaskResolver.Resolve(
+			getNeighborTile,
+			Vector2.new(tileX, tileY),
+			TileChunkRender.GetRuleForDefinition(definition)
+		)
+	end
+
+	local atlasMask = DirectionBits.MirrorHorizontal(sameMask)
+	local atlasMergeMask = DirectionBits.MirrorHorizontal(mergeMask)
+	local atlasResult = AtlasResolver.ResolveMerged(
+		definition,
+		atlasMask,
+		atlasMergeMask,
+		Vector2.new(tileX, tileY),
+		rawget(definition, "VariantSeed")
+	)
 	if atlasResult == nil then
 		return nil
 	end

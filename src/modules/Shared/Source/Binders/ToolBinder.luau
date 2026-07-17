@@ -36,7 +36,7 @@ local function normalizeToken(valueRaw: any): string
 	return compact
 end
 
-local function GetOwnerPlayer(tool: Tool?): (Player?, Model?)
+local function getOwnerPlayer(tool: Tool?): (Player?, Model?)
 	if tool == nil then
 		return nil, nil
 	end
@@ -61,7 +61,7 @@ local function GetOwnerPlayer(tool: Tool?): (Player?, Model?)
 	return nil, nil
 end
 
-local function GetMeleeVariantTag(itemIdRaw: any, definitionRaw: any): string?
+local function getMeleeVariantTag(itemIdRaw: any, definitionRaw: any): string?
 	local itemId = normalizeToken(itemIdRaw)
 	local displayName = if typeof(definitionRaw) == "table"
 		then normalizeToken((definitionRaw :: { [string]: any }).name)
@@ -111,7 +111,7 @@ function ToolBinder.Get(toolOrInstanceRaw: any): ToolResolution
 	local templates = if itemId ~= nil
 		then GetItem.Get(itemId)
 		else { primaryTemplate = nil, toolTemplate = nil }
-	local ownerPlayer, ownerCharacter = GetOwnerPlayer(tool)
+	local ownerPlayer, ownerCharacter = getOwnerPlayer(tool)
 	local deployable = if typeof(definition) == "table"
 			and typeof((definition :: { [string]: any }).deployable) == "table"
 		then (definition :: { [string]: any }).deployable :: { [string]: any }
@@ -133,7 +133,7 @@ function ToolBinder.Get(toolOrInstanceRaw: any): ToolResolution
 		deployable = deployable,
 		isMelee = isMelee,
 		isMagic = isMagic,
-		meleeVariantTag = GetMeleeVariantTag(itemId, definition),
+		meleeVariantTag = getMeleeVariantTag(itemId, definition),
 	}
 end
 

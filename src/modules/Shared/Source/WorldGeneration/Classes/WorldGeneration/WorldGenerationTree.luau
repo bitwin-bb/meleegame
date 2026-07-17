@@ -120,7 +120,7 @@ export type ProceduralTree = typeof(setmetatable(
 	ProceduralTree
 ))
 
-local function GetLeafMaterialFallback(): Enum.Material
+local function getLeafMaterialFallback(): Enum.Material
 	local success, material = pcall(function()
 		return Enum.Material.LeafyGrass
 	end)
@@ -139,7 +139,7 @@ local function applyStudSurfaces(part: BasePart)
 	part.BackSurface = Enum.SurfaceType.Studs
 end
 
-local DEFAULT_LEAF_MATERIAL = GetLeafMaterialFallback()
+local DEFAULT_LEAF_MATERIAL = getLeafMaterialFallback()
 local DEFAULT_TREE_PALETTE = WorldGenerationColor.TREE_PALETTES.Default
 	or {
 		BranchColor = Color3.fromRGB(102, 72, 49),
@@ -202,7 +202,7 @@ local function clampInteger(valueRaw: any, minimum: number, maximum: number, fal
 	return math.floor(clampNumber(valueRaw, minimum, maximum, fallback))
 end
 
-local function CoerceNumberRange(valueRaw: any, fallback: NumberRange, minimum: number, maximum: number): NumberRange
+local function coerceNumberRange(valueRaw: any, fallback: NumberRange, minimum: number, maximum: number): NumberRange
 	local minValue = fallback.Min
 	local maxValue = fallback.Max
 
@@ -234,7 +234,7 @@ local function CoerceNumberRange(valueRaw: any, fallback: NumberRange, minimum: 
 	return NumberRange.new(minValue, maxValue)
 end
 
-local function CoerceVector3(valueRaw: any, fallback: Vector3): Vector3
+local function coerceVector3(valueRaw: any, fallback: Vector3): Vector3
 	if typeof(valueRaw) == "Vector3" then
 		return valueRaw
 	end
@@ -263,7 +263,7 @@ local function CoerceVector3(valueRaw: any, fallback: Vector3): Vector3
 	return Vector3.new(xRaw, yRaw, zRaw)
 end
 
-local function CoerceAlgorithm(valueRaw: any, fallback: BranchAlgorithm): BranchAlgorithm
+local function coerceAlgorithm(valueRaw: any, fallback: BranchAlgorithm): BranchAlgorithm
 	if valueRaw == "Recursive" then
 		return "Recursive"
 	end
@@ -273,21 +273,21 @@ local function CoerceAlgorithm(valueRaw: any, fallback: BranchAlgorithm): Branch
 	return fallback
 end
 
-local function CoerceMaterial(valueRaw: any, fallback: Enum.Material): Enum.Material
+local function coerceMaterial(valueRaw: any, fallback: Enum.Material): Enum.Material
 	if typeof(valueRaw) == "EnumItem" and valueRaw.EnumType == Enum.Material then
 		return valueRaw :: Enum.Material
 	end
 	return fallback
 end
 
-local function CoerceColor(valueRaw: any, fallback: Color3): Color3
+local function coerceColor(valueRaw: any, fallback: Color3): Color3
 	if typeof(valueRaw) == "Color3" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function CoerceString(valueRaw: any, fallback: string): string
+local function coerceString(valueRaw: any, fallback: string): string
 	if typeof(valueRaw) ~= "string" then
 		return fallback
 	end
@@ -298,7 +298,7 @@ local function CoerceString(valueRaw: any, fallback: string): string
 	return trimmed
 end
 
-local function GetConfig(configRaw: ProceduralTreeConfig?): ProceduralTreeRuntimeConfig
+local function getConfig(configRaw: ProceduralTreeConfig?): ProceduralTreeRuntimeConfig
 	local source = if typeof(configRaw) == "table" then configRaw :: { [string]: any } else {} :: any
 
 	local minBranches = clampInteger(source.MinBranchesPerNode, 0, 6, DEFAULT_CONFIG.MinBranchesPerNode)
@@ -307,8 +307,8 @@ local function GetConfig(configRaw: ProceduralTreeConfig?): ProceduralTreeRuntim
 	local leavesMin = clampInteger(source.LeavesPerTerminalMin, 1, 8, DEFAULT_CONFIG.LeavesPerTerminalMin)
 	local leavesMax = clampInteger(source.LeavesPerTerminalMax, leavesMin, 8, DEFAULT_CONFIG.LeavesPerTerminalMax)
 
-	local leafSizeMin = CoerceVector3(source.LeafSizeMin, DEFAULT_CONFIG.LeafSizeMin)
-	local leafSizeMax = CoerceVector3(source.LeafSizeMax, DEFAULT_CONFIG.LeafSizeMax)
+	local leafSizeMin = coerceVector3(source.LeafSizeMin, DEFAULT_CONFIG.LeafSizeMin)
+	local leafSizeMax = coerceVector3(source.LeafSizeMax, DEFAULT_CONFIG.LeafSizeMax)
 	local GotLeafSizeMin = Vector3.new(
 		math.max(0.5, math.min(leafSizeMin.X, leafSizeMax.X)),
 		math.max(0.5, math.min(leafSizeMin.Y, leafSizeMax.Y)),
@@ -321,10 +321,10 @@ local function GetConfig(configRaw: ProceduralTreeConfig?): ProceduralTreeRuntim
 	)
 
 	local Got = {
-		Algorithm = CoerceAlgorithm(source.Algorithm, DEFAULT_CONFIG.Algorithm),
+		Algorithm = coerceAlgorithm(source.Algorithm, DEFAULT_CONFIG.Algorithm),
 		Seed = clampInteger(source.Seed, -2147483648, 2147483647, DEFAULT_CONFIG.Seed),
 		MaxDepth = clampInteger(source.MaxDepth, 1, 12, DEFAULT_CONFIG.MaxDepth),
-		BranchAngleRange = CoerceNumberRange(source.BranchAngleRange, DEFAULT_CONFIG.BranchAngleRange, 0, 89),
+		BranchAngleRange = coerceNumberRange(source.BranchAngleRange, DEFAULT_CONFIG.BranchAngleRange, 0, 89),
 		LengthScale = clampNumber(source.LengthScale, 0.25, 0.95, DEFAULT_CONFIG.LengthScale),
 		ThicknessScale = clampNumber(source.ThicknessScale, 0.2, 0.95, DEFAULT_CONFIG.ThicknessScale),
 		BranchChance = clampNumber(source.BranchChance, 0, 1, DEFAULT_CONFIG.BranchChance),
@@ -336,8 +336,8 @@ local function GetConfig(configRaw: ProceduralTreeConfig?): ProceduralTreeRuntim
 		MinBranchThickness = clampNumber(source.MinBranchThickness, 0.1, 32, DEFAULT_CONFIG.MinBranchThickness),
 		MinBranchesPerNode = minBranches,
 		MaxBranchesPerNode = maxBranches,
-		LengthJitter = CoerceNumberRange(source.LengthJitter, DEFAULT_CONFIG.LengthJitter, 0.5, 2),
-		ThicknessJitter = CoerceNumberRange(source.ThicknessJitter, DEFAULT_CONFIG.ThicknessJitter, 0.5, 2),
+		LengthJitter = coerceNumberRange(source.LengthJitter, DEFAULT_CONFIG.LengthJitter, 0.5, 2),
+		ThicknessJitter = coerceNumberRange(source.ThicknessJitter, DEFAULT_CONFIG.ThicknessJitter, 0.5, 2),
 		LeafSizeMin = GotLeafSizeMin,
 		LeafSizeMax = GotLeafSizeMax,
 		LeafRotationVariance = clampNumber(source.LeafRotationVariance, 0, 90, DEFAULT_CONFIG.LeafRotationVariance),
@@ -349,11 +349,11 @@ local function GetConfig(configRaw: ProceduralTreeConfig?): ProceduralTreeRuntim
 		BranchCanCollide = if source.BranchCanCollide == nil
 			then DEFAULT_CONFIG.BranchCanCollide
 			else source.BranchCanCollide == true,
-		BranchMaterial = CoerceMaterial(source.BranchMaterial, DEFAULT_CONFIG.BranchMaterial),
-		BranchColor = CoerceColor(source.BranchColor, DEFAULT_CONFIG.BranchColor),
-		LeafMaterial = CoerceMaterial(source.LeafMaterial, DEFAULT_CONFIG.LeafMaterial),
-		LeafColor = CoerceColor(source.LeafColor, DEFAULT_CONFIG.LeafColor),
-		ModelName = CoerceString(source.ModelName, DEFAULT_CONFIG.ModelName),
+		BranchMaterial = coerceMaterial(source.BranchMaterial, DEFAULT_CONFIG.BranchMaterial),
+		BranchColor = coerceColor(source.BranchColor, DEFAULT_CONFIG.BranchColor),
+		LeafMaterial = coerceMaterial(source.LeafMaterial, DEFAULT_CONFIG.LeafMaterial),
+		LeafColor = coerceColor(source.LeafColor, DEFAULT_CONFIG.LeafColor),
+		ModelName = coerceString(source.ModelName, DEFAULT_CONFIG.ModelName),
 	}
 
 	Got.MinBranchLength = math.min(Got.MinBranchLength, Got.InitialLength)
@@ -441,7 +441,7 @@ local function ensureWindFoliagePivotAttachment(rootPart: BasePart): Attachment
 	})
 end
 
-local function GetWindFoliagePreset(
+local function getWindFoliagePreset(
 	config: ProceduralTreeRuntimeConfig
 ): (string, number, number, number, number, number)
 	local isHeavyTree = config.InitialLength >= 22 or config.InitialThickness >= 3.6 or config.MaxDepth >= 6
@@ -453,7 +453,7 @@ end
 
 local function applyWindFoliageMetadata(treeModel: Model, rootPart: BasePart, config: ProceduralTreeRuntimeConfig)
 	local presetName, maxBendAngle, swayAmplitude, heightMultiplier, gustSensitivity, disturbanceSensitivity =
-		GetWindFoliagePreset(config)
+		getWindFoliagePreset(config)
 
 	ensureWindFoliagePivotAttachment(rootPart)
 
@@ -475,12 +475,12 @@ local function applyWindFoliageMetadata(treeModel: Model, rootPart: BasePart, co
 	treeModel:SetAttribute("WindFoliageTweenSmoothingMaxDuration", 0)
 end
 
-local function GetInitialLength(config: ProceduralTreeRuntimeConfig, seed: number): number
+local function getInitialLength(config: ProceduralTreeRuntimeConfig, seed: number): number
 	return config.InitialLength * Height.GetHeightScale(seed)
 end
 
 function ProceduralTree.New(configRaw: ProceduralTreeConfig?): ProceduralTree
-	local config = GetConfig(configRaw)
+	local config = getConfig(configRaw)
 
 	local self = setmetatable({
 		config = config,
@@ -630,7 +630,7 @@ function ProceduralTree.BuildRecursiveDescriptors(
 		end
 	end
 
-	grow(Vector3.zero, Vector3.yAxis, GetInitialLength(self.config, self.seed), self.config.InitialThickness, 0, 0)
+	grow(Vector3.zero, Vector3.yAxis, getInitialLength(self.config, self.seed), self.config.InitialThickness, 0, 0)
 	return branches, leaves
 end
 
@@ -646,7 +646,7 @@ function ProceduralTree.BuildLSystemStyleDescriptors(
 			parentIndex = 0,
 			startPosition = Vector3.zero,
 			direction = Vector3.yAxis,
-			length = GetInitialLength(self.config, self.seed),
+			length = getInitialLength(self.config, self.seed),
 			thickness = self.config.InitialThickness,
 			depth = 0,
 		},

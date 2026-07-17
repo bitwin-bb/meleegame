@@ -2,89 +2,23 @@ local require = require(script.Parent.loader).load(script)
 
 local Table = require("Table")
 
-local AutotileTypes = require("AutotileTypes")
-local BuildServiceUtils = require("BuildServiceUtils")
-local DirectionBits = require("DirectionBits")
+local AtlasDefinition = require("AtlasDefinition")
+local BlendRule = require("BlendRule")
 
 local SOURCE_IMAGE_SIZE = Vector2.new(288, 1980)
 local ROBLOX_IMAGE_SIZE = Vector2.new(148, 1017)
-local IMAGE_RECT_SCALE = Vector2.new(
-	ROBLOX_IMAGE_SIZE.X / SOURCE_IMAGE_SIZE.X,
-	ROBLOX_IMAGE_SIZE.Y / SOURCE_IMAGE_SIZE.Y
-)
+local IMAGE_RECT_SCALE =
+	Vector2.new(ROBLOX_IMAGE_SIZE.X / SOURCE_IMAGE_SIZE.X, ROBLOX_IMAGE_SIZE.Y / SOURCE_IMAGE_SIZE.Y)
 
-local function createEntry(cell: Vector2): any
-	return {
-		Variants = {
-			{ Cell = cell },
-		},
-	}
-end
-
-local TerrainEntries = {
-	[0] = createEntry(Vector2.new(9, 3)),
-	[1] = createEntry(Vector2.new(6, 3)),
-	[2] = createEntry(Vector2.new(12, 0)),
-	[3] = createEntry(Vector2.new(1, 4)),
-	[4] = createEntry(Vector2.new(9, 0)),
-	[5] = createEntry(Vector2.new(0, 4)),
-	[6] = createEntry(Vector2.new(6, 4)),
-	-- the dirt-layout slot at 13,1 is transparent in the grass atlas
-	[7] = createEntry(Vector2.new(1, 2)),
-	[8] = createEntry(Vector2.new(6, 0)),
-	[9] = createEntry(Vector2.new(5, 0)),
-	[10] = createEntry(Vector2.new(1, 3)),
-	[11] = createEntry(Vector2.new(4, 0)),
-	[12] = createEntry(Vector2.new(0, 3)),
-	[13] = createEntry(Vector2.new(0, 0)),
-	[14] = createEntry(Vector2.new(1, 0)),
-	[15] = createEntry(Vector2.new(1, 1)),
-}
-
-local function hasBit(mask: number, bit: number): boolean
-	return bit32.band(mask, bit) ~= 0
-end
-
-local function translateCardinalMask(mask: number): number
-	local terrainMask = 0
-	if hasBit(mask, DirectionBits.N) then
-		terrainMask += 1
-	end
-	if hasBit(mask, DirectionBits.W) then
-		terrainMask += 2
-	end
-	if hasBit(mask, DirectionBits.E) then
-		terrainMask += 4
-	end
-	if hasBit(mask, DirectionBits.S) then
-		terrainMask += 8
-	end
-	return terrainMask
-end
-
-local function createEntries(): any
-	local entries = {}
-	for mask = 0, DirectionBits.AllMask do
-		local cardinalMask = bit32.band(mask, DirectionBits.CardinalMask)
-		entries[mask] = TerrainEntries[translateCardinalMask(cardinalMask)] or TerrainEntries[0]
-	end
-	return entries
-end
-
-local Entries = createEntries()
-
-return Table.readonly({
+return Table.readonly(AtlasDefinition.Create({
 	Id = "Grass",
-	TileId = BuildServiceUtils.TILE_ID.GRASS,
+	TileId = AtlasDefinition.TileIds.GRASS,
 	Image = "rbxassetid://104962191554416",
-	TileSize = 16,
-	Padding = 0,
-	Spacing = 2,
-	-- Roblox downsizes this tall source image while preserving its logical frame grid.
+	SourceAsset = "assets/blocks/Grass.png",
 	ImageRectScale = IMAGE_RECT_SCALE,
-	UseSurfaceGui = true,
-	Mode = AutotileTypes.Modes.EightWayBlob,
 	ConnectGroup = "Soil",
-	Entries = Entries,
-	Fallback = Entries[0],
-})
+	RuleStrictness = BlendRule.Strictness.Grass,
+	MergeTileIds = {
+		AtlasDefinition.TileIds.DIRT,
+	},
+}))

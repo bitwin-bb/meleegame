@@ -2,8 +2,11 @@ local require = require(script.Parent.loader).load(script)
 
 local Maid = require("Maid")
 
+local CullServiceClient = require("CullServiceClient")
 local TileChunkRender = require("TileChunkRender")
 local TileLayerRenderer = require("TileLayerRenderer")
+local WallChunkRender = require("WallChunkRender")
+local WallLayerRenderer = require("WallLayerRenderer")
 
 local TileChunkRenderer = {}
 TileChunkRenderer.__index = TileChunkRenderer
@@ -32,15 +35,42 @@ local function parseChunkKey(chunkKeyRaw: any): (number?, number?)
 end
 
 function TileChunkRenderer.new(chunkInstance: Instance, contextRaw: any?): any
-	local self = setmetatable({
+	local self: any = setmetatable({
 		_maid = Maid.new(),
 		_chunkInstance = chunkInstance,
 		_context = if typeof(contextRaw) == "table" then contextRaw else {},
 	}, TileChunkRenderer)
 
 	self:_refreshBounds()
-	self._layerRenderer = TileLayerRenderer.new(chunkInstance)
+	self._layerRenderer = TileLayerRenderer.new(chunkInstance, self._width, self._height)
 	self._maid:GiveTask(self._layerRenderer)
+	local wallRenderService = self._context.wallRenderService
+	local autotileContainer = self._layerRenderer:GetContainer()
+	if wallRenderService ~= nil and autotileContainer ~= nil then
+		self._wallLayerRenderer = WallLayerRenderer.new(autotileContainer, self._width, self._height)
+		self._maid:GiveTask(self._wallLayerRenderer)
+	end
+	self._cullClient = CullServiceClient:CreateClient({
+		key = self._chunkKey,
+		tileMinX = self._tileMinX,
+		tileMinY = self._tileMinY,
+		width = self._width,
+		height = self._height,
+		renderTile = function(tileX: number, tileY: number)
+			self:_renderTile(tileX, tileY)
+		end,
+		clearTile = function(tileX: number, tileY: number)
+			self:_clearTile(tileX, tileY)
+		end,
+		clearAll = function()
+			if self._layerRenderer ~= nil then
+				self._layerRenderer:Clear()
+			end
+			if self._wallLayerRenderer ~= nil then
+				self._wallLayerRenderer:Clear()
+			end
+		end,
+	})
 
 	return self
 end
@@ -55,12 +85,15 @@ function TileChunkRenderer._refreshBounds(self: any)
 	local chunkX, chunkY = parseChunkKey(self._chunkInstance:GetAttribute("ChunkKey"))
 	chunkX = getNumberAttribute(self._chunkInstance, { "ChunkX", "chunkX" }, chunkX or 0)
 	chunkY = getNumberAttribute(self._chunkInstance, { "ChunkY", "chunkY" }, chunkY or 0)
+	self._chunkKey = `{chunkX}:{chunkY}`
 
-	self._chunkSize = getNumberAttribute(self._chunkInstance, { "ChunkSize", "chunkSize" }, chunkSize)
+	self._chunkSize = math.max(1, getNumberAttribute(self._chunkInstance, { "ChunkSize", "chunkSize" }, chunkSize))
 	self._tileMinX = getNumberAttribute(self._chunkInstance, { "TileMinX", "tileMinX" }, chunkX * self._chunkSize)
 	self._tileMinY = getNumberAttribute(self._chunkInstance, { "TileMinY", "tileMinY" }, chunkY * self._chunkSize)
-	self._width = getNumberAttribute(self._chunkInstance, { "Width", "TileWidth", "tileWidth" }, self._chunkSize)
-	self._height = getNumberAttribute(self._chunkInstance, { "Height", "TileHeight", "tileHeight" }, self._chunkSize)
+	self._width =
+		math.max(1, getNumberAttribute(self._chunkInstance, { "Width", "TileWidth", "tileWidth" }, self._chunkSize))
+	self._height =
+		math.max(1, getNumberAttribute(self._chunkInstance, { "Height", "TileHeight", "tileHeight" }, self._chunkSize))
 end
 
 function TileChunkRenderer.ContainsTile(self: any, tileX: number, tileY: number): boolean
@@ -93,10 +126,19 @@ function TileChunkRenderer.GetTileSurfaceLayout(
 end
 
 function TileChunkRenderer.RenderInitial(self: any)
-	for localY = 0, self._height - 1 do
-		for localX = 0, self._width - 1 do
-			self:UpdateTile(self._tileMinX + localX, self._tileMinY + localY)
-		end
+	if self._cullClient == nil then
+		return
+	end
+
+	if CullServiceClient:IsConfigured() then
+		CullServiceClient:RefreshClient(self._cullClient)
+		return
+	end
+
+	-- standalone renderers reconcile the chunk without a camera service
+	self._cullClient:SetVisibleBounds(self._cullClient:GetChunkBounds())
+	while self._cullClient:HasWork() do
+		self._cullClient:Step(256)
 	end
 end
 
@@ -108,23 +150,65 @@ function TileChunkRenderer.UpdateTileAndNeighbors(self: any, tileX: number, tile
 	end
 end
 
-function TileChunkRenderer.UpdateTile(self: any, tileX: number, tileY: number)
-	if self._layerRenderer == nil or not self:ContainsTile(tileX, tileY) then
+function TileChunkRenderer._clearTile(self: any, tileX: number, tileY: number)
+	if not self:ContainsTile(tileX, tileY) then
 		return
 	end
 
 	local localX = tileX - self._tileMinX
 	local localY = tileY - self._tileMinY
-	local resolved = TileChunkRender.Resolve(self._context.renderService, tileX, tileY)
-	if resolved == nil then
+	if self._layerRenderer ~= nil then
 		self._layerRenderer:ClearTile(localX, localY)
+	end
+	if self._wallLayerRenderer ~= nil then
+		self._wallLayerRenderer:ClearTile(localX, localY)
+	end
+end
+
+function TileChunkRenderer._renderTile(self: any, tileX: number, tileY: number)
+	if not self:ContainsTile(tileX, tileY) then
 		return
 	end
 
-	self._layerRenderer:SetTile(localX, localY, resolved.atlasResult, resolved.layout)
+	local localX = tileX - self._tileMinX
+	local localY = tileY - self._tileMinY
+	if self._layerRenderer ~= nil then
+		local resolved = TileChunkRender.Resolve(self._context.renderService, tileX, tileY)
+		if resolved == nil then
+			self._layerRenderer:ClearTile(localX, localY)
+		else
+			self._layerRenderer:SetTile(localX, localY, resolved.atlasResult, resolved.layout)
+		end
+	end
+
+	if self._wallLayerRenderer ~= nil then
+		local wallResolved = WallChunkRender.Resolve(self._context.wallRenderService, tileX, tileY)
+		if wallResolved == nil then
+			self._wallLayerRenderer:ClearTile(localX, localY)
+		else
+			self._wallLayerRenderer:SetTile(localX, localY, wallResolved.atlasResult, wallResolved.layout)
+		end
+	end
+end
+
+function TileChunkRenderer.UpdateTile(self: any, tileX: number, tileY: number)
+	if
+		self._cullClient == nil
+		or not self._cullClient:IsTileVisible(tileX, tileY)
+		or not self._cullClient:IsTileActive(tileX, tileY)
+	then
+		return
+	end
+
+	self:_renderTile(tileX, tileY)
 end
 
 function TileChunkRenderer.Destroy(self: any)
+	if self._cullClient ~= nil then
+		CullServiceClient:Unregister(self._cullClient)
+		self._cullClient:Destroy()
+		self._cullClient = nil
+	end
 	if self._maid ~= nil then
 		self._maid:DoCleaning()
 		self._maid = nil

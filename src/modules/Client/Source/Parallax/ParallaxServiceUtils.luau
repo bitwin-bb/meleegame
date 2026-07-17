@@ -38,7 +38,7 @@ local function normalizeToken(valueRaw: any): string
 	return value
 end
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw and valueRaw ~= math.huge and valueRaw ~= -math.huge then
 		value = valueRaw
@@ -52,11 +52,11 @@ local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, m
 	return value
 end
 
-local function CoerceInteger(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
-	return math.floor(CoerceNumber(valueRaw, fallback, minimum, maximum))
+local function coerceInteger(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+	return math.floor(coerceNumber(valueRaw, fallback, minimum, maximum))
 end
 
-local function CoerceColor3(valueRaw: any, fallback: Color3): Color3
+local function coerceColor3(valueRaw: any, fallback: Color3): Color3
 	if typeof(valueRaw) == "Color3" then
 		return valueRaw
 	end
@@ -71,28 +71,28 @@ local function readSourceValue(source: { [string]: any }, camelName: string, pas
 	return source[pascalName]
 end
 
-local function GetImageAspectRatio(source: { [string]: any }, fallback: number): number
-	local directAspectRatio = CoerceNumber(source.imageAspectRatio, fallback, 0.05, 64)
+local function getImageAspectRatio(source: { [string]: any }, fallback: number): number
+	local directAspectRatio = coerceNumber(source.imageAspectRatio, fallback, 0.05, 64)
 	if typeof(source.imageAspectRatio) == "number" then
 		return directAspectRatio
 	end
 
-	local imageWidth = CoerceNumber(source.imageWidth, -1, 1, 65536)
-	local imageHeight = CoerceNumber(source.imageHeight, -1, 1, 65536)
+	local imageWidth = coerceNumber(source.imageWidth, -1, 1, 65536)
+	local imageHeight = coerceNumber(source.imageHeight, -1, 1, 65536)
 	if imageWidth > 0 and imageHeight > 0 then
-		return CoerceNumber(imageWidth / imageHeight, fallback, 0.05, 64)
+		return coerceNumber(imageWidth / imageHeight, fallback, 0.05, 64)
 	end
 
-	local tileWidth = CoerceNumber(source.textureStudsPerTileU, -1, 1, 4096)
-	local tileHeight = CoerceNumber(source.textureStudsPerTileV, -1, 1, 4096)
+	local tileWidth = coerceNumber(source.textureStudsPerTileU, -1, 1, 4096)
+	local tileHeight = coerceNumber(source.textureStudsPerTileV, -1, 1, 4096)
 	if tileWidth > 0 and tileHeight > 0 then
-		return CoerceNumber(tileWidth / tileHeight, fallback, 0.05, 64)
+		return coerceNumber(tileWidth / tileHeight, fallback, 0.05, 64)
 	end
 
 	return directAspectRatio
 end
 
-local function GetImplicitSourceImageAspectRatio(biomeName: string, layerIndex: number): number?
+local function getImplicitSourceImageAspectRatio(biomeName: string, layerIndex: number): number?
 	local normalizedBiomeName = normalizeToken(biomeName)
 	if normalizedBiomeName == "forest" then
 		normalizedBiomeName = "overworld"
@@ -111,9 +111,9 @@ local function GetImplicitSourceImageAspectRatio(biomeName: string, layerIndex: 
 	return imageDimensions.width / imageDimensions.height
 end
 
-local function GetImplicitLayerDefaults(biomeName: string, layerIndex: number, _totalLayers: number): { [string]: any }
+local function getImplicitLayerDefaults(biomeName: string, layerIndex: number, _totalLayers: number): { [string]: any }
 	local stackIndex = math.max(layerIndex - 1, 0)
-	local imageAspectRatio = GetImplicitSourceImageAspectRatio(biomeName, layerIndex)
+	local imageAspectRatio = getImplicitSourceImageAspectRatio(biomeName, layerIndex)
 		or ParallaxConstants.IMPLICIT_LAYER_FALLBACK_IMAGE_ASPECT_RATIO
 
 	return {
@@ -149,7 +149,7 @@ local function GetImplicitLayerDefaults(biomeName: string, layerIndex: number, _
 	}
 end
 
-local function CoerceVerticalAlign(valueRaw: any, fallback: VerticalAlign): VerticalAlign
+local function coerceVerticalAlign(valueRaw: any, fallback: VerticalAlign): VerticalAlign
 	local token = normalizeToken(valueRaw)
 	if token == "top" then
 		return "Top"
@@ -194,7 +194,7 @@ local function createImplicitLayerSource(
 	totalLayers: number,
 	image: string
 ): { [string]: any }
-	local defaults = GetImplicitLayerDefaults(biomeName, layerIndex, totalLayers)
+	local defaults = getImplicitLayerDefaults(biomeName, layerIndex, totalLayers)
 	return {
 		id = `{biomeName}_{variantName}_Layer_{layerIndex}`,
 		image = image,
@@ -221,7 +221,7 @@ local function createImplicitLayerSource(
 	}
 end
 
-local function CoerceLayerDefinition(
+local function coerceLayerDefinition(
 	layerRaw: any,
 	fallbackId: string,
 	layerIndex: number,
@@ -251,9 +251,9 @@ local function CoerceLayerDefinition(
 		return nil
 	end
 
-	local defaults = GetImplicitLayerDefaults(biomeName, layerIndex, totalLayers)
-	local minY = CoerceNumber(readSourceValue(source, "minY", "MinY"), defaults.minY, -4, 4)
-	local maxY = CoerceNumber(readSourceValue(source, "maxY", "MaxY"), defaults.maxY, -4, 4)
+	local defaults = getImplicitLayerDefaults(biomeName, layerIndex, totalLayers)
+	local minY = coerceNumber(readSourceValue(source, "minY", "MinY"), defaults.minY, -4, 4)
+	local maxY = coerceNumber(readSourceValue(source, "maxY", "MaxY"), defaults.maxY, -4, 4)
 	if minY > maxY then
 		minY, maxY = maxY, minY
 	end
@@ -261,29 +261,29 @@ local function CoerceLayerDefinition(
 	return {
 		id = trim(source.id) ~= "" and trim(source.id) or fallbackId,
 		image = image,
-		imageAspectRatio = GetImageAspectRatio(source, defaults.imageAspectRatio),
-		depth = CoerceNumber(source.depth, defaults.depth, 0, 0.98),
-		planeDepthBlocks = CoerceNumber(source.planeDepthBlocks, defaults.planeDepthBlocks, 1, 256),
-		heightScale = CoerceNumber(source.heightScale, defaults.heightScale, 0.05, 4),
-		segmentWidthScale = CoerceNumber(source.segmentWidthScale, defaults.segmentWidthScale, 0.25, 8),
-		minSegments = CoerceInteger(source.minSegments, defaults.minSegments, 1, 32),
-		overscanSegments = CoerceInteger(source.overscanSegments, defaults.overscanSegments, 0, 16),
-		tint = CoerceColor3(source.tint, defaults.tint),
+		imageAspectRatio = getImageAspectRatio(source, defaults.imageAspectRatio),
+		depth = coerceNumber(source.depth, defaults.depth, 0, 0.98),
+		planeDepthBlocks = coerceNumber(source.planeDepthBlocks, defaults.planeDepthBlocks, 1, 256),
+		heightScale = coerceNumber(source.heightScale, defaults.heightScale, 0.05, 4),
+		segmentWidthScale = coerceNumber(source.segmentWidthScale, defaults.segmentWidthScale, 0.25, 8),
+		minSegments = coerceInteger(source.minSegments, defaults.minSegments, 1, 32),
+		overscanSegments = coerceInteger(source.overscanSegments, defaults.overscanSegments, 0, 16),
+		tint = coerceColor3(source.tint, defaults.tint),
 		transparency = 0,
-		scrollSpeed = CoerceNumber(source.scrollSpeed, defaults.scrollSpeed, -256, 256),
-		textureStudsPerTileU = CoerceNumber(source.textureStudsPerTileU, defaults.textureStudsPerTileU, 1, 4096),
-		textureStudsPerTileV = CoerceNumber(source.textureStudsPerTileV, defaults.textureStudsPerTileV, 1, 4096),
-		verticalAlign = CoerceVerticalAlign(source.verticalAlign, defaults.verticalAlign),
-		verticalOffsetStuds = CoerceNumber(source.verticalOffsetStuds, defaults.verticalOffsetStuds, -4096, 4096),
-		verticalDepth = CoerceNumber(source.verticalDepth, defaults.verticalDepth, 0, 1),
-		verticalParallax = CoerceNumber(
+		scrollSpeed = coerceNumber(source.scrollSpeed, defaults.scrollSpeed, -256, 256),
+		textureStudsPerTileU = coerceNumber(source.textureStudsPerTileU, defaults.textureStudsPerTileU, 1, 4096),
+		textureStudsPerTileV = coerceNumber(source.textureStudsPerTileV, defaults.textureStudsPerTileV, 1, 4096),
+		verticalAlign = coerceVerticalAlign(source.verticalAlign, defaults.verticalAlign),
+		verticalOffsetStuds = coerceNumber(source.verticalOffsetStuds, defaults.verticalOffsetStuds, -4096, 4096),
+		verticalDepth = coerceNumber(source.verticalDepth, defaults.verticalDepth, 0, 1),
+		verticalParallax = coerceNumber(
 			readSourceValue(source, "verticalParallax", "VerticalParallax"),
 			defaults.verticalParallax,
 			0,
 			1
 		),
-		baseYOffset = CoerceNumber(readSourceValue(source, "baseYOffset", "BaseYOffset"), defaults.baseYOffset, -4, 4),
-		bottomOverscan = CoerceNumber(
+		baseYOffset = coerceNumber(readSourceValue(source, "baseYOffset", "BaseYOffset"), defaults.baseYOffset, -4, 4),
+		bottomOverscan = coerceNumber(
 			readSourceValue(source, "bottomOverscan", "BottomOverscan"),
 			defaults.bottomOverscan,
 			0,
@@ -294,7 +294,7 @@ local function CoerceLayerDefinition(
 	}
 end
 
-local function CoerceVariantDefinition(biomeName: string, variantNameRaw: any, variantRaw: any): BiomeVariantDefinition?
+local function coerceVariantDefinition(biomeName: string, variantNameRaw: any, variantRaw: any): BiomeVariantDefinition?
 	local variantName = trim(variantNameRaw)
 	if variantName == "" or typeof(variantRaw) ~= "table" then
 		return nil
@@ -310,7 +310,7 @@ local function CoerceVariantDefinition(biomeName: string, variantNameRaw: any, v
 
 	local layers: { LayerDefinition } = {}
 	for ordinal, numericIndex in indices do
-		local layer = CoerceLayerDefinition(
+		local layer = coerceLayerDefinition(
 			(layersRaw :: { [any]: any })[numericIndex],
 			`{biomeName}_{variantName}_Layer_{numericIndex}`,
 			ordinal,
@@ -352,7 +352,7 @@ local function appendBuiltInAliases(aliases: { string }, biomeName: string)
 	end
 end
 
-local function CoerceBiomeDefinition(nameRaw: any, biomeRaw: any): BiomeDefinition?
+local function coerceBiomeDefinition(nameRaw: any, biomeRaw: any): BiomeDefinition?
 	local name = trim(nameRaw)
 	if name == "" or typeof(biomeRaw) ~= "table" then
 		return nil
@@ -377,7 +377,7 @@ local function CoerceBiomeDefinition(nameRaw: any, biomeRaw: any): BiomeDefiniti
 		if implicitVariantName == "" then
 			implicitVariantName = "default"
 		end
-		local variant = CoerceVariantDefinition(name, implicitVariantName, {
+		local variant = coerceVariantDefinition(name, implicitVariantName, {
 			layers = source.layers,
 		})
 		if variant ~= nil then
@@ -387,7 +387,7 @@ local function CoerceBiomeDefinition(nameRaw: any, biomeRaw: any): BiomeDefiniti
 	elseif typeof(source.variants) == "table" then
 		for _, variantName in collectSortedStringKeys(source.variants) do
 			local variant =
-				CoerceVariantDefinition(name, variantName, (source.variants :: { [string]: any })[variantName])
+				coerceVariantDefinition(name, variantName, (source.variants :: { [string]: any })[variantName])
 			if variant ~= nil then
 				variants[variant.name] = variant
 				table.insert(orderedVariantNames, variant.name)
@@ -398,7 +398,7 @@ local function CoerceBiomeDefinition(nameRaw: any, biomeRaw: any): BiomeDefiniti
 			if ParallaxConstants.BIOME_RESERVED_KEYS[variantName] then
 				continue
 			end
-			local variant = CoerceVariantDefinition(name, variantName, source[variantName])
+			local variant = coerceVariantDefinition(name, variantName, source[variantName])
 			if variant ~= nil then
 				variants[variant.name] = variant
 				table.insert(orderedVariantNames, variant.name)
@@ -438,7 +438,7 @@ function ParallaxServiceUtils.NormalizeCatalog(rawCatalog: any): Catalog
 			continue
 		end
 
-		local biome = CoerceBiomeDefinition(biomeName, rawBiomes[biomeName])
+		local biome = coerceBiomeDefinition(biomeName, rawBiomes[biomeName])
 		if biome == nil then
 			continue
 		end
@@ -452,7 +452,7 @@ function ParallaxServiceUtils.NormalizeCatalog(rawCatalog: any): Catalog
 	end
 
 	if next(biomes) == nil then
-		local fallbackBiome = CoerceBiomeDefinition("overworld", {
+		local fallbackBiome = coerceBiomeDefinition("overworld", {
 			defaultVariant = "default",
 			default = {
 				[1] = "rbxassetid://79294783523700",
@@ -479,10 +479,10 @@ function ParallaxServiceUtils.NormalizeCatalog(rawCatalog: any): Catalog
 
 	local settings: CatalogSettings = {
 		defaultBiome = if biomes[defaultBiome] ~= nil then defaultBiome else orderedBiomeNames[1],
-		transitionSeconds = CoerceNumber(settingsRaw.transitionSeconds, 1.35, 0, 10),
-		biomeSampleIntervalSeconds = CoerceNumber(settingsRaw.biomeSampleIntervalSeconds, 0.2, 0.02, 5),
+		transitionSeconds = coerceNumber(settingsRaw.transitionSeconds, 1.35, 0, 10),
+		biomeSampleIntervalSeconds = coerceNumber(settingsRaw.biomeSampleIntervalSeconds, 0.2, 0.02, 5),
 		folderName = trim(settingsRaw.folderName) ~= "" and trim(settingsRaw.folderName) or "ParallaxDepth",
-		segmentThickness = CoerceNumber(settingsRaw.segmentThickness, 0.2, 0.01, 16),
+		segmentThickness = coerceNumber(settingsRaw.segmentThickness, 0.2, 0.01, 16),
 	}
 
 	return {
@@ -573,9 +573,9 @@ function ParallaxServiceUtils.ComputeHorizontalVisionStuds(
 	tileSizeRaw: any,
 	renderDistanceChunksRaw: any
 ): number
-	local chunkSize = CoerceInteger(chunkSizeRaw, 32, 1, 512)
-	local tileSize = CoerceNumber(tileSizeRaw, 4, 0.25, 128)
-	local renderDistanceChunks = CoerceInteger(renderDistanceChunksRaw, 4, 1, 128)
+	local chunkSize = coerceInteger(chunkSizeRaw, 32, 1, 512)
+	local tileSize = coerceNumber(tileSizeRaw, 4, 0.25, 128)
+	local renderDistanceChunks = coerceInteger(renderDistanceChunksRaw, 4, 1, 128)
 	return math.max(
 		ParallaxConstants.DEFAULT_HORIZONTAL_VISION_STUDS,
 		(renderDistanceChunks * 2 + 1) * chunkSize * tileSize
@@ -592,23 +592,23 @@ function ParallaxServiceUtils.GetDeterministicPlaneSizing(
 	textureStudsPerTileURaw: any,
 	requiredPlaneHeightRaw: any?
 ): PlaneSizing
-	local visibleWidth = CoerceNumber(visibleWidthRaw, 0, 0, 1000000)
-	local sizeReferenceWidth = CoerceNumber(sizeReferenceWidthRaw, visibleWidth, 0, 1000000)
+	local visibleWidth = coerceNumber(visibleWidthRaw, 0, 0, 1000000)
+	local sizeReferenceWidth = coerceNumber(sizeReferenceWidthRaw, visibleWidth, 0, 1000000)
 	local horizontalVisionStuds =
-		CoerceNumber(horizontalVisionStudsRaw, ParallaxConstants.DEFAULT_HORIZONTAL_VISION_STUDS, 0, 1000000)
+		coerceNumber(horizontalVisionStudsRaw, ParallaxConstants.DEFAULT_HORIZONTAL_VISION_STUDS, 0, 1000000)
 	local imageAspectRatio =
-		CoerceNumber(imageAspectRatioRaw, ParallaxConstants.IMPLICIT_LAYER_FALLBACK_IMAGE_ASPECT_RATIO, 0.05, 64)
-	local heightScale = CoerceNumber(heightScaleRaw, 1, 0.05, 4)
+		coerceNumber(imageAspectRatioRaw, ParallaxConstants.IMPLICIT_LAYER_FALLBACK_IMAGE_ASPECT_RATIO, 0.05, 64)
+	local heightScale = coerceNumber(heightScaleRaw, 1, 0.05, 4)
 	local segmentWidthScale =
-		CoerceNumber(segmentWidthScaleRaw, ParallaxConstants.IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_BASE, 0.25, 8)
+		coerceNumber(segmentWidthScaleRaw, ParallaxConstants.IMPLICIT_LAYER_SEGMENT_WIDTH_SCALE_BASE, 0.25, 8)
 	local textureStudsPerTileU =
-		CoerceNumber(textureStudsPerTileURaw, ParallaxConstants.IMPLICIT_LAYER_BASE_TEXTURE_TILE_STUDS, 1, 4096)
+		coerceNumber(textureStudsPerTileURaw, ParallaxConstants.IMPLICIT_LAYER_BASE_TEXTURE_TILE_STUDS, 1, 4096)
 
 	local minimumTextureRepeatWidth =
 		math.max(textureStudsPerTileU * 0.25, ParallaxConstants.MINIMUM_TEXTURE_REPEAT_WIDTH_STUDS)
 	local baseTextureRepeatWidth = math.max(sizeReferenceWidth * segmentWidthScale, minimumTextureRepeatWidth)
 	local baseTextureRepeatHeight = math.max(1, (baseTextureRepeatWidth / imageAspectRatio) * heightScale)
-	local textureRepeatHeight = math.max(baseTextureRepeatHeight, CoerceNumber(requiredPlaneHeightRaw, 0, 0, 1000000))
+	local textureRepeatHeight = math.max(baseTextureRepeatHeight, coerceNumber(requiredPlaneHeightRaw, 0, 0, 1000000))
 	local textureRepeatWidth = math.max(baseTextureRepeatWidth, (textureRepeatHeight / heightScale) * imageAspectRatio)
 	local horizontalBleed = math.max(
 		visibleWidth * ParallaxConstants.HORIZONTAL_PLANE_BLEED_FACTOR,
@@ -630,11 +630,11 @@ function ParallaxServiceUtils.GetStableGameplayPlaneDistance(
 	worldOriginXRaw: any,
 	basePlaneXRaw: any
 ): number
-	local cameraPositionX = CoerceNumber(cameraPositionXRaw, 0, nil, nil)
-	local worldOriginX = CoerceNumber(worldOriginXRaw, 0, nil, nil)
-	local basePlaneX = CoerceNumber(basePlaneXRaw, 0, nil, nil)
+	local cameraPositionX = coerceNumber(cameraPositionXRaw, 0, nil, nil)
+	local worldOriginX = coerceNumber(worldOriginXRaw, 0, nil, nil)
+	local basePlaneX = coerceNumber(basePlaneXRaw, 0, nil, nil)
 	local gameplayPlaneDistance = math.max(math.abs(cameraPositionX - (worldOriginX + basePlaneX)), 1)
-	local referenceDistance = CoerceNumber(referenceDistanceRaw, gameplayPlaneDistance, 1, nil)
+	local referenceDistance = coerceNumber(referenceDistanceRaw, gameplayPlaneDistance, 1, nil)
 	return math.max(referenceDistance, gameplayPlaneDistance)
 end
 
@@ -644,10 +644,10 @@ function ParallaxServiceUtils.GetHorizonLockedCenterY(
 	verticalOffsetAlphaRaw: any,
 	verticalOffsetStudsRaw: any?
 ): number
-	local cameraPositionY = CoerceNumber(cameraPositionYRaw, 0, nil, nil)
-	local visibleHeight = CoerceNumber(visibleHeightRaw, 1, 1, nil)
-	local verticalOffsetAlpha = CoerceNumber(verticalOffsetAlphaRaw, 0.5, -4, 4)
-	local verticalOffsetStuds = CoerceNumber(verticalOffsetStudsRaw, 0, nil, nil)
+	local cameraPositionY = coerceNumber(cameraPositionYRaw, 0, nil, nil)
+	local visibleHeight = coerceNumber(visibleHeightRaw, 1, 1, nil)
+	local verticalOffsetAlpha = coerceNumber(verticalOffsetAlphaRaw, 0.5, -4, 4)
+	local verticalOffsetStuds = coerceNumber(verticalOffsetStudsRaw, 0, nil, nil)
 	return cameraPositionY - visibleHeight * 0.5 + visibleHeight * verticalOffsetAlpha + verticalOffsetStuds
 end
 
@@ -657,10 +657,10 @@ function ParallaxServiceUtils.GetWorldHorizonCenterY(
 	verticalOffsetAlphaRaw: any,
 	verticalOffsetStudsRaw: any?
 ): number
-	local worldOriginY = CoerceNumber(worldOriginYRaw, 0, nil, nil)
-	local visibleHeight = CoerceNumber(visibleHeightRaw, 1, 1, nil)
-	local verticalOffsetAlpha = CoerceNumber(verticalOffsetAlphaRaw, 0.5, -4, 4)
-	local verticalOffsetStuds = CoerceNumber(verticalOffsetStudsRaw, 0, nil, nil)
+	local worldOriginY = coerceNumber(worldOriginYRaw, 0, nil, nil)
+	local visibleHeight = coerceNumber(visibleHeightRaw, 1, 1, nil)
+	local verticalOffsetAlpha = coerceNumber(verticalOffsetAlphaRaw, 0.5, -4, 4)
+	local verticalOffsetStuds = coerceNumber(verticalOffsetStudsRaw, 0, nil, nil)
 	return worldOriginY + visibleHeight * verticalOffsetAlpha + verticalOffsetStuds
 end
 
@@ -673,7 +673,7 @@ function ParallaxServiceUtils.GetWorldHorizonParallaxCenterY(
 	verticalParallaxRaw: any?,
 	subjectPositionRaw: any?
 ): number
-	local worldOriginY = CoerceNumber(worldOriginYRaw, 0, nil, nil)
+	local worldOriginY = coerceNumber(worldOriginYRaw, 0, nil, nil)
 	local baseCenterY = ParallaxServiceUtils.GetWorldHorizonCenterY(
 		worldOriginY,
 		visibleHeightRaw,
@@ -682,8 +682,8 @@ function ParallaxServiceUtils.GetWorldHorizonParallaxCenterY(
 	)
 	local subjectY = if typeof(subjectPositionRaw) == "Vector3"
 		then (subjectPositionRaw :: Vector3).Y
-		else CoerceNumber(cameraPositionYRaw, worldOriginY, nil, nil)
-	local verticalParallax = CoerceNumber(verticalParallaxRaw, 0, 0, 1)
+		else coerceNumber(cameraPositionYRaw, worldOriginY, nil, nil)
+	local verticalParallax = coerceNumber(verticalParallaxRaw, 0, 0, 1)
 	return baseCenterY + (subjectY - worldOriginY) * verticalParallax
 end
 
@@ -699,8 +699,8 @@ function ParallaxServiceUtils.GetSharedHorizonVerticalShift(layerLimitsRaw: any)
 		end
 
 		local layerLimit = layerLimitRaw :: { [string]: any }
-		local centerY = CoerceNumber(layerLimit.centerY, 0, nil, nil)
-		local maximumCenterY = CoerceNumber(layerLimit.maximumCenterY, centerY, nil, nil)
+		local centerY = coerceNumber(layerLimit.centerY, 0, nil, nil)
+		local maximumCenterY = coerceNumber(layerLimit.maximumCenterY, centerY, nil, nil)
 		shift = math.min(shift, maximumCenterY - centerY)
 	end
 	return shift
@@ -711,7 +711,7 @@ function ParallaxServiceUtils.GetScrollPositionZ(cameraPositionZRaw: any, subjec
 		return (subjectPositionRaw :: Vector3).Z
 	end
 
-	return CoerceNumber(cameraPositionZRaw, 0, nil, nil)
+	return coerceNumber(cameraPositionZRaw, 0, nil, nil)
 end
 
 function ParallaxServiceUtils.GetPlayerTravelZ(
@@ -719,9 +719,9 @@ function ParallaxServiceUtils.GetPlayerTravelZ(
 	previousTravelZRaw: any?,
 	subjectPositionRaw: any?
 ): (number, number?)
-	local previousTravelZ = CoerceNumber(previousTravelZRaw, 0, nil, nil)
+	local previousTravelZ = coerceNumber(previousTravelZRaw, 0, nil, nil)
 	local anchorPositionZ = if typeof(anchorPositionZRaw) == "number"
-		then CoerceNumber(anchorPositionZRaw, 0, nil, nil)
+		then coerceNumber(anchorPositionZRaw, 0, nil, nil)
 		else nil
 
 	if typeof(subjectPositionRaw) ~= "Vector3" then
@@ -742,8 +742,8 @@ function ParallaxServiceUtils.GetBiomeNameFromWorldSample(
 	biomeTypeRaw: any,
 	_depthLayerRaw: any
 ): string
-	local biomeType = CoerceInteger(biomeTypeRaw, WorldSimulationShared.BIOME_ID.FOREST, 0, 1024)
-	local biomeId = CoerceInteger(biomeIdRaw, WorldSimulationShared.BIOME_ID.FOREST, 0, 1024)
+	local biomeType = coerceInteger(biomeTypeRaw, WorldSimulationShared.BIOME_ID.FOREST, 0, 1024)
+	local biomeId = coerceInteger(biomeIdRaw, WorldSimulationShared.BIOME_ID.FOREST, 0, 1024)
 
 	if biomeId == WorldSimulationShared.BIOME_ID.CORRUPTION or biomeType == 2 then
 		return ParallaxServiceUtils.GetBiomeName(catalog, "Corruption")

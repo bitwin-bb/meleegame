@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 
 local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
+local ServiceBag = require("ServiceBag")
 local RagdollServicePackets = require("NetPacketsShared").RagdollService
 
 local function sendPacket(methodName: string, ...: any)
@@ -58,6 +59,7 @@ type SignalObject = Signal.Signal<...any>
 type JanitorClass = any
 
 local RagdollServiceClient = {}
+RagdollServiceClient.ServiceName = "AquariaRagdollServiceClient"
 local SELF_REQUEST_REASON = "SelfRequest"
 
 RagdollServiceClient.state = RagdollServiceUtils.CreateDefaultState()
@@ -85,7 +87,10 @@ local function didStateChange(previousState: RagdollServiceState, nextState: Rag
 	return false
 end
 
-function RagdollServiceClient.Init(self: RagdollServiceClient)
+function RagdollServiceClient.Init(self: RagdollServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
@@ -109,12 +114,12 @@ function RagdollServiceClient.ApplyState(self: RagdollServiceClient, stateRaw: a
 	end
 end
 
-function RagdollServiceClient.RequestSync(self: RagdollServiceClient)
+function RagdollServiceClient.RequestSync(_self: RagdollServiceClient)
 	sendPacket("requestSync")
 end
 
 function RagdollServiceClient.RequestSelfRagdoll(
-	self: RagdollServiceClient,
+	_self: RagdollServiceClient,
 	durationRaw: any,
 	reasonRaw: any,
 	impulseRaw: any
@@ -130,7 +135,7 @@ function RagdollServiceClient.RequestSelfRagdoll(
 	sendPacket("requestSelfRagdoll", duration, reason, impulse)
 end
 
-function RagdollServiceClient.RequestSelfRecover(self: RagdollServiceClient)
+function RagdollServiceClient.RequestSelfRecover(_self: RagdollServiceClient)
 	sendPacket("requestSelfRecover")
 end
 
@@ -147,8 +152,10 @@ function RagdollServiceClient.Destroy(self: RagdollServiceClient)
 	if self.janitor then
 		self.janitor:Destroy()
 	end
+	self._serviceBag = nil
 end
 export type RagdollServiceClient = typeof(RagdollServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
 	localPlayer: Player,
 	janitor: JanitorClass,
 	state: RagdollServiceState,

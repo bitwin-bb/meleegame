@@ -37,7 +37,7 @@ export type Cache = typeof(setmetatable(
 	Cache
 ))
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = if typeof(valueRaw) == "number" and valueRaw == valueRaw then valueRaw else fallback
 	if minimum ~= nil and value < minimum then
 		value = minimum
@@ -124,7 +124,7 @@ function Cache.GetDerivedVelocity(
 		return fallbackVelocity
 	end
 
-	local now = CoerceNumber(nowRaw, os.clock(), 0, nil)
+	local now = coerceNumber(nowRaw, os.clock(), 0, nil)
 	local dt = now - previous.updatedAt
 	if dt <= 1e-4 then
 		return fallbackVelocity
@@ -154,7 +154,7 @@ function Cache.RememberSubject(
 		kind = if typeof(kindRaw) == "string" and kindRaw ~= "" then kindRaw else "Unknown",
 		position = positionRaw,
 		velocity = if typeof(velocityRaw) == "Vector3" then velocityRaw else Vector3.zero,
-		updatedAt = CoerceNumber(nowRaw, os.clock(), 0, nil),
+		updatedAt = coerceNumber(nowRaw, os.clock(), 0, nil),
 	}
 	self.subjects[keyRaw] = snapshot
 	return snapshot
@@ -163,8 +163,8 @@ end
 function Cache.StoreFrame(self: Cache, snapshotRaw: any): FrameSnapshot
 	local snapshot = if typeof(snapshotRaw) == "table" then snapshotRaw else {} :: any
 	self.frame += 1
-	self.lastUpdatedAt = CoerceNumber((snapshot :: any).updatedAt, os.clock(), 0, nil)
-	self.lastDeltaTime = CoerceNumber((snapshot :: any).deltaTime, self.lastDeltaTime, 0, 1)
+	self.lastUpdatedAt = coerceNumber((snapshot :: any).updatedAt, os.clock(), 0, nil)
+	self.lastDeltaTime = coerceNumber((snapshot :: any).deltaTime, self.lastDeltaTime, 0, 1)
 
 	self.lastFrame = {
 		frame = self.frame,

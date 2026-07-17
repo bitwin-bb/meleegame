@@ -28,7 +28,7 @@ local DEFAULT_TWEEN: TweenOptions = {
 local DEFAULT_FROM_SCALE = 0
 local DEFAULT_TO_SCALE = 1
 
-local function CoerceScale(valueRaw: any, fallback: number): number
+local function coerceScale(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw or valueRaw < 0 then
 		return fallback
 	end
@@ -38,8 +38,8 @@ end
 
 local function useItemAppear(options: ItemAppearOptions?): number
 	local enabled = if options and options.enabled ~= nil then options.enabled else false
-	local fromScale = CoerceScale(if options then options.fromScale else nil, DEFAULT_FROM_SCALE)
-	local toScale = CoerceScale(if options then options.toScale else nil, DEFAULT_TO_SCALE)
+	local fromScale = coerceScale(if options then options.fromScale else nil, DEFAULT_FROM_SCALE)
+	local toScale = coerceScale(if options then options.toScale else nil, DEFAULT_TO_SCALE)
 	local tween = if options and options.tween ~= nil then options.tween else DEFAULT_TWEEN
 	local onComplete = if options then options.onComplete else nil
 	local trigger = if options then options.trigger else nil

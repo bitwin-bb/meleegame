@@ -9,6 +9,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
+local ServiceBag = require("ServiceBag")
 local AudioRegistry = require("Audio")
 local AudioServiceClient = require("AudioServiceClient")
 local AudioServiceUtils = require("AudioServiceUtils")
@@ -74,6 +75,7 @@ type NumberMotion = Ripple.Motion<number>
 type JanitorClass = any
 
 local PlayerServiceClient = {}
+PlayerServiceClient.ServiceName = "PlayerServiceClient"
 local MOVE_RENDERSTEP_NAME = "PlayerService_UpdateMovement"
 local BLOCK_MOVEMENT_ACTION = "PlayerService_BlockMovement"
 local BLOCK_MOVEMENT_PRIORITY = 2000
@@ -109,7 +111,7 @@ local function isGroundHitContact(hit: RaycastResult?): boolean
 	return hit ~= nil and hit.Distance <= GROUNDED_CONTACT_MAX_DISTANCE
 end
 
-local function GetGamepadAimVector(gamepadNavRaw: any, maxAgeSeconds: number?): Vector2?
+local function getGamepadAimVector(gamepadNavRaw: any, maxAgeSeconds: number?): Vector2?
 	if gamepadNavRaw == nil or typeof((gamepadNavRaw :: any).GetThumbstickState) ~= "function" then
 		return nil
 	end
@@ -131,7 +133,7 @@ local function GetGamepadAimVector(gamepadNavRaw: any, maxAgeSeconds: number?): 
 	return screenVector
 end
 
-local function GetThumbstickVector(inputObjectRaw: any): Vector2?
+local function getThumbstickVector(inputObjectRaw: any): Vector2?
 	if typeof(inputObjectRaw) ~= "InputObject" then
 		return nil
 	end
@@ -216,13 +218,13 @@ local function getPolledThumbstickVector(
 	for _, inputObjectRaw in gamepadState do
 		local inputObject = if typeof(inputObjectRaw) == "InputObject" then inputObjectRaw :: InputObject else nil
 		if inputObject ~= nil and inputObject.KeyCode == keyCode then
-			return GetThumbstickVector(inputObject)
+			return getThumbstickVector(inputObject)
 		end
 	end
 	return nil
 end
 
-local function GetScreenThumbstickVector(vectorRaw: any, deadzone: number): Vector2?
+local function getScreenThumbstickVector(vectorRaw: any, deadzone: number): Vector2?
 	if typeof(vectorRaw) ~= "Vector2" then
 		return nil
 	end
@@ -297,7 +299,7 @@ local function getPolledGamepadAimVector(userInputServiceRaw: any): (Vector2?, b
 			end
 			didPollThumbstick = true
 
-			local screenVector = GetScreenThumbstickVector(rawVector, GAMEPAD_AIM_DEADZONE)
+			local screenVector = getScreenThumbstickVector(rawVector, GAMEPAD_AIM_DEADZONE)
 			if screenVector ~= nil then
 				return screenVector, didPollThumbstick
 			end
@@ -321,7 +323,10 @@ local function shouldRefreshRigFromCharacterChild(child: Instance): boolean
 	return true
 end
 
-function PlayerServiceClient.Init(self: PlayerServiceClient)
+function PlayerServiceClient.Init(self: PlayerServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
@@ -682,7 +687,7 @@ function PlayerServiceClient.OnGamepadMoveInputChanged(self: PlayerServiceClient
 	if inputObject.KeyCode ~= Enum.KeyCode.Thumbstick1 then
 		return
 	end
-	local thumbstickVector = GetThumbstickVector(inputObject)
+	local thumbstickVector = getThumbstickVector(inputObject)
 	if thumbstickVector == nil then
 		return
 	end
@@ -701,7 +706,7 @@ function PlayerServiceClient.OnGamepadAimInputChanged(self: PlayerServiceClient,
 		return
 	end
 
-	local thumbstickVector = GetThumbstickVector(inputObject)
+	local thumbstickVector = getThumbstickVector(inputObject)
 	if thumbstickVector == nil then
 		return
 	end
@@ -722,7 +727,7 @@ function PlayerServiceClient.GetGamepadAimVector(self: PlayerServiceClient): Vec
 		return nil
 	end
 
-	local navAimVector = GetGamepadAimVector(self.gamepadNav, GAMEPAD_NAV_SNAPSHOT_MAX_AGE_SECONDS)
+	local navAimVector = getGamepadAimVector(self.gamepadNav, GAMEPAD_NAV_SNAPSHOT_MAX_AGE_SECONDS)
 	if navAimVector ~= nil then
 		return navAimVector
 	end
@@ -1595,8 +1600,10 @@ function PlayerServiceClient.Destroy(self: PlayerServiceClient)
 	self.runtimeContext = nil
 	self.gamepadNav = nil
 	self.cursorModule = nil
+	self._serviceBag = nil
 end
 type PlayerServiceClient = typeof(PlayerServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
 	refreshHurtSoundTemplates: (self: PlayerServiceClient) -> (),
 	pickHurtSoundAssetId: (self: PlayerServiceClient) -> string?,
 	playHurtFeedback: (self: PlayerServiceClient) -> (),
@@ -1624,7 +1631,7 @@ type PlayerServiceClient = typeof(PlayerServiceClient) & {
 	onGamepadMoveInputChanged: (self: PlayerServiceClient, inputObjectRaw: any) -> (),
 	onGamepadAimInputChanged: (self: PlayerServiceClient, inputObjectRaw: any) -> (),
 	getPolledGamepadAimVector: (self: PlayerServiceClient) -> Vector2?,
-	getGamepadAimVector: (self: PlayerServiceClient) -> Vector2?,
+	GetGamepadAimVector: (self: PlayerServiceClient) -> Vector2?,
 	getActionHorizontalMoveAxis: (self: PlayerServiceClient) -> number,
 	getGamepadMoveAxis: (self: PlayerServiceClient) -> number,
 	getHorizontalMoveAxisComponents: (self: PlayerServiceClient) -> (number, number, number),

@@ -24,7 +24,7 @@ local function trim(valueRaw: any): string
 	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function CoerceItemId(itemIdRaw: any): string?
+local function coerceItemId(itemIdRaw: any): string?
 	local itemId = trim(itemIdRaw)
 	if itemId == "" then
 		return nil
@@ -41,7 +41,7 @@ local function findItemsFolder(): Folder?
 end
 
 local function registerAlias(canonicalByAlias: { [string]: string }, aliasRaw: any, canonicalItemId: string)
-	local alias = CoerceItemId(aliasRaw)
+	local alias = coerceItemId(aliasRaw)
 	if alias == nil then
 		return
 	end
@@ -98,7 +98,7 @@ local function collectDefinitions(sourceRaw: any, fallbackItemId: string?, regis
 	end
 
 	local source = sourceRaw :: { [any]: any }
-	local explicitItemId = CoerceItemId(source.id) or CoerceItemId(source.itemId)
+	local explicitItemId = coerceItemId(source.id) or coerceItemId(source.itemId)
 	local canonicalItemId = explicitItemId or fallbackItemId
 	if canonicalItemId ~= nil and looksLikeDefinition(source) then
 		if registry.definitionsById[canonicalItemId] == nil then
@@ -118,7 +118,7 @@ local function collectDefinitions(sourceRaw: any, fallbackItemId: string?, regis
 		end
 
 		local nested = value :: { [any]: any }
-		local nestedItemId = CoerceItemId(nested.id) or CoerceItemId(nested.itemId) or CoerceItemId(key)
+		local nestedItemId = coerceItemId(nested.id) or coerceItemId(nested.itemId) or coerceItemId(key)
 		collectDefinitions(nested, nestedItemId, registry)
 	end
 end
@@ -155,7 +155,7 @@ local function buildRegistry(): RegistryData
 				continue
 			end
 
-			collectDefinitions(moduleResult, CoerceItemId(child.Name), registry)
+			collectDefinitions(moduleResult, coerceItemId(child.Name), registry)
 		end
 	else
 		cachedItemsFolder = nil
@@ -176,7 +176,7 @@ local function buildRegistry(): RegistryData
 end
 
 function Registry.GetCanonicalItemId(itemIdRaw: any): string?
-	local itemId = CoerceItemId(itemIdRaw)
+	local itemId = coerceItemId(itemIdRaw)
 	if itemId == nil then
 		return nil
 	end

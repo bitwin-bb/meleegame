@@ -79,7 +79,7 @@ local function mergeFolderContents(target: Folder, source: Folder)
 	source:Destroy()
 end
 
-local function GetCanonicalGameFolder(): Folder?
+local function getCanonicalGameFolder(): Folder?
 	local gameFolders = {}
 	for _, child in Workspace:GetChildren() do
 		if child.Name == GAME_FOLDER_NAME and child:IsA("Folder") then
@@ -116,7 +116,7 @@ local function GetCanonicalGameFolder(): Folder?
 	return canonical
 end
 
-local function GetManagedParent(folder: Folder): Instance?
+local function getManagedParent(folder: Folder): Instance?
 	local getter = managedParents[folder]
 	if getter == nil then
 		return nil
@@ -130,7 +130,7 @@ local function attachManagedFolder(folder: Folder)
 		return
 	end
 
-	local parent = GetManagedParent(folder)
+	local parent = getManagedParent(folder)
 	if parent == nil or folder.Parent == parent then
 		return
 	end
@@ -153,7 +153,7 @@ local function attachManagedFolder(folder: Folder)
 end
 
 local function pruneGameFolderIfEmpty()
-	local gameFolder = GetCanonicalGameFolder()
+	local gameFolder = getCanonicalGameFolder()
 	if gameFolder ~= nil and isFolderEmpty(gameFolder) then
 		gameFolder.Parent = nil
 	end
@@ -225,7 +225,7 @@ local function ensureWorkspaceGameConnection()
 			return
 		end
 		task.defer(function()
-			local gameFolder = GetCanonicalGameFolder()
+			local gameFolder = getCanonicalGameFolder()
 			if gameFolder == nil then
 				return
 			end
@@ -238,7 +238,7 @@ local function ensureWorkspaceGameConnection()
 end
 
 local function getExistingOrCreateGameFolder(): Folder
-	local existing = GetCanonicalGameFolder()
+	local existing = getCanonicalGameFolder()
 	if existing ~= nil then
 		return existing
 	end
@@ -269,7 +269,7 @@ end
 
 function WorkspaceFolders.FindFolderInGame(folderName: string): Folder?
 	ensureWorkspaceGameConnection()
-	local gameFolder = GetCanonicalGameFolder()
+	local gameFolder = getCanonicalGameFolder()
 	if gameFolder == nil then
 		return nil
 	end

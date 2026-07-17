@@ -89,7 +89,7 @@ function PlayerBinderClient.Refresh(self: any)
 	model:SetAttribute("PlayerTagged", ownerPlayer ~= nil)
 	model:SetAttribute("PlayerClientTagged", ownerPlayer ~= nil)
 	model:SetAttribute("PlayerIsLocal", isLocalPlayer)
-	model:SetAttribute("PlayerViewportEnabled", isLocalPlayer)
+	model:SetAttribute("PlayerViewportEnabled", ownerPlayer ~= nil)
 
 	if ownerPlayer ~= nil then
 		model:SetAttribute("PlayerUserId", ownerPlayer.UserId)

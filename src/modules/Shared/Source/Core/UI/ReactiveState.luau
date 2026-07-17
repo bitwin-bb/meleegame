@@ -2,8 +2,8 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local MaidTaskUtils = require("MaidTaskUtils")
+local Sift: any = require(ReplicatedStorage.Packages.Sift)
 
 local ReactiveState = {}
 
@@ -27,12 +27,6 @@ export type ComputedState<T> = any
 local nextValueId = 0
 local nextSubscriberId = 0
 local activeCollector: any? = nil
-
-local function clearArray(array: { any })
-	for index = #array, 1, -1 do
-		array[index] = nil
-	end
-end
 
 local function noop() end
 
@@ -87,14 +81,14 @@ function MutableState.new<T>(initialValue: T): MutableState<T>
 	return self :: any
 end
 
-function MutableState.get<T>(self: MutableState<T>): T
+function MutableState.Get<T>(self: MutableState<T>): T
 	if activeCollector ~= nil then
 		activeCollector:_collectDependency(self)
 	end
 	return self.value
 end
 
-function MutableState.set<T>(self: MutableState<T>, nextValue: T): boolean
+function MutableState.Set<T>(self: MutableState<T>, nextValue: T): boolean
 	if self.destroyed then
 		return false
 	end
@@ -107,18 +101,18 @@ function MutableState.set<T>(self: MutableState<T>, nextValue: T): boolean
 	return true
 end
 
-function MutableState.update<T>(self: MutableState<T>, updater: (prevValue: T) -> T): boolean
+function MutableState.Update<T>(self: MutableState<T>, updater: (prevValue: T) -> T): boolean
 	if self.destroyed then
 		return false
 	end
 	if typeof(updater) ~= "function" then
 		return false
 	end
-	return self:set(updater(self.value))
+	return self:Set(updater(self.value))
 end
 
-MutableState.subscribe = BaseValue.Subscribe
-MutableState.destroy = BaseValue.Destroy
+MutableState.Subscribe = BaseValue.Subscribe
+MutableState.Destroy = BaseValue.Destroy
 
 function ComputedState.new<T>(compute: () -> T): ComputedState<T>
 	nextValueId += 1
@@ -167,7 +161,7 @@ function ComputedState._recompute(self: any)
 	end
 
 	for dependency in self.dependencies do
-		self.dependencySubscriptions[dependency] = dependency:subscribe(function()
+		self.dependencySubscriptions[dependency] = dependency:Subscribe(function()
 			self:_markDirty()
 		end)
 	end
@@ -193,7 +187,7 @@ function ComputedState._markDirty(self: any)
 	self:_recompute()
 end
 
-function ComputedState.get<T>(self: ComputedState<T>): T
+function ComputedState.Get<T>(self: ComputedState<T>): T
 	if activeCollector ~= nil then
 		activeCollector:_collectDependency(self)
 	end
@@ -204,7 +198,7 @@ function ComputedState.get<T>(self: ComputedState<T>): T
 	return (self :: any).value
 end
 
-function ComputedState.destroy<T>(self: ComputedState<T>)
+function ComputedState.Destroy<T>(self: ComputedState<T>)
 	if self.destroyed then
 		return
 	end
@@ -213,7 +207,7 @@ function ComputedState.destroy<T>(self: ComputedState<T>)
 	BaseValue.Destroy(self :: any)
 end
 
-ComputedState.subscribe = BaseValue.Subscribe
+ComputedState.Subscribe = BaseValue.Subscribe
 
 function ReactiveState.CreateState<T>(initialValue: T): MutableState<T>
 	return MutableState.new(initialValue)
@@ -233,16 +227,17 @@ function ReactiveState.Bind(instanceRaw: any, propertyRaw: any, sourceRaw: any, 
 	if typeof(propertyRaw) ~= "string" or propertyRaw == "" then
 		return noop
 	end
-	if
-		typeof(sourceRaw) ~= "table"
-		or typeof(sourceRaw.get) ~= "function"
-		or typeof(sourceRaw.subscribe) ~= "function"
-	then
+	if typeof(sourceRaw) ~= "table" then
 		return noop
 	end
 
 	local instance = instanceRaw :: Instance
 	local source = sourceRaw :: any
+	local getValue = if typeof(source.Get) == "function" then source.Get else source.get
+	local subscribe = if typeof(source.Subscribe) == "function" then source.Subscribe else source.subscribe
+	if typeof(getValue) ~= "function" or typeof(subscribe) ~= "function" then
+		return noop
+	end
 	local property = propertyRaw :: string
 	local transform = if typeof(transformRaw) == "function" then transformRaw else nil
 
@@ -257,8 +252,8 @@ function ReactiveState.Bind(instanceRaw: any, propertyRaw: any, sourceRaw: any, 
 		end)
 	end
 
-	apply(source:get())
-	local disconnectSource = source:subscribe(function(nextValue: any)
+	apply(getValue(source))
+	local disconnectSource = subscribe(source, function(nextValue: any)
 		apply(nextValue)
 	end)
 
@@ -302,7 +297,9 @@ function ReactiveState.Combine(sourceListRaw: any, compute: (...any) -> any): Co
 	return ReactiveState.Computed(function()
 		local values = Sift.Array.create(#sourceList)
 		for index = 1, #sourceList do
-			values[index] = sourceList[index]:get()
+			local source = sourceList[index]
+			local getValue = if typeof(source.Get) == "function" then source.Get else source.get
+			values[index] = getValue(source)
 		end
 		return compute(table.unpack(values, 1, #values))
 	end)
@@ -331,7 +328,7 @@ function ReactiveState.FromAttributeCache(
 
 	if attributeCacheRaw ~= nil and typeof(attributeCacheRaw.OnChanged) == "function" then
 		disconnect = attributeCacheRaw:OnChanged(instanceRaw, attributeRaw, function(_, _, nextValue)
-			state:set(nextValue)
+			state:Set(nextValue)
 		end)
 	elseif typeof(instanceRaw) == "Instance" and typeof(attributeRaw) == "string" then
 		connection = instanceRaw:GetAttributeChangedSignal(attributeRaw):Connect(function()
@@ -339,7 +336,7 @@ function ReactiveState.FromAttributeCache(
 			if value == nil then
 				value = defaultValue
 			end
-			state:set(value)
+			state:Set(value)
 		end)
 	end
 

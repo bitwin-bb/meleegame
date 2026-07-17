@@ -7,14 +7,15 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local Damp = require("Damp")
-local HumanoidTracker = require("HumanoidTracker")
 local Maid = require("Maid")
 local Promise = require("Promise")
-local PromiseMaidUtils = require("PromiseMaidUtils")
 local Rx = require("Rx")
+local RxCharacterUtils = require("RxCharacterUtils")
 local RxInstanceUtils = require("RxInstanceUtils")
 local Table = require("Table")
 local ValueObject = require("ValueObject")
+local WorkspaceFolders = require("WorkspaceFolders")
+local WorldGenerationConstants = require("WorldGenerationConstants")
 
 local Fusion: any = require(ReplicatedStorage.Packages.Fusion)
 
@@ -26,13 +27,16 @@ local SURFACE_ANCHOR_NAME = "PlayerViewportAnchor"
 local VIEWPORT_FRAME_NAME = "PlayerViewport"
 local WORLD_MODEL_NAME = "PlayerViewportWorld"
 local CAMERA_NAME = "PlayerViewportCamera"
+local SURFACE_FOLDER_NAME = "PlayerViewportSurfaces"
+local WORLD_GENERATION_FOLDER_NAME = "WorldGeneration"
 local DEFAULT_VIEWPORT_SIZE = Vector2.new(1280, 720)
-local VIEWPORT_FRAME_POSITION = UDim2.fromScale(1, 0)
-local VIEWPORT_FRAME_SIZE = UDim2.fromScale(-1, 1)
+local VIEWPORT_FRAME_POSITION = UDim2.fromScale(0, 0)
+local VIEWPORT_FRAME_SIZE = UDim2.fromScale(1, 1)
 local DEFAULT_SURFACE_ANCHOR_SIZE = Vector3.new(2, 8, 6)
 local SURFACE_FACE = Enum.NormalId.Right
 local SURFACE_PIXELS_PER_STUD = 8
-local SURFACE_ANCHOR_DEPTH = 2
+local SURFACE_ANCHOR_DEPTH = WorldGenerationConstants.DEFAULT_TILE_DEPTH
+local SURFACE_Z_OFFSET = 0
 local ORTHOGRAPHIC_FIELD_OF_VIEW = 1
 local CAMERA_PADDING_SCALE = 1.18
 local CAMERA_HALF_EXTENTS_PADDING = Vector3.new(0.25, 0.75, 1)
@@ -40,7 +44,6 @@ local VIEWPORT_FRAME_SMOOTHING_RESPONSE = 30
 local VIEWPORT_CENTER_SNAP_DISTANCE = 8
 local DEFAULT_SMOOTHING_DELTA_TIME = 1 / 60
 local MAX_SMOOTHING_DELTA_TIME = 1 / 15
-local PLAYER_GUI_TIMEOUT_SECONDS = 10
 local REBUILD_DEBOUNCE_SECONDS = 0.03
 
 local AUDIO_CLASS_NAMES = table.freeze({
@@ -99,8 +102,24 @@ local function getModelRootPart(model: Model): BasePart?
 	return nil
 end
 
-local function getPlayerGui(player: Player): PlayerGui?
-	return player:FindFirstChildOfClass("PlayerGui")
+local function isFiniteNumber(value: any): boolean
+	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
+end
+
+local function getTerrainPlaneCenterX(self: any, fallbackX: number): number
+	local worldFolder = rawget(self, "worldGenerationFolder")
+	if worldFolder == nil or worldFolder.Parent == nil then
+		worldFolder = WorkspaceFolders.FindFolderInGameOrWorkspace(WORLD_GENERATION_FOLDER_NAME)
+		self.worldGenerationFolder = worldFolder
+	end
+	if worldFolder == nil then
+		return fallbackX
+	end
+
+	local worldOriginX = worldFolder:GetAttribute("WorldOriginX")
+	local basePlaneX = worldFolder:GetAttribute("BasePlaneX")
+	return (if isFiniteNumber(worldOriginX) then worldOriginX :: number else 0)
+		+ (if isFiniteNumber(basePlaneX) then basePlaneX :: number else 0)
 end
 
 local function setFusionValue(valueObject: any, nextValue: any)
@@ -235,15 +254,13 @@ end
 
 function PlayerMain.GetSurfaceAnchorSize(boundsSize: Vector3, paddingScale: number?): Vector3
 	local padding = math.max(1, paddingScale or CAMERA_PADDING_SCALE)
-	return Vector3.new(
-		SURFACE_ANCHOR_DEPTH,
-		math.max(1, boundsSize.Y * padding),
-		math.max(1, boundsSize.Z * padding)
-	)
+	return Vector3.new(SURFACE_ANCHOR_DEPTH, math.max(1, boundsSize.Y * padding), math.max(1, boundsSize.Z * padding))
 end
 
-function PlayerMain.GetSurfaceAnchorCFrame(boundsCFrame: CFrame): CFrame
-	return CFrame.new(boundsCFrame.Position)
+function PlayerMain.GetSurfaceAnchorCFrame(boundsCFrame: CFrame, terrainPlaneCenterX: number?): CFrame
+	local position = boundsCFrame.Position
+	local planeCenterX = if isFiniteNumber(terrainPlaneCenterX) then terrainPlaneCenterX :: number else position.X
+	return CFrame.new(planeCenterX, position.Y, position.Z)
 end
 
 function PlayerMain.GetSurfacePixelsPerStud(): number
@@ -329,13 +346,16 @@ function PlayerMain.ShouldRebuildForCharacterChild(child: Instance): boolean
 	return child:IsA("Tool") or child:IsA("Accessory") or child:IsA("BasePart") or child:IsA("Model")
 end
 
-function PlayerMain.new(localPlayer: Player?): any
+function PlayerMain.new(player: Player?, viewerPlayer: Player?): any
 	local self = setmetatable({}, PlayerMain)
-	self.localPlayer = localPlayer or Players.LocalPlayer
+	self.localPlayer = player or Players.LocalPlayer
+	self.viewerPlayer = viewerPlayer or Players.LocalPlayer
 	self.maid = Maid.new()
 	self.mountMaid = Maid.new()
 	self.characterMaid = Maid.new()
+	self.visibilityMaid = Maid.new()
 	self.cloneMaid = Maid.new()
+	self.rebuildMaid = Maid.new()
 	self.state = ValueObject.new({
 		enabled = false,
 		character = nil,
@@ -343,6 +363,7 @@ function PlayerMain.new(localPlayer: Player?): any
 		updatedAt = os.clock(),
 	})
 	self.scope = Fusion.scoped(Fusion)
+	self.playerGuiParentValue = self.scope:Value(self.viewerPlayer:FindFirstChildOfClass("PlayerGui"))
 	self.viewportSizeValue = self.scope:Value(DEFAULT_VIEWPORT_SIZE)
 	self.surfaceAnchorSizeValue = self.scope:Value(DEFAULT_SURFACE_ANCHOR_SIZE)
 	self.surfaceAnchorCFrameValue = self.scope:Value(CFrame.new())
@@ -353,13 +374,16 @@ function PlayerMain.new(localPlayer: Player?): any
 	self.stableHalfExtents = nil
 	self.stableCenterOffset = nil
 	self.smoothedViewportCenter = nil
+	self.characterDead = false
 	self.started = false
 	self.rebuildRequested = false
 	self.destroyed = false
 
 	self.maid:GiveTask(self.mountMaid)
 	self.maid:GiveTask(self.characterMaid)
+	self.maid:GiveTask(self.visibilityMaid)
 	self.maid:GiveTask(self.cloneMaid)
+	self.maid:GiveTask(self.rebuildMaid)
 	self.maid:GiveTask(self.state)
 	self.maid:GiveTask(function()
 		Fusion.doCleanup(self.scope)
@@ -372,43 +396,27 @@ function PlayerMain.ObserveState(self: any): any
 	return self.state:Observe()
 end
 
-function PlayerMain.PromisePlayerGui(self: any): any
-	local existingPlayerGui = getPlayerGui(self.localPlayer)
-	if existingPlayerGui ~= nil then
-		return Promise.resolved(existingPlayerGui)
-	end
-
-	local promise = Promise.new()
-	self.maid:GiveTask(PromiseMaidUtils.whilePromise(promise, function(lifetimeMaid: any)
-		lifetimeMaid:GiveTask(self.localPlayer.ChildAdded:Connect(function(child: Instance)
-			if child:IsA("PlayerGui") then
-				promise:Resolve(child)
-			end
-		end))
-		lifetimeMaid:GiveTask(task.delay(PLAYER_GUI_TIMEOUT_SECONDS, function()
-			promise:Reject("[playermain] timed out waiting for PlayerGui")
-		end))
-	end))
-	return promise
-end
-
 function PlayerMain.Start(self: any)
 	if self.started == true then
 		return
 	end
 
 	self.started = true
+	self:Mount()
 	self:ObserveLocalCharacter()
 
-	local playerGuiPromise = self:PromisePlayerGui()
-	self.maid:GivePromise(playerGuiPromise:Then(function(playerGui: PlayerGui)
-		if self.destroyed then
-			return
+	local function refreshPlayerGuiParent()
+		setFusionValue(self.playerGuiParentValue, self.viewerPlayer:FindFirstChildOfClass("PlayerGui"))
+	end
+	self.maid:GiveTask(self.viewerPlayer.ChildAdded:Connect(function(child: Instance)
+		if child:IsA("PlayerGui") then
+			refreshPlayerGuiParent()
 		end
-		self:Mount(playerGui)
-		self:RequestRebuildCharacterClone()
-	end, function(message: any)
-		warn(message)
+	end))
+	self.maid:GiveTask(self.viewerPlayer.ChildRemoved:Connect(function(child: Instance)
+		if child:IsA("PlayerGui") then
+			refreshPlayerGuiParent()
+		end
 	end))
 
 	self.maid:GiveTask(Rx.fromSignal(RunService.RenderStepped):Subscribe(function(deltaTime: number)
@@ -417,19 +425,12 @@ function PlayerMain.Start(self: any)
 end
 
 function PlayerMain.ObserveLocalCharacter(self: any)
-	local humanoidTracker = HumanoidTracker.new(self.localPlayer)
-	self.maid:GiveTask(humanoidTracker)
-	self.maid:GiveTask(humanoidTracker.Humanoid:Observe():Subscribe(function(humanoid: Humanoid?)
-		local character = if humanoid ~= nil
-				and humanoid.Parent ~= nil
-				and humanoid.Parent:IsA("Model")
-			then humanoid.Parent
-			else self.localPlayer.Character
+	self.maid:GiveTask(RxCharacterUtils.observeCharacter(self.localPlayer):Subscribe(function(character: Model?)
 		self:SetCharacter(character)
 	end))
 end
 
-function PlayerMain.Mount(self: any, _playerGui: PlayerGui)
+function PlayerMain.Mount(self: any, _playerGui: Instance?)
 	self.mountMaid:DoCleaning()
 
 	local mountScope = Fusion.deriveScope(self.scope)
@@ -441,6 +442,7 @@ function PlayerMain.Mount(self: any, _playerGui: PlayerGui)
 		self.worldModel = nil
 		self.surfaceAnchor = nil
 		self.surfaceGui = nil
+		self.surfaceFolder = nil
 	end)
 
 	self.camera = mountScope:New "Camera" {
@@ -454,9 +456,29 @@ function PlayerMain.Mount(self: any, _playerGui: PlayerGui)
 		Name = WORLD_MODEL_NAME,
 	}
 
+	self.surfaceAnchor = mountScope:New "Part" {
+		Name = SURFACE_ANCHOR_NAME,
+		Anchored = true,
+		CanCollide = false,
+		CanQuery = false,
+		CanTouch = false,
+		CastShadow = false,
+		CFrame = self.surfaceAnchorCFrameValue,
+		Size = self.surfaceAnchorSizeValue,
+		Transparency = 1,
+		Parent = Workspace,
+	}
+	self.surfaceFolder = mountScope:New "ScreenGui" {
+		Name = SURFACE_FOLDER_NAME,
+		IgnoreGuiInset = true,
+		ResetOnSpawn = false,
+		Parent = self.playerGuiParentValue,
+	}
+
 	self.surfaceGui = mountScope:New "SurfaceGui" {
 		Name = SURFACE_GUI_NAME,
-		AlwaysOnTop = false,
+		Adornee = self.surfaceAnchor,
+		AlwaysOnTop = true,
 		Brightness = 1,
 		Enabled = self.surfaceEnabledValue,
 		Face = SURFACE_FACE,
@@ -465,7 +487,9 @@ function PlayerMain.Mount(self: any, _playerGui: PlayerGui)
 		PixelsPerStud = PlayerMain.GetSurfacePixelsPerStud(),
 		ResetOnSpawn = false,
 		SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud,
+		ZOffset = SURFACE_Z_OFFSET,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		Parent = self.surfaceFolder,
 
 		[Fusion.Children] = {
 			mountScope:New "ViewportFrame" {
@@ -492,23 +516,6 @@ function PlayerMain.Mount(self: any, _playerGui: PlayerGui)
 			},
 		},
 	}
-
-	self.surfaceAnchor = mountScope:New "Part" {
-		Name = SURFACE_ANCHOR_NAME,
-		Anchored = true,
-		CanCollide = false,
-		CanQuery = false,
-		CanTouch = false,
-		CastShadow = false,
-		CFrame = self.surfaceAnchorCFrameValue,
-		Size = self.surfaceAnchorSizeValue,
-		Transparency = 1,
-		Parent = Workspace,
-
-		[Fusion.Children] = {
-			self.surfaceGui,
-		},
-	}
 end
 
 function PlayerMain.SetCharacter(self: any, character: Model?)
@@ -518,19 +525,22 @@ function PlayerMain.SetCharacter(self: any, character: Model?)
 
 	self.character = character
 	self.characterMaid:DoCleaning()
-	self.cloneMaid:DoCleaning()
-	self.characterClone = nil
+	self.visibilityMaid:DoCleaning()
+	self.rebuildMaid:DoCleaning()
 	self.partMap = nil
 	self.stableBoundsSize = nil
 	self.stableHalfExtents = nil
 	self.stableCenterOffset = nil
 	self.smoothedViewportCenter = nil
-	setFusionValue(self.surfaceEnabledValue, false)
+	self.characterDead = false
+	local activeClone = rawget(self, "characterClone")
+	local hasActiveClone = activeClone ~= nil and activeClone.Parent ~= nil
+	setFusionValue(self.surfaceEnabledValue, hasActiveClone)
 
 	self.state.Value = {
-		enabled = false,
+		enabled = hasActiveClone,
 		character = character,
-		clone = nil,
+		clone = activeClone,
 		updatedAt = os.clock(),
 	}
 
@@ -538,13 +548,13 @@ function PlayerMain.SetCharacter(self: any, character: Model?)
 		return
 	end
 
-	self:BindCharacterLocalVisibility(character)
 	self:BindCharacterChangeSignals(character)
 	self:RequestRebuildCharacterClone()
 end
 
 function PlayerMain.BindCharacterLocalVisibility(self: any, character: Model)
-	self.characterMaid:GiveTask(
+	self.visibilityMaid:DoCleaning()
+	self.visibilityMaid:GiveTask(
 		RxInstanceUtils.observeDescendantsAndSelfBrio(character, isRenderablePart):Subscribe(function(brio: any)
 			if brio:IsDead() then
 				return
@@ -563,12 +573,31 @@ function PlayerMain.BindCharacterLocalVisibility(self: any, character: Model)
 end
 
 function PlayerMain.BindCharacterChangeSignals(self: any, character: Model)
+	local function bindHumanoid(humanoid: Humanoid)
+		self.characterMaid.HumanoidDied = humanoid.Died:Connect(function()
+			if rawget(self, "character") == character then
+				self.characterDead = true
+			end
+		end)
+	end
+
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid ~= nil then
+		bindHumanoid(humanoid)
+	end
+
 	self.characterMaid:GiveTask(Rx.fromSignal(character.ChildAdded):Subscribe(function(child: Instance)
+		if child:IsA("Humanoid") then
+			bindHumanoid(child)
+		end
 		if PlayerMain.ShouldRebuildForCharacterChild(child) then
 			self:RequestRebuildCharacterClone()
 		end
 	end))
 	self.characterMaid:GiveTask(Rx.fromSignal(character.ChildRemoved):Subscribe(function(child: Instance)
+		if child:IsA("Humanoid") then
+			self.characterMaid.HumanoidDied = nil
+		end
 		if PlayerMain.ShouldRebuildForCharacterChild(child) then
 			self:RequestRebuildCharacterClone()
 		end
@@ -594,14 +623,11 @@ end
 function PlayerMain.RebuildCharacterClone(self: any)
 	local character = rawget(self, "character")
 	local worldModel = rawget(self, "worldModel")
-	if character == nil or character.Parent == nil or worldModel == nil then
+	if self.characterDead or character == nil or character.Parent == nil or worldModel == nil then
 		return
 	end
 
-	self.cloneMaid:DoCleaning()
-	self.characterClone = nil
-	self.partMap = nil
-	setFusionValue(self.surfaceEnabledValue, false)
+	self.rebuildMaid:DoCleaning()
 
 	local clonePromise = Promise.defer(function(resolve, reject)
 		local clone = cloneCharacter(character)
@@ -614,13 +640,23 @@ function PlayerMain.RebuildCharacterClone(self: any)
 		resolve(clone)
 	end)
 
-	self.cloneMaid:GivePromise(clonePromise:Then(function(clone: Model)
+	self.rebuildMaid:GivePromise(clonePromise:Then(function(clone: Model)
 		local currentWorldModel = rawget(self, "worldModel")
-		if self.destroyed or rawget(self, "character") ~= character or currentWorldModel == nil then
+		if
+			self.destroyed
+			or self.characterDead
+			or rawget(self, "character") ~= character
+			or currentWorldModel == nil
+		then
 			clone:Destroy()
 			return
 		end
 
+		local partMap = {}
+		mapCloneParts(character, clone, partMap)
+
+		self.cloneMaid:DoCleaning()
+		self.visibilityMaid:DoCleaning()
 		local cloneScope = Fusion.deriveScope(self.scope)
 		self.cloneMaid:GiveTask(function()
 			Fusion.doCleanup(cloneScope)
@@ -630,8 +666,6 @@ function PlayerMain.RebuildCharacterClone(self: any)
 			Parent = currentWorldModel,
 		}
 
-		local partMap = {}
-		mapCloneParts(character, clone, partMap)
 		self.characterClone = clone
 		self.partMap = partMap
 		self.state.Value = {
@@ -641,6 +675,7 @@ function PlayerMain.RebuildCharacterClone(self: any)
 			updatedAt = os.clock(),
 		}
 		self:SyncViewport()
+		self:BindCharacterLocalVisibility(character)
 	end, function(message: any)
 		warn(message)
 	end))
@@ -653,7 +688,9 @@ function PlayerMain.SyncViewport(self: any, deltaTimeRaw: number?)
 	if partMap ~= nil then
 		for sourcePart, clonePart in partMap do
 			if sourcePart.Parent == nil or clonePart.Parent == nil then
-				self:RequestRebuildCharacterClone()
+				if not self.characterDead then
+					self:RequestRebuildCharacterClone()
+				end
 				continue
 			end
 
@@ -701,8 +738,13 @@ function PlayerMain.RefreshCamera(self: any, deltaTimeRaw: number?)
 		PlayerMain.GetViewportSmoothingAlpha(VIEWPORT_FRAME_SMOOTHING_RESPONSE, getSmoothingDeltaTime(deltaTimeRaw))
 	local smoothedCenter =
 		smoothVector3(rawget(self, "smoothedViewportCenter"), stableCenter, frameAlpha, VIEWPORT_CENTER_SNAP_DISTANCE)
+	local terrainPlaneCenterX =
+		getTerrainPlaneCenterX(self, if rootPart ~= nil then rootPart.CFrame.Position.X else smoothedCenter.X)
 	setFusionValue(self.surfaceAnchorSizeValue, PlayerMain.GetSurfaceAnchorSize(stableBoundsSize, CAMERA_PADDING_SCALE))
-	setFusionValue(self.surfaceAnchorCFrameValue, PlayerMain.GetSurfaceAnchorCFrame(CFrame.new(smoothedCenter)))
+	setFusionValue(
+		self.surfaceAnchorCFrameValue,
+		PlayerMain.GetSurfaceAnchorCFrame(CFrame.new(smoothedCenter), terrainPlaneCenterX)
+	)
 	setFusionValue(self.surfaceEnabledValue, true)
 
 	local distance = PlayerMain.GetViewportCameraDistance(

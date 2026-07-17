@@ -38,11 +38,11 @@ local function normalizeToken(valueRaw: any): string
 	return BossServiceUtils.NormalizeToken(valueRaw)
 end
 
-local function GetPlayerRootPart(player: Player): BasePart?
+local function getPlayerRootPart(player: Player): BasePart?
 	return BossServiceUtils.GetCharacterRootPart(player)
 end
 
-local function GetNpcPosition(runtime: NpcRuntime): Vector3?
+local function getNpcPosition(runtime: NpcRuntime): Vector3?
 	local slime = runtime.slime
 	if slime == nil then
 		return nil
@@ -71,7 +71,7 @@ local function GetNpcPosition(runtime: NpcRuntime): Vector3?
 	return nil
 end
 
-local function GetBossPosition(boss: BossObject): Vector3?
+local function getBossPosition(boss: BossObject): Vector3?
 	if typeof(boss.position) == "Vector3" then
 		return boss.position
 	end
@@ -155,7 +155,7 @@ local function matchesBoss(entity: EntityEntry, boss: BossObject): boolean
 end
 
 local function findNearestNpcRuntime(entity: EntityEntry, player: Player, seenIds: { [string]: boolean }): NpcRuntime?
-	local rootPart = GetPlayerRootPart(player)
+	local rootPart = getPlayerRootPart(player)
 	if rootPart == nil then
 		return nil
 	end
@@ -168,7 +168,7 @@ local function findNearestNpcRuntime(entity: EntityEntry, player: Player, seenId
 			continue
 		end
 
-		local position = GetNpcPosition(runtime)
+		local position = getNpcPosition(runtime)
 		if position == nil then
 			continue
 		end
@@ -184,7 +184,7 @@ local function findNearestNpcRuntime(entity: EntityEntry, player: Player, seenId
 end
 
 local function findNearestBoss(entity: EntityEntry, player: Player, seenIds: { [string]: boolean }): BossObject?
-	local rootPart = GetPlayerRootPart(player)
+	local rootPart = getPlayerRootPart(player)
 	if rootPart == nil then
 		return nil
 	end
@@ -197,7 +197,7 @@ local function findNearestBoss(entity: EntityEntry, player: Player, seenIds: { [
 			continue
 		end
 
-		local bossPosition = GetBossPosition(boss)
+		local bossPosition = getBossPosition(boss)
 		if bossPosition == nil then
 			continue
 		end
@@ -252,7 +252,7 @@ return function(_context, entity: EntityEntry, players: { Player }, amountRaw: n
 	local seenIds = {}
 
 	for _, player in players do
-		local rootPart = GetPlayerRootPart(player)
+		local rootPart = getPlayerRootPart(player)
 		if rootPart == nil then
 			responseParts[#responseParts + 1] =
 				`Could not target anything for {player.Name} because their character was unavailable.`

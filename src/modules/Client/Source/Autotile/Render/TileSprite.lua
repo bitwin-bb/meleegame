@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Fusion: any = require(ReplicatedStorage.Packages.Fusion)
 local Maid = require("Maid")
+local WorldGenerationConstants = require("WorldGenerationConstants")
 
 local TileSprite = {}
 TileSprite.__index = TileSprite
@@ -16,7 +17,8 @@ export type TileSurfaceLayout = {
 
 local Children = Fusion.Children
 
-local DEFAULT_ROOT_SIZE = Vector3.new(2, 2, 2)
+local PLANE_DEPTH = WorldGenerationConstants.DEFAULT_TILE_DEPTH
+local DEFAULT_ROOT_SIZE = Vector3.new(PLANE_DEPTH, 2, 2)
 local DEFAULT_PIXELS_PER_STUD = 8
 local SURFACE_FACE = Enum.NormalId.Right
 
@@ -26,7 +28,7 @@ end
 
 local function coerceRootSize(sizeRaw: any): Vector3
 	if typeof(sizeRaw) == "Vector3" then
-		return Vector3.new(math.max(0.05, sizeRaw.X), math.max(0.05, sizeRaw.Y), math.max(0.05, sizeRaw.Z))
+		return Vector3.new(PLANE_DEPTH, math.max(0.05, sizeRaw.Y), math.max(0.05, sizeRaw.Z))
 	end
 	return DEFAULT_ROOT_SIZE
 end

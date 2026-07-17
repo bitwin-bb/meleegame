@@ -1,12 +1,16 @@
 local require = require(script.Parent.loader).load(script)
 
+local BinderSupportClient = require("BinderSupportClient")
 local Maid = require("Maid")
+local ServiceBag = require("ServiceBag")
 
 local AutotileRegistry = require("AutotileRegistry")
 local BuildServiceClient = require("BuildServiceClient")
 local BuildServiceUtils = require("BuildServiceUtils")
-local TileChunkBinderClient = require("TileChunkBinderClient")
+local TagBinder = require("TagBinder")
 local TileRenderServiceClient = require("TileRenderServiceClient")
+local WallAutotileServiceClient = require("WallAutotileServiceClient")
+local WorldGenerationConstants = require("WorldGenerationConstants")
 local WorldGenerationServiceClient = require("WorldGenerationServiceClient")
 
 local AutotileRenderServiceClient = {}
@@ -60,21 +64,70 @@ local function enqueueTileUpdate(pending: { any }, pendingLookup: { [string]: bo
 	}
 end
 
-function AutotileRenderServiceClient.Init(self: any)
+local function getChunkKeyForInstance(instance: Instance): string?
+	local chunkKeyRaw = instance:GetAttribute("ChunkKey")
+	local chunkX, chunkY = BuildServiceUtils.UnpackChunkKey(chunkKeyRaw)
+	if chunkX ~= nil and chunkY ~= nil then
+		return chunkKeyRaw :: string
+	end
+	return nil
+end
+
+local function getChunkKeyForTile(self: any, tileX: number, tileY: number): string
+	local chunkSize = self:GetChunkSize()
+	return BuildServiceUtils.PackChunkKey(
+		BuildServiceUtils.ToChunkCoordinate(tileX, chunkSize),
+		BuildServiceUtils.ToChunkCoordinate(tileY, chunkSize)
+	)
+end
+
+local function updateTile(self: any, tileX: number, tileY: number)
+	local chunkKey = getChunkKeyForTile(self, tileX, tileY)
+	local indexedChunkClient = self._chunkClientsByKey[chunkKey]
+	if indexedChunkClient ~= nil and indexedChunkClient:ContainsTile(tileX, tileY) then
+		indexedChunkClient:UpdateTile(tileX, tileY)
+		return
+	end
+
+	for _, chunkClient in self._chunkBinder:GetAll() do
+		if chunkClient:ContainsTile(tileX, tileY) then
+			chunkClient:UpdateTile(tileX, tileY)
+		end
+	end
+end
+
+function AutotileRenderServiceClient.Init(self: any, serviceBag: ServiceBag.ServiceBag)
 	if self._maid ~= nil then
 		return
 	end
 
+	self._serviceBag = serviceBag
 	self._maid = Maid.new()
-	self._chunkBinder = TileChunkBinderClient.new(self)
-	self._maid:GiveTask(self._chunkBinder)
-	self._chunkBinder:Start()
+	self._chunkBinder = serviceBag:GetService(BinderSupportClient):Get(TagBinder.Tags.Chunk)
+	self._wallRenderService = serviceBag:GetService(WallAutotileServiceClient)
+	self._chunkClientsByKey = {}
+	local function registerChunkClient(chunkClient: any)
+		local chunkKey = getChunkKeyForInstance(chunkClient._obj)
+		if chunkKey ~= nil and chunkClient.renderer ~= nil then
+			self._chunkClientsByKey[chunkKey] = chunkClient
+		end
+	end
+	for _, chunkClient in self._chunkBinder:GetAll() do
+		registerChunkClient(chunkClient)
+	end
+	self._maid:GiveTask(self._chunkBinder:GetClassAddedSignal():Connect(registerChunkClient))
+	self._maid:GiveTask(self._chunkBinder:GetClassRemovingSignal():Connect(function(chunkClient: any)
+		local chunkKey = getChunkKeyForInstance(chunkClient._obj)
+		if chunkKey ~= nil and self._chunkClientsByKey[chunkKey] == chunkClient then
+			self._chunkClientsByKey[chunkKey] = nil
+		end
+	end))
 	self._renderScheduler = TileRenderServiceClient.new({
 		tileDeltasApplied = BuildServiceClient.tileDeltasApplied,
 		stateChanged = BuildServiceClient.stateChanged,
 		updateTile = function(tileX: number, tileY: number)
 			if self._chunkBinder ~= nil then
-				self._chunkBinder:UpdateTile(tileX, tileY)
+				updateTile(self, tileX, tileY)
 			end
 		end,
 		refreshAll = function()
@@ -82,11 +135,19 @@ function AutotileRenderServiceClient.Init(self: any)
 		end,
 	})
 	self._maid:GiveTask(self._renderScheduler)
-	self._maid:GiveTask(WorldGenerationServiceClient.chunkSnapshotsChanged:Connect(function(chunkKey: string)
-		if self._renderScheduler ~= nil then
-			self._renderScheduler:QueueChunkBoundary(chunkKey, self:GetChunkSize())
-		end
-	end))
+	self._maid:GiveTask(
+		WorldGenerationServiceClient.chunkSnapshotsChanged:Connect(
+			function(chunkKey: string, nextSnapshot: any, previousSnapshot: any)
+				if self._renderScheduler ~= nil then
+					local chunkSize = self:GetChunkSize()
+					self._renderScheduler:QueueChunkBoundary(chunkKey, chunkSize)
+					if self._wallRenderService:SnapshotsHaveDifferentWalls(nextSnapshot, previousSnapshot) then
+						self._renderScheduler:QueueChunk(chunkKey, chunkSize)
+					end
+				end
+			end
+		)
+	)
 	self._renderScheduler:RequestRefresh()
 end
 
@@ -135,10 +196,8 @@ function AutotileRenderServiceClient.GetTileSurfaceLayout(
 	local surfacePlaneX = worldOrigin.X + self:GetBasePlaneX()
 
 	return {
-		cframe = CFrame.new(
-			BuildServiceUtils.TileToWorldCenter(tileX, tileY, worldOrigin, tileSize, surfacePlaneX)
-		),
-		size = Vector3.new(tileSize, tileSize, tileSize),
+		cframe = CFrame.new(BuildServiceUtils.TileToWorldCenter(tileX, tileY, worldOrigin, tileSize, surfacePlaneX)),
+		size = Vector3.new(WorldGenerationConstants.DEFAULT_TILE_DEPTH, tileSize, tileSize),
 		pixelsPerStud = atlasPixelSize / tileSize,
 	}
 end
@@ -186,13 +245,17 @@ function AutotileRenderServiceClient.OnTileDeltas(self: any, deltasRaw: any)
 	end
 
 	for _, coordinate in pending do
-		self._chunkBinder:UpdateTile(coordinate.tileX, coordinate.tileY)
+		updateTile(self, coordinate.tileX, coordinate.tileY)
 	end
 end
 
 function AutotileRenderServiceClient.RefreshAll(self: any)
 	if self._chunkBinder ~= nil then
-		self._chunkBinder:RefreshAll()
+		for _, chunkClient in self._chunkBinder:GetAll() do
+			if chunkClient.renderer ~= nil then
+				chunkClient.renderer:RenderInitial()
+			end
+		end
 	end
 end
 
@@ -201,8 +264,11 @@ function AutotileRenderServiceClient.Destroy(self: any)
 		self._maid:DoCleaning()
 		self._maid = nil
 	end
+	self._serviceBag = nil
 	self._chunkBinder = nil
+	self._chunkClientsByKey = nil
 	self._renderScheduler = nil
+	self._wallRenderService = nil
 end
 
 return AutotileRenderServiceClient

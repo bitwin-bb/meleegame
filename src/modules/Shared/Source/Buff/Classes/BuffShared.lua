@@ -14,7 +14,7 @@ BuffShared.__index = BuffShared
 
 export type BuffRecord = buffUtils.BuffRecord
 
-local function GetConstructorOptions(serviceBagOrOptionsRaw: any, optionsRaw: any?): (any?, { [string]: any })
+local function getConstructorOptions(serviceBagOrOptionsRaw: any, optionsRaw: any?): (any?, { [string]: any })
 	if typeof(optionsRaw) == "table" then
 		return serviceBagOrOptionsRaw, optionsRaw :: { [string]: any }
 	end
@@ -27,7 +27,7 @@ local function GetConstructorOptions(serviceBagOrOptionsRaw: any, optionsRaw: an
 end
 
 function BuffShared.new(serviceBagOrOptionsRaw: any?, optionsRaw: any?): BuffShared
-	local serviceBag, options = GetConstructorOptions(serviceBagOrOptionsRaw, optionsRaw)
+	local serviceBag, options = getConstructorOptions(serviceBagOrOptionsRaw, optionsRaw)
 	local self: any = setmetatable(BaseObject.new() :: any, BuffShared)
 
 	self._serviceBag = serviceBag

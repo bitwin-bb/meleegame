@@ -35,7 +35,7 @@ local function trim(valueRaw: any): string
 	return string.gsub(valueRaw, "^%s*(.-)%s*$", "%1")
 end
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number, maximum: number): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -49,7 +49,7 @@ local function CoerceNumber(valueRaw: any, fallback: number, minimum: number, ma
 	return math.clamp(value, minimum, maximum)
 end
 
-local function CoerceBoolean(valueRaw: any, fallback: boolean?): boolean?
+local function coerceBoolean(valueRaw: any, fallback: boolean?): boolean?
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
@@ -89,7 +89,7 @@ function buffUtils.CoerceName(nameRaw: any): string
 end
 
 function buffUtils.CoerceDuration(durationRaw: any): number
-	return CoerceNumber(
+	return coerceNumber(
 		durationRaw,
 		BuffConstants.DEFAULT_DURATION_SECONDS,
 		BuffConstants.MIN_DURATION_SECONDS,
@@ -98,11 +98,11 @@ function buffUtils.CoerceDuration(durationRaw: any): number
 end
 
 function buffUtils.CoerceStacks(stacksRaw: any): number
-	return math.max(1, math.floor(CoerceNumber(stacksRaw, BuffConstants.DEFAULT_STACKS, 1, 999)))
+	return math.max(1, math.floor(coerceNumber(stacksRaw, BuffConstants.DEFAULT_STACKS, 1, 999)))
 end
 
 function buffUtils.CoerceMaxStacks(maxStacksRaw: any): number
-	return math.max(1, math.floor(CoerceNumber(maxStacksRaw, BuffConstants.DEFAULT_MAX_STACKS, 1, 999)))
+	return math.max(1, math.floor(coerceNumber(maxStacksRaw, BuffConstants.DEFAULT_MAX_STACKS, 1, 999)))
 end
 
 function buffUtils.CoerceStackMode(stackModeRaw: any): string
@@ -189,7 +189,7 @@ function buffUtils.CreateRecord(
 	local effects = buffUtils.CloneEffects(if positional then effectsRaw else source.effects or source.specialEffects)
 	local description = trim(if positional then descriptionRaw else source.description or source.tooltip)
 	local affects = trim(if positional then affectsRaw else source.affects or source.playerEffect or source.affectsPlayer)
-	local appliedAt = CoerceNumber(source.appliedAt, os.clock(), 0, math.huge)
+	local appliedAt = coerceNumber(source.appliedAt, os.clock(), 0, math.huge)
 	local id = trim(source.id)
 	if id == "" then
 		id = buffUtils.CreateId(kind, name)
@@ -217,7 +217,7 @@ function buffUtils.CreateRecord(
 		stackMode = buffUtils.CoerceStackMode(source.stackMode or effects.stackMode),
 		source = trim(source.source),
 		icon = trim(source.icon or source.iconId),
-		hidden = CoerceBoolean(source.hidden, nil),
+		hidden = coerceBoolean(source.hidden, nil),
 	}
 end
 

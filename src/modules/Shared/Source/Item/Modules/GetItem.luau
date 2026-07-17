@@ -58,12 +58,12 @@ local TILE_BLOCK_KEY_BY_ITEM_ID = {
 }
 local MISSING_ASSET_ERROR = "no asset found!"
 
-local function CoerceItemId(itemIdRaw: any): string?
+local function coerceItemId(itemIdRaw: any): string?
 	return StringUtils.Coerce(itemIdRaw, nil)
 end
 
 local function appendUniqueString(target: { string }, seen: { [string]: boolean }, valueRaw: any)
-	local value = CoerceItemId(valueRaw)
+	local value = coerceItemId(valueRaw)
 	if value == nil or seen[value] == true then
 		return
 	end
@@ -72,7 +72,7 @@ local function appendUniqueString(target: { string }, seen: { [string]: boolean 
 	target[#target + 1] = value
 end
 
-local function GetAssetSearchRoots(): { Instance }
+local function getAssetSearchRoots(): { Instance }
 	if assetSearchRootsCache ~= nil then
 		return assetSearchRootsCache
 	end
@@ -89,7 +89,7 @@ local function GetAssetSearchRoots(): { Instance }
 
 			local segments = {}
 			for _, segmentRaw in pathRaw do
-				local segment = CoerceItemId(segmentRaw)
+				local segment = coerceItemId(segmentRaw)
 				if segment ~= nil then
 					segments[#segments + 1] = segment
 				end
@@ -116,8 +116,8 @@ local function GetAssetSearchRoots(): { Instance }
 	return roots
 end
 
-local function GetItemNameCandidates(itemIdRaw: any): { string }
-	local itemId = CoerceItemId(itemIdRaw)
+local function getItemNameCandidates(itemIdRaw: any): { string }
+	local itemId = coerceItemId(itemIdRaw)
 	if itemId == nil then
 		return {}
 	end
@@ -142,7 +142,7 @@ local function GetItemNameCandidates(itemIdRaw: any): { string }
 end
 
 local function isVariantBranchName(nameRaw: any): boolean
-	local name = CoerceItemId(nameRaw)
+	local name = coerceItemId(nameRaw)
 	if name == nil then
 		return false
 	end
@@ -163,7 +163,7 @@ local function promoteMatchedTemplateRoot(match: Instance): Instance
 	return promoted
 end
 
-local function GetTemplatesFromRoot(root: Instance): ItemTemplateResolution
+local function getTemplatesFromRoot(root: Instance): ItemTemplateResolution
 	local toolTemplate = GetToolInstance.GetTool(root)
 	local primaryTemplate = if root:IsA("Tool") then root else GetToolInstance.GetVisualTemplate(root)
 	if primaryTemplate == nil then
@@ -176,7 +176,7 @@ local function GetTemplatesFromRoot(root: Instance): ItemTemplateResolution
 	}
 end
 
-local function GetGeneratedTileToolFolder(): Folder
+local function getGeneratedTileToolFolder(): Folder
 	if generatedTileToolFolder ~= nil and generatedTileToolFolder.Parent ~= nil then
 		return generatedTileToolFolder
 	end
@@ -197,8 +197,8 @@ local function GetGeneratedTileToolFolder(): Folder
 	return folder
 end
 
-local function GetTileBlockBuilder(itemIdRaw: any): (string?, any?)
-	local itemId = CoerceItemId(itemIdRaw)
+local function getTileBlockBuilder(itemIdRaw: any): (string?, any?)
+	local itemId = coerceItemId(itemIdRaw)
 	if itemId == nil then
 		return nil, nil
 	end
@@ -219,13 +219,13 @@ end
 
 local GetToolPrimaryTemplate
 
-local function GetDefinitionText(definition: { [string]: any }, key: string): string?
+local function getDefinitionText(definition: { [string]: any }, key: string): string?
 	return StringUtils.Coerce(definition[key], nil)
 end
 
-local function GetGeneratedEquipmentItemType(definition: { [string]: any }): string?
-	local itemType = GetDefinitionText(definition, "itemType") or GetDefinitionText(definition, "type")
-	local functionality = GetDefinitionText(definition, "functionality")
+local function getGeneratedEquipmentItemType(definition: { [string]: any }): string?
+	local itemType = getDefinitionText(definition, "itemType") or getDefinitionText(definition, "type")
+	local functionality = getDefinitionText(definition, "functionality")
 	local candidate = itemType or functionality
 	if candidate == nil then
 		return nil
@@ -238,7 +238,7 @@ local function GetGeneratedEquipmentItemType(definition: { [string]: any }): str
 	return nil
 end
 
-local function GetGeneratedEquipmentHandleSize(itemType: string): Vector3
+local function getGeneratedEquipmentHandleSize(itemType: string): Vector3
 	if itemType == "weapon" then
 		return Vector3.new(0.25, 3, 0.25)
 	elseif itemType == "pickaxe" then
@@ -249,7 +249,7 @@ local function GetGeneratedEquipmentHandleSize(itemType: string): Vector3
 	return Vector3.new(0.5, 1.6, 0.5)
 end
 
-local function GetGeneratedEquipmentGrip(itemType: string): CFrame
+local function getGeneratedEquipmentGrip(itemType: string): CFrame
 	if itemType == "weapon" then
 		return CFrame.new(0, -1.1, 0)
 	elseif itemType == "pickaxe" or itemType == "axe" then
@@ -258,8 +258,8 @@ local function GetGeneratedEquipmentGrip(itemType: string): CFrame
 	return CFrame.new(0, -0.5, 0)
 end
 
-local function GetTemplatesFromItemDefinition(itemIdRaw: any): ItemTemplateResolution?
-	local itemId = CoerceItemId(itemIdRaw)
+local function getTemplatesFromItemDefinition(itemIdRaw: any): ItemTemplateResolution?
+	local itemId = coerceItemId(itemIdRaw)
 	if itemId == nil then
 		return nil
 	end
@@ -271,20 +271,20 @@ local function GetTemplatesFromItemDefinition(itemIdRaw: any): ItemTemplateResol
 	end
 
 	local definitionTable = definition :: { [string]: any }
-	local itemType = GetGeneratedEquipmentItemType(definitionTable)
+	local itemType = getGeneratedEquipmentItemType(definitionTable)
 	if itemType == nil then
 		return nil
 	end
 
-	local displayName = GetDefinitionText(definitionTable, "name") or canonicalItemId
+	local displayName = getDefinitionText(definitionTable, "name") or canonicalItemId
 	local scope = Fusion.scoped(Fusion)
 	local handleColor = GENERATED_EQUIPMENT_TOOL_COLORS[itemType] or GENERATED_EQUIPMENT_TOOL_COLORS.tool
 	local tool = scope:New "Tool" {
 		Name = displayName,
 		RequiresHandle = true,
 		CanBeDropped = false,
-		Grip = GetGeneratedEquipmentGrip(itemType),
-		Parent = GetGeneratedTileToolFolder(),
+		Grip = getGeneratedEquipmentGrip(itemType),
+		Parent = getGeneratedTileToolFolder(),
 		[Fusion.Attribute("itemId")] = canonicalItemId,
 		[Fusion.Attribute("ItemId")] = canonicalItemId,
 		[Fusion.Attribute("itemType")] = itemType,
@@ -299,7 +299,7 @@ local function GetTemplatesFromItemDefinition(itemIdRaw: any): ItemTemplateResol
 				Massless = true,
 				Material = Enum.Material.Metal,
 				Color = handleColor,
-				Size = GetGeneratedEquipmentHandleSize(itemType),
+				Size = getGeneratedEquipmentHandleSize(itemType),
 			},
 		},
 	}
@@ -327,8 +327,8 @@ function GetToolPrimaryTemplate(tool: Tool): Instance?
 	return tool
 end
 
-local function GetTemplatesFromTileBlock(itemIdRaw: any): ItemTemplateResolution?
-	local canonicalItemId, builder = GetTileBlockBuilder(itemIdRaw)
+local function getTemplatesFromTileBlock(itemIdRaw: any): ItemTemplateResolution?
+	local canonicalItemId, builder = getTileBlockBuilder(itemIdRaw)
 	if canonicalItemId == nil or builder == nil then
 		return nil
 	end
@@ -343,7 +343,7 @@ local function GetTemplatesFromTileBlock(itemIdRaw: any): ItemTemplateResolution
 	local tool = toolRaw :: Tool
 	scope:Hydrate(tool) {
 		Name = tool.Name ~= "" and tool.Name or canonicalItemId,
-		Parent = GetGeneratedTileToolFolder(),
+		Parent = getGeneratedTileToolFolder(),
 		[Fusion.Attribute("itemId")] = canonicalItemId,
 		[Fusion.Attribute("ItemId")] = canonicalItemId,
 		[Fusion.Attribute("itemType")] = "Tile",
@@ -365,7 +365,7 @@ local function mergeTileComponentToolTemplate(
 		return resolution
 	end
 
-	local componentResolution = GetTemplatesFromTileBlock(itemId)
+	local componentResolution = getTemplatesFromTileBlock(itemId)
 	if componentResolution == nil then
 		return resolution
 	end
@@ -409,7 +409,7 @@ local function cacheResolution(itemId: string, resolution: ItemTemplateResolutio
 end
 
 function GetItem.Get(itemIdRaw: any): ItemTemplateResolution
-	local itemId = CoerceItemId(itemIdRaw)
+	local itemId = coerceItemId(itemIdRaw)
 	if itemId == nil then
 		return {
 			primaryTemplate = nil,
@@ -422,8 +422,8 @@ function GetItem.Get(itemIdRaw: any): ItemTemplateResolution
 		return cached
 	end
 
-	local roots = GetAssetSearchRoots()
-	local candidates = GetItemNameCandidates(itemId)
+	local roots = getAssetSearchRoots()
+	local candidates = getItemNameCandidates(itemId)
 	local GotRoots = {} :: { [Instance]: boolean }
 
 	local function tryGetFromMatch(match: Instance): ItemTemplateResolution?
@@ -433,7 +433,7 @@ function GetItem.Get(itemIdRaw: any): ItemTemplateResolution
 		end
 		GotRoots[promotedRoot] = true
 
-		local resolution = GetTemplatesFromRoot(promotedRoot)
+		local resolution = getTemplatesFromRoot(promotedRoot)
 		if resolution.primaryTemplate ~= nil or resolution.toolTemplate ~= nil then
 			return resolution
 		end
@@ -467,12 +467,12 @@ function GetItem.Get(itemIdRaw: any): ItemTemplateResolution
 		end
 	end
 
-	local componentResolution = GetTemplatesFromTileBlock(itemId)
+	local componentResolution = getTemplatesFromTileBlock(itemId)
 	if componentResolution ~= nil then
 		return cacheResolution(itemId, componentResolution)
 	end
 
-	local definitionResolution = GetTemplatesFromItemDefinition(itemId)
+	local definitionResolution = getTemplatesFromItemDefinition(itemId)
 	if definitionResolution ~= nil then
 		return cacheResolution(itemId, definitionResolution)
 	end

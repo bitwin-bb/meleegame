@@ -4,7 +4,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
-local ServerScriptService = game:GetService("ServerScriptService")
 
 local Configs = require("CoreConfigs")
 local CoreRuntime = require("CoreRuntime")
@@ -216,6 +215,7 @@ type SimulationTickStats = {
 }
 
 local LiquidServiceServer = {}
+LiquidServiceServer.ServiceName = "LiquidServiceServer"
 
 local function isGameplayReplicationActive(player: Player): boolean
 	local activeCheck = (PlayerServiceServer :: any).isGameplayActiveForPlayer
@@ -254,7 +254,7 @@ local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function GetSourceConfig(): any
+local function getSourceConfig(): any
 	if typeof(Configs) ~= "table" then
 		return nil
 	end
@@ -303,7 +303,7 @@ local function dequeueString(
 	return value, head, tail
 end
 
-local function CoerceChunkDebugName(chunkKey: string): string
+local function coerceChunkDebugName(chunkKey: string): string
 	return string.gsub(chunkKey, ":", "_")
 end
 
@@ -340,7 +340,7 @@ local function createSimulationTickStats(): SimulationTickStats
 	}
 end
 
-local function GetPlayerCharacter(player: Player): Model?
+local function getPlayerCharacter(player: Player): Model?
 	local character = player.Character
 	if character ~= nil and character:IsA("Model") then
 		return character
@@ -348,7 +348,7 @@ local function GetPlayerCharacter(player: Player): Model?
 	return nil
 end
 
-local function GetCharacterRootPart(character: Model?): BasePart?
+local function getCharacterRootPart(character: Model?): BasePart?
 	if character == nil then
 		return nil
 	end
@@ -367,7 +367,7 @@ local function GetCharacterRootPart(character: Model?): BasePart?
 	return nil
 end
 
-local function GetCharacterHumanoid(character: Model?): Humanoid?
+local function getCharacterHumanoid(character: Model?): Humanoid?
 	if character == nil then
 		return nil
 	end
@@ -378,7 +378,7 @@ local function GetCharacterHumanoid(character: Model?): Humanoid?
 	return nil
 end
 
-function LiquidServiceServer.CreateChunkRuntime(self: LiquidServiceServer, chunkKey: string): ChunkRuntime
+function LiquidServiceServer.CreateChunkRuntime(_self: LiquidServiceServer, chunkKey: string): ChunkRuntime
 	local runtime: ChunkRuntime = {
 		key = chunkKey,
 		revision = 1,
@@ -726,7 +726,7 @@ function LiquidServiceServer.ShouldDebugLog(self: LiquidServiceServer, flagName:
 	return (self.config.debug :: any)[flagName] == true
 end
 
-function LiquidServiceServer.DebugLog(self: LiquidServiceServer, _flagName: string, _message: string)
+function LiquidServiceServer.DebugLog(_self: LiquidServiceServer, _flagName: string, _message: string)
 	return
 end
 
@@ -749,7 +749,7 @@ function LiquidServiceServer.GetChunkDebugFolder(self: LiquidServiceServer, chun
 	if debugFolder == nil then
 		return nil
 	end
-	local folderName = `Chunk_{CoerceChunkDebugName(chunkKey)}`
+	local folderName = `Chunk_{coerceChunkDebugName(chunkKey)}`
 	local existing = debugFolder:FindFirstChild(folderName)
 	if existing ~= nil and existing:IsA("Folder") then
 		return existing
@@ -1017,7 +1017,7 @@ function LiquidServiceServer.UpdateChunkDebugAttributes(
 	end
 end
 
-function LiquidServiceServer.CreatePlayerStream(self: LiquidServiceServer): PlayerStream
+function LiquidServiceServer.CreatePlayerStream(_self: LiquidServiceServer): PlayerStream
 	local fullQueue, head, tail, lookup = createStringQueue()
 	return {
 		ready = false,
@@ -1046,7 +1046,7 @@ function LiquidServiceServer.IsPlayerStreamReady(self: LiquidServiceServer, play
 	return stream ~= nil and stream.ready == true
 end
 
-function LiquidServiceServer.CreateHazardRuntime(self: LiquidServiceServer): PlayerHazardRuntime
+function LiquidServiceServer.CreateHazardRuntime(_self: LiquidServiceServer): PlayerHazardRuntime
 	return {
 		lastQuery = nil,
 		lastQueryAt = -math.huge,
@@ -1120,7 +1120,7 @@ function LiquidServiceServer.GetChunkSnapshot(self: LiquidServiceServer, chunkKe
 	}
 end
 
-function LiquidServiceServer.EnqueueFullSnapshot(self: LiquidServiceServer, stream: PlayerStream, chunkKey: string)
+function LiquidServiceServer.EnqueueFullSnapshot(_self: LiquidServiceServer, stream: PlayerStream, chunkKey: string)
 	stream.fullQueueTail = enqueueString(stream.fullQueue, stream.fullQueueLookup, stream.fullQueueTail, chunkKey)
 end
 
@@ -1218,8 +1218,8 @@ function LiquidServiceServer.TrackRecentChunkActivity(
 		chunkY = chunkY,
 		touchedAt = touchedAt,
 	}
-	if not self.recentChunkGrid:update(chunkKey, worldX, worldY, worldZ, payload) then
-		self.recentChunkGrid:insert(chunkKey, worldX, worldY, worldZ, payload)
+	if not self.recentChunkGrid:Update(chunkKey, worldX, worldY, worldZ, payload) then
+		self.recentChunkGrid:Insert(chunkKey, worldX, worldY, worldZ, payload)
 	end
 end
 
@@ -2067,12 +2067,12 @@ function LiquidServiceServer.ProcessConsistencySweep(self: LiquidServiceServer)
 		* math.max(1, self.config.simulation.activeSafetyMarginChunks + 2)
 
 	for player in self.playerStreams do
-		local rootPart = GetCharacterRootPart(GetPlayerCharacter(player))
+		local rootPart = getCharacterRootPart(getPlayerCharacter(player))
 		if rootPart == nil then
 			continue
 		end
 		table.clear(queryResults)
-		local entries = self.recentChunkGrid:queryRadius(
+		local entries = self.recentChunkGrid:QueryRadius(
 			rootPart.Position.Z,
 			rootPart.Position.Y,
 			0,
@@ -2372,7 +2372,7 @@ function LiquidServiceServer.GetPlayerQuery(self: LiquidServiceServer, player: P
 		getLiquidDefinition = function(liquidType: number): LiquidDefinition?
 			return self:GetDefinition(liquidType)
 		end,
-	}, GetPlayerCharacter(player))
+	}, getPlayerCharacter(player))
 	hazard.lastQuery = query
 	hazard.lastQueryAt = now
 	return query
@@ -2401,7 +2401,7 @@ function LiquidServiceServer.ApplyLiquidMovementSpeed(
 	player: Player,
 	query: LiquidQueryResult
 )
-	local humanoid = GetCharacterHumanoid(GetPlayerCharacter(player))
+	local humanoid = getCharacterHumanoid(getPlayerCharacter(player))
 	if humanoid == nil or not PlayerServiceUtils.IsHumanoidAlive(humanoid) then
 		return
 	end
@@ -2620,13 +2620,13 @@ function LiquidServiceServer.RefreshWorldBinding(self: LiquidServiceServer)
 	end
 end
 
-function LiquidServiceServer.Init(self: LiquidServiceServer)
+function LiquidServiceServer.Init(self: LiquidServiceServer, _serviceBag: any?)
 	self.runtimeContext = CoreRuntime.GetServerRuntime()
 	if self.runtimeContext ~= nil and typeof((self.runtimeContext :: any).Init) == "function" then
 		local runtimeAny = self.runtimeContext :: any
 		runtimeAny:Init()
 	end
-	self.config = LiquidServiceUtils.CoerceConfig(GetSourceConfig(), nil)
+	self.config = LiquidServiceUtils.CoerceConfig(getSourceConfig(), nil)
 	self.state = LiquidServiceUtils.CreateDefaultState()
 	self.worldGenerationService = WorldGenerationServiceServer :: WorldGenerationServiceServerObject
 	self.world = self.worldGenerationService:GetWorld()

@@ -5,6 +5,7 @@ local Table: any = require("Table")
 local CelestialCycleClassServer = require("CelestialCycleClassServer")
 
 local CelestialCycleServer = {}
+CelestialCycleServer.ServiceName = "CelestialCycleServer"
 
 local runtime: CelestialCycleClassServer.CelestialCycleClassServer? = nil
 
@@ -15,7 +16,7 @@ local function getRuntime(): CelestialCycleClassServer.CelestialCycleClassServer
 	return runtime :: CelestialCycleClassServer.CelestialCycleClassServer
 end
 
-function CelestialCycleServer.Init(_self: any)
+function CelestialCycleServer.Init(_self: any, _serviceBag: any?)
 	getRuntime():Init()
 end
 

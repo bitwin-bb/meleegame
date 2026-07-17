@@ -9,7 +9,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local PACKAGE_NAME = "AquariaBackup"
-local BRIDGE_NAME = "AquarialoaderBridge"
+local BRIDGE_NAME = "AquariaLoaderBridge"
 local STATE_CHANGED_NAME = "StateChanged"
 local GET_SNAPSHOT_NAME = "GetSnapshot"
 local CLIENT_SCRIPT_FOLDER_NAME = "AquariaBackupScripts"
@@ -33,8 +33,6 @@ local MODULE_REQUIRE_BATCH_SIZE = 12
 local ASSET_PRELOAD_BATCH_SIZE = 40
 local ASSET_PROGRESS_INTERVAL = 5
 local BLOOD_ENGINE_PACKAGE_NAME = "BloodEngine"
-local PROJECT_loader_LINK_NAME = "loader"
-local NEVERMORE_loader_LINK_NAME = "loader"
 local SOURCE_FOLDER_NAME = "Source"
 local VENDOR_FOLDER_NAME = "Vendor"
 
@@ -143,35 +141,7 @@ local SKIPPED_MODULE_PATHS = {
 	["Npc/UI/Screens/QueenBeeScreen"] = true,
 }
 
-local PACKAGE_TRACKER_IGNORED_MODULE_PATHS = {
-	"game/Client/Source/Audio/network/Replication",
-	"game/Client/Source/Replication",
-	"game/Client/Source/SnackbarNotifications",
-	"game/Server/Source/Net/NetPacketsServer",
-	"game/Client/Source/Npc/UI/Components/SlimeComponent",
-	"game/Client/Source/Services/NpcServiceClient",
-	"game/Server/Source/Binders/NpcBinder",
-	"game/Server/Source/Services/NpcServiceServer",
-	"game/Shared/Source/Classes/Npc",
-	"game/Server/Source/Npc/Npc/EyeOfCthulhuNpc",
-	"game/Server/Source/Npc/Npc/QueenBeeNpc",
-	"game/Shared/Source/Replication",
-	"game/Shared/Source/Replication/Packets",
-	"game/Shared/Source/Services/NpcServiceUtils",
-	"game/Shared/Source/StateMachine/Machines/Enemies/SlimeStateMachine",
-}
-
-local REQUIRED_ARCHIVABLE_MODULE_PATHS = {
-	"game/Client/Source/Notification/FeatureSnackbarNotifications",
-	"game/Client/Source/NetClient/NetPacketsClient",
-	"game/Client/Source/Npc/UI/Components/EyeOfCthulhuComponent",
-	"game/Client/Source/Npc/UI/Components/QueenBeeComponent",
-}
-
-local PACKAGE_TRACKER_IGNORE_TIMEOUT_SECONDS = 5
-local PROJECT_MODULE_PACKAGE_LINK_ATTRIBUTE = "AquariaProjectModulePackageLink"
-
-type loaderSnapshot = {
+type LoaderSnapshot = {
 	status: string,
 	stage: string,
 	message: string,
@@ -189,7 +159,7 @@ type loaderSnapshot = {
 	failures: { string },
 }
 
-type loaderBridge = {
+type LoaderBridge = {
 	folder: Folder,
 	changed: BindableEvent,
 	getSnapshot: BindableFunction,
@@ -202,20 +172,10 @@ type ReplicatedContext = {
 	sharedRoot: Instance,
 	packagesRoot: Instance,
 	vendorRoot: Instance,
-	loaderModule: ModuleScript,
-	loaderUtils: Instance,
-}
-
-type FrameworkContext = {
-	gameRequire: any,
-	Maid: any,
-	NevermoreSupport: any,
-	Promise: any,
-	ServiceBag: any,
 }
 
 local failures: { string } = {}
-local snapshot: loaderSnapshot = {
+local snapshot: LoaderSnapshot = {
 	status = "idle",
 	stage = "boot",
 	message = "starting loader",
@@ -235,157 +195,6 @@ local snapshot: loaderSnapshot = {
 
 local completedWeight = 0
 
-local function disableStudioWallyIndexPackageTrackerModules(packageRoot: Instance)
-	if not RunService:IsStudio() then
-		return
-	end
-
-	local nodeModules = packageRoot:FindFirstChild("node_modules")
-	if nodeModules == nil then
-		return
-	end
-
-	local wallyIndex = nodeModules:FindFirstChild("_Index")
-	if wallyIndex == nil then
-		return
-	end
-
-	for _, descendant in wallyIndex:GetDescendants() do
-		if descendant:IsA("ModuleScript") then
-			descendant.Archivable = false
-		end
-	end
-end
-
-local function ensureExternalPackageLinks(packageRoot: Instance, packagesRoot: Instance)
-	local nodeModules = packageRoot:FindFirstChild("node_modules")
-	if nodeModules == nil or not nodeModules:IsA("Folder") then
-		return
-	end
-
-	for _, packageModule in packagesRoot:GetChildren() do
-		if not packageModule:IsA("ModuleScript") then
-			continue
-		end
-
-		local existing = nodeModules:FindFirstChild(packageModule.Name)
-		if existing == nil then
-			local link = Instance.new("ObjectValue")
-			link.Name = packageModule.Name
-			link.Value = packageModule
-			link.Archivable = false
-			link.Parent = nodeModules
-		elseif existing:IsA("ObjectValue") then
-			existing.Value = packageModule
-		end
-	end
-end
-
-local function waitForDescendantByPath(root: Instance, path: string, timeoutSeconds: number): Instance?
-	local deadline = os.clock() + timeoutSeconds
-	local current = root
-
-	for segment in string.gmatch(path, "[^/]+") do
-		local child = current:FindFirstChild(segment)
-		while child == nil and os.clock() < deadline do
-			child = current:WaitForChild(segment, math.min(0.25, math.max(0, deadline - os.clock())))
-		end
-		if child == nil then
-			return nil
-		end
-
-		current = child
-	end
-
-	return current
-end
-
-local function disableDuplicatePackageTrackerModules(packageRoot: Instance)
-	local deadline = os.clock() + PACKAGE_TRACKER_IGNORE_TIMEOUT_SECONDS
-
-	for _, path in REQUIRED_ARCHIVABLE_MODULE_PATHS do
-		local remaining = deadline - os.clock()
-		if remaining <= 0 then
-			return
-		end
-
-		local moduleScript = waitForDescendantByPath(packageRoot, path, remaining)
-		if moduleScript ~= nil and moduleScript:IsA("ModuleScript") then
-			moduleScript.Archivable = true
-		end
-	end
-
-	for _, path in PACKAGE_TRACKER_IGNORED_MODULE_PATHS do
-		local remaining = deadline - os.clock()
-		if remaining <= 0 then
-			return
-		end
-
-		local moduleScript = waitForDescendantByPath(packageRoot, path, remaining)
-		if moduleScript ~= nil and moduleScript:IsA("ModuleScript") then
-			moduleScript.Archivable = false
-		end
-	end
-end
-
-local function ensureProjectModulePackageLinks(packageRoot: Instance)
-	local nodeModules = packageRoot:FindFirstChild("node_modules")
-	local gameRoot = packageRoot:FindFirstChild("game")
-	if nodeModules == nil or not nodeModules:IsA("Folder") or gameRoot == nil then
-		return
-	end
-
-	local moduleByName: { [string]: ModuleScript } = {}
-	local duplicateNames: { [string]: boolean } = {}
-
-	for _, descendant in gameRoot:GetDescendants() do
-		if
-			descendant:IsA("ModuleScript")
-			and descendant.Archivable
-			and descendant.Name ~= PROJECT_loader_LINK_NAME
-			and descendant.Name ~= NEVERMORE_loader_LINK_NAME
-		then
-			if moduleByName[descendant.Name] ~= nil then
-				duplicateNames[descendant.Name] = true
-			else
-				moduleByName[descendant.Name] = descendant
-			end
-		end
-	end
-
-	for name in duplicateNames do
-		moduleByName[name] = nil
-	end
-
-	for _, child in nodeModules:GetChildren() do
-		if child:IsA("ObjectValue") and child:GetAttribute(PROJECT_MODULE_PACKAGE_LINK_ATTRIBUTE) == true then
-			local target = child.Value
-			if
-				target == nil
-				or not target:IsA("ModuleScript")
-				or not target.Archivable
-				or moduleByName[child.Name] ~= target
-			then
-				child:Destroy()
-			end
-		end
-	end
-
-	for name, moduleScript in moduleByName do
-		local existing = nodeModules:FindFirstChild(name)
-		if existing == nil then
-			local link = Instance.new("ObjectValue")
-			link.Name = name
-			link.Value = moduleScript
-			link.Archivable = false
-			link:SetAttribute(PROJECT_MODULE_PACKAGE_LINK_ATTRIBUTE, true)
-			link.Parent = nodeModules
-		elseif existing:IsA("ObjectValue") and existing:GetAttribute(PROJECT_MODULE_PACKAGE_LINK_ATTRIBUTE) == true then
-			existing.Value = moduleScript
-		end
-	end
-end
-
 local function cloneStringArray(source: { string }): { string }
 	local output = table.create(#source)
 	for index, value in source do
@@ -394,10 +203,10 @@ local function cloneStringArray(source: { string }): { string }
 	return output
 end
 
-local function cloneSnapshot(): loaderSnapshot
+local function cloneSnapshot(): LoaderSnapshot
 	local output = table.clone(snapshot) :: any
 	output.failures = cloneStringArray(failures)
-	return output :: loaderSnapshot
+	return output :: LoaderSnapshot
 end
 
 local function ensureFolder(parent: Instance, name: string): Folder
@@ -445,7 +254,7 @@ local function ensureBindableFunction(parent: Instance, name: string): BindableF
 	return bindable
 end
 
-local function ensureBridge(): loaderBridge
+local function ensureBridge(): LoaderBridge
 	local folder = ensureFolder(ReplicatedFirst, BRIDGE_NAME)
 	local changed = ensureBindableEvent(folder, STATE_CHANGED_NAME)
 	local getSnapshot = ensureBindableFunction(folder, GET_SNAPSHOT_NAME)
@@ -480,21 +289,21 @@ local function writeAttributes()
 	}
 
 	for _, target in targets do
-		target:SetAttribute("AquarialoaderStatus", snapshot.status)
-		target:SetAttribute("AquarialoaderStage", snapshot.stage)
-		target:SetAttribute("AquarialoaderMessage", snapshot.message)
-		target:SetAttribute("AquarialoaderProgress", snapshot.progress)
-		target:SetAttribute("AquarialoaderCompleted", snapshot.completed)
-		target:SetAttribute("AquarialoaderTotal", snapshot.total)
-		target:SetAttribute("AquarialoaderStartedAt", snapshot.startedAt)
-		target:SetAttribute("AquarialoaderFinishedAt", snapshot.finishedAt)
-		target:SetAttribute("AquarialoaderModuleCount", snapshot.moduleCount)
-		target:SetAttribute("AquarialoaderAssetCount", snapshot.assetCount)
-		target:SetAttribute("AquarialoaderAssetLoadedCount", snapshot.assetLoadedCount)
-		target:SetAttribute("AquarialoaderAssetFailedCount", snapshot.assetFailedCount)
-		target:SetAttribute("AquarialoaderFailureCount", snapshot.failureCount)
-		target:SetAttribute("AquarialoaderLastError", snapshot.lastError)
-		target:SetAttribute("AquarialoaderSnapshot", encodedSnapshot)
+		target:SetAttribute("AquariaLoaderStatus", snapshot.status)
+		target:SetAttribute("AquariaLoaderStage", snapshot.stage)
+		target:SetAttribute("AquariaLoaderMessage", snapshot.message)
+		target:SetAttribute("AquariaLoaderProgress", snapshot.progress)
+		target:SetAttribute("AquariaLoaderCompleted", snapshot.completed)
+		target:SetAttribute("AquariaLoaderTotal", snapshot.total)
+		target:SetAttribute("AquariaLoaderStartedAt", snapshot.startedAt)
+		target:SetAttribute("AquariaLoaderFinishedAt", snapshot.finishedAt)
+		target:SetAttribute("AquariaLoaderModuleCount", snapshot.moduleCount)
+		target:SetAttribute("AquariaLoaderAssetCount", snapshot.assetCount)
+		target:SetAttribute("AquariaLoaderAssetLoadedCount", snapshot.assetLoadedCount)
+		target:SetAttribute("AquariaLoaderAssetFailedCount", snapshot.assetFailedCount)
+		target:SetAttribute("AquariaLoaderFailureCount", snapshot.failureCount)
+		target:SetAttribute("AquariaLoaderLastError", snapshot.lastError)
+		target:SetAttribute("AquariaLoaderSnapshot", encodedSnapshot)
 	end
 end
 
@@ -532,11 +341,11 @@ local function recordFailure(scope: string, err: any)
 	failures[#failures + 1] = message
 	snapshot.failureCount = #failures
 	snapshot.lastError = message
-	warn("[Aquarialoader] " .. message)
+	warn("[AquariaLoader] " .. message)
 end
 
 local function recordWarning(scope: string, err: any)
-	warn("[Aquarialoader] " .. `{scope}: {tostring(err)}`)
+	warn("[AquariaLoader] " .. `{scope}: {tostring(err)}`)
 end
 
 bridge.getSnapshot.OnInvoke = function()
@@ -571,21 +380,6 @@ local function waitForByteNetNamespace(storage: Instance, namespaceName: string,
 	if namespaceValue.Value == "" then
 		error(`timed out waiting for ByteNet namespace {namespaceName} to be ready`)
 	end
-end
-
-local function waitForRequiredDescendant(parent: Instance, name: string, timeoutSeconds: number): Instance
-	local deadline = os.clock() + timeoutSeconds
-	local existing = parent:FindFirstChild(name, true)
-	while existing == nil and os.clock() < deadline do
-		task.wait(0.05)
-		existing = parent:FindFirstChild(name, true)
-	end
-
-	if existing == nil then
-		error(`timed out waiting for descendant {name} under {parent:GetFullName()}`)
-	end
-
-	return existing
 end
 
 local function waitForInstancePath(root: Instance, path: { string }, timeoutSeconds: number): Instance
@@ -623,67 +417,6 @@ local function waitForRequiredModule(root: Instance, path: { string }, timeoutSe
 	end
 
 	return current
-end
-
-local function findloaderModule(packageRoot: Instance): ModuleScript
-	local loaderUtils = waitForRequiredDescendant(packageRoot, "LoaderUtils", REPLICATION_TIMEOUT_SECONDS)
-	local loader = loaderUtils.Parent
-	if loader == nil or not loader:IsA("ModuleScript") then
-		error("replicated loader is not a ModuleScript")
-	end
-
-	waitForRequiredChild(loader, "Dependencies", REPLICATION_TIMEOUT_SECONDS)
-	waitForRequiredChild(loader, "LoaderLink", REPLICATION_TIMEOUT_SECONDS)
-	waitForRequiredChild(loader, "Replication", REPLICATION_TIMEOUT_SECONDS)
-	waitForRequiredChild(loader, "Maid", REPLICATION_TIMEOUT_SECONDS)
-	waitForRequiredChild(loader, "Utils", REPLICATION_TIMEOUT_SECONDS)
-
-	return loader
-end
-
-local function shouldAddProjectloaderLink(container: Instance): boolean
-	if container:FindFirstChild(PROJECT_loader_LINK_NAME) ~= nil then
-		return false
-	end
-
-	for _, child in container:GetChildren() do
-		if
-			child:IsA("ModuleScript")
-			and child.Name ~= PROJECT_loader_LINK_NAME
-			and child.Name ~= NEVERMORE_loader_LINK_NAME
-		then
-			return true
-		end
-	end
-
-	return false
-end
-
-local function ensureProjectloaderLinks(packageRoot: Instance, loader: ModuleScript)
-	local gameRoot = packageRoot:FindFirstChild("game")
-	if gameRoot == nil then
-		return
-	end
-
-	local loaderLinkUtils = require(loader.LoaderLink.LoaderLinkUtils)
-	local function ensureContainerLink(container: Instance)
-		if not shouldAddProjectloaderLink(container) then
-			return
-		end
-
-		local link = loaderLinkUtils.create(loader, PROJECT_loader_LINK_NAME)
-		link.Parent = container
-	end
-
-	if gameRoot:IsA("Folder") then
-		ensureContainerLink(gameRoot)
-	end
-
-	for _, descendant in gameRoot:GetDescendants() do
-		if descendant:IsA("Folder") or descendant:IsA("ModuleScript") then
-			ensureContainerLink(descendant)
-		end
-	end
 end
 
 local function getLocalPlayer(): Player
@@ -866,7 +599,7 @@ local function requireModule(
 	return result
 end
 
-local function GetWorkspaceFoldersModule(context: ReplicatedContext): ModuleScript?
+local function getWorkspaceFoldersModule(context: ReplicatedContext): ModuleScript?
 	local coreFolder = context.sharedRoot:FindFirstChild("Core")
 	if coreFolder ~= nil then
 		local workspaceFoldersModule = coreFolder:FindFirstChild("WorkspaceFolders")
@@ -899,7 +632,7 @@ local function adoptPartCacheFolder(context: ReplicatedContext)
 		return
 	end
 
-	local workspaceFoldersModule = GetWorkspaceFoldersModule(context)
+	local workspaceFoldersModule = getWorkspaceFoldersModule(context)
 	if workspaceFoldersModule == nil then
 		recordWarning("part cache folder", "WorkspaceFolders module was not available")
 		return
@@ -963,9 +696,6 @@ local function waitForReplicatedContext(): ReplicatedContext
 	local sharedRoot = waitForRequiredChild(sharedRealmRoot, SOURCE_FOLDER_NAME, REPLICATION_TIMEOUT_SECONDS)
 	local packagesRoot = waitForRequiredChild(ReplicatedStorage, "Packages", REPLICATION_TIMEOUT_SECONDS)
 	local vendorRoot = waitForRequiredChild(sharedRealmRoot, VENDOR_FOLDER_NAME, REPLICATION_TIMEOUT_SECONDS)
-	local loader = findloaderModule(packageRoot)
-	local loaderUtils = waitForRequiredDescendant(packageRoot, "LoaderUtils", REPLICATION_TIMEOUT_SECONDS)
-	ensureProjectloaderLinks(packageRoot, loader)
 
 	completeStage("replication", "replicated game package is ready", STAGE_WEIGHT_REPLICATION)
 	return {
@@ -975,42 +705,31 @@ local function waitForReplicatedContext(): ReplicatedContext
 		sharedRoot = sharedRoot,
 		packagesRoot = packagesRoot,
 		vendorRoot = vendorRoot,
-		loaderModule = loader,
-		loaderUtils = loaderUtils,
 	}
 end
 
-local function bootstrapFramework(context: ReplicatedContext): FrameworkContext
-	setStageProgress("framework", "bootstrapping nevermore", 0, STAGE_WEIGHT_FRAMEWORK)
+local function waitForNevermoreLoader(context: ReplicatedContext)
+	setStageProgress("framework", "waiting for nevermore loader", 0, STAGE_WEIGHT_FRAMEWORK)
 
-	ensureExternalPackageLinks(context.packageRoot, context.packagesRoot)
-	disableStudioWallyIndexPackageTrackerModules(context.packageRoot)
-	disableDuplicatePackageTrackerModules(context.packageRoot)
-	ensureProjectModulePackageLinks(context.packageRoot)
+	local loader = waitForRequiredChild(context.packageRoot, "loader", REPLICATION_TIMEOUT_SECONDS)
+	if not loader:IsA("ModuleScript") then
+		error("replicated loader is not a ModuleScript")
+	end
 
-	local loaderApi = (require :: any)(context.loaderModule)
-	local gameRequire = (loaderApi :: any).bootstrapGame(context.packageRoot)
-	local framework = {
-		gameRequire = gameRequire,
-		Maid = gameRequire("Maid"),
-		NevermoreSupport = gameRequire("NevermoreSupport"),
-		Promise = gameRequire("Promise"),
-		ServiceBag = gameRequire("ServiceBag"),
-	}
+	local loaderLink = waitForRequiredChild(loader, "LoaderLink", REPLICATION_TIMEOUT_SECONDS)
+	if not loaderLink:IsA("ObjectValue") then
+		error("replicated loader link is not an ObjectValue")
+	end
 
-	-- prewarm only so the existing client service lifecycle stays single owner
-	if
-		typeof(framework.NevermoreSupport) == "table"
-		and typeof((framework.NevermoreSupport :: any).IsStarted) == "function"
-	then
-		(bridge.folder :: any):SetAttribute(
-			"AquarialoaderServiceBagStarted",
-			(framework.NevermoreSupport :: any).IsStarted()
-		)
+	local deadline = os.clock() + REPLICATION_TIMEOUT_SECONDS
+	while loaderLink.Value == nil and os.clock() < deadline do
+		task.wait(0.05)
+	end
+	if loaderLink.Value == nil then
+		error("replicated loader link did not resolve")
 	end
 
 	completeStage("framework", "nevermore framework is ready", STAGE_WEIGHT_FRAMEWORK)
-	return framework
 end
 
 local function waitForNetwork(
@@ -1393,7 +1112,7 @@ local function waitForClientBootScript()
 	completeStage("scripts", "client boot scripts are present", STAGE_WEIGHT_SCRIPTS)
 end
 
-local function runloader()
+local function runLoader()
 	if not RunService:IsClient() then
 		return
 	end
@@ -1405,10 +1124,7 @@ local function runloader()
 	local warmedModules = {}
 
 	local context = waitForReplicatedContext()
-	local framework = bootstrapFramework(context)
-	if framework.ServiceBag == nil or framework.Promise == nil or framework.Maid == nil then
-		error("nevermore framework did not expose required packages")
-	end
+	waitForNevermoreLoader(context)
 
 	waitForNetwork(context, warmedModules, assetIds, assetSet)
 	prewarmRuntimePackages(context, warmedModules, assetIds, assetSet)
@@ -1432,7 +1148,7 @@ local function runloader()
 	publish("complete", "complete", "loader complete", 1)
 end
 
-local ok, err = (xpcall :: any)(runloader, debug.traceback)
+local ok, err = (xpcall :: any)(runLoader, debug.traceback)
 if not ok then
 	recordFailure("loader", err)
 	publish("failed", "failed", "loader failed", math.max(snapshot.progress, completedWeight / TOTAL_STAGE_WEIGHT))

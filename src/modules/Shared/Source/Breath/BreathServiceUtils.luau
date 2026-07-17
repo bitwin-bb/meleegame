@@ -41,14 +41,14 @@ local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function CoerceNumber(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+local function coerceNumber(valueRaw: any, minimum: number, maximum: number, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
 	return math.clamp(valueRaw, minimum, maximum)
 end
 
-local function CoerceBoolean(valueRaw: any, fallback: boolean): boolean
+local function coerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
@@ -72,14 +72,14 @@ function BreathServiceUtils.CoerceConfig(configRaw: any, fallbackRaw: BreathServ
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else BreathServiceUtils.CreateDefaultConfig()
 	local source = if typeof(configRaw) == "table" then configRaw else {} :: any
 	return {
-		maxBreathSeconds = CoerceNumber(source.maxBreathSeconds, 1, 120, fallback.maxBreathSeconds),
-		graceDuration = CoerceNumber(source.graceDuration, 0, 10, fallback.graceDuration),
-		recoveryDelay = CoerceNumber(source.recoveryDelay, 0, 10, fallback.recoveryDelay),
-		recoveryDuration = CoerceNumber(source.recoveryDuration, 0.1, 30, fallback.recoveryDuration),
-		drowningTickRate = CoerceNumber(source.drowningTickRate, 0.05, 5, fallback.drowningTickRate),
-		drowningDamage = CoerceNumber(source.drowningDamage, 0, 100, fallback.drowningDamage),
-		updateRate = CoerceNumber(source.updateRate, 1, 60, fallback.updateRate),
-		statePushInterval = CoerceNumber(source.statePushInterval, 0.03, 2, fallback.statePushInterval),
+		maxBreathSeconds = coerceNumber(source.maxBreathSeconds, 1, 120, fallback.maxBreathSeconds),
+		graceDuration = coerceNumber(source.graceDuration, 0, 10, fallback.graceDuration),
+		recoveryDelay = coerceNumber(source.recoveryDelay, 0, 10, fallback.recoveryDelay),
+		recoveryDuration = coerceNumber(source.recoveryDuration, 0.1, 30, fallback.recoveryDuration),
+		drowningTickRate = coerceNumber(source.drowningTickRate, 0.05, 5, fallback.drowningTickRate),
+		drowningDamage = coerceNumber(source.drowningDamage, 0, 100, fallback.drowningDamage),
+		updateRate = coerceNumber(source.updateRate, 1, 60, fallback.updateRate),
+		statePushInterval = coerceNumber(source.statePushInterval, 0.03, 2, fallback.statePushInterval),
 	}
 end
 
@@ -101,16 +101,16 @@ end
 function BreathServiceUtils.CreateState(stateRaw: any, fallbackRaw: BreathServiceState?): BreathServiceState
 	local fallback = if fallbackRaw ~= nil then fallbackRaw else BreathServiceUtils.CreateDefaultState()
 	local source = if typeof(stateRaw) == "table" then stateRaw else {} :: any
-	local maxBreath = CoerceNumber(source.maxBreath, 1, 120, fallback.maxBreath)
+	local maxBreath = coerceNumber(source.maxBreath, 1, 120, fallback.maxBreath)
 	return {
-		ready = CoerceBoolean(source.ready, fallback.ready),
+		ready = coerceBoolean(source.ready, fallback.ready),
 		maxBreath = maxBreath,
-		breath = CoerceNumber(source.breath, 0, maxBreath, fallback.breath),
-		graceRemaining = CoerceNumber(source.graceRemaining, 0, 30, fallback.graceRemaining),
-		isUnderwater = CoerceBoolean(source.isUnderwater, fallback.isUnderwater),
-		isBreathingBlocked = CoerceBoolean(source.isBreathingBlocked, fallback.isBreathingBlocked),
-		isDrowning = CoerceBoolean(source.isDrowning, fallback.isDrowning),
-		submersionRatio = CoerceNumber(source.submersionRatio, 0, 1, fallback.submersionRatio),
+		breath = coerceNumber(source.breath, 0, maxBreath, fallback.breath),
+		graceRemaining = coerceNumber(source.graceRemaining, 0, 30, fallback.graceRemaining),
+		isUnderwater = coerceBoolean(source.isUnderwater, fallback.isUnderwater),
+		isBreathingBlocked = coerceBoolean(source.isBreathingBlocked, fallback.isBreathingBlocked),
+		isDrowning = coerceBoolean(source.isDrowning, fallback.isDrowning),
+		submersionRatio = coerceNumber(source.submersionRatio, 0, 1, fallback.submersionRatio),
 		breathingLiquidType = if isFiniteNumber(source.breathingLiquidType)
 			then math.max(0, math.floor(source.breathingLiquidType))
 			else fallback.breathingLiquidType,

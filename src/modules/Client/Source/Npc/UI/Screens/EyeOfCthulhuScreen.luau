@@ -1,7 +1,6 @@
 local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
@@ -27,7 +26,7 @@ local e: typeof(React.createElement) = React.createElement
 local BOSS_RUNTIME_FOLDER_NAME = "BossRuntime"
 local runtimeRootPartCache: { [string]: BasePart? } = {}
 
-local function GetUntimeRootPart(runtimeId: string): BasePart?
+local function getRuntimeRootPart(runtimeId: string): BasePart?
 	local cachedRootPart = runtimeRootPartCache[runtimeId]
 	if cachedRootPart ~= nil and cachedRootPart:IsDescendantOf(Workspace) then
 		return cachedRootPart
@@ -131,7 +130,7 @@ return function(props: EyeOfCthulhuScreenProps): React.ReactNode
 		end
 
 		local displayOrder = zIndex + index
-		local rootPart = GetUntimeRootPart(runtimeId)
+		local rootPart = getRuntimeRootPart(runtimeId)
 		children[#children + 1] = if rootPart ~= nil
 			then renderSurfaceBoss(snapshot :: BossSnapshot, rootPart, displayOrder, renderClock)
 			else renderScreenBoss(snapshot :: BossSnapshot, displayOrder, renderClock)

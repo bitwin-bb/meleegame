@@ -7,6 +7,7 @@ local Workspace = game:GetService("Workspace")
 
 local CharacterUtils = require("CharacterUtils")
 local ContentProviderUtils = require("ContentProviderUtils")
+local FieldOfViewUtils = require("FieldOfViewUtils")
 local Maid = require("Maid")
 local Rx: any = require("Rx")
 local RxSignal: any = require("RxSignal")
@@ -20,8 +21,8 @@ local Horizon = require("ParallaxHorizonGetter")
 local Math = require("ParallaxMath")
 local ParallaxBackgrounds = require("ParallaxBackgrounds")
 local ParallaxConstants = require("ParallaxConstants")
-local ParallaxRuntimeConstants = require("ParallaxRuntimeConstants")
 local ParallaxRoot = require("ParallaxRoot")
+local ParallaxRuntimeConstants = require("ParallaxRuntimeConstants")
 local ParallaxServiceUtils = require("ParallaxServiceUtils")
 local ParallaxSlice = require("ParallaxSlice")
 local ParallaxThunks = require("ParallaxThunks")
@@ -29,6 +30,7 @@ local Profile = require("ParallaxProfiles")
 local Scrolling = require("Scrolling")
 local State = require("ParallaxState")
 local WorkspaceFolders = require("WorkspaceFolders")
+local WorldGenerationConstants = require("WorldGenerationConstants")
 local WorldGenerationServiceClient = require("WorldGenerationServiceClient")
 
 type Catalog = ParallaxServiceUtils.Catalog
@@ -157,7 +159,7 @@ local function getCamera(): Camera?
 	return Workspace.CurrentCamera
 end
 
-local function GetCharacterRootPosition(player: Player?): Vector3?
+local function getCharacterRootPosition(player: Player?): Vector3?
 	if player == nil then
 		return nil
 	end
@@ -170,7 +172,7 @@ local function GetCharacterRootPosition(player: Player?): Vector3?
 	return nil
 end
 
-local function GetCameraSnapshot(camera: Camera?): CameraSnapshot
+local function getCameraSnapshot(camera: Camera?): CameraSnapshot
 	if camera == nil then
 		return {
 			fieldOfView = ParallaxRuntimeConstants.DEFAULT_CAMERA_FIELD_OF_VIEW,
@@ -192,7 +194,7 @@ local function computeVisibleExtentsAtDistance(
 ): (number, number)
 	local aspectRatio = if viewportSize.Y > 0 then viewportSize.X / viewportSize.Y else 16 / 9
 	local distanceValue = math.max(distance, 1)
-	local visibleHeight = 2 * distanceValue * math.tan(math.rad(fieldOfViewDegrees) * 0.5)
+	local visibleHeight = distanceValue * FieldOfViewUtils.fovToHeight(fieldOfViewDegrees)
 	local visibleWidth = visibleHeight * aspectRatio
 	return visibleWidth, visibleHeight
 end
@@ -231,7 +233,7 @@ local function cloneState(state: ServiceState): ServiceState
 	return ParallaxServiceUtils.CloneState(state)
 end
 
-local function GetSurfacePixelsPerStud(widthStuds: number, heightStuds: number): number
+local function getSurfacePixelsPerStud(widthStuds: number, heightStuds: number): number
 	local largestAxis = math.max(widthStuds, heightStuds, 1)
 	return math.max(
 		1,
@@ -250,7 +252,7 @@ local function toCanvasPixels(studs: number, pixelsPerStud: number): number
 	)
 end
 
-local function GetLayerRenderId(biomeRuntime: BiomeRuntime, layerRuntime: LayerRuntime): string
+local function getLayerRenderId(biomeRuntime: BiomeRuntime, layerRuntime: LayerRuntime): string
 	local layerId = layerRuntime.definition.id
 	if layerId == "" then
 		layerId = `Layer{layerRuntime.layerIndex}`
@@ -270,6 +272,7 @@ function Parallax.new(): Parallax
 	self.didPreloadAllAssets = false
 	self.preloadAllAssetsPromise = nil
 	self.referenceGameplayPlaneDistanceX = nil
+	self.referenceFieldOfView = nil
 	self.scrollAnchorZ = nil
 	self.scrollTravelZ = 0
 	self.transitionActive = false
@@ -316,7 +319,9 @@ end
 function Parallax._GetWorldLayoutSnapshot(_self: Parallax, stateRaw: any?): WorldLayoutSnapshot
 	local fallbackState = ((WorldGenerationServiceClient :: any).state :: { [string]: any }?) or ({} :: any)
 	local state = if typeof(stateRaw) == "table" then stateRaw :: { [string]: any } else fallbackState
-	local tileDepth = if typeof(state.tileDepth) == "number" then math.max(state.tileDepth, 0.5) else 4
+	local tileDepth = if typeof(state.tileDepth) == "number"
+		then math.max(state.tileDepth, 0.5)
+		else WorldGenerationConstants.DEFAULT_TILE_DEPTH
 	local chunkSize = if typeof(state.chunkSize) == "number" then math.max(1, math.floor(state.chunkSize)) else 32
 	local tileSize = if typeof(state.tileSize) == "number" then math.max(state.tileSize, 0.25) else 4
 	local renderDistanceChunks = if typeof(state.renderDistanceChunks) == "number"
@@ -337,7 +342,7 @@ function Parallax._GetWorldLayoutSnapshot(_self: Parallax, stateRaw: any?): Worl
 end
 
 function Parallax._GetCurrentLayoutSnapshot(self: Parallax): LayoutSnapshot
-	local cameraSnapshot = GetCameraSnapshot(getCamera())
+	local cameraSnapshot = getCameraSnapshot(getCamera())
 	local worldSnapshot = self:_GetWorldLayoutSnapshot()
 	return {
 		fieldOfView = cameraSnapshot.fieldOfView,
@@ -360,7 +365,7 @@ function Parallax._observeCameraSnapshot(_self: Parallax): ObservableObject
 		end),
 		Rx.switchMap(function(camera: Camera?): ObservableObject
 			if camera == nil then
-				return Rx.of(GetCameraSnapshot(nil)) :: any
+				return Rx.of(getCameraSnapshot(nil)) :: any
 			end
 
 			return Rx.merge({
@@ -369,7 +374,7 @@ function Parallax._observeCameraSnapshot(_self: Parallax): ObservableObject
 				Rx.fromSignal(camera:GetPropertyChangedSignal("ViewportSize")),
 			}):Pipe({
 				Rx.map(function()
-					return GetCameraSnapshot(camera)
+					return getCameraSnapshot(camera)
 				end),
 			}) :: any
 		end),
@@ -554,7 +559,7 @@ function Parallax._ensureSurfaceRuntime(self: Parallax): SurfaceRuntime?
 	anchorPart.CanTouch = false
 	anchorPart.CastShadow = false
 	anchorPart.Transparency = 1
-	anchorPart.Size = Vector3.new(self.catalog.settings.segmentThickness, 1, 1)
+	anchorPart.Size = Vector3.new(WorldGenerationConstants.DEFAULT_TILE_DEPTH, 1, 1)
 	anchorPart.Parent = rootFolder
 
 	local root = ReactRoblox.createRoot(anchorPart)
@@ -641,14 +646,27 @@ function Parallax._refreshWorldAttributes(self: Parallax)
 end
 
 function Parallax._GetGameplayPlaneReferenceDistance(self: Parallax, cameraPositionX: number): number
-	self.referenceGameplayPlaneDistanceX = ParallaxServiceUtils.GetStableGameplayPlaneDistance(
-		self.referenceGameplayPlaneDistanceX,
-		cameraPositionX,
-		self.worldOrigin.X,
-		self.basePlaneX
-	)
+	if self.referenceGameplayPlaneDistanceX == nil then
+		self.referenceGameplayPlaneDistanceX = ParallaxServiceUtils.GetStableGameplayPlaneDistance(
+			nil,
+			cameraPositionX,
+			self.worldOrigin.X,
+			self.basePlaneX
+		)
+	end
 
 	return self.referenceGameplayPlaneDistanceX :: number
+end
+
+function Parallax._GetReferenceFieldOfView(self: Parallax, fieldOfView: number): number
+	local referenceFieldOfView = self.referenceFieldOfView
+	if referenceFieldOfView ~= nil then
+		return referenceFieldOfView
+	end
+
+	local nextReferenceFieldOfView = math.clamp(fieldOfView, 1, 120)
+	self.referenceFieldOfView = nextReferenceFieldOfView
+	return nextReferenceFieldOfView
 end
 
 function Parallax._GetPlayerTravelZ(self: Parallax, subjectPosition: Vector3?): number
@@ -972,6 +990,9 @@ function Parallax._GetLayerMetric(
 		layoutSnapshot.viewportSize,
 		coverageReferenceDistance
 	)
+	local referenceFieldOfView = self:_GetReferenceFieldOfView(layoutSnapshot.fieldOfView)
+	local referenceVisibleWidth, referenceVisibleHeight =
+		computeVisibleExtentsAtDistance(referenceFieldOfView, layoutSnapshot.viewportSize, coverageReferenceDistance)
 	local sizeReferenceWidth = select(
 		1,
 		computeVisibleExtentsAtDistance(
@@ -979,6 +1000,10 @@ function Parallax._GetLayerMetric(
 			layoutSnapshot.viewportSize,
 			gameplayReferenceDistance
 		)
+	)
+	local referenceSizeWidth = select(
+		1,
+		computeVisibleExtentsAtDistance(referenceFieldOfView, layoutSnapshot.viewportSize, gameplayReferenceDistance)
 	)
 	local planeSizing: PlaneSizing = ParallaxServiceUtils.GetDeterministicPlaneSizing(
 		visibleWidth,
@@ -989,7 +1014,17 @@ function Parallax._GetLayerMetric(
 		definition.segmentWidthScale,
 		definition.textureStudsPerTileU
 	)
+	local referencePlaneSizing: PlaneSizing = ParallaxServiceUtils.GetDeterministicPlaneSizing(
+		referenceVisibleWidth,
+		referenceSizeWidth,
+		layoutSnapshot.horizontalVisionStuds,
+		definition.imageAspectRatio,
+		definition.heightScale,
+		definition.segmentWidthScale,
+		definition.textureStudsPerTileU
+	)
 	local textureRepeatHeight = planeSizing.textureRepeatHeight
+	local referenceTextureRepeatHeight = referencePlaneSizing.textureRepeatHeight
 	local visibleBottomY = cameraPosition.Y - visibleHeight * 0.5
 	local horizonCenterY = ParallaxServiceUtils.GetWorldHorizonParallaxCenterY(
 		self.worldOrigin.Y,
@@ -1004,11 +1039,19 @@ function Parallax._GetLayerMetric(
 	local minimumViewHeight = visibleHeight * ParallaxRuntimeConstants.SURFACE_LAYER_MIN_VIEW_HEIGHT_FACTOR
 	local maximumViewHeight = visibleHeight * ParallaxRuntimeConstants.SURFACE_LAYER_MAX_VIEW_HEIGHT_FACTOR
 	textureRepeatHeight = math.clamp(textureRepeatHeight, minimumViewHeight, maximumViewHeight)
+	referenceTextureRepeatHeight = math.clamp(
+		referenceTextureRepeatHeight,
+		referenceVisibleHeight * ParallaxRuntimeConstants.SURFACE_LAYER_MIN_VIEW_HEIGHT_FACTOR,
+		referenceVisibleHeight * ParallaxRuntimeConstants.SURFACE_LAYER_MAX_VIEW_HEIGHT_FACTOR
+	)
 	local textureRepeatWidth = computeTextureRepeatWidthFromHeight(definition, textureRepeatHeight)
+	local referenceTextureRepeatWidth = computeTextureRepeatWidthFromHeight(definition, referenceTextureRepeatHeight)
 	local planeWidth = math.max(planeSizing.planeWidth, textureRepeatWidth)
 	local planeHeight = textureRepeatHeight
-	local bottomBleed =
-		math.max(visibleHeight * definition.bottomOverscan, ParallaxRuntimeConstants.MIN_PLANE_VERTICAL_COVERAGE_BLEED_STUDS)
+	local bottomBleed = math.max(
+		visibleHeight * definition.bottomOverscan,
+		ParallaxRuntimeConstants.MIN_PLANE_VERTICAL_COVERAGE_BLEED_STUDS
+	)
 	local highestHiddenBottomCenterY = visibleBottomY - bottomBleed + planeHeight * 0.5
 	local transparency = blendToLayerTransparency(definition.transparency, biomeRuntime.alpha)
 	if transparency >= 0.999 then
@@ -1016,7 +1059,7 @@ function Parallax._GetLayerMetric(
 	end
 
 	return {
-		id = GetLayerRenderId(biomeRuntime, layerRuntime),
+		id = getLayerRenderId(biomeRuntime, layerRuntime),
 		image = definition.image,
 		tint = definition.tint,
 		transparency = transparency,
@@ -1027,14 +1070,22 @@ function Parallax._GetLayerMetric(
 		height = planeHeight,
 		textureRepeatWidth = textureRepeatWidth,
 		textureRepeatHeight = textureRepeatHeight,
-		textureOffsetU = Scrolling.ComputeHorizontalOffsetStuds(
-			scrollTravelZ,
-			definition.depth,
-			definition.scrollSpeed,
-			textureRepeatWidth,
-			_now
+		textureOffsetU = Math.RescaleWrappedOffset(
+			Scrolling.ComputeHorizontalOffsetStuds(
+				scrollTravelZ,
+				definition.depth,
+				definition.scrollSpeed,
+				referenceTextureRepeatWidth,
+				_now
+			),
+			referenceTextureRepeatWidth,
+			textureRepeatWidth
 		),
-		textureOffsetV = Scrolling.ComputeVerticalOffsetStuds(textureRepeatHeight),
+		textureOffsetV = Math.RescaleWrappedOffset(
+			Scrolling.ComputeVerticalOffsetStuds(referenceTextureRepeatHeight),
+			referenceTextureRepeatHeight,
+			textureRepeatHeight
+		),
 		planeDepthBlocks = definition.planeDepthBlocks,
 		zIndex = 1000 - layerRuntime.layerIndex,
 	}
@@ -1042,7 +1093,7 @@ end
 
 function Parallax._collectLayerMetrics(self: Parallax, cameraPosition: Vector3, now: number): { LayerMetric }
 	local metrics: { LayerMetric } = {}
-	local subjectPosition = GetCharacterRootPosition(self.localPlayer)
+	local subjectPosition = getCharacterRootPosition(self.localPlayer)
 	local scrollTravelZ = self:_GetPlayerTravelZ(subjectPosition)
 	for _, biomeRuntime in self.activeBiomeRuntimes do
 		for _, layerRuntime in biomeRuntime.layers do
@@ -1078,7 +1129,7 @@ function Parallax._collectParallaxLayerMetrics(
 	local activeLayerIds: { string } = {}
 	local bgTopValues: { string } = {}
 	local layerSizeValues: { string } = {}
-	local subjectPosition = GetCharacterRootPosition(self.localPlayer)
+	local subjectPosition = getCharacterRootPosition(self.localPlayer)
 	local layoutSnapshot = self.layoutStateValue.Value
 	if layoutSnapshot == nil then
 		layoutSnapshot = self:_GetCurrentLayoutSnapshot()
@@ -1088,6 +1139,7 @@ function Parallax._collectParallaxLayerMetrics(
 	local gameplayReferenceDistance = self:_GetGameplayPlaneReferenceDistance(cameraPosition.X)
 	local screenHeight = math.max(layoutSnapshot.viewportSize.Y, 1)
 	local parallaxUiScale = Math.ComputeUiScale(screenHeight)
+	local referenceFieldOfView = self:_GetReferenceFieldOfView(layoutSnapshot.fieldOfView)
 	local stylesByProfile = Profile.ByStyle
 	local horizon = Horizon.GetHorizon(self, cameraPosition, subjectPosition, dt)
 	self.lastParallaxHorizon = horizon
@@ -1117,11 +1169,25 @@ function Parallax._collectParallaxLayerMetrics(
 				layoutSnapshot.viewportSize,
 				coverageReferenceDistance
 			)
+			local _, referenceVisibleHeight = computeVisibleExtentsAtDistance(
+				referenceFieldOfView,
+				layoutSnapshot.viewportSize,
+				coverageReferenceDistance
+			)
 			local textureRepeatWidth, textureRepeatHeight = Math.ComputeTextureSizeWorld(
 				profile.imageWidth or 1024,
 				profile.imageHeight or 600,
 				profile.bgScale,
 				visibleHeight,
+				screenHeight,
+				parallaxUiScale,
+				ParallaxConstants.TERRARIA_PARALLAX_LAYER_SIZE_SCALE
+			)
+			local referenceTextureRepeatWidth, referenceTextureRepeatHeight = Math.ComputeTextureSizeWorld(
+				profile.imageWidth or 1024,
+				profile.imageHeight or 600,
+				profile.bgScale,
+				referenceVisibleHeight,
 				screenHeight,
 				parallaxUiScale,
 				ParallaxConstants.TERRARIA_PARALLAX_LAYER_SIZE_SCALE
@@ -1154,11 +1220,10 @@ function Parallax._collectParallaxLayerMetrics(
 				layoutSnapshot.horizontalVisionStuds + horizontalBleed
 			)
 			local visibleBottomY = cameraPosition.Y - visibleHeight * 0.5
-			local bottomBleed =
-				math.max(
-					visibleHeight * ParallaxRuntimeConstants.PARALLAX_SURFACE_BOTTOM_OVERSCAN,
-					ParallaxRuntimeConstants.MIN_PLANE_VERTICAL_COVERAGE_BLEED_STUDS
-				)
+			local bottomBleed = math.max(
+				visibleHeight * ParallaxRuntimeConstants.PARALLAX_SURFACE_BOTTOM_OVERSCAN,
+				ParallaxRuntimeConstants.MIN_PLANE_VERTICAL_COVERAGE_BLEED_STUDS
+			)
 			local highestHiddenBottomCenterY = visibleBottomY - bottomBleed + textureRepeatHeight * 0.5
 			local transparency = blendToParallaxLayerTransparency(profile.transparency or 0, styleAlpha, surfaceAlpha)
 			if transparency >= 0.999 then
@@ -1207,14 +1272,22 @@ function Parallax._collectParallaxLayerMetrics(
 				height = textureRepeatHeight,
 				textureRepeatWidth = textureRepeatWidth,
 				textureRepeatHeight = textureRepeatHeight,
-				textureOffsetU = Math.ComputeHorizontalTextureOffsetWorld(
-					scrollTravelZ + (profile.offsetX or 0),
-					profile.parallaxX,
-					textureRepeatWidth,
-					0,
-					now
+				textureOffsetU = Math.RescaleWrappedOffset(
+					Math.ComputeHorizontalTextureOffsetWorld(
+						scrollTravelZ + (profile.offsetX or 0),
+						profile.parallaxX,
+						referenceTextureRepeatWidth,
+						0,
+						now
+					),
+					referenceTextureRepeatWidth,
+					textureRepeatWidth
 				),
-				textureOffsetV = Scrolling.ComputeVerticalOffsetStuds(textureRepeatHeight),
+				textureOffsetV = Math.RescaleWrappedOffset(
+					Scrolling.ComputeVerticalOffsetStuds(referenceTextureRepeatHeight),
+					referenceTextureRepeatHeight,
+					textureRepeatHeight
+				),
 				planeDepthBlocks = planeDepthBlocks,
 				zIndex = profile.zIndex or (1000 - layerIndex),
 			})
@@ -1249,17 +1322,49 @@ function Parallax._publishSurfaceState(self: Parallax, metrics: { LayerMetric },
 		return
 	end
 
+	local minPlaneDepthBlocks = math.huge
+	for _, metric in metrics do
+		minPlaneDepthBlocks = math.min(minPlaneDepthBlocks, metric.planeDepthBlocks)
+	end
+
+	local layoutSnapshot = self.layoutStateValue.Value
+	if layoutSnapshot == nil then
+		layoutSnapshot = self:_GetCurrentLayoutSnapshot()
+		self.layoutStateValue.Value = layoutSnapshot
+	end
+	local anchorPlaneX = self.worldOrigin.X + self.basePlaneX - minPlaneDepthBlocks * layoutSnapshot.tileDepth
+	local referenceAnchorDistance = self:_GetGameplayPlaneReferenceDistance(cameraPosition.X)
+		+ math.abs((self.worldOrigin.X + self.basePlaneX) - anchorPlaneX)
+	local _, referenceAnchorVisibleHeight = computeVisibleExtentsAtDistance(
+		layoutSnapshot.fieldOfView,
+		layoutSnapshot.viewportSize,
+		referenceAnchorDistance
+	)
+	local _, anchorVisibleHeight = computeVisibleExtentsAtDistance(
+		layoutSnapshot.fieldOfView,
+		layoutSnapshot.viewportSize,
+		math.abs(cameraPosition.X - anchorPlaneX)
+	)
+	local projectionScale = Math.ComputeProjectionScale(referenceAnchorVisibleHeight, anchorVisibleHeight)
+
 	local minY = math.huge
 	local maxY = -math.huge
 	local minZ = math.huge
 	local maxZ = -math.huge
-	local minPlaneDepthBlocks = math.huge
 	for _, metric in metrics do
+		metric.centerY = cameraPosition.Y + (metric.centerY - cameraPosition.Y) * projectionScale
+		metric.centerZ = cameraPosition.Z + (metric.centerZ - cameraPosition.Z) * projectionScale
+		metric.width *= projectionScale
+		metric.height *= projectionScale
+		metric.textureRepeatWidth *= projectionScale
+		metric.textureRepeatHeight *= projectionScale
+		metric.textureOffsetU *= projectionScale
+		metric.textureOffsetV *= projectionScale
+
 		minY = math.min(minY, metric.centerY - metric.height * 0.5)
 		maxY = math.max(maxY, metric.centerY + metric.height * 0.5)
 		minZ = math.min(minZ, metric.centerZ - metric.width * 0.5)
 		maxZ = math.max(maxZ, metric.centerZ + metric.width * 0.5)
-		minPlaneDepthBlocks = math.min(minPlaneDepthBlocks, metric.planeDepthBlocks)
 	end
 	local rawAnchorHeightStuds = math.max(maxY - minY, 1)
 	local rawAnchorWidthStuds = math.max(maxZ - minZ, 1)
@@ -1280,15 +1385,12 @@ function Parallax._publishSurfaceState(self: Parallax, metrics: { LayerMetric },
 	local anchorWidthStuds = math.max(maxZ - minZ, 1)
 	local anchorCenterY = (minY + maxY) * 0.5
 	local anchorCenterZ = (minZ + maxZ) * 0.5
-	local anchorPlaneX = self.worldOrigin.X
-		+ self.basePlaneX
-		- minPlaneDepthBlocks * self.layoutStateValue.Value.tileDepth
-	local pixelsPerStud = GetSurfacePixelsPerStud(anchorWidthStuds, anchorHeightStuds)
+	local pixelsPerStud = getSurfacePixelsPerStud(anchorWidthStuds, anchorHeightStuds)
 	local canvasWidth = toCanvasPixels(anchorWidthStuds, pixelsPerStud)
 	local canvasHeight = toCanvasPixels(anchorHeightStuds, pixelsPerStud)
 
 	surfaceRuntime.anchorPart.Size =
-		Vector3.new(self.catalog.settings.segmentThickness, anchorHeightStuds, anchorWidthStuds)
+		Vector3.new(WorldGenerationConstants.DEFAULT_TILE_DEPTH, anchorHeightStuds, anchorWidthStuds)
 	surfaceRuntime.anchorPart.CFrame = CFrame.new(anchorPlaneX, anchorCenterY, anchorCenterZ)
 	local surfaceFace = if cameraPosition.X >= anchorPlaneX then Enum.NormalId.Right else Enum.NormalId.Left
 
@@ -1300,7 +1402,8 @@ function Parallax._publishSurfaceState(self: Parallax, metrics: { LayerMetric },
 		local frameHeight = math.max(metric.height * pixelsPerStud, 1)
 		local frameCenterX = (metric.centerZ - anchorMinZ) * pixelsPerStud
 		local frameCenterY = (anchorMaxY - metric.centerY) * pixelsPerStud
-		local tileWidth = math.max(metric.textureRepeatWidth * pixelsPerStud * ParallaxRuntimeConstants.SURFACE_TILE_SCALE, 1)
+		local tileWidth =
+			math.max(metric.textureRepeatWidth * pixelsPerStud * ParallaxRuntimeConstants.SURFACE_TILE_SCALE, 1)
 		local tileHeight =
 			math.max(metric.textureRepeatHeight * pixelsPerStud * ParallaxRuntimeConstants.SURFACE_TILE_SCALE, 1)
 		local imageOffsetX = Scrolling.ComputeOffsetPixels(metric.textureOffsetU, metric.textureRepeatWidth, tileWidth)
@@ -1482,6 +1585,7 @@ function Parallax.ForceRefresh(self: Parallax)
 	self.didPreloadAllAssets = false
 	self.preloadAllAssetsPromise = nil
 	self.referenceGameplayPlaneDistanceX = nil
+	self.referenceFieldOfView = nil
 	self.smoothedParallaxHorizonY = nil
 	self.parallaxState = State.new()
 	self.currentParallaxSample = nil
@@ -1559,6 +1663,8 @@ function Parallax.Destroy(self: Parallax)
 	self.stateValue = nil
 	self.layoutStateValue = nil
 	self.preloadAllAssetsPromise = nil
+	self.referenceGameplayPlaneDistanceX = nil
+	self.referenceFieldOfView = nil
 	self.scrollAnchorZ = nil
 	self.scrollTravelZ = 0
 	self.initialized = false
@@ -1581,6 +1687,7 @@ export type Parallax = typeof(setmetatable(
 		didPreloadAllAssets: boolean,
 		preloadAllAssetsPromise: any?,
 		referenceGameplayPlaneDistanceX: number?,
+		referenceFieldOfView: number?,
 		scrollAnchorZ: number?,
 		scrollTravelZ: number,
 		transitionActive: boolean,

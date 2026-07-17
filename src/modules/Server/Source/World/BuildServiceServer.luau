@@ -6,7 +6,6 @@ local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local Sift: any = require(ReplicatedStorage.Packages.Sift)
 local RunService = game:GetService("RunService")
-local ServerScriptService = game:GetService("ServerScriptService")
 
 local AutotileService = require("AutotileService")
 local BuildServiceUtils = require("BuildServiceUtils")
@@ -65,8 +64,8 @@ local function bindPackets(self: any)
 end
 
 local BinderSupportServer = require("BinderSupportServer")
-local NevermoreSupport = require("NevermoreSupport")
 local PlayerServiceServer = require("PlayerServiceServer")
+local Table = require("Table")
 local TagBinder = require("TagBinder")
 local WorldGenerationServiceServer = require("WorldGenerationServiceServer")
 
@@ -153,6 +152,7 @@ type MultiTileAnchorRuntime = {
 }
 
 local BuildServiceServer = {}
+BuildServiceServer.ServiceName = "BuildServiceServer"
 
 local function shouldReplicateToPlayer(player: Player): boolean
 	return PlayerServiceServer:IsGameplayActiveForPlayer(player)
@@ -171,7 +171,7 @@ local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function CoerceInventorySlot(slotRaw: any): number?
+local function coerceInventorySlot(slotRaw: any): number?
 	if typeof(slotRaw) ~= "number" or slotRaw ~= slotRaw then
 		return nil
 	end
@@ -205,14 +205,14 @@ local function footprintHasBlockingTorch(footprint: { TileCoordinate }): boolean
 	return false
 end
 
-local function GetBuildConfigSource(): any
+local function getBuildConfigSource(): any
 	if typeof(Configs) ~= "table" then
 		return nil
 	end
 	return (Configs :: any).buildService
 end
 
-local function GetPlayerRootPart(player: Player): BasePart?
+local function getPlayerRootPart(player: Player): BasePart?
 	local character = player.Character
 	if character == nil then
 		return nil
@@ -233,11 +233,11 @@ local function GetPlayerRootPart(player: Player): BasePart?
 	return nil
 end
 
-local function GetTileBreakDropItemId(tileId: number): string?
+local function getTileBreakDropItemId(tileId: number): string?
 	return BuildServiceUtils.GetTileBreakDropItemId(tileId)
 end
 
-local function GetSelectedInventoryToolProfile(
+local function getSelectedInventoryToolProfile(
 	inventoryService: InventoryServiceServerObject?,
 	player: Player
 ): MiningPower.ToolProfile?
@@ -256,12 +256,12 @@ local function GetSelectedInventoryToolProfile(
 	return selectedToolContext
 end
 
-local function GetPlayerToolPower(
+local function getPlayerToolPower(
 	inventoryService: InventoryServiceServerObject?,
 	player: Player,
 	fallback: number
 ): number
-	local selectedProfile = GetSelectedInventoryToolProfile(inventoryService, player)
+	local selectedProfile = getSelectedInventoryToolProfile(inventoryService, player)
 	if selectedProfile ~= nil then
 		return math.max(0, selectedProfile.toolPower)
 	end
@@ -269,12 +269,12 @@ local function GetPlayerToolPower(
 	return fallback
 end
 
-local function GetPlayerToolType(
+local function getPlayerToolType(
 	inventoryService: InventoryServiceServerObject?,
 	player: Player,
 	fallback: string
 ): string
-	local selectedProfile = GetSelectedInventoryToolProfile(inventoryService, player)
+	local selectedProfile = getSelectedInventoryToolProfile(inventoryService, player)
 	if selectedProfile ~= nil and selectedProfile.toolType ~= nil then
 		return selectedProfile.toolType
 	end
@@ -282,7 +282,7 @@ local function GetPlayerToolType(
 	return fallback
 end
 
-local function GetPlaceableFromInventory(
+local function getPlaceableFromInventory(
 	inventoryService: InventoryServiceServerObject?,
 	player: Player,
 	sourceSlotRaw: any?
@@ -298,7 +298,7 @@ local function GetPlaceableFromInventory(
 
 	local sourceSlot = nil :: number?
 	if sourceSlotRaw ~= nil then
-		sourceSlot = CoerceInventorySlot(sourceSlotRaw)
+		sourceSlot = coerceInventorySlot(sourceSlotRaw)
 		if sourceSlot == nil then
 			return nil, nil, nil, "invalid_source_slot"
 		end
@@ -412,9 +412,9 @@ function BuildServiceServer.GetTileAtInternal(self: BuildServiceServer, tileX: n
 	end
 	local tileId = (self.world :: any):GetTileAt(tileX, tileY)
 	if isFiniteNumber(tileId) then
-		local CoerceD = BuildServiceUtils.CoerceTileId(tileId)
-		if CoerceD ~= nil then
-			return CoerceD
+		local coerced = BuildServiceUtils.CoerceTileId(tileId)
+		if coerced ~= nil then
+			return coerced
 		end
 	end
 	return BuildServiceUtils.AIR_TILE_ID
@@ -462,8 +462,19 @@ function BuildServiceServer.GetTreeHitAt(self: BuildServiceServer, tileX: number
 	)
 end
 
+function BuildServiceServer.GetTreeRootAtTile(self: BuildServiceServer, tileX: number, tileY: number): TreeSnapshot?
+	return BuildServiceUtils.GetTreeRootAtTile(
+		tileX,
+		tileY,
+		self.state.chunkSize,
+		function(chunkX: number, chunkY: number): { any }?
+			return self:GetTreesForChunk(chunkX, chunkY)
+		end
+	)
+end
+
 function BuildServiceServer.GetPlayerTileX(self: BuildServiceServer, player: Player, fallbackTileX: number): number
-	local rootPart = GetPlayerRootPart(player)
+	local rootPart = getPlayerRootPart(player)
 	if rootPart == nil then
 		return fallbackTileX
 	end
@@ -586,7 +597,7 @@ function BuildServiceServer.IsWithinInteractionRange(
 	tileX: number,
 	tileY: number
 ): boolean
-	local rootPart = GetPlayerRootPart(player)
+	local rootPart = getPlayerRootPart(player)
 	if rootPart == nil then
 		return false
 	end
@@ -623,7 +634,7 @@ function BuildServiceServer.IsBreakTargetWithinInteractionRange(
 end
 
 function BuildServiceServer.PushBreakProgress(
-	self: BuildServiceServer,
+	_self: BuildServiceServer,
 	player: Player,
 	isActive: boolean,
 	tileX: number?,
@@ -654,7 +665,7 @@ function BuildServiceServer.PushBreakProgress(
 end
 
 function BuildServiceServer.SendActionResult(
-	self: BuildServiceServer,
+	_self: BuildServiceServer,
 	player: Player,
 	requestIdRaw: any,
 	actionType: string,
@@ -698,7 +709,7 @@ function BuildServiceServer.ClearBreakRuntimeForIntent(self: BuildServiceServer,
 	end
 end
 
-function BuildServiceServer.ClearBreakTargetForIntent(self: BuildServiceServer, intent: PlayerBreakIntent)
+function BuildServiceServer.ClearBreakTargetForIntent(_self: BuildServiceServer, intent: PlayerBreakIntent)
 	intent.breakTargetKind = nil
 	intent.targetTreeId = nil
 	intent.targetTreeRootTileX = nil
@@ -1029,7 +1040,7 @@ function BuildServiceServer.CanPlaceAt(
 	if tileX == nil or tileY == nil or requestedTileId == nil then
 		return false, "invalid_tile_coordinate_or_id"
 	end
-	local _, _, selectedPlaceableConfig = GetPlaceableFromInventory(self.inventoryService, player, nil)
+	local _, _, selectedPlaceableConfig = getPlaceableFromInventory(self.inventoryService, player, nil)
 	if selectedPlaceableConfig == nil then
 		return false, "selected_item_not_placeable"
 	end
@@ -1086,7 +1097,7 @@ function BuildServiceServer.RequestPlaceTile(
 		return
 	end
 	local sourceSlot, sourceStack, sourcePlaceableConfig, sourceError =
-		GetPlaceableFromInventory(self.inventoryService, player, sourceSlotRaw)
+		getPlaceableFromInventory(self.inventoryService, player, sourceSlotRaw)
 	if sourceError ~= nil then
 		self:SendActionResult(player, requestId, BuildServiceUtils.ACTION_TYPE_PLACE, false, sourceError, nil)
 		return
@@ -1243,6 +1254,17 @@ function BuildServiceServer.ProcessBreakCompletion(
 		self:SendActionResult(player, intent.requestId, BuildServiceUtils.ACTION_TYPE_BREAK, false, "no_footprint", nil)
 		return
 	end
+	local supportingTree = Table.reduce(
+		breakFootprint :: any,
+		function(found: TreeSnapshot?, breakTile: TileCoordinate): TreeSnapshot?
+			return found or self:GetTreeRootAtTile(breakTile.tileX, breakTile.tileY)
+		end,
+		nil :: TreeSnapshot?
+	)
+	if supportingTree ~= nil then
+		self:SendActionResult(player, intent.requestId, BuildServiceUtils.ACTION_TYPE_BREAK, false, "tree_support", nil)
+		return
+	end
 
 	local changedTiles: { TileCoordinate } = {}
 	local breakDeltas: { TileDelta } = {}
@@ -1265,7 +1287,7 @@ function BuildServiceServer.ProcessBreakCompletion(
 				reason = "break",
 			}
 
-			local droppedItemId = GetTileBreakDropItemId(currentTileId)
+			local droppedItemId = getTileBreakDropItemId(currentTileId)
 			if droppedItemId ~= nil and self.lootService ~= nil then
 				local spawnPosition = BuildServiceUtils.TileToWorldCenter(
 					breakTile.tileX,
@@ -1396,8 +1418,8 @@ function BuildServiceServer.RequestBreakTile(
 	local registerHit = BuildServiceUtils.CoerceBoolean(registerHitRaw, false)
 	intent.requestId = BuildServiceUtils.CoerceRequestId(requestIdRaw)
 	intent.lastInputAt = os.clock()
-	intent.toolPower = GetPlayerToolPower(self.inventoryService, player, self.config.defaultToolPower)
-	intent.toolType = GetPlayerToolType(self.inventoryService, player, "")
+	intent.toolPower = getPlayerToolPower(self.inventoryService, player, self.config.defaultToolPower)
+	intent.toolType = getPlayerToolType(self.inventoryService, player, "")
 
 	if not isBreaking then
 		self:StopBreaking(player, intent, "client_released")
@@ -1418,6 +1440,10 @@ function BuildServiceServer.RequestBreakTile(
 		self:StopBreaking(player, intent, "out_of_range")
 		return
 	end
+	if self:GetTreeRootAtTile(tileX, tileY) ~= nil then
+		self:StopBreaking(player, intent, "tree_support")
+		return
+	end
 
 	intent.isBreaking = true
 	if intent.tileX ~= tileX or intent.tileY ~= tileY then
@@ -1433,14 +1459,14 @@ function BuildServiceServer.RequestBreakTile(
 	end
 end
 
-function BuildServiceServer.ProcessBreakIntents(self: BuildServiceServer, deltaTime: number)
+function BuildServiceServer.ProcessBreakIntents(self: BuildServiceServer, _deltaTime: number)
 	local now = os.clock()
 	for player, intent in self.playerBreakIntents do
 		if not intent.isBreaking then
 			continue
 		end
-		intent.toolPower = GetPlayerToolPower(self.inventoryService, player, self.config.defaultToolPower)
-		intent.toolType = GetPlayerToolType(self.inventoryService, player, "")
+		intent.toolPower = getPlayerToolPower(self.inventoryService, player, self.config.defaultToolPower)
+		intent.toolType = getPlayerToolType(self.inventoryService, player, "")
 		if now - intent.lastInputAt > self.config.breakInputTimeout then
 			self:StopBreaking(player, intent, "input_timeout")
 			continue
@@ -1645,13 +1671,13 @@ function BuildServiceServer.OnHeartbeat(self: BuildServiceServer, deltaTime: num
 	self:FlushTileDeltas()
 end
 
-function BuildServiceServer.Init(self: BuildServiceServer)
+function BuildServiceServer.Init(self: BuildServiceServer, serviceBag: any)
 	local worldGenerationService = WorldGenerationServiceServer :: WorldGenerationServiceServerObject
 	self.worldGenerationService = worldGenerationService
 	self.inventoryService = InventoryServiceServer :: any
 	self.lootService = LootServiceServer :: any
 	self.world = worldGenerationService:GetWorld()
-	self.config = BuildServiceUtils.CoerceConfig(GetBuildConfigSource(), nil)
+	self.config = BuildServiceUtils.CoerceConfig(getBuildConfigSource(), nil)
 	self.state = BuildServiceUtils.CreateDefaultState()
 	self.pendingTileDeltas = {} :: { TileDelta }
 	self.pendingTileDeltaLookup = {} :: { [string]: number }
@@ -1662,7 +1688,7 @@ function BuildServiceServer.Init(self: BuildServiceServer)
 	self.multiTileAnchors = {} :: { [string]: MultiTileAnchorRuntime }
 	self.multiTileMembers = {} :: { [string]: string }
 	self.damagePruneAccumulator = 0
-	self.binders = NevermoreSupport.GetService(BinderSupportServer)
+	self.binders = serviceBag:GetService(BinderSupportServer)
 
 	bindPackets(self)
 

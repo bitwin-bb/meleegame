@@ -79,7 +79,7 @@ GetSelectedRecipeFromEntries = function(
 	return nil
 end
 
-local function GetBestRecipeEntry(entries: { CraftingRecipeEntry }): CraftingRecipeEntry?
+local function getBestRecipeEntry(entries: { CraftingRecipeEntry }): CraftingRecipeEntry?
 	local preferred = nil :: CraftingRecipeEntry?
 	for _, entry in entries do
 		if preferred == nil then
@@ -120,7 +120,7 @@ local function pickPreferredRecipeEntry(
 		return selectedRecipe
 	end
 
-	local preferred = GetBestRecipeEntry(entries)
+	local preferred = getBestRecipeEntry(entries)
 	if preferred ~= nil then
 		return preferred
 	end
@@ -128,7 +128,7 @@ local function pickPreferredRecipeEntry(
 	return selectedRecipe
 end
 
-local function GetDisplayRecipeGroups(
+local function getDisplayRecipeGroups(
 	entries: { CraftingRecipeEntry },
 	categoryRaw: any,
 	selectedRecipeIdRaw: any
@@ -187,7 +187,7 @@ local function GetDisplayRecipeGroups(
 	return visibleEntries, groupsByVisibleRecipeId
 end
 
-local function GetDisplayedSelectedRecipe(
+local function getDisplayedSelectedRecipe(
 	displayedRecipes: { CraftingRecipeEntry },
 	displayRecipeGroups: { [string]: { CraftingRecipeEntry } },
 	selectedRecipeIdRaw: any
@@ -379,9 +379,9 @@ return function(props: CraftingSlotsProps): React.ReactNode
 	local panelScale = responsivePanelScale * (PANEL_MIN_SCALE + (1 - PANEL_MIN_SCALE) * (1 - panelTransparency))
 	local activeCategory = craftingState.categoryFilter
 	local displayedRecipes, displayRecipeGroups =
-		GetDisplayRecipeGroups(craftingState.recipes, activeCategory, craftingState.selectedRecipeId)
+		getDisplayRecipeGroups(craftingState.recipes, activeCategory, craftingState.selectedRecipeId)
 	local selectedRecipe =
-		GetDisplayedSelectedRecipe(displayedRecipes, displayRecipeGroups, craftingState.selectedRecipeId)
+		getDisplayedSelectedRecipe(displayedRecipes, displayRecipeGroups, craftingState.selectedRecipeId)
 	local canCraftSelected = selectedRecipe ~= nil and selectedRecipe.canCraft
 	local categoryTabs = { "All" }
 	for _, category in craftingState.availableCategories do

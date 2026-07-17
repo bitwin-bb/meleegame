@@ -4,8 +4,7 @@ local Workspace = game:GetService("Workspace")
 
 local Angle = require("Angle")
 local Audio = require("Audio")
-local AudioServiceUtils =
-	require(script:FindFirstAncestor("game").Shared.Source.Audio:WaitForChild("AudioServiceUtils"))
+local AudioServiceUtils = require("AudioServiceUtils")
 local Plane = require("Plane")
 local Trig = require("Trig")
 local WorkspaceFolders = require("WorkspaceFolders")
@@ -201,14 +200,14 @@ local function normalizeSignedRadians(angleRadians: number): number
 	return Angle.WrapRadians(angleRadians)
 end
 
-local function CoerceDeadzone(valueRaw: any, fallback: number): number
+local function coerceDeadzone(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		return math.clamp(valueRaw, 0, 0.99)
 	end
 	return fallback
 end
 
-local function CoerceAxis(valueRaw: any): number
+local function coerceAxis(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return 0
 	end
@@ -225,7 +224,7 @@ local function applyThumbstickDeadzone(vector: Vector2, deadzone: number): Vecto
 	return (vector / magnitude) * scaledMagnitude
 end
 
-local function GetThumbstickVector(inputObjectRaw: any): Vector2?
+local function getThumbstickVector(inputObjectRaw: any): Vector2?
 	if typeof(inputObjectRaw) == "Vector2" then
 		return inputObjectRaw
 	end
@@ -850,8 +849,8 @@ function PlayerServiceUtils.GetNormalizedWorldAxisFromZ(targetZ: number, originZ
 end
 
 function PlayerServiceUtils.ApplyAxisDeadzone(axisRaw: any, deadzoneRaw: any): number
-	local axis = CoerceAxis(axisRaw)
-	local deadzone = CoerceDeadzone(deadzoneRaw, DEFAULT_MOVE_AXIS_DEADZONE)
+	local axis = coerceAxis(axisRaw)
+	local deadzone = coerceDeadzone(deadzoneRaw, DEFAULT_MOVE_AXIS_DEADZONE)
 	if math.abs(axis) <= deadzone then
 		return 0
 	end
@@ -863,13 +862,13 @@ function PlayerServiceUtils.GetGamepadMoveAxis(
 	stickDeadzoneRaw: any,
 	axisDeadzoneRaw: any?
 ): number
-	local stickDeadzone = CoerceDeadzone(stickDeadzoneRaw, DEFAULT_HORIZONTAL_DEADZONE)
-	local axisDeadzone = CoerceDeadzone(axisDeadzoneRaw, DEFAULT_MOVE_AXIS_DEADZONE)
-	local thumbstickVector = GetThumbstickVector(gamepadStateRaw)
+	local stickDeadzone = coerceDeadzone(stickDeadzoneRaw, DEFAULT_HORIZONTAL_DEADZONE)
+	local axisDeadzone = coerceDeadzone(axisDeadzoneRaw, DEFAULT_MOVE_AXIS_DEADZONE)
+	local thumbstickVector = getThumbstickVector(gamepadStateRaw)
 
 	if thumbstickVector == nil and typeof(gamepadStateRaw) == "table" then
 		for _, inputObjectRaw in gamepadStateRaw do
-			thumbstickVector = GetThumbstickVector(inputObjectRaw)
+			thumbstickVector = getThumbstickVector(inputObjectRaw)
 			if thumbstickVector ~= nil then
 				break
 			end
@@ -905,7 +904,7 @@ function PlayerServiceUtils.GetGamepadHorizontalAxis(
 
 	if typeof(gamepadState) == "table" then
 		for _, inputObjectRaw in gamepadState do
-			if GetThumbstickVector(inputObjectRaw) ~= nil then
+			if getThumbstickVector(inputObjectRaw) ~= nil then
 				return PlayerServiceUtils.GetGamepadMoveAxis(inputObjectRaw, stickDeadzoneRaw, axisDeadzoneRaw)
 			end
 		end
@@ -951,7 +950,7 @@ function PlayerServiceUtils.GetCombinedHorizontalInputAxis(
 		local isKeyDown = keyboardProviderRaw :: (Enum.KeyCode) -> boolean
 		return PlayerServiceUtils.GetHorizontalInputAxis(isKeyDown)
 	end
-	return CoerceAxis(keyboardProviderRaw)
+	return coerceAxis(keyboardProviderRaw)
 end
 
 function PlayerServiceUtils.GetFacingFromLookVector(lookVector: Vector3, fallback: FacingSign?): FacingSign

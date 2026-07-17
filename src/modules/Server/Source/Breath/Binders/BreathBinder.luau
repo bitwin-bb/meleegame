@@ -30,7 +30,7 @@ function BreathBinder.new(instance: Instance, context: any)
 	return self
 end
 
-function BreathBinder.containsCharacter(self: any, character: Model): boolean
+function BreathBinder.ContainsCharacter(self: any, character: Model): boolean
 	local head = character:FindFirstChild("Head")
 	if head ~= nil and head:IsA("BasePart") then
 		if self.rootPart ~= nil and containsPointInPart(self.rootPart, head.Position) then
@@ -71,7 +71,7 @@ function BreathBinder.QueryCharacterOverride(character: Model?): { [string]: any
 	local inAir = false
 	local inWater = false
 	for binder in ACTIVE_BINDERS do
-		if binder:containsCharacter(character) then
+		if binder:ContainsCharacter(character) then
 			if binder.breathType == "Air" then
 				inAir = true
 			else

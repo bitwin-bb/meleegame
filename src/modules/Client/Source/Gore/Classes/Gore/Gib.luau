@@ -9,10 +9,16 @@ local Workspace = game:GetService("Workspace")
 local Curve = require("Curve")
 local Ease = require("Ease")
 local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
+local String = require("String")
 local Vec = require("Vec")
 
 local Gib = {}
 Gib.__index = Gib
+
+local function createRuntimeInstanceName(): string
+	local guid = String.removePostfix(String.removePrefix(HttpService:GenerateGUID(true), "{"), "}")
+	return string.format("%03d", (tonumber(string.sub(guid, 1, 8), 16) or 0) % 1000)
+end
 
 export type GibConfig = {
 	source: BasePart?,
@@ -64,7 +70,7 @@ local DEFAULT_LIFETIME = 10
 local DEFAULT_REST_DISTANCE = NumberRange.new(2, 6)
 local DEFAULT_ROTATION_VELOCITY = Vector3.new(math.pi * 1.2, math.pi * 0.75, math.pi * 1.6)
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -78,21 +84,21 @@ local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, m
 	return value
 end
 
-local function CoerceBoolean(valueRaw: any, fallback: boolean): boolean
+local function coerceBoolean(valueRaw: any, fallback: boolean): boolean
 	if typeof(valueRaw) == "boolean" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function CoerceVector3(valueRaw: any, fallback: Vector3): Vector3
+local function coerceVector3(valueRaw: any, fallback: Vector3): Vector3
 	if typeof(valueRaw) == "Vector3" then
 		return valueRaw
 	end
 	return fallback
 end
 
-local function CoerceRestRange(rangeRaw: any, fallback: NumberRange): NumberRange
+local function coerceRestRange(rangeRaw: any, fallback: NumberRange): NumberRange
 	if typeof(rangeRaw) == "NumberRange" then
 		local minimum = math.min(rangeRaw.Min, rangeRaw.Max)
 		local maximum = math.max(rangeRaw.Min, rangeRaw.Max)
@@ -111,7 +117,7 @@ local function ensurePartSource(config: GibConfig): BasePart
 	end
 
 	local fallback = Instance.new("Part")
-	fallback.Name = HttpService:GenerateGUID(false)
+	fallback.Name = createRuntimeInstanceName()
 	fallback.Size = Vector3.new(1, 1, 1)
 	fallback.Material = Enum.Material.SmoothPlastic
 	fallback.Color = Color3.fromRGB(117, 0, 0)
@@ -144,7 +150,7 @@ local function randomUnitVector2D(randomObject: Random): Vector3
 	return Vector3.new(math.cos(angle), 0, math.sin(angle))
 end
 
-local function GetEstPosition(self: Gib, startCFrame: CFrame): Vector3
+local function getRestPosition(self: Gib, startCFrame: CFrame): Vector3
 	local distance = self.random:NextNumber(self.restDistance.Min, self.restDistance.Max)
 	local direction = randomUnitVector2D(self.random)
 	local planarOffset = direction * distance
@@ -169,7 +175,7 @@ function Gib.New(configRaw: GibConfig?): Gib
 	local source = ensurePartSource(config)
 	local clone = source:Clone()
 	clearConstraintsAndJoints(clone)
-	clone.Name = HttpService:GenerateGUID(false)
+	clone.Name = createRuntimeInstanceName()
 
 	local startCFrame = if typeof(config.originCFrame) == "CFrame" then config.originCFrame else source.CFrame
 	local restCFrame = config.restCFrame
@@ -183,11 +189,11 @@ function Gib.New(configRaw: GibConfig?): Gib
 		restCFrame = if typeof(restCFrame) == "CFrame" then restCFrame else CFrame.new(),
 		raycastParams = config.raycastParams,
 		controlPoint = Vector3.zero,
-		rotationVelocity = CoerceVector3(config.rotationVelocity, DEFAULT_ROTATION_VELOCITY),
-		travelTime = CoerceNumber(config.travelTime, DEFAULT_TRAVEL_TIME, 0.1, 12),
-		lifetime = CoerceNumber(config.lifetime, DEFAULT_LIFETIME, 0.05, 120),
-		restDistance = CoerceRestRange(config.restDistance, DEFAULT_REST_DISTANCE),
-		anchoredAtRest = CoerceBoolean(config.anchoredAtRest, true),
+		rotationVelocity = coerceVector3(config.rotationVelocity, DEFAULT_ROTATION_VELOCITY),
+		travelTime = coerceNumber(config.travelTime, DEFAULT_TRAVEL_TIME, 0.1, 12),
+		lifetime = coerceNumber(config.lifetime, DEFAULT_LIFETIME, 0.05, 120),
+		restDistance = coerceRestRange(config.restDistance, DEFAULT_REST_DISTANCE),
+		anchoredAtRest = coerceBoolean(config.anchoredAtRest, true),
 		elapsed = 0,
 		isPlaying = false,
 		isLanded = false,
@@ -196,16 +202,16 @@ function Gib.New(configRaw: GibConfig?): Gib
 	}, Gib)
 
 	clone.Anchored = true
-	clone.CanCollide = CoerceBoolean(config.canCollide, true)
-	clone.CanTouch = CoerceBoolean(config.canTouch, false)
-	clone.CanQuery = CoerceBoolean(config.canQuery, false)
+	clone.CanCollide = coerceBoolean(config.canCollide, true)
+	clone.CanTouch = coerceBoolean(config.canTouch, false)
+	clone.CanQuery = coerceBoolean(config.canQuery, false)
 	clone.CFrame = startCFrame
 	clone.AssemblyLinearVelocity = Vector3.zero
 	clone.AssemblyAngularVelocity = Vector3.zero
 
 	local restPosition = config.restPosition
 	if typeof(restPosition) ~= "Vector3" then
-		restPosition = GetEstPosition(self, startCFrame)
+		restPosition = getRestPosition(self, startCFrame)
 	end
 
 	local randomYaw = self.random:NextNumber(-math.pi, math.pi)
@@ -216,7 +222,7 @@ function Gib.New(configRaw: GibConfig?): Gib
 		self.restCFrame = CFrame.new(restPosition :: Vector3) * defaultRestRotation
 	end
 
-	local arcHeight = CoerceNumber(config.arcHeight, DEFAULT_ARC_HEIGHT, 0, 200)
+	local arcHeight = coerceNumber(config.arcHeight, DEFAULT_ARC_HEIGHT, 0, 200)
 	local midpoint = (self.startCFrame.Position + self.restCFrame.Position) * 0.5
 	self.controlPoint = midpoint + Vector3.new(0, arcHeight, 0)
 

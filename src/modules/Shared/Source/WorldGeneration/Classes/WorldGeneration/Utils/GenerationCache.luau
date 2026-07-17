@@ -24,7 +24,7 @@ local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function CoerceInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+local function coerceInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
@@ -38,8 +38,8 @@ function Cache.New(configRaw: CacheConfig?): Cache
 		else nil
 
 	local self = setmetatable({
-		maxPoolSize = CoerceInteger((config :: any).maxPoolSize, 16, 200000, DEFAULT_MAX_POOL_SIZE),
-		maxCachedChunkData = CoerceInteger(
+		maxPoolSize = coerceInteger((config :: any).maxPoolSize, 16, 200000, DEFAULT_MAX_POOL_SIZE),
+		maxCachedChunkData = coerceInteger(
 			(config :: any).maxCachedChunkData,
 			16,
 			4096,

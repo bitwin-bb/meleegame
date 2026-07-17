@@ -7,7 +7,7 @@ local BreakableBinder = {}
 BreakableBinder.__index = BreakableBinder
 setmetatable(BreakableBinder, ModelBinder)
 
-local function GetNumber(valueRaw: any, fallback: number): number
+local function getNumber(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
@@ -17,34 +17,34 @@ end
 function BreakableBinder.new(instance: Instance, context: any)
 	local self = ModelBinder.new(instance, context, BreakableBinder)
 	self.broken = false
-	self:refresh()
+	self:Refresh()
 
 	self:ObserveAttribute("BreakableHealth", function()
-		self:refresh()
+		self:Refresh()
 	end)
 
 	local humanoid = self:GetHumanoid()
 	if humanoid ~= nil then
 		self:Connect(humanoid.Died, function()
-			self:triggerBreak("HumanoidDied")
+			self:TriggerBreak("HumanoidDied")
 		end)
 	end
 
 	return self
 end
 
-function BreakableBinder.refresh(self: any)
-	local maxHealth = GetNumber(self.instance:GetAttribute("BreakableMaxHealth"), 1)
-	local health = GetNumber(self.instance:GetAttribute("BreakableHealth"), maxHealth)
+function BreakableBinder.Refresh(self: any)
+	local maxHealth = getNumber(self.instance:GetAttribute("BreakableMaxHealth"), 1)
+	local health = getNumber(self.instance:GetAttribute("BreakableHealth"), maxHealth)
 	self.instance:SetAttribute("BreakableTagged", true)
 	self.instance:SetAttribute("BreakableMaxHealth", maxHealth)
 	self.instance:SetAttribute("BreakableHealth", health)
 	if health <= 0 then
-		self:triggerBreak("HealthDepleted")
+		self:TriggerBreak("HealthDepleted")
 	end
 end
 
-function BreakableBinder.triggerBreak(self: any, reason: string)
+function BreakableBinder.TriggerBreak(self: any, reason: string)
 	if self.broken then
 		return
 	end

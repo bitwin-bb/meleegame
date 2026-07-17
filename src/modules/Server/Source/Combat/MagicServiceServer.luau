@@ -15,6 +15,7 @@ local Magic = require("Magic")
 local MagicServiceUtils = require("MagicServiceUtils")
 local ManaServiceServer = require("ManaServiceServer")
 local PacketPayload = require("PacketPayload")
+local String = require("String")
 local MagicServicePackets = require("NetPacketsShared").MagicService
 
 local function sendPacket(player: Player, methodName: string, ...: any)
@@ -62,11 +63,10 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local NevermoreSupport = require("NevermoreSupport")
+local BinderSupportServer = require("BinderSupportServer")
 local NpcServiceServer = require("NpcServiceServer")
 local PlayerServiceServer = require("PlayerServiceServer")
 local PlayerServiceUtils = require("PlayerServiceUtils")
-local BinderSupportServer = require("BinderSupportServer")
 
 type WeaponRuntimeConfig = MagicServiceUtils.WeaponRuntimeConfig
 type ModifierStats = MagicServiceUtils.ModifierStats
@@ -154,6 +154,12 @@ type PlayerRuntime = {
 }
 
 local MagicServiceServer = {}
+MagicServiceServer.ServiceName = "MagicServiceServer"
+
+local function createRuntimeInstanceName(): string
+	local guid = String.removePostfix(String.removePrefix(HttpService:GenerateGUID(true), "{"), "}")
+	return string.format("%03d", (tonumber(string.sub(guid, 1, 8), 16) or 0) % 1000)
+end
 
 local STATE_PUSH_INTERVAL = 0.15
 local CAST_REQUEST_INTERVAL = 1 / 90
@@ -233,7 +239,7 @@ local function shouldSilenceModuleRequireError(errorRaw: any): boolean
 	return false
 end
 
-local function GetCastToken(contextRaw: any): number
+local function getCastToken(contextRaw: any): number
 	if typeof(contextRaw) ~= "table" then
 		return -1
 	end
@@ -288,7 +294,7 @@ function MagicServiceServer.GetRuntime(self: MagicServiceServer, player: Player)
 	return nextRuntime
 end
 
-function MagicServiceServer.GetUntimeByMagic(
+function MagicServiceServer.GetRuntimeByMagic(
 	self: MagicServiceServer,
 	magicControllerRaw: any
 ): (Player?, PlayerRuntime?)
@@ -530,7 +536,7 @@ function MagicServiceServer.OnMagicCastRequested(
 	magicController: MagicController,
 	contextRaw: any
 ): boolean
-	local player, runtime = self:GetUntimeByMagic(magicController)
+	local player, runtime = self:GetRuntimeByMagic(magicController)
 	if player == nil or runtime == nil then
 		return false
 	end
@@ -551,7 +557,7 @@ function MagicServiceServer.OnMagicCastRequested(
 		return false
 	end
 
-	local castToken = GetCastToken(context)
+	local castToken = getCastToken(context)
 	if castToken < 1 then
 		return false
 	end
@@ -573,7 +579,7 @@ function MagicServiceServer.CanConsumeMana(
 	if runtime == nil then
 		return false
 	end
-	local castToken = GetCastToken(contextRaw)
+	local castToken = getCastToken(contextRaw)
 	if castToken < 1 then
 		return false
 	end
@@ -610,7 +616,7 @@ function MagicServiceServer.ConsumeMana(
 	if runtime == nil then
 		return false
 	end
-	local castToken = GetCastToken(contextRaw)
+	local castToken = getCastToken(contextRaw)
 	if castToken < 1 then
 		return false
 	end
@@ -730,7 +736,7 @@ function MagicServiceServer.CreateProjectilePart(
 		part = fallbackPart
 	end
 	local projectilePart = part :: BasePart
-	projectilePart.Name = HttpService:GenerateGUID(false)
+	projectilePart.Name = createRuntimeInstanceName()
 	projectilePart.Anchored = true
 	projectilePart.CanCollide = false
 	projectilePart.CanQuery = false
@@ -788,7 +794,11 @@ function MagicServiceServer.GetCastOriginAndDirection(
 	return origin, direction
 end
 
-function MagicServiceServer.InvokeWeaponCallback(_self: MagicServiceServer, callbackRaw: any, context: { [string]: any })
+function MagicServiceServer.InvokeWeaponCallback(
+	_self: MagicServiceServer,
+	callbackRaw: any,
+	context: { [string]: any }
+)
 	if typeof(callbackRaw) ~= "function" then
 		return
 	end
@@ -1543,12 +1553,12 @@ function MagicServiceServer.OnMagicCastCommitted(
 	magicController: MagicController,
 	contextRaw: any
 )
-	local player, runtime = self:GetUntimeByMagic(magicController)
+	local player, runtime = self:GetRuntimeByMagic(magicController)
 	if player == nil or runtime == nil then
 		return
 	end
 	local context = if typeof(contextRaw) == "table" then contextRaw else {} :: any
-	local castToken = GetCastToken(context)
+	local castToken = getCastToken(context)
 	if castToken < 1 then
 		return
 	end
@@ -1811,7 +1821,7 @@ function MagicServiceServer.RegisterDefinitionsFromFolder(self: MagicServiceServ
 	return registered
 end
 
-function MagicServiceServer.Init(self: MagicServiceServer)
+function MagicServiceServer.Init(self: MagicServiceServer, serviceBag: any)
 	bindPackets(self)
 	self.inventoryService = InventoryServiceServer :: any
 	self.manaService = ManaServiceServer :: any
@@ -1827,7 +1837,7 @@ function MagicServiceServer.Init(self: MagicServiceServer)
 	self.nextProjectileId = 0
 	self.fixedStepAccumulator = 0
 	self.projectileFolder = MagicServiceUtils.EnsureProjectileFolder()
-	self.binders = NevermoreSupport.GetService(BinderSupportServer)
+	self.binders = serviceBag:GetService(BinderSupportServer)
 
 	local gameRoot = script:FindFirstAncestor("game")
 	local sharedRealmRoot = if gameRoot ~= nil then gameRoot:FindFirstChild("Shared") else nil

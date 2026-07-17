@@ -28,7 +28,7 @@ local function cloneDelta(delta: any): any
 	}
 end
 
-function TileReplicationService.Init(self: any)
+function TileReplicationService.Init(self: any, _serviceBag: any?)
 	if self._maid ~= nil then
 		return
 	end

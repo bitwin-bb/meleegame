@@ -119,9 +119,9 @@ local buffs = {
 }
 
 local debuffs = {
-	bleeding = "rbxassetid://134660674079184",
-	rollCooldown = "rbxassetid://105815029746376",
-	healingPotionSickness = "rbxassetid://136038259594710",
+	bleeding = "rbxassetid://75591328520912",
+	rollCooldown = "rbxassetid://71990997273462",
+	healingPotionSickness = "rbxassetid://79886210506830",
 }
 
 return Table.readonly({

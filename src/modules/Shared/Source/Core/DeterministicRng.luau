@@ -21,8 +21,8 @@ export type RNG = {
 	NextInteger: (self: RNG, minValue: number, maxValue: number) -> number,
 	NextRange: (self: RNG, minValue: number, maxValue: number) -> number,
 	Chance: (self: RNG, probability: number) -> boolean,
-	pickWeighted: <T>(self: RNG, entries: { WeightedEntry<T> }) -> T?,
-	shuffleInPlace: <T>(self: RNG, array: { T }) -> { T },
+	PickWeighted: <T>(self: RNG, entries: { WeightedEntry<T> }) -> T?,
+	ShuffleInPlace: <T>(self: RNG, array: { T }) -> { T },
 	Fork: (self: RNG, saltRaw: any) -> RNG,
 	Reset: (self: RNG) -> (),
 }
@@ -40,25 +40,6 @@ export type NoiseWrapper = {
 		lacunarity: number?
 	) -> number,
 	Fbm3D: (
-		self: NoiseWrapper,
-		x: number,
-		y: number,
-		z: number,
-		octaves: number?,
-		persistence: number?,
-		lacunarity: number?
-	) -> number,
-	sample2D: (self: NoiseWrapper, x: number, y: number, scale: number?) -> number,
-	sample3D: (self: NoiseWrapper, x: number, y: number, z: number, scale: number?) -> number,
-	fbm2D: (
-		self: NoiseWrapper,
-		x: number,
-		y: number,
-		octaves: number?,
-		persistence: number?,
-		lacunarity: number?
-	) -> number,
-	fbm3D: (
 		self: NoiseWrapper,
 		x: number,
 		y: number,
@@ -224,13 +205,13 @@ function RNG.Chance(self: RNG, probabilityRaw: any): boolean
 	return value
 end
 
-function RNG.pickWeighted<T>(self: RNG, entries: { WeightedEntry<T> }): T?
+function RNG.PickWeighted<T>(self: RNG, entries: { WeightedEntry<T> }): T?
 	local nextSeed, picked = Rand.weighted(self.state, entries)
 	self.state = nextSeed
 	return picked
 end
 
-function RNG.shuffleInPlace<T>(self: RNG, array: { T }): { T }
+function RNG.ShuffleInPlace<T>(self: RNG, array: { T }): { T }
 	for index = #array, 2, -1 do
 		local swapIndex = self:NextInteger(1, index)
 		array[index], array[swapIndex] = array[swapIndex], array[index]
@@ -320,6 +301,6 @@ end
 
 function DeterministicRNG.weightedPick<T>(seedRaw: any, entries: { WeightedEntry<T> }): T?
 	local rng = DeterministicRNG.New(seedRaw)
-	return rng:pickWeighted(entries)
+	return rng:PickWeighted(entries)
 end
 return DeterministicRNG

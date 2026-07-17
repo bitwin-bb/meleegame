@@ -54,14 +54,8 @@ function RectUtil.FromCell(
 	)
 
 	return {
-		ImageRectOffset = Vector2.new(
-			logicalOffset.X * imageRectScale.X,
-			logicalOffset.Y * imageRectScale.Y
-		),
-		ImageRectSize = Vector2.new(
-			tileSize.X * imageRectScale.X,
-			tileSize.Y * imageRectScale.Y
-		),
+		ImageRectOffset = Vector2.new(logicalOffset.X * imageRectScale.X, logicalOffset.Y * imageRectScale.Y),
+		ImageRectSize = Vector2.new(tileSize.X * imageRectScale.X, tileSize.Y * imageRectScale.Y),
 	}
 end
 

@@ -1,11 +1,14 @@
 local require = require(script.Parent.loader).load(script)
 
+local NevermoreMath = require("Math")
 local Table: any = require("Table")
 
 local ParallaxBackgrounds = require("ParallaxBackgrounds")
 local ParallaxConstants = require("ParallaxConstants")
 
 local Profile = {}
+
+local FARTHEST_LAYER_PARALLAX_MULTIPLIER = 0.8
 
 export type LayerProfile = {
 	id: string,
@@ -328,6 +331,16 @@ local function getLayerTuning(tuningsRaw: { LayerTuning }?, ordinal: number): La
 		or DEFAULT_LAYER_TUNINGS[1]
 end
 
+local function getDepthOrderedParallaxX(baseParallaxX: number, ordinal: number, totalLayers: number): number
+	if totalLayers <= 1 then
+		return baseParallaxX
+	end
+
+	local depthAlpha = math.clamp((ordinal - 1) / (totalLayers - 1), 0, 1)
+	local depthMultiplier = NevermoreMath.lerp(1, FARTHEST_LAYER_PARALLAX_MULTIPLIER, depthAlpha)
+	return baseParallaxX * depthMultiplier
+end
+
 local function createProfilesFromAssetOrder(
 	style: number,
 	styleName: string,
@@ -336,7 +349,7 @@ local function createProfilesFromAssetOrder(
 ): { LayerProfile }
 	local profiles: { LayerProfile } = {}
 	local layerIndices = collectSortedNumericIndices(getVariantLayers(assetBiomeName))
-	for _, layerIndex in layerIndices do
+	for ordinal, layerIndex in layerIndices do
 		local tuning = getLayerTuning(tuningsRaw, layerIndex)
 		local profile = createLayer(
 			style,
@@ -345,7 +358,7 @@ local function createProfilesFromAssetOrder(
 			layerIndex,
 			`Layer{layerIndex}`,
 			tuning.Scale,
-			tuning.ParallaxX,
+			getDepthOrderedParallaxX(tuning.ParallaxX, ordinal, #layerIndices),
 			tuning.verticalStrength,
 			tuning.baseScreenY,
 			tuning.alphaGroup

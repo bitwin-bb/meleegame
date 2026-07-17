@@ -3,8 +3,7 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local React: any = require(ReplicatedStorage.Packages.React)
-local TextLabel =
-	require(script:FindFirstAncestor("game").Client.Source.UI.Core.Primitives:WaitForChild("UITextLabel"))
+local TextLabel = require("UITextLabel")
 local bindingSlice = require("BindingSlice")
 
 type BindingHintEntry = bindingSlice.BindingHintEntry
@@ -38,7 +37,7 @@ local PROMPT_TEXT_COLOR = Color3.fromRGB(244, 248, 255)
 local LABEL_TEXT_COLOR = Color3.fromRGB(246, 249, 255)
 local DETAIL_TEXT_COLOR = Color3.fromRGB(160, 198, 235)
 
-local function GetMetrics(deviceClassRaw: any): Metrics
+local function getMetrics(deviceClassRaw: any): Metrics
 	if deviceClassRaw == "Console" then
 		return {
 			promptHeight = 42,
@@ -95,7 +94,7 @@ local function GetMetrics(deviceClassRaw: any): Metrics
 	}
 end
 
-local function GetPromptIconWidth(hint: BindingHintEntry, metrics: Metrics): number
+local function getPromptIconWidth(hint: BindingHintEntry, metrics: Metrics): number
 	local promptText = hint.promptText or ""
 	local widthFactor = 1
 
@@ -114,7 +113,7 @@ local function GetPromptIconWidth(hint: BindingHintEntry, metrics: Metrics): num
 	return math.max(metrics.promptMinWidth, math.floor(metrics.promptHeight * widthFactor + 0.5))
 end
 
-local function GetPromptGap(hint: BindingHintEntry, metrics: Metrics): number
+local function getPromptGap(hint: BindingHintEntry, metrics: Metrics): number
 	local promptText = hint.promptText or ""
 	if promptText == "Space" then
 		return math.max(2, metrics.promptGap - 2)
@@ -139,7 +138,7 @@ local function HintPrompt(props: {
 
 	if hasPromptIcon then
 		return e("ImageLabel", {
-			Size = UDim2.fromOffset(GetPromptIconWidth(props.hint, props.metrics), props.metrics.promptHeight),
+			Size = UDim2.fromOffset(getPromptIconWidth(props.hint, props.metrics), props.metrics.promptHeight),
 			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
 			Image = props.hint.promptIcon,
@@ -257,7 +256,7 @@ local function HintItem(props: {
 			FillDirection = Enum.FillDirection.Horizontal,
 			HorizontalAlignment = Enum.HorizontalAlignment.Left,
 			VerticalAlignment = Enum.VerticalAlignment.Center,
-			Padding = UDim.new(0, GetPromptGap(props.hint, props.metrics)),
+			Padding = UDim.new(0, getPromptGap(props.hint, props.metrics)),
 			SortOrder = Enum.SortOrder.LayoutOrder,
 		}),
 		e(HintBody, {
@@ -295,7 +294,7 @@ return function(props: BindingHintBottomBarProps): React.ReactNode
 	end
 
 	local zIndex = props.zIndex or 180
-	local metrics = GetMetrics(props.deviceClass)
+	local metrics = getMetrics(props.deviceClass)
 	local children: { React.ReactNode } = {
 		e("UIListLayout", {
 			FillDirection = Enum.FillDirection.Horizontal,

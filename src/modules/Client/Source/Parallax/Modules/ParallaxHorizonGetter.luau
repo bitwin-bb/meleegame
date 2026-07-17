@@ -23,7 +23,7 @@ local WORLD_TOP_DEPTH_FACTOR = 0.15
 local MIN_WORLD_TOP_DEPTH_FACTOR = 0.1
 local MIN_WORLD_TOP_DEPTH_TILES = 24
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and Math.isFinite(valueRaw) then
 		value = valueRaw
@@ -34,7 +34,7 @@ local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?): 
 	return value
 end
 
-local function GetFiniteNumber(valueRaw: any): number?
+local function getFiniteNumber(valueRaw: any): number?
 	if typeof(valueRaw) == "number" and Math.isFinite(valueRaw) then
 		return valueRaw
 	end
@@ -57,14 +57,14 @@ local function safeCall(service: any, methodName: string, ...: any): any?
 	return result
 end
 
-local function GetWorldGenerationService(runtime: any): any
+local function getWorldGenerationService(runtime: any): any
 	if typeof(runtime) == "table" and runtime.worldGenerationServiceClient ~= nil then
 		return runtime.worldGenerationServiceClient
 	end
 	return WorldGenerationServiceClient
 end
 
-local function GetLayoutSnapshot(runtime: any): any
+local function getLayoutSnapshot(runtime: any): any
 	if typeof(runtime) ~= "table" then
 		return nil
 	end
@@ -82,20 +82,20 @@ local function GetLayoutSnapshot(runtime: any): any
 	return nil
 end
 
-local function GetUntimeNumber(runtime: any, key: string, fallback: number, minimum: number?): number
+local function getRuntimeNumber(runtime: any, key: string, fallback: number, minimum: number?): number
 	if typeof(runtime) == "table" then
-		return CoerceNumber(runtime[key], fallback, minimum)
+		return coerceNumber(runtime[key], fallback, minimum)
 	end
-	return CoerceNumber(nil, fallback, minimum)
+	return coerceNumber(nil, fallback, minimum)
 end
 
-local function GetGlobalSurfaceY(runtime: any): number
-	local worldSurfaceY = if typeof(runtime) == "table" then GetFiniteNumber(runtime.worldSurfaceY) else nil
+local function getGlobalSurfaceY(runtime: any): number
+	local worldSurfaceY = if typeof(runtime) == "table" then getFiniteNumber(runtime.worldSurfaceY) else nil
 	if worldSurfaceY ~= nil then
 		return worldSurfaceY
 	end
 
-	local seaLevelY = if typeof(runtime) == "table" then GetFiniteNumber(runtime.seaLevelY) else nil
+	local seaLevelY = if typeof(runtime) == "table" then getFiniteNumber(runtime.seaLevelY) else nil
 	if seaLevelY ~= nil then
 		return seaLevelY
 	end
@@ -107,16 +107,16 @@ local function GetGlobalSurfaceY(runtime: any): number
 	return 0
 end
 
-local function GetWorldTopY(runtime: any, globalSurfaceY: number): number
-	local layoutSnapshot = GetLayoutSnapshot(runtime)
+local function getWorldTopY(runtime: any, globalSurfaceY: number): number
+	local layoutSnapshot = getLayoutSnapshot(runtime)
 	local tileSize = if typeof(layoutSnapshot) == "table"
-		then CoerceNumber(layoutSnapshot.tileSize, DEFAULT_TILE_SIZE, 0.25)
+		then coerceNumber(layoutSnapshot.tileSize, DEFAULT_TILE_SIZE, 0.25)
 		else DEFAULT_TILE_SIZE
-	local maxTilesY = GetUntimeNumber(runtime, "maxTilesY", DEFAULT_MAX_TILES_Y, 1)
+	local maxTilesY = getRuntimeNumber(runtime, "maxTilesY", DEFAULT_MAX_TILES_Y, 1)
 	local fallbackWorldTopDepth = maxTilesY * tileSize * WORLD_TOP_DEPTH_FACTOR
 	local minimumWorldTopDepth =
 		math.max(tileSize * MIN_WORLD_TOP_DEPTH_TILES, fallbackWorldTopDepth * MIN_WORLD_TOP_DEPTH_FACTOR)
-	local worldTopY = if typeof(runtime) == "table" then GetFiniteNumber(runtime.worldTopY) else nil
+	local worldTopY = if typeof(runtime) == "table" then getFiniteNumber(runtime.worldTopY) else nil
 	if worldTopY ~= nil and worldTopY >= globalSurfaceY + minimumWorldTopDepth then
 		return worldTopY
 	end
@@ -125,21 +125,21 @@ local function GetWorldTopY(runtime: any, globalSurfaceY: number): number
 end
 
 local function insertSurfaceSample(samples: { number }, valueRaw: any)
-	local value = GetFiniteNumber(valueRaw)
+	local value = getFiniteNumber(valueRaw)
 	if value ~= nil then
 		table.insert(samples, value)
 	end
 end
 
-local function GetSampleField(sampleRaw: any): number?
+local function getSampleField(sampleRaw: any): number?
 	if typeof(sampleRaw) ~= "table" then
 		return nil
 	end
-	return GetFiniteNumber(sampleRaw.parallaxHorizonY)
-		or GetFiniteNumber(sampleRaw.smoothedSurfaceY)
-		or GetFiniteNumber(sampleRaw.averageSurfaceY)
-		or GetFiniteNumber(sampleRaw.surfaceY)
-		or GetFiniteNumber(sampleRaw.worldSurfaceY)
+	return getFiniteNumber(sampleRaw.parallaxHorizonY)
+		or getFiniteNumber(sampleRaw.smoothedSurfaceY)
+		or getFiniteNumber(sampleRaw.averageSurfaceY)
+		or getFiniteNumber(sampleRaw.surfaceY)
+		or getFiniteNumber(sampleRaw.worldSurfaceY)
 end
 
 local function computeMedian(samples: { number }): number?
@@ -169,37 +169,36 @@ local function sampleExactSurfaceBand(
 		insertSurfaceSample(samples, safeCall(service, "GetSurfaceYAtWorldPosition", samplePosition))
 		insertSurfaceSample(
 			samples,
-			GetSampleField(safeCall(service, "getParallaxSampleAtWorldPosition", samplePosition))
+			getSampleField(safeCall(service, "getParallaxSampleAtWorldPosition", samplePosition))
 		)
 	end
 	return computeMedian(samples)
 end
 
-local function GetLocalSurfaceY(
+local function getLocalSurfaceY(
 	service: any,
 	cameraPosition: Vector3,
 	subjectPosition: Vector3?,
 	sampleRadiusStuds: number
 ): number?
 	local samplePosition = subjectPosition or cameraPosition
-	local directHorizon = GetFiniteNumber(safeCall(service, "getParallaxHorizonYAtWorldPosition", samplePosition))
+	local directHorizon = getFiniteNumber(safeCall(service, "getParallaxHorizonYAtWorldPosition", samplePosition))
 	if directHorizon ~= nil then
 		return directHorizon
 	end
 
-	local smoothedSurface = GetFiniteNumber(safeCall(service, "getSmoothedSurfaceYAtWorldPosition", samplePosition))
+	local smoothedSurface = getFiniteNumber(safeCall(service, "getSmoothedSurfaceYAtWorldPosition", samplePosition))
 	if smoothedSurface ~= nil then
 		return smoothedSurface
 	end
 
-	local averageSurface = GetFiniteNumber(
-		safeCall(service, "getAverageSurfaceYAroundWorldPosition", samplePosition, sampleRadiusStuds)
-	)
+	local averageSurface =
+		getFiniteNumber(safeCall(service, "getAverageSurfaceYAroundWorldPosition", samplePosition, sampleRadiusStuds))
 	if averageSurface ~= nil then
 		return averageSurface
 	end
 
-	local richSample = GetSampleField(safeCall(service, "getParallaxSampleAtWorldPosition", samplePosition))
+	local richSample = getSampleField(safeCall(service, "getParallaxSampleAtWorldPosition", samplePosition))
 	if richSample ~= nil then
 		return richSample
 	end
@@ -213,17 +212,17 @@ function Horizon.GetHorizon(
 	subjectPosition: Vector3?,
 	_dt: number
 ): HorizonSample
-	local layoutSnapshot = GetLayoutSnapshot(runtime)
+	local layoutSnapshot = getLayoutSnapshot(runtime)
 	local tileSize = if typeof(layoutSnapshot) == "table"
-		then CoerceNumber(layoutSnapshot.tileSize, DEFAULT_TILE_SIZE, 0.25)
+		then coerceNumber(layoutSnapshot.tileSize, DEFAULT_TILE_SIZE, 0.25)
 		else DEFAULT_TILE_SIZE
 	local chunkSize = if typeof(layoutSnapshot) == "table"
-		then math.max(1, math.floor(CoerceNumber(layoutSnapshot.chunkSize, DEFAULT_CHUNK_SIZE, 1)))
+		then math.max(1, math.floor(coerceNumber(layoutSnapshot.chunkSize, DEFAULT_CHUNK_SIZE, 1)))
 		else DEFAULT_CHUNK_SIZE
 	local sampleRadiusStuds = tileSize * chunkSize * 2
-	local globalSurfaceY = GetGlobalSurfaceY(runtime)
-	local localSurfaceY = GetLocalSurfaceY(
-		GetWorldGenerationService(runtime),
+	local globalSurfaceY = getGlobalSurfaceY(runtime)
+	local localSurfaceY = getLocalSurfaceY(
+		getWorldGenerationService(runtime),
 		cameraPosition,
 		subjectPosition,
 		sampleRadiusStuds
@@ -234,7 +233,7 @@ function Horizon.GetHorizon(
 		runtime.smoothedParallaxHorizonY = horizonY
 	end
 
-	local worldTopY = GetWorldTopY(runtime, globalSurfaceY)
+	local worldTopY = getWorldTopY(runtime, globalSurfaceY)
 	local cameraDepthFromTop = worldTopY - cameraPosition.Y
 	local surfaceDepthFromTop = math.max(worldTopY - horizonY, 1)
 
@@ -247,6 +246,5 @@ function Horizon.GetHorizon(
 		surfaceDepthFromTop = surfaceDepthFromTop,
 	}
 end
-
 
 return Horizon

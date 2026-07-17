@@ -3,6 +3,7 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Fusion: any = require(ReplicatedStorage.Packages.Fusion)
+local WorldGenerationConstants = require("WorldGenerationConstants")
 
 local Children = Fusion.Children
 
@@ -16,18 +17,19 @@ export type EyeOfCthulhuServantRootConfig = {
 }
 
 local DEFAULT_NAME = "ServantOfCthulhu"
-local DEFAULT_ROOT_SIZE = Vector3.new(2.6, 2.6, 2.6)
+local PLANE_DEPTH = WorldGenerationConstants.DEFAULT_TILE_DEPTH
+local DEFAULT_ROOT_SIZE = Vector3.new(PLANE_DEPTH, 2.6, 2.6)
 
-local function CoerceName(valueRaw: any): string
+local function coerceName(valueRaw: any): string
 	if typeof(valueRaw) == "string" and valueRaw ~= "" then
 		return valueRaw
 	end
 	return DEFAULT_NAME
 end
 
-local function CoerceSize(valueRaw: any): Vector3
+local function coerceSize(valueRaw: any): Vector3
 	if typeof(valueRaw) == "Vector3" then
-		return Vector3.new(math.max(0.05, valueRaw.X), math.max(0.05, valueRaw.Y), math.max(0.05, valueRaw.Z))
+		return Vector3.new(PLANE_DEPTH, math.max(0.05, valueRaw.Y), math.max(0.05, valueRaw.Z))
 	end
 	return DEFAULT_ROOT_SIZE
 end
@@ -37,7 +39,7 @@ function EyeOfCthulhuServantRoot.CreateModel(configRaw: EyeOfCthulhuServantRootC
 	local scope = Fusion.scoped(Fusion)
 	local rootPart = scope:New "Part" {
 		Name = "RootPart",
-		Size = CoerceSize(config.size),
+		Size = coerceSize(config.size),
 		Transparency = 1,
 		Anchored = true,
 		CanCollide = false,
@@ -46,7 +48,7 @@ function EyeOfCthulhuServantRoot.CreateModel(configRaw: EyeOfCthulhuServantRootC
 	}
 
 	local model = scope:New "Model" {
-		Name = CoerceName(config.name),
+		Name = coerceName(config.name),
 		[Children] = {
 			rootPart,
 		},

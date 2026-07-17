@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local ModelBinder = require("ModelBinder")
@@ -7,15 +6,6 @@ local PickupBinder = {}
 PickupBinder.__index = PickupBinder
 setmetatable(PickupBinder, ModelBinder)
 
-local inventoryServiceServer = nil
-
-local function getInventoryServiceServer()
-	if inventoryServiceServer == nil then
-		inventoryServiceServer = require("InventoryServiceServer")
-	end
-	return inventoryServiceServer
-end
-
 local ITEM_ATTRIBUTE_NAMES = {
 	"PickupItemId",
 	"LootItemId",
@@ -23,7 +13,7 @@ local ITEM_ATTRIBUTE_NAMES = {
 	"PlacedItemId",
 }
 
-local function GetStringAttribute(instance: Instance, attributeNames: { string }): string?
+local function getStringAttribute(instance: Instance, attributeNames: { string }): string?
 	for _, attributeName in attributeNames do
 		local value = instance:GetAttribute(attributeName)
 		if typeof(value) == "string" and value ~= "" then
@@ -33,24 +23,26 @@ local function GetStringAttribute(instance: Instance, attributeNames: { string }
 	return nil
 end
 
-function PickupBinder.new(instance: Instance, context: any)
+function PickupBinder.new(instance: Instance, context: ModelBinder.BinderContext)
 	local self = ModelBinder.new(instance, context, PickupBinder)
+	self.inventoryServiceServer =
+		assert(self:GetDependencies().InventoryServiceServer, "InventoryServiceServer dependency is unavailable")
 	self.cooldowns = {} :: { [Player]: number }
-	self:refresh()
+	self:Refresh()
 	ModelBinder.BindTouchedParts(instance, self.janitor, function(_part: BasePart, other: BasePart)
-		self:onTouched(other)
+		self:OnTouched(other)
 	end)
 	return self
 end
 
-function PickupBinder.refresh(self: any)
-	self.itemId = GetStringAttribute(self.instance, ITEM_ATTRIBUTE_NAMES)
+function PickupBinder.Refresh(self: any)
+	self.itemId = getStringAttribute(self.instance, ITEM_ATTRIBUTE_NAMES)
 	self.amount = math.max(1, math.floor(tonumber(self.instance:GetAttribute("PickupAmount")) or 1))
 	self.destroyOnCollect = self.instance:GetAttribute("PickupDestroyOnCollect") ~= false
 	self.instance:SetAttribute("PickupTagged", true)
 end
 
-function PickupBinder.onTouched(self: any, other: BasePart)
+function PickupBinder.OnTouched(self: any, other: BasePart)
 	if self.itemId == nil then
 		return
 	end
@@ -66,7 +58,7 @@ function PickupBinder.onTouched(self: any, other: BasePart)
 	end
 	self.cooldowns[player] = now + 0.15
 
-	local addResult = getInventoryServiceServer():AddItem(player, self.itemId, self.amount, {})
+	local addResult = self.inventoryServiceServer:AddItem(player, self.itemId, self.amount, {})
 	if addResult.added <= 0 then
 		return
 	end

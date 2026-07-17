@@ -14,7 +14,7 @@ SpaceShared.SPACE_SAMPLE_INTERVAL_SECONDS = 0.2
 local DEFAULT_TILE_SIZE = 2
 local DEFAULT_WORLD_ORIGIN = Vector3.zero
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and not Math.isNaN(valueRaw) and Math.isFinite(valueRaw) then
 		value = valueRaw
@@ -30,7 +30,7 @@ end
 
 function SpaceShared.GetTileSize(worldStateRaw: any): number
 	local worldState = if typeof(worldStateRaw) == "table" then worldStateRaw :: { [string]: any } else {} :: any
-	return CoerceNumber(worldState.tileSize, DEFAULT_TILE_SIZE, 0.25, 1024)
+	return coerceNumber(worldState.tileSize, DEFAULT_TILE_SIZE, 0.25, 1024)
 end
 
 function SpaceShared.GetWorldOrigin(worldOriginRaw: any): Vector3

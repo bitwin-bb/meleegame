@@ -28,7 +28,7 @@ local COIN_VALUE_TO_COPPER: { [string]: number } = {
 
 local COIN_TYPE_ORDER_DESCENDING: { CoinType } = { "platinum", "gold", "silver", "copper" }
 
-local function CoerceWholeNumber(valueRaw: any, fallback: number): number
+local function coerceWholeNumber(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
@@ -45,17 +45,17 @@ local function createDefaultCoinAmounts(): CoinAmounts
 	}
 end
 
-local function GetAwCoinAmounts(coinsDataRaw: any): (CoinAmounts, boolean)
+local function getRawCoinAmounts(coinsDataRaw: any): (CoinAmounts, boolean)
 	if typeof(coinsDataRaw) ~= "table" then
 		return createDefaultCoinAmounts(), false
 	end
 
 	local source = coinsDataRaw :: { [string]: any }
 	local amounts: CoinAmounts = {
-		copper = CoerceWholeNumber(source.copper, 0),
-		silver = CoerceWholeNumber(source.silver, 0),
-		gold = CoerceWholeNumber(source.gold, 0),
-		platinum = CoerceWholeNumber(source.platinum, 0),
+		copper = coerceWholeNumber(source.copper, 0),
+		silver = coerceWholeNumber(source.silver, 0),
+		gold = coerceWholeNumber(source.gold, 0),
+		platinum = coerceWholeNumber(source.platinum, 0),
 	}
 	local hasExplicitAmounts = amounts.copper > 0 or amounts.silver > 0 or amounts.gold > 0 or amounts.platinum > 0
 	return amounts, hasExplicitAmounts
@@ -69,7 +69,7 @@ local function coinsToTotalCopper(amounts: CoinAmounts): number
 end
 
 local function totalCopperToCoinAmounts(totalCopperRaw: any): CoinAmounts
-	local remaining = CoerceWholeNumber(totalCopperRaw, 0)
+	local remaining = coerceWholeNumber(totalCopperRaw, 0)
 	local amounts = createDefaultCoinAmounts()
 	local amountMap = amounts :: { [string]: number }
 
@@ -83,20 +83,20 @@ local function totalCopperToCoinAmounts(totalCopperRaw: any): CoinAmounts
 	return amounts
 end
 
-local function GetTotalCopperFromCoinsData(coinsDataRaw: any, fallbackTotalCopper: number): number
+local function getTotalCopperFromCoinsData(coinsDataRaw: any, fallbackTotalCopper: number): number
 	if typeof(coinsDataRaw) ~= "table" then
 		return fallbackTotalCopper
 	end
 
 	local source = coinsDataRaw :: { [string]: any }
-	local rawAmounts, hasExplicitAmounts = GetAwCoinAmounts(source)
+	local rawAmounts, hasExplicitAmounts = getRawCoinAmounts(source)
 	if hasExplicitAmounts then
 		return coinsToTotalCopper(rawAmounts)
 	end
 
 	local explicitTotalCopperRaw = source.totalCopper
 	if typeof(explicitTotalCopperRaw) == "number" and explicitTotalCopperRaw == explicitTotalCopperRaw then
-		return CoerceWholeNumber(explicitTotalCopperRaw, fallbackTotalCopper)
+		return coerceWholeNumber(explicitTotalCopperRaw, fallbackTotalCopper)
 	end
 
 	return coinsToTotalCopper(rawAmounts)
@@ -117,8 +117,8 @@ local function createStateFromData(coinsDataRaw: any, loadStateRaw: any, fallbac
 		then fallbackStateRaw :: CoinState
 		else createDefaultState(PlayerDataServiceUtils.LOAD_STATE_UNLOADED)
 	local loadState = PlayerDataServiceUtils.CoerceLoadState(loadStateRaw, fallbackState.loadState)
-	local rawAmounts, hasExplicitAmounts = GetAwCoinAmounts(coinsDataRaw)
-	local totalCopper = GetTotalCopperFromCoinsData(coinsDataRaw, fallbackState.totalCopper)
+	local rawAmounts, hasExplicitAmounts = getRawCoinAmounts(coinsDataRaw)
+	local totalCopper = getTotalCopperFromCoinsData(coinsDataRaw, fallbackState.totalCopper)
 	local amounts = if hasExplicitAmounts then rawAmounts else totalCopperToCoinAmounts(totalCopper)
 
 	return {

@@ -2,41 +2,61 @@ local require = require(script.Parent.loader).load(script)
 
 local Players = game:GetService("Players")
 
+local BaseObject = require("BaseObject")
 local InstanceUtils = require("InstanceUtils")
 local Maid = require("Maid")
+local ServiceBag = require("ServiceBag")
 local TagBinder = require("TagBinder")
 
-type MaidClass = any
-
-export type BinderContext = {
-	tags: { string }?,
-	serviceBag: any?,
+export type BinderDependencies = {
+	AudioServiceClient: any?,
+	AutotileRenderServiceClient: any?,
+	WallAutotileServiceClient: any?,
+	BossServiceServer: any?,
+	BuildServiceClient: any?,
+	GoreServiceServer: any?,
+	HpServiceServer: any?,
+	InventoryServiceServer: any?,
+	LiquidServiceServer: any?,
+	LootServiceServer: any?,
+	MagicServiceServer: any?,
+	MeleeServiceServer: any?,
+	NpcServiceServer: any?,
+	WindFoliageServiceClient: any?,
 }
 
-local ModelBinder = {}
+export type BinderContext = {
+	dependencies: BinderDependencies?,
+	tags: { string }?,
+	serviceBag: ServiceBag.ServiceBag?,
+}
+
+local ModelBinder = setmetatable({}, BaseObject)
+ModelBinder.ClassName = "ModelBinder"
 ModelBinder.__index = ModelBinder
 
-export type ModelBinder = typeof(setmetatable(
-	{} :: {
-		instance: Instance,
-		janitor: MaidClass,
-		context: BinderContext?,
-		destroyed: boolean,
-	},
-	ModelBinder
-))
+export type ModelBinder =
+	typeof(setmetatable(
+		{} :: {
+			_obj: Instance,
+			_maid: Maid.Maid,
+			_serviceBag: ServiceBag.ServiceBag?,
+			instance: Instance,
+			janitor: Maid.Maid,
+			context: BinderContext?,
+			destroyed: boolean,
+		},
+		ModelBinder
+	))
+	& BaseObject.BaseObject
 
-local function createJanitor(): MaidClass
-	return Maid.new() :: MaidClass
-end
-
-local function GetBoundInstance(targetRaw: any): Instance?
+local function getBoundInstance(targetRaw: any): Instance?
 	if typeof(targetRaw) == "Instance" then
 		return targetRaw
 	end
 
 	if typeof(targetRaw) == "table" then
-		local instance = (targetRaw :: any).instance
+		local instance = (targetRaw :: any)._obj or (targetRaw :: any).instance
 		if typeof(instance) == "Instance" then
 			return instance
 		end
@@ -46,7 +66,7 @@ local function GetBoundInstance(targetRaw: any): Instance?
 end
 
 function ModelBinder.CollectBaseParts(instanceRaw: any): { BasePart }
-	local instance = GetBoundInstance(instanceRaw)
+	local instance = getBoundInstance(instanceRaw)
 	if instance == nil then
 		return {}
 	end
@@ -65,7 +85,7 @@ function ModelBinder.CollectBaseParts(instanceRaw: any): { BasePart }
 end
 
 function ModelBinder.CollectLights(instanceRaw: any): { Instance }
-	local instance = GetBoundInstance(instanceRaw)
+	local instance = getBoundInstance(instanceRaw)
 	if instance == nil then
 		return {}
 	end
@@ -80,7 +100,7 @@ function ModelBinder.CollectLights(instanceRaw: any): { Instance }
 end
 
 function ModelBinder.BindTouchedParts(instanceRaw: any, janitor: any, callback: (part: BasePart, other: BasePart) -> ())
-	local instance = GetBoundInstance(instanceRaw)
+	local instance = getBoundInstance(instanceRaw)
 	if instance == nil then
 		return
 	end
@@ -109,27 +129,6 @@ function ModelBinder.BindTouchedParts(instanceRaw: any, janitor: any, callback: 
 	end))
 end
 
-function ModelBinder.GetModel(instanceRaw: any): Model?
-	local instance = GetBoundInstance(instanceRaw)
-	if instance == nil then
-		return nil
-	end
-
-	if instance:IsA("Model") then
-		return instance
-	end
-
-	return instance:FindFirstAncestorOfClass("Model")
-end
-
-function ModelBinder.GetHumanoid(instanceRaw: any): Humanoid?
-	local model = ModelBinder.GetModel(instanceRaw)
-	if model == nil then
-		return nil
-	end
-	return model:FindFirstChildOfClass("Humanoid")
-end
-
 function ModelBinder.GetPlayer(instanceRaw: any): Player?
 	local model = ModelBinder.GetModel(instanceRaw)
 	if model == nil then
@@ -138,21 +137,8 @@ function ModelBinder.GetPlayer(instanceRaw: any): Player?
 	return Players:GetPlayerFromCharacter(model)
 end
 
-function ModelBinder.GetRootPart(instanceRaw: any): BasePart?
-	local instance = GetBoundInstance(instanceRaw)
-	if instance == nil then
-		return nil
-	end
-
-	if instance:IsA("BasePart") then
-		return instance
-	end
-
-	return InstanceUtils.GetInstanceRootPart(instance, false)
-end
-
 function ModelBinder.GetAdornee(instanceRaw: any): Instance?
-	local instance = GetBoundInstance(instanceRaw)
+	local instance = getBoundInstance(instanceRaw)
 	if instance == nil then
 		return nil
 	end
@@ -170,7 +156,7 @@ function ModelBinder.GetAdornee(instanceRaw: any): Instance?
 end
 
 function ModelBinder.GetWorldPosition(instanceRaw: any): Vector3?
-	local instance = GetBoundInstance(instanceRaw)
+	local instance = getBoundInstance(instanceRaw)
 	if instance == nil then
 		return nil
 	end
@@ -193,22 +179,23 @@ function ModelBinder.new(instanceRaw: any, contextRaw: any, classRaw: any?): any
 	end
 
 	local class = if typeof(classRaw) == "table" then classRaw else ModelBinder
-	local self = setmetatable({
-		instance = instanceRaw,
-		janitor = createJanitor(),
-		context = if typeof(contextRaw) == "table" then contextRaw else nil,
-		destroyed = false,
-	}, class)
+	local context = if typeof(contextRaw) == "table" then contextRaw :: BinderContext else nil
+	local self = setmetatable(BaseObject.new(instanceRaw) :: any, class)
+	self.instance = instanceRaw
+	self.janitor = self._maid
+	self.context = context
+	self._serviceBag = if context ~= nil then context.serviceBag else nil
+	self.destroyed = false
 
-	self.janitor:GiveTask(self.instance.Destroying:Connect(function()
+	self._maid:GiveTask(self._obj.Destroying:Connect(function()
 		self:Destroy()
 	end))
 
 	return self
 end
 
-function ModelBinder.GetModel(self: ModelBinder): Model?
-	local instance = GetBoundInstance(self)
+function ModelBinder.GetModel(instanceRaw: any): Model?
+	local instance = getBoundInstance(instanceRaw)
 	if instance == nil then
 		return nil
 	end
@@ -219,16 +206,16 @@ function ModelBinder.GetModel(self: ModelBinder): Model?
 	return instance:FindFirstAncestorOfClass("Model")
 end
 
-function ModelBinder.GetHumanoid(self: ModelBinder): Humanoid?
-	local model = ModelBinder.GetModel(self)
+function ModelBinder.GetHumanoid(instanceRaw: any): Humanoid?
+	local model = ModelBinder.GetModel(instanceRaw)
 	if model == nil then
 		return nil
 	end
 	return model:FindFirstChildOfClass("Humanoid")
 end
 
-function ModelBinder.GetRootPart(self: ModelBinder): BasePart?
-	local instance = GetBoundInstance(self)
+function ModelBinder.GetRootPart(instanceRaw: any): BasePart?
+	local instance = getBoundInstance(instanceRaw)
 	if instance == nil then
 		return nil
 	end
@@ -237,7 +224,7 @@ function ModelBinder.GetRootPart(self: ModelBinder): BasePart?
 		return instance
 	end
 
-	local model = ModelBinder.GetModel(self)
+	local model = ModelBinder.GetModel(instanceRaw)
 	if model ~= nil then
 		return InstanceUtils.GetModelRootPart(model, false)
 	end
@@ -246,7 +233,7 @@ function ModelBinder.GetRootPart(self: ModelBinder): BasePart?
 end
 
 function ModelBinder.HasTag(self: ModelBinder, tagRaw: any): boolean
-	return TagBinder.hasTag(self.instance, tagRaw)
+	return TagBinder.hasTag(self._obj, tagRaw)
 end
 
 function ModelBinder.GetMatchedTags(self: ModelBinder): { string }
@@ -255,12 +242,17 @@ function ModelBinder.GetMatchedTags(self: ModelBinder): { string }
 		return {}
 	end
 
-	return TagBinder.getMatchedTags(self.instance, context.tags)
+	return TagBinder.getMatchedTags(self._obj, context.tags)
+end
+
+function ModelBinder.GetDependencies(self: ModelBinder): BinderDependencies
+	local context = assert(self.context, "binder context is unavailable")
+	return assert(context.dependencies, "binder dependencies are unavailable")
 end
 
 function ModelBinder.Connect(self: ModelBinder, signal: RBXScriptSignal, callback: (...any) -> ()): RBXScriptConnection
 	local connection = signal:Connect(callback)
-	self.janitor:GiveTask(connection)
+	self._maid:GiveTask(connection)
 	return connection
 end
 
@@ -269,14 +261,14 @@ function ModelBinder.ObserveAttribute(
 	attributeName: string,
 	callback: (nextValue: any, instance: Instance) -> ()
 ): RBXScriptConnection
-	callback(self.instance:GetAttribute(attributeName), self.instance)
-	return self:Connect(self.instance:GetAttributeChangedSignal(attributeName), function()
-		callback(self.instance:GetAttribute(attributeName), self.instance)
+	callback(self._obj:GetAttribute(attributeName), self._obj)
+	return self:Connect(self._obj:GetAttributeChangedSignal(attributeName), function()
+		callback(self._obj:GetAttribute(attributeName), self._obj)
 	end)
 end
 
-function ModelBinder.AddCleanup(self: ModelBinder, cleanup: any, ...: any)
-	return self.janitor:GiveTask(cleanup)
+function ModelBinder.AddCleanup(self: ModelBinder, cleanup: any)
+	return self._maid:GiveTask(cleanup)
 end
 
 function ModelBinder.Destroy(self: ModelBinder)
@@ -286,10 +278,15 @@ function ModelBinder.Destroy(self: ModelBinder)
 
 	self.destroyed = true
 	local cleanupMethod = (getmetatable(self) :: any).Cleanup
+	local cleanupOk = true
+	local cleanupError = nil
 	if typeof(cleanupMethod) == "function" then
-		pcall(cleanupMethod, self)
+		cleanupOk, cleanupError = pcall(cleanupMethod, self)
 	end
 
-	self.janitor:Destroy()
+	self._maid:DoCleaning()
+	if not cleanupOk then
+		error(cleanupError)
+	end
 end
 return ModelBinder

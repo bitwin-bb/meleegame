@@ -46,7 +46,7 @@ local DEFAULT_SIZE = UDim2.fromOffset(260, 112)
 local DEFAULT_CARD_SIZE = UDim2.fromOffset(220, 72)
 local DEFAULT_STUDS_OFFSET = Vector3.new(0, 3, 0)
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = if typeof(valueRaw) == "number" and valueRaw == valueRaw then valueRaw else fallback
 	if minimum ~= nil and value < minimum then
 		value = minimum
@@ -57,7 +57,7 @@ local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, m
 	return value
 end
 
-local function CoerceVector3(valueRaw: any, fallback: Vector3): Vector3
+local function coerceVector3(valueRaw: any, fallback: Vector3): Vector3
 	return if typeof(valueRaw) == "Vector3" then valueRaw else fallback
 end
 
@@ -71,7 +71,7 @@ local function applyNativeProps(target: { [any]: any }, nativeProps: { [any]: an
 	end
 end
 
-local function GetPortalTarget(props: BillboardCardProps): Instance?
+local function getPortalTarget(props: BillboardCardProps): Instance?
 	if props.disablePortal == true then
 		return nil
 	end
@@ -93,11 +93,11 @@ return function(props: BillboardCardProps): React.ReactNode
 		Enabled = props.enabled ~= false,
 		Active = props.active == true,
 		AlwaysOnTop = props.alwaysOnTop ~= false,
-		MaxDistance = CoerceNumber(props.maxDistance, 130, 0, 20000),
-		LightInfluence = CoerceNumber(props.lightInfluence, 0, 0, 1),
-		StudsOffset = CoerceVector3(props.studsOffset, DEFAULT_STUDS_OFFSET),
-		StudsOffsetWorldSpace = CoerceVector3(props.studsOffsetWorldSpace, Vector3.zero),
-		ExtentsOffset = CoerceVector3(props.extentsOffset, Vector3.zero),
+		MaxDistance = coerceNumber(props.maxDistance, 130, 0, 20000),
+		LightInfluence = coerceNumber(props.lightInfluence, 0, 0, 1),
+		StudsOffset = coerceVector3(props.studsOffset, DEFAULT_STUDS_OFFSET),
+		StudsOffsetWorldSpace = coerceVector3(props.studsOffsetWorldSpace, Vector3.zero),
+		ExtentsOffset = coerceVector3(props.extentsOffset, Vector3.zero),
 		Size = props.size or DEFAULT_SIZE,
 		ResetOnSpawn = props.resetOnSpawn == true,
 		ClipsDescendants = props.clipsDescendants == true,
@@ -135,7 +135,7 @@ return function(props: BillboardCardProps): React.ReactNode
 		})
 		else billboardElement
 
-	local portalTarget = GetPortalTarget(props)
+	local portalTarget = getPortalTarget(props)
 	if portalTarget ~= nil then
 		return ReactRoblox.createPortal(element, portalTarget)
 	end

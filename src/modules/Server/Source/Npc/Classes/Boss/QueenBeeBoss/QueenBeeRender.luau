@@ -29,7 +29,7 @@ local function setAttribute(instance: Instance?, name: string, value: any)
 	instance:SetAttribute(name, value)
 end
 
-local function GetFacingSign(context: RenderContext): number
+local function getFacingSign(context: RenderContext): number
 	if context.velocity.Magnitude > 0.5 then
 		local sign = if math.abs(context.velocity.Z) > 0.001 then math.sign(context.velocity.Z) else 0
 		if sign ~= 0 then
@@ -50,7 +50,7 @@ local function GetFacingSign(context: RenderContext): number
 	return sign
 end
 
-local function GetWingSpeed(context: RenderContext): number
+local function getWingSpeed(context: RenderContext): number
 	local phaseBoost = 1 + math.max(0, context.phase - 1) * 0.34
 	local stateBoost = if context.state == Configs.States.Charge
 			or context.state == Configs.States.ChargeWindup
@@ -60,7 +60,7 @@ local function GetWingSpeed(context: RenderContext): number
 	return phaseBoost * stateBoost * enrageBoost
 end
 
-local function GetChargeAnticipation(context: RenderContext): number
+local function getChargeAnticipation(context: RenderContext): number
 	if context.state == Configs.States.Charge then
 		return 1
 	end
@@ -98,9 +98,9 @@ end
 function Render.Apply(context: RenderContext)
 	local model = context.model
 	local rootPart = context.rootPart
-	local facingSign = GetFacingSign(context)
-	local wingSpeed = GetWingSpeed(context)
-	local anticipation = GetChargeAnticipation(context)
+	local facingSign = getFacingSign(context)
+	local wingSpeed = getWingSpeed(context)
+	local anticipation = getChargeAnticipation(context)
 
 	setAttribute(model, "QueenBeeRenderFacingSign", facingSign)
 	setAttribute(model, "QueenBeeWingSpeed", wingSpeed)

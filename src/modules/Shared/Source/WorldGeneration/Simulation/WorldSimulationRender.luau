@@ -1,15 +1,20 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local HttpService = game:GetService("HttpService")
 
 local Cache = require("SimulationCache")
 local Shared = require("Shared")
+local String = require("String")
 local TileComponent = require("Tile")
 local WorkspaceFolders = require("WorkspaceFolders")
 
 local Render = {}
 Render.__index = Render
+
+local function createRuntimeInstanceName(): string
+	local guid = String.removePostfix(String.removePrefix(HttpService:GenerateGUID(true), "{"), "}")
+	return string.format("%03d", (tonumber(string.sub(guid, 1, 8), 16) or 0) % 1000)
+end
 
 export type Render = typeof(setmetatable({} :: any, Render))
 
@@ -68,7 +73,7 @@ function Render.New(configRaw: any, cacheRaw: any, debugRaw: any)
 
 	self.partPool = cache:createObjectPool(function()
 		local part = TileComponent.CreatePart({
-			name = HttpService:GenerateGUID(false),
+			name = createRuntimeInstanceName(),
 			anchored = true,
 			locked = true,
 			canCollide = false,
@@ -102,7 +107,7 @@ function Render.BindChunkFolderGuard(self: Render, chunksFolder: Folder)
 	end)
 end
 
-function Render.GetExistingChunksFolder(self: Render): Folder?
+function Render.GetExistingChunksFolder(_self: Render): Folder?
 	local worldFolder = WorkspaceFolders.FindFolderInGameOrWorkspace(WORLD_FOLDER_NAME)
 	if worldFolder == nil or not worldFolder:IsA("Folder") then
 		return nil
@@ -199,7 +204,7 @@ function Render.SpawnChunkModel(self: Render, coordRaw: any, chunkDataRaw: any):
 	end
 
 	local model = TileComponent.CreateModel({
-		name = HttpService:GenerateGUID(false),
+		name = createRuntimeInstanceName(),
 		parent = chunksFolder,
 		attributes = {
 			ChunkKey = key,

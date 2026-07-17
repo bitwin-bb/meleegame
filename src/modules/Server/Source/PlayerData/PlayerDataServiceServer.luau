@@ -62,7 +62,7 @@ local Signal = require("Signal")
 
 local SERVER_PACKAGE_LOAD_TIMEOUT_SECONDS = 10
 
-local function GetServerPackage(packageName: string): ModuleScript
+local function getServerPackage(packageName: string): ModuleScript
 	local serverPackages = game:GetService("ServerScriptService"):FindFirstChild("ServerPackages")
 		or game:GetService("ServerScriptService"):WaitForChild("ServerPackages", SERVER_PACKAGE_LOAD_TIMEOUT_SECONDS)
 	assert(serverPackages ~= nil, `[PlayerDataServiceServer] Missing ServerScriptService.ServerPackages.`)
@@ -77,7 +77,7 @@ local function GetServerPackage(packageName: string): ModuleScript
 	return package
 end
 
-local ProfileStore = require(GetServerPackage("ProfileStore") :: any)
+local ProfileStore = require(getServerPackage("ProfileStore") :: any)
 
 type PlayerData = PlayerDataServiceUtils.PlayerData
 type LoadState = string
@@ -107,6 +107,7 @@ type PlayerRuntime = {
 }
 
 local PlayerDataServiceServer = {}
+PlayerDataServiceServer.ServiceName = "PlayerDataServiceServer"
 
 local DATA_SESSION_ENDED_KICK_MESSAGE = "Your data session ended. Please rejoin."
 local PROFILE_FALLBACK_DATASTORE_TIMEOUT_SECONDS = 2
@@ -123,7 +124,7 @@ local function promiseTry<T...>(callback: () -> T...): any
 	end)
 end
 
-local function GetPlayerDataTemplate(): PlayerData
+local function getPlayerDataTemplate(): PlayerData
 	local templateRoot = if typeof(DataTemplate) == "table" then DataTemplate else {} :: any
 	local playerData = if typeof((templateRoot :: any).playerData) == "table"
 		then (templateRoot :: any).playerData
@@ -157,7 +158,7 @@ local function runProtectedWithTimeout(timeoutSeconds: number, callback: () -> a
 	return status, success, result
 end
 
-local function CoerceFailureReason(reasonRaw: any): string?
+local function coerceFailureReason(reasonRaw: any): string?
 	if typeof(reasonRaw) ~= "string" then
 		return nil
 	end
@@ -179,8 +180,8 @@ local function stringifyLogValue(valueRaw: any): string
 	return valueType
 end
 
-function PlayerDataServiceServer.Init(self: PlayerDataServiceServer)
-	self.dataTemplate = GetPlayerDataTemplate()
+function PlayerDataServiceServer.Init(self: PlayerDataServiceServer, _serviceBag: any?)
+	self.dataTemplate = getPlayerDataTemplate()
 	self.profileStore = ProfileStore.New(PlayerDataServiceUtils.DEFAULT_PROFILE_STORE_NAME, self.dataTemplate)
 	self.playerRuntimes = {}
 	bindPackets(self)
@@ -491,7 +492,7 @@ function PlayerDataServiceServer.FinalizeFailedRuntime(
 	runtime.loadState = PlayerDataServiceUtils.LOAD_STATE_FAILED
 	runtime.isLoading = false
 	runtime.hasInitialLoad = true
-	runtime.lastFailureReason = CoerceFailureReason(reasonRaw) or "unknown"
+	runtime.lastFailureReason = coerceFailureReason(reasonRaw) or "unknown"
 	runtime.usingFallbackData = false
 	runtime.fallbackBaselineData = nil
 	runtime.fallbackDirty = false
@@ -724,7 +725,7 @@ function PlayerDataServiceServer.WaitForDataPromise(
 		then math.max(0, timeoutSecondsRaw)
 		else 15
 
-	local function GetIfReady(): PlayerData?
+	local function getIfReady(): PlayerData?
 		local availableRuntime = self:GetAvailableRuntime(player)
 		if availableRuntime ~= nil and availableRuntime.data ~= nil then
 			return availableRuntime.data
@@ -732,7 +733,7 @@ function PlayerDataServiceServer.WaitForDataPromise(
 		return nil
 	end
 
-	local immediateData = GetIfReady()
+	local immediateData = getIfReady()
 	if immediateData ~= nil then
 		return fulfilledPromise(immediateData)
 	end
@@ -742,7 +743,7 @@ function PlayerDataServiceServer.WaitForDataPromise(
 		return fulfilledPromise(nil)
 	end
 	if trackedRuntime.hasInitialLoad then
-		return fulfilledPromise(GetIfReady())
+		return fulfilledPromise(getIfReady())
 	end
 
 	if timeoutSeconds <= 0 then
@@ -771,12 +772,12 @@ function PlayerDataServiceServer.WaitForDataPromise(
 
 		connection = trackedRuntime.stateChangedSignal:Connect(function()
 			local currentRuntime = self.playerRuntimes[player]
-			if currentRuntime == nil or currentRuntime.hasInitialLoad or GetIfReady() ~= nil then
-				settle(GetIfReady())
+			if currentRuntime == nil or currentRuntime.hasInitialLoad or getIfReady() ~= nil then
+				settle(getIfReady())
 			end
 		end)
 
-		local readyData = GetIfReady()
+		local readyData = getIfReady()
 		if readyData ~= nil or trackedRuntime.hasInitialLoad then
 			settle(readyData)
 			return

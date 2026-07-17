@@ -70,7 +70,7 @@ local function normalizeAttribute(attributeRaw: any): string?
 	return attributeRaw
 end
 
-local function GetNumber(valueRaw: any, fallback: number): number
+local function getNumber(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" then
 		return fallback
 	end
@@ -96,7 +96,7 @@ function AttributeCache.New(): AttributeCache
 end
 
 function AttributeCache._getListenerSignal(
-	self: AttributeCache,
+	_self: AttributeCache,
 	record: InstanceRecord,
 	attribute: string
 ): AttributeChangedSignal
@@ -122,7 +122,7 @@ function AttributeCache._registerDirtyInstance(self: AttributeCache, instance: I
 end
 
 function AttributeCache._notifyListeners(
-	self: AttributeCache,
+	_self: AttributeCache,
 	record: InstanceRecord,
 	instance: Instance,
 	attribute: string,
@@ -164,7 +164,7 @@ function AttributeCache._recordDiff(
 	self:_notifyListeners(record, instance, attribute, newValue, oldValue)
 end
 
-function AttributeCache._GetAttribute(self: AttributeCache, record: InstanceRecord, attribute: string): any
+function AttributeCache._GetAttribute(_self: AttributeCache, record: InstanceRecord, attribute: string): any
 	local baseValue = record.base[attribute]
 	local modifierBucket = record.modifiers[attribute]
 	if modifierBucket == nil or next(modifierBucket) == nil then
@@ -201,19 +201,14 @@ function AttributeCache._GetAttribute(self: AttributeCache, record: InstanceReco
 	end
 
 	if hasNumericOps then
-		local numericBase = GetNumber(baseValue, 0)
+		local numericBase = getNumber(baseValue, 0)
 		return numericBase * multiplyTotal + addTotal
 	end
 
 	return baseValue
 end
 
-function AttributeCache._applyGot(
-	self: AttributeCache,
-	instance: Instance,
-	record: InstanceRecord,
-	attribute: string
-)
+function AttributeCache._applyGot(self: AttributeCache, instance: Instance, record: InstanceRecord, attribute: string)
 	local oldValue = record.cache[attribute]
 	local Got = self:_GetAttribute(record, attribute)
 	record.cache[attribute] = Got
@@ -351,7 +346,7 @@ end
 function AttributeCache.Increment(self: AttributeCache, instanceRaw: any, attributeRaw: any, amountRaw: any): number
 	local amount = if typeof(amountRaw) == "number" then amountRaw else 0
 	local currentValue = self:Get(instanceRaw, attributeRaw, 0)
-	local nextValue = GetNumber(currentValue, 0) + amount
+	local nextValue = getNumber(currentValue, 0) + amount
 	self:Set(instanceRaw, attributeRaw, nextValue)
 	return nextValue
 end
@@ -608,7 +603,7 @@ function AttributeCache.BuildReplicationBatch(self: AttributeCache, maxAttribute
 	return out
 end
 
-function AttributeCache.SerializeReplicationBatch(self: AttributeCache, batchRaw: any): string
+function AttributeCache.SerializeReplicationBatch(_self: AttributeCache, batchRaw: any): string
 	if typeof(batchRaw) ~= "table" then
 		return Codec.SerializeCompressed({})
 	end
@@ -627,7 +622,7 @@ function AttributeCache.SerializeReplicationBatch(self: AttributeCache, batchRaw
 	return Codec.SerializeCompressed(normalized)
 end
 
-function AttributeCache.DeserializeReplicationBatch(self: AttributeCache, payloadRaw: any): { any }
+function AttributeCache.DeserializeReplicationBatch(_self: AttributeCache, payloadRaw: any): { any }
 	if typeof(payloadRaw) ~= "string" then
 		return {}
 	end

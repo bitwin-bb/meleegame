@@ -22,7 +22,7 @@ local function normalizeToken(valueRaw: any): string
 	return string.gsub(value, "[^%w]", "")
 end
 
-local function GetKind(valueRaw: any): string?
+local function getKind(valueRaw: any): string?
 	local token = normalizeToken(valueRaw)
 	if token == "buff" then
 		return BuffConstants.KIND_BUFF
@@ -147,7 +147,7 @@ local function getDefinitions(kind: string): { any }
 	return loadFallbackDefinitions(kind)
 end
 
-local function GetDefinition(kind: string, nameRaw: any): any?
+local function getDefinition(kind: string, nameRaw: any): any?
 	local directOk, directDefinition = pcall(function()
 		return BuffService:GetDefinition(nameRaw, kind)
 	end)
@@ -294,12 +294,12 @@ return function(context, subcommandRaw: string, nameRaw: string)
 		return "No command executor was found."
 	end
 
-	local kind = GetKind(subcommandRaw)
+	local kind = getKind(subcommandRaw)
 	if kind == nil then
 		return "Use test buff <name> or test debuff <name>."
 	end
 
-	local definition = GetDefinition(kind, nameRaw)
+	local definition = getDefinition(kind, nameRaw)
 	if definition == nil then
 		local names = getAvailableNames(kind)
 		if #names > 0 then

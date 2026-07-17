@@ -32,7 +32,7 @@ local function createAlphaTable(maxIndex: number, activeIndex: number): { [numbe
 	return values
 end
 
-local function GetFarGroup(style: number): number
+local function getFarGroup(style: number): number
 	if style == Styles.Desert then
 		return FarGroups.Desert
 	end
@@ -102,7 +102,7 @@ function State.Update(self: State, targetStyle: number, dt: number)
 
 	local alpha = math.clamp(self.tranSpeed * deltaSeconds * 60, 0, 1)
 	fadeAlphaTable(self.bgAlpha, self.bgStyle, CLOSE_STYLE_COUNT, alpha)
-	fadeAlphaTable(self.bgAlpha2, GetFarGroup(self.bgStyle), FAR_GROUP_COUNT, alpha)
+	fadeAlphaTable(self.bgAlpha2, getFarGroup(self.bgStyle), FAR_GROUP_COUNT, alpha)
 end
 
 function State.GetStyleAlpha(self: State, style: number): number
@@ -113,7 +113,7 @@ function State.GetStyleAlpha(self: State, style: number): number
 end
 
 function State.GetFarAlpha(self: State, groupIndex: number): number
-	local GotGroup = GetFarGroup(groupIndex)
+	local GotGroup = getFarGroup(groupIndex)
 	return math.clamp(self.bgAlpha2[GotGroup] or 0, 0, 1)
 end
 

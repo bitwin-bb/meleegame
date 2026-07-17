@@ -8,6 +8,7 @@ local AnimationServiceUtils = require("AnimationServiceUtils")
 local AudioServiceClient = require("AudioServiceClient")
 local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
+local ServiceBag = require("ServiceBag")
 local AnimationServicePackets = require("NetPacketsShared").AnimationService
 
 local function sendPacket(methodName: string, ...: any)
@@ -76,6 +77,7 @@ type CharacterRuntime = {
 }
 
 local AnimationServiceClient = {}
+AnimationServiceClient.ServiceName = "AnimationServiceClient"
 local FOOTSTEP_MOVE_DEADZONE = 0.05
 local FOOTSTEP_EVENT_DEDUPE_WINDOW = 0.06
 local JUMP_EVENT_DEDUPE_WINDOW = 0.09
@@ -104,7 +106,7 @@ local function isFallState(state: Enum.HumanoidStateType): boolean
 	return FALL_STATES[state] == true
 end
 
-local function GetClipPlaybackSpeed(runtime: CharacterRuntime, clipName: string): number
+local function getClipPlaybackSpeed(runtime: CharacterRuntime, clipName: string): number
 	local clipConfig = getClipConfig(runtime, clipName)
 	if not clipConfig then
 		return 1
@@ -124,7 +126,7 @@ local function GetClipPlaybackSpeed(runtime: CharacterRuntime, clipName: string)
 	return clipConfig.speed * speedScale
 end
 
-local function GetTransitionFadeTime(runtime: CharacterRuntime, fromClipName: string?, toClipName: string?): number
+local function getTransitionFadeTime(runtime: CharacterRuntime, fromClipName: string?, toClipName: string?): number
 	local fadeTime = DEFAULT_TRANSITION_FADE_TIME
 
 	if fromClipName ~= nil then
@@ -166,7 +168,10 @@ local function bindTrackAnimationEvents(
 	end))
 end
 
-function AnimationServiceClient.Init(self: AnimationServiceClient)
+function AnimationServiceClient.Init(self: AnimationServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
@@ -321,7 +326,7 @@ function AnimationServiceClient.SwitchToClip(self: AnimationServiceClient, clipN
 	if not runtime then
 		return
 	end
-	local transitionFadeTime = GetTransitionFadeTime(runtime, runtime.activeClipName, clipName)
+	local transitionFadeTime = getTransitionFadeTime(runtime, runtime.activeClipName, clipName)
 
 	if clipName == nil then
 		for _, track in runtime.tracks do
@@ -344,7 +349,7 @@ function AnimationServiceClient.SwitchToClip(self: AnimationServiceClient, clipN
 	if runtime.activeClipName == clipName then
 		local activeTrack = runtime.tracks[clipName]
 		local activeClipConfig = getClipConfig(runtime, clipName)
-		local playbackSpeed = GetClipPlaybackSpeed(runtime, clipName)
+		local playbackSpeed = getClipPlaybackSpeed(runtime, clipName)
 		if activeTrack and activeClipConfig then
 			if activeTrack.IsPlaying then
 				activeTrack:AdjustWeight(activeClipConfig.weight, transitionFadeTime)
@@ -359,7 +364,7 @@ function AnimationServiceClient.SwitchToClip(self: AnimationServiceClient, clipN
 	local targetTrack = requestedTrack
 	local targetClipConfig = getClipConfig(runtime, clipName)
 	if targetTrack and targetClipConfig then
-		local playbackSpeed = GetClipPlaybackSpeed(runtime, clipName)
+		local playbackSpeed = getClipPlaybackSpeed(runtime, clipName)
 		if targetTrack.IsPlaying then
 			targetTrack:AdjustWeight(targetClipConfig.weight, transitionFadeTime)
 			targetTrack:AdjustSpeed(playbackSpeed)
@@ -492,7 +497,7 @@ function AnimationServiceClient.OnJumpEvent(self: AnimationServiceClient)
 	self:PlayJump(runtime, now)
 end
 
-function AnimationServiceClient.CanPlayJump(self: AnimationServiceClient, runtime: CharacterRuntime): boolean
+function AnimationServiceClient.CanPlayJump(_self: AnimationServiceClient, runtime: CharacterRuntime): boolean
 	if runtime.activeClipName ~= "Jump" then
 		return false
 	end
@@ -573,15 +578,15 @@ function AnimationServiceClient.ApplyState(self: AnimationServiceClient, profile
 	end
 end
 
-function AnimationServiceClient.SetProfile(self: AnimationServiceClient, profileName: string)
+function AnimationServiceClient.SetProfile(_self: AnimationServiceClient, profileName: string)
 	sendPacket("setProfile", profileName)
 end
 
-function AnimationServiceClient.SetFootstepsEnabled(self: AnimationServiceClient, enabled: boolean)
+function AnimationServiceClient.SetFootstepsEnabled(_self: AnimationServiceClient, enabled: boolean)
 	sendPacket("setFootstepsEnabled", enabled)
 end
 
-function AnimationServiceClient.RequestSync(self: AnimationServiceClient)
+function AnimationServiceClient.RequestSync(_self: AnimationServiceClient)
 	sendPacket("requestSync")
 end
 
@@ -595,8 +600,10 @@ function AnimationServiceClient.Destroy(self: AnimationServiceClient)
 	if self.janitor then
 		self.janitor:Destroy()
 	end
+	self._serviceBag = nil
 end
 type AnimationServiceClient = typeof(AnimationServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
 	localPlayer: Player,
 	janitor: JanitorClass,
 	characterJanitor: JanitorClass,

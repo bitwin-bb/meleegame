@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local AbbreviationFormatter = require("AbbreviationFormatter")
@@ -48,7 +47,7 @@ local function splitPath(path: string): { string }
 	return out
 end
 
-local function GetPath(context: any, keyPath: string): any
+local function getPath(context: any, keyPath: string): any
 	if typeof(context) ~= "table" then
 		return nil
 	end
@@ -122,7 +121,7 @@ function DynamicTextGetter._missing(
 	return missingValue
 end
 
-function DynamicTextGetter._applyModifier(self: DynamicTextGetter, value: any, modifierRaw: string): string
+function DynamicTextGetter._applyModifier(_self: DynamicTextGetter, value: any, modifierRaw: string): string
 	if modifierRaw == "" then
 		return toStringValue(value)
 	end
@@ -194,31 +193,31 @@ function DynamicTextGetter._GetConditionals(
 		end
 
 		local nextText = (string.gsub :: any)(
-			text,
-			"%[if:([%w_%.]+)%](.-)%[/if%]",
-			function(key: string, body: string)
-				changed = true
-				local value = GetPath(context, key)
-				if isTruthy(value) then
-					return self:_GetInternal(body, context, depth + 1, options)
+				text,
+				"%[if:([%w_%.]+)%](.-)%[/if%]",
+				function(key: string, body: string)
+					changed = true
+					local value = getPath(context, key)
+					if isTruthy(value) then
+						return self:_GetInternal(body, context, depth + 1, options)
+					end
+					return ""
 				end
-				return ""
-			end
-		) :: string
+			) :: string
 		text = nextText
 
 		nextText = (string.gsub :: any)(
-			text,
-			"%[ifnot:([%w_%.]+)%](.-)%[/ifnot%]",
-			function(key: string, body: string)
-				changed = true
-				local value = GetPath(context, key)
-				if not isTruthy(value) then
-					return self:_GetInternal(body, context, depth + 1, options)
+				text,
+				"%[ifnot:([%w_%.]+)%](.-)%[/ifnot%]",
+				function(key: string, body: string)
+					changed = true
+					local value = getPath(context, key)
+					if not isTruthy(value) then
+						return self:_GetInternal(body, context, depth + 1, options)
+					end
+					return ""
 				end
-				return ""
-			end
-		) :: string
+			) :: string
 		text = nextText
 	end
 
@@ -260,7 +259,7 @@ function DynamicTextGetter._GetInternal(
 		if key == "" then
 			return ""
 		end
-		local value = GetPath(context, key)
+		local value = getPath(context, key)
 		if value == nil then
 			return self:_missing(key, templateRaw, keepUnknown, missingValue)
 		end

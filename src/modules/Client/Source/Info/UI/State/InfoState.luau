@@ -21,7 +21,7 @@ local DEFAULT_STATE: HoverInfoState = {
 
 local infoStateAtom: Charm.Atom<HoverInfoState> = Charm.atom(DEFAULT_STATE)
 
-local function CoerceHoverId(value: any): string
+local function coerceHoverId(value: any): string
 	if typeof(value) == "string" and value ~= "" then
 		return value
 	end
@@ -29,7 +29,7 @@ local function CoerceHoverId(value: any): string
 	return "default"
 end
 
-local function CoerceText(value: any): string
+local function coerceText(value: any): string
 	if typeof(value) == "string" then
 		return value
 	end
@@ -37,7 +37,7 @@ local function CoerceText(value: any): string
 	return ""
 end
 
-local function CoerceMousePosition(value: any): Vector2
+local function coerceMousePosition(value: any): Vector2
 	if typeof(value) == "Vector2" then
 		return value
 	end
@@ -53,9 +53,9 @@ local function setInfoState(stateRaw: any): HoverInfoState
 	local source = if typeof(stateRaw) == "table" then stateRaw else DEFAULT_STATE
 	local nextState: HoverInfoState = {
 		visible = source.visible == true,
-		hoverId = if source.visible == true then CoerceHoverId(source.hoverId) else nil,
-		text = CoerceText(source.text),
-		mousePosition = CoerceMousePosition(source.mousePosition),
+		hoverId = if source.visible == true then coerceHoverId(source.hoverId) else nil,
+		text = coerceText(source.text),
+		mousePosition = coerceMousePosition(source.mousePosition),
 	}
 
 	infoStateAtom(nextState)
@@ -65,9 +65,9 @@ end
 local function showHover(hoverIdRaw: any, textRaw: any, mousePositionRaw: any): HoverInfoState
 	local nextState: HoverInfoState = {
 		visible = true,
-		hoverId = CoerceHoverId(hoverIdRaw),
-		text = CoerceText(textRaw),
-		mousePosition = CoerceMousePosition(mousePositionRaw),
+		hoverId = coerceHoverId(hoverIdRaw),
+		text = coerceText(textRaw),
+		mousePosition = coerceMousePosition(mousePositionRaw),
 	}
 
 	infoStateAtom(nextState)
@@ -93,7 +93,7 @@ end
 
 local function updateMousePosition(mousePositionRaw: any): HoverInfoState
 	local current = infoStateAtom()
-	local nextMousePosition = CoerceMousePosition(mousePositionRaw)
+	local nextMousePosition = coerceMousePosition(mousePositionRaw)
 	if current.mousePosition == nextMousePosition then
 		return current
 	end

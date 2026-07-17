@@ -55,8 +55,9 @@ type AnimationProfile = AnimationServiceUtils.AnimationProfile
 type AnimationServiceState = AnimationServiceUtils.AnimationServiceState
 
 local AnimationServiceServer = {}
+AnimationServiceServer.ServiceName = "AnimationServiceServer"
 
-function AnimationServiceServer.Init(self: AnimationServiceServer)
+function AnimationServiceServer.Init(self: AnimationServiceServer, _serviceBag: any?)
 	self.profileRegistry = AnimationServiceUtils.CreateDefaultProfileRegistry()
 	self.playerStates = {}
 	bindPackets(self)

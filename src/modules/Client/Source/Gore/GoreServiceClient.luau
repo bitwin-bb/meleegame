@@ -10,6 +10,7 @@ local Gore = require("Gore")
 local GoreServiceUtils = require("GoreServiceUtils")
 local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
+local ServiceBag = require("ServiceBag")
 local GoreServicePackets = require("NetPacketsShared").GoreService
 
 local function sendPacket(methodName: string, ...: any)
@@ -58,11 +59,12 @@ end
 type JanitorClass = any
 
 local GoreServiceClient = {}
+GoreServiceClient.ServiceName = "GoreServiceClient"
 local NPC_RUNTIME_ID_ATTRIBUTE = "NpcRuntimeId"
 local PLAYER_PREFIX = "player:"
 local NPC_PREFIX = "npc:"
 
-local function CoerceEntityId(entityIdRaw: any): string?
+local function coerceEntityId(entityIdRaw: any): string?
 	return GoreServiceUtils.CoerceEntityId(entityIdRaw)
 end
 
@@ -84,8 +86,8 @@ local function parseEntityId(entityId: string): (string?, string?)
 	return nil, nil
 end
 
-function GoreServiceClient.GetModelFromEntityId(self: GoreServiceClient, entityIdRaw: any): Model?
-	local entityId = CoerceEntityId(entityIdRaw)
+function GoreServiceClient.GetModelFromEntityId(_self: GoreServiceClient, entityIdRaw: any): Model?
+	local entityId = coerceEntityId(entityIdRaw)
 	if entityId == nil then
 		return nil
 	end
@@ -124,7 +126,7 @@ function GoreServiceClient.GetModelFromEntityId(self: GoreServiceClient, entityI
 end
 
 function GoreServiceClient.TryGetPendingEntity(self: GoreServiceClient, entityIdRaw: any): Gore.Gore?
-	local entityId = CoerceEntityId(entityIdRaw)
+	local entityId = coerceEntityId(entityIdRaw)
 	if entityId == nil then
 		return nil
 	end
@@ -153,7 +155,7 @@ function GoreServiceClient.RegisterEntity(
 	modelRaw: any,
 	configRaw: any
 ): Gore.Gore?
-	local entityId = CoerceEntityId(entityIdRaw)
+	local entityId = coerceEntityId(entityIdRaw)
 	if entityId == nil then
 		return nil
 	end
@@ -174,7 +176,7 @@ function GoreServiceClient.RegisterEntity(
 end
 
 function GoreServiceClient.GetEntity(self: GoreServiceClient, entityIdRaw: any): Gore.Gore?
-	local entityId = CoerceEntityId(entityIdRaw)
+	local entityId = coerceEntityId(entityIdRaw)
 	if entityId == nil then
 		return nil
 	end
@@ -186,7 +188,7 @@ function GoreServiceClient.GetEntity(self: GoreServiceClient, entityIdRaw: any):
 end
 
 function GoreServiceClient.RemoveEntity(self: GoreServiceClient, entityIdRaw: any)
-	local entityId = CoerceEntityId(entityIdRaw)
+	local entityId = coerceEntityId(entityIdRaw)
 	if entityId == nil then
 		return
 	end
@@ -292,7 +294,10 @@ function GoreServiceClient.SpawnGibs(
 	return spawned
 end
 
-function GoreServiceClient.Init(self: GoreServiceClient)
+function GoreServiceClient.Init(self: GoreServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	if self.janitor ~= nil then
 		return
 	end
@@ -334,9 +339,11 @@ function GoreServiceClient.Destroy(self: GoreServiceClient)
 		self.janitor:Destroy()
 		self.janitor = nil
 	end
+	self._serviceBag = nil
 end
 
 type GoreServiceClient = typeof(GoreServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
 	GetModelFromEntityId: (self: GoreServiceClient, entityIdRaw: any) -> Model?,
 	tryGetPendingEntity: (self: GoreServiceClient, entityIdRaw: any) -> Gore.Gore?,
 	janitor: any,

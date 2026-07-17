@@ -55,7 +55,6 @@ local function bindPackets(self: any)
 	bindPacket(self, "setRenderDistance")
 end
 
-local NevermoreSupport = require("NevermoreSupport")
 local BinderSupportServer = require("BinderSupportServer")
 local TagBinder = require("TagBinder")
 local WorldGeneration = require("WorldGeneration")
@@ -107,7 +106,7 @@ local CHUNK_STREAM_PER_PLAYER_BUDGET_PER_TICK = 16
 local CHUNK_STREAM_SIMULATION_BUDGET_PER_TICK = 24
 local CHUNK_STREAM_MAX_QUEUE_PER_PLAYER = 4096
 
-local function GetConfigSource(): any
+local function getConfigSource(): any
 	if typeof(Configs) ~= "table" then
 		return nil
 	end
@@ -153,14 +152,14 @@ local function hasExplicitSeed(configSource: any): boolean
 	return isFiniteNumber((configSource :: any).seed)
 end
 
-local function GetUntimeSeed(configSource: any, CoerceDConfig: WorldGenerationConfig): number
+local function getRuntimeSeed(configSource: any, coercedConfig: WorldGenerationConfig): number
 	if hasExplicitSeed(configSource) then
-		return CoerceDConfig.seed
+		return coercedConfig.seed
 	end
 	return Random.new():NextInteger(MIN_INT32_SEED, MAX_INT32_SEED)
 end
 
-local function GetStudioPreviewEnabled(configSource: any): boolean
+local function getStudioPreviewEnabled(configSource: any): boolean
 	if typeof(configSource) ~= "table" then
 		return false
 	end
@@ -287,22 +286,23 @@ local function dequeueChunkForStream(sendQueue: ChunkSendQueue): string?
 end
 
 local WorldGenerationServiceServer = {}
+WorldGenerationServiceServer.ServiceName = "WorldGenerationServiceServer"
 
-function WorldGenerationServiceServer.Init(self: WorldGenerationServiceServer)
+function WorldGenerationServiceServer.Init(self: WorldGenerationServiceServer, serviceBag: any)
 	self.maid = Maid.new() :: MaidClass
-	local configSource = GetConfigSource()
+	local configSource = getConfigSource()
 	self.config = WorldGenerationServiceUtils.CoerceConfig(configSource, nil)
-	self.config.seed = GetUntimeSeed(configSource, self.config)
+	self.config.seed = getRuntimeSeed(configSource, self.config)
 	self.world = (WorldGeneration.New :: any)(self.config)
 	self.world:Init()
 	self.latestWorldStats = self.world:GetStats()
 	self:PushSeedToWorldSimulation()
-	self.studioPreviewEnabled = RunService:IsStudio() and GetStudioPreviewEnabled(configSource)
+	self.studioPreviewEnabled = RunService:IsStudio() and getStudioPreviewEnabled(configSource)
 	self.studioPreviewInterestKeys = {}
 	self.studioPreviewActive = false
 	self.worldBootstrapPlayerUserId = nil
 
-	self.binders = NevermoreSupport.GetService(BinderSupportServer)
+	self.binders = serviceBag:GetService(BinderSupportServer)
 	self.chunkBinder = self.binders:Get(TagBinder.Tags.Chunk)
 	self.playerRenderSettings = {}
 	self.playerChunkStreams = {}
@@ -387,7 +387,7 @@ end
 
 function WorldGenerationServiceServer.LoadWorld(self: WorldGenerationServiceServer, worldRaw: any)
 	local worldSource = if typeof(worldRaw) == "table" then worldRaw else {} :: any
-	local configSource = cloneTableShallow(GetConfigSource())
+	local configSource = cloneTableShallow(getConfigSource())
 	for key, value in worldSource do
 		if
 			key == "seed"
@@ -401,7 +401,7 @@ function WorldGenerationServiceServer.LoadWorld(self: WorldGenerationServiceServ
 	end
 
 	local nextConfig = WorldGenerationServiceUtils.CoerceConfig(configSource, nil)
-	nextConfig.seed = GetUntimeSeed(configSource, nextConfig)
+	nextConfig.seed = getRuntimeSeed(configSource, nextConfig)
 
 	self:DisableStudioPreview()
 	self:ResetStreamingState()
@@ -604,6 +604,22 @@ function WorldGenerationServiceServer.MarkPlayerStreamDirty(
 	end
 end
 
+function WorldGenerationServiceServer.QueueChunkSnapshotForInterestedPlayers(
+	self: WorldGenerationServiceServer,
+	chunkKeyRaw: any
+)
+	if typeof(chunkKeyRaw) ~= "string" or chunkKeyRaw == "" then
+		return
+	end
+
+	for _, player in self.world:GetPlayersInterestedInChunk(chunkKeyRaw) do
+		local stream = self:GetOrCreateChunkStream(player)
+		if stream.interestKeys[chunkKeyRaw] == true then
+			enqueueChunkForStream(stream, chunkKeyRaw)
+		end
+	end
+end
+
 function WorldGenerationServiceServer.QueueChunkForInterestedPlayers(
 	self: WorldGenerationServiceServer,
 	chunkKeyRaw: any,
@@ -613,16 +629,10 @@ function WorldGenerationServiceServer.QueueChunkForInterestedPlayers(
 		return
 	end
 
+	self:QueueChunkSnapshotForInterestedPlayers(chunkKeyRaw)
 	local revision = revisionRaw
 	if revision == nil then
 		revision = self.world:GetChunkRevisionByKey(chunkKeyRaw)
-	end
-
-	for _, player in self.world:GetPlayersInterestedInChunk(chunkKeyRaw) do
-		local stream = self:GetOrCreateChunkStream(player)
-		if stream.interestKeys[chunkKeyRaw] == true then
-			enqueueChunkForStream(stream, chunkKeyRaw)
-		end
 	end
 
 	self:EnqueueChunkForWorldSimulation(chunkKeyRaw, revision)
@@ -660,6 +670,13 @@ function WorldGenerationServiceServer.ConnectReactiveWorldObservers(self: WorldG
 			return
 		end
 		self:QueueChunkForInterestedPlayers(event.chunkKey)
+	end))
+
+	observerMaid:GiveTask(self.world:ObserveChunkWallChanged():Subscribe(function(event: ChunkLifecycleEvent)
+		if typeof(event) ~= "table" then
+			return
+		end
+		self:QueueChunkSnapshotForInterestedPlayers(event.chunkKey)
 	end))
 
 	observerMaid:GiveTask(self.world:ObserveChunkCollisionUnloaded():Subscribe(function(event: ChunkLifecycleEvent)
@@ -1054,6 +1071,15 @@ function WorldGenerationServiceServer.SetTileAt(
 		self:EnqueueAffectedWorldSimulationChunkKeysForTile(math.floor(tileXRaw), math.floor(tileYRaw))
 	end
 	return changed, previousTileId, nextTileId
+end
+
+function WorldGenerationServiceServer.SetWallAt(
+	self: WorldGenerationServiceServer,
+	tileXRaw: any,
+	tileYRaw: any,
+	wallIdRaw: any
+): (boolean, number, number)
+	return self.world:SetWallAt(tileXRaw, tileYRaw, wallIdRaw)
 end
 
 function WorldGenerationServiceServer.GetBiomeTypeAt(

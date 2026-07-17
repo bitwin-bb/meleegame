@@ -32,7 +32,7 @@ local e: typeof(React.createElement) = React.createElement
 local TRASH_HOVER_ID = "inventory_trash"
 local DEFAULT_SIZE = UDim2.fromOffset(58, 58)
 
-local function GetEmergeOffset(offsetRaw: any): Vector2
+local function getEmergeOffset(offsetRaw: any): Vector2
 	if typeof(offsetRaw) ~= "Vector2" then
 		return Vector2.zero
 	end
@@ -42,7 +42,7 @@ local function GetEmergeOffset(offsetRaw: any): Vector2
 	return offsetRaw
 end
 
-local function GetTransparency(valueRaw: any): number
+local function getTransparency(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return 0
 	end
@@ -57,7 +57,7 @@ local function playUiTrashSound(soundAssetId: string?)
 	UiSound.play(soundAssetId)
 end
 
-local function GetHoverText(state: TrashState, dragState: ItemDragState): string
+local function getHoverText(state: TrashState, dragState: ItemDragState): string
 	if dragState.active and dragState.stack ~= nil then
 		local slotIndex = if typeof(dragState.sourceSlot) == "number" then dragState.sourceSlot else 0
 		return ("Trash\nDrop to destroy:\n%s"):format(itemThunks.GetHoverTextForStack(dragState.stack, slotIndex))
@@ -89,7 +89,7 @@ return function(props: TrashScreenProps): React.ReactNode
 		end
 		infoThunks.ShowHover({
 			id = TRASH_HOVER_ID,
-			text = GetHoverText(state, dragState),
+			text = getHoverText(state, dragState),
 		})
 	end, { state.updatedAt, state.isHovered, dragState.updatedAt, dragState.active } :: { any })
 
@@ -98,8 +98,8 @@ return function(props: TrashScreenProps): React.ReactNode
 	end
 
 	local zIndex = props.zIndex or 60
-	local emergeOffset = GetEmergeOffset(props.emergeOffset)
-	local emergeTransparency = GetTransparency(props.emergeTransparency)
+	local emergeOffset = getEmergeOffset(props.emergeOffset)
+	local emergeTransparency = getTransparency(props.emergeTransparency)
 	local canTrashDragged = dragState.active and dragState.stack ~= nil and dragState.sourceSlot ~= nil
 	local canInteract = canTrashDragged or state.canTrash
 	local isBrightHover = state.isHovered and canTrashDragged
@@ -122,7 +122,7 @@ return function(props: TrashScreenProps): React.ReactNode
 			trashThunks.Open()
 			infoThunks.ShowHover({
 				id = TRASH_HOVER_ID,
-				text = GetHoverText(state, dragState),
+				text = getHoverText(state, dragState),
 			})
 			playUiTrashSound((UiSound :: any).trashCanOpen)
 		end,

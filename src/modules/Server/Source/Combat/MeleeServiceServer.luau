@@ -3,7 +3,6 @@ local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Players = game:GetService("Players")
-local ServerScriptService = game:GetService("ServerScriptService")
 local Workspace = game:GetService("Workspace")
 
 local BossServiceServer = require("BossServiceServer")
@@ -48,12 +47,11 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSetInputHeld")
 end
 
-local NevermoreSupport = require("NevermoreSupport")
+local BinderSupportServer = require("BinderSupportServer")
 local NpcServiceServer = require("NpcServiceServer")
 local PlayerServiceServer = require("PlayerServiceServer")
 local RagdollServiceServer = require("RagdollServiceServer")
 local RaycastHitbox: any = require("RaycastHitbox")
-local BinderSupportServer = require("BinderSupportServer")
 
 type MeleeWeaponConfig = MeleeServiceUtils.MeleeWeaponConfig
 type InventoryState = InventoryServiceUtils.InventoryState
@@ -133,8 +131,8 @@ type BossServiceServerObject = {
 }
 
 local MeleeServiceServer = {}
+MeleeServiceServer.ServiceName = "MeleeServiceServer"
 
-local HITBOX_CLEANUP_PADDING = 0.03
 local RAYCAST_HITBOX_DEBUG = false
 local DEFAULT_NPC_OVERLAP_QUERY_MAX_PARTS = 64
 
@@ -148,7 +146,7 @@ local function isHumanoidAlive(humanoid: Humanoid?): boolean
 	return humanoid:GetState() ~= Enum.HumanoidStateType.Dead
 end
 
-local function GetHumanoidAndRootPart(character: Model?): (Humanoid?, BasePart?)
+local function getHumanoidAndRootPart(character: Model?): (Humanoid?, BasePart?)
 	if character == nil then
 		return nil, nil
 	end
@@ -159,7 +157,7 @@ local function GetHumanoidAndRootPart(character: Model?): (Humanoid?, BasePart?)
 	return humanoid, rootPart
 end
 
-local function GetToolHandlePart(toolRaw: any): BasePart?
+local function getToolHandlePart(toolRaw: any): BasePart?
 	if typeof(toolRaw) ~= "Instance" or not toolRaw:IsA("Tool") then
 		return nil
 	end
@@ -178,7 +176,7 @@ local function GetToolHandlePart(toolRaw: any): BasePart?
 	return tool:FindFirstChildWhichIsA("BasePart", true)
 end
 
-local function GetCharacterHandPart(character: Model?): BasePart?
+local function getCharacterHandPart(character: Model?): BasePart?
 	if character == nil then
 		return nil
 	end
@@ -193,17 +191,17 @@ local function GetCharacterHandPart(character: Model?): BasePart?
 	return nil
 end
 
-local function GetHitboxAnchorPart(runtime: PlayerRuntime): BasePart?
+local function getHitboxAnchorPart(runtime: PlayerRuntime): BasePart?
 	local character = runtime.character
 	local equippedTool = runtime.equippedTool
 	if equippedTool ~= nil and character ~= nil and equippedTool:IsDescendantOf(character) then
-		local toolPart = GetToolHandlePart(equippedTool)
+		local toolPart = getToolHandlePart(equippedTool)
 		if toolPart ~= nil then
 			return toolPart
 		end
 	end
 
-	local handPart = GetCharacterHandPart(character)
+	local handPart = getCharacterHandPart(character)
 	if handPart ~= nil then
 		return handPart
 	end
@@ -211,17 +209,17 @@ local function GetHitboxAnchorPart(runtime: PlayerRuntime): BasePart?
 	return runtime.rootPart
 end
 
-local function GetNpcOverlapAnchorPart(runtime: PlayerRuntime): BasePart?
+local function getNpcOverlapAnchorPart(runtime: PlayerRuntime): BasePart?
 	if runtime.rootPart ~= nil then
 		return runtime.rootPart
 	end
 
-	local handPart = GetCharacterHandPart(runtime.character)
+	local handPart = getCharacterHandPart(runtime.character)
 	if handPart ~= nil then
 		return handPart
 	end
 
-	return GetHitboxAnchorPart(runtime)
+	return getHitboxAnchorPart(runtime)
 end
 
 local function applyNpcOverlapDamageFallback(player: Player, runtime: PlayerRuntime, weaponConfig: MeleeWeaponConfig)
@@ -237,7 +235,7 @@ local function applyNpcOverlapDamageFallback(player: Player, runtime: PlayerRunt
 		return
 	end
 
-	local anchorPart = GetNpcOverlapAnchorPart(runtime)
+	local anchorPart = getNpcOverlapAnchorPart(runtime)
 	if anchorPart == nil then
 		return
 	end
@@ -402,12 +400,12 @@ local function isWeaponConfigEquivalent(lhsRaw: any, rhsRaw: any): boolean
 	return true
 end
 
-function MeleeServiceServer.Init(self: MeleeServiceServer)
+function MeleeServiceServer.Init(self: MeleeServiceServer, serviceBag: any)
 	bindPackets(self)
 	self.inventoryService = InventoryServiceServer :: any
 	self.ragdollService = RagdollServiceServer :: RagdollServiceServerObject
 	self.playerRuntimes = {}
-	(self :: any).binders = NevermoreSupport.GetService(BinderSupportServer)
+	(self :: any).binders = serviceBag:GetService(BinderSupportServer)
 
 	for _, player in Players:GetPlayers() do
 		if PlayerServiceServer:IsGameplayActiveForPlayer(player) then
@@ -470,7 +468,7 @@ function MeleeServiceServer.EnforceInputAllowed(
 	end
 end
 
-function MeleeServiceServer.CreateRuntime(self: MeleeServiceServer): PlayerRuntime
+function MeleeServiceServer.CreateRuntime(_self: MeleeServiceServer): PlayerRuntime
 	return {
 		playerJanitor = Janitor.new(),
 		characterJanitor = Janitor.new(),
@@ -502,7 +500,7 @@ function MeleeServiceServer.GetRuntime(self: MeleeServiceServer, player: Player)
 	return nextRuntime
 end
 
-function MeleeServiceServer.CancelHitboxCleanupPromise(self: MeleeServiceServer, runtime: PlayerRuntime)
+function MeleeServiceServer.CancelHitboxCleanupPromise(_self: MeleeServiceServer, runtime: PlayerRuntime)
 	local hitboxCleanupPromise = runtime.hitboxCleanupPromise
 	runtime.hitboxCleanupPromise = nil
 	if hitboxCleanupPromise == nil then
@@ -522,7 +520,7 @@ function MeleeServiceServer.StopHitbox(self: MeleeServiceServer, runtime: Player
 	end)
 end
 
-function MeleeServiceServer.ClearHitboxPoints(self: MeleeServiceServer, runtime: PlayerRuntime)
+function MeleeServiceServer.ClearHitboxPoints(_self: MeleeServiceServer, runtime: PlayerRuntime)
 	local hitbox = runtime.hitbox
 	local hitboxPointsPart = runtime.hitboxPointsPart
 	local hitboxPoints = runtime.hitboxPoints
@@ -544,7 +542,7 @@ function MeleeServiceServer.ApplyHitboxPoints(self: MeleeServiceServer, runtime:
 		return
 	end
 
-	local anchorPart = GetHitboxAnchorPart(runtime)
+	local anchorPart = getHitboxAnchorPart(runtime)
 	if anchorPart == nil then
 		self:ClearHitboxPoints(runtime)
 		return
@@ -582,7 +580,7 @@ function MeleeServiceServer.DestroyHitbox(self: MeleeServiceServer, runtime: Pla
 	end
 end
 
-function MeleeServiceServer.DestroyMeleeController(self: MeleeServiceServer, runtime: PlayerRuntime)
+function MeleeServiceServer.DestroyMeleeController(_self: MeleeServiceServer, runtime: PlayerRuntime)
 	local meleeController = runtime.meleeController
 	runtime.meleeController = nil
 	if meleeController == nil then
@@ -594,7 +592,7 @@ function MeleeServiceServer.DestroyMeleeController(self: MeleeServiceServer, run
 end
 
 function MeleeServiceServer.OnHit(
-	self: MeleeServiceServer,
+	_self: MeleeServiceServer,
 	player: Player,
 	runtime: PlayerRuntime,
 	hitPart: BasePart,
@@ -730,7 +728,7 @@ function MeleeServiceServer.BindCharacter(self: MeleeServiceServer, player: Play
 	runtime.characterJanitor:Clean()
 
 	runtime.character = character
-	runtime.humanoid, runtime.rootPart = GetHumanoidAndRootPart(character)
+	runtime.humanoid, runtime.rootPart = getHumanoidAndRootPart(character)
 
 	self:DestroyHitbox(runtime)
 	local hitbox = RaycastHitbox.new(character) :: any
@@ -745,14 +743,14 @@ function MeleeServiceServer.BindCharacter(self: MeleeServiceServer, player: Play
 	hitbox.RaycastParams = params
 
 	runtime.hitboxConnection = hitbox.OnHit:Connect(
-		function(hitPart: BasePart, hitHumanoid: Humanoid?, raycastResult: RaycastResult?, group: string?)
+		function(hitPart: BasePart, hitHumanoid: Humanoid?, _raycastResult: RaycastResult?, _group: string?)
 			self:OnHit(player, runtime, hitPart, hitHumanoid)
 		end
 	)
 
 	runtime.characterJanitor:GiveChore(character.ChildAdded:Connect(function(child: Instance)
 		if child:IsA("Humanoid") or child.Name == "HumanoidRootPart" then
-			runtime.humanoid, runtime.rootPart = GetHumanoidAndRootPart(character)
+			runtime.humanoid, runtime.rootPart = getHumanoidAndRootPart(character)
 			if child:IsA("Humanoid") then
 				runtime.characterJanitor:GiveChore(child.Died:Connect(function()
 					self:EnforceInputAllowed(player, runtime, "HumanoidDied")
@@ -930,8 +928,7 @@ function MeleeServiceServer.RefreshEquippedWeaponFromInventory(
 		weaponConfig = nil
 	elseif weaponConfig ~= nil then
 		local nextWeaponConfig = shallowCopyWeaponConfig(weaponConfig)
-		nextWeaponConfig.animations =
-			MeleeServiceUtils.GetToolAnimationOverrides(selectedTool, weaponConfig.animations)
+		nextWeaponConfig.animations = MeleeServiceUtils.GetToolAnimationOverrides(selectedTool, weaponConfig.animations)
 		weaponConfig = nextWeaponConfig
 	end
 

@@ -1,9 +1,7 @@
-
 local require = require(script.Parent.loader).load(script)
 
-local Animations = require(script.Parent:WaitForChild("Animations"))
-local BuildAnimationMelee =
-	require(script:FindFirstAncestor("game").Shared.Source.Game.Render:WaitForChild("BuildAnimationMelee"))
+local Animations = require("Animations")
+local BuildAnimationMelee = require("BuildAnimationMelee")
 
 local weaponAnimationIds = (((Animations :: any).Items or ({} :: any)).Weapons or ({} :: any)) :: { [string]: any }
 

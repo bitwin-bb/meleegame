@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local HttpService = game:GetService("HttpService")
@@ -15,6 +14,8 @@ local AudioServiceUtils = require("AudioServiceUtils")
 local CameraShaker = require("EZCameraShake")
 local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
+local ServiceBag = require("ServiceBag")
+local String = require("String")
 local WeatherServicePackets = require("NetPacketsShared").WeatherService
 
 local function sendPacket(methodName: string, ...: any)
@@ -56,9 +57,9 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local WeatherServiceUtils = require("WeatherServiceUtils")
 local CrossfadeClient = require("CrossfadeClient")
 local SpaceShared = require("SpaceShared")
+local WeatherServiceUtils = require("WeatherServiceUtils")
 local WorkspaceFolders = require("WorkspaceFolders")
 local WorldGenerationServiceClient = require("WorldGenerationServiceClient")
 
@@ -100,6 +101,12 @@ type RainRuntime = {
 }
 
 local WeatherServiceClient = {}
+WeatherServiceClient.ServiceName = "WeatherServiceClient"
+
+local function createRuntimeInstanceName(): string
+	local guid = String.removePostfix(String.removePrefix(HttpService:GenerateGUID(true), "{"), "}")
+	return string.format("%03d", (tonumber(string.sub(guid, 1, 8), 16) or 0) % 1000)
+end
 
 local RUNTIME_SKY_NAME = "WeatherServiceSky"
 local RUNTIME_ATMOSPHERE_NAME = "WeatherServiceAtmosphere"
@@ -142,7 +149,6 @@ local WEATHER_AUDIO = ((AudioRegistry :: any).Misc or ({} :: any)).Weather or ({
 local WEATHER_RAIN_SOUND_ASSET_ID = AudioServiceUtils.NormalizeSoundAssetId(WEATHER_AUDIO.Rain)
 local WEATHER_THUNDER_SOUND_ASSET_IDS = AudioServiceUtils.CollectSoundAssetIds(WEATHER_AUDIO.Thunder)
 
-local cachedAudioServiceClient = nil
 local cachedWindFoliageServiceClient = nil
 
 local RAIN_ATTACHMENT_OFFSETS = {
@@ -225,7 +231,7 @@ local LIGHTING_PROPERTY_NAMES = {
 	"GeographicLatitude",
 }
 
-local function GetCharacterRootPart(character: Model?): BasePart?
+local function getCharacterRootPart(character: Model?): BasePart?
 	if character == nil then
 		return nil
 	end
@@ -246,7 +252,7 @@ local function isContainerInstance(instance: Instance?): boolean
 	return instance ~= nil and (instance:IsA("Folder") or instance:IsA("Model"))
 end
 
-local function GetWeatherSkyRoot(): Instance?
+local function getWeatherSkyRoot(): Instance?
 	local assets = ReplicatedStorage:FindFirstChild("Assets")
 	if not isContainerInstance(assets) then
 		return nil
@@ -264,7 +270,7 @@ local function GetWeatherSkyRoot(): Instance?
 	return nil
 end
 
-local function GetSkyFolderByKey(skyRoot: Instance?, skyKey: SkyKey): Instance?
+local function getSkyFolderByKey(skyRoot: Instance?, skyKey: SkyKey): Instance?
 	if skyRoot == nil then
 		return nil
 	end
@@ -394,7 +400,7 @@ local function buildTweenGoal(source: Instance, target: Instance, propertyNames:
 	return goal
 end
 
-local function GetCloudFallback(skyKey: SkyKey): (number, number, Color3)
+local function getCloudFallback(skyKey: SkyKey): (number, number, Color3)
 	if skyKey == WeatherServiceUtils.SKY_KEY_CORRUPTION then
 		return 0.64, 0.56, CORRUPTION_CLOUD_COLOR
 	end
@@ -408,22 +414,6 @@ local function GetCloudFallback(skyKey: SkyKey): (number, number, Color3)
 		return 0.02, 0.02, Color3.fromRGB(18, 22, 38)
 	end
 	return 0.34, 0.32, Color3.fromRGB(235, 242, 255)
-end
-
-local function getAudioServiceClient(): any?
-	if cachedAudioServiceClient ~= nil then
-		return cachedAudioServiceClient
-	end
-
-	local ok, moduleOrError = pcall(function()
-		return require("AudioServiceClient")
-	end)
-	if not ok then
-		return nil
-	end
-
-	cachedAudioServiceClient = moduleOrError
-	return cachedAudioServiceClient
 end
 
 local function getWindFoliageServiceClient(): any?
@@ -478,7 +468,7 @@ function WeatherServiceClient.PickRandomThunderSoundAssetId(self: WeatherService
 end
 
 function WeatherServiceClient.UpdateRainAudio(self: WeatherServiceClient)
-	local audioServiceClient = getAudioServiceClient()
+	local audioServiceClient = self.audioServiceClient
 	if audioServiceClient == nil or audioServiceClient.categoryGroups == nil then
 		return
 	end
@@ -870,7 +860,7 @@ function WeatherServiceClient.EnsureTerrainClouds(self: WeatherServiceClient): C
 	end
 
 	local clouds = Instance.new("Clouds")
-	clouds.Name = HttpService:GenerateGUID(false)
+	clouds.Name = createRuntimeInstanceName()
 	clouds.Cover = 0.34
 	clouds.Density = 0.32
 	clouds.Color = Color3.fromRGB(235, 242, 255)
@@ -893,7 +883,7 @@ function WeatherServiceClient.ApplyCloudTargetFromTemplate(
 		nextDensity = WeatherServiceUtils.CoerceNumber(templateClouds.Density, self.cloudTargetDensity, 0, 1)
 		nextColor = templateClouds.Color
 	else
-		nextCover, nextDensity, nextColor = GetCloudFallback(skyKey)
+		nextCover, nextDensity, nextColor = getCloudFallback(skyKey)
 	end
 
 	if skyKey == WeatherServiceUtils.SKY_KEY_CORRUPTION then
@@ -922,7 +912,7 @@ function WeatherServiceClient.GetSkyKeyForLocalPlayer(self: WeatherServiceClient
 		return WeatherServiceUtils.SKY_KEY_OVERWORLD
 	end
 
-	local rootPart = GetCharacterRootPart(character)
+	local rootPart = getCharacterRootPart(character)
 	if rootPart == nil then
 		return WeatherServiceUtils.SKY_KEY_OVERWORLD
 	end
@@ -962,11 +952,11 @@ function WeatherServiceClient.TransitionToSky(self: WeatherServiceClient, skyKey
 	local transitionSeconds =
 		WeatherServiceUtils.CoerceNumber(transitionSecondsRaw, self.state.skyTransitionSeconds, 0, 20)
 
-	local skyRoot = GetWeatherSkyRoot()
-	local skyFolder = GetSkyFolderByKey(skyRoot, skyKey)
+	local skyRoot = getWeatherSkyRoot()
+	local skyFolder = getSkyFolderByKey(skyRoot, skyKey)
 	if skyFolder == nil then
 		self:WarnMissingSkyAsset(skyKey)
-		local fallbackCover, fallbackDensity, fallbackColor = GetCloudFallback(skyKey)
+		local fallbackCover, fallbackDensity, fallbackColor = getCloudFallback(skyKey)
 		self.cloudTargetCover = fallbackCover
 		self.cloudTargetDensity = fallbackDensity
 		self.cloudTargetColor = fallbackColor
@@ -989,7 +979,7 @@ end
 
 function WeatherServiceClient.CreateRainEmitter(_self: WeatherServiceClient, attachment: Attachment): ParticleEmitter
 	local emitter = Instance.new("ParticleEmitter")
-	emitter.Name = HttpService:GenerateGUID(false)
+	emitter.Name = createRuntimeInstanceName()
 	emitter.Enabled = true
 	emitter.Rate = 0
 	emitter.Lifetime = NumberRange.new(0.55, 0.82)
@@ -1073,7 +1063,7 @@ end
 
 function WeatherServiceClient.GetRainFollowPosition(self: WeatherServiceClient): Vector3
 	local character = self.localPlayer.Character
-	local rootPart = GetCharacterRootPart(character)
+	local rootPart = getCharacterRootPart(character)
 	if rootPart ~= nil then
 		return rootPart.Position
 	end
@@ -1204,7 +1194,7 @@ function WeatherServiceClient.TriggerLightningFlash(self: WeatherServiceClient)
 	end
 
 	local thunderSoundAssetId = self:PickRandomThunderSoundAssetId()
-	local audioServiceClient = getAudioServiceClient()
+	local audioServiceClient = self.audioServiceClient
 	if thunderSoundAssetId ~= nil and audioServiceClient ~= nil and audioServiceClient.categoryGroups ~= nil then
 		audioServiceClient:PlaySfx(thunderSoundAssetId, {
 			volume = 0.65 + intensity * 0.35,
@@ -1304,7 +1294,7 @@ function WeatherServiceClient.CleanupVisualRuntime(self: WeatherServiceClient)
 		self:DestroyRainRuntime()
 	end
 	CrossfadeClient:Cleanup()
-	local audioServiceClient = getAudioServiceClient()
+	local audioServiceClient = self.audioServiceClient
 	if audioServiceClient ~= nil and audioServiceClient.categoryGroups ~= nil then
 		audioServiceClient:StopChannel(WEATHER_RAIN_CHANNEL_NAME, 0)
 	end
@@ -1332,7 +1322,15 @@ function WeatherServiceClient.CleanupVisualRuntime(self: WeatherServiceClient)
 	end
 end
 
-function WeatherServiceClient.Init(self: WeatherServiceClient)
+function WeatherServiceClient.Init(
+	self: WeatherServiceClient,
+	serviceBag: ServiceBag.ServiceBag?,
+	audioServiceClient: any
+)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
+	self.audioServiceClient = assert(audioServiceClient, "AudioServiceClient dependency is unavailable")
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
@@ -1363,7 +1361,7 @@ function WeatherServiceClient.Init(self: WeatherServiceClient)
 	self.weatherWindUpdateAccumulator = WEATHER_WIND_UPDATE_INTERVAL
 	self.lastWeatherWindStormAlpha = nil :: number?
 	self.lastWeatherWindIsThunderstorm = nil :: boolean?
-	local fallbackCover, fallbackDensity, fallbackColor = GetCloudFallback(WeatherServiceUtils.SKY_KEY_OVERWORLD)
+	local fallbackCover, fallbackDensity, fallbackColor = getCloudFallback(WeatherServiceUtils.SKY_KEY_OVERWORLD)
 	self.cloudTargetCover = fallbackCover
 	self.cloudTargetDensity = fallbackDensity
 	self.cloudTargetColor = fallbackColor
@@ -1397,8 +1395,12 @@ function WeatherServiceClient.Destroy(self: WeatherServiceClient)
 	if self.janitor ~= nil then
 		self.janitor:Destroy()
 	end
+	self.audioServiceClient = nil
+	self._serviceBag = nil
 end
 type WeatherServiceClient = typeof(WeatherServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
+	audioServiceClient: any?,
 	localPlayer: Player,
 	janitor: JanitorClass,
 	random: Random,

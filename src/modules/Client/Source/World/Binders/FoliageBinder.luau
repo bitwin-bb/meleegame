@@ -6,39 +6,32 @@ local FoliageBinder = {}
 FoliageBinder.__index = FoliageBinder
 setmetatable(FoliageBinder, ModelBinder)
 
-local windFoliageServiceClient = nil
-
-local function getWindFoliageServiceClient()
-	if windFoliageServiceClient == nil then
-		windFoliageServiceClient = require("WindFoliageServiceClient")
-	end
-	return windFoliageServiceClient
-end
-
-function FoliageBinder.new(instance: Instance, context: any)
+function FoliageBinder.new(instance: Instance, context: ModelBinder.BinderContext)
 	local self = ModelBinder.new(instance, context, FoliageBinder)
+	self.windFoliageServiceClient =
+		assert(self:GetDependencies().WindFoliageServiceClient, "WindFoliageServiceClient dependency is unavailable")
 	self.isRegistered = false
 
-	self:refresh()
+	self:Refresh()
 	self:ObserveAttribute("WindFoliageEnabled", function()
-		self:refresh()
+		self:Refresh()
 	end)
 
 	return self
 end
 
-function FoliageBinder.refresh(self: any)
+function FoliageBinder.Refresh(self: any)
 	local enabled = self.instance:GetAttribute("WindFoliageEnabled") ~= false
 	self.instance:SetAttribute("FoliageTagged", true)
 
 	if enabled and not self.isRegistered then
 		local ok, registeredEntry = pcall(function()
-			return getWindFoliageServiceClient():RegisterFoliage(self.instance)
+			return self.windFoliageServiceClient:RegisterFoliage(self.instance)
 		end)
 		self.isRegistered = ok and registeredEntry ~= nil
 	elseif not enabled and self.isRegistered then
 		pcall(function()
-			getWindFoliageServiceClient():UnregisterFoliage(self.instance)
+			self.windFoliageServiceClient:UnregisterFoliage(self.instance)
 		end)
 		self.isRegistered = false
 	end
@@ -47,7 +40,7 @@ end
 function FoliageBinder.Cleanup(self: any)
 	if self.isRegistered then
 		pcall(function()
-			getWindFoliageServiceClient():UnregisterFoliage(self.instance)
+			self.windFoliageServiceClient:UnregisterFoliage(self.instance)
 		end)
 	end
 end

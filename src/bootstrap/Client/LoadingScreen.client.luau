@@ -11,10 +11,10 @@ end)
 local PACKAGES_NAME = "Packages"
 local REACT_NAME = "React"
 local REACT_ROBLOX_NAME = "ReactRoblox"
-local BRIDGE_NAME = "AquarialoaderBridge"
+local BRIDGE_NAME = "AquariaLoaderBridge"
 local STATE_CHANGED_NAME = "StateChanged"
 local GET_SNAPSHOT_NAME = "GetSnapshot"
-local SCREEN_GUI_NAME = "AquarialoaderGui"
+local SCREEN_GUI_NAME = "AquariaLoaderGui"
 local SPAWN_READY_REMOTE_NAME = "AquariaLoadingScreenReady"
 local PACKAGE_WAIT_TIMEOUT_SECONDS = 60
 local BRIDGE_WAIT_TIMEOUT_SECONDS = 60
@@ -35,12 +35,12 @@ local function waitForPackageModule(name: string): ModuleScript
 	return module
 end
 
-local loaderGui = require(script.Parent.Parent.UI.Components.LoaderGui)
+local LoaderGui = require(script.Parent.Parent.UI.Components.LoaderGui)
 local React = (require :: any)(waitForPackageModule(REACT_NAME))
 local ReactRoblox = (require :: any)(waitForPackageModule(REACT_ROBLOX_NAME))
 local e: typeof(React.createElement) = React.createElement
 
-type loaderSnapshot = {
+type LoaderSnapshot = {
 	status: string,
 	stage: string,
 	message: string,
@@ -59,10 +59,10 @@ type loaderSnapshot = {
 }
 
 type LoadingScreenAppProps = {
-	onFinished: (loaderSnapshot) -> (),
+	onFinished: (LoaderSnapshot) -> (),
 }
 
-local DEFAULT_SNAPSHOT: loaderSnapshot = {
+local DEFAULT_SNAPSHOT: LoaderSnapshot = {
 	status = "idle",
 	stage = "boot",
 	message = "starting loader",
@@ -80,7 +80,7 @@ local DEFAULT_SNAPSHOT: loaderSnapshot = {
 	failures = {},
 }
 
-local function CoerceNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
 	end
@@ -95,14 +95,14 @@ local function CoerceNumber(value: any, fallback: number, minimum: number?, maxi
 	return nextValue
 end
 
-local function CoerceString(value: any, fallback: string): string
+local function coerceString(value: any, fallback: string): string
 	if typeof(value) == "string" and value ~= "" then
 		return value
 	end
 	return fallback
 end
 
-local function CoerceStringArray(valueRaw: any): { string }
+local function coerceStringArray(valueRaw: any): { string }
 	local values: { string } = {}
 	if typeof(valueRaw) ~= "table" then
 		return values
@@ -117,29 +117,29 @@ local function CoerceStringArray(valueRaw: any): { string }
 	return values
 end
 
-local function CoerceSnapshot(valueRaw: any): loaderSnapshot
+local function coerceSnapshot(valueRaw: any): LoaderSnapshot
 	local value: { [string]: any } = if typeof(valueRaw) == "table" then valueRaw :: { [string]: any } else {} :: any
 
 	return {
-		status = CoerceString(value.status, DEFAULT_SNAPSHOT.status),
-		stage = CoerceString(value.stage, DEFAULT_SNAPSHOT.stage),
-		message = CoerceString(value.message, DEFAULT_SNAPSHOT.message),
-		progress = CoerceNumber(value.progress, DEFAULT_SNAPSHOT.progress, 0, 1),
-		completed = CoerceNumber(value.completed, DEFAULT_SNAPSHOT.completed, 0, nil),
-		total = CoerceNumber(value.total, DEFAULT_SNAPSHOT.total, 1, nil),
-		startedAt = CoerceNumber(value.startedAt, DEFAULT_SNAPSHOT.startedAt, 0, nil),
+		status = coerceString(value.status, DEFAULT_SNAPSHOT.status),
+		stage = coerceString(value.stage, DEFAULT_SNAPSHOT.stage),
+		message = coerceString(value.message, DEFAULT_SNAPSHOT.message),
+		progress = coerceNumber(value.progress, DEFAULT_SNAPSHOT.progress, 0, 1),
+		completed = coerceNumber(value.completed, DEFAULT_SNAPSHOT.completed, 0, nil),
+		total = coerceNumber(value.total, DEFAULT_SNAPSHOT.total, 1, nil),
+		startedAt = coerceNumber(value.startedAt, DEFAULT_SNAPSHOT.startedAt, 0, nil),
 		finishedAt = if typeof(value.finishedAt) == "number" then value.finishedAt else nil,
-		moduleCount = CoerceNumber(value.moduleCount, DEFAULT_SNAPSHOT.moduleCount, 0, nil),
-		assetCount = CoerceNumber(value.assetCount, DEFAULT_SNAPSHOT.assetCount, 0, nil),
-		assetLoadedCount = CoerceNumber(value.assetLoadedCount, DEFAULT_SNAPSHOT.assetLoadedCount, 0, nil),
-		assetFailedCount = CoerceNumber(value.assetFailedCount, DEFAULT_SNAPSHOT.assetFailedCount, 0, nil),
-		failureCount = CoerceNumber(value.failureCount, DEFAULT_SNAPSHOT.failureCount, 0, nil),
+		moduleCount = coerceNumber(value.moduleCount, DEFAULT_SNAPSHOT.moduleCount, 0, nil),
+		assetCount = coerceNumber(value.assetCount, DEFAULT_SNAPSHOT.assetCount, 0, nil),
+		assetLoadedCount = coerceNumber(value.assetLoadedCount, DEFAULT_SNAPSHOT.assetLoadedCount, 0, nil),
+		assetFailedCount = coerceNumber(value.assetFailedCount, DEFAULT_SNAPSHOT.assetFailedCount, 0, nil),
+		failureCount = coerceNumber(value.failureCount, DEFAULT_SNAPSHOT.failureCount, 0, nil),
 		lastError = if typeof(value.lastError) == "string" and value.lastError ~= "" then value.lastError else nil,
-		failures = CoerceStringArray(value.failures),
+		failures = coerceStringArray(value.failures),
 	}
 end
 
-local function isTerminalSnapshot(snapshot: loaderSnapshot): boolean
+local function isTerminalSnapshot(snapshot: LoaderSnapshot): boolean
 	return snapshot.status == "complete" or snapshot.status == "failed"
 end
 
@@ -151,29 +151,29 @@ local function findBridge(): Folder?
 	return nil
 end
 
-local function readAttributeSnapshot(): loaderSnapshot
+local function readAttributeSnapshot(): LoaderSnapshot
 	local bridge = findBridge()
 	local source = if bridge ~= nil then bridge else ReplicatedFirst
 
-	return CoerceSnapshot({
-		status = source:GetAttribute("AquarialoaderStatus"),
-		stage = source:GetAttribute("AquarialoaderStage"),
-		message = source:GetAttribute("AquarialoaderMessage"),
-		progress = source:GetAttribute("AquarialoaderProgress"),
-		completed = source:GetAttribute("AquarialoaderCompleted"),
-		total = source:GetAttribute("AquarialoaderTotal"),
-		startedAt = source:GetAttribute("AquarialoaderStartedAt"),
-		finishedAt = source:GetAttribute("AquarialoaderFinishedAt"),
-		moduleCount = source:GetAttribute("AquarialoaderModuleCount"),
-		assetCount = source:GetAttribute("AquarialoaderAssetCount"),
-		assetLoadedCount = source:GetAttribute("AquarialoaderAssetLoadedCount"),
-		assetFailedCount = source:GetAttribute("AquarialoaderAssetFailedCount"),
-		failureCount = source:GetAttribute("AquarialoaderFailureCount"),
-		lastError = source:GetAttribute("AquarialoaderLastError"),
+	return coerceSnapshot({
+		status = source:GetAttribute("AquariaLoaderStatus"),
+		stage = source:GetAttribute("AquariaLoaderStage"),
+		message = source:GetAttribute("AquariaLoaderMessage"),
+		progress = source:GetAttribute("AquariaLoaderProgress"),
+		completed = source:GetAttribute("AquariaLoaderCompleted"),
+		total = source:GetAttribute("AquariaLoaderTotal"),
+		startedAt = source:GetAttribute("AquariaLoaderStartedAt"),
+		finishedAt = source:GetAttribute("AquariaLoaderFinishedAt"),
+		moduleCount = source:GetAttribute("AquariaLoaderModuleCount"),
+		assetCount = source:GetAttribute("AquariaLoaderAssetCount"),
+		assetLoadedCount = source:GetAttribute("AquariaLoaderAssetLoadedCount"),
+		assetFailedCount = source:GetAttribute("AquariaLoaderAssetFailedCount"),
+		failureCount = source:GetAttribute("AquariaLoaderFailureCount"),
+		lastError = source:GetAttribute("AquariaLoaderLastError"),
 	})
 end
 
-local function readBridgeSnapshot(): loaderSnapshot
+local function readBridgeSnapshot(): LoaderSnapshot
 	local bridge = findBridge()
 	if bridge == nil then
 		return readAttributeSnapshot()
@@ -188,13 +188,13 @@ local function readBridgeSnapshot(): loaderSnapshot
 		return getSnapshot:Invoke()
 	end)
 	if ok then
-		return CoerceSnapshot(result)
+		return coerceSnapshot(result)
 	end
 
 	return readAttributeSnapshot()
 end
 
-local function subscribeToSnapshots(onSnapshot: (loaderSnapshot) -> ()): () -> ()
+local function subscribeToSnapshots(onSnapshot: (LoaderSnapshot) -> ()): () -> ()
 	local cancelled = false
 	local connection = nil :: RBXScriptConnection?
 
@@ -218,7 +218,7 @@ local function subscribeToSnapshots(onSnapshot: (loaderSnapshot) -> ()): () -> (
 
 		onSnapshot(readBridgeSnapshot())
 		connection = changed.Event:Connect(function(snapshotRaw: any)
-			onSnapshot(CoerceSnapshot(snapshotRaw))
+			onSnapshot(coerceSnapshot(snapshotRaw))
 		end)
 	end)
 
@@ -258,7 +258,7 @@ local function ensureScreenGui(): ScreenGui
 	return screenGui
 end
 
-local function fireSpawnReady(snapshot: loaderSnapshot): boolean
+local function fireSpawnReady(snapshot: LoaderSnapshot): boolean
 	local deadline = os.clock() + SPAWN_READY_WAIT_TIMEOUT_SECONDS
 	while os.clock() < deadline do
 		local remote = ReplicatedStorage:FindFirstChild(SPAWN_READY_REMOTE_NAME)
@@ -274,7 +274,7 @@ local function fireSpawnReady(snapshot: loaderSnapshot): boolean
 end
 
 local function LoadingScreenApp(props: LoadingScreenAppProps): any
-	local snapshot, setSnapshot = React.useState(function(): loaderSnapshot
+	local snapshot, setSnapshot = React.useState(function(): LoaderSnapshot
 		return readBridgeSnapshot()
 	end)
 	local finishedRef = React.useRef(false)
@@ -292,7 +292,7 @@ local function LoadingScreenApp(props: LoadingScreenAppProps): any
 		props.onFinished(snapshot)
 	end, { snapshot.status })
 
-	return e(loaderGui, {
+	return e(LoaderGui, {
 		snapshot = snapshot,
 	})
 end
@@ -314,7 +314,7 @@ local function destroy()
 	end
 end
 
-local function onFinished(snapshot: loaderSnapshot)
+local function onFinished(snapshot: LoaderSnapshot)
 	if spawnReadyStarted then
 		return
 	end

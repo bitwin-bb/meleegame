@@ -30,7 +30,7 @@ local HEALTH_BAR_SPRING = {
 	damping = 1,
 }
 
-local function GetHealthColor(hpPercent: number): Color3
+local function getHealthColor(hpPercent: number): Color3
 	local clamped = math.clamp(hpPercent, 0, 1)
 	if clamped <= 0.5 then
 		return LOW_HEALTH_COLOR:Lerp(MID_HEALTH_COLOR, clamped / 0.5)
@@ -73,7 +73,7 @@ return function(props: EntityInfoScreenProps): React.ReactNode
 	)
 
 	local healthColor = healthSpring.binding:map(function(value: number)
-		return GetHealthColor(value)
+		return getHealthColor(value)
 	end)
 
 	if

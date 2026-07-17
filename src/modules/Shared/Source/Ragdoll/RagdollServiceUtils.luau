@@ -4,10 +4,16 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local HttpService = game:GetService("HttpService")
 local Sift: any = require(ReplicatedStorage.Packages.Sift)
+local String = require("String")
 
 local Workspace = game:GetService("Workspace")
 
 local RagdollServiceUtils = {}
+
+local function createRuntimeInstanceName(): string
+	local guid = String.removePostfix(String.removePrefix(HttpService:GenerateGUID(true), "{"), "}")
+	return string.format("%03d", (tonumber(string.sub(guid, 1, 8), 16) or 0) % 1000)
+end
 
 export type CharacterRig = {
 	character: Model,
@@ -218,7 +224,7 @@ local IGNORED_MOTOR_NAMES: { [string]: boolean } = {
 	LeftGrip = true,
 }
 
-local function CoerceNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(value: any, fallback: number, minimum: number?, maximum: number?): number
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
 	end
@@ -233,7 +239,7 @@ local function CoerceNumber(value: any, fallback: number, minimum: number?, maxi
 	return nextValue
 end
 
-local function CoerceOptionalTimestamp(value: any): number?
+local function coerceOptionalTimestamp(value: any): number?
 	if typeof(value) ~= "number" or value ~= value then
 		return nil
 	end
@@ -250,7 +256,7 @@ local function getNow(): number
 	return os.clock()
 end
 
-local function GetJointConfig(motorName: string): JointConstraintConfig
+local function getJointConfig(motorName: string): JointConstraintConfig
 	local aliasName = JOINT_ALIASES[motorName]
 	local GotName = if aliasName ~= nil then aliasName else motorName
 	local config = JOINT_CONFIGS[GotName]
@@ -377,8 +383,8 @@ local function restoreHumanoidState(humanoid: Humanoid, snapshot: HumanoidSnapsh
 	end
 end
 
-local function CoercePlaneX(valueRaw: any, fallback: number): number
-	return CoerceNumber(valueRaw, fallback, -MAX_ABS_PLANE_X, MAX_ABS_PLANE_X)
+local function coercePlaneX(valueRaw: any, fallback: number): number
+	return coerceNumber(valueRaw, fallback, -MAX_ABS_PLANE_X, MAX_ABS_PLANE_X)
 end
 
 local function createConstraintsForMotor(motor: Motor6D, runtimeFolder: Folder, createdInstances: { Instance })
@@ -389,19 +395,19 @@ local function createConstraintsForMotor(motor: Motor6D, runtimeFolder: Folder, 
 	end
 
 	local attachment0 = Instance.new("Attachment")
-	attachment0.Name = HttpService:GenerateGUID(false)
+	attachment0.Name = createRuntimeInstanceName()
 	attachment0.CFrame = motor.C0
 	attachment0.Parent = part0
 
 	local attachment1 = Instance.new("Attachment")
-	attachment1.Name = HttpService:GenerateGUID(false)
+	attachment1.Name = createRuntimeInstanceName()
 	attachment1.CFrame = motor.C1
 	attachment1.Parent = part1
 
-	local config = GetJointConfig(motor.Name)
+	local config = getJointConfig(motor.Name)
 
 	local ballSocket = Instance.new("BallSocketConstraint")
-	ballSocket.Name = HttpService:GenerateGUID(false)
+	ballSocket.Name = createRuntimeInstanceName()
 	ballSocket.Attachment0 = attachment0
 	ballSocket.Attachment1 = attachment1
 	ballSocket.LimitsEnabled = true
@@ -414,7 +420,7 @@ local function createConstraintsForMotor(motor: Motor6D, runtimeFolder: Folder, 
 	ballSocket.Parent = runtimeFolder
 
 	local noCollision = Instance.new("NoCollisionConstraint")
-	noCollision.Name = HttpService:GenerateGUID(false)
+	noCollision.Name = createRuntimeInstanceName()
 	noCollision.Part0 = part0
 	noCollision.Part1 = part1
 	noCollision.Parent = runtimeFolder
@@ -478,9 +484,9 @@ function RagdollServiceUtils.CreateState(
 ): RagdollServiceState
 	local isRagdolled = isRagdolledRaw == true
 	local fallbackStartedAt = if fallback then fallback.startedAt else getNow()
-	local startedAt = CoerceNumber(startedAtRaw, fallbackStartedAt, 0, nil)
+	local startedAt = coerceNumber(startedAtRaw, fallbackStartedAt, 0, nil)
 	local fallbackSequence = if fallback then fallback.sequence else DEFAULT_STATE_SEQUENCE
-	local sequence = CoerceNumber(sequenceRaw, fallbackSequence, DEFAULT_STATE_SEQUENCE, nil)
+	local sequence = coerceNumber(sequenceRaw, fallbackSequence, DEFAULT_STATE_SEQUENCE, nil)
 
 	local reasonFallback = if fallback then fallback.reason else DEFAULT_REASON
 	local reason = RagdollServiceUtils.CoerceReason(reasonRaw, reasonFallback)
@@ -488,7 +494,7 @@ function RagdollServiceUtils.CreateState(
 
 	local scheduledRecoveryAt: number? = nil
 	if isRagdolled and canRecover then
-		local parsedRecoveryAt = CoerceOptionalTimestamp(scheduledRecoveryAtRaw)
+		local parsedRecoveryAt = coerceOptionalTimestamp(scheduledRecoveryAtRaw)
 		if parsedRecoveryAt ~= nil and parsedRecoveryAt > startedAt then
 			scheduledRecoveryAt = parsedRecoveryAt
 		end
@@ -655,7 +661,7 @@ function RagdollServiceUtils.EnforceRagdoll2DPlane(context: RagdollContext, plan
 		return
 	end
 
-	local planeX = CoercePlaneX(planeXRaw, rootPart.Position.X)
+	local planeX = coercePlaneX(planeXRaw, rootPart.Position.X)
 
 	for _, snapshot in context.partSnapshots do
 		local part = snapshot.part

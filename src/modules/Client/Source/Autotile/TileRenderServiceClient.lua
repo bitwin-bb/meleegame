@@ -54,11 +54,13 @@ function TileRenderServiceClient.new(optionsRaw: any?): any
 	}, TileRenderServiceClient)
 
 	self._maid:GiveTask(self._queueChanged)
-	self._maid:GiveTask(Rx.fromSignal(self._queueChanged):Pipe({
-		Rx.throttleDefer(),
-	}):Subscribe(function()
-		self._flushRequested = true
-	end))
+	self._maid:GiveTask(Rx.fromSignal(self._queueChanged)
+		:Pipe({
+			Rx.throttleDefer(),
+		})
+		:Subscribe(function()
+			self._flushRequested = true
+		end))
 	self._maid:GiveTask(Rx.fromSignal(RunService.Heartbeat):Subscribe(function()
 		self:Flush()
 	end))
@@ -165,6 +167,32 @@ function TileRenderServiceClient.QueueChunkBoundary(self: any, chunkKeyRaw: any,
 		end
 	end
 
+	if queuedCount > 0 then
+		self._queueChanged:Fire()
+	end
+	return queuedCount
+end
+
+function TileRenderServiceClient.QueueChunk(self: any, chunkKeyRaw: any, chunkSizeRaw: any): number
+	if self._tileUpdateQueue == nil then
+		return 0
+	end
+
+	local chunkX, chunkY = BuildServiceUtils.UnpackChunkKey(chunkKeyRaw)
+	if chunkX == nil or chunkY == nil then
+		return 0
+	end
+	local chunkSize = if isFiniteNumber(chunkSizeRaw) then math.max(1, math.floor(chunkSizeRaw :: number)) else 32
+	local minTileX = chunkX * chunkSize
+	local minTileY = chunkY * chunkSize
+	local queuedCount = 0
+	for tileY = minTileY, minTileY + chunkSize - 1 do
+		for tileX = minTileX, minTileX + chunkSize - 1 do
+			if self:_queueTileUpdate(tileX, tileY) then
+				queuedCount += 1
+			end
+		end
+	end
 	if queuedCount > 0 then
 		self._queueChanged:Fire()
 	end

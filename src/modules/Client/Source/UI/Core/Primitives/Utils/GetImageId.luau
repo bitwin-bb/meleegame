@@ -34,7 +34,7 @@ local function normalizeImageId(valueRaw: any): string?
 	return value
 end
 
-local function GetImageId(valueRaw: any, _fallbackRaw: any?): string
+local function getImageId(valueRaw: any, _fallbackRaw: any?): string
 	local imageId = normalizeImageId(valueRaw)
 	if imageId == nil then
 		error(MISSING_ASSET_ERROR, 0)
@@ -42,4 +42,4 @@ local function GetImageId(valueRaw: any, _fallbackRaw: any?): string
 	return imageId
 end
 
-return GetImageId
+return getImageId

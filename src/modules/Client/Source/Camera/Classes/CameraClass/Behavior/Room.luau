@@ -33,7 +33,7 @@ export type Room = typeof(setmetatable(
 local DEFAULT_CONFIG = RoomScaleFactor.CoerceConfig(((Configs.cameraData :: any).room or ({} :: any)) :: RoomConfig)
 local AIR_TILE_ID = BuildServiceUtils.AIR_TILE_ID
 
-local function GetWorldSpace(): (Vector3?, number?)
+local function getWorldSpace(): (Vector3?, number?)
 	local worldGenerationClient = WorldGenerationServiceClient :: any
 	local worldGenerationState = worldGenerationClient.state
 	local tileSize = if typeof(worldGenerationState) == "table"
@@ -131,7 +131,7 @@ local function isSolidTile(tileX: number, tileY: number): boolean
 	return BuildServiceUtils.IsSolidTile(getTileAt(tileX, tileY))
 end
 
-local function GetOriginTile(tileX: number, tileY: number): (number, number)
+local function getOriginTile(tileX: number, tileY: number): (number, number)
 	for _, offsetY in { 0, 1, -1, 2, -2 } do
 		local candidateTileY = tileY + offsetY
 		if not isSolidTile(tileX, candidateTileY) then
@@ -141,7 +141,7 @@ local function GetOriginTile(tileX: number, tileY: number): (number, number)
 	return tileX, tileY
 end
 
-local function GetBoundaryDistance(
+local function getBoundaryDistance(
 	tileX: number,
 	tileY: number,
 	stepX: number,
@@ -184,14 +184,14 @@ function Room.SampleScale(self: Room, worldPosition: Vector3): RoomScaleResult
 		return self.cachedScaleResult
 	end
 
-	local worldOrigin, tileSize = GetWorldSpace()
+	local worldOrigin, tileSize = getWorldSpace()
 	if worldOrigin == nil or tileSize == nil then
 		self.cachedScaleResult = RoomScaleFactor.CreateDefaultResult()
 		return self.cachedScaleResult
 	end
 
 	local tileX, tileY = BuildServiceUtils.WorldPositionToTile(worldPosition, worldOrigin, tileSize)
-	tileX, tileY = GetOriginTile(tileX, tileY)
+	tileX, tileY = getOriginTile(tileX, tileY)
 
 	local now = os.clock()
 	local sampleInterval = self.config.sampleIntervalSeconds :: number
@@ -208,10 +208,10 @@ function Room.SampleScale(self: Room, worldPosition: Vector3): RoomScaleResult
 
 	local horizontalScanRadius = math.max(1, math.floor(self.config.horizontalScanRadiusTiles :: number))
 	local verticalScanRadius = math.max(1, math.floor(self.config.verticalScanRadiusTiles :: number))
-	local leftDistance = GetBoundaryDistance(tileX, tileY, -1, 0, horizontalScanRadius)
-	local rightDistance = GetBoundaryDistance(tileX, tileY, 1, 0, horizontalScanRadius)
-	local upDistance = GetBoundaryDistance(tileX, tileY, 0, 1, verticalScanRadius)
-	local downDistance = GetBoundaryDistance(tileX, tileY, 0, -1, verticalScanRadius)
+	local leftDistance = getBoundaryDistance(tileX, tileY, -1, 0, horizontalScanRadius)
+	local rightDistance = getBoundaryDistance(tileX, tileY, 1, 0, horizontalScanRadius)
+	local upDistance = getBoundaryDistance(tileX, tileY, 0, 1, verticalScanRadius)
+	local downDistance = getBoundaryDistance(tileX, tileY, 0, -1, verticalScanRadius)
 	local isEnclosed = leftDistance ~= nil and rightDistance ~= nil and upDistance ~= nil and downDistance ~= nil
 	local widthTiles = if isEnclosed then math.max(1, (leftDistance :: number) + (rightDistance :: number) - 1) else 0
 	local heightTiles = if isEnclosed then math.max(1, (upDistance :: number) + (downDistance :: number) - 1) else 0

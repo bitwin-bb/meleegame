@@ -59,8 +59,9 @@ type WeatherServiceConfig = WeatherServiceUtils.WeatherServiceConfig
 type WeatherServiceState = WeatherServiceUtils.WeatherServiceState
 
 local WeatherServiceServer = {}
+WeatherServiceServer.ServiceName = "WeatherServiceServer"
 
-local function CoerceDeltaTime(dtRaw: any): number
+local function coerceDeltaTime(dtRaw: any): number
 	return WeatherServiceUtils.CoerceNumber(dtRaw, 0, 0, 1)
 end
 
@@ -199,7 +200,7 @@ function WeatherServiceServer.StepWeatherCycle(self: WeatherServiceServer, dt: n
 end
 
 function WeatherServiceServer.OnHeartbeat(self: WeatherServiceServer, dtRaw: any)
-	local dt = CoerceDeltaTime(dtRaw)
+	local dt = coerceDeltaTime(dtRaw)
 	if dt <= 0 then
 		return
 	end
@@ -229,7 +230,7 @@ function WeatherServiceServer.GetState(self: WeatherServiceServer): WeatherServi
 	return WeatherServiceUtils.CloneState(self.state)
 end
 
-function WeatherServiceServer.Init(self: WeatherServiceServer)
+function WeatherServiceServer.Init(self: WeatherServiceServer, _serviceBag: any?)
 	local configSource = if typeof(Configs) == "table" then (Configs :: any).weather else nil
 	self.config = WeatherServiceUtils.GetConfig(configSource, nil)
 	self.state = WeatherServiceUtils.CreateStateFromConfig(self.config)

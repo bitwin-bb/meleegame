@@ -58,7 +58,7 @@ local function clampNumber(value: any, min: number, max: number, fallback: numbe
 	return math.clamp(value, min, max)
 end
 
-local function GetConfiguredNumber(
+local function getConfiguredNumber(
 	source: any,
 	primaryKey: string,
 	legacyKey: string?,
@@ -75,7 +75,7 @@ local function GetConfiguredNumber(
 	return clampNumber(value, min, max, fallback)
 end
 
-local function CoerceConfig(config: any, fallbackConfig: CatchUpPlayerConfig?): CatchUpPlayerConfig
+local function coerceConfig(config: any, fallbackConfig: CatchUpPlayerConfig?): CatchUpPlayerConfig
 	local source = if typeof(config) == "table" then config else {} :: any
 	local fallback = if typeof(fallbackConfig) == "table" then fallbackConfig else {} :: any
 
@@ -90,21 +90,21 @@ local function CoerceConfig(config: any, fallbackConfig: CatchUpPlayerConfig?): 
 		10,
 		clampNumber((fallback :: any).accelerationSeconds, 0.05, 10, 0.9)
 	)
-	local minFrequencyDivisor = GetConfiguredNumber(
+	local minFrequencyDivisor = getConfiguredNumber(
 		source,
 		"minFrequencyDivisor",
 		"minFrequencyMultiplier",
 		1,
 		50,
-		GetConfiguredNumber(fallback, "minFrequencyDivisor", "minFrequencyMultiplier", 1, 50, 2.2)
+		getConfiguredNumber(fallback, "minFrequencyDivisor", "minFrequencyMultiplier", 1, 50, 2.2)
 	)
-	local maxFrequencyDivisor = GetConfiguredNumber(
+	local maxFrequencyDivisor = getConfiguredNumber(
 		source,
 		"maxFrequencyDivisor",
 		"maxFrequencyMultiplier",
 		minFrequencyDivisor,
 		50,
-		GetConfiguredNumber(fallback, "maxFrequencyDivisor", "maxFrequencyMultiplier", minFrequencyDivisor, 50, 6)
+		getConfiguredNumber(fallback, "maxFrequencyDivisor", "maxFrequencyMultiplier", minFrequencyDivisor, 50, 6)
 	)
 
 	return {
@@ -126,7 +126,7 @@ local function cloneSpringOptions(baseSpring: SpringOptions): SpringOptions
 	return clone
 end
 
-local function GetBaseFrequency(baseSpring: SpringOptions): number?
+local function getBaseFrequency(baseSpring: SpringOptions): number?
 	local frequency = baseSpring.frequency
 	if typeof(frequency) ~= "number" then
 		return nil
@@ -139,7 +139,7 @@ local function GetBaseFrequency(baseSpring: SpringOptions): number?
 end
 
 function CatchUpPlayer.New(config: CatchUpPlayerConfig?): CatchUpPlayer
-	local GotConfig = CoerceConfig(config, DEFAULT_CONFIG)
+	local GotConfig = coerceConfig(config, DEFAULT_CONFIG)
 
 	return setmetatable({
 		enabled = GotConfig.enabled == true,
@@ -167,7 +167,7 @@ function CatchUpPlayer.ApplyConfig(self: CatchUpPlayer, config: CatchUpPlayerCon
 		minFrequencyDivisor = self.minFrequencyDivisor,
 		maxFrequencyDivisor = self.maxFrequencyDivisor,
 	}
-	local GotConfig = CoerceConfig(config, currentConfig)
+	local GotConfig = coerceConfig(config, currentConfig)
 
 	self.enabled = GotConfig.enabled == true
 	self.startDistance = GotConfig.startDistance :: number
@@ -190,7 +190,7 @@ function CatchUpPlayer.GetSpring(
 		return baseSpring
 	end
 
-	local baseFrequency = GetBaseFrequency(baseSpring)
+	local baseFrequency = getBaseFrequency(baseSpring)
 	if not baseFrequency then
 		self:Reset()
 		return baseSpring

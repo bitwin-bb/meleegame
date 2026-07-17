@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local LiquidServiceUtils = require("LiquidServiceUtils")
@@ -9,40 +8,7 @@ local HazardBinder = {}
 HazardBinder.__index = HazardBinder
 setmetatable(HazardBinder, ModelBinder)
 
-local bossServiceServer = nil
-local hpServiceServer = nil
-local liquidServiceServer = nil
-local npcServiceServer = nil
-
-local function getBossServiceServer()
-	if bossServiceServer == nil then
-		bossServiceServer = require("BossServiceServer")
-	end
-	return bossServiceServer
-end
-
-local function getHpServiceServer()
-	if hpServiceServer == nil then
-		hpServiceServer = require("HpServiceServer")
-	end
-	return hpServiceServer
-end
-
-local function getLiquidServiceServer()
-	if liquidServiceServer == nil then
-		liquidServiceServer = require("LiquidServiceServer")
-	end
-	return liquidServiceServer
-end
-
-local function getNpcServiceServer()
-	if npcServiceServer == nil then
-		npcServiceServer = require("NpcServiceServer")
-	end
-	return npcServiceServer
-end
-
-local function GetNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
+local function getNumberAttribute(instance: Instance, attributeName: string, fallback: number): number
 	local value = instance:GetAttribute(attributeName)
 	if typeof(value) ~= "number" or value ~= value then
 		return fallback
@@ -50,9 +16,9 @@ local function GetNumberAttribute(instance: Instance, attributeName: string, fal
 	return value
 end
 
-local function GetHazardDefaults(self: any): (string, number, number)
+local function getHazardDefaults(self: any): (string, number, number)
 	if self:HasTag(TagBinder.Tags.Hazard_Lava) then
-		local lavaDefinition = LiquidServiceUtils.LiquidDamage.GetLavaDefinition(getLiquidServiceServer().config)
+		local lavaDefinition = LiquidServiceUtils.LiquidDamage.GetLavaDefinition(self.liquidServiceServer.config)
 		if lavaDefinition ~= nil then
 			return "Lava", lavaDefinition.lavaTouchDamage, lavaDefinition.lavaTouchInterval
 		end
@@ -67,26 +33,31 @@ local function GetHazardDefaults(self: any): (string, number, number)
 	return "Hazard", 8, 0.5
 end
 
-function HazardBinder.new(instance: Instance, context: any)
+function HazardBinder.new(instance: Instance, context: ModelBinder.BinderContext)
 	local self = ModelBinder.new(instance, context, HazardBinder)
+	local dependencies = self:GetDependencies()
+	self.bossServiceServer = assert(dependencies.BossServiceServer, "BossServiceServer dependency is unavailable")
+	self.hpServiceServer = assert(dependencies.HpServiceServer, "HpServiceServer dependency is unavailable")
+	self.liquidServiceServer = assert(dependencies.LiquidServiceServer, "LiquidServiceServer dependency is unavailable")
+	self.npcServiceServer = assert(dependencies.NpcServiceServer, "NpcServiceServer dependency is unavailable")
 	self.lastDamageAt = {} :: { [Instance]: number }
-	self:refresh()
+	self:Refresh()
 	ModelBinder.BindTouchedParts(instance, self.janitor, function(_part: BasePart, other: BasePart)
-		self:onTouched(other)
+		self:OnTouched(other)
 	end)
 	return self
 end
 
-function HazardBinder.refresh(self: any)
-	local kind, defaultDamage, defaultInterval = GetHazardDefaults(self)
+function HazardBinder.Refresh(self: any)
+	local kind, defaultDamage, defaultInterval = getHazardDefaults(self)
 	self.kind = kind
-	self.damage = math.max(0, GetNumberAttribute(self.instance, "HazardDamage", defaultDamage))
-	self.interval = math.max(0.05, GetNumberAttribute(self.instance, "HazardInterval", defaultInterval))
+	self.damage = math.max(0, getNumberAttribute(self.instance, "HazardDamage", defaultDamage))
+	self.interval = math.max(0.05, getNumberAttribute(self.instance, "HazardInterval", defaultInterval))
 	self.instance:SetAttribute("HazardTagged", true)
 	self.instance:SetAttribute("HazardKind", kind)
 end
 
-function HazardBinder.onTouched(self: any, other: BasePart)
+function HazardBinder.OnTouched(self: any, other: BasePart)
 	if self.damage <= 0 then
 		return
 	end
@@ -103,14 +74,14 @@ function HazardBinder.onTouched(self: any, other: BasePart)
 	self.lastDamageAt[cooldownKey] = now + self.interval
 
 	if player ~= nil then
-		getHpServiceServer():DamagePlayer(player, self.damage)
+		self.hpServiceServer:DamagePlayer(player, self.damage)
 		return
 	end
 
-	if getNpcServiceServer():DamageNpcFromHitPart(other, self.damage, self.instance) > 0 then
+	if self.npcServiceServer:DamageNpcFromHitPart(other, self.damage, self.instance) > 0 then
 		return
 	end
-	if getBossServiceServer():DamageBossFromHitPart(other, self.damage, self.instance, self.kind) > 0 then
+	if self.bossServiceServer:DamageBossFromHitPart(other, self.damage, self.instance, self.kind) > 0 then
 		return
 	end
 	if humanoid ~= nil then

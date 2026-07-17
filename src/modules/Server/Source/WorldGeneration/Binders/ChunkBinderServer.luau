@@ -27,15 +27,15 @@ function ChunkBinderServer.new(instance: any, context: any)
 	self.chunkX = nil :: number?
 	self.chunkY = nil :: number?
 
-	self:updateMetadata()
+	self:UpdateMetadata()
 	self:ObserveAttribute("ChunkKey", function()
-		self:updateMetadata()
+		self:UpdateMetadata()
 	end)
 
 	return self
 end
 
-function ChunkBinderServer.updateMetadata(self: any)
+function ChunkBinderServer.UpdateMetadata(self: any)
 	local chunkKey = self.instance:GetAttribute("ChunkKey")
 	if typeof(chunkKey) ~= "string" then
 		chunkKey = ""

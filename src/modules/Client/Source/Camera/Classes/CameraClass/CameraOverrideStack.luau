@@ -51,7 +51,7 @@ local function trim(valueRaw: any): string
 	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = if typeof(valueRaw) == "number" and valueRaw == valueRaw then valueRaw else fallback
 	if minimum ~= nil and value < minimum then
 		value = minimum
@@ -130,7 +130,7 @@ function Stack.Push(self: Stack, entryRaw: any): number
 	local entry: OverrideEntry = {
 		id = self.nextId,
 		order = self.nextOrder,
-		priority = math.floor(CoerceNumber((source :: any).priority, 0, -1000000, 1000000)),
+		priority = math.floor(coerceNumber((source :: any).priority, 0, -1000000, 1000000)),
 		kind = if trim((source :: any).kind) ~= "" then trim((source :: any).kind) else "Override",
 		label = if trim((source :: any).label) ~= "" then trim((source :: any).label) else "",
 		enabled = (source :: any).enabled ~= false,
@@ -216,7 +216,7 @@ function Stack.Clear(self: Stack)
 end
 
 function Stack.PruneExpired(self: Stack, nowRaw: any)
-	local now = CoerceNumber(nowRaw, os.clock(), 0, nil)
+	local now = coerceNumber(nowRaw, os.clock(), 0, nil)
 	for id, entry in self.entries do
 		if entry.enabled ~= true or isExpired(entry, now) then
 			self.entries[id] = nil
@@ -225,7 +225,7 @@ function Stack.PruneExpired(self: Stack, nowRaw: any)
 end
 
 function Stack.Get(self: Stack, nowRaw: any): OverrideEntry?
-	local now = CoerceNumber(nowRaw, os.clock(), 0, nil)
+	local now = coerceNumber(nowRaw, os.clock(), 0, nil)
 	self:PruneExpired(now)
 
 	local bestEntry = nil :: OverrideEntry?
@@ -252,7 +252,7 @@ function Stack.Get(self: Stack, nowRaw: any): OverrideEntry?
 end
 
 function Stack.GetEntries(self: Stack, nowRaw: any): { OverrideEntry }
-	local now = CoerceNumber(nowRaw, os.clock(), 0, nil)
+	local now = coerceNumber(nowRaw, os.clock(), 0, nil)
 	self:PruneExpired(now)
 
 	local entries = {}

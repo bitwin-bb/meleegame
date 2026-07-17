@@ -10,7 +10,7 @@ local Utils = require("GoapUtils")
 
 local DistanceSensor = {}
 
-local function GetPosition(valueRaw: any): any?
+local function getPosition(valueRaw: any): any?
 	local okDirect, directPosition = pcall(function()
 		return valueRaw.Position
 	end)
@@ -26,7 +26,7 @@ local function GetPosition(valueRaw: any): any?
 	return nil
 end
 
-local function GetNumber(valueRaw: any, fallback: number): number
+local function getNumber(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return fallback
 	end
@@ -38,9 +38,9 @@ function DistanceSensor.new(): any
 		Name = "DistanceSensor",
 		Update = function(_, agent)
 			local blackboard = agent:GetBlackboard()
-			local rootPosition = GetPosition(blackboard:Get("Root"))
-			local targetPosition = GetPosition(blackboard:Get("Target"))
-			local attackRange = math.max(0, GetNumber(blackboard:Get("AttackRange"), 8))
+			local rootPosition = getPosition(blackboard:Get("Root"))
+			local targetPosition = getPosition(blackboard:Get("Target"))
+			local attackRange = math.max(0, getNumber(blackboard:Get("AttackRange"), 8))
 			if rootPosition == nil or targetPosition == nil then
 				Utils.WriteWorldState(agent, "TargetInRange", false)
 				return

@@ -98,7 +98,7 @@ local function scaleNumber(value: number, scale: number, minValue: number?): num
 	return math.max(minValue or 0, snap(value * scale))
 end
 
-local function GetTrailingInset(viewportAxis: number, trailingValue: number): number
+local function getTrailingInset(viewportAxis: number, trailingValue: number): number
 	if trailingValue > viewportAxis * 0.5 then
 		return math.max(0, viewportAxis - trailingValue)
 	end
@@ -153,12 +153,12 @@ function UiScaleUtils.GetSafeArea(
 	return {
 		top = math.max(basePadding, snap(topLeft.Y)),
 		left = math.max(basePadding, snap(topLeft.X)),
-		right = math.max(basePadding, snap(GetTrailingInset(viewport.X, bottomRight.X))),
-		bottom = math.max(basePadding, snap(GetTrailingInset(viewport.Y, bottomRight.Y))),
+		right = math.max(basePadding, snap(getTrailingInset(viewport.X, bottomRight.X))),
+		bottom = math.max(basePadding, snap(getTrailingInset(viewport.Y, bottomRight.Y))),
 	}
 end
 
-local function GetInventorySlotSize(viewport: Vector2, safeArea: SafeArea, scale: number, compact: boolean): number
+local function getInventorySlotSize(viewport: Vector2, safeArea: SafeArea, scale: number, compact: boolean): number
 	local desiredSlot = scaleNumber(if compact then 50 else 58, scale, if compact then 38 else 46)
 	local desiredGap = scaleNumber(if compact then 5 else 6, scale, 4)
 	local availableWidth = math.max(220, viewport.X - safeArea.left - safeArea.right - scaleNumber(24, scale, 12))
@@ -185,7 +185,7 @@ function UiScaleUtils.GetTokens(metrics: {
 	local sideButtonWidth = scaleNumber(if compact then 132 else 190, scale, 112)
 	local navButtonHeight = scaleNumber(if compact then 34 else 40, scale, 30)
 	local segmentSize = scaleNumber(if compact then 24 else 30, scale, 20)
-	local slotSize = GetInventorySlotSize(viewport, safeArea, scale, compact)
+	local slotSize = getInventorySlotSize(viewport, safeArea, scale, compact)
 	local slotGap = scaleNumber(if compact then 5 else 6, scale, 4)
 	local craftingAvailableWidth = math.max(220, viewport.X - safeArea.left - safeArea.right - edgePadding * 2)
 	local craftingAvailableHeight = math.max(260, viewport.Y - safeArea.top - safeArea.bottom - edgePadding * 2)

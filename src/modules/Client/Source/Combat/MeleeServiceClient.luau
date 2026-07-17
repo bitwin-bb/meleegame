@@ -7,6 +7,7 @@ local Workspace = game:GetService("Workspace")
 local CameraShaker = require("EZCameraShake")
 local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
+local ServiceBag = require("ServiceBag")
 local MeleeServicePackets = require("NetPacketsShared").MeleeService
 
 local function sendPacket(methodName: string, ...: any)
@@ -79,6 +80,7 @@ type HitboxObject = {
 }
 
 local MeleeServiceClient = {}
+MeleeServiceClient.ServiceName = "MeleeServiceClient"
 
 local INPUT_ACTION_ATTACK = "MeleeService.Attack"
 
@@ -90,18 +92,6 @@ local TOOL_SOUND_FALLBACKS_BY_EVENT_TYPE: { [string]: { string } } = {
 }
 
 local MELEE_CAMERA_SHAKE_RENDER_PRIORITY = Enum.RenderPriority.Camera.Value + 1
-local MELEE_CAMERA_SHAKE_MIN_MAGNITUDE = 1.35
-local MELEE_CAMERA_SHAKE_MAX_MAGNITUDE = 2.2
-local MELEE_CAMERA_SHAKE_MIN_ROUGHNESS = 13
-local MELEE_CAMERA_SHAKE_MAX_ROUGHNESS = 18
-local MELEE_CAMERA_SHAKE_FADE_IN = 0.01
-local MELEE_CAMERA_SHAKE_FADE_OUT = 0.18
-local MELEE_CAMERA_SHAKE_MIN_POSITION_INFLUENCE = Vector3.new(0.12, 0.09, 0.12)
-local MELEE_CAMERA_SHAKE_MAX_POSITION_INFLUENCE = Vector3.new(0.18, 0.13, 0.18)
-local MELEE_CAMERA_SHAKE_MIN_ROTATION_INFLUENCE = Vector3.new(1.35, 1.75, 1.35)
-local MELEE_CAMERA_SHAKE_MAX_ROTATION_INFLUENCE = Vector3.new(1.75, 2.15, 1.75)
-local MELEE_CAMERA_SHAKE_MIN_INTERVAL = 0.06
-local MELEE_CAMERA_SHAKE_DAMAGE_FOR_MAX_INTENSITY = 60
 
 local function promiseAll(promises: { any }): any
 	if #promises <= 0 then
@@ -122,7 +112,7 @@ local function promiseAll(promises: { any }): any
 			reject(...)
 		end
 
-		local function GetOne(index: number, ...)
+		local function getOne(index: number, ...)
 			if settled then
 				return
 			end
@@ -136,7 +126,7 @@ local function promiseAll(promises: { any }): any
 
 		for index, nextPromise in promises do
 			nextPromise:Then(function(...)
-				GetOne(index, ...)
+				getOne(index, ...)
 			end, rejectOnce)
 		end
 	end)
@@ -195,7 +185,7 @@ local function promiseFromSignal(signal: any, predicate: ((...any) -> boolean)?)
 	return promise
 end
 
-local function GetHumanoidFromCharacter(character: Model?): Humanoid?
+local function getHumanoidFromCharacter(character: Model?): Humanoid?
 	if character == nil then
 		return nil
 	end
@@ -224,7 +214,7 @@ local function trim(valueRaw: any): string
 	return string.match(valueRaw, "^%s*(.-)%s*$") or ""
 end
 
-local function GetRootPart(character: Model?): BasePart?
+local function getRootPart(character: Model?): BasePart?
 	if character == nil then
 		return nil
 	end
@@ -261,7 +251,7 @@ local function isStartSwingEvent(valueRaw: any): boolean
 	return normalized == "startswing" or normalized == "swingstart"
 end
 
-local function GetOrderedSwingGroups(swingSounds: { [string]: { string } }): { string }
+local function getOrderedSwingGroups(swingSounds: { [string]: { string } }): { string }
 	local indexedGroups = {}
 	for groupName, pool in swingSounds do
 		if typeof(groupName) ~= "string" or typeof(pool) ~= "table" or #pool <= 0 then
@@ -292,7 +282,7 @@ local function GetOrderedSwingGroups(swingSounds: { [string]: { string } }): { s
 	return orderedGroups
 end
 
-local function GetToolHandlePart(toolRaw: any): BasePart?
+local function getToolHandlePart(toolRaw: any): BasePart?
 	if typeof(toolRaw) ~= "Instance" or not toolRaw:IsA("Tool") then
 		return nil
 	end
@@ -311,7 +301,7 @@ local function GetToolHandlePart(toolRaw: any): BasePart?
 	return tool:FindFirstChildWhichIsA("BasePart", true)
 end
 
-local function GetCharacterHandPart(character: Model?): BasePart?
+local function getCharacterHandPart(character: Model?): BasePart?
 	if character == nil then
 		return nil
 	end
@@ -326,7 +316,7 @@ local function GetCharacterHandPart(character: Model?): BasePart?
 	return nil
 end
 
-local function GetMeleeDebugHitboxEnabledFromConfigs(): boolean
+local function getMeleeDebugHitboxEnabledFromConfigs(): boolean
 	if typeof(Configs) ~= "table" then
 		return false
 	end
@@ -427,7 +417,10 @@ local function isWeaponConfigEquivalent(lhsRaw: any, rhsRaw: any): boolean
 	return true
 end
 
-function MeleeServiceClient.Init(self: MeleeServiceClient)
+function MeleeServiceClient.Init(self: MeleeServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	self.localPlayer = Players.LocalPlayer
 	self.janitor = Janitor.new()
 	self.characterJanitor = Janitor.new()
@@ -450,7 +443,7 @@ function MeleeServiceClient.Init(self: MeleeServiceClient)
 	self.replicatedSlot = nil :: number?
 	self.cameraShaker = nil :: CameraShakerObject?
 	self.lastSwingCameraShakeAt = -math.huge
-	self.debugHitboxEnabled = GetMeleeDebugHitboxEnabledFromConfigs()
+	self.debugHitboxEnabled = getMeleeDebugHitboxEnabledFromConfigs()
 	self.debugHitbox = nil :: HitboxObject?
 	self.debugHitboxPointsPart = nil :: BasePart?
 	self.debugHitboxPoints = {} :: { Vector3 }
@@ -617,25 +610,25 @@ function MeleeServiceClient.ReplicateEquippedState(self: MeleeServiceClient, for
 end
 
 function MeleeServiceClient.RefreshHumanoidReference(self: MeleeServiceClient)
-	self.humanoid = GetHumanoidFromCharacter(self.character)
+	self.humanoid = getHumanoidFromCharacter(self.character)
 end
 
 function MeleeServiceClient.GetDebugHitboxAnchorPart(self: MeleeServiceClient): BasePart?
 	local character = self.character
 	local equippedTool = self.equippedTool
 	if equippedTool ~= nil and character ~= nil and equippedTool:IsDescendantOf(character) then
-		local toolPart = GetToolHandlePart(equippedTool)
+		local toolPart = getToolHandlePart(equippedTool)
 		if toolPart ~= nil then
 			return toolPart
 		end
 	end
 
-	local handPart = GetCharacterHandPart(character)
+	local handPart = getCharacterHandPart(character)
 	if handPart ~= nil then
 		return handPart
 	end
 
-	return GetRootPart(character)
+	return getRootPart(character)
 end
 
 function MeleeServiceClient.StopDebugHitbox(self: MeleeServiceClient)
@@ -756,7 +749,7 @@ function MeleeServiceClient.PlayToolSoundAssetId(self: MeleeServiceClient, sound
 		return
 	end
 
-	local rootPart = GetRootPart(self.character)
+	local rootPart = getRootPart(self.character)
 	AudioServiceClient:PlaySfx(soundAssetIdRaw, {
 		parent = rootPart,
 		replaceChannel = false,
@@ -778,7 +771,7 @@ function MeleeServiceClient.GetToolSound(self: MeleeServiceClient, soundNameRaw:
 	return equippedToolSounds[string.lower(soundName)]
 end
 
-function MeleeServiceClient.GetAndomSwingSound(self: MeleeServiceClient, swingGroupRaw: any): string?
+function MeleeServiceClient.GetRandomSwingSound(self: MeleeServiceClient, swingGroupRaw: any): string?
 	local swingGroup = normalizeSwingSoundGroup(swingGroupRaw)
 	if swingGroup == nil then
 		return nil
@@ -815,7 +808,7 @@ function MeleeServiceClient.GetSwingSoundGroupFromContext(self: MeleeServiceClie
 	local swingIndexRaw = context.swingIndex
 	if typeof(swingIndexRaw) == "number" and swingIndexRaw == swingIndexRaw then
 		local swingIndex = math.max(1, math.floor(swingIndexRaw))
-		local orderedGroups = GetOrderedSwingGroups(equippedToolSwingSounds)
+		local orderedGroups = getOrderedSwingGroups(equippedToolSwingSounds)
 		if #orderedGroups > 0 then
 			local cycledIndex = ((swingIndex - 1) % #orderedGroups) + 1
 			return orderedGroups[cycledIndex]
@@ -831,7 +824,7 @@ function MeleeServiceClient.PlaySwingSoundFromContext(self: MeleeServiceClient, 
 		return false
 	end
 
-	local swingSound = self:GetAndomSwingSound(swingGroup)
+	local swingSound = self:GetRandomSwingSound(swingGroup)
 	if swingSound == nil then
 		return false
 	end
@@ -1171,8 +1164,7 @@ function MeleeServiceClient.RefreshEquippedWeapon(self: MeleeServiceClient, trig
 		weaponConfig = nil
 	elseif weaponConfig ~= nil then
 		local nextWeaponConfig = shallowCopyWeaponConfig(weaponConfig)
-		nextWeaponConfig.animations =
-			MeleeServiceUtils.GetToolAnimationOverrides(selectedTool, weaponConfig.animations)
+		nextWeaponConfig.animations = MeleeServiceUtils.GetToolAnimationOverrides(selectedTool, weaponConfig.animations)
 		weaponConfig = nextWeaponConfig
 	end
 
@@ -1255,8 +1247,10 @@ function MeleeServiceClient.Destroy(self: MeleeServiceClient)
 	if self.janitor ~= nil then
 		self.janitor:Destroy()
 	end
+	self._serviceBag = nil
 end
 type MeleeServiceClient = typeof(MeleeServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
 	GetDebugHitboxAnchorPart: (self: MeleeServiceClient) -> BasePart?,
 	stopDebugHitbox: (self: MeleeServiceClient) -> (),
 	clearDebugHitboxPoints: (self: MeleeServiceClient) -> (),

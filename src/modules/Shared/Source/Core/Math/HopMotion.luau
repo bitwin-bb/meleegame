@@ -54,7 +54,7 @@ local DEFAULT_SPRING: SpringOptions = {
 	damping = 1,
 }
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -85,19 +85,19 @@ local function cloneSpringOptions(source: SpringOptions?): SpringOptions
 	end
 
 	if source.frequency ~= nil then
-		spring.frequency = CoerceNumber(source.frequency, spring.frequency or 9, 0.01, 120)
+		spring.frequency = coerceNumber(source.frequency, spring.frequency or 9, 0.01, 120)
 	end
 	if source.damping ~= nil then
-		spring.damping = CoerceNumber(source.damping, spring.damping or 1, 0, 20)
+		spring.damping = coerceNumber(source.damping, spring.damping or 1, 0, 20)
 	end
 
 	return spring
 end
 
 function HopMotion.ComputeArcHeight(horizontalDistanceRaw: any, minArcHeightRaw: any, maxArcHeightRaw: any): number
-	local horizontalDistance = CoerceNumber(horizontalDistanceRaw, 0, 0, nil)
-	local minArcHeight = CoerceNumber(minArcHeightRaw, DEFAULT_MIN_ARC_HEIGHT, 0, nil)
-	local maxArcHeight = CoerceNumber(maxArcHeightRaw, DEFAULT_MAX_ARC_HEIGHT, minArcHeight, nil)
+	local horizontalDistance = coerceNumber(horizontalDistanceRaw, 0, 0, nil)
+	local minArcHeight = coerceNumber(minArcHeightRaw, DEFAULT_MIN_ARC_HEIGHT, 0, nil)
+	local maxArcHeight = coerceNumber(maxArcHeightRaw, DEFAULT_MAX_ARC_HEIGHT, minArcHeight, nil)
 
 	local scaledHeight = horizontalDistance * DEFAULT_ARC_DISTANCE_MULTIPLIER
 	return math.clamp(scaledHeight, minArcHeight, maxArcHeight)
@@ -105,11 +105,11 @@ end
 
 function HopMotion.New(configRaw: HopConfig?): HopMotion
 	local config = if typeof(configRaw) == "table" then configRaw else {} :: any
-	local minArcHeight = CoerceNumber(config.minArcHeight, DEFAULT_MIN_ARC_HEIGHT, 0, nil)
-	local maxArcHeight = CoerceNumber(config.maxArcHeight, DEFAULT_MAX_ARC_HEIGHT, minArcHeight, nil)
-	local duration = CoerceNumber(config.duration, DEFAULT_DURATION, 0.03, 8)
+	local minArcHeight = coerceNumber(config.minArcHeight, DEFAULT_MIN_ARC_HEIGHT, 0, nil)
+	local maxArcHeight = coerceNumber(config.maxArcHeight, DEFAULT_MAX_ARC_HEIGHT, minArcHeight, nil)
+	local duration = coerceNumber(config.duration, DEFAULT_DURATION, 0.03, 8)
 	local arcHeight = if config.arcHeight ~= nil
-		then CoerceNumber(config.arcHeight, minArcHeight, 0, nil)
+		then coerceNumber(config.arcHeight, minArcHeight, 0, nil)
 		else minArcHeight
 
 	local origin = Vector3.zero
@@ -135,7 +135,7 @@ function HopMotion.New(configRaw: HopConfig?): HopMotion
 end
 
 function HopMotion.Sample(self: HopMotion, alphaRaw: any): Vector3
-	local alpha = CoerceNumber(alphaRaw, 0, 0, 1)
+	local alpha = coerceNumber(alphaRaw, 0, 0, 1)
 	local linearPosition = self.origin:Lerp(self.destination, alpha)
 	local arcOffsetY = 4 * self.arcHeight * alpha * (1 - alpha)
 	return linearPosition + Vector3.new(0, arcOffsetY, 0)
@@ -148,13 +148,13 @@ function HopMotion.Start(self: HopMotion, originRaw: any, destinationRaw: any, d
 
 	self.origin = originRaw
 	self.destination = destinationRaw
-	self.duration = CoerceNumber(durationRaw, self.duration, 0.03, 8)
+	self.duration = coerceNumber(durationRaw, self.duration, 0.03, 8)
 
 	local horizontalDelta = Vector3.new(destinationRaw.X - originRaw.X, 0, destinationRaw.Z - originRaw.Z)
 	local computedArcHeight =
 		HopMotion.ComputeArcHeight(horizontalDelta.Magnitude, self.minArcHeight, self.maxArcHeight)
 	self.arcHeight = if arcHeightRaw ~= nil
-		then CoerceNumber(arcHeightRaw, computedArcHeight, 0, nil)
+		then coerceNumber(arcHeightRaw, computedArcHeight, 0, nil)
 		else computedArcHeight
 
 	self.elapsed = 0
@@ -187,7 +187,7 @@ function HopMotion.IsActive(self: HopMotion): boolean
 end
 
 function HopMotion.Step(self: HopMotion, dtRaw: any): HopStep
-	local dt = CoerceNumber(dtRaw, 0, 0, 1)
+	local dt = coerceNumber(dtRaw, 0, 0, 1)
 	if not self.active then
 		return {
 			position = self.lastPosition,

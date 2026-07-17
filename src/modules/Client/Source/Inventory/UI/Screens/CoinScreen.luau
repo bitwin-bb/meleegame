@@ -49,7 +49,7 @@ local COIN_ICON_TOP_PADDING = 4
 local COIN_AMOUNT_HEIGHT = 16
 local COIN_AMOUNT_GAP = 1
 
-local function GetCoinItemData(itemId: string): CoinItemData
+local function getCoinItemData(itemId: string): CoinItemData
 	local definition = ItemRegistry.GetDefinition(itemId)
 	if typeof(definition) ~= "table" then
 		return {}
@@ -63,29 +63,29 @@ local COIN_RENDER_ORDER: { CoinDefinition } = {
 		id = "copper",
 		fallbackName = "Copper Coin",
 		spriteSheetKey = "copperCoin",
-		itemData = GetCoinItemData("CopperCoin"),
+		itemData = getCoinItemData("CopperCoin"),
 	},
 	{
 		id = "silver",
 		fallbackName = "Silver Coin",
 		spriteSheetKey = "silverCoin",
-		itemData = GetCoinItemData("SilverCoin"),
+		itemData = getCoinItemData("SilverCoin"),
 	},
 	{
 		id = "gold",
 		fallbackName = "Gold Coin",
 		spriteSheetKey = "goldCoin",
-		itemData = GetCoinItemData("GoldCoin"),
+		itemData = getCoinItemData("GoldCoin"),
 	},
 	{
 		id = "platinum",
 		fallbackName = "Platinum Coin",
 		spriteSheetKey = "platinumCoin",
-		itemData = GetCoinItemData("PlatinumCoin"),
+		itemData = getCoinItemData("PlatinumCoin"),
 	},
 }
 
-local function GetCoinAmount(state: CoinState, coinType: CoinType): number
+local function getCoinAmount(state: CoinState, coinType: CoinType): number
 	local amounts = state.amounts
 	return if coinType == "platinum"
 		then amounts.platinum
@@ -94,7 +94,7 @@ local function GetCoinAmount(state: CoinState, coinType: CoinType): number
 			else if coinType == "silver" then amounts.silver else amounts.copper
 end
 
-local function GetItemField(valueRaw: any, fallback: string): string
+local function getItemField(valueRaw: any, fallback: string): string
 	if typeof(valueRaw) ~= "string" then
 		return fallback
 	end
@@ -106,16 +106,16 @@ local function GetItemField(valueRaw: any, fallback: string): string
 	return trimmed
 end
 
-local function GetHoverText(coinDefinition: CoinDefinition, amount: number): string
+local function getHoverText(coinDefinition: CoinDefinition, amount: number): string
 	local itemData = coinDefinition.itemData
-	local itemName = GetItemField(itemData.name, coinDefinition.fallbackName)
-	local itemDescription = GetItemField(itemData.description, "No description.")
-	local itemValue = GetItemField(itemData.value, "Unknown value")
+	local itemName = getItemField(itemData.name, coinDefinition.fallbackName)
+	local itemDescription = getItemField(itemData.description, "No description.")
+	local itemValue = getItemField(itemData.value, "Unknown value")
 
 	return ("%s\n%s\nValue: %s\nOwned: %s"):format(itemName, itemDescription, itemValue, formatNumber(amount))
 end
 
-local function GetEmergeOffset(offsetRaw: any): Vector2
+local function getEmergeOffset(offsetRaw: any): Vector2
 	if typeof(offsetRaw) ~= "Vector2" then
 		return Vector2.zero
 	end
@@ -125,7 +125,7 @@ local function GetEmergeOffset(offsetRaw: any): Vector2
 	return offsetRaw
 end
 
-local function GetTransparency(valueRaw: any): number
+local function getTransparency(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return 0
 	end
@@ -153,8 +153,8 @@ return function(props: CoinScreenProps): React.ReactNode
 	end
 
 	local zIndex = props.zIndex or 40
-	local emergeOffset = GetEmergeOffset(props.emergeOffset)
-	local emergeTransparency = GetTransparency(props.emergeTransparency)
+	local emergeOffset = getEmergeOffset(props.emergeOffset)
+	local emergeTransparency = getTransparency(props.emergeTransparency)
 	local slotWidth = if props.slotSize ~= nil
 		then math.max(1, math.floor(props.slotSize.X.Offset + 0.5))
 		else DEFAULT_COIN_SLOT_SIZE
@@ -180,7 +180,7 @@ return function(props: CoinScreenProps): React.ReactNode
 		end
 
 		renderedCoinCount += 1
-		local coinAmount = GetCoinAmount(coinState, coinDefinition.id)
+		local coinAmount = getCoinAmount(coinState, coinDefinition.id)
 		local coinLayoutOrder = renderedCoinCount
 		local hoverId = COIN_HOVER_ID_PREFIX .. coinDefinition.id
 
@@ -189,7 +189,7 @@ return function(props: CoinScreenProps): React.ReactNode
 			amount = coinAmount,
 			spriteSheetImage = spriteSheetImage,
 			hoverId = hoverId,
-			hoverText = GetHoverText(coinDefinition, coinAmount),
+			hoverText = getHoverText(coinDefinition, coinAmount),
 			layoutOrder = coinLayoutOrder,
 		}
 	end

@@ -25,7 +25,7 @@ export type SpatialHash<T> = typeof(setmetatable(
 
 local DEFAULT_CELL_SIZE = 8
 
-local function CoerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
+local function coerceNumber(valueRaw: any, fallback: number, minimum: number?, maximum: number?): number
 	local value = fallback
 	if typeof(valueRaw) == "number" and valueRaw == valueRaw then
 		value = valueRaw
@@ -69,7 +69,7 @@ end
 
 function SpatialHash.new<T>(cellSizeRaw: any): SpatialHash<T>
 	local self = setmetatable({
-		cellSize = CoerceNumber(cellSizeRaw, DEFAULT_CELL_SIZE, 0.1, 2048),
+		cellSize = coerceNumber(cellSizeRaw, DEFAULT_CELL_SIZE, 0.1, 2048),
 		cells = {},
 		entries = {},
 	}, SpatialHash)
@@ -256,7 +256,7 @@ function SpatialHash.QuerySphere(
 	predicate: ((entry: SpatialHashEntry<any>) -> boolean)?
 ): { SpatialHashEntry<any> }
 	local center = if typeof(centerRaw) == "Vector3" then centerRaw else Vector3.zero
-	local radius = CoerceNumber(radiusRaw, 0, 0, nil)
+	local radius = coerceNumber(radiusRaw, 0, 0, nil)
 	local half = Vector3.new(radius, radius, radius)
 	local aabbMin = center - half
 	local aabbMax = center + half

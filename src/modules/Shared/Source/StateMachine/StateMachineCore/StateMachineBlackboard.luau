@@ -21,7 +21,7 @@ export type Blackboard = typeof(setmetatable(
 	Blackboard
 ))
 
-local function CoerceKey(keyRaw: any): string?
+local function coerceKey(keyRaw: any): string?
 	if typeof(keyRaw) ~= "string" or keyRaw == "" then
 		return nil
 	end
@@ -50,7 +50,7 @@ function Blackboard._syncValueObject(self: Blackboard, key: string, value: any)
 end
 
 function Blackboard.Set(self: Blackboard, keyRaw: any, value: any)
-	local key = CoerceKey(keyRaw)
+	local key = coerceKey(keyRaw)
 	if key == nil or self.destroyed then
 		return
 	end
@@ -64,7 +64,7 @@ function Blackboard.Set(self: Blackboard, keyRaw: any, value: any)
 end
 
 function Blackboard.Get(self: Blackboard, keyRaw: any): any?
-	local key = CoerceKey(keyRaw)
+	local key = coerceKey(keyRaw)
 	if key == nil or self.destroyed then
 		return nil
 	end
@@ -72,12 +72,12 @@ function Blackboard.Get(self: Blackboard, keyRaw: any): any?
 end
 
 function Blackboard.Has(self: Blackboard, keyRaw: any): boolean
-	local key = CoerceKey(keyRaw)
+	local key = coerceKey(keyRaw)
 	return key ~= nil and not self.destroyed and self.values[key] ~= nil
 end
 
 function Blackboard.Remove(self: Blackboard, keyRaw: any): any?
-	local key = CoerceKey(keyRaw)
+	local key = coerceKey(keyRaw)
 	if key == nil or self.destroyed then
 		return nil
 	end
@@ -109,7 +109,7 @@ function Blackboard.GetSnapshot(self: Blackboard): { [string]: any }
 end
 
 function Blackboard.GetValueObject(self: Blackboard, keyRaw: any): any?
-	local key = CoerceKey(keyRaw)
+	local key = coerceKey(keyRaw)
 	if key == nil or self.destroyed then
 		return nil
 	end

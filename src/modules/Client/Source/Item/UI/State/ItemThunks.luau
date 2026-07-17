@@ -2,7 +2,6 @@ local require = require(script.Parent.loader).load(script)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-
 local Sift: any = require(ReplicatedStorage.Packages.Sift)
 
 local ImageIds = require("ImageIds")
@@ -56,7 +55,7 @@ local function normalizeTypeKey(valueRaw: any): string?
 	return value
 end
 
-local function CoerceText(valueRaw: any, fallback: string?): string?
+local function coerceText(valueRaw: any, fallback: string?): string?
 	local value = trim(valueRaw)
 	if value == "" then
 		return fallback
@@ -65,7 +64,7 @@ local function CoerceText(valueRaw: any, fallback: string?): string?
 end
 
 local function toTitleCase(textRaw: any): string
-	local value = CoerceText(textRaw, "Item") or "Item"
+	local value = coerceText(textRaw, "Item") or "Item"
 	value = string.gsub(value, "_", " ")
 	value = string.gsub(value, "-", " ")
 	value = string.gsub(value, "%s+", " ")
@@ -75,7 +74,7 @@ local function toTitleCase(textRaw: any): string
 	return title
 end
 
-local function GetItemTypeFromItemId(itemIdRaw: any): string?
+local function getItemTypeFromItemId(itemIdRaw: any): string?
 	local itemId = normalizeTypeKey(itemIdRaw)
 	if itemId == nil then
 		return nil
@@ -111,26 +110,26 @@ local function normalizeItemDefinition(itemId: string, definitionRaw: any): Item
 	local definition = definitionRaw :: { [string]: any }
 	local itemType = normalizeTypeKey(definition.itemType or definition.type)
 	if itemType == nil then
-		itemType = GetItemTypeFromItemId(itemId)
+		itemType = getItemTypeFromItemId(itemId)
 	end
 
-	local description = CoerceText(definition.description, nil)
+	local description = coerceText(definition.description, nil)
 	if description == nil and definition.value ~= nil then
-		description = CoerceText(tostring(definition.value), nil)
+		description = coerceText(tostring(definition.value), nil)
 	end
 
 	return {
 		itemId = itemId,
 		name = toTitleCase(definition.name or itemId),
 		description = description or "No description.",
-		useCase = CoerceText(definition.useCase, nil),
+		useCase = coerceText(definition.useCase, nil),
 		itemType = itemType,
 		stats = if typeof(definition.stats) == "table" then definition.stats else nil,
 	}
 end
 
-local function GetItemDefinition(itemIdRaw: any): ItemDefinition?
-	local itemId = CoerceText(itemIdRaw, nil)
+local function getItemDefinition(itemIdRaw: any): ItemDefinition?
+	local itemId = coerceText(itemIdRaw, nil)
 	if itemId == nil then
 		return nil
 	end
@@ -153,14 +152,14 @@ local function GetItemDefinition(itemIdRaw: any): ItemDefinition?
 
 	cachedItemDefinitions[itemId] = normalized
 	cachedItemDefinitions[canonicalItemId] = normalized
-	local altId = CoerceText((definitionTable :: any).id, nil)
+	local altId = coerceText((definitionTable :: any).id, nil)
 	if altId ~= nil then
 		cachedItemDefinitions[altId] = normalized
 	end
 	return normalized
 end
 
-local function GetItemTypeFromStack(stackRaw: any): string?
+local function getItemTypeFromStack(stackRaw: any): string?
 	if typeof(stackRaw) ~= "table" then
 		return nil
 	end
@@ -174,12 +173,12 @@ local function GetItemTypeFromStack(stackRaw: any): string?
 		end
 	end
 
-	local definition = GetItemDefinition(stack.itemId)
+	local definition = getItemDefinition(stack.itemId)
 	if definition ~= nil and definition.itemType ~= nil then
 		return definition.itemType
 	end
 
-	return GetItemTypeFromItemId(stack.itemId)
+	return getItemTypeFromItemId(stack.itemId)
 end
 
 local function formatStats(statsRaw: any): string
@@ -191,7 +190,7 @@ local function formatStats(statsRaw: any): string
 	local lines = {}
 	for key, value in stats do
 		local label = toTitleCase(key)
-		local textValue = CoerceText(tostring(value), "")
+		local textValue = coerceText(tostring(value), "")
 		if textValue ~= nil and textValue ~= "" then
 			lines = Sift.Array.append(lines, ("%s: %s"):format(label, textValue))
 		end
@@ -200,7 +199,7 @@ local function formatStats(statsRaw: any): string
 	return joinStrings(lines, "\n")
 end
 
-local function GetStackAmount(stackRaw: any): number
+local function getStackAmount(stackRaw: any): number
 	if typeof(stackRaw) ~= "table" then
 		return 0
 	end
@@ -211,7 +210,7 @@ local function GetStackAmount(stackRaw: any): number
 	return math.max(0, math.floor(amountRaw))
 end
 
-local function GetEquestedDragAmount(state: ItemDragState, amountRaw: any): any
+local function getRequestedDragAmount(state: ItemDragState, amountRaw: any): any
 	if amountRaw ~= nil then
 		return amountRaw
 	end
@@ -226,7 +225,7 @@ function itemThunks.GetItemIconByType(itemTypeRaw: any, itemIdRaw: any?): string
 	local normalizedItemId = normalizeTypeKey(itemIdRaw)
 	local itemIcons = if typeof(ItemIcons) == "table" then ItemIcons :: { [string]: any } else nil
 	if normalizedType == nil and normalizedItemId ~= nil then
-		normalizedType = GetItemTypeFromItemId(itemIdRaw)
+		normalizedType = getItemTypeFromItemId(itemIdRaw)
 	end
 
 	if itemIcons ~= nil and normalizedItemId ~= nil then
@@ -266,7 +265,7 @@ end
 
 function itemThunks.GetIconForStack(stackRaw: any): string?
 	local itemId = if typeof(stackRaw) == "table" then (stackRaw :: { [string]: any }).itemId else nil
-	local itemType = GetItemTypeFromStack(stackRaw)
+	local itemType = getItemTypeFromStack(stackRaw)
 	return itemThunks.GetItemIconByType(itemType, itemId)
 end
 
@@ -276,7 +275,7 @@ function itemThunks.GetDisplayNameForStack(stackRaw: any): string
 	end
 
 	local stack = stackRaw :: { [string]: any }
-	local definition = GetItemDefinition(stack.itemId)
+	local definition = getItemDefinition(stack.itemId)
 	if definition ~= nil then
 		return definition.name
 	end
@@ -292,7 +291,7 @@ function itemThunks.GetHoverTextForStack(stackRaw: any, slotIndexRaw: any): stri
 	end
 
 	local stack = stackRaw :: { [string]: any }
-	local definition = GetItemDefinition(stack.itemId)
+	local definition = getItemDefinition(stack.itemId)
 	local name = if definition ~= nil then definition.name else toTitleCase(stack.itemId)
 	local amount = if typeof(stack.amount) == "number" and stack.amount == stack.amount
 		then math.max(0, stack.amount)
@@ -316,7 +315,7 @@ end
 
 function itemThunks.BeginDrag(slotIndexRaw: any, stackRaw: any, pointerPositionRaw: any): ItemDragState
 	local itemId = if typeof(stackRaw) == "table" then (stackRaw :: { [string]: any }).itemId else nil
-	local itemType = GetItemTypeFromStack(stackRaw)
+	local itemType = getItemTypeFromStack(stackRaw)
 	local icon = itemThunks.GetItemIconByType(itemType, itemId)
 	return itemSlice.beginDrag(slotIndexRaw, stackRaw, pointerPositionRaw, itemType, icon)
 end
@@ -328,9 +327,9 @@ function itemThunks.BeginSplitDrag(
 	amountRaw: any
 ): ItemDragState
 	local itemId = if typeof(stackRaw) == "table" then (stackRaw :: { [string]: any }).itemId else nil
-	local itemType = GetItemTypeFromStack(stackRaw)
+	local itemType = getItemTypeFromStack(stackRaw)
 	local icon = itemThunks.GetItemIconByType(itemType, itemId)
-	local sourceStackAmount = GetStackAmount(stackRaw)
+	local sourceStackAmount = getStackAmount(stackRaw)
 	return itemSlice.beginDrag(slotIndexRaw, stackRaw, pointerPositionRaw, itemType, icon, {
 		mode = "SplitHold",
 		dragAmount = amountRaw,
@@ -366,7 +365,7 @@ function itemThunks.TrashDrag(amountRaw: any): boolean
 		return false
 	end
 
-	local requestedAmount = GetEquestedDragAmount(state, amountRaw)
+	local requestedAmount = getRequestedDragAmount(state, amountRaw)
 	local didRequest = inventoryThunks.TrashSlot(sourceSlot, requestedAmount)
 	itemSlice.clearDragState()
 	return didRequest
@@ -384,7 +383,7 @@ function itemThunks.DropDrag(amountRaw: any): boolean
 		return false
 	end
 
-	local requestedAmount = GetEquestedDragAmount(state, amountRaw)
+	local requestedAmount = getRequestedDragAmount(state, amountRaw)
 	local didRequest = inventoryThunks.DropFromSlot(sourceSlot, requestedAmount)
 	if didRequest then
 		itemSlice.clearDragState()

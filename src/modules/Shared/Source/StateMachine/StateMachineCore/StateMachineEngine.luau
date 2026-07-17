@@ -82,7 +82,7 @@ local function clampPriority(valueRaw: any, fallback: number): number
 	return math.clamp(value, -1000000, 1000000)
 end
 
-local function CoerceStateName(stateNameRaw: any): string?
+local function coerceStateName(stateNameRaw: any): string?
 	if typeof(stateNameRaw) ~= "string" or stateNameRaw == "" then
 		return nil
 	end
@@ -97,7 +97,7 @@ local function isLegacyStateList(valueRaw: any): boolean
 	return typeof(first) == "table" and typeof((first :: any).id) == "string"
 end
 
-local function GetPathParent(stateId: string): string?
+local function getPathParent(stateId: string): string?
 	local lastDot = string.find(stateId, "%.[^%.]*$")
 	if lastDot == nil or lastDot <= 1 then
 		return nil
@@ -264,7 +264,7 @@ function StateMachine.New(statesRaw: any?, initialStateIdRaw: any?, context: any
 		for _, state in states do
 			self:_registerStateDefinition(state :: StateDefinition)
 		end
-		local initialStateId = CoerceStateName(initialStateIdRaw)
+		local initialStateId = coerceStateName(initialStateIdRaw)
 		if initialStateId == nil or self.states[initialStateId] == nil then
 			initialStateId = states[1].id
 		end
@@ -279,9 +279,9 @@ function StateMachine._ensureStateDefinition(self: StateMachine, stateId: string
 		return
 	end
 
-	local parent = if typeof(parentRaw) == "string" and parentRaw ~= "" then parentRaw else GetPathParent(stateId)
+	local parent = if typeof(parentRaw) == "string" and parentRaw ~= "" then parentRaw else getPathParent(stateId)
 	if parent ~= nil then
-		self:_ensureStateDefinition(parent, GetPathParent(parent))
+		self:_ensureStateDefinition(parent, getPathParent(parent))
 	end
 
 	self.states[stateId] = {
@@ -299,7 +299,7 @@ function StateMachine._registerStateDefinition(self: StateMachine, state: StateD
 		error(string.format("StateMachine duplicate state id '%s'", state.id))
 	end
 	if state.parent ~= nil then
-		self:_ensureStateDefinition(state.parent, GetPathParent(state.parent))
+		self:_ensureStateDefinition(state.parent, getPathParent(state.parent))
 	end
 
 	self.states[state.id] = state
@@ -383,7 +383,7 @@ function StateMachine.ObserveStateBrio(self: StateMachine): any
 end
 
 function StateMachine.PromiseState(self: StateMachine, stateNameRaw: any, timeoutRaw: any?): any
-	local stateName = CoerceStateName(stateNameRaw)
+	local stateName = coerceStateName(stateNameRaw)
 	if stateName == nil then
 		return Promise.rejected("bad state name")
 	end
@@ -506,7 +506,7 @@ function StateMachine._collectRegisteredCandidates(self: StateMachine): { Transi
 		local from = if typeof(transition.From) == "string" and transition.From ~= ""
 			then transition.From
 			else WILDCARD_STATE
-		local to = CoerceStateName(transition.To)
+		local to = coerceStateName(transition.To)
 		if to == nil then
 			continue
 		end
@@ -626,7 +626,7 @@ function StateMachine.Start(self: StateMachine, initialStateNameRaw: any): boole
 	if self.destroyed then
 		return false
 	end
-	local initialStateName = CoerceStateName(initialStateNameRaw)
+	local initialStateName = coerceStateName(initialStateNameRaw)
 	if initialStateName == nil or self.states[initialStateName] == nil then
 		return false
 	end
@@ -685,7 +685,7 @@ function StateMachine.ChangeState(self: StateMachine, stateNameRaw: any): boolea
 	if self.disabled or not self.running then
 		return false
 	end
-	local stateName = CoerceStateName(stateNameRaw)
+	local stateName = coerceStateName(stateNameRaw)
 	if stateName == nil then
 		self.TransitionRejected:Fire(self.activeStateId, nil, nil, "BadStateName")
 		return false
@@ -717,7 +717,7 @@ function StateMachine.RegisterState(self: StateMachine, stateNameRaw: any, state
 	if self.destroyed then
 		return false
 	end
-	local stateName = CoerceStateName(stateNameRaw)
+	local stateName = coerceStateName(stateNameRaw)
 	if stateName == nil then
 		return false
 	end
@@ -740,7 +740,7 @@ function StateMachine.RegisterTransition(self: StateMachine, transitionRaw: any)
 		return false
 	end
 
-	local to = CoerceStateName((transitionRaw :: TransitionObject).To)
+	local to = coerceStateName((transitionRaw :: TransitionObject).To)
 	if to == nil then
 		return false
 	end
@@ -760,7 +760,7 @@ function StateMachine.TransitionTo(
 	if self.disabled or not self.running then
 		return false
 	end
-	local stateId = CoerceStateName(stateIdRaw)
+	local stateId = coerceStateName(stateIdRaw)
 	if stateId == nil or self.states[stateId] == nil then
 		return false
 	end

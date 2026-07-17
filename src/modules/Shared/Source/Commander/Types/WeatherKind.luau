@@ -1,37 +1,6 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local ServerScriptService = game:GetService("ServerScriptService")
+local require = require(script.Parent.loader).load(script)
 
-local PACKAGE_NAME = "AquariaBackup"
-
-local function GetGameRoot(): Instance
-	local directGameRoot = script:FindFirstAncestor("game")
-	if directGameRoot ~= nil then
-		return directGameRoot
-	end
-
-	local serverPackage = ServerScriptService:FindFirstChild(PACKAGE_NAME)
-	if serverPackage ~= nil then
-		local serverGameRoot = serverPackage:FindFirstChild("game")
-		if serverGameRoot ~= nil then
-			return serverGameRoot
-		end
-	end
-
-	local replicatedPackage = ReplicatedStorage:FindFirstChild(PACKAGE_NAME)
-		or ReplicatedStorage:WaitForChild(PACKAGE_NAME, 5)
-	if replicatedPackage ~= nil then
-		local replicatedGameRoot = replicatedPackage:FindFirstChild("game")
-		if replicatedGameRoot ~= nil then
-			return replicatedGameRoot
-		end
-	end
-
-	error("Missing Nevermore game root for WeatherKind.")
-end
-
-
-local gameRoot: any = GetGameRoot()
-local WeatherServiceUtils = require(gameRoot.Shared.Source.World.WeatherServiceUtils)
+local WeatherServiceUtils = require("WeatherServiceUtils")
 
 local WEATHER_OPTIONS = {
 	{
@@ -58,7 +27,7 @@ local function normalizeToken(valueRaw: any): string
 	return string.lower(normalized)
 end
 
-local function GetWeatherValue(valueRaw: any): string?
+local function getWeatherValue(valueRaw: any): string?
 	local token = normalizeToken(valueRaw)
 	if token == "clear" or token == "sunny" then
 		return WeatherServiceUtils.WEATHER_TYPE_CLEAR
@@ -79,7 +48,7 @@ return function(registry)
 		Transform = function(text: string)
 			local fuzzyFinder = cmdrUtil.MakeFuzzyFinder(WEATHER_OPTIONS)
 			local matches = fuzzyFinder(text)
-			local exactValue = GetWeatherValue(text)
+			local exactValue = getWeatherValue(text)
 
 			if exactValue == nil then
 				return matches

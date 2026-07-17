@@ -1,4 +1,3 @@
-
 local require = require(script.Parent.loader).load(script)
 
 local Noise = require("Noise")
@@ -82,7 +81,7 @@ local function clampNumber(valueRaw: any, minimum: number, maximum: number, fall
 	return math.clamp(valueRaw :: number, minimum, maximum)
 end
 
-local function CoerceOctaveCount(valueRaw: any, fallback: number): number
+local function coerceOctaveCount(valueRaw: any, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
@@ -110,7 +109,7 @@ local function sampleOctaveNoise(
 	end)
 end
 
-local function GetWallByBiome(self, biomeId: number, layer: DepthLayer): number
+local function getWallByBiome(self, biomeId: number, layer: DepthLayer): number
 	if biomeId == self.biomeId.DESERT then
 		return self.wallId.SANDSTONE
 	end
@@ -147,7 +146,7 @@ function Cave.New(configRaw: any)
 		),
 		cavernDepth = math.floor(clampNumber((config :: any).cavernDepth, 64, 512, DEFAULT_CAVERN_DEPTH)),
 		caveFrequency = clampNumber((config :: any).caveFrequency, 0.0001, 1, DEFAULT_CAVE_FREQUENCY),
-		caveOctaves = CoerceOctaveCount((config :: any).caveOctaves, DEFAULT_CAVE_OCTAVES),
+		caveOctaves = coerceOctaveCount((config :: any).caveOctaves, DEFAULT_CAVE_OCTAVES),
 		caveLacunarity = clampNumber((config :: any).caveLacunarity, 1, 4, DEFAULT_CAVE_LACUNARITY),
 		cavePersistence = clampNumber((config :: any).cavePersistence, 0.1, 0.95, DEFAULT_CAVE_PERSISTENCE),
 		tunnelFrequency = clampNumber((config :: any).tunnelFrequency, 0.0001, 1, DEFAULT_TUNNEL_FREQUENCY),
@@ -330,14 +329,14 @@ function Cave.GetWall(
 		if depthLayer == "Surface" and depthBelowSurface <= 3 then
 			return self.wallId.NONE
 		end
-		return GetWallByBiome(self, biomeId, depthLayer)
+		return getWallByBiome(self, biomeId, depthLayer)
 	end
 
 	if depthLayer == "Surface" then
 		return self.wallId.NONE
 	end
 
-	return GetWallByBiome(self, biomeId, depthLayer)
+	return getWallByBiome(self, biomeId, depthLayer)
 end
 
 export type Cave = typeof(setmetatable(

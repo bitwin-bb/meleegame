@@ -27,7 +27,7 @@ type Node = {
 	cost: number,
 }
 
-local function CoerceIterations(iterationsRaw: any): number
+local function coerceIterations(iterationsRaw: any): number
 	if typeof(iterationsRaw) ~= "number" or iterationsRaw ~= iterationsRaw then
 		return 256
 	end
@@ -127,7 +127,7 @@ end
 function Planner.new(configRaw: any?): Planner
 	local config = if typeof(configRaw) == "table" then configRaw else {}
 	return setmetatable({
-		MaxIterations = CoerceIterations(config.MaxIterations),
+		MaxIterations = coerceIterations(config.MaxIterations),
 		maid = Maid.new(),
 		destroyed = false,
 	}, Planner)

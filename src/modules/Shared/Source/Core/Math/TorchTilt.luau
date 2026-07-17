@@ -18,7 +18,7 @@ local MIN_GROUND_UP_DOT = 0.75
 local MAX_WALL_UP_DOT = 0.25
 local MIN_SURFACE_OFFSET = 0.05
 
-local function CoerceVector3(valueRaw: any): Vector3?
+local function coerceVector3(valueRaw: any): Vector3?
 	if typeof(valueRaw) ~= "Vector3" then
 		return nil
 	end
@@ -28,7 +28,7 @@ local function CoerceVector3(valueRaw: any): Vector3?
 	return valueRaw
 end
 
-local function CoerceNumber(valueRaw: any): number?
+local function coerceNumber(valueRaw: any): number?
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw then
 		return nil
 	end
@@ -36,7 +36,7 @@ local function CoerceNumber(valueRaw: any): number?
 end
 
 local function normalizeOrFallback(vectorRaw: any, fallback: Vector3): Vector3
-	local vector = CoerceVector3(vectorRaw)
+	local vector = coerceVector3(vectorRaw)
 	if vector == nil then
 		return fallback
 	end
@@ -83,7 +83,7 @@ function TorchTilt.IsSolidSurface(instanceRaw: any): boolean
 end
 
 function TorchTilt.IsGroundNormal(normalRaw: any): boolean
-	local normal = CoerceVector3(normalRaw)
+	local normal = coerceVector3(normalRaw)
 	if normal == nil then
 		return false
 	end
@@ -91,7 +91,7 @@ function TorchTilt.IsGroundNormal(normalRaw: any): boolean
 end
 
 function TorchTilt.IsWallNormal(normalRaw: any): boolean
-	local normal = CoerceVector3(normalRaw)
+	local normal = coerceVector3(normalRaw)
 	if normal == nil then
 		return false
 	end
@@ -114,8 +114,8 @@ function TorchTilt.GetTileAlignedCFrame(
 	supportNormalRaw: any,
 	lookVectorRaw: any
 ): (CFrame?, SupportKind?)
-	local tileCenter = CoerceVector3(tileCenterRaw)
-	local supportNormal = CoerceVector3(supportNormalRaw)
+	local tileCenter = coerceVector3(tileCenterRaw)
+	local supportNormal = coerceVector3(supportNormalRaw)
 	if tileCenter == nil or supportNormal == nil then
 		return nil, nil
 	end
@@ -153,11 +153,11 @@ function TorchTilt.GetTilePlacement(
 	basePlaneXRaw: any,
 	lookVectorRaw: any
 ): TilePlacement?
-	local hitPosition = CoerceVector3(hitPositionRaw)
-	local hitNormal = CoerceVector3(hitNormalRaw)
-	local worldOrigin = CoerceVector3(worldOriginRaw)
-	local tileSize = CoerceNumber(tileSizeRaw)
-	local basePlaneX = CoerceNumber(basePlaneXRaw)
+	local hitPosition = coerceVector3(hitPositionRaw)
+	local hitNormal = coerceVector3(hitNormalRaw)
+	local worldOrigin = coerceVector3(worldOriginRaw)
+	local tileSize = coerceNumber(tileSizeRaw)
+	local basePlaneX = coerceNumber(basePlaneXRaw)
 	if hitPosition == nil or hitNormal == nil or worldOrigin == nil or tileSize == nil or basePlaneX == nil then
 		return nil
 	end
@@ -202,8 +202,8 @@ function TorchTilt.GetPlacementCFrame(
 	boundingSizeRaw: any,
 	lookVectorRaw: any
 ): (CFrame?, SupportKind?)
-	local hitPosition = CoerceVector3(hitPositionRaw)
-	local hitNormal = CoerceVector3(hitNormalRaw)
+	local hitPosition = coerceVector3(hitPositionRaw)
+	local hitNormal = coerceVector3(hitNormalRaw)
 	local boundingSize = if typeof(boundingSizeRaw) == "Vector3" then boundingSizeRaw else nil
 	if hitPosition == nil or hitNormal == nil or boundingSize == nil then
 		return nil, nil

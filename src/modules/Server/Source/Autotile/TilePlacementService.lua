@@ -39,7 +39,7 @@ local function coerceTileData(tileDataRaw: any): any?
 	}
 end
 
-function TilePlacementService.Init(self: any)
+function TilePlacementService.Init(self: any, _serviceBag: any?)
 	if self._maid ~= nil then
 		return
 	end
@@ -50,7 +50,7 @@ function TilePlacementService.Init(self: any)
 end
 
 function TilePlacementService.CanPlaceTile(
-	self: any,
+	_self: any,
 	_player: Player?,
 	tileXRaw: any,
 	tileYRaw: any,

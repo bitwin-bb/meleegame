@@ -22,7 +22,7 @@
 --]]
 
 --// Modules
-local table = require(script.Parent.Parent.Table)
+local table = require(script.Parent.Parent.VendorTable)
 
 --// Types
 type ClassData = {

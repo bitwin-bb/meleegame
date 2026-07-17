@@ -35,7 +35,7 @@ local runtime = {
 	anchorPart = nil :: Part?,
 }
 
-local function CoerceBuildState(stateRaw: any): BuildServiceState?
+local function coerceBuildState(stateRaw: any): BuildServiceState?
 	if typeof(stateRaw) ~= "table" then
 		return nil
 	end
@@ -126,8 +126,8 @@ local function hideMiningProgressVisual()
 	applyToBillboard(nextState)
 end
 
-local function GetBreakWorldPosition(tileX: number, tileY: number): Vector3?
-	local state = CoerceBuildState((BuildServiceClient :: any).state)
+local function getBreakWorldPosition(tileX: number, tileY: number): Vector3?
+	local state = coerceBuildState((BuildServiceClient :: any).state)
 	if state == nil then
 		return nil
 	end
@@ -160,7 +160,7 @@ local function applyBuildBreakProgress(payloadRaw: any): MiningProgressState
 		return miningProgressSlice.getMiningProgressState()
 	end
 
-	local worldPosition = GetBreakWorldPosition(tileX, tileY)
+	local worldPosition = getBreakWorldPosition(tileX, tileY)
 	if worldPosition == nil then
 		hideMiningProgressVisual()
 		return miningProgressSlice.getMiningProgressState()

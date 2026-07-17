@@ -70,7 +70,7 @@ local function cleanupTask(taskRaw: any)
 	end
 end
 
-local function GetGamepadNav(runtimeContextRaw: any): any?
+local function getGamepadNav(runtimeContextRaw: any): any?
 	if runtimeContextRaw == nil then
 		return nil
 	end
@@ -87,7 +87,7 @@ local function GetGamepadNav(runtimeContextRaw: any): any?
 	return (runtimeContextRaw :: any).gamepadNav
 end
 
-local function GetThumbstickSnapshot(gamepadNavRaw: any): ThumbstickSnapshot
+local function getThumbstickSnapshot(gamepadNavRaw: any): ThumbstickSnapshot
 	if gamepadNavRaw ~= nil and typeof((gamepadNavRaw :: any).GetThumbstickState) == "function" then
 		local ok, snapshotOrError = pcall(function()
 			return (gamepadNavRaw :: any):GetThumbstickState()
@@ -115,7 +115,7 @@ function PadNavBinder._observeThumbsticks(self): ObservableObject
 			end)
 		end
 
-		sub:Fire(GetThumbstickSnapshot(gamepadNav))
+		sub:Fire(getThumbstickSnapshot(gamepadNav))
 
 		return function()
 			cleanupTask(disconnect)
@@ -125,10 +125,10 @@ end
 
 function PadNavBinder._bindStreams(self)
 	self._maid:DoCleaning()
-	self._gamepadNav = GetGamepadNav(self._runtimeContext)
+	self._gamepadNav = getGamepadNav(self._runtimeContext)
 
 	padSlice.setPlatform(PlatformServiceClient:GetPlatform())
-	padSlice.updateThumbsticks(GetThumbstickSnapshot(self._gamepadNav))
+	padSlice.updateThumbsticks(getThumbstickSnapshot(self._gamepadNav))
 
 	self._maid:GiveTask(Rx.combineLatestDefer({
 		platform = PlatformServiceClient:ObservePlatform(),

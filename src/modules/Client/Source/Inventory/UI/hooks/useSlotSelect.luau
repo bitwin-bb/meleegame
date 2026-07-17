@@ -19,14 +19,14 @@ local DEFAULT_SELECTED_SCALE = 1.12
 local DEFAULT_DURATION = 0.16
 local SCALE_EPSILON = 0.001
 
-local function CoerceScale(valueRaw: any, fallback: number): number
+local function coerceScale(valueRaw: any, fallback: number): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw or valueRaw <= 0 then
 		return fallback
 	end
 	return valueRaw
 end
 
-local function CoerceDuration(valueRaw: any): number
+local function coerceDuration(valueRaw: any): number
 	if typeof(valueRaw) ~= "number" or valueRaw ~= valueRaw or valueRaw <= 0 then
 		return DEFAULT_DURATION
 	end
@@ -35,9 +35,9 @@ end
 
 local function useSlotSelect(options: SlotSelectOptions?): number
 	local enabled = if options and options.enabled ~= nil then options.enabled else false
-	local normalScale = CoerceScale(if options then options.normalScale else nil, DEFAULT_NORMAL_SCALE)
-	local selectedScale = CoerceScale(if options then options.selectedScale else nil, DEFAULT_SELECTED_SCALE)
-	local duration = CoerceDuration(if options then options.duration else nil)
+	local normalScale = coerceScale(if options then options.normalScale else nil, DEFAULT_NORMAL_SCALE)
+	local selectedScale = coerceScale(if options then options.selectedScale else nil, DEFAULT_SELECTED_SCALE)
+	local duration = coerceDuration(if options then options.duration else nil)
 	local targetScale = if enabled then selectedScale else normalScale
 	local targetRef = React.useRef(targetScale)
 	local animationRef = React.useRef(nil :: { fromScale: number, toScale: number, startedAt: number }?)

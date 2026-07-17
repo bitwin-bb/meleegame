@@ -50,15 +50,15 @@ local function isFiniteNumber(value: any): boolean
 	return typeof(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-local function CoerceInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
+local function coerceInteger(valueRaw: any, minimum: number, maximum: number, fallback: number): number
 	if not isFiniteNumber(valueRaw) then
 		return fallback
 	end
 	return math.clamp(math.floor(valueRaw), minimum, maximum)
 end
 
-local function CoerceBiomeId(valueRaw: any, fallback: number): number
-	return CoerceInteger(valueRaw, Shared.BIOME_ID.FOREST, Shared.BIOME_ID.CORRUPTION, fallback)
+local function coerceBiomeId(valueRaw: any, fallback: number): number
+	return coerceInteger(valueRaw, Shared.BIOME_ID.FOREST, Shared.BIOME_ID.CORRUPTION, fallback)
 end
 
 local function decodeClusterIndex(index: number, countX: number, countY: number): (number, number, number)
@@ -131,7 +131,7 @@ function Net.DecodeRle(rleRaw: any): { number }
 	local totalLength = 0
 	for _, pair in rleRaw do
 		if typeof(pair) == "table" then
-			local length = CoerceInteger((pair :: any).length, 1, 10000000, 1)
+			local length = coerceInteger((pair :: any).length, 1, 10000000, 1)
 			totalLength += length
 		end
 	end
@@ -143,7 +143,7 @@ function Net.DecodeRle(rleRaw: any): { number }
 			continue
 		end
 		local value = if isFiniteNumber((pair :: any).value) then (pair :: any).value else 0
-		local length = CoerceInteger((pair :: any).length, 1, 10000000, 1)
+		local length = coerceInteger((pair :: any).length, 1, 10000000, 1)
 		for _ = 1, length do
 			output[cursor] = value
 			cursor += 1
@@ -202,7 +202,7 @@ function Net.BuildChunkDelta(chunk: { [string]: any }, previousRevision: number?
 
 	local entities = chunk.entities
 	local entityCount = if typeof(entities) == "table"
-		then CoerceInteger((entities :: any).count, 0, 1000000, 0)
+		then coerceInteger((entities :: any).count, 0, 1000000, 0)
 		else 0
 
 	return {
@@ -244,18 +244,18 @@ function Net.DecodeChunkDelta(deltaRaw: any): { [string]: any }?
 
 	return {
 		key = key,
-		chunkX = CoerceInteger((deltaRaw :: any).chunkX, -1000000, 1000000, 0),
-		chunkY = CoerceInteger((deltaRaw :: any).chunkY, -1000000, 1000000, 0),
-		chunkZ = CoerceInteger((deltaRaw :: any).chunkZ, -1000000, 1000000, 0),
-		revision = CoerceInteger((deltaRaw :: any).revision, 0, 1000000000, 0),
-		clusterCountX = CoerceInteger((deltaRaw :: any).clusterCountX, 1, 512, 1),
-		clusterCountY = CoerceInteger((deltaRaw :: any).clusterCountY, 1, 512, 1),
-		clusterCountZ = CoerceInteger((deltaRaw :: any).clusterCountZ, 1, 512, 1),
+		chunkX = coerceInteger((deltaRaw :: any).chunkX, -1000000, 1000000, 0),
+		chunkY = coerceInteger((deltaRaw :: any).chunkY, -1000000, 1000000, 0),
+		chunkZ = coerceInteger((deltaRaw :: any).chunkZ, -1000000, 1000000, 0),
+		revision = coerceInteger((deltaRaw :: any).revision, 0, 1000000000, 0),
+		clusterCountX = coerceInteger((deltaRaw :: any).clusterCountX, 1, 512, 1),
+		clusterCountY = coerceInteger((deltaRaw :: any).clusterCountY, 1, 512, 1),
+		clusterCountZ = coerceInteger((deltaRaw :: any).clusterCountZ, 1, 512, 1),
 		clusterChosenBiomeIds = clusterChosenBiomeIds,
 		clusterBlendWeights = clusterBlendWeights,
 		clusterSolidMask = clusterSolidMask,
 		clusterSurfaceY = clusterSurfaceY,
-		entityCount = CoerceInteger((deltaRaw :: any).entityCount, 0, 100000, 0),
+		entityCount = coerceInteger((deltaRaw :: any).entityCount, 0, 100000, 0),
 		entityIds = if typeof((deltaRaw :: any).entityIds) == "table" then (deltaRaw :: any).entityIds else {} :: any,
 		entityKinds = if typeof((deltaRaw :: any).entityKinds) == "table"
 			then (deltaRaw :: any).entityKinds
@@ -275,9 +275,9 @@ function Net.DecodeChunkDelta(deltaRaw: any): { [string]: any }?
 	}
 end
 
-local function GetLegacyBiomeId(biomeIdRaw: any, biomeTypeRaw: any, fallbackBiomeId: number): number
+local function getLegacyBiomeId(biomeIdRaw: any, biomeTypeRaw: any, fallbackBiomeId: number): number
 	if isFiniteNumber(biomeIdRaw) then
-		return CoerceBiomeId(biomeIdRaw, fallbackBiomeId)
+		return coerceBiomeId(biomeIdRaw, fallbackBiomeId)
 	end
 	if isFiniteNumber(biomeTypeRaw) then
 		local biomeType = math.floor(biomeTypeRaw)
@@ -288,10 +288,10 @@ local function GetLegacyBiomeId(biomeIdRaw: any, biomeTypeRaw: any, fallbackBiom
 	return fallbackBiomeId
 end
 
-local function GetLegacyChunkCoordinates(legacy: { [string]: any }): (number, number, number, string)
-	local chunkX = CoerceInteger(legacy.chunkX, -1000000, 1000000, 0)
-	local chunkY = CoerceInteger(legacy.chunkY, -1000000, 1000000, 0)
-	local chunkZ = CoerceInteger(legacy.chunkZ, -1000000, 1000000, 0)
+local function getLegacyChunkCoordinates(legacy: { [string]: any }): (number, number, number, string)
+	local chunkX = coerceInteger(legacy.chunkX, -1000000, 1000000, 0)
+	local chunkY = coerceInteger(legacy.chunkY, -1000000, 1000000, 0)
+	local chunkZ = coerceInteger(legacy.chunkZ, -1000000, 1000000, 0)
 	local key = Shared.PackChunkKey(chunkX, chunkY, chunkZ)
 
 	local parsedX, parsedY, parsedZ = unpackLegacyChunkKey(legacy.key)
@@ -305,29 +305,29 @@ local function GetLegacyChunkCoordinates(legacy: { [string]: any }): (number, nu
 	return chunkX, chunkY, chunkZ, key
 end
 
-local function GetLegacyAxisSize(
+local function getLegacyAxisSize(
 	legacy: { [string]: any },
 	fieldPrimary: string,
 	fieldSecondary: string,
 	fallback: number
 ): number
-	local primary = CoerceInteger(legacy[fieldPrimary], 1, LEGACY_AXIS_MAX, 0)
+	local primary = coerceInteger(legacy[fieldPrimary], 1, LEGACY_AXIS_MAX, 0)
 	if primary > 0 then
 		return primary
 	end
-	local secondary = CoerceInteger(legacy[fieldSecondary], 1, LEGACY_AXIS_MAX, 0)
+	local secondary = coerceInteger(legacy[fieldSecondary], 1, LEGACY_AXIS_MAX, 0)
 	if secondary > 0 then
 		return secondary
 	end
 	return fallback
 end
 
-local function GetLegacyClusterAxisCount(
+local function getLegacyClusterAxisCount(
 	legacy: { [string]: any },
 	clusterField: string,
 	tileAxisSize: number
 ): number
-	local direct = CoerceInteger(legacy[clusterField], 1, 512, 0)
+	local direct = coerceInteger(legacy[clusterField], 1, 512, 0)
 	if direct > 0 then
 		return direct
 	end
@@ -352,20 +352,20 @@ function Net.DecodeLegacyChunkTransitional(legacyRaw: any): { [string]: any }?
 		return nil
 	end
 
-	local chunkX, chunkY, chunkZ, key = GetLegacyChunkCoordinates(legacy)
-	local tileCountX = GetLegacyAxisSize(legacy, "tileCountX", "width", Shared.CLUSTER_SIZE)
-	local tileCountY = GetLegacyAxisSize(legacy, "tileCountY", "height", Shared.CLUSTER_SIZE)
-	local tileCountZ = GetLegacyAxisSize(legacy, "tileCountZ", "depth", 1)
+	local chunkX, chunkY, chunkZ, key = getLegacyChunkCoordinates(legacy)
+	local tileCountX = getLegacyAxisSize(legacy, "tileCountX", "width", Shared.CLUSTER_SIZE)
+	local tileCountY = getLegacyAxisSize(legacy, "tileCountY", "height", Shared.CLUSTER_SIZE)
+	local tileCountZ = getLegacyAxisSize(legacy, "tileCountZ", "depth", 1)
 
-	local clusterCountX = GetLegacyClusterAxisCount(legacy, "clusterCountX", tileCountX)
-	local clusterCountY = GetLegacyClusterAxisCount(legacy, "clusterCountY", tileCountY)
-	local clusterCountZ = GetLegacyClusterAxisCount(legacy, "clusterCountZ", tileCountZ)
+	local clusterCountX = getLegacyClusterAxisCount(legacy, "clusterCountX", tileCountX)
+	local clusterCountY = getLegacyClusterAxisCount(legacy, "clusterCountY", tileCountY)
+	local clusterCountZ = getLegacyClusterAxisCount(legacy, "clusterCountZ", tileCountZ)
 	local expectedClusters = clusterCountX * clusterCountY * clusterCountZ
 	local clusterSize = math.max(1, Shared.CLUSTER_SIZE)
 
-	local dominantBiomeId = CoerceBiomeId(legacy.dominantBiomeId, Shared.BIOME_ID.FOREST)
-	local revision = CoerceInteger(legacy.revision, 0, 1000000000, 0)
-	local tileMinY = CoerceInteger(legacy.tileMinY, -1000000, 1000000, chunkY * tileCountY)
+	local dominantBiomeId = coerceBiomeId(legacy.dominantBiomeId, Shared.BIOME_ID.FOREST)
+	local revision = coerceInteger(legacy.revision, 0, 1000000000, 0)
+	local tileMinY = coerceInteger(legacy.tileMinY, -1000000, 1000000, chunkY * tileCountY)
 
 	local clusterChosenBiomeIds = Sift.Array.create(expectedClusters, dominantBiomeId)
 	local clusterBlendWeights = Sift.Array.create(expectedClusters, 0)
@@ -388,18 +388,18 @@ function Net.DecodeLegacyChunkTransitional(legacyRaw: any): { [string]: any }?
 	if clusterChosenBiomeIdsRaw ~= nil then
 		for clusterIndex = 1, expectedClusters do
 			clusterChosenBiomeIds[clusterIndex] =
-				CoerceBiomeId(clusterChosenBiomeIdsRaw[clusterIndex], dominantBiomeId)
+				coerceBiomeId(clusterChosenBiomeIdsRaw[clusterIndex], dominantBiomeId)
 			clusterBlendWeights[clusterIndex] = if clusterBlendWeightsRaw ~= nil
-				then CoerceInteger(clusterBlendWeightsRaw[clusterIndex], 0, 255, 0)
+				then coerceInteger(clusterBlendWeightsRaw[clusterIndex], 0, 255, 0)
 				else 0
 			clusterSolidMask[clusterIndex] = if clusterSolidMaskRaw ~= nil
-				then CoerceInteger(clusterSolidMaskRaw[clusterIndex], 0, 1, 0)
+				then coerceInteger(clusterSolidMaskRaw[clusterIndex], 0, 1, 0)
 				else 0
 
 			local _clusterLocalX, clusterLocalY, _ = decodeClusterIndex(clusterIndex, clusterCountX, clusterCountY)
 			local fallbackSurface = tileMinY + clusterLocalY * clusterSize + (clusterSize - 1)
 			clusterSurfaceY[clusterIndex] = if clusterSurfaceYRaw ~= nil
-				then CoerceInteger(clusterSurfaceYRaw[clusterIndex], -1000000, 1000000, fallbackSurface)
+				then coerceInteger(clusterSurfaceYRaw[clusterIndex], -1000000, 1000000, fallbackSurface)
 				else fallbackSurface
 		end
 	else
@@ -438,7 +438,7 @@ function Net.DecodeLegacyChunkTransitional(legacyRaw: any): { [string]: any }?
 						for localTileY = minLocalTileY, maxLocalTileY do
 							for localTileX = minTileX, maxTileX do
 								local tileIndex = localTileZ * layerArea + localTileY * tileCountX + localTileX + 1
-								local tileId = CoerceInteger(tiles[tileIndex], 0, 65535, 0)
+								local tileId = coerceInteger(tiles[tileIndex], 0, 65535, 0)
 								if tileId ~= 0 then
 									solidMask = 1
 									if localTileY > highestSolidTileY then
@@ -447,7 +447,7 @@ function Net.DecodeLegacyChunkTransitional(legacyRaw: any): { [string]: any }?
 								end
 
 								local biomeId =
-									GetLegacyBiomeId(biomeIds[tileIndex], biomeTypes[tileIndex], dominantBiomeId)
+									getLegacyBiomeId(biomeIds[tileIndex], biomeTypes[tileIndex], dominantBiomeId)
 								if biomeId == Shared.BIOME_ID.CORRUPTION then
 									corruptionCount += 1
 								elseif biomeId == Shared.BIOME_ID.JUNGLE then
@@ -490,14 +490,14 @@ function Net.DecodeLegacyChunkTransitional(legacyRaw: any): { [string]: any }?
 					clusterSurfaceY[clusterIndex] = tileMinY
 						+ (if highestSolidTileY >= 0 then highestSolidTileY else maxLocalTileY)
 					clusterBlendWeights[clusterIndex] = if blendWeightsRaw ~= nil
-						then CoerceInteger(blendWeightsRaw[clusterIndex], 0, 255, 0)
+						then coerceInteger(blendWeightsRaw[clusterIndex], 0, 255, 0)
 						else 0
 				end
 			end
 		end
 	end
 
-	local entityCount = CoerceInteger(legacy.entityCount, 0, 100000, 0)
+	local entityCount = coerceInteger(legacy.entityCount, 0, 100000, 0)
 	return {
 		key = key,
 		chunkX = chunkX,
@@ -527,7 +527,7 @@ function Net.TranslateLegacyChunkToChunkDeltaTransitional(legacyRaw: any): Chunk
 		return nil
 	end
 
-	local entityCount = CoerceInteger(decoded.entityCount, 0, 100000, 0)
+	local entityCount = coerceInteger(decoded.entityCount, 0, 100000, 0)
 	return {
 		key = decoded.key,
 		chunkX = decoded.chunkX,
@@ -565,7 +565,7 @@ function Net.ValidateClientInput(inputRaw: any): (boolean, string)
 	end
 
 	local input = inputRaw :: { [string]: any }
-	local entityId = CoerceInteger(input.entityId, 0, 1000000000, 0)
+	local entityId = coerceInteger(input.entityId, 0, 1000000000, 0)
 	if entityId <= 0 then
 		return false, "entityId is required"
 	end
@@ -591,7 +591,7 @@ function Net.PredictEntityPosition(
 end
 
 function Net.CoerceStreamRadius(valueRaw: any, fallback: number): number
-	return CoerceInteger(valueRaw, 1, 32, fallback)
+	return coerceInteger(valueRaw, 1, 32, fallback)
 end
 
 function Net.ChunkPriorityFromCenter(

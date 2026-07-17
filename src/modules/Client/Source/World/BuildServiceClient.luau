@@ -10,9 +10,9 @@ local Workspace = game:GetService("Workspace")
 
 local AudioServiceClient = require("AudioServiceClient")
 local AudioServiceUtils = require("AudioServiceUtils")
+local BinderSupportClient = require("BinderSupportClient")
 local BuildServiceClientConstants = require("BuildServiceClientConstants")
 local BuildServiceUtils = require("BuildServiceUtils")
-local BinderSupportClient = require("BinderSupportClient")
 local CoreRuntime = require("CoreRuntime")
 local GamepadPointer = require("GamepadPointer")
 local GamepadTargetServiceClient = require("GamepadTargetServiceClient")
@@ -20,6 +20,8 @@ local InventoryServiceClient = require("InventoryServiceClient")
 local InventoryServiceUtils = require("InventoryServiceUtils")
 local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
+local ServiceBag = require("ServiceBag")
+local String = require("String")
 local BuildServicePackets = require("NetPacketsShared").BuildService
 
 local function sendPacket(methodName: string, ...: any)
@@ -70,7 +72,6 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local NevermoreSupport = require("NevermoreSupport")
 local PlatformServiceClient = require("PlatformServiceClient")
 local Ripple: any = require(ReplicatedStorage.Packages.Ripple)
 local Rubble = require("Rubble")
@@ -83,7 +84,7 @@ local itemSlice = require("ItemSlice")
 
 local cachedWindFoliageServiceClient = nil
 
-local function GetWindFoliageServiceClient(): any?
+local function getWindFoliageServiceClient(): any?
 	if cachedWindFoliageServiceClient ~= nil then
 		return cachedWindFoliageServiceClient
 	end
@@ -104,6 +105,7 @@ type PlaceableItemConfig = BuildServiceUtils.PlaceableItemConfig
 type TileCoordinate = BuildServiceUtils.TileCoordinate
 type TileDelta = BuildServiceUtils.TileDelta
 type TreeHitResult = BuildServiceUtils.TreeHitResult
+type TreeSnapshot = BuildServiceUtils.TreeSnapshot
 type TreeFelledPayload = BuildServiceUtils.TreeFelledPayload
 
 local DEPLOYABLE_TILE_X_ATTRIBUTE_NAME = "DeployableTileX"
@@ -189,6 +191,12 @@ type TreeFallAnimation = {
 }
 
 local BuildServiceClient = {}
+BuildServiceClient.ServiceName = "BuildServiceClient"
+
+local function createRuntimeInstanceName(): string
+	local guid = String.removePostfix(String.removePrefix(HttpService:GenerateGUID(true), "{"), "}")
+	return string.format("%03d", (tonumber(string.sub(guid, 1, 8), 16) or 0) % 1000)
+end
 
 local CLIENT_VISUALS_FOLDER_NAME = "BuildServiceClientVisuals"
 
@@ -200,7 +208,7 @@ local function isPrimaryInput(inputObject: InputObject): boolean
 	return BuildServiceClientConstants.PRIMARY_INPUT_USER_TYPES[inputObject.UserInputType] == true
 end
 
-local function CoerceInventorySlot(slotRaw: any): number?
+local function coerceInventorySlot(slotRaw: any): number?
 	if typeof(slotRaw) ~= "number" or slotRaw ~= slotRaw then
 		return nil
 	end
@@ -212,7 +220,7 @@ local function CoerceInventorySlot(slotRaw: any): number?
 	return slot
 end
 
-local function CoerceInventoryState(stateRaw: any): InventoryState
+local function coerceInventoryState(stateRaw: any): InventoryState
 	local state = if typeof(stateRaw) == "table"
 		then InventoryServiceUtils.CoerceState(
 			stateRaw,
@@ -222,7 +230,7 @@ local function CoerceInventoryState(stateRaw: any): InventoryState
 	return state
 end
 
-local function GetMouseLocation(cursorModuleRaw: any): Vector2?
+local function getMouseLocation(cursorModuleRaw: any): Vector2?
 	if cursorModuleRaw ~= nil and typeof((cursorModuleRaw :: any).GetScreenPosition) == "function" then
 		local candidate = (cursorModuleRaw :: any):GetScreenPosition()
 		if typeof(candidate) == "Vector2" then
@@ -244,7 +252,7 @@ local function shouldUseGamepadWorldSelection(): boolean
 	return PlatformServiceClient:IsGamepad() and PlatformServiceClient:GetMachineFamily() ~= "desktop"
 end
 
-local function GetCharacterRootPart(playerRaw: any): BasePart?
+local function getCharacterRootPart(playerRaw: any): BasePart?
 	if typeof(playerRaw) ~= "Instance" or not playerRaw:IsA("Player") then
 		return nil
 	end
@@ -266,7 +274,7 @@ local function GetCharacterRootPart(playerRaw: any): BasePart?
 	return character:FindFirstChildWhichIsA("BasePart")
 end
 
-local function GetGamepadNav(runtimeContextRaw: any): any?
+local function getGamepadNav(runtimeContextRaw: any): any?
 	local runtimeContext = runtimeContextRaw
 	if runtimeContext == nil then
 		local ok, runtimeOrError = pcall(function()
@@ -299,8 +307,8 @@ local function GetGamepadNav(runtimeContextRaw: any): any?
 	return nil
 end
 
-local function GetGamepadScreenVector(runtimeContextRaw: any): Vector2?
-	local gamepadNav = GetGamepadNav(runtimeContextRaw)
+local function getGamepadScreenVector(runtimeContextRaw: any): Vector2?
+	local gamepadNav = getGamepadNav(runtimeContextRaw)
 	if gamepadNav == nil or typeof((gamepadNav :: any).GetThumbstickState) ~= "function" then
 		return nil
 	end
@@ -316,7 +324,7 @@ local function GetGamepadScreenVector(runtimeContextRaw: any): Vector2?
 	return if typeof(screenVector) == "Vector2" then screenVector else nil
 end
 
-local function GetIntegerAttribute(instance: Instance?, attributeName: string): number?
+local function getIntegerAttribute(instance: Instance?, attributeName: string): number?
 	if instance == nil then
 		return nil
 	end
@@ -364,7 +372,7 @@ local function computeFootprintBounds(
 	return minTileX, maxTileX, minTileY, maxTileY
 end
 
-local function GetTreeRootTileNearWorldPosition(worldPosition: Vector3, radiusStudsRaw: any): (number?, number?)
+local function getTreeRootTileNearWorldPosition(worldPosition: Vector3, radiusStudsRaw: any): (number?, number?)
 	local chunksFolder = (WorldGenerationServiceClient :: any).chunksFolder
 	if typeof(chunksFolder) ~= "Instance" then
 		return nil, nil
@@ -395,8 +403,8 @@ local function GetTreeRootTileNearWorldPosition(worldPosition: Vector3, radiusSt
 		end
 
 		local hitModel = part:FindFirstAncestorOfClass("Model")
-		local rootTileX = GetIntegerAttribute(hitModel, BuildServiceClientConstants.BUILD_TREE_ROOT_TILE_X_ATTRIBUTE)
-		local rootTileY = GetIntegerAttribute(hitModel, BuildServiceClientConstants.BUILD_TREE_ROOT_TILE_Y_ATTRIBUTE)
+		local rootTileX = getIntegerAttribute(hitModel, BuildServiceClientConstants.BUILD_TREE_ROOT_TILE_X_ATTRIBUTE)
+		local rootTileY = getIntegerAttribute(hitModel, BuildServiceClientConstants.BUILD_TREE_ROOT_TILE_Y_ATTRIBUTE)
 		if rootTileX == nil or rootTileY == nil then
 			continue
 		end
@@ -412,8 +420,8 @@ local function GetTreeRootTileNearWorldPosition(worldPosition: Vector3, radiusSt
 	return bestTileX, bestTileY
 end
 
-local function GetPlaceableSourceFromInventorySlot(state: InventoryState, slotRaw: any): ActivePlaceSource?
-	local slot = CoerceInventorySlot(slotRaw)
+local function getPlaceableSourceFromInventorySlot(state: InventoryState, slotRaw: any): ActivePlaceSource?
+	local slot = coerceInventorySlot(slotRaw)
 	if slot == nil then
 		return nil
 	end
@@ -434,17 +442,17 @@ local function GetPlaceableSourceFromInventorySlot(state: InventoryState, slotRa
 	}
 end
 
-local function GetSelectedPlaceableSourceFromInventoryState(stateRaw: any): ActivePlaceSource?
-	local state = CoerceInventoryState(stateRaw)
+local function getSelectedPlaceableSourceFromInventoryState(stateRaw: any): ActivePlaceSource?
+	local state = coerceInventoryState(stateRaw)
 	if not InventoryServiceUtils.IsLoadedState(state.loadState) then
 		return nil
 	end
 
-	return GetPlaceableSourceFromInventorySlot(state, state.selectedSlot)
+	return getPlaceableSourceFromInventorySlot(state, state.selectedSlot)
 end
 
-local function GetSelectedPlaceableConfigFromInventoryState(stateRaw: any): PlaceableItemConfig?
-	local placeSource = GetSelectedPlaceableSourceFromInventoryState(stateRaw)
+local function getSelectedPlaceableConfigFromInventoryState(stateRaw: any): PlaceableItemConfig?
+	local placeSource = getSelectedPlaceableSourceFromInventoryState(stateRaw)
 	if placeSource == nil then
 		return nil
 	end
@@ -452,8 +460,8 @@ local function GetSelectedPlaceableConfigFromInventoryState(stateRaw: any): Plac
 	return placeSource.config
 end
 
-local function GetActivePlaceSourceFromInventoryState(stateRaw: any): ActivePlaceSource?
-	local state = CoerceInventoryState(stateRaw)
+local function getActivePlaceSourceFromInventoryState(stateRaw: any): ActivePlaceSource?
+	local state = coerceInventoryState(stateRaw)
 	if not InventoryServiceUtils.IsLoadedState(state.loadState) then
 		return nil
 	end
@@ -463,13 +471,13 @@ local function GetActivePlaceSourceFromInventoryState(stateRaw: any): ActivePlac
 		if dragState.hoveredSlot ~= nil then
 			return nil
 		end
-		return GetPlaceableSourceFromInventorySlot(state, dragState.sourceSlot)
+		return getPlaceableSourceFromInventorySlot(state, dragState.sourceSlot)
 	end
 
-	return GetSelectedPlaceableSourceFromInventoryState(state)
+	return getSelectedPlaceableSourceFromInventoryState(state)
 end
 
-local function GetBreakDebrisVisual(tileId: number): (Color3, Enum.Material)
+local function getBreakDebrisVisual(tileId: number): (Color3, Enum.Material)
 	local visual = BuildServiceClientConstants.BREAK_DEBRIS_VISUALS[tileId]
 	if visual == nil then
 		visual = BuildServiceClientConstants.DEFAULT_BREAK_DEBRIS_VISUAL
@@ -506,7 +514,7 @@ local function collectModelParts(model: Model): ({ BasePart }, { number })
 	return parts, baseTransparency
 end
 
-local function GetSoundPlayableDuration(sound: Sound?): number?
+local function getSoundPlayableDuration(sound: Sound?): number?
 	if sound == nil then
 		return nil
 	end
@@ -521,7 +529,7 @@ local function GetSoundPlayableDuration(sound: Sound?): number?
 	return length / (playbackSpeed :: number)
 end
 
-function BuildServiceClient.GetTreesForChunk(self: BuildServiceClient, chunkX: number, chunkY: number): { any }?
+function BuildServiceClient.GetTreesForChunk(_self: BuildServiceClient, chunkX: number, chunkY: number): { any }?
 	local chunkSnapshots = (WorldGenerationServiceClient :: any).chunkSnapshots
 	if typeof(chunkSnapshots) ~= "table" then
 		return nil
@@ -549,10 +557,21 @@ function BuildServiceClient.GetTreeHitAtTile(self: BuildServiceClient, tileX: nu
 	)
 end
 
+function BuildServiceClient.GetTreeRootAtTile(self: BuildServiceClient, tileX: number, tileY: number): TreeSnapshot?
+	return BuildServiceUtils.GetTreeRootAtTile(
+		tileX,
+		tileY,
+		self.state.chunkSize,
+		function(chunkX: number, chunkY: number): { any }?
+			return self:GetTreesForChunk(chunkX, chunkY)
+		end
+	)
+end
+
 function BuildServiceClient.IsBreakableTarget(self: BuildServiceClient, tileX: number, tileY: number): boolean
 	local tileId = self:GetTileAt(tileX, tileY, false)
 	if tileId ~= BuildServiceUtils.AIR_TILE_ID then
-		return true
+		return self:GetTreeRootAtTile(tileX, tileY) == nil
 	end
 	local treeHit = self:GetTreeHitAtTile(tileX, tileY)
 	return treeHit ~= nil
@@ -753,8 +772,8 @@ function BuildServiceClient.PlayTreeFallSound(self: BuildServiceClient, animatio
 	animation.sound = playedSound
 	animation.soundFadeStarted = false
 
-	self:ApplyTreeFallSoundSyncDuration(animation, GetSoundPlayableDuration(playedSound))
-	if GetSoundPlayableDuration(playedSound) ~= nil then
+	self:ApplyTreeFallSoundSyncDuration(animation, getSoundPlayableDuration(playedSound))
+	if getSoundPlayableDuration(playedSound) ~= nil then
 		return
 	end
 
@@ -767,7 +786,7 @@ function BuildServiceClient.PlayTreeFallSound(self: BuildServiceClient, animatio
 		if self.treeFallAnimations[animation.treeId] ~= animation then
 			return
 		end
-		self:ApplyTreeFallSoundSyncDuration(animation, GetSoundPlayableDuration(playedSound))
+		self:ApplyTreeFallSoundSyncDuration(animation, getSoundPlayableDuration(playedSound))
 	end)
 	animation.soundLoadedConnection = loadedConnection
 end
@@ -917,7 +936,7 @@ function BuildServiceClient.DisableFallingTreeWindFoliage(_self: BuildServiceCli
 		descendant:SetAttribute(BuildServiceClientConstants.WIND_FOLIAGE_ENABLED_ATTRIBUTE, false)
 	end
 
-	local windFoliageServiceClient = GetWindFoliageServiceClient()
+	local windFoliageServiceClient = getWindFoliageServiceClient()
 	if windFoliageServiceClient == nil then
 		return
 	end
@@ -1088,7 +1107,7 @@ function BuildServiceClient.OnTreeFelled(self: BuildServiceClient, payloadRaw: a
 	self:StartTreeFallAnimation(payload)
 end
 
-function BuildServiceClient.CreateVisualFolder(self: BuildServiceClient): Folder
+function BuildServiceClient.CreateVisualFolder(_self: BuildServiceClient): Folder
 	return WorkspaceFolders.GetOrCreateFolderInGame(CLIENT_VISUALS_FOLDER_NAME)
 end
 
@@ -1114,7 +1133,7 @@ function BuildServiceClient.CreatePreviewVisual(self: BuildServiceClient)
 	end
 
 	local previewPart = Instance.new("Part")
-	previewPart.Name = HttpService:GenerateGUID(false)
+	previewPart.Name = createRuntimeInstanceName()
 	previewPart.Anchored = true
 	previewPart.CanCollide = false
 	previewPart.CanTouch = false
@@ -1129,12 +1148,12 @@ function BuildServiceClient.CreatePreviewVisual(self: BuildServiceClient)
 end
 
 function BuildServiceClient.GetGamepadWorldPosition(self: BuildServiceClient): (Vector3?, Vector2?)
-	local screenVector = GetGamepadScreenVector(self.runtimeContext)
+	local screenVector = getGamepadScreenVector(self.runtimeContext)
 	if screenVector == nil then
 		return nil, nil
 	end
 
-	local rootPart = GetCharacterRootPart(self.localPlayer)
+	local rootPart = getCharacterRootPart(self.localPlayer)
 	if rootPart == nil then
 		return nil, screenVector
 	end
@@ -1182,7 +1201,7 @@ function BuildServiceClient.GetCursorTile(self: BuildServiceClient): (number?, n
 		self.cursorScreenVector = screenVector
 		if worldPosition ~= nil then
 			local rootTileX, rootTileY =
-				GetTreeRootTileNearWorldPosition(worldPosition, math.max(1, self.state.tileSize * 0.8))
+				getTreeRootTileNearWorldPosition(worldPosition, math.max(1, self.state.tileSize * 0.8))
 			if rootTileX ~= nil and rootTileY ~= nil then
 				return rootTileX, rootTileY
 			end
@@ -1199,7 +1218,7 @@ function BuildServiceClient.GetCursorTile(self: BuildServiceClient): (number?, n
 	if currentCamera == nil then
 		return nil, nil
 	end
-	local mouseLocation = GetMouseLocation(self.cursorModule)
+	local mouseLocation = getMouseLocation(self.cursorModule)
 	if mouseLocation == nil then
 		return nil, nil
 	end
@@ -1219,8 +1238,10 @@ function BuildServiceClient.GetCursorTile(self: BuildServiceClient): (number?, n
 		)
 		if raycastResult ~= nil then
 			local hitModel = raycastResult.Instance:FindFirstAncestorOfClass("Model")
-			local rootTileX = GetIntegerAttribute(hitModel, BuildServiceClientConstants.BUILD_TREE_ROOT_TILE_X_ATTRIBUTE)
-			local rootTileY = GetIntegerAttribute(hitModel, BuildServiceClientConstants.BUILD_TREE_ROOT_TILE_Y_ATTRIBUTE)
+			local rootTileX =
+				getIntegerAttribute(hitModel, BuildServiceClientConstants.BUILD_TREE_ROOT_TILE_X_ATTRIBUTE)
+			local rootTileY =
+				getIntegerAttribute(hitModel, BuildServiceClientConstants.BUILD_TREE_ROOT_TILE_Y_ATTRIBUTE)
 			if rootTileX ~= nil and rootTileY ~= nil then
 				return rootTileX, rootTileY
 			end
@@ -1268,7 +1289,7 @@ function BuildServiceClient.GetTerrainHoverTile(
 end
 
 function BuildServiceClient.GetTileFromWorldGenerationSnapshot(
-	self: BuildServiceClient,
+	_self: BuildServiceClient,
 	tileX: number,
 	tileY: number
 ): number?
@@ -1480,7 +1501,7 @@ function BuildServiceClient.RequestPlaceTile(
 	local tileX = BuildServiceUtils.CoerceTileCoordinate(tileXRaw)
 	local tileY = BuildServiceUtils.CoerceTileCoordinate(tileYRaw)
 	local tileId = BuildServiceUtils.CoerceTileId(tileIdRaw)
-	local sourceSlot = CoerceInventorySlot(sourceSlotRaw)
+	local sourceSlot = coerceInventorySlot(sourceSlotRaw)
 	local requestId = self.nextRequestId
 	self.nextRequestId += 1
 
@@ -1505,6 +1526,10 @@ function BuildServiceClient.RequestBreakTile(
 	local registerHit = BuildServiceUtils.CoerceBoolean(registerHitRaw, false)
 	local requestId = self.nextRequestId
 	self.nextRequestId += 1
+	if isBreaking and tileX ~= nil and tileY ~= nil and self:GetTreeRootAtTile(tileX, tileY) ~= nil then
+		sendPacket(BuildServiceUtils.NETWORK_METHOD_REQUEST_BREAK_TILE, tileX, tileY, false, requestId, false)
+		return requestId
+	end
 	sendPacket(BuildServiceUtils.NETWORK_METHOD_REQUEST_BREAK_TILE, tileX, tileY, isBreaking, requestId, registerHit)
 	return requestId
 end
@@ -1536,7 +1561,8 @@ function BuildServiceClient.OnTileDeltas(self: BuildServiceClient, payloadRaw: a
 			self.predictedTileOverrides[tileKey] = nil
 		end
 
-		local isBreakDelta = delta.reason ~= nil and BuildServiceClientConstants.BREAK_DEBRIS_REASONS[delta.reason] == true
+		local isBreakDelta = delta.reason ~= nil
+			and BuildServiceClientConstants.BREAK_DEBRIS_REASONS[delta.reason] == true
 		if isBreakDelta then
 			suppressChunkAnimationForBreakDelta(delta)
 		end
@@ -1550,11 +1576,7 @@ function BuildServiceClient.OnTileDeltas(self: BuildServiceClient, payloadRaw: a
 				and self.breakInput.tileX == delta.tileX
 				and self.breakInput.tileY == delta.tileY
 			)
-				or (
-					self.currentBreakProgress ~= nil
-					and self.currentBreakProgress.tileX == delta.tileX
-					and self.currentBreakProgress.tileY == delta.tileY
-				)
+				or (self.currentBreakProgress ~= nil and self.currentBreakProgress.tileX == delta.tileX and self.currentBreakProgress.tileY == delta.tileY)
 				or (self.cursorTileX == delta.tileX and self.cursorTileY == delta.tileY)
 			if isLocalBreakTarget and not playedTileBreakSound then
 				playedTileBreakSound = self:PlayTileBreakSound()
@@ -1590,7 +1612,7 @@ local function spawnDebrisBurst(
 	if self.rubble == nil then
 		return
 	end
-	local color, material = GetBreakDebrisVisual(tileId)
+	local color, material = getBreakDebrisVisual(tileId)
 	local tileCenter = BuildServiceUtils.TileToWorldCenter(
 		tileX,
 		tileY,
@@ -1656,6 +1678,9 @@ function BuildServiceClient.PlayHoveredTileBreakFeedback(self: BuildServiceClien
 
 	local tileId = self:GetTileAt(targetTileX, targetTileY, false)
 	if tileId == BuildServiceUtils.AIR_TILE_ID then
+		return false
+	end
+	if self:GetTreeRootAtTile(targetTileX, targetTileY) ~= nil then
 		return false
 	end
 
@@ -2023,7 +2048,7 @@ end
 
 function BuildServiceClient.OnInventoryStateChanged(self: BuildServiceClient, stateRaw: any)
 	self.inventoryState = InventoryServiceUtils.CoerceState(stateRaw, self.inventoryState)
-	self:ApplySelectedPlaceableConfig(GetSelectedPlaceableConfigFromInventoryState(self.inventoryState))
+	self:ApplySelectedPlaceableConfig(getSelectedPlaceableConfigFromInventoryState(self.inventoryState))
 end
 
 function BuildServiceClient.SetSelectedTileId(self: BuildServiceClient, tileIdRaw: any)
@@ -2063,11 +2088,14 @@ function BuildServiceClient.ApplyState(self: BuildServiceClient, stateRaw: any)
 	self.stateChanged:Fire(BuildServiceUtils.CloneState(self.state))
 end
 
-function BuildServiceClient.RequestSync(self: BuildServiceClient)
+function BuildServiceClient.RequestSync(_self: BuildServiceClient)
 	sendPacket(BuildServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
-function BuildServiceClient.Init(self: BuildServiceClient)
+function BuildServiceClient.Init(self: BuildServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
@@ -2153,7 +2181,7 @@ function BuildServiceClient.Init(self: BuildServiceClient)
 		},
 	}) :: RubbleObject
 
-	self.binders = NevermoreSupport.GetService(BinderSupportClient)
+	self.binders = if serviceBag ~= nil then serviceBag:GetService(BinderSupportClient) else nil
 	self:CreatePreviewVisual()
 	local clearHoveredTerrainTile = (WorldGenerationServiceClient :: any).ClearHoveredTerrainTile
 	if typeof(clearHoveredTerrainTile) == "function" then
@@ -2208,6 +2236,7 @@ function BuildServiceClient.Init(self: BuildServiceClient)
 end
 
 function BuildServiceClient.Destroy(self: BuildServiceClient)
+	self._serviceBag = nil
 	self:SetBreakInput(false, nil, nil)
 	self:SetPlaceInput(false, nil, nil)
 	GamepadTargetServiceClient.ClearTarget()
@@ -2230,7 +2259,7 @@ function BuildServiceClient.Destroy(self: BuildServiceClient)
 end
 
 function BuildServiceClient.GetActivePlaceSource(self: BuildServiceClient): ActivePlaceSource?
-	return GetActivePlaceSourceFromInventoryState(self.inventoryState)
+	return getActivePlaceSourceFromInventoryState(self.inventoryState)
 end
 
 function BuildServiceClient.BeginBreakInputFromCursor(self: BuildServiceClient): boolean

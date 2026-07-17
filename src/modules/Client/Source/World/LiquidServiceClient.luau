@@ -1,7 +1,6 @@
 local require = require(script.Parent.loader).load(script)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-
 local CollectionService = game:GetService("CollectionService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -18,6 +17,8 @@ local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local Lerp = require("Lerp")
 local LiquidServiceUtils = require("LiquidServiceUtils")
 local PacketPayload = require("PacketPayload")
+local ServiceBag = require("ServiceBag")
+local String = require("String")
 local LiquidServicePackets = require("NetPacketsShared").LiquidService
 
 local function sendPacket(methodName: string, ...: any)
@@ -63,7 +64,6 @@ local function bindPackets(self: any)
 	bindPacket(self, "requestSync")
 end
 
-local NevermoreSupport = require("NevermoreSupport")
 local Signal = require("Signal")
 local TagBinder = require("TagBinder")
 local TickSchedulerModule = require("TickScheduler")
@@ -121,6 +121,12 @@ type LayerRenderContext = {
 }
 
 local LiquidServiceClient = {}
+LiquidServiceClient.ServiceName = "LiquidServiceClient"
+
+local function createRuntimeInstanceName(): string
+	local guid = String.removePostfix(String.removePrefix(HttpService:GenerateGUID(true), "{"), "}")
+	return string.format("%03d", (tonumber(string.sub(guid, 1, 8), 16) or 0) % 1000)
+end
 
 local LiquidMesher = LiquidServiceUtils.LiquidMesher
 local LiquidColor = LiquidServiceUtils.LiquidColor
@@ -153,7 +159,7 @@ local function darkenColor(color: Color3, amountRaw: any): Color3
 	return Color3.new(color.R * scale, color.G * scale, color.B * scale)
 end
 
-local function CoerceSourceConfig(): LiquidServiceConfig
+local function coerceSourceConfig(): LiquidServiceConfig
 	local source = if typeof(Configs) == "table" then (Configs :: any).liquid else nil
 	return LiquidServiceUtils.CoerceConfig(source, nil)
 end
@@ -197,7 +203,7 @@ end
 
 function LiquidServiceClient.CreateChunkVisual(self: LiquidServiceClient, chunkKey: string): ChunkVisual
 	local model = Instance.new("Model")
-	model.Name = HttpService:GenerateGUID(false)
+	model.Name = createRuntimeInstanceName()
 	model:SetAttribute("ChunkKey", chunkKey)
 	model.Parent = self.visualFolder
 	TagBinder.applyTag(model, TagBinder.Tags.Liquid, CollectionService)
@@ -236,7 +242,7 @@ function LiquidServiceClient.GetTileDepth(self: LiquidServiceClient): number
 	return math.max(0.05, self.state.tileSize)
 end
 
-function LiquidServiceClient.GetBasePlaneX(self: LiquidServiceClient): number
+function LiquidServiceClient.GetBasePlaneX(_self: LiquidServiceClient): number
 	local basePlaneX = (WorldGenerationServiceClient :: any).basePlaneX
 	if isFiniteNumber(basePlaneX) then
 		return basePlaneX
@@ -244,7 +250,7 @@ function LiquidServiceClient.GetBasePlaneX(self: LiquidServiceClient): number
 	return 0
 end
 
-function LiquidServiceClient.GetWorldChunkSnapshot(self: LiquidServiceClient, chunkKey: string): any?
+function LiquidServiceClient.GetWorldChunkSnapshot(_self: LiquidServiceClient, chunkKey: string): any?
 	local chunkSnapshots = (WorldGenerationServiceClient :: any).chunkSnapshots
 	if typeof(chunkSnapshots) ~= "table" then
 		return nil
@@ -266,7 +272,7 @@ function LiquidServiceClient.IsChunkVisualRelevant(self: LiquidServiceClient, ch
 end
 
 function LiquidServiceClient.GetLayerVisual(
-	self: LiquidServiceClient,
+	_self: LiquidServiceClient,
 	chunkVisual: ChunkVisual,
 	layerContext: LayerRenderContext
 ): ChunkLayerVisual
@@ -286,7 +292,7 @@ function LiquidServiceClient.GetLayerVisual(
 end
 
 function LiquidServiceClient.GetRowVisual(
-	self: LiquidServiceClient,
+	_self: LiquidServiceClient,
 	layerVisual: ChunkLayerVisual,
 	rowY: number
 ): RowVisual
@@ -694,7 +700,7 @@ function LiquidServiceClient.RebuildLayerRow(
 		local part = rowParts[descriptor.key]
 		if part == nil or part.Parent == nil then
 			local newPart = Instance.new("Part")
-			newPart.Name = HttpService:GenerateGUID(false)
+			newPart.Name = createRuntimeInstanceName()
 			newPart.Size =
 				Vector3.new(self:GetTileDepth(), 0.02, math.max(0.02, descriptor.widthTiles * self.state.tileSize))
 			newPart.Transparency = 1
@@ -964,7 +970,7 @@ function LiquidServiceClient.GetBurnAttachment(self: LiquidServiceClient): Attac
 		return nil
 	end
 	local attachment = Instance.new("Attachment")
-	attachment.Name = HttpService:GenerateGUID(false)
+	attachment.Name = createRuntimeInstanceName()
 	attachment.Parent = rootPart
 	self.burnAttachment = attachment
 	return attachment
@@ -977,7 +983,7 @@ function LiquidServiceClient.SetBurningVisualEnabled(self: LiquidServiceClient, 
 	end
 	if self.burnEmitter == nil or self.burnEmitter.Parent ~= attachment then
 		local emitter = Instance.new("ParticleEmitter")
-		emitter.Name = HttpService:GenerateGUID(false)
+		emitter.Name = createRuntimeInstanceName()
 		emitter.Color = ColorSequence.new(Color3.fromRGB(255, 176, 74), Color3.fromRGB(255, 77, 18))
 		emitter.Size = NumberSequence.new({
 			NumberSequenceKeypoint.new(0, 0.45),
@@ -1049,10 +1055,10 @@ function LiquidServiceClient.EmitSplash(self: LiquidServiceClient, liquidTypeRaw
 	end
 
 	local attachment = Instance.new("Attachment")
-	attachment.Name = HttpService:GenerateGUID(false)
+	attachment.Name = createRuntimeInstanceName()
 	attachment.Parent = rootPart
 	local emitter = Instance.new("ParticleEmitter")
-	emitter.Name = HttpService:GenerateGUID(false)
+	emitter.Name = createRuntimeInstanceName()
 	emitter.Rate = 0
 	emitter.Lifetime = NumberRange.new(0.25, 0.45)
 	emitter.Speed = NumberRange.new(2.5, 4.8)
@@ -1165,18 +1171,21 @@ function LiquidServiceClient.ApplyState(self: LiquidServiceClient, stateRaw: any
 	self.stateChanged:Fire(LiquidServiceUtils.CloneState(self.state))
 end
 
-function LiquidServiceClient.RequestSync(self: LiquidServiceClient)
+function LiquidServiceClient.RequestSync(_self: LiquidServiceClient)
 	sendPacket(LiquidServiceUtils.NETWORK_METHOD_REQUEST_SYNC)
 end
 
-function LiquidServiceClient.Init(self: LiquidServiceClient)
+function LiquidServiceClient.Init(self: LiquidServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	self.localPlayer = Players.LocalPlayer
 	self.runtimeContext = CoreRuntime.GetClientRuntime()
 	if self.runtimeContext ~= nil and typeof((self.runtimeContext :: any).Init) == "function" then
 		local runtimeAny = self.runtimeContext :: any
 		runtimeAny:Init()
 	end
-	self.config = CoerceSourceConfig()
+	self.config = coerceSourceConfig()
 	self.state = LiquidServiceUtils.CreateDefaultState()
 	self.debug = WorldSimulationDebug.New({
 		enabled = self.config.debug.enabled,
@@ -1199,7 +1208,7 @@ function LiquidServiceClient.Init(self: LiquidServiceClient)
 	self.visualFolder = WorkspaceFolders.GetOrCreateFolderInGame(VISUAL_FOLDER_NAME)
 	self.burnAttachment = nil :: Attachment?
 	self.burnEmitter = nil :: ParticleEmitter?
-	self.binders = NevermoreSupport.GetService(BinderSupportClient)
+	self.binders = if serviceBag ~= nil then serviceBag:GetService(BinderSupportClient) else nil
 	self:RefreshWaterSplashSoundAssetIds()
 	self:RecreateRebuildQueue()
 
@@ -1244,6 +1253,7 @@ function LiquidServiceClient.Init(self: LiquidServiceClient)
 end
 
 function LiquidServiceClient.Destroy(self: LiquidServiceClient)
+	self._serviceBag = nil
 	if self.janitor ~= nil then
 		self.janitor:Destroy()
 	end

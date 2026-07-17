@@ -10,7 +10,7 @@ type DroppedToolEntry = {
 	createdAt: number,
 }
 
-local function CoerceString(raw: any): string?
+local function coerceString(raw: any): string?
 	if typeof(raw) ~= "string" then
 		return nil
 	end
@@ -21,7 +21,7 @@ local function CoerceString(raw: any): string?
 	return trimmed
 end
 
-local function CoerceUserId(raw: any): number?
+local function coerceUserId(raw: any): number?
 	if typeof(raw) ~= "number" or raw ~= raw then
 		return nil
 	end
@@ -32,7 +32,7 @@ local function CoerceUserId(raw: any): number?
 	return userId
 end
 
-local function GetToolArray(toolsRaw: any): { Tool }
+local function getToolArray(toolsRaw: any): { Tool }
 	local output = {}
 	if typeof(toolsRaw) ~= "table" then
 		return output
@@ -58,7 +58,7 @@ function Cache.New(): Cache
 end
 
 function Cache.RememberToolTemplate(self: Cache, itemIdRaw: any, templateRaw: any): boolean
-	local itemId = CoerceString(itemIdRaw)
+	local itemId = coerceString(itemIdRaw)
 	if itemId == nil then
 		return false
 	end
@@ -71,7 +71,7 @@ function Cache.RememberToolTemplate(self: Cache, itemIdRaw: any, templateRaw: an
 end
 
 function Cache.CloneToolTemplate(self: Cache, itemIdRaw: any): Tool?
-	local itemId = CoerceString(itemIdRaw)
+	local itemId = coerceString(itemIdRaw)
 	if itemId == nil then
 		return nil
 	end
@@ -97,7 +97,7 @@ function Cache.CloneToolTemplate(self: Cache, itemIdRaw: any): Tool?
 end
 
 function Cache.DiscardDroppedTools(self: Cache, lootIdRaw: any)
-	local lootId = CoerceString(lootIdRaw)
+	local lootId = coerceString(lootIdRaw)
 	if lootId == nil then
 		return
 	end
@@ -120,13 +120,13 @@ function Cache.CacheDroppedTools(
 	ownerUserIdRaw: any,
 	toolsRaw: any
 ): number
-	local lootId = CoerceString(lootIdRaw)
-	local itemId = CoerceString(itemIdRaw)
+	local lootId = coerceString(lootIdRaw)
+	local itemId = coerceString(itemIdRaw)
 	if lootId == nil or itemId == nil then
 		return 0
 	end
 
-	local tools = GetToolArray(toolsRaw)
+	local tools = getToolArray(toolsRaw)
 	if #tools <= 0 then
 		return 0
 	end
@@ -134,7 +134,7 @@ function Cache.CacheDroppedTools(
 	self:DiscardDroppedTools(lootId)
 	self.droppedToolsByLootId[lootId] = {
 		itemId = itemId,
-		ownerUserId = CoerceUserId(ownerUserIdRaw),
+		ownerUserId = coerceUserId(ownerUserIdRaw),
 		tools = tools,
 		createdAt = os.clock(),
 	}
@@ -142,8 +142,8 @@ function Cache.CacheDroppedTools(
 end
 
 function Cache.PopDroppedTool(self: Cache, lootIdRaw: any, itemIdRaw: any): Tool?
-	local lootId = CoerceString(lootIdRaw)
-	local expectedItemId = CoerceString(itemIdRaw)
+	local lootId = coerceString(lootIdRaw)
+	local expectedItemId = coerceString(itemIdRaw)
 	if lootId == nil or expectedItemId == nil then
 		return nil
 	end

@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 
 local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
 local PacketPayload = require("PacketPayload")
+local ServiceBag = require("ServiceBag")
 local PlayerDataServicePackets = require("NetPacketsShared").PlayerDataService
 
 local function sendPacket(methodName: string, ...: any)
@@ -58,8 +59,12 @@ type SignalObject = Signal.Signal<...any>
 type JanitorClass = any
 
 local PlayerDataServiceClient = {}
+PlayerDataServiceClient.ServiceName = "PlayerDataServiceClient"
 
-function PlayerDataServiceClient.Init(self: PlayerDataServiceClient)
+function PlayerDataServiceClient.Init(self: PlayerDataServiceClient, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	self.localPlayer = Players.LocalPlayer
 	bindPackets(self)
 	self.janitor = Janitor.new()
@@ -83,7 +88,7 @@ function PlayerDataServiceClient.ApplyState(
 	self.stateChanged:Fire(PlayerDataServiceUtils.CloneState(self.state))
 end
 
-function PlayerDataServiceClient.RequestSync(self: PlayerDataServiceClient)
+function PlayerDataServiceClient.RequestSync(_self: PlayerDataServiceClient)
 	sendPacket("requestSync")
 end
 
@@ -123,8 +128,10 @@ function PlayerDataServiceClient.Destroy(self: PlayerDataServiceClient)
 	if self.janitor then
 		self.janitor:Destroy()
 	end
+	self._serviceBag = nil
 end
 type PlayerDataServiceClient = typeof(PlayerDataServiceClient) & {
+	_serviceBag: ServiceBag.ServiceBag?,
 	localPlayer: Player,
 	janitor: JanitorClass,
 	state: PlayerDataServiceState,

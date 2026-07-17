@@ -94,7 +94,7 @@ local function isHoverTarget(guiObject: GuiObject): boolean
 	return false
 end
 
-local function GetHoveredGuiObject(guiPosition: Vector2): GuiObject?
+local function getHoveredGuiObject(guiPosition: Vector2): GuiObject?
 	local playerGui = getPlayerGui()
 	if playerGui == nil then
 		return nil
@@ -137,7 +137,7 @@ end
 
 local function applyPointerStateFromScreenPosition(screenPosition: Vector2)
 	local guiPosition = toGuiPosition(screenPosition)
-	local hoveredGui = GetHoveredGuiObject(guiPosition)
+	local hoveredGui = getHoveredGuiObject(guiPosition)
 	mouseSlice.updatePointer(
 		guiPosition,
 		hoveredGui ~= nil,

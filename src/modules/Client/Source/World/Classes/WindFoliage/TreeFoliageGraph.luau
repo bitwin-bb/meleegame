@@ -117,22 +117,22 @@ local function clampNumber(valueRaw: any, fallback: number, minimum: number, max
 	return value
 end
 
-local function GetDeterministicPhase(seed: number, salt: string): (number, number)
+local function getDeterministicPhase(seed: number, salt: string): (number, number)
 	local nodeSeed = DeterministicRNG.SeedFrom(("%s:%s"):format(tostring(seed), salt))
 	local phaseOffset = (nodeSeed % 100000) / 100000 * math.pi * 2
 	local amplitudeScale = 0.92 + ((nodeSeed % 8191) / 8191) * 0.18
 	return phaseOffset, amplitudeScale
 end
 
-local function GetBranchBaseFrame(part: BasePart): CFrame
+local function getBranchBaseFrame(part: BasePart): CFrame
 	return part.CFrame * CFrame.new(0, 0, part.Size.Z * 0.5)
 end
 
-local function GetBranchTipFrame(part: BasePart): CFrame
+local function getBranchTipFrame(part: BasePart): CFrame
 	return part.CFrame * CFrame.new(0, 0, -part.Size.Z * 0.5)
 end
 
-local function GetBranchTipFrameFromWorld(worldCFrame: CFrame, size: Vector3): CFrame
+local function getBranchTipFrameFromWorld(worldCFrame: CFrame, size: Vector3): CFrame
 	return worldCFrame * CFrame.new(0, 0, -size.Z * 0.5)
 end
 
@@ -202,11 +202,11 @@ local function tweenNodeCFrame(node: any, config: Config, targetCFrame: CFrame, 
 	tween:Play()
 end
 
-local function GetTrunkBasePosition(part: BasePart): Vector3
-	return GetBranchBaseFrame(part).Position
+local function getTrunkBasePosition(part: BasePart): Vector3
+	return getBranchBaseFrame(part).Position
 end
 
-local function GetPlanarAngles(
+local function getPlanarAngles(
 	referenceFrame: CFrame,
 	bendWorld: Vector3,
 	maxAngleRadians: number,
@@ -335,7 +335,7 @@ function TreeFoliageGraph.New(modelRaw: any, configRaw: any): TreeFoliageGraph?
 	end)
 
 	local trunkRestWorld = trunkPart.CFrame
-	local trunkRestTipWorld = GetBranchTipFrame(trunkPart)
+	local trunkRestTipWorld = getBranchTipFrame(trunkPart)
 	local trunkThickness = math.max(0.25, trunkPart.Size.X)
 	local branchNodesByIndex = {} :: { [number]: BranchNode }
 	local branchOrder = {} :: { BranchNode }
@@ -351,17 +351,17 @@ function TreeFoliageGraph.New(modelRaw: any, configRaw: any): TreeFoliageGraph?
 		local parentAttachmentWorld = trunkRestTipWorld
 		if candidate.parentIndex ~= trunkIndex and branchNodesByIndex[candidate.parentIndex] ~= nil then
 			local parentBranch = branchNodesByIndex[candidate.parentIndex]
-			parentAttachmentWorld = GetBranchTipFrame(parentBranch.part)
+			parentAttachmentWorld = getBranchTipFrame(parentBranch.part)
 		end
 
 		local part = candidate.part :: BasePart
 		part.Anchored = true
 		part.Massless = false
 
-		local branchBaseWorld = GetBranchBaseFrame(part)
+		local branchBaseWorld = getBranchBaseFrame(part)
 		local thinness = 1 - math.clamp(part.Size.X / trunkThickness, 0.1, 1)
 		local depthAlpha = if maxDepth <= 0 then 1 else math.clamp(candidate.depth / maxDepth, 0, 1)
-		local phaseOffset, amplitudeScale = GetDeterministicPhase(config.seed, ("branch:%d"):format(candidate.index))
+		local phaseOffset, amplitudeScale = getDeterministicPhase(config.seed, ("branch:%d"):format(candidate.index))
 
 		local node = {
 			part = part,
@@ -396,7 +396,7 @@ function TreeFoliageGraph.New(modelRaw: any, configRaw: any): TreeFoliageGraph?
 	for _, candidate in leafCandidates do
 		local parentAttachmentWorld = trunkRestTipWorld
 		if branchNodesByIndex[candidate.parentIndex] ~= nil then
-			parentAttachmentWorld = GetBranchTipFrame(branchNodesByIndex[candidate.parentIndex].part)
+			parentAttachmentWorld = getBranchTipFrame(branchNodesByIndex[candidate.parentIndex].part)
 		end
 
 		local part = candidate.part :: BasePart
@@ -405,7 +405,7 @@ function TreeFoliageGraph.New(modelRaw: any, configRaw: any): TreeFoliageGraph?
 
 		local parentBranch = branchNodesByIndex[candidate.parentIndex]
 		local inheritedScale = if parentBranch ~= nil then 0.9 + math.min(0.4, parentBranch.depth * 0.05) else 0.95
-		local phaseOffset, amplitudeScale = GetDeterministicPhase(config.seed, ("leaf:%d"):format(candidate.index))
+		local phaseOffset, amplitudeScale = getDeterministicPhase(config.seed, ("leaf:%d"):format(candidate.index))
 
 		leafNodes[#leafNodes + 1] = {
 			part = part,
@@ -452,7 +452,7 @@ function TreeFoliageGraph.New(modelRaw: any, configRaw: any): TreeFoliageGraph?
 		branchOrder = branchOrder,
 		leafNodes = leafNodes,
 		parentAttachmentByIndex = {} :: { [number]: CFrame },
-		rootPosition = GetTrunkBasePosition(trunkPart),
+		rootPosition = getTrunkBasePosition(trunkPart),
 		influenceRadius = influenceRadius,
 		destroyed = false,
 	}, TreeFoliageGraph)
@@ -478,7 +478,7 @@ end
 function TreeFoliageGraph.Reset(self: TreeFoliageGraph)
 	self:CancelTweens()
 	self.trunk.CFrame = self.trunkRestWorld
-	self.rootPosition = GetTrunkBasePosition(self.trunk)
+	self.rootPosition = getTrunkBasePosition(self.trunk)
 
 	for _, branch in self.branchOrder do
 		branch.currentBend = ZERO
@@ -536,7 +536,7 @@ function TreeFoliageGraph.Step(
 	local presentationDt = if typeof(presentationDtRaw) == "number" then presentationDtRaw else dt
 
 	self.trunk.CFrame = self.trunkRestWorld
-	self.rootPosition = GetTrunkBasePosition(self.trunk)
+	self.rootPosition = getTrunkBasePosition(self.trunk)
 
 	local heightMultiplier = clampNumber(self.config.heightMultiplier, 0.72, 0.1, 8)
 	local swayAmplitude = clampNumber(self.config.swayAmplitude, 0.46, 0, 10)
@@ -571,13 +571,13 @@ function TreeFoliageGraph.Step(
 		integrateSpring(branch, target, dt)
 
 		local yawAmount = windSample.flutter * branch.yawScale * lod.detailScale * 0.25
-		local pitch, yaw, roll = GetPlanarAngles(jointRestWorld, branch.currentBend, branch.maxAngleRadians, yawAmount)
+		local pitch, yaw, roll = getPlanarAngles(jointRestWorld, branch.currentBend, branch.maxAngleRadians, yawAmount)
 		local dynamicLocal = CFrame.Angles(pitch, yaw, roll)
 		local finalBaseWorld = parentAttachmentWorld * branch.restLocal * dynamicLocal
 		local finalWorld = finalBaseWorld * branch.jointToPart
 		branch.currentWorld = finalWorld
 		tweenNodeCFrame(branch, self.config, finalWorld, presentationDt)
-		parentAttachmentByIndex[branch.index] = GetBranchTipFrameFromWorld(finalWorld, branch.part.Size)
+		parentAttachmentByIndex[branch.index] = getBranchTipFrameFromWorld(finalWorld, branch.part.Size)
 	end
 
 	for _, leaf in self.leafNodes do
@@ -600,7 +600,7 @@ function TreeFoliageGraph.Step(
 
 		local restWorld = parentAttachmentWorld * leaf.restLocal
 		local yawAmount = (windSample.flutter + flutterWave * 0.5) * leaf.yawScale * lod.detailScale
-		local pitch, yaw, roll = GetPlanarAngles(restWorld, leaf.currentBend, leaf.maxAngleRadians, yawAmount)
+		local pitch, yaw, roll = getPlanarAngles(restWorld, leaf.currentBend, leaf.maxAngleRadians, yawAmount)
 		local localTranslation = restWorld:VectorToObjectSpace(leaf.currentBend) * leaf.translationScale * lod.windScale
 		local dynamicLocal = CFrame.new(localTranslation) * CFrame.Angles(pitch, yaw, roll)
 		local finalWorld = parentAttachmentWorld * leaf.restLocal * dynamicLocal

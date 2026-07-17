@@ -5,16 +5,17 @@ local Workspace = game:GetService("Workspace")
 
 local Sift: any = require(ReplicatedStorage.Packages.Sift)
 
+local ServiceBag = require("ServiceBag")
 local BinderSupportClient = require("BinderSupportClient")
 local Configs = require("CoreConfigs")
 local CoreRuntime = require("CoreRuntime")
 local Janitor: any = require(ReplicatedStorage.Packages.Janitor)
-local NevermoreSupport = require("NevermoreSupport")
 local WindFoliage = require("WindFoliage")
 
 type JanitorClass = any
 
 local WindFoliageServiceClient = {}
+WindFoliageServiceClient.ServiceName = "WindFoliageServiceClient"
 
 local MIN_WEATHER_UPDATE_INTERVAL = 1 / 240
 
@@ -122,23 +123,26 @@ local function applyTierState(
 	end
 end
 
-local function GetConfig(): { [string]: any }
+local function getConfig(): { [string]: any }
 	local configSource = if typeof(Configs) == "table" then (Configs :: any).windFoliage else nil
 	return if typeof(configSource) == "table" then Sift.Dictionary.copy(configSource) else {} :: any
 end
 
-local function RegisterExistingFoliage(simulation: any)
+local function registerExistingFoliage(simulation: any)
 	for _, descendant in Workspace:GetDescendants() do
 		simulation:ConsiderDescendant(descendant)
 	end
 end
 
-function WindFoliageServiceClient.Init(self: any)
+function WindFoliageServiceClient.Init(self: any, serviceBag: ServiceBag.ServiceBag?)
+	if serviceBag ~= nil then
+		self._serviceBag = serviceBag
+	end
 	if self.janitor ~= nil then
 		return
 	end
 
-	local config = GetConfig()
+	local config = getConfig()
 	if config.enabled == false then
 		return
 	end
@@ -150,8 +154,8 @@ function WindFoliageServiceClient.Init(self: any)
 
 	self.simulation = WindFoliage.New(config)
 	self.simulation:Init()
-	self.binders = NevermoreSupport.GetService(BinderSupportClient)
-	RegisterExistingFoliage(self.simulation)
+	self.binders = if serviceBag ~= nil then serviceBag:GetService(BinderSupportClient) else nil
+	registerExistingFoliage(self.simulation)
 	self.janitor = Janitor.new()
 	local windField = self.simulation.windField
 	local lodController = self.simulation.lodController
@@ -350,6 +354,7 @@ function WindFoliageServiceClient.GetStats(self: any): { [string]: number }
 end
 
 function WindFoliageServiceClient.Destroy(self: any)
+	self._serviceBag = nil
 	if self.janitor ~= nil then
 		local janitor = self.janitor :: JanitorClass
 		janitor:Destroy()

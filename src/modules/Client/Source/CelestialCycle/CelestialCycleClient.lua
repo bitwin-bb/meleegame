@@ -1,10 +1,12 @@
 local require = require(script.Parent.loader).load(script)
 
+local ServiceBag = require("ServiceBag")
 local Table: any = require("Table")
 
 local CelestialCycleClassClient = require("CelestialCycleClassClient")
 
 local CelestialCycleClient = {}
+CelestialCycleClient.ServiceName = "CelestialCycleClient"
 
 local runtime: CelestialCycleClassClient.CelestialCycleClassClient? = nil
 
@@ -15,7 +17,8 @@ local function getRuntime(): CelestialCycleClassClient.CelestialCycleClassClient
 	return runtime :: CelestialCycleClassClient.CelestialCycleClassClient
 end
 
-function CelestialCycleClient.Init(_self: any, container: Instance?)
+function CelestialCycleClient.Init(_self: any, containerOrServiceBag: Instance | ServiceBag.ServiceBag?)
+	local container = if typeof(containerOrServiceBag) == "Instance" then containerOrServiceBag else nil
 	getRuntime():Init(container)
 end
 

@@ -1,2 +1,5 @@
 std = "roblox"
-exclude = ["src/modules/Shared/Vendor/**"]
+exclude = [
+	"src/modules/Shared/Vendor/**",
+	"src/scripts/Client/PlayerModule/**",
+]

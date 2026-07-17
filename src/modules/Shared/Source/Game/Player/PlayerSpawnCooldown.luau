@@ -11,7 +11,7 @@ local DEFAULT_RESPAWN_DELAY = 5
 local MIN_RESPAWN_DELAY = 0.1
 local MAX_RESPAWN_DELAY = 120
 
-local function CoerceRespawnDelay(valueRaw: any, fallbackRaw: any?): number
+local function coerceRespawnDelay(valueRaw: any, fallbackRaw: any?): number
 	local fallbackValue = if typeof(fallbackRaw) == "number" and fallbackRaw == fallbackRaw
 		then fallbackRaw
 		else DEFAULT_RESPAWN_DELAY
@@ -23,7 +23,7 @@ local function CoerceRespawnDelay(valueRaw: any, fallbackRaw: any?): number
 	return math.clamp(valueRaw, MIN_RESPAWN_DELAY, MAX_RESPAWN_DELAY)
 end
 
-local function GetConfiguredRespawnDelayFromTemplate(): number?
+local function getConfiguredRespawnDelayFromTemplate(): number?
 	if typeof(DataTemplate) ~= "table" then
 		return nil
 	end
@@ -43,15 +43,15 @@ local function GetConfiguredRespawnDelayFromTemplate(): number?
 		return nil
 	end
 
-	return CoerceRespawnDelay(configuredDelayRaw, DEFAULT_RESPAWN_DELAY)
+	return coerceRespawnDelay(configuredDelayRaw, DEFAULT_RESPAWN_DELAY)
 end
 
 function PlayerSpawnCooldown.GetCurrentRespawnDelay(): number
-	return CoerceRespawnDelay(Players.RespawnTime, DEFAULT_RESPAWN_DELAY)
+	return coerceRespawnDelay(Players.RespawnTime, DEFAULT_RESPAWN_DELAY)
 end
 
 function PlayerSpawnCooldown.GetConfiguredRespawnDelay(): number
-	local configuredRespawnDelay = GetConfiguredRespawnDelayFromTemplate()
+	local configuredRespawnDelay = getConfiguredRespawnDelayFromTemplate()
 	if configuredRespawnDelay ~= nil then
 		return configuredRespawnDelay
 	end
